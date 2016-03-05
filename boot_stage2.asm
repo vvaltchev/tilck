@@ -323,7 +323,10 @@ asmMain:
    nop
    nop
 
-   jmp 0x22000
+   jmp dword 0x08:0x00022000
+   
+   ;jmp 0x22000
+
    
    ;sti
    
