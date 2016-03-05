@@ -32,15 +32,18 @@ start:
    
    mov word [counter], 1
    
-   
+   .load_loop:
 
-   mov ax, [counter]    ; sector 1 (next 512 bytes after this bootloader)
+   mov ax, [counter]    ; sector 1 (next 512 bytes after this bootloader) 
    call l2hts
 
    mov ax, 0x2000
    mov es, ax        ; Store 2000h in ES, the destination address of the sectors read
                      ; (cannot store directly IMM value in ES)
-   mov bx, 0         ; Store in BX 0, since the sectors are stored in ES:BX
+                     
+   mov bx, [counter]
+   shl bx, 9         ; Sectors read from floppy are stored in ES:BX
+   sub bx, 512
    
    ; 20 address in 8086 (real mode)
    ; SEG:OFF
@@ -48,15 +51,22 @@ start:
 
 
    mov ah, 2         ; Params for int 13h: read floppy sectors
-   mov al, 18        ; Sectors to read(10)
+   mov al, 18        ; Sectors to read
 
    int 13h
-
+   
    jc error
   
+   mov ax, [counter]  
+   cmp ax, 108
+   jge ok
    
-   jmp ok
-
+   add ax, 18
+   mov [counter], ax
+   
+   jmp .load_loop
+  
+   
 error:
 
    push err1
