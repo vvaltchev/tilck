@@ -1,4 +1,5 @@
 
+[ORG 0x20000]
 [BITS 16]
 
    ; Our trivial bootloader has loaded this code at absolute address 0x20000
@@ -64,7 +65,7 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
    mov word [gdtr+5], 0x00
 
    
-   xchg bx, bx ; bochs magic break 
+   ; xchg bx, bx ; bochs magic break 
      
    mov word [idtr+2], 0x1B ; 0x3 (jmp) + 0x18 (GDT)
    mov word [idtr+3], 0x00
@@ -146,10 +147,10 @@ complete_flush: ; will be copied at 0x1000
    or al, 1     ; set PE (Protection Enable) bit in CR0 (Control Register 0)
    mov cr0, eax   
 
-   sti
+   ; sti
    
    
-   ;xchg bx, bx ; bochs magic break
+   xchg bx, bx ; bochs magic break
    
    nop
    nop
@@ -157,6 +158,7 @@ complete_flush: ; will be copied at 0x1000
    nop
    
    jmp asmMain
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -321,10 +323,12 @@ asmMain:
    nop
    nop
 
+   jmp 0x22000
+   
    ;sti
    
-    mov eax, 0x07690748
-    mov [0xb8000], eax
+   ; mov eax, 0x07690748
+   ; mov [0xb8000], eax
    
    ; mov al, 65
    ; mov ah, 0
@@ -332,7 +336,7 @@ asmMain:
    ; mov [ebx], ax
    
 
-   after_loop:
+   ;after_loop:
    
    
    end:
@@ -340,4 +344,4 @@ asmMain:
 
 
 times 4096-($-complete_flush) db 0   ; Pad to 4 KB   
-
+times 8192-($-$$) db 0   ; Pad to 8 KB   
