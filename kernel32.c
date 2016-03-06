@@ -96,7 +96,12 @@ void write_string(const char *str) {
    }
 }
 
-
+uint8_t mybuffer[16] =
+{
+  0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+  0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC,
+  0xDD, 0xEE, 0xFF
+};
 
 void kernelMain() {
    
@@ -107,6 +112,10 @@ void kernelMain() {
    //terminal_writestring("Hello from my C kernel!");
    
    write_string("hello from my kernel!   ");
+    
+   for (int i = 0; i < 16; i++) {
+      mybuffer[i]--;
+   }
     
    while (1) { }
 }

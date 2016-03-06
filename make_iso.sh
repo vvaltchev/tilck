@@ -3,9 +3,11 @@
 nasm -f bin -o myboot.bin myboot.asm
 nasm -f bin -o boot_stage2.bin boot_stage2.asm
 
-gcc -m32 -O0 -c -o kernel32.o -ffreestanding -nostdinc -fno-builtin -fno-asynchronous-unwind-tables kernel32.c 
+CFLAGS="-O0 -std=c99 -mno-red-zone -ffreestanding -nostdinc -fno-builtin -fno-asynchronous-unwind-tables"
+
+gcc -m32 -c -o kernel32.o $CFLAGS kernel32.c 
 ld -T link.ld -Ttext 0x22000 -s -o kerneltmp kernel32.o
-objcopy -O binary -j .text -j .rdata kerneltmp kernel32.bin
+objcopy -O binary -j .text -j .rdata -j .data kerneltmp kernel32.bin
 
 
 dd status=noxfer conv=notrunc if=myboot.bin of=os2.img
