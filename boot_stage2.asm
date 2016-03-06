@@ -10,8 +10,6 @@
 gdt0 db 0, 0, 0, 0, 0, 0, 0, 0
 gdt1 db 0xFF, 0xFF, 0, 0, 0, 0x9A, 0xCF, 0
 gdt2 db 0xFF, 0xFF, 0, 0, 0, 0x92, 0xCF, 0
-
-idt  times 2048 db 0
    
 gdtr db 23,      0,  0, 0, 0, 0
 
@@ -75,7 +73,7 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
    ;mov word [idtr+5], 0x00    
    
    ; now we have to copy the text from
-   ; complete_flush + 0x0 to complete_flush + 4 KB
+   ; complete_flush + 0x0 to complete_flush + 1 KB
    ; into 0x0000:0x1000
    
    mov si, complete_flush
@@ -85,7 +83,7 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
    
    .copy_loop:
    
-   cmp cx, 4096
+   cmp cx, 1024
    je .end_copy_loop
    add cx, 2
    
@@ -98,8 +96,6 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
    jmp .copy_loop
    
    .end_copy_loop:
-
-
    
    call smart_enable_A20
   
@@ -302,8 +298,8 @@ complete_flush: ; will be copied at 0x1000
    ; sti
    
    xchg bx, bx ; bochs magic break   
-   jmp dword 0x08:0x00022000
+   jmp dword 0x08:0x00021000
 
 
-times 4096-($-complete_flush) db 0   ; Pad to 4 KB   
-times 8192-($-$$) db 0   ; Pad to 8 KB   
+times 1024-($-complete_flush) db 0   ; Pad to 1 KB   
+times 4096-($-$$) db 0               ; Pad to 4 KB   
