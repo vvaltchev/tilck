@@ -14,7 +14,9 @@ gdt2 db 0xFF, 0xFF, 0, 0, 0, 0x92, 0xCF, 0
 idt  times 2048 db 0
    
 gdtr db 23,      0,  0, 0, 0, 0
-idtr db 0xFF, 0x07,  0, 0, 0, 0
+
+;idtr db 0xFF, 0x07,  0, 0, 0, 0
+idtr db 0, 0, 0, 0, 0, 0
 
 helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0      
 
@@ -67,10 +69,10 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
    
    ; xchg bx, bx ; bochs magic break 
      
-   mov word [idtr+2], 0x1B ; 0x3 (jmp) + 0x18 (GDT)
-   mov word [idtr+3], 0x00
-   mov word [idtr+4], 0x02
-   mov word [idtr+5], 0x00    
+   ;mov word [idtr+2], 0x1B ; 0x3 (jmp) + 0x18 (GDT)
+   ;mov word [idtr+3], 0x00
+   ;mov word [idtr+4], 0x02
+   ;mov word [idtr+5], 0x00    
    
    ; now we have to copy the text from
    ; complete_flush + 0x0 to complete_flush + 4 KB
@@ -96,7 +98,11 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
    jmp .copy_loop
    
    .end_copy_loop:
+
+
    
+   call smart_enable_A20
+  
    
    ;xchg bx, bx ; bochs magic break 
 
@@ -113,51 +119,19 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
 flush_gdt:
    lgdt [gdtr]  ; load GDT register with start address of Global Descriptor Table
    
+   mov eax, cr0 
+   or al, 1     ; set PE (Protection Enable) bit in CR0 (Control Register 0)
+   mov cr0, eax   
    
-   jmp 0x08:0xF80 ; the JMP sets CS (code selector);
-                  ; the JMP jumps at OFFSET + 0x80;
-                  ; 0xF80 is 0x1000 - 0x80
-                  ; TODO: Why?? This should not happen!
-
+   xchg bx, bx ; bochs magic break 
+   
+   jmp 0x08:0x1000 ; the JMP sets CS (code selector);
+                  
    ; 0x08 =
    ; 0000000000001     0         00
    ; index 1 (code)   GDT    privileged
 
    
-complete_flush: ; will be copied at 0x1000
-   mov ax, 0x10
-   mov ds, ax
-   mov es, ax
-   mov fs, ax
-   mov gs, ax
-   mov ss, ax
-
-   ; 0x10:
-   ; 0000000000010     0         00
-   ; index 2 (data)   GDT    privileged   
-   
-   ;xchg bx, bx ; bochs magic break   
-
-   call smart_enable_A20
-
-   ;xchg bx, bx ; bochs magic break      
-
-   
-   mov eax, cr0 
-   or al, 1     ; set PE (Protection Enable) bit in CR0 (Control Register 0)
-   mov cr0, eax   
-
-   ; sti
-   
-   
-   xchg bx, bx ; bochs magic break
-   
-   nop
-   nop
-   nop
-   nop
-   
-   jmp asmMain
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -312,26 +286,29 @@ smart_enable_A20:
 
 [BITS 32]
 
-asmMain:
+complete_flush: ; will be copied at 0x1000
 
-   nop
-   nop
-   nop
-   nop
-   nop
-   nop
-   nop
-   nop
+   ; 0x10:
+   ; 0000000000010     0         00
+   ; index 2 (data)   GDT    privileged   
+   
+   mov ax, 0x10
+   mov ds, ax
+   mov es, ax
+   mov fs, ax
+   mov gs, ax
+   mov ss, ax
 
-   jmp dword 0x08:0x00022000
-   
-   ;jmp 0x22000
 
+   ; sti
    
-   ;sti
+   xchg bx, bx ; bochs magic break
    
-   ; mov eax, 0x07690748
-   ; mov [0xb8000], eax
+
+
+
+   mov eax, 0x07690748
+   mov [0xb8000], eax
    
    ; mov al, 65
    ; mov ah, 0
@@ -340,10 +317,10 @@ asmMain:
    
 
    ;after_loop:
+
+   xchg bx, bx ; bochs magic break
    
-   
-   end:
-      jmp end
+   jmp dword 0x08:0x00022000
 
 
 times 4096-($-complete_flush) db 0   ; Pad to 4 KB   
