@@ -292,9 +292,27 @@ complete_flush: ; will be copied at 0x1000
    mov gs, ax
    mov ss, ax
 
+   ; Now the kernel is at 0x21000 - 0x9FFFF (512 KiB)
+   ; Copy it to its standard location, 0x100000 (1 MiB)
+   
+   mov esi, 0x21000
+   mov edi, 0x100000
+   
+   .copy_loop:
+   
+   mov eax, [esi]
+   mov [edi], eax
+   add esi, 4
+   add edi, 4
+   
+   cmp esi, 0xA0000
+   je .end_copy_loop
+   jmp .copy_loop
+   
+   .end_copy_loop:
+   
    xchg bx, bx ; bochs magic break   
-   jmp dword 0x08:0x00021000
-
+   jmp dword 0x08:0x00100000
 
 times 1024-($-complete_flush) db 0   ; Pad to 1 KB   
 times 4096-($-$$) db 0               ; Pad to 4 KB   

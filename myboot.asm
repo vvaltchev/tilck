@@ -67,7 +67,7 @@ start:
    .end_small_load_loop:
    mov ax, [currSegmentKernel]
    
-   cmp ax, 0xA000 ; so, we'd have 0x20000 - 0xAFFFF for the kernel
+   cmp ax, 0x9000 ; so, we'd have 0x20000 - 0x9FFFF for the kernel (512 KB)
    je .load_OK
    
    add ax, 0x1000
