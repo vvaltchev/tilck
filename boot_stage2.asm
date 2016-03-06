@@ -119,19 +119,19 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
 flush_gdt:
    lgdt [gdtr]  ; load GDT register with start address of Global Descriptor Table
    
+   ; FIRST switch to protected mode and THEN do the FAR JUMP to 32 bit code
+   
    mov eax, cr0 
    or al, 1     ; set PE (Protection Enable) bit in CR0 (Control Register 0)
    mov cr0, eax   
    
-   xchg bx, bx ; bochs magic break 
-   
-   jmp 0x08:0x1000 ; the JMP sets CS (code selector);
-                  
-   ; 0x08 =
+   ; xchg bx, bx ; bochs magic break 
+
+   ; 0x08 is the first selector
    ; 0000000000001     0         00
    ; index 1 (code)   GDT    privileged
-
    
+   jmp 0x08:0x1000 ; the JMP sets CS (code selector);
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -299,27 +299,9 @@ complete_flush: ; will be copied at 0x1000
    mov gs, ax
    mov ss, ax
 
-
    ; sti
    
-   xchg bx, bx ; bochs magic break
-   
-
-
-
-   mov eax, 0x07690748
-   mov [0xb8000], eax
-   
-   ; mov al, 65
-   ; mov ah, 0
-   ; mov ebx, 0xb8000
-   ; mov [ebx], ax
-   
-
-   ;after_loop:
-
-   xchg bx, bx ; bochs magic break
-   
+   xchg bx, bx ; bochs magic break   
    jmp dword 0x08:0x00022000
 
 
