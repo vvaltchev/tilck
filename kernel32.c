@@ -201,11 +201,17 @@ void show_hello_message()
    write_string(" kernel, line 2");   
 }
 
+static inline void halt()
+{
+   asm volatile("hlt");
+}
+
 void kmain() {
    
    term_init(); 
    
    show_hello_message();
     
-   while (1) { }
+   halt();
+   //while (1) { }
 }

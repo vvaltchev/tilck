@@ -311,6 +311,8 @@ complete_flush: ; will be copied at 0x1000
    
    .end_copy_loop:
    
+   mov esp, 0x1FFFFF ; 1 MB of stack
+   
    xchg bx, bx ; bochs magic break   
    jmp dword 0x08:0x00100000
 
