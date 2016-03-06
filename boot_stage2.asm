@@ -1,5 +1,4 @@
 
-[ORG 0x20000]
 [BITS 16]
 
    ; Our trivial bootloader has loaded this code at absolute address 0x20000
@@ -12,8 +11,6 @@ gdt1 db 0xFF, 0xFF, 0, 0, 0, 0x9A, 0xCF, 0
 gdt2 db 0xFF, 0xFF, 0, 0, 0, 0x92, 0xCF, 0
    
 gdtr db 23,      0,  0, 0, 0, 0
-
-;idtr db 0xFF, 0x07,  0, 0, 0, 0
 idtr db 0, 0, 0, 0, 0, 0
 
 helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0      
@@ -54,10 +51,10 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
    mov bx, gdt0
    
    ; the pointer of GDT must be an absolute 32bit address
-   ; since the kernel is loaded in 0x2000:0000,
-   ; this means, 0x20000.
+   ; since the kernel is loaded in 0x2000:0x0000,
+   ; this means, 0x20000 (note the EXTRA zero).
    ; the following code write this value (litte-endian)
-   ; in to GDTR
+   ; in to GDTR.
    
    mov word [gdtr+2], 0x03
    mov word [gdtr+3], 0x00
@@ -295,8 +292,6 @@ complete_flush: ; will be copied at 0x1000
    mov gs, ax
    mov ss, ax
 
-   ; sti
-   
    xchg bx, bx ; bochs magic break   
    jmp dword 0x08:0x00021000
 

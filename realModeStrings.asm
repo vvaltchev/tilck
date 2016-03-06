@@ -1,5 +1,14 @@
    
-   BITS 16
+[BITS 16]
+
+   ;;;;;;;;;;;;;;;;;
+   ; EXAMPLE: print a char using BIOS
+   ;
+   ; mov ah, 0Eh
+   ; mov al, 'k'
+
+   ; int 10h
+   ;;;;;;;;;;;;;;;;;
    
 print_string:      ; Routine: output string in SI to screen
    push bp

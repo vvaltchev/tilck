@@ -1,27 +1,25 @@
-   
 
-   BITS 16
+
+[BITS 16]
+[ORG 0x0000]
+
+%define BASE_LOAD_ADDR 0x07C0
+%define SECTORS_TO_READ_AT_TIME 8
+%define DEST_SEGMENT_KERNEL 0x2000
 
 start:
    
-   mov ax, 07C0h        ; Set up 4K of stack space above buffer
-   add ax, 544          ; 8k buffer = 512 paragraphs + 32 paragraphs (loader)
-   cli                  ; Disable interrupts while changing stack
+   mov ax, BASE_LOAD_ADDR      ; Set up 4K of stack space above buffer
+   add ax, 544                 ; 8k buffer = 512 paragraphs + 32 paragraphs (loader)
+   cli                         ; Disable interrupts while changing stack
    mov ss, ax
    mov sp, 4096
-   sti                  ; Restore interrupts
+   sti                         ; Restore interrupts
 
-   mov ax, 07C0h        ; Set data segment to where we're loaded
+   mov ax, BASE_LOAD_ADDR      ; Set data segment to where we're loaded
    mov ds, ax
 
-   ;;;;;;;;;;;;;;;;;
-   ; EXAMPLE: print a char using BIOS
-   ;
-   ; mov ah, 0Eh
-   ; mov al, 'k'
 
-   ; int 10h
-   ;;;;;;;;;;;;;;;;;
 
    ; set video mode
    mov ah, 0x0 ; set video mode
@@ -32,58 +30,64 @@ start:
    
    mov word [counter], 1
    
+   .big_load_loop:
+   
    .load_loop:
 
    mov ax, [counter]    ; sector 1 (next 512 bytes after this bootloader) 
    call l2hts
 
-   mov ax, 0x2000
-   mov es, ax        ; Store 2000h in ES, the destination address of the sectors read
-                     ; (cannot store directly IMM value in ES)
+   mov ax, [currSegmentKernel]
+   mov es, ax        ; Store currSegmentKernel in ES, the destination address of the sectors read
+                     ; (AX is used since we cannot store directly IMM value in ES)
                      
    mov bx, [counter]
    shl bx, 9         ; Sectors read from floppy are stored in ES:BX
-   sub bx, 512
+   sub bx, 512       ; => (bx << 9) - 512;
    
    ; 20 address in 8086 (real mode)
    ; SEG:OFF
    ; ADDR20 = (SEG << 4) | OFF
 
-
    mov ah, 2         ; Params for int 13h: read floppy sectors
-   mov al, 18        ; Sectors to read
+   mov al, SECTORS_TO_READ_AT_TIME
 
    int 13h
    
-   jc error
-  
-   mov ax, [counter]  
-   cmp ax, 108
-   jge ok
-   
-   add ax, 18
+   jc .load_error
+
+   mov ax, [counter]    
+   add ax, SECTORS_TO_READ_AT_TIME
    mov [counter], ax
    
+   cmp ax, 128
+   jge .end_small_load_loop 
    jmp .load_loop
-  
    
-error:
+   .end_small_load_loop:
+   mov ax, [currSegmentKernel]
+   
+   cmp ax, 0xA000 ; so, we'd have 0x20000 - 0xAFFFF for the kernel
+   je .load_OK
+   
+   add ax, 0x1000
+   mov [currSegmentKernel], ax
+   jmp .big_load_loop
+   
+.load_error:
 
    push err1
    call print_string
    add sp, 2
    jmp end
 
-ok:
+.load_OK:
 
    push str1
    call print_string
-   add sp, 2
- 
-   ;mov ah, 0x0
-   ;int 0x16 ; read char from keyboard
+   add sp, 2 
 
-   jmp 0x2000:0000
+   jmp DEST_SEGMENT_KERNEL:0x0000
    
 end:
    jmp end
@@ -141,8 +145,7 @@ str1                 db 'This is my bootloader!', 10, 13, 0
 err1                 db 'ERROR while loading kernel!', 10, 13, 0
 newline              db 10, 13, 0
 counter              dw 0
+currSegmentKernel    dw DEST_SEGMENT_KERNEL
 
 times 510-($-$$) db 0   ; Pad remainder of boot sector with 0s
 dw 0xAA55               ; The standard PC boot signature
-  
-times 1024 db 0
