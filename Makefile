@@ -13,21 +13,21 @@ POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 KERNEL_TMP_BIN = kernel_binary_tmp
 KERNEL_TARGET = kernel32.bin
 
-KERNEL_SOURCES=$(wildcard ./*.c)
+KERNEL_SOURCES=$(wildcard *.c)
 KERNEL_ASM_SOURCES=kernelAsm.asm
 KERNEL_OBJECTS=$(KERNEL_ASM_SOURCES:%.asm=%.o) $(KERNEL_SOURCES:%.c=%.o)
 
-BOOTLOADER_SRCS = $(wildcard boot_*.asm)
+BOOTLOADER_SRCS = $(wildcard bootloader/boot_*.asm)
 BOOTLOADER_OBJS = $(BOOTLOADER_SRCS:%.asm=%.bin)
 
 
 all: $(BOOTLOADER_OBJS) $(KERNEL_TARGET)
-	dd status=noxfer conv=notrunc if=boot_stage1.bin of=os2.img
-	dd status=noxfer conv=notrunc if=boot_stage2.bin of=os2.img seek=1 obs=512 ibs=512
+	dd status=noxfer conv=notrunc if=bootloader/boot_stage1.bin of=os2.img
+	dd status=noxfer conv=notrunc if=bootloader/boot_stage2.bin of=os2.img seek=1 obs=512 ibs=512
 	dd status=noxfer conv=notrunc if=kernel32.bin of=os2.img seek=9 obs=512 ibs=512
 
 clean:
-	rm *.o *.bin
+	rm *.o *.bin bootloader/*.bin
 
 .PHONY: all clean
 

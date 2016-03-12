@@ -1,17 +1,16 @@
 
 
-char * itoa( int value, char * str, int base )
+void itoa(int value, char *destBuf, int base)
 {
-   char * rc;
    char * ptr;
    char * low;
    // Check for supported base.
    if ( base < 2 || base > 36 )
    {
-     *str = '\0';
-     return str;
+     *destBuf = '\0';
+     return;
    }
-   rc = ptr = str;
+   ptr = destBuf;
    // Set '-' for negative decimals.
    if ( value < 0 && base == 10 )
    {
@@ -35,5 +34,4 @@ char * itoa( int value, char * str, int base )
      *low++ = *ptr;
      *ptr-- = tmp;
    }
-   return rc;
 }

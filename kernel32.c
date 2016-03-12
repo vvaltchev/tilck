@@ -144,6 +144,8 @@ void term_move_ch(int row, int col)
    terminal_column = col;
 }
 
+char * itoa( int value, char * str, int base );
+
 void show_hello_message()
 {
    term_move_ch(0, 0);
@@ -160,7 +162,14 @@ void show_hello_message()
    
    term_move_ch(1, 0);
    write_string(" hello from my kernel!\n");
-   write_string(" kernel, line 2");   
+   write_string(" kernel, line 2\n");
+   
+   char buf[32];
+   for (int i=0; i < 10; i++) {
+      itoa(i, buf, 10);
+      write_string(buf);
+      write_string("\n");
+   }
 }
 
 static inline void halt()
