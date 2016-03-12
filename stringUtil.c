@@ -1,4 +1,5 @@
 
+#include <stringUtil.h>
 
 void itoa(int value, char *destBuf, int base)
 {

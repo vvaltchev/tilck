@@ -1,11 +1,16 @@
 
 AS = nasm
 CC = gcc
-CFLAGS = -m32 -O2 -std=c99 -mno-red-zone -ffreestanding -nostdinc -fno-builtin -fno-asynchronous-unwind-tables
+OPT = -O2
+INCDIRS = -I./include
+CFLAGS = -m32 $(OPT) -std=c99 $(INCDIRS) -mno-red-zone -ffreestanding \
+         -nostdinc -fno-builtin -fno-asynchronous-unwind-tables
 
 DEPDIR := .d
 $(shell mkdir -p $(DEPDIR) >/dev/null)
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
+
+BUILD_DIR = ./build
 
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
 POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
@@ -15,29 +20,32 @@ KERNEL_TARGET = kernel32.bin
 
 KERNEL_SOURCES=$(wildcard *.c)
 KERNEL_ASM_SOURCES=kernelAsm.asm
-KERNEL_OBJECTS=$(KERNEL_ASM_SOURCES:%.asm=%.o) $(KERNEL_SOURCES:%.c=%.o)
+KERNEL_OBJECTS=$(KERNEL_ASM_SOURCES:%.asm=build/%.o) $(KERNEL_SOURCES:%.c=build/%.o)
 
 BOOTLOADER_SRCS = $(wildcard bootloader/boot_*.asm)
 BOOTLOADER_OBJS = $(BOOTLOADER_SRCS:%.asm=%.bin)
 
 
-all: $(BOOTLOADER_OBJS) $(KERNEL_TARGET)
+all: $(BUILD_DIR) $(BOOTLOADER_OBJS) $(KERNEL_TARGET)
 	dd status=noxfer conv=notrunc if=bootloader/boot_stage1.bin of=os2.img
 	dd status=noxfer conv=notrunc if=bootloader/boot_stage2.bin of=os2.img seek=1 obs=512 ibs=512
 	dd status=noxfer conv=notrunc if=kernel32.bin of=os2.img seek=9 obs=512 ibs=512
 
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+	
 clean:
-	rm *.o *.bin bootloader/*.bin
+	rm -rf ./build/ bootloader/*.bin
 
+# Targets that do not generate files
 .PHONY: all clean
 
-
-%.o : %.c
-%.o : %.c $(DEPDIR)/%.d
+build/%.o : %.c
+build/%.o : %.c $(DEPDIR)/%.d
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 	$(POSTCOMPILE)
 
-%.o : %.asm
+build/%.o : %.asm
 	nasm -f win32 $(OUTPUT_OPTION) $<
 
 boot_%.bin: boot_%.asm
@@ -51,4 +59,4 @@ $(KERNEL_TARGET): $(KERNEL_OBJECTS)
 $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d
 
--include $(patsubst %,$(DEPDIR)/%.d,$(basename $(SRCS)))
+-include $(patsubst %,$(DEPDIR)/%.d,$(basename $(KERNEL_SOURCES)))

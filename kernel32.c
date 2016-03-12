@@ -1,6 +1,8 @@
 
 #define asm __asm__
 
+#include <stringUtil.h>
+
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned long size_t;
@@ -143,8 +145,6 @@ void term_move_ch(int row, int col)
    terminal_row = row;
    terminal_column = col;
 }
-
-char * itoa( int value, char * str, int base );
 
 void show_hello_message()
 {
