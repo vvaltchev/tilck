@@ -15,27 +15,27 @@ BUILD_DIR = ./build
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
 POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
-KERNEL_TMP_BIN = kernel_binary_tmp
-KERNEL_TARGET = kernel32.bin
+KERNEL_TMP_BIN = $(BUILD_DIR)/kernel_binary_tmp
+KERNEL_TARGET = $(BUILD_DIR)/kernel32.bin
 
 KERNEL_SOURCES=$(wildcard *.c)
 KERNEL_ASM_SOURCES=kernelAsm.asm
 KERNEL_OBJECTS=$(KERNEL_ASM_SOURCES:%.asm=build/%.o) $(KERNEL_SOURCES:%.c=build/%.o)
 
-BOOTLOADER_SRCS = $(wildcard bootloader/boot_*.asm)
-BOOTLOADER_OBJS = $(BOOTLOADER_SRCS:%.asm=%.bin)
+BOOTLOADER_TARGET = $(BUILD_DIR)/bootloader.bin
 
+FINAL_TARGET = os2.img
 
-all: $(BUILD_DIR) $(BOOTLOADER_OBJS) $(KERNEL_TARGET)
-	dd status=noxfer conv=notrunc if=bootloader/boot_stage1.bin of=os2.img
-	dd status=noxfer conv=notrunc if=bootloader/boot_stage2.bin of=os2.img seek=1 obs=512 ibs=512
-	dd status=noxfer conv=notrunc if=kernel32.bin of=os2.img seek=9 obs=512 ibs=512
+all: $(BUILD_DIR) $(BOOTLOADER_TARGET) $(KERNEL_TARGET)
+	dd status=noxfer conv=notrunc if=$(BOOTLOADER_TARGET) of=$(FINAL_TARGET)
+	dd status=noxfer conv=notrunc if=$(KERNEL_TARGET) of=$(FINAL_TARGET) seek=8 obs=512 ibs=512
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
+	dd status=noxfer if=/dev/zero of=$(FINAL_TARGET) obs=512 ibs=512 count=2880
 	
 clean:
-	rm -rf ./build/ bootloader/*.bin
+	rm -rf $(BUILD_DIR) $(FINAL_TARGET)
 
 # Targets that do not generate files
 .PHONY: all clean
@@ -48,8 +48,12 @@ build/%.o : %.c $(DEPDIR)/%.d
 build/%.o : %.asm
 	nasm -f win32 $(OUTPUT_OPTION) $<
 
-boot_%.bin: boot_%.asm
-	nasm -f bin $(OUTPUT_OPTION) $<
+
+$(BOOTLOADER_TARGET): bootloader/boot_stage1.asm bootloader/boot_stage2.asm
+	nasm -f bin -o $(BUILD_DIR)/boot_stage1.bin bootloader/boot_stage1.asm
+	nasm -f bin -o $(BUILD_DIR)/boot_stage2.bin bootloader/boot_stage2.asm
+	cp $(BUILD_DIR)/boot_stage1.bin $(BOOTLOADER_TARGET)
+	dd status=noxfer conv=notrunc if=$(BUILD_DIR)/boot_stage2.bin of=$(BOOTLOADER_TARGET) seek=1 obs=512 ibs=512
 
 $(KERNEL_TARGET): $(KERNEL_OBJECTS)
 	ld -T link.ld -Ttext 0x100000 -s -o $(KERNEL_TMP_BIN) $(KERNEL_OBJECTS)

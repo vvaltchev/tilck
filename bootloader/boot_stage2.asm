@@ -62,12 +62,7 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
    mov word [gdtr+5], 0x00
 
    
-   ; xchg bx, bx ; bochs magic break 
-     
-   ;mov word [idtr+2], 0x1B ; 0x3 (jmp) + 0x18 (GDT)
-   ;mov word [idtr+3], 0x00
-   ;mov word [idtr+4], 0x02
-   ;mov word [idtr+5], 0x00    
+   ; xchg bx, bx ; bochs magic break    
    
    ; now we have to copy the text from
    ; complete_flush + 0x0 to complete_flush + 1 KB
@@ -292,10 +287,10 @@ complete_flush: ; will be copied at 0x1000
    mov gs, ax
    mov ss, ax
 
-   ; Now the kernel is at 0x21000 - 0x9FFFF (512 KiB)
+   ; Now the kernel is at 0x20E00 - 0x9FFFF (512 KiB)
    ; Copy it to its standard location, 0x100000 (1 MiB)
    
-   mov esi, 0x21000
+   mov esi, 0x20E00
    mov edi, 0x100000
    
    .copy_loop:
@@ -317,4 +312,4 @@ complete_flush: ; will be copied at 0x1000
    jmp dword 0x08:0x00100000
 
 times 1024-($-complete_flush) db 0   ; Pad to 1 KB   
-times 4096-($-$$) db 0               ; Pad to 4 KB   
+times 3584-($-$$) db 0               ; Pad to (4 KB - 512 B) in order to the bootloader to be in total 4 KB
