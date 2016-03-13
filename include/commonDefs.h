@@ -54,6 +54,11 @@ static inline void halt()
    asmVolatile("hlt");
 }
 
+static inline void cli()
+{
+   asmVolatile("cli");
+}
+
 static inline void sti()
 {
    asmVolatile("sti");

@@ -6,6 +6,7 @@ extern _idtp
 
 
 global _idt_load
+global _init_PIT
 
 section .text
 
@@ -56,218 +57,218 @@ global _isr31
 
 ;  0: Divide By Zero Exception
 _isr0:
-    cli
+    ; cli
     push byte 0
     push byte 0
     jmp isr_common_stub
 
 ;  1: Debug Exception
 _isr1:
-    cli
+    ; cli
     push byte 0
     push byte 1
     jmp isr_common_stub
 
 ;  2: Non Maskable Interrupt Exception
 _isr2:
-    cli
+    ; cli
     push byte 0
     push byte 2
     jmp isr_common_stub
 
 ;  3: Int 3 Exception
 _isr3:
-    cli
+    ; cli
     push byte 0
     push byte 3
     jmp isr_common_stub
 
 ;  4: INTO Exception
 _isr4:
-    cli
+    ; cli
     push byte 0
     push byte 4
     jmp isr_common_stub
 
 ;  5: Out of Bounds Exception
 _isr5:
-    cli
+    ; cli
     push byte 0
     push byte 5
     jmp isr_common_stub
 
 ;  6: Invalid Opcode Exception
 _isr6:
-    cli
+    ; cli
     push byte 0
     push byte 6
     jmp isr_common_stub
 
 ;  7: Coprocessor Not Available Exception
 _isr7:
-    cli
+    ; cli
     push byte 0
     push byte 7
     jmp isr_common_stub
 
 ;  8: Double Fault Exception (With Error Code!)
 _isr8:
-    cli
+    ; cli
     push byte 8
     jmp isr_common_stub
 
 ;  9: Coprocessor Segment Overrun Exception
 _isr9:
-    cli
+    ; cli
     push byte 0
     push byte 9
     jmp isr_common_stub
 
 ; 10: Bad TSS Exception (With Error Code!)
 _isr10:
-    cli
+    ; cli
     push byte 10
     jmp isr_common_stub
 
 ; 11: Segment Not Present Exception (With Error Code!)
 _isr11:
-    cli
+    ; cli
     push byte 11
     jmp isr_common_stub
 
 ; 12: Stack Fault Exception (With Error Code!)
 _isr12:
-    cli
+    ; cli
     push byte 12
     jmp isr_common_stub
 
 ; 13: General Protection Fault Exception (With Error Code!)
 _isr13:
-    cli
+    ; cli
     push byte 13
     jmp isr_common_stub
 
 ; 14: Page Fault Exception (With Error Code!)
 _isr14:
-    cli
+    ; cli
     push byte 14
     jmp isr_common_stub
 
 ; 15: Reserved Exception
 _isr15:
-    cli
+    ; cli
     push byte 0
     push byte 15
     jmp isr_common_stub
 
 ; 16: Floating Point Exception
 _isr16:
-    cli
+    ; cli
     push byte 0
     push byte 16
     jmp isr_common_stub
 
 ; 17: Alignment Check Exception
 _isr17:
-    cli
+    ; cli
     push byte 0
     push byte 17
     jmp isr_common_stub
 
 ; 18: Machine Check Exception
 _isr18:
-    cli
+    ; cli
     push byte 0
     push byte 18
     jmp isr_common_stub
 
 ; 19: Reserved
 _isr19:
-    cli
+    ; cli
     push byte 0
     push byte 19
     jmp isr_common_stub
 
 ; 20: Reserved
 _isr20:
-    cli
+    ; cli
     push byte 0
     push byte 20
     jmp isr_common_stub
 
 ; 21: Reserved
 _isr21:
-    cli
+    ; cli
     push byte 0
     push byte 21
     jmp isr_common_stub
 
 ; 22: Reserved
 _isr22:
-    cli
+    ; cli
     push byte 0
     push byte 22
     jmp isr_common_stub
 
 ; 23: Reserved
 _isr23:
-    cli
+    ; cli
     push byte 0
     push byte 23
     jmp isr_common_stub
 
 ; 24: Reserved
 _isr24:
-    cli
+    ; cli
     push byte 0
     push byte 24
     jmp isr_common_stub
 
 ; 25: Reserved
 _isr25:
-    cli
+    ; cli
     push byte 0
     push byte 25
     jmp isr_common_stub
 
 ; 26: Reserved
 _isr26:
-    cli
+    ; cli
     push byte 0
     push byte 26
     jmp isr_common_stub
 
 ; 27: Reserved
 _isr27:
-    cli
+    ; cli
     push byte 0
     push byte 27
     jmp isr_common_stub
 
 ; 28: Reserved
 _isr28:
-    cli
+    ; cli
     push byte 0
     push byte 28
     jmp isr_common_stub
 
 ; 29: Reserved
 _isr29:
-    cli
+    ; cli
     push byte 0
     push byte 29
     jmp isr_common_stub
 
 ; 30: Reserved
 _isr30:
-    cli
+    ; cli
     push byte 0
     push byte 30
     jmp isr_common_stub
 
 ; 31: Reserved
 _isr31:
-    cli
+    ; cli
     push byte 0
     push byte 31
     jmp isr_common_stub
@@ -327,112 +328,112 @@ global _irq15
 
 ; 32: IRQ0
 _irq0:
-    cli
+    ; cli
     push byte 0
     push byte 32
     jmp irq_common_stub
 
 ; 33: IRQ1
 _irq1:
-    cli
+    ; cli
     push byte 0
     push byte 33
     jmp irq_common_stub
 
 ; 34: IRQ2
 _irq2:
-    cli
+    ; cli
     push byte 0
     push byte 34
     jmp irq_common_stub
 
 ; 35: IRQ3
 _irq3:
-    cli
+    ; cli
     push byte 0
     push byte 35
     jmp irq_common_stub
 
 ; 36: IRQ4
 _irq4:
-    cli
+    ; cli
     push byte 0
     push byte 36
     jmp irq_common_stub
 
 ; 37: IRQ5
 _irq5:
-    cli
+    ; cli
     push byte 0
     push byte 37
     jmp irq_common_stub
 
 ; 38: IRQ6
 _irq6:
-    cli
+    ; cli
     push byte 0
     push byte 38
     jmp irq_common_stub
 
 ; 39: IRQ7
 _irq7:
-    cli
+    ; cli
     push byte 0
     push byte 39
     jmp irq_common_stub
 
 ; 40: IRQ8
 _irq8:
-    cli
+    ; cli
     push byte 0
     push byte 40
     jmp irq_common_stub
 
 ; 41: IRQ9
 _irq9:
-    cli
+    ; cli
     push byte 0
     push byte 41
     jmp irq_common_stub
 
 ; 42: IRQ10
 _irq10:
-    cli
+    ; cli
     push byte 0
     push byte 42
     jmp irq_common_stub
 
 ; 43: IRQ11
 _irq11:
-    cli
+    ; cli
     push byte 0
     push byte 43
     jmp irq_common_stub
 
 ; 44: IRQ12
 _irq12:
-    cli
+    ; cli
     push byte 0
     push byte 44
     jmp irq_common_stub
 
 ; 45: IRQ13
 _irq13:
-    cli
+    ; cli
     push byte 0
     push byte 45
     jmp irq_common_stub
 
 ; 46: IRQ14
 _irq14:
-    cli
+    ; cli
     push byte 0
     push byte 46
     jmp irq_common_stub
 
 ; 47: IRQ15
 _irq15:
-    cli
+    ; cli
     push byte 0
     push byte 47
     jmp irq_common_stub
@@ -465,3 +466,128 @@ irq_common_stub:
     popa
     add esp, 8
     iret
+ 
+ 
+ ;Input
+ ; ebx   Desired PIT frequency in Hz
+ 
+ _init_PIT:
+ 
+    mov ebx, 1
+ 
+    pushad
+ 
+    ; Do some checking
+ 
+    mov eax,0x10000                   ;eax = reload value for slowest possible frequency (65536)
+    cmp ebx,18                        ;Is the requested frequency too low?
+    jbe .gotReloadValue               ; yes, use slowest possible frequency
+ 
+    mov eax,1                         ;ax = reload value for fastest possible frequency (1)
+    cmp ebx,1193181                   ;Is the requested frequency too high?
+    jae .gotReloadValue               ; yes, use fastest possible frequency
+ 
+    ; Calculate the reload value
+ 
+    mov eax,3579545
+    mov edx,0                         ;edx:eax = 3579545
+    div ebx                           ;eax = 3579545 / frequency, edx = remainder
+    cmp edx,3579545 / 2               ;Is the remainder more than half?
+    jb .l1                            ; no, round down
+    inc eax                           ; yes, round up
+ .l1:
+    mov ebx,3
+    mov edx,0                         ;edx:eax = 3579545 * 256 / frequency
+    div ebx                           ;eax = (3579545 * 256 / 3 * 256) / frequency
+    cmp edx,3 / 2                     ;Is the remainder more than half?
+    jb .l2                            ; no, round down
+    inc eax                           ; yes, round up
+ .l2:
+ 
+ 
+ ; Store the reload value and calculate the actual frequency
+ 
+ .gotReloadValue:
+    push eax                          ;Store reload_value for later
+    mov [PIT_reload_value],ax         ;Store the reload value for later
+    mov ebx,eax                       ;ebx = reload value
+ 
+    mov eax,3579545
+    mov edx,0                         ;edx:eax = 3579545
+    div ebx                           ;eax = 3579545 / reload_value, edx = remainder
+    cmp edx,3579545 / 2               ;Is the remainder more than half?
+    jb .l3                            ; no, round down
+    inc eax                           ; yes, round up
+ .l3:
+    mov ebx,3
+    mov edx,0                         ;edx:eax = 3579545 / reload_value
+    div ebx                           ;eax = (3579545 / 3) / frequency
+    cmp edx,3 / 2                     ;Is the remainder more than half?
+    jb .l4                            ; no, round down
+    inc eax                           ; yes, round up
+ .l4:
+    mov [IRQ0_frequency],eax          ;Store the actual frequency for displaying later
+ 
+ 
+ ; Calculate the amount of time between IRQs in 32.32 fixed point
+ ;
+ ; Note: The basic formula is:
+ ;           time in ms = reload_value / (3579545 / 3) * 1000
+ ;       This can be rearranged in the follow way:
+ ;           time in ms = reload_value * 3000 / 3579545
+ ;           time in ms = reload_value * 3000 / 3579545 * (2^42)/(2^42)
+ ;           time in ms = reload_value * 3000 * (2^42) / 3579545 / (2^42)
+ ;           time in ms * 2^32 = reload_value * 3000 * (2^42) / 3579545 / (2^42) * (2^32)
+ ;           time in ms * 2^32 = reload_value * 3000 * (2^42) / 3579545 / (2^10)
+ 
+    pop ebx                           ;ebx = reload_value
+    mov eax,0xDBB3A062                ;eax = 3000 * (2^42) / 3579545
+    mul ebx                           ;edx:eax = reload_value * 3000 * (2^42) / 3579545
+    shrd eax,edx,10
+    shr edx,10                        ;edx:eax = reload_value * 3000 * (2^42) / 3579545 / (2^10)
+ 
+    mov [IRQ0_ms],edx                 ;Set whole ms between IRQs
+    mov [IRQ0_fractions],eax          ;Set fractions of 1 ms between IRQs
+ 
+ 
+ ; Program the PIT channel
+ 
+    pushfd
+    cli                               ;Disabled interrupts (just in case)
+ 
+    mov al,00110100b                  ;channel 0, lobyte/hibyte, rate generator
+    out 0x43, al
+ 
+    mov ax,[PIT_reload_value]         ;ax = 16 bit reload value
+    out 0x40,al                       ;Set low byte of PIT reload value
+    mov al,ah                         ;ax = high 8 bits of reload value
+    out 0x40,al                       ;Set high byte of PIT reload value
+ 
+    popfd
+ 
+    popad
+    ret
+
+global _IRQ0_handler
+_IRQ0_handler:
+	push eax
+	push ebx
+ 
+	mov eax, [IRQ0_fractions]
+	mov ebx, [IRQ0_ms]                    ; eax.ebx = amount of time between IRQs
+	add [system_timer_fractions], eax     ; Update system timer tick fractions
+	adc [system_timer_ms], ebx            ; Update system timer tick milli-seconds
+ 
+	mov al, 0x20
+	out 0x20, al                          ; Send the EOI to the PIC
+ 
+	pop ebx
+	pop eax
+	iretd
+    
+system_timer_fractions  db 0          ; Fractions of 1 ms since timer initialized
+system_timer_ms         db 0          ; Number of whole ms since timer initialized
+IRQ0_fractions          db 0          ; Fractions of 1 ms between IRQs
+IRQ0_ms                 db 0          ; Number of whole ms between IRQs
+IRQ0_frequency          db 0          ; Actual frequency of PIT
+PIT_reload_value        db 0          ; Current PIT reload value

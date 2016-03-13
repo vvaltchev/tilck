@@ -94,6 +94,8 @@ void write_string(const char *str)
    }
 }
 
+void some_fake_func(const char *str) { /* do nothing */ }
+
 void term_move_ch(int row, int col)
 {
    terminal_row = row;

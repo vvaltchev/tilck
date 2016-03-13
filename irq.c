@@ -1,6 +1,11 @@
 #include <commonDefs.h>
+
+#include <irq.h>
+
 #include <stringUtil.h>
 #include <term.h>
+
+
 
 /* These are own ISRs that point to our special IRQ handler
 *  instead of the regular 'fault_handler' function */
@@ -41,27 +46,19 @@ void irq_uninstall_handler(int irq)
    irq_routines[irq] = 0;
 }
 
-/* Normally, IRQs 0 to 7 are mapped to entries 8 to 15. This
-*  is a problem in protected mode, because IDT entry 8 is a
-*  Double Fault! Without remapping, every time IRQ0 fires,
-*  you get a Double Fault Exception, which is NOT actually
-*  what's happening. We send commands to the Programmable
-*  Interrupt Controller (PICs - also called the 8259's) in
-*  order to make IRQ0 to 15 be remapped to IDT entries 32 to
-*  47 */
-//void irq_remap(void)
-//{
-//   outb(0x20, 0x11);
-//   outb(0xA0, 0x11);
-//   outb(0x21, 0x20);
-//   outb(0xA1, 0x28);
-//   outb(0x21, 0x04);
-//   outb(0xA1, 0x02);
-//   outb(0x21, 0x01);
-//   outb(0xA1, 0x01);
-//   outb(0x21, 0x0);
-//   outb(0xA1, 0x0);
-//}
+void irq_remap(void)
+{
+   outb(0x20, 0x11);
+   outb(0xA0, 0x11);
+   outb(0x21, 0x20);
+   outb(0xA1, 0x28);
+   outb(0x21, 0x04);
+   outb(0xA1, 0x02);
+   outb(0x21, 0x01);
+   outb(0xA1, 0x01);
+   outb(0x21, 0x0);
+   outb(0xA1, 0x0);
+}
 
 extern void idt_set_gate(unsigned char num,
                          unsigned long base,
@@ -78,7 +75,7 @@ extern void idt_set_gate(unsigned char num,
 
 #define PIC_EOI		0x20		/* End-of-interrupt command code */
 
-void PIC_sendEOI(unsigned char irq)
+void PIC_sendEOI(int irq)
 {
    if (irq >= 8)
       outb(PIC2_COMMAND, PIC_EOI);
@@ -99,14 +96,26 @@ void PIC_sendEOI(unsigned char irq)
 #define ICW4_BUF_MASTER	0x0C		/* Buffered mode/master */
 #define ICW4_SFNM	0x10		/* Special fully nested (not) */
 
-static inline io_wait() {}
+static inline void io_wait() {}
+
+
+
+/* Normally, IRQs 0 to 7 are mapped to entries 8 to 15. This
+*  is a problem in protected mode, because IDT entry 8 is a
+*  Double Fault! Without remapping, every time IRQ0 fires,
+*  you get a Double Fault Exception, which is NOT actually
+*  what's happening. We send commands to the Programmable
+*  Interrupt Controller (PICs - also called the 8259's) in
+*  order to make IRQ0 to 15 be remapped to IDT entries 32 to
+*  47 */
 
 /*
-arguments:
-offset1 - vector offset for master PIC
-vectors on the master become offset1..offset1+7
-offset2 - same for slave PIC: offset2..offset2+7
+   arguments:
+   offset1 - vector offset for master PIC
+   vectors on the master become offset1..offset1+7
+   offset2 - same for slave PIC: offset2..offset2+7
 */
+
 void PIC_remap(int offset1, int offset2)
 {
    unsigned char a1, a2;
@@ -166,13 +175,15 @@ void IRQ_clear_mask(unsigned char IRQline) {
    outb(port, value);
 }
 
+void IRQ0_handler();
+
 /* We first remap the interrupt controllers, and then we install
 *  the appropriate ISRs to the correct entries in the IDT. This
 *  is just like installing the exception handlers */
 void irq_install()
 {
-   //irq_remap();
-   PIC_remap(32, 40);
+   irq_remap();
+   //PIC_remap(32, 40);
 
    idt_set_gate(32, (unsigned)irq0, 0x08, 0x8E);
    idt_set_gate(33, (unsigned)irq1, 0x08, 0x8E);
@@ -190,8 +201,6 @@ void irq_install()
    idt_set_gate(45, (unsigned)irq13, 0x08, 0x8E);
    idt_set_gate(46, (unsigned)irq14, 0x08, 0x8E);
    idt_set_gate(47, (unsigned)irq15, 0x08, 0x8E);
-
-   IRQ_set_mask(0);
 }
 
 /* Each of the IRQ ISRs point to this function, rather than
@@ -204,6 +213,9 @@ void irq_install()
 *  interrupt at BOTH controllers, otherwise, you only send
 *  an EOI command to the first controller. If you don't send
 *  an EOI, you won't raise any more IRQs */
+
+void some_fake_func(void);
+
 void irq_handler(struct regs *r)
 {
    /* This is a blank function pointer */
@@ -215,8 +227,18 @@ void irq_handler(struct regs *r)
    *  IRQ, and then finally, run it */
    handler = irq_routines[irq_no];
 
-   if (handler) {
+   some_fake_func();
+
+   if (handler != 0) {
+
       handler(r);
+
+   } else {
+      write_string("Unhandled IRQ #");
+      char buf[32];
+      itoa(irq_no, buf, 10);
+      write_string(buf);
+      write_string("\n");
    }
 
    PIC_sendEOI(irq_no);

@@ -3,11 +3,9 @@
 #include <commonDefs.h>
 #include <stringUtil.h>
 #include <term.h>
+#include <irq.h>
 
 extern void idt_install();
-extern void irq_install();
-
-extern void irq_install_handler(int irq, void(*handler)(struct regs *r));
 
 
 /* KBDUS means US Keyboard Layout. This is a scancode table
@@ -59,6 +57,7 @@ void keyboard_handler(struct regs *r)
 {
    unsigned char scancode;
 
+   //if (inb(0x64) & 1 == 0) continue;   //check if scancode is ready
 
    /* Read from the keyboard's data buffer */
    scancode = inb(0x60);
@@ -113,13 +112,17 @@ volatile unsigned timer_ticks = 0;
 *  timer fires. By default, the timer fires 18.222 times
 *  per second. Why 18.222Hz? Some engineer at IBM must've
 *  been smoking something funky */
+
+//volatile uint16_t *video = (volatile uint16_t *)0xB8000;
+
 void timer_handler(struct regs *r)
 {
-   /* Increment our 'tick count' */
-   *((char *)0) = 'a';
+   ++timer_ticks;
+
+   //*video++ = make_vgaentry('x', COLOR_GREEN);
 }
 
-
+void init_PIT(void);
 
 void kmain() {
 
@@ -130,15 +133,33 @@ void kmain() {
    idt_install();
    irq_install();
 
+   //magic_debug_break();
+
+
+   //init_PIT();
    timer_phase(1);
 
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
-   //magic_debug_break();
+   IRQ_set_mask(0);
+
+   timer_ticks = 0;
    sti();
 
    while (1) {
+
+      unsigned val = timer_ticks;
+
+      //if ((val % 10) == 0) {
+         //char buf[32];
+         //itoa(val, buf, 10);
+
+         //write_string("ticks: ");
+         //write_string(buf);
+         //write_string("\n");
+
+      //}
       halt();
    }
 }
