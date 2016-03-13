@@ -308,7 +308,7 @@ complete_flush: ; will be copied at 0x1000
    
    mov esp, 0x1FFFFF ; 1 MB of stack
    
-   xchg bx, bx ; bochs magic break   
+   ; xchg bx, bx ; bochs magic break   
    jmp dword 0x08:0x00100000
 
 times 1024-($-complete_flush) db 0   ; Pad to 1 KB   

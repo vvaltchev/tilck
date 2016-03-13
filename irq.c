@@ -1,4 +1,6 @@
 #include <commonDefs.h>
+#include <stringUtil.h>
+#include <term.h>
 
 /* These are own ISRs that point to our special IRQ handler
 *  instead of the regular 'fault_handler' function */
@@ -89,6 +91,8 @@ void irq_install()
    idt_set_gate(45, (unsigned)irq13, 0x08, 0x8E);
    idt_set_gate(46, (unsigned)irq14, 0x08, 0x8E);
    idt_set_gate(47, (unsigned)irq15, 0x08, 0x8E);
+
+   write_string("IRQ installed!\n");
 }
 
 /* Each of the IRQ ISRs point to this function, rather than
@@ -106,9 +110,18 @@ void irq_handler(struct regs *r)
    /* This is a blank function pointer */
    void(*handler)(struct regs *r);
 
+   const int irq_no = r->int_no - 32;
+
+   //char buf[32];
+   //write_string("IRQ #");
+   //itoa(irq_no, buf, 10);
+   //write_string(buf);
+   //write_string("\n");
+
+
    /* Find out if we have a custom handler to run for this
    *  IRQ, and then finally, run it */
-   handler = irq_routines[r->int_no - 32];
+   handler = irq_routines[irq_no];
    if (handler)
    {
       handler(r);
