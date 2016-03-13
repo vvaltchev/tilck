@@ -107,6 +107,8 @@ void timer_phase(int hz)
 *  has been running for */
 volatile unsigned timer_ticks = 0;
 
+#define CLOCK_HZ 10
+
 /* Handles the timer. In this case, it's very simple: We
 *  increment the 'timer_ticks' variable every time the
 *  timer fires. By default, the timer fires 18.222 times
@@ -115,10 +117,18 @@ volatile unsigned timer_ticks = 0;
 
 void timer_handler(struct regs *r)
 {
-   ++timer_ticks;
+   unsigned val = ++timer_ticks;
+
+   if ((val % CLOCK_HZ) == 0) {
+      char buf[32];
+      itoa(val, buf, 10);
+
+      write_string("ticks: ");
+      write_string(buf);
+      write_string("\n");
+   }
 }
 
-void init_PIT(void);
 
 void kmain() {
 
@@ -131,31 +141,16 @@ void kmain() {
 
    //magic_debug_break();
 
-
-   //init_PIT();
-   timer_phase(1);
+   timer_phase(CLOCK_HZ);
 
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
-   //IRQ_set_mask(0);
-
    timer_ticks = 0;
+   //IRQ_set_mask(0);
    sti();
 
    while (1) {
-
-      unsigned val = timer_ticks;
-
-      if ((val % 10) == 0) {
-         char buf[32];
-         itoa(val, buf, 10);
-
-         write_string("ticks: ");
-         write_string(buf);
-         write_string("\n");
-      }
-
       halt();
    }
 }

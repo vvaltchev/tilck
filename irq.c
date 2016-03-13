@@ -75,7 +75,7 @@ extern void idt_set_gate(unsigned char num,
 
 #define PIC_EOI		0x20		/* End-of-interrupt command code */
 
-void PIC_sendEOI(int irq)
+void PIC_sendEOI(uint8_t irq)
 {
    if (irq >= 8)
       outb(PIC2_COMMAND, PIC_EOI);
@@ -116,7 +116,7 @@ static inline void io_wait() {}
    offset2 - same for slave PIC: offset2..offset2+7
 */
 
-void PIC_remap(int offset1, int offset2)
+void PIC_remap(uint8_t offset1, uint8_t offset2)
 {
    unsigned char a1, a2;
 
@@ -145,7 +145,7 @@ void PIC_remap(int offset1, int offset2)
    outb(PIC2_DATA, a2);
 }
 
-void IRQ_set_mask(unsigned char IRQline) {
+void IRQ_set_mask(uint8_t IRQline) {
    uint16_t port;
    uint8_t value;
 
@@ -160,7 +160,7 @@ void IRQ_set_mask(unsigned char IRQline) {
    outb(port, value);
 }
 
-void IRQ_clear_mask(unsigned char IRQline) {
+void IRQ_clear_mask(uint8_t IRQline) {
    uint16_t port;
    uint8_t value;
 
@@ -182,8 +182,8 @@ void IRQ0_handler();
 *  is just like installing the exception handlers */
 void irq_install()
 {
-   irq_remap();
-   //PIC_remap(32, 40);
+   //irq_remap();
+   PIC_remap(32, 40);
 
    idt_set_gate(32, (unsigned)irq0, 0x08, 0x8E);
    idt_set_gate(33, (unsigned)irq1, 0x08, 0x8E);
@@ -220,13 +220,13 @@ void irq_handler(struct regs *r)
    /* This is a blank function pointer */
    void(*handler)(struct regs *r);
 
-   const int irq_no = r->int_no - 32;
+   const uint8_t irq_no = r->int_no - 32;
 
    /* Find out if we have a custom handler to run for this
    *  IRQ, and then finally, run it */
    handler = irq_routines[irq_no];
 
-   if (handler != 0) {
+   if (handler) {
 
       handler(r);
 

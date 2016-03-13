@@ -1,6 +1,7 @@
 
 #include <commonDefs.h>
 #include <stringUtil.h>
+#include <term.h>
 
 /* bkerndev - Bran's Kernel Development Tutorial
 *  By:   Brandon F. (friesenb@gmail.com)
@@ -179,8 +180,6 @@ char *exception_messages[] =
 };
 
 
-extern void write_string(const char *);
-
 /* All of our Exception handling Interrupt Service Routines will
 *  point to this function. This will tell us what exception has
 *  happened! Right now, we simply halt the system by hitting an
@@ -197,7 +196,7 @@ void fault_handler(struct regs *r)
       *  infinite loop.
       */
 
-      //puts(exception_messages[r->int_no]);
+      cli();
 
       char buf[32];
 
@@ -212,8 +211,6 @@ void fault_handler(struct regs *r)
       itoa(r->err_code, buf, 10);
       write_string(buf);
       write_string("\n");
-
-
 
       halt();
    }
