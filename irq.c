@@ -214,7 +214,6 @@ void irq_install()
 *  an EOI command to the first controller. If you don't send
 *  an EOI, you won't raise any more IRQs */
 
-void some_fake_func(void);
 
 void irq_handler(struct regs *r)
 {
@@ -226,8 +225,6 @@ void irq_handler(struct regs *r)
    /* Find out if we have a custom handler to run for this
    *  IRQ, and then finally, run it */
    handler = irq_routines[irq_no];
-
-   some_fake_func();
 
    if (handler != 0) {
 

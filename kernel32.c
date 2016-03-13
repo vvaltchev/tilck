@@ -113,13 +113,9 @@ volatile unsigned timer_ticks = 0;
 *  per second. Why 18.222Hz? Some engineer at IBM must've
 *  been smoking something funky */
 
-//volatile uint16_t *video = (volatile uint16_t *)0xB8000;
-
 void timer_handler(struct regs *r)
 {
    ++timer_ticks;
-
-   //*video++ = make_vgaentry('x', COLOR_GREEN);
 }
 
 void init_PIT(void);
@@ -142,7 +138,7 @@ void kmain() {
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
-   IRQ_set_mask(0);
+   //IRQ_set_mask(0);
 
    timer_ticks = 0;
    sti();
@@ -151,15 +147,15 @@ void kmain() {
 
       unsigned val = timer_ticks;
 
-      //if ((val % 10) == 0) {
-         //char buf[32];
-         //itoa(val, buf, 10);
+      if ((val % 10) == 0) {
+         char buf[32];
+         itoa(val, buf, 10);
 
-         //write_string("ticks: ");
-         //write_string(buf);
-         //write_string("\n");
+         write_string("ticks: ");
+         write_string(buf);
+         write_string("\n");
+      }
 
-      //}
       halt();
    }
 }

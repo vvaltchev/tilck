@@ -8,7 +8,8 @@ CFLAGS = -m32 $(OPT) -std=c99 $(INCDIRS) -mno-red-zone -ffreestanding \
 
 DEPDIR := .d
 $(shell mkdir -p $(DEPDIR) >/dev/null)
-DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
+#DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
+DEPFLAGS =
 
 BUILD_DIR = ./build
 
@@ -40,12 +41,17 @@ clean:
 # Targets that do not generate files
 .PHONY: all clean
 
-build/%.o : %.c
-build/%.o : %.c $(DEPDIR)/%.d
-	$(COMPILE.c) $(OUTPUT_OPTION) $<
-	$(POSTCOMPILE)
+#build/%.o : %.c
+#build/%.o : %.c $(DEPDIR)/%.d
+#	 $(COMPILE.c) $(OUTPUT_OPTION) $<
+#	 $(POSTCOMPILE)
+	
+$(BUILD_DIR)/bigobject.o: *.c include/*.h
+	cat *.c > bigfile.c
+	$(COMPILE.c) $(OUTPUT_OPTION) bigfile.c
+	rm bigfile.c
 
-build/%.o : %.asm
+$(BUILD_DIR)/%.o : %.asm
 	nasm -f win32 $(OUTPUT_OPTION) $<
 
 
@@ -55,12 +61,12 @@ $(BOOTLOADER_TARGET): bootloader/boot_stage1.asm bootloader/boot_stage2.asm
 	cp $(BUILD_DIR)/boot_stage1.bin $(BOOTLOADER_TARGET)
 	dd status=noxfer conv=notrunc if=$(BUILD_DIR)/boot_stage2.bin of=$(BOOTLOADER_TARGET) seek=1 obs=512 ibs=512
 
-$(KERNEL_TARGET): $(KERNEL_OBJECTS)
-	ld -T link.ld -Ttext 0x100000 -s -o $(KERNEL_TMP_BIN) $(KERNEL_OBJECTS)
+$(KERNEL_TARGET): $(BUILD_DIR)/kernelAsm.o $(BUILD_DIR)/bigobject.o
+	ld -T link.ld -Ttext 0x100000 -s -o $(KERNEL_TMP_BIN) $(BUILD_DIR)/kernelAsm.o $(BUILD_DIR)/bigobject.o
 	objcopy -O binary -j .text -j .rdata -j .data $(KERNEL_TMP_BIN) $@
 	rm $(KERNEL_TMP_BIN)
 
 $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d
 
--include $(patsubst %,$(DEPDIR)/%.d,$(basename $(KERNEL_SOURCES)))
+#-include $(patsubst %,$(DEPDIR)/%.d,$(basename $(KERNEL_SOURCES)))

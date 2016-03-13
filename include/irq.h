@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include <commonDefs.h>
 
 void irq_install_handler(int irq, void(*handler)(struct regs *r));

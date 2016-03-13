@@ -94,7 +94,7 @@ void write_string(const char *str)
    }
 }
 
-void some_fake_func(const char *str) { /* do nothing */ }
+void some_fake_func(void) { /* do nothing */ }
 
 void term_move_ch(int row, int col)
 {
