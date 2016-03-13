@@ -4,7 +4,7 @@ CC = gcc
 OPT = -O2
 INCDIRS = -I./include
 CFLAGS = -m32 $(OPT) -std=c99 $(INCDIRS) -mno-red-zone -ffreestanding \
-         -nostdinc -fno-builtin -fno-asynchronous-unwind-tables
+         -nostdinc -fno-builtin -fno-asynchronous-unwind-tables -fno-zero-initialized-in-bss
 
 DEPDIR := .d
 $(shell mkdir -p $(DEPDIR) >/dev/null)
@@ -64,7 +64,7 @@ $(BOOTLOADER_TARGET): bootloader/boot_stage1.asm bootloader/boot_stage2.asm
 $(KERNEL_TARGET): $(BUILD_DIR)/kernelAsm.o $(BUILD_DIR)/bigobject.o
 	ld -T link.ld -Ttext 0x100000 -s -o $(KERNEL_TMP_BIN) $(BUILD_DIR)/kernelAsm.o $(BUILD_DIR)/bigobject.o
 	objcopy -O binary -j .text -j .rdata -j .data $(KERNEL_TMP_BIN) $@
-	rm $(KERNEL_TMP_BIN)
+	#rm $(KERNEL_TMP_BIN)
 
 $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d

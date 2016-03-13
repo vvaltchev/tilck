@@ -115,17 +115,24 @@ volatile unsigned timer_ticks = 0;
 *  per second. Why 18.222Hz? Some engineer at IBM must've
 *  been smoking something funky */
 
+void dump_ticks(void)
+{
+   unsigned val = timer_ticks;
+
+   char buf[32];
+   itoa(val, buf, 10);
+
+   write_string("ticks: ");
+   write_string(buf);
+   write_string("\n");
+}
+
 void timer_handler(struct regs *r)
 {
    unsigned val = ++timer_ticks;
 
    if ((val % CLOCK_HZ) == 0) {
-      char buf[32];
-      itoa(val, buf, 10);
-
-      write_string("ticks: ");
-      write_string(buf);
-      write_string("\n");
+      dump_ticks();
    }
 }
 
@@ -146,8 +153,13 @@ void kmain() {
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
-   timer_ticks = 0;
+   //timer_ticks = 0;
    //IRQ_set_mask(0);
+
+   magic_debug_break();
+   dump_ticks();
+   magic_debug_break();
+
    sti();
 
    while (1) {
