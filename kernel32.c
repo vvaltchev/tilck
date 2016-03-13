@@ -1,11 +1,7 @@
 
-#define asm __asm__
 
+#include <commonDefs.h>
 #include <stringUtil.h>
-
-typedef unsigned char uint8_t;
-typedef unsigned short uint16_t;
-typedef unsigned long size_t;
 
 
 /* Hardware text mode color constants. */
@@ -57,23 +53,7 @@ void terminal_setcolor(uint8_t color) {
 
 #define TERMINAL_VIDEO_ADDR ((volatile uint8_t*)0xB8000)
 
-static inline void outb(uint16_t port, uint8_t val)
-{
-    asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) );
-    /* There's an outb %al, $imm8  encoding, for compile-time constant port numbers that fit in 8b.  (N constraint).
-     * Wider immediate constants would be truncated at assemble-time (e.g. "i" constraint).
-     * The  outb  %al, %dx  encoding is the only option for all other cases.
-     * %1 expands to %dx because  port  is a uint16_t.  %w1 could be used if we had the port number a wider C type */
-}
 
-static inline uint8_t inb(uint16_t port)
-{
-    uint8_t ret_val;
-    asm volatile ( "inb %[port], %[result]"
-                   : [result] "=a"(ret_val)   // using symbolic operand names as an example, mainly because they're not used in order
-                   : [port] "Nd"(port) );
-    return ret_val;
-}
 
  /* void update_cursor(int row, int col)
   * by Dark Fiber
@@ -163,26 +143,23 @@ void show_hello_message()
    term_move_ch(1, 0);
    write_string(" hello from my kernel!\n");
    write_string(" kernel, line 2\n");
-   
-   char buf[32];
-   for (int i=0; i < 10; i++) {
-      itoa(i, buf, 10);
-      write_string(buf);
-      write_string("\n");
-   }
 }
 
-static inline void halt()
-{
-   asm volatile("hlt");
-}
+
+extern void idt_install();
+extern void irq_install();
 
 void kmain() {
-   
-   term_init(); 
-   
+
+   term_init();
+
    show_hello_message();
-    
-   halt();
-   //while (1) { }
+
+   idt_install();
+   irq_install();
+
+   magic_debug_break();
+   sti();
+
+   while (1);
 }

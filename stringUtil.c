@@ -1,6 +1,12 @@
 
 #include <stringUtil.h>
 
+void *memset(void *ptr, int value, size_t num)
+{
+   for (size_t i = 0; i < num; ++i)
+      ((char*)ptr)[i] = value;
+}
+
 void itoa(int value, char *destBuf, int base)
 {
    char * ptr;
