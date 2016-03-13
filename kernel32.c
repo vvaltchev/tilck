@@ -146,19 +146,11 @@ void kmain() {
    idt_install();
    irq_install();
 
-   //magic_debug_break();
 
    timer_phase(CLOCK_HZ);
 
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
-
-   //timer_ticks = 0;
-   //IRQ_set_mask(0);
-
-   magic_debug_break();
-   dump_ticks();
-   magic_debug_break();
 
    sti();
 
