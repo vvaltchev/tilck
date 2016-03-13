@@ -11,7 +11,7 @@ volatile uint8_t terminal_row;
 volatile uint8_t terminal_column;
 volatile uint8_t terminal_color;
 
-void terminal_setcolor(uint8_t color) {
+void term_setcolor(uint8_t color) {
    terminal_color = color;
 }
 
@@ -37,7 +37,7 @@ void term_init() {
    terminal_column = 0;
    update_cursor(0, 0);
 
-   terminal_setcolor(make_color(COLOR_WHITE, COLOR_BLACK));
+   term_setcolor(make_color(COLOR_WHITE, COLOR_BLACK));
    volatile uint16_t *ptr = (volatile uint16_t *)TERMINAL_VIDEO_ADDR;
 
    for (int i = 0; i < TERM_WIDTH*TERM_HEIGHT; ++i) {

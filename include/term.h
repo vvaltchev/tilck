@@ -32,7 +32,7 @@ static inline uint16_t make_vgaentry(char c, uint8_t color) {
    return c16 | color16 << 8;
 }
 
-void terminal_setcolor(uint8_t color);
+void term_setcolor(uint8_t color);
 void update_cursor(int row, int col);
 void term_init();
 void term_write_char(char c);
@@ -40,4 +40,4 @@ void write_string(const char *str);
 void term_move_ch(int row, int col);
 void show_hello_message();
 
-
+//static inline void puts(const char *s) { write_string(s); }
