@@ -24,10 +24,10 @@ void itoa(int value, char *destBuf)
 
    ptr = destBuf;
    // Set '-' for negative decimals.
-   if ( value < 0 && base == 10 )
-   {
+   if (value < 0) {
      *ptr++ = '-';
    }
+
    // Remember where the numbers start.
    low = ptr;
    // The actual conversion.
