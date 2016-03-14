@@ -57,7 +57,11 @@ void keyboard_handler(struct regs *r)
 {
    unsigned char scancode;
 
-   //if (inb(0x64) & 1 == 0) continue;   //check if scancode is ready
+   //check if scancode is ready
+   //this is useful since sometimes the IRQ is triggered before
+   //the data is available.
+
+   //if (inb(0x64) & 1 == 0) continue;  
 
    /* Read from the keyboard's data buffer */
    scancode = inb(0x60);
@@ -68,6 +72,8 @@ void keyboard_handler(struct regs *r)
    {
       /* You can use this one to see if the user released the
       *  shift, alt, or control keys... */
+
+      printk("RELEASED scancode: %i\n", scancode & ~0x80);
    }
    else
    {
@@ -84,13 +90,9 @@ void keyboard_handler(struct regs *r)
       *  held. If shift is held using the larger lookup table,
       *  you would add 128 to the scancode when you look for it */
 
-      term_write_char(kbdus[scancode]);
+      //term_write_char(kbdus[scancode]);
 
-      //term_write_string("Scancode: ");
-      //char buf[32];
-      //itoa(scancode, buf, 10);
-      //term_write_string(buf);
-      //term_write_string("\n");
+      printk("PRESSED scancode: %i\n", scancode);
    }
 }
 
@@ -124,9 +126,9 @@ void timer_handler(struct regs *r)
 {
    unsigned val = ++timer_ticks;
 
-   if ((val % CLOCK_HZ) == 0) {
-      dump_ticks();
-   }
+   //if ((val % CLOCK_HZ) == 0) {
+   //   dump_ticks();
+   //}
 }
 
 void kmain() {
@@ -144,9 +146,8 @@ void kmain() {
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
-   printk("hello. Int = %i, Ptr = '%p', Str = '%s'\n", -3, 0x00CCDDU, "substr");
-
-   magic_debug_break();
+   //printk("hello. Int = %i, Ptr = '%p', Str = '%s'\n", -3, 0x00CCDDU, "substr");
+   //magic_debug_break();
    sti();
 
    while (1) {
