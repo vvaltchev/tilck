@@ -198,20 +198,10 @@ void fault_handler(struct regs *r)
 
       cli();
 
-      char buf[32];
-
-      write_string("Exception N#: ");
-      itoa(r->int_no, buf, 10);
-      write_string(buf);
-      write_string(", ");
-      write_string(exception_messages[r->int_no]);
-      write_string("\n");
-
-      write_string("Error code: ");
-      itoa(r->err_code, buf, 10);
-      write_string(buf);
-      write_string("\n");
-
+      printk("Exception #%i: %s [errCode: %i]\n",
+             r->int_no,
+             exception_messages[r->int_no],
+             r->err_code);
       halt();
    }
 }

@@ -231,11 +231,8 @@ void irq_handler(struct regs *r)
       handler(r);
 
    } else {
-      write_string("Unhandled IRQ #");
-      char buf[32];
-      itoa(irq_no, buf, 10);
-      write_string(buf);
-      write_string("\n");
+
+      printk("Unhandled IRQ #%i\n", irq_no);
    }
 
    PIC_sendEOI(irq_no);

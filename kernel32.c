@@ -86,11 +86,11 @@ void keyboard_handler(struct regs *r)
 
       term_write_char(kbdus[scancode]);
 
-      //write_string("Scancode: ");
+      //term_write_string("Scancode: ");
       //char buf[32];
       //itoa(scancode, buf, 10);
-      //write_string(buf);
-      //write_string("\n");
+      //term_write_string(buf);
+      //term_write_string("\n");
    }
 }
 
@@ -117,14 +117,7 @@ volatile unsigned timer_ticks = 0;
 
 void dump_ticks(void)
 {
-   unsigned val = timer_ticks;
-
-   char buf[32];
-   itoa(val, buf, 10);
-
-   write_string("ticks: ");
-   write_string(buf);
-   write_string("\n");
+   printk("Ticks: %u\n", timer_ticks);
 }
 
 void timer_handler(struct regs *r)
@@ -135,7 +128,6 @@ void timer_handler(struct regs *r)
       dump_ticks();
    }
 }
-
 
 void kmain() {
 
@@ -152,6 +144,9 @@ void kmain() {
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
+   printk("hello. Int = %i, Ptr = '%p', Str = '%s'\n", -3, 0x00CCDDU, "substr");
+
+   magic_debug_break();
    sti();
 
    while (1) {
