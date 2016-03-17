@@ -73,7 +73,7 @@ void keyboard_handler(struct regs *r)
       /* You can use this one to see if the user released the
       *  shift, alt, or control keys... */
 
-      printk("RELEASED scancode: %i\n", scancode & ~0x80);
+      //printk("RELEASED scancode: %i\n", scancode & ~0x80);
    }
    else
    {
@@ -90,9 +90,9 @@ void keyboard_handler(struct regs *r)
       *  held. If shift is held using the larger lookup table,
       *  you would add 128 to the scancode when you look for it */
 
-      //term_write_char(kbdus[scancode]);
+      term_write_char(kbdus[scancode]);
 
-      printk("PRESSED scancode: %i\n", scancode);
+      //printk("PRESSED scancode: %i\n", scancode);
    }
 }
 
@@ -126,9 +126,9 @@ void timer_handler(struct regs *r)
 {
    unsigned val = ++timer_ticks;
 
-   //if ((val % CLOCK_HZ) == 0) {
-   //   dump_ticks();
-   //}
+   if ((val % CLOCK_HZ) == 0) {
+      dump_ticks();
+   }
 }
 
 void kmain() {

@@ -8,6 +8,14 @@ void *memset(void *ptr, int value, size_t num)
       ((char*)ptr)[i] = value;
 }
 
+void *memcpy(void *dest, void *src, size_t num)
+{
+   for (size_t i = 0; i < num; ++i)
+      ((char*)dest)[i] = ((char*)src)[i];
+
+   return dest;
+}
+
 size_t strlen(const char *str)
 {
    size_t c = 0;
