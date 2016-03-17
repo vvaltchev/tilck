@@ -138,6 +138,7 @@
   <ItemGroup>
     <ClCompile Include="..\idt.c" />
     <ClCompile Include="..\irq.c" />
+    <ClCompile Include="..\kb.c" />
     <ClCompile Include="..\kernel32.c" />
     <ClCompile Include="..\stringUtil.c" />
     <ClCompile Include="..\term.c" />
