@@ -62,7 +62,7 @@ void kmain() {
    IRQ_set_mask(0);
 
    //printk("hello. Int = %i, Ptr = '%p', Str = '%s'\n", -3, 0x00CCDDU, "substr");
-   //magic_debug_break();
+   magic_debug_break();
    sti();
 
    while (1) {

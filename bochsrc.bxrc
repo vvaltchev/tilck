@@ -18,7 +18,7 @@ ata1-slave: type=none
 ata2: enabled=0
 ata3: enabled=0
 pci: enabled=1, chipset=i440fx
-vga: extension=vbe, update_freq=5, realtime=1
+vga: extension=vbe, update_freq=25, realtime=1
 cpu: count=1, ips=4000000, model=core2_penryn_t9600, reset_on_triple_fault=0, cpuid_limit_winnt=0, ignore_bad_msrs=1, mwait_is_nop=0
 print_timestamps: enabled=0
 debugger_log: -

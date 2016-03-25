@@ -1,10 +1,10 @@
 
 AS = nasm
 CC = gcc
-OPT = -O2
+OPT = -O0 -g -fvisibility=default
 INCDIRS = -I./include
-CFLAGS = -m32 $(OPT) -std=c99 $(INCDIRS) -mno-red-zone -ffreestanding \
-         -nostdinc -fno-builtin -fno-asynchronous-unwind-tables -fno-zero-initialized-in-bss
+CFLAGS =  $(OPT) -std=c99 $(INCDIRS) -m32 -mno-red-zone -ffreestanding \
+          -nostdinc -fno-builtin  -fno-asynchronous-unwind-tables -fno-zero-initialized-in-bss
 
 DEPDIR := .d
 $(shell mkdir -p $(DEPDIR) >/dev/null)
@@ -65,9 +65,10 @@ build/%.o : %.c $(DEPDIR)/%.d
 	 $(POSTCOMPILE)
 
 $(KERNEL_TARGET): $(KERNEL_OBJECTS)
-	ld -T link.ld -Ttext 0x100000 -s -o $(KERNEL_TMP_BIN) $(KERNEL_OBJECTS)
+	ld -T link.ld -Ttext 0x100000 -o $(KERNEL_TMP_BIN) $(KERNEL_OBJECTS)
 	objcopy -O binary -j .text -j .rdata -j .data $(KERNEL_TMP_BIN) $@
-
+	nm $(KERNEL_TMP_BIN) | grep " T " | awk '{ print $$1" "$$3 }' > build/kernel.sym
+ 
 $(BOOTLOADER_TARGET): bootloader/boot_stage1.asm bootloader/boot_stage2.asm
 	nasm -f bin -o $(BUILD_DIR)/boot_stage1.bin bootloader/boot_stage1.asm
 	nasm -f bin -o $(BUILD_DIR)/boot_stage2.bin bootloader/boot_stage2.asm
