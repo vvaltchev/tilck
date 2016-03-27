@@ -1,3 +1,5 @@
+/* trivial link script without debug info */
+
 phys = 0x00100000;
 
 SECTIONS
@@ -13,5 +15,4 @@ SECTIONS
     data = .;
     *(.data)
   }
-
 }

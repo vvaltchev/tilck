@@ -65,7 +65,7 @@ build/%.o : %.c $(DEPDIR)/%.d
 	 $(POSTCOMPILE)
 
 $(KERNEL_TARGET): $(KERNEL_OBJECTS)
-	ld -Ttext 0x100000 -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
+	ld -T link2.ld -Ttext 0x100000 -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
 	objcopy -O binary -j .text -j .rdata -j .data $(KERNEL_UNSTRIPPED) $@
 
 
