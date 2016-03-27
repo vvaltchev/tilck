@@ -1,7 +1,7 @@
 
 AS = nasm
 CC = gcc
-OPT = -O0 -fvisibility=default
+OPT = -O0 -fvisibility=default -Wall -Wextra
 INCDIRS = -I./include
 CFLAGS =  $(OPT) -std=c99 $(INCDIRS) -m32 -mno-red-zone -ffreestanding -g \
           -nostdinc -fno-builtin  -fno-asynchronous-unwind-tables -fno-zero-initialized-in-bss

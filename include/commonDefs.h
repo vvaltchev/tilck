@@ -19,7 +19,10 @@
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned long size_t;
+typedef uint8_t bool;
 
+#define true (1)
+#define false (0)
 
 
 /* This defines what the stack looks like after an ISR was running */

@@ -3,6 +3,8 @@
 
 extern _kmain
 extern _idtp
+extern _irq_handler
+
 
 
 global _idt_load
@@ -438,7 +440,7 @@ _irq15:
     push byte 47
     jmp irq_common_stub
 
-extern _irq_handler
+
 
 irq_common_stub:
     pusha
@@ -466,3 +468,4 @@ irq_common_stub:
     popa
     add esp, 8
     iret
+
