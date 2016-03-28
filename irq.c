@@ -60,11 +60,6 @@ void irq_remap(void)
    outb(0xA1, 0x0);
 }
 
-extern void idt_set_gate(unsigned char num,
-                         unsigned long base,
-                         unsigned short sel,
-                         unsigned char flags);
-
 
 #define PIC1      0x20     /* IO base address for master PIC */
 #define PIC2      0xA0     /* IO base address for slave PIC */

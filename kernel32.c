@@ -40,16 +40,15 @@ void timer_handler()
 }
 
 void init_kb();
+
 void keyboard_handler(struct regs *r);
 
 void kmain() {
 
-   gdt_install();
-
    term_init();
-
    show_hello_message();
 
+   gdt_install();
    idt_install();
    irq_install();
 
@@ -60,11 +59,14 @@ void kmain() {
 
    IRQ_set_mask(0);
 
-   //printk("hello. Int = %i, Ptr = '%p', Str = '%s'\n", -3, 0x00CCDDU, "substr");
+
    //magic_debug_break();
 
    sti();
    init_kb();
+
+   asmVolatile("movl $1, %eax;");
+   asmVolatile("int $0x80");
 
    while (1) {
       halt();

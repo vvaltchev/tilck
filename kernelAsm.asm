@@ -58,6 +58,8 @@ global _isr29
 global _isr30
 global _isr31
 
+global _isr128
+
 ;  0: Divide By Zero Exception
 _isr0:
     ; cli
@@ -276,6 +278,10 @@ _isr31:
     push byte 31
     jmp isr_common_stub
 
+_isr128:
+    push byte 0
+    push 0x80
+    jmp isr_common_stub
 
 ; We call a C function in here. We need to let the assembler know
 ; that '_fault_handler' exists in another file
