@@ -90,6 +90,10 @@ void term_write_char(char c) {
       return;
    }
 
+   if (c == '\t') {
+      return;
+   }
+
    volatile uint16_t *video = (volatile uint16_t *)TERMINAL_VIDEO_ADDR;
 
    if (c == '\b') {
