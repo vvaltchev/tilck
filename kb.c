@@ -87,6 +87,10 @@ unsigned char kbdus_up[128] =
    0, /* All other keys are undefined */
 };
 
+unsigned char *us_kb_layouts[2] = {
+   kbdus, kbdus_up
+};
+
 uint8_t numkey[128] = {
    [71] = '7', '8', '9',
    [75] = '4', '5', '6',
@@ -96,33 +100,11 @@ uint8_t numkey[128] = {
 #define KEY_L_SHIFT 42
 #define KEY_R_SHIFT 54
 #define NUM_LOCK 69
+#define CAPS_LOCK 58
 
-bool pressed_keys[128] = { false };
-bool blockNum = true;
-
-
-//void kbd_wait_asm()
-//{
-//   uint8_t al;
-//
-//begin:
-//
-//   al = inb(KB_CONTROL_PORT);
-//
-//   if ((al & 1) == 0) {
-//      goto ok;
-//   }
-//
-//   (void) inb(KB_DATA_PORT);
-//   goto begin;
-//
-//ok:
-//
-//   if ((al & 2) != 0) {
-//      // we have data, drain it.
-//      goto begin;
-//   }
-//}
+bool pkeys[128] = { false };
+bool numLock = true;
+bool capsLock = false;
 
 void kbd_wait()
 {
@@ -131,32 +113,85 @@ void kbd_wait()
    do {
 
       while ((al = inb(KB_CONTROL_PORT)) & 1) {
+         // drain input data..
          (void) inb(KB_DATA_PORT);
       }
 
    } while (al & 2);
 }
 
-void num_lock_switch(bool val)
+void kb_led_set(uint8_t val)
 {
    kbd_wait();
 
    outb(KB_DATA_PORT, 0xED);
    kbd_wait();
 
-   outb(KB_DATA_PORT, 0x0 | (!!val << 1));
+   outb(KB_DATA_PORT, val & 7);
    kbd_wait();
+}
+
+void num_lock_switch(bool val)
+{
+   kb_led_set(capsLock << 2 | val << 1);
+}
+
+void caps_lock_switch(bool val)
+{
+   kb_led_set(numLock << 1 | val << 2);
 }
 
 void init_kb()
 {
-   num_lock_switch(blockNum);
+   num_lock_switch(numLock);
+   caps_lock_switch(capsLock);
+}
+
+void handle_key_pressed(uint8_t scancode) {
+
+   switch(scancode) {
+
+   case NUM_LOCK:
+      numLock = !numLock;
+      num_lock_switch(numLock);
+      printk("\nNUM LOCK is %s\n", numLock ? "ON" : "OFF");
+      return;
+
+   case CAPS_LOCK:
+      capsLock = !capsLock;
+      caps_lock_switch(capsLock);
+      printk("\nCAPS LOCK is %s\n", capsLock ? "ON" : "OFF");
+      return;
+
+   case KEY_L_SHIFT:
+   case KEY_R_SHIFT:
+      return;
+
+   default:
+      break;
+   }
+
+   uint8_t *layout = us_kb_layouts[pkeys[KEY_L_SHIFT] || pkeys[KEY_R_SHIFT]];
+   uint8_t c = layout[scancode];
+
+   if (numLock) {
+      c |= numkey[scancode];
+   }
+
+   if (capsLock) {
+      c = upper(c);
+   }
+
+   if (c) {
+      term_write_char(c);
+   } else {
+      printk("PRESSED scancode: %i\n", scancode);
+   }
 }
 
 void keyboard_handler()
 {
-   unsigned char scancode;
-
+   uint8_t scancode;
 
    while (inb(KB_CONTROL_PORT) & 2) {
       //check if scancode is ready
@@ -167,43 +202,14 @@ void keyboard_handler()
    /* Read from the keyboard's data buffer */
    scancode = inb(KB_DATA_PORT);
 
-   /* If the top bit of the byte we read from the keyboard is
-   *  set, that means that a key has just been released */
-   if (scancode & 0x80)
-   {
-      pressed_keys[scancode & ~0x80] = false;
+   if (scancode & 0x80) {
 
-      //printk("RELEASED scancode: %i\n", scancode & ~0x80);
+      pkeys[scancode & ~0x80] = false;
+
    } else {
 
-      pressed_keys[scancode] = true;
-
-      if (scancode == NUM_LOCK) {
-         blockNum = !blockNum;
-         num_lock_switch(blockNum);
-         printk("NUM LOCK is %s\n", blockNum ? "ON" : "OFF");
-         return;
-      }
-
-      //printk("PRESSED scancode: %i\n", scancode);
-      
-      unsigned char c;
-      
-      if (pressed_keys[KEY_L_SHIFT] || pressed_keys[KEY_R_SHIFT]) {
-         c = kbdus_up[scancode];
-      } else {
-         c = kbdus[scancode];
-      }
-
-      if (blockNum) {
-         c |= numkey[scancode];
-      }
-
-      if (c) {
-         term_write_char(c);
-      } else {
-         printk("PRESSED scancode: %i\n", scancode);
-      }
+      pkeys[scancode] = true;
+      handle_key_pressed(scancode);
    }
 }
 

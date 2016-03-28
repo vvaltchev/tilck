@@ -5,6 +5,7 @@
 #include <term.h>
 #include <irq.h>
 
+void gdt_install();
 void idt_install();
 
 void timer_phase(int hz)
@@ -42,6 +43,8 @@ void init_kb();
 void keyboard_handler(struct regs *r);
 
 void kmain() {
+
+   gdt_install();
 
    term_init();
 

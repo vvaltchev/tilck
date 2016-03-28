@@ -175,7 +175,6 @@ void IRQ_clear_mask(uint8_t IRQline) {
    outb(port, value);
 }
 
-void IRQ0_handler();
 
 /* We first remap the interrupt controllers, and then we install
 *  the appropriate ISRs to the correct entries in the IDT. This

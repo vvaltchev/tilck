@@ -4,22 +4,23 @@
 extern _kmain
 extern _idtp
 extern _irq_handler
+extern _gdt_pointer
 
-
-
+global _gdt_load
 global _idt_load
-global _init_PIT
 
 section .text
 
 ; just jump to kmain()
    jmp _kmain
 
+_gdt_load:
+   lgdt [_gdt_pointer]
+   ret
 
 _idt_load:
     lidt [_idtp]
     ret
-
 
 
 ; In just a few pages in this tutorial, we will add our Interrupt

@@ -7,8 +7,8 @@
 
 #define TERMINAL_BUFFER_ROWS 1000
 
-static const size_t TERM_WIDTH = 80;
-static const size_t TERM_HEIGHT = 25;
+static int8_t TERM_WIDTH = 80;
+static int8_t TERM_HEIGHT = 25;
 
 volatile uint8_t terminal_row;
 volatile uint8_t terminal_column;
