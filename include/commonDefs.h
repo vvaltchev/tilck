@@ -9,9 +9,12 @@
 #define asmVolatile(...)
 #define __attribute__(...)
 
+#define asm(...)
+
 #else
 
 #define asmVolatile __asm__ volatile
+#define asm __asm__
 
 #endif
 

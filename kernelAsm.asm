@@ -283,9 +283,8 @@ _isr128:
     push 0x80
     jmp isr_common_stub
 
-; We call a C function in here. We need to let the assembler know
-; that '_fault_handler' exists in another file
-extern _fault_handler
+
+extern _generic_interrupt_handler
 
 ; This is our common ISR stub. It saves the processor state, sets
 ; up for kernel mode segments, calls the C-level fault handler,
@@ -303,7 +302,7 @@ isr_common_stub:
     mov gs, ax
     mov eax, esp
     push eax
-    mov eax, _fault_handler
+    mov eax, _generic_interrupt_handler
     call eax
     pop eax
     pop gs

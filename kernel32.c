@@ -43,6 +43,9 @@ void init_kb();
 
 void keyboard_handler(struct regs *r);
 
+
+#include "usermode_syscall_wrappers.h"
+
 void kmain() {
 
    term_init();
@@ -60,13 +63,17 @@ void kmain() {
    IRQ_set_mask(0);
 
 
-   //magic_debug_break();
-
    sti();
    init_kb();
 
-   asmVolatile("movl $1, %eax;");
-   asmVolatile("int $0x80");
+
+   magic_debug_break();
+
+   /////////////////
+   generic_usermode_syscall_wrapper3(5, "/myfile.txt", (void*)0xAABB, (void*)0x112233);
+
+   generic_usermode_syscall_wrapper0(23);
+   //////////////////
 
    while (1) {
       halt();

@@ -192,7 +192,7 @@ char *exception_messages[] =
 void handle_syscall(struct regs *);
 
 
-void fault_handler(struct regs *r)
+void generic_interrupt_handler(struct regs *r)
 {
    if (r->int_no == 0x80) {
       handle_syscall(r);
@@ -209,7 +209,7 @@ void fault_handler(struct regs *r)
 
       cli();
 
-      printk("Exception #%i: %s [errCode: %i]\n",
+      printk("Fault #%i: %s [errCode: %i]\n",
              r->int_no,
              exception_messages[r->int_no],
              r->err_code);
