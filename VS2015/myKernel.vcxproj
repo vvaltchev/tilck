@@ -150,6 +150,7 @@
     <ClInclude Include="..\include\irq.h" />
     <ClInclude Include="..\include\stringUtil.h" />
     <ClInclude Include="..\include\term.h" />
+    <ClInclude Include="..\usermode_syscall_wrappers.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\kernelAsm.asm" />
