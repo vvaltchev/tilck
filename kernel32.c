@@ -46,6 +46,50 @@ void keyboard_handler(struct regs *r);
 
 #include "usermode_syscall_wrappers.h"
 
+void set_kernel_stack(uint32_t stack);
+
+void switch_to_user_mode()
+{
+    // Set up our kernel stack.
+    set_kernel_stack(0x1FFFFF);
+    
+   magic_debug_break();
+
+    // Set up a stack structure for switching to user mode.
+    asmVolatile("  \
+       \
+      mov $0x23, %ax; \
+      mov %ax, %ds; \
+      mov %ax, %es; \
+      mov %ax, %fs; \
+      mov %ax, %gs; \
+                    \
+       \
+      mov %esp, %eax; \
+      pushl $0x23; \
+      pushl %esp; \
+      pushf; \
+      pushl $0x1B; \
+      push $1f; \
+      iret; \
+    1: \
+      "); 
+
+
+
+   /////////////////
+
+   magic_debug_break();
+
+   for (int i = 0; i < 10; ++i) {
+      asmVolatile("");
+   }
+
+   generic_usermode_syscall_wrapper3(5, "/myfile.txt", (void*)0xAABB, (void*)0x112233);
+
+}
+
+
 void kmain() {
 
    term_init();
@@ -60,19 +104,15 @@ void kmain() {
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
-   IRQ_set_mask(0);
-
+   IRQ_set_mask(0); // mask the timer interrupt.
 
    sti();
    init_kb();
 
 
-   magic_debug_break();
+   ///////////////////////////////////////////////////////////
 
-   /////////////////
-   generic_usermode_syscall_wrapper3(5, "/myfile.txt", (void*)0xAABB, (void*)0x112233);
-
-   generic_usermode_syscall_wrapper0(23);
+   switch_to_user_mode();
    //////////////////
 
    while (1) {

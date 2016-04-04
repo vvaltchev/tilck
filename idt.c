@@ -142,7 +142,16 @@ void isrs_install()
    idt_set_gate(31, (unsigned)isr31, 0x08, 0x8E);
 
    // Syscall with int 0x80.
-   idt_set_gate(0x80, (unsigned)isr128, 0x08, 0x8E);
+
+   // Note: flags is 0xEE, in order to allow this interrupt
+   // to be used from ring 3.
+
+   // Flags:
+   // P | DPL | Always 01110 (14)
+   // P = Segment is present, 1 = Yes
+   // DPL = Ring
+   //
+   idt_set_gate(0x80, (unsigned)isr128, 0x08, 0xEE);
 }
 
 /* This is a simple string array. It contains the message that
