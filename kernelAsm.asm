@@ -32,23 +32,27 @@ _tss_flush:
    ret
 
 global _switch_to_usermode_asm
-extern _usermode_init
+;extern _usermode_init
    
 _switch_to_usermode_asm:
      mov ax,0x23
      mov ds,ax
      mov es,ax 
      mov fs,ax 
-     mov gs,ax ;we don't need to worry about SS. it's handled by iret
+     mov gs,ax ; we don't need to worry about SS. it's handled by iret
  
      ;mov eax,esp
-     mov eax, 0x2FFFFF ; a dedicated usermode stack
+     
+     ; mov eax, 0x2FFFFF ; a dedicated usermode stack
+     
+     mov ebx, [esp + 4]  ; first arg, the usermode entry point
+     mov eax, [esp + 8]  ; second arg, the usermode stack ptr
      
      push 0x23 ;user data segment with bottom 2 bits set for ring 3
-     push eax ;push our current stack just for the heck of it
+     push eax ; push the stack pointer
      pushf
      push 0x1B; ;user code segment with bottom 2 bits set for ring 3
-     push _usermode_init
+     push ebx
      iret
    
    
@@ -320,7 +324,7 @@ extern _generic_interrupt_handler
 ; up for kernel mode segments, calls the C-level fault handler,
 ; and finally restores the stack frame.
 isr_common_stub:
-    pusha
+    pusha          ;  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
     push ds
     push es
     push fs
@@ -339,8 +343,8 @@ isr_common_stub:
     pop fs
     pop es
     pop ds
-    popa
-    add esp, 8
+    popa          ; Pops edi,esi,ebp...
+    add esp, 8    ; Cleans up the pushed error code and pushed ISR number
     iret
 
     

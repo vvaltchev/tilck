@@ -198,14 +198,13 @@ char *exception_messages[] =
 };
 
 
-void handle_syscall(struct regs *);
+int handle_syscall(struct regs *);
 
 
-void generic_interrupt_handler(struct regs *r)
+int generic_interrupt_handler(struct regs *r)
 {
    if (r->int_no == 0x80) {
-      handle_syscall(r);
-      return;
+      return handle_syscall(r);
    }
 
    /* Is this a fault whose number is from 0 to 31? */
@@ -224,6 +223,8 @@ void generic_interrupt_handler(struct regs *r)
              r->err_code);
       halt();
    }
+
+   return 0;
 }
 
 
