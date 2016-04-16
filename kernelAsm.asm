@@ -31,6 +31,27 @@ _tss_flush:
    ltr ax            ; Load 0x2B into the task state register.
    ret
 
+global _switch_to_usermode_asm
+extern _usermode_init
+   
+_switch_to_usermode_asm:
+     mov ax,0x23
+     mov ds,ax
+     mov es,ax 
+     mov fs,ax 
+     mov gs,ax ;we don't need to worry about SS. it's handled by iret
+ 
+     ;mov eax,esp
+     mov eax, 0x2FFFFF ; a dedicated usermode stack
+     
+     push 0x23 ;user data segment with bottom 2 bits set for ring 3
+     push eax ;push our current stack just for the heck of it
+     pushf
+     push 0x1B; ;user code segment with bottom 2 bits set for ring 3
+     push _usermode_init
+     iret
+   
+   
 
 ; In just a few pages in this tutorial, we will add our Interrupt
 ; Service Routines (ISRs) right here!
