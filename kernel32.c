@@ -48,7 +48,7 @@ void keyboard_handler(struct regs *r);
 
 void set_kernel_stack(uint32_t stack);
 
-void switch_to_usermode_asm();
+void switch_to_usermode_asm(void *entryPoint, void *stackAddr);
 
 void usermode_init()
 {
@@ -56,9 +56,16 @@ void usermode_init()
       asmVolatile("");
    }
 
-   generic_usermode_syscall_wrapper3(5, "/myfile.txt", (void*)0xAABB, (void*)0x112233);
+   int ret = generic_usermode_syscall_wrapper3(5, "/myfile.txt", (void*)0xAABB, (void*)0x112233);
 
-   generic_usermode_syscall_wrapper3(5, "otherFile", (void*)0xAABB, (void*)0x112233);
+   while (ret > 0) {
+
+      generic_usermode_syscall_wrapper3(4, 2, "hello", 0);
+
+      ret--;
+   }
+
+   while (1);
 }
 
 void switch_to_user_mode()
@@ -66,7 +73,7 @@ void switch_to_user_mode()
    // Set up our kernel stack.
    set_kernel_stack(0x1FFFFF);
 
-   switch_to_usermode_asm();
+   switch_to_usermode_asm(usermode_init, (void*) 0x2FFFFF);
 }
 
 

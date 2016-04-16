@@ -1,10 +1,11 @@
 
 AS = nasm
 CC = gcc
-OPT = -O0 -fvisibility=default -Wall -Wextra
+OPT = -O2 -fvisibility=default -Wall -Wextra
 INCDIRS = -I./include
 CFLAGS =  $(OPT) -std=c99 $(INCDIRS) -m32 -mno-red-zone -ffreestanding -g \
-          -nostdinc -fno-builtin  -fno-asynchronous-unwind-tables -fno-zero-initialized-in-bss
+          -nostdinc -fno-builtin  -fno-asynchronous-unwind-tables \
+			 -fno-zero-initialized-in-bss -Wno-unused-function
 
 DEPDIR := .d
 $(shell mkdir -p $(DEPDIR) >/dev/null)
