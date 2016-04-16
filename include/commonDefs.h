@@ -63,23 +63,8 @@ static inline uint8_t inb(uint16_t port)
    return ret_val;
 }
 
-static inline void halt()
-{
-   asmVolatile("hlt");
-}
-
-static inline void cli()
-{
-   asmVolatile("cli");
-}
-
-static inline void sti()
-{
-   asmVolatile("sti");
-}
-
-static inline void magic_debug_break()
-{
-   asmVolatile("xchg %bx, %bx");
-}
+#define halt() asmVolatile("hlt")
+#define cli() asmVolatile("cli")
+#define sti() asmVolatile("sti")
+#define magic_debug_break() asmVolatile("xchg %bx, %bx")
 
