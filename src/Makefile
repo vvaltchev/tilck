@@ -7,15 +7,12 @@ KERNEL_OBJECTS=$(KERNEL_ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(KERNEL_SOURCES:%.c
 
 $(shell mkdir -p $(DEPDIR) >/dev/null)
 
-
 $(KERNEL_TARGET): $(KERNEL_OBJECTS)
 	ld -T link2.ld -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
 	objcopy -O binary -j .text -j .rdata -j .data $(KERNEL_UNSTRIPPED) $@
 
-
 $(BUILD_DIR)/%.o : %.asm
 	nasm -f win32 $(OUTPUT_OPTION) $<
-
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
