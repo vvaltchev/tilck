@@ -136,14 +136,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\gdt.c" />
-    <ClCompile Include="..\idt.c" />
-    <ClCompile Include="..\irq.c" />
-    <ClCompile Include="..\kb.c" />
-    <ClCompile Include="..\kernel32.c" />
-    <ClCompile Include="..\stringUtil.c" />
-    <ClCompile Include="..\syscalls.c" />
-    <ClCompile Include="..\term.c" />
+    <ClCompile Include="..\src\gdt.c" />
+    <ClCompile Include="..\src\idt.c" />
+    <ClCompile Include="..\src\irq.c" />
+    <ClCompile Include="..\src\kb.c" />
+    <ClCompile Include="..\src\kernel32.c" />
+    <ClCompile Include="..\src\stringUtil.c" />
+    <ClCompile Include="..\src\syscalls.c" />
+    <ClCompile Include="..\src\term.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\commonDefs.h" />
@@ -153,7 +153,7 @@
     <ClInclude Include="..\usermode_syscall_wrappers.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\kernelAsm.asm" />
+    <None Include="..\src\kernelAsm.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

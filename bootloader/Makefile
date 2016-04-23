@@ -1,4 +1,6 @@
 
+# Makefile for the bootloader
+
 ASM_SOURCES=$(wildcard *.asm)
 OBJECTS=$(ASM_SOURCES:%.asm=$(BUILD_DIR)/%.bin)
 

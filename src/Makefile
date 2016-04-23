@@ -1,4 +1,6 @@
 
+# Makefile for the kernel
+
 KERNEL_UNSTRIPPED = $(BUILD_DIR)/uk
 
 KERNEL_SOURCES=$(wildcard *.c)
