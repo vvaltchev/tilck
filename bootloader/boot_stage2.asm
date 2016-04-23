@@ -16,7 +16,7 @@ idtr db 0, 0, 0, 0, 0, 0
 helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0      
 
  
-%INCLUDE 'realModeStrings.asm'
+%INCLUDE 'realModeStrings.inc'
 
 
    entry_point:
