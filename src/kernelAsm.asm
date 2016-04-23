@@ -33,7 +33,6 @@ _tss_flush:
    ret
 
 global _switch_to_usermode_asm
-;extern _usermode_init
    
 _switch_to_usermode_asm:
      mov ax,0x23
@@ -41,10 +40,6 @@ _switch_to_usermode_asm:
      mov es,ax 
      mov fs,ax 
      mov gs,ax ; we don't need to worry about SS. it's handled by iret
- 
-     ;mov eax,esp
-     
-     ; mov eax, 0x2FFFFF ; a dedicated usermode stack
      
      mov ebx, [esp + 4]  ; first arg, the usermode entry point
      mov eax, [esp + 8]  ; second arg, the usermode stack ptr
