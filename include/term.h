@@ -34,6 +34,7 @@ static inline uint16_t make_vgaentry(char c, uint8_t color) {
    return c16 | color16 << 8;
 }
 
+
 void term_init();
 void term_setcolor(uint8_t color);
 void term_movecur(int row, int col);

@@ -1,4 +1,3 @@
-
 [BITS 32]
 
 extern _kmain
