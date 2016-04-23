@@ -1,4 +1,6 @@
 
+# Master Makefile of the project
+
 export AS = nasm
 export CC = gcc
 export OPT = -O2 -fvisibility=default -Wall -Wextra
@@ -17,12 +19,16 @@ export POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
 export BOOTLOADER_TARGET = $(BUILD_DIR)/bootloader.bin
 export KERNEL_TARGET = $(BUILD_DIR)/kernel32.bin
+export INIT_TARGET = $(BUILD_DIR)/init.bin
 
 export FINAL_TARGET = os2.img
 
-$(FINAL_TARGET): $(BUILD_DIR) $(BOOTLOADER_TARGET) $(KERNEL_TARGET)
-	dd status=noxfer conv=notrunc if=$(BOOTLOADER_TARGET) of=$(FINAL_TARGET)
-	dd status=noxfer conv=notrunc if=$(KERNEL_TARGET) of=$(FINAL_TARGET) seek=8 obs=512 ibs=512
+
+$(FINAL_TARGET): $(BUILD_DIR) $(BOOTLOADER_TARGET) $(KERNEL_TARGET) $(INIT_TARGET)
+	dd status=noxfer conv=notrunc if=$(BOOTLOADER_TARGET) of=$@
+	dd status=noxfer conv=notrunc if=$(KERNEL_TARGET) of=$@ seek=8 obs=512 ibs=512
+	dd status=noxfer conv=notrunc if=$(INIT_TARGET) of=$@ seek=72 obs=512 ibs=512
+# 72 sectors = 4KB (for the bootloader) + 32KB for the kernel
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -32,11 +38,14 @@ clean:
 	rm -rf $(BUILD_DIR) $(FINAL_TARGET)
 
 # Targets that do not generate files
-.PHONY: clean $(KERNEL_TARGET) $(BOOTLOADER_TARGET)
+.PHONY: clean $(KERNEL_TARGET) $(BOOTLOADER_TARGET) $(INIT_TARGET)
+
+$(BOOTLOADER_TARGET):
+	cd bootloader && $(MAKE)
 
 $(KERNEL_TARGET):
 	cd src && $(MAKE)
 
-$(BOOTLOADER_TARGET):
-	cd bootloader && $(MAKE)
+$(INIT_TARGET):
+	cd init_src && $(MAKE)
 

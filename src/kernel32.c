@@ -44,36 +44,19 @@ void init_kb();
 void keyboard_handler(struct regs *r);
 
 
-#include "usermode_syscall_wrappers.h"
 
 void set_kernel_stack(uint32_t stack);
 
 void switch_to_usermode_asm(void *entryPoint, void *stackAddr);
 
-void usermode_init()
-{
-   for (int i = 0; i < 10; ++i) {
-      asmVolatile("");
-   }
 
-   int ret = generic_usermode_syscall_wrapper3(5, "/myfile.txt", (void*)0xAABB, (void*)0x112233);
-
-   while (ret > 0) {
-
-      generic_usermode_syscall_wrapper3(4, 2, "hello", 0);
-
-      ret--;
-   }
-
-   while (1);
-}
 
 void switch_to_user_mode()
 {
    // Set up our kernel stack.
    set_kernel_stack(0x1FFFFF);
 
-   switch_to_usermode_asm(usermode_init, (void*) 0x2FFFFF);
+   switch_to_usermode_asm((void*)0x108000, (void*) 0x2FFFFF);
 }
 
 
@@ -98,6 +81,33 @@ void kmain() {
 
 
    ///////////////////////////////////////////////////////////
+   //uint32_t addr = 0x100000;
+   //uint32_t bseq = 0;
+   //uint32_t c = 0;
+
+   //for (int i = 0; i < 1024*1024; i+=4) {
+
+   //   bool found = true;
+   //   uint8_t b = ((uint8_t *)(addr))[i];
+
+   //   if (b != 0xCC) {
+   //      bseq = 0;
+   //      c = 0;
+   //      continue;
+   //   }
+
+   //   if (c == 0) {
+   //      bseq = addr + i;
+   //      c++;
+   //   } else if (c < 8) {
+   //      c++;
+   //   } else {
+   //      printk("FOUND at %p\n", bseq);
+   //      break;
+   //   }
+   //}
+
+   //printk("nothing found :-( \n");
 
    switch_to_user_mode();
    //////////////////
