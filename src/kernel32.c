@@ -79,38 +79,7 @@ void kmain() {
    sti();
    init_kb();
 
-
-   ///////////////////////////////////////////////////////////
-   //uint32_t addr = 0x100000;
-   //uint32_t bseq = 0;
-   //uint32_t c = 0;
-
-   //for (int i = 0; i < 1024*1024; i+=4) {
-
-   //   bool found = true;
-   //   uint8_t b = ((uint8_t *)(addr))[i];
-
-   //   if (b != 0xCC) {
-   //      bseq = 0;
-   //      c = 0;
-   //      continue;
-   //   }
-
-   //   if (c == 0) {
-   //      bseq = addr + i;
-   //      c++;
-   //   } else if (c < 8) {
-   //      c++;
-   //   } else {
-   //      printk("FOUND at %p\n", bseq);
-   //      break;
-   //   }
-   //}
-
-   //printk("nothing found :-( \n");
-
    switch_to_user_mode();
-   //////////////////
 
    while (1) {
       halt();

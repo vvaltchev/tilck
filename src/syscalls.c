@@ -25,28 +25,36 @@ int32_t sys_fork()
 }
 
 // 3
-int32_t sys_read()
+int32_t sys_read(int fd, void *buf, size_t count)
 {
+   //printk("sys_read(fd = %i, count = %u)\n", fd, count);
    return 0;
 }
 
 // 4
 int32_t sys_write(int fd, const void *buf, size_t count)
 {
-   printk("sys_write(fd = %i, buf = '%s', count = %u)\n", fd, buf, count);
+   //printk("sys_write(fd = %i, count = %u)\n", fd, count);
+
+   for (size_t i = 0; i < count; i++) {
+      term_write_char(((char *)buf)[i]);
+   }
+
    return 0;
 }
 
 // 5
 int32_t sys_open(const char *pathname, int32_t flags, int32_t mode)
 {
-   printk("sys_open(filename = '%s', flags = %x, mode = %x)\n", pathname, flags, mode);
+   printk("sys_open(filename = '%s', "
+          "flags = %x, mode = %x)\n", pathname, flags, mode);
    return 3;
 }
 
 // 6
-int32_t sys_close()
+int32_t sys_close(int fd)
 {
+   printk("sys_close(fd = %d)\n", fd);
    return 0;
 }
 
@@ -79,7 +87,7 @@ int handle_syscall(struct regs *r)
       return -1;
    }
 
-   printk("Syscall #%i\n", r->eax);
+   //printk("Syscall #%i\n", r->eax);
    //printk("Arg 1 (ebx): %p\n", r->ebx);
    //printk("Arg 2 (ecx): %p\n", r->ecx);
    //printk("Arg 3 (edx): %p\n", r->edx);

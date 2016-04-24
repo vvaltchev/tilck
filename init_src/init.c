@@ -3,7 +3,7 @@
 
 #include <commonDefs.h>
 #include "usermode_syscall_wrappers.h"
-
+#include "string.h"
 
 void init_main()
 {
@@ -11,13 +11,12 @@ void init_main()
       asmVolatile("");
    }
 
-   int ret = generic_usermode_syscall_wrapper3(5, "/myfile.txt", (void*)0xAABB, (void*)0x112233);
+   int ret = open("/myfile.txt", 0xAABB, 0x112233);
 
-   while (ret > 0) {
+   printf("ret = %i\n", ret);
 
-      generic_usermode_syscall_wrapper3(4, 2, "hello", 0);
-
-      ret--;
+   for (int i = 0; i < 5; i++) {
+      printf("i = %i\n", i);
    }
 
    while (1);
