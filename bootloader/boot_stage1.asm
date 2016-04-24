@@ -3,20 +3,20 @@
 [BITS 16]
 [ORG 0x0000]
 
-%define BASE_LOAD_ADDR 0x07C0
-%define SECTORS_TO_READ_AT_TIME 8
-%define DEST_SEGMENT_KERNEL 0x2000
+%define BASE_LOAD_SEG 0x07C0
+%define SECTORS_TO_READ_AT_TIME 1
+%define DEST_DATA_SEGMENT 0x2000
 
 start:
    
-   mov ax, BASE_LOAD_ADDR      ; Set up 4K of stack space above buffer
-   add ax, 544                 ; 8k buffer = 512 paragraphs + 32 paragraphs (loader)
+   mov ax, BASE_LOAD_SEG
+   add ax, (8192 / 16)         ; 8K buffer
    cli                         ; Disable interrupts while changing stack
    mov ss, ax
-   mov sp, 4096
+   mov sp, 0x1FFF
    sti                         ; Restore interrupts
 
-   mov ax, BASE_LOAD_ADDR      ; Set data segment to where we're loaded
+   mov ax, BASE_LOAD_SEG      ; Set data segment to where we're loaded
    mov ds, ax
 
 
@@ -28,24 +28,26 @@ start:
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   
    
-   mov word [counter], 1
+   mov word [currSectorNum], 1 ; sector 1 (512 bytes after this bootloader)
    
    .big_load_loop:
    
    .load_loop:
 
-   mov ax, [counter]    ; sector 1 (next 512 bytes after this bootloader) 
+   ; xchg bx, bx ; magic break
+
+   mov ax, [currSectorNum]
    call l2hts
 
-   mov ax, [currSegmentKernel]
-   mov es, ax        ; Store currSegmentKernel in ES, the destination address of the sectors read
+   mov ax, [currDataSeg]
+   mov es, ax        ; Store currDataSeg in ES, the destination address of the sectors read
                      ; (AX is used since we cannot store directly IMM value in ES)
                      
-   mov bx, [counter]
+   mov bx, [currSectorNum]
    shl bx, 9         ; Sectors read from floppy are stored in ES:BX
-   sub bx, 512       ; => (bx << 9) - 512;
+                     ; bx = 512 * counter * bx
    
-   ; 20 address in 8086 (real mode)
+   ; 20-bit address in 8086 (real mode)
    ; SEG:OFF
    ; ADDR20 = (SEG << 4) | OFF
 
@@ -54,25 +56,29 @@ start:
 
    int 13h
    
+   ;xchg bx, bx ; magic break
+   
    jc .load_error
 
-   mov ax, [counter]    
+   mov ax, [currSectorNum]
    add ax, SECTORS_TO_READ_AT_TIME
-   mov [counter], ax
+   mov [currSectorNum], ax
    
-   cmp ax, 128
-   jge .end_small_load_loop 
+   and ax, 0x7F
+   cmp ax, 0
+   je .end_small_load_loop 
    jmp .load_loop
    
    .end_small_load_loop:
-   mov ax, [currSegmentKernel]
    
+   xchg bx, bx ; magic break
    
-   cmp ax, 0x9000 ; so, we'd have 0x20000 - 0x9FFFF for the kernel (512 KB)
+   mov ax, [currDataSeg] 
+   cmp ax, 0x9FE0 ; so, we'd have 0x20000 - 0x9FFFF for the kernel (512 KB)
    je .load_OK
    
    add ax, 0x1000
-   mov [currSegmentKernel], ax
+   mov [currDataSeg], ax
    jmp .big_load_loop
    
 .load_error:
@@ -88,7 +94,8 @@ start:
    call print_string
    add sp, 2 
 
-   jmp DEST_SEGMENT_KERNEL:0x0000
+   xchg bx, bx ; magic break   
+   jmp DEST_DATA_SEGMENT:0x0000
    
 end:
    jmp end
@@ -145,8 +152,12 @@ Sides                dw 2
 str1                 db 'This is my bootloader!', 10, 13, 0
 err1                 db 'ERROR while loading kernel!', 10, 13, 0
 newline              db 10, 13, 0
-counter              dw 0
-currSegmentKernel    dw DEST_SEGMENT_KERNEL
+currSectorNum        dw 0
+
+                     ; Hack the destination segment in a way to avoid
+                     ; special calculations in order to skip the first sector
+                     ; of the floppy.
+currDataSeg          dw (DEST_DATA_SEGMENT - 512/16)
 
 times 510-($-$$) db 0   ; Pad remainder of boot sector with 0s
 dw 0xAA55               ; The standard PC boot signature

@@ -30,7 +30,7 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
    cld               ; The default direction for string operations
                      ; will be 'up' - incrementing address in RAM
 
-   mov ax, 2000h     ; Set all segments to match where kernel is loaded
+   mov ax, 2000h     ; Set all segments to match where this code is loaded
    mov ds, ax        
    mov es, ax        
    mov fs, ax        
@@ -74,17 +74,16 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
    mov es, cx ; using extra segment for 0x0
    
    .copy_loop:
-   
-   cmp cx, 1024
-   je .end_copy_loop
-   add cx, 2
-   
+
    mov bx, [si]  
    mov [es:di], bx 
-   
+
+   add cx, 2
    add si, 2
    add di, 2
-   
+
+   cmp cx, 1024
+   je .end_copy_loop
    jmp .copy_loop
    
    .end_copy_loop:
@@ -274,7 +273,7 @@ smart_enable_A20:
 
 [BITS 32]
 
-complete_flush: ; will be copied at 0x1000
+complete_flush: ; this is located at 0x1000
 
    ; 0x10:
    ; 0000000000010     0         00
@@ -308,7 +307,7 @@ complete_flush: ; will be copied at 0x1000
    
    mov esp, 0x1FFFFF ; 1 MB of stack
    
-   ; xchg bx, bx ; bochs magic break   
+   xchg bx, bx ; bochs magic break   
    jmp dword 0x08:0x00100000
 
 times 1024-($-complete_flush) db 0   ; Pad to 1 KB   
