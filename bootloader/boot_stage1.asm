@@ -4,7 +4,7 @@
 [ORG 0x0000]
 
 %define BASE_LOAD_SEG 0x07C0
-%define SECTORS_TO_READ_AT_TIME 1
+%define SECTORS_TO_READ_AT_TIME 16
 %define DEST_DATA_SEGMENT 0x2000
 
 start:
@@ -64,15 +64,16 @@ start:
    add ax, SECTORS_TO_READ_AT_TIME
    mov [currSectorNum], ax
    
+   sub ax, 1
    and ax, 0x7F
    cmp ax, 0
    je .end_small_load_loop 
    jmp .load_loop
-   
+
    .end_small_load_loop:
-   
-   xchg bx, bx ; magic break
-   
+
+   ; xchg bx, bx ; magic break
+
    mov ax, [currDataSeg] 
    cmp ax, 0x9FE0 ; so, we'd have 0x20000 - 0x9FFFF for the kernel (512 KB)
    je .load_OK
