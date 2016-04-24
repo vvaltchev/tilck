@@ -27,8 +27,8 @@ export FINAL_TARGET = os2.img
 $(FINAL_TARGET): $(BUILD_DIR) $(BOOTLOADER_TARGET) $(KERNEL_TARGET) $(INIT_TARGET)
 	dd status=noxfer conv=notrunc if=$(BOOTLOADER_TARGET) of=$@
 	dd status=noxfer conv=notrunc if=$(KERNEL_TARGET) of=$@ seek=8 obs=512 ibs=512
-	dd status=noxfer conv=notrunc if=$(INIT_TARGET) of=$@ seek=72 obs=512 ibs=512
-# 72 sectors = 4KB (for the bootloader) + 32KB for the kernel
+	dd status=noxfer conv=notrunc if=$(INIT_TARGET) of=$@ seek=272 obs=512 ibs=512
+# 272 sectors = 4KB (for the bootloader) + 128KB for the kernel
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)

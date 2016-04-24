@@ -4,7 +4,7 @@
 [ORG 0x0000]
 
 %define BASE_LOAD_SEG 0x07C0
-%define SECTORS_TO_READ_AT_TIME 16
+%define SECTORS_TO_READ_AT_TIME 1
 %define DEST_DATA_SEGMENT 0x2000
 
 start:
@@ -37,7 +37,7 @@ start:
    ; xchg bx, bx ; magic break
 
    mov ax, [currSectorNum]
-   call l2hts
+   call lba_to_chs
 
    mov ax, [currDataSeg]
    mov es, ax        ; Store currDataSeg in ES, the destination address of the sectors read
@@ -101,8 +101,8 @@ start:
 end:
    jmp end
 
-l2hts:         ; Calculate head, track and sector settings for int 13h
-               ; IN: logical sector in AX, OUT: correct registers for int 13h
+lba_to_chs:         ; Calculate head, track and sector settings for int 13h
+                    ; IN: logical sector in AX, OUT: correct registers for int 13h
    push bx
    push ax
 
@@ -117,9 +117,9 @@ l2hts:         ; Calculate head, track and sector settings for int 13h
    mov dx, 0         ; Now calculate the head
    div word [SectorsPerTrack]
    mov dx, 0
-   div word [Sides]
-   mov dh, dl        ; Head/side
-   mov ch, al        ; Track
+   div word [HeadsPerCylinder]
+   mov dh, dl        ; Head
+   mov ch, al        ; Cylinder
 
    pop ax
    pop bx
@@ -149,7 +149,7 @@ print_string:      ; Routine: output string in SI to screen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 SectorsPerTrack      dw 18    ; Sectors per track (36/cylinder)
-Sides                dw 2
+HeadsPerCylinder     dw 2
 str1                 db 'This is my bootloader!', 10, 13, 0
 err1                 db 'ERROR while loading kernel!', 10, 13, 0
 newline              db 10, 13, 0

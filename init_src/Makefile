@@ -25,4 +25,4 @@ $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
 $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d
 
--include $(patsubst %,$(DEPDIR)/%.d,$(basename $(KERNEL_SOURCES)))
+-include $(patsubst %,$(DEPDIR)/%.d,$(basename $(SOURCES)))
