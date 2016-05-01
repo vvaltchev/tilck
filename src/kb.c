@@ -103,8 +103,11 @@ uint8_t numkey[128] = {
 #define CAPS_LOCK 58
 
 bool pkeys[128] = { false };
+bool e0pkeys[128] = { false };
+
 bool numLock = true;
 bool capsLock = false;
+bool lastWasE0 = false;
 
 void kbd_wait()
 {
@@ -147,8 +150,8 @@ void init_kb()
    caps_lock_switch(capsLock);
 }
 
-void handle_key_pressed(uint8_t scancode) {
-
+void handle_key_pressed(uint8_t scancode)
+{
    switch(scancode) {
 
    case NUM_LOCK:
@@ -185,13 +188,19 @@ void handle_key_pressed(uint8_t scancode) {
    if (c) {
       term_write_char(c);
    } else {
-      printk("PRESSED scancode: %i\n", scancode);
+      printk("PRESSED scancode: %x\n", scancode);
    }
+}
+
+void handle_e0_key_pressed(uint8_t scancode)
+{
+   //printk("PRESSED E0 scancode: %x\n", scancode);
 }
 
 void keyboard_handler()
 {
    uint8_t scancode;
+   bool *pkeysPtr = pkeys;
 
    while (inb(KB_CONTROL_PORT) & 2) {
       //check if scancode is ready
@@ -202,14 +211,51 @@ void keyboard_handler()
    /* Read from the keyboard's data buffer */
    scancode = inb(KB_DATA_PORT);
 
-   if (scancode & 0x80) {
+   if (scancode == 0xE0) {
+      lastWasE0 = true;
+      //printk("found E0, set flag and return\n");
+      return;
+   }
 
-      pkeys[scancode & ~0x80] = false;
+   if (lastWasE0) {
+      pkeysPtr = e0pkeys;
+      //printk("last was E0..\n");
+
+      if (scancode == 0x2A) {
+         // fake shift.
+         return; // keep E0 flag UP.
+      }
+
+      if (scancode == 0xAA) {
+         lastWasE0 = false;
+         return;
+      }
+
+      printk("E8 scancode: %x\n", scancode);
+   }
+
+
+
+
+   if (scancode & 0x80) {
+      //printk("released %x after e8..\n", scancode & ~0x80);
+      pkeysPtr[scancode & ~0x80] = false;
 
    } else {
 
-      pkeys[scancode] = true;
-      handle_key_pressed(scancode);
+      //printk("pressed %x after e8..\n", scancode);
+
+      pkeysPtr[scancode] = true;
+
+      if (!lastWasE0) {
+         handle_key_pressed(scancode);
+      } else {
+         handle_e0_key_pressed(scancode);
+      }
+   }
+
+   if (lastWasE0) {
+      lastWasE0 = false;
    }
 }
 
