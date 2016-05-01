@@ -136,11 +136,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\init_src\init.c" />
+    <ClCompile Include="..\init_src\string.c" />
     <ClCompile Include="..\src\gdt.c" />
     <ClCompile Include="..\src\idt.c" />
     <ClCompile Include="..\src\irq.c" />
     <ClCompile Include="..\src\kb.c" />
     <ClCompile Include="..\src\kernel32.c" />
+    <ClCompile Include="..\src\pageAllocator.c" />
     <ClCompile Include="..\src\stringUtil.c" />
     <ClCompile Include="..\src\syscalls.c" />
     <ClCompile Include="..\src\term.c" />
@@ -148,9 +151,11 @@
   <ItemGroup>
     <ClInclude Include="..\include\commonDefs.h" />
     <ClInclude Include="..\include\irq.h" />
+    <ClInclude Include="..\include\kmalloc.h" />
     <ClInclude Include="..\include\stringUtil.h" />
     <ClInclude Include="..\include\term.h" />
-    <ClInclude Include="..\usermode_syscall_wrappers.h" />
+    <ClInclude Include="..\init_src\string.h" />
+    <ClInclude Include="..\init_src\usermode_syscall_wrappers.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\kernelAsm.asm" />
