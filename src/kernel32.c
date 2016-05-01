@@ -75,6 +75,11 @@ void test1()
    alloc_phys_page();
 }
 
+void show_hello_message()
+{
+   printk("Hello from my kernel!\n");
+}
+
 void kmain() {
 
    init_physical_page_allocator();
@@ -95,7 +100,7 @@ void kmain() {
    sti();
    init_kb();
 
-   test1();
+   //test1();
 
    //switch_to_user_mode();
 

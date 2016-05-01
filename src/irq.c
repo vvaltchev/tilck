@@ -43,7 +43,7 @@ void irq_install_handler(int irq, void(*handler)(struct regs *r))
 /* This clears the handler for a given IRQ */
 void irq_uninstall_handler(int irq)
 {
-   irq_routines[irq] = 0;
+   irq_routines[irq] = NULL;
 }
 
 void irq_remap(void)
@@ -72,8 +72,9 @@ void irq_remap(void)
 
 void PIC_sendEOI(uint8_t irq)
 {
-   if (irq >= 8)
+   if (irq >= 8) {
       outb(PIC2_COMMAND, PIC_EOI);
+   }
 
    outb(PIC1_COMMAND, PIC_EOI);
 }

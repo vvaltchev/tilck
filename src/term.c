@@ -3,7 +3,7 @@
 #include <stringUtil.h>
 
 #define TERMINAL_VIDEO_ADDR ((char *)0xB8000)
-#define TERMINAL_BUFFER_ADDR ((char *)0x200000)
+#define TERMINAL_BUFFER_ADDR ((char *)0x10000)
 
 #define TERMINAL_BUFFER_ROWS 1000
 
@@ -25,7 +25,7 @@ void term_setcolor(uint8_t color) {
 
 void term_movecur(int row, int col)
 {
-   uint16_t position = (row * 80) + col;
+   uint16_t position = (row * TERM_WIDTH) + col;
 
    // cursor LOW port to vga INDEX register
    outb(0x3D4, 0x0F);
@@ -136,7 +136,4 @@ void term_move_ch(int row, int col)
    term_movecur(row, col);
 }
 
-void show_hello_message()
-{
-   term_write_string("Hello from my kernel!\n");
-}
+
