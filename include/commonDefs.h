@@ -30,10 +30,15 @@ typedef unsigned int uint32_t;
 typedef long ssize_t; // signed pointer-size integer
 typedef unsigned long size_t; // unsigned pointer-size integer
 
+typedef uint32_t uintptr_t;
+typedef int32_t intptr_t;
+typedef int32_t ptrdiff_t;
+
 typedef uint8_t bool;
 
 #define true (1)
 #define false (0)
+#define NULL ((void *) 0)
 
 
 /* This defines what the stack looks like after an ISR ran */

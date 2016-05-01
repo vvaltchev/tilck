@@ -4,6 +4,7 @@
 #include <stringUtil.h>
 #include <term.h>
 #include <irq.h>
+#include <kmalloc.h>
 
 void gdt_install();
 void idt_install();
@@ -56,12 +57,27 @@ void switch_to_user_mode()
    // Set up our kernel stack.
    set_kernel_stack(0x1FFFFF);
 
-   switch_to_usermode_asm((void*)0x108000, (void*) 0x2FFFFF);
+   switch_to_usermode_asm((void*)0x108000, (void*) (0x108000 + 128*1024));
 }
 
 
+void test1()
+{
+   void *p[64];
+   int i;
+
+   for (i = 0; i < 33; i++)
+      p[i] = alloc_phys_page();
+
+   for (i = 0; i < 33; i++)
+      free_phys_page(p[i]);
+
+   alloc_phys_page();
+}
+
 void kmain() {
 
+   init_physical_page_allocator();
    term_init();
    show_hello_message();
 
@@ -79,7 +95,9 @@ void kmain() {
    sti();
    init_kb();
 
-   switch_to_user_mode();
+   test1();
+
+   //switch_to_user_mode();
 
    while (1) {
       halt();
