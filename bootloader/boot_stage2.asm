@@ -70,27 +70,14 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
    
    mov si, complete_flush
    mov di, 0x1000
-   mov cx, 0
-   mov es, cx ; using extra segment for 0x0
+   mov cx, 512 ; 512 2-byte word
    
-   .copy_loop:
-
-   mov bx, [si]  
-   mov [es:di], bx 
-
-   add cx, 2
-   add si, 2
-   add di, 2
-
-   cmp cx, 1024
-   je .end_copy_loop
-   jmp .copy_loop
-   
-   .end_copy_loop:
+   mov ax, 0
+   mov es, ax ; using extra segment for 0x0
+   rep movsw ; copies 2*CX bytes from [di:si] to [es:di]
    
    call smart_enable_A20
   
-   
    ;xchg bx, bx ; bochs magic break 
 
    lidt [idtr]
@@ -291,21 +278,11 @@ complete_flush: ; this is located at 0x1000
    
    mov esi, 0x20E00
    mov edi, 0x100000
+
+   mov ecx, 131072 ; 128 K * 4 bytes = 512 KiB
+   rep movsd ; copies 4 * ECX bytes from [DS:ESI] to [ES:EDI]
    
-   .copy_loop:
-   
-   mov eax, [esi]
-   mov [edi], eax
-   add esi, 4
-   add edi, 4
-   
-   cmp esi, 0xA0000
-   je .end_copy_loop
-   jmp .copy_loop
-   
-   .end_copy_loop:
-   
-   mov esp, 0x1FFFFF ; 1 MB of stack
+   mov esp, 0x1FFFFF ; 1 MB of stack for the kernel
    
    ; xchg bx, bx ; bochs magic break   
    jmp dword 0x08:0x00100000
