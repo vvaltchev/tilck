@@ -28,7 +28,6 @@ void term_setcolor(uint8_t color) {
    terminal_color = color;
 }
 
-
 void term_movecur(int row, int col)
 {
    uint16_t position = (row * TERM_WIDTH) + col;
@@ -51,23 +50,27 @@ void term_init() {
    for (int i = 0; i < TERM_WIDTH*TERM_HEIGHT; ++i) {
       *ptr++ = make_vgaentry(' ', terminal_color);
    }
+
+   for (int i = 0; i < TERMINAL_BUFFER_ROWS * TERM_WIDTH; i++) {
+      ((volatile uint16_t *)TERMINAL_BUFFER_ADDR)[i] =
+      make_vgaentry('*', make_color(COLOR_RED, COLOR_GREEN));
+   }
 }
 
-static void put_line_in_buffer(int lineIndex)
+static void put_line_in_buffer(int videoRow)
 {
    volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
    volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
 
-   int destIndex = buf_next_slot; // % TERMINAL_BUFFER_ROWS;
+   int destIndex = buf_next_slot % TERMINAL_BUFFER_ROWS;
 
    memcpy(buf + destIndex * 2 * TERM_WIDTH,
-          video + lineIndex * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
+          video + videoRow * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
 
-   //buf_next_slot = (buf_next_slot + 1) % TERMINAL_BUFFER_ROWS;
-   buf_next_slot++;
+   buf_next_slot = (buf_next_slot + 1) % TERMINAL_BUFFER_ROWS;
 
    if (buf_next_slot == 0) {  // we wrapped-around
-      //buf_full = true;
+      buf_full = true;
    }
 }
 
@@ -76,7 +79,11 @@ static void from_buffer_to_video(int bufRow, int videoRow)
    volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
    volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
 
-   bufRow %= TERMINAL_BUFFER_ROWS;
+   if (bufRow < 0) {
+      bufRow += TERMINAL_BUFFER_ROWS;
+   } else {
+      bufRow %= TERMINAL_BUFFER_ROWS;
+   }
 
    memcpy(video + videoRow * 2 * TERM_WIDTH,
           buf + bufRow * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
@@ -84,11 +91,17 @@ static void from_buffer_to_video(int bufRow, int videoRow)
 
 void term_scroll(int lines)
 {
+   int max_scroll_lines = 0;
+
    if (lines < 0) {
       return;
    }
 
    if (lines == 0) {
+
+      if (scroll_value == 0) {
+         return;
+      }
 
       // just restore the video buffer
       for (int i = 0; i < TERM_HEIGHT; i++) {
@@ -98,33 +111,38 @@ void term_scroll(int lines)
       }
 
       buf_next_slot -= TERM_HEIGHT;
+
+      if (buf_next_slot < 0) {
+         buf_next_slot += TERMINAL_BUFFER_ROWS;
+      }
+
       scroll_value = 0;
       return;
    }
 
-   // if the current scroll_value is 0,
-   // save the whole current screen buffer.
+
 
    if (scroll_value == 0) {
 
-      if (buf_full) {
-         lines = MIN(lines, TERMINAL_BUFFER_ROWS);
-      } else {
-         lines = MIN(lines, MIN(buf_next_slot, TERMINAL_BUFFER_ROWS));
-      }
+      max_scroll_lines = buf_full
+                         ? TERMINAL_BUFFER_ROWS
+                         : MIN(buf_next_slot, TERMINAL_BUFFER_ROWS);
+
+
+      // if the current scroll_value is 0,
+      // save the whole current screen buffer.
 
       for (int i = 0; i < TERM_HEIGHT; i++) {
          put_line_in_buffer(i);
       }
 
    } else {
-
-      if (buf_full) {
-         lines = MIN(lines, TERMINAL_BUFFER_ROWS - TERM_HEIGHT);
-      } else {
-         lines = MIN(lines, MIN(buf_next_slot, TERMINAL_BUFFER_ROWS) - TERM_HEIGHT);
-      }
+      max_scroll_lines = buf_full
+                         ? TERMINAL_BUFFER_ROWS - TERM_HEIGHT
+                         : MIN(buf_next_slot, TERMINAL_BUFFER_ROWS) - TERM_HEIGHT;
    }
+
+   lines = MIN(lines, max_scroll_lines);
 
    for (int i = 0; i < TERM_HEIGHT; i++) {
 
