@@ -2,28 +2,6 @@
 #include <stringUtil.h>
 #include <term.h>
 
-void *memset(void *ptr, int value, size_t num)
-{
-   for (size_t i = 0; i < num; ++i)
-      ((char*)ptr)[i] = value;
-
-   return ptr;
-}
-
-void *memcpy(void *dest, void *src, size_t num)
-{
-   for (size_t i = 0; i < num; ++i)
-      ((char*)dest)[i] = ((char*)src)[i];
-
-   return dest;
-}
-
-size_t strlen(const char *str)
-{
-   size_t c = 0;
-   while (*str++) { ++c; }
-   return c;
-}
 
 void itoa(int value, char *destBuf)
 {

@@ -2,10 +2,10 @@
 #include <term.h>
 #include <stringUtil.h>
 
-#define TERMINAL_VIDEO_ADDR ((void*)0xB8000)
-#define TERMINAL_BUFFER_ADDR ((void*)0x10000)
+#define TERMINAL_VIDEO_ADDR ((char*)0xB8000)
+#define TERMINAL_BUFFER_ADDR ((char*)0x10000)
 
-#define TERMINAL_BUFFER_ROWS 1000
+#define TERMINAL_BUFFER_ROWS 28
 #define TERMINAL_SCREEN_SIZE (TERM_WIDTH * TERM_HEIGHT * 2)
 
 static int8_t TERM_WIDTH = 80;
@@ -15,9 +15,9 @@ volatile uint8_t terminal_row = 0;
 volatile uint8_t terminal_column = 0;
 volatile uint8_t terminal_color;
 
-volatile int rows_in_buffer = 0;
+volatile int buf_next_slot = 0;
 volatile int scroll_value = 0;
-volatile int first_row_index = 0;
+volatile bool buf_full = false;
 
 int term_get_scroll_value()
 {
@@ -58,28 +58,32 @@ static void put_line_in_buffer(int lineIndex)
    volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
    volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
 
-   int destIndex = rows_in_buffer;
+   int destIndex = buf_next_slot; // % TERMINAL_BUFFER_ROWS;
 
    memcpy(buf + destIndex * 2 * TERM_WIDTH,
           video + lineIndex * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
 
-   rows_in_buffer++;
+   //buf_next_slot = (buf_next_slot + 1) % TERMINAL_BUFFER_ROWS;
+   buf_next_slot++;
+
+   if (buf_next_slot == 0) {  // we wrapped-around
+      //buf_full = true;
+   }
 }
 
-static void from_buffer_to_video(int bufLine, int videoLine)
+static void from_buffer_to_video(int bufRow, int videoRow)
 {
    volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
    volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
 
-   memcpy(video + videoLine * 2 * TERM_WIDTH,
-          buf + bufLine * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
+   bufRow %= TERMINAL_BUFFER_ROWS;
+
+   memcpy(video + videoRow * 2 * TERM_WIDTH,
+          buf + bufRow * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
 }
 
 void term_scroll(int lines)
 {
-   volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
-   volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
-
    if (lines < 0) {
       return;
    }
@@ -89,14 +93,11 @@ void term_scroll(int lines)
       // just restore the video buffer
       for (int i = 0; i < TERM_HEIGHT; i++) {
 
-         int index = (rows_in_buffer - lines - 1 - i);
-
-         memcpy(video + (TERM_HEIGHT - i - 1) * 2 * TERM_WIDTH,
-                buf + index * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
+         from_buffer_to_video(buf_next_slot - lines - 1 - i, // backwards read
+                              TERM_HEIGHT - i - 1);          // backwards write
       }
 
-
-      rows_in_buffer -= TERM_HEIGHT;
+      buf_next_slot -= TERM_HEIGHT;
       scroll_value = 0;
       return;
    }
@@ -106,8 +107,10 @@ void term_scroll(int lines)
 
    if (scroll_value == 0) {
 
-      if (lines > rows_in_buffer) {
-         lines = rows_in_buffer;
+      if (buf_full) {
+         lines = MIN(lines, TERMINAL_BUFFER_ROWS);
+      } else {
+         lines = MIN(lines, MIN(buf_next_slot, TERMINAL_BUFFER_ROWS));
       }
 
       for (int i = 0; i < TERM_HEIGHT; i++) {
@@ -116,16 +119,17 @@ void term_scroll(int lines)
 
    } else {
 
-      if (lines > rows_in_buffer - TERM_HEIGHT) {
-         lines = rows_in_buffer - TERM_HEIGHT;
+      if (buf_full) {
+         lines = MIN(lines, TERMINAL_BUFFER_ROWS - TERM_HEIGHT);
+      } else {
+         lines = MIN(lines, MIN(buf_next_slot, TERMINAL_BUFFER_ROWS) - TERM_HEIGHT);
       }
    }
 
-
    for (int i = 0; i < TERM_HEIGHT; i++) {
 
-      int bufRow = (rows_in_buffer - 1 - lines - i);
-      from_buffer_to_video(bufRow, TERM_HEIGHT- i - 1);
+      from_buffer_to_video(buf_next_slot - 1 - lines - i,
+                           TERM_HEIGHT - i - 1);
    }
 
    scroll_value = lines;
@@ -142,9 +146,9 @@ static void term_incr_row()
 
    // We have to scroll...
 
-   memcpy(TERMINAL_VIDEO_ADDR,
-          TERMINAL_VIDEO_ADDR + 2 * TERM_WIDTH,
-          TERM_WIDTH * TERM_HEIGHT * 2);
+   memmove(TERMINAL_VIDEO_ADDR,
+           TERMINAL_VIDEO_ADDR + 2 * TERM_WIDTH,
+           TERM_WIDTH * (TERM_HEIGHT - 1) * 2);
 
    volatile uint16_t *lastRow =
       (volatile uint16_t *)TERMINAL_VIDEO_ADDR + TERM_WIDTH * (TERM_HEIGHT - 1);

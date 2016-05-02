@@ -11,7 +11,11 @@
 
 #define asm(...)
 
+#define ALWAYS_INLINE inline
+
 #else
+
+#define ALWAYS_INLINE __attribute__((always_inline))
 
 #define asmVolatile __asm__ volatile
 #define asm __asm__
@@ -73,3 +77,5 @@ static inline uint8_t inb(uint16_t port)
 #define sti() asmVolatile("sti")
 #define magic_debug_break() asmVolatile("xchg %bx, %bx")
 
+#define MIN(x, y) (((x) <= (y)) ? (x) : (y))
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
