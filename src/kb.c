@@ -94,20 +94,31 @@ unsigned char *us_kb_layouts[2] = {
 uint8_t numkey[128] = {
    [71] = '7', '8', '9',
    [75] = '4', '5', '6',
-   [79] = '1', '2', '3'
+   [79] = '1', '2', '3',
+   [82] = '0', '.'
 };
 
 #define KEY_L_SHIFT 42
 #define KEY_R_SHIFT 54
 #define NUM_LOCK 69
 #define CAPS_LOCK 58
+#define KEY_PAGE_UP 0x49
+#define KEY_PAGE_DOWN 0x51
+#define KEY_LEFT 0x4b
+#define KEY_RIGHT 0x4d
+#define KEY_UP 0x48
+#define KEY_DOWN 0x50
 
 bool pkeys[128] = { false };
 bool e0pkeys[128] = { false };
 
+bool *pkeysArrays[2] = { pkeys, e0pkeys };
+
 bool numLock = true;
 bool capsLock = false;
 bool lastWasE0 = false;
+
+uint8_t next_kb_interrupts_to_ignore = 0;
 
 void kbd_wait()
 {
@@ -188,19 +199,35 @@ void handle_key_pressed(uint8_t scancode)
    if (c) {
       term_write_char(c);
    } else {
-      printk("PRESSED scancode: %x\n", scancode);
+      printk("PRESSED scancode: 0x%x (%i)\n", scancode, scancode);
    }
 }
 
-void handle_e0_key_pressed(uint8_t scancode)
+void handle_E0_key_pressed(uint8_t scancode)
 {
-   //printk("PRESSED E0 scancode: %x\n", scancode);
+   switch (scancode) {
+
+   case KEY_PAGE_UP:
+      printk("PRESSED: PAGE UP\n");
+      break;
+
+   case KEY_PAGE_DOWN:
+      printk("PRESSED: PAGE DOWN\n");
+      break;
+
+   default:
+      printk("PRESSED E0 scancode: 0x%x (%i)\n", scancode, scancode);
+      break;
+   }
 }
+
+void (*keyPressHandlers[2])(uint8_t) = {
+   handle_key_pressed, handle_E0_key_pressed
+};
 
 void keyboard_handler()
 {
    uint8_t scancode;
-   bool *pkeysPtr = pkeys;
 
    while (inb(KB_CONTROL_PORT) & 2) {
       //check if scancode is ready
@@ -211,51 +238,41 @@ void keyboard_handler()
    /* Read from the keyboard's data buffer */
    scancode = inb(KB_DATA_PORT);
 
-   if (scancode == 0xE0) {
-      lastWasE0 = true;
-      //printk("found E0, set flag and return\n");
+   if (next_kb_interrupts_to_ignore) {
+      next_kb_interrupts_to_ignore--;
       return;
    }
 
-   if (lastWasE0) {
-      pkeysPtr = e0pkeys;
-      //printk("last was E0..\n");
-
-      if (scancode == 0x2A) {
-         // fake shift.
-         return; // keep E0 flag UP.
-      }
-
-      if (scancode == 0xAA) {
-         lastWasE0 = false;
-         return;
-      }
-
-      printk("E8 scancode: %x\n", scancode);
+   if (scancode == 0xE1) {
+      next_kb_interrupts_to_ignore = 2;
+      return;
    }
 
 
+   if (scancode == 0xE0) {
+      lastWasE0 = true;
+      return;
+   }
 
+
+   if (lastWasE0) {
+      // Fake lshift pressed (2A) or released (AA)
+      if (scancode == 0x2A || scancode == 0xAA) {
+         goto end;
+      }
+   }
 
    if (scancode & 0x80) {
-      //printk("released %x after e8..\n", scancode & ~0x80);
-      pkeysPtr[scancode & ~0x80] = false;
+
+      pkeysArrays[lastWasE0][scancode & ~0x80] = false;
 
    } else {
 
-      //printk("pressed %x after e8..\n", scancode);
-
-      pkeysPtr[scancode] = true;
-
-      if (!lastWasE0) {
-         handle_key_pressed(scancode);
-      } else {
-         handle_e0_key_pressed(scancode);
-      }
+      pkeysArrays[lastWasE0][scancode] = true;
+      keyPressHandlers[lastWasE0](scancode);
    }
 
-   if (lastWasE0) {
-      lastWasE0 = false;
-   }
+end:
+   lastWasE0 = false;
 }
 
