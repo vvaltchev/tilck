@@ -2,21 +2,27 @@
 #include <term.h>
 #include <stringUtil.h>
 
-#define TERMINAL_VIDEO_ADDR ((char *)0xB8000)
-#define TERMINAL_BUFFER_ADDR ((char *)0x10000)
+#define TERMINAL_VIDEO_ADDR ((void*)0xB8000)
+#define TERMINAL_BUFFER_ADDR ((void*)0x10000)
 
 #define TERMINAL_BUFFER_ROWS 1000
+#define TERMINAL_SCREEN_SIZE (TERM_WIDTH * TERM_HEIGHT * 2)
 
 static int8_t TERM_WIDTH = 80;
 static int8_t TERM_HEIGHT = 25;
 
-volatile uint8_t terminal_row;
-volatile uint8_t terminal_column;
+volatile uint8_t terminal_row = 0;
+volatile uint8_t terminal_column = 0;
 volatile uint8_t terminal_color;
 
-volatile uint16_t buffer_rows_used;
-volatile uint16_t scroll_value;
+volatile int rows_in_buffer = 0;
+volatile int scroll_value = 0;
+volatile int first_row_index = 0;
 
+int term_get_scroll_value()
+{
+   return scroll_value;
+}
 
 void term_setcolor(uint8_t color) {
    terminal_color = color;
@@ -37,14 +43,9 @@ void term_movecur(int row, int col)
 
 void term_init() {
 
-   terminal_row = 0;
-   terminal_column = 0;
-   buffer_rows_used = 0;
-   scroll_value = 0;
-
    term_movecur(0, 0);
-
    term_setcolor(make_color(COLOR_WHITE, COLOR_BLACK));
+
    volatile uint16_t *ptr = (volatile uint16_t *)TERMINAL_VIDEO_ADDR;
 
    for (int i = 0; i < TERM_WIDTH*TERM_HEIGHT; ++i) {
@@ -52,13 +53,92 @@ void term_init() {
    }
 }
 
+static void put_line_in_buffer(int lineIndex)
+{
+   volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
+   volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
+
+   int destIndex = rows_in_buffer;
+
+   memcpy(buf + destIndex * 2 * TERM_WIDTH,
+          video + lineIndex * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
+
+   rows_in_buffer++;
+}
+
+static void from_buffer_to_video(int bufLine, int videoLine)
+{
+   volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
+   volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
+
+   memcpy(video + videoLine * 2 * TERM_WIDTH,
+          buf + bufLine * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
+}
+
+void term_scroll(int lines)
+{
+   volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
+   volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
+
+   if (lines < 0) {
+      return;
+   }
+
+   if (lines == 0) {
+
+      // just restore the video buffer
+      for (int i = 0; i < TERM_HEIGHT; i++) {
+
+         int index = (rows_in_buffer - lines - 1 - i);
+
+         memcpy(video + (TERM_HEIGHT - i - 1) * 2 * TERM_WIDTH,
+                buf + index * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
+      }
+
+
+      rows_in_buffer -= TERM_HEIGHT;
+      scroll_value = 0;
+      return;
+   }
+
+   // if the current scroll_value is 0,
+   // save the whole current screen buffer.
+
+   if (scroll_value == 0) {
+
+      if (lines > rows_in_buffer) {
+         lines = rows_in_buffer;
+      }
+
+      for (int i = 0; i < TERM_HEIGHT; i++) {
+         put_line_in_buffer(i);
+      }
+
+   } else {
+
+      if (lines > rows_in_buffer - TERM_HEIGHT) {
+         lines = rows_in_buffer - TERM_HEIGHT;
+      }
+   }
+
+
+   for (int i = 0; i < TERM_HEIGHT; i++) {
+
+      int bufRow = (rows_in_buffer - 1 - lines - i);
+      from_buffer_to_video(bufRow, TERM_HEIGHT- i - 1);
+   }
+
+   scroll_value = lines;
+}
+
 static void term_incr_row()
 {
    if (terminal_row < TERM_HEIGHT - 1) {
-
       ++terminal_row;
       return;
    }
+
+   put_line_in_buffer(0);
 
    // We have to scroll...
 
@@ -72,10 +152,13 @@ static void term_incr_row()
    for (int i = 0; i < TERM_WIDTH; i++) {
       lastRow[i] = make_vgaentry(' ', terminal_color);
    }
-
 }
 
 void term_write_char(char c) {
+
+   if (scroll_value != 0) {
+      term_scroll(0);
+   }
 
    if (c == '\n') {
       terminal_column = 0;
@@ -135,5 +218,4 @@ void term_move_ch(int row, int col)
 
    term_movecur(row, col);
 }
-
 
