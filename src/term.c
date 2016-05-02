@@ -5,7 +5,7 @@
 #define TERMINAL_VIDEO_ADDR ((char*)0xB8000)
 #define TERMINAL_BUFFER_ADDR ((char*)0x10000)
 
-#define TERMINAL_BUFFER_ROWS 28
+#define TERMINAL_BUFFER_ROWS 1024
 #define TERMINAL_SCREEN_SIZE (TERM_WIDTH * TERM_HEIGHT * 2)
 
 static int8_t TERM_WIDTH = 80;
@@ -119,7 +119,7 @@ void term_scroll(int lines)
    int max_scroll_lines = 0;
 
    if (lines < 0) {
-      return;
+      lines = 0;
    }
 
    if (lines == 0) {

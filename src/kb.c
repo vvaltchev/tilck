@@ -208,13 +208,11 @@ void handle_E0_key_pressed(uint8_t scancode)
    switch (scancode) {
 
    case KEY_PAGE_UP:
-      //printk("PRESSED: PAGE UP\n");
-      term_scroll(term_get_scroll_value() + 1);
+      term_scroll(term_get_scroll_value() + 5);
       break;
 
    case KEY_PAGE_DOWN:
-      //printk("PRESSED: PAGE DOWN\n");
-      term_scroll(term_get_scroll_value() - 1);
+      term_scroll(term_get_scroll_value() - 5);
       break;
 
    default:
