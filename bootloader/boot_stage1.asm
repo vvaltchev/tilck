@@ -95,7 +95,7 @@ start:
    call print_string
    add sp, 2 
 
-   xchg bx, bx ; magic break   
+   ; xchg bx, bx ; magic break   
    jmp DEST_DATA_SEGMENT:0x0000
    
 end:
