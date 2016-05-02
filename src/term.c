@@ -57,21 +57,21 @@ void term_init() {
    }
 }
 
-static void put_line_in_buffer(int videoRow)
+static void ALWAYS_INLINE increase_buf_next_slot(int val)
 {
-   volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
-   volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
+   if (val < 0) {
+      buf_next_slot += val;
 
-   int destIndex = buf_next_slot % TERMINAL_BUFFER_ROWS;
+      if (buf_next_slot < 0)
+         buf_next_slot += TERMINAL_BUFFER_ROWS;
+      return;
+   }
 
-   memcpy(buf + destIndex * 2 * TERM_WIDTH,
-          video + videoRow * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
-
-   buf_next_slot = (buf_next_slot + 1) % TERMINAL_BUFFER_ROWS;
-
-   if (buf_next_slot == 0) {  // we wrapped-around
+   if (buf_next_slot + val >= TERMINAL_BUFFER_ROWS) {  // we'll wrap around
       buf_full = true;
    }
+
+   buf_next_slot = (buf_next_slot + val) % TERMINAL_BUFFER_ROWS;
 }
 
 static void from_buffer_to_video(int bufRow, int videoRow)
@@ -89,6 +89,31 @@ static void from_buffer_to_video(int bufRow, int videoRow)
           buf + bufRow * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
 }
 
+static void push_line_in_buffer(int videoRow)
+{
+   volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
+   volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
+
+   int destIndex = buf_next_slot % TERMINAL_BUFFER_ROWS;
+
+   memcpy(buf + destIndex * 2 * TERM_WIDTH,
+          video + videoRow * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
+
+   increase_buf_next_slot(1);
+}
+
+static void pop_line_from_buffer(int videoRow)
+{
+   volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
+   volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
+
+   // ASSERT buf_next_slot > 0
+
+   from_buffer_to_video(buf_next_slot - 1, videoRow);
+   increase_buf_next_slot(-1);
+}
+
+
 void term_scroll(int lines)
 {
    int max_scroll_lines = 0;
@@ -104,16 +129,9 @@ void term_scroll(int lines)
       }
 
       // just restore the video buffer
+
       for (int i = 0; i < TERM_HEIGHT; i++) {
-
-         from_buffer_to_video(buf_next_slot - lines - 1 - i, // backwards read
-                              TERM_HEIGHT - i - 1);          // backwards write
-      }
-
-      buf_next_slot -= TERM_HEIGHT;
-
-      if (buf_next_slot < 0) {
-         buf_next_slot += TERMINAL_BUFFER_ROWS;
+         pop_line_from_buffer(TERM_HEIGHT - i - 1);
       }
 
       scroll_value = 0;
@@ -121,25 +139,22 @@ void term_scroll(int lines)
    }
 
 
+   max_scroll_lines = buf_full
+                      ? TERMINAL_BUFFER_ROWS
+                      : MIN(buf_next_slot, TERMINAL_BUFFER_ROWS);
 
    if (scroll_value == 0) {
-
-      max_scroll_lines = buf_full
-                         ? TERMINAL_BUFFER_ROWS
-                         : MIN(buf_next_slot, TERMINAL_BUFFER_ROWS);
-
 
       // if the current scroll_value is 0,
       // save the whole current screen buffer.
 
       for (int i = 0; i < TERM_HEIGHT; i++) {
-         put_line_in_buffer(i);
+         push_line_in_buffer(i);
       }
 
    } else {
-      max_scroll_lines = buf_full
-                         ? TERMINAL_BUFFER_ROWS - TERM_HEIGHT
-                         : MIN(buf_next_slot, TERMINAL_BUFFER_ROWS) - TERM_HEIGHT;
+
+      max_scroll_lines -= TERM_HEIGHT;
    }
 
    lines = MIN(lines, max_scroll_lines);
@@ -160,7 +175,7 @@ static void term_incr_row()
       return;
    }
 
-   put_line_in_buffer(0);
+   push_line_in_buffer(0);
 
    // We have to scroll...
 
