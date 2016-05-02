@@ -41,5 +41,5 @@ void term_movecur(int row, int col);
 void term_write_char(char c);
 void term_write_string(const char *str);
 void term_move_ch(int row, int col);
-
-void show_hello_message();
+void term_scroll(int lines);
+int term_get_scroll_value();
