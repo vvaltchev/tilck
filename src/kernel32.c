@@ -122,7 +122,7 @@ void kmain() {
    IRQ_set_mask(0); // mask the timer interrupt.
 
    //magic_debug_break();
-   //init_paging();
+   init_paging();
    //magic_debug_break();
 
    sti();

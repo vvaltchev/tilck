@@ -59,7 +59,7 @@ void *alloc_phys_page() {
    ret = ((last_index << 17) + (free_index << 12));
    pages_bit_field[last_index] |= (1 << free_index);
 
-   //printk("[alloc_page] Returning: %p\n", ret);
+   printk("[alloc_page] Returning: %p\n", ret);
    return (void *)ret;
 }
 
