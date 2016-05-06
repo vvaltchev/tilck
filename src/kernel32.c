@@ -80,6 +80,28 @@ void show_hello_message()
    printk("Hello from my kernel!\n");
 }
 
+void panic(const char *fmt, ...)
+{
+   cli();
+
+   printk("\n\n************** KERNEL PANIC **************\n");
+
+   va_list args;
+   va_start(args, fmt);
+   vprintk(fmt, args);
+   va_end(args);
+
+   while (true) {
+      halt();
+   }
+}
+
+void assert_failed(const char *expr, const char *file, int line)
+{
+   panic("\nASSERTION '%s' FAILED in file '%s' at line %i\n",
+         expr, file, line);
+}
+
 void kmain() {
 
    init_physical_page_allocator();

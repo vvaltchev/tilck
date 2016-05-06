@@ -5,8 +5,8 @@ export AS = nasm
 export CC = gcc
 export OPT = -O2 -fvisibility=default -Wall -Wextra
 export INCDIRS = -I$(shell pwd)/include
-export CFLAGS =  $(OPT) -std=c99 $(INCDIRS) -m32 -mno-red-zone -ffreestanding -g \
-                 -nostdinc -fno-builtin  -fno-asynchronous-unwind-tables \
+export CFLAGS =  $(OPT) -std=c99 $(INCDIRS) -Wall -Wextra -m32 -mno-red-zone     \
+                 -ffreestanding -g -nostdinc -fno-builtin  -fno-asynchronous-unwind-tables \
 			        -fno-zero-initialized-in-bss -Wno-unused-function -Wno-unused-parameter
 
 export DEPDIR := .d
