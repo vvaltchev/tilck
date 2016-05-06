@@ -25,18 +25,7 @@ void init_paging()
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
 
-   page_dir_entry_t not_present;
-   memset(&not_present, 0, sizeof(not_present));
-
-   not_present.present = 0;
-   not_present.rw = 1;
-   not_present.us = 0;
-
    kernel_page_dir.physical_address = &kernel_page_dir;
-
-   for (int i = 0; i < 1024; i++) {
-      kernel_page_dir.entries[i] = not_present;
-   }
 
    for (int i = 0; i < 512; i++) {
 
@@ -62,6 +51,17 @@ void init_paging()
 
    kernel_page_dir.entries[0] = kernel_2mb;
 
-   magic_debug_break();
+   page_dir_entry_t not_present;
+   memset(&not_present, 0, sizeof(not_present));
+
+   not_present.present = 0;
+   not_present.rw = 1;
+   not_present.us = 0;
+
+   for (int i = 1; i < 1024; i++) {
+      kernel_page_dir.entries[i] = not_present;
+   }
+
+   //magic_debug_break();
    set_page_directory(&kernel_page_dir);
 }
