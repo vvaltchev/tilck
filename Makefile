@@ -9,14 +9,7 @@ export CFLAGS =  $(OPT) -std=c99 $(INCDIRS) -Wall -Wextra -m32 -mno-red-zone    
                  -ffreestanding -g -nostdinc -fno-builtin  -fno-asynchronous-unwind-tables \
 			        -fno-zero-initialized-in-bss -Wno-unused-function -Wno-unused-parameter
 
-export DEPDIR = .d
-export DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
-
 export BUILD_DIR = $(shell pwd)/build
-
-export COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
-export POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
-
 export BOOTLOADER_TARGET = $(BUILD_DIR)/bootloader.bin
 export KERNEL_TARGET = $(BUILD_DIR)/kernel32.bin
 export INIT_TARGET = $(BUILD_DIR)/init.bin

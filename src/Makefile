@@ -1,6 +1,11 @@
 
 # Makefile for the kernel
 
+DEPDIR = .d
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
+COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
+POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
+
 KERNEL_UNSTRIPPED = $(BUILD_DIR)/uk
 
 KERNEL_SOURCES=$(wildcard *.c)
