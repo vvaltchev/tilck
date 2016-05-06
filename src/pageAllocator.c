@@ -49,18 +49,18 @@ void *alloc_phys_page() {
       last_index = (last_index + 1) % PAGES_BIT_FIELD_ELEMS;
    }
 
-   if (!found) return NULL;
-
-   {
-      uintptr_t ret;
-
-      free_index = get_first_zero_bit_index(pages_bit_field[last_index]);
-      ret = ((last_index << 17) + (free_index << 12));
-      pages_bit_field[last_index] |= (1 << free_index);
-
-      //printk("[alloc_page] Returning: %p\n", ret);
-      return (void *)ret;
+   if (!found) {
+      return NULL;
    }
+
+   uintptr_t ret;
+
+   free_index = get_first_zero_bit_index(pages_bit_field[last_index]);
+   ret = ((last_index << 17) + (free_index << 12));
+   pages_bit_field[last_index] |= (1 << free_index);
+
+   //printk("[alloc_page] Returning: %p\n", ret);
+   return (void *)ret;
 }
 
 

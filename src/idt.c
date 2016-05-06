@@ -3,12 +3,6 @@
 #include <stringUtil.h>
 #include <term.h>
 
-/* bkerndev - Bran's Kernel Development Tutorial
-*  By:   Brandon F. (friesenb@gmail.com)
-*  Desc: Interrupt Descriptor Table management
-*
-*  Notes: No warranty expressed or implied. Use at own risk. */
-
 /* Defines an IDT entry */
 struct idt_entry
 {
@@ -25,20 +19,24 @@ struct idt_ptr
     void *base;
 } __attribute__((packed));
 
-/* Declare an IDT of 256 entries. Although we will only use the
-*  first 32 entries in this tutorial, the rest exists as a bit
-*  of a trap. If any undefined IDT entry is hit, it normally
-*  will cause an "Unhandled Interrupt" exception. Any descriptor
-*  for which the 'presence' bit is cleared (0) will generate an
-*  "Unhandled Interrupt" exception */
+/*
+ * Declare an IDT of 256 entries. Although we will only use the
+ * first 32 entries in this tutorial, the rest exists as a bit
+ * of a trap. If any undefined IDT entry is hit, it normally
+ * will cause an "Unhandled Interrupt" exception. Any descriptor
+ * for which the 'presence' bit is cleared (0) will generate an
+ * "Unhandled Interrupt" exception
+ */
 struct idt_entry idt[256];
 struct idt_ptr idtp;
 
 /* This exists in 'start.asm', and is used to load our IDT */
 extern void idt_load();
 
-/* Use this function to set an entry in the IDT. Alot simpler
-*  than twiddling with the GDT ;) */
+/*
+ * Use this function to set an entry in the IDT. Alot simpler
+ * than twiddling with the GDT ;)
+ */
 void idt_set_gate(unsigned char num,
                   unsigned long base,
                   unsigned short sel,
@@ -55,9 +53,12 @@ void idt_set_gate(unsigned char num,
     idt[num].flags = flags;
 }
 
-/* These are function prototypes for all of the exception
-*  handlers: The first 32 entries in the IDT are reserved
-*  by Intel, and are designed to service exceptions! */
+/*
+ * These are function prototypes for all of the exception
+ * handlers: The first 32 entries in the IDT are reserved
+ * by Intel, and are designed to service exceptions!
+ */
+
 void isr0();
 void isr1();
 void isr2();
@@ -94,15 +95,18 @@ void isr31();
 
 void isr128();
 
-/* This is a very repetitive function... it's not hard, it's
-*  just annoying. As you can see, we set the first 32 entries
-*  in the IDT to the first 32 ISRs. We can't use a for loop
-*  for this, because there is no way to get the function names
-*  that correspond to that given entry. We set the access
-*  flags to 0x8E. This means that the entry is present, is
-*  running in ring 0 (kernel level), and has the lower 5 bits
-*  set to the required '14', which is represented by 'E' in
-*  hex. */
+/*
+ * This is a very repetitive function... it's not hard, it's
+ * just annoying. As you can see, we set the first 32 entries
+ * in the IDT to the first 32 ISRs. We can't use a for loop
+ * for this, because there is no way to get the function names
+ * that correspond to that given entry. We set the access
+ * flags to 0x8E. This means that the entry is present, is
+ * running in ring 0 (kernel level), and has the lower 5 bits
+ * set to the required '14', which is represented by 'E' in
+ * hex.
+ */
+
 void isrs_install()
 {
    idt_set_gate(0, (unsigned)isr0, 0x08, 0x8E);
@@ -200,20 +204,30 @@ char *exception_messages[] =
 
 int handle_syscall(struct regs *);
 
+void *fault_handlers[32] = { NULL };
+
+void set_fault_handler(int exceptionNum, void *ptr)
+{
+   fault_handlers[exceptionNum] = ptr;
+}
 
 int generic_interrupt_handler(struct regs *r)
 {
-   if (r->int_no == 0x80) {
+   if (LIKELY(r->int_no == 0x80)) {
       return handle_syscall(r);
    }
 
-   /* Is this a fault whose number is from 0 to 31? */
-   if (r->int_no < 32) {
+   // Higher exception numbers are handled by irq_handler()
+   ASSERT(r->int_no < 32);
 
-      /*  Display the description for the Exception that occurred.
-      *  In this tutorial, we will simply halt the system using an
-      *  infinite loop.
-      */
+   void(*handler)(struct regs *r);
+   handler = fault_handlers[r->int_no];
+
+   if (handler) {
+
+      handler(r);
+
+   } else {
 
       cli();
 
