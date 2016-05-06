@@ -47,7 +47,7 @@ void init_paging()
       page.rw = 1;
       page.us = 0;
 
-      page.pageAddr = 0x1000 * i;
+      page.pageAddr = (0x1000 * i) >> 12;
 
       kernel_page_table.pages[i] = page;
    }
@@ -62,5 +62,6 @@ void init_paging()
 
    kernel_page_dir.entries[0] = kernel_2mb;
 
+   magic_debug_break();
    set_page_directory(&kernel_page_dir);
 }
