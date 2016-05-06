@@ -1,6 +1,11 @@
 
 # Makefile for user mode 'init' program
 
+DEPDIR = .d
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
+COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
+POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
+
 INIT_UNSTRIPPED = $(BUILD_DIR)/ui
 
 SOURCES=$(wildcard *.c)
