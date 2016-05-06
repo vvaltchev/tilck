@@ -70,6 +70,9 @@ void free_phys_page(void *address) {
    uint32_t bitIndex = (naddr >> 12) & 31;
    uint32_t majorIndex = (naddr & 0xFFFE0000U) >> 17;
 
+   // Asserts that the page was allocated.
+   ASSERT(pages_bit_field[majorIndex] & (1 << bitIndex));
+
    //printk("[free_page]: addr: %p\n", naddr);
 
    pages_bit_field[majorIndex] &= ~(1 << bitIndex);

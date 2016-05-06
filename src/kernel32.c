@@ -5,6 +5,7 @@
 #include <term.h>
 #include <irq.h>
 #include <kmalloc.h>
+#include <paging.h>
 
 void gdt_install();
 void idt_install();
@@ -118,6 +119,9 @@ void kmain() {
    irq_install_handler(1, keyboard_handler);
 
    IRQ_set_mask(0); // mask the timer interrupt.
+
+   //init_paging();
+   //printk("after paging..\n");
 
    sti();
    init_kb();
