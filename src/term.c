@@ -2,14 +2,14 @@
 #include <term.h>
 #include <stringUtil.h>
 
-#define TERMINAL_VIDEO_ADDR ((char*)0xB8000)
-#define TERMINAL_BUFFER_ADDR ((char*)0x10000)
+#define TERMINAL_VIDEO_ADDR ((volatile uint16_t*)0xB8000)
+#define TERMINAL_BUFFER_ADDR ((volatile uint16_t*)0x10000)
 
 #define TERMINAL_BUFFER_ROWS 1024
-#define TERMINAL_SCREEN_SIZE (TERM_WIDTH * TERM_HEIGHT * 2)
+#define TERMINAL_SCREEN_SIZE (term_width * term_height * 2)
 
-static int8_t TERM_WIDTH = 80;
-static int8_t TERM_HEIGHT = 25;
+static int8_t term_width = 80;
+static int8_t term_height = 25;
 
 volatile uint8_t terminal_row = 0;
 volatile uint8_t terminal_column = 0;
@@ -30,7 +30,7 @@ void term_setcolor(uint8_t color) {
 
 void term_movecur(int row, int col)
 {
-   uint16_t position = (row * TERM_WIDTH) + col;
+   uint16_t position = (row * term_width) + col;
 
    // cursor LOW port to vga INDEX register
    outb(0x3D4, 0x0F);
@@ -45,19 +45,19 @@ void term_init() {
    term_movecur(0, 0);
    term_setcolor(make_color(COLOR_WHITE, COLOR_BLACK));
 
-   volatile uint16_t *ptr = (volatile uint16_t *)TERMINAL_VIDEO_ADDR;
+   volatile uint16_t *ptr = TERMINAL_VIDEO_ADDR;
 
-   for (int i = 0; i < TERM_WIDTH*TERM_HEIGHT; ++i) {
+   for (int i = 0; i < term_width*term_height; ++i) {
       *ptr++ = make_vgaentry(' ', terminal_color);
    }
 
-   for (int i = 0; i < TERMINAL_BUFFER_ROWS * TERM_WIDTH; i++) {
-      ((volatile uint16_t *)TERMINAL_BUFFER_ADDR)[i] =
-      make_vgaentry('*', make_color(COLOR_RED, COLOR_GREEN));
+   for (int i = 0; i < TERMINAL_BUFFER_ROWS * term_width; i++) {
+      TERMINAL_BUFFER_ADDR[i] =
+         make_vgaentry('*', make_color(COLOR_RED, COLOR_GREEN));
    }
 }
 
-static void ALWAYS_INLINE increase_buf_next_slot(int val)
+static void increase_buf_next_slot(int val)
 {
    if (val < 0) {
       buf_next_slot += val;
@@ -76,38 +76,29 @@ static void ALWAYS_INLINE increase_buf_next_slot(int val)
 
 static void from_buffer_to_video(int bufRow, int videoRow)
 {
-   volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
-   volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
-
    if (bufRow < 0) {
       bufRow += TERMINAL_BUFFER_ROWS;
    } else {
       bufRow %= TERMINAL_BUFFER_ROWS;
    }
 
-   memcpy(video + videoRow * 2 * TERM_WIDTH,
-          buf + bufRow * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
+   memcpy(TERMINAL_VIDEO_ADDR + videoRow * term_width,
+          TERMINAL_BUFFER_ADDR + bufRow * term_width, term_width);
 }
 
 static void push_line_in_buffer(int videoRow)
 {
-   volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
-   volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
-
    int destIndex = buf_next_slot % TERMINAL_BUFFER_ROWS;
 
-   memcpy(buf + destIndex * 2 * TERM_WIDTH,
-          video + videoRow * 2 * TERM_WIDTH, 2 * TERM_WIDTH);
+   memcpy(TERMINAL_BUFFER_ADDR + destIndex * term_width,
+          TERMINAL_VIDEO_ADDR + videoRow * term_width, term_width);
 
    increase_buf_next_slot(1);
 }
 
 static void pop_line_from_buffer(int videoRow)
 {
-   volatile char *video = (volatile char *)TERMINAL_VIDEO_ADDR;
-   volatile char *buf = (volatile char *)TERMINAL_BUFFER_ADDR;
-
-   // ASSERT buf_next_slot > 0
+   ASSERT(buf_next_slot > 0);
 
    from_buffer_to_video(buf_next_slot - 1, videoRow);
    increase_buf_next_slot(-1);
@@ -130,8 +121,8 @@ void term_scroll(int lines)
 
       // just restore the video buffer
 
-      for (int i = 0; i < TERM_HEIGHT; i++) {
-         pop_line_from_buffer(TERM_HEIGHT - i - 1);
+      for (int i = 0; i < term_height; i++) {
+         pop_line_from_buffer(term_height - i - 1);
       }
 
       scroll_value = 0;
@@ -148,21 +139,21 @@ void term_scroll(int lines)
       // if the current scroll_value is 0,
       // save the whole current screen buffer.
 
-      for (int i = 0; i < TERM_HEIGHT; i++) {
+      for (int i = 0; i < term_height; i++) {
          push_line_in_buffer(i);
       }
 
    } else {
 
-      max_scroll_lines -= TERM_HEIGHT;
+      max_scroll_lines -= term_height;
    }
 
    lines = MIN(lines, max_scroll_lines);
 
-   for (int i = 0; i < TERM_HEIGHT; i++) {
+   for (int i = 0; i < term_height; i++) {
 
       from_buffer_to_video(buf_next_slot - 1 - lines - i,
-                           TERM_HEIGHT - i - 1);
+                           term_height - i - 1);
    }
 
    scroll_value = lines;
@@ -170,7 +161,7 @@ void term_scroll(int lines)
 
 static void term_incr_row()
 {
-   if (terminal_row < TERM_HEIGHT - 1) {
+   if (terminal_row < term_height - 1) {
       ++terminal_row;
       return;
    }
@@ -180,19 +171,19 @@ static void term_incr_row()
    // We have to scroll...
 
    memmove(TERMINAL_VIDEO_ADDR,
-           TERMINAL_VIDEO_ADDR + 2 * TERM_WIDTH,
-           TERM_WIDTH * (TERM_HEIGHT - 1) * 2);
+           TERMINAL_VIDEO_ADDR + term_width,
+           term_width * (term_height - 1) * 2);
 
    volatile uint16_t *lastRow =
-      (volatile uint16_t *)TERMINAL_VIDEO_ADDR + TERM_WIDTH * (TERM_HEIGHT - 1);
+      TERMINAL_VIDEO_ADDR + term_width * (term_height - 1);
 
-   for (int i = 0; i < TERM_WIDTH; i++) {
+   for (int i = 0; i < term_width; i++) {
       lastRow[i] = make_vgaentry(' ', terminal_color);
    }
 }
 
-void term_write_char(char c) {
-
+void term_write_char(char c)
+{
    if (scroll_value != 0) {
       term_scroll(0);
    }
@@ -214,7 +205,7 @@ void term_write_char(char c) {
       return;
    }
 
-   volatile uint16_t *video = (volatile uint16_t *)TERMINAL_VIDEO_ADDR;
+   volatile uint16_t *video = TERMINAL_VIDEO_ADDR;
 
    if (c == '\b') {
 
@@ -222,18 +213,18 @@ void term_write_char(char c) {
          --terminal_column;
       }
 
-      const size_t offset = terminal_row * TERM_WIDTH + terminal_column;
+      const size_t offset = terminal_row * term_width + terminal_column;
       video[offset] = make_vgaentry(' ', terminal_color);
 
       term_movecur(terminal_row, terminal_column);
       return;
    }
 
-   const size_t offset = terminal_row * TERM_WIDTH + terminal_column;
+   const size_t offset = terminal_row * term_width + terminal_column;
    video[offset] = make_vgaentry(c, terminal_color);
    ++terminal_column;
 
-   if (terminal_column == TERM_WIDTH) {
+   if (terminal_column == term_width) {
       terminal_column = 0;
       term_incr_row();
    }
@@ -255,4 +246,3 @@ void term_move_ch(int row, int col)
 
    term_movecur(row, col);
 }
-

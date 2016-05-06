@@ -15,7 +15,7 @@
 
 #else
 
-#define ALWAYS_INLINE __attribute__((always_inline))
+#define ALWAYS_INLINE __attribute__((always_inline)) inline
 
 #define asmVolatile __asm__ volatile
 #define asm __asm__
@@ -54,7 +54,7 @@ struct regs
    unsigned int eip, cs, eflags, useresp, ss;   /* pushed by the processor automatically */
 };
 
-static inline void outb(uint16_t port, uint8_t val)
+static ALWAYS_INLINE void outb(uint16_t port, uint8_t val)
 {
    asmVolatile("outb %0, %1" : : "a"(val), "Nd"(port));
    /* There's an outb %al, $imm8  encoding, for compile-time constant port numbers that fit in 8b.  (N constraint).
@@ -63,7 +63,7 @@ static inline void outb(uint16_t port, uint8_t val)
    * %1 expands to %dx because  port  is a uint16_t.  %w1 could be used if we had the port number a wider C type */
 }
 
-static inline uint8_t inb(uint16_t port)
+static ALWAYS_INLINE uint8_t inb(uint16_t port)
 {
    uint8_t ret_val;
    asmVolatile("inb %[port], %[result]"
@@ -79,3 +79,16 @@ static inline uint8_t inb(uint16_t port)
 
 #define MIN(x, y) (((x) <= (y)) ? (x) : (y))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
+
+#define LIKELY(x) __builtin_expect((x), true)
+#define UNLIKELY(x) __builtin_expect((x), false)
+
+void panic(const char *fmt, ...);
+void assert_failed(const char *expr, const char *file, int line);
+
+#define ASSERT(x)                                                    \
+   do {                                                              \
+      if (UNLIKELY(!(x))) {                                          \
+         assert_failed(#x , __FILE__, __LINE__);                     \
+      }                                                              \
+   } while (0)

@@ -95,7 +95,7 @@ int handle_syscall(struct regs *r)
    //printk("Arg 5 (edi): %p\n", r->edi);
    //printk("Arg 6 (ebp): %p\n\n", r->ebp);
 
-   void *sysCallPtr = syscalls_pointers[r->eax];
+   void *sysCallPtr = (void *) syscalls_pointers[r->eax];
 
    int ret;
 
