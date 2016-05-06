@@ -13,6 +13,9 @@ $(KERNEL_TARGET): $(KERNEL_OBJECTS)
 	ld -T link2.ld -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
 	objcopy -O binary -j .text -j .rdata -j .data $(KERNEL_UNSTRIPPED) $@
 
+clean:
+	rm -rf $(DEPDIR)
+
 $(BUILD_DIR)/%.o : %.asm
 	nasm -f win32 $(OUTPUT_OPTION) $<
 
@@ -21,6 +24,7 @@ $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
 	 $(COMPILE.c) $(OUTPUT_OPTION) $<
 	 $(POSTCOMPILE)
 
+.PHONY: clean
 
 $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d

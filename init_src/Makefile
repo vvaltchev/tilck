@@ -21,6 +21,10 @@ $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
 	 $(COMPILE.c) $(OUTPUT_OPTION) $<
 	 $(POSTCOMPILE)
 
+clean:
+	rm -rf $(DEPDIR)
+
+.PHONY: clean
 
 $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d

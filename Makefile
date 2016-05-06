@@ -9,7 +9,7 @@ export CFLAGS =  $(OPT) -std=c99 $(INCDIRS) -Wall -Wextra -m32 -mno-red-zone    
                  -ffreestanding -g -nostdinc -fno-builtin  -fno-asynchronous-unwind-tables \
 			        -fno-zero-initialized-in-bss -Wno-unused-function -Wno-unused-parameter
 
-export DEPDIR := .d
+export DEPDIR = .d
 export DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 
 export BUILD_DIR = $(shell pwd)/build
@@ -34,6 +34,8 @@ $(BUILD_DIR):
 	dd status=noxfer if=/dev/zero of=$(FINAL_TARGET) obs=512 ibs=512 count=2880
 
 clean:
+	cd src && $(MAKE) clean
+	cd init_src && $(MAKE) clean
 	rm -rf $(BUILD_DIR) $(FINAL_TARGET)
 
 # Targets that do not generate files
