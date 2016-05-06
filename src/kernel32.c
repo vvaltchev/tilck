@@ -58,6 +58,7 @@ void switch_to_user_mode()
    // Set up our kernel stack.
    set_kernel_stack(0x1FFFFF);
 
+   magic_debug_break();
    switch_to_usermode_asm((void*)0x108000, (void*) (0x108000 + 128*1024));
 }
 
@@ -121,14 +122,14 @@ void kmain() {
    IRQ_set_mask(0); // mask the timer interrupt.
 
    //magic_debug_break();
-   init_paging();
+   //init_paging();
    //magic_debug_break();
 
    sti();
    init_kb();
 
    //test1();
-   //switch_to_user_mode();
+   switch_to_user_mode();
 
    for (int i = 1; i < 24; i++) printk("%i\n", i);
 
