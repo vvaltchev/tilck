@@ -51,8 +51,9 @@ typedef struct {
 // A page directory
 typedef struct {
 
-   page_dir_entry_t entries[1024];
-   void *physical_address;
+   page_dir_entry_t entries[1024];  // actual entries used by the CPU
+   page_table_t *page_tables[1024]; // pointers to the tables (virtual addreses)
+   void *physical_address;          // physical address of this struct
 
 } page_directory_t;
 

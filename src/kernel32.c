@@ -122,7 +122,6 @@ void kmain() {
 
    IRQ_set_mask(0); // mask the timer interrupt.
 
-   //magic_debug_break();
    init_paging();
 
    sti();
@@ -130,8 +129,6 @@ void kmain() {
 
    //test1();
    switch_to_user_mode();
-
-   for (int i = 1; i < 24; i++) printk("%i\n", i);
 
    while (1) {
       halt();
