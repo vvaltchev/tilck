@@ -58,8 +58,8 @@ void switch_to_user_mode()
    // Set up our kernel stack.
    set_kernel_stack(0x1FFFFF);
 
-   magic_debug_break();
-   switch_to_usermode_asm((void*)0x108000, (void*) (0x108000 + 128*1024));
+   // magic_debug_break();
+   switch_to_usermode_asm((void*)0x120000, (void*) (0x120000 + 64*1024));
 }
 
 
@@ -76,6 +76,7 @@ void test1()
 
    alloc_phys_page();
 }
+
 
 void show_hello_message()
 {
@@ -123,7 +124,6 @@ void kmain() {
 
    //magic_debug_break();
    init_paging();
-   //magic_debug_break();
 
    sti();
    init_kb();
