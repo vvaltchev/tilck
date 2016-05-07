@@ -67,7 +67,7 @@ static ALWAYS_INLINE uint8_t inb(uint16_t port)
 {
    uint8_t ret_val;
    asmVolatile("inb %[port], %[result]"
-      : [result] "=a"(ret_val)   // using symbolic operand names as an example, mainly because they're not used in order
+      : [result] "=a"(ret_val)   // using symbolic operand names
       : [port] "Nd"(port));
    return ret_val;
 }

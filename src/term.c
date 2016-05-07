@@ -82,16 +82,16 @@ static void from_buffer_to_video(int bufRow, int videoRow)
       bufRow %= TERMINAL_BUFFER_ROWS;
    }
 
-   memcpy(TERMINAL_VIDEO_ADDR + videoRow * term_width,
-          TERMINAL_BUFFER_ADDR + bufRow * term_width, term_width);
+   memcpy((void *)(TERMINAL_VIDEO_ADDR + videoRow * term_width),
+          (const void *)(TERMINAL_BUFFER_ADDR + bufRow * term_width), term_width);
 }
 
 static void push_line_in_buffer(int videoRow)
 {
    int destIndex = buf_next_slot % TERMINAL_BUFFER_ROWS;
 
-   memcpy(TERMINAL_BUFFER_ADDR + destIndex * term_width,
-          TERMINAL_VIDEO_ADDR + videoRow * term_width, term_width);
+   memcpy((void *)(TERMINAL_BUFFER_ADDR + destIndex * term_width),
+          (const void *)(TERMINAL_VIDEO_ADDR + videoRow * term_width), term_width);
 
    increase_buf_next_slot(1);
 }
@@ -170,8 +170,8 @@ static void term_incr_row()
 
    // We have to scroll...
 
-   memmove(TERMINAL_VIDEO_ADDR,
-           TERMINAL_VIDEO_ADDR + term_width,
+   memmove((void *) TERMINAL_VIDEO_ADDR,
+           (const void *) (TERMINAL_VIDEO_ADDR + term_width),
            term_width * (term_height - 1) * 2);
 
    volatile uint16_t *lastRow =

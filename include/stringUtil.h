@@ -9,39 +9,24 @@ typedef unsigned char *va_list;
 #define va_end(list) // do nothing.
 
 // TODO: optimize
-static ALWAYS_INLINE void memset(volatile void *ptr, int value, size_t num)
+static ALWAYS_INLINE void memset(void *ptr, uint8_t value, size_t num)
 {
-   for (size_t i = 0; i < num; ++i)
-      ((char*)ptr)[i] = value;
-}
-
-// TODO: optimize
-static ALWAYS_INLINE size_t strlen(const char *str)
-{
-   size_t c = 0;
-   while (*str++) { ++c; }
-   return c;
-}
-
-
-// Dest and src can overlap
-// TODO: optimize
-static ALWAYS_INLINE void memmove(volatile void *dest, volatile void *src, size_t num)
-{
-   volatile char *dst = (volatile char *)dest;
-   volatile char *s = (volatile char *)src;
-
-   for (size_t i = 0; i < num; i++) {
-      *dst++ = *s++;
+   for (size_t i = 0; i < num; ++i) {
+      ((char *)ptr)[i] = value;
    }
 }
 
-// Dest and src cannot overlap
-// TODO: optimize
-static ALWAYS_INLINE void memcpy(volatile void *dest, volatile void *src, size_t num)
+static ALWAYS_INLINE size_t strlen(const char *str)
 {
-   memmove(dest, src, num);
+   const char *ptr = str;
+   while (*ptr++) { }
+
+   return ptr - str - 1;
 }
+
+void memcpy(void *dest, const void *src, size_t n);
+void memmove(void *dest, const void *src, size_t n);
+
 
 void itoa(int value, char *destBuf);
 void uitoa(uint32_t value, char *destBuf, uint32_t base);

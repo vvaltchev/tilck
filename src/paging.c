@@ -4,28 +4,33 @@
 #include <stringUtil.h>
 #include <kmalloc.h>
 
-page_directory_t kernel_page_dir __attribute__((aligned(4096)));
 page_table_t kernel_page_table __attribute__((aligned(4096)));
+page_directory_t kernel_page_dir __attribute__((aligned(4096)));
 
 
 void handle_page_fault(struct regs *r)
 {
-   printk("Page fault handling..\n");
+   printk("Page fault. Error: %p\n", r->err_code);
+}
+
+void handle_general_protection_fault(struct regs *r)
+{
+   printk("General protection fault. Error: %p\n", r->err_code);
 }
 
 void set_page_directory(page_directory_t *dir)
 {
-    asmVolatile("mov %0, %%cr3":: "r"(dir->physical_address));
+   asmVolatile("mov %0, %%cr3" :: "r"(dir->physical_address));
 
-    uint32_t cr0;
-    asmVolatile("mov %%cr0, %0": "=r"(cr0));
-    cr0 |= 0x80000000; // Enable paging!
-    asmVolatile("mov %0, %%cr0":: "r"(cr0));
+   asmVolatile("mov %cr0, %eax");
+   asmVolatile("orl 0x80000000, %eax"); // enable paging.
+   asmVolatile("mov %eax, %cr0");
 }
 
 void init_paging()
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
+   set_fault_handler(FAULT_GENERAL_PROTECTION, handle_general_protection_fault);
 
    kernel_page_dir.physical_address = &kernel_page_dir;
 
