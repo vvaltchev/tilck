@@ -122,13 +122,15 @@ void kmain() {
 
    IRQ_set_mask(0); // mask the timer interrupt.
 
-   init_paging();
+   //init_paging();
 
    sti();
    init_kb();
 
    //test1();
-   switch_to_user_mode();
+   //switch_to_user_mode();
+
+endloop:
 
    while (1) {
       halt();

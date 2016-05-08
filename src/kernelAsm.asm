@@ -11,9 +11,61 @@ global _tss_flush
 
 section .text
 
-; just jump to kmain()
-   jmp _kmain
+_start:
 
+   ; before jump to kernel, we have to setup a basic paging
+   ; in order to map the kernel from 0x100000 to 0xC0000000 (+3 GB)
+   
+   ; let's put the page directory at 0x1000 (+ 4 KB)
+   
+   mov edi, 0x1000
+
+   .l1:  
+   mov dword [edi], 0
+   add edi, 4
+   cmp edi, 0x2000
+   jne .l1
+
+   ; let's put the first page table at 0x2000 (+ 8 KB)
+   mov eax, 0
+   .l2:
+   
+   mov ebx, eax
+   or ebx, 3  ; present, rw
+   mov [edi], ebx
+   
+   add eax, 0x1000 ; += 4K
+   add edi, 4
+   
+   cmp edi, 0x3000
+   jne .l2
+   
+   xchg bx, bx ; bochs magic break
+   
+   mov eax, 0x2003    ; = 0x2000 | preset,rw
+   
+   ; identity map the first low 4 MB 
+   ; this is necessary for executing the jmp far eax below)
+   ; otherwise, just after 'mov cr0, eax', EIP will point to an invalid address
+   
+   mov [0x1000], eax
+   mov [0x1C00], eax  ; map them also to 0xC0000000
+   
+   mov ebx, 0x1000
+   mov cr3, ebx     ; set page dir physical address
+   
+   mov eax, cr0
+   or eax, 0x80000000
+   mov cr0, eax       ; enable paging!
+  
+   mov eax, 0xC0100400
+   jmp far eax        ; jump to next instruction using the high virtual address
+
+   times 1024-($-$$) db 0
+   
+   ; this is 0xC0100400
+   jmp _kmain        ; now, really jump to kernel's code which uses 0xC0100000 as ORG
+   
 _gdt_load:
    lgdt [_gdt_pointer]
    ret

@@ -42,19 +42,21 @@ void term_movecur(int row, int col)
 
 void term_init() {
 
+   uint8_t defColor = make_color(COLOR_WHITE, COLOR_BLACK);
    term_movecur(0, 0);
-   term_setcolor(make_color(COLOR_WHITE, COLOR_BLACK));
 
    volatile uint16_t *ptr = TERMINAL_VIDEO_ADDR;
 
    for (int i = 0; i < term_width*term_height; ++i) {
-      *ptr++ = make_vgaentry(' ', terminal_color);
+      *ptr++ = make_vgaentry(' ', defColor);
    }
 
    for (int i = 0; i < TERMINAL_BUFFER_ROWS * term_width; i++) {
       TERMINAL_BUFFER_ADDR[i] =
          make_vgaentry('*', make_color(COLOR_RED, COLOR_GREEN));
    }
+
+   term_setcolor(defColor);
 }
 
 static void increase_buf_next_slot(int val)
