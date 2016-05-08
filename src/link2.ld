@@ -1,13 +1,15 @@
 
 SECTIONS
 {
-  . = 0x100000;
+  /* . = 0x100000; */
+  
+  . = 0xC0100000;
  
   .text :
   {
     *(.text)
     *(SORT(.text$*))
-     *(.text.*)
+    *(.text.*)
   }
   .data BLOCK(__section_alignment__) :
   {
