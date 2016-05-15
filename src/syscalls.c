@@ -106,7 +106,12 @@ int handle_syscall(struct regs *r)
      push %4; \
      push %5; \
      call *%6; \
-     addl $20, %%esp; \
+     xchg %%bx, %%bx; \
+     pop %%ebx; \
+     pop %%ecx; \
+     pop %%edx; \
+     pop %%esi; \
+     pop %%edi; \
    " : "=a" (ret)
      : "r" (r->edi),
        "r" (r->esi),
@@ -115,7 +120,7 @@ int handle_syscall(struct regs *r)
        "r" (r->ebx),
        "r" (sysCallPtr));
 
-   r->eax = ret;
+   //r->eax = ret;
 
    return 0;
 }

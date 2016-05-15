@@ -1,6 +1,7 @@
 
 #include <term.h>
 #include <stringUtil.h>
+#include <paging.h>
 
 #define TERMINAL_VIDEO_ADDR ((volatile uint16_t*)(KERNEL_BASE_VADDR + 0xB8000))
 #define TERMINAL_BUFFER_ADDR ((volatile uint16_t*)(KERNEL_BASE_VADDR + 0x10000))

@@ -49,10 +49,16 @@ void switch_to_usermode_asm(void *entryPoint, void *stackAddr);
 void switch_to_user_mode()
 {
    // Set up our kernel stack.
-   set_kernel_stack(0xC001FFFFF);
+   set_kernel_stack(0xC01FFFFF);
 
-   // magic_debug_break();
-   switch_to_usermode_asm((void*)0x120000, (void*) (0x120000 + 64*1024));
+   magic_debug_break();
+   switch_to_usermode_asm((void*)0xC0120000, (void*) (0xC0120000 + 64*1024));
+
+   //map_page(get_curr_page_dir(), 0xA0000000U, 0x120000, true, true);
+   //map_page(get_curr_page_dir(), 0xA0000000U + 4096, 0x120000 + 4096, true, true);
+
+   //map_page(get_curr_page_dir(), 0xA0010000, alloc_phys_page(), true, true);
+   //switch_to_usermode_asm((void *) 0xA0000000, (void *) 0xA000FFFF);
 }
 
 
@@ -119,7 +125,7 @@ void kmain() {
    init_kb();
 
    test1();
-   //switch_to_user_mode();
+   switch_to_user_mode();
 
    while (1) {
       halt();

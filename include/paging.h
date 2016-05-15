@@ -3,6 +3,10 @@
 
 #include <commonDefs.h>
 
+#define KERNEL_BASE_VADDR ((uint32_t) 0xC0000000UL)
+
+#define KERNEL_PADDR_TO_VADDR(paddr) ((uint32_t)(paddr) + KERNEL_BASE_VADDR)
+#define KERNEL_VADDR_TO_PADDR(vaddr) ((uint32_t)(vaddr) - KERNEL_BASE_VADDR)
 
 // A page table entry
 typedef struct {
@@ -66,3 +70,7 @@ void map_page(page_directory_t *pdir,
               uint32_t paddr,
               bool us,
               bool rw);
+
+
+
+
