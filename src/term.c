@@ -51,11 +51,6 @@ void term_init() {
       *ptr++ = make_vgaentry(' ', defColor);
    }
 
-   for (int i = 0; i < TERMINAL_BUFFER_ROWS * term_width; i++) {
-      TERMINAL_BUFFER_ADDR[i] =
-         make_vgaentry('*', make_color(COLOR_RED, COLOR_GREEN));
-   }
-
    term_setcolor(defColor);
 }
 
@@ -85,7 +80,7 @@ static void from_buffer_to_video(int bufRow, int videoRow)
    }
 
    memcpy((void *)(TERMINAL_VIDEO_ADDR + videoRow * term_width),
-          (const void *)(TERMINAL_BUFFER_ADDR + bufRow * term_width), term_width);
+          (const void *)(TERMINAL_BUFFER_ADDR + bufRow * term_width), term_width * 2);
 }
 
 static void push_line_in_buffer(int videoRow)
@@ -93,7 +88,7 @@ static void push_line_in_buffer(int videoRow)
    int destIndex = buf_next_slot % TERMINAL_BUFFER_ROWS;
 
    memcpy((void *)(TERMINAL_BUFFER_ADDR + destIndex * term_width),
-          (const void *)(TERMINAL_VIDEO_ADDR + videoRow * term_width), term_width);
+          (const void *)(TERMINAL_VIDEO_ADDR + videoRow * term_width), term_width * 2);
 
    increase_buf_next_slot(1);
 }
