@@ -40,7 +40,7 @@ _start:
    cmp edi, 0x3000
    jne .l2
    
-   xchg bx, bx ; bochs magic break
+   ; xchg bx, bx ; bochs magic break
    
    mov eax, 0x2003    ; = 0x2000 | preset,rw
    
@@ -64,6 +64,7 @@ _start:
    times 1024-($-$$) db 0
    
    ; this is 0xC0100400
+   mov esp, 0xC01FFFFF
    jmp _kmain        ; now, really jump to kernel's code which uses 0xC0100000 as ORG
    
 _gdt_load:

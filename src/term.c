@@ -2,8 +2,8 @@
 #include <term.h>
 #include <stringUtil.h>
 
-#define TERMINAL_VIDEO_ADDR ((volatile uint16_t*)0xB8000)
-#define TERMINAL_BUFFER_ADDR ((volatile uint16_t*)0x10000)
+#define TERMINAL_VIDEO_ADDR ((volatile uint16_t*)(KERNEL_BASE_VADDR + 0xB8000))
+#define TERMINAL_BUFFER_ADDR ((volatile uint16_t*)(KERNEL_BASE_VADDR + 0x10000))
 
 #define TERMINAL_BUFFER_ROWS 1024
 #define TERMINAL_SCREEN_SIZE (term_width * term_height * 2)
