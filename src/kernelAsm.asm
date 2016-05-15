@@ -95,10 +95,10 @@ _switch_to_usermode_asm:
      mov ebx, [esp + 4]  ; first arg, the usermode entry point
      mov eax, [esp + 8]  ; second arg, the usermode stack ptr
      
-     push 0x23 ;user data segment with bottom 2 bits set for ring 3
-     push eax ; push the stack pointer
+     push 0x23 ; user data segment with bottom 2 bits set for ring 3
+     push eax  ; push the stack pointer
      pushf
-     push 0x1B; ;user code segment with bottom 2 bits set for ring 3
+     push 0x1B ; user code segment with bottom 2 bits set for ring 3
      push ebx
      iret
    

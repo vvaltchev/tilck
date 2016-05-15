@@ -92,7 +92,3 @@ void assert_failed(const char *expr, const char *file, int line);
          assert_failed(#x , __FILE__, __LINE__);                     \
       }                                                              \
    } while (0)
-
-
-
-#define KERNEL_BASE_VADDR ((uint32_t) 0xC0000000UL)
