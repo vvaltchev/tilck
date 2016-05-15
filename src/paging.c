@@ -4,14 +4,11 @@
 #include <stringUtil.h>
 #include <kmalloc.h>
 
-page_table_t kernel_page_table __attribute__((aligned(4096)));
-page_directory_t kernel_page_dir __attribute__((aligned(4096)));
-
 volatile page_directory_t *curr_page_dir = NULL;
 
 page_directory_t *get_curr_page_dir()
 {
-   return curr_page_dir;
+   return (page_directory_t *)curr_page_dir;
 }
 
 
@@ -30,10 +27,6 @@ void set_page_directory(page_directory_t *dir)
    curr_page_dir = dir;
 
    asmVolatile("mov %0, %%cr3" :: "r"(dir->physical_address));
-
-   //asmVolatile("mov %cr0, %eax");
-   //asmVolatile("orl 0x80000000, %eax"); // enable paging.
-   //asmVolatile("mov %eax, %cr0");
 }
 
 static void initialize_empty_page_table(page_table_t *t)
@@ -117,17 +110,17 @@ void init_paging()
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
    set_fault_handler(FAULT_GENERAL_PROTECTION, handle_general_protection_fault);
 
-   //curr_page_dir = alloc_phys_page();
+   page_directory_t *kernel_page_dir =
+      (page_directory_t *)(KERNEL_BASE_VADDR + (char*)alloc_phys_page());
 
-   page_directory_t *kernel_page_dir_phys_addr =
-      (page_directory_t *) ((uint32_t)&kernel_page_dir - KERNEL_BASE_VADDR);
-
-
-   initialize_page_directory(&kernel_page_dir, kernel_page_dir_phys_addr, true);
+   initialize_page_directory(kernel_page_dir,
+                             (char *)kernel_page_dir - KERNEL_BASE_VADDR, true);
 
    for (uint32_t i = 0; i < 1024; i++) {
-      map_page(&kernel_page_dir, KERNEL_BASE_VADDR + 0x1000 * i, 0x1000 * i, false, true);
+      map_page(kernel_page_dir,
+               KERNEL_BASE_VADDR + 0x1000 * i,
+               0x1000 * i, false, true);
    }
 
-   set_page_directory(&kernel_page_dir);
+   set_page_directory(kernel_page_dir);
 }
