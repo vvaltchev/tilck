@@ -59,4 +59,10 @@ typedef struct {
 
 
 void init_paging();
+page_directory_t *get_curr_page_dir();
 
+void map_page(page_directory_t *pdir,
+              uint32_t vaddr,
+              uint32_t paddr,
+              bool us,
+              bool rw);

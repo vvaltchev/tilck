@@ -42,21 +42,14 @@ void timer_handler()
 }
 
 void init_kb();
-
 void keyboard_handler(struct regs *r);
-
-
-
 void set_kernel_stack(uint32_t stack);
-
 void switch_to_usermode_asm(void *entryPoint, void *stackAddr);
-
-
 
 void switch_to_user_mode()
 {
    // Set up our kernel stack.
-   set_kernel_stack(0x1FFFFF);
+   set_kernel_stack(0xC001FFFFF);
 
    // magic_debug_break();
    switch_to_usermode_asm((void*)0x120000, (void*) (0x120000 + 64*1024));
@@ -65,16 +58,12 @@ void switch_to_user_mode()
 
 void test1()
 {
-   void *p[64];
-   int i;
+   //const char *str = "hello world in 3MB";
+   //memcpy((void*) 0x300000, str, strlen(str) + 1);
 
-   for (i = 0; i < 33; i++)
-      p[i] = alloc_phys_page();
+   //map_page(&kernel_page_dir, 0x900000, 0x300000, true, true);
+   //printk("[pagination test] string at 0x900000: %s\n", (const char *)0x900000);
 
-   for (i = 0; i < 33; i++)
-      free_phys_page(p[i]);
-
-   alloc_phys_page();
 }
 
 
@@ -107,13 +96,14 @@ void assert_failed(const char *expr, const char *file, int line)
 
 void kmain() {
 
-   init_physical_page_allocator();
-   term_init();
-   show_hello_message();
-
    gdt_install();
    idt_install();
    irq_install();
+
+   init_physical_page_allocator();
+   init_paging();
+
+   term_init();
 
    timer_phase(CLOCK_HZ);
 
@@ -122,15 +112,14 @@ void kmain() {
 
    IRQ_set_mask(0); // mask the timer interrupt.
 
-   //init_paging();
+   show_hello_message();
+
 
    sti();
    init_kb();
 
-   //test1();
+   test1();
    //switch_to_user_mode();
-
-endloop:
 
    while (1) {
       halt();

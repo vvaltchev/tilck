@@ -59,7 +59,6 @@ void *alloc_phys_page() {
    ret = ((last_index << 17) + (free_index << 12));
    pages_bit_field[last_index] |= (1 << free_index);
 
-   printk("[alloc_page] Returning: %p\n", ret);
    return (void *)ret;
 }
 
@@ -72,8 +71,6 @@ void free_phys_page(void *address) {
 
    // Asserts that the page was allocated.
    ASSERT(pages_bit_field[majorIndex] & (1 << bitIndex));
-
-   //printk("[free_page]: addr: %p\n", naddr);
 
    pages_bit_field[majorIndex] &= ~(1 << bitIndex);
 
