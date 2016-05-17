@@ -95,32 +95,9 @@ int handle_syscall(struct regs *r)
    //printk("Arg 5 (edi): %p\n", r->edi);
    //printk("Arg 6 (ebp): %p\n\n", r->ebp);
 
-   void *sysCallPtr = (void *) syscalls_pointers[r->eax];
-
-   int ret;
-
-   asmVolatile(" \
-     push %1; \
-     push %2; \
-     push %3; \
-     push %4; \
-     push %5; \
-     call *%6; \
-     xchg %%bx, %%bx; \
-     pop %%ebx; \
-     pop %%ecx; \
-     pop %%edx; \
-     pop %%esi; \
-     pop %%edi; \
-   " : "=a" (ret)
-     : "r" (r->edi),
-       "r" (r->esi),
-       "r" (r->edx),
-       "r" (r->ecx),
-       "r" (r->ebx),
-       "r" (sysCallPtr));
-
-   //r->eax = ret;
+   r->eax =
+      syscalls_pointers[r->eax](r->ebx, r->ecx, r->edx,
+                                r->esi, r->edi, r->ebp);
 
    return 0;
 }
