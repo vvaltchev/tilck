@@ -8,7 +8,7 @@
 void init_main()
 {
    for (int i = 0; i < 10; ++i) {
-      asmVolatile("");
+      asmVolatile("" : : : "memory");
    }
 magic_debug_break();
    int ret = open("/myfile.txt", 0xAABB, 0x112233);

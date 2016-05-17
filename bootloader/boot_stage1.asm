@@ -13,7 +13,7 @@ start:
    add ax, (8192 / 16)         ; 8K buffer
    cli                         ; Disable interrupts while changing stack
    mov ss, ax
-   mov sp, 0x1FFF
+   mov sp, 0x1FF0
    sti                         ; Restore interrupts
 
    mov ax, BASE_LOAD_SEG      ; Set data segment to where we're loaded

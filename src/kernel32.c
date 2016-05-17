@@ -49,10 +49,10 @@ void switch_to_usermode_asm(void *entryPoint, void *stackAddr);
 void switch_to_user_mode()
 {
    // Set up our kernel stack.
-   set_kernel_stack(0xC01FFFFF);
+   set_kernel_stack(0xC01FFFF0);
 
    magic_debug_break();
-   switch_to_usermode_asm((void*)0xC0120000, (void*) (0xC0120000 + 64*1024));
+   switch_to_usermode_asm((void*)0xC0120000, (void*) (0xC0120000 + 64*1024 - 16));
 
    //map_page(get_curr_page_dir(), 0xA0000000U, 0x120000, true, true);
    //map_page(get_curr_page_dir(), 0xA0000000U + 4096, 0x120000 + 4096, true, true);

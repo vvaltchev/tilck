@@ -24,7 +24,7 @@ helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
    cli             ; Clear interrupts
    mov ax, 0
    mov ss, ax      ; Set stack segment and pointer
-   mov sp, 0FFFFh
+   mov sp, 0FFF0h
    sti             ; Restore interrupts
 
    cld               ; The default direction for string operations
@@ -282,7 +282,7 @@ complete_flush: ; this is located at 0x1000
    mov ecx, 131072 ; 128 K * 4 bytes = 512 KiB
    rep movsd ; copies 4 * ECX bytes from [DS:ESI] to [ES:EDI]
    
-   mov esp, 0x1FFFFF ; 1 MB of stack for the kernel
+   mov esp, 0x1FFFF0 ; 1 MB of stack for the kernel
    
    ; xchg bx, bx ; bochs magic break   
    jmp dword 0x08:0x00100000
