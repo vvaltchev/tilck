@@ -21,7 +21,6 @@ $(FINAL_TARGET): $(BUILD_DIR) $(BOOTLOADER_TARGET) $(KERNEL_TARGET) $(INIT_TARGE
 	dd status=noxfer conv=notrunc if=$(BOOTLOADER_TARGET) of=$@
 	dd status=noxfer conv=notrunc if=$(KERNEL_TARGET) of=$@ seek=4 obs=1024 ibs=1024
 	dd status=noxfer conv=notrunc if=$(INIT_TARGET) of=$@ seek=132 obs=1024 ibs=1024
-	chmod 666 os2.img
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
