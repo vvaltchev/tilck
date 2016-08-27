@@ -7,9 +7,15 @@
 
 void init_main()
 {
+   int stackVar;
+
    for (int i = 0; i < 10; ++i) {
       asmVolatile("" : : : "memory");
    }
+
+   printf("Hello from init!\n");
+   printf("&stackVar = %p\n", &stackVar);
+
 magic_debug_break();
    int ret = open("/myfile.txt", 0xAABB, 0x112233);
 magic_debug_break();

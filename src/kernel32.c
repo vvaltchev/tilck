@@ -52,13 +52,17 @@ void switch_to_user_mode()
    set_kernel_stack(0xC01FFFF0);
 
    magic_debug_break();
-   switch_to_usermode_asm((void*)0xC0120000, (void*) (0xC0120000 + 64*1024 - 16));
+   //switch_to_usermode_asm((void*)0xC0120000, (void*) (0xC0120000 + 64*1024 - 16));
 
-   //map_page(get_curr_page_dir(), 0xA0000000U, 0x120000, true, true);
-   //map_page(get_curr_page_dir(), 0xA0000000U + 4096, 0x120000 + 4096, true, true);
+   // maps 16 pages for the user program
+   for (int i = 0; i < 16; i++) {
+      map_page(get_curr_page_dir(), 0xA0000000U + 4096 * i, 0x120000 + 4096 * i, true, true);
+   }
 
-   //map_page(get_curr_page_dir(), 0xA0010000, alloc_phys_page(), true, true);
-   //switch_to_usermode_asm((void *) 0xA0000000, (void *) 0xA000FFFF);
+   printk("pdir entries used = %i\n", debug_count_used_pdir_entries(get_curr_page_dir()));
+   debug_dump_used_pdir_entries(get_curr_page_dir());
+
+   switch_to_usermode_asm((void *) 0xA0000000, (void *) 0xA000FFF0);
 }
 
 
@@ -102,6 +106,9 @@ void assert_failed(const char *expr, const char *file, int line)
 
 void kmain() {
 
+   term_init();
+   show_hello_message();
+
    gdt_install();
    idt_install();
    irq_install();
@@ -109,7 +116,6 @@ void kmain() {
    init_physical_page_allocator();
    init_paging();
 
-   term_init();
 
    timer_phase(CLOCK_HZ);
 
@@ -118,7 +124,6 @@ void kmain() {
 
    IRQ_set_mask(0); // mask the timer interrupt.
 
-   show_hello_message();
 
 
    sti();

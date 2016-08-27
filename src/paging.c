@@ -53,6 +53,8 @@ static void initialize_page_directory(page_directory_t *pdir,
    }
 }
 
+volatile bool paging_debug = false;
+
 void map_page(page_directory_t *pdir,
               uint32_t vaddr,
               uint32_t paddr,
@@ -64,12 +66,26 @@ void map_page(page_directory_t *pdir,
 
    page_table_t *ptable = NULL;
 
+   if (paging_debug) {
+      printk("Mapping vaddr = %p to paddr = %p\n", vaddr, paddr);
+      printk("page dir index = %p\n", page_dir_index);
+      printk("page table index = %p\n", page_table_index);
+      printk("pdir->page_tables[page_dir_index] == %p\n", pdir->page_tables[page_dir_index]);
+   }
+
+   ASSERT(((uintptr_t)pdir->page_tables[page_dir_index] & 0xFFF) == 0);
+
    if (pdir->page_tables[page_dir_index] == NULL) {
 
       // we have to create a page table for mapping 'vaddr'
 
       ptable = alloc_phys_page();
-      initialize_empty_page_table(ptable);
+
+      if (paging_debug) {
+         printk("Creating a new page table at paddr = %p..\n", ptable);
+      }
+
+      initialize_empty_page_table(KERNEL_PADDR_TO_VADDR(ptable));
 
       page_dir_entry_t e = {0};
       e.present = 1;
@@ -77,7 +93,7 @@ void map_page(page_directory_t *pdir,
       e.us = us;
       e.pageTableAddr = ((uint32_t)ptable) >> 12;
 
-      pdir->page_tables[page_dir_index] = ptable;
+      pdir->page_tables[page_dir_index] = KERNEL_PADDR_TO_VADDR(ptable);
       pdir->entries[page_dir_index] = e;
    }
 
@@ -95,6 +111,26 @@ void map_page(page_directory_t *pdir,
    ptable->pages[page_table_index] = p;
 }
 
+int debug_count_used_pdir_entries(page_directory_t *pdir)
+{
+   int used = 0;
+   for (int i = 0; i < 1024; i++) {
+      used += (pdir->page_tables[i] != NULL);
+   }
+   return used;
+}
+
+void debug_dump_used_pdir_entries(page_directory_t *pdir)
+{
+   printk("Used pdir entries:\n");
+
+   for (int i = 0; i < 1024; i++) {
+      if (pdir->page_tables[i] != NULL) {
+         printk("Index: %i (= paddr %p)\n", i, (uintptr_t)i << 22);
+      }
+   }
+}
+
 void init_paging()
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
@@ -103,15 +139,22 @@ void init_paging()
    kernel_page_dir =
       (page_directory_t *) KERNEL_PADDR_TO_VADDR(alloc_phys_page());
 
+   alloc_phys_page();
+   alloc_phys_page();
+
    initialize_page_directory(kernel_page_dir,
                              KERNEL_VADDR_TO_PADDR(kernel_page_dir),
                              true);
 
+
    for (uint32_t i = 0; i < 1024; i++) {
+
       map_page(kernel_page_dir,
                KERNEL_PADDR_TO_VADDR(0x1000 * i),
                0x1000 * i, true, true);
+
    }
 
+   ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 1);
    set_page_directory(kernel_page_dir);
 }

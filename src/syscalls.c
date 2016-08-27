@@ -48,7 +48,7 @@ int32_t sys_open(const char *pathname, int32_t flags, int32_t mode)
 {
    printk("sys_open(filename = '%s', "
           "flags = %x, mode = %x)\n", pathname, flags, mode);
-   return 3;
+   return 825;
 }
 
 // 6

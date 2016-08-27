@@ -65,7 +65,7 @@ _start:
    times 1024-($-$$) db 0
    
    ; this is 0xC0100400
-   mov esp, 0xC01FFFFF
+   mov esp, 0xC01FFFF0
    jmp _kmain        ; now, really jump to kernel's code which uses 0xC0100000 as ORG
    
 _gdt_load:
