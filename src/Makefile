@@ -16,7 +16,7 @@ $(shell mkdir -p $(DEPDIR) >/dev/null)
 
 $(KERNEL_TARGET): $(KERNEL_OBJECTS)
 	ld -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
-	objcopy -O binary -j .text -j .rdata -j .data $(KERNEL_UNSTRIPPED) $@
+	objcopy -O binary -j .text -j .rodata -j .data $(KERNEL_UNSTRIPPED) $@
 
 clean:
 	rm -rf $(DEPDIR)
