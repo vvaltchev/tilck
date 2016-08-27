@@ -5,9 +5,9 @@ export AS = nasm
 export CC = gcc
 export OPT = -O2 -fvisibility=default -Wall -Wextra
 export INCDIRS = -I$(shell pwd)/include
-export CFLAGS =  $(OPT) -std=c99 $(INCDIRS) -Wall -Wextra -m32 -mno-red-zone     \
+export CFLAGS =  $(OPT) -std=c99 $(INCDIRS) -Wall -Wextra -m32 -march=i686 -mno-red-zone -fleading-underscore  \
                  -ffreestanding -g -nostdinc -fno-builtin -fno-asynchronous-unwind-tables \
-			        -fno-zero-initialized-in-bss -Wno-unused-function -Wno-unused-parameter
+                 -fno-zero-initialized-in-bss -Wno-unused-function -Wno-unused-parameter
 
 export BUILD_DIR = $(shell pwd)/build
 export BOOTLOADER_TARGET = $(BUILD_DIR)/bootloader.bin
@@ -21,6 +21,7 @@ $(FINAL_TARGET): $(BUILD_DIR) $(BOOTLOADER_TARGET) $(KERNEL_TARGET) $(INIT_TARGE
 	dd status=noxfer conv=notrunc if=$(BOOTLOADER_TARGET) of=$@
 	dd status=noxfer conv=notrunc if=$(KERNEL_TARGET) of=$@ seek=4 obs=1024 ibs=1024
 	dd status=noxfer conv=notrunc if=$(INIT_TARGET) of=$@ seek=132 obs=1024 ibs=1024
+	chmod 666 os2.img
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
