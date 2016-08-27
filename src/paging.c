@@ -23,7 +23,7 @@ void handle_general_protection_fault(struct regs *r)
 
 void set_page_directory(page_directory_t *dir)
 {
-   asmVolatile("mov %0, %%cr3" :: "r"(dir->physical_address));
+   asmVolatile("mov %0, %%cr3" :: "r"(KERNEL_VADDR_TO_PADDR(dir)));
 }
 
 static void initialize_empty_page_table(page_table_t *t)
@@ -35,11 +35,8 @@ static void initialize_empty_page_table(page_table_t *t)
 }
 
 static void initialize_page_directory(page_directory_t *pdir,
-                                      void *physical_addr,
                                       bool us)
 {
-   pdir->physical_address = physical_addr;
-
    page_dir_entry_t not_present = {0};
 
    not_present.present = 0;
@@ -139,13 +136,9 @@ void init_paging()
    kernel_page_dir =
       (page_directory_t *) KERNEL_PADDR_TO_VADDR(alloc_phys_page());
 
-   alloc_phys_page();
-   alloc_phys_page();
+   alloc_phys_page(); // The page directory uses two pages!
 
-   initialize_page_directory(kernel_page_dir,
-                             KERNEL_VADDR_TO_PADDR(kernel_page_dir),
-                             true);
-
+   initialize_page_directory(kernel_page_dir, true);
 
    for (uint32_t i = 0; i < 1024; i++) {
 
