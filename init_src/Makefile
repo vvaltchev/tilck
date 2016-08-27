@@ -15,11 +15,11 @@ OBJECTS=$(ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 $(shell mkdir -p $(DEPDIR) >/dev/null)
 
 $(INIT_TARGET): $(OBJECTS)
-	ld -T link.ld -o $(INIT_UNSTRIPPED) $(OBJECTS)
+	ld -Ttext=0xC0120000 -o $(INIT_UNSTRIPPED) $(OBJECTS)
 	objcopy -O binary -j .text -j .rdata -j .data $(INIT_UNSTRIPPED) $@
 
 $(BUILD_DIR)/%.o : %.asm
-	nasm -f win32 $(OUTPUT_OPTION) $<
+	nasm -f elf $(OUTPUT_OPTION) $<
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d

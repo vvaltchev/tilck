@@ -8,6 +8,7 @@ extern _gdt_pointer
 global _gdt_load
 global _idt_load
 global _tss_flush
+global _start
 
 section .text
 
