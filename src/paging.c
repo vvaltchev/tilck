@@ -3,6 +3,7 @@
 #include <irq.h>
 #include <stringUtil.h>
 #include <kmalloc.h>
+#include <debug_utils.h>
 
 page_directory_t *kernel_page_dir = NULL;
 
@@ -14,6 +15,7 @@ page_directory_t *get_curr_page_dir()
 void handle_page_fault(struct regs *r)
 {
    printk("Page fault. Error: %p\n", r->err_code);
+   ASSERT(0);
 }
 
 void handle_general_protection_fault(struct regs *r)
@@ -108,25 +110,6 @@ void map_page(page_directory_t *pdir,
    ptable->pages[page_table_index] = p;
 }
 
-int debug_count_used_pdir_entries(page_directory_t *pdir)
-{
-   int used = 0;
-   for (int i = 0; i < 1024; i++) {
-      used += (pdir->page_tables[i] != NULL);
-   }
-   return used;
-}
-
-void debug_dump_used_pdir_entries(page_directory_t *pdir)
-{
-   printk("Used pdir entries:\n");
-
-   for (int i = 0; i < 1024; i++) {
-      if (pdir->page_tables[i] != NULL) {
-         printk("Index: %i (= paddr %p)\n", i, (uintptr_t)i << 22);
-      }
-   }
-}
 
 void init_paging()
 {

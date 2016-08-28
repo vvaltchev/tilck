@@ -3,11 +3,15 @@
 
 export AS = nasm
 export CC = gcc
-export OPT = -O2 -fvisibility=default -Wall -Wextra
+export OPT = -O2
+#export OPT = -O0 -fno-inline-functions
+export WARN = -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
 export INCDIRS = -I$(shell pwd)/include
-export CFLAGS =  $(OPT) -std=c99 $(INCDIRS) -Wall -Wextra -m32 -march=i686 -mno-red-zone -fleading-underscore  \
-                 -ffreestanding -g -nostdinc -fno-builtin -fno-asynchronous-unwind-tables \
-                 -fno-zero-initialized-in-bss -Wno-unused-function -Wno-unused-parameter
+export CFLAGS =  $(OPT) $(WARN) -std=c99 $(INCDIRS) -m32 -march=i686 \
+                 -mno-red-zone -fleading-underscore -fvisibility=default \
+                 -ffreestanding -g -nostdinc -fno-builtin \
+                 -fno-asynchronous-unwind-tables \
+                 -fno-zero-initialized-in-bss
 
 export BUILD_DIR = $(shell pwd)/build
 export BOOTLOADER_TARGET = $(BUILD_DIR)/bootloader.bin

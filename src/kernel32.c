@@ -6,6 +6,7 @@
 #include <irq.h>
 #include <kmalloc.h>
 #include <paging.h>
+#include <debug_utils.h>
 
 void gdt_install();
 void idt_install();
@@ -60,6 +61,7 @@ void switch_to_user_mode()
    debug_dump_used_pdir_entries(get_curr_page_dir());
 
    magic_debug_break();
+
    switch_to_usermode_asm((void *) 0xA0000000, (void *) 0xA000FFF0);
 }
 
@@ -91,6 +93,9 @@ void panic(const char *fmt, ...)
    vprintk(fmt, args);
    va_end(args);
 
+   printk("\n");
+   dump_stacktrace();
+
    while (true) {
       halt();
    }
@@ -121,8 +126,6 @@ void kmain() {
    irq_install_handler(1, keyboard_handler);
 
    IRQ_set_mask(0); // mask the timer interrupt.
-
-
 
    sti();
    init_kb();
