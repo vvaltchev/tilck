@@ -14,7 +14,19 @@ page_directory_t *get_curr_page_dir()
 
 void handle_page_fault(struct regs *r)
 {
-   printk("Page fault. Error: %p\n", r->err_code);
+   uint32_t cr2;
+   asmVolatile("movl %%cr2, %0" : "=r"(cr2));
+
+   bool us = (r->err_code & (1 << 2)) != 0;
+   bool rw = (r->err_code & (1 << 1)) != 0;
+   bool p = (r->err_code & (1 << 0)) != 0;
+
+   printk("*** PAGE FAULT in attempt to %s %p from %s %s\n",
+          rw ? "WRITE" : "READ",
+          cr2,
+          us ? "userland" : "kernel",
+          !p ? "(NON present page)" : "");
+
    ASSERT(0);
 }
 

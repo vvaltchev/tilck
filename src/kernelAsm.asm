@@ -56,7 +56,8 @@ _start:
    mov cr3, ebx     ; set page dir physical address
    
    mov eax, cr0
-   or eax, 0x80000000
+   or eax, 0x80000000 ; paging ON
+   or eax, 0x10000    ; WP ON (write protect for supervisor)
    mov cr0, eax       ; enable paging!
   
    mov eax, 0xC0100400
