@@ -12,6 +12,7 @@
 #define asm(...)
 
 #define ALWAYS_INLINE inline
+#define typeof(x) void *
 
 #else
 
@@ -20,8 +21,9 @@
 #define asmVolatile __asm__ volatile
 #define asm __asm__
 
-#endif
+#define typeof(x) __typeof__(x)
 
+#endif
 
 typedef char int8_t;
 typedef short int16_t;
