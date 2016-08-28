@@ -75,7 +75,7 @@ static int open(const char *pathname, int32_t flags, int32_t mode)
    return generic_syscall3(SYSCALL_OPEN,
                            (void*)pathname,
                            (void*)flags,
-                           (void*) mode);
+                           (void*)mode);
 }
 
 static int write(int fd, const void *buf, size_t count)

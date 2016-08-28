@@ -144,7 +144,7 @@ void init_paging()
 
       map_page(kernel_page_dir,
                KERNEL_PADDR_TO_VADDR(0x1000 * i),
-               0x1000 * i, true, true);
+               0x1000 * i, false, true);
 
    }
 
