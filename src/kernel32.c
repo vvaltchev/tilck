@@ -51,8 +51,6 @@ void switch_to_user_mode()
    // Set up our kernel stack.
    set_kernel_stack(0xC01FFFF0);
 
-   magic_debug_break();
-
    // maps 16 pages for the user program
    for (int i = 0; i < 16; i++) {
       map_page(get_curr_page_dir(), 0xA0000000U + 4096 * i, 0x120000 + 4096 * i, true, true);
@@ -61,6 +59,7 @@ void switch_to_user_mode()
    printk("pdir entries used = %i\n", debug_count_used_pdir_entries(get_curr_page_dir()));
    debug_dump_used_pdir_entries(get_curr_page_dir());
 
+   magic_debug_break();
    switch_to_usermode_asm((void *) 0xA0000000, (void *) 0xA000FFF0);
 }
 

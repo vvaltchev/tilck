@@ -15,7 +15,7 @@ OBJECTS=$(ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 $(shell mkdir -p $(DEPDIR) >/dev/null)
 
 $(INIT_TARGET): $(OBJECTS)
-	ld -Ttext=0xC0120000 -o $(INIT_UNSTRIPPED) $(OBJECTS)
+	ld -Ttext=0xA0000000 -o $(INIT_UNSTRIPPED) $(OBJECTS)
 	objcopy -O binary -j .text -j .rodata -j .data $(INIT_UNSTRIPPED) $@
 
 $(BUILD_DIR)/%.o : %.asm
