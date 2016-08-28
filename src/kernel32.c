@@ -54,7 +54,11 @@ void switch_to_user_mode()
 
    // maps 16 pages for the user program
    for (int i = 0; i < 16; i++) {
-      map_page(get_curr_page_dir(), 0xA0000000U + 4096 * i, 0x120000 + 4096 * i, true, true);
+      map_page(get_curr_page_dir(),
+               0x08000000U + 4096 * i,
+               0x120000 + 4096 * i,
+               true,  // US
+               true); // RW
    }
 
    printk("pdir entries used = %i\n", debug_count_used_pdir_entries(get_curr_page_dir()));
@@ -62,18 +66,17 @@ void switch_to_user_mode()
 
    magic_debug_break();
 
-   switch_to_usermode_asm((void *) 0xA0000000, (void *) 0xA000FFF0);
-}
+   // test
 
+   void *paddr = alloc_phys_page();
+   map_page(get_curr_page_dir(), 0xB0000000, (uint32_t) paddr, true, false);
+   volatile char *robuf = (volatile char *)0xB0000000;
 
-void test1()
-{
-   //const char *str = "hello world in 3MB";
-   //memcpy((void*) 0x300000, str, strlen(str) + 1);
+   robuf[123] = 'x';
 
-   //map_page(&kernel_page_dir, 0x900000, 0x300000, true, true);
-   //printk("[pagination test] string at 0x900000: %s\n", (const char *)0x900000);
+   ///////////////
 
+   switch_to_usermode_asm((void *) 0x08000000, (void *) 0x0800FFF0);
 }
 
 
@@ -130,7 +133,6 @@ void kmain() {
    sti();
    init_kb();
 
-   test1();
    switch_to_user_mode();
 
    while (1) {
