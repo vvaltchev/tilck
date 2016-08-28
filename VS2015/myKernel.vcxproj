@@ -148,6 +148,7 @@
     <ClCompile Include="..\src\stringUtil.c" />
     <ClCompile Include="..\src\syscalls.c" />
     <ClCompile Include="..\src\term.c" />
+    <ClCompile Include="..\src\debug_utils.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\commonDefs.h" />
@@ -156,6 +157,7 @@
     <ClInclude Include="..\include\paging.h" />
     <ClInclude Include="..\include\stringUtil.h" />
     <ClInclude Include="..\include\term.h" />
+    <ClInclude Include="..\include\debug_utils.h" />
     <ClInclude Include="..\init_src\string.h" />
     <ClInclude Include="..\init_src\usermode_syscall_wrappers.h" />
   </ItemGroup>
