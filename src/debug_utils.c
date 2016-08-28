@@ -25,6 +25,27 @@ size_t stackwalk32(void **frames, size_t count)
    return i;
 }
 
+size_t stackwalk32_ex(void *ebp, void **frames, size_t count)
+{
+   void *retAddr;
+   size_t i;
+
+   for (i = 0; i < count; i++) {
+
+      retAddr = *((void **)ebp + 1);
+      ebp = *(void **)ebp;
+
+      if (!ebp || !retAddr) {
+         break;
+      }
+
+      frames[i] = retAddr;
+   }
+
+   return i;
+}
+
+
 void dump_stacktrace()
 {
    void *frames[10] = {0};
@@ -39,6 +60,19 @@ void dump_stacktrace()
    printk("\n\n");
 }
 
+void dump_stacktrace_ex(void *ebp)
+{
+   void *frames[10] = {0};
+   size_t c = stackwalk32_ex(ebp, frames, 10);
+
+   printk("*** STACKTRACE ***\n");
+
+   for (size_t i = 0; i < c; i++) {
+      printk("frame[%i]: %p\n", i, frames[i]);
+   }
+
+   printk("\n\n");
+}
 
 
 int debug_count_used_pdir_entries(page_directory_t *pdir)

@@ -12,6 +12,8 @@ page_directory_t *get_curr_page_dir()
    return kernel_page_dir;
 }
 
+volatile bool in_page_fault = false;
+
 void handle_page_fault(struct regs *r)
 {
    uint32_t cr2;
@@ -27,6 +29,13 @@ void handle_page_fault(struct regs *r)
           us ? "userland" : "kernel",
           !p ? "(NON present page)" : "");
 
+   if (in_page_fault) {
+      while (true) {
+         halt();
+      }
+   }
+
+   in_page_fault = true;
    ASSERT(0);
 }
 
