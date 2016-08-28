@@ -52,7 +52,6 @@ void switch_to_user_mode()
    set_kernel_stack(0xC01FFFF0);
 
    magic_debug_break();
-   //switch_to_usermode_asm((void*)0xC0120000, (void*) (0xC0120000 + 64*1024 - 16));
 
    // maps 16 pages for the user program
    for (int i = 0; i < 16; i++) {

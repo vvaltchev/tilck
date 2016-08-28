@@ -5,7 +5,7 @@
 #include "usermode_syscall_wrappers.h"
 #include "string.h"
 
-void init_main()
+void main()
 {
    int stackVar;
 

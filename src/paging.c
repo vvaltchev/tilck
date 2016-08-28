@@ -4,7 +4,7 @@
 #include <stringUtil.h>
 #include <kmalloc.h>
 
-volatile page_directory_t *kernel_page_dir = NULL;
+page_directory_t *kernel_page_dir = NULL;
 
 page_directory_t *get_curr_page_dir()
 {
@@ -50,7 +50,7 @@ static void initialize_page_directory(page_directory_t *pdir,
    }
 }
 
-volatile bool paging_debug = false;
+bool paging_debug = false;
 
 void map_page(page_directory_t *pdir,
               uint32_t vaddr,
@@ -76,21 +76,21 @@ void map_page(page_directory_t *pdir,
 
       // we have to create a page table for mapping 'vaddr'
 
-      ptable = alloc_phys_page();
+      ptable = KERNEL_PADDR_TO_VADDR(alloc_phys_page());
 
       if (paging_debug) {
          printk("Creating a new page table at paddr = %p..\n", ptable);
       }
 
-      initialize_empty_page_table(KERNEL_PADDR_TO_VADDR(ptable));
+      initialize_empty_page_table(ptable);
 
       page_dir_entry_t e = {0};
       e.present = 1;
       e.rw = 1;
       e.us = us;
-      e.pageTableAddr = ((uint32_t)ptable) >> 12;
+      e.pageTableAddr = ((uint32_t)KERNEL_VADDR_TO_PADDR(ptable)) >> 12;
 
-      pdir->page_tables[page_dir_index] = KERNEL_PADDR_TO_VADDR(ptable);
+      pdir->page_tables[page_dir_index] = ptable;
       pdir->entries[page_dir_index] = e;
    }
 
