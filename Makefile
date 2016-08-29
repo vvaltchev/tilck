@@ -18,8 +18,9 @@ export BOOTLOADER_TARGET = $(BUILD_DIR)/bootloader.bin
 export KERNEL_TARGET = $(BUILD_DIR)/kernel32.bin
 export INIT_TARGET = $(BUILD_DIR)/init.bin
 
-export FINAL_TARGET = os2.img
+export FINAL_TARGET = $(BUILD_DIR)/exos.img
 
+all: $(FINAL_TARGET)
 
 $(FINAL_TARGET): $(BUILD_DIR) $(BOOTLOADER_TARGET) $(KERNEL_TARGET) $(INIT_TARGET)
 	dd status=noxfer conv=notrunc if=$(BOOTLOADER_TARGET) of=$@
@@ -33,7 +34,7 @@ $(BUILD_DIR):
 clean:
 	cd src && $(MAKE) clean
 	cd init_src && $(MAKE) clean
-	rm -rf $(BUILD_DIR) $(FINAL_TARGET)
+	rm -rf $(BUILD_DIR)
 
 # Targets that do not generate files
 .PHONY: clean $(KERNEL_TARGET) $(BOOTLOADER_TARGET) $(INIT_TARGET)
