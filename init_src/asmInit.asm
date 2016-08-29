@@ -5,5 +5,5 @@ global _start
 
 section .text
 
-_start
+_start:
 jmp _main
