@@ -15,14 +15,14 @@ KERNEL_OBJECTS=$(KERNEL_ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(KERNEL_SOURCES:%.c
 $(shell mkdir -p $(DEPDIR) >/dev/null)
 
 $(KERNEL_TARGET): $(KERNEL_OBJECTS)
-	ld -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
+	ld -m elf_i386 -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
 	objcopy -O binary -j .text -j .rodata -j .data $(KERNEL_UNSTRIPPED) $@
 
 clean:
 	rm -rf $(DEPDIR)
 
 $(BUILD_DIR)/%.o : %.asm
-	nasm -f elf $(OUTPUT_OPTION) $<
+	nasm -f elf32 $(OUTPUT_OPTION) $<
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
