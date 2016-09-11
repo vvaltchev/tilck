@@ -68,11 +68,11 @@ void switch_to_user_mode()
 
    // test
 
-   void *paddr = alloc_phys_page();
-   map_page(get_curr_page_dir(), 0xB0000000, (uint32_t) paddr, true, false);
-   volatile char *robuf = (volatile char *)0xB0000000;
+   //void *paddr = alloc_phys_page();
+   //map_page(get_curr_page_dir(), 0xB0000000, (uint32_t) paddr, true, false);
+   //volatile char *robuf = (volatile char *)0xB0000000;
 
-   robuf[123] = 'x';
+   //robuf[123] = 'x';
 
    ///////////////
 
