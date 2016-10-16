@@ -94,3 +94,32 @@ void debug_dump_used_pdir_entries(page_directory_t *pdir)
       }
    }
 }
+
+void panic(const char *fmt, ...)
+{
+   cli();
+
+   printk("\n\n************** KERNEL PANIC **************\n");
+
+   va_list args;
+   va_start(args, fmt);
+   vprintk(fmt, args);
+   va_end(args);
+
+   printk("\n");
+
+   //dump_stacktrace();
+   //sti();
+
+   while (true) {
+      halt();
+   }
+}
+
+void assert_failed(const char *expr, const char *file, int line)
+{
+   panic("\nASSERTION '%s' FAILED in file '%s' at line %i\n",
+         expr, file, line);
+}
+
+

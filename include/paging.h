@@ -70,3 +70,17 @@ void map_page(page_directory_t *pdir,
               bool us,
               bool rw);
 
+bool is_mapped(page_directory_t *pdir, uint32_t vaddr);
+bool unmap_page(page_directory_t *pdir, uint32_t vaddr);
+
+void map_pages(page_directory_t *pdir,
+               uint32_t vaddr,
+               uint32_t paddr,
+               uint32_t pageCount,
+               bool us,
+               bool rw);
+
+bool kbasic_virtual_alloc(page_directory_t *pdir, uint32_t vaddr,
+                          size_t size, bool us, bool rw);
+
+bool kbasic_virtual_free(page_directory_t *pdir, uint32_t vaddr, size_t size);

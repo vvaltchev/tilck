@@ -5,6 +5,16 @@
 #include <kmalloc.h>
 #include <debug_utils.h>
 
+/*
+ * ----------------------------------------------
+ * DEBUG options
+ * ----------------------------------------------
+ */
+
+bool paging_debug = false;
+
+/* ---------------------------------------------- */
+
 page_directory_t *kernel_page_dir = NULL;
 
 page_directory_t *get_curr_page_dir()
@@ -73,7 +83,40 @@ static void initialize_page_directory(page_directory_t *pdir,
    }
 }
 
-bool paging_debug = false;
+bool is_mapped(page_directory_t *pdir, uint32_t vaddr)
+{
+   page_table_t *ptable;
+   uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
+   uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
+
+   if (pdir->page_tables[page_dir_index] == NULL) {
+      return false;
+   }
+
+   ptable = pdir->page_tables[page_dir_index];
+   return ptable->pages[page_table_index].present;
+}
+
+bool unmap_page(page_directory_t *pdir, uint32_t vaddr)
+{
+   page_table_t *ptable;
+   uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
+   uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
+
+   if (pdir->page_tables[page_dir_index] == NULL) {
+      return false;
+   }
+
+   ptable = pdir->page_tables[page_dir_index];
+
+   if (!ptable->pages[page_table_index].present) {
+      return false;
+   }
+
+   page_t p = {0};
+   ptable->pages[page_table_index] = p;
+   return true;
+}
 
 void map_page(page_directory_t *pdir,
               uint32_t vaddr,
@@ -84,13 +127,13 @@ void map_page(page_directory_t *pdir,
    uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
    uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
 
+   ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
+   ASSERT(!(paddr & 4095)); // the paddr must be page-aligned
+
    page_table_t *ptable = NULL;
 
    if (paging_debug) {
       printk("Mapping vaddr = %p to paddr = %p\n", vaddr, paddr);
-      printk("page dir index = %p\n", page_dir_index);
-      printk("page table index = %p\n", page_table_index);
-      printk("pdir->page_tables[page_dir_index] == %p\n", pdir->page_tables[page_dir_index]);
    }
 
    ASSERT(((uintptr_t)pdir->page_tables[page_dir_index] & 0xFFF) == 0);
@@ -102,7 +145,9 @@ void map_page(page_directory_t *pdir,
       ptable = KERNEL_PADDR_TO_VADDR(alloc_phys_page());
 
       if (paging_debug) {
-         printk("Creating a new page table at paddr = %p..\n", ptable);
+         printk("Creating a new page table at paddr = %p\n"
+                "for page_dir_index = %p (= vaddr %p)\n",
+                ptable, page_dir_index, page_dir_index << 22);
       }
 
       initialize_empty_page_table(ptable);
@@ -132,6 +177,66 @@ void map_page(page_directory_t *pdir,
 }
 
 
+void map_pages(page_directory_t *pdir,
+               uint32_t vaddr,
+               uint32_t paddr,
+               uint32_t pageCount,
+               bool us,
+               bool rw)
+{
+   for (unsigned i = 0; i < pageCount; i++) {
+      map_page(pdir, vaddr + (i << 12), paddr + (i << 12), us, rw);
+   }
+}
+
+bool kbasic_virtual_alloc(page_directory_t *pdir, uint32_t vaddr,
+                          size_t size, bool us, bool rw)
+{
+   ASSERT(size > 0);        // the size must be > 0.
+   ASSERT(!(size & 4095));  // the size must be a multiple of 4096
+   ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
+
+   unsigned pagesCount = size >> 12;
+
+   for (unsigned i = 0; i < pagesCount; i++) {
+      if (is_mapped(pdir, vaddr + (i << 12))) {
+         return false;
+      }
+   }
+
+   for (unsigned i = 0; i < pagesCount; i++) {
+
+      void *paddr = alloc_phys_page();
+      ASSERT(paddr != NULL);
+
+      map_page(pdir, vaddr + (i << 12), (uint32_t)paddr, us, rw);
+   }
+
+   return true;
+}
+
+bool kbasic_virtual_free(page_directory_t *pdir, uint32_t vaddr, size_t size)
+{
+   ASSERT(size > 0);        // the size must be > 0.
+   ASSERT(!(size & 4095));  // the size must be a multiple of 4096
+   ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
+
+   unsigned pagesCount = size >> 12;
+
+   for (unsigned i = 0; i < pagesCount; i++) {
+      if (!is_mapped(pdir, vaddr + (i << 12))) {
+         return false;
+      }
+   }
+
+   for (unsigned i = 0; i < pagesCount; i++) {
+      unmap_page(pdir, vaddr + (i << 12));
+   }
+
+   return true;
+}
+
+
 void init_paging()
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
@@ -144,13 +249,8 @@ void init_paging()
 
    initialize_page_directory(kernel_page_dir, true);
 
-   for (uint32_t i = 0; i < 1024; i++) {
-
-      map_page(kernel_page_dir,
-               KERNEL_PADDR_TO_VADDR(0x1000 * i),
-               0x1000 * i, false, true);
-
-   }
+   map_pages(kernel_page_dir,
+             KERNEL_PADDR_TO_VADDR(0x1000), 0x1000, 1023, false, true);
 
    ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 1);
    set_page_directory(kernel_page_dir);
