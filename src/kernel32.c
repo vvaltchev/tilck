@@ -49,34 +49,23 @@ void switch_to_usermode_asm(void *entryPoint, void *stackAddr);
 
 void switch_to_user_mode()
 {
+   void * const user_program_vaddr = (void *) 0x08000000U;
+   void * const user_program_stack_vaddr = (void *) 0x0800FFF0U;
+   void * const user_program_paddr = (void *) 0x120000;
+
    // Set up our kernel stack.
    set_kernel_stack(0xC01FFFF0);
 
-   // maps 16 pages for the user program
-   for (int i = 0; i < 16; i++) {
-      map_page(get_curr_page_dir(),
-               0x08000000U + 4096 * i,
-               0x120000 + 4096 * i,
-               true,  // US
-               true); // RW
-   }
+   // maps 16 pages (64 KB) for the user program
+
+   map_pages(get_curr_page_dir(),
+             (uint32_t)user_program_vaddr,
+             (uint32_t)user_program_paddr, 16, true, true);
 
    printk("pdir entries used = %i\n", debug_count_used_pdir_entries(get_curr_page_dir()));
    debug_dump_used_pdir_entries(get_curr_page_dir());
 
-   magic_debug_break();
-
-   // test
-
-   //void *paddr = alloc_phys_page();
-   //map_page(get_curr_page_dir(), 0xB0000000, (uint32_t) paddr, true, false);
-   //volatile char *robuf = (volatile char *)0xB0000000;
-
-   //robuf[123] = 'x';
-
-   ///////////////
-
-   switch_to_usermode_asm((void *) 0x08000000, (void *) 0x0800FFF0);
+   switch_to_usermode_asm(user_program_vaddr, user_program_stack_vaddr);
 }
 
 
@@ -85,30 +74,6 @@ void show_hello_message()
    printk("Hello from my kernel!\n");
 }
 
-void panic(const char *fmt, ...)
-{
-   cli();
-
-   printk("\n\n************** KERNEL PANIC **************\n");
-
-   va_list args;
-   va_start(args, fmt);
-   vprintk(fmt, args);
-   va_end(args);
-
-   printk("\n");
-   dump_stacktrace();
-
-   while (true) {
-      halt();
-   }
-}
-
-void assert_failed(const char *expr, const char *file, int line)
-{
-   panic("\nASSERTION '%s' FAILED in file '%s' at line %i\n",
-         expr, file, line);
-}
 
 void kmain() {
 
