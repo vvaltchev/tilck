@@ -17,8 +17,8 @@ export BUILD_DIR = $(shell pwd)/build
 export BOOTLOADER_TARGET = $(BUILD_DIR)/bootloader.bin
 export KERNEL_TARGET = $(BUILD_DIR)/kernel32.bin
 export INIT_TARGET = $(BUILD_DIR)/init.bin
-
 export FINAL_TARGET = $(BUILD_DIR)/exos.img
+export UNITTESTS_TARGET = $(BUILD_DIR)/unittests
 
 all: $(FINAL_TARGET)
 
@@ -31,13 +31,16 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 	dd status=noxfer if=/dev/zero of=$(FINAL_TARGET) obs=512 ibs=512 count=2880
 
+tests:
+	cd unittests && $(MAKE)
+	
 clean:
 	cd src && $(MAKE) clean
 	cd init_src && $(MAKE) clean
 	rm -rf $(BUILD_DIR)
 
 # Targets that do not generate files
-.PHONY: clean $(KERNEL_TARGET) $(BOOTLOADER_TARGET) $(INIT_TARGET)
+.PHONY: clean tests $(KERNEL_TARGET) $(BOOTLOADER_TARGET) $(INIT_TARGET)
 
 $(BOOTLOADER_TARGET):
 	cd bootloader && $(MAKE)
