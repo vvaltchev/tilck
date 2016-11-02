@@ -149,6 +149,7 @@
     <ClCompile Include="..\src\syscalls.c" />
     <ClCompile Include="..\src\term.c" />
     <ClCompile Include="..\src\debug_utils.c" />
+    <ClCompile Include="..\src\kmalloc.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\commonDefs.h" />
