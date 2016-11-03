@@ -20,6 +20,8 @@ export INIT_TARGET = $(BUILD_DIR)/init.bin
 export FINAL_TARGET = $(BUILD_DIR)/exos.img
 export UNITTESTS_TARGET = $(BUILD_DIR)/unittests
 
+$(shell mkdir -p $(BUILD_DIR) > /dev/null)
+
 all: $(FINAL_TARGET)
 
 $(FINAL_TARGET): $(BUILD_DIR) $(BOOTLOADER_TARGET) $(KERNEL_TARGET) $(INIT_TARGET)
@@ -28,10 +30,9 @@ $(FINAL_TARGET): $(BUILD_DIR) $(BOOTLOADER_TARGET) $(KERNEL_TARGET) $(INIT_TARGE
 	dd status=noxfer conv=notrunc if=$(INIT_TARGET) of=$@ seek=132 obs=1024 ibs=1024
 
 $(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
 	dd status=noxfer if=/dev/zero of=$(FINAL_TARGET) obs=512 ibs=512 count=2880
 
-tests:
+tests: $(KERNEL_TARGET)
 	cd unittests && $(MAKE)
 	
 clean:
