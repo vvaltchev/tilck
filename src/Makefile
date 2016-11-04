@@ -11,6 +11,10 @@ KERNEL_SOURCES=$(wildcard *.c)
 KERNEL_ASM_SOURCES=$(wildcard *.asm)
 KERNEL_OBJECTS=$(KERNEL_ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(KERNEL_SOURCES:%.c=$(BUILD_DIR)/%.o)
 
+ifdef TEST
+	CFLAGS = $(OPT) $(WARN) -std=c99 $(INCDIRS) -fvisibility=default -ffreestanding -g -nostdinc -m32 -march=i686
+endif
+
 $(shell mkdir -p $(DEPDIR) > /dev/null)
 $(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
