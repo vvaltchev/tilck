@@ -13,6 +13,7 @@ ASM_SOURCES=$(wildcard *.asm)
 OBJECTS=$(ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 
 $(shell mkdir -p $(DEPDIR) >/dev/null)
+$(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
 $(INIT_TARGET): $(OBJECTS)
 	ld -m elf_i386 -Ttext=0x08000000 -o $(INIT_UNSTRIPPED) $(OBJECTS)
