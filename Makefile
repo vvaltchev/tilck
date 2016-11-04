@@ -8,7 +8,7 @@ export OPT = -O2
 export WARN = -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
 export INCDIRS = -I$(shell pwd)/include
 export CFLAGS =  $(OPT) $(WARN) -std=c99 $(INCDIRS) -m32 -march=i686 \
-                 -mno-red-zone -fleading-underscore -fvisibility=default \
+                 -mno-red-zone -fvisibility=default \
                  -ffreestanding -g -nostdinc -fno-builtin \
                  -fno-asynchronous-unwind-tables \
                  -fno-zero-initialized-in-bss
