@@ -8,11 +8,11 @@ COMPILE.c = $(CC) $(DEPFLAGS) $(TEST_CFLAGS) -c
 POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
 $(shell mkdir -p $(DEPDIR) > /dev/null)
-
+$(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
 KERNEL_SOURCES=$(wildcard ../src/*.c)
 KERNEL_SOURCES_FILES=$(patsubst ../src/%,%, $(KERNEL_SOURCES))
-KERNEL_OBJECTS=$(patsubst %.c,$(BUILD_DIR)/%.o, $(KERNEL_SOURCES_FILES))
+KERNEL_OBJECTS=$(patsubst %.c,$(KERNEL_TEST_BUILD_DIR)/%.o, $(KERNEL_SOURCES_FILES))
 
 TEST_SOURCES=$(wildcard *.c)
 TEST_OBJECTS=$(TEST_SOURCES:%.c=$(BUILD_DIR)/%.o)
