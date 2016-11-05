@@ -10,7 +10,7 @@ export ELF_NASM_FORMAT = elf32
 endif
 
 ifeq ($(strip $(ARCH)),x86_64)
-export ARCH_CFLAGS = -m64 -march=amd64
+export ARCH_CFLAGS = -m64
 export ELF_LD_FORMAT = elf_x86_64
 export ELF_NASM_FORMAT = elf64
 endif
@@ -36,7 +36,12 @@ export BUILD_DIR := $(shell pwd)/build
 export BOOTLOADER_TARGET := $(BUILD_DIR)/bootloader.bin
 export KERNEL_TARGET := $(BUILD_DIR)/kernel.bin
 
+ifndef TEST
 export KERNEL_BUILD_DIR := $(BUILD_DIR)/kernel
+else
+export KERNEL_BUILD_DIR := $(BUILD_DIR)/test_kernel
+endif
+
 export KERNEL_STATIC_LIB_TARGET := $(KERNEL_BUILD_DIR)/kernel_static.a
 export KERNEL_ARCH_CODE_STATIC_LIB_TARGET := $(KERNEL_BUILD_DIR)/kernel_arch.a
 
@@ -44,7 +49,6 @@ export INIT_TARGET := $(BUILD_DIR)/init.bin
 export FINAL_TARGET := $(BUILD_DIR)/exos.img
 export UNITTESTS_TARGET := $(BUILD_DIR)/unittests
 
-export KERNEL_TEST_BUILD_DIR := $(BUILD_DIR)/test_kernel
 export INIT_BUILD_DIR := $(BUILD_DIR)/init
 export UNITTESTS_BUILD_DIR := $(BUILD_DIR)/tests
 
@@ -64,7 +68,7 @@ $(EMPTY_IMG_FILE):
 tests: $(UNITTESTS_TARGET)
 
 $(UNITTESTS_TARGET):
-	@cd src && $(MAKE) TEST=1 BUILD_DIR=$(KERNEL_TEST_BUILD_DIR)
+	@cd src && $(MAKE) TEST=1 BUILD_DIR=$(KERNEL_BUILD_DIR)
 	@cd unittests && $(MAKE) BUILD_DIR=$(UNITTESTS_BUILD_DIR)
 	
 clean:
