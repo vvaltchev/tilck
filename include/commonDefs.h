@@ -54,6 +54,10 @@ static_assert(sizeof(void *) == 4);
 
 static_assert(sizeof(void *) == 8);
 
+#else
+
+#error Platform not supported.
+
 #endif
 
 
