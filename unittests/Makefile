@@ -27,7 +27,6 @@ $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
 	
 clean:
 	rm -rf $(DEPDIR)
-	rm -f $(UNITTESTS_TARGET) $(TEST_OBJECTS)
 
 .PHONY: clean
 

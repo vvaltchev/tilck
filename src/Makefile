@@ -13,16 +13,18 @@ KERNEL_ASM_SOURCES=$(wildcard *.asm)
 KERNEL_OBJECTS=$(KERNEL_ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(KERNEL_SOURCES:%.c=$(BUILD_DIR)/%.o)
 
 ifdef TEST
-	CFLAGS = $(OPT) $(WARN) -std=c99 $(INCDIRS) -fvisibility=default -ffreestanding -g -nostdinc
+	CFLAGS = $(OPT) $(WARN) -std=c99 $(INCDIRS) -fvisibility=default -ffreestanding -g -nostdinc $(ARCH_CFLAGS)
 endif
 
 $(shell mkdir -p $(DEPDIR) > /dev/null)
 $(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
 $(KERNEL_TARGET): $(KERNEL_OBJECTS)
-	ld -m elf_i386 -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
 ifndef TEST
+	ld -m elf_i386 -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
 	objcopy -O binary -j .text -j .rodata -j .data $(KERNEL_UNSTRIPPED) $@
+else
+	
 endif
 
 clean:
