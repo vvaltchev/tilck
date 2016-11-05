@@ -3,7 +3,7 @@
 
 DEPDIR = .d
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
-TEST_CFLAGS =  $(OPT) $(WARN) -std=c99 $(INCDIRS) -m32 -march=i686 -DTEST
+TEST_CFLAGS =  $(OPT) $(WARN) -std=c99 $(INCDIRS) -DTEST $(ARCH_CFLAGS)
 COMPILE.c = $(CC) $(DEPFLAGS) $(TEST_CFLAGS) -c
 POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
