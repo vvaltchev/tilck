@@ -1,12 +1,12 @@
 
 # Master Makefile of the project
 
-ARCH = i386
+export ARCH = i386
 
 ifeq ($(strip $(ARCH)),i386)
-ARCH_CFLAGS = -m32 -march=i686
+export ARCH_CFLAGS = -m32 -march=i686
 else
-ARCH_CFLAGS =
+export ARCH_CFLAGS =
 endif
 
 export AS = nasm
@@ -52,6 +52,9 @@ $(UNITTESTS_TARGET):
 	cd unittests && $(MAKE) BUILD_DIR=$(UNITTESTS_BUILD_DIR)
 	
 clean:
+	cd src && $(MAKE) clean
+	cd unittests && $(MAKE) clean
+	cd init_src && $(MAKE) clean
 	rm -rf $(BUILD_DIR)
 
 # Targets that do not generate files
