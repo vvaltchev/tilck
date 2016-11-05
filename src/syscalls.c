@@ -4,35 +4,34 @@
 #include <term.h>
 #include <irq.h>
 
-typedef int32_t (*syscall_type)();
+typedef intptr_t (*syscall_type)();
 
 // 0
-int32_t sys_restart_syscall()
+intptr_t sys_restart_syscall()
 {
    return 0;
 }
 
 // 1
-int32_t sys_exit()
+intptr_t sys_exit()
 {
    return 0;
 }
 
 // 2
-int32_t sys_fork()
+intptr_t sys_fork()
 {
    return 0;
 }
 
 // 3
-int32_t sys_read(int fd, void *buf, size_t count)
+intptr_t sys_read(int fd, void *buf, size_t count)
 {
    //printk("sys_read(fd = %i, count = %u)\n", fd, count);
    return 0;
 }
 
-// 4
-int32_t sys_write(int fd, const void *buf, size_t count)
+intptr_t sys_write(int fd, const void *buf, size_t count)
 {
    //printk("sys_write(fd = %i, count = %u)\n", fd, count);
 
@@ -44,7 +43,7 @@ int32_t sys_write(int fd, const void *buf, size_t count)
 }
 
 // 5
-int32_t sys_open(const char *pathname, int32_t flags, int32_t mode)
+intptr_t sys_open(const char *pathname, int flags, int mode)
 {
    printk("sys_open(filename = '%s', "
           "flags = %x, mode = %x)\n", pathname, flags, mode);
@@ -52,14 +51,14 @@ int32_t sys_open(const char *pathname, int32_t flags, int32_t mode)
 }
 
 // 6
-int32_t sys_close(int fd)
+intptr_t sys_close(int fd)
 {
    printk("sys_close(fd = %d)\n", fd);
    return 0;
 }
 
 // 7
-int32_t sys_waitpid()
+intptr_t sys_waitpid()
 {
    return 0;
 }
@@ -76,11 +75,13 @@ syscall_type syscalls_pointers[] =
    sys_waitpid
 };
 
-const int syscall_count = sizeof(syscalls_pointers) / sizeof(void *);
+ssize_t syscall_count = sizeof(syscalls_pointers) / sizeof(void *);
 
-int handle_syscall(struct regs *r)
+#ifdef __i386__
+
+intptr_t handle_syscall(regs *r)
 {
-   int syscall_no = r->eax;
+   intptr_t syscall_no = r->eax;
 
    if (syscall_no < 0 || syscall_no >= syscall_count) {
       printk("INVALID syscall #%i\n", syscall_no);
@@ -102,4 +103,4 @@ int handle_syscall(struct regs *r)
    return 0;
 }
 
-
+#endif

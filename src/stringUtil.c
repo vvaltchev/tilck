@@ -2,42 +2,9 @@
 #include <stringUtil.h>
 #include <term.h>
 
-void memcpy(void *dest, const void *src, size_t n)
+void itoa(intptr_t value, char *destBuf)
 {
-   // Copy byte-by-byte until 'b' because divisible by 4
-   asmVolatile ("cld\n\t"
-                "rep movsb\n\t"
-                : // no output
-                :"c" (n % 4),"S" (src),"D" (dest)
-                :"memory");
-
-   // Copy a dword at time the rest
-   asmVolatile ("rep movsd\n\t"
-                : // no output
-                : "c" (n / 4)
-                : "memory");
-}
-
-// Dest and src can overlap
-void memmove(void *dest, const void *src, size_t n)
-{
-   if (dest < src) {
-
-      memcpy(dest, src, n);
-
-   } else {
-      asmVolatile ("std\n\t"
-                   "rep movsb\n\t"
-                   : // no output
-                   :"c" (n), "S" (src+n-1), "D" (dest+n-1)
-                   :"memory");
-   }
-}
-
-
-void itoa(int value, char *destBuf)
-{
-   const int base = 10;
+   const intptr_t base = 10;
 
    char * ptr;
    char * low;
@@ -68,7 +35,7 @@ void itoa(int value, char *destBuf)
    }
 }
 
-void uitoa(unsigned int value, char *destBuf, unsigned int base)
+void uitoa(uintptr_t value, char *destBuf, uint32_t base)
 {
    char * ptr;
    char * low;
@@ -130,7 +97,7 @@ void vprintk(const char *fmt, va_list args)
             break;
 
          case 'p':
-            uitoa(va_arg(args, unsigned), buf, 16);
+            uitoa(va_arg(args, uintptr_t), buf, 16);
             size_t len = strlen(buf);
             size_t fixedLen = 2 * sizeof(void*);
 

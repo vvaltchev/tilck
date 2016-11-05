@@ -3,31 +3,32 @@
 
 DEPDIR = .d
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
-TEST_CFLAGS =  $(OPT) $(WARN) -std=c99 $(INCDIRS) -m32 -march=i686 -DTEST
+TEST_CFLAGS =  $(OPT) $(WARN) -std=c99 $(INCDIRS) -DTEST $(ARCH_CFLAGS)
 COMPILE.c = $(CC) $(DEPFLAGS) $(TEST_CFLAGS) -c
-POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
+POSTCOMPILE = $(MV) -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
 $(shell mkdir -p $(DEPDIR) > /dev/null)
 $(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
-KERNEL_SOURCES=$(wildcard ../src/*.c)
-KERNEL_SOURCES_FILES=$(patsubst ../src/%,%, $(KERNEL_SOURCES))
-KERNEL_OBJECTS=$(patsubst %.c,$(KERNEL_TEST_BUILD_DIR)/%.o, $(KERNEL_SOURCES_FILES))
+#KERNEL_SOURCES=$(wildcard ../src/*.c)
+#KERNEL_SOURCES_FILES=$(patsubst ../src/%,%, $(KERNEL_SOURCES))
+#KERNEL_OBJECTS=$(patsubst %.c,$(KERNEL_TEST_BUILD_DIR)/%.o, $(KERNEL_SOURCES_FILES))
 
 TEST_SOURCES=$(wildcard *.c)
 TEST_OBJECTS=$(TEST_SOURCES:%.c=$(BUILD_DIR)/%.o)
 
 $(UNITTESTS_TARGET): $(TEST_OBJECTS)
-	$(CC) -m32 -o $@ $(TEST_OBJECTS) $(KERNEL_OBJECTS)
+	@echo Linking $@ ...
+	@$(CC) $(ARCH_CFLAGS) -o $@ $(TEST_OBJECTS) $(KERNEL_STATIC_LIB_TARGET)
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
-	 $(COMPILE.c) $(OUTPUT_OPTION) $<
-	 $(POSTCOMPILE)	
+	 @echo Compiling $< ...
+	 @$(COMPILE.c) $(OUTPUT_OPTION) $<
+	 @$(POSTCOMPILE)	
 	
 clean:
-	rm -rf $(DEPDIR)
-	rm -f $(UNITTESTS_TARGET) $(TEST_OBJECTS)
+	$(RM) -rf $(DEPDIR)
 
 .PHONY: clean
 

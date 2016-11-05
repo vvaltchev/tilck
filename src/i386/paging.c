@@ -5,6 +5,8 @@
 #include <kmalloc.h>
 #include <debug_utils.h>
 
+#include <arch/i386/paging_int.h>
+
 /*
  * ----------------------------------------------
  * DEBUG options
@@ -24,7 +26,7 @@ page_directory_t *get_curr_page_dir()
 
 volatile bool in_page_fault = false;
 
-void handle_page_fault(struct regs *r)
+void handle_page_fault(regs *r)
 {
    uint32_t cr2;
    asmVolatile("movl %%cr2, %0" : "=r"(cr2));
@@ -49,7 +51,7 @@ void handle_page_fault(struct regs *r)
    ASSERT(0);
 }
 
-void handle_general_protection_fault(struct regs *r)
+void handle_general_protection_fault(regs *r)
 {
    printk("General protection fault. Error: %p\n", r->err_code);
 }
@@ -83,7 +85,7 @@ static void initialize_page_directory(page_directory_t *pdir,
    }
 }
 
-bool is_mapped(page_directory_t *pdir, uint32_t vaddr)
+bool is_mapped(page_directory_t *pdir, uintptr_t vaddr)
 {
    page_table_t *ptable;
    uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
@@ -97,7 +99,7 @@ bool is_mapped(page_directory_t *pdir, uint32_t vaddr)
    return ptable->pages[page_table_index].present;
 }
 
-bool unmap_page(page_directory_t *pdir, uint32_t vaddr)
+bool unmap_page(page_directory_t *pdir, uintptr_t vaddr)
 {
    page_table_t *ptable;
    uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
@@ -119,8 +121,8 @@ bool unmap_page(page_directory_t *pdir, uint32_t vaddr)
 }
 
 void map_page(page_directory_t *pdir,
-              uint32_t vaddr,
-              uint32_t paddr,
+	          uintptr_t vaddr,
+	          uintptr_t paddr,
               bool us,
               bool rw)
 {
@@ -178,18 +180,18 @@ void map_page(page_directory_t *pdir,
 
 
 void map_pages(page_directory_t *pdir,
-               uint32_t vaddr,
-               uint32_t paddr,
-               uint32_t pageCount,
+	           uintptr_t vaddr,
+	           uintptr_t paddr,
+               int pageCount,
                bool us,
                bool rw)
 {
-   for (unsigned i = 0; i < pageCount; i++) {
+   for (int i = 0; i < pageCount; i++) {
       map_page(pdir, vaddr + (i << 12), paddr + (i << 12), us, rw);
    }
 }
 
-bool kbasic_virtual_alloc(page_directory_t *pdir, uint32_t vaddr,
+bool kbasic_virtual_alloc(page_directory_t *pdir, uintptr_t vaddr,
                           size_t size, bool us, bool rw)
 {
    ASSERT(size > 0);        // the size must be > 0.
@@ -215,7 +217,7 @@ bool kbasic_virtual_alloc(page_directory_t *pdir, uint32_t vaddr,
    return true;
 }
 
-bool kbasic_virtual_free(page_directory_t *pdir, uint32_t vaddr, size_t size)
+bool kbasic_virtual_free(page_directory_t *pdir, uintptr_t vaddr, uintptr_t size)
 {
    ASSERT(size > 0);        // the size must be > 0.
    ASSERT(!(size & 4095));  // the size must be a multiple of 4096

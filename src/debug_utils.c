@@ -74,6 +74,9 @@ void dump_stacktrace_ex(void *ebp)
    printk("\n\n");
 }
 
+#ifdef __i386__
+
+#include <arch/i386/paging_int.h>
 
 int debug_count_used_pdir_entries(page_directory_t *pdir)
 {
@@ -94,6 +97,8 @@ void debug_dump_used_pdir_entries(page_directory_t *pdir)
       }
    }
 }
+
+#endif
 
 void panic(const char *fmt, ...)
 {

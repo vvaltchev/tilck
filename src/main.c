@@ -22,7 +22,7 @@ void timer_phase(int hz)
 
 /* This will keep track of how many ticks that the system
 *  has been running for */
-volatile unsigned timer_ticks = 0;
+volatile uint32_t timer_ticks = 0;
 
 #define CLOCK_HZ 10
 
@@ -43,7 +43,7 @@ void timer_handler()
 }
 
 void init_kb();
-void keyboard_handler(struct regs *r);
+void keyboard_handler(regs *r);
 void set_kernel_stack(uint32_t stack);
 void switch_to_usermode_asm(void *entryPoint, void *stackAddr);
 
@@ -59,8 +59,8 @@ void switch_to_user_mode()
    // maps 16 pages (64 KB) for the user program
 
    map_pages(get_curr_page_dir(),
-             (uint32_t)user_program_vaddr,
-             (uint32_t)user_program_paddr, 16, true, true);
+             (uintptr_t)user_program_vaddr,
+             (uintptr_t)user_program_paddr, 16, true, true);
 
    printk("pdir entries used = %i\n", debug_count_used_pdir_entries(get_curr_page_dir()));
    debug_dump_used_pdir_entries(get_curr_page_dir());

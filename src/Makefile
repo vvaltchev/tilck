@@ -1,43 +1,52 @@
 
-# Makefile for the kernel
+# Makefile for kernel's main directory
 
-DEPDIR = .d
+DEPDIR := .d
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
-POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
+POSTCOMPILE = $(MV) -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
-KERNEL_UNSTRIPPED = $(BUILD_DIR)/uk
-KERNEL_SOURCES=$(wildcard *.c)
-KERNEL_ASM_SOURCES=$(wildcard *.asm)
-KERNEL_OBJECTS=$(KERNEL_ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(KERNEL_SOURCES:%.c=$(BUILD_DIR)/%.o)
+
+KERNEL_UNSTRIPPED := $(BUILD_DIR)/uk
+SOURCES:=$(wildcard *.c)
+OBJECTS:=$(SOURCES:%.c=$(BUILD_DIR)/%.o)
 
 ifdef TEST
-	CFLAGS = $(OPT) $(WARN) -std=c99 $(INCDIRS) -fvisibility=default -ffreestanding -g -nostdinc -m32 -march=i686
+	export CFLAGS = $(OPT) $(WARN) -std=c99 $(INCDIRS) -fvisibility=default -ffreestanding -g -nostdinc $(ARCH_CFLAGS)
 endif
 
 $(shell mkdir -p $(DEPDIR) > /dev/null)
 $(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
-$(KERNEL_TARGET): $(KERNEL_OBJECTS)
-	ld -m elf_i386 -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
+$(KERNEL_TARGET): $(KERNEL_ARCH_CODE_STATIC_LIB_TARGET) $(OBJECTS)
+	@echo Packaging the kernel\'s static library ...
+	@$(AR) rcs $(KERNEL_STATIC_LIB_TARGET) $(OBJECTS)
 ifndef TEST
-	objcopy -O binary -j .text -j .rodata -j .data $(KERNEL_UNSTRIPPED) $@
+	@echo Linking the unstripped ELF binary of the kernel
+	@ld -m $(ELF_LD_FORMAT) -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) \
+	--start-group $(KERNEL_ARCH_CODE_STATIC_LIB_TARGET) $(KERNEL_STATIC_LIB_TARGET) --end-group
+	@echo Stripping the kernel\'s binary ...
+	@objcopy -O binary -j .text -j .rodata -j .data $(KERNEL_UNSTRIPPED) $@
+else
+	
 endif
 
-clean:
-	rm -rf $(DEPDIR)
 
-$(BUILD_DIR)/%.o : %.asm
-	nasm -f elf32 $(OUTPUT_OPTION) $<
+$(KERNEL_ARCH_CODE_STATIC_LIB_TARGET):
+	@cd $(ARCH) && $(MAKE) BUILD_DIR=$(BUILD_DIR)/$(ARCH)	
+
+clean:
+	$(RM) -rf $(DEPDIR)
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
-	 $(COMPILE.c) $(OUTPUT_OPTION) $<
-	 $(POSTCOMPILE)
+	@echo Compiling $< ...
+	@$(COMPILE.c) $(OUTPUT_OPTION) $<
+	@$(POSTCOMPILE)
 
-.PHONY: clean
+.PHONY: clean $(KERNEL_ARCH_CODE_STATIC_LIB_TARGET)
 
 $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d
 
--include $(patsubst %,$(DEPDIR)/%.d,$(basename $(KERNEL_SOURCES)))
+-include $(patsubst %,$(DEPDIR)/%.d,$(basename $(SOURCES)))

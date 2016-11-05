@@ -159,6 +159,7 @@
     <ClInclude Include="..\include\stringUtil.h" />
     <ClInclude Include="..\include\term.h" />
     <ClInclude Include="..\include\debug_utils.h" />
+    <ClInclude Include="..\include\arch\i386\paging_int.h" />
     <ClInclude Include="..\init_src\string.h" />
     <ClInclude Include="..\init_src\usermode_syscall_wrappers.h" />
   </ItemGroup>
