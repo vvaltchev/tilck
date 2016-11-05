@@ -18,12 +18,14 @@ TEST_SOURCES=$(wildcard *.c)
 TEST_OBJECTS=$(TEST_SOURCES:%.c=$(BUILD_DIR)/%.o)
 
 $(UNITTESTS_TARGET): $(TEST_OBJECTS)
-	$(CC) $(ARCH_CFLAGS) -o $@ $(TEST_OBJECTS) $(KERNEL_STATIC_LIB_TARGET)
+	@echo Linking $@ ...
+	@$(CC) $(ARCH_CFLAGS) -o $@ $(TEST_OBJECTS) $(KERNEL_STATIC_LIB_TARGET)
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
-	 $(COMPILE.c) $(OUTPUT_OPTION) $<
-	 $(POSTCOMPILE)	
+	 @echo Compiling $< ...
+	 @$(COMPILE.c) $(OUTPUT_OPTION) $<
+	 @$(POSTCOMPILE)	
 	
 clean:
 	$(RM) -rf $(DEPDIR)
