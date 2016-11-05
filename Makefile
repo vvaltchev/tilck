@@ -1,9 +1,9 @@
 
 # Master Makefile of the project
 
-ARCH = x86
+ARCH = i386
 
-ifeq ($(strip $(ARCH)),x86)
+ifeq ($(strip $(ARCH)),i386)
 ARCH_CFLAGS = -m32 -march=i686
 else
 ARCH_CFLAGS =

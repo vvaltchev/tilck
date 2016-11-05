@@ -26,8 +26,8 @@
 
 void irq_install();
 
-void irq_install_handler(int irq, void(*handler)(regs *r));
-void irq_uninstall_handler(int irq);
+void irq_install_handler(uint8_t irq, void(*handler)(regs *r));
+void irq_uninstall_handler(uint8_t irq);
 
 void IRQ_set_mask(uint8_t IRQline);
 void IRQ_clear_mask(uint8_t IRQline);
