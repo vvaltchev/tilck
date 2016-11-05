@@ -15,6 +15,7 @@ export ELF_LD_FORMAT = elf_x86_64
 export ELF_NASM_FORMAT = elf64
 endif
 
+export AR = ar
 export AS = nasm
 export CC = gcc
 export OPT = -O2
@@ -29,7 +30,10 @@ export CFLAGS =  $(OPT) $(WARN) -std=c99 $(INCDIRS) $(ARCH_CFLAGS) \
 
 export BUILD_DIR = $(shell pwd)/build
 export BOOTLOADER_TARGET = $(BUILD_DIR)/bootloader.bin
-export KERNEL_TARGET = $(BUILD_DIR)/kernel32.bin
+export KERNEL_TARGET = $(BUILD_DIR)/kernel.bin
+
+export KERNEL_STATIC_LIB_TARGET = $(BUILD_DIR)/kernel_static.a
+
 export INIT_TARGET = $(BUILD_DIR)/init.bin
 export FINAL_TARGET = $(BUILD_DIR)/exos.img
 export UNITTESTS_TARGET = $(BUILD_DIR)/unittests

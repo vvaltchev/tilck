@@ -24,7 +24,7 @@ ifndef TEST
 	ld -m $(ELF_LD_FORMAT) -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
 	objcopy -O binary -j .text -j .rodata -j .data $(KERNEL_UNSTRIPPED) $@
 else
-	
+	$(AR) rcs $(KERNEL_STATIC_LIB_TARGET) $(KERNEL_OBJECTS)
 endif
 
 clean:
