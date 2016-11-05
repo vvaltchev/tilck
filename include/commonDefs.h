@@ -14,6 +14,8 @@
 #define ALWAYS_INLINE inline
 #define typeof(x) void *
 
+#define static_assert(s,err)
+
 #else
 
 #define ALWAYS_INLINE __attribute__((always_inline)) inline
@@ -23,12 +25,13 @@
 
 #define typeof(x) __typeof__(x)
 
+#define static_assert(s) _Static_assert(s, "Static assertion failed")
+
 #endif
 
 typedef char int8_t;
 typedef short int16_t;
 typedef int int32_t;
-
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
@@ -36,25 +39,37 @@ typedef unsigned int uint32_t;
 typedef long ssize_t; // signed pointer-size integer
 typedef unsigned long size_t; // unsigned pointer-size integer
 
-typedef uint32_t uintptr_t;
-typedef int32_t intptr_t;
-typedef int32_t ptrdiff_t;
+typedef size_t uintptr_t;
+typedef ssize_t intptr_t;
+typedef ssize_t ptrdiff_t;
+
+static_assert(sizeof(uintptr_t) == sizeof(intptr_t));
+static_assert(sizeof(uintptr_t) == sizeof(void *));
+
+#ifdef __i386__
+
+static_assert(sizeof(void *) == 4);
+
+#elif defined(__x86_64__)
+
+static_assert(sizeof(void *) == 8);
+
+#endif
+
 
 typedef uint8_t bool;
-
-#define true (1)
-#define false (0)
+#define true ((uint8_t)1)
+#define false ((uint8_t)0)
 #define NULL ((void *) 0)
 
 
 /* This defines what the stack looks like after an ISR ran */
-struct regs
-{
+typedef struct {
    uint32_t gs, fs, es, ds;      /* pushed the segs last */
    uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;  /* pushed by 'pusha' */
    uint32_t int_no, err_code;    /* our 'push byte #' and ecodes do this */
    uint32_t eip, cs, eflags, useresp, ss;   /* pushed by the processor automatically */
-};
+} regs;
 
 static ALWAYS_INLINE void outb(uint16_t port, uint8_t val)
 {

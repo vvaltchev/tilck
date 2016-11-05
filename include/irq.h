@@ -32,7 +32,7 @@ void idt_set_gate(unsigned char num,
 
 void irq_install();
 
-void irq_install_handler(int irq, void(*handler)(struct regs *r));
+void irq_install_handler(int irq, void(*handler)(regs *r));
 void irq_uninstall_handler(int irq);
 
 void IRQ_set_mask(uint8_t IRQline);

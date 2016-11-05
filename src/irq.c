@@ -35,7 +35,7 @@ void *irq_routines[16] =
 };
 
 /* This installs a custom IRQ handler for the given IRQ */
-void irq_install_handler(int irq, void(*handler)(struct regs *r))
+void irq_install_handler(int irq, void(*handler)(regs *r))
 {
    irq_routines[irq] = handler;
 }
@@ -210,10 +210,10 @@ void irq_install()
 *  an EOI, you won't raise any more IRQs */
 
 
-void irq_handler(struct regs *r)
+void irq_handler(regs *r)
 {
    /* This is a blank function pointer */
-   void(*handler)(struct regs *r);
+   void(*handler)(regs *r);
 
    const uint8_t irq_no = r->int_no - 32;
 

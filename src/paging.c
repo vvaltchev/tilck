@@ -24,7 +24,7 @@ page_directory_t *get_curr_page_dir()
 
 volatile bool in_page_fault = false;
 
-void handle_page_fault(struct regs *r)
+void handle_page_fault(regs *r)
 {
    uint32_t cr2;
    asmVolatile("movl %%cr2, %0" : "=r"(cr2));
@@ -49,7 +49,7 @@ void handle_page_fault(struct regs *r)
    ASSERT(0);
 }
 
-void handle_general_protection_fault(struct regs *r)
+void handle_general_protection_fault(regs *r)
 {
    printk("General protection fault. Error: %p\n", r->err_code);
 }
