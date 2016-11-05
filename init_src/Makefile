@@ -4,7 +4,7 @@
 DEPDIR = .d
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
-POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
+POSTCOMPILE = $(MV) -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
 INIT_UNSTRIPPED = $(BUILD_DIR)/ui
 
@@ -16,11 +16,11 @@ $(shell mkdir -p $(DEPDIR) >/dev/null)
 $(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
 $(INIT_TARGET): $(OBJECTS)
-	ld -m elf_i386 -Ttext=0x08000000 -o $(INIT_UNSTRIPPED) $(OBJECTS)
+	ld -m $(ELF_LD_FORMAT) -Ttext=0x08000000 -o $(INIT_UNSTRIPPED) $(OBJECTS)
 	objcopy -O binary -j .text -j .rodata -j .data $(INIT_UNSTRIPPED) $@
 
 $(BUILD_DIR)/%.o : %.asm
-	nasm -f elf32 $(OUTPUT_OPTION) $<
+	$(NASM) -f $(ELF_NASM_FORMAT) $(OUTPUT_OPTION) $<
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
@@ -28,7 +28,7 @@ $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
 	 $(POSTCOMPILE)
 
 clean:
-	rm -rf $(DEPDIR)
+	$(RM) -rf $(DEPDIR)
 
 .PHONY: clean
 
