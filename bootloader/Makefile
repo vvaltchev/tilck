@@ -5,7 +5,7 @@ ASM_SOURCES=$(wildcard *.asm)
 OBJECTS=$(ASM_SOURCES:%.asm=$(BUILD_DIR)/%.bin)
 
 $(BUILD_DIR)/%.bin : %.asm
-	$(AS) -f bin $(OUTPUT_OPTION) $<
+	$(NASM) -f bin $(OUTPUT_OPTION) $<
 
 $(BOOTLOADER_TARGET): $(OBJECTS)
 	cp $(BUILD_DIR)/boot_stage1.bin $@

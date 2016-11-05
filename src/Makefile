@@ -4,7 +4,7 @@
 DEPDIR = .d
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
-POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
+POSTCOMPILE = $(MV) -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
 KERNEL_UNSTRIPPED = $(BUILD_DIR)/uk
 KERNEL_SOURCES=$(wildcard *.c)
@@ -13,7 +13,7 @@ KERNEL_ASM_SOURCES=$(wildcard *.asm)
 KERNEL_OBJECTS=$(KERNEL_ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(KERNEL_SOURCES:%.c=$(BUILD_DIR)/%.o)
 
 ifdef TEST
-	CFLAGS = $(OPT) $(WARN) -std=c99 $(INCDIRS) -fvisibility=default -ffreestanding -g -nostdinc $(ARCH_CFLAGS)
+	export CFLAGS = $(OPT) $(WARN) -std=c99 $(INCDIRS) -fvisibility=default -ffreestanding -g -nostdinc $(ARCH_CFLAGS)
 endif
 
 $(shell mkdir -p $(DEPDIR) > /dev/null)
@@ -28,10 +28,10 @@ else
 endif
 
 clean:
-	rm -rf $(DEPDIR)
+	$(RM) -rf $(DEPDIR)
 
 $(BUILD_DIR)/%.o : %.asm
-	nasm -f $(ELF_NASM_FORMAT) $(OUTPUT_OPTION) $<
+	$(NASM) -f $(ELF_NASM_FORMAT) $(OUTPUT_OPTION) $<
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d

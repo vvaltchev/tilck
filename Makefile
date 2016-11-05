@@ -15,9 +15,13 @@ export ELF_LD_FORMAT = elf_x86_64
 export ELF_NASM_FORMAT = elf64
 endif
 
+# Tools
 export AR = ar
-export AS = nasm
+export NASM = nasm
 export CC = gcc
+export MV = mv
+export RM = rm
+
 export OPT = -O2
 #export OPT = -O0 -fno-inline-functions
 export WARN = -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
