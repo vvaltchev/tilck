@@ -21,7 +21,7 @@ $(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
 $(KERNEL_TARGET): $(KERNEL_OBJECTS)
 ifndef TEST
-	ld -m elf_i386 -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
+	ld -m $(ELF_LD_FORMAT) -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) $(KERNEL_OBJECTS)
 	objcopy -O binary -j .text -j .rodata -j .data $(KERNEL_UNSTRIPPED) $@
 else
 	
@@ -31,7 +31,7 @@ clean:
 	rm -rf $(DEPDIR)
 
 $(BUILD_DIR)/%.o : %.asm
-	nasm -f elf32 $(OUTPUT_OPTION) $<
+	nasm -f $(ELF_NASM_FORMAT) $(OUTPUT_OPTION) $<
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d

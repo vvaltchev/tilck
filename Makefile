@@ -5,8 +5,14 @@ export ARCH = i386
 
 ifeq ($(strip $(ARCH)),i386)
 export ARCH_CFLAGS = -m32 -march=i686
-else
-export ARCH_CFLAGS =
+export ELF_LD_FORMAT = elf_i386
+export ELF_NASM_FORMAT = elf32
+endif
+
+ifeq ($(strip $(ARCH)),x86_64)
+export ARCH_CFLAGS = -m64 -march=amd64
+export ELF_LD_FORMAT = elf_x86_64
+export ELF_NASM_FORMAT = elf64
 endif
 
 export AS = nasm
