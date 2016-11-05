@@ -28,7 +28,7 @@ ifndef TEST
 	@echo Stripping the kernel\'s binary ...
 	@objcopy -O binary -j .text -j .rodata -j .data $(KERNEL_UNSTRIPPED) $@
 else
-	# Do nothing
+	
 endif
 
 
