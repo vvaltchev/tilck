@@ -1,13 +1,21 @@
 
 # Master Makefile of the project
 
+ARCH = x86
+
+ifeq ($(strip $(ARCH)),x86)
+ARCH_CFLAGS = -m32 -march=i686
+else
+ARCH_CFLAGS =
+endif
+
 export AS = nasm
 export CC = gcc
 export OPT = -O2
 #export OPT = -O0 -fno-inline-functions
 export WARN = -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
 export INCDIRS = -I$(shell pwd)/include
-export CFLAGS =  $(OPT) $(WARN) -std=c99 $(INCDIRS) -m32 -march=i686 \
+export CFLAGS =  $(OPT) $(WARN) -std=c99 $(INCDIRS) $(ARCH_CFLAGS) \
                  -mno-red-zone -fvisibility=default \
                  -ffreestanding -g -nostdinc -fno-builtin \
                  -fno-asynchronous-unwind-tables \
