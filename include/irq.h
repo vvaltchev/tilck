@@ -24,12 +24,6 @@
 #define FAULT_ALIGN_FAULT         17
 #define FAULT_MACHINE_CHECK       18
 
-
-void idt_set_gate(unsigned char num,
-                  unsigned long base,
-                  unsigned short sel,
-                  unsigned char flags);
-
 void irq_install();
 
 void irq_install_handler(int irq, void(*handler)(regs *r));
