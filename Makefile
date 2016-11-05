@@ -36,13 +36,14 @@ export BUILD_DIR = $(shell pwd)/build
 export BOOTLOADER_TARGET = $(BUILD_DIR)/bootloader.bin
 export KERNEL_TARGET = $(BUILD_DIR)/kernel.bin
 
-export KERNEL_STATIC_LIB_TARGET = $(BUILD_DIR)/kernel_static.a
+export KERNEL_BUILD_DIR = $(BUILD_DIR)/kernel
+export KERNEL_STATIC_LIB_TARGET = $(KERNEL_BUILD_DIR)/kernel_static.a
+export KERNEL_ARCH_CODE_STATIC_LIB_TARGET = $(KERNEL_BUILD_DIR)/kernel_arch.a
 
 export INIT_TARGET = $(BUILD_DIR)/init.bin
 export FINAL_TARGET = $(BUILD_DIR)/exos.img
 export UNITTESTS_TARGET = $(BUILD_DIR)/unittests
 
-export KERNEL_BUILD_DIR = $(BUILD_DIR)/kernel
 export KERNEL_TEST_BUILD_DIR = $(BUILD_DIR)/test_kernel
 export INIT_BUILD_DIR = $(BUILD_DIR)/init
 export UNITTESTS_BUILD_DIR = $(BUILD_DIR)/tests
