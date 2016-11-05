@@ -22,7 +22,7 @@ void timer_phase(int hz)
 
 /* This will keep track of how many ticks that the system
 *  has been running for */
-volatile unsigned timer_ticks = 0;
+volatile uint32_t timer_ticks = 0;
 
 #define CLOCK_HZ 10
 
@@ -43,7 +43,7 @@ void timer_handler()
 }
 
 void init_kb();
-void keyboard_handler(struct regs *r);
+void keyboard_handler(regs *r);
 void set_kernel_stack(uint32_t stack);
 void switch_to_usermode_asm(void *entryPoint, void *stackAddr);
 

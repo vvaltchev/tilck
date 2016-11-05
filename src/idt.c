@@ -202,7 +202,7 @@ char *exception_messages[] =
 };
 
 
-int handle_syscall(struct regs *);
+int handle_syscall(regs *);
 
 void *fault_handlers[32] = { NULL };
 
@@ -211,7 +211,7 @@ void set_fault_handler(int exceptionNum, void *ptr)
    fault_handlers[exceptionNum] = ptr;
 }
 
-int generic_interrupt_handler(struct regs *r)
+int generic_interrupt_handler(regs *r)
 {
    if (LIKELY(r->int_no == 0x80)) {
       return handle_syscall(r);
@@ -220,7 +220,7 @@ int generic_interrupt_handler(struct regs *r)
    // Higher exception numbers are handled by irq_handler()
    ASSERT(r->int_no < 32);
 
-   void(*handler)(struct regs *r);
+   void(*handler)(regs *r);
    handler = fault_handlers[r->int_no];
 
    if (handler) {

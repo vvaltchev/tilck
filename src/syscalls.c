@@ -78,7 +78,7 @@ syscall_type syscalls_pointers[] =
 
 const int syscall_count = sizeof(syscalls_pointers) / sizeof(void *);
 
-int handle_syscall(struct regs *r)
+int handle_syscall(regs *r)
 {
    int syscall_no = r->eax;
 
