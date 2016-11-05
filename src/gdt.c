@@ -112,11 +112,7 @@ void gdt_set_gate(int num,
 
 
 
-/**Ok, this is going to be hackish, but we will salvage the gdt_entry_bits struct to form our TSS descriptor
-So some of these names of the fields will actually be different.. maybe I'll fix this later..**/
 tss_entry_t tss_entry;
- 
-
 
 void set_kernel_stack(uint32_t stack) //this will update the ESP0 stack used when an interrupt occurs
 {
@@ -184,11 +180,8 @@ void gdt_install()
 
     write_tss(5, 0x10, 0x0);
 
-
-
     /* Flush out the old GDT and install the new changes! */
     gdt_load();
 
    tss_flush();
-
 }
