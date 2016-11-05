@@ -9,6 +9,7 @@ POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 KERNEL_UNSTRIPPED = $(BUILD_DIR)/uk
 KERNEL_SOURCES=$(wildcard *.c)
 KERNEL_ASM_SOURCES=$(wildcard *.asm)
+
 KERNEL_OBJECTS=$(KERNEL_ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(KERNEL_SOURCES:%.c=$(BUILD_DIR)/%.o)
 
 ifdef TEST

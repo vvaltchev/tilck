@@ -5,26 +5,27 @@
 #include <stringUtil.h>
 #include <term.h>
 
+void idt_set_gate(uint8_t num, void *handler, uint16_t sel, uint8_t flags);
 
 
 /* These are own ISRs that point to our special IRQ handler
 *  instead of the regular 'fault_handler' function */
-extern void irq0();
-extern void irq1();
-extern void irq2();
-extern void irq3();
-extern void irq4();
-extern void irq5();
-extern void irq6();
-extern void irq7();
-extern void irq8();
-extern void irq9();
-extern void irq10();
-extern void irq11();
-extern void irq12();
-extern void irq13();
-extern void irq14();
-extern void irq15();
+void irq0();
+void irq1();
+void irq2();
+void irq3();
+void irq4();
+void irq5();
+void irq6();
+void irq7();
+void irq8();
+void irq9();
+void irq10();
+void irq11();
+void irq12();
+void irq13();
+void irq14();
+void irq15();
 
 /* This array is actually an array of function pointers. We use
 *  this to handle custom IRQ handlers for a given IRQ */
@@ -35,13 +36,13 @@ void *irq_routines[16] =
 };
 
 /* This installs a custom IRQ handler for the given IRQ */
-void irq_install_handler(int irq, void(*handler)(regs *r))
+void irq_install_handler(uint8_t irq, void(*handler)(regs *r))
 {
    irq_routines[irq] = handler;
 }
 
 /* This clears the handler for a given IRQ */
-void irq_uninstall_handler(int irq)
+void irq_uninstall_handler(uint8_t irq)
 {
    irq_routines[irq] = NULL;
 }
@@ -180,22 +181,22 @@ void irq_install()
    //irq_remap();
    PIC_remap(32, 40);
 
-   idt_set_gate(32, (unsigned)irq0, 0x08, 0x8E);
-   idt_set_gate(33, (unsigned)irq1, 0x08, 0x8E);
-   idt_set_gate(34, (unsigned)irq2, 0x08, 0x8E);
-   idt_set_gate(35, (unsigned)irq3, 0x08, 0x8E);
-   idt_set_gate(36, (unsigned)irq4, 0x08, 0x8E);
-   idt_set_gate(37, (unsigned)irq5, 0x08, 0x8E);
-   idt_set_gate(38, (unsigned)irq6, 0x08, 0x8E);
-   idt_set_gate(39, (unsigned)irq7, 0x08, 0x8E);
-   idt_set_gate(40, (unsigned)irq8, 0x08, 0x8E);
-   idt_set_gate(41, (unsigned)irq9, 0x08, 0x8E);
-   idt_set_gate(42, (unsigned)irq10, 0x08, 0x8E);
-   idt_set_gate(43, (unsigned)irq11, 0x08, 0x8E);
-   idt_set_gate(44, (unsigned)irq12, 0x08, 0x8E);
-   idt_set_gate(45, (unsigned)irq13, 0x08, 0x8E);
-   idt_set_gate(46, (unsigned)irq14, 0x08, 0x8E);
-   idt_set_gate(47, (unsigned)irq15, 0x08, 0x8E);
+   idt_set_gate(32, irq0, 0x08, 0x8E);
+   idt_set_gate(33, irq1, 0x08, 0x8E);
+   idt_set_gate(34, irq2, 0x08, 0x8E);
+   idt_set_gate(35, irq3, 0x08, 0x8E);
+   idt_set_gate(36, irq4, 0x08, 0x8E);
+   idt_set_gate(37, irq5, 0x08, 0x8E);
+   idt_set_gate(38, irq6, 0x08, 0x8E);
+   idt_set_gate(39, irq7, 0x08, 0x8E);
+   idt_set_gate(40, irq8, 0x08, 0x8E);
+   idt_set_gate(41, irq9, 0x08, 0x8E);
+   idt_set_gate(42, irq10, 0x08, 0x8E);
+   idt_set_gate(43, irq11, 0x08, 0x8E);
+   idt_set_gate(44, irq12, 0x08, 0x8E);
+   idt_set_gate(45, irq13, 0x08, 0x8E);
+   idt_set_gate(46, irq14, 0x08, 0x8E);
+   idt_set_gate(47, irq15, 0x08, 0x8E);
 }
 
 /* Each of the IRQ ISRs point to this function, rather than

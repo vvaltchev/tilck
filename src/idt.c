@@ -36,10 +36,7 @@ void idt_load();
 /*
  * Use this function to set an entry in the IDT.
  */
-void idt_set_gate(uint8_t num,
-                  void *handler,
-                  uint16_t sel,
-                  uint8_t flags)
+void idt_set_gate(uint8_t num, void *handler, uint16_t sel, uint8_t flags)
 {
 	const uint32_t base = (uint32_t)handler;
 
