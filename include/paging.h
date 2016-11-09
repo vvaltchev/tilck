@@ -22,14 +22,15 @@ void map_page(page_directory_t *pdir,
 bool is_mapped(page_directory_t *pdir, uintptr_t vaddr);
 bool unmap_page(page_directory_t *pdir, uintptr_t vaddr);
 
-void map_pages(page_directory_t *pdir,
-	            uintptr_t vaddr,
-	            uintptr_t paddr,
-               int pageCount,
-               bool us,
-               bool rw);
-
-bool kbasic_virtual_alloc(page_directory_t *pdir, uintptr_t vaddr,
-                          size_t size, bool us, bool rw);
-
-bool kbasic_virtual_free(page_directory_t *pdir, uintptr_t vaddr, size_t size);
+static inline void
+map_pages(page_directory_t *pdir,
+          uintptr_t vaddr,
+          uintptr_t paddr,
+          int pageCount,
+          bool us,
+          bool rw)
+{
+   for (int i = 0; i < pageCount; i++) {
+      map_page(pdir, vaddr + (i << 12), paddr + (i << 12), us, rw);
+   }
+}
