@@ -140,7 +140,7 @@
     <ClCompile Include="..\init_src\string.c" />
     <ClCompile Include="..\unittests\asmMocks.c" />
     <ClCompile Include="..\unittests\mocks.c" />
-    <ClCompile Include="..\unittests\testMain.c" />
+    <ClCompile Include="..\unittests\tests_main.cpp" />
     <ClCompile Include="..\src\i386\gdt.c" />
     <ClCompile Include="..\src\i386\idt.c" />
     <ClCompile Include="..\src\i386\irq.c" />
@@ -153,7 +153,7 @@
     <ClCompile Include="..\src\term.c" />
     <ClCompile Include="..\src\debug_utils.c" />
     <ClCompile Include="..\src\kmalloc.c" />
-    <ClCompile Include="..\src\src\util32.c" />
+    <ClCompile Include="..\src\i386\utils32.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\commonDefs.h" />

@@ -121,8 +121,8 @@ bool unmap_page(page_directory_t *pdir, uintptr_t vaddr)
 }
 
 void map_page(page_directory_t *pdir,
-	          uintptr_t vaddr,
-	          uintptr_t paddr,
+	           uintptr_t vaddr,
+	           uintptr_t paddr,
               bool us,
               bool rw)
 {
@@ -180,8 +180,8 @@ void map_page(page_directory_t *pdir,
 
 
 void map_pages(page_directory_t *pdir,
-	           uintptr_t vaddr,
-	           uintptr_t paddr,
+	            uintptr_t vaddr,
+	            uintptr_t paddr,
                int pageCount,
                bool us,
                bool rw)
