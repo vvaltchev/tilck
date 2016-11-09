@@ -15,7 +15,7 @@ page_directory_t *get_curr_page_dir();
 
 void map_page(page_directory_t *pdir,
               uintptr_t vaddr,
-	          uintptr_t paddr,
+	           uintptr_t paddr,
               bool us,
               bool rw);
 
@@ -23,8 +23,8 @@ bool is_mapped(page_directory_t *pdir, uintptr_t vaddr);
 bool unmap_page(page_directory_t *pdir, uintptr_t vaddr);
 
 void map_pages(page_directory_t *pdir,
-	           uintptr_t vaddr,
-	           uintptr_t paddr,
+	            uintptr_t vaddr,
+	            uintptr_t paddr,
                int pageCount,
                bool us,
                bool rw);

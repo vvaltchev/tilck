@@ -19,6 +19,7 @@ endif
 export AR = ar
 export NASM = nasm
 export CC = gcc
+export CXX = g++
 export MV = mv
 export RM = rm
 
