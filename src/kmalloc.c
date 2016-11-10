@@ -14,7 +14,7 @@
 // Reasonble sizes for MIN_BLOCK_SIZE
 static_assert(MIN_BLOCK_SIZE == 16 || MIN_BLOCK_SIZE == 32 || MIN_BLOCK_SIZE == 64);
 
-// Reasonable size for BIG_CHUNK_SIZE
+// Reasonable size for BIG_CHUNK_SIZE (divisible by 1 MB)
 static_assert((BIG_CHUNK_SIZE & ((1 << 20) - 1)) == 0);
 
 bool kbasic_virtual_alloc(uintptr_t vaddr, size_t size);
@@ -40,12 +40,13 @@ bool initialized_slots[BIG_CHUNK_COUNT] = {0};
 
 typedef struct {
 
-   uint8_t split : 1;
-   uint8_t free : 1;
+   uint8_t split : 1; // 1 if the block has been split. Check its children.
+   uint8_t free : 1;  // In case split = 0, free = 1 means the chunk is free.
 
    uint8_t unused : 6;
 
 } block_node;
+
 
 typedef struct {
 
@@ -60,16 +61,21 @@ typedef struct {
 
 } meta_data_chunk;
 
+static_assert(sizeof(meta_data_chunk) == BIG_CHUNK_SIZE);
+
 int get_free_chunk_index()
 {
    /*
-   * Only chunks at index N, with N not divisible by 16 usable for data.
-   * Chunks with index divisible by 16, are used for allocator's meta-data.
-   * Since the meta-data for 1 MB of data is 64 KB, 1 meta-data chunk can contain
-   * meta-data for up to 16 data chunks. In order to keep things simple, it contains
-   * meta-data for the next 15 chunks. That way, given a chunk at index N, we know
-   * that: its meta-data chunk is (N >> 4) and its meta-data is the 64 KB block at index
-   * N & 15.
+   * Only chunks at index N, with N not divisible by
+   * CHUNKS_IN_METADATA_CHUNK are usable for data.
+   * Chunks with index divisible by CHUNKS_IN_METADATA_CHUNK, are used for
+   * allocator's meta-data.
+   *
+   * In order to keep things simple and handy, a meta-data chunk contains
+   * meta-data for the next (CHUNKS_IN_METADATA_CHUNK - 1) chunks.
+   * That way, given a chunk at index N, we know that its meta-data chunk is
+   * floor(N / CHUNKS_IN_METADATA_CHUNK) and its meta-data is the chunk_meta_data_obj
+   * at index N & (CHUNKS_IN_METADATA_CHUNK - 1)
    */
 
    for (int i = 0; i < BIG_CHUNK_COUNT; i++)
