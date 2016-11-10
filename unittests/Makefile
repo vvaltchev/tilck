@@ -1,9 +1,9 @@
 
-# Makefile for kernel's unit tests
+# Makefile for kernel's UNIT TESTS
 
 DEPDIR = .d
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
-TEST_CFLAGS =  $(OPT) $(WARN) -g $(INCDIRS) -DTEST $(ARCH_CFLAGS)
+TEST_CFLAGS =  $(OPT) $(WARN) -g $(INCDIRS) -DTEST $(ARCH_CFLAGS) -Wno-format
 COMPILE.c = $(CC) -std=c99 $(DEPFLAGS) $(TEST_CFLAGS) -c
 COMPILE.cpp = $(CXX) -std=c++11 $(DEPFLAGS) $(TEST_CFLAGS) -c
 POSTCOMPILE = $(MV) -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
@@ -11,6 +11,8 @@ POSTCOMPILE = $(MV) -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 SYMBOL_WRAPPING  = -Wl,--wrap,panic
 SYMBOL_WRAPPING += -Wl,--wrap,assert_failed
 SYMBOL_WRAPPING += -Wl,--wrap,printk
+SYMBOL_WRAPPING += -Wl,--wrap,kbasic_virtual_alloc
+SYMBOL_WRAPPING += -Wl,--wrap,kbasic_virtual_free
 
 
 $(shell mkdir -p $(DEPDIR) > /dev/null)
@@ -25,7 +27,6 @@ TEST_CPP_SOURCES = $(wildcard *.cpp)
 TEST_OBJECTS=$(TEST_C_SOURCES:%.c=$(BUILD_DIR)/%.o) $(TEST_CPP_SOURCES:%.cpp=$(BUILD_DIR)/%.o) 
 
 $(UNITTESTS_TARGET): $(TEST_OBJECTS)
-	@echo test objects: $(TEST_OBJECTS)
 	@echo Linking $@ ...
 	@$(CXX) $(ARCH_CFLAGS) -o $@ $(TEST_OBJECTS) $(BUILD_DIR)/kernel/$(KERNEL_STATIC_LIB_TARGET_NAME) $(SYMBOL_WRAPPING)
 
@@ -45,7 +46,7 @@ $(BUILD_DIR)/%.o : %.cpp $(DEPDIR)/%.d
 clean:
 	$(RM) -rf $(DEPDIR)
 
-.PHONY: clean
+.PHONY: clean $(UNITTESTS_TARGET)
 
 $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d

@@ -3,56 +3,10 @@
 #include <paging.h>
 #include <stringUtil.h>
 
-#define HEAP_BASE_ADDR (KERNEL_BASE_VADDR + 0x4000000) // BASE + 64 MB
-#define SLOTS_COUNT (128)
+#define SLOTS_COUNT (128) // Total of 128 MB
 
-
-bool kbasic_virtual_alloc(page_directory_t *pdir, uintptr_t vaddr,
-                          size_t size, bool us, bool rw)
-{
-   ASSERT(size > 0);        // the size must be > 0.
-   ASSERT(!(size & 4095));  // the size must be a multiple of 4096
-   ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
-
-   unsigned pagesCount = size >> 12;
-
-   for (unsigned i = 0; i < pagesCount; i++) {
-      if (is_mapped(pdir, vaddr + (i << 12))) {
-         return false;
-      }
-   }
-
-   for (unsigned i = 0; i < pagesCount; i++) {
-
-      void *paddr = alloc_phys_page();
-      ASSERT(paddr != NULL);
-
-      map_page(pdir, vaddr + (i << 12), (uintptr_t)paddr, us, rw);
-   }
-
-   return true;
-}
-
-bool kbasic_virtual_free(page_directory_t *pdir, uintptr_t vaddr, uintptr_t size)
-{
-   ASSERT(size > 0);        // the size must be > 0.
-   ASSERT(!(size & 4095));  // the size must be a multiple of 4096
-   ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
-
-   unsigned pagesCount = size >> 12;
-
-   for (unsigned i = 0; i < pagesCount; i++) {
-      if (!is_mapped(pdir, vaddr + (i << 12))) {
-         return false;
-      }
-   }
-
-   for (unsigned i = 0; i < pagesCount; i++) {
-      unmap_page(pdir, vaddr + (i << 12));
-   }
-
-   return true;
-}
+bool kbasic_virtual_alloc(uintptr_t vaddr, size_t size);
+bool kbasic_virtual_free(uintptr_t vaddr, uintptr_t size);
 
 /*
  * Table for accounting slots of 1 MB used in kernel's virtual memory.
@@ -62,7 +16,7 @@ bool kbasic_virtual_free(page_directory_t *pdir, uintptr_t vaddr, uintptr_t size
  *
  */
 
-bool slots_table[SLOTS_COUNT];
+bool slots_table[SLOTS_COUNT] = {0};
 
 
 /*
@@ -70,25 +24,28 @@ bool slots_table[SLOTS_COUNT];
  * Initialized means that the memory for it has been claimed
  */
 
-bool initialized_slots[SLOTS_COUNT];
+bool initialized_slots[SLOTS_COUNT] = {0};
 
 int get_free_slot()
 {
-   for (int i = 0; i < SLOTS_COUNT; i++) {
+   for (int i = 0; i < SLOTS_COUNT; i++)
       if (!slots_table[i])
          return i;
-   }
 
    return -1;
 }
 
 void *kmalloc(size_t size)
 {
-	printk("kmalloc(%d)\n", size);
+	printk("kmalloc(%i)\n", size);
+   printk("heap base addr: %p\n", HEAP_BASE_ADDR);
 
-   
+   bool r = kbasic_virtual_alloc(HEAP_BASE_ADDR, 4096);
 
-	return NULL;
+   ASSERT(r);
+
+
+	return (void*)HEAP_BASE_ADDR;
 }
 
 

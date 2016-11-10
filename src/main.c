@@ -75,6 +75,12 @@ void show_hello_message()
 }
 
 
+void kmalloc_test()
+{
+   void *ptr = kmalloc(16);
+   printk("Testing kmalloc: %p\n", ptr);
+}
+
 void kmain() {
 
    term_init();
@@ -97,6 +103,8 @@ void kmain() {
 
    sti();
    init_kb();
+
+   kmalloc_test();
 
    switch_to_user_mode();
 
