@@ -24,6 +24,11 @@ page_directory_t *get_curr_page_dir()
    return kernel_page_dir;
 }
 
+page_directory_t *get_kernel_page_dir()
+{
+   return kernel_page_dir;
+}
+
 volatile bool in_page_fault = false;
 
 void handle_page_fault(regs *r)
