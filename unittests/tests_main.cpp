@@ -25,13 +25,13 @@ uintptr_t test_get_heap_base() {
 
 bool __wrap_kbasic_virtual_alloc(uintptr_t vaddr, size_t size)
 {
-   printf("[kernel] kbasic_virtual_alloc(%p, %u)\n", vaddr, size);
+   printf("[test wrap] kbasic_virtual_alloc(%p, %u)\n", vaddr, size);
    return true;
 }
 
 bool __wrap_kbasic_virtual_free(uintptr_t vaddr, uintptr_t size)
 {
-   printf("[kernel] kbasic_virtual_free(%p, %u)\n", vaddr, size);
+   printf("[test wrap] kbasic_virtual_free(%p, %u)\n", vaddr, size);
    return true;
 }
 
