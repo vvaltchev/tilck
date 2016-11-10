@@ -3,20 +3,32 @@
 #include <paging.h>
 #include <stringUtil.h>
 
-#define SLOTS_COUNT (128) // Total of 128 MB
+#define MIN_BLOCK_SIZE (32)
+#define BIG_CHUNK_SIZE (1 << 20) // 1 MB
+#define BIG_CHUNK_COUNT (128) // Total of 128 MB
+
+
+#define BLOCK_NODES_IN_META_DATA_OBJ (2 * BIG_CHUNK_SIZE / MIN_BLOCK_SIZE)
+#define CHUNKS_IN_METADATA_CHUNK (BIG_CHUNK_SIZE / BLOCK_NODES_IN_META_DATA_OBJ)
+
+// Reasonble sizes for MIN_BLOCK_SIZE
+static_assert(MIN_BLOCK_SIZE == 16 || MIN_BLOCK_SIZE == 32 || MIN_BLOCK_SIZE == 64);
+
+// Reasonable size for BIG_CHUNK_SIZE
+static_assert((BIG_CHUNK_SIZE & ((1 << 20) - 1)) == 0);
 
 bool kbasic_virtual_alloc(uintptr_t vaddr, size_t size);
-bool kbasic_virtual_free(uintptr_t vaddr, uintptr_t size);
+bool kbasic_virtual_free(uintptr_t vaddr, size_t size);
 
 /*
  * Table for accounting slots of 1 MB used in kernel's virtual memory.
  *
- * Each slot is 'false' if there is some space left or 'true' if its whole
+ * Each chunk is 'false' if there is some space left or 'true' if its whole
  * memory has been used.
  *
  */
 
-bool slots_table[SLOTS_COUNT] = {0};
+bool full_chunks_table[BIG_CHUNK_COUNT] = {0};
 
 
 /*
@@ -24,16 +36,50 @@ bool slots_table[SLOTS_COUNT] = {0};
  * Initialized means that the memory for it has been claimed
  */
 
-bool initialized_slots[SLOTS_COUNT] = {0};
+bool initialized_slots[BIG_CHUNK_COUNT] = {0};
 
-int get_free_slot()
+typedef struct {
+
+   uint8_t split : 1;
+   uint8_t free : 1;
+
+   uint8_t unused : 6;
+
+} block_node;
+
+typedef struct {
+
+   block_node nodes[BLOCK_NODES_IN_META_DATA_OBJ];
+
+} chunk_meta_data_obj;
+
+
+typedef struct {
+
+   chunk_meta_data_obj meta_data_objects[CHUNKS_IN_METADATA_CHUNK];
+
+} meta_data_chunk;
+
+int get_free_chunk_index()
 {
-   for (int i = 0; i < SLOTS_COUNT; i++)
-      if (!slots_table[i])
+   /*
+   * Only chunks at index N, with N not divisible by 16 usable for data.
+   * Chunks with index divisible by 16, are used for allocator's meta-data.
+   * Since the meta-data for 1 MB of data is 64 KB, 1 meta-data chunk can contain
+   * meta-data for up to 16 data chunks. In order to keep things simple, it contains
+   * meta-data for the next 15 chunks. That way, given a chunk at index N, we know
+   * that: its meta-data chunk is (N >> 4) and its meta-data is the 64 KB block at index
+   * N & 15.
+   */
+
+   for (int i = 0; i < BIG_CHUNK_COUNT; i++)
+      if ((i & (CHUNKS_IN_METADATA_CHUNK - 1)) && !full_chunks_table[i])
          return i;
 
    return -1;
 }
+
+
 
 void *kmalloc(size_t size)
 {

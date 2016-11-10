@@ -120,7 +120,7 @@ bool kbasic_virtual_alloc(uintptr_t vaddr, size_t size)
    return true;
 }
 
-bool kbasic_virtual_free(uintptr_t vaddr, uintptr_t size)
+bool kbasic_virtual_free(uintptr_t vaddr, size_t size)
 {
    ASSERT(size > 0);        // the size must be > 0.
    ASSERT(!(size & 4095));  // the size must be a multiple of 4096
