@@ -92,24 +92,21 @@ void free_phys_page(void *address) {
 }
 
 
-bool kbasic_virtual_alloc(uintptr_t vaddr, size_t size)
+bool kbasic_virtual_alloc(uintptr_t vaddr, int pageCount)
 {
-   ASSERT(size > 0);        // the size must be > 0.
-   ASSERT(!(size & 4095));  // the size must be a multiple of 4096
    ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
 
-   page_directory_t *pdir = get_curr_page_dir();
+   page_directory_t *pdir = get_kernel_page_dir();
 
-   int pagesCount = (int) (size >> 12);
-
-   if (get_free_physical_pages_count() < pagesCount)
+   // Ensure that we have enough physical memory.
+   if (get_free_physical_pages_count() < pageCount)
       return false;
 
-   for (int i = 0; i < pagesCount; i++)
+   for (int i = 0; i < pageCount; i++)
       if (is_mapped(pdir, vaddr + (i << 12)))
          return false;
 
-   for (int i = 0; i < pagesCount; i++) {
+   for (int i = 0; i < pageCount; i++) {
 
       void *paddr = alloc_phys_page();
       ASSERT(paddr != NULL);
@@ -120,21 +117,17 @@ bool kbasic_virtual_alloc(uintptr_t vaddr, size_t size)
    return true;
 }
 
-bool kbasic_virtual_free(uintptr_t vaddr, size_t size)
+bool kbasic_virtual_free(uintptr_t vaddr, int pageCount)
 {
-   ASSERT(size > 0);        // the size must be > 0.
-   ASSERT(!(size & 4095));  // the size must be a multiple of 4096
    ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
 
-   page_directory_t *pdir = get_curr_page_dir();
+   page_directory_t *pdir = get_kernel_page_dir();
 
-   unsigned pagesCount = size >> 12;
-
-   for (unsigned i = 0; i < pagesCount; i++)
+   for (int i = 0; i < pageCount; i++)
       if (!is_mapped(pdir, vaddr + (i << 12)))
          return false;
 
-   for (unsigned i = 0; i < pagesCount; i++) {
+   for (int i = 0; i < pageCount; i++) {
 
       uintptr_t va = vaddr + (i << 12);
 
