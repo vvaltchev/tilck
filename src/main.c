@@ -92,7 +92,7 @@ void kmain() {
 
    init_physical_page_allocator();
    init_paging();
-
+   initialize_kmalloc();
 
    timer_phase(CLOCK_HZ);
 

@@ -4,100 +4,149 @@
 #include <stringUtil.h>
 
 #define MIN_BLOCK_SIZE (32)
-#define BIG_CHUNK_SIZE (1 << 20) // 1 MB
-#define BIG_CHUNK_COUNT (128) // Total of 128 MB
+#define HEAP_DATA_SIZE (512 * 1024 * 1024)
+
+#define BLOCK_NODES_IN_META_DATA (2 * HEAP_DATA_SIZE / MIN_BLOCK_SIZE)
+#define HEAP_DATA_ADDR (HEAP_BASE_ADDR + BLOCK_NODES_IN_META_DATA * sizeof(block_node))
 
 
-#define BLOCK_NODES_IN_META_DATA_OBJ (2 * BIG_CHUNK_SIZE / MIN_BLOCK_SIZE)
-#define CHUNKS_IN_METADATA_CHUNK (BIG_CHUNK_SIZE / BLOCK_NODES_IN_META_DATA_OBJ)
+// MIN_BLOCK_SIZE has to be a multiple of 32
+static_assert((MIN_BLOCK_SIZE & 31) == 0);
 
-// Reasonble sizes for MIN_BLOCK_SIZE
-static_assert(MIN_BLOCK_SIZE == 16 || MIN_BLOCK_SIZE == 32 || MIN_BLOCK_SIZE == 64);
-
-// Reasonable size for BIG_CHUNK_SIZE (divisible by 1 MB)
-static_assert((BIG_CHUNK_SIZE & ((1 << 20) - 1)) == 0);
+// HEAP_DATA_SIZE has to be a multiple of 1 MB
+static_assert((HEAP_DATA_SIZE & ((1 << 20) - 1)) == 0);
 
 bool kbasic_virtual_alloc(uintptr_t vaddr, size_t size);
 bool kbasic_virtual_free(uintptr_t vaddr, size_t size);
 
-/*
- * Table for accounting slots of 1 MB used in kernel's virtual memory.
- *
- * Each chunk is 'false' if there is some space left or 'true' if its whole
- * memory has been used.
- *
- */
 
-bool full_chunks_table[BIG_CHUNK_COUNT] = {0};
-
-
-/*
- * Each bool here is true if the slot has been initialized.
- * Initialized means that the memory for it has been claimed
- */
-
-bool initialized_slots[BIG_CHUNK_COUNT] = {0};
 
 typedef struct {
 
    uint8_t split : 1; // 1 if the block has been split. Check its children.
-   uint8_t free : 1;  // In case split = 0, free = 1 means the chunk is free.
+   uint8_t free : 1;  // free = 1 means the chunk is free when split = 0,
+                      // otherwise, when split = 1, it means there is some free space.
 
-   uint8_t unused : 6;
+   uint8_t data_allocated : 1;
+
+   uint8_t unused : 5;
 
 } block_node;
 
+static_assert(sizeof(block_node) == 1);
 
 typedef struct {
 
-   block_node nodes[BLOCK_NODES_IN_META_DATA_OBJ];
+   block_node nodes[BLOCK_NODES_IN_META_DATA];
 
-} chunk_meta_data_obj;
+} allocator_meta_data;
 
 
-typedef struct {
+#define HALF(x) ((x) >> 1)
+#define TWICE(x) ((x) << 1)
 
-   chunk_meta_data_obj meta_data_objects[CHUNKS_IN_METADATA_CHUNK];
+#define NODE_LEFT(n) (TWICE(n) + 1)
+#define NODE_RIGHT(n) (TWICE(n) + 2)
+#define NODE_PARENT(n) (HALF(n-1))
 
-} meta_data_chunk;
-
-static_assert(sizeof(meta_data_chunk) == BIG_CHUNK_SIZE);
-
-int get_free_chunk_index()
+void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr)
 {
-   /*
-   * Only chunks at index N, with N not divisible by
-   * CHUNKS_IN_METADATA_CHUNK are usable for data.
-   * Chunks with index divisible by CHUNKS_IN_METADATA_CHUNK, are used for
-   * allocator's meta-data.
-   *
-   * In order to keep things simple and handy, a meta-data chunk contains
-   * meta-data for the next (CHUNKS_IN_METADATA_CHUNK - 1) chunks.
-   * That way, given a chunk at index N, we know that its meta-data chunk is
-   * floor(N / CHUNKS_IN_METADATA_CHUNK) and its meta-data is the chunk_meta_data_obj
-   * at index N & (CHUNKS_IN_METADATA_CHUNK - 1)
-   */
+   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
-   for (int i = 0; i < BIG_CHUNK_COUNT; i++)
-      if ((i & (CHUNKS_IN_METADATA_CHUNK - 1)) && !full_chunks_table[i])
-         return i;
+   if ((node & (PAGE_SIZE - 1)) == 0) {
 
-   return -1;
+      // &md->nodes[node] is on page boundary
+
+      if (!is_mapped(get_kernel_page_dir(), (uintptr_t) &md->nodes[node])) {
+
+         printk("Allocating one page for node %i at addr: %p\n", node, &md->nodes[node]);
+
+         bool success = kbasic_virtual_alloc((uintptr_t) &md->nodes[node], PAGE_SIZE);
+         ASSERT(success);
+      }
+   }
+
+   block_node n = md->nodes[node];
+
+   if (!n.free) {
+      return NULL;
+   }
+
+   if (HALF(node_size) < size) {
+
+      if (n.split) {
+         return NULL;
+      }
+
+      return (void *) vaddr;
+   }
+   
+   // node_size / 2 >= size
+
+   if (!n.split) {
+
+      // The node is free and not split: split it and allocate in the children.
+
+      md->nodes[node].split = true;
+   }
+
+   if (md->nodes[NODE_LEFT(node)].free) {
+
+      void *res = allocate_node_rec(size, HALF(node_size), NODE_LEFT(node), vaddr);
+
+      if (!res) {
+         res = allocate_node_rec(size, HALF(node_size), NODE_RIGHT(node), vaddr + HALF(node_size));
+      }
+
+      return res;
+
+   } else if (md->nodes[NODE_RIGHT(node)].free) {
+
+      return allocate_node_rec(size, HALF(node_size), NODE_LEFT(node), vaddr + HALF(node_size));
+   }
+
+   return NULL;
+}
+
+void *allocate_node(size_t size)
+{
+   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
+
+   int node = 0;
+   size_t node_size = HEAP_DATA_SIZE;
+
+   if (UNLIKELY(!md->nodes[node].free || size > HEAP_DATA_SIZE)) {
+      return NULL;
+   }
+
+   size = MAX(size, MIN_BLOCK_SIZE);
+ 
+   return allocate_node_rec(size, node_size, node, HEAP_DATA_ADDR);
 }
 
 
+void initialize_kmalloc() {
+
+   bool success;
+   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
+
+   success = kbasic_virtual_alloc(HEAP_BASE_ADDR, PAGE_SIZE);
+   ASSERT(success);
+
+   md->nodes[0].split = 0;
+   md->nodes[0].free = 1;
+   md->nodes[0].data_allocated = 0;
+}
 
 void *kmalloc(size_t size)
 {
 	printk("kmalloc(%i)\n", size);
-   printk("heap base addr: %p\n", HEAP_BASE_ADDR);
+   //printk("heap base addr: %p\n", HEAP_BASE_ADDR);
 
-   bool r = kbasic_virtual_alloc(HEAP_BASE_ADDR, 4096);
-
-   ASSERT(r);
+   
 
 
-	return (void*)HEAP_BASE_ADDR;
+	return 0;
 }
 
 
