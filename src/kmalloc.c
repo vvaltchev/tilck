@@ -53,48 +53,85 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
 {
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
-   if ((node & (PAGE_SIZE - 1)) == 0) {
+   printk("allocate_node_rec(size = %i, node_size = %i, node index = %i, vaddr = %p\n", size, node_size, node, vaddr);
 
-      // &md->nodes[node] is on page boundary
+   uintptr_t pageAddr = (uintptr_t)(md->nodes + node) & ~(PAGE_SIZE - 1);
+   //printk("pageAddr = %p\n", pageAddr);
 
-      if (!is_mapped(get_kernel_page_dir(), (uintptr_t) &md->nodes[node])) {
+   if (!is_mapped(get_kernel_page_dir(), pageAddr)) {
 
-         printk("Allocating one page for node %i at addr: %p\n", node, &md->nodes[node]);
+      printk("Allocating one page for node %i at addr: %p\n", node, pageAddr);
 
-         bool success = kbasic_virtual_alloc((uintptr_t) &md->nodes[node], PAGE_SIZE);
-         ASSERT(success);
-      }
+      bool success = kbasic_virtual_alloc(pageAddr, PAGE_SIZE);
+      ASSERT(success);
    }
+
 
    block_node n = md->nodes[node];
 
    if (!n.free) {
+      printk("Node is not free, return NULL\n");
       return NULL;
    }
 
    if (HALF(node_size) < size) {
 
+      printk("The node size is correct\n");
+
       if (n.split) {
+
+         printk("The node is split, returning NULL\n");
          return NULL;
       }
 
+      md->nodes[node].free = false;
+
+      // Walking up to mark the parents as 'not free' if necessary..
+
+      int n = NODE_PARENT(node);
+
+      do {
+
+         if (!md->nodes[NODE_LEFT(n)].free && !md->nodes[NODE_RIGHT(n)].free) {
+            md->nodes[n].free = false;
+         }
+
+         n = NODE_PARENT(n);
+
+      } while (n != 0);
+
+      // Allocate memory for the data, if necessary...
+
+      printk("allocate_node_rec: returning vaddr = %p\n", vaddr);
       return (void *) vaddr;
    }
    
+   //printk("The node size is bigger than necessary.. going to children\n");
+
    // node_size / 2 >= size
 
    if (!n.split) {
 
-      // The node is free and not split: split it and allocate in the children.
+      printk("Splitting the node..\n");
 
+      // The node is free and not split: split it and allocate in the children.
       md->nodes[node].split = true;
+
+      block_node child;
+      child.split = false;
+      child.free = true;
+
+      md->nodes[NODE_LEFT(node)] = child;
+      md->nodes[NODE_RIGHT(node)] = child;
    }
 
    if (md->nodes[NODE_LEFT(node)].free) {
 
+      printk("Left node has free space\n");
       void *res = allocate_node_rec(size, HALF(node_size), NODE_LEFT(node), vaddr);
 
       if (!res) {
+         printk("Left node returned NULL, going to right node\n");
          res = allocate_node_rec(size, HALF(node_size), NODE_RIGHT(node), vaddr + HALF(node_size));
       }
 
@@ -102,9 +139,11 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
 
    } else if (md->nodes[NODE_RIGHT(node)].free) {
 
-      return allocate_node_rec(size, HALF(node_size), NODE_LEFT(node), vaddr + HALF(node_size));
+      printk("The right node has free space\n");
+      return allocate_node_rec(size, HALF(node_size), NODE_RIGHT(node), vaddr + HALF(node_size));
    }
 
+   printk("Nothing was found neither in the left nor the right node\n");
    return NULL;
 }
 
@@ -141,12 +180,7 @@ void initialize_kmalloc() {
 void *kmalloc(size_t size)
 {
 	printk("kmalloc(%i)\n", size);
-   //printk("heap base addr: %p\n", HEAP_BASE_ADDR);
-
-   
-
-
-	return 0;
+	return allocate_node(size);
 }
 
 
