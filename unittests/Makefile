@@ -13,6 +13,9 @@ SYMBOL_WRAPPING += -Wl,--wrap,assert_failed
 SYMBOL_WRAPPING += -Wl,--wrap,printk
 SYMBOL_WRAPPING += -Wl,--wrap,kbasic_virtual_alloc
 SYMBOL_WRAPPING += -Wl,--wrap,kbasic_virtual_free
+SYMBOL_WRAPPING += -Wl,--wrap,get_kernel_page_dir
+SYMBOL_WRAPPING += -Wl,--wrap,is_mapped
+
 
 
 $(shell mkdir -p $(DEPDIR) > /dev/null)

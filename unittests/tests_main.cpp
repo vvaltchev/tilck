@@ -8,6 +8,7 @@ using namespace std;
 extern "C" {
 
 void *kmalloc(size_t);
+void initialize_kmalloc();
 
 uintptr_t test_get_heap_base();
 
@@ -22,6 +23,15 @@ uintptr_t test_get_heap_base() {
    return (uintptr_t) kernel_heap_base;
 }
 
+void *__wrap_get_kernel_page_dir()
+{
+   return nullptr;
+}
+
+bool __wrap_is_mapped(void *pdir, uintptr_t vaddr)
+{
+   return true;
+}
 
 bool __wrap_kbasic_virtual_alloc(uintptr_t vaddr, size_t size)
 {
@@ -39,8 +49,18 @@ bool __wrap_kbasic_virtual_free(uintptr_t vaddr, uintptr_t size)
 
 int main(int argc, char **argv) {
 
+   initialize_kmalloc();
+
    cout << "hello from C++ 11 kernel unit tests!" << endl;
    printf("kmalloc(10) returns: %p\n", kmalloc(10));
+
+   int n = 0;
+   for (int i = 0; i < 16; i++) {
+
+      printf("i = %d, n = %d\n", i, n);
+
+      n = 2 * n + 2;
+   }
 
    return 0;
 }
