@@ -16,6 +16,9 @@
 
 #define static_assert(s,err)
 
+#define PURE
+#define CONSTEXPR
+
 #else
 
 #define ALWAYS_INLINE __attribute__((always_inline)) inline
@@ -26,6 +29,9 @@
 #define typeof(x) __typeof__(x)
 
 #define static_assert(s) _Static_assert(s, "Static assertion failed")
+
+#define PURE __attribute__((pure))
+#define CONSTEXPR __attribute__((const))
 
 #endif
 
@@ -113,3 +119,15 @@ void assert_failed(const char *expr, const char *file, int line);
          assert_failed(#x , __FILE__, __LINE__);                     \
       }                                                              \
    } while (0)
+
+static inline int CONSTEXPR log2(size_t n)
+{
+   int res = 0;
+
+   while (n > 1) {
+      res++;
+      n >>= 1;
+   }
+
+   return res;
+}
