@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 
    uint64_t start = RDTSC();
 
-   const int iters = 1000000;
+   const int iters = 100000;
 
    for (int i = 0; i < iters; i++) {
 
