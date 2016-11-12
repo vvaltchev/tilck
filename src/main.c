@@ -103,9 +103,12 @@ void show_hello_message()
 
 void kmalloc_test()
 {
+   const int iters = 100000;
+
+   printk("Running a kmalloc() perf. test for %u iterations...\n", iters);
+
    uintptr_t start = RDTSC();
 
-   const int iters = 100000;
 
    for (int i = 0; i < iters; i++) {
 
@@ -123,7 +126,7 @@ void kmalloc_test()
 
    uintptr_t duration = (RDTSC() - start) / iters;
 
-   printk("Cycles per kmalloc + kfree: %u\n",  duration / 4);
+   printk("Cycles per kmalloc + kfree: %u\n",  duration >> 2);
 }
 
 void kmain() {

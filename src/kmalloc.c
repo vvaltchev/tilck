@@ -7,7 +7,7 @@
 
 #ifndef KERNEL_TEST
 
-#define HEAP_DATA_SIZE (512 * 1024 * 1024)
+#define HEAP_DATA_SIZE (1 * 1024 * 1024)
 
 #else
 
