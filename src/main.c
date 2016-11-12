@@ -92,10 +92,12 @@ void kmalloc_test()
    kfree(b2, 10);
    kfree(b3, 50);
 
-   printk("\n\n\n\n\n\n\n\n\n\n");
-
    void *b4 = call_kmalloc_and_print(3 * PAGE_SIZE + 43);
    kfree(b4, 3 * PAGE_SIZE + 43);
+
+   void *b5 = call_kmalloc_and_print(3 * PAGE_SIZE + 43);
+   kfree(b5, 3 * PAGE_SIZE + 43);
+
 }
 
 void kmain() {

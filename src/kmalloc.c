@@ -7,7 +7,7 @@
 
 #ifndef TEST
 
-#define HEAP_DATA_SIZE (1 * 1024 * 1024)
+#define HEAP_DATA_SIZE (512 * 1024 * 1024)
 
 #else
 
@@ -110,12 +110,12 @@ size_t set_free_uplevels(int n, size_t size) {
 
       if (!md->nodes[NODE_LEFT(n)].free || !md->nodes[NODE_RIGHT(n)].free) {
 
-         printk("STOP node left free:  %i\n", md->nodes[NODE_LEFT(n)].free);
-         printk("STOP node right free: %i\n", md->nodes[NODE_RIGHT(n)].free);
+         //printk("STOP node left free:  %i\n", md->nodes[NODE_LEFT(n)].free);
+         //printk("STOP node right free: %i\n", md->nodes[NODE_RIGHT(n)].free);
          break; // break on the first node that cannot be coaleshed.
       }
 
-      printk("Marking parent node = %i (size: %u) as free\n", n, curr_size);
+      //printk("Marking parent node = %i (size: %u) as free\n", n, curr_size);
 
       md->nodes[n].free = true;
       md->nodes[n].split = false;
@@ -133,11 +133,11 @@ void evenually_allocate_page_for_node(int node)
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
    uintptr_t pageAddr = (uintptr_t)(md->nodes + node) & ~(PAGE_SIZE - 1);
 
-   //printk("evenually_allocate_page_for_node(%i): page: %p\n", node, pageAddr);
+   ////printk("evenually_allocate_page_for_node(%i): page: %p\n", node, pageAddr);
 
    if (!is_mapped(get_kernel_page_dir(), pageAddr)) {
 
-      printk("Allocating page %p for node# %i\n", pageAddr, node);
+      //printk("Allocating page %p for node# %i\n", pageAddr, node);
 
       bool success = kbasic_virtual_alloc(pageAddr, 1);
       ASSERT(success);
@@ -167,7 +167,7 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
 {
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
-   printk("allocate_node_rec(node_size = %u, node index = %i, vaddr = %p\n", node_size, node, vaddr);
+   //printk("allocate_node_rec(node_size = %u, node index = %i, vaddr = %p\n", node_size, node, vaddr);
 
    //debug_print_node_state(256);
 
@@ -181,17 +181,17 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
    block_node n = md->nodes[node];
 
    if (!n.free) {
-      printk("Node is not free, return NULL\n");
+      //printk("Node is not free, return NULL\n");
       return NULL;
    }
 
    if (HALF(node_size) < size) {
 
-      //printk("The node size is correct\n");
+      ////printk("The node size is correct\n");
 
       if (n.split) {
 
-         printk("The node is split, returning NULL\n");
+         //printk("The node is split, returning NULL\n");
          return NULL;
       }
 
@@ -205,13 +205,13 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
       uintptr_t pageOfVaddr = vaddr & ~(PAGE_SIZE - 1);
       int pageCount = 1 + ( (node_size - 1) >> log2(PAGE_SIZE) );
 
-      printk("For that node, I'd need %i pages\n", pageCount);
+      //printk("For that node, I'd need %i pages\n", pageCount);
 
       for (int i = 0; i < pageCount; i++) {
          
          int pageNode = ptr_to_node((void *) pageOfVaddr, PAGE_SIZE);
 
-         printk("i = %i, pageNode = %i, pageAddr = %p\n", i, pageNode, pageOfVaddr);
+         //printk("i = %i, pageNode = %i, pageAddr = %p\n", i, pageNode, pageOfVaddr);
          evenually_allocate_page_for_node(pageNode);
 
 
@@ -223,7 +223,7 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
 
          } else {
 
-            printk("Page %p is already allocated, skipping..\n", pageOfVaddr);
+            //printk("Page %p is already allocated, skipping..\n", pageOfVaddr);
          }
 
          if (node_size >= PAGE_SIZE) {
@@ -234,17 +234,17 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
          pageOfVaddr += PAGE_SIZE;
       }
 
-      printk("allocate_node_rec: returning vaddr = %p for node# %i (parent: %i)\n", vaddr, node, NODE_PARENT(node));
+      //printk("allocate_node_rec: returning vaddr = %p for node# %i (parent: %i)\n", vaddr, node, NODE_PARENT(node));
       return (void *) vaddr;
    }
    
-   //printk("The node size is bigger than necessary.. going to children\n");
+   ////printk("The node size is bigger than necessary.. going to children\n");
 
    // node_size / 2 >= size
 
    if (!n.split) {
 
-      //printk("Splitting the node..\n");
+      ////printk("Splitting the node..\n");
 
       // The node is free and not split: split it and allocate in the children.
       md->nodes[node].split = true;
@@ -258,11 +258,11 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
 
    if (md->nodes[NODE_LEFT(node)].free) {
 
-      printk("Left node has free space\n");
+      //printk("Left node has free space\n");
       void *res = allocate_node_rec(size, HALF(node_size), NODE_LEFT(node), vaddr);
 
       if (!res) {
-         printk("Left node returned NULL, going to right node\n");
+         //printk("Left node returned NULL, going to right node\n");
          res = allocate_node_rec(size, HALF(node_size), NODE_RIGHT(node), vaddr + HALF(node_size));
       }
 
@@ -270,11 +270,11 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
 
    } else if (md->nodes[NODE_RIGHT(node)].free) {
 
-      printk("The right node has free space\n");
+      //printk("The right node has free space\n");
       return allocate_node_rec(size, HALF(node_size), NODE_RIGHT(node), vaddr + HALF(node_size));
    }
 
-   printk("Nothing was found neither in the left nor the right node\n");
+   //printk("Nothing was found neither in the left nor the right node\n");
    return NULL;
 }
 
@@ -301,7 +301,7 @@ void debug_print_node_state(int node)
 
    block_node n = md->nodes[node];
 
-   printk("[Node #%i] free: %i, split: %i, allocated: %i\n", node, n.free, n.split, n.allocated);
+   //printk("[Node #%i] free: %i, split: %i, allocated: %i\n", node, n.free, n.split, n.allocated);
 }
 
 
@@ -309,7 +309,7 @@ void free_node(void *ptr, size_t size)
 {
    int node = ptr_to_node(ptr, size);
 
-   printk("free_node: node# %i\n", node);
+   //printk("free_node: node# %i\n", node);
    debug_print_node_state(256);
 
    ASSERT(node_to_ptr(node, size) == ptr);
@@ -325,7 +325,7 @@ void free_node(void *ptr, size_t size)
    
    size_t curr_size = set_free_uplevels(n, size);
 
-   printk("After coaleshe, n = %i, curr_size = %u\n", n, curr_size);
+   //printk("After coaleshe, n = %i, curr_size = %u\n", n, curr_size);
    
    if (curr_size < PAGE_SIZE)
       return;
@@ -333,15 +333,15 @@ void free_node(void *ptr, size_t size)
    uintptr_t pageOfVaddr = (uintptr_t)ptr & ~(PAGE_SIZE - 1);
    int pageCount = 1 + ((size - 1) >> log2(PAGE_SIZE));
 
-   printk("The block node used up to %i pages\n", pageCount);
+   //printk("The block node used up to %i pages\n", pageCount);
 
    for (int i = 0; i < pageCount; i++) {
 
       int pageNode = ptr_to_node((void *)pageOfVaddr, PAGE_SIZE);
       ASSERT(node_has_page(pageNode));
 
-      printk("i = %i, pNode = %i, pAddr = %p, alloc = %i, free = %i, split = %i\n",
-             i, pageNode, pageOfVaddr, md->nodes[pageNode].allocated, md->nodes[pageNode].free, md->nodes[pageNode].split);
+      //printk("i = %i, pNode = %i, pAddr = %p, alloc = %i, free = %i, split = %i\n",
+      //       i, pageNode, pageOfVaddr, md->nodes[pageNode].allocated, md->nodes[pageNode].free, md->nodes[pageNode].split);
 
       ASSERT(md->nodes[pageNode].allocated);
       bool success = kbasic_virtual_free(pageOfVaddr, 1);
@@ -363,20 +363,20 @@ void initialize_kmalloc() {
 
    /* Do nothing, for the moment. */
 
-   printk("heap base addr: %p\n", HEAP_BASE_ADDR);
-   printk("heap data addr: %p\n", HEAP_DATA_ADDR);
+   //printk("heap base addr: %p\n", HEAP_BASE_ADDR);
+   //printk("heap data addr: %p\n", HEAP_DATA_ADDR);
 }
 
 void *kmalloc(size_t size)
 {
-	printk("kmalloc(%i)\n", size);
+	//printk("kmalloc(%i)\n", size);
 	return allocate_node(size);
 }
 
 
 void kfree(void *ptr, size_t size)
 {
-	printk("free(%p, %u)\n", ptr, size);
+	//printk("free(%p, %u)\n", ptr, size);
 
    size = MAX(size, MIN_BLOCK_SIZE);
    free_node(ptr, roundup_next_power_of_2(size));

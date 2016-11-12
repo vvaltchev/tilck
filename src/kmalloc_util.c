@@ -6,20 +6,20 @@ bool kbasic_virtual_alloc(uintptr_t vaddr, int pageCount)
 {
    ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
 
-   printk("Mapping %i pages to %p\n", pageCount, vaddr);
+   //printk("Mapping %i pages to %p\n", pageCount, vaddr);
 
    page_directory_t *pdir = get_kernel_page_dir();
 
    // Ensure that we have enough physical memory.
    if (get_free_physical_pages_count() < pageCount) {
-      printk("not enough physical memory. exit\n");
+      //printk("not enough physical memory. exit\n");
       return false;
    }
 
    for (int i = 0; i < pageCount; i++) {
       if (is_mapped(pdir, vaddr + (i << 12))) {
 
-         printk("vaddr + page %i is already mapped. exit\n", i);
+         //printk("vaddr + page %i is already mapped. exit\n", i);
          return false;
       }
    }
@@ -41,11 +41,11 @@ bool kbasic_virtual_free(uintptr_t vaddr, int pageCount)
 
    page_directory_t *pdir = get_kernel_page_dir();
 
-   printk("Free %i pages at %p\n", pageCount, vaddr);
+   //printk("Free %i pages at %p\n", pageCount, vaddr);
 
    for (int i = 0; i < pageCount; i++) {
       if (!is_mapped(pdir, vaddr + (i << 12))) {
-         printk("virtual_free: vaddr + page %i is NOT mapped. exit.\n", i);
+         //printk("virtual_free: vaddr + page %i is NOT mapped. exit.\n", i);
          return false;
       }
    }
