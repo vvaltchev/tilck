@@ -108,9 +108,6 @@ size_t set_free_uplevels(int n, size_t size) {
 
    do {
 
-      if (md->nodes[n].free && curr_size >= PAGE_SIZE)
-         break;
-
       if (!md->nodes[NODE_LEFT(n)].free || !md->nodes[NODE_RIGHT(n)].free) {
 
          printk("STOP node left free:  %i\n", md->nodes[NODE_LEFT(n)].free);
@@ -131,25 +128,45 @@ size_t set_free_uplevels(int n, size_t size) {
    return curr_size;
 }
 
+void evenually_allocate_page_for_node(int node)
+{
+   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
+   uintptr_t pageAddr = (uintptr_t)(md->nodes + node) & ~(PAGE_SIZE - 1);
+
+   if (!is_mapped(get_kernel_page_dir(), pageAddr)) {
+
+      printk("Allocating page for node# %i\n", node);
+
+      bool success = kbasic_virtual_alloc(pageAddr, 1);
+      ASSERT(success);
+   }
+}
+
+
+bool node_has_page(int node)
+{
+   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
+   uintptr_t pageAddr = (uintptr_t)(md->nodes + node) & ~(PAGE_SIZE - 1);
+
+   return is_mapped(get_kernel_page_dir(), pageAddr);
+}
+
+
 void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr)
 {
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
-   //printk("allocate_node_rec(size = %i, node_size = %i, node index = %i, vaddr = %p\n", size, node_size, node, vaddr);
+   printk("allocate_node_rec(size = %i, node_size = %i, node index = %i, vaddr = %p\n", size, node_size, node, vaddr);
 
-   uintptr_t pageAddr = (uintptr_t)(md->nodes + node) & ~(PAGE_SIZE - 1);
-   //printk("pageAddr = %p\n", pageAddr);
-
-   if (!is_mapped(get_kernel_page_dir(), pageAddr)) {
-      bool success = kbasic_virtual_alloc(pageAddr, 1);
-      ASSERT(success);
-   }
+   evenually_allocate_page_for_node(node);
+   evenually_allocate_page_for_node(NODE_LEFT(node));
+   evenually_allocate_page_for_node(NODE_RIGHT(node));
 
 
    block_node n = md->nodes[node];
 
    if (!n.free) {
-      //printk("Node is not free, return NULL\n");
+      printk("Node is not free, return NULL\n");
       return NULL;
    }
 
@@ -159,7 +176,7 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
 
       if (n.split) {
 
-         //printk("The node is split, returning NULL\n");
+         printk("The node is split, returning NULL\n");
          return NULL;
       }
 
@@ -178,6 +195,7 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
       for (int i = 0; i < pageCount; i++) {
          
          int pageNode = ptr_to_node((void *) pageOfVaddr, PAGE_SIZE);
+         evenually_allocate_page_for_node(pageNode);
 
          printk("i = %i, pageNode = %i, pageAddr = %p\n", i, pageNode, pageOfVaddr);
 
@@ -190,7 +208,7 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
 
          if (node_size >= PAGE_SIZE) {
             md->nodes[pageNode].free = false;
-            set_no_free_uplevels(pageNode);
+            //set_no_free_uplevels(pageNode);
          }
 
          pageOfVaddr += PAGE_SIZE;
@@ -221,11 +239,11 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
 
    if (md->nodes[NODE_LEFT(node)].free) {
 
-      //printk("Left node has free space\n");
+      printk("Left node has free space\n");
       void *res = allocate_node_rec(size, HALF(node_size), NODE_LEFT(node), vaddr);
 
       if (!res) {
-         //printk("Left node returned NULL, going to right node\n");
+         printk("Left node returned NULL, going to right node\n");
          res = allocate_node_rec(size, HALF(node_size), NODE_RIGHT(node), vaddr + HALF(node_size));
       }
 
@@ -233,23 +251,21 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
 
    } else if (md->nodes[NODE_RIGHT(node)].free) {
 
-      //printk("The right node has free space\n");
+      printk("The right node has free space\n");
       return allocate_node_rec(size, HALF(node_size), NODE_RIGHT(node), vaddr + HALF(node_size));
    }
 
-   //printk("Nothing was found neither in the left nor the right node\n");
+   printk("Nothing was found neither in the left nor the right node\n");
    return NULL;
 }
 
 
 void *allocate_node(size_t size)
 {
-   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
-
    int node = 0;
    size_t node_size = HEAP_DATA_SIZE;
 
-   if (UNLIKELY(!md->nodes[node].free || size > HEAP_DATA_SIZE)) {
+   if (UNLIKELY(size > HEAP_DATA_SIZE)) {
       return NULL;
    }
 
@@ -265,6 +281,7 @@ void free_node(void *ptr, size_t size)
    printk("free_node: node# %i\n", node);
 
    ASSERT(node_to_ptr(node, size) == ptr);
+   ASSERT(node_has_page(node));
 
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
@@ -289,17 +306,21 @@ void free_node(void *ptr, size_t size)
    for (int i = 0; i < pageCount; i++) {
 
       int pageNode = ptr_to_node((void *)pageOfVaddr, PAGE_SIZE);
+      ASSERT(node_has_page(pageNode));
 
-      printk("i = %i, pageNode = %i, pageAddr = %p, allocated = %i, free = %i\n",
-             i, pageNode, pageOfVaddr, md->nodes[pageNode].allocated, md->nodes[pageNode].free);
+      printk("i = %i, pageNode = %i, pageAddr = %p, allocated = %i, free = %i, split = %i\n",
+             i, pageNode, pageOfVaddr, md->nodes[pageNode].allocated, md->nodes[pageNode].free, md->nodes[pageNode].split);
 
       ASSERT(md->nodes[pageNode].allocated);
       bool success = kbasic_virtual_free(pageOfVaddr, 1);
       ASSERT(success);
 
-      md->nodes[pageNode].allocated = false;
-      md->nodes[pageNode].free = true;
-      set_free_uplevels(pageNode, PAGE_SIZE);
+      block_node new_node_val;
+      new_node_val.allocated = false;
+      new_node_val.free = true;
+      new_node_val.split = false;
+
+      md->nodes[pageNode] = new_node_val;
 
       pageOfVaddr += PAGE_SIZE;
    }
@@ -325,23 +346,6 @@ void *kmalloc(size_t size)
 	return allocate_node(size);
 }
 
-CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
-{
-   v--;
-   v |= v >> 1;
-   v |= v >> 2;
-   v |= v >> 4;
-   v |= v >> 8;
-   v |= v >> 16;
-
-#ifdef __x86_64__
-   v |= v >> 32;
-#endif
-
-   v++;
-
-   return v;
-}
 
 void kfree(void *ptr, size_t size)
 {

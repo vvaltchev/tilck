@@ -100,9 +100,6 @@ int main(int argc, char **argv) {
    kfree(b2, 10);
    kfree(b3, 50);
 
-   //void *b1_2 = call_kmalloc_and_print(10);
-   //void *b2_2 = call_kmalloc_and_print(10);
-
 
    void *b4 = call_kmalloc_and_print(3 * PAGE_SIZE + 43);
    kfree(b4, 3 * PAGE_SIZE + 43);

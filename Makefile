@@ -23,8 +23,8 @@ export CXX = g++
 export MV = mv
 export RM = rm
 
-export OPT = -O2
-#export OPT = -O0 -fno-inline-functions
+#export OPT = -O2
+export OPT = -O0 -fno-inline-functions
 export WARN = -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
 export INCDIRS = -I$(shell pwd)/include
 export CFLAGS =  $(OPT) $(WARN) -std=c99 $(INCDIRS) $(ARCH_CFLAGS) \
