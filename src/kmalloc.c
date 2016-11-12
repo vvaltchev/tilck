@@ -7,7 +7,7 @@
 
 #ifndef TEST
 
-#define HEAP_DATA_SIZE (512 * 1024 * 1024)
+#define HEAP_DATA_SIZE (1 * 1024 * 1024)
 
 #else
 
@@ -133,12 +133,23 @@ void evenually_allocate_page_for_node(int node)
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
    uintptr_t pageAddr = (uintptr_t)(md->nodes + node) & ~(PAGE_SIZE - 1);
 
+   //printk("evenually_allocate_page_for_node(%i): page: %p\n", node, pageAddr);
+
    if (!is_mapped(get_kernel_page_dir(), pageAddr)) {
 
-      printk("Allocating page for node# %i\n", node);
+      printk("Allocating page %p for node# %i\n", pageAddr, node);
 
       bool success = kbasic_virtual_alloc(pageAddr, 1);
       ASSERT(success);
+
+      block_node new_node;
+      new_node.free = true;
+      new_node.allocated = false;
+      new_node.split = false;
+
+      for (unsigned i = 0; i < PAGE_SIZE/sizeof(block_node); i++) {
+         ((block_node *)pageAddr)[i] = new_node;
+      }
    }
 }
 
@@ -156,12 +167,16 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
 {
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
-   printk("allocate_node_rec(size = %i, node_size = %i, node index = %i, vaddr = %p\n", size, node_size, node, vaddr);
+   printk("allocate_node_rec(node_size = %u, node index = %i, vaddr = %p\n", node_size, node, vaddr);
+
+   //debug_print_node_state(256);
 
    evenually_allocate_page_for_node(node);
-   evenually_allocate_page_for_node(NODE_LEFT(node));
-   evenually_allocate_page_for_node(NODE_RIGHT(node));
 
+   if (node_size > MIN_BLOCK_SIZE) {
+      evenually_allocate_page_for_node(NODE_LEFT(node));
+      evenually_allocate_page_for_node(NODE_RIGHT(node));
+   }
 
    block_node n = md->nodes[node];
 
@@ -195,15 +210,20 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
       for (int i = 0; i < pageCount; i++) {
          
          int pageNode = ptr_to_node((void *) pageOfVaddr, PAGE_SIZE);
-         evenually_allocate_page_for_node(pageNode);
 
          printk("i = %i, pageNode = %i, pageAddr = %p\n", i, pageNode, pageOfVaddr);
+         evenually_allocate_page_for_node(pageNode);
+
 
          if (!md->nodes[pageNode].allocated) {
             bool success = kbasic_virtual_alloc(pageOfVaddr, 1);
             ASSERT(success);
 
             md->nodes[pageNode].allocated = true;
+
+         } else {
+
+            printk("Page %p is already allocated, skipping..\n", pageOfVaddr);
          }
 
          if (node_size >= PAGE_SIZE) {
@@ -229,12 +249,11 @@ void *allocate_node_rec(size_t size, size_t node_size, int node, uintptr_t vaddr
       // The node is free and not split: split it and allocate in the children.
       md->nodes[node].split = true;
 
-      block_node child;
-      child.split = false;
-      child.free = true;
+      md->nodes[NODE_LEFT(node)].split = false;
+      md->nodes[NODE_LEFT(node)].free = true;
 
-      md->nodes[NODE_LEFT(node)] = child;
-      md->nodes[NODE_RIGHT(node)] = child;
+      md->nodes[NODE_RIGHT(node)].split = false;
+      md->nodes[NODE_RIGHT(node)].free = true;
    }
 
    if (md->nodes[NODE_LEFT(node)].free) {
@@ -274,11 +293,24 @@ void *allocate_node(size_t size)
    return allocate_node_rec(size, node_size, node, HEAP_DATA_ADDR);
 }
 
+void debug_print_node_state(int node)
+{
+   evenually_allocate_page_for_node(node);
+
+   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
+
+   block_node n = md->nodes[node];
+
+   printk("[Node #%i] free: %i, split: %i, allocated: %i\n", node, n.free, n.split, n.allocated);
+}
+
+
 void free_node(void *ptr, size_t size)
 {
    int node = ptr_to_node(ptr, size);
 
    printk("free_node: node# %i\n", node);
+   debug_print_node_state(256);
 
    ASSERT(node_to_ptr(node, size) == ptr);
    ASSERT(node_has_page(node));
@@ -308,7 +340,7 @@ void free_node(void *ptr, size_t size)
       int pageNode = ptr_to_node((void *)pageOfVaddr, PAGE_SIZE);
       ASSERT(node_has_page(pageNode));
 
-      printk("i = %i, pageNode = %i, pageAddr = %p, allocated = %i, free = %i, split = %i\n",
+      printk("i = %i, pNode = %i, pAddr = %p, alloc = %i, free = %i, split = %i\n",
              i, pageNode, pageOfVaddr, md->nodes[pageNode].allocated, md->nodes[pageNode].free, md->nodes[pageNode].split);
 
       ASSERT(md->nodes[pageNode].allocated);
@@ -324,20 +356,15 @@ void free_node(void *ptr, size_t size)
 
       pageOfVaddr += PAGE_SIZE;
    }
-
 }
 
 
 void initialize_kmalloc() {
 
-   bool success;
-   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
+   /* Do nothing, for the moment. */
 
-   success = kbasic_virtual_alloc(HEAP_BASE_ADDR, 1);
-   ASSERT(success);
-
-   md->nodes[0].split = 0;
-   md->nodes[0].free = 1;
+   printk("heap base addr: %p\n", HEAP_BASE_ADDR);
+   printk("heap data addr: %p\n", HEAP_DATA_ADDR);
 }
 
 void *kmalloc(size_t size)

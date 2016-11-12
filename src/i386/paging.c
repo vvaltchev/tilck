@@ -7,6 +7,10 @@
 
 #include <arch/i386/paging_int.h>
 
+#define KERNEL_PADDR_TO_VADDR(paddr) ((typeof(paddr))((uintptr_t)(paddr) + KERNEL_BASE_VADDR))
+#define KERNEL_VADDR_TO_PADDR(vaddr) ((typeof(vaddr))((uintptr_t)(vaddr) - KERNEL_BASE_VADDR))
+
+
 /*
  * ----------------------------------------------
  * DEBUG options
@@ -123,6 +127,21 @@ bool unmap_page(page_directory_t *pdir, uintptr_t vaddr)
    page_t p = {0};
    ptable->pages[page_table_index] = p;
    return true;
+}
+
+void *get_mapping(page_directory_t *pdir, uintptr_t vaddr)
+{
+   page_table_t *ptable;
+   uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
+   uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
+
+   ASSERT(pdir->page_tables[page_dir_index] != NULL);
+
+   ptable = pdir->page_tables[page_dir_index];
+
+   ASSERT(ptable->pages[page_table_index].present);
+
+   return (void *)(ptable->pages[page_table_index].pageAddr << 12);
 }
 
 void map_page(page_directory_t *pdir,

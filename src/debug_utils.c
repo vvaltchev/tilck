@@ -102,7 +102,7 @@ void debug_dump_used_pdir_entries(page_directory_t *pdir)
 
 void panic(const char *fmt, ...)
 {
-   cli();
+   //cli();
 
    printk("\n\n************** KERNEL PANIC **************\n");
 
