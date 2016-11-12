@@ -18,7 +18,7 @@ volatile int pagesUsed = 0;
 
 int get_free_physical_pages_count()
 {
-   return (MEM_SIZE_IN_MB / PAGE_SIZE) - pagesUsed;
+   return ((MEM_SIZE_IN_MB << 20) / PAGE_SIZE) - pagesUsed;
 }
 
 static uint32_t get_first_zero_bit_index(uint32_t num)
@@ -89,54 +89,4 @@ void free_phys_page(void *address) {
    last_index = majorIndex;
 
    pagesUsed--;
-}
-
-
-bool kbasic_virtual_alloc(uintptr_t vaddr, int pageCount)
-{
-   ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
-
-   page_directory_t *pdir = get_kernel_page_dir();
-
-   // Ensure that we have enough physical memory.
-   if (get_free_physical_pages_count() < pageCount)
-      return false;
-
-   for (int i = 0; i < pageCount; i++)
-      if (is_mapped(pdir, vaddr + (i << 12)))
-         return false;
-
-   for (int i = 0; i < pageCount; i++) {
-
-      void *paddr = alloc_phys_page();
-      ASSERT(paddr != NULL);
-
-      map_page(pdir, vaddr + (i << 12), (uintptr_t)paddr, false, true);
-   }
-
-   return true;
-}
-
-bool kbasic_virtual_free(uintptr_t vaddr, int pageCount)
-{
-   ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
-
-   page_directory_t *pdir = get_kernel_page_dir();
-
-   for (int i = 0; i < pageCount; i++)
-      if (!is_mapped(pdir, vaddr + (i << 12)))
-         return false;
-
-   for (int i = 0; i < pageCount; i++) {
-
-      uintptr_t va = vaddr + (i << 12);
-
-      // un-map the virtual address.
-      unmap_page(pdir, va);
-
-      // free the physical page as well.
-      free_phys_page((void *) KERNEL_VADDR_TO_PADDR(va));
-   }
-
-   return true;
 }

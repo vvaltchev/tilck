@@ -74,11 +74,28 @@ void show_hello_message()
    printk("Hello from my kernel!\n");
 }
 
+void *call_kmalloc_and_print(size_t s)
+{
+   void *ret = kmalloc(s);
+   printk("kmalloc(%u) returns: %p\n", s, (uintptr_t)((char *)ret - (char *)HEAP_BASE_ADDR));
 
+   return ret;
+}
 void kmalloc_test()
 {
-   void *ptr = kmalloc(16);
-   printk("Testing kmalloc: %p\n", ptr);
+
+   void *b1 = call_kmalloc_and_print(10);
+   void *b2 = call_kmalloc_and_print(10);
+   void *b3 = call_kmalloc_and_print(50);
+
+   kfree(b1, 10);
+   kfree(b2, 10);
+   kfree(b3, 50);
+
+   printk("\n\n\n\n\n\n\n\n\n\n");
+
+   void *b4 = call_kmalloc_and_print(3 * PAGE_SIZE + 43);
+   kfree(b4, 3 * PAGE_SIZE + 43);
 }
 
 void kmain() {
