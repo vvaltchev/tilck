@@ -50,7 +50,7 @@ bool __wrap_is_mapped(void *pdir, uintptr_t vaddr)
 
 bool __wrap_kbasic_virtual_alloc(uintptr_t vaddr, int pageCount)
 {
-   printf("[test wrap] kbasic_virtual_alloc(%p, %u)\n", vaddr, pageCount);
+   //printf("[test wrap] kbasic_virtual_alloc(%p, %u)\n", vaddr, pageCount);
 
    assert((vaddr & (PAGE_SIZE - 1)) == 0);
 
@@ -63,7 +63,7 @@ bool __wrap_kbasic_virtual_alloc(uintptr_t vaddr, int pageCount)
 
 bool __wrap_kbasic_virtual_free(uintptr_t vaddr, int pageCount)
 {
-   printf("[test wrap] kbasic_virtual_free(%p, %u)\n", vaddr, pageCount);
+   //printf("[test wrap] kbasic_virtual_free(%p, %u)\n", vaddr, pageCount);
 
    assert((vaddr & (PAGE_SIZE - 1)) == 0);
 
@@ -76,11 +76,14 @@ bool __wrap_kbasic_virtual_free(uintptr_t vaddr, int pageCount)
 
 }
 
+//#define kmalloc(x) malloc(x)
+//#define kfree(x,s) free(x)
+
 void *call_kmalloc_and_print(size_t s)
 {
    void *ret = kmalloc(s);
-   printf("kmalloc(%u) returns: %p\n", s, (uintptr_t)((char *)ret - (char *)kernel_heap_base));
-
+   //printf("kmalloc(%u) returns: %p\n", s, (uintptr_t)((char *)ret - (char *)kernel_heap_base));
+   DO_NOT_OPTIMIZE_AWAY(ret);
    return ret;
 }
 
@@ -91,20 +94,27 @@ int main(int argc, char **argv) {
    cout << "hello from C++ 11 kernel unit tests!" << endl;
    printf("kernel heap base: %p\n", kernel_heap_base);
 
+   uint64_t start = RDTSC();
 
-   void *b1 = call_kmalloc_and_print(10);
-   void *b2 = call_kmalloc_and_print(10);
+   const int iters = 1000000;
 
-   void *b3 = call_kmalloc_and_print(50);
+   for (int i = 0; i < iters; i++) {
 
+      void *b1 = call_kmalloc_and_print(10);
+      void *b2 = call_kmalloc_and_print(10);
+      void *b3 = call_kmalloc_and_print(50);
 
-   kfree(b1, 10);
-   kfree(b2, 10);
-   kfree(b3, 50);
+      kfree(b1, 10);
+      kfree(b2, 10);
+      kfree(b3, 50);
 
+      void *b4 = call_kmalloc_and_print(3 * PAGE_SIZE + 43);
+      kfree(b4, 3 * PAGE_SIZE + 43);
+   }
 
-   void *b4 = call_kmalloc_and_print(3 * PAGE_SIZE + 43);
-   kfree(b4, 3 * PAGE_SIZE + 43);
+   uint64_t duration = (RDTSC() - start) / iters;
+
+   cout << "cycles per malloc + free: " << (duration/4) << endl;
 
    return 0;
 }
