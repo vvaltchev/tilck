@@ -31,7 +31,9 @@ STATIC_ASSERT(sizeof(void *) == 8);
 #endif
 
 #ifdef _MSC_VER
+
 #define inline __inline
+#define __i386__
 
 // Make the Microsoft Intellisense happy: this does not have to work
 // since we use GCC. Just, we'd like to avoid to confuse intellisense.
@@ -129,12 +131,21 @@ static ALWAYS_INLINE uint8_t inb(uint16_t port)
 void panic(const char *fmt, ...);
 void assert_failed(const char *expr, const char *file, int line);
 
+#ifndef NDEBUG
+
 #define ASSERT(x)                                                    \
    do {                                                              \
       if (UNLIKELY(!(x))) {                                          \
          assert_failed(#x , __FILE__, __LINE__);                     \
       }                                                              \
    } while (0)
+
+#else
+
+#define ASSERT(x)
+
+#endif
+
 
 static inline int CONSTEXPR log2(size_t n)
 {
@@ -166,3 +177,21 @@ CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
    return v;
 }
 
+#if defined(__i386__) || defined(__x86_64__)
+
+static ALWAYS_INLINE uintptr_t RDTSC()
+{
+   uintptr_t lo, hi;
+   asm("rdtsc" : "=a" (lo), "=d" (hi));
+   
+#ifdef BITS64
+   return lo | (hi << 32);
+#else
+   return lo;
+#endif
+
+}
+
+#endif
+
+#define DO_NOT_OPTIMIZE_AWAY(x) asmVolatile("" : "+r" ( (void *)(x) ))

@@ -74,30 +74,56 @@ void show_hello_message()
    printk("Hello from my kernel!\n");
 }
 
-void *call_kmalloc_and_print(size_t s)
-{
-   void *ret = kmalloc(s);
-   printk("kmalloc(%u) returns: %p\n", s, (uintptr_t)((char *)ret - (char *)HEAP_BASE_ADDR));
+//void *call_kmalloc_and_print(size_t s)
+//{
+//   void *ret = kmalloc(s);
+//   printk("kmalloc(%u) returns: %p\n", s, (uintptr_t)((char *)ret - (char *)HEAP_BASE_ADDR));
+//
+//   return ret;
+//}
 
-   return ret;
-}
+//void kmalloc_test()
+//{
+//
+//   void *b1 = call_kmalloc_and_print(10);
+//   void *b2 = call_kmalloc_and_print(10);
+//   void *b3 = call_kmalloc_and_print(50);
+//
+//   kfree(b1, 10);
+//   kfree(b2, 10);
+//   kfree(b3, 50);
+//
+//   void *b4 = call_kmalloc_and_print(3 * PAGE_SIZE + 43);
+//   kfree(b4, 3 * PAGE_SIZE + 43);
+//
+//   void *b5 = call_kmalloc_and_print(3 * PAGE_SIZE + 43);
+//   kfree(b5, 3 * PAGE_SIZE + 43);
+//
+//}
+
 void kmalloc_test()
 {
+   uintptr_t start = RDTSC();
 
-   void *b1 = call_kmalloc_and_print(10);
-   void *b2 = call_kmalloc_and_print(10);
-   void *b3 = call_kmalloc_and_print(50);
+   const int iters = 100000;
 
-   kfree(b1, 10);
-   kfree(b2, 10);
-   kfree(b3, 50);
+   for (int i = 0; i < iters; i++) {
 
-   void *b4 = call_kmalloc_and_print(3 * PAGE_SIZE + 43);
-   kfree(b4, 3 * PAGE_SIZE + 43);
+      void *b1 = kmalloc(10);
+      void *b2 = kmalloc(10);
+      void *b3 = kmalloc(50);
 
-   void *b5 = call_kmalloc_and_print(3 * PAGE_SIZE + 43);
-   kfree(b5, 3 * PAGE_SIZE + 43);
+      kfree(b1, 10);
+      kfree(b2, 10);
+      kfree(b3, 50);
 
+      void *b4 = kmalloc(3 * PAGE_SIZE + 43);
+      kfree(b4, 3 * PAGE_SIZE + 43);
+   }
+
+   uintptr_t duration = (RDTSC() - start) / iters;
+
+   printk("Cycles per kmalloc + kfree: %u\n",  duration / 4);
 }
 
 void kmain() {
