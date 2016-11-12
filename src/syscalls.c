@@ -79,6 +79,8 @@ ssize_t syscall_count = sizeof(syscalls_pointers) / sizeof(void *);
 
 #ifdef __i386__
 
+#include <arch/i386/arch_utils.h>
+
 intptr_t handle_syscall(regs *r)
 {
    intptr_t syscall_no = r->eax;

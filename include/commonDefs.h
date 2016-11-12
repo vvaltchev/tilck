@@ -1,6 +1,35 @@
 
 #pragma once
 
+#ifndef __cplusplus
+
+typedef unsigned char bool;
+#define true ((unsigned char)1)
+#define false ((unsigned char)0)
+#define STATIC_ASSERT(s) _Static_assert(s, "Static assertion failed")
+
+#else
+
+#define STATIC_ASSERT(s) static_assert(s, "Static assertion failed")
+
+#endif
+
+#ifdef __i386__
+
+STATIC_ASSERT(sizeof(void *) == 4);
+#define BITS32
+
+#elif defined(__x86_64__)
+
+STATIC_ASSERT(sizeof(void *) == 8);
+#define BITS64
+
+#else
+
+#error Platform not supported.
+
+#endif
+
 #ifdef _MSC_VER
 #define inline __inline
 
@@ -14,7 +43,7 @@
 #define ALWAYS_INLINE inline
 #define typeof(x) void *
 
-#define static_assert(s,err)
+#define STATIC_ASSERT(s, err)
 
 #define PURE
 #define CONSTEXPR
@@ -28,12 +57,12 @@
 
 #define typeof(x) __typeof__(x)
 
-#define static_assert(s) _Static_assert(s, "Static assertion failed")
-
 #define PURE __attribute__((pure))
 #define CONSTEXPR __attribute__((const))
 
 #endif
+
+#ifndef TEST
 
 typedef char int8_t;
 typedef short int16_t;
@@ -42,6 +71,14 @@ typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 
+#ifdef BITS32
+typedef unsigned long long uint64_t;
+typedef long long int64_t;
+#else
+typedef unsigned long uint64_t;
+typedef long int64_t;
+#endif
+
 typedef long ssize_t; // signed pointer-size integer
 typedef unsigned long size_t; // unsigned pointer-size integer
 
@@ -49,37 +86,16 @@ typedef size_t uintptr_t;
 typedef ssize_t intptr_t;
 typedef ssize_t ptrdiff_t;
 
-static_assert(sizeof(uintptr_t) == sizeof(intptr_t));
-static_assert(sizeof(uintptr_t) == sizeof(void *));
-
-#ifdef __i386__
-
-static_assert(sizeof(void *) == 4);
-
-#elif defined(__x86_64__)
-
-static_assert(sizeof(void *) == 8);
+#define NULL ((void *) 0)
 
 #else
 
-#error Platform not supported.
+#include <cstdint>
 
 #endif
 
-
-typedef uint8_t bool;
-#define true ((uint8_t)1)
-#define false ((uint8_t)0)
-#define NULL ((void *) 0)
-
-
-/* This defines what the stack looks like after an ISR ran */
-typedef struct {
-   uint32_t gs, fs, es, ds;      /* pushed the segs last */
-   uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;  /* pushed by 'pusha' */
-   uint32_t int_no, err_code;    /* our 'push byte #' and ecodes do this */
-   uint32_t eip, cs, eflags, useresp, ss;   /* pushed by the processor automatically */
-} regs;
+STATIC_ASSERT(sizeof(uintptr_t) == sizeof(intptr_t));
+STATIC_ASSERT(sizeof(uintptr_t) == sizeof(void *));
 
 static ALWAYS_INLINE void outb(uint16_t port, uint8_t val)
 {
@@ -141,7 +157,7 @@ CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
    v |= v >> 8;
    v |= v >> 16;
 
-#ifdef __x86_64__
+#ifdef BITS64
    v |= v >> 32;
 #endif
 
@@ -149,3 +165,4 @@ CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
 
    return v;
 }
+

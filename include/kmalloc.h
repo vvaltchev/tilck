@@ -3,7 +3,7 @@
 
 #include <commonDefs.h>
 
-#ifndef TEST
+#if !defined(TEST) && !defined(KERNEL_TEST)
 #define HEAP_BASE_ADDR (KERNEL_BASE_VADDR + 0x4000000) // BASE + 64 MB
 #else
 uintptr_t test_get_heap_base();
