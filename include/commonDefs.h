@@ -131,3 +131,21 @@ static inline int CONSTEXPR log2(size_t n)
 
    return res;
 }
+
+CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
+{
+   v--;
+   v |= v >> 1;
+   v |= v >> 2;
+   v |= v >> 4;
+   v |= v >> 8;
+   v |= v >> 16;
+
+#ifdef __x86_64__
+   v |= v >> 32;
+#endif
+
+   v++;
+
+   return v;
+}
