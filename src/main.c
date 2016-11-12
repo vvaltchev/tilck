@@ -109,7 +109,6 @@ void kmalloc_test()
 
    uintptr_t start = RDTSC();
 
-
    for (int i = 0; i < iters; i++) {
 
       void *b1 = kmalloc(10);

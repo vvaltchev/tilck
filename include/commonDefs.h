@@ -147,17 +147,46 @@ void assert_failed(const char *expr, const char *file, int line);
 #endif
 
 
-static inline int CONSTEXPR log2(size_t n)
+/*
+ * From: http://graphics.stanford.edu/~seander/bithacks.html
+ * with custom adaptions.
+ */
+
+static inline int CONSTEXPR log2_for_power_of_2(uintptr_t v)
 {
-   int res = 0;
+   static const uintptr_t b[] = {
+      0xAAAAAAAA
+      , 0xCCCCCCCC
+      , 0xF0F0F0F0
+      , 0xFF00FF00
+      , 0xFFFF0000
 
-   while (n > 1) {
-      res++;
-      n >>= 1;
+#ifdef BITS64
+      , 0xFFFFFFFF00000000ULL
+#endif
+   };
+
+   int i;
+   register uintptr_t r = (v & b[0]) != 0;
+
+
+#ifdef BITS32
+   for (i = 4; i > 0; i--) {
+      r |= ((v & b[i]) != 0) << i;
    }
+#else
+   for (i = 5; i > 0; i--) {
+      r |= ((v & b[i]) != 0) << i;
+   }
+#endif
 
-   return res;
+   return r;
 }
+
+/*
+* From: http://graphics.stanford.edu/~seander/bithacks.html
+* with custom adaptions.
+*/
 
 CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
 {
@@ -179,6 +208,11 @@ CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
 
 #if defined(__i386__) || defined(__x86_64__)
 
+/*
+ * RDTSC doesn't work well on 32 bit because it returns just 'lo'.
+ * In order to work good, we need uint64_t working on kernel for
+ * i386 as well. TODO: make it work.
+ */
 static ALWAYS_INLINE uintptr_t RDTSC()
 {
    uintptr_t lo, hi;
