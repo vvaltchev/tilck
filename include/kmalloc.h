@@ -6,8 +6,8 @@
 #if !defined(TEST) && !defined(KERNEL_TEST)
 #define HEAP_BASE_ADDR (KERNEL_BASE_VADDR + 0x4000000) // BASE + 64 MB
 #else
-uintptr_t test_get_heap_base();
-#define HEAP_BASE_ADDR (test_get_heap_base())
+extern void *kernel_heap_base;
+#define HEAP_BASE_ADDR ((uintptr_t)kernel_heap_base)
 #endif
 
 void initialize_kmalloc();
