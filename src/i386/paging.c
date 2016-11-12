@@ -1,4 +1,5 @@
 
+#include <arch/i386/arch_utils.h>
 #include <paging.h>
 #include <irq.h>
 #include <stringUtil.h>

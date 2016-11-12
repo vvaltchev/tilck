@@ -1,6 +1,7 @@
 #include <commonDefs.h>
 
 #include <irq.h>
+#include <arch/i386/arch_utils.h>
 
 #include <stringUtil.h>
 #include <term.h>

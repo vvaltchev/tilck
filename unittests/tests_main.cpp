@@ -5,6 +5,8 @@
 #include <cassert>
 #include <unordered_map>
 
+#include <commonDefs.h>
+
 using namespace std;
 
 #define PAGE_SIZE (4096)

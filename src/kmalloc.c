@@ -5,7 +5,7 @@
 
 #define MIN_BLOCK_SIZE (32)
 
-#ifndef TEST
+#ifndef KERNEL_TEST
 
 #define HEAP_DATA_SIZE (512 * 1024 * 1024)
 
@@ -21,10 +21,10 @@
 
 
 // MIN_BLOCK_SIZE has to be a multiple of 32
-static_assert((MIN_BLOCK_SIZE & 31) == 0);
+STATIC_ASSERT((MIN_BLOCK_SIZE & 31) == 0);
 
 // HEAP_DATA_SIZE has to be a multiple of 1 MB
-static_assert((HEAP_DATA_SIZE & ((1 << 20) - 1)) == 0);
+STATIC_ASSERT((HEAP_DATA_SIZE & ((1 << 20) - 1)) == 0);
 
 bool kbasic_virtual_alloc(uintptr_t vaddr, int pageCount);
 bool kbasic_virtual_free(uintptr_t vaddr, int pageCount);
@@ -43,7 +43,7 @@ typedef struct {
 
 } block_node;
 
-static_assert(sizeof(block_node) == 1);
+STATIC_ASSERT(sizeof(block_node) == 1);
 
 typedef struct {
 
@@ -293,16 +293,16 @@ void *allocate_node(size_t size)
    return allocate_node_rec(size, node_size, node, HEAP_DATA_ADDR);
 }
 
-void debug_print_node_state(int node)
-{
-   evenually_allocate_page_for_node(node);
-
-   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
-
-   block_node n = md->nodes[node];
-
-   //printk("[Node #%i] free: %i, split: %i, allocated: %i\n", node, n.free, n.split, n.allocated);
-}
+//void debug_print_node_state(int node)
+//{
+//   evenually_allocate_page_for_node(node);
+//
+//   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
+//
+//   block_node n = md->nodes[node];
+//
+//   //printk("[Node #%i] free: %i, split: %i, allocated: %i\n", node, n.free, n.split, n.allocated);
+//}
 
 
 void free_node(void *ptr, size_t size)
@@ -310,7 +310,6 @@ void free_node(void *ptr, size_t size)
    int node = ptr_to_node(ptr, size);
 
    //printk("free_node: node# %i\n", node);
-   debug_print_node_state(256);
 
    ASSERT(node_to_ptr(node, size) == ptr);
    ASSERT(node_has_page(node));
