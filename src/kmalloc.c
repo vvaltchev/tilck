@@ -129,41 +129,48 @@ static size_t set_free_uplevels(int n, size_t size) {
    return curr_size;
 }
 
-ALWAYS_INLINE static bool node_has_page(int node)
-{
-   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
-   uintptr_t pageAddr = (uintptr_t)(md->nodes + node) & ~(PAGE_SIZE - 1);
+/*
+ * Each byte represents 8 * PAGE_SIZE bytes = 32 KB.
+ */
 
-   return is_mapped(get_kernel_page_dir(), pageAddr);
+#define ALLOC_METADATA_SIZE sizeof(block_node) * BLOCK_NODES_IN_META_DATA / (8 * PAGE_SIZE)
+bool allocation_for_metadata_nodes[ALLOC_METADATA_SIZE] = {0};
+
+ALWAYS_INLINE static bool node_has_page(int node)
+{  
+   return allocation_for_metadata_nodes[(node * sizeof(block_node)) >> 15];
 }
 
 
 void evenually_allocate_page_for_node(int node)
 {
-   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
-   uintptr_t pageAddr = (uintptr_t)(md->nodes + node) & ~(PAGE_SIZE - 1);
+   block_node new_node;
+   new_node.split = false;
+   new_node.free = true;
+   new_node.allocated = false;
 
-   ////printk("evenually_allocate_page_for_node(%i): page: %p\n", node, pageAddr);
+   uintptr_t index = (node * sizeof(block_node)) >> 15;
+   uintptr_t pagesAddr = HEAP_BASE_ADDR + (index << 15);
 
-   if (!node_has_page(node)) {
+   //allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR; 
+   //uintptr_t pageAddr = (uintptr_t)(md->nodes + node) & ~(PAGE_SIZE - 1);
 
-      //printk("Allocating page %p for node# %i\n", pageAddr, node);
+   //printk("evenually_allocate_page_for_node(%i): index = %u, pagesAddr: %p\n", node, index, pagesAddr);
 
-      bool success = kbasic_virtual_alloc(pageAddr, 1);
+   if (!allocation_for_metadata_nodes[index]) {
+
+      //printk("Allocating 8 pages at %p for node# %i\n", pagesAddr, node);
+
+      bool success = kbasic_virtual_alloc(pagesAddr, 8);
       ASSERT(success);
 
-      block_node new_node;
-      new_node.free = true;
-      new_node.allocated = false;
-      new_node.split = false;
-
-      for (unsigned i = 0; i < PAGE_SIZE/sizeof(block_node); i++) {
-         ((block_node *)pageAddr)[i] = new_node;
+      for (unsigned i = 0; i < 8 * PAGE_SIZE/sizeof(block_node); i++) {
+         ((block_node *)pagesAddr)[i] = new_node;
       }
+
+      allocation_for_metadata_nodes[index] = true;
    }
 }
-
-
 
 
 static void actual_allocate_node(size_t node_size, int node, uintptr_t vaddr)
@@ -238,15 +245,15 @@ typedef struct {
 
 //////////////////////////////////////////////////////////////////
 
-void *kmalloc(size_t size)
+void *kmalloc(size_t desired_size)
 {
-   if (UNLIKELY(size > HEAP_DATA_SIZE)) {
+   if (UNLIKELY(desired_size > HEAP_DATA_SIZE)) {
       return NULL;
    }
 
-   size = MAX(size, MIN_BLOCK_SIZE);
+   const size_t size = MAX(desired_size, MIN_BLOCK_SIZE);
 
-   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
+   allocator_meta_data * const md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
    int stack_size = 1;
    stack_elem alloc_stack[32];
@@ -256,15 +263,20 @@ void *kmalloc(size_t size)
 
    while (stack_size) {
 
-      size_t node_size = alloc_stack[stack_size - 1].node_size;
-      uintptr_t vaddr = alloc_stack[stack_size - 1].vaddr;
-      int node = alloc_stack[stack_size - 1].node;
+      const size_t node_size = alloc_stack[stack_size - 1].node_size;
+      const size_t half_node_size = HALF(node_size);
+
+      const uintptr_t vaddr = alloc_stack[stack_size - 1].vaddr;
+
+      const int node = alloc_stack[stack_size - 1].node;
+      const int left_node = NODE_LEFT(node);
+      const int right_node = NODE_RIGHT(node);
 
       evenually_allocate_page_for_node(node);
 
       if (node_size > MIN_BLOCK_SIZE) {
-         evenually_allocate_page_for_node(NODE_LEFT(node));
-         evenually_allocate_page_for_node(NODE_RIGHT(node));
+         evenually_allocate_page_for_node(left_node);
+         evenually_allocate_page_for_node(right_node);
       }
 
       block_node n = md->nodes[node];
@@ -273,7 +285,7 @@ void *kmalloc(size_t size)
          SIMULATE_RETURN_NULL();
       }
 
-      if (HALF(node_size) < size) {
+      if (half_node_size < size) {
 
          if (n.split) {
             SIMULATE_RETURN_NULL();
@@ -288,9 +300,9 @@ void *kmalloc(size_t size)
          split_node(node);
       }
 
-      if (md->nodes[NODE_LEFT(node)].free) {
+      if (md->nodes[left_node].free) {
 
-         SIMULATE_CALL(HALF(node_size), vaddr, NODE_LEFT(node));
+         SIMULATE_CALL(half_node_size, vaddr, left_node);
 
          after_call:
 
@@ -303,9 +315,9 @@ void *kmalloc(size_t size)
          SIMULATE_CALL(node_size, vaddr + node_size, NODE_RIGHT(NODE_PARENT(node)));
 
 
-      } else if (md->nodes[NODE_RIGHT(node)].free) {
+      } else if (md->nodes[right_node].free) {
 
-         SIMULATE_CALL(HALF(node_size), vaddr + HALF(node_size), NODE_RIGHT(node));
+         SIMULATE_CALL(half_node_size, vaddr + half_node_size, right_node);
       }
 
    }
@@ -376,8 +388,8 @@ void initialize_kmalloc() {
 
    /* Do nothing, for the moment. */
 
-   //printk("heap base addr: %p\n", HEAP_BASE_ADDR);
-   //printk("heap data addr: %p\n", HEAP_DATA_ADDR);
+   printk("heap base addr: %p\n", HEAP_BASE_ADDR);
+   printk("heap data addr: %p\n", HEAP_DATA_ADDR);
 
    /*
     * Experiment: if we make node_has_page() always return TRUE,
