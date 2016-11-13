@@ -74,59 +74,8 @@ void show_hello_message()
    printk("Hello from my kernel!\n");
 }
 
-//void *call_kmalloc_and_print(size_t s)
-//{
-//   void *ret = kmalloc(s);
-//   printk("kmalloc(%u) returns: %p\n", s, (uintptr_t)((char *)ret - (char *)HEAP_BASE_ADDR));
-//
-//   return ret;
-//}
 
-//void kmalloc_test()
-//{
-//
-//   void *b1 = call_kmalloc_and_print(10);
-//   void *b2 = call_kmalloc_and_print(10);
-//   void *b3 = call_kmalloc_and_print(50);
-//
-//   kfree(b1, 10);
-//   kfree(b2, 10);
-//   kfree(b3, 50);
-//
-//   void *b4 = call_kmalloc_and_print(3 * PAGE_SIZE + 43);
-//   kfree(b4, 3 * PAGE_SIZE + 43);
-//
-//   void *b5 = call_kmalloc_and_print(3 * PAGE_SIZE + 43);
-//   kfree(b5, 3 * PAGE_SIZE + 43);
-//
-//}
-
-void kmalloc_test()
-{
-   const int iters = 100000;
-
-   printk("Running a kmalloc() perf. test for %u iterations...\n", iters);
-
-   uintptr_t start = RDTSC();
-
-   for (int i = 0; i < iters; i++) {
-
-      void *b1 = kmalloc(10);
-      void *b2 = kmalloc(10);
-      void *b3 = kmalloc(50);
-
-      kfree(b1, 10);
-      kfree(b2, 10);
-      kfree(b3, 50);
-
-      void *b4 = kmalloc(3 * PAGE_SIZE + 43);
-      kfree(b4, 3 * PAGE_SIZE + 43);
-   }
-
-   uintptr_t duration = (RDTSC() - start) / iters;
-
-   printk("Cycles per kmalloc + kfree: %u\n",  duration >> 2);
-}
+void kmalloc_trivial_perf_test();
 
 void kmain() {
 
@@ -151,7 +100,7 @@ void kmain() {
    sti();
    init_kb();
 
-   kmalloc_test();
+   kmalloc_trivial_perf_test();
 
    switch_to_user_mode();
 
