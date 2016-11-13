@@ -68,13 +68,9 @@ void init_test_kmalloc()
 int main(int argc, char **argv) {
 
    init_test_kmalloc();
-
-
    initialize_kmalloc();
 
-   cout << "hello from C++ 11 kernel unit tests!" << endl;
    printf("kernel heap base: %p\n", kernel_heap_base);
-
    kmalloc_trivial_perf_test();
 
    return 0;
