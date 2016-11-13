@@ -1,4 +1,5 @@
 
+#include <arch/i386/arch_utils.h>
 #include <paging.h>
 #include <irq.h>
 #include <stringUtil.h>
@@ -6,6 +7,10 @@
 #include <debug_utils.h>
 
 #include <arch/i386/paging_int.h>
+
+#define KERNEL_PADDR_TO_VADDR(paddr) ((typeof(paddr))((uintptr_t)(paddr) + KERNEL_BASE_VADDR))
+#define KERNEL_VADDR_TO_PADDR(vaddr) ((typeof(vaddr))((uintptr_t)(vaddr) - KERNEL_BASE_VADDR))
+
 
 /*
  * ----------------------------------------------
@@ -20,6 +25,11 @@ bool paging_debug = false;
 page_directory_t *kernel_page_dir = NULL;
 
 page_directory_t *get_curr_page_dir()
+{
+   return kernel_page_dir;
+}
+
+page_directory_t *get_kernel_page_dir()
 {
    return kernel_page_dir;
 }
@@ -120,9 +130,24 @@ bool unmap_page(page_directory_t *pdir, uintptr_t vaddr)
    return true;
 }
 
+void *get_mapping(page_directory_t *pdir, uintptr_t vaddr)
+{
+   page_table_t *ptable;
+   uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
+   uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
+
+   ASSERT(pdir->page_tables[page_dir_index] != NULL);
+
+   ptable = pdir->page_tables[page_dir_index];
+
+   ASSERT(ptable->pages[page_table_index].present);
+
+   return (void *)(ptable->pages[page_table_index].pageAddr << 12);
+}
+
 void map_page(page_directory_t *pdir,
-	          uintptr_t vaddr,
-	          uintptr_t paddr,
+	           uintptr_t vaddr,
+	           uintptr_t paddr,
               bool us,
               bool rw)
 {
@@ -176,66 +201,6 @@ void map_page(page_directory_t *pdir,
    p.pageAddr = paddr >> 12;
 
    ptable->pages[page_table_index] = p;
-}
-
-
-void map_pages(page_directory_t *pdir,
-	           uintptr_t vaddr,
-	           uintptr_t paddr,
-               int pageCount,
-               bool us,
-               bool rw)
-{
-   for (int i = 0; i < pageCount; i++) {
-      map_page(pdir, vaddr + (i << 12), paddr + (i << 12), us, rw);
-   }
-}
-
-bool kbasic_virtual_alloc(page_directory_t *pdir, uintptr_t vaddr,
-                          size_t size, bool us, bool rw)
-{
-   ASSERT(size > 0);        // the size must be > 0.
-   ASSERT(!(size & 4095));  // the size must be a multiple of 4096
-   ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
-
-   unsigned pagesCount = size >> 12;
-
-   for (unsigned i = 0; i < pagesCount; i++) {
-      if (is_mapped(pdir, vaddr + (i << 12))) {
-         return false;
-      }
-   }
-
-   for (unsigned i = 0; i < pagesCount; i++) {
-
-      void *paddr = alloc_phys_page();
-      ASSERT(paddr != NULL);
-
-      map_page(pdir, vaddr + (i << 12), (uint32_t)paddr, us, rw);
-   }
-
-   return true;
-}
-
-bool kbasic_virtual_free(page_directory_t *pdir, uintptr_t vaddr, uintptr_t size)
-{
-   ASSERT(size > 0);        // the size must be > 0.
-   ASSERT(!(size & 4095));  // the size must be a multiple of 4096
-   ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
-
-   unsigned pagesCount = size >> 12;
-
-   for (unsigned i = 0; i < pagesCount; i++) {
-      if (!is_mapped(pdir, vaddr + (i << 12))) {
-         return false;
-      }
-   }
-
-   for (unsigned i = 0; i < pagesCount; i++) {
-      unmap_page(pdir, vaddr + (i << 12));
-   }
-
-   return true;
 }
 
 

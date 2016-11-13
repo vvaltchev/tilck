@@ -1,3 +1,6 @@
+
+// Just defining so necessary symbols
+
 void isr0() { }
 void isr1() { }
 void isr2() { }

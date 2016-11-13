@@ -75,6 +75,8 @@ void show_hello_message()
 }
 
 
+void kmalloc_trivial_perf_test();
+
 void kmain() {
 
    term_init();
@@ -86,7 +88,7 @@ void kmain() {
 
    init_physical_page_allocator();
    init_paging();
-
+   initialize_kmalloc();
 
    timer_phase(CLOCK_HZ);
 
@@ -97,6 +99,8 @@ void kmain() {
 
    sti();
    init_kb();
+
+   kmalloc_trivial_perf_test();
 
    switch_to_user_mode();
 

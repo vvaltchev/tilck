@@ -19,14 +19,22 @@ endif
 export AR = ar
 export NASM = nasm
 export CC = gcc
+export CXX = g++
 export MV = mv
 export RM = rm
 
-export OPT = -O2
+
+# Optimized build
+export OPT = -O3
+export DEFS = -DNDEBUG
+
+# Debug build
 #export OPT = -O0 -fno-inline-functions
+#export DEFS = -DDEBUG
+
 export WARN = -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
 export INCDIRS = -I$(shell pwd)/include
-export CFLAGS =  $(OPT) $(WARN) -std=c99 $(INCDIRS) $(ARCH_CFLAGS) \
+export CFLAGS =  $(OPT) $(WARN) $(DEFS) -std=c99 $(INCDIRS) $(ARCH_CFLAGS) \
                  -mno-red-zone -fvisibility=default \
                  -ffreestanding -g -nostdinc -fno-builtin \
                  -fno-asynchronous-unwind-tables \

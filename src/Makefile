@@ -15,7 +15,8 @@ export KERNEL_ARCH_CODE_STATIC_LIB_TARGET := $(BUILD_DIR)/kernel_arch.a
 
 
 ifdef TEST
-	export CFLAGS = $(OPT) $(WARN) -std=c99 $(INCDIRS) -fvisibility=default -ffreestanding -g -nostdinc $(ARCH_CFLAGS)
+	export CFLAGS = $(OPT) $(WARN) $(DEFS) -std=c99 -DKERNEL_TEST $(INCDIRS) \
+	                -fvisibility=default -ffreestanding -g -nostdinc $(ARCH_CFLAGS)
 endif
 
 $(shell mkdir -p $(DEPDIR) > /dev/null)
@@ -47,7 +48,7 @@ $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
 	@$(COMPILE.c) $(OUTPUT_OPTION) $<
 	@$(POSTCOMPILE)
 
-.PHONY: clean $(KERNEL_ARCH_CODE_STATIC_LIB_TARGET)
+.PHONY: clean $(KERNEL_ARCH_CODE_STATIC_LIB_TARGET) $(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME)
 
 $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d

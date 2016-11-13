@@ -24,6 +24,9 @@
 #define FAULT_ALIGN_FAULT         17
 #define FAULT_MACHINE_CHECK       18
 
+// Forward-declaring regs
+typedef struct regs regs;
+
 void irq_install();
 
 void irq_install_handler(uint8_t irq, void(*handler)(regs *r));

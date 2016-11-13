@@ -1,5 +1,5 @@
 
-#include <kmalloc.h>
+#include <paging.h>
 #include <stringUtil.h>
 
 #define MEM_SIZE_IN_MB 128
@@ -14,6 +14,12 @@
 
 volatile uint32_t pages_bit_field[PAGES_BIT_FIELD_ELEMS] = {0};
 volatile uint32_t last_index = 0;
+volatile int pagesUsed = 0;
+
+int get_free_physical_pages_count()
+{
+   return ((MEM_SIZE_IN_MB << 20) / PAGE_SIZE) - pagesUsed;
+}
 
 static uint32_t get_first_zero_bit_index(uint32_t num)
 {
@@ -31,6 +37,7 @@ void init_physical_page_allocator()
    // Mark the first 2 MBs as used.
    for (uint32_t i = 0; i < 16; i++) {
       pages_bit_field[i] = FULL_128KB_AREA;
+      pagesUsed += 32;
    }
 }
 
@@ -59,6 +66,7 @@ void *alloc_phys_page() {
    ret = ((last_index << 17) + (free_index << 12));
    pages_bit_field[last_index] |= (1 << free_index);
 
+   pagesUsed++;
    return (void *)ret;
 }
 
@@ -79,4 +87,6 @@ void free_phys_page(void *address) {
     * This increases the data locality.
     */
    last_index = majorIndex;
+
+   pagesUsed--;
 }

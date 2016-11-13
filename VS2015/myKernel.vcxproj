@@ -138,18 +138,23 @@
   <ItemGroup>
     <ClCompile Include="..\init_src\init.c" />
     <ClCompile Include="..\init_src\string.c" />
-    <ClCompile Include="..\src\gdt.c" />
-    <ClCompile Include="..\src\idt.c" />
-    <ClCompile Include="..\src\irq.c" />
+    <ClCompile Include="..\unittests\asmMocks.c" />
+    <ClCompile Include="..\unittests\mocks.c" />
+    <ClCompile Include="..\unittests\tests_main.cpp" />
+    <ClCompile Include="..\src\i386\gdt.c" />
+    <ClCompile Include="..\src\i386\idt.c" />
+    <ClCompile Include="..\src\i386\irq.c" />
     <ClCompile Include="..\src\kb.c" />
-    <ClCompile Include="..\src\kernel32.c" />
+    <ClCompile Include="..\src\main.c" />
     <ClCompile Include="..\src\pageAllocator.c" />
-    <ClCompile Include="..\src\paging.c" />
+    <ClCompile Include="..\src\i386\paging.c" />
     <ClCompile Include="..\src\stringUtil.c" />
     <ClCompile Include="..\src\syscalls.c" />
     <ClCompile Include="..\src\term.c" />
     <ClCompile Include="..\src\debug_utils.c" />
     <ClCompile Include="..\src\kmalloc.c" />
+    <ClCompile Include="..\src\kmalloc_util.c" />
+    <ClCompile Include="..\src\i386\utils32.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\commonDefs.h" />
@@ -160,6 +165,7 @@
     <ClInclude Include="..\include\term.h" />
     <ClInclude Include="..\include\debug_utils.h" />
     <ClInclude Include="..\include\arch\i386\paging_int.h" />
+    <ClInclude Include="..\include\arch\i386\arch_utils.h" />
     <ClInclude Include="..\init_src\string.h" />
     <ClInclude Include="..\init_src\usermode_syscall_wrappers.h" />
   </ItemGroup>
