@@ -7,7 +7,7 @@
 
 #ifndef KERNEL_TEST
 
-#define HEAP_DATA_SIZE (1 * 1024 * 1024)
+#define HEAP_DATA_SIZE (512 * 1024 * 1024)
 
 #else
 
@@ -390,21 +390,5 @@ void initialize_kmalloc() {
 
    printk("heap base addr: %p\n", HEAP_BASE_ADDR);
    printk("heap data addr: %p\n", HEAP_DATA_ADDR);
-
-   /*
-    * Experiment: if we make node_has_page() always return TRUE,
-    * and we initialize all the nodes meta-data here, how fast
-    * it will be?
-    */
-   
-   //allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
-
-   //for (int i = 0; i < BLOCK_NODES_IN_META_DATA; i++) {
-   //   block_node new_node;
-   //   new_node.free = true;
-   //   new_node.allocated = false;
-   //   new_node.split = false;
-
-   //   md->nodes[i]=new_node;
-   //}
 }
+
