@@ -77,8 +77,6 @@ void kmalloc_chaos_test()
 
    for (int i = 0; i < 100; i++) {
 
-      //cout << round(dist(e)) << endl;
-
       size_t s = roundup_next_power_of_2(round(dist(e)));
 
       printf("Allocating %u bytes..\n", s);
@@ -87,11 +85,20 @@ void kmalloc_chaos_test()
 
       if (!r) {
 
-         printf("Unable to allocate %u bytes (allocated by now: %u)\n", s, mem_allocated);
+         printf("************* Unable to allocate %u bytes (allocated by now: %u)\n", s, mem_allocated);
          continue;
       }
 
+
+      mem_allocated += s;
       allocations.push_back(make_pair(r, s));
+   }
+
+   for (const auto& e: allocations) {
+
+      printf("Free ptr at %p (size: %u)\n", e.first, e.second);
+
+      kfree(e.first, e.second);
    }
 }
 

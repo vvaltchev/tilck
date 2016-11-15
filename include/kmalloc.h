@@ -9,7 +9,7 @@
 #else
 extern void *kernel_heap_base;
 #define HEAP_BASE_ADDR ((uintptr_t)kernel_heap_base)
-#define HEAP_DATA_SIZE (1 * 1024 * 1024)
+#define HEAP_DATA_SIZE (64 * 1024 * 1024)
 #endif
 
 void initialize_kmalloc();

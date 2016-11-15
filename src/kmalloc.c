@@ -331,6 +331,8 @@ void *kmalloc(size_t desired_size)
          SIMULATE_RETURN_NULL();
       }
 
+      // In case nor the left nor the right child is free, just return NULL.
+      SIMULATE_RETURN_NULL();
    }
 
    return NULL;
