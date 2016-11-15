@@ -122,7 +122,7 @@ void kmalloc_chaos_test()
 
    lognormal_distribution<> dist(5.0, 3);
 
-   for (int i = 0; i < 100; i++) {
+   for (int i = 0; i < 1; i++) {
       kmalloc_chaos_test_sub(e, dist);
    }
 }
