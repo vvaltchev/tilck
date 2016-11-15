@@ -28,5 +28,5 @@ void __wrap_panic(const char *fmt, ...)
 void __wrap_assert_failed(const char *expr, const char *file, int line)
 {
 	printf("Kernel assertion '%s' FAILED in %s at line %d\n", expr, file, line);
-	exit(1);
+   abort();
 }
