@@ -75,11 +75,11 @@ void kmalloc_chaos_test()
    size_t mem_allocated = 0;
    vector<pair<void *, size_t>> allocations;
 
-   for (int i = 0; i < 100; i++) {
+   for (int i = 0; i < 1000; i++) {
 
       size_t s = roundup_next_power_of_2(round(dist(e)));
 
-      printf("Allocating %u bytes..\n", s);
+      printf("[Test] Allocating %u bytes..\n", s);
 
       void *r = kmalloc(s);
 
@@ -89,14 +89,13 @@ void kmalloc_chaos_test()
          continue;
       }
 
-
       mem_allocated += s;
       allocations.push_back(make_pair(r, s));
    }
 
    for (const auto& e: allocations) {
 
-      printf("Free ptr at %p (size: %u)\n", e.first, e.second);
+      printf("[Test] Free ptr at %p (size: %u)\n", e.first, e.second);
 
       kfree(e.first, e.second);
    }

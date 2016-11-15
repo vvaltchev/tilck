@@ -91,6 +91,11 @@ static void set_no_free_uplevels(int node)
    } while (n > 0);
 }
 
+CONSTEXPR static ALWAYS_INLINE bool is_block_node_free(block_node n)
+{
+   return n.free && !n.split;
+}
+
 static size_t set_free_uplevels(int n, size_t size) {
 
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
@@ -98,14 +103,20 @@ static size_t set_free_uplevels(int n, size_t size) {
 
    do {
 
-      if (!md->nodes[NODE_LEFT(n)].free || !md->nodes[NODE_RIGHT(n)].free) {
+      block_node left = md->nodes[NODE_LEFT(n)];
+      block_node right = md->nodes[NODE_RIGHT(n)];
 
-         //printk("STOP node left free:  %i\n", md->nodes[NODE_LEFT(n)].free);
-         //printk("STOP node right free: %i\n", md->nodes[NODE_RIGHT(n)].free);
-         break; // break on the first node that cannot be coaleshed.
+      if (!is_block_node_free(left) || !is_block_node_free(right)) {
+
+         printk("STOP: unable to make node %i (size %u) as free\n", n, curr_size);
+         printk("node left free:  %i\n", md->nodes[NODE_LEFT(n)].free);
+         printk("node right free: %i\n", md->nodes[NODE_RIGHT(n)].free);
+
+         curr_size >>= 1;
+         break;
       }
 
-      //printk("Marking parent node = %i (size: %u) as free\n", n, curr_size);
+      printk("Marking node = %i (size: %u) as free\n", n, curr_size);
 
       md->nodes[n].free = true;
       md->nodes[n].split = false;
@@ -194,6 +205,8 @@ static void actual_allocate_node(size_t node_size, int node, uintptr_t vaddr)
 
       pageOfVaddr += PAGE_SIZE;
    }
+
+   printk("Returning addr %p (%u pages)\n", vaddr, pageCount);
 }
 
 ALWAYS_INLINE static void split_node(int node)
@@ -348,22 +361,22 @@ void kfree(void *ptr, size_t size)
 
    int node = ptr_to_node(ptr, size);
 
-   //printk("free_node: node# %i\n", node);
+   printk("free_node: node# %i\n", node);
 
    ASSERT(node_to_ptr(node, size) == ptr);
    ASSERT(node_has_page(node));
 
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
+   // A node returned to user cannot be split.
+   ASSERT(!md->nodes[node].split);
+
    md->nodes[node].free = true;
 
-   // Walking up to mark the parent nodes as 'free' if necessary..
+   // Walking up to mark the parent nodes as 'free' if necessary..  
+   size_t curr_size = set_free_uplevels(NODE_PARENT(node), size);
 
-   int n = NODE_PARENT(node);
-   
-   size_t curr_size = set_free_uplevels(n, size);
-
-   //printk("After coaleshe, n = %i, curr_size = %u\n", n, curr_size);
+   printk("After coaleshe, curr_size = %u\n", curr_size);
    
    if (curr_size < PAGE_SIZE)
       return;
@@ -371,17 +384,33 @@ void kfree(void *ptr, size_t size)
    uintptr_t pageOfVaddr = (uintptr_t)ptr & ~(PAGE_SIZE - 1);
    int pageCount = 1 + ((size - 1) >> log2_for_power_of_2(PAGE_SIZE));
 
-   //printk("The block node used up to %i pages\n", pageCount);
+   printk("The block node used up to %i pages\n", pageCount);
 
    for (int i = 0; i < pageCount; i++) {
 
       int pageNode = ptr_to_node((void *)pageOfVaddr, PAGE_SIZE);
       ASSERT(node_has_page(pageNode));
 
-      //printk("i = %i, pNode = %i, pAddr = %p, alloc = %i, free = %i, split = %i\n",
-      //       i, pageNode, pageOfVaddr, md->nodes[pageNode].allocated, md->nodes[pageNode].free, md->nodes[pageNode].split);
+      printk("Checking page i = %i, pNode = %i, pAddr = %p, alloc = %i, free = %i, split = %i\n",
+         i, pageNode, pageOfVaddr, md->nodes[pageNode].allocated,
+         md->nodes[pageNode].free, md->nodes[pageNode].split);
+
+      /*
+       * For nodes smaller than PAGE_SIZE, the page we're freeing MUST be free.
+       * For bigger nodes that kind of checking does not make sense:
+       * a major block owns its all pages and their flags are irrelevant.
+       */
+      ASSERT(size > PAGE_SIZE || md->nodes[pageNode].free);
+   
+      ////if (!md->nodes[pageNode].free) {
+      ////   printk("Page at %p is NOT free\n", pageOfVaddr);
+      ////   continue;
+      ////}
 
       ASSERT(md->nodes[pageNode].allocated);
+
+      printk("---> FREEING the PAGE!\n");
+
       bool success = kbasic_virtual_free(pageOfVaddr, 1);
       ASSERT(success);
 
