@@ -100,10 +100,11 @@ CONSTEXPR static ALWAYS_INLINE bool is_block_node_free(block_node n)
    return n.has_some_free_space && !n.split;
 }
 
-static size_t set_free_uplevels(int n, size_t size) {
+static size_t set_free_uplevels(int *node, size_t size) {
 
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
    size_t curr_size = size << 1;
+   int n = *node;
 
    do {
 
@@ -113,12 +114,14 @@ static size_t set_free_uplevels(int n, size_t size) {
       if (!is_block_node_free(left) || !is_block_node_free(right)) {
 
          printk("STOP: unable to make node %i (size %u) as free\n", n, curr_size);
-         printk("node left free:  %i\n", md->nodes[NODE_LEFT(n)].has_some_free_space);
-         printk("node right free: %i\n", md->nodes[NODE_RIGHT(n)].has_some_free_space);
+         printk("node left: free:  %i, split: %i\n", left.has_some_free_space, left.split);
+         printk("node right: free: %i, split: %i\n", right.has_some_free_space, left.split);
 
          curr_size >>= 1;
          break;
       }
+
+      *node = n; // last successful coaleshe.
 
       printk("Marking node = %i (size: %u) as free\n", n, curr_size);
 
@@ -196,15 +199,21 @@ static void actual_allocate_node(size_t node_size, int node, uintptr_t vaddr)
       int pageNode = ptr_to_node((void *)pageOfVaddr, PAGE_SIZE);
       evenually_allocate_page_for_node(pageNode);
 
+      printk("For node# %i, using page (%i/%i): %p\n", node, i+1, pageCount, pageOfVaddr);
+
       if (!md->nodes[pageNode].allocated) {
          bool success = kbasic_virtual_alloc(pageOfVaddr, 1);
          ASSERT(success);
 
+         printk("Allocating page..\n");
          md->nodes[pageNode].allocated = true;
       }
 
       if (node_size >= PAGE_SIZE) {
+         ASSERT(!md->nodes[pageNode].split);
          md->nodes[pageNode].has_some_free_space = false;
+      } else {
+         ASSERT(md->nodes[pageNode].split);
       }
 
       pageOfVaddr += PAGE_SIZE;
@@ -378,17 +387,28 @@ void kfree(void *ptr, size_t size)
    md->nodes[node].has_some_free_space = true;
 
    // Walking up to mark the parent nodes as 'free' if necessary..  
-   size_t curr_size = set_free_uplevels(NODE_PARENT(node), size);
 
-   printk("After coaleshe, curr_size = %u\n", curr_size);
+   int curr_node = NODE_PARENT(node);
+   size_t curr_size = set_free_uplevels(&curr_node, size);
+
+   printk("After coaleshe, curr node# %i, curr_size = %u\n", curr_node, curr_size);
    
    if (curr_size < PAGE_SIZE)
       return;
 
-   uintptr_t pageOfVaddr = (uintptr_t)ptr & ~(PAGE_SIZE - 1);
-   int pageCount = 1 + ((size - 1) >> log2_for_power_of_2(PAGE_SIZE));
+   uintptr_t pageOfVaddr = (uintptr_t)node_to_ptr(curr_node, curr_size) & ~(PAGE_SIZE - 1);
+   int pageCount = 1 + ((curr_size - 1) >> log2_for_power_of_2(PAGE_SIZE));
 
    printk("The block node used up to %i pages\n", pageCount);
+
+
+#ifdef DEBUG
+
+   uintptr_t this_node_page_addr = (uintptr_t)ptr & ~(PAGE_SIZE - 1);
+   int this_node_page = ptr_to_node((void *)this_node_page_addr, PAGE_SIZE);
+   ASSERT(md->nodes[this_node_page].allocated);
+
+#endif
 
    for (int i = 0; i < pageCount; i++) {
 
@@ -404,22 +424,21 @@ void kfree(void *ptr, size_t size)
        * For bigger nodes that kind of checking does not make sense:
        * a major block owns its all pages and their flags are irrelevant.
        */
-      ASSERT(size > PAGE_SIZE || md->nodes[pageNode].has_some_free_space);
+      ASSERT(curr_size >= PAGE_SIZE || is_block_node_free(md->nodes[pageNode]));
 
-      // ASSERT that the page is currently marked as allocated.
-      ASSERT(md->nodes[pageNode].allocated);
+      if (md->nodes[pageNode].allocated) {
+         
+         printk("---> FREEING the PAGE!\n");
+         bool success = kbasic_virtual_free(pageOfVaddr, 1);
+         ASSERT(success);
 
-      printk("---> FREEING the PAGE!\n");
+         block_node new_node_val;
+         new_node_val.allocated = false;
+         new_node_val.has_some_free_space = true;
+         new_node_val.split = false;
 
-      bool success = kbasic_virtual_free(pageOfVaddr, 1);
-      ASSERT(success);
-
-      block_node new_node_val;
-      new_node_val.allocated = false;
-      new_node_val.has_some_free_space = true;
-      new_node_val.split = false;
-
-      md->nodes[pageNode] = new_node_val;
+         md->nodes[pageNode] = new_node_val;
+      }
 
       pageOfVaddr += PAGE_SIZE;
    }

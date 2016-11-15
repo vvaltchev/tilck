@@ -142,7 +142,7 @@ void assert_failed(const char *expr, const char *file, int line);
 
 #else
 
-#define ASSERT(x)
+#define ASSERT(x) (void)(x)
 
 #endif
 
