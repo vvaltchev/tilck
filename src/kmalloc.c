@@ -22,11 +22,14 @@ bool kbasic_virtual_free(uintptr_t vaddr, int pageCount);
 
 typedef struct {
 
-   uint8_t split : 1; // 1 if the block has been split. Check its children.
-   uint8_t free : 1;  // free = 1 means the chunk is free when split = 0,
-                      // otherwise, when split = 1, it means there is some free space.
+   // 1 if the block has been split. Check its children.
+   uint8_t split : 1;
 
-   uint8_t allocated : 1; // used only for nodes of PAGE_SIZE size.
+   // 1 means the chunk is completely free when split = 0,
+   // otherwise (when split = 1), it means there is some free space.
+   uint8_t has_some_free_space : 1;
+
+   uint8_t allocated : 1; // used only for nodes having size=PAGE_SIZE.
 
    uint8_t unused : 5;
 
@@ -82,8 +85,9 @@ static void set_no_free_uplevels(int node)
 
    do {
 
-      if (!md->nodes[NODE_LEFT(n)].free && !md->nodes[NODE_RIGHT(n)].free) {
-         md->nodes[n].free = false;
+      if (!md->nodes[NODE_LEFT(n)].has_some_free_space &&
+          !md->nodes[NODE_RIGHT(n)].has_some_free_space) {
+         md->nodes[n].has_some_free_space = false;
       }
 
       n = NODE_PARENT(n);
@@ -93,7 +97,7 @@ static void set_no_free_uplevels(int node)
 
 CONSTEXPR static ALWAYS_INLINE bool is_block_node_free(block_node n)
 {
-   return n.free && !n.split;
+   return n.has_some_free_space && !n.split;
 }
 
 static size_t set_free_uplevels(int n, size_t size) {
@@ -109,8 +113,8 @@ static size_t set_free_uplevels(int n, size_t size) {
       if (!is_block_node_free(left) || !is_block_node_free(right)) {
 
          printk("STOP: unable to make node %i (size %u) as free\n", n, curr_size);
-         printk("node left free:  %i\n", md->nodes[NODE_LEFT(n)].free);
-         printk("node right free: %i\n", md->nodes[NODE_RIGHT(n)].free);
+         printk("node left free:  %i\n", md->nodes[NODE_LEFT(n)].has_some_free_space);
+         printk("node right free: %i\n", md->nodes[NODE_RIGHT(n)].has_some_free_space);
 
          curr_size >>= 1;
          break;
@@ -118,7 +122,7 @@ static size_t set_free_uplevels(int n, size_t size) {
 
       printk("Marking node = %i (size: %u) as free\n", n, curr_size);
 
-      md->nodes[n].free = true;
+      md->nodes[n].has_some_free_space = true;
       md->nodes[n].split = false;
 
       n = NODE_PARENT(n);
@@ -146,7 +150,7 @@ void evenually_allocate_page_for_node(int node)
 {
    block_node new_node;
    new_node.split = false;
-   new_node.free = true;
+   new_node.has_some_free_space = true;
    new_node.allocated = false;
 
    uintptr_t index = (node * sizeof(block_node)) >> 15;
@@ -177,7 +181,7 @@ static void actual_allocate_node(size_t node_size, int node, uintptr_t vaddr)
 {
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
-   md->nodes[node].free = false;
+   md->nodes[node].has_some_free_space = false;
 
    // Walking up to mark the parent node as 'not free' if necessary..
    set_no_free_uplevels(node);
@@ -200,7 +204,7 @@ static void actual_allocate_node(size_t node_size, int node, uintptr_t vaddr)
       }
 
       if (node_size >= PAGE_SIZE) {
-         md->nodes[pageNode].free = false;
+         md->nodes[pageNode].has_some_free_space = false;
       }
 
       pageOfVaddr += PAGE_SIZE;
@@ -216,10 +220,10 @@ ALWAYS_INLINE static void split_node(int node)
    md->nodes[node].split = true;
 
    md->nodes[NODE_LEFT(node)].split = false;
-   md->nodes[NODE_LEFT(node)].free = true;
+   md->nodes[NODE_LEFT(node)].has_some_free_space = true;
 
    md->nodes[NODE_RIGHT(node)].split = false;
-   md->nodes[NODE_RIGHT(node)].free = true;
+   md->nodes[NODE_RIGHT(node)].has_some_free_space = true;
 }
 
 //////////////////////////////////////////////////////////////////
@@ -300,7 +304,7 @@ void *kmalloc(size_t desired_size)
 
       block_node n = md->nodes[node];
 
-      if (!n.free) {
+      if (!n.has_some_free_space) {
          printk("Not free, return null\n");
          SIMULATE_RETURN_NULL();
       }
@@ -321,7 +325,7 @@ void *kmalloc(size_t desired_size)
          split_node(node);
       }
 
-      if (md->nodes[left_node].free) {
+      if (md->nodes[left_node].has_some_free_space) {
 
          printk("going to left..\n");
 
@@ -334,7 +338,7 @@ void *kmalloc(size_t desired_size)
          // The call on the left node returned NULL so, go to the right node.
          SIMULATE_CALL(half_node_size, vaddr + half_node_size, right_node);
 
-      } else if (md->nodes[right_node].free) {
+      } else if (md->nodes[right_node].has_some_free_space) {
 
          printk("going on right..\n");
 
@@ -371,7 +375,7 @@ void kfree(void *ptr, size_t size)
    // A node returned to user cannot be split.
    ASSERT(!md->nodes[node].split);
 
-   md->nodes[node].free = true;
+   md->nodes[node].has_some_free_space = true;
 
    // Walking up to mark the parent nodes as 'free' if necessary..  
    size_t curr_size = set_free_uplevels(NODE_PARENT(node), size);
@@ -393,20 +397,16 @@ void kfree(void *ptr, size_t size)
 
       printk("Checking page i = %i, pNode = %i, pAddr = %p, alloc = %i, free = %i, split = %i\n",
          i, pageNode, pageOfVaddr, md->nodes[pageNode].allocated,
-         md->nodes[pageNode].free, md->nodes[pageNode].split);
+         md->nodes[pageNode].has_some_free_space, md->nodes[pageNode].split);
 
       /*
        * For nodes smaller than PAGE_SIZE, the page we're freeing MUST be free.
        * For bigger nodes that kind of checking does not make sense:
        * a major block owns its all pages and their flags are irrelevant.
        */
-      ASSERT(size > PAGE_SIZE || md->nodes[pageNode].free);
-   
-      ////if (!md->nodes[pageNode].free) {
-      ////   printk("Page at %p is NOT free\n", pageOfVaddr);
-      ////   continue;
-      ////}
+      ASSERT(size > PAGE_SIZE || md->nodes[pageNode].has_some_free_space);
 
+      // ASSERT that the page is currently marked as allocated.
       ASSERT(md->nodes[pageNode].allocated);
 
       printk("---> FREEING the PAGE!\n");
@@ -416,7 +416,7 @@ void kfree(void *ptr, size_t size)
 
       block_node new_node_val;
       new_node_val.allocated = false;
-      new_node_val.free = true;
+      new_node_val.has_some_free_space = true;
       new_node_val.split = false;
 
       md->nodes[pageNode] = new_node_val;
