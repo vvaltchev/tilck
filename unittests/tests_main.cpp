@@ -84,8 +84,7 @@ void kmalloc_chaos_test()
       void *r = kmalloc(s);
 
       if (!r) {
-
-         printf("************* Unable to allocate %u bytes (allocated by now: %u)\n", s, mem_allocated);
+         printf("**** Unable to allocate %u bytes (allocated by now: %u)\n", s, mem_allocated);
          continue;
       }
 
@@ -96,8 +95,23 @@ void kmalloc_chaos_test()
    for (const auto& e: allocations) {
 
       printf("[Test] Free ptr at %p (size: %u)\n", e.first, e.second);
-
       kfree(e.first, e.second);
+   }
+
+   // Now, re-allocate all the chunks and expect to get the same results.
+
+   for (const auto& e : allocations) {
+   
+      printf("Re-allocating block of size %u\n", e.second);
+
+      void *ptr = kmalloc(e.second);
+
+      if (ptr != e.first) {
+         printf("TEST FAILED\n");
+         printf("ptr expected: %p\n", e.first);
+         printf("ptr got:      %p\n", ptr);
+         break;
+      }
    }
 }
 
