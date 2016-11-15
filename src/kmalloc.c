@@ -5,17 +5,6 @@
 
 #define MIN_BLOCK_SIZE (32)
 
-#ifndef KERNEL_TEST
-
-#define HEAP_DATA_SIZE (512 * 1024 * 1024)
-
-#else
-
-#define HEAP_DATA_SIZE (1 * 1024 * 1024)
-
-#endif
-
-
 #define BLOCK_NODES_IN_META_DATA (2 * HEAP_DATA_SIZE / MIN_BLOCK_SIZE)
 #define HEAP_DATA_ADDR (HEAP_BASE_ADDR + BLOCK_NODES_IN_META_DATA * sizeof(block_node))
 
@@ -99,7 +88,7 @@ static void set_no_free_uplevels(int node)
 
       n = NODE_PARENT(n);
 
-   } while (n != 0);
+   } while (n > 0);
 }
 
 static size_t set_free_uplevels(int n, size_t size) {
@@ -240,7 +229,7 @@ typedef struct {
 
 #define SIMULATE_RETURN_NULL()                 \
    stack_size--;                               \
-   if (NODE_IS_LEFT(node)) goto after_call;    \
+   returned = true;                            \
    continue
 
 //////////////////////////////////////////////////////////////////
@@ -256,6 +245,7 @@ void *kmalloc(size_t desired_size)
    allocator_meta_data * const md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
    int stack_size = 1;
+   bool returned = false;
    stack_elem alloc_stack[32];
 
    stack_elem base_elem = { HEAP_DATA_SIZE, HEAP_DATA_ADDR, 0 };
@@ -263,14 +253,30 @@ void *kmalloc(size_t desired_size)
 
    while (stack_size) {
 
+      // Load the "stack" (function arguments)
       const size_t node_size = alloc_stack[stack_size - 1].node_size;
-      const size_t half_node_size = HALF(node_size);
-
       const uintptr_t vaddr = alloc_stack[stack_size - 1].vaddr;
-
       const int node = alloc_stack[stack_size - 1].node;
+
+      const size_t half_node_size = HALF(node_size);
       const int left_node = NODE_LEFT(node);
       const int right_node = NODE_RIGHT(node);
+
+      // Handle a RETURN
+
+      if (returned) {
+
+         returned = false;
+
+         if (alloc_stack[stack_size].node == left_node)
+            goto after_left_call;
+         else
+            goto after_right_call;
+      }
+
+      // Handling a CALL
+
+      printk("Node# %i, node_size = %u\n", node, node_size);
 
       evenually_allocate_page_for_node(node);
 
@@ -282,12 +288,14 @@ void *kmalloc(size_t desired_size)
       block_node n = md->nodes[node];
 
       if (!n.free) {
+         printk("Not free, return null\n");
          SIMULATE_RETURN_NULL();
       }
 
       if (half_node_size < size) {
 
          if (n.split) {
+            printk("split, return null\n");
             SIMULATE_RETURN_NULL();
          }
 
@@ -302,22 +310,25 @@ void *kmalloc(size_t desired_size)
 
       if (md->nodes[left_node].free) {
 
+         printk("going to left..\n");
+
          SIMULATE_CALL(half_node_size, vaddr, left_node);
 
-         after_call:
+         after_left_call:
 
-         /*
-          * The call on a left node is going to return NULL,
-          * so, go to the right node.
-          * NOTE: we are still in the "frame" of the left node here.
-          */
+         printk("allocation on left node not possible, trying with right..\n");
 
-         SIMULATE_CALL(node_size, vaddr + node_size, NODE_RIGHT(NODE_PARENT(node)));
-
+         // The call on the left node returned NULL so, go to the right node.
+         SIMULATE_CALL(half_node_size, vaddr + half_node_size, right_node);
 
       } else if (md->nodes[right_node].free) {
 
+         printk("going on right..\n");
+
          SIMULATE_CALL(half_node_size, vaddr + half_node_size, right_node);
+
+         after_right_call:
+         SIMULATE_RETURN_NULL();
       }
 
    }

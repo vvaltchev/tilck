@@ -4,7 +4,6 @@
 #include <commonDefs.h>
 
 #define PAGE_SIZE (4096)
-
 #define KERNEL_BASE_VADDR ((uintptr_t) 0xC0000000UL)
 
 void init_physical_page_allocator();
