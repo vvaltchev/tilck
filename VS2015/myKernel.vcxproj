@@ -138,6 +138,7 @@
   <ItemGroup>
     <ClCompile Include="..\init_src\init.c" />
     <ClCompile Include="..\init_src\string.c" />
+    <ClCompile Include="..\src\process.c" />
     <ClCompile Include="..\unittests\asmMocks.c" />
     <ClCompile Include="..\unittests\mocks.c" />
     <ClCompile Include="..\unittests\tests_main.cpp" />
@@ -163,6 +164,7 @@
     <ClInclude Include="..\include\irq.h" />
     <ClInclude Include="..\include\kmalloc.h" />
     <ClInclude Include="..\include\paging.h" />
+    <ClInclude Include="..\include\process.h" />
     <ClInclude Include="..\include\stringUtil.h" />
     <ClInclude Include="..\include\term.h" />
     <ClInclude Include="..\include\debug_utils.h" />
