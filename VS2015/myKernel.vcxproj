@@ -154,6 +154,8 @@
     <ClCompile Include="..\src\debug_utils.c" />
     <ClCompile Include="..\src\kmalloc.c" />
     <ClCompile Include="..\src\kmalloc_util.c" />
+    <ClCompile Include="..\src\perftests.c" />
+    <ClCompile Include="..\src\timer.c" />
     <ClCompile Include="..\src\i386\utils32.c" />
   </ItemGroup>
   <ItemGroup>
