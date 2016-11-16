@@ -8,42 +8,16 @@
 #include <paging.h>
 #include <debug_utils.h>
 
+#define TIMER_FREQ_HZ 10
+
 void gdt_install();
 void idt_install();
 
-/*
- * Sets timer's frequency.
- * Default value: 18.222 Hz.
- */
-
-void timer_phase(int hz)
-{
-   int divisor = 1193180 / hz;   /* Calculate our divisor */
-   outb(0x43, 0x36);             /* Set our command byte 0x36 */
-   outb(0x40, divisor & 0xFF);   /* Set low byte of divisor */
-   outb(0x40, divisor >> 8);     /* Set high byte of divisor */
-}
-
-
-/*
- * This will keep track of how many ticks that the system
- * has been running for.
- */
-volatile uint32_t timer_ticks = 0;
-
-#define CLOCK_HZ 10
-
-void timer_handler()
-{
-   unsigned val = ++timer_ticks;
-
-   if ((val % CLOCK_HZ) == 0) {
-      printk("Ticks: %u\n", timer_ticks);
-   }
-}
 
 void init_kb();
+void timer_handler();
 void keyboard_handler(regs *r);
+void set_timer_freq(int hz);
 void set_kernel_stack(uint32_t stack);
 void switch_to_usermode_asm(void *entryPoint, void *stackAddr);
 
@@ -90,7 +64,7 @@ void kmain() {
    init_paging();
    initialize_kmalloc();
 
-   timer_phase(CLOCK_HZ);
+   set_timer_freq(TIMER_FREQ_HZ);
 
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);

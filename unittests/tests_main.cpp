@@ -134,9 +134,9 @@ int main(int argc, char **argv) {
    initialize_kmalloc();
 
    printf("kernel heap base: %p\n", kernel_heap_base);
-   //kmalloc_trivial_perf_test();
 
-   kmalloc_chaos_test();
+   kmalloc_trivial_perf_test();
+   //kmalloc_chaos_test();
 
    return 0;
 }
