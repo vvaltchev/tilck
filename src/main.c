@@ -11,6 +11,11 @@
 void gdt_install();
 void idt_install();
 
+/*
+ * Sets timer's frequency.
+ * Default value: 18.222 Hz.
+ */
+
 void timer_phase(int hz)
 {
    int divisor = 1193180 / hz;   /* Calculate our divisor */
@@ -20,18 +25,13 @@ void timer_phase(int hz)
 }
 
 
-/* This will keep track of how many ticks that the system
-*  has been running for */
+/*
+ * This will keep track of how many ticks that the system
+ * has been running for.
+ */
 volatile uint32_t timer_ticks = 0;
 
 #define CLOCK_HZ 10
-
-/* Handles the timer. In this case, it's very simple: We
-*  increment the 'timer_ticks' variable every time the
-*  timer fires. By default, the timer fires 18.222 times
-*  per second. Why 18.222Hz? Some engineer at IBM must've
-*  been smoking something funky */
-
 
 void timer_handler()
 {
