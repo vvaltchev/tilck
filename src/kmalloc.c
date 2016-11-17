@@ -199,10 +199,12 @@ static void actual_allocate_node(size_t node_size, int node, uintptr_t vaddr)
       DEBUG_printk("For node# %i, using page (%i/%i): %p\n", node, i+1, pageCount, pageOfVaddr);
 
       if (!md->nodes[pageNode].allocated) {
+
+         DEBUG_printk("Allocating page..\n");
+
          bool success = kbasic_virtual_alloc(pageOfVaddr, 1);
          ASSERT(success);
 
-         DEBUG_printk("Allocating page..\n");
          md->nodes[pageNode].allocated = true;
       }
 
@@ -262,6 +264,8 @@ void *kmalloc(size_t desired_size)
    if (UNLIKELY(desired_size > HEAP_DATA_SIZE)) {
       return NULL;
    }
+
+   ASSERT(desired_size != 0);
 
    const size_t size = MAX(desired_size, MIN_BLOCK_SIZE);
 
@@ -367,6 +371,12 @@ void *kmalloc(size_t desired_size)
 
 void kfree(void *ptr, size_t size)
 {
+   if (ptr == NULL) {
+      return;
+   }
+
+   ASSERT(size != 0);
+
    size = roundup_next_power_of_2(MAX(size, MIN_BLOCK_SIZE));
 
    int node = ptr_to_node(ptr, size);
@@ -406,9 +416,10 @@ void kfree(void *ptr, size_t size)
       int pageNode = ptr_to_node((void *)pageOfVaddr, PAGE_SIZE);
       ASSERT(node_has_page(pageNode));
 
-      //DEBUG_printk("Checking page i = %i, pNode = %i, pAddr = %p, alloc = %i, free = %i, split = %i\n",
-      //   i, pageNode, pageOfVaddr, md->nodes[pageNode].allocated,
-      //   md->nodes[pageNode].has_some_free_space, md->nodes[pageNode].split);
+      DEBUG_printk("Checking page i = %i, pNode = %i, pAddr = %p, "
+                   "alloc = %i, free = %i, split = %i\n",
+                   i, pageNode, pageOfVaddr, md->nodes[pageNode].allocated,
+                   md->nodes[pageNode].has_some_free_space, md->nodes[pageNode].split);
 
       /*
        * For nodes smaller than PAGE_SIZE, the page we're freeing MUST be free.

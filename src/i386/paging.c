@@ -8,8 +8,15 @@
 
 #include <arch/i386/paging_int.h>
 
+/*
+ * Theese MACROs can be used only for the first 4 MB of the kernel virtual address space.
+ */
+
 #define KERNEL_PADDR_TO_VADDR(paddr) ((typeof(paddr))((uintptr_t)(paddr) + KERNEL_BASE_VADDR))
 #define KERNEL_VADDR_TO_PADDR(vaddr) ((typeof(vaddr))((uintptr_t)(vaddr) - KERNEL_BASE_VADDR))
+
+void *paging_alloc_phys_page();
+void paging_free_phys_page(void *address);
 
 
 /*
@@ -169,7 +176,7 @@ void map_page(page_directory_t *pdir,
 
       // we have to create a page table for mapping 'vaddr'
 
-      ptable = KERNEL_PADDR_TO_VADDR(alloc_phys_page());
+      ptable = KERNEL_PADDR_TO_VADDR(paging_alloc_phys_page());
 
       if (paging_debug) {
          printk("Creating a new page table at paddr = %p\n"
@@ -210,14 +217,17 @@ void init_paging()
    set_fault_handler(FAULT_GENERAL_PROTECTION, handle_general_protection_fault);
 
    kernel_page_dir =
-      (page_directory_t *) KERNEL_PADDR_TO_VADDR(alloc_phys_page());
+      (page_directory_t *) KERNEL_PADDR_TO_VADDR(paging_alloc_phys_page());
 
-   alloc_phys_page(); // The page directory uses two pages!
+   paging_alloc_phys_page(); // The page directory uses two pages!
 
    initialize_page_directory(kernel_page_dir, true);
 
    map_pages(kernel_page_dir,
-             KERNEL_PADDR_TO_VADDR(0x1000), 0x1000, 1023, false, true);
+             KERNEL_PADDR_TO_VADDR(0x1000), 0x1000, 1024 - 1, false, true);
+
+   //printk("debug cout used pdir entries: %u\n",
+   //       debug_count_used_pdir_entries(kernel_page_dir));
 
    ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 1);
    set_page_directory(kernel_page_dir);
