@@ -27,3 +27,4 @@ volatile uint32_t timer_ticks = 0;
 void timer_handler() {
    timer_ticks++;
 }
+
