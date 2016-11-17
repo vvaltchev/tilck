@@ -50,6 +50,7 @@ void show_hello_message()
 
 
 void kmalloc_trivial_perf_test();
+void kmalloc_perf_test();
 
 void kmain() {
 
@@ -74,7 +75,8 @@ void kmain() {
    sti();
    init_kb();
 
-   kmalloc_trivial_perf_test();
+   //kmalloc_trivial_perf_test();
+   kmalloc_perf_test();
 
    switch_to_user_mode();
 
