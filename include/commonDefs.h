@@ -213,17 +213,18 @@ CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
  * In order to work good, we need uint64_t working on kernel for
  * i386 as well. TODO: make it work.
  */
-static ALWAYS_INLINE uintptr_t RDTSC()
+static ALWAYS_INLINE uint64_t RDTSC()
 {
-   uintptr_t lo, hi;
-   asm("rdtsc" : "=a" (lo), "=d" (hi));
    
 #ifdef BITS64
+   uintptr_t lo, hi;
+   asm("rdtsc" : "=a" (lo), "=d" (hi));
    return lo | (hi << 32);
 #else
-   return lo;
+   uint64_t val;
+   asm("rdtsc" : "=A" (val));
+   return val;
 #endif
-
 }
 
 #endif

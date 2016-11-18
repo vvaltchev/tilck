@@ -22,7 +22,7 @@ export CC = gcc
 export CXX = g++
 export MV = mv
 export RM = rm
-
+export GAS = as
 
 # Optimized build
 export OPT = -O3

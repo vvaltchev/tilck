@@ -6,27 +6,26 @@ void itoa(intptr_t value, char *destBuf)
 {
    const intptr_t base = 10;
 
-   char * ptr;
-   char * low;
+   char *ptr;
+   char *low;
 
    ptr = destBuf;
-   // Set '-' for negative decimals.
+
    if (value < 0) {
      *ptr++ = '-';
    }
 
-   // Remember where the numbers start.
    low = ptr;
-   // The actual conversion.
+
    do
    {
      // Modulo is negative for negative value. This trick makes abs() unnecessary.
      *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
      value /= base;
    } while ( value );
-   // Terminating the string.
+
    *ptr-- = '\0';
-   // Invert the numbers.
+
    while ( low < ptr )
    {
      char tmp = *low;
@@ -35,25 +34,30 @@ void itoa(intptr_t value, char *destBuf)
    }
 }
 
-void uitoa(uintptr_t value, char *destBuf, uint32_t base)
+void llitoa(int64_t value, char *destBuf)
 {
-   char * ptr;
-   char * low;
+   const intptr_t base = 10;
+
+   char *ptr;
+   char *low;
 
    ptr = destBuf;
 
-   // Remember where the numbers start.
+   if (value < 0) {
+      *ptr++ = '-';
+   }
+
    low = ptr;
-   // The actual conversion.
+
    do
    {
       // Modulo is negative for negative value. This trick makes abs() unnecessary.
       *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
       value /= base;
    } while (value);
-   // Terminating the string.
+
    *ptr-- = '\0';
-   // Invert the numbers.
+
    while (low < ptr)
    {
       char tmp = *low;
@@ -62,65 +66,133 @@ void uitoa(uintptr_t value, char *destBuf, uint32_t base)
    }
 }
 
+void uitoa(uintptr_t value, char *destBuf, uint32_t base)
+{
+   char *ptr;
+   char *low;
+
+   ptr = destBuf;
+   low = ptr;
+
+   do
+   {
+      // Modulo is negative for negative value. This trick makes abs() unnecessary.
+      *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
+      value /= base;
+   } while (value);
+
+   *ptr-- = '\0';
+   while (low < ptr)
+   {
+      char tmp = *low;
+      *low++ = *ptr;
+      *ptr-- = tmp;
+   }
+}
+
+void ullitoa(uint64_t value, char *destBuf, uint32_t base)
+{
+   char *ptr;
+   char *low;
+
+   ptr = destBuf;
+   low = ptr;
+
+   do
+   {
+      // Modulo is negative for negative value. This trick makes abs() unnecessary.
+      *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
+      value /= base;
+   } while (value);
+
+   *ptr-- = '\0';
+   while (low < ptr)
+   {
+      char tmp = *low;
+      *low++ = *ptr;
+      *ptr-- = tmp;
+   }
+}
+
+
 void vprintk(const char *fmt, va_list args)
 {
    const char *ptr = fmt;
-   char buf[32];
+   char buf[64];
 
    while (*ptr) {
 
-      if (*ptr == '%') {
-         ++ptr;
-
-         if (*ptr == '%')
-            continue;
-
-         switch (*ptr) {
-
-         case 'i':
-            itoa(va_arg(args, int), buf);
-            term_write_string(buf);
-            break;
-
-         case 'u':
-            uitoa(va_arg(args, unsigned), buf, 10);
-            term_write_string(buf);
-            break;
-
-         case 'x':
-            uitoa(va_arg(args, unsigned), buf, 16);
-            term_write_string(buf);
-            break;
-
-         case 's':
-            term_write_string(va_arg(args, const char *));
-            break;
-
-         case 'p':
-            uitoa(va_arg(args, uintptr_t), buf, 16);
-            size_t len = strlen(buf);
-            size_t fixedLen = 2 * sizeof(void*);
-
-            term_write_string("0x");
-
-            while (fixedLen-- > len) {
-               term_write_char('0');
-            }
-
-            term_write_string(buf);
-            break;
-
-         default:
-            term_write_char('%');
-            term_write_char(*ptr);
-         }
-
-
-         ++ptr;
+      if (*ptr != '%') {
+         term_write_char(*ptr++);
          continue;
       }
 
-      term_write_char(*ptr);
+      // *ptr is '%'
+
+      ++ptr;
+
+      if (*ptr == '%')
+         continue;
+
+      switch (*ptr) {
+
+      case 'l':
+         ++ptr;
+
+         if (*ptr && *ptr == 'l') {
+            ++ptr;
+            if (*ptr) {
+               if (*ptr == 'u') {
+                  ullitoa(va_arg(args, uint64_t), buf, 10);
+                  term_write_string(buf);
+               } else if (*ptr == 'i' || *ptr == 'd') {
+                  llitoa(va_arg(args, int64_t), buf);
+                  term_write_string(buf);
+               }
+            }
+         }
+         break;
+
+      case 'd':
+      case 'i':
+         itoa(va_arg(args, int), buf);
+         term_write_string(buf);
+         break;
+
+      case 'u':
+         uitoa(va_arg(args, unsigned), buf, 10);
+         term_write_string(buf);
+         break;
+
+      case 'x':
+         uitoa(va_arg(args, unsigned), buf, 16);
+         term_write_string(buf);
+         break;
+
+      case 's':
+         term_write_string(va_arg(args, const char *));
+         break;
+
+      case 'p':
+         uitoa(va_arg(args, uintptr_t), buf, 16);
+         size_t len = strlen(buf);
+         size_t fixedLen = 2 * sizeof(void*);
+
+         term_write_string("0x");
+
+         while (fixedLen-- > len) {
+            term_write_char('0');
+         }
+
+         term_write_string(buf);
+         break;
+
+      default:
+         term_write_char('%');
+         term_write_char(*ptr);
+      }
+
+
       ++ptr;
    }
 }
