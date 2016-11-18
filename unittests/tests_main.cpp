@@ -11,6 +11,7 @@ extern "C" {
 #include <kmalloc.h>
 #include <paging.h>
 void kmalloc_trivial_perf_test();
+void kmalloc_perf_test();
 }
 
 using namespace std;
@@ -73,7 +74,8 @@ void kmalloc_chaos_test_sub(default_random_engine &e, lognormal_distribution<> &
 
    for (int i = 0; i < 1000; i++) {
 
-      size_t s = roundup_next_power_of_2(round(dist(e)));
+      size_t orig_s = round(dist(e));
+      size_t s = roundup_next_power_of_2(MAX(orig_s, MIN_BLOCK_SIZE));
 
       //printf("[Test] Allocating %u bytes..\n", s);
 
@@ -128,15 +130,17 @@ void kmalloc_chaos_test()
 }
 
 
+
 int main(int argc, char **argv) {
 
    init_test_kmalloc();
    initialize_kmalloc();
 
    printf("kernel heap base: %p\n", kernel_heap_base);
-   //kmalloc_trivial_perf_test();
 
-   kmalloc_chaos_test();
+   //kmalloc_trivial_perf_test();
+   //kmalloc_chaos_test();
+   kmalloc_perf_test();
 
    return 0;
 }

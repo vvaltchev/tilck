@@ -8,7 +8,8 @@ POSTCOMPILE = $(MV) -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
 SOURCES := $(wildcard *.c)
 ASM_SOURCES := $(wildcard *.asm)
-OBJECTS := $(ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(SOURCES:%.c=$(BUILD_DIR)/%.o)
+GAS_SOURCES := $(wildcard *.s)
+OBJECTS := $(ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(GAS_SOURCES:%.s=$(BUILD_DIR)/%.o) $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 
 $(shell mkdir -p $(DEPDIR) > /dev/null)
 $(shell mkdir -p $(BUILD_DIR) > /dev/null)
@@ -27,6 +28,11 @@ $(BUILD_DIR)/%.o : %.asm
 	@echo Compiling $< ...
 	@$(NASM) -f $(ELF_NASM_FORMAT) $(OUTPUT_OPTION) $<
 
+$(BUILD_DIR)/%.o : %.s
+	@echo Compiling $< ...
+	@$(GAS) --32 $(OUTPUT_OPTION) $<
+
+	
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
 	@echo Compiling $< ...
