@@ -33,14 +33,14 @@ void kmalloc_perf_test()
 
    void *allocations[RANDOM_VALUES_COUNT];
 
-   printk("*** kmalloc_perf_test ***\n");
+   printk("*** kmalloc_perf_test, %d iterations ***\n", iters);
 
    //memcpy(valuesCopy, random_values, sizeof(int) * RANDOM_VALUES_COUNT);
 
    //printk("random_values = %p\n", random_values);
    //printk("random_values[0] = %i\n", random_values[0]);
 
-   uintptr_t start = RDTSC();
+   uint64_t start = RDTSC();
 
    for (int i = 0; i < iters; i++) {
 
@@ -69,9 +69,9 @@ void kmalloc_perf_test()
       }
    }
 
-   uintptr_t duration = (RDTSC() - start) / (iters * RANDOM_VALUES_COUNT);
+   uint64_t duration = (RDTSC() - start) / (iters * RANDOM_VALUES_COUNT);
 
-   printk("Cycles per kmalloc + kfree: %u\n", duration);
+   printk("Cycles per kmalloc + kfree: %llu\n", duration);
 }
 
 void kmalloc_trivial_perf_test()
@@ -81,7 +81,7 @@ void kmalloc_trivial_perf_test()
    printk("Running a kmalloc() perf. test for %u iterations...\n", iters);
 
    void *b1,*b2,*b3,*b4;
-   uintptr_t start = RDTSC();
+   uint64_t start = RDTSC();
 
    for (int i = 0; i < iters; i++) {
 
@@ -97,9 +97,9 @@ void kmalloc_trivial_perf_test()
       kfree(b4, 3 * PAGE_SIZE + 43);
    }
 
-   uintptr_t duration = (RDTSC() - start) / iters;
+   uint64_t duration = (RDTSC() - start) / iters;
 
-   printk("Cycles per kmalloc + kfree: %u\n",  duration >> 2);
+   printk("Cycles per kmalloc + kfree: %llu\n",  duration >> 2);
 
    ASSERT((uintptr_t)b1 == HEAP_DATA_ADDR + 0x0);
    ASSERT((uintptr_t)b2 == HEAP_DATA_ADDR + 0x20);
