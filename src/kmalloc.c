@@ -3,7 +3,7 @@
 #include <paging.h>
 #include <stringUtil.h>
 
-#define ALLOC_BLOCK_SIZE (4 * PAGE_SIZE)
+#define ALLOC_BLOCK_SIZE (8 * PAGE_SIZE)
 
 // MIN_BLOCK_SIZE has to be a multiple of 32
 STATIC_ASSERT((MIN_BLOCK_SIZE & 31) == 0);
@@ -199,7 +199,8 @@ static void actual_allocate_node(size_t node_size, int node, uintptr_t vaddr)
       int alloc_node = ptr_to_node((void *)alloc_block_vaddr, ALLOC_BLOCK_SIZE);
       evenually_allocate_page_for_node(alloc_node);
 
-      DEBUG_printk("For node# %i, using alloc block (%i/%i): %p\n", node, i+1, alloc_block_count, alloc_block_vaddr);
+      DEBUG_printk("For node# %i, using alloc block (%i/%i): %p (node #%u)\n",
+                   node, i+1, alloc_block_count, alloc_block_vaddr, alloc_node);
 
       if (!md->nodes[alloc_node].allocated) {
 
@@ -264,6 +265,8 @@ typedef struct {
 
 void *kmalloc(size_t desired_size)
 {
+   DEBUG_printk("kmalloc(%u)...\n", desired_size);
+
    if (UNLIKELY(desired_size > HEAP_DATA_SIZE)) {
       return NULL;
    }
@@ -306,7 +309,7 @@ void *kmalloc(size_t desired_size)
 
       // Handling a CALL
 
-      DEBUG_printk("Node# %i, node_size = %u\n", node, node_size);
+      DEBUG_printk("Node# %i, node_size = %u, vaddr = %p\n", node, node_size, vaddr);
 
       evenually_allocate_page_for_node(node);
 
@@ -335,6 +338,7 @@ void *kmalloc(size_t desired_size)
    
 
       if (!n.split) {
+         DEBUG_printk("Splitting node #%u...\n", node);
          split_node(node);
       }
 
@@ -455,5 +459,6 @@ void initialize_kmalloc() {
 
    DEBUG_printk("heap base addr: %p\n", HEAP_BASE_ADDR);
    DEBUG_printk("heap data addr: %p\n", HEAP_DATA_ADDR);
+   DEBUG_printk("heap size: %u\n", HEAP_DATA_SIZE);
 }
 
