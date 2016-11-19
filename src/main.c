@@ -75,8 +75,8 @@ void kmain() {
    sti();
    init_kb();
 
-   //kmalloc_trivial_perf_test();
-   kmalloc_perf_test();
+   kmalloc_trivial_perf_test();
+   //kmalloc_perf_test();
 
    switch_to_user_mode();
 

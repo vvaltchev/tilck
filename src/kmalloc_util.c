@@ -4,7 +4,7 @@
 
 bool kbasic_virtual_alloc(uintptr_t vaddr, int pageCount)
 {
-   ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
+   ASSERT(!(vaddr & (PAGE_SIZE - 1))); // the vaddr must be page-aligned
 
    page_directory_t *pdir = get_kernel_page_dir();
 
@@ -27,7 +27,7 @@ bool kbasic_virtual_alloc(uintptr_t vaddr, int pageCount)
 
 bool kbasic_virtual_free(uintptr_t vaddr, int pageCount)
 {
-   ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
+   ASSERT(!(vaddr & (PAGE_SIZE - 1))); // the vaddr must be page-aligned
 
    page_directory_t *pdir = get_kernel_page_dir();
 

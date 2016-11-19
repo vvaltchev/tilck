@@ -25,12 +25,12 @@ export RM = rm
 export GAS = as
 
 # Optimized build
-#export OPT = -O3
-#export DEFS = -DNDEBUG
+export OPT = -O3
+export DEFS = -DNDEBUG
 
 # Debug build
-export OPT = -O0 -fno-inline-functions
-export DEFS = -DDEBUG
+#export OPT = -O0 -fno-inline-functions
+#export DEFS = -DDEBUG
 
 export WARN = -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
 export INCDIRS = -I$(shell pwd)/include

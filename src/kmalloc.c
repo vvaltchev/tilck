@@ -3,6 +3,12 @@
 #include <paging.h>
 #include <stringUtil.h>
 
+/*
+ * Use 32 KB as alloc block size.
+ * Using bigger blocks with the current implementation does not
+ * lead to performance benefits.
+ */
+#define ALLOC_BLOCK_SIZE (8 * PAGE_SIZE)
 
 
 // MIN_BLOCK_SIZE has to be a multiple of 32
@@ -10,6 +16,9 @@ STATIC_ASSERT((MIN_BLOCK_SIZE & 31) == 0);
 
 // HEAP_DATA_SIZE has to be a multiple of 1 MB
 STATIC_ASSERT((HEAP_DATA_SIZE & ((1 << 20) - 1)) == 0);
+
+// ALLOC_BLOCK_SIZE has to be a multiple of PAGE_SIZE
+STATIC_ASSERT((ALLOC_BLOCK_SIZE & (PAGE_SIZE - 1)) == 0);
 
 bool kbasic_virtual_alloc(uintptr_t vaddr, int pageCount);
 bool kbasic_virtual_free(uintptr_t vaddr, int pageCount);
@@ -26,7 +35,7 @@ typedef struct {
    // otherwise (when split = 1), it means there is some free space.
    uint8_t has_some_free_space : 1;
 
-   uint8_t allocated : 1; // used only for nodes having size=PAGE_SIZE.
+   uint8_t allocated : 1; // used only for nodes having size=ALLOC_BLOCK_SIZE.
 
    uint8_t unused : 5;
 
@@ -188,37 +197,37 @@ static void actual_allocate_node(size_t node_size, int node, uintptr_t vaddr)
 
    ASSERT((void *)vaddr == node_to_ptr(node, node_size));
 
-   uintptr_t pageOfVaddr = vaddr & ~(PAGE_SIZE - 1);
-   int pageCount = 1 + ((node_size - 1) >> log2_for_power_of_2(PAGE_SIZE));
+   uintptr_t alloc_block_vaddr = vaddr & ~(ALLOC_BLOCK_SIZE - 1);
+   int alloc_block_count = 1 + ((node_size - 1) >> log2_for_power_of_2(ALLOC_BLOCK_SIZE));
 
-   for (int i = 0; i < pageCount; i++) {
+   for (int i = 0; i < alloc_block_count; i++) {
 
-      int pageNode = ptr_to_node((void *)pageOfVaddr, PAGE_SIZE);
-      evenually_allocate_page_for_node(pageNode);
+      int alloc_node = ptr_to_node((void *)alloc_block_vaddr, ALLOC_BLOCK_SIZE);
+      evenually_allocate_page_for_node(alloc_node);
 
-      DEBUG_printk("For node# %i, using page (%i/%i): %p\n", node, i+1, pageCount, pageOfVaddr);
+      DEBUG_printk("For node# %i, using alloc block (%i/%i): %p\n", node, i+1, alloc_block_count, alloc_block_vaddr);
 
-      if (!md->nodes[pageNode].allocated) {
+      if (!md->nodes[alloc_node].allocated) {
 
-         DEBUG_printk("Allocating page..\n");
+         DEBUG_printk("Allocating block of pages..\n");
 
-         bool success = kbasic_virtual_alloc(pageOfVaddr, 1);
+         bool success = kbasic_virtual_alloc(alloc_block_vaddr, ALLOC_BLOCK_SIZE / PAGE_SIZE);
          ASSERT(success);
 
-         md->nodes[pageNode].allocated = true;
+         md->nodes[alloc_node].allocated = true;
       }
 
-      if (node_size >= PAGE_SIZE) {
-         ASSERT(!md->nodes[pageNode].split);
-         md->nodes[pageNode].has_some_free_space = false;
+      if (node_size >= ALLOC_BLOCK_SIZE) {
+         ASSERT(!md->nodes[alloc_node].split);
+         md->nodes[alloc_node].has_some_free_space = false;
       } else {
-         ASSERT(md->nodes[pageNode].split);
+         ASSERT(md->nodes[alloc_node].split);
       }
 
-      pageOfVaddr += PAGE_SIZE;
+      alloc_block_vaddr += ALLOC_BLOCK_SIZE;
    }
 
-   DEBUG_printk("Returning addr %p (%u pages)\n", vaddr, pageCount);
+   DEBUG_printk("Returning addr %p (%u alloc blocks)\n", vaddr, alloc_block_count);
 }
 
 ALWAYS_INLINE static void split_node(int node)
@@ -402,36 +411,36 @@ void kfree(void *ptr, size_t size)
    
       ASSERT(biggest_free_node == node || biggest_free_size != size);
 
-      if (biggest_free_size < PAGE_SIZE)
+      if (biggest_free_size < ALLOC_BLOCK_SIZE)
          return;
    }
 
-   uintptr_t pageOfVaddr = (uintptr_t)ptr & ~(PAGE_SIZE - 1);
-   int pageCount = 1 + ((size - 1) >> log2_for_power_of_2(PAGE_SIZE));
+   uintptr_t alloc_block_vaddr = (uintptr_t)ptr & ~(ALLOC_BLOCK_SIZE - 1);
+   int alloc_block_count = 1 + ((size - 1) >> log2_for_power_of_2(ALLOC_BLOCK_SIZE));
 
-   DEBUG_printk("The block node used up to %i pages\n", pageCount);
+   DEBUG_printk("The block node used up to %i pages\n", alloc_block_count);
 
-   for (int i = 0; i < pageCount; i++) {
+   for (int i = 0; i < alloc_block_count; i++) {
 
-      int pageNode = ptr_to_node((void *)pageOfVaddr, PAGE_SIZE);
-      ASSERT(node_has_page(pageNode));
+      int alloc_block_node = ptr_to_node((void *)alloc_block_vaddr, ALLOC_BLOCK_SIZE);
+      ASSERT(node_has_page(alloc_block_node));
 
-      DEBUG_printk("Checking page i = %i, pNode = %i, pAddr = %p, "
+      DEBUG_printk("Checking alloc block i = %i, pNode = %i, pAddr = %p, "
                    "alloc = %i, free = %i, split = %i\n",
-                   i, pageNode, pageOfVaddr, md->nodes[pageNode].allocated,
-                   md->nodes[pageNode].has_some_free_space, md->nodes[pageNode].split);
+                   i, alloc_block_node, alloc_block_vaddr, md->nodes[alloc_block_node].allocated,
+                   md->nodes[alloc_block_node].has_some_free_space, md->nodes[alloc_block_node].split);
 
       /*
-       * For nodes smaller than PAGE_SIZE, the page we're freeing MUST be free.
+       * For nodes smaller than ALLOC_BLOCK_SIZE, the page we're freeing MUST be free.
        * For bigger nodes that kind of checking does not make sense:
        * a major block owns its all pages and their flags are irrelevant.
        */
-      ASSERT(size >= PAGE_SIZE || is_block_node_free(md->nodes[pageNode]));
+      ASSERT(size >= ALLOC_BLOCK_SIZE || is_block_node_free(md->nodes[alloc_block_node]));
 
-      ASSERT(md->nodes[pageNode].allocated);
+      ASSERT(md->nodes[alloc_block_node].allocated);
 
-      DEBUG_printk("---> FREEING the PAGE!\n");
-      bool success = kbasic_virtual_free(pageOfVaddr, 1);
+      DEBUG_printk("---> FREEING the ALLOC BLOCK!\n");
+      bool success = kbasic_virtual_free(alloc_block_vaddr, ALLOC_BLOCK_SIZE / PAGE_SIZE);
       ASSERT(success);
 
       block_node new_node_val;
@@ -439,9 +448,9 @@ void kfree(void *ptr, size_t size)
       new_node_val.has_some_free_space = true;
       new_node_val.split = false;
 
-      md->nodes[pageNode] = new_node_val;
+      md->nodes[alloc_block_node] = new_node_val;
  
-      pageOfVaddr += PAGE_SIZE;
+      alloc_block_vaddr += ALLOC_BLOCK_SIZE;
    }
 }
 
