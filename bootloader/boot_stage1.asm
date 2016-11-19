@@ -29,9 +29,8 @@ start:
    
    mov [current_device], dl
   
-   push hello
+   mov si, hello
    call print_string
-   add sp, 2
    
    mov ax, [current_device] 
    call print_num
@@ -44,9 +43,9 @@ start:
    mov ah, 0x8 ; read drive parameters  
    int 0x13
    
-   jnc after_read_params_ok
-   
-   push read_params_failed
+   jnc after_read_params_ok 
+
+   mov si, read_params_failed
    call print_string
    jmp end
 
@@ -72,19 +71,13 @@ start:
    
    
    mov ax, [HeadsPerCylinder]  
-   push ax
    call print_num
-   add sp, 2
 
    mov ax, [SectorsPerTrack]  
-   push ax
    call print_num
-   add sp, 2
 
    mov ax, [CylindersCount]  
-   push ax
    call print_num
-   add sp, 2
    
    
    ;pause:
@@ -153,13 +146,13 @@ start:
    
 .load_error:
 
-   push load_failed
+   mov si, load_failed
    call print_string
-   add sp, 2
    
    mov ax, [currSectorNum]
-   push ax
    call print_num
+
+.load_OK:
 
    ; burn some cycles to wait
    
@@ -177,13 +170,6 @@ start:
    cmp bx, 0
    jne .wait_outer
    
-   ;jmp end
-
-.load_OK:
-
-   ;push load_ok
-   ;call print_string
-   ;add sp, 2 
 
    ; xchg bx, bx ; magic break   
    jmp DEST_DATA_SEGMENT:0x0000
@@ -225,23 +211,18 @@ print_num:
    call itoa
    add sp, 4
    
-   push strBuf
+   mov si, strBuf
    call print_string
-   add sp, 2
    
-   push newline
+   mov si, newline
    call print_string
-   add sp, 2
-   
+  
    ret
    
    
-print_string:      ; Routine: output string in SI to screen
-   push bp
-   mov bp, sp
-   
-   mov si, [bp+4]  ; bp+4 is the first argument
-   mov ah, 0Eh     ; int 10h 'print char' function
+print_string:
+
+   mov ah, 0x0E    ; int 10h 'print char' function
 
 .repeat:
    lodsb           ; Get character from string
@@ -251,7 +232,6 @@ print_string:      ; Routine: output string in SI to screen
    jmp .repeat
 
 .done:
-   leave
    ret
    
 itoa: ; convert integer to string
@@ -314,12 +294,13 @@ itoa: ; convert integer to string
    
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-SectorsPerTrack      dw 18    ; Sectors per track (36/cylinder)
-HeadsPerCylinder     dw 2
+SectorsPerTrack      dw 0
+HeadsPerCylinder     dw 0
 CylindersCount       dw 0
 
 newline              db 10, 13, 0
 hello                db 'Hello', 10, 13, 0
+load_ok              db 'Load OK', 10, 13, 0
 load_failed          db 'Load failed, LBA: ', 0
 read_params_failed   db 'F0', 10, 13, 0
 
