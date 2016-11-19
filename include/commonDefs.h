@@ -208,11 +208,6 @@ CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
 
 #if defined(__i386__) || defined(__x86_64__)
 
-/*
- * RDTSC doesn't work well on 32 bit because it returns just 'lo'.
- * In order to work good, we need uint64_t working on kernel for
- * i386 as well. TODO: make it work.
- */
 static ALWAYS_INLINE uint64_t RDTSC()
 {
    
