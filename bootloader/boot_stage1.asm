@@ -82,16 +82,10 @@ start:
    
    
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   
-   
-   ;mov word [currSectorNum], 1 ; sector 1 (512 bytes after this bootloader)
-   
-   .big_load_loop:
-   
+     
    .load_loop:
 
-
    ;xchg bx, bx ; magic break
-
    
    mov ax, [currSectorNum]
    call lba_to_chs
@@ -101,16 +95,17 @@ start:
                      ; (AX is used since we cannot store directly IMM value in ES)
                      
    mov bx, [currSectorNum]
-   shl bx, 9         ; Sectors read from floppy are stored in ES:BX
+   shl bx, 9         ; Sectors read are stored in ES:BX
                      ; bx = 512 * counter * bx
    
    ; 20-bit address in 8086 (real mode)
    ; SEG:OFF
    ; ADDR20 = (SEG << 4) | OFF
 
-   mov ah, 2         ; Params for int 13h: read floppy sectors
+   mov ah, 2         ; Params for int 13h: read sectors
    mov al, SECTORS_TO_READ_AT_TIME
 
+   ; save the parameters CHS parameters
    mov [saved_cx], cx
    mov [saved_dx], dx
    
@@ -127,11 +122,8 @@ start:
    sub ax, 1
    and ax, 0x7F
    cmp ax, 0
-   je .end_small_load_loop 
-   jmp .load_loop
-
-   .end_small_load_loop:
-
+   jne .load_loop
+   
    ; xchg bx, bx ; magic break
 
    mov ax, [currDataSeg] 
@@ -140,7 +132,7 @@ start:
    
    add ax, 0x1000
    mov [currDataSeg], ax
-   jmp .big_load_loop
+   jmp .load_loop
    
 .load_error:
 
@@ -183,22 +175,7 @@ start:
 .load_OK:
 
    ; burn some cycles to wait
-   ;jmp end
-   
-   ; mov bx, 16000  
-   ; .wait_outer:
-
-   ; mov ax, 65535
-   ; .wait_inner:
-
-   ; dec ax
-   ; cmp ax, 0
-   ; jne .wait_inner
-
-   ; dec bx
-   ; cmp bx, 0
-   ; jne .wait_outer
-   
+     
    mov eax, 4000000000
    
    .loop:
