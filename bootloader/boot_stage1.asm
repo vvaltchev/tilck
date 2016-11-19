@@ -25,7 +25,71 @@ start:
    mov ah, 0x0 ; set video mode
    mov al, 0x3 ; 80x25 mode
    int 0x10
+   
+   
+   mov [current_device], dl
+  
+   push hello
+   call print_string
+   add sp, 2
+   
+   mov ax, [current_device] 
+   call print_num
+   
+   xor ax, ax
+   mov es, ax
+   mov di, ax
+   
+   mov dl, [current_device]
+   mov ah, 0x8 ; read drive parameters  
+   int 0x13
+   
+   jnc after_read_params_ok
+   
+   push read_params_failed
+   call print_string
+   jmp end
 
+   after_read_params_ok:
+   
+   xor ax, ax
+   mov al, dh
+   inc al
+   
+   mov [HeadsPerCylinder], ax  
+   
+   mov ax, cx
+   and ax, 63   ; last 6 bits
+   mov [SectorsPerTrack], ax
+   
+   xor ax, ax
+   mov al, ch  ; higher 8 bits of CX = lower bits for cyclinders count
+   and cx, 192 ; bits 6 and 7 of CX = higher 2 bits for cyclinders count
+   shl cx, 8
+   or ax, cx
+   inc ax
+   mov [CylindersCount], ax
+   
+   
+   mov ax, [HeadsPerCylinder]  
+   push ax
+   call print_num
+   add sp, 2
+
+   mov ax, [SectorsPerTrack]  
+   push ax
+   call print_num
+   add sp, 2
+
+   mov ax, [CylindersCount]  
+   push ax
+   call print_num
+   add sp, 2
+   
+   
+   ;pause:
+   ;jmp pause
+   
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   
    
    mov word [currSectorNum], 1 ; sector 1 (512 bytes after this bootloader)
@@ -34,8 +98,13 @@ start:
    
    .load_loop:
 
-   ; xchg bx, bx ; magic break
+   ;xchg bx, bx ; magic break
+   ;mov ax, [currSectorNum]
+   ;call print_num
 
+   ;xchg bx, bx ; magic break
+
+   
    mov ax, [currSectorNum]
    call lba_to_chs
 
@@ -84,16 +153,37 @@ start:
    
 .load_error:
 
-   push err1
+   push load_failed
    call print_string
    add sp, 2
-   jmp end
+   
+   mov ax, [currSectorNum]
+   push ax
+   call print_num
+
+   ; burn some cycles to wait
+   
+   mov bx, 8192  
+   .wait_outer:
+
+   mov ax, 65535
+   .wait_inner:
+
+   dec ax
+   cmp ax, 0
+   jne .wait_inner
+
+   dec bx
+   cmp bx, 0
+   jne .wait_outer
+   
+   ;jmp end
 
 .load_OK:
 
-   push str1
-   call print_string
-   add sp, 2 
+   ;push load_ok
+   ;call print_string
+   ;add sp, 2 
 
    ; xchg bx, bx ; magic break   
    jmp DEST_DATA_SEGMENT:0x0000
@@ -124,10 +214,28 @@ lba_to_chs:         ; Calculate head, track and sector settings for int 13h
    pop ax
    pop bx
 
-   mov dl, 0      ; Set correct device
+   mov dl, [current_device]      ; Set correct device
 
    ret
 
+print_num:
+
+   push strBuf
+   push ax ; the input number
+   call itoa
+   add sp, 4
+   
+   push strBuf
+   call print_string
+   add sp, 2
+   
+   push newline
+   call print_string
+   add sp, 2
+   
+   ret
+   
+   
 print_string:      ; Routine: output string in SI to screen
    push bp
    mov bp, sp
@@ -146,19 +254,95 @@ print_string:      ; Routine: output string in SI to screen
    leave
    ret
    
+itoa: ; convert integer to string
+
+;  USAGE:
+;  push destbuffer
+;  push number
+;
+;  call itoa
+;  add sp, 4
+
+   push bp
+   mov bp, sp
+   sub sp, 24
+
+   mov [bp-2], bp
+   sub word [bp-2], 4
+
+   .loop:
+
+   mov dx, 0
+   mov ax, [bp+4]
+   mov bx, 10
+   div bx
+   mov [bp+4], ax
+
+   mov bx, [bp-2]
+   add dl, 48
+   mov [bx], dl
+   add word [bp-2], 1
+
+   mov cx, [bp+4]
+   cmp cx, 0
+   jne .loop
+
+   mov bx, [bp-2]
+   sub bx, 1
+
+
+   mov di, [bp+6]
+
+   .l2:
+
+   mov ax, [bx]
+   mov [di], ax
+
+   dec bx
+   inc di
+
+   mov ax, bp
+   sub ax, 4
+   cmp bx, ax
+   jge .l2
+
+   mov byte [di], 0
+   
+   leave
+   ret
+   
+   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 SectorsPerTrack      dw 18    ; Sectors per track (36/cylinder)
 HeadsPerCylinder     dw 2
-str1                 db 'This is my bootloader!', 10, 13, 0
-err1                 db 'ERROR while loading kernel!', 10, 13, 0
+CylindersCount       dw 0
+
 newline              db 10, 13, 0
+hello                db 'Hello', 10, 13, 0
+load_failed          db 'Load failed, LBA: ', 0
+read_params_failed   db 'F0', 10, 13, 0
+
+current_device       dw 0
+
 currSectorNum        dw 0
 
                      ; Hack the destination segment in a way to avoid
                      ; special calculations in order to skip the first sector
                      ; of the floppy.
 currDataSeg          dw (DEST_DATA_SEGMENT - 512/16)
+
+strBuf               times 8 db 0
+
+;driveParams          dw 0x1E ; size of this buffer
+;infoFlags            dw 0
+;cyl_count            dd 0
+;head_count           dd 0
+;sec_per_track        dd 0
+;tot_sec              dq 0
+;sector_size          dw 0
+;edd_params           dd 0
+
 
 times 510-($-$$) db 0   ; Pad remainder of boot sector with 0s
 dw 0xAA55               ; The standard PC boot signature
