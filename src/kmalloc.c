@@ -3,13 +3,7 @@
 #include <paging.h>
 #include <stringUtil.h>
 
-/*
- * Use 32 KB as alloc block size.
- * Using bigger blocks with the current implementation does not
- * lead to performance benefits.
- */
-#define ALLOC_BLOCK_SIZE (8 * PAGE_SIZE)
-
+#define ALLOC_BLOCK_SIZE (4 * PAGE_SIZE)
 
 // MIN_BLOCK_SIZE has to be a multiple of 32
 STATIC_ASSERT((MIN_BLOCK_SIZE & 31) == 0);
