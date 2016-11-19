@@ -69,6 +69,9 @@ start:
    inc ax
    mov [CylindersCount], ax
    
+
+   mov ax, [CylindersCount]  
+   call print_num
    
    mov ax, [HeadsPerCylinder]  
    call print_num
@@ -76,24 +79,16 @@ start:
    mov ax, [SectorsPerTrack]  
    call print_num
 
-   mov ax, [CylindersCount]  
-   call print_num
    
-   
-   ;pause:
-   ;jmp pause
    
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   
    
-   mov word [currSectorNum], 1 ; sector 1 (512 bytes after this bootloader)
+   ;mov word [currSectorNum], 1 ; sector 1 (512 bytes after this bootloader)
    
    .big_load_loop:
    
    .load_loop:
 
-   ;xchg bx, bx ; magic break
-   ;mov ax, [currSectorNum]
-   ;call print_num
 
    ;xchg bx, bx ; magic break
 
@@ -116,6 +111,9 @@ start:
    mov ah, 2         ; Params for int 13h: read floppy sectors
    mov al, SECTORS_TO_READ_AT_TIME
 
+   mov [saved_cx], cx
+   mov [saved_dx], dx
+   
    int 13h
    
    ;xchg bx, bx ; magic break
@@ -146,30 +144,67 @@ start:
    
 .load_error:
 
+
    mov si, load_failed
    call print_string
    
    mov ax, [currSectorNum]
    call print_num
+   
+   mov si, cyl_param
+   call print_string
+   
+   mov cx, [saved_cx]
+   xor ax, ax
+   mov al, ch  
+   call print_num
 
+   mov si, head_param
+   call print_string
+
+   mov dx, [saved_dx]
+   xor ax, ax
+   mov al, dh
+   call print_num
+
+   mov si, sector_param
+   call print_string
+
+   
+   mov cx, [saved_cx]
+   xor ax, ax
+   mov al, cl
+   call print_num
+      
+
+   ; continue to boot anyway since
+   ; with hdd we fail after loading 270 sectors
+   
 .load_OK:
 
    ; burn some cycles to wait
+   ;jmp end
    
-   mov bx, 8192  
-   .wait_outer:
+   ; mov bx, 16000  
+   ; .wait_outer:
 
-   mov ax, 65535
-   .wait_inner:
+   ; mov ax, 65535
+   ; .wait_inner:
 
-   dec ax
-   cmp ax, 0
-   jne .wait_inner
+   ; dec ax
+   ; cmp ax, 0
+   ; jne .wait_inner
 
-   dec bx
-   cmp bx, 0
-   jne .wait_outer
+   ; dec bx
+   ; cmp bx, 0
+   ; jne .wait_outer
    
+   mov eax, 4000000000
+   
+   .loop:
+   dec eax
+   cmp eax, 0
+   jne .loop
 
    ; xchg bx, bx ; magic break   
    jmp DEST_DATA_SEGMENT:0x0000
@@ -234,7 +269,7 @@ print_string:
 .done:
    ret
    
-itoa: ; convert integer to string
+itoa: ; convert 16-bit integer to string
 
 ;  USAGE:
 ;  push destbuffer
@@ -298,15 +333,21 @@ SectorsPerTrack      dw 0
 HeadsPerCylinder     dw 0
 CylindersCount       dw 0
 
+saved_cx             dw 0
+saved_dx             dw 0
+
 newline              db 10, 13, 0
 hello                db 'Hello', 10, 13, 0
 load_ok              db 'Load OK', 10, 13, 0
 load_failed          db 'Load failed, LBA: ', 0
+cyl_param            db 'C: ', 0
+head_param           db 'H: ', 0
+sector_param         db 'S: ', 0
 read_params_failed   db 'F0', 10, 13, 0
 
 current_device       dw 0
 
-currSectorNum        dw 0
+currSectorNum        dw 1
 
                      ; Hack the destination segment in a way to avoid
                      ; special calculations in order to skip the first sector
