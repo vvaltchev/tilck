@@ -25,21 +25,11 @@ void paging_free_phys_page(void *address);
  * ----------------------------------------------
  */
 
-bool paging_debug = false;
+//bool paging_debug = false;
 
 /* ---------------------------------------------- */
 
 page_directory_t *kernel_page_dir = NULL;
-
-page_directory_t *get_curr_page_dir()
-{
-   return kernel_page_dir;
-}
-
-page_directory_t *get_kernel_page_dir()
-{
-   return kernel_page_dir;
-}
 
 volatile bool in_page_fault = false;
 
@@ -86,8 +76,7 @@ static void initialize_empty_page_table(page_table_t *t)
    }
 }
 
-static void initialize_page_directory(page_directory_t *pdir,
-                                      bool us)
+static void initialize_page_directory(page_directory_t *pdir, bool us)
 {
    page_dir_entry_t not_present = {0};
 
@@ -116,25 +105,20 @@ bool is_mapped(page_directory_t *pdir, uintptr_t vaddr)
    return ptable->pages[page_table_index].present;
 }
 
-bool unmap_page(page_directory_t *pdir, uintptr_t vaddr)
+void unmap_page(page_directory_t *pdir, uintptr_t vaddr)
 {
    page_table_t *ptable;
    uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
    uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
 
-   if (pdir->page_tables[page_dir_index] == NULL) {
-      return false;
-   }
+   ASSERT(pdir->page_tables[page_dir_index] != NULL);
 
    ptable = pdir->page_tables[page_dir_index];
 
-   if (!ptable->pages[page_table_index].present) {
-      return false;
-   }
+   ASSERT(ptable->pages[page_table_index].present);
 
    page_t p = {0};
    ptable->pages[page_table_index] = p;
-   return true;
 }
 
 void *get_mapping(page_directory_t *pdir, uintptr_t vaddr)
@@ -166,23 +150,25 @@ void map_page(page_directory_t *pdir,
 
    page_table_t *ptable = NULL;
 
-   if (paging_debug) {
-      printk("Mapping vaddr = %p to paddr = %p\n", vaddr, paddr);
-   }
+   //if (paging_debug) {
+   //   printk("Mapping vaddr = %p to paddr = %p\n", vaddr, paddr);
+   //}
 
    ASSERT(((uintptr_t)pdir->page_tables[page_dir_index] & 0xFFF) == 0);
 
-   if (pdir->page_tables[page_dir_index] == NULL) {
+   if (UNLIKELY(pdir->page_tables[page_dir_index] == NULL)) {
 
       // we have to create a page table for mapping 'vaddr'
 
-      ptable = KERNEL_PADDR_TO_VADDR(paging_alloc_phys_page());
+      uint32_t page_physical_addr = (uint32_t)paging_alloc_phys_page();
 
-      if (paging_debug) {
-         printk("Creating a new page table at paddr = %p\n"
-                "for page_dir_index = %p (= vaddr %p)\n",
-                ptable, page_dir_index, page_dir_index << 22);
-      }
+      ptable = (void*)KERNEL_PADDR_TO_VADDR(page_physical_addr);
+
+      //if (paging_debug) {
+      //   printk("Creating a new page table at paddr = %p\n"
+      //          "for page_dir_index = %p (= vaddr %p)\n",
+      //          ptable, page_dir_index, page_dir_index << 22);
+      //}
 
       initialize_empty_page_table(ptable);
 
@@ -190,7 +176,7 @@ void map_page(page_directory_t *pdir,
       e.present = 1;
       e.rw = 1;
       e.us = us;
-      e.pageTableAddr = ((uint32_t)KERNEL_VADDR_TO_PADDR(ptable)) >> 12;
+      e.pageTableAddr = ((uint32_t)page_physical_addr) >> 12;
 
       pdir->page_tables[page_dir_index] = ptable;
       pdir->entries[page_dir_index] = e;
