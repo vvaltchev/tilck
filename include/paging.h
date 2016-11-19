@@ -15,9 +15,6 @@ int get_free_physical_pages_count();
 typedef struct page_directory_t page_directory_t;
 
 void init_paging();
-page_directory_t *get_curr_page_dir();
-page_directory_t *get_kernel_page_dir();
-
 void map_page(page_directory_t *pdir,
               uintptr_t vaddr,
 	           uintptr_t paddr,
@@ -25,7 +22,7 @@ void map_page(page_directory_t *pdir,
               bool rw);
 
 bool is_mapped(page_directory_t *pdir, uintptr_t vaddr);
-bool unmap_page(page_directory_t *pdir, uintptr_t vaddr);
+void unmap_page(page_directory_t *pdir, uintptr_t vaddr);
 
 void *get_mapping(page_directory_t *pdir, uintptr_t vaddr);
 
@@ -40,4 +37,16 @@ map_pages(page_directory_t *pdir,
    for (int i = 0; i < pageCount; i++) {
       map_page(pdir, vaddr + (i << 12), paddr + (i << 12), us, rw);
    }
+}
+
+extern page_directory_t *kernel_page_dir;
+
+static ALWAYS_INLINE page_directory_t *get_curr_page_dir()
+{
+   return kernel_page_dir;
+}
+
+static ALWAYS_INLINE page_directory_t *get_kernel_page_dir()
+{
+   return kernel_page_dir;
 }
