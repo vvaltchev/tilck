@@ -239,7 +239,7 @@ print_string:
 
 .repeat:
    lodsb           ; Get character from string
-   cmp al, 0
+   test al, al
    je .done        ; If char is zero, end of string
    int 10h         ; Otherwise, print it
    jmp .repeat
@@ -265,7 +265,7 @@ itoa: ; convert 16-bit integer to string
 
    .loop:
 
-   mov dx, 0
+   xor dx, dx
    mov ax, [bp+4]
    mov bx, 10
    div bx
