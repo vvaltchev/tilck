@@ -105,7 +105,7 @@ start:
    mov ah, 2         ; Params for int 13h: read sectors
    mov al, SECTORS_TO_READ_AT_TIME
 
-   ; save the parameters CHS parameters
+   ; save the CHS parameters
    mov [saved_cx], cx
    mov [saved_dx], dx
    
@@ -169,19 +169,20 @@ start:
    call print_num
       
 
-   ; continue to boot anyway since
-   ; with hdd we fail after loading 270 sectors
+   ; continue to boot anyway since with hdd we fail after loading 270 sectors
+   ; which are enough for the moment, but that's not OK of course.
    
-.load_OK:
-
-   ; burn some cycles to wait
      
-   mov eax, 4000000000
+   ; burn some cycles to wait before booting
+   
+   xor eax, eax
    
    .loop:
    dec eax
-   cmp eax, 0
-   jne .loop
+   test eax, eax
+   jne .loop      ; JMP if EAX != 0  
+ 
+.load_OK:
 
    ; xchg bx, bx ; magic break   
    jmp DEST_DATA_SEGMENT:0x0000
