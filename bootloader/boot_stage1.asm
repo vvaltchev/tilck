@@ -134,7 +134,7 @@ start:
    jne .load_loop ; JMP if ax != 0
 
    mov ax, [currDataSeg]
-   cmp ax, 0x8FE0 ; so, we'd have 0x20000 - 0x8FFFF for the kernel (448 KB)
+   cmp ax, 0x9FE0 ; so, we'd have 0x20000 - 0x9FFFF for the kernel (512 KB)
    je .load_OK
 
    ; Increment the segment by 4K => 64K in plain address

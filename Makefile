@@ -54,18 +54,19 @@ export UNITTESTS_TARGET := $(BUILD_DIR)/unittests
 export INIT_BUILD_DIR := $(BUILD_DIR)/init
 export UNITTESTS_BUILD_DIR := $(BUILD_DIR)/tests
 
-$(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
 all: $(FINAL_TARGET)
 
-$(FINAL_TARGET): $(EMPTY_IMG_FILE) $(BOOTLOADER_TARGET) $(KERNEL_TARGET) $(INIT_TARGET)
+$(FINAL_TARGET): $(BUILD_DIR) $(BOOTLOADER_TARGET) $(KERNEL_TARGET) $(INIT_TARGET)
 	@echo Creating $@ ...
 	@dd status=none conv=notrunc if=$(BOOTLOADER_TARGET) of=$@
 	@dd status=none conv=notrunc if=$(KERNEL_TARGET) of=$@ seek=4 obs=1024 ibs=1024
 	@dd status=none conv=notrunc if=$(INIT_TARGET) of=$@ seek=132 obs=1024 ibs=1024
 
-$(EMPTY_IMG_FILE):
-	@dd status=none if=/dev/zero of=$(FINAL_TARGET) obs=512 ibs=512 count=2880
+$(BUILD_DIR):
+	@echo Creating the build directory..
+	$(shell mkdir -p $(BUILD_DIR) > /dev/null)
+	@dd status=none if=/dev/urandom of=$(FINAL_TARGET) obs=512 ibs=512 count=2880
 
 tests: $(UNITTESTS_TARGET)
 
