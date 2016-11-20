@@ -130,6 +130,7 @@ static ALWAYS_INLINE uint8_t inb(uint16_t port)
 
 void panic(const char *fmt, ...);
 void assert_failed(const char *expr, const char *file, int line);
+void reboot();
 
 #ifndef NDEBUG
 
