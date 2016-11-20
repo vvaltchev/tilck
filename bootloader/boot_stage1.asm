@@ -6,6 +6,9 @@
 %define BASE_LOAD_SEG 0x07C0
 %define DEST_DATA_SEGMENT 0x2000
 
+; We're OK with just 1000 512-byte sectors (500 KB)
+%define SECTORS_TO_READ 1000
+
 start:
 
    mov ax, BASE_LOAD_SEG
@@ -89,8 +92,6 @@ start:
 
    .load_loop:
 
-   ;xchg bx, bx ; magic break
-
    mov ax, [currSectorNum]
    call lba_to_chs
 
@@ -114,19 +115,20 @@ start:
    mov [saved_dx], dx
 
    int 13h
-
-   ;call print_chs
-   ;xchg bx, bx ; magic break
-
    jc .load_error
 
    mov ax, [currSectorNum]
+
+   ; We read all the sectors we needed: loading is over.
+   cmp ax, SECTORS_TO_READ
+   je .load_OK
+
    inc ax                    ; we read just 1 sector at time
    mov [currSectorNum], ax
 
    ; If the current sector num have the bits 0-7 unset,
    ; we loaded 128 sectors * 512 bytes = 64K.
-   ; We have to increase the segment.
+   ; We have to change the segment in order to continue.
 
    dec ax
    and ax, 0x7F
@@ -134,10 +136,15 @@ start:
    jne .load_loop ; JMP if ax != 0
 
    mov ax, [currDataSeg]
-   cmp ax, 0x9FE0 ; so, we'd have 0x20000 - 0x9FFFF for the kernel (512 KB)
-   je .load_OK
+  
+   ; The idea of reading exactly 512 KB was good but, for some reason,
+   ; on my PC, when booting using a USB stick, I cannot read more than
+   ; 1022 sectors. So, that's why this code has been commented.
 
-   ; Increment the segment by 4K => 64K in plain address
+   ;cmp ax, 0x8FE0 ; so, we'd have 0x20000 - 0x9FFFF for the kernel (512 KB)
+   ;je .load_OK
+
+   ; Increment the segment by 4K => 64K in plain address space
    add ax, 0x1000
    mov [currDataSeg], ax
    jmp .load_loop
@@ -150,12 +157,8 @@ start:
    mov dl, [current_device]
    int 0x13
 
-   jnc .los_ok
-   
-   mov si, los_failed
-   call print_string
-   
-   .los_ok:
+   ; The carry flag here is always set and people on os-dev say
+   ; that one should not rely on it.
    
    ; We have now in AH the last error
    shr ax, 8 ; move AH in AL and make AH=0
@@ -164,35 +167,27 @@ start:
    call print_num
    
    
-   ;print the sector number
+   ; Print the sector number (LBA)
    mov si, load_failed
    call print_string
    mov ax, [currSectorNum]
    call print_num
 
+   ; Print the CHS params we actually used
    call print_chs
 
-   ; continue to boot anyway since with hdd we fail after loading 270 sectors
-   ; which are enough for the moment, but that's not OK of course.
-
-   ; xchg bx, bx
-
-   ; burn some cycles to wait before booting
-
-   xor eax, eax
-
-   .loop:
-   dec eax
-   test eax, eax
-   jne .loop      ; JMP if EAX != 0
+   ; unrecovable error: hang forever!
+   jmp end
 
 .load_OK:
-
-   ; xchg bx, bx ; magic break
    jmp DEST_DATA_SEGMENT:0x0000
 
 end:
    jmp end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Utility functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 print_chs:
    pusha
@@ -215,7 +210,7 @@ print_chs:
    mov si, sector_param
    call print_string
    mov ax, [saved_cx]
-   xor ah, ah
+   and ax, 63      ; only the first 6 bits matter
    call print_num
 
    popa
@@ -259,6 +254,8 @@ lba_to_chs:         ; Calculate head, track and sector settings for int 13h
 
 print_num:
 
+   pusha
+
    push strBuf
    push ax ; the input number
    call itoa
@@ -270,6 +267,7 @@ print_num:
    mov si, newline
    call print_string
 
+   popa
    ret
 
 
@@ -365,10 +363,8 @@ head_param           db 'H:', 0
 sector_param         db 'S:', 0
 last_op_status       db 'LOS:', 0
 read_params_failed   db 'F1', 10, 13, 0
-los_failed           db 'F2', 10, 13, 0
 
 current_device       dw 0
-
 currSectorNum        dw 1
 
                      ; Hack the destination segment in a way to avoid
