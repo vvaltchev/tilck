@@ -8,7 +8,7 @@
 %define DEST_DATA_SEGMENT 0x2000
 
 start:
-   
+
    mov ax, BASE_LOAD_SEG
    add ax, (8192 / 16)         ; 8K buffer
    cli                         ; Disable interrupts while changing stack
@@ -25,41 +25,41 @@ start:
    mov ah, 0x0 ; set video mode
    mov al, 0x3 ; 80x25 mode
    int 0x10
-   
-   
+
+
    mov [current_device], dl
-  
+
    mov si, dev
    call print_string
-   mov ax, [current_device] 
+   mov ax, [current_device]
    call print_num
-   
+
    xor ax, ax
    mov es, ax
    mov di, ax
-   
+
    mov dl, [current_device]
-   mov ah, 0x8 ; read drive parameters  
+   mov ah, 0x8 ; read drive parameters
    int 0x13
-   
-   jnc after_read_params_ok 
+
+   jnc after_read_params_ok
 
    mov si, read_params_failed
    call print_string
    jmp end
 
    after_read_params_ok:
-   
+
    xor ax, ax
    mov al, dh
    inc al
-   
-   mov [HeadsPerCylinder], ax  
-   
+
+   mov [HeadsPerCylinder], ax
+
    mov ax, cx
    and ax, 63   ; last 6 bits
    mov [SectorsPerTrack], ax
-   
+
    xor ax, ax
    mov al, ch  ; higher 8 bits of CX = lower bits for cyclinders count
    and cx, 192 ; bits 6 and 7 of CX = higher 2 bits for cyclinders count
@@ -67,36 +67,36 @@ start:
    or ax, cx
    inc ax
    mov [CylindersCount], ax
-   
+
 
    ; mov ax, [CylindersCount]  ; we have already the value in ax
    call print_num
-   
-   mov ax, [HeadsPerCylinder]  
+
+   mov ax, [HeadsPerCylinder]
    call print_num
 
-   mov ax, [SectorsPerTrack]  
+   mov ax, [SectorsPerTrack]
    call print_num
 
-   
-   
-   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   
-     
+
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
    .load_loop:
 
    ;xchg bx, bx ; magic break
-   
+
    mov ax, [currSectorNum]
    call lba_to_chs
 
    mov ax, [currDataSeg]
    mov es, ax        ; Store currDataSeg in ES, the destination address of the sectors read
                      ; (AX is used since we cannot store directly IMM value in ES)
-                     
+
    mov bx, [currSectorNum]
    shl bx, 9         ; Sectors read are stored in ES:BX
                      ; bx = 512 * counter * bx
-   
+
    ; 20-bit address in 8086 (real mode)
    ; SEG:OFF
    ; ADDR20 = (SEG << 4) | OFF
@@ -107,27 +107,28 @@ start:
    ; save the CHS parameters for error messages
    mov [saved_cx], cx
    mov [saved_dx], dx
-   
+
    int 13h
-   
+
+   ;call print_chs
    ;xchg bx, bx ; magic break
-   
+
    jc .load_error
 
    mov ax, [currSectorNum]
    inc ax                    ; we read just 1 sector at time
    mov [currSectorNum], ax
-   
+
    ; If the current sector num have the bits 0-7 unset,
    ; we loaded 128 sectors * 512 bytes = 64K.
    ; We have to increase the segment.
-   
+
    dec ax
    and ax, 0x7F
    test ax, ax
    jne .load_loop ; JMP if ax != 0
-   
-   mov ax, [currDataSeg] 
+
+   mov ax, [currDataSeg]
    cmp ax, 0x9FE0 ; so, we'd have 0x20000 - 0x9FFFF for the kernel (512 KB)
    je .load_OK
 
@@ -135,7 +136,7 @@ start:
    add ax, 0x1000
    mov [currDataSeg], ax
    jmp .load_loop
-   
+
 .load_error:
 
    ; The load failed for some reason
@@ -145,13 +146,40 @@ start:
    call print_string
    mov ax, [currSectorNum]
    call print_num
-   
+
+   call print_chs
+
+   ; continue to boot anyway since with hdd we fail after loading 270 sectors
+   ; which are enough for the moment, but that's not OK of course.
+
+   ; xchg bx, bx
+
+   ; burn some cycles to wait before booting
+
+   xor eax, eax
+
+   .loop:
+   dec eax
+   test eax, eax
+   jne .loop      ; JMP if EAX != 0
+
+.load_OK:
+
+   ; xchg bx, bx ; magic break
+   jmp DEST_DATA_SEGMENT:0x0000
+
+end:
+   jmp end
+
+print_chs:
+   pusha
+
    ; print the cylinder param
    mov si, cyl_param
-   call print_string   
+   call print_string
    mov cx, [saved_cx]
    xor ax, ax
-   mov al, ch  
+   mov al, ch
    call print_num
 
    ; print the head param
@@ -164,33 +192,15 @@ start:
 
    ; print the sector param
    mov si, sector_param
-   call print_string 
+   call print_string
    mov cx, [saved_cx]
    xor ax, ax
    mov al, cl
    call print_num
-      
 
-   ; continue to boot anyway since with hdd we fail after loading 270 sectors
-   ; which are enough for the moment, but that's not OK of course.
-   
-     
-   ; burn some cycles to wait before booting
-   
-   xor eax, eax
-   
-   .loop:
-   dec eax
-   test eax, eax
-   jne .loop      ; JMP if EAX != 0  
- 
-.load_OK:
 
-   ; xchg bx, bx ; magic break   
-   jmp DEST_DATA_SEGMENT:0x0000
-   
-end:
-   jmp end
+   popa
+   ret
 
 lba_to_chs:         ; Calculate head, track and sector settings for int 13h
                     ; IN: logical sector in AX, OUT: correct registers for int 13h
@@ -199,13 +209,22 @@ lba_to_chs:         ; Calculate head, track and sector settings for int 13h
 
    mov bx, ax        ; Save logical sector
 
+   ; DIV {ARG}
+   ; divides DX:AX by {ARG}
+   ; quotient => AX
+   ; reminder => DX
+
+
    xor dx, dx        ; First the sector
    div word [SectorsPerTrack]
    inc dl            ; Physical sectors start at 1
    mov cl, dl        ; Sectors belong in CL for int 13h
-   mov ax, bx
+   and cl, 63        ; Make sure the upper two bits of CL are unset
 
-   xor dx, dx         ; Now calculate the head
+
+   mov ax, bx        ; reload the LBA sector in AX
+
+   xor dx, dx        ; reset DX and calculate the head
    div word [SectorsPerTrack]
    xor dx, dx
    div word [HeadsPerCylinder]
@@ -225,16 +244,16 @@ print_num:
    push ax ; the input number
    call itoa
    add sp, 4
-   
+
    mov si, strBuf
    call print_string
-   
+
    mov si, newline
    call print_string
-  
+
    ret
-   
-   
+
+
 print_string:
 
    mov ah, 0x0E    ; int 10h 'print char' function
@@ -248,7 +267,7 @@ print_string:
 
 .done:
    ret
-   
+
 itoa: ; convert 16-bit integer to string
 
 ;  USAGE:
@@ -302,11 +321,11 @@ itoa: ; convert 16-bit integer to string
    jge .l2
 
    mov byte [di], 0
-   
+
    leave
    ret
-   
-   
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 SectorsPerTrack      dw 0
