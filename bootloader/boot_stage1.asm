@@ -4,7 +4,7 @@
 [ORG 0x0000]
 
 %define BASE_LOAD_SEG 0x07C0
-%define SECTORS_TO_READ_AT_TIME 1
+;%define SECTORS_TO_READ_AT_TIME 1
 %define DEST_DATA_SEGMENT 0x2000
 
 start:
@@ -31,7 +31,6 @@ start:
   
    mov si, dev
    call print_string
-   
    mov ax, [current_device] 
    call print_num
    
@@ -70,7 +69,7 @@ start:
    mov [CylindersCount], ax
    
 
-   mov ax, [CylindersCount]  
+   ; mov ax, [CylindersCount]  ; we have already the value in ax
    call print_num
    
    mov ax, [HeadsPerCylinder]  
@@ -102,10 +101,10 @@ start:
    ; SEG:OFF
    ; ADDR20 = (SEG << 4) | OFF
 
-   mov ah, 2         ; Params for int 13h: read sectors
-   mov al, SECTORS_TO_READ_AT_TIME
+   mov ah, 0x02      ; Params for int 13h: read sectors
+   mov al, 1         ; Read just 1 sector at time
 
-   ; save the CHS parameters
+   ; save the CHS parameters for error messages
    mov [saved_cx], cx
    mov [saved_dx], dx
    
@@ -116,53 +115,56 @@ start:
    jc .load_error
 
    mov ax, [currSectorNum]
-   add ax, SECTORS_TO_READ_AT_TIME
+   inc ax                    ; we read just 1 sector at time
    mov [currSectorNum], ax
+   
+   ; If the current sector num have the bits 0-7 unset,
+   ; we loaded 128 sectors * 512 bytes = 64K.
+   ; We have to increase the segment.
    
    dec ax
    and ax, 0x7F
    test ax, ax
    jne .load_loop ; JMP if ax != 0
    
-   ; xchg bx, bx ; magic break
-
    mov ax, [currDataSeg] 
    cmp ax, 0x9FE0 ; so, we'd have 0x20000 - 0x9FFFF for the kernel (512 KB)
    je .load_OK
-   
+
+   ; Increment the segment by 4K => 64K in plain address
    add ax, 0x1000
    mov [currDataSeg], ax
    jmp .load_loop
    
 .load_error:
 
+   ; The load failed for some reason
 
+   ; print the sector number
    mov si, load_failed
    call print_string
-   
    mov ax, [currSectorNum]
    call print_num
    
+   ; print the cylinder param
    mov si, cyl_param
-   call print_string
-   
+   call print_string   
    mov cx, [saved_cx]
    xor ax, ax
    mov al, ch  
    call print_num
 
+   ; print the head param
    mov si, head_param
    call print_string
-
    mov dx, [saved_dx]
    xor ax, ax
    mov al, dh
    call print_num
 
+   ; print the sector param
    mov si, sector_param
-   call print_string
-
-   
+   call print_string 
    mov cx, [saved_cx]
    xor ax, ax
    mov al, cl
