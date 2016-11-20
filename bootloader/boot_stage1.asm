@@ -197,15 +197,15 @@ lba_to_chs:         ; Calculate head, track and sector settings for int 13h
 
    mov bx, ax        ; Save logical sector
 
-   mov dx, 0         ; First the sector
+   xor dx, dx         ; First the sector
    div word [SectorsPerTrack]
    add dl, 01h       ; Physical sectors start at 1
    mov cl, dl        ; Sectors belong in CL for int 13h
    mov ax, bx
 
-   mov dx, 0         ; Now calculate the head
+   xor dx, dx         ; Now calculate the head
    div word [SectorsPerTrack]
-   mov dx, 0
+   xor dx, dx
    div word [HeadsPerCylinder]
    mov dh, dl        ; Head
    mov ch, al        ; Cylinder
