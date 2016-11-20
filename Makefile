@@ -66,7 +66,7 @@ $(FINAL_TARGET): $(BUILD_DIR) $(BOOTLOADER_TARGET) $(KERNEL_TARGET) $(INIT_TARGE
 $(BUILD_DIR):
 	@echo Creating the build directory..
 	$(shell mkdir -p $(BUILD_DIR) > /dev/null)
-	@dd status=none if=/dev/urandom of=$(FINAL_TARGET) obs=512 ibs=512 count=2880
+	@dd status=none if=/dev/zero of=$(FINAL_TARGET) obs=512 ibs=512 count=2880
 
 tests: $(UNITTESTS_TARGET)
 
