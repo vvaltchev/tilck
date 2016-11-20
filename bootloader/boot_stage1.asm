@@ -29,7 +29,7 @@ start:
    
    mov [current_device], dl
   
-   mov si, hello
+   mov si, dev
    call print_string
    
    mov ax, [current_device] 
@@ -315,8 +315,7 @@ saved_cx             dw 0
 saved_dx             dw 0
 
 newline              db 10, 13, 0
-hello                db 'Hello', 10, 13, 0
-load_ok              db 'Load OK', 10, 13, 0
+dev                  db 'Dev: ', 0
 load_failed          db 'Load failed, LBA: ', 0
 cyl_param            db 'C: ', 0
 head_param           db 'H: ', 0
