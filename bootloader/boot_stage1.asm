@@ -4,7 +4,6 @@
 [ORG 0x0000]
 
 %define BASE_LOAD_SEG 0x07C0
-;%define SECTORS_TO_READ_AT_TIME 1
 %define DEST_DATA_SEGMENT 0x2000
 
 start:
@@ -29,6 +28,12 @@ start:
 
    mov [current_device], dl
 
+   mov ah, 0x00  ; reset device
+   int 0x13
+   jc end
+   
+   .reset_ok:
+   
    mov si, dev
    call print_string
    mov ax, [current_device]
@@ -129,7 +134,7 @@ start:
    jne .load_loop ; JMP if ax != 0
 
    mov ax, [currDataSeg]
-   cmp ax, 0x9FE0 ; so, we'd have 0x20000 - 0x9FFFF for the kernel (512 KB)
+   cmp ax, 0x8FE0 ; so, we'd have 0x20000 - 0x8FFFF for the kernel (448 KB)
    je .load_OK
 
    ; Increment the segment by 4K => 64K in plain address
@@ -141,7 +146,25 @@ start:
 
    ; The load failed for some reason
 
-   ; print the sector number
+   mov ah, 0x01 ; Get Status of Last Drive Operation
+   mov dl, [current_device]
+   int 0x13
+
+   jnc .los_ok
+   
+   mov si, los_failed
+   call print_string
+   
+   .los_ok:
+   
+   ; We have now in AH the last error
+   shr ax, 8 ; move AH in AL and make AH=0
+   mov si, last_op_status
+   call print_string
+   call print_num
+   
+   
+   ;print the sector number
    mov si, load_failed
    call print_string
    mov ax, [currSectorNum]
@@ -177,27 +200,23 @@ print_chs:
    ; print the cylinder param
    mov si, cyl_param
    call print_string
-   mov cx, [saved_cx]
-   xor ax, ax
-   mov al, ch
+   mov ax, [saved_cx]
+   shr ax, 8     ; put 'ch' in al
    call print_num
 
    ; print the head param
    mov si, head_param
    call print_string
-   mov dx, [saved_dx]
-   xor ax, ax
-   mov al, dh
+   mov ax, [saved_dx]
+   shr ax, 8    ; put 'dh' in al
    call print_num
 
    ; print the sector param
    mov si, sector_param
    call print_string
-   mov cx, [saved_cx]
-   xor ax, ax
-   mov al, cl
+   mov ax, [saved_cx]
+   xor ah, ah
    call print_num
-
 
    popa
    ret
@@ -256,6 +275,8 @@ print_num:
 
 print_string:
 
+   push ax         ; save AX for the caller
+   
    mov ah, 0x0E    ; int 10h 'print char' function
 
 .repeat:
@@ -266,6 +287,7 @@ print_string:
    jmp .repeat
 
 .done:
+   pop ax
    ret
 
 itoa: ; convert 16-bit integer to string
@@ -336,12 +358,14 @@ saved_cx             dw 0
 saved_dx             dw 0
 
 newline              db 10, 13, 0
-dev                  db 'Dev: ', 0
-load_failed          db 'Load failed, LBA: ', 0
-cyl_param            db 'C: ', 0
-head_param           db 'H: ', 0
-sector_param         db 'S: ', 0
-read_params_failed   db 'F0', 10, 13, 0
+dev                  db 'Dev:', 0
+load_failed          db 'LBA:', 0
+cyl_param            db 'C:', 0
+head_param           db 'H:', 0
+sector_param         db 'S:', 0
+last_op_status       db 'LOS:', 0
+read_params_failed   db 'F1', 10, 13, 0
+los_failed           db 'F2', 10, 13, 0
 
 current_device       dw 0
 
@@ -353,16 +377,6 @@ currSectorNum        dw 1
 currDataSeg          dw (DEST_DATA_SEGMENT - 512/16)
 
 strBuf               times 8 db 0
-
-;driveParams          dw 0x1E ; size of this buffer
-;infoFlags            dw 0
-;cyl_count            dd 0
-;head_count           dd 0
-;sec_per_track        dd 0
-;tot_sec              dq 0
-;sector_size          dw 0
-;edd_params           dd 0
-
 
 times 510-($-$$) db 0   ; Pad remainder of boot sector with 0s
 dw 0xAA55               ; The standard PC boot signature
