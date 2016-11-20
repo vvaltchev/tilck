@@ -119,10 +119,10 @@ start:
    add ax, SECTORS_TO_READ_AT_TIME
    mov [currSectorNum], ax
    
-   sub ax, 1
+   dec ax
    and ax, 0x7F
-   cmp ax, 0
-   jne .load_loop
+   test ax, ax
+   jne .load_loop ; JMP if ax != 0
    
    ; xchg bx, bx ; magic break
 
@@ -197,9 +197,9 @@ lba_to_chs:         ; Calculate head, track and sector settings for int 13h
 
    mov bx, ax        ; Save logical sector
 
-   xor dx, dx         ; First the sector
+   xor dx, dx        ; First the sector
    div word [SectorsPerTrack]
-   add dl, 01h       ; Physical sectors start at 1
+   inc dl            ; Physical sectors start at 1
    mov cl, dl        ; Sectors belong in CL for int 13h
    mov ax, bx
 
@@ -277,8 +277,8 @@ itoa: ; convert 16-bit integer to string
    add word [bp-2], 1
 
    mov cx, [bp+4]
-   cmp cx, 0
-   jne .loop
+   test cx, cx
+   jne .loop   ; JMP if cx != 0
 
    mov bx, [bp-2]
    sub bx, 1
