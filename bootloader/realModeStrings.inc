@@ -106,7 +106,7 @@ dump_binary: ; dump binary data to the screen in dec bytes
 itoa: ; convert integer to string
 
 ;  USAGE:
-;  push [in/out] destbuffer
+;  push destbuffer
 ;  push number
 ;
 ;  call itoa

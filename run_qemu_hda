@@ -1,0 +1,2 @@
+#!/bin/sh
+qemu-system-i386 -hda ./build/exos.img
