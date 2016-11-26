@@ -2,6 +2,7 @@
 #pragma once
 
 #include <commonDefs.h>
+#include <process.h>
 
 // Forward-declaring regs
 typedef struct regs regs;
@@ -15,3 +16,4 @@ struct regs {
    uint32_t eip, cs, eflags, useresp, ss;   /* pushed by the processor automatically */
 };
 
+STATIC_ASSERT(sizeof(regs) == PROCESS_REGS_DATA_SIZE);

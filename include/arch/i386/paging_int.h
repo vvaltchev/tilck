@@ -52,7 +52,6 @@ typedef struct {
 struct page_directory_t {
 
 	page_dir_entry_t entries[1024];  // actual entries used by the CPU
-	page_table_t *page_tables[1024]; // pointers to the tables (virtual addreses)
-
+	page_table_t *page_tables[1024]; // pointers to the tables (virtual addresses)
 };
 
