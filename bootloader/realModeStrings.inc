@@ -1,34 +1,44 @@
    
 [BITS 16]
 
-   ;;;;;;;;;;;;;;;;;
-   ; EXAMPLE: print a char using BIOS
-   ;
-   ; mov ah, 0Eh
-   ; mov al, 'k'
+strBuf               times 8 db 0
+newline              db 10, 13, 0
 
-   ; int 10h
-   ;;;;;;;;;;;;;;;;;
+print_num:
+
+   pusha
+
+   push strBuf
+   push ax ; the input number
+   call itoa
+   add sp, 4
+
+   mov si, strBuf
+   call print_string
+
+   mov si, newline
+   call print_string
+
+   popa
+   ret
    
-print_string:      ; Routine: output string in SI to screen
-   push bp
-   mov bp, sp
+print_string:
+
+   push ax         ; save AX for the caller
    
-   mov si, [bp+4]  ; bp+4 is the first argument
-   mov ah, 0Eh     ; int 10h 'print char' function
+   mov ah, 0x0E    ; int 10h 'print char' function
 
 .repeat:
    lodsb           ; Get character from string
-   cmp al, 0
+   test al, al
    je .done        ; If char is zero, end of string
    int 10h         ; Otherwise, print it
    jmp .repeat
 
 .done:
-   leave
+   pop ax
    ret
 
-   
    
 dump_binary: ; dump binary data to the screen in dec bytes
 
