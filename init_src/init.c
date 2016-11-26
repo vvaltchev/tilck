@@ -16,15 +16,27 @@ void main()
    printf("Hello from init!\n");
    printf("&stackVar = %p\n", &stackVar);
 
-magic_debug_break();
+
    int ret = open("/myfile.txt", 0xAABB, 0x112233);
-magic_debug_break();
+
    printf("ret = %i\n", ret);
-magic_debug_break();
+
    for (int i = 0; i < 5; i++) {
       printf("i = %i\n", i);
    }
 
-   while (1);
+   printf("Running infinite loop..\n");
+
+   unsigned n = 1;
+
+   while (true) {
+
+      if (!(n % (1024 * 1024 * 1024))) {
+
+         printf("1 billion iters\n");
+      }
+
+      n++;
+   }
 }
 

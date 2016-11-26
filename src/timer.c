@@ -1,5 +1,7 @@
 
 #include <commonDefs.h>
+#include <process.h>
+
 
 /*
  * Sets timer's frequency.
@@ -24,7 +26,8 @@ void set_timer_freq(int hz)
 volatile uint32_t timer_ticks = 0;
 
 
-void timer_handler() {
+void timer_handler(regs *r) {
    timer_ticks++;
+   schedule(r);
 }
 

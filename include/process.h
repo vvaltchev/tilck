@@ -3,6 +3,7 @@
 
 #include <commonDefs.h>
 #include <paging.h>
+#include <irq.h>
 
 #ifdef __i386__
 #define PROCESS_REGS_DATA_SIZE 76
@@ -19,4 +20,5 @@ struct process_info {
 
 };
 
+void schedule(regs *r);
 

@@ -8,14 +8,14 @@
 #include <paging.h>
 #include <debug_utils.h>
 
-#define TIMER_FREQ_HZ 10
+#define TIMER_FREQ_HZ 100
 
 void gdt_install();
 void idt_install();
 
 
 void init_kb();
-void timer_handler();
+void timer_handler(regs *r);
 void keyboard_handler(regs *r);
 void set_timer_freq(int hz);
 void set_kernel_stack(uint32_t stack);
@@ -26,21 +26,32 @@ void load_usermode_init()
    void *const vaddr = (void *)0x08000000U;
    void *const paddr = (void *)0x120000;
 
+   page_directory_t *pdir = kmalloc(PAGE_DIR_SIZE);
+
+   uintptr_t pdir_paddr = (uintptr_t) get_mapping(get_kernel_page_dir(), (uintptr_t) pdir);
+
+   initialize_page_directory(pdir, pdir_paddr, true);
+
+   add_kernel_base_mappings(pdir);
+
    // maps 16 pages (64 KB) for the user program
 
-   map_pages(get_curr_page_dir(),
+   map_pages(pdir,
              (uintptr_t)vaddr,
              (uintptr_t)paddr, 16, true, true);
 
    // map 4 pages for the user program's stack
 
-   map_pages(get_curr_page_dir(),
+   map_pages(pdir,
              (uintptr_t)vaddr + 16 * PAGE_SIZE,
              (uintptr_t)paddr + 16 * PAGE_SIZE, 4, true, true);
 
 
-   void *stack = (void *) (((uintptr_t)vaddr + (16 + 4) * PAGE_SIZE) & ~15);
+   void *stack = (void *) (((uintptr_t)vaddr + (16 + 4) * PAGE_SIZE - 1) & ~15);
 
+   set_page_directory(pdir);
+
+   printk("user mode stack addr: %p\n", stack);
    switch_to_usermode_asm(vaddr, stack);
 }
 
@@ -84,12 +95,11 @@ void kmain() {
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
-   IRQ_set_mask(0); // mask the timer interrupt.
+   //IRQ_set_mask(0); // mask the timer interrupt.
 
    sti();
    init_kb();
 
-   //kmalloc_trivial_perf_test();
    //kmalloc_perf_test();
 
    switch_to_user_mode();
