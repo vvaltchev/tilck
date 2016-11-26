@@ -11,25 +11,37 @@
 
 start:
 
-   mov ax, BASE_LOAD_SEG
-   add ax, (8192 / 16)         ; 8K buffer
-   cli                         ; Disable interrupts while changing stack
-   mov ss, ax
-   mov sp, 0x1FF0
-   sti                         ; Restore interrupts
+   mov [current_device], dl ; Save the current device
+   
+   cli               ; Clear interrupts
+   cld               ; The default direction for string operations
+                     ; will be 'up' - incrementing address in RAM
 
-   mov ax, BASE_LOAD_SEG      ; Set data segment to where we're loaded
+
+   ; relocate to DEST_DATA_SEGMENT
+   
+   mov ax, BASE_LOAD_SEG
+   mov ds, ax
+   mov ax, DEST_DATA_SEGMENT
+   mov es, ax
+
+   xor si, si ; si = 0
+   xor di, di ; di = 0
+   mov cx, 256 ; 256 words = 512 bytes
+   rep movsw
+
+   jmp DEST_DATA_SEGMENT:after_reloc
+   
+after_reloc:
+   
+   xor ax, ax
+   mov ss, ax      ; Set stack segment and pointer
+   mov sp, 0x0FFF0
+   sti             ; Restore interrupts
+
+   mov ax, DEST_DATA_SEGMENT   ; Set all segments to match where this code is loaded
    mov ds, ax
 
-
-
-   ; set video mode
-   mov ah, 0x0 ; set video mode
-   mov al, 0x3 ; 80x25 mode
-   int 0x10
-
-
-   mov [current_device], dl
 
    mov ah, 0x00  ; reset device
    int 0x13
@@ -76,7 +88,10 @@ start:
    inc ax
    mov [CylindersCount], ax
 
-
+   ; -------------------------------------------
+   ; DEBUG CODE
+   ; -------------------------------------------
+   
    ; mov ax, [CylindersCount]  ; we have already the value in ax
    call print_num
 
@@ -86,11 +101,13 @@ start:
    mov ax, [SectorsPerTrack]
    call print_num
 
+   ; ------------------------------------------
+   ; END DEBUG CODE
+   ; ------------------------------------------
 
-
-   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    .load_loop:
+
    
    mov ax, [currSectorNum]
    call lba_to_chs
@@ -101,8 +118,8 @@ start:
 
    mov bx, [currSectorNum]
    shl bx, 9         ; Sectors read are stored in ES:BX
-                     ; bx = 512 * counter * bx
-
+                     ; bx *= 512 * currSectorNum
+                     
    ; 20-bit address in 8086 (real mode)
    ; SEG:OFF
    ; ADDR20 = (SEG << 4) | OFF
@@ -123,7 +140,7 @@ start:
    ; We read all the sectors we needed: loading is over.
    cmp ax, SECTORS_TO_READ
    je .load_OK
-
+   
    inc ax                    ; we read just 1 sector at time
    mov [currSectorNum], ax
 
@@ -131,20 +148,13 @@ start:
    ; we loaded 128 sectors * 512 bytes = 64K.
    ; We have to change the segment in order to continue.
 
-   dec ax
    and ax, 0x7F
    test ax, ax
    jne .load_loop ; JMP if ax != 0
-
+   
    mov ax, [currDataSeg]
-  
-   ; The idea of reading exactly 512 KB was good but, for some reason,
-   ; on my PC, when booting using a USB stick, I cannot read more than
-   ; 1022 sectors. So, that's why this code has been commented.
 
-   ;cmp ax, 0x8FE0 ; so, we'd have 0x20000 - 0x9FFFF for the kernel (512 KB)
-   ;je .load_OK
-
+   
    ; Increment the segment by 4K => 64K in plain address space
    add ax, 0x1000
    mov [currDataSeg], ax
@@ -182,14 +192,6 @@ start:
 
 .load_OK:
 
-   xor si, si ; si = 0
-   xor di, di ; di = 0
-   mov ax, DEST_DATA_SEGMENT
-   mov es, ax
-   mov cx, 256 ; 256 words = 512 bytes
-   rep movsw
-
-   xchg bx, bx   
    jmp DEST_DATA_SEGMENT:512
 
 end:
@@ -355,8 +357,9 @@ itoa: ; convert 16-bit integer to string
    leave
    ret
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; -----------------------------------------------------------
+; DATA (variables)
+; -----------------------------------------------------------
 
 SectorsPerTrack      dw 0
 HeadsPerCylinder     dw 0
@@ -366,7 +369,7 @@ saved_cx             dw 0
 saved_dx             dw 0
 
 newline              db 10, 13, 0
-dev                  db 'Dev:', 0
+dev                  db 'D:', 0
 load_failed          db 'LBA:', 0
 cyl_param            db 'C:', 0
 head_param           db 'H:', 0
@@ -385,38 +388,31 @@ times 510-($-$$) db 0   ; Pad remainder of boot sector with 0s
 dw 0xAA55               ; The standard PC boot signature
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; -------------------------------------------------------------
 ;
 ; STAGE 2
 ;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; -------------------------------------------------------------
 
-   ; Our trivial bootloader has loaded this code at absolute address 0x20000
-   ; now we have more than 512 bytes to execute
+   ; The code above has loaded this code at absolute address 0x20000
+   ; now we have more than 512 bytes to execute.
 
    stage2_entry:
 
-   cli             ; Clear interrupts
-   mov ax, 0
-   mov ss, ax      ; Set stack segment and pointer
-   mov sp, 0x0FFF0
-   sti             ; Restore interrupts
-
-   cld               ; The default direction for string operations
-                     ; will be 'up' - incrementing address in RAM
-
-   mov ax, 0x2000   ; Set all segments to match where this code is loaded
-   mov ds, ax
+   mov ax, DEST_DATA_SEGMENT   ; Set all segments to match where this code is loaded
    mov es, ax
    mov fs, ax
    mov gs, ax
 
+   ; set video mode
+   mov ah, 0x0 ; set video mode
+   mov al, 0x3 ; 80x25 mode
+   int 0x10
 
+   ; Hello message, just a "nice to have"
    mov si, helloStr
    call print_string
    add sp, 2
-
-   ; xchg bx, bx ; bochs magic break
 
    cli          ; disable interrupts
 
