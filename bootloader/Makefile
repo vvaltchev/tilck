@@ -10,5 +10,5 @@ $(BUILD_DIR)/%.bin : %.asm
 
 $(BOOTLOADER_TARGET): $(OBJECTS)
 	@echo Creating $@ ...
-	@cp $(BUILD_DIR)/boot_stage1.bin $@
-	@dd status=none conv=notrunc if=$(BUILD_DIR)/boot_stage2.bin of=$@ seek=1 obs=512 ibs=512
+	@cp $(BUILD_DIR)/boot.bin $@
+
