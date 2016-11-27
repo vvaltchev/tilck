@@ -27,12 +27,13 @@ void load_usermode_init()
    void *const paddr = (void *)0x120000;
 
    page_directory_t *pdir = kmalloc(PAGE_DIR_SIZE);
-
    uintptr_t pdir_paddr = (uintptr_t) get_mapping(get_kernel_page_dir(), (uintptr_t) pdir);
-
    initialize_page_directory(pdir, pdir_paddr, true);
-
    add_kernel_base_mappings(pdir);
+
+
+   //page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
+
 
    // maps 16 pages (64 KB) for the user program
 

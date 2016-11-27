@@ -9,7 +9,7 @@ typedef struct {
 
 	uint32_t present : 1;
 	uint32_t rw : 1;        // read only = 0, read/write = 1
-	uint32_t us : 1;       // user/supervisor
+	uint32_t us : 1;        // user/supervisor
 	uint32_t wt : 1;        // write-through
 	uint32_t cd : 1;        // cache-disabled
 	uint32_t accessed : 1;

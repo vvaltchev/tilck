@@ -228,7 +228,7 @@ static ALWAYS_INLINE uint64_t RDTSC()
 #define DO_NOT_OPTIMIZE_AWAY(x) asmVolatile("" : "+r" ( (void *)(x) ))
 
 
-static ALWAYS_INLINE void flush_tlb(uintptr_t addr)
+static ALWAYS_INLINE void invalidate_tlb_page(uintptr_t addr)
 {
    asmVolatile("invlpg (%0)" ::"r" (addr) : "memory");
 }
