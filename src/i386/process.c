@@ -1,12 +1,10 @@
 
 #include <process.h>
 #include <stringUtil.h>
+#include <arch/i386/process_int.h>
 
 extern volatile uint32_t timer_ticks;
 
-#ifdef __i386__
-
-#include <arch/i386/arch_utils.h>
 
 void schedule(regs *r)
 {
@@ -17,4 +15,3 @@ void schedule(regs *r)
    printk("eip: %p\n", r->eip);
 }
 
-#endif
