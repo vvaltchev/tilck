@@ -41,7 +41,7 @@ void handle_page_fault(regs *r)
    bool rw = (r->err_code & (1 << 1)) != 0;
    bool p = (r->err_code & (1 << 0)) != 0;
 
-   if (us && p && !rw) {
+   if (us && rw && p) {
       page_table_t *ptable;
       uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
       uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
@@ -61,13 +61,15 @@ void handle_page_fault(regs *r)
          // Allocate and set a new page.
          uintptr_t paddr = (uintptr_t) alloc_phys_page();
          ptable->pages[page_table_index].pageAddr = paddr >> 12;
+         ptable->pages[page_table_index].rw = true;
+         ptable->pages[page_table_index].avail = 0;
 
          invalidate_tlb_page((uintptr_t) ptable);
 
          // Copy back the page.
          memmove(page_vaddr, page_size_buf, PAGE_SIZE);
 
-         // This is not a real page-fault.
+         // This is not a "real" page-fault.
          return;
       }
    }
@@ -232,7 +234,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
    not_present.us = true;
    not_present.pageTableAddr = 0;
 
-   for (int i = 0; i < 1024; i++) {
+   for (int i = 0; i < 768; i++) {
 
       if (pdir->page_tables[i] == NULL) {
          new_pdir->page_tables[i] = NULL;
@@ -264,18 +266,15 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
 
          pt->pages[j].avail = flags;
          pt->pages[j].rw = false;
-      }      
+      }
+   }
+
+   for (int i = 768; i < 1024; i++) {
+      new_pdir->entries[i] = kernel_page_dir->entries[i];
+      new_pdir->page_tables[i] = kernel_page_dir->page_tables[i];
    }
 
    return new_pdir;
-}
-
-void add_kernel_base_mappings(page_directory_t *pdir)
-{
-   for (int i = 768; i < 1024; i++) {
-      pdir->entries[i] = kernel_page_dir->entries[i];
-      pdir->page_tables[i] = kernel_page_dir->page_tables[i];
-   }
 }
 
 void init_paging()

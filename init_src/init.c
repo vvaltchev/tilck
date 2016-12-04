@@ -5,6 +5,8 @@
 #include "usermode_syscall_wrappers.h"
 #include "string.h"
 
+char bigBuf[4096];
+
 void main()
 {
    int stackVar;
@@ -34,6 +36,7 @@ void main()
       if (!(n % (1024 * 1024 * 1024))) {
 
          printf("1 billion iters\n");
+         bigBuf[1024] = 'a';
       }
 
       n++;

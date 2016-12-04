@@ -26,14 +26,7 @@ void load_usermode_init()
    void *const vaddr = (void *)0x08000000U;
    void *const paddr = (void *)0x120000;
 
-   page_directory_t *pdir = kmalloc(PAGE_DIR_SIZE);
-   uintptr_t pdir_paddr = (uintptr_t) get_mapping(get_kernel_page_dir(), (uintptr_t) pdir);
-   initialize_page_directory(pdir, pdir_paddr, true);
-   add_kernel_base_mappings(pdir);
-
-
-   //page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
-
+   page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
 
    // maps 16 pages (64 KB) for the user program
 
@@ -50,7 +43,11 @@ void load_usermode_init()
 
    void *stack = (void *) (((uintptr_t)vaddr + (16 + 4) * PAGE_SIZE - 1) & ~15);
 
-   set_page_directory(pdir);
+   // simulate a page directory of fork-ed process
+   // to observe COW working
+   page_directory_t *pdir2 = pdir_clone(pdir);
+
+   set_page_directory(pdir2);
 
    printk("user mode stack addr: %p\n", stack);
    switch_to_usermode_asm(vaddr, stack);
