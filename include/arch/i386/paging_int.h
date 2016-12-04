@@ -9,7 +9,7 @@ typedef struct {
 
 	uint32_t present : 1;
 	uint32_t rw : 1;        // read only = 0, read/write = 1
-	uint32_t us : 1;       // user/supervisor
+	uint32_t us : 1;        // user/supervisor
 	uint32_t wt : 1;        // write-through
 	uint32_t cd : 1;        // cache-disabled
 	uint32_t accessed : 1;
@@ -35,7 +35,7 @@ typedef struct {
 
 	uint32_t present : 1;
 	uint32_t rw : 1;             // read only = 0, read/write = 1
-	uint32_t us : 1;            // us = 0 -> supervisor only, 1 -> user also
+	uint32_t us : 1;             // us = 0 -> supervisor only, 1 -> user also
 	uint32_t wt : 1;             // write-through
 	uint32_t cd : 1;             // cache-disabled
 	uint32_t accessed : 1;
@@ -52,7 +52,8 @@ typedef struct {
 struct page_directory_t {
 
 	page_dir_entry_t entries[1024];  // actual entries used by the CPU
-	page_table_t *page_tables[1024]; // pointers to the tables (virtual addreses)
-
+	page_table_t *page_tables[1024]; // pointers to the tables (virtual addresses)
+   uintptr_t paddr;                 // physical address of this page directory
 };
 
+STATIC_ASSERT(sizeof(page_directory_t) == PAGE_DIR_SIZE);

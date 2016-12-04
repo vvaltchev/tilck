@@ -18,33 +18,66 @@
 void *paging_alloc_phys_page();
 void paging_free_phys_page(void *address);
 
+#define PAGE_COW_FLAG 1
+#define PAGE_COW_ORIG_RW 2
 
-/*
- * ----------------------------------------------
- * DEBUG options
- * ----------------------------------------------
- */
-
-//bool paging_debug = false;
 
 /* ---------------------------------------------- */
 
 page_directory_t *kernel_page_dir = NULL;
+page_directory_t *curr_page_dir = NULL;
+
+
+void *page_size_buf = NULL;
 
 volatile bool in_page_fault = false;
 
 void handle_page_fault(regs *r)
 {
-   uint32_t cr2;
-   asmVolatile("movl %%cr2, %0" : "=r"(cr2));
+   uint32_t vaddr;
+   asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
 
    bool us = (r->err_code & (1 << 2)) != 0;
    bool rw = (r->err_code & (1 << 1)) != 0;
    bool p = (r->err_code & (1 << 0)) != 0;
 
+   if (us && rw && p) {
+      page_table_t *ptable;
+      uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
+      uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
+
+      ptable = curr_page_dir->page_tables[page_dir_index];
+      uint8_t flags = ptable->pages[page_table_index].avail;
+
+      void *page_vaddr = (void *) (vaddr & ~4095);
+
+      if (flags & (PAGE_COW_FLAG | PAGE_COW_ORIG_RW)) {
+
+         printk("*** DEBUG: attempt to write COW page at %p\n", page_vaddr);
+
+         // Copy the whole page to our temporary buffer.
+         memmove(page_size_buf, page_vaddr, PAGE_SIZE);
+
+         // Allocate and set a new page.
+         uintptr_t paddr = (uintptr_t) alloc_phys_page();
+         ptable->pages[page_table_index].pageAddr = paddr >> 12;
+         ptable->pages[page_table_index].rw = true;
+         ptable->pages[page_table_index].avail = 0;
+
+         invalidate_tlb_page((uintptr_t) ptable);
+
+         // Copy back the page.
+         memmove(page_vaddr, page_size_buf, PAGE_SIZE);
+
+         // This is not a "real" page-fault.
+         return;
+      }
+   }
+
+
    printk("*** PAGE FAULT in attempt to %s %p from %s %s\n",
           rw ? "WRITE" : "READ",
-          cr2,
+          vaddr,
           us ? "userland" : "kernel",
           !p ? "(NON present page)" : "");
 
@@ -63,9 +96,10 @@ void handle_general_protection_fault(regs *r)
    printk("General protection fault. Error: %p\n", r->err_code);
 }
 
-void set_page_directory(page_directory_t *dir)
+void set_page_directory(page_directory_t *pdir)
 {
-   asmVolatile("mov %0, %%cr3" :: "r"(KERNEL_VADDR_TO_PADDR(dir)));
+   curr_page_dir = pdir;
+   asmVolatile("mov %0, %%cr3" :: "r"(pdir->paddr));
 }
 
 static void initialize_empty_page_table(page_table_t *t)
@@ -76,7 +110,7 @@ static void initialize_empty_page_table(page_table_t *t)
    }
 }
 
-static void initialize_page_directory(page_directory_t *pdir, bool us)
+void initialize_page_directory(page_directory_t *pdir, uintptr_t paddr, bool us)
 {
    page_dir_entry_t not_present = {0};
 
@@ -84,6 +118,8 @@ static void initialize_page_directory(page_directory_t *pdir, bool us)
    not_present.rw = 1;
    not_present.us = us;
    not_present.pageTableAddr = 0;
+
+   pdir->paddr = paddr;
 
    for (int i = 0; i < 1024; i++) {
       pdir->entries[i] = not_present;
@@ -150,10 +186,6 @@ void map_page(page_directory_t *pdir,
 
    page_table_t *ptable = NULL;
 
-   //if (paging_debug) {
-   //   printk("Mapping vaddr = %p to paddr = %p\n", vaddr, paddr);
-   //}
-
    ASSERT(((uintptr_t)pdir->page_tables[page_dir_index] & 0xFFF) == 0);
 
    if (UNLIKELY(pdir->page_tables[page_dir_index] == NULL)) {
@@ -163,12 +195,6 @@ void map_page(page_directory_t *pdir,
       uint32_t page_physical_addr = (uint32_t)paging_alloc_phys_page();
 
       ptable = (void*)KERNEL_PADDR_TO_VADDR(page_physical_addr);
-
-      //if (paging_debug) {
-      //   printk("Creating a new page table at paddr = %p\n"
-      //          "for page_dir_index = %p (= vaddr %p)\n",
-      //          ptable, page_dir_index, page_dir_index << 22);
-      //}
 
       initialize_empty_page_table(ptable);
 
@@ -196,6 +222,60 @@ void map_page(page_directory_t *pdir,
    ptable->pages[page_table_index] = p;
 }
 
+page_directory_t *pdir_clone(page_directory_t *pdir)
+{
+   page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
+   new_pdir->paddr = (uintptr_t)get_mapping(curr_page_dir, (uintptr_t)new_pdir);
+
+   page_dir_entry_t not_present = { 0 };
+
+   not_present.present = 0;
+   not_present.rw = 1;
+   not_present.us = true;
+   not_present.pageTableAddr = 0;
+
+   for (int i = 0; i < 768; i++) {
+
+      if (pdir->page_tables[i] == NULL) {
+         new_pdir->page_tables[i] = NULL;
+         new_pdir->entries[i] = not_present;
+         continue;
+      }
+
+      // alloc memory for the page table
+
+      page_table_t *pt = kmalloc(sizeof(page_table_t));
+      uintptr_t pt_paddr = (uintptr_t)get_mapping(curr_page_dir, (uintptr_t)pt);
+
+      // copy the page table
+      memmove(pt, pdir->page_tables[i], sizeof(page_table_t));
+
+      new_pdir->page_tables[i] = pt;
+
+      // copy the entry, but use the new page table
+      new_pdir->entries[i] = pdir->entries[i];
+      new_pdir->entries[i].pageTableAddr = pt_paddr >> 12;
+      
+      for (int j = 0; j < 1024; j++) {
+
+         int flags = PAGE_COW_FLAG;
+
+         if (pt->pages[j].rw) {
+            flags |= PAGE_COW_ORIG_RW;
+         }
+
+         pt->pages[j].avail = flags;
+         pt->pages[j].rw = false;
+      }
+   }
+
+   for (int i = 768; i < 1024; i++) {
+      new_pdir->entries[i] = kernel_page_dir->entries[i];
+      new_pdir->page_tables[i] = kernel_page_dir->page_tables[i];
+   }
+
+   return new_pdir;
+}
 
 void init_paging()
 {
@@ -205,16 +285,40 @@ void init_paging()
    kernel_page_dir =
       (page_directory_t *) KERNEL_PADDR_TO_VADDR(paging_alloc_phys_page());
 
-   paging_alloc_phys_page(); // The page directory uses two pages!
+   paging_alloc_phys_page(); // The page directory uses 3 pages!
+   paging_alloc_phys_page();
 
-   initialize_page_directory(kernel_page_dir, true);
+   initialize_page_directory(kernel_page_dir,
+                             (uintptr_t) KERNEL_VADDR_TO_PADDR(kernel_page_dir), true);
+
+   // Create page entries for the whole 4th GB of virtual memory
+   for (int i = 768; i < 1024; i++) {
+
+      uint32_t page_physical_addr = (uint32_t)paging_alloc_phys_page();
+
+      page_table_t *ptable = (void*)KERNEL_PADDR_TO_VADDR(page_physical_addr);
+
+      initialize_empty_page_table(ptable);
+
+      page_dir_entry_t e = { 0 };
+      e.present = 1;
+      e.rw = 1;
+      e.us = true;
+      e.pageTableAddr = ((uint32_t)page_physical_addr) >> 12;
+
+      kernel_page_dir->page_tables[i] = ptable;
+      kernel_page_dir->entries[i] = e;
+   }
 
    map_pages(kernel_page_dir,
              KERNEL_PADDR_TO_VADDR(0x1000), 0x1000, 1024 - 1, false, true);
 
-   //printk("debug cout used pdir entries: %u\n",
+   //printk("debug count used pdir entries: %u\n",
    //       debug_count_used_pdir_entries(kernel_page_dir));
 
-   ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 1);
+   ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 256);
    set_page_directory(kernel_page_dir);
+
+   // Page-size buffer used for COW.
+   page_size_buf = KERNEL_PADDR_TO_VADDR(paging_alloc_phys_page());
 }
