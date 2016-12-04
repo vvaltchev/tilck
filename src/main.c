@@ -8,38 +8,61 @@
 #include <paging.h>
 #include <debug_utils.h>
 
-#define TIMER_FREQ_HZ 10
+#define TIMER_FREQ_HZ 100
 
 void gdt_install();
 void idt_install();
 
 
 void init_kb();
-void timer_handler();
+void timer_handler(regs *r);
 void keyboard_handler(regs *r);
 void set_timer_freq(int hz);
 void set_kernel_stack(uint32_t stack);
 void switch_to_usermode_asm(void *entryPoint, void *stackAddr);
 
-void switch_to_user_mode()
+void load_usermode_init()
 {
-   void * const user_program_vaddr = (void *) 0x08000000U;
-   void * const user_program_stack_vaddr = (void *) 0x0800FFF0U;
-   void * const user_program_paddr = (void *) 0x120000;
+   void *const vaddr = (void *)0x08000000U;
+   void *const paddr = (void *)0x120000;
 
-   // Set up our kernel stack.
-   set_kernel_stack(0xC01FFFF0);
+   page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
 
    // maps 16 pages (64 KB) for the user program
 
-   map_pages(get_curr_page_dir(),
-             (uintptr_t)user_program_vaddr,
-             (uintptr_t)user_program_paddr, 16, true, true);
+   map_pages(pdir,
+             (uintptr_t)vaddr,
+             (uintptr_t)paddr, 16, true, true);
 
-   printk("pdir entries used = %i\n", debug_count_used_pdir_entries(get_curr_page_dir()));
-   debug_dump_used_pdir_entries(get_curr_page_dir());
+   // map 4 pages for the user program's stack
 
-   switch_to_usermode_asm(user_program_vaddr, user_program_stack_vaddr);
+   map_pages(pdir,
+             (uintptr_t)vaddr + 16 * PAGE_SIZE,
+             (uintptr_t)paddr + 16 * PAGE_SIZE, 4, true, true);
+
+
+   void *stack = (void *) (((uintptr_t)vaddr + (16 + 4) * PAGE_SIZE - 1) & ~15);
+
+   // simulate a page directory of fork-ed process
+   // to observe COW working
+   page_directory_t *pdir2 = pdir_clone(pdir);
+
+   set_page_directory(pdir2);
+
+   printk("user mode stack addr: %p\n", stack);
+   switch_to_usermode_asm(vaddr, stack);
+}
+
+void switch_to_user_mode()
+{
+   // Set up our kernel stack.
+   set_kernel_stack(0xC01FFFF0);
+
+   load_usermode_init();
+
+   //printk("pdir entries used = %i\n", debug_count_used_pdir_entries(get_curr_page_dir()));
+   //debug_dump_used_pdir_entries(get_curr_page_dir());
+
 }
 
 
@@ -70,13 +93,12 @@ void kmain() {
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
-   IRQ_set_mask(0); // mask the timer interrupt.
+   //IRQ_set_mask(0); // mask the timer interrupt.
 
    sti();
    init_kb();
 
-   //kmalloc_trivial_perf_test();
-   kmalloc_perf_test();
+   //kmalloc_perf_test();
 
    switch_to_user_mode();
 
