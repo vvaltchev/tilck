@@ -64,8 +64,6 @@ STATIC_ASSERT(sizeof(void *) == 8);
 
 #endif
 
-#ifndef TEST
-
 typedef char s8;
 typedef short s16;
 typedef int s32;
@@ -81,13 +79,11 @@ typedef unsigned long u64;
 typedef long s64;
 #endif
 
+#ifndef TEST
+
 typedef long ssize_t; // signed pointer-size integer
 typedef unsigned long size_t; // unsigned pointer-size integer
-
-typedef size_t uptr;
-typedef ssize_t sptr;
 typedef ssize_t ptrdiff_t;
-
 #define NULL ((void *) 0)
 
 #else
@@ -95,6 +91,10 @@ typedef ssize_t ptrdiff_t;
 #include <cstdint>
 
 #endif
+
+typedef size_t uptr;
+typedef ssize_t sptr;
+
 
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
