@@ -74,11 +74,11 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 
 #ifdef BITS32
-typedef unsigned long long uint64_t;
-typedef long long int64_t;
+typedef unsigned long long u64;
+typedef long long s64;
 #else
-typedef unsigned long uint64_t;
-typedef long int64_t;
+typedef unsigned long u64;
+typedef long s64;
 #endif
 
 typedef long ssize_t; // signed pointer-size integer
@@ -209,7 +209,7 @@ CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
 
 #if defined(__i386__) || defined(__x86_64__)
 
-static ALWAYS_INLINE uint64_t RDTSC()
+static ALWAYS_INLINE u64 RDTSC()
 {
    
 #ifdef BITS64
@@ -217,7 +217,7 @@ static ALWAYS_INLINE uint64_t RDTSC()
    asm("rdtsc" : "=a" (lo), "=d" (hi));
    return lo | (hi << 32);
 #else
-   uint64_t val;
+   u64 val;
    asm("rdtsc" : "=A" (val));
    return val;
 #endif
