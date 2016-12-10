@@ -34,7 +34,7 @@ void itoa(intptr_t value, char *destBuf)
    }
 }
 
-void llitoa(int64_t value, char *destBuf)
+void llitoa(s64 value, char *destBuf)
 {
    const intptr_t base = 10;
 
@@ -66,7 +66,7 @@ void llitoa(int64_t value, char *destBuf)
    }
 }
 
-void uitoa(uintptr_t value, char *destBuf, uint32_t base)
+void uitoa(uintptr_t value, char *destBuf, u32 base)
 {
    char *ptr;
    char *low;
@@ -90,7 +90,7 @@ void uitoa(uintptr_t value, char *destBuf, uint32_t base)
    }
 }
 
-void ullitoa(uint64_t value, char *destBuf, uint32_t base)
+void ullitoa(u64 value, char *destBuf, u32 base)
 {
    char *ptr;
    char *low;
@@ -143,10 +143,10 @@ void vprintk(const char *fmt, va_list args)
             ++ptr;
             if (*ptr) {
                if (*ptr == 'u') {
-                  ullitoa(va_arg(args, uint64_t), buf, 10);
+                  ullitoa(va_arg(args, u64), buf, 10);
                   term_write_string(buf);
                } else if (*ptr == 'i' || *ptr == 'd') {
-                  llitoa(va_arg(args, int64_t), buf);
+                  llitoa(va_arg(args, s64), buf);
                   term_write_string(buf);
                }
             }

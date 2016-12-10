@@ -17,7 +17,7 @@ void kmalloc_perf_test()
 
    printk("*** kmalloc_perf_test, %d iterations ***\n", iters);
 
-   uint64_t start = RDTSC();
+   u64 start = RDTSC();
 
    for (int i = 0; i < iters; i++) {
 
@@ -40,7 +40,7 @@ void kmalloc_perf_test()
       }
    }
 
-   uint64_t duration = (RDTSC() - start) / (iters * RANDOM_VALUES_COUNT);
+   u64 duration = (RDTSC() - start) / (iters * RANDOM_VALUES_COUNT);
 
    printk("Cycles per kmalloc + kfree: %llu\n", duration);
 }
@@ -52,7 +52,7 @@ void kmalloc_trivial_perf_test()
    printk("Trivial kmalloc() perf. test for %u iterations...\n", iters);
 
    void *b1,*b2,*b3,*b4;
-   uint64_t start = RDTSC();
+   u64 start = RDTSC();
 
    for (int i = 0; i < iters; i++) {
 
@@ -68,7 +68,7 @@ void kmalloc_trivial_perf_test()
       kfree(b4, 3 * PAGE_SIZE + 43);
    }
 
-   uint64_t duration = (RDTSC() - start) / iters;
+   u64 duration = (RDTSC() - start) / iters;
 
    printk("Cycles per kmalloc + kfree: %llu\n",  duration >> 2);
 

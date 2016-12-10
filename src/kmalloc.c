@@ -23,15 +23,15 @@ bool kbasic_virtual_free(uintptr_t vaddr, int pageCount);
 typedef struct {
 
    // 1 if the block has been split. Check its children.
-   uint8_t split : 1;
+   u8 split : 1;
 
    // 1 means the chunk is completely free when split = 0,
    // otherwise (when split = 1), it means there is some free space.
-   uint8_t has_some_free_space : 1;
+   u8 has_some_free_space : 1;
 
-   uint8_t allocated : 1; // used only for nodes having size=ALLOC_BLOCK_SIZE.
+   u8 allocated : 1; // used only for nodes having size=ALLOC_BLOCK_SIZE.
 
-   uint8_t unused : 5;
+   u8 unused : 5;
 
 } block_node;
 

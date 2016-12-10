@@ -3,7 +3,7 @@
 #include <stringUtil.h>
 #include <arch/i386/process_int.h>
 
-extern volatile uint32_t timer_ticks;
+extern volatile u32 timer_ticks;
 
 
 void schedule(regs *r)

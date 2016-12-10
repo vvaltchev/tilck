@@ -18,7 +18,7 @@ void init_kb();
 void timer_handler(regs *r);
 void keyboard_handler(regs *r);
 void set_timer_freq(int hz);
-void set_kernel_stack(uint32_t stack);
+void set_kernel_stack(u32 stack);
 void switch_to_usermode_asm(void *entryPoint, void *stackAddr);
 
 void load_usermode_init()

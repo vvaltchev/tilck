@@ -11,33 +11,33 @@ void tss_flush();
 *  compiler "optimization" by packing */
 struct gdt_entry
 {
-    uint16_t limit_low;
-    uint16_t base_low;
-    uint8_t base_middle;
-    uint8_t access;
-    uint8_t granularity;
-    uint8_t base_high;
+    u16 limit_low;
+    u16 base_low;
+    u8 base_middle;
+    u8 access;
+    u8 granularity;
+    u8 base_high;
 } __attribute__((packed));
 
 struct gdt_entry_bits
 {
-	uint32_t limit_low:16;
-	uint32_t base_low : 24;
+	u32 limit_low:16;
+	u32 base_low : 24;
      //attribute byte split into bitfields
-	uint32_t accessed :1;
-	uint32_t read_write :1; //readable for code, writable for data
-	uint32_t conforming_expand_down :1; //conforming for code, expand down for data
-	uint32_t code :1; //1 for code, 0 for data
-	uint32_t always_1 :1; //should be 1 for everything but TSS and LDT
-	uint32_t DPL :2; //priviledge level
-	uint32_t present :1;
+	u32 accessed :1;
+	u32 read_write :1; //readable for code, writable for data
+	u32 conforming_expand_down :1; //conforming for code, expand down for data
+	u32 code :1; //1 for code, 0 for data
+	u32 always_1 :1; //should be 1 for everything but TSS and LDT
+	u32 DPL :2; //priviledge level
+	u32 present :1;
      //and now into granularity
-	uint32_t limit_high :4;
-	uint32_t available :1;
-	uint32_t always_0 :1; //should always be 0
-	uint32_t big :1; //32bit opcodes for code, uint32_t stack for data
-	uint32_t gran :1; //1 to use 4k page addressing, 0 for byte addressing
-	uint32_t base_high :8;
+	u32 limit_high :4;
+	u32 available :1;
+	u32 always_0 :1; //should always be 0
+	u32 big :1; //32bit opcodes for code, u32 stack for data
+	u32 gran :1; //1 to use 4k page addressing, 0 for byte addressing
+	u32 base_high :8;
 } __attribute__((packed));
 
 typedef struct gdt_entry_bits gdt_entry_bits;
@@ -45,33 +45,33 @@ typedef struct gdt_entry_bits gdt_entry_bits;
 // A struct describing a Task State Segment.
 struct tss_entry_struct
 {
-   uint32_t prev_tss;   // The previous TSS - if we used hardware task switching this would form a linked list.
-   uint32_t esp0;       // The stack pointer to load when we change to kernel mode.
-   uint32_t ss0;        // The stack segment to load when we change to kernel mode.
-   uint32_t esp1;       // everything below here is unusued now.. 
-   uint32_t ss1;
-   uint32_t esp2;
-   uint32_t ss2;
-   uint32_t cr3;
-   uint32_t eip;
-   uint32_t eflags;
-   uint32_t eax;
-   uint32_t ecx;
-   uint32_t edx;
-   uint32_t ebx;
-   uint32_t esp;
-   uint32_t ebp;
-   uint32_t esi;
-   uint32_t edi;
-   uint32_t es;         
-   uint32_t cs;        
-   uint32_t ss;        
-   uint32_t ds;        
-   uint32_t fs;       
-   uint32_t gs;         
-   uint32_t ldt;      
-   uint16_t trap;
-   uint16_t iomap_base;
+   u32 prev_tss;   // The previous TSS - if we used hardware task switching this would form a linked list.
+   u32 esp0;       // The stack pointer to load when we change to kernel mode.
+   u32 ss0;        // The stack segment to load when we change to kernel mode.
+   u32 esp1;       // everything below here is unusued now.. 
+   u32 ss1;
+   u32 esp2;
+   u32 ss2;
+   u32 cr3;
+   u32 eip;
+   u32 eflags;
+   u32 eax;
+   u32 ecx;
+   u32 edx;
+   u32 ebx;
+   u32 esp;
+   u32 ebp;
+   u32 esi;
+   u32 edi;
+   u32 es;         
+   u32 cs;        
+   u32 ss;        
+   u32 ds;        
+   u32 fs;       
+   u32 gs;         
+   u32 ldt;      
+   u16 trap;
+   u16 iomap_base;
 } __attribute__((packed));
 
 typedef struct tss_entry_struct tss_entry_t;
@@ -81,8 +81,8 @@ typedef struct tss_entry_struct tss_entry_t;
 *  taken up by the GDT, minus 1. Again, this NEEDS to be packed */
 struct gdt_ptr
 {
-   uint16_t limit; // 2 bytes
-   uint32_t base;  // 4 bytes
+   u16 limit; // 2 bytes
+   u32 base;  // 4 bytes
 } __attribute__((packed));
 
 /* Our GDT, with 3 entries, and finally our special GDT pointer */
@@ -93,8 +93,8 @@ struct gdt_ptr gdt_pointer;
 void gdt_set_gate(int num,
                   size_t base,
                   size_t limit,
-                  uint8_t access,
-                  uint8_t gran)
+                  u8 access,
+                  u8 gran)
 {
     /* Setup the descriptor base address */
     gdt[num].base_low = (base & 0xFFFF);
@@ -114,7 +114,7 @@ void gdt_set_gate(int num,
 
 tss_entry_t tss_entry;
 
-void set_kernel_stack(uint32_t stack) //this will update the ESP0 stack used when an interrupt occurs
+void set_kernel_stack(u32 stack) //this will update the ESP0 stack used when an interrupt occurs
 {
    tss_entry.esp0 = stack;
 }
@@ -122,11 +122,11 @@ void set_kernel_stack(uint32_t stack) //this will update the ESP0 stack used whe
 
 
 // Initialise our task state segment structure.
-static void write_tss(int32_t num, uint16_t ss0, uint32_t esp0)
+static void write_tss(s32 num, u16 ss0, u32 esp0)
 {
     // Firstly, let's compute the base and limit of our entry into the GDT.
-    uint32_t base = (uint32_t) &tss_entry;
-    uint32_t limit = base + sizeof(tss_entry);
+    u32 base = (u32) &tss_entry;
+    u32 limit = base + sizeof(tss_entry);
     
     // Now, add our TSS descriptor's address to the GDT.
     gdt_set_gate(num, base, limit, 0xE9, 0x00);
@@ -157,7 +157,7 @@ void gdt_install()
 {
    /* Setup the GDT pointer and limit */
    gdt_pointer.limit = (sizeof(struct gdt_entry) * 6) - 1;
-   gdt_pointer.base = (uint32_t)&gdt;
+   gdt_pointer.base = (u32)&gdt;
 
    /* Our NULL descriptor */
    gdt_set_gate(0, 0, 0, 0, 0);

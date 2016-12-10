@@ -34,7 +34,7 @@ volatile bool in_page_fault = false;
 
 void handle_page_fault(regs *r)
 {
-   uint32_t vaddr;
+   u32 vaddr;
    asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
 
    bool us = (r->err_code & (1 << 2)) != 0;
@@ -43,11 +43,11 @@ void handle_page_fault(regs *r)
 
    if (us && rw && p) {
       page_table_t *ptable;
-      uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
-      uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
+      u32 page_table_index = (vaddr >> 12) & 0x3FF;
+      u32 page_dir_index = (vaddr >> 22) & 0x3FF;
 
       ptable = curr_page_dir->page_tables[page_dir_index];
-      uint8_t flags = ptable->pages[page_table_index].avail;
+      u8 flags = ptable->pages[page_table_index].avail;
 
       void *page_vaddr = (void *) (vaddr & ~4095);
 
@@ -130,8 +130,8 @@ void initialize_page_directory(page_directory_t *pdir, uintptr_t paddr, bool us)
 bool is_mapped(page_directory_t *pdir, uintptr_t vaddr)
 {
    page_table_t *ptable;
-   uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
-   uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
+   u32 page_table_index = (vaddr >> 12) & 0x3FF;
+   u32 page_dir_index = (vaddr >> 22) & 0x3FF;
 
    if (pdir->page_tables[page_dir_index] == NULL) {
       return false;
@@ -144,8 +144,8 @@ bool is_mapped(page_directory_t *pdir, uintptr_t vaddr)
 void unmap_page(page_directory_t *pdir, uintptr_t vaddr)
 {
    page_table_t *ptable;
-   uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
-   uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
+   u32 page_table_index = (vaddr >> 12) & 0x3FF;
+   u32 page_dir_index = (vaddr >> 22) & 0x3FF;
 
    ASSERT(pdir->page_tables[page_dir_index] != NULL);
 
@@ -160,8 +160,8 @@ void unmap_page(page_directory_t *pdir, uintptr_t vaddr)
 void *get_mapping(page_directory_t *pdir, uintptr_t vaddr)
 {
    page_table_t *ptable;
-   uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
-   uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
+   u32 page_table_index = (vaddr >> 12) & 0x3FF;
+   u32 page_dir_index = (vaddr >> 22) & 0x3FF;
 
    ASSERT(pdir->page_tables[page_dir_index] != NULL);
 
@@ -178,8 +178,8 @@ void map_page(page_directory_t *pdir,
               bool us,
               bool rw)
 {
-   uint32_t page_table_index = (vaddr >> 12) & 0x3FF;
-   uint32_t page_dir_index = (vaddr >> 22) & 0x3FF;
+   u32 page_table_index = (vaddr >> 12) & 0x3FF;
+   u32 page_dir_index = (vaddr >> 22) & 0x3FF;
 
    ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
    ASSERT(!(paddr & 4095)); // the paddr must be page-aligned
@@ -192,7 +192,7 @@ void map_page(page_directory_t *pdir,
 
       // we have to create a page table for mapping 'vaddr'
 
-      uint32_t page_physical_addr = (uint32_t)paging_alloc_phys_page();
+      u32 page_physical_addr = (u32)paging_alloc_phys_page();
 
       ptable = (void*)KERNEL_PADDR_TO_VADDR(page_physical_addr);
 
@@ -202,7 +202,7 @@ void map_page(page_directory_t *pdir,
       e.present = 1;
       e.rw = 1;
       e.us = us;
-      e.pageTableAddr = ((uint32_t)page_physical_addr) >> 12;
+      e.pageTableAddr = ((u32)page_physical_addr) >> 12;
 
       pdir->page_tables[page_dir_index] = ptable;
       pdir->entries[page_dir_index] = e;
@@ -294,7 +294,7 @@ void init_paging()
    // Create page entries for the whole 4th GB of virtual memory
    for (int i = 768; i < 1024; i++) {
 
-      uint32_t page_physical_addr = (uint32_t)paging_alloc_phys_page();
+      u32 page_physical_addr = (u32)paging_alloc_phys_page();
 
       page_table_t *ptable = (void*)KERNEL_PADDR_TO_VADDR(page_physical_addr);
 
@@ -304,7 +304,7 @@ void init_paging()
       e.present = 1;
       e.rw = 1;
       e.us = true;
-      e.pageTableAddr = ((uint32_t)page_physical_addr) >> 12;
+      e.pageTableAddr = ((u32)page_physical_addr) >> 12;
 
       kernel_page_dir->page_tables[i] = ptable;
       kernel_page_dir->entries[i] = e;
