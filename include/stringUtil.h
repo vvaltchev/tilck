@@ -29,7 +29,7 @@ void memmove(void *dest, const void *src, size_t n);
 
 
 void itoa(intptr_t value, char *destBuf);
-void uitoa(uintptr_t value, char *destBuf, uint32_t base);
+void uitoa(uintptr_t value, char *destBuf, u32 base);
 
 static ALWAYS_INLINE bool isalpha_lower(char c) {
    return (c >= 'a' && c <= 'z');

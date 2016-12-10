@@ -68,10 +68,10 @@ STATIC_ASSERT(sizeof(void *) == 8);
 
 typedef char s8;
 typedef short s16;
-typedef int int32_t;
+typedef int s32;
 typedef unsigned char u8;
 typedef unsigned short u16;
-typedef unsigned int uint32_t;
+typedef unsigned int u32;
 
 #ifdef BITS32
 typedef unsigned long long uint64_t;
