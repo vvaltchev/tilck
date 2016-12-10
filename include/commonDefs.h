@@ -66,10 +66,10 @@ STATIC_ASSERT(sizeof(void *) == 8);
 
 #ifndef TEST
 
-typedef char int8_t;
+typedef char s8;
 typedef short int16_t;
 typedef int int32_t;
-typedef unsigned char uint8_t;
+typedef unsigned char u8;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 
@@ -99,7 +99,7 @@ typedef ssize_t ptrdiff_t;
 STATIC_ASSERT(sizeof(uintptr_t) == sizeof(intptr_t));
 STATIC_ASSERT(sizeof(uintptr_t) == sizeof(void *));
 
-static ALWAYS_INLINE void outb(uint16_t port, uint8_t val)
+static ALWAYS_INLINE void outb(uint16_t port, u8 val)
 {
    asmVolatile("outb %0, %1" : : "a"(val), "Nd"(port));
    /* There's an outb %al, $imm8  encoding, for compile-time constant port numbers that fit in 8b.  (N constraint).
@@ -108,9 +108,9 @@ static ALWAYS_INLINE void outb(uint16_t port, uint8_t val)
    * %1 expands to %dx because  port  is a uint16_t.  %w1 could be used if we had the port number a wider C type */
 }
 
-static ALWAYS_INLINE uint8_t inb(uint16_t port)
+static ALWAYS_INLINE u8 inb(uint16_t port)
 {
-   uint8_t ret_val;
+   u8 ret_val;
    asmVolatile("inb %[port], %[result]"
       : [result] "=a"(ret_val)   // using symbolic operand names
       : [port] "Nd"(port));

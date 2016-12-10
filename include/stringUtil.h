@@ -9,7 +9,7 @@ typedef unsigned char *va_list;
 #define va_end(list) // do nothing.
 
 // TODO: optimize
-static ALWAYS_INLINE void memset(void *ptr, uint8_t value, size_t num)
+static ALWAYS_INLINE void memset(void *ptr, u8 value, size_t num)
 {
    for (size_t i = 0; i < num; ++i) {
       ((char *)ptr)[i] = value;
