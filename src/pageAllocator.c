@@ -75,7 +75,7 @@ void *paging_alloc_phys_page()
 
    ASSERT(found);
 
-   uintptr_t ret;
+   uptr ret;
 
    u32 free_index = get_first_zero_bit_index(bitfield[index]);  
    bitfield[index] |= (1 << free_index);
@@ -87,7 +87,7 @@ void *paging_alloc_phys_page()
 
 void paging_free_phys_page(void *address) {
 
-   uintptr_t naddr = ((uintptr_t)address) & 0xFFFFF000U;
+   uptr naddr = ((uptr)address) & 0xFFFFF000U;
    u32 bitIndex = (naddr >> 12) & 31;
    u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
 
@@ -129,7 +129,7 @@ void *alloc_phys_page()
       return NULL;
    }
 
-   uintptr_t ret;
+   uptr ret;
 
    free_index = get_first_zero_bit_index(bitfield[last_index]);
    bitfield[last_index] |= (1 << free_index);
@@ -146,7 +146,7 @@ void *alloc_phys_page()
 
 void free_phys_page(void *address) {
 
-   uintptr_t naddr = ((uintptr_t)address) & 0xFFFFF000U;
+   uptr naddr = ((uptr)address) & 0xFFFFF000U;
    u32 bitIndex = (naddr >> 12) & 31;
    u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
 

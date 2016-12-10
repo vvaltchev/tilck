@@ -72,8 +72,8 @@ void kmalloc_trivial_perf_test()
 
    printk("Cycles per kmalloc + kfree: %llu\n",  duration >> 2);
 
-   ASSERT((uintptr_t)b1 == HEAP_DATA_ADDR + 0x0);
-   ASSERT((uintptr_t)b2 == HEAP_DATA_ADDR + 0x20);
-   ASSERT((uintptr_t)b3 == HEAP_DATA_ADDR + 0x40);
-   ASSERT((uintptr_t)b4 == HEAP_DATA_ADDR + 0x0);
+   ASSERT((uptr)b1 == HEAP_DATA_ADDR + 0x0);
+   ASSERT((uptr)b2 == HEAP_DATA_ADDR + 0x20);
+   ASSERT((uptr)b3 == HEAP_DATA_ADDR + 0x40);
+   ASSERT((uptr)b4 == HEAP_DATA_ADDR + 0x0);
 }

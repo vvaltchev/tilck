@@ -14,8 +14,8 @@ STATIC_ASSERT((HEAP_DATA_SIZE & ((1 << 20) - 1)) == 0);
 // ALLOC_BLOCK_SIZE has to be a multiple of PAGE_SIZE
 STATIC_ASSERT((ALLOC_BLOCK_SIZE & (PAGE_SIZE - 1)) == 0);
 
-bool kbasic_virtual_alloc(uintptr_t vaddr, int pageCount);
-bool kbasic_virtual_free(uintptr_t vaddr, int pageCount);
+bool kbasic_virtual_alloc(uptr vaddr, int pageCount);
+bool kbasic_virtual_free(uptr vaddr, int pageCount);
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
@@ -56,7 +56,7 @@ CONSTEXPR int ptr_to_node(void *ptr, size_t size)
 {
    const int heapSizeLog = log2_for_power_of_2(HEAP_DATA_SIZE);
 
-   uintptr_t raddr = (uintptr_t)ptr - HEAP_DATA_ADDR;
+   uptr raddr = (uptr)ptr - HEAP_DATA_ADDR;
    int sizeLog = log2_for_power_of_2(size);
    int nodes_before_our = (1 << (heapSizeLog - sizeLog)) - 1;
    int position_in_row = raddr >> sizeLog;
@@ -72,7 +72,7 @@ CONSTEXPR void *node_to_ptr(int node, size_t size)
    int nodes_before_our = (1 << (heapSizeLog - sizeLog)) - 1;
 
    int position_in_row = node - nodes_before_our;
-   uintptr_t raddr = position_in_row << sizeLog;
+   uptr raddr = position_in_row << sizeLog;
 
    return (void *)(raddr + HEAP_DATA_ADDR);
 }
@@ -163,8 +163,8 @@ void evenually_allocate_page_for_node(int node)
    new_node.has_some_free_space = true;
    new_node.allocated = false;
 
-   uintptr_t index = (node * sizeof(block_node)) >> 15;
-   uintptr_t pagesAddr = HEAP_BASE_ADDR + (index << 15);
+   uptr index = (node * sizeof(block_node)) >> 15;
+   uptr pagesAddr = HEAP_BASE_ADDR + (index << 15);
 
    if (!allocation_for_metadata_nodes[index]) {
 
@@ -180,7 +180,7 @@ void evenually_allocate_page_for_node(int node)
 }
 
 
-static void actual_allocate_node(size_t node_size, int node, uintptr_t vaddr)
+static void actual_allocate_node(size_t node_size, int node, uptr vaddr)
 {
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
@@ -191,7 +191,7 @@ static void actual_allocate_node(size_t node_size, int node, uintptr_t vaddr)
 
    ASSERT((void *)vaddr == node_to_ptr(node, node_size));
 
-   uintptr_t alloc_block_vaddr = vaddr & ~(ALLOC_BLOCK_SIZE - 1);
+   uptr alloc_block_vaddr = vaddr & ~(ALLOC_BLOCK_SIZE - 1);
    int alloc_block_count = 1 + ((node_size - 1) >> log2_for_power_of_2(ALLOC_BLOCK_SIZE));
 
    for (int i = 0; i < alloc_block_count; i++) {
@@ -243,7 +243,7 @@ ALWAYS_INLINE static void split_node(int node)
 typedef struct {
 
    size_t node_size;
-   uintptr_t vaddr;
+   uptr vaddr;
    int node;
 
 } stack_elem;
@@ -288,7 +288,7 @@ void *kmalloc(size_t desired_size)
 
       // Load the "stack" (function arguments)
       const size_t node_size = alloc_stack[stack_size - 1].node_size;
-      const uintptr_t vaddr = alloc_stack[stack_size - 1].vaddr;
+      const uptr vaddr = alloc_stack[stack_size - 1].vaddr;
       const int node = alloc_stack[stack_size - 1].node;
 
       const size_t half_node_size = HALF(node_size);
@@ -413,7 +413,7 @@ void kfree(void *ptr, size_t size)
          return;
    }
 
-   uintptr_t alloc_block_vaddr = (uintptr_t)ptr & ~(ALLOC_BLOCK_SIZE - 1);
+   uptr alloc_block_vaddr = (uptr)ptr & ~(ALLOC_BLOCK_SIZE - 1);
    int alloc_block_count = 1 + ((size - 1) >> log2_for_power_of_2(ALLOC_BLOCK_SIZE));
 
    DEBUG_printk("The block node used up to %i pages\n", alloc_block_count);

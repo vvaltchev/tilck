@@ -31,17 +31,17 @@ void load_usermode_init()
    // maps 16 pages (64 KB) for the user program
 
    map_pages(pdir,
-             (uintptr_t)vaddr,
-             (uintptr_t)paddr, 16, true, true);
+             (uptr)vaddr,
+             (uptr)paddr, 16, true, true);
 
    // map 4 pages for the user program's stack
 
    map_pages(pdir,
-             (uintptr_t)vaddr + 16 * PAGE_SIZE,
-             (uintptr_t)paddr + 16 * PAGE_SIZE, 4, true, true);
+             (uptr)vaddr + 16 * PAGE_SIZE,
+             (uptr)paddr + 16 * PAGE_SIZE, 4, true, true);
 
 
-   void *stack = (void *) (((uintptr_t)vaddr + (16 + 4) * PAGE_SIZE - 1) & ~15);
+   void *stack = (void *) (((uptr)vaddr + (16 + 4) * PAGE_SIZE - 1) & ~15);
 
    // simulate a page directory of fork-ed process
    // to observe COW working

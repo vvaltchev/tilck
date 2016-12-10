@@ -84,8 +84,8 @@ typedef long s64;
 typedef long ssize_t; // signed pointer-size integer
 typedef unsigned long size_t; // unsigned pointer-size integer
 
-typedef size_t uintptr_t;
-typedef ssize_t intptr_t;
+typedef size_t uptr;
+typedef ssize_t sptr;
 typedef ssize_t ptrdiff_t;
 
 #define NULL ((void *) 0)
@@ -96,8 +96,8 @@ typedef ssize_t ptrdiff_t;
 
 #endif
 
-STATIC_ASSERT(sizeof(uintptr_t) == sizeof(intptr_t));
-STATIC_ASSERT(sizeof(uintptr_t) == sizeof(void *));
+STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
+STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 
 static ALWAYS_INLINE void outb(u16 port, u8 val)
 {
@@ -153,9 +153,9 @@ void reboot();
  * with custom adaptions.
  */
 
-static inline int CONSTEXPR log2_for_power_of_2(uintptr_t v)
+static inline int CONSTEXPR log2_for_power_of_2(uptr v)
 {
-   static const uintptr_t b[] = {
+   static const uptr b[] = {
       0xAAAAAAAA
       , 0xCCCCCCCC
       , 0xF0F0F0F0
@@ -168,7 +168,7 @@ static inline int CONSTEXPR log2_for_power_of_2(uintptr_t v)
    };
 
    int i;
-   register uintptr_t r = (v & b[0]) != 0;
+   register uptr r = (v & b[0]) != 0;
 
 
 #ifdef BITS32
@@ -189,7 +189,7 @@ static inline int CONSTEXPR log2_for_power_of_2(uintptr_t v)
 * with custom adaptions.
 */
 
-CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
+CONSTEXPR static inline uptr roundup_next_power_of_2(uptr v)
 {
    v--;
    v |= v >> 1;
@@ -213,7 +213,7 @@ static ALWAYS_INLINE u64 RDTSC()
 {
    
 #ifdef BITS64
-   uintptr_t lo, hi;
+   uptr lo, hi;
    asm("rdtsc" : "=a" (lo), "=d" (hi));
    return lo | (hi << 32);
 #else
@@ -228,7 +228,7 @@ static ALWAYS_INLINE u64 RDTSC()
 #define DO_NOT_OPTIMIZE_AWAY(x) asmVolatile("" : "+r" ( (void *)(x) ))
 
 
-static ALWAYS_INLINE void invalidate_tlb_page(uintptr_t addr)
+static ALWAYS_INLINE void invalidate_tlb_page(uptr addr)
 {
    asmVolatile("invlpg (%0)" ::"r" (addr) : "memory");
 }

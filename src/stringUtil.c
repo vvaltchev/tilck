@@ -2,9 +2,9 @@
 #include <stringUtil.h>
 #include <term.h>
 
-void itoa(intptr_t value, char *destBuf)
+void itoa(sptr value, char *destBuf)
 {
-   const intptr_t base = 10;
+   const sptr base = 10;
 
    char *ptr;
    char *low;
@@ -36,7 +36,7 @@ void itoa(intptr_t value, char *destBuf)
 
 void llitoa(s64 value, char *destBuf)
 {
-   const intptr_t base = 10;
+   const sptr base = 10;
 
    char *ptr;
    char *low;
@@ -66,7 +66,7 @@ void llitoa(s64 value, char *destBuf)
    }
 }
 
-void uitoa(uintptr_t value, char *destBuf, u32 base)
+void uitoa(uptr value, char *destBuf, u32 base)
 {
    char *ptr;
    char *low;
@@ -174,7 +174,7 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 'p':
-         uitoa(va_arg(args, uintptr_t), buf, 16);
+         uitoa(va_arg(args, uptr), buf, 16);
          size_t len = strlen(buf);
          size_t fixedLen = 2 * sizeof(void*);
 

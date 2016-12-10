@@ -22,32 +22,32 @@ extern "C" {
 void *kernel_heap_base = nullptr;
 
 
-unordered_map<uintptr_t, uintptr_t> mappings;
+unordered_map<uptr, uptr> mappings;
 
-bool __wrap_is_mapped(void *pdir, uintptr_t vaddr)
+bool __wrap_is_mapped(void *pdir, uptr vaddr)
 {
    return mappings[vaddr & ~(PAGE_SIZE - 1)] != 0;
 }
 
-bool __wrap_kbasic_virtual_alloc(uintptr_t vaddr, int pageCount)
+bool __wrap_kbasic_virtual_alloc(uptr vaddr, int pageCount)
 {
    assert((vaddr & (PAGE_SIZE - 1)) == 0);
 
    for (int i = 0; i < pageCount; i++) {
       void *p = alloc_phys_page();
-      mappings[vaddr + i * PAGE_SIZE] = (uintptr_t)p;
+      mappings[vaddr + i * PAGE_SIZE] = (uptr)p;
    }
 
    return true;
 }
 
-bool __wrap_kbasic_virtual_free(uintptr_t vaddr, int pageCount)
+bool __wrap_kbasic_virtual_free(uptr vaddr, int pageCount)
 {
    assert((vaddr & (PAGE_SIZE - 1)) == 0);
 
    for (int i = 0; i < pageCount; i++) {
       
-      uintptr_t phys_addr = mappings[vaddr + i * PAGE_SIZE];
+      uptr phys_addr = mappings[vaddr + i * PAGE_SIZE];
       free_phys_page((void *)phys_addr);
       mappings[vaddr + i * PAGE_SIZE] = 0;
    }
@@ -59,9 +59,9 @@ bool __wrap_kbasic_virtual_free(uintptr_t vaddr, int pageCount)
 
 void init_test_kmalloc()
 {
-   uintptr_t align_size = 16 * PAGE_SIZE;
+   uptr align_size = 16 * PAGE_SIZE;
 
-   uintptr_t addr = (uintptr_t)malloc(HEAP_DATA_SIZE + align_size);
+   uptr addr = (uptr)malloc(HEAP_DATA_SIZE + align_size);
    addr += align_size;
    addr &= ~(align_size - 1);
 

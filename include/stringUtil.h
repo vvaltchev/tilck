@@ -28,8 +28,8 @@ void memcpy(void *dest, const void *src, size_t n);
 void memmove(void *dest, const void *src, size_t n);
 
 
-void itoa(intptr_t value, char *destBuf);
-void uitoa(uintptr_t value, char *destBuf, u32 base);
+void itoa(sptr value, char *destBuf);
+void uitoa(uptr value, char *destBuf, u32 base);
 
 static ALWAYS_INLINE bool isalpha_lower(char c) {
    return (c >= 'a' && c <= 'z');

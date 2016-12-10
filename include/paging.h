@@ -4,7 +4,7 @@
 #include <commonDefs.h>
 
 #define PAGE_SIZE (4096)
-#define KERNEL_BASE_VADDR ((uintptr_t) 0xC0000000UL)
+#define KERNEL_BASE_VADDR ((uptr) 0xC0000000UL)
 
 void init_physical_page_allocator();
 void *alloc_phys_page();
@@ -21,25 +21,25 @@ typedef struct page_directory_t page_directory_t;
 
 void init_paging();
 
-void initialize_page_directory(page_directory_t *pdir, uintptr_t paddr, bool us);
+void initialize_page_directory(page_directory_t *pdir, uptr paddr, bool us);
 
 void map_page(page_directory_t *pdir,
-              uintptr_t vaddr,
-	           uintptr_t paddr,
+              uptr vaddr,
+	           uptr paddr,
               bool us,
               bool rw);
 
-bool is_mapped(page_directory_t *pdir, uintptr_t vaddr);
-void unmap_page(page_directory_t *pdir, uintptr_t vaddr);
+bool is_mapped(page_directory_t *pdir, uptr vaddr);
+void unmap_page(page_directory_t *pdir, uptr vaddr);
 
-void *get_mapping(page_directory_t *pdir, uintptr_t vaddr);
+void *get_mapping(page_directory_t *pdir, uptr vaddr);
 
 page_directory_t *pdir_clone(page_directory_t *pdir);
 
 static inline void
 map_pages(page_directory_t *pdir,
-          uintptr_t vaddr,
-          uintptr_t paddr,
+          uptr vaddr,
+          uptr paddr,
           int pageCount,
           bool us,
           bool rw)
