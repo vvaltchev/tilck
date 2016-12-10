@@ -8,16 +8,16 @@
 /* Defines an IDT entry */
 struct idt_entry
 {
-    uint16_t base_lo;
-    uint16_t sel;
-    uint8_t always0;
-    uint8_t flags;
-    uint16_t base_hi;
+    u16 base_lo;
+    u16 sel;
+    u8 always0;
+    u8 flags;
+    u16 base_hi;
 } __attribute__((packed));
 
 struct idt_ptr
 {
-    uint16_t limit;
+    u16 limit;
     void *base;
 } __attribute__((packed));
 
@@ -38,9 +38,9 @@ void idt_load();
 /*
  * Use this function to set an entry in the IDT.
  */
-void idt_set_gate(uint8_t num, void *handler, uint16_t sel, uint8_t flags)
+void idt_set_gate(u8 num, void *handler, u16 sel, u8 flags)
 {
-	const uint32_t base = (uint32_t)handler;
+	const u32 base = (u32)handler;
 
     /* The interrupt routine's base address */
     idt[num].base_lo = (base & 0xFFFF);

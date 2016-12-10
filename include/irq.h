@@ -29,10 +29,10 @@ typedef struct regs regs;
 
 void irq_install();
 
-void irq_install_handler(uint8_t irq, void(*handler)(regs *r));
-void irq_uninstall_handler(uint8_t irq);
+void irq_install_handler(u8 irq, void(*handler)(regs *r));
+void irq_uninstall_handler(u8 irq);
 
-void IRQ_set_mask(uint8_t IRQline);
-void IRQ_clear_mask(uint8_t IRQline);
+void IRQ_set_mask(u8 IRQline);
+void IRQ_clear_mask(u8 IRQline);
 
 void set_fault_handler(int fault, void *ptr);

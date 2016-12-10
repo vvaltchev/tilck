@@ -23,7 +23,7 @@ void set_timer_freq(int hz)
  * This will keep track of how many ticks that the system
  * has been running for.
  */
-volatile uint32_t timer_ticks = 0;
+volatile u32 timer_ticks = 0;
 
 
 void timer_handler(regs *r) {

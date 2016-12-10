@@ -93,7 +93,7 @@ void debug_dump_used_pdir_entries(page_directory_t *pdir)
 
    for (int i = 0; i < 1024; i++) {
       if (pdir->page_tables[i] != NULL) {
-         printk("Index: %i (= vaddr %p)\n", i, (uintptr_t)i << 22);
+         printk("Index: %i (= vaddr %p)\n", i, (uptr)i << 22);
       }
    }
 }

@@ -64,30 +64,26 @@ STATIC_ASSERT(sizeof(void *) == 8);
 
 #endif
 
-#ifndef TEST
-
-typedef char int8_t;
-typedef short int16_t;
-typedef int int32_t;
-typedef unsigned char uint8_t;
-typedef unsigned short uint16_t;
-typedef unsigned int uint32_t;
+typedef char s8;
+typedef short s16;
+typedef int s32;
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
 
 #ifdef BITS32
-typedef unsigned long long uint64_t;
-typedef long long int64_t;
+typedef unsigned long long u64;
+typedef long long s64;
 #else
-typedef unsigned long uint64_t;
-typedef long int64_t;
+typedef unsigned long u64;
+typedef long s64;
 #endif
+
+#ifndef TEST
 
 typedef long ssize_t; // signed pointer-size integer
 typedef unsigned long size_t; // unsigned pointer-size integer
-
-typedef size_t uintptr_t;
-typedef ssize_t intptr_t;
 typedef ssize_t ptrdiff_t;
-
 #define NULL ((void *) 0)
 
 #else
@@ -96,21 +92,25 @@ typedef ssize_t ptrdiff_t;
 
 #endif
 
-STATIC_ASSERT(sizeof(uintptr_t) == sizeof(intptr_t));
-STATIC_ASSERT(sizeof(uintptr_t) == sizeof(void *));
+typedef size_t uptr;
+typedef ssize_t sptr;
 
-static ALWAYS_INLINE void outb(uint16_t port, uint8_t val)
+
+STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
+STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
+
+static ALWAYS_INLINE void outb(u16 port, u8 val)
 {
    asmVolatile("outb %0, %1" : : "a"(val), "Nd"(port));
    /* There's an outb %al, $imm8  encoding, for compile-time constant port numbers that fit in 8b.  (N constraint).
    * Wider immediate constants would be truncated at assemble-time (e.g. "i" constraint).
    * The  outb  %al, %dx  encoding is the only option for all other cases.
-   * %1 expands to %dx because  port  is a uint16_t.  %w1 could be used if we had the port number a wider C type */
+   * %1 expands to %dx because  port  is a u16.  %w1 could be used if we had the port number a wider C type */
 }
 
-static ALWAYS_INLINE uint8_t inb(uint16_t port)
+static ALWAYS_INLINE u8 inb(u16 port)
 {
-   uint8_t ret_val;
+   u8 ret_val;
    asmVolatile("inb %[port], %[result]"
       : [result] "=a"(ret_val)   // using symbolic operand names
       : [port] "Nd"(port));
@@ -153,9 +153,9 @@ void reboot();
  * with custom adaptions.
  */
 
-static inline int CONSTEXPR log2_for_power_of_2(uintptr_t v)
+static inline int CONSTEXPR log2_for_power_of_2(uptr v)
 {
-   static const uintptr_t b[] = {
+   static const uptr b[] = {
       0xAAAAAAAA
       , 0xCCCCCCCC
       , 0xF0F0F0F0
@@ -168,7 +168,7 @@ static inline int CONSTEXPR log2_for_power_of_2(uintptr_t v)
    };
 
    int i;
-   register uintptr_t r = (v & b[0]) != 0;
+   register uptr r = (v & b[0]) != 0;
 
 
 #ifdef BITS32
@@ -185,11 +185,11 @@ static inline int CONSTEXPR log2_for_power_of_2(uintptr_t v)
 }
 
 /*
-* From: http://graphics.stanford.edu/~seander/bithacks.html
-* with custom adaptions.
-*/
+ * From: http://graphics.stanford.edu/~seander/bithacks.html
+ * with custom adaptions.
+ */
 
-CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
+CONSTEXPR static inline uptr roundup_next_power_of_2(uptr v)
 {
    v--;
    v |= v >> 1;
@@ -209,15 +209,15 @@ CONSTEXPR static inline uintptr_t roundup_next_power_of_2(uintptr_t v)
 
 #if defined(__i386__) || defined(__x86_64__)
 
-static ALWAYS_INLINE uint64_t RDTSC()
+static ALWAYS_INLINE u64 RDTSC()
 {
    
 #ifdef BITS64
-   uintptr_t lo, hi;
+   uptr lo, hi;
    asm("rdtsc" : "=a" (lo), "=d" (hi));
    return lo | (hi << 32);
 #else
-   uint64_t val;
+   u64 val;
    asm("rdtsc" : "=A" (val));
    return val;
 #endif
@@ -228,7 +228,7 @@ static ALWAYS_INLINE uint64_t RDTSC()
 #define DO_NOT_OPTIMIZE_AWAY(x) asmVolatile("" : "+r" ( (void *)(x) ))
 
 
-static ALWAYS_INLINE void invalidate_tlb_page(uintptr_t addr)
+static ALWAYS_INLINE void invalidate_tlb_page(uptr addr)
 {
    asmVolatile("invlpg (%0)" ::"r" (addr) : "memory");
 }
