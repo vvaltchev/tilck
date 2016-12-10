@@ -2,7 +2,7 @@
 #include <paging.h>
 #include <stringUtil.h>
 
-bool kbasic_virtual_alloc(uintptr_t vaddr, int pageCount)
+bool kbasic_virtual_alloc(uptr vaddr, int pageCount)
 {
    ASSERT(!(vaddr & (PAGE_SIZE - 1))); // the vaddr must be page-aligned
 
@@ -18,14 +18,14 @@ bool kbasic_virtual_alloc(uintptr_t vaddr, int pageCount)
       void *paddr = alloc_phys_page();
       ASSERT(paddr != NULL);
 
-      ASSERT(!is_mapped(pdir, vaddr + (i << 12)));
-      map_page(pdir, vaddr + (i << 12), (uintptr_t)paddr, false, true);
+      ASSERT(!is_mapped(pdir, vaddr + (i << PAGE_SHIFT)));
+      map_page(pdir, vaddr + (i << PAGE_SHIFT), (uptr)paddr, false, true);
    }
 
    return true;
 }
 
-bool kbasic_virtual_free(uintptr_t vaddr, int pageCount)
+bool kbasic_virtual_free(uptr vaddr, int pageCount)
 {
    ASSERT(!(vaddr & (PAGE_SIZE - 1))); // the vaddr must be page-aligned
 
@@ -33,7 +33,7 @@ bool kbasic_virtual_free(uintptr_t vaddr, int pageCount)
 
    for (int i = 0; i < pageCount; i++) {
 
-      uintptr_t va = vaddr + (i << 12);
+      uptr va = vaddr + (i << PAGE_SHIFT);
 
       // get_mapping ASSERTs that 'va' is mapped.
       void *paddr = get_mapping(pdir, va);

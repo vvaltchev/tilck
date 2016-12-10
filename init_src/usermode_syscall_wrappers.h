@@ -70,7 +70,7 @@ static int generic_syscall3(int syscall_num, void *arg1, void *arg2, void *arg3)
    return result;
 }
 
-static int open(const char *pathname, int32_t flags, int32_t mode)
+static int open(const char *pathname, s32 flags, s32 mode)
 {
    return generic_syscall3(SYSCALL_OPEN,
                            (void*)pathname,

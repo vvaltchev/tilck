@@ -22,8 +22,8 @@
 #define PAGES_BIT_FIELD_ELEMS (8 * USABLE_MEM_SIZE_IN_MB)
 
 
-volatile uint32_t pages_bit_field[8 * MEM_SIZE_IN_MB] = {0};
-volatile uint32_t last_index = 0;
+volatile u32 pages_bit_field[8 * MEM_SIZE_IN_MB] = {0};
+volatile u32 last_index = 0;
 volatile int pagesUsed = 0;
 
 int get_free_physical_pages_count()
@@ -31,9 +31,9 @@ int get_free_physical_pages_count()
    return ((USABLE_MEM_SIZE_IN_MB << 20) / PAGE_SIZE) - pagesUsed;
 }
 
-static uint32_t get_first_zero_bit_index(uint32_t num)
+static u32 get_first_zero_bit_index(u32 num)
 {
-   uint32_t i;
+   u32 i;
 
    for (i = 0; i < 32; i++) {
       if ((num & (1U << i)) == 0) break;
@@ -45,7 +45,7 @@ static uint32_t get_first_zero_bit_index(uint32_t num)
 void init_physical_page_allocator()
 {
    //// Mark the first 2 MBs as used.
-   //for (uint32_t i = 0; i < INITIAL_ELEMS_RESERVED; i++) {
+   //for (u32 i = 0; i < INITIAL_ELEMS_RESERVED; i++) {
    //   pages_bit_field[i] = FULL_128KB_AREA;
    //   pagesUsed += 32;
    //}
@@ -57,10 +57,10 @@ void init_physical_page_allocator()
 
 void *paging_alloc_phys_page()
 {
-   uint32_t index = 0;
+   u32 index = 0;
    bool found = false;
 
-   volatile uint32_t * const bitfield =
+   volatile u32 * const bitfield =
       pages_bit_field + INITIAL_ELEMS_RESERVED;
 
    for (int i = 0; i < ELEMS_RESERVED_FOR_PAGING; i++) {
@@ -75,21 +75,21 @@ void *paging_alloc_phys_page()
 
    ASSERT(found);
 
-   uintptr_t ret;
+   uptr ret;
 
-   uint32_t free_index = get_first_zero_bit_index(bitfield[index]);  
+   u32 free_index = get_first_zero_bit_index(bitfield[index]);  
    bitfield[index] |= (1 << free_index);
 
-   ret = (( (index + INITIAL_ELEMS_RESERVED) << 17) + (free_index << 12));
+   ret = (( (index + INITIAL_ELEMS_RESERVED) << 17) + (free_index << PAGE_SHIFT));
    return (void *)ret;
 }
 
 
 void paging_free_phys_page(void *address) {
 
-   uintptr_t naddr = ((uintptr_t)address) & 0xFFFFF000U;
-   uint32_t bitIndex = (naddr >> 12) & 31;
-   uint32_t majorIndex = (naddr & 0xFFFE0000U) >> 17;
+   uptr naddr = ((uptr)address) & 0xFFFFF000U;
+   u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
+   u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
 
    // Asserts that the page was allocated.
    ASSERT(pages_bit_field[majorIndex] & (1 << bitIndex));
@@ -109,10 +109,10 @@ void paging_free_phys_page(void *address) {
 void *alloc_phys_page()
 {
 
-   uint32_t free_index;
+   u32 free_index;
    bool found = false;
 
-   volatile uint32_t * const bitfield =
+   volatile u32 * const bitfield =
       pages_bit_field + INITIAL_ELEMS_RESERVED + ELEMS_RESERVED_FOR_PAGING;
 
    for (int i = 0; i < PAGES_BIT_FIELD_ELEMS; i++) {
@@ -129,26 +129,26 @@ void *alloc_phys_page()
       return NULL;
    }
 
-   uintptr_t ret;
+   uptr ret;
 
    free_index = get_first_zero_bit_index(bitfield[last_index]);
    bitfield[last_index] |= (1 << free_index);
 
    pagesUsed++;
 
-   const uint32_t actual_index =
+   const u32 actual_index =
       last_index + INITIAL_ELEMS_RESERVED + ELEMS_RESERVED_FOR_PAGING;
 
-   ret = ((actual_index << 17) + (free_index << 12));
+   ret = ((actual_index << 17) + (free_index << PAGE_SHIFT));
    return (void *)ret;
 }
 
 
 void free_phys_page(void *address) {
 
-   uintptr_t naddr = ((uintptr_t)address) & 0xFFFFF000U;
-   uint32_t bitIndex = (naddr >> 12) & 31;
-   uint32_t majorIndex = (naddr & 0xFFFE0000U) >> 17;
+   uptr naddr = ((uptr)address) & 0xFFFFF000U;
+   u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
+   u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
 
    // Asserts that the page was allocated.
    ASSERT(pages_bit_field[majorIndex] & (1 << bitIndex));

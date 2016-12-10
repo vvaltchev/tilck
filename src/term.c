@@ -3,18 +3,18 @@
 #include <stringUtil.h>
 #include <paging.h>
 
-#define TERMINAL_VIDEO_ADDR ((volatile uint16_t*)(KERNEL_BASE_VADDR + 0xB8000))
-#define TERMINAL_BUFFER_ADDR ((volatile uint16_t*)(KERNEL_BASE_VADDR + 0x10000))
+#define TERMINAL_VIDEO_ADDR ((volatile u16*)(KERNEL_BASE_VADDR + 0xB8000))
+#define TERMINAL_BUFFER_ADDR ((volatile u16*)(KERNEL_BASE_VADDR + 0x10000))
 
 #define TERMINAL_BUFFER_ROWS 1024
 #define TERMINAL_SCREEN_SIZE (term_width * term_height * 2)
 
-static int8_t term_width = 80;
-static int8_t term_height = 25;
+static s8 term_width = 80;
+static s8 term_height = 25;
 
-volatile uint8_t terminal_row = 0;
-volatile uint8_t terminal_column = 0;
-volatile uint8_t terminal_color;
+volatile u8 terminal_row = 0;
+volatile u8 terminal_column = 0;
+volatile u8 terminal_color;
 
 volatile int buf_next_slot = 0;
 volatile int scroll_value = 0;
@@ -25,13 +25,13 @@ int term_get_scroll_value()
    return scroll_value;
 }
 
-void term_setcolor(uint8_t color) {
+void term_setcolor(u8 color) {
    terminal_color = color;
 }
 
 void term_movecur(int row, int col)
 {
-   uint16_t position = (row * term_width) + col;
+   u16 position = (row * term_width) + col;
 
    // cursor LOW port to vga INDEX register
    outb(0x3D4, 0x0F);
@@ -43,10 +43,10 @@ void term_movecur(int row, int col)
 
 void term_init() {
 
-   uint8_t defColor = make_color(COLOR_WHITE, COLOR_BLACK);
+   u8 defColor = make_color(COLOR_WHITE, COLOR_BLACK);
    term_movecur(0, 0);
 
-   volatile uint16_t *ptr = TERMINAL_VIDEO_ADDR;
+   volatile u16 *ptr = TERMINAL_VIDEO_ADDR;
 
    for (int i = 0; i < term_width*term_height; ++i) {
       *ptr++ = make_vgaentry(' ', defColor);
@@ -172,7 +172,7 @@ static void term_incr_row()
            (const void *) (TERMINAL_VIDEO_ADDR + term_width),
            term_width * (term_height - 1) * 2);
 
-   volatile uint16_t *lastRow =
+   volatile u16 *lastRow =
       TERMINAL_VIDEO_ADDR + term_width * (term_height - 1);
 
    for (int i = 0; i < term_width; i++) {
@@ -203,7 +203,7 @@ void term_write_char(char c)
       return;
    }
 
-   volatile uint16_t *video = TERMINAL_VIDEO_ADDR;
+   volatile u16 *video = TERMINAL_VIDEO_ADDR;
 
    if (c == '\b') {
 

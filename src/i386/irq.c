@@ -6,7 +6,7 @@
 #include <stringUtil.h>
 #include <term.h>
 
-void idt_set_gate(uint8_t num, void *handler, uint16_t sel, uint8_t flags);
+void idt_set_gate(u8 num, void *handler, u16 sel, u8 flags);
 
 
 /* These are own ISRs that point to our special IRQ handler
@@ -34,13 +34,13 @@ void *irq_routines[16] = { 0 };
 
 
 /* This installs a custom IRQ handler for the given IRQ */
-void irq_install_handler(uint8_t irq, void(*handler)(regs *r))
+void irq_install_handler(u8 irq, void(*handler)(regs *r))
 {
    irq_routines[irq] = handler;
 }
 
 /* This clears the handler for a given IRQ */
-void irq_uninstall_handler(uint8_t irq)
+void irq_uninstall_handler(u8 irq)
 {
    irq_routines[irq] = NULL;
 }
@@ -54,7 +54,7 @@ void irq_uninstall_handler(uint8_t irq)
 
 #define PIC_EOI      0x20     /* End-of-interrupt command code */
 
-void PIC_sendEOI(uint8_t irq)
+void PIC_sendEOI(u8 irq)
 {
    if (irq >= 8) {
       outb(PIC2_COMMAND, PIC_EOI);
@@ -98,7 +98,7 @@ static inline void io_wait() {}
    offset2 - same for slave PIC: offset2..offset2+7
 */
 
-void PIC_remap(uint8_t offset1, uint8_t offset2)
+void PIC_remap(u8 offset1, u8 offset2)
 {
    unsigned char a1, a2;
 
@@ -127,9 +127,9 @@ void PIC_remap(uint8_t offset1, uint8_t offset2)
    outb(PIC2_DATA, a2);
 }
 
-void IRQ_set_mask(uint8_t IRQline) {
-   uint16_t port;
-   uint8_t value;
+void IRQ_set_mask(u8 IRQline) {
+   u16 port;
+   u8 value;
 
    if (IRQline < 8) {
       port = PIC1_DATA;
@@ -142,9 +142,9 @@ void IRQ_set_mask(uint8_t IRQline) {
    outb(port, value);
 }
 
-void IRQ_clear_mask(uint8_t IRQline) {
-   uint16_t port;
-   uint8_t value;
+void IRQ_clear_mask(u8 IRQline) {
+   u16 port;
+   u8 value;
 
    if (IRQline < 8) {
       port = PIC1_DATA;
@@ -202,7 +202,7 @@ void irq_handler(regs *r)
    /* This is a blank function pointer */
    void(*handler)(regs *r);
 
-   const uint8_t irq_no = r->int_no - 32;
+   const u8 irq_no = r->int_no - 32;
 
    /* Find out if we have a custom handler to run for this
    *  IRQ, and then finally, run it */
