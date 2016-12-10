@@ -5,10 +5,6 @@
 void gdt_load();
 void tss_flush();
 
-
-/* Defines a GDT entry. We say packed, because it prevents the
-*  compiler from doing things that it thinks is best: Prevent
-*  compiler "optimization" by packing */
 struct gdt_entry
 {
     u16 limit_low;
@@ -21,23 +17,23 @@ struct gdt_entry
 
 struct gdt_entry_bits
 {
-	u32 limit_low:16;
-	u32 base_low : 24;
-     //attribute byte split into bitfields
-	u32 accessed :1;
-	u32 read_write :1; //readable for code, writable for data
-	u32 conforming_expand_down :1; //conforming for code, expand down for data
-	u32 code :1; //1 for code, 0 for data
-	u32 always_1 :1; //should be 1 for everything but TSS and LDT
-	u32 DPL :2; //priviledge level
-	u32 present :1;
-     //and now into granularity
-	u32 limit_high :4;
-	u32 available :1;
-	u32 always_0 :1; //should always be 0
-	u32 big :1; //32bit opcodes for code, u32 stack for data
-	u32 gran :1; //1 to use 4k page addressing, 0 for byte addressing
-	u32 base_high :8;
+   u32 limit_low:16;
+   u32 base_low : 24;
+   //attribute byte split into bitfields
+   u32 accessed :1;
+   u32 read_write :1; //readable for code, writable for data
+   u32 conforming_expand_down :1; //conforming for code, expand down for data
+   u32 code :1; //1 for code, 0 for data
+   u32 always_1 :1; //should be 1 for everything but TSS and LDT
+   u32 DPL :2; //priviledge level
+   u32 present :1;
+   //and now into granularity
+   u32 limit_high :4;
+   u32 available :1;
+   u32 always_0 :1; //should always be 0
+   u32 big :1; //32bit opcodes for code, u32 stack for data
+   u32 gran :1; //1 to use 4k page addressing, 0 for byte addressing
+   u32 base_high :8;
 } __attribute__((packed));
 
 typedef struct gdt_entry_bits gdt_entry_bits;
@@ -63,13 +59,13 @@ struct tss_entry_struct
    u32 ebp;
    u32 esi;
    u32 edi;
-   u32 es;         
-   u32 cs;        
-   u32 ss;        
-   u32 ds;        
-   u32 fs;       
-   u32 gs;         
-   u32 ldt;      
+   u32 es;
+   u32 cs;
+   u32 ss;
+   u32 ds;
+   u32 fs;
+   u32 gs;
+   u32 ldt;
    u16 trap;
    u16 iomap_base;
 } __attribute__((packed));
@@ -77,8 +73,11 @@ struct tss_entry_struct
 typedef struct tss_entry_struct tss_entry_t;
 
 
-/* Special pointer which includes the limit: The max bytes
-*  taken up by the GDT, minus 1. Again, this NEEDS to be packed */
+/*
+ * Special pointer which includes the limit: The max bytes
+ * taken up by the GDT, minus 1. This NEEDS to be packed.
+ */
+
 struct gdt_ptr
 {
    u16 limit; // 2 bytes
