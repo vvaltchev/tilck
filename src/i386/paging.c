@@ -43,13 +43,13 @@ void handle_page_fault(regs *r)
 
    if (us && rw && p) {
       page_table_t *ptable;
-      u32 page_table_index = (vaddr >> 12) & 0x3FF;
+      u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
       u32 page_dir_index = (vaddr >> 22) & 0x3FF;
 
       ptable = curr_page_dir->page_tables[page_dir_index];
       u8 flags = ptable->pages[page_table_index].avail;
 
-      void *page_vaddr = (void *) (vaddr & ~4095);
+      void *page_vaddr = (void *) (vaddr & PAGE_MASK);
 
       if (flags & (PAGE_COW_FLAG | PAGE_COW_ORIG_RW)) {
 
@@ -60,7 +60,7 @@ void handle_page_fault(regs *r)
 
          // Allocate and set a new page.
          uptr paddr = (uptr) alloc_phys_page();
-         ptable->pages[page_table_index].pageAddr = paddr >> 12;
+         ptable->pages[page_table_index].pageAddr = paddr >> PAGE_SHIFT;
          ptable->pages[page_table_index].rw = true;
          ptable->pages[page_table_index].avail = 0;
 
@@ -130,7 +130,7 @@ void initialize_page_directory(page_directory_t *pdir, uptr paddr, bool us)
 bool is_mapped(page_directory_t *pdir, uptr vaddr)
 {
    page_table_t *ptable;
-   u32 page_table_index = (vaddr >> 12) & 0x3FF;
+   u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
    u32 page_dir_index = (vaddr >> 22) & 0x3FF;
 
    if (pdir->page_tables[page_dir_index] == NULL) {
@@ -144,7 +144,7 @@ bool is_mapped(page_directory_t *pdir, uptr vaddr)
 void unmap_page(page_directory_t *pdir, uptr vaddr)
 {
    page_table_t *ptable;
-   u32 page_table_index = (vaddr >> 12) & 0x3FF;
+   u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
    u32 page_dir_index = (vaddr >> 22) & 0x3FF;
 
    ASSERT(pdir->page_tables[page_dir_index] != NULL);
@@ -160,7 +160,7 @@ void unmap_page(page_directory_t *pdir, uptr vaddr)
 void *get_mapping(page_directory_t *pdir, uptr vaddr)
 {
    page_table_t *ptable;
-   u32 page_table_index = (vaddr >> 12) & 0x3FF;
+   u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
    u32 page_dir_index = (vaddr >> 22) & 0x3FF;
 
    ASSERT(pdir->page_tables[page_dir_index] != NULL);
@@ -169,7 +169,7 @@ void *get_mapping(page_directory_t *pdir, uptr vaddr)
 
    ASSERT(ptable->pages[page_table_index].present);
 
-   return (void *)(ptable->pages[page_table_index].pageAddr << 12);
+   return (void *)(ptable->pages[page_table_index].pageAddr << PAGE_SHIFT);
 }
 
 void map_page(page_directory_t *pdir,
@@ -178,11 +178,11 @@ void map_page(page_directory_t *pdir,
               bool us,
               bool rw)
 {
-   u32 page_table_index = (vaddr >> 12) & 0x3FF;
+   u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
    u32 page_dir_index = (vaddr >> 22) & 0x3FF;
 
-   ASSERT(!(vaddr & 4095)); // the vaddr must be page-aligned
-   ASSERT(!(paddr & 4095)); // the paddr must be page-aligned
+   ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
+   ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // the paddr must be page-aligned
 
    page_table_t *ptable = NULL;
 
@@ -202,7 +202,7 @@ void map_page(page_directory_t *pdir,
       e.present = 1;
       e.rw = 1;
       e.us = us;
-      e.pageTableAddr = ((u32)page_physical_addr) >> 12;
+      e.pageTableAddr = ((u32)page_physical_addr) >> PAGE_SHIFT;
 
       pdir->page_tables[page_dir_index] = ptable;
       pdir->entries[page_dir_index] = e;
@@ -217,7 +217,7 @@ void map_page(page_directory_t *pdir,
    p.us = us;
    p.rw = rw;
 
-   p.pageAddr = paddr >> 12;
+   p.pageAddr = paddr >> PAGE_SHIFT;
 
    ptable->pages[page_table_index] = p;
 }
@@ -254,7 +254,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
 
       // copy the entry, but use the new page table
       new_pdir->entries[i] = pdir->entries[i];
-      new_pdir->entries[i].pageTableAddr = pt_paddr >> 12;
+      new_pdir->entries[i].pageTableAddr = pt_paddr >> PAGE_SHIFT;
       
       for (int j = 0; j < 1024; j++) {
 
@@ -304,7 +304,7 @@ void init_paging()
       e.present = 1;
       e.rw = 1;
       e.us = true;
-      e.pageTableAddr = ((u32)page_physical_addr) >> 12;
+      e.pageTableAddr = ((u32)page_physical_addr) >> PAGE_SHIFT;
 
       kernel_page_dir->page_tables[i] = ptable;
       kernel_page_dir->entries[i] = e;

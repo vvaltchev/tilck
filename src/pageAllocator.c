@@ -80,7 +80,7 @@ void *paging_alloc_phys_page()
    u32 free_index = get_first_zero_bit_index(bitfield[index]);  
    bitfield[index] |= (1 << free_index);
 
-   ret = (( (index + INITIAL_ELEMS_RESERVED) << 17) + (free_index << 12));
+   ret = (( (index + INITIAL_ELEMS_RESERVED) << 17) + (free_index << PAGE_SHIFT));
    return (void *)ret;
 }
 
@@ -88,7 +88,7 @@ void *paging_alloc_phys_page()
 void paging_free_phys_page(void *address) {
 
    uptr naddr = ((uptr)address) & 0xFFFFF000U;
-   u32 bitIndex = (naddr >> 12) & 31;
+   u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
    u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
 
    // Asserts that the page was allocated.
@@ -139,7 +139,7 @@ void *alloc_phys_page()
    const u32 actual_index =
       last_index + INITIAL_ELEMS_RESERVED + ELEMS_RESERVED_FOR_PAGING;
 
-   ret = ((actual_index << 17) + (free_index << 12));
+   ret = ((actual_index << 17) + (free_index << PAGE_SHIFT));
    return (void *)ret;
 }
 
@@ -147,7 +147,7 @@ void *alloc_phys_page()
 void free_phys_page(void *address) {
 
    uptr naddr = ((uptr)address) & 0xFFFFF000U;
-   u32 bitIndex = (naddr >> 12) & 31;
+   u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
    u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
 
    // Asserts that the page was allocated.

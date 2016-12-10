@@ -26,7 +26,7 @@ unordered_map<uptr, uptr> mappings;
 
 bool __wrap_is_mapped(void *pdir, uptr vaddr)
 {
-   return mappings[vaddr & ~(PAGE_SIZE - 1)] != 0;
+   return mappings[vaddr & PAGE_MASK] != 0;
 }
 
 bool __wrap_kbasic_virtual_alloc(uptr vaddr, int pageCount)

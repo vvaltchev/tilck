@@ -3,7 +3,11 @@
 
 #include <commonDefs.h>
 
-#define PAGE_SIZE (4096)
+#define PAGE_SHIFT 12
+#define PAGE_SIZE ((uptr)1 << PAGE_SHIFT)
+#define PAGE_MASK (~(PAGE_SIZE - 1))
+#define OFFSET_IN_PAGE_MASK (PAGE_SIZE - 1)
+
 #define KERNEL_BASE_VADDR ((uptr) 0xC0000000UL)
 
 void init_physical_page_allocator();
@@ -25,7 +29,7 @@ void initialize_page_directory(page_directory_t *pdir, uptr paddr, bool us);
 
 void map_page(page_directory_t *pdir,
               uptr vaddr,
-	           uptr paddr,
+              uptr paddr,
               bool us,
               bool rw);
 
@@ -45,7 +49,7 @@ map_pages(page_directory_t *pdir,
           bool rw)
 {
    for (int i = 0; i < pageCount; i++) {
-      map_page(pdir, vaddr + (i << 12), paddr + (i << 12), us, rw);
+      map_page(pdir, vaddr + (i << PAGE_SHIFT), paddr + (i << PAGE_SHIFT), us, rw);
    }
 }
 

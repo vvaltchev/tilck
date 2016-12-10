@@ -185,9 +185,9 @@ static inline int CONSTEXPR log2_for_power_of_2(uptr v)
 }
 
 /*
-* From: http://graphics.stanford.edu/~seander/bithacks.html
-* with custom adaptions.
-*/
+ * From: http://graphics.stanford.edu/~seander/bithacks.html
+ * with custom adaptions.
+ */
 
 CONSTEXPR static inline uptr roundup_next_power_of_2(uptr v)
 {
