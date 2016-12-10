@@ -28,9 +28,9 @@ static inline u8 make_color(enum vga_color fg, enum vga_color bg) {
    return fg | bg << 4;
 }
 
-static inline uint16_t make_vgaentry(char c, u8 color) {
-   uint16_t c16 = c;
-   uint16_t color16 = color;
+static inline u16 make_vgaentry(char c, u8 color) {
+   u16 c16 = c;
+   u16 color16 = color;
    return c16 | color16 << 8;
 }
 
