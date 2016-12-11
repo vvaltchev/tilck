@@ -85,24 +85,6 @@ tss_flush:
    ltr ax            ; Load 0x2B into the task state register.
    ret
 
-global switch_to_usermode_asm
-   
-switch_to_usermode_asm:
-  mov ax,0x23 ; user data selector
-  mov ds,ax
-  mov es,ax 
-  mov fs,ax 
-  mov gs,ax ; we don't need to worry about SS. it's handled by iret
-  
-  mov ebx, [esp + 4]  ; first arg, the usermode entry point
-  mov eax, [esp + 8]  ; second arg, the usermode stack ptr
-  
-  push 0x23 ; user data selector with bottom 2 bits set for ring 3
-  push eax  ; push the stack pointer
-  pushf     ; push the EFLAGS register onto the stack
-  push 0x1B ; user code selector with bottom 2 bits set for ring 3
-  push ebx  
-  iret
    
 global asm_context_switch_x86
 
@@ -122,6 +104,7 @@ asm_context_switch_x86:
    pop eax ; ds
    mov ds, ax 
       
+   ; We can't do 'popa' here because it will restore ESP
    pop edi
    pop esi
    pop ebp
@@ -129,13 +112,16 @@ asm_context_switch_x86:
    pop edx
    pop ecx
    pop eax
-      
+   
+   ; eip, cs, eflags, useresp and ss
+   ; are already on stack, passed by the caller.
+   
    ; debug ;;;;;;;;;;;;;;;;;;;
    ;pop eax ; entry point (eip)
    ;pop eax ; 0x1b (cs)
    ;pop eax ; eflags
    ;pop eax ; stack
-   ;pop eax ; 0x23 (ds)
+   ;pop eax ; 0x23 (ss)
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;
    
    iret

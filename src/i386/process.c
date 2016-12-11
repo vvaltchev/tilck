@@ -20,6 +20,7 @@ static ALWAYS_INLINE void context_switch(regs *r)
                           r->edi,
                           r->esi,
                           r->ebp,
+                          /* skipping ESP */
                           r->ebx,
                           r->edx,
                           r->ecx,
@@ -38,8 +39,12 @@ void first_usermode_switch(void *entry, void *stack_addr)
    regs r;
    memset(&r, 0, sizeof(r));
 
+   // User data selector with bottom 2 bits set for ring 3.
    r.gs = r.fs = r.es = r.ds = r.ss = 0x23;
+
+   // User code selector with bottom 2 bits set for ring 3.
    r.cs = 0x1b;
+
    r.eip = (u32) entry;
    r.useresp = (u32) stack_addr;
 
