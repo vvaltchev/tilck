@@ -36,3 +36,4 @@ void IRQ_set_mask(u8 IRQline);
 void IRQ_clear_mask(u8 IRQline);
 
 void set_fault_handler(int fault, void *ptr);
+void PIC_sendEOI(u8 irq);

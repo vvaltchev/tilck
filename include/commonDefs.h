@@ -49,9 +49,11 @@ STATIC_ASSERT(sizeof(void *) == 8);
 
 #define PURE
 #define CONSTEXPR
+#define NORETURN
 
 #else
 
+#define NORETURN __attribute__((noreturn))
 #define ALWAYS_INLINE __attribute__((always_inline)) inline
 
 #define asmVolatile __asm__ volatile
@@ -120,6 +122,8 @@ static ALWAYS_INLINE u8 inb(u16 port)
 #define halt() asmVolatile("hlt")
 #define cli() asmVolatile("cli")
 #define sti() asmVolatile("sti")
+
+// Used to break with the Bochs x86 emulator.
 #define magic_debug_break() asmVolatile("xchg %bx, %bx")
 
 #define MIN(x, y) (((x) <= (y)) ? (x) : (y))
