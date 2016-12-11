@@ -463,6 +463,7 @@ flush_gdt:
    ; 0000000000001     0         00
    ; index 1 (code)   GDT    privileged
 
+   cli
    jmp 0x08:0x1000 ; the JMP sets CS (code selector);
 
 
