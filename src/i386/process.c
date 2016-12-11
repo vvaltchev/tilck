@@ -51,8 +51,6 @@ void first_usermode_switch(void *entry, void *stack_addr)
 }
 
 
-
-
 void schedule(regs *r)
 {
    if ((timer_ticks % 500)) return;
@@ -60,6 +58,15 @@ void schedule(regs *r)
    printk("sched!\n");
    printk("current pdir is %p\n", get_curr_page_dir());
    printk("eip: %p\n", r->eip);
+
+   if (r->int_no >= 32) {
+      /* 
+       * We are here because of an IRQ, likely the timer.
+       * and we have to send EOI to the PIC otherwise
+       * we won't get anymore IRQs.
+       */
+      PIC_sendEOI(r->int_no - 32);
+   }
 
    context_switch(r);
 }
