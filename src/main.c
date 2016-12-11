@@ -19,9 +19,9 @@ void timer_handler(regs *r);
 void keyboard_handler(regs *r);
 void set_timer_freq(int hz);
 void set_kernel_stack(u32 stack);
-void switch_to_usermode_asm(void *entryPoint, void *stackAddr);
+void first_usermode_switch(void *entry, void *stack_addr);
 
-void load_usermode_init()
+void run_usermode_init()
 {
    void *const vaddr = (void *)0x08000000U;
    void *const paddr = (void *)0x120000;
@@ -50,21 +50,8 @@ void load_usermode_init()
    set_page_directory(pdir2);
 
    printk("user mode stack addr: %p\n", stack);
-   switch_to_usermode_asm(vaddr, stack);
+   first_usermode_switch(vaddr, stack);
 }
-
-void switch_to_user_mode()
-{
-   // Set up our kernel stack.
-   set_kernel_stack(0xC01FFFF0);
-
-   load_usermode_init();
-
-   //printk("pdir entries used = %i\n", debug_count_used_pdir_entries(get_curr_page_dir()));
-   //debug_dump_used_pdir_entries(get_curr_page_dir());
-
-}
-
 
 void show_hello_message()
 {
@@ -100,7 +87,12 @@ void kmain() {
 
    //kmalloc_perf_test();
 
-   switch_to_user_mode();
+   // Set up our kernel stack.
+   set_kernel_stack(0xC01FFFF0);
+
+   // Run the 'init' usermode program.
+   run_usermode_init();
+
 
    while (1) {
       halt();

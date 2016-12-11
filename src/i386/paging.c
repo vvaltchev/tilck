@@ -173,13 +173,13 @@ void *get_mapping(page_directory_t *pdir, uptr vaddr)
 }
 
 void map_page(page_directory_t *pdir,
-	           uptr vaddr,
-	           uptr paddr,
+              uptr vaddr,
+              uptr paddr,
               bool us,
               bool rw)
 {
    u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
-   u32 page_dir_index = (vaddr >> 22) & 0x3FF;
+   u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10)) & 0x3FF;
 
    ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // the paddr must be page-aligned
