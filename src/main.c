@@ -7,6 +7,7 @@
 #include <kmalloc.h>
 #include <paging.h>
 #include <debug_utils.h>
+#include <process.h>
 
 #define TIMER_FREQ_HZ 100
 
@@ -19,7 +20,6 @@ void timer_handler(regs *r);
 void keyboard_handler(regs *r);
 void set_timer_freq(int hz);
 void set_kernel_stack(u32 stack);
-void first_usermode_switch(void *entry, void *stack_addr);
 
 void run_usermode_init()
 {
@@ -47,10 +47,8 @@ void run_usermode_init()
    // to observe COW working
    page_directory_t *pdir2 = pdir_clone(pdir);
 
-   set_page_directory(pdir2);
-
    printk("user mode stack addr: %p\n", stack);
-   first_usermode_switch(vaddr, stack);
+   first_usermode_switch(pdir2, vaddr, stack);
 }
 
 void show_hello_message()
@@ -80,15 +78,13 @@ void kmain() {
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
-   //IRQ_set_mask(0); // mask the timer interrupt.
+   set_kernel_stack(0xC01FFFF0);
 
    sti();
    init_kb();
 
    //kmalloc_perf_test();
 
-   // Set up our kernel stack.
-   set_kernel_stack(0xC01FFFF0);
 
    // Run the 'init' usermode program.
    run_usermode_init();
