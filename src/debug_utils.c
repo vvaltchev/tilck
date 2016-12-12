@@ -74,6 +74,9 @@ void dump_stacktrace_ex(void *ebp)
    printk("\n\n");
 }
 
+#ifdef __i386__
+
+#include <arch/i386/paging_int.h>
 
 int debug_count_used_pdir_entries(page_directory_t *pdir)
 {
@@ -90,14 +93,16 @@ void debug_dump_used_pdir_entries(page_directory_t *pdir)
 
    for (int i = 0; i < 1024; i++) {
       if (pdir->page_tables[i] != NULL) {
-         printk("Index: %i (= vaddr %p)\n", i, (uintptr_t)i << 22);
+         printk("Index: %i (= vaddr %p)\n", i, (uptr)i << 22);
       }
    }
 }
 
+#endif
+
 void panic(const char *fmt, ...)
 {
-   cli();
+   //cli();
 
    printk("\n\n************** KERNEL PANIC **************\n");
 

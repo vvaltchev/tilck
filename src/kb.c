@@ -6,6 +6,15 @@
 #define KB_DATA_PORT 0x60
 #define KB_CONTROL_PORT 0x64
 
+/* keyboard interface bits */
+#define KBRD_BIT_KDATA 0 /* keyboard data is in buffer (output buffer is empty) (bit 0) */
+#define KBRD_BIT_UDATA 1 /* user data is in buffer (command buffer is empty) (bit 1) */
+
+#define KBRD_RESET 0xFE /* reset CPU command */
+
+#define BIT(n) (1 << (n))
+#define CHECK_FLAG(flags, n) ((flags) & BIT(n))
+
 /* US Keyboard Layout.  */
 unsigned char kbdus[128] =
 {
@@ -91,7 +100,7 @@ unsigned char *us_kb_layouts[2] = {
    kbdus, kbdus_up
 };
 
-uint8_t numkey[128] = {
+u8 numkey[128] = {
    [71] = '7', '8', '9',
    [75] = '4', '5', '6',
    [79] = '1', '2', '3',
@@ -109,6 +118,10 @@ uint8_t numkey[128] = {
 #define KEY_UP 0x48
 #define KEY_DOWN 0x50
 
+#define KEY_CTRL 0x1d
+#define KEY_ALT 0x38
+#define KEY_E0_DEL 0x53
+
 bool pkeys[128] = { false };
 bool e0pkeys[128] = { false };
 
@@ -118,23 +131,34 @@ bool numLock = true;
 bool capsLock = false;
 bool lastWasE0 = false;
 
-uint8_t next_kb_interrupts_to_ignore = 0;
+u8 next_kb_interrupts_to_ignore = 0;
 
 void kbd_wait()
 {
-   uint8_t al;
+   u8 temp;
 
-   do {
-
-      while ((al = inb(KB_CONTROL_PORT)) & 1) {
-         // drain input data..
-         (void) inb(KB_DATA_PORT);
+   /* Clear all keyboard buffers (output and command buffers) */
+   do
+   {
+      temp = inb(KB_CONTROL_PORT); /* empty user data */
+      if (CHECK_FLAG(temp, KBRD_BIT_KDATA) != 0) {
+         inb(KB_DATA_PORT); /* empty keyboard data */
       }
+   } while (CHECK_FLAG(temp, KBRD_BIT_UDATA) != 0);
 
-   } while (al & 2);
+   //u8 al;
+
+   //do {
+
+   //   while ((al = inb(KB_CONTROL_PORT)) & 1) {
+   //      // drain input data..
+   //      (void) inb(KB_DATA_PORT);
+   //   }
+
+   //} while (al & 2);
 }
 
-void kb_led_set(uint8_t val)
+void kb_led_set(u8 val)
 {
    kbd_wait();
 
@@ -161,7 +185,7 @@ void init_kb()
    caps_lock_switch(capsLock);
 }
 
-void handle_key_pressed(uint8_t scancode)
+void handle_key_pressed(u8 scancode)
 {
    switch(scancode) {
 
@@ -185,8 +209,8 @@ void handle_key_pressed(uint8_t scancode)
       break;
    }
 
-   uint8_t *layout = us_kb_layouts[pkeys[KEY_L_SHIFT] || pkeys[KEY_R_SHIFT]];
-   uint8_t c = layout[scancode];
+   u8 *layout = us_kb_layouts[pkeys[KEY_L_SHIFT] || pkeys[KEY_R_SHIFT]];
+   u8 c = layout[scancode];
 
    if (numLock) {
       c |= numkey[scancode];
@@ -203,7 +227,7 @@ void handle_key_pressed(uint8_t scancode)
    }
 }
 
-void handle_E0_key_pressed(uint8_t scancode)
+void handle_E0_key_pressed(u8 scancode)
 {
    switch (scancode) {
 
@@ -215,19 +239,29 @@ void handle_E0_key_pressed(uint8_t scancode)
       term_scroll(term_get_scroll_value() - 5);
       break;
 
+   case KEY_E0_DEL:
+
+      if (pkeysArrays[0][KEY_CTRL] && pkeysArrays[0][KEY_ALT]) {
+         printk("Ctrl + Alt + Del: Reboot!\n");
+         reboot();
+         break;
+      }
+
+   // fall-through
+
    default:
       printk("PRESSED E0 scancode: 0x%x (%i)\n", scancode, scancode);
       break;
    }
 }
 
-void (*keyPressHandlers[2])(uint8_t) = {
+void (*keyPressHandlers[2])(u8) = {
    handle_key_pressed, handle_E0_key_pressed
 };
 
 void keyboard_handler()
 {
-   uint8_t scancode;
+   u8 scancode;
 
    while (inb(KB_CONTROL_PORT) & 2) {
       //check if scancode is ready
@@ -276,3 +310,16 @@ end:
    lastWasE0 = false;
 }
 
+// Reboot procedure using the keyboard controller
+
+void reboot() {
+
+   cli();
+   kbd_wait();
+   
+   outb(KB_CONTROL_PORT, KBRD_RESET);
+
+   while (true) {
+      halt();
+   }
+}

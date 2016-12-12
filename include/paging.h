@@ -3,84 +3,67 @@
 
 #include <commonDefs.h>
 
-#define KERNEL_BASE_VADDR ((uintptr_t) 0xC0000000UL)
+#define PAGE_SHIFT 12
+#define PAGE_SIZE ((uptr)1 << PAGE_SHIFT)
+#define PAGE_MASK (~(PAGE_SIZE - 1))
+#define OFFSET_IN_PAGE_MASK (PAGE_SIZE - 1)
 
-#define KERNEL_PADDR_TO_VADDR(paddr) ((typeof(paddr))((uintptr_t)(paddr) + KERNEL_BASE_VADDR))
-#define KERNEL_VADDR_TO_PADDR(vaddr) ((typeof(vaddr))((uintptr_t)(vaddr) - KERNEL_BASE_VADDR))
+#define KERNEL_BASE_VADDR ((uptr) 0xC0000000UL)
 
-// A page table entry
-typedef struct {
+void init_physical_page_allocator();
+void *alloc_phys_page();
+void free_phys_page(void *address);
+int get_free_physical_pages_count();
 
-   uint32_t present : 1;
-   uint32_t rw : 1;        // read only = 0, read/write = 1
-   uint32_t us :  1;       // user/supervisor
-   uint32_t wt : 1;        // write-through
-   uint32_t cd : 1;        // cache-disabled
-   uint32_t accessed : 1;
-   uint32_t dirty : 1;
-   uint32_t zero : 1;
-   uint32_t global : 1;
-   uint32_t avail : 3;
-   uint32_t pageAddr : 20; // the first 20 bits of the physical addr.
-
-} page_t;
+#ifdef __i386__
+#define PAGE_DIR_SIZE (2 * PAGE_SIZE + 4)
+#endif
 
 
-// A page table
-typedef struct {
-
-   page_t pages[1024];
-
-} page_table_t;
-
-
-// A page directory entry
-typedef struct {
-
-   uint32_t present : 1;
-   uint32_t rw : 1;             // read only = 0, read/write = 1
-   uint32_t us :  1;            // us = 0 -> supervisor only, 1 -> user also
-   uint32_t wt : 1;             // write-through
-   uint32_t cd : 1;             // cache-disabled
-   uint32_t accessed : 1;
-   uint32_t zero : 1;
-   uint32_t psize : 1;          // page size; 0 = 4 KB, 1 = 4 MB
-   uint32_t ignored : 1;
-   uint32_t avail : 3;
-   uint32_t pageTableAddr : 20; // aka, 'page_table_t *'
-
-} page_dir_entry_t;
-
-
-// A page directory
-typedef struct {
-
-   page_dir_entry_t entries[1024];  // actual entries used by the CPU
-   page_table_t *page_tables[1024]; // pointers to the tables (virtual addreses)
-
-} page_directory_t;
-
+// Forward-declaring page_directory_t
+typedef struct page_directory_t page_directory_t;
 
 void init_paging();
-page_directory_t *get_curr_page_dir();
+
+void initialize_page_directory(page_directory_t *pdir, uptr paddr, bool us);
 
 void map_page(page_directory_t *pdir,
-              uint32_t vaddr,
-              uint32_t paddr,
+              uptr vaddr,
+              uptr paddr,
               bool us,
               bool rw);
 
-bool is_mapped(page_directory_t *pdir, uint32_t vaddr);
-bool unmap_page(page_directory_t *pdir, uint32_t vaddr);
+bool is_mapped(page_directory_t *pdir, uptr vaddr);
+void unmap_page(page_directory_t *pdir, uptr vaddr);
 
-void map_pages(page_directory_t *pdir,
-               uint32_t vaddr,
-               uint32_t paddr,
-               uint32_t pageCount,
-               bool us,
-               bool rw);
+void *get_mapping(page_directory_t *pdir, uptr vaddr);
 
-bool kbasic_virtual_alloc(page_directory_t *pdir, uint32_t vaddr,
-                          size_t size, bool us, bool rw);
+page_directory_t *pdir_clone(page_directory_t *pdir);
 
-bool kbasic_virtual_free(page_directory_t *pdir, uint32_t vaddr, size_t size);
+static inline void
+map_pages(page_directory_t *pdir,
+          uptr vaddr,
+          uptr paddr,
+          int pageCount,
+          bool us,
+          bool rw)
+{
+   for (int i = 0; i < pageCount; i++) {
+      map_page(pdir, vaddr + (i << PAGE_SHIFT), paddr + (i << PAGE_SHIFT), us, rw);
+   }
+}
+
+extern page_directory_t *kernel_page_dir;
+extern page_directory_t *curr_page_dir;
+
+void set_page_directory(page_directory_t *dir);
+
+static ALWAYS_INLINE page_directory_t *get_curr_page_dir()
+{
+   return curr_page_dir;
+}
+
+static ALWAYS_INLINE page_directory_t *get_kernel_page_dir()
+{
+   return kernel_page_dir;
+}

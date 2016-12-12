@@ -4,7 +4,7 @@
 DEPDIR = .d
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
-POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
+POSTCOMPILE = $(MV) -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
 INIT_UNSTRIPPED = $(BUILD_DIR)/ui
 
@@ -13,21 +13,25 @@ ASM_SOURCES=$(wildcard *.asm)
 OBJECTS=$(ASM_SOURCES:%.asm=$(BUILD_DIR)/%.o) $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 
 $(shell mkdir -p $(DEPDIR) >/dev/null)
+$(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
 $(INIT_TARGET): $(OBJECTS)
-	ld -m elf_i386 -Ttext=0x08000000 -o $(INIT_UNSTRIPPED) $(OBJECTS)
-	objcopy -O binary -j .text -j .rodata -j .data $(INIT_UNSTRIPPED) $@
+	@echo Linking $@ ...
+	@ld -m $(ELF_LD_FORMAT) -Ttext=0x08000000 -o $(INIT_UNSTRIPPED) $(OBJECTS)
+	@objcopy -O binary -j .text -j .rodata -j .data $(INIT_UNSTRIPPED) $@
 
 $(BUILD_DIR)/%.o : %.asm
-	nasm -f elf32 $(OUTPUT_OPTION) $<
+	@echo Compiling $< ...
+	@$(NASM) -f $(ELF_NASM_FORMAT) $(OUTPUT_OPTION) $<
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
-	 $(COMPILE.c) $(OUTPUT_OPTION) $<
-	 $(POSTCOMPILE)
+	@echo Compiling $< ...
+	@$(COMPILE.c) $(OUTPUT_OPTION) $<
+	@$(POSTCOMPILE)
 
 clean:
-	rm -rf $(DEPDIR)
+	$(RM) -rf $(DEPDIR)
 
 .PHONY: clean
 

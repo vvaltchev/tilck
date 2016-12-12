@@ -1,9 +1,9 @@
 [BITS 32]
 
-extern _main
+extern main
 global _start
 
 section .text
 
 _start:
-jmp _main
+jmp main

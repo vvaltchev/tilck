@@ -24,19 +24,19 @@ enum vga_color {
    COLOR_WHITE = 15,
 };
 
-static inline uint8_t make_color(enum vga_color fg, enum vga_color bg) {
+static inline u8 make_color(enum vga_color fg, enum vga_color bg) {
    return fg | bg << 4;
 }
 
-static inline uint16_t make_vgaentry(char c, uint8_t color) {
-   uint16_t c16 = c;
-   uint16_t color16 = color;
+static inline u16 make_vgaentry(char c, u8 color) {
+   u16 c16 = c;
+   u16 color16 = color;
    return c16 | color16 << 8;
 }
 
 
 void term_init();
-void term_setcolor(uint8_t color);
+void term_setcolor(u8 color);
 void term_movecur(int row, int col);
 void term_write_char(char c);
 void term_write_string(const char *str);

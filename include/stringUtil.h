@@ -9,7 +9,7 @@ typedef unsigned char *va_list;
 #define va_end(list) // do nothing.
 
 // TODO: optimize
-static ALWAYS_INLINE void memset(void *ptr, uint8_t value, size_t num)
+static ALWAYS_INLINE void memset(void *ptr, u8 value, size_t num)
 {
    for (size_t i = 0; i < num; ++i) {
       ((char *)ptr)[i] = value;
@@ -28,8 +28,8 @@ void memcpy(void *dest, const void *src, size_t n);
 void memmove(void *dest, const void *src, size_t n);
 
 
-void itoa(int value, char *destBuf);
-void uitoa(uint32_t value, char *destBuf, uint32_t base);
+void itoa(sptr value, char *destBuf);
+void uitoa(uptr value, char *destBuf, u32 base);
 
 static ALWAYS_INLINE bool isalpha_lower(char c) {
    return (c >= 'a' && c <= 'z');

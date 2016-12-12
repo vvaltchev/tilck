@@ -1,65 +1,49 @@
 #include <commonDefs.h>
 
 #include <irq.h>
+#include <arch/i386/arch_utils.h>
 
 #include <stringUtil.h>
 #include <term.h>
 
+void idt_set_gate(u8 num, void *handler, u16 sel, u8 flags);
 
 
 /* These are own ISRs that point to our special IRQ handler
 *  instead of the regular 'fault_handler' function */
-extern void irq0();
-extern void irq1();
-extern void irq2();
-extern void irq3();
-extern void irq4();
-extern void irq5();
-extern void irq6();
-extern void irq7();
-extern void irq8();
-extern void irq9();
-extern void irq10();
-extern void irq11();
-extern void irq12();
-extern void irq13();
-extern void irq14();
-extern void irq15();
+void irq0();
+void irq1();
+void irq2();
+void irq3();
+void irq4();
+void irq5();
+void irq6();
+void irq7();
+void irq8();
+void irq9();
+void irq10();
+void irq11();
+void irq12();
+void irq13();
+void irq14();
+void irq15();
 
 /* This array is actually an array of function pointers. We use
 *  this to handle custom IRQ handlers for a given IRQ */
-void *irq_routines[16] =
-{
-   0, 0, 0, 0, 0, 0, 0, 0,
-   0, 0, 0, 0, 0, 0, 0, 0
-};
+void *irq_routines[16] = { 0 };
+
 
 /* This installs a custom IRQ handler for the given IRQ */
-void irq_install_handler(int irq, void(*handler)(struct regs *r))
+void irq_install_handler(u8 irq, void(*handler)(regs *r))
 {
    irq_routines[irq] = handler;
 }
 
 /* This clears the handler for a given IRQ */
-void irq_uninstall_handler(int irq)
+void irq_uninstall_handler(u8 irq)
 {
    irq_routines[irq] = NULL;
 }
-
-void irq_remap(void)
-{
-   outb(0x20, 0x11);
-   outb(0xA0, 0x11);
-   outb(0x21, 0x20);
-   outb(0xA1, 0x28);
-   outb(0x21, 0x04);
-   outb(0xA1, 0x02);
-   outb(0x21, 0x01);
-   outb(0xA1, 0x01);
-   outb(0x21, 0x0);
-   outb(0xA1, 0x0);
-}
-
 
 #define PIC1      0x20     /* IO base address for master PIC */
 #define PIC2      0xA0     /* IO base address for slave PIC */
@@ -70,7 +54,7 @@ void irq_remap(void)
 
 #define PIC_EOI      0x20     /* End-of-interrupt command code */
 
-void PIC_sendEOI(uint8_t irq)
+void PIC_sendEOI(u8 irq)
 {
    if (irq >= 8) {
       outb(PIC2_COMMAND, PIC_EOI);
@@ -96,14 +80,16 @@ static inline void io_wait() {}
 
 
 
-/* Normally, IRQs 0 to 7 are mapped to entries 8 to 15. This
-*  is a problem in protected mode, because IDT entry 8 is a
-*  Double Fault! Without remapping, every time IRQ0 fires,
-*  you get a Double Fault Exception, which is NOT actually
-*  what's happening. We send commands to the Programmable
-*  Interrupt Controller (PICs - also called the 8259's) in
-*  order to make IRQ0 to 15 be remapped to IDT entries 32 to
-*  47 */
+/*
+ * Normally, IRQs 0 to 7 are mapped to entries 8 to 15. This
+ * is a problem in protected mode, because IDT entry 8 is a
+ * Double Fault! Without remapping, every time IRQ0 fires,
+ * you get a Double Fault Exception, which is NOT actually
+ * what's happening. We send commands to the Programmable
+ * Interrupt Controller (PICs - also called the 8259's) in
+ * order to make IRQ0 to 15 be remapped to IDT entries 32 to
+ * 47.
+ */
 
 /*
    arguments:
@@ -112,7 +98,7 @@ static inline void io_wait() {}
    offset2 - same for slave PIC: offset2..offset2+7
 */
 
-void PIC_remap(uint8_t offset1, uint8_t offset2)
+void PIC_remap(u8 offset1, u8 offset2)
 {
    unsigned char a1, a2;
 
@@ -141,9 +127,9 @@ void PIC_remap(uint8_t offset1, uint8_t offset2)
    outb(PIC2_DATA, a2);
 }
 
-void IRQ_set_mask(uint8_t IRQline) {
-   uint16_t port;
-   uint8_t value;
+void IRQ_set_mask(u8 IRQline) {
+   u16 port;
+   u8 value;
 
    if (IRQline < 8) {
       port = PIC1_DATA;
@@ -156,9 +142,9 @@ void IRQ_set_mask(uint8_t IRQline) {
    outb(port, value);
 }
 
-void IRQ_clear_mask(uint8_t IRQline) {
-   uint16_t port;
-   uint8_t value;
+void IRQ_clear_mask(u8 IRQline) {
+   u16 port;
+   u8 value;
 
    if (IRQline < 8) {
       port = PIC1_DATA;
@@ -177,45 +163,46 @@ void IRQ_clear_mask(uint8_t IRQline) {
 *  is just like installing the exception handlers */
 void irq_install()
 {
-   //irq_remap();
    PIC_remap(32, 40);
 
-   idt_set_gate(32, (unsigned)irq0, 0x08, 0x8E);
-   idt_set_gate(33, (unsigned)irq1, 0x08, 0x8E);
-   idt_set_gate(34, (unsigned)irq2, 0x08, 0x8E);
-   idt_set_gate(35, (unsigned)irq3, 0x08, 0x8E);
-   idt_set_gate(36, (unsigned)irq4, 0x08, 0x8E);
-   idt_set_gate(37, (unsigned)irq5, 0x08, 0x8E);
-   idt_set_gate(38, (unsigned)irq6, 0x08, 0x8E);
-   idt_set_gate(39, (unsigned)irq7, 0x08, 0x8E);
-   idt_set_gate(40, (unsigned)irq8, 0x08, 0x8E);
-   idt_set_gate(41, (unsigned)irq9, 0x08, 0x8E);
-   idt_set_gate(42, (unsigned)irq10, 0x08, 0x8E);
-   idt_set_gate(43, (unsigned)irq11, 0x08, 0x8E);
-   idt_set_gate(44, (unsigned)irq12, 0x08, 0x8E);
-   idt_set_gate(45, (unsigned)irq13, 0x08, 0x8E);
-   idt_set_gate(46, (unsigned)irq14, 0x08, 0x8E);
-   idt_set_gate(47, (unsigned)irq15, 0x08, 0x8E);
+   idt_set_gate(32, irq0, 0x08, 0x8E);
+   idt_set_gate(33, irq1, 0x08, 0x8E);
+   idt_set_gate(34, irq2, 0x08, 0x8E);
+   idt_set_gate(35, irq3, 0x08, 0x8E);
+   idt_set_gate(36, irq4, 0x08, 0x8E);
+   idt_set_gate(37, irq5, 0x08, 0x8E);
+   idt_set_gate(38, irq6, 0x08, 0x8E);
+   idt_set_gate(39, irq7, 0x08, 0x8E);
+   idt_set_gate(40, irq8, 0x08, 0x8E);
+   idt_set_gate(41, irq9, 0x08, 0x8E);
+   idt_set_gate(42, irq10, 0x08, 0x8E);
+   idt_set_gate(43, irq11, 0x08, 0x8E);
+   idt_set_gate(44, irq12, 0x08, 0x8E);
+   idt_set_gate(45, irq13, 0x08, 0x8E);
+   idt_set_gate(46, irq14, 0x08, 0x8E);
+   idt_set_gate(47, irq15, 0x08, 0x8E);
 }
 
-/* Each of the IRQ ISRs point to this function, rather than
-*  the 'fault_handler' in 'isrs.c'. The IRQ Controllers need
-*  to be told when you are done servicing them, so you need
-*  to send them an "End of Interrupt" command (0x20). There
-*  are two 8259 chips: The first exists at 0x20, the second
-*  exists at 0xA0. If the second controller (an IRQ from 8 to
-*  15) gets an interrupt, you need to acknowledge the
-*  interrupt at BOTH controllers, otherwise, you only send
-*  an EOI command to the first controller. If you don't send
-*  an EOI, you won't raise any more IRQs */
+/*
+ * Each of the IRQ ISRs point to this function, rather than
+ * the 'fault_handler' in 'isrs.c'. The IRQ Controllers need
+ * to be told when you are done servicing them, so you need
+ * to send them an "End of Interrupt" command (0x20). There
+ * are two 8259 chips: The first exists at 0x20, the second
+ * exists at 0xA0. If the second controller (an IRQ from 8 to
+ * 15) gets an interrupt, you need to acknowledge the
+ * interrupt at BOTH controllers, otherwise, you only send
+ * an EOI command to the first controller. If you don't send
+ * an EOI, you won't raise any more IRQs.
+ */
 
 
-void irq_handler(struct regs *r)
+void irq_handler(regs *r)
 {
    /* This is a blank function pointer */
-   void(*handler)(struct regs *r);
+   void(*handler)(regs *r);
 
-   const uint8_t irq_no = r->int_no - 32;
+   const u8 irq_no = r->int_no - 32;
 
    /* Find out if we have a custom handler to run for this
    *  IRQ, and then finally, run it */
