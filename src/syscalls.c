@@ -3,6 +3,7 @@
 #include <stringUtil.h>
 #include <term.h>
 #include <irq.h>
+#include <process.h>
 
 typedef sptr (*syscall_type)();
 
@@ -21,6 +22,7 @@ sptr sys_exit()
 // 2
 sptr sys_fork()
 {
+   fork_current_process();
    return 0;
 }
 
@@ -97,6 +99,11 @@ sptr handle_syscall(regs *r)
    //printk("Arg 4 (esi): %p\n", r->esi);
    //printk("Arg 5 (edi): %p\n", r->edi);
    //printk("Arg 6 (ebp): %p\n\n", r->ebp);
+
+   if (syscall_no == 2 /* fork */) {
+      printk("syscall is fork(), saving state..\n");
+      save_current_process_state(r);
+   }
 
    r->eax =
       syscalls_pointers[r->eax](r->ebx, r->ecx, r->edx,

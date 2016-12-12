@@ -9,9 +9,9 @@
 struct process_info {
 
    process_info *next;
+   process_info *prev;
 
    int pid;
-   int tid;
    int state;
 
    regs state_regs;

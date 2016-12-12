@@ -27,7 +27,12 @@ volatile u32 timer_ticks = 0;
 
 
 void timer_handler(regs *r) {
+
    timer_ticks++;
-   schedule(r);
+
+   if (!(timer_ticks % 500)) {
+      save_current_process_state(r);
+      schedule();
+   }
 }
 
