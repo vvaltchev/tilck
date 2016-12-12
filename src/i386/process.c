@@ -7,7 +7,10 @@
 extern volatile u32 timer_ticks;
 void asm_context_switch_x86(u32 d, ...) NORETURN;
 
-process_info *processes = NULL;
+process_info *processes_list = NULL;
+process_info *current_process = NULL;
+
+int current_max_pid = -1;
 
 static ALWAYS_INLINE void context_switch(regs *r)
 {
@@ -38,12 +41,19 @@ static ALWAYS_INLINE void context_switch(regs *r)
 
 void add_process(process_info *p)
 {
-   if (!processes) {
-      processes = p;
+   if (!processes_list) {
+      p->next = p;
+      p->prev = p;
+      processes_list = p;
       return;
    }
 
-   // TODO: finish the implementation.
+   process_info *last = processes_list->prev;
+
+   last->next = p;
+   p->prev = last;
+   p->next = processes_list;
+   processes_list->prev = p;   
 }
 
 void first_usermode_switch(page_directory_t *pdir,
@@ -66,34 +76,37 @@ void first_usermode_switch(page_directory_t *pdir,
    asmVolatile("movl %0, %%eax" : "=r"(r.eflags));
 
    process_info *pi = kmalloc(sizeof(process_info));
-   pi->next = NULL;
-   pi->state_regs = r;
    pi->pdir = pdir;
+   pi->pid = ++current_max_pid;
+   memmove(&pi->state_regs, &r, sizeof(r));
 
    add_process(pi);
 
+   current_process = pi;
    set_page_directory(pdir);
-   context_switch(&processes->state_regs);
+   context_switch(&pi->state_regs);
 }
 
-
-void schedule(regs *r)
+void save_current_process_state(regs *r)
 {
-   if ((timer_ticks % 500)) return;
-
-   printk("sched!\n");
-   printk("current pdir is %p\n", get_curr_page_dir());
-   printk("eip: %p\n", r->eip);
+   memmove(&current_process->state_regs, r, sizeof(*r));
 
    if (r->int_no >= 32) {
-      /* 
-       * We are here because of an IRQ, likely the timer.
-       * and we have to send EOI to the PIC otherwise
-       * we won't get anymore IRQs.
-       */
       PIC_sendEOI(r->int_no - 32);
    }
+}
 
-   context_switch(r);
+void schedule()
+{
+   printk("sched!\n");
+   printk("Current pid: %i\n", current_process->pid);
+
+   //printk("current pdir is %p\n", get_curr_page_dir());
+   //printk("eip: %p\n", r->eip);
+
+   current_process = current_process->next;
+   printk("Switching to pid: %i\n", current_process->pid);
+
+   context_switch(&current_process->state_regs);
 }
 
