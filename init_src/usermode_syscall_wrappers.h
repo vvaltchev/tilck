@@ -11,7 +11,7 @@
 #define SYSCALL_WAITPID   7
 
 
-static int generic_syscall0(int syscall_num)
+static ALWAYS_INLINE int generic_syscall0(int syscall_num)
 {
    int result;
    asmVolatile("movl %0, %%eax\n"
@@ -24,7 +24,7 @@ static int generic_syscall0(int syscall_num)
    return result;
 }
 
-static int generic_syscall1(int syscall_num, void *arg1)
+static ALWAYS_INLINE int generic_syscall1(int syscall_num, void *arg1)
 {
    int result;
    asmVolatile("movl %0, %%eax\n"
@@ -38,7 +38,7 @@ static int generic_syscall1(int syscall_num, void *arg1)
    return result;
 }
 
-static int generic_syscall2(int syscall_num, void *arg1, void *arg2)
+static ALWAYS_INLINE int generic_syscall2(int syscall_num, void *arg1, void *arg2)
 {
    int result;
    asmVolatile("movl %0, %%eax\n"
@@ -54,7 +54,7 @@ static int generic_syscall2(int syscall_num, void *arg1, void *arg2)
 }
 
 
-static int generic_syscall3(int syscall_num, void *arg1, void *arg2, void *arg3)
+static ALWAYS_INLINE int generic_syscall3(int syscall_num, void *arg1, void *arg2, void *arg3)
 {
    int result;
    asmVolatile("movl %0, %%eax\n"
@@ -68,6 +68,11 @@ static int generic_syscall3(int syscall_num, void *arg1, void *arg2, void *arg3)
 
    asm("movl %%eax, %0": "=a"(result));
    return result;
+}
+
+static int fork()
+{
+   return generic_syscall0(SYSCALL_FORK);
 }
 
 static int open(const char *pathname, s32 flags, s32 mode)

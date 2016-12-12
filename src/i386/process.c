@@ -91,22 +91,59 @@ void save_current_process_state(regs *r)
 {
    memmove(&current_process->state_regs, r, sizeof(*r));
 
+   //printk("save_current_process_state(), eip = %p\n", r->eip);
+
    if (r->int_no >= 32) {
       PIC_sendEOI(r->int_no - 32);
    }
 }
 
+void switch_to_process(process_info *pi)
+{
+   current_process = pi;
+
+   printk("[sched] Switching to pid: %i\n", current_process->pid);
+
+   if (get_curr_page_dir() != current_process->pdir) {
+      //printk("[kernel] Switch pdir to %p\n", current_process->pdir);
+      set_page_directory(current_process->pdir);
+   }
+
+   //printk("context_switch() to eip = %p\n", current_process->state_regs.eip);
+   context_switch(&current_process->state_regs);
+}
+
+// Returns child's pid
+void fork_current_process()
+{
+   page_directory_t *pdir = pdir_clone(current_process->pdir);
+   
+   process_info *child = kmalloc(sizeof(process_info));
+   child->pdir = pdir;
+   child->pid = ++current_max_pid;
+   memmove(&child->state_regs,
+           &current_process->state_regs,
+           sizeof(child->state_regs));
+   child->state_regs.eax = 0;
+
+   //printk("forking current proccess with eip = %p\n", child->state_regs.eip);
+
+   add_process(child);
+
+   // Make the parent to get child's pid as return value.
+   current_process->state_regs.eax = child->pid;
+
+   switch_to_process(child);
+}
+
 void schedule()
 {
-   printk("sched!\n");
-   printk("Current pid: %i\n", current_process->pid);
+   //printk("sched!\n");
+   //printk("Current pid: %i\n", current_process->pid);
 
    //printk("current pdir is %p\n", get_curr_page_dir());
    //printk("eip: %p\n", r->eip);
 
-   current_process = current_process->next;
-   printk("Switching to pid: %i\n", current_process->pid);
-
-   context_switch(&current_process->state_regs);
+   switch_to_process(current_process->next);
 }
 
