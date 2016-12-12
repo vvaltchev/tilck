@@ -1,11 +1,13 @@
 
 #include <process.h>
 #include <stringUtil.h>
+#include <kmalloc.h>
 #include <arch/i386/process_int.h>
 
 extern volatile u32 timer_ticks;
-
 void asm_context_switch_x86(u32 d, ...) NORETURN;
+
+process_info *processes = NULL;
 
 static ALWAYS_INLINE void context_switch(regs *r)
 {
@@ -34,7 +36,18 @@ static ALWAYS_INLINE void context_switch(regs *r)
                           r->ss);
 }
 
-void first_usermode_switch(void *entry, void *stack_addr)
+void add_process(process_info *p)
+{
+   if (!processes) {
+      processes = p;
+      return;
+   }
+
+   // TODO: finish the implementation.
+}
+
+void first_usermode_switch(page_directory_t *pdir,
+                           void *entry, void *stack_addr)
 {
    regs r;
    memset(&r, 0, sizeof(r));
@@ -52,7 +65,15 @@ void first_usermode_switch(void *entry, void *stack_addr)
    asmVolatile("pop %eax");
    asmVolatile("movl %0, %%eax" : "=r"(r.eflags));
 
-   context_switch(&r);
+   process_info *pi = kmalloc(sizeof(process_info));
+   pi->next = NULL;
+   pi->state_regs = r;
+   pi->pdir = pdir;
+
+   add_process(pi);
+
+   set_page_directory(pdir);
+   context_switch(&processes->state_regs);
 }
 
 
