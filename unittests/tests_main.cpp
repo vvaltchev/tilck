@@ -10,6 +10,8 @@
 extern "C" {
 #include <kmalloc.h>
 #include <paging.h>
+#include <utils.h>
+
 void kmalloc_trivial_perf_test();
 void kmalloc_perf_test();
 }

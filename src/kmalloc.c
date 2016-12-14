@@ -2,6 +2,7 @@
 #include <kmalloc.h>
 #include <paging.h>
 #include <stringUtil.h>
+#include <utils.h>
 
 #define ALLOC_BLOCK_SIZE (8 * PAGE_SIZE)
 
