@@ -69,7 +69,7 @@ void kmain() {
    idt_install();
    irq_install();
 
-   init_physical_page_allocator();
+   init_pageframe_allocator();
    init_paging();
    initialize_kmalloc();
 

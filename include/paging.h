@@ -10,10 +10,10 @@
 
 #define KERNEL_BASE_VADDR ((uptr) 0xC0000000UL)
 
-void init_physical_page_allocator();
-void *alloc_phys_page();
-void free_phys_page(void *address);
-int get_free_physical_pages_count();
+void init_pageframe_allocator();
+void *alloc_pageframe();
+void free_pageframe(void *address);
+int get_free_pageframes_count();
 
 #ifdef __i386__
 #define PAGE_DIR_SIZE (2 * PAGE_SIZE + 4)
