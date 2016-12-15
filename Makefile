@@ -71,7 +71,7 @@ $(BUILD_DIR):
 tests: $(UNITTESTS_TARGET)
 
 $(UNITTESTS_TARGET):
-	@cd src && $(MAKE) TEST=1 BUILD_DIR=$(UNITTESTS_BUILD_DIR)/kernel
+	@cd src && $(MAKE) TESTING=1 BUILD_DIR=$(UNITTESTS_BUILD_DIR)/kernel
 	@cd unittests && $(MAKE) BUILD_DIR=$(UNITTESTS_BUILD_DIR)
 	
 clean:

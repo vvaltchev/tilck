@@ -14,7 +14,7 @@ OBJECTS:=$(SOURCES:%.c=$(BUILD_DIR)/%.o)
 export KERNEL_ARCH_CODE_STATIC_LIB_TARGET := $(BUILD_DIR)/kernel_arch.a
 
 
-ifdef TEST
+ifdef TESTING
 	export CFLAGS = $(OPT) $(WARN) $(DEFS) -std=c99 -DKERNEL_TEST $(INCDIRS) \
 	                -fvisibility=default -ffreestanding -g -nostdinc $(ARCH_CFLAGS)
 endif
@@ -25,7 +25,7 @@ $(shell mkdir -p $(BUILD_DIR) > /dev/null)
 $(KERNEL_TARGET): $(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME) $(OBJECTS)
 	@echo Packaging the kernel\'s static library ...
 	@$(AR) rcs $(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME) $(OBJECTS)
-ifndef TEST
+ifndef TESTING
 	@echo Linking the unstripped ELF binary of the kernel
 	@ld -m $(ELF_LD_FORMAT) -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) \
 	--start-group $(KERNEL_ARCH_CODE_STATIC_LIB_TARGET) $(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME) --end-group

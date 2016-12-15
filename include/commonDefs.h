@@ -81,7 +81,7 @@ typedef unsigned long u64;
 typedef long s64;
 #endif
 
-#ifndef TEST
+#ifndef TESTING
 
 typedef long ssize_t; // signed pointer-size integer
 typedef unsigned long size_t; // unsigned pointer-size integer

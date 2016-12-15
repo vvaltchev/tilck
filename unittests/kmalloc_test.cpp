@@ -7,14 +7,17 @@
 #include <unordered_map>
 #include <random>
 
+#include <gtest/gtest.h>
+
 extern "C" {
 #include <kmalloc.h>
 #include <paging.h>
 #include <utils.h>
+void kernel_kmalloc_perf_test();
 }
 
 using namespace std;
-
+using namespace testing;
 
 
 void init_test_kmalloc()
@@ -75,7 +78,7 @@ void kmalloc_chaos_test_sub(default_random_engine &e,
    }
 }
 
-void kmalloc_chaos_test()
+TEST(kmalloc, chaos_test)
 {
    random_device rdev;
    default_random_engine e(rdev());
@@ -85,4 +88,9 @@ void kmalloc_chaos_test()
    for (int i = 0; i < 100; i++) {
       kmalloc_chaos_test_sub(e, dist);
    }
+}
+
+TEST(kmalloc_kernel, perf_test)
+{
+   kernel_kmalloc_perf_test();
 }

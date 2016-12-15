@@ -3,7 +3,12 @@
 
 DEPDIR = .d
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
-TEST_CFLAGS =  $(OPT) $(WARN) -g $(INCDIRS) -DTEST $(ARCH_CFLAGS) -Wno-format
+
+GTEST_DIR = ../toolchain/googletest/googletest
+OTHER_INC_DIRS = -I$(GTEST_DIR)/include
+LIBS = $(GTEST_DIR)/libgtest.a $(GTEST_DIR)/libgtest_main.a -lpthread
+
+TEST_CFLAGS =  $(OPT) $(WARN) -g $(INCDIRS) $(OTHER_INC_DIRS) -DTESTING $(ARCH_CFLAGS) -Wno-format
 COMPILE.c = $(CC) -std=c99 $(DEPFLAGS) $(TEST_CFLAGS) -c
 COMPILE.cpp = $(CXX) -std=c++11 $(DEPFLAGS) $(TEST_CFLAGS) -c
 POSTCOMPILE = $(MV) -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
@@ -30,7 +35,7 @@ TEST_OBJECTS=$(TEST_C_SOURCES:%.c=$(BUILD_DIR)/%.o) $(TEST_CPP_SOURCES:%.cpp=$(B
 
 $(UNITTESTS_TARGET): $(TEST_OBJECTS)
 	@echo Linking $@ ...
-	@$(CXX) $(ARCH_CFLAGS) -o $@ $(TEST_OBJECTS) $(BUILD_DIR)/kernel/$(KERNEL_STATIC_LIB_TARGET_NAME) $(SYMBOL_WRAPPING)
+	@$(CXX) $(ARCH_CFLAGS) -o $@ $(TEST_OBJECTS) $(LIBS) $(BUILD_DIR)/kernel/$(KERNEL_STATIC_LIB_TARGET_NAME) $(SYMBOL_WRAPPING)
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
