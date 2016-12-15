@@ -1,111 +1,32 @@
 #include <cstdio>
-#include <cstdint>
-#include <cstdlib>
-#include <cassert>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <random>
-
-extern "C" {
-#include <kmalloc.h>
-#include <paging.h>
-#include <utils.h>
-
-void kmalloc_trivial_perf_test();
-void kmalloc_perf_test();
-}
 
 using namespace std;
 
-
-
-void init_test_kmalloc()
-{
-   uptr align_size = 16 * PAGE_SIZE;
-
-   uptr addr = (uptr)malloc(HEAP_DATA_SIZE + align_size);
-   addr += align_size;
-   addr &= ~(align_size - 1);
-
-   kernel_heap_base = (void *)addr;
+extern "C" {
+   void kernel_kmalloc_perf_test();
+   void init_pageframe_allocator();
+   void initialize_kmalloc();      
 }
 
+void init_test_kmalloc();
+void kmalloc_chaos_test();
 
-void kmalloc_chaos_test_sub(default_random_engine &e, lognormal_distribution<> &dist)
+void inititalize_kernel_data_structures()
 {
-   size_t mem_allocated = 0;
-   vector<pair<void *, size_t>> allocations;
-
-   for (int i = 0; i < 1000; i++) {
-
-      size_t orig_s = round(dist(e));
-      size_t s = roundup_next_power_of_2(MAX(orig_s, MIN_BLOCK_SIZE));
-
-      //printf("[Test] Allocating %u bytes..\n", s);
-
-      void *r = kmalloc(s);
-
-      if (!r) {
-         //printf("**** Unable to allocate %u bytes (allocated by now: %u)\n", s, mem_allocated);
-         continue;
-      }
-
-      mem_allocated += s;
-      allocations.push_back(make_pair(r, s));
-   }
-
-   for (const auto& e : allocations) {
-      //printf("[Test] Free ptr at %p (size: %u)\n", e.first, e.second);
-      kfree(e.first, e.second);
-      mem_allocated -= e.second;
-   }
-
-   // Now, re-allocate all the chunks and expect to get the same results.
-
-   for (const auto& e : allocations) {
-
-      //printf("Re-allocating block of size %u\n", e.second);
-      void *ptr = kmalloc(e.second);
-
-      if (ptr != e.first) {
-         printf("TEST FAILED\n");
-         printf("ptr expected: %p\n", e.first);
-         printf("ptr got:      %p\n", ptr);
-         break;
-      }
-   }
-
-   for (const auto& e : allocations) {
-      kfree(e.first, e.second);
-      mem_allocated -= e.second;
-   }
-}
-
-void kmalloc_chaos_test()
-{
-   random_device rdev;
-   default_random_engine e(rdev());
-
-   lognormal_distribution<> dist(5.0, 3);
-
-   for (int i = 0; i < 100; i++) {
-      kmalloc_chaos_test_sub(e, dist);
-   }
-}
-
-
-
-int main(int argc, char **argv) {
-
-   init_test_kmalloc();
    init_pageframe_allocator();
-   initialize_kmalloc();
+   initialize_kmalloc();   
+}
+
+int main(int argc, char **argv)
+{
+   // Initialize mock-up, before kernel itself
+   init_test_kmalloc();
+
+   // Run the kernel initialization
+   inititalize_kernel_data_structures();
 
    kmalloc_chaos_test();
-
-   //kmalloc_trivial_perf_test();
-   kmalloc_perf_test();
+   kernel_kmalloc_perf_test();
 
    return 0;
 }

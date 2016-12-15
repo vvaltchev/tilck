@@ -11,7 +11,7 @@
 
 extern int random_values[RANDOM_VALUES_COUNT];
 
-void kmalloc_perf_test()
+void kernel_kmalloc_perf_test()
 {
    const int iters = 1000;
    int memAllocated = 0;
