@@ -9,6 +9,8 @@
 #include <debug_utils.h>
 #include <process.h>
 
+#include <arch/generic_x86/utils.h>
+
 #define TIMER_FREQ_HZ 100
 
 void gdt_install();
@@ -69,7 +71,7 @@ void kmain() {
    idt_install();
    irq_install();
 
-   init_physical_page_allocator();
+   init_pageframe_allocator();
    init_paging();
    initialize_kmalloc();
 

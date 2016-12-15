@@ -3,12 +3,15 @@
 #include <kmalloc.h>
 #include <stringUtil.h>
 #include <paging.h>
+#include <utils.h>
+#include <arch/generic_x86/utils.h>
+
 
 #define RANDOM_VALUES_COUNT 1000
 
 extern int random_values[RANDOM_VALUES_COUNT];
 
-void kmalloc_perf_test()
+void kernel_kmalloc_perf_test()
 {
    const int iters = 1000;
    int memAllocated = 0;

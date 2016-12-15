@@ -3,6 +3,7 @@
 
 #include <commonDefs.h>
 #include <process.h>
+#include <arch/generic_x86/utils.h>
 
 // Forward-declaring regs
 typedef struct regs regs;

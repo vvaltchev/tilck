@@ -147,7 +147,7 @@
     <ClCompile Include="..\src\i386\irq.c" />
     <ClCompile Include="..\src\kb.c" />
     <ClCompile Include="..\src\main.c" />
-    <ClCompile Include="..\src\pageAllocator.c" />
+    <ClCompile Include="..\src\pageframe_allocator.c" />
     <ClCompile Include="..\src\i386\paging.c" />
     <ClCompile Include="..\src\stringUtil.c" />
     <ClCompile Include="..\src\syscalls.c" />
@@ -160,6 +160,7 @@
     <ClCompile Include="..\src\i386\utils32.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\arch\generic_x86\utils.h" />
     <ClInclude Include="..\include\arch\i386\process_int.h" />
     <ClInclude Include="..\include\commonDefs.h" />
     <ClInclude Include="..\include\irq.h" />
@@ -171,6 +172,7 @@
     <ClInclude Include="..\include\debug_utils.h" />
     <ClInclude Include="..\include\arch\i386\paging_int.h" />
     <ClInclude Include="..\include\arch\i386\arch_utils.h" />
+    <ClInclude Include="..\include\utils.h" />
     <ClInclude Include="..\init_src\string.h" />
     <ClInclude Include="..\init_src\usermode_syscall_wrappers.h" />
   </ItemGroup>
