@@ -15,8 +15,8 @@
 #define KERNEL_PADDR_TO_VADDR(paddr) ((typeof(paddr))((uptr)(paddr) + KERNEL_BASE_VADDR))
 #define KERNEL_VADDR_TO_PADDR(vaddr) ((typeof(vaddr))((uptr)(vaddr) - KERNEL_BASE_VADDR))
 
-void *paging_alloc_phys_page();
-void paging_free_phys_page(void *address);
+void *paging_alloc_pageframe();
+void paging_free_pageframe(void *address);
 
 #define PAGE_COW_FLAG 1
 #define PAGE_COW_ORIG_RW 2
@@ -59,7 +59,7 @@ void handle_page_fault(regs *r)
          memmove(page_size_buf, page_vaddr, PAGE_SIZE);
 
          // Allocate and set a new page.
-         uptr paddr = (uptr) alloc_phys_page();
+         uptr paddr = (uptr) alloc_pageframe();
          ptable->pages[page_table_index].pageAddr = paddr >> PAGE_SHIFT;
          ptable->pages[page_table_index].rw = true;
          ptable->pages[page_table_index].avail = 0;
@@ -192,7 +192,7 @@ void map_page(page_directory_t *pdir,
 
       // we have to create a page table for mapping 'vaddr'
 
-      u32 page_physical_addr = (u32)paging_alloc_phys_page();
+      u32 page_physical_addr = (u32)paging_alloc_pageframe();
 
       ptable = (void*)KERNEL_PADDR_TO_VADDR(page_physical_addr);
 
@@ -283,10 +283,10 @@ void init_paging()
    set_fault_handler(FAULT_GENERAL_PROTECTION, handle_general_protection_fault);
 
    kernel_page_dir =
-      (page_directory_t *) KERNEL_PADDR_TO_VADDR(paging_alloc_phys_page());
+      (page_directory_t *) KERNEL_PADDR_TO_VADDR(paging_alloc_pageframe());
 
-   paging_alloc_phys_page(); // The page directory uses 3 pages!
-   paging_alloc_phys_page();
+   paging_alloc_pageframe(); // The page directory uses 3 pages!
+   paging_alloc_pageframe();
 
    initialize_page_directory(kernel_page_dir,
                              (uptr) KERNEL_VADDR_TO_PADDR(kernel_page_dir), true);
@@ -294,7 +294,7 @@ void init_paging()
    // Create page entries for the whole 4th GB of virtual memory
    for (int i = 768; i < 1024; i++) {
 
-      u32 page_physical_addr = (u32)paging_alloc_phys_page();
+      u32 page_physical_addr = (u32)paging_alloc_pageframe();
 
       page_table_t *ptable = (void*)KERNEL_PADDR_TO_VADDR(page_physical_addr);
 
@@ -320,5 +320,5 @@ void init_paging()
    set_page_directory(kernel_page_dir);
 
    // Page-size buffer used for COW.
-   page_size_buf = KERNEL_PADDR_TO_VADDR(paging_alloc_phys_page());
+   page_size_buf = KERNEL_PADDR_TO_VADDR(paging_alloc_pageframe());
 }

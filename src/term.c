@@ -2,6 +2,7 @@
 #include <term.h>
 #include <stringUtil.h>
 #include <paging.h>
+#include <arch/generic_x86/utils.h>
 
 #define TERMINAL_VIDEO_ADDR ((volatile u16*)(KERNEL_BASE_VADDR + 0xB8000))
 #define TERMINAL_BUFFER_ADDR ((volatile u16*)(KERNEL_BASE_VADDR + 0x10000))

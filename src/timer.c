@@ -1,7 +1,7 @@
 
 #include <commonDefs.h>
 #include <process.h>
-
+#include <arch/generic_x86/utils.h>
 
 /*
  * Sets timer's frequency.
