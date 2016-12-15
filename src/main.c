@@ -9,6 +9,8 @@
 #include <debug_utils.h>
 #include <process.h>
 
+#include <arch/generic_x86/utils.h>
+
 #define TIMER_FREQ_HZ 100
 
 void gdt_install();

@@ -101,28 +101,6 @@ typedef ssize_t sptr;
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 
-static ALWAYS_INLINE void outb(u16 port, u8 val)
-{
-   asmVolatile("outb %0, %1" : : "a"(val), "Nd"(port));
-   /* There's an outb %al, $imm8  encoding, for compile-time constant port numbers that fit in 8b.  (N constraint).
-   * Wider immediate constants would be truncated at assemble-time (e.g. "i" constraint).
-   * The  outb  %al, %dx  encoding is the only option for all other cases.
-   * %1 expands to %dx because  port  is a u16.  %w1 could be used if we had the port number a wider C type */
-}
-
-static ALWAYS_INLINE u8 inb(u16 port)
-{
-   u8 ret_val;
-   asmVolatile("inb %[port], %[result]"
-      : [result] "=a"(ret_val)   // using symbolic operand names
-      : [port] "Nd"(port));
-   return ret_val;
-}
-
-#define halt() asmVolatile("hlt")
-#define cli() asmVolatile("cli")
-#define sti() asmVolatile("sti")
-
 // Used to break with the Bochs x86 emulator.
 #define magic_debug_break() asmVolatile("xchg %bx, %bx")
 
