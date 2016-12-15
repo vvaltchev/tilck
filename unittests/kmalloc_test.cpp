@@ -63,13 +63,7 @@ void kmalloc_chaos_test_sub(default_random_engine &e,
    for (const auto& e : allocations) {
 
       void *ptr = kmalloc(e.second);
-
-      if (ptr != e.first) {
-         printf("TEST FAILED\n");
-         printf("ptr expected: %p\n", e.first);
-         printf("ptr got:      %p\n", ptr);
-         break;
-      }
+      ASSERT_EQ(e.first, ptr);
    }
 
    for (const auto& e : allocations) {
