@@ -5,7 +5,7 @@ set -e
 
 echo 'Installing the necessary packages...'
 
-cmd='sudo apt-get install gcc g++ git nasm gcc-multilib g++-multilib make cmake'
+cmd='sudo apt-get install gcc g++ git nasm gcc-multilib g++-multilib make cmake binutils binutils-multiarch'
 echo $cmd
 
 $cmd
