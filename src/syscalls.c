@@ -22,8 +22,7 @@ sptr sys_exit()
 // 2
 sptr sys_fork()
 {
-   fork_current_process();
-   return 0;
+   return fork_current_process();
 }
 
 // 3

@@ -26,11 +26,71 @@ void paging_free_pageframe(void *address);
 
 page_directory_t *kernel_page_dir = NULL;
 page_directory_t *curr_page_dir = NULL;
-
-
 void *page_size_buf = NULL;
+u16 *pageframes_refcount = NULL;
+
+
 
 volatile bool in_page_fault = false;
+
+
+bool handle_potential_cow(u32 vaddr)
+{
+   page_table_t *ptable;
+   u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
+   u32 page_dir_index = (vaddr >> 22) & 0x3FF;
+
+   ptable = curr_page_dir->page_tables[page_dir_index];
+   u8 flags = ptable->pages[page_table_index].avail;
+
+   if (!(flags & (PAGE_COW_FLAG | PAGE_COW_ORIG_RW))) {
+      // That was not a page-fault caused by COW.
+      return false;
+   }
+
+   void *page_vaddr = (void *)(vaddr & PAGE_MASK);
+   u32 orig_page_paddr = ptable->pages[page_table_index].pageAddr;
+
+   printk("*** DEBUG: attempt to write COW page at %p\n", page_vaddr);
+
+   if (pageframes_refcount[orig_page_paddr] == 1) {
+
+      /*
+       * This page is not shared anymore. No need for copying it.
+       */
+
+      ptable->pages[page_table_index].rw = true;
+      ptable->pages[page_table_index].avail = 0;
+      invalidate_tlb_page((uptr)ptable);
+
+      printk("*** DEBUG: the page was not shared anymore. "
+               "Making it writable.\n");
+
+      return true;
+   }
+
+   // Decrease the ref-count of the original pageframe.
+   pageframes_refcount[orig_page_paddr]--;
+
+   ASSERT(pageframes_refcount[orig_page_paddr] > 0);
+
+   // Copy the whole page to our temporary buffer.
+   memmove(page_size_buf, page_vaddr, PAGE_SIZE);
+
+   // Allocate and set a new page.
+   uptr paddr = (uptr)alloc_pageframe();
+   ptable->pages[page_table_index].pageAddr = paddr >> PAGE_SHIFT;
+   ptable->pages[page_table_index].rw = true;
+   ptable->pages[page_table_index].avail = 0;
+
+   invalidate_tlb_page((uptr)ptable);
+
+   // Copy back the page.
+   memmove(page_vaddr, page_size_buf, PAGE_SIZE);
+
+   // This was actually a COW-caused page-fault.
+   return true;
+}
 
 void handle_page_fault(regs *r)
 {
@@ -41,39 +101,9 @@ void handle_page_fault(regs *r)
    bool rw = (r->err_code & (1 << 1)) != 0;
    bool p = (r->err_code & (1 << 0)) != 0;
 
-   if (us && rw && p) {
-      page_table_t *ptable;
-      u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
-      u32 page_dir_index = (vaddr >> 22) & 0x3FF;
-
-      ptable = curr_page_dir->page_tables[page_dir_index];
-      u8 flags = ptable->pages[page_table_index].avail;
-
-      void *page_vaddr = (void *) (vaddr & PAGE_MASK);
-
-      if (flags & (PAGE_COW_FLAG | PAGE_COW_ORIG_RW)) {
-
-         printk("*** DEBUG: attempt to write COW page at %p\n", page_vaddr);
-
-         // Copy the whole page to our temporary buffer.
-         memmove(page_size_buf, page_vaddr, PAGE_SIZE);
-
-         // Allocate and set a new page.
-         uptr paddr = (uptr) alloc_pageframe();
-         ptable->pages[page_table_index].pageAddr = paddr >> PAGE_SHIFT;
-         ptable->pages[page_table_index].rw = true;
-         ptable->pages[page_table_index].avail = 0;
-
-         invalidate_tlb_page((uptr) ptable);
-
-         // Copy back the page.
-         memmove(page_vaddr, page_size_buf, PAGE_SIZE);
-
-         // This is not a "real" page-fault.
-         return;
-      }
+   if (us && rw && p && handle_potential_cow(vaddr)) {
+      return;
    }
-
 
    printk("*** PAGE FAULT in attempt to %s %p from %s %s\n",
           rw ? "WRITE" : "READ",
@@ -220,6 +250,8 @@ void map_page(page_directory_t *pdir,
    p.pageAddr = paddr >> PAGE_SHIFT;
 
    ptable->pages[page_table_index] = p;
+
+   invalidate_tlb_page((uptr)ptable);
 }
 
 page_directory_t *pdir_clone(page_directory_t *pdir)
@@ -237,36 +269,52 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
    for (int i = 0; i < 768; i++) {
 
       if (pdir->page_tables[i] == NULL) {
-         new_pdir->page_tables[i] = NULL;
          new_pdir->entries[i] = not_present;
+         new_pdir->page_tables[i] = NULL;
          continue;
       }
 
+      page_table_t *orig_pt = pdir->page_tables[i];
+
+      /*
+       * Mark all the pages in that page-table as COW.
+       */
+      for (int j = 0; j < 1024; j++) {
+
+         if (orig_pt->pages[j].avail & PAGE_COW_FLAG) {
+            // The page is already COW. Just increase its ref-count.
+            pageframes_refcount[orig_pt->pages[j].pageAddr]++;
+            continue;
+         }
+
+         int flags = PAGE_COW_FLAG;
+
+         if (orig_pt->pages[j].rw) {
+            flags |= PAGE_COW_ORIG_RW;
+         }
+
+         orig_pt->pages[j].avail = flags;
+         orig_pt->pages[j].rw = false;
+
+         // We're making for the first time this page to be COW.
+         pageframes_refcount[orig_pt->pages[j].pageAddr] = 2;
+      }
+
+      invalidate_tlb_page((uptr)orig_pt);
+
       // alloc memory for the page table
 
-      page_table_t *pt = kmalloc(sizeof(page_table_t));
+      page_table_t *pt = kmalloc(sizeof(*pt));
       uptr pt_paddr = (uptr)get_mapping(curr_page_dir, (uptr)pt);
 
       // copy the page table
-      memmove(pt, pdir->page_tables[i], sizeof(page_table_t));
+      memmove(pt, orig_pt, sizeof(*pt));
 
       new_pdir->page_tables[i] = pt;
 
       // copy the entry, but use the new page table
       new_pdir->entries[i] = pdir->entries[i];
       new_pdir->entries[i].pageTableAddr = pt_paddr >> PAGE_SHIFT;
-      
-      for (int j = 0; j < 1024; j++) {
-
-         int flags = PAGE_COW_FLAG;
-
-         if (pt->pages[j].rw) {
-            flags |= PAGE_COW_ORIG_RW;
-         }
-
-         pt->pages[j].avail = flags;
-         pt->pages[j].rw = false;
-      }
    }
 
    for (int i = 768; i < 1024; i++) {
@@ -313,12 +361,22 @@ void init_paging()
    map_pages(kernel_page_dir,
              KERNEL_PADDR_TO_VADDR(0x1000), 0x1000, 1024 - 1, false, true);
 
-   //printk("debug count used pdir entries: %u\n",
-   //       debug_count_used_pdir_entries(kernel_page_dir));
-
    ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 256);
    set_page_directory(kernel_page_dir);
 
    // Page-size buffer used for COW.
    page_size_buf = KERNEL_PADDR_TO_VADDR(paging_alloc_pageframe());
+
+
+   /*
+    * Allocate the buffer used for keeping a ref-count for each pageframe.
+    * This is necessary for COW.
+    */
+
+   size_t pagesframes_refcount_bufsize =
+      sizeof(pageframes_refcount[0]) * MB
+      * get_amount_of_physical_memory_in_mb() / PAGE_SIZE;
+
+   pageframes_refcount = kmalloc(pagesframes_refcount_bufsize);
+   memset(pageframes_refcount, 0, pagesframes_refcount_bufsize);
 }

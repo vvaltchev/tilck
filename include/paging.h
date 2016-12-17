@@ -3,10 +3,21 @@
 
 #include <commonDefs.h>
 
+/*
+ * Our simple pageframe allocator supports only 128 MB of RAW,
+ * for now. Supporting more than that requires a much more complex
+ * implementation in order to keep its performance good.
+ */
+#define MAX_MEM_SIZE_IN_MB 128
+
 #define PAGE_SHIFT 12
 #define PAGE_SIZE ((uptr)1 << PAGE_SHIFT)
 #define PAGE_MASK (~(PAGE_SIZE - 1))
 #define OFFSET_IN_PAGE_MASK (PAGE_SIZE - 1)
+
+#ifdef __i386__
+#define PAGE_DIR_SIZE (2 * PAGE_SIZE + 4)
+#endif
 
 #define KERNEL_BASE_VADDR ((uptr) 0xC0000000UL)
 
@@ -15,9 +26,17 @@ void *alloc_pageframe();
 void free_pageframe(void *address);
 int get_free_pageframes_count();
 
-#ifdef __i386__
-#define PAGE_DIR_SIZE (2 * PAGE_SIZE + 4)
-#endif
+
+/*
+ * For the moment, we don't know the total amount of RAM present
+ * in the system, so we just assume it to be MAX_MEM_SIZE_IN_MB.
+ * In the future, we'll fetch that information during the boot
+ * stage and return a real value.
+ */
+static ALWAYS_INLINE int get_amount_of_physical_memory_in_mb()
+{
+   return MAX_MEM_SIZE_IN_MB;
+}
 
 
 // Forward-declaring page_directory_t
@@ -49,7 +68,11 @@ map_pages(page_directory_t *pdir,
           bool rw)
 {
    for (int i = 0; i < pageCount; i++) {
-      map_page(pdir, vaddr + (i << PAGE_SHIFT), paddr + (i << PAGE_SHIFT), us, rw);
+      map_page(pdir,
+               vaddr + (i << PAGE_SHIFT),
+               paddr + (i << PAGE_SHIFT),
+               us,
+               rw);
    }
 }
 

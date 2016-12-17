@@ -45,12 +45,8 @@ void run_usermode_init()
 
    void *stack = (void *) (((uptr)vaddr + (16 + 4) * PAGE_SIZE - 1) & ~15);
 
-   // simulate a page directory of fork-ed process
-   // to observe COW working
-   page_directory_t *pdir2 = pdir_clone(pdir);
-
    printk("user mode stack addr: %p\n", stack);
-   first_usermode_switch(pdir2, vaddr, stack);
+   first_usermode_switch(pdir, vaddr, stack);
 }
 
 void show_hello_message()
