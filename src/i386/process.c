@@ -136,9 +136,10 @@ int fork_current_process()
    /*
     * Force the CR3 reflush using the current (parent's) pdir.
     * Without doing that, COW on parent's pages doesn't work immediately.
-    * TODO: investigate how to achieve this in lighter ways, for example
-    * by using invalidate_tlb_page().
+    * That is better (in this case) than invalidating all the pages affected,
+    * one by one.
     */
+
    set_page_directory(current_process->pdir);
    return child->pid;
 }

@@ -138,7 +138,10 @@ void reboot();
 #define DO_NOT_OPTIMIZE_AWAY(x) asmVolatile("" : "+r" ( (void *)(x) ))
 
 
-static ALWAYS_INLINE void invalidate_tlb_page(uptr addr)
+/*
+ * Invalidates the TLB entry used for resolving the page containing 'vaddr'.
+ */
+static ALWAYS_INLINE void invalidate_page(uptr vaddr)
 {
-   asmVolatile("invlpg (%0)" ::"r" (addr) : "memory");
+   asmVolatile("invlpg (%0)" ::"r" (vaddr) : "memory");
 }
