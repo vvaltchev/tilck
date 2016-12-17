@@ -61,7 +61,7 @@ bool handle_potential_cow(u32 vaddr)
 
       ptable->pages[page_table_index].rw = true;
       ptable->pages[page_table_index].avail = 0;
-      invalidate_tlb_page((uptr)ptable);
+      invalidate_page(vaddr);
 
       printk("*** DEBUG: the page was not shared anymore. "
                "Making it writable.\n");
@@ -83,7 +83,7 @@ bool handle_potential_cow(u32 vaddr)
    ptable->pages[page_table_index].rw = true;
    ptable->pages[page_table_index].avail = 0;
 
-   invalidate_tlb_page((uptr)ptable);
+   invalidate_page(vaddr);
 
    // Copy back the page.
    memmove(page_vaddr, page_size_buf, PAGE_SIZE);
@@ -185,6 +185,8 @@ void unmap_page(page_directory_t *pdir, uptr vaddr)
 
    page_t p = {0};
    ptable->pages[page_table_index] = p;
+
+   invalidate_page(vaddr);
 }
 
 void *get_mapping(page_directory_t *pdir, uptr vaddr)
@@ -251,7 +253,7 @@ void map_page(page_directory_t *pdir,
 
    ptable->pages[page_table_index] = p;
 
-   invalidate_tlb_page((uptr)ptable);
+   invalidate_page(vaddr);
 }
 
 page_directory_t *pdir_clone(page_directory_t *pdir)
@@ -298,9 +300,16 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
 
          // We're making for the first time this page to be COW.
          pageframes_refcount[orig_pt->pages[j].pageAddr] = 2;
+
+         /*
+          * If we wanted to use invalidate_page() instead of reloading CR3,
+          * we would had to invalidate all the affected virtual addresses
+          * this way:
+          * invalidate_page(((uptr)i << 22) | ((uptr)j << 12));
+          * That is too much. At that point, reloading CR3 is more convenient.
+          */
       }
 
-      invalidate_tlb_page((uptr)orig_pt);
 
       // alloc memory for the page table
 
