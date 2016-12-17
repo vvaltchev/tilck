@@ -114,7 +114,7 @@ void switch_to_process(process_info *pi)
 }
 
 // Returns child's pid
-void fork_current_process()
+int fork_current_process()
 {
    page_directory_t *pdir = pdir_clone(current_process->pdir);
    
@@ -133,7 +133,14 @@ void fork_current_process()
    // Make the parent to get child's pid as return value.
    current_process->state_regs.eax = child->pid;
 
-   switch_to_process(child);
+   /*
+    * Force the CR3 reflush using the current (parent's) pdir.
+    * Without doing that, COW on parent's pages doesn't work immediately.
+    * TODO: investigate how to achieve this in lighter ways, for example
+    * by using invalidate_tlb_page().
+    */
+   set_page_directory(current_process->pdir);
+   return child->pid;
 }
 
 void schedule()
