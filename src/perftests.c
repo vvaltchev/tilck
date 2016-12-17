@@ -1,7 +1,7 @@
 
 #include <commonDefs.h>
 #include <kmalloc.h>
-#include <stringUtil.h>
+#include <string_util.h>
 #include <paging.h>
 #include <utils.h>
 #include <arch/generic_x86/utils.h>

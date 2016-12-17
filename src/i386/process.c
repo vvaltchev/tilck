@@ -1,6 +1,6 @@
 
 #include <process.h>
-#include <stringUtil.h>
+#include <string_util.h>
 #include <kmalloc.h>
 #include <arch/i386/process_int.h>
 

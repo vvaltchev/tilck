@@ -1,6 +1,6 @@
 
 #include <commonDefs.h>
-#include <stringUtil.h>
+#include <string_util.h>
 #include <term.h>
 #include <irq.h>
 #include <process.h>

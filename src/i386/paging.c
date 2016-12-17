@@ -2,7 +2,7 @@
 #include <arch/i386/arch_utils.h>
 #include <paging.h>
 #include <irq.h>
-#include <stringUtil.h>
+#include <string_util.h>
 #include <kmalloc.h>
 #include <debug_utils.h>
 

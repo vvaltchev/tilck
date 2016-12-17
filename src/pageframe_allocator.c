@@ -1,7 +1,7 @@
 
 #include <commonDefs.h>
 #include <paging.h>
-#include <stringUtil.h>
+#include <string_util.h>
 
 #define MEM_SIZE_IN_MB 128
 #define INITIAL_MB_RESERVED 2
