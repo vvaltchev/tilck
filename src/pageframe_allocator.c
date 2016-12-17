@@ -3,12 +3,11 @@
 #include <paging.h>
 #include <string_util.h>
 
-#define MEM_SIZE_IN_MB 128
 #define INITIAL_MB_RESERVED 2
 #define MB_RESERVED_FOR_PAGING 2
 
 #define USABLE_MEM_SIZE_IN_MB \
-   (MEM_SIZE_IN_MB - INITIAL_MB_RESERVED - MB_RESERVED_FOR_PAGING)
+   (MAX_MEM_SIZE_IN_MB - INITIAL_MB_RESERVED - MB_RESERVED_FOR_PAGING)
 
 /*
  * By mapping 4096 KB (one page) in 1 bit, a single 32-bit integer maps 128 KB.
@@ -23,7 +22,7 @@
 #define PAGEFRAMES_BITFIELD_ELEMS (8 * USABLE_MEM_SIZE_IN_MB)
 
 
-volatile u32 pageframes_bitfield[8 * MEM_SIZE_IN_MB] = {0};
+volatile u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB] = {0};
 volatile u32 last_index = 0;
 volatile int pageframes_used = 0;
 
@@ -35,6 +34,8 @@ int get_free_pageframes_count()
 static u32 get_first_zero_bit_index(u32 num)
 {
    u32 i;
+
+   ASSERT(num != ~0U);
 
    for (i = 0; i < 32; i++) {
       if ((num & (1U << i)) == 0) break;

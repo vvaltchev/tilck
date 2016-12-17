@@ -104,6 +104,9 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 // Used to break with the Bochs x86 emulator.
 #define magic_debug_break() asmVolatile("xchg %bx, %bx")
 
+#define KB (1U << 10)
+#define MB (1U << 20)
+
 #define MIN(x, y) (((x) <= (y)) ? (x) : (y))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 
