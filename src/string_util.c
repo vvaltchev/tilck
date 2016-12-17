@@ -1,5 +1,5 @@
 
-#include <stringUtil.h>
+#include <string_util.h>
 #include <term.h>
 
 void itoa(sptr value, char *destBuf)

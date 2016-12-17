@@ -1,6 +1,6 @@
 
 #include <commonDefs.h>
-#include <stringUtil.h>
+#include <string_util.h>
 #include <term.h>
 #include <arch/generic_x86/utils.h>
 

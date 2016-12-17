@@ -2,7 +2,7 @@
 #include <commonDefs.h>
 
 #include <arch/i386/arch_utils.h>
-#include <stringUtil.h>
+#include <string_util.h>
 #include <term.h>
 
 /* Defines an IDT entry */

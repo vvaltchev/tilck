@@ -1,6 +1,6 @@
 
 #include <paging.h>
-#include <stringUtil.h>
+#include <string_util.h>
 
 bool kbasic_virtual_alloc(uptr vaddr, int pageCount)
 {
