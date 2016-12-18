@@ -4,8 +4,8 @@
 #include <paging.h>
 #include <arch/generic_x86/utils.h>
 
-#define TERMINAL_VIDEO_ADDR ((volatile u16*)(KERNEL_BASE_VADDR + 0xB8000))
-#define TERMINAL_BUFFER_ADDR ((volatile u16*)(KERNEL_BASE_VADDR + 0x10000))
+#define TERMINAL_VIDEO_ADDR ((volatile u16*)(KERNEL_BASE_VA + 0xB8000))
+#define TERMINAL_BUFFER_ADDR ((volatile u16*)(KERNEL_BASE_VA + 0x10000))
 
 #define TERMINAL_BUFFER_ROWS 1024
 #define TERMINAL_SCREEN_SIZE (term_width * term_height * 2)
@@ -82,7 +82,8 @@ static void from_buffer_to_video(int bufRow, int videoRow)
    }
 
    memcpy((void *)(TERMINAL_VIDEO_ADDR + videoRow * term_width),
-          (const void *)(TERMINAL_BUFFER_ADDR + bufRow * term_width), term_width * 2);
+          (const void *)(TERMINAL_BUFFER_ADDR + bufRow * term_width),
+          term_width * 2);
 }
 
 static void push_line_in_buffer(int videoRow)
@@ -90,7 +91,8 @@ static void push_line_in_buffer(int videoRow)
    int destIndex = buf_next_slot % TERMINAL_BUFFER_ROWS;
 
    memcpy((void *)(TERMINAL_BUFFER_ADDR + destIndex * term_width),
-          (const void *)(TERMINAL_VIDEO_ADDR + videoRow * term_width), term_width * 2);
+          (const void *)(TERMINAL_VIDEO_ADDR + videoRow * term_width),
+          term_width * 2);
 
    increase_buf_next_slot(1);
 }

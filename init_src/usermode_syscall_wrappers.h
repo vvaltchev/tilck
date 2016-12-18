@@ -1,5 +1,8 @@
 
+#pragma once
+
 #include <commonDefs.h>
+#include "syscall_interface.h"
 
 #define SYSCALL_RESTART   0
 #define SYSCALL_EXIT      1
@@ -11,71 +14,17 @@
 #define SYSCALL_WAITPID   7
 
 
-static ALWAYS_INLINE int generic_syscall0(int syscall_num)
-{
-   int result;
-   asmVolatile("movl %0, %%eax\n"
-               "int $0x80\n"
-               : // no output
-               : "m"(syscall_num)
-               : "%eax");
-
-   asm("movl %%eax, %0": "=a"(result));
-   return result;
-}
-
-static ALWAYS_INLINE int generic_syscall1(int syscall_num, void *arg1)
-{
-   int result;
-   asmVolatile("movl %0, %%eax\n"
-               "movl %1, %%ebx\n"
-               "int $0x80\n"
-               : // no output
-               : "m"(syscall_num), "m"(arg1)
-               : "%eax", "%ebx");
-
-   asm("movl %%eax, %0": "=a"(result));
-   return result;
-}
-
-static ALWAYS_INLINE int generic_syscall2(int syscall_num, void *arg1, void *arg2)
-{
-   int result;
-   asmVolatile("movl %0, %%eax\n"
-               "movl %1, %%ebx\n"
-               "movl %2, %%ecx\n"
-               "int $0x80\n"
-               : // no output
-               : "m"(syscall_num), "m"(arg1), "m"(arg2)
-               : "%eax", "%ebx", "%ecx");
-
-   asm("movl %%eax, %0": "=a"(result));
-   return result;
-}
-
-
-static ALWAYS_INLINE int generic_syscall3(int syscall_num, void *arg1, void *arg2, void *arg3)
-{
-   int result;
-   asmVolatile("movl %0, %%eax\n"
-               "movl %1, %%ebx\n"
-               "movl %2, %%ecx\n"
-               "movl %3, %%edx\n"
-               "int $0x80\n"
-               : // no output
-               : "m"(syscall_num), "m"(arg1), "m"(arg2), "m"(arg3)
-               : "%eax", "%ebx", "%ecx", "%edx");
-
-   asm("movl %%eax, %0": "=a"(result));
-   return result;
-}
-
-static int fork()
+static ALWAYS_INLINE int fork()
 {
    return generic_syscall0(SYSCALL_FORK);
 }
 
-static int open(const char *pathname, s32 flags, s32 mode)
+static ALWAYS_INLINE void _exit(int code)
+{
+   generic_syscall1(SYSCALL_EXIT, (void *) code);
+}
+
+static ALWAYS_INLINE int open(const char *pathname, s32 flags, s32 mode)
 {
    return generic_syscall3(SYSCALL_OPEN,
                            (void*)pathname,
@@ -83,7 +32,7 @@ static int open(const char *pathname, s32 flags, s32 mode)
                            (void*)mode);
 }
 
-static int write(int fd, const void *buf, size_t count)
+static ALWAYS_INLINE int write(int fd, const void *buf, size_t count)
 {
    return generic_syscall3(SYSCALL_WRITE,
                            (void*)fd,
@@ -91,7 +40,7 @@ static int write(int fd, const void *buf, size_t count)
                            (void*)count);
 }
 
-static int read(int fd, const void *buf, size_t count)
+static ALWAYS_INLINE int read(int fd, const void *buf, size_t count)
 {
    return generic_syscall3(SYSCALL_READ,
                            (void*)fd,
@@ -99,7 +48,7 @@ static int read(int fd, const void *buf, size_t count)
                            (void*)count);
 }
 
-static int close(int fd)
+static ALWAYS_INLINE int close(int fd)
 {
    return generic_syscall1(SYSCALL_CLOSE, (void *)fd);
 }

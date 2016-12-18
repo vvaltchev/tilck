@@ -1,5 +1,5 @@
 
-// Just defining so necessary symbols
+// Just defining some necessary symbols for making the linker happy.
 
 void isr0() { }
 void isr1() { }

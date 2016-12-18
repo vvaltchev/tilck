@@ -14,8 +14,9 @@ sptr sys_restart_syscall()
 }
 
 // 1
-sptr sys_exit()
+sptr sys_exit(int code)
 {
+   exit_current_process(code);
    return 0;
 }
 
@@ -76,19 +77,19 @@ syscall_type syscalls_pointers[] =
    sys_waitpid
 };
 
-ssize_t syscall_count = sizeof(syscalls_pointers) / sizeof(void *);
+ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
 
 #ifdef __i386__
 
 #include <arch/i386/arch_utils.h>
 
-sptr handle_syscall(regs *r)
+void handle_syscall(regs *r)
 {
    sptr syscall_no = r->eax;
 
    if (syscall_no < 0 || syscall_no >= syscall_count) {
       printk("INVALID syscall #%i\n", syscall_no);
-      return -1;
+      return;
    }
 
    //printk("Syscall #%i\n", r->eax);
@@ -107,8 +108,6 @@ sptr handle_syscall(regs *r)
    r->eax =
       syscalls_pointers[r->eax](r->ebx, r->ecx, r->edx,
                                 r->esi, r->edi, r->ebp);
-
-   return 0;
 }
 
 #endif

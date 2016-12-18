@@ -195,8 +195,10 @@ char *exception_messages[] =
    "Reserved"
 };
 
+volatile int current_interrupt_num = -1;
 
-int handle_syscall(regs *);
+void handle_syscall(regs *);
+void irq_handler(regs *r);
 
 void *fault_handlers[32] = { NULL };
 
@@ -205,34 +207,35 @@ void set_fault_handler(int exceptionNum, void *ptr)
    fault_handlers[exceptionNum] = ptr;
 }
 
-int generic_interrupt_handler(regs *r)
+
+void generic_interrupt_handler(regs *r)
 {
+   current_interrupt_num = r->int_no;
+
    if (LIKELY(r->int_no == 0x80)) {
-      return handle_syscall(r);
+      handle_syscall(r);
+      return;
    }
 
-   // Higher exception numbers are handled by irq_handler()
-   ASSERT(r->int_no < 32);
+   if (LIKELY(r->int_no >= 32)) {
+      irq_handler(r);
+      return;
+   }
 
-   void(*handler)(regs *r);
-   handler = fault_handlers[r->int_no];
+   void(*handler)(regs *r) = fault_handlers[r->int_no];
 
-   if (handler) {
-
-      handler(r);
-
-   } else {
-
+   if (!handler) {
       cli();
 
       printk("Fault #%i: %s [errCode: %i]\n",
              r->int_no,
              exception_messages[r->int_no],
              r->err_code);
+
       halt();
    }
 
-   return 0;
+   handler(r);
 }
 
 
