@@ -74,7 +74,10 @@ void remove_process(task_info *p)
 
 void exit_current_process(int exit_code)
 {
-   printk("[kernel] Exit process %i with code = %i\n", current_process->pid, exit_code);
+   printk("[kernel] Exit process %i with code = %i\n",
+          current_process->pid,
+          exit_code);
+
    current_process->state = TASK_STATE_ZOMBIE;
    current_process->exit_code = exit_code;
    pdir_destroy(current_process->pdir);

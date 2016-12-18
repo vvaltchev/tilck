@@ -4,8 +4,8 @@
 #include <paging.h>
 #include <arch/generic_x86/utils.h>
 
-#define TERMINAL_VIDEO_ADDR ((volatile u16*)(KERNEL_BASE_VADDR + 0xB8000))
-#define TERMINAL_BUFFER_ADDR ((volatile u16*)(KERNEL_BASE_VADDR + 0x10000))
+#define TERMINAL_VIDEO_ADDR ((volatile u16*)(KERNEL_BASE_VA + 0xB8000))
+#define TERMINAL_BUFFER_ADDR ((volatile u16*)(KERNEL_BASE_VA + 0x10000))
 
 #define TERMINAL_BUFFER_ROWS 1024
 #define TERMINAL_SCREEN_SIZE (term_width * term_height * 2)

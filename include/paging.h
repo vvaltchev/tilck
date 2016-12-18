@@ -19,7 +19,7 @@
 #define PAGE_DIR_SIZE (2 * PAGE_SIZE + 4)
 #endif
 
-#define KERNEL_BASE_VADDR ((uptr) 0xC0000000UL)
+#define KERNEL_BASE_VA ((uptr) 0xC0000000UL)
 
 void init_pageframe_allocator();
 uptr alloc_pageframe();
