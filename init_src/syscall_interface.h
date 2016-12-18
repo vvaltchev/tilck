@@ -30,7 +30,9 @@ static ALWAYS_INLINE int generic_syscall1(int syscall_num, void *arg1)
    return result;
 }
 
-static ALWAYS_INLINE int generic_syscall2(int syscall_num, void *arg1, void *arg2)
+static ALWAYS_INLINE int generic_syscall2(int syscall_num,
+                                          void *arg1,
+                                          void *arg2)
 {
    int result;
    asmVolatile("movl %0, %%eax\n"
@@ -46,7 +48,10 @@ static ALWAYS_INLINE int generic_syscall2(int syscall_num, void *arg1, void *arg
 }
 
 
-static ALWAYS_INLINE int generic_syscall3(int syscall_num, void *arg1, void *arg2, void *arg3)
+static ALWAYS_INLINE int generic_syscall3(int syscall_num,
+                                          void *arg1,
+                                          void *arg2,
+                                          void *arg3)
 {
    int result;
    asmVolatile("movl %0, %%eax\n"

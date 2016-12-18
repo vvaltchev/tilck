@@ -451,8 +451,8 @@ void kfree(void *ptr, size_t size)
                    md->nodes[alloc_block_node].split);
 
       /*
-       * For nodes smaller than ALLOC_BLOCK_SIZE, the page we're freeing MUST be free.
-       * For bigger nodes that kind of checking does not make sense:
+       * For nodes smaller than ALLOC_BLOCK_SIZE, the page we're freeing MUST
+       * be free. For bigger nodes that kind of checking does not make sense:
        * a major block owns its all pages and their flags are irrelevant.
        */
       ASSERT(size >= ALLOC_BLOCK_SIZE ||

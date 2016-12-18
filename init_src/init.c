@@ -47,10 +47,10 @@ void main()
             printf("Fork returned %i\n", pid);
 
             if (pid == 0) {
-               printf("###################### I'm the child!\n");
+               printf("############## I'm the child!\n");
                inchild = true;
             } else {
-               printf("###################### I'm the parent, child's pid = %i\n", pid);
+               printf("############## I'm the parent, child's pid = %i\n", pid);
             }
 
          }

@@ -43,8 +43,10 @@ void itoa(int value, char *destBuf)
    // The actual conversion.
    do
    {
-     // Modulo is negative for negative value. This trick makes abs() unnecessary.
-     *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
+     // Mod(x, b) < 0 if x < 0. This trick makes abs() unnecessary.
+     *ptr++ = "zyxwvutsrqponmlkjihgfedcba"
+              "9876543210123456789"
+              "abcdefghijklmnopqrstuvwxyz"[35 + value % base];
      value /= base;
    } while ( value );
    // Terminating the string.
@@ -70,8 +72,10 @@ void uitoa(unsigned int value, char *destBuf, unsigned int base)
    // The actual conversion.
    do
    {
-      // Modulo is negative for negative value. This trick makes abs() unnecessary.
-      *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
+      // Mod(x, b) < 0 if x < 0. This trick makes abs() unnecessary.
+      *ptr++ = "zyxwvutsrqponmlkjihgfedcba"
+               "9876543210123456789"
+               "abcdefghijklmnopqrstuvwxyz"[35 + value % base];
       value /= base;
    } while (value);
    // Terminating the string.
