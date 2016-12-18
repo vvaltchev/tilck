@@ -54,10 +54,10 @@ void init_pageframe_allocator()
 }
 
 /*
- * Paging needs its custom page frame allocator for page tables.
+ * Paging needs its custom page frame allocator for (kernel) page tables.
  */
 
-void *paging_alloc_pageframe()
+uptr paging_alloc_pageframe()
 {
    u32 index = 0;
    bool found = false;
@@ -83,13 +83,13 @@ void *paging_alloc_pageframe()
    bitfield[index] |= (1 << free_index);
 
    ret = (( (index + INITIAL_ELEMS_RESERVED) << 17) + (free_index << PAGE_SHIFT));
-   return (void *)ret;
+   return ret;
 }
 
 
-void paging_free_pageframe(void *address) {
+void paging_free_pageframe(uptr address) {
 
-   uptr naddr = ((uptr)address) & 0xFFFFF000U;
+   uptr naddr = address & 0xFFFFF000U;
    u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
    u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
 
@@ -108,7 +108,7 @@ void paging_free_pageframe(void *address) {
  * ------------------------------------------------------
  */
 
-void *alloc_pageframe()
+uptr alloc_pageframe()
 {
 
    u32 free_index;
@@ -128,7 +128,7 @@ void *alloc_pageframe()
    }
 
    if (!found) {
-      return NULL;
+      return 0;
    }
 
    uptr ret;
@@ -142,13 +142,13 @@ void *alloc_pageframe()
       last_index + INITIAL_ELEMS_RESERVED + ELEMS_RESERVED_FOR_PAGING;
 
    ret = ((actual_index << 17) + (free_index << PAGE_SHIFT));
-   return (void *)ret;
+   return ret;
 }
 
 
-void free_pageframe(void *address) {
+void free_pageframe(uptr address) {
 
-   uptr naddr = ((uptr)address) & 0xFFFFF000U;
+   uptr naddr = address & 0xFFFFF000U;
    u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
    u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
 
@@ -171,12 +171,12 @@ void free_pageframe(void *address) {
 
 #ifdef DEBUG
 
-bool is_allocated_pageframe(void *address)
+bool is_allocated_pageframe(uptr address)
 {
-   uptr naddr = ((uptr)address) & 0xFFFFF000U;
+   uptr naddr = address & 0xFFFFF000U;
    u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
    u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
-   return pageframes_bitfield[majorIndex] & (1 << bitIndex);
+   return !!(pageframes_bitfield[majorIndex] & (1 << bitIndex));
 }
 
 #endif

@@ -15,8 +15,8 @@
 #define KERNEL_PADDR_TO_VADDR(paddr) ((typeof(paddr))((uptr)(paddr) + KERNEL_BASE_VADDR))
 #define KERNEL_VADDR_TO_PADDR(vaddr) ((typeof(vaddr))((uptr)(vaddr) - KERNEL_BASE_VADDR))
 
-void *paging_alloc_pageframe();
-void paging_free_pageframe(void *address);
+uptr paging_alloc_pageframe();
+void paging_free_pageframe(uptr address);
 
 #ifdef DEBUG
 bool is_allocated_pageframe(void *address);
@@ -193,7 +193,7 @@ void unmap_page(page_directory_t *pdir, uptr vaddr)
    invalidate_page(vaddr);
 }
 
-void *get_mapping(page_directory_t *pdir, uptr vaddr)
+uptr get_mapping(page_directory_t *pdir, uptr vaddr)
 {
    page_table_t *ptable;
    u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
@@ -205,7 +205,7 @@ void *get_mapping(page_directory_t *pdir, uptr vaddr)
 
    ASSERT(ptable->pages[page_table_index].present);
 
-   return (void *)(ptable->pages[page_table_index].pageAddr << PAGE_SHIFT);
+   return ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 }
 
 void map_page(page_directory_t *pdir,
@@ -263,7 +263,7 @@ void map_page(page_directory_t *pdir,
 page_directory_t *pdir_clone(page_directory_t *pdir)
 {
    page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
-   new_pdir->paddr = (uptr)get_mapping(curr_page_dir, (uptr)new_pdir);
+   new_pdir->paddr = get_mapping(curr_page_dir, (uptr)new_pdir);
 
    page_dir_entry_t not_present = { 0 };
 
@@ -371,7 +371,7 @@ void pdir_destroy(page_directory_t *pdir)
          }
 
          // No COW (or COW with ref-count == 1).
-         free_pageframe((void *) (paddr << PAGE_SHIFT));
+         free_pageframe(paddr << PAGE_SHIFT);
       }
 
       // We freed all the pages, now free the whole page-table.
@@ -422,7 +422,7 @@ void init_paging()
    set_page_directory(kernel_page_dir);
 
    // Page-size buffer used for COW.
-   page_size_buf = KERNEL_PADDR_TO_VADDR(paging_alloc_pageframe());
+   page_size_buf = (void *) KERNEL_PADDR_TO_VADDR(paging_alloc_pageframe());
 
 
    /*

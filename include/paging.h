@@ -22,8 +22,8 @@
 #define KERNEL_BASE_VADDR ((uptr) 0xC0000000UL)
 
 void init_pageframe_allocator();
-void *alloc_pageframe();
-void free_pageframe(void *address);
+uptr alloc_pageframe();
+void free_pageframe(uptr address);
 int get_free_pageframes_count();
 
 
@@ -55,7 +55,7 @@ void map_page(page_directory_t *pdir,
 bool is_mapped(page_directory_t *pdir, uptr vaddr);
 void unmap_page(page_directory_t *pdir, uptr vaddr);
 
-void *get_mapping(page_directory_t *pdir, uptr vaddr);
+uptr get_mapping(page_directory_t *pdir, uptr vaddr);
 
 page_directory_t *pdir_clone(page_directory_t *pdir);
 void pdir_destroy(page_directory_t *pdir);

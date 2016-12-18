@@ -32,7 +32,7 @@ export GAS = as
 export OPT = -O0 -fno-inline-functions
 export DEFS = -DDEBUG
 
-export WARN = -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
+export WARN = -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Werror
 export INCDIRS = -I$(shell pwd)/include
 export CFLAGS =  $(OPT) $(WARN) $(DEFS) -std=c99 $(INCDIRS) $(ARCH_CFLAGS) \
                  -mno-red-zone -fvisibility=default \
