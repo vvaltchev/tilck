@@ -26,21 +26,21 @@ void set_kernel_stack(u32 stack);
 void run_usermode_init()
 {
    void *const vaddr = (void *)0x08000000U;
-   void *const paddr = (void *)0x120000;
+   const uptr paddr = 0x120000UL;
 
    page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
 
    // maps 16 pages (64 KB) for the user program
 
    map_pages(pdir,
-             (uptr)vaddr,
-             (uptr)paddr, 16, true, true);
+             vaddr,
+             paddr, 16, true, true);
 
    // map 4 pages for the user program's stack
 
    map_pages(pdir,
-             (uptr)vaddr + 16 * PAGE_SIZE,
-             (uptr)paddr + 16 * PAGE_SIZE, 4, true, true);
+             (u8 *)vaddr + 16 * PAGE_SIZE,
+             paddr + 16 * PAGE_SIZE, 4, true, true);
 
 
    void *stack = (void *) (((uptr)vaddr + (16 + 4) * PAGE_SIZE - 1) & ~15);

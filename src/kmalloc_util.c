@@ -18,8 +18,8 @@ bool kbasic_virtual_alloc(uptr vaddr, int pageCount)
       uptr paddr = alloc_pageframe();
       ASSERT(paddr != 0);
 
-      ASSERT(!is_mapped(pdir, vaddr + (i << PAGE_SHIFT)));
-      map_page(pdir, vaddr + (i << PAGE_SHIFT), paddr, false, true);
+      ASSERT(!is_mapped(pdir, (u8 *)vaddr + (i << PAGE_SHIFT)));
+      map_page(pdir, (u8 *)vaddr + (i << PAGE_SHIFT), paddr, false, true);
    }
 
    return true;
@@ -33,7 +33,7 @@ bool kbasic_virtual_free(uptr vaddr, int pageCount)
 
    for (int i = 0; i < pageCount; i++) {
 
-      uptr va = vaddr + (i << PAGE_SHIFT);
+      void *va = (u8 *)vaddr + (i << PAGE_SHIFT);
 
       // get_mapping ASSERTs that 'va' is mapped.
       uptr paddr = get_mapping(pdir, va);

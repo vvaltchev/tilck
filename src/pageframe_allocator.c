@@ -89,7 +89,7 @@ uptr paging_alloc_pageframe()
 
 void paging_free_pageframe(uptr address) {
 
-   uptr naddr = address & 0xFFFFF000U;
+   uptr naddr = address & PAGE_MASK;
    u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
    u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
 
@@ -148,7 +148,7 @@ uptr alloc_pageframe()
 
 void free_pageframe(uptr address) {
 
-   uptr naddr = address & 0xFFFFF000U;
+   uptr naddr = address & PAGE_MASK;
    u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
    u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
 
@@ -173,7 +173,7 @@ void free_pageframe(uptr address) {
 
 bool is_allocated_pageframe(uptr address)
 {
-   uptr naddr = address & 0xFFFFF000U;
+   uptr naddr = address & PAGE_MASK;
    u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
    u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
    return !!(pageframes_bitfield[majorIndex] & (1 << bitIndex));

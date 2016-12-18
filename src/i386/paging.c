@@ -38,8 +38,8 @@ volatile bool in_page_fault = false;
 bool handle_potential_cow(u32 vaddr)
 {
    page_table_t *ptable;
-   u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
-   u32 page_dir_index = (vaddr >> 22) & 0x3FF;
+   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
    ptable = curr_page_dir->page_tables[page_dir_index];
    u8 flags = ptable->pages[page_table_index].avail;
@@ -161,25 +161,26 @@ void initialize_page_directory(page_directory_t *pdir, uptr paddr, bool us)
    }
 }
 
-bool is_mapped(page_directory_t *pdir, uptr vaddr)
+bool is_mapped(page_directory_t *pdir, void *vaddrp)
 {
-   page_table_t *ptable;
-   u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
-   u32 page_dir_index = (vaddr >> 22) & 0x3FF;
+   const uptr vaddr = (uptr) vaddrp;
+   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
    if (pdir->page_tables[page_dir_index] == NULL) {
       return false;
    }
 
-   ptable = pdir->page_tables[page_dir_index];
+   page_table_t *ptable = pdir->page_tables[page_dir_index];
    return ptable->pages[page_table_index].present;
 }
 
-void unmap_page(page_directory_t *pdir, uptr vaddr)
+void unmap_page(page_directory_t *pdir, void *vaddrp)
 {
    page_table_t *ptable;
-   u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
-   u32 page_dir_index = (vaddr >> 22) & 0x3FF;
+   const uptr vaddr = (uptr) vaddrp;
+   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
    ASSERT(pdir->page_tables[page_dir_index] != NULL);
 
@@ -193,8 +194,9 @@ void unmap_page(page_directory_t *pdir, uptr vaddr)
    invalidate_page(vaddr);
 }
 
-uptr get_mapping(page_directory_t *pdir, uptr vaddr)
+uptr get_mapping(page_directory_t *pdir, void *vaddrp)
 {
+   uptr vaddr = (uptr)vaddrp;
    page_table_t *ptable;
    u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
    u32 page_dir_index = (vaddr >> 22) & 0x3FF;
@@ -209,22 +211,23 @@ uptr get_mapping(page_directory_t *pdir, uptr vaddr)
 }
 
 void map_page(page_directory_t *pdir,
-              uptr vaddr,
+              void *vaddrp,
               uptr paddr,
               bool us,
               bool rw)
 {
-   u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
-   u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10)) & 0x3FF;
+   const u32 vaddr = (u32) vaddrp;
+   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
    ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // the paddr must be page-aligned
 
-   page_table_t *ptable = NULL;
+   page_table_t *ptable = pdir->page_tables[page_dir_index];
 
-   ASSERT(((uptr)pdir->page_tables[page_dir_index] & 0xFFF) == 0);
+   ASSERT(((uptr)ptable & OFFSET_IN_PAGE_MASK) == 0);
 
-   if (UNLIKELY(pdir->page_tables[page_dir_index] == NULL)) {
+   if (UNLIKELY(ptable == NULL)) {
 
       // we have to create a page table for mapping 'vaddr'
 
@@ -244,26 +247,22 @@ void map_page(page_directory_t *pdir,
       pdir->entries[page_dir_index] = e;
    }
 
-   ptable = pdir->page_tables[page_dir_index];
-
    ASSERT(ptable->pages[page_table_index].present == 0);
 
    page_t p = {0};
    p.present = 1;
    p.us = us;
    p.rw = rw;
-
    p.pageAddr = paddr >> PAGE_SHIFT;
 
    ptable->pages[page_table_index] = p;
-
    invalidate_page(vaddr);
 }
 
 page_directory_t *pdir_clone(page_directory_t *pdir)
 {
    page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
-   new_pdir->paddr = get_mapping(curr_page_dir, (uptr)new_pdir);
+   new_pdir->paddr = get_mapping(curr_page_dir, new_pdir);
 
    page_dir_entry_t not_present = { 0 };
 
@@ -318,7 +317,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
       // alloc memory for the page table
 
       page_table_t *pt = kmalloc(sizeof(*pt));
-      uptr pt_paddr = (uptr)get_mapping(curr_page_dir, (uptr)pt);
+      uptr pt_paddr = get_mapping(curr_page_dir, pt);
 
       // copy the page table
       memmove(pt, orig_pt, sizeof(*pt));
@@ -393,14 +392,21 @@ void init_paging()
    paging_alloc_pageframe(); // The page directory uses 3 pages!
    paging_alloc_pageframe();
 
+   /*
+    * The above trick of using 3 consecutive calls of paging_alloc_pageframe()
+    * works because in this early stage the frame allocator have all of its frames
+    * free and so it is expected to return consecutive frames.
+    * In general, expecting to have consecutive physical pages is NOT supported
+    * and such tricks should *NOT* be used.
+    */
+
    initialize_page_directory(kernel_page_dir,
                              (uptr) KERNEL_VADDR_TO_PADDR(kernel_page_dir), true);
 
    // Create page entries for the whole 4th GB of virtual memory
    for (int i = 768; i < 1024; i++) {
 
-      u32 page_physical_addr = (u32)paging_alloc_pageframe();
-
+      u32 page_physical_addr = paging_alloc_pageframe();
       page_table_t *ptable = (void*)KERNEL_PADDR_TO_VADDR(page_physical_addr);
 
       initialize_empty_page_table(ptable);
@@ -409,14 +415,15 @@ void init_paging()
       e.present = 1;
       e.rw = 1;
       e.us = true;
-      e.pageTableAddr = ((u32)page_physical_addr) >> PAGE_SHIFT;
+      e.pageTableAddr = page_physical_addr >> PAGE_SHIFT;
 
       kernel_page_dir->page_tables[i] = ptable;
       kernel_page_dir->entries[i] = e;
    }
 
    map_pages(kernel_page_dir,
-             KERNEL_PADDR_TO_VADDR(0x1000), 0x1000, 1024 - 1, false, true);
+             (void *)KERNEL_PADDR_TO_VADDR(0x1000),
+             0x1000, 1024 - 1, false, true);
 
    ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 256);
    set_page_directory(kernel_page_dir);
