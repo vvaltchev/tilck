@@ -29,6 +29,7 @@ void main()
 
    unsigned n = 1;
    int billions = 0;
+   bool inchild = false;
 
    while (true) {
 
@@ -46,12 +47,17 @@ void main()
             printf("Fork returned %i\n", pid);
 
             if (pid == 0) {
-               printf("###################### I'm the child!\n");
+               printf("############## I'm the child!\n");
+               inchild = true;
             } else {
-               printf("###################### I'm the parent, child's pid = %i\n", pid);
+               printf("############## I'm the parent, child's pid = %i\n", pid);
             }
 
+         }
 
+         if (billions == 2 && inchild) {
+            printf("child: 2 billion, exit!\n");
+            _exit(123);
          }
       }
 

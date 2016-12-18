@@ -26,21 +26,21 @@ void set_kernel_stack(u32 stack);
 void run_usermode_init()
 {
    void *const vaddr = (void *)0x08000000U;
-   void *const paddr = (void *)0x120000;
+   const uptr paddr = 0x120000UL;
 
    page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
 
    // maps 16 pages (64 KB) for the user program
 
    map_pages(pdir,
-             (uptr)vaddr,
-             (uptr)paddr, 16, true, true);
+             vaddr,
+             paddr, 16, true, true);
 
    // map 4 pages for the user program's stack
 
    map_pages(pdir,
-             (uptr)vaddr + 16 * PAGE_SIZE,
-             (uptr)paddr + 16 * PAGE_SIZE, 4, true, true);
+             (u8 *)vaddr + 16 * PAGE_SIZE,
+             paddr + 16 * PAGE_SIZE, 4, true, true);
 
 
    void *stack = (void *) (((uptr)vaddr + (16 + 4) * PAGE_SIZE - 1) & ~15);
@@ -54,12 +54,8 @@ void show_hello_message()
    printk("Hello from my kernel!\n");
 }
 
-
-void kmalloc_trivial_perf_test();
-void kmalloc_perf_test();
-
-void kmain() {
-
+void kmain()
+{
    term_init();
    show_hello_message();
 
@@ -72,7 +68,6 @@ void kmain() {
    initialize_kmalloc();
 
    set_timer_freq(TIMER_FREQ_HZ);
-
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
@@ -81,14 +76,9 @@ void kmain() {
    sti();
    init_kb();
 
-   //kmalloc_perf_test();
-
-
    // Run the 'init' usermode program.
    run_usermode_init();
 
-
-   while (1) {
-      halt();
-   }
+   // We should never get here!
+   ASSERT(0);
 }

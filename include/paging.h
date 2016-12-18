@@ -19,11 +19,11 @@
 #define PAGE_DIR_SIZE (2 * PAGE_SIZE + 4)
 #endif
 
-#define KERNEL_BASE_VADDR ((uptr) 0xC0000000UL)
+#define KERNEL_BASE_VA ((uptr) 0xC0000000UL)
 
 void init_pageframe_allocator();
-void *alloc_pageframe();
-void free_pageframe(void *address);
+uptr alloc_pageframe();
+void free_pageframe(uptr address);
 int get_free_pageframes_count();
 
 
@@ -47,21 +47,22 @@ void init_paging();
 void initialize_page_directory(page_directory_t *pdir, uptr paddr, bool us);
 
 void map_page(page_directory_t *pdir,
-              uptr vaddr,
+              void *vaddr,
               uptr paddr,
               bool us,
               bool rw);
 
-bool is_mapped(page_directory_t *pdir, uptr vaddr);
-void unmap_page(page_directory_t *pdir, uptr vaddr);
+bool is_mapped(page_directory_t *pdir, void *vaddr);
+void unmap_page(page_directory_t *pdir, void *vaddr);
 
-void *get_mapping(page_directory_t *pdir, uptr vaddr);
+uptr get_mapping(page_directory_t *pdir, void *vaddr);
 
 page_directory_t *pdir_clone(page_directory_t *pdir);
+void pdir_destroy(page_directory_t *pdir);
 
 static inline void
 map_pages(page_directory_t *pdir,
-          uptr vaddr,
+          void *vaddr,
           uptr paddr,
           int pageCount,
           bool us,
@@ -69,7 +70,7 @@ map_pages(page_directory_t *pdir,
 {
    for (int i = 0; i < pageCount; i++) {
       map_page(pdir,
-               vaddr + (i << PAGE_SHIFT),
+               (u8 *)vaddr + (i << PAGE_SHIFT),
                paddr + (i << PAGE_SHIFT),
                us,
                rw);

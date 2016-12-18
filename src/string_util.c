@@ -19,9 +19,11 @@ void itoa(sptr value, char *destBuf)
 
    do
    {
-     // Modulo is negative for negative value. This trick makes abs() unnecessary.
-     *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
-     value /= base;
+      // Mod(x, b) < 0 if x < 0. This trick makes abs() unnecessary.
+      *ptr++ = "zyxwvutsrqponmlkjihgfedcba"
+               "9876543210123456789"
+               "abcdefghijklmnopqrstuvwxyz"[35 + value % base];
+      value /= base;
    } while ( value );
 
    *ptr-- = '\0';
@@ -51,8 +53,10 @@ void llitoa(s64 value, char *destBuf)
 
    do
    {
-      // Modulo is negative for negative value. This trick makes abs() unnecessary.
-      *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
+      // Mod(x, b) < 0 if x < 0. This trick makes abs() unnecessary.
+      *ptr++ = "zyxwvutsrqponmlkjihgfedcba"
+               "9876543210123456789"
+               "abcdefghijklmnopqrstuvwxyz"[35 + value % base];
       value /= base;
    } while (value);
 
@@ -76,8 +80,10 @@ void uitoa(uptr value, char *destBuf, u32 base)
 
    do
    {
-      // Modulo is negative for negative value. This trick makes abs() unnecessary.
-      *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
+      // Mod(x, b) < 0 if x < 0. This trick makes abs() unnecessary.
+      *ptr++ = "zyxwvutsrqponmlkjihgfedcba"
+               "9876543210123456789"
+               "abcdefghijklmnopqrstuvwxyz"[35 + value % base];
       value /= base;
    } while (value);
 
@@ -100,8 +106,10 @@ void ullitoa(u64 value, char *destBuf, u32 base)
 
    do
    {
-      // Modulo is negative for negative value. This trick makes abs() unnecessary.
-      *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
+      // Mod(x, b) < 0 if x < 0. This trick makes abs() unnecessary.
+      *ptr++ = "zyxwvutsrqponmlkjihgfedcba"
+               "9876543210123456789"
+               "abcdefghijklmnopqrstuvwxyz"[35 + value % base];
       value /= base;
    } while (value);
 

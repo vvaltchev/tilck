@@ -175,10 +175,8 @@
     <ClInclude Include="..\include\arch\i386\arch_utils.h" />
     <ClInclude Include="..\include\utils.h" />
     <ClInclude Include="..\init_src\string.h" />
+    <ClInclude Include="..\init_src\syscall_interface.h" />
     <ClInclude Include="..\init_src\usermode_syscall_wrappers.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\src\kernelAsm.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

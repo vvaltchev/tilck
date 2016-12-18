@@ -33,13 +33,16 @@ void kernel_kmalloc_perf_test()
 
          } else {
 
-            memAllocated += roundup_next_power_of_2(MAX(random_values[j], MIN_BLOCK_SIZE));
+            memAllocated +=
+               roundup_next_power_of_2(MAX(random_values[j], MIN_BLOCK_SIZE));
          }
       }
 
       for (int j = 0; j < RANDOM_VALUES_COUNT; j++) {
          kfree(allocations[j], random_values[j]);
-         memAllocated -= roundup_next_power_of_2(MAX(random_values[j], MIN_BLOCK_SIZE));
+
+         memAllocated -=
+            roundup_next_power_of_2(MAX(random_values[j], MIN_BLOCK_SIZE));
       }
    }
 
