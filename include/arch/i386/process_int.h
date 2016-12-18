@@ -9,10 +9,10 @@
 #define TASK_STATE_SLEEPING 2
 #define TASK_STATE_ZOMBIE 3
 
-struct process_info {
+struct task_info {
 
-   process_info *next;
-   process_info *prev;
+   task_info *next;
+   task_info *prev;
 
    int pid;
    int state;

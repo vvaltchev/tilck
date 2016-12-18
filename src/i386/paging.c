@@ -18,6 +18,10 @@
 void *paging_alloc_pageframe();
 void paging_free_pageframe(void *address);
 
+#ifdef DEBUG
+bool is_allocated_pageframe(void *address);
+#endif
+
 #define PAGE_COW_FLAG 1
 #define PAGE_COW_ORIG_RW 2
 
@@ -29,10 +33,7 @@ page_directory_t *curr_page_dir = NULL;
 void *page_size_buf = NULL;
 u16 *pageframes_refcount = NULL;
 
-
-
 volatile bool in_page_fault = false;
-
 
 bool handle_potential_cow(u32 vaddr)
 {
@@ -79,6 +80,9 @@ bool handle_potential_cow(u32 vaddr)
 
    // Allocate and set a new page.
    uptr paddr = (uptr)alloc_pageframe();
+
+   printk("[COW] Allocated new pageframe at %p\n", paddr);
+
    ptable->pages[page_table_index].pageAddr = paddr >> PAGE_SHIFT;
    ptable->pages[page_table_index].rw = true;
    ptable->pages[page_table_index].avail = 0;
@@ -332,6 +336,50 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
    }
 
    return new_pdir;
+}
+
+
+void pdir_destroy(page_directory_t *pdir)
+{
+   // Kernel's pdir cannot be destroyed!
+   ASSERT(pdir != kernel_page_dir);
+
+   for (int i = 0; i < 768; i++) {
+
+      page_table_t *pt = pdir->page_tables[i];
+      
+      if (pt == NULL) {
+         continue;
+      }
+
+      for (int j = 0; j < 1024; j++) {
+
+         if (!pt->pages[j].present) {
+            continue;
+         }
+
+         u32 paddr = pt->pages[j].pageAddr;
+
+         if (pt->pages[j].avail & PAGE_COW_FLAG) {
+
+            ASSERT(pageframes_refcount[paddr] > 0);
+
+            if (pageframes_refcount[paddr] > 1) {
+               pageframes_refcount[paddr]--;
+               continue;
+            }
+         }
+
+         // No COW (or COW with ref-count == 1).
+         free_pageframe((void *) (paddr << PAGE_SHIFT));
+      }
+
+      // We freed all the pages, now free the whole page-table.
+      kfree(pt, sizeof(*pt));
+   }
+
+   // We freed all pages and all the page-tables, now free pdir.
+   kfree(pdir, sizeof(*pdir));
 }
 
 void init_paging()

@@ -46,7 +46,11 @@ static u32 get_first_zero_bit_index(u32 num)
 
 void init_pageframe_allocator()
 {
-   /* Do nothing (for the moment). */
+   int reserved_elems = INITIAL_ELEMS_RESERVED;
+
+   for (int i = 0; i < reserved_elems; i++) {
+      pageframes_bitfield[i] = FULL_128KB_AREA;
+   }
 }
 
 /*
@@ -163,3 +167,16 @@ void free_pageframe(void *address) {
 
    pageframes_used--;
 }
+
+
+#ifdef DEBUG
+
+bool is_allocated_pageframe(void *address)
+{
+   uptr naddr = ((uptr)address) & 0xFFFFF000U;
+   u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
+   u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
+   return pageframes_bitfield[majorIndex] & (1 << bitIndex);
+}
+
+#endif

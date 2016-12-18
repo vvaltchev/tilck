@@ -6,8 +6,8 @@
 #include <irq.h>
 
 
-struct process_info;
-typedef struct process_info process_info;
+struct task_info;
+typedef struct task_info task_info;
 
 void schedule();
 void save_current_process_state(regs *);

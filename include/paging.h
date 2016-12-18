@@ -58,6 +58,7 @@ void unmap_page(page_directory_t *pdir, uptr vaddr);
 void *get_mapping(page_directory_t *pdir, uptr vaddr);
 
 page_directory_t *pdir_clone(page_directory_t *pdir);
+void pdir_destroy(page_directory_t *pdir);
 
 static inline void
 map_pages(page_directory_t *pdir,

@@ -7,8 +7,8 @@
 extern volatile u32 timer_ticks;
 void asm_context_switch_x86(u32 d, ...) NORETURN;
 
-process_info *processes_list = NULL;
-process_info *current_process = NULL;
+task_info *processes_list = NULL;
+task_info *current_process = NULL;
 
 int current_max_pid = -1;
 
@@ -39,7 +39,7 @@ static ALWAYS_INLINE void context_switch(regs *r)
                           r->ss);
 }
 
-void add_process(process_info *p)
+void add_process(task_info *p)
 {
    p->state = TASK_STATE_RUNNABLE;
 
@@ -50,7 +50,7 @@ void add_process(process_info *p)
       return;
    }
 
-   process_info *last = processes_list->prev;
+   task_info *last = processes_list->prev;
 
    last->next = p;
    p->prev = last;
@@ -58,7 +58,7 @@ void add_process(process_info *p)
    processes_list->prev = p;   
 }
 
-void remove_process(process_info *p)
+void remove_process(task_info *p)
 {
    p->prev->next = p->next;
    p->next->prev = p->prev;
@@ -77,6 +77,7 @@ void exit_current_process(int exit_code)
    printk("[kernel] Exit process %i with code = %i\n", current_process->pid, exit_code);
    current_process->state = TASK_STATE_ZOMBIE;
    current_process->exit_code = exit_code;
+   pdir_destroy(current_process->pdir);
    schedule();
 }
 
@@ -99,7 +100,7 @@ void first_usermode_switch(page_directory_t *pdir,
    asmVolatile("pop %eax");
    asmVolatile("movl %0, %%eax" : "=r"(r.eflags));
 
-   process_info *pi = kmalloc(sizeof(process_info));
+   task_info *pi = kmalloc(sizeof(task_info));
    pi->pdir = pdir;
    pi->pid = ++current_max_pid;
    pi->state = TASK_STATE_RUNNABLE;
@@ -123,19 +124,19 @@ void save_current_process_state(regs *r)
    }
 }
 
-void switch_to_process(process_info *pi)
+void switch_to_process(task_info *pi)
 {
+   ASSERT(pi->state == TASK_STATE_RUNNABLE);
+
    current_process = pi;
    current_process->state = TASK_STATE_RUNNING;
 
    printk("[sched] Switching to pid: %i\n", current_process->pid);
 
    if (get_curr_page_dir() != current_process->pdir) {
-      //printk("[kernel] Switch pdir to %p\n", current_process->pdir);
       set_page_directory(current_process->pdir);
    }
 
-   //printk("context_switch() to eip = %p\n", current_process->state_regs.eip);
    context_switch(&current_process->state_regs);
 }
 
@@ -144,7 +145,7 @@ int fork_current_process()
 {
    page_directory_t *pdir = pdir_clone(current_process->pdir);
    
-   process_info *child = kmalloc(sizeof(process_info));
+   task_info *child = kmalloc(sizeof(task_info));
    child->pdir = pdir;
    child->pid = ++current_max_pid;
    memmove(&child->state_regs,
@@ -175,29 +176,21 @@ void schedule()
    printk("sched!\n");
    printk("Current pid: %i\n", current_process->pid);
 
-   //printk("current pdir is %p\n", get_curr_page_dir());
-   //printk("eip: %p\n", r->eip);
-
-   process_info *curr = current_process;
-   process_info *p = curr;
+   task_info *curr = current_process;
+   task_info *p = curr;
 
    if (curr->state == TASK_STATE_RUNNING) {
       curr->state = TASK_STATE_RUNNABLE;
    }
 
    do {
-
       p = p->next;
-      //printk("[sched] Checking process %i: state = %i\n", p->pid, p->state);
 
       if (p->state == TASK_STATE_RUNNABLE) {
-         //printk("[sched] runnable, that's fine.\n");
          break;
       }
 
    } while (p != curr);  
-
-   //printk("[sched] Ok, we're switching to process %i, with state = %i\n", p->pid, p->state);
 
    if (p->state != TASK_STATE_RUNNABLE) {
 
