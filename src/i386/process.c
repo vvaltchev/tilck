@@ -41,6 +41,8 @@ static ALWAYS_INLINE void context_switch(regs *r)
 
 void add_process(process_info *p)
 {
+   p->state = TASK_STATE_RUNNABLE;
+
    if (!processes_list) {
       p->next = p;
       p->prev = p;
@@ -54,6 +56,28 @@ void add_process(process_info *p)
    p->prev = last;
    p->next = processes_list;
    processes_list->prev = p;   
+}
+
+void remove_process(process_info *p)
+{
+   p->prev->next = p->next;
+   p->next->prev = p->prev;
+
+   printk("[remove_process] pid = %i\n", p->pid);
+
+   // TODO: free pages and handles
+
+   if (p == current_process) {
+      current_process = current_process->next;
+   }
+}
+
+void exit_current_process(int exit_code)
+{
+   printk("[kernel] Exit process %i with code = %i\n", current_process->pid, exit_code);
+   current_process->state = TASK_STATE_ZOMBIE;
+   current_process->exit_code = exit_code;
+   schedule();
 }
 
 void first_usermode_switch(page_directory_t *pdir,
@@ -78,6 +102,7 @@ void first_usermode_switch(page_directory_t *pdir,
    process_info *pi = kmalloc(sizeof(process_info));
    pi->pdir = pdir;
    pi->pid = ++current_max_pid;
+   pi->state = TASK_STATE_RUNNABLE;
    memmove(&pi->state_regs, &r, sizeof(r));
 
    add_process(pi);
@@ -101,6 +126,7 @@ void save_current_process_state(regs *r)
 void switch_to_process(process_info *pi)
 {
    current_process = pi;
+   current_process->state = TASK_STATE_RUNNING;
 
    printk("[sched] Switching to pid: %i\n", current_process->pid);
 
@@ -146,12 +172,41 @@ int fork_current_process()
 
 void schedule()
 {
-   //printk("sched!\n");
-   //printk("Current pid: %i\n", current_process->pid);
+   printk("sched!\n");
+   printk("Current pid: %i\n", current_process->pid);
 
    //printk("current pdir is %p\n", get_curr_page_dir());
    //printk("eip: %p\n", r->eip);
 
-   switch_to_process(current_process->next);
+   process_info *curr = current_process;
+   process_info *p = curr;
+
+   if (curr->state == TASK_STATE_RUNNING) {
+      curr->state = TASK_STATE_RUNNABLE;
+   }
+
+   do {
+
+      p = p->next;
+      //printk("[sched] Checking process %i: state = %i\n", p->pid, p->state);
+
+      if (p->state == TASK_STATE_RUNNABLE) {
+         //printk("[sched] runnable, that's fine.\n");
+         break;
+      }
+
+   } while (p != curr);  
+
+   //printk("[sched] Ok, we're switching to process %i, with state = %i\n", p->pid, p->state);
+
+   if (p->state != TASK_STATE_RUNNABLE) {
+
+      printk("[sched] No runnable process found. Halt.\n");
+
+      // We did not found any runnable task. Halt.
+      halt();
+   }
+
+   switch_to_process(p);
 }
 

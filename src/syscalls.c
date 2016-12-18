@@ -14,8 +14,9 @@ sptr sys_restart_syscall()
 }
 
 // 1
-sptr sys_exit()
+sptr sys_exit(int code)
 {
+   exit_current_process(code);
    return 0;
 }
 
@@ -76,7 +77,7 @@ syscall_type syscalls_pointers[] =
    sys_waitpid
 };
 
-ssize_t syscall_count = sizeof(syscalls_pointers) / sizeof(void *);
+ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
 
 #ifdef __i386__
 

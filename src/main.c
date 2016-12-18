@@ -54,12 +54,8 @@ void show_hello_message()
    printk("Hello from my kernel!\n");
 }
 
-
-void kmalloc_trivial_perf_test();
-void kmalloc_perf_test();
-
-void kmain() {
-
+void kmain()
+{
    term_init();
    show_hello_message();
 
@@ -81,12 +77,8 @@ void kmain() {
    sti();
    init_kb();
 
-   //kmalloc_perf_test();
-
-
    // Run the 'init' usermode program.
    run_usermode_init();
-
 
    while (1) {
       halt();
