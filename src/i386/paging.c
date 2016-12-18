@@ -34,8 +34,6 @@ page_directory_t *curr_page_dir = NULL;
 void *page_size_buf = NULL;
 u16 *pageframes_refcount = NULL;
 
-volatile bool in_page_fault = false;
-
 bool handle_potential_cow(u32 vaddr)
 {
    page_table_t *ptable;
@@ -116,13 +114,6 @@ void handle_page_fault(regs *r)
           us ? "userland" : "kernel",
           !p ? "(NON present page)" : "");
 
-   if (in_page_fault) {
-      while (true) {
-         halt();
-      }
-   }
-
-   in_page_fault = true;
    ASSERT(0);
 }
 

@@ -30,7 +30,7 @@ void irq15();
 
 /* This array is actually an array of function pointers. We use
 *  this to handle custom IRQ handlers for a given IRQ */
-void *irq_routines[16] = { 0 };
+void *irq_routines[16] = { NULL };
 
 
 /* This installs a custom IRQ handler for the given IRQ */

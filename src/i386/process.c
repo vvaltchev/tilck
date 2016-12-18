@@ -64,12 +64,6 @@ void remove_process(task_info *p)
    p->next->prev = p->prev;
 
    printk("[remove_process] pid = %i\n", p->pid);
-
-   // TODO: free pages and handles
-
-   if (p == current_process) {
-      current_process = current_process->next;
-   }
 }
 
 void exit_current_process(int exit_code)
@@ -119,13 +113,9 @@ void first_usermode_switch(page_directory_t *pdir,
 void save_current_process_state(regs *r)
 {
    memmove(&current_process->state_regs, r, sizeof(*r));
-
-   //printk("save_current_process_state(), eip = %p\n", r->eip);
-
-   if (r->int_no >= 32) {
-      PIC_sendEOI(r->int_no - 32);
-   }
 }
+
+extern volatile int current_interrupt_num;
 
 void switch_to_process(task_info *pi)
 {
@@ -138,6 +128,11 @@ void switch_to_process(task_info *pi)
 
    if (get_curr_page_dir() != current_process->pdir) {
       set_page_directory(current_process->pdir);
+   }
+
+   if (current_interrupt_num >= 32 && current_interrupt_num != 0x80) {
+      //printk("[sched] PIC_sendEOI for IRQ #%i\n", current_interrupt_num - 32);
+      PIC_sendEOI(current_interrupt_num - 32);
    }
 
    context_switch(&current_process->state_regs);
@@ -176,8 +171,7 @@ int fork_current_process()
 
 void schedule()
 {
-   printk("sched!\n");
-   printk("Current pid: %i\n", current_process->pid);
+   printk("[sched] Current pid: %i\n", current_process->pid);
 
    task_info *curr = current_process;
    task_info *p = curr;
@@ -198,6 +192,10 @@ void schedule()
    if (p->state != TASK_STATE_RUNNABLE) {
 
       printk("[sched] No runnable process found. Halt.\n");
+
+      if (current_interrupt_num >= 32) {
+         PIC_sendEOI(current_interrupt_num - 32);
+      }
 
       // We did not found any runnable task. Halt.
       halt();

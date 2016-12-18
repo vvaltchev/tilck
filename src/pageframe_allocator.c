@@ -59,7 +59,7 @@ void init_pageframe_allocator()
 
 uptr paging_alloc_pageframe()
 {
-   u32 index = 0;
+   u32 idx = 0;
    bool found = false;
 
    volatile u32 * const bitfield =
@@ -67,22 +67,22 @@ uptr paging_alloc_pageframe()
 
    for (int i = 0; i < ELEMS_RESERVED_FOR_PAGING; i++) {
 
-      if (bitfield[index] != FULL_128KB_AREA) {
+      if (bitfield[idx] != FULL_128KB_AREA) {
          found = true;
          break;
       }
 
-      index = (index + 1) % ELEMS_RESERVED_FOR_PAGING;
+      idx = (idx + 1) % ELEMS_RESERVED_FOR_PAGING;
    }
 
    ASSERT(found);
 
    uptr ret;
 
-   u32 free_index = get_first_zero_bit_index(bitfield[index]);  
-   bitfield[index] |= (1 << free_index);
+   u32 free_index = get_first_zero_bit_index(bitfield[idx]);  
+   bitfield[idx] |= (1 << free_index);
 
-   ret = (( (index + INITIAL_ELEMS_RESERVED) << 17) + (free_index << PAGE_SHIFT));
+   ret = (((idx + INITIAL_ELEMS_RESERVED) << 17) + (free_index << PAGE_SHIFT));
    return ret;
 }
 

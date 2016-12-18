@@ -101,8 +101,16 @@ void debug_dump_used_pdir_entries(page_directory_t *pdir)
 
 #endif
 
+volatile bool in_panic = false;
+
 void panic(const char *fmt, ...)
 {
+   if (in_panic) {
+      return;
+   }
+
+   in_panic = true;
+
    //cli();
 
    printk("\n\n************** KERNEL PANIC **************\n");
@@ -114,7 +122,7 @@ void panic(const char *fmt, ...)
 
    printk("\n");
 
-   //dump_stacktrace();
+   dump_stacktrace();
    //sti();
 
    while (true) {

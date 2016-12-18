@@ -68,7 +68,6 @@ void kmain()
    initialize_kmalloc();
 
    set_timer_freq(TIMER_FREQ_HZ);
-
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
@@ -80,7 +79,6 @@ void kmain()
    // Run the 'init' usermode program.
    run_usermode_init();
 
-   while (1) {
-      halt();
-   }
+   // We should never get here!
+   ASSERT(0);
 }
