@@ -3,9 +3,9 @@
 
 #ifndef __cplusplus
 
-typedef unsigned char bool;
-#define true ((unsigned char)1)
-#define false ((unsigned char)0)
+typedef _Bool bool;
+#define true ((bool)1)
+#define false ((bool)0)
 #define STATIC_ASSERT(s) _Static_assert(s, "Static assertion failed")
 
 #else
