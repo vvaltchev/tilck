@@ -34,7 +34,7 @@ export DEFS = -DDEBUG
 
 export WARN = -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Werror
 export INCDIRS = -I$(shell pwd)/include
-export CFLAGS =  $(OPT) $(WARN) $(DEFS) -std=c99 $(INCDIRS) $(ARCH_CFLAGS) \
+export CFLAGS =  $(OPT) $(WARN) $(DEFS) -std=c11 $(INCDIRS) $(ARCH_CFLAGS) \
                  -mno-red-zone -fvisibility=default \
                  -ffreestanding -g -nostdinc -fno-builtin \
                  -fno-asynchronous-unwind-tables \

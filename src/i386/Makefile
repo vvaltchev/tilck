@@ -20,7 +20,7 @@ all: $(KERNEL_ARCH_CODE_STATIC_LIB_TARGET)
 $(KERNEL_ARCH_CODE_STATIC_LIB_TARGET): $(OBJECTS)
 	@echo Packaging kernel\'s i386 static library ...
 	@$(AR) rcs $@ $(OBJECTS)
-	
+
 clean:
 	$(RM) -rf $(DEPDIR)
 
@@ -32,7 +32,6 @@ $(BUILD_DIR)/%.o : %.s
 	@echo Compiling $< ...
 	@$(GAS) --32 $(OUTPUT_OPTION) $<
 
-	
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
 	@echo Compiling $< ...

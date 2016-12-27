@@ -5,7 +5,7 @@
 #include <arch/i386/process_int.h>
 
 extern volatile u32 timer_ticks;
-void asm_context_switch_x86(u32 d, ...) NORETURN;
+NORETURN void asm_context_switch_x86(u32 d, ...);
 
 task_info *processes_list = NULL;
 task_info *current_process = NULL;

@@ -15,7 +15,7 @@ export KERNEL_ARCH_CODE_STATIC_LIB_TARGET := $(BUILD_DIR)/kernel_arch.a
 
 
 ifdef TESTING
-	export CFLAGS = $(OPT) $(WARN) $(DEFS) -std=c99 -DKERNEL_TEST $(INCDIRS) \
+	export CFLAGS = $(OPT) $(WARN) $(DEFS) -std=c11 -DKERNEL_TEST $(INCDIRS) \
 	                -fvisibility=default -ffreestanding -g -nostdinc $(ARCH_CFLAGS)
 endif
 
