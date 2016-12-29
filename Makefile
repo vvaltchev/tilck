@@ -44,6 +44,9 @@ export BUILD_DIR := $(shell pwd)/build
 export BOOTLOADER_TARGET := $(BUILD_DIR)/bootloader.bin
 export KERNEL_TARGET := $(BUILD_DIR)/kernel.bin
 
+# Don't export this
+KERNEL_SOURCE_DIR_NAME := kernel
+
 export KERNEL_BUILD_DIR := $(BUILD_DIR)/kernel
 export KERNEL_STATIC_LIB_TARGET_NAME := kernel_static.a
 
@@ -71,11 +74,11 @@ $(BUILD_DIR):
 tests: $(UNITTESTS_TARGET)
 
 $(UNITTESTS_TARGET):
-	@cd src && $(MAKE) TESTING=1 BUILD_DIR=$(UNITTESTS_BUILD_DIR)/kernel
+	@cd $(KERNEL_SOURCE_DIR_NAME) && $(MAKE) TESTING=1 BUILD_DIR=$(UNITTESTS_BUILD_DIR)/kernel
 	@cd unittests && $(MAKE) BUILD_DIR=$(UNITTESTS_BUILD_DIR)
 	
 clean:
-	cd src && $(MAKE) clean
+	cd $(KERNEL_SOURCE_DIR_NAME) && $(MAKE) clean
 	cd unittests && $(MAKE) clean
 	cd init_src && $(MAKE) clean
 	rm -rf $(BUILD_DIR)
@@ -87,7 +90,7 @@ $(BOOTLOADER_TARGET):
 	@cd bootloader && $(MAKE)
 
 $(KERNEL_TARGET):
-	@cd src && $(MAKE) BUILD_DIR=$(KERNEL_BUILD_DIR)
+	@cd $(KERNEL_SOURCE_DIR_NAME) && $(MAKE) BUILD_DIR=$(KERNEL_BUILD_DIR)
 
 $(INIT_TARGET):
 	@cd init_src && $(MAKE) BUILD_DIR=$(INIT_BUILD_DIR)
