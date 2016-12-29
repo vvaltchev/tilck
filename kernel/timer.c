@@ -23,14 +23,14 @@ void set_timer_freq(int hz)
  * This will keep track of how many ticks that the system
  * has been running for.
  */
-volatile u32 timer_ticks = 0;
+volatile u64 jiffies = 0;
 
 
 void timer_handler(regs *r) {
 
-   timer_ticks++;
+   jiffies++;
 
-   if (!(timer_ticks % 500)) {
+   if (!(jiffies % 500)) {
       save_current_process_state(r);
       schedule();
    }

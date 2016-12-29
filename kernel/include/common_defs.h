@@ -55,7 +55,11 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 #define CONSTEXPR
 #define NORETURN
 
+#define OFFSET_OF(st, m)
+
 #else
+
+#define OFFSET_OF(st, m) __builtin_offsetof(st, m)
 
 #define NORETURN _Noreturn /* C11 standard no return attribute. */
 #define ALWAYS_INLINE __attribute__((always_inline)) inline
@@ -134,6 +138,10 @@ static ALWAYS_INLINE void invalidate_page(uptr vaddr)
 {
    asmVolatile("invlpg (%0)" ::"r" (vaddr) : "memory");
 }
+
+
+#define CONTAINER_OF(elem_ptr, struct_type, mem_name) \
+   ((struct_type *)(((char *)elem_ptr) - OFFSET_OF(struct_type, mem_name)))
 
 
 /*
