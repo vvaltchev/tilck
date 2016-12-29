@@ -28,7 +28,10 @@ $(KERNEL_TARGET): $(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME) $(OBJECTS)
 ifndef TESTING
 	@echo Linking the unstripped ELF binary of the kernel
 	@ld -m $(ELF_LD_FORMAT) -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) \
-	--start-group $(KERNEL_ARCH_CODE_STATIC_LIB_TARGET) $(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME) --end-group
+	--start-group \
+	$(KERNEL_ARCH_CODE_STATIC_LIB_TARGET) \
+	$(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME) \
+	--end-group
 	@echo Stripping the kernel\'s binary ...
 	@objcopy -O binary -j .text -j .rodata -j .data $(KERNEL_UNSTRIPPED) $@
 else
@@ -48,7 +51,9 @@ $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
 	@$(COMPILE.c) $(OUTPUT_OPTION) $<
 	@$(POSTCOMPILE)
 
-.PHONY: clean $(KERNEL_ARCH_CODE_STATIC_LIB_TARGET) $(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME)
+.PHONY: clean \
+        $(KERNEL_ARCH_CODE_STATIC_LIB_TARGET) \
+        $(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME)
 
 $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d
