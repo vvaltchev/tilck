@@ -80,9 +80,13 @@ typedef unsigned int u32;
 #ifdef BITS32
 typedef unsigned long long u64;
 typedef long long s64;
+typedef u32 uptr;
+typedef s32 sptr;
 #else
 typedef unsigned long u64;
 typedef long s64;
+typedef u64 uptr;
+typedef s64 sptr;
 #endif
 
 #ifndef TESTING
@@ -97,10 +101,6 @@ typedef ssize_t ptrdiff_t;
 #include <cstdint>
 
 #endif
-
-typedef size_t uptr;
-typedef ssize_t sptr;
-
 
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));

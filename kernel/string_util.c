@@ -2,126 +2,64 @@
 #include <string_util.h>
 #include <term.h>
 
-void itoa(sptr value, char *destBuf)
-{
-   const sptr base = 10;
+#define MAGIC_ITOA_STRING \
+   "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"
 
-   char *ptr;
-   char *low;
 
-   ptr = destBuf;
+// Two kind-of ugly macros to avoid code duplication.
 
-   if (value < 0) {
-     *ptr++ = '-';
+#define instantiate_generic_itoa(function_name, integer_type)   \
+   void function_name(integer_type value, char *destBuf)        \
+   {                                                            \
+      const integer_type base = 10;                             \
+      char *ptr = destBuf;                                      \
+                                                                \
+      if (value < 0) {                                          \
+         *ptr++ = '-';                                          \
+      }                                                         \
+                                                                \
+      char *low = ptr;                                          \
+                                                                \
+      do {                                                      \
+         /* Mod(x, b) < 0 if x < 0: no need for abs(). */       \
+         *ptr++ = MAGIC_ITOA_STRING[35 + value % base];         \
+         value /= base;                                         \
+      } while ( value );                                        \
+                                                                \
+      *ptr-- = '\0';                                            \
+                                                                \
+      while (low < ptr) {                                       \
+         char tmp = *low;                                       \
+         *low++ = *ptr;                                         \
+         *ptr-- = tmp;                                          \
+      }                                                         \
    }
 
-   low = ptr;
+#define instantiate_generic_uitoa(function_name, integer_type)     \
+   void function_name(integer_type value, char *destBuf, u32 base) \
+   {                                                               \
+      char *ptr = destBuf;                                         \
+      char *low = ptr;                                             \
+                                                                   \
+      do {                                                         \
+         /* Mod(x, b) < 0 if x < 0: no need for abs(). */          \
+         *ptr++ = MAGIC_ITOA_STRING[35 + value % base];            \
+         value /= base;                                            \
+      } while (value);                                             \
+                                                                   \
+      *ptr-- = '\0';                                               \
+      while (low < ptr) {                                          \
+         char tmp = *low;                                          \
+         *low++ = *ptr;                                            \
+         *ptr-- = tmp;                                             \
+      }                                                            \
+   }                                                               \
 
-   do
-   {
-      // Mod(x, b) < 0 if x < 0. This trick makes abs() unnecessary.
-      *ptr++ = "zyxwvutsrqponmlkjihgfedcba"
-               "9876543210123456789"
-               "abcdefghijklmnopqrstuvwxyz"[35 + value % base];
-      value /= base;
-   } while ( value );
 
-   *ptr-- = '\0';
-
-   while ( low < ptr )
-   {
-     char tmp = *low;
-     *low++ = *ptr;
-     *ptr-- = tmp;
-   }
-}
-
-void llitoa(s64 value, char *destBuf)
-{
-   const sptr base = 10;
-
-   char *ptr;
-   char *low;
-
-   ptr = destBuf;
-
-   if (value < 0) {
-      *ptr++ = '-';
-   }
-
-   low = ptr;
-
-   do
-   {
-      // Mod(x, b) < 0 if x < 0. This trick makes abs() unnecessary.
-      *ptr++ = "zyxwvutsrqponmlkjihgfedcba"
-               "9876543210123456789"
-               "abcdefghijklmnopqrstuvwxyz"[35 + value % base];
-      value /= base;
-   } while (value);
-
-   *ptr-- = '\0';
-
-   while (low < ptr)
-   {
-      char tmp = *low;
-      *low++ = *ptr;
-      *ptr-- = tmp;
-   }
-}
-
-void uitoa(uptr value, char *destBuf, u32 base)
-{
-   char *ptr;
-   char *low;
-
-   ptr = destBuf;
-   low = ptr;
-
-   do
-   {
-      // Mod(x, b) < 0 if x < 0. This trick makes abs() unnecessary.
-      *ptr++ = "zyxwvutsrqponmlkjihgfedcba"
-               "9876543210123456789"
-               "abcdefghijklmnopqrstuvwxyz"[35 + value % base];
-      value /= base;
-   } while (value);
-
-   *ptr-- = '\0';
-   while (low < ptr)
-   {
-      char tmp = *low;
-      *low++ = *ptr;
-      *ptr-- = tmp;
-   }
-}
-
-void ullitoa(u64 value, char *destBuf, u32 base)
-{
-   char *ptr;
-   char *low;
-
-   ptr = destBuf;
-   low = ptr;
-
-   do
-   {
-      // Mod(x, b) < 0 if x < 0. This trick makes abs() unnecessary.
-      *ptr++ = "zyxwvutsrqponmlkjihgfedcba"
-               "9876543210123456789"
-               "abcdefghijklmnopqrstuvwxyz"[35 + value % base];
-      value /= base;
-   } while (value);
-
-   *ptr-- = '\0';
-   while (low < ptr)
-   {
-      char tmp = *low;
-      *low++ = *ptr;
-      *ptr-- = tmp;
-   }
-}
-
+instantiate_generic_itoa(itoa32, s32)
+instantiate_generic_itoa(itoa64, s64)
+instantiate_generic_uitoa(uitoa32, u32)
+instantiate_generic_uitoa(uitoa64, u64)
 
 void vprintk(const char *fmt, va_list args)
 {
@@ -151,10 +89,10 @@ void vprintk(const char *fmt, va_list args)
             ++ptr;
             if (*ptr) {
                if (*ptr == 'u') {
-                  ullitoa(va_arg(args, u64), buf, 10);
+                  uitoa(va_arg(args, u64), buf, 10);
                   term_write_string(buf);
                } else if (*ptr == 'i' || *ptr == 'd') {
-                  llitoa(va_arg(args, s64), buf);
+                  itoa(va_arg(args, s64), buf);
                   term_write_string(buf);
                }
             }
@@ -163,17 +101,17 @@ void vprintk(const char *fmt, va_list args)
 
       case 'd':
       case 'i':
-         itoa(va_arg(args, int), buf);
+         itoa(va_arg(args, s32), buf);
          term_write_string(buf);
          break;
 
       case 'u':
-         uitoa(va_arg(args, unsigned), buf, 10);
+         uitoa(va_arg(args, u32), buf, 10);
          term_write_string(buf);
          break;
 
       case 'x':
-         uitoa(va_arg(args, unsigned), buf, 16);
+         uitoa(va_arg(args, u32), buf, 16);
          term_write_string(buf);
          break;
 
@@ -199,7 +137,6 @@ void vprintk(const char *fmt, va_list args)
          term_write_char('%');
          term_write_char(*ptr);
       }
-
 
       ++ptr;
    }

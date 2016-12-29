@@ -28,27 +28,42 @@ void memcpy(void *dest, const void *src, size_t n);
 void memmove(void *dest, const void *src, size_t n);
 
 
-void itoa(sptr value, char *destBuf);
-void uitoa(uptr value, char *destBuf, u32 base);
+void itoa32(s32 value, char *destBuf);
+void uitoa32(u32 value, char *destBuf, u32 base);
+void itoa64(s64 value, char *destBuf);
+void uitoa64(u64 value, char *destBuf, u32 base);
 
-static ALWAYS_INLINE bool isalpha_lower(char c) {
+/* Using C11's _Generic feature. */
+
+#define itoa(num, destbuf) \
+   _Generic((num), s32: itoa32, s64: itoa64)(num, destbuf)
+
+#define uitoa(num, destbuf, base) \
+   _Generic((num), u32: uitoa32, u64: uitoa64)((num), (destbuf), (base))
+
+
+static ALWAYS_INLINE bool isalpha_lower(int c) {
    return (c >= 'a' && c <= 'z');
 }
 
-static ALWAYS_INLINE bool isalpha_upper(char c) {
+static ALWAYS_INLINE bool isalpha_upper(int c) {
    return (c >= 'a' && c <= 'z');
 }
 
-static ALWAYS_INLINE bool isalpha(char c) {
+static ALWAYS_INLINE bool isalpha(int c) {
    return isalpha_lower(c) || isalpha_upper(c);
 }
 
-static ALWAYS_INLINE char lower(char c) {
+static ALWAYS_INLINE char lower(int c) {
    return isalpha_upper(c) ? c + 27 : c;
 }
 
-static ALWAYS_INLINE char upper(char c) {
+static ALWAYS_INLINE char upper(int c) {
    return isalpha_lower(c) ? c - 27 : c;
+}
+
+static ALWAYS_INLINE bool isdigit(int c) {
+   return c >= '0' && c <= '9';
 }
 
 void vprintk(const char *fmt, va_list args);
