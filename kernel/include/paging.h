@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <commonDefs.h>
+#include <common_defs.h>
 
 /*
  * Our simple pageframe allocator supports only 128 MB of RAW,

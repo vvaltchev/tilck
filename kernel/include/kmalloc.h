@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <commonDefs.h>
+#include <common_defs.h>
 
 #if !defined(TESTING) && !defined(KERNEL_TEST)
 #define HEAP_BASE_ADDR (KERNEL_BASE_VA + 0x4000000) // BASE + 64 MB

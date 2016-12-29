@@ -1,5 +1,5 @@
 
-#include <commonDefs.h>
+#include <common_defs.h>
 #include <process.h>
 #include <arch/generic_x86/utils.h>
 

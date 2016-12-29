@@ -1,7 +1,7 @@
 
 /* Usermode application */
 
-#include <commonDefs.h>
+#include <common_defs.h>
 #include "usermode_syscall_wrappers.h"
 #include "string.h"
 

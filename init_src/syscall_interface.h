@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <commonDefs.h>
+#include <common_defs.h>
 
 static ALWAYS_INLINE int generic_syscall0(int syscall_num)
 {

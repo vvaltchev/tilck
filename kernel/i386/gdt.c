@@ -1,5 +1,5 @@
 
-#include <commonDefs.h>
+#include <common_defs.h>
 #include <string_util.h>
 
 void gdt_load();

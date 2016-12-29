@@ -1,6 +1,6 @@
-src/.d
+kernel/.d
+kernel/i386/.d
 init_src/.d
-src/i386/.d
 build/
 VS2015/.vs/
 VS2015/Debug/

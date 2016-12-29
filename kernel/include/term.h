@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <commonDefs.h>
+#include <common_defs.h>
 
 
 /* Hardware text mode color constants. */

@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <commonDefs.h>
+#include <common_defs.h>
 
 #define FAULT_DIVISION_BY_ZERO     0
 #define FAULT_DEBUG                1

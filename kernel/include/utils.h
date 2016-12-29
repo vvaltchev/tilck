@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <commonDefs.h>
+#include <common_defs.h>
 
 /*
 * From: http://graphics.stanford.edu/~seander/bithacks.html

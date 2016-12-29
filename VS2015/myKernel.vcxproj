@@ -164,7 +164,7 @@
   <ItemGroup>
     <ClInclude Include="..\kernel\include\arch\generic_x86\utils.h" />
     <ClInclude Include="..\kernel\include\arch\i386\process_int.h" />
-    <ClInclude Include="..\kernel\include\commonDefs.h" />
+    <ClInclude Include="..\kernel\include\common_defs.h" />
     <ClInclude Include="..\kernel\include\irq.h" />
     <ClInclude Include="..\kernel\include\kmalloc.h" />
     <ClInclude Include="..\kernel\include\paging.h" />

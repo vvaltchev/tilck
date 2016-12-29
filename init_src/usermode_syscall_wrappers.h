@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <commonDefs.h>
+#include <common_defs.h>
 #include "syscall_interface.h"
 
 #define SYSCALL_RESTART   0
