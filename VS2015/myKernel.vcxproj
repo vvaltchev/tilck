@@ -70,7 +70,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ExecutablePath />
-    <IncludePath>..\include</IncludePath>
+    <IncludePath>..\kernel\include</IncludePath>
     <ReferencePath />
     <LibraryPath />
     <LibraryWPath />
@@ -79,7 +79,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ExecutablePath />
-    <IncludePath>..\include</IncludePath>
+    <IncludePath>..\kernel\include</IncludePath>
     <ReferencePath />
     <LibraryPath />
     <LibraryWPath />
@@ -138,42 +138,42 @@
   <ItemGroup>
     <ClCompile Include="..\init_src\init.c" />
     <ClCompile Include="..\init_src\string.c" />
-    <ClCompile Include="..\src\i386\process.c" />
-    <ClCompile Include="..\src\string_util.c" />
+    <ClCompile Include="..\kernel\i386\process.c" />
+    <ClCompile Include="..\kernel\string_util.c" />
     <ClCompile Include="..\unittests\asm_mocks.c" />
     <ClCompile Include="..\unittests\generic_mocks.c" />
     <ClCompile Include="..\unittests\kmalloc_mocks.cpp" />
     <ClCompile Include="..\unittests\kmalloc_test.cpp" />
     <ClCompile Include="..\unittests\tests_main.cpp" />
-    <ClCompile Include="..\src\i386\gdt.c" />
-    <ClCompile Include="..\src\i386\idt.c" />
-    <ClCompile Include="..\src\i386\irq.c" />
-    <ClCompile Include="..\src\kb.c" />
-    <ClCompile Include="..\src\main.c" />
-    <ClCompile Include="..\src\pageframe_allocator.c" />
-    <ClCompile Include="..\src\i386\paging.c" />
-    <ClCompile Include="..\src\syscalls.c" />
-    <ClCompile Include="..\src\term.c" />
-    <ClCompile Include="..\src\debug_utils.c" />
-    <ClCompile Include="..\src\kmalloc.c" />
-    <ClCompile Include="..\src\kmalloc_util.c" />
-    <ClCompile Include="..\src\perftests.c" />
-    <ClCompile Include="..\src\timer.c" />
-    <ClCompile Include="..\src\i386\utils32.c" />
+    <ClCompile Include="..\kernel\i386\gdt.c" />
+    <ClCompile Include="..\kernel\i386\idt.c" />
+    <ClCompile Include="..\kernel\i386\irq.c" />
+    <ClCompile Include="..\kernel\kb.c" />
+    <ClCompile Include="..\kernel\main.c" />
+    <ClCompile Include="..\kernel\pageframe_allocator.c" />
+    <ClCompile Include="..\kernel\i386\paging.c" />
+    <ClCompile Include="..\kernel\syscalls.c" />
+    <ClCompile Include="..\kernel\term.c" />
+    <ClCompile Include="..\kernel\debug_utils.c" />
+    <ClCompile Include="..\kernel\kmalloc.c" />
+    <ClCompile Include="..\kernel\kmalloc_util.c" />
+    <ClCompile Include="..\kernel\perftests.c" />
+    <ClCompile Include="..\kernel\timer.c" />
+    <ClCompile Include="..\kernel\i386\utils32.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\arch\generic_x86\utils.h" />
-    <ClInclude Include="..\include\arch\i386\process_int.h" />
-    <ClInclude Include="..\include\commonDefs.h" />
-    <ClInclude Include="..\include\irq.h" />
-    <ClInclude Include="..\include\kmalloc.h" />
-    <ClInclude Include="..\include\paging.h" />
-    <ClInclude Include="..\include\process.h" />
-    <ClInclude Include="..\include\term.h" />
-    <ClInclude Include="..\include\debug_utils.h" />
-    <ClInclude Include="..\include\arch\i386\paging_int.h" />
-    <ClInclude Include="..\include\arch\i386\arch_utils.h" />
-    <ClInclude Include="..\include\utils.h" />
+    <ClInclude Include="..\kernel\include\arch\generic_x86\utils.h" />
+    <ClInclude Include="..\kernel\include\arch\i386\process_int.h" />
+    <ClInclude Include="..\kernel\include\commonDefs.h" />
+    <ClInclude Include="..\kernel\include\irq.h" />
+    <ClInclude Include="..\kernel\include\kmalloc.h" />
+    <ClInclude Include="..\kernel\include\paging.h" />
+    <ClInclude Include="..\kernel\include\process.h" />
+    <ClInclude Include="..\kernel\include\term.h" />
+    <ClInclude Include="..\kernel\include\debug_utils.h" />
+    <ClInclude Include="..\kernel\include\arch\i386\paging_int.h" />
+    <ClInclude Include="..\kernel\include\arch\i386\arch_utils.h" />
+    <ClInclude Include="..\kernel\include\utils.h" />
     <ClInclude Include="..\init_src\string.h" />
     <ClInclude Include="..\init_src\syscall_interface.h" />
     <ClInclude Include="..\init_src\usermode_syscall_wrappers.h" />
