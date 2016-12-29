@@ -7,6 +7,8 @@
 #error This header can be used only for x86 and x86-64 architectures.
 #endif
 
+#define TIMER_HZ 100
+
 
 static ALWAYS_INLINE u64 RDTSC()
 {

@@ -136,4 +136,7 @@ void assert_failed(const char *expr, const char *file, int line)
          expr, file, line);
 }
 
-
+void not_reached(const char *file, int line)
+{
+   panic("\nNOT_REACHED statement in file '%s' at line %i\n", file, line);
+}

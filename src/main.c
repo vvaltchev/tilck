@@ -11,8 +11,6 @@
 
 #include <arch/generic_x86/utils.h>
 
-#define TIMER_FREQ_HZ 100
-
 void gdt_install();
 void idt_install();
 
@@ -67,7 +65,7 @@ void kmain()
    init_paging();
    initialize_kmalloc();
 
-   set_timer_freq(TIMER_FREQ_HZ);
+   set_timer_freq(TIMER_HZ);
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 
@@ -80,5 +78,5 @@ void kmain()
    run_usermode_init();
 
    // We should never get here!
-   ASSERT(0);
+   NOT_REACHED();
 }

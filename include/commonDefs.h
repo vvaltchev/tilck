@@ -17,11 +17,15 @@ typedef _Bool bool;
 #ifdef __i386__
 
 STATIC_ASSERT(sizeof(void *) == 4);
+STATIC_ASSERT(sizeof(long) == sizeof(void *));
+
 #define BITS32
 
 #elif defined(__x86_64__)
 
 STATIC_ASSERT(sizeof(void *) == 8);
+STATIC_ASSERT(sizeof(long) == sizeof(void *));
+
 #define BITS64
 
 #else
@@ -115,9 +119,34 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
 
+
+#define DO_NOT_OPTIMIZE_AWAY(x) asmVolatile("" : "+r" ( (void *)(x) ))
+
+
+// Putting reboot() temporarly here.
+void reboot();
+
+
+/*
+ * Invalidates the TLB entry used for resolving the page containing 'vaddr'.
+ */
+static ALWAYS_INLINE void invalidate_page(uptr vaddr)
+{
+   asmVolatile("invlpg (%0)" ::"r" (vaddr) : "memory");
+}
+
+
+/*
+ * ********************************************
+ *
+ * Panic-related stuff
+ *
+ * ********************************************
+ */
+
 void panic(const char *fmt, ...);
 void assert_failed(const char *expr, const char *file, int line);
-void reboot();
+void not_reached(const char *file, int line);
 
 #ifndef NDEBUG
 
@@ -135,13 +164,4 @@ void reboot();
 #endif
 
 
-#define DO_NOT_OPTIMIZE_AWAY(x) asmVolatile("" : "+r" ( (void *)(x) ))
-
-
-/*
- * Invalidates the TLB entry used for resolving the page containing 'vaddr'.
- */
-static ALWAYS_INLINE void invalidate_page(uptr vaddr)
-{
-   asmVolatile("invlpg (%0)" ::"r" (vaddr) : "memory");
-}
+#define NOT_REACHED() not_reached(__FILE__, __LINE__)

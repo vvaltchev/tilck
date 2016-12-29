@@ -114,7 +114,8 @@ void handle_page_fault(regs *r)
           us ? "userland" : "kernel",
           !p ? "(NON present page)" : "");
 
-   ASSERT(0);
+   // We are not really handling 'real' page-faults yet.
+   NOT_REACHED();
 }
 
 void handle_general_protection_fault(regs *r)
