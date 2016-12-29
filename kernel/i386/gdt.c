@@ -45,7 +45,7 @@ struct tss_entry_struct
                    // would form a linked list.
    u32 esp0;       // The stack pointer to load when we change to kernel mode.
    u32 ss0;        // The stack segment to load when we change to kernel mode.
-   u32 esp1;       // everything below here is unusued now.. 
+   u32 esp1;       // everything below here is unusued now..
    u32 ss1;
    u32 esp2;
    u32 ss2;
@@ -127,7 +127,7 @@ static void write_tss(s32 num, u16 ss0, u32 esp0)
     // Firstly, let's compute the base and limit of our entry into the GDT.
     u32 base = (u32) &tss_entry;
     u32 limit = base + sizeof(tss_entry);
-    
+
     // Now, add our TSS descriptor's address to the GDT.
     gdt_set_gate(num, base, limit, 0xE9, 0x00);
 
@@ -136,7 +136,7 @@ static void write_tss(s32 num, u16 ss0, u32 esp0)
 
     tss_entry.ss0  = ss0;  // Set the kernel stack segment.
     tss_entry.esp0 = esp0; // Set the kernel stack pointer.
-    
+
     /*
      * Here we set the cs, ss, ds, es, fs and gs entries in the TSS. These
      * specify what segments should be loaded when the processor switches to
@@ -146,7 +146,7 @@ static void write_tss(s32 num, u16 ss0, u32 esp0)
      * level) to 3, meaning that this TSS can be used to switch to kernel mode
      * from ring 3.
      */
-    tss_entry.cs   = 0x0b;     
+    tss_entry.cs   = 0x0b;
     tss_entry.ss =
       tss_entry.ds = tss_entry.es = tss_entry.fs = tss_entry.gs = 0x13;
 }
@@ -166,16 +166,18 @@ void gdt_install()
    /* Our NULL descriptor */
    gdt_set_gate(0, 0, 0, 0, 0);
 
-   /* The second entry is our Code Segment. The base address
-   *  is 0, the limit is 4GBytes, it uses 4KByte granularity,
-   *  uses 32-bit opcodes, and is a Code Segment descriptor.
-   *  Please check the table above in the tutorial in order
-   *  to see exactly what each value means */
+   /*
+    * The second entry is our Code Segment. The base address
+    * is 0, the limit is 4GBytes, it uses 4KByte granularity,
+    * uses 32-bit opcodes, and is a Code Segment descriptor.
+   */
    gdt_set_gate(1, 0, 0xFFFFFFFF, 0x9A, 0xCF);
 
-   /* The third entry is our Data Segment. It's EXACTLY the
-   *  same as our code segment, but the descriptor type in
-   *  this entry's access byte says it's a Data Segment */
+   /*
+    * The third entry is our Data Segment. It's EXACTLY the
+    * same as our code segment, but the descriptor type in
+    * this entry's access byte says it's a Data Segment.
+    */
    gdt_set_gate(2, 0, 0xFFFFFFFF, 0x92, 0xCF);
 
 
