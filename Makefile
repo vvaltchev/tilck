@@ -32,8 +32,11 @@ export GAS = as
 export OPT = -O0 -fno-inline-functions
 export DEFS = -DDEBUG
 
+# Don't export this
+KERNEL_SOURCE_DIR_NAME := kernel
+
 export WARN = -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Werror
-export INCDIRS = -I$(shell pwd)/include
+export INCDIRS = -I$(shell pwd)/$(KERNEL_SOURCE_DIR_NAME)/include
 export CFLAGS =  $(OPT) $(WARN) $(DEFS) -std=c11 $(INCDIRS) $(ARCH_CFLAGS) \
                  -mno-red-zone -fvisibility=default \
                  -ffreestanding -g -nostdinc -fno-builtin \
@@ -44,8 +47,6 @@ export BUILD_DIR := $(shell pwd)/build
 export BOOTLOADER_TARGET := $(BUILD_DIR)/bootloader.bin
 export KERNEL_TARGET := $(BUILD_DIR)/kernel.bin
 
-# Don't export this
-KERNEL_SOURCE_DIR_NAME := kernel
 
 export KERNEL_BUILD_DIR := $(BUILD_DIR)/kernel
 export KERNEL_STATIC_LIB_TARGET_NAME := kernel_static.a
