@@ -13,6 +13,5 @@ VS2015/myKernel.vcxproj.user
 bochsrc-disk.bxrc
 bochsrc.bxrc
 bx_enh_dbg.iniunittests/.d/
-.vscode/
 unittests/.d/
 toolchain/
