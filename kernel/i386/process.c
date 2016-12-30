@@ -7,10 +7,12 @@
 extern volatile u32 timer_ticks;
 NORETURN void asm_context_switch_x86(u32 d, ...);
 
-task_info *processes_list = NULL;
 task_info *current_process = NULL;
 
-int current_max_pid = -1;
+// Our linked list for all the tasks (processes, threads, etc.)
+LIST_HEAD(tasks_list);
+
+int current_max_pid = 0;
 
 static ALWAYS_INLINE void context_switch(regs *r)
 {
@@ -42,27 +44,12 @@ static ALWAYS_INLINE void context_switch(regs *r)
 void add_process(task_info *p)
 {
    p->state = TASK_STATE_RUNNABLE;
-
-   if (!processes_list) {
-      p->next = p;
-      p->prev = p;
-      processes_list = p;
-      return;
-   }
-
-   task_info *last = processes_list->prev;
-
-   last->next = p;
-   p->prev = last;
-   p->next = processes_list;
-   processes_list->prev = p;   
+   list_add_tail(&tasks_list, &p->list);
 }
 
 void remove_process(task_info *p)
 {
-   p->prev->next = p->next;
-   p->next->prev = p->prev;
-
+   list_remove(&p->list);
    printk("[remove_process] pid = %i\n", p->pid);
 }
 
@@ -98,6 +85,7 @@ void first_usermode_switch(page_directory_t *pdir,
    asmVolatile("movl %0, %%eax" : "=r"(r.eflags));
 
    task_info *pi = kmalloc(sizeof(task_info));
+   INIT_LIST_HEAD(&pi->list);
    pi->pdir = pdir;
    pi->pid = ++current_max_pid;
    pi->state = TASK_STATE_RUNNABLE;
@@ -142,8 +130,9 @@ void switch_to_process(task_info *pi)
 int fork_current_process()
 {
    page_directory_t *pdir = pdir_clone(current_process->pdir);
-   
+
    task_info *child = kmalloc(sizeof(task_info));
+   INIT_LIST_HEAD(&child->list);
    child->pdir = pdir;
    child->pid = ++current_max_pid;
    memmove(&child->state_regs,
@@ -174,22 +163,26 @@ void schedule()
    printk("[sched] Current pid: %i\n", current_process->pid);
 
    task_info *curr = current_process;
-   task_info *p = curr;
 
    if (curr->state == TASK_STATE_RUNNING) {
       curr->state = TASK_STATE_RUNNABLE;
    }
 
-   do {
-      p = p->next;
+   task_info *selected = NULL;
 
-      if (p->state == TASK_STATE_RUNNABLE) {
+   task_info *pos;
+   list_for_each_entry(pos, &tasks_list, list) {
+      if (pos != curr && pos->state == TASK_STATE_RUNNABLE) {
+         selected = pos;
          break;
       }
+   }
 
-   } while (p != curr);  
+   if (!selected) {
+      selected = curr;
+   }
 
-   if (p->state != TASK_STATE_RUNNABLE) {
+   if (selected->state != TASK_STATE_RUNNABLE) {
 
       printk("[sched] No runnable process found. Halt.\n");
 
@@ -201,6 +194,6 @@ void schedule()
       halt();
    }
 
-   switch_to_process(p);
+   switch_to_process(selected);
 }
 

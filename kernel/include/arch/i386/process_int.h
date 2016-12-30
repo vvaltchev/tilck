@@ -2,6 +2,7 @@
 #pragma once
 
 #include <process.h>
+#include <list.h>
 #include <arch/i386/arch_utils.h>
 
 #define TASK_STATE_RUNNABLE 0
@@ -11,8 +12,7 @@
 
 struct task_info {
 
-   task_info *next;
-   task_info *prev;
+   list_head list;
 
    int pid;
    int state;
