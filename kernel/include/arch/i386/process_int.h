@@ -18,6 +18,8 @@ struct task_info {
    int state;
    int exit_code;
 
+   u64 jiffies_when_switch;
+
    regs state_regs;
    page_directory_t *pdir;
 };

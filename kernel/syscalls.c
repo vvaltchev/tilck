@@ -8,23 +8,16 @@
 typedef sptr (*syscall_type)();
 
 // 0
-sptr sys_restart_syscall()
+sptr sys_setup()
 {
    return 0;
 }
 
 // 1
-sptr sys_exit(int code)
-{
-   exit_current_process(code);
-   return 0;
-}
+sptr sys_exit(int code);
 
 // 2
-sptr sys_fork()
-{
-   return fork_current_process();
-}
+sptr sys_fork();
 
 // 3
 sptr sys_read(int fd, void *buf, size_t count)
@@ -65,19 +58,107 @@ sptr sys_waitpid()
    return 0;
 }
 
+// 8
+sptr sys_creat()
+{
+   return 0;
+}
+
+// 9
+sptr sys_link()
+{
+   return 0;
+}
+
+// 10
+sptr sys_unlink()
+{
+   return 0;
+}
+
+// 11
+sptr sys_execve()
+{
+   return 0;
+}
+
+// 12
+sptr sys_chdir()
+{
+   return 0;
+}
+
+// 13
+sptr sys_time()
+{
+   return 0;
+}
+
+// 14
+sptr sys_mknod()
+{
+   return 0;
+}
+
+// 15
+sptr sys_chmod()
+{
+   return 0;
+}
+
+// 16
+sptr sys_lchown()
+{
+   return 0;
+}
+
+// 17
+sptr sys_break()
+{
+   return 0;
+}
+
+// 18
+sptr sys_oldstat()
+{
+   return 0;
+}
+
+// 19
+sptr sys_lseek()
+{
+   return 0;
+}
+
+// 20
+sptr sys_getpid();
+
 syscall_type syscalls_pointers[] =
 {
-   sys_restart_syscall,
+   sys_setup,
    sys_exit,
    sys_fork,
    sys_read,
    sys_write,
    sys_open,
    sys_close,
-   sys_waitpid
+   sys_waitpid,
+   sys_creat,
+   sys_link,
+   sys_unlink,
+   sys_execve,
+   sys_chdir,
+   sys_time,
+   sys_mknod,
+   sys_chmod,
+   sys_lchown,
+   sys_break,
+   sys_oldstat,
+   sys_lseek,
+   sys_getpid
 };
 
-ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
+const ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
 
 #ifdef __i386__
 
@@ -85,6 +166,8 @@ ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
 
 void handle_syscall(regs *r)
 {
+   save_current_process_state(r);
+
    sptr syscall_no = r->eax;
 
    if (syscall_no < 0 || syscall_no >= syscall_count) {
@@ -99,11 +182,6 @@ void handle_syscall(regs *r)
    //printk("Arg 4 (esi): %p\n", r->esi);
    //printk("Arg 5 (edi): %p\n", r->edi);
    //printk("Arg 6 (ebp): %p\n\n", r->ebp);
-
-   if (syscall_no == 2 /* fork */) {
-      printk("syscall is fork(), saving state..\n");
-      save_current_process_state(r);
-   }
 
    r->eax =
       syscalls_pointers[r->eax](r->ebx, r->ecx, r->edx,

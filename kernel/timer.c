@@ -10,7 +10,7 @@
 
 void set_timer_freq(int hz)
 {
-   ASSERT(hz >= 1 && hz <= 250);
+   ASSERT(hz >= 1 && hz <= 1000);
 
    int divisor = 1193180 / hz;   /* Calculate our divisor */
    outb(0x43, 0x36);             /* Set our command byte 0x36 */
@@ -25,14 +25,18 @@ void set_timer_freq(int hz)
  */
 volatile u64 jiffies = 0;
 
+extern volatile task_info *current_process;
 
-void timer_handler(regs *r) {
-
+void timer_handler(regs *r)
+{
    jiffies++;
 
-   if (!(jiffies % 500)) {
-      save_current_process_state(r);
-      schedule();
+   if (!current_process) {
+      // The kernel is still initializing and we cannot call schedule() yet.
+      return;
    }
+
+   save_current_process_state(r);
+   schedule();
 }
 

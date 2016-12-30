@@ -35,7 +35,7 @@ void main()
 
       if (!(n % (1024 * 1024 * 1024))) {
 
-         printf("1 billion iters\n");
+         printf("[PID: %i] 1 billion iters\n", getpid());
          billions++;
 
          if (billions == 1) {
