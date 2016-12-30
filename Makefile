@@ -35,15 +35,17 @@ export DEFS = -DDEBUG
 # Don't export this
 KERNEL_SOURCE_DIR_NAME := kernel
 
+export MAIN_PROJ_DIR := $(shell pwd)
+
 export WARN = -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Werror
-export INCDIRS = -I$(shell pwd)/$(KERNEL_SOURCE_DIR_NAME)/include
+export INCDIRS = -I$(MAIN_PROJ_DIR)/$(KERNEL_SOURCE_DIR_NAME)/include
 export CFLAGS =  $(OPT) $(WARN) $(DEFS) -std=c11 $(INCDIRS) $(ARCH_CFLAGS) \
                  -mno-red-zone -fvisibility=default \
                  -ffreestanding -g -nostdinc -fno-builtin \
                  -fno-asynchronous-unwind-tables \
                  -fno-zero-initialized-in-bss
 
-export BUILD_DIR := $(shell pwd)/build
+export BUILD_DIR := $(MAIN_PROJ_DIR)/build
 export BOOTLOADER_TARGET := $(BUILD_DIR)/bootloader.bin
 export KERNEL_TARGET := $(BUILD_DIR)/kernel.bin
 
@@ -77,7 +79,7 @@ tests: $(UNITTESTS_TARGET)
 $(UNITTESTS_TARGET):
 	@cd $(KERNEL_SOURCE_DIR_NAME) && $(MAKE) TESTING=1 BUILD_DIR=$(UNITTESTS_BUILD_DIR)/kernel
 	@cd unittests && $(MAKE) BUILD_DIR=$(UNITTESTS_BUILD_DIR)
-	
+
 clean:
 	cd $(KERNEL_SOURCE_DIR_NAME) && $(MAKE) clean
 	cd unittests && $(MAKE) clean
