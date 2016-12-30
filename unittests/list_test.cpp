@@ -52,8 +52,8 @@ TEST(list_adt, add)
    my_struct *e1 = create_elem("head");
    my_struct *e2 = create_elem("tail");
 
-   ASSERT_TRUE(LIST_ENTRY(&e1->list, my_struct, list) == e1);
-   ASSERT_TRUE(LIST_ENTRY(&e2->list, my_struct, list) == e2);
+   ASSERT_TRUE(list_entry(&e1->list, my_struct, list) == e1);
+   ASSERT_TRUE(list_entry(&e2->list, my_struct, list) == e2);
 
    LIST_HEAD(list);
    ASSERT_TRUE(list_is_empty(&list));
@@ -79,11 +79,38 @@ TEST(list_adt, add)
    ASSERT_TRUE(e2->list.next == &list);
    ASSERT_TRUE(list.prev == &e2->list);
 
-   ASSERT_TRUE(LIST_ENTRY(&e1->list, my_struct, list) == e1);
-   ASSERT_TRUE(LIST_ENTRY(&e2->list, my_struct, list) == e2);
-   ASSERT_TRUE(LIST_ENTRY(&e12->list, my_struct, list) == e12);
+   ASSERT_TRUE(list_entry(&e1->list, my_struct, list) == e1);
+   ASSERT_TRUE(list_entry(&e2->list, my_struct, list) == e2);
+   ASSERT_TRUE(list_entry(&e12->list, my_struct, list) == e12);
 
    destroy_elem(e1);
    destroy_elem(e2);
    destroy_elem(e12);
+}
+
+TEST(list_adt, add_tail)
+{
+   my_struct *e1 = create_elem("head");
+   my_struct *e2 = create_elem("tail");
+
+   ASSERT_TRUE(list_entry(&e1->list, my_struct, list) == e1);
+   ASSERT_TRUE(list_entry(&e2->list, my_struct, list) == e2);
+
+   LIST_HEAD(list);
+   ASSERT_TRUE(list_is_empty(&list));
+
+   list_add(&list, &e1->list);
+   list_add(&e1->list, &e2->list);
+
+   my_struct *ne = create_elem("new tail");
+   list_add_tail(&list, &ne->list);
+
+   ASSERT_TRUE(list.prev == &ne->list);
+   ASSERT_TRUE(ne->list.next == &list);
+   ASSERT_TRUE(e2->list.next == &ne->list);
+   ASSERT_TRUE(ne->list.prev == &e2->list);
+
+   destroy_elem(e1);
+   destroy_elem(e2);
+   destroy_elem(ne);
 }
