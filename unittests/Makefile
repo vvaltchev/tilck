@@ -9,8 +9,8 @@ OTHER_INC_DIRS = -I$(GTEST_DIR)/include
 LIBS = $(GTEST_DIR)/libgtest.a $(GTEST_DIR)/libgtest_main.a -lpthread
 
 TEST_CFLAGS =  $(OPT) $(WARN) -g $(INCDIRS) $(OTHER_INC_DIRS) -DTESTING $(ARCH_CFLAGS) -Wno-format
-COMPILE.c = $(CC) -std=c99 $(DEPFLAGS) $(TEST_CFLAGS) -c
-COMPILE.cpp = $(CXX) -std=c++11 $(DEPFLAGS) $(TEST_CFLAGS) -c
+COMPILE.c = $(CC) -std=c11 $(DEPFLAGS) $(TEST_CFLAGS) -c
+COMPILE.cpp = $(CXX) -std=c++17 $(DEPFLAGS) $(TEST_CFLAGS) -c
 POSTCOMPILE = $(MV) -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
 SYMBOL_WRAPPING  = -Wl,--wrap,panic
@@ -39,17 +39,17 @@ $(UNITTESTS_TARGET): $(TEST_OBJECTS)
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
-	 @echo Compiling $< ...
-	 @$(COMPILE.c) $(OUTPUT_OPTION) $<
-	 @$(POSTCOMPILE)	
+	@echo Compiling $< ...
+	@$(COMPILE.c) $(OUTPUT_OPTION) $<
+	@$(POSTCOMPILE)
 
 
 $(BUILD_DIR)/%.o : %.cpp
 $(BUILD_DIR)/%.o : %.cpp $(DEPDIR)/%.d
-	 @echo Compiling $< ...
-	 @$(COMPILE.cpp) $(OUTPUT_OPTION) $<
-	 @$(POSTCOMPILE)	
-	 
+	@echo Compiling $< ...
+	@$(COMPILE.cpp) $(OUTPUT_OPTION) $<
+	@$(POSTCOMPILE)
+
 clean:
 	$(RM) -rf $(DEPDIR)
 
