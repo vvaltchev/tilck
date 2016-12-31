@@ -1,22 +1,30 @@
 
 #pragma once
 
-#include <commonDefs.h>
+#include <common_defs.h>
 #include "syscall_interface.h"
 
-#define SYSCALL_RESTART   0
-#define SYSCALL_EXIT      1
-#define SYSCALL_FORK      2
-#define SYSCALL_READ      3
-#define SYSCALL_WRITE     4
-#define SYSCALL_OPEN      5
-#define SYSCALL_CLOSE     6
-#define SYSCALL_WAITPID   7
+#define SYSCALL_RESTART    0
+#define SYSCALL_EXIT       1
+#define SYSCALL_FORK       2
+#define SYSCALL_READ       3
+#define SYSCALL_WRITE      4
+#define SYSCALL_OPEN       5
+#define SYSCALL_CLOSE      6
+#define SYSCALL_WAITPID    7
 
+// ...
+
+#define SYSCALL_GETPID    20
 
 static ALWAYS_INLINE int fork()
 {
    return generic_syscall0(SYSCALL_FORK);
+}
+
+static ALWAYS_INLINE int getpid()
+{
+   return generic_syscall0(SYSCALL_GETPID);
 }
 
 static ALWAYS_INLINE void _exit(int code)

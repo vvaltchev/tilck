@@ -1,0 +1,19 @@
+// Place your settings in this file to overwrite default and user settings.
+{
+    "editor.tabSize": 3,
+    "editor.rulers": [80],
+    "editor.renderWhitespace":"boundary",
+    "editor.detectIndentation": false,
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/.d": true,
+        "toolchain/**": true,
+        "build/**": true
+    },
+    "files.eol": "\n",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true
+}
