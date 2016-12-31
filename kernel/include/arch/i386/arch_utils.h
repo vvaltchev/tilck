@@ -16,3 +16,38 @@ struct regs {
    u32 int_no, err_code;    /* our 'push byte #' and error codes do this */
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
+
+static inline void set_return_register(regs *r, u32 value)
+{
+   r->eax = value;
+}
+
+
+NORETURN void asm_context_switch_x86(u32 d, ...);
+
+NORETURN static ALWAYS_INLINE void context_switch(regs *r)
+{
+   asm_context_switch_x86(
+                          // Segment registers
+                          r->gs,
+                          r->fs,
+                          r->es,
+                          r->ds,
+
+                          // General purpose registers
+                          r->edi,
+                          r->esi,
+                          r->ebp,
+                          /* skipping ESP */
+                          r->ebx,
+                          r->edx,
+                          r->ecx,
+                          r->eax,
+
+                          // Registers pop-ed by iret
+                          r->eip,
+                          r->cs,
+                          r->eflags,
+                          r->useresp,
+                          r->ss);
+}
