@@ -339,7 +339,7 @@ void pdir_destroy(page_directory_t *pdir)
    for (int i = 0; i < 768; i++) {
 
       page_table_t *pt = pdir->page_tables[i];
-      
+
       if (pt == NULL) {
          continue;
       }

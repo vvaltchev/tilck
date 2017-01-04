@@ -17,8 +17,7 @@ $(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
 $(INIT_TARGET): $(OBJECTS)
 	@echo Linking $@ ...
-	@ld -m $(ELF_LD_FORMAT) -Ttext=0x08000000 -o $(INIT_UNSTRIPPED) $(OBJECTS)
-	@objcopy -O binary -j .text -j .rodata -j .data $(INIT_UNSTRIPPED) $@
+	@ld -m $(ELF_LD_FORMAT) -Ttext=0x08000000 -o $@ $(OBJECTS)
 
 $(BUILD_DIR)/%.o : %.asm
 	@echo Compiling $< ...
