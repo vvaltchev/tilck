@@ -1,9 +1,15 @@
 
 #include <elf.h>
 #include <paging.h>
+
 #include <string_util.h>
 #include <arch/generic_x86/utils.h>
 
+#ifdef DEBUG
+
+//
+// Debug functions
+//
 
 void dump_elf32_header(Elf32_Ehdr *h)
 {
@@ -40,13 +46,18 @@ void dump_elf32_phdrs(Elf32_Ehdr *h)
 {
    Elf32_Phdr *phdr = (Elf32_Phdr *) ((char *)h + sizeof(*h));
 
-   for (int i = 0; i < h->e_phnum; i++) {
+   for (int i = 0; i < h->e_phnum; i++, phdr++) {
       printk("*** SEGMENT %i ***\n", i);
       dump_elf32_program_segment_header(phdr);
-      phdr++;
       printk("\n\n");
    }
 }
+
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+
+uptr alloc_pageframe();
 
 void load_elf_program(void *elf,
                       page_directory_t *pdir,
@@ -57,8 +68,52 @@ void load_elf_program(void *elf,
    Elf32_Ehdr *header = (Elf32_Ehdr *)elf;
    ASSERT(header->e_ehsize == sizeof(*header));
 
-   dump_elf32_header(header);
-   dump_elf32_phdrs(header);
+   //dump_elf32_header(header);
+   //dump_elf32_phdrs(header);
 
-   while(true) halt();
+   Elf32_Phdr *phdr = (Elf32_Phdr *) ((char *)header + sizeof(*header));
+
+   for (int i = 0; i < header->e_phnum; i++, phdr++) {
+
+      // Ignore non-load segments.
+      if (phdr->p_type != PT_LOAD) {
+         continue;
+      }
+
+      // Support only page-aligned segments.
+      ASSERT(phdr->p_align == PAGE_SIZE);
+
+      ASSERT(phdr->p_memsz >= phdr->p_filesz);
+
+      int pages_count = ((phdr->p_memsz + PAGE_SIZE) & ~OFFSET_IN_PAGE_MASK) >> PAGE_SHIFT;
+
+      printk("[ELF LOADER] Segment %i\n", i);
+      printk("[ELF LOADER] Size: %i\n", phdr->p_memsz);
+      printk("[ELF LOADER] Vaddr: %p\n", phdr->p_vaddr);
+      printk("[ELF LOADER] Pages count: %i\n", pages_count);
+
+      char *vaddr = (char *) phdr->p_vaddr;
+
+      for (int j = 0; j < pages_count; j++, vaddr += PAGE_SIZE) {
+         map_page(pdir, vaddr, alloc_pageframe(), true, true);
+         memset(vaddr, 0, PAGE_SIZE);
+         memmove(vaddr,
+                 (char *)elf + phdr->p_offset + j * PAGE_SIZE,
+                 PAGE_SIZE);
+      }
+   }
+
+   // Allocating memory for the user stack.
+
+   const int pages_for_stack = 16;
+   void *stack_top = (void *) (0xC0000000UL - pages_for_stack * PAGE_SIZE);
+
+   for (int i = 0; i < pages_for_stack; i++) {
+      map_page(pdir, stack_top + i * PAGE_SIZE, alloc_pageframe(), true, true);
+   }
+
+   // Finally setting the output-params.
+
+   *stack_addr = (void *) ((0xC0000000UL - 1) & ~15);
+   *entry = (void *) header->e_entry;
 }

@@ -42,6 +42,8 @@ void run_usermode_init()
 
    page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
 
+   set_page_directory(pdir);
+
    void *entry_point = NULL;
    void *stack_addr = NULL;
    load_elf_program(elf_vaddr, pdir, &entry_point, &stack_addr);
