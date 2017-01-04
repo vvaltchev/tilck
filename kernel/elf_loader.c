@@ -1,6 +1,7 @@
 
 #include <elf.h>
 #include <paging.h>
+#include <process.h>
 
 #include <string_util.h>
 #include <arch/generic_x86/utils.h>
@@ -85,7 +86,8 @@ void load_elf_program(void *elf,
 
       ASSERT(phdr->p_memsz >= phdr->p_filesz);
 
-      int pages_count = ((phdr->p_memsz + PAGE_SIZE) & ~OFFSET_IN_PAGE_MASK) >> PAGE_SHIFT;
+      int pages_count =
+         ((phdr->p_memsz + PAGE_SIZE) & ~OFFSET_IN_PAGE_MASK) >> PAGE_SHIFT;
 
       printk("[ELF LOADER] Segment %i\n", i);
       printk("[ELF LOADER] Size: %i\n", phdr->p_memsz);
@@ -106,7 +108,8 @@ void load_elf_program(void *elf,
    // Allocating memory for the user stack.
 
    const int pages_for_stack = 16;
-   void *stack_top = (void *) (0xC0000000UL - pages_for_stack * PAGE_SIZE);
+   void *stack_top =
+      (void *) (OFFLIMIT_USERMODE_ADDR - pages_for_stack * PAGE_SIZE);
 
    for (int i = 0; i < pages_for_stack; i++) {
       map_page(pdir, stack_top + i * PAGE_SIZE, alloc_pageframe(), true, true);
@@ -114,6 +117,6 @@ void load_elf_program(void *elf,
 
    // Finally setting the output-params.
 
-   *stack_addr = (void *) ((0xC0000000UL - 1) & ~15);
+   *stack_addr = (void *) ((OFFLIMIT_USERMODE_ADDR - 1) & ~15);
    *entry = (void *) header->e_entry;
 }

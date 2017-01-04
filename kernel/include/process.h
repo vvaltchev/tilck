@@ -5,6 +5,9 @@
 #include <paging.h>
 #include <irq.h>
 
+// This is the biggest usermode addr + 1
+#define OFFLIMIT_USERMODE_ADDR 0xC0000000UL
+
 #define TASK_STATE_RUNNABLE 0
 #define TASK_STATE_RUNNING 1
 #define TASK_STATE_SLEEPING 2
