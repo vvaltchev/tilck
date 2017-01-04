@@ -26,7 +26,7 @@ pushd .
 
 git clone git://git.musl-libc.org/musl
 cd musl
-git checkout v1.1.9
+git checkout v1.1.16
 
 mkdir ../musl-install
 mkdir ../musl-install/lib
