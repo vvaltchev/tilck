@@ -43,7 +43,7 @@ NORETURN void switch_to_process(task_info *pi)
       set_page_directory(current_process->pdir);
    }
 
-   if (current_interrupt_num >= 32 && current_interrupt_num != 0x80) {
+   if (is_irq(current_interrupt_num)) {
       PIC_sendEOI(current_interrupt_num - 32);
    }
 
@@ -90,7 +90,7 @@ end:
 
       printk("[sched] No runnable process found. Halt.\n");
 
-      if (current_interrupt_num >= 32 && current_interrupt_num != 0x80) {
+      if (is_irq(current_interrupt_num)) {
          PIC_sendEOI(current_interrupt_num - 32);
       }
 

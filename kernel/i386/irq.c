@@ -203,14 +203,8 @@ void irq_install()
 
 void irq_handler(regs *r)
 {
-   /* This is a blank function pointer */
-   void(*handler)(regs *r);
-
    const u8 irq_no = r->int_no - 32;
-
-   /* Find out if we have a custom handler to run for this
-   *  IRQ, and then finally, run it */
-   handler = irq_routines[irq_no];
+   void(*handler)(regs *) = irq_routines[irq_no];
 
    if (handler) {
 

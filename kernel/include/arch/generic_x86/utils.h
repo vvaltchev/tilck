@@ -8,7 +8,13 @@
 #endif
 
 #define TIMER_HZ 100
+#define SYSCALL_SOFT_INTERRUPT 0x80
 
+
+static ALWAYS_INLINE bool is_irq(int interrupt_num)
+{
+   return interrupt_num >= 32 && interrupt_num != SYSCALL_SOFT_INTERRUPT;
+}
 
 static ALWAYS_INLINE u64 RDTSC()
 {
