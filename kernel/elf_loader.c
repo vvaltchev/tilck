@@ -69,6 +69,11 @@ void load_elf_program(void *elf,
    Elf32_Ehdr *header = (Elf32_Ehdr *)elf;
    ASSERT(header->e_ehsize == sizeof(*header));
 
+   ASSERT(header->e_ident[EI_MAG0] == ELFMAG0);
+   ASSERT(header->e_ident[EI_MAG1] == ELFMAG1);
+   ASSERT(header->e_ident[EI_MAG2] == ELFMAG2);
+   ASSERT(header->e_ident[EI_MAG3] == ELFMAG3);
+
    //dump_elf32_header(header);
    //dump_elf32_phdrs(header);
 
@@ -81,27 +86,44 @@ void load_elf_program(void *elf,
          continue;
       }
 
-      // Support only page-aligned segments.
-      ASSERT(phdr->p_align == PAGE_SIZE);
-
-      ASSERT(phdr->p_memsz >= phdr->p_filesz);
 
       int pages_count =
-         ((phdr->p_memsz + PAGE_SIZE) & ~OFFSET_IN_PAGE_MASK) >> PAGE_SHIFT;
+         ((phdr->p_memsz + PAGE_SIZE) & PAGE_MASK) >> PAGE_SHIFT;
 
       printk("[ELF LOADER] Segment %i\n", i);
-      printk("[ELF LOADER] Size: %i\n", phdr->p_memsz);
+      printk("[ELF LOADER] Mem Size: %i\n", phdr->p_memsz);
       printk("[ELF LOADER] Vaddr: %p\n", phdr->p_vaddr);
+
+      if ((phdr->p_memsz < PAGE_SIZE) &&
+          ((phdr->p_vaddr + phdr->p_memsz) & PAGE_MASK) >
+          (phdr->p_vaddr & PAGE_MASK)) {
+
+         printk("[ELF LOADER]: Cross-page small segment!\n");
+         pages_count++;
+      }
+
+
       printk("[ELF LOADER] Pages count: %i\n", pages_count);
 
-      char *vaddr = (char *) phdr->p_vaddr;
+      char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
 
       for (int j = 0; j < pages_count; j++, vaddr += PAGE_SIZE) {
+
+         if (is_mapped(pdir, vaddr)) {
+            continue;
+         }
+
          map_page(pdir, vaddr, alloc_pageframe(), true, true);
          memset(vaddr, 0, PAGE_SIZE);
-         memmove(vaddr,
-                 (char *)elf + phdr->p_offset + j * PAGE_SIZE,
-                 PAGE_SIZE);
+      }
+
+      memmove((void *)phdr->p_vaddr,
+              (char *)elf + phdr->p_offset, phdr->p_filesz);
+
+
+      vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
+      for (int j = 0; j < pages_count; j++, vaddr += PAGE_SIZE) {
+         set_page_rw(pdir, vaddr, !!(phdr->p_flags & PF_W));
       }
    }
 

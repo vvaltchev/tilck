@@ -3,6 +3,13 @@
 
 DEPDIR = .d
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
+
+
+CFLAGS =  $(OPT) $(WARN) $(DEFS) -std=c11 $(INCDIRS) $(ARCH_CFLAGS) \
+                 -ffreestanding -g -nostdinc -fno-builtin \
+                 -fno-asynchronous-unwind-tables
+
+
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
 POSTCOMPILE = $(MV) -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
@@ -17,7 +24,7 @@ $(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
 $(INIT_TARGET): $(OBJECTS)
 	@echo Linking $@ ...
-	@ld -m $(ELF_LD_FORMAT) -Ttext=0x08000000 -o $@ $(OBJECTS)
+	@ld -m $(ELF_LD_FORMAT) -o $@ $(OBJECTS)
 
 $(BUILD_DIR)/%.o : %.asm
 	@echo Compiling $< ...

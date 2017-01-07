@@ -168,6 +168,20 @@ bool is_mapped(page_directory_t *pdir, void *vaddrp)
    return ptable->pages[page_table_index].present;
 }
 
+void set_page_rw(page_directory_t *pdir, void *vaddrp, bool rw)
+{
+   const uptr vaddr = (uptr) vaddrp;
+   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+
+   ASSERT(pdir->page_tables[page_dir_index] != NULL);
+
+   page_table_t *ptable = pdir->page_tables[page_dir_index];
+   ptable->pages[page_table_index].rw = rw;
+
+   invalidate_page(vaddr);
+}
+
 void unmap_page(page_directory_t *pdir, void *vaddrp)
 {
    page_table_t *ptable;

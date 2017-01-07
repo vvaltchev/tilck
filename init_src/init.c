@@ -5,17 +5,18 @@
 #include "usermode_syscall_wrappers.h"
 #include "string.h"
 
+int bss_variable[32];
+
 void main()
 {
    int stackVar;
 
-   for (int i = 0; i < 10; ++i) {
-      asmVolatile("" : : : "memory");
-   }
-
    printf("Hello from init!\n");
    printf("&stackVar = %p\n", &stackVar);
 
+   for (int i = 0; i < 4; i++) {
+      printf("BssVar[%i] = %i\n", i, bss_variable[i]);
+   }
 
    int ret = open("/myfile.txt", 0xAABB, 0x112233);
 
