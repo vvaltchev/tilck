@@ -80,6 +80,15 @@ map_pages(page_directory_t *pdir,
    }
 }
 
+static inline void
+unmap_pages(page_directory_t *pdir, void *vaddr, int pageCount)
+{
+   for (int i = 0; i < pageCount; i++) {
+      unmap_page(pdir, (u8 *)vaddr + (i << PAGE_SHIFT));
+   }
+}
+
+
 extern page_directory_t *kernel_page_dir;
 extern page_directory_t *curr_page_dir;
 
