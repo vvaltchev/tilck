@@ -5,7 +5,7 @@
 
 #include <arch_utils.h>
 
-#define TIME_SLOT_JIFFIES 250
+#define TIME_SLOT_JIFFIES 500
 
 task_info *current_process = NULL;
 int current_max_pid = 0;

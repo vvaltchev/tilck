@@ -11,15 +11,13 @@
 
 start:
 
-   mov [current_device], dl ; Save the current device
-   
    cli               ; Clear interrupts
    cld               ; The default direction for string operations
                      ; will be 'up' - incrementing address in RAM
 
 
    ; relocate to DEST_DATA_SEGMENT
-   
+
    mov ax, BASE_LOAD_SEG
    mov ds, ax
    mov ax, DEST_DATA_SEGMENT
@@ -31,9 +29,9 @@ start:
    rep movsw
 
    jmp DEST_DATA_SEGMENT:after_reloc
-   
+
 after_reloc:
-   
+
    xor ax, ax
    mov ss, ax      ; Set stack segment and pointer
    mov sp, 0x0FFF0
@@ -42,13 +40,15 @@ after_reloc:
    mov ax, DEST_DATA_SEGMENT   ; Set all segments to match where this code is loaded
    mov ds, ax
 
+   mov [current_device], dl ; Save the current device
+
 
    mov ah, 0x00  ; reset device
    int 0x13
    jc end
-   
+
    .reset_ok:
-   
+
    mov si, dev
    call print_string
    mov ax, [current_device]
@@ -91,7 +91,7 @@ after_reloc:
    ; -------------------------------------------
    ; DEBUG CODE
    ; -------------------------------------------
-   
+
    ; mov ax, [CylindersCount]  ; we have already the value in ax
    call print_num
 
@@ -108,7 +108,7 @@ after_reloc:
 
    .load_loop:
 
-   
+
    mov ax, [currSectorNum]
    call lba_to_chs
 
@@ -119,7 +119,7 @@ after_reloc:
    mov bx, [currSectorNum]
    shl bx, 9         ; Sectors read are stored in ES:BX
                      ; bx *= 512 * currSectorNum
-                     
+
    ; 20-bit address in 8086 (real mode)
    ; SEG:OFF
    ; ADDR20 = (SEG << 4) | OFF
@@ -140,7 +140,7 @@ after_reloc:
    ; We read all the sectors we needed: loading is over.
    cmp ax, SECTORS_TO_READ
    je .load_OK
-   
+
    inc ax                    ; we read just 1 sector at time
    mov [currSectorNum], ax
 
@@ -151,10 +151,10 @@ after_reloc:
    and ax, 0x7F
    test ax, ax
    jne .load_loop ; JMP if ax != 0
-   
+
    mov ax, [currDataSeg]
 
-   
+
    ; Increment the segment by 4K => 64K in plain address space
    add ax, 0x1000
    mov [currDataSeg], ax
@@ -170,14 +170,14 @@ after_reloc:
 
    ; The carry flag here is always set and people on os-dev say
    ; that one should not rely on it.
-   
+
    ; We have now in AH the last error
    shr ax, 8 ; move AH in AL and make AH=0
    mov si, last_op_status
    call print_string
    call print_num
-   
-   
+
+
    ; Print the sector number (LBA)
    mov si, load_failed
    call print_string
@@ -286,7 +286,7 @@ print_num:
 print_string:
 
    push ax         ; save AX for the caller
-   
+
    mov ah, 0x0E    ; int 10h 'print char' function
 
 .repeat:

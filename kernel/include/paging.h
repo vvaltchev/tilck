@@ -60,6 +60,9 @@ uptr get_mapping(page_directory_t *pdir, void *vaddr);
 page_directory_t *pdir_clone(page_directory_t *pdir);
 void pdir_destroy(page_directory_t *pdir);
 
+// Temporary function, untit get/set page flags is made available.
+void set_page_rw(page_directory_t *pdir, void *vaddr, bool rw);
+
 static inline void
 map_pages(page_directory_t *pdir,
           void *vaddr,
@@ -76,6 +79,15 @@ map_pages(page_directory_t *pdir,
                rw);
    }
 }
+
+static inline void
+unmap_pages(page_directory_t *pdir, void *vaddr, int pageCount)
+{
+   for (int i = 0; i < pageCount; i++) {
+      unmap_page(pdir, (u8 *)vaddr + (i << PAGE_SHIFT));
+   }
+}
+
 
 extern page_directory_t *kernel_page_dir;
 extern page_directory_t *curr_page_dir;
