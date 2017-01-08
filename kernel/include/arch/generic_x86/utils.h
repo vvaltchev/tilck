@@ -44,9 +44,20 @@ static ALWAYS_INLINE u8 inb(u16 port)
    return ret_val;
 }
 
-#define halt() asmVolatile("hlt")
-#define cli() asmVolatile("cli")
-#define sti() asmVolatile("sti")
+static ALWAYS_INLINE void halt()
+{
+   asmVolatile("hlt");
+}
+
+static ALWAYS_INLINE void cli()
+{
+   asmVolatile("cli");
+}
+
+static ALWAYS_INLINE void sti()
+{
+   asmVolatile("sti");
+}
 
 static ALWAYS_INLINE void wrmsr(u32 msr_id, u64 msr_value)
 {
