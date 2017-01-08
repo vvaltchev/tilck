@@ -195,18 +195,19 @@ char *exception_messages[] =
    "Reserved"
 };
 
-void *fault_handlers[32] = { NULL };
+
+interrupt_handler fault_handlers[32] = { NULL };
+
 volatile int nested_interrupts_count = 0;
 volatile int nested_interrupts[32] = { [0 ... 31] = -1 };
 
-
+extern interrupt_handler irq_routines[16];
 void handle_syscall(regs *);
-void irq_handler(regs *r);
 
 
 void set_fault_handler(int exceptionNum, void *ptr)
 {
-   fault_handlers[exceptionNum] = ptr;
+   fault_handlers[exceptionNum] = (interrupt_handler) ptr;
 }
 
 extern task_info *current_process;
@@ -230,6 +231,40 @@ void end_current_interrupt_handling()
    }
 }
 
+static void handle_irq(regs *r)
+{
+   const u8 irq = r->int_no - 32;
+
+   if (irq_routines[irq] != NULL) {
+
+      irq_routines[irq](r);
+
+   } else {
+
+      printk("Unhandled IRQ #%i\n", irq);
+   }
+}
+
+static void handle_fault(regs *r)
+{
+   if (fault_handlers[r->int_no] != NULL) {
+
+      fault_handlers[r->int_no](r);
+
+   } else {
+
+      cli();
+
+      printk("Fault #%i: %s [errCode: %i]\n",
+             r->int_no,
+             exception_messages[r->int_no],
+             r->err_code);
+
+      NOT_REACHED();
+   }
+}
+
+
 void generic_interrupt_handler(regs *r)
 {
    if (nested_interrupts_count >= (int)ARRAY_SIZE(nested_interrupts)) {
@@ -238,32 +273,19 @@ void generic_interrupt_handler(regs *r)
 
    nested_interrupts[nested_interrupts_count++] = r->int_no;
 
-   if (LIKELY(r->int_no == 0x80)) {
+   if (LIKELY(r->int_no == SYSCALL_SOFT_INTERRUPT)) {
+
       handle_syscall(r);
-      goto end;
+
+   } else if (LIKELY(r->int_no >= 32)) {
+
+      handle_irq(r);
+
+   } else {
+
+      handle_fault(r);
    }
 
-   if (LIKELY(r->int_no >= 32)) {
-      irq_handler(r);
-      goto end;
-   }
-
-   void(*handler)(regs *r) = fault_handlers[r->int_no];
-
-   if (!handler) {
-      cli();
-
-      printk("Fault #%i: %s [errCode: %i]\n",
-             r->int_no,
-             exception_messages[r->int_no],
-             r->err_code);
-
-      halt();
-   }
-
-   handler(r);
-
-end:
    end_current_interrupt_handling();
 }
 

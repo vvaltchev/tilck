@@ -81,7 +81,10 @@ void kmain()
 
    set_kernel_stack(0xC01FFFF0);
 
+   // Restore the interrupts.
    sti();
+
+   // Initialize the keyboard driver.
    init_kb();
 
    // Run the 'init' usermode program.

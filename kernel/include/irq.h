@@ -29,9 +29,11 @@
 // Forward-declaring regs
 typedef struct regs regs;
 
+typedef void (*interrupt_handler)(regs *);
+
 void irq_install();
 
-void irq_install_handler(u8 irq, void(*handler)(regs *r));
+void irq_install_handler(u8 irq, interrupt_handler h);
 void irq_uninstall_handler(u8 irq);
 
 void IRQ_set_mask(u8 IRQline);
