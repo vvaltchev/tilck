@@ -16,12 +16,12 @@ _start:
 
    ; before jump to kernel, we have to setup a basic paging
    ; in order to map the kernel from 0x100000 to 0xC0000000 (+3 GB)
-   
+
    ; let's put the page directory at 0x1000 (+ 4 KB)
-   
+
    mov edi, 0x1000
 
-   .l1:  
+   .l1:
    mov dword [edi], 0
    add edi, 4
    cmp edi, 0x2000
@@ -30,45 +30,45 @@ _start:
    ; let's put the first page table at 0x2000 (+ 8 KB)
    mov eax, 0
    .l2:
-   
+
    mov ebx, eax
    or ebx, 3  ; present, rw
    mov [edi], ebx
-   
+
    add eax, 0x1000 ; += 4K
    add edi, 4
-   
+
    cmp edi, 0x3000
    jne .l2
-   
+
    ; xchg bx, bx ; bochs magic break
-   
+
    mov eax, 0x2003    ; = 0x2000 | preset,rw
-   
-   ; identity map the first low 4 MB 
-   ; this is necessary for executing the jmp far eax below)
+
+   ; identity map the first low 4 MB
+   ; this is necessary for executing the 'jmp eax' below)
    ; otherwise, just after 'mov cr0, eax', EIP will point to an invalid address
-   
+
    mov [0x1000], eax
    mov [0x1C00], eax  ; map them also to 0xC0000000
-   
+
    mov ebx, 0x1000
    mov cr3, ebx     ; set page dir physical address
-   
+
    mov eax, cr0
    or eax, 0x80000000 ; paging ON
    or eax, 0x10000    ; WP ON (write protect for supervisor)
    mov cr0, eax       ; enable paging!
-  
+
    mov eax, 0xC0100400
-   jmp far eax        ; jump to next instruction using the high virtual address
+   jmp eax        ; jump to next instruction using the high virtual address
 
    times 1024-($-$$) db 0
-   
+
    ; this is 0xC0100400
    mov esp, 0xC01FFFF0
    jmp kmain        ; now, really jump to kernel's code which uses 0xC0100000 as ORG
-   
+
 gdt_load:
    lgdt [gdt_pointer]
    ret
@@ -76,7 +76,7 @@ gdt_load:
 idt_load:
     lidt [idtp]
     ret
-    
+
 tss_flush:
    mov ax, 0x2B      ; Load the index of our TSS structure - The index is
                      ; 0x28, as it is the 5th selector and each is 8 bytes
@@ -85,7 +85,7 @@ tss_flush:
    ltr ax            ; Load 0x2B into the task state register.
    ret
 
-   
+
 global asm_context_switch_x86
 
 asm_context_switch_x86:
@@ -94,16 +94,16 @@ asm_context_switch_x86:
 
    pop eax ; gs
    mov gs, ax
-   
+
    pop eax ; fs
    mov fs, ax
-   
+
    pop eax ; es
    mov es, ax
-   
+
    pop eax ; ds
-   mov ds, ax 
-      
+   mov ds, ax
+
    ; We can't do 'popa' here because it will restore ESP
    pop edi
    pop esi
@@ -112,10 +112,10 @@ asm_context_switch_x86:
    pop edx
    pop ecx
    pop eax
-   
+
    ; eip, cs, eflags, useresp and ss
    ; are already on stack, passed by the caller.
-   
+
    ; debug ;;;;;;;;;;;;;;;;;;;
    ;pop eax ; entry point (eip)
    ;pop eax ; 0x1b (cs)
@@ -123,9 +123,9 @@ asm_context_switch_x86:
    ;pop eax ; stack
    ;pop eax ; 0x23 (ss)
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;
-   
+
    iret
-   
+
 
 ; Service Routines (ISRs)
 global isr0
@@ -416,7 +416,7 @@ asm_int_handler:
     add esp, 8    ; Cleans up the pushed error code and pushed ISR number
     iret
 
-    
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
