@@ -7,11 +7,6 @@
 
 typedef sptr (*syscall_type)();
 
-sptr sys_setup()
-{
-   return 0;
-}
-
 sptr sys_exit(int code);
 
 sptr sys_fork();
@@ -113,32 +108,33 @@ sptr sys_lseek()
 
 sptr sys_getpid();
 
+
 #ifdef __i386__
 
 // The syscall numbers are ARCH-dependent
 syscall_type syscalls_pointers[] =
 {
-   sys_setup,    //  0
-   sys_exit,     //  1
-   sys_fork,     //  2
-   sys_read,     //  3
-   sys_write,    //  4
-   sys_open,     //  5
-   sys_close,    //  6
-   sys_waitpid,  //  7
-   sys_creat,    //  8
-   sys_link,     //  9
-   sys_unlink,   // 10
-   sys_execve,   // 11
-   sys_chdir,    // 12
-   sys_time,     // 13
-   sys_mknod,    // 14
-   sys_chmod,    // 15
-   sys_lchown,   // 16
-   sys_break,    // 17
-   sys_oldstat,  // 18
-   sys_lseek,    // 19
-   sys_getpid    // 20
+   [0] = NULL,
+   [1] = sys_exit,
+   [2] = sys_fork,
+   [3] = sys_read,
+   [4] = sys_write,
+   [5] = sys_open,
+   [6] = sys_close,
+   [7] = sys_waitpid,
+   [8] = sys_creat,
+   [9] = sys_link,
+   [10] = sys_unlink,
+   [11] = sys_execve,
+   [12] = sys_chdir,
+   [13] = sys_time,
+   [14] = sys_mknod,
+   [15] = sys_chmod,
+   [16] = sys_lchown,
+   [17] = sys_break,
+   [18] = sys_oldstat,
+   [19] = sys_lseek,
+   [20] = sys_getpid
 };
 
 const ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
@@ -157,10 +153,10 @@ void handle_syscall(regs *r)
       return;
    }
 
-   //printk("Syscall #%i\n", r->eax);
-   //printk("Arg 1 (ebx): %p\n", r->ebx);
-   //printk("Arg 2 (ecx): %p\n", r->ecx);
-   //printk("Arg 3 (edx): %p\n", r->edx);
+   printk("Syscall #%i\n", r->eax);
+   printk("Arg 1 (ebx): %p\n", r->ebx);
+   printk("Arg 2 (ecx): %p\n", r->ecx);
+   printk("Arg 3 (edx): %p\n", r->edx);
    //printk("Arg 4 (esi): %p\n", r->esi);
    //printk("Arg 5 (edi): %p\n", r->edi);
    //printk("Arg 6 (ebp): %p\n\n", r->ebp);
@@ -168,6 +164,19 @@ void handle_syscall(regs *r)
    r->eax =
       syscalls_pointers[r->eax](r->ebx, r->ecx, r->edx,
                                 r->esi, r->edi, r->ebp);
+}
+
+#define MSR_IA32_SYSENTER_CS            0x174
+#define MSR_IA32_SYSENTER_ESP           0x175
+#define MSR_IA32_SYSENTER_EIP           0x176
+
+void isr128();
+
+void setup_syscall_interface()
+{
+   wrmsr(MSR_IA32_SYSENTER_CS, 0x08 + 3);
+   wrmsr(MSR_IA32_SYSENTER_ESP, get_kernel_stack());
+   wrmsr(MSR_IA32_SYSENTER_EIP, (uptr) &isr128);
 }
 
 #endif
