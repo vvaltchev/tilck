@@ -144,7 +144,7 @@ syscall_type syscalls_pointers[] =
 const ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
 
 
-#include <arch/i386/arch_utils.h>
+#include <arch_utils.h>
 
 void handle_syscall(regs *r)
 {

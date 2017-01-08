@@ -47,3 +47,29 @@ static ALWAYS_INLINE u8 inb(u16 port)
 #define halt() asmVolatile("hlt")
 #define cli() asmVolatile("cli")
 #define sti() asmVolatile("sti")
+
+static ALWAYS_INLINE void wrmsr(u32 msr_id, u64 msr_value)
+{
+    asmVolatile( "wrmsr" : : "c" (msr_id), "A" (msr_value) );
+}
+
+static ALWAYS_INLINE u64 rdmsr(u32 msr_id)
+{
+    u64 msr_value;
+    asmVolatile( "rdmsr" : "=A" (msr_value) : "c" (msr_id) );
+    return msr_value;
+}
+
+static ALWAYS_INLINE bool are_interrupts_enabled()
+{
+    uptr flags;
+    asmVolatile( "pushf\n\t"
+                 "pop %0"
+                 : "=g"(flags) );
+    return flags & (1 << 9);
+}
+
+static ALWAYS_INLINE void cpuid(int code, u32 *a, u32 *d)
+{
+    asmVolatile( "cpuid" : "=a"(*a), "=d"(*d) : "0"(code) : "ebx", "ecx" );
+}
