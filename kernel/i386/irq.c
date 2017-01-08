@@ -215,5 +215,5 @@ void irq_handler(regs *r)
       printk("Unhandled IRQ #%i\n", irq_no);
    }
 
-   PIC_sendEOI(irq_no);
+   //PIC_sendEOI(irq_no);
 }

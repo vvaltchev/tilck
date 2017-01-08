@@ -34,19 +34,16 @@ NORETURN void switch_to_process(task_info *pi)
 {
    ASSERT(pi->state == TASK_STATE_RUNNABLE);
 
-   current_process = pi;
-   current_process->state = TASK_STATE_RUNNING;
+   pi->state = TASK_STATE_RUNNING;
 
    //printk("[sched] Switching to pid: %i\n", current_process->pid);
 
-   if (get_curr_page_dir() != current_process->pdir) {
-      set_page_directory(current_process->pdir);
+   if (get_curr_page_dir() != pi->pdir) {
+      set_page_directory(pi->pdir);
    }
 
-   if (is_irq(current_interrupt_num)) {
-      PIC_sendEOI(current_interrupt_num - 32);
-   }
-
+   end_current_interrupt_handling();
+   current_process = pi;
    context_switch(&current_process->state_regs);
 }
 
@@ -90,10 +87,7 @@ end:
 
       printk("[sched] No runnable process found. Halt.\n");
 
-      if (is_irq(current_interrupt_num)) {
-         PIC_sendEOI(current_interrupt_num - 32);
-      }
-
+      end_current_interrupt_handling();
       // We did not found any runnable task. Halt.
       halt();
    }

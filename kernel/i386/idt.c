@@ -195,31 +195,57 @@ char *exception_messages[] =
    "Reserved"
 };
 
-volatile int current_interrupt_num = -1;
+void *fault_handlers[32] = { NULL };
+volatile int nested_interrupts_count = 0;
+volatile int nested_interrupts[32] = { [0 ... 31] = -1 };
+
 
 void handle_syscall(regs *);
 void irq_handler(regs *r);
 
-void *fault_handlers[32] = { NULL };
 
 void set_fault_handler(int exceptionNum, void *ptr)
 {
    fault_handlers[exceptionNum] = ptr;
 }
 
+extern task_info *current_process;
+
+void end_current_interrupt_handling()
+{
+   int curr_int = get_curr_interrupt();
+
+   if (is_irq(curr_int)) {
+      PIC_sendEOI(curr_int - 32);
+   }
+
+   if (LIKELY(current_process != NULL)) {
+
+      nested_interrupts_count--;
+      ASSERT(nested_interrupts_count >= 0);
+
+   } else if (nested_interrupts_count > 0) {
+
+      nested_interrupts_count--;
+   }
+}
 
 void generic_interrupt_handler(regs *r)
 {
-   current_interrupt_num = r->int_no;
+   if (nested_interrupts_count >= (int)ARRAY_SIZE(nested_interrupts)) {
+      NOT_REACHED();
+   }
+
+   nested_interrupts[nested_interrupts_count++] = r->int_no;
 
    if (LIKELY(r->int_no == 0x80)) {
       handle_syscall(r);
-      return;
+      goto end;
    }
 
    if (LIKELY(r->int_no >= 32)) {
       irq_handler(r);
-      return;
+      goto end;
    }
 
    void(*handler)(regs *r) = fault_handlers[r->int_no];
@@ -236,6 +262,9 @@ void generic_interrupt_handler(regs *r)
    }
 
    handler(r);
+
+end:
+   end_current_interrupt_handling();
 }
 
 
