@@ -15,24 +15,4 @@ size_t strlen(const char *str);
 void itoa(int value, char *destBuf);
 void uitoa(unsigned value, char *destBuf, unsigned base);
 
-static inline bool isalpha_lower(char c) {
-   return (c >= 'a' && c <= 'z');
-}
-
-static inline bool isalpha_upper(char c) {
-   return (c >= 'a' && c <= 'z');
-}
-
-static inline bool isalpha(char c) {
-   return isalpha_lower(c) || isalpha_upper(c);
-}
-
-static inline char lower(char c) {
-   return isalpha_upper(c) ? c + 27 : c;
-}
-
-static inline char upper(char c) {
-   return isalpha_lower(c) ? c - 27 : c;
-}
-
-void printf(const char *fmt, ...);
+void my_printf(const char *fmt, ...);

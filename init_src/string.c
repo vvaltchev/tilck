@@ -105,7 +105,7 @@ void serialize(char *destBuf, size_t *ib, const char *str)
    }
 }
 
-void vprintf(const char *fmt, va_list args)
+void my_vprintf(const char *fmt, va_list args)
 {
    const char *ptr = fmt;
    char buf[32];
@@ -180,9 +180,9 @@ void vprintf(const char *fmt, va_list args)
    write(1, bigBuf, ib);
 }
 
-void printf(const char *fmt, ...)
+void my_printf(const char *fmt, ...)
 {
    va_list args;
    va_start(args, fmt);
-   vprintf(fmt, args);
+   my_vprintf(fmt, args);
 }
