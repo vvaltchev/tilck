@@ -153,10 +153,10 @@ void handle_syscall(regs *r)
       return;
    }
 
-   printk("Syscall #%i\n", r->eax);
-   printk("Arg 1 (ebx): %p\n", r->ebx);
-   printk("Arg 2 (ecx): %p\n", r->ecx);
-   printk("Arg 3 (edx): %p\n", r->edx);
+   //printk("Syscall #%i\n", r->eax);
+   //printk("Arg 1 (ebx): %p\n", r->ebx);
+   //printk("Arg 2 (ecx): %p\n", r->ecx);
+   //printk("Arg 3 (edx): %p\n", r->edx);
    //printk("Arg 4 (esi): %p\n", r->esi);
    //printk("Arg 5 (edi): %p\n", r->edi);
    //printk("Arg 6 (ebp): %p\n\n", r->ebp);
