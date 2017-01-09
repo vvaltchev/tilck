@@ -146,10 +146,11 @@ void handle_syscall(regs *r)
 {
    save_current_process_state(r);
 
-   sptr syscall_no = r->eax;
+   sptr syscall_no = (sptr) r->eax;
 
    if (syscall_no < 0 || syscall_no >= syscall_count) {
       printk("INVALID syscall #%i\n", syscall_no);
+      r->eax = (uptr) -1;
       return;
    }
 

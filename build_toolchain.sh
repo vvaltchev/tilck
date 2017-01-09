@@ -8,7 +8,7 @@ export PATH=$MAIN_DIR/build_scripts:$PATH
 
 echo 'Installing the necessary packages...'
 
-cmd='sudo apt-get install gcc g++ git nasm gcc-multilib g++-multilib make cmake binutils binutils-multiarch'
+cmd='sudo apt-get install wget gcc g++ git nasm gcc-multilib g++-multilib make cmake binutils binutils-multiarch'
 echo $cmd
 
 $cmd
@@ -20,26 +20,32 @@ cd toolchain
 TC=$PWD
 
 
-# Build libmusl
+###############################
+# Build diet libc
+###############################
 
 pushd .
 
-git clone git://git.musl-libc.org/musl
-cd musl
-git checkout v1.1.16
+wget https://www.fefe.de/dietlibc/dietlibc-0.33.tar.bz2
+tar xfvj dietlibc-0.33.tar.bz2
+cd dietlibc-0.33
+sed -i 's/#define WANT_SYSENTER/\/\/#define WANT_SYSENTER/g' dietfeatures.h
 
-mkdir ../musl-install
-mkdir ../musl-install/lib
+# The build of dietlibc fails even when succeeds, when we cross-build for i386
+# So, disabling the 'exit on first failure' option.
+set +e
 
-./configure --target=i386 --host=i386 --build=x86_64 --disable-shared --prefix=$TC/musl-install --exec-prefix=$TC/musl-install --syslibdir=$TC/musl-install/lib
+make i386 DEBUG=1
 
-make
-make install
+# Restore the 'exit on first failure'
+set -e
 
 popd
 
 
+##############################
 # Build gtest
+##############################
 
 pushd .
 git clone https://github.com/google/googletest.git
@@ -48,3 +54,24 @@ git checkout release-1.8.0
 cmake .
 make
 popd
+
+
+##############################
+# Build libmusl
+##############################
+
+# pushd .
+
+# git clone git://git.musl-libc.org/musl
+# cd musl
+# git checkout v1.1.16
+
+# mkdir ../musl-install
+# mkdir ../musl-install/lib
+
+# ./configure --target=i386 --host=i386 --build=x86_64 --disable-shared --prefix=$TC/musl-install --exec-prefix=$TC/musl-install --syslibdir=$TC/musl-install/lib
+
+# make
+# make install
+
+# popd

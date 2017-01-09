@@ -4,24 +4,24 @@
 DEPDIR = .d
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 
-# Experimental build of the init program with the musl libc
-# The build works fine as the ELF loading, but the programs crashes
-# since the kernel does not implement the following syscalls:
-#
-# - 243 set_thread_area()
-# - 123 modify_ldt()
-# - 258 set_tid_address()
-#
-# Likely, after writing a pseudo-fake impl. of those syscalls, other will
-# cause troubles as well.
+# MUSL_GCC := $(MAIN_PROJ_DIR)/build_scripts/musl-gcc
+# COMPILE.c = $(MUSL_GCC) $(DEPFLAGS) $(CFLAGS) -c
 
-#USE_MUSL = 1
+# Linking the init target with MUSL_GCC
 
-ifdef USE_MUSL
+# $(INIT_TARGET): $(OBJECTS)
+# 	@echo Linking $@ ...
+# 	$(MUSL_GCC) -Wl,-m -Wl,elf_i386 -static -o $@ $(OBJECTS)
+
+
+
+USE_LIBC = 1
+
+ifdef USE_LIBC
+
 CFLAGS := $(OPT) $(WARN) $(DEFS) -std=c11 $(INCDIRS) $(ARCH_CFLAGS) -g
-
-MUSL_GCC := $(MAIN_PROJ_DIR)/build_scripts/musl-gcc
-COMPILE.c = $(MUSL_GCC) $(DEPFLAGS) $(CFLAGS) -c
+DIET_WRAPPER := $(MAIN_PROJ_DIR)/toolchain/dietlibc-0.33/bin-i386/diet
+COMPILE.c = $(DIET_WRAPPER) $(CC) $(DEPFLAGS) $(CFLAGS) -c
 
 else
 
@@ -41,7 +41,7 @@ INIT_UNSTRIPPED = $(BUILD_DIR)/ui
 
 SOURCES=$(wildcard *.c)
 
-ifdef USE_MUSL
+ifdef USE_LIBC
 OBJECTS=$(SOURCES:%.c=$(BUILD_DIR)/%.o)
 else
 # default
@@ -52,10 +52,10 @@ endif
 $(shell mkdir -p $(DEPDIR) >/dev/null)
 $(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
-ifdef USE_MUSL
+ifdef USE_LIBC
 $(INIT_TARGET): $(OBJECTS)
 	@echo Linking $@ ...
-	$(MUSL_GCC) -Wl,-m -Wl,elf_i386 -static -o $@ $(OBJECTS)
+	$(DIET_WRAPPER) $(CC) -m32 -static -o $@ $(OBJECTS)
 else
 #default way
 $(INIT_TARGET): $(OBJECTS)
