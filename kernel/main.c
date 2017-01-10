@@ -19,7 +19,6 @@ void init_kb();
 void timer_handler(regs *r);
 void keyboard_handler(regs *r);
 void set_timer_freq(int hz);
-void set_kernel_stack(u32 stack);
 
 
 void load_elf_program(void *elf,
@@ -81,7 +80,12 @@ void kmain()
 
    set_kernel_stack(0xC01FFFF0);
 
+   setup_syscall_interface();
+
+   // Restore the interrupts.
    sti();
+
+   // Initialize the keyboard driver.
    init_kb();
 
    // Run the 'init' usermode program.

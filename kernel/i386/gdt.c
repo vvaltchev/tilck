@@ -119,6 +119,10 @@ void set_kernel_stack(u32 stack)
    tss_entry.esp0 = stack;
 }
 
+u32 get_kernel_stack()
+{
+   return tss_entry.esp0;
+}
 
 
 // Initialise our task state segment structure.
@@ -146,9 +150,10 @@ static void write_tss(s32 num, u16 ss0, u32 esp0)
      * level) to 3, meaning that this TSS can be used to switch to kernel mode
      * from ring 3.
      */
-    tss_entry.cs   = 0x0b;
-    tss_entry.ss =
-      tss_entry.ds = tss_entry.es = tss_entry.fs = tss_entry.gs = 0x13;
+    tss_entry.cs = 0x08 + 3;
+    tss_entry.ds = 0x10 + 3;
+    tss_entry.ss = 0x10 + 3;
+    tss_entry.es = tss_entry.fs = tss_entry.gs = 0x10 + 3;
 }
 
 

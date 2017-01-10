@@ -1,17 +1,31 @@
 
 /* Usermode application */
 
-#include <common_defs.h>
-#include "usermode_syscall_wrappers.h"
-#include "string.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+typedef unsigned char bool;
+#define true 1
+#define false 0
 
 int bss_variable[32];
 
-void main()
+int main(int argc, char **argv, char **env)
 {
-   int stackVar;
 
-   printf("Hello from init!\n");
+   printf("### Hello from init!\n");
+
+   printf("argc: %i\n", argc);
+
+   for (int i = 0; i < argc; i++) {
+      printf("argv[%i] = '%s'\n", i, argv[i]);
+   }
+
+   printf("env[OSTYPE] = '%s'\n", getenv("OSTYPE"));
+
+
+   int stackVar;
    printf("&stackVar = %p\n", &stackVar);
 
    for (int i = 0; i < 4; i++) {
@@ -58,7 +72,7 @@ void main()
 
          if (billions == 2 && inchild) {
             printf("child: 2 billion, exit!\n");
-            _exit(123);
+            exit(123);
          }
       }
 
