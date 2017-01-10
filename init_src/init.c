@@ -11,10 +11,15 @@ typedef unsigned char bool;
 
 int bss_variable[32];
 
-int main()
+int main(int argc, char **argv)
 {
 
    printf("### Hello from init!\n");
+   printf("argc: %i\n", argc);
+   for (int i = 0; i < argc; i++) {
+      printf("argv[%i] = '%s'\n", i, argv[i]);
+   }
+
 
    int stackVar;
    printf("&stackVar = %p\n", &stackVar);
