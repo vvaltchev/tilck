@@ -13,9 +13,10 @@ int bss_variable[32];
 
 int main()
 {
-   int stackVar;
 
-   printf("Hello from init!\n");
+   printf("### Hello from init!\n");
+
+   int stackVar;
    printf("&stackVar = %p\n", &stackVar);
 
    for (int i = 0; i < 4; i++) {

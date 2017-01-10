@@ -19,25 +19,25 @@ sptr sys_read(int fd, void *buf, size_t count)
 
 sptr sys_write(int fd, const void *buf, size_t count)
 {
-   //printk("sys_write(fd = %i, count = %u)\n", fd, count);
+   //printk("sys_write(fd = %i, count = %u, buf = '%s')\n", fd, count, buf);
 
    for (size_t i = 0; i < count; i++) {
       term_write_char(((char *)buf)[i]);
    }
 
-   return 0;
+   return count;
 }
 
 sptr sys_open(const char *pathname, int flags, int mode)
 {
-   printk("sys_open(filename = '%s', "
+   printk("[kernel] sys_open(filename = '%s', "
           "flags = %x, mode = %x)\n", pathname, flags, mode);
    return 825;
 }
 
 sptr sys_close(int fd)
 {
-   printk("sys_close(fd = %d)\n", fd);
+   printk("[kernel] sys_close(fd = %d)\n", fd);
    return 0;
 }
 
