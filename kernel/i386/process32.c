@@ -6,16 +6,54 @@
 
 static inline void push_on_user_stack(regs *r, uptr val)
 {
-   memcpy((void *)r->useresp, &val, sizeof(val));
    r->useresp -= sizeof(val);
+   memcpy((void *)r->useresp, &val, sizeof(val));
+}
+
+static void push_string_on_user_stack(regs *r, const char *str)
+{
+   size_t len = strlen(str) + 1; // count the '\0'
+   size_t aligned_len = (len / sizeof(uptr)) * sizeof(uptr);
+
+   size_t rem = len - aligned_len;
+   r->useresp -= aligned_len + (rem > 0 ? sizeof(uptr) : 0);
+
+   memcpy((void *)r->useresp, str, aligned_len);
+
+   if (rem > 0) {
+      uptr smallbuf = 0;
+      memcpy(&smallbuf, str + aligned_len, rem);
+      memcpy((void *)(r->useresp + aligned_len), &smallbuf, sizeof(smallbuf));
+   }
+}
+
+static void push_args_on_user_stack(regs *r, int argc, char **argv)
+{
+   uptr pointers[argc]; // VLA
+
+   for (int i = 0; i < argc; i++) {
+      push_string_on_user_stack(r, argv[i]);
+      pointers[i] = r->useresp;
+   }
+
+   // push 0 ; env (null pointer)
+   push_on_user_stack(r, 0);
+
+   // push the argv array (in reverse order)
+   push_on_user_stack(r, 0); // mandatory final NULL pointer
+
+   for (int i = argc - 1; i >= 0; i--) {
+      push_on_user_stack(r, pointers[i]);
+   }
+
+   // push argc as last (since it will be the first to be pop-ed)
+   push_on_user_stack(r, argc);
 }
 
 NORETURN void first_usermode_switch(page_directory_t *pdir,
                                     void *entry,
                                     void *stack_addr)
 {
-   const char prog_name[4] = "ini\0";
-
    regs r;
    memset(&r, 0, sizeof(r));
 
@@ -28,22 +66,8 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
    r.eip = (u32) entry;
    r.useresp = (u32) stack_addr;
 
-   // push ini\0
-   push_on_user_stack(&r, *((uptr*)prog_name));
-
-   // env itself (1 entry containing NULL)
-   push_on_user_stack(&r, 0);
-
-   // push 0 ; env
-   push_on_user_stack(&r, r.useresp - 4);
-
-   // push the argv array
-   push_on_user_stack(&r, 0);
-   push_on_user_stack(&r, (uptr) stack_addr /* containing now prog_name */);
-
-   // push argc
-   push_on_user_stack(&r, 1);
-   r.useresp += sizeof(uptr);
+   char *argv[] = { "init", "test_arg_1" };
+   push_args_on_user_stack(&r, ARRAY_SIZE(argv), argv);
 
 
    asmVolatile("pushf");

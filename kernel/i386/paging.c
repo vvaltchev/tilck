@@ -108,7 +108,7 @@ void handle_page_fault(regs *r)
       return;
    }
 
-   printk("*** PAGE FAULT in attempt to %s %p from %s %s. EIP: %p\n",
+   printk("*** PAGE FAULT in attempt to %s %p from %s %s.\n*** EIP: %p\n",
           rw ? "WRITE" : "READ",
           vaddr,
           us ? "userland" : "kernel",
