@@ -30,7 +30,7 @@ wget https://www.fefe.de/dietlibc/dietlibc-0.33.tar.bz2
 tar xfvj dietlibc-0.33.tar.bz2
 cd dietlibc-0.33
 sed -i 's/#define WANT_SYSENTER/\/\/#define WANT_SYSENTER/g' dietfeatures.h
-
+sed -i 's/-Wno-unused -Wredundant-decls/-Wno-unused -Wredundant-decls -fno-stack-protector/g' Makefile
 # The build of dietlibc fails even when succeeds, when we cross-build for i386
 # So, disabling the 'exit on first failure' option.
 set +e
