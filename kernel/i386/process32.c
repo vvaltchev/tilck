@@ -4,13 +4,13 @@
 #include <kmalloc.h>
 #include <arch/i386/process_int.h>
 
-static inline void push_on_user_stack(regs *r, uptr val)
+void push_on_user_stack(regs *r, uptr val)
 {
    r->useresp -= sizeof(val);
    memcpy((void *)r->useresp, &val, sizeof(val));
 }
 
-static void push_string_on_user_stack(regs *r, const char *str)
+void push_string_on_user_stack(regs *r, const char *str)
 {
    size_t len = strlen(str) + 1; // count the '\0'
    size_t aligned_len = (len / sizeof(uptr)) * sizeof(uptr);
@@ -27,17 +27,30 @@ static void push_string_on_user_stack(regs *r, const char *str)
    }
 }
 
-static void push_args_on_user_stack(regs *r, int argc, char **argv)
+void push_args_on_user_stack(regs *r, int argc,
+                             char **argv, int envc, char **env)
 {
    uptr pointers[argc]; // VLA
+   uptr env_pointers[envc]; // VLA
 
+   // push argv data on stack (it could be anywhere else, as well)
    for (int i = 0; i < argc; i++) {
       push_string_on_user_stack(r, argv[i]);
       pointers[i] = r->useresp;
    }
 
-   // push 0 ; env (null pointer)
-   push_on_user_stack(r, 0);
+   // push env data on stack (it could be anywhere else, as well)
+   for (int i = 0; i < envc; i++) {
+      push_string_on_user_stack(r, env[i]);
+      env_pointers[i] = r->useresp;
+   }
+
+   // push the env array (in reverse order)
+   push_on_user_stack(r, 0); // mandatory final NULL pointer
+
+   for (int i = envc - 1; i >= 0; i--) {
+      push_on_user_stack(r, env_pointers[i]);
+   }
 
    // push the argv array (in reverse order)
    push_on_user_stack(r, 0); // mandatory final NULL pointer
@@ -67,7 +80,8 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
    r.useresp = (u32) stack_addr;
 
    char *argv[] = { "init", "test_arg_1" };
-   push_args_on_user_stack(&r, ARRAY_SIZE(argv), argv);
+   char *env[] = { "OSTYPE=gnu-linux", "PWD=/" };
+   push_args_on_user_stack(&r, ARRAY_SIZE(argv), argv, ARRAY_SIZE(env), env);
 
 
    asmVolatile("pushf");

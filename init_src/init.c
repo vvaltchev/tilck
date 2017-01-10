@@ -11,7 +11,7 @@ typedef unsigned char bool;
 
 int bss_variable[32];
 
-int main(int argc, char **argv)
+int main(int argc, char **argv, char **env)
 {
 
    printf("### Hello from init!\n");
@@ -21,6 +21,8 @@ int main(int argc, char **argv)
    for (int i = 0; i < argc; i++) {
       printf("argv[%i] = '%s'\n", i, argv[i]);
    }
+
+   printf("env[OSTYPE] = '%s'\n", getenv("OSTYPE"));
 
 
    int stackVar;
