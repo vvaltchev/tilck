@@ -19,7 +19,7 @@ USE_LIBC = 1
 
 ifdef USE_LIBC
 
-CFLAGS := $(OPT) $(WARN) $(DEFS) -std=c11 $(INCDIRS) $(ARCH_CFLAGS) -g
+CFLAGS := $(OPT) $(WARN) $(DEFS) -std=c11 $(INCDIRS) $(ARCH_CFLAGS) -g -fno-stack-protector
 DIET_WRAPPER := $(MAIN_PROJ_DIR)/toolchain/dietlibc-0.33/bin-i386/diet
 COMPILE.c = $(DIET_WRAPPER) $(CC) $(DEPFLAGS) $(CFLAGS) -c
 
