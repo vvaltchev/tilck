@@ -22,3 +22,9 @@
 #error Unsupported architecture.
 
 #endif
+
+
+void setup_syscall_interface();
+void set_kernel_stack(u32 stack);
+u32 get_kernel_stack();
+

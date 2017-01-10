@@ -195,36 +195,64 @@ char *exception_messages[] =
    "Reserved"
 };
 
-volatile int current_interrupt_num = -1;
 
+interrupt_handler fault_handlers[32] = { NULL };
+
+volatile int nested_interrupts_count = 0;
+volatile int nested_interrupts[32] = { [0 ... 31] = -1 };
+
+extern interrupt_handler irq_routines[16];
 void handle_syscall(regs *);
-void irq_handler(regs *r);
 
-void *fault_handlers[32] = { NULL };
 
 void set_fault_handler(int exceptionNum, void *ptr)
 {
-   fault_handlers[exceptionNum] = ptr;
+   fault_handlers[exceptionNum] = (interrupt_handler) ptr;
 }
 
+extern task_info *current_process;
 
-void generic_interrupt_handler(regs *r)
+void end_current_interrupt_handling()
 {
-   current_interrupt_num = r->int_no;
+   int curr_int = get_curr_interrupt();
 
-   if (LIKELY(r->int_no == 0x80)) {
-      handle_syscall(r);
-      return;
+   if (is_irq(curr_int)) {
+      PIC_sendEOI(curr_int - 32);
    }
 
-   if (LIKELY(r->int_no >= 32)) {
-      irq_handler(r);
-      return;
+   if (LIKELY(current_process != NULL)) {
+
+      nested_interrupts_count--;
+      ASSERT(nested_interrupts_count >= 0);
+
+   } else if (nested_interrupts_count > 0) {
+
+      nested_interrupts_count--;
    }
+}
 
-   void(*handler)(regs *r) = fault_handlers[r->int_no];
+static void handle_irq(regs *r)
+{
+   const u8 irq = r->int_no - 32;
 
-   if (!handler) {
+   if (irq_routines[irq] != NULL) {
+
+      irq_routines[irq](r);
+
+   } else {
+
+      printk("Unhandled IRQ #%i\n", irq);
+   }
+}
+
+static void handle_fault(regs *r)
+{
+   if (fault_handlers[r->int_no] != NULL) {
+
+      fault_handlers[r->int_no](r);
+
+   } else {
+
       cli();
 
       printk("Fault #%i: %s [errCode: %i]\n",
@@ -232,10 +260,33 @@ void generic_interrupt_handler(regs *r)
              exception_messages[r->int_no],
              r->err_code);
 
-      halt();
+      NOT_REACHED();
+   }
+}
+
+
+void generic_interrupt_handler(regs *r)
+{
+   if (nested_interrupts_count >= (int)ARRAY_SIZE(nested_interrupts)) {
+      NOT_REACHED();
    }
 
-   handler(r);
+   nested_interrupts[nested_interrupts_count++] = r->int_no;
+
+   if (LIKELY(r->int_no == SYSCALL_SOFT_INTERRUPT)) {
+
+      handle_syscall(r);
+
+   } else if (LIKELY(r->int_no >= 32)) {
+
+      handle_irq(r);
+
+   } else {
+
+      handle_fault(r);
+   }
+
+   end_current_interrupt_handling();
 }
 
 
