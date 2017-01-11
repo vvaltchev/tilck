@@ -29,8 +29,8 @@ struct idt_ptr
  * for which the 'presence' bit is cleared (0) will generate an
  * "Unhandled Interrupt" exception
  */
-struct idt_entry idt[256];
-struct idt_ptr idtp;
+struct idt_entry idt[256] = {0};
+struct idt_ptr idtp = {0};
 
 /* This exists in 'start.asm', and is used to load our IDT */
 void idt_load();
