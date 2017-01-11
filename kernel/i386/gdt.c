@@ -86,8 +86,8 @@ struct gdt_ptr
 } __attribute__((packed));
 
 /* Our GDT, with 3 entries, and finally our special GDT pointer */
-struct gdt_entry gdt[6];
-struct gdt_ptr gdt_pointer;
+struct gdt_entry gdt[6] = {0};
+struct gdt_ptr gdt_pointer = {0};
 
 /* Setup a descriptor in the Global Descriptor Table */
 void gdt_set_gate(int num,
@@ -112,7 +112,7 @@ void gdt_set_gate(int num,
 
 
 
-tss_entry_t tss_entry;
+tss_entry_t tss_entry = {0};
 
 void set_kernel_stack(u32 stack)
 {

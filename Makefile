@@ -43,7 +43,7 @@ export CFLAGS =  $(OPT) $(WARN) $(DEFS) -std=c11 $(INCDIRS) $(ARCH_CFLAGS) \
                  -mno-red-zone -fvisibility=default \
                  -ffreestanding -g -nostdinc -fno-builtin \
                  -fno-asynchronous-unwind-tables \
-                 -fno-zero-initialized-in-bss
+                 -fno-zero-initialized-in-bss -fno-exceptions
 
 export BUILD_DIR := $(MAIN_PROJ_DIR)/build
 export BOOTLOADER_TARGET := $(BUILD_DIR)/bootloader.bin

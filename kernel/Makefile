@@ -13,10 +13,10 @@ OBJECTS:=$(SOURCES:%.c=$(BUILD_DIR)/%.o)
 
 export KERNEL_ARCH_CODE_STATIC_LIB_TARGET := $(BUILD_DIR)/kernel_arch.a
 
-
 ifdef TESTING
 	export CFLAGS = $(OPT) $(WARN) $(DEFS) -std=c11 -DKERNEL_TEST $(INCDIRS) \
-	                -fvisibility=default -ffreestanding -g -nostdinc $(ARCH_CFLAGS)
+	                -fvisibility=default -ffreestanding -g \
+                   -nostdinc $(ARCH_CFLAGS)
 endif
 
 $(shell mkdir -p $(DEPDIR) > /dev/null)
@@ -27,20 +27,18 @@ $(KERNEL_TARGET): $(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME) $(OBJECTS)
 	@$(AR) rcs $(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME) $(OBJECTS)
 ifndef TESTING
 	@echo Linking the unstripped ELF binary of the kernel
-	@ld -m $(ELF_LD_FORMAT) -Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) \
-	--start-group \
-	$(KERNEL_ARCH_CODE_STATIC_LIB_TARGET) \
-	$(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME) \
-	--end-group
+	@$(CC) -m32 -Wl,-Ttext=0xC0100000 -o $(KERNEL_UNSTRIPPED) \
+	-Wl,--start-group \
+	-Wl,$(KERNEL_ARCH_CODE_STATIC_LIB_TARGET) \
+	-Wl,$(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME) \
+	-Wl,--end-group -nostdlib -lgcc
 	@echo Stripping the kernel\'s binary ...
 	@objcopy -O binary -j .text -j .rodata -j .data $(KERNEL_UNSTRIPPED) $@
-else
-	
 endif
 
 
 $(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME):
-	@cd $(ARCH) && $(MAKE) BUILD_DIR=$(BUILD_DIR)/$(ARCH)	
+	@cd $(ARCH) && $(MAKE) BUILD_DIR=$(BUILD_DIR)/$(ARCH)
 
 clean:
 	$(RM) -rf $(DEPDIR)

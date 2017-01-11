@@ -15,7 +15,7 @@ static s8 term_height = 25;
 
 volatile u8 terminal_row = 0;
 volatile u8 terminal_column = 0;
-volatile u8 terminal_color;
+volatile u8 terminal_color = 0;
 
 volatile int buf_next_slot = 0;
 volatile int scroll_value = 0;
