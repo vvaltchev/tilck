@@ -32,6 +32,7 @@ ifndef TESTING
 	-Wl,$(KERNEL_ARCH_CODE_STATIC_LIB_TARGET) \
 	-Wl,$(BUILD_DIR)/$(KERNEL_STATIC_LIB_TARGET_NAME) \
 	-Wl,--end-group -nostdlib -lgcc
+	@$(MAIN_PROJ_DIR)/build_scripts/bss_checker.sh $(KERNEL_UNSTRIPPED)
 	@echo Stripping the kernel\'s binary ...
 	@objcopy -O binary -j .text -j .rodata -j .data $(KERNEL_UNSTRIPPED) $@
 endif
