@@ -23,9 +23,26 @@ DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 #########################################################################
 
 
-CFLAGS := $(OPT) $(WARN) $(DEFS) -std=c11 $(INCDIRS) $(ARCH_CFLAGS) -g -fno-stack-protector
-DIET_WRAPPER := $(MAIN_PROJ_DIR)/toolchain/dietlibc-0.33/bin-i386/diet
-COMPILE.c = $(DIET_WRAPPER) $(CC) $(DEPFLAGS) $(CFLAGS) -c
+
+# Diet libc special flags
+#########################################################################
+
+DIET_SRC_FLAGS := -nostdlib -m32 \
+    -isystem $(MAIN_PROJ_DIR)/toolchain/dietlibc-0.33/include -D__dietlibc__
+
+DIET_PRE_OBJ_FLAGS := -nostdlib -static \
+   -L$(MAIN_PROJ_DIR)/toolchain/dietlibc-0.33/bin-i386 \
+    $(MAIN_PROJ_DIR)/toolchain/dietlibc-0.33/bin-i386/start.o -m32
+
+DIET_POST_OBJ_FLAGS := \
+   $(MAIN_PROJ_DIR)/toolchain/dietlibc-0.33/bin-i386/dietlibc.a -lgcc
+
+#########################################################################
+
+CFLAGS := -std=c11 $(OPT) $(WARN) $(DEFS) \
+   $(INCDIRS) $(ARCH_CFLAGS) -g -fno-stack-protector
+
+COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) $(DIET_SRC_FLAGS) -c
 
 POSTCOMPILE = $(MV) -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
@@ -39,7 +56,7 @@ $(shell mkdir -p $(BUILD_DIR) > /dev/null)
 
 $(INIT_TARGET): $(OBJECTS)
 	@echo Linking $@ ...
-	$(DIET_WRAPPER) $(CC) -m32 -static -o $@ $(OBJECTS)
+	@$(CC) -o $@ $(DIET_PRE_OBJ_FLAGS) $(OBJECTS) $(DIET_POST_OBJ_FLAGS)
 
 $(BUILD_DIR)/%.o : %.c
 $(BUILD_DIR)/%.o : %.c $(DEPDIR)/%.d
