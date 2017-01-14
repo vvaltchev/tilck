@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.2)
 project (exos_kernel C ASM_NASM)
 
-set(CMAKE_VERBOSE_MAKEFILE on)
-
 set(CMAKE_C_COMPILER "gcc")
-set(CMAKE_CXX_COMPILER "g++")
+
 
 # Do not use -rdynamic
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
@@ -30,7 +28,6 @@ include_directories("include")
 
 file(GLOB SOURCES "i386/*.asm" "i386/*.c" "*.c")
 
-
 set(ARCH_FLAGS "-m32 -march=i686")
 set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> -f elf32 -o <OBJECT> <SOURCE>")
 
@@ -39,3 +36,15 @@ set_source_files_properties(${SOURCES} PROPERTIES COMPILE_FLAGS ${ARCH_FLAGS})
 add_executable(elf_kernel "${SOURCES}")
 set_target_properties(elf_kernel PROPERTIES LINK_FLAGS "${ARCH_FLAGS} -Wl,-Ttext=0xC0100000 -nostdlib")
 target_link_libraries(elf_kernel gcc)
+
+add_custom_target(
+    
+    kernel.bin ALL
+
+    COMMAND
+        objcopy -O binary -j .text -j .rodata -j .data elf_kernel ${CMAKE_BINARY_DIR}/kernel.bin
+    DEPENDS
+        ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
+    COMMENT
+        "Preparing kernel's flat-binary"
+    )

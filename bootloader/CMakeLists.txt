@@ -1,0 +1,29 @@
+cmake_minimum_required(VERSION 3.2)
+project (exos_bootloader ASM_NASM)
+
+file(GLOB SOURCES "*.asm")
+
+add_custom_command(
+    OUTPUT
+        boot.o
+    DEPENDS
+        boot.asm
+    COMMAND
+        nasm -f bin -o boot.o ${SOURCES}
+    COMMENT
+        "Building the bootloader"
+)
+
+
+
+add_custom_target(
+    
+    bootloader.bin ALL
+    
+    COMMAND
+        cp boot.o ${CMAKE_BINARY_DIR}/bootloader.bin
+    DEPENDS
+        ${CMAKE_CURRENT_BINARY_DIR}/boot.o
+    COMMENT
+        "Linking the bootloader"
+     )
