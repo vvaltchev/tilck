@@ -7,7 +7,7 @@ set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_CXX_COMPILER "g++")
 
 # Do not use -rdynamic
-SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 
 set(OPT_FLAGS "-O0 -fno-inline-functions")
 set(WARN_FLAGS "-Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Werror")
