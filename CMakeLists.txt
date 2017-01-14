@@ -21,8 +21,7 @@ set(GENERAL_KERNEL_FLAGS "\
 -fno-zero-initialized-in-bss \
 -fno-exceptions")
 
-set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${OPT_FLAGS} ${WARN_FLAGS} ${GENERAL_KERNEL_FLAGS}" )
-
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPT_FLAGS} ${WARN_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 add_definitions("-DDEBUG")
 
 
@@ -38,5 +37,5 @@ set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> -f elf32 -o <OBJECT
 set_source_files_properties(${SOURCES} PROPERTIES COMPILE_FLAGS ${ARCH_FLAGS})
 
 add_executable(elf_kernel "${SOURCES}")
-set_target_properties(elf_kernel PROPERTIES LINK_FLAGS "-m32 -march=i686 -Wl,-Ttext=0xC0100000 -nostdlib")
+set_target_properties(elf_kernel PROPERTIES LINK_FLAGS "${ARCH_FLAGS} -Wl,-Ttext=0xC0100000 -nostdlib")
 target_link_libraries(elf_kernel gcc)
