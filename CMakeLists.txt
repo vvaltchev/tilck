@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 2.8.12)
-project (exos)
-
-enable_language(ASM_NASM)
+project (exos C ASM_NASM)
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
@@ -32,7 +30,6 @@ add_definitions("-DDEBUG")
 include_directories("kernel/include")
 
 file(GLOB SOURCES "kernel/i386/*.asm" "kernel/*.c" "kernel/i386/*.c")
-
 
 
 set(ARCH_FLAGS "-m32 -march=i686")
