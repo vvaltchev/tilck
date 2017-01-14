@@ -20,7 +20,7 @@ add_custom_target(
     COMMAND
         dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/kernel.bin of=$@ seek=4 obs=1024 ibs=1024   
     DEPENDS
-        bootloader.bin kernel.bin
+        ${CMAKE_BINARY_DIR}/bootloader.bin ${CMAKE_BINARY_DIR}/kernel.bin
     COMMENT
         "Creating the bootable image file"
     )

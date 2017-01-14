@@ -37,14 +37,21 @@ add_executable(elf_kernel "${SOURCES}")
 set_target_properties(elf_kernel PROPERTIES LINK_FLAGS "${ARCH_FLAGS} -Wl,-Ttext=0xC0100000 -nostdlib")
 target_link_libraries(elf_kernel gcc)
 
-add_custom_target(
-    
-    kernel.bin ALL
-
+add_custom_command(
+    OUTPUT
+        ${CMAKE_BINARY_DIR}/kernel.bin
     COMMAND
         objcopy -O binary -j .text -j .rodata -j .data elf_kernel ${CMAKE_BINARY_DIR}/kernel.bin
     DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
     COMMENT
         "Preparing kernel's flat-binary"
-    )
+)
+
+add_custom_target(
+    
+    kernel ALL
+
+    DEPENDS
+        ${CMAKE_BINARY_DIR}/kernel.bin
+)

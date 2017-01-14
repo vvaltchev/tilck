@@ -14,16 +14,21 @@ add_custom_command(
         "Building the bootloader"
 )
 
-
-
-add_custom_target(
-    
-    bootloader.bin ALL
-    
+add_custom_command(
+    OUTPUT
+        ${CMAKE_BINARY_DIR}/bootloader.bin
     COMMAND
         cp boot.o ${CMAKE_BINARY_DIR}/bootloader.bin
     DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/boot.o
     COMMENT
-        "Linking the bootloader"
-     )
+        "Linking the bootloader"   
+)
+
+add_custom_target(
+    
+    bootloader ALL
+    
+    DEPENDS
+        ${CMAKE_BINARY_DIR}/bootloader.bin
+)
