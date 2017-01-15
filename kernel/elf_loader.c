@@ -144,4 +144,4 @@ void load_elf_program(void *elf,
    *entry = (void *) header->e_entry;
 }
 
-#endif
+#endif // BITS32
