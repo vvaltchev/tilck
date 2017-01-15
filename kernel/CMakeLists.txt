@@ -18,11 +18,12 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GENERAL_DEFS} ${GENERAL_CFLAGS} ${ARCH_FLA
 
 include_directories("include")
 
-file(GLOB SOURCES "arch/${ARCH}/*.asm" "arch/${ARCH}/*.c" "*.c")
+file(GLOB ARCH_SOURCES "arch/${ARCH}/*.asm" "arch/${ARCH}/*.c")
+file(GLOB SOURCES "*.c")
 
 set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> -f elf32 -o <OBJECT> <SOURCE>")
 
-add_executable(elf_kernel "${SOURCES}")
+add_executable(elf_kernel "${ARCH_SOURCES}" "${SOURCES}")
 set_target_properties(
 
    elf_kernel
@@ -53,3 +54,5 @@ add_custom_target(
     DEPENDS
         ${KERNEL_BIN_FILE}
 )
+
+add_library(kernel_noarch_static STATIC "${SOURCES}")

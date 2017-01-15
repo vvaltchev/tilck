@@ -6,6 +6,8 @@
 #include <string_util.h>
 #include <arch/generic_x86/utils.h>
 
+#ifdef BITS32
+
 #ifdef DEBUG
 
 //
@@ -142,3 +144,5 @@ void load_elf_program(void *elf,
    *stack_addr = (void *) ((OFFLIMIT_USERMODE_ADDR - 1) & ~15);
    *entry = (void *) header->e_entry;
 }
+
+#endif // BITS32

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.2)
-project (exos C ASM_NASM)
+project (exos C CXX ASM_NASM)
 
-#set(CMAKE_VERBOSE_MAKEFILE on)
+set(CMAKE_VERBOSE_MAKEFILE on)
 set(BUILD_SHARED_LIBRARIES off)
 
 # Generic CMake Utilities
@@ -16,9 +16,15 @@ endfunction()
 ####################################
 
 set(CMAKE_C_COMPILER "gcc")
+set(CMAKE_CXX_COMPILER "g++")
 
+set(CMAKE_C_COMPILE_OBJECT "<CMAKE_C_COMPILER> -std=c11 <DEFINES> <FLAGS> -o <OBJECT> -c <SOURCE>")
+set(CMAKE_CXX_COMPILE_OBJECT "<CMAKE_CXX_COMPILER> -std=c++17 <DEFINES> <FLAGS> -o <OBJECT> -c <SOURCE>")
 
-set(ARCH i386)
+#message("CMAKE_C_COMPILE_OBJECT: ${CMAKE_C_COMPILE_OBJECT}")
+#message("CMAKE_CXX_COMPILE_OBJECT: ${CMAKE_CXX_COMPILE_OBJECT}")
+
+set(ARCH "i386")
 set(ARCH_FLAGS "-m32 -march=i686")
 
 set(GENERAL_DEFS_LIST
@@ -27,7 +33,6 @@ set(GENERAL_DEFS_LIST
 
 set(GENERAL_CFLAGS_LIST
    -g
-   -std=c11
    -fno-stack-protector
 )
 
@@ -54,7 +59,7 @@ set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
 add_subdirectory(bootloader)
 add_subdirectory(kernel)
 add_subdirectory(usermode_init)
-
+add_subdirectory(unittests)
 
 add_custom_command(
 
