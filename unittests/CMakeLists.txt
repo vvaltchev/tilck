@@ -4,7 +4,7 @@ file(GLOB SOURCES "*.c" "*.cpp")
 
 set(GTEST_DIR "${CMAKE_SOURCE_DIR}/toolchain/googletest/googletest")
 
-include_directories("../kernel/include")
+include_directories("${CMAKE_SOURCE_DIR}/kernel/include")
 include_directories("${GTEST_DIR}/include")
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
@@ -29,7 +29,7 @@ set(
 )
 
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})
-JOIN("${WRAPPED_SYMS_LIST}" "${SPACE}" WRAPPINGS)
+JOIN("${WRAPPED_SYMS_LIST}" ${SPACE} WRAPPINGS)
 
 target_link_libraries(tests ${GTEST_DIR}/libgtest.a)
 target_link_libraries(tests ${GTEST_DIR}/libgtest_main.a)

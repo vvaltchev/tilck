@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.2)
 project (exos C CXX ASM_NASM)
 
-#set(CMAKE_VERBOSE_MAKEFILE on)
-set(BUILD_SHARED_LIBRARIES off)
+set(CMAKE_VERBOSE_MAKEFILE off)
 
+###########################################################
 # Generic CMake Utilities
 
 set(SPACE " ")
@@ -21,10 +21,13 @@ FUNCTION(PREPEND var prefix)
    SET(${var} "${listVar}" PARENT_SCOPE)
 ENDFUNCTION(PREPEND)
 
-####################################
+###########################################################
+# Architecture setting. Only i386 is accepted by now.
 
 set(ARCH "i386")
 set(DEBUG_BUILD on)
+
+###########################################################
 
 if (${ARCH} STREQUAL "i386")
    set(ARCH_FLAGS "-m32 -march=i686")
@@ -34,6 +37,7 @@ else()
 endif()
 
 
+set(BUILD_SHARED_LIBRARIES off)
 set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_CXX_COMPILER "g++")
 
@@ -42,8 +46,8 @@ set(
    "<CMAKE_ASM_NASM_COMPILER> -f ${NASM_ARCH_FORMAT} -o <OBJECT> <SOURCE>"
 )
 
-set(CMAKE_C_FLAGS "-std=c11")
-set(CMAKE_CXX_FLAGS "-std=c++17")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 
 #message("CMAKE_C_LINK_EXECUTABLE: ${CMAKE_C_LINK_EXECUTABLE}")
@@ -93,19 +97,26 @@ set(KERNEL_BIN_FILE ${CMAKE_BINARY_DIR}/kernel.bin)
 set(INIT_FILE ${CMAKE_BINARY_DIR}/init)
 set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
 
+set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/build_scripts)
+
+################################################################################
+# Including sub-directories
+
 add_subdirectory(bootloader)
 add_subdirectory(kernel)
 add_subdirectory(usermode_init)
 add_subdirectory(unittests)
+
+################################################################################
 
 add_custom_command(
 
    OUTPUT
       ${IMG_FILE}
    COMMAND
-      ${CMAKE_SOURCE_DIR}/build_scripts/create_empty_img_if_necessary.sh ${IMG_FILE} 1440
+      ${BUILD_SCRIPTS}/create_empty_img_if_necessary.sh ${IMG_FILE} 1440
    COMMAND
-      dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE}
+      dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} obs=1024 ibs=1024
    COMMAND
       dd status=none conv=notrunc if=${KERNEL_BIN_FILE} of=${IMG_FILE} seek=4 obs=1024 ibs=1024
    COMMAND

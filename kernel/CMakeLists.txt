@@ -41,7 +41,7 @@ add_custom_command(
     OUTPUT
         ${KERNEL_BIN_FILE}
     COMMAND
-        ${CMAKE_SOURCE_DIR}/build_scripts/bss_checker.sh elf_kernel
+        ${BUILD_SCRIPTS}/bss_checker.sh elf_kernel
     COMMAND
         objcopy -O binary -j .text -j .rodata -j .data elf_kernel ${KERNEL_BIN_FILE}
     DEPENDS
@@ -57,6 +57,9 @@ add_custom_target(
     DEPENDS
         ${KERNEL_BIN_FILE}
 )
+
+
+# Creating a static library target for putting kernel's arch-independent code.
 
 add_library(kernel_noarch_static_for_test STATIC EXCLUDE_FROM_ALL ${SOURCES})
 
