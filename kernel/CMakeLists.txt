@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.2)
 
 set(KERNEL_LOAD_VADDR 0xC0100000)
 
-set(GENERAL_KERNEL_FLAGS_LIST
+set(
+   GENERAL_KERNEL_FLAGS_LIST
+
    -mno-red-zone
    -ffreestanding
    -nostdinc
@@ -12,7 +14,7 @@ set(GENERAL_KERNEL_FLAGS_LIST
    -fno-exceptions
 )
 
-JOIN("${GENERAL_KERNEL_FLAGS_LIST}" "${SPACE}" GENERAL_KERNEL_FLAGS)
+JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
 
 include_directories("include")
 
@@ -22,7 +24,7 @@ file(GLOB SOURCES "*.c")
 
 set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 
-add_executable(elf_kernel "${ARCH_SOURCES}" "${SOURCES}")
+add_executable(elf_kernel ${ARCH_SOURCES} ${SOURCES})
 set_target_properties(
 
    elf_kernel
@@ -56,7 +58,7 @@ add_custom_target(
         ${KERNEL_BIN_FILE}
 )
 
-add_library(kernel_noarch_static_for_test STATIC EXCLUDE_FROM_ALL "${SOURCES}")
+add_library(kernel_noarch_static_for_test STATIC EXCLUDE_FROM_ALL ${SOURCES})
 
 set_target_properties(
 

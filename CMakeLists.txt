@@ -23,12 +23,23 @@ ENDFUNCTION(PREPEND)
 
 ####################################
 
+set(ARCH "i386")
+set(DEBUG_BUILD on)
+
+if (${ARCH} STREQUAL "i386")
+   set(ARCH_FLAGS "-m32 -march=i686")
+   set(NASM_ARCH_FORMAT "elf32")
+else()
+   message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
+endif()
+
+
 set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_CXX_COMPILER "g++")
 
 set(
    CMAKE_ASM_NASM_COMPILE_OBJECT
-   "<CMAKE_ASM_NASM_COMPILER> -f elf32 -o <OBJECT> <SOURCE>"
+   "<CMAKE_ASM_NASM_COMPILER> -f ${NASM_ARCH_FORMAT} -o <OBJECT> <SOURCE>"
 )
 
 set(CMAKE_C_FLAGS "-std=c11")
@@ -39,14 +50,22 @@ set(CMAKE_CXX_FLAGS "-std=c++17")
 #message("CMAKE_C_COMPILE_OBJECT: ${CMAKE_C_COMPILE_OBJECT}")
 #message("CMAKE_CXX_COMPILE_OBJECT: ${CMAKE_CXX_COMPILE_OBJECT}")
 
-set(ARCH "i386")
-set(ARCH_FLAGS "-m32 -march=i686")
+set(GENERAL_DEFS_LIST "")
 
-set(
-   GENERAL_DEFS_LIST
+if (${DEBUG_BUILD})
 
-   -DDEBUG
-)
+   message(STATUS "Preparing a DEBUG build...")
+   LIST(APPEND GENERAL_DEFS_LIST "-DDEBUG")
+   set(OPT_FLAGS_LIST -O0 -fno-inline-functions)
+
+else()
+
+   message(STATUS "Preparing a RELEASE build...")
+   LIST(APPEND GENERAL_DEFS_LIST "-DNDEBUG")
+   set(OPT_FLAGS_LIST -O2)
+
+endif()
+
 
 set(
    OTHER_CFLAGS_LIST
@@ -55,12 +74,6 @@ set(
    -fno-stack-protector
 )
 
-set(
-   OPT_FLAGS_LIST
-
-   -O0
-   -fno-inline-functions
-)
 
 set(
    WARN_FLAGS_LIST
@@ -68,10 +81,10 @@ set(
    -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Werror
 )
 
-JOIN("${GENERAL_DEFS_LIST}" "${SPACE}" GENERAL_DEFS)
-JOIN("${OTHER_CFLAGS_LIST}" "${SPACE}" OTHER_CFLAGS)
-JOIN("${OPT_FLAGS_LIST}" "${SPACE}" OPT_FLAGS)
-JOIN("${WARN_FLAGS_LIST}" "${SPACE}" WARN_FLAGS)
+JOIN("${GENERAL_DEFS_LIST}" ${SPACE} GENERAL_DEFS)
+JOIN("${OTHER_CFLAGS_LIST}" ${SPACE} OTHER_CFLAGS)
+JOIN("${OPT_FLAGS_LIST}" ${SPACE} OPT_FLAGS)
+JOIN("${WARN_FLAGS_LIST}" ${SPACE} WARN_FLAGS)
 
 set(COMMON_FLAGS "${GENERAL_DEFS} ${OTHER_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 

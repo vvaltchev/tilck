@@ -22,11 +22,11 @@ file(GLOB SOURCES "*.c")
 
 set(DIET_LIBC_PATH "${CMAKE_SOURCE_DIR}/toolchain/dietlibc-0.33")
 
-include_directories(SYSTEM "${DIET_LIBC_PATH}/include")
+include_directories(SYSTEM ${DIET_LIBC_PATH}/include)
 
-add_executable(init "${SOURCES}")
+add_executable(init ${SOURCES})
 
-set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}")
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 set_target_properties(
 
