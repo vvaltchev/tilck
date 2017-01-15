@@ -41,6 +41,8 @@ add_custom_command(
     OUTPUT
         ${CMAKE_BINARY_DIR}/kernel.bin
     COMMAND
+        ${CMAKE_SOURCE_DIR}/build_scripts/bss_checker.sh elf_kernel
+    COMMAND
         objcopy -O binary -j .text -j .rodata -j .data elf_kernel ${CMAKE_BINARY_DIR}/kernel.bin
     DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel

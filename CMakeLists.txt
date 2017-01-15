@@ -14,7 +14,7 @@ add_custom_command(
     OUTPUT
         ${IMG_FILE}
     COMMAND
-        dd status=none if=/dev/zero of=${IMG_FILE} obs=512 ibs=512 count=2880
+        ${CMAKE_SOURCE_DIR}/build_scripts/create_empty_img_if_necessary.sh ${IMG_FILE} 1440
     COMMAND
         dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/bootloader.bin of=${IMG_FILE}
     COMMAND
@@ -25,6 +25,7 @@ add_custom_command(
         bootloader kernel ${CMAKE_BINARY_DIR}/bootloader.bin ${CMAKE_BINARY_DIR}/kernel.bin
     COMMENT
         "Creating the bootable image file"
+    VERBATIM
 )
 
 
