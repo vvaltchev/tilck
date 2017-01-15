@@ -14,12 +14,31 @@ endfunction()
 
 ####################################
 
-
 set(ARCH i386)
+set(ARCH_FLAGS "-m32 -march=i686")
+
+set(GENERAL_DEFS_LIST
+   -DDEBUG
+)
+
+set(OPT_FLAGS_LIST
+   -O0
+   -fno-inline-functions
+)
+
+set(WARN_FLAGS_LIST
+   -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Werror
+)
+
+JOIN("${GENERAL_DEFS_LIST}" "${SPACE}" GENERAL_DEFS)
+JOIN("${OPT_FLAGS_LIST}" "${SPACE}" OPT_FLAGS)
+JOIN("${WARN_FLAGS_LIST}" "${SPACE}" WARN_FLAGS)
+
 
 
 add_subdirectory(bootloader)
 add_subdirectory(kernel)
+add_subdirectory(init_src)
 
 set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
 

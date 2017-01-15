@@ -6,15 +6,6 @@ set(CMAKE_C_COMPILER "gcc")
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 
 
-set(OPT_FLAGS_LIST
-   -O0
-   -fno-inline-functions
-)
-
-set(WARN_FLAGS_LIST
-   -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Werror
-)
-
 set(GENERAL_KERNEL_FLAGS_LIST
    -g
    -std=c11
@@ -28,23 +19,15 @@ set(GENERAL_KERNEL_FLAGS_LIST
    -fno-exceptions
 )
 
-
-
-JOIN("${OPT_FLAGS_LIST}" "${SPACE}" OPT_FLAGS)
-JOIN("${WARN_FLAGS_LIST}" "${SPACE}" WARN_FLAGS)
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" "${SPACE}" GENERAL_KERNEL_FLAGS)
 
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPT_FLAGS} ${WARN_FLAGS} ${GENERAL_KERNEL_FLAGS}")
-add_definitions("-DDEBUG")
-
-
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GENERAL_DEFS} ${OPT_FLAGS} ${WARN_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 
 include_directories("include")
 
 file(GLOB SOURCES "arch/${ARCH}/*.asm" "arch/${ARCH}/*.c" "*.c")
 
-set(ARCH_FLAGS "-m32 -march=i686")
+
 set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> -f elf32 -o <OBJECT> <SOURCE>")
 
 set_source_files_properties(${SOURCES} PROPERTIES COMPILE_FLAGS ${ARCH_FLAGS})
