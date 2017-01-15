@@ -32,4 +32,4 @@ set_target_properties(
 
 
 target_link_libraries(tests "${GTEST_DIR}/libgtest.a" "${GTEST_DIR}/libgtest_main.a" pthread)
-#target_link_libraries(tests kernel_noarch_static)
+target_link_libraries(tests kernel_noarch_static_for_test)

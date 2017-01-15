@@ -14,7 +14,7 @@ set(GENERAL_KERNEL_FLAGS_LIST
 
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" "${SPACE}" GENERAL_KERNEL_FLAGS)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GENERAL_DEFS} ${GENERAL_CFLAGS} ${ARCH_FLAGS} ${OPT_FLAGS} ${WARN_FLAGS} ${GENERAL_KERNEL_FLAGS}")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GENERAL_DEFS} ${GENERAL_CFLAGS} ${ARCH_FLAGS} ${OPT_FLAGS} ${WARN_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 
 include_directories("include")
 
@@ -29,6 +29,7 @@ set_target_properties(
    elf_kernel
 
    PROPERTIES
+      COMPILE_FLAGS "${GENERAL_DEFS} ${GENERAL_CFLAGS} ${ARCH_FLAGS} ${OPT_FLAGS} ${WARN_FLAGS} ${GENERAL_KERNEL_FLAGS}"
       LINK_FLAGS "${ARCH_FLAGS} -Wl,-Ttext=${KERNEL_LOAD_VADDR} -nostdlib"
 )
 
@@ -55,4 +56,12 @@ add_custom_target(
         ${KERNEL_BIN_FILE}
 )
 
-add_library(kernel_noarch_static STATIC "${SOURCES}")
+add_library(kernel_noarch_static_for_test STATIC "${SOURCES}")
+
+set_target_properties(
+
+   kernel_noarch_static_for_test
+
+   PROPERTIES
+      COMPILE_FLAGS "${GENERAL_DEFS} -DKERNEL_TEST ${GENERAL_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS} ${GENERAL_KERNEL_FLAGS}"
+)
