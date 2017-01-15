@@ -56,7 +56,7 @@ add_custom_target(
         ${KERNEL_BIN_FILE}
 )
 
-add_library(kernel_noarch_static_for_test STATIC "${SOURCES}")
+add_library(kernel_noarch_static_for_test STATIC EXCLUDE_FROM_ALL "${SOURCES}")
 
 set_target_properties(
 
