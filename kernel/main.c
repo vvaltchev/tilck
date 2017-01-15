@@ -90,7 +90,6 @@ void kmain()
 
    // Run the 'init' usermode program.
    //run_usermode_init();
-
    
    // We should never get here!
    NOT_REACHED();
