@@ -7,7 +7,7 @@ add_custom_command(
     OUTPUT
         boot.o
     DEPENDS
-        boot.asm
+        ${SOURCES}
     COMMAND
         nasm -f bin -o boot.o ${SOURCES}
     COMMENT
