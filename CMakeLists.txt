@@ -49,7 +49,7 @@ JOIN("${WARN_FLAGS_LIST}" "${SPACE}" WARN_FLAGS)
 
 add_subdirectory(bootloader)
 add_subdirectory(kernel)
-add_subdirectory(init_src)
+add_subdirectory(usermode_init)
 
 set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
 
@@ -65,11 +65,11 @@ add_custom_command(
    COMMAND
       dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/kernel.bin of=${IMG_FILE} seek=4 obs=1024 ibs=1024
    COMMAND
-      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/init_src/init of=${IMG_FILE} seek=132 obs=1024 ibs=1024
+      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/init of=${IMG_FILE} seek=132 obs=1024 ibs=1024
    DEPENDS
       # We MUST depend on BOTH the wrapper-target AND its OUTPUT in order to this
       # to be re-build when the *.bin files are re-built.
-      bootloader kernel ${CMAKE_BINARY_DIR}/bootloader.bin ${CMAKE_BINARY_DIR}/kernel.bin ${CMAKE_BINARY_DIR}/init_src/init
+      bootloader kernel usermode_init ${CMAKE_BINARY_DIR}/bootloader.bin ${CMAKE_BINARY_DIR}/kernel.bin ${CMAKE_BINARY_DIR}/init
    COMMENT
       "Creating the bootable image file"
    VERBATIM

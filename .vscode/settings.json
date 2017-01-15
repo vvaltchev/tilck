@@ -11,7 +11,8 @@
         "**/.DS_Store": true,
         "**/.d": true,
         "toolchain/**": true,
-        "build/**": true
+        "build/**": true,
+        "CMakeFiles/**": true
     },
     "files.eol": "\n",
     "files.trimTrailingWhitespace": true,

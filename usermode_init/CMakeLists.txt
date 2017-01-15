@@ -30,6 +30,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GENERAL_DEFS} ${GENERAL_CFLAGS} ${ARCH_FLA
 
 add_executable(init "${SOURCES}")
 
+set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}")
+
 set_target_properties(
 
    init
