@@ -111,7 +111,12 @@ typedef u64 uint64_t;
 
 #else
 
+#ifdef __cplusplus
 #include <cstdint>
+#else
+#include <stdint.h>
+#include <stddef.h>
+#endif
 
 #endif
 
