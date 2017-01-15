@@ -46,12 +46,14 @@ JOIN("${OPT_FLAGS_LIST}" "${SPACE}" OPT_FLAGS)
 JOIN("${WARN_FLAGS_LIST}" "${SPACE}" WARN_FLAGS)
 
 
+set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/bootloader.bin)
+set(KERNEL_BIN_FILE ${CMAKE_BINARY_DIR}/kernel.bin)
+set(INIT_FILE ${CMAKE_BINARY_DIR}/init)
+set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
 
 add_subdirectory(bootloader)
 add_subdirectory(kernel)
 add_subdirectory(usermode_init)
-
-set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
 
 
 add_custom_command(
@@ -61,15 +63,15 @@ add_custom_command(
    COMMAND
       ${CMAKE_SOURCE_DIR}/build_scripts/create_empty_img_if_necessary.sh ${IMG_FILE} 1440
    COMMAND
-      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/bootloader.bin of=${IMG_FILE}
+      dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE}
    COMMAND
-      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/kernel.bin of=${IMG_FILE} seek=4 obs=1024 ibs=1024
+      dd status=none conv=notrunc if=${KERNEL_BIN_FILE} of=${IMG_FILE} seek=4 obs=1024 ibs=1024
    COMMAND
-      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/init of=${IMG_FILE} seek=132 obs=1024 ibs=1024
+      dd status=none conv=notrunc if=${INIT_FILE} of=${IMG_FILE} seek=132 obs=1024 ibs=1024
    DEPENDS
       # We MUST depend on BOTH the wrapper-target AND its OUTPUT in order to this
       # to be re-build when the *.bin files are re-built.
-      bootloader kernel usermode_init ${CMAKE_BINARY_DIR}/bootloader.bin ${CMAKE_BINARY_DIR}/kernel.bin ${CMAKE_BINARY_DIR}/init
+      bootloader kernel usermode_init ${BOOTLOADER_BIN_FILE} ${KERNEL_BIN_FILE} ${INIT_FILE}
    COMMENT
       "Creating the bootable image file"
    VERBATIM
