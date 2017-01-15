@@ -22,11 +22,7 @@ file(GLOB SOURCES "*.c")
 
 set(DIET_LIBC_PATH "${CMAKE_SOURCE_DIR}/toolchain/dietlibc-0.33")
 
-set(GENERAL_DEFS "${GENERAL_DEFS} -D__dietlibc__")
-
-
 include_directories(SYSTEM "${DIET_LIBC_PATH}/include")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GENERAL_DEFS} ${GENERAL_CFLAGS} ${ARCH_FLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 
 add_executable(init "${SOURCES}")
 
@@ -37,6 +33,7 @@ set_target_properties(
    init
 
    PROPERTIES
+      COMPILE_FLAGS "-D__dietlibc__ ${ARCH_FLAGS} ${COMMON_FLAGS}"
       LINK_FLAGS "${ARCH_FLAGS} -nostdlib ${DIET_LIBC_PATH}/bin-i386/start.o"
 )
 

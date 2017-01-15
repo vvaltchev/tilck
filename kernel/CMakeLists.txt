@@ -14,14 +14,13 @@ set(GENERAL_KERNEL_FLAGS_LIST
 
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" "${SPACE}" GENERAL_KERNEL_FLAGS)
 
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GENERAL_DEFS} ${GENERAL_CFLAGS} ${ARCH_FLAGS} ${OPT_FLAGS} ${WARN_FLAGS} ${GENERAL_KERNEL_FLAGS}")
-
 include_directories("include")
 
 file(GLOB ARCH_SOURCES "arch/${ARCH}/*.asm" "arch/${ARCH}/*.c")
 file(GLOB SOURCES "*.c")
 
-set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> -f elf32 -o <OBJECT> <SOURCE>")
+
+set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 
 add_executable(elf_kernel "${ARCH_SOURCES}" "${SOURCES}")
 set_target_properties(
@@ -29,10 +28,11 @@ set_target_properties(
    elf_kernel
 
    PROPERTIES
-      COMPILE_FLAGS "${GENERAL_DEFS} ${GENERAL_CFLAGS} ${ARCH_FLAGS} ${OPT_FLAGS} ${WARN_FLAGS} ${GENERAL_KERNEL_FLAGS}"
+      COMPILE_FLAGS "${ARCH_FLAGS} ${KERNEL_FLAGS}"
       LINK_FLAGS "${ARCH_FLAGS} -Wl,-Ttext=${KERNEL_LOAD_VADDR} -nostdlib"
 )
 
+# -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(elf_kernel gcc)
 
 add_custom_command(
@@ -63,5 +63,5 @@ set_target_properties(
    kernel_noarch_static_for_test
 
    PROPERTIES
-      COMPILE_FLAGS "${GENERAL_DEFS} -DKERNEL_TEST ${GENERAL_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS} ${GENERAL_KERNEL_FLAGS}"
+      COMPILE_FLAGS "-DKERNEL_TEST ${KERNEL_FLAGS}"
 )

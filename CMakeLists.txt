@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.2)
 project (exos C CXX ASM_NASM)
 
-set(CMAKE_VERBOSE_MAKEFILE on)
+#set(CMAKE_VERBOSE_MAKEFILE on)
 set(BUILD_SHARED_LIBRARIES off)
 
 # Generic CMake Utilities
@@ -13,13 +13,27 @@ function(JOIN VALUES GLUE OUTPUT)
   set (${OUTPUT} "${_TMP_STR}" PARENT_SCOPE)
 endfunction()
 
+FUNCTION(PREPEND var prefix)
+   SET(listVar "")
+   FOREACH(f ${ARGN})
+      LIST(APPEND listVar "${prefix}${f}")
+   ENDFOREACH(f)
+   SET(${var} "${listVar}" PARENT_SCOPE)
+ENDFUNCTION(PREPEND)
+
 ####################################
 
 set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_CXX_COMPILER "g++")
 
-set(CMAKE_C_COMPILE_OBJECT "<CMAKE_C_COMPILER> -std=c11 <DEFINES> <FLAGS> -o <OBJECT> -c <SOURCE>")
-set(CMAKE_CXX_COMPILE_OBJECT "<CMAKE_CXX_COMPILER> -std=c++17 <DEFINES> <FLAGS> -o <OBJECT> -c <SOURCE>")
+set(
+   CMAKE_ASM_NASM_COMPILE_OBJECT
+   "<CMAKE_ASM_NASM_COMPILER> -f elf32 -o <OBJECT> <SOURCE>"
+)
+
+set(CMAKE_C_FLAGS "-std=c11")
+set(CMAKE_CXX_FLAGS "-std=c++17")
+
 
 #message("CMAKE_C_LINK_EXECUTABLE: ${CMAKE_C_LINK_EXECUTABLE}")
 #message("CMAKE_C_COMPILE_OBJECT: ${CMAKE_C_COMPILE_OBJECT}")
@@ -28,29 +42,38 @@ set(CMAKE_CXX_COMPILE_OBJECT "<CMAKE_CXX_COMPILER> -std=c++17 <DEFINES> <FLAGS> 
 set(ARCH "i386")
 set(ARCH_FLAGS "-m32 -march=i686")
 
-set(GENERAL_DEFS_LIST
+set(
+   GENERAL_DEFS_LIST
+
    -DDEBUG
 )
 
-set(GENERAL_CFLAGS_LIST
+set(
+   OTHER_CFLAGS_LIST
+
    -g
    -fno-stack-protector
 )
 
-set(OPT_FLAGS_LIST
+set(
+   OPT_FLAGS_LIST
+
    -O0
    -fno-inline-functions
 )
 
-set(WARN_FLAGS_LIST
+set(
+   WARN_FLAGS_LIST
+
    -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Werror
 )
 
 JOIN("${GENERAL_DEFS_LIST}" "${SPACE}" GENERAL_DEFS)
-JOIN("${GENERAL_CFLAGS_LIST}" "${SPACE}" GENERAL_CFLAGS)
+JOIN("${OTHER_CFLAGS_LIST}" "${SPACE}" OTHER_CFLAGS)
 JOIN("${OPT_FLAGS_LIST}" "${SPACE}" OPT_FLAGS)
 JOIN("${WARN_FLAGS_LIST}" "${SPACE}" WARN_FLAGS)
 
+set(COMMON_FLAGS "${GENERAL_DEFS} ${OTHER_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 
 set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/bootloader.bin)
 set(KERNEL_BIN_FILE ${CMAKE_BINARY_DIR}/kernel.bin)
