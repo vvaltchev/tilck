@@ -7,7 +7,6 @@
 #include <arch/generic_x86/utils.h>
 
 #ifdef BITS32
-
 #ifdef DEBUG
 
 //
