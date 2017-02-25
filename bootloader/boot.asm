@@ -413,6 +413,92 @@ dw 0xAA55               ; The standard PC boot signature
    call print_string
    add sp, 2
 
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   mov si, dev
+   call print_string
+   mov ax, [current_device]
+   call print_num
+
+
+
+   mov ax, 2048
+   call lba_to_chs
+   mov ax, ds ; store in the current data segment
+   mov es, ax
+   mov bx, bigBuf
+   mov ah, 0x02      ; Params for int 13h: read sectors
+   mov al, 1         ; Read just 1 sector at time
+   int 13h
+
+   jnc everything_ok
+
+   ; report error
+   mov si, read_failed
+   call print_string
+   jmp hang
+
+
+   everything_ok:
+
+   mov si, cool
+   call print_string
+   add sp, 2
+
+   ;mov si, 4096
+   ;call print_string
+   ;add sp, 2
+
+   mov word [addr], bigBuf
+
+   ; mov ax, [addr]
+   ; push strBuf
+   ; push ax
+   ; call itoa
+   ; mov si, strBuf
+   ; call print_string
+   ; mov si, newline
+   ; call print_string
+   ; add sp, 6
+
+   ploop:
+
+   mov bx, [addr]
+
+   mov ax, [cc]
+   inc ax
+   cmp ax, 4
+   jg hang
+   mov [cc], ax
+
+   xor ax, ax
+   mov al, [bx]
+   inc bx
+   mov [addr], bx
+
+   push strBuf
+   push ax
+   call itoa
+   mov si, strBuf
+   call print_string
+   mov si, newline
+   call print_string
+
+   add sp, 8
+
+   jmp ploop
+
+   hang: jmp hang
+
+   cool db 'We are totally cool', 10, 13, 0
+   addr dw 0
+   cc dw 0
+   read_failed db 'Read of sector failed.', 10, 13, 0
+   bigBuf times 512 db 0
+
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
    cli          ; disable interrupts
 
    ; calculate the absolute 32 bit address of GDT
