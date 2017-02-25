@@ -422,7 +422,7 @@ dw 0xAA55               ; The standard PC boot signature
 
 
 
-   mov ax, 2048
+   mov ax, 20480
    call lba_to_chs
    mov ax, ds ; store in the current data segment
    mov es, ax
@@ -445,9 +445,11 @@ dw 0xAA55               ; The standard PC boot signature
    call print_string
    add sp, 2
 
-   ;mov si, 4096
-   ;call print_string
-   ;add sp, 2
+   mov si, bigBuf
+   call print_string
+   mov si, newline
+   call print_string
+   add sp, 4
 
    mov word [addr], bigBuf
 
