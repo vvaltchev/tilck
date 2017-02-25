@@ -66,6 +66,13 @@ void kmain()
    term_init();
    show_hello_message();
 
+   printk("Data at high address:\n");
+   char *ptr = (char *)0x300000;
+   for (int i = 0; i < 16; i++) {
+      printk("%d, ", ptr[i]);
+   }
+   printk("\n\n");
+
    gdt_install();
    idt_install();
    irq_install();

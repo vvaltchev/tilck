@@ -413,95 +413,81 @@ dw 0xAA55               ; The standard PC boot signature
    call print_string
    add sp, 2
 
-   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   mov si, dev
-   call print_string
-   mov ax, [current_device]
-   call print_num
+   cli          ; disable interrupts
+
+   call smart_enable_A20
+
+   jmp enter_unreal_mode
+
+   gdt16info:
+   dw gdt16_end - gdt16 - 1   ; size of table - 1
+   dd 0                       ; start of table
+
+   gdt16       dd 0,0        ; entry 0 is always unused
+   flatdesc    db 0xff, 0xff, 0, 0, 0, 10010010b, 11001111b, 0
+   gdt16_end:
+
+   enter_unreal_mode:
+
+   xor eax, eax
+   mov ax, ds
+   shl eax, 4
+   add eax, gdt16
+   mov dword [gdt16info+2], eax
 
 
+   push ds                ; save real mode
+
+   lgdt [gdt16info]       ; load gdt register
+
+   mov eax, cr0           ; switch to 16-bit pmode by
+   or al,1                ; set pmode bit
+   mov cr0, eax
+
+   jmp $+2                ; tell 386/486 to not crash
+
+   mov bx, 0x08           ; select descriptor 1
+   mov ds, bx             ; 8h = 1000b
+
+   and al, 0xFE           ; back to realmode
+   mov cr0, eax           ; by toggling bit again
+
+   pop ds                 ; get back old segment
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    mov ax, 20480
    call lba_to_chs
-   mov ax, ds ; store in the current data segment
+   mov ax, 0x1000
    mov es, ax
-   mov bx, bigBuf
+   mov bx, 0 ;       ; address 0x1000:0 => 0x10000
    mov ah, 0x02      ; Params for int 13h: read sectors
    mov al, 1         ; Read just 1 sector at time
    int 13h
 
-   jnc everything_ok
 
-   ; report error
-   mov si, read_failed
-   call print_string
-   jmp hang
+   mov ax, 0
+   mov es, ax
 
+   mov eax, 0x300000  ; dest
+   mov ecx, 0x10000 ; src addr
 
-   everything_ok:
+   copy_sector_loop:
 
-   mov si, cool
-   call print_string
-   add sp, 2
+   mov ebx, [es:ecx]
+   mov [es:eax], ebx
+   add eax, 4
+   add ecx, 4
 
-   mov si, bigBuf
-   call print_string
-   mov si, newline
-   call print_string
-   add sp, 4
-
-   mov word [addr], bigBuf
-
-   ; mov ax, [addr]
-   ; push strBuf
-   ; push ax
-   ; call itoa
-   ; mov si, strBuf
-   ; call print_string
-   ; mov si, newline
-   ; call print_string
-   ; add sp, 6
-
-   ploop:
-
-   mov bx, [addr]
-
-   mov ax, [cc]
-   inc ax
-   cmp ax, 4
-   jg hang
-   mov [cc], ax
-
-   xor ax, ax
-   mov al, [bx]
-   inc bx
-   mov [addr], bx
-
-   push strBuf
-   push ax
-   call itoa
-   mov si, strBuf
-   call print_string
-   mov si, newline
-   call print_string
-
-   add sp, 8
-
-   jmp ploop
-
-   hang: jmp hang
-
-   cool db 'We are totally cool', 10, 13, 0
-   addr dw 0
-   cc dw 0
-   read_failed db 'Read of sector failed.', 10, 13, 0
-   bigBuf times 512 db 0
+   cmp ecx, 0x10200
+   jl copy_sector_loop
 
 
-   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   cli          ; disable interrupts
+   enter_32bit_protected_mode:
 
    ; calculate the absolute 32 bit address of GDT
    ; since flat addr = SEG << 4 + OFF
@@ -526,7 +512,6 @@ dw 0xAA55               ; The standard PC boot signature
    mov es, ax ; using extra segment for 0x0
    rep movsw  ; copies 2*CX bytes from [ds:si] to [es:di]
 
-   call smart_enable_A20
    lidt [idtr]
 
 
