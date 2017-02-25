@@ -121,6 +121,8 @@ add_custom_command(
       dd status=none conv=notrunc if=${KERNEL_BIN_FILE} of=${IMG_FILE} seek=4 obs=1024 ibs=1024
    COMMAND
       dd status=none conv=notrunc if=${INIT_FILE} of=${IMG_FILE} seek=132 obs=1024 ibs=1024
+   COMMAND
+      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/data.txt of=${IMG_FILE} seek=512 obs=1024 ibs=1024
    DEPENDS
       # We MUST depend on BOTH the wrapper-target AND its OUTPUT in order to this
       # to be re-build when the *.bin files are re-built.

@@ -1,0 +1,10 @@
+with USB disk drive
+D:128
+1
+16
+26
+LOS:1
+LBA:832
+C:2
+H:0
+S:1
