@@ -474,7 +474,7 @@ dw 0xAA55               ; The standard PC boot signature
    mov eax, 0x300000  ; dest
    mov ecx, 0x10000 ; src addr
 
-   copy_sector_loop:
+   copy_loop:
 
    mov ebx, [es:ecx]
    mov [es:eax], ebx
@@ -482,7 +482,7 @@ dw 0xAA55               ; The standard PC boot signature
    add ecx, 4
 
    cmp ecx, 0x10200
-   jl copy_sector_loop
+   jl copy_loop
 
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -497,7 +497,6 @@ dw 0xAA55               ; The standard PC boot signature
    mov ax, ds
    shl eax, 4
    add eax, gdt
-
    mov dword [gdtr+2], eax
 
    ; now we have to copy the text from
