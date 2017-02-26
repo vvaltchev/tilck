@@ -77,15 +77,28 @@ void mount_memdisk()
 
 void test_memdisk()
 {
-   printk("Data at high address:\n");
-   char *ptr = (char *)VDISK_ADDR;
+   char *ptr;
+
+   printk("Data at %p:\n", 0x0);
+   ptr = (char *)VDISK_ADDR;
    for (int i = 0; i < 16; i++) {
       printk("%x ", (u8)ptr[i]);
    }
-   printk("\n\n");
+   printk("\n");
 
-   u32 crc = crc32(0, (void *)VDISK_ADDR, 64*1024);
-   printk("Crc32 for 64 KB: %p\n", crc);
+   printk("Data at %p:\n", 0x10000);
+   ptr = (char *)(VDISK_ADDR + 0x10000);
+   for (int i = 0; i < 16; i++) {
+      printk("%x ", (u8)ptr[i]);
+   }
+   printk("\n");
+
+
+
+   printk("\n\n");
+   printk("Calculating CRC32...\n");
+   u32 crc = crc32(0, (void *)VDISK_ADDR, 13631488);
+   printk("Crc32 of the data: %p\n", crc);
 }
 
 void kmain()

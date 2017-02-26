@@ -7,6 +7,9 @@
 %define VDISK_ADDR 0x8000000
 %define VDISK_FIRST_LBA_SECTOR 1008
 
+; 1008 + 32768 sectors (16 MB) - 1
+%define VDISK_LAST_LBA_SECTOR 33775
+
 ; We're OK with just 1000 512-byte sectors (500 KB)
 %define SECTORS_TO_READ 1000
 
@@ -432,9 +435,15 @@ dw 0xAA55               ; The standard PC boot signature
    gdt16_end:
 
 
+   error_occured dw 0
    sectors_read dw 0
    vdisk_dest_addr dd VDISK_ADDR
    error_while_loading_vdisk db 'Error while loading vdisk', 10, 13, 0
+
+   read_seg_msg db 'Reading a segment..',10,13,0
+
+   load_of_vdisk_complete db 'Loading of vdisk completed.', 10, 13, 0
+   str_curr_sector_num db 'Current sector: ', 10, 13, 0
 
    enter_unreal_mode:
 
@@ -469,6 +478,18 @@ dw 0xAA55               ; The standard PC boot signature
 
    read_a_segment_from_drive:
 
+   mov si, read_seg_msg
+   call print_string
+   add sp, 2
+
+   ; mov si, str_curr_sector_num
+   ; call print_string
+   ; add sp, 2
+
+   ; mov ax, [currSectorNum]
+   ; call print_num
+   ; add sp, 2
+
    mov word [sectors_read], 0
 
    loop_for_reading_a_segment:
@@ -501,9 +522,14 @@ dw 0xAA55               ; The standard PC boot signature
 
    read_error:
 
+   mov word [error_occured], 1
+
    mov si, error_while_loading_vdisk
    call print_string
    add si, 2
+
+   h: jmp h
+
 
    read_segment_done:
 
@@ -526,6 +552,36 @@ dw 0xAA55               ; The standard PC boot signature
    mov eax, [vdisk_dest_addr]
    add eax, 0x10000 ; 64 KB
    mov [vdisk_dest_addr], eax
+
+
+   mov ax, [error_occured]
+   cmp ax, 1
+   je load_of_vdisk_done
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   mov si, str_curr_sector_num
+   call print_string
+   add sp, 2
+
+   mov ax, [currSectorNum]
+   call print_num
+   add sp, 2
+
+   ;mov ax, [currSectorNum]
+   ;cmp ax, VDISK_LAST_LBA_SECTOR
+   ;jge load_of_vdisk_done
+
+   jmp read_a_segment_from_drive
+
+
+   load_of_vdisk_done:
+
+   mov si, load_of_vdisk_complete
+   call print_string
+   add sp, 2
+
+   h2: jmp h2 ; HANG
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
