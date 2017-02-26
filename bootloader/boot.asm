@@ -4,6 +4,8 @@
 
 %define BASE_LOAD_SEG 0x07C0
 %define DEST_DATA_SEGMENT 0x2000
+%define VDISK_ADDR 0x8000000
+%define VDISK_FIRST_LBA_SECTOR 1008
 
 ; We're OK with just 1000 512-byte sectors (500 KB)
 %define SECTORS_TO_READ 1000
@@ -429,6 +431,11 @@ dw 0xAA55               ; The standard PC boot signature
    flatdesc    db 0xff, 0xff, 0, 0, 0, 10010010b, 11001111b, 0
    gdt16_end:
 
+
+   sectors_read dw 0
+   vdisk_dest_addr dd VDISK_ADDR
+   error_while_loading_vdisk db 'Error while loading vdisk', 10, 13, 0
+
    enter_unreal_mode:
 
    xor eax, eax
@@ -458,32 +465,67 @@ dw 0xAA55               ; The standard PC boot signature
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   mov ax, 20480
+   mov word [currSectorNum], VDISK_FIRST_LBA_SECTOR
+
+   read_a_segment_from_drive:
+
+   mov word [sectors_read], 0
+
+   loop_for_reading_a_segment:
+
+   mov ax, [currSectorNum]
    call lba_to_chs
    mov ax, 0x1000
-   mov es, ax
-   mov bx, 0 ;       ; address 0x1000:0 => 0x10000
+   mov es, ax        ; set the destination segment
+
+   mov bx, [sectors_read]
+   shl bx, 9 ; bx *= 512    (destination offset)
+
    mov ah, 0x02      ; Params for int 13h: read sectors
    mov al, 1         ; Read just 1 sector at time
    int 13h
 
+   jc read_error
+
+   mov ax, [sectors_read]
+   mov bx, [currSectorNum]
+   inc ax
+   inc bx
+   mov [sectors_read], ax
+   mov [currSectorNum], bx
+
+   cmp ax, 128 ; = 64 KiB
+   je read_segment_done
+
+   jmp loop_for_reading_a_segment
+
+   read_error:
+
+   mov si, error_while_loading_vdisk
+   call print_string
+   add si, 2
+
+   read_segment_done:
 
    mov ax, 0
    mov es, ax
 
-   mov eax, 0x300000  ; dest
-   mov ecx, 0x10000 ; src addr
+   mov eax, [vdisk_dest_addr]  ; dest
+   mov ecx, 0x10000            ; src addr
 
-   copy_loop:
+   copy_segment_loop:
+      mov ebx, [es:ecx]
+      mov [es:eax], ebx
+      add eax, 4
+      add ecx, 4
 
-   mov ebx, [es:ecx]
-   mov [es:eax], ebx
-   add eax, 4
-   add ecx, 4
+      cmp ecx, 0x20000
+      jl copy_segment_loop
 
-   cmp ecx, 0x10200
-   jl copy_loop
 
+   mov eax, [vdisk_dest_addr]
+   add eax, 0x10000 ; 64 KB
+   mov [vdisk_dest_addr], eax
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

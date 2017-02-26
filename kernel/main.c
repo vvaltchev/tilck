@@ -10,6 +10,7 @@
 #include <process.h>
 
 #include <arch_utils.h>
+#include <utils.h>
 
 void gdt_install();
 void idt_install();
@@ -61,17 +62,36 @@ void show_hello_message()
    printk("Hello from my kernel!\n");
 }
 
+void mount_memdisk()
+{
+   printk("Mapping the vdisk at %p (%d pages)...\n",
+          VDISK_ADDR, VDISK_SIZE / PAGE_SIZE);
+
+   map_pages(get_kernel_page_dir(),
+             (void *) VDISK_ADDR, // +128 MB
+             VDISK_ADDR, // +128 MB
+             VDISK_SIZE / PAGE_SIZE,
+             false,
+             true);
+}
+
+void test_memdisk()
+{
+   printk("Data at high address:\n");
+   char *ptr = (char *)VDISK_ADDR;
+   for (int i = 0; i < 16; i++) {
+      printk("%x ", (u8)ptr[i]);
+   }
+   printk("\n\n");
+
+   u32 crc = crc32(0, (void *)VDISK_ADDR, 64*1024);
+   printk("Crc32 for 64 KB: %p\n", crc);
+}
+
 void kmain()
 {
    term_init();
    show_hello_message();
-
-   printk("Data at high address:\n");
-   char *ptr = (char *)0x300000;
-   for (int i = 0; i < 16; i++) {
-      printk("%d, ", ptr[i]);
-   }
-   printk("\n\n");
 
    gdt_install();
    idt_install();
@@ -88,6 +108,10 @@ void kmain()
    set_kernel_stack(0xC01FFFF0);
 
    setup_syscall_interface();
+
+   mount_memdisk();
+
+   test_memdisk();
 
    // Restore the interrupts.
    sti();
