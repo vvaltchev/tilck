@@ -4,12 +4,17 @@
 
 %define BASE_LOAD_SEG 0x07C0
 %define DEST_DATA_SEGMENT 0x2000
+%define TEMP_DATA_SEGMENT 0x1000
 %define VDISK_ADDR 0x8000000
 
 %define VDISK_FIRST_LBA_SECTOR 1008
 
 ; 1008 + 32768 sectors (16 MB) - 1
 %define VDISK_LAST_LBA_SECTOR 33775
+
+; Smaller last LBA sector for quick tests
+;%define VDISK_LAST_LBA_SECTOR 2000
+
 
 ; We're OK with just 1000 512-byte sectors (500 KB)
 %define SECTORS_TO_READ 1000
@@ -501,7 +506,7 @@ dw 0xAA55               ; The standard PC boot signature
 
    mov ax, [sec_num]
    call lba_to_chs
-   mov ax, 0x1000
+   mov ax, TEMP_DATA_SEGMENT
    mov es, ax        ; set the destination segment
 
    mov bx, [sectors_read]
@@ -818,10 +823,9 @@ complete_flush: ; this is located at 0x1000
    mov gs, ax
    mov ss, ax
 
-   ; Now the kernel is at 0x21000
-   ; Copy it to its standard location, 0x100000 (1 MiB)
+   ; Copy the kernel to its standard location, 0x100000 (1 MiB)
 
-   mov esi, 0x21000
+   mov esi, (DEST_DATA_SEGMENT * 16 + 0x1000) ; 0x1000 = 4 KB for the bootloader
    mov edi, 0x100000
 
    mov ecx, 131072 ; 128 K * 4 bytes = 512 KiB
