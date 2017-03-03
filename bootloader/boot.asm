@@ -5,6 +5,7 @@
 %define BASE_LOAD_SEG 0x07C0
 %define DEST_DATA_SEGMENT 0x2000
 %define VDISK_ADDR 0x8000000
+
 %define VDISK_FIRST_LBA_SECTOR 1008
 
 ; 1008 + 32768 sectors (16 MB) - 1
@@ -416,7 +417,6 @@ dw 0xAA55               ; The standard PC boot signature
    ; Hello message, just a "nice to have"
    mov si, helloStr
    call print_string
-   add sp, 2
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -435,15 +435,17 @@ dw 0xAA55               ; The standard PC boot signature
    gdt16_end:
 
 
-   error_occured dw 0
-   sectors_read dw 0
+   sec_num dd 0
+   error_occured dd 0
+   sectors_read dd 0
    vdisk_dest_addr dd VDISK_ADDR
+
+
    error_while_loading_vdisk db 'Error while loading vdisk', 10, 13, 0
-
    read_seg_msg db 'Reading a segment..',10,13,0
-
    load_of_vdisk_complete db 'Loading of vdisk completed.', 10, 13, 0
-   str_curr_sector_num db 'Current sector: ', 10, 13, 0
+   str_before_reading_sec_num db 'Before reading sec num: ', 0
+   str_curr_sector_num db 'After reading, current sector: ', 0
 
    enter_unreal_mode:
 
@@ -474,27 +476,30 @@ dw 0xAA55               ; The standard PC boot signature
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   mov word [currSectorNum], VDISK_FIRST_LBA_SECTOR
+   ; bochs magic break
+   ; xchg bx, bx
+
+   sti ; re-enable interrupts
+
+   mov word [sec_num], VDISK_FIRST_LBA_SECTOR
 
    read_a_segment_from_drive:
 
+   mov word [sectors_read], 0
+
    mov si, read_seg_msg
    call print_string
-   add sp, 2
 
-   ; mov si, str_curr_sector_num
+   ; mov si, str_before_reading_sec_num
    ; call print_string
-   ; add sp, 2
 
-   ; mov ax, [currSectorNum]
+   ; mov ax, [sec_num]
    ; call print_num
-   ; add sp, 2
 
-   mov word [sectors_read], 0
 
    loop_for_reading_a_segment:
 
-   mov ax, [currSectorNum]
+   mov ax, [sec_num]
    call lba_to_chs
    mov ax, 0x1000
    mov es, ax        ; set the destination segment
@@ -505,15 +510,14 @@ dw 0xAA55               ; The standard PC boot signature
    mov ah, 0x02      ; Params for int 13h: read sectors
    mov al, 1         ; Read just 1 sector at time
    int 13h
-
    jc read_error
 
    mov ax, [sectors_read]
-   mov bx, [currSectorNum]
+   mov bx, [sec_num]
    inc ax
    inc bx
    mov [sectors_read], ax
-   mov [currSectorNum], bx
+   mov [sec_num], bx
 
    cmp ax, 128 ; = 64 KiB
    je read_segment_done
@@ -523,13 +527,8 @@ dw 0xAA55               ; The standard PC boot signature
    read_error:
 
    mov word [error_occured], 1
-
    mov si, error_while_loading_vdisk
    call print_string
-   add si, 2
-
-   h: jmp h
-
 
    read_segment_done:
 
@@ -556,21 +555,26 @@ dw 0xAA55               ; The standard PC boot signature
 
    mov ax, [error_occured]
    cmp ax, 1
-   je load_of_vdisk_done
+   jne continue_load
+
+   ; An error occurred. Show a message?
+   jmp load_of_vdisk_done
+
+   continue_load:
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    mov si, str_curr_sector_num
    call print_string
-   add sp, 2
 
-   mov ax, [currSectorNum]
+   mov ax, [sec_num]
    call print_num
-   add sp, 2
 
-   ;mov ax, [currSectorNum]
-   ;cmp ax, VDISK_LAST_LBA_SECTOR
-   ;jge load_of_vdisk_done
+
+   ; Use EAX instead of AX since the LBA sector is more than 2^15-1
+   mov eax, [sec_num]
+   cmp eax, VDISK_LAST_LBA_SECTOR
+   jge load_of_vdisk_done
 
    jmp read_a_segment_from_drive
 
@@ -579,13 +583,12 @@ dw 0xAA55               ; The standard PC boot signature
 
    mov si, load_of_vdisk_complete
    call print_string
-   add sp, 2
-
-   h2: jmp h2 ; HANG
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    enter_32bit_protected_mode:
+
+   cli
 
    ; calculate the absolute 32 bit address of GDT
    ; since flat addr = SEG << 4 + OFF
