@@ -2,6 +2,8 @@
 [BITS 16]
 [ORG 0x0000]
 
+%define VALUE_64K 0x10000
+
 %define BASE_LOAD_SEG 0x07C0
 %define DEST_DATA_SEGMENT 0x2000
 %define TEMP_DATA_SEGMENT 0x1000
@@ -523,8 +525,8 @@ dw 0xAA55               ; The standard PC boot signature
    mov ax, 0
    mov es, ax
 
-   mov eax, [vdisk_dest_addr]  ; dest
-   mov ecx, 0x10000            ; src addr
+   mov eax, [vdisk_dest_addr]              ; dest flat addr
+   mov ecx, (TEMP_DATA_SEGMENT * 16)       ; src flat addr
 
    copy_segment_loop:
       mov ebx, [es:ecx]
@@ -532,12 +534,12 @@ dw 0xAA55               ; The standard PC boot signature
       add eax, 4
       add ecx, 4
 
-      cmp ecx, 0x20000
+      cmp ecx, (TEMP_DATA_SEGMENT * 16 + VALUE_64K)
       jl copy_segment_loop
 
 
    mov eax, [vdisk_dest_addr]
-   add eax, 0x10000 ; 64 KB
+   add eax, VALUE_64K
    mov [vdisk_dest_addr], eax
 
 
