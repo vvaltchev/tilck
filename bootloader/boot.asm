@@ -202,7 +202,7 @@ after_reloc:
 
 .load_OK:
 
-   jmp DEST_DATA_SEGMENT:512
+   jmp DEST_DATA_SEGMENT:stage2_entry
 
 end:
    jmp end
@@ -431,15 +431,6 @@ dw 0xAA55               ; The standard PC boot signature
 
    jmp enter_unreal_mode
 
-   gdt16info:
-   dw gdt16_end - gdt16 - 1   ; size of table - 1
-   dd 0                       ; start of table
-
-   gdt16       dd 0,0        ; entry 0 is always unused
-   flatdesc    db 0xff, 0xff, 0, 0, 0, 10010010b, 11001111b, 0
-   gdt16_end:
-
-
    sec_num dd 0
    error_occured dd 0
    sectors_read dd 0
@@ -447,23 +438,25 @@ dw 0xAA55               ; The standard PC boot signature
 
 
    error_while_loading_vdisk db 'Error while loading vdisk', 10, 13, 0
-   read_seg_msg db 'Reading a segment..',10,13,0
    load_of_vdisk_complete db 'Loading of vdisk completed.', 10, 13, 0
    str_before_reading_sec_num db 'Before reading sec num: ', 0
-   str_curr_sector_num db 'After reading, current sector: ', 0
+   str_curr_sector_num db 'After reading a segment, current sector: ', 0
 
    enter_unreal_mode:
+
+   ; calculate the absolute 32 bit address of GDT
+   ; since flat addr = SEG << 4 + OFF
+   ; that's exactly what we do below (SEG is DS)
 
    xor eax, eax
    mov ax, ds
    shl eax, 4
-   add eax, gdt16
-   mov dword [gdt16info+2], eax
-
+   add eax, gdt
+   mov dword [gdtr+2], eax
 
    push ds                ; save real mode
 
-   lgdt [gdt16info]       ; load gdt register
+   lgdt [gdtr]            ; load gdt register
 
    mov eax, cr0           ; switch to 16-bit pmode by
    or al,1                ; set pmode bit
@@ -491,16 +484,6 @@ dw 0xAA55               ; The standard PC boot signature
    read_a_segment_from_drive:
 
    mov word [sectors_read], 0
-
-   mov si, read_seg_msg
-   call print_string
-
-   ; mov si, str_before_reading_sec_num
-   ; call print_string
-
-   ; mov ax, [sec_num]
-   ; call print_num
-
 
    loop_for_reading_a_segment:
 
@@ -595,15 +578,7 @@ dw 0xAA55               ; The standard PC boot signature
 
    cli
 
-   ; calculate the absolute 32 bit address of GDT
-   ; since flat addr = SEG << 4 + OFF
-   ; that's exactly what we do below (SEG is DS)
 
-   xor eax, eax
-   mov ax, ds
-   shl eax, 4
-   add eax, gdt
-   mov dword [gdtr+2], eax
 
    ; now we have to copy the text from
    ; complete_flush + 0x0 to complete_flush + 1 KB
