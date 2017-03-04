@@ -99,6 +99,12 @@ void test_memdisk()
    printk("Calculating CRC32...\n");
    u32 crc = crc32(0, (void *)VDISK_ADDR, 13631488);
    printk("Crc32 of the data: %p\n", crc);
+
+   if (crc == 0x7e4d61ac) {
+      printk("CRC is CORRECT!!\n");
+   } else {
+      printk("CRC is **WRONG**\n");
+   }
 }
 
 void kmain()

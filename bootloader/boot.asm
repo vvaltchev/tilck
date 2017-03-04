@@ -415,6 +415,13 @@ dw 0xAA55               ; The standard PC boot signature
    mov fs, ax
    mov gs, ax
 
+
+   ; mov eax, 4000*1000*1000
+   ; .waitloop:
+   ;    dec eax
+   ;    cmp eax, 0
+   ;    jne .waitloop
+
    ; set video mode
    mov ah, 0x0 ; set video mode
    mov al, 0x3 ; 80x25 mode
@@ -434,22 +441,24 @@ dw 0xAA55               ; The standard PC boot signature
 
    error_occured dd 0
    sectors_read dd 0
+   bytes_per_track dd 0
    vdisk_dest_addr dd VDISK_ADDR
 
 
    gdt:
    gdt_null db 0, 0, 0, 0, 0, 0, 0, 0
-   gdt_data db 0xFF, 0xFF, 0, 0, 0, 0x9A, 0xCF, 0
-   gdt_code db 0xFF, 0xFF, 0, 0, 0, 0x92, 0xCF, 0
+   gdt_code db 0xFF, 0xFF, 0, 0, 0, 0x9A, 0xCF, 0
+   gdt_data db 0xFF, 0xFF, 0, 0, 0, 0x92, 0xCF, 0
 
    gdtr db 23, 0, 0, 0, 0, 0
    idtr db  0, 0, 0, 0, 0, 0
 
    helloStr db 'Hello, I am the 2nd stage-bootloader!', 13, 10, 0
-   error_while_loading_vdisk db 'Error while loading vdisk', 10, 13, 0
+   error_while_loading_vdisk db '********* Error while loading vdisk', 10, 13, 0
    load_of_vdisk_complete db 'Loading of vdisk completed.', 10, 13, 0
-   str_before_reading_curr_sec db 'Before reading sec num: ', 0
-   str_curr_sector_num db 'After reading a segment, current sector: ', 0
+   str_before_reading_curr_sec db 'Current sector num: ', 0
+   str_curr_sector_num db 'After reading, current sector: ', 0
+   str_bytes_per_track db 'Bytes per track: ', 0
 
    enter_unreal_mode:
 
@@ -458,122 +467,199 @@ dw 0xAA55               ; The standard PC boot signature
    ; that's exactly what we do below (SEG is DS)
 
    xor eax, eax
-   mov ax, ds
+   mov ax, cs
    shl eax, 4
    add eax, gdt
    mov dword [gdtr+2], eax
 
-   push ds                ; save real mode
 
    lgdt [gdtr]            ; load gdt register
 
    mov eax, cr0           ; switch to 16-bit pmode by
-   or al,1                ; set pmode bit
+   or al, 1                ; set pmode bit
    mov cr0, eax
 
    jmp $+2                ; tell 386/486 to not crash
 
-   mov bx, 0x08           ; select descriptor 1
-   mov ds, bx             ; 8h = 1000b
+   mov bx, 0x10           ; select descriptor 2
+   mov es, bx             ; store it in 'es'.
+                          ; After that, only it can be used for indexing
+                          ; 32-bit addresses from "unreal mode".
 
    and al, 0xFE           ; back to realmode
    mov cr0, eax           ; by toggling bit again
 
-   pop ds                 ; get back old segment
-
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-   ; bochs magic break
-   ; xchg bx, bx
 
    sti ; re-enable interrupts
 
-   mov word [curr_sec], VDISK_FIRST_LBA_SECTOR
+   mov dword [curr_sec], VDISK_FIRST_LBA_SECTOR
 
-   .read_a_segment_from_drive:
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   ; NEW CODE (faster)
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   mov word [sectors_read], 0
+   xor edx, edx
+   mov dx, [sectors_per_track]
+   shl dx, 9 ; dx = dx << 9 (2^9 = 512 = sector size)
+   mov [bytes_per_track], edx
 
-   .loop_for_reading_a_segment:
+   .load_vdisk_loop:
 
-   mov ax, [curr_sec]
-   call lba_to_chs
-   mov ax, TEMP_DATA_SEGMENT
-   mov es, ax        ; set the destination segment
-
-   mov bx, [sectors_read]
-   shl bx, 9 ; bx *= 512    (destination offset)
-
-   mov ah, 0x02      ; Params for int 13h: read sectors
-   mov al, 1         ; Read just 1 sector at time
-   int 13h
-   jc .read_error
-
-   mov ax, [sectors_read]
-   mov bx, [curr_sec]
-   inc ax
-   inc bx
-   mov [sectors_read], ax
-   mov [curr_sec], bx
-
-   cmp ax, 128 ; = 64 KiB
-   je .read_segment_done
-
-   jmp .loop_for_reading_a_segment
-
-   .read_error:
-
-   mov word [error_occured], 1
-   mov si, error_while_loading_vdisk
-   call print_string
-
-   .read_segment_done:
-
-   mov ax, 0
-   mov es, ax
-
-   mov eax, [vdisk_dest_addr]              ; dest flat addr
-   mov ecx, (TEMP_DATA_SEGMENT * 16)       ; src flat addr
-
-   .copy_segment_loop:
-      mov ebx, [es:ecx]
-      mov [es:eax], ebx
-      add eax, 4
-      add ecx, 4
-
-      cmp ecx, (TEMP_DATA_SEGMENT * 16 + VALUE_64K)
-      jl .copy_segment_loop
-
-
-   mov eax, [vdisk_dest_addr]
-   add eax, VALUE_64K
-   mov [vdisk_dest_addr], eax
-
-
-   mov ax, [error_occured]
-   cmp ax, 1
-   jne .continue_load
-
-   ; An error occurred. Show a message?
-   jmp .load_of_vdisk_done
-
-   .continue_load:
-
-   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-   mov si, str_curr_sector_num
+   mov si, str_before_reading_curr_sec
    call print_string
 
    mov ax, [curr_sec]
    call print_num
 
 
-   ; Use EAX instead of AX since the LBA sector is more than 2^15-1
-   mov eax, [curr_sec]
-   cmp eax, VDISK_LAST_LBA_SECTOR
-   jge .load_of_vdisk_done
+   ; mov eax, 30*1000*1000
+   ; .waitloop:
+   ;    dec eax
+   ;    cmp eax, 0
+   ;    jne .waitloop
 
-   jmp .read_a_segment_from_drive
+
+   mov ax, [curr_sec]
+   call lba_to_chs
+   mov ax, TEMP_DATA_SEGMENT
+   mov es, ax        ; set the destination segment
+   mov bx, 0         ; set the destination offset
+
+   mov ah, 0x02      ; Params for int 13h: read sectors
+   mov al, [sectors_per_track] ; Read MAX possible sectors
+   int 13h
+   jnc .read_ok
+
+   .read_error:
+
+   mov word [error_occured], 1
+   mov si, error_while_loading_vdisk
+   call print_string
+   ; for the moment, still copy the data, even on error.
+
+   .read_ok:
+
+
+   xor ax, ax
+   mov es, ax
+
+   mov edi, [vdisk_dest_addr]              ; dest flat addr
+   mov esi, (TEMP_DATA_SEGMENT * 16)       ; src flat addr
+
+   mov edx, esi
+   add edx, [bytes_per_track]
+
+   .copy_segment_loop:
+      mov ebx, [es:esi]  ; copy src data in ebx
+      mov [es:edi], ebx  ; copy ebx in dest ptr
+      add edi, 4
+      add esi, 4
+
+      cmp esi, edx
+      jle .copy_segment_loop
+
+
+   mov eax, [vdisk_dest_addr]
+   add eax, [bytes_per_track]
+   mov [vdisk_dest_addr], eax
+
+
+   mov eax, [curr_sec]
+   add ax, [sectors_per_track]
+   mov [curr_sec], eax
+
+   cmp eax, VDISK_LAST_LBA_SECTOR
+   jl .load_vdisk_loop
+
+
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   ; .read_a_segment_from_drive:
+
+   ; mov word [sectors_read], 0
+
+   ; .loop_for_reading_a_segment:
+
+   ; mov ax, [curr_sec]
+   ; call lba_to_chs
+   ; mov ax, TEMP_DATA_SEGMENT
+   ; mov es, ax        ; set the destination segment
+
+   ; mov bx, [sectors_read]
+   ; shl bx, 9 ; bx *= 512    (destination offset)
+
+   ; mov ah, 0x02      ; Params for int 13h: read sectors
+   ; mov al, 1         ; Read just 1 sector at time
+   ; int 13h
+   ; jc .read_error
+
+   ; mov ax, [sectors_read]
+   ; mov bx, [curr_sec]
+   ; inc ax
+   ; inc bx
+   ; mov [sectors_read], ax
+   ; mov [curr_sec], bx
+
+   ; cmp ax, 128 ; = 64 KiB
+   ; je .read_segment_done
+
+   ; jmp .loop_for_reading_a_segment
+
+   ; .read_error:
+
+   ; mov word [error_occured], 1
+   ; mov si, error_while_loading_vdisk
+   ; call print_string
+
+   ; .read_segment_done:
+
+   ; mov ax, 0
+   ; mov es, ax
+
+   ; mov eax, [vdisk_dest_addr]              ; dest flat addr
+   ; mov ecx, (TEMP_DATA_SEGMENT * 16)       ; src flat addr
+
+   ; .copy_segment_loop:
+   ;    mov ebx, [es:ecx]
+   ;    mov [es:eax], ebx
+   ;    add eax, 4
+   ;    add ecx, 4
+
+   ;    cmp ecx, (TEMP_DATA_SEGMENT * 16 + VALUE_64K)
+   ;    jl .copy_segment_loop
+
+
+   ; mov eax, [vdisk_dest_addr]
+   ; add eax, VALUE_64K
+   ; mov [vdisk_dest_addr], eax
+
+
+   ; mov ax, [error_occured]
+   ; cmp ax, 1
+   ; jne .continue_load
+
+   ; ; An error occurred. Show a message?
+   ; jmp .load_of_vdisk_done
+
+   ; .continue_load:
+
+   ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   ; mov si, str_curr_sector_num
+   ; call print_string
+
+   ; mov ax, [curr_sec]
+   ; call print_num
+
+
+   ; ; Use EAX instead of AX since the LBA sector is more than 2^15-1
+   ; mov eax, [curr_sec]
+   ; cmp eax, VDISK_LAST_LBA_SECTOR
+   ; jge .load_of_vdisk_done
+
+   ; jmp .read_a_segment_from_drive
 
 
    .load_of_vdisk_done:
