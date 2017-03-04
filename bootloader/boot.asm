@@ -390,7 +390,7 @@ last_op_status       db 'LOS:', 0
 read_params_failed   db 'F1', 10, 13, 0
 
 current_device       dw 0
-currSectorNum        dw 1
+currSectorNum        dd 1
 
 currDataSeg          dw DEST_DATA_SEGMENT
 
@@ -433,15 +433,23 @@ dw 0xAA55               ; The standard PC boot signature
 
    jmp enter_unreal_mode
 
-   sec_num dd 0
    error_occured dd 0
    sectors_read dd 0
    vdisk_dest_addr dd VDISK_ADDR
 
 
+   gdt:
+   gdt_null db 0, 0, 0, 0, 0, 0, 0, 0
+   gdt_data db 0xFF, 0xFF, 0, 0, 0, 0x9A, 0xCF, 0
+   gdt_code db 0xFF, 0xFF, 0, 0, 0, 0x92, 0xCF, 0
+
+   gdtr db 23, 0, 0, 0, 0, 0
+   idtr db  0, 0, 0, 0, 0, 0
+
+   helloStr db 'Hello, I am the 2nd stage-bootloader!', 13, 10, 0
    error_while_loading_vdisk db 'Error while loading vdisk', 10, 13, 0
    load_of_vdisk_complete db 'Loading of vdisk completed.', 10, 13, 0
-   str_before_reading_sec_num db 'Before reading sec num: ', 0
+   str_before_reading_currSectorNum db 'Before reading sec num: ', 0
    str_curr_sector_num db 'After reading a segment, current sector: ', 0
 
    enter_unreal_mode:
@@ -481,7 +489,7 @@ dw 0xAA55               ; The standard PC boot signature
 
    sti ; re-enable interrupts
 
-   mov word [sec_num], VDISK_FIRST_LBA_SECTOR
+   mov word [currSectorNum], VDISK_FIRST_LBA_SECTOR
 
    read_a_segment_from_drive:
 
@@ -489,7 +497,7 @@ dw 0xAA55               ; The standard PC boot signature
 
    loop_for_reading_a_segment:
 
-   mov ax, [sec_num]
+   mov ax, [currSectorNum]
    call lba_to_chs
    mov ax, TEMP_DATA_SEGMENT
    mov es, ax        ; set the destination segment
@@ -503,11 +511,11 @@ dw 0xAA55               ; The standard PC boot signature
    jc read_error
 
    mov ax, [sectors_read]
-   mov bx, [sec_num]
+   mov bx, [currSectorNum]
    inc ax
    inc bx
    mov [sectors_read], ax
-   mov [sec_num], bx
+   mov [currSectorNum], bx
 
    cmp ax, 128 ; = 64 KiB
    je read_segment_done
@@ -557,12 +565,12 @@ dw 0xAA55               ; The standard PC boot signature
    mov si, str_curr_sector_num
    call print_string
 
-   mov ax, [sec_num]
+   mov ax, [currSectorNum]
    call print_num
 
 
    ; Use EAX instead of AX since the LBA sector is more than 2^15-1
-   mov eax, [sec_num]
+   mov eax, [currSectorNum]
    cmp eax, VDISK_LAST_LBA_SECTOR
    jge load_of_vdisk_done
 
@@ -771,18 +779,7 @@ smart_enable_A20:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-gdt:
-db 0, 0, 0, 0, 0, 0, 0, 0
-db 0xFF, 0xFF, 0, 0, 0, 0x9A, 0xCF, 0
-db 0xFF, 0xFF, 0, 0, 0, 0x92, 0xCF, 0
 
-gdtr db 23, 0, 0, 0, 0, 0
-idtr db 0, 0, 0, 0, 0, 0
-
-helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 [BITS 32]
