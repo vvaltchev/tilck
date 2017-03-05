@@ -594,6 +594,9 @@ dw 0xAA55               ; The standard PC boot signature
 
    .load_of_vdisk_done:
 
+   mov si, newline
+   call print_string
+
    mov si, load_of_vdisk_complete
    call print_string
 
