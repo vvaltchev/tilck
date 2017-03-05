@@ -116,13 +116,15 @@ add_custom_command(
    COMMAND
       ${BUILD_SCRIPTS}/create_empty_img_if_necessary.sh ${IMG_FILE} 32768
    COMMAND
-      dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} obs=1024 ibs=1024
+      dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
    COMMAND
-      dd status=none conv=notrunc if=${KERNEL_BIN_FILE} of=${IMG_FILE} seek=4 obs=1024 ibs=1024
+      dd status=none conv=notrunc if=${KERNEL_BIN_FILE} of=${IMG_FILE} seek=4 bs=1K
    COMMAND
       dd status=none conv=notrunc if=${INIT_FILE} of=${IMG_FILE} seek=132 obs=1024 ibs=1024
    COMMAND
-      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/data.txt of=${IMG_FILE} seek=1024 obs=1024 ibs=1024
+      ${BUILD_SCRIPTS}/build_fatpart.sh ${CMAKE_BINARY_DIR} fatpart
+   COMMAND
+      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K
    DEPENDS
       # We MUST depend on BOTH the wrapper-target AND its OUTPUT in order to this
       # to be re-build when the *.bin files are re-built.

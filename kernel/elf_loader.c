@@ -91,9 +91,9 @@ void load_elf_program(void *elf,
       int pages_count =
          ((phdr->p_memsz + PAGE_SIZE) & PAGE_MASK) >> PAGE_SHIFT;
 
-      //printk("[ELF LOADER] Segment %i\n", i);
-      //printk("[ELF LOADER] Mem Size: %i\n", phdr->p_memsz);
-      //printk("[ELF LOADER] Vaddr: %p\n", phdr->p_vaddr);
+      // printk("[ELF LOADER] Segment %i\n", i);
+      // printk("[ELF LOADER] Mem Size: %i\n", phdr->p_memsz);
+      // printk("[ELF LOADER] Vaddr: %p\n", phdr->p_vaddr);
 
       if ((phdr->p_memsz < PAGE_SIZE) &&
           ((phdr->p_vaddr + phdr->p_memsz) & PAGE_MASK) >
@@ -129,6 +129,8 @@ void load_elf_program(void *elf,
    }
 
    // Allocating memory for the user stack.
+
+   //printk("[ELF LOADER] Allocating memory for user stack\n");
 
    const int pages_for_stack = 16;
    void *stack_top =
