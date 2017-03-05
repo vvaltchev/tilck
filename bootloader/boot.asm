@@ -2,8 +2,21 @@
 [BITS 16]
 [ORG 0x0000]
 
+%define VALUE_64K 0x10000
+
 %define BASE_LOAD_SEG 0x07C0
 %define DEST_DATA_SEGMENT 0x2000
+%define TEMP_DATA_SEGMENT 0x1000
+%define VDISK_ADDR 0x8000000
+
+%define VDISK_FIRST_LBA_SECTOR 1008
+
+; 1008 + 32768 sectors (16 MB) - 1
+%define VDISK_LAST_LBA_SECTOR 33775
+
+; Smaller last LBA sector for quick tests
+;%define VDISK_LAST_LBA_SECTOR 2000
+
 
 ; We're OK with just 1000 512-byte sectors (500 KB)
 %define SECTORS_TO_READ 1000
@@ -33,7 +46,7 @@ after_reloc:
 
    xor ax, ax
    mov ss, ax      ; Set stack segment and pointer
-   mov sp, 0x0FFF0
+   mov sp, 0xFFF0
    sti             ; Restore interrupts
 
    mov ax, DEST_DATA_SEGMENT   ; Set all segments to match where this code is loaded
@@ -73,11 +86,11 @@ after_reloc:
    mov al, dh
    inc al
 
-   mov [HeadsPerCylinder], ax
+   mov [heads_per_cylinder], ax
 
    mov ax, cx
    and ax, 63   ; last 6 bits
-   mov [SectorsPerTrack], ax
+   mov [sectors_per_track], ax
 
    xor ax, ax
    mov al, ch  ; higher 8 bits of CX = lower bits for cyclinders count
@@ -85,19 +98,19 @@ after_reloc:
    shl cx, 8
    or ax, cx
    inc ax
-   mov [CylindersCount], ax
+   mov [cylinders_count], ax
 
    ; -------------------------------------------
    ; DEBUG CODE
    ; -------------------------------------------
 
-   ; mov ax, [CylindersCount]  ; we have already the value in ax
+   ; mov ax, [cylinders_count]  ; we have already the value in ax
    call print_num
 
-   mov ax, [HeadsPerCylinder]
+   mov ax, [heads_per_cylinder]
    call print_num
 
-   mov ax, [SectorsPerTrack]
+   mov ax, [sectors_per_track]
    call print_num
 
    ; ------------------------------------------
@@ -108,16 +121,16 @@ after_reloc:
    .load_loop:
 
 
-   mov ax, [currSectorNum]
+   mov ax, [curr_sec]
    call lba_to_chs
 
-   mov ax, [currDataSeg]
-   mov es, ax        ; Store currDataSeg in ES, the destination address of the sectors read
+   mov ax, [curr_data_seg]
+   mov es, ax        ; Store curr_data_seg in ES, the destination address of the sectors read
                      ; (AX is used since we cannot store directly IMM value in ES)
 
-   mov bx, [currSectorNum]
+   mov bx, [curr_sec]
    shl bx, 9         ; Sectors read are stored in ES:BX
-                     ; bx *= 512 * currSectorNum
+                     ; bx *= 512 * curr_sec
 
    ; 20-bit address in 8086 (real mode)
    ; SEG:OFF
@@ -134,14 +147,14 @@ after_reloc:
 
    jc .load_error
 
-   mov ax, [currSectorNum]
+   mov ax, [curr_sec]
 
    ; We read all the sectors we needed: loading is over.
    cmp ax, SECTORS_TO_READ
    je .load_OK
 
    inc ax                    ; we read just 1 sector at time
-   mov [currSectorNum], ax
+   mov [curr_sec], ax
 
    ; If the current sector num have the bits 0-7 unset,
    ; we loaded 128 sectors * 512 bytes = 64K.
@@ -151,12 +164,12 @@ after_reloc:
    test ax, ax
    jne .load_loop ; JMP if ax != 0
 
-   mov ax, [currDataSeg]
+   mov ax, [curr_data_seg]
 
 
    ; Increment the segment by 4K => 64K in plain address space
    add ax, 0x1000
-   mov [currDataSeg], ax
+   mov [curr_data_seg], ax
    jmp .load_loop
 
 .load_error:
@@ -180,7 +193,7 @@ after_reloc:
    ; Print the sector number (LBA)
    mov si, load_failed
    call print_string
-   mov ax, [currSectorNum]
+   mov ax, [curr_sec]
    call print_num
 
    ; Print the CHS params we actually used
@@ -191,7 +204,7 @@ after_reloc:
 
 .load_OK:
 
-   jmp DEST_DATA_SEGMENT:512
+   jmp DEST_DATA_SEGMENT:stage2_entry
 
 end:
    jmp end
@@ -241,7 +254,7 @@ lba_to_chs:         ; Calculate head, track and sector settings for int 13h
 
 
    xor dx, dx        ; First the sector
-   div word [SectorsPerTrack]
+   div word [sectors_per_track]
    inc dl            ; Physical sectors start at 1
    mov cl, dl        ; Sectors belong in CL for int 13h
    and cl, 63        ; Make sure the upper two bits of CL are unset
@@ -250,9 +263,9 @@ lba_to_chs:         ; Calculate head, track and sector settings for int 13h
    mov ax, bx        ; reload the LBA sector in AX
 
    xor dx, dx        ; reset DX and calculate the head
-   div word [SectorsPerTrack]
+   div word [sectors_per_track]
    xor dx, dx
-   div word [HeadsPerCylinder]
+   div word [heads_per_cylinder]
    mov dh, dl        ; Head
    mov ch, al        ; Cylinder
 
@@ -267,12 +280,12 @@ print_num:
 
    pusha
 
-   push strBuf
+   push small_buf
    push ax ; the input number
    call itoa
    add sp, 4
 
-   mov si, strBuf
+   mov si, small_buf
    call print_string
 
    mov si, newline
@@ -360,9 +373,9 @@ itoa: ; convert 16-bit integer to string
 ; DATA (variables)
 ; -----------------------------------------------------------
 
-SectorsPerTrack      dw 0
-HeadsPerCylinder     dw 0
-CylindersCount       dw 0
+sectors_per_track    dw 0
+heads_per_cylinder   dw 0
+cylinders_count      dw 0
 
 saved_cx             dw 0
 saved_dx             dw 0
@@ -377,11 +390,10 @@ last_op_status       db 'LOS:', 0
 read_params_failed   db 'F1', 10, 13, 0
 
 current_device       dw 0
-currSectorNum        dw 1
+curr_data_seg        dw DEST_DATA_SEGMENT
 
-currDataSeg          dw DEST_DATA_SEGMENT
-
-strBuf               times 8 db 0
+curr_sec             dd 1
+small_buf            times 8 db 0
 
 times 510-($-$$) db 0   ; Pad remainder of boot sector with 0s
 dw 0xAA55               ; The standard PC boot signature
@@ -403,6 +415,13 @@ dw 0xAA55               ; The standard PC boot signature
    mov fs, ax
    mov gs, ax
 
+
+   ; mov eax, 4000*1000*1000
+   ; .waitloop:
+   ;    dec eax
+   ;    cmp eax, 0
+   ;    jne .waitloop
+
    ; set video mode
    mov ah, 0x0 ; set video mode
    mov al, 0x3 ; 80x25 mode
@@ -411,20 +430,248 @@ dw 0xAA55               ; The standard PC boot signature
    ; Hello message, just a "nice to have"
    mov si, helloStr
    call print_string
-   add sp, 2
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    cli          ; disable interrupts
+
+   call smart_enable_A20
+
+   jmp enter_unreal_mode
+
+   error_occured dd 0
+   sectors_read dd 0
+   bytes_per_track dd 0
+   vdisk_dest_addr dd VDISK_ADDR
+
+
+   gdt:
+   gdt_null db 0, 0, 0, 0, 0, 0, 0, 0
+   gdt_code db 0xFF, 0xFF, 0, 0, 0, 0x9A, 0xCF, 0
+   gdt_data db 0xFF, 0xFF, 0, 0, 0, 0x92, 0xCF, 0
+
+   gdtr db 23, 0, 0, 0, 0, 0
+   idtr db  0, 0, 0, 0, 0, 0
+
+   helloStr db 'Hello, I am the 2nd stage-bootloader!', 13, 10, 0
+   error_while_loading_vdisk db '********* Error while loading vdisk', 10, 13, 0
+   load_of_vdisk_complete db 'Loading of vdisk completed.', 10, 13, 0
+   str_before_reading_curr_sec db 'Current sector num: ', 0
+   str_curr_sector_num db 'After reading, current sector: ', 0
+   str_bytes_per_track db 'Bytes per track: ', 0
+
+   enter_unreal_mode:
 
    ; calculate the absolute 32 bit address of GDT
    ; since flat addr = SEG << 4 + OFF
    ; that's exactly what we do below (SEG is DS)
 
    xor eax, eax
-   mov ax, ds
+   mov ax, cs
    shl eax, 4
    add eax, gdt
-
    mov dword [gdtr+2], eax
+
+
+   lgdt [gdtr]            ; load gdt register
+
+   mov eax, cr0           ; switch to 16-bit pmode by
+   or al, 1                ; set pmode bit
+   mov cr0, eax
+
+   jmp $+2                ; tell 386/486 to not crash
+
+   mov bx, 0x10           ; select descriptor 2
+   mov es, bx             ; store it in 'es'.
+                          ; After that, only it can be used for indexing
+                          ; 32-bit addresses from "unreal mode".
+
+   and al, 0xFE           ; back to realmode
+   mov cr0, eax           ; by toggling bit again
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   sti ; re-enable interrupts
+
+   mov dword [curr_sec], VDISK_FIRST_LBA_SECTOR
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   ; NEW CODE (faster)
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   xor edx, edx
+   mov dx, [sectors_per_track]
+   shl dx, 9 ; dx = dx << 9 (2^9 = 512 = sector size)
+   mov [bytes_per_track], edx
+
+   .load_vdisk_loop:
+
+   mov si, str_before_reading_curr_sec
+   call print_string
+
+   mov ax, [curr_sec]
+   call print_num
+
+
+   ; mov eax, 30*1000*1000
+   ; .waitloop:
+   ;    dec eax
+   ;    cmp eax, 0
+   ;    jne .waitloop
+
+
+   mov ax, [curr_sec]
+   call lba_to_chs
+   mov ax, TEMP_DATA_SEGMENT
+   mov es, ax        ; set the destination segment
+   mov bx, 0         ; set the destination offset
+
+   mov ah, 0x02      ; Params for int 13h: read sectors
+   mov al, [sectors_per_track] ; Read MAX possible sectors
+   int 13h
+   jnc .read_ok
+
+   .read_error:
+
+   mov word [error_occured], 1
+   mov si, error_while_loading_vdisk
+   call print_string
+   ; for the moment, still copy the data, even on error.
+
+   .read_ok:
+
+
+   xor ax, ax
+   mov es, ax
+
+   mov edi, [vdisk_dest_addr]              ; dest flat addr
+   mov esi, (TEMP_DATA_SEGMENT * 16)       ; src flat addr
+
+   mov edx, esi
+   add edx, [bytes_per_track]
+
+   .copy_segment_loop:
+      mov ebx, [es:esi]  ; copy src data in ebx
+      mov [es:edi], ebx  ; copy ebx in dest ptr
+      add edi, 4
+      add esi, 4
+
+      cmp esi, edx
+      jle .copy_segment_loop
+
+
+   mov eax, [vdisk_dest_addr]
+   add eax, [bytes_per_track]
+   mov [vdisk_dest_addr], eax
+
+
+   mov eax, [curr_sec]
+   add ax, [sectors_per_track]
+   mov [curr_sec], eax
+
+   cmp eax, VDISK_LAST_LBA_SECTOR
+   jl .load_vdisk_loop
+
+
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   ; .read_a_segment_from_drive:
+
+   ; mov word [sectors_read], 0
+
+   ; .loop_for_reading_a_segment:
+
+   ; mov ax, [curr_sec]
+   ; call lba_to_chs
+   ; mov ax, TEMP_DATA_SEGMENT
+   ; mov es, ax        ; set the destination segment
+
+   ; mov bx, [sectors_read]
+   ; shl bx, 9 ; bx *= 512    (destination offset)
+
+   ; mov ah, 0x02      ; Params for int 13h: read sectors
+   ; mov al, 1         ; Read just 1 sector at time
+   ; int 13h
+   ; jc .read_error
+
+   ; mov ax, [sectors_read]
+   ; mov bx, [curr_sec]
+   ; inc ax
+   ; inc bx
+   ; mov [sectors_read], ax
+   ; mov [curr_sec], bx
+
+   ; cmp ax, 128 ; = 64 KiB
+   ; je .read_segment_done
+
+   ; jmp .loop_for_reading_a_segment
+
+   ; .read_error:
+
+   ; mov word [error_occured], 1
+   ; mov si, error_while_loading_vdisk
+   ; call print_string
+
+   ; .read_segment_done:
+
+   ; mov ax, 0
+   ; mov es, ax
+
+   ; mov eax, [vdisk_dest_addr]              ; dest flat addr
+   ; mov ecx, (TEMP_DATA_SEGMENT * 16)       ; src flat addr
+
+   ; .copy_segment_loop:
+   ;    mov ebx, [es:ecx]
+   ;    mov [es:eax], ebx
+   ;    add eax, 4
+   ;    add ecx, 4
+
+   ;    cmp ecx, (TEMP_DATA_SEGMENT * 16 + VALUE_64K)
+   ;    jl .copy_segment_loop
+
+
+   ; mov eax, [vdisk_dest_addr]
+   ; add eax, VALUE_64K
+   ; mov [vdisk_dest_addr], eax
+
+
+   ; mov ax, [error_occured]
+   ; cmp ax, 1
+   ; jne .continue_load
+
+   ; ; An error occurred. Show a message?
+   ; jmp .load_of_vdisk_done
+
+   ; .continue_load:
+
+   ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   ; mov si, str_curr_sector_num
+   ; call print_string
+
+   ; mov ax, [curr_sec]
+   ; call print_num
+
+
+   ; ; Use EAX instead of AX since the LBA sector is more than 2^15-1
+   ; mov eax, [curr_sec]
+   ; cmp eax, VDISK_LAST_LBA_SECTOR
+   ; jge .load_of_vdisk_done
+
+   ; jmp .read_a_segment_from_drive
+
+
+   .load_of_vdisk_done:
+
+   mov si, load_of_vdisk_complete
+   call print_string
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   enter_32bit_protected_mode:
+
+   cli
 
    ; now we have to copy the text from
    ; complete_flush + 0x0 to complete_flush + 1 KB
@@ -438,7 +685,6 @@ dw 0xAA55               ; The standard PC boot signature
    mov es, ax ; using extra segment for 0x0
    rep movsw  ; copies 2*CX bytes from [ds:si] to [es:di]
 
-   call smart_enable_A20
    lidt [idtr]
 
 
@@ -449,7 +695,6 @@ dw 0xAA55               ; The standard PC boot signature
    ; TI = table indicator; 0 = GDT, 1 = LDT
    ; RPL = Requestor priviledge level; 00 = highest, 11 = lowest
 
-flush_gdt:
    lgdt [gdtr]  ; load GDT register with start address of Global Descriptor Table
 
    ; FIRST switch to protected mode and THEN do the FAR JUMP to 32 bit code
@@ -616,18 +861,7 @@ smart_enable_A20:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-gdt:
-db 0, 0, 0, 0, 0, 0, 0, 0
-db 0xFF, 0xFF, 0, 0, 0, 0x9A, 0xCF, 0
-db 0xFF, 0xFF, 0, 0, 0, 0x92, 0xCF, 0
 
-gdtr db 23, 0, 0, 0, 0, 0
-idtr db 0, 0, 0, 0, 0, 0
-
-helloStr db 'Hello, I am the 2nd stage-bootloader', 13, 10, 0
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 [BITS 32]
@@ -645,10 +879,9 @@ complete_flush: ; this is located at 0x1000
    mov gs, ax
    mov ss, ax
 
-   ; Now the kernel is at 0x21000
-   ; Copy it to its standard location, 0x100000 (1 MiB)
+   ; Copy the kernel to its standard location, 0x100000 (1 MiB)
 
-   mov esi, 0x21000
+   mov esi, (DEST_DATA_SEGMENT * 16 + 0x1000) ; 0x1000 = 4 KB for the bootloader
    mov edi, 0x100000
 
    mov ecx, 131072 ; 128 K * 4 bytes = 512 KiB

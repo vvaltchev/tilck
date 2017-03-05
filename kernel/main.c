@@ -10,6 +10,7 @@
 #include <process.h>
 
 #include <arch_utils.h>
+#include <utils.h>
 
 void gdt_install();
 void idt_install();
@@ -61,6 +62,51 @@ void show_hello_message()
    printk("Hello from my kernel!\n");
 }
 
+void mount_memdisk()
+{
+   printk("Mapping the vdisk at %p (%d pages)...\n",
+          VDISK_ADDR, VDISK_SIZE / PAGE_SIZE);
+
+   map_pages(get_kernel_page_dir(),
+             (void *) VDISK_ADDR, // +128 MB
+             VDISK_ADDR, // +128 MB
+             VDISK_SIZE / PAGE_SIZE,
+             false,
+             true);
+}
+
+void test_memdisk()
+{
+   char *ptr;
+
+   printk("Data at %p:\n", 0x0);
+   ptr = (char *)VDISK_ADDR;
+   for (int i = 0; i < 16; i++) {
+      printk("%x ", (u8)ptr[i]);
+   }
+   printk("\n");
+
+   printk("Data at %p:\n", 0x10000);
+   ptr = (char *)(VDISK_ADDR + 0x10000);
+   for (int i = 0; i < 16; i++) {
+      printk("%x ", (u8)ptr[i]);
+   }
+   printk("\n");
+
+
+
+   printk("\n\n");
+   printk("Calculating CRC32...\n");
+   u32 crc = crc32(0, (void *)VDISK_ADDR, 13631488);
+   printk("Crc32 of the data: %p\n", crc);
+
+   if (crc == 0x7e4d61ac) {
+      printk("CRC is CORRECT!!\n");
+   } else {
+      printk("CRC is **WRONG**\n");
+   }
+}
+
 void kmain()
 {
    term_init();
@@ -82,6 +128,10 @@ void kmain()
 
    setup_syscall_interface();
 
+   mount_memdisk();
+
+   test_memdisk();
+
    // Restore the interrupts.
    sti();
 
@@ -89,7 +139,7 @@ void kmain()
    init_kb();
 
    // Run the 'init' usermode program.
-   run_usermode_init();
+   //run_usermode_init();
 
    // We should never get here!
    NOT_REACHED();
