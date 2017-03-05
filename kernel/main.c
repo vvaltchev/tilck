@@ -28,28 +28,18 @@ void load_elf_program(void *elf,
                       void **stack_addr);
 
 
-#define INIT_PROGRAM_PHYSICAL_ADDR 0x120000UL
+#define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023e00
 
 void run_usermode_init()
 {
-   void *elf_vaddr = (void *)0xB0000000U;
-
-   // Map somewhere in kernel space the ELF of our init program
-
-   map_pages(get_kernel_page_dir(),
-             elf_vaddr,
-             INIT_PROGRAM_PHYSICAL_ADDR, 16, false, false);
+   void *elf_vaddr = (void *) (RAM_DISK_VADDR + INIT_PROGRAM_MEM_DISK_OFFSET);
 
    page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
-
    set_page_directory(pdir);
 
    void *entry_point = NULL;
    void *stack_addr = NULL;
    load_elf_program(elf_vaddr, pdir, &entry_point, &stack_addr);
-
-   // Unmap the temporary mapping of the ELF file in kernel space.
-   unmap_pages(get_kernel_page_dir(), elf_vaddr, 16);
 
    printk("[run_usermode_init] Entry: %p\n", entry_point);
    printk("[run_usermode_init] Stack: %p\n", stack_addr);
@@ -65,12 +55,12 @@ void show_hello_message()
 void mount_memdisk()
 {
    printk("Mapping the vdisk at %p (%d pages)...\n",
-          VDISK_ADDR, VDISK_SIZE / PAGE_SIZE);
+          RAM_DISK_VADDR, RAM_DISK_SIZE / PAGE_SIZE);
 
    map_pages(get_kernel_page_dir(),
-             (void *) VDISK_ADDR, // +128 MB
-             VDISK_ADDR, // +128 MB
-             VDISK_SIZE / PAGE_SIZE,
+             (void *) RAM_DISK_VADDR,
+             RAM_DISK_PADDR,
+             RAM_DISK_SIZE / PAGE_SIZE,
              false,
              true);
 }
@@ -80,14 +70,14 @@ void test_memdisk()
    char *ptr;
 
    printk("Data at %p:\n", 0x0);
-   ptr = (char *)VDISK_ADDR;
+   ptr = (char *)RAM_DISK_VADDR;
    for (int i = 0; i < 16; i++) {
       printk("%x ", (u8)ptr[i]);
    }
    printk("\n");
 
-   printk("Data at %p:\n", 0x10000);
-   ptr = (char *)(VDISK_ADDR + 0x10000);
+   printk("Data at %p:\n", INIT_PROGRAM_MEM_DISK_OFFSET);
+   ptr = (char *)(RAM_DISK_VADDR + INIT_PROGRAM_MEM_DISK_OFFSET);
    for (int i = 0; i < 16; i++) {
       printk("%x ", (u8)ptr[i]);
    }
@@ -97,14 +87,8 @@ void test_memdisk()
 
    printk("\n\n");
    printk("Calculating CRC32...\n");
-   u32 crc = crc32(0, (void *)VDISK_ADDR, 13631488);
+   u32 crc = crc32(0, (void *)RAM_DISK_VADDR, RAM_DISK_SIZE);
    printk("Crc32 of the data: %p\n", crc);
-
-   if (crc == 0x7e4d61ac) {
-      printk("CRC is CORRECT!!\n");
-   } else {
-      printk("CRC is **WRONG**\n");
-   }
 }
 
 void kmain()
@@ -132,7 +116,6 @@ void kmain()
    setup_syscall_interface();
 
    mount_memdisk();
-
    test_memdisk();
 
    // Restore the interrupts.
@@ -142,7 +125,7 @@ void kmain()
    init_kb();
 
    // Run the 'init' usermode program.
-   //run_usermode_init();
+   run_usermode_init();
 
    // We should never get here!
    NOT_REACHED();
