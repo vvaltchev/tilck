@@ -241,6 +241,8 @@ static void handle_irq(regs *r)
 
    } else {
 
+      if (irq == 7) return;
+
       printk("Unhandled IRQ #%i\n", irq);
    }
 }

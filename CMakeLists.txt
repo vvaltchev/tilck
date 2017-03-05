@@ -114,7 +114,7 @@ add_custom_command(
    OUTPUT
       ${IMG_FILE}
    COMMAND
-      ${BUILD_SCRIPTS}/create_empty_img_if_necessary.sh ${IMG_FILE} 32256
+      ${BUILD_SCRIPTS}/create_empty_img_if_necessary.sh ${IMG_FILE} 32768
    COMMAND
       dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} obs=1024 ibs=1024
    COMMAND

@@ -121,6 +121,9 @@ void kmain()
    initialize_kmalloc();
 
    set_timer_freq(TIMER_HZ);
+
+   IRQ_set_mask(7); // mask IRQ #7
+
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
 

@@ -14,12 +14,33 @@
 ; 1008 + 32768 sectors (16 MB) - 1
 %define VDISK_LAST_LBA_SECTOR 33775
 
-; Smaller last LBA sector for quick tests
-;%define VDISK_LAST_LBA_SECTOR 2000
-
-
 ; We're OK with just 1000 512-byte sectors (500 KB)
 %define SECTORS_TO_READ 1000
+
+jmp start
+times 0x0B - ($-$$) nop
+
+bios_parameter_pack:
+
+sectorsize          DW 512
+sectors_per_cluster DB 1
+reserved_sectors    DW 2048
+Number_of_FATs      DB 2
+root_entries        DW 240
+small_sector_count  DW 0    ; the other value large_total_sectors is used.
+media_descriptor    DB 0xF0 ; floppy (even if that's not a real floppy)
+
+sectors_per_FAT     DW 9
+
+phys_sectors_per_track dw 63
+num_heads              dw 16
+hidden_sectors         dd 2048
+large_total_sectors    dd 65536
+
+driveNumber         DB 0x80
+bflags              DB 0
+bootSignature       DB 28h  ; DOS 3.4 EBPB
+serial_num          DD 123456789
 
 start:
 
@@ -55,7 +76,7 @@ after_reloc:
    mov [current_device], dl ; Save the current device
 
 
-   ;mov ah, 0x00  ; reset device
+   ;mov ah, 0x00  ; reset device. No need for that, at the moment.
    ;int 0x13
    ;jc end
 
@@ -111,7 +132,7 @@ after_reloc:
 
 
    int 13h
-   jc .load_error
+   jc end
 
    mov ax, [curr_sec]
 
@@ -138,17 +159,41 @@ after_reloc:
    mov [curr_data_seg], ax
    jmp .load_loop
 
-.load_error:
-
-   ; unrecovable error: hang forever!
-   jmp end
-
 .load_OK:
-
    jmp DEST_DATA_SEGMENT:stage2_entry
 
 end:
    jmp $ ; loop forever
+
+
+
+; -----------------------------------------------------------
+; DATA (variables)
+; -----------------------------------------------------------
+
+sectors_per_track    dw 0
+heads_per_cylinder   dw 0
+cylinders_count      dw 0
+
+curr_data_seg        dw DEST_DATA_SEGMENT
+curr_sec             dd 1
+current_device       db 0           ; Our Drive Number Variable
+
+; MBR data
+
+times 218 - ($-$$) nop      ; Pad for disk time stamp
+
+times 6 db 0  ; Disk Time Stamp (aka "mistery bytes")
+              ; See http://thestarman.pcministry.com/asm/mbr/mystery.htm
+
+times 224 - ($-$$) db 0     ; Pad for the beginning of the 2nd code area.
+
+;
+;
+; SOME SPACE FOR CODE
+;
+;
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Utility functions
@@ -191,41 +236,21 @@ lba_to_chs:         ; Calculate head, track and sector settings for int 13h
 
    ret
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-; -----------------------------------------------------------
-; DATA (variables)
-; -----------------------------------------------------------
+times 436 - ($-$$) nop      ; Pad For MBR Partition Table
 
-sectors_per_track    dw 0
-heads_per_cylinder   dw 0
-cylinders_count      dw 0
+UID: ; Unique Disk ID
+db 0x00, 0x00, 0x00, 0x00, 0x2b, 0x06, 0x06, 0x49, 0x00, 0x00
 
-curr_data_seg        dw DEST_DATA_SEGMENT
-curr_sec             dd 1
+PT1: ; First Partition Entry
+db 0x00, 0x20, 0x21, 0x00, 0x04, 0x14, 0x10, 0x04
+db 0x00, 0x08, 0x00, 0x00, 0x00, 0xf8, 0x00, 0x00
 
-; MBR data
-
-times (218 - ($-$$)) nop      ; Pad for disk time stamp
-DiskTimeStamp times 8 db 0    ; Disk Time Stamp
-
-current_device db 0           ; Our Drive Number Variable
-PToff dw 0                    ; Our Partition Table Entry Offset
-
-;
-;
-; SOME SPACE FOR CODE
-;
-;
-
-times (436 - ($-$$)) nop      ; Pad For MBR Partition Table
-
-UID times 10 db 0             ; Unique Disk ID
-PT1 times 16 db 0             ; First Partition Entry
 PT2 times 16 db 0             ; Second Partition Entry
 PT3 times 16 db 0             ; Third Partition Entry
 PT4 times 16 db 0             ; Fourth Partition Entry
-
 
 times 510-($-$$) db 0   ; Pad remainder of boot sector with 0s
 dw 0xAA55               ; The standard PC boot signature
@@ -264,6 +289,9 @@ dw 0xAA55               ; The standard PC boot signature
 
    jmp enter_unreal_mode
 
+   saved_cx dw 0
+   saved_dx dw 0
+
    error_occured dd 0
    sectors_read dd 0
    bytes_per_track dd 0
@@ -279,6 +307,12 @@ dw 0xAA55               ; The standard PC boot signature
    idtr db  0, 0, 0, 0, 0, 0
 
    small_buf            times 8 db 0
+
+   load_failed          db 'LBA: ', 0
+   cyl_param            db 'C: ', 0
+   head_param           db 'H: ', 0
+   sector_param         db 'S: ', 0
+   last_op_status       db 'Last op status: ', 0
 
    newline db 13, 10, 0
    helloStr db 'Hello, I am the 2nd stage-bootloader!', 13, 10, 0
@@ -346,6 +380,10 @@ dw 0xAA55               ; The standard PC boot signature
    mov es, ax        ; set the destination segment
    mov bx, 0         ; set the destination offset
 
+   ; save the CHS parameters for error messages
+   mov [saved_cx], cx
+   mov [saved_dx], dx
+
    mov ah, 0x02      ; Params for int 13h: read sectors
    mov al, [sectors_per_track] ; Read MAX possible sectors
    int 13h
@@ -353,10 +391,41 @@ dw 0xAA55               ; The standard PC boot signature
 
    .read_error:
 
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   ; ERROR HANDLING CODE
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
    mov word [error_occured], 1
    mov si, error_while_loading_vdisk
    call print_string
-   ; for the moment, still copy the data, even on error.
+
+   ; The load failed for some reason
+
+   mov ah, 0x01 ; Get Status of Last Drive Operation
+   mov dl, [current_device]
+   int 0x13
+
+   ; The carry flag here is always set and people on os-dev say
+   ; that one should not rely on it.
+
+   ; We have now in AH the last error
+   shr ax, 8 ; move AH in AL and make AH=0
+   mov si, last_op_status
+   call print_string
+   call print_num
+
+
+   ; Print the sector number (LBA)
+   mov si, load_failed
+   call print_string
+   mov ax, [curr_sec]
+   call print_num
+
+   ; Print the CHS params we actually used
+   call print_chs
+
+   .hang:
+      jmp $
 
    .read_ok:
 
@@ -370,14 +439,14 @@ dw 0xAA55               ; The standard PC boot signature
    mov edx, esi
    add edx, [bytes_per_track]
 
-   .copy_segment_loop:
+   .copy_loop:
       mov ebx, [es:esi]  ; copy src data in ebx
       mov [es:edi], ebx  ; copy ebx in dest ptr
       add edi, 4
       add esi, 4
 
       cmp esi, edx
-      jle .copy_segment_loop
+      jle .copy_loop
 
 
    mov eax, [vdisk_dest_addr]
@@ -770,6 +839,33 @@ itoa: ; convert 16-bit integer to string
    mov byte [di], 0
 
    leave
+   ret
+
+print_chs:
+   pusha
+
+   ; print the cylinder param
+   mov si, cyl_param
+   call print_string
+   mov ax, [saved_cx]
+   shr ax, 8     ; put 'ch' in al
+   call print_num
+
+   ; print the head param
+   mov si, head_param
+   call print_string
+   mov ax, [saved_dx]
+   shr ax, 8    ; put 'dh' in al
+   call print_num
+
+   ; print the sector param
+   mov si, sector_param
+   call print_string
+   mov ax, [saved_cx]
+   and ax, 63      ; only the first 6 bits matter
+   call print_num
+
+   popa
    ret
 
 
