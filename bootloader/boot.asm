@@ -48,7 +48,6 @@ start:
    cld               ; The default direction for string operations
                      ; will be 'up' - incrementing address in RAM
 
-
    ; relocate to DEST_DATA_SEGMENT
 
    mov ax, BASE_LOAD_SEG
@@ -74,6 +73,9 @@ after_reloc:
    mov ds, ax
 
    mov [current_device], dl ; Save the current device
+
+   mov si, str_loading
+   call print_string
 
 
    ;mov ah, 0x00  ; reset device. No need for that, at the moment.
@@ -165,6 +167,20 @@ end:
    jmp $ ; loop forever
 
 
+; MBR data
+
+times 218 - ($-$$) nop      ; Pad for disk time stamp
+
+times 6 db 0  ; Disk Time Stamp (aka "mistery bytes")
+              ; See http://thestarman.pcministry.com/asm/mbr/mystery.htm
+
+times 224 - ($-$$) db 0     ; Pad for the beginning of the 2nd code area.
+
+;
+;
+; SOME SPACE FOR CODE and DATA
+;
+;
 
 ; -----------------------------------------------------------
 ; DATA (variables)
@@ -178,21 +194,7 @@ curr_data_seg        dw DEST_DATA_SEGMENT
 current_device       dw 0
 curr_sec             dd 1
 
-; MBR data
-
-times 218 - ($-$$) nop      ; Pad for disk time stamp
-
-times 6 db 0  ; Disk Time Stamp (aka "mistery bytes")
-              ; See http://thestarman.pcministry.com/asm/mbr/mystery.htm
-
-times 224 - ($-$$) db 0     ; Pad for the beginning of the 2nd code area.
-
-;
-;
-; SOME SPACE FOR CODE
-;
-;
-
+str_loading          db 'Loading...', 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Utility functions
@@ -235,6 +237,24 @@ lba_to_chs:         ; Calculate head, track and sector settings for int 13h
 
    ret
 
+
+print_string:
+
+   push ax         ; save AX for the caller
+
+   mov ah, 0x0E    ; int 10h 'print char' function
+
+.repeat:
+   lodsb           ; Get character from string
+   test al, al
+   je .done        ; If char is zero, end of string
+   int 10h         ; Otherwise, print it
+   jmp .repeat
+
+.done:
+   pop ax
+   ret
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -273,7 +293,6 @@ dw 0xAA55               ; The standard PC boot signature
    mov fs, ax
    mov gs, ax
 
-   ; set video mode
    mov ah, 0x0 ; set video mode
    mov al, 0x3 ; 80x25 mode
    int 0x10
@@ -342,6 +361,7 @@ dw 0xAA55               ; The standard PC boot signature
    str_before_reading_curr_sec db 'Current sector num: ', 0
    str_curr_sector_num db 'After reading, current sector: ', 0
    str_bytes_per_track db 'Bytes per track: ', 0
+   str_loading_mem_disk db 'Loading memory disk ', 0
 
    enter_unreal_mode:
 
@@ -375,6 +395,9 @@ dw 0xAA55               ; The standard PC boot signature
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    sti ; re-enable interrupts
+
+   mov si, str_loading_mem_disk
+   call print_string
 
    mov dword [curr_sec], VDISK_FIRST_LBA_SECTOR
 
@@ -785,22 +808,6 @@ print_num:
    ret
 
 
-print_string:
-
-   push ax         ; save AX for the caller
-
-   mov ah, 0x0E    ; int 10h 'print char' function
-
-.repeat:
-   lodsb           ; Get character from string
-   test al, al
-   je .done        ; If char is zero, end of string
-   int 10h         ; Otherwise, print it
-   jmp .repeat
-
-.done:
-   pop ax
-   ret
 
 ; IN: string in SI
 ; IN: number in AX
