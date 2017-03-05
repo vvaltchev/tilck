@@ -28,3 +28,5 @@ void setup_syscall_interface();
 void set_kernel_stack(u32 stack);
 u32 get_kernel_stack();
 
+#define VDISK_ADDR (0x8000000U) // +128 MB
+#define VDISK_SIZE (128 * MB)
