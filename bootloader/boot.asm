@@ -11,8 +11,8 @@
 
 %define VDISK_FIRST_LBA_SECTOR 2048
 
-; 1008 + 32768 sectors (16 MB) - 1
-%define VDISK_LAST_LBA_SECTOR 33775
+; 2048 + 32768 sectors (16 MB) - 1
+%define VDISK_LAST_LBA_SECTOR 34815
 
 ; We're OK with just 1000 512-byte sectors (500 KB)
 %define SECTORS_TO_READ 1000
@@ -22,25 +22,25 @@ times 0x0B - ($-$$) nop
 
 bios_parameter_pack:
 
-sectorsize          DW 512
-sectors_per_cluster DB 1
-reserved_sectors    DW 2048
-Number_of_FATs      DB 2
-root_entries        DW 240
-small_sector_count  DW 0    ; the other value large_total_sectors is used.
-media_descriptor    DB 0xF0 ; floppy (even if that's not a real floppy)
+sectorsize              dw 512
+sectors_per_cluster     db 1
+reserved_sectors        dw 2048
+number_of_FATs          db 2
+root_entries            dw 240
+small_sector_count      dw 0    ; the other value large_total_sectors is used.
+media_descriptor        db 0xF0 ; floppy (even if that's not a real floppy)
 
-sectors_per_FAT     DW 9
+sectors_per_FAT         dw 9
 
-phys_sectors_per_track dw 63
-num_heads              dw 16
-hidden_sectors         dd 2048
-large_total_sectors    dd 65536
+phys_sectors_per_track  dw 63
+num_heads               dw 16
+hidden_sectors          dd 2048
+large_total_sectors     dd 65536
 
-driveNumber         DB 0x80
-bflags              DB 0
-bootSignature       DB 28h  ; DOS 3.4 EBPB
-serial_num          DD 123456789
+drive_number            db 0x80
+bflags                  db 0
+boot_signature          db 28h  ; DOS 3.4 EBPB
+serial_num              dd 123456789
 
 start:
 
@@ -70,7 +70,7 @@ after_reloc:
    mov sp, 0xFFF0
    sti             ; Restore interrupts
 
-   mov ax, DEST_DATA_SEGMENT   ; Set all segments to match where this code is loaded
+   mov ax, DEST_DATA_SEGMENT ; Update ds to match the new cs segment.
    mov ds, ax
 
    mov [current_device], dl ; Save the current device
@@ -120,8 +120,7 @@ after_reloc:
    call lba_to_chs
 
    mov ax, [curr_data_seg]
-   mov es, ax        ; Store curr_data_seg in ES, the destination address of the sectors read
-                     ; (AX is used since we cannot store directly IMM value in ES)
+   mov es, ax
 
    mov bx, [curr_sec]
    shl bx, 9         ; Sectors read are stored in ES:BX
@@ -176,8 +175,8 @@ heads_per_cylinder   dw 0
 cylinders_count      dw 0
 
 curr_data_seg        dw DEST_DATA_SEGMENT
+current_device       dw 0
 curr_sec             dd 1
-current_device       db 0           ; Our Drive Number Variable
 
 ; MBR data
 
@@ -201,7 +200,7 @@ times 224 - ($-$$) db 0     ; Pad for the beginning of the 2nd code area.
 
 
 lba_to_chs:         ; Calculate head, track and sector settings for int 13h
-                    ; IN: logical sector in AX, OUT: correct registers for int 13h
+                    ; IN: LBA in AX, OUT: correct registers for int 13h
    push bx
    push ax
 
@@ -245,8 +244,9 @@ UID: ; Unique Disk ID
 db 0x00, 0x00, 0x00, 0x00, 0x2b, 0x06, 0x06, 0x49, 0x00, 0x00
 
 PT1: ; First Partition Entry
-db 0x00, 0x20, 0x21, 0x00, 0x04, 0x14, 0x10, 0x04
-db 0x00, 0x08, 0x00, 0x00, 0x00, 0xf8, 0x00, 0x00
+; A 16MB FAT16 partition, from sector 2048 to sector 34815.
+db 0x00, 0x02, 0x01, 0x06, 0x06, 0x0c, 0x10, 0x67
+db 0x00, 0x08, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00
 
 PT2 times 16 db 0             ; Second Partition Entry
 PT3 times 16 db 0             ; Third Partition Entry
@@ -267,7 +267,8 @@ dw 0xAA55               ; The standard PC boot signature
 
    stage2_entry:
 
-   mov ax, DEST_DATA_SEGMENT   ; Set all segments to match where this code is loaded
+   ; Set all segments to match where this code is loaded
+   mov ax, DEST_DATA_SEGMENT
    mov es, ax
    mov fs, ax
    mov gs, ax
@@ -278,8 +279,24 @@ dw 0xAA55               ; The standard PC boot signature
    int 0x10
 
    ; Hello message, just a "nice to have"
-   mov si, helloStr
+   mov si, str_hello
    call print_string
+
+   mov si, str_device
+   mov ax, [current_device]
+   call print_string_and_num
+
+   mov si, str_cylinders
+   mov ax, [cylinders_count]
+   call print_string_and_num
+
+   mov si, str_heads_per_cyl
+   mov ax, [heads_per_cylinder]
+   call print_string_and_num
+
+   mov si, str_sectors_per_track
+   mov ax, [sectors_per_track]
+   call print_string_and_num
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -315,7 +332,11 @@ dw 0xAA55               ; The standard PC boot signature
    last_op_status       db 'Last op status: ', 0
 
    newline db 13, 10, 0
-   helloStr db 'Hello, I am the 2nd stage-bootloader!', 13, 10, 0
+   str_device            db 'Device number: ', 0
+   str_cylinders         db 'Cyclinders count:   ', 0
+   str_heads_per_cyl     db 'Heads per cylinder: ', 0
+   str_sectors_per_track db 'Sectors per track:  ', 0
+   str_hello db 'Hello, I am the 2nd stage-bootloader!', 13, 10, 0
    error_while_loading_vdisk db '********* Error while loading vdisk', 13, 10, 0
    load_of_vdisk_complete db 'Loading of vdisk completed.', 13, 10, 0
    str_before_reading_curr_sec db 'Current sector num: ', 0
@@ -368,11 +389,11 @@ dw 0xAA55               ; The standard PC boot signature
 
    .load_vdisk_loop:
 
-   mov si, str_before_reading_curr_sec
-   call print_string
+   ; Progress by showing dots: faster than full verbose strings
 
-   mov ax, [curr_sec]
-   call print_num
+   mov ah, 0x0E ; print char
+   mov al, 46   ; dot '.'
+   int 0x10
 
    mov ax, [curr_sec]
    call lba_to_chs
@@ -411,15 +432,13 @@ dw 0xAA55               ; The standard PC boot signature
    ; We have now in AH the last error
    shr ax, 8 ; move AH in AL and make AH=0
    mov si, last_op_status
-   call print_string
-   call print_num
+   call print_string_and_num
 
 
    ; Print the sector number (LBA)
    mov si, load_failed
-   call print_string
    mov ax, [curr_sec]
-   call print_num
+   call print_string_and_num
 
    ; Print the CHS params we actually used
    call print_chs
@@ -428,7 +447,6 @@ dw 0xAA55               ; The standard PC boot signature
       jmp $
 
    .read_ok:
-
 
    xor ax, ax
    mov es, ax
@@ -782,6 +800,14 @@ print_string:
 
 .done:
    pop ax
+   ret
+
+; IN: string in SI
+; IN: number in AX
+
+print_string_and_num:
+   call print_string
+   call print_num
    ret
 
 itoa: ; convert 16-bit integer to string
