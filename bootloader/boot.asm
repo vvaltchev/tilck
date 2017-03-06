@@ -98,20 +98,19 @@ after_reloc:
 
    xor ax, ax
    mov al, dh
-   inc al
-
+   inc al      ; DH contains MAX head num, so we have to add +1.
    mov [heads_per_cylinder], ax
 
    mov ax, cx
    and ax, 63   ; last 6 bits
-   mov [sectors_per_track], ax
+   mov [sectors_per_track], ax ; Actual number of sectors, NOT number_of - 1.
 
    xor ax, ax
    mov al, ch  ; higher 8 bits of CX = lower bits for cyclinders count
    and cx, 192 ; bits 6 and 7 of CX = higher 2 bits for cyclinders count
    shl cx, 8
    or ax, cx
-   inc ax
+   inc ax      ; the 10 bits in CX are the MAX cyl number, so we have to add +1.
    mov [cylinders_count], ax
 
 
@@ -164,6 +163,8 @@ after_reloc:
    jmp DEST_DATA_SEGMENT:stage2_entry
 
 end:
+   mov si, str_failed
+   call print_string
    jmp $ ; loop forever
 
 
@@ -194,7 +195,8 @@ curr_data_seg        dw DEST_DATA_SEGMENT
 current_device       dw 0
 curr_sec             dd 1
 
-str_loading          db 'Loading...', 0
+str_loading          db 'Loading... ', 0
+str_failed           db 'FAILED', 13, 10, 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Utility functions
@@ -466,8 +468,7 @@ dw 0xAA55               ; The standard PC boot signature
    ; Print the CHS params we actually used
    call print_chs
 
-   .hang:
-      jmp $
+   .hang: jmp $
 
    .read_ok:
 
