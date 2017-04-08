@@ -241,7 +241,7 @@ static void handle_irq(regs *r)
 
    } else {
 
-      if (irq == 7) return;
+      if (irq == 7) return; // Ignore spurious wake-ups.
 
       printk("Unhandled IRQ #%i\n", irq);
    }
@@ -269,6 +269,8 @@ static void handle_fault(regs *r)
 
 void generic_interrupt_handler(regs *r)
 {
+   printk("[kernel] int: %i, level: %i\n", r->int_no, nested_interrupts_count);
+
    if (nested_interrupts_count >= (int)ARRAY_SIZE(nested_interrupts)) {
       NOT_REACHED();
    }

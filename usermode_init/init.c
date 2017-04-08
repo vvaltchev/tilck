@@ -16,6 +16,9 @@ int main(int argc, char **argv, char **env)
 
    printf("### Hello from init!\n");
 
+   /// XXX
+   while (1);
+
    printf("argc: %i\n", argc);
 
    for (int i = 0; i < argc; i++) {

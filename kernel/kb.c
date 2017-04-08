@@ -8,7 +8,7 @@
 #define KB_CONTROL_PORT 0x64
 
 /* keyboard interface bits */
-#define KBRD_BIT_KDATA 0     // keyboard data is in buffer 
+#define KBRD_BIT_KDATA 0     // keyboard data is in buffer
                              // (output buffer is empty) (bit 0)
 
 #define KBRD_BIT_UDATA 1     // user data is in buffer
@@ -309,7 +309,7 @@ void reboot() {
 
    cli();
    kbd_wait();
-   
+
    outb(KB_CONTROL_PORT, KBRD_RESET);
 
    while (true) {

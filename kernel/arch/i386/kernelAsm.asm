@@ -405,6 +405,7 @@ asm_int_handler:
     mov gs, ax
     mov eax, esp
     push eax
+    sti ; force the interrupts to be enabled
     mov eax, generic_interrupt_handler
     call eax
     pop eax

@@ -142,6 +142,8 @@ const ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
 
 #include <arch_utils.h>
 
+void end_current_interrupt_handling();
+
 void handle_syscall(regs *r)
 {
    save_current_process_state(r);
@@ -154,7 +156,17 @@ void handle_syscall(regs *r)
       return;
    }
 
-   //printk("Syscall #%i\n", r->eax);
+   printk("Syscall #%i\n", r->eax);
+
+   ///////////////////
+   //sti();
+   printk("[kernel] waiting...\n");
+   for (int i = 0; i < 1000*1000*1000; i++) {
+
+   }
+   printk("[kernel] end wait\n");
+   //////////////////
+
    //printk("Arg 1 (ebx): %p\n", r->ebx);
    //printk("Arg 2 (ecx): %p\n", r->ecx);
    //printk("Arg 3 (edx): %p\n", r->edx);

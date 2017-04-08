@@ -12,10 +12,13 @@
 %define VDISK_FIRST_LBA_SECTOR 2048
 
 ; 2048 + 32768 sectors (16 MB) - 1
-%define VDISK_LAST_LBA_SECTOR 34815
+;%define VDISK_LAST_LBA_SECTOR 34815
+%define VDISK_LAST_LBA_SECTOR 2560
+
 
 ; We're OK with just 1000 512-byte sectors (500 KB)
-%define SECTORS_TO_READ 1000
+; %define INITIAL_SECTORS_TO_READ 1000
+%define INITIAL_SECTORS_TO_READ 128
 
 jmp start
 times 0x0B - ($-$$) nop
@@ -137,7 +140,7 @@ after_reloc:
    mov ax, [curr_sec]
 
    ; We read all the sectors we needed: loading is over.
-   cmp ax, SECTORS_TO_READ
+   cmp ax, INITIAL_SECTORS_TO_READ
    je .load_OK
 
    inc ax                    ; we read just 1 sector at time

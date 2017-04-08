@@ -107,6 +107,7 @@ void kmain()
    set_timer_freq(TIMER_HZ);
 
    IRQ_set_mask(7); // mask IRQ #7
+   IRQ_set_mask(0); // mask the timer (temporary)
 
    irq_install_handler(0, timer_handler);
    irq_install_handler(1, keyboard_handler);
@@ -126,6 +127,9 @@ void kmain()
 
    // Run the 'init' usermode program.
    run_usermode_init();
+
+   //printk("Ready.\n");
+   //while (1) halt();
 
    // We should never get here!
    NOT_REACHED();
