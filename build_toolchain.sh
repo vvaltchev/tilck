@@ -8,7 +8,7 @@ export PATH=$MAIN_DIR/build_scripts:$PATH
 
 echo 'Installing the necessary packages...'
 
-cmd='sudo apt-get install wget gcc g++ git nasm gcc-multilib g++-multilib make cmake binutils binutils-multiarch'
+cmd='sudo apt-get install wget gcc g++ git nasm gcc-multilib g++-multilib make cmake binutils binutils-multiarch mtools'
 echo $cmd
 
 $cmd
