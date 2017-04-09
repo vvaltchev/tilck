@@ -9,6 +9,13 @@
 
 #define TIMER_HZ 100
 
+#define X86_PC_TIMER_IRQ       0
+#define X86_PC_KEYBOARD_IRQ    1
+#define X86_PC_RTC_IRQ         8
+#define X86_PC_ACPI_IRQ        9
+#define X86_PC_PS2_MOUSE_IRQ  12
+
+
 static ALWAYS_INLINE u64 RDTSC()
 {
 #ifdef BITS64
@@ -84,3 +91,15 @@ static ALWAYS_INLINE void cpuid(int code, u32 *a, u32 *d)
 {
     asmVolatile( "cpuid" : "=a"(*a), "=d"(*d) : "0"(code) : "ebx", "ecx" );
 }
+
+/*
+ * Invalidates the TLB entry used for resolving the page containing 'vaddr'.
+ */
+static ALWAYS_INLINE void invalidate_page(uptr vaddr)
+{
+   asmVolatile("invlpg (%0)" ::"r" (vaddr) : "memory");
+}
+
+
+// Reboot the system
+void reboot();

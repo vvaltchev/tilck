@@ -5,11 +5,7 @@
 #include <process.h>
 #include <arch/generic_x86/utils.h>
 
-#define X86_PC_TIMER_IRQ       0
-#define X86_PC_KEYBOARD_IRQ    1
-#define X86_PC_RTC_IRQ         8
-#define X86_PC_ACPI_IRQ        9
-#define X86_PC_PS2_MOUSE_IRQ  12
+#define KERNEL_BASE_STACK_ADDR 0xC01FFFF0
 
 // Forward-declaring regs
 typedef struct regs regs;
@@ -22,6 +18,15 @@ struct regs {
    u32 int_num, err_code;    /* our 'push byte #' and error codes do this */
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
+
+static ALWAYS_INLINE uptr get_eflags()
+{
+   uptr eflags;
+   asmVolatile("pushf");
+   asmVolatile("pop %eax");
+   asmVolatile("movl %0, %%eax" : "=r"(eflags));
+   return eflags;
+}
 
 static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
 {
@@ -57,3 +62,5 @@ NORETURN static ALWAYS_INLINE void context_switch(regs *r)
                           r->useresp,
                           r->ss);
 }
+
+

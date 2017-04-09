@@ -111,7 +111,7 @@ void kmain()
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
 
-   set_kernel_stack(0xC01FFFF0);
+   set_kernel_stack(KERNEL_BASE_STACK_ADDR);
 
    setup_syscall_interface();
 

@@ -83,10 +83,7 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
    char *env[] = { "OSTYPE=gnu-linux", "PWD=/" };
    push_args_on_user_stack(&r, ARRAY_SIZE(argv), argv, ARRAY_SIZE(env), env);
 
-
-   asmVolatile("pushf");
-   asmVolatile("pop %eax");
-   asmVolatile("movl %0, %%eax" : "=r"(r.eflags));
+   r.eflags = get_eflags();
 
    task_info *pi = kmalloc(sizeof(task_info));
    INIT_LIST_HEAD(&pi->list);
