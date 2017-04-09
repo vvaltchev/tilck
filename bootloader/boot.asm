@@ -21,8 +21,8 @@
 ; We're OK with just 1000 512-byte sectors (500 KB)
 ;%define INITIAL_SECTORS_TO_READ 1000
 
-; DEBUG VALUE, usable until the kernel + bootloader fit in 64 KB
-%define INITIAL_SECTORS_TO_READ 128
+; DEBUG VALUE, usable until the kernel + bootloader fit in 128 KB
+%define INITIAL_SECTORS_TO_READ 256
 
 jmp start
 times 0x0B - ($-$$) nop

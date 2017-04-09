@@ -125,7 +125,7 @@ add_custom_command(
       ${BUILD_SCRIPTS}/build_fatpart.sh ${CMAKE_BINARY_DIR} fatpart
    COMMAND
       # For development purposes, copy just a small part from the fatpart to make the build faster.
-      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K count=256
+      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K count=512
       #dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K
    DEPENDS
       # We MUST depend on BOTH the wrapper-target AND its OUTPUT in order to this
