@@ -56,7 +56,7 @@ void idt_set_gate(u8 num, void *handler, u16 sel, u8 flags)
 /*
  * These are function prototypes for all of the exception
  * handlers: The first 32 entries in the IDT are reserved
- * by Intel, and are designed to service exceptions!
+ * by Intel and are designed to service exceptions.
  */
 
 void isr0();
@@ -92,7 +92,7 @@ void isr29();
 void isr30();
 void isr31();
 
-// This is used for int 0x80 (syscallls)
+// This is used for int 0x80 (syscalls)
 void isr128();
 
 /*
@@ -233,7 +233,7 @@ void end_current_interrupt_handling()
 
 static void handle_irq(regs *r)
 {
-   const u8 irq = r->int_no - 32;
+   const u8 irq = r->int_num - 32;
 
    if (irq_routines[irq] != NULL) {
 
@@ -249,47 +249,87 @@ static void handle_irq(regs *r)
 
 static void handle_fault(regs *r)
 {
-   if (fault_handlers[r->int_no] != NULL) {
+   if (fault_handlers[r->int_num] != NULL) {
 
-      fault_handlers[r->int_no](r);
+      fault_handlers[r->int_num](r);
 
    } else {
 
-      cli();
+      disable_interrupts();
 
       printk("Fault #%i: %s [errCode: %i]\n",
-             r->int_no,
-             exception_messages[r->int_no],
+             r->int_num,
+             exception_messages[r->int_num],
              r->err_code);
 
       NOT_REACHED();
    }
 }
 
+#ifdef DEBUG
+
+bool is_interrupt_racing_with_itself(int int_num) {
+
+   for (int i = nested_interrupts_count - 1; i >= 0; i--) {
+      if (nested_interrupts[i] == int_num) {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+#endif
 
 void generic_interrupt_handler(regs *r)
 {
-   printk("[kernel] int: %i, level: %i\n", r->int_no, nested_interrupts_count);
+   // if (!is_irq(r->int_num))
+   //    printk("[kernel] int: %i, level: %i\n", r->int_num,
+   //                                            nested_interrupts_count);
+   // else
+   //    printk("[kernel] IRQ: %i, level: %i\n", r->int_num - 32,
+   //                                            nested_interrupts_count);
 
-   if (nested_interrupts_count >= (int)ARRAY_SIZE(nested_interrupts)) {
-      NOT_REACHED();
-   }
 
-   nested_interrupts[nested_interrupts_count++] = r->int_no;
+   ASSERT(nested_interrupts_count < (int)ARRAY_SIZE(nested_interrupts));
+   ASSERT(!is_interrupt_racing_with_itself(r->int_num));
 
-   if (LIKELY(r->int_no == SYSCALL_SOFT_INTERRUPT)) {
+   nested_interrupts[nested_interrupts_count++] = r->int_num;
 
-      handle_syscall(r);
+   if (is_irq(r->int_num)) {
 
-   } else if (LIKELY(r->int_no >= 32)) {
+      IRQ_set_mask(r->int_num - 32);
+
+      /*
+       * Since x86 automatically disables all interrupts before jumping to the
+       * interrupt handler, we have to re-enable them manually here.
+       */
+
+      ASSERT(!are_interrupts_enabled());
+      enable_interrupts();
 
       handle_irq(r);
+
+      end_current_interrupt_handling();
+      IRQ_clear_mask(r->int_num - 32);
+      return;
+   }
+
+   IRQ_set_mask(X86_PC_TIMER_IRQ);
+
+   // Re-enable the interrupts, for the same reason as before.
+   enable_interrupts();
+
+   if (LIKELY(r->int_num == SYSCALL_SOFT_INTERRUPT)) {
+
+      handle_syscall(r);
 
    } else {
 
       handle_fault(r);
    }
 
+   IRQ_clear_mask(X86_PC_TIMER_IRQ);
    end_current_interrupt_handling();
 }
 

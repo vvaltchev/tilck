@@ -307,7 +307,7 @@ end:
 
 void reboot() {
 
-   cli();
+   disable_interrupts();
    kbd_wait();
 
    outb(KB_CONTROL_PORT, KBRD_RESET);

@@ -42,8 +42,10 @@ NORETURN void switch_to_process(task_info *pi)
       set_page_directory(pi->pdir);
    }
 
+
    end_current_interrupt_handling();
    current_process = pi;
+   IRQ_clear_mask(X86_PC_TIMER_IRQ);
    context_switch(&current_process->state_regs);
 }
 

@@ -5,6 +5,12 @@
 #include <process.h>
 #include <arch/generic_x86/utils.h>
 
+#define X86_PC_TIMER_IRQ       0
+#define X86_PC_KEYBOARD_IRQ    1
+#define X86_PC_RTC_IRQ         8
+#define X86_PC_ACPI_IRQ        9
+#define X86_PC_PS2_MOUSE_IRQ  12
+
 // Forward-declaring regs
 typedef struct regs regs;
 
@@ -13,11 +19,11 @@ typedef struct regs regs;
 struct regs {
    u32 gs, fs, es, ds;      /* pushed the segs last */
    u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;  /* pushed by 'pusha' */
-   u32 int_no, err_code;    /* our 'push byte #' and error codes do this */
+   u32 int_num, err_code;    /* our 'push byte #' and error codes do this */
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
 
-static inline void set_return_register(regs *r, u32 value)
+static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
 {
    r->eax = value;
 }

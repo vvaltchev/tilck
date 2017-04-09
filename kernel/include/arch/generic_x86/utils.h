@@ -49,12 +49,12 @@ static ALWAYS_INLINE void halt()
    asmVolatile("hlt");
 }
 
-static ALWAYS_INLINE void cli()
+static ALWAYS_INLINE void disable_interrupts()
 {
    asmVolatile("cli");
 }
 
-static ALWAYS_INLINE void sti()
+static ALWAYS_INLINE void enable_interrupts()
 {
    asmVolatile("sti");
 }

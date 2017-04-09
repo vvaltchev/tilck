@@ -106,30 +106,26 @@ void kmain()
 
    set_timer_freq(TIMER_HZ);
 
-   IRQ_set_mask(7); // mask IRQ #7
-   IRQ_set_mask(0); // mask the timer (temporary)
+   IRQ_set_mask(7); // mask IRQ #7 (spurious wake-up)
 
-   irq_install_handler(0, timer_handler);
-   irq_install_handler(1, keyboard_handler);
+   irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
+   irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
 
    set_kernel_stack(0xC01FFFF0);
 
    setup_syscall_interface();
 
    mount_memdisk();
-   test_memdisk();
+   //test_memdisk();
 
    // Restore the interrupts.
-   sti();
+   enable_interrupts();
 
    // Initialize the keyboard driver.
    init_kb();
 
    // Run the 'init' usermode program.
    run_usermode_init();
-
-   //printk("Ready.\n");
-   //while (1) halt();
 
    // We should never get here!
    NOT_REACHED();

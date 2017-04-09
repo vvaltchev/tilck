@@ -111,7 +111,7 @@ void panic(const char *fmt, ...)
 
    in_panic = true;
 
-   //cli();
+   //disable_interrupts();
 
    printk("\n\n************** KERNEL PANIC **************\n");
 
@@ -123,7 +123,7 @@ void panic(const char *fmt, ...)
    printk("\n");
 
    //dump_stacktrace();
-   //sti();
+   //enable_interrupts();
 
    while (true) {
       halt();

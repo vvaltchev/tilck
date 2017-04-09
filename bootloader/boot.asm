@@ -13,11 +13,15 @@
 
 ; 2048 + 32768 sectors (16 MB) - 1
 ;%define VDISK_LAST_LBA_SECTOR 34815
-%define VDISK_LAST_LBA_SECTOR 2560
+
+; DEBUG VALUE, usable until the fatpart contains just a small init program.
+%define VDISK_LAST_LBA_SECTOR 2304
 
 
 ; We're OK with just 1000 512-byte sectors (500 KB)
 ; %define INITIAL_SECTORS_TO_READ 1000
+
+; DEBUG VALUE, unable until the kernel + bootloader fit in 64 KB
 %define INITIAL_SECTORS_TO_READ 128
 
 jmp start
