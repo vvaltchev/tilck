@@ -91,6 +91,25 @@ void test_memdisk()
    printk("Crc32 of the data: %p\n", crc);
 }
 
+
+void simple_tasklet(void)
+{
+   disable_interrupts();
+   printk("[kernel tasklet] This is a kernel tasklet..\n");
+   enable_interrupts();
+
+   for (int i = 0; i < 1024*(int)MB; i++) {
+      if (!(i % (256*MB))) {
+
+         disable_interrupts();
+         printk("[kernel tasklet] i = %i\n", i);
+         enable_interrupts();
+      }
+   }
+
+   exit_kernel_tasklet();
+}
+
 void kmain()
 {
    term_init();
@@ -106,6 +125,7 @@ void kmain()
 
    set_timer_freq(TIMER_HZ);
 
+   //IRQ_set_mask(0);
    IRQ_set_mask(7); // mask IRQ #7 (spurious wake-up)
 
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
@@ -123,6 +143,8 @@ void kmain()
 
    // Initialize the keyboard driver.
    init_kb();
+
+   create_kernel_tasklet(simple_tasklet);
 
    // Run the 'init' usermode program.
    run_usermode_init();

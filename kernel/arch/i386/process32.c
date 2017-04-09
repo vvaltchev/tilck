@@ -4,6 +4,7 @@
 #include <kmalloc.h>
 #include <arch/i386/process_int.h>
 
+
 void push_on_user_stack(regs *r, uptr val)
 {
    r->useresp -= sizeof(val);
@@ -63,6 +64,53 @@ void push_args_on_user_stack(regs *r, int argc,
    push_on_user_stack(r, argc);
 }
 
+int create_kernel_tasklet(tasklet_func_type fun)
+{
+   regs r;
+   memset(&r, 0, sizeof(r));
+
+   r.gs = r.fs = r.es = r.ds = r.ss = 0x10;
+   r.cs = 0x08;
+
+   r.eip = (u32) fun;
+   r.eflags = get_eflags();
+
+   task_info *pi = kmalloc(sizeof(task_info));
+   INIT_LIST_HEAD(&pi->list);
+   pi->pdir = get_kernel_page_dir();
+   pi->pid = 0;
+   pi->state = TASK_STATE_RUNNABLE;
+
+   pi->tasklet_id = 1; // TODO: fix!
+   pi->kernel_stack = (void *) kmalloc(PAGE_SIZE);
+
+   r.useresp = ((u32) pi->kernel_stack + PAGE_SIZE - 1) & 0xFFFFFFF0;
+   memmove(&pi->state_regs, &r, sizeof(r));
+
+   add_process(pi);
+   pi->jiffies_when_switch = jiffies;
+
+   return pi->tasklet_id;
+}
+
+void exit_kernel_tasklet()
+{
+   task_info *ti = get_current_task();
+   printk("[kernel tasklet] Tasklet %i EXIT\n", ti->tasklet_id);
+
+   kfree(ti->kernel_stack, PAGE_SIZE);
+   ti->kernel_stack = NULL;
+
+   ti->state = TASK_STATE_ZOMBIE;
+
+   // HACK: push a fake interrupt to compensate the call to
+   // end_current_interrupt_handling() in switch_to_process(), done by the
+   // scheduler.
+
+   push_nested_interrupt(-1);
+   schedule();
+}
+
 NORETURN void first_usermode_switch(page_directory_t *pdir,
                                     void *entry,
                                     void *stack_addr)
@@ -87,6 +135,10 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
 
    task_info *pi = kmalloc(sizeof(task_info));
    INIT_LIST_HEAD(&pi->list);
+
+   pi->tasklet_id = -1;
+   pi->kernel_stack = NULL;
+
    pi->pdir = pdir;
    pi->pid = ++current_max_pid;
    pi->state = TASK_STATE_RUNNABLE;

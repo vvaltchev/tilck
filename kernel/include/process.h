@@ -26,3 +26,13 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
 NORETURN void switch_to_process(task_info *pi);
 void add_process(task_info *p);
 void remove_process(task_info *p);
+
+task_info *get_current_task();
+
+
+typedef void (*tasklet_func_type)();
+
+int create_kernel_tasklet(tasklet_func_type fun);
+
+// Must be called at the end of each tasklet.
+void exit_kernel_tasklet();

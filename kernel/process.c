@@ -13,9 +13,27 @@ int current_max_pid = 0;
 // Our linked list for all the tasks (processes, threads, etc.)
 LIST_HEAD(tasks_list);
 
+
+task_info *get_current_task()
+{
+   return current_process;
+}
+
 void save_current_process_state(regs *r)
 {
    memmove(&current_process->state_regs, r, sizeof(*r));
+
+   if (current_process->pid == 0) {
+      /*
+       * We the current task is a kernel tasklet, than the useresp has not
+       * be saved on the stack by the CPU, since there has been not priviledge
+       * change. So, we have to use the actual value of ESP as 'useresp' and
+       * adjust it by +16. That's why when the interrupt occured, the CPU
+       * pushed on the stack CS+EIP and we pushed int_num + err_code; in total,
+       * 4 pointer-size integers.
+       */
+      current_process->state_regs.useresp = r->esp + 16;
+   }
 }
 
 void add_process(task_info *p)
@@ -28,6 +46,7 @@ void remove_process(task_info *p)
 {
    list_remove(&p->list);
    printk("[remove_process] pid = %i\n", p->pid);
+   kfree(p, sizeof(task_info));
 }
 
 NORETURN void switch_to_process(task_info *pi)
@@ -36,25 +55,35 @@ NORETURN void switch_to_process(task_info *pi)
 
    pi->state = TASK_STATE_RUNNING;
 
-   //printk("[sched] Switching to pid: %i\n", current_process->pid);
-
    if (get_curr_page_dir() != pi->pdir) {
       set_page_directory(pi->pdir);
    }
 
-
    end_current_interrupt_handling();
    current_process = pi;
    IRQ_clear_mask(X86_PC_TIMER_IRQ);
-   context_switch(&current_process->state_regs);
+
+   if (pi->pid != 0) {
+      context_switch(&current_process->state_regs);
+   } else {
+      tasklet_schedule(&current_process->state_regs);
+   }
 }
 
 
 NORETURN void schedule()
 {
-   task_info *const curr = current_process;
+   task_info *curr = current_process;
    task_info *selected = curr;
+   task_info *pos;
    const u64 jiffies_used = jiffies - curr->jiffies_when_switch;
+
+   if (curr->state == TASK_STATE_ZOMBIE && curr->pid == 0) {
+      // We're dealing with a dead tasklet
+      remove_process(curr);
+      curr = NULL;
+      goto actual_sched;
+   }
 
    if (jiffies_used < TIME_SLOT_JIFFIES && curr->state == TASK_STATE_RUNNING) {
       curr->state = TASK_STATE_RUNNABLE;
@@ -70,8 +99,8 @@ NORETURN void schedule()
    }
 
    // Actual scheduling logic.
+actual_sched:
 
-   task_info *pos;
    list_for_each_entry(pos, &tasks_list, list) {
       if (pos != curr && pos->state == TASK_STATE_RUNNABLE) {
          selected = pos;
@@ -97,6 +126,11 @@ end:
    if (selected != curr) {
       printk("[sched] Switching to pid: %i\n", selected->pid);
    }
+
+   // if (curr != NULL && curr->pid == 0) {
+   //    printk("[sched] ESP: %p\n", curr->state_regs.esp);
+   //    printk("[sched] USERESP: %p\n", curr->state_regs.useresp);
+   // }
 
    switch_to_process(selected);
 }

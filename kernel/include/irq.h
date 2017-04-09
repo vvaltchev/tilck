@@ -62,3 +62,4 @@ static ALWAYS_INLINE bool is_irq(int interrupt_num)
 }
 
 void end_current_interrupt_handling();
+void push_nested_interrupt(int int_num);

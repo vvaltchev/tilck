@@ -281,6 +281,11 @@ bool is_interrupt_racing_with_itself(int int_num) {
 
 #endif
 
+void push_nested_interrupt(int int_num)
+{
+   nested_interrupts[nested_interrupts_count++] = int_num;
+}
+
 void generic_interrupt_handler(regs *r)
 {
    // if (!is_irq(r->int_num))
@@ -294,7 +299,7 @@ void generic_interrupt_handler(regs *r)
    ASSERT(nested_interrupts_count < (int)ARRAY_SIZE(nested_interrupts));
    ASSERT(!is_interrupt_racing_with_itself(r->int_num));
 
-   nested_interrupts[nested_interrupts_count++] = r->int_num;
+   push_nested_interrupt(r->int_num);
 
    if (is_irq(r->int_num)) {
 

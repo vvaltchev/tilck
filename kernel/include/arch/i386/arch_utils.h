@@ -35,6 +35,7 @@ static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
 
 
 NORETURN void asm_context_switch_x86(u32 d, ...);
+NORETURN void asm_tasklet_context_switch_x86(u32 d, ...);
 
 NORETURN static ALWAYS_INLINE void context_switch(regs *r)
 {
@@ -64,3 +65,29 @@ NORETURN static ALWAYS_INLINE void context_switch(regs *r)
 }
 
 
+
+NORETURN static ALWAYS_INLINE void tasklet_schedule(regs *r)
+{
+   asm_tasklet_context_switch_x86(
+                                  r->eip,
+                                  r->useresp,
+
+                                  // Segment registers
+                                  r->gs,
+                                  r->fs,
+                                  r->es,
+                                  r->ds,
+
+                                  // General purpose registers
+                                  r->edi,
+                                  r->esi,
+                                  r->ebp,
+                                  /* skipping ESP */
+                                  r->ebx,
+                                  r->edx,
+                                  r->ecx,
+                                  r->eax,
+
+                                  // The useresp is repeated. See the assembly.
+                                  r->useresp);
+}

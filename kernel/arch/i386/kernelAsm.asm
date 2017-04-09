@@ -127,6 +127,48 @@ asm_context_switch_x86:
    iret
 
 
+
+global asm_tasklet_context_switch_x86
+
+asm_tasklet_context_switch_x86:
+
+   pop eax ; return addr (ignored)
+
+   pop eax ; eip
+   pop ebx ; new esp
+
+   ; we have to simulate a push of the eip, but using the esp stack in order
+   ; to allow the final: pop esp; ret.
+
+   mov [ebx], eax
+   sub ebx, 4
+
+   pop eax ; gs
+   mov gs, ax
+
+   pop eax ; fs
+   mov fs, ax
+
+   pop eax ; es
+   mov es, ax
+
+   pop eax ; ds
+   mov ds, ax
+
+   ; We can't do 'popa' here because it will restore ESP
+   pop edi
+   pop esi
+   pop ebp
+   pop ebx
+   pop edx
+   pop ecx
+   pop eax
+
+   ; Now we can finally pop the 2nd copy of the ESP and just do RET since
+   ; the right EIP is already on the new stack.
+   pop esp
+   ret
+
 ; Service Routines (ISRs)
 global isr0
 global isr1

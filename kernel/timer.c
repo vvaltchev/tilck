@@ -2,6 +2,7 @@
 #include <common_defs.h>
 #include <process.h>
 #include <arch/generic_x86/utils.h>
+#include <string_util.h>
 
 /*
  * Sets timer's frequency.
@@ -35,6 +36,8 @@ void timer_handler(regs *r)
       // The kernel is still initializing and we cannot call schedule() yet.
       return;
    }
+
+   //printk("[timer]\n");
 
    save_current_process_state(r);
    schedule();

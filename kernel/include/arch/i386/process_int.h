@@ -15,6 +15,13 @@ struct task_info {
 
    u64 jiffies_when_switch;
 
+   /* tasklet members */
+
+   int tasklet_id;
+   void *kernel_stack;
+
+   /* end tasklet members */
+
    regs state_regs;
    page_directory_t *pdir;
 };
