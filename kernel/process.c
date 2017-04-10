@@ -74,7 +74,6 @@ NORETURN void switch_to_task(task_info *pi)
    disable_timer_for(TIMER_HZ / 10);
    IRQ_clear_mask(X86_PC_TIMER_IRQ);
 
-
    if (!is_kernel_tasklet(current_task)) {
       context_switch(&current_task->state_regs);
    } else {
@@ -131,6 +130,10 @@ end:
       printk("[sched] No runnable process found. Halt.\n");
 
       end_current_interrupt_handling();
+
+      // Re-enable the timer.
+      IRQ_clear_mask(X86_PC_TIMER_IRQ);
+
       // We did not found any runnable task. Halt.
       halt();
    }
