@@ -26,20 +26,20 @@ void set_timer_freq(int hz)
  */
 volatile u64 jiffies = 0;
 
-extern volatile task_info *current_process;
+extern volatile task_info *current_task;
 
 void timer_handler(regs *r)
 {
    jiffies++;
 
-   if (!current_process) {
+   if (!current_task) {
       // The kernel is still initializing and we cannot call schedule() yet.
       return;
    }
 
    //printk("[timer]\n");
 
-   save_current_process_state(r);
+   save_current_task_state(r);
    schedule();
 }
 

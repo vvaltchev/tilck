@@ -87,7 +87,7 @@ int create_kernel_tasklet(tasklet_func_type fun)
    r.useresp = ((u32) pi->kernel_stack + PAGE_SIZE - 1) & 0xFFFFFFF0;
    memmove(&pi->state_regs, &r, sizeof(r));
 
-   add_process(pi);
+   add_task(pi);
    pi->jiffies_when_switch = jiffies;
 
    return pi->tasklet_id;
@@ -144,7 +144,7 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
    pi->state = TASK_STATE_RUNNABLE;
    memmove(&pi->state_regs, &r, sizeof(r));
 
-   add_process(pi);
+   add_task(pi);
    pi->jiffies_when_switch = jiffies;
-   switch_to_process(pi);
+   switch_to_task(pi);
 }

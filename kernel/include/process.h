@@ -16,16 +16,16 @@
 struct task_info;
 typedef struct task_info task_info;
 
-void save_current_process_state(regs *);
+void save_current_task_state(regs *);
 
 NORETURN void schedule();
 NORETURN void first_usermode_switch(page_directory_t *pdir,
                                     void *entry,
                                     void *stack_addr);
 
-NORETURN void switch_to_process(task_info *pi);
-void add_process(task_info *p);
-void remove_process(task_info *p);
+NORETURN void switch_to_task(task_info *pi);
+void add_task(task_info *p);
+void remove_task(task_info *p);
 
 task_info *get_current_task();
 

@@ -210,7 +210,7 @@ void set_fault_handler(int exceptionNum, void *ptr)
    fault_handlers[exceptionNum] = (interrupt_handler) ptr;
 }
 
-extern task_info *current_process;
+extern task_info *current_task;
 
 void end_current_interrupt_handling()
 {
@@ -220,7 +220,7 @@ void end_current_interrupt_handling()
       PIC_sendEOI(curr_int - 32);
    }
 
-   if (LIKELY(current_process != NULL)) {
+   if (LIKELY(current_task != NULL)) {
 
       nested_interrupts_count--;
       ASSERT(nested_interrupts_count >= 0);

@@ -137,8 +137,8 @@ asm_tasklet_context_switch_x86:
    pop eax ; eip
    pop ebx ; new esp
 
-   ; we have to simulate a push of the eip, but using the esp stack in order
-   ; to allow the final: pop esp; ret.
+   ; we have to simulate a push of the eip, but using the stack in EBX in order
+   ; to allow the final RET.
 
    mov [ebx], eax
    sub ebx, 4

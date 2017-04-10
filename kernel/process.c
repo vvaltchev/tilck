@@ -7,7 +7,7 @@
 
 #define TIME_SLOT_JIFFIES 500
 
-task_info *current_process = NULL;
+task_info *current_task = NULL;
 int current_max_pid = 0;
 
 // Our linked list for all the tasks (processes, threads, etc.)
@@ -16,14 +16,14 @@ LIST_HEAD(tasks_list);
 
 task_info *get_current_task()
 {
-   return current_process;
+   return current_task;
 }
 
-void save_current_process_state(regs *r)
+void save_current_task_state(regs *r)
 {
-   memmove(&current_process->state_regs, r, sizeof(*r));
+   memmove(&current_task->state_regs, r, sizeof(*r));
 
-   if (current_process->pid == 0) {
+   if (current_task->pid == 0) {
       /*
        * We the current task is a kernel tasklet, than the useresp has not
        * be saved on the stack by the CPU, since there has been not priviledge
@@ -32,24 +32,24 @@ void save_current_process_state(regs *r)
        * pushed on the stack CS+EIP and we pushed int_num + err_code; in total,
        * 4 pointer-size integers.
        */
-      current_process->state_regs.useresp = r->esp + 16;
+      current_task->state_regs.useresp = r->esp + 16;
    }
 }
 
-void add_process(task_info *p)
+void add_task(task_info *p)
 {
    p->state = TASK_STATE_RUNNABLE;
    list_add_tail(&tasks_list, &p->list);
 }
 
-void remove_process(task_info *p)
+void remove_task(task_info *p)
 {
    list_remove(&p->list);
-   printk("[remove_process] pid = %i\n", p->pid);
+   printk("[remove_task] pid = %i\n", p->pid);
    kfree(p, sizeof(task_info));
 }
 
-NORETURN void switch_to_process(task_info *pi)
+NORETURN void switch_to_task(task_info *pi)
 {
    ASSERT(pi->state == TASK_STATE_RUNNABLE);
 
@@ -60,27 +60,27 @@ NORETURN void switch_to_process(task_info *pi)
    }
 
    end_current_interrupt_handling();
-   current_process = pi;
+   current_task = pi;
    IRQ_clear_mask(X86_PC_TIMER_IRQ);
 
    if (pi->pid != 0) {
-      context_switch(&current_process->state_regs);
+      context_switch(&current_task->state_regs);
    } else {
-      tasklet_schedule(&current_process->state_regs);
+      tasklet_schedule(&current_task->state_regs);
    }
 }
 
 
 NORETURN void schedule()
 {
-   task_info *curr = current_process;
+   task_info *curr = current_task;
    task_info *selected = curr;
    task_info *pos;
    const u64 jiffies_used = jiffies - curr->jiffies_when_switch;
 
    if (curr->state == TASK_STATE_ZOMBIE && curr->pid == 0) {
       // We're dealing with a dead tasklet
-      remove_process(curr);
+      remove_task(curr);
       curr = NULL;
       goto actual_sched;
    }
@@ -90,7 +90,7 @@ NORETURN void schedule()
       goto end;
    }
 
-   printk("[sched] Current pid: %i\n", current_process->pid);
+   printk("[sched] Current pid: %i\n", current_task->pid);
    printk("[sched] Used %llu jiffies\n", jiffies_used);
 
    // If we preempted the process, it is still runnable.
@@ -127,12 +127,7 @@ end:
       printk("[sched] Switching to pid: %i\n", selected->pid);
    }
 
-   // if (curr != NULL && curr->pid == 0) {
-   //    printk("[sched] ESP: %p\n", curr->state_regs.esp);
-   //    printk("[sched] USERESP: %p\n", curr->state_regs.useresp);
-   // }
-
-   switch_to_process(selected);
+   switch_to_task(selected);
 }
 
 
@@ -147,33 +142,33 @@ end:
 
 int sys_getpid()
 {
-   ASSERT(current_process != NULL);
-   return current_process->pid;
+   ASSERT(current_task != NULL);
+   return current_task->pid;
 }
 
 NORETURN void sys_exit(int exit_code)
 {
    printk("[kernel] Exit process %i with code = %i\n",
-          current_process->pid,
+          current_task->pid,
           exit_code);
 
-   current_process->state = TASK_STATE_ZOMBIE;
-   current_process->exit_code = exit_code;
-   pdir_destroy(current_process->pdir);
+   current_task->state = TASK_STATE_ZOMBIE;
+   current_task->exit_code = exit_code;
+   pdir_destroy(current_task->pdir);
    schedule();
 }
 
 // Returns child's pid
 int sys_fork()
 {
-   page_directory_t *pdir = pdir_clone(current_process->pdir);
+   page_directory_t *pdir = pdir_clone(current_task->pdir);
 
    task_info *child = kmalloc(sizeof(task_info));
    INIT_LIST_HEAD(&child->list);
    child->pdir = pdir;
    child->pid = ++current_max_pid;
    memmove(&child->state_regs,
-           &current_process->state_regs,
+           &current_task->state_regs,
            sizeof(child->state_regs));
 
    set_return_register(&child->state_regs, 0);
@@ -181,10 +176,10 @@ int sys_fork()
 
    //printk("forking current proccess with eip = %p\n", child->state_regs.eip);
 
-   add_process(child);
+   add_task(child);
 
    // Make the parent to get child's pid as return value.
-   set_return_register(&current_process->state_regs, child->pid);
+   set_return_register(&current_task->state_regs, child->pid);
 
    /*
     * Force the CR3 reflush using the current (parent's) pdir.
@@ -193,6 +188,6 @@ int sys_fork()
     * one by one.
     */
 
-   set_page_directory(current_process->pdir);
+   set_page_directory(current_task->pdir);
    return child->pid;
 }

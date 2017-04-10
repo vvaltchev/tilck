@@ -27,5 +27,5 @@ struct task_info {
 };
 
 extern volatile u64 jiffies;
-extern task_info *current_process;
+extern task_info *current_task;
 extern int current_max_pid;
