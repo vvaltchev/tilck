@@ -19,7 +19,7 @@ struct task_info {
 
    /* tasklet members */
 
-   int tasklet_id;
+   bool is_tasklet;
    void *kernel_stack;
 
    /* end tasklet members */
@@ -29,5 +29,5 @@ struct task_info {
 };
 
 extern volatile u64 jiffies;
-extern task_info *current_task;
+extern task_info *volatile current_task;
 extern int current_max_pid;

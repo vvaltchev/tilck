@@ -78,10 +78,10 @@ int create_kernel_tasklet(tasklet_func_type fun)
    task_info *pi = kmalloc(sizeof(task_info));
    INIT_LIST_HEAD(&pi->list);
    pi->pdir = get_kernel_page_dir();
-   pi->pid = 0;
+   pi->pid = ++current_max_pid;
    pi->state = TASK_STATE_RUNNABLE;
 
-   pi->tasklet_id = 1; // TODO: fix!
+   pi->is_tasklet = true;
    pi->kernel_stack = (void *) kmalloc(KERNEL_TASKLET_STACK_SIZE);
 
    memset(pi->kernel_stack, 0, KERNEL_TASKLET_STACK_SIZE);
@@ -92,13 +92,13 @@ int create_kernel_tasklet(tasklet_func_type fun)
    add_task(pi);
    pi->jiffies_when_switch = jiffies;
 
-   return pi->tasklet_id;
+   return pi->pid;
 }
 
 void exit_kernel_tasklet()
 {
    task_info *ti = get_current_task();
-   printk("[kernel tasklet] Tasklet %i EXIT\n", ti->tasklet_id);
+   printk("[kernel tasklet] Tasklet EXIT (pid: %i)\n", ti->pid);
 
    kfree(ti->kernel_stack, KERNEL_TASKLET_STACK_SIZE);
    ti->kernel_stack = NULL;
@@ -138,7 +138,7 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
    task_info *pi = kmalloc(sizeof(task_info));
    INIT_LIST_HEAD(&pi->list);
 
-   pi->tasklet_id = -1;
+   pi->is_tasklet = false;
    pi->kernel_stack = NULL;
 
    pi->pdir = pdir;

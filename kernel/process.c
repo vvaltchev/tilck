@@ -5,9 +5,9 @@
 
 #include <arch_utils.h>
 
-#define TIME_SLOT_JIFFIES 500
+#define TIME_SLOT_JIFFIES 50
 
-task_info *current_task = NULL;
+task_info *volatile current_task = NULL;
 int current_max_pid = 0;
 
 // Our linked list for all the tasks (processes, threads, etc.)
@@ -22,7 +22,7 @@ task_info *get_current_task()
 
 bool is_kernel_tasklet(task_info *ti)
 {
-   return ti->pid == 0;
+   return ti->is_tasklet;
 }
 
 
@@ -72,7 +72,6 @@ NORETURN void switch_to_task(task_info *pi)
 
    // This allows the switch to happen without interrupts.
    disable_timer_for(TIMER_HZ / 10);
-
    IRQ_clear_mask(X86_PC_TIMER_IRQ);
 
 
@@ -93,7 +92,7 @@ NORETURN void schedule()
 
    if (curr->state == TASK_STATE_ZOMBIE && is_kernel_tasklet(curr)) {
       // We're dealing with a dead tasklet
-      //remove_task(curr);
+      remove_task(curr);
       curr = NULL;
       goto actual_sched;
    }
@@ -103,8 +102,8 @@ NORETURN void schedule()
       goto end;
    }
 
-   printk("[sched] Current pid: %i\n", current_task->pid);
-   printk("[sched] Used %llu jiffies\n", jiffies_used);
+   printk("[sched] Current pid: %i, used %llu jiffies\n",
+          current_task->pid, jiffies_used);
 
    // If we preempted the process, it is still runnable.
    if (curr->state == TASK_STATE_RUNNING) {
@@ -137,7 +136,8 @@ end:
    }
 
    if (selected != curr) {
-      printk("[sched] Switching to pid: %i\n", selected->pid);
+      printk("[sched] Switching to pid: %i %s\n",
+             selected->pid, is_kernel_tasklet(selected) ? "[TASKLET]" : "");
    }
 
    ASSERT(selected != NULL);
