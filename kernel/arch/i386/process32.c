@@ -82,9 +82,11 @@ int create_kernel_tasklet(tasklet_func_type fun)
    pi->state = TASK_STATE_RUNNABLE;
 
    pi->tasklet_id = 1; // TODO: fix!
-   pi->kernel_stack = (void *) kmalloc(PAGE_SIZE);
+   pi->kernel_stack = (void *) kmalloc(KERNEL_TASKLET_STACK_SIZE);
 
-   r.useresp = ((u32) pi->kernel_stack + PAGE_SIZE - 1) & 0xFFFFFFF0;
+   memset(pi->kernel_stack, 0, KERNEL_TASKLET_STACK_SIZE);
+
+   r.useresp = ((u32) pi->kernel_stack + KERNEL_TASKLET_STACK_SIZE - 1) & 0xFFFFFFF0;
    memmove(&pi->state_regs, &r, sizeof(r));
 
    add_task(pi);
@@ -98,7 +100,7 @@ void exit_kernel_tasklet()
    task_info *ti = get_current_task();
    printk("[kernel tasklet] Tasklet %i EXIT\n", ti->tasklet_id);
 
-   kfree(ti->kernel_stack, PAGE_SIZE);
+   kfree(ti->kernel_stack, KERNEL_TASKLET_STACK_SIZE);
    ti->kernel_stack = NULL;
 
    ti->state = TASK_STATE_ZOMBIE;

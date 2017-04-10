@@ -19,13 +19,20 @@ task_info *get_current_task()
    return current_task;
 }
 
+
+bool is_kernel_tasklet(task_info *ti)
+{
+   return ti->pid == 0;
+}
+
+
 void save_current_task_state(regs *r)
 {
    memmove(&current_task->state_regs, r, sizeof(*r));
 
-   if (current_task->pid == 0) {
+   if (is_kernel_tasklet(current_task)) {
       /*
-       * We the current task is a kernel tasklet, than the useresp has not
+       * If the current task is a kernel tasklet, than the useresp has not
        * be saved on the stack by the CPU, since there has been not priviledge
        * change. So, we have to use the actual value of ESP as 'useresp' and
        * adjust it by +16. That's why when the interrupt occured, the CPU
@@ -36,17 +43,17 @@ void save_current_task_state(regs *r)
    }
 }
 
-void add_task(task_info *p)
+void add_task(task_info *ti)
 {
-   p->state = TASK_STATE_RUNNABLE;
-   list_add_tail(&tasks_list, &p->list);
+   ti->state = TASK_STATE_RUNNABLE;
+   list_add_tail(&tasks_list, &ti->list);
 }
 
-void remove_task(task_info *p)
+void remove_task(task_info *ti)
 {
-   list_remove(&p->list);
-   printk("[remove_task] pid = %i\n", p->pid);
-   kfree(p, sizeof(task_info));
+   printk("[remove_task] pid = %i\n", ti->pid);
+   list_remove(&ti->list);
+   kfree(ti, sizeof(task_info));
 }
 
 NORETURN void switch_to_task(task_info *pi)
@@ -61,9 +68,15 @@ NORETURN void switch_to_task(task_info *pi)
 
    end_current_interrupt_handling();
    current_task = pi;
+
+
+   // This allows the switch to happen without interrupts.
+   disable_timer_for(TIMER_HZ / 10);
+
    IRQ_clear_mask(X86_PC_TIMER_IRQ);
 
-   if (pi->pid != 0) {
+
+   if (!is_kernel_tasklet(current_task)) {
       context_switch(&current_task->state_regs);
    } else {
       tasklet_schedule(&current_task->state_regs);
@@ -78,9 +91,9 @@ NORETURN void schedule()
    task_info *pos;
    const u64 jiffies_used = jiffies - curr->jiffies_when_switch;
 
-   if (curr->state == TASK_STATE_ZOMBIE && curr->pid == 0) {
+   if (curr->state == TASK_STATE_ZOMBIE && is_kernel_tasklet(curr)) {
       // We're dealing with a dead tasklet
-      remove_task(curr);
+      //remove_task(curr);
       curr = NULL;
       goto actual_sched;
    }
@@ -127,6 +140,7 @@ end:
       printk("[sched] Switching to pid: %i\n", selected->pid);
    }
 
+   ASSERT(selected != NULL);
    switch_to_task(selected);
 }
 

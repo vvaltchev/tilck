@@ -4,20 +4,7 @@
 #include <arch/generic_x86/utils.h>
 #include <string_util.h>
 
-/*
- * Sets timer's frequency.
- * Default value: 18.222 Hz.
- */
-
-void set_timer_freq(int hz)
-{
-   ASSERT(hz >= 1 && hz <= 1000);
-
-   int divisor = 1193180 / hz;   /* Calculate our divisor */
-   outb(0x43, 0x36);             /* Set our command byte 0x36 */
-   outb(0x40, divisor & 0xFF);   /* Set low byte of divisor */
-   outb(0x40, divisor >> 8);     /* Set high byte of divisor */
-}
+extern volatile task_info *current_task;
 
 
 /*
@@ -26,18 +13,29 @@ void set_timer_freq(int hz)
  */
 volatile u64 jiffies = 0;
 
-extern volatile task_info *current_task;
+u32 timer_disabled_jiffies = 0;
+
+void disable_timer_for(int jiffies)
+{
+   timer_disabled_jiffies += jiffies;
+}
+
 
 void timer_handler(regs *r)
 {
    jiffies++;
+
+   if (timer_disabled_jiffies != 0) {
+      timer_disabled_jiffies--;
+      return;
+   }
 
    if (!current_task) {
       // The kernel is still initializing and we cannot call schedule() yet.
       return;
    }
 
-   //printk("[timer]\n");
+
 
    save_current_task_state(r);
    schedule();

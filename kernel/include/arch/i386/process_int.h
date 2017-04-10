@@ -5,6 +5,8 @@
 #include <list.h>
 #include <arch/i386/arch_utils.h>
 
+#define KERNEL_TASKLET_STACK_SIZE PAGE_SIZE
+
 struct task_info {
 
    list_head list;

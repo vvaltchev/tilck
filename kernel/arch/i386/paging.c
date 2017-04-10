@@ -120,8 +120,9 @@ void handle_page_fault(regs *r)
 
 void handle_general_protection_fault(regs *r)
 {
+   disable_interrupts();
    printk("General protection fault. Error: %p\n", r->err_code);
-   NOT_REACHED();
+   halt();
 }
 
 void set_page_directory(page_directory_t *pdir)

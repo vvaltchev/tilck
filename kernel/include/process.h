@@ -23,9 +23,12 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
                                     void *entry,
                                     void *stack_addr);
 
-NORETURN void switch_to_task(task_info *pi);
-void add_task(task_info *p);
-void remove_task(task_info *p);
+NORETURN void switch_to_task(task_info *ti);
+
+bool is_kernel_tasklet(task_info *ti);
+
+void add_task(task_info *ti);
+void remove_task(task_info *ti);
 
 task_info *get_current_task();
 
