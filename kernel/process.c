@@ -185,6 +185,8 @@ int sys_fork()
    INIT_LIST_HEAD(&child->list);
    child->pdir = pdir;
    child->pid = ++current_max_pid;
+   child->is_kthread = false;
+
    memmove(&child->state_regs,
            &current_task->state_regs,
            sizeof(child->state_regs));
