@@ -19,7 +19,13 @@ struct task_info {
 
    /* kernel thread members */
 
+   /*
+    * By adding this int above the bool is_kthread, we crash.
+    * If the bool in turned into an 'int' instead, everything is fine.
+    * This requires investigation.
+    */
    //int task_process_pid; /* The pid of the process owning this thread. */
+
    bool is_kthread;
    void *kernel_stack;
 
