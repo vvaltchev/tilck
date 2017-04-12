@@ -128,9 +128,9 @@ asm_context_switch_x86:
 
 
 
-global asm_tasklet_context_switch_x86
+global asm_kthread_context_switch_x86
 
-asm_tasklet_context_switch_x86:
+asm_kthread_context_switch_x86:
 
    pop eax ; return addr (ignored)
 
@@ -168,6 +168,37 @@ asm_tasklet_context_switch_x86:
    ; the right EIP is already on the new stack.
    pop esp
    ret
+
+
+extern generic_interrupt_handler
+
+; This is our common ISR stub. It saves the processor state, sets
+; up for kernel mode segments, calls the C-level fault handler,
+; and finally restores the stack frame.
+asm_int_handler:
+    pusha          ;  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+    push ds
+    push es
+    push fs
+    push gs
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov eax, esp
+    push eax
+    mov eax, generic_interrupt_handler
+    call eax
+    pop eax
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    popa          ; Pops edi,esi,ebp...
+    add esp, 8    ; Cleans up the pushed error code and pushed ISR number
+    iret
+
 
 ; Service Routines (ISRs)
 global isr0
@@ -397,35 +428,6 @@ isr128:
     push 0x80
     jmp asm_int_handler
 
-
-extern generic_interrupt_handler
-
-; This is our common ISR stub. It saves the processor state, sets
-; up for kernel mode segments, calls the C-level fault handler,
-; and finally restores the stack frame.
-asm_int_handler:
-    pusha          ;  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
-    push ds
-    push es
-    push fs
-    push gs
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov eax, esp
-    push eax
-    mov eax, generic_interrupt_handler
-    call eax
-    pop eax
-    pop gs
-    pop fs
-    pop es
-    pop ds
-    popa          ; Pops edi,esi,ebp...
-    add esp, 8    ; Cleans up the pushed error code and pushed ISR number
-    iret
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

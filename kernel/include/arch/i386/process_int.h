@@ -17,9 +17,9 @@ struct task_info {
 
    u64 jiffies_when_switch;
 
-   /* tasklet members */
+   /* kernel thread members */
 
-   bool is_tasklet;
+   int task_process_pid; /* The pid of the process owning this thread. */
    void *kernel_stack;
 
    /* end tasklet members */

@@ -108,11 +108,11 @@ void handle_page_fault(regs *r)
       return;
    }
 
-   printk("*** PAGE FAULT in attempt to %s %p from %s %s.\n*** EIP: %p\n",
+   printk("*** PAGE FAULT in attempt to %s %p from %s%s.\n*** EIP: %p\n",
           rw ? "WRITE" : "READ",
           vaddr,
           us ? "userland" : "kernel",
-          !p ? "(NON present page)" : "", r->eip);
+          !p ? " (NON present page)." : ".", r->eip);
 
    // We are not really handling 'real' page-faults yet.
    NOT_REACHED();

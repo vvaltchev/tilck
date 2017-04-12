@@ -28,7 +28,7 @@ void setup_syscall_interface();
 void set_kernel_stack(uptr stack);
 uptr get_kernel_stack();
 
-void disable_timer_for(int jiffies);
+void disable_preemption_for(int jiffies);
 
 
 #define RAM_DISK_PADDR (0x8000000U) // +128 M

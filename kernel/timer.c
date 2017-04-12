@@ -13,20 +13,19 @@ extern volatile task_info *current_task;
  */
 volatile u64 jiffies = 0;
 
-u32 timer_disabled_jiffies = 0;
+u32 disabled_preemption_jiffies = 0;
 
-void disable_timer_for(int jiffies)
+void disable_preemption_for(int jiffies)
 {
-   timer_disabled_jiffies += jiffies;
+   disabled_preemption_jiffies += jiffies;
 }
-
 
 void timer_handler(regs *r)
 {
    jiffies++;
 
-   if (timer_disabled_jiffies != 0) {
-      timer_disabled_jiffies--;
+   if (disabled_preemption_jiffies != 0) {
+      disabled_preemption_jiffies--;
       return;
    }
 
@@ -34,8 +33,6 @@ void timer_handler(regs *r)
       // The kernel is still initializing and we cannot call schedule() yet.
       return;
    }
-
-
 
    save_current_task_state(r);
    schedule();

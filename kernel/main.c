@@ -92,22 +92,22 @@ void test_memdisk()
 }
 
 
-void simple_tasklet(void)
+void simple_kthread(void)
 {
    disable_interrupts();
-   printk("[kernel tasklet] This is a kernel tasklet..\n");
+   printk("[kernel thread] This is a kernel thread..\n");
    enable_interrupts();
 
    for (int i = 0; i < 1024*(int)MB; i++) {
       if (!(i % (256*MB))) {
 
          disable_interrupts();
-         printk("[kernel tasklet] i = %i\n", i);
+         printk("[kernel thread] i = %i\n", i);
          enable_interrupts();
       }
    }
 
-   exit_kernel_tasklet();
+   kthread_exit();
 }
 
 void kmain()
@@ -144,7 +144,9 @@ void kmain()
    // Initialize the keyboard driver.
    init_kb();
 
-   create_kernel_tasklet(simple_tasklet);
+   printk("pointer align mask: %p\n", POINTER_ALIGN_MASK );
+
+   kthread_create(simple_kthread);
 
    // Run the 'init' usermode program.
    run_usermode_init();

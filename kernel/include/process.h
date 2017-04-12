@@ -25,7 +25,7 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
 
 NORETURN void switch_to_task(task_info *ti);
 
-bool is_kernel_tasklet(task_info *ti);
+bool is_kernel_thread(task_info *ti);
 
 void add_task(task_info *ti);
 void remove_task(task_info *ti);
@@ -33,9 +33,9 @@ void remove_task(task_info *ti);
 task_info *get_current_task();
 
 
-typedef void (*tasklet_func_type)();
+typedef void (*kthread_func_ptr)();
 
-int create_kernel_tasklet(tasklet_func_type fun);
+int kthread_create(kthread_func_ptr fun);
 
-// Must be called at the end of each tasklet.
-void exit_kernel_tasklet();
+// Must be called at the end of each kernel thread.
+void kthread_exit();

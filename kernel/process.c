@@ -20,9 +20,9 @@ task_info *get_current_task()
 }
 
 
-bool is_kernel_tasklet(task_info *ti)
+bool is_kernel_thread(task_info *ti)
 {
-   return ti->is_tasklet;
+   return ti->task_process_pid == 0;
 }
 
 
@@ -30,9 +30,9 @@ void save_current_task_state(regs *r)
 {
    memmove(&current_task->state_regs, r, sizeof(*r));
 
-   if (is_kernel_tasklet(current_task)) {
+   if (is_kernel_thread(current_task)) {
       /*
-       * If the current task is a kernel tasklet, than the useresp has not
+       * If the current task is a kernel thread, than the useresp has not
        * be saved on the stack by the CPU, since there has been not priviledge
        * change. So, we have to use the actual value of ESP as 'useresp' and
        * adjust it by +16. That's why when the interrupt occured, the CPU
@@ -71,13 +71,13 @@ NORETURN void switch_to_task(task_info *pi)
 
 
    // This allows the switch to happen without interrupts.
-   disable_timer_for(TIMER_HZ / 10);
+   disable_preemption_for(TIMER_HZ / 10);
    IRQ_clear_mask(X86_PC_TIMER_IRQ);
 
-   if (!is_kernel_tasklet(current_task)) {
+   if (!is_kernel_thread(current_task)) {
       context_switch(&current_task->state_regs);
    } else {
-      tasklet_schedule(&current_task->state_regs);
+      kthread_context_switch(&current_task->state_regs);
    }
 }
 
@@ -89,7 +89,7 @@ NORETURN void schedule()
    task_info *pos;
    const u64 jiffies_used = jiffies - curr->jiffies_when_switch;
 
-   if (curr->state == TASK_STATE_ZOMBIE && is_kernel_tasklet(curr)) {
+   if (curr->state == TASK_STATE_ZOMBIE && is_kernel_thread(curr)) {
       // We're dealing with a dead tasklet
       remove_task(curr);
       curr = NULL;
@@ -140,7 +140,7 @@ end:
 
    if (selected != curr) {
       printk("[sched] Switching to pid: %i %s\n",
-             selected->pid, is_kernel_tasklet(selected) ? "[TASKLET]" : "");
+             selected->pid, is_kernel_thread(selected) ? "[KTHREAD]" : "");
    }
 
    ASSERT(selected != NULL);

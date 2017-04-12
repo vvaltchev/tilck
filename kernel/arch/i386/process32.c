@@ -64,7 +64,7 @@ void push_args_on_user_stack(regs *r, int argc,
    push_on_user_stack(r, argc);
 }
 
-int create_kernel_tasklet(tasklet_func_type fun)
+int kthread_create(kthread_func_ptr fun)
 {
    regs r;
    memset(&r, 0, sizeof(r));
@@ -81,12 +81,13 @@ int create_kernel_tasklet(tasklet_func_type fun)
    pi->pid = ++current_max_pid;
    pi->state = TASK_STATE_RUNNABLE;
 
-   pi->is_tasklet = true;
+   pi->task_process_pid = 0; /* The pid of the "kernel process" is 0 */
    pi->kernel_stack = (void *) kmalloc(KERNEL_TASKLET_STACK_SIZE);
 
    memset(pi->kernel_stack, 0, KERNEL_TASKLET_STACK_SIZE);
 
-   r.useresp = ((u32) pi->kernel_stack + KERNEL_TASKLET_STACK_SIZE - 1) & 0xFFFFFFF0;
+   r.useresp = ((uptr) pi->kernel_stack + KERNEL_TASKLET_STACK_SIZE - 1) & POINTER_ALIGN_MASK;
+
    memmove(&pi->state_regs, &r, sizeof(r));
 
    add_task(pi);
@@ -95,10 +96,10 @@ int create_kernel_tasklet(tasklet_func_type fun)
    return pi->pid;
 }
 
-void exit_kernel_tasklet()
+void kthread_exit()
 {
    task_info *ti = get_current_task();
-   printk("[kernel tasklet] Tasklet EXIT (pid: %i)\n", ti->pid);
+   printk("[kernel thread] EXIT (pid: %i)\n", ti->pid);
 
    kfree(ti->kernel_stack, KERNEL_TASKLET_STACK_SIZE);
    ti->kernel_stack = NULL;
@@ -138,12 +139,13 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
    task_info *pi = kmalloc(sizeof(task_info));
    INIT_LIST_HEAD(&pi->list);
 
-   pi->is_tasklet = false;
-   pi->kernel_stack = NULL;
-
    pi->pdir = pdir;
    pi->pid = ++current_max_pid;
    pi->state = TASK_STATE_RUNNABLE;
+
+   pi->task_process_pid = pi->pid;
+   pi->kernel_stack = NULL;
+
    memmove(&pi->state_regs, &r, sizeof(r));
 
    add_task(pi);

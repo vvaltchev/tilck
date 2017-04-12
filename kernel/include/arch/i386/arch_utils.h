@@ -35,7 +35,7 @@ static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
 
 
 NORETURN void asm_context_switch_x86(u32 d, ...);
-NORETURN void asm_tasklet_context_switch_x86(u32 d, ...);
+NORETURN void asm_kthread_context_switch_x86(u32 d, ...);
 
 NORETURN static ALWAYS_INLINE void context_switch(regs *r)
 {
@@ -66,9 +66,9 @@ NORETURN static ALWAYS_INLINE void context_switch(regs *r)
 
 
 
-NORETURN static ALWAYS_INLINE void tasklet_schedule(regs *r)
+NORETURN static ALWAYS_INLINE void kthread_context_switch(regs *r)
 {
-   asm_tasklet_context_switch_x86(
+   asm_kthread_context_switch_x86(
                                   r->eip,
                                   r->useresp,
 
