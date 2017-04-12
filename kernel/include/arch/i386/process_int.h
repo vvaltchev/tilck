@@ -19,7 +19,8 @@ struct task_info {
 
    /* kernel thread members */
 
-   int task_process_pid; /* The pid of the process owning this thread. */
+   //int task_process_pid; /* The pid of the process owning this thread. */
+   bool is_kthread;
    void *kernel_stack;
 
    /* end tasklet members */

@@ -144,7 +144,7 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 #define CONTAINER_OF(elem_ptr, struct_type, mem_name) \
    ((struct_type *)(((char *)elem_ptr) - OFFSET_OF(struct_type, mem_name)))
 
-#define POINTER_ALIGN_MASK 0xFFFFFFF0U //(~(sizeof(void *) - 1))
+#define POINTER_ALIGN_MASK (~(sizeof(void *) - 1))
 
 /*
  * ********************************************

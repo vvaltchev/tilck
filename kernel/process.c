@@ -22,7 +22,8 @@ task_info *get_current_task()
 
 bool is_kernel_thread(task_info *ti)
 {
-   return ti->task_process_pid == 0;
+   //return ti->task_process_pid == 0;
+   return ti->is_kthread;
 }
 
 
