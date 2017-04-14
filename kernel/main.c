@@ -106,8 +106,6 @@ void simple_kthread(void)
          enable_interrupts();
       }
    }
-
-   kthread_exit();
 }
 
 void kmain()

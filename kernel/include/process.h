@@ -37,5 +37,5 @@ typedef void (*kthread_func_ptr)();
 
 int kthread_create(kthread_func_ptr fun);
 
-// Must be called at the end of each kernel thread.
+// It is called when each kernel thread returns. May be called explicitly too.
 void kthread_exit();

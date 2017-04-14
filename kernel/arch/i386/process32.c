@@ -89,6 +89,12 @@ int kthread_create(kthread_func_ptr fun)
    r.useresp = ((uptr) pi->kernel_stack + KTHREAD_STACK_SIZE - 1);
    r.useresp &= POINTER_ALIGN_MASK;
 
+   // Pushes the address of kthread_exit() into thread's stack in order to
+   // it to be called after thread's function returns.
+
+   *(void **)(r.useresp) = (void *) &kthread_exit;
+   r.useresp -= sizeof(void *);
+
    memmove(&pi->state_regs, &r, sizeof(r));
 
    add_task(pi);
@@ -113,7 +119,7 @@ void kthread_exit()
    push_nested_interrupt(-1);
 
    asmVolatile("movl %0, %%esp" : : "i"(KERNEL_BASE_STACK_ADDR));
-   asmVolatile("jmp %0" : : "r"(&schedule));
+   asmVolatile("jmp *%0" : : "r"(&schedule));
 }
 
 NORETURN void first_usermode_switch(page_directory_t *pdir,
