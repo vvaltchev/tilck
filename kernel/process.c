@@ -22,14 +22,7 @@ task_info *get_current_task()
 
 bool is_kernel_thread(task_info *ti)
 {
-   //return ti->task_process_pid == 0;
-
-   if (ti->owning_process_pid != ti->pid) {
-      printk("own pid (%i) != pid (%i)\n", ti->owning_process_pid, ti->pid);
-      NOT_REACHED();
-   }
-
-   return ti->is_kthread;
+   return ti->owning_process_pid == 0;
 }
 
 
@@ -97,7 +90,7 @@ NORETURN void schedule()
    const u64 jiffies_used = jiffies - curr->jiffies_when_switch;
 
    if (curr->state == TASK_STATE_ZOMBIE && is_kernel_thread(curr)) {
-      // We're dealing with a dead tasklet
+      // We're dealing with a dead kernel thread
       // TODO: this code has to be fixed since we cannot free kthread's stack
       // while we're using it.
       remove_task(curr);
@@ -193,8 +186,9 @@ int sys_fork()
    INIT_LIST_HEAD(&child->list);
    child->pdir = pdir;
    child->pid = ++current_max_pid;
-   child->is_kthread = false;
+
    child->owning_process_pid = child->pid;
+   child->kernel_stack = NULL;
 
    memmove(&child->state_regs,
            &current_task->state_regs,

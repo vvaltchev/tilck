@@ -81,8 +81,7 @@ int kthread_create(kthread_func_ptr fun)
    pi->pid = ++current_max_pid;
    pi->state = TASK_STATE_RUNNABLE;
 
-   pi->is_kthread = true;
-   //pi->task_process_pid = 0; /* The pid of the "kernel process" is 0 */
+   pi->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
    pi->kernel_stack = (void *) kmalloc(KERNEL_TASKLET_STACK_SIZE);
 
    memset(pi->kernel_stack, 0, KERNEL_TASKLET_STACK_SIZE);
@@ -103,8 +102,9 @@ void kthread_exit()
    task_info *ti = get_current_task();
    printk("[kernel thread] EXIT (pid: %i)\n", ti->pid);
 
-   kfree(ti->kernel_stack, KERNEL_TASKLET_STACK_SIZE);
-   ti->kernel_stack = NULL;
+   //we cannot free this stack and still use it in schedule()!
+   //kfree(ti->kernel_stack, KERNEL_TASKLET_STACK_SIZE);
+   //ti->kernel_stack = NULL;
 
    ti->state = TASK_STATE_ZOMBIE;
 
@@ -147,7 +147,6 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
    pi->state = TASK_STATE_RUNNABLE;
 
    pi->owning_process_pid = pi->pid;
-   pi->is_kthread = false;
    pi->kernel_stack = NULL;
 
    memmove(&pi->state_regs, &r, sizeof(r));

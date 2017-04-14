@@ -17,19 +17,8 @@ struct task_info {
 
    u64 jiffies_when_switch;
 
-   /* kernel thread members */
-
-   /*
-    * By adding this int above the bool is_kthread, we crash.
-    * If the bool in turned into an 'int' instead, everything is fine.
-    * This requires investigation.
-    */
    int owning_process_pid; /* The pid of the process owning this thread. */
-
-   bool is_kthread;
    void *kernel_stack;
-
-   /* end tasklet members */
 
    regs state_regs;
    page_directory_t *pdir;

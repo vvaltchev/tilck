@@ -144,9 +144,7 @@ void kmain()
    // Initialize the keyboard driver.
    init_kb();
 
-   printk("pointer align mask: %p\n", POINTER_ALIGN_MASK );
-
-   //kthread_create(simple_kthread);
+   kthread_create(simple_kthread);
 
    // Run the 'init' usermode program.
    run_usermode_init();
