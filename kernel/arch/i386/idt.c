@@ -21,6 +21,9 @@ struct idt_ptr
     void *base;
 } __attribute__((packed));
 
+typedef struct idt_entry idt_entry;
+typedef struct idt_ptr idt_ptr;
+
 /*
  * Declare an IDT of 256 entries. Although we will only use the
  * first 32 entries in this tutorial, the rest exists as a bit
@@ -29,8 +32,8 @@ struct idt_ptr
  * for which the 'presence' bit is cleared (0) will generate an
  * "Unhandled Interrupt" exception
  */
-struct idt_entry idt[256] = {0};
-struct idt_ptr idtp = {0};
+idt_entry idt[256] = {0};
+idt_ptr idtp = {0};
 
 /* This exists in 'start.asm', and is used to load our IDT */
 void idt_load();
@@ -303,7 +306,7 @@ void generic_interrupt_handler(regs *r)
 
    if (is_irq(r->int_num)) {
 
-      IRQ_set_mask(r->int_num - 32);
+      irq_set_mask(r->int_num - 32);
 
       /*
        * Since x86 automatically disables all interrupts before jumping to the
@@ -316,11 +319,11 @@ void generic_interrupt_handler(regs *r)
       handle_irq(r);
 
       end_current_interrupt_handling();
-      IRQ_clear_mask(r->int_num - 32);
+      irq_clear_mask(r->int_num - 32);
       return;
    }
 
-   IRQ_set_mask(X86_PC_TIMER_IRQ);
+   irq_set_mask(X86_PC_TIMER_IRQ);
 
    // Re-enable the interrupts, for the same reason as before.
    enable_interrupts();
@@ -334,7 +337,7 @@ void generic_interrupt_handler(regs *r)
       handle_fault(r);
    }
 
-   IRQ_clear_mask(X86_PC_TIMER_IRQ);
+   irq_clear_mask(X86_PC_TIMER_IRQ);
    end_current_interrupt_handling();
 }
 
@@ -344,11 +347,8 @@ void generic_interrupt_handler(regs *r)
 void idt_install()
 {
     /* Sets the special IDT pointer up, just like in 'gdt.c' */
-    idtp.limit = (sizeof (struct idt_entry) * 256) - 1;
+    idtp.limit = sizeof(idt) - 1;
     idtp.base = &idt;
-
-    /* Clear out the entire IDT, initializing it to zeros */
-    memset(&idt, 0, sizeof(struct idt_entry) * 256);
 
     /* Add any new ISRs to the IDT here using idt_set_gate */
 

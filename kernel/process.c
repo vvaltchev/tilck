@@ -23,6 +23,12 @@ task_info *get_current_task()
 bool is_kernel_thread(task_info *ti)
 {
    //return ti->task_process_pid == 0;
+
+   if (ti->owning_process_pid != ti->pid) {
+      printk("own pid (%i) != pid (%i)\n", ti->owning_process_pid, ti->pid);
+      NOT_REACHED();
+   }
+
    return ti->is_kthread;
 }
 
@@ -73,7 +79,7 @@ NORETURN void switch_to_task(task_info *pi)
 
    // This allows the switch to happen without interrupts.
    disable_preemption_for(TIMER_HZ / 10);
-   IRQ_clear_mask(X86_PC_TIMER_IRQ);
+   irq_clear_mask(X86_PC_TIMER_IRQ);
 
    if (!is_kernel_thread(current_task)) {
       context_switch(&current_task->state_regs);
@@ -92,6 +98,8 @@ NORETURN void schedule()
 
    if (curr->state == TASK_STATE_ZOMBIE && is_kernel_thread(curr)) {
       // We're dealing with a dead tasklet
+      // TODO: this code has to be fixed since we cannot free kthread's stack
+      // while we're using it.
       remove_task(curr);
       curr = NULL;
       goto actual_sched;
@@ -133,7 +141,7 @@ end:
       end_current_interrupt_handling();
 
       // Re-enable the timer.
-      IRQ_clear_mask(X86_PC_TIMER_IRQ);
+      irq_clear_mask(X86_PC_TIMER_IRQ);
 
       // We did not found any runnable task. Halt.
       halt();
@@ -186,6 +194,7 @@ int sys_fork()
    child->pdir = pdir;
    child->pid = ++current_max_pid;
    child->is_kthread = false;
+   child->owning_process_pid = child->pid;
 
    memmove(&child->state_regs,
            &current_task->state_regs,

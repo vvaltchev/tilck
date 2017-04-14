@@ -11,7 +11,7 @@ struct task_info {
 
    list_head list;
 
-   int pid;
+   int pid; /* global user/kernel thread identifier */
    int state;
    int exit_code;
 
@@ -24,7 +24,7 @@ struct task_info {
     * If the bool in turned into an 'int' instead, everything is fine.
     * This requires investigation.
     */
-   //int task_process_pid; /* The pid of the process owning this thread. */
+   int owning_process_pid; /* The pid of the process owning this thread. */
 
    bool is_kthread;
    void *kernel_stack;

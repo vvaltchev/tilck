@@ -130,14 +130,13 @@ void PIC_remap(u8 offset1, u8 offset2)
    outb(PIC2_DATA, a2);
 }
 
-void IRQ_set_mask(u8 IRQline) {
+void irq_set_mask(u8 IRQline) {
    u16 port;
    u8 value;
 
    if (IRQline < 8) {
       port = PIC1_DATA;
-   }
-   else {
+   } else {
       port = PIC2_DATA;
       IRQline -= 8;
    }
@@ -145,14 +144,13 @@ void IRQ_set_mask(u8 IRQline) {
    outb(port, value);
 }
 
-void IRQ_clear_mask(u8 IRQline) {
+void irq_clear_mask(u8 IRQline) {
    u16 port;
    u8 value;
 
    if (IRQline < 8) {
       port = PIC1_DATA;
-   }
-   else {
+   } else {
       port = PIC2_DATA;
       IRQline -= 8;
    }

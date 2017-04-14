@@ -141,15 +141,14 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
    task_info *pi = kmalloc(sizeof(task_info));
    INIT_LIST_HEAD(&pi->list);
 
-   pi->is_kthread = false;
-   pi->kernel_stack = NULL;
 
    pi->pdir = pdir;
    pi->pid = ++current_max_pid;
    pi->state = TASK_STATE_RUNNABLE;
 
-   //pi->task_process_pid = pi->pid;
-   //pi->kernel_stack = NULL;
+   pi->owning_process_pid = pi->pid;
+   pi->is_kthread = false;
+   pi->kernel_stack = NULL;
 
    memmove(&pi->state_regs, &r, sizeof(r));
 

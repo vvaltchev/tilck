@@ -4,6 +4,7 @@
     "editor.rulers": [80],
     "editor.renderWhitespace":"boundary",
     "editor.detectIndentation": false,
+    "editor.autoClosingBrackets": false,
     "files.exclude": {
         "**/.git": true,
         "**/.svn": true,

@@ -36,8 +36,8 @@ void irq_install();
 void irq_install_handler(u8 irq, interrupt_handler h);
 void irq_uninstall_handler(u8 irq);
 
-void IRQ_set_mask(u8 IRQline);
-void IRQ_clear_mask(u8 IRQline);
+void irq_set_mask(u8 IRQline);
+void irq_clear_mask(u8 IRQline);
 
 void set_fault_handler(int fault, void *ptr);
 void PIC_sendEOI(u8 irq);
