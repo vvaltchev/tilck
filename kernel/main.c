@@ -102,7 +102,7 @@ void simple_kthread(void)
       if (!(i % (256*MB))) {
 
          disable_interrupts();
-         printk("[kernel thread] i = %i\n", i);
+         printk("[kernel thread] i = %i\n", i/MB);
          enable_interrupts();
       }
    }

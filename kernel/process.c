@@ -74,6 +74,7 @@ NORETURN void switch_to_task(task_info *pi)
    disable_preemption_for(TIMER_HZ / 10);
    irq_clear_mask(X86_PC_TIMER_IRQ);
 
+
    if (!is_kernel_thread(current_task)) {
       context_switch(&current_task->state_regs);
    } else {
@@ -90,11 +91,12 @@ NORETURN void schedule()
    const u64 jiffies_used = jiffies - curr->jiffies_when_switch;
 
    if (curr->state == TASK_STATE_ZOMBIE && is_kernel_thread(curr)) {
-      // We're dealing with a dead kernel thread
-      // TODO: this code has to be fixed since we cannot free kthread's stack
-      // while we're using it.
+
+      // Here we're able to free kthread's stack since we're using another stack
+      kfree(curr->kernel_stack, KTHREAD_STACK_SIZE);
+
       remove_task(curr);
-      curr = NULL;
+      selected = curr = NULL;
       goto actual_sched;
    }
 

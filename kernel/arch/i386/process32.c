@@ -82,11 +82,11 @@ int kthread_create(kthread_func_ptr fun)
    pi->state = TASK_STATE_RUNNABLE;
 
    pi->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
-   pi->kernel_stack = (void *) kmalloc(KERNEL_TASKLET_STACK_SIZE);
+   pi->kernel_stack = (void *) kmalloc(KTHREAD_STACK_SIZE);
 
-   memset(pi->kernel_stack, 0, KERNEL_TASKLET_STACK_SIZE);
+   memset(pi->kernel_stack, 0, KTHREAD_STACK_SIZE);
 
-   r.useresp = ((uptr) pi->kernel_stack + KERNEL_TASKLET_STACK_SIZE - 1);
+   r.useresp = ((uptr) pi->kernel_stack + KTHREAD_STACK_SIZE - 1);
    r.useresp &= POINTER_ALIGN_MASK;
 
    memmove(&pi->state_regs, &r, sizeof(r));
@@ -99,12 +99,10 @@ int kthread_create(kthread_func_ptr fun)
 
 void kthread_exit()
 {
-   task_info *ti = get_current_task();
-   printk("[kernel thread] EXIT (pid: %i)\n", ti->pid);
+   irq_set_mask(X86_PC_TIMER_IRQ);
 
-   //we cannot free this stack and still use it in schedule()!
-   //kfree(ti->kernel_stack, KERNEL_TASKLET_STACK_SIZE);
-   //ti->kernel_stack = NULL;
+   task_info *ti = get_current_task();
+   printk("****** [kernel thread] EXIT (pid: %i)\n", ti->pid);
 
    ti->state = TASK_STATE_ZOMBIE;
 
@@ -113,7 +111,9 @@ void kthread_exit()
    // scheduler.
 
    push_nested_interrupt(-1);
-   schedule();
+
+   asmVolatile("movl %0, %%esp" : : "i"(KERNEL_BASE_STACK_ADDR));
+   asmVolatile("jmp %0" : : "r"(&schedule));
 }
 
 NORETURN void first_usermode_switch(page_directory_t *pdir,
