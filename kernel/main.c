@@ -123,7 +123,6 @@ void kmain()
 
    set_timer_freq(TIMER_HZ);
 
-   //irq_set_mask(0);
    irq_set_mask(7); // mask IRQ #7 (spurious wake-up)
 
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);

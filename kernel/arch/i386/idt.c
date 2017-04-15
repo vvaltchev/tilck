@@ -314,7 +314,7 @@ void generic_interrupt_handler(regs *r)
        */
 
       ASSERT(!are_interrupts_enabled());
-      enable_interrupts();
+      enable_interrupts_forced();
 
       handle_irq(r);
 
@@ -326,7 +326,7 @@ void generic_interrupt_handler(regs *r)
    irq_set_mask(X86_PC_TIMER_IRQ);
 
    // Re-enable the interrupts, for the same reason as before.
-   enable_interrupts();
+   enable_interrupts_forced();
 
    if (LIKELY(r->int_num == SYSCALL_SOFT_INTERRUPT)) {
 
