@@ -42,17 +42,45 @@ void simple_func(void *p1, void *p2, void *p3)
    ASSERT_EQ(p3, (void*) 3);
 }
 
+void simple_func2(void *p1, void *p2)
+{
+   ASSERT_EQ(p1, (void*) 1);
+   ASSERT_EQ(p2, (void*) 2);
+}
+
+void simple_func1(void *p1)
+{
+   ASSERT_EQ(p1, (void*) 1);
+}
+
+TEST_F(tasklet_test, essential)
+{
+   bool res;
+
+   ASSERT_TRUE(add_tasklet3(&simple_func, 1, 2, 3));
+   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+   ASSERT_TRUE(res);
+
+   ASSERT_TRUE(add_tasklet2(&simple_func2, 1, 2));
+   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+   ASSERT_TRUE(res);
+
+   ASSERT_TRUE(add_tasklet1(&simple_func1, 1));
+   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+   ASSERT_TRUE(res);
+}
+
 
 TEST_F(tasklet_test, base)
 {
    bool res;
 
    for (int i = 0; i < MAX_TASKLETS; i++) {
-      res = add_tasklet((void *)&simple_func, (void*)1, (void*)2, (void*)3);
+      res = add_tasklet3(&simple_func, 1, 2, 3);
       ASSERT_TRUE(res);
    }
 
-   res = add_tasklet((void *)&simple_func, (void*)1, (void*)2, (void*)3);
+   res = add_tasklet3(&simple_func, 1, 2, 3);
 
    // There is no more space left, expecting the ADD failed.
    ASSERT_FALSE(res);
@@ -75,7 +103,7 @@ TEST_F(tasklet_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < MAX_TASKLETS/2; i++) {
-      res = add_tasklet((void *)&simple_func, (void*)1, (void*)2, (void*)3);
+      res = add_tasklet3(&simple_func, 1, 2, 3);
       ASSERT_TRUE(res);
    }
 
@@ -87,7 +115,7 @@ TEST_F(tasklet_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < MAX_TASKLETS/2; i++) {
-      res = add_tasklet((void *)&simple_func, (void*)1, (void*)2, (void*)3);
+      res = add_tasklet3(&simple_func, 1, 2, 3);
       ASSERT_TRUE(res);
    }
 
@@ -99,7 +127,7 @@ TEST_F(tasklet_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < MAX_TASKLETS/2; i++) {
-      res = add_tasklet((void *)&simple_func, (void*)1, (void*)2, (void*)3);
+      res = add_tasklet3(&simple_func, 1, 2, 3);
       ASSERT_TRUE(res);
    }
 
@@ -117,7 +145,7 @@ TEST_F(tasklet_test, advanced)
    ASSERT_FALSE(res);
 }
 
-TEST_F(tasklet_test, chaos_test)
+TEST_F(tasklet_test, chaos)
 {
    random_device rdev;
    default_random_engine e(rdev());
@@ -135,11 +163,11 @@ TEST_F(tasklet_test, chaos_test)
       for (int i = 0; i < c; i++) {
 
          if (slots_used == MAX_TASKLETS) {
-            ASSERT_FALSE(add_tasklet((void *)&simple_func, NULL, NULL, NULL));
+            ASSERT_FALSE(add_tasklet3(&simple_func, NULL, NULL, NULL));
             break;
          }
 
-         res = add_tasklet((void *)&simple_func, (void*)1, (void*)2, (void*)3);
+         res = add_tasklet3(&simple_func, 1, 2, 3);
          ASSERT_TRUE(res);
          slots_used++;
       }

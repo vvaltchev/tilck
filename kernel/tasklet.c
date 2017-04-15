@@ -27,7 +27,7 @@ void initialize_tasklets()
 }
 
 
-bool add_tasklet(void *func, void *arg1, void *arg2, void *arg3)
+bool add_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
 {
    if (slots_used >= MAX_TASKLETS) {
       return false;
@@ -39,9 +39,9 @@ bool add_tasklet(void *func, void *arg1, void *arg2, void *arg3)
       ASSERT(all_tasklets[first_free_slot_index].fptr == NULL);
 
       all_tasklets[first_free_slot_index].fptr = (tasklet_func)func;
-      all_tasklets[first_free_slot_index].ctx.arg1 = (uptr)arg1;
-      all_tasklets[first_free_slot_index].ctx.arg2 = (uptr)arg2;
-      all_tasklets[first_free_slot_index].ctx.arg3 = (uptr)arg3;
+      all_tasklets[first_free_slot_index].ctx.arg1 = arg1;
+      all_tasklets[first_free_slot_index].ctx.arg2 = arg2;
+      all_tasklets[first_free_slot_index].ctx.arg3 = arg3;
 
       first_free_slot_index = (first_free_slot_index + 1) % MAX_TASKLETS;
       slots_used++;
