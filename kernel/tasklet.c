@@ -4,7 +4,6 @@
 #include <string_util.h>
 #include <hal.h>
 
-#define MAX_TASKLETS 1024
 
 typedef void (*tasklet_func)(uptr, uptr, uptr);
 
@@ -28,22 +27,29 @@ void initialize_tasklets()
 }
 
 
-void add_tasklet(void *func, void *arg1, void *arg2, void *arg3)
+bool add_tasklet(void *func, void *arg1, void *arg2, void *arg3)
 {
+   if (slots_used >= MAX_TASKLETS) {
+      return false;
+   }
+
    disable_interrupts();
 
-   ASSERT(slots_used < MAX_TASKLETS);
-   ASSERT(all_tasklets[first_free_slot_index].fptr == NULL);
+   {
+      ASSERT(all_tasklets[first_free_slot_index].fptr == NULL);
 
-   all_tasklets[first_free_slot_index].fptr = (tasklet_func)func;
-   all_tasklets[first_free_slot_index].ctx.arg1 = (uptr)arg1;
-   all_tasklets[first_free_slot_index].ctx.arg2 = (uptr)arg2;
-   all_tasklets[first_free_slot_index].ctx.arg3 = (uptr)arg3;
+      all_tasklets[first_free_slot_index].fptr = (tasklet_func)func;
+      all_tasklets[first_free_slot_index].ctx.arg1 = (uptr)arg1;
+      all_tasklets[first_free_slot_index].ctx.arg2 = (uptr)arg2;
+      all_tasklets[first_free_slot_index].ctx.arg3 = (uptr)arg3;
 
-   first_free_slot_index = (first_free_slot_index + 1) % MAX_TASKLETS;
-   slots_used++;
+      first_free_slot_index = (first_free_slot_index + 1) % MAX_TASKLETS;
+      slots_used++;
+   }
 
    enable_interrupts();
+
+   return true;
 }
 
 bool run_one_tasklet()
@@ -56,12 +62,16 @@ bool run_one_tasklet()
 
    disable_interrupts();
 
-   ASSERT(all_tasklets[tasklet_to_execute].fptr != NULL);
-   memmove(&t, &all_tasklets[tasklet_to_execute], sizeof(tasklet));
-   all_tasklets[tasklet_to_execute].fptr = NULL;
+   {
+      ASSERT(all_tasklets[tasklet_to_execute].fptr != NULL);
 
-   slots_used--;
-   tasklet_to_execute = (tasklet_to_execute + 1) % MAX_TASKLETS;
+      memmove(&t, &all_tasklets[tasklet_to_execute], sizeof(tasklet));
+      all_tasklets[tasklet_to_execute].fptr = NULL;
+
+      slots_used--;
+      tasklet_to_execute = (tasklet_to_execute + 1) % MAX_TASKLETS;
+   }
+
    enable_interrupts();
 
 

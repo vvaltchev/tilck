@@ -17,5 +17,8 @@
     },
     "files.eol": "\n",
     "files.trimTrailingWhitespace": true,
-    "files.insertFinalNewline": true
+   "files.insertFinalNewline": true,
+   "files.associations": {
+      "cstdio": "cpp"
+   }
 }

@@ -8,13 +8,13 @@
 #include <random>
 
 #include <gtest/gtest.h>
+#include "mocks.h"
 
 extern "C" {
-#include <kmalloc.h>
-#include <paging.h>
-#include <utils.h>
-void kernel_kmalloc_perf_test();
-void initialize_test_kernel_heap();
+   #include <kmalloc.h>
+   #include <paging.h>
+   #include <utils.h>
+   void kernel_kmalloc_perf_test();
 }
 
 using namespace std;

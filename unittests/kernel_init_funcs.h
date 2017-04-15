@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include <common_defs.h>
 
 extern "C" {
