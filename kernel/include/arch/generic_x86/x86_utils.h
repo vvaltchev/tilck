@@ -61,14 +61,21 @@ extern volatile int disable_interrupts_count;
 static ALWAYS_INLINE void disable_interrupts()
 {
    if (++disable_interrupts_count == 1) {
+
+#if !defined(TESTING) && !defined(KERNEL_TEST)
       asmVolatile("cli");
+#endif
+
    }
 }
 
 static ALWAYS_INLINE void disable_interrupts_forced()
 {
    disable_interrupts_count = 1;
+
+#if !defined(TESTING) && !defined(KERNEL_TEST)
    asmVolatile("cli");
+#endif
 }
 
 
@@ -77,14 +84,21 @@ static ALWAYS_INLINE void enable_interrupts()
    ASSERT(disable_interrupts_count > 0);
 
    if (--disable_interrupts_count == 0) {
+
+#if !defined(TESTING) && !defined(KERNEL_TEST)
       asmVolatile("sti");
+#endif
+
    }
 }
 
 static ALWAYS_INLINE void enable_interrupts_forced()
 {
    disable_interrupts_count = 0;
+
+#if !defined(TESTING) && !defined(KERNEL_TEST)
    asmVolatile("sti");
+#endif
 }
 
 

@@ -31,6 +31,10 @@ void kernel_kmalloc_perf_test()
 
             printk("We were unable to allocate %u bytes\n", random_values[j]);
 
+#ifdef KERNEL_TEST
+            NOT_REACHED();
+#endif
+
          } else {
 
             memAllocated +=

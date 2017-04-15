@@ -2,10 +2,6 @@
 #include <string_util.h>
 #include <hal.h>
 
-/* the kernel starts with interrupts disabled */
-volatile int disable_interrupts_count = 1;
-
-
 void memcpy(void *dest, const void *src, size_t n)
 {
    // Copy byte-by-byte until 'b' because divisible by 4

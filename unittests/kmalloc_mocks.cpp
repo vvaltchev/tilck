@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <cassert>
 #include <iostream>
 #include <vector>
@@ -17,9 +18,30 @@ extern "C" {
 #include <utils.h>
 
 void *kernel_heap_base = nullptr;
-
-
 unordered_map<uptr, uptr> mappings;
+
+void initialize_test_kernel_heap()
+{
+   if (kernel_heap_base != nullptr) {
+      //printf("initialize_test_kernel_heap: heap is not null, re-allocating!\n");
+      //free(kernel_heap_base);
+      //memset(kernel_heap_base, 0, HEAP_DATA_SIZE);
+      mappings.clear();
+   }
+
+   uptr align_size = 16 * PAGE_SIZE;
+
+   kernel_heap_base = aligned_alloc(align_size, HEAP_DATA_SIZE);
+
+   ///printf("aligned alloc returned: %p\n", kernel_heap_base);
+   //exit(0);
+
+   // uptr addr = (uptr)malloc(HEAP_DATA_SIZE + align_size);
+   // addr += align_size;
+   // addr &= ~(align_size - 1);
+
+   // kernel_heap_base = (void *)addr;
+}
 
 bool __wrap_is_mapped(void *pdir, uptr vaddr)
 {
@@ -43,7 +65,7 @@ bool __wrap_kbasic_virtual_free(uptr vaddr, int pageCount)
    assert((vaddr & (PAGE_SIZE - 1)) == 0);
 
    for (int i = 0; i < pageCount; i++) {
-      
+
       uptr phys_addr = mappings[vaddr + i * PAGE_SIZE];
       free_pageframe(phys_addr);
       mappings[vaddr + i * PAGE_SIZE] = 0;

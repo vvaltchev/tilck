@@ -22,6 +22,8 @@ set(
    WRAPPED_SYMS
 
    panic
+   assert_failed
+   not_reached
    printk
    kbasic_virtual_alloc
    kbasic_virtual_free

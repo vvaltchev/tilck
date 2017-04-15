@@ -159,7 +159,7 @@ static size_t set_free_uplevels(int *node, size_t size) {
 bool allocation_for_metadata_nodes[ALLOC_METADATA_SIZE] = {0};
 
 ALWAYS_INLINE static bool node_has_page(int node)
-{  
+{
    return allocation_for_metadata_nodes[(node * sizeof(block_node)) >> 15];
 }
 
@@ -349,7 +349,7 @@ void *kmalloc(size_t desired_size)
          actual_allocate_node(node_size, node, vaddr);
          return (void *) vaddr;
       }
-   
+
 
       if (!n.split) {
          DEBUG_printk("Splitting node #%u...\n", node);
@@ -414,7 +414,7 @@ void kfree(void *ptr, size_t size)
    ASSERT(!md->nodes[node].split);
 
 
-   // Walking up to mark the parent nodes as 'free' if necessary..  
+   // Walking up to mark the parent nodes as 'free' if necessary..
 
    {
       int biggest_free_node = node;
@@ -423,7 +423,7 @@ void kfree(void *ptr, size_t size)
       DEBUG_printk("After coaleshe, biggest_free_node# %i, "
                    "biggest_free_size = %u\n",
                    biggest_free_node, biggest_free_size);
-   
+
       ASSERT(biggest_free_node == node || biggest_free_size != size);
 
       if (biggest_free_size < ALLOC_BLOCK_SIZE)
@@ -471,7 +471,7 @@ void kfree(void *ptr, size_t size)
       new_node_val.split = false;
 
       md->nodes[alloc_block_node] = new_node_val;
- 
+
       alloc_block_vaddr += ALLOC_BLOCK_SIZE;
    }
 }
@@ -479,7 +479,9 @@ void kfree(void *ptr, size_t size)
 
 void initialize_kmalloc() {
 
-   /* Do nothing, for the moment. */
+   memset(allocation_for_metadata_nodes,
+          0,
+          sizeof(allocation_for_metadata_nodes));
 
    DEBUG_printk("heap base addr: %p\n", HEAP_BASE_ADDR);
    DEBUG_printk("heap data addr: %p\n", HEAP_DATA_ADDR);
