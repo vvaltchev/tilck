@@ -60,13 +60,22 @@ void kmalloc_chaos_test_sub(default_random_engine &e,
    }
 }
 
+class kmalloc_test : public Test {
+public:
 
-TEST(kmalloc, chaos_test)
+   void SetUp() override {
+      initialize_test_kernel_heap();
+      init_pageframe_allocator();
+      initialize_kmalloc();
+   }
+
+   void TearDown() override {
+      /* do nothing, for the moment */
+   }
+};
+
+TEST_F(kmalloc_test, chaos_test)
 {
-   initialize_test_kernel_heap();
-   init_pageframe_allocator();
-   initialize_kmalloc();
-
    random_device rdev;
    default_random_engine e(rdev());
 
@@ -78,7 +87,7 @@ TEST(kmalloc, chaos_test)
 }
 
 
-TEST(kmalloc_kernel, perf_test)
+TEST_F(kmalloc_test, perf_test)
 {
    initialize_test_kernel_heap();
    init_pageframe_allocator();
