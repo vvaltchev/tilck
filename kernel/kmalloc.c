@@ -479,9 +479,9 @@ void kfree(void *ptr, size_t size)
 
 void initialize_kmalloc() {
 
-   memset(allocation_for_metadata_nodes,
-          0,
-          sizeof(allocation_for_metadata_nodes));
+   // memset(allocation_for_metadata_nodes,
+   //        0,
+   //        sizeof(allocation_for_metadata_nodes));
 
    DEBUG_printk("heap base addr: %p\n", HEAP_BASE_ADDR);
    DEBUG_printk("heap data addr: %p\n", HEAP_DATA_ADDR);

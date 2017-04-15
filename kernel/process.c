@@ -89,6 +89,7 @@ NORETURN void schedule()
    task_info *selected = curr;
    task_info *pos;
    const u64 jiffies_used = jiffies - curr->jiffies_when_switch;
+   u64 least_jiffies_for_task = (u64)-1;
 
    if (curr->state == TASK_STATE_ZOMBIE && is_kernel_thread(curr)) {
 
@@ -105,8 +106,8 @@ NORETURN void schedule()
       goto end;
    }
 
-   printk("[sched] Current pid: %i, used %llu jiffies\n",
-          current_task->pid, jiffies_used);
+   //printk("[sched] Current pid: %i, used %llu jiffies\n",
+   //       current_task->pid, jiffies_used);
 
    // If we preempted the process, it is still runnable.
    if (curr->state == TASK_STATE_RUNNING) {
@@ -117,9 +118,14 @@ NORETURN void schedule()
 actual_sched:
 
    list_for_each_entry(pos, &tasks_list, list) {
-      if (pos != curr && pos->state == TASK_STATE_RUNNABLE) {
+
+      if (pos == curr || pos->state != TASK_STATE_RUNNABLE) {
+         continue;
+      }
+
+      if (pos->jiffies_when_switch < least_jiffies_for_task) {
          selected = pos;
-         break;
+         least_jiffies_for_task = pos->jiffies_when_switch;
       }
    }
 
@@ -144,7 +150,8 @@ end:
 
    if (selected != curr) {
       printk("[sched] Switching to pid: %i %s\n",
-             selected->pid, is_kernel_thread(selected) ? "[KTHREAD]" : "");
+             selected->pid,
+             is_kernel_thread(selected) ? "[KTHREAD]" : "[USER]");
    }
 
    ASSERT(selected != NULL);

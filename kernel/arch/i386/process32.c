@@ -108,7 +108,10 @@ void kthread_exit()
    irq_set_mask(X86_PC_TIMER_IRQ);
 
    task_info *ti = get_current_task();
+
+   disable_interrupts();
    printk("****** [kernel thread] EXIT (pid: %i)\n", ti->pid);
+   enable_interrupts();
 
    ti->state = TASK_STATE_ZOMBIE;
 

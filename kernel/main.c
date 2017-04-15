@@ -93,7 +93,7 @@ void test_memdisk()
 }
 
 
-void simple_kthread(void)
+void simple_test_kthread(void)
 {
    disable_interrupts();
    printk("[kernel thread] This is a kernel thread..\n");
@@ -108,6 +108,25 @@ void simple_kthread(void)
       }
    }
 }
+
+void tasklet_runner_kthread(void)
+{
+   bool res;
+
+   disable_interrupts();
+   printk("[kernel thread] tasklet runner kthread (pid: %i)\n", get_current_task()->pid);
+   enable_interrupts();
+
+   while (true) {
+
+      res = run_one_tasklet();
+
+      if (!res) {
+         halt();
+      }
+   }
+}
+
 
 void kmain()
 {
@@ -143,7 +162,8 @@ void kmain()
    // Initialize the keyboard driver.
    init_kb();
 
-   kthread_create(simple_kthread);
+   kthread_create(simple_test_kthread);
+   kthread_create(tasklet_runner_kthread);
 
    // Run the 'init' usermode program.
    run_usermode_init();
