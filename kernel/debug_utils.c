@@ -1,7 +1,7 @@
 
 #include <debug_utils.h>
 #include <string_util.h>
-#include <arch/generic_x86/utils.h>
+#include <arch/generic_x86/x86_utils.h>
 
 size_t stackwalk32(void **frames, size_t count)
 {

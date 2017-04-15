@@ -1,7 +1,7 @@
 
 #include <common_defs.h>
 #include <process.h>
-#include <arch/generic_x86/utils.h>
+#include <arch/generic_x86/x86_utils.h>
 #include <string_util.h>
 
 extern volatile task_info *current_task;

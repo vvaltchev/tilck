@@ -4,7 +4,7 @@
 #include <string_util.h>
 #include <paging.h>
 #include <utils.h>
-#include <arch/generic_x86/utils.h>
+#include <arch/generic_x86/x86_utils.h>
 
 
 #define RANDOM_VALUES_COUNT 1000

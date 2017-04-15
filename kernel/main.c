@@ -9,7 +9,7 @@
 #include <debug_utils.h>
 #include <process.h>
 
-#include <arch_utils.h>
+#include <hal.h>
 #include <utils.h>
 
 void gdt_install();

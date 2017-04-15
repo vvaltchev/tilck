@@ -2,7 +2,7 @@
 #include <common_defs.h>
 #include <string_util.h>
 #include <term.h>
-#include <arch/generic_x86/utils.h>
+#include <arch/generic_x86/x86_utils.h>
 
 #define KB_DATA_PORT 0x60
 #define KB_CONTROL_PORT 0x64

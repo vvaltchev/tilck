@@ -3,7 +3,7 @@
 #include <kmalloc.h>
 #include <string_util.h>
 
-#include <arch_utils.h>
+#include <hal.h>
 
 #define TIME_SLOT_JIFFIES 50
 

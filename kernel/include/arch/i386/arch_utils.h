@@ -3,7 +3,7 @@
 
 #include <common_defs.h>
 #include <process.h>
-#include <arch/generic_x86/utils.h>
+#include <arch/generic_x86/x86_utils.h>
 
 #define KERNEL_BASE_STACK_ADDR 0xC01FFFF0
 
