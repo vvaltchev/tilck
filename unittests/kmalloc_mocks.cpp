@@ -23,24 +23,12 @@ unordered_map<uptr, uptr> mappings;
 void initialize_test_kernel_heap()
 {
    if (kernel_heap_base != nullptr) {
-      //printf("initialize_test_kernel_heap: heap is not null, re-allocating!\n");
-      //free(kernel_heap_base);
-      //memset(kernel_heap_base, 0, HEAP_DATA_SIZE);
+      memset(kernel_heap_base, 0, HEAP_DATA_SIZE);
       mappings.clear();
    }
 
    uptr align_size = 16 * PAGE_SIZE;
-
    kernel_heap_base = aligned_alloc(align_size, HEAP_DATA_SIZE);
-
-   ///printf("aligned alloc returned: %p\n", kernel_heap_base);
-   //exit(0);
-
-   // uptr addr = (uptr)malloc(HEAP_DATA_SIZE + align_size);
-   // addr += align_size;
-   // addr &= ~(align_size - 1);
-
-   // kernel_heap_base = (void *)addr;
 }
 
 bool __wrap_is_mapped(void *pdir, uptr vaddr)
