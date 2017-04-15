@@ -111,7 +111,7 @@ void panic(const char *fmt, ...)
 
    in_panic = true;
 
-   disable_interrupts();
+   disable_interrupts_forced();
 
    printk("\n\n************** KERNEL PANIC **************\n");
 

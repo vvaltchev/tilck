@@ -1,0 +1,72 @@
+
+#include <tasklet.h>
+#include <kmalloc.h>
+#include <string_util.h>
+#include <hal.h>
+
+#define MAX_TASKLETS 1024
+
+typedef void (*tasklet_func)(uptr, uptr, uptr);
+
+typedef struct {
+
+   tasklet_func fptr;
+   tasklet_context ctx;
+
+} tasklet;
+
+
+tasklet *all_tasklets = NULL;
+static volatile int first_free_slot_index = 0;
+static volatile int slots_used = 0;
+static volatile int tasklet_to_execute = 0;
+
+void initialize_tasklets()
+{
+   all_tasklets = kmalloc(sizeof(tasklet) * MAX_TASKLETS);
+   memset(all_tasklets, 0, sizeof(tasklet) * MAX_TASKLETS);
+}
+
+
+void add_tasklet(void *func, void *arg1, void *arg2, void *arg3)
+{
+   disable_interrupts();
+
+   ASSERT(slots_used < MAX_TASKLETS);
+   ASSERT(all_tasklets[first_free_slot_index].fptr == NULL);
+
+   all_tasklets[first_free_slot_index].fptr = (tasklet_func)func;
+   all_tasklets[first_free_slot_index].ctx.arg1 = (uptr)arg1;
+   all_tasklets[first_free_slot_index].ctx.arg2 = (uptr)arg2;
+   all_tasklets[first_free_slot_index].ctx.arg3 = (uptr)arg3;
+
+   first_free_slot_index = (first_free_slot_index + 1) % MAX_TASKLETS;
+   slots_used++;
+
+   enable_interrupts();
+}
+
+bool run_one_tasklet()
+{
+   tasklet t;
+
+   if (slots_used == 0) {
+      return false;
+   }
+
+   disable_interrupts();
+
+   ASSERT(all_tasklets[tasklet_to_execute].fptr != NULL);
+   memmove(&t, &all_tasklets[tasklet_to_execute], sizeof(tasklet));
+   all_tasklets[tasklet_to_execute].fptr = NULL;
+
+   slots_used--;
+   tasklet_to_execute = (tasklet_to_execute + 1) % MAX_TASKLETS;
+   enable_interrupts();
+
+
+   /* Execute the tasklet with interrupts ENABLED */
+   t.fptr(t.ctx.arg1, t.ctx.arg2, t.ctx.arg3);
+
+   return true;
+}

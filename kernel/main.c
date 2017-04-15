@@ -11,6 +11,7 @@
 
 #include <hal.h>
 #include <utils.h>
+#include <tasklet.h>
 
 void gdt_install();
 void idt_install();
@@ -135,7 +136,8 @@ void kmain()
    mount_memdisk();
    //test_memdisk();
 
-   // Restore the interrupts.
+   initialize_tasklets();
+
    enable_interrupts();
 
    // Initialize the keyboard driver.
