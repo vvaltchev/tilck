@@ -256,7 +256,7 @@ void handle_irq(regs *r)
        */
 
        if (!(pic_get_isr() & (1 << irq))) {
-          printk("Spurious IRQ #%i\n", irq);
+          //printk("Spurious IRQ #%i\n", irq);
           goto clear_mask_end;
        }
    }
