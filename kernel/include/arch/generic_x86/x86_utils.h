@@ -7,7 +7,7 @@
 #error This header can be used only for x86 and x86-64 architectures.
 #endif
 
-#define TIMER_HZ 100
+#define TIMER_HZ 250
 
 #define X86_PC_TIMER_IRQ       0
 #define X86_PC_KEYBOARD_IRQ    1

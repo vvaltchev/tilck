@@ -131,7 +131,7 @@ bool e0pkeys[128] = { false };
 
 bool *pkeysArrays[2] = { pkeys, e0pkeys };
 
-bool numLock = true;
+bool numLock = false;
 bool capsLock = false;
 bool lastWasE0 = false;
 

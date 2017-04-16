@@ -42,6 +42,8 @@ void irq_clear_mask(u8 IRQline);
 void set_fault_handler(int fault, void *ptr);
 void PIC_sendEOI(u8 irq);
 
+u16 pic_get_irr(void);
+u16 pic_get_isr(void);
 
 
 extern volatile int nested_interrupts_count;

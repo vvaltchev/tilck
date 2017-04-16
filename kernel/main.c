@@ -143,7 +143,7 @@ void kmain()
 
    set_timer_freq(TIMER_HZ);
 
-   irq_set_mask(7); // mask IRQ #7 (spurious wake-up)
+   //irq_set_mask(X86_PC_TIMER_IRQ);
 
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
@@ -167,6 +167,8 @@ void kmain()
 
    // Run the 'init' usermode program.
    run_usermode_init();
+
+   //while(1) halt();
 
    // We should never get here!
    NOT_REACHED();

@@ -123,7 +123,6 @@ void panic(const char *fmt, ...)
    printk("\n");
 
    dump_stacktrace();
-   //enable_interrupts();
 
    while (true) {
       halt();

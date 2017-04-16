@@ -234,21 +234,7 @@ void end_current_interrupt_handling()
    }
 }
 
-static void handle_irq(regs *r)
-{
-   const u8 irq = r->int_num - 32;
 
-   if (irq_routines[irq] != NULL) {
-
-      irq_routines[irq](r);
-
-   } else {
-
-      if (irq == 7) return; // Ignore spurious wake-ups.
-
-      printk("Unhandled IRQ #%i\n", irq);
-   }
-}
 
 static void handle_fault(regs *r)
 {
@@ -269,8 +255,6 @@ static void handle_fault(regs *r)
    }
 }
 
-#ifdef DEBUG
-
 bool is_interrupt_racing_with_itself(int int_num) {
 
    for (int i = nested_interrupts_count - 1; i >= 0; i--) {
@@ -282,12 +266,12 @@ bool is_interrupt_racing_with_itself(int int_num) {
    return false;
 }
 
-#endif
-
 void push_nested_interrupt(int int_num)
 {
    nested_interrupts[nested_interrupts_count++] = int_num;
 }
+
+void handle_irq(regs *r);
 
 void generic_interrupt_handler(regs *r)
 {
@@ -302,28 +286,13 @@ void generic_interrupt_handler(regs *r)
    ASSERT(nested_interrupts_count < (int)ARRAY_SIZE(nested_interrupts));
    ASSERT(!is_interrupt_racing_with_itself(r->int_num));
 
-   push_nested_interrupt(r->int_num);
-
    if (is_irq(r->int_num)) {
-
-      irq_set_mask(r->int_num - 32);
-
-      /*
-       * Since x86 automatically disables all interrupts before jumping to the
-       * interrupt handler, we have to re-enable them manually here.
-       */
-
-      ASSERT(!are_interrupts_enabled());
-      enable_interrupts_forced();
-
       handle_irq(r);
-
-      end_current_interrupt_handling();
-      irq_clear_mask(r->int_num - 32);
       return;
    }
 
    irq_set_mask(X86_PC_TIMER_IRQ);
+   push_nested_interrupt(r->int_num);
 
    // Re-enable the interrupts, for the same reason as before.
    enable_interrupts_forced();
@@ -351,7 +320,6 @@ void idt_install()
     idtp.base = &idt;
 
     /* Add any new ISRs to the IDT here using idt_set_gate */
-
     isrs_install();
 
     /* Points the processor's internal register to the new IDT */

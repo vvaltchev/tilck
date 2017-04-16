@@ -95,10 +95,18 @@ bool handle_potential_cow(u32 vaddr)
    return true;
 }
 
+extern volatile bool in_panic;
+
 void handle_page_fault(regs *r)
 {
    u32 vaddr;
+
+   if (in_panic) {
+      return;
+   }
+
    asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
+
 
    bool us = (r->err_code & (1 << 2)) != 0;
    bool rw = (r->err_code & (1 << 1)) != 0;

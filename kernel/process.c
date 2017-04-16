@@ -5,7 +5,7 @@
 
 #include <hal.h>
 
-#define TIME_SLOT_JIFFIES 50
+#define TIME_SLOT_JIFFIES (TIMER_HZ)
 
 task_info *volatile current_task = NULL;
 int current_max_pid = 0;
