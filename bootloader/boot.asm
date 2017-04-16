@@ -11,8 +11,8 @@
 
 %define VDISK_FIRST_LBA_SECTOR 2048
 
-; 2048 + 32768 sectors (16 MB) - 1
-;%define VDISK_LAST_LBA_SECTOR 34815
+; 2048 + 32256 sectors (~16 MB) - 1
+;%define VDISK_LAST_LBA_SECTOR 34304
 
 ; DEBUG VALUE, usable until the fatpart contains just a small init program.
 %define VDISK_LAST_LBA_SECTOR 2560

@@ -29,7 +29,7 @@ void load_elf_program(void *elf,
                       void **stack_addr);
 
 
-#define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023e00
+#define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023600
 
 void run_usermode_init()
 {

@@ -120,8 +120,6 @@ add_custom_command(
    COMMAND
       dd status=none conv=notrunc if=${KERNEL_BIN_FILE} of=${IMG_FILE} seek=4 bs=1K
    COMMAND
-      dd status=none conv=notrunc if=${INIT_FILE} of=${IMG_FILE} seek=132 obs=1024 ibs=1024
-   COMMAND
       ${BUILD_SCRIPTS}/build_fatpart.sh ${CMAKE_BINARY_DIR} fatpart
    COMMAND
       # For development purposes, copy just a small part from the fatpart to make the build faster.
