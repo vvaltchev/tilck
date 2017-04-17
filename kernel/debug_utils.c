@@ -2,21 +2,35 @@
 #include <debug_utils.h>
 #include <string_util.h>
 #include <arch/generic_x86/x86_utils.h>
-#include <paging.h>
+#include <arch/i386/process_int.h>
+#include <irq.h>
 
-size_t stackwalk32(void **frames, size_t count)
+static bool mapped_in_kernel_or_in_pdir(page_directory_t *pdir, void *vaddr)
+{
+   return is_mapped(pdir, vaddr) || is_mapped(get_kernel_page_dir(), vaddr);
+}
+
+size_t stackwalk32(void **frames,
+                   size_t count,
+                   void *ebp,
+                   page_directory_t *pdir)
 {
    void *retAddr;
-   void *ebp;
    size_t i;
 
-   ebp = (void *) (&frames - 2);
+   if (!ebp) {
+      ebp = (void *) (&frames - 2);
+   }
+
+   if (!pdir) {
+      pdir = get_kernel_page_dir();
+   }
 
    for (i = 0; i < count; i++) {
 
       void *addrs_to_deref[2] = { ebp, ebp + 1 };
-      if (!is_mapped(get_kernel_page_dir(), addrs_to_deref[0]) ||
-          !is_mapped(get_kernel_page_dir(), addrs_to_deref[1])) {
+      if (!mapped_in_kernel_or_in_pdir(pdir, addrs_to_deref[0]) ||
+          !mapped_in_kernel_or_in_pdir(pdir, addrs_to_deref[1])) {
 
          break;
       }
@@ -38,15 +52,26 @@ size_t stackwalk32(void **frames, size_t count)
 void dump_stacktrace()
 {
    void *frames[32] = {0};
-   size_t c = stackwalk32(frames, 32);
+   size_t c = stackwalk32(frames, 32, NULL, NULL);
 
-   printk("*** STACKTRACE ***\n");
+   printk("*** KERNEL STACKTRACE ***\n");
 
    for (size_t i = 0; i < c; i++) {
       printk("frame[%i]: %p\n", i, frames[i]);
    }
 
    printk("\n\n");
+
+   // task_info *ti = get_current_task();
+   // c = stackwalk32(frames, 32, (void *) ti->state_regs.ebp, ti->pdir);
+
+   // printk("*** TASK[%i] STACKTRACE ***\n", ti->pid);
+
+   // for (size_t i = 0; i < c; i++) {
+   //    printk("frame[%i]: %p\n", i, frames[i]);
+   // }
+
+   // printk("\n\n");
 }
 
 
@@ -97,6 +122,12 @@ void panic(const char *fmt, ...)
    va_end(args);
 
    printk("\n");
+
+   printk("Nested interrupts [count: %i]: ", nested_interrupts_count);
+   for (int i = nested_interrupts_count - 1; i >= 0; i--) {
+      printk("%i ", nested_interrupts[i]);
+   }
+   printk("\n\n");
 
    dump_stacktrace();
 

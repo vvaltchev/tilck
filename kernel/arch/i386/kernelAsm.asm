@@ -67,7 +67,7 @@ _start:
 
    ; this is 0xC0100400
    mov esp, 0xC01FFFF0
-   jmp kmain        ; now, really jump to kernel's code which uses 0xC0100000 as ORG
+   jmp kmain   ; now, really jump to kernel's code which uses 0xC0100000 as ORG
 
 gdt_load:
    lgdt [gdt_pointer]
@@ -167,7 +167,39 @@ asm_kthread_context_switch_x86:
    ; Now we can finally pop the 2nd copy of the ESP and just do RET since
    ; the right EIP is already on the new stack.
    pop esp
+
+   sti ; re-enable interrupts
    ret
+
+extern generic_interrupt_handler
+
+; This is our common ISR stub. It saves the processor state, sets
+; up for kernel mode segments, calls the C-level fault handler,
+; and finally restores the stack frame.
+asm_int_handler:
+    pusha          ;  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+    push ds
+    push es
+    push fs
+    push gs
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov eax, esp
+    push eax
+    mov eax, generic_interrupt_handler
+    call eax
+    pop eax
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    popa          ; Pops edi,esi,ebp...
+    add esp, 8    ; Cleans up the pushed error code and pushed ISR number
+    iret
+
 
 ; Service Routines (ISRs)
 global isr0
@@ -396,36 +428,6 @@ isr128:
     push byte 0
     push 0x80
     jmp asm_int_handler
-
-
-extern generic_interrupt_handler
-
-; This is our common ISR stub. It saves the processor state, sets
-; up for kernel mode segments, calls the C-level fault handler,
-; and finally restores the stack frame.
-asm_int_handler:
-    pusha          ;  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
-    push ds
-    push es
-    push fs
-    push gs
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov eax, esp
-    push eax
-    mov eax, generic_interrupt_handler
-    call eax
-    pop eax
-    pop gs
-    pop fs
-    pop es
-    pop ds
-    popa          ; Pops edi,esi,ebp...
-    add esp, 8    ; Cleans up the pushed error code and pushed ISR number
-    iret
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

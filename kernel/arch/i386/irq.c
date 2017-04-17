@@ -6,6 +6,7 @@
 #include <string_util.h>
 #include <term.h>
 #include <utils.h>
+#include <hal.h>
 
 void idt_set_gate(u8 num, void *handler, u16 sel, u8 flags);
 
@@ -226,6 +227,8 @@ void handle_irq(regs *r)
    const int irq = r->int_num - 32;
 
    irq_set_mask(irq);
+   ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+   disable_preemption();
 
    if (irq == 7 || irq == 15) {
 
@@ -256,7 +259,7 @@ void handle_irq(regs *r)
        */
 
        if (!(pic_get_isr() & (1 << irq))) {
-          //printk("Spurious IRQ #%i\n", irq);
+          printk("Spurious IRQ #%i\n", irq);
           goto clear_mask_end;
        }
    }
@@ -285,8 +288,11 @@ void handle_irq(regs *r)
       printk("Unhandled IRQ #%i\n", irq);
    }
 
-   end_current_interrupt_handling();
+   end_current_interrupt_handling(); // sends EOI to the PIC
 
 clear_mask_end:
+   enable_preemption();
+   ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+
    irq_clear_mask(irq);
 }

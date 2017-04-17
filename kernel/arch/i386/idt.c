@@ -4,6 +4,7 @@
 #include <arch/i386/arch_utils.h>
 #include <string_util.h>
 #include <term.h>
+#include <hal.h>
 
 /* Defines an IDT entry */
 struct idt_entry
@@ -213,8 +214,6 @@ void set_fault_handler(int exceptionNum, void *ptr)
    fault_handlers[exceptionNum] = (interrupt_handler) ptr;
 }
 
-extern task_info *current_task;
-
 void end_current_interrupt_handling()
 {
    int curr_int = get_curr_interrupt();
@@ -291,10 +290,16 @@ void generic_interrupt_handler(regs *r)
       return;
    }
 
-   irq_set_mask(X86_PC_TIMER_IRQ);
+   ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+
+   disable_preemption();
    push_nested_interrupt(r->int_num);
 
    // Re-enable the interrupts, for the same reason as before.
+   //if (!are_interrupts_enabled()) {
+   //   printk("int: %i, interrupts are not enabled.\n", r->int_num);
+      //NOT_REACHED();
+   //}
    enable_interrupts_forced();
 
    if (LIKELY(r->int_num == SYSCALL_SOFT_INTERRUPT)) {
@@ -306,7 +311,9 @@ void generic_interrupt_handler(regs *r)
       handle_fault(r);
    }
 
-   irq_clear_mask(X86_PC_TIMER_IRQ);
+   enable_preemption();
+   ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+
    end_current_interrupt_handling();
 }
 

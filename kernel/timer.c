@@ -13,19 +13,37 @@ extern volatile task_info *current_task;
  */
 volatile u64 jiffies = 0;
 
-u32 disabled_preemption_jiffies = 0;
+volatile u32 disable_preemption_count = 0;
 
-void disable_preemption_for(int jiffies)
-{
-   disabled_preemption_jiffies += jiffies;
+void disable_preemption() {
+   disable_preemption_count++;
+}
+
+void enable_preemption() {
+   ASSERT(disable_preemption_count > 0);
+   disable_preemption_count--;
+}
+
+bool is_preemption_enabled() {
+   return disable_preemption_count == 0;
 }
 
 void timer_handler(regs *r)
 {
    jiffies++;
 
-   if (disabled_preemption_jiffies != 0) {
-      disabled_preemption_jiffies--;
+   //if (!(jiffies % 250))
+   //printk("timer[task: %p]: disable_count: %i\n", current_task, disable_preemption_count);
+
+
+   /*
+    * Here we have to check that disabled_preemption_count is > 1, not > 0
+    * since as the way the handle_irq() is implemented, that counter will be
+    * always 1 when this function is called. We have avoid calling schedule()
+    * if there has been another part of the code that disabled the preemption
+    * and we're running in a nested interrupt.
+    */
+   if (disable_preemption_count > 1) {
       return;
    }
 
@@ -33,6 +51,8 @@ void timer_handler(regs *r)
       // The kernel is still initializing and we cannot call schedule() yet.
       return;
    }
+
+   disable_preemption_count = 1;
 
    save_current_task_state(r);
    schedule();

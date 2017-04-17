@@ -4,6 +4,7 @@
 #include <term.h>
 #include <irq.h>
 #include <process.h>
+#include <hal.h>
 
 typedef sptr (*syscall_type)();
 
@@ -173,7 +174,7 @@ void handle_syscall(regs *r)
 
 void isr128();
 
-void setup_syscall_interface()
+void setup_sysenter_interface()
 {
    wrmsr(MSR_IA32_SYSENTER_CS, 0x08 + 3);
    wrmsr(MSR_IA32_SYSENTER_ESP, get_kernel_stack());

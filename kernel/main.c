@@ -150,7 +150,7 @@ void kmain()
 
    set_kernel_stack(KERNEL_BASE_STACK_ADDR);
 
-   setup_syscall_interface();
+   setup_sysenter_interface();
 
    mount_memdisk();
    //test_memdisk();
@@ -162,8 +162,8 @@ void kmain()
    // Initialize the keyboard driver.
    init_kb();
 
-   kthread_create(simple_test_kthread);
-   kthread_create(tasklet_runner_kthread);
+   //kthread_create(simple_test_kthread);
+   //kthread_create(tasklet_runner_kthread);
 
    // Run the 'init' usermode program.
    run_usermode_init();

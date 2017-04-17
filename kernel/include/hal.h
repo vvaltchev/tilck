@@ -23,11 +23,14 @@
 #endif
 
 
-void setup_syscall_interface();
+void setup_sysenter_interface();
+
 void set_kernel_stack(uptr stack);
 uptr get_kernel_stack();
 
-void disable_preemption_for(int jiffies);
+void disable_preemption();
+void enable_preemption();
+bool is_preemption_enabled();
 
 
 #define RAM_DISK_PADDR (0x8000000U) // +128 M

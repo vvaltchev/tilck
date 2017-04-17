@@ -5,7 +5,7 @@
 
 #include <hal.h>
 
-#define TIME_SLOT_JIFFIES (TIMER_HZ*5)
+#define TIME_SLOT_JIFFIES (TIMER_HZ*2)
 
 task_info *volatile current_task = NULL;
 int current_max_pid = 0;
@@ -66,13 +66,25 @@ NORETURN void switch_to_task(task_info *pi)
       set_page_directory(pi->pdir);
    }
 
+   disable_interrupts();
+
+   // We have to be SURE that the timer IRQ is NOT masked!
+   irq_clear_mask(X86_PC_TIMER_IRQ);
+
    end_current_interrupt_handling();
+   enable_preemption();
+
+   ASSERT(is_preemption_enabled());
+
    current_task = pi;
 
 
-   // This allows the switch to happen without interrupts.
-   disable_preemption_for(TIMER_HZ / 10);
-   irq_clear_mask(X86_PC_TIMER_IRQ);
+   /*
+    * ASSERT that the 9th bit in task's eflags is 1, which means that on
+    * IRET the CPU will enable the interrupts.
+    */
+
+   ASSERT(current_task->state_regs.eflags & (1 << 9));
 
 
    if (!is_kernel_thread(current_task)) {
@@ -106,8 +118,8 @@ NORETURN void schedule()
       goto end;
    }
 
-   printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
-          current_task->pid, jiffies_used);
+   // printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
+   //        current_task->pid, jiffies_used);
 
    // If we preempted the process, it is still runnable.
    if (curr->state == TASK_STATE_RUNNING) {
@@ -119,19 +131,19 @@ actual_sched:
 
    list_for_each_entry(pos, &tasks_list, list) {
 
-      printk("[sched] checking pid %i (jiffies = %llu)\n", pos->pid, pos->jiffies_when_switch);
+      //printk("[sched] checking pid %i (jiffies = %llu)\n", pos->pid, pos->jiffies_when_switch);
 
       if (pos == curr || pos->state != TASK_STATE_RUNNABLE) {
-         if (pos == curr)
-            printk("[sched] it is THIS task, skip\n");
-         else
-            printk("[sched] this TASK is NOT runnable!\n");
+         // if (pos == curr)
+         //    printk("[sched] it is THIS task, skip\n");
+         // else
+         //    printk("[sched] this TASK is NOT runnable!\n");
 
          continue;
       }
 
       if (pos->jiffies_when_switch < least_jiffies_for_task) {
-         printk("[sched] it used less jiffies.. selecting IT\n");
+         //printk("[sched] it used less jiffies.. selecting IT\n");
          selected = pos;
          least_jiffies_for_task = pos->jiffies_when_switch;
       }
@@ -148,9 +160,8 @@ end:
       printk("[sched] No runnable process found. Halt.\n");
 
       end_current_interrupt_handling();
-
-      // Re-enable the timer.
       irq_clear_mask(X86_PC_TIMER_IRQ);
+      enable_preemption();
 
       // We did not found any runnable task. Halt.
       halt();

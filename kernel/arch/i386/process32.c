@@ -3,6 +3,7 @@
 #include <string_util.h>
 #include <kmalloc.h>
 #include <arch/i386/process_int.h>
+#include <hal.h>
 
 
 void push_on_user_stack(regs *r, uptr val)
@@ -105,13 +106,10 @@ int kthread_create(kthread_func_ptr fun)
 
 void kthread_exit()
 {
-   irq_set_mask(X86_PC_TIMER_IRQ);
+   disable_interrupts();
 
    task_info *ti = get_current_task();
-
-   disable_interrupts();
    printk("****** [kernel thread] EXIT (pid: %i)\n", ti->pid);
-   enable_interrupts();
 
    ti->state = TASK_STATE_ZOMBIE;
 
@@ -145,11 +143,10 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
    char *env[] = { "OSTYPE=gnu-linux", "PWD=/" };
    push_args_on_user_stack(&r, ARRAY_SIZE(argv), argv, ARRAY_SIZE(env), env);
 
-   r.eflags = get_eflags();
+   r.eflags = get_eflags() | (1 << 9);
 
    task_info *pi = kmalloc(sizeof(task_info));
    INIT_LIST_HEAD(&pi->list);
-
 
    pi->pdir = pdir;
    pi->pid = ++current_max_pid;
@@ -162,5 +159,7 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
 
    add_task(pi);
    pi->jiffies_when_switch = jiffies;
+
+   disable_preemption();
    switch_to_task(pi);
 }
