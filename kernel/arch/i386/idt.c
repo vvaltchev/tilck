@@ -244,7 +244,7 @@ static void handle_fault(regs *r)
 
    } else {
 
-      disable_interrupts();
+      disable_interrupts_forced();
 
       printk("Fault #%i: %s [errCode: %i]\n",
              r->int_num,
