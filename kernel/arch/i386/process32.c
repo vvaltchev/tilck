@@ -74,7 +74,7 @@ int kthread_create(kthread_func_ptr fun)
    r.cs = 0x08;
 
    r.eip = (u32) fun;
-   r.eflags = get_eflags();
+   r.eflags = get_eflags() | (1 << 9);
 
    task_info *pi = kmalloc(sizeof(task_info));
    INIT_LIST_HEAD(&pi->list);
@@ -106,7 +106,7 @@ int kthread_create(kthread_func_ptr fun)
 
 void kthread_exit()
 {
-   disable_interrupts();
+   disable_preemption();
 
    task_info *ti = get_current_task();
    printk("****** [kernel thread] EXIT (pid: %i)\n", ti->pid);
