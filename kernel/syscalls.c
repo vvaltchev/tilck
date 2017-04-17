@@ -4,6 +4,7 @@
 #include <term.h>
 #include <irq.h>
 #include <process.h>
+#include <hal.h>
 
 typedef sptr (*syscall_type)();
 
@@ -140,11 +141,11 @@ syscall_type syscalls_pointers[] =
 const ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
 
 
-#include <arch_utils.h>
+#include <hal.h>
 
 void handle_syscall(regs *r)
 {
-   save_current_process_state(r);
+   save_current_task_state(r);
 
    sptr syscall_no = (sptr) r->eax;
 
@@ -173,7 +174,7 @@ void handle_syscall(regs *r)
 
 void isr128();
 
-void setup_syscall_interface()
+void setup_sysenter_interface()
 {
    wrmsr(MSR_IA32_SYSENTER_CS, 0x08 + 3);
    wrmsr(MSR_IA32_SYSENTER_ESP, get_kernel_stack());

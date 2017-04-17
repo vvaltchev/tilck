@@ -48,6 +48,8 @@ void init_pageframe_allocator()
 {
    int reserved_elems = INITIAL_ELEMS_RESERVED;
 
+   memset((void *)pageframes_bitfield, 0, sizeof(pageframes_bitfield));
+
    for (int i = 0; i < reserved_elems; i++) {
       pageframes_bitfield[i] = FULL_128KB_AREA;
    }
@@ -79,7 +81,7 @@ uptr paging_alloc_pageframe()
 
    uptr ret;
 
-   u32 free_index = get_first_zero_bit_index(bitfield[idx]);  
+   u32 free_index = get_first_zero_bit_index(bitfield[idx]);
    bitfield[idx] |= (1 << free_index);
 
    ret = (((idx + INITIAL_ELEMS_RESERVED) << 17) + (free_index << PAGE_SHIFT));

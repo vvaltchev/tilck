@@ -4,6 +4,7 @@
 #include <arch/i386/arch_utils.h>
 #include <string_util.h>
 #include <term.h>
+#include <hal.h>
 
 /* Defines an IDT entry */
 struct idt_entry
@@ -21,6 +22,9 @@ struct idt_ptr
     void *base;
 } __attribute__((packed));
 
+typedef struct idt_entry idt_entry;
+typedef struct idt_ptr idt_ptr;
+
 /*
  * Declare an IDT of 256 entries. Although we will only use the
  * first 32 entries in this tutorial, the rest exists as a bit
@@ -29,8 +33,8 @@ struct idt_ptr
  * for which the 'presence' bit is cleared (0) will generate an
  * "Unhandled Interrupt" exception
  */
-struct idt_entry idt[256] = {0};
-struct idt_ptr idtp = {0};
+idt_entry idt[256] = {0};
+idt_ptr idtp = {0};
 
 /* This exists in 'start.asm', and is used to load our IDT */
 void idt_load();
@@ -56,7 +60,7 @@ void idt_set_gate(u8 num, void *handler, u16 sel, u8 flags)
 /*
  * These are function prototypes for all of the exception
  * handlers: The first 32 entries in the IDT are reserved
- * by Intel, and are designed to service exceptions!
+ * by Intel and are designed to service exceptions.
  */
 
 void isr0();
@@ -92,7 +96,7 @@ void isr29();
 void isr30();
 void isr31();
 
-// This is used for int 0x80 (syscallls)
+// This is used for int 0x80 (syscalls)
 void isr128();
 
 /*
@@ -210,8 +214,6 @@ void set_fault_handler(int exceptionNum, void *ptr)
    fault_handlers[exceptionNum] = (interrupt_handler) ptr;
 }
 
-extern task_info *current_process;
-
 void end_current_interrupt_handling()
 {
    int curr_int = get_curr_interrupt();
@@ -220,7 +222,7 @@ void end_current_interrupt_handling()
       PIC_sendEOI(curr_int - 32);
    }
 
-   if (LIKELY(current_process != NULL)) {
+   if (LIKELY(current_task != NULL)) {
 
       nested_interrupts_count--;
       ASSERT(nested_interrupts_count >= 0);
@@ -231,62 +233,86 @@ void end_current_interrupt_handling()
    }
 }
 
-static void handle_irq(regs *r)
-{
-   const u8 irq = r->int_no - 32;
 
-   if (irq_routines[irq] != NULL) {
-
-      irq_routines[irq](r);
-
-   } else {
-
-      if (irq == 7) return;
-
-      printk("Unhandled IRQ #%i\n", irq);
-   }
-}
 
 static void handle_fault(regs *r)
 {
-   if (fault_handlers[r->int_no] != NULL) {
+   if (fault_handlers[r->int_num] != NULL) {
 
-      fault_handlers[r->int_no](r);
+      fault_handlers[r->int_num](r);
 
    } else {
 
-      cli();
+      disable_interrupts_forced();
 
       printk("Fault #%i: %s [errCode: %i]\n",
-             r->int_no,
-             exception_messages[r->int_no],
+             r->int_num,
+             exception_messages[r->int_num],
              r->err_code);
 
       NOT_REACHED();
    }
 }
 
+bool is_interrupt_racing_with_itself(int int_num) {
+
+   for (int i = nested_interrupts_count - 1; i >= 0; i--) {
+      if (nested_interrupts[i] == int_num) {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+void push_nested_interrupt(int int_num)
+{
+   nested_interrupts[nested_interrupts_count++] = int_num;
+}
+
+void handle_irq(regs *r);
 
 void generic_interrupt_handler(regs *r)
 {
-   if (nested_interrupts_count >= (int)ARRAY_SIZE(nested_interrupts)) {
-      NOT_REACHED();
+   // if (!is_irq(r->int_num))
+   //    printk("[kernel] int: %i, level: %i\n", r->int_num,
+   //                                            nested_interrupts_count);
+   // else
+   //    printk("[kernel] IRQ: %i, level: %i\n", r->int_num - 32,
+   //                                            nested_interrupts_count);
+
+
+   ASSERT(nested_interrupts_count < (int)ARRAY_SIZE(nested_interrupts));
+   ASSERT(!is_interrupt_racing_with_itself(r->int_num));
+
+   if (is_irq(r->int_num)) {
+      handle_irq(r);
+      return;
    }
 
-   nested_interrupts[nested_interrupts_count++] = r->int_no;
+   ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
 
-   if (LIKELY(r->int_no == SYSCALL_SOFT_INTERRUPT)) {
+   disable_preemption();
+   push_nested_interrupt(r->int_num);
+
+   // Re-enable the interrupts, for the same reason as before.
+   //if (!are_interrupts_enabled()) {
+   //   printk("int: %i, interrupts are not enabled.\n", r->int_num);
+      //NOT_REACHED();
+   //}
+   enable_interrupts_forced();
+
+   if (LIKELY(r->int_num == SYSCALL_SOFT_INTERRUPT)) {
 
       handle_syscall(r);
-
-   } else if (LIKELY(r->int_no >= 32)) {
-
-      handle_irq(r);
 
    } else {
 
       handle_fault(r);
    }
+
+   enable_preemption();
+   ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
 
    end_current_interrupt_handling();
 }
@@ -297,14 +323,10 @@ void generic_interrupt_handler(regs *r)
 void idt_install()
 {
     /* Sets the special IDT pointer up, just like in 'gdt.c' */
-    idtp.limit = (sizeof (struct idt_entry) * 256) - 1;
+    idtp.limit = sizeof(idt) - 1;
     idtp.base = &idt;
 
-    /* Clear out the entire IDT, initializing it to zeros */
-    memset(&idt, 0, sizeof(struct idt_entry) * 256);
-
     /* Add any new ISRs to the IDT here using idt_set_gate */
-
     isrs_install();
 
     /* Points the processor's internal register to the new IDT */

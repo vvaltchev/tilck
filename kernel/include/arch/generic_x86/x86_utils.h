@@ -7,7 +7,14 @@
 #error This header can be used only for x86 and x86-64 architectures.
 #endif
 
-#define TIMER_HZ 100
+#define TIMER_HZ 250
+
+#define X86_PC_TIMER_IRQ       0
+#define X86_PC_KEYBOARD_IRQ    1
+#define X86_PC_RTC_IRQ         8
+#define X86_PC_ACPI_IRQ        9
+#define X86_PC_PS2_MOUSE_IRQ  12
+
 
 static ALWAYS_INLINE u64 RDTSC()
 {
@@ -49,15 +56,51 @@ static ALWAYS_INLINE void halt()
    asmVolatile("hlt");
 }
 
-static ALWAYS_INLINE void cli()
+extern volatile int disable_interrupts_count;
+
+static ALWAYS_INLINE void disable_interrupts()
 {
-   asmVolatile("cli");
+   if (++disable_interrupts_count == 1) {
+
+#if !defined(TESTING) && !defined(KERNEL_TEST)
+      asmVolatile("cli");
+#endif
+
+   }
 }
 
-static ALWAYS_INLINE void sti()
+static ALWAYS_INLINE void disable_interrupts_forced()
 {
-   asmVolatile("sti");
+   disable_interrupts_count = 1;
+
+#if !defined(TESTING) && !defined(KERNEL_TEST)
+   asmVolatile("cli");
+#endif
 }
+
+
+static ALWAYS_INLINE void enable_interrupts()
+{
+   ASSERT(disable_interrupts_count > 0);
+
+   if (--disable_interrupts_count == 0) {
+
+#if !defined(TESTING) && !defined(KERNEL_TEST)
+      asmVolatile("sti");
+#endif
+
+   }
+}
+
+static ALWAYS_INLINE void enable_interrupts_forced()
+{
+   disable_interrupts_count = 0;
+
+#if !defined(TESTING) && !defined(KERNEL_TEST)
+   asmVolatile("sti");
+#endif
+}
+
 
 static ALWAYS_INLINE void wrmsr(u32 msr_id, u64 msr_value)
 {
@@ -84,3 +127,15 @@ static ALWAYS_INLINE void cpuid(int code, u32 *a, u32 *d)
 {
     asmVolatile( "cpuid" : "=a"(*a), "=d"(*d) : "0"(code) : "ebx", "ecx" );
 }
+
+/*
+ * Invalidates the TLB entry used for resolving the page containing 'vaddr'.
+ */
+static ALWAYS_INLINE void invalidate_page(uptr vaddr)
+{
+   asmVolatile("invlpg (%0)" ::"r" (vaddr) : "memory");
+}
+
+
+// Reboot the system
+void reboot();
