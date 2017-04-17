@@ -32,10 +32,6 @@ void timer_handler(regs *r)
 {
    jiffies++;
 
-   //if (!(jiffies % 250))
-   //printk("timer[task: %p]: disable_count: %i\n", current_task, disable_preemption_count);
-
-
    /*
     * Here we have to check that disabled_preemption_count is > 1, not > 0
     * since as the way the handle_irq() is implemented, that counter will be

@@ -225,9 +225,14 @@ void irq_install()
 void handle_irq(regs *r)
 {
    const int irq = r->int_num - 32;
+   task_info *curr = get_current_task();
 
    irq_set_mask(irq);
-   ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+
+   if (!curr || !is_kernel_thread(curr)) {
+      ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+   }
+
    disable_preemption();
 
    if (irq == 7 || irq == 15) {
@@ -259,7 +264,7 @@ void handle_irq(regs *r)
        */
 
        if (!(pic_get_isr() & (1 << irq))) {
-          printk("Spurious IRQ #%i\n", irq);
+          //printk("Spurious IRQ #%i\n", irq);
           goto clear_mask_end;
        }
    }
@@ -292,7 +297,10 @@ void handle_irq(regs *r)
 
 clear_mask_end:
    enable_preemption();
-   ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+
+   if (!curr || !is_kernel_thread(curr)) {
+      ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+   }
 
    irq_clear_mask(irq);
 }
