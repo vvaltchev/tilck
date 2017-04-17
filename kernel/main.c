@@ -128,6 +128,9 @@ void tasklet_runner_kthread(void)
       res = run_one_tasklet();
 
       if (!res) {
+         ASSERT(is_preemption_enabled());
+         ASSERT(are_interrupts_enabled());
+
          halt();
       }
    }

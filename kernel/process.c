@@ -5,7 +5,7 @@
 
 #include <hal.h>
 
-#define TIME_SLOT_JIFFIES (TIMER_HZ*2)
+#define TIME_SLOT_JIFFIES (TIMER_HZ*5)
 
 task_info *volatile current_task = NULL;
 int current_max_pid = 0;
@@ -118,8 +118,8 @@ NORETURN void schedule()
       goto end;
    }
 
-   // printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
-   //        current_task->pid, jiffies_used);
+    printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
+           current_task->pid, jiffies_used);
 
    // If we preempted the process, it is still runnable.
    if (curr->state == TASK_STATE_RUNNING) {
@@ -131,21 +131,23 @@ actual_sched:
 
    list_for_each_entry(pos, &tasks_list, list) {
 
-      //printk("[sched] checking pid %i (jiffies = %llu)\n", pos->pid, pos->jiffies_when_switch);
+      printk("   [sched] checking pid %i (jiffies = %llu): ", pos->pid, pos->jiffies_when_switch);
 
       if (pos == curr || pos->state != TASK_STATE_RUNNABLE) {
-         // if (pos == curr)
-         //    printk("[sched] it is THIS task, skip\n");
-         // else
-         //    printk("[sched] this TASK is NOT runnable!\n");
+         if (pos == curr)
+            printk("SKIP\n");
+         else
+            printk("NOT RUNNABLE\n");
 
          continue;
       }
 
       if (pos->jiffies_when_switch < least_jiffies_for_task) {
-         //printk("[sched] it used less jiffies.. selecting IT\n");
+         printk("GOOD\n");
          selected = pos;
          least_jiffies_for_task = pos->jiffies_when_switch;
+      } else {
+         printk("BAD\n");
       }
    }
 
@@ -211,12 +213,16 @@ int sys_fork()
    page_directory_t *pdir = pdir_clone(current_task->pdir);
 
    task_info *child = kmalloc(sizeof(task_info));
+   memmove(child, current_task, sizeof(task_info));
+
    INIT_LIST_HEAD(&child->list);
    child->pdir = pdir;
    child->pid = ++current_max_pid;
 
    child->owning_process_pid = child->pid;
    child->kernel_stack = NULL;
+
+   child->jiffies_when_switch = current_task->jiffies_when_switch;
 
    memmove(&child->state_regs,
            &current_task->state_regs,
