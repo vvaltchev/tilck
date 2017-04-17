@@ -2,6 +2,7 @@
 #include <debug_utils.h>
 #include <string_util.h>
 #include <arch/generic_x86/x86_utils.h>
+#include <paging.h>
 
 size_t stackwalk32(void **frames, size_t count)
 {
@@ -13,25 +14,12 @@ size_t stackwalk32(void **frames, size_t count)
 
    for (i = 0; i < count; i++) {
 
-      retAddr = *((void **)ebp + 1);
-      ebp = *(void **)ebp;
+      void *addrs_to_deref[2] = { ebp, ebp + 1 };
+      if (!is_mapped(get_kernel_page_dir(), addrs_to_deref[0]) ||
+          !is_mapped(get_kernel_page_dir(), addrs_to_deref[1])) {
 
-      if (!ebp || !retAddr) {
          break;
       }
-
-      frames[i] = retAddr;
-   }
-
-   return i;
-}
-
-size_t stackwalk32_ex(void *ebp, void **frames, size_t count)
-{
-   void *retAddr;
-   size_t i;
-
-   for (i = 0; i < count; i++) {
 
       retAddr = *((void **)ebp + 1);
       ebp = *(void **)ebp;
@@ -49,8 +37,8 @@ size_t stackwalk32_ex(void *ebp, void **frames, size_t count)
 
 void dump_stacktrace()
 {
-   void *frames[10] = {0};
-   size_t c = stackwalk32(frames, 10);
+   void *frames[32] = {0};
+   size_t c = stackwalk32(frames, 32);
 
    printk("*** STACKTRACE ***\n");
 
@@ -61,19 +49,7 @@ void dump_stacktrace()
    printk("\n\n");
 }
 
-void dump_stacktrace_ex(void *ebp)
-{
-   void *frames[10] = {0};
-   size_t c = stackwalk32_ex(ebp, frames, 10);
 
-   printk("*** STACKTRACE ***\n");
-
-   for (size_t i = 0; i < c; i++) {
-      printk("frame[%i]: %p\n", i, frames[i]);
-   }
-
-   printk("\n\n");
-}
 
 #ifdef __i386__
 
