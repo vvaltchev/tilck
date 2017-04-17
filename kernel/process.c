@@ -5,7 +5,7 @@
 
 #include <hal.h>
 
-#define TIME_SLOT_JIFFIES (TIMER_HZ*5)
+#define TIME_SLOT_JIFFIES (TIMER_HZ)
 
 task_info *volatile current_task = NULL;
 int current_max_pid = 0;
@@ -118,8 +118,8 @@ NORETURN void schedule()
       goto end;
    }
 
-    printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
-           current_task->pid, jiffies_used);
+   //  printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
+   //         current_task->pid, jiffies_used);
 
    // If we preempted the process, it is still runnable.
    if (curr->state == TASK_STATE_RUNNING) {
@@ -131,23 +131,23 @@ actual_sched:
 
    list_for_each_entry(pos, &tasks_list, list) {
 
-      printk("   [sched] checking pid %i (jiffies = %llu): ", pos->pid, pos->jiffies_when_switch);
+      // printk("   [sched] checking pid %i (jiffies = %llu): ", pos->pid, pos->jiffies_when_switch);
 
       if (pos == curr || pos->state != TASK_STATE_RUNNABLE) {
-         if (pos == curr)
-            printk("SKIP\n");
-         else
-            printk("NOT RUNNABLE\n");
+         // if (pos == curr)
+         //    printk("SKIP\n");
+         // else
+         //    printk("NOT RUNNABLE\n");
 
          continue;
       }
 
       if (pos->jiffies_when_switch < least_jiffies_for_task) {
-         printk("GOOD\n");
+         //printk("GOOD\n");
          selected = pos;
          least_jiffies_for_task = pos->jiffies_when_switch;
       } else {
-         printk("BAD\n");
+         //printk("BAD\n");
       }
    }
 
