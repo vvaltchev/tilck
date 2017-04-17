@@ -4,7 +4,7 @@
 #include <process.h>
 
 #include <string_util.h>
-#include <arch/generic_x86/utils.h>
+#include <arch/generic_x86/x86_utils.h>
 
 #ifdef BITS32
 #ifdef DEBUG

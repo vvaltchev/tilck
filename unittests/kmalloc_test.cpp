@@ -8,29 +8,17 @@
 #include <random>
 
 #include <gtest/gtest.h>
+#include "mocks.h"
 
 extern "C" {
-#include <kmalloc.h>
-#include <paging.h>
-#include <utils.h>
-void kernel_kmalloc_perf_test();
+   #include <kmalloc.h>
+   #include <paging.h>
+   #include <utils.h>
+   void kernel_kmalloc_perf_test();
 }
 
 using namespace std;
 using namespace testing;
-
-
-void init_test_kmalloc()
-{
-   uptr align_size = 16 * PAGE_SIZE;
-
-   uptr addr = (uptr)malloc(HEAP_DATA_SIZE + align_size);
-   addr += align_size;
-   addr &= ~(align_size - 1);
-
-   kernel_heap_base = (void *)addr;
-}
-
 
 void kmalloc_chaos_test_sub(default_random_engine &e,
                             lognormal_distribution<> &dist)
@@ -72,7 +60,21 @@ void kmalloc_chaos_test_sub(default_random_engine &e,
    }
 }
 
-TEST(kmalloc, chaos_test)
+class kmalloc_test : public Test {
+public:
+
+   void SetUp() override {
+      initialize_test_kernel_heap();
+      init_pageframe_allocator();
+      initialize_kmalloc();
+   }
+
+   void TearDown() override {
+      /* do nothing, for the moment */
+   }
+};
+
+TEST_F(kmalloc_test, chaos_test)
 {
    random_device rdev;
    default_random_engine e(rdev());
@@ -84,7 +86,12 @@ TEST(kmalloc, chaos_test)
    }
 }
 
-TEST(kmalloc_kernel, perf_test)
+
+TEST_F(kmalloc_test, perf_test)
 {
+   initialize_test_kernel_heap();
+   init_pageframe_allocator();
+   initialize_kmalloc();
+
    kernel_kmalloc_perf_test();
 }

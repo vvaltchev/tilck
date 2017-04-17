@@ -9,8 +9,9 @@
 #include <debug_utils.h>
 #include <process.h>
 
-#include <arch_utils.h>
+#include <hal.h>
 #include <utils.h>
+#include <tasklet.h>
 
 void gdt_install();
 void idt_install();
@@ -28,7 +29,7 @@ void load_elf_program(void *elf,
                       void **stack_addr);
 
 
-#define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023e00
+#define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023600
 
 void run_usermode_init()
 {
@@ -91,6 +92,51 @@ void test_memdisk()
    printk("Crc32 of the data: %p\n", crc);
 }
 
+
+void simple_test_kthread(void)
+{
+   disable_preemption();
+   {
+      printk("[kernel thread] This is a kernel thread..\n");
+   }
+   enable_preemption();
+
+   for (int i = 0; i < 1024*(int)MB; i++) {
+      if (!(i % (256*MB))) {
+
+         disable_preemption();
+         {
+            printk("[kernel thread] i = %i\n", i/MB);
+         }
+         enable_preemption();
+      }
+   }
+}
+
+void tasklet_runner_kthread(void)
+{
+   bool res;
+
+   disable_preemption();
+   {
+      printk("[kernel thread] tasklet runner kthread (pid: %i)\n", get_current_task()->pid);
+   }
+   enable_preemption();
+
+   while (true) {
+
+      res = run_one_tasklet();
+
+      if (!res) {
+         ASSERT(is_preemption_enabled());
+         ASSERT(are_interrupts_enabled());
+
+         halt();
+      }
+   }
+}
+
+
 void kmain()
 {
    term_init();
@@ -106,26 +152,32 @@ void kmain()
 
    set_timer_freq(TIMER_HZ);
 
-   IRQ_set_mask(7); // mask IRQ #7
+   //irq_set_mask(X86_PC_TIMER_IRQ);
 
-   irq_install_handler(0, timer_handler);
-   irq_install_handler(1, keyboard_handler);
+   irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
+   irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
 
-   set_kernel_stack(0xC01FFFF0);
+   set_kernel_stack(KERNEL_BASE_STACK_ADDR);
 
-   setup_syscall_interface();
+   setup_sysenter_interface();
 
    mount_memdisk();
-   test_memdisk();
+   //test_memdisk();
 
-   // Restore the interrupts.
-   sti();
+   initialize_tasklets();
+
+   enable_interrupts();
 
    // Initialize the keyboard driver.
    init_kb();
 
+   kthread_create(simple_test_kthread);
+   kthread_create(tasklet_runner_kthread);
+
    // Run the 'init' usermode program.
    run_usermode_init();
+
+   //while(1) halt();
 
    // We should never get here!
    NOT_REACHED();

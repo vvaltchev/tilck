@@ -4,7 +4,7 @@
 #include <string_util.h>
 #include <paging.h>
 #include <utils.h>
-#include <arch/generic_x86/utils.h>
+#include <arch/generic_x86/x86_utils.h>
 
 
 #define RANDOM_VALUES_COUNT 1000
@@ -30,6 +30,10 @@ void kernel_kmalloc_perf_test()
          if (!allocations[j]) {
 
             printk("We were unable to allocate %u bytes\n", random_values[j]);
+
+#ifdef KERNEL_TEST
+            NOT_REACHED();
+#endif
 
          } else {
 

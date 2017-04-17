@@ -2,13 +2,13 @@
 #include <common_defs.h>
 #include <string_util.h>
 #include <term.h>
-#include <arch/generic_x86/utils.h>
+#include <arch/generic_x86/x86_utils.h>
 
 #define KB_DATA_PORT 0x60
 #define KB_CONTROL_PORT 0x64
 
 /* keyboard interface bits */
-#define KBRD_BIT_KDATA 0     // keyboard data is in buffer 
+#define KBRD_BIT_KDATA 0     // keyboard data is in buffer
                              // (output buffer is empty) (bit 0)
 
 #define KBRD_BIT_UDATA 1     // user data is in buffer
@@ -131,7 +131,7 @@ bool e0pkeys[128] = { false };
 
 bool *pkeysArrays[2] = { pkeys, e0pkeys };
 
-bool numLock = true;
+bool numLock = false;
 bool capsLock = false;
 bool lastWasE0 = false;
 
@@ -307,9 +307,9 @@ end:
 
 void reboot() {
 
-   cli();
+   disable_interrupts();
    kbd_wait();
-   
+
    outb(KB_CONTROL_PORT, KBRD_RESET);
 
    while (true) {

@@ -141,22 +141,10 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 #define DO_NOT_OPTIMIZE_AWAY(x) asmVolatile("" : "+r" ( (void *)(x) ))
 
 
-// Putting reboot() temporarly here.
-void reboot();
-
-
-/*
- * Invalidates the TLB entry used for resolving the page containing 'vaddr'.
- */
-static ALWAYS_INLINE void invalidate_page(uptr vaddr)
-{
-   asmVolatile("invlpg (%0)" ::"r" (vaddr) : "memory");
-}
-
-
 #define CONTAINER_OF(elem_ptr, struct_type, mem_name) \
    ((struct_type *)(((char *)elem_ptr) - OFFSET_OF(struct_type, mem_name)))
 
+#define POINTER_ALIGN_MASK (~(sizeof(void *) - 1))
 
 /*
  * ********************************************

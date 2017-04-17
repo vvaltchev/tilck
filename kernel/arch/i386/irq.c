@@ -5,6 +5,8 @@
 
 #include <string_util.h>
 #include <term.h>
+#include <utils.h>
+#include <hal.h>
 
 void idt_set_gate(u8 num, void *handler, u16 sel, u8 flags);
 
@@ -52,6 +54,8 @@ void irq_uninstall_handler(u8 irq)
 #define PIC2_COMMAND        PIC2
 #define PIC2_DATA           (PIC2+1)
 #define PIC_EOI             0x20     /* End-of-interrupt command code */
+#define PIC_READ_IRR        0x0a    /* OCW3 irq ready next CMD read */
+#define PIC_READ_ISR        0x0b    /* OCW3 irq service next CMD read */
 
 void PIC_sendEOI(u8 irq)
 {
@@ -130,14 +134,13 @@ void PIC_remap(u8 offset1, u8 offset2)
    outb(PIC2_DATA, a2);
 }
 
-void IRQ_set_mask(u8 IRQline) {
+void irq_set_mask(u8 IRQline) {
    u16 port;
    u8 value;
 
    if (IRQline < 8) {
       port = PIC1_DATA;
-   }
-   else {
+   } else {
       port = PIC2_DATA;
       IRQline -= 8;
    }
@@ -145,19 +148,49 @@ void IRQ_set_mask(u8 IRQline) {
    outb(port, value);
 }
 
-void IRQ_clear_mask(u8 IRQline) {
+void irq_clear_mask(u8 IRQline) {
    u16 port;
    u8 value;
 
    if (IRQline < 8) {
       port = PIC1_DATA;
-   }
-   else {
+   } else {
       port = PIC2_DATA;
       IRQline -= 8;
    }
    value = inb(port) & ~(1 << IRQline);
    outb(port, value);
+}
+
+
+/* Helper func */
+static u16 __pic_get_irq_reg(int ocw3)
+{
+    /* OCW3 to PIC CMD to get the register values.  PIC2 is chained, and
+     * represents IRQs 8-15.  PIC1 is IRQs 0-7, with 2 being the chain */
+    outb(PIC1_COMMAND, ocw3);
+    outb(PIC2_COMMAND, ocw3);
+    return (inb(PIC2_COMMAND) << 8) | inb(PIC1_COMMAND);
+}
+
+/*
+ * Returns the combined value of the cascaded PICs irq request register.
+ * The Interrupt Request Register (IRR) tells us which interrupts have been
+ * raised.
+ */
+u16 pic_get_irr(void)
+{
+    return __pic_get_irq_reg(PIC_READ_IRR);
+}
+
+/*
+ * Returns the combined value of the cascaded PICs in-service register.
+ * The In-Service Register (ISR) tells us which interrupts are being serviced,
+ * meaning IRQs sent to the CPU.
+ */
+u16 pic_get_isr(void)
+{
+    return __pic_get_irq_reg(PIC_READ_ISR);
 }
 
 
@@ -187,4 +220,87 @@ void irq_install()
    idt_set_gate(45, irq13, 0x08, 0x8E);
    idt_set_gate(46, irq14, 0x08, 0x8E);
    idt_set_gate(47, irq15, 0x08, 0x8E);
+}
+
+void handle_irq(regs *r)
+{
+   const int irq = r->int_num - 32;
+   task_info *curr = get_current_task();
+
+   irq_set_mask(irq);
+
+   if (!curr || !is_kernel_thread(curr)) {
+      ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+   }
+
+   disable_preemption();
+
+   if (irq == 7 || irq == 15) {
+
+      /*
+       * Check for a spurious wake-up.
+       *
+       * When an IRQ occurs, the PIC chip tells the CPU (via. the PIC's INTR
+       * line) that there's an interrupt, and the CPU acknowledges this and
+       * waits for the PIC to send the interrupt vector. This creates a race
+       * condition: if the IRQ disappears after the PIC has told the CPU there's
+       * an interrupt but before the PIC has sent the interrupt vector to the
+       * CPU, then the CPU will be waiting for the PIC to tell it which
+       * interrupt vector but the PIC won't have a valid interrupt vector to
+       * tell the CPU.
+       *
+       * To get around this, the PIC tells the CPU a fake interrupt number.
+       * This is a spurious IRQ. The fake interrupt number is the lowest
+       * priority interrupt number for the corresponding PIC chip (IRQ 7 for the
+       * master PIC, and IRQ 15 for the slave PIC).
+       *
+       * Handling Spurious IRQs
+       * -------------------------
+       *
+       * For a spurious IRQ, there is no real IRQ and the PIC chip's ISR
+       * (In Service Register) flag for the corresponding IRQ will NOT be set.
+       * This means that the interrupt handler must not send an EOI back to the
+       * PIC to reset the ISR flag.
+       */
+
+       if (!(pic_get_isr() & (1 << irq))) {
+          //printk("Spurious IRQ #%i\n", irq);
+          goto clear_mask_end;
+       }
+   }
+
+   push_nested_interrupt(r->int_num);
+
+   //printk("IRQ #%i. IRR bit: %i, ISR bit: %i\n",
+   //       irq,
+   //       log2_for_power_of_2(pic_get_irr()),
+   //       log2_for_power_of_2(pic_get_isr()));
+
+   /*
+    * Since x86 automatically disables all interrupts before jumping to the
+    * interrupt handler, we have to re-enable them manually here.
+    */
+
+   ASSERT(!are_interrupts_enabled());
+   enable_interrupts_forced();
+
+   if (irq_routines[irq] != NULL) {
+
+      irq_routines[irq](r);
+
+   } else {
+
+      printk("Unhandled IRQ #%i\n", irq);
+   }
+
+   end_current_interrupt_handling(); // sends EOI to the PIC
+
+clear_mask_end:
+   enable_preemption();
+
+   if (!curr || !is_kernel_thread(curr)) {
+      ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+   }
+
+   irq_clear_mask(irq);
 }

@@ -23,10 +23,17 @@ void __wrap_panic(const char *fmt, ...)
 	va_end(args);
 
 	printf("--- END PANIC MESSAGE --- n");
+   abort();
 }
 
 void __wrap_assert_failed(const char *expr, const char *file, int line)
 {
 	printf("Kernel assertion '%s' FAILED in %s at line %d\n", expr, file, line);
+   abort();
+}
+
+void __wrap_not_reached(const char *file, int line)
+{
+   printf("Kernel NOT_REACHED statement in %s at line %d\n", file, line);
    abort();
 }

@@ -1,37 +1,39 @@
 
 #include <debug_utils.h>
 #include <string_util.h>
-#include <arch/generic_x86/utils.h>
+#include <arch/generic_x86/x86_utils.h>
+#include <arch/i386/process_int.h>
+#include <irq.h>
 
-size_t stackwalk32(void **frames, size_t count)
+static bool mapped_in_kernel_or_in_pdir(page_directory_t *pdir, void *vaddr)
 {
-   void *retAddr;
-   void *ebp;
-   size_t i;
-
-   ebp = (void *) (&frames - 2);
-
-   for (i = 0; i < count; i++) {
-
-      retAddr = *((void **)ebp + 1);
-      ebp = *(void **)ebp;
-
-      if (!ebp || !retAddr) {
-         break;
-      }
-
-      frames[i] = retAddr;
-   }
-
-   return i;
+   return is_mapped(pdir, vaddr) || is_mapped(get_kernel_page_dir(), vaddr);
 }
 
-size_t stackwalk32_ex(void *ebp, void **frames, size_t count)
+size_t stackwalk32(void **frames,
+                   size_t count,
+                   void *ebp,
+                   page_directory_t *pdir)
 {
    void *retAddr;
    size_t i;
 
+   if (!ebp) {
+      ebp = (void *) (&frames - 2);
+   }
+
+   if (!pdir) {
+      pdir = get_kernel_page_dir();
+   }
+
    for (i = 0; i < count; i++) {
+
+      void *addrs_to_deref[2] = { ebp, ebp + 1 };
+      if (!mapped_in_kernel_or_in_pdir(pdir, addrs_to_deref[0]) ||
+          !mapped_in_kernel_or_in_pdir(pdir, addrs_to_deref[1])) {
+
+         break;
+      }
 
       retAddr = *((void **)ebp + 1);
       ebp = *(void **)ebp;
@@ -49,31 +51,30 @@ size_t stackwalk32_ex(void *ebp, void **frames, size_t count)
 
 void dump_stacktrace()
 {
-   void *frames[10] = {0};
-   size_t c = stackwalk32(frames, 10);
+   void *frames[32] = {0};
+   size_t c = stackwalk32(frames, 32, NULL, NULL);
 
-   printk("*** STACKTRACE ***\n");
-
-   for (size_t i = 0; i < c; i++) {
-      printk("frame[%i]: %p\n", i, frames[i]);
-   }
-
-   printk("\n\n");
-}
-
-void dump_stacktrace_ex(void *ebp)
-{
-   void *frames[10] = {0};
-   size_t c = stackwalk32_ex(ebp, frames, 10);
-
-   printk("*** STACKTRACE ***\n");
+   printk("*** KERNEL STACKTRACE ***\n");
 
    for (size_t i = 0; i < c; i++) {
       printk("frame[%i]: %p\n", i, frames[i]);
    }
 
    printk("\n\n");
+
+   // task_info *ti = get_current_task();
+   // c = stackwalk32(frames, 32, (void *) ti->state_regs.ebp, ti->pdir);
+
+   // printk("*** TASK[%i] STACKTRACE ***\n", ti->pid);
+
+   // for (size_t i = 0; i < c; i++) {
+   //    printk("frame[%i]: %p\n", i, frames[i]);
+   // }
+
+   // printk("\n\n");
 }
+
+
 
 #ifdef __i386__
 
@@ -111,7 +112,7 @@ void panic(const char *fmt, ...)
 
    in_panic = true;
 
-   //cli();
+   disable_interrupts_forced();
 
    printk("\n\n************** KERNEL PANIC **************\n");
 
@@ -122,8 +123,14 @@ void panic(const char *fmt, ...)
 
    printk("\n");
 
-   //dump_stacktrace();
-   //sti();
+   printk("Current interrupt: %i\n", get_curr_interrupt());
+   printk("Nested interrupts [count: %i]: ", nested_interrupts_count);
+   for (int i = nested_interrupts_count - 1; i >= 0; i--) {
+      printk("%i ", nested_interrupts[i]);
+   }
+   printk("\n\n");
+
+   dump_stacktrace();
 
    while (true) {
       halt();

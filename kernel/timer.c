@@ -1,22 +1,10 @@
 
 #include <common_defs.h>
 #include <process.h>
-#include <arch/generic_x86/utils.h>
+#include <arch/generic_x86/x86_utils.h>
+#include <string_util.h>
 
-/*
- * Sets timer's frequency.
- * Default value: 18.222 Hz.
- */
-
-void set_timer_freq(int hz)
-{
-   ASSERT(hz >= 1 && hz <= 1000);
-
-   int divisor = 1193180 / hz;   /* Calculate our divisor */
-   outb(0x43, 0x36);             /* Set our command byte 0x36 */
-   outb(0x40, divisor & 0xFF);   /* Set low byte of divisor */
-   outb(0x40, divisor >> 8);     /* Set high byte of divisor */
-}
+extern volatile task_info *current_task;
 
 
 /*
@@ -25,18 +13,44 @@ void set_timer_freq(int hz)
  */
 volatile u64 jiffies = 0;
 
-extern volatile task_info *current_process;
+volatile u32 disable_preemption_count = 0;
+
+void disable_preemption() {
+   disable_preemption_count++;
+}
+
+void enable_preemption() {
+   ASSERT(disable_preemption_count > 0);
+   disable_preemption_count--;
+}
+
+bool is_preemption_enabled() {
+   return disable_preemption_count == 0;
+}
 
 void timer_handler(regs *r)
 {
    jiffies++;
 
-   if (!current_process) {
+   /*
+    * Here we have to check that disabled_preemption_count is > 1, not > 0
+    * since as the way the handle_irq() is implemented, that counter will be
+    * always 1 when this function is called. We have avoid calling schedule()
+    * if there has been another part of the code that disabled the preemption
+    * and we're running in a nested interrupt.
+    */
+   if (disable_preemption_count > 1) {
+      return;
+   }
+
+   if (!current_task) {
       // The kernel is still initializing and we cannot call schedule() yet.
       return;
    }
 
-   save_current_process_state(r);
+   disable_preemption_count = 1;
+
+   save_current_task_state(r);
    schedule();
 }
 
