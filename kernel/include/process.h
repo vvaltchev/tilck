@@ -18,6 +18,9 @@ typedef struct task_info task_info;
 
 void save_current_task_state(regs *);
 
+void account_ticks();
+bool need_reschedule();
+
 NORETURN void schedule();
 NORETURN void first_usermode_switch(page_directory_t *pdir,
                                     void *entry,

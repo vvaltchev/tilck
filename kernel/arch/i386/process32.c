@@ -100,6 +100,7 @@ int kthread_create(kthread_func_ptr fun)
 
    add_task(pi);
    pi->jiffies_when_switch = jiffies;
+   pi->ticks = 0;
 
    return pi->pid;
 }
@@ -159,6 +160,7 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
 
    add_task(pi);
    pi->jiffies_when_switch = jiffies;
+   pi->ticks = 0;
 
    disable_preemption();
    switch_to_task(pi);

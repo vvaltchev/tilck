@@ -48,9 +48,12 @@ void timer_handler(regs *r)
       return;
    }
 
-   disable_preemption_count = 1;
+   account_ticks();
 
-   save_current_task_state(r);
-   schedule();
+   if (need_reschedule()) {
+      disable_preemption_count = 1;
+      save_current_task_state(r);
+      schedule();
+   }
 }
 

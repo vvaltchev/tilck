@@ -17,6 +17,8 @@ struct task_info {
 
    u64 jiffies_when_switch;
 
+   u64 ticks;
+
    int owning_process_pid; /* The pid of the process owning this thread. */
    void *kernel_stack;
 

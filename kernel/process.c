@@ -94,13 +94,31 @@ NORETURN void switch_to_task(task_info *pi)
    }
 }
 
+void account_ticks()
+{
+   current_task->ticks++;
+}
+
+bool need_reschedule()
+{
+   task_info *curr = current_task;
+   const u64 jiffies_used = jiffies - curr->jiffies_when_switch;
+
+   if (jiffies_used < TIME_SLOT_JIFFIES && curr->state == TASK_STATE_RUNNING) {
+      return false;
+   }
+
+   // printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
+   //        current_task->pid, jiffies_used);
+
+   return true;
+}
 
 NORETURN void schedule()
 {
    task_info *curr = current_task;
    task_info *selected = curr;
    task_info *pos;
-   const u64 jiffies_used = jiffies - curr->jiffies_when_switch;
    u64 least_jiffies_for_task = (u64)-1;
 
    if (curr->state == TASK_STATE_ZOMBIE && is_kernel_thread(curr)) {
@@ -113,13 +131,6 @@ NORETURN void schedule()
       goto actual_sched;
    }
 
-   if (jiffies_used < TIME_SLOT_JIFFIES && curr->state == TASK_STATE_RUNNING) {
-      curr->state = TASK_STATE_RUNNABLE;
-      goto end;
-   }
-
-   //  printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
-   //         current_task->pid, jiffies_used);
 
    // If we preempted the process, it is still runnable.
    if (curr->state == TASK_STATE_RUNNING) {
@@ -154,8 +165,6 @@ actual_sched:
    selected->jiffies_when_switch = jiffies;
 
    // Finalizing code.
-
-end:
 
    if (selected->state != TASK_STATE_RUNNABLE) {
 
@@ -223,6 +232,7 @@ int sys_fork()
    child->kernel_stack = NULL;
 
    child->jiffies_when_switch = current_task->jiffies_when_switch;
+   child->ticks = current_task->ticks;
 
    memmove(&child->state_regs,
            &current_task->state_regs,
