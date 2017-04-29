@@ -119,7 +119,8 @@ void tasklet_runner_kthread(void)
 
    disable_preemption();
    {
-      printk("[kernel thread] tasklet runner kthread (pid: %i)\n", get_current_task()->pid);
+      printk("[kernel thread] tasklet runner kthread (pid: %i)\n",
+             get_current_task()->pid);
    }
    enable_preemption();
 
@@ -157,8 +158,6 @@ void kmain()
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
 
-   set_kernel_stack(KERNEL_BASE_STACK_ADDR);
-
    setup_sysenter_interface();
 
    mount_memdisk();
@@ -172,7 +171,7 @@ void kmain()
    init_kb();
 
    kthread_create(simple_test_kthread);
-   kthread_create(tasklet_runner_kthread);
+   //kthread_create(tasklet_runner_kthread);
 
    // Run the 'init' usermode program.
    run_usermode_init();

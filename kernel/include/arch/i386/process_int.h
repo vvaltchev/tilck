@@ -5,7 +5,7 @@
 #include <list.h>
 #include <arch/i386/arch_utils.h>
 
-#define KTHREAD_STACK_SIZE PAGE_SIZE
+#define KTHREAD_STACK_SIZE (PAGE_SIZE)
 
 struct task_info {
 

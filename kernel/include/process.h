@@ -30,6 +30,9 @@ NORETURN void switch_to_task(task_info *ti);
 
 bool is_kernel_thread(task_info *ti);
 
+void set_current_task_in_kernel();
+void set_current_task_in_user_mode();
+
 void add_task(task_info *ti);
 void remove_task(task_info *ti);
 

@@ -30,6 +30,16 @@ bool is_kernel_thread(task_info *ti)
    return ti->owning_process_pid == 0;
 }
 
+void set_current_task_in_kernel()
+{
+   current_task->running_in_kernel = 1;
+}
+
+void set_current_task_in_user_mode()
+{
+   current_task->running_in_kernel = 0;
+}
+
 
 void save_current_task_state(regs *r)
 {
@@ -44,11 +54,16 @@ void save_current_task_state(regs *r)
        * If the current task is a kernel thread, than the useresp has not
        * be saved on the stack by the CPU, since there has been not priviledge
        * change. So, we have to use the actual value of ESP as 'useresp' and
-       * adjust it by +16. That's why when the interrupt occured, the CPU
+       * adjust it by +16. That's because when the interrupt occured, the CPU
        * pushed on the stack CS+EIP and we pushed int_num + err_code; in total,
        * 4 pointer-size integers.
        */
       state->useresp = r->esp + 16;
+
+      if (!is_kernel_thread(current_task)) {
+         printk("[kernel] PREEMPTING kernel code for user program!\n");
+      }
+
    }
 }
 
@@ -62,6 +77,7 @@ void remove_task(task_info *ti)
 {
    printk("[remove_task] pid = %i\n", ti->pid);
    list_remove(&ti->list);
+   kfree(ti->kernel_stack, KTHREAD_STACK_SIZE);
    kfree(ti, sizeof(task_info));
 }
 
@@ -100,7 +116,9 @@ NORETURN void switch_to_task(task_info *ti)
 
    ASSERT(state->eflags & (1 << 9));
 
+
    if (!current_task->running_in_kernel) {
+      set_kernel_stack(((uptr) current_task->kernel_stack + KTHREAD_STACK_SIZE - 1) & POINTER_ALIGN_MASK);
       context_switch(state);
    } else {
       kthread_context_switch(state);
@@ -146,7 +164,7 @@ NORETURN void schedule()
    if (curr->state == TASK_STATE_ZOMBIE && is_kernel_thread(curr)) {
 
       // Here we're able to free kthread's stack since we're using another stack
-      kfree(curr->kernel_stack, KTHREAD_STACK_SIZE);
+      //kfree(curr->kernel_stack, KTHREAD_STACK_SIZE);
 
       remove_task(curr);
       selected = curr = NULL;
@@ -258,7 +276,10 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
 
    enable_preemption();
    {
-
+      while (true) {
+         if (waited_task->state == TASK_STATE_ZOMBIE) break;
+         halt();
+      }
    }
    disable_preemption();
 
@@ -281,28 +302,22 @@ NORETURN void sys_exit(int exit_code)
 // Returns child's pid
 sptr sys_fork()
 {
-   page_directory_t *pdir = pdir_clone(current_task->pdir);
-
    task_info *child = kmalloc(sizeof(task_info));
    memmove(child, current_task, sizeof(task_info));
 
    INIT_LIST_HEAD(&child->list);
-   child->pdir = pdir;
+   child->pdir = pdir_clone(current_task->pdir);
    child->pid = ++current_max_pid;
 
    child->owning_process_pid = child->pid;
-   child->kernel_stack = (void *) kmalloc(KTHREAD_STACK_SIZE);
    child->running_in_kernel = 0;
+   child->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
+   memset(child->kernel_stack, 0, KTHREAD_STACK_SIZE);
 
-   child->ticks = current_task->ticks;
-   child->total_ticks = current_task->total_ticks;
+   // The other members of task_info have been copied by the memmove() above
 
-   memmove(&child->state_regs,
-           &current_task->state_regs,
-           sizeof(child->state_regs));
-
+   memset(&child->kernel_state_regs, 0, sizeof(child->kernel_state_regs));
    set_return_register(&child->state_regs, 0);
-
 
    //printk("forking current proccess with eip = %p\n", child->state_regs.eip);
 

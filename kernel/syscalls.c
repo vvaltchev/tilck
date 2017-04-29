@@ -162,9 +162,13 @@ void handle_syscall(regs *r)
    //printk("Arg 5 (edi): %p\n", r->edi);
    //printk("Arg 6 (ebp): %p\n\n", r->ebp);
 
+   set_current_task_in_kernel();
+
    r->eax =
       syscalls_pointers[r->eax](r->ebx, r->ecx, r->edx,
                                 r->esi, r->edi, r->ebp);
+
+   set_current_task_in_user_mode();
 }
 
 #define MSR_IA32_SYSENTER_CS            0x174
