@@ -68,7 +68,9 @@ int main(int argc, char **argv, char **env)
                inchild = true;
             } else {
                printf("############## I'm the parent, child's pid = %i\n", pid);
-               //waitpid(pid, NULL, 0);
+               printf("[parent] waiting the child to exit...\n");
+               int p = waitpid(pid, NULL, 0);
+               printf("[parent] child (pid: %i) exited!\n", p);
             }
 
          }

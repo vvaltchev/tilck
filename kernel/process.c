@@ -98,12 +98,23 @@ NORETURN void switch_to_task(task_info *ti)
    irq_clear_mask(X86_PC_TIMER_IRQ);
 
    end_current_interrupt_handling();
+
+   if (current_task &&
+       current_task->running_in_kernel && !is_kernel_thread(current_task)) {
+
+      if (nested_interrupts_count > 0) {
+
+         ASSERT(nested_interrupts_count == 1);
+         ASSERT(get_curr_interrupt() == 0x80); // int 0x80 (syscall)
+         end_current_interrupt_handling();
+      }
+   }
+
    enable_preemption();
 
    ASSERT(is_preemption_enabled());
 
    current_task = ti;
-
 
    regs *state = current_task->running_in_kernel
                     ? &current_task->kernel_state_regs
@@ -118,10 +129,17 @@ NORETURN void switch_to_task(task_info *ti)
 
 
    if (!current_task->running_in_kernel) {
+
       set_kernel_stack(((uptr) current_task->kernel_stack +
                        KTHREAD_STACK_SIZE - 1) & POINTER_ALIGN_MASK);
       context_switch(state);
+
    } else {
+
+      if (!is_kernel_thread(current_task)) {
+         push_nested_interrupt(0x80);
+      }
+
       kthread_context_switch(state);
    }
 }
@@ -163,10 +181,6 @@ NORETURN void schedule()
    u64 least_ticks_for_task = (u64)-1;
 
    if (curr->state == TASK_STATE_ZOMBIE && is_kernel_thread(curr)) {
-
-      // Here we're able to free kthread's stack since we're using another stack
-      //kfree(curr->kernel_stack, KTHREAD_STACK_SIZE);
-
       remove_task(curr);
       selected = curr = NULL;
       goto actual_sched;
@@ -269,16 +283,18 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
    }
 
    /*
-    * TODO: Finish this function.
-    * In order make a syscall (= kernel code working for the user) to be
-    * preemptable, syscalls need to have their own stack and context regs
-    * in user's process data structure.
+    * This is just a DEMO implementation of waitpid() having the goal
+    * to test the preemption of kernel code running for user applications.
     */
 
    enable_preemption();
    {
       while (true) {
-         if (waited_task->state == TASK_STATE_ZOMBIE) break;
+
+         if (waited_task->state == TASK_STATE_ZOMBIE) {
+            break;
+         }
+
          halt();
       }
    }
