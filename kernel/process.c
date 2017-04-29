@@ -33,9 +33,13 @@ bool is_kernel_thread(task_info *ti)
 
 void save_current_task_state(regs *r)
 {
-   memmove(&current_task->state_regs, r, sizeof(*r));
+   regs *state = current_task->running_in_kernel
+                    ? &current_task->kernel_state_regs
+                    : &current_task->state_regs;
 
-   if (is_kernel_thread(current_task)) {
+   memmove(state, r, sizeof(*r));
+
+   if (current_task->running_in_kernel) {
       /*
        * If the current task is a kernel thread, than the useresp has not
        * be saved on the stack by the CPU, since there has been not priviledge
@@ -44,7 +48,7 @@ void save_current_task_state(regs *r)
        * pushed on the stack CS+EIP and we pushed int_num + err_code; in total,
        * 4 pointer-size integers.
        */
-      current_task->state_regs.useresp = r->esp + 16;
+      state->useresp = r->esp + 16;
    }
 }
 
@@ -85,18 +89,21 @@ NORETURN void switch_to_task(task_info *ti)
    current_task = ti;
 
 
+   regs *state = current_task->running_in_kernel
+                    ? &current_task->kernel_state_regs
+                    : &current_task->state_regs;
+
    /*
     * ASSERT that the 9th bit in task's eflags is 1, which means that on
     * IRET the CPU will enable the interrupts.
     */
 
-   ASSERT(current_task->state_regs.eflags & (1 << 9));
+   ASSERT(state->eflags & (1 << 9));
 
-
-   if (!is_kernel_thread(current_task)) {
-      context_switch(&current_task->state_regs);
+   if (!current_task->running_in_kernel) {
+      context_switch(state);
    } else {
-      kthread_context_switch(&current_task->state_regs);
+      kthread_context_switch(state);
    }
 }
 
@@ -284,7 +291,8 @@ sptr sys_fork()
    child->pid = ++current_max_pid;
 
    child->owning_process_pid = child->pid;
-   child->kernel_stack = NULL;
+   child->kernel_stack = (void *) kmalloc(KTHREAD_STACK_SIZE);
+   child->running_in_kernel = 0;
 
    child->ticks = current_task->ticks;
    child->total_ticks = current_task->total_ticks;

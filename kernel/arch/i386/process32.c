@@ -84,6 +84,7 @@ int kthread_create(kthread_func_ptr fun)
 
    ti->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
    ti->kernel_stack = (void *) kmalloc(KTHREAD_STACK_SIZE);
+   ti->running_in_kernel = 1;
 
    memset(ti->kernel_stack, 0, KTHREAD_STACK_SIZE);
 
@@ -96,7 +97,7 @@ int kthread_create(kthread_func_ptr fun)
    *(void **)(r.useresp) = (void *) &kthread_exit;
    r.useresp -= sizeof(void *);
 
-   memmove(&ti->state_regs, &r, sizeof(r));
+   memmove(&ti->kernel_state_regs, &r, sizeof(r));
 
    add_task(ti);
    ti->ticks = 0;
@@ -154,7 +155,8 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
    ti->state = TASK_STATE_RUNNABLE;
 
    ti->owning_process_pid = ti->pid;
-   ti->kernel_stack = NULL;
+   ti->kernel_stack = (void *) kmalloc(KTHREAD_STACK_SIZE);
+   ti->running_in_kernel = 0;
 
    memmove(&ti->state_regs, &r, sizeof(r));
 

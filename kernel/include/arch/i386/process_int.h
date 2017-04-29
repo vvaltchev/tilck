@@ -18,10 +18,13 @@ struct task_info {
    u64 ticks;
    u64 total_ticks;
 
+   int running_in_kernel;
+
    int owning_process_pid; /* The pid of the process owning this thread. */
    void *kernel_stack;
 
    regs state_regs;
+   regs kernel_state_regs;
    page_directory_t *pdir;
 };
 
