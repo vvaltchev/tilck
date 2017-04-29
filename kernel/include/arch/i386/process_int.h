@@ -15,9 +15,8 @@ struct task_info {
    int state;
    int exit_code;
 
-   u64 jiffies_when_switch;
-
    u64 ticks;
+   u64 total_ticks;
 
    int owning_process_pid; /* The pid of the process owning this thread. */
    void *kernel_stack;

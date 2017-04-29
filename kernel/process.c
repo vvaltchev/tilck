@@ -61,6 +61,7 @@ NORETURN void switch_to_task(task_info *pi)
    ASSERT(pi->state == TASK_STATE_RUNNABLE);
 
    pi->state = TASK_STATE_RUNNING;
+   pi->ticks = 0;
 
    if (get_curr_page_dir() != pi->pdir) {
       set_page_directory(pi->pdir);
@@ -97,19 +98,19 @@ NORETURN void switch_to_task(task_info *pi)
 void account_ticks()
 {
    current_task->ticks++;
+   current_task->total_ticks++;
 }
 
 bool need_reschedule()
 {
    task_info *curr = current_task;
-   const u64 jiffies_used = jiffies - curr->jiffies_when_switch;
 
-   if (jiffies_used < TIME_SLOT_JIFFIES && curr->state == TASK_STATE_RUNNING) {
+   if (curr->ticks < TIME_SLOT_JIFFIES && curr->state == TASK_STATE_RUNNING) {
       return false;
    }
 
-   // printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
-   //        current_task->pid, jiffies_used);
+   printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
+          current_task->pid, curr->ticks);
 
    return true;
 }
@@ -119,7 +120,7 @@ NORETURN void schedule()
    task_info *curr = current_task;
    task_info *selected = curr;
    task_info *pos;
-   u64 least_jiffies_for_task = (u64)-1;
+   u64 least_ticks_for_task = (u64)-1;
 
    if (curr->state == TASK_STATE_ZOMBIE && is_kernel_thread(curr)) {
 
@@ -142,7 +143,8 @@ actual_sched:
 
    list_for_each_entry(pos, &tasks_list, list) {
 
-      // printk("   [sched] checking pid %i (jiffies = %llu): ", pos->pid, pos->jiffies_when_switch);
+      // printk("   [sched] checking pid %i (ticks = %llu): ",
+      //        pos->pid, pos->total_ticks);
 
       if (pos == curr || pos->state != TASK_STATE_RUNNABLE) {
          // if (pos == curr)
@@ -153,16 +155,14 @@ actual_sched:
          continue;
       }
 
-      if (pos->jiffies_when_switch < least_jiffies_for_task) {
-         //printk("GOOD\n");
+      if (pos->total_ticks < least_ticks_for_task) {
+         // printk("GOOD\n");
          selected = pos;
-         least_jiffies_for_task = pos->jiffies_when_switch;
+         least_ticks_for_task = pos->total_ticks;
       } else {
-         //printk("BAD\n");
+         // printk("BAD\n");
       }
    }
-
-   selected->jiffies_when_switch = jiffies;
 
    // Finalizing code.
 
@@ -231,8 +231,8 @@ int sys_fork()
    child->owning_process_pid = child->pid;
    child->kernel_stack = NULL;
 
-   child->jiffies_when_switch = current_task->jiffies_when_switch;
    child->ticks = current_task->ticks;
+   child->total_ticks = current_task->total_ticks;
 
    memmove(&child->state_regs,
            &current_task->state_regs,
