@@ -32,6 +32,8 @@ void timer_handler(regs *r)
 {
    jiffies++;
 
+   account_ticks();
+
    /*
     * Here we have to check that disabled_preemption_count is > 1, not > 0
     * since as the way the handle_irq() is implemented, that counter will be
@@ -42,13 +44,6 @@ void timer_handler(regs *r)
    if (disable_preemption_count > 1) {
       return;
    }
-
-   if (!current_task) {
-      // The kernel is still initializing and we cannot call schedule() yet.
-      return;
-   }
-
-   account_ticks();
 
    if (need_reschedule()) {
       disable_preemption_count = 1;

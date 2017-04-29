@@ -5,7 +5,12 @@
 
 #include <hal.h>
 
-#define TIME_SLOT_JIFFIES (TIMER_HZ)
+//#define DEBUG_printk printk
+#define DEBUG_printk(...)
+
+
+
+#define TIME_SLOT_JIFFIES (TIMER_HZ * 3)
 
 task_info *volatile current_task = NULL;
 int current_max_pid = 0;
@@ -97,20 +102,27 @@ NORETURN void switch_to_task(task_info *pi)
 
 void account_ticks()
 {
-   current_task->ticks++;
-   current_task->total_ticks++;
+   if (current_task) {
+      current_task->ticks++;
+      current_task->total_ticks++;
+   }
 }
 
 bool need_reschedule()
 {
    task_info *curr = current_task;
 
+   if (!curr) {
+      // The kernel is still initializing and we cannot call schedule() yet.
+      return false;
+   }
+
    if (curr->ticks < TIME_SLOT_JIFFIES && curr->state == TASK_STATE_RUNNING) {
       return false;
    }
 
-   printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
-          current_task->pid, curr->ticks);
+   DEBUG_printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
+                current_task->pid, curr->total_ticks);
 
    return true;
 }
@@ -143,24 +155,26 @@ actual_sched:
 
    list_for_each_entry(pos, &tasks_list, list) {
 
-      // printk("   [sched] checking pid %i (ticks = %llu): ",
-      //        pos->pid, pos->total_ticks);
+       DEBUG_printk("   [sched] checking pid %i (ticks = %llu): ",
+                    pos->pid, pos->total_ticks);
 
       if (pos == curr || pos->state != TASK_STATE_RUNNABLE) {
-         // if (pos == curr)
-         //    printk("SKIP\n");
-         // else
-         //    printk("NOT RUNNABLE\n");
+
+         if (pos == curr) {
+            DEBUG_printk("SKIP\n");
+         } else {
+            DEBUG_printk("NOT RUNNABLE\n");
+         }
 
          continue;
       }
 
       if (pos->total_ticks < least_ticks_for_task) {
-         // printk("GOOD\n");
+         DEBUG_printk("GOOD\n");
          selected = pos;
          least_ticks_for_task = pos->total_ticks;
       } else {
-         // printk("BAD\n");
+         DEBUG_printk("BAD\n");
       }
    }
 

@@ -22,6 +22,8 @@ sptr sys_write(int fd, const void *buf, size_t count)
 {
    //printk("sys_write(fd = %i, count = %u, buf = '%s')\n", fd, count, buf);
 
+   //for (int i = 0; i < 50*1000*1000; i++) { } // waste some cylces
+
    for (size_t i = 0; i < count; i++) {
       term_write_char(((char *)buf)[i]);
    }
