@@ -95,20 +95,11 @@ void test_memdisk()
 
 void simple_test_kthread(void)
 {
-   disable_preemption();
-   {
-      printk("[kernel thread] This is a kernel thread..\n");
-   }
-   enable_preemption();
+   printk("[kernel thread] This is a kernel thread..\n");
 
    for (int i = 0; i < 1024*(int)MB; i++) {
       if (!(i % (256*MB))) {
-
-         disable_preemption();
-         {
-            printk("[kernel thread] i = %i\n", i/MB);
-         }
-         enable_preemption();
+         printk("[kernel thread] i = %i\n", i/MB);
       }
    }
 }
@@ -117,12 +108,8 @@ void tasklet_runner_kthread(void)
 {
    bool res;
 
-   disable_preemption();
-   {
-      printk("[kernel thread] tasklet runner kthread (pid: %i)\n",
-             get_current_task()->pid);
-   }
-   enable_preemption();
+   printk("[kernel thread] tasklet runner kthread (pid: %i)\n",
+          get_current_task()->pid);
 
    while (true) {
 
@@ -132,7 +119,23 @@ void tasklet_runner_kthread(void)
          ASSERT(is_preemption_enabled());
          ASSERT(are_interrupts_enabled());
 
+
+         /*
+          * TODO. Implement:
+          *
+          * - a way to save the current task state from inside the kernel
+          *   without an interrupt.
+          *
+          * - a safe_schedule() function that: disables the preemption, saves
+          *   the current kthread state and only then runs schedule().
+          */
          halt();
+
+         // disable_preemption();
+         // save_current_task_state();
+         // push_nested_interrupt(-1);
+         // schedule();
+         // enable_preemption();
       }
    }
 }
@@ -171,7 +174,7 @@ void kmain()
    init_kb();
 
    kthread_create(simple_test_kthread);
-   //kthread_create(tasklet_runner_kthread);
+   kthread_create(tasklet_runner_kthread);
 
    // Run the 'init' usermode program.
    run_usermode_init();

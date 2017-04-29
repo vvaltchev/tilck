@@ -142,9 +142,15 @@ void vprintk(const char *fmt, va_list args)
    }
 }
 
+#include <hal.h>
+
 void printk(const char *fmt, ...)
 {
-   va_list args;
-   va_start(args, fmt);
-   vprintk(fmt, args);
+   disable_preemption();
+   {
+      va_list args;
+      va_start(args, fmt);
+      vprintk(fmt, args);
+   }
+   enable_preemption();
 }
