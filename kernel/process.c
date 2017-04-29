@@ -118,7 +118,8 @@ NORETURN void switch_to_task(task_info *ti)
 
 
    if (!current_task->running_in_kernel) {
-      set_kernel_stack(((uptr) current_task->kernel_stack + KTHREAD_STACK_SIZE - 1) & POINTER_ALIGN_MASK);
+      set_kernel_stack(((uptr) current_task->kernel_stack +
+                       KTHREAD_STACK_SIZE - 1) & POINTER_ALIGN_MASK);
       context_switch(state);
    } else {
       kthread_context_switch(state);
