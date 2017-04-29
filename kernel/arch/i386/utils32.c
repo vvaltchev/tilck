@@ -48,3 +48,16 @@ void set_timer_freq(int hz)
    outb(0x40, divisor & 0xFF);   /* Set low byte of divisor */
    outb(0x40, divisor >> 8);     /* Set high byte of divisor */
 }
+
+
+void asm_save_curr_state(void);
+
+void save_curr_kernel_state()
+{
+   asm_save_curr_state();
+}
+
+void kernel_state_saver(kernel_context_regs *ctx)
+{
+
+}

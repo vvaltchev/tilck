@@ -19,6 +19,16 @@ struct regs {
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
 
+typedef struct kernel_context_regs kernel_context_regs;
+
+struct kernel_context_regs {
+   u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
+   u32 eflags;
+   u32 eip;
+};
+
+void save_curr_kernel_state();
+
 static ALWAYS_INLINE uptr get_eflags()
 {
    uptr eflags;

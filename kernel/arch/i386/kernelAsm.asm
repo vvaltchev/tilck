@@ -177,28 +177,44 @@ extern generic_interrupt_handler
 ; up for kernel mode segments, calls the C-level fault handler,
 ; and finally restores the stack frame.
 asm_int_handler:
-    pusha          ;  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
-    push ds
-    push es
-    push fs
-    push gs
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov eax, esp
-    push eax
-    mov eax, generic_interrupt_handler
-    call eax
-    pop eax
-    pop gs
-    pop fs
-    pop es
-    pop ds
-    popa          ; Pops edi,esi,ebp...
-    add esp, 8    ; Cleans up the pushed error code and pushed ISR number
-    iret
+   pusha          ;  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+   push ds
+   push es
+   push fs
+   push gs
+   mov ax, 0x10
+   mov ds, ax
+   mov es, ax
+   mov fs, ax
+   mov gs, ax
+   mov eax, esp
+   push eax
+   mov eax, generic_interrupt_handler
+   call eax
+   pop eax
+   pop gs
+   pop fs
+   pop es
+   pop ds
+   popa          ; Pops edi,esi,ebp...
+   add esp, 8    ; Cleans up the pushed error code and pushed ISR number
+   iret
+
+extern kernel_state_saver
+
+global asm_save_curr_state
+asm_save_curr_state:
+
+   pushf
+   pusha          ;  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+
+   mov eax, esp
+   push eax
+   mov eax, kernel_state_saver
+   call eax
+
+   add esp, 40
+   ret
 
 
 ; Service Routines (ISRs)
