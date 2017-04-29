@@ -76,18 +76,18 @@ int kthread_create(kthread_func_ptr fun)
    r.eip = (u32) fun;
    r.eflags = get_eflags() | (1 << 9);
 
-   task_info *pi = kmalloc(sizeof(task_info));
-   INIT_LIST_HEAD(&pi->list);
-   pi->pdir = get_kernel_page_dir();
-   pi->pid = ++current_max_pid;
-   pi->state = TASK_STATE_RUNNABLE;
+   task_info *ti = kmalloc(sizeof(task_info));
+   INIT_LIST_HEAD(&ti->list);
+   ti->pdir = get_kernel_page_dir();
+   ti->pid = ++current_max_pid;
+   ti->state = TASK_STATE_RUNNABLE;
 
-   pi->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
-   pi->kernel_stack = (void *) kmalloc(KTHREAD_STACK_SIZE);
+   ti->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
+   ti->kernel_stack = (void *) kmalloc(KTHREAD_STACK_SIZE);
 
-   memset(pi->kernel_stack, 0, KTHREAD_STACK_SIZE);
+   memset(ti->kernel_stack, 0, KTHREAD_STACK_SIZE);
 
-   r.useresp = ((uptr) pi->kernel_stack + KTHREAD_STACK_SIZE - 1);
+   r.useresp = ((uptr) ti->kernel_stack + KTHREAD_STACK_SIZE - 1);
    r.useresp &= POINTER_ALIGN_MASK;
 
    // Pushes the address of kthread_exit() into thread's stack in order to
@@ -96,13 +96,13 @@ int kthread_create(kthread_func_ptr fun)
    *(void **)(r.useresp) = (void *) &kthread_exit;
    r.useresp -= sizeof(void *);
 
-   memmove(&pi->state_regs, &r, sizeof(r));
+   memmove(&ti->state_regs, &r, sizeof(r));
 
-   add_task(pi);
-   pi->ticks = 0;
-   pi->total_ticks = 0;
+   add_task(ti);
+   ti->ticks = 0;
+   ti->total_ticks = 0;
 
-   return pi->pid;
+   return ti->pid;
 }
 
 void kthread_exit()
@@ -146,22 +146,22 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
 
    r.eflags = get_eflags() | (1 << 9);
 
-   task_info *pi = kmalloc(sizeof(task_info));
-   INIT_LIST_HEAD(&pi->list);
+   task_info *ti = kmalloc(sizeof(task_info));
+   INIT_LIST_HEAD(&ti->list);
 
-   pi->pdir = pdir;
-   pi->pid = ++current_max_pid;
-   pi->state = TASK_STATE_RUNNABLE;
+   ti->pdir = pdir;
+   ti->pid = ++current_max_pid;
+   ti->state = TASK_STATE_RUNNABLE;
 
-   pi->owning_process_pid = pi->pid;
-   pi->kernel_stack = NULL;
+   ti->owning_process_pid = ti->pid;
+   ti->kernel_stack = NULL;
 
-   memmove(&pi->state_regs, &r, sizeof(r));
+   memmove(&ti->state_regs, &r, sizeof(r));
 
-   add_task(pi);
-   pi->ticks = 0;
-   pi->total_ticks = 0;
+   add_task(ti);
+   ti->ticks = 0;
+   ti->total_ticks = 0;
 
    disable_preemption();
-   switch_to_task(pi);
+   switch_to_task(ti);
 }

@@ -44,10 +44,7 @@ sptr sys_close(int fd)
    return 0;
 }
 
-sptr sys_waitpid()
-{
-   return 0;
-}
+sptr sys_waitpid(int pid, int *wstatus, int options);
 
 sptr sys_creat()
 {

@@ -1,10 +1,6 @@
 
 #include <common_defs.h>
 #include <process.h>
-#include <arch/generic_x86/x86_utils.h>
-#include <string_util.h>
-
-extern volatile task_info *current_task;
 
 
 /*
@@ -28,7 +24,7 @@ bool is_preemption_enabled() {
    return disable_preemption_count == 0;
 }
 
-void timer_handler(regs *r)
+void timer_handler(void *context)
 {
    jiffies++;
 
@@ -47,7 +43,7 @@ void timer_handler(regs *r)
 
    if (need_reschedule()) {
       disable_preemption_count = 1;
-      save_current_task_state(r);
+      save_current_task_state(context);
       schedule();
    }
 }

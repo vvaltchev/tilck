@@ -61,15 +61,15 @@ void remove_task(task_info *ti)
    kfree(ti, sizeof(task_info));
 }
 
-NORETURN void switch_to_task(task_info *pi)
+NORETURN void switch_to_task(task_info *ti)
 {
-   ASSERT(pi->state == TASK_STATE_RUNNABLE);
+   ASSERT(ti->state == TASK_STATE_RUNNABLE);
 
-   pi->state = TASK_STATE_RUNNING;
-   pi->ticks = 0;
+   ti->state = TASK_STATE_RUNNING;
+   ti->ticks = 0;
 
-   if (get_curr_page_dir() != pi->pdir) {
-      set_page_directory(pi->pdir);
+   if (get_curr_page_dir() != ti->pdir) {
+      set_page_directory(ti->pdir);
    }
 
    disable_interrupts();
@@ -82,7 +82,7 @@ NORETURN void switch_to_task(task_info *pi)
 
    ASSERT(is_preemption_enabled());
 
-   current_task = pi;
+   current_task = ti;
 
 
    /*
@@ -102,10 +102,12 @@ NORETURN void switch_to_task(task_info *pi)
 
 void account_ticks()
 {
-   if (current_task) {
-      current_task->ticks++;
-      current_task->total_ticks++;
+   if (!current_task) {
+      return;
    }
+
+   current_task->ticks++;
+   current_task->total_ticks++;
 }
 
 bool need_reschedule()
@@ -202,7 +204,18 @@ actual_sched:
    switch_to_task(selected);
 }
 
+task_info *get_task(int pid)
+{
+   task_info *pos;
 
+   list_for_each_entry(pos, &tasks_list, list) {
+      if (pos->pid == pid) {
+         return pos;
+      }
+   }
+
+   return NULL;
+}
 
 /*
  * ***************************************************************
@@ -212,11 +225,39 @@ actual_sched:
  * ***************************************************************
  */
 
-int sys_getpid()
+sptr sys_getpid()
 {
    ASSERT(current_task != NULL);
    return current_task->pid;
 }
+
+sptr sys_waitpid(int pid, int *wstatus, int options)
+{
+   printk("[kernel] Pid %i will WAIT until pid %i dies\n",
+          current_task->pid, pid);
+
+   task_info *waited_task = get_task(pid);
+
+   if (!waited_task) {
+      return -1;
+   }
+
+   /*
+    * TODO: Finish this function.
+    * In order make a syscall (= kernel code working for the user) to be
+    * preemptable, syscalls need to have their own stack and context regs
+    * in user's process data structure.
+    */
+
+   enable_preemption();
+   {
+
+   }
+   disable_preemption();
+
+   return waited_task->pid;
+}
+
 
 NORETURN void sys_exit(int exit_code)
 {
@@ -231,7 +272,7 @@ NORETURN void sys_exit(int exit_code)
 }
 
 // Returns child's pid
-int sys_fork()
+sptr sys_fork()
 {
    page_directory_t *pdir = pdir_clone(current_task->pdir);
 
