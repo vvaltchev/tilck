@@ -5,6 +5,13 @@
 #include <arch/i386/process_int.h>
 #include <hal.h>
 
+void reset_kernel_stack(task_info *ti)
+{
+   ti->kernel_state_regs.useresp = \
+      ((uptr) ti->kernel_stack +
+      KTHREAD_STACK_SIZE - 1) & POINTER_ALIGN_MASK;
+}
+
 
 void push_on_user_stack(regs *r, uptr val)
 {
@@ -65,7 +72,7 @@ void push_args_on_user_stack(regs *r, int argc,
    push_on_user_stack(r, argc);
 }
 
-int kthread_create(kthread_func_ptr fun)
+task_info *kthread_create(kthread_func_ptr fun)
 {
    regs r;
    memset(&r, 0, sizeof(r));
@@ -76,32 +83,37 @@ int kthread_create(kthread_func_ptr fun)
    r.eip = (u32) fun;
    r.eflags = get_eflags() | (1 << 9);
 
-   task_info *pi = kmalloc(sizeof(task_info));
-   INIT_LIST_HEAD(&pi->list);
-   pi->pdir = get_kernel_page_dir();
-   pi->pid = ++current_max_pid;
-   pi->state = TASK_STATE_RUNNABLE;
+   task_info *ti = kmalloc(sizeof(task_info));
+   memset(ti, 0, sizeof(task_info));
 
-   pi->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
-   pi->kernel_stack = (void *) kmalloc(KTHREAD_STACK_SIZE);
+   INIT_LIST_HEAD(&ti->list);
+   ti->pdir = get_kernel_page_dir();
+   ti->pid = ++current_max_pid;
+   ti->state = TASK_STATE_RUNNABLE;
 
-   memset(pi->kernel_stack, 0, KTHREAD_STACK_SIZE);
+   ti->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
+   ti->running_in_kernel = 1;
+   ti->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
+   memset(ti->kernel_stack, 0, KTHREAD_STACK_SIZE);
 
-   r.useresp = ((uptr) pi->kernel_stack + KTHREAD_STACK_SIZE - 1);
-   r.useresp &= POINTER_ALIGN_MASK;
+   memset(&ti->state_regs, 0, sizeof(r));
+   memmove(&ti->kernel_state_regs, &r, sizeof(r));
 
-   // Pushes the address of kthread_exit() into thread's stack in order to
-   // it to be called after thread's function returns.
+   reset_kernel_stack(ti);
 
-   *(void **)(r.useresp) = (void *) &kthread_exit;
-   r.useresp -= sizeof(void *);
+   /*
+    * Pushes the address of kthread_exit() into thread's stack in order to
+    * it to be called after thread's function returns.
+    * This is AS IF kthread_exit() called the thread 'fun' with a CALL
+    * instruction before doing anything else. That allows the RET by 'fun' to
+    * jump in the begging of kthread_exit().
+    */
 
-   memmove(&pi->state_regs, &r, sizeof(r));
+   push_on_user_stack(&ti->kernel_state_regs, (uptr) &kthread_exit);
+   ti->kernel_state_regs.useresp -= sizeof(uptr);
 
-   add_task(pi);
-   pi->jiffies_when_switch = jiffies;
-
-   return pi->pid;
+   add_task(ti);
+   return ti;
 }
 
 void kthread_exit()
@@ -123,9 +135,9 @@ void kthread_exit()
    asmVolatile("jmp *%0" : : "r"(&schedule));
 }
 
-NORETURN void first_usermode_switch(page_directory_t *pdir,
-                                    void *entry,
-                                    void *stack_addr)
+task_info *create_first_usermode_task(page_directory_t *pdir,
+                                      void *entry,
+                                      void *stack_addr)
 {
    regs r;
    memset(&r, 0, sizeof(r));
@@ -145,21 +157,24 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
 
    r.eflags = get_eflags() | (1 << 9);
 
-   task_info *pi = kmalloc(sizeof(task_info));
-   INIT_LIST_HEAD(&pi->list);
+   task_info *ti = kmalloc(sizeof(task_info));
+   memset(ti, 0, sizeof(task_info));
 
-   pi->pdir = pdir;
-   pi->pid = ++current_max_pid;
-   pi->state = TASK_STATE_RUNNABLE;
+   INIT_LIST_HEAD(&ti->list);
 
-   pi->owning_process_pid = pi->pid;
-   pi->kernel_stack = NULL;
+   ti->pdir = pdir;
+   ti->pid = ++current_max_pid;
+   ti->state = TASK_STATE_RUNNABLE;
 
-   memmove(&pi->state_regs, &r, sizeof(r));
+   ti->owning_process_pid = ti->pid;
+   ti->running_in_kernel = 0;
+   ti->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
+   memset(ti->kernel_stack, 0, KTHREAD_STACK_SIZE);
 
-   add_task(pi);
-   pi->jiffies_when_switch = jiffies;
+   memmove(&ti->state_regs, &r, sizeof(r));
+   memset(&ti->kernel_state_regs, 0, sizeof(r));
 
-   disable_preemption();
-   switch_to_task(pi);
+   reset_kernel_stack(ti);
+   add_task(ti);
+   return ti;
 }

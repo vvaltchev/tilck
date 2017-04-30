@@ -1,6 +1,7 @@
 
 #include <string_util.h>
 #include <hal.h>
+#include <process.h>
 
 void memcpy(void *dest, const void *src, size_t n)
 {
@@ -47,4 +48,14 @@ void set_timer_freq(int hz)
    outb(0x43, 0x36);             /* Set our command byte 0x36 */
    outb(0x40, divisor & 0xFF);   /* Set low byte of divisor */
    outb(0x40, divisor >> 8);     /* Set high byte of divisor */
+}
+
+
+
+void kernel_yield_post(regs *ctx)
+{
+   disable_preemption();
+   save_current_task_state(ctx);
+   push_nested_interrupt(-1);
+   schedule();
 }

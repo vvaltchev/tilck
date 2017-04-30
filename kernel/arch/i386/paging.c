@@ -41,8 +41,6 @@ bool handle_potential_cow(u32 vaddr)
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
-   disable_interrupts();
-
    ptable = curr_page_dir->page_tables[page_dir_index];
    u8 flags = ptable->pages[page_table_index].avail;
 
@@ -55,7 +53,8 @@ bool handle_potential_cow(u32 vaddr)
    void *page_vaddr = (void *)(vaddr & PAGE_MASK);
    u32 orig_page_paddr = ptable->pages[page_table_index].pageAddr;
 
-   printk("*** DEBUG: attempt to write COW page at %p\n", page_vaddr);
+   printk("*** DEBUG: attempt to write COW page at %p (addr: %p)\n",
+          page_vaddr, vaddr);
 
    if (pageframes_refcount[orig_page_paddr] == 1) {
 
@@ -100,7 +99,6 @@ bool handle_potential_cow(u32 vaddr)
    retval = true;
 
 end:
-   enable_interrupts();
    return retval;
 }
 

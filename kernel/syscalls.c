@@ -22,6 +22,8 @@ sptr sys_write(int fd, const void *buf, size_t count)
 {
    //printk("sys_write(fd = %i, count = %u, buf = '%s')\n", fd, count, buf);
 
+   //for (int i = 0; i < 50*1000*1000; i++) { } // waste some cylces
+
    for (size_t i = 0; i < count; i++) {
       term_write_char(((char *)buf)[i]);
    }
@@ -42,10 +44,7 @@ sptr sys_close(int fd)
    return 0;
 }
 
-sptr sys_waitpid()
-{
-   return 0;
-}
+sptr sys_waitpid(int pid, int *wstatus, int options);
 
 sptr sys_creat()
 {
@@ -163,9 +162,13 @@ void handle_syscall(regs *r)
    //printk("Arg 5 (edi): %p\n", r->edi);
    //printk("Arg 6 (ebp): %p\n\n", r->ebp);
 
+   set_current_task_in_kernel();
+
    r->eax =
       syscalls_pointers[r->eax](r->ebx, r->ecx, r->edx,
                                 r->esi, r->edi, r->ebp);
+
+   set_current_task_in_user_mode();
 }
 
 #define MSR_IA32_SYSENTER_CS            0x174

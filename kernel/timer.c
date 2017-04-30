@@ -1,10 +1,6 @@
 
 #include <common_defs.h>
 #include <process.h>
-#include <arch/generic_x86/x86_utils.h>
-#include <string_util.h>
-
-extern volatile task_info *current_task;
 
 
 /*
@@ -28,9 +24,11 @@ bool is_preemption_enabled() {
    return disable_preemption_count == 0;
 }
 
-void timer_handler(regs *r)
+void timer_handler(void *context)
 {
    jiffies++;
+
+   account_ticks();
 
    /*
     * Here we have to check that disabled_preemption_count is > 1, not > 0
@@ -43,14 +41,10 @@ void timer_handler(regs *r)
       return;
    }
 
-   if (!current_task) {
-      // The kernel is still initializing and we cannot call schedule() yet.
-      return;
+   if (need_reschedule()) {
+      disable_preemption_count = 1;
+      save_current_task_state(context);
+      schedule();
    }
-
-   disable_preemption_count = 1;
-
-   save_current_task_state(r);
-   schedule();
 }
 

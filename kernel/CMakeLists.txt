@@ -12,6 +12,11 @@ set(
    -fno-asynchronous-unwind-tables
    -fno-zero-initialized-in-bss
    -fno-exceptions
+
+   # Allow easier debugging using disassembly
+   -mpush-args
+   -mno-accumulate-outgoing-args
+   -mno-stack-arg-probe
 )
 
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
