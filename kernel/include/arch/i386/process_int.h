@@ -17,6 +17,7 @@ struct task_info {
 
    u64 ticks;
    u64 total_ticks;
+   u64 kernel_ticks;
 
    int running_in_kernel;
 

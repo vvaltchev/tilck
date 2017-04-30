@@ -84,6 +84,8 @@ task_info *kthread_create(kthread_func_ptr fun)
    r.eflags = get_eflags() | (1 << 9);
 
    task_info *ti = kmalloc(sizeof(task_info));
+   memset(ti, 0, sizeof(task_info));
+
    INIT_LIST_HEAD(&ti->list);
    ti->pdir = get_kernel_page_dir();
    ti->pid = ++current_max_pid;
@@ -99,15 +101,16 @@ task_info *kthread_create(kthread_func_ptr fun)
 
    reset_kernel_stack(ti);
 
-   // Pushes the address of kthread_exit() into thread's stack in order to
-   // it to be called after thread's function returns.
+   /*
+    * Pushes the address of kthread_exit() into thread's stack in order to
+    * it to be called after thread's function returns.
+    * This is AS IF kthread_exit() called the thread 'fun' with a CALL
+    * instruction before doing anything else. That allows the RET by 'fun' to
+    * jump in the begging of kthread_exit().
+    */
 
-   *(void **)(ti->kernel_state_regs.useresp) = (void *) &kthread_exit;
-   ti->kernel_state_regs.useresp -= sizeof(void *);
-
-
-   ti->ticks = 0;
-   ti->total_ticks = 0;
+   push_on_user_stack(&ti->kernel_state_regs, (uptr) &kthread_exit);
+   ti->kernel_state_regs.useresp -= sizeof(uptr);
 
    add_task(ti);
    return ti;
@@ -155,6 +158,8 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
    r.eflags = get_eflags() | (1 << 9);
 
    task_info *ti = kmalloc(sizeof(task_info));
+   memset(ti, 0, sizeof(task_info));
+
    INIT_LIST_HEAD(&ti->list);
 
    ti->pdir = pdir;
@@ -170,10 +175,6 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
    memset(&ti->kernel_state_regs, 0, sizeof(r));
 
    reset_kernel_stack(ti);
-
-   ti->ticks = 0;
-   ti->total_ticks = 0;
-
    add_task(ti);
    return ti;
 }

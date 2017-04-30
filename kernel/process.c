@@ -171,6 +171,10 @@ void account_ticks()
 
    current_task->ticks++;
    current_task->total_ticks++;
+
+   if (current_task->running_in_kernel) {
+      current_task->kernel_ticks++;
+   }
 }
 
 bool need_reschedule()
@@ -186,8 +190,8 @@ bool need_reschedule()
       return false;
    }
 
-   DEBUG_printk("\n\n[sched] Current pid: %i, used %llu jiffies\n",
-                current_task->pid, curr->total_ticks);
+   printk("\n\n[sched] Current pid: %i, used %llu ticks (%llu in kernel)\n",
+                current_task->pid, curr->total_ticks, curr->kernel_ticks);
 
    return true;
 }
@@ -351,17 +355,15 @@ sptr sys_fork()
 
    child->owning_process_pid = child->pid;
    child->running_in_kernel = 0;
+
+   // The other members of task_info have been copied by the memmove() above
+   memset(&child->kernel_state_regs, 0, sizeof(child->kernel_state_regs));
+
    child->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
    memset(child->kernel_stack, 0, KTHREAD_STACK_SIZE);
    reset_kernel_stack(child);
 
-   // The other members of task_info have been copied by the memmove() above
-
-   memset(&child->kernel_state_regs, 0, sizeof(child->kernel_state_regs));
-
    set_return_register(&child->state_regs, 0);
-
-   //printk("forking current proccess with eip = %p\n", child->state_regs.eip);
 
    add_task(child);
 
