@@ -119,6 +119,7 @@ void tasklet_runner_kthread(void)
          ASSERT(is_preemption_enabled());
          ASSERT(are_interrupts_enabled());
 
+         printk("[kernel thread] no tasklets, yield!\n");
          kernel_yield();
       }
    }

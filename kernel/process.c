@@ -143,7 +143,7 @@ NORETURN void switch_to_task(task_info *ti)
          push_nested_interrupt(0x80);
       }
 
-      kthread_context_switch(state);
+      kernel_context_switch(state);
    }
 }
 

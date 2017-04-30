@@ -13,7 +13,7 @@ global idt_load
 global tss_flush
 global _start
 global asm_context_switch_x86
-global asm_kthread_context_switch_x86
+global asm_kernel_context_switch_x86
 global kernel_yield
 
 
@@ -132,7 +132,7 @@ asm_context_switch_x86:
    iret
 
 
-asm_kthread_context_switch_x86:
+asm_kernel_context_switch_x86:
 
    pop eax ; return addr (ignored)
 
@@ -166,11 +166,11 @@ asm_kthread_context_switch_x86:
    pop ecx
    pop eax
 
+   popf ; pop the eflags register (it will restore the interrupts as well)
+
    ; Now we can finally pop the 2nd copy of the ESP and just do RET since
    ; the right EIP is already on the new stack.
    pop esp
-
-   sti ; re-enable interrupts
    ret
 
 
@@ -202,6 +202,9 @@ asm_int_handler:
    add esp, 8    ; Cleans up the pushed error code and pushed ISR number
    iret
 
+
+; Saves the current (kernel) state as if an interrupt occurred while running
+; in kernel mode.
 
 kernel_yield:
 
