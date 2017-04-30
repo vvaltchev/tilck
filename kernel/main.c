@@ -119,23 +119,7 @@ void tasklet_runner_kthread(void)
          ASSERT(is_preemption_enabled());
          ASSERT(are_interrupts_enabled());
 
-
-         /*
-          * TODO. Implement:
-          *
-          * - a way to save the current task state from inside the kernel
-          *   without an interrupt.
-          *
-          * - a safe_schedule() function that: disables the preemption, saves
-          *   the current kthread state and only then runs schedule().
-          */
-         halt();
-
-         // disable_preemption();
-         // save_current_task_state();
-         // push_nested_interrupt(-1);
-         // schedule();
-         // enable_preemption();
+         kernel_yield();
       }
    }
 }

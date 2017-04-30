@@ -50,8 +50,9 @@ void save_current_task_state(regs *r)
    memmove(state, r, sizeof(*r));
 
    if (current_task->running_in_kernel) {
+
       /*
-       * If the current task is a kernel thread, than the useresp has not
+       * If the current task was running in kernel, than the useresp has not
        * be saved on the stack by the CPU, since there has been not priviledge
        * change. So, we have to use the actual value of ESP as 'useresp' and
        * adjust it by +16. That's because when the interrupt occured, the CPU
@@ -60,10 +61,12 @@ void save_current_task_state(regs *r)
        */
       state->useresp = r->esp + 16;
 
+      state->eflags = get_eflags();
+      state->ss = 0x10;
+
       if (!is_kernel_thread(current_task)) {
          printk("[kernel] PREEMPTING kernel code for user program!\n");
       }
-
    }
 }
 

@@ -1,6 +1,7 @@
 
 #include <string_util.h>
 #include <hal.h>
+#include <process.h>
 
 void memcpy(void *dest, const void *src, size_t n)
 {
@@ -50,14 +51,11 @@ void set_timer_freq(int hz)
 }
 
 
-void asm_save_curr_state(void);
 
-void save_curr_kernel_state()
+void kernel_yield_post(regs *ctx)
 {
-   asm_save_curr_state();
-}
-
-void kernel_state_saver(kernel_context_regs *ctx)
-{
-
+   disable_preemption();
+   save_current_task_state(ctx);
+   push_nested_interrupt(-1);
+   schedule();
 }

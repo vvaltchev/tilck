@@ -4,11 +4,18 @@ extern kmain
 extern idtp
 extern irq_handler
 extern gdt_pointer
+extern generic_interrupt_handler
+extern kernel_yield_post
+
 
 global gdt_load
 global idt_load
 global tss_flush
 global _start
+global asm_context_switch_x86
+global asm_kthread_context_switch_x86
+global kernel_yield
+
 
 section .text
 
@@ -86,8 +93,6 @@ tss_flush:
    ret
 
 
-global asm_context_switch_x86
-
 asm_context_switch_x86:
 
    pop eax ; return addr (ignored)
@@ -126,9 +131,6 @@ asm_context_switch_x86:
 
    iret
 
-
-
-global asm_kthread_context_switch_x86
 
 asm_kthread_context_switch_x86:
 
@@ -171,7 +173,7 @@ asm_kthread_context_switch_x86:
    sti ; re-enable interrupts
    ret
 
-extern generic_interrupt_handler
+
 
 ; This is our common ISR stub. It saves the processor state, sets
 ; up for kernel mode segments, calls the C-level fault handler,
@@ -200,21 +202,26 @@ asm_int_handler:
    add esp, 8    ; Cleans up the pushed error code and pushed ISR number
    iret
 
-extern kernel_state_saver
 
-global asm_save_curr_state
-asm_save_curr_state:
+kernel_yield:
 
-   pushf
-   pusha          ;  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+   pop eax   ; pop eip (return addr)
+
+   push cs
+   push eax  ; eip (we saved before)
+   push 0    ; err_code
+   push -1   ; int_num
+
+   pusha     ; Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+   push ds
+   push es
+   push fs
+   push gs
 
    mov eax, esp
    push eax
-   mov eax, kernel_state_saver
+   mov eax, kernel_yield_post
    call eax
-
-   add esp, 40
-   ret
 
 
 ; Service Routines (ISRs)
