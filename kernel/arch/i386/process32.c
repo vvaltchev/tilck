@@ -65,7 +65,7 @@ void push_args_on_user_stack(regs *r, int argc,
    push_on_user_stack(r, argc);
 }
 
-int kthread_create(kthread_func_ptr fun)
+task_info *kthread_create(kthread_func_ptr fun)
 {
    regs r;
    memset(&r, 0, sizeof(r));
@@ -103,7 +103,7 @@ int kthread_create(kthread_func_ptr fun)
    ti->total_ticks = 0;
 
    add_task(ti);
-   return ti->pid;
+   return ti;
 }
 
 void kthread_exit()
@@ -125,9 +125,9 @@ void kthread_exit()
    asmVolatile("jmp *%0" : : "r"(&schedule));
 }
 
-NORETURN void first_usermode_switch(page_directory_t *pdir,
-                                    void *entry,
-                                    void *stack_addr)
+task_info *create_first_usermode_task(page_directory_t *pdir,
+                                      void *entry,
+                                      void *stack_addr)
 {
    regs r;
    memset(&r, 0, sizeof(r));
@@ -162,10 +162,9 @@ NORETURN void first_usermode_switch(page_directory_t *pdir,
    memmove(&ti->state_regs, &r, sizeof(r));
    memset(&ti->kernel_state_regs, 0, sizeof(r));
 
-   add_task(ti);
    ti->ticks = 0;
    ti->total_ticks = 0;
 
-   disable_preemption();
-   switch_to_task(ti);
+   add_task(ti);
+   return ti;
 }

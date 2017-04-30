@@ -78,10 +78,21 @@ void add_task(task_info *ti)
 
 void remove_task(task_info *ti)
 {
-   printk("[remove_task] pid = %i\n", ti->pid);
-   list_remove(&ti->list);
-   kfree(ti->kernel_stack, KTHREAD_STACK_SIZE);
-   kfree(ti, sizeof(task_info));
+   ASSERT(ti->state == TASK_STATE_ZOMBIE);
+
+   disable_preemption();
+   {
+      printk("[remove_task] pid = %i\n", ti->pid);
+      list_remove(&ti->list);
+
+      printk("ti->kernel_stack: %p\n", ti->kernel_stack);
+
+      // TODO: investigate WHY we crash if this kfree() is run!
+      // kfree(ti->kernel_stack, KTHREAD_STACK_SIZE);
+
+      kfree(ti, sizeof(task_info));
+   }
+   enable_preemption();
 }
 
 NORETURN void switch_to_task(task_info *ti)
@@ -247,6 +258,7 @@ actual_sched:
    switch_to_task(selected);
 }
 
+// TODO: make this function much faster (e.g. indexing by pid)
 task_info *get_task(int pid)
 {
    task_info *pos;
@@ -259,6 +271,7 @@ task_info *get_task(int pid)
 
    return NULL;
 }
+
 
 /*
  * ***************************************************************
@@ -303,7 +316,8 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
    }
    disable_preemption();
 
-   return waited_task->pid;
+   remove_task(waited_task);
+   return pid;
 }
 
 

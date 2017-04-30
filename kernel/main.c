@@ -31,7 +31,7 @@ void load_elf_program(void *elf,
 
 #define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023600
 
-void run_usermode_init()
+void load_usermode_init()
 {
    void *elf_vaddr = (void *) (RAM_DISK_VADDR + INIT_PROGRAM_MEM_DISK_OFFSET);
 
@@ -42,10 +42,10 @@ void run_usermode_init()
    void *stack_addr = NULL;
    load_elf_program(elf_vaddr, pdir, &entry_point, &stack_addr);
 
-   printk("[run_usermode_init] Entry: %p\n", entry_point);
-   printk("[run_usermode_init] Stack: %p\n", stack_addr);
+   printk("[load_usermode_init] Entry: %p\n", entry_point);
+   printk("[load_usermode_init] Stack: %p\n", stack_addr);
 
-   first_usermode_switch(pdir, entry_point, stack_addr);
+   current_task = create_first_usermode_task(pdir, entry_point, stack_addr);
 }
 
 void show_hello_message()
@@ -106,25 +106,22 @@ void simple_test_kthread(void)
 
 void tasklet_runner_kthread(void)
 {
-   bool res;
-
    printk("[kernel thread] tasklet runner kthread (pid: %i)\n",
           get_current_task()->pid);
 
    while (true) {
 
-      res = run_one_tasklet();
+      bool res = run_one_tasklet();
 
       if (!res) {
          ASSERT(is_preemption_enabled());
          ASSERT(are_interrupts_enabled());
 
-         printk("[kernel thread] no tasklets, yield!\n");
+         //printk("[kernel thread] no tasklets, yield!\n");
          kernel_yield();
       }
    }
 }
-
 
 void kmain()
 {
@@ -141,8 +138,6 @@ void kmain()
 
    set_timer_freq(TIMER_HZ);
 
-   //irq_set_mask(X86_PC_TIMER_IRQ);
-
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
 
@@ -153,18 +148,19 @@ void kmain()
 
    initialize_tasklets();
 
+   kthread_create(simple_test_kthread);
+   kthread_create(tasklet_runner_kthread);
+
    enable_interrupts();
 
    // Initialize the keyboard driver.
    init_kb();
 
-   kthread_create(simple_test_kthread);
-   kthread_create(tasklet_runner_kthread);
+   load_usermode_init();
 
-   // Run the 'init' usermode program.
-   run_usermode_init();
-
-   //while(1) halt();
+   disable_preemption();
+   push_nested_interrupt(-1);
+   schedule();
 
    // We should never get here!
    NOT_REACHED();
