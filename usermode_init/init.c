@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 
 typedef unsigned char bool;
 #define true 1
@@ -66,6 +68,9 @@ int main(int argc, char **argv, char **env)
                inchild = true;
             } else {
                printf("############## I'm the parent, child's pid = %i\n", pid);
+               printf("[parent] waiting the child to exit...\n");
+               int p = waitpid(pid, NULL, 0);
+               printf("[parent] child (pid: %i) exited!\n", p);
             }
 
          }

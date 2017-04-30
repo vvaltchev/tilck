@@ -19,6 +19,9 @@ struct regs {
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
 
+/* Saves the current state and calls schedule() */
+void kernel_yield();
+
 static ALWAYS_INLINE uptr get_eflags()
 {
    uptr eflags;
@@ -35,7 +38,7 @@ static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
 
 
 NORETURN void asm_context_switch_x86(u32 d, ...);
-NORETURN void asm_kthread_context_switch_x86(u32 d, ...);
+NORETURN void asm_kernel_context_switch_x86(u32 d, ...);
 
 NORETURN static ALWAYS_INLINE void context_switch(regs *r)
 {
@@ -66,28 +69,31 @@ NORETURN static ALWAYS_INLINE void context_switch(regs *r)
 
 
 
-NORETURN static ALWAYS_INLINE void kthread_context_switch(regs *r)
+NORETURN static ALWAYS_INLINE void kernel_context_switch(regs *r)
 {
-   asm_kthread_context_switch_x86(
-                                  r->eip,
-                                  r->useresp,
+   asm_kernel_context_switch_x86(
+                                 r->eip,
+                                 r->useresp,
 
-                                  // Segment registers
-                                  r->gs,
-                                  r->fs,
-                                  r->es,
-                                  r->ds,
+                                 // Segment registers
+                                 r->gs,
+                                 r->fs,
+                                 r->es,
+                                 r->ds,
 
-                                  // General purpose registers
-                                  r->edi,
-                                  r->esi,
-                                  r->ebp,
-                                  /* skipping ESP */
-                                  r->ebx,
-                                  r->edx,
-                                  r->ecx,
-                                  r->eax,
+                                 // General purpose registers
+                                 r->edi,
+                                 r->esi,
+                                 r->ebp,
+                                 /* skipping ESP */
+                                 r->ebx,
+                                 r->edx,
+                                 r->ecx,
+                                 r->eax,
 
-                                  // The useresp is repeated. See the assembly.
-                                  r->useresp);
+                                 // The eflags register
+                                 r->eflags,
+
+                                 // The useresp is repeated. See the assembly.
+                                 r->useresp);
 }

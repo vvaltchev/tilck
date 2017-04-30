@@ -5,7 +5,7 @@
 #include <list.h>
 #include <arch/i386/arch_utils.h>
 
-#define KTHREAD_STACK_SIZE PAGE_SIZE
+#define KTHREAD_STACK_SIZE (PAGE_SIZE)
 
 struct task_info {
 
@@ -15,12 +15,17 @@ struct task_info {
    int state;
    int exit_code;
 
-   u64 jiffies_when_switch;
+   u64 ticks;
+   u64 total_ticks;
+   u64 kernel_ticks;
+
+   int running_in_kernel;
 
    int owning_process_pid; /* The pid of the process owning this thread. */
    void *kernel_stack;
 
    regs state_regs;
+   regs kernel_state_regs;
    page_directory_t *pdir;
 };
 
