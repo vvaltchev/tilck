@@ -36,6 +36,8 @@ void set_current_task_in_user_mode();
 
 task_info *get_task(int pid);
 
+void reset_kernel_stack(task_info *ti);
+
 void add_task(task_info *ti);
 void remove_task(task_info *ti);
 

@@ -5,6 +5,13 @@
 #include <arch/i386/process_int.h>
 #include <hal.h>
 
+void reset_kernel_stack(task_info *ti)
+{
+   ti->kernel_state_regs.useresp = \
+      ((uptr) ti->kernel_stack +
+      KTHREAD_STACK_SIZE - 1) & POINTER_ALIGN_MASK;
+}
+
 
 void push_on_user_stack(regs *r, uptr val)
 {
@@ -87,17 +94,17 @@ task_info *kthread_create(kthread_func_ptr fun)
    ti->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
    memset(ti->kernel_stack, 0, KTHREAD_STACK_SIZE);
 
-   r.useresp = ((uptr) ti->kernel_stack + KTHREAD_STACK_SIZE - 1);
-   r.useresp &= POINTER_ALIGN_MASK;
+   memset(&ti->state_regs, 0, sizeof(r));
+   memmove(&ti->kernel_state_regs, &r, sizeof(r));
+
+   reset_kernel_stack(ti);
 
    // Pushes the address of kthread_exit() into thread's stack in order to
    // it to be called after thread's function returns.
 
-   *(void **)(r.useresp) = (void *) &kthread_exit;
-   r.useresp -= sizeof(void *);
+   *(void **)(ti->kernel_state_regs.useresp) = (void *) &kthread_exit;
+   ti->kernel_state_regs.useresp -= sizeof(void *);
 
-   memset(&ti->state_regs, 0, sizeof(r));
-   memmove(&ti->kernel_state_regs, &r, sizeof(r));
 
    ti->ticks = 0;
    ti->total_ticks = 0;
@@ -161,6 +168,8 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
 
    memmove(&ti->state_regs, &r, sizeof(r));
    memset(&ti->kernel_state_regs, 0, sizeof(r));
+
+   reset_kernel_stack(ti);
 
    ti->ticks = 0;
    ti->total_ticks = 0;

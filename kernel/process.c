@@ -32,12 +32,18 @@ bool is_kernel_thread(task_info *ti)
 
 void set_current_task_in_kernel()
 {
+   ASSERT(!is_preemption_enabled());
    current_task->running_in_kernel = 1;
 }
 
 void set_current_task_in_user_mode()
 {
+   ASSERT(!is_preemption_enabled());
+
    current_task->running_in_kernel = 0;
+
+   reset_kernel_stack(current_task);
+   set_kernel_stack(current_task->kernel_state_regs.useresp);
 }
 
 
@@ -85,11 +91,7 @@ void remove_task(task_info *ti)
       printk("[remove_task] pid = %i\n", ti->pid);
       list_remove(&ti->list);
 
-      printk("ti->kernel_stack: %p\n", ti->kernel_stack);
-
-      // TODO: investigate WHY we crash if this kfree() is run!
-      // kfree(ti->kernel_stack, KTHREAD_STACK_SIZE);
-
+      kfree(ti->kernel_stack, KTHREAD_STACK_SIZE);
       kfree(ti, sizeof(task_info));
    }
    enable_preemption();
@@ -144,8 +146,11 @@ NORETURN void switch_to_task(task_info *ti)
 
    if (!current_task->running_in_kernel) {
 
-      set_kernel_stack(((uptr) current_task->kernel_stack +
-                       KTHREAD_STACK_SIZE - 1) & POINTER_ALIGN_MASK);
+      memset(current_task->kernel_stack, 0, KTHREAD_STACK_SIZE);
+
+      reset_kernel_stack(current_task);
+      set_kernel_stack(current_task->kernel_state_regs.useresp);
+
       context_switch(state);
 
    } else {
@@ -249,9 +254,10 @@ actual_sched:
    }
 
    if (selected != curr) {
-      printk("[sched] Switching to pid: %i %s\n",
+      printk("[sched] Switching to pid: %i %s %s\n",
              selected->pid,
-             is_kernel_thread(selected) ? "[KTHREAD]" : "[USER]");
+             is_kernel_thread(selected) ? "[KTHREAD]" : "[USER]",
+             selected->running_in_kernel ? "(kernel mode)" : "(usermode)");
    }
 
    ASSERT(selected != NULL);
@@ -347,10 +353,12 @@ sptr sys_fork()
    child->running_in_kernel = 0;
    child->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
    memset(child->kernel_stack, 0, KTHREAD_STACK_SIZE);
+   reset_kernel_stack(child);
 
    // The other members of task_info have been copied by the memmove() above
 
    memset(&child->kernel_state_regs, 0, sizeof(child->kernel_state_regs));
+
    set_return_register(&child->state_regs, 0);
 
    //printk("forking current proccess with eip = %p\n", child->state_regs.eip);
