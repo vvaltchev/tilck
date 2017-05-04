@@ -1,2 +1,0 @@
-#!/bin/sh
-qemu-system-i386 -drive file=./build/exos.img,format=raw,index=0,if=floppy
