@@ -271,15 +271,20 @@ actual_sched:
 // TODO: make this function much faster (e.g. indexing by pid)
 task_info *get_task(int pid)
 {
-   task_info *pos;
+   task_info *pos, *res = NULL;
+
+   disable_preemption();
 
    list_for_each_entry(pos, &tasks_list, list) {
       if (pos->pid == pid) {
-         return pos;
+         res = pos;
+         goto end;
       }
    }
 
-   return NULL;
+end:
+   enable_preemption();
+   return res;
 }
 
 
@@ -299,8 +304,6 @@ sptr sys_getpid()
 
 sptr sys_waitpid(int pid, int *wstatus, int options)
 {
-   disable_preemption();
-
    printk("[kernel] Pid %i will WAIT until pid %i dies\n",
           current_task->pid, pid);
 
@@ -315,22 +318,19 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
     * to test the preemption of kernel code running for user applications.
     */
 
-   enable_preemption();
-   {
-      while (true) {
+   while (true) {
 
-         if (waited_task->state == TASK_STATE_ZOMBIE) {
-            break;
-         }
-
-         halt();
+      if (waited_task->state == TASK_STATE_ZOMBIE) {
+         break;
       }
+
+      halt();
    }
+
    disable_preemption();
-
    remove_task(waited_task);
-
    enable_preemption();
+
    return pid;
 }
 
