@@ -9,6 +9,7 @@
 
 
 #define TIME_SLOT_JIFFIES (TIMER_HZ * 3)
+//#define TIME_SLOT_JIFFIES (TIMER_HZ / 5)
 
 task_info *volatile current_task = NULL;
 int current_max_pid = 0;
@@ -69,7 +70,7 @@ void save_current_task_state(regs *r)
       state->ss = 0x10;
 
       if (!is_kernel_thread(current_task)) {
-         printk("[kernel] PREEMPTING kernel code for user program!\n");
+         DEBUG_printk("[kernel] PREEMPTING kernel code for user program!\n");
       }
    }
 }
@@ -191,7 +192,7 @@ bool need_reschedule()
       return false;
    }
 
-   printk("\n\n[sched] Current pid: %i, used %llu ticks (%llu in kernel)\n",
+   DEBUG_printk("\n\n[sched] Current pid: %i, used %llu ticks (%llu in kernel)\n",
           current_task->pid, curr->total_ticks, curr->kernel_ticks);
 
    return true;

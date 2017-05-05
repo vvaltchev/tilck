@@ -158,15 +158,23 @@ void test_kmutex_thread2(void)
 
 void test_kmutex_thread3(void)
 {
-   printk("3) before lock\n");
+   printk("3) before trylock\n");
 
-   lock(&test_mutex);
+   bool locked = trylock(&test_mutex);
 
-   printk("3) under lock..\n");
+   if (locked) {
 
-   unlock(&test_mutex);
+      printk("3) trylock SUCCEEDED: under lock..\n");
 
-   printk("3) after lock\n");
+      if (locked) {
+         unlock(&test_mutex);
+      }
+
+      printk("3) after lock\n");
+
+   } else {
+      printk("trylock returned FALSE\n");
+   }
 }
 
 
@@ -174,9 +182,8 @@ void kmutex_test(void)
 {
    kmutex_init(&test_mutex);
    current_task = kthread_create(test_kmutex_thread1);
-   current_task = kthread_create(test_kmutex_thread3);
    current_task = kthread_create(test_kmutex_thread2);
-
+   current_task = kthread_create(test_kmutex_thread3);
 }
 
 void kmain()
@@ -191,6 +198,7 @@ void kmain()
    init_pageframe_allocator();
    init_paging();
    initialize_kmalloc();
+   initialize_tasklets();
 
    set_timer_freq(TIMER_HZ);
 
@@ -203,17 +211,14 @@ void kmain()
    mount_memdisk();
    //test_memdisk();
 
-   initialize_tasklets();
-
-   current_task = kthread_create(simple_test_kthread);
-   //current_task = kthread_create(tasklet_runner_kthread);
-
-
    disable_preemption();
    enable_interrupts();
 
    // Initialize the keyboard driver.
    init_kb();
+
+   current_task = kthread_create(simple_test_kthread);
+   current_task = kthread_create(tasklet_runner_kthread);
 
    kmutex_test();
    //load_usermode_init();

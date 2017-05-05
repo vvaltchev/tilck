@@ -49,6 +49,22 @@ void lock(kmutex *m)
    enable_preemption();
 }
 
+bool trylock(kmutex *m)
+{
+   bool success = false;
+
+   disable_preemption();
+
+   if (!m->owner_task) {
+      // Nobody owns this mutex, just set the owner
+      m->owner_task = get_current_task();
+      success = true;
+   }
+
+   enable_preemption();
+   return success;
+}
+
 void unlock(kmutex *m)
 {
    task_info *pos;

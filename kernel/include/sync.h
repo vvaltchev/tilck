@@ -36,6 +36,7 @@ typedef struct {
 
 void kmutex_init(kmutex *m);
 void lock(kmutex *m);
+bool trylock(kmutex *m);
 void unlock(kmutex *m);
 void kmutex_destroy(kmutex *m);
 
