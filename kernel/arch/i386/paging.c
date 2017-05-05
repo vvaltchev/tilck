@@ -46,8 +46,7 @@ bool handle_potential_cow(u32 vaddr)
 
    if (!(flags & (PAGE_COW_FLAG | PAGE_COW_ORIG_RW))) {
       // That was not a page-fault caused by COW.
-      retval = false;
-      goto end;
+      return false;
    }
 
    void *page_vaddr = (void *)(vaddr & PAGE_MASK);
@@ -69,8 +68,7 @@ bool handle_potential_cow(u32 vaddr)
       printk("*** DEBUG: the page was not shared anymore. "
              "Making it writable.\n");
 
-      retval = true;
-      goto end;
+      return true;
    }
 
    // Decrease the ref-count of the original pageframe.
@@ -96,10 +94,7 @@ bool handle_potential_cow(u32 vaddr)
    memmove(page_vaddr, page_size_buf, PAGE_SIZE);
 
    // This was actually a COW-caused page-fault.
-   retval = true;
-
-end:
-   return retval;
+   return true;
 }
 
 extern volatile bool in_panic;
@@ -277,6 +272,7 @@ void map_page(page_directory_t *pdir,
    p.present = 1;
    p.us = us;
    p.rw = rw;
+   p.global = !us; /* All kernel pages are 'global'. */
    p.pageAddr = paddr >> PAGE_SHIFT;
 
    ptable->pages[page_table_index] = p;
