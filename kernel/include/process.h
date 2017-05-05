@@ -22,6 +22,7 @@ void account_ticks();
 bool need_reschedule();
 
 NORETURN void schedule();
+NORETURN void schedule_outside_interrupt_context();
 
 task_info *create_first_usermode_task(page_directory_t *pdir,
                                       void *entry,

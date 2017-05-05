@@ -56,6 +56,5 @@ void kernel_yield_post(regs *ctx)
 {
    disable_preemption();
    save_current_task_state(ctx);
-   push_nested_interrupt(-1);
-   schedule();
+   schedule_outside_interrupt_context();
 }

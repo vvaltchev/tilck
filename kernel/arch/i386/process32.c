@@ -124,14 +124,8 @@ void kthread_exit()
 
    ti->state = TASK_STATE_ZOMBIE;
 
-   // HACK: push a fake interrupt to compensate the call to
-   // end_current_interrupt_handling() in switch_to_process(), done by the
-   // scheduler.
-
-   push_nested_interrupt(-1);
-
    asmVolatile("movl %0, %%esp" : : "i"(KERNEL_BASE_STACK_ADDR));
-   asmVolatile("jmp *%0" : : "r"(&schedule));
+   asmVolatile("jmp *%0" : : "r"(&schedule_outside_interrupt_context));
 }
 
 task_info *create_first_usermode_task(page_directory_t *pdir,

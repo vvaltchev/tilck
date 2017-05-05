@@ -65,6 +65,10 @@ NORETURN void sys_exit(int exit_code)
 
    current_task->state = TASK_STATE_ZOMBIE;
    current_task->exit_code = exit_code;
+
+   kfree(current_task->kernel_stack, KTHREAD_STACK_SIZE);
+   current_task->kernel_stack = NULL;
+
    pdir_destroy(current_task->pdir);
    schedule();
 }

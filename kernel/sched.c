@@ -197,6 +197,16 @@ bool need_reschedule()
    return true;
 }
 
+NORETURN void schedule_outside_interrupt_context()
+{
+   // HACK: push a fake interrupt to compensate the call to
+   // end_current_interrupt_handling() in switch_to_process().
+
+   push_nested_interrupt(-1);
+   schedule();
+}
+
+
 NORETURN void schedule()
 {
    task_info *curr = current_task;

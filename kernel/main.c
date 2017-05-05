@@ -160,8 +160,7 @@ void kmain()
 
    load_usermode_init();
 
-   push_nested_interrupt(-1);
-   schedule();
+   schedule_outside_interrupt_context();
 
    // We should never get here!
    NOT_REACHED();
