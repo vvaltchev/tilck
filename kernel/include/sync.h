@@ -2,6 +2,7 @@
 #pragma once
 
 #include <common_defs.h>
+#include <process.h>
 
 #define WOBJ_NONE   0
 #define WOBJ_KMUTEX 1
@@ -25,11 +26,17 @@ static inline void wait_obj_reset(wait_obj *obj)
    obj->ptr = NULL;
 }
 
-struct kmutex;
-typedef struct kmutex kmutex;
+typedef struct {
+
+   uptr id;
+   task_info *owner_task;
+
+} kmutex;
+
 
 void kmutex_init(kmutex *m);
 void lock(kmutex *m);
 void unlock(kmutex *m);
+void kmutex_destroy(kmutex *m);
 
 

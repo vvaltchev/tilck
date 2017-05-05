@@ -12,6 +12,7 @@
 #include <hal.h>
 #include <utils.h>
 #include <tasklet.h>
+#include <sync.h>
 
 void gdt_install();
 void idt_install();
@@ -125,6 +126,59 @@ void tasklet_runner_kthread(void)
    }
 }
 
+kmutex test_mutex = { 0 };
+
+void test_kmutex_thread1(void)
+{
+   printk("1) before lock\n");
+
+   lock(&test_mutex);
+
+   printk("1) under lock..\n");
+   for (int i=0; i < 1024*1024*1024; i++) { }
+
+   unlock(&test_mutex);
+
+   printk("1) after lock\n");
+}
+
+void test_kmutex_thread2(void)
+{
+   printk("2) before lock\n");
+
+   lock(&test_mutex);
+
+   printk("2) under lock..\n");
+   for (int i=0; i < 1024*1024*1024; i++) { }
+
+   unlock(&test_mutex);
+
+   printk("2) after lock\n");
+}
+
+void test_kmutex_thread3(void)
+{
+   printk("3) before lock\n");
+
+   lock(&test_mutex);
+
+   printk("3) under lock..\n");
+
+   unlock(&test_mutex);
+
+   printk("3) after lock\n");
+}
+
+
+void kmutex_test(void)
+{
+   kmutex_init(&test_mutex);
+   current_task = kthread_create(test_kmutex_thread1);
+   current_task = kthread_create(test_kmutex_thread3);
+   current_task = kthread_create(test_kmutex_thread2);
+
+}
+
 void kmain()
 {
    term_init();
@@ -152,7 +206,8 @@ void kmain()
    initialize_tasklets();
 
    current_task = kthread_create(simple_test_kthread);
-   current_task = kthread_create(tasklet_runner_kthread);
+   //current_task = kthread_create(tasklet_runner_kthread);
+
 
    disable_preemption();
    enable_interrupts();
@@ -160,7 +215,8 @@ void kmain()
    // Initialize the keyboard driver.
    init_kb();
 
-   load_usermode_init();
+   kmutex_test();
+   //load_usermode_init();
    schedule_outside_interrupt_context();
 
    // We should never get here!

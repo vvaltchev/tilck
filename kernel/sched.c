@@ -259,13 +259,13 @@ actual_sched:
    }
 
    // Finalizing code.
-
-   if (selected->state != TASK_STATE_RUNNABLE) {
+   if (!selected || selected->state != TASK_STATE_RUNNABLE) {
 
       printk("[sched] No runnable process found. Halt.\n");
 
-      end_current_interrupt_handling();
+      current_task = selected;
       irq_clear_mask(X86_PC_TIMER_IRQ);
+      end_current_interrupt_handling();
       enable_preemption();
 
       // We did not found any runnable task. Halt.
@@ -279,7 +279,6 @@ actual_sched:
              selected->running_in_kernel ? "(kernel mode)" : "(usermode)");
    }
 
-   ASSERT(selected != NULL);
    switch_to_task(selected);
 }
 

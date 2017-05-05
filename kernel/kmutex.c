@@ -5,11 +5,6 @@
 
 volatile uptr new_mutex_id = 0;
 
-struct kmutex {
-   uptr id;
-   task_info *owner_task;
-};
-
 
 void kmutex_init(kmutex *m)
 {
@@ -19,6 +14,11 @@ void kmutex_init(kmutex *m)
       m->owner_task = NULL;
    }
    enable_preemption();
+}
+
+void kmutex_destroy(kmutex *m)
+{
+   (void)m; // Do nothing.
 }
 
 void lock(kmutex *m)
@@ -35,7 +35,10 @@ void lock(kmutex *m)
 
          wait_obj_set(&current_task->wobj, WOBJ_KMUTEX, m);
          current_task->state = TASK_STATE_SLEEPING;
+
+         enable_preemption();
          kernel_yield();
+         return;
 
       } else {
 
@@ -55,6 +58,8 @@ void unlock(kmutex *m)
       ASSERT(m->owner_task == get_current_task());
 
       m->owner_task = NULL;
+
+      /* Unlock one task waiting to acquire the mutex 'm' */
 
       // TODO: make that we iterate only among sleeping tasks
 
