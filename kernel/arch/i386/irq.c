@@ -229,7 +229,7 @@ void handle_irq(regs *r)
 
    irq_set_mask(irq);
 
-   if (!curr || !curr->running_in_kernel) {
+   if (curr && !curr->running_in_kernel) {
       ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
    }
 
@@ -298,7 +298,7 @@ void handle_irq(regs *r)
 clear_mask_end:
    enable_preemption();
 
-   if (!curr || !curr->running_in_kernel) {
+   if (curr && !curr->running_in_kernel) {
       ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
    }
 

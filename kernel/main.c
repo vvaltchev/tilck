@@ -141,6 +141,7 @@ void kmain()
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
 
+   // TODO: make the kernel actually support the sysenter interface
    setup_sysenter_interface();
 
    mount_memdisk();
@@ -151,6 +152,7 @@ void kmain()
    kthread_create(simple_test_kthread);
    kthread_create(tasklet_runner_kthread);
 
+   disable_preemption();
    enable_interrupts();
 
    // Initialize the keyboard driver.
@@ -158,7 +160,6 @@ void kmain()
 
    load_usermode_init();
 
-   disable_preemption();
    push_nested_interrupt(-1);
    schedule();
 

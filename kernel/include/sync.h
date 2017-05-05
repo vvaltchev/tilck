@@ -29,7 +29,7 @@ struct kmutex;
 typedef struct kmutex kmutex;
 
 void kmutex_init(kmutex *m);
-void klock(kmutex *m);
-void kunlock(kmutex *m);
+void lock(kmutex *m);
+void unlock(kmutex *m);
 
 

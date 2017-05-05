@@ -221,6 +221,8 @@ NORETURN void schedule()
    // Actual scheduling logic.
 actual_sched:
 
+   // TODO: make that we iterate only runnable tasks
+
    list_for_each_entry(pos, &tasks_list, list) {
 
        DEBUG_printk("   [sched] checking pid %i (ticks = %llu): ",
@@ -282,11 +284,10 @@ task_info *get_task(int pid)
    list_for_each_entry(pos, &tasks_list, list) {
       if (pos->pid == pid) {
          res = pos;
-         goto end;
+         break;
       }
    }
 
-end:
    enable_preemption();
    return res;
 }

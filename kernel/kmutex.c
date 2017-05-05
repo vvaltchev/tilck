@@ -21,7 +21,7 @@ void kmutex_init(kmutex *m)
    enable_preemption();
 }
 
-void klock(kmutex *m)
+void lock(kmutex *m)
 {
    disable_preemption();
    {
@@ -46,7 +46,7 @@ void klock(kmutex *m)
    enable_preemption();
 }
 
-void kunlock(kmutex *m)
+void unlock(kmutex *m)
 {
    task_info *pos;
 
@@ -55,6 +55,8 @@ void kunlock(kmutex *m)
       ASSERT(m->owner_task == get_current_task());
 
       m->owner_task = NULL;
+
+      // TODO: make that we iterate only among sleeping tasks
 
       list_for_each_entry(pos, &tasks_list, list) {
          if (pos->state != TASK_STATE_SLEEPING) {
