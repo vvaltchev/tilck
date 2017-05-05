@@ -22,15 +22,6 @@ struct regs {
 /* Saves the current state and calls schedule() */
 void kernel_yield();
 
-static ALWAYS_INLINE uptr get_eflags()
-{
-   uptr eflags;
-   asmVolatile("pushf");
-   asmVolatile("pop %eax");
-   asmVolatile("movl %0, %%eax" : "=r"(eflags));
-   return eflags;
-}
-
 static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
 {
    r->eax = value;
