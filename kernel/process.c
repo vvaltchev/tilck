@@ -50,10 +50,7 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
       halt();
    }
 
-   disable_preemption();
    remove_task(waited_task);
-   enable_preemption();
-
    return pid;
 }
 

@@ -83,8 +83,7 @@ task_info *kthread_create(kthread_func_ptr fun)
    r.eip = (u32) fun;
    r.eflags = get_eflags() | (1 << 9);
 
-   task_info *ti = kmalloc(sizeof(task_info));
-   bzero(ti, sizeof(task_info));
+   task_info *ti = kzmalloc(sizeof(task_info));
 
    INIT_LIST_HEAD(&ti->list);
    ti->pdir = get_kernel_page_dir();
@@ -157,9 +156,7 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
 
    r.eflags = get_eflags() | (1 << 9);
 
-   task_info *ti = kmalloc(sizeof(task_info));
-   bzero(ti, sizeof(task_info));
-
+   task_info *ti = kzmalloc(sizeof(task_info));
    INIT_LIST_HEAD(&ti->list);
 
    ti->pdir = pdir;

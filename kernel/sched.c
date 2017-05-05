@@ -76,16 +76,19 @@ void save_current_task_state(regs *r)
 
 void add_task(task_info *ti)
 {
-   ti->state = TASK_STATE_RUNNABLE;
-   list_add_tail(&tasks_list, &ti->list);
+   disable_preemption();
+   {
+      ti->state = TASK_STATE_RUNNABLE;
+      list_add_tail(&tasks_list, &ti->list);
+   }
+   enable_preemption();
 }
 
 void remove_task(task_info *ti)
 {
-   ASSERT(ti->state == TASK_STATE_ZOMBIE);
-
    disable_preemption();
    {
+      ASSERT(ti->state == TASK_STATE_ZOMBIE);
       printk("[remove_task] pid = %i\n", ti->pid);
       list_remove(&ti->list);
 
