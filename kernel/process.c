@@ -299,6 +299,8 @@ sptr sys_getpid()
 
 sptr sys_waitpid(int pid, int *wstatus, int options)
 {
+   disable_preemption();
+
    printk("[kernel] Pid %i will WAIT until pid %i dies\n",
           current_task->pid, pid);
 
@@ -327,12 +329,16 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
    disable_preemption();
 
    remove_task(waited_task);
+
+   enable_preemption();
    return pid;
 }
 
 
 NORETURN void sys_exit(int exit_code)
 {
+   disable_preemption();
+
    printk("[kernel] Exit process %i with code = %i\n",
           current_task->pid,
           exit_code);
@@ -346,6 +352,8 @@ NORETURN void sys_exit(int exit_code)
 // Returns child's pid
 sptr sys_fork()
 {
+   disable_preemption();
+
    task_info *child = kmalloc(sizeof(task_info));
    memmove(child, current_task, sizeof(task_info));
 
@@ -378,5 +386,7 @@ sptr sys_fork()
     */
 
    set_page_directory(current_task->pdir);
+
+   enable_preemption();
    return child->pid;
 }
