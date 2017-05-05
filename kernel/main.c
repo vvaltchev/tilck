@@ -119,6 +119,8 @@ void tasklet_runner_kthread(void)
 
          //printk("[kernel thread] no tasklets, yield!\n");
          kernel_yield();
+
+         //printk("after yield..\n");
       }
    }
 }
@@ -159,7 +161,6 @@ void kmain()
    init_kb();
 
    load_usermode_init();
-
    schedule_outside_interrupt_context();
 
    // We should never get here!

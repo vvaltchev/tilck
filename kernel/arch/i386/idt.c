@@ -283,6 +283,7 @@ void generic_interrupt_handler(regs *r)
    //    printk("[kernel] IRQ: %i, level: %i\n", r->int_num - 32,
    //                                            nested_interrupts_count);
 
+   task_info *curr = get_current_task();
 
    ASSERT(nested_interrupts_count < (int)ARRAY_SIZE(nested_interrupts));
    ASSERT(!is_interrupt_racing_with_itself(r->int_num));
@@ -292,7 +293,9 @@ void generic_interrupt_handler(regs *r)
       return;
    }
 
-   ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+   if (curr && !curr->running_in_kernel) {
+      ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+   }
 
    disable_preemption();
    push_nested_interrupt(r->int_num);
@@ -314,7 +317,10 @@ void generic_interrupt_handler(regs *r)
    }
 
    enable_preemption();
-   ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+
+   if (curr && !curr->running_in_kernel) {
+      ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
+   }
 
    end_current_interrupt_handling();
 }
