@@ -36,7 +36,6 @@ u16 *pageframes_refcount = NULL;
 
 bool handle_potential_cow(u32 vaddr)
 {
-   bool retval;
    page_table_t *ptable;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
