@@ -149,8 +149,8 @@ void kmain()
 
    initialize_tasklets();
 
-   kthread_create(simple_test_kthread);
-   kthread_create(tasklet_runner_kthread);
+   current_task = kthread_create(simple_test_kthread);
+   current_task = kthread_create(tasklet_runner_kthread);
 
    disable_preemption();
    enable_interrupts();

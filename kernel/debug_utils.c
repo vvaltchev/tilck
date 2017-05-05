@@ -124,13 +124,13 @@ void panic(const char *fmt, ...)
    printk("\n");
 
    printk("Current interrupt: %i\n", get_curr_interrupt());
-   printk("Nested interrupts [count: %i]: ", nested_interrupts_count);
+   printk("Previous nested interrupts [count: %i]: ", nested_interrupts_count);
    for (int i = nested_interrupts_count - 1; i >= 0; i--) {
       printk("%i ", nested_interrupts[i]);
    }
    printk("\n\n");
 
-   dump_stacktrace();
+   //dump_stacktrace();
 
    while (true) {
       halt();
