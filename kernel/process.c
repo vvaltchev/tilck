@@ -88,10 +88,10 @@ sptr sys_fork()
    child->running_in_kernel = 0;
 
    // The other members of task_info have been copied by the memmove() above
-   memset(&child->kernel_state_regs, 0, sizeof(child->kernel_state_regs));
+   bzero(&child->kernel_state_regs, sizeof(child->kernel_state_regs));
 
    child->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
-   memset(child->kernel_stack, 0, KTHREAD_STACK_SIZE);
+   bzero(child->kernel_stack, KTHREAD_STACK_SIZE);
    reset_kernel_stack(child);
 
    set_return_register(&child->state_regs, 0);

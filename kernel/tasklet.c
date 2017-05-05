@@ -23,7 +23,7 @@ static volatile int tasklet_to_execute = 0;
 void initialize_tasklets()
 {
    all_tasklets = kmalloc(sizeof(tasklet) * MAX_TASKLETS);
-   memset(all_tasklets, 0, sizeof(tasklet) * MAX_TASKLETS);
+   bzero(all_tasklets, sizeof(tasklet) * MAX_TASKLETS);
 }
 
 

@@ -462,5 +462,5 @@ void init_paging()
       * get_amount_of_physical_memory_in_mb() / PAGE_SIZE;
 
    pageframes_refcount = kmalloc(pagesframes_refcount_bufsize);
-   memset(pageframes_refcount, 0, pagesframes_refcount_bufsize);
+   bzero(pageframes_refcount, pagesframes_refcount_bufsize);
 }

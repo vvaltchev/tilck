@@ -75,7 +75,7 @@ void push_args_on_user_stack(regs *r, int argc,
 task_info *kthread_create(kthread_func_ptr fun)
 {
    regs r;
-   memset(&r, 0, sizeof(r));
+   bzero(&r, sizeof(r));
 
    r.gs = r.fs = r.es = r.ds = r.ss = 0x10;
    r.cs = 0x08;
@@ -84,7 +84,7 @@ task_info *kthread_create(kthread_func_ptr fun)
    r.eflags = get_eflags() | (1 << 9);
 
    task_info *ti = kmalloc(sizeof(task_info));
-   memset(ti, 0, sizeof(task_info));
+   bzero(ti, sizeof(task_info));
 
    INIT_LIST_HEAD(&ti->list);
    ti->pdir = get_kernel_page_dir();
@@ -94,9 +94,9 @@ task_info *kthread_create(kthread_func_ptr fun)
    ti->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
    ti->running_in_kernel = 1;
    ti->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
-   memset(ti->kernel_stack, 0, KTHREAD_STACK_SIZE);
+   bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
 
-   memset(&ti->state_regs, 0, sizeof(r));
+   bzero(&ti->state_regs, sizeof(r));
    memmove(&ti->kernel_state_regs, &r, sizeof(r));
 
    reset_kernel_stack(ti);
@@ -140,7 +140,7 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
                                       void *stack_addr)
 {
    regs r;
-   memset(&r, 0, sizeof(r));
+   bzero(&r, sizeof(r));
 
    // User data selector with bottom 2 bits set for ring 3.
    r.gs = r.fs = r.es = r.ds = r.ss = 0x23;
@@ -158,7 +158,7 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
    r.eflags = get_eflags() | (1 << 9);
 
    task_info *ti = kmalloc(sizeof(task_info));
-   memset(ti, 0, sizeof(task_info));
+   bzero(ti, sizeof(task_info));
 
    INIT_LIST_HEAD(&ti->list);
 
@@ -169,10 +169,10 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
    ti->owning_process_pid = ti->pid;
    ti->running_in_kernel = 0;
    ti->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
-   memset(ti->kernel_stack, 0, KTHREAD_STACK_SIZE);
+   bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
 
    memmove(&ti->state_regs, &r, sizeof(r));
-   memset(&ti->kernel_state_regs, 0, sizeof(r));
+   bzero(&ti->kernel_state_regs, sizeof(r));
 
    reset_kernel_stack(ti);
    add_task(ti);

@@ -144,7 +144,7 @@ NORETURN void switch_to_task(task_info *ti)
 
    if (!current_task->running_in_kernel) {
 
-      memset(current_task->kernel_stack, 0, KTHREAD_STACK_SIZE);
+      bzero(current_task->kernel_stack, KTHREAD_STACK_SIZE);
 
       reset_kernel_stack(current_task);
       set_kernel_stack(current_task->kernel_state_regs.useresp);
@@ -189,7 +189,7 @@ bool need_reschedule()
    }
 
    printk("\n\n[sched] Current pid: %i, used %llu ticks (%llu in kernel)\n",
-                current_task->pid, curr->total_ticks, curr->kernel_ticks);
+          current_task->pid, curr->total_ticks, curr->kernel_ticks);
 
    return true;
 }
@@ -271,7 +271,8 @@ actual_sched:
 // TODO: make this function much faster (e.g. indexing by pid)
 task_info *get_task(int pid)
 {
-   task_info *pos, *res = NULL;
+   task_info *pos;
+   task_info *res = NULL;
 
    disable_preemption();
 

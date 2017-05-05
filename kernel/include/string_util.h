@@ -16,6 +16,12 @@ static ALWAYS_INLINE void memset(void *ptr, u8 value, size_t num)
    }
 }
 
+// TODO: optimize
+static ALWAYS_INLINE void bzero(void *ptr, size_t len)
+{
+   memset(ptr, 0, len);
+}
+
 static ALWAYS_INLINE size_t strlen(const char *str)
 {
    const char *ptr = str;

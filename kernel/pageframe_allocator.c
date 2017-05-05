@@ -48,7 +48,7 @@ void init_pageframe_allocator()
 {
    int reserved_elems = INITIAL_ELEMS_RESERVED;
 
-   memset((void *)pageframes_bitfield, 0, sizeof(pageframes_bitfield));
+   bzero((void *)pageframes_bitfield, sizeof(pageframes_bitfield));
 
    for (int i = 0; i < reserved_elems; i++) {
       pageframes_bitfield[i] = FULL_128KB_AREA;
