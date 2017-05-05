@@ -3,6 +3,7 @@
 #include <string_util.h>
 #include <term.h>
 #include <arch/generic_x86/x86_utils.h>
+#include <tasklet.h>
 
 #define KB_DATA_PORT 0x60
 #define KB_CONTROL_PORT 0x64
@@ -178,6 +179,11 @@ void init_kb()
    caps_lock_switch(capsLock);
 }
 
+void dummy_tasklet(int arg1)
+{
+   printk(" ### Running dummy_tasklet, key = '%c' ###\n", arg1);
+}
+
 void handle_key_pressed(u8 scancode)
 {
    switch(scancode) {
@@ -214,7 +220,16 @@ void handle_key_pressed(u8 scancode)
    }
 
    if (c) {
-      term_write_char(c);
+
+      if (c == '!' || c == '@') {
+
+         printk("you pressed char '%c' creating tasklet\n", c);
+         add_tasklet1(&dummy_tasklet, c);
+
+      } else {
+         term_write_char(c);
+      }
+
    } else {
       printk("PRESSED scancode: 0x%x (%i)\n", scancode, scancode);
    }
