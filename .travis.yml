@@ -14,6 +14,11 @@ addons:
       - gcc-6-multilib
       - g++-6-multilib
 
+matrix:
+  include:
+    - env RELEASE=on
+    - env RELEASE=off
+
 before_install:
   - ./build_toolchain
 
