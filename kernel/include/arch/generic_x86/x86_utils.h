@@ -136,6 +136,26 @@ static ALWAYS_INLINE void invalidate_page(uptr vaddr)
    asmVolatile("invlpg (%0)" ::"r" (vaddr) : "memory");
 }
 
+#ifdef BITS32
+
+static ALWAYS_INLINE uptr get_eflags()
+{
+   uptr eflags;
+   asmVolatile("pushf");
+   asmVolatile("pop %eax");
+   asmVolatile("movl %0, %%eax" : "=r"(eflags));
+   return eflags;
+}
+
+#else
+
+static ALWAYS_INLINE uptr get_eflags()
+{
+   NOT_REACHED();
+   return 0;
+}
+
+#endif
 
 // Reboot the system
 void reboot();

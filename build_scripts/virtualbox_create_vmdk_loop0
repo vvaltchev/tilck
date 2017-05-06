@@ -9,5 +9,5 @@ sudo losetup /dev/loop0 ./exos.img
 sudo chmod o+rw /dev/loop0
 rm -f exos.vmdk
 VBoxManage internalcommands createrawvmdk -filename exos.vmdk -rawdisk /dev/loop0
-
+sudo chown $USER exos.vmdk
 popd

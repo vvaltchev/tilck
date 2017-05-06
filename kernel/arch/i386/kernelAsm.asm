@@ -209,6 +209,7 @@ asm_int_handler:
 kernel_yield:
 
    pop eax   ; pop eip (return addr)
+   push eax  ; re-push it back to the stack, as if the POP above never happened
 
    push cs
    push eax  ; eip (we saved before)

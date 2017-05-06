@@ -36,7 +36,7 @@ TEST(list_adt, initialization)
    ASSERT_TRUE(list.next == &list);
    ASSERT_TRUE(list.prev == &list);
 
-   memset(&list, 0, sizeof(list));
+   bzero(&list, sizeof(list));
 
    ASSERT_TRUE(list.next == 0);
    ASSERT_TRUE(list.prev == 0);
