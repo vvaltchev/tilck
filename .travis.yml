@@ -20,7 +20,7 @@ matrix:
       dist: trusty
       sudo: required
       language: cpp
-      env: RELEASE=off
+      env: RELEASE=off USE_GCOV=on
       addons:
         apt:
           sources:
@@ -38,6 +38,7 @@ install:
   - ./cmake_run
   - ./make_run
   - ./make_run tests
+  - ./generate_coverage_report # Does nothing unless USE_GCOV is set
 
 script:
   - ./build/tests

@@ -72,5 +72,5 @@ set_target_properties(
    kernel_noarch_static_for_test
 
    PROPERTIES
-      COMPILE_FLAGS "-DKERNEL_TEST ${KERNEL_FLAGS}"
+      COMPILE_FLAGS "-DKERNEL_TEST ${KERNEL_FLAGS} ${GCOV_COMPILE_FLAGS}"
 )

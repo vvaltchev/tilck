@@ -15,7 +15,8 @@ set_target_properties(
    tests
 
    PROPERTIES
-      COMPILE_FLAGS "-DTESTING ${COMMON_FLAGS}"
+      COMPILE_FLAGS "-DTESTING ${COMMON_FLAGS} ${GCOV_COMPILE_FLAGS}"
+      LINK_FLAGS "${GCOV_LINK_FLAGS}"
 )
 
 set(
