@@ -11,12 +11,16 @@ addons:
     packages:
       - gcc-6
       - g++-6
+      - gcc-6-multilib
+      - g++-6-multilib
 
 before_install:
   - ./build_toolchain
 
 install:
   - ./cmake_run
+  - ./make_run tests
 
 script:
-  - ./make_run tests
+  - ./build/tests
+
