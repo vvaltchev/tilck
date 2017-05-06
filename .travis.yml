@@ -38,8 +38,7 @@ install:
   - ./cmake_run
   - ./make_run
   - ./make_run tests
-  - ./generate_coverage_report # Does nothing unless USE_GCOV is set
 
 script:
   - ./build/tests
-
+  - ./generate_coverage_report # Does nothing unless USE_GCOV is set
