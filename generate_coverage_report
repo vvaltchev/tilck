@@ -10,7 +10,7 @@ if [ -z "$USE_GCOV" ]; then
 fi
 
 cd build
-lcov -d . --capture -o lcov.info
+lcov -d . --capture --gcov-tool `which gcov-6` -o lcov.info
 lcov --remove lcov.info '*toolchain*' '/usr/include/*' -o lcov2.info
 rm -rf coverage
 mkdir coverage
