@@ -53,7 +53,7 @@ void simple_func1(void *p1)
 
 TEST_F(tasklet_test, essential)
 {
-   bool res;
+   bool res = false;
 
    ASSERT_TRUE(add_tasklet3(&simple_func, 1, 2, 3));
    ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
@@ -151,7 +151,7 @@ TEST_F(tasklet_test, chaos)
    lognormal_distribution<> dist(3.0, 2.5);
 
    int slots_used = 0;
-   bool res;
+   bool res = false;
 
    for (int iters = 0; iters < 10000; iters++) {
 

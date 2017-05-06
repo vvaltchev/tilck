@@ -25,7 +25,8 @@ ENDFUNCTION(PREPEND)
 # Architecture setting. Only i386 is accepted by now.
 
 set(ARCH "i386")
-set(DEBUG_BUILD on)
+
+set(RELEASE_BUILD CACHE BOOL "Do a release build if true.")
 
 ###########################################################
 
@@ -38,10 +39,11 @@ endif()
 
 
 set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/build_scripts)
-
 set(BUILD_SHARED_LIBRARIES off)
-set(CMAKE_C_COMPILER ${BUILD_SCRIPTS}/run_gcc)
-set(CMAKE_CXX_COMPILER ${BUILD_SCRIPTS}/run_g++)
+
+# Let's assume the right compiler is set from outside
+#set(CMAKE_C_COMPILER ${BUILD_SCRIPTS}/run_gcc)
+#set(CMAKE_CXX_COMPILER ${BUILD_SCRIPTS}/run_g++)
 
 set(
    CMAKE_ASM_NASM_COMPILE_OBJECT
@@ -58,17 +60,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 set(GENERAL_DEFS_LIST "")
 
-if (${DEBUG_BUILD})
-
-   message(STATUS "Preparing a DEBUG build...")
-   LIST(APPEND GENERAL_DEFS_LIST "-DDEBUG")
-   set(OPT_FLAGS_LIST -O0 -fno-inline-functions)
-
-else()
+if (${RELEASE_BUILD})
 
    message(STATUS "Preparing a RELEASE build...")
    LIST(APPEND GENERAL_DEFS_LIST "-DNDEBUG")
    set(OPT_FLAGS_LIST -O2)
+
+else()
+
+   message(STATUS "Preparing a DEBUG build...")
+   LIST(APPEND GENERAL_DEFS_LIST "-DDEBUG")
+   set(OPT_FLAGS_LIST -O0 -fno-inline-functions)
 
 endif()
 
