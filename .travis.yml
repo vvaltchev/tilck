@@ -1,0 +1,27 @@
+dist: trusty
+sudo: required
+language: cpp
+os:
+  - linux
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-6
+      - g++-6
+      - gcc-6-multilib
+      - g++-6-multilib
+
+before_install:
+  - ./build_toolchain
+
+install:
+  - ./cmake_run
+  - ./make_run
+  - ./make_run tests
+
+script:
+  - ./build/tests
+
