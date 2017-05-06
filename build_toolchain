@@ -9,9 +9,9 @@ export PATH=$MAIN_DIR/build_scripts:$PATH
 echo 'Installing the necessary packages...'
 
 if [ -z "$TRAVIS" ]; then
-   cmd='sudo apt-get install wget gcc g++ git nasm gcc-multilib g++-multilib make binutils binutils-multiarch mtools';
+   cmd='sudo apt-get install lcov wget gcc g++ git nasm gcc-multilib g++-multilib make binutils binutils-multiarch mtools';
 else
-   cmd='sudo apt-get install nasm binutils binutils-multiarch mtools';
+   cmd='sudo apt-get install lcov nasm binutils binutils-multiarch mtools';
 fi
 
 echo $cmd

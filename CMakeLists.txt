@@ -26,7 +26,8 @@ ENDFUNCTION(PREPEND)
 
 set(ARCH "i386")
 
-set(RELEASE_BUILD CACHE BOOL "Do a release build if true.")
+set(RELEASE_BUILD CACHE BOOL "Do a release build if true")
+set(USE_GCOV CACHE BOOL "Compile the tests for measuring coverage")
 
 ###########################################################
 
@@ -72,6 +73,15 @@ else()
    LIST(APPEND GENERAL_DEFS_LIST "-DDEBUG")
    set(OPT_FLAGS_LIST -O0 -fno-inline-functions)
 
+endif()
+
+set (GCOV_COMPILE_FLAGS "")
+set (GCOV_LINK_FLAGS "")
+
+if (${USE_GCOV})
+   message(STATUS "Using GCOV for code coverage")
+   set(GCOV_COMPILE_FLAGS "-fprofile-arcs -ftest-coverage")
+   set(GCOV_LINK_FLAGS "-fprofile-arcs -lgcov")
 endif()
 
 
