@@ -1,6 +1,15 @@
-#!/bin/sh
+#!/bin/bash
+
+CC=gcc-6
+CXX=g++-6
+
+
+if [ -z "$RELEASE" ]; then
+   # unset, assuming OFF by default
+   RELEASE=off
+fi
 
 mkdir -p build
 cd build
-../toolchain/cmake-3.7.0-Linux-x86_64/bin/cmake .. $@
+../toolchain/cmake-3.7.0-Linux-x86_64/bin/cmake -D RELEASE_BUILD:BOOL=$RELEASE .. $@
 
