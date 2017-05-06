@@ -51,7 +51,7 @@ sed -i 's/-Wno-unused -Wredundant-decls/-Wno-unused -Wredundant-decls -fno-stack
 # So, disabling the 'exit on first failure' option.
 set +e
 
-make i386 DEBUG=1
+make -j i386 DEBUG=1
 
 # Restore the 'exit on first failure'
 set -e
@@ -68,7 +68,7 @@ git clone https://github.com/google/googletest.git
 cd googletest/googletest
 git checkout release-1.8.0
 $CMAKE .
-make
+make -j
 popd
 
 
