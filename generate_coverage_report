@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # If USE_GCOV is empty/unset but TRAVIS is set, exit
+# In other words, the USE_GCOV controls this script only if it is running
+# under TRAVIS, which makes sense.
 
 if [ -z "$USE_GCOV" ]; then
    if [ -n "$TRAVIS" ]; then
@@ -9,11 +11,14 @@ if [ -z "$USE_GCOV" ]; then
    fi
 fi
 
+LCOV=$PWD/toolchain/lcov/bin/lcov
+GENHTML=$PWD/toolchain/lcov/bin/genhtml
+
 cd build
-lcov -d . --capture --gcov-tool `which gcov-6` -o lcov.info
-lcov --remove lcov.info '*toolchain*' '/usr/include/*' -o lcov2.info
+$LCOV -d . --capture --gcov-tool `which gcov-6` -o lcov.info
+$LCOV --remove lcov.info '*toolchain*' '/usr/include/*' -o lcov2.info
 rm -rf coverage
 mkdir coverage
-genhtml --output-directory coverage lcov2.info
+$GENHTML --output-directory coverage lcov2.info
 find . -type f -name '*.gcda' -print | xargs /bin/rm -f
 rm lcov*.info
