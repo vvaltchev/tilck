@@ -22,12 +22,13 @@ sptr sys_write(int fd, const void *buf, size_t count)
 {
    //printk("sys_write(fd = %i, count = %u, buf = '%s')\n", fd, count, buf);
 
-   //for (int i = 0; i < 50*1000*1000; i++) { } // waste some cylces
+   disable_preemption();
 
    for (size_t i = 0; i < count; i++) {
       term_write_char(((char *)buf)[i]);
    }
 
+   enable_preemption();
    return count;
 }
 
@@ -163,11 +164,13 @@ void handle_syscall(regs *r)
    //printk("Arg 6 (ebp): %p\n\n", r->ebp);
 
    set_current_task_in_kernel();
+   enable_preemption();
 
    r->eax =
       syscalls_pointers[r->eax](r->ebx, r->ecx, r->edx,
                                 r->esi, r->edi, r->ebp);
 
+   disable_preemption();
    set_current_task_in_user_mode();
 }
 

@@ -24,9 +24,7 @@ using namespace testing;
 class tasklet_test : public Test {
 
    void SetUp() override {
-      initialize_test_kernel_heap();
-      init_pageframe_allocator();
-      initialize_kmalloc();
+      initialize_kmalloc_for_tests();
       initialize_tasklets();
    }
 

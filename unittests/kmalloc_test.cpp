@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 #include "mocks.h"
+#include "kernel_init_funcs.h"
 
 extern "C" {
    #include <kmalloc.h>
@@ -64,15 +65,19 @@ class kmalloc_test : public Test {
 public:
 
    void SetUp() override {
-      initialize_test_kernel_heap();
-      init_pageframe_allocator();
-      initialize_kmalloc();
+      initialize_kmalloc_for_tests();
    }
 
    void TearDown() override {
       /* do nothing, for the moment */
    }
 };
+
+TEST_F(kmalloc_test, perf_test)
+{
+   kernel_kmalloc_perf_test();
+}
+
 
 TEST_F(kmalloc_test, chaos_test)
 {
@@ -84,14 +89,4 @@ TEST_F(kmalloc_test, chaos_test)
    for (int i = 0; i < 100; i++) {
       kmalloc_chaos_test_sub(e, dist);
    }
-}
-
-
-TEST_F(kmalloc_test, perf_test)
-{
-   initialize_test_kernel_heap();
-   init_pageframe_allocator();
-   initialize_kmalloc();
-
-   kernel_kmalloc_perf_test();
 }

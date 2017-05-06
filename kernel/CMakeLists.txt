@@ -13,7 +13,7 @@ set(
    -fno-zero-initialized-in-bss
    -fno-exceptions
 
-   # Allow easier debugging using disassembly
+   # Allow easier disassembly debugging
    -mpush-args
    -mno-accumulate-outgoing-args
    -mno-stack-arg-probe
@@ -24,8 +24,7 @@ JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
 include_directories("include")
 
 file(GLOB ARCH_SOURCES "arch/${ARCH}/*.asm" "arch/${ARCH}/*.c")
-file(GLOB SOURCES "*.c")
-
+file(GLOB SOURCES "*.c" "test_stuff/*.c")
 
 set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 
