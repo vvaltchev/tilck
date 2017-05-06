@@ -115,7 +115,7 @@ void load_elf_program(void *elf,
          }
 
          map_page(pdir, vaddr, alloc_pageframe(), true, true);
-         memset(vaddr, 0, PAGE_SIZE);
+         bzero(vaddr, PAGE_SIZE);
       }
 
       memmove((void *)phdr->p_vaddr,

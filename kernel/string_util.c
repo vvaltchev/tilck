@@ -115,6 +115,10 @@ void vprintk(const char *fmt, va_list args)
          term_write_string(buf);
          break;
 
+      case 'c':
+         term_write_char(va_arg(args, s32));
+         break;
+
       case 's':
          term_write_string(va_arg(args, const char *));
          break;

@@ -17,6 +17,7 @@ extern "C" {
 #include <paging.h>
 #include <utils.h>
 
+extern bool kmalloc_initialized;
 void *kernel_heap_base = nullptr;
 unordered_map<uptr, uptr> mappings;
 
@@ -29,6 +30,14 @@ void initialize_test_kernel_heap()
 
    uptr align_size = 16 * PAGE_SIZE;
    kernel_heap_base = aligned_alloc(align_size, HEAP_DATA_SIZE);
+}
+
+void initialize_kmalloc_for_tests()
+{
+   kmalloc_initialized = false;
+   initialize_test_kernel_heap();
+   init_pageframe_allocator();
+   initialize_kmalloc();
 }
 
 bool __wrap_is_mapped(void *pdir, uptr vaddr)

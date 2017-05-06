@@ -12,6 +12,7 @@
 #include <hal.h>
 #include <utils.h>
 #include <tasklet.h>
+#include <sync.h>
 
 void gdt_install();
 void idt_install();
@@ -66,32 +67,6 @@ void mount_memdisk()
              true);
 }
 
-void test_memdisk()
-{
-   char *ptr;
-
-   printk("Data at %p:\n", 0x0);
-   ptr = (char *)RAM_DISK_VADDR;
-   for (int i = 0; i < 16; i++) {
-      printk("%x ", (u8)ptr[i]);
-   }
-   printk("\n");
-
-   printk("Data at %p:\n", INIT_PROGRAM_MEM_DISK_OFFSET);
-   ptr = (char *)(RAM_DISK_VADDR + INIT_PROGRAM_MEM_DISK_OFFSET);
-   for (int i = 0; i < 16; i++) {
-      printk("%x ", (u8)ptr[i]);
-   }
-   printk("\n");
-
-
-
-   printk("\n\n");
-   printk("Calculating CRC32...\n");
-   u32 crc = crc32(0, (void *)RAM_DISK_VADDR, RAM_DISK_SIZE);
-   printk("Crc32 of the data: %p\n", crc);
-}
-
 
 void simple_test_kthread(void)
 {
@@ -119,9 +94,13 @@ void tasklet_runner_kthread(void)
 
          //printk("[kernel thread] no tasklets, yield!\n");
          kernel_yield();
+
+         //printk("after yield..\n");
       }
    }
 }
+
+void kmutex_test();
 
 void kmain()
 {
@@ -133,34 +112,34 @@ void kmain()
    irq_install();
 
    init_pageframe_allocator();
-   init_paging();
    initialize_kmalloc();
+
+   init_paging();
+   initialize_tasklets();
 
    set_timer_freq(TIMER_HZ);
 
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
 
+   // TODO: make the kernel actually support the sysenter interface
    setup_sysenter_interface();
 
    mount_memdisk();
    //test_memdisk();
 
-   initialize_tasklets();
-
-   kthread_create(simple_test_kthread);
-   kthread_create(tasklet_runner_kthread);
-
+   disable_preemption();
    enable_interrupts();
 
    // Initialize the keyboard driver.
    init_kb();
 
-   load_usermode_init();
+   current_task = kthread_create(simple_test_kthread);
+   current_task = kthread_create(tasklet_runner_kthread);
 
-   disable_preemption();
-   push_nested_interrupt(-1);
-   schedule();
+   kmutex_test();
+   //load_usermode_init();
+   schedule_outside_interrupt_context();
 
    // We should never get here!
    NOT_REACHED();

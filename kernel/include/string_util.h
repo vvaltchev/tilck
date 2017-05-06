@@ -3,6 +3,8 @@
 
 #include <common_defs.h>
 
+#if !defined(TESTING)
+
 typedef unsigned char *va_list;
 #define va_start(list, param) (list = (((va_list)&param) + sizeof(param)))
 #define va_arg(list, type)    (*(type *)((list += sizeof(type)) - sizeof(type)))
@@ -14,6 +16,12 @@ static ALWAYS_INLINE void memset(void *ptr, u8 value, size_t num)
    for (size_t i = 0; i < num; ++i) {
       ((char *)ptr)[i] = value;
    }
+}
+
+// TODO: optimize
+static ALWAYS_INLINE void bzero(void *ptr, size_t len)
+{
+   memset(ptr, 0, len);
 }
 
 static ALWAYS_INLINE size_t strlen(const char *str)
@@ -65,6 +73,12 @@ static ALWAYS_INLINE char upper(int c) {
 static ALWAYS_INLINE bool isdigit(int c) {
    return c >= '0' && c <= '9';
 }
+
+#else
+
+/* Add here any necessary #include for the tests. */
+
+#endif
 
 void vprintk(const char *fmt, va_list args);
 void printk(const char *fmt, ...);

@@ -5,7 +5,7 @@
 #include <arch/i386/process_int.h>
 #include <hal.h>
 
-void reset_kernel_stack(task_info *ti)
+void task_info_reset_kernel_stack(task_info *ti)
 {
    ti->kernel_state_regs.useresp = \
       ((uptr) ti->kernel_stack +
@@ -75,7 +75,7 @@ void push_args_on_user_stack(regs *r, int argc,
 task_info *kthread_create(kthread_func_ptr fun)
 {
    regs r;
-   memset(&r, 0, sizeof(r));
+   bzero(&r, sizeof(r));
 
    r.gs = r.fs = r.es = r.ds = r.ss = 0x10;
    r.cs = 0x08;
@@ -83,8 +83,7 @@ task_info *kthread_create(kthread_func_ptr fun)
    r.eip = (u32) fun;
    r.eflags = get_eflags() | (1 << 9);
 
-   task_info *ti = kmalloc(sizeof(task_info));
-   memset(ti, 0, sizeof(task_info));
+   task_info *ti = kzmalloc(sizeof(task_info));
 
    INIT_LIST_HEAD(&ti->list);
    ti->pdir = get_kernel_page_dir();
@@ -94,12 +93,12 @@ task_info *kthread_create(kthread_func_ptr fun)
    ti->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
    ti->running_in_kernel = 1;
    ti->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
-   memset(ti->kernel_stack, 0, KTHREAD_STACK_SIZE);
+   bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
 
-   memset(&ti->state_regs, 0, sizeof(r));
+   bzero(&ti->state_regs, sizeof(r));
    memmove(&ti->kernel_state_regs, &r, sizeof(r));
 
-   reset_kernel_stack(ti);
+   task_info_reset_kernel_stack(ti);
 
    /*
     * Pushes the address of kthread_exit() into thread's stack in order to
@@ -125,14 +124,8 @@ void kthread_exit()
 
    ti->state = TASK_STATE_ZOMBIE;
 
-   // HACK: push a fake interrupt to compensate the call to
-   // end_current_interrupt_handling() in switch_to_process(), done by the
-   // scheduler.
-
-   push_nested_interrupt(-1);
-
    asmVolatile("movl %0, %%esp" : : "i"(KERNEL_BASE_STACK_ADDR));
-   asmVolatile("jmp *%0" : : "r"(&schedule));
+   asmVolatile("jmp *%0" : : "r"(&schedule_outside_interrupt_context));
 }
 
 task_info *create_first_usermode_task(page_directory_t *pdir,
@@ -140,7 +133,7 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
                                       void *stack_addr)
 {
    regs r;
-   memset(&r, 0, sizeof(r));
+   bzero(&r, sizeof(r));
 
    // User data selector with bottom 2 bits set for ring 3.
    r.gs = r.fs = r.es = r.ds = r.ss = 0x23;
@@ -157,9 +150,7 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
 
    r.eflags = get_eflags() | (1 << 9);
 
-   task_info *ti = kmalloc(sizeof(task_info));
-   memset(ti, 0, sizeof(task_info));
-
+   task_info *ti = kzmalloc(sizeof(task_info));
    INIT_LIST_HEAD(&ti->list);
 
    ti->pdir = pdir;
@@ -169,12 +160,12 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
    ti->owning_process_pid = ti->pid;
    ti->running_in_kernel = 0;
    ti->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
-   memset(ti->kernel_stack, 0, KTHREAD_STACK_SIZE);
+   bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
 
    memmove(&ti->state_regs, &r, sizeof(r));
-   memset(&ti->kernel_state_regs, 0, sizeof(r));
+   bzero(&ti->kernel_state_regs, sizeof(r));
 
-   reset_kernel_stack(ti);
+   task_info_reset_kernel_stack(ti);
    add_task(ti);
    return ti;
 }

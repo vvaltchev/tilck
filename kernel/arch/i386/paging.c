@@ -29,14 +29,13 @@ bool is_allocated_pageframe(void *address);
 
 /* ---------------------------------------------- */
 
-page_directory_t *kernel_page_dir = NULL;
-page_directory_t *curr_page_dir = NULL;
-void *page_size_buf = NULL;
-u16 *pageframes_refcount = NULL;
+extern page_directory_t *kernel_page_dir;
+extern page_directory_t *curr_page_dir;
+extern void *page_size_buf;
+extern u16 *pageframes_refcount;
 
 bool handle_potential_cow(u32 vaddr)
 {
-   bool retval;
    page_table_t *ptable;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
@@ -46,8 +45,7 @@ bool handle_potential_cow(u32 vaddr)
 
    if (!(flags & (PAGE_COW_FLAG | PAGE_COW_ORIG_RW))) {
       // That was not a page-fault caused by COW.
-      retval = false;
-      goto end;
+      return false;
    }
 
    void *page_vaddr = (void *)(vaddr & PAGE_MASK);
@@ -69,8 +67,7 @@ bool handle_potential_cow(u32 vaddr)
       printk("*** DEBUG: the page was not shared anymore. "
              "Making it writable.\n");
 
-      retval = true;
-      goto end;
+      return true;
    }
 
    // Decrease the ref-count of the original pageframe.
@@ -96,10 +93,7 @@ bool handle_potential_cow(u32 vaddr)
    memmove(page_vaddr, page_size_buf, PAGE_SIZE);
 
    // This was actually a COW-caused page-fault.
-   retval = true;
-
-end:
-   return retval;
+   return true;
 }
 
 extern volatile bool in_panic;
@@ -277,6 +271,7 @@ void map_page(page_directory_t *pdir,
    p.present = 1;
    p.us = us;
    p.rw = rw;
+   p.global = !us; /* All kernel pages are 'global'. */
    p.pageAddr = paddr >> PAGE_SHIFT;
 
    ptable->pages[page_table_index] = p;
@@ -467,5 +462,5 @@ void init_paging()
       * get_amount_of_physical_memory_in_mb() / PAGE_SIZE;
 
    pageframes_refcount = kmalloc(pagesframes_refcount_bufsize);
-   memset(pageframes_refcount, 0, pagesframes_refcount_bufsize);
+   bzero(pageframes_refcount, pagesframes_refcount_bufsize);
 }

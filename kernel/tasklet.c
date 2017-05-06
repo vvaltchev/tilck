@@ -23,7 +23,9 @@ static volatile int tasklet_to_execute = 0;
 void initialize_tasklets()
 {
    all_tasklets = kmalloc(sizeof(tasklet) * MAX_TASKLETS);
-   memset(all_tasklets, 0, sizeof(tasklet) * MAX_TASKLETS);
+
+   ASSERT(all_tasklets != NULL);
+   bzero(all_tasklets, sizeof(tasklet) * MAX_TASKLETS);
 }
 
 
@@ -33,8 +35,7 @@ bool add_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
       return false;
    }
 
-   disable_interrupts();
-
+   disable_preemption();
    {
       ASSERT(all_tasklets[first_free_slot_index].fptr == NULL);
 
@@ -46,8 +47,7 @@ bool add_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
       first_free_slot_index = (first_free_slot_index + 1) % MAX_TASKLETS;
       slots_used++;
    }
-
-   enable_interrupts();
+   enable_preemption();
 
    return true;
 }
@@ -60,8 +60,7 @@ bool run_one_tasklet()
       return false;
    }
 
-   disable_interrupts();
-
+   disable_preemption();
    {
       ASSERT(all_tasklets[tasklet_to_execute].fptr != NULL);
 
@@ -71,11 +70,10 @@ bool run_one_tasklet()
       slots_used--;
       tasklet_to_execute = (tasklet_to_execute + 1) % MAX_TASKLETS;
    }
+   enable_preemption();
 
-   enable_interrupts();
 
-
-   /* Execute the tasklet with interrupts ENABLED */
+   /* Execute the tasklet with preemption ENABLED */
    t.fptr(t.ctx.arg1, t.ctx.arg2, t.ctx.arg3);
 
    return true;
