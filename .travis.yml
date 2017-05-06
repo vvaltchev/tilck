@@ -19,6 +19,7 @@ before_install:
 
 install:
   - ./cmake_run
+  - ./make_run
   - ./make_run tests
 
 script:
