@@ -4,16 +4,15 @@ language: cpp
 os:
   - linux
 
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-6
+      - g++-6
+
 before_install:
-  - mkdir temp
-  - cd temp
-  - wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
-  - tar xf cmake-3.7.2.tar.gz
-  - cd cmake-3.7.2
-  - ./configure
-  - make
-  - make install
-  - cd ../..
   - ./build_toolchain
 
 install:

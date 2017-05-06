@@ -2,5 +2,5 @@
 
 mkdir -p build
 cd build
-cmake .. $@
+../toolchain/cmake-3.7.0-Linux-x86_64/bin/cmake .. $@
 

@@ -37,9 +37,11 @@ else()
 endif()
 
 
+set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/build_scripts)
+
 set(BUILD_SHARED_LIBRARIES off)
-set(CMAKE_C_COMPILER "gcc")
-set(CMAKE_CXX_COMPILER "g++")
+set(CMAKE_C_COMPILER ${BUILD_SCRIPTS}/run_gcc)
+set(CMAKE_CXX_COMPILER ${BUILD_SCRIPTS}/run_g++)
 
 set(
    CMAKE_ASM_NASM_COMPILE_OBJECT
@@ -97,7 +99,6 @@ set(KERNEL_BIN_FILE ${CMAKE_BINARY_DIR}/kernel.bin)
 set(INIT_FILE ${CMAKE_BINARY_DIR}/init)
 set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
 
-set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/build_scripts)
 
 ################################################################################
 # Including sub-directories
