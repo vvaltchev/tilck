@@ -1,23 +1,35 @@
-dist: trusty
-sudo: required
-language: cpp
-os:
-  - linux
-
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - gcc-6
-      - g++-6
-      - gcc-6-multilib
-      - g++-6-multilib
 
 matrix:
   include:
-    - env RELEASE=on
-    - env RELEASE=off
+    - os: linux
+      dist: trusty
+      sudo: required
+      language: cpp
+      env: RELEASE=on
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-6
+            - g++-6
+            - gcc-6-multilib
+            - g++-6-multilib
+
+    - os: linux
+      dist: trusty
+      sudo: required
+      language: cpp
+      env: RELEASE=off
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-6
+            - g++-6
+            - gcc-6-multilib
+            - g++-6-multilib
 
 before_install:
   - ./build_toolchain
