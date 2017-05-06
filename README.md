@@ -1,6 +1,10 @@
 exOS
 ------
 
+[![Build Status](https://travis-ci.org/darthvader88/experimentOs.svg?branch=master)](https://travis-ci.org/darthvader88/experimentOs)
+
+
+
 A Linux-compatible x86 kernel written for educational purposes and fun.
 
 From the technical point of view, the goal of this project is writing a kernel being able to run *natively* x86 Linux console applications (like shells, text editors and compilers), without having to rebuild any part of them. The kernel will support only a subset of today's Linux syscalls but that subset will be determinied by the minimum necessary to run a given set of applications. Briefly, making typical applications like `bash`, `ls`, `cat`, `sed`, `vi`, `gcc` to work correctly, is a *must*. At the moment, it is not part of project's main goal the kernel to actually have disk drivers, nor graphic ones: everything will be loaded at boot time and only a ram disk will be available. At most, maybe a simple network driver will be implemented or an actual driver will be ported from an open-source kernel (Linux or FreeBSD).
