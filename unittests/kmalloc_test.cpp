@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 #include "mocks.h"
+#include "kernel_init_funcs.h"
 
 extern "C" {
    #include <kmalloc.h>
@@ -64,9 +65,7 @@ class kmalloc_test : public Test {
 public:
 
    void SetUp() override {
-      initialize_test_kernel_heap();
-      init_pageframe_allocator();
-      initialize_kmalloc();
+      initialize_kmalloc_for_tests();
    }
 
    void TearDown() override {
