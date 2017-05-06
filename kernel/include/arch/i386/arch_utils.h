@@ -28,8 +28,8 @@ static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
 }
 
 
-NORETURN void asm_context_switch_x86(u32 d, ...);
-NORETURN void asm_kernel_context_switch_x86(u32 d, ...);
+NORETURN void asm_context_switch_x86();
+NORETURN void asm_kernel_context_switch_x86();
 
 NORETURN static ALWAYS_INLINE void context_switch(regs *r)
 {

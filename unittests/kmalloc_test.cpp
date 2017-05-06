@@ -93,5 +93,5 @@ TEST_F(kmalloc_test, perf_test)
    init_pageframe_allocator();
    initialize_kmalloc();
 
-   kernel_kmalloc_perf_test();
+   //kernel_kmalloc_perf_test();
 }

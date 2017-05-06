@@ -29,10 +29,10 @@ bool is_allocated_pageframe(void *address);
 
 /* ---------------------------------------------- */
 
-page_directory_t *kernel_page_dir = NULL;
-page_directory_t *curr_page_dir = NULL;
-void *page_size_buf = NULL;
-u16 *pageframes_refcount = NULL;
+extern page_directory_t *kernel_page_dir;
+extern page_directory_t *curr_page_dir;
+extern void *page_size_buf;
+extern u16 *pageframes_refcount;
 
 bool handle_potential_cow(u32 vaddr)
 {

@@ -5,7 +5,7 @@
 #include <arch/i386/process_int.h>
 #include <hal.h>
 
-void reset_kernel_stack(task_info *ti)
+void task_info_reset_kernel_stack(task_info *ti)
 {
    ti->kernel_state_regs.useresp = \
       ((uptr) ti->kernel_stack +
@@ -98,7 +98,7 @@ task_info *kthread_create(kthread_func_ptr fun)
    bzero(&ti->state_regs, sizeof(r));
    memmove(&ti->kernel_state_regs, &r, sizeof(r));
 
-   reset_kernel_stack(ti);
+   task_info_reset_kernel_stack(ti);
 
    /*
     * Pushes the address of kthread_exit() into thread's stack in order to
@@ -165,7 +165,7 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
    memmove(&ti->state_regs, &r, sizeof(r));
    bzero(&ti->kernel_state_regs, sizeof(r));
 
-   reset_kernel_stack(ti);
+   task_info_reset_kernel_stack(ti);
    add_task(ti);
    return ti;
 }

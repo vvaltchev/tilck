@@ -41,7 +41,7 @@ void set_current_task_in_user_mode()
 
    current_task->running_in_kernel = 0;
 
-   reset_kernel_stack(current_task);
+   task_info_reset_kernel_stack(current_task);
    set_kernel_stack(current_task->kernel_state_regs.useresp);
 }
 
@@ -150,7 +150,7 @@ NORETURN void switch_to_task(task_info *ti)
 
       bzero(current_task->kernel_stack, KTHREAD_STACK_SIZE);
 
-      reset_kernel_stack(current_task);
+      task_info_reset_kernel_stack(current_task);
       set_kernel_stack(current_task->kernel_state_regs.useresp);
 
       context_switch(state);

@@ -92,7 +92,7 @@ sptr sys_fork()
 
    child->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
    bzero(child->kernel_stack, KTHREAD_STACK_SIZE);
-   reset_kernel_stack(child);
+   task_info_reset_kernel_stack(child);
 
    set_return_register(&child->state_regs, 0);
 
