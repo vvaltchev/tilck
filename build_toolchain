@@ -8,9 +8,13 @@ export PATH=$MAIN_DIR/build_scripts:$PATH
 
 echo 'Installing the necessary packages...'
 
-cmd='sudo apt-get install wget gcc g++ git nasm gcc-multilib g++-multilib make cmake binutils binutils-multiarch mtools'
-echo $cmd
+if [ -z "$TRAVIS" ]; then
+   cmd='sudo apt-get install wget gcc g++ git nasm gcc-multilib g++-multilib make binutils binutils-multiarch mtools';
+else
+   cmd='sudo apt-get install nasm binutils binutils-multiarch mtools';
+fi
 
+echo $cmd
 $cmd
 
 mkdir toolchain
@@ -27,6 +31,7 @@ TC=$PWD
 pushd .
 wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
 tar xf cmake-3.7.0-Linux-x86_64.tar.gz
+CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
 popd
 
 
@@ -62,7 +67,7 @@ pushd .
 git clone https://github.com/google/googletest.git
 cd googletest/googletest
 git checkout release-1.8.0
-cmake .
+$CMAKE .
 make
 popd
 
