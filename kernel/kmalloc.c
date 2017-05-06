@@ -45,6 +45,16 @@ typedef struct {
 } allocator_meta_data;
 
 
+/*
+ * Each byte represents 8 * PAGE_SIZE bytes = 32 KB.
+ */
+
+#define ALLOC_METADATA_SIZE \
+   (sizeof(block_node) * KMALLOC_NODES_COUNT_IN_META_DATA / (8 * PAGE_SIZE))
+
+static bool allocation_for_metadata_nodes[ALLOC_METADATA_SIZE] = {0};
+
+
 #define HALF(x) ((x) >> 1)
 #define TWICE(x) ((x) << 1)
 
@@ -148,15 +158,6 @@ static size_t set_free_uplevels(int *node, size_t size) {
 
    return curr_size;
 }
-
-/*
- * Each byte represents 8 * PAGE_SIZE bytes = 32 KB.
- */
-
-#define ALLOC_METADATA_SIZE \
-   (sizeof(block_node) * KMALLOC_NODES_COUNT_IN_META_DATA / (8 * PAGE_SIZE))
-
-bool allocation_for_metadata_nodes[ALLOC_METADATA_SIZE] = {0};
 
 ALWAYS_INLINE static bool node_has_page(int node)
 {
@@ -479,9 +480,7 @@ void kfree(void *ptr, size_t size)
 
 void initialize_kmalloc() {
 
-   // memset(allocation_for_metadata_nodes,
-   //        0,
-   //        sizeof(allocation_for_metadata_nodes));
+   bzero(allocation_for_metadata_nodes, sizeof(allocation_for_metadata_nodes));
 
    DEBUG_printk("heap base addr: %p\n", HEAP_BASE_ADDR);
    DEBUG_printk("heap data addr: %p\n", HEAP_DATA_ADDR);

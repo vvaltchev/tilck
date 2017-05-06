@@ -130,7 +130,7 @@ void panic(const char *fmt, ...)
    }
    printk("\n\n");
 
-   //dump_stacktrace();
+   dump_stacktrace();
 
    while (true) {
       halt();

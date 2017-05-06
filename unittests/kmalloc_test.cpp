@@ -74,6 +74,12 @@ public:
    }
 };
 
+TEST_F(kmalloc_test, perf_test)
+{
+   kernel_kmalloc_perf_test();
+}
+
+
 TEST_F(kmalloc_test, chaos_test)
 {
    random_device rdev;
@@ -84,14 +90,4 @@ TEST_F(kmalloc_test, chaos_test)
    for (int i = 0; i < 100; i++) {
       kmalloc_chaos_test_sub(e, dist);
    }
-}
-
-
-TEST_F(kmalloc_test, perf_test)
-{
-   initialize_test_kernel_heap();
-   init_pageframe_allocator();
-   initialize_kmalloc();
-
-   //kernel_kmalloc_perf_test();
 }

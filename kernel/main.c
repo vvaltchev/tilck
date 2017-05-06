@@ -112,8 +112,9 @@ void kmain()
    irq_install();
 
    init_pageframe_allocator();
-   init_paging();
    initialize_kmalloc();
+
+   init_paging();
    initialize_tasklets();
 
    set_timer_freq(TIMER_HZ);
