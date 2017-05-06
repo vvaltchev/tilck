@@ -1,0 +1,13 @@
+sudo: required
+language: cpp
+os:
+  - linux
+
+before_install:
+  - ./build_toolchain
+
+install:
+  - ./cmake_run
+
+script:
+  - ./make_run tests
