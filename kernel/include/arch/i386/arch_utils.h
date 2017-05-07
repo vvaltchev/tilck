@@ -19,8 +19,14 @@ struct regs {
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
 
-/* Saves the current state and calls schedule() */
+/*
+ * Saves the current state and calls schedule().
+ * That after, typically after some time, the scheduler will restore the thread
+ * as if kernel_yield() returned and nothing else happened.
+ */
+
 void kernel_yield();
+
 
 static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
 {

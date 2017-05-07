@@ -48,12 +48,12 @@ void test_kmutex_thread1(void)
 {
    printk("1) before lock\n");
 
-   lock(&test_mutex);
+   kmutex_lock(&test_mutex);
 
    printk("1) under lock..\n");
    for (int i=0; i < 1024*1024*1024; i++) { }
 
-   unlock(&test_mutex);
+   kmutex_unlock(&test_mutex);
 
    printk("1) after lock\n");
 }
@@ -62,12 +62,12 @@ void test_kmutex_thread2(void)
 {
    printk("2) before lock\n");
 
-   lock(&test_mutex);
+   kmutex_lock(&test_mutex);
 
    printk("2) under lock..\n");
    for (int i=0; i < 1024*1024*1024; i++) { }
 
-   unlock(&test_mutex);
+   kmutex_unlock(&test_mutex);
 
    printk("2) after lock\n");
 }
@@ -76,14 +76,14 @@ void test_kmutex_thread3(void)
 {
    printk("3) before trylock\n");
 
-   bool locked = trylock(&test_mutex);
+   bool locked = kmutex_trylock(&test_mutex);
 
    if (locked) {
 
       printk("3) trylock SUCCEEDED: under lock..\n");
 
       if (locked) {
-         unlock(&test_mutex);
+         kmutex_unlock(&test_mutex);
       }
 
       printk("3) after lock\n");
