@@ -101,3 +101,63 @@ void kmutex_test(void)
    current_task = kthread_create(test_kmutex_thread2);
    current_task = kthread_create(test_kmutex_thread3);
 }
+
+
+kcond cond = { 0 };
+kmutex cond_mutex = { 0 };
+
+void kcond_thread_test1()
+{
+   kmutex_lock(&cond_mutex);
+
+   printk("[thread1]: under lock, waiting for signal..\n");
+   kcond_wait(&cond, &cond_mutex);
+
+   printk("[thread1]: under lock, signal received..\n");
+
+   kmutex_unlock(&cond_mutex);
+
+   printk("[thread1]: exit\n");
+}
+
+void kcond_thread_test2()
+{
+   kmutex_lock(&cond_mutex);
+
+   printk("[thread2]: under lock, waiting for signal..\n");
+   kcond_wait(&cond, &cond_mutex);
+
+   printk("[thread2]: under lock, signal received..\n");
+
+   kmutex_unlock(&cond_mutex);
+
+   printk("[thread2]: exit\n");
+}
+
+
+void kcond_thread_signal_generator()
+{
+   kmutex_lock(&cond_mutex);
+
+   printk("[thread signal]: under lock, waiting some time..\n");
+   for (int i=0; i < 1024*1024*1024; i++) { }
+
+   printk("[thread signal]: under lock, signal_all!\n");
+
+   kcond_signal_all(&cond);
+
+   kmutex_unlock(&cond_mutex);
+
+   printk("[thread signal]: exit\n");
+}
+
+
+void kcond_test(void)
+{
+   kmutex_init(&cond_mutex);
+   kcond_init(&cond);
+
+   current_task = kthread_create(&kcond_thread_test1);
+   current_task = kthread_create(&kcond_thread_test2);
+   current_task = kthread_create(&kcond_thread_signal_generator);
+}

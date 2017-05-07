@@ -101,6 +101,7 @@ void tasklet_runner_kthread(void)
 }
 
 void kmutex_test();
+void kcond_test();
 
 void kmain()
 {
@@ -137,7 +138,10 @@ void kmain()
    current_task = kthread_create(simple_test_kthread);
    current_task = kthread_create(tasklet_runner_kthread);
 
-   kmutex_test();
+   //kmutex_test();
+
+   kcond_test();
+
    //load_usermode_init();
    schedule_outside_interrupt_context();
 

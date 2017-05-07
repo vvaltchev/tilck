@@ -24,7 +24,8 @@ void kcond_wait(kcond *c, kmutex *m)
 
    kmutex_unlock(m);
    enable_preemption();
-   kernel_yield(); // Go to sleep until someone else holding is the lock.
+   kernel_yield(); // Go to sleep until a signal is fired.
+   kmutex_lock(m); // Re-acquire the lock back
 }
 
 void kcond_signal_int(kcond *c, bool all)
