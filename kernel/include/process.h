@@ -54,7 +54,7 @@ void task_change_state(task_info *ti, int new_state);
 
 typedef void (*kthread_func_ptr)();
 
-task_info *kthread_create(kthread_func_ptr fun);
+task_info *kthread_create(kthread_func_ptr fun, void *arg);
 
 // It is called when each kernel thread returns. May be called explicitly too.
 void kthread_exit();

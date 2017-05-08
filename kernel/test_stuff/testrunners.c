@@ -16,9 +16,9 @@
 #define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023600
 
 
-void simple_test_kthread(void)
+void simple_test_kthread(void *arg)
 {
-   printk("[kernel thread] This is a kernel thread..\n");
+   printk("[kernel thread] This is a kernel thread, arg = %p\n", arg);
 
    for (int i = 0; i < 1024*(int)MB; i++) {
       if (!(i % (256*MB))) {
@@ -57,35 +57,21 @@ void test_memdisk()
 
 static kmutex test_mutex = { 0 };
 
-void test_kmutex_thread1(void)
+void test_kmutex_thread(void *arg)
 {
-   printk("1) before lock\n");
+   printk("%i) before lock\n", arg);
 
    kmutex_lock(&test_mutex);
 
-   printk("1) under lock..\n");
+   printk("%i) under lock..\n", arg);
    for (int i=0; i < 1024*1024*1024; i++) { }
 
    kmutex_unlock(&test_mutex);
 
-   printk("1) after lock\n");
+   printk("%i) after lock\n", arg);
 }
 
-void test_kmutex_thread2(void)
-{
-   printk("2) before lock\n");
-
-   kmutex_lock(&test_mutex);
-
-   printk("2) under lock..\n");
-   for (int i=0; i < 1024*1024*1024; i++) { }
-
-   kmutex_unlock(&test_mutex);
-
-   printk("2) after lock\n");
-}
-
-void test_kmutex_thread3(void)
+void test_kmutex_thread_trylock()
 {
    printk("3) before trylock\n");
 
@@ -107,44 +93,30 @@ void test_kmutex_thread3(void)
 }
 
 
-void kmutex_test(void)
+void kmutex_test()
 {
    kmutex_init(&test_mutex);
-   current_task = kthread_create(test_kmutex_thread1);
-   current_task = kthread_create(test_kmutex_thread2);
-   current_task = kthread_create(test_kmutex_thread3);
+   current_task = kthread_create(test_kmutex_thread, (void *)1);
+   current_task = kthread_create(test_kmutex_thread, (void *)2);
+   current_task = kthread_create(test_kmutex_thread_trylock, NULL);
 }
 
 
 static kcond cond = { 0 };
 static kmutex cond_mutex = { 0 };
 
-void kcond_thread_test1()
+void kcond_thread_test(void *arg)
 {
    kmutex_lock(&cond_mutex);
 
-   printk("[thread1]: under lock, waiting for signal..\n");
+   printk("[thread %i]: under lock, waiting for signal..\n", arg);
    kcond_wait(&cond, &cond_mutex);
 
-   printk("[thread1]: under lock, signal received..\n");
+   printk("[thread %i]: under lock, signal received..\n", arg);
 
    kmutex_unlock(&cond_mutex);
 
-   printk("[thread1]: exit\n");
-}
-
-void kcond_thread_test2()
-{
-   kmutex_lock(&cond_mutex);
-
-   printk("[thread2]: under lock, waiting for signal..\n");
-   kcond_wait(&cond, &cond_mutex);
-
-   printk("[thread2]: under lock, signal received..\n");
-
-   kmutex_unlock(&cond_mutex);
-
-   printk("[thread2]: exit\n");
+   printk("[thread %i]: exit\n", arg);
 }
 
 
@@ -165,12 +137,12 @@ void kcond_thread_signal_generator()
 }
 
 
-void kcond_test(void)
+void kcond_test()
 {
    kmutex_init(&cond_mutex);
    kcond_init(&cond);
 
-   current_task = kthread_create(&kcond_thread_test1);
-   current_task = kthread_create(&kcond_thread_test2);
-   current_task = kthread_create(&kcond_thread_signal_generator);
+   current_task = kthread_create(&kcond_thread_test, (void*) 1);
+   current_task = kthread_create(&kcond_thread_test, (void*) 2);
+   current_task = kthread_create(&kcond_thread_signal_generator, NULL);
 }

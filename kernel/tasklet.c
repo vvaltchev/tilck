@@ -29,7 +29,7 @@ void initialize_tasklets()
    bzero(all_tasklets, sizeof(tasklet) * MAX_TASKLETS);
 
    kcond_init(&tasklet_cond);
-   kthread_create(tasklet_runner_kthread);
+   kthread_create(tasklet_runner_kthread, NULL);
 }
 
 
@@ -94,7 +94,7 @@ bool run_one_tasklet(void)
 }
 
 
-void tasklet_runner_kthread(void)
+void tasklet_runner_kthread()
 {
    printk("[kernel thread] tasklet runner kthread (pid: %i)\n",
           get_current_task()->pid);
