@@ -21,35 +21,38 @@ void kmutex_destroy(kmutex *m)
    (void)m; // Do nothing.
 }
 
-void lock(kmutex *m)
+void kmutex_lock(kmutex *m)
 {
    disable_preemption();
-   {
-      if (m->owner_task) {
 
-         /*
-          * The mutex is NOT recursive: ASSERT that the mutex is not already
-          * owned by the current task.
-          */
-         ASSERT(m->owner_task != get_current_task());
+   if (m->owner_task) {
 
-         wait_obj_set(&current_task->wobj, WOBJ_KMUTEX, m);
-         current_task->state = TASK_STATE_SLEEPING;
+      /*
+       * The mutex is NOT recursive: ASSERT that the mutex is not already
+       * owned by the current task.
+       */
+      ASSERT(!kmutex_is_curr_task_holding_lock(m));
 
-         enable_preemption();
-         kernel_yield();
-         return;
+      wait_obj_set(&current_task->wobj, WOBJ_KMUTEX, m);
+      task_change_state(current_task, TASK_STATE_SLEEPING);
 
-      } else {
+      enable_preemption();
+      kernel_yield(); // Go to sleep until someone else holding is the lock.
 
-         // Nobody owns this mutex, just set the owner
-         m->owner_task = get_current_task();
-      }
+      // Here for sure this task should hold the mutex.
+      ASSERT(kmutex_is_curr_task_holding_lock(m));
+      return;
+
+   } else {
+
+      // Nobody owns this mutex, just set the owner
+      m->owner_task = get_current_task();
    }
+
    enable_preemption();
 }
 
-bool trylock(kmutex *m)
+bool kmutex_trylock(kmutex *m)
 {
    bool success = false;
 
@@ -65,29 +68,26 @@ bool trylock(kmutex *m)
    return success;
 }
 
-void unlock(kmutex *m)
+void kmutex_unlock(kmutex *m)
 {
    task_info *pos;
 
    disable_preemption();
    {
-      ASSERT(m->owner_task == get_current_task());
+      ASSERT(kmutex_is_curr_task_holding_lock(m));
 
       m->owner_task = NULL;
 
       /* Unlock one task waiting to acquire the mutex 'm' */
 
-      // TODO: make that we iterate only among sleeping tasks
+      list_for_each_entry(pos, &sleeping_tasks_list, sleeping_list) {
 
-      list_for_each_entry(pos, &tasks_list, list) {
-         if (pos->state != TASK_STATE_SLEEPING) {
-            continue;
-         }
+         ASSERT(pos->state == TASK_STATE_SLEEPING);
 
          if (pos->wobj.ptr == m) {
             m->owner_task = pos;
             wait_obj_reset(&pos->wobj);
-            pos->state = TASK_STATE_RUNNABLE;
+            task_change_state(pos, TASK_STATE_RUNNABLE);
             break;
          }
       }

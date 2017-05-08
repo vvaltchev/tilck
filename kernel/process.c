@@ -30,7 +30,7 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
    printk("[kernel] Pid %i will WAIT until pid %i dies\n",
           current_task->pid, pid);
 
-   task_info *waited_task = get_task(pid);
+   volatile task_info *waited_task = (volatile task_info *)get_task(pid);
 
    if (!waited_task) {
       return -1;
@@ -50,7 +50,7 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
       halt();
    }
 
-   remove_task(waited_task);
+   remove_task((task_info *)waited_task);
    return pid;
 }
 
@@ -63,7 +63,7 @@ NORETURN void sys_exit(int exit_code)
           current_task->pid,
           exit_code);
 
-   current_task->state = TASK_STATE_ZOMBIE;
+   task_change_state(current_task, TASK_STATE_ZOMBIE);
    current_task->exit_code = exit_code;
 
    // We CANNOT free current_task->kernel_task here because we're using it!
@@ -81,6 +81,11 @@ sptr sys_fork()
    memmove(child, current_task, sizeof(task_info));
 
    INIT_LIST_HEAD(&child->list);
+
+   if (child->state == TASK_STATE_RUNNING) {
+      child->state = TASK_STATE_RUNNABLE;
+   }
+
    child->pdir = pdir_clone(current_task->pdir);
    child->pid = ++current_max_pid;
 

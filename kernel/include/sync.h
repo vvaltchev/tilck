@@ -4,17 +4,25 @@
 #include <common_defs.h>
 #include <process.h>
 
-#define WOBJ_NONE   0
-#define WOBJ_KMUTEX 1
+typedef enum {
+   WOBJ_NONE = 0,
+   WOBJ_KMUTEX = 1,
+   WOBJ_KCOND = 2
+} wo_type;
+
+/*
+ * wait_obj is used internally in task_info for referring to an object that
+ * is blocking that task (keeping it in a sleep state).
+ */
 
 typedef struct {
 
-   int type;
+   wo_type type;
    void *ptr;
 
 } wait_obj;
 
-static inline void wait_obj_set(wait_obj *obj, int type, void *ptr)
+static inline void wait_obj_set(wait_obj *obj, wo_type type, void *ptr)
 {
    obj->type = type;
    obj->ptr = ptr;
@@ -26,6 +34,11 @@ static inline void wait_obj_reset(wait_obj *obj)
    obj->ptr = NULL;
 }
 
+
+/*
+ * The mutex implementation used for locking in kernel mode.
+ */
+
 typedef struct {
 
    uptr id;
@@ -33,11 +46,41 @@ typedef struct {
 
 } kmutex;
 
-
 void kmutex_init(kmutex *m);
-void lock(kmutex *m);
-bool trylock(kmutex *m);
-void unlock(kmutex *m);
+void kmutex_lock(kmutex *m);
+bool kmutex_trylock(kmutex *m);
+void kmutex_unlock(kmutex *m);
 void kmutex_destroy(kmutex *m);
 
+static inline bool kmutex_is_curr_task_holding_lock(kmutex *m)
+{
+   return m->owner_task == get_current_task();
+}
+
+
+/*
+ * A basic implementation of condition variables similar to the pthread ones.
+ */
+
+typedef struct {
+
+   uptr id;
+
+} kcond;
+
+void kcond_signal_int(kcond *c, bool all);
+
+void kcond_init(kcond *c);
+void kcond_wait(kcond *c, kmutex *m);
+void kcond_destory(kcond *c);
+
+static inline void kcond_signal_one(kcond *c)
+{
+   kcond_signal_int(c, false);
+}
+
+static inline void kcond_signal_all(kcond *c)
+{
+   kcond_signal_int(c, true);
+}
 

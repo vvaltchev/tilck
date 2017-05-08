@@ -59,11 +59,5 @@ void switch_to_usermode_asm(void *entryPoint, void *stackAddr) { }
 
 void asm_context_switch_x86() { }
 void asm_kernel_context_switch_x86() { }
-void handle_fault() { }
-void handle_syscall() { }
-void handle_irq() { }
-void PIC_sendEOI() { }
-void task_info_reset_kernel_stack() { }
-void set_kernel_stack() { }
-void set_page_directory() { }
-void irq_clear_mask() { }
+void kernel_yield() { }
+
