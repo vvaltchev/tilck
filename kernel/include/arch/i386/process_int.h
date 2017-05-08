@@ -11,6 +11,8 @@
 struct task_info {
 
    list_head list;
+   list_head runnable_list;
+   list_head sleeping_list;
 
    int pid; /* global user/kernel thread identifier */
    int state;
