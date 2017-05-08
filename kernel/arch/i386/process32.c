@@ -122,7 +122,7 @@ void kthread_exit()
    task_info *ti = get_current_task();
    printk("****** [kernel thread] EXIT (pid: %i)\n", ti->pid);
 
-   ti->state = TASK_STATE_ZOMBIE;
+   task_change_state(ti, TASK_STATE_ZOMBIE);
 
    asmVolatile("movl %0, %%esp" : : "i"(KERNEL_BASE_STACK_ADDR));
    asmVolatile("jmp *%0" : : "r"(&schedule_outside_interrupt_context));

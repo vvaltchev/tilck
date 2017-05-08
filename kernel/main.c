@@ -68,39 +68,9 @@ void mount_memdisk()
 }
 
 
-void simple_test_kthread(void)
-{
-   printk("[kernel thread] This is a kernel thread..\n");
-
-   for (int i = 0; i < 1024*(int)MB; i++) {
-      if (!(i % (256*MB))) {
-         printk("[kernel thread] i = %i\n", i/MB);
-      }
-   }
-}
-
-void tasklet_runner_kthread(void)
-{
-   printk("[kernel thread] tasklet runner kthread (pid: %i)\n",
-          get_current_task()->pid);
-
-   while (true) {
-
-      bool res = run_one_tasklet();
-
-      if (!res) {
-         ASSERT(is_preemption_enabled());
-         ASSERT(are_interrupts_enabled());
-
-         //printk("[kernel thread] no tasklets, yield!\n");
-         kernel_yield();
-
-         //printk("after yield..\n");
-      }
-   }
-}
-
+void simple_test_kthread(void);
 void kmutex_test();
+void kcond_test();
 
 void kmain()
 {
@@ -115,6 +85,8 @@ void kmain()
    initialize_kmalloc();
 
    init_paging();
+
+   initialize_scheduler();
    initialize_tasklets();
 
    set_timer_freq(TIMER_HZ);
@@ -134,11 +106,12 @@ void kmain()
    // Initialize the keyboard driver.
    init_kb();
 
-   current_task = kthread_create(simple_test_kthread);
-   current_task = kthread_create(tasklet_runner_kthread);
+   kthread_create(&simple_test_kthread);
 
-   kmutex_test();
-   //load_usermode_init();
+   //kmutex_test();
+   //kcond_test();
+
+   load_usermode_init();
    schedule_outside_interrupt_context();
 
    // We should never get here!

@@ -15,14 +15,23 @@ task_info *volatile current_task = NULL;
 int current_max_pid = 0;
 
 // Our linked list for all the tasks (processes, threads, etc.)
-LIST_HEAD(tasks_list);
+list_head tasks_list = LIST_HEAD_INIT(tasks_list);
+list_head runnable_tasks_list = LIST_HEAD_INIT(runnable_tasks_list);
+list_head sleeping_tasks_list = LIST_HEAD_INIT(sleeping_tasks_list);
 
 
-task_info *get_current_task()
+void idle_task_kthread(void)
 {
-   return current_task;
+   while (true) {
+      halt();
+      kernel_yield();
+   }
 }
 
+void initialize_scheduler(void)
+{
+   current_task = kthread_create(&idle_task_kthread);
+}
 
 bool is_kernel_thread(task_info *ti)
 {
@@ -75,12 +84,68 @@ void save_current_task_state(regs *r)
    }
 }
 
+void task_add_to_state_list(task_info *ti)
+{
+   switch (ti->state) {
+
+   case TASK_STATE_RUNNABLE:
+      list_add_tail(&runnable_tasks_list, &ti->runnable_list);
+      break;
+
+   case TASK_STATE_SLEEPING:
+      list_add_tail(&sleeping_tasks_list, &ti->sleeping_list);
+      break;
+
+   case TASK_STATE_RUNNING:
+   case TASK_STATE_ZOMBIE:
+      break;
+
+   default:
+      NOT_REACHED();
+   }
+}
+
+void task_remove_from_state_list(task_info *ti)
+{
+   switch (ti->state) {
+
+   case TASK_STATE_RUNNABLE:
+      list_remove(&ti->runnable_list);
+      break;
+
+   case TASK_STATE_SLEEPING:
+      list_remove(&ti->sleeping_list);
+      break;
+
+   case TASK_STATE_RUNNING:
+   case TASK_STATE_ZOMBIE:
+      break;
+
+   default:
+      NOT_REACHED();
+   }
+}
+
+void task_change_state(task_info *ti, int new_state)
+{
+   disable_preemption();
+   {
+      ASSERT(ti->state != new_state);
+      task_remove_from_state_list(ti);
+
+      ti->state = new_state;
+
+      task_add_to_state_list(ti);
+   }
+   enable_preemption();
+}
+
 void add_task(task_info *ti)
 {
    disable_preemption();
    {
-      ti->state = TASK_STATE_RUNNABLE;
       list_add_tail(&tasks_list, &ti->list);
+      task_add_to_state_list(ti);
    }
    enable_preemption();
 }
@@ -91,6 +156,8 @@ void remove_task(task_info *ti)
    {
       ASSERT(ti->state == TASK_STATE_ZOMBIE);
       printk("[remove_task] pid = %i\n", ti->pid);
+
+      task_remove_from_state_list(ti);
       list_remove(&ti->list);
 
       kfree(ti->kernel_stack, KTHREAD_STACK_SIZE);
@@ -103,7 +170,7 @@ NORETURN void switch_to_task(task_info *ti)
 {
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
 
-   ti->state = TASK_STATE_RUNNING;
+   task_change_state(ti, TASK_STATE_RUNNING);
    ti->ticks = 0;
 
    if (get_curr_page_dir() != ti->pdir) {
@@ -226,27 +293,21 @@ NORETURN void schedule()
 
    // If we preempted the process, it is still runnable.
    if (curr->state == TASK_STATE_RUNNING) {
-      curr->state = TASK_STATE_RUNNABLE;
+      task_change_state(curr, TASK_STATE_RUNNABLE);
    }
 
    // Actual scheduling logic.
 actual_sched:
 
-   // TODO: make that we iterate only runnable tasks
+   list_for_each_entry(pos, &runnable_tasks_list, runnable_list) {
 
-   list_for_each_entry(pos, &tasks_list, list) {
+      DEBUG_printk("   [sched] checking pid %i (ticks = %llu): ",
+                   pos->pid, pos->total_ticks);
 
-       DEBUG_printk("   [sched] checking pid %i (ticks = %llu): ",
-                    pos->pid, pos->total_ticks);
+      ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
-      if (pos == curr || pos->state != TASK_STATE_RUNNABLE) {
-
-         if (pos == curr) {
-            DEBUG_printk("SKIP\n");
-         } else {
-            DEBUG_printk("NOT RUNNABLE\n");
-         }
-
+      if (pos == curr) {
+         DEBUG_printk("SKIP\n");
          continue;
       }
 
@@ -260,21 +321,11 @@ actual_sched:
    }
 
    // Finalizing code.
-   if (!selected || selected->state != TASK_STATE_RUNNABLE) {
 
-      printk("[sched] No runnable process found. Halt.\n");
-
-      current_task = selected;
-      irq_clear_mask(X86_PC_TIMER_IRQ);
-      end_current_interrupt_handling();
-      enable_preemption();
-
-      // We did not found any runnable task. Halt.
-      halt();
-   }
+   ASSERT(selected != NULL);
 
    if (selected != curr) {
-      printk("[sched] Switching to pid: %i %s %s\n",
+      DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
              selected->pid,
              is_kernel_thread(selected) ? "[KTHREAD]" : "[USER]",
              selected->running_in_kernel ? "(kernel mode)" : "(usermode)");
