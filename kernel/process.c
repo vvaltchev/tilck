@@ -81,6 +81,11 @@ sptr sys_fork()
    memmove(child, current_task, sizeof(task_info));
 
    INIT_LIST_HEAD(&child->list);
+
+   if (child->state == TASK_STATE_RUNNING) {
+      child->state = TASK_STATE_RUNNABLE;
+   }
+
    child->pdir = pdir_clone(current_task->pdir);
    child->pid = ++current_max_pid;
 
