@@ -68,7 +68,7 @@ void mount_memdisk()
 }
 
 
-void simple_test_kthread(void);
+void simple_test_kthread(void *);
 void kmutex_test();
 void kcond_test();
 
@@ -106,12 +106,12 @@ void kmain()
    // Initialize the keyboard driver.
    init_kb();
 
-   kthread_create(&simple_test_kthread);
+   kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
 
-   //kmutex_test();
-   //kcond_test();
+   kmutex_test();
+   kcond_test();
 
-   load_usermode_init();
+   //load_usermode_init();
    schedule_outside_interrupt_context();
 
    // We should never get here!

@@ -20,7 +20,13 @@ list_head runnable_tasks_list = LIST_HEAD_INIT(runnable_tasks_list);
 list_head sleeping_tasks_list = LIST_HEAD_INIT(sleeping_tasks_list);
 
 
-void idle_task_kthread(void)
+/*
+ * TODO: consider implementing a mechanism such that the idle thread is runnable
+ * only when there are actually no runnable processes, in order to minimize
+ * the time wasted in scheduling it.
+ */
+
+void idle_task_kthread()
 {
    while (true) {
       halt();
@@ -30,7 +36,7 @@ void idle_task_kthread(void)
 
 void initialize_scheduler(void)
 {
-   current_task = kthread_create(&idle_task_kthread);
+   current_task = kthread_create(&idle_task_kthread, NULL);
 }
 
 bool is_kernel_thread(task_info *ti)
@@ -155,7 +161,7 @@ void remove_task(task_info *ti)
    disable_preemption();
    {
       ASSERT(ti->state == TASK_STATE_ZOMBIE);
-      printk("[remove_task] pid = %i\n", ti->pid);
+      DEBUG_printk("[remove_task] pid = %i\n", ti->pid);
 
       task_remove_from_state_list(ti);
       list_remove(&ti->list);
@@ -259,8 +265,9 @@ bool need_reschedule()
       return false;
    }
 
-   DEBUG_printk("\n\n[sched] Current pid: %i, used %llu ticks (%llu in kernel)\n",
-          current_task->pid, curr->total_ticks, curr->kernel_ticks);
+   DEBUG_printk("\n\n[sched] Current pid: %i, "
+                "used %llu ticks (%llu in kernel)\n",
+                current_task->pid, curr->total_ticks, curr->kernel_ticks);
 
    return true;
 }

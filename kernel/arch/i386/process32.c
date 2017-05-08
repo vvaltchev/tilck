@@ -72,7 +72,7 @@ void push_args_on_user_stack(regs *r, int argc,
    push_on_user_stack(r, argc);
 }
 
-task_info *kthread_create(kthread_func_ptr fun)
+task_info *kthread_create(kthread_func_ptr fun, void *arg)
 {
    regs r;
    bzero(&r, sizeof(r));
@@ -99,6 +99,8 @@ task_info *kthread_create(kthread_func_ptr fun)
    memmove(&ti->kernel_state_regs, &r, sizeof(r));
 
    task_info_reset_kernel_stack(ti);
+
+   push_on_user_stack(&ti->kernel_state_regs, (uptr) arg);
 
    /*
     * Pushes the address of kthread_exit() into thread's stack in order to
