@@ -37,3 +37,13 @@ void __wrap_not_reached(const char *file, int line)
    printf("Kernel NOT_REACHED statement in %s at line %d\n", file, line);
    abort();
 }
+
+void handle_fault() { }
+void handle_syscall() { }
+void handle_irq() { }
+void PIC_sendEOI() { }
+void task_info_reset_kernel_stack() { }
+void set_kernel_stack() { }
+void set_page_directory() { }
+void irq_clear_mask() { }
+void kthread_create() { }
