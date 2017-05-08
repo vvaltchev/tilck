@@ -20,7 +20,7 @@ void kcond_wait(kcond *c, kmutex *m)
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
 
    wait_obj_set(&current_task->wobj, WOBJ_KCOND, c);
-   current_task->state = TASK_STATE_SLEEPING;
+   task_change_state(current_task, TASK_STATE_SLEEPING);
 
    if (m) {
       kmutex_unlock(m);
@@ -55,7 +55,7 @@ void kcond_signal_int(kcond *c, bool all)
       // pos->wobj.ptr == c
 
       wait_obj_reset(&pos->wobj);
-      pos->state = TASK_STATE_RUNNABLE;
+      task_change_state(pos, TASK_STATE_RUNNABLE);
 
       if (!all) {
          break;

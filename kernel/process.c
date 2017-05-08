@@ -63,7 +63,7 @@ NORETURN void sys_exit(int exit_code)
           current_task->pid,
           exit_code);
 
-   current_task->state = TASK_STATE_ZOMBIE;
+   task_change_state(current_task, TASK_STATE_ZOMBIE);
    current_task->exit_code = exit_code;
 
    // We CANNOT free current_task->kernel_task here because we're using it!

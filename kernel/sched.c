@@ -293,7 +293,7 @@ NORETURN void schedule()
 
    // If we preempted the process, it is still runnable.
    if (curr->state == TASK_STATE_RUNNING) {
-      curr->state = TASK_STATE_RUNNABLE;
+      task_change_state(curr, TASK_STATE_RUNNABLE);
    }
 
    // Actual scheduling logic.

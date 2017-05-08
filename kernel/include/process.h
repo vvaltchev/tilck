@@ -23,7 +23,6 @@ static ALWAYS_INLINE task_info *get_current_task()
    return current_task;
 }
 
-
 void save_current_task_state(regs *);
 
 void account_ticks();
@@ -51,6 +50,7 @@ void remove_task(task_info *ti);
 task_info *get_current_task();
 void initialize_scheduler(void);
 
+void task_change_state(task_info *ti, int new_state);
 
 typedef void (*kthread_func_ptr)();
 
