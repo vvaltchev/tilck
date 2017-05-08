@@ -15,6 +15,19 @@
 
 #define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023600
 
+
+void simple_test_kthread(void)
+{
+   printk("[kernel thread] This is a kernel thread..\n");
+
+   for (int i = 0; i < 1024*(int)MB; i++) {
+      if (!(i % (256*MB))) {
+         printk("[kernel thread] i = %i\n", i/MB);
+      }
+   }
+}
+
+
 void test_memdisk()
 {
    char *ptr;
@@ -42,7 +55,7 @@ void test_memdisk()
 }
 
 
-kmutex test_mutex = { 0 };
+static kmutex test_mutex = { 0 };
 
 void test_kmutex_thread1(void)
 {
@@ -103,8 +116,8 @@ void kmutex_test(void)
 }
 
 
-kcond cond = { 0 };
-kmutex cond_mutex = { 0 };
+static kcond cond = { 0 };
+static kmutex cond_mutex = { 0 };
 
 void kcond_thread_test1()
 {

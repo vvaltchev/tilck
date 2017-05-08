@@ -18,11 +18,18 @@ int current_max_pid = 0;
 LIST_HEAD(tasks_list);
 
 
-task_info *get_current_task()
+void idle_task_kthread(void)
 {
-   return current_task;
+   while (true) {
+      halt();
+      kernel_yield();
+   }
 }
 
+void initialize_scheduler(void)
+{
+   current_task = kthread_create(&idle_task_kthread);
+}
 
 bool is_kernel_thread(task_info *ti)
 {
@@ -260,21 +267,11 @@ actual_sched:
    }
 
    // Finalizing code.
-   if (!selected || selected->state != TASK_STATE_RUNNABLE) {
 
-      printk("[sched] No runnable process found. Halt.\n");
-
-      current_task = selected;
-      irq_clear_mask(X86_PC_TIMER_IRQ);
-      end_current_interrupt_handling();
-      enable_preemption();
-
-      // We did not found any runnable task. Halt.
-      halt();
-   }
+   ASSERT(selected && selected->state == TASK_STATE_RUNNABLE);
 
    if (selected != curr) {
-      printk("[sched] Switching to pid: %i %s %s\n",
+      DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
              selected->pid,
              is_kernel_thread(selected) ? "[KTHREAD]" : "[USER]",
              selected->running_in_kernel ? "(kernel mode)" : "(usermode)");

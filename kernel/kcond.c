@@ -17,15 +17,21 @@ void kcond_init(kcond *c)
 void kcond_wait(kcond *c, kmutex *m)
 {
    disable_preemption();
-   ASSERT(kmutex_is_curr_task_holding_lock(m));
+   ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
 
    wait_obj_set(&current_task->wobj, WOBJ_KCOND, c);
    current_task->state = TASK_STATE_SLEEPING;
 
-   kmutex_unlock(m);
+   if (m) {
+      kmutex_unlock(m);
+   }
+
    enable_preemption();
    kernel_yield(); // Go to sleep until a signal is fired.
-   kmutex_lock(m); // Re-acquire the lock back
+
+   if (m) {
+      kmutex_lock(m); // Re-acquire the lock back
+   }
 }
 
 void kcond_signal_int(kcond *c, bool all)

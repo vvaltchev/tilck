@@ -67,3 +67,4 @@ void task_info_reset_kernel_stack() { }
 void set_kernel_stack() { }
 void set_page_directory() { }
 void irq_clear_mask() { }
+void kernel_yield() { }

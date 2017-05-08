@@ -16,7 +16,8 @@ typedef struct {
 void initialize_tasklets();
 
 bool add_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3);
-bool run_one_tasklet();
+bool run_one_tasklet(void);
+void tasklet_runner_kthread(void);
 
 
 #define add_tasklet3(f, a1, a2, a3) \

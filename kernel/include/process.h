@@ -16,6 +16,14 @@
 struct task_info;
 typedef struct task_info task_info;
 
+extern task_info *volatile current_task;
+
+static ALWAYS_INLINE task_info *get_current_task()
+{
+   return current_task;
+}
+
+
 void save_current_task_state(regs *);
 
 void account_ticks();
@@ -27,8 +35,6 @@ NORETURN void schedule_outside_interrupt_context();
 task_info *create_first_usermode_task(page_directory_t *pdir,
                                       void *entry,
                                       void *stack_addr);
-
-//NORETURN void switch_to_task(task_info *ti);
 
 bool is_kernel_thread(task_info *ti);
 
@@ -43,6 +49,7 @@ void add_task(task_info *ti);
 void remove_task(task_info *ti);
 
 task_info *get_current_task();
+void initialize_scheduler(void);
 
 
 typedef void (*kthread_func_ptr)();
