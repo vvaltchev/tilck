@@ -37,3 +37,5 @@ struct task_info {
 extern volatile u64 jiffies;
 extern int current_max_pid;
 extern list_head tasks_list;
+extern list_head runnable_tasks_list;
+extern list_head sleeping_tasks_list;

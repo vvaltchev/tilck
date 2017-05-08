@@ -42,11 +42,9 @@ void kcond_signal_int(kcond *c, bool all)
 
    // TODO: make that we iterate only among sleeping tasks
 
-   list_for_each_entry(pos, &tasks_list, list) {
+   list_for_each_entry(pos, &sleeping_tasks_list, sleeping_list) {
 
-      if (pos->state != TASK_STATE_SLEEPING) {
-         continue;
-      }
+      ASSERT(pos->state == TASK_STATE_SLEEPING);
 
       if (pos->wobj.ptr != c) {
          continue;

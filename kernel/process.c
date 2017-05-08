@@ -30,7 +30,7 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
    printk("[kernel] Pid %i will WAIT until pid %i dies\n",
           current_task->pid, pid);
 
-   task_info *waited_task = get_task(pid);
+   volatile task_info *waited_task = (volatile task_info *)get_task(pid);
 
    if (!waited_task) {
       return -1;
@@ -50,7 +50,7 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
       halt();
    }
 
-   remove_task(waited_task);
+   remove_task((task_info *)waited_task);
    return pid;
 }
 

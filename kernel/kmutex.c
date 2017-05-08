@@ -80,12 +80,9 @@ void kmutex_unlock(kmutex *m)
 
       /* Unlock one task waiting to acquire the mutex 'm' */
 
-      // TODO: make that we iterate only among sleeping tasks
+      list_for_each_entry(pos, &sleeping_tasks_list, sleeping_list) {
 
-      list_for_each_entry(pos, &tasks_list, list) {
-         if (pos->state != TASK_STATE_SLEEPING) {
-            continue;
-         }
+         ASSERT(pos->state == TASK_STATE_SLEEPING);
 
          if (pos->wobj.ptr == m) {
             m->owner_task = pos;

@@ -109,9 +109,9 @@ void kmain()
    kthread_create(&simple_test_kthread);
 
    //kmutex_test();
-   kcond_test();
+   //kcond_test();
 
-   //load_usermode_init();
+   load_usermode_init();
    schedule_outside_interrupt_context();
 
    // We should never get here!

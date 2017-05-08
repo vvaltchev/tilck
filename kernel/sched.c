@@ -299,21 +299,15 @@ NORETURN void schedule()
    // Actual scheduling logic.
 actual_sched:
 
-   // TODO: make that we iterate only runnable tasks
+   list_for_each_entry(pos, &runnable_tasks_list, runnable_list) {
 
-   list_for_each_entry(pos, &tasks_list, list) {
+      DEBUG_printk("   [sched] checking pid %i (ticks = %llu): ",
+                   pos->pid, pos->total_ticks);
 
-       DEBUG_printk("   [sched] checking pid %i (ticks = %llu): ",
-                    pos->pid, pos->total_ticks);
+      ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
-      if (pos == curr || pos->state != TASK_STATE_RUNNABLE) {
-
-         if (pos == curr) {
-            DEBUG_printk("SKIP\n");
-         } else {
-            DEBUG_printk("NOT RUNNABLE\n");
-         }
-
+      if (pos == curr) {
+         DEBUG_printk("SKIP\n");
          continue;
       }
 
@@ -328,7 +322,7 @@ actual_sched:
 
    // Finalizing code.
 
-   ASSERT(selected && selected->state == TASK_STATE_RUNNABLE);
+   ASSERT(selected != NULL);
 
    if (selected != curr) {
       DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
