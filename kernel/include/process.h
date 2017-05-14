@@ -16,11 +16,11 @@
 struct task_info;
 typedef struct task_info task_info;
 
-extern task_info *volatile current_task;
+extern task_info *volatile current;
 
 static ALWAYS_INLINE task_info *get_current_task()
 {
-   return current_task;
+   return current;
 }
 
 void save_current_task_state(regs *);

@@ -11,7 +11,7 @@
 #define TIME_SLOT_JIFFIES (TIMER_HZ * 3)
 //#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
 
-task_info *volatile current_task = NULL;
+task_info *volatile current = NULL;
 int current_max_pid = 0;
 
 // Our linked list for all the tasks (processes, threads, etc.)
@@ -30,7 +30,7 @@ void idle_task_kthread()
 
 void initialize_scheduler(void)
 {
-   current_task = idle_task = kthread_create(&idle_task_kthread, NULL);
+   current = idle_task = kthread_create(&idle_task_kthread, NULL);
 }
 
 bool is_kernel_thread(task_info *ti)
@@ -41,29 +41,29 @@ bool is_kernel_thread(task_info *ti)
 void set_current_task_in_kernel()
 {
    ASSERT(!is_preemption_enabled());
-   current_task->running_in_kernel = 1;
+   current->running_in_kernel = 1;
 }
 
 void set_current_task_in_user_mode()
 {
    ASSERT(!is_preemption_enabled());
 
-   current_task->running_in_kernel = 0;
+   current->running_in_kernel = 0;
 
-   task_info_reset_kernel_stack(current_task);
-   set_kernel_stack(current_task->kernel_state_regs.useresp);
+   task_info_reset_kernel_stack(current);
+   set_kernel_stack(current->kernel_state_regs.useresp);
 }
 
 
 void save_current_task_state(regs *r)
 {
-   regs *state = current_task->running_in_kernel
-                    ? &current_task->kernel_state_regs
-                    : &current_task->state_regs;
+   regs *state = current->running_in_kernel
+                    ? &current->kernel_state_regs
+                    : &current->state_regs;
 
    memmove(state, r, sizeof(*r));
 
-   if (current_task->running_in_kernel) {
+   if (current->running_in_kernel) {
 
       /*
        * If the current task was running in kernel, than the useresp has not
@@ -78,7 +78,7 @@ void save_current_task_state(regs *r)
       state->eflags = get_eflags();
       state->ss = 0x10;
 
-      if (!is_kernel_thread(current_task)) {
+      if (!is_kernel_thread(current)) {
          DEBUG_printk("[kernel] PREEMPTING kernel code for user program!\n");
       }
    }
@@ -168,11 +168,11 @@ void remove_task(task_info *ti)
 
 NORETURN void switch_to_task(task_info *ti)
 {
-   ASSERT(!current_task || current_task->state != TASK_STATE_RUNNING);
+   ASSERT(!current || current->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
 
 
-   if (ti != current_task) {
+   if (ti != current) {
       DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
              ti->pid,
              is_kernel_thread(ti) ? "[KTHREAD]" : "[USER]",
@@ -194,8 +194,8 @@ NORETURN void switch_to_task(task_info *ti)
 
    end_current_interrupt_handling();
 
-   if (current_task &&
-       current_task->running_in_kernel && !is_kernel_thread(current_task)) {
+   if (current &&
+       current->running_in_kernel && !is_kernel_thread(current)) {
 
       if (nested_interrupts_count > 0) {
 
@@ -209,11 +209,11 @@ NORETURN void switch_to_task(task_info *ti)
 
    ASSERT(is_preemption_enabled());
 
-   current_task = ti;
+   current = ti;
 
-   regs *state = current_task->running_in_kernel
-                    ? &current_task->kernel_state_regs
-                    : &current_task->state_regs;
+   regs *state = current->running_in_kernel
+                    ? &current->kernel_state_regs
+                    : &current->state_regs;
 
    /*
     * ASSERT that the 9th bit in task's eflags is 1, which means that on
@@ -223,18 +223,18 @@ NORETURN void switch_to_task(task_info *ti)
    ASSERT(state->eflags & (1 << 9));
 
 
-   if (!current_task->running_in_kernel) {
+   if (!current->running_in_kernel) {
 
-      bzero(current_task->kernel_stack, KTHREAD_STACK_SIZE);
+      bzero(current->kernel_stack, KTHREAD_STACK_SIZE);
 
-      task_info_reset_kernel_stack(current_task);
-      set_kernel_stack(current_task->kernel_state_regs.useresp);
+      task_info_reset_kernel_stack(current);
+      set_kernel_stack(current->kernel_state_regs.useresp);
 
       context_switch(state);
 
    } else {
 
-      if (!is_kernel_thread(current_task)) {
+      if (!is_kernel_thread(current)) {
          push_nested_interrupt(0x80);
       }
 
@@ -244,38 +244,37 @@ NORETURN void switch_to_task(task_info *ti)
 
 void account_ticks()
 {
-   if (!current_task) {
+   if (!current) {
       return;
    }
 
-   current_task->ticks++;
-   current_task->total_ticks++;
+   current->ticks++;
+   current->total_ticks++;
 
-   if (current_task->running_in_kernel) {
-      current_task->kernel_ticks++;
+   if (current->running_in_kernel) {
+      current->kernel_ticks++;
    }
 }
 
 bool need_reschedule()
 {
-   task_info *curr = current_task;
-
-   if (!curr) {
+   if (!current) {
       // The kernel is still initializing and we cannot call schedule() yet.
       return false;
    }
 
-   if (curr == idle_task) {
+   if (current == idle_task) {
       return true;
    }
 
-   if (curr->ticks < TIME_SLOT_JIFFIES && curr->state == TASK_STATE_RUNNING) {
+   if (current->ticks < TIME_SLOT_JIFFIES &&
+       current->state == TASK_STATE_RUNNING) {
       return false;
    }
 
    DEBUG_printk("\n\n[sched] Current pid: %i, "
                 "used %llu ticks (%llu in kernel)\n",
-                current_task->pid, curr->total_ticks, curr->kernel_ticks);
+                current->pid, current->total_ticks, current->kernel_ticks);
 
    return true;
 }
@@ -292,23 +291,22 @@ NORETURN void schedule_outside_interrupt_context()
 
 NORETURN void schedule()
 {
-   task_info *curr = current_task;
-   task_info *selected = curr;
+   task_info *selected = current;
    task_info *pos;
    u64 least_ticks_for_task = (u64)-1;
 
    ASSERT(!is_preemption_enabled());
 
-   if (curr->state == TASK_STATE_ZOMBIE && is_kernel_thread(curr)) {
+   if (current->state == TASK_STATE_ZOMBIE && is_kernel_thread(current)) {
 
-      remove_task(curr);
-      selected = curr = NULL;
+      remove_task(current);
+      selected = current = NULL;
 
    } else {
 
       // If we preempted the process, it is still runnable.
-      if (curr->state == TASK_STATE_RUNNING) {
-         task_change_state(curr, TASK_STATE_RUNNABLE);
+      if (current->state == TASK_STATE_RUNNING) {
+         task_change_state(current, TASK_STATE_RUNNABLE);
       }
    }
 
@@ -319,7 +317,7 @@ NORETURN void schedule()
 
       ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
-      if (pos == curr || pos == idle_task) {
+      if (pos == current || pos == idle_task) {
          DEBUG_printk("SKIP\n");
          continue;
       }

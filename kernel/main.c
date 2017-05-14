@@ -46,7 +46,7 @@ void load_usermode_init()
    printk("[load_usermode_init] Entry: %p\n", entry_point);
    printk("[load_usermode_init] Stack: %p\n", stack_addr);
 
-   current_task = create_first_usermode_task(pdir, entry_point, stack_addr);
+   current = create_first_usermode_task(pdir, entry_point, stack_addr);
 }
 
 void show_hello_message()
@@ -110,8 +110,8 @@ void kmain()
    init_kb();
 
    kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
-   //kmutex_test();
-   //kcond_test();
+   kmutex_test();
+   kcond_test();
    kthread_create(&sleeping_kthread, (void *) 123);
    kthread_create(&sleeping_kthread, (void *) 20);
    kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
