@@ -27,6 +27,18 @@ void simple_test_kthread(void *arg)
    }
 }
 
+void kthread_with_sleep(void *arg)
+{
+   u64 before = get_ticks();
+
+   printk("[Sleeping kthread] [PID: %i] before ticks: %llu\n", get_current_task()->pid, before);
+
+   kernel_sleep(150);
+
+   u64 after = get_ticks();
+   printk("[Sleeping kthread] after ticks: %llu\n", after);
+   printk("[Sleeping kthread] elapsed ticks: %llu\n", after-before);
+}
 
 void test_memdisk()
 {

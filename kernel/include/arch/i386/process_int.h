@@ -39,3 +39,8 @@ extern int current_max_pid;
 extern list_head tasks_list;
 extern list_head runnable_tasks_list;
 extern list_head sleeping_tasks_list;
+
+static ALWAYS_INLINE u64 get_ticks()
+{
+   return jiffies;
+}

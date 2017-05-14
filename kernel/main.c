@@ -68,9 +68,12 @@ void mount_memdisk()
 }
 
 
+void kthread_with_sleep(void *);
 void simple_test_kthread(void *);
 void kmutex_test();
 void kcond_test();
+
+
 
 void kmain()
 {
@@ -107,9 +110,9 @@ void kmain()
    init_kb();
 
    kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
-
-   kmutex_test();
-   kcond_test();
+   //kmutex_test();
+   //kcond_test();
+   kthread_create(&kthread_with_sleep, NULL);
 
    //load_usermode_init();
    schedule_outside_interrupt_context();
