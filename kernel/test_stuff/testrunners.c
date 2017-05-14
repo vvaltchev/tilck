@@ -27,7 +27,7 @@ void simple_test_kthread(void *arg)
    }
 }
 
-void kthread_with_sleep(void *arg)
+void sleeping_kthread(void *arg)
 {
    u64 wait_ticks = (u32) arg;
    u64 before = get_ticks();
@@ -35,10 +35,12 @@ void kthread_with_sleep(void *arg)
    kernel_sleep(wait_ticks);
 
    u64 after = get_ticks();
-   printk("[Sleeping kthread] elapsed ticks: %llu (expected: %llu)\n",
-          after - before, wait_ticks);
+   u64 elapsed = after - before;
 
-   ASSERT(after - before == wait_ticks);
+   printk("[Sleeping kthread] elapsed ticks: %llu (expected: %llu)\n",
+          elapsed, wait_ticks);
+
+   ASSERT((elapsed - wait_ticks) <= 2);
 }
 
 void test_memdisk()

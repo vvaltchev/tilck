@@ -19,24 +19,18 @@ list_head tasks_list = LIST_HEAD_INIT(tasks_list);
 list_head runnable_tasks_list = LIST_HEAD_INIT(runnable_tasks_list);
 list_head sleeping_tasks_list = LIST_HEAD_INIT(sleeping_tasks_list);
 
-
-/*
- * TODO: consider implementing a mechanism such that the idle thread is runnable
- * only when there are actually no runnable processes, in order to minimize
- * the time wasted in scheduling it.
- */
+task_info *idle_task = NULL;
 
 void idle_task_kthread()
 {
    while (true) {
       halt();
-      kernel_yield();
    }
 }
 
 void initialize_scheduler(void)
 {
-   current_task = kthread_create(&idle_task_kthread, NULL);
+   current_task = idle_task = kthread_create(&idle_task_kthread, NULL);
 }
 
 bool is_kernel_thread(task_info *ti)
@@ -174,7 +168,17 @@ void remove_task(task_info *ti)
 
 NORETURN void switch_to_task(task_info *ti)
 {
+   ASSERT(!current_task || current_task->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
+
+
+   if (ti != current_task) {
+      DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
+             ti->pid,
+             is_kernel_thread(ti) ? "[KTHREAD]" : "[USER]",
+             ti->running_in_kernel ? "(kernel mode)" : "(usermode)");
+   }
+
 
    task_change_state(ti, TASK_STATE_RUNNING);
    ti->ticks = 0;
@@ -261,6 +265,10 @@ bool need_reschedule()
       return false;
    }
 
+   if (curr == idle_task) {
+      return true;
+   }
+
    if (curr->ticks < TIME_SLOT_JIFFIES && curr->state == TASK_STATE_RUNNING) {
       return false;
    }
@@ -292,19 +300,17 @@ NORETURN void schedule()
    ASSERT(!is_preemption_enabled());
 
    if (curr->state == TASK_STATE_ZOMBIE && is_kernel_thread(curr)) {
+
       remove_task(curr);
       selected = curr = NULL;
-      goto actual_sched;
+
+   } else {
+
+      // If we preempted the process, it is still runnable.
+      if (curr->state == TASK_STATE_RUNNING) {
+         task_change_state(curr, TASK_STATE_RUNNABLE);
+      }
    }
-
-
-   // If we preempted the process, it is still runnable.
-   if (curr->state == TASK_STATE_RUNNING) {
-      task_change_state(curr, TASK_STATE_RUNNABLE);
-   }
-
-   // Actual scheduling logic.
-actual_sched:
 
    list_for_each_entry(pos, &runnable_tasks_list, runnable_list) {
 
@@ -313,7 +319,7 @@ actual_sched:
 
       ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
-      if (pos == curr) {
+      if (pos == curr || pos == idle_task) {
          DEBUG_printk("SKIP\n");
          continue;
       }
@@ -327,15 +333,8 @@ actual_sched:
       }
    }
 
-   // Finalizing code.
-
-   ASSERT(selected != NULL);
-
-   if (selected != curr) {
-      DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
-             selected->pid,
-             is_kernel_thread(selected) ? "[KTHREAD]" : "[USER]",
-             selected->running_in_kernel ? "(kernel mode)" : "(usermode)");
+   if (!selected || selected->state != TASK_STATE_RUNNABLE) {
+      selected = idle_task;
    }
 
    switch_to_task(selected);
