@@ -20,11 +20,17 @@ list_head runnable_tasks_list = LIST_HEAD_INIT(runnable_tasks_list);
 list_head sleeping_tasks_list = LIST_HEAD_INIT(sleeping_tasks_list);
 
 task_info *idle_task = NULL;
+volatile u64 idle_ticks = 0;
 
 void idle_task_kthread()
 {
    while (true) {
       halt();
+      idle_ticks++;
+
+      if (!(idle_ticks % (TIMER_HZ))) {
+         printk("Idle ticks: %llu\n", idle_ticks);
+      }
    }
 }
 

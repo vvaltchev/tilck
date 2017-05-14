@@ -50,7 +50,7 @@ static void register_curr_task_for_timer_sleep(u64 ticks)
    NOT_REACHED(); // TODO: fallback to a linked list here
 }
 
-static void tick_all_timers()
+static void tick_all_timers(void *context)
 {
    ASSERT(!is_preemption_enabled());
    task_info *last_ready_task = NULL;
@@ -73,7 +73,10 @@ static void tick_all_timers()
    }
 
    if (last_ready_task) {
-      task_change_state(get_current_task(), TASK_STATE_RUNNABLE);
+      ASSERT(current->state == TASK_STATE_RUNNING);
+      task_change_state(current, TASK_STATE_RUNNABLE);
+      disable_preemption_count = 1;
+      save_current_task_state(context);
       switch_to_task(last_ready_task);
    }
 }
@@ -105,7 +108,7 @@ void timer_handler(void *context)
       return;
    }
 
-   tick_all_timers();
+   tick_all_timers(context);
 
    if (need_reschedule()) {
       disable_preemption_count = 1;
