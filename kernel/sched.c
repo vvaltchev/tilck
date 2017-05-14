@@ -27,10 +27,7 @@ void idle_task_kthread()
    while (true) {
       halt();
       idle_ticks++;
-
-      if (!(idle_ticks % (5))) {
-         printk("Idle ticks: %llu\n", idle_ticks);
-      }
+      printk("Idle ticks: %llu\n", idle_ticks);
    }
 }
 
@@ -297,7 +294,7 @@ NORETURN void schedule_outside_interrupt_context()
 
 NORETURN void schedule()
 {
-   task_info *selected = current;
+   task_info *selected = NULL;
    task_info *pos;
    u64 least_ticks_for_task = (u64)-1;
 
@@ -323,7 +320,7 @@ NORETURN void schedule()
 
       ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
-      if (pos == current /*|| pos == idle_task*/) {
+      if (pos == current || pos == idle_task) {
          DEBUG_printk("SKIP\n");
          continue;
       }
@@ -337,7 +334,7 @@ NORETURN void schedule()
       }
    }
 
-   if (!selected || selected->state != TASK_STATE_RUNNABLE) {
+   if (!selected) {
       selected = idle_task;
    }
 
