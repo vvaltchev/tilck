@@ -112,7 +112,9 @@ void kmain()
    kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
    //kmutex_test();
    //kcond_test();
-   kthread_create(&kthread_with_sleep, NULL);
+   kthread_create(&kthread_with_sleep, (void *) 123);
+   kthread_create(&kthread_with_sleep, (void *) 20);
+   kthread_create(&kthread_with_sleep, (void *) 500);
 
    //load_usermode_init();
    schedule_outside_interrupt_context();

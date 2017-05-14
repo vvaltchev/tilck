@@ -29,15 +29,16 @@ void simple_test_kthread(void *arg)
 
 void kthread_with_sleep(void *arg)
 {
+   u64 wait_ticks = (u32) arg;
    u64 before = get_ticks();
 
-   printk("[Sleeping kthread] [PID: %i] before ticks: %llu\n", get_current_task()->pid, before);
-
-   kernel_sleep(150);
+   kernel_sleep(wait_ticks);
 
    u64 after = get_ticks();
-   printk("[Sleeping kthread] after ticks: %llu\n", after);
-   printk("[Sleeping kthread] elapsed ticks: %llu\n", after-before);
+   printk("[Sleeping kthread] elapsed ticks: %llu (expected: %llu)\n",
+          after - before, wait_ticks);
+
+   ASSERT(after - before == wait_ticks);
 }
 
 void test_memdisk()
