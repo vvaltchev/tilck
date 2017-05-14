@@ -110,11 +110,11 @@ void kmain()
    init_kb();
 
    kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
-   //kmutex_test();
-   //kcond_test();
+   kmutex_test();
+   kcond_test();
    kthread_create(&sleeping_kthread, (void *) 123);
    kthread_create(&sleeping_kthread, (void *) 20);
-   //kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
+   kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
 
    load_usermode_init();
    schedule_outside_interrupt_context();

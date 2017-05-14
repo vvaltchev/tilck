@@ -335,6 +335,16 @@ NORETURN void schedule()
    }
 
    if (!selected) {
+
+      // TODO: investigate why the following code causes the OS to stall
+      // sometimes.
+
+      // if (current && current->state == TASK_STATE_RUNNABLE) {
+      //    selected = current;
+      // } else {
+      //    selected = idle_task;
+      // }
+
       selected = idle_task;
    }
 
