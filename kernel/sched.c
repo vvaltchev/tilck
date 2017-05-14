@@ -28,7 +28,7 @@ void idle_task_kthread()
       halt();
       idle_ticks++;
 
-      if (!(idle_ticks % (TIMER_HZ))) {
+      if (!(idle_ticks % (5))) {
          printk("Idle ticks: %llu\n", idle_ticks);
       }
    }
@@ -323,7 +323,7 @@ NORETURN void schedule()
 
       ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
-      if (pos == current || pos == idle_task) {
+      if (pos == current /*|| pos == idle_task*/) {
          DEBUG_printk("SKIP\n");
          continue;
       }
