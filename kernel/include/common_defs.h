@@ -154,9 +154,9 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
  * ********************************************
  */
 
-void panic(const char *fmt, ...);
-void assert_failed(const char *expr, const char *file, int line);
-void not_reached(const char *file, int line);
+NORETURN void panic(const char *fmt, ...);
+NORETURN void assert_failed(const char *expr, const char *file, int line);
+NORETURN void not_reached(const char *file, int line);
 
 #ifndef NDEBUG
 

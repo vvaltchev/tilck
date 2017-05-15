@@ -111,10 +111,12 @@ static ALWAYS_INLINE void disable_interrupts()
 
 #if !defined(TESTING) && !defined(KERNEL_TEST)
       asmVolatile("cli");
-      ASSERT(!are_interrupts_enabled());
 #endif
-
    }
+
+#if !defined(TESTING) && !defined(KERNEL_TEST)
+   ASSERT(!are_interrupts_enabled());
+#endif
 }
 
 static ALWAYS_INLINE void disable_interrupts_forced()

@@ -70,6 +70,7 @@ NORETURN void sys_exit(int exit_code)
 
    pdir_destroy(current->pdir);
    schedule();
+   NOT_REACHED();
 }
 
 // Returns child's pid

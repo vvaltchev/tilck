@@ -4,8 +4,8 @@
 
 #include <hal.h>
 
-//#define DEBUG_printk printk
-#define DEBUG_printk(...)
+#define DEBUG_printk printk
+//#define DEBUG_printk(...)
 
 
 #define TIME_SLOT_JIFFIES (TIMER_HZ * 3)
@@ -33,7 +33,7 @@ void idle_task_kthread()
 
 void initialize_scheduler(void)
 {
-   current = idle_task = kthread_create(&idle_task_kthread, NULL);
+   idle_task = kthread_create(&idle_task_kthread, NULL);
 }
 
 bool is_kernel_thread(task_info *ti)
@@ -173,10 +173,10 @@ NORETURN void switch_to_task(task_info *ti)
 {
    ASSERT(!current || current->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
-
+   ASSERT(ti != current);
 
    if (ti != current) {
-      DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
+      printk("[sched] Switching to pid: %i %s %s\n",
              ti->pid,
              is_kernel_thread(ti) ? "[KTHREAD]" : "[USER]",
              ti->running_in_kernel ? "(kernel mode)" : "(usermode)");
@@ -279,13 +279,14 @@ bool need_reschedule()
    }
 
    DEBUG_printk("\n\n[sched] Current pid: %i, "
-                "used %llu ticks (%llu in kernel)\n",
-                current->pid, current->total_ticks, current->kernel_ticks);
+                "used %llu ticks (in total %llu, %llu of them in kernel)\n",
+                current->pid, current->ticks,
+                current->total_ticks, current->kernel_ticks);
 
    return true;
 }
 
-NORETURN void schedule_outside_interrupt_context()
+void schedule_outside_interrupt_context()
 {
    // HACK: push a fake interrupt to compensate the call to
    // end_current_interrupt_handling() in switch_to_process().
@@ -294,8 +295,17 @@ NORETURN void schedule_outside_interrupt_context()
    schedule();
 }
 
+NORETURN void switch_to_task_outside_interrupt_context(task_info *task)
+{
+   // HACK: push a fake interrupt to compensate the call to
+   // end_current_interrupt_handling() in switch_to_process().
 
-NORETURN void schedule()
+   push_nested_interrupt(-1);
+   switch_to_task(task);
+}
+
+
+void schedule()
 {
    task_info *selected = NULL;
    task_info *pos;
@@ -323,7 +333,7 @@ NORETURN void schedule()
 
       ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
-      if (pos == current || pos == idle_task) {
+      if (/*pos == current ||*/ pos == idle_task) {
          DEBUG_printk("SKIP\n");
          continue;
       }
@@ -339,16 +349,19 @@ NORETURN void schedule()
 
    if (!selected) {
 
-      //TODO: investigate why the following code causes the OS to stall
-      //sometimes.
-
       // if (current && current->state == TASK_STATE_RUNNABLE) {
       //    selected = current;
+      //    DEBUG_printk("[sched] Selected 'current'\n");
       // } else {
-      //    selected = idle_task;
-      // }
+         selected = idle_task;
+         DEBUG_printk("[sched] Selected 'idle'\n");
+      //}
+   }
 
-      selected = idle_task;
+   if (selected == current) {
+      task_change_state(selected, TASK_STATE_RUNNING);
+      selected->ticks = 0;
+      return;
    }
 
    switch_to_task(selected);

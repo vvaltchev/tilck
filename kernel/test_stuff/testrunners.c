@@ -111,9 +111,9 @@ void test_kmutex_thread_trylock()
 void kmutex_test()
 {
    kmutex_init(&test_mutex);
-   current = kthread_create(test_kmutex_thread, (void *)1);
-   current = kthread_create(test_kmutex_thread, (void *)2);
-   current = kthread_create(test_kmutex_thread_trylock, NULL);
+   kthread_create(test_kmutex_thread, (void *)1);
+   kthread_create(test_kmutex_thread, (void *)2);
+   kthread_create(test_kmutex_thread_trylock, NULL);
 }
 
 
@@ -157,7 +157,7 @@ void kcond_test()
    kmutex_init(&cond_mutex);
    kcond_init(&cond);
 
-   current = kthread_create(&kcond_thread_test, (void*) 1);
-   current = kthread_create(&kcond_thread_test, (void*) 2);
-   current = kthread_create(&kcond_thread_signal_generator, NULL);
+   kthread_create(&kcond_thread_test, (void*) 1);
+   kthread_create(&kcond_thread_test, (void*) 2);
+   kthread_create(&kcond_thread_signal_generator, NULL);
 }

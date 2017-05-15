@@ -30,8 +30,10 @@ bool need_reschedule();
 
 NORETURN void switch_to_task(task_info *ti);
 
-NORETURN void schedule();
-NORETURN void schedule_outside_interrupt_context();
+void schedule();
+void schedule_outside_interrupt_context();
+
+NORETURN void switch_to_task_outside_interrupt_context(task_info *task);
 
 task_info *create_first_usermode_task(page_directory_t *pdir,
                                       void *entry,
