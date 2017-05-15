@@ -59,9 +59,14 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 
 #else
 
+#ifndef TESTING
+#define NORETURN _Noreturn /* C11 standard no return attribute. */
+#else
+#define NORETURN
+#endif
+
 #define OFFSET_OF(st, m) __builtin_offsetof(st, m)
 
-#define NORETURN _Noreturn /* C11 standard no return attribute. */
 #define ALWAYS_INLINE __attribute__((always_inline)) inline
 
 #define asmVolatile __asm__ volatile
