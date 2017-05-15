@@ -333,7 +333,7 @@ void schedule()
 
       ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
-      if (/*pos == current ||*/ pos == idle_task) {
+      if (pos == idle_task) {
          DEBUG_printk("SKIP\n");
          continue;
       }
@@ -348,14 +348,8 @@ void schedule()
    }
 
    if (!selected) {
-
-      // if (current && current->state == TASK_STATE_RUNNABLE) {
-      //    selected = current;
-      //    DEBUG_printk("[sched] Selected 'current'\n");
-      // } else {
-         selected = idle_task;
-         DEBUG_printk("[sched] Selected 'idle'\n");
-      //}
+      selected = idle_task;
+      DEBUG_printk("[sched] Selected 'idle'\n");
    }
 
    if (selected == current) {

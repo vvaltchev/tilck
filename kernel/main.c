@@ -90,6 +90,8 @@ void kmain()
    init_paging();
 
    initialize_scheduler();
+
+   // TODO: re-enable this after fixing the exit() of init problem.
    //initialize_tasklets();
 
    set_timer_freq(TIMER_HZ);
