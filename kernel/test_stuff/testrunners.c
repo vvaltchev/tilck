@@ -29,7 +29,7 @@ void simple_test_kthread(void *arg)
 
 void sleeping_kthread(void *arg)
 {
-   u64 wait_ticks = (u32) arg;
+   u64 wait_ticks = (uptr) arg;
    u64 before = get_ticks();
 
    kernel_sleep(wait_ticks);
