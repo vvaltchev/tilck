@@ -58,25 +58,6 @@ static ALWAYS_INLINE void halt()
 
 extern volatile int disable_interrupts_count;
 
-static ALWAYS_INLINE void disable_interrupts()
-{
-   if (++disable_interrupts_count == 1) {
-
-#if !defined(TESTING) && !defined(KERNEL_TEST)
-      asmVolatile("cli");
-#endif
-
-   }
-}
-
-static ALWAYS_INLINE void disable_interrupts_forced()
-{
-   disable_interrupts_count = 1;
-
-#if !defined(TESTING) && !defined(KERNEL_TEST)
-   asmVolatile("cli");
-#endif
-}
 
 
 static ALWAYS_INLINE void enable_interrupts()
@@ -122,6 +103,30 @@ static ALWAYS_INLINE bool are_interrupts_enabled()
                  : "=g"(flags) );
     return flags & (1 << 9);
 }
+
+
+static ALWAYS_INLINE void disable_interrupts()
+{
+   if (++disable_interrupts_count == 1) {
+
+#if !defined(TESTING) && !defined(KERNEL_TEST)
+      asmVolatile("cli");
+      ASSERT(!are_interrupts_enabled());
+#endif
+
+   }
+}
+
+static ALWAYS_INLINE void disable_interrupts_forced()
+{
+   disable_interrupts_count = 1;
+
+#if !defined(TESTING) && !defined(KERNEL_TEST)
+   asmVolatile("cli");
+   ASSERT(!are_interrupts_enabled());
+#endif
+}
+
 
 static ALWAYS_INLINE void cpuid(int code, u32 *a, u32 *d)
 {

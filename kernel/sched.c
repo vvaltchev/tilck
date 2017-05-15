@@ -190,7 +190,10 @@ NORETURN void switch_to_task(task_info *ti)
       set_page_directory(ti->pdir);
    }
 
-   disable_interrupts();
+   disable_interrupts_forced();
+
+   ASSERT(disable_interrupts_count > 0);
+   ASSERT(!are_interrupts_enabled());
 
    // We have to be SURE that the timer IRQ is NOT masked!
    irq_clear_mask(X86_PC_TIMER_IRQ);
@@ -336,8 +339,8 @@ NORETURN void schedule()
 
    if (!selected) {
 
-      // TODO: investigate why the following code causes the OS to stall
-      // sometimes.
+      //TODO: investigate why the following code causes the OS to stall
+      //sometimes.
 
       // if (current && current->state == TASK_STATE_RUNNABLE) {
       //    selected = current;
