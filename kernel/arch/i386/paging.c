@@ -1,11 +1,10 @@
 
-#include <arch/i386/arch_utils.h>
 #include <paging.h>
 #include <irq.h>
 #include <string_util.h>
 #include <kmalloc.h>
 #include <debug_utils.h>
-
+#include <hal.h>
 #include <arch/i386/paging_int.h>
 
 /*
@@ -105,24 +104,29 @@ bool handle_potential_cow(u32 vaddr)
 }
 
 extern volatile bool in_panic;
+volatile bool in_page_fault = false;
 
 void handle_page_fault(regs *r)
 {
    u32 vaddr;
 
+   ASSERT(!in_page_fault);
+   in_page_fault = true;
+
    if (in_panic) {
-      return;
+      goto good_end;
    }
 
-   asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
+   ASSERT(!is_preemption_enabled());
 
+   asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
 
    bool us = (r->err_code & (1 << 2)) != 0;
    bool rw = (r->err_code & (1 << 1)) != 0;
    bool p = (r->err_code & (1 << 0)) != 0;
 
    if (us && rw && p && handle_potential_cow(vaddr)) {
-      return;
+      goto good_end;
    }
 
    printk("*** PAGE FAULT in attempt to %s %p from %s%s\n*** EIP: %p\n",
@@ -133,6 +137,9 @@ void handle_page_fault(regs *r)
 
    // We are not really handling 'real' page-faults yet.
    NOT_REACHED();
+
+good_end:
+   in_page_fault = false;
 }
 
 void handle_general_protection_fault(regs *r)

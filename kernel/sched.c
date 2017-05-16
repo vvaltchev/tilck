@@ -9,7 +9,7 @@
 
 
 //#define TIME_SLOT_JIFFIES (TIMER_HZ * 3)
-#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
+#define TIME_SLOT_JIFFIES (TIMER_HZ / 5)
 
 task_info *volatile current = NULL;
 int current_max_pid = 0;

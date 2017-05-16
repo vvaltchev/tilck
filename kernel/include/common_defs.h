@@ -172,9 +172,12 @@ NORETURN void not_reached(const char *file, int line);
       }                                                              \
    } while (0)
 
+#define DEBUG_ONLY(x) x
+
 #else
 
 #define ASSERT(x) (void)(x)
+#define DEBUG_ONLY(x)
 
 #endif
 
