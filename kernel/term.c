@@ -42,19 +42,6 @@ void term_movecur(int row, int col)
    outb(0x3D5, (unsigned char)((position >> 8) & 0xFF));
 }
 
-void term_init() {
-
-   u8 defColor = make_color(COLOR_WHITE, COLOR_BLACK);
-   term_movecur(0, 0);
-
-   volatile u16 *ptr = TERMINAL_VIDEO_ADDR;
-
-   for (int i = 0; i < term_width*term_height; ++i) {
-      *ptr++ = make_vgaentry(' ', defColor);
-   }
-
-   term_setcolor(defColor);
-}
 
 static void increase_buf_next_slot(int val)
 {
@@ -183,8 +170,45 @@ static void term_incr_row()
    }
 }
 
+///////////////////////////
+
+#define COM1 0x3f8
+
+void init_serial_port()
+{
+   outb(COM1 + 1, 0x00);    // Disable all interrupts
+   outb(COM1 + 3, 0x80);    // Enable DLAB (set baud rate divisor)
+   outb(COM1 + 0, 0x03);    // Set divisor to 3 (lo byte) 38400 baud
+   outb(COM1 + 1, 0x00);    //                  (hi byte)
+   outb(COM1 + 3, 0x03);    // 8 bits, no parity, one stop bit
+   outb(COM1 + 2, 0xC7);    // Enable FIFO, clear them, with 14-byte threshold
+   outb(COM1 + 4, 0x0B);    // IRQs enabled, RTS/DSR set
+}
+
+int serial_received() {
+   return inb(COM1 + 5) & 1;
+}
+
+char read_serial() {
+   while (serial_received() == 0);
+   return inb(COM1);
+}
+
+int is_transmit_empty() {
+   return inb(COM1 + 5) & 0x20;
+}
+
+void write_serial(char a) {
+   while (is_transmit_empty() == 0);
+   outb(COM1, a);
+}
+
+//////////////////////////
+
 void term_write_char(char c)
 {
+   write_serial(c);
+
    if (scroll_value != 0) {
       term_scroll(0);
    }
@@ -246,4 +270,20 @@ void term_move_ch(int row, int col)
    terminal_column = col;
 
    term_movecur(row, col);
+}
+
+void term_init() {
+
+   u8 defColor = make_color(COLOR_WHITE, COLOR_BLACK);
+   term_movecur(0, 0);
+
+   volatile u16 *ptr = TERMINAL_VIDEO_ADDR;
+
+   for (int i = 0; i < term_width*term_height; ++i) {
+      *ptr++ = make_vgaentry(' ', defColor);
+   }
+
+   term_setcolor(defColor);
+
+   init_serial_port();
 }
