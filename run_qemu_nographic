@@ -1,2 +1,2 @@
 #!/bin/sh
-qemu-system-i386 -m 256 -usb -usbdevice disk:format=raw:./build/exos.img -nographic
+qemu-system-i386 -m 256 -usb -usbdevice disk:format=raw:./build/exos.img -nographic -device isa-debug-exit,iobase=0xf4,iosize=0x04

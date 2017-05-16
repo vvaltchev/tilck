@@ -164,5 +164,7 @@ static ALWAYS_INLINE uptr get_eflags()
 
 #endif
 
+void debug_qemu_turn_off_machine();
+
 // Reboot the system
 void reboot();
