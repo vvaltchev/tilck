@@ -19,8 +19,8 @@ void kcond_wait(kcond *c, kmutex *m)
    disable_preemption();
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
 
-   wait_obj_set(&current_task->wobj, WOBJ_KCOND, c);
-   task_change_state(current_task, TASK_STATE_SLEEPING);
+   wait_obj_set(&current->wobj, WOBJ_KCOND, c);
+   task_change_state(current, TASK_STATE_SLEEPING);
 
    if (m) {
       kmutex_unlock(m);

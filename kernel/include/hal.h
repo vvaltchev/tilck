@@ -3,6 +3,7 @@
 
 #if defined(__i386__)
 
+#  include <arch/generic_x86/x86_utils.h>
 #  include <arch/i386/arch_utils.h>
 #  include <arch/i386/process_int.h>
 

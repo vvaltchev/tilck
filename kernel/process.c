@@ -7,7 +7,7 @@
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
 
-extern task_info *volatile current_task;
+extern task_info *volatile current;
 extern int current_max_pid;
 
 
@@ -21,14 +21,14 @@ extern int current_max_pid;
 
 sptr sys_getpid()
 {
-   ASSERT(current_task != NULL);
-   return current_task->pid;
+   ASSERT(current != NULL);
+   return current->pid;
 }
 
 sptr sys_waitpid(int pid, int *wstatus, int options)
 {
    printk("[kernel] Pid %i will WAIT until pid %i dies\n",
-          current_task->pid, pid);
+          current->pid, pid);
 
    volatile task_info *waited_task = (volatile task_info *)get_task(pid);
 
@@ -60,16 +60,17 @@ NORETURN void sys_exit(int exit_code)
    disable_preemption();
 
    printk("[kernel] Exit process %i with code = %i\n",
-          current_task->pid,
+          current->pid,
           exit_code);
 
-   task_change_state(current_task, TASK_STATE_ZOMBIE);
-   current_task->exit_code = exit_code;
+   task_change_state(current, TASK_STATE_ZOMBIE);
+   current->exit_code = exit_code;
 
-   // We CANNOT free current_task->kernel_task here because we're using it!
+   // We CANNOT free current->kernel_task here because we're using it!
 
-   pdir_destroy(current_task->pdir);
+   pdir_destroy(current->pdir);
    schedule();
+   NOT_REACHED();
 }
 
 // Returns child's pid
@@ -78,7 +79,7 @@ sptr sys_fork()
    disable_preemption();
 
    task_info *child = kmalloc(sizeof(task_info));
-   memmove(child, current_task, sizeof(task_info));
+   memmove(child, current, sizeof(task_info));
 
    INIT_LIST_HEAD(&child->list);
 
@@ -86,7 +87,7 @@ sptr sys_fork()
       child->state = TASK_STATE_RUNNABLE;
    }
 
-   child->pdir = pdir_clone(current_task->pdir);
+   child->pdir = pdir_clone(current->pdir);
    child->pid = ++current_max_pid;
 
    child->owning_process_pid = child->pid;
@@ -104,7 +105,7 @@ sptr sys_fork()
    add_task(child);
 
    // Make the parent to get child's pid as return value.
-   set_return_register(&current_task->state_regs, child->pid);
+   set_return_register(&current->state_regs, child->pid);
 
    /*
     * Force the CR3 reflush using the current (parent's) pdir.
@@ -113,7 +114,7 @@ sptr sys_fork()
     * one by one.
     */
 
-   set_page_directory(current_task->pdir);
+   set_page_directory(current->pdir);
 
    enable_preemption();
    return child->pid;
