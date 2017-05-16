@@ -1,11 +1,10 @@
 
-#include <arch/i386/arch_utils.h>
 #include <paging.h>
 #include <irq.h>
 #include <string_util.h>
 #include <kmalloc.h>
 #include <debug_utils.h>
-
+#include <hal.h>
 #include <arch/i386/paging_int.h>
 
 /*
@@ -15,6 +14,14 @@
 
 #define KERNEL_PA_TO_VA(pa) ((typeof(pa))((uptr)(pa) + KERNEL_BASE_VA))
 #define KERNEL_VA_TO_PA(va) ((typeof(va))((uptr)(va) - KERNEL_BASE_VA))
+
+#define KERNEL_BASE_MAPPED_VADDR_LIMIT \
+   ((uptr) KERNEL_BASE_VA + 4 * 1024 * 1024 - 1)
+
+static inline bool is_vaddr_part_of_base_mapping(void *vaddr)
+{
+   return ((uptr)vaddr) <= KERNEL_BASE_MAPPED_VADDR_LIMIT;
+}
 
 uptr paging_alloc_pageframe();
 void paging_free_pageframe(uptr address);
@@ -97,24 +104,29 @@ bool handle_potential_cow(u32 vaddr)
 }
 
 extern volatile bool in_panic;
+volatile bool in_page_fault = false;
 
 void handle_page_fault(regs *r)
 {
    u32 vaddr;
 
+   ASSERT(!in_page_fault);
+   in_page_fault = true;
+
    if (in_panic) {
-      return;
+      goto good_end;
    }
 
-   asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
+   ASSERT(!is_preemption_enabled());
 
+   asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
 
    bool us = (r->err_code & (1 << 2)) != 0;
    bool rw = (r->err_code & (1 << 1)) != 0;
    bool p = (r->err_code & (1 << 0)) != 0;
 
    if (us && rw && p && handle_potential_cow(vaddr)) {
-      return;
+      goto good_end;
    }
 
    printk("*** PAGE FAULT in attempt to %s %p from %s%s\n*** EIP: %p\n",
@@ -125,6 +137,9 @@ void handle_page_fault(regs *r)
 
    // We are not really handling 'real' page-faults yet.
    NOT_REACHED();
+
+good_end:
+   in_page_fault = false;
 }
 
 void handle_general_protection_fault(regs *r)
@@ -383,7 +398,7 @@ void pdir_destroy(page_directory_t *pdir)
             ASSERT(pageframes_refcount[paddr] > 0);
 
             if (pageframes_refcount[paddr] > 1) {
-               pageframes_refcount[paddr]--;
+                pageframes_refcount[paddr]--;
                continue;
             }
          }
@@ -393,10 +408,15 @@ void pdir_destroy(page_directory_t *pdir)
       }
 
       // We freed all the pages, now free the whole page-table.
-      kfree(pt, sizeof(*pt));
+
+      if (!is_vaddr_part_of_base_mapping(pt)) {
+         kfree(pt, sizeof(*pt));
+      }
    }
 
    // We freed all pages and all the page-tables, now free pdir.
+
+   ASSERT(!is_vaddr_part_of_base_mapping(pdir));
    kfree(pdir, sizeof(*pdir));
 }
 

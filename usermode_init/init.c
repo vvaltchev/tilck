@@ -15,8 +15,7 @@ int bss_variable[32];
 
 int main(int argc, char **argv, char **env)
 {
-
-   printf("### Hello from init!\n");
+   printf("### Hello from init! MY PID IS %i\n", getpid());
 
    printf("argc: %i\n", argc);
 
@@ -47,12 +46,18 @@ int main(int argc, char **argv, char **env)
    unsigned n = 1;
    int billions = 0;
    bool inchild = false;
+   bool exit_on_next_billion = false;
 
    while (true) {
 
       if (!(n % (1024 * 1024 * 1024))) {
 
          printf("[PID: %i] 1 billion iters\n", getpid());
+
+         if (exit_on_next_billion) {
+            return 0;
+         }
+
          billions++;
 
          if (billions == 1) {
@@ -71,6 +76,7 @@ int main(int argc, char **argv, char **env)
                printf("[parent] waiting the child to exit...\n");
                int p = waitpid(pid, NULL, 0);
                printf("[parent] child (pid: %i) exited!\n", p);
+               exit_on_next_billion = true;
             }
 
          }

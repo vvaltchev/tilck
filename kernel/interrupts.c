@@ -21,7 +21,7 @@ void end_current_interrupt_handling()
       PIC_sendEOI(curr_int - 32);
    }
 
-   if (LIKELY(current_task != NULL)) {
+   if (LIKELY(current != NULL)) {
 
       nested_interrupts_count--;
       ASSERT(nested_interrupts_count >= 0);

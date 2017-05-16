@@ -104,10 +104,10 @@ void debug_dump_used_pdir_entries(page_directory_t *pdir)
 
 volatile bool in_panic = false;
 
-void panic(const char *fmt, ...)
+NORETURN void panic(const char *fmt, ...)
 {
    if (in_panic) {
-      return;
+      goto end;
    }
 
    in_panic = true;
@@ -132,18 +132,20 @@ void panic(const char *fmt, ...)
 
    dump_stacktrace();
 
+end:
+
    while (true) {
       halt();
    }
 }
 
-void assert_failed(const char *expr, const char *file, int line)
+NORETURN void assert_failed(const char *expr, const char *file, int line)
 {
    panic("\nASSERTION '%s' FAILED in file '%s' at line %i\n",
          expr, file, line);
 }
 
-void not_reached(const char *file, int line)
+NORETURN void not_reached(const char *file, int line)
 {
    panic("\nNOT_REACHED statement in file '%s' at line %i\n", file, line);
 }

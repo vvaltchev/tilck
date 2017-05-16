@@ -27,6 +27,21 @@ void simple_test_kthread(void *arg)
    }
 }
 
+void sleeping_kthread(void *arg)
+{
+   u64 wait_ticks = (uptr) arg;
+   u64 before = get_ticks();
+
+   kernel_sleep(wait_ticks);
+
+   u64 after = get_ticks();
+   u64 elapsed = after - before;
+
+   printk("[Sleeping kthread] elapsed ticks: %llu (expected: %llu)\n",
+          elapsed, wait_ticks);
+
+   ASSERT((elapsed - wait_ticks) <= 2);
+}
 
 void test_memdisk()
 {
@@ -96,9 +111,9 @@ void test_kmutex_thread_trylock()
 void kmutex_test()
 {
    kmutex_init(&test_mutex);
-   current_task = kthread_create(test_kmutex_thread, (void *)1);
-   current_task = kthread_create(test_kmutex_thread, (void *)2);
-   current_task = kthread_create(test_kmutex_thread_trylock, NULL);
+   kthread_create(test_kmutex_thread, (void *)1);
+   kthread_create(test_kmutex_thread, (void *)2);
+   kthread_create(test_kmutex_thread_trylock, NULL);
 }
 
 
@@ -142,7 +157,7 @@ void kcond_test()
    kmutex_init(&cond_mutex);
    kcond_init(&cond);
 
-   current_task = kthread_create(&kcond_thread_test, (void*) 1);
-   current_task = kthread_create(&kcond_thread_test, (void*) 2);
-   current_task = kthread_create(&kcond_thread_signal_generator, NULL);
+   kthread_create(&kcond_thread_test, (void*) 1);
+   kthread_create(&kcond_thread_test, (void*) 2);
+   kthread_create(&kcond_thread_signal_generator, NULL);
 }
