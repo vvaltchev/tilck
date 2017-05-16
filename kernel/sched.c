@@ -27,7 +27,13 @@ void idle_task_kthread()
    while (true) {
       halt();
       idle_ticks++;
-      printk("Idle ticks: %llu\n", idle_ticks);
+
+      // TODO: add a runnable_count variable, and kernel_yield here when it
+      // becomes > 1.
+
+      if (!(idle_ticks % TIMER_HZ)) {
+         printk("[idle task] ticks: %llu\n", idle_ticks);
+      }
    }
 }
 
@@ -212,7 +218,6 @@ NORETURN void switch_to_task(task_info *ti)
    }
 
    enable_preemption();
-
    ASSERT(is_preemption_enabled());
 
    current = ti;
@@ -269,9 +274,10 @@ bool need_reschedule()
       return false;
    }
 
-   if (current == idle_task) {
-      return true;
-   }
+   // This forces the scheduler to run at each tick, when idle_task is running.
+   // if (current == idle_task) {
+   //    return true;
+   // }
 
    if (current->ticks < TIME_SLOT_JIFFIES &&
        current->state == TASK_STATE_RUNNING) {
