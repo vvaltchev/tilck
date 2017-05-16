@@ -4,12 +4,12 @@
 
 #include <hal.h>
 
-#define DEBUG_printk printk
-//#define DEBUG_printk(...)
+//#define DEBUG_printk printk
+#define DEBUG_printk(...)
 
 
-#define TIME_SLOT_JIFFIES (TIMER_HZ * 3)
-//#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
+//#define TIME_SLOT_JIFFIES (TIMER_HZ * 3)
+#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
 
 task_info *volatile current = NULL;
 int current_max_pid = 0;
@@ -18,6 +18,8 @@ int current_max_pid = 0;
 list_head tasks_list = LIST_HEAD_INIT(tasks_list);
 list_head runnable_tasks_list = LIST_HEAD_INIT(runnable_tasks_list);
 list_head sleeping_tasks_list = LIST_HEAD_INIT(sleeping_tasks_list);
+
+int runnable_tasks_count = 0;
 
 task_info *idle_task = NULL;
 volatile u64 idle_ticks = 0;
@@ -28,11 +30,13 @@ void idle_task_kthread()
       halt();
       idle_ticks++;
 
-      // TODO: add a runnable_count variable, and kernel_yield here when it
-      // becomes > 1.
-
       if (!(idle_ticks % TIMER_HZ)) {
-         printk("[idle task] ticks: %llu\n", idle_ticks);
+         DEBUG_printk("[idle task] ticks: %llu\n", idle_ticks);
+      }
+
+      if (runnable_tasks_count > 0) {
+         DEBUG_printk("[idle task] runnable > 0, yield!\n");
+         kernel_yield();
       }
    }
 }
@@ -99,6 +103,7 @@ void task_add_to_state_list(task_info *ti)
 
    case TASK_STATE_RUNNABLE:
       list_add_tail(&runnable_tasks_list, &ti->runnable_list);
+      runnable_tasks_count++;
       break;
 
    case TASK_STATE_SLEEPING:
@@ -120,6 +125,8 @@ void task_remove_from_state_list(task_info *ti)
 
    case TASK_STATE_RUNNABLE:
       list_remove(&ti->runnable_list);
+      runnable_tasks_count--;
+      ASSERT(runnable_tasks_count >= 0);
       break;
 
    case TASK_STATE_SLEEPING:
@@ -182,7 +189,7 @@ NORETURN void switch_to_task(task_info *ti)
    ASSERT(ti != current);
 
    if (ti != current) {
-      printk("[sched] Switching to pid: %i %s %s\n",
+      DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
              ti->pid,
              is_kernel_thread(ti) ? "[KTHREAD]" : "[USER]",
              ti->running_in_kernel ? "(kernel mode)" : "(usermode)");
@@ -285,9 +292,10 @@ bool need_reschedule()
    }
 
    DEBUG_printk("\n\n[sched] Current pid: %i, "
-                "used %llu ticks (in total %llu, %llu of them in kernel)\n",
+                "used %llu ticks (user: %llu, kernel: %llu) [runnable: %i]\n",
                 current->pid, current->ticks,
-                current->total_ticks, current->kernel_ticks);
+                current->total_ticks - current->kernel_ticks,
+                current->kernel_ticks, runnable_tasks_count);
 
    return true;
 }

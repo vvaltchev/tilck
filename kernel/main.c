@@ -73,8 +73,6 @@ void simple_test_kthread(void *);
 void kmutex_test();
 void kcond_test();
 
-
-
 void kmain()
 {
    term_init();
@@ -90,9 +88,7 @@ void kmain()
    init_paging();
 
    initialize_scheduler();
-
-   // TODO: re-enable this after fixing the exit() of init problem.
-   //initialize_tasklets();
+   initialize_tasklets();
 
    set_timer_freq(TIMER_HZ);
 
