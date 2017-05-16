@@ -33,8 +33,8 @@ void kmutex_lock(kmutex *m)
        */
       ASSERT(!kmutex_is_curr_task_holding_lock(m));
 
-      wait_obj_set(&current_task->wobj, WOBJ_KMUTEX, m);
-      task_change_state(current_task, TASK_STATE_SLEEPING);
+      wait_obj_set(&current->wobj, WOBJ_KMUTEX, m);
+      task_change_state(current, TASK_STATE_SLEEPING);
 
       enable_preemption();
       kernel_yield(); // Go to sleep until someone else holding is the lock.

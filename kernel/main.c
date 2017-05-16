@@ -32,7 +32,7 @@ void load_elf_program(void *elf,
 
 #define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023600
 
-void load_usermode_init()
+task_info *load_usermode_init()
 {
    void *elf_vaddr = (void *) (RAM_DISK_VADDR + INIT_PROGRAM_MEM_DISK_OFFSET);
 
@@ -46,7 +46,7 @@ void load_usermode_init()
    printk("[load_usermode_init] Entry: %p\n", entry_point);
    printk("[load_usermode_init] Stack: %p\n", stack_addr);
 
-   current_task = create_first_usermode_task(pdir, entry_point, stack_addr);
+   return create_first_usermode_task(pdir, entry_point, stack_addr);
 }
 
 void show_hello_message()
@@ -68,6 +68,7 @@ void mount_memdisk()
 }
 
 
+void sleeping_kthread(void *);
 void simple_test_kthread(void *);
 void kmutex_test();
 void kcond_test();
@@ -106,13 +107,15 @@ void kmain()
    // Initialize the keyboard driver.
    init_kb();
 
-   kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
+   // kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
+   // kmutex_test();
+   // kcond_test();
+   // kthread_create(&sleeping_kthread, (void *) 123);
+   // kthread_create(&sleeping_kthread, (void *) 20);
+   // kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
 
-   kmutex_test();
-   kcond_test();
-
-   //load_usermode_init();
-   schedule_outside_interrupt_context();
+   task_info *init = load_usermode_init();
+   switch_to_task_outside_interrupt_context(init);
 
    // We should never get here!
    NOT_REACHED();

@@ -16,11 +16,11 @@
 struct task_info;
 typedef struct task_info task_info;
 
-extern task_info *volatile current_task;
+extern task_info *volatile current;
 
 static ALWAYS_INLINE task_info *get_current_task()
 {
-   return current_task;
+   return current;
 }
 
 void save_current_task_state(regs *);
@@ -28,8 +28,12 @@ void save_current_task_state(regs *);
 void account_ticks();
 bool need_reschedule();
 
-NORETURN void schedule();
-NORETURN void schedule_outside_interrupt_context();
+NORETURN void switch_to_task(task_info *ti);
+
+void schedule();
+void schedule_outside_interrupt_context();
+
+NORETURN void switch_to_task_outside_interrupt_context(task_info *task);
 
 task_info *create_first_usermode_task(page_directory_t *pdir,
                                       void *entry,
@@ -58,3 +62,5 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg);
 
 // It is called when each kernel thread returns. May be called explicitly too.
 void kthread_exit();
+
+void kernel_sleep(u64 ticks);
