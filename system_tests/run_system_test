@@ -1,0 +1,89 @@
+#!/usr/bin/python
+
+import os
+import sys
+import time
+import signal
+import subprocess
+import threading
+
+TEST_TIMEOUT = 120
+VM_MEMORY_SIZE_IN_MB = 256
+KERNEL_HELLO_MSG = 'Hello from exOS!'
+OS_IMG_FILE = './build/exos.img'
+
+output = ""
+process = None
+failed = False
+hello_msg_found = False
+
+def RunTheVM():
+
+   global output
+   global process
+   global failed
+   global hello_msg_found
+
+   print "Running the VM..."
+   print "-"*80, "\n"
+
+   process = subprocess.Popen(['qemu-system-i386',
+                               '-m', str(VM_MEMORY_SIZE_IN_MB),
+                               '-usb', '-usbdevice',
+                               'disk:format=raw:'+OS_IMG_FILE,
+                               '-nographic', '-device',
+                               'isa-debug-exit,iobase=0xf4,iosize=0x04'],
+                              stdout=subprocess.PIPE)
+
+
+   for line in iter(process.stdout.readline,''):
+      output += line
+      stripped = line.rstrip()
+
+      print stripped
+
+      if stripped.find(KERNEL_HELLO_MSG) != -1:
+         if not hello_msg_found:
+            hello_msg_found = True
+         else:
+            print "\n[system test runner] Detected TWICE the kernel " + \
+                  "hello msg: likely the machine rebooted."
+            print "[system test runner] KILLING the VM."
+
+            failed = True
+            process.send_signal(signal.SIGINT)
+
+   print "\n"
+   print "-"*80
+
+start_time = time.time()
+
+thread = threading.Thread(target = RunTheVM)
+thread.start()
+thread.join(TEST_TIMEOUT)
+
+if thread.is_alive():
+   failed = True
+
+   print "The VM is alive after the timeout " + \
+         "of {0} seconds. KILLING IT.".format(TEST_TIMEOUT)
+
+   process.send_signal(signal.SIGINT)
+   thread.join()
+
+
+if output.find("KERNEL PANIC") != -1:
+   failed = True
+
+################################################################################
+
+elapsed = time.time() - start_time
+
+if failed:
+   print "TEST FAILED after %.2f seconds" % elapsed
+   sys.exit(1)
+
+
+print "TEST PASSED in %.2f seconds" % elapsed
+sys.exit(0)
+

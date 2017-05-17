@@ -10,12 +10,9 @@ echo 'Installing the necessary packages...'
 
 if [ -z "$TRAVIS" ]; then
    cmd='sudo apt-get install wget gcc g++ git nasm gcc-multilib g++-multilib make binutils binutils-multiarch mtools';
-else
-   cmd='sudo apt-get install nasm binutils binutils-multiarch mtools';
+   echo $cmd
+   $cmd
 fi
-
-echo $cmd
-$cmd
 
 mkdir toolchain
 cd toolchain

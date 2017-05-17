@@ -100,6 +100,11 @@ void debug_dump_used_pdir_entries(page_directory_t *pdir)
    }
 }
 
+void debug_qemu_turn_off_machine()
+{
+   outb(0xf4, 0x00);
+}
+
 #endif
 
 volatile bool in_panic = false;
@@ -131,6 +136,10 @@ NORETURN void panic(const char *fmt, ...)
    printk("\n\n");
 
    dump_stacktrace();
+
+#ifdef DEBUG_QEMU_EXIT_ON_PANIC
+   debug_qemu_turn_off_machine();
+#endif
 
 end:
 
