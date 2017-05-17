@@ -23,6 +23,7 @@ matrix:
             - nasm
             - binutils-multiarch
             - mtools
+            - qemu
 
     - os: linux
       dist: trusty
@@ -41,6 +42,7 @@ matrix:
             - nasm
             - binutils-multiarch
             - mtools
+            - qemu
  
 before_install:
   - ./build_toolchain
@@ -53,3 +55,5 @@ install:
 script:
   - ./build/gtests
   - ./generate_coverage_report # Does nothing unless USE_GCOV is set
+  - ./system_tests/run_system_test
+
