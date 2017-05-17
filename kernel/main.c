@@ -53,7 +53,7 @@ task_info *load_usermode_init()
 
 void show_hello_message()
 {
-   printk("Hello from my kernel!\n");
+   printk("Hello from exOS!\n");
 }
 
 void mount_memdisk()
