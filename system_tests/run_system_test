@@ -1,0 +1,33 @@
+#!/usr/bin/python
+
+import os
+import sys
+import subprocess
+
+
+print "Running the VM..."
+print "-"*80, "\n"
+
+p = subprocess.Popen(["./run_qemu_nographic"],
+                     stdout=subprocess.PIPE)
+
+output = ""
+
+for line in iter(p.stdout.readline,''):
+   output += line
+   print line.rstrip()
+
+print "\n"
+print "-"*80
+
+failed = False
+
+if output.find("KERNEL PANIC") != -1:
+   failed = True
+
+
+if failed:
+   print "TEST FAILED"
+else:
+   print "TEST PASSED"
+
