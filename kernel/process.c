@@ -55,6 +55,10 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
 }
 
 
+#ifdef DEBUG_QEMU_EXIT_ON_INIT_EXIT
+extern task_info *usermode_init_task;
+#endif
+
 NORETURN void sys_exit(int exit_code)
 {
    disable_preemption();
@@ -69,6 +73,13 @@ NORETURN void sys_exit(int exit_code)
    // We CANNOT free current->kernel_task here because we're using it!
 
    pdir_destroy(current->pdir);
+
+#ifdef DEBUG_QEMU_EXIT_ON_INIT_EXIT
+   if (current == usermode_init_task) {
+      debug_qemu_turn_off_machine();
+   }
+#endif
+
    schedule();
    NOT_REACHED();
 }
