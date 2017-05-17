@@ -164,5 +164,9 @@ static ALWAYS_INLINE uptr get_eflags()
 
 #endif
 
+
+// Turn off the machine using a debug qemu-only mechnism
+void debug_qemu_turn_off_machine();
+
 // Reboot the system
 void reboot();

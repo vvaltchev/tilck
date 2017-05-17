@@ -32,6 +32,8 @@ void load_elf_program(void *elf,
 
 #define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023600
 
+task_info *usermode_init_task = NULL;
+
 task_info *load_usermode_init()
 {
    void *elf_vaddr = (void *) (RAM_DISK_VADDR + INIT_PROGRAM_MEM_DISK_OFFSET);
@@ -51,7 +53,7 @@ task_info *load_usermode_init()
 
 void show_hello_message()
 {
-   printk("Hello from my kernel!\n");
+   printk("Hello from exOS!\n");
 }
 
 void mount_memdisk()
@@ -114,8 +116,8 @@ void kmain()
    // kthread_create(&sleeping_kthread, (void *) 20);
    // kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
 
-   task_info *init = load_usermode_init();
-   switch_to_task_outside_interrupt_context(init);
+   usermode_init_task = load_usermode_init();
+   switch_to_task_outside_interrupt_context(usermode_init_task);
 
    // We should never get here!
    NOT_REACHED();
