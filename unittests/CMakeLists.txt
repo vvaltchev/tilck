@@ -8,11 +8,11 @@ include_directories("${CMAKE_SOURCE_DIR}/kernel/include")
 include_directories("${GTEST_DIR}/include")
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
-add_executable(tests EXCLUDE_FROM_ALL ${SOURCES})
+add_executable(gtests EXCLUDE_FROM_ALL ${SOURCES})
 
 set_target_properties(
 
-   tests
+   gtests
 
    PROPERTIES
       COMPILE_FLAGS "-DTESTING ${COMMON_FLAGS} ${GCOV_COMPILE_FLAGS}"
@@ -34,7 +34,7 @@ set(
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})
 JOIN("${WRAPPED_SYMS_LIST}" ${SPACE} WRAPPINGS)
 
-target_link_libraries(tests ${GTEST_DIR}/libgtest.a)
-target_link_libraries(tests ${GTEST_DIR}/libgtest_main.a)
-target_link_libraries(tests pthread)
-target_link_libraries(tests kernel_noarch_static_for_test "${WRAPPINGS}")
+target_link_libraries(gtests ${GTEST_DIR}/libgtest.a)
+target_link_libraries(gtests ${GTEST_DIR}/libgtest_main.a)
+target_link_libraries(gtests pthread)
+target_link_libraries(gtests kernel_noarch_static_for_test "${WRAPPINGS}")

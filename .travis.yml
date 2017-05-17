@@ -20,6 +20,9 @@ matrix:
             - g++-6
             - gcc-6-multilib
             - g++-6-multilib
+            - nasm
+            - binutils-multiarch
+            - mtools
 
     - os: linux
       dist: trusty
@@ -35,15 +38,18 @@ matrix:
             - g++-6
             - gcc-6-multilib
             - g++-6-multilib
-
+            - nasm
+            - binutils-multiarch
+            - mtools
+ 
 before_install:
   - ./build_toolchain
 
 install:
   - ./cmake_run
   - ./make_run
-  - ./make_run tests
+  - ./make_run gtests
 
 script:
-  - ./build/tests
+  - ./build/gtests
   - ./generate_coverage_report # Does nothing unless USE_GCOV is set
