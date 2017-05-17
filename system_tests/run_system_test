@@ -3,24 +3,51 @@
 import os
 import sys
 import subprocess
+import threading
+import string
 
-
-print "Running the VM..."
-print "-"*80, "\n"
-
-p = subprocess.Popen(["./run_qemu_nographic"],
-                     stdout=subprocess.PIPE)
+TIMEOUT = 20
 
 output = ""
-
-for line in iter(p.stdout.readline,''):
-   output += line
-   print line.rstrip()
-
-print "\n"
-print "-"*80
-
+process = None
 failed = False
+
+def RunTheVM():
+
+   global output
+   global process
+
+   print "Running the VM..."
+   print "-"*80, "\n"
+
+   process = subprocess.Popen(['qemu-system-i386',
+                               '-m', '256', '-usb', '-usbdevice',
+                               'disk:format=raw:./build/exos.img',
+                               '-nographic', '-device',
+                               'isa-debug-exit,iobase=0xf4,iosize=0x04'],
+                              stdout=subprocess.PIPE)
+
+
+   for line in iter(process.stdout.readline,''):
+      output += line
+      filtered = filter(lambda x: x in string.printable, line.rstrip())
+      print filtered
+
+   print "\n"
+   print "-"*80
+
+
+thread = threading.Thread(target = RunTheVM)
+thread.start()
+thread.join(TIMEOUT)
+
+if thread.is_alive():
+   failed = True
+
+   print "The VM is alive after the timeout of {0} seconds. KILLING IT.".format(TIMEOUT)
+   process.kill()
+   thread.join()
+
 
 if output.find("KERNEL PANIC") != -1:
    failed = True
