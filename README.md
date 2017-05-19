@@ -26,23 +26,18 @@ Step 1. If you're using a Debian-based system, build the toolchain by running:
 In case you're not using a Debian-based system or your system does not have by default `gcc` and `g++` version 6.0 or higher, you'll have to manually setup your environment in a way that such statement is true. For example, if you are using an older Ubuntu can you could:
 
   * run build_toolchian to install all the necessary packages
-  * install gcc-6 and g++-6 somehow
-  * add gcc and g++ symlinks in ~/bin
-  * add ~/bin as a first entry in your PATH enviroment variable
+  * install gcc-6 and g++-6
+  * export CC=gcc-6 and CXX=g++-6
+ 
+In case you're not using a Debian system instead, you'll have to take a look at the `build_toolchain` script and install the same packages using the package manager available on your system.
 
-In case you're not using a Debian system instead, you'll have to take a look at the build_toolchain script and install the same packages using the package manager available on your system.
-
-Step 2. Run cmake this way:
+Step 2. Run `cmake` this way:
 
     ./cmake_run
 
-Step 3. Compile the kernel this way:
+Step 3. Compile the kernel and prepare the bootable image this way:
 
     ./make_run
-
-Optionally, you could also build kernel's unit tests this way:
-
-    ./make_run tests
 
 Step 4. Now you should have an image file named `exos.img` in the `build` directory.
 The easiest way for actually trying `exOS` at that point is to install `qemu` on your system and just run:
@@ -52,10 +47,14 @@ The easiest way for actually trying `exOS` at that point is to install `qemu` on
 Step 5. Enjoy :-)
 
 
+Build & run the unit tests
+----------------------------
 
+You could build kernel's unit tests this way:
 
+    ./make_run gtests
 
+And run them with:
 
-
-
+    ./build/gtests
 
