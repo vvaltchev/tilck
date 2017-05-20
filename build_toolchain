@@ -17,7 +17,6 @@ function install_packages {
 
 }
 
-
 ###############################
 # CMake 3.7
 ###############################
@@ -77,7 +76,7 @@ function build_dietlibc {
 ##############################
 
 function build_gtest {
-   
+
    pushd .
    git clone https://github.com/google/googletest.git
    cd googletest/googletest
@@ -119,7 +118,7 @@ function build_libmusl {
 
 ##########################################################
 #
-# MAIN 
+# MAIN
 #
 ##########################################################
 
@@ -141,7 +140,7 @@ cd $TC
 
 
 if [ "$1" == "-single" ]; then
-   
+
    if [ $# -ne 2 ]; then
       echo "Expected the name of the function to call after the -single option"
    fi
