@@ -1,18 +1,30 @@
 #!/bin/bash
 
 ##############################################
+# Internal utility functions
+##############################################
+
+function run_command {
+   echo "Running command: $1"
+   $1
+}
+
+function run_command2 {
+   echo "Running command: $1 &> $2"
+   $1 &> $2
+}
+
+##############################################
 # Install the necessary packages using apt
 ##############################################
 
 function install_packages {
 
-   pkgs_list="wget gcc g++ git nasm gcc-multilib g++-multilib make binutils binutils-multiarch mtools"
+   pkgs_list="wget gcc g++ git nasm gcc-multilib g++-multilib make binutils binutils-multiarch mtools qemu"
 
    if [ -z "$TRAVIS" ]; then
       echo "Installing the necessary packages..."
-      cmd="sudo apt-get install $pkgs_list"
-      echo "By executing: $cmd"
-      $cmd
+      run_command "sudo apt-get install $pkgs_list"
    fi
 
 }
@@ -62,7 +74,7 @@ function build_dietlibc {
    # So, disabling the 'exit on first failure' option.
    set +e
 
-   make -j i386 DEBUG=1
+   run_command2 "make -j i386 DEBUG=1" "dietlibc_build.log"
 
    # Restore the 'exit on first failure'
    set -e
@@ -82,7 +94,7 @@ function build_gtest {
    cd googletest/googletest
    git checkout release-1.8.0
    $CMAKE .
-   make -j
+   run_command2 "make -j" "gtest_build.log"
    popd
 
 }
@@ -139,10 +151,10 @@ mkdir -p $TC
 cd $TC
 
 
-if [ "$1" == "-single" ]; then
+if [ "$1" == "-s" ]; then
 
    if [ $# -ne 2 ]; then
-      echo "Expected the name of the function to call after the -single option"
+      echo "Expected the name of the function to call after the $1 option"
    fi
 
    func="$2"
