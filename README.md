@@ -25,9 +25,9 @@ Step 1. If you're using a Debian-based system, build the toolchain by running:
 
 In case you're not using a Debian-based system or your system does not have by default `gcc` and `g++` version 6.0 or higher, you'll have to manually setup your environment in a way that such statement is true. For example, if you are using an older Ubuntu can you could:
 
-  * run build_toolchian to install all the necessary packages
-  * install gcc-6 and g++-6
-  * export CC=gcc-6 and CXX=g++-6
+  * run `build_toolchian` to install most of the necessary packages
+  * install gcc-6 and g++-6 since the default compiler is older
+  * export CC=gcc-6 and CXX=g++-6 (at least before running `cmake_run`)
  
 In case you're not using a Debian system instead, you'll have to take a look at the `build_toolchain` script and install the same packages using the package manager available on your system.
 
@@ -40,7 +40,7 @@ Step 3. Compile the kernel and prepare the bootable image this way:
     ./make_run
 
 Step 4. Now you should have an image file named `exos.img` in the `build` directory.
-The easiest way for actually trying `exOS` at that point is to install `qemu` on your system and just run:
+The easiest way for actually trying `exOS` at that point is to just run:
 
     ./run_qemu
 

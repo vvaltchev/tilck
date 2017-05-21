@@ -9,7 +9,7 @@ matrix:
     - os: linux
       dist: trusty
       sudo: required
-      language: cpp
+      language: generic
       env: RELEASE=on
       addons:
         apt:
@@ -28,7 +28,7 @@ matrix:
     - os: linux
       dist: trusty
       sudo: required
-      language: cpp
+      language: generic
       env: RELEASE=off USE_GCOV=on
       addons:
         apt:
@@ -45,7 +45,7 @@ matrix:
             - qemu
  
 before_install:
-  - ./build_toolchain
+  - ./build_toolchain --skip-install-pkgs
 
 install:
   - ./cmake_run
