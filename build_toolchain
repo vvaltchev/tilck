@@ -1,98 +1,196 @@
 #!/bin/bash
 
-# Exit on the first failure
-set -e
+##############################################
+# Internal utility functions
+##############################################
 
-MAIN_DIR=$PWD
-export PATH=$MAIN_DIR/build_scripts:$PATH
+function run_command {
+   echo "Running command: $1"
+   $1
+}
 
-echo 'Installing the necessary packages...'
+function run_command2 {
+   echo "Running command: $1 &> $2"
+   $1 &> $2
+}
 
-if [ -z "$TRAVIS" ]; then
-   cmd='sudo apt-get install wget gcc g++ git nasm gcc-multilib g++-multilib make binutils binutils-multiarch mtools';
-   echo $cmd
-   $cmd
-fi
+##############################################
+# Install the necessary packages using apt
+##############################################
 
-mkdir toolchain
-cd toolchain
+function install_packages {
 
-# Toolchain dir
-TC=$PWD
+   pkgs_list="wget gcc g++ git nasm gcc-multilib g++-multilib make binutils binutils-multiarch mtools qemu"
 
+   if [ "`lsb_release -si`" != "Ubuntu" ]; then
+      echo "*** WARNING: your distribution is not Ubuntu and the following apt install command MAY fail"
+      echo "*** WARNING: In case that happens, please install manually the following packages:"
+      echo "*** WARNING: $pgks_list"
+      echo "*** WARNING: and re-run this script with the option --skip-install-pkgs"
+   fi
+
+   echo "Installing the necessary packages..."
+   run_command "sudo apt install $pkgs_list"
+}
 
 ###############################
 # CMake 3.7
 ###############################
 
-pushd .
-wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
-tar xf cmake-3.7.0-Linux-x86_64.tar.gz
-CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
-popd
+function build_cmake {
+
+   pushd .
+   wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
+   tar xf cmake-3.7.0-Linux-x86_64.tar.gz
+   CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
+   popd
+
+}
 
 ###############################
 # LCOV (front end for GCOV)
 ###############################
 
-pushd .
-git clone https://github.com/linux-test-project/lcov.git
-cd lcov
-git checkout v1.13
-popd
+function build_lcov {
+
+   pushd .
+   git clone https://github.com/linux-test-project/lcov.git
+   cd lcov
+   git checkout v1.13
+   popd
+
+}
 
 ###############################
-# Build diet libc
+# Build dietlibc
 ###############################
 
-pushd .
+function build_dietlibc {
 
-wget https://www.fefe.de/dietlibc/dietlibc-0.33.tar.bz2
-tar xfj dietlibc-0.33.tar.bz2
-cd dietlibc-0.33
-sed -i 's/#define WANT_SYSENTER/\/\/#define WANT_SYSENTER/g' dietfeatures.h
-sed -i 's/-Wno-unused -Wredundant-decls/-Wno-unused -Wredundant-decls -fno-stack-protector/g' Makefile
-# The build of dietlibc fails even when succeeds, when we cross-build for i386
-# So, disabling the 'exit on first failure' option.
-set +e
+   pushd .
 
-make -j i386 DEBUG=1
+   wget https://www.fefe.de/dietlibc/dietlibc-0.33.tar.bz2
+   tar xfj dietlibc-0.33.tar.bz2
+   cd dietlibc-0.33
+   sed -i 's/#define WANT_SYSENTER/\/\/#define WANT_SYSENTER/g' dietfeatures.h
+   sed -i 's/-Wno-unused -Wredundant-decls/-Wno-unused -Wredundant-decls -fno-stack-protector/g' Makefile
+   # The build of dietlibc fails even when succeeds, when we cross-build for i386
+   # So, disabling the 'exit on first failure' option.
+   set +e
 
-# Restore the 'exit on first failure'
-set -e
+   run_command2 "make -j i386 DEBUG=1" "dietlibc_build.log"
 
-popd
+   # Restore the 'exit on first failure'
+   set -e
 
+   popd
+
+}
 
 ##############################
 # Build gtest
 ##############################
 
-pushd .
-git clone https://github.com/google/googletest.git
-cd googletest/googletest
-git checkout release-1.8.0
-$CMAKE .
-make -j
-popd
+function build_gtest {
+
+   pushd .
+   git clone https://github.com/google/googletest.git
+   cd googletest/googletest
+   git checkout release-1.8.0
+   $CMAKE .
+   run_command2 "make -j" "gtest_build.log"
+   popd
+
+}
+
+##################################
+# Build libmusl (unused for now)
+##################################
+
+function build_libmusl {
+
+   pushd .
+
+   git clone git://git.musl-libc.org/musl
+   cd musl
+   git checkout v1.1.16
+
+   mkdir ../musl-install
+   mkdir ../musl-install/lib
+
+   libmusl_opts1="--target=i386 --host=i386 --build=x86_64 --disable-shared"
+   libmusl_opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
+   libmusl_opts3="--syslibdir=$TC/musl-install/lib"
+
+   ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3
+
+   make
+   make install
+
+   popd
+
+}
 
 
-##############################
-# Build libmusl
-##############################
+##########################################################
+#
+# MAIN
+#
+##########################################################
 
-# pushd .
 
-# git clone git://git.musl-libc.org/musl
-# cd musl
-# git checkout v1.1.16
+# Exit on the first failure
+set -e
 
-# mkdir ../musl-install
-# mkdir ../musl-install/lib
+# Main project directory
+MAIN_DIR=$PWD
 
-# ./configure --target=i386 --host=i386 --build=x86_64 --disable-shared --prefix=$TC/musl-install --exec-prefix=$TC/musl-install --syslibdir=$TC/musl-install/lib
+# Toolchain dir
+TC=$PWD/toolchain
 
-# make
-# make install
+# Make the scripts build_scripts runnable from everywhere
+export PATH="$MAIN_DIR/build_scripts:$PATH"
 
-# popd
+mkdir -p $TC
+cd $TC
+
+
+if [ "$1" == "-s" ]; then
+
+   if [ $# -ne 2 ]; then
+      echo "Expected the name of the function to call after the $1 option"
+   fi
+
+   func="$2"
+
+   if [ -n "$(type -t $func)" ] && [ "$(type -t $func)" = function ]; then
+      echo "Executing single function '$func'"
+      $func
+   else
+      echo "ERORR: The function '$func' does not exist."
+      exit 1
+   fi
+
+   exit 0
+fi
+
+
+
+if [ "$1" == "--skip-install-pkgs" ]; then
+   skip_install=true
+   echo "*** SKIPPING installation of packages"
+fi
+
+
+if [ -z "$skip_install" ]; then
+   install_packages
+fi
+
+build_cmake
+build_lcov
+build_dietlibc
+build_gtest
+
+
+
+

@@ -1,11 +1,58 @@
 #!/bin/bash
 
-CC=gcc-6
-CXX=g++-6
+if [ -z "$CC" ]; then
+
+   CC=gcc
+
+   if [ -n "`which gcc-6`" ]; then
+      CC=gcc-6
+   fi
+fi
+
+if [ -z "$CXX" ]; then
+
+   CXX=g++
+
+   if [ -n "`which g++-6`" ]; then
+      CXX=g++-6
+   fi
+fi
+
+
+if [ -z "`which $CC`" ]; then
+   echo "CC compiler '$CC' not found."
+   exit 1
+fi
+
+if [ -z "`which $CXX`" ]; then
+   echo "CXX compiler '$CXX' not found."
+   exit 1
+fi
+
+
+cc_ver=`$CC --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
+cxx_ver=`$CXX --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
+
+echo "gcc version: $cc_ver"
+echo "g++ version: $cxx_ver"
+
+cc_major=`echo -ne $cc_ver | grep -Eo '[0-9]+' | head -1`
+cxx_major=`echo -ne $cxx_ver | grep -Eo '[0-9]+' | head -1`
+
+if [ $cc_major -lt 6 ]; then
+   echo "Your gcc compiler is too old. Version >= 6 is required."
+   exit 1
+fi
+
+if [ $cxx_major -lt 6 ]; then
+   echo "Your g++ compiler is too old. Version >= 6 is required."
+   exit 1
+fi
+
+
 CMAKE=../toolchain/cmake-3.7.0-Linux-x86_64/bin/cmake
 
 if [ -z "$RELEASE" ]; then
-   # unset, assuming OFF by default
    RELEASE=off
 fi
 
