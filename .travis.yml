@@ -9,7 +9,7 @@ matrix:
     - os: linux
       dist: trusty
       sudo: required
-      language: cpp
+      language: generic
       env: RELEASE=on
       addons:
         apt:
@@ -28,7 +28,7 @@ matrix:
     - os: linux
       dist: trusty
       sudo: required
-      language: cpp
+      language: generic
       env: RELEASE=off USE_GCOV=on
       addons:
         apt:
