@@ -2,10 +2,15 @@
 
 if [ -z "$CC" ]; then
 
+   echo "DEBUG: CC is not set"
    CC=gcc
 
    if [ -n "`which gcc-6`" ]; then
+      echo "DEBUG: found gcc-6, setting CC"
       CC=gcc-6
+   else
+      echo "DEBUG: gcc-6 not found, output of which: "
+      echo "`which gcc-6`"
    fi
 fi
 
