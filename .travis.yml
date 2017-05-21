@@ -45,7 +45,7 @@ matrix:
             - qemu
  
 before_install:
-  - ./build_toolchain
+  - ./build_toolchain --skip-install-pkgs
 
 install:
   - ./cmake_run

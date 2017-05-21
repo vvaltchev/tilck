@@ -22,11 +22,15 @@ function install_packages {
 
    pkgs_list="wget gcc g++ git nasm gcc-multilib g++-multilib make binutils binutils-multiarch mtools qemu"
 
-   if [ -z "$TRAVIS" ]; then
-      echo "Installing the necessary packages..."
-      run_command "sudo apt-get install $pkgs_list"
+   if [ "`lsb_release -si`" != "Ubuntu" ]; then
+      echo "*** WARNING: your distribution is not Ubuntu and the following apt install command MAY fail"
+      echo "*** WARNING: In case that happens, please install manually the following packages:"
+      echo "*** WARNING: $pgks_list"
+      echo "*** WARNING: and re-run this script with the option --skip-install-pkgs"
    fi
 
+   echo "Installing the necessary packages..."
+   run_command "sudo apt install $pkgs_list"
 }
 
 ###############################
@@ -171,7 +175,17 @@ if [ "$1" == "-s" ]; then
 fi
 
 
-install_packages
+
+if [ "$1" == "--skip-install-pkgs" ]; then
+   skip_install=true
+   echo "*** SKIPPING installation of packages"
+fi
+
+
+if [ -z "$skip_install" ]; then
+   install_packages
+fi
+
 build_cmake
 build_lcov
 build_dietlibc
