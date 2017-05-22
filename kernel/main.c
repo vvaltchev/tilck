@@ -103,9 +103,6 @@ void kmain()
    mount_memdisk();
    //test_memdisk();
 
-   disable_preemption();
-   enable_interrupts();
-
    // Initialize the keyboard driver.
    init_kb();
 

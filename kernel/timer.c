@@ -10,7 +10,7 @@
  */
 volatile u64 jiffies = 0;
 
-volatile u32 disable_preemption_count = 0;
+volatile u32 disable_preemption_count = 1;
 
 void disable_preemption() {
    disable_preemption_count++;

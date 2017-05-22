@@ -85,30 +85,18 @@ static ALWAYS_INLINE void enable_interrupts_forced()
 
 static ALWAYS_INLINE void wrmsr(u32 msr_id, u64 msr_value)
 {
-    asmVolatile( "wrmsr" : : "c" (msr_id), "A" (msr_value) );
+   asmVolatile( "wrmsr" : : "c" (msr_id), "A" (msr_value) );
 }
 
 static ALWAYS_INLINE u64 rdmsr(u32 msr_id)
 {
-    u64 msr_value;
-    asmVolatile( "rdmsr" : "=A" (msr_value) : "c" (msr_id) );
-    return msr_value;
+   u64 msr_value;
+   asmVolatile( "rdmsr" : "=A" (msr_value) : "c" (msr_id) );
+   return msr_value;
 }
 
-static ALWAYS_INLINE bool are_interrupts_enabled()
-{
-    uptr flags;
-    asmVolatile( "pushf\n\t"
-                 "pop %0"
-                 : "=g"(flags) );
 
-    bool res = flags & (1 << 9);
-
-    ASSERT((res && disable_interrupts_count == 0) ||
-           (!res && disable_interrupts_count > 0));
-
-    return res;
-}
+bool are_interrupts_enabled();
 
 
 static ALWAYS_INLINE void disable_interrupts()

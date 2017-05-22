@@ -140,7 +140,7 @@ NORETURN void panic(const char *fmt, ...)
    }
    printk("]\n\n");
 
-   //dump_stacktrace();
+   dump_stacktrace();
 
 #ifdef DEBUG_QEMU_EXIT_ON_PANIC
    debug_qemu_turn_off_machine();
