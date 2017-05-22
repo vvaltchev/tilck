@@ -54,6 +54,6 @@ install:
 
 script:
   - ./build/gtests
-  - ./generate_coverage_report # Does nothing unless USE_GCOV is set
+  - ./other_scripts/generate_coverage_report # Does nothing if not USE_GCOV.
   - ./system_tests/run_system_test
 

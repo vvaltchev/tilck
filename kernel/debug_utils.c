@@ -60,7 +60,7 @@ void dump_stacktrace()
       printk("frame[%i]: %p\n", i, frames[i]);
    }
 
-   printk("\n\n");
+   printk("*** END STACKTRACE ***\n\n");
 
    // task_info *ti = get_current_task();
    // c = stackwalk32(frames, 32, (void *) ti->state_regs.ebp, ti->pdir);
@@ -128,12 +128,17 @@ NORETURN void panic(const char *fmt, ...)
 
    printk("\n");
 
-   printk("Current interrupt: %i\n", get_curr_interrupt());
-   printk("Previous nested interrupts [count: %i]: ", nested_interrupts_count);
+   if (get_current_task()) {
+      printk("Current process: %i\n", get_current_task()->pid);
+   } else {
+      printk("Current process: NONE\n");
+   }
+
+   printk("Interrupts: [ ");
    for (int i = nested_interrupts_count - 1; i >= 0; i--) {
       printk("%i ", nested_interrupts[i]);
    }
-   printk("\n\n");
+   printk("]\n\n");
 
    dump_stacktrace();
 
