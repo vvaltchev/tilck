@@ -101,7 +101,13 @@ static ALWAYS_INLINE bool are_interrupts_enabled()
     asmVolatile( "pushf\n\t"
                  "pop %0"
                  : "=g"(flags) );
-    return flags & (1 << 9);
+
+    bool res = flags & (1 << 9);
+
+    ASSERT((res && disable_interrupts_count == 0) ||
+           (!res && disable_interrupts_count > 0));
+
+    return res;
 }
 
 

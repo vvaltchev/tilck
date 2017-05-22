@@ -48,15 +48,18 @@ void push_nested_interrupt(int int_num)
    nested_interrupts[nested_interrupts_count++] = int_num;
 }
 
+DEBUG_ONLY(extern volatile bool in_page_fault;)
 
 void generic_interrupt_handler(regs *r)
 {
-   // if (!is_irq(r->int_num))
-   //    printk("[kernel] int: %i, level: %i\n", r->int_num,
-   //                                            nested_interrupts_count);
-   // else
-   //    printk("[kernel] IRQ: %i, level: %i\n", r->int_num - 32,
-   //                                            nested_interrupts_count);
+   /*
+    * We know that interrupts have been disabled exactly once at this point,
+    * so, we're forcing disable_interrupts_count = 1.
+    */
+   disable_interrupts_count = 1;
+
+   // This ASSERT is pretty heavy to check, keeping commented.
+   // ASSERT(!are_interrupts_enabled());
 
    task_info *curr = get_current_task();
 
@@ -64,6 +67,11 @@ void generic_interrupt_handler(regs *r)
    ASSERT(!is_interrupt_racing_with_itself(r->int_num));
 
    if (is_irq(r->int_num)) {
+
+      if (in_page_fault) {
+         printk("IRQ #%i while in page fault!\n", r->int_num - 32);
+      }
+
       handle_irq(r);
       return;
    }

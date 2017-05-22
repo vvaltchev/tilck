@@ -205,7 +205,7 @@ void write_serial(char a) {
 
 //////////////////////////
 
-void term_write_char(char c)
+void term_write_char_unsafe(char c)
 {
    write_serial(c);
 
@@ -255,6 +255,13 @@ void term_write_char(char c)
    }
 
    term_movecur(terminal_row, terminal_column);
+}
+
+void term_write_char(char c)
+{
+   disable_interrupts();
+   term_write_char_unsafe(c);
+   enable_interrupts();
 }
 
 void term_write_string(const char *str)

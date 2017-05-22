@@ -89,7 +89,7 @@ NORETURN static ALWAYS_INLINE void kernel_context_switch(regs *r)
                                  r->eax,
 
                                  // The eflags register
-                                 r->eflags,
+                                 //r->eflags,
 
                                  // The useresp is repeated. See the assembly.
                                  r->useresp);

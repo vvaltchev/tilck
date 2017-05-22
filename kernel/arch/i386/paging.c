@@ -103,22 +103,10 @@ bool handle_potential_cow(u32 vaddr)
    return true;
 }
 
-extern volatile bool in_panic;
-volatile bool in_page_fault = false;
 
-void handle_page_fault(regs *r)
+void handle_page_fault_int(regs *r)
 {
    u32 vaddr;
-
-   ASSERT(!in_page_fault);
-   in_page_fault = true;
-
-   if (in_panic) {
-      goto good_end;
-   }
-
-   ASSERT(!is_preemption_enabled());
-
    asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
 
    bool us = (r->err_code & (1 << 2)) != 0;
@@ -126,7 +114,7 @@ void handle_page_fault(regs *r)
    bool p = (r->err_code & (1 << 0)) != 0;
 
    if (us && rw && p && handle_potential_cow(vaddr)) {
-      goto good_end;
+      return;
    }
 
    printk("*** PAGE FAULT in attempt to %s %p from %s%s\n*** EIP: %p\n",
@@ -137,14 +125,27 @@ void handle_page_fault(regs *r)
 
    // We are not really handling 'real' page-faults yet.
    NOT_REACHED();
+}
 
-good_end:
-   in_page_fault = false;
+extern volatile bool in_panic;
+DEBUG_ONLY(volatile bool in_page_fault = false);
+
+void handle_page_fault(regs *r)
+{
+   ASSERT(!in_page_fault);
+   DEBUG_ONLY(in_page_fault = true);
+   ASSERT(!is_preemption_enabled());
+
+   if (!in_panic) {
+      handle_page_fault_int(r);
+   }
+
+   DEBUG_ONLY(in_page_fault = false);
 }
 
 void handle_general_protection_fault(regs *r)
 {
-   disable_interrupts();
+   disable_interrupts_forced();
    printk("General protection fault. Error: %p\n", r->err_code);
    halt();
 }

@@ -166,11 +166,13 @@ asm_kernel_context_switch_x86:
    pop ecx
    pop eax
 
-   popf ; pop the eflags register (it will restore the interrupts as well)
+   ;popf ; pop the eflags register (it will restore the interrupts as well)
 
    ; Now we can finally pop the 2nd copy of the ESP and just do RET since
    ; the right EIP is already on the new stack.
    pop esp
+
+   sti
    ret
 
 

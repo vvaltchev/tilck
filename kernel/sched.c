@@ -8,7 +8,7 @@
 #define DEBUG_printk(...)
 
 
-//#define TIME_SLOT_JIFFIES (TIMER_HZ * 3)
+//#define TIME_SLOT_JIFFIES (TIMER_HZ * 1)
 #define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
 
 task_info *volatile current = NULL;
@@ -240,6 +240,12 @@ NORETURN void switch_to_task(task_info *ti)
 
    ASSERT(state->eflags & (1 << 9));
 
+   /*
+    * The interrupts will be enabled after the context switch even if they are
+    * disabled now, so only in this special context is OK to make that counter
+    * equal to 0, without enabling the interrupts.
+    */
+   disable_interrupts_count = 0;
 
    if (!current->running_in_kernel) {
 
