@@ -9,7 +9,8 @@
 
 
 //#define TIME_SLOT_JIFFIES (TIMER_HZ * 1)
-#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
+#define TIME_SLOT_JIFFIES (TIMER_HZ / 5)
+//#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
 
 task_info *volatile current = NULL;
 int current_max_pid = 0;
@@ -142,7 +143,7 @@ void task_remove_from_state_list(task_info *ti)
    }
 }
 
-void task_change_state(task_info *ti, int new_state)
+void task_change_state(task_info *ti, task_state_enum new_state)
 {
    disable_preemption();
    {

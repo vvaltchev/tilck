@@ -67,11 +67,6 @@ void generic_interrupt_handler(regs *r)
    ASSERT(!is_interrupt_racing_with_itself(r->int_num));
 
    if (is_irq(r->int_num)) {
-
-      if (in_page_fault) {
-         printk("IRQ #%i while in page fault!\n", r->int_num - 32);
-      }
-
       handle_irq(r);
       return;
    }
