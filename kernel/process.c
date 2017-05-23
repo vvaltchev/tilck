@@ -55,7 +55,10 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
 
       ASSERT(are_interrupts_enabled());
       validate_stack_pointer();
-      halt();
+
+      //halt();
+      kernel_yield();
+
       validate_stack_pointer();
    }
 

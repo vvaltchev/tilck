@@ -92,7 +92,8 @@ void save_current_task_state(regs *r)
       state->ss = 0x10;
 
       if (!is_kernel_thread(current)) {
-         DEBUG_printk("[kernel] PREEMPTING kernel code for user program!\n");
+         printk("[kernel] PREEMPTING kernel code for user program!\n");
+         validate_stack_pointer();
       }
    }
 }
@@ -191,7 +192,7 @@ NORETURN void switch_to_task(task_info *ti)
    ASSERT(ti != current);
 
 
-   DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
+   printk("[sched] Switching to pid: %i %s %s\n",
                 ti->pid,
                 is_kernel_thread(ti) ? "[KTHREAD]" : "[USER]",
                 ti->running_in_kernel ? "(kernel mode)" : "(usermode)");
@@ -255,9 +256,9 @@ NORETURN void switch_to_task(task_info *ti)
     */
    disable_interrupts_count = 0;
 
-   if (!ti->running_in_kernel) {
+   DEBUG_ONLY(validate_stack_pointer());
 
-      DEBUG_ONLY(validate_stack_pointer());
+   if (!ti->running_in_kernel) {
 
       bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
 
@@ -273,6 +274,7 @@ NORETURN void switch_to_task(task_info *ti)
          push_nested_interrupt(0x80);
       }
 
+      set_kernel_stack(ti->kernel_state_regs.useresp);
       current = ti;
       kernel_context_switch(state);
    }
