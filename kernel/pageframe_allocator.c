@@ -77,7 +77,7 @@ uptr paging_alloc_pageframe()
       idx = (idx + 1) % ELEMS_RESERVED_FOR_PAGING;
    }
 
-   ASSERT(found);
+   VERIFY(found);
 
    uptr ret;
 

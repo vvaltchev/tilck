@@ -95,8 +95,32 @@ static ALWAYS_INLINE u64 rdmsr(u32 msr_id)
    return msr_value;
 }
 
+extern volatile bool in_panic;
 
-bool are_interrupts_enabled();
+static inline bool are_interrupts_enabled()
+{
+   uptr flags;
+   asmVolatile("pushf\n\t"
+               "pop %0"
+               : "=g"(flags) );
+
+   bool interrupts_on = flags & (1 << 9);
+
+#ifdef DEBUG
+
+   if (interrupts_on != (disable_interrupts_count == 0)) {
+      if (!in_panic) {
+         panic("interrupts_on: %s\ndisable_interrupts_count: %i",
+               interrupts_on ? "TRUE" : "FALSE", disable_interrupts_count);
+      }
+   }
+
+#endif
+
+   return interrupts_on;
+}
+
+
 
 
 static ALWAYS_INLINE void disable_interrupts()

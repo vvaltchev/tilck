@@ -177,10 +177,18 @@ NORETURN void not_reached(const char *file, int line);
 
 #else
 
-#define ASSERT(x) (void)(x)
+#define ASSERT(x)
 #define DEBUG_ONLY(x)
 
 #endif
+
+/* VERIFY is like ASSERT, but is enabled on release builds as well */
+#define VERIFY(x)                                                    \
+   do {                                                              \
+      if (UNLIKELY(!(x))) {                                          \
+         assert_failed(#x , __FILE__, __LINE__);                     \
+      }                                                              \
+   } while (0)
 
 
 #define NOT_REACHED() not_reached(__FILE__, __LINE__)
