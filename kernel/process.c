@@ -40,7 +40,7 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
       return -1;
    }
 
-   validate_stack_pointer();
+   DEBUG_VALIDATE_STACK_PTR();
 
    /*
     * This is just a DEMO implementation of waitpid() having the goal
@@ -54,12 +54,9 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
       }
 
       ASSERT(are_interrupts_enabled());
-      validate_stack_pointer();
-
       halt();
-      //kernel_yield();
 
-      validate_stack_pointer();
+      DEBUG_VALIDATE_STACK_PTR();
    }
 
    remove_task((task_info *)waited_task);

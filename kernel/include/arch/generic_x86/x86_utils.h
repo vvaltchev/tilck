@@ -181,7 +181,12 @@ static ALWAYS_INLINE uptr get_eflags()
 
 void validate_stack_pointer_int(const char *file, int line);
 
-#define validate_stack_pointer() validate_stack_pointer_int(__FILE__, __LINE__)
+#ifdef DEBUG
+#  define DEBUG_VALIDATE_STACK_PTR() validate_stack_pointer_int(__FILE__, \
+                                                                __LINE__)
+#else
+#  define DEBUG_VALIDATE_STACK_PTR()
+#endif
 
 // Turn off the machine using a debug qemu-only mechnism
 void debug_qemu_turn_off_machine();

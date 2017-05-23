@@ -9,8 +9,8 @@
 
 
 //#define TIME_SLOT_JIFFIES (TIMER_HZ * 1)
-//#define TIME_SLOT_JIFFIES (TIMER_HZ / 5)
-#define TIME_SLOT_JIFFIES (1)
+#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
+//#define TIME_SLOT_JIFFIES (1)
 
 task_info *volatile current = NULL;
 int current_max_pid = 0;
@@ -94,7 +94,7 @@ void save_current_task_state(regs *r)
 
       if (!is_kernel_thread(current)) {
          DEBUG_printk("[kernel] PREEMPTING kernel code for user program!\n");
-         validate_stack_pointer();
+         DEBUG_VALIDATE_STACK_PTR();
       }
    }
 }
@@ -253,7 +253,7 @@ NORETURN void switch_to_task(task_info *ti)
     */
    disable_interrupts_count = 0;
 
-   validate_stack_pointer();
+   DEBUG_VALIDATE_STACK_PTR();
 
    if (!ti->running_in_kernel) {
 
