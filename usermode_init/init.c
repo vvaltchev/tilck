@@ -13,7 +13,7 @@ typedef unsigned char bool;
 
 int bss_variable[32];
 
-#define ITERS (100 * 1024 * 1024)
+#define ITERS (1000 * 1024 * 1024)
 
 int main(int argc, char **argv, char **env)
 {
@@ -84,7 +84,7 @@ int main(int argc, char **argv, char **env)
          }
 
          if (iters_hits_count == 2 && inchild) {
-            printf("child: 2 billion, exit!\n");
+            printf("child: 2 iter hits, exit!\n");
             exit(123);
          }
       }

@@ -6,7 +6,7 @@
 /* the kernel starts with interrupts disabled */
 volatile int disable_interrupts_count = 1;
 
-void validate_stack_pointer()
+void validate_stack_pointer_int(const char *file, int line)
 {
    if (!current) {
       return;
@@ -23,6 +23,6 @@ void validate_stack_pointer()
       printk("[validate stack] current->kernel_stack: %p\n",
              current->kernel_stack);
 
-      NOT_REACHED();
+      panic("Invalid kernel stack pointer.\nFile %s at line %i\n", file, line);
    }
 }

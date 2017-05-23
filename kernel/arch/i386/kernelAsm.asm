@@ -166,13 +166,18 @@ asm_kernel_context_switch_x86:
    pop ecx
    pop eax
 
-   popf ; pop the eflags register (it will restore the interrupts as well)
+   popf ; pop the eflags register
 
    ; Now we can finally pop the 2nd copy of the ESP and just do RET since
    ; the right EIP is already on the new stack.
    pop esp
 
-   ; sti ; This is not needed if we pop the eflags register above.
+   sti ; This is mandatory here, after setting ESP since the eflags register
+       ; for kernel context switches needs to have interrupts disabled.
+       ; That's in order to allow the above 'pop esp' to happen, otherwise,
+       ; we won't be able to ASSERT that the ESP's page is the same as
+       ; current->kernel_stack.
+
    ret
 
 
