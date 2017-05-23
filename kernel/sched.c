@@ -8,8 +8,13 @@
 #define DEBUG_printk(...)
 
 
+// low debug value
 //#define TIME_SLOT_JIFFIES (TIMER_HZ * 1)
+
+// correct value (20 ms)
 //#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
+
+// high debug value
 #define TIME_SLOT_JIFFIES (1)
 
 task_info *volatile current = NULL;

@@ -1,4 +1,16 @@
 
+
+/*
+ * This is a DEMO/DEBUG version of the KB driver.
+ * Until the concept of character devices is implemented in exOS, that's
+ * good enough for basic experiments.
+ *
+ * Useful info:
+ * http://wiki.osdev.org/PS/2_Keyboard
+ * http://www.brokenthorn.com/Resources/OSDev19.html
+ */
+
+
 #include <common_defs.h>
 #include <string_util.h>
 #include <term.h>
@@ -16,6 +28,9 @@
                              // (command buffer is empty) (bit 1)
 
 #define KBRD_RESET 0xFE /* reset CPU command */
+
+#define KB_ACK 0xFA
+#define KB_RESEND 0xFE
 
 #define BIT(n) (1 << (n))
 #define CHECK_FLAG(flags, n) ((flags) & BIT(n))
@@ -173,12 +188,6 @@ void caps_lock_switch(bool val)
    kb_led_set(numLock << 1 | val << 2);
 }
 
-void init_kb()
-{
-   num_lock_switch(numLock);
-   caps_lock_switch(capsLock);
-}
-
 void dummy_tasklet(int arg1)
 {
    //printk(" ### Running dummy_tasklet, key = '%c' ###\n", arg1);
@@ -332,4 +341,33 @@ void reboot() {
    while (true) {
       halt();
    }
+}
+
+
+/*
+ * From http://wiki.osdev.org/PS/2_Keyboard
+ *
+ * BITS [0,4]: Repeat rate (00000b = 30 Hz, ..., 11111b = 2 Hz)
+ * BITS [5,6]: Delay before keys repeat (00b = 250 ms, ..., 11b = 1000 ms)
+ * BIT [7]: Must be zero
+ * BIT [8]: I'm assuming is ignored.
+ *
+ */
+
+void kb_set_typematic_byte(u8 val)
+{
+   kbd_wait();
+   outb(KB_DATA_PORT, 0xF3);
+   kbd_wait();
+   outb(KB_DATA_PORT, 0);
+   kbd_wait();
+}
+
+void init_kb()
+{
+   num_lock_switch(numLock);
+   caps_lock_switch(capsLock);
+   kb_set_typematic_byte(0);
+
+   printk("[kernel] keyboard initialized.\n");
 }

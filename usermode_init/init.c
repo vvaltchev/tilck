@@ -13,7 +13,7 @@ typedef unsigned char bool;
 
 int bss_variable[32];
 
-#define ITERS (500 * 1024 * 1024)
+#define ITERS (250 * 1024 * 1024)
 
 int main(int argc, char **argv, char **env)
 {

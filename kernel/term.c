@@ -1,4 +1,13 @@
 
+/*
+ * This is a DEMO/DEBUG version of the tty driver.
+ * Until the concept of character devices is implemented in exOS, that's
+ * good enough for basic experiments.
+ *
+ * Useful info:
+ * http://www.linusakesson.net/programming/tty/index.php
+ */
+
 #include <term.h>
 #include <string_util.h>
 #include <paging.h>

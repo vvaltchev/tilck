@@ -75,6 +75,8 @@ void simple_test_kthread(void *);
 void kmutex_test();
 void kcond_test();
 
+extern task_info *idle_task;
+
 void kmain()
 {
    term_init();
@@ -103,7 +105,6 @@ void kmain()
    mount_memdisk();
    //test_memdisk();
 
-   // Initialize the keyboard driver.
    init_kb();
 
    // kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
@@ -113,13 +114,9 @@ void kmain()
    // task_info *t2 = kthread_create(&sleeping_kthread, (void *) 20);
    // kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
 
-   usermode_init_task = load_usermode_init();
-   switch_to_task_outside_interrupt_context(usermode_init_task);
+   load_usermode_init();
 
-   // (void)t1;
-   // (void)t2;
-
-   // switch_to_task_outside_interrupt_context(t1);
+   switch_to_task_outside_interrupt_context(idle_task);
 
    // We should never get here!
    NOT_REACHED();
