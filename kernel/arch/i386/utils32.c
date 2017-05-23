@@ -50,11 +50,3 @@ void set_timer_freq(int hz)
    outb(0x40, divisor >> 8);     /* Set high byte of divisor */
 }
 
-
-
-void kernel_yield_post(regs *ctx)
-{
-   disable_preemption();
-   save_current_task_state(ctx);
-   schedule_outside_interrupt_context();
-}

@@ -47,3 +47,4 @@ void set_kernel_stack() { }
 void set_page_directory() { }
 void irq_clear_mask() { }
 void kthread_create() { }
+void debug_qemu_turn_off_machine() { }

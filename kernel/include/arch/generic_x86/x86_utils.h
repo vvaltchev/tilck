@@ -85,25 +85,40 @@ static ALWAYS_INLINE void enable_interrupts_forced()
 
 static ALWAYS_INLINE void wrmsr(u32 msr_id, u64 msr_value)
 {
-    asmVolatile( "wrmsr" : : "c" (msr_id), "A" (msr_value) );
+   asmVolatile( "wrmsr" : : "c" (msr_id), "A" (msr_value) );
 }
 
 static ALWAYS_INLINE u64 rdmsr(u32 msr_id)
 {
-    u64 msr_value;
-    asmVolatile( "rdmsr" : "=A" (msr_value) : "c" (msr_id) );
-    return msr_value;
+   u64 msr_value;
+   asmVolatile( "rdmsr" : "=A" (msr_value) : "c" (msr_id) );
+   return msr_value;
 }
 
-static ALWAYS_INLINE bool are_interrupts_enabled()
+extern volatile bool in_panic;
+
+static inline bool are_interrupts_enabled()
 {
-    uptr flags;
-    asmVolatile( "pushf\n\t"
-                 "pop %0"
-                 : "=g"(flags) );
-    return flags & (1 << 9);
-}
+   uptr flags;
+   asmVolatile("pushf\n\t"
+               "pop %0"
+               : "=g"(flags) );
 
+   bool interrupts_on = flags & (1 << 9);
+
+#ifdef DEBUG
+
+   if (interrupts_on != (disable_interrupts_count == 0)) {
+      if (!in_panic) {
+         panic("interrupts_on: %s\ndisable_interrupts_count: %i",
+               interrupts_on ? "TRUE" : "FALSE", disable_interrupts_count);
+      }
+   }
+
+#endif
+
+   return interrupts_on;
+}
 
 static ALWAYS_INLINE void disable_interrupts()
 {
@@ -164,6 +179,14 @@ static ALWAYS_INLINE uptr get_eflags()
 
 #endif
 
+void validate_stack_pointer_int(const char *file, int line);
+
+#ifdef DEBUG
+#  define DEBUG_VALIDATE_STACK_PTR() validate_stack_pointer_int(__FILE__, \
+                                                                __LINE__)
+#else
+#  define DEBUG_VALIDATE_STACK_PTR()
+#endif
 
 // Turn off the machine using a debug qemu-only mechnism
 void debug_qemu_turn_off_machine();
