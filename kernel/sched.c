@@ -189,7 +189,6 @@ void remove_task(task_info *ti)
    enable_preemption();
 }
 
-//volatile bool first_time_switch_to_2_kernel = false;
 
 NORETURN void switch_to_task(task_info *ti)
 {
@@ -202,16 +201,6 @@ NORETURN void switch_to_task(task_info *ti)
                 ti->pid,
                 is_kernel_thread(ti) ? "[KTHREAD]" : "[USER]",
                 ti->running_in_kernel ? "(kernel mode)" : "(usermode)");
-
-   // XXX: temp!
-   //for (int i = 0; i < 100*1024*1024; i++) { } // waste cycles
-
-   // XXX: temp
-   // if (!first_time_switch_to_2_kernel && ti->pid == 2 && ti->running_in_kernel) {
-   //    first_time_switch_to_2_kernel = true;
-   // }
-
-
 
    task_change_state(ti, TASK_STATE_RUNNING);
    ti->ticks = 0;
