@@ -6,7 +6,9 @@ extern irq_handler
 extern gdt_pointer
 extern generic_interrupt_handler
 extern kernel_yield_post
-
+extern disable_preemption
+extern save_current_task_state
+extern schedule_outside_interrupt_context
 
 global gdt_load
 global idt_load
@@ -166,11 +168,18 @@ asm_kernel_context_switch_x86:
    pop ecx
    pop eax
 
-   popf ; pop the eflags register (it will restore the interrupts as well)
+   popf ; pop the eflags register
 
    ; Now we can finally pop the 2nd copy of the ESP and just do RET since
    ; the right EIP is already on the new stack.
    pop esp
+
+   sti ; This is mandatory here, after setting ESP since the eflags register
+       ; for kernel context switches needs to have interrupts disabled.
+       ; That's in order to allow the above 'pop esp' to happen, otherwise,
+       ; we won't be able to ASSERT that the ESP's page is the same as
+       ; current->kernel_stack.
+
    ret
 
 
@@ -208,6 +217,9 @@ asm_int_handler:
 
 kernel_yield:
 
+   call disable_preemption
+   cli
+
    pop eax   ; pop eip (return addr)
    push eax  ; re-push it back to the stack, as if the POP above never happened
 
@@ -224,8 +236,11 @@ kernel_yield:
 
    mov eax, esp
    push eax
-   mov eax, kernel_yield_post
+   mov eax, save_current_task_state
    call eax
+
+   sti
+   call schedule_outside_interrupt_context
 
 
 ; Service Routines (ISRs)

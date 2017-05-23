@@ -27,14 +27,20 @@ sptr sys_getpid()
 
 sptr sys_waitpid(int pid, int *wstatus, int options)
 {
+   ASSERT(are_interrupts_enabled());
+
    printk("[kernel] Pid %i will WAIT until pid %i dies\n",
           current->pid, pid);
+
+   ASSERT(are_interrupts_enabled());
 
    volatile task_info *waited_task = (volatile task_info *)get_task(pid);
 
    if (!waited_task) {
       return -1;
    }
+
+   DEBUG_VALIDATE_STACK_PTR();
 
    /*
     * This is just a DEMO implementation of waitpid() having the goal
@@ -47,7 +53,10 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
          break;
       }
 
+      ASSERT(are_interrupts_enabled());
       halt();
+
+      DEBUG_VALIDATE_STACK_PTR();
    }
 
    remove_task((task_info *)waited_task);

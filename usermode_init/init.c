@@ -13,6 +13,8 @@ typedef unsigned char bool;
 
 int bss_variable[32];
 
+#define ITERS (250 * 1024 * 1024)
+
 int main(int argc, char **argv, char **env)
 {
    printf("### Hello from init! MY PID IS %i\n", getpid());
@@ -44,23 +46,23 @@ int main(int argc, char **argv, char **env)
    printf("Running infinite loop..\n");
 
    unsigned n = 1;
-   int billions = 0;
+   int iters_hits_count = 0;
    bool inchild = false;
-   bool exit_on_next_billion = false;
+   bool exit_on_next_iters_hit = false;
 
    while (true) {
 
-      if (!(n % (1024 * 1024 * 1024))) {
+      if (!(n % ITERS)) {
 
-         printf("[PID: %i] 1 billion iters\n", getpid());
+         printf("[PID: %i] iters hit!\n", getpid());
 
-         if (exit_on_next_billion) {
+         if (exit_on_next_iters_hit) {
             return 0;
          }
 
-         billions++;
+         iters_hits_count++;
 
-         if (billions == 1) {
+         if (iters_hits_count == 1) {
 
             printf("forking..\n");
 
@@ -76,13 +78,13 @@ int main(int argc, char **argv, char **env)
                printf("[parent] waiting the child to exit...\n");
                int p = waitpid(pid, NULL, 0);
                printf("[parent] child (pid: %i) exited!\n", p);
-               exit_on_next_billion = true;
+               exit_on_next_iters_hit = true;
             }
 
          }
 
-         if (billions == 2 && inchild) {
-            printf("child: 2 billion, exit!\n");
+         if (iters_hits_count == 2 && inchild) {
+            printf("child: 2 iter hits, exit!\n");
             exit(123);
          }
       }

@@ -8,10 +8,12 @@
 // This is the biggest usermode addr + 1
 #define OFFLIMIT_USERMODE_ADDR 0xC0000000UL
 
-#define TASK_STATE_RUNNABLE 0
-#define TASK_STATE_RUNNING 1
-#define TASK_STATE_SLEEPING 2
-#define TASK_STATE_ZOMBIE 3
+typedef enum {
+   TASK_STATE_RUNNABLE = 0,
+   TASK_STATE_RUNNING = 1,
+   TASK_STATE_SLEEPING = 2,
+   TASK_STATE_ZOMBIE = 3
+} task_state_enum;
 
 struct task_info;
 typedef struct task_info task_info;
@@ -54,7 +56,7 @@ void remove_task(task_info *ti);
 task_info *get_current_task();
 void initialize_scheduler(void);
 
-void task_change_state(task_info *ti, int new_state);
+void task_change_state(task_info *ti, task_state_enum new_state);
 
 typedef void (*kthread_func_ptr)();
 

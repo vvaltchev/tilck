@@ -15,7 +15,7 @@ struct task_info {
    list_head sleeping_list;
 
    int pid; /* global user/kernel thread identifier */
-   int state;
+   task_state_enum state;
    int exit_code;
 
    u64 ticks;

@@ -10,7 +10,7 @@
  */
 volatile u64 jiffies = 0;
 
-volatile u32 disable_preemption_count = 0;
+volatile u32 disable_preemption_count = 1;
 
 void disable_preemption() {
    disable_preemption_count++;
@@ -50,7 +50,7 @@ static void register_curr_task_for_timer_sleep(u64 ticks)
    NOT_REACHED(); // TODO: fallback to a linked list here
 }
 
-static void tick_all_timers(void *context)
+static task_info *tick_all_timers(void *context)
 {
    ASSERT(!is_preemption_enabled());
    task_info *last_ready_task = NULL;
@@ -72,13 +72,7 @@ static void tick_all_timers(void *context)
       }
    }
 
-   if (last_ready_task) {
-      ASSERT(current->state == TASK_STATE_RUNNING);
-      task_change_state(current, TASK_STATE_RUNNABLE);
-      disable_preemption_count = 1;
-      save_current_task_state(context);
-      switch_to_task(last_ready_task);
-   }
+   return last_ready_task;
 }
 
 void kernel_sleep(u64 ticks)
@@ -90,12 +84,14 @@ void kernel_sleep(u64 ticks)
    kernel_yield();
 }
 
+#include <string_util.h>
 
 void timer_handler(void *context)
 {
    jiffies++;
 
    account_ticks();
+   task_info *last_ready_task = tick_all_timers(context);
 
    /*
     * Here we have to check that disabled_preemption_count is > 1, not > 0
@@ -108,10 +104,17 @@ void timer_handler(void *context)
       return;
    }
 
-   tick_all_timers(context);
+   ASSERT(disable_preemption_count == 1);
+
+   if (last_ready_task) {
+      ASSERT(current->state == TASK_STATE_RUNNING);
+      task_change_state(current, TASK_STATE_RUNNABLE);
+      disable_preemption_count = 1;
+      save_current_task_state(context);
+      switch_to_task(last_ready_task);
+   }
 
    if (need_reschedule()) {
-      disable_preemption_count = 1;
       save_current_task_state(context);
       schedule();
    }

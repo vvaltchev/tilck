@@ -12,8 +12,8 @@
 
 #define PAGE_SHIFT 12
 #define PAGE_SIZE ((uptr)1 << PAGE_SHIFT)
-#define PAGE_MASK (~(PAGE_SIZE - 1))
 #define OFFSET_IN_PAGE_MASK (PAGE_SIZE - 1)
+#define PAGE_MASK (~OFFSET_IN_PAGE_MASK)
 
 #ifdef __i386__
 #define PAGE_DIR_SIZE (2 * PAGE_SIZE + 4)
