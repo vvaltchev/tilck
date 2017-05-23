@@ -61,7 +61,6 @@ void set_current_task_in_kernel()
 void set_current_task_in_user_mode()
 {
    ASSERT(!is_preemption_enabled());
-
    current->running_in_kernel = 0;
 
    task_info_reset_kernel_stack(current);
@@ -183,19 +182,27 @@ void remove_task(task_info *ti)
    enable_preemption();
 }
 
+volatile bool first_time_switch_to_3 = false;
+
 NORETURN void switch_to_task(task_info *ti)
 {
    ASSERT(!current || current->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
    ASSERT(ti != current);
 
-   if (ti != current) {
-      DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
-             ti->pid,
-             is_kernel_thread(ti) ? "[KTHREAD]" : "[USER]",
-             ti->running_in_kernel ? "(kernel mode)" : "(usermode)");
+
+   DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
+                ti->pid,
+                is_kernel_thread(ti) ? "[KTHREAD]" : "[USER]",
+                ti->running_in_kernel ? "(kernel mode)" : "(usermode)");
+
+   // XXX: temp
+   if (ti->pid == 3 && !first_time_switch_to_3) {
+      first_time_switch_to_3 = true;
    }
 
+   // XXX: temp!
+   for (int i = 0; i < 100*1024*1024; i++) { } // waste cycles
 
    task_change_state(ti, TASK_STATE_RUNNING);
    ti->ticks = 0;
@@ -239,6 +246,8 @@ NORETURN void switch_to_task(task_info *ti)
 
    ASSERT(state->eflags & (1 << 9));
 
+   ASSERT(!are_interrupts_enabled());
+
    /*
     * The interrupts will be enabled after the context switch even if they are
     * disabled now, so only in this special context is OK to make that counter
@@ -247,6 +256,8 @@ NORETURN void switch_to_task(task_info *ti)
    disable_interrupts_count = 0;
 
    if (!ti->running_in_kernel) {
+
+      DEBUG_ONLY(validate_stack_pointer());
 
       bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
 

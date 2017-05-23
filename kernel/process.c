@@ -40,6 +40,8 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
       return -1;
    }
 
+   validate_stack_pointer();
+
    /*
     * This is just a DEMO implementation of waitpid() having the goal
     * to test the preemption of kernel code running for user applications.
@@ -52,7 +54,9 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
       }
 
       ASSERT(are_interrupts_enabled());
+      validate_stack_pointer();
       halt();
+      validate_stack_pointer();
    }
 
    remove_task((task_info *)waited_task);

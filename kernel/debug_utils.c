@@ -119,7 +119,7 @@ NORETURN void panic(const char *fmt, ...)
 
    disable_interrupts_forced();
 
-   printk("\n\n************** KERNEL PANIC **************\n");
+   printk("\n************** KERNEL PANIC **************\n");
 
    va_list args;
    va_start(args, fmt);
@@ -138,9 +138,9 @@ NORETURN void panic(const char *fmt, ...)
    for (int i = nested_interrupts_count - 1; i >= 0; i--) {
       printk("%i ", nested_interrupts[i]);
    }
-   printk("]\n\n");
+   printk("]\n");
 
-   //dump_stacktrace();
+   dump_stacktrace();
 
 #ifdef DEBUG_QEMU_EXIT_ON_PANIC
    debug_qemu_turn_off_machine();
@@ -161,5 +161,5 @@ NORETURN void assert_failed(const char *expr, const char *file, int line)
 
 NORETURN void not_reached(const char *file, int line)
 {
-   panic("\nNOT_REACHED statement in file '%s' at line %i\n", file, line);
+   panic("\nNOT_REACHED in file '%s' at line %i\n", file, line);
 }
