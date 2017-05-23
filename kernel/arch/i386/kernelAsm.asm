@@ -6,7 +6,9 @@ extern irq_handler
 extern gdt_pointer
 extern generic_interrupt_handler
 extern kernel_yield_post
-
+extern disable_preemption
+extern save_current_task_state
+extern schedule_outside_interrupt_context
 
 global gdt_load
 global idt_load
@@ -215,6 +217,9 @@ asm_int_handler:
 
 kernel_yield:
 
+   call disable_preemption
+   cli
+
    pop eax   ; pop eip (return addr)
    push eax  ; re-push it back to the stack, as if the POP above never happened
 
@@ -231,8 +236,11 @@ kernel_yield:
 
    mov eax, esp
    push eax
-   mov eax, kernel_yield_post
+   mov eax, save_current_task_state
    call eax
+
+   sti
+   call schedule_outside_interrupt_context
 
 
 ; Service Routines (ISRs)

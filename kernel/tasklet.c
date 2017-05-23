@@ -36,6 +36,7 @@ void initialize_tasklets()
 bool add_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
 {
    disable_interrupts();
+   ASSERT(all_tasklets != NULL);
 
    if (slots_used >= MAX_TASKLETS) {
       enable_interrupts();
@@ -70,8 +71,8 @@ bool add_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
 bool run_one_tasklet(void)
 {
    tasklet t;
-
    disable_interrupts();
+   ASSERT(all_tasklets != NULL);
 
    if (slots_used == 0) {
       enable_interrupts();

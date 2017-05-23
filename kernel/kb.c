@@ -181,7 +181,8 @@ void init_kb()
 
 void dummy_tasklet(int arg1)
 {
-   printk(" ### Running dummy_tasklet, key = '%c' ###\n", arg1);
+   //printk(" ### Running dummy_tasklet, key = '%c' ###\n", arg1);
+   term_write_char(arg1);
 }
 
 void handle_key_pressed(u8 scancode)
@@ -223,7 +224,7 @@ void handle_key_pressed(u8 scancode)
 
       if (c == '!' || c == '@') {
 
-         printk("you pressed char '%c' creating tasklet\n", c);
+         //printk("you pressed char '%c' creating tasklet\n", c);
          DEBUG_ONLY(bool success =) add_tasklet1(&dummy_tasklet, c);
          ASSERT(success);
 
