@@ -180,7 +180,7 @@ void evenually_allocate_page_for_node(int node)
 
    if (!allocation_for_metadata_nodes[index]) {
 
-      bool success = kbasic_virtual_alloc(pagesAddr, 8);
+      DEBUG_ONLY(bool success =) kbasic_virtual_alloc(pagesAddr, 8);
       ASSERT(success);
 
       for (unsigned i = 0; i < 8 * PAGE_SIZE/sizeof(block_node); i++) {
@@ -219,7 +219,7 @@ static void actual_allocate_node(size_t node_size, int node, uptr vaddr)
 
          DEBUG_printk("Allocating block of pages..\n");
 
-         bool success =
+         DEBUG_ONLY(bool success =)
             kbasic_virtual_alloc(alloc_block_vaddr,
                                  ALLOC_BLOCK_SIZE / PAGE_SIZE);
          ASSERT(success);
@@ -469,7 +469,8 @@ void kfree(void *ptr, size_t size)
       ASSERT(md->nodes[alloc_block_node].allocated);
 
       DEBUG_printk("---> FREEING the ALLOC BLOCK!\n");
-      bool success =
+
+      DEBUG_ONLY(bool success =)
          kbasic_virtual_free(alloc_block_vaddr, ALLOC_BLOCK_SIZE / PAGE_SIZE);
       ASSERT(success);
 

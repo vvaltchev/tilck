@@ -8,8 +8,14 @@
 #define DEBUG_printk(...)
 
 
-//#define TIME_SLOT_JIFFIES (TIMER_HZ * 3)
-#define TIME_SLOT_JIFFIES (TIMER_HZ / 5)
+// low debug value
+//#define TIME_SLOT_JIFFIES (TIMER_HZ * 1)
+
+// correct value (20 ms)
+//#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
+
+// high debug value
+#define TIME_SLOT_JIFFIES (1)
 
 task_info *volatile current = NULL;
 int current_max_pid = 0;
@@ -18,8 +24,8 @@ int current_max_pid = 0;
 list_head tasks_list = LIST_HEAD_INIT(tasks_list);
 list_head runnable_tasks_list = LIST_HEAD_INIT(runnable_tasks_list);
 list_head sleeping_tasks_list = LIST_HEAD_INIT(sleeping_tasks_list);
+volatile int runnable_tasks_count = 0;
 
-int runnable_tasks_count = 0;
 
 task_info *idle_task = NULL;
 volatile u64 idle_ticks = 0;
@@ -27,8 +33,9 @@ volatile u64 idle_ticks = 0;
 void idle_task_kthread()
 {
    while (true) {
-      halt();
+
       idle_ticks++;
+      halt();
 
       if (!(idle_ticks % TIMER_HZ)) {
          DEBUG_printk("[idle task] ticks: %llu\n", idle_ticks);
@@ -60,7 +67,6 @@ void set_current_task_in_kernel()
 void set_current_task_in_user_mode()
 {
    ASSERT(!is_preemption_enabled());
-
    current->running_in_kernel = 0;
 
    task_info_reset_kernel_stack(current);
@@ -93,6 +99,7 @@ void save_current_task_state(regs *r)
 
       if (!is_kernel_thread(current)) {
          DEBUG_printk("[kernel] PREEMPTING kernel code for user program!\n");
+         DEBUG_VALIDATE_STACK_PTR();
       }
    }
 }
@@ -142,7 +149,7 @@ void task_remove_from_state_list(task_info *ti)
    }
 }
 
-void task_change_state(task_info *ti, int new_state)
+void task_change_state(task_info *ti, task_state_enum new_state)
 {
    disable_preemption();
    {
@@ -182,19 +189,18 @@ void remove_task(task_info *ti)
    enable_preemption();
 }
 
+
 NORETURN void switch_to_task(task_info *ti)
 {
    ASSERT(!current || current->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
    ASSERT(ti != current);
 
-   if (ti != current) {
-      DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
-             ti->pid,
-             is_kernel_thread(ti) ? "[KTHREAD]" : "[USER]",
-             ti->running_in_kernel ? "(kernel mode)" : "(usermode)");
-   }
 
+   DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
+                ti->pid,
+                is_kernel_thread(ti) ? "[KTHREAD]" : "[USER]",
+                ti->running_in_kernel ? "(kernel mode)" : "(usermode)");
 
    task_change_state(ti, TASK_STATE_RUNNING);
    ti->ticks = 0;
@@ -227,35 +233,56 @@ NORETURN void switch_to_task(task_info *ti)
    enable_preemption();
    ASSERT(is_preemption_enabled());
 
-   current = ti;
+   regs *state = ti->running_in_kernel
+                    ? &ti->kernel_state_regs
+                    : &ti->state_regs;
 
-   regs *state = current->running_in_kernel
-                    ? &current->kernel_state_regs
-                    : &current->state_regs;
+
+   ASSERT(!are_interrupts_enabled());
 
    /*
-    * ASSERT that the 9th bit in task's eflags is 1, which means that on
-    * IRET the CPU will enable the interrupts.
+    * The interrupts will be enabled after the context switch even if they are
+    * disabled now, so only in this special context is OK to make that counter
+    * equal to 0, without enabling the interrupts.
     */
+   disable_interrupts_count = 0;
 
-   ASSERT(state->eflags & (1 << 9));
+   DEBUG_VALIDATE_STACK_PTR();
 
+   if (!ti->running_in_kernel) {
 
-   if (!current->running_in_kernel) {
+      bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
 
-      bzero(current->kernel_stack, KTHREAD_STACK_SIZE);
+      task_info_reset_kernel_stack(ti);
+      set_kernel_stack(ti->kernel_state_regs.useresp);
 
-      task_info_reset_kernel_stack(current);
-      set_kernel_stack(current->kernel_state_regs.useresp);
+      /*
+       * ASSERT that the 9th bit in task's eflags is 1, which means that on
+       * IRET the CPU will enable the interrupts.
+       */
 
+      ASSERT(state->eflags & (1 << 9));
+
+      current = ti;
       context_switch(state);
 
    } else {
 
-      if (!is_kernel_thread(current)) {
+      if (!is_kernel_thread(ti)) {
          push_nested_interrupt(0x80);
       }
 
+      /*
+       * Forcibily disable interrupts: that because we don't want them to be
+       * automatically enabled when asm_kernel_context_switch_x86 runs POPF.
+       * And that's because asm_kernel_context_switch_x86 has to POP ESP before
+       * finally enabling them. See the comment in asm_kernel_context_switch_x86
+       * for more about this.
+       */
+      state->eflags &= ~ (1 << 9);
+
+      set_kernel_stack(ti->kernel_state_regs.useresp);
+      current = ti;
       kernel_context_switch(state);
    }
 }
@@ -280,11 +307,6 @@ bool need_reschedule()
       // The kernel is still initializing and we cannot call schedule() yet.
       return false;
    }
-
-   // This forces the scheduler to run at each tick, when idle_task is running.
-   // if (current == idle_task) {
-   //    return true;
-   // }
 
    if (current->ticks < TIME_SLOT_JIFFIES &&
        current->state == TASK_STATE_RUNNING) {

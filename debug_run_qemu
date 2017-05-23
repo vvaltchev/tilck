@@ -1,2 +1,2 @@
 #!/bin/sh
-qemu-system-i386 -s -S -m 256 -usb -usbdevice disk:format=raw:./build/exos.img
+qemu-system-i386 -s -S -m 256 -usb -usbdevice disk:format=raw:./build/exos.img $@
