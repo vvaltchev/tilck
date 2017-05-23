@@ -90,7 +90,7 @@ void kmain()
    init_paging();
 
    initialize_scheduler();
-   initialize_tasklets();
+   //initialize_tasklets();
 
    set_timer_freq(TIMER_HZ);
 

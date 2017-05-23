@@ -9,8 +9,8 @@
 
 
 //#define TIME_SLOT_JIFFIES (TIMER_HZ * 1)
-#define TIME_SLOT_JIFFIES (TIMER_HZ / 5)
-//#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
+//#define TIME_SLOT_JIFFIES (TIMER_HZ / 5)
+#define TIME_SLOT_JIFFIES (TIMER_HZ / 250)
 
 task_info *volatile current = NULL;
 int current_max_pid = 0;
@@ -19,8 +19,8 @@ int current_max_pid = 0;
 list_head tasks_list = LIST_HEAD_INIT(tasks_list);
 list_head runnable_tasks_list = LIST_HEAD_INIT(runnable_tasks_list);
 list_head sleeping_tasks_list = LIST_HEAD_INIT(sleeping_tasks_list);
+volatile int runnable_tasks_count = 0;
 
-int runnable_tasks_count = 0;
 
 task_info *idle_task = NULL;
 volatile u64 idle_ticks = 0;
@@ -228,11 +228,9 @@ NORETURN void switch_to_task(task_info *ti)
    enable_preemption();
    ASSERT(is_preemption_enabled());
 
-   current = ti;
-
-   regs *state = current->running_in_kernel
-                    ? &current->kernel_state_regs
-                    : &current->state_regs;
+   regs *state = ti->running_in_kernel
+                    ? &ti->kernel_state_regs
+                    : &ti->state_regs;
 
    /*
     * ASSERT that the 9th bit in task's eflags is 1, which means that on
@@ -248,21 +246,23 @@ NORETURN void switch_to_task(task_info *ti)
     */
    disable_interrupts_count = 0;
 
-   if (!current->running_in_kernel) {
+   if (!ti->running_in_kernel) {
 
-      bzero(current->kernel_stack, KTHREAD_STACK_SIZE);
+      bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
 
-      task_info_reset_kernel_stack(current);
-      set_kernel_stack(current->kernel_state_regs.useresp);
+      task_info_reset_kernel_stack(ti);
+      set_kernel_stack(ti->kernel_state_regs.useresp);
 
+      current = ti;
       context_switch(state);
 
    } else {
 
-      if (!is_kernel_thread(current)) {
+      if (!is_kernel_thread(ti)) {
          push_nested_interrupt(0x80);
       }
 
+      current = ti;
       kernel_context_switch(state);
    }
 }
@@ -287,11 +287,6 @@ bool need_reschedule()
       // The kernel is still initializing and we cannot call schedule() yet.
       return false;
    }
-
-   // This forces the scheduler to run at each tick, when idle_task is running.
-   // if (current == idle_task) {
-   //    return true;
-   // }
 
    if (current->ticks < TIME_SLOT_JIFFIES &&
        current->state == TASK_STATE_RUNNING) {

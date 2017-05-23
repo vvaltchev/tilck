@@ -63,6 +63,8 @@ void generic_interrupt_handler(regs *r)
 
    task_info *curr = get_current_task();
 
+   DEBUG_ONLY(validate_stack_pointer());
+
    ASSERT(nested_interrupts_count < (int)ARRAY_SIZE(nested_interrupts));
    ASSERT(!is_interrupt_racing_with_itself(r->int_num));
 

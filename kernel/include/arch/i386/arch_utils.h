@@ -94,3 +94,4 @@ NORETURN static ALWAYS_INLINE void kernel_context_switch(regs *r)
                                  // The useresp is repeated. See the assembly.
                                  r->useresp);
 }
+
