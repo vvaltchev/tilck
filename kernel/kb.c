@@ -224,7 +224,8 @@ void handle_key_pressed(u8 scancode)
       if (c == '!' || c == '@') {
 
          printk("you pressed char '%c' creating tasklet\n", c);
-         add_tasklet1(&dummy_tasklet, c);
+         DEBUG_ONLY(bool success =) add_tasklet1(&dummy_tasklet, c);
+         ASSERT(success);
 
       } else {
          term_write_char(c);
