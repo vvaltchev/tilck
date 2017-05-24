@@ -21,14 +21,14 @@
 
 void test_tasklet_func()
 {
-   for (int i = 0; i < 1000; i++) {
+   for (int i = 0; i < 50; i++) {
       asmVolatile("nop");
    }
 }
 
 void tasklet_stress_test()
 {
-   const int tot_iters = 10000;
+   const int tot_iters = MAX_TASKLETS * 10;
 
    printk("[tasklet_stress_test] BEGIN\n");
 

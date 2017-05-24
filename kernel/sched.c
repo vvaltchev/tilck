@@ -237,7 +237,6 @@ NORETURN void switch_to_task(task_info *ti)
                     ? &ti->kernel_state_regs
                     : &ti->state_regs;
 
-
    ASSERT(!are_interrupts_enabled());
 
    /*

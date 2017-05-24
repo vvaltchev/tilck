@@ -53,16 +53,18 @@ DEBUG_ONLY(extern volatile bool in_page_fault);
 void generic_interrupt_handler(regs *r)
 {
    /*
-    * We know that interrupts have been disabled exactly once at this point,
-    * so, we're forcing disable_interrupts_count = 1, in order to the counter
-    * to be consistent with the actual CPU state.
+    * We know that interrupts have been disabled exactly once at this point
+    * by the CPU or the low-level assembly interrupt handler so we have to
+    * set disable_interrupts_count = 1, in order to the counter to be consistent
+    * with the actual CPU state.
     */
 
    //ASSERT(disable_interrupts_count == 0);
 
    if (disable_interrupts_count != 0) {
-      panic("[generic_interrupt_handler] "
-            "disable_interrupts_count == %i", disable_interrupts_count);
+      panic("[generic_interrupt_handler] int_num: %i\n"
+            "disable_interrupts_count: %i (expected: 0)",
+            r->int_num, disable_interrupts_count);
    }
 
    disable_interrupts_count = 1;
