@@ -81,9 +81,10 @@ static ALWAYS_INLINE u64 rdmsr(u32 msr_id)
 static ALWAYS_INLINE uptr get_eflags()
 {
    uptr eflags;
-   asmVolatile("pushf");
-   asmVolatile("pop %eax");
-   asmVolatile("movl %0, %%eax" : "=r"(eflags));
+   asmVolatile("pushf\n\t"
+               "pop %0"
+               : "=g"(eflags) );
+
    return eflags;
 }
 
@@ -113,12 +114,8 @@ extern volatile int disable_interrupts_count;
 
 static inline bool are_interrupts_enabled_int(const char *file, int line)
 {
-   uptr flags;
-   asmVolatile("pushf\n\t"
-               "pop %0"
-               : "=g"(flags) );
-
-   bool interrupts_on = !!(flags & X86_EFLAGS_IF);
+   uptr eflags = get_eflags();
+   bool interrupts_on = !!(eflags & X86_EFLAGS_IF);
 
 #ifdef DEBUG
 
@@ -164,10 +161,7 @@ static ALWAYS_INLINE void disable_interrupts_forced()
 
 static ALWAYS_INLINE void enable_interrupts()
 {
-#if !defined(TESTING) && !defined(KERNEL_TEST)
    ASSERT(!are_interrupts_enabled());
-#endif
-
    ASSERT(disable_interrupts_count > 0);
 
    if (--disable_interrupts_count == 0) {
