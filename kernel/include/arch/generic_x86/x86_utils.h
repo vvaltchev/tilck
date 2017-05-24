@@ -97,7 +97,7 @@ static ALWAYS_INLINE u64 rdmsr(u32 msr_id)
 
 extern volatile bool in_panic;
 
-static inline bool are_interrupts_enabled()
+static inline bool are_interrupts_enabled_int(const char *file, int line)
 {
    uptr flags;
    asmVolatile("pushf\n\t"
@@ -110,8 +110,10 @@ static inline bool are_interrupts_enabled()
 
    if (interrupts_on != (disable_interrupts_count == 0)) {
       if (!in_panic) {
-         panic("interrupts_on: %s\ndisable_interrupts_count: %i",
-               interrupts_on ? "TRUE" : "FALSE", disable_interrupts_count);
+         panic("FAILED interrupts check.\nFile: %s on line %i.\n"
+               "interrupts_on: %s\ndisable_interrupts_count: %i",
+               file, line, interrupts_on ? "TRUE" : "FALSE",
+               disable_interrupts_count);
       }
    }
 
@@ -119,6 +121,8 @@ static inline bool are_interrupts_enabled()
 
    return interrupts_on;
 }
+
+#define are_interrupts_enabled() are_interrupts_enabled_int(__FILE__, __LINE__)
 
 static ALWAYS_INLINE void disable_interrupts()
 {
