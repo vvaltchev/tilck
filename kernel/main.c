@@ -108,7 +108,8 @@ void kmain()
    mount_memdisk();
    //test_memdisk();
 
-   init_kb();
+   DEBUG_ONLY(bool tasklet_added =) add_tasklet0(&init_kb);
+   ASSERT(tasklet_added);
 
    // kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
    // kmutex_test();
@@ -117,11 +118,11 @@ void kmain()
    // task_info *t2 = kthread_create(&sleeping_kthread, (void *) 20);
    // kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
 
-   kthread_create(&tasklet_stress_test, NULL);
+   //kthread_create(&tasklet_stress_test, NULL);
 
    load_usermode_init();
 
-   printk("[kernel main] Starting the scheduler...");
+   printk("[kernel main] Starting the scheduler...\n");
    switch_to_task_outside_interrupt_context(idle_task);
 
    // We should never get here!

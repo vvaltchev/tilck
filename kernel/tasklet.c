@@ -103,12 +103,12 @@ void tasklet_runner_kthread()
 
    while (true) {
 
+      run_one_tasklet();
+
       /*
        * Special use of a condition variable without a mutex, see the comment
        * above in add_tasklet_int().
        */
       kcond_wait(&tasklet_cond, NULL);
-
-      run_one_tasklet();
    }
 }
