@@ -21,7 +21,7 @@
 
 void test_tasklet_func()
 {
-   for (int i = 0; i < 50; i++) {
+   for (int i = 0; i < 10; i++) {
       asmVolatile("nop");
    }
 }
