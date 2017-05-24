@@ -211,11 +211,8 @@ NORETURN void switch_to_task(task_info *ti)
 
    disable_interrupts_forced();
 
-   ASSERT(disable_interrupts_count > 0);
+   ASSERT(disable_interrupts_count == 1);
    ASSERT(!are_interrupts_enabled());
-
-   // We have to be SURE that the timer IRQ is NOT masked!
-   irq_clear_mask(X86_PC_TIMER_IRQ);
 
    end_current_interrupt_handling();
 
@@ -248,6 +245,9 @@ NORETURN void switch_to_task(task_info *ti)
 
    DEBUG_VALIDATE_STACK_PTR();
 
+   // We have to be SURE that the timer IRQ is NOT masked!
+   irq_clear_mask(X86_PC_TIMER_IRQ);
+
    if (!ti->running_in_kernel) {
 
       bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
@@ -260,7 +260,7 @@ NORETURN void switch_to_task(task_info *ti)
        * IRET the CPU will enable the interrupts.
        */
 
-      ASSERT(state->eflags & (1 << 9));
+      ASSERT(state->eflags & X86_EFLAGS_IF);
 
       current = ti;
       context_switch(state);
@@ -278,7 +278,7 @@ NORETURN void switch_to_task(task_info *ti)
        * finally enabling them. See the comment in asm_kernel_context_switch_x86
        * for more about this.
        */
-      state->eflags &= ~ (1 << 9);
+      state->eflags &= ~X86_EFLAGS_IF;
 
       set_kernel_stack(ti->kernel_state_regs.useresp);
       current = ti;
