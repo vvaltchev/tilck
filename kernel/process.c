@@ -81,6 +81,7 @@ NORETURN void sys_exit(int exit_code)
 
    // We CANNOT free current->kernel_task here because we're using it!
 
+   set_page_directory(get_kernel_page_dir());
    pdir_destroy(current->pdir);
 
 #ifdef DEBUG_QEMU_EXIT_ON_INIT_EXIT
