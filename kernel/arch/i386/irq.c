@@ -194,6 +194,13 @@ u16 pic_get_isr(void)
 }
 
 
+/* IMR = Interrupt Mask Register */
+u32 pic_get_imr(void)
+{
+   return inb(PIC1_DATA) | inb(PIC2_DATA) << 8;
+}
+
+
 /*
  * We first remap the interrupt controllers, and then we install
  * the appropriate ISRs to the correct entries in the IDT. This
@@ -271,25 +278,27 @@ void handle_irq(regs *r)
 
    push_nested_interrupt(r->int_num);
 
-   if (nested_interrupts_count > 1) {
+   // Some debug stuff, used for experiments
 
-      if (! (nested_interrupts[nested_interrupts_count - 1] == 32 &&
-             nested_interrupts[nested_interrupts_count - 2] == 128)) {
+   // if (nested_interrupts_count > 1) {
 
-         printk("(interesting) Nested interrupts: [ ");
-         for (int i = nested_interrupts_count - 1; i >= 0; i--) {
-            if (is_irq(nested_interrupts[i])) {
-               printk("IRQ #%i ", nested_interrupts[i] - 32);
-            } else if (nested_interrupts[i] == 128) {
-               printk("(int 0x80) ");
-            } else {
-               printk("%i ", nested_interrupts[i]);
-            }
-         }
-         printk("]\n");
+   //    if (! (nested_interrupts[nested_interrupts_count - 1] == 32 &&
+   //           nested_interrupts[nested_interrupts_count - 2] == 128)) {
 
-      }
-   }
+   //       printk("(interesting) Nested interrupts: [ ");
+   //       for (int i = nested_interrupts_count - 1; i >= 0; i--) {
+   //          if (is_irq(nested_interrupts[i])) {
+   //             printk("IRQ #%i ", nested_interrupts[i] - 32);
+   //          } else if (nested_interrupts[i] == 128) {
+   //             printk("(int 0x80) ");
+   //          } else {
+   //             printk("%i ", nested_interrupts[i]);
+   //          }
+   //       }
+   //       printk("]\n");
+
+   //    }
+   // }
 
 
    /*
@@ -311,6 +320,9 @@ void handle_irq(regs *r)
       printk("Unhandled IRQ #%i\n", irq);
    }
 
+   /*
+    * We MUST call pop_nested_interrupt() here, BEFORE irq_clear_mask(irq).
+    */
    pop_nested_interrupt();
 
 clear_mask_end:

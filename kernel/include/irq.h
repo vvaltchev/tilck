@@ -44,7 +44,7 @@ void PIC_sendEOI(u8 irq);
 
 u16 pic_get_irr(void);
 u16 pic_get_isr(void);
-
+u32 pic_get_imr(void);
 
 extern volatile int nested_interrupts_count;
 extern volatile int nested_interrupts[32];
