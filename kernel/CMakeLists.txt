@@ -12,6 +12,7 @@ set(
    -fno-asynchronous-unwind-tables
    -fno-zero-initialized-in-bss
    -fno-exceptions
+   -fno-pic
 
    # Allow easier disassembly debugging
    -mpush-args
