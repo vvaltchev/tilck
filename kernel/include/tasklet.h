@@ -2,7 +2,7 @@
 #pragma once
 #include <common_defs.h>
 
-#define MAX_TASKLETS 1024
+#define MAX_TASKLETS 1000
 
 typedef struct {
 
