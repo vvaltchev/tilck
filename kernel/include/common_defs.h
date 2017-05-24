@@ -2,6 +2,26 @@
 #pragma once
 #include <config.h>
 
+/*
+ * TESTING is defined when kernel unit tests are compiled and it affects
+ * actual kernel headers but NOT kernel's C files.
+ *
+ * KERNEL_TEST is defined when the non-arch part of the kernel is compiled for
+ * unit tests. Therefore, it affects only the kernel's C files.
+ *
+ * UNIT_TEST_ENVIRONMENT is defined when TESTING or KERNEL_TEST is defined.
+ * It make sense to be used in kernel headers that can be both used by the
+ * kernel and by the tests itself, in particular when calling kernel header-only
+ * code. Therefore, that macro it is the one that should be used the most since
+ * it allows consistent behavior for headers & C files.
+ */
+
+#if defined(TESTING) || defined(KERNEL_TEST)
+#define UNIT_TEST_ENVIRONMENT
+#endif
+
+
+
 #ifndef __cplusplus
 
 typedef _Bool bool;
@@ -128,9 +148,6 @@ typedef u64 uint64_t;
 
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
-
-// Used to break with the Bochs x86 emulator.
-#define magic_debug_break() asmVolatile("xchg %bx, %bx")
 
 #define KB (1U << 10)
 #define MB (1U << 20)
