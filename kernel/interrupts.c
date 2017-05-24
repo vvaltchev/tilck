@@ -50,6 +50,8 @@ void push_nested_interrupt(int int_num)
 
 DEBUG_ONLY(extern volatile bool in_page_fault);
 
+extern volatile u64 jiffies;
+
 void generic_interrupt_handler(regs *r)
 {
    /*
@@ -61,15 +63,24 @@ void generic_interrupt_handler(regs *r)
 
    //ASSERT(disable_interrupts_count == 0);
 
-   if (disable_interrupts_count != 0) {
+   int disable_int_c = disable_interrupts_count;
+
+   if (disable_int_c != 0) {
+
+      /*
+       * disable the interrupts in the lowest-level possible in case, for any
+       * reason they are actually enabled.
+       */
+      HW_disable_interrupts();
+
       panic("[generic_interrupt_handler] int_num: %i\n"
-            "disable_interrupts_count: %i (expected: 0)",
-            r->int_num, disable_interrupts_count);
+            "disable_interrupts_count: %i (expected: 0)\n"
+            "total system ticks: %llu\n",
+            r->int_num, disable_int_c, jiffies);
    }
 
    disable_interrupts_count = 1;
 
-   // This ASSERT is pretty heavy to check, keeping commented.
    ASSERT(!are_interrupts_enabled());
 
    task_info *curr = get_current_task();
@@ -90,9 +101,8 @@ void generic_interrupt_handler(regs *r)
 
    disable_preemption();
    push_nested_interrupt(r->int_num);
-
-   // Re-enable the interrupts, for the same reason as before.
    enable_interrupts_forced();
+   ASSERT(are_interrupts_enabled());
 
    if (LIKELY(r->int_num == SYSCALL_SOFT_INTERRUPT)) {
 

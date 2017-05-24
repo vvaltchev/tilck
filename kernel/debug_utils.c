@@ -52,12 +52,13 @@ size_t stackwalk32(void **frames,
 void dump_stacktrace()
 {
    void *frames[32] = {0};
-   size_t c = stackwalk32(frames, 32, NULL, NULL);
+   size_t c = stackwalk32(frames, ARRAY_SIZE(frames), NULL, NULL);
 
    printk("*** KERNEL STACKTRACE ***\n");
 
-   for (size_t i = 0; i < c; i++) {
-      printk("frame[%i]: %p\n", i, frames[i]);
+   /* i starts with 1, in order to skip the frame of this function call. */
+   for (size_t i = 1; i < c; i++) {
+      printk("frame[%i]: %p\n", i - 1, frames[i]);
    }
 
    printk("*** END STACKTRACE ***\n\n");
@@ -129,7 +130,9 @@ NORETURN void panic(const char *fmt, ...)
    printk("\n");
 
    if (get_current_task()) {
-      printk("Current process: %i\n", get_current_task()->pid);
+      printk("Current process: %i %s\n",
+             get_current_task()->pid,
+             is_kernel_thread(get_current_task()) ? "[KERNEL]" : "[USER]");
    } else {
       printk("Current process: NONE\n");
    }
