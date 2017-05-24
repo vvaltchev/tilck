@@ -75,6 +75,7 @@ void sleeping_kthread(void *);
 void simple_test_kthread(void *);
 void kmutex_test();
 void kcond_test();
+void tasklet_stress_test();
 
 extern task_info *idle_task;
 
@@ -115,7 +116,9 @@ void kmain()
    // task_info *t2 = kthread_create(&sleeping_kthread, (void *) 20);
    // kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
 
-   load_usermode_init();
+   kthread_create(&tasklet_stress_test, NULL);
+
+   //load_usermode_init();
 
    switch_to_task_outside_interrupt_context(idle_task);
 
