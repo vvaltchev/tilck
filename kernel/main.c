@@ -118,8 +118,9 @@ void kmain()
 
    kthread_create(&tasklet_stress_test, NULL);
 
-   //load_usermode_init();
+   load_usermode_init();
 
+   printk("[kernel main] Starting the scheduler...");
    switch_to_task_outside_interrupt_context(idle_task);
 
    // We should never get here!
