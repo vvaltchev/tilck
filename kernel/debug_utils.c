@@ -119,7 +119,7 @@ NORETURN void panic(const char *fmt, ...)
 
    disable_interrupts_forced();
 
-   printk("\n************** KERNEL PANIC **************\n");
+   printk("\n************************ KERNEL PANIC ************************\n");
 
    va_list args;
    va_start(args, fmt);

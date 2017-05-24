@@ -126,6 +126,8 @@ static inline bool are_interrupts_enabled_int(const char *file, int line)
 
 static ALWAYS_INLINE void disable_interrupts()
 {
+   ASSERT(disable_interrupts_count >= 0);
+
    if (++disable_interrupts_count == 1) {
 
 #if !defined(TESTING) && !defined(KERNEL_TEST)
