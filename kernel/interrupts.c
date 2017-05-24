@@ -59,25 +59,21 @@ extern volatile u64 jiffies;
 
 void generic_interrupt_handler(regs *r)
 {
-   // TODO: investigate why on real hardware the following panic() is hit
-   // sometimes on the FIRST clock tick.
-   // disable_int_c is 1 instead of being 0.
+   int disable_int_c = disable_interrupts_count;
 
-   // int disable_int_c = disable_interrupts_count;
+   if (disable_int_c != 0) {
 
-   // if (disable_int_c != 0) {
+      /*
+       * Disable the interrupts in the lowest-level possible in case,
+       * for any reason, they are actually enabled.
+       */
+      HW_disable_interrupts();
 
-   //    /*
-   //     * Disable the interrupts in the lowest-level possible in case,
-   //     * for any reason, they are actually enabled.
-   //     */
-   //    HW_disable_interrupts();
-
-   //    panic("[generic_interrupt_handler] int_num: %i\n"
-   //          "disable_interrupts_count: %i (expected: 0)\n"
-   //          "total system ticks: %llu\n",
-   //          r->int_num, disable_int_c, jiffies);
-   // }
+      panic("[generic_interrupt_handler] int_num: %i\n"
+            "disable_interrupts_count: %i (expected: 0)\n"
+            "total system ticks: %llu\n",
+            r->int_num, disable_int_c, jiffies);
+   }
 
    /*
     * We know that interrupts have been disabled exactly once at this point
@@ -111,6 +107,7 @@ void generic_interrupt_handler(regs *r)
 
    enable_interrupts_forced();
    ASSERT(are_interrupts_enabled());
+   ASSERT(disable_interrupts_count == 0);
 
    if (LIKELY(r->int_num == SYSCALL_SOFT_INTERRUPT)) {
 

@@ -300,16 +300,18 @@ void handle_irq(regs *r)
    //    }
    // }
 
-
-   /*
-    * Since x86 automatically disables all interrupts before jumping to the
-    * interrupt handler, we have to re-enable them manually here.
-    */
-
    ASSERT(!are_interrupts_enabled());
    enable_interrupts_forced();
-   ASSERT(are_interrupts_enabled());
+
+   ASSERT(disable_interrupts_count == 0);
+
+   /*
+    * We MUST send EOI to the PIC here, before starting the interrupt handler
+    * otherwise, the PIC will just not allow nested interrupts to happen.
+    */
    PIC_sendEOI(irq);
+
+   ASSERT(are_interrupts_enabled());
 
    if (irq_routines[irq] != NULL) {
 

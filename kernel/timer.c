@@ -77,14 +77,13 @@ static task_info *tick_all_timers(void *context)
 
 void kernel_sleep(u64 ticks)
 {
-   disable_preemption();
+   disable_interrupts();
    register_curr_task_for_timer_sleep(ticks);
-   enable_preemption();
+   enable_interrupts();
 
    kernel_yield();
 }
 
-#include <string_util.h>
 
 void timer_handler(void *context)
 {
@@ -109,7 +108,6 @@ void timer_handler(void *context)
    if (last_ready_task) {
       ASSERT(current->state == TASK_STATE_RUNNING);
       task_change_state(current, TASK_STATE_RUNNABLE);
-      disable_preemption_count = 1;
       save_current_task_state(context);
       switch_to_task(last_ready_task);
    }
