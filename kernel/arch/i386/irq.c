@@ -271,10 +271,26 @@ void handle_irq(regs *r)
 
    push_nested_interrupt(r->int_num);
 
-   //printk("IRQ #%i. IRR bit: %i, ISR bit: %i\n",
-   //       irq,
-   //       log2_for_power_of_2(pic_get_irr()),
-   //       log2_for_power_of_2(pic_get_isr()));
+   if (nested_interrupts_count > 1) {
+
+      if (! (nested_interrupts[nested_interrupts_count - 1] == 32 &&
+             nested_interrupts[nested_interrupts_count - 2] == 128)) {
+
+         printk("(interesting) Nested interrupts: [ ");
+         for (int i = nested_interrupts_count - 1; i >= 0; i--) {
+            if (is_irq(nested_interrupts[i])) {
+               printk("IRQ #%i ", nested_interrupts[i] - 32);
+            } else if (nested_interrupts[i] == 128) {
+               printk("(int 0x80) ");
+            } else {
+               printk("%i ", nested_interrupts[i]);
+            }
+         }
+         printk("]\n");
+
+      }
+   }
+
 
    /*
     * Since x86 automatically disables all interrupts before jumping to the
@@ -283,6 +299,8 @@ void handle_irq(regs *r)
 
    ASSERT(!are_interrupts_enabled());
    enable_interrupts_forced();
+   ASSERT(are_interrupts_enabled());
+   PIC_sendEOI(irq);
 
    if (irq_routines[irq] != NULL) {
 
@@ -293,7 +311,7 @@ void handle_irq(regs *r)
       printk("Unhandled IRQ #%i\n", irq);
    }
 
-   end_current_interrupt_handling(); // sends EOI to the PIC
+   pop_nested_interrupt();
 
 clear_mask_end:
    enable_preemption();

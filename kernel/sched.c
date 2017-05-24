@@ -12,10 +12,10 @@
 //#define TIME_SLOT_JIFFIES (TIMER_HZ * 1)
 
 // correct value (20 ms)
-//#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
+#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
 
 // high debug value
-#define TIME_SLOT_JIFFIES (1)
+//#define TIME_SLOT_JIFFIES (1)
 
 task_info *volatile current = NULL;
 int current_max_pid = 0;
@@ -214,7 +214,7 @@ NORETURN void switch_to_task(task_info *ti)
    ASSERT(disable_interrupts_count == 1);
    ASSERT(!are_interrupts_enabled());
 
-   end_current_interrupt_handling();
+   pop_nested_interrupt();
 
    if (current &&
        current->running_in_kernel && !is_kernel_thread(current)) {
@@ -223,7 +223,7 @@ NORETURN void switch_to_task(task_info *ti)
 
          ASSERT(nested_interrupts_count == 1);
          ASSERT(get_curr_interrupt() == 0x80); // int 0x80 (syscall)
-         end_current_interrupt_handling();
+         pop_nested_interrupt();
       }
    }
 
@@ -324,7 +324,7 @@ bool need_reschedule()
 void schedule_outside_interrupt_context()
 {
    // HACK: push a fake interrupt to compensate the call to
-   // end_current_interrupt_handling() in switch_to_process().
+   // pop_nested_interrupt() in switch_to_process().
 
    push_nested_interrupt(-1);
    schedule();
@@ -333,7 +333,7 @@ void schedule_outside_interrupt_context()
 NORETURN void switch_to_task_outside_interrupt_context(task_info *task)
 {
    // HACK: push a fake interrupt to compensate the call to
-   // end_current_interrupt_handling() in switch_to_process().
+   // pop_nested_interrupt() in switch_to_process().
 
    push_nested_interrupt(-1);
    switch_to_task(task);

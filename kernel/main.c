@@ -49,12 +49,13 @@ void load_usermode_init()
    printk("[load_usermode_init] Stack: %p\n", stack_addr);
 
    usermode_init_task =
-      create_first_usermode_task(pdir, entry_point, stack_addr); 
+      create_first_usermode_task(pdir, entry_point, stack_addr);
 }
 
 void show_hello_message()
 {
    printk("Hello from exOS!\n");
+   printk("TIMER_HZ: %i\n", TIMER_HZ);
 }
 
 void mount_memdisk()

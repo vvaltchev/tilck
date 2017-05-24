@@ -282,9 +282,17 @@ void (*keyPressHandlers[2])(u8) = {
    handle_key_pressed, handle_E0_key_pressed
 };
 
+//extern volatile u64 jiffies;
+
 void keyboard_handler()
 {
    u8 scancode;
+   ASSERT(are_interrupts_enabled());
+   // printk("keyboard handler begin (ticks: %llu) <", jiffies);
+
+   // for (int i = 0; i < 100*1000*1000; i++) {
+   //    asmVolatile("nop");
+   // }
 
    while (inb(KB_CONTROL_PORT) & 2) {
       //check if scancode is ready
@@ -331,6 +339,8 @@ void keyboard_handler()
 
 end:
    lastWasE0 = false;
+
+   //printk("> END.\n");
 }
 
 // Reboot procedure using the keyboard controller

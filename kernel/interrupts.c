@@ -13,23 +13,28 @@ void handle_irq(regs *r);
 
 
 
-void end_current_interrupt_handling()
+void pop_nested_interrupt()
 {
-   int curr_int = get_curr_interrupt();
+   // int curr_int = get_curr_interrupt();
 
-   if (is_irq(curr_int)) {
-      PIC_sendEOI(curr_int - 32);
-   }
+   // if (is_irq(curr_int)) {
+   //    PIC_sendEOI(curr_int - 32);
+   // }
 
-   if (LIKELY(current != NULL)) {
 
-      nested_interrupts_count--;
-      ASSERT(nested_interrupts_count >= 0);
+   nested_interrupts_count--;
+   ASSERT(nested_interrupts_count >= 0);
 
-   } else if (nested_interrupts_count > 0) {
 
-      nested_interrupts_count--;
-   }
+   // if (LIKELY(current != NULL)) {
+
+   //    nested_interrupts_count--;
+   //    ASSERT(nested_interrupts_count >= 0);
+
+   // } else if (nested_interrupts_count > 0) {
+
+   //    nested_interrupts_count--;
+   // }
 }
 
 bool is_interrupt_racing_with_itself(int int_num) {
@@ -104,10 +109,6 @@ void generic_interrupt_handler(regs *r)
    disable_preemption();
    push_nested_interrupt(r->int_num);
 
-   if (nested_interrupts_count > 1) {
-      printk("\n\n[interrupts]: nested count: %i\n\n", nested_interrupts_count);
-   }
-
    enable_interrupts_forced();
    ASSERT(are_interrupts_enabled());
 
@@ -126,6 +127,6 @@ void generic_interrupt_handler(regs *r)
       ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
    }
 
-   end_current_interrupt_handling();
+   pop_nested_interrupt();
 }
 

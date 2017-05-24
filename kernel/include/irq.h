@@ -63,5 +63,5 @@ static ALWAYS_INLINE bool is_irq(int interrupt_num)
           interrupt_num != SYSCALL_SOFT_INTERRUPT;
 }
 
-void end_current_interrupt_handling();
+void pop_nested_interrupt();
 void push_nested_interrupt(int int_num);
