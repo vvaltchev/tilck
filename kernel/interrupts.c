@@ -48,18 +48,27 @@ void push_nested_interrupt(int int_num)
    nested_interrupts[nested_interrupts_count++] = int_num;
 }
 
-DEBUG_ONLY(extern volatile bool in_page_fault;)
+DEBUG_ONLY(extern volatile bool in_page_fault);
 
 void generic_interrupt_handler(regs *r)
 {
    /*
     * We know that interrupts have been disabled exactly once at this point,
-    * so, we're forcing disable_interrupts_count = 1.
+    * so, we're forcing disable_interrupts_count = 1, in order to the counter
+    * to be consistent with the actual CPU state.
     */
+
+   //ASSERT(disable_interrupts_count == 0);
+
+   if (disable_interrupts_count != 0) {
+      panic("[generic_interrupt_handler] "
+            "disable_interrupts_count == %i", disable_interrupts_count);
+   }
+
    disable_interrupts_count = 1;
 
    // This ASSERT is pretty heavy to check, keeping commented.
-   // ASSERT(!are_interrupts_enabled());
+   ASSERT(!are_interrupts_enabled());
 
    task_info *curr = get_current_task();
 

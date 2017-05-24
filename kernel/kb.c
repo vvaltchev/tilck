@@ -234,8 +234,12 @@ void handle_key_pressed(u8 scancode)
       if (c == '!' || c == '@') {
 
          //printk("you pressed char '%c' creating tasklet\n", c);
-         DEBUG_ONLY(bool success =) add_tasklet1(&dummy_tasklet, c);
-         ASSERT(success);
+         bool success;
+         success = add_tasklet1(&dummy_tasklet, c);
+
+         if (!success) {
+            printk("[kb] failed to create tasklet\n");
+         }
 
       } else {
          term_write_char(c);
