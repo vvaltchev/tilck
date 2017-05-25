@@ -12,7 +12,9 @@ set(
    -fno-asynchronous-unwind-tables
    -fno-zero-initialized-in-bss
    -fno-exceptions
-   -fno-pic
+
+   # TODO: use this option only when kernel is NOT compiled for tests
+   # -fno-pic
 
    # Allow easier disassembly debugging
    -mpush-args
