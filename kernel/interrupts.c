@@ -25,6 +25,8 @@ void pop_nested_interrupt()
 
 static bool is_same_interrupt_nested(int int_num)
 {
+   ASSERT(!are_interrupts_enabled());
+
    for (int i = nested_interrupts_count - 1; i >= 0; i--) {
       if (nested_interrupts[i] == int_num) {
          return true;
@@ -32,6 +34,19 @@ static bool is_same_interrupt_nested(int int_num)
    }
 
    return false;
+}
+
+/*
+ * This sanity check is very fundamental: it assures us that in no case
+ * we're running an usermode thread with preemption disabled.
+ */
+static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode()
+{
+   if (!current->running_in_kernel) {
+      if (nested_interrupts_count == 0) {
+         ASSERT(is_preemption_enabled());
+      }
+   }
 }
 
 
@@ -53,14 +68,15 @@ void generic_interrupt_handler(regs *r)
    ASSERT(!is_same_interrupt_nested(r->int_num));
    ASSERT(current != NULL);
 
+   DEBUG_check_preemption_enabled_for_usermode();
+
    if (is_irq(r->int_num)) {
       handle_irq(r);
+      DEBUG_check_preemption_enabled_for_usermode();
       return;
    }
 
-   if (!current->running_in_kernel) {
-      ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
-   }
+   DEBUG_check_preemption_enabled_for_usermode();
 
    disable_preemption();
    push_nested_interrupt(r->int_num);
@@ -80,10 +96,7 @@ void generic_interrupt_handler(regs *r)
 
    enable_preemption();
 
-   if (!current->running_in_kernel) {
-      ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
-   }
-
+   DEBUG_check_preemption_enabled_for_usermode();
    pop_nested_interrupt();
 }
 
