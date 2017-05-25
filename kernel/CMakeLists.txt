@@ -9,18 +9,26 @@ set(
    -ffreestanding
    -nostdinc
    -fno-builtin
+)
+JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
+
+# Options that will be used only when building the actual kernel, not when
+# building kernel's code for unit testing.
+
+set(
+   ACTUAL_KERNEL_ONLY_FLAGS_LIST
+
+   -fno-pic
    -fno-asynchronous-unwind-tables
    -fno-zero-initialized-in-bss
    -fno-exceptions
-   -fno-pic
 
    # Allow easier disassembly debugging
    -mpush-args
    -mno-accumulate-outgoing-args
    -mno-stack-arg-probe
 )
-
-JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
+JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
 
 include_directories("include")
 
@@ -35,7 +43,7 @@ set_target_properties(
    elf_kernel
 
    PROPERTIES
-      COMPILE_FLAGS "${ARCH_FLAGS} ${KERNEL_FLAGS}"
+      COMPILE_FLAGS "${ARCH_FLAGS} ${KERNEL_FLAGS} ${ACTUAL_KERNEL_ONLY_FLAGS}"
       LINK_FLAGS "${ARCH_FLAGS} -Wl,-Ttext=${KERNEL_LOAD_VADDR} -nostdlib"
 )
 
