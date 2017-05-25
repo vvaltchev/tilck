@@ -233,11 +233,6 @@ void handle_irq(regs *r)
 {
    const int irq = r->int_num - 32;
    irq_set_mask(irq);
-
-   if (!current->running_in_kernel) {
-      ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
-   }
-
    disable_preemption();
 
    if (irq == 7 || irq == 15) {
@@ -276,28 +271,6 @@ void handle_irq(regs *r)
 
    push_nested_interrupt(r->int_num);
 
-   // Some debug stuff, used for experiments
-
-   // if (nested_interrupts_count > 1) {
-
-   //    if (! (nested_interrupts[nested_interrupts_count - 1] == 32 &&
-   //           nested_interrupts[nested_interrupts_count - 2] == 128)) {
-
-   //       printk("(interesting) Nested interrupts: [ ");
-   //       for (int i = nested_interrupts_count - 1; i >= 0; i--) {
-   //          if (is_irq(nested_interrupts[i])) {
-   //             printk("IRQ #%i ", nested_interrupts[i] - 32);
-   //          } else if (nested_interrupts[i] == 128) {
-   //             printk("(int 0x80) ");
-   //          } else {
-   //             printk("%i ", nested_interrupts[i]);
-   //          }
-   //       }
-   //       printk("]\n");
-
-   //    }
-   // }
-
    ASSERT(!are_interrupts_enabled());
    enable_interrupts();
 
@@ -308,7 +281,6 @@ void handle_irq(regs *r)
     * otherwise, the PIC will just not allow nested interrupts to happen.
     */
    PIC_sendEOI(irq);
-
    ASSERT(are_interrupts_enabled());
 
    if (irq_routines[irq] != NULL) {
@@ -327,10 +299,5 @@ void handle_irq(regs *r)
 
 clear_mask_end:
    enable_preemption();
-
-   if (!current->running_in_kernel) {
-      ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
-   }
-
    irq_clear_mask(irq);
 }

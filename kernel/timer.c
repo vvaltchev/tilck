@@ -34,9 +34,14 @@ typedef struct {
 
 kthread_timer_sleep_obj timers_array[64] = { 0 };
 
+/*
+ * TODO: consider making this logic reentrant: avoid disabling interrupts
+ * and disable just the preemption.
+ */
+
 static void register_curr_task_for_timer_sleep(u64 ticks)
 {
-   ASSERT(!is_preemption_enabled());
+   ASSERT(!are_interrupts_enabled());
 
    for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
       if (!timers_array[i].task) {
@@ -52,7 +57,6 @@ static void register_curr_task_for_timer_sleep(u64 ticks)
 
 static task_info *tick_all_timers(void *context)
 {
-   ASSERT(!is_preemption_enabled());
    task_info *last_ready_task = NULL;
 
    for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
