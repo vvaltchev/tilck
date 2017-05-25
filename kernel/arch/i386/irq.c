@@ -299,7 +299,7 @@ void handle_irq(regs *r)
    // }
 
    ASSERT(!are_interrupts_enabled());
-   enable_interrupts_forced();
+   enable_interrupts();
 
    ASSERT(disable_interrupts_count == 0);
 

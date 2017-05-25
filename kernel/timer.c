@@ -2,7 +2,7 @@
 #include <common_defs.h>
 #include <process.h>
 #include <hal.h>
-
+#include <irq.h>
 
 /*
  * This will keep track of how many ticks that the system
@@ -103,7 +103,28 @@ void timer_handler(void *context)
       return;
    }
 
-   ASSERT(disable_preemption_count == 1);
+   ASSERT(disable_preemption_count == 1); // again, for us disable = 1 means 0.
+
+   /*
+    * We CANNOT allow the timer to call the scheduler if it interrupted an
+    * interrupt handler. Interrupt handlers have always to run with preemption
+    * disabled.
+    *
+    * Therefore, the ASSERT checks that:
+    *
+    * nested_interrupts_count == 1
+    *     meaning the timer is the only current interrupt because a kernel
+    *     thread was running)
+    *
+    * OR
+    *
+    * nested_interrupts_count == 2
+    *     meaning that the timer interrupted a syscall working with preemption
+    *     enabled.
+    */
+
+   ASSERT(nested_interrupts_count == 1 ||
+          (nested_interrupts_count == 2 && in_syscall()));
 
    if (last_ready_task) {
       ASSERT(current->state == TASK_STATE_RUNNING);

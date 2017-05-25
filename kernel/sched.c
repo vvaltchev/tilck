@@ -165,6 +165,7 @@ void task_change_state(task_info *ti, task_state_enum new_state)
 
 void add_task(task_info *ti)
 {
+   ASSERT(!is_preemption_enabled());
    disable_preemption();
    {
       list_add_tail(&tasks_list, &ti->list);
@@ -222,7 +223,7 @@ NORETURN void switch_to_task(task_info *ti)
       if (nested_interrupts_count > 0) {
 
          ASSERT(nested_interrupts_count == 1);
-         ASSERT(get_curr_interrupt() == 0x80); // int 0x80 (syscall)
+         ASSERT(nested_interrupts[0] == 0x80); // int 0x80 (syscall)
          pop_nested_interrupt();
       }
    }
