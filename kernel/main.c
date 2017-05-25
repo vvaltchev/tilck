@@ -118,7 +118,7 @@ void kmain()
    // task_info *t2 = kthread_create(&sleeping_kthread, (void *) 20);
    // kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
 
-   //kthread_create(&tasklet_stress_test, NULL);
+   kthread_create(&tasklet_stress_test, NULL);
 
    load_usermode_init();
 

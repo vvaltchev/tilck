@@ -232,11 +232,9 @@ void irq_install()
 void handle_irq(regs *r)
 {
    const int irq = r->int_num - 32;
-   task_info *curr = get_current_task();
-
    irq_set_mask(irq);
 
-   if (curr && !curr->running_in_kernel) {
+   if (!current->running_in_kernel) {
       ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
    }
 
@@ -330,7 +328,7 @@ void handle_irq(regs *r)
 clear_mask_end:
    enable_preemption();
 
-   if (curr && !curr->running_in_kernel) {
+   if (!current->running_in_kernel) {
       ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
    }
 
