@@ -80,7 +80,6 @@ static inline bool in_interrupt_handler()
 }
 
 // TODO: re-implement this when SYSENTER is supported as well.
-
 static inline bool in_syscall()
 {
    bool res = false;
