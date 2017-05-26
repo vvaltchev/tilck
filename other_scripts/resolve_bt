@@ -10,19 +10,16 @@ while True:
 
    line = sys.stdin.readline().rstrip()
 
-   if line.find("KERNEL STACKTRACE") != -1:
-      continue
-   if line.find("END STACKTRACE") != -1:
-      break
-
-   frame, vaddr = line.split(": ")
-   out = subprocess.check_output(['addr2line',
-                                  '-s', '-f', '-e',
-                                  'build/kernel/elf_kernel', vaddr])
-
    if not firstPrint:
       print "\n\n"
       firstPrint = True
 
-   func, f = out.splitlines()
-   print "{0}() in {1}\n".format(func, f)
+   addrs_list = line.split(" ")
+
+   for i, vaddr in enumerate(addrs_list):
+      out = subprocess.check_output(['addr2line',
+                                     '-s', '-f', '-e',
+                                     'build/kernel/elf_kernel', vaddr])
+
+      func, f = out.splitlines()
+      print "[Frame {}] [{}] {}() in {}\n".format(i, vaddr, func, f)

@@ -54,27 +54,15 @@ void dump_stacktrace()
    void *frames[32] = {0};
    size_t c = stackwalk32(frames, ARRAY_SIZE(frames), NULL, NULL);
 
-   printk("*** KERNEL STACKTRACE ***\n");
+   printk("Stacktrace:\n");
 
    /* i starts with 1, in order to skip the frame of this function call. */
    for (size_t i = 1; i < c; i++) {
-      printk("frame[%i]: %p\n", i - 1, frames[i]);
+      printk("%p ", frames[i]);
    }
 
-   printk("*** END STACKTRACE ***\n\n");
-
-   // task_info *ti = get_current_task();
-   // c = stackwalk32(frames, 32, (void *) ti->state_regs.ebp, ti->pdir);
-
-   // printk("*** TASK[%i] STACKTRACE ***\n", ti->pid);
-
-   // for (size_t i = 0; i < c; i++) {
-   //    printk("frame[%i]: %p\n", i, frames[i]);
-   // }
-
-   // printk("\n\n");
+   printk("\n");
 }
-
 
 
 #ifdef __i386__
@@ -106,19 +94,56 @@ void debug_qemu_turn_off_machine()
    outb(0xf4, 0x00);
 }
 
+void dump_regs(regs *r)
+{
+   printk("Registers: eflags: %p\n", r->eflags);
+
+   printk("ss:  %p, cs:  %p, ds:  %p, esp: %p\n",
+          r->ss, r->cs, r->ds, r->useresp);
+
+   printk("eip: %p, eax: %p, ecx: %p, edx: %p\n",
+          r->eip, r->eax, r->ecx, r->edx);
+
+   printk("ebx: %p, ebp: %p, esi: %p, edi: %p\n",
+          r->ebx, r->ebp, r->esi, r->edi);
+}
+
+void dump_current_kernel_state_raw_stack()
+{
+   printk("Raw stack dump:\n");
+
+   uptr addr = current->kernel_state_regs.useresp;
+
+   for (int i = 0; i < 36; i += 4) {
+
+      printk("%p: ", addr);
+
+      for (int j = 0; j < 4; j++) {
+         printk("%p ", *(void **)addr);
+         addr += sizeof(uptr);
+      }
+
+      printk("\n");
+   }
+}
+
 #endif
+
+void panic_save_current_state();
 
 volatile bool in_panic = false;
 
 NORETURN void panic(const char *fmt, ...)
 {
+   disable_interrupts_forced();
+
    if (in_panic) {
       goto end;
    }
 
    in_panic = true;
 
-   disable_interrupts_forced();
+   panic_save_current_state();
 
    printk("\n************************ KERNEL PANIC ************************\n");
 
@@ -144,6 +169,9 @@ NORETURN void panic(const char *fmt, ...)
    printk("]\n");
 
    dump_stacktrace();
+   dump_regs(&current->kernel_state_regs);
+   dump_current_kernel_state_raw_stack();
+
 
 #ifdef DEBUG_QEMU_EXIT_ON_PANIC
    debug_qemu_turn_off_machine();
@@ -158,11 +186,11 @@ end:
 
 NORETURN void assert_failed(const char *expr, const char *file, int line)
 {
-   panic("\nASSERTION '%s' FAILED in file '%s' at line %i\n",
+   panic("ASSERTION '%s' FAILED in file '%s' at line %i\n",
          expr, file, line);
 }
 
 NORETURN void not_reached(const char *file, int line)
 {
-   panic("\nNOT_REACHED in file '%s' at line %i\n", file, line);
+   panic("NOT_REACHED in file '%s' at line %i\n", file, line);
 }

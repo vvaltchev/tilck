@@ -9,6 +9,7 @@ set(
    -ffreestanding
    -nostdinc
    -fno-builtin
+   -fno-omit-frame-pointer
 )
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
 
