@@ -14,20 +14,35 @@
 #include <tasklet.h>
 #include <sync.h>
 
+// TODO: move these forward-declarations in appropriate header files.
+
 void gdt_install();
 void idt_install();
-
 
 void init_kb();
 void timer_handler(regs *r);
 void keyboard_handler(regs *r);
 void set_timer_freq(int hz);
 
+void sleeping_kthread(void *);
+void simple_test_kthread(void *);
+void kmutex_test();
+void kcond_test();
+void tasklet_stress_test();
 
 void load_elf_program(void *elf,
                       page_directory_t *pdir,
                       void **entry,
                       void **stack_addr);
+
+
+
+void show_hello_message()
+{
+   printk("Hello from exOS!\n");
+   printk("TIMER_HZ: %i\n", TIMER_HZ);
+}
+
 
 
 #define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023600
@@ -52,11 +67,6 @@ void load_usermode_init()
       create_first_usermode_task(pdir, entry_point, stack_addr);
 }
 
-void show_hello_message()
-{
-   printk("Hello from exOS!\n");
-   printk("TIMER_HZ: %i\n", TIMER_HZ);
-}
 
 void mount_memdisk()
 {
@@ -72,13 +82,6 @@ void mount_memdisk()
 }
 
 
-void sleeping_kthread(void *);
-void simple_test_kthread(void *);
-void kmutex_test();
-void kcond_test();
-void tasklet_stress_test();
-
-extern task_info *idle_task;
 
 void kmain()
 {
@@ -123,7 +126,7 @@ void kmain()
    load_usermode_init();
 
    printk("[kernel main] Starting the scheduler...\n");
-   switch_to_task_outside_interrupt_context(idle_task);
+   switch_to_idle_task_outside_interrupt_context();
 
    // We should never get here!
    NOT_REACHED();
