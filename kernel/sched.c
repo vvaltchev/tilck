@@ -331,13 +331,13 @@ void schedule_outside_interrupt_context()
    schedule();
 }
 
-NORETURN void switch_to_task_outside_interrupt_context(task_info *task)
+NORETURN void switch_to_idle_task_outside_interrupt_context()
 {
    // HACK: push a fake interrupt to compensate the call to
    // pop_nested_interrupt() in switch_to_process().
 
    push_nested_interrupt(-1);
-   switch_to_task(task);
+   switch_to_task(idle_task);
 }
 
 
