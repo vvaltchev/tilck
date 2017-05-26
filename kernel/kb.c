@@ -188,11 +188,21 @@ void caps_lock_switch(bool val)
    kb_led_set(numLock << 1 | val << 2);
 }
 
+//////////////////////////////////////////
+// TEMP EXPERIMENT STUFF
+
 void dummy_tasklet(int arg1)
 {
    //printk(" ### Running dummy_tasklet, key = '%c' ###\n", arg1);
    term_write_char(arg1);
 }
+
+void panic_tasklet()
+{
+   NOT_REACHED();
+}
+
+//////////////////////////////////////////
 
 void handle_key_pressed(u8 scancode)
 {
@@ -240,6 +250,10 @@ void handle_key_pressed(u8 scancode)
          if (!success) {
             printk("[kb] failed to create tasklet\n");
          }
+
+      } else if (c == '$') {
+
+         add_tasklet0(panic_tasklet);
 
       } else {
          term_write_char(c);

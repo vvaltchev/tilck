@@ -5,7 +5,6 @@ extern idtp
 extern irq_handler
 extern gdt_pointer
 extern generic_interrupt_handler
-extern kernel_yield_post
 extern disable_preemption
 extern save_current_task_state
 extern schedule_outside_interrupt_context
@@ -17,7 +16,7 @@ global _start
 global asm_context_switch_x86
 global asm_kernel_context_switch_x86
 global kernel_yield
-
+global panic_save_current_state
 
 section .text
 
@@ -243,6 +242,29 @@ kernel_yield:
    sti
    call schedule_outside_interrupt_context
 
+panic_save_current_state:
+
+   pop eax   ; pop eip (return addr)
+   push eax  ; re-push it back to the stack, as if the POP above never happened
+
+   push cs
+   push eax  ; eip (we saved before)
+   push 0    ; err_code
+   push -1   ; int_num
+
+   pusha     ; Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+   push ds
+   push es
+   push fs
+   push gs
+
+   mov eax, esp
+   push eax
+   mov eax, save_current_task_state
+   call eax
+
+   add esp, 68
+   ret
 
 ; Service Routines (ISRs)
 global isr0
