@@ -61,7 +61,7 @@ void dump_stacktrace()
    void *frames[32] = {0};
    size_t c = stackwalk32(frames, ARRAY_SIZE(frames), NULL, NULL);
 
-   printk("Stacktrace:\n");
+   printk("Stacktrace: ");
 
    /* i starts with 1, in order to skip the frame of this function call. */
    for (size_t i = 1; i < c; i++) {
@@ -121,7 +121,7 @@ void dump_current_kernel_state_raw_stack()
 
    uptr addr = current->kernel_state_regs.useresp;
 
-   for (int i = 0; i < 36; i += 4) {
+   for (int i = 0; i < 32; i += 4) {
 
       printk("%p: ", addr);
 
