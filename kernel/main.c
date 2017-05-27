@@ -81,8 +81,6 @@ void mount_memdisk()
              true);
 }
 
-
-
 void kmain()
 {
    term_init();
