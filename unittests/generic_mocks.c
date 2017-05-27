@@ -22,7 +22,7 @@ void __wrap_panic(const char *fmt, ...)
 	vprintf(fmt, args);
 	va_end(args);
 
-	printf("--- END PANIC MESSAGE --- n");
+	printf("--- END PANIC MESSAGE ---\n");
    abort();
 }
 
@@ -48,3 +48,14 @@ void set_page_directory() { }
 void irq_clear_mask() { }
 void kthread_create() { }
 void debug_qemu_turn_off_machine() { }
+void map_page() { }
+void pdir_clone() { }
+void load_elf_program() { }
+void create_first_usermode_task() { }
+void gdt_install() { }
+void idt_install() { }
+void irq_install() { }
+void init_paging() { }
+void set_timer_freq() { }
+void irq_install_handler() { }
+void setup_sysenter_interface() { }
