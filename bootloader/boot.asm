@@ -294,7 +294,7 @@ dw 0xAA55               ; The standard PC boot signature
    ; The code above has loaded this code at absolute address 0x20000
    ; now we have more than 512 bytes to execute.
 
-   stage2_entry:
+stage2_entry:
 
    ; Set all segments to match where this code is loaded
    mov ax, DEST_DATA_SEGMENT
@@ -372,7 +372,7 @@ dw 0xAA55               ; The standard PC boot signature
    str_bytes_per_track db 'Bytes per track: ', 0
    str_loading_mem_disk db 'Loading memory disk ', 0
 
-   enter_unreal_mode:
+enter_unreal_mode:
 
    ; calculate the absolute 32 bit address of GDT
    ; since flat addr = SEG << 4 + OFF
