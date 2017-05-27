@@ -1,9 +1,16 @@
 
+#include <common_defs.h>
+
+#ifndef UNIT_TEST_ENVIRONMENT
+
 #include <debug_utils.h>
 #include <string_util.h>
 #include <arch/generic_x86/x86_utils.h>
 #include <arch/i386/process_int.h>
 #include <irq.h>
+
+void panic_save_current_state();
+volatile bool in_panic = false;
 
 static bool mapped_in_kernel_or_in_pdir(page_directory_t *pdir, void *vaddr)
 {
@@ -129,9 +136,6 @@ void dump_current_kernel_state_raw_stack()
 
 #endif
 
-void panic_save_current_state();
-
-volatile bool in_panic = false;
 
 NORETURN void panic(const char *fmt, ...)
 {
@@ -194,3 +198,5 @@ NORETURN void not_reached(const char *file, int line)
 {
    panic("NOT_REACHED in file '%s' at line %i\n", file, line);
 }
+
+#endif
