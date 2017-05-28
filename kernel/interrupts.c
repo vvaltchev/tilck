@@ -52,7 +52,7 @@ static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode()
 
 void generic_interrupt_handler(regs *r)
 {
-   DEBUG_check_disable_interrupts_count(r->int_num);
+   DEBUG_check_disable_interrupts_count_is_0(r->int_num);
 
    /*
     * We know that interrupts have been disabled exactly once at this point
@@ -73,6 +73,9 @@ void generic_interrupt_handler(regs *r)
    if (is_irq(r->int_num)) {
       handle_irq(r);
       DEBUG_check_preemption_enabled_for_usermode();
+
+      /* Restore the value of disable_interrupts_count to 0. */
+      disable_interrupts_count = 0;
       return;
    }
 
@@ -98,5 +101,8 @@ void generic_interrupt_handler(regs *r)
 
    DEBUG_check_preemption_enabled_for_usermode();
    pop_nested_interrupt();
+
+   /* Restore the value of disable_interrupts_count to 0. */
+   disable_interrupts_count = 0;
 }
 
