@@ -20,13 +20,13 @@ void validate_stack_pointer_int(const char *file, int line)
 
       disable_interrupts_forced();
 
-      panic("\n"
+      panic("Invalid kernel stack pointer.\n"
+            "File %s at line %i\n"
             "[validate stack] real stack page:       %p\n"
-            "[validate stack] current->kernel_stack: %p\n"
-            "Invalid kernel stack pointer.\n"
-            "File %s at line %i\n",
+            "[validate stack] current->kernel_stack: %p\n",
+            file, line,
             ((uptr)&stack_var & PAGE_MASK),
-            current->kernel_stack, file, line);
+            current->kernel_stack);
    }
 }
 
