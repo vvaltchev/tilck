@@ -73,8 +73,9 @@ _start:
 
    times 1024-($-$$) db 0
 
-   ; this is 0xC0100400
-   mov esp, 0xC01FFFF0
+   ; the current EIP is 0xC0100400
+
+   mov esp, 0xC000FFF0 ; +64 KB - 16
    jmp kmain   ; now, really jump to kernel's code which uses 0xC0100000 as ORG
 
 gdt_load:

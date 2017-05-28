@@ -349,17 +349,9 @@ void schedule()
 
    ASSERT(!is_preemption_enabled());
 
-   if (current->state == TASK_STATE_ZOMBIE && is_kernel_thread(current)) {
-
-      remove_task(current);
-      selected = current = NULL;
-
-   } else {
-
-      // If we preempted the process, it is still runnable.
-      if (current->state == TASK_STATE_RUNNING) {
-         task_change_state(current, TASK_STATE_RUNNABLE);
-      }
+   // If we preempted the process, it is still runnable.
+   if (current->state == TASK_STATE_RUNNING) {
+      task_change_state(current, TASK_STATE_RUNNABLE);
    }
 
    list_for_each_entry(pos, &runnable_tasks_list, runnable_list) {
