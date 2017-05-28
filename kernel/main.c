@@ -112,13 +112,13 @@ void kmain()
    DEBUG_ONLY(bool tasklet_added =) add_tasklet0(&init_kb);
    ASSERT(tasklet_added);
 
-   // kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
+   kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
    kmutex_test();
    kcond_test();
 
-   kthread_create(&sleeping_kthread, (void *) 123);
-   kthread_create(&sleeping_kthread, (void *) 20);
-   kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
+   //kthread_create(&sleeping_kthread, (void *) 123);
+   //kthread_create(&sleeping_kthread, (void *) 20);
+   //kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
    //kthread_create(&tasklet_stress_test, NULL);
 
    load_usermode_init();
