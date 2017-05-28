@@ -108,7 +108,7 @@ static inline bool in_syscall()
 extern volatile int disable_interrupts_count;
 extern volatile u64 jiffies;
 
-static inline void DEBUG_check_disable_interrupts_count(int int_num)
+static inline void DEBUG_check_disable_interrupts_count_is_0(int int_num)
 {
 #ifdef DEBUG
 

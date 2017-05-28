@@ -14,8 +14,8 @@
 #include <common_defs.h>
 #include <string_util.h>
 #include <term.h>
-#include <arch/generic_x86/x86_utils.h>
 #include <tasklet.h>
+#include <hal.h>
 
 #define KB_DATA_PORT 0x60
 #define KB_CONTROL_PORT 0x64
@@ -391,11 +391,16 @@ void kb_set_typematic_byte(u8 val)
    kbd_wait();
 }
 
+/* This will be executed in a tasklet */
 void init_kb()
 {
+   disable_preemption();
+
    num_lock_switch(numLock);
    caps_lock_switch(capsLock);
    kb_set_typematic_byte(0);
 
    printk("[kernel] keyboard initialized.\n");
+
+   enable_preemption();
 }
