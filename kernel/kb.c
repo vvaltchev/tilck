@@ -14,8 +14,8 @@
 #include <common_defs.h>
 #include <string_util.h>
 #include <term.h>
-#include <arch/generic_x86/x86_utils.h>
 #include <tasklet.h>
+#include <hal.h>
 
 #define KB_DATA_PORT 0x60
 #define KB_CONTROL_PORT 0x64
@@ -188,11 +188,21 @@ void caps_lock_switch(bool val)
    kb_led_set(numLock << 1 | val << 2);
 }
 
+//////////////////////////////////////////
+// TEMP EXPERIMENT STUFF
+
 void dummy_tasklet(int arg1)
 {
    //printk(" ### Running dummy_tasklet, key = '%c' ###\n", arg1);
    term_write_char(arg1);
 }
+
+void panic_tasklet()
+{
+   NOT_REACHED();
+}
+
+//////////////////////////////////////////
 
 void handle_key_pressed(u8 scancode)
 {
@@ -234,8 +244,16 @@ void handle_key_pressed(u8 scancode)
       if (c == '!' || c == '@') {
 
          //printk("you pressed char '%c' creating tasklet\n", c);
-         DEBUG_ONLY(bool success =) add_tasklet1(&dummy_tasklet, c);
-         ASSERT(success);
+         bool success;
+         success = add_tasklet1(&dummy_tasklet, c);
+
+         if (!success) {
+            printk("[kb] failed to create tasklet\n");
+         }
+
+      } else if (c == '$') {
+
+         add_tasklet0(panic_tasklet);
 
       } else {
          term_write_char(c);
@@ -278,9 +296,17 @@ void (*keyPressHandlers[2])(u8) = {
    handle_key_pressed, handle_E0_key_pressed
 };
 
+//extern volatile u64 jiffies;
+
 void keyboard_handler()
 {
    u8 scancode;
+   ASSERT(are_interrupts_enabled());
+   // printk("keyboard handler begin (ticks: %llu) <", jiffies);
+
+   // for (int i = 0; i < 100*1000*1000; i++) {
+   //    asmVolatile("nop");
+   // }
 
    while (inb(KB_CONTROL_PORT) & 2) {
       //check if scancode is ready
@@ -327,6 +353,8 @@ void keyboard_handler()
 
 end:
    lastWasE0 = false;
+
+   //printk("> END.\n");
 }
 
 // Reboot procedure using the keyboard controller
@@ -363,11 +391,16 @@ void kb_set_typematic_byte(u8 val)
    kbd_wait();
 }
 
+/* This will be executed in a tasklet */
 void init_kb()
 {
+   disable_preemption();
+
    num_lock_switch(numLock);
    caps_lock_switch(capsLock);
    kb_set_typematic_byte(0);
 
    printk("[kernel] keyboard initialized.\n");
+
+   enable_preemption();
 }

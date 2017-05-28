@@ -194,6 +194,13 @@ u16 pic_get_isr(void)
 }
 
 
+/* IMR = Interrupt Mask Register */
+u32 pic_get_imr(void)
+{
+   return inb(PIC1_DATA) | inb(PIC2_DATA) << 8;
+}
+
+
 /*
  * We first remap the interrupt controllers, and then we install
  * the appropriate ISRs to the correct entries in the IDT. This
@@ -225,14 +232,7 @@ void irq_install()
 void handle_irq(regs *r)
 {
    const int irq = r->int_num - 32;
-   task_info *curr = get_current_task();
-
    irq_set_mask(irq);
-
-   if (curr && !curr->running_in_kernel) {
-      ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
-   }
-
    disable_preemption();
 
    if (irq == 7 || irq == 15) {
@@ -271,18 +271,17 @@ void handle_irq(regs *r)
 
    push_nested_interrupt(r->int_num);
 
-   //printk("IRQ #%i. IRR bit: %i, ISR bit: %i\n",
-   //       irq,
-   //       log2_for_power_of_2(pic_get_irr()),
-   //       log2_for_power_of_2(pic_get_isr()));
+   ASSERT(!are_interrupts_enabled());
+   enable_interrupts();
+
+   ASSERT(disable_interrupts_count == 0);
 
    /*
-    * Since x86 automatically disables all interrupts before jumping to the
-    * interrupt handler, we have to re-enable them manually here.
+    * We MUST send EOI to the PIC here, before starting the interrupt handler
+    * otherwise, the PIC will just not allow nested interrupts to happen.
     */
-
-   ASSERT(!are_interrupts_enabled());
-   enable_interrupts_forced();
+   PIC_sendEOI(irq);
+   ASSERT(are_interrupts_enabled());
 
    if (irq_routines[irq] != NULL) {
 
@@ -293,14 +292,12 @@ void handle_irq(regs *r)
       printk("Unhandled IRQ #%i\n", irq);
    }
 
-   end_current_interrupt_handling(); // sends EOI to the PIC
+   /*
+    * We MUST call pop_nested_interrupt() here, BEFORE irq_clear_mask(irq).
+    */
+   pop_nested_interrupt();
 
 clear_mask_end:
    enable_preemption();
-
-   if (curr && !curr->running_in_kernel) {
-      ASSERT(nested_interrupts_count > 0 || is_preemption_enabled());
-   }
-
    irq_clear_mask(irq);
 }

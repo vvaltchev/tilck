@@ -14,20 +14,35 @@
 #include <tasklet.h>
 #include <sync.h>
 
+// TODO: move these forward-declarations in appropriate header files.
+
 void gdt_install();
 void idt_install();
-
 
 void init_kb();
 void timer_handler(regs *r);
 void keyboard_handler(regs *r);
 void set_timer_freq(int hz);
 
+void sleeping_kthread(void *);
+void simple_test_kthread(void *);
+void kmutex_test();
+void kcond_test();
+void tasklet_stress_test();
 
 void load_elf_program(void *elf,
                       page_directory_t *pdir,
                       void **entry,
                       void **stack_addr);
+
+
+
+void show_hello_message()
+{
+   printk("Hello from exOS!\n");
+   printk("TIMER_HZ: %i\n", TIMER_HZ);
+}
+
 
 
 #define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023600
@@ -49,13 +64,9 @@ void load_usermode_init()
    printk("[load_usermode_init] Stack: %p\n", stack_addr);
 
    usermode_init_task =
-      create_first_usermode_task(pdir, entry_point, stack_addr); 
+      create_first_usermode_task(pdir, entry_point, stack_addr);
 }
 
-void show_hello_message()
-{
-   printk("Hello from exOS!\n");
-}
 
 void mount_memdisk()
 {
@@ -69,14 +80,6 @@ void mount_memdisk()
              false,
              true);
 }
-
-
-void sleeping_kthread(void *);
-void simple_test_kthread(void *);
-void kmutex_test();
-void kcond_test();
-
-extern task_info *idle_task;
 
 void kmain()
 {
@@ -106,18 +109,22 @@ void kmain()
    mount_memdisk();
    //test_memdisk();
 
-   init_kb();
+   DEBUG_ONLY(bool tasklet_added =) add_tasklet0(&init_kb);
+   ASSERT(tasklet_added);
 
-   // kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
-   // kmutex_test();
-   // kcond_test();
-   // task_info *t1 = kthread_create(&sleeping_kthread, (void *) 123);
-   // task_info *t2 = kthread_create(&sleeping_kthread, (void *) 20);
-   // kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
+   kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
+   kmutex_test();
+   kcond_test();
+
+   //kthread_create(&sleeping_kthread, (void *) 123);
+   //kthread_create(&sleeping_kthread, (void *) 20);
+   //kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
+   //kthread_create(&tasklet_stress_test, NULL);
 
    load_usermode_init();
 
-   switch_to_task_outside_interrupt_context(idle_task);
+   printk("[kernel main] Starting the scheduler...\n");
+   switch_to_idle_task_outside_interrupt_context();
 
    // We should never get here!
    NOT_REACHED();

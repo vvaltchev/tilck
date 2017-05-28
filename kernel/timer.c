@@ -2,7 +2,7 @@
 #include <common_defs.h>
 #include <process.h>
 #include <hal.h>
-
+#include <irq.h>
 
 /*
  * This will keep track of how many ticks that the system
@@ -34,9 +34,14 @@ typedef struct {
 
 kthread_timer_sleep_obj timers_array[64] = { 0 };
 
+/*
+ * TODO: consider making this logic reentrant: avoid disabling interrupts
+ * and disable just the preemption.
+ */
+
 static void register_curr_task_for_timer_sleep(u64 ticks)
 {
-   ASSERT(!is_preemption_enabled());
+   ASSERT(!are_interrupts_enabled());
 
    for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
       if (!timers_array[i].task) {
@@ -52,7 +57,6 @@ static void register_curr_task_for_timer_sleep(u64 ticks)
 
 static task_info *tick_all_timers(void *context)
 {
-   ASSERT(!is_preemption_enabled());
    task_info *last_ready_task = NULL;
 
    for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
@@ -77,14 +81,13 @@ static task_info *tick_all_timers(void *context)
 
 void kernel_sleep(u64 ticks)
 {
-   disable_preemption();
+   disable_interrupts();
    register_curr_task_for_timer_sleep(ticks);
-   enable_preemption();
+   enable_interrupts();
 
    kernel_yield();
 }
 
-#include <string_util.h>
 
 void timer_handler(void *context)
 {
@@ -104,12 +107,32 @@ void timer_handler(void *context)
       return;
    }
 
-   ASSERT(disable_preemption_count == 1);
+   ASSERT(disable_preemption_count == 1); // again, for us disable = 1 means 0.
+
+   /*
+    * We CANNOT allow the timer to call the scheduler if it interrupted an
+    * interrupt handler. Interrupt handlers have always to run with preemption
+    * disabled.
+    *
+    * Therefore, the ASSERT checks that:
+    *
+    * nested_interrupts_count == 1
+    *     meaning the timer is the only current interrupt because a kernel
+    *     thread was running)
+    *
+    * OR
+    *
+    * nested_interrupts_count == 2
+    *     meaning that the timer interrupted a syscall working with preemption
+    *     enabled.
+    */
+
+   ASSERT(nested_interrupts_count == 1 ||
+          (nested_interrupts_count == 2 && in_syscall()));
 
    if (last_ready_task) {
       ASSERT(current->state == TASK_STATE_RUNNING);
       task_change_state(current, TASK_STATE_RUNNABLE);
-      disable_preemption_count = 1;
       save_current_task_state(context);
       switch_to_task(last_ready_task);
    }

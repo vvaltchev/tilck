@@ -35,7 +35,7 @@ NORETURN void switch_to_task(task_info *ti);
 void schedule();
 void schedule_outside_interrupt_context();
 
-NORETURN void switch_to_task_outside_interrupt_context(task_info *task);
+NORETURN void switch_to_idle_task_outside_interrupt_context();
 
 task_info *create_first_usermode_task(page_directory_t *pdir,
                                       void *entry,

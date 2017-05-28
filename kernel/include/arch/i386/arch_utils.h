@@ -5,7 +5,7 @@
 #include <process.h>
 #include <arch/generic_x86/x86_utils.h>
 
-#define KERNEL_BASE_STACK_ADDR 0xC01FFFF0
+#define KERNEL_INITIAL_STACK_ADDR 0xC000FFF0
 
 // Forward-declaring regs
 typedef struct regs regs;

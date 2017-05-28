@@ -13,8 +13,40 @@
 #include <tasklet.h>
 #include <sync.h>
 
+/*
+ * Clearly things like that will disappear when code actually able to read FAT
+ * will be introduced in exOS.
+ */
 #define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023600
 
+void test_tasklet_func()
+{
+   for (int i = 0; i < 10; i++) {
+      asmVolatile("nop");
+   }
+}
+
+void tasklet_stress_test()
+{
+   const int tot_iters = MAX_TASKLETS * 10;
+
+   printk("[tasklet_stress_test] BEGIN\n");
+
+   for (int i = 0; i < tot_iters; i++) {
+
+      bool added;
+
+      do {
+         added = add_tasklet0(&test_tasklet_func);
+      } while (!added);
+
+      if (!(i % 1000)) {
+         printk("[tasklet_stress_test] %i%%\n", (i*100)/tot_iters);
+      }
+   }
+
+   printk("[tasklet_stress_test] COMPLETED\n");
+}
 
 void simple_test_kthread(void *arg)
 {

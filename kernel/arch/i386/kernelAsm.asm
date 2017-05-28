@@ -5,7 +5,6 @@ extern idtp
 extern irq_handler
 extern gdt_pointer
 extern generic_interrupt_handler
-extern kernel_yield_post
 extern disable_preemption
 extern save_current_task_state
 extern schedule_outside_interrupt_context
@@ -17,7 +16,7 @@ global _start
 global asm_context_switch_x86
 global asm_kernel_context_switch_x86
 global kernel_yield
-
+global panic_save_current_state
 
 section .text
 
@@ -74,8 +73,9 @@ _start:
 
    times 1024-($-$$) db 0
 
-   ; this is 0xC0100400
-   mov esp, 0xC01FFFF0
+   ; the current EIP is 0xC0100400
+
+   mov esp, 0xC000FFF0 ; +64 KB - 16
    jmp kmain   ; now, really jump to kernel's code which uses 0xC0100000 as ORG
 
 gdt_load:
@@ -188,6 +188,7 @@ asm_kernel_context_switch_x86:
 ; up for kernel mode segments, calls the C-level fault handler,
 ; and finally restores the stack frame.
 asm_int_handler:
+
    pusha          ;  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
    push ds
    push es
@@ -242,6 +243,29 @@ kernel_yield:
    sti
    call schedule_outside_interrupt_context
 
+panic_save_current_state:
+
+   pop eax   ; pop eip (return addr)
+   push eax  ; re-push it back to the stack, as if the POP above never happened
+
+   push cs
+   push eax  ; eip (we saved before)
+   push 0    ; err_code
+   push -1   ; int_num
+
+   pusha     ; Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+   push ds
+   push es
+   push fs
+   push gs
+
+   mov eax, esp
+   push eax
+   mov eax, save_current_task_state
+   call eax
+
+   add esp, 68
+   ret
 
 ; Service Routines (ISRs)
 global isr0
@@ -281,195 +305,228 @@ global isr128
 
 ;  0: Divide By Zero Exception
 isr0:
-    push byte 0
-    push byte 0
-    jmp asm_int_handler
+   cli
+   push 0
+   push 0
+   jmp asm_int_handler
 
 ;  1: Debug Exception
 isr1:
-    push byte 0
-    push byte 1
-    jmp asm_int_handler
+   cli
+   push 0
+   push 1
+   jmp asm_int_handler
 
 ;  2: Non Maskable Interrupt Exception
 isr2:
-    push byte 0
-    push byte 2
-    jmp asm_int_handler
+   cli
+   push 0
+   push 2
+   jmp asm_int_handler
 
 ;  3: Int 3 Exception
 isr3:
-    push byte 0
-    push byte 3
-    jmp asm_int_handler
+   cli
+   push 0
+   push 3
+   jmp asm_int_handler
 
 ;  4: INTO Exception
 isr4:
-    push byte 0
-    push byte 4
-    jmp asm_int_handler
+   cli
+   push 0
+   push 4
+   jmp asm_int_handler
 
 ;  5: Out of Bounds Exception
 isr5:
-    push byte 0
-    push byte 5
-    jmp asm_int_handler
+   cli
+   push 0
+   push 5
+   jmp asm_int_handler
 
 ;  6: Invalid Opcode Exception
 isr6:
-    push byte 0
-    push byte 6
-    jmp asm_int_handler
+   cli
+   push 0
+   push 6
+   jmp asm_int_handler
 
 ;  7: Coprocessor Not Available Exception
 isr7:
-    push byte 0
-    push byte 7
-    jmp asm_int_handler
+   cli
+   push 0
+   push 7
+   jmp asm_int_handler
 
 ;  8: Double Fault Exception (With Error Code!)
 isr8:
-    push byte 8
-    jmp asm_int_handler
+   cli
+   push 8
+   jmp asm_int_handler
 
 ;  9: Coprocessor Segment Overrun Exception
 isr9:
-    push byte 0
-    push byte 9
-    jmp asm_int_handler
+   cli
+   push 0
+   push 9
+   jmp asm_int_handler
 
 ; 10: Bad TSS Exception (With Error Code!)
 isr10:
-    push byte 10
-    jmp asm_int_handler
+   cli
+   push 10
+   jmp asm_int_handler
 
 ; 11: Segment Not Present Exception (With Error Code!)
 isr11:
-    push byte 11
-    jmp asm_int_handler
+   cli
+   push 11
+   jmp asm_int_handler
 
 ; 12: Stack Fault Exception (With Error Code!)
 isr12:
-    push byte 12
-    jmp asm_int_handler
+   cli
+   push 12
+   jmp asm_int_handler
 
 ; 13: General Protection Fault Exception (With Error Code!)
 isr13:
-    push byte 13
-    jmp asm_int_handler
+   cli
+   push 13
+   jmp asm_int_handler
 
 ; 14: Page Fault Exception (With Error Code!)
 isr14:
-    push byte 14
-    jmp asm_int_handler
+   cli
+   push 14
+   jmp asm_int_handler
 
 ; 15: Reserved Exception
 isr15:
-    push byte 0
-    push byte 15
-    jmp asm_int_handler
+   cli
+   push 0
+   push 15
+   jmp asm_int_handler
 
 ; 16: Floating Point Exception
 isr16:
-    push byte 0
-    push byte 16
-    jmp asm_int_handler
+   cli
+   push 0
+   push 16
+   jmp asm_int_handler
 
 ; 17: Alignment Check Exception
 isr17:
-    push byte 0
-    push byte 17
-    jmp asm_int_handler
+   cli
+   push 0
+   push 17
+   jmp asm_int_handler
 
 ; 18: Machine Check Exception
 isr18:
-    push byte 0
-    push byte 18
-    jmp asm_int_handler
+   cli
+   push 0
+   push 18
+   jmp asm_int_handler
 
 ; 19: Reserved
 isr19:
-    push byte 0
-    push byte 19
-    jmp asm_int_handler
+   cli
+   push 0
+   push 19
+   jmp asm_int_handler
 
 ; 20: Reserved
 isr20:
-    push byte 0
-    push byte 20
-    jmp asm_int_handler
+   cli
+   push 0
+   push 20
+   jmp asm_int_handler
 
 ; 21: Reserved
 isr21:
-    push byte 0
-    push byte 21
-    jmp asm_int_handler
+   cli
+   push 0
+   push 21
+   jmp asm_int_handler
 
 ; 22: Reserved
 isr22:
-    push byte 0
-    push byte 22
-    jmp asm_int_handler
+   cli
+   push 0
+   push 22
+   jmp asm_int_handler
 
 ; 23: Reserved
 isr23:
-    push byte 0
-    push byte 23
-    jmp asm_int_handler
+   cli
+   push 0
+   push 23
+   jmp asm_int_handler
 
 ; 24: Reserved
 isr24:
-    push byte 0
-    push byte 24
-    jmp asm_int_handler
+   cli
+   push 0
+   push 24
+   jmp asm_int_handler
 
 ; 25: Reserved
 isr25:
-    push byte 0
-    push byte 25
-    jmp asm_int_handler
+   cli
+   push 0
+   push 25
+   jmp asm_int_handler
 
 ; 26: Reserved
 isr26:
-    push byte 0
-    push byte 26
-    jmp asm_int_handler
+   cli
+   push 0
+   push 26
+   jmp asm_int_handler
 
 ; 27: Reserved
 isr27:
-    push byte 0
-    push byte 27
-    jmp asm_int_handler
+   cli
+   push 0
+   push 27
+   jmp asm_int_handler
 
 ; 28: Reserved
 isr28:
-    push byte 0
-    push byte 28
-    jmp asm_int_handler
+   cli
+   push 0
+   push 28
+   jmp asm_int_handler
 
 ; 29: Reserved
 isr29:
-    push byte 0
-    push byte 29
-    jmp asm_int_handler
+   cli
+   push 0
+   push 29
+   jmp asm_int_handler
 
 ; 30: Reserved
 isr30:
-    push byte 0
-    push byte 30
-    jmp asm_int_handler
+   cli
+   push 0
+   push 30
+   jmp asm_int_handler
 
 ; 31: Reserved
 isr31:
-    push byte 0
-    push byte 31
-    jmp asm_int_handler
+   cli
+   push 0
+   push 31
+   jmp asm_int_handler
 
 ; int 0x80: syscall
 isr128:
-    push byte 0
-    push 0x80
-    jmp asm_int_handler
+   cli
+   push 0
+   push 0x80
+   jmp asm_int_handler
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -494,97 +551,113 @@ global irq15
 
 ; 32: IRQ0
 irq0:
-    push byte 0
-    push byte 32
-    jmp asm_int_handler
+   cli
+   push 0
+   push 32
+   jmp asm_int_handler
 
 ; 33: IRQ1
 irq1:
-    push byte 0
-    push byte 33
-    jmp asm_int_handler
+   cli
+   push 0
+   push 33
+   jmp asm_int_handler
 
 ; 34: IRQ2
 irq2:
-    push byte 0
-    push byte 34
-    jmp asm_int_handler
+   cli
+   push 0
+   push 34
+   jmp asm_int_handler
 
 ; 35: IRQ3
 irq3:
-    push byte 0
-    push byte 35
-    jmp asm_int_handler
+   cli
+   push 0
+   push 35
+   jmp asm_int_handler
 
 ; 36: IRQ4
 irq4:
-    push byte 0
-    push byte 36
-    jmp asm_int_handler
+   cli
+   push 0
+   push 36
+   jmp asm_int_handler
 
 ; 37: IRQ5
 irq5:
-    push byte 0
-    push byte 37
-    jmp asm_int_handler
+   cli
+   push 0
+   push 37
+   jmp asm_int_handler
 
 ; 38: IRQ6
 irq6:
-    push byte 0
-    push byte 38
-    jmp asm_int_handler
+   cli
+   push 0
+   push 38
+   jmp asm_int_handler
 
 ; 39: IRQ7
 irq7:
-    push byte 0
-    push byte 39
-    jmp asm_int_handler
+   cli
+   push 0
+   push 39
+   jmp asm_int_handler
 
 ; 40: IRQ8
 irq8:
-    push byte 0
-    push byte 40
-    jmp asm_int_handler
+   cli
+   push 0
+   push 40
+   jmp asm_int_handler
 
 ; 41: IRQ9
 irq9:
-    push byte 0
-    push byte 41
-    jmp asm_int_handler
+   cli
+   push 0
+   push 41
+   jmp asm_int_handler
 
 ; 42: IRQ10
 irq10:
-    push byte 0
-    push byte 42
-    jmp asm_int_handler
+   cli
+   push 0
+   push 42
+   jmp asm_int_handler
 
 ; 43: IRQ11
 irq11:
-    push byte 0
-    push byte 43
-    jmp asm_int_handler
+   cli
+   push 0
+   push 43
+   jmp asm_int_handler
 
 ; 44: IRQ12
 irq12:
-    push byte 0
-    push byte 44
-    jmp asm_int_handler
+   cli
+   push 0
+   push 44
+   jmp asm_int_handler
 
 ; 45: IRQ13
 irq13:
-    push byte 0
-    push byte 45
-    jmp asm_int_handler
+   cli
+   push 0
+   push 45
+   jmp asm_int_handler
 
 ; 46: IRQ14
 irq14:
-    push byte 0
-    push byte 46
-    jmp asm_int_handler
+   cli
+   push 0
+   push 46
+   jmp asm_int_handler
 
 ; 47: IRQ15
 irq15:
-    push byte 0
-    push byte 47
-    jmp asm_int_handler
+   cli
+   push 0
+   push 47
+   jmp asm_int_handler
 

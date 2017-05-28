@@ -2,6 +2,7 @@
 #include <process.h>
 #include <string_util.h>
 #include <kmalloc.h>
+#include <tasklet.h>
 #include <arch/i386/process_int.h>
 #include <hal.h>
 
@@ -117,6 +118,26 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    return ti;
 }
 
+void remove_dead_kthread_tasklet(task_info *task)
+{
+   ASSERT(task->state == TASK_STATE_ZOMBIE);
+
+   while (true) {
+
+      disable_preemption();
+
+      if (current != task) {
+         printk("[kernel] remove_dead_kthread_tasklet (pid: %i)\n", task->pid);
+         remove_task(task);
+         enable_preemption();
+         break;
+      }
+
+      enable_preemption();
+      kernel_yield();
+   }
+}
+
 void kthread_exit()
 {
    disable_preemption();
@@ -126,8 +147,8 @@ void kthread_exit()
 
    task_change_state(ti, TASK_STATE_ZOMBIE);
 
-   asmVolatile("movl %0, %%esp" : : "i"(KERNEL_BASE_STACK_ADDR));
-   asmVolatile("jmp *%0" : : "r"(&schedule_outside_interrupt_context));
+   add_tasklet1(&remove_dead_kthread_tasklet, ti);
+   schedule_outside_interrupt_context();
 }
 
 task_info *create_first_usermode_task(page_directory_t *pdir,

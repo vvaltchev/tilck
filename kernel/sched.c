@@ -12,10 +12,10 @@
 //#define TIME_SLOT_JIFFIES (TIMER_HZ * 1)
 
 // correct value (20 ms)
-//#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
+#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
 
 // high debug value
-#define TIME_SLOT_JIFFIES (1)
+//#define TIME_SLOT_JIFFIES (1)
 
 task_info *volatile current = NULL;
 int current_max_pid = 0;
@@ -165,6 +165,7 @@ void task_change_state(task_info *ti, task_state_enum new_state)
 
 void add_task(task_info *ti)
 {
+   ASSERT(!is_preemption_enabled());
    disable_preemption();
    {
       list_add_tail(&tasks_list, &ti->list);
@@ -211,13 +212,10 @@ NORETURN void switch_to_task(task_info *ti)
 
    disable_interrupts_forced();
 
-   ASSERT(disable_interrupts_count > 0);
+   ASSERT(disable_interrupts_count == 1);
    ASSERT(!are_interrupts_enabled());
 
-   // We have to be SURE that the timer IRQ is NOT masked!
-   irq_clear_mask(X86_PC_TIMER_IRQ);
-
-   end_current_interrupt_handling();
+   pop_nested_interrupt();
 
    if (current &&
        current->running_in_kernel && !is_kernel_thread(current)) {
@@ -225,8 +223,8 @@ NORETURN void switch_to_task(task_info *ti)
       if (nested_interrupts_count > 0) {
 
          ASSERT(nested_interrupts_count == 1);
-         ASSERT(get_curr_interrupt() == 0x80); // int 0x80 (syscall)
-         end_current_interrupt_handling();
+         ASSERT(nested_interrupts[0] == 0x80); // int 0x80 (syscall)
+         pop_nested_interrupt();
       }
    }
 
@@ -236,7 +234,6 @@ NORETURN void switch_to_task(task_info *ti)
    regs *state = ti->running_in_kernel
                     ? &ti->kernel_state_regs
                     : &ti->state_regs;
-
 
    ASSERT(!are_interrupts_enabled());
 
@@ -248,6 +245,9 @@ NORETURN void switch_to_task(task_info *ti)
    disable_interrupts_count = 0;
 
    DEBUG_VALIDATE_STACK_PTR();
+
+   // We have to be SURE that the timer IRQ is NOT masked!
+   irq_clear_mask(X86_PC_TIMER_IRQ);
 
    if (!ti->running_in_kernel) {
 
@@ -261,7 +261,7 @@ NORETURN void switch_to_task(task_info *ti)
        * IRET the CPU will enable the interrupts.
        */
 
-      ASSERT(state->eflags & (1 << 9));
+      ASSERT(state->eflags & X86_EFLAGS_IF);
 
       current = ti;
       context_switch(state);
@@ -279,7 +279,7 @@ NORETURN void switch_to_task(task_info *ti)
        * finally enabling them. See the comment in asm_kernel_context_switch_x86
        * for more about this.
        */
-      state->eflags &= ~ (1 << 9);
+      state->eflags &= ~X86_EFLAGS_IF;
 
       set_kernel_stack(ti->kernel_state_regs.useresp);
       current = ti;
@@ -325,19 +325,19 @@ bool need_reschedule()
 void schedule_outside_interrupt_context()
 {
    // HACK: push a fake interrupt to compensate the call to
-   // end_current_interrupt_handling() in switch_to_process().
+   // pop_nested_interrupt() in switch_to_process().
 
    push_nested_interrupt(-1);
    schedule();
 }
 
-NORETURN void switch_to_task_outside_interrupt_context(task_info *task)
+NORETURN void switch_to_idle_task_outside_interrupt_context()
 {
    // HACK: push a fake interrupt to compensate the call to
-   // end_current_interrupt_handling() in switch_to_process().
+   // pop_nested_interrupt() in switch_to_process().
 
    push_nested_interrupt(-1);
-   switch_to_task(task);
+   switch_to_task(idle_task);
 }
 
 
@@ -349,17 +349,9 @@ void schedule()
 
    ASSERT(!is_preemption_enabled());
 
-   if (current->state == TASK_STATE_ZOMBIE && is_kernel_thread(current)) {
-
-      remove_task(current);
-      selected = current = NULL;
-
-   } else {
-
-      // If we preempted the process, it is still runnable.
-      if (current->state == TASK_STATE_RUNNING) {
-         task_change_state(current, TASK_STATE_RUNNABLE);
-      }
+   // If we preempted the process, it is still runnable.
+   if (current->state == TASK_STATE_RUNNING) {
+      task_change_state(current, TASK_STATE_RUNNABLE);
    }
 
    list_for_each_entry(pos, &runnable_tasks_list, runnable_list) {
