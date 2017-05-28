@@ -115,13 +115,11 @@ void dump_regs(regs *r)
           r->ebx, r->ebp, r->esi, r->edi);
 }
 
-void dump_current_kernel_state_raw_stack()
+void dump_raw_stack(uptr addr)
 {
    printk("Raw stack dump:\n");
 
-   uptr addr = current->kernel_state_regs.useresp;
-
-   for (int i = 0; i < 32; i += 4) {
+   for (int i = 0; i < 36; i += 4) {
 
       printk("%p: ", addr);
 
@@ -174,7 +172,7 @@ NORETURN void panic(const char *fmt, ...)
 
    dump_stacktrace();
    dump_regs(&current->kernel_state_regs);
-   dump_current_kernel_state_raw_stack();
+   dump_raw_stack((uptr) &fmt);
 
 
 #ifdef DEBUG_QEMU_EXIT_ON_PANIC
