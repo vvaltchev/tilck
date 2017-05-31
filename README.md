@@ -11,6 +11,14 @@ From the technical point of view, the goal of this project is writing a kernel b
 
 Once the main goal is achieved, this simple kernel could be actually used for any kind of kernel-development *experiments* with the advantage that changes will be *orders of magnitude* simpler to implement in **exOS** compared to doing that in a world-class production-quality kernel like Linux. Also, this project may allow anyone interested in kernel development to see how a minimalistic linux-compatible kernel can be written by just looking at its commits, from the first lines of its bootloader to the implementation of its most complex syscalls including, along the way, the story of all of its defects and fixes.
 
+Current state
+---------------
+
+At the moment, exOS is primitive monolithic non-SMP kernel supporting usermode (single-threaded) processes with dedicated kernel stack, some "int 0x80" syscalls, preemptable kernel threads, kernel tasklets, nested interrupts, basic kernel synchronization primitives like mutexes and condition variables and other still demo-level things a PS/2 keyboard driver that just echos the input and a term driver with scrolling support. There are still not (yet) concepts like char/block devices: that's why the term and the KB "drivers" are left in a demo-like state, for now.
+For the point of view of user applications, the kernel is able to load statically linked (Linux) ELF binaries and to deal with some basic syscalls like `fork`, `exit`, `getpid` and `waitpid` (incomplete) plus a demo version of `write` that just writes everything to the console. The usermode binaries at the moment must be compiled with `dietlibc` in order to work since other implementations of libc like `glibc` require some advanced TLS-related syscalls to work during the initialization: the support for those syscalls will be introduced later in exOS.
+
+The only usermode program loaded by the kernel by now is what will be the actual `init` process (today just a test program). Now, the program is loaded using a hard-coded offset relative to the beginning of a memory-mapped FAT16 partition, which is loaded by a custom legacy 16-bit x86 bootloader, part of this project. At some point code the actually understands FAT16 will be introduced in the kernel, along with (probably) abstractions like VFS so clearly such hacks will die.
+
 
 Build & run
 ------------
@@ -46,7 +54,6 @@ The easiest way for actually trying `exOS` at that point is to just run:
 
 Step 5. Enjoy :-)
 
-
 Build & run the unit tests
 ----------------------------
 
@@ -58,3 +65,8 @@ And run them with:
 
     ./build/gtests
 
+
+Real hardware support
+----------------------
+
+It is possible to try exOS on any machine compatible with the IBM-PC architecture that supports legacy (insecure) boot. For doing that, it is enough to use `dd` to store `exos.img` in a flash drive and than use it for booting.
