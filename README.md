@@ -1,7 +1,7 @@
 exOS
 ------
 
-[![Build Status](https://travis-ci.org/darthvader88/experimentOs.svg?branch=master)](https://travis-ci.org/darthvader88/experimentOs)
+[![Build Status](https://travis-ci.org/vvaltchev/experimentOs.svg?branch=master)](https://travis-ci.org/vvaltchev/experimentOs)
 
 
 
