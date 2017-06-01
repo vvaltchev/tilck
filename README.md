@@ -19,9 +19,14 @@ From the point of view of user applications, the kernel is able to load statical
 
 The only usermode program loaded by the kernel by now is what will be the actual `init` process (today just a test program). Now, the program is loaded using a hard-coded offset relative to the beginning of a memory-mapped FAT16 partition, which is loaded by a custom legacy 16-bit x86 bootloader, part of this project. At some point, code the actually understands FAT16 will be introduced in the kernel, along with (probably) abstractions like VFS so clearly such hacks (hard-coded offsets) will disappear. Also, at that point the character and block devices will be introduced as well.
 
+Hardware support
+--------------------
 
-Build & run
-------------
+From the beginning of its development, `exOS` has been tested both on virtualized hardware (`qemu`, `virtualbox`, `vmware workstation`) and on bare-metal machines, like my own Dell XPS 13" 9360. Therefore `exOS` should work on any `80486+` machine compatible with the IBM-PC architecture that supports legacy boot. At least 144 MB of RAM are required, because of the way the OS partitions the physical memory. Such limitation may be removed later.
+If you want to try it, just use `dd` to store `exos.img` in a flash drive and than use it for booting.
+
+How to build & run
+---------------------
 
 The project has been designed to be easily buildable on Debian-based systems like Ubuntu, even if it is possible to build the kernel on every GNU/Linux system.
 
@@ -54,8 +59,8 @@ The easiest way for actually trying `exOS` at that point is to just run:
 
 Step 5. Enjoy :-)
 
-Build & run the unit tests
-----------------------------
+Unit tests
+-------------
 
 You could build kernel's unit tests this way:
 
@@ -64,10 +69,3 @@ You could build kernel's unit tests this way:
 And run them with:
 
     ./build/gtests
-
-
-Hardware support
---------------------
-
-From the beginning of its development, `exOS` has been tested both on virtualized hardware (`qemu`, `virtualbox`, `vmware workstation`) and on bare-metal machines, like my own Dell XPS 13" 9360. Therefore `exOS` should work on any `80486+` machine compatible with the IBM-PC architecture that supports legacy boot. At least 144 MB of RAM are required, because of the way the OS partitions the physical memory. Such limitation may be removed later.
-If you want to try it, just use `dd` to store `exos.img` in a flash drive and than use it for booting.
