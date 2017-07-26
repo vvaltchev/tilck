@@ -5,13 +5,15 @@
             "includePath": [
                 "${workspaceRoot}/kernel/include"
             ],
-            "defines": ["__i386__"],
+            "defines": [
+                "__i386__"
+            ],
             "browse": {
-                "path": [
-                ],
+                "path": [],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
-            }
+            },
+            "intelliSenseMode": "clang-x64"
         }
     ]
 }
