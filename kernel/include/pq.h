@@ -21,3 +21,8 @@ static inline bool pqueue_is_empty(pqueue *pq)
 {
    return pq->size == 0;
 }
+
+static inline bool pqueue_is_full(pqueue *pq)
+{
+   return pq->size == pq->capacity;
+}
