@@ -9,11 +9,14 @@
                 "__i386__"
             ],
             "browse": {
-                "path": [],
+                "path": [
+                    "${workspaceRoot}"
+                ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
             },
             "intelliSenseMode": "clang-x64"
         }
-    ]
+    ],
+    "version": 2
 }

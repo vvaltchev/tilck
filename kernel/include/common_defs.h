@@ -169,6 +169,10 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 
 #define POINTER_ALIGN_MASK (~(sizeof(void *) - 1))
 
+// Standard compare function signature.
+typedef int (*cmpfun_ptr)(const void *a, const void *b);
+
+
 /*
  * ********************************************
  *
