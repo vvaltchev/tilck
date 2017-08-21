@@ -7,8 +7,6 @@
 
 extern "C" {
    #include <bintree.h>
-   void rotate_cw_left_child(void **obj, ptrdiff_t bintree_offset);
-   void rotate_ccw_right_child(void **obj,  ptrdiff_t bintree_offset);
 }
 
 using namespace std;
@@ -54,25 +52,25 @@ static void node_dump(int_struct *obj, int level)
    printf("%i [%i]\n", obj->val, n->height);
 
 
-   if (!n->left && !n->right)
+   if (!n->left_obj && !n->right_obj)
       return;
 
-   if (n->left) {
-      node_dump((int_struct*)n->left, level+1);
+   if (n->left_obj) {
+      node_dump((int_struct*)n->left_obj, level+1);
    } else {
       indent(level+1);
       printf("L%i\n", obj->val);
    }
 
-   if (n->right) {
-      node_dump((int_struct*)n->right, level+1);
+   if (n->right_obj) {
+      node_dump((int_struct*)n->right_obj, level+1);
    } else {
       indent(level+1);
       printf("R%i\n", obj->val);
    }
 }
 
-TEST(avl_bintree, insert_test)
+TEST(avl_bintree, basic_insert_test)
 {
    int_struct *r = new int_struct(100);
    int_struct *n2 = new int_struct(50);
@@ -88,32 +86,16 @@ TEST(avl_bintree, insert_test)
    node_dump(r, 0);
 }
 
-TEST(avl_bintree, rotate_cw_left_child)
+TEST(avl_bintree, insert_orderd_test)
 {
-   int_struct *r = new int_struct(3);
-   int_struct *n2 = new int_struct(2);
-   int_struct *n3 = new int_struct(1);
+   constexpr int elems = 32;
+   int_struct *arr[elems];
 
-   bintree_insert(&r, n2, my_cmpfun, int_struct, node);
-   bintree_insert(&r, n3, my_cmpfun, int_struct, node);
-   node_dump(r, 0);
+   for (int i = 0; i < elems; i++)
+      arr[i] = new int_struct(i + 1);
 
-   rotate_cw_left_child((void **)&r, OFFSET_OF(int_struct, node));
-   node_dump(r, 0);
+   for (int i = 1; i < elems; i++)
+      bintree_insert(&arr[0], arr[i], my_cmpfun, int_struct, node);
+
+   node_dump(arr[0], 0);
 }
-
-TEST(avl_bintree, rotate_ccw_right_child)
-{
-   int_struct *r = new int_struct(1);
-   int_struct *n2 = new int_struct(2);
-   int_struct *n3 = new int_struct(3);
-
-   bintree_insert(&r, n2, my_cmpfun, int_struct, node);
-   bintree_insert(&r, n3, my_cmpfun, int_struct, node);
-   node_dump(r, 0);
-
-   rotate_ccw_right_child((void **)&r, OFFSET_OF(int_struct, node));
-   node_dump(r, 0);
-}
-
-

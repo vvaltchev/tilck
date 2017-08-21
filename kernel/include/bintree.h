@@ -6,8 +6,8 @@
 typedef struct bintree_node bintree_node;
 
 struct bintree_node {
-   void *left;   // pointer to the left container obj
-   void *right;  // pointer to the right container obj
+   void *left_obj;   // pointer to the left container obj
+   void *right_obj;  // pointer to the right container obj
    u16 height;
 };
 
