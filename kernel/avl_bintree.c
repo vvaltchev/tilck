@@ -6,25 +6,23 @@ static inline int height(bintree_node *n)
    return n ? n->height : -1;
 }
 
-
 static void update_height(bintree_node *n)
 {
    n->height = MAX(height(n->left), height(n->right)) + 1;
 }
 
-
 static inline bintree_node *
-obj_to_bintree_node(void *obj, ptrdiff_t bintree_offset)
+obj_to_bintree_node(void *obj, ptrdiff_t offset)
 {
    ASSERT(obj != NULL);
-   return (bintree_node *)((char*)obj + bintree_offset);
+   return (bintree_node *)((char*)obj + offset);
 }
 
 static inline void *
-bintree_node_to_obj(bintree_node *node, ptrdiff_t bintree_offset)
+bintree_node_to_obj(bintree_node *node, ptrdiff_t offset)
 {
    ASSERT(node != NULL);
-   return (void *)((char*)node - bintree_offset);
+   return (void *)((char*)node - offset);
 }
 
 #define OBJTN(o) (obj_to_bintree_node((o), bintree_offset))
@@ -79,6 +77,10 @@ void rotate_ccw_right_child(void **obj, ptrdiff_t bintree_offset)
    update_height(orig_right_child);
 }
 
+void bintree_avl_balance(void **root_obj_ref, ptrdiff_t bintree_offset)
+{
+
+}
 
 bool
 bintree_insert_internal(void **root_obj,
@@ -89,7 +91,7 @@ bintree_insert_internal(void **root_obj,
    ASSERT(root_obj != NULL);
    ASSERT(*root_obj != NULL);
 
-   bintree_node *root = obj_to_bintree_node(*root_obj, bintree_offset);
+   bintree_node *root = OBJTN(*root_obj);
 
    bool ret = true;
    int c = cmp(obj, *root_obj);
@@ -102,7 +104,7 @@ bintree_insert_internal(void **root_obj,
 
       if (!root->left) {
          root->left = obj;
-         //balance(root->left);
+         bintree_avl_balance(&root->left, bintree_offset);
          goto end;
       }
 
@@ -114,13 +116,13 @@ bintree_insert_internal(void **root_obj,
 
    if (!root->right) {
       root->right = obj;
-      //balance(root->right);
+      bintree_avl_balance(&root->right, bintree_offset);
       goto end;
    }
 
    ret = bintree_insert_internal(&root->right, obj, cmp, bintree_offset);
 
 end:
-   //balance(root);
+   bintree_avl_balance(root_obj, bintree_offset);
    return ret;
 }
