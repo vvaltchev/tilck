@@ -80,20 +80,6 @@ void rotate_ccw_right_child(void **obj, ptrdiff_t bintree_offset)
    UPDATE_HEIGHT(orig_right_child);
 }
 
-
-void rotate_left_right(void **obj, ptrdiff_t bintree_offset)
-{
-   rotate_ccw_right_child(&LEFT_OF(*obj), bintree_offset);
-   rotate_cw_left_child(obj, bintree_offset);
-}
-
-void rotate_right_left(void **obj, ptrdiff_t bintree_offset)
-{
-   rotate_cw_left_child(&RIGHT_OF(*obj), bintree_offset);
-   rotate_ccw_right_child(obj, bintree_offset);
-}
-
-
 void bintree_avl_balance(void **obj, ptrdiff_t bintree_offset)
 {
    ASSERT(obj != NULL);
@@ -111,7 +97,8 @@ void bintree_avl_balance(void **obj, ptrdiff_t bintree_offset)
       if (HEIGHT(LEFT_OF(left_obj)) >= HEIGHT(RIGHT_OF(left_obj))) {
          rotate_cw_left_child(obj, bintree_offset);
       } else {
-         rotate_left_right(obj, bintree_offset);
+         rotate_ccw_right_child(&LEFT_OF(*obj), bintree_offset);
+         rotate_cw_left_child(obj, bintree_offset);
       }
 
    } else if (bf < -ALLOWED_IMBALANCE) {
@@ -119,7 +106,8 @@ void bintree_avl_balance(void **obj, ptrdiff_t bintree_offset)
       if (HEIGHT(RIGHT_OF(right_obj)) >= HEIGHT(LEFT_OF(right_obj))) {
          rotate_ccw_right_child(obj, bintree_offset);
       } else {
-         rotate_right_left(obj, bintree_offset);
+         rotate_cw_left_child(&RIGHT_OF(*obj), bintree_offset);
+         rotate_ccw_right_child(obj, bintree_offset);
       }
    }
 
