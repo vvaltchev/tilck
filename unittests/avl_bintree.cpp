@@ -73,36 +73,6 @@ static void node_dump(int_struct *obj, int level)
    }
 }
 
-// TEST(avl_bintree, basic_insert_test)
-// {
-//    int_struct *r = new int_struct(100);
-//    int_struct *n2 = new int_struct(50);
-//    int_struct *n3 = new int_struct(200);
-//    int_struct *n4 = new int_struct(25);
-//    int_struct *n5 = new int_struct(75);
-
-//    bintree_insert(&r, n2, my_cmpfun, int_struct, node);
-//    bintree_insert(&r, n3, my_cmpfun, int_struct, node);
-//    bintree_insert(&r, n4, my_cmpfun, int_struct, node);
-//    bintree_insert(&r, n5, my_cmpfun, int_struct, node);
-
-//    node_dump(r, 0);
-// }
-
-// TEST(avl_bintree, insert_ordered_numbers)
-// {
-//    constexpr int elems = 32;
-//    int_struct *arr[elems];
-
-//    for (int i = 0; i < elems; i++)
-//       arr[i] = new int_struct(i + 1);
-
-//    for (int i = 1; i < elems; i++)
-//       bintree_insert(&arr[0], arr[i], my_cmpfun, int_struct, node);
-
-//    node_dump(arr[0], 0);
-// }
-
 static void
 in_order_visit_int(int_struct *obj,
                    int *arr,
