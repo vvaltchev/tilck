@@ -4,7 +4,7 @@
 #include <random>
 #include <gtest/gtest.h>
 
-#include <common_defs.h>
+//#include <common_defs.h>
 
 extern "C" {
    #include <bintree.h>
@@ -230,10 +230,26 @@ generate_random_array(default_random_engine &e,
    }
 }
 
+int check_height(int_struct *obj)
+{
+   if (!obj)
+      return -1;
+
+   int lh = check_height((int_struct *)obj->node.left_obj);
+   int rh = check_height((int_struct *)obj->node.right_obj);
+
+   assert(obj->node.height == ( max(lh, rh) + 1 ));
+
+   // balance condition.
+   assert( -1 <= (lh-rh) && (lh-rh) <= 1 );
+
+   return obj->node.height;
+}
+
 TEST(avl_bintree, in_order_visit_random_tree)
 {
    constexpr const int iters = 100;
-   constexpr const int elems = 15;
+   constexpr const int elems = 1000;
 
    random_device rdev;
    default_random_engine e(rdev());
@@ -242,13 +258,14 @@ TEST(avl_bintree, in_order_visit_random_tree)
    int arr[elems];
    int ordered_nums[elems];
    int_struct nodes[elems];
-   int_struct *root = &nodes[0];
 
    for (int iter = 0; iter < iters; iter++) {
 
+      int_struct *root = &nodes[0];
       generate_random_array(e, dist, arr, elems);
 
       for (int i = 0; i < elems; i++) {
+
          nodes[i] = int_struct(arr[i]);
          bintree_insert(&root, &nodes[i], my_cmpfun, int_struct, node);
 
@@ -258,6 +275,16 @@ TEST(avl_bintree, in_order_visit_random_tree)
          }
       }
 
+      int max_h = ceil(log2(elems)) + 1;
+
+      if (root->node.height > max_h) {
+
+         FAIL() << "tree's height ("
+                << root->node.height
+                << ") exceeds the maximum expected: " << max_h;
+      }
+
+      check_height(root);
       in_order_visit(root, ordered_nums, elems);
 
       if (!is_sorted(ordered_nums, elems)) {
@@ -269,5 +296,6 @@ TEST(avl_bintree, in_order_visit_random_tree)
          node_dump(root, 0);
          FAIL();
       }
+
    }
 }

@@ -80,7 +80,23 @@ void rotate_ccw_right_child(void **obj, ptrdiff_t bintree_offset)
    UPDATE_HEIGHT(orig_right_child);
 }
 
-void bintree_avl_balance(void **obj, ptrdiff_t bintree_offset)
+
+static void validate_bst(void *obj, ptrdiff_t bintree_offset, cmpfun_ptr cmp)
+{
+   if (!obj) return;
+
+   if (LEFT_OF(obj)) {
+      ASSERT(cmp(LEFT_OF(obj), obj) < 0);
+   }
+
+   if (RIGHT_OF(obj)) {
+      ASSERT(cmp(RIGHT_OF(obj), obj) > 0);
+   }
+}
+
+#define VALIDATE_BST(obj) (validate_bst((obj), bintree_offset, cmp))
+
+static void balance(void **obj, ptrdiff_t bintree_offset)
 {
    ASSERT(obj != NULL);
 
@@ -136,7 +152,9 @@ bintree_insert_internal(void **root_obj,
 
       if (!root->left_obj) {
          root->left_obj = obj;
-         bintree_avl_balance(&root->left_obj, bintree_offset);
+         balance(&root->left_obj, bintree_offset);
+
+         DEBUG_ONLY(VALIDATE_BST(root->left_obj));
          goto end;
       }
 
@@ -148,13 +166,16 @@ bintree_insert_internal(void **root_obj,
 
    if (!root->right_obj) {
       root->right_obj = obj;
-      bintree_avl_balance(&root->right_obj, bintree_offset);
+      balance(&root->right_obj, bintree_offset);
+
+      DEBUG_ONLY(VALIDATE_BST(root->right_obj));
       goto end;
    }
 
    ret = bintree_insert_internal(&root->right_obj, obj, cmp, bintree_offset);
 
 end:
-   bintree_avl_balance(root_obj, bintree_offset);
+   balance(root_obj, bintree_offset);
+   DEBUG_ONLY(VALIDATE_BST(*root_obj));
    return ret;
 }
