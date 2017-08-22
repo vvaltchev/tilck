@@ -133,6 +133,8 @@ static void balance(void **obj_ref, ptrdiff_t bintree_offset)
    UPDATE_HEIGHT(OBJTN(*obj_ref));
 }
 
+#define SIMULATE_CALL(r) (stack[stack_size++] = (r))
+
 bool
 bintree_insert_internal(void **root_obj_ref,
                         void *obj,
@@ -147,7 +149,11 @@ bintree_insert_internal(void **root_obj_ref,
    void **stack[32] = {0};
    int stack_size = 0;
 
+   SIMULATE_CALL(root_obj_ref);
+
    while (true) {
+
+      root_obj_ref = stack[stack_size-1];
 
       ASSERT(root_obj_ref != NULL);
       ASSERT(*root_obj_ref != NULL);
@@ -165,13 +171,12 @@ bintree_insert_internal(void **root_obj_ref,
          if (!root->left_obj) {
             root->left_obj = obj;
             BALANCE(&root->left_obj);
-
+            BALANCE(root_obj_ref);
             DEBUG_ONLY(VALIDATE_BST(root->left_obj));
             break;
          }
 
-         stack[stack_size++] = root_obj_ref;
-         root_obj_ref = &root->left_obj;
+         SIMULATE_CALL(&root->left_obj);
          continue;
       }
 
@@ -180,21 +185,20 @@ bintree_insert_internal(void **root_obj_ref,
       if (!root->right_obj) {
          root->right_obj = obj;
          BALANCE(&root->right_obj);
-
+         BALANCE(root_obj_ref);
          DEBUG_ONLY(VALIDATE_BST(root->right_obj));
          break;
       }
 
-      stack[stack_size++] = root_obj_ref;
-      root_obj_ref = &root->right_obj;
+      SIMULATE_CALL(&root->right_obj);
    }
 
-   stack[stack_size++] = root_obj_ref;
-
-   while (stack_size >= 0) {
+   while (stack_size > 0) {
       BALANCE(stack[--stack_size]);
    }
 
    DEBUG_ONLY(VALIDATE_BST(*root_obj_ref));
    return true;
 }
+
+#undef SIMULATE_CALL
