@@ -139,46 +139,62 @@ bintree_insert_internal(void **root_obj_ref,
                         cmpfun_ptr cmp,
                         ptrdiff_t bintree_offset)
 {
-   ASSERT(root_obj_ref != NULL);
-   ASSERT(*root_obj_ref != NULL);
+   /*
+    * It will contain the whole reverse path leaf to root objects traversed:
+    * that is needed for the balance at the end (it simulates the stack
+    * unwinding that happens for recursive implementations).
+    */
+   void **stack[32] = {0};
+   int stack_size = 0;
 
-   bintree_node *root = OBJTN(*root_obj_ref);
+   while (true) {
 
-   bool ret = true;
-   int c = cmp(obj, *root_obj_ref);
+      ASSERT(root_obj_ref != NULL);
+      ASSERT(*root_obj_ref != NULL);
 
-   if (c == 0) {
-      return false; // such elem already exists.
-   }
+      bintree_node *root = OBJTN(*root_obj_ref);
 
-   if (c < 0) {
+      int c = cmp(obj, *root_obj_ref);
 
-      if (!root->left_obj) {
-         root->left_obj = obj;
-         BALANCE(&root->left_obj);
-
-         DEBUG_ONLY(VALIDATE_BST(root->left_obj));
-         goto end;
+      if (c == 0) {
+         return false; // such elem already exists.
       }
 
-      ret = bintree_insert_internal(&root->left_obj, obj, cmp, bintree_offset);
-      goto end;
+      if (c < 0) {
+
+         if (!root->left_obj) {
+            root->left_obj = obj;
+            BALANCE(&root->left_obj);
+
+            DEBUG_ONLY(VALIDATE_BST(root->left_obj));
+            break;
+         }
+
+         stack[stack_size++] = root_obj_ref;
+         root_obj_ref = &root->left_obj;
+         continue;
+      }
+
+      // case c > 0
+
+      if (!root->right_obj) {
+         root->right_obj = obj;
+         BALANCE(&root->right_obj);
+
+         DEBUG_ONLY(VALIDATE_BST(root->right_obj));
+         break;
+      }
+
+      stack[stack_size++] = root_obj_ref;
+      root_obj_ref = &root->right_obj;
    }
 
-   // case c > 0
+   stack[stack_size++] = root_obj_ref;
 
-   if (!root->right_obj) {
-      root->right_obj = obj;
-      BALANCE(&root->right_obj);
-
-      DEBUG_ONLY(VALIDATE_BST(root->right_obj));
-      goto end;
+   while (stack_size >= 0) {
+      BALANCE(stack[--stack_size]);
    }
 
-   ret = bintree_insert_internal(&root->right_obj, obj, cmp, bintree_offset);
-
-end:
-   BALANCE(root_obj_ref);
    DEBUG_ONLY(VALIDATE_BST(*root_obj_ref));
-   return ret;
+   return true;
 }
