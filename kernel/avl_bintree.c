@@ -99,53 +99,53 @@ static void validate_bst(void *obj, ptrdiff_t bintree_offset, cmpfun_ptr cmp)
 #define VALIDATE_BST(obj) (validate_bst((obj), bintree_offset, cmp))
 #define BALANCE(obj) (balance((obj), bintree_offset))
 
-static void balance(void **obj, ptrdiff_t bintree_offset)
+static void balance(void **obj_ref, ptrdiff_t bintree_offset)
 {
-   ASSERT(obj != NULL);
+   ASSERT(obj_ref != NULL);
 
-   if (*obj == NULL)
+   if (*obj_ref == NULL)
       return;
 
-   void *left_obj = LEFT_OF(*obj);
-   void *right_obj = RIGHT_OF(*obj);
+   void *left_obj = LEFT_OF(*obj_ref);
+   void *right_obj = RIGHT_OF(*obj_ref);
 
    int bf = HEIGHT(left_obj) - HEIGHT(right_obj);
 
    if (bf > ALLOWED_IMBALANCE) {
 
       if (HEIGHT(LEFT_OF(left_obj)) >= HEIGHT(RIGHT_OF(left_obj))) {
-         ROTATE_CW_LEFT_CHILD(obj);
+         ROTATE_CW_LEFT_CHILD(obj_ref);
       } else {
-         ROTATE_CCW_RIGHT_CHILD(&LEFT_OF(*obj));
-         ROTATE_CW_LEFT_CHILD(obj);
+         ROTATE_CCW_RIGHT_CHILD(&LEFT_OF(*obj_ref));
+         ROTATE_CW_LEFT_CHILD(obj_ref);
       }
 
    } else if (bf < -ALLOWED_IMBALANCE) {
 
       if (HEIGHT(RIGHT_OF(right_obj)) >= HEIGHT(LEFT_OF(right_obj))) {
-         ROTATE_CCW_RIGHT_CHILD(obj);
+         ROTATE_CCW_RIGHT_CHILD(obj_ref);
       } else {
-         ROTATE_CW_LEFT_CHILD(&RIGHT_OF(*obj));
-         ROTATE_CCW_RIGHT_CHILD(obj);
+         ROTATE_CW_LEFT_CHILD(&RIGHT_OF(*obj_ref));
+         ROTATE_CCW_RIGHT_CHILD(obj_ref);
       }
    }
 
-   UPDATE_HEIGHT(OBJTN(*obj));
+   UPDATE_HEIGHT(OBJTN(*obj_ref));
 }
 
 bool
-bintree_insert_internal(void **root_obj,
+bintree_insert_internal(void **root_obj_ref,
                         void *obj,
                         cmpfun_ptr cmp,
                         ptrdiff_t bintree_offset)
 {
-   ASSERT(root_obj != NULL);
-   ASSERT(*root_obj != NULL);
+   ASSERT(root_obj_ref != NULL);
+   ASSERT(*root_obj_ref != NULL);
 
-   bintree_node *root = OBJTN(*root_obj);
+   bintree_node *root = OBJTN(*root_obj_ref);
 
    bool ret = true;
-   int c = cmp(obj, *root_obj);
+   int c = cmp(obj, *root_obj_ref);
 
    if (c == 0) {
       return false; // such elem already exists.
@@ -178,7 +178,7 @@ bintree_insert_internal(void **root_obj,
    ret = bintree_insert_internal(&root->right_obj, obj, cmp, bintree_offset);
 
 end:
-   BALANCE(root_obj);
-   DEBUG_ONLY(VALIDATE_BST(*root_obj));
+   BALANCE(root_obj_ref);
+   DEBUG_ONLY(VALIDATE_BST(*root_obj_ref));
    return ret;
 }
