@@ -33,7 +33,7 @@ update_height(bintree_node *node, ptrdiff_t bintree_offset)
 
 
 /*
- * rotate the left child of *obj clock-wise
+ * rotate the left child of *obj_ref clock-wise
  *
  *         (n)                  (nl)
  *         /  \                 /  \
@@ -42,39 +42,39 @@ update_height(bintree_node *node, ptrdiff_t bintree_offset)
  *    (nll) (nlr)               (nlr) (nr)
  */
 
-void rotate_cw_left_child(void **obj, ptrdiff_t bintree_offset)
+void rotate_cw_left_child(void **obj_ref, ptrdiff_t bintree_offset)
 {
-   ASSERT(obj != NULL);
-   ASSERT(*obj != NULL);
+   ASSERT(obj_ref != NULL);
+   ASSERT(*obj_ref != NULL);
 
-   bintree_node *orig_node = OBJTN(*obj);
+   bintree_node *orig_node = OBJTN(*obj_ref);
    ASSERT(orig_node->left_obj != NULL);
 
    bintree_node *orig_left_child = OBJTN(orig_node->left_obj);
-   *obj = orig_node->left_obj;
+   *obj_ref = orig_node->left_obj;
    orig_node->left_obj = orig_left_child->right_obj;
-   OBJTN(*obj)->right_obj = NTOBJ(orig_node);
+   OBJTN(*obj_ref)->right_obj = NTOBJ(orig_node);
 
    UPDATE_HEIGHT(orig_node);
    UPDATE_HEIGHT(orig_left_child);
 }
 
 /*
- * rotate the right child of obj counterclock-wise
+ * rotate the right child of *obj_ref counterclock-wise
  */
 
-void rotate_ccw_right_child(void **obj, ptrdiff_t bintree_offset)
+void rotate_ccw_right_child(void **obj_ref, ptrdiff_t bintree_offset)
 {
-   ASSERT(obj != NULL);
-   ASSERT(*obj != NULL);
+   ASSERT(obj_ref != NULL);
+   ASSERT(*obj_ref != NULL);
 
-   bintree_node *orig_node = OBJTN(*obj);
+   bintree_node *orig_node = OBJTN(*obj_ref);
    ASSERT(orig_node->right_obj != NULL);
 
    bintree_node *orig_right_child = OBJTN(orig_node->right_obj);
-   *obj = orig_node->right_obj;
+   *obj_ref = orig_node->right_obj;
    orig_node->right_obj = orig_right_child->left_obj;
-   OBJTN(*obj)->left_obj = NTOBJ(orig_node);
+   OBJTN(*obj_ref)->left_obj = NTOBJ(orig_node);
 
    UPDATE_HEIGHT(orig_node);
    UPDATE_HEIGHT(orig_right_child);
@@ -94,7 +94,10 @@ static void validate_bst(void *obj, ptrdiff_t bintree_offset, cmpfun_ptr cmp)
    }
 }
 
+#define ROTATE_CW_LEFT_CHILD(obj) (rotate_cw_left_child((obj), bintree_offset))
+#define ROTATE_CCW_RIGHT_CHILD(obj) (rotate_ccw_right_child((obj), bintree_offset))
 #define VALIDATE_BST(obj) (validate_bst((obj), bintree_offset, cmp))
+#define BALANCE(obj) (balance((obj), bintree_offset))
 
 static void balance(void **obj, ptrdiff_t bintree_offset)
 {
@@ -111,19 +114,19 @@ static void balance(void **obj, ptrdiff_t bintree_offset)
    if (bf > ALLOWED_IMBALANCE) {
 
       if (HEIGHT(LEFT_OF(left_obj)) >= HEIGHT(RIGHT_OF(left_obj))) {
-         rotate_cw_left_child(obj, bintree_offset);
+         ROTATE_CW_LEFT_CHILD(obj);
       } else {
-         rotate_ccw_right_child(&LEFT_OF(*obj), bintree_offset);
-         rotate_cw_left_child(obj, bintree_offset);
+         ROTATE_CCW_RIGHT_CHILD(&LEFT_OF(*obj));
+         ROTATE_CW_LEFT_CHILD(obj);
       }
 
    } else if (bf < -ALLOWED_IMBALANCE) {
 
       if (HEIGHT(RIGHT_OF(right_obj)) >= HEIGHT(LEFT_OF(right_obj))) {
-         rotate_ccw_right_child(obj, bintree_offset);
+         ROTATE_CCW_RIGHT_CHILD(obj);
       } else {
-         rotate_cw_left_child(&RIGHT_OF(*obj), bintree_offset);
-         rotate_ccw_right_child(obj, bintree_offset);
+         ROTATE_CW_LEFT_CHILD(&RIGHT_OF(*obj));
+         ROTATE_CCW_RIGHT_CHILD(obj);
       }
    }
 
@@ -152,7 +155,7 @@ bintree_insert_internal(void **root_obj,
 
       if (!root->left_obj) {
          root->left_obj = obj;
-         balance(&root->left_obj, bintree_offset);
+         BALANCE(&root->left_obj);
 
          DEBUG_ONLY(VALIDATE_BST(root->left_obj));
          goto end;
@@ -166,7 +169,7 @@ bintree_insert_internal(void **root_obj,
 
    if (!root->right_obj) {
       root->right_obj = obj;
-      balance(&root->right_obj, bintree_offset);
+      BALANCE(&root->right_obj);
 
       DEBUG_ONLY(VALIDATE_BST(root->right_obj));
       goto end;
@@ -175,7 +178,7 @@ bintree_insert_internal(void **root_obj,
    ret = bintree_insert_internal(&root->right_obj, obj, cmp, bintree_offset);
 
 end:
-   balance(root_obj, bintree_offset);
+   BALANCE(root_obj);
    DEBUG_ONLY(VALIDATE_BST(*root_obj));
    return ret;
 }
