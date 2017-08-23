@@ -213,6 +213,9 @@ int check_height(int_struct *obj)
    // balance condition.
    assert( -1 <= (lh-rh) && (lh-rh) <= 1 );
 
+   (void)lh;
+   (void)rh;
+
    return obj->node.height;
 }
 
