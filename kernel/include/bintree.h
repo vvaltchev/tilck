@@ -11,21 +11,28 @@ struct bintree_node {
    u16 height;
 };
 
-#define bintree_entry(ptr, struct_type, bintree_node_elem_name) \
-   CONTAINER_OF(ptr, struct_type, bintree_node_elem_name)
-
 static inline void bintree_node_init(bintree_node *node)
 {
    bzero(node, sizeof(bintree_node));
 }
 
 bool
-bintree_insert_internal(void **root,
+bintree_insert_internal(void **root_obj_ref,
                         void *obj,
-                        cmpfun_ptr f,
+                        cmpfun_ptr cmp,
                         ptrdiff_t bintree_offset);
 
+void *
+bintree_find_internal(void *root_obj,
+                      const uptr value,
+                      cmpfun_objval_ptr cmp,
+                      ptrdiff_t bintree_offset);
 
-#define bintree_insert(rootref, obj, cmpfun, struct_type, elem_name) \
-   bintree_insert_internal((void **)rootref, (void*)obj, cmpfun,     \
+#define bintree_insert(rootref, obj, cmpfun, struct_type, elem_name)   \
+   bintree_insert_internal((void **)(rootref), (void*)obj, cmpfun,     \
                            OFFSET_OF(struct_type, elem_name))
+
+#define bintree_find(root_obj, value, objval_cmpfun, struct_type, elem_name)  \
+   bintree_find_internal((void*)(root_obj),                                   \
+                         (value), (objval_cmpfun),                            \
+                         OFFSET_OF(struct_type, elem_name))

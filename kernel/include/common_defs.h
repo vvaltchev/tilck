@@ -169,8 +169,14 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 
 #define POINTER_ALIGN_MASK (~(sizeof(void *) - 1))
 
-// Standard compare function signature.
+// Standard compare function signature among generic objects.
 typedef int (*cmpfun_ptr)(const void *a, const void *b);
+
+/*
+ * Compare function signature for comparing a generic object (obj)
+ * with a given value (value).
+ */
+typedef int (*cmpfun_objval_ptr)(const void *obj, const uptr value);
 
 
 /*

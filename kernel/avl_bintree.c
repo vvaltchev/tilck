@@ -202,3 +202,31 @@ bintree_insert_internal(void **root_obj_ref,
 }
 
 #undef SIMULATE_CALL
+
+
+
+void *
+bintree_find_internal(void *root_obj,
+                      const uptr value,
+                      cmpfun_objval_ptr cmp,
+                      ptrdiff_t bintree_offset)
+
+{
+   while (root_obj) {
+
+      int c = cmp(root_obj, value);
+
+      if (c == 0) {
+         return root_obj;
+      }
+
+      // root_obj is smaller then val => val is bigger => go right.
+      if (c < 0) {
+         root_obj = RIGHT_OF(root_obj);
+      } else {
+         root_obj = LEFT_OF(root_obj);
+      }
+   }
+
+   return NULL;
+}

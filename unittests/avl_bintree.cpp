@@ -2,9 +2,9 @@
 
 #include <iostream>
 #include <random>
-#include <gtest/gtest.h>
+#include <unordered_set>
 
-//#include <common_defs.h>
+#include <gtest/gtest.h>
 
 extern "C" {
    #include <bintree.h>
@@ -173,30 +173,28 @@ static void dump_array(int *arr, int size)
    printf("\n");
 }
 
-static bool exists_in_array(int e, int *arr, int arr_size)
-{
-   for (int i = 0; i < arr_size; i++)
-      if (arr[i] == e)
-         return true;
-
-   return false;
-}
-
 static void
 generate_random_array(default_random_engine &e,
                       lognormal_distribution<> &dist,
                       int *arr,
                       int arr_size)
 {
+   unordered_set<int> s;
+
+   for (int i = 0; i < arr_size;) {
+
+      int candidate = dist(e);
+      if (candidate <= 0 || candidate > 1000*1000*1000) continue;
+
+      if (s.insert(candidate).second) {
+         arr[i++] = candidate;
+      }
+   }
+
+   assert(s.size() == (size_t)arr_size);
+
    for (int i = 0; i < arr_size; i++) {
-
-      int candidate;
-
-      do {
-         candidate = dist(e);
-      } while (exists_in_array(candidate, arr, i));
-
-      arr[i] = candidate;
+      assert(arr[i] > 0);
    }
 }
 
@@ -219,14 +217,18 @@ int check_height(int_struct *obj)
    return obj->node.height;
 }
 
-TEST(avl_bintree, in_order_visit_random_tree)
+static int cmpfun_objval(const void *obj, uptr uval)
 {
-   constexpr const int iters = 100;
-   constexpr const int elems = 1000;
+   int_struct *s = (int_struct*)obj;
+   int ival = *(int*)&uval;
+   return s->val - ival;
+}
 
-   random_device rdev;
-   default_random_engine e(rdev());
-   lognormal_distribution<> dist(5.0, 3);
+static void in_order_visit_rand(int iters, int elems, bool slow_checks)
+{
+   //random_device rdev;
+   default_random_engine e(0);
+   lognormal_distribution<> dist(6.0, 3);
 
    int arr[elems];
    int ordered_nums[elems];
@@ -237,18 +239,28 @@ TEST(avl_bintree, in_order_visit_random_tree)
       int_struct *root = &nodes[0];
       generate_random_array(e, dist, arr, elems);
 
+      if (iter == 0) {
+         cout << "[ INFO     ] sample numbers: ";
+         for (int i = 0; i < 20 && i < elems; i++) {
+            printf("%i ", arr[i]);
+         }
+         printf("\n");
+      }
+
       for (int i = 0; i < elems; i++) {
 
          nodes[i] = int_struct(arr[i]);
          bintree_insert(&root, &nodes[i], my_cmpfun, int_struct, node);
 
-         if (!check_binary_search_tree(root)) {
+         if (slow_checks && !check_binary_search_tree(root)) {
             node_dump(root, 0);
-            FAIL() << "while inserting node " << arr[i] << endl;
+            FAIL() << "[iteration " << iter
+                   << "/" << iters << "] while inserting node "
+                   << arr[i] << endl;
          }
       }
 
-      int max_h = ceil(log2(elems)) + 1;
+      int max_h = ceil(log2(elems)) + 2;
 
       if (root->node.height > max_h) {
 
@@ -265,10 +277,33 @@ TEST(avl_bintree, in_order_visit_random_tree)
          dump_array(arr, elems);
          printf("Ordered:\n");
          dump_array(ordered_nums, elems);
-         printf("Tree:\n");
-         node_dump(root, 0);
-         FAIL();
+         //printf("Tree:\n");
+         //node_dump(root, 0);
+         FAIL() << "an in-order visit did not produce an ordered-array";
       }
 
+      for (int i = 0; i < elems/10; i++) {
+
+         uptr val = *(uptr*)&arr[i];
+
+         void *res = bintree_find(root, val,
+                                  cmpfun_objval, int_struct, node);
+
+         ASSERT_TRUE(res != NULL);
+
+         int_struct *o = (int_struct*)res;
+         ASSERT(o->val == arr[i]);
+      }
    }
 }
+
+TEST(avl_bintree, in_order_visit_random_tree_100k_iters_100_elems)
+{
+   in_order_visit_rand(100000, 100, true);
+}
+
+TEST(avl_bintree, in_order_visit_random_tree_20_iters_100k_elems)
+{
+   in_order_visit_rand(20, 100000, false);
+}
+
