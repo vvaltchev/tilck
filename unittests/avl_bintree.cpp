@@ -220,14 +220,15 @@ int check_height(int_struct *obj)
 static int cmpfun_objval(const void *obj, uptr uval)
 {
    int_struct *s = (int_struct*)obj;
-   int ival = *(int*)&uval;
+   int ival = (int)uval;
    return s->val - ival;
 }
 
 static void in_order_visit_rand(int iters, int elems, bool slow_checks)
 {
-   //random_device rdev;
-   default_random_engine e(0);
+   random_device rdev;
+   const auto seed = rdev();
+   default_random_engine e(seed);
    lognormal_distribution<> dist(6.0, 3);
 
    int arr[elems];
@@ -240,6 +241,7 @@ static void in_order_visit_rand(int iters, int elems, bool slow_checks)
       generate_random_array(e, dist, arr, elems);
 
       if (iter == 0) {
+         cout << "[ INFO     ] random seed: " << seed << endl;
          cout << "[ INFO     ] sample numbers: ";
          for (int i = 0; i < 20 && i < elems; i++) {
             printf("%i ", arr[i]);
@@ -273,26 +275,26 @@ static void in_order_visit_rand(int iters, int elems, bool slow_checks)
       in_order_visit(root, ordered_nums, elems);
 
       if (!is_sorted(ordered_nums, elems)) {
-         printf("FAIL. Original:\n");
-         dump_array(arr, elems);
-         printf("Ordered:\n");
-         dump_array(ordered_nums, elems);
-         //printf("Tree:\n");
-         //node_dump(root, 0);
+
+         // For a few elems, it makes sense to print more info.
+         if (elems <= 100) {
+            printf("FAIL. Original:\n");
+            dump_array(arr, elems);
+            printf("Ordered:\n");
+            dump_array(ordered_nums, elems);
+            printf("Tree:\n");
+            node_dump(root, 0);
+         }
          FAIL() << "an in-order visit did not produce an ordered-array";
       }
 
       for (int i = 0; i < elems/10; i++) {
 
-         uptr val = *(uptr*)&arr[i];
-
-         void *res = bintree_find(root, val,
+         void *res = bintree_find(root, (uptr)arr[i],
                                   cmpfun_objval, int_struct, node);
 
          ASSERT_TRUE(res != NULL);
-
-         int_struct *o = (int_struct*)res;
-         ASSERT(o->val == arr[i]);
+         ASSERT(((int_struct*)res)->val == arr[i]);
       }
    }
 }
