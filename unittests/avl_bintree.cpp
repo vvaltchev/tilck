@@ -237,7 +237,7 @@ static void in_order_visit_rand(int iters, int elems, bool slow_checks)
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   lognormal_distribution<> dist(6.0, 3);
+   lognormal_distribution<> dist(6.0, elems <= 100*1000 ? 3 : 5);
 
    test_data *data = new test_data;
 
@@ -318,9 +318,9 @@ TEST(avl_bintree, in_order_visit_random_tree_10k_iters_100_elems)
    in_order_visit_rand(10*1000, 100, true);
 }
 
-TEST(avl_bintree, in_order_visit_random_tree_20_iters_100k_elems)
+TEST(avl_bintree, in_order_visit_random_tree_10_iters_100k_elems)
 {
-   in_order_visit_rand(20, 100*1000, false);
+   in_order_visit_rand(10, 100*1000, false);
 }
 
 TEST(avl_bintree, in_order_visit_random_tree_1m_elems)
