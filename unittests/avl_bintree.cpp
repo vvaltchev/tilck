@@ -217,12 +217,20 @@ int check_height(int_struct *obj)
    return obj->node.height;
 }
 
-static int cmpfun_objval(const void *obj, uptr uval)
+static int cmpfun_objval(const void *obj, const void *valptr)
 {
    int_struct *s = (int_struct*)obj;
-   int ival = (int)uval;
+   int ival = *(int*)valptr;
    return s->val - ival;
 }
+
+#define MAX_ELEMS (1000*1000)
+
+struct test_data {
+   int arr[MAX_ELEMS];
+   int ordered_nums[MAX_ELEMS];
+   int_struct nodes[MAX_ELEMS];
+};
 
 static void in_order_visit_rand(int iters, int elems, bool slow_checks)
 {
@@ -231,81 +239,92 @@ static void in_order_visit_rand(int iters, int elems, bool slow_checks)
    default_random_engine e(seed);
    lognormal_distribution<> dist(6.0, 3);
 
-   int arr[elems];
-   int ordered_nums[elems];
-   int_struct nodes[elems];
+   test_data *data = new test_data;
 
    for (int iter = 0; iter < iters; iter++) {
 
-      int_struct *root = &nodes[0];
-      generate_random_array(e, dist, arr, elems);
+      int_struct *root = &data->nodes[0];
+      generate_random_array(e, dist, data->arr, elems);
 
       if (iter == 0) {
          cout << "[ INFO     ] random seed: " << seed << endl;
          cout << "[ INFO     ] sample numbers: ";
          for (int i = 0; i < 20 && i < elems; i++) {
-            printf("%i ", arr[i]);
+            printf("%i ", data->arr[i]);
          }
          printf("\n");
       }
 
       for (int i = 0; i < elems; i++) {
 
-         nodes[i] = int_struct(arr[i]);
-         bintree_insert(&root, &nodes[i], my_cmpfun, int_struct, node);
+         data->nodes[i] = int_struct(data->arr[i]);
+         bintree_insert(&root, &data->nodes[i], my_cmpfun, int_struct, node);
 
          if (slow_checks && !check_binary_search_tree(root)) {
             node_dump(root, 0);
             FAIL() << "[iteration " << iter
                    << "/" << iters << "] while inserting node "
-                   << arr[i] << endl;
+                   << data->arr[i] << endl;
          }
       }
 
-      int max_h = ceil(log2(elems)) + 2;
+      /*
+       * According to wikipedia:
+       * https://en.wikipedia.org/wiki/AVL_tree
+       *
+       * max_h is the upper-limit for the function height(N) for an AVL tree.
+       */
+      const int max_h = ceil(1.44 * log2(elems+2) - 0.328);
 
-      if (root->node.height > max_h) {
+      if (root->node.height >= max_h) {
 
          FAIL() << "tree's height ("
                 << root->node.height
-                << ") exceeds the maximum expected: " << max_h;
+                << ") exceeds the maximum expected: " << max_h-1;
       }
 
       check_height(root);
-      in_order_visit(root, ordered_nums, elems);
+      in_order_visit(root, data->ordered_nums, elems);
 
-      if (!is_sorted(ordered_nums, elems)) {
+      if (!is_sorted(data->ordered_nums, elems)) {
 
          // For a few elems, it makes sense to print more info.
          if (elems <= 100) {
             printf("FAIL. Original:\n");
-            dump_array(arr, elems);
+            dump_array(data->arr, elems);
             printf("Ordered:\n");
-            dump_array(ordered_nums, elems);
+            dump_array(data->ordered_nums, elems);
             printf("Tree:\n");
             node_dump(root, 0);
          }
          FAIL() << "an in-order visit did not produce an ordered-array";
       }
 
-      for (int i = 0; i < elems/10; i++) {
+      int elems_to_find = slow_checks ? elems : elems/10;
 
-         void *res = bintree_find(root, (uptr)arr[i],
+      for (int i = 0; i < elems_to_find; i++) {
+
+         void *res = bintree_find(root, &data->arr[i],
                                   cmpfun_objval, int_struct, node);
 
          ASSERT_TRUE(res != NULL);
-         ASSERT(((int_struct*)res)->val == arr[i]);
+         ASSERT(((int_struct*)res)->val == data->arr[i]);
       }
    }
 }
 
-TEST(avl_bintree, in_order_visit_random_tree_100k_iters_100_elems)
+TEST(avl_bintree, in_order_visit_random_tree_10k_iters_100_elems)
 {
-   in_order_visit_rand(100000, 100, true);
+   in_order_visit_rand(10*1000, 100, true);
 }
 
 TEST(avl_bintree, in_order_visit_random_tree_20_iters_100k_elems)
 {
-   in_order_visit_rand(20, 100000, false);
+   in_order_visit_rand(20, 100*1000, false);
+}
+
+TEST(avl_bintree, in_order_visit_random_tree_1m_elems)
+{
+   in_order_visit_rand(1, 1000*1000, false);
 }
 

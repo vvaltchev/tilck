@@ -24,8 +24,8 @@ bintree_insert_internal(void **root_obj_ref,
 
 void *
 bintree_find_internal(void *root_obj,
-                      const uptr value,
-                      cmpfun_objval_ptr cmp,
+                      void *value_ptr,
+                      cmpfun_ptr cmp,
                       ptrdiff_t bintree_offset);
 
 #define bintree_insert(rootref, obj, cmpfun, struct_type, elem_name)   \
