@@ -208,13 +208,13 @@ bintree_insert_internal(void **root_obj_ref,
 void *
 bintree_find_internal(void *root_obj,
                       void *value_ptr,
-                      cmpfun_ptr cmp,
+                      cmpfun_ptr objval_cmpfun,
                       ptrdiff_t bintree_offset)
 
 {
    while (root_obj) {
 
-      int c = cmp(root_obj, value_ptr);
+      int c = objval_cmpfun(root_obj, value_ptr);
 
       if (c == 0) {
          return root_obj;
@@ -229,4 +229,34 @@ bintree_find_internal(void *root_obj,
    }
 
    return NULL;
+}
+
+bool
+bintree_remove_internal(void **root_obj_ref,
+                        void *value_ptr,
+                        cmpfun_ptr objval_cmpfun, // cmp(root_obj, value_ptr)
+                        ptrdiff_t bintree_offset)
+{
+   ASSERT(root_obj_ref != NULL);
+
+   if (!*root_obj_ref)
+      return false;
+
+   int c = objval_cmpfun(*root_obj_ref, value_ptr);
+
+   if (c == 0) {
+
+      return true;
+   }
+
+   // We did not find the value yet.
+   // *root_obj_ref is smaller then val => val is bigger => go right.
+   if (c < 0) {
+      root_obj_ref = &RIGHT_OF(*root_obj_ref);
+   } else {
+      root_obj_ref = &LEFT_OF(*root_obj_ref);
+   }
+
+   return bintree_remove_internal(root_obj_ref, value_ptr,
+                                  objval_cmpfun, bintree_offset);
 }
