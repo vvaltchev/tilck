@@ -231,7 +231,10 @@ bintree_find_internal(void *root_obj,
    return NULL;
 }
 
-bool
+
+// TODO: implement the function WITHOUT recursion!
+
+void *
 bintree_remove_internal(void **root_obj_ref,
                         void *value_ptr,
                         cmpfun_ptr objval_cmpfun, // cmp(root_obj, value_ptr)
@@ -240,17 +243,43 @@ bintree_remove_internal(void **root_obj_ref,
    ASSERT(root_obj_ref != NULL);
 
    if (!*root_obj_ref)
-      return false;
+      return NULL;
 
    int c = objval_cmpfun(*root_obj_ref, value_ptr);
 
    if (c == 0) {
 
+      void *deleted_obj = *root_obj_ref;
+
       if (LEFT_OF(*root_obj_ref) && RIGHT_OF(*root_obj_ref)) {
 
          // not-leaf node
 
-         // TODO: implement.
+         void **left = &LEFT_OF(*root_obj_ref);
+         void **right = &RIGHT_OF(*root_obj_ref);
+
+         void **obj = &RIGHT_OF(*root_obj_ref);
+         while (LEFT_OF(*obj)) {
+            obj = &LEFT_OF(*obj);
+         }
+
+         // now *obj is the smallest node at the right side of *root_obj_ref
+         // and so it is its successor.
+
+         // save *obj's right node (it has no left node!).
+         void *obj_right = RIGHT_OF(*obj); // may be NULL.
+
+         // replace *root_obj_ref (to be deleted) with *obj
+         *root_obj_ref = *obj;
+
+         // now we have to replace *obj with its right child
+         *obj = obj_right;
+
+         // restore its left and right links
+         OBJTN(*root_obj_ref)->left_obj = *left;
+         OBJTN(*root_obj_ref)->right_obj = *right;
+
+         BALANCE(root_obj_ref);
 
       } else {
 
@@ -261,7 +290,7 @@ bintree_remove_internal(void **root_obj_ref,
          }
       }
 
-      return true;
+      return deleted_obj;
    }
 
    // We did not find the value yet.
@@ -272,8 +301,8 @@ bintree_remove_internal(void **root_obj_ref,
       root_obj_ref = &LEFT_OF(*root_obj_ref);
    }
 
-   bool res = bintree_remove_internal(root_obj_ref, value_ptr,
-                                      objval_cmpfun, bintree_offset);
+   void *ret = bintree_remove_internal(root_obj_ref, value_ptr,
+                                       objval_cmpfun, bintree_offset);
    BALANCE(root_obj_ref);
-   return res;
+   return ret;
 }

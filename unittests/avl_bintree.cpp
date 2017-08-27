@@ -203,8 +203,11 @@ int check_height(int_struct *obj)
    if (!obj)
       return -1;
 
-   int lh = check_height((int_struct *)obj->node.left_obj);
-   int rh = check_height((int_struct *)obj->node.right_obj);
+   assert(obj->node.left_obj != obj);
+   assert(obj->node.right_obj != obj);
+
+   int lh = check_height((int_struct*)obj->node.left_obj);
+   int rh = check_height((int_struct*)obj->node.right_obj);
 
    assert(obj->node.height == ( max(lh, rh) + 1 ));
 
@@ -232,6 +235,25 @@ struct test_data {
    int_struct nodes[MAX_ELEMS];
 };
 
+void check_height_vs_elems(int_struct *obj, int elems)
+{
+
+   /*
+    * According to wikipedia:
+    * https://en.wikipedia.org/wiki/AVL_tree
+    *
+    * max_h is the upper-limit for the function height(N) for an AVL tree.
+    */
+   const int max_h = ceil(1.44 * log2(elems+2) - 0.328);
+
+   if (obj->node.height >= max_h) {
+
+      FAIL() << "tree's height ("
+             << obj->node.height
+             << ") exceeds the maximum expected: " << max_h-1;
+   }
+}
+
 static void in_order_visit_rand(int iters, int elems, bool slow_checks)
 {
    random_device rdev;
@@ -239,7 +261,7 @@ static void in_order_visit_rand(int iters, int elems, bool slow_checks)
    default_random_engine e(seed);
    lognormal_distribution<> dist(6.0, elems <= 100*1000 ? 3 : 5);
 
-   test_data *data = new test_data;
+   unique_ptr<test_data> data{new test_data};
 
    for (int iter = 0; iter < iters; iter++) {
 
@@ -268,21 +290,7 @@ static void in_order_visit_rand(int iters, int elems, bool slow_checks)
          }
       }
 
-      /*
-       * According to wikipedia:
-       * https://en.wikipedia.org/wiki/AVL_tree
-       *
-       * max_h is the upper-limit for the function height(N) for an AVL tree.
-       */
-      const int max_h = ceil(1.44 * log2(elems+2) - 0.328);
-
-      if (root->node.height >= max_h) {
-
-         FAIL() << "tree's height ("
-                << root->node.height
-                << ") exceeds the maximum expected: " << max_h-1;
-      }
-
+      ASSERT_NO_FATAL_FAILURE({ check_height_vs_elems(root, elems); });
       check_height(root);
       in_order_visit(root, data->ordered_nums, elems);
 
@@ -308,22 +316,104 @@ static void in_order_visit_rand(int iters, int elems, bool slow_checks)
                                   cmpfun_objval, int_struct, node);
 
          ASSERT_TRUE(res != NULL);
-         ASSERT(((int_struct*)res)->val == data->arr[i]);
+         ASSERT_TRUE(((int_struct*)res)->val == data->arr[i]);
       }
    }
 }
 
-TEST(avl_bintree, in_order_visit_random_tree_10k_iters_100_elems)
+TEST(avl_bintree, in_order_visit_quick)
+{
+   in_order_visit_rand(100, 1000, true);
+}
+
+TEST(avl_bintree, remove_rand)
+{
+   const int elems = 64;
+   const int iters = 1000;
+
+   random_device rdev;
+   const auto seed = rdev();
+   default_random_engine e(seed);
+   lognormal_distribution<> dist(6.0, elems <= 100*1000 ? 3 : 5);
+
+   unique_ptr<test_data> data{new test_data};
+
+   for (int iter = 0; iter < iters; iter++) {
+
+      int_struct *root = &data->nodes[0];
+      generate_random_array(e, dist, data->arr, elems);
+
+      if (iter == 0) {
+         cout << "[ INFO     ] random seed: " << seed << endl;
+         cout << "[ INFO     ] sample numbers: ";
+         for (int i = 0; i < 20 && i < elems; i++) {
+            printf("%i ", data->arr[i]);
+         }
+         printf("\n");
+      }
+
+      for (int i = 0; i < elems; i++) {
+         data->nodes[i] = int_struct(data->arr[i]);
+         bintree_insert(&root, &data->nodes[i], my_cmpfun, int_struct, node);
+      }
+
+      for (int i = 0; i < elems; i++) {
+
+         void *res = bintree_find(root, &data->arr[i],
+                                 cmpfun_objval, int_struct, node);
+
+         ASSERT_TRUE(res != NULL);
+         ASSERT_TRUE(((int_struct*)res)->val == data->arr[i]);
+
+         void *removed_obj =
+            bintree_remove(&root, &data->arr[i],
+                           cmpfun_objval, int_struct, node);
+
+         ASSERT_TRUE(removed_obj != NULL);
+         ASSERT_TRUE(((int_struct*)removed_obj)->val == data->arr[i]);
+
+         const int new_elems = elems - i - 1;
+
+         if (new_elems == 0) {
+            ASSERT_TRUE(root == NULL);
+            break;
+         }
+
+         ASSERT_NO_FATAL_FAILURE({ check_height_vs_elems(root, elems); });
+         check_height(root);
+         in_order_visit(root, data->ordered_nums, new_elems);
+
+         if (!is_sorted(data->ordered_nums, new_elems)) {
+
+            // For a few elems, it makes sense to print more info.
+            if (elems <= 100) {
+               printf("FAIL. Original:\n");
+               dump_array(data->arr, new_elems);
+               printf("Ordered:\n");
+               dump_array(data->ordered_nums, new_elems);
+               printf("Tree:\n");
+               node_dump(root, 0);
+            }
+            FAIL() << "an in-order visit did not produce "
+                   << "an ordered-array, after removing " << data->arr[i];
+         }
+      }
+
+   }
+}
+
+
+TEST(avl_bintree, DISABLED_in_order_visit_random_tree_10k_iters_100_elems)
 {
    in_order_visit_rand(10*1000, 100, true);
 }
 
-TEST(avl_bintree, in_order_visit_random_tree_10_iters_100k_elems)
+TEST(avl_bintree, DISABLED_in_order_visit_random_tree_10_iters_100k_elems)
 {
    in_order_visit_rand(10, 100*1000, false);
 }
 
-TEST(avl_bintree, in_order_visit_random_tree_1m_elems)
+TEST(avl_bintree, DISABLED_in_order_visit_random_tree_1m_elems)
 {
    in_order_visit_rand(1, 1000*1000, false);
 }

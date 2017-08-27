@@ -46,7 +46,11 @@ bintree_find_internal(void *root_obj,
                       cmpfun_ptr objval_cmpfun,   // cmp(root_obj, value_ptr)
                       ptrdiff_t bintree_offset);
 
-bool
+
+/*
+ * returns a pointer to the removed object (if found) or NULL.
+ */
+void *
 bintree_remove_internal(void **root_obj_ref,
                         void *value_ptr,
                         cmpfun_ptr objval_cmpfun, // cmp(*root_obj_ref, value_ptr)
@@ -60,3 +64,8 @@ bintree_remove_internal(void **root_obj_ref,
    bintree_find_internal((void*)(root_obj),                                   \
                          (value), (objval_cmpfun),                            \
                          OFFSET_OF(struct_type, elem_name))
+
+#define bintree_remove(rootref, value, objval_cmpfun, struct_type, elem_name) \
+   bintree_remove_internal((void**)(rootref),                                 \
+                           (value), (objval_cmpfun),                          \
+                           OFFSET_OF(struct_type, elem_name))
