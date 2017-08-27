@@ -246,6 +246,21 @@ bintree_remove_internal(void **root_obj_ref,
 
    if (c == 0) {
 
+      if (LEFT_OF(*root_obj_ref) && RIGHT_OF(*root_obj_ref)) {
+
+         // not-leaf node
+
+         // TODO: implement.
+
+      } else {
+
+         if (LEFT_OF(*root_obj_ref) != NULL) {
+            *root_obj_ref = LEFT_OF(*root_obj_ref);
+         } else {
+            *root_obj_ref = RIGHT_OF(*root_obj_ref);
+         }
+      }
+
       return true;
    }
 
@@ -257,6 +272,8 @@ bintree_remove_internal(void **root_obj_ref,
       root_obj_ref = &LEFT_OF(*root_obj_ref);
    }
 
-   return bintree_remove_internal(root_obj_ref, value_ptr,
-                                  objval_cmpfun, bintree_offset);
+   bool res = bintree_remove_internal(root_obj_ref, value_ptr,
+                                      objval_cmpfun, bintree_offset);
+   BALANCE(root_obj_ref);
+   return res;
 }
