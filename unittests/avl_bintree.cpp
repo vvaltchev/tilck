@@ -198,7 +198,7 @@ generate_random_array(default_random_engine &e,
    }
 }
 
-int check_height(int_struct *obj)
+int check_height(int_struct *obj, bool *failed)
 {
    if (!obj)
       return -1;
@@ -206,29 +206,54 @@ int check_height(int_struct *obj)
    assert(obj->node.left_obj != obj);
    assert(obj->node.right_obj != obj);
 
-   int lh = check_height((int_struct*)obj->node.left_obj);
-   int rh = check_height((int_struct*)obj->node.right_obj);
+   bool fail1, fail2;
 
-   //assert(obj->node.height == ( max(lh, rh) + 1 ));
+   int lh = check_height((int_struct*)obj->node.left_obj, &fail1);
+   int rh = check_height((int_struct*)obj->node.right_obj, &fail2);
+
+   if (fail1 || fail2) {
+
+      if (failed) {
+         *failed = true;
+         return -1;
+      }
+
+      printf("Tree:\n");
+      node_dump(obj, 0);
+      NOT_REACHED();
+   }
 
    if ( obj->node.height != ( max(lh, rh) + 1 ) ) {
 
-      printf("[ERROR] obj->node.height != ( max(lh, rh) + 1 ); %i vs %i\n",
-             obj->node.height, max(lh, rh) + 1);
+      printf("[ERROR] obj->node.height != ( max(lh, rh) + 1 ); Node val: %i. H: %i vs %i\n",
+             obj->val, obj->node.height, max(lh, rh) + 1);
+
+      if (failed != NULL) {
+         *failed = true;
+         return -1;
+      }
 
       NOT_REACHED();
    }
 
    // balance condition.
-   //assert( -1 <= (lh-rh) && (lh-rh) <= 1 );
 
    if (!( -1 <= (lh-rh) && (lh-rh) <= 1 )) {
       printf("[ERROR] lh-rh is %i\n", lh-rh);
+
+      if (failed != NULL) {
+         *failed = true;
+         return -1;
+      }
+
       NOT_REACHED();
    }
 
    (void)lh;
    (void)rh;
+
+   if (failed != NULL)
+      *failed = false;
 
    return obj->node.height;
 }
@@ -304,7 +329,7 @@ static void in_order_visit_rand(int iters, int elems, bool slow_checks)
       }
 
       ASSERT_NO_FATAL_FAILURE({ check_height_vs_elems(root, elems); });
-      check_height(root);
+      check_height(root, NULL);
       in_order_visit(root, data->ordered_nums, elems);
 
       if (!is_sorted(data->ordered_nums, elems)) {
@@ -341,7 +366,7 @@ TEST(avl_bintree, in_order_visit_quick)
 
 TEST(avl_bintree, remove_rand)
 {
-   const int elems = 64;
+   const int elems = 32;
    const int iters = 20000;
 
    random_device rdev;
@@ -393,7 +418,7 @@ TEST(avl_bintree, remove_rand)
          }
 
          ASSERT_NO_FATAL_FAILURE({ check_height_vs_elems(root, elems); });
-         check_height(root);
+         check_height(root, NULL);
          in_order_visit(root, data->ordered_nums, new_elems);
 
          if (!is_sorted(data->ordered_nums, new_elems)) {
