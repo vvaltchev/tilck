@@ -209,10 +209,23 @@ int check_height(int_struct *obj)
    int lh = check_height((int_struct*)obj->node.left_obj);
    int rh = check_height((int_struct*)obj->node.right_obj);
 
-   assert(obj->node.height == ( max(lh, rh) + 1 ));
+   //assert(obj->node.height == ( max(lh, rh) + 1 ));
+
+   if ( obj->node.height != ( max(lh, rh) + 1 ) ) {
+
+      printf("[ERROR] obj->node.height != ( max(lh, rh) + 1 ); %i vs %i\n",
+             obj->node.height, max(lh, rh) + 1);
+
+      NOT_REACHED();
+   }
 
    // balance condition.
-   assert( -1 <= (lh-rh) && (lh-rh) <= 1 );
+   //assert( -1 <= (lh-rh) && (lh-rh) <= 1 );
+
+   if (!( -1 <= (lh-rh) && (lh-rh) <= 1 )) {
+      printf("[ERROR] lh-rh is %i\n", lh-rh);
+      NOT_REACHED();
+   }
 
    (void)lh;
    (void)rh;
@@ -329,10 +342,10 @@ TEST(avl_bintree, in_order_visit_quick)
 TEST(avl_bintree, remove_rand)
 {
    const int elems = 64;
-   const int iters = 1000;
+   const int iters = 20000;
 
    random_device rdev;
-   const auto seed = rdev();
+   const auto seed = 3826494094; //rdev();
    default_random_engine e(seed);
    lognormal_distribution<> dist(6.0, elems <= 100*1000 ? 3 : 5);
 
