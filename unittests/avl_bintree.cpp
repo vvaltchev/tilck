@@ -200,13 +200,16 @@ generate_random_array(default_random_engine &e,
 
 int check_height(int_struct *obj, bool *failed)
 {
-   if (!obj)
+   if (!obj) {
+      if (failed)
+         *failed=false;
       return -1;
+   }
 
    assert(obj->node.left_obj != obj);
    assert(obj->node.right_obj != obj);
 
-   bool fail1, fail2;
+   bool fail1 = false, fail2 = false;
 
    int lh = check_height((int_struct*)obj->node.left_obj, &fail1);
    int rh = check_height((int_struct*)obj->node.right_obj, &fail2);
@@ -366,7 +369,7 @@ TEST(avl_bintree, in_order_visit_quick)
 
 TEST(avl_bintree, remove_rand)
 {
-   const int elems = 32;
+   const int elems = 16;
    const int iters = 20000;
 
    random_device rdev;

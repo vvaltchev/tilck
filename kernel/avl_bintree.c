@@ -275,9 +275,14 @@ bintree_remove_internal(void **root_obj_ref,
          // now we have to replace *obj with its right child
          *obj = obj_right;
 
+         BALANCE(obj);
+
          // restore its left and right links
          OBJTN(*root_obj_ref)->left_obj = *left;
          OBJTN(*root_obj_ref)->right_obj = *right;
+
+         BALANCE(&LEFT_OF(*root_obj_ref)); //add
+         BALANCE(&RIGHT_OF(*root_obj_ref)); //add
 
          BALANCE(root_obj_ref);
 
@@ -288,6 +293,10 @@ bintree_remove_internal(void **root_obj_ref,
          } else {
             *root_obj_ref = RIGHT_OF(*root_obj_ref);
          }
+
+         BALANCE(&LEFT_OF(*root_obj_ref)); //add
+         BALANCE(&RIGHT_OF(*root_obj_ref)); //add
+         BALANCE(root_obj_ref); //add
       }
 
       return deleted_obj;
@@ -303,6 +312,10 @@ bintree_remove_internal(void **root_obj_ref,
 
    void *ret = bintree_remove_internal(root_obj_ref, value_ptr,
                                        objval_cmpfun, bintree_offset);
+
+   BALANCE(&LEFT_OF(*root_obj_ref)); //add
+   BALANCE(&RIGHT_OF(*root_obj_ref)); //add
+
    BALANCE(root_obj_ref);
    return ret;
 }
