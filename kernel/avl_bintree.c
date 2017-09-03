@@ -4,7 +4,7 @@
 #define MAX_TREE_HEIGHT 32
 #define ALLOWED_IMBALANCE 1
 
-void (*debug_dump)();
+void (*debug_dump)() = NULL;
 
 static inline bintree_node *
 obj_to_bintree_node(void *obj, ptrdiff_t offset)
