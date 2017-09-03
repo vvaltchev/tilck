@@ -17,10 +17,8 @@
     },
     "files.eol": "\n",
     "files.trimTrailingWhitespace": true,
-   "files.insertFinalNewline": true,
-   "files.associations": {
-      "cstdio": "cpp",
-      "algorithm": "cpp",
-      "functional": "cpp"
-   }
+    "files.insertFinalNewline": true,
+    "editor.formatOnPaste": false,
+    "editor.autoIndent": false,
+    "editor.emptySelectionClipboard": false
 }
