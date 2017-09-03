@@ -1,7 +1,13 @@
 
 #include <bintree.h>
 
+#define MAX_TREE_HEIGHT 32
 #define ALLOWED_IMBALANCE 1
+
+void (*debug_dump)();
+
+void printf(const char*, ...);
+
 
 static inline bintree_node *
 obj_to_bintree_node(void *obj, ptrdiff_t offset)
@@ -114,26 +120,45 @@ static void balance(void **obj_ref, ptrdiff_t bintree_offset)
    if (bf > ALLOWED_IMBALANCE) {
 
       if (HEIGHT(LEFT_OF(left_obj)) >= HEIGHT(RIGHT_OF(left_obj))) {
+         if (debug_dump) { printf("##1\n"); debug_dump(); }
          ROTATE_CW_LEFT_CHILD(obj_ref);
+         if (debug_dump) { printf("##2\n"); debug_dump(); }
       } else {
+         if (debug_dump) { printf("##3\n"); debug_dump(); }
          ROTATE_CCW_RIGHT_CHILD(&LEFT_OF(*obj_ref));
+         if (debug_dump) { printf("##4\n"); debug_dump(); }
          ROTATE_CW_LEFT_CHILD(obj_ref);
+         if (debug_dump) { printf("##5\n"); debug_dump(); }
       }
 
    } else if (bf < -ALLOWED_IMBALANCE) {
 
       if (HEIGHT(RIGHT_OF(right_obj)) >= HEIGHT(LEFT_OF(right_obj))) {
+         if (debug_dump) { printf("##6\n"); debug_dump(); }
          ROTATE_CCW_RIGHT_CHILD(obj_ref);
+         if (debug_dump) { printf("##7\n"); debug_dump(); }
       } else {
+         if (debug_dump) { printf("##8\n"); debug_dump(); }
          ROTATE_CW_LEFT_CHILD(&RIGHT_OF(*obj_ref));
+
+         /*
+          * the problem occurs between 9 and 10. After the rotation, a visit
+          * from the root, finds the still the old right node. That's before
+          * obj_ref was in first place the WRONG reference!
+          */
+         if (debug_dump) { printf("##9\n"); debug_dump(); }
          ROTATE_CCW_RIGHT_CHILD(obj_ref);
+         if (debug_dump) { printf("##10\n"); debug_dump(); }
       }
    }
 
    UPDATE_HEIGHT(OBJTN(*obj_ref));
 }
 
-#define SIMULATE_CALL(r) (stack[stack_size++] = (r))
+
+#define STACK_PUSH(r) (stack[stack_size++] = (r))
+#define STACK_TOP() (stack[stack_size-1])
+
 
 bool
 bintree_insert_internal(void **root_obj_ref,
@@ -146,10 +171,10 @@ bintree_insert_internal(void **root_obj_ref,
     * that is needed for the balance at the end (it simulates the stack
     * unwinding that happens for recursive implementations).
     */
-   void **stack[32] = {0};
+   void **stack[MAX_TREE_HEIGHT] = {0};
    int stack_size = 0;
 
-   SIMULATE_CALL(root_obj_ref);
+   STACK_PUSH(root_obj_ref);
 
    while (true) {
 
@@ -176,7 +201,7 @@ bintree_insert_internal(void **root_obj_ref,
             break;
          }
 
-         SIMULATE_CALL(&root->left_obj);
+         STACK_PUSH(&root->left_obj);
          continue;
       }
 
@@ -190,7 +215,7 @@ bintree_insert_internal(void **root_obj_ref,
          break;
       }
 
-      SIMULATE_CALL(&root->right_obj);
+      STACK_PUSH(&root->right_obj);
    }
 
    while (stack_size > 0) {
@@ -200,8 +225,6 @@ bintree_insert_internal(void **root_obj_ref,
    DEBUG_ONLY(VALIDATE_BST(*root_obj_ref));
    return true;
 }
-
-#undef SIMULATE_CALL
 
 
 
@@ -221,18 +244,13 @@ bintree_find_internal(void *root_obj,
       }
 
       // root_obj is smaller then val => val is bigger => go right.
-      if (c < 0) {
-         root_obj = RIGHT_OF(root_obj);
-      } else {
-         root_obj = LEFT_OF(root_obj);
-      }
+      root_obj = c < 0 ? RIGHT_OF(root_obj) : LEFT_OF(root_obj);
    }
 
    return NULL;
 }
 
 
-// TODO: implement the function WITHOUT recursion!
 
 void *
 bintree_remove_internal(void **root_obj_ref,
@@ -240,82 +258,94 @@ bintree_remove_internal(void **root_obj_ref,
                         cmpfun_ptr objval_cmpfun, // cmp(root_obj, value_ptr)
                         ptrdiff_t bintree_offset)
 {
+   void **stack[MAX_TREE_HEIGHT] = {0};
+   int stack_size = 0;
+
    ASSERT(root_obj_ref != NULL);
 
-   if (!*root_obj_ref)
-      return NULL;
+   STACK_PUSH(root_obj_ref);
 
-   int c = objval_cmpfun(*root_obj_ref, value_ptr);
+   while (true) {
 
-   if (c == 0) {
+      root_obj_ref = STACK_TOP();
 
-      void *deleted_obj = *root_obj_ref;
+      if (!*root_obj_ref)
+         return NULL; // we did not find the object.
 
-      if (LEFT_OF(*root_obj_ref) && RIGHT_OF(*root_obj_ref)) {
+      int c = objval_cmpfun(*root_obj_ref, value_ptr);
 
-         // not-leaf node
+      if (c == 0)
+         break;
 
-         void **left = &LEFT_OF(*root_obj_ref);
-         void **right = &RIGHT_OF(*root_obj_ref);
+      // *root_obj_ref is smaller then val => val is bigger => go right.
+      STACK_PUSH(c < 0 ? &RIGHT_OF(*root_obj_ref) : &LEFT_OF(*root_obj_ref));
+   }
 
-         void **obj = &RIGHT_OF(*root_obj_ref);
-         while (LEFT_OF(*obj)) {
-            obj = &LEFT_OF(*obj);
-         }
 
-         // now *obj is the smallest node at the right side of *root_obj_ref
-         // and so it is its successor.
+   void *deleted_obj = *root_obj_ref;
 
-         // save *obj's right node (it has no left node!).
-         void *obj_right = RIGHT_OF(*obj); // may be NULL.
+   if (LEFT_OF(*root_obj_ref) && RIGHT_OF(*root_obj_ref)) {
 
-         // replace *root_obj_ref (to be deleted) with *obj
-         *root_obj_ref = *obj;
+      // not-leaf node
 
-         // now we have to replace *obj with its right child
-         *obj = obj_right;
+      void **left = &LEFT_OF(*root_obj_ref);
+      void **right = &RIGHT_OF(*root_obj_ref);
 
-         BALANCE(obj);
+      void **obj = &RIGHT_OF(*root_obj_ref);
 
-         // restore its left and right links
-         OBJTN(*root_obj_ref)->left_obj = *left;
-         OBJTN(*root_obj_ref)->right_obj = *right;
+      int curr_stack_size = stack_size;
 
-         BALANCE(&LEFT_OF(*root_obj_ref)); //add
-         BALANCE(&RIGHT_OF(*root_obj_ref)); //add
-
-         BALANCE(root_obj_ref);
-
-      } else {
-
-         if (LEFT_OF(*root_obj_ref) != NULL) {
-            *root_obj_ref = LEFT_OF(*root_obj_ref);
-         } else {
-            *root_obj_ref = RIGHT_OF(*root_obj_ref);
-         }
-
-         BALANCE(&LEFT_OF(*root_obj_ref)); //add
-         BALANCE(&RIGHT_OF(*root_obj_ref)); //add
-         BALANCE(root_obj_ref); //add
+      while (LEFT_OF(*obj)) {
+         STACK_PUSH(obj);
+         obj = &LEFT_OF(*obj);
       }
 
-      return deleted_obj;
-   }
+      STACK_PUSH(obj);
 
-   // We did not find the value yet.
-   // *root_obj_ref is smaller then val => val is bigger => go right.
-   if (c < 0) {
-      root_obj_ref = &RIGHT_OF(*root_obj_ref);
+      // now *obj is the smallest node at the right side of *root_obj_ref
+      // and so it is its successor.
+
+      // save *obj's right node (it has no left node!).
+      void *obj_right = RIGHT_OF(*obj); // may be NULL.
+
+      // replace *root_obj_ref (to be deleted) with *obj
+      *root_obj_ref = *obj;
+
+      // now we have to replace *obj with its right child
+      *obj = obj_right;
+
+      // Balance the part of the tree up to the original value of 'obj'
+      while (stack_size > curr_stack_size) {
+         BALANCE(stack[--stack_size]);
+      }
+
+      // restore its left and right links
+      OBJTN(*root_obj_ref)->left_obj = *left;
+      OBJTN(*root_obj_ref)->right_obj = *right;
+
    } else {
-      root_obj_ref = &LEFT_OF(*root_obj_ref);
+
+      if (LEFT_OF(*root_obj_ref) != NULL) {
+         *root_obj_ref = LEFT_OF(*root_obj_ref);
+      } else {
+         *root_obj_ref = RIGHT_OF(*root_obj_ref);
+      }
    }
 
-   void *ret = bintree_remove_internal(root_obj_ref, value_ptr,
-                                       objval_cmpfun, bintree_offset);
 
-   BALANCE(&LEFT_OF(*root_obj_ref)); //add
-   BALANCE(&RIGHT_OF(*root_obj_ref)); //add
+   while (stack_size > 0) {
 
-   BALANCE(root_obj_ref);
-   return ret;
+      if (debug_dump) {
+         void **objref = STACK_TOP();
+         void *obj = *objref;
+         int *obji = (int*)obj;
+         if (obji) {
+            printf("#before balancing %i\n", *obji);
+         }
+         debug_dump();
+      }
+      BALANCE(stack[--stack_size]);
+   }
+
+   return deleted_obj;
 }

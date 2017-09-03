@@ -218,7 +218,7 @@ int check_height(int_struct *obj, bool *failed)
 
       if (failed) {
          *failed = true;
-         return -1;
+         return -1000;
       }
 
       printf("Tree:\n");
@@ -231,9 +231,12 @@ int check_height(int_struct *obj, bool *failed)
       printf("[ERROR] obj->node.height != ( max(lh, rh) + 1 ); Node val: %i. H: %i vs %i\n",
              obj->val, obj->node.height, max(lh, rh) + 1);
 
+      printf("Tree:\n");
+      node_dump(obj, 0);
+
       if (failed != NULL) {
          *failed = true;
-         return -1;
+         return -1000;
       }
 
       NOT_REACHED();
@@ -242,23 +245,24 @@ int check_height(int_struct *obj, bool *failed)
    // balance condition.
 
    if (!( -1 <= (lh-rh) && (lh-rh) <= 1 )) {
-      printf("[ERROR] lh-rh is %i\n", lh-rh);
+      printf("[ERROR] lh-rh is %i for node %i; lh:%i, rh:%i\n",
+             lh-rh, obj->val, lh, rh);
+
+      printf("Tree:\n");
+      node_dump(obj, 0);
 
       if (failed != NULL) {
          *failed = true;
-         return -1;
+         return -1000;
       }
 
       NOT_REACHED();
    }
 
-   (void)lh;
-   (void)rh;
-
    if (failed != NULL)
       *failed = false;
 
-   return obj->node.height;
+   return max(lh, rh) + 1;
 }
 
 static int cmpfun_objval(const void *obj, const void *valptr)
@@ -367,6 +371,16 @@ TEST(avl_bintree, in_order_visit_quick)
    in_order_visit_rand(100, 1000, true);
 }
 
+extern void (*debug_dump)();
+int_struct **global_root;
+
+void debug_dump_tree()
+{
+   node_dump(*global_root, 0);
+   printf("\n");
+}
+
+
 TEST(avl_bintree, remove_rand)
 {
    const int elems = 16;
@@ -382,6 +396,8 @@ TEST(avl_bintree, remove_rand)
    for (int iter = 0; iter < iters; iter++) {
 
       int_struct *root = &data->nodes[0];
+      global_root=&root;
+
       generate_random_array(e, dist, data->arr, elems);
 
       if (iter == 0) {
@@ -398,7 +414,19 @@ TEST(avl_bintree, remove_rand)
          bintree_insert(&root, &data->nodes[i], my_cmpfun, int_struct, node);
       }
 
+      //printf("#iter %i\n", iter);
+
       for (int i = 0; i < elems; i++) {
+
+         // if (iter == 4) {
+
+         //    //debug_dump = debug_dump_tree;
+
+         //    printf("#\n#Tree (before removing):\n");
+         //    node_dump(root, 0);
+         //    printf("\n");
+         //    printf("#removing elem: %i\n", data->arr[i]);
+         // }
 
          void *res = bintree_find(root, &data->arr[i],
                                  cmpfun_objval, int_struct, node);
