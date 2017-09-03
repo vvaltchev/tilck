@@ -1,0 +1,2 @@
+#!/bin/sh
+$PWD/run_qemu -enable-kvm $@
