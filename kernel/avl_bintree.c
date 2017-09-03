@@ -117,25 +117,25 @@ static void balance(void **obj_ref, ptrdiff_t bintree_offset)
    if (bf > ALLOWED_IMBALANCE) {
 
       if (HEIGHT(LEFT_OF(left_obj)) >= HEIGHT(RIGHT_OF(left_obj))) {
-         if (debug_dump) { printf("##1\n"); debug_dump(); }
+         // if (debug_dump) { printf("##1\n"); debug_dump(); }
          ROTATE_CW_LEFT_CHILD(obj_ref);
-         if (debug_dump) { printf("##2\n"); debug_dump(); }
+         // if (debug_dump) { printf("##2\n"); debug_dump(); }
       } else {
-         if (debug_dump) { printf("##3\n"); debug_dump(); }
+         // if (debug_dump) { printf("##3\n"); debug_dump(); }
          ROTATE_CCW_RIGHT_CHILD(&LEFT_OF(*obj_ref));
-         if (debug_dump) { printf("##4\n"); debug_dump(); }
+         // if (debug_dump) { printf("##4\n"); debug_dump(); }
          ROTATE_CW_LEFT_CHILD(obj_ref);
-         if (debug_dump) { printf("##5\n"); debug_dump(); }
+         // if (debug_dump) { printf("##5\n"); debug_dump(); }
       }
 
    } else if (bf < -ALLOWED_IMBALANCE) {
 
       if (HEIGHT(RIGHT_OF(right_obj)) >= HEIGHT(LEFT_OF(right_obj))) {
-         if (debug_dump) { printf("##6\n"); debug_dump(); }
+         // if (debug_dump) { printf("##6\n"); debug_dump(); }
          ROTATE_CCW_RIGHT_CHILD(obj_ref);
-         if (debug_dump) { printf("##7\n"); debug_dump(); }
+         // if (debug_dump) { printf("##7\n"); debug_dump(); }
       } else {
-         if (debug_dump) { printf("##8\n"); debug_dump(); }
+         // if (debug_dump) { printf("##8\n"); debug_dump(); }
          ROTATE_CW_LEFT_CHILD(&RIGHT_OF(*obj_ref));
 
          /*
@@ -143,9 +143,9 @@ static void balance(void **obj_ref, ptrdiff_t bintree_offset)
           * from the root, finds the still the old right node. That's before
           * obj_ref was in first place the WRONG reference!
           */
-         if (debug_dump) { printf("##9\n"); debug_dump(); }
+         // if (debug_dump) { printf("##9\n"); debug_dump(); }
          ROTATE_CCW_RIGHT_CHILD(obj_ref);
-         if (debug_dump) { printf("##10\n"); debug_dump(); }
+         // if (debug_dump) { printf("##10\n"); debug_dump(); }
       }
    }
 
