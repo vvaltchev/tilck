@@ -299,7 +299,7 @@ void check_height_vs_elems(int_struct *obj, int elems)
    }
 }
 
-static void in_order_visit_rand(int iters, int elems, bool slow_checks)
+static void test_insert_rand_data(int iters, int elems, bool slow_checks)
 {
    random_device rdev;
    const auto seed = rdev();
@@ -366,9 +366,9 @@ static void in_order_visit_rand(int iters, int elems, bool slow_checks)
    }
 }
 
-TEST(avl_bintree, in_order_visit_quick)
+TEST(avl_bintree, insert_quick_test)
 {
-   in_order_visit_rand(100, 1000, true);
+   test_insert_rand_data(100, 1000, true);
 }
 
 extern void (*debug_dump)();
@@ -381,13 +381,10 @@ void debug_dump_tree()
 }
 
 
-TEST(avl_bintree, remove_rand)
+void remove_rand_data(const int elems, const int iters)
 {
-   const int elems = 16;
-   const int iters = 20000;
-
    random_device rdev;
-   const auto seed = 3826494094; //rdev();
+   const auto seed = rdev();
    default_random_engine e(seed);
    lognormal_distribution<> dist(6.0, elems <= 100*1000 ? 3 : 5);
 
@@ -414,22 +411,10 @@ TEST(avl_bintree, remove_rand)
          bintree_insert(&root, &data->nodes[i], my_cmpfun, int_struct, node);
       }
 
-      //printf("#iter %i\n", iter);
-
       for (int i = 0; i < elems; i++) {
 
-         // if (iter == 4) {
-
-         //    //debug_dump = debug_dump_tree;
-
-         //    printf("#\n#Tree (before removing):\n");
-         //    node_dump(root, 0);
-         //    printf("\n");
-         //    printf("#removing elem: %i\n", data->arr[i]);
-         // }
-
          void *res = bintree_find(root, &data->arr[i],
-                                 cmpfun_objval, int_struct, node);
+                                  cmpfun_objval, int_struct, node);
 
          ASSERT_TRUE(res != NULL);
          ASSERT_TRUE(((int_struct*)res)->val == data->arr[i]);
@@ -471,19 +456,39 @@ TEST(avl_bintree, remove_rand)
    }
 }
 
-
-TEST(avl_bintree, DISABLED_in_order_visit_random_tree_10k_iters_100_elems)
+TEST(avl_bintree, remove_quick_test)
 {
-   in_order_visit_rand(10*1000, 100, true);
+   remove_rand_data(100, 1000);
 }
 
-TEST(avl_bintree, DISABLED_in_order_visit_random_tree_10_iters_100k_elems)
+TEST(avl_bintree, DISABLED_remove_1000_elems_100_iters)
 {
-   in_order_visit_rand(10, 100*1000, false);
+   remove_rand_data(1000, 100);
 }
 
-TEST(avl_bintree, DISABLED_in_order_visit_random_tree_1m_elems)
+TEST(avl_bintree, DISABLED_remove_1k_elems_1k_iters)
 {
-   in_order_visit_rand(1, 1000*1000, false);
+   remove_rand_data(1000, 1000);
+}
+
+TEST(avl_bintree, DISABLED_remove_10k_elems_10_iters)
+{
+   remove_rand_data(10*1000, 10);
+}
+
+
+TEST(avl_bintree, DISABLED_test_insert_rand_data_tree_10k_iters_100_elems)
+{
+   test_insert_rand_data(10*1000, 100, true);
+}
+
+TEST(avl_bintree, DISABLED_test_insert_rand_data_tree_10_iters_100k_elems)
+{
+   test_insert_rand_data(10, 100*1000, false);
+}
+
+TEST(avl_bintree, DISABLED_test_insert_rand_data_tree_1m_elems)
+{
+   test_insert_rand_data(1, 1000*1000, false);
 }
 

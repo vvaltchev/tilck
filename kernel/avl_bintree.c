@@ -314,12 +314,12 @@ bintree_remove_internal(void **root_obj_ref,
       // now we have to replace *obj with its right child
       *obj = obj_right;
 
-      // Balance the part of the tree up to the original value of 'obj'
+      // balance the part of the tree up to the original value of 'obj'
       while (stack_size > curr_stack_size) {
          BALANCE(stack[--stack_size]);
       }
 
-      // restore its left and right links
+      // restore root's original left and right links
       OBJTN(*root_obj_ref)->left_obj = *left;
       OBJTN(*root_obj_ref)->right_obj = *right;
 
