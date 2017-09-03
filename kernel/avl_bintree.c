@@ -6,9 +6,6 @@
 
 void (*debug_dump)();
 
-void printf(const char*, ...);
-
-
 static inline bintree_node *
 obj_to_bintree_node(void *obj, ptrdiff_t offset)
 {
@@ -335,15 +332,15 @@ bintree_remove_internal(void **root_obj_ref,
 
    while (stack_size > 0) {
 
-      if (debug_dump) {
-         void **objref = STACK_TOP();
-         void *obj = *objref;
-         int *obji = (int*)obj;
-         if (obji) {
-            printf("#before balancing %i\n", *obji);
-         }
-         debug_dump();
-      }
+      // if (debug_dump) {
+      //    void **objref = STACK_TOP();
+      //    void *obj = *objref;
+      //    int *obji = (int*)obj;
+      //    if (obji) {
+      //       printf("#before balancing %i\n", *obji);
+      //    }
+      //    debug_dump();
+      // }
       BALANCE(stack[--stack_size]);
    }
 
