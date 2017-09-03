@@ -157,7 +157,7 @@ bintree_insert_internal(void **root_obj_ref,
 
    while (true) {
 
-      root_obj_ref = stack[stack_size-1];
+      root_obj_ref = STACK_TOP();
 
       ASSERT(root_obj_ref != NULL);
       ASSERT(*root_obj_ref != NULL);
@@ -166,9 +166,8 @@ bintree_insert_internal(void **root_obj_ref,
 
       int c = cmp(obj, *root_obj_ref);
 
-      if (c == 0) {
+      if (!c)
          return false; // such elem already exists.
-      }
 
       if (c < 0) {
 
@@ -197,9 +196,8 @@ bintree_insert_internal(void **root_obj_ref,
       STACK_PUSH(&root->right_obj);
    }
 
-   while (stack_size > 0) {
+   while (stack_size > 0)
       BALANCE(STACK_POP());
-   }
 
    DEBUG_ONLY(VALIDATE_BST(*root_obj_ref));
    return true;
@@ -216,9 +214,8 @@ bintree_find_internal(void *root_obj,
 
       int c = objval_cmpfun(root_obj, value_ptr);
 
-      if (c == 0) {
+      if (c == 0)
          return root_obj;
-      }
 
       // root_obj is smaller then val => val is bigger => go right.
       root_obj = c < 0 ? RIGHT_OF(root_obj) : LEFT_OF(root_obj);
@@ -237,7 +234,6 @@ bintree_remove_internal(void **root_obj_ref,
    int stack_size = 0;
 
    ASSERT(root_obj_ref != NULL);
-
    STACK_PUSH(root_obj_ref);
 
    while (true) {
@@ -249,7 +245,7 @@ bintree_remove_internal(void **root_obj_ref,
 
       int c = objval_cmpfun(*root_obj_ref, value_ptr);
 
-      if (c == 0)
+      if (!c)
          break;
 
       // *root_obj_ref is smaller then val => val is bigger => go right.
@@ -300,17 +296,13 @@ bintree_remove_internal(void **root_obj_ref,
 
    } else {
 
-      if (LEFT_OF(*root_obj_ref) != NULL) {
-         *root_obj_ref = LEFT_OF(*root_obj_ref);
-      } else {
-         *root_obj_ref = RIGHT_OF(*root_obj_ref);
-      }
+      *root_obj_ref = LEFT_OF(*root_obj_ref)
+                        ? LEFT_OF(*root_obj_ref)
+                        : RIGHT_OF(*root_obj_ref);
    }
 
-
-   while (stack_size > 0) {
+   while (stack_size > 0)
       BALANCE(STACK_POP());
-   }
 
    return deleted_obj;
 }
