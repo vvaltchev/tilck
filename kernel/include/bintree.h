@@ -53,7 +53,7 @@ bintree_find_internal(void *root_obj,
 void *
 bintree_remove_internal(void **root_obj_ref,
                         void *value_ptr,
-                        cmpfun_ptr objval_cmpfun, // cmp(*root_obj_ref, value_ptr)
+                        cmpfun_ptr objval_cmpfun, //cmp(*root_obj_ref,value_ptr)
                         ptrdiff_t bintree_offset);
 
 #define bintree_insert(rootref, obj, cmpfun, struct_type, elem_name)   \

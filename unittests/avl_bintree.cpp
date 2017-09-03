@@ -34,9 +34,11 @@ static int my_cmpfun(const void *a, const void *b)
    return v1->val - v2->val;
 }
 
-////////////////////////////////////////////////////////////////////////////
-// DEBUGGING STUFF
-////////////////////////////////////////////////////////////////////////////
+/*
+ * --------------------------------------------------------------------------
+ * DEBUGGING UTILS
+ * --------------------------------------------------------------------------
+ */
 
 
 static void indent(int level)
@@ -181,6 +183,7 @@ generate_random_array(default_random_engine &e,
    }
 }
 
+// TODO: re-write this function in a better way.
 int check_height(int_struct *obj, bool *failed)
 {
    if (!obj) {
@@ -211,8 +214,9 @@ int check_height(int_struct *obj, bool *failed)
 
    if ( obj->node.height != ( max(lh, rh) + 1 ) ) {
 
-      printf("[ERROR] obj->node.height != ( max(lh, rh) + 1 ); Node val: %i. H: %i vs %i\n",
-             obj->val, obj->node.height, max(lh, rh) + 1);
+      printf("[ERROR] obj->node.height != ( max(lh, rh) + 1 ); "
+             "Node val: %i. H: %i vs %i\n", obj->val,
+             obj->node.height, max(lh, rh) + 1);
 
       printf("Tree:\n");
       node_dump(obj, 0);
@@ -282,9 +286,13 @@ void check_height_vs_elems(int_struct *obj, int elems)
    }
 }
 
-///////////////////////////////////////////////////
-// TESTS
-///////////////////////////////////////////////////
+
+/*
+ * --------------------------------------------------------------------------
+ * TESTS
+ * --------------------------------------------------------------------------
+ */
+
 
 TEST(avl_bintree, in_order_visit_after_insert_is_correct)
 {

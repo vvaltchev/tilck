@@ -47,7 +47,7 @@ update_height(bintree_node *node, ptrdiff_t bintree_offset)
  *    (nll) (nlr)               (nlr) (nr)
  */
 
-void rotate_cw_left_child(void **obj_ref, ptrdiff_t bintree_offset)
+void rotate_left_child(void **obj_ref, ptrdiff_t bintree_offset)
 {
    ASSERT(obj_ref != NULL);
    ASSERT(*obj_ref != NULL);
@@ -65,10 +65,10 @@ void rotate_cw_left_child(void **obj_ref, ptrdiff_t bintree_offset)
 }
 
 /*
- * rotate the right child of *obj_ref counterclock-wise
+ * rotate the right child of *obj_ref counterclock-wise (symmetric function)
  */
 
-void rotate_ccw_right_child(void **obj_ref, ptrdiff_t bintree_offset)
+void rotate_right_child(void **obj_ref, ptrdiff_t bintree_offset)
 {
    ASSERT(obj_ref != NULL);
    ASSERT(*obj_ref != NULL);
@@ -85,23 +85,8 @@ void rotate_ccw_right_child(void **obj_ref, ptrdiff_t bintree_offset)
    UPDATE_HEIGHT(orig_right_child);
 }
 
-
-static void validate_bst(void *obj, ptrdiff_t bintree_offset, cmpfun_ptr cmp)
-{
-   if (!obj) return;
-
-   if (LEFT_OF(obj)) {
-      ASSERT(cmp(LEFT_OF(obj), obj) < 0);
-   }
-
-   if (RIGHT_OF(obj)) {
-      ASSERT(cmp(RIGHT_OF(obj), obj) > 0);
-   }
-}
-
-#define ROTATE_CW_LEFT_CHILD(obj) (rotate_cw_left_child((obj), bintree_offset))
-#define ROTATE_CCW_RIGHT_CHILD(obj) (rotate_ccw_right_child((obj), bintree_offset))
-#define VALIDATE_BST(obj) (validate_bst((obj), bintree_offset, cmp))
+#define ROTATE_CW_LEFT_CHILD(obj) (rotate_left_child((obj), bintree_offset))
+#define ROTATE_CCW_RIGHT_CHILD(obj) (rotate_right_child((obj), bintree_offset))
 #define BALANCE(obj) (balance((obj), bintree_offset))
 
 static void balance(void **obj_ref, ptrdiff_t bintree_offset)
@@ -175,7 +160,6 @@ bintree_insert_internal(void **root_obj_ref,
             root->left_obj = obj;
             BALANCE(&root->left_obj);
             BALANCE(root_obj_ref);
-            DEBUG_ONLY(VALIDATE_BST(root->left_obj));
             break;
          }
 
@@ -189,7 +173,6 @@ bintree_insert_internal(void **root_obj_ref,
          root->right_obj = obj;
          BALANCE(&root->right_obj);
          BALANCE(root_obj_ref);
-         DEBUG_ONLY(VALIDATE_BST(root->right_obj));
          break;
       }
 
@@ -199,7 +182,6 @@ bintree_insert_internal(void **root_obj_ref,
    while (stack_size > 0)
       BALANCE(STACK_POP());
 
-   DEBUG_ONLY(VALIDATE_BST(*root_obj_ref));
    return true;
 }
 
@@ -261,32 +243,31 @@ bintree_remove_internal(void **root_obj_ref,
 
       void **left = &LEFT_OF(*root_obj_ref);
       void **right = &RIGHT_OF(*root_obj_ref);
+      void **successor_ref = &RIGHT_OF(*root_obj_ref);
 
-      void **obj = &RIGHT_OF(*root_obj_ref);
+      int saved_stack_size = stack_size;
 
-      int curr_stack_size = stack_size;
-
-      while (LEFT_OF(*obj)) {
-         STACK_PUSH(obj);
-         obj = &LEFT_OF(*obj);
+      while (LEFT_OF(*successor_ref)) {
+         STACK_PUSH(successor_ref);
+         successor_ref = &LEFT_OF(*successor_ref);
       }
 
-      STACK_PUSH(obj);
+      STACK_PUSH(successor_ref);
 
-      // now *obj is the smallest node at the right side of *root_obj_ref
-      // and so it is its successor.
+      // now *successor_ref is the smallest node at the right side of
+      // *root_obj_ref and so it is its successor.
 
-      // save *obj's right node (it has no left node!).
-      void *obj_right = RIGHT_OF(*obj); // may be NULL.
+      // save *successor's right node (it has no left node!).
+      void *successors_right = RIGHT_OF(*successor_ref); // may be NULL.
 
-      // replace *root_obj_ref (to be deleted) with *obj
-      *root_obj_ref = *obj;
+      // replace *root_obj_ref (to be deleted) with *successor_ref
+      *root_obj_ref = *successor_ref;
 
       // now we have to replace *obj with its right child
-      *obj = obj_right;
+      *successor_ref = successors_right;
 
       // balance the part of the tree up to the original value of 'obj'
-      while (stack_size > curr_stack_size) {
+      while (stack_size > saved_stack_size) {
          BALANCE(STACK_POP());
       }
 
@@ -295,6 +276,8 @@ bintree_remove_internal(void **root_obj_ref,
       OBJTN(*root_obj_ref)->right_obj = *right;
 
    } else {
+
+      // leaf node: replace with its left/right child.
 
       *root_obj_ref = LEFT_OF(*root_obj_ref)
                         ? LEFT_OF(*root_obj_ref)
