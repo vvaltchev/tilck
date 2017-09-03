@@ -4,7 +4,10 @@
 #define MAX_TREE_HEIGHT 32
 #define ALLOWED_IMBALANCE 1
 
-void (*debug_dump)() = NULL;
+#define STACK_PUSH(r) (stack[stack_size++] = (r))
+#define STACK_TOP() (stack[stack_size-1])
+#define STACK_POP() (stack[--stack_size])
+
 
 static inline bintree_node *
 obj_to_bintree_node(void *obj, ptrdiff_t offset)
@@ -32,7 +35,6 @@ update_height(bintree_node *node, ptrdiff_t bintree_offset)
 }
 
 #define UPDATE_HEIGHT(n) update_height((n), bintree_offset)
-
 
 
 /*
@@ -117,44 +119,24 @@ static void balance(void **obj_ref, ptrdiff_t bintree_offset)
    if (bf > ALLOWED_IMBALANCE) {
 
       if (HEIGHT(LEFT_OF(left_obj)) >= HEIGHT(RIGHT_OF(left_obj))) {
-         // if (debug_dump) { printf("##1\n"); debug_dump(); }
          ROTATE_CW_LEFT_CHILD(obj_ref);
-         // if (debug_dump) { printf("##2\n"); debug_dump(); }
       } else {
-         // if (debug_dump) { printf("##3\n"); debug_dump(); }
          ROTATE_CCW_RIGHT_CHILD(&LEFT_OF(*obj_ref));
-         // if (debug_dump) { printf("##4\n"); debug_dump(); }
          ROTATE_CW_LEFT_CHILD(obj_ref);
-         // if (debug_dump) { printf("##5\n"); debug_dump(); }
       }
 
    } else if (bf < -ALLOWED_IMBALANCE) {
 
       if (HEIGHT(RIGHT_OF(right_obj)) >= HEIGHT(LEFT_OF(right_obj))) {
-         // if (debug_dump) { printf("##6\n"); debug_dump(); }
          ROTATE_CCW_RIGHT_CHILD(obj_ref);
-         // if (debug_dump) { printf("##7\n"); debug_dump(); }
       } else {
-         // if (debug_dump) { printf("##8\n"); debug_dump(); }
          ROTATE_CW_LEFT_CHILD(&RIGHT_OF(*obj_ref));
-
-         /*
-          * the problem occurs between 9 and 10. After the rotation, a visit
-          * from the root, finds the still the old right node. That's before
-          * obj_ref was in first place the WRONG reference!
-          */
-         // if (debug_dump) { printf("##9\n"); debug_dump(); }
          ROTATE_CCW_RIGHT_CHILD(obj_ref);
-         // if (debug_dump) { printf("##10\n"); debug_dump(); }
       }
    }
 
    UPDATE_HEIGHT(OBJTN(*obj_ref));
 }
-
-
-#define STACK_PUSH(r) (stack[stack_size++] = (r))
-#define STACK_TOP() (stack[stack_size-1])
 
 
 bool
@@ -216,14 +198,12 @@ bintree_insert_internal(void **root_obj_ref,
    }
 
    while (stack_size > 0) {
-      BALANCE(stack[--stack_size]);
+      BALANCE(STACK_POP());
    }
 
    DEBUG_ONLY(VALIDATE_BST(*root_obj_ref));
    return true;
 }
-
-
 
 void *
 bintree_find_internal(void *root_obj,
@@ -246,8 +226,6 @@ bintree_find_internal(void *root_obj,
 
    return NULL;
 }
-
-
 
 void *
 bintree_remove_internal(void **root_obj_ref,
@@ -313,7 +291,7 @@ bintree_remove_internal(void **root_obj_ref,
 
       // balance the part of the tree up to the original value of 'obj'
       while (stack_size > curr_stack_size) {
-         BALANCE(stack[--stack_size]);
+         BALANCE(STACK_POP());
       }
 
       // restore root's original left and right links
@@ -331,17 +309,7 @@ bintree_remove_internal(void **root_obj_ref,
 
 
    while (stack_size > 0) {
-
-      // if (debug_dump) {
-      //    void **objref = STACK_TOP();
-      //    void *obj = *objref;
-      //    int *obji = (int*)obj;
-      //    if (obji) {
-      //       printf("#before balancing %i\n", *obji);
-      //    }
-      //    debug_dump();
-      // }
-      BALANCE(stack[--stack_size]);
+      BALANCE(STACK_POP());
    }
 
    return deleted_obj;

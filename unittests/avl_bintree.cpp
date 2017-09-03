@@ -146,23 +146,6 @@ static bool is_sorted(int *arr, int size)
    return true;
 }
 
-TEST(avl_bintree, in_order_visit_correct)
-{
-   constexpr const int elems = 32;
-   int_struct arr[elems];
-
-   for (int i = 0; i < elems; i++)
-      arr[i] = int_struct(i + 1);
-
-   int_struct *root = &arr[0];
-
-   for (int i = 1; i < elems; i++)
-      bintree_insert(&root, &arr[i], my_cmpfun, int_struct, node);
-
-   int ordered_nums[elems];
-   in_order_visit(root, ordered_nums, elems);
-   ASSERT_TRUE(is_sorted(ordered_nums, elems));
-}
 
 static void dump_array(int *arr, int size)
 {
@@ -299,6 +282,28 @@ void check_height_vs_elems(int_struct *obj, int elems)
    }
 }
 
+///////////////////////////////////////////////////
+// TESTS
+///////////////////////////////////////////////////
+
+TEST(avl_bintree, in_order_visit_after_insert_is_correct)
+{
+   constexpr const int elems = 32;
+   int_struct arr[elems];
+
+   for (int i = 0; i < elems; i++)
+      arr[i] = int_struct(i + 1);
+
+   int_struct *root = &arr[0];
+
+   for (int i = 1; i < elems; i++)
+      bintree_insert(&root, &arr[i], my_cmpfun, int_struct, node);
+
+   int ordered_nums[elems];
+   in_order_visit(root, ordered_nums, elems);
+   ASSERT_TRUE(is_sorted(ordered_nums, elems));
+}
+
 static void test_insert_rand_data(int iters, int elems, bool slow_checks)
 {
    random_device rdev;
@@ -371,16 +376,6 @@ TEST(avl_bintree, insert_quick_test)
    test_insert_rand_data(100, 1000, true);
 }
 
-extern void (*debug_dump)();
-int_struct **global_root;
-
-void debug_dump_tree()
-{
-   node_dump(*global_root, 0);
-   printf("\n");
-}
-
-
 void remove_rand_data(const int elems, const int iters)
 {
    random_device rdev;
@@ -393,8 +388,6 @@ void remove_rand_data(const int elems, const int iters)
    for (int iter = 0; iter < iters; iter++) {
 
       int_struct *root = &data->nodes[0];
-      global_root=&root;
-
       generate_random_array(e, dist, data->arr, elems);
 
       if (iter == 0) {
@@ -475,7 +468,6 @@ TEST(avl_bintree, DISABLED_remove_10k_elems_10_iters)
 {
    remove_rand_data(10*1000, 10);
 }
-
 
 TEST(avl_bintree, DISABLED_test_insert_rand_data_tree_10k_iters_100_elems)
 {
