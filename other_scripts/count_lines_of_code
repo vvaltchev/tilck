@@ -1,0 +1,92 @@
+#!/usr/bin/python
+
+
+import os
+import sys
+from os.path import *
+
+knownExtensions = [
+   ".c", ".cpp", ".cc", ".cxx", ".h", ".py", ".asm", ".txt"
+]
+
+destDirs = sys.argv[1:]
+globalLinesCount = {ext: 0 for ext in knownExtensions}
+globalTotal = 0
+
+extFieldLen = 10
+numFieldLen = 10
+prefix = " "*3
+
+def count_lines_in_file(f):
+   res = 0
+   with open(f, 'r') as fd:
+      for line in fd:
+         res += 1
+   return res
+
+for destDir in destDirs:
+   if not os.path.isdir(destDir):
+      print "The directory '{0}' does not exist!".format(destDir)
+      sys.exit(1)
+
+print # print an empty line
+
+for destDir in destDirs:
+
+   linesByExtention = {ext: 0 for ext in knownExtensions}
+   total = 0
+
+   for folder, subfolders, files in os.walk(destDir):
+
+      for f in files:
+         fname, fext = splitext(f)
+
+         if not fext in knownExtensions:
+            continue
+
+         c = count_lines_in_file(join(folder,f))
+         linesByExtention[fext] += c
+         total += c
+         globalTotal += c
+
+
+   print "Number of lines in '"+destDir+"':"
+
+   for ext in linesByExtention:
+      val = linesByExtention[ext]
+
+      if val == 0:
+         continue
+
+      globalLinesCount[ext] += val
+      strVal = str(val)
+      ep = extFieldLen-len(ext)
+      np = numFieldLen-len(strVal)
+      print prefix+ext+" "*ep+" "+" "*np+strVal
+
+   print "-"*35
+   totExt = "Total: "
+   ep = extFieldLen-len(totExt)
+   np = numFieldLen-len(str(total))
+   print prefix+"Total: "+" "*ep+" "+" "*np+str(total)+"\n"
+
+
+if len(destDirs) > 1:
+   print "Cumulative number of lines:"
+
+   for ext in globalLinesCount:
+      val = globalLinesCount[ext]
+
+      if val == 0:
+         continue
+
+      strVal = str(val)
+      ep = extFieldLen-len(ext)
+      np = numFieldLen-len(strVal)
+      print prefix+ext+" "*ep+" "+" "*np+strVal
+
+   print "-"*35
+   totExt = "Total: "
+   ep = extFieldLen-len(totExt)
+   np = numFieldLen-len(str(globalTotal))
+   print prefix+"Total: "+" "*ep+" "+" "*np+str(globalTotal)+"\n"
