@@ -21,9 +21,9 @@ task_info *volatile current = NULL;
 int current_max_pid = 0;
 
 // Our linked list for all the tasks (processes, threads, etc.)
-list_head tasks_list = LIST_HEAD_INIT(tasks_list);
-list_head runnable_tasks_list = LIST_HEAD_INIT(runnable_tasks_list);
-list_head sleeping_tasks_list = LIST_HEAD_INIT(sleeping_tasks_list);
+list_node tasks_list = list_node_make(tasks_list);
+list_node runnable_tasks_list = list_node_make(runnable_tasks_list);
+list_node sleeping_tasks_list = list_node_make(sleeping_tasks_list);
 volatile int runnable_tasks_count = 0;
 
 
@@ -109,12 +109,12 @@ void task_add_to_state_list(task_info *ti)
    switch (ti->state) {
 
    case TASK_STATE_RUNNABLE:
-      list_add_tail(&runnable_tasks_list, &ti->runnable_list);
+      list_add_before(&runnable_tasks_list, &ti->runnable_list);
       runnable_tasks_count++;
       break;
 
    case TASK_STATE_SLEEPING:
-      list_add_tail(&sleeping_tasks_list, &ti->sleeping_list);
+      list_add_before(&sleeping_tasks_list, &ti->sleeping_list);
       break;
 
    case TASK_STATE_RUNNING:
@@ -168,7 +168,7 @@ void add_task(task_info *ti)
    ASSERT(!is_preemption_enabled());
    disable_preemption();
    {
-      list_add_tail(&tasks_list, &ti->list);
+      list_add_before(&tasks_list, &ti->list);
       task_add_to_state_list(ti);
    }
    enable_preemption();

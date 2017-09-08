@@ -2,52 +2,45 @@
 #pragma once
 #include <common_defs.h>
 
-/*
- * Doubly-linked list, like the one in the Linux kernel.
- * Some functions/types/macros have been copy-pasted, other re-written.
- * See Kernel's include/linux/list.h file for better understanding the
- * differences and the similarities.
- */
-
-struct list_head {
-   struct list_head *next;
-   struct list_head *prev;
+struct list_node {
+   struct list_node *next;
+   struct list_node *prev;
 };
 
-typedef struct list_head list_head;
+typedef struct list_node list_node;
 
-#define LIST_HEAD_INIT(name) { &(name), &(name) }
-#define LIST_HEAD(name) list_head name = LIST_HEAD_INIT(name)
+#define list_node_make(name) { &(name), &(name) }
 
-static inline void INIT_LIST_HEAD(list_head *list)
+static inline void list_node_init(list_node *list)
 {
    list->next = list;
    list->prev = list;
 }
 
-static inline bool list_is_empty(list_head *list) {
+static inline bool list_is_empty(list_node *list) {
    return list->next == list && list->prev == list;
 }
 
-static inline void list_add(list_head *curr, list_head *elem)
+static inline void list_add_after(list_node *curr, list_node *elem)
 {
-   list_head *curr_next = curr->next;
+   list_node *curr_next = curr->next;
    curr->next = elem;
    elem->next = curr_next;
    elem->prev = curr;
    curr_next->prev = elem;
 }
 
-static inline void list_add_tail(list_head *curr, list_head *elem)
+// Add 'elem' before 'curr'. If 'curr' is the root list_node, adds on tail.
+static inline void list_add_before(list_node *curr, list_node *elem)
 {
-   list_head *curr_prev = curr->prev;
+   list_node *curr_prev = curr->prev;
    curr->prev = elem;
    elem->prev = curr_prev;
    elem->next = curr;
    curr_prev->next = elem;
 }
 
-static inline void list_remove(list_head *elem)
+static inline void list_remove(list_node *elem)
 {
    elem->prev->next = elem->next;
    elem->next->prev = elem->prev;
@@ -65,7 +58,7 @@ static inline void list_remove(list_head *elem)
 #define list_last_entry(list_ptr, type, member) \
    list_entry((list_ptr)->prev, type, member)
 
-// Here 'pos' is a struct *, contaning a list_head 'member'
+// Here 'pos' is a struct *, contaning a list_node 'member'
 
 #define list_next_entry(pos, list_mem_name) \
    list_entry((pos)->list_mem_name.next, typeof(*(pos)), list_mem_name)
@@ -73,17 +66,17 @@ static inline void list_remove(list_head *elem)
 #define list_prev_entry(pos, list_mem_name) \
    list_entry((pos)->list_mem_name.prev, typeof(*(pos)),list_mem_name)
 
-#define list_for_each_entry(pos, list_head, member)                 \
-   for (pos = list_first_entry(list_head, typeof(*pos), member);    \
-        &pos->member != (list_head);                                \
+#define list_for_each_entry(pos, list_node, member)                 \
+   for (pos = list_first_entry(list_node, typeof(*pos), member);    \
+        &pos->member != (list_node);                                \
         pos = list_next_entry(pos, member))
 
-#define list_for_each_entry_reverse(pos, list_head, member)         \
-   for (pos = list_last_entry(list_head, typeof(*pos), member);     \
-        &pos->member != (list_head);                                \
+#define list_for_each_entry_reverse(pos, list_node, member)         \
+   for (pos = list_last_entry(list_node, typeof(*pos), member);     \
+        &pos->member != (list_node);                                \
         pos = list_prev_entry(pos, member))
 
-// Here 'pos' is a list_head* pointer.
+// Here 'pos' is a list_node* pointer.
 
 #define list_for_each(pos, head) \
    for (pos = (head)->next; pos != (head); pos = pos->next)
@@ -92,9 +85,9 @@ static inline void list_remove(list_head *elem)
    for (pos = (head)->prev; pos != (head); pos = pos->prev)
 
 #define list_for_each2(head)        \
-   list_head *_pos;                 \
+   list_node *_pos;                 \
    list_for_each(_pos, head)
 
 #define list_for_each_prev2(head)   \
-   list_head *_pos;                 \
+   list_node *_pos;                 \
    list_for_each_prev(_pos, head)

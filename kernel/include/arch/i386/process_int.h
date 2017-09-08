@@ -10,9 +10,9 @@
 
 struct task_info {
 
-   list_head list;
-   list_head runnable_list;
-   list_head sleeping_list;
+   list_node list;
+   list_node runnable_list;
+   list_node sleeping_list;
 
    int pid; /* global user/kernel thread identifier */
    task_state_enum state;
@@ -36,9 +36,9 @@ struct task_info {
 
 extern volatile u64 jiffies;
 extern int current_max_pid;
-extern list_head tasks_list;
-extern list_head runnable_tasks_list;
-extern list_head sleeping_tasks_list;
+extern list_node tasks_list;
+extern list_node runnable_tasks_list;
+extern list_node sleeping_tasks_list;
 
 static ALWAYS_INLINE u64 get_ticks()
 {

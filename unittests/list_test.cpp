@@ -10,14 +10,14 @@ using namespace std;
 typedef struct {
 
    const char *data;
-   list_head list;
+   list_node list;
 
 } my_struct;
 
 
 static my_struct *create_elem(const char *data = nullptr) {
    my_struct *e = (my_struct *) malloc(sizeof(my_struct));
-   INIT_LIST_HEAD(&e->list);
+   list_node_init(&e->list);
    e->data = data;
    return e;
 }
@@ -29,7 +29,7 @@ static void destroy_elem(my_struct *e) {
 
 TEST(list_adt, initialization)
 {
-   list_head list = LIST_HEAD_INIT(list);
+   list_node list = list_node_make(list);
 
    ASSERT_TRUE(list_is_empty(&list));
 
@@ -41,7 +41,7 @@ TEST(list_adt, initialization)
    ASSERT_TRUE(list.next == 0);
    ASSERT_TRUE(list.prev == 0);
 
-   INIT_LIST_HEAD(&list);
+   list_node_init(&list);
    ASSERT_TRUE(list.next == &list);
    ASSERT_TRUE(list.prev == &list);
 }
@@ -55,11 +55,12 @@ TEST(list_adt, add)
    ASSERT_TRUE(list_entry(&e1->list, my_struct, list) == e1);
    ASSERT_TRUE(list_entry(&e2->list, my_struct, list) == e2);
 
-   LIST_HEAD(list);
+   list_node list;
+   list_node_init(&list);
    ASSERT_TRUE(list_is_empty(&list));
 
-   list_add(&list, &e1->list);
-   list_add(&e1->list, &e2->list);
+   list_add_after(&list, &e1->list);
+   list_add_after(&e1->list, &e2->list);
 
    ASSERT_TRUE(e1->list.next == &e2->list);
    ASSERT_TRUE(e1->list.next->next == &list);
@@ -68,7 +69,7 @@ TEST(list_adt, add)
    ASSERT_TRUE(e2->list.prev == &e1->list);
 
    my_struct *e12 = create_elem("mid");
-   list_add(&e1->list, &e12->list);
+   list_add_after(&e1->list, &e12->list);
 
    ASSERT_TRUE(e1->list.next == &e12->list);
    ASSERT_TRUE(e1->list.next->next == &e2->list);
@@ -96,14 +97,16 @@ TEST(list_adt, add_tail)
    ASSERT_TRUE(list_entry(&e1->list, my_struct, list) == e1);
    ASSERT_TRUE(list_entry(&e2->list, my_struct, list) == e2);
 
-   LIST_HEAD(list);
+   list_node list;
+   list_node_init(&list);
+
    ASSERT_TRUE(list_is_empty(&list));
 
-   list_add(&list, &e1->list);
-   list_add(&e1->list, &e2->list);
+   list_add_after(&list, &e1->list);
+   list_add_after(&e1->list, &e2->list);
 
    my_struct *ne = create_elem("new tail");
-   list_add_tail(&list, &ne->list);
+   list_add_before(&list, &ne->list);
 
    ASSERT_TRUE(list.prev == &ne->list);
    ASSERT_TRUE(ne->list.next == &list);
