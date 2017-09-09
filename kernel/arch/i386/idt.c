@@ -9,17 +9,17 @@
 /* Defines an IDT entry */
 struct idt_entry
 {
-    u16 base_lo;
-    u16 sel;
-    u8 always0;
-    u8 flags;
-    u16 base_hi;
+   u16 base_lo;
+   u16 sel;
+   u8 always0;
+   u8 flags;
+   u16 base_hi;
 } __attribute__((packed));
 
 struct idt_ptr
 {
-    u16 limit;
-    void *base;
+   u16 limit;
+   void *base;
 } __attribute__((packed));
 
 typedef struct idt_entry idt_entry;
@@ -44,17 +44,17 @@ void idt_load();
  */
 void idt_set_gate(u8 num, void *handler, u16 sel, u8 flags)
 {
-	const u32 base = (u32)handler;
+   const u32 base = (u32)handler;
 
-    /* The interrupt routine's base address */
-    idt[num].base_lo = (base & 0xFFFF);
-    idt[num].base_hi = (base >> 16) & 0xFFFF;
+   /* The interrupt routine's base address */
+   idt[num].base_lo = (base & 0xFFFF);
+   idt[num].base_hi = (base >> 16) & 0xFFFF;
 
-    /* The segment or 'selector' that this IDT entry will use
-    *  is set here, along with any access flags */
-    idt[num].sel = sel;
-    idt[num].always0 = 0;
-    idt[num].flags = flags;
+   /* The segment or 'selector' that this IDT entry will use
+   *  is set here, along with any access flags */
+   idt[num].sel = sel;
+   idt[num].always0 = 0;
+   idt[num].flags = flags;
 }
 
 /*
@@ -230,13 +230,13 @@ void set_fault_handler(int exceptionNum, void *ptr)
 /* Installs the IDT */
 void idt_install()
 {
-    /* Sets the special IDT pointer up, just like in 'gdt.c' */
-    idtp.limit = sizeof(idt) - 1;
-    idtp.base = &idt;
+   /* Sets the special IDT pointer up, just like in 'gdt.c' */
+   idtp.limit = sizeof(idt) - 1;
+   idtp.base = &idt;
 
-    /* Add any new ISRs to the IDT here using idt_set_gate */
-    isrs_install();
+   /* Add any new ISRs to the IDT here using idt_set_gate */
+   isrs_install();
 
-    /* Points the processor's internal register to the new IDT */
-    idt_load();
+   /* Points the processor's internal register to the new IDT */
+   idt_load();
 }

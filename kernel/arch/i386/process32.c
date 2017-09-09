@@ -86,7 +86,7 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
 
    task_info *ti = kzmalloc(sizeof(task_info));
 
-   INIT_LIST_HEAD(&ti->list);
+   list_node_init(&ti->list);
    ti->pdir = get_kernel_page_dir();
    ti->pid = ++current_max_pid;
    ti->state = TASK_STATE_RUNNABLE;
@@ -174,7 +174,7 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
    r.eflags = get_eflags() | (1 << 9);
 
    task_info *ti = kzmalloc(sizeof(task_info));
-   INIT_LIST_HEAD(&ti->list);
+   list_node_init(&ti->list);
 
    ti->pdir = pdir;
    ti->pid = ++current_max_pid;
