@@ -29,7 +29,7 @@ static void destroy_elem(my_struct *e) {
 
 TEST(list_adt, initialization)
 {
-   list_node list = list_node_make(list);
+   list_node list = make_list_node(list);
 
    ASSERT_TRUE(list_is_empty(&list));
 
@@ -52,8 +52,8 @@ TEST(list_adt, add)
    my_struct *e1 = create_elem("head");
    my_struct *e2 = create_elem("tail");
 
-   ASSERT_TRUE(list_entry(&e1->list, my_struct, list) == e1);
-   ASSERT_TRUE(list_entry(&e2->list, my_struct, list) == e2);
+   ASSERT_TRUE(list_to_obj(&e1->list, my_struct, list) == e1);
+   ASSERT_TRUE(list_to_obj(&e2->list, my_struct, list) == e2);
 
    list_node list;
    list_node_init(&list);
@@ -80,9 +80,9 @@ TEST(list_adt, add)
    ASSERT_TRUE(e2->list.next == &list);
    ASSERT_TRUE(list.prev == &e2->list);
 
-   ASSERT_TRUE(list_entry(&e1->list, my_struct, list) == e1);
-   ASSERT_TRUE(list_entry(&e2->list, my_struct, list) == e2);
-   ASSERT_TRUE(list_entry(&e12->list, my_struct, list) == e12);
+   ASSERT_TRUE(list_to_obj(&e1->list, my_struct, list) == e1);
+   ASSERT_TRUE(list_to_obj(&e2->list, my_struct, list) == e2);
+   ASSERT_TRUE(list_to_obj(&e12->list, my_struct, list) == e12);
 
    destroy_elem(e1);
    destroy_elem(e2);
@@ -94,8 +94,8 @@ TEST(list_adt, add_tail)
    my_struct *e1 = create_elem("head");
    my_struct *e2 = create_elem("tail");
 
-   ASSERT_TRUE(list_entry(&e1->list, my_struct, list) == e1);
-   ASSERT_TRUE(list_entry(&e2->list, my_struct, list) == e2);
+   ASSERT_TRUE(list_to_obj(&e1->list, my_struct, list) == e1);
+   ASSERT_TRUE(list_to_obj(&e2->list, my_struct, list) == e2);
 
    list_node list;
    list_node_init(&list);
@@ -106,7 +106,7 @@ TEST(list_adt, add_tail)
    list_add_after(&e1->list, &e2->list);
 
    my_struct *ne = create_elem("new tail");
-   list_add_before(&list, &ne->list);
+   list_add_tail(&list, &ne->list);
 
    ASSERT_TRUE(list.prev == &ne->list);
    ASSERT_TRUE(ne->list.next == &list);
