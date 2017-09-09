@@ -21,9 +21,9 @@ task_info *volatile current = NULL;
 int current_max_pid = 0;
 
 // Our linked list for all the tasks (processes, threads, etc.)
-list_head tasks_list = LIST_HEAD_INIT(tasks_list);
-list_head runnable_tasks_list = LIST_HEAD_INIT(runnable_tasks_list);
-list_head sleeping_tasks_list = LIST_HEAD_INIT(sleeping_tasks_list);
+list_node tasks_list = make_list_node(tasks_list);
+list_node runnable_tasks_list = make_list_node(runnable_tasks_list);
+list_node sleeping_tasks_list = make_list_node(sleeping_tasks_list);
 volatile int runnable_tasks_count = 0;
 
 
@@ -354,7 +354,7 @@ void schedule()
       task_change_state(current, TASK_STATE_RUNNABLE);
    }
 
-   list_for_each_entry(pos, &runnable_tasks_list, runnable_list) {
+   list_for_each(pos, &runnable_tasks_list, runnable_list) {
 
       DEBUG_printk("   [sched] checking pid %i (ticks = %llu): ",
                    pos->pid, pos->total_ticks);
@@ -397,7 +397,7 @@ task_info *get_task(int pid)
 
    disable_preemption();
 
-   list_for_each_entry(pos, &tasks_list, list) {
+   list_for_each(pos, &tasks_list, list) {
       if (pos->pid == pid) {
          res = pos;
          break;

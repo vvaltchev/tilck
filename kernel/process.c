@@ -102,7 +102,7 @@ sptr sys_fork()
    task_info *child = kmalloc(sizeof(task_info));
    memmove(child, current, sizeof(task_info));
 
-   INIT_LIST_HEAD(&child->list);
+   list_node_init(&child->list);
 
    if (child->state == TASK_STATE_RUNNING) {
       child->state = TASK_STATE_RUNNABLE;
