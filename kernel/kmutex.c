@@ -80,7 +80,7 @@ void kmutex_unlock(kmutex *m)
 
       /* Unlock one task waiting to acquire the mutex 'm' */
 
-      list_for_each_entry(pos, &sleeping_tasks_list, sleeping_list) {
+      list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
 
          ASSERT(pos->state == TASK_STATE_SLEEPING);
 
