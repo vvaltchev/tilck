@@ -56,7 +56,7 @@ static inline void list_remove(list_node *elem)
 #define list_last_obj(list_root_ptr, type, member) \
    list_to_obj((list_root_ptr)->prev, type, member)
 
-// Here 'pos' is an object (struct *), contaning a list_node 'member'
+// Here 'pos' is an object (struct *), containing a list_node 'member'
 
 #define list_next_obj(pos, list_mem_name) \
    list_to_obj((pos)->list_mem_name.next, typeof(*(pos)), list_mem_name)
