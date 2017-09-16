@@ -14,7 +14,8 @@ TEST(fat32, dumpinfo)
    FILE *fd = fopen("build/fatpart", "rb");
 
    buf = (char*) calloc(1, 16*1024*1024);
-   fread(buf, 16*1024*1024, 1, fd);
+   size_t res = fread(buf, 16*1024*1024, 1, fd);
+   (void)res;
 
    fat32_dump_info(buf);
    fclose(fd);

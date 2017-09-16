@@ -29,7 +29,7 @@ static void dump_fixed_str(const char *what, char *str, u32 len)
    printk("%s: '%s'\n", what, buf);
 }
 
-void fat32_dump_common_header(void *data)
+void fat_dump_common_header(void *data)
 {
    fat_bpb *bpb = data;
 
@@ -72,7 +72,7 @@ static void dump_fat16_headers(void *data)
 
 typedef struct __attribute__(( packed )) {
 
-   u8 short_filename[11];
+   s8 short_filename[11];
 
    u8 unused1 : 1;
    u8 unused2 : 1;
@@ -83,17 +83,50 @@ typedef struct __attribute__(( packed )) {
    u8 hidden : 1;
    u8 readonly : 1;
 
-   u16 first_clust_hi;
-   u16 first_clust_lo;
-   u32 filesize;
+   u8 DIR_NTRes;
+   u8 DIR_CrtTimeTenth;
 
-} fat_file;
+   u8 unused3[6];
 
+   u16 DIR_FstClusHI;
+
+   u16 DIR_WrtTime;
+   u16 DIR_WrtDate;
+
+   u16 DIR_FstClusLO;
+   u32 DIR_FileSize;
+
+} fat_dir_entry;
+
+void dump_dir_entry(fat_dir_entry *entry)
+{
+   printk("readonly:  %u\n", entry->readonly);
+   printk("hidden:    %u\n", entry->hidden);
+   printk("system:    %u\n", entry->system);
+   printk("vol id:    %u\n", entry->volume_id);
+   printk("directory: %u\n", entry->directory);
+
+   char *fname = entry->short_filename;
+
+   if (fname[0] == 0) {
+      printk("dir end\n");
+      return;
+   }
+
+   if (fname[0] == (char)0xE5) {
+      printk("invalid fname\n");
+      return;
+   }
+
+   dump_fixed_str("short fname", (char*)entry->short_filename, sizeof(entry->short_filename));
+   printk("file size: %u\n", entry->DIR_FileSize);
+   printk("first clust: %u\n", entry->DIR_FstClusHI << 16 | entry->DIR_FstClusLO);
+}
 
 void fat32_dump_info(void *fatpart_begin)
 {
    fat_bpb *hdr = fatpart_begin;
-   fat32_dump_common_header(fatpart_begin);
+   fat_dump_common_header(fatpart_begin);
 
    printk("\n");
 
@@ -106,22 +139,11 @@ void fat32_dump_info(void *fatpart_begin)
    }
 
    printk("\n");
-
-   int clusters_first_sec = hdr->BPB_RsvdSecCnt + hdr->BPB_NumFATs * hdr->BPB_FATSz16;
+   int clusters_first_sec = hdr->BPB_RsvdSecCnt + (hdr->BPB_NumFATs * hdr->BPB_FATSz16);
 
    printk("clusters first sec: %i\n", clusters_first_sec);
-
-   root_dir = (void*) ((u8*)hdr + hdr->BPB_BytsPerSec * clusters_first_sec);
-
-   printk("root_dir offset: %i\n", (u8*)root_dir - (u8*)fatpart_begin);
-
-   fat_file *file = root_dir;
-
-   if (file->short_filename[0] != 0xE5)
-      dump_fixed_str("short fname", (char*)file->short_filename, sizeof(file->short_filename));
-
-   printk("file size: %u\n", file->filesize);
-   printk("first clust: %u\n", file->first_clust_hi << 16 | file->first_clust_lo);
+   root_dir = (void*) ((u8*)hdr + (hdr->BPB_BytsPerSec * clusters_first_sec));
+   dump_dir_entry(root_dir);
 }
 
 
