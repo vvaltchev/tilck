@@ -26,7 +26,7 @@ static void dump_fixed_str(const char *what, char *str, u32 len)
    char buf[len+1];
    buf[len]=0;
    memcpy(buf, str, len);
-   printk("%s: %s\n", what, buf);
+   printk("%s: '%s'\n", what, buf);
 }
 
 void fat32_dump_common_header(void *data)
@@ -55,27 +55,20 @@ typedef struct __attribute__(( packed )) {
    u8 BS_BootSig;
    u32 BS_VolID;
    s8 BS_VolLab[11];
-   s8 BS_FilSysType[11];
+   s8 BS_FilSysType[8];
 
 } fat16_bpb;
 
-void fat32_dump_info(void *fatpart_begin)
+static void dump_fat16_headers(void *data)
 {
-   fat32_dump_common_header(fatpart_begin);
+   fat16_bpb *hdr = (void*) ( (u8*)data + sizeof(fat_bpb) );
 
-
-
-/*
-   fat_file *hdr = fatpart_begin;
-
-   if (hdr->short_filename[0] != 0xE5)
-      printk("short filename: %s\n", hdr->short_filename);
-
-   printk("file size: %u\n", hdr->filesize);
-   printk("first clust: %u\n", hdr->first_clust_hi << 16 | hdr->first_clust_lo);
-*/
+   printk("Drive num: %u\n", hdr->BS_DrvNum);
+   printk("BootSig: %u\n", hdr->BS_BootSig);
+   printk("VolID: %p\n", hdr->BS_VolID);
+   dump_fixed_str("VolLab", hdr->BS_VolLab, sizeof(hdr->BS_VolLab));
+   dump_fixed_str("FilSysType", hdr->BS_FilSysType, sizeof(hdr->BS_FilSysType));
 }
-
 
 typedef struct __attribute__(( packed )) {
 
@@ -95,3 +88,40 @@ typedef struct __attribute__(( packed )) {
    u32 filesize;
 
 } fat_file;
+
+
+void fat32_dump_info(void *fatpart_begin)
+{
+   fat_bpb *hdr = fatpart_begin;
+   fat32_dump_common_header(fatpart_begin);
+
+   printk("\n");
+
+   void *root_dir = NULL;
+
+   if (hdr->BPB_TotSec16 != 0) {
+      dump_fat16_headers(fatpart_begin);
+   } else {
+      printk("FAT32\n");
+   }
+
+   printk("\n");
+
+   int clusters_first_sec = hdr->BPB_RsvdSecCnt + hdr->BPB_NumFATs * hdr->BPB_FATSz16;
+
+   printk("clusters first sec: %i\n", clusters_first_sec);
+
+   root_dir = (void*) ((u8*)hdr + hdr->BPB_BytsPerSec * clusters_first_sec);
+
+   printk("root_dir offset: %i\n", (u8*)root_dir - (u8*)fatpart_begin);
+
+   fat_file *file = root_dir;
+
+   if (file->short_filename[0] != 0xE5)
+      dump_fixed_str("short fname", (char*)file->short_filename, sizeof(file->short_filename));
+
+   printk("file size: %u\n", file->filesize);
+   printk("first clust: %u\n", file->first_clust_hi << 16 | file->first_clust_lo);
+}
+
+
