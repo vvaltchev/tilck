@@ -110,6 +110,7 @@ set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/bootloader.bin)
 set(KERNEL_BIN_FILE ${CMAKE_BINARY_DIR}/kernel.bin)
 set(INIT_FILE ${CMAKE_BINARY_DIR}/init)
 set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
+set(GTESTS_FILE ${CMAKE_BINARY_DIR}/gtests)
 
 
 ################################################################################
@@ -148,7 +149,6 @@ add_custom_command(
 )
 
 
-
 add_custom_target(
 
     exos_image ALL
@@ -156,3 +156,5 @@ add_custom_target(
     DEPENDS
         ${IMG_FILE}
 )
+
+add_dependencies(gtests exos_image)

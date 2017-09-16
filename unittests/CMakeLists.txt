@@ -38,3 +38,4 @@ target_link_libraries(gtests ${GTEST_DIR}/libgtest.a)
 target_link_libraries(gtests ${GTEST_DIR}/libgtest_main.a)
 target_link_libraries(gtests pthread)
 target_link_libraries(gtests kernel_noarch_static_for_test "${WRAPPINGS}")
+
