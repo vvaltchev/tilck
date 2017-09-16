@@ -17,8 +17,8 @@ cp -r $bdir/../sysroot $bdir/
 
 cd $bdir/sysroot
 
-# hard-link init to sysroot/
-ln $bdir/init .
+# hard-link init to sysroot/sbin
+ln $bdir/init sbin/
 
 # first, create the directories
 for f in $(find * -type d); do

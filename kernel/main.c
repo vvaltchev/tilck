@@ -45,17 +45,16 @@ void show_hello_message()
    printk("TIMER_HZ: %i\n", TIMER_HZ);
 }
 
-
-
-#define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023600
-
 task_info *usermode_init_task = NULL;
 
 void load_usermode_init()
 {
-   fat32_dump_info((void*)RAM_DISK_VADDR);
+   fat_header *fat = (fat_header*)RAM_DISK_VADDR;
 
-   void *elf_vaddr = (void *) (RAM_DISK_VADDR + INIT_PROGRAM_MEM_DISK_OFFSET);
+   fat_entry *entry = fat_search_entry(fat, "/SBIN/INIT");
+   ASSERT(entry != NULL);
+
+   void *elf_vaddr = fat_get_pointer_to_first_cluster(fat, entry);
 
    page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
    set_page_directory(pdir);
