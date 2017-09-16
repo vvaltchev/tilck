@@ -72,21 +72,20 @@ static void dump_fat16_headers(void *data)
 
 typedef struct __attribute__(( packed )) {
 
-   s8 short_filename[11];
+   s8 sfname[11];
 
-   u8 unused1 : 1;
-   u8 unused2 : 1;
-   u8 archive : 1;
-   u8 directory : 1;
-   u8 volume_id : 1;
-   u8 system : 1;
+   u8 readonly : 1; // lower-bit
    u8 hidden : 1;
-   u8 readonly : 1;
+   u8 system : 1;
+   u8 volume_id : 1;
+   u8 directory : 1;
+   u8 archive : 1;
+   u8 unused1 : 2;  // higher 2 bits
 
    u8 DIR_NTRes;
    u8 DIR_CrtTimeTenth;
 
-   u8 unused3[6];
+   u8 unused2[6];
 
    u16 DIR_FstClusHI;
 
@@ -98,29 +97,71 @@ typedef struct __attribute__(( packed )) {
 
 } fat_dir_entry;
 
-void dump_dir_entry(fat_dir_entry *entry)
-{
-   printk("readonly:  %u\n", entry->readonly);
-   printk("hidden:    %u\n", entry->hidden);
-   printk("system:    %u\n", entry->system);
-   printk("vol id:    %u\n", entry->volume_id);
-   printk("directory: %u\n", entry->directory);
+int dump_directory(fat_bpb *hdr, fat_dir_entry *entry, int level);
 
-   char *fname = entry->short_filename;
+int get_sector_for_cluster(fat_bpb *hdr, int clusterNum)
+{
+   int RootDirSectors = ((hdr->BPB_RootEntCnt * 32) + (hdr->BPB_BytsPerSec - 1)) / hdr->BPB_BytsPerSec;
+   int FirstDataSector = hdr->BPB_RsvdSecCnt + (hdr->BPB_NumFATs * hdr->BPB_FATSz16) + RootDirSectors;
+
+   int FirstSectorofCluster = ((clusterNum - 2) * hdr->BPB_SecPerClus) + FirstDataSector;
+
+   return FirstSectorofCluster;
+}
+
+int dump_dir_entry(fat_bpb *hdr, fat_dir_entry *entry, int level)
+{
+   if (entry->volume_id) {
+      return 0; // the first "file" is the volume ID. Skip it.
+   }
+
+   char *fname = entry->sfname;
 
    if (fname[0] == 0) {
-      printk("dir end\n");
-      return;
+      //printk("dir end\n");
+      return -1;
    }
 
    if (fname[0] == (char)0xE5) {
-      printk("invalid fname\n");
-      return;
+      //printk("invalid fname\n");
+      return -1;
    }
 
-   dump_fixed_str("short fname", (char*)entry->short_filename, sizeof(entry->short_filename));
+   // TODO: hack!! fix it
+   if (fname[0] == '.')
+      return 0;
+
+   dump_fixed_str("short fname", (char*)entry->sfname, sizeof(entry->sfname));
+
+   // printk("readonly:  %u\n", entry->readonly);
+   // printk("hidden:    %u\n", entry->hidden);
+   // printk("system:    %u\n", entry->system);
+   // printk("vol id:    %u\n", entry->volume_id);
+   //printk("directory: %u\n", entry->directory);
+
+   int first_cluster = entry->DIR_FstClusHI << 16 | entry->DIR_FstClusLO;
+
+   if (entry->directory) {
+      int sec = get_sector_for_cluster(hdr, first_cluster);
+      fat_dir_entry *e = (fat_dir_entry*)((u8*)hdr + sec * hdr->BPB_BytsPerSec);
+      dump_directory(hdr, e, level);
+      return 0;
+   }
+
    printk("file size: %u\n", entry->DIR_FileSize);
-   printk("first clust: %u\n", entry->DIR_FstClusHI << 16 | entry->DIR_FstClusLO);
+   //printk("first cluster: %u\n", first_cluster);
+   printk("\n");
+   return 0;
+}
+
+int dump_directory(fat_bpb *hdr, fat_dir_entry *entry, int level)
+{
+   int ret;
+   do {
+      ret = dump_dir_entry(hdr, entry, level+1);
+      entry++;
+   } while (ret == 0);
+   return 0;
 }
 
 void fat32_dump_info(void *fatpart_begin)
@@ -137,13 +178,13 @@ void fat32_dump_info(void *fatpart_begin)
    } else {
       printk("FAT32 not supported yet.\n");
    }
-
    printk("\n");
+
    int clusters_first_sec = hdr->BPB_RsvdSecCnt + (hdr->BPB_NumFATs * hdr->BPB_FATSz16);
 
    printk("clusters first sec: %i\n", clusters_first_sec);
    root_dir = (void*) ((u8*)hdr + (hdr->BPB_BytsPerSec * clusters_first_sec));
-   dump_dir_entry(root_dir);
+   dump_directory(hdr, root_dir, 0);
 }
 
 
