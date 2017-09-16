@@ -135,7 +135,7 @@ void fat32_dump_info(void *fatpart_begin)
    if (hdr->BPB_TotSec16 != 0) {
       dump_fat16_headers(fatpart_begin);
    } else {
-      printk("FAT32\n");
+      printk("FAT32 not supported yet.\n");
    }
 
    printk("\n");
