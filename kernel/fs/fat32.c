@@ -1,25 +1,7 @@
 
 #include <common_defs.h>
 #include <string_util.h>
-
-typedef struct __attribute__(( packed )) {
-
-   u8 BS_jmpBoot[3];
-   s8 BS_OEMName[8];
-   u16 BPB_BytsPerSec;
-   u8 BPB_SecPerClus;
-   u16 BPB_RsvdSecCnt;
-   u8 BPB_NumFATs;
-   u16 BPB_RootEntCnt;
-   u16 BPB_TotSec16;
-   u8 BPB_Media;
-   u16 BPB_FATSz16;
-   u16 BPB_SecPerTrk;
-   u16 BPB_NumHeads;
-   u32 BPB_HiddSec;
-   u32 BPB_TotSec32;
-
-} fat_bpb;
+#include <fs/fat32.h>
 
 static void dump_fixed_str(const char *what, char *str, u32 len)
 {
@@ -31,7 +13,7 @@ static void dump_fixed_str(const char *what, char *str, u32 len)
 
 void fat_dump_common_header(void *data)
 {
-   fat_bpb *bpb = data;
+   fat_header *bpb = data;
 
    dump_fixed_str("EOM name", bpb->BS_OEMName, sizeof(bpb->BS_OEMName));
    printk("Bytes per sec: %u\n", bpb->BPB_BytsPerSec);
@@ -61,7 +43,7 @@ typedef struct __attribute__(( packed )) {
 
 static void dump_fat16_headers(void *data)
 {
-   fat16_bpb *hdr = (void*) ( (u8*)data + sizeof(fat_bpb) );
+   fat16_bpb *hdr = (void*) ( (u8*)data + sizeof(fat_header) );
 
    printk("Drive num: %u\n", hdr->BS_DrvNum);
    printk("BootSig: %u\n", hdr->BS_BootSig);
@@ -95,66 +77,98 @@ typedef struct __attribute__(( packed )) {
    u16 DIR_FstClusLO;
    u32 DIR_FileSize;
 
-} fat_dir_entry;
+} fat_entry;
 
-int dump_directory(fat_bpb *hdr, fat_dir_entry *entry, int level);
-
-int get_sector_for_cluster(fat_bpb *hdr, int clusterNum)
+int get_sector_for_cluster(fat_header *hdr, int N)
 {
-   int RootDirSectors = ((hdr->BPB_RootEntCnt * 32) + (hdr->BPB_BytsPerSec - 1)) / hdr->BPB_BytsPerSec;
-   int FirstDataSector = hdr->BPB_RsvdSecCnt + (hdr->BPB_NumFATs * hdr->BPB_FATSz16) + RootDirSectors;
+   int RootDirSectors =
+    ((hdr->BPB_RootEntCnt * 32)
+     + (hdr->BPB_BytsPerSec - 1)) / hdr->BPB_BytsPerSec;
 
-   int FirstSectorofCluster = ((clusterNum - 2) * hdr->BPB_SecPerClus) + FirstDataSector;
+   int FirstDataSector = hdr->BPB_RsvdSecCnt +
+      (hdr->BPB_NumFATs * hdr->BPB_FATSz16) + RootDirSectors;
 
+   int FirstSectorofCluster = ((N - 2) * hdr->BPB_SecPerClus) + FirstDataSector;
    return FirstSectorofCluster;
 }
 
-int dump_dir_entry(fat_bpb *hdr, fat_dir_entry *entry, int level)
+fat_entry *fat_get_rootdir(fat_header *hdr)
+{
+   int first_sec =
+      hdr->BPB_RsvdSecCnt + (hdr->BPB_NumFATs * hdr->BPB_FATSz16);
+
+   return (fat_entry*) ((u8*)hdr + (hdr->BPB_BytsPerSec * first_sec));
+}
+
+int dump_directory(fat_header *hdr, fat_entry *entry, int level);
+
+int dump_dir_entry(fat_header *hdr, fat_entry *entry, int level)
 {
    if (entry->volume_id) {
       return 0; // the first "file" is the volume ID. Skip it.
    }
 
-   char *fname = entry->sfname;
-
-   if (fname[0] == 0) {
-      //printk("dir end\n");
+   // that means all the rest of the entries are free.
+   if (entry->sfname[0] == 0) {
       return -1;
    }
 
-   if (fname[0] == (char)0xE5) {
-      //printk("invalid fname\n");
+   // that means that the directory is empty
+   if (entry->sfname[0] == (char)0xE5) {
       return -1;
    }
 
-   // TODO: hack!! fix it
-   if (fname[0] == '.')
+   // '.' is NOT a legal char in the short name
+   // With this check, we skip the directories '.' and '..'.
+   if (entry->sfname[0] == '.') {
       return 0;
+   }
 
-   dump_fixed_str("short fname", (char*)entry->sfname, sizeof(entry->sfname));
+   char fn[32] = {0};
+   for (int i = 0; i <= 8; i++) {
+      if (entry->sfname[i] == ' ')
+         break;
+      fn[i] = entry->sfname[i];
+   }
+
+   char ext[4] = {0};
+   for (int i = 8; i < 11; i++) {
+      if (entry->sfname[i] == ' ')
+         break;
+      ext[i-8] = entry->sfname[i];
+   }
+
+   char indentbuf[4*16] = {0};
+   for (int i = 0; i < 4*level; i++)
+      indentbuf[i] = ' ';
+
+   if (!entry->directory) {
+      printk("%s%s%s%s: %u bytes\n", indentbuf, fn,
+             ext[0] != 0 ? "." : "", ext, entry->DIR_FileSize);
+   } else {
+      printk("%s%s\n", indentbuf, fn);
+   }
 
    // printk("readonly:  %u\n", entry->readonly);
    // printk("hidden:    %u\n", entry->hidden);
    // printk("system:    %u\n", entry->system);
    // printk("vol id:    %u\n", entry->volume_id);
-   //printk("directory: %u\n", entry->directory);
+   // printk("directory: %u\n", entry->directory);
 
    int first_cluster = entry->DIR_FstClusHI << 16 | entry->DIR_FstClusLO;
 
    if (entry->directory) {
       int sec = get_sector_for_cluster(hdr, first_cluster);
-      fat_dir_entry *e = (fat_dir_entry*)((u8*)hdr + sec * hdr->BPB_BytsPerSec);
+      fat_entry *e = (fat_entry*)((u8*)hdr + sec * hdr->BPB_BytsPerSec);
       dump_directory(hdr, e, level);
       return 0;
    }
 
-   printk("file size: %u\n", entry->DIR_FileSize);
    //printk("first cluster: %u\n", first_cluster);
-   printk("\n");
    return 0;
 }
 
-int dump_directory(fat_bpb *hdr, fat_dir_entry *entry, int level)
+int dump_directory(fat_header *hdr, fat_entry *entry, int level)
 {
    int ret;
    do {
@@ -164,14 +178,23 @@ int dump_directory(fat_bpb *hdr, fat_dir_entry *entry, int level)
    return 0;
 }
 
+
+
+fat_entry *fat32_search_entry(fat_header *hdr, const char *abspath)
+{
+   if (*abspath != '/')
+      return NULL;
+
+
+   return NULL;
+}
+
 void fat32_dump_info(void *fatpart_begin)
 {
-   fat_bpb *hdr = fatpart_begin;
+   fat_header *hdr = fatpart_begin;
    fat_dump_common_header(fatpart_begin);
 
    printk("\n");
-
-   void *root_dir = NULL;
 
    if (hdr->BPB_TotSec16 != 0) {
       dump_fat16_headers(fatpart_begin);
@@ -180,11 +203,8 @@ void fat32_dump_info(void *fatpart_begin)
    }
    printk("\n");
 
-   int clusters_first_sec = hdr->BPB_RsvdSecCnt + (hdr->BPB_NumFATs * hdr->BPB_FATSz16);
-
-   printk("clusters first sec: %i\n", clusters_first_sec);
-   root_dir = (void*) ((u8*)hdr + (hdr->BPB_BytsPerSec * clusters_first_sec));
-   dump_directory(hdr, root_dir, 0);
+   fat_entry *root = fat_get_rootdir(hdr);
+   dump_directory(hdr, root, 0);
 }
 
 

@@ -14,6 +14,8 @@
 #include <tasklet.h>
 #include <sync.h>
 
+#include <fs/fat32.h>
+
 // TODO: move these forward-declarations in appropriate header files.
 
 void gdt_install();
@@ -51,6 +53,8 @@ task_info *usermode_init_task = NULL;
 
 void load_usermode_init()
 {
+   fat32_dump_info((void*)RAM_DISK_VADDR);
+
    void *elf_vaddr = (void *) (RAM_DISK_VADDR + INIT_PROGRAM_MEM_DISK_OFFSET);
 
    page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
@@ -112,9 +116,9 @@ void kmain()
    DEBUG_ONLY(bool tasklet_added =) add_tasklet0(&init_kb);
    ASSERT(tasklet_added);
 
-   kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
-   kmutex_test();
-   kcond_test();
+   //kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
+   //kmutex_test();
+   //kcond_test();
 
    //kthread_create(&sleeping_kthread, (void *) 123);
    //kthread_create(&sleeping_kthread, (void *) 20);

@@ -18,6 +18,7 @@ TEST(fat32, dumpinfo)
    (void)res;
 
    fat32_dump_info(buf);
-   fclose(fd);
    free(buf);
+
+   fclose(fd);
 }
