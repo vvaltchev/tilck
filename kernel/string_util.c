@@ -68,23 +68,16 @@ int strcmp(const char *s1, const char *s2)
         s1++; s2++;
    }
 
-    return *(const u8*)s1 - *(const u8*)s2;
+    return (int)*s1 - (int)*s2;
 }
 
-bool istreq(const char *s1, const char *s2)
+int stricmp(const char *s1, const char *s2)
 {
-   while (*s1) {
-
-      // different length
-      if (!*s2)
-         return false;
-
-      // TODO: finish this impl.
-
+   while(*s1 && lower(*s1) == lower(*s2)) {
       s1++; s2++;
    }
 
-   return true;
+   return (int)lower(*s1) - (int)lower(*s2);
 }
 
 void vprintk(const char *fmt, va_list args)

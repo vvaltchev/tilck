@@ -314,7 +314,7 @@ bigloop:
 
       //printk("checking entry with sname '%s'\n", shortname);
 
-      if (!strcmp(shortname, comp)) {
+      if (!stricmp(shortname, comp)) {
 
          // ok, we found the component.
          // if path is ended, that's it.

@@ -1,5 +1,6 @@
 
 #include <cstdio>
+#include <iostream>
 #include <gtest/gtest.h>
 
 using namespace std;
@@ -19,7 +20,7 @@ TEST(fat32, dumpinfo)
 
    fat_dump_info(buf);
 
-   fat_entry *e = fat_search_entry((fat_header*)buf, "/TESTDIR/DIR1/F1");
+   fat_entry *e = fat_search_entry((fat_header*)buf, "/testdir/dir1/f1");
 
    void *data = fat_get_pointer_to_first_cluster((fat_header*)buf, e);
 
