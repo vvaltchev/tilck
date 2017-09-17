@@ -191,14 +191,14 @@ u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, int clusterN, int fatNum)
    u32 FATOffset = (ft == fat16_type) ? clusterN * 2 : clusterN * 4;
 
    u32 ThisFATSecNum =
-      fatNum * FATSz + hdr->BPB_ResvdSecCnt + (FATOffset / hdr->BPB_BytsPerSec);
+      fatNum * FATSz + hdr->BPB_RsvdSecCnt + (FATOffset / hdr->BPB_BytsPerSec);
 
    u32 ThisFATEntOffset = FATOffset % hdr->BPB_BytsPerSec;
 
    u8 *SecBuf = (u8*)hdr + ThisFATSecNum * hdr->BPB_BytsPerSec;
 
    if (ft == fat16_type) {
-      return *(u16*)(SecBuf+ThisFATEntOffset)
+      return *(u16*)(SecBuf+ThisFATEntOffset);
    }
 
    // FAT32
