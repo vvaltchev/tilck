@@ -17,7 +17,7 @@ TEST(fat32, dumpinfo)
    size_t res = fread(buf, 16*1024*1024, 1, fd);
    (void)res;
 
-   fat32_dump_info(buf);
+   fat_dump_info(buf);
 
    fat_entry *e = fat_search_entry((fat_header*)buf, "/TESTDIR/DIR1/F1");
 
