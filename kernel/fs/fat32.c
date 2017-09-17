@@ -206,11 +206,11 @@ u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, int clusterN, int fatNum)
    return (*(u32*)(SecBuf+ThisFATEntOffset)) & 0x0FFFFFFF;
 }
 
-int fat_get_sector_for_cluster(fat_header *hdr, int N)
+u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N)
 {
-   int RootDirSectors = fat_get_RootDirSectors(hdr);
+   u32 RootDirSectors = fat_get_RootDirSectors(hdr);
 
-   int FirstDataSector = hdr->BPB_RsvdSecCnt +
+   u32 FirstDataSector = hdr->BPB_RsvdSecCnt +
       (hdr->BPB_NumFATs * hdr->BPB_FATSz16) + RootDirSectors;
 
    // FirstSectorofCluster
@@ -223,14 +223,6 @@ fat_entry *fat_get_rootdir(fat_header *hdr)
       hdr->BPB_RsvdSecCnt + (hdr->BPB_NumFATs * hdr->BPB_FATSz16);
 
    return (fat_entry*) ((u8*)hdr + (hdr->BPB_BytsPerSec * first_sec));
-}
-
-void *
-fat_get_pointer_to_first_cluster(fat_header *hdr, fat_entry *entry)
-{
-   int first_cluster = entry->DIR_FstClusHI << 16 | entry->DIR_FstClusLO;
-   int sector = fat_get_sector_for_cluster(hdr, first_cluster);
-   return ((u8*)hdr + sector * hdr->BPB_BytsPerSec);
 }
 
 void fat_get_short_name(fat_entry *entry, char *destbuf)
@@ -362,5 +354,55 @@ fat_entry *fat_search_entry(fat_header *hdr, const char *abspath)
    return fat_search_entry_int(hdr, root, abspath);
 }
 
+void
+fat_read_whole_file(fat_header *hdr,
+                    fat_entry *entry, char *dest_buf, size_t dest_buf_size)
+{
+   ASSERT(entry->DIR_FileSize <= dest_buf_size);
 
+   // cluster size in bytes
+   const u32 cs = hdr->BPB_SecPerClus * hdr->BPB_BytsPerSec;
+
+   u32 cluster;
+   size_t written = 0;
+   size_t fsize = entry->DIR_FileSize;
+
+   fat_type ft = fat_get_type(hdr);
+
+   cluster = fat_get_first_cluster(entry);
+
+   do {
+
+      char *data = fat_get_pointer_to_cluster_data(hdr, cluster);
+
+      size_t rem = fsize - written;
+
+      if (rem <= cs) {
+         // read what is needed
+         memmove(dest_buf + written, data, rem);
+         written += rem;
+         break;
+      }
+
+      // read the whole cluster
+      memmove(dest_buf + written, data, cs);
+      written += cs;
+
+      ASSERT((fsize - written) > 0);
+
+      // find the new cluster
+      u32 fatval = fat_read_fat_entry(hdr, ft, cluster, 0);
+
+      if (fat_is_end_of_clusterchain(ft, fatval)) {
+         // rem is still > 0, this should NOT be the last cluster
+         NOT_REACHED();
+      }
+
+      // we do not expect BAD CLUSTERS
+      ASSERT(!fat_is_bad_cluster(ft, fatval));
+
+      cluster = fatval; // go reading the new cluster in the chain.
+
+   } while (written < fsize);
+}
 

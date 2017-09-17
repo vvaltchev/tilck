@@ -91,11 +91,10 @@ void fat_dump_info(void *fatpart_begin);
 
 // FAT INTERNALS ---------------------------------------------------------------
 
+fat_type fat_get_type(fat_header *hdr);
 fat_entry *fat_get_rootdir(fat_header *hdr);
 void fat_get_short_name(fat_entry *entry, char *destbuf);
-void *fat_get_pointer_to_first_cluster(fat_header *hdr, fat_entry *entry);
-fat_type fat_get_type(fat_header *hdr);
-int fat_get_sector_for_cluster(fat_header *hdr, int N);
+u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N);
 
 // FATSz is the number of sectors per FAT
 static inline u32 fat_get_FATSz(fat_header *hdr)
@@ -118,6 +117,11 @@ static inline u32 fat_get_RootDirSectors(fat_header *hdr)
    return ((hdr->BPB_RootEntCnt * 32) + (bps - 1)) / bps;
 }
 
+static inline u32 fat_get_first_cluster(fat_entry *entry)
+{
+   return entry->DIR_FstClusHI << 16 | entry->DIR_FstClusLO;
+}
+
 static inline bool fat_is_end_of_clusterchain(fat_type ft, u32 val)
 {
    ASSERT(ft == fat16_type || ft == fat32_type);
@@ -130,5 +134,27 @@ static inline bool fat_is_bad_cluster(fat_type ft, u32 val)
    return (ft == fat16_type) ? (val == 0xFFF7) : (val == 0x0FFFFFF7);
 }
 
+static inline void *
+fat_get_pointer_to_cluster_data(fat_header *hdr, u32 clusterN)
+{
+   u32 sector = fat_get_sector_for_cluster(hdr, clusterN);
+   return ((u8*)hdr + sector * hdr->BPB_BytsPerSec);
+}
+
+static inline void *
+fat_get_pointer_to_first_cluster(fat_header *hdr, fat_entry *entry)
+{
+   u32 first_cluster = fat_get_first_cluster(entry);
+   return fat_get_pointer_to_cluster_data(hdr, first_cluster);
+}
+
+
 // PUBLIC interface ------------------------------------------------------------
+
 fat_entry *fat_search_entry(fat_header *hdr, const char *abspath);
+
+void
+fat_read_whole_file(fat_header *hdr,
+                    fat_entry *entry,
+                    char *dest_buf,
+                    size_t dest_buf_size);
