@@ -2,6 +2,7 @@
 
 typedef enum {
 
+   fat_unknown = 0, // unknown FAT type
    fat12_type = 1,
    fat16_type = 2,
    fat32_type = 3
@@ -94,6 +95,7 @@ fat_entry *fat_get_rootdir(fat_header *hdr);
 void fat_get_short_name(fat_entry *entry, char *destbuf);
 void *fat_get_pointer_to_first_cluster(fat_header *hdr, fat_entry *entry);
 fat_type fat_get_type(fat_header *hdr);
+int fat_get_sector_for_cluster(fat_header *hdr, int N);
 
 // FATSz is the number of sectors per FAT
 static inline u32 fat_get_FATSz(fat_header *hdr)
@@ -116,6 +118,17 @@ static inline u32 fat_get_RootDirSectors(fat_header *hdr)
    return ((hdr->BPB_RootEntCnt * 32) + (bps - 1)) / bps;
 }
 
+static inline bool fat_is_end_of_clusterchain(fat_type ft, u32 val)
+{
+   ASSERT(ft == fat16_type || ft == fat32_type);
+   return (ft == fat16_type) ? val >= 0xFFF8 : val >= 0x0FFFFFF8;
+}
+
+static inline bool fat_is_bad_cluster(fat_type ft, u32 val)
+{
+   ASSERT(ft == fat16_type || ft == fat32_type);
+   return (ft == fat16_type) ? (val == 0xFFF7) : (val == 0x0FFFFFF7);
+}
 
 // PUBLIC interface ------------------------------------------------------------
 fat_entry *fat_search_entry(fat_header *hdr, const char *abspath);

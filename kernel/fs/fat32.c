@@ -170,6 +170,42 @@ fat_type fat_get_type(fat_header *hdr)
    }
 }
 
+/*
+ * Reads the entry in the FAT 'fatNum' for cluster 'clusterN'.
+ * The entry may be 16 or 32 bit. It returns 32-bit integer for convenience.
+ */
+u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, int clusterN, int fatNum)
+{
+   if (ft == fat_unknown) {
+      ft = fat_get_type(hdr);
+   }
+
+   if (ft == fat12_type) {
+      // FAT12 is NOT supported.
+      NOT_REACHED();
+   }
+
+   ASSERT(fatNum < hdr->BPB_NumFATs);
+
+   u32 FATSz = fat_get_FATSz(hdr);
+   u32 FATOffset = (ft == fat16_type) ? clusterN * 2 : clusterN * 4;
+
+   u32 ThisFATSecNum =
+      fatNum * FATSz + hdr->BPB_ResvdSecCnt + (FATOffset / hdr->BPB_BytsPerSec);
+
+   u32 ThisFATEntOffset = FATOffset % hdr->BPB_BytsPerSec;
+
+   u8 *SecBuf = (u8*)hdr + ThisFATSecNum * hdr->BPB_BytsPerSec;
+
+   if (ft == fat16_type) {
+      return *(u16*)(SecBuf+ThisFATEntOffset)
+   }
+
+   // FAT32
+   // Note: FAT32 "FAT" entries are 28-bit. The 4 higher bits are reserved.
+   return (*(u32*)(SecBuf+ThisFATEntOffset)) & 0x0FFFFFFF;
+}
+
 int fat_get_sector_for_cluster(fat_header *hdr, int N)
 {
    int RootDirSectors = fat_get_RootDirSectors(hdr);
@@ -177,8 +213,8 @@ int fat_get_sector_for_cluster(fat_header *hdr, int N)
    int FirstDataSector = hdr->BPB_RsvdSecCnt +
       (hdr->BPB_NumFATs * hdr->BPB_FATSz16) + RootDirSectors;
 
-   int FirstSectorofCluster = ((N - 2) * hdr->BPB_SecPerClus) + FirstDataSector;
-   return FirstSectorofCluster;
+   // FirstSectorofCluster
+   return ((N - 2) * hdr->BPB_SecPerClus) + FirstDataSector;
 }
 
 fat_entry *fat_get_rootdir(fat_header *hdr)
