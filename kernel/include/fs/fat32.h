@@ -61,7 +61,7 @@ typedef struct __attribute__(( packed )) {
 
 typedef struct __attribute__(( packed )) {
 
-   s8 sfname[11];
+   s8 DIR_Name[11];
 
    u8 readonly : 1; // lower-bit
    u8 hidden : 1;
@@ -92,9 +92,10 @@ void fat_dump_info(void *fatpart_begin);
 // FAT INTERNALS ---------------------------------------------------------------
 
 fat_type fat_get_type(fat_header *hdr);
-fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft);
+fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft, u32 *cluster /*out*/);
 void fat_get_short_name(fat_entry *entry, char *destbuf);
 u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N);
+u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, int clusterN, int fatNum);
 
 // FATSz is the number of sectors per FAT
 static inline u32 fat_get_FATSz(fat_header *hdr)

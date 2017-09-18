@@ -76,7 +76,8 @@ static void dump_entry_attrs(fat_entry *entry)
    printk("archive:   %u\n", entry->archive);
 }
 
-static int dump_directory(fat_header *hdr, fat_entry *entry, int level);
+static int
+dump_directory(fat_header *hdr, fat_entry *entry, u32 cluster, int level);
 
 
 int dump_dir_entry(fat_header *hdr, fat_entry *entry, int level)
@@ -86,21 +87,20 @@ int dump_dir_entry(fat_header *hdr, fat_entry *entry, int level)
    }
 
    // that means all the rest of the entries are free.
-   if (entry->sfname[0] == 0) {
+   if (entry->DIR_Name[0] == 0) {
       return -1;
    }
 
    // that means that the directory is empty
-   if (entry->sfname[0] == (char)0xE5) {
+   if (entry->DIR_Name[0] == (char)0xE5) {
       return -1;
    }
 
    // '.' is NOT a legal char in the short name
    // With this check, we skip the directories '.' and '..'.
-   if (entry->sfname[0] == '.') {
+   if (entry->DIR_Name[0] == '.') {
       return 0;
    }
-
 
    char shortname[12];
    fat_get_short_name(entry, shortname);
@@ -117,22 +117,62 @@ int dump_dir_entry(fat_header *hdr, fat_entry *entry, int level)
 
    if (entry->directory) {
       u32 first_cluster = fat_get_first_cluster(entry);
-      fat_entry *e = fat_get_pointer_to_cluster_data(hdr, first_cluster);
-      dump_directory(hdr, e, level);
+      dump_directory(hdr, NULL, first_cluster, level);
       return 0;
    }
 
    return 0;
 }
 
-// TODO: make the code to follow the clusterchain!
-static int dump_directory(fat_header *hdr, fat_entry *entry, int level)
+static int dump_directory(fat_header *hdr,
+                          fat_entry *entry, u32 cluster, int level)
 {
-   int ret;
-   do {
-      ret = dump_dir_entry(hdr, entry, level+1);
-      entry++;
-   } while (ret == 0);
+   const u32 entries_per_cluster =
+      (hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus) / sizeof(fat_entry);
+
+   fat_type ft = fat_get_type(hdr);
+
+   while (true) {
+
+      if (cluster != 0) {
+         // if cluster != 0, cluster is used and entry is overriden.
+         // That's because on FAT16 we know only the sector of the root dir.
+         // In that case, fat_get_rootdir() returns 0 as cluster. In all the
+         // other cases, we need only the cluster.
+
+         entry = fat_get_pointer_to_cluster_data(hdr, cluster);
+      }
+
+      for (u32 i = 0; i < entries_per_cluster; i++) {
+
+         int ret = dump_dir_entry(hdr, entry + i, level + 1);
+
+         // If ret < 0, there are no more entries for this directory.
+         if (ret < 0)
+            return 0;
+      }
+
+      // In case dump_directory() has been called on the root dir on a FAT16,
+      // cluster is 0 (invalid) and there is no next cluster in the chain. This
+      // fact seriously limits the number of items in the root dir of a FAT16
+      // volume.
+      if (cluster == 0)
+         break;
+
+      // If we're here, it means that there is more then 1 cluster for the
+      // entries of this directory. We have to follow the chain.
+
+      u32 val = fat_read_fat_entry(hdr, ft, cluster, 0);
+
+      if (fat_is_end_of_clusterchain(ft, val))
+         break; // that's it: we hit an exactly full cluster.
+
+      // we do not expect BAD CLUSTERS
+      ASSERT(!fat_is_bad_cluster(ft, val));
+
+      cluster = val;
+   }
+
    return 0;
 }
 
@@ -154,8 +194,9 @@ void fat_dump_info(void *fatpart_begin)
    }
    printk("\n");
 
-   fat_entry *root = fat_get_rootdir(hdr, ft);
-   dump_directory(hdr, root, 0);
+   u32 root_dir_cluster;
+   fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
+   dump_directory(hdr, root, root_dir_cluster, 0);
 }
 
 
@@ -239,8 +280,7 @@ u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N)
    return ((N - 2) * hdr->BPB_SecPerClus) + FirstDataSector;
 }
 
-// TODO: make this function return the cluster, not the entry!
-fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft)
+fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft, u32 *cluster /* out */)
 {
    ASSERT(ft != fat12_type);
    ASSERT(ft != fat_unknown);
@@ -253,12 +293,14 @@ fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft)
          hdr->BPB_RsvdSecCnt + (hdr->BPB_NumFATs * hdr->BPB_FATSz16);
 
       sector = FirstDataSector;
+      *cluster = 0;
+
    } else {
 
       // FAT32
       fat32_header2 *h32 = (fat32_header2*) (hdr+1);
-      u32 cluster = h32->BPB_RootClus;
-      sector = fat_get_sector_for_cluster(hdr, cluster);
+      *cluster = h32->BPB_RootClus;
+      sector = fat_get_sector_for_cluster(hdr, *cluster);
    }
 
    return (fat_entry*) ((u8*)hdr + (hdr->BPB_BytsPerSec * sector));
@@ -268,16 +310,16 @@ void fat_get_short_name(fat_entry *entry, char *destbuf)
 {
    char fn[32] = {0};
    for (int i = 0; i <= 8; i++) {
-      if (entry->sfname[i] == ' ')
+      if (entry->DIR_Name[i] == ' ')
          break;
-      fn[i] = entry->sfname[i];
+      fn[i] = entry->DIR_Name[i];
    }
 
    char ext[4] = {0};
    for (int i = 8; i < 11; i++) {
-      if (entry->sfname[i] == ' ')
+      if (entry->DIR_Name[i] == ' ')
          break;
-      ext[i-8] = entry->sfname[i];
+      ext[i-8] = entry->DIR_Name[i];
    }
 
    int d = 0;
@@ -324,18 +366,18 @@ bigloop:
    while (true) {
 
       // that means all the rest of the entries are free.
-      if (entry->sfname[0] == 0) {
+      if (entry->DIR_Name[0] == 0) {
          break;
       }
 
       // that means that the directory is empty
-      if (entry->sfname[0] == (char)0xE5) {
+      if (entry->DIR_Name[0] == (char)0xE5) {
          break;
       }
 
       // '.' is NOT a legal char in the short name
       // With this check, we skip the directories '.' and '..'.
-      if (entry->sfname[0] == '.') {
+      if (entry->DIR_Name[0] == '.') {
          entry++;
          continue;
       }
@@ -379,6 +421,7 @@ bigloop:
    return NULL;
 }
 
+
 fat_entry *fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
 {
    if (*abspath != '/')
@@ -390,7 +433,8 @@ fat_entry *fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
 
    abspath++;
 
-   fat_entry *root = fat_get_rootdir(hdr, ft);
+   u32 root_dir_cluster;
+   fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
 
    if (*abspath == 0)
       return root;
