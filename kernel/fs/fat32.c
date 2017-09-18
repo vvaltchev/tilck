@@ -116,7 +116,8 @@ int dump_dir_entry(fat_header *hdr, fat_entry *entry, int level)
    }
 
    if (entry->directory) {
-      fat_entry *e = fat_get_pointer_to_first_cluster(hdr, entry);
+      u32 first_cluster = fat_get_first_cluster(entry);
+      fat_entry *e = fat_get_pointer_to_cluster_data(hdr, first_cluster);
       dump_directory(hdr, e, level);
       return 0;
    }
@@ -366,7 +367,8 @@ bigloop:
          if (!entry->directory)
             break;
 
-         entry = fat_get_pointer_to_first_cluster(hdr, entry);
+         u32 first_cluster = fat_get_first_cluster(entry);
+         entry = fat_get_pointer_to_cluster_data(hdr, first_cluster);
          complen = 0;
          goto bigloop;
       }

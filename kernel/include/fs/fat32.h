@@ -141,14 +141,6 @@ fat_get_pointer_to_cluster_data(fat_header *hdr, u32 clusterN)
    return ((u8*)hdr + sector * hdr->BPB_BytsPerSec);
 }
 
-static inline void *
-fat_get_pointer_to_first_cluster(fat_header *hdr, fat_entry *entry)
-{
-   u32 first_cluster = fat_get_first_cluster(entry);
-   return fat_get_pointer_to_cluster_data(hdr, first_cluster);
-}
-
-
 // PUBLIC interface ------------------------------------------------------------
 
 fat_entry *fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath);

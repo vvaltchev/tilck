@@ -54,7 +54,8 @@ void load_usermode_init()
    fat_entry *entry = fat_search_entry(fat, fat_unknown, "/sbin/init");
    ASSERT(entry != NULL);
 
-   void *elf_vaddr = fat_get_pointer_to_first_cluster(fat, entry);
+   u32 first_cluster = fat_get_first_cluster(entry);
+   void *elf_vaddr = fat_get_pointer_to_cluster_data(fat, first_cluster);
 
    page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
    set_page_directory(pdir);
