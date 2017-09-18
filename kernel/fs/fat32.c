@@ -76,12 +76,11 @@ static void dump_entry_attrs(fat_entry *entry)
    printk("archive:   %u\n", entry->archive);
 }
 
-static int
-dump_directory(fat_header *hdr, fat_type ft,
-               fat_entry *entry, u32 cluster, int level);
-
-
-int dump_dir_entry(fat_header *hdr, fat_type ft, fat_entry *entry, int level)
+static int dump_dir_entry(fat_header *hdr,
+                          fat_type ft,
+                          fat_entry *entry,
+                          void *arg,
+                          int level)
 {
    char shortname[12];
    fat_get_short_name(entry, shortname);
@@ -97,81 +96,15 @@ int dump_dir_entry(fat_header *hdr, fat_type ft, fat_entry *entry, int level)
    }
 
    if (entry->directory) {
-      u32 first_cluster = fat_get_first_cluster(entry);
-      dump_directory(hdr, ft, NULL, first_cluster, level + 1);
+
+      fat_walk_directory(hdr,
+                         ft,
+                         NULL,
+                         fat_get_first_cluster(entry),
+                         &dump_dir_entry,
+                         arg,
+                         level + 1);
       return 0;
-   }
-
-   return 0;
-}
-
-static int dump_directory(fat_header *hdr, fat_type ft,
-                          fat_entry *entry, u32 cluster, int level)
-{
-   const u32 entries_per_cluster =
-      (hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus) / sizeof(fat_entry);
-
-   ASSERT(ft == fat16_type || ft == fat32_type);
-
-   while (true) {
-
-      if (cluster != 0) {
-         // if cluster != 0, cluster is used and entry is overriden.
-         // That's because on FAT16 we know only the sector of the root dir.
-         // In that case, fat_get_rootdir() returns 0 as cluster. In all the
-         // other cases, we need only the cluster.
-
-         entry = fat_get_pointer_to_cluster_data(hdr, cluster);
-      }
-
-      for (u32 i = 0; i < entries_per_cluster; i++) {
-
-         if (entry[i].volume_id) {
-            continue; // the first "file" is the volume ID. Skip it.
-         }
-
-         // that means all the rest of the entries are free.
-         if (entry[i].DIR_Name[0] == 0) {
-            return 0;
-         }
-
-         // that means that the directory is empty
-         if (entry[i].DIR_Name[0] == (char)0xE5) {
-            return 0;
-         }
-
-         // '.' is NOT a legal char in the short name
-         // With this check, we skip the directories '.' and '..'.
-         if (entry[i].DIR_Name[0] == '.') {
-            continue;
-         }
-
-         int ret = dump_dir_entry(hdr, ft, entry + i, level);
-
-         // If ret < 0, we have to stop the walk.
-         if (ret < 0)
-            return 0;
-      }
-
-      // In case dump_directory() has been called on the root dir on a FAT16,
-      // cluster is 0 (invalid) and there is no next cluster in the chain. This
-      // fact seriously limits the number of items in the root dir of a FAT16
-      // volume.
-      if (cluster == 0)
-         break;
-
-      // If we're here, it means that there is more then 1 cluster for the
-      // entries of this directory. We have to follow the chain.
-
-      u32 val = fat_read_fat_entry(hdr, ft, cluster, 0);
-
-      if (fat_is_end_of_clusterchain(ft, val))
-         break; // that's it: we hit an exactly full cluster.
-
-      // we do not expect BAD CLUSTERS
-      ASSERT(!fat_is_bad_cluster(ft, val));
-
-      cluster = val;
    }
 
    return 0;
@@ -197,7 +130,14 @@ void fat_dump_info(void *fatpart_begin)
 
    u32 root_dir_cluster;
    fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
-   dump_directory(hdr, ft, root, root_dir_cluster, 0);
+
+   fat_walk_directory(hdr,
+                      ft,
+                      root,
+                      root_dir_cluster,
+                      &dump_dir_entry, // callback
+                      NULL,            // arg
+                      0);              // level
 }
 
 
@@ -207,6 +147,90 @@ void fat_dump_info(void *fatpart_begin)
  * Actual FAT code
  * *********************************************
  */
+
+int fat_walk_directory(fat_header *hdr,
+                       fat_type ft,
+                       fat_entry *entry,
+                       u32 cluster,
+                       fat_dentry_cb cb,
+                       void *arg,
+                       int level)
+{
+   const u32 entries_per_cluster =
+      (hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus) / sizeof(fat_entry);
+
+   ASSERT(ft == fat16_type || ft == fat32_type);
+
+   while (true) {
+
+      if (cluster != 0) {
+
+         /*
+          * if cluster != 0, cluster is used and entry is overriden.
+          * That's because on FAT16 we know only the sector of the root dir.
+          * In that case, fat_get_rootdir() returns 0 as cluster. In all the
+          * other cases, we need only the cluster.
+          */
+         entry = fat_get_pointer_to_cluster_data(hdr, cluster);
+      }
+
+      for (u32 i = 0; i < entries_per_cluster; i++) {
+
+         if (entry[i].volume_id) {
+            continue; // the first "file" is the volume ID. Skip it.
+         }
+
+         // that means all the rest of the entries are free.
+         if (entry[i].DIR_Name[0] == 0) {
+            return 0;
+         }
+
+         // that means that the directory is empty
+         if (entry[i].DIR_Name[0] == (char)0xE5) {
+            return 0;
+         }
+
+         /*
+          * '.' is NOT a legal char in the short name. Therefore, with this
+          * simple check, we skip the directories '.' and '..'.
+          */
+         if (entry[i].DIR_Name[0] == '.') {
+            continue;
+         }
+
+         int ret = cb(hdr, ft, entry + i, arg, level);
+
+         // if ret < 0, we have to stop the walk.
+         if (ret < 0)
+            return 0;
+      }
+
+      /*
+       * In case dump_directory() has been called on the root dir on a FAT16,
+       * cluster is 0 (invalid) and there is no next cluster in the chain. This
+       * fact seriously limits the number of items in the root dir of a FAT16
+       * volume.
+       */
+      if (cluster == 0)
+         break;
+
+      /*
+       * If we're here, it means that there is more then one cluster for the
+       * entries of this directory. We have to follow the chain.
+       */
+      u32 val = fat_read_fat_entry(hdr, ft, cluster, 0);
+
+      if (fat_is_end_of_clusterchain(ft, val))
+         break; // that's it: we hit an exactly full cluster.
+
+      // we do not expect BAD CLUSTERS
+      ASSERT(!fat_is_bad_cluster(ft, val));
+
+      cluster = val;
+   }
+
+   return 0;
+}
 
 fat_type fat_get_type(fat_header *hdr)
 {

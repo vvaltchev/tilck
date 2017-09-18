@@ -144,6 +144,18 @@ fat_get_pointer_to_cluster_data(fat_header *hdr, u32 clusterN)
 
 // PUBLIC interface ------------------------------------------------------------
 
+typedef int (*fat_dentry_cb)(fat_header *, fat_type, fat_entry *, void *, int);
+
+int
+fat_walk_directory(fat_header *hdr,
+                   fat_type ft,
+                   fat_entry *entry,
+                   u32 cluster,
+                   fat_dentry_cb cb,
+                   void *arg,
+                   int level);
+
+
 fat_entry *fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath);
 
 void
