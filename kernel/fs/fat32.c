@@ -77,31 +77,12 @@ static void dump_entry_attrs(fat_entry *entry)
 }
 
 static int
-dump_directory(fat_header *hdr, fat_entry *entry, u32 cluster, int level);
+dump_directory(fat_header *hdr, fat_type ft,
+               fat_entry *entry, u32 cluster, int level);
 
 
-int dump_dir_entry(fat_header *hdr, fat_entry *entry, int level)
+int dump_dir_entry(fat_header *hdr, fat_type ft, fat_entry *entry, int level)
 {
-   if (entry->volume_id) {
-      return 0; // the first "file" is the volume ID. Skip it.
-   }
-
-   // that means all the rest of the entries are free.
-   if (entry->DIR_Name[0] == 0) {
-      return -1;
-   }
-
-   // that means that the directory is empty
-   if (entry->DIR_Name[0] == (char)0xE5) {
-      return -1;
-   }
-
-   // '.' is NOT a legal char in the short name
-   // With this check, we skip the directories '.' and '..'.
-   if (entry->DIR_Name[0] == '.') {
-      return 0;
-   }
-
    char shortname[12];
    fat_get_short_name(entry, shortname);
 
@@ -117,20 +98,20 @@ int dump_dir_entry(fat_header *hdr, fat_entry *entry, int level)
 
    if (entry->directory) {
       u32 first_cluster = fat_get_first_cluster(entry);
-      dump_directory(hdr, NULL, first_cluster, level);
+      dump_directory(hdr, ft, NULL, first_cluster, level + 1);
       return 0;
    }
 
    return 0;
 }
 
-static int dump_directory(fat_header *hdr,
+static int dump_directory(fat_header *hdr, fat_type ft,
                           fat_entry *entry, u32 cluster, int level)
 {
    const u32 entries_per_cluster =
       (hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus) / sizeof(fat_entry);
 
-   fat_type ft = fat_get_type(hdr);
+   ASSERT(ft == fat16_type || ft == fat32_type);
 
    while (true) {
 
@@ -145,9 +126,29 @@ static int dump_directory(fat_header *hdr,
 
       for (u32 i = 0; i < entries_per_cluster; i++) {
 
-         int ret = dump_dir_entry(hdr, entry + i, level + 1);
+         if (entry[i].volume_id) {
+            continue; // the first "file" is the volume ID. Skip it.
+         }
 
-         // If ret < 0, there are no more entries for this directory.
+         // that means all the rest of the entries are free.
+         if (entry[i].DIR_Name[0] == 0) {
+            return 0;
+         }
+
+         // that means that the directory is empty
+         if (entry[i].DIR_Name[0] == (char)0xE5) {
+            return 0;
+         }
+
+         // '.' is NOT a legal char in the short name
+         // With this check, we skip the directories '.' and '..'.
+         if (entry[i].DIR_Name[0] == '.') {
+            continue;
+         }
+
+         int ret = dump_dir_entry(hdr, ft, entry + i, level);
+
+         // If ret < 0, we have to stop the walk.
          if (ret < 0)
             return 0;
       }
@@ -196,7 +197,7 @@ void fat_dump_info(void *fatpart_begin)
 
    u32 root_dir_cluster;
    fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
-   dump_directory(hdr, root, root_dir_cluster, 0);
+   dump_directory(hdr, ft, root, root_dir_cluster, 0);
 }
 
 
