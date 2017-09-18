@@ -37,15 +37,33 @@ void fat_dump_common_header(void *data)
 }
 
 
-static void dump_fat16_headers(void *data)
+static void dump_fat16_headers(fat_header *common_hdr)
 {
-   fat16_header2 *hdr = (void*) ( (u8*)data + sizeof(fat_header) );
+   fat16_header2 *hdr = (fat16_header2*) (common_hdr+1);
 
-   printk("Drive num: %u\n", hdr->BS_DrvNum);
-   printk("BootSig: %u\n", hdr->BS_BootSig);
-   printk("VolID: %p\n", hdr->BS_VolID);
-   dump_fixed_str("VolLab", hdr->BS_VolLab, sizeof(hdr->BS_VolLab));
-   dump_fixed_str("FilSysType", hdr->BS_FilSysType, sizeof(hdr->BS_FilSysType));
+   printk("BS_DrvNum: %u\n", hdr->BS_DrvNum);
+   printk("BS_BootSig: %u\n", hdr->BS_BootSig);
+   printk("BS_VolID: %p\n", hdr->BS_VolID);
+   dump_fixed_str("BS_VolLab", hdr->BS_VolLab, sizeof(hdr->BS_VolLab));
+   dump_fixed_str("BS_FilSysType",
+                  hdr->BS_FilSysType, sizeof(hdr->BS_FilSysType));
+}
+
+static void dump_fat32_headers(fat_header *common_hdr)
+{
+   fat32_header2 *hdr = (fat32_header2*) (common_hdr+1);
+   printk("BPB_FATSz32: %u\n", hdr->BPB_FATSz32);
+   printk("BPB_ExtFlags: %u\n", hdr->BPB_ExtFlags);
+   printk("BPB_FSVer: %u\n", hdr->BPB_FSVer);
+   printk("BPB_RootClus: %u\n", hdr->BPB_RootClus);
+   printk("BPB_FSInfo: %u\n", hdr->BPB_FSInfo);
+   printk("BPB_BkBootSec: %u\n", hdr->BPB_BkBootSec);
+   printk("BS_DrvNum: %u\n", hdr->BS_DrvNum);
+   printk("BS_BootSig: %u\n", hdr->BS_BootSig);
+   printk("BS_VolID: %p\n", hdr->BS_VolID);
+   dump_fixed_str("BS_VolLab", hdr->BS_VolLab, sizeof(hdr->BS_VolLab));
+   dump_fixed_str("BS_FilSysType",
+                  hdr->BS_FilSysType, sizeof(hdr->BS_FilSysType));
 }
 
 static void dump_entry_attrs(fat_entry *entry)
@@ -106,7 +124,7 @@ int dump_dir_entry(fat_header *hdr, fat_entry *entry, int level)
    return 0;
 }
 
-
+// TODO: make the code to follow the clusterchain!
 static int dump_directory(fat_header *hdr, fat_entry *entry, int level)
 {
    int ret;
@@ -125,14 +143,17 @@ void fat_dump_info(void *fatpart_begin)
 
    printk("\n");
 
-   if (hdr->BPB_TotSec16 != 0) {
+   fat_type ft = fat_get_type(hdr);
+   ASSERT(ft != fat12_type);
+
+   if (ft == fat16_type) {
       dump_fat16_headers(fatpart_begin);
    } else {
-      printk("FAT32 not supported yet.\n");
+      dump_fat32_headers(hdr);
    }
    printk("\n");
 
-   fat_entry *root = fat_get_rootdir(hdr);
+   fat_entry *root = fat_get_rootdir(hdr, ft);
    dump_directory(hdr, root, 0);
 }
 
@@ -217,12 +238,29 @@ u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N)
    return ((N - 2) * hdr->BPB_SecPerClus) + FirstDataSector;
 }
 
-fat_entry *fat_get_rootdir(fat_header *hdr)
+// TODO: make this function return the cluster, not the entry!
+fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft)
 {
-   int first_sec =
-      hdr->BPB_RsvdSecCnt + (hdr->BPB_NumFATs * hdr->BPB_FATSz16);
+   ASSERT(ft != fat12_type);
+   ASSERT(ft != fat_unknown);
 
-   return (fat_entry*) ((u8*)hdr + (hdr->BPB_BytsPerSec * first_sec));
+   u32 sector;
+
+   if (ft == fat16_type) {
+
+      u32 FirstDataSector =
+         hdr->BPB_RsvdSecCnt + (hdr->BPB_NumFATs * hdr->BPB_FATSz16);
+
+      sector = FirstDataSector;
+   } else {
+
+      // FAT32
+      fat32_header2 *h32 = (fat32_header2*) (hdr+1);
+      u32 cluster = h32->BPB_RootClus;
+      sector = fat_get_sector_for_cluster(hdr, cluster);
+   }
+
+   return (fat_entry*) ((u8*)hdr + (hdr->BPB_BytsPerSec * sector));
 }
 
 void fat_get_short_name(fat_entry *entry, char *destbuf)
@@ -262,7 +300,7 @@ void fat_get_short_name(fat_entry *entry, char *destbuf)
    destbuf[d++] = 0;
 }
 
-
+// TODO: make the code to follow the clusterchain!!
 static fat_entry *
 fat_search_entry_int(fat_header *hdr, fat_entry *entry, const char *path)
 {
@@ -339,14 +377,18 @@ bigloop:
    return NULL;
 }
 
-fat_entry *fat_search_entry(fat_header *hdr, const char *abspath)
+fat_entry *fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
 {
    if (*abspath != '/')
       return NULL;
 
+   if (ft == fat_unknown) {
+      ft = fat_get_type(hdr);
+   }
+
    abspath++;
 
-   fat_entry *root = fat_get_rootdir(hdr);
+   fat_entry *root = fat_get_rootdir(hdr, ft);
 
    if (*abspath == 0)
       return root;

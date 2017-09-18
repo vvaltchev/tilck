@@ -51,7 +51,7 @@ void load_usermode_init()
 {
    fat_header *fat = (fat_header*)RAM_DISK_VADDR;
 
-   fat_entry *entry = fat_search_entry(fat, "/sbin/init");
+   fat_entry *entry = fat_search_entry(fat, fat_unknown, "/sbin/init");
    ASSERT(entry != NULL);
 
    void *elf_vaddr = fat_get_pointer_to_first_cluster(fat, entry);

@@ -92,7 +92,7 @@ void fat_dump_info(void *fatpart_begin);
 // FAT INTERNALS ---------------------------------------------------------------
 
 fat_type fat_get_type(fat_header *hdr);
-fat_entry *fat_get_rootdir(fat_header *hdr);
+fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft);
 void fat_get_short_name(fat_entry *entry, char *destbuf);
 u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N);
 
@@ -151,7 +151,7 @@ fat_get_pointer_to_first_cluster(fat_header *hdr, fat_entry *entry)
 
 // PUBLIC interface ------------------------------------------------------------
 
-fat_entry *fat_search_entry(fat_header *hdr, const char *abspath);
+fat_entry *fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath);
 
 void
 fat_read_whole_file(fat_header *hdr,

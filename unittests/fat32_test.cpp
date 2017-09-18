@@ -24,7 +24,7 @@ TEST(fat32, dumpinfo)
    fat_dump_info(buf);
 
    fat_header *hdr = (fat_header*)buf;
-   fat_entry *e = fat_search_entry(hdr, "/testdir/dir1/f1");
+   fat_entry *e = fat_search_entry(hdr, fat_unknown, "/testdir/dir1/f1");
 
    char data[128] = {0};
    fat_read_whole_file(hdr, e, data, 128);
@@ -45,7 +45,7 @@ TEST(fat32, crc_of_init)
    (void)res;
 
    fat_header *hdr = (fat_header*)buf;
-   fat_entry *e = fat_search_entry(hdr, "/sbin/init");
+   fat_entry *e = fat_search_entry(hdr, fat_unknown, "/sbin/init");
 
    char *content = (char*)calloc(1, e->DIR_FileSize);
    fat_read_whole_file(hdr, e, content, e->DIR_FileSize);
