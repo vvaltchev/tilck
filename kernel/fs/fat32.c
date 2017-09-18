@@ -446,7 +446,8 @@ bigloop:
    return NULL;
 }
 
-
+// Make the whole function and its helper to use fat_walk_directory: this
+// way the walk though the cluster chain will be done at only one place.
 fat_entry *fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
 {
    if (*abspath != '/')
