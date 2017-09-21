@@ -34,7 +34,7 @@ JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
 include_directories("include")
 
 file(GLOB ARCH_SOURCES "arch/${ARCH}/*.asm" "arch/${ARCH}/*.c")
-file(GLOB SOURCES "*.c" "test_stuff/*.c")
+file(GLOB SOURCES "*.c" "fs/*.c" "test_stuff/*.c")
 
 set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 

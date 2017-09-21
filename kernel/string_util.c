@@ -61,6 +61,25 @@ instantiate_generic_itoa(itoa64, s64)
 instantiate_generic_uitoa(uitoa32, u32)
 instantiate_generic_uitoa(uitoa64, u64)
 
+
+int strcmp(const char *s1, const char *s2)
+{
+    while(*s1 && *s1 == *s2) {
+        s1++; s2++;
+   }
+
+    return (int)*s1 - (int)*s2;
+}
+
+int stricmp(const char *s1, const char *s2)
+{
+   while(*s1 && lower(*s1) == lower(*s2)) {
+      s1++; s2++;
+   }
+
+   return (int)lower(*s1) - (int)lower(*s2);
+}
+
 void vprintk(const char *fmt, va_list args)
 {
    const char *ptr = fmt;
