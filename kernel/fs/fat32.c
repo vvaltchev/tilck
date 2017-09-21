@@ -82,7 +82,7 @@ static int dump_dir_entry(fat_header *hdr,
                           void *arg,
                           int level)
 {
-   char shortname[12];
+   char shortname[16];
    fat_get_short_name(entry, shortname);
 
    char indentbuf[4*16] = {0};
@@ -335,8 +335,8 @@ fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft, u32 *cluster /* out */)
 
 void fat_get_short_name(fat_entry *entry, char *destbuf)
 {
-   char fn[32] = {0};
-   for (int i = 0; i <= 8; i++) {
+   char fn[16] = {0};
+   for (int i = 0; i < 8; i++) {
       if (entry->DIR_Name[i] == ' ')
          break;
       fn[i] = entry->DIR_Name[i];
@@ -375,7 +375,7 @@ typedef struct {
    const char *path;   // the searched path.
    char pc[256];       // path component
    size_t pcl;         // path component's length
-   char shortname[12]; // short name of the current entry
+   char shortname[16]; // short name of the current entry
    fat_entry *result;  // the found entry
 
 } fat_search_ctx;
