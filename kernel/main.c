@@ -14,6 +14,8 @@
 #include <tasklet.h>
 #include <sync.h>
 
+#include <fs/fat32.h>
+
 // TODO: move these forward-declarations in appropriate header files.
 
 void gdt_install();
@@ -43,15 +45,17 @@ void show_hello_message()
    printk("TIMER_HZ: %i\n", TIMER_HZ);
 }
 
-
-
-#define INIT_PROGRAM_MEM_DISK_OFFSET 0x00023600
-
 task_info *usermode_init_task = NULL;
 
 void load_usermode_init()
 {
-   void *elf_vaddr = (void *) (RAM_DISK_VADDR + INIT_PROGRAM_MEM_DISK_OFFSET);
+   fat_header *fat = (fat_header*)RAM_DISK_VADDR;
+
+   fat_entry *entry = fat_search_entry(fat, fat_unknown, "/sbin/init");
+   ASSERT(entry != NULL);
+
+   u32 first_cluster = fat_get_first_cluster(entry);
+   void *elf_vaddr = fat_get_pointer_to_cluster_data(fat, first_cluster);
 
    page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
    set_page_directory(pdir);
@@ -112,9 +116,9 @@ void kmain()
    DEBUG_ONLY(bool tasklet_added =) add_tasklet0(&init_kb);
    ASSERT(tasklet_added);
 
-   kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
-   kmutex_test();
-   kcond_test();
+   //kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
+   //kmutex_test();
+   //kcond_test();
 
    //kthread_create(&sleeping_kthread, (void *) 123);
    //kthread_create(&sleeping_kthread, (void *) 20);

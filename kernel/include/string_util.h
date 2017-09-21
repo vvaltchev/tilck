@@ -14,7 +14,7 @@ typedef unsigned char *va_list;
 static ALWAYS_INLINE void memset(void *ptr, u8 value, size_t num)
 {
    for (size_t i = 0; i < num; ++i) {
-      ((char *)ptr)[i] = value;
+      ((u8 *)ptr)[i] = value;
    }
 }
 
@@ -32,6 +32,8 @@ static ALWAYS_INLINE size_t strlen(const char *str)
    return ptr - str - 1;
 }
 
+int strcmp(const char *s1, const char *s2);
+int stricmp(const char *s1, const char *s2);
 void memcpy(void *dest, const void *src, size_t n);
 void memmove(void *dest, const void *src, size_t n);
 
@@ -55,7 +57,7 @@ static ALWAYS_INLINE bool isalpha_lower(int c) {
 }
 
 static ALWAYS_INLINE bool isalpha_upper(int c) {
-   return (c >= 'a' && c <= 'z');
+   return (c >= 'A' && c <= 'Z');
 }
 
 static ALWAYS_INLINE bool isalpha(int c) {
@@ -63,11 +65,11 @@ static ALWAYS_INLINE bool isalpha(int c) {
 }
 
 static ALWAYS_INLINE char lower(int c) {
-   return isalpha_upper(c) ? c + 27 : c;
+   return isalpha_upper(c) ? c + 32 : c;
 }
 
 static ALWAYS_INLINE char upper(int c) {
-   return isalpha_lower(c) ? c - 27 : c;
+   return isalpha_lower(c) ? c - 32 : c;
 }
 
 static ALWAYS_INLINE bool isdigit(int c) {
