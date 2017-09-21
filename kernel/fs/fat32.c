@@ -4,6 +4,20 @@
 #include <fs/fat32.h>
 
 /*
+ * The following code uses in many cases the CamelCase naming convention
+ * because it is based on the Microsoft's public document:
+ *
+ *    Microsoft Extensible Firmware Initiative
+ *    FAT32 File System Specification
+ *
+ *    FAT: General Overview of On-Disk Format
+ *
+ *    Version 1.03, December 6, 2000
+ *
+ * Keeping the exact same names as the official document, helps a lot.
+ */
+
+/*
  * *********************************************
  * DEBUG util code
  * *********************************************
@@ -335,36 +349,23 @@ fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft, u32 *cluster /* out */)
 
 void fat_get_short_name(fat_entry *entry, char *destbuf)
 {
-   char fn[16] = {0};
-   char ext[4] = {0};
-   char *ptr = fn;
+   u32 i = 0;
    u32 d = 0;
 
-   for (int i = 0; i < 8 && entry->DIR_Name[i] != ' '; i++) {
-      fn[i] = entry->DIR_Name[i];
+   for (i = 0; i < 8 && entry->DIR_Name[i] != ' '; i++) {
+      destbuf[d++] = entry->DIR_Name[i];
    }
 
-   for (int i = 8; i < 11 && entry->DIR_Name[i] != ' '; i++) {
-      ext[i-8] = entry->DIR_Name[i];
+   i = 8; // beginning of the extension part.
+
+   if (entry->DIR_Name[i] != ' ') {
+      destbuf[d++] = '.';
+      for (; i < 11 && entry->DIR_Name[i] != ' '; i++) {
+         destbuf[d++] = entry->DIR_Name[i];
+      }
    }
 
-   while (*ptr) {
-      destbuf[d++] = *ptr++;
-   }
-
-   if (ext[0] == 0) {
-      destbuf[d++] = 0;
-      return;
-   }
-
-   destbuf[d++] = '.';
-   ptr = ext;
-
-   while (*ptr) {
-      destbuf[d++] = *ptr++;
-   }
-
-   destbuf[d++] = 0;
+   destbuf[d] = 0;
 }
 
 typedef struct {
