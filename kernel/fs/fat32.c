@@ -336,21 +336,18 @@ fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft, u32 *cluster /* out */)
 void fat_get_short_name(fat_entry *entry, char *destbuf)
 {
    char fn[16] = {0};
-   for (int i = 0; i < 8; i++) {
-      if (entry->DIR_Name[i] == ' ')
-         break;
+   char ext[4] = {0};
+   char *ptr = fn;
+   u32 d = 0;
+
+   for (int i = 0; i < 8 && entry->DIR_Name[i] != ' '; i++) {
       fn[i] = entry->DIR_Name[i];
    }
 
-   char ext[4] = {0};
-   for (int i = 8; i < 11; i++) {
-      if (entry->DIR_Name[i] == ' ')
-         break;
+   for (int i = 8; i < 11 && entry->DIR_Name[i] != ' '; i++) {
       ext[i-8] = entry->DIR_Name[i];
    }
 
-   int d = 0;
-   char *ptr = fn;
    while (*ptr) {
       destbuf[d++] = *ptr++;
    }
@@ -391,8 +388,7 @@ static bool fat_fetch_next_component(fat_search_ctx *ctx)
     */
 
    while (*ctx->path && *ctx->path != '/') {
-      ctx->pc[ctx->pcl++] = *ctx->path;
-      ctx->path++;
+      ctx->pc[ctx->pcl++] = *ctx->path++;
    }
 
    ctx->pc[ctx->pcl++] = 0;
