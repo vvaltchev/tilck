@@ -175,12 +175,12 @@ int fat_walk_directory(fat_header *hdr,
       (hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus) / sizeof(fat_entry);
 
    ASSERT(ft == fat16_type || ft == fat32_type);
+   ASSERT(cluster == 0 || entry == NULL); // cluster != 0 => entry == NULL
+   ASSERT(entry == NULL || cluster == 0); // entry != NULL => cluster == 0
 
    while (true) {
 
       if (cluster != 0) {
-
-         ASSERT(entry == NULL);
 
          /*
           * if cluster != 0, cluster is used and entry is overriden.
