@@ -31,6 +31,9 @@ TEST(fat32, dumpinfo)
 
    printf("data: '%s'\n", data);
 
+   e = fat_search_entry(hdr, fat_unknown, "/nonesistentfile");
+   ASSERT_TRUE(e == NULL);
+
    free(buf);
    fclose(fd);
 }

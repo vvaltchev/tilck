@@ -140,13 +140,14 @@ void fat_dump_info(void *fatpart_begin)
                       0);              // level
 }
 
-
-
 /*
  * *********************************************
  * Actual FAT code
  * *********************************************
  */
+
+#define FAT_ENTRY_DIRNAME_NO_MORE_ENTRIES ((char)0)
+#define FAT_ENTRY_DIRNAME_EMPTY_DIR ((char)0xE5)
 
 int fat_walk_directory(fat_header *hdr,
                        fat_type ft,
@@ -165,6 +166,8 @@ int fat_walk_directory(fat_header *hdr,
 
       if (cluster != 0) {
 
+         ASSERT(entry == NULL);
+
          /*
           * if cluster != 0, cluster is used and entry is overriden.
           * That's because on FAT16 we know only the sector of the root dir.
@@ -181,12 +184,12 @@ int fat_walk_directory(fat_header *hdr,
          }
 
          // that means all the rest of the entries are free.
-         if (entry[i].DIR_Name[0] == 0) {
+         if (entry[i].DIR_Name[0] == FAT_ENTRY_DIRNAME_NO_MORE_ENTRIES) {
             return 0;
          }
 
          // that means that the directory is empty
-         if (entry[i].DIR_Name[0] == (char)0xE5) {
+         if (entry[i].DIR_Name[0] == FAT_ENTRY_DIRNAME_EMPTY_DIR) {
             return 0;
          }
 
@@ -198,11 +201,10 @@ int fat_walk_directory(fat_header *hdr,
             continue;
          }
 
-         int ret = cb(hdr, ft, entry + i, arg, level);
-
-         // if ret < 0, we have to stop the walk.
-         if (ret < 0)
+         if (cb(hdr, ft, entry + i, arg, level) < 0) {
+            /* the callback returns a value < 0 to request a walk STOP. */
             return 0;
+         }
       }
 
       /*
@@ -368,104 +370,113 @@ void fat_get_short_name(fat_entry *entry, char *destbuf)
    destbuf[d++] = 0;
 }
 
-// TODO: make the code to follow the clusterchain!!
-static fat_entry *
-fat_search_entry_int(fat_header *hdr, fat_entry *entry, const char *path)
+typedef struct {
+
+   const char *path;   // the searched path.
+   char pc[256];       // path component
+   size_t pcl;         // path component's length
+   char shortname[12]; // short name of the current entry
+   fat_entry *result;  // the found entry
+
+} fat_search_ctx;
+
+static bool fat_fetch_next_component(fat_search_ctx *ctx)
 {
-   char comp[256];
-   int complen = 0;
+   ASSERT(ctx->pcl == 0);
 
-bigloop:
+   /*
+    * Fetch a path component from the abspath: we'll use it while iterating
+    * the whole directory. On a match, we reset pcl and start a new walk on
+    * the subdirectory.
+    */
 
-   if (*path == 0)
-      return NULL;
-
-   while (*path && *path != '/') {
-      comp[complen++] = *path;
-      path++;
-   }
-   comp[complen++] = 0;
-
-   //printk("comp is '%s'\n", comp);
-
-   while (true) {
-
-      // that means all the rest of the entries are free.
-      if (entry->DIR_Name[0] == 0) {
-         break;
-      }
-
-      // that means that the directory is empty
-      if (entry->DIR_Name[0] == (char)0xE5) {
-         break;
-      }
-
-      // '.' is NOT a legal char in the short name
-      // With this check, we skip the directories '.' and '..'.
-      if (entry->DIR_Name[0] == '.') {
-         entry++;
-         continue;
-      }
-
-      char shortname[12];
-      fat_get_short_name(entry, shortname);
-
-      //printk("checking entry with sname '%s'\n", shortname);
-
-      if (!stricmp(shortname, comp)) {
-
-         // ok, we found the component.
-         // if path is ended, that's it.
-
-         if (*path == 0)
-            return entry;
-
-         // otherwise, *path is '/'
-         ASSERT(*path == '/');
-
-         path++;
-
-         // path ended with '/'. that's still OK.
-         if (*path == 0)
-            return entry;
-
-         // path continues.
-         // if the current entry is not a directory, we failed.
-         if (!entry->directory)
-            break;
-
-         u32 first_cluster = fat_get_first_cluster(entry);
-         entry = fat_get_pointer_to_cluster_data(hdr, first_cluster);
-         complen = 0;
-         goto bigloop;
-      }
-
-      entry++;
+   while (*ctx->path && *ctx->path != '/') {
+      ctx->pc[ctx->pcl++] = *ctx->path;
+      ctx->path++;
    }
 
-   return NULL;
+   ctx->pc[ctx->pcl++] = 0;
+   return ctx->pcl != 0;
 }
 
-// Make the whole function and its helper to use fat_walk_directory: this
-// way the walk though the cluster chain will be done at only one place.
-fat_entry *fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
+static int fat_search_entry_cb(fat_header *hdr,
+                               fat_type ft,
+                               fat_entry *entry,
+                               void *arg,
+                               int level)
 {
-   if (*abspath != '/')
-      return NULL;
+   fat_search_ctx *ctx = arg;
 
-   if (ft == fat_unknown) {
-      ft = fat_get_type(hdr);
+   if (ctx->pcl == 0) {
+      if (!fat_fetch_next_component(ctx)) {
+         // The path was empty, so not path component has been fetched.
+         return -1;
+      }
    }
 
+   fat_get_short_name(entry, ctx->shortname);
+
+   if (stricmp(ctx->shortname, ctx->pc)) {
+      // not a match, continue.
+      return 0;
+   }
+
+   // we've found a match.
+
+   if (*ctx->path == 0) {
+      ctx->result = entry; // if the path ended, that's it. Just return.
+      return -1;
+   }
+
+   /*
+    * The next char in path MUST be a '/' since otherwise
+    * fat_fetch_next_component() would have continued, until a '/' or a
+    * '\0' is hit.
+    */
+   ASSERT(*ctx->path == '/');
+
+   // path's next char is a '/': maybe there are more components in the path.
+   ctx->path++;
+
+   if (*ctx->path == 0) {
+      ctx->result = entry; // the path just ended with '/'. That's still OK.
+      return -1;
+   }
+
+   if (!entry->directory) {
+      return -1; // if the entry is not a directory, we failed.
+   }
+
+   // The path did not end: we have to do a walk in the sub-dir.
+   ctx->pcl = 0;
+   fat_walk_directory(hdr, ft, NULL, fat_get_first_cluster(entry),
+                      &fat_search_entry_cb, ctx, level + 1);
+   return -1;
+}
+
+fat_entry *
+fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
+{
+   if (ft == fat_unknown) {
+       ft = fat_get_type(hdr);
+   }
+
+   ASSERT(*abspath == '/');
    abspath++;
 
    u32 root_dir_cluster;
    fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
 
-   if (*abspath == 0)
-      return root;
+   if (*abspath == 0) {
+      return root; // abspath was just '/'.
+   }
 
-   return fat_search_entry_int(hdr, root, abspath);
+   fat_search_ctx ctx = {0};
+   ctx.path = abspath;
+
+   fat_walk_directory(hdr, ft, root, root_dir_cluster,
+                      &fat_search_entry_cb, &ctx, 0);
+   return ctx.result;
 }
 
 void
