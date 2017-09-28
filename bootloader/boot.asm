@@ -8,6 +8,7 @@
 %define DEST_DATA_SEGMENT 0x2000
 %define TEMP_DATA_SEGMENT 0x1000
 %define VDISK_ADDR 0x8000000
+%define KERNEL_PADDR 0x100000 ; + 1 MB
 
 %define VDISK_FIRST_LBA_SECTOR 2048
 
@@ -83,11 +84,6 @@ after_reloc:
 
    mov si, str_loading
    call print_string
-
-
-   ;mov ah, 0x00  ; reset device. No need for that, at the moment.
-   ;int 0x13
-   ;jc end
 
    .reset_ok:
 
@@ -410,10 +406,6 @@ enter_unreal_mode:
 
    mov dword [curr_sec], VDISK_FIRST_LBA_SECTOR
 
-   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-   ; NEW CODE (faster)
-   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
    xor edx, edx
    mov dx, [sectors_per_track]
    shl dx, 9 ; dx = dx << 9 (2^9 = 512 = sector size)
@@ -439,7 +431,7 @@ enter_unreal_mode:
 
    mov ah, 0x02      ; Params for int 13h: read sectors
    mov al, [sectors_per_track] ; Read MAX possible sectors
-   int 13h
+   int 0x13
    jnc .read_ok
 
    .read_error:
@@ -843,15 +835,13 @@ complete_flush: ; this is located at 0x1000
    ; Copy the kernel to its standard location, 0x100000 (1 MiB)
 
    mov esi, (DEST_DATA_SEGMENT * 16 + 0x1000) ; 0x1000 = 4 KB for the bootloader
-   mov edi, 0x100000
+   mov edi, KERNEL_PADDR
 
    mov ecx, 131072 ; 128 K * 4 bytes = 512 KiB
    rep movsd ; copies 4 * ECX bytes from [DS:ESI] to [ES:EDI]
 
-   mov esp, 0x1FFFF0 ; 1 MB of stack for the kernel
-
    ; jump to kernel
-   jmp dword 0x08:0x00100000
+   jmp 0x08:KERNEL_PADDR
 
 times 1024-($-complete_flush) db 0   ; Pad to 1 KB. That guarantees us that complete_flush is <= 1 KB.
 times 4096-($-$$) db 0               ; Pad to 4 KB in order to the whole bootloader to be exactly 4 KB
