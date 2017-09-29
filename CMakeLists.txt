@@ -107,6 +107,7 @@ JOIN("${WARN_FLAGS_LIST}" ${SPACE} WARN_FLAGS)
 set(COMMON_FLAGS "${GENERAL_DEFS} ${OTHER_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 
 set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/bootloader.bin)
+set(EFI_MAIN_FILE ${CMAKE_BINARY_DIR}/main.efi)
 set(KERNEL_BIN_FILE ${CMAKE_BINARY_DIR}/kernel.bin)
 set(INIT_FILE ${CMAKE_BINARY_DIR}/init)
 set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
@@ -137,8 +138,9 @@ add_custom_command(
       ${BUILD_SCRIPTS}/build_fatpart.sh ${CMAKE_BINARY_DIR} fatpart
    COMMAND
       # For development purposes, copy just a small part from the fatpart to make the build faster.
-      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K count=512
-      #dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K
+      #dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K count=512
+
+      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K
    DEPENDS
       # We MUST depend on BOTH the wrapper-target AND its OUTPUT in order to this
       # to be re-build when the *.bin files are re-built.

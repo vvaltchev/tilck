@@ -10,11 +10,11 @@ add_custom_command(
    COMMAND
       nasm -f bin -o boot.o ${SOURCES}
    COMMENT
-      "Building the bootloader"
+      "Building the BIOS bootloader"
 )
 
 # This is not an actual linking since 'boot.o' is already a flat binary file
-# but, in the future there may be C code in the bootloader as well.
+# but, in the future there may be some C code in the bootloader as well.
 
 add_custom_command(
    OUTPUT
@@ -24,7 +24,7 @@ add_custom_command(
    DEPENDS
       ${CMAKE_CURRENT_BINARY_DIR}/boot.o
    COMMENT
-      "Linking the bootloader"
+      "Linking the BIOS bootloader"
 )
 
 add_custom_target(
