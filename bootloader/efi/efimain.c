@@ -169,6 +169,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
   Print(L"Alloc OK\r\n");
 
+  // TODO: make this ReadDisk() to skip MBR and kernel and just to the fatpart.
   status = uefi_call_wrapper(ioprot->ReadDisk,
                              5, /* #args */
                              ioprot,
@@ -198,7 +199,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
   status = uefi_call_wrapper(fileFsProt->OpenVolume, 2, fileFsProt, &fileProt);
   HANDLE_EFI_ERROR("OpenVolume");
 
-
+  // TODO: load the kernel with ReadDisk() from a fixed offset instead of using kernel.bin
   status = LoadFileFromDisk(BS, fileProt, KERNEL_MAX_SIZE / PAGE_SIZE, KERNEL_PADDR, L"\\kernel.bin");
   HANDLE_EFI_ERROR("LoadFileFromDisk");
 
