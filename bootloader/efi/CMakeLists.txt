@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.2)
 
 file(GLOB C_SOURCES "*.c")
-set(ASM_SOURCE "switchmode.asm")
+file(GLOB ASM_SOURCES "*.asm")
 
 set(GNUEFI_DIR "${CMAKE_SOURCE_DIR}/toolchain/gnu-efi")
 set(EFI_MAIN_SO "efimain.so")
@@ -12,9 +12,9 @@ add_custom_command(
    OUTPUT
       ${SWITCHMODE_OBJ}
    DEPENDS
-      ${ASM_SOURCE}
+      ${ASM_SOURCES}
    COMMAND
-      nasm -f bin -o ${SWITCHMODE_OBJ} ${ASM_SOURCE}
+      nasm -f bin -o ${SWITCHMODE_OBJ} ${ASM_SOURCES}
    COMMENT
       "Building ${SWITCHMODE_OBJ}"
 )
@@ -25,7 +25,7 @@ add_custom_command(
    DEPENDS
       ${C_SOURCES}
    COMMAND
-      ${CC} -o ${EFI_MAIN_OBJ} ${C_SOURCES} -std=c99 -c -fno-stack-protector -fpic -fshort-wchar -mno-red-zone -I${GNUEFI_DIR}/inc -I${GNUEFI_DIR}/inc/x86_64 -DEFI_FUNCTION_WRAPPER
+      gcc -o ${EFI_MAIN_OBJ} ${C_SOURCES} -std=c99 -c -fno-stack-protector -fpic -fshort-wchar -mno-red-zone -I${GNUEFI_DIR}/inc -I${GNUEFI_DIR}/inc/x86_64 -DEFI_FUNCTION_WRAPPER
    COMMENT
       "Building ${EFI_MAIN_OBJ}"
 )
