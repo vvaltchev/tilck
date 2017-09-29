@@ -6,17 +6,17 @@ file(GLOB ASM_SOURCES "*.asm")
 set(GNUEFI_DIR "${CMAKE_SOURCE_DIR}/toolchain/gnu-efi")
 set(EFI_MAIN_SO "efimain.so")
 set(EFI_MAIN_OBJ "efimain.o")
-set(SWITCHMODE_OBJ "switchmode.o")
+set(SWITCHMODE_BIN ${CMAKE_BINARY_DIR}/switchmode.bin)
 
 add_custom_command(
    OUTPUT
-      ${SWITCHMODE_OBJ}
+      ${SWITCHMODE_BIN}
    DEPENDS
       ${ASM_SOURCES}
    COMMAND
-      nasm -f bin -o ${SWITCHMODE_OBJ} ${ASM_SOURCES}
+      nasm -f bin -o ${SWITCHMODE_BIN} ${ASM_SOURCES}
    COMMENT
-      "Building ${SWITCHMODE_OBJ}"
+      "Building switchmode.bin"
 )
 
 add_custom_command(
@@ -48,9 +48,9 @@ add_custom_command(
    COMMAND
       objcopy -j .text -j .sdata -j .data -j .dynamic -j .dynsym -j .rel -j .rela -j .reloc --target=efi-app-x86_64 ${EFI_MAIN_SO} ${EFI_MAIN_FILE}
    DEPENDS
-      ${CMAKE_CURRENT_BINARY_DIR}/${SWITCHMODE_OBJ} ${CMAKE_CURRENT_BINARY_DIR}/${EFI_MAIN_SO}
+      ${SWITCHMODE_BIN} ${CMAKE_CURRENT_BINARY_DIR}/${EFI_MAIN_SO}
    COMMENT
-      "Creating ${EFI_MAIN_FILE} from ${EFI_MAIN_SO}"
+      "Creating BOOTX64.EFI from ${EFI_MAIN_SO}"
 )
 
 add_custom_target(

@@ -56,9 +56,9 @@ LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
   EFI_FILE_PROTOCOL *fileHandle;
   UINTN bufSize = pagesCount * PAGE_SIZE;
   UINT32 crc32 = 0;
-  
+
   Print(L"AllocatePages for '%s'..\r\n", filePath);
-  
+
   status = uefi_call_wrapper(BS->AllocatePages,
                              4,
                              AllocateAddress,
@@ -112,7 +112,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
   UINTN bufSize;
   UINTN ramdisk_paddr = RAMDISK_PADDR;
   EFI_BOOT_SERVICES *BS = ST->BootServices;
-  
+
 
   InitializeLib(image, ST);
 
@@ -130,7 +130,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
   HANDLE_EFI_ERROR("Getting a LoadedImageProtocol handle");
 
   hdev = loaded_image->DeviceHandle;
-  status = uefi_call_wrapper(BS->OpenProtocol, 
+  status = uefi_call_wrapper(BS->OpenProtocol,
                              6, hdev, &BlockIoProtocol,
                              &blockio, image, NULL,
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
@@ -144,11 +144,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 //   char buf[256];
 //   for (int i = 0; i < 256; i++) buf[i]=0;
 
-//   status = uefi_call_wrapper(ioprot->ReadDisk, 5, ioprot, 
+//   status = uefi_call_wrapper(ioprot->ReadDisk, 5, ioprot,
 //                              blockio->Media->MediaId,
 //                              0 /* offset */, 256 /* buffer size */, buf);
 //   HANDLE_EFI_ERROR("ReadDisk");
-  
+
 //   Print(L"Disk initial hex Data: \r\n");
 //   for (int i = 0; i < 16; i++) {
 //     Print(L"%x ", (unsigned char)buf[i]);
@@ -193,17 +193,16 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                              &FileSystemProtocol, &fileFsProt,
                              image, NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
   HANDLE_EFI_ERROR("OpenProtocol FileSystemProtocol");
- 
+
   Print(L"OpenVolume()...\r\n");
   status = uefi_call_wrapper(fileFsProt->OpenVolume, 2, fileFsProt, &fileProt);
   HANDLE_EFI_ERROR("OpenVolume");
 
-  // Load kernel.bin
+
   status = LoadFileFromDisk(BS, fileProt, KERNEL_MAX_SIZE / PAGE_SIZE, KERNEL_PADDR, L"\\kernel.bin");
   HANDLE_EFI_ERROR("LoadFileFromDisk");
 
-  // Load boot.bin
-  status = LoadFileFromDisk(BS, fileProt, 1, BOOT_PADDR, L"\\boot.bin");
+  status = LoadFileFromDisk(BS, fileProt, 1, BOOT_PADDR, L"\\switchmode.bin");
   HANDLE_EFI_ERROR("LoadFileFromDisk");
 
 
