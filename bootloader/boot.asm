@@ -7,16 +7,21 @@
 %define BASE_LOAD_SEG 0x07C0
 %define DEST_DATA_SEGMENT 0x2000
 %define TEMP_DATA_SEGMENT 0x1000
-%define VDISK_ADDR 0x8000000
-%define KERNEL_PADDR 0x100000 ; + 1 MB
+%define RAMDISK_PADDR 0x08000000 ; + 128 MB
+%define KERNEL_PADDR  0x00100000 ; +   1 MB
 
-%define VDISK_FIRST_LBA_SECTOR 2048
+%define RAMDISK_FIRST_SECTOR 2048
+
+; TODO: fix the number of sectors, since the fatpart is now bigger!
+; This would require to fix the function lba_to_chs to work with LBA addresses
+; bigger than 65535.
 
 ; 2048 + 32256 sectors (~16 MB) - 1
-;%define VDISK_LAST_LBA_SECTOR 34304
+;%define RAMDISK_LAST_SECTOR 34304   ; temporary lie!
 
-; DEBUG VALUE, usable until the fatpart contains just a small init program.
-%define VDISK_LAST_LBA_SECTOR 2560
+; DEBUG VALUE, usable until everything fits in 4 MB
+; 2048 + 8192 sectors (~4 MB) - 1
+%define RAMDISK_LAST_SECTOR 10239
 
 
 ; We're OK with just 1000 512-byte sectors (500 KB)
@@ -43,7 +48,7 @@ sectors_per_FAT         dw 9
 phys_sectors_per_track  dw 63
 num_heads               dw 16
 hidden_sectors          dd 2048
-large_total_sectors     dd 65536
+large_total_sectors     dd (40*1024*1024)/512
 
 drive_number            db 0x80
 bflags                  db 0
@@ -268,10 +273,51 @@ times 436 - ($-$$) nop      ; Pad For MBR Partition Table
 UID: ; Unique Disk ID
 db 0x00, 0x00, 0x00, 0x00, 0x2b, 0x06, 0x06, 0x49, 0x00, 0x00
 
+
 PT1: ; First Partition Entry
-; A 16MB FAT16 partition, from sector 2048 to sector 34815.
-db 0x00, 0x02, 0x01, 0x06, 0x06, 0x0c, 0x10, 0x67
-db 0x00, 0x08, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00
+
+; A 35MB FAT32 partition, from sector 2048 to sector 73727.
+
+; status: 0x80 means active/bootable, 0x00 means inactive.
+db 0x80 ; it doesn't really matter in our case.
+
+; first absolute sector (CHS) of the partition, 3 bytes
+; in this case, it is: 2048
+
+; C = LBA / (heads_per_cyl * sectors_per_track)
+; H = (LBA / sectors_per_track) % heads_per_cyl
+; S = (LBA % sectors_per_track) + 1
+;
+; LBA = (C × heads_per_cyl + H) × sectors_per_track + (S - 1)
+
+; Given our (typical LBA) values:
+; heads_per_cyl = 16
+; sectors_per_track = 63
+;
+; C = LBA / (16*63)
+; H = (LBA / 63) % 16
+; S = (LBA % 63) + 1
+
+db  0 ; head
+db 33 ; HI cyl num  | sector num
+      ; bits [7-6]  | bits [5-0]
+
+db  2 ; LO 8 bits of the cylinder num
+
+; partition type
+db 0x0C ; FAT32 (LBA)
+
+; last abs sector (CHS), 3 bytes
+; it this case it is: 73727
+
+db  2 ; head
+db 18 ; sector + 2 HI bits of cyl (0)
+db 73 ; cylinder (lower 8 bits)
+
+; LBA first sector in the partition
+dd 0x00000800 ; 2048
+dd 0x00012000 ; 71680 sectors: 35 MB
+
 
 PT2 times 16 db 0             ; Second Partition Entry
 PT3 times 16 db 0             ; Third Partition Entry
@@ -336,7 +382,7 @@ stage2_entry:
    error_occured dd 0
    sectors_read dd 0
    bytes_per_track dd 0
-   vdisk_dest_addr dd VDISK_ADDR
+   ramdisk_dest_addr32 dd RAMDISK_PADDR
 
 
    gdt:
@@ -344,8 +390,13 @@ stage2_entry:
    gdt_code db 0xFF, 0xFF, 0, 0, 0, 0x9A, 0xCF, 0
    gdt_data db 0xFF, 0xFF, 0, 0, 0, 0x92, 0xCF, 0
 
-   gdtr db 23, 0, 0, 0, 0, 0
-   idtr db  0, 0, 0, 0, 0, 0
+   gdtr:
+      dw 0x0023
+      dd 0x00000000
+
+   idtr:
+      dw 0x0000
+      dd 0x00000000
 
    small_buf            times 8 db 0
 
@@ -361,12 +412,12 @@ stage2_entry:
    str_heads_per_cyl     db 'Heads per cylinder: ', 0
    str_sectors_per_track db 'Sectors per track:  ', 0
    str_hello db 'Hello, I am the 2nd stage-bootloader!', 13, 10, 0
-   error_while_loading_vdisk db '********* Error while loading vdisk', 13, 10, 0
-   load_of_vdisk_complete db 'Loading of vdisk completed.', 13, 10, 0
+   err_while_loading_ramdisk db 'Error while loading ramdisk', 13, 10, 0
+   str_load_of_ramdisk_completed db 'Loading of ramdisk completed.', 13, 10, 0
    str_before_reading_curr_sec db 'Current sector num: ', 0
    str_curr_sector_num db 'After reading, current sector: ', 0
    str_bytes_per_track db 'Bytes per track: ', 0
-   str_loading_mem_disk db 'Loading memory disk ', 0
+   str_loading_ramdisk db 'Loading ramdisk ', 0
 
 enter_unreal_mode:
 
@@ -401,10 +452,10 @@ enter_unreal_mode:
 
    sti ; re-enable interrupts
 
-   mov si, str_loading_mem_disk
+   mov si, str_loading_ramdisk
    call print_string
 
-   mov dword [curr_sec], VDISK_FIRST_LBA_SECTOR
+   mov dword [curr_sec], RAMDISK_FIRST_SECTOR
 
    xor edx, edx
    mov dx, [sectors_per_track]
@@ -441,7 +492,7 @@ enter_unreal_mode:
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    mov word [error_occured], 1
-   mov si, error_while_loading_vdisk
+   mov si, err_while_loading_ramdisk
    call print_string
 
    ; The load failed for some reason
@@ -474,7 +525,7 @@ enter_unreal_mode:
    xor ax, ax
    mov es, ax
 
-   mov edi, [vdisk_dest_addr]              ; dest flat addr
+   mov edi, [ramdisk_dest_addr32]          ; dest flat addr
    mov esi, (TEMP_DATA_SEGMENT * 16)       ; src flat addr
 
    mov edx, esi
@@ -490,24 +541,24 @@ enter_unreal_mode:
       jle .copy_loop
 
 
-   mov eax, [vdisk_dest_addr]
+   mov eax, [ramdisk_dest_addr32]
    add eax, [bytes_per_track]
-   mov [vdisk_dest_addr], eax
+   mov [ramdisk_dest_addr32], eax
 
 
    mov eax, [curr_sec]
    add ax, [sectors_per_track]
    mov [curr_sec], eax
 
-   cmp eax, VDISK_LAST_LBA_SECTOR
+   cmp eax, RAMDISK_LAST_SECTOR
    jl .load_vdisk_loop
 
-   .load_of_vdisk_done:
+   .load_of_ramdisk_done:
 
    mov si, newline
    call print_string
 
-   mov si, load_of_vdisk_complete
+   mov si, str_load_of_ramdisk_completed
    call print_string
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
