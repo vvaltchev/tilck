@@ -130,7 +130,7 @@ add_custom_command(
    OUTPUT
       ${IMG_FILE}
    COMMAND
-      ${BUILD_SCRIPTS}/create_empty_img_if_necessary.sh ${IMG_FILE} 32768
+      ${BUILD_SCRIPTS}/create_empty_img_if_necessary.sh ${IMG_FILE} 40
    COMMAND
       dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
    COMMAND
@@ -139,12 +139,12 @@ add_custom_command(
       ${BUILD_SCRIPTS}/build_fatpart.sh ${CMAKE_BINARY_DIR} fatpart
    COMMAND
       # For development purposes, copy just a small part from the fatpart to make the build faster.
-      #dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K count=512
+      #dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K count=8192
       dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K
    DEPENDS
       # We MUST depend on BOTH the wrapper-target AND its OUTPUT in order to this
       # to be re-build when the *.bin files are re-built.
-      bootloader efi_bootloader kernel usermode_init ${BOOTLOADER_BIN_FILE} ${EFI_MAIN_FILE} ${KERNEL_BIN_FILE} ${INIT_FILE}
+      bootloader efi_bootloader kernel usermode_init ${BUILD_SCRIPTS}/build_fatpart.sh ${BOOTLOADER_BIN_FILE} ${EFI_MAIN_FILE} ${KERNEL_BIN_FILE} ${INIT_FILE}
    COMMENT
       "Creating the bootable image file"
    VERBATIM

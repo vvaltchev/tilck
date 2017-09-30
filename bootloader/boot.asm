@@ -7,16 +7,14 @@
 %define BASE_LOAD_SEG 0x07C0
 %define DEST_DATA_SEGMENT 0x2000
 %define TEMP_DATA_SEGMENT 0x1000
-%define VDISK_ADDR 0x8000000
-%define KERNEL_PADDR 0x100000 ; + 1 MB
+%define RAMDISK_PADDR 0x08000000 ; + 128 MB
+%define KERNEL_PADDR  0x00100000 ; +   1 MB
 
-%define VDISK_FIRST_LBA_SECTOR 2048
+%define RAMDISK_FIRST_SECTOR 2048
 
+; TODO: fix the number of sectors, since the fatpart is now bigger!
 ; 2048 + 32256 sectors (~16 MB) - 1
-;%define VDISK_LAST_LBA_SECTOR 34304
-
-; DEBUG VALUE, usable until the fatpart contains just a small init program.
-%define VDISK_LAST_LBA_SECTOR 2560
+%define RAMDISK_LAST_SECTOR 34304
 
 
 ; We're OK with just 1000 512-byte sectors (500 KB)
@@ -268,6 +266,8 @@ times 436 - ($-$$) nop      ; Pad For MBR Partition Table
 UID: ; Unique Disk ID
 db 0x00, 0x00, 0x00, 0x00, 0x2b, 0x06, 0x06, 0x49, 0x00, 0x00
 
+; TODO: fix this partition entry to reflect actual's partition size and type.
+
 PT1: ; First Partition Entry
 ; A 16MB FAT16 partition, from sector 2048 to sector 34815.
 db 0x00, 0x02, 0x01, 0x06, 0x06, 0x0c, 0x10, 0x67
@@ -336,7 +336,7 @@ stage2_entry:
    error_occured dd 0
    sectors_read dd 0
    bytes_per_track dd 0
-   vdisk_dest_addr dd VDISK_ADDR
+   vdisk_dest_addr dd RAMDISK_PADDR
 
 
    gdt:
@@ -404,7 +404,7 @@ enter_unreal_mode:
    mov si, str_loading_mem_disk
    call print_string
 
-   mov dword [curr_sec], VDISK_FIRST_LBA_SECTOR
+   mov dword [curr_sec], RAMDISK_FIRST_SECTOR
 
    xor edx, edx
    mov dx, [sectors_per_track]
@@ -499,7 +499,7 @@ enter_unreal_mode:
    add ax, [sectors_per_track]
    mov [curr_sec], eax
 
-   cmp eax, VDISK_LAST_LBA_SECTOR
+   cmp eax, RAMDISK_LAST_SECTOR
    jl .load_vdisk_loop
 
    .load_of_vdisk_done:
