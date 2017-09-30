@@ -26,7 +26,6 @@ ln $bdir/BOOTX64.EFI EFI/BOOT/
 ln $bdir/switchmode.bin EFI/BOOT/
 ln $bdir/kernel.bin EFI/BOOT/
 
-
 # first, create the directories
 for f in $(find * -type d); do
    mmd -i $dest $f
@@ -36,3 +35,4 @@ done
 for f in $(find * -type f); do
    mcopy -i $dest $f ::/$f
 done
+

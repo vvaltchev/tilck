@@ -13,8 +13,11 @@
 %define RAMDISK_FIRST_SECTOR 2048
 
 ; TODO: fix the number of sectors, since the fatpart is now bigger!
+; This would require to fix the function lba_to_chs to work with LBA addresses
+; bigger than 65535.
+
 ; 2048 + 32256 sectors (~16 MB) - 1
-%define RAMDISK_LAST_SECTOR 34304
+%define RAMDISK_LAST_SECTOR 34304   ; temporary lie!
 
 
 ; We're OK with just 1000 512-byte sectors (500 KB)
