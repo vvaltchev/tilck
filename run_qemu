@@ -1,0 +1,2 @@
+#!/bin/sh
+qemu-system-x86_64 -s -m 256 -drive file=./build/exos.img,index=0,media=disk,format=raw $@
