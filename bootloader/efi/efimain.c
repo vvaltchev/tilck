@@ -102,9 +102,9 @@ end:
    return status;
 }
 
-void AlignedMemCpy(UINTN *src, UINTN *dst, UINTN count)
+void AlignedMemCpy(UINTN *src, UINTN *dst, INTN count)
 {
-   for (UINTN i = count-1; i >= 0; i--) {
+   for (INTN i = count - 1; i >= 0; i--) {
       dst[i] = src[i];
    }
 }
@@ -230,6 +230,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    Print(L"Press ANY key to boot the kernel...\r\n");
    WaitForKeyPress(ST);
+
 
    EFI_MEMORY_DESCRIPTOR mmap[128];
    UINTN mmap_size, mapkey, desc_size, desc_ver;

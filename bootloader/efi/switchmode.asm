@@ -225,6 +225,7 @@ gdt16:
 ; size-1 [ 2 bytes ], gdt addr [ 4 bytes ]
 
 gdtr:
-   db 23, 0, 0, 0, 0, 0
+   dw 0x0023
+   dd 0x00000000
 
 
