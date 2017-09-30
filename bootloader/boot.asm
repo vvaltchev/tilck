@@ -266,12 +266,51 @@ times 436 - ($-$$) nop      ; Pad For MBR Partition Table
 UID: ; Unique Disk ID
 db 0x00, 0x00, 0x00, 0x00, 0x2b, 0x06, 0x06, 0x49, 0x00, 0x00
 
-; TODO: fix this partition entry to reflect actual's partition size and type.
 
 PT1: ; First Partition Entry
-; A 16MB FAT16 partition, from sector 2048 to sector 34815.
-db 0x00, 0x02, 0x01, 0x06, 0x06, 0x0c, 0x10, 0x67
-db 0x00, 0x08, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00
+
+; A 35MB FAT32 partition, from sector 2048 to sector 73727.
+
+; status: 0x80 means active/bootable, 0x00 means inactive.
+db 0x80 ; it doesn't really matter in our case.
+
+; first absolute sector (CHS) of the partition, 3 bytes
+; in this case, it is: 2048
+
+; C = LBA / (heads_per_cyl * sectors_per_track)
+; H = (LBA / sectors_per_track) % heads_per_cyl
+; S = (LBA % sectors_per_track) + 1
+;
+; LBA = (C × heads_per_cyl + H) × sectors_per_track + (S - 1)
+
+; Given our (typical LBA) values:
+; heads_per_cyl = 16
+; sectors_per_track = 63
+;
+; C = LBA / (16*63)
+; H = (LBA / 63) % 16
+; S = (LBA % 63) + 1
+
+db  0 ; head
+db 33 ; HI cyl num  | sector num
+      ; bits [7-6]  | bits [5-0]
+
+db  2 ; LO 8 bits of the cylinder num
+
+; partition type
+db 0x0C ; FAT32 (LBA)
+
+; last abs sector (CHS), 3 bytes
+; it this case it is: 73727
+
+db  2 ; head
+db 18 ; sector + 2 HI bits of cyl (0)
+db 73 ; cylinder (lower 8 bits)
+
+; LBA first sector in the partition
+dd 0x00000800 ; 2048
+dd 0x00012000 ; 71680 sectors: 35 MB
+
 
 PT2 times 16 db 0             ; Second Partition Entry
 PT3 times 16 db 0             ; Third Partition Entry
