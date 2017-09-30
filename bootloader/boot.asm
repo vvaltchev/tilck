@@ -336,7 +336,7 @@ stage2_entry:
    error_occured dd 0
    sectors_read dd 0
    bytes_per_track dd 0
-   vdisk_dest_addr dd RAMDISK_PADDR
+   ramdisk_dest_addr32 dd RAMDISK_PADDR
 
 
    gdt:
@@ -344,8 +344,13 @@ stage2_entry:
    gdt_code db 0xFF, 0xFF, 0, 0, 0, 0x9A, 0xCF, 0
    gdt_data db 0xFF, 0xFF, 0, 0, 0, 0x92, 0xCF, 0
 
-   gdtr db 23, 0, 0, 0, 0, 0
-   idtr db  0, 0, 0, 0, 0, 0
+   gdtr:
+      dw 0x0023
+      dd 0x00000000
+
+   idtr:
+      dw 0x0000
+      dd 0x00000000
 
    small_buf            times 8 db 0
 
@@ -362,7 +367,7 @@ stage2_entry:
    str_sectors_per_track db 'Sectors per track:  ', 0
    str_hello db 'Hello, I am the 2nd stage-bootloader!', 13, 10, 0
    err_while_loading_ramdisk db 'Error while loading ramdisk', 13, 10, 0
-   load_of_vdisk_complete db 'Loading of vdisk completed.', 13, 10, 0
+   str_load_of_ramdisk_completed db 'Loading of ramdisk completed.', 13, 10, 0
    str_before_reading_curr_sec db 'Current sector num: ', 0
    str_curr_sector_num db 'After reading, current sector: ', 0
    str_bytes_per_track db 'Bytes per track: ', 0
@@ -474,7 +479,7 @@ enter_unreal_mode:
    xor ax, ax
    mov es, ax
 
-   mov edi, [vdisk_dest_addr]              ; dest flat addr
+   mov edi, [ramdisk_dest_addr32]          ; dest flat addr
    mov esi, (TEMP_DATA_SEGMENT * 16)       ; src flat addr
 
    mov edx, esi
@@ -490,9 +495,9 @@ enter_unreal_mode:
       jle .copy_loop
 
 
-   mov eax, [vdisk_dest_addr]
+   mov eax, [ramdisk_dest_addr32]
    add eax, [bytes_per_track]
-   mov [vdisk_dest_addr], eax
+   mov [ramdisk_dest_addr32], eax
 
 
    mov eax, [curr_sec]
@@ -502,12 +507,12 @@ enter_unreal_mode:
    cmp eax, RAMDISK_LAST_SECTOR
    jl .load_vdisk_loop
 
-   .load_of_vdisk_done:
+   .load_of_ramdisk_done:
 
    mov si, newline
    call print_string
 
-   mov si, load_of_vdisk_complete
+   mov si, str_load_of_ramdisk_completed
    call print_string
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

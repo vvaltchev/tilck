@@ -173,7 +173,7 @@ pm32:
    ; jump to kernel
    jmp 0x08:KERNEL_PADDR
 
-   ; --- we should hever get past this poinrt ---
+   ; --- we should hever get past this point ---
 
 idt16:
    dw 0x03ff          ; 256 entries, 4b each = 1K
