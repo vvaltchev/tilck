@@ -7,7 +7,7 @@ import signal
 import subprocess
 import threading
 
-TEST_TIMEOUT = 180
+TEST_TIMEOUT = 120
 VM_MEMORY_SIZE_IN_MB = 256
 KERNEL_HELLO_MSG = 'Hello from exOS!'
 OS_IMG_FILE = './build/exos.img'
@@ -29,8 +29,9 @@ def RunTheVM():
 
    process = subprocess.Popen(['qemu-system-i386',
                                '-m', str(VM_MEMORY_SIZE_IN_MB),
-                               '-usb', '-usbdevice',
-                               'disk:format=raw:'+OS_IMG_FILE,
+                               '-drive',
+                               'file=./build/exos.img,'+
+                               'index=0,media=disk,format=raw',
                                '-nographic', '-device',
                                'isa-debug-exit,iobase=0xf4,iosize=0x04'],
                               stdout=subprocess.PIPE)

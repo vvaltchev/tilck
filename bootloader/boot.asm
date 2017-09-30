@@ -17,7 +17,11 @@
 ; bigger than 65535.
 
 ; 2048 + 32256 sectors (~16 MB) - 1
-%define RAMDISK_LAST_SECTOR 34304   ; temporary lie!
+;%define RAMDISK_LAST_SECTOR 34304   ; temporary lie!
+
+; DEBUG VALUE, usable until everything fits in 4 MB
+; 2048 + 8192 sectors (~4 MB) - 1
+%define RAMDISK_LAST_SECTOR 10239
 
 
 ; We're OK with just 1000 512-byte sectors (500 KB)
