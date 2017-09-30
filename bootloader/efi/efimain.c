@@ -11,12 +11,12 @@
 #include "efiprot.h"
 
 
-#define BOOT_PADDR         0xC000
-#define KERNEL_PADDR      0x100000
-#define PAGE_SIZE          0x1000             // 4 KB
-#define RAMDISK_PADDR    0x08000000       // + 128 MB
-#define RAMDISK_OFFSET   0x100000          // + 1MB from the beginning of the volume
-#define RAMDISK_SIZE      (35*1024*1024) // size of 'fatpart'
+#define BOOT_PADDR           0xC000
+#define KERNEL_PADDR       0x100000
+#define PAGE_SIZE            0x1000    // 4 KB
+#define RAMDISK_PADDR    0x08000000    // + 128 MB
+#define RAMDISK_OFFSET     0x100000    // + 1MB from the beginning of the volume
+#define RAMDISK_SIZE    (15*1024*1024) // size of 'fatpart'
 #define KERNEL_MAX_SIZE (500 * 1024)
 
 
@@ -142,19 +142,19 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                               image, NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("Getting a DiskIOProtocol handle");
 
-//    char buf[256];
-//    for (int i = 0; i < 256; i++) buf[i]=0;
+   // char buf[256];
+   // for (int i = 0; i < 256; i++) buf[i]=0;
 
-//    status = uefi_call_wrapper(ioprot->ReadDisk, 5, ioprot,
-//                                             blockio->Media->MediaId,
-//                                             0 /* offset */, 256 /* buffer size */, buf);
-//    HANDLE_EFI_ERROR("ReadDisk");
+   // status = uefi_call_wrapper(ioprot->ReadDisk, 5, ioprot,
+   //                                          blockio->Media->MediaId,
+   //                                          0 /* offset */, 256 /* buffer size */, buf);
+   // HANDLE_EFI_ERROR("ReadDisk");
 
-//    Print(L"Disk initial hex Data: \r\n");
-//    for (int i = 0; i < 16; i++) {
-//       Print(L"%x ", (unsigned char)buf[i]);
-//    }
-//    Print(L"\r\n");
+   // Print(L"Disk initial hex Data: \r\n");
+   // for (int i = 0; i < 16; i++) {
+   //    Print(L"%x ", (unsigned char)buf[i]);
+   // }
+   // Print(L"\r\n");
 
 
    Print(L"Loading ramdisk...\r\n");
