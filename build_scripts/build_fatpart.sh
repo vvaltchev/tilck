@@ -23,6 +23,8 @@ ln $bdir/init sbin/
 # hark-link EFI files
 ln $bdir/BOOTX64.EFI EFI/BOOT/
 ln $bdir/switchmode.bin EFI/BOOT/
+ln $bdir/kernel.bin EFI/BOOT/
+
 
 # first, create the directories
 for f in $(find * -type d); do

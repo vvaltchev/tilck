@@ -200,10 +200,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
   HANDLE_EFI_ERROR("OpenVolume");
 
   // TODO: load the kernel with ReadDisk() from a fixed offset instead of using kernel.bin
-  status = LoadFileFromDisk(BS, fileProt, KERNEL_MAX_SIZE / PAGE_SIZE, KERNEL_PADDR, L"\\kernel.bin");
+  status = LoadFileFromDisk(BS, fileProt, KERNEL_MAX_SIZE / PAGE_SIZE, KERNEL_PADDR, L"\\EFI\\BOOT\\kernel.bin");
   HANDLE_EFI_ERROR("LoadFileFromDisk");
 
-  status = LoadFileFromDisk(BS, fileProt, 1, BOOT_PADDR, L"\\switchmode.bin");
+  status = LoadFileFromDisk(BS, fileProt, 1, BOOT_PADDR, L"\\EFI\\BOOT\\switchmode.bin");
   HANDLE_EFI_ERROR("LoadFileFromDisk");
 
 
