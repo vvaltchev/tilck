@@ -41,7 +41,7 @@ sectors_per_FAT         dw 9
 phys_sectors_per_track  dw 63
 num_heads               dw 16
 hidden_sectors          dd 2048
-large_total_sectors     dd 65536
+large_total_sectors     dd (40*1024*1024)/512
 
 drive_number            db 0x80
 bflags                  db 0
