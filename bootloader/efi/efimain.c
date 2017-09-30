@@ -16,7 +16,7 @@
 #define PAGE_SIZE            0x1000    // 4 KB
 #define RAMDISK_PADDR    0x08000000    // + 128 MB
 #define RAMDISK_OFFSET     0x100000    // + 1MB from the beginning of the volume
-#define RAMDISK_SIZE    (15*1024*1024) // size of 'fatpart'
+#define RAMDISK_SIZE    (16*1024*1024) // size of 'fatpart'
 #define KERNEL_MAX_SIZE (500 * 1024)
 
 

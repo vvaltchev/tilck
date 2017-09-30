@@ -72,9 +72,9 @@ void load_usermode_init()
 }
 
 
-void mount_memdisk()
+void mount_ramdisk()
 {
-   printk("Mapping the vdisk at %p (%d pages)...\n",
+   printk("Mapping the ramdisk at %p (%d pages)... ",
           RAM_DISK_VADDR, RAM_DISK_SIZE / PAGE_SIZE);
 
    map_pages(get_kernel_page_dir(),
@@ -83,6 +83,8 @@ void mount_memdisk()
              RAM_DISK_SIZE / PAGE_SIZE,
              false,
              true);
+
+   printk("DONE\n");
 }
 
 void kmain()
@@ -110,7 +112,7 @@ void kmain()
    // TODO: make the kernel actually support the sysenter interface
    setup_sysenter_interface();
 
-   mount_memdisk();
+   mount_ramdisk();
    //test_memdisk();
 
    DEBUG_ONLY(bool tasklet_added =) add_tasklet0(&init_kb);

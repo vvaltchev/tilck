@@ -361,12 +361,12 @@ stage2_entry:
    str_heads_per_cyl     db 'Heads per cylinder: ', 0
    str_sectors_per_track db 'Sectors per track:  ', 0
    str_hello db 'Hello, I am the 2nd stage-bootloader!', 13, 10, 0
-   error_while_loading_vdisk db '********* Error while loading vdisk', 13, 10, 0
+   err_while_loading_ramdisk db 'Error while loading ramdisk', 13, 10, 0
    load_of_vdisk_complete db 'Loading of vdisk completed.', 13, 10, 0
    str_before_reading_curr_sec db 'Current sector num: ', 0
    str_curr_sector_num db 'After reading, current sector: ', 0
    str_bytes_per_track db 'Bytes per track: ', 0
-   str_loading_mem_disk db 'Loading memory disk ', 0
+   str_loading_ramdisk db 'Loading ramdisk ', 0
 
 enter_unreal_mode:
 
@@ -401,7 +401,7 @@ enter_unreal_mode:
 
    sti ; re-enable interrupts
 
-   mov si, str_loading_mem_disk
+   mov si, str_loading_ramdisk
    call print_string
 
    mov dword [curr_sec], RAMDISK_FIRST_SECTOR
@@ -441,7 +441,7 @@ enter_unreal_mode:
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    mov word [error_occured], 1
-   mov si, error_while_loading_vdisk
+   mov si, err_while_loading_ramdisk
    call print_string
 
    ; The load failed for some reason

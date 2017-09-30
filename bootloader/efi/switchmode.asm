@@ -92,7 +92,7 @@ code16_seg:
 
    mov     eax, cr0
    and     al, 0xfe ; Disable protected mode.
-   mov     cr0, eax 
+   mov     cr0, eax
 
 [BITS 16]
    jmp 0x00:realmode
@@ -113,7 +113,7 @@ realmode:
    mov ss, ax      ; Set stack segment and pointer
    mov sp, 0xFFF0
 
-   mov     di, idt_real
+   mov     di, idt16
    lidt    [di]
 
    sti
@@ -175,7 +175,7 @@ pm32:
 
    ; --- we should hever get past this poinrt ---
 
-idt_real:
+idt16:
    dw 0x03ff          ; 256 entries, 4b each = 1K
    dd 0               ; Real Mode IVT @ 0x0000
 
@@ -205,7 +205,7 @@ gdt32:
 
 gdt16:
    db 0x00, 0x00, 0, 0, 0, 0x00, 0x00, 0  ; sel 0x00.
-   
+
    ; sel 0x08. 64k 16-bit code
    dw 0xFFFF ; segment limit first 0-15 bits
    dw 0x0000 ; base first 0-15 bits
