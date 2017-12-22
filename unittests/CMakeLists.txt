@@ -10,12 +10,14 @@ include_directories("${GTEST_DIR}/include")
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 add_executable(gtests EXCLUDE_FROM_ALL ${SOURCES})
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
+
 set_target_properties(
 
    gtests
 
    PROPERTIES
-      COMPILE_FLAGS "-DTESTING ${COMMON_FLAGS} ${GCOV_COMPILE_FLAGS}"
+      COMPILE_OPTIONS "-DTESTING -Wno-register ${COMMON_FLAGS} ${GCOV_COMPILE_FLAGS}"
       LINK_FLAGS "${GCOV_LINK_FLAGS}"
 )
 
