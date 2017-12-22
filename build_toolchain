@@ -159,10 +159,10 @@ function build_gnuefi {
 set -e
 
 # Main project directory
-MAIN_DIR=$PWD
+MAIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Toolchain dir
-TC=$PWD/toolchain
+TC=$MAIN_DIR/toolchain
 
 # Make the scripts build_scripts runnable from everywhere
 export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
