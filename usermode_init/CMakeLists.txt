@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.2)
 # requires set_thread_area (syscall #243) to work.
 #
 
-# MUSL_GCC := $(MAIN_PROJ_DIR)/build_scripts/musl-gcc
+# MUSL_GCC := $(MAIN_PROJ_DIR)/scripts/build_scripts/musl-gcc
 # COMPILE.c = $(MUSL_GCC) $(DEPFLAGS) $(CFLAGS) -c
 
 # Linking the init target with MUSL_GCC
