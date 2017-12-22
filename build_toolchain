@@ -165,7 +165,7 @@ MAIN_DIR=$PWD
 TC=$PWD/toolchain
 
 # Make the scripts build_scripts runnable from everywhere
-export PATH="$MAIN_DIR/build_scripts:$PATH"
+export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
 
 mkdir -p $TC
 cd $TC

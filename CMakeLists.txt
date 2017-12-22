@@ -39,7 +39,7 @@ else()
 endif()
 
 
-set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/build_scripts)
+set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_SHARED_LIBRARIES off)
 
 # Let's assume the right compiler is set from outside
