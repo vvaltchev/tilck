@@ -261,7 +261,7 @@ MAIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Toolchain dir
 TC=$MAIN_DIR/toolchain
 
-# Make the scripts build_scripts runnable from everywhere
+# Make the scripts in build_scripts runnable from everywhere
 export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
 
 mkdir -p $TC
@@ -289,14 +289,15 @@ fi
 
 
 
-if [ "$1" == "--skip-install-pkgs" ]; then
+if [ "$1" == "-n" ] || [ "$1" == "--skip-install-pkgs" ]; then
    skip_install=true
-   echo "*** SKIPPING installation of packages"
 fi
 
 
 if [ -z "$skip_install" ]; then
    install_packages
+else
+   echo "*** SKIPPING installation of packages"
 fi
 
 build_cmake
