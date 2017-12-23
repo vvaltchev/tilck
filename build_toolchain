@@ -61,7 +61,7 @@ function install_debian_family {
    fi
 }
 
-function install_redhat_family {
+function install_fedora {
 
    packages_list=()
    packages_list+=(wget)
@@ -73,6 +73,7 @@ function install_redhat_family {
    packages_list+=(binutils)
    packages_list+=(mtools)
    packages_list+=(qemu-system-x86)
+   packages_list+=(bzip2)
 
    to_install=()
 
@@ -98,23 +99,28 @@ function install_redhat_family {
    fi
 }
 
+
 function install_packages {
 
-   if [ "$(grep -Ei 'debian|buntu|mint' /etc/*release)" ]; then
+   rel_files=`echo /etc/*release`
+   lsb="/etc/lsb-release"
+
+   if [ -f $lsb ] && [ "$(grep -Ei 'debian|buntu|mint' $lsb)" ]; then
 
       install_debian_family
 
-   elif [ "$(grep -Ei 'redhat|fedora' /etc/*release)" ]; then
+   elif echo $rel_files | grep -Ei 'fedora' - &> /dev/null; then
 
-      install_redhat_family
+      install_fedora
 
    else
 
       echo "Your distribution is not fully supported by this script."
-      echo "The supported distributions are:"
+      echo "The supported distros are:"
       echo "  * Ubuntu"
       echo "  * Debian"
       echo "  * Mint"
+      echo "  * Fedora"
       echo "In order to compile exOS on this distro, please make sure the "
       echo "following packages (ubuntu package names) are installed:"
 
