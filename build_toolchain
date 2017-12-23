@@ -155,9 +155,8 @@ function build_cmake {
 function build_lcov {
 
    pushd .
-   git clone https://github.com/linux-test-project/lcov.git
+   git clone --branch v1.13 --depth 1 https://github.com/linux-test-project/lcov.git
    cd lcov
-   git checkout v1.13
    popd
 
 }
@@ -195,9 +194,8 @@ function build_dietlibc {
 function build_gtest {
 
    pushd .
-   git clone https://github.com/google/googletest.git
+   git clone --branch release-1.8.0 --depth 1 https://github.com/google/googletest.git
    cd googletest/googletest
-   git checkout release-1.8.0
    $CMAKE .
    run_command2 "make -j" "gtest_build.log"
    popd
@@ -212,9 +210,8 @@ function build_libmusl {
 
    pushd .
 
-   git clone git://git.musl-libc.org/musl
+   git clone --branch v1.1.16 --depth 1 git://git.musl-libc.org/musl
    cd musl
-   git checkout v1.1.16
 
    mkdir ../musl-install
    mkdir ../musl-install/lib
@@ -240,10 +237,9 @@ function build_gnuefi {
 
    pushd .
 
-   git clone https://git.code.sf.net/p/gnu-efi/code gnu-efi
+   git clone --branch 3.0.6 --depth 1 https://git.code.sf.net/p/gnu-efi/code gnu-efi
 
    cd gnu-efi
-   git checkout 3.0.6
    make
 
    popd
