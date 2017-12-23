@@ -18,40 +18,24 @@ function run_command2 {
 # Install the necessary packages using apt
 ##############################################
 
-function install_packages {
+debian_pkg_list=()
+debian_pkg_list+=(wget)
+debian_pkg_list+=(gcc)
+debian_pkg_list+=(g++)
+debian_pkg_list+=(git)
+debian_pkg_list+=(nasm)
+debian_pkg_list+=(gcc-multilib)
+debian_pkg_list+=(g++-multilib)
+debian_pkg_list+=(make)
+debian_pkg_list+=(binutils)
+debian_pkg_list+=(binutils-multiarch)
+debian_pkg_list+=(mtools)
+debian_pkg_list+=(qemu-system-x86)
 
-   packages_list=()
-   packages_list+=(wget)
-   packages_list+=(gcc)
-   packages_list+=(g++)
-   packages_list+=(git)
-   packages_list+=(nasm)
-   packages_list+=(gcc-multilib)
-   packages_list+=(g++-multilib)
-   packages_list+=(make)
-   packages_list+=(binutils)
-   packages_list+=(binutils-multiarch)
-   packages_list+=(mtools)
-   packages_list+=(qemu)
+function install_debian_family {
 
+   packages_list=( "${debian_pkg_list[@]}" )
    to_install=()
-
-   if ! [ "$(grep -Ei 'debian|buntu|mint' /etc/*release)" ]; then
-      echo "Your distribution is not fully supported by this script."
-      echo "The supported distributions are:"
-      echo "  * Ubuntu"
-      echo "  * Debian"
-      echo "  * Mint"
-      echo "In order to compile exOS on this distro, please make sure the "
-      echo "following packages are installed:"
-
-      for x in ${packages_list[@]}; do
-         echo "  * $x"
-      done
-
-      echo "After that, re-run this script with the option --skip-install-pkgs"
-      exit 1
-   fi
 
    echo Checking the packages that need to be installed
 
@@ -66,6 +50,8 @@ function install_packages {
       fi
    done
 
+   echo
+
    if [ ${#to_install[@]} -ne 0 ]; then
       echo ${#to_install[@]} packages need to be installed
       tmp="${to_install[@]}"
@@ -73,6 +59,73 @@ function install_packages {
    else
       echo "You are all set, no packages need to be installed."
    fi
+}
+
+function install_redhat_family {
+
+   packages_list=()
+   packages_list+=(wget)
+   packages_list+=(gcc)
+   packages_list+=(gcc-c++)
+   packages_list+=(git)
+   packages_list+=(nasm)
+   packages_list+=(make)
+   packages_list+=(binutils)
+   packages_list+=(mtools)
+   packages_list+=(qemu-system-x86)
+
+   to_install=()
+
+   echo Checking the packages that need to be installed
+
+   for x in ${packages_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if dnf list installed $x &> /dev/null; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "sudo dnf install $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
+
+function install_packages {
+
+   if [ "$(grep -Ei 'debian|buntu|mint' /etc/*release)" ]; then
+
+      install_debian_family
+
+   elif [ "$(grep -Ei 'redhat|fedora' /etc/*release)" ]; then
+
+      install_redhat_family
+
+   else
+
+      echo "Your distribution is not fully supported by this script."
+      echo "The supported distributions are:"
+      echo "  * Ubuntu"
+      echo "  * Debian"
+      echo "  * Mint"
+      echo "In order to compile exOS on this distro, please make sure the "
+      echo "following packages (ubuntu package names) are installed:"
+
+      for x in ${debian_pkg_list[@]}; do
+         echo "  * $x"
+      done
+
+      echo "After that, re-run this script with the option --skip-install-pkgs"
+      exit 1
+   fi
+
 }
 
 ###############################
