@@ -274,6 +274,13 @@ if [ "$1" == "-s" ]; then
       echo "Expected the name of the function to call after the $1 option"
    fi
 
+   # Export the CMAKE variable in order to single functions to be able to use it
+   if [ -f $TC/cmake-3.7.0-Linux-x86_64/bin/cmake ]; then
+      CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
+   else
+      CMAKE=cmake
+   fi
+
    func="$2"
 
    if [ -n "$(type -t $func)" ] && [ "$(type -t $func)" = function ]; then
@@ -287,12 +294,13 @@ if [ "$1" == "-s" ]; then
    exit 0
 fi
 
-
+# Single-option parsing
 
 if [ "$1" == "-n" ] || [ "$1" == "--skip-install-pkgs" ]; then
    skip_install=true
 fi
 
+# The actual job
 
 if [ -z "$skip_install" ]; then
    install_packages
@@ -305,5 +313,3 @@ build_lcov
 build_dietlibc
 build_gtest
 build_gnuefi
-
-
