@@ -47,13 +47,13 @@ echo "g++ version: $cxx_ver"
 cc_major=`echo -ne $cc_ver | grep -Eo '[0-9]+' | head -1`
 cxx_major=`echo -ne $cxx_ver | grep -Eo '[0-9]+' | head -1`
 
-if [ $cc_major -lt 6 ]; then
-   echo "Your gcc compiler is too old. Version >= 6 is required."
+if [ $cc_major -lt 5 ]; then
+   echo "Your gcc compiler is too old. Version >= 5 is required."
    exit 1
 fi
 
-if [ $cxx_major -lt 6 ]; then
-   echo "Your g++ compiler is too old. Version >= 6 is required."
+if [ $cxx_major -lt 5 ]; then
+   echo "Your g++ compiler is too old. Version >= 5 is required."
    exit 1
 fi
 
