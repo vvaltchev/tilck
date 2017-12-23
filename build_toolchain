@@ -20,17 +20,59 @@ function run_command2 {
 
 function install_packages {
 
-   pkgs_list="wget gcc g++ git nasm gcc-multilib g++-multilib make binutils binutils-multiarch mtools qemu"
+   packages_list=()
+   packages_list+=(wget)
+   packages_list+=(gcc)
+   packages_list+=(g++)
+   packages_list+=(git)
+   packages_list+=(nasm)
+   packages_list+=(gcc-multilib)
+   packages_list+=(g++-multilib)
+   packages_list+=(make)
+   packages_list+=(binutils)
+   packages_list+=(binutils-multiarch)
+   packages_list+=(mtools)
+   packages_list+=(qemu)
 
-   if [ "`lsb_release -si`" != "Ubuntu" ]; then
-      echo "*** WARNING: your distribution is not Ubuntu and the following apt install command MAY fail"
-      echo "*** WARNING: In case that happens, please install manually the following packages:"
-      echo "*** WARNING: $pgks_list"
-      echo "*** WARNING: and re-run this script with the option --skip-install-pkgs"
+   to_install=()
+
+   if ! [ "$(grep -Ei 'debian|buntu|mint' /etc/*release)" ]; then
+      echo "Your distribution is not fully supported by this script."
+      echo "The supported distributions are:"
+      echo "  * Ubuntu"
+      echo "  * Debian"
+      echo "  * Mint"
+      echo "In order to compile exOS on this distro, please make sure the "
+      echo "following packages are installed:"
+
+      for x in ${packages_list[@]}; do
+         echo "  * $x"
+      done
+
+      echo "After that, re-run this script with the option --skip-install-pkgs"
+      exit 1
    fi
 
-   echo "Installing the necessary packages..."
-   run_command "sudo apt install $pkgs_list"
+   echo Checking the packages that need to be installed
+
+   for x in ${packages_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if [ "`dpkg -s $x 2>&1 | grep Status`" ]; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "sudo apt install $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
 }
 
 ###############################
