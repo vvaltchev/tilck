@@ -255,7 +255,7 @@ function build_gnuefi {
 # Exit on the first failure
 set -e
 
-# Main project directory
+# Project's root directory
 MAIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Toolchain dir
