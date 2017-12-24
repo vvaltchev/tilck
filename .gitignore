@@ -1,17 +1,4 @@
-kernel/.d
-kernel/i386/.d
-init_src/.d
 build/
-VS2015/.vs/
-VS2015/Debug/
-VS2015/myKernel.VC.VC.opendb
-VS2015/myKernel.VC.db
-VS2015/myKernel.sdf
-VS2015/myKernel.sln
-VS2015/myKernel.vcxproj.filters
-VS2015/myKernel.vcxproj.user
 bochsrc-disk.bxrc
 bochsrc.bxrc
-bx_enh_dbg.iniunittests/.d/
-unittests/.d/
 toolchain/
