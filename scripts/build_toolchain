@@ -14,6 +14,14 @@ function run_command2 {
    $1 &> $2
 }
 
+pushd () {
+    command pushd "$@" > /dev/null
+}
+
+popd () {
+    command popd "$@" > /dev/null
+}
+
 ##############################################
 # Install the necessary packages using apt
 ##############################################
@@ -187,9 +195,15 @@ function install_packages {
 function build_cmake {
 
    pushd .
-   wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
-   tar xf cmake-3.7.0-Linux-x86_64.tar.gz
-   CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
+   if ! [ -d cmake-3.7.0-Linux-x86_64 ]; then
+      wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
+      tar xf cmake-3.7.0-Linux-x86_64.tar.gz
+      CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
+      rm cmake-3.7.0-Linux-x86_64.tar.gz
+   else
+      echo "NOTE: Skipping CMake"
+   fi
+
    popd
 
 }
@@ -201,8 +215,12 @@ function build_cmake {
 function build_lcov {
 
    pushd .
-   git clone --branch v1.13 --depth 1 https://github.com/linux-test-project/lcov.git
-   cd lcov
+   if ! [ -d lcov ]; then
+      git clone --branch v1.13 --depth 1 https://github.com/linux-test-project/lcov.git
+      cd lcov
+   else
+      echo "NOTE: Skipping lcov"
+   fi
    popd
 
 }
@@ -215,19 +233,30 @@ function build_dietlibc {
 
    pushd .
 
-   wget https://www.fefe.de/dietlibc/dietlibc-0.33.tar.bz2
-   tar xfj dietlibc-0.33.tar.bz2
-   cd dietlibc-0.33
-   sed -i 's/#define WANT_SYSENTER/\/\/#define WANT_SYSENTER/g' dietfeatures.h
-   sed -i 's/-Wno-unused -Wredundant-decls/-Wno-unused -Wredundant-decls -fno-stack-protector/g' Makefile
-   # The build of dietlibc fails even when succeeds, when we cross-build for i386
-   # So, disabling the 'exit on first failure' option.
-   set +e
+   if ! [ -d dietlibc-0.33 ]; then
 
-   run_command2 "make -j i386 DEBUG=1" "dietlibc_build.log"
+      wget https://www.fefe.de/dietlibc/dietlibc-0.33.tar.bz2
+      tar xfj dietlibc-0.33.tar.bz2
+      pushd dietlibc-0.33
+      sed -i 's/#define WANT_SYSENTER/\/\/#define WANT_SYSENTER/g' dietfeatures.h
+      sed -i 's/-Wno-unused -Wredundant-decls/-Wno-unused -Wredundant-decls -fno-stack-protector/g' Makefile
+      # The build of dietlibc fails even when succeeds, when we cross-build for i386
+      # So, disabling the 'exit on first failure' option.
+      set +e
 
-   # Restore the 'exit on first failure'
-   set -e
+      run_command2 "make -j i386 DEBUG=1" "dietlibc_build.log"
+
+      # Restore the 'exit on first failure'
+      set -e
+
+      popd
+      rm dietlibc-0.33.tar.bz2
+
+   else
+
+      echo "NOTE: Skipping dietlibc"
+
+   fi
 
    popd
 
@@ -240,10 +269,14 @@ function build_dietlibc {
 function build_gtest {
 
    pushd .
-   git clone --branch release-1.8.0 --depth 1 https://github.com/google/googletest.git
-   cd googletest/googletest
-   $CMAKE .
-   run_command2 "make -j" "gtest_build.log"
+   if ! [ -d googletest ]; then
+      git clone --branch release-1.8.0 --depth 1 https://github.com/google/googletest.git
+      cd googletest/googletest
+      $CMAKE .
+      run_command2 "make -j" "gtest_build.log"
+   else
+      echo "NOTE: Skipping googletest"
+   fi
    popd
 
 }
@@ -256,20 +289,24 @@ function build_libmusl {
 
    pushd .
 
-   git clone --branch v1.1.16 --depth 1 git://git.musl-libc.org/musl
-   cd musl
+   if ! [ -d musl ]; then
+      git clone --branch v1.1.16 --depth 1 git://git.musl-libc.org/musl
+      cd musl
 
-   mkdir ../musl-install
-   mkdir ../musl-install/lib
+      mkdir ../musl-install
+      mkdir ../musl-install/lib
 
-   libmusl_opts1="--target=i386 --host=i386 --build=x86_64 --disable-shared"
-   libmusl_opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
-   libmusl_opts3="--syslibdir=$TC/musl-install/lib"
+      libmusl_opts1="--target=i386 --host=i386 --build=x86_64 --disable-shared"
+      libmusl_opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
+      libmusl_opts3="--syslibdir=$TC/musl-install/lib"
 
-   ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3
+      ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3
 
-   make
-   make install
+      make
+      make install
+   else
+      echo "NOTE: Skipping musl"
+   fi
 
    popd
 
@@ -283,10 +320,17 @@ function build_gnuefi {
 
    pushd .
 
-   git clone --branch 3.0.6 --depth 1 https://git.code.sf.net/p/gnu-efi/code gnu-efi
+   if ! [ -d gnu-efi ]; then
 
-   cd gnu-efi
-   make
+      git clone --branch 3.0.6 --depth 1 https://git.code.sf.net/p/gnu-efi/code gnu-efi
+      cd gnu-efi
+      make
+
+   else
+
+      echo "NOTE: Skipping gnu-efi"
+
+   fi
 
    popd
 }
@@ -314,18 +358,17 @@ export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
 mkdir -p $TC
 cd $TC
 
+# Export the CMAKE variable in order to single functions to be able to use it
+if [ -f $TC/cmake-3.7.0-Linux-x86_64/bin/cmake ]; then
+   CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
+else
+   CMAKE=cmake
+fi
 
 if [ "$1" == "-s" ]; then
 
    if [ $# -ne 2 ]; then
       echo "Expected the name of the function to call after the $1 option"
-   fi
-
-   # Export the CMAKE variable in order to single functions to be able to use it
-   if [ -f $TC/cmake-3.7.0-Linux-x86_64/bin/cmake ]; then
-      CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
-   else
-      CMAKE=cmake
    fi
 
    func="$2"
@@ -354,6 +397,8 @@ if [ -z "$skip_install" ]; then
 else
    echo "*** SKIPPING installation of packages"
 fi
+
+echo
 
 build_cmake
 build_lcov
