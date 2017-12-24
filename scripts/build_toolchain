@@ -257,6 +257,7 @@ set -e
 
 # Project's root directory
 MAIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_DIR=$MAIN_DIR/..
 
 # Toolchain dir
 TC=$MAIN_DIR/toolchain
@@ -313,3 +314,4 @@ build_lcov
 build_dietlibc
 build_gtest
 build_gnuefi
+

@@ -43,14 +43,14 @@ matrix:
             - binutils-multiarch
             - mtools
             - qemu
- 
+
 before_install:
   - ./scripts/build_toolchain --skip-install-pkgs
 
 install:
   - ./scripts/cmake_run
-  - ./make_run
-  - ./make_run gtests
+  - make
+  - make gtests
 
 script:
   - ./build/gtests
