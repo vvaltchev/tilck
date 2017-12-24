@@ -46,7 +46,7 @@ In case you're not using a Debian system instead, you'll have to take a look at 
 
 Step 2. Run `cmake` this way:
 
-    ./cmake_run
+    ./scripts/cmake_run
 
 Step 3. Compile the kernel and prepare the bootable image this way:
 

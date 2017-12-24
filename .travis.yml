@@ -48,7 +48,7 @@ before_install:
   - ./build_toolchain --skip-install-pkgs
 
 install:
-  - ./cmake_run
+  - ./scripts/cmake_run
   - ./make_run
   - ./make_run gtests
 
