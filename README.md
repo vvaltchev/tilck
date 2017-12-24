@@ -34,7 +34,7 @@ Step 0. Enter project's root directory.
 
 Step 1. If you're using a Debian-based system, build the toolchain by running:
 
-    ./build_toolchian
+    ./scripts/build_toolchian
 
 In case you're not using a Debian-based system or your system does not have by default `gcc` and `g++` version 6.0 or higher, you'll have to manually setup your environment in a way that such statement is true. For example, if you are using an older Ubuntu can you could:
 
