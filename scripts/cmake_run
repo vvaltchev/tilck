@@ -1,11 +1,19 @@
 #!/bin/bash
 
+# Project's root directory
+MAIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_DIR=$MAIN_DIR/..
+
 if [ -z "$CC" ]; then
 
    CC=gcc
 
-   if [ -n "`which gcc-6`" ]; then
+   if which gcc-6 &> /dev/null; then
       CC=gcc-6
+   fi
+
+   if which gcc-7 &> /dev/null; then
+      CC=gcc-7
    fi
 fi
 
@@ -13,18 +21,22 @@ if [ -z "$CXX" ]; then
 
    CXX=g++
 
-   if [ -n "`which g++-6`" ]; then
+   if which g++-6 &> /dev/null; then
       CXX=g++-6
+   fi
+
+   if which g++-7 &> /dev/null; then
+      CXX=g++-7
    fi
 fi
 
 
-if [ -z "`which $CC`" ]; then
+if ! which $CC &> /dev/null; then
    echo "CC compiler '$CC' not found."
    exit 1
 fi
 
-if [ -z "`which $CXX`" ]; then
+if ! which $CXX &> /dev/null; then
    echo "CXX compiler '$CXX' not found."
    exit 1
 fi
@@ -39,18 +51,18 @@ echo "g++ version: $cxx_ver"
 cc_major=`echo -ne $cc_ver | grep -Eo '[0-9]+' | head -1`
 cxx_major=`echo -ne $cxx_ver | grep -Eo '[0-9]+' | head -1`
 
-if [ $cc_major -lt 6 ]; then
-   echo "Your gcc compiler is too old. Version >= 6 is required."
+if [ $cc_major -lt 5 ]; then
+   echo "Your gcc compiler is too old. Version >= 5 is required."
    exit 1
 fi
 
-if [ $cxx_major -lt 6 ]; then
-   echo "Your g++ compiler is too old. Version >= 6 is required."
+if [ $cxx_major -lt 5 ]; then
+   echo "Your g++ compiler is too old. Version >= 5 is required."
    exit 1
 fi
 
 
-CMAKE=../toolchain/cmake-3.7.0-Linux-x86_64/bin/cmake
+CMAKE=$MAIN_DIR/toolchain/cmake-3.7.0-Linux-x86_64/bin/cmake
 
 if [ -z "$RELEASE" ]; then
    RELEASE=off

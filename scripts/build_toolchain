@@ -1,0 +1,408 @@
+#!/bin/bash
+
+##############################################
+# Internal utility functions
+##############################################
+
+function run_command {
+   echo "Running command: $1"
+   $1
+}
+
+function run_command2 {
+   echo "Running command: $1 &> $2"
+   $1 &> $2
+}
+
+pushd () {
+    command pushd "$@" > /dev/null
+}
+
+popd () {
+    command popd "$@" > /dev/null
+}
+
+##############################################
+# Install the necessary packages using apt
+##############################################
+
+ubuntu_pkg_list=()
+ubuntu_pkg_list+=(wget)
+ubuntu_pkg_list+=(gcc)
+ubuntu_pkg_list+=(g++)
+ubuntu_pkg_list+=(git)
+ubuntu_pkg_list+=(nasm)
+ubuntu_pkg_list+=(gcc-multilib)
+ubuntu_pkg_list+=(g++-multilib)
+ubuntu_pkg_list+=(make)
+ubuntu_pkg_list+=(binutils)
+ubuntu_pkg_list+=(binutils-multiarch)
+ubuntu_pkg_list+=(mtools)
+ubuntu_pkg_list+=(qemu-system-x86)
+
+function install_ubuntu_family {
+
+   packages_list=( "${ubuntu_pkg_list[@]}" )
+   to_install=()
+
+   echo Checking the packages that need to be installed
+
+   for x in ${packages_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if [ "`dpkg -s $x 2>&1 | grep Status`" ]; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   echo
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "sudo apt install $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
+
+function install_debian_family {
+
+   packages_list=( "${ubuntu_pkg_list[@]}" )
+   to_install=()
+
+   echo Checking the packages that need to be installed
+
+   for x in ${packages_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if [ "`dpkg -s $x 2>&1 | grep Status`" ]; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   echo
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      echo Running the command:
+      echo su -c \"apt install $tmp\"
+      su -c "apt install $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
+
+function install_fedora {
+
+   packages_list=()
+   packages_list+=(wget)
+   packages_list+=(gcc)
+   packages_list+=(gcc-c++)
+   packages_list+=(git)
+   packages_list+=(nasm)
+   packages_list+=(make)
+   packages_list+=(binutils)
+   packages_list+=(mtools)
+   packages_list+=(qemu-system-x86)
+   packages_list+=(bzip2)
+
+   to_install=()
+
+   echo Checking the packages that need to be installed
+
+   for x in ${packages_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if dnf list installed $x &> /dev/null; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "sudo dnf install $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
+
+
+function install_packages {
+
+   rel_files=`echo /etc/*release`
+   lsb="/etc/lsb-release"
+   os_rel="/etc/os-release"
+
+   # Where lsb-release exists, use only it.
+   # On Mint doing grep /etc/*release reports an error because there is an
+   # upstream-release directory matching that wildcard. Using grep -r is not
+   # a solution since in /etc/upstream-release/* on Mint, Ubuntu is mentioned.
+   if [ -f $lsb ] && [ "$(grep -Ei 'buntu|mint' $lsb)" ]; then
+
+      install_ubuntu_family
+
+   # Debian does not contain the lsb-release file. Also, it needs a special
+   # handling since it does not have 'sudo' by default. Installing sudo is not
+   # a solution since the current use still won't be a sudoer and in general
+   # does not make sense in such a script. The ubuntu script cannot made to use
+   # su -c since by default the login to root is disabled. Only sudo -i works.
+   elif [ -f $os_rel ] && [ "$(grep -Ei 'debian' $os_rel)" ]; then
+
+      install_debian_family
+
+   # On Fedora, we need to check if exactly a [Ff]edora-release file exists.
+   elif echo $rel_files | grep -Ei 'fedora' - &> /dev/null; then
+
+      install_fedora
+
+   else
+
+      echo "Your distribution is not fully supported by this script."
+      echo "The supported distros are:"
+      echo "  * Ubuntu"
+      echo "  * Mint"
+      echo "  * Debian"
+      echo "  * Fedora"
+      echo "In order to compile exOS on this distro, please make sure the "
+      echo "following packages (ubuntu package names) are installed:"
+
+      for x in ${ubuntu_pkg_list[@]}; do
+         echo "  * $x"
+      done
+
+      echo "After that, re-run this script with the option --skip-install-pkgs"
+      exit 1
+   fi
+
+}
+
+###############################
+# CMake 3.7
+###############################
+
+function build_cmake {
+
+   pushd .
+   if ! [ -d cmake-3.7.0-Linux-x86_64 ]; then
+      wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
+      tar xf cmake-3.7.0-Linux-x86_64.tar.gz
+      CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
+      rm cmake-3.7.0-Linux-x86_64.tar.gz
+   else
+      echo "NOTE: Skipping CMake"
+   fi
+
+   popd
+
+}
+
+###############################
+# LCOV (front end for GCOV)
+###############################
+
+function build_lcov {
+
+   pushd .
+   if ! [ -d lcov ]; then
+      git clone --branch v1.13 --depth 1 https://github.com/linux-test-project/lcov.git
+      cd lcov
+   else
+      echo "NOTE: Skipping lcov"
+   fi
+   popd
+
+}
+
+###############################
+# Build dietlibc
+###############################
+
+function build_dietlibc {
+
+   pushd .
+
+   if ! [ -d dietlibc-0.33 ]; then
+
+      wget https://www.fefe.de/dietlibc/dietlibc-0.33.tar.bz2
+      tar xfj dietlibc-0.33.tar.bz2
+      pushd dietlibc-0.33
+      sed -i 's/#define WANT_SYSENTER/\/\/#define WANT_SYSENTER/g' dietfeatures.h
+      sed -i 's/-Wno-unused -Wredundant-decls/-Wno-unused -Wredundant-decls -fno-stack-protector/g' Makefile
+      # The build of dietlibc fails even when succeeds, when we cross-build for i386
+      # So, disabling the 'exit on first failure' option.
+      set +e
+
+      run_command2 "make -j i386 DEBUG=1" "dietlibc_build.log"
+
+      # Restore the 'exit on first failure'
+      set -e
+
+      popd
+      rm dietlibc-0.33.tar.bz2
+
+   else
+
+      echo "NOTE: Skipping dietlibc"
+
+   fi
+
+   popd
+
+}
+
+##############################
+# Build gtest
+##############################
+
+function build_gtest {
+
+   pushd .
+   if ! [ -d googletest ]; then
+      git clone --branch release-1.8.0 --depth 1 https://github.com/google/googletest.git
+      cd googletest/googletest
+      $CMAKE .
+      run_command2 "make -j" "gtest_build.log"
+   else
+      echo "NOTE: Skipping googletest"
+   fi
+   popd
+
+}
+
+##################################
+# Build libmusl (unused for now)
+##################################
+
+function build_libmusl {
+
+   pushd .
+
+   if ! [ -d musl ]; then
+      git clone --branch v1.1.16 --depth 1 git://git.musl-libc.org/musl
+      cd musl
+
+      mkdir ../musl-install
+      mkdir ../musl-install/lib
+
+      libmusl_opts1="--target=i386 --host=i386 --build=x86_64 --disable-shared"
+      libmusl_opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
+      libmusl_opts3="--syslibdir=$TC/musl-install/lib"
+
+      ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3
+
+      make
+      make install
+   else
+      echo "NOTE: Skipping musl"
+   fi
+
+   popd
+
+}
+
+##################################
+# Build GNU EFI
+##################################
+
+function build_gnuefi {
+
+   pushd .
+
+   if ! [ -d gnu-efi ]; then
+
+      git clone --branch 3.0.6 --depth 1 https://git.code.sf.net/p/gnu-efi/code gnu-efi
+      cd gnu-efi
+      make
+
+   else
+
+      echo "NOTE: Skipping gnu-efi"
+
+   fi
+
+   popd
+}
+
+##########################################################
+#
+# MAIN
+#
+##########################################################
+
+
+# Exit on the first failure
+set -e
+
+# Project's root directory
+MAIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_DIR=$MAIN_DIR/..
+
+# Toolchain dir
+TC=$MAIN_DIR/toolchain
+
+# Make the scripts in build_scripts runnable from everywhere
+export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
+
+mkdir -p $TC
+cd $TC
+
+# Export the CMAKE variable in order to single functions to be able to use it
+if [ -f $TC/cmake-3.7.0-Linux-x86_64/bin/cmake ]; then
+   CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
+else
+   CMAKE=cmake
+fi
+
+if [ "$1" == "-s" ]; then
+
+   if [ $# -ne 2 ]; then
+      echo "Expected the name of the function to call after the $1 option"
+   fi
+
+   func="$2"
+
+   if [ -n "$(type -t $func)" ] && [ "$(type -t $func)" = function ]; then
+      echo "Executing single function '$func'"
+      $func
+   else
+      echo "ERORR: The function '$func' does not exist."
+      exit 1
+   fi
+
+   exit 0
+fi
+
+# Single-option parsing
+
+if [ "$1" == "-n" ] || [ "$1" == "--skip-install-pkgs" ]; then
+   skip_install=true
+fi
+
+# The actual job
+
+if [ -z "$skip_install" ]; then
+   install_packages
+else
+   echo "*** SKIPPING installation of packages"
+fi
+
+echo
+
+build_cmake
+build_lcov
+build_dietlibc
+build_gtest
+build_gnuefi
+
