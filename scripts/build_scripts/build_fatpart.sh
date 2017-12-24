@@ -21,7 +21,7 @@ cd $bdir/sysroot
 # hard-link init to sysroot/sbin
 ln $bdir/init sbin/
 
-# hark-link EFI files
+# hard-link EFI files
 ln $bdir/BOOTX64.EFI EFI/BOOT/
 ln $bdir/switchmode.bin EFI/BOOT/
 ln $bdir/kernel.bin EFI/BOOT/

@@ -61,7 +61,7 @@ typedef struct __attribute__(( packed )) {
 
 typedef struct __attribute__(( packed )) {
 
-   s8 DIR_Name[11];
+   u8 DIR_Name[11];
 
    u8 readonly : 1; // lower-bit
    u8 hidden : 1;
@@ -85,6 +85,26 @@ typedef struct __attribute__(( packed )) {
    u32 DIR_FileSize;
 
 } fat_entry;
+
+#define LAST_LONG_ENTRY_MASK (0x40)
+
+typedef struct __attribute__(( packed )) {
+
+   u8 LDIR_Ord;
+   u8 LDIR_Name1[10];
+   u8 LDIR_Attr;
+   u8 LDIR_Type; /* 0 means sub-comp of a long name entry. != 0 reserved. */
+   u8 LDIR_Chksum;
+   u8 LDIR_Name2[12];
+   u16 LDIR_FstClusLO; /* must be always 0 in this context. */
+   u8 LDIR_Name3[4];
+
+} fat_long_entry;
+
+static inline bool is_long_name_entry(fat_entry *e)
+{
+   return e->readonly && e->hidden && e->system && e->volume_id;
+}
 
 // DEBUG functions
 void fat_dump_info(void *fatpart_begin);
@@ -144,10 +164,24 @@ fat_get_pointer_to_cluster_data(fat_header *hdr, u32 clusterN)
 
 // PUBLIC interface ------------------------------------------------------------
 
-typedef int (*fat_dentry_cb)(fat_header *, fat_type, fat_entry *, void *, int);
+typedef struct {
+
+   u8 long_name_buf[256];
+   s16 long_name_size;
+   s16 long_name_chksum;
+
+} fat_walk_dir_ctx;
+
+typedef int (*fat_dentry_cb)(fat_header *,
+                             fat_type,
+                             fat_entry *,
+                             const char *, /* long name */
+                             void *, /* user data pointer */
+                             int); /* depth level */
 
 int
-fat_walk_directory(fat_header *hdr,
+fat_walk_directory(fat_walk_dir_ctx *ctx,
+                   fat_header *hdr,
                    fat_type ft,
                    fat_entry *entry,
                    u32 cluster,

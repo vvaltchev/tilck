@@ -93,6 +93,7 @@ static void dump_entry_attrs(fat_entry *entry)
 static int dump_dir_entry(fat_header *hdr,
                           fat_type ft,
                           fat_entry *entry,
+                          const char *long_name,
                           void *arg,
                           int level)
 {
@@ -104,14 +105,15 @@ static int dump_dir_entry(fat_header *hdr,
       indentbuf[i] = ' ';
 
    if (!entry->directory) {
-      printk("%s%s: %u bytes\n", indentbuf, shortname, entry->DIR_FileSize);
+      printk("%s%s: %u bytes\n", indentbuf, long_name ? long_name : shortname, entry->DIR_FileSize);
    } else {
-      printk("%s%s\n", indentbuf, shortname);
+      printk("%s%s\n", indentbuf, long_name ? long_name : shortname);
    }
 
    if (entry->directory) {
 
-      fat_walk_directory(hdr,
+      fat_walk_directory((fat_walk_dir_ctx*)arg,
+                         hdr,
                          ft,
                          NULL,
                          fat_get_first_cluster(entry),
@@ -145,12 +147,15 @@ void fat_dump_info(void *fatpart_begin)
    u32 root_dir_cluster;
    fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
 
-   fat_walk_directory(hdr,
+   fat_walk_dir_ctx walk_ctx;
+
+   fat_walk_directory(&walk_ctx,
+                      hdr,
                       ft,
                       root,
                       root_dir_cluster,
                       &dump_dir_entry, // callback
-                      NULL,            // arg
+                      &walk_ctx,       // arg
                       0);              // level
 }
 
@@ -160,10 +165,74 @@ void fat_dump_info(void *fatpart_begin)
  * *********************************************
  */
 
-#define FAT_ENTRY_DIRNAME_NO_MORE_ENTRIES ((char)0)
-#define FAT_ENTRY_DIRNAME_EMPTY_DIR ((char)0xE5)
+#define FAT_ENTRY_DIRNAME_NO_MORE_ENTRIES ((u8)0)
+#define FAT_ENTRY_DIRNAME_EMPTY_DIR ((u8)0xE5)
 
-int fat_walk_directory(fat_header *hdr,
+static u8 shortname_checksum(u8 *shortname)
+{
+   u8 sum = 0;
+
+   for (int i = 0; i < 11; i++) {
+      // NOTE: The operation is an unsigned char rotate right
+      sum = ((sum & 1) ? 0x80 : 0) + (sum >> 1) + *shortname++;
+   }
+
+   return sum;
+}
+
+static void reverse_long_name(fat_walk_dir_ctx *ctx)
+{
+   char tmp[256] = {0};
+   int di = 0;
+
+   for (int i = ctx->long_name_size-1; i >= 0; i--)
+      tmp[di++] = ctx->long_name_buf[i];
+
+   for (int i = 0; i < ctx->long_name_size; i++)
+      ctx->long_name_buf[i] = tmp[i];
+}
+
+static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
+                                      fat_long_entry *le)
+{
+   char entrybuf[13]={0};
+   int ebuf_size=0;
+
+   if (ctx->long_name_chksum != le->LDIR_Chksum) {
+      bzero(ctx->long_name_buf, sizeof(ctx->long_name_chksum));
+      ctx->long_name_size = 0;
+      ctx->long_name_chksum = le->LDIR_Chksum;
+   }
+
+   for (int i = 0; i < 10; i+=2) {
+      u8 c = le->LDIR_Name1[i];
+      if (c == 0 || c == 0xFF)
+         goto end;
+      entrybuf[ebuf_size++] = c;
+   }
+
+   for (int i = 0; i < 12; i+=2) {
+      u8 c = le->LDIR_Name2[i];
+      if (c == 0 || c == 0xFF)
+         goto end;
+      entrybuf[ebuf_size++] = c;
+   }
+
+   for (int i = 0; i < 4; i+=2) {
+      u8 c = le->LDIR_Name3[i];
+      if (c == 0 || c == 0xFF)
+         goto end;
+      entrybuf[ebuf_size++] = c;
+   }
+
+   end:
+
+   for (int i = ebuf_size-1; i >= 0; i--)
+      ctx->long_name_buf[ctx->long_name_size++] = entrybuf[i];
+}
+
+int fat_walk_directory(fat_walk_dir_ctx *ctx,
+                       fat_header *hdr,
                        fat_type ft,
                        fat_entry *entry,
                        u32 cluster,
@@ -177,6 +246,10 @@ int fat_walk_directory(fat_header *hdr,
    ASSERT(ft == fat16_type || ft == fat32_type);
    ASSERT(cluster == 0 || entry == NULL); // cluster != 0 => entry == NULL
    ASSERT(entry == NULL || cluster == 0); // entry != NULL => cluster == 0
+
+   bzero(ctx->long_name_buf, sizeof(ctx->long_name_buf));
+   ctx->long_name_size = 0;
+   ctx->long_name_chksum = -1;
 
    while (true) {
 
@@ -192,6 +265,11 @@ int fat_walk_directory(fat_header *hdr,
       }
 
       for (u32 i = 0; i < entries_per_cluster; i++) {
+
+         if (is_long_name_entry(&entry[i])) {
+            fat_handle_long_dir_entry(ctx, (fat_long_entry*)&entry[i]);
+            continue;
+         }
 
          if (entry[i].volume_id) {
             continue; // the first "file" is the volume ID. Skip it.
@@ -215,7 +293,24 @@ int fat_walk_directory(fat_header *hdr,
             continue;
          }
 
-         if (cb(hdr, ft, entry + i, arg, level) < 0) {
+
+         const char *long_name_ptr = NULL;
+
+         if (ctx->long_name_size > 0) {
+
+            s16 entry_checksum = shortname_checksum(entry[i].DIR_Name);
+            if (ctx->long_name_chksum == entry_checksum) {
+               reverse_long_name(ctx);
+               long_name_ptr = (const char *) ctx->long_name_buf;
+            }
+         }
+
+         int ret = cb(hdr, ft, entry + i, long_name_ptr, arg, level);
+
+         ctx->long_name_size = 0;
+         ctx->long_name_chksum = -1;
+
+         if (ret < 0) {
             /* the callback returns a value < 0 to request a walk STOP. */
             return 0;
          }
@@ -370,11 +465,12 @@ void fat_get_short_name(fat_entry *entry, char *destbuf)
 
 typedef struct {
 
-   const char *path;   // the searched path.
-   char pc[256];       // path component
-   size_t pcl;         // path component's length
-   char shortname[16]; // short name of the current entry
-   fat_entry *result;  // the found entry
+   const char *path;          // the searched path.
+   char pc[256];              // path component
+   size_t pcl;                // path component's length
+   char shortname[16];        // short name of the current entry
+   fat_entry *result;         // the found entry
+   fat_walk_dir_ctx walk_ctx; // walk context: contains long names
 
 } fat_search_ctx;
 
@@ -399,6 +495,7 @@ static bool fat_fetch_next_component(fat_search_ctx *ctx)
 static int fat_search_entry_cb(fat_header *hdr,
                                fat_type ft,
                                fat_entry *entry,
+                               const char *long_name,
                                void *arg,
                                int level)
 {
@@ -411,11 +508,38 @@ static int fat_search_entry_cb(fat_header *hdr,
       }
    }
 
-   fat_get_short_name(entry, ctx->shortname);
+   /*
+    * NOTE: the following is NOT fully FAT32 compliant: for long names this
+    * code compares file names using a CASE SENSITIVE comparison!
+    * This HACK allows a UNIX system like exOS to use FAT32 [case sensitivity
+    * is a MUST in UNIX] by just forcing each file to have a long name, even
+    * when that is not necessary.
+    */
 
-   if (stricmp(ctx->shortname, ctx->pc)) {
-      // not a match, continue.
-      return 0;
+   if (long_name) {
+
+      if (strcmp(long_name, ctx->pc)) {
+         // no match, continue.
+         return 0;
+      }
+
+      // we have a long-name match (case sensitive)
+
+   } else {
+
+      /*
+       * no long name: for short names, we do a compliant case INSENSITVE
+       * string comparison.
+       */
+
+      fat_get_short_name(entry, ctx->shortname);
+
+      if (stricmp(ctx->shortname, ctx->pc)) {
+         // no match, continue.
+         return 0;
+      }
+
+      // we have a short-name match (case insensitive)
    }
 
    // we've found a match.
@@ -446,7 +570,8 @@ static int fat_search_entry_cb(fat_header *hdr,
 
    // The path did not end: we have to do a walk in the sub-dir.
    ctx->pcl = 0;
-   fat_walk_directory(hdr, ft, NULL, fat_get_first_cluster(entry),
+   fat_walk_directory(&ctx->walk_ctx, hdr,
+                      ft, NULL, fat_get_first_cluster(entry),
                       &fat_search_entry_cb, ctx, level + 1);
    return -1;
 }
@@ -471,7 +596,7 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
    fat_search_ctx ctx = {0};
    ctx.path = abspath;
 
-   fat_walk_directory(hdr, ft, root, root_dir_cluster,
+   fat_walk_directory(&ctx.walk_ctx, hdr, ft, root, root_dir_cluster,
                       &fat_search_entry_cb, &ctx, 0);
    return ctx.result;
 }
