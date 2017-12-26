@@ -4,18 +4,30 @@
 # In other words, the USE_GCOV controls this script only if it is running
 # under TRAVIS, which makes sense.
 
-if [ -z "$USE_GCOV" ]; then
-   if [ -n "$TRAVIS" ]; then
-      echo "Exit 0 without doing anything"
-      exit 0
-   fi
+if [ -z "$USE_GCOV" ] && [ -z "$TRAVIS" ]; then
+   echo "Exit 0 without doing anything"
+   exit 0
 fi
+
+
+if which gcov-7 &> /dev/null; then
+   GCOV=gcov-7
+elif which gcov-6 &> /dev/null; then
+   GCOV=gcov-6
+elif which gcov &> /dev/null; then
+   GCOV=gcov
+else
+   echo No GCOV found.
+   exit 1
+fi
+
+GCOV_ABS_PATH=`which $GCOV`
 
 LCOV=$PWD/toolchain/lcov/bin/lcov
 GENHTML=$PWD/toolchain/lcov/bin/genhtml
 
 cd build
-$LCOV -d . --capture --gcov-tool `which gcov-6` -o lcov.info
+$LCOV -d . --capture --gcov-tool $GCOV_ABS_PATH -o lcov.info
 $LCOV --remove lcov.info '*toolchain*' '/usr/include/*' -o lcov2.info
 rm -rf coverage
 mkdir coverage
