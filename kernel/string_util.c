@@ -108,10 +108,10 @@ void vprintk(const char *fmt, va_list args)
             ++ptr;
             if (*ptr) {
                if (*ptr == 'u') {
-                  uitoa(va_arg(args, u64), buf, 10);
+                  uitoa64(va_arg(args, u64), buf, 10);
                   term_write_string(buf);
                } else if (*ptr == 'i' || *ptr == 'd') {
-                  itoa(va_arg(args, s64), buf);
+                  itoa64(va_arg(args, s64), buf);
                   term_write_string(buf);
                }
             }
@@ -120,17 +120,17 @@ void vprintk(const char *fmt, va_list args)
 
       case 'd':
       case 'i':
-         itoa(va_arg(args, s32), buf);
+         itoa32(va_arg(args, s32), buf);
          term_write_string(buf);
          break;
 
       case 'u':
-         uitoa(va_arg(args, u32), buf, 10);
+         uitoa32(va_arg(args, u32), buf, 10);
          term_write_string(buf);
          break;
 
       case 'x':
-         uitoa(va_arg(args, u32), buf, 16);
+         uitoa32(va_arg(args, u32), buf, 16);
          term_write_string(buf);
          break;
 
@@ -143,7 +143,7 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 'p':
-         uitoa(va_arg(args, uptr), buf, 16);
+         uitoa32(va_arg(args, uptr), buf, 16);
          size_t len = strlen(buf);
          size_t fixedLen = 2 * sizeof(void*);
 
