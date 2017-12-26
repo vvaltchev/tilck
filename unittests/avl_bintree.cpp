@@ -3,6 +3,7 @@
 #include <iostream>
 #include <random>
 #include <unordered_set>
+#include <memory>
 
 #include <gtest/gtest.h>
 

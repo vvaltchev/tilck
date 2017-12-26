@@ -54,6 +54,8 @@ set(
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
+message(STATUS "C compiler: ${CMAKE_C_COMPILER_ID}")
+message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER_ID}")
 
 #message("CMAKE_C_LINK_EXECUTABLE: ${CMAKE_C_LINK_EXECUTABLE}")
 #message("CMAKE_C_COMPILE_OBJECT: ${CMAKE_C_COMPILE_OBJECT}")
