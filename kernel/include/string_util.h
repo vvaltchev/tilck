@@ -43,15 +43,6 @@ void itoa64(s64 value, char *destBuf);
 void uitoa32(u32 value, char *destBuf, u32 base);
 void uitoa64(u64 value, char *destBuf, u32 base);
 
-/* Using C11's _Generic feature. */
-
-#define itoa(num, destbuf) \
-   _Generic((num), s32: itoa32, s64: itoa64)((num), (destbuf))
-
-#define uitoa(num, destbuf, base) \
-   _Generic((num), u32: uitoa32, u64: uitoa64)((num), (destbuf), (base))
-
-
 static ALWAYS_INLINE bool isalpha_lower(int c) {
    return (c >= 'a' && c <= 'z');
 }

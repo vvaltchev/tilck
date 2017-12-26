@@ -13,13 +13,11 @@ matrix:
       env: RELEASE=on
       addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
+#         sources:
+#           - ubuntu-toolchain-r-test
           packages:
-            - gcc-6
-            - g++-6
-            - gcc-6-multilib
-            - g++-6-multilib
+            - gcc-multilib
+            - g++-multilib
             - nasm
             - binutils-multiarch
             - mtools
@@ -32,13 +30,11 @@ matrix:
       env: RELEASE=off USE_GCOV=on
       addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
+#         sources:
+#           - ubuntu-toolchain-r-test
           packages:
-            - gcc-6
-            - g++-6
-            - gcc-6-multilib
-            - g++-6-multilib
+            - gcc-multilib
+            - g++-multilib
             - nasm
             - binutils-multiarch
             - mtools
@@ -48,7 +44,6 @@ before_install:
   - ./scripts/build_toolchain --skip-install-pkgs
 
 install:
-  - ./scripts/cmake_run
   - make
   - make gtests
 
