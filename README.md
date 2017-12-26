@@ -50,7 +50,7 @@ Unit tests
 
 You could build kernel's unit tests this way:
 
-    ./make_run gtests
+    make gtests
 
 And run them with:
 
