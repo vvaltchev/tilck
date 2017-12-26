@@ -2,6 +2,13 @@ cmake_minimum_required(VERSION 3.2)
 
 set(KERNEL_LOAD_VADDR 0xC0100000)
 
+if (${ARCH} STREQUAL "i386")
+
+   set(CMAKE_C_COMPILER
+       ${TCROOT}/x86-i686--glibc--stable/bin/i686-buildroot-linux-gnu-gcc)
+
+endif()
+
 set(
    GENERAL_KERNEL_FLAGS_LIST
 

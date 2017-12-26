@@ -189,6 +189,27 @@ function install_packages {
 }
 
 ###############################
+# x86-i686 GNU toolchain
+###############################
+
+function download_i686_toolchain {
+
+   pushd .
+
+   if ! [ -d x86-i686--glibc--stable ]; then
+      tarname=x86-i686--glibc--stable-2017.05-toolchains-1-1.tar.bz2
+      wget http://toolchains.free-electrons.com/downloads/releases/toolchains/x86-i686/tarballs/$tarname
+      tar xfj $tarname
+      rm $tarname
+   else
+      echo "NOTE: Skipping x86-i686 GNU toolchain"
+   fi
+
+   popd
+}
+
+
+###############################
 # CMake 3.7
 ###############################
 
@@ -400,6 +421,7 @@ fi
 
 echo
 
+download_i686_toolchain
 build_cmake
 build_lcov
 build_dietlibc
