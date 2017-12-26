@@ -41,39 +41,43 @@ if ! which $CXX &> /dev/null; then
    exit 1
 fi
 
+if $CC --version | grep gcc; then
 
-cc_ver=`$CC --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
-cxx_ver=`$CXX --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
+   cc_ver=`$CC --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
+   cc_major=`echo -ne $cc_ver | grep -Eo '[0-9]+' | head -1`
+   cc_minor=`echo -ne $cc_ver | grep -Eo '[0-9]+' | head -2 | tail -1`
+   echo "gcc version (parsed): $cc_major.$cc_minor"
 
-echo "gcc version: $cc_ver"
-echo "g++ version: $cxx_ver"
+   if [ $cc_major -lt 4 ]; then
+      echo "Your gcc compiler is too old. Version >= 4.8 is required."
+      exit 1
+   fi
 
-cc_major=`echo -ne $cc_ver | grep -Eo '[0-9]+' | head -1`
-cc_minor=`echo -ne $cc_ver | grep -Eo '[0-9]+' | head -2 | tail -1`
+   if [ $cc_major -eq 4 ] && [ $cc_minor -lt 8 ]; then
+      echo "Your gcc compiler is too old. Version >= 4.8 is required."
+      exit 1
+   fi
 
-cxx_major=`echo -ne $cxx_ver | grep -Eo '[0-9]+' | head -1`
-cxx_minor=`echo -ne $cxx_ver | grep -Eo '[0-9]+' | head -2 | tail -1`
-
-if [ $cc_major -lt 4 ]; then
-   echo "Your gcc compiler is too old. Version >= 4.8 is required."
-   exit 1
 fi
 
-if [ $cxx_major -lt 4 ]; then
-   echo "Your g++ compiler is too old. Version >= 4.8 is required."
-   exit 1
-fi
+if $CXX --version | grep g++; then
 
-if [ $cc_minor -lt 8 ]; then
-   echo "Your gcc compiler is too old. Version >= 4.8 is required."
-   exit 1
-fi
+   cxx_ver=`$CXX --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
+   cxx_major=`echo -ne $cxx_ver | grep -Eo '[0-9]+' | head -1`
+   cxx_minor=`echo -ne $cxx_ver | grep -Eo '[0-9]+' | head -2 | tail -1`
+   echo "g++ version (parsed): $cxx_major.$cxx_minor"
 
-if [ $cxx_minor -lt 8 ]; then
-   echo "Your g++ compiler is too old. Version >= 4.8 is required."
-   exit 1
-fi
+   if [ $cxx_major -lt 4 ]; then
+      echo "Your g++ compiler is too old. Version >= 4.8 is required."
+      exit 1
+   fi
 
+   if [ $cxx_major -eq 4 ] && [ $cxx_minor -lt 8 ]; then
+      echo "Your g++ compiler is too old. Version >= 4.8 is required."
+      exit 1
+   fi
+
+fi
 
 CMAKE=$MAIN_DIR/toolchain/cmake-3.7.0-Linux-x86_64/bin/cmake
 
