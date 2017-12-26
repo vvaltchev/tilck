@@ -22,7 +22,7 @@ FUNCTION(PREPEND var prefix)
 ENDFUNCTION(PREPEND)
 
 ###########################################################
-# Architecture setting. Only i386 is accepted by now.
+# Architecture setting. Only x86 is accepted by now.
 
 set(ARCH "i386")
 
@@ -32,7 +32,6 @@ set(USE_GCOV CACHE BOOL "Compile the tests for measuring coverage")
 ###########################################################
 
 if (${ARCH} STREQUAL "i386")
-   set(ARCH_FLAGS "-m32 -march=i686")
    set(NASM_ARCH_FORMAT "elf32")
 else()
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
@@ -41,6 +40,7 @@ endif()
 
 set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_SHARED_LIBRARIES off)
+set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
 
 # Let's assume the right compiler is set from outside
 #set(CMAKE_C_COMPILER ${BUILD_SCRIPTS}/run_gcc)

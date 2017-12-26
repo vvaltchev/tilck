@@ -20,7 +20,15 @@ cmake_minimum_required(VERSION 3.2)
 
 file(GLOB SOURCES "*.c")
 
-set(DIET_LIBC_PATH "${CMAKE_SOURCE_DIR}/toolchain/dietlibc-0.33")
+if (${ARCH} STREQUAL "i386")
+
+   set(CMAKE_C_COMPILER
+       ${TCROOT}/x86-i686--glibc--stable/bin/i686-buildroot-linux-gnu-gcc)
+
+endif()
+
+
+set(DIET_LIBC_PATH ${TCROOT}/dietlibc-0.33)
 
 include_directories(SYSTEM ${DIET_LIBC_PATH}/include)
 
