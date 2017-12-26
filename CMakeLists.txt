@@ -97,6 +97,7 @@ set(
    WARN_FLAGS_LIST
 
    -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Werror
+   -Wno-missing-braces # See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53119
 )
 
 JOIN("${GENERAL_DEFS_LIST}" ${SPACE} GENERAL_DEFS)

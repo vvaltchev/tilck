@@ -17,7 +17,6 @@ matrix:
 #           - ubuntu-toolchain-r-test
           packages:
             - gcc-multilib
-            - g++-multilib
             - nasm
             - binutils-multiarch
             - mtools
@@ -34,7 +33,6 @@ matrix:
 #           - ubuntu-toolchain-r-test
           packages:
             - gcc-multilib
-            - g++-multilib
             - nasm
             - binutils-multiarch
             - mtools
