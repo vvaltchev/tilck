@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.2)
 
 file(GLOB SOURCES "*.c" "*.cpp")
 
-set(GTEST_DIR "${CMAKE_SOURCE_DIR}/toolchain/googletest/googletest")
+set(GTEST_DIR "${TCROOT}/googletest/googletest")
 
 include_directories("${CMAKE_SOURCE_DIR}/kernel/include")
 include_directories("${GTEST_DIR}/include")

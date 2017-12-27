@@ -186,6 +186,30 @@ function install_packages {
 }
 
 ###############################
+# Mtools
+###############################
+
+function build_mtools {
+
+   pushd .
+
+   if ! [ -d mtools ]; then
+      wget ftp://ftp.gnu.org/gnu/mtools/mtools-4.0.18.tar.gz
+      tar xfz mtools-4.0.18.tar.gz
+      rm mtools-4.0.18.tar.gz
+      mv mtools-4.0.18 mtools
+      cd mtools
+      ./configure
+      make -j
+   else
+      echo "NOTE: Skipping mtools"
+   fi
+
+   popd
+}
+
+
+###############################
 # x86-i686 GNU toolchain
 ###############################
 
@@ -424,4 +448,5 @@ build_lcov
 build_dietlibc
 build_gtest
 build_gnuefi
+build_mtools
 
