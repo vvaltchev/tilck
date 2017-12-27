@@ -162,21 +162,55 @@ function install_packages {
 
    else
 
-      echo "Your distribution is not fully supported by this script."
-      echo "The supported distros are:"
-      echo "  * Ubuntu"
-      echo "  * Mint"
-      echo "  * Debian"
-      echo "  * Fedora"
-      echo "In order to compile exOS on this distro, please make sure the "
-      echo "following packages (ubuntu package names) are installed:"
+      pkg_list=()
 
-      for x in ${ubuntu_pkg_list[@]}; do
-         echo "  * $x"
-      done
+      if ! which wget &> /dev/null; then
+         pkg_list+=(wget)
+      fi
 
-      echo "After that, re-run this script with the option --skip-install-pkgs"
-      exit 1
+      if ! which git &> /dev/null; then
+         pkg_list+=(git)
+      fi
+
+      if ! which gcc &> /dev/null; then
+         pkg_list+=(gcc)
+      fi
+
+      if ! which g++ &> /dev/null; then
+         pkg_list+=(g++)
+      fi
+
+      if ! which make &> /dev/null; then
+         pkg_list+=(make)
+      fi
+
+      if ! which objdump &> /dev/null; then
+         pkg_list+=(binutils)
+      fi
+
+      if ! which qemu-system-x86_64; then
+         pkg_list+=(qemu-system-x86)
+      fi
+
+      if [ ${#pkg_list[@]} -ne 0 ]; then
+
+         echo "Your distribution is not fully supported by this script."
+         echo "The supported distros are:"
+         echo "  * Ubuntu"
+         echo "  * Mint"
+         echo "  * Debian"
+         echo "  * Fedora"
+         echo "In order to compile exOS on this distro, please make sure the "
+         echo "following packages (ubuntu package names) are installed:"
+
+         for x in ${pkg_list[@]}; do
+            echo "  * $x"
+         done
+
+         echo "After that, re-run this script with the option --skip-install-pkgs"
+         exit 1
+
+      fi
    fi
 
 }
