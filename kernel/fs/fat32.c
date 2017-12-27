@@ -192,6 +192,17 @@ static void reverse_long_name(fat_walk_dir_ctx *ctx)
       ctx->long_name_buf[i] = tmp[i];
 }
 
+bool fat32_is_valid_filename_character(char c)
+{
+   return c >= ' ' && c <= '~' && c != '/' &&
+          c != '\\' && c != '\"' && c != '*' &&
+          c != ':' && c != '<' && c != '>' &&
+          c != '?' && c != '|';
+}
+
+/*
+ * WARNING: this implementation supports only the ASCII subset of UTF16.
+ */
 static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
                                       fat_long_entry *le)
 {
@@ -202,10 +213,21 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
       bzero(ctx->long_name_buf, sizeof(ctx->long_name_chksum));
       ctx->long_name_size = 0;
       ctx->long_name_chksum = le->LDIR_Chksum;
+      ctx->is_valid = true;
    }
+
+   if (!ctx->is_valid)
+      return;
 
    for (int i = 0; i < 10; i+=2) {
       u8 c = le->LDIR_Name1[i];
+
+      /* NON-ASCII characters are NOT supported */
+      if (le->LDIR_Name1[i+1] != 0) {
+         ctx->is_valid = true;
+         return;
+      }
+
       if (c == 0 || c == 0xFF)
          goto end;
       entrybuf[ebuf_size++] = c;
@@ -213,6 +235,13 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 
    for (int i = 0; i < 12; i+=2) {
       u8 c = le->LDIR_Name2[i];
+
+      /* NON-ASCII characters are NOT supported */
+      if (le->LDIR_Name2[i+1] != 0) {
+         ctx->is_valid = true;
+         return;
+      }
+
       if (c == 0 || c == 0xFF)
          goto end;
       entrybuf[ebuf_size++] = c;
@@ -220,6 +249,13 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 
    for (int i = 0; i < 4; i+=2) {
       u8 c = le->LDIR_Name3[i];
+
+      /* NON-ASCII characters are NOT supported */
+      if (le->LDIR_Name3[i+1] != 0) {
+         ctx->is_valid = true;
+         return;
+      }
+
       if (c == 0 || c == 0xFF)
          goto end;
       entrybuf[ebuf_size++] = c;
@@ -227,8 +263,17 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 
    end:
 
-   for (int i = ebuf_size-1; i >= 0; i--)
-      ctx->long_name_buf[ctx->long_name_size++] = entrybuf[i];
+   for (int i = ebuf_size-1; i >= 0; i--) {
+
+      char c = entrybuf[i];
+
+      if (!fat32_is_valid_filename_character(c)) {
+         ctx->is_valid = false;
+         break;
+      }
+
+      ctx->long_name_buf[ctx->long_name_size++] = c;
+   }
 }
 
 int fat_walk_directory(fat_walk_dir_ctx *ctx,
@@ -296,7 +341,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
 
          const char *long_name_ptr = NULL;
 
-         if (ctx->long_name_size > 0) {
+         if (ctx->long_name_size > 0 && ctx->is_valid) {
 
             s16 entry_checksum = shortname_checksum(entry[i].DIR_Name);
             if (ctx->long_name_chksum == entry_checksum) {
@@ -599,6 +644,11 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
    fat_walk_directory(&ctx.walk_ctx, hdr, ft, root, root_dir_cluster,
                       &fat_search_entry_cb, &ctx, 0);
    return ctx.result;
+}
+
+size_t fat_get_file_size(fat_entry *entry)
+{
+   return entry->DIR_FileSize;
 }
 
 void

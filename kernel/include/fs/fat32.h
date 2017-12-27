@@ -164,11 +164,14 @@ fat_get_pointer_to_cluster_data(fat_header *hdr, u32 clusterN)
 
 // PUBLIC interface ------------------------------------------------------------
 
+bool fat32_is_valid_filename_character(char c);
+
 typedef struct {
 
    u8 long_name_buf[256];
    s16 long_name_size;
    s16 long_name_chksum;
+   bool is_valid;
 
 } fat_walk_dir_ctx;
 
@@ -191,6 +194,8 @@ fat_walk_directory(fat_walk_dir_ctx *ctx,
 
 
 fat_entry *fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath);
+
+size_t fat_get_file_size(fat_entry *entry);
 
 void
 fat_read_whole_file(fat_header *hdr,
