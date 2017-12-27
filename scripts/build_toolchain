@@ -188,7 +188,7 @@ function install_packages {
          pkg_list+=(binutils)
       fi
 
-      if ! which qemu-system-x86_64; then
+      if ! which qemu-system-x86_64 &> /dev/null; then
          pkg_list+=(qemu-system-x86)
       fi
 
