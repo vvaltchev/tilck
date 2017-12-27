@@ -231,16 +231,17 @@ function download_i686_toolchain {
 
 
 ###############################
-# CMake 3.7
+# CMake
 ###############################
 
 function build_cmake {
 
    pushd .
-   if ! [ -d cmake-3.7.0-Linux-x86_64 ]; then
+   if ! [ -d cmake ]; then
       wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
       tar xf cmake-3.7.0-Linux-x86_64.tar.gz
-      CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
+      mv cmake-3.7.0-Linux-x86_64 cmake
+      CMAKE=$TC/cmake/bin/cmake
       rm cmake-3.7.0-Linux-x86_64.tar.gz
    else
       echo "NOTE: Skipping CMake"
