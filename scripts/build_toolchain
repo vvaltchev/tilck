@@ -186,6 +186,30 @@ function install_packages {
 }
 
 ###############################
+# Nasm
+###############################
+
+function build_nasm {
+
+   pushd .
+
+   if ! [ -d nasm ]; then
+      tarname=nasm-2.13.02.tar.gz
+      wget http://www.nasm.us/pub/nasm/releasebuilds/2.13.02/$tarname
+      tar xfz $tarname
+      rm $tarname
+      mv nasm-2.13.02 nasm
+      cd nasm
+      ./configure
+      make -j
+   else
+      echo "NOTE: Skipping nasm"
+   fi
+
+   popd
+}
+
+###############################
 # Mtools
 ###############################
 
@@ -194,9 +218,10 @@ function build_mtools {
    pushd .
 
    if ! [ -d mtools ]; then
-      wget ftp://ftp.gnu.org/gnu/mtools/mtools-4.0.18.tar.gz
-      tar xfz mtools-4.0.18.tar.gz
-      rm mtools-4.0.18.tar.gz
+      tarname=mtools-4.0.18.tar.gz
+      wget ftp://ftp.gnu.org/gnu/mtools/$tarname
+      tar xfz $tarname
+      rm $tarname
       mv mtools-4.0.18 mtools
       cd mtools
       ./configure
@@ -450,4 +475,4 @@ build_dietlibc
 build_gtest
 build_gnuefi
 build_mtools
-
+build_nasm

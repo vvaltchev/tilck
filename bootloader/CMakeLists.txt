@@ -8,7 +8,7 @@ add_custom_command(
    DEPENDS
       ${SOURCES}
    COMMAND
-      nasm -f bin -o boot.o ${SOURCES}
+      ${CMAKE_ASM_NASM_COMPILER} -f bin -o boot.o ${SOURCES}
    COMMENT
       "Building the BIOS bootloader"
 )
