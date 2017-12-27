@@ -5,6 +5,7 @@
 #include <irq.h>
 #include <process.h>
 #include <hal.h>
+#include <errno.h>
 
 typedef sptr (*syscall_type)();
 
@@ -208,7 +209,7 @@ void handle_syscall(regs *r)
 
    if (syscall_no < 0 || syscall_no >= syscall_count) {
       printk("INVALID syscall #%i\n", syscall_no);
-      r->eax = (uptr) -1;
+      r->eax = (uptr) -ENOSYS;
       return;
    }
 
