@@ -230,8 +230,8 @@ function build_nasm {
       rm $tarname
       mv nasm-2.13.02 nasm
       cd nasm
-      ./configure
-      make -j &> build_nasm_log.txt
+      run_command2 ./configure configure_log.txt
+      run_command2 "make -j" build_nasm_log.txt
    else
       echo "NOTE: Skipping nasm"
    fi
@@ -254,8 +254,8 @@ function build_mtools {
       rm $tarname
       mv mtools-4.0.18 mtools
       cd mtools
-      ./configure
-      make -j &> build_mtools_log.txt
+      run_command2 ./configure configure_log.txt
+      run_command2 "make -j" build_mtools_log.txt
    else
       echo "NOTE: Skipping mtools"
    fi
@@ -434,9 +434,8 @@ function build_libmusl {
       libmusl_opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
       libmusl_opts3="--syslibdir=$TC/musl-install/lib"
 
-      ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3
-
-      make -j &> libmusl_build_log.txt
+      ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3 &> configure_logs.txt
+      run_command2 "make -j" libmusl_build_log.txt
       make install
    else
       echo "NOTE: Skipping musl"
@@ -458,7 +457,7 @@ function build_gnuefi {
 
       git clone --branch 3.0.6 --depth 1 https://git.code.sf.net/p/gnu-efi/code gnu-efi
       cd gnu-efi
-      make -j &> gnu_efi_build.log
+      run_command2 "make -j" gnu_efi_build.log
 
    else
 
@@ -532,6 +531,8 @@ else
    echo "*** SKIPPING installation of packages"
 fi
 
+echo
+echo "*** Building the custom toolchain ***"
 echo
 
 download_i686_toolchain
