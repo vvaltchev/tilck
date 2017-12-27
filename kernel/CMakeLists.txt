@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
 
-set(KERNEL_LOAD_VADDR 0xC0100000)
-
-
 set(
    GENERAL_KERNEL_FLAGS_LIST
 
@@ -17,9 +14,6 @@ JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
 set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 
 include_directories("include")
-
-add_subdirectory(arch)
-
 file(GLOB SOURCES "*.c" "fs/*.c" "test_stuff/*.c")
 
 # Creating a static library target for putting kernel's arch-independent code.
@@ -33,3 +27,5 @@ set_target_properties(
    PROPERTIES
       COMPILE_FLAGS "-DKERNEL_TEST ${KERNEL_FLAGS} ${GCOV_COMPILE_FLAGS}"
 )
+
+add_subdirectory(arch)
