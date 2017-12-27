@@ -4,8 +4,13 @@ set(KERNEL_LOAD_VADDR 0xC0100000)
 
 if (${ARCH} STREQUAL "i386")
 
-   set(CMAKE_C_COMPILER
-       ${TCROOT}/x86-i686--glibc--stable/bin/i686-buildroot-linux-gnu-gcc)
+   set(GCC_TOOLCHAIN ${TCROOT}/x86-i686--glibc--stable/bin)
+   set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-gcc)
+   set(OBJCOPY ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-objcopy)
+
+else()
+
+   set(OBJCOPY objcopy)
 
 endif()
 
@@ -34,6 +39,7 @@ file(GLOB SOURCES "../*.c" "../fs/*.c" "../test_stuff/*.c")
 
 
 add_executable(elf_kernel ${ARCH_SOURCES} ${SOURCES})
+
 set_target_properties(
 
    elf_kernel
@@ -52,7 +58,7 @@ add_custom_command(
     COMMAND
         ${BUILD_SCRIPTS}/bss_checker.sh elf_kernel
     COMMAND
-        objcopy -O binary -j .text -j .rodata -j .data elf_kernel ${KERNEL_BIN_FILE}
+        ${OBJCOPY} -O binary -j .text -j .rodata -j .data elf_kernel ${KERNEL_BIN_FILE}
     DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
     COMMENT
