@@ -19,6 +19,13 @@ extern int current_max_pid;
  * ***************************************************************
  */
 
+sptr sys_pause()
+{
+   task_change_state(current, TASK_STATE_SLEEPING);
+   kernel_yield();
+   return 0;
+}
+
 sptr sys_getpid()
 {
    ASSERT(current != NULL);
