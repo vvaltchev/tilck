@@ -28,16 +28,11 @@ popd () {
 
 ubuntu_pkg_list=()
 ubuntu_pkg_list+=(wget)
+ubuntu_pkg_list+=(git)
 ubuntu_pkg_list+=(gcc)
 ubuntu_pkg_list+=(g++)
-ubuntu_pkg_list+=(git)
-ubuntu_pkg_list+=(nasm)
-ubuntu_pkg_list+=(gcc-multilib)
-ubuntu_pkg_list+=(g++-multilib)
 ubuntu_pkg_list+=(make)
 ubuntu_pkg_list+=(binutils)
-ubuntu_pkg_list+=(binutils-multiarch)
-ubuntu_pkg_list+=(mtools)
 ubuntu_pkg_list+=(qemu-system-x86)
 
 function install_ubuntu_family {
@@ -104,13 +99,11 @@ function install_fedora {
 
    packages_list=()
    packages_list+=(wget)
+   packages_list+=(git)
    packages_list+=(gcc)
    packages_list+=(gcc-c++)
-   packages_list+=(git)
-   packages_list+=(nasm)
    packages_list+=(make)
    packages_list+=(binutils)
-   packages_list+=(mtools)
    packages_list+=(qemu-system-x86)
    packages_list+=(bzip2)
 
@@ -169,43 +162,184 @@ function install_packages {
 
    else
 
-      echo "Your distribution is not fully supported by this script."
-      echo "The supported distros are:"
-      echo "  * Ubuntu"
-      echo "  * Mint"
-      echo "  * Debian"
-      echo "  * Fedora"
-      echo "In order to compile exOS on this distro, please make sure the "
-      echo "following packages (ubuntu package names) are installed:"
+      pkg_list=()
 
-      for x in ${ubuntu_pkg_list[@]}; do
-         echo "  * $x"
-      done
+      if ! which wget &> /dev/null; then
+         pkg_list+=(wget)
+      fi
 
-      echo "After that, re-run this script with the option --skip-install-pkgs"
-      exit 1
+      if ! which git &> /dev/null; then
+         pkg_list+=(git)
+      fi
+
+      if ! which gcc &> /dev/null; then
+         pkg_list+=(gcc)
+      fi
+
+      if ! which g++ &> /dev/null; then
+         pkg_list+=(g++)
+      fi
+
+      if ! which make &> /dev/null; then
+         pkg_list+=(make)
+      fi
+
+      if ! which objdump &> /dev/null; then
+         pkg_list+=(binutils)
+      fi
+
+      if ! which qemu-system-x86_64 &> /dev/null; then
+         pkg_list+=(qemu-system-x86)
+      fi
+
+      if [ ${#pkg_list[@]} -ne 0 ]; then
+
+         echo "Your distribution is not fully supported by this script."
+         echo "The supported distros are:"
+         echo "  * Ubuntu"
+         echo "  * Mint"
+         echo "  * Debian"
+         echo "  * Fedora"
+         echo "In order to compile exOS on this distro, please make sure the "
+         echo "following packages (ubuntu package names) are installed:"
+
+         for x in ${pkg_list[@]}; do
+            echo "  * $x"
+         done
+
+         echo "After that, re-run this script with the option --skip-install-pkgs"
+         exit 1
+
+      fi
    fi
 
 }
 
 ###############################
-# CMake 3.7
+# Nasm
 ###############################
+
+function build_nasm {
+
+   pushd .
+
+   if ! [ -d nasm ]; then
+      tarname=nasm-2.13.02.tar.gz
+      wget http://www.nasm.us/pub/nasm/releasebuilds/2.13.02/$tarname
+      tar xfz $tarname
+      rm $tarname
+      mv nasm-2.13.02 nasm
+      cd nasm
+      run_command2 ./configure configure_log.txt
+      run_command2 "make -j" build_nasm_log.txt
+   else
+      echo "NOTE: Skipping nasm"
+   fi
+
+   popd
+}
+
+###############################
+# Mtools
+###############################
+
+function build_mtools {
+
+   pushd .
+
+   if ! [ -d mtools ]; then
+      tarname=mtools-4.0.18.tar.gz
+      wget ftp://ftp.gnu.org/gnu/mtools/$tarname
+      tar xfz $tarname
+      rm $tarname
+      mv mtools-4.0.18 mtools
+      cd mtools
+      run_command2 ./configure configure_log.txt
+      run_command2 "make -j" build_mtools_log.txt
+   else
+      echo "NOTE: Skipping mtools"
+   fi
+
+   popd
+}
+
+
+###############################
+# x86-i686 GNU toolchain
+###############################
+
+function download_i686_toolchain {
+
+   pushd .
+
+   if ! [ -d x86-i686--glibc--stable ]; then
+      tarname=x86-i686--glibc--stable-2017.05-toolchains-1-1.tar.bz2
+      wget http://toolchains.free-electrons.com/downloads/releases/toolchains/x86-i686/tarballs/$tarname
+      tar xfj $tarname
+      rm $tarname
+   else
+      echo "NOTE: Skipping x86-i686 GNU toolchain"
+   fi
+
+   popd
+}
+
+
+###############################
+# CMake
+###############################
+
+function build_cmake_internal {
+   wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
+   tar xf cmake-3.7.0-Linux-x86_64.tar.gz
+   mv cmake-3.7.0-Linux-x86_64 cmake
+   CMAKE=$TC/cmake/bin/cmake
+   rm cmake-3.7.0-Linux-x86_64.tar.gz
+}
 
 function build_cmake {
 
    pushd .
-   if ! [ -d cmake-3.7.0-Linux-x86_64 ]; then
-      wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
-      tar xf cmake-3.7.0-Linux-x86_64.tar.gz
-      CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
-      rm cmake-3.7.0-Linux-x86_64.tar.gz
+
+   if ! [ -d cmake ]; then
+
+      if ! which cmake &> /dev/null; then
+
+         # CMake is not installed on the machine, download it.
+         build_cmake_internal
+
+      else
+
+         # CMake is installed: let's check its version
+         ver=`cmake --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
+         major=`echo -ne $ver | grep -Eo '[0-9]+' | head -1`
+         minor=`echo -ne $ver | grep -Eo '[0-9]+' | head -2 | tail -1`
+
+         if [ $major -lt 3 ]; then
+
+            # The installed CMake is too old.
+            build_cmake_internal
+
+         elif [ $minor -lt 2 ]; then
+
+            # The installed CMake is too old. Ver >= 3.2 is required.
+            build_cmake_internal
+
+         else
+
+            # The installed version is >= 3.2. Using it.
+            CMAKE=cmake
+            echo "NOTE: Using system's CMake (version $major.$minor)"
+
+         fi
+
+      fi
+
    else
       echo "NOTE: Skipping CMake"
    fi
 
    popd
-
 }
 
 ###############################
@@ -300,9 +434,8 @@ function build_libmusl {
       libmusl_opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
       libmusl_opts3="--syslibdir=$TC/musl-install/lib"
 
-      ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3
-
-      make
+      ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3 &> configure_logs.txt
+      run_command2 "make -j" libmusl_build_log.txt
       make install
    else
       echo "NOTE: Skipping musl"
@@ -324,7 +457,7 @@ function build_gnuefi {
 
       git clone --branch 3.0.6 --depth 1 https://git.code.sf.net/p/gnu-efi/code gnu-efi
       cd gnu-efi
-      make
+      run_command2 "make -j" gnu_efi_build.log
 
    else
 
@@ -359,8 +492,8 @@ mkdir -p $TC
 cd $TC
 
 # Export the CMAKE variable in order to single functions to be able to use it
-if [ -f $TC/cmake-3.7.0-Linux-x86_64/bin/cmake ]; then
-   CMAKE=$TC/cmake-3.7.0-Linux-x86_64/bin/cmake
+if [ -f $TC/cmake/bin/cmake ]; then
+   CMAKE=$TC/cmake/bin/cmake
 else
    CMAKE=cmake
 fi
@@ -399,10 +532,14 @@ else
 fi
 
 echo
+echo "*** Building the custom toolchain ***"
+echo
 
+download_i686_toolchain
 build_cmake
 build_lcov
 build_dietlibc
 build_gtest
 build_gnuefi
-
+build_mtools
+build_nasm

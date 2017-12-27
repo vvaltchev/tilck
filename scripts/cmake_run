@@ -79,7 +79,16 @@ if $CXX --version | grep g++; then
 
 fi
 
-CMAKE=$MAIN_DIR/toolchain/cmake-3.7.0-Linux-x86_64/bin/cmake
+export CC
+export CXX
+
+if [ -f $MAIN_DIR/toolchain/cmake/bin/cmake ]; then
+   export CMAKE=$MAIN_DIR/toolchain/cmake/bin/cmake
+else
+   export CMAKE=cmake
+fi
+
+export ASM_NASM=$MAIN_DIR/toolchain/nasm/nasm
 
 if [ -z "$RELEASE" ]; then
    RELEASE=off

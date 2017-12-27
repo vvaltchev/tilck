@@ -41,7 +41,7 @@ add_custom_command(
    DEPENDS
       ${ASM_SOURCES}
    COMMAND
-      nasm -f bin -o ${SWITCHMODE_BIN} ${ASM_SOURCES}
+      ${CMAKE_ASM_NASM_COMPILER} -f bin -o ${SWITCHMODE_BIN} ${ASM_SOURCES}
    COMMENT
       "Building switchmode.bin"
 )

@@ -8,35 +8,23 @@ matrix:
   include:
     - os: linux
       dist: trusty
-      sudo: required
+      sudo: false
       language: generic
       env: RELEASE=on
-      addons:
-        apt:
-#         sources:
-#           - ubuntu-toolchain-r-test
-          packages:
-            - gcc-multilib
-            - binutils-multiarch
-            - nasm
-            - mtools
-            - qemu
+      # addons:
+      #   apt:
+      #     packages:
+      #       - qemu-system-x86
 
     - os: linux
       dist: trusty
-      sudo: required
+      sudo: false
       language: generic
       env: RELEASE=off USE_GCOV=on
-      addons:
-        apt:
-#         sources:
-#           - ubuntu-toolchain-r-test
-          packages:
-            - gcc-multilib
-            - binutils-multiarch
-            - nasm
-            - mtools
-            - qemu
+      # addons:
+      #   apt:
+      #     packages:
+      #       - qemu-system-x86
 
 before_install:
   - ./scripts/build_toolchain --skip-install-pkgs
@@ -48,5 +36,5 @@ install:
 script:
   - ./build/gtests
   - ./scripts/generate_coverage_report # Does nothing if not USE_GCOV.
-  - ./system_tests/run_system_test
+#  - ./system_tests/run_system_test
 

@@ -22,7 +22,7 @@ FUNCTION(PREPEND var prefix)
 ENDFUNCTION(PREPEND)
 
 ###########################################################
-# Architecture setting. Only i386 is accepted by now.
+# Architecture setting. Only x86 is accepted by now.
 
 set(ARCH "i386")
 
@@ -32,15 +32,16 @@ set(USE_GCOV CACHE BOOL "Compile the tests for measuring coverage")
 ###########################################################
 
 if (${ARCH} STREQUAL "i386")
-   set(ARCH_FLAGS "-m32 -march=i686")
    set(NASM_ARCH_FORMAT "elf32")
 else()
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
 endif()
 
-
 set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_SHARED_LIBRARIES off)
+set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
+set(CMAKE_ASM_NASM_COMPILER ${TCROOT}/nasm/nasm)
+
 
 # Let's assume the right compiler is set from outside
 #set(CMAKE_C_COMPILER ${BUILD_SCRIPTS}/run_gcc)
@@ -139,7 +140,7 @@ add_custom_command(
    COMMAND
       dd status=none conv=notrunc if=${KERNEL_BIN_FILE} of=${IMG_FILE} seek=4 bs=1K
    COMMAND
-      ${BUILD_SCRIPTS}/build_fatpart.sh ${CMAKE_BINARY_DIR} fatpart
+      ${BUILD_SCRIPTS}/build_fatpart.sh ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} fatpart
    COMMAND
       # For development purposes, copy just a small part from the fatpart to make the build faster.
       #dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K count=8192
