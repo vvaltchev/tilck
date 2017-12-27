@@ -8,7 +8,7 @@ matrix:
   include:
     - os: linux
       dist: trusty
-#      sudo: required
+      sudo: false
       language: generic
       env: RELEASE=on
       # addons:
@@ -18,7 +18,7 @@ matrix:
 
     - os: linux
       dist: trusty
-#      sudo: required
+      sudo: false
       language: generic
       env: RELEASE=off USE_GCOV=on
       # addons:
