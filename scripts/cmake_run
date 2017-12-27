@@ -79,7 +79,7 @@ if $CXX --version | grep g++; then
 
 fi
 
-CMAKE=$MAIN_DIR/toolchain/cmake-3.7.0-Linux-x86_64/bin/cmake
+CMAKE=$MAIN_DIR/toolchain/cmake/bin/cmake
 
 if [ -z "$RELEASE" ]; then
    RELEASE=off

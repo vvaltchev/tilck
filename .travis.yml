@@ -13,11 +13,8 @@ matrix:
       env: RELEASE=on
       addons:
         apt:
-#         sources:
-#           - ubuntu-toolchain-r-test
           packages:
             - nasm
-            - mtools
             - qemu
 
     - os: linux
@@ -27,11 +24,8 @@ matrix:
       env: RELEASE=off USE_GCOV=on
       addons:
         apt:
-#         sources:
-#           - ubuntu-toolchain-r-test
           packages:
             - nasm
-            - mtools
             - qemu
 
 before_install:
