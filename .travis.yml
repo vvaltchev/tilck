@@ -16,8 +16,8 @@ matrix:
 #         sources:
 #           - ubuntu-toolchain-r-test
           packages:
-            - gcc-multilib
-            - binutils-multiarch
+#            - gcc-multilib
+#            - binutils-multiarch
             - nasm
             - mtools
             - qemu
@@ -32,14 +32,16 @@ matrix:
 #         sources:
 #           - ubuntu-toolchain-r-test
           packages:
-            - gcc-multilib
-            - binutils-multiarch
+#            - gcc-multilib
+#            - binutils-multiarch
             - nasm
             - mtools
             - qemu
 
 before_install:
   - ./scripts/build_toolchain --skip-install-pkgs
+  - ./scripts/build_toolchain -s download_i686_toolchain
+
 
 install:
   - make
