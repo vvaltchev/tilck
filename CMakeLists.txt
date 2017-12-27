@@ -37,10 +37,11 @@ else()
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
 endif()
 
-
 set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_SHARED_LIBRARIES off)
 set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
+set(CMAKE_ASM_NASM_COMPILER ${TCROOT}/nasm/nasm)
+
 
 # Let's assume the right compiler is set from outside
 #set(CMAKE_C_COMPILER ${BUILD_SCRIPTS}/run_gcc)
