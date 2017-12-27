@@ -81,7 +81,13 @@ fi
 
 export CC
 export CXX
-export CMAKE=$MAIN_DIR/toolchain/cmake/bin/cmake
+
+if [ -f $MAIN_DIR/toolchain/cmake/bin/cmake ]; then
+   export CMAKE=$MAIN_DIR/toolchain/cmake/bin/cmake
+else
+   export CMAKE=cmake
+fi
+
 export ASM_NASM=$MAIN_DIR/toolchain/nasm/nasm
 
 if [ -z "$RELEASE" ]; then

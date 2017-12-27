@@ -197,7 +197,7 @@ function build_nasm {
       mv nasm-2.13.02 nasm
       cd nasm
       ./configure
-      make -j
+      make -j &> build_nasm_log.txt
    else
       echo "NOTE: Skipping nasm"
    fi
@@ -221,7 +221,7 @@ function build_mtools {
       mv mtools-4.0.18 mtools
       cd mtools
       ./configure
-      make -j
+      make -j &> build_mtools_log.txt
    else
       echo "NOTE: Skipping mtools"
    fi
@@ -255,21 +255,57 @@ function download_i686_toolchain {
 # CMake
 ###############################
 
+function build_cmake_internal {
+   wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
+   tar xf cmake-3.7.0-Linux-x86_64.tar.gz
+   mv cmake-3.7.0-Linux-x86_64 cmake
+   CMAKE=$TC/cmake/bin/cmake
+   rm cmake-3.7.0-Linux-x86_64.tar.gz
+}
+
 function build_cmake {
 
    pushd .
+
    if ! [ -d cmake ]; then
-      wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
-      tar xf cmake-3.7.0-Linux-x86_64.tar.gz
-      mv cmake-3.7.0-Linux-x86_64 cmake
-      CMAKE=$TC/cmake/bin/cmake
-      rm cmake-3.7.0-Linux-x86_64.tar.gz
+
+      if ! which cmake &> /dev/null; then
+
+         # CMake is not installed on the machine, download it.
+         build_cmake_internal
+
+      else
+
+         # CMake is installed: let's check its version
+         ver=`cmake --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
+         major=`echo -ne $ver | grep -Eo '[0-9]+' | head -1`
+         minor=`echo -ne $ver | grep -Eo '[0-9]+' | head -2 | tail -1`
+
+         if [ $major -lt 3 ]; then
+
+            # The installed CMake is too old.
+            build_cmake_internal
+
+         elif [ $minor -lt 2 ]; then
+
+            # The installed CMake is too old. Ver >= 3.2 is required.
+            build_cmake_internal
+
+         else
+
+            # The installed version is >= 3.2. Using it.
+            CMAKE=cmake
+            echo "NOTE: Using system's CMake (version $major.$minor)"
+
+         fi
+
+      fi
+
    else
       echo "NOTE: Skipping CMake"
    fi
 
    popd
-
 }
 
 ###############################
@@ -366,7 +402,7 @@ function build_libmusl {
 
       ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3
 
-      make
+      make -j &> libmusl_build_log.txt
       make install
    else
       echo "NOTE: Skipping musl"
@@ -388,7 +424,7 @@ function build_gnuefi {
 
       git clone --branch 3.0.6 --depth 1 https://git.code.sf.net/p/gnu-efi/code gnu-efi
       cd gnu-efi
-      make
+      make -j &> gnu_efi_build.log
 
    else
 
