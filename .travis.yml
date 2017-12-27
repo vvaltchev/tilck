@@ -14,7 +14,7 @@ matrix:
       addons:
         apt:
           packages:
-            - qemu
+            - qemu-system-x86
 
     - os: linux
       dist: trusty
@@ -24,7 +24,7 @@ matrix:
       addons:
         apt:
           packages:
-            - qemu
+            - qemu-system-x86
 
 before_install:
   - ./scripts/build_toolchain --skip-install-pkgs
