@@ -16,8 +16,6 @@ matrix:
 #         sources:
 #           - ubuntu-toolchain-r-test
           packages:
-#            - gcc-multilib
-#            - binutils-multiarch
             - nasm
             - mtools
             - qemu
@@ -32,8 +30,6 @@ matrix:
 #         sources:
 #           - ubuntu-toolchain-r-test
           packages:
-#            - gcc-multilib
-#            - binutils-multiarch
             - nasm
             - mtools
             - qemu
