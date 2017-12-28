@@ -68,13 +68,17 @@ _start:
    or eax, 0x10000    ; WP ON (write protect for supervisor)
    mov cr0, eax       ; enable paging!
 
-   mov eax, 0xC0100400
-   jmp eax        ; jump to next instruction using the high virtual address
+   mov eax, .next_step
+   jmp eax        ; Jump to next instruction using the high virtual address.
 
-   times 1024-($-$$) db 0
+                  ; This is necessary since here the EIP is still a physical
+                  ; address, while in the kernel the physical identity mapping
+                  ; is removed. We need to continue using high (+3 GB)
+                  ; virtual addresses. The trick works because this file is
+                  ; part of the original kernel ELF binary where the ORG
+                  ; is set to +3 GB.
 
-   ; the current EIP is 0xC0100400
-
+.next_step:
    mov esp, 0xC000FFF0 ; +64 KB - 16
    jmp kmain   ; now, really jump to kernel's code which uses 0xC0100000 as ORG
 
