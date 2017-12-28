@@ -1,2 +1,2 @@
 #!/bin/sh
-qemu-system-x86_64 -s -S -m 256 -usb -usbdevice disk:format=raw:./build/exos.img $@
+./run_qemu -S $@
