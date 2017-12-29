@@ -1,4 +1,8 @@
+
+#pragma once
+
 #include <common_defs.h>
+#include <fs/exvfs.h>
 
 typedef enum {
 
@@ -202,3 +206,6 @@ fat_read_whole_file(fat_header *hdr,
                     fat_entry *entry,
                     char *dest_buf,
                     size_t dest_buf_size);
+
+filesystem *fat_mount_ramdisk(void *vaddr);
+void fat_umount_ramdisk(filesystem *fs);

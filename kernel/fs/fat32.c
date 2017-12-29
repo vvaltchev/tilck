@@ -2,6 +2,8 @@
 #include <common_defs.h>
 #include <string_util.h>
 #include <fs/fat32.h>
+#include <fs/exvfs.h>
+#include <kmalloc.h>
 
 /*
  * The following code uses in many cases the CamelCase naming convention
@@ -703,3 +705,54 @@ fat_read_whole_file(fat_header *hdr,
    } while (written < fsize);
 }
 
+typedef struct {
+
+   fat_header *hdr; /* vaddr of the beginning of the FAT partition */
+   fat_type type;
+
+} fat_fs_internal_data;
+
+static fs_handle fat_open(filesystem *fs, const char *path)
+{
+   return NULL;
+}
+
+static void fat_close(filesystem *fs, fs_handle handle)
+{
+   /* Do nothing, at least for the moment. */
+}
+
+static int fat_read(filesystem *fs, fs_handle h, char *buf, size_t bufsize)
+{
+   // TODO: implement
+   return -1;
+}
+
+static int fat_write(filesystem *fs, fs_handle h, char *buf, size_t bufsize)
+{
+   // TODO: implement
+   return -1;
+}
+
+filesystem *fat_mount_ramdisk(void *vaddr)
+{
+   fat_fs_internal_data *d = kmalloc(sizeof(fat_fs_internal_data));
+   d->hdr = (fat_header *) vaddr;
+   d->type = fat_get_type(d->hdr);
+
+   filesystem *fs = kmalloc(sizeof(filesystem));
+   fs->device_data = d;
+
+   fs->fopen = fat_open;
+   fs->fclose = fat_close;
+   fs->fread = fat_read;
+   fs->fwrite = fat_write;
+
+   return fs;
+}
+
+void fat_umount_ramdisk(filesystem *fs)
+{
+   kfree(fs->device_data, sizeof(fat_fs_internal_data));
+   kfree(fs, sizeof(filesystem));
+}
