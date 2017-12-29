@@ -709,17 +709,42 @@ typedef struct {
 
    fat_header *hdr; /* vaddr of the beginning of the FAT partition */
    fat_type type;
+   u32 cluster_size;
 
 } fat_fs_internal_data;
 
+typedef struct {
+
+   fat_entry *e;
+   u32 pos;
+   u32 curr_cluster;
+
+} fat_file_handle;
+
 static fs_handle fat_open(filesystem *fs, const char *path)
 {
-   return NULL;
+   fat_fs_internal_data *d = (fat_fs_internal_data *) fs->device_data;
+
+   fat_entry *e = fat_search_entry(d->hdr, d->type, path);
+
+   if (!e) {
+      return NULL; /* file not found */
+   }
+
+   fat_file_handle *h = kmalloc(sizeof(fat_file_handle));
+   VERIFY(h != NULL);
+
+   h->e = e;
+   h->pos = 0;
+   h->curr_cluster = fat_get_first_cluster(e);
+
+   return h;
 }
 
 static void fat_close(filesystem *fs, fs_handle handle)
 {
-   /* Do nothing, at least for the moment. */
+   fat_file_handle *h = (fat_file_handle *)handle;
+   kfree(h, sizeof(fat_file_handle));
 }
 
 static int fat_read(filesystem *fs, fs_handle h, char *buf, size_t bufsize)
@@ -737,10 +762,15 @@ static int fat_write(filesystem *fs, fs_handle h, char *buf, size_t bufsize)
 filesystem *fat_mount_ramdisk(void *vaddr)
 {
    fat_fs_internal_data *d = kmalloc(sizeof(fat_fs_internal_data));
+   VERIFY(d != NULL);
+
    d->hdr = (fat_header *) vaddr;
    d->type = fat_get_type(d->hdr);
+   d->cluster_size = d->hdr->BPB_SecPerClus * d->hdr->BPB_BytsPerSec;
 
    filesystem *fs = kmalloc(sizeof(filesystem));
+   VERIFY(fs != NULL);
+
    fs->device_data = d;
 
    fs->fopen = fat_open;
