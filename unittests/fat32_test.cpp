@@ -7,6 +7,7 @@ using namespace std;
 
 extern "C" {
    #include <fs/fat32.h>
+   #include <fs/exvfs.h>
    #include <utils.h>
 }
 
