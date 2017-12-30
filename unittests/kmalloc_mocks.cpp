@@ -26,6 +26,7 @@ void initialize_test_kernel_heap()
    if (kernel_heap_base != nullptr) {
       memset(kernel_heap_base, 0, HEAP_DATA_SIZE);
       mappings.clear();
+      return;
    }
 
    uptr align_size = 16 * PAGE_SIZE;
