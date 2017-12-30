@@ -10,7 +10,7 @@ matrix:
       dist: trusty
       sudo: false
       language: generic
-      env: RELEASE=on
+      env: RELEASE=1
       # addons:
       #   apt:
       #     packages:
@@ -20,11 +20,17 @@ matrix:
       dist: trusty
       sudo: false
       language: generic
-      env: RELEASE=off USE_GCOV=on
+      env: RELEASE=0 USE_GCOV=on
       # addons:
       #   apt:
       #     packages:
       #       - qemu-system-x86
+    - os: linux
+      dist: trusty
+      sudo: false
+      language: generic
+      env: RELEASE=0 USE_GCOV=on CXX=clang++
+
 
 before_install:
   - ./scripts/build_toolchain --skip-install-pkgs
