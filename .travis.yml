@@ -4,6 +4,14 @@ notifications:
     on_success: never
     on_failure: always
 
+# In order to ask travis to install packages:
+# sudo: required AND under matrix/include:
+# addons:
+#   apt:
+#     packages:
+#       - qemu-system-x86
+# [ at the same level of env ]
+
 matrix:
   include:
     - os: linux
@@ -11,25 +19,16 @@ matrix:
       sudo: false
       language: generic
       env: RELEASE=1
-      # addons:
-      #   apt:
-      #     packages:
-      #       - qemu-system-x86
-
     - os: linux
       dist: trusty
       sudo: false
       language: generic
       env: RELEASE=0 USE_GCOV=on
-      # addons:
-      #   apt:
-      #     packages:
-      #       - qemu-system-x86
     - os: linux
       dist: trusty
       sudo: false
       language: generic
-      env: RELEASE=0 USE_GCOV=on CXX=clang++
+      env: RELEASE=0 CXX=clang++
 
 
 before_install:
@@ -42,5 +41,5 @@ install:
 script:
   - MALLOC_CHECK_=2 ./build/gtests
   - ./scripts/generate_coverage_report # Does nothing if not USE_GCOV.
-#  - ./system_tests/run_system_test
+
 
