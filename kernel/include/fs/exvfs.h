@@ -25,8 +25,8 @@ typedef struct filesystem filesystem;
 
 typedef fs_handle (*func_open) (filesystem *, const char *);
 typedef void (*func_close) (filesystem *, fs_handle);
-typedef int (*func_read) (filesystem *, fs_handle, char *, size_t);
-typedef int (*func_write) (filesystem *, fs_handle, char *, size_t);
+typedef ssize_t (*func_read) (filesystem *, fs_handle, char *, size_t);
+typedef ssize_t (*func_write) (filesystem *, fs_handle, char *, size_t);
 
 struct filesystem {
 
