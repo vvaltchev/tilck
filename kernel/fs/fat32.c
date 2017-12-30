@@ -689,7 +689,7 @@ fat_read_whole_file(fat_header *hdr,
 
       ASSERT((fsize - written) > 0);
 
-      // find the new cluster
+      // find the next cluster
       u32 fatval = fat_read_fat_entry(hdr, ft, cluster, 0);
 
       if (fat_is_end_of_clusterchain(ft, fatval)) {
@@ -705,25 +705,10 @@ fat_read_whole_file(fat_header *hdr,
    } while (written < fsize);
 }
 
-typedef struct {
-
-   fat_header *hdr; /* vaddr of the beginning of the FAT partition */
-   fat_type type;
-   u32 cluster_size;
-
-} fat_fs_internal_data;
-
-typedef struct {
-
-   fat_entry *e;
-   u32 pos;
-   u32 curr_cluster;
-
-} fat_file_handle;
 
 static fs_handle fat_open(filesystem *fs, const char *path)
 {
-   fat_fs_internal_data *d = (fat_fs_internal_data *) fs->device_data;
+   fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
 
    fat_entry *e = fat_search_entry(d->hdr, d->type, path);
 
@@ -747,13 +732,70 @@ static void fat_close(filesystem *fs, fs_handle handle)
    kfree(h, sizeof(fat_file_handle));
 }
 
-static int fat_read(filesystem *fs, fs_handle h, char *buf, size_t bufsize)
+static ssize_t fat_read(filesystem *fs,
+                        fs_handle handle,
+                        char *buf,
+                        size_t bufsize)
 {
-   // TODO: implement
-   return -1;
+   fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
+   fat_file_handle *h = (fat_file_handle *) handle;
+   u32 fsize = h->e->DIR_FileSize;
+   u32 written_to_buf = 0;
+
+   do {
+
+      char *data = fat_get_pointer_to_cluster_data(d->hdr, h->curr_cluster);
+
+      const ssize_t file_rem = fsize - h->pos;
+      const ssize_t buf_rem = bufsize - written_to_buf;
+      const ssize_t cluster_offset = h->pos % d->cluster_size;
+      const ssize_t cluster_rem = d->cluster_size - cluster_offset;
+      const ssize_t to_read = MIN(cluster_rem, MIN(buf_rem, file_rem));
+
+      memmove(buf + written_to_buf, data + cluster_offset, to_read);
+      written_to_buf += to_read;
+      h->pos += to_read;
+
+      if (to_read < cluster_rem) {
+
+         /*
+          * We read less than cluster_rem because the buf was not big enough
+          * of because the file was not big enough. In either case, we cannot
+          * continue.
+          */
+         break;
+      }
+
+      // find the next cluster
+      u32 fatval = fat_read_fat_entry(d->hdr, d->type, h->curr_cluster, 0);
+
+      if (fat_is_end_of_clusterchain(d->type, fatval)) {
+
+         /*
+          * We should NOT get here, unless the file size was an exact multiple
+          * of cluster_size.
+          */
+
+         ASSERT(to_read == d->cluster_size);
+         ASSERT(h->pos == fsize);
+
+         break;
+      }
+
+      // we do not expect BAD CLUSTERS
+      ASSERT(!fat_is_bad_cluster(d->type, fatval));
+
+      h->curr_cluster = fatval; // go reading the new cluster in the chain.
+
+   } while (1);
+
+   return written_to_buf;
 }
 
-static int fat_write(filesystem *fs, fs_handle h, char *buf, size_t bufsize)
+static ssize_t fat_write(filesystem *fs,
+                         fs_handle h,
+                         char *buf,
+                         size_t bufsize)
 {
    // TODO: implement
    return -1;
@@ -761,7 +803,7 @@ static int fat_write(filesystem *fs, fs_handle h, char *buf, size_t bufsize)
 
 filesystem *fat_mount_ramdisk(void *vaddr)
 {
-   fat_fs_internal_data *d = kmalloc(sizeof(fat_fs_internal_data));
+   fat_fs_device_data *d = kmalloc(sizeof(fat_fs_device_data));
    VERIFY(d != NULL);
 
    d->hdr = (fat_header *) vaddr;
@@ -783,6 +825,6 @@ filesystem *fat_mount_ramdisk(void *vaddr)
 
 void fat_umount_ramdisk(filesystem *fs)
 {
-   kfree(fs->device_data, sizeof(fat_fs_internal_data));
+   kfree(fs->device_data, sizeof(fat_fs_device_data));
    kfree(fs, sizeof(filesystem));
 }

@@ -105,6 +105,25 @@ typedef struct __attribute__(( packed )) {
 
 } fat_long_entry;
 
+
+typedef struct {
+
+   fat_header *hdr; /* vaddr of the beginning of the FAT partition */
+   fat_type type;
+   ssize_t cluster_size;
+
+} fat_fs_device_data;
+
+
+typedef struct {
+
+   fat_entry *e;
+   u32 pos;
+   u32 curr_cluster;
+
+} fat_file_handle;
+
+
 static inline bool is_long_name_entry(fat_entry *e)
 {
    return e->readonly && e->hidden && e->system && e->volume_id;
