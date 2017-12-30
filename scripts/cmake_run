@@ -41,12 +41,12 @@ if ! which $CXX &> /dev/null; then
    exit 1
 fi
 
-if $CC --version | grep gcc; then
+if $CC --version | grep gcc &> /dev/null; then
 
    cc_ver=`$CC --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
    cc_major=`echo -ne $cc_ver | grep -Eo '[0-9]+' | head -1`
    cc_minor=`echo -ne $cc_ver | grep -Eo '[0-9]+' | head -2 | tail -1`
-   echo "gcc version (parsed): $cc_major.$cc_minor"
+   echo "[cmake_run] gcc version (parsed): $cc_major.$cc_minor"
 
    if [ $cc_major -lt 4 ]; then
       echo "Your gcc compiler is too old. Version >= 4.8 is required."
@@ -60,12 +60,12 @@ if $CC --version | grep gcc; then
 
 fi
 
-if $CXX --version | grep g++; then
+if $CXX --version | grep g++ &> /dev/null; then
 
    cxx_ver=`$CXX --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
    cxx_major=`echo -ne $cxx_ver | grep -Eo '[0-9]+' | head -1`
    cxx_minor=`echo -ne $cxx_ver | grep -Eo '[0-9]+' | head -2 | tail -1`
-   echo "g++ version (parsed): $cxx_major.$cxx_minor"
+   echo "[cmake_run] g++ version (parsed): $cxx_major.$cxx_minor"
 
    if [ $cxx_major -lt 4 ]; then
       echo "Your g++ compiler is too old. Version >= 4.8 is required."
@@ -90,8 +90,10 @@ fi
 
 export ASM_NASM=$MAIN_DIR/toolchain/nasm/nasm
 
-if [ -z "$RELEASE" ]; then
-   RELEASE=off
+if [ -n "$RELEASE" ] && [ "$RELEASE" -eq 1 ]; then
+   BUILD_TYPE=Release
+else
+   BUILD_TYPE=Debug
 fi
 
 if [ -z "$USE_GCOV" ]; then
@@ -100,5 +102,5 @@ fi
 
 mkdir -p build
 cd build
-$CMAKE -D RELEASE_BUILD:BOOL=$RELEASE -D USE_GCOV:BOOL=$USE_GCOV .. $@
+$CMAKE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D USE_GCOV:BOOL=$USE_GCOV .. $@
 

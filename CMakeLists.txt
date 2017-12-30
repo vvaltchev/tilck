@@ -64,7 +64,7 @@ message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER_ID}")
 
 set(GENERAL_DEFS_LIST "")
 
-if (${RELEASE_BUILD})
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
 
    message(STATUS "Preparing a RELEASE build...")
    LIST(APPEND GENERAL_DEFS_LIST "-DNDEBUG")
@@ -92,7 +92,6 @@ set(
    OTHER_CFLAGS_LIST
 
    -g
-   -fno-stack-protector
 )
 
 
