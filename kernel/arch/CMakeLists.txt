@@ -25,6 +25,7 @@ set(
    -fno-asynchronous-unwind-tables
    -fno-zero-initialized-in-bss
    -fno-exceptions
+   -fno-stack-protector
 
    # Allow easier disassembly debugging
    -mpush-args
