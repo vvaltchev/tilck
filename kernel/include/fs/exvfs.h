@@ -27,6 +27,12 @@ typedef fs_handle (*func_open) (filesystem *, const char *);
 typedef void (*func_close) (filesystem *, fs_handle);
 typedef ssize_t (*func_read) (filesystem *, fs_handle, char *, size_t);
 typedef ssize_t (*func_write) (filesystem *, fs_handle, char *, size_t);
+typedef int (*func_seek) (filesystem *, fs_handle, ssize_t, int);
+typedef ssize_t (*func_tell) (filesystem *, fs_handle);
+
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
 
 struct filesystem {
 
@@ -36,7 +42,8 @@ struct filesystem {
    func_close fclose;
    func_read fread;
    func_write fwrite;
-
+   func_seek fseek;
+   func_tell ftell;
 };
 
 typedef struct {
