@@ -4,6 +4,7 @@
 #include <fs/fat32.h>
 #include <fs/exvfs.h>
 #include <kmalloc.h>
+#include <exos_errno.h>
 
 /*
  * The following code uses in many cases the CamelCase naming convention
@@ -787,7 +788,7 @@ static ssize_t fat_read(filesystem *fs,
 
       h->curr_cluster = fatval; // go reading the new cluster in the chain.
 
-   } while (1);
+   } while (true);
 
    return written_to_buf;
 }
@@ -799,6 +800,94 @@ static ssize_t fat_write(filesystem *fs,
 {
    // TODO: implement
    return -1;
+}
+
+static int fat_rewind(filesystem *fs, fs_handle handle)
+{
+   fat_file_handle *h = (fat_file_handle *) handle;
+   h->pos = 0;
+   h->curr_cluster = fat_get_first_cluster(h->e);
+   return 0;
+}
+
+static int fat_seek_forward(filesystem *fs, fs_handle handle, ssize_t dist)
+{
+   fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
+   fat_file_handle *h = (fat_file_handle *) handle;
+   u32 fsize = h->e->DIR_FileSize;
+   ssize_t moved_distance = 0;
+
+   do {
+
+      const ssize_t file_rem = fsize - h->pos;
+      const ssize_t dist_rem = dist - moved_distance;
+      const ssize_t cluster_offset = h->pos % d->cluster_size;
+      const ssize_t cluster_rem = d->cluster_size - cluster_offset;
+      const ssize_t to_move = MIN(cluster_rem, MIN(dist_rem, file_rem));
+
+      moved_distance += to_move;
+      h->pos += to_move;
+
+      if (to_move < cluster_rem) {
+         break;
+      }
+
+      // find the next cluster
+      u32 fatval = fat_read_fat_entry(d->hdr, d->type, h->curr_cluster, 0);
+
+      if (fat_is_end_of_clusterchain(d->type, fatval)) {
+
+         /*
+          * We should NOT get here, unless the file size was an exact multiple
+          * of cluster_size.
+          */
+
+         ASSERT(to_move == d->cluster_size);
+         ASSERT(h->pos == fsize);
+
+         break;
+      }
+
+      // we do not expect BAD CLUSTERS
+      ASSERT(!fat_is_bad_cluster(d->type, fatval));
+
+      h->curr_cluster = fatval; // go reading the new cluster in the chain.
+
+   } while (true);
+
+   return moved_distance == dist;
+}
+
+static int fat_seek(filesystem *fs, fs_handle handle, ssize_t off, int whence)
+{
+   if (whence == SEEK_SET) {
+
+      if (off < 0)
+         return -EINVAL; /* invalid negative offset */
+
+      fat_rewind(fs, handle);
+      return fat_seek_forward(fs, handle, off);
+   }
+
+   if (whence == SEEK_END) {
+
+      if (off > 0)
+         return -EINVAL; /* invalid positive offset */
+
+      fat_file_handle *h = (fat_file_handle *) handle;
+      size_t fsize = h->e->DIR_FileSize;
+      fat_rewind(fs, handle);
+      return fat_seek_forward(fs, handle, fsize + off);
+   }
+
+   ASSERT(whence == SEEK_CUR);
+   return fat_seek_forward(fs, handle, off);
+}
+
+static ssize_t fat_tell(filesystem *fs, fs_handle handle)
+{
+   fat_file_handle *h = (fat_file_handle *) handle;
+   return h->pos;
 }
 
 filesystem *fat_mount_ramdisk(void *vaddr)
@@ -819,6 +908,8 @@ filesystem *fat_mount_ramdisk(void *vaddr)
    fs->fclose = fat_close;
    fs->fread = fat_read;
    fs->fwrite = fat_write;
+   fs->fseek = fat_seek;
+   fs->ftell = fat_tell;
 
    return fs;
 }
