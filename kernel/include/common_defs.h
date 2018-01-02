@@ -213,3 +213,10 @@ NORETURN void not_reached(const char *file, int line);
 
 
 #define NOT_REACHED() not_reached(__FILE__, __LINE__)
+
+
+#ifdef KERNEL_TEST
+#define STATIC
+#else
+#define STATIC static
+#endif
