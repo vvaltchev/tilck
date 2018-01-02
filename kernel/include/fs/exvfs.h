@@ -52,3 +52,24 @@ typedef struct {
    char path[0];
 
 } mountpoint;
+
+typedef struct {
+
+   filesystem *fs;
+   fs_handle *fsh;
+
+} fhandle;
+
+void mountpoint_add(filesystem *fs, const char *path);
+void mountpoint_remove(filesystem *fs);
+
+static inline bool exvfs_is_handle_valid(fhandle h)
+{
+   return h.fsh != NULL && h.fs != NULL;
+}
+
+fhandle exvfs_open(const char *path);
+void exvfs_close(fhandle h);
+ssize_t exvfs_read(fhandle h, char *buf, size_t buf_size);
+int exvfs_seek(fhandle h, ssize_t off, int whence);
+size_t exvfs_tell(fhandle h);

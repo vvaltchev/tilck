@@ -707,7 +707,7 @@ fat_read_whole_file(fat_header *hdr,
 }
 
 
-static fs_handle fat_open(filesystem *fs, const char *path)
+STATIC fs_handle fat_open(filesystem *fs, const char *path)
 {
    fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
 
@@ -727,13 +727,13 @@ static fs_handle fat_open(filesystem *fs, const char *path)
    return h;
 }
 
-static void fat_close(filesystem *fs, fs_handle handle)
+STATIC void fat_close(filesystem *fs, fs_handle handle)
 {
    fat_file_handle *h = (fat_file_handle *)handle;
    kfree(h, sizeof(fat_file_handle));
 }
 
-static ssize_t fat_read(filesystem *fs,
+STATIC ssize_t fat_read(filesystem *fs,
                         fs_handle handle,
                         char *buf,
                         size_t bufsize)
@@ -793,7 +793,7 @@ static ssize_t fat_read(filesystem *fs,
    return written_to_buf;
 }
 
-static ssize_t fat_write(filesystem *fs,
+STATIC ssize_t fat_write(filesystem *fs,
                          fs_handle h,
                          char *buf,
                          size_t bufsize)
@@ -802,7 +802,7 @@ static ssize_t fat_write(filesystem *fs,
    return -1;
 }
 
-static int fat_rewind(filesystem *fs, fs_handle handle)
+STATIC int fat_rewind(filesystem *fs, fs_handle handle)
 {
    fat_file_handle *h = (fat_file_handle *) handle;
    h->pos = 0;
@@ -810,7 +810,7 @@ static int fat_rewind(filesystem *fs, fs_handle handle)
    return 0;
 }
 
-static int fat_seek_forward(filesystem *fs, fs_handle handle, ssize_t dist)
+STATIC int fat_seek_forward(filesystem *fs, fs_handle handle, ssize_t dist)
 {
    fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
    fat_file_handle *h = (fat_file_handle *) handle;
@@ -858,7 +858,7 @@ static int fat_seek_forward(filesystem *fs, fs_handle handle, ssize_t dist)
    return moved_distance == dist;
 }
 
-static int fat_seek(filesystem *fs, fs_handle handle, ssize_t off, int whence)
+STATIC int fat_seek(filesystem *fs, fs_handle handle, ssize_t off, int whence)
 {
    if (whence == SEEK_SET) {
 
@@ -884,7 +884,7 @@ static int fat_seek(filesystem *fs, fs_handle handle, ssize_t off, int whence)
    return fat_seek_forward(fs, handle, off);
 }
 
-static ssize_t fat_tell(filesystem *fs, fs_handle handle)
+STATIC ssize_t fat_tell(filesystem *fs, fs_handle handle)
 {
    fat_file_handle *h = (fat_file_handle *) handle;
    return h->pos;
