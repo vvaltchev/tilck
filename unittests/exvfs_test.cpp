@@ -40,7 +40,8 @@ TEST(exvfs, read_content_of_longname_file)
    filesystem *fat_fs = fat_mount_ramdisk((void *) buf);
    ASSERT_TRUE(fat_fs != NULL);
 
-   mountpoint_add(fat_fs, "/");
+   int r = mountpoint_add(fat_fs, "/");
+   ASSERT_EQ(r, 0);
 
    const char *file_path =
       "/testdir/This_is_a_file_with_a_veeeery_long_name.txt";
@@ -51,8 +52,10 @@ TEST(exvfs, read_content_of_longname_file)
    exvfs_close(h);
 
    EXPECT_GT(res, 0);
-
    ASSERT_STREQ("Content of file with a long name\n", data);
+
+   mountpoint_remove(fat_fs);
+   fat_umount_ramdisk(fat_fs);
 }
 
 TEST(exvfs, fseek)
@@ -69,7 +72,8 @@ TEST(exvfs, fseek)
    filesystem *fat_fs = fat_mount_ramdisk((void *) fatpart);
    ASSERT_TRUE(fat_fs != NULL);
 
-   mountpoint_add(fat_fs, "/");
+   int r = mountpoint_add(fat_fs, "/");
+   ASSERT_EQ(r, 0);
 
    const char *fatpart_file_path = "/EFI/BOOT/kernel.bin";
    const char *real_file_path = "build/sysroot/EFI/BOOT/kernel.bin";
@@ -94,14 +98,6 @@ TEST(exvfs, fseek)
 
       ssize_t offset = (ssize_t) ( dist(engine) - dist(engine)/2 );
 
-      if (last_pos + offset > file_size) {
-         /*
-          * Linux's seek() allows the current's file position to go beyond
-          * the file's end. ExOS does not allow that for the moment.
-          */
-         continue;
-      }
-
       long glibc_fseek = fseek(fp, offset, SEEK_CUR);
       long exos_fseek = exvfs_seek(h, offset, SEEK_CUR);
 
@@ -124,11 +120,17 @@ TEST(exvfs, fseek)
       exos_pos = exvfs_tell(h);
 
       ASSERT_EQ(exos_pos, glibc_pos);
-      ASSERT_EQ(memcmp(buf_exos, buf_glibc, sizeof(buf_glibc)), 0);
+      ASSERT_EQ(memcmp(buf_exos, buf_glibc, sizeof(buf_glibc)), 0)
+         << "Buffers differ. " << endl
+         << "Last offset: " << offset << endl
+         << "Curr pos: " << glibc_pos << endl;
 
       last_pos = glibc_pos;
    }
 
    exvfs_close(h);
    fclose(fp);
+
+   mountpoint_remove(fat_fs);
+   fat_umount_ramdisk(fat_fs);
 }

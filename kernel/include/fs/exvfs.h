@@ -60,7 +60,7 @@ typedef struct {
 
 } fhandle;
 
-void mountpoint_add(filesystem *fs, const char *path);
+int mountpoint_add(filesystem *fs, const char *path);
 void mountpoint_remove(filesystem *fs);
 
 static inline bool exvfs_is_handle_valid(fhandle h)
