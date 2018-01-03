@@ -1,10 +1,15 @@
 
 #include <cstdio>
 #include <iostream>
-#include <gtest/gtest.h>
-#include "kernel_init_funcs.h"
+#include <memory>
+#include <map>
 
 using namespace std;
+
+#include <gtest/gtest.h>
+
+#include "kernel_init_funcs.h"
+
 
 extern "C" {
    #include <fs/fat32.h>
@@ -12,39 +17,65 @@ extern "C" {
    #include <utils.h>
 }
 
-#define BUFSIZE (40*1024*1024)
+const char *load_once_file(const char *filepath, size_t *fsize = nullptr)
+{
+   static map<const char *,
+              pair<unique_ptr<const char[]>, size_t>> files_loaded;
+
+   auto it = files_loaded.find(filepath);
+
+   if (it == files_loaded.end()) {
+
+      long file_size;
+      char *buf;
+      FILE *fp;
+
+      fp = fopen(filepath, "rb");
+      assert(fp != nullptr);
+
+      fseek(fp, 0, SEEK_END);
+      file_size = ftell(fp);
+
+      buf = new char [file_size];
+      assert(buf != nullptr);
+
+      fseek(fp, 0, SEEK_SET);
+      size_t bytes_read = fread(buf, 1, file_size, fp);
+      assert(bytes_read == file_size);
+
+      fclose(fp);
+
+      auto &e = files_loaded[filepath];
+      e.first.reset(buf);
+      e.second = file_size;
+   }
+
+   auto &e = files_loaded[filepath];
+
+   if (fsize)
+      *fsize = e.second;
+
+   return e.first.get();
+}
 
 TEST(fat32, dumpinfo)
 {
-   char *buf = (char*) calloc(1, BUFSIZE);
-
-   FILE *fp = fopen("build/fatpart", "rb");
-   size_t res = fread(buf, 1, BUFSIZE, fp);
-   ASSERT_GT(res, 0);
-
-   fat_dump_info(buf);
+   const char *buf = load_once_file("build/fatpart");
+   fat_dump_info((void *) buf);
 
    fat_header *hdr = (fat_header*)buf;
    fat_entry *e = fat_search_entry(hdr, fat_unknown, "/nonesistentfile");
    ASSERT_TRUE(e == NULL);
-
-   free(buf);
-   fclose(fp);
 }
 
 TEST(fat32, read_content_of_shortname_file)
 {
-   char *buf = (char*) calloc(1, BUFSIZE);
+   const char *buf = load_once_file("build/fatpart");
    char data[128] = {0};
    fat_header *hdr;
    fat_entry *e;
    size_t res;
    FILE *fp;
-
-   fp = fopen("build/fatpart", "rb");
-   res = fread(buf, 1, BUFSIZE, fp);
-   ASSERT_GT(res, 0);
-   fclose(fp);
 
    hdr = (fat_header*)buf;
    e = fat_search_entry(hdr, fat_unknown, "/testdir/dir1/f1");
@@ -53,23 +84,16 @@ TEST(fat32, read_content_of_shortname_file)
    fat_read_whole_file(hdr, e, data, sizeof(data));
 
    ASSERT_STREQ("hello world!\n", data);
-
-   free(buf);
 }
 
 TEST(fat32, read_content_of_longname_file)
 {
-   char *buf = (char*) calloc(1, BUFSIZE);
+   const char *buf = load_once_file("build/fatpart");
    char data[128] = {0};
    fat_header *hdr;
    fat_entry *e;
    size_t res;
    FILE *fp;
-
-   fp = fopen("build/fatpart", "rb");
-   res = fread(buf, 1, BUFSIZE, fp);
-   ASSERT_GT(res, 0);
-   fclose(fp);
 
    hdr = (fat_header*)buf;
    e = fat_search_entry(hdr,
@@ -79,53 +103,30 @@ TEST(fat32, read_content_of_longname_file)
    fat_read_whole_file(hdr, e, data, sizeof(data));
 
    ASSERT_STREQ("Content of file with a long name\n", data);
-
-   free(buf);
 }
 
 
 TEST(fat32, read_whole_file)
 {
-   char *buf = (char*) calloc(1, BUFSIZE);
-
-   FILE *fp = fopen("build/fatpart", "rb");
-   size_t res = fread(buf, 1, BUFSIZE, fp);
-   ASSERT_GT(res, 0);
-   fclose(fp);
-
-   fat_header *hdr = (fat_header*)buf;
+   fat_header *hdr = (fat_header*)load_once_file("build/fatpart");
    fat_entry *e = fat_search_entry(hdr, fat_unknown, "/sbin/init");
 
    char *content = (char*)calloc(1, e->DIR_FileSize);
    fat_read_whole_file(hdr, e, content, e->DIR_FileSize);
-
    uint32_t fat_crc = crc32(0, content, e->DIR_FileSize);
-
    free(content);
 
-   fp = fopen("build/init", "rb");
-   res = fread(buf, 1, BUFSIZE, fp);
-   ASSERT_EQ(e->DIR_FileSize, res);
-   fclose(fp);
-
-   uint32_t actual_file_crc = crc32(0, buf, res);
-
+   size_t fsize;
+   const char *buf = load_once_file("build/init", &fsize);
+   uint32_t actual_file_crc = crc32(0, buf, fsize);
    ASSERT_EQ(fat_crc, actual_file_crc);
-   free(buf);
 }
 
 TEST(fat32, fread)
 {
    initialize_kmalloc_for_tests();
 
-   char *buf = (char*) calloc(1, BUFSIZE);
-
-   FILE *fp = fopen("build/fatpart", "rb");
-   size_t res = fread(buf, 1, BUFSIZE, fp);
-   ASSERT_GT(res, 0);
-   fclose(fp);
-
-   filesystem *fs = fat_mount_ramdisk(buf);
+   filesystem *fs = fat_mount_ramdisk((void *) load_once_file("build/fatpart"));
 
    fs_handle h = fs->fopen(fs, "/sbin/init");
    ASSERT_TRUE(h != NULL);
@@ -134,10 +135,10 @@ TEST(fat32, fread)
    char *buf2 = (char *) calloc(1, buf2_size);
    ssize_t read_offset = 0;
 
-   fp = fopen("build/init", "rb");
+   FILE *fp = fopen("build/init", "rb");
    char tmpbuf[1024];
 
-   while (1) {
+   while (true) {
 
       ssize_t read_block_size = 1023; /* 1023 is a prime number */
       ssize_t bytes_read = fs->fread(fs, h, buf2+read_offset, read_block_size);
@@ -174,5 +175,4 @@ TEST(fat32, fread)
 
    fat_umount_ramdisk(fs);
    free(buf2);
-   free(buf);
 }

@@ -2,16 +2,21 @@
 #include <cstdio>
 #include <iostream>
 #include <vector>
-#include <gtest/gtest.h>
-#include "kernel_init_funcs.h"
 
 using namespace std;
+
+#include <gtest/gtest.h>
+
+#include "kernel_init_funcs.h"
 
 extern "C" {
    #include <fs/fat32.h>
    #include <fs/exvfs.h>
    int check_mountpoint_match(const char *mp, const char *path);
 }
+
+// Implemented in fat32_test.cpp
+const char *load_once_file(const char *filepath, size_t *fsize = nullptr);
 
 TEST(exvfs, check_mountpoint_match)
 {
@@ -22,26 +27,14 @@ TEST(exvfs, check_mountpoint_match)
    EXPECT_EQ(check_mountpoint_match("/devices/", "/dev"), 0);
 }
 
-#define BUFSIZE (40*1024*1024)
-
 TEST(exvfs, read_content_of_longname_file)
 {
    initialize_kmalloc_for_tests();
 
-   vector<char> buf(BUFSIZE, 0);
-
+   const char *buf = load_once_file("build/fatpart");
    char data[128] = {0};
-   ssize_t res;
 
-   {
-      FILE *fp;
-      fp = fopen("build/fatpart", "rb");
-      res = fread(&buf[0], 1, BUFSIZE, fp);
-      ASSERT_GT(res, 0);
-      fclose(fp);
-   }
-
-   filesystem *fat_fs = fat_mount_ramdisk((void *) &buf[0]);
+   filesystem *fat_fs = fat_mount_ramdisk((void *) buf);
    ASSERT_TRUE(fat_fs != NULL);
 
    mountpoint_add(fat_fs, "/");
@@ -51,7 +44,7 @@ TEST(exvfs, read_content_of_longname_file)
 
    fhandle h = exvfs_open(file_path);
    ASSERT_TRUE(exvfs_is_handle_valid(h));
-   res = exvfs_read(h, data, sizeof(data));
+   ssize_t res = exvfs_read(h, data, sizeof(data));
    exvfs_close(h);
 
    EXPECT_GT(res, 0);
