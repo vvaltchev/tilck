@@ -855,7 +855,7 @@ STATIC int fat_seek_forward(filesystem *fs, fs_handle handle, ssize_t dist)
 
    } while (true);
 
-   return moved_distance == dist;
+   return 0;
 }
 
 STATIC int fat_seek(filesystem *fs, fs_handle handle, ssize_t off, int whence)
@@ -877,10 +877,32 @@ STATIC int fat_seek(filesystem *fs, fs_handle handle, ssize_t off, int whence)
       fat_file_handle *h = (fat_file_handle *) handle;
       size_t fsize = h->e->DIR_FileSize;
       fat_rewind(fs, handle);
+
+      if ((size_t)(-off) >= fsize) {
+
+         /*
+          * Seeking back by 'off' will go beyond the beginning: no point in doing
+          * that. Since after the rewind() above we're already at the beginning,
+          * just return 0.
+          */
+         return 0;
+      }
+
       return fat_seek_forward(fs, handle, fsize + off);
    }
 
    ASSERT(whence == SEEK_CUR);
+
+   if (off < 0) {
+
+      off = ((fat_file_handle *)handle)->pos + off;
+
+      if (off < 0)
+         return -1;
+
+      fat_rewind(fs, handle);
+   }
+
    return fat_seek_forward(fs, handle, off);
 }
 
