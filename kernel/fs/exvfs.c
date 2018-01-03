@@ -6,13 +6,23 @@
 /* exOS is small: supporting 16 mount points seems more than enough. */
 mountpoint *mps[16] = {0};
 
-void mountpoint_add(filesystem *fs, const char *path)
+int mountpoint_add(filesystem *fs, const char *path)
 {
    u32 i;
 
-   for (i = 0; i < ARRAY_SIZE(mps); i++)
+   for (i = 0; i < ARRAY_SIZE(mps); i++) {
+
       if (!mps[i])
          break;
+
+      if (mps[i]->fs == fs) {
+         return -1;
+      }
+
+      if (!strcmp(mps[i]->path, path)) {
+         return -2;
+      }
+   }
 
    VERIFY(i < ARRAY_SIZE(mps));
 
@@ -27,15 +37,17 @@ void mountpoint_add(filesystem *fs, const char *path)
    mp->fs = fs;
    memcpy(mp->path, path, path_len + 1);
    mps[i] = mp;
+
+   return 0;
 }
 
 void mountpoint_remove(filesystem *fs)
 {
    for (u32 i = 0; i < ARRAY_SIZE(mps); i++) {
       if (mps[i] && mps[i]->fs == fs) {
-         kfree(mps, sizeof(mountpoint) + strlen(mps[i]->path) + 1);
+         kfree(mps[i], sizeof(mountpoint) + strlen(mps[i]->path) + 1);
          mps[i] = NULL;
-         break;
+         return;
       }
    }
 

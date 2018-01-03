@@ -743,6 +743,15 @@ STATIC ssize_t fat_read(filesystem *fs,
    u32 fsize = h->e->DIR_FileSize;
    u32 written_to_buf = 0;
 
+   if (h->pos >= fsize) {
+
+      /*
+       * The cursor is at the end or past the end: nothing to read.
+       */
+
+      return 0;
+   }
+
    do {
 
       char *data = fat_get_pointer_to_cluster_data(d->hdr, h->curr_cluster);
@@ -817,6 +826,13 @@ STATIC int fat_seek_forward(filesystem *fs, fs_handle handle, ssize_t dist)
    u32 fsize = h->e->DIR_FileSize;
    ssize_t moved_distance = 0;
 
+   if (h->pos + dist > fsize) {
+      /* Allow, like Linux does, to seek past the end of a file. */
+      h->pos += dist;
+      h->curr_cluster = (u32) -1; /* invalid cluster */
+      return 0;
+   }
+
    do {
 
       const ssize_t file_rem = fsize - h->pos;
@@ -860,6 +876,8 @@ STATIC int fat_seek_forward(filesystem *fs, fs_handle handle, ssize_t dist)
 
 STATIC int fat_seek(filesystem *fs, fs_handle handle, ssize_t off, int whence)
 {
+   ssize_t curr_pos = (ssize_t) ((fat_file_handle *)handle)->pos;
+
    if (whence == SEEK_SET) {
 
       if (off < 0)
@@ -895,7 +913,7 @@ STATIC int fat_seek(filesystem *fs, fs_handle handle, ssize_t off, int whence)
 
    if (off < 0) {
 
-      off = ((fat_file_handle *)handle)->pos + off;
+      off = curr_pos + off;
 
       if (off < 0)
          return -1;
