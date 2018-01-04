@@ -128,7 +128,7 @@ TEST(fat32, fread)
 
    filesystem *fs = fat_mount_ramdisk((void *) load_once_file("build/fatpart"));
 
-   fs_handle h = fs->fopen(fs, "/sbin/init");
+   fs_int_handle_t h = fs->fopen(fs, "/sbin/init");
    ASSERT_TRUE(h != NULL);
 
    ssize_t buf2_size = 100*1000;

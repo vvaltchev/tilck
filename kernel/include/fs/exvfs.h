@@ -22,14 +22,14 @@
 
 typedef ssize_t off_t;
 
-typedef void *fs_handle;
+typedef void *fs_int_handle_t;
 typedef struct filesystem filesystem;
 
-typedef fs_handle (*func_open) (filesystem *, const char *);
-typedef void (*func_close) (filesystem *, fs_handle);
-typedef ssize_t (*func_read) (filesystem *, fs_handle, char *, size_t);
-typedef ssize_t (*func_write) (filesystem *, fs_handle, char *, size_t);
-typedef off_t (*func_seek) (filesystem *, fs_handle, off_t, int);
+typedef fs_int_handle_t (*func_open) (filesystem *, const char *);
+typedef void (*func_close) (filesystem *, fs_int_handle_t);
+typedef ssize_t (*func_read) (filesystem *, fs_int_handle_t, char *, size_t);
+typedef ssize_t (*func_write) (filesystem *, fs_int_handle_t, char *, size_t);
+typedef off_t (*func_seek) (filesystem *, fs_int_handle_t, off_t, int);
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
@@ -56,7 +56,7 @@ typedef struct {
 typedef struct {
 
    filesystem *fs;
-   fs_handle *fsh;
+   fs_int_handle_t *internal_handle;
 
 } fhandle;
 
@@ -65,7 +65,7 @@ void mountpoint_remove(filesystem *fs);
 
 static inline bool exvfs_is_handle_valid(fhandle h)
 {
-   return h.fsh != NULL && h.fs != NULL;
+   return h.internal_handle != NULL && h.fs != NULL;
 }
 
 fhandle exvfs_open(const char *path);
