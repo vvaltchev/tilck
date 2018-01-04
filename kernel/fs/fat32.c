@@ -707,39 +707,19 @@ fat_read_whole_file(fat_header *hdr,
 }
 
 
-STATIC fs_int_handle_t fat_open(filesystem *fs, const char *path)
-{
-   fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
 
-   fat_entry *e = fat_search_entry(d->hdr, d->type, path);
-
-   if (!e) {
-      return NULL; /* file not found */
-   }
-
-   fat_file_handle *h = kmalloc(sizeof(fat_file_handle));
-   VERIFY(h != NULL);
-
-   h->e = e;
-   h->pos = 0;
-   h->curr_cluster = fat_get_first_cluster(e);
-
-   return h;
-}
-
-STATIC void fat_close(filesystem *fs, fs_int_handle_t handle)
+STATIC void fat_close(fs_handle handle)
 {
    fat_file_handle *h = (fat_file_handle *)handle;
    kfree(h, sizeof(fat_file_handle));
 }
 
-STATIC ssize_t fat_read(filesystem *fs,
-                        fs_int_handle_t handle,
+STATIC ssize_t fat_read(fs_handle handle,
                         char *buf,
                         size_t bufsize)
 {
-   fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
    fat_file_handle *h = (fat_file_handle *) handle;
+   fat_fs_device_data *d = h->fs->device_data;
    u32 fsize = h->e->DIR_FileSize;
    u32 written_to_buf = 0;
 
@@ -802,8 +782,7 @@ STATIC ssize_t fat_read(filesystem *fs,
    return written_to_buf;
 }
 
-STATIC ssize_t fat_write(filesystem *fs,
-                         fs_int_handle_t h,
+STATIC ssize_t fat_write(fs_handle h,
                          char *buf,
                          size_t bufsize)
 {
@@ -811,7 +790,7 @@ STATIC ssize_t fat_write(filesystem *fs,
    return -1;
 }
 
-STATIC int fat_rewind(filesystem *fs, fs_int_handle_t handle)
+STATIC int fat_rewind(fs_handle handle)
 {
    fat_file_handle *h = (fat_file_handle *) handle;
    h->pos = 0;
@@ -819,12 +798,11 @@ STATIC int fat_rewind(filesystem *fs, fs_int_handle_t handle)
    return 0;
 }
 
-STATIC off_t fat_seek_forward(filesystem *fs,
-                              fs_int_handle_t handle,
+STATIC off_t fat_seek_forward(fs_handle handle,
                               off_t dist)
 {
-   fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
    fat_file_handle *h = (fat_file_handle *) handle;
+   fat_fs_device_data *d = h->fs->device_data;
    u32 fsize = h->e->DIR_FileSize;
    ssize_t moved_distance = 0;
 
@@ -878,8 +856,7 @@ STATIC off_t fat_seek_forward(filesystem *fs,
    return h->pos;
 }
 
-STATIC off_t fat_seek(filesystem *fs,
-                      fs_int_handle_t handle,
+STATIC off_t fat_seek(fs_handle handle,
                       off_t off,
                       int whence)
 {
@@ -892,7 +869,7 @@ STATIC off_t fat_seek(filesystem *fs,
       if (off < 0)
          return -EINVAL; /* invalid negative offset */
 
-      fat_rewind(fs, handle);
+      fat_rewind(handle);
       break;
 
    case SEEK_END:
@@ -906,7 +883,7 @@ STATIC off_t fat_seek(filesystem *fs,
       if (off < 0)
          return -EINVAL;
 
-      fat_rewind(fs, handle);
+      fat_rewind(handle);
       break;
 
    case SEEK_CUR:
@@ -918,7 +895,7 @@ STATIC off_t fat_seek(filesystem *fs,
          if (off < 0)
             return -EINVAL;
 
-         fat_rewind(fs, handle);
+         fat_rewind(handle);
       }
 
       break;
@@ -927,7 +904,32 @@ STATIC off_t fat_seek(filesystem *fs,
       return -EINVAL;
    }
 
-   return fat_seek_forward(fs, handle, off);
+   return fat_seek_forward(handle, off);
+}
+
+STATIC fs_handle fat_open(filesystem *fs, const char *path)
+{
+   fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
+
+   fat_entry *e = fat_search_entry(d->hdr, d->type, path);
+
+   if (!e) {
+      return NULL; /* file not found */
+   }
+
+   fat_file_handle *h = kmalloc(sizeof(fat_file_handle));
+   VERIFY(h != NULL);
+
+   h->fs = fs;
+   h->fops.fread = fat_read;
+   h->fops.fwrite = fat_write;
+   h->fops.fseek = fat_seek;
+
+   h->e = e;
+   h->pos = 0;
+   h->curr_cluster = fat_get_first_cluster(e);
+
+   return h;
 }
 
 filesystem *fat_mount_ramdisk(void *vaddr)
@@ -943,13 +945,8 @@ filesystem *fat_mount_ramdisk(void *vaddr)
    VERIFY(fs != NULL);
 
    fs->device_data = d;
-
    fs->fopen = fat_open;
    fs->fclose = fat_close;
-   fs->fread = fat_read;
-   fs->fwrite = fat_write;
-   fs->fseek = fat_seek;
-
    return fs;
 }
 

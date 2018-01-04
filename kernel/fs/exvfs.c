@@ -109,9 +109,9 @@ STATIC int check_mountpoint_match(const char *mp, const char *path)
    return m;
 }
 
-fhandle exvfs_open(const char *path)
+fs_handle exvfs_open(const char *path)
 {
-   fhandle res = {0};
+   fs_handle res = {0};
    int best_match_index = -1;
    int best_match_len = 0;
 
@@ -131,29 +131,33 @@ fhandle exvfs_open(const char *path)
    }
 
    if (best_match_index >= 0) {
-      res.fs = mps[best_match_index]->fs;
-      res.internal_handle = res.fs->fopen(res.fs, path + best_match_len - 1);
+      filesystem *fs = mps[best_match_index]->fs;
+      res = fs->fopen(fs, path + best_match_len - 1);
    }
 
    return res;
 }
 
-void exvfs_close(fhandle h)
+void exvfs_close(fs_handle h)
 {
-   h.fs->fclose(h.fs, h.internal_handle);
+   fs_handle_base *hb = (fs_handle_base *) h;
+   hb->fs->fclose(h);
 }
 
-ssize_t exvfs_read(fhandle h, char *buf, size_t buf_size)
+ssize_t exvfs_read(fs_handle h, char *buf, size_t buf_size)
 {
-   return h.fs->fread(h.fs, h.internal_handle, buf, buf_size);
+   fs_handle_base *hb = (fs_handle_base *) h;
+   return hb->fops.fread(h, buf, buf_size);
 }
 
-ssize_t exvfs_write(fhandle h, char *buf, size_t buf_size)
+ssize_t exvfs_write(fs_handle h, char *buf, size_t buf_size)
 {
-   return h.fs->fwrite(h.fs, h.internal_handle, buf, buf_size);
+   fs_handle_base *hb = (fs_handle_base *) h;
+   return hb->fops.fwrite(h, buf, buf_size);
 }
 
-off_t exvfs_seek(fhandle h, off_t off, int whence)
+off_t exvfs_seek(fs_handle h, off_t off, int whence)
 {
-   return h.fs->fseek(h.fs, h.internal_handle, off, whence);
+   fs_handle_base *hb = (fs_handle_base *) h;
+   return hb->fops.fseek(h, off, whence);
 }

@@ -128,8 +128,10 @@ TEST(fat32, fread)
 
    filesystem *fs = fat_mount_ramdisk((void *) load_once_file("build/fatpart"));
 
-   fs_int_handle_t h = fs->fopen(fs, "/sbin/init");
+   fs_handle h = fs->fopen(fs, "/sbin/init");
    ASSERT_TRUE(h != NULL);
+
+   fat_file_handle *fat_handle = (fat_file_handle *)h;
 
    ssize_t buf2_size = 100*1000;
    char *buf2 = (char *) calloc(1, buf2_size);
@@ -141,7 +143,9 @@ TEST(fat32, fread)
    while (true) {
 
       ssize_t read_block_size = 1023; /* 1023 is a prime number */
-      ssize_t bytes_read = fs->fread(fs, h, buf2+read_offset, read_block_size);
+      ssize_t bytes_read = fat_handle->fops.fread(h,
+                                                  buf2+read_offset,
+                                                  read_block_size);
       ssize_t bytes_read_real_file = fread(tmpbuf, 1, read_block_size, fp);
 
       ASSERT_EQ(bytes_read_real_file, bytes_read);
@@ -171,7 +175,7 @@ TEST(fat32, fread)
    }
 
    fclose(fp);
-   fs->fclose(fs, h);
+   fs->fclose(h);
 
    fat_umount_ramdisk(fs);
    free(buf2);

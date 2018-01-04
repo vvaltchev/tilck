@@ -22,14 +22,22 @@
 
 typedef ssize_t off_t;
 
-typedef void *fs_int_handle_t;
+/*
+ * Opaque type for file handles.
+ *
+ * The only requirement for such handles is that they must have at their
+ * beginning all the members of fs_handle_base. Therefore, a fs_handle MUST
+ * always be castable to fs_handle_base *.
+ */
+typedef void *fs_handle;
+
 typedef struct filesystem filesystem;
 
-typedef fs_int_handle_t (*func_open) (filesystem *, const char *);
-typedef void (*func_close) (filesystem *, fs_int_handle_t);
-typedef ssize_t (*func_read) (filesystem *, fs_int_handle_t, char *, size_t);
-typedef ssize_t (*func_write) (filesystem *, fs_int_handle_t, char *, size_t);
-typedef off_t (*func_seek) (filesystem *, fs_int_handle_t, off_t, int);
+typedef fs_handle (*func_open) (filesystem *, const char *);
+typedef void (*func_close) (fs_handle);
+typedef ssize_t (*func_read) (fs_handle, char *, size_t);
+typedef ssize_t (*func_write) (fs_handle, char *, size_t);
+typedef off_t (*func_seek) (fs_handle, off_t, int);
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
@@ -41,10 +49,15 @@ struct filesystem {
 
    func_open fopen;
    func_close fclose;
+};
+
+typedef struct {
+
    func_read fread;
    func_write fwrite;
    func_seek fseek;
-};
+
+} file_ops;
 
 typedef struct {
 
@@ -53,24 +66,24 @@ typedef struct {
 
 } mountpoint;
 
+/*
+ * Each fs_handle struct should contain at its beginning the fields of the
+ * following base struct [a rough attempt to emulate inheritance in C].
+ */
 typedef struct {
 
    filesystem *fs;
-   fs_int_handle_t *internal_handle;
+   file_ops fops;
 
-} fhandle;
+} fs_handle_base;
+
 
 int mountpoint_add(filesystem *fs, const char *path);
 void mountpoint_remove(filesystem *fs);
 
-static inline bool exvfs_is_handle_valid(fhandle h)
-{
-   return h.internal_handle != NULL && h.fs != NULL;
-}
-
-fhandle exvfs_open(const char *path);
-void exvfs_close(fhandle h);
-ssize_t exvfs_read(fhandle h, char *buf, size_t buf_size);
-ssize_t exvfs_write(fhandle h, char *buf, size_t buf_size);
-off_t exvfs_seek(fhandle h, off_t off, int whence);
+fs_handle exvfs_open(const char *path);
+void exvfs_close(fs_handle h);
+ssize_t exvfs_read(fs_handle h, char *buf, size_t buf_size);
+ssize_t exvfs_write(fs_handle h, char *buf, size_t buf_size);
+off_t exvfs_seek(fs_handle h, off_t off, int whence);
 

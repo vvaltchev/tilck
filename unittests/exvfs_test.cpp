@@ -50,8 +50,8 @@ TEST(exvfs, read_content_of_longname_file)
    const char *file_path =
       "/testdir/This_is_a_file_with_a_veeeery_long_name.txt";
 
-   fhandle h = exvfs_open(file_path);
-   ASSERT_TRUE(exvfs_is_handle_valid(h));
+   fs_handle h = exvfs_open(file_path);
+   ASSERT_TRUE(h != NULL);
    ssize_t res = exvfs_read(h, data, sizeof(data));
    exvfs_close(h);
 
@@ -86,8 +86,8 @@ TEST(exvfs, fseek)
 
    size_t file_size = lseek(fd, 0, SEEK_END);
 
-   fhandle h = exvfs_open(fatpart_file_path);
-   ASSERT_TRUE(exvfs_is_handle_valid(h));
+   fs_handle h = exvfs_open(fatpart_file_path);
+   ASSERT_TRUE(h != NULL);
 
    char buf_exos[64];
    char buf_linux[64];
