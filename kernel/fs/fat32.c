@@ -819,18 +819,21 @@ STATIC int fat_rewind(filesystem *fs, fs_handle handle)
    return 0;
 }
 
-STATIC int fat_seek_forward(filesystem *fs, fs_handle handle, ssize_t dist)
+STATIC off_t fat_seek_forward(filesystem *fs, fs_handle handle, off_t dist)
 {
    fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
    fat_file_handle *h = (fat_file_handle *) handle;
    u32 fsize = h->e->DIR_FileSize;
    ssize_t moved_distance = 0;
 
+   if (dist == 0)
+      return h->pos;
+
    if (h->pos + dist > fsize) {
       /* Allow, like Linux does, to seek past the end of a file. */
       h->pos += dist;
       h->curr_cluster = (u32) -1; /* invalid cluster */
-      return 0;
+      return h->pos;
    }
 
    do {
@@ -860,7 +863,6 @@ STATIC int fat_seek_forward(filesystem *fs, fs_handle handle, ssize_t dist)
 
          ASSERT(to_move == d->cluster_size);
          ASSERT(h->pos == fsize);
-
          break;
       }
 
@@ -871,23 +873,24 @@ STATIC int fat_seek_forward(filesystem *fs, fs_handle handle, ssize_t dist)
 
    } while (true);
 
-   return 0;
+   return h->pos;
 }
 
-STATIC int fat_seek(filesystem *fs, fs_handle handle, ssize_t off, int whence)
+STATIC off_t fat_seek(filesystem *fs, fs_handle handle, off_t off, int whence)
 {
-   ssize_t curr_pos = (ssize_t) ((fat_file_handle *)handle)->pos;
+   off_t curr_pos = (off_t) ((fat_file_handle *)handle)->pos;
 
-   if (whence == SEEK_SET) {
+   switch (whence) {
+
+   case SEEK_SET:
 
       if (off < 0)
          return -EINVAL; /* invalid negative offset */
 
       fat_rewind(fs, handle);
-      return fat_seek_forward(fs, handle, off);
-   }
+      break;
 
-   if (whence == SEEK_END) {
+   case SEEK_END:
 
       if (off > 0)
          return -EINVAL; /* invalid positive offset */
@@ -906,28 +909,27 @@ STATIC int fat_seek(filesystem *fs, fs_handle handle, ssize_t off, int whence)
          return 0;
       }
 
-      return fat_seek_forward(fs, handle, fsize + off);
-   }
+      break;
 
-   ASSERT(whence == SEEK_CUR);
+   case SEEK_CUR:
 
-   if (off < 0) {
+      if (off < 0) {
 
-      off = curr_pos + off;
+         off = curr_pos + off;
 
-      if (off < 0)
-         return -1;
+         if (off < 0)
+            return -EINVAL;
 
-      fat_rewind(fs, handle);
+         fat_rewind(fs, handle);
+      }
+
+      break;
+
+   default:
+      return -EINVAL;
    }
 
    return fat_seek_forward(fs, handle, off);
-}
-
-STATIC ssize_t fat_tell(filesystem *fs, fs_handle handle)
-{
-   fat_file_handle *h = (fat_file_handle *) handle;
-   return h->pos;
 }
 
 filesystem *fat_mount_ramdisk(void *vaddr)
@@ -949,7 +951,6 @@ filesystem *fat_mount_ramdisk(void *vaddr)
    fs->fread = fat_read;
    fs->fwrite = fat_write;
    fs->fseek = fat_seek;
-   fs->ftell = fat_tell;
 
    return fs;
 }

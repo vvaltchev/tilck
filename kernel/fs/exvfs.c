@@ -148,12 +148,7 @@ ssize_t exvfs_read(fhandle h, char *buf, size_t buf_size)
    return h.fs->fread(h.fs, h.fsh, buf, buf_size);
 }
 
-int exvfs_seek(fhandle h, ssize_t off, int whence)
+off_t exvfs_seek(fhandle h, off_t off, int whence)
 {
    return h.fs->fseek(h.fs, h.fsh, off, whence);
-}
-
-size_t exvfs_tell(fhandle h)
-{
-   return h.fs->ftell(h.fs, h.fsh);
 }

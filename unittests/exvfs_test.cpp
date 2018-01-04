@@ -1,4 +1,8 @@
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <cstdio>
 #include <cstring>
 
@@ -78,58 +82,74 @@ TEST(exvfs, fseek)
    const char *fatpart_file_path = "/EFI/BOOT/kernel.bin";
    const char *real_file_path = "build/sysroot/EFI/BOOT/kernel.bin";
 
-   FILE *fp = fopen(real_file_path, "rb");
+   int fd = open(real_file_path, O_RDONLY);
 
-   fseek(fp, 0, SEEK_END);
-   size_t file_size = ftell(fp);
+   size_t file_size = lseek(fd, 0, SEEK_END);
 
    fhandle h = exvfs_open(fatpart_file_path);
    ASSERT_TRUE(exvfs_is_handle_valid(h));
 
    char buf_exos[64];
-   char buf_glibc[64];
+   char buf_linux[64];
 
-   fseek(fp, file_size / 2, SEEK_SET);
+   lseek(fd, file_size / 2, SEEK_SET);
    exvfs_seek(h, file_size / 2, SEEK_SET);
 
-   ssize_t last_pos = ftell(fp);
+   off_t last_pos = lseek(fd, 0, SEEK_CUR);
 
-   for (int i = 0; i < 10000; i++) {
+   const int iters = 10000;
 
-      ssize_t offset = (ssize_t) ( dist(engine) - dist(engine)/2 );
+   for (int i = 0; i < iters; i++) {
 
-      long glibc_fseek = fseek(fp, offset, SEEK_CUR);
-      long exos_fseek = exvfs_seek(h, offset, SEEK_CUR);
+      int saved_errno = 0;
+      off_t offset = (off_t) ( dist(engine) - dist(engine)/1.3 );
 
-      ssize_t glibc_pos = ftell(fp);
-      ssize_t exos_pos = exvfs_tell(h);
+      off_t linux_lseek = lseek(fd, offset, SEEK_CUR);
+      off_t exos_fseek = exvfs_seek(h, offset, SEEK_CUR);
 
-      ASSERT_EQ(exos_fseek, glibc_fseek)
+      if (linux_lseek < 0)
+         saved_errno = errno;
+
+      off_t linux_pos = lseek(fd, 0, SEEK_CUR);
+      off_t exos_pos = exvfs_seek(h, 0, SEEK_CUR);
+
+      if (linux_lseek < 0) {
+
+         /*
+          * Linux syscalls return -ERRNO_VALUE in case something goes wrong,
+          * while the glibc wrappers return -1 and set errno. Since we're
+          * testing the value returned by the syscall in exOS, we need to revert
+          * that.
+          */
+         linux_lseek = -errno;
+      }
+
+      ASSERT_EQ(exos_fseek, linux_lseek)
          << "Offset: " << offset << endl
-         << "Curr pos (glibc): " << glibc_pos << endl
+         << "Curr pos (glibc): " << linux_pos << endl
          << "Curr pos (exos):  " << exos_pos << endl;
 
-      ASSERT_EQ(exos_pos, glibc_pos);
+      ASSERT_EQ(exos_pos, linux_pos);
 
-      ssize_t glibc_fread = fread(buf_glibc, 1, sizeof(buf_glibc), fp);
+      ssize_t glibc_fread = read(fd, buf_linux, sizeof(buf_linux));
       ssize_t exos_fread = exvfs_read(h, buf_exos, sizeof(buf_exos));
 
       ASSERT_EQ(exos_fread, glibc_fread);
 
-      glibc_pos = ftell(fp);
-      exos_pos = exvfs_tell(h);
+      linux_pos = lseek(fd, 0, SEEK_CUR);
+      exos_pos = exvfs_seek(h, 0, SEEK_CUR);
 
-      ASSERT_EQ(exos_pos, glibc_pos);
-      ASSERT_EQ(memcmp(buf_exos, buf_glibc, sizeof(buf_glibc)), 0)
+      ASSERT_EQ(exos_pos, linux_pos);
+      ASSERT_EQ(memcmp(buf_exos, buf_linux, sizeof(buf_linux)), 0)
          << "Buffers differ. " << endl
          << "Last offset: " << offset << endl
-         << "Curr pos: " << glibc_pos << endl;
+         << "Curr pos: " << linux_pos << endl;
 
-      last_pos = glibc_pos;
+      last_pos = linux_pos;
    }
 
    exvfs_close(h);
-   fclose(fp);
+   close(fd);
 
    mountpoint_remove(fat_fs);
    fat_umount_ramdisk(fat_fs);
