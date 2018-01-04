@@ -20,6 +20,8 @@
 
 #include <common_defs.h>
 
+typedef ssize_t off_t;
+
 typedef void *fs_handle;
 typedef struct filesystem filesystem;
 
@@ -27,7 +29,7 @@ typedef fs_handle (*func_open) (filesystem *, const char *);
 typedef void (*func_close) (filesystem *, fs_handle);
 typedef ssize_t (*func_read) (filesystem *, fs_handle, char *, size_t);
 typedef ssize_t (*func_write) (filesystem *, fs_handle, char *, size_t);
-typedef int (*func_seek) (filesystem *, fs_handle, ssize_t, int);
+typedef off_t (*func_seek) (filesystem *, fs_handle, off_t, int);
 typedef ssize_t (*func_tell) (filesystem *, fs_handle);
 
 #define SEEK_SET 0
@@ -43,7 +45,6 @@ struct filesystem {
    func_read fread;
    func_write fwrite;
    func_seek fseek;
-   func_tell ftell;
 };
 
 typedef struct {
@@ -71,5 +72,5 @@ static inline bool exvfs_is_handle_valid(fhandle h)
 fhandle exvfs_open(const char *path);
 void exvfs_close(fhandle h);
 ssize_t exvfs_read(fhandle h, char *buf, size_t buf_size);
-int exvfs_seek(fhandle h, ssize_t off, int whence);
-size_t exvfs_tell(fhandle h);
+off_t exvfs_seek(fhandle h, off_t off, int whence);
+
