@@ -4,7 +4,7 @@
 # In other words, the USE_GCOV controls this script only if it is running
 # under TRAVIS, which makes sense.
 
-if [ -z "$USE_GCOV" ] && [ -z "$TRAVIS" ]; then
+if [ -z "$USE_GCOV" ] && [ -n "$TRAVIS" ]; then
    echo "Exit 0 without doing anything"
    exit 0
 fi

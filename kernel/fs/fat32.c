@@ -227,7 +227,7 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 
       /* NON-ASCII characters are NOT supported */
       if (le->LDIR_Name1[i+1] != 0) {
-         ctx->is_valid = true;
+         ctx->is_valid = false;
          return;
       }
 
@@ -241,7 +241,7 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 
       /* NON-ASCII characters are NOT supported */
       if (le->LDIR_Name2[i+1] != 0) {
-         ctx->is_valid = true;
+         ctx->is_valid = false;
          return;
       }
 
@@ -255,7 +255,7 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 
       /* NON-ASCII characters are NOT supported */
       if (le->LDIR_Name3[i+1] != 0) {
-         ctx->is_valid = true;
+         ctx->is_valid = false;
          return;
       }
 
