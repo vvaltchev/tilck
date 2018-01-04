@@ -274,9 +274,19 @@ function download_i686_toolchain {
 
    if ! [ -d x86-i686--glibc--stable ]; then
       tarname=x86-i686--glibc--stable-2017.05-toolchains-1-1.tar.bz2
-      wget http://toolchains.free-electrons.com/downloads/releases/toolchains/x86-i686/tarballs/$tarname
+      url=http://toolchains.free-electrons.com/downloads/releases/toolchains
+      wget $url/x86-i686/tarballs/$tarname
       tar xfj $tarname
       rm $tarname
+      cd $X86_TOOLCHAIN
+
+      for x in *; do
+         if [[ $x == i686* ]]; then
+            new_name=`echo $x | sed 's/i686/i386/g' -`
+            ln -s $x $new_name
+         fi
+      done
+
    else
       echo "NOTE: Skipping x86-i686 GNU toolchain"
    fi
@@ -371,17 +381,12 @@ function build_dietlibc {
 
       wget https://www.fefe.de/dietlibc/dietlibc-0.33.tar.bz2
       tar xfj dietlibc-0.33.tar.bz2
+
       pushd dietlibc-0.33
+
       sed -i 's/#define WANT_SYSENTER/\/\/#define WANT_SYSENTER/g' dietfeatures.h
       sed -i 's/-Wno-unused -Wredundant-decls/-Wno-unused -Wredundant-decls -fno-stack-protector/g' Makefile
-      # The build of dietlibc fails even when succeeds, when we cross-build for i386
-      # So, disabling the 'exit on first failure' option.
-      set +e
-
-      run_command2 "make -j i386 DEBUG=1" "dietlibc_build.log"
-
-      # Restore the 'exit on first failure'
-      set -e
+      PATH=$X86_TOOLCHAIN:$PATH make MYARCH=i386 -j i386 DEBUG=1 &> dietlibc_build.log
 
       popd
       rm dietlibc-0.33.tar.bz2
@@ -497,6 +502,8 @@ if [ -f $TC/cmake/bin/cmake ]; then
 else
    CMAKE=cmake
 fi
+
+X86_TOOLCHAIN=$TC/x86-i686--glibc--stable/bin
 
 if [ "$1" == "-s" ]; then
 
