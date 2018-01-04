@@ -132,7 +132,7 @@ fhandle exvfs_open(const char *path)
 
    if (best_match_index >= 0) {
       res.fs = mps[best_match_index]->fs;
-      res.fsh = res.fs->fopen(res.fs, path + best_match_len - 1);
+      res.internal_handle = res.fs->fopen(res.fs, path + best_match_len - 1);
    }
 
    return res;
@@ -140,20 +140,20 @@ fhandle exvfs_open(const char *path)
 
 void exvfs_close(fhandle h)
 {
-   h.fs->fclose(h.fs, h.fsh);
+   h.fs->fclose(h.fs, h.internal_handle);
 }
 
 ssize_t exvfs_read(fhandle h, char *buf, size_t buf_size)
 {
-   return h.fs->fread(h.fs, h.fsh, buf, buf_size);
+   return h.fs->fread(h.fs, h.internal_handle, buf, buf_size);
 }
 
 ssize_t exvfs_write(fhandle h, char *buf, size_t buf_size)
 {
-   return h.fs->fwrite(h.fs, h.fsh, buf, buf_size);
+   return h.fs->fwrite(h.fs, h.internal_handle, buf, buf_size);
 }
 
 off_t exvfs_seek(fhandle h, off_t off, int whence)
 {
-   return h.fs->fseek(h.fs, h.fsh, off, whence);
+   return h.fs->fseek(h.fs, h.internal_handle, off, whence);
 }

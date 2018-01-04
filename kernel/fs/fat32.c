@@ -707,7 +707,7 @@ fat_read_whole_file(fat_header *hdr,
 }
 
 
-STATIC fs_handle fat_open(filesystem *fs, const char *path)
+STATIC fs_int_handle_t fat_open(filesystem *fs, const char *path)
 {
    fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
 
@@ -727,14 +727,14 @@ STATIC fs_handle fat_open(filesystem *fs, const char *path)
    return h;
 }
 
-STATIC void fat_close(filesystem *fs, fs_handle handle)
+STATIC void fat_close(filesystem *fs, fs_int_handle_t handle)
 {
    fat_file_handle *h = (fat_file_handle *)handle;
    kfree(h, sizeof(fat_file_handle));
 }
 
 STATIC ssize_t fat_read(filesystem *fs,
-                        fs_handle handle,
+                        fs_int_handle_t handle,
                         char *buf,
                         size_t bufsize)
 {
@@ -803,7 +803,7 @@ STATIC ssize_t fat_read(filesystem *fs,
 }
 
 STATIC ssize_t fat_write(filesystem *fs,
-                         fs_handle h,
+                         fs_int_handle_t h,
                          char *buf,
                          size_t bufsize)
 {
@@ -811,7 +811,7 @@ STATIC ssize_t fat_write(filesystem *fs,
    return -1;
 }
 
-STATIC int fat_rewind(filesystem *fs, fs_handle handle)
+STATIC int fat_rewind(filesystem *fs, fs_int_handle_t handle)
 {
    fat_file_handle *h = (fat_file_handle *) handle;
    h->pos = 0;
@@ -819,7 +819,9 @@ STATIC int fat_rewind(filesystem *fs, fs_handle handle)
    return 0;
 }
 
-STATIC off_t fat_seek_forward(filesystem *fs, fs_handle handle, off_t dist)
+STATIC off_t fat_seek_forward(filesystem *fs,
+                              fs_int_handle_t handle,
+                              off_t dist)
 {
    fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
    fat_file_handle *h = (fat_file_handle *) handle;
@@ -876,7 +878,10 @@ STATIC off_t fat_seek_forward(filesystem *fs, fs_handle handle, off_t dist)
    return h->pos;
 }
 
-STATIC off_t fat_seek(filesystem *fs, fs_handle handle, off_t off, int whence)
+STATIC off_t fat_seek(filesystem *fs,
+                      fs_int_handle_t handle,
+                      off_t off,
+                      int whence)
 {
    off_t curr_pos = (off_t) ((fat_file_handle *)handle)->pos;
 
