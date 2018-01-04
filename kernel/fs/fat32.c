@@ -892,23 +892,16 @@ STATIC off_t fat_seek(filesystem *fs, fs_handle handle, off_t off, int whence)
 
    case SEEK_END:
 
-      if (off > 0)
-         return -EINVAL; /* invalid positive offset */
+      if (off >= 0)
+         break;
 
       fat_file_handle *h = (fat_file_handle *) handle;
-      size_t fsize = h->e->DIR_FileSize;
+      off = (off_t) h->e->DIR_FileSize + off;
+
+      if (off < 0)
+         return -EINVAL;
+
       fat_rewind(fs, handle);
-
-      if ((size_t)(-off) >= fsize) {
-
-         /*
-          * Seeking back by 'off' will go beyond the beginning: no point in doing
-          * that. Since after the rewind() above we're already at the beginning,
-          * just return 0.
-          */
-         return 0;
-      }
-
       break;
 
    case SEEK_CUR:
