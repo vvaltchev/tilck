@@ -67,8 +67,11 @@ TEST(exvfs, fseek)
    initialize_kmalloc_for_tests();
 
    random_device rdev;
-   default_random_engine engine(rdev());
+   const auto seed = rdev();
+   default_random_engine engine(seed);
    lognormal_distribution<> dist(4.0, 3);
+
+   cout << "[ INFO     ] random seed: " << seed << endl;
 
    size_t fatpart_size;
    const char *fatpart = load_once_file("build/fatpart", &fatpart_size);
@@ -131,19 +134,36 @@ TEST(exvfs, fseek)
 
       ASSERT_EQ(exos_pos, linux_pos);
 
-      ssize_t glibc_fread = read(fd, buf_linux, sizeof(buf_linux));
-      ssize_t exos_fread = exvfs_read(h, buf_exos, sizeof(buf_exos));
+      ssize_t linux_read = read(fd, buf_linux, sizeof(buf_linux));
+      ssize_t exos_read = exvfs_read(h, buf_exos, sizeof(buf_exos));
 
-      ASSERT_EQ(exos_fread, glibc_fread);
+      ASSERT_EQ(exos_read, linux_read);
 
       linux_pos = lseek(fd, 0, SEEK_CUR);
       exos_pos = exvfs_seek(h, 0, SEEK_CUR);
 
       ASSERT_EQ(exos_pos, linux_pos);
-      ASSERT_EQ(memcmp(buf_exos, buf_linux, sizeof(buf_linux)), 0)
-         << "Buffers differ. " << endl
-         << "Last offset: " << offset << endl
-         << "Curr pos: " << linux_pos << endl;
+
+      if (memcmp(buf_exos, buf_linux, sizeof(buf_linux)) != 0) {
+
+         cout << "Buffers differ. " << endl;
+         cout << "Last offset: " << offset << endl;
+         cout << "Curr pos: " << linux_pos << endl;
+         cout << "read ret: " << linux_read << endl;
+
+         cout << "Linux buf: ";
+
+         for (size_t i = 0; i < sizeof(buf_linux); i++)
+            printf("%02x ", buf_linux[i]);
+
+         cout << endl;
+         cout << "ExOS buf:  ";
+
+         for (size_t i = 0; i < sizeof(buf_linux); i++)
+            printf("%02x ", buf_exos[i]);
+
+         FAIL();
+      }
 
       last_pos = linux_pos;
    }
