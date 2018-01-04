@@ -30,7 +30,6 @@ typedef void (*func_close) (filesystem *, fs_handle);
 typedef ssize_t (*func_read) (filesystem *, fs_handle, char *, size_t);
 typedef ssize_t (*func_write) (filesystem *, fs_handle, char *, size_t);
 typedef off_t (*func_seek) (filesystem *, fs_handle, off_t, int);
-typedef ssize_t (*func_tell) (filesystem *, fs_handle);
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
@@ -72,5 +71,6 @@ static inline bool exvfs_is_handle_valid(fhandle h)
 fhandle exvfs_open(const char *path);
 void exvfs_close(fhandle h);
 ssize_t exvfs_read(fhandle h, char *buf, size_t buf_size);
+ssize_t exvfs_write(fhandle h, char *buf, size_t buf_size);
 off_t exvfs_seek(fhandle h, off_t off, int whence);
 
