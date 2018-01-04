@@ -18,7 +18,7 @@ if [ ! -f $1 ]; then
    dd status=none if=/dev/zero of=$dest bs=1M count=35
 fi
 
-$mformat -i $dest -t 70 -h 16 -s 63 ::
+$mformat -i $dest -d 1 -F -c 1 -t 70 -h 16 -s 63 ::
 $mlabel -i $dest ::EXOS
 
 rm -rf $bdir/sysroot

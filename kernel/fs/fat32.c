@@ -292,8 +292,11 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
       (hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus) / sizeof(fat_entry);
 
    ASSERT(ft == fat16_type || ft == fat32_type);
-   ASSERT(cluster == 0 || entry == NULL); // cluster != 0 => entry == NULL
-   ASSERT(entry == NULL || cluster == 0); // entry != NULL => cluster == 0
+
+   if (ft == fat16_type) {
+      ASSERT(cluster == 0 || entry == NULL); // cluster != 0 => entry == NULL
+      ASSERT(entry == NULL || cluster == 0); // entry != NULL => cluster == 0
+   }
 
    bzero(ctx->long_name_buf, sizeof(ctx->long_name_buf));
    ctx->long_name_size = 0;
@@ -457,8 +460,17 @@ u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N)
 {
    u32 RootDirSectors = fat_get_RootDirSectors(hdr);
 
+   u32 FATSz;
+
+   if (hdr->BPB_FATSz16 != 0) {
+      FATSz = hdr->BPB_FATSz16;
+   } else {
+      fat32_header2 *h32 = (fat32_header2*) (hdr+1);
+      FATSz = h32->BPB_FATSz32;
+   }
+
    u32 FirstDataSector = hdr->BPB_RsvdSecCnt +
-      (hdr->BPB_NumFATs * hdr->BPB_FATSz16) + RootDirSectors;
+      (hdr->BPB_NumFATs * FATSz) + RootDirSectors;
 
    // FirstSectorofCluster
    return ((N - 2) * hdr->BPB_SecPerClus) + FirstDataSector;
