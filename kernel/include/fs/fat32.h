@@ -117,6 +117,11 @@ typedef struct {
 
 typedef struct {
 
+   /* fs_handle_base */
+   filesystem *fs;
+   file_ops fops;
+
+   /* fs-specific members */
    fat_entry *e;
    u32 pos;
    u32 curr_cluster;
