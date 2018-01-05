@@ -2,8 +2,11 @@
 #include <elf.h>
 #include <paging.h>
 #include <process.h>
+#include <kmalloc.h>
 
 #include <string_util.h>
+#include <fs/exvfs.h>
+
 #include <arch/generic_x86/x86_utils.h>
 
 #ifdef BITS32
@@ -61,11 +64,16 @@ void dump_elf32_phdrs(Elf32_Ehdr *h)
 
 uptr alloc_pageframe();
 
-void load_elf_program(void *elf,
+void load_elf_program(fs_handle *elf_file,
                       page_directory_t *pdir,
                       void **entry,
                       void **stack_addr)
 {
+
+   // HACK!!!
+   char *elf = kmalloc(100*1000);
+   exvfs_read(elf_file, elf, 100*1000);
+   // END HACK!!!
 
    Elf32_Ehdr *header = (Elf32_Ehdr *)elf;
    ASSERT(header->e_ehsize == sizeof(*header));
@@ -144,6 +152,11 @@ void load_elf_program(void *elf,
 
    *stack_addr = (void *) ((OFFLIMIT_USERMODE_ADDR - 1) & ~15);
    *entry = (void *) header->e_entry;
+
+
+   // HACK ////
+   kfree(elf, 100*1000);
+   /////////////////////
 }
 
 #endif // BITS32
