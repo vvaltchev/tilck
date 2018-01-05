@@ -57,7 +57,7 @@ add_custom_command(
     OUTPUT
         ${KERNEL_BIN_FILE}
     COMMAND
-        ${BUILD_SCRIPTS}/bss_checker.sh elf_kernel
+        ${BUILD_SCRIPTS}/bss_checker elf_kernel
     COMMAND
         ${OBJCOPY} -O binary -j .text -j .rodata -j .data elf_kernel ${KERNEL_BIN_FILE}
     DEPENDS

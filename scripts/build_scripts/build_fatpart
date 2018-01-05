@@ -18,6 +18,13 @@ if [ ! -f $1 ]; then
    dd status=none if=/dev/zero of=$dest bs=1M count=35
 fi
 
+# mformat options
+# -d <N> ; num of FAT copies
+# -F     ; force FAT32 to be used
+# -c <N> ; sectors per cluster
+# -t <N> ; cylinders
+# -h <N> ; heads
+# -s <N> ; sectors
 $mformat -i $dest -d 1 -F -c 1 -t 70 -h 16 -s 63 ::
 $mlabel -i $dest ::EXOS
 
