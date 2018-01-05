@@ -220,3 +220,26 @@ NORETURN void not_reached(const char *file, int line);
 #else
 #define STATIC static
 #endif
+
+
+#ifdef KERNEL_TEST
+
+/*
+ * When tests are built, on some older compilers, using just '= {0}' is not
+ * well accepted. That triggers the 'missing-field-initializers' warning.
+ * I'm not sure if just suppressing the warning will guaratee that the struct
+ * will be fully zero-initialized. The safer path is therefore, to just leave
+ * the global in BSS, when BSS can be used. In the kernel, that's not possible.
+ */
+#define ZERO_INITIALIZED(x) x
+
+#else
+
+/*
+ * The kernel is still a flat-binary so no BSS.
+ * All the globals must be explicitly initialized in order to be placed in
+ * .data by the compiler. And yes, this wastes space in the kernel. At some
+ * point, support for an ELF kernel will be added in the bootloader.
+ */
+#define ZERO_INITIALIZED(x) x = {0}
+#endif
