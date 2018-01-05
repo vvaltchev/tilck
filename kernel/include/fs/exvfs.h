@@ -83,7 +83,7 @@ void mountpoint_remove(filesystem *fs);
 
 fs_handle exvfs_open(const char *path);
 void exvfs_close(fs_handle h);
-ssize_t exvfs_read(fs_handle h, char *buf, size_t buf_size);
-ssize_t exvfs_write(fs_handle h, char *buf, size_t buf_size);
+ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size);
+ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size);
 off_t exvfs_seek(fs_handle h, off_t off, int whence);
 
