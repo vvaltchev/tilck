@@ -73,7 +73,7 @@ void set_current_task_in_user_mode()
    set_kernel_stack(current->kernel_state_regs.useresp);
 }
 
-task_info fake_current_proccess = {0};
+ZERO_INITIALIZED(task_info fake_current_proccess);
 
 void save_current_task_state(regs *r)
 {
