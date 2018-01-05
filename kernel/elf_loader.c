@@ -86,15 +86,8 @@ void load_elf_program(fs_handle *elf_file,
    Elf32_Phdr *phdr = kmalloc(total_phdrs_size);
    VERIFY(phdr != NULL);
 
-   //dump_elf32_header(header);
-   //dump_elf32_phdrs(header);
-
    ret = exvfs_read(elf_file, phdr, total_phdrs_size);
    ASSERT(ret == total_phdrs_size);
-
-   // printk("Size of eheader: %u\n", sizeof(*header));
-   // printk("Size of one phdr: %u\n", sizeof(*phdr));
-   // printk("Num of phdrs: %u\n", header->e_phnum);
 
    for (int i = 0; i < header.e_phnum; i++, phdr++) {
 
@@ -102,7 +95,6 @@ void load_elf_program(fs_handle *elf_file,
       if (phdr->p_type != PT_LOAD) {
          continue;
       }
-
 
       int pages_count =
          ((phdr->p_memsz + PAGE_SIZE) & PAGE_MASK) >> PAGE_SHIFT;
