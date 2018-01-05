@@ -15,6 +15,7 @@
 #include <sync.h>
 
 #include <fs/fat32.h>
+#include <fs/exvfs.h>
 
 // TODO: move these forward-declarations in appropriate header files.
 
@@ -32,7 +33,7 @@ void kmutex_test();
 void kcond_test();
 void tasklet_stress_test();
 
-void load_elf_program(void *elf,
+void load_elf_program(fs_handle *elf_file,
                       page_directory_t *pdir,
                       void **entry,
                       void **stack_addr);
@@ -46,23 +47,25 @@ void show_hello_message()
 }
 
 task_info *usermode_init_task = NULL;
+filesystem *root_fs = NULL;
 
 void load_usermode_init()
 {
-   fat_header *fat = (fat_header*)RAM_DISK_VADDR;
+   void *entry_point = NULL;
+   void *stack_addr = NULL;
 
-   fat_entry *entry = fat_search_entry(fat, fat_unknown, "/sbin/init");
-   ASSERT(entry != NULL);
+   fs_handle *elf = exvfs_open("/sbin/init");
 
-   u32 first_cluster = fat_get_first_cluster(entry);
-   void *elf_vaddr = fat_get_pointer_to_cluster_data(fat, first_cluster);
+   if (!elf) {
+      panic("[kernel] Unable to open /sbin/init!\n");
+   }
 
    page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
    set_page_directory(pdir);
 
-   void *entry_point = NULL;
-   void *stack_addr = NULL;
-   load_elf_program(elf_vaddr, pdir, &entry_point, &stack_addr);
+   load_elf_program(elf, pdir, &entry_point, &stack_addr);
+
+   exvfs_close(elf);
 
    printk("[load_usermode_init] Entry: %p\n", entry_point);
    printk("[load_usermode_init] Stack: %p\n", stack_addr);
@@ -85,6 +88,9 @@ void mount_ramdisk()
              true);
 
    printk("DONE\n");
+
+   root_fs = fat_mount_ramdisk((void *)RAM_DISK_VADDR);
+   mountpoint_add(root_fs, "/");
 }
 
 void kmain()
