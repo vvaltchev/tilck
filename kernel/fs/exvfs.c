@@ -144,13 +144,13 @@ void exvfs_close(fs_handle h)
    hb->fs->fclose(h);
 }
 
-ssize_t exvfs_read(fs_handle h, char *buf, size_t buf_size)
+ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    return hb->fops.fread(h, buf, buf_size);
 }
 
-ssize_t exvfs_write(fs_handle h, char *buf, size_t buf_size)
+ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    return hb->fops.fwrite(h, buf, buf_size);
