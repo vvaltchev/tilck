@@ -168,7 +168,7 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
    r.useresp = (u32) stack_addr;
 
    char *argv[] = { "init", "test_arg_1" };
-   char *env[] = { "OSTYPE=gnu-linux", "PWD=/" };
+   char *env[] = { "OSTYPE=linux-gnu", "PWD=/" };
    push_args_on_user_stack(&r, ARRAY_SIZE(argv), argv, ARRAY_SIZE(env), env);
 
    r.eflags = get_eflags() | (1 << 9);
