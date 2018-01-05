@@ -6,63 +6,33 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <stdbool.h>
 
-typedef unsigned char bool;
-#define true 1
-#define false 0
 
-int bss_variable[32];
+#define FORK_TEST_ITERS (2 * 250 * 1024 * 1024)
 
-#define ITERS (2 * 250 * 1024 * 1024)
-
-int main(int argc, char **argv, char **env)
+void fork_test(void)
 {
-   printf("### Hello from init! MY PID IS %i\n", getpid());
-
-   printf("argc: %i\n", argc);
-
-   for (int i = 0; i < argc; i++) {
-      printf("argv[%i] = '%s'\n", i, argv[i]);
-   }
-
-   printf("env[OSTYPE] = '%s'\n", getenv("OSTYPE"));
-
-
-   int stackVar;
-   printf("&stackVar = %p\n", &stackVar);
-
-   for (int i = 0; i < 4; i++) {
-      printf("BssVar[%i] = %i\n", i, bss_variable[i]);
-   }
-
-   int ret = open("/myfile.txt", 0xAABB, 0x112233);
-
-   printf("ret = %i\n", ret);
-
-   for (int i = 0; i < 5; i++) {
-      printf("i = %i\n", i);
-   }
-
    printf("Running infinite loop..\n");
 
    unsigned n = 1;
-   int iters_hits_count = 0;
+   int FORK_TEST_ITERS_hits_count = 0;
    bool inchild = false;
-   bool exit_on_next_iters_hit = false;
+   bool exit_on_next_FORK_TEST_ITERS_hit = false;
 
    while (true) {
 
-      if (!(n % ITERS)) {
+      if (!(n % FORK_TEST_ITERS)) {
 
-         printf("[PID: %i] iters hit!\n", getpid());
+         printf("[PID: %i] FORK_TEST_ITERS hit!\n", getpid());
 
-         if (exit_on_next_iters_hit) {
-            return 0;
+         if (exit_on_next_FORK_TEST_ITERS_hit) {
+            return;
          }
 
-         iters_hits_count++;
+         FORK_TEST_ITERS_hits_count++;
 
-         if (iters_hits_count == 1) {
+         if (FORK_TEST_ITERS_hits_count == 1) {
 
             printf("forking..\n");
 
@@ -78,12 +48,12 @@ int main(int argc, char **argv, char **env)
                printf("[parent] waiting the child to exit...\n");
                int p = waitpid(pid, NULL, 0);
                printf("[parent] child (pid: %i) exited!\n", p);
-               exit_on_next_iters_hit = true;
+               exit_on_next_FORK_TEST_ITERS_hit = true;
             }
 
          }
 
-         if (iters_hits_count == 2 && inchild) {
+         if (FORK_TEST_ITERS_hits_count == 2 && inchild) {
             printf("child: 2 iter hits, exit!\n");
             exit(123);
          }
@@ -91,5 +61,51 @@ int main(int argc, char **argv, char **env)
 
       n++;
    }
+}
+
+int bss_variable[32];
+
+void bss_var_test(void)
+{
+   for (int i = 0; i < 32; i++) {
+      if (bss_variable[i] != 0) {
+         printf("%s: FAIL\n", __FUNCTION__);
+         exit(1);
+      }
+   }
+
+   printf("%s: OK\n", __FUNCTION__);
+}
+
+void args_test(int argc, char ** argv)
+{
+   printf("argc: %i\n", argc);
+
+   for (int i = 0; i < argc; i++) {
+      printf("argv[%i] = '%s'\n", i, argv[i]);
+   }
+
+   printf("env[OSTYPE] = '%s'\n", getenv("OSTYPE"));
+
+   if (strcmp(argv[0], "init")) {
+      printf("%s: FAIL\n", __FUNCTION__);
+      exit(1);
+   }
+
+   if (strcmp(getenv("OSTYPE"), "linux-gnu")) {
+      printf("%s: FAIL\n", __FUNCTION__);
+      exit(1);
+   }
+}
+
+int main(int argc, char **argv, char **env)
+{
+   printf("Hello from init! MY PID IS %i\n", getpid());
+
+   args_test(argc, argv);
+   bss_var_test();
+   fork_test();
+
+   return 0;
 }
 
