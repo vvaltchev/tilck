@@ -3,9 +3,11 @@
 
 
 #if defined(__i386__)
+#define __arch__x86__
 
 #include <arch/generic_x86/x86_utils.h>
 #include <arch/i386/arch_utils.h>
+
 
 static ALWAYS_INLINE int regs_intnum(regs *r)
 {
@@ -13,6 +15,7 @@ static ALWAYS_INLINE int regs_intnum(regs *r)
 }
 
 #elif defined(__x86_64__)
+#define __arch__x86__
 
 #include <arch/generic_x86/x86_utils.h>
 
@@ -37,6 +40,15 @@ static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
 
 #error Unsupported architecture.
 
+#endif
+
+#ifdef __arch__x86__
+
+void gdt_install();
+void idt_install();
+
+#define setup_segmentation() gdt_install()
+#define setup_interrupt_handling() idt_install(); irq_install()
 #endif
 
 typedef void (*interrupt_handler)(regs *);

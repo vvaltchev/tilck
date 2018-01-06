@@ -35,8 +35,8 @@ before_install:
   - ./scripts/build_toolchain --skip-install-pkgs
 
 install:
-  - make
-  - make gtests
+  - make -j
+  - make -j gtests
 
 script:
   - MALLOC_CHECK_=2 ./build/gtests

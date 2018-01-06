@@ -25,6 +25,7 @@
       "sync.h": "c",
       "process.h": "c",
       "kmalloc.h": "c",
-      "common_defs.h": "c"
+      "common_defs.h": "c",
+      "term.h": "c"
    }
 }

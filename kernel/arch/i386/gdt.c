@@ -125,7 +125,7 @@ u32 get_kernel_stack()
 }
 
 
-// Initialise our task state segment structure.
+// Initialize our task state segment structure.
 static void write_tss(s32 num, u16 ss0, u32 esp0)
 {
     // First, let's compute the base and limit of our entry into the GDT.
