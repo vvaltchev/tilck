@@ -4,6 +4,7 @@
 #include <string_util.h>
 #include <hal.h>
 #include <sync.h>
+#include <process.h>
 
 typedef void (*tasklet_func)(uptr, uptr, uptr);
 

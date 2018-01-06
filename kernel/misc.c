@@ -1,6 +1,7 @@
 
 #include <common_defs.h>
 #include <string_util.h>
+#include <process.h>
 #include <hal.h>
 
 /* the kernel starts with interrupts disabled */

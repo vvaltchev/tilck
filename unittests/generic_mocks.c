@@ -59,3 +59,5 @@ void init_paging() { }
 void set_timer_freq() { }
 void irq_install_handler() { }
 void setup_sysenter_interface() { }
+void save_current_task_state() { }
+void switch_to_task() { }

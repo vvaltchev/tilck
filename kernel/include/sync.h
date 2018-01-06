@@ -2,7 +2,9 @@
 #pragma once
 
 #include <common_defs.h>
-#include <process.h>
+
+typedef struct task_info task_info;
+static ALWAYS_INLINE task_info *get_current_task();
 
 typedef enum {
    WOBJ_NONE = 0,
@@ -33,7 +35,6 @@ static inline void wait_obj_reset(wait_obj *obj)
    obj->type = WOBJ_NONE;
    obj->ptr = NULL;
 }
-
 
 /*
  * The mutex implementation used for locking in kernel mode.

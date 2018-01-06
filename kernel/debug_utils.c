@@ -5,9 +5,9 @@
 
 #include <debug_utils.h>
 #include <string_util.h>
-#include <arch/generic_x86/x86_utils.h>
-#include <arch/i386/process_int.h>
+#include <hal.h>
 #include <irq.h>
+#include <process.h>
 
 void panic_save_current_state();
 volatile bool in_panic = false;

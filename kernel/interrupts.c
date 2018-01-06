@@ -1,7 +1,8 @@
 
 #include <common_defs.h>
-#include <hal.h>
 #include <string_util.h>
+#include <process.h>
+#include <hal.h>
 
 void handle_syscall(regs *);
 void handle_fault(regs *);
@@ -42,7 +43,7 @@ static bool is_same_interrupt_nested(int int_num)
  */
 static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode()
 {
-   if (!current->running_in_kernel) {
+   if (!running_in_kernel(current)) {
       if (nested_interrupts_count == 0) {
          ASSERT(is_preemption_enabled());
       }
@@ -52,7 +53,7 @@ static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode()
 
 void generic_interrupt_handler(regs *r)
 {
-   DEBUG_check_disable_interrupts_count_is_0(r->int_num);
+   DEBUG_check_disable_interrupts_count_is_0(regs_intnum(r));
 
    /*
     * We know that interrupts have been disabled exactly once at this point
@@ -65,12 +66,12 @@ void generic_interrupt_handler(regs *r)
 
    ASSERT(!are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
-   ASSERT(!is_same_interrupt_nested(r->int_num));
+   ASSERT(!is_same_interrupt_nested(regs_intnum(r)));
    ASSERT(current != NULL);
 
    DEBUG_check_preemption_enabled_for_usermode();
 
-   if (is_irq(r->int_num)) {
+   if (is_irq(regs_intnum(r))) {
       handle_irq(r);
       DEBUG_check_preemption_enabled_for_usermode();
 
@@ -82,13 +83,13 @@ void generic_interrupt_handler(regs *r)
    DEBUG_check_preemption_enabled_for_usermode();
 
    disable_preemption();
-   push_nested_interrupt(r->int_num);
+   push_nested_interrupt(regs_intnum(r));
 
    enable_interrupts_forced();
    ASSERT(are_interrupts_enabled());
    ASSERT(disable_interrupts_count == 0);
 
-   if (LIKELY(r->int_num == SYSCALL_SOFT_INTERRUPT)) {
+   if (LIKELY(regs_intnum(r) == SYSCALL_SOFT_INTERRUPT)) {
 
       handle_syscall(r);
 

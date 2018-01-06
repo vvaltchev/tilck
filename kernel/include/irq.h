@@ -2,10 +2,12 @@
 #pragma once
 
 #include <common_defs.h>
+#include <hal.h>
 
-// TODO: avoiding including this arch-specific header here.
-#include <arch/generic_x86/x86_utils.h>
 
+/*
+ * The following FAULTs are valid both for x86 (i386+) and for x86_64.
+ */
 #define FAULT_DIVISION_BY_ZERO      0
 #define FAULT_DEBUG                 1
 #define FAULT_NMI                   2
@@ -31,8 +33,6 @@
 
 // Forward-declaring regs
 typedef struct regs regs;
-
-typedef void (*interrupt_handler)(regs *);
 
 void irq_install();
 
