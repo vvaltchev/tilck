@@ -2,11 +2,16 @@
 #pragma once
 
 #include <common_defs.h>
+#include <list.h>
 #include <paging.h>
 #include <irq.h>
+#include <hal.h>
+#include <sync.h>
 
 // This is the biggest usermode addr + 1
 #define OFFLIMIT_USERMODE_ADDR 0xC0000000UL
+
+#define KTHREAD_STACK_SIZE (PAGE_SIZE)
 
 typedef enum {
    TASK_STATE_RUNNABLE = 0,
@@ -15,10 +20,51 @@ typedef enum {
    TASK_STATE_ZOMBIE = 3
 } task_state_enum;
 
-struct task_info;
+struct task_info {
+
+   list_node list;
+   list_node runnable_list;
+   list_node sleeping_list;
+
+   int pid; /* global user/kernel thread identifier */
+   task_state_enum state;
+   int exit_code;
+
+   u64 ticks;
+   u64 total_ticks;
+   u64 kernel_ticks;
+
+   int running_in_kernel;
+
+   int owning_process_pid; /* The pid of the process owning this thread. */
+   void *kernel_stack;
+
+   wait_obj wobj;
+
+   regs state_regs;
+   regs kernel_state_regs;
+   page_directory_t *pdir;
+};
+
 typedef struct task_info task_info;
 
+extern volatile u64 jiffies;
+extern int current_max_pid;
 extern task_info *volatile current;
+
+extern list_node tasks_list;
+extern list_node runnable_tasks_list;
+extern list_node sleeping_tasks_list;
+
+static ALWAYS_INLINE bool running_in_kernel(task_info *t)
+{
+   return t->running_in_kernel;
+}
+
+static ALWAYS_INLINE u64 get_ticks()
+{
+   return jiffies;
+}
 
 static ALWAYS_INLINE task_info *get_current_task()
 {
@@ -66,3 +112,11 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg);
 void kthread_exit();
 
 void kernel_sleep(u64 ticks);
+
+/*
+ * Saves the current state and calls schedule().
+ * That after, typically after some time, the scheduler will restore the thread
+ * as if kernel_yield() returned and nothing else happened.
+ */
+
+void kernel_yield();

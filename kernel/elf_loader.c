@@ -7,8 +7,6 @@
 #include <string_util.h>
 #include <fs/exvfs.h>
 
-#include <arch/generic_x86/x86_utils.h>
-
 #ifdef BITS32
 #ifdef DEBUG
 

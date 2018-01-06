@@ -20,5 +20,9 @@
     "files.insertFinalNewline": true,
     "editor.formatOnPaste": false,
     "editor.autoIndent": false,
-    "editor.emptySelectionClipboard": false
+   "editor.emptySelectionClipboard": false,
+   "files.associations": {
+      "sync.h": "c",
+      "process.h": "c"
+   }
 }

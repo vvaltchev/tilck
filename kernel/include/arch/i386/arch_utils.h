@@ -2,7 +2,6 @@
 #pragma once
 
 #include <common_defs.h>
-#include <process.h>
 #include <arch/generic_x86/x86_utils.h>
 
 #define KERNEL_INITIAL_STACK_ADDR 0xC000FFF0
@@ -18,15 +17,6 @@ struct regs {
    u32 int_num, err_code;    /* our 'push byte #' and error codes do this */
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
-
-/*
- * Saves the current state and calls schedule().
- * That after, typically after some time, the scheduler will restore the thread
- * as if kernel_yield() returned and nothing else happened.
- */
-
-void kernel_yield();
-
 
 static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
 {
