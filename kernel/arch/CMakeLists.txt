@@ -36,10 +36,10 @@ JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
 
 
 file(GLOB ARCH_SOURCES "${ARCH}/*.asm" "${ARCH}/*.c")
+file(GLOB ARCH_FAMILY_SOURCES "${ARCH_FAMILY}/*.c")
 file(GLOB SOURCES "../*.c" "../fs/*.c" "../test_stuff/*.c")
 
-
-add_executable(elf_kernel ${ARCH_SOURCES} ${SOURCES})
+add_executable(elf_kernel ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES})
 
 set_target_properties(
 

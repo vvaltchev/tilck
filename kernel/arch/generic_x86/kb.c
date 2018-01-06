@@ -9,8 +9,6 @@
  * http://wiki.osdev.org/PS/2_Keyboard
  * http://www.brokenthorn.com/Resources/OSDev19.html
  *
- * TODO: move this file in the generic_x86 directory, once the build system
- * supports that.
  */
 
 

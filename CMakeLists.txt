@@ -26,13 +26,15 @@ ENDFUNCTION(PREPEND)
 
 set(ARCH "i386")
 
-set(RELEASE_BUILD CACHE BOOL "Do a release build if true")
+# Other general config variables.
+
 set(USE_GCOV CACHE BOOL "Compile the tests for measuring coverage")
 
 ###########################################################
 
 if (${ARCH} STREQUAL "i386")
    set(NASM_ARCH_FORMAT "elf32")
+   set(ARCH_FAMILY "generic_x86")
 else()
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
 endif()
