@@ -62,13 +62,24 @@ void dump_elf32_phdrs(Elf32_Ehdr *h)
 
 uptr alloc_pageframe();
 
-void load_elf_program(fs_handle *elf_file,
-                      page_directory_t *pdir,
+void load_elf_program(const char *filepath,
+                      page_directory_t **pdir_ref,
                       void **entry,
                       void **stack_addr)
 {
    ssize_t ret;
    Elf32_Ehdr header;
+
+   fs_handle *elf_file = exvfs_open(filepath);
+
+   if (!elf_file) {
+      panic("[kernel] Unable to open '%s'!\n", filepath);
+   }
+
+   if (*pdir_ref == NULL) {
+      *pdir_ref = pdir_clone(get_kernel_page_dir());
+   }
+   set_page_directory(*pdir_ref);
 
    ret = exvfs_read(elf_file, &header, sizeof(header));
    ASSERT(ret == sizeof(header));
@@ -114,29 +125,30 @@ void load_elf_program(fs_handle *elf_file,
 
       for (int j = 0; j < pages_count; j++, vaddr += PAGE_SIZE) {
 
-         if (is_mapped(pdir, vaddr)) {
+         if (is_mapped(*pdir_ref, vaddr)) {
             continue;
          }
 
          uptr paddr = alloc_pageframe();
          VERIFY(paddr != 0);
 
-         map_page(pdir, vaddr, paddr, true, true);
+         map_page(*pdir_ref, vaddr, paddr, true, true);
          bzero(vaddr, PAGE_SIZE);
       }
 
       ret = exvfs_seek(elf_file, phdr->p_offset, SEEK_SET);
-      ASSERT(ret == (ssize_t)phdr->p_offset);
+      VERIFY(ret == (ssize_t)phdr->p_offset);
 
       ret = exvfs_read(elf_file, (void *) phdr->p_vaddr, phdr->p_filesz);
       VERIFY(ret == (ssize_t)phdr->p_filesz);
 
-
       vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
       for (int j = 0; j < pages_count; j++, vaddr += PAGE_SIZE) {
-         set_page_rw(pdir, vaddr, !!(phdr->p_flags & PF_W));
+         set_page_rw(*pdir_ref, vaddr, !!(phdr->p_flags & PF_W));
       }
    }
+
+   exvfs_close(elf_file);
 
    // Allocating memory for the user stack.
 
@@ -145,7 +157,9 @@ void load_elf_program(fs_handle *elf_file,
       (void *) (OFFLIMIT_USERMODE_ADDR - pages_for_stack * PAGE_SIZE);
 
    for (int i = 0; i < pages_for_stack; i++) {
-      map_page(pdir, stack_top + i * PAGE_SIZE, alloc_pageframe(), true, true);
+      uptr paddr = alloc_pageframe();
+      VERIFY(paddr != 0);
+      map_page(*pdir_ref, stack_top + i * PAGE_SIZE, paddr, true, true);
    }
 
    // Finally setting the output-params.
