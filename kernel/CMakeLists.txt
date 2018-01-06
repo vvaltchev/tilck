@@ -14,7 +14,7 @@ JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
 set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 
 include_directories("include")
-file(GLOB SOURCES "*.c" "fs/*.c" "test_stuff/*.c")
+file(GLOB SOURCES "*.c" "fs/*.c" "self_tests/*.c")
 
 # Creating a static library target for putting kernel's arch-independent code.
 

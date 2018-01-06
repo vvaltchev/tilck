@@ -2,6 +2,7 @@
 #pragma once
 
 #include <common_defs.h>
+#include <hal.h>
 
 
 /* Hardware text mode color constants. */

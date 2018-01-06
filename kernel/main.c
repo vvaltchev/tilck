@@ -2,14 +2,15 @@
 
 #include <common_defs.h>
 #include <string_util.h>
-#include <term.h>
+#include <hal.h>
+
 #include <irq.h>
 #include <kmalloc.h>
 #include <paging.h>
 #include <debug_utils.h>
 #include <process.h>
+#include <elf_loader.h>
 
-#include <hal.h>
 #include <utils.h>
 #include <tasklet.h>
 #include <sync.h>
@@ -17,33 +18,19 @@
 #include <fs/fat32.h>
 #include <fs/exvfs.h>
 
-#include <elf_loader.h>
+#include <kb.h>
+#include <timer.h>
+#include <term.h>
 
-// TODO: move these forward-declarations in appropriate header files.
+#include <self_tests/self_tests.h>
 
-void gdt_install();
-void idt_install();
-
-void init_kb();
-void timer_handler(regs *r);
-void keyboard_handler(regs *r);
-void set_timer_freq(int hz);
-
-void sleeping_kthread(void *);
-void simple_test_kthread(void *);
-void kmutex_test();
-void kcond_test();
-void tasklet_stress_test();
-
+task_info *usermode_init_task = NULL;
 
 void show_hello_message()
 {
    printk("Hello from exOS!\n");
    printk("TIMER_HZ: %i\n", TIMER_HZ);
 }
-
-task_info *usermode_init_task = NULL;
-filesystem *root_fs = NULL;
 
 void load_usermode_init()
 {
@@ -75,7 +62,7 @@ void mount_ramdisk()
 
    printk("DONE\n");
 
-   root_fs = fat_mount_ramdisk((void *)RAM_DISK_VADDR);
+   filesystem *root_fs = fat_mount_ramdisk((void *)RAM_DISK_VADDR);
    mountpoint_add(root_fs, "/");
 }
 
@@ -84,9 +71,8 @@ void kmain()
    term_init();
    show_hello_message();
 
-   gdt_install();
-   idt_install();
-   irq_install();
+   setup_segmentation();
+   setup_interrupt_handling();
 
    init_pageframe_allocator();
    initialize_kmalloc();
