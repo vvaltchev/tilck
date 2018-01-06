@@ -17,6 +17,8 @@
 #include <fs/fat32.h>
 #include <fs/exvfs.h>
 
+#include <elf_loader.h>
+
 // TODO: move these forward-declarations in appropriate header files.
 
 void gdt_install();
@@ -33,12 +35,6 @@ void kmutex_test();
 void kcond_test();
 void tasklet_stress_test();
 
-void load_elf_program(fs_handle *elf_file,
-                      page_directory_t *pdir,
-                      void **entry,
-                      void **stack_addr);
-
-
 
 void show_hello_message()
 {
@@ -53,25 +49,15 @@ void load_usermode_init()
 {
    void *entry_point = NULL;
    void *stack_addr = NULL;
+   page_directory_t *pdir = NULL;
 
-   fs_handle *elf = exvfs_open("/sbin/init");
-
-   if (!elf) {
-      panic("[kernel] Unable to open /sbin/init!\n");
-   }
-
-   page_directory_t *pdir = pdir_clone(get_kernel_page_dir());
-   set_page_directory(pdir);
-
-   load_elf_program(elf, pdir, &entry_point, &stack_addr);
-
-   exvfs_close(elf);
-
-   printk("[load_usermode_init] Entry: %p\n", entry_point);
-   printk("[load_usermode_init] Stack: %p\n", stack_addr);
+   load_elf_program("/sbin/init", &pdir, &entry_point, &stack_addr);
 
    usermode_init_task =
       create_first_usermode_task(pdir, entry_point, stack_addr);
+
+   printk("[load_usermode_init] Entry: %p\n", entry_point);
+   printk("[load_usermode_init] Stack: %p\n", stack_addr);
 }
 
 
@@ -119,7 +105,6 @@ void kmain()
    setup_sysenter_interface();
 
    mount_ramdisk();
-   //test_memdisk();
 
    DEBUG_ONLY(bool tasklet_added =) add_tasklet0(&init_kb);
    ASSERT(tasklet_added);

@@ -23,6 +23,8 @@
    "editor.emptySelectionClipboard": false,
    "files.associations": {
       "sync.h": "c",
-      "process.h": "c"
+      "process.h": "c",
+      "kmalloc.h": "c",
+      "common_defs.h": "c"
    }
 }
