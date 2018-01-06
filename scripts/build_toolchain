@@ -460,7 +460,7 @@ function build_gnuefi {
 
    if ! [ -d gnu-efi ]; then
 
-      git clone --branch 3.0.6 --depth 1 https://git.code.sf.net/p/gnu-efi/code gnu-efi
+      git clone --branch 3.0.6 --depth 1 https://github.com/vvaltchev/gnu-efi-fork.git gnu-efi
       cd gnu-efi
       run_command2 "make -j" gnu_efi_build.log
 
