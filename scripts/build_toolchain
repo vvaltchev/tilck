@@ -379,8 +379,8 @@ function build_dietlibc {
 
    if ! [ -d dietlibc-0.33 ]; then
 
-      wget https://www.fefe.de/dietlibc/dietlibc-0.33.tar.bz2
-      tar xfj dietlibc-0.33.tar.bz2
+      git clone --branch v0.33 --depth 1 https://github.com/vvaltchev/dietlibc-fork.git
+      mv dietlibc-fork dietlibc-0.33
 
       pushd dietlibc-0.33
 
@@ -389,7 +389,6 @@ function build_dietlibc {
       PATH=$X86_TOOLCHAIN:$PATH make MYARCH=i386 -j i386 DEBUG=1 &> dietlibc_build.log
 
       popd
-      rm dietlibc-0.33.tar.bz2
 
    else
 
