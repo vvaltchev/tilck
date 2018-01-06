@@ -5,6 +5,7 @@
 #include <irq.h>
 #include <process.h>
 #include <hal.h>
+#include <exos_errno.h>
 
 typedef sptr (*syscall_type)();
 
@@ -109,6 +110,53 @@ sptr sys_lseek()
 
 sptr sys_getpid();
 
+sptr sys_mount()
+{
+   return 0;
+}
+
+sptr sys_umount()
+{
+   return 0;
+}
+
+sptr sys_setuid()
+{
+   return 0;
+}
+
+/* Actual implementation, not a stub: only the root user exists. */
+sptr sys_getuid()
+{
+   return 0;
+}
+
+sptr sys_stime()
+{
+   return 0;
+}
+
+sptr sys_ptrace()
+{
+   return 0;
+}
+
+sptr sys_alarm()
+{
+   return 0;
+}
+
+sptr sys_oldfstat()
+{
+   return 0;
+}
+
+sptr sys_pause();
+
+sptr sys_utime()
+{
+   return 0;
+}
 
 #ifdef __i386__
 
@@ -135,7 +183,17 @@ syscall_type syscalls_pointers[] =
    [17] = sys_break,
    [18] = sys_oldstat,
    [19] = sys_lseek,
-   [20] = sys_getpid
+   [20] = sys_getpid,
+   [21] = sys_mount,
+   [22] = sys_umount,
+   [23] = sys_setuid,
+   [24] = sys_getuid,
+   [25] = sys_stime,
+   [26] = sys_ptrace,
+   [27] = sys_alarm,
+   [28] = sys_oldfstat,
+   [29] = sys_pause,
+   [30] = sys_utime
 };
 
 const ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
@@ -151,7 +209,7 @@ void handle_syscall(regs *r)
 
    if (syscall_no < 0 || syscall_no >= syscall_count) {
       printk("INVALID syscall #%i\n", syscall_no);
-      r->eax = (uptr) -1;
+      r->eax = (uptr) -ENOSYS;
       return;
    }
 

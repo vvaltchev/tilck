@@ -73,9 +73,21 @@ void set_current_task_in_user_mode()
    set_kernel_stack(current->kernel_state_regs.useresp);
 }
 
+ZERO_INITIALIZED(task_info fake_current_proccess);
 
 void save_current_task_state(regs *r)
 {
+   if (!current) {
+      /*
+       * PANIC occurred before the first task is started.
+       * Create a fake current task just to store the registers.
+       */
+
+      fake_current_proccess.pid = -1;
+      fake_current_proccess.running_in_kernel = true;
+      current = &fake_current_proccess;
+   }
+
    regs *state = current->running_in_kernel
                     ? &current->kernel_state_regs
                     : &current->state_regs;

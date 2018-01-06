@@ -2,6 +2,9 @@
 #include <common_defs.h>
 #include <string_util.h>
 #include <fs/fat32.h>
+#include <fs/exvfs.h>
+#include <kmalloc.h>
+#include <exos_errno.h>
 
 /*
  * The following code uses in many cases the CamelCase naming convention
@@ -192,6 +195,17 @@ static void reverse_long_name(fat_walk_dir_ctx *ctx)
       ctx->long_name_buf[i] = tmp[i];
 }
 
+bool fat32_is_valid_filename_character(char c)
+{
+   return c >= ' ' && c <= '~' && c != '/' &&
+          c != '\\' && c != '\"' && c != '*' &&
+          c != ':' && c != '<' && c != '>' &&
+          c != '?' && c != '|';
+}
+
+/*
+ * WARNING: this implementation supports only the ASCII subset of UTF16.
+ */
 static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
                                       fat_long_entry *le)
 {
@@ -202,10 +216,21 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
       bzero(ctx->long_name_buf, sizeof(ctx->long_name_chksum));
       ctx->long_name_size = 0;
       ctx->long_name_chksum = le->LDIR_Chksum;
+      ctx->is_valid = true;
    }
+
+   if (!ctx->is_valid)
+      return;
 
    for (int i = 0; i < 10; i+=2) {
       u8 c = le->LDIR_Name1[i];
+
+      /* NON-ASCII characters are NOT supported */
+      if (le->LDIR_Name1[i+1] != 0) {
+         ctx->is_valid = false;
+         return;
+      }
+
       if (c == 0 || c == 0xFF)
          goto end;
       entrybuf[ebuf_size++] = c;
@@ -213,6 +238,13 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 
    for (int i = 0; i < 12; i+=2) {
       u8 c = le->LDIR_Name2[i];
+
+      /* NON-ASCII characters are NOT supported */
+      if (le->LDIR_Name2[i+1] != 0) {
+         ctx->is_valid = false;
+         return;
+      }
+
       if (c == 0 || c == 0xFF)
          goto end;
       entrybuf[ebuf_size++] = c;
@@ -220,6 +252,13 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 
    for (int i = 0; i < 4; i+=2) {
       u8 c = le->LDIR_Name3[i];
+
+      /* NON-ASCII characters are NOT supported */
+      if (le->LDIR_Name3[i+1] != 0) {
+         ctx->is_valid = false;
+         return;
+      }
+
       if (c == 0 || c == 0xFF)
          goto end;
       entrybuf[ebuf_size++] = c;
@@ -227,8 +266,17 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 
    end:
 
-   for (int i = ebuf_size-1; i >= 0; i--)
-      ctx->long_name_buf[ctx->long_name_size++] = entrybuf[i];
+   for (int i = ebuf_size-1; i >= 0; i--) {
+
+      char c = entrybuf[i];
+
+      if (!fat32_is_valid_filename_character(c)) {
+         ctx->is_valid = false;
+         break;
+      }
+
+      ctx->long_name_buf[ctx->long_name_size++] = c;
+   }
 }
 
 int fat_walk_directory(fat_walk_dir_ctx *ctx,
@@ -244,8 +292,11 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
       (hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus) / sizeof(fat_entry);
 
    ASSERT(ft == fat16_type || ft == fat32_type);
-   ASSERT(cluster == 0 || entry == NULL); // cluster != 0 => entry == NULL
-   ASSERT(entry == NULL || cluster == 0); // entry != NULL => cluster == 0
+
+   if (ft == fat16_type) {
+      ASSERT(cluster == 0 || entry == NULL); // cluster != 0 => entry == NULL
+      ASSERT(entry == NULL || cluster == 0); // entry != NULL => cluster == 0
+   }
 
    bzero(ctx->long_name_buf, sizeof(ctx->long_name_buf));
    ctx->long_name_size = 0;
@@ -296,7 +347,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
 
          const char *long_name_ptr = NULL;
 
-         if (ctx->long_name_size > 0) {
+         if (ctx->long_name_size > 0 && ctx->is_valid) {
 
             s16 entry_checksum = shortname_checksum(entry[i].DIR_Name);
             if (ctx->long_name_chksum == entry_checksum) {
@@ -409,8 +460,17 @@ u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N)
 {
    u32 RootDirSectors = fat_get_RootDirSectors(hdr);
 
+   u32 FATSz;
+
+   if (hdr->BPB_FATSz16 != 0) {
+      FATSz = hdr->BPB_FATSz16;
+   } else {
+      fat32_header2 *h32 = (fat32_header2*) (hdr+1);
+      FATSz = h32->BPB_FATSz32;
+   }
+
    u32 FirstDataSector = hdr->BPB_RsvdSecCnt +
-      (hdr->BPB_NumFATs * hdr->BPB_FATSz16) + RootDirSectors;
+      (hdr->BPB_NumFATs * FATSz) + RootDirSectors;
 
    // FirstSectorofCluster
    return ((N - 2) * hdr->BPB_SecPerClus) + FirstDataSector;
@@ -601,6 +661,11 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
    return ctx.result;
 }
 
+size_t fat_get_file_size(fat_entry *entry)
+{
+   return entry->DIR_FileSize;
+}
+
 void
 fat_read_whole_file(fat_header *hdr,
                     fat_entry *entry, char *dest_buf, size_t dest_buf_size)
@@ -637,7 +702,7 @@ fat_read_whole_file(fat_header *hdr,
 
       ASSERT((fsize - written) > 0);
 
-      // find the new cluster
+      // find the next cluster
       u32 fatval = fat_read_fat_entry(hdr, ft, cluster, 0);
 
       if (fat_is_end_of_clusterchain(ft, fatval)) {
@@ -653,3 +718,252 @@ fat_read_whole_file(fat_header *hdr,
    } while (written < fsize);
 }
 
+
+
+STATIC void fat_close(fs_handle handle)
+{
+   fat_file_handle *h = (fat_file_handle *)handle;
+   kfree(h, sizeof(fat_file_handle));
+}
+
+STATIC ssize_t fat_read(fs_handle handle,
+                        char *buf,
+                        size_t bufsize)
+{
+   fat_file_handle *h = (fat_file_handle *) handle;
+   fat_fs_device_data *d = h->fs->device_data;
+   u32 fsize = h->e->DIR_FileSize;
+   u32 written_to_buf = 0;
+
+   if (h->pos >= fsize) {
+
+      /*
+       * The cursor is at the end or past the end: nothing to read.
+       */
+
+      return 0;
+   }
+
+   do {
+
+      char *data = fat_get_pointer_to_cluster_data(d->hdr, h->curr_cluster);
+
+      const ssize_t file_rem = fsize - h->pos;
+      const ssize_t buf_rem = bufsize - written_to_buf;
+      const ssize_t cluster_offset = h->pos % d->cluster_size;
+      const ssize_t cluster_rem = d->cluster_size - cluster_offset;
+      const ssize_t to_read = MIN(cluster_rem, MIN(buf_rem, file_rem));
+
+      memmove(buf + written_to_buf, data + cluster_offset, to_read);
+      written_to_buf += to_read;
+      h->pos += to_read;
+
+      if (to_read < cluster_rem) {
+
+         /*
+          * We read less than cluster_rem because the buf was not big enough
+          * of because the file was not big enough. In either case, we cannot
+          * continue.
+          */
+         break;
+      }
+
+      // find the next cluster
+      u32 fatval = fat_read_fat_entry(d->hdr, d->type, h->curr_cluster, 0);
+
+      if (fat_is_end_of_clusterchain(d->type, fatval)) {
+
+         /*
+          * We should NOT get here, unless the file size was an exact multiple
+          * of cluster_size.
+          */
+
+         ASSERT(to_read == d->cluster_size);
+         ASSERT(h->pos == fsize);
+
+         break;
+      }
+
+      // we do not expect BAD CLUSTERS
+      ASSERT(!fat_is_bad_cluster(d->type, fatval));
+
+      h->curr_cluster = fatval; // go reading the new cluster in the chain.
+
+   } while (true);
+
+   return written_to_buf;
+}
+
+STATIC ssize_t fat_write(fs_handle h,
+                         char *buf,
+                         size_t bufsize)
+{
+   // TODO: implement
+   return -1;
+}
+
+STATIC int fat_rewind(fs_handle handle)
+{
+   fat_file_handle *h = (fat_file_handle *) handle;
+   h->pos = 0;
+   h->curr_cluster = fat_get_first_cluster(h->e);
+   return 0;
+}
+
+STATIC off_t fat_seek_forward(fs_handle handle,
+                              off_t dist)
+{
+   fat_file_handle *h = (fat_file_handle *) handle;
+   fat_fs_device_data *d = h->fs->device_data;
+   u32 fsize = h->e->DIR_FileSize;
+   ssize_t moved_distance = 0;
+
+   if (dist == 0)
+      return h->pos;
+
+   if (h->pos + dist > fsize) {
+      /* Allow, like Linux does, to seek past the end of a file. */
+      h->pos += dist;
+      h->curr_cluster = (u32) -1; /* invalid cluster */
+      return h->pos;
+   }
+
+   do {
+
+      const ssize_t file_rem = fsize - h->pos;
+      const ssize_t dist_rem = dist - moved_distance;
+      const ssize_t cluster_offset = h->pos % d->cluster_size;
+      const ssize_t cluster_rem = d->cluster_size - cluster_offset;
+      const ssize_t to_move = MIN(cluster_rem, MIN(dist_rem, file_rem));
+
+      moved_distance += to_move;
+      h->pos += to_move;
+
+      if (to_move < cluster_rem) {
+         break;
+      }
+
+      // find the next cluster
+      u32 fatval = fat_read_fat_entry(d->hdr, d->type, h->curr_cluster, 0);
+
+      if (fat_is_end_of_clusterchain(d->type, fatval)) {
+
+         /*
+          * We should NOT get here, unless the file size was an exact multiple
+          * of cluster_size.
+          */
+
+         ASSERT(to_move == d->cluster_size);
+         ASSERT(h->pos == fsize);
+         break;
+      }
+
+      // we do not expect BAD CLUSTERS
+      ASSERT(!fat_is_bad_cluster(d->type, fatval));
+
+      h->curr_cluster = fatval; // go reading the new cluster in the chain.
+
+   } while (true);
+
+   return h->pos;
+}
+
+STATIC off_t fat_seek(fs_handle handle,
+                      off_t off,
+                      int whence)
+{
+   off_t curr_pos = (off_t) ((fat_file_handle *)handle)->pos;
+
+   switch (whence) {
+
+   case SEEK_SET:
+
+      if (off < 0)
+         return -EINVAL; /* invalid negative offset */
+
+      fat_rewind(handle);
+      break;
+
+   case SEEK_END:
+
+      if (off >= 0)
+         break;
+
+      fat_file_handle *h = (fat_file_handle *) handle;
+      off = (off_t) h->e->DIR_FileSize + off;
+
+      if (off < 0)
+         return -EINVAL;
+
+      fat_rewind(handle);
+      break;
+
+   case SEEK_CUR:
+
+      if (off < 0) {
+
+         off = curr_pos + off;
+
+         if (off < 0)
+            return -EINVAL;
+
+         fat_rewind(handle);
+      }
+
+      break;
+
+   default:
+      return -EINVAL;
+   }
+
+   return fat_seek_forward(handle, off);
+}
+
+STATIC fs_handle fat_open(filesystem *fs, const char *path)
+{
+   fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
+
+   fat_entry *e = fat_search_entry(d->hdr, d->type, path);
+
+   if (!e) {
+      return NULL; /* file not found */
+   }
+
+   fat_file_handle *h = kmalloc(sizeof(fat_file_handle));
+   VERIFY(h != NULL);
+
+   h->fs = fs;
+   h->fops.fread = fat_read;
+   h->fops.fwrite = fat_write;
+   h->fops.fseek = fat_seek;
+
+   h->e = e;
+   h->pos = 0;
+   h->curr_cluster = fat_get_first_cluster(e);
+
+   return h;
+}
+
+filesystem *fat_mount_ramdisk(void *vaddr)
+{
+   fat_fs_device_data *d = kmalloc(sizeof(fat_fs_device_data));
+   VERIFY(d != NULL);
+
+   d->hdr = (fat_header *) vaddr;
+   d->type = fat_get_type(d->hdr);
+   d->cluster_size = d->hdr->BPB_SecPerClus * d->hdr->BPB_BytsPerSec;
+
+   filesystem *fs = kmalloc(sizeof(filesystem));
+   VERIFY(fs != NULL);
+
+   fs->device_data = d;
+   fs->fopen = fat_open;
+   fs->fclose = fat_close;
+   return fs;
+}
+
+void fat_umount_ramdisk(filesystem *fs)
+{
+   kfree(fs->device_data, sizeof(fat_fs_device_data));
+   kfree(fs, sizeof(filesystem));
+}

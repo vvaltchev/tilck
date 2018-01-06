@@ -2,8 +2,11 @@
 #include <elf.h>
 #include <paging.h>
 #include <process.h>
+#include <kmalloc.h>
 
 #include <string_util.h>
+#include <fs/exvfs.h>
+
 #include <arch/generic_x86/x86_utils.h>
 
 #ifdef BITS32
@@ -61,32 +64,37 @@ void dump_elf32_phdrs(Elf32_Ehdr *h)
 
 uptr alloc_pageframe();
 
-void load_elf_program(void *elf,
+void load_elf_program(fs_handle *elf_file,
                       page_directory_t *pdir,
                       void **entry,
                       void **stack_addr)
 {
+   ssize_t ret;
+   Elf32_Ehdr header;
 
-   Elf32_Ehdr *header = (Elf32_Ehdr *)elf;
-   ASSERT(header->e_ehsize == sizeof(*header));
+   ret = exvfs_read(elf_file, &header, sizeof(header));
+   ASSERT(ret == sizeof(header));
 
-   ASSERT(header->e_ident[EI_MAG0] == ELFMAG0);
-   ASSERT(header->e_ident[EI_MAG1] == ELFMAG1);
-   ASSERT(header->e_ident[EI_MAG2] == ELFMAG2);
-   ASSERT(header->e_ident[EI_MAG3] == ELFMAG3);
+   ASSERT(header.e_ident[EI_MAG0] == ELFMAG0);
+   ASSERT(header.e_ident[EI_MAG1] == ELFMAG1);
+   ASSERT(header.e_ident[EI_MAG2] == ELFMAG2);
+   ASSERT(header.e_ident[EI_MAG3] == ELFMAG3);
 
-   //dump_elf32_header(header);
-   //dump_elf32_phdrs(header);
+   ASSERT(header.e_ehsize == sizeof(header));
 
-   Elf32_Phdr *phdr = (Elf32_Phdr *) ((char *)header + sizeof(*header));
+   const ssize_t total_phdrs_size = header.e_phnum * sizeof(Elf32_Phdr);
+   Elf32_Phdr *phdr = kmalloc(total_phdrs_size);
+   VERIFY(phdr != NULL);
 
-   for (int i = 0; i < header->e_phnum; i++, phdr++) {
+   ret = exvfs_read(elf_file, phdr, total_phdrs_size);
+   ASSERT(ret == total_phdrs_size);
+
+   for (int i = 0; i < header.e_phnum; i++, phdr++) {
 
       // Ignore non-load segments.
       if (phdr->p_type != PT_LOAD) {
          continue;
       }
-
 
       int pages_count =
          ((phdr->p_memsz + PAGE_SIZE) & PAGE_MASK) >> PAGE_SHIFT;
@@ -99,12 +107,10 @@ void load_elf_program(void *elf,
           ((phdr->p_vaddr + phdr->p_memsz) & PAGE_MASK) >
           (phdr->p_vaddr & PAGE_MASK)) {
 
-         //printk("[ELF LOADER]: Cross-page small segment!\n");
+         // Cross-page small segment
          pages_count++;
       }
 
-
-      //printk("[ELF LOADER] Pages count: %i\n", pages_count);
 
       char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
 
@@ -114,12 +120,18 @@ void load_elf_program(void *elf,
             continue;
          }
 
-         map_page(pdir, vaddr, alloc_pageframe(), true, true);
+         uptr paddr = alloc_pageframe();
+         VERIFY(paddr != 0);
+
+         map_page(pdir, vaddr, paddr, true, true);
          bzero(vaddr, PAGE_SIZE);
       }
 
-      memmove((void *)phdr->p_vaddr,
-              (char *)elf + phdr->p_offset, phdr->p_filesz);
+      ret = exvfs_seek(elf_file, phdr->p_offset, SEEK_SET);
+      ASSERT(ret == (ssize_t)phdr->p_offset);
+
+      ret = exvfs_read(elf_file, (void *) phdr->p_vaddr, phdr->p_filesz);
+      VERIFY(ret == (ssize_t)phdr->p_filesz);
 
 
       vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
@@ -129,8 +141,6 @@ void load_elf_program(void *elf,
    }
 
    // Allocating memory for the user stack.
-
-   //printk("[ELF LOADER] Allocating memory for user stack\n");
 
    const int pages_for_stack = 16;
    void *stack_top =
@@ -143,7 +153,9 @@ void load_elf_program(void *elf,
    // Finally setting the output-params.
 
    *stack_addr = (void *) ((OFFLIMIT_USERMODE_ADDR - 1) & ~15);
-   *entry = (void *) header->e_entry;
+   *entry = (void *) header.e_entry;
+
+   kfree(phdr, sizeof(*phdr));
 }
 
 #endif // BITS32

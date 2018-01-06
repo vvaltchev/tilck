@@ -1,4 +1,8 @@
+
+#pragma once
+
 #include <common_defs.h>
+#include <fs/exvfs.h>
 
 typedef enum {
 
@@ -101,6 +105,30 @@ typedef struct __attribute__(( packed )) {
 
 } fat_long_entry;
 
+
+typedef struct {
+
+   fat_header *hdr; /* vaddr of the beginning of the FAT partition */
+   fat_type type;
+   ssize_t cluster_size;
+
+} fat_fs_device_data;
+
+
+typedef struct {
+
+   /* fs_handle_base */
+   filesystem *fs;
+   file_ops fops;
+
+   /* fs-specific members */
+   fat_entry *e;
+   u32 pos;
+   u32 curr_cluster;
+
+} fat_file_handle;
+
+
 static inline bool is_long_name_entry(fat_entry *e)
 {
    return e->readonly && e->hidden && e->system && e->volume_id;
@@ -164,11 +192,14 @@ fat_get_pointer_to_cluster_data(fat_header *hdr, u32 clusterN)
 
 // PUBLIC interface ------------------------------------------------------------
 
+bool fat32_is_valid_filename_character(char c);
+
 typedef struct {
 
    u8 long_name_buf[256];
    s16 long_name_size;
    s16 long_name_chksum;
+   bool is_valid;
 
 } fat_walk_dir_ctx;
 
@@ -192,8 +223,13 @@ fat_walk_directory(fat_walk_dir_ctx *ctx,
 
 fat_entry *fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath);
 
+size_t fat_get_file_size(fat_entry *entry);
+
 void
 fat_read_whole_file(fat_header *hdr,
                     fat_entry *entry,
                     char *dest_buf,
                     size_t dest_buf_size);
+
+filesystem *fat_mount_ramdisk(void *vaddr);
+void fat_umount_ramdisk(filesystem *fs);
