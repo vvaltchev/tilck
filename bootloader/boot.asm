@@ -882,14 +882,14 @@ complete_flush: ; this is located at 0x1000
 
    ; Copy the kernel to its standard location, 0x100000 (1 MiB)
 
-   mov esi, (DEST_DATA_SEGMENT * 16 + 0x10000) ; 0x10000 = 64 KB for the bootloader
-   mov edi, KERNEL_PADDR
+   mov esi, (DEST_DATA_SEGMENT * 16)
+   mov edi, KERNEL_PADDR-0x10000 ; -64 KB for the bootloader
 
    mov ecx, 131072 ; 128 K * 4 bytes = 512 KiB
    rep movsd ; copies 4 * ECX bytes from [DS:ESI] to [ES:EDI]
 
-   ; jump to kernel
-   jmp 0x08:KERNEL_PADDR
+   ; jump to the 3rd stage of the bootloader
+   jmp 0x08:(KERNEL_PADDR - 0x10000 + 0x1000) ; -60KB (net) for the 3rd stage
 
 times 1024-($-complete_flush) db 0   ; Pad to 1 KB. That guarantees us that complete_flush is <= 1 KB.
 times 4096-($-$$) db 0               ; Pad to 4 KB in order to the whole bootloader to be exactly 4 KB
