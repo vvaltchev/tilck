@@ -12,9 +12,6 @@ else()
 
 endif()
 
-
-
-
 file(GLOB EARLY_STAGES_SOURCES "boot.asm")
 
 add_custom_command(
@@ -28,32 +25,58 @@ add_custom_command(
       "Building the early stages of the BIOS bootloader"
 )
 
-# file(GLOB STAGE3_SOURCES "*.c")
+file(GLOB STAGE3_SOURCES "stage3_entry.asm" "*.c")
 
-# add_executable(elf_stage3 ${STAGE3_SOURCES})
+add_executable(elf_stage3 ${STAGE3_SOURCES})
 
-# add_custom_command(
-#     OUTPUT
-#         stage3
-#     COMMAND
-#         ${BUILD_SCRIPTS}/bss_checker elf_stage3
-#     COMMAND
-#         ${OBJCOPY} -O binary -j .text -j .rodata -j .data elf_stage3 stage3
-#     DEPENDS
-#         ${CMAKE_CURRENT_BINARY_DIR}/elf_stage3
-#     COMMENT
-#         "Preparing bootloaders's flat-binary"
-# )
+set(
+   FLAGS_LIST
+
+   -mno-red-zone
+   -ffreestanding
+   -nostdinc
+   -fno-builtin
+   -fno-omit-frame-pointer
+
+   -fno-pic
+   -fno-asynchronous-unwind-tables
+   -fno-zero-initialized-in-bss
+   -fno-exceptions
+   -fno-stack-protector
+)
+JOIN("${FLAGS_LIST}" ${SPACE} FLAGS)
+
+set_target_properties(
+
+   elf_stage3
+
+   PROPERTIES
+      COMPILE_FLAGS "${FLAGS}"
+      LINK_FLAGS "-nostdlib"
+)
+
+add_custom_command(
+    OUTPUT
+        stage3
+    COMMAND
+        ${BUILD_SCRIPTS}/bss_checker elf_stage3
+    COMMAND
+        ${OBJCOPY} -O binary -j .text -j .rodata -j .data elf_stage3 stage3
+    DEPENDS
+        ${CMAKE_CURRENT_BINARY_DIR}/elf_stage3
+    COMMENT
+        "Preparing bootloaders's flat-binary"
+)
 
 add_custom_command(
    OUTPUT
       ${BOOTLOADER_BIN_FILE}
    COMMAND
       cp boot.o ${BOOTLOADER_BIN_FILE}
-#   COMMAND
-#      dd status=none conv=notrunc if=${CMAKE_CURRENT_BINARY_DIR}/stage3 of=${BOOTLOADER_BIN_FILE}
+   COMMAND
+      dd status=none conv=notrunc if=${CMAKE_CURRENT_BINARY_DIR}/stage3 of=${BOOTLOADER_BIN_FILE} seek=4 bs=1K
    DEPENDS
-      ${CMAKE_CURRENT_BINARY_DIR}/boot.o
+      ${CMAKE_CURRENT_BINARY_DIR}/boot.o ${CMAKE_CURRENT_BINARY_DIR}/stage3
    COMMENT
       "Linking the BIOS bootloader"
 )
