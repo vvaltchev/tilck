@@ -139,7 +139,7 @@ add_custom_command(
    COMMAND
       dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
    COMMAND
-      dd status=none conv=notrunc if=${KERNEL_BIN_FILE} of=${IMG_FILE} seek=4 bs=1K
+      dd status=none conv=notrunc if=${KERNEL_BIN_FILE} of=${IMG_FILE} seek=64 bs=1K
    COMMAND
       ${BUILD_SCRIPTS}/build_fatpart ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} fatpart
    COMMAND

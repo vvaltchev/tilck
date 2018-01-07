@@ -25,10 +25,7 @@
 
 
 ; We're OK with just 1000 512-byte sectors (500 KB)
-;%define INITIAL_SECTORS_TO_READ 1000
-
-; DEBUG VALUE, usable until the kernel + bootloader fit in 128 KB
-%define INITIAL_SECTORS_TO_READ 256
+%define INITIAL_SECTORS_TO_READ 1000
 
 jmp start
 times 0x0B - ($-$$) nop
@@ -885,7 +882,7 @@ complete_flush: ; this is located at 0x1000
 
    ; Copy the kernel to its standard location, 0x100000 (1 MiB)
 
-   mov esi, (DEST_DATA_SEGMENT * 16 + 0x1000) ; 0x1000 = 4 KB for the bootloader
+   mov esi, (DEST_DATA_SEGMENT * 16 + 0x10000) ; 0x10000 = 64 KB for the bootloader
    mov edi, KERNEL_PADDR
 
    mov ecx, 131072 ; 128 K * 4 bytes = 512 KiB
