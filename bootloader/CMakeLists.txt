@@ -38,11 +38,26 @@ set(
    -fno-builtin
    -fno-omit-frame-pointer
 
+   -g
+   -O0
+   -fno-inline-functions
+
+   -Wall
+   -Wextra
+   -Wno-unused-function
+   -Wno-unused-parameter
+   -Werror
+
    -fno-pic
    -fno-asynchronous-unwind-tables
    -fno-zero-initialized-in-bss
    -fno-exceptions
    -fno-stack-protector
+
+   # Allow easier disassembly debugging
+   -mpush-args
+   -mno-accumulate-outgoing-args
+   -mno-stack-arg-probe
 )
 JOIN("${FLAGS_LIST}" ${SPACE} FLAGS)
 
@@ -52,8 +67,13 @@ set_target_properties(
 
    PROPERTIES
       COMPILE_FLAGS "${FLAGS}"
-      LINK_FLAGS "-nostdlib"
+      LINK_FLAGS "-Wl,-Ttext=0x21000 -nostdlib"
 )
+
+# -lgcc is necessary for things like 64 bit integers in 32 bit mode.
+target_link_libraries(elf_stage3 gcc)
+
+target_include_directories(elf_stage3 PUBLIC "${CMAKE_SOURCE_DIR}/kernel/include")
 
 add_custom_command(
     OUTPUT
