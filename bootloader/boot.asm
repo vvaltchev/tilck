@@ -2,13 +2,20 @@
 [BITS 16]
 [ORG 0x0000]
 
-%define VALUE_64K 0x10000
+%define VALUE_1K        0x400
+%define VALUE_4K       0x1000
+%define VALUE_64K     0x10000
+%define MB         0x00100000
 
-%define BASE_LOAD_SEG 0x07C0
-%define DEST_DATA_SEGMENT 0x2000
-%define TEMP_DATA_SEGMENT 0x1000
-%define RAMDISK_PADDR 0x08000000 ; + 128 MB
-%define KERNEL_PADDR  0x00100000 ; +   1 MB
+%define SECTOR_SIZE               512
+%define BASE_LOAD_SEG          0x07C0
+%define DEST_DATA_SEGMENT      0x2000
+%define TEMP_DATA_SEGMENT      0x1000
+%define COMPLETE_FLUSH_ADDR    0x1000
+%define COMPLETE_FLUSH_SIZE       128
+
+%define RAMDISK_PADDR      0x08000000 ; + 128 MB
+%define KERNEL_PADDR       0x00100000 ; +   1 MB
 
 %define RAMDISK_FIRST_SECTOR 2048
 
@@ -16,18 +23,20 @@
 ; This would require to fix the function lba_to_chs to work with LBA addresses
 ; bigger than 65535.
 
-; 2048 + 32256 sectors (~16 MB) - 1
-;%define RAMDISK_LAST_SECTOR 34304   ; temporary lie!
+; 2048 + 16 MB - 1 (TEMPORARY LIE)
+;%define RAMDISK_LAST_SECTOR (RAMDISK_FIRST_SECTOR + (16 * MB)/SECTOR_SIZE - 1)
 
 ; DEBUG VALUE, usable until everything fits in 4 MB
-; 2048 + 8192 sectors (~4 MB) - 1
-%define RAMDISK_LAST_SECTOR 10239
+; 2048 + 4 MB - 1
+%define RAMDISK_LAST_SECTOR (RAMDISK_FIRST_SECTOR + (4 * MB)/SECTOR_SIZE - 1)
 
 
 ; We're OK with just 1000 512-byte sectors (500 KB)
 %define INITIAL_SECTORS_TO_READ 1000
 
 jmp start
+
+; Fill the gap with nops since bios_parameter_pack has to be at offset +0x0B.
 times 0x0B - ($-$$) nop
 
 bios_parameter_pack:
@@ -565,12 +574,12 @@ enter_unreal_mode:
    cli
 
    ; now we have to copy the text from
-   ; complete_flush + 0x0 to complete_flush + 1 KB
-   ; into 0x0000:0x1000
+   ; complete_flush + 0x0 to complete_flush + 128
+   ; into 0x0000:COMPLETE_FLUSH_ADDR
 
    mov si, complete_flush
-   mov di, 0x1000
-   mov cx, 512 ; 512 2-byte words
+   mov di, COMPLETE_FLUSH_ADDR
+   mov cx, COMPLETE_FLUSH_SIZE/2 ; 2-byte words
 
    mov ax, 0
    mov es, ax ; using extra segment for 0x0
@@ -882,14 +891,18 @@ complete_flush: ; this is located at 0x1000
 
    ; Copy the kernel to its standard location, 0x100000 (1 MiB)
 
-   mov esi, (DEST_DATA_SEGMENT * 16)
-   mov edi, KERNEL_PADDR-0x10000 ; -64 KB for the bootloader
+   mov esi, (DEST_DATA_SEGMENT * 16 + VALUE_64K) ; +64 KB for the bootloader
+   mov edi, KERNEL_PADDR
 
-   mov ecx, 131072 ; 128 K * 4 bytes = 512 KiB
+   mov ecx, 128 * VALUE_1K ; 128 K * 4 bytes = 512 KiB
    rep movsd ; copies 4 * ECX bytes from [DS:ESI] to [ES:EDI]
 
-   ; jump to the 3rd stage of the bootloader
-   jmp 0x08:(KERNEL_PADDR - 0x10000 + 0x1000) ; -60KB (net) for the 3rd stage
+   ; Set the stack for the 3rd stage of the bootloader
+   mov esp, 0x0000FFF0
 
-times 1024-($-complete_flush) db 0   ; Pad to 1 KB. That guarantees us that complete_flush is <= 1 KB.
-times 4096-($-$$) db 0               ; Pad to 4 KB in order to the whole bootloader to be exactly 4 KB
+   ; jump to the 3rd stage of the bootloader
+   jmp 0x08:(DEST_DATA_SEGMENT * 16 + VALUE_4K) ; +4 KB to skip this code
+
+times COMPLETE_FLUSH_SIZE-($-complete_flush) db 0
+
+times VALUE_4K-($-$$) db 0          ; Pad the whole file to 4 KB.
