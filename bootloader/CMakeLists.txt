@@ -102,7 +102,7 @@ add_custom_command(
    COMMAND
       cp boot.o ${BOOTLOADER_BIN_FILE}
    COMMAND
-      dd status=none conv=notrunc if=${CMAKE_CURRENT_BINARY_DIR}/stage3 of=${BOOTLOADER_BIN_FILE} seek=4 bs=1K
+      dd status=none conv=notrunc oflag=append if=${CMAKE_CURRENT_BINARY_DIR}/stage3 of=${BOOTLOADER_BIN_FILE}
    DEPENDS
       ${CMAKE_CURRENT_BINARY_DIR}/boot.o ${CMAKE_CURRENT_BINARY_DIR}/stage3
    COMMENT
