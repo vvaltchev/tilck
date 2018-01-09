@@ -110,13 +110,6 @@ void term_write_string(const char *str)
    }
 }
 
-void term_move_ch(int row, int col)
-{
-   terminal_row = row;
-   terminal_column = col;
-   term_movecur(row, col);
-}
-
 void term_init() {
 
    term_movecur(0, 0);
@@ -135,6 +128,6 @@ void main()
    term_init();
    term_write_string("Hello from the 3rd stage of the bootloader!\n");
 
-   while(1);
-   //jump_to_kernel();
+   //while(1);
+   jump_to_kernel();
 }

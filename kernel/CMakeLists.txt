@@ -14,7 +14,17 @@ JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
 set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 
 include_directories("include")
-file(GLOB SOURCES "*.c" "fs/*.c" "self_tests/*.c")
+
+set(
+   KERNEL_NOARCH_SOURCES_GLOB
+
+   "${CMAKE_SOURCE_DIR}/kernel/*.c"
+   "${CMAKE_SOURCE_DIR}/kernel/fs/*.c"
+   "${CMAKE_SOURCE_DIR}/kernel/self_tests/*.c"
+   "${CMAKE_SOURCE_DIR}/common/*.c"
+)
+
+file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})
 
 # Creating a static library target for putting kernel's arch-independent code.
 

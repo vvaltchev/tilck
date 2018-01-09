@@ -1,0 +1,2 @@
+This directory contains common code that is shared between the kernel and the
+bootloader.
