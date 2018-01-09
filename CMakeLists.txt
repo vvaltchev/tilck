@@ -139,12 +139,8 @@ add_custom_command(
    COMMAND
       dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
    COMMAND
-      dd status=none conv=notrunc if=${KERNEL_BIN_FILE} of=${IMG_FILE} seek=64 bs=1K
-   COMMAND
       ${BUILD_SCRIPTS}/build_fatpart ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} fatpart
    COMMAND
-      # For development purposes, copy just a small part from the fatpart to make the build faster.
-      #dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K count=8192
       dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K
    DEPENDS
       # We MUST depend on BOTH the wrapper-target AND its OUTPUT in order to this

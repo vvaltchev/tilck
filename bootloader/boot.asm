@@ -15,7 +15,7 @@
 %define COMPLETE_FLUSH_SIZE       128
 
 %define RAMDISK_PADDR      0x08000000 ; + 128 MB
-%define KERNEL_PADDR       0x00100000 ; +   1 MB
+
 
 %define RAMDISK_FIRST_SECTOR 2048
 
@@ -31,8 +31,12 @@
 %define RAMDISK_LAST_SECTOR (RAMDISK_FIRST_SECTOR + (4 * MB)/SECTOR_SIZE - 1)
 
 
-; We're OK with just 1000 512-byte sectors (500 KB)
-%define INITIAL_SECTORS_TO_READ 1000
+; We're OK with just 256 sectors (512 bytes each => 128 KB)
+; That's because now the initial sectors contain just the 3rd stage of the
+; bootloader. The actual kernel file is loaded by the bootloader from the
+; FAT32 ramdisk.
+
+%define INITIAL_SECTORS_TO_READ 256
 
 jmp start
 
@@ -888,14 +892,6 @@ complete_flush: ; this is located at 0x1000
    mov fs, ax
    mov gs, ax
    mov ss, ax
-
-   ; Copy the kernel to its standard location, 0x100000 (1 MiB)
-
-   mov esi, (DEST_DATA_SEGMENT * 16 + VALUE_64K) ; +64 KB for the bootloader
-   mov edi, KERNEL_PADDR
-
-   mov ecx, 128 * VALUE_1K ; 128 K * 4 bytes = 512 KiB
-   rep movsd ; copies 4 * ECX bytes from [DS:ESI] to [ES:EDI]
 
    ; Set the stack for the 3rd stage of the bootloader
    mov esp, 0x0000FFF0
