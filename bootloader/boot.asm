@@ -897,8 +897,12 @@ complete_flush: ; this is located at 0x1000
    mov esp, 0x0000FFF0
 
    ; jump to the 3rd stage of the bootloader
-   jmp 0x08:(DEST_DATA_SEGMENT * 16 + VALUE_4K) ; +4 KB to skip this code
+   jmp 0x08:(DEST_DATA_SEGMENT * 16 + bootloader_3rd_stage)
 
 times COMPLETE_FLUSH_SIZE-($-complete_flush) db 0
-
 times VALUE_4K-($-$$) db 0          ; Pad the whole file to 4 KB.
+
+
+bootloader_3rd_stage:
+; !!! DON'T ADD CODE HERE: this label is just a placeholder !!!
+; !!! NOTE: The execution continues in stage3_entry.asm     !!!
