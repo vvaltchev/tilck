@@ -4,7 +4,8 @@
 #include <common_defs.h>
 #include <arch/generic_x86/x86_utils.h>
 
-#define KERNEL_INITIAL_STACK_ADDR 0xC000FFF0
+#define KERNEL_PADDR              (0x00100000) // +  1 MB
+#define KERNEL_INITIAL_STACK_ADDR (0xC000FFF0)
 
 // Forward-declaring regs
 typedef struct regs regs;
