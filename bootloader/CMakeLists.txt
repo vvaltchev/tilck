@@ -25,7 +25,13 @@ add_custom_command(
       "Building the early stages of the BIOS bootloader"
 )
 
-file(GLOB STAGE3_SOURCES "stage3_entry.asm" "*.c")
+file(
+   GLOB STAGE3_SOURCES
+
+   "stage3_entry.asm"
+   "*.c"
+   "${CMAKE_SOURCE_DIR}/common/*.c"
+)
 
 add_executable(elf_stage3 ${STAGE3_SOURCES})
 
