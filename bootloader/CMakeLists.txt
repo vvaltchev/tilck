@@ -44,9 +44,11 @@ set(
    -fno-builtin
    -fno-omit-frame-pointer
 
-   -g
-   -O0
-   -fno-inline-functions
+   #-g
+   #-O0
+   #-fno-inline-functions
+
+   -O2
 
    -Wall
    -Wextra
