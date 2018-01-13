@@ -7,10 +7,13 @@ if (${ARCH} STREQUAL "i386")
    set(GCC_TOOLCHAIN ${TCROOT}/x86-i686--glibc--stable/bin)
    set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-gcc)
    set(OBJCOPY ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-objcopy)
+   set(STRIP ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-strip)
+
 
 else()
 
    set(OBJCOPY objcopy)
+   set(STRIP strip)
 
 endif()
 
@@ -59,8 +62,7 @@ add_custom_command(
     COMMAND
         ${BUILD_SCRIPTS}/bss_checker elf_kernel
     COMMAND
-         cp elf_kernel ${KERNEL_BIN_FILE}
-#        ${OBJCOPY} -O binary -j .text -j .rodata -j .data elf_kernel ${KERNEL_BIN_FILE}
+         ${STRIP} --strip-debug elf_kernel -o ${KERNEL_BIN_FILE}
     DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
     COMMENT
