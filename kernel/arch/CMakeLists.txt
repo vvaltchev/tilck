@@ -59,11 +59,12 @@ add_custom_command(
     COMMAND
         ${BUILD_SCRIPTS}/bss_checker elf_kernel
     COMMAND
-        ${OBJCOPY} -O binary -j .text -j .rodata -j .data elf_kernel ${KERNEL_BIN_FILE}
+         cp elf_kernel ${KERNEL_BIN_FILE}
+#        ${OBJCOPY} -O binary -j .text -j .rodata -j .data elf_kernel ${KERNEL_BIN_FILE}
     DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
     COMMENT
-        "Preparing kernel's flat-binary"
+        "Preparing kernel's stripped binary"
 )
 
 add_custom_target(
