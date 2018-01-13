@@ -6,7 +6,8 @@
 #include <kmalloc.h>
 #include <elf.h>
 
-#define VADDR_TO_PADDR(x) ((void *)( (uptr)(x) - 0xC0000000UL ))
+#define KERNEL_VADDR_OFFSET (0xC0000000UL)
+#define VADDR_TO_PADDR(x) ((void *)( (uptr)(x) - KERNEL_VADDR_OFFSET ))
 
 const char *kernel_path = "/EFI/BOOT/elf_kernel_stripped";
 
@@ -64,6 +65,17 @@ void load_elf_kernel(const char *filepath, void **entry)
 
       // Ignore non-load segments.
       if (phdr->p_type != PT_LOAD) {
+         continue;
+      }
+
+      if (phdr->p_vaddr < KERNEL_VADDR_OFFSET) {
+
+         /*
+          * Temporary hack to skip the sections:
+          * .interp, .hash, .dynsym, .dynstr
+          *
+          * We need a proper linker script to avoid them.
+          */
          continue;
       }
 
