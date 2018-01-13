@@ -8,7 +8,7 @@
 
 #define VADDR_TO_PADDR(x) ((void *)( (uptr)(x) - 0xC0000000UL ))
 
-const char *kernel_path = "/EFI/BOOT/kernel.bin";
+const char *kernel_path = "/EFI/BOOT/elf_kernel_stripped";
 
 char small_heap[4096] = {0};
 size_t heap_used = 0;

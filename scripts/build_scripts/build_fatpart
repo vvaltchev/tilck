@@ -39,7 +39,7 @@ ln $bdir/init sbin/
 # hard-link EFI files
 ln $bdir/BOOTX64.EFI EFI/BOOT/
 ln $bdir/switchmode.bin EFI/BOOT/
-ln $bdir/kernel.bin EFI/BOOT/
+ln $bdir/elf_kernel_stripped EFI/BOOT/elf_kernel_stripped
 
 # first, create the directories
 for f in $(find * -type d); do
