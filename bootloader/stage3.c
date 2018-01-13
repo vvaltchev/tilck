@@ -68,16 +68,7 @@ void load_elf_kernel(const char *filepath, void **entry)
          continue;
       }
 
-      if (phdr->p_vaddr < KERNEL_VADDR_OFFSET) {
-
-         /*
-          * Temporary hack to skip the sections:
-          * .interp, .hash, .dynsym, .dynstr
-          *
-          * We need a proper linker script to avoid them.
-          */
-         continue;
-      }
+      VERIFY(phdr->p_vaddr >= KERNEL_VADDR_OFFSET);
 
       bzero(VADDR_TO_PADDR(phdr->p_vaddr), phdr->p_memsz);
 

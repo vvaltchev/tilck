@@ -180,16 +180,7 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS, EFI_FILE_PROTOCOL *fileProt)
          continue;
       }
 
-      if (phdr->p_vaddr < KERNEL_VADDR_OFFSET) {
-
-         /*
-          * Temporary hack to skip the sections:
-          * .interp, .hash, .dynsym, .dynstr
-          *
-          * We need a proper linker script to avoid them.
-          */
-         continue;
-      }
+      CHECK(phdr->p_vaddr >= KERNEL_VADDR_OFFSET);
 
       bzero(VADDR_TO_PADDR(phdr->p_vaddr), phdr->p_memsz);
 

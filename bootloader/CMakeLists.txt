@@ -33,6 +33,9 @@ file(
    "${CMAKE_SOURCE_DIR}/common/*.c"
 )
 
+# Remove -rdynamic
+SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+
 add_executable(elf_stage3 ${STAGE3_SOURCES})
 
 set(

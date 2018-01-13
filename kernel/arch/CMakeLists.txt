@@ -53,6 +53,10 @@ set_target_properties(
       LINK_FLAGS "${ARCH_FLAGS} -Wl,-Ttext=${KERNEL_LOAD_VADDR} -nostdlib"
 )
 
+# Remove -rdynamic
+SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+
+
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(elf_kernel gcc)
 
