@@ -1,4 +1,3 @@
-
 #include <efi.h>
 #include <efilib.h>
 
@@ -10,23 +9,18 @@
 #include "efierr.h"
 #include "efiprot.h"
 
+#include <elf.h>
+
 #define PAGE_SIZE            0x1000    // 4 KB
 #define BOOT_PADDR           0xC000
 #define KERNEL_PADDR       0x100000    // +1 MB
 #define RAMDISK_PADDR    0x08000000    // +128 MB
 #define RAMDISK_SIZE    (35*1024*1024) // 35 MB, size of 'fatpart'
 #define KERNEL_MAX_SIZE (500 * 1024)   // 500 KB, max size of kernel.bin
+#define KERNEL_FILE      L"\\EFI\\BOOT\\elf_kernel_stripped"
 
-/*
- * The folloing offsets cannot be easily (maybe not at all?) used by this loader
- * as the offset parameter in ReadDisk() takes an offset from the beginning of
- * the FAT32 partition. Here, in my understanding 'Disk' stands for 'partition'.
- * Since kernel is actually located at sector 4, not inside any partition, it
- * is hardly accessible.
- */
-
-// #define KERNEL_OFFSET        0x1000    // +4 KB
-// #define RAMDISK_OFFSET     0x100000    // +1 MB
+#define KERNEL_VADDR_OFFSET (0xC0000000UL)
+#define VADDR_TO_PADDR(x) ((void *)( (UINTN)(x) - KERNEL_VADDR_OFFSET ))
 
 
 void WaitForKeyPress(EFI_SYSTEM_TABLE *ST)
@@ -45,6 +39,15 @@ void WaitForKeyPress(EFI_SYSTEM_TABLE *ST)
                       ST->ConIn,
                       &k);
 }
+
+#define CHECK(cond)                                  \
+   do {                                              \
+      if (!(cond)) {                                 \
+         Print(L"CHECK '%a' FAILED\n", #cond);       \
+         status = EFI_LOAD_ERROR;                    \
+         goto end;                                   \
+      }                                              \
+   } while(0)
 
 #define HANDLE_EFI_ERROR(op)                                 \
     do {                                                     \
@@ -102,7 +105,7 @@ end:
    return status;
 }
 
-void AlignedMemCpy(UINTN *src, UINTN *dst, INTN count)
+void AlignedMemCpy(UINTN *dst, UINTN *src, INTN count)
 {
    for (INTN i = count - 1; i >= 0; i--) {
       dst[i] = src[i];
@@ -116,6 +119,90 @@ void DumpFirst16Bytes(char *buf)
       Print(L"%02x ", (unsigned char)buf[i]);
    }
    Print(L"\r\n");
+}
+
+void bzero(void *ptr, UINTN len)
+{
+   for (UINTN i = 0; i < len; i++)
+      ((char*)ptr)[i] = 0;
+}
+
+void BasicMemmove(void *dest, void *src, UINTN len)
+{
+   for (UINTN i = 0; i < len; i++)
+      ((char*)dest)[i] = ((char*)src)[i];
+}
+
+EFI_STATUS
+LoadElfKernel(EFI_BOOT_SERVICES *BS, EFI_FILE_PROTOCOL *fileProt)
+{
+   EFI_STATUS status = EFI_LOAD_ERROR;
+   UINTN temp_kernel_addr = KERNEL_PADDR+KERNEL_MAX_SIZE*4;
+   UINTN kernel_paddr = KERNEL_PADDR;
+
+   /*
+    * Temporary load the whole kernel file in a safe location.
+    */
+   status = LoadFileFromDisk(BS, fileProt, KERNEL_MAX_SIZE / PAGE_SIZE,
+                             temp_kernel_addr, KERNEL_FILE);
+   HANDLE_EFI_ERROR("LoadFileFromDisk");
+
+   Print(L"Kernel loaded in temporary paddr.\n");
+   Print(L"Allocating memory for final kernel's location...\n");
+
+   status = uefi_call_wrapper(BS->AllocatePages,
+                              4,
+                              AllocateAddress,
+                              EfiBootServicesData,
+                              KERNEL_MAX_SIZE / PAGE_SIZE,
+                              &kernel_paddr);
+   HANDLE_EFI_ERROR("AllocatePages");
+   Print(L"Memory allocated.\n");
+
+   CHECK(kernel_paddr == KERNEL_PADDR);
+
+   Elf32_Ehdr *header = (Elf32_Ehdr *)temp_kernel_addr;
+
+   CHECK(header->e_ident[EI_MAG0] == ELFMAG0);
+   CHECK(header->e_ident[EI_MAG1] == ELFMAG1);
+   CHECK(header->e_ident[EI_MAG2] == ELFMAG2);
+   CHECK(header->e_ident[EI_MAG3] == ELFMAG3);
+   CHECK(header->e_ehsize == sizeof(*header));
+
+   Elf32_Phdr *phdr = (Elf32_Phdr *)(header + 1);
+
+   Print(L"Num of program headers: %d\n", header->e_phnum);
+
+   for (int i = 0; i < header->e_phnum; i++, phdr++) {
+
+      // Ignore non-load segments.
+      if (phdr->p_type != PT_LOAD) {
+         continue;
+      }
+
+      if (phdr->p_vaddr < KERNEL_VADDR_OFFSET) {
+
+         /*
+          * Temporary hack to skip the sections:
+          * .interp, .hash, .dynsym, .dynstr
+          *
+          * We need a proper linker script to avoid them.
+          */
+         continue;
+      }
+
+      bzero(VADDR_TO_PADDR(phdr->p_vaddr), phdr->p_memsz);
+
+      BasicMemmove(VADDR_TO_PADDR(phdr->p_vaddr),
+                   (char *) header + phdr->p_offset,
+                   phdr->p_filesz);
+   }
+
+   Print(L"ELF kernel loaded\n");
+   status = EFI_SUCCESS;
+
+end:
+   return status;
 }
 
 /**
@@ -214,17 +301,14 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = uefi_call_wrapper(fileFsProt->OpenVolume, 2, fileFsProt, &fileProt);
    HANDLE_EFI_ERROR("OpenVolume");
 
-   // Load kernel.bin as a file from the 'fatpart'.
-   status = LoadFileFromDisk(BS, fileProt, KERNEL_MAX_SIZE / PAGE_SIZE,
-                             KERNEL_PADDR, L"\\EFI\\BOOT\\kernel.bin");
-   HANDLE_EFI_ERROR("LoadFileFromDisk");
+   status = LoadElfKernel(BS, fileProt);
+   HANDLE_EFI_ERROR("LoadElfKernel");
 
    // Load switchmode.bin as a file from the 'fatpart'.
 
    status = LoadFileFromDisk(BS, fileProt, 1,
                              BOOT_PADDR, L"\\EFI\\BOOT\\switchmode.bin");
    HANDLE_EFI_ERROR("LoadFileFromDisk");
-
 
    // Prepare for the actual boot
 
@@ -247,8 +331,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
 
    if (ramdisk_paddr != RAMDISK_PADDR) {
-      AlignedMemCpy((UINTN*)ramdisk_paddr,
-                    (UINTN*)RAMDISK_PADDR,
+      AlignedMemCpy((UINTN*)RAMDISK_PADDR,
+                    (UINTN*)ramdisk_paddr,
                     RAMDISK_SIZE / sizeof(UINTN));
    }
 
