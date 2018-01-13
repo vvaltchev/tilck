@@ -22,7 +22,7 @@
 #define PAGEFRAMES_BITFIELD_ELEMS (8 * USABLE_MEM_SIZE_IN_MB)
 
 
-volatile u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB] = {0};
+volatile u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
 volatile u32 last_index = 0;
 volatile int pageframes_used = 0;
 

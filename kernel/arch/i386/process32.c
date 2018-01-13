@@ -194,7 +194,7 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
 }
 
 
-ZERO_INITIALIZED(task_info fake_current_proccess);
+task_info fake_current_proccess;
 
 void save_current_task_state(regs *r)
 {

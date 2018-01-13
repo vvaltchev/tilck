@@ -4,7 +4,7 @@
 #include <kmalloc.h>
 
 /* exOS is small: supporting 16 mount points seems more than enough. */
-mountpoint *mps[16] = {0};
+mountpoint *mps[16];
 
 int mountpoint_add(filesystem *fs, const char *path)
 {

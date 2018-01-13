@@ -16,11 +16,11 @@ typedef struct {
 } tasklet;
 
 
-tasklet *all_tasklets = NULL;
-static volatile int first_free_slot_index = 0;
-static volatile int slots_used = 0;
-static volatile int tasklet_to_execute = 0;
-static kcond tasklet_cond = {0};
+tasklet *all_tasklets;
+static volatile int first_free_slot_index;
+static volatile int slots_used;
+static volatile int tasklet_to_execute;
+static kcond tasklet_cond;
 
 void initialize_tasklets()
 {

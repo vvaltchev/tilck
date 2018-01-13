@@ -45,7 +45,7 @@ typedef struct {
 } allocator_meta_data;
 
 
-bool kmalloc_initialized = false;
+bool kmalloc_initialized; // Zero-initialized => false.
 
 
 /*
@@ -55,7 +55,7 @@ bool kmalloc_initialized = false;
 #define ALLOC_METADATA_SIZE \
    (sizeof(block_node) * KMALLOC_NODES_COUNT_IN_META_DATA / (8 * PAGE_SIZE))
 
-static bool allocation_for_metadata_nodes[ALLOC_METADATA_SIZE] = {0};
+static bool allocation_for_metadata_nodes[ALLOC_METADATA_SIZE];
 
 
 #define HALF(x) ((x) >> 1)

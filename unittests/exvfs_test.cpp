@@ -82,8 +82,8 @@ TEST(exvfs, fseek)
    int r = mountpoint_add(fat_fs, "/");
    ASSERT_EQ(r, 0);
 
-   const char *fatpart_file_path = "/EFI/BOOT/kernel.bin";
-   const char *real_file_path = "build/sysroot/EFI/BOOT/kernel.bin";
+   const char *fatpart_file_path = "/EFI/BOOT/elf_kernel_stripped";
+   const char *real_file_path = "build/sysroot/EFI/BOOT/elf_kernel_stripped";
 
    int fd = open(real_file_path, O_RDONLY);
 
