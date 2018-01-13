@@ -58,11 +58,9 @@ target_link_libraries(elf_kernel gcc)
 
 add_custom_command(
     OUTPUT
-        ${KERNEL_BIN_FILE}
+        ${KERNEL_FILE}
     COMMAND
-        ${BUILD_SCRIPTS}/bss_checker elf_kernel
-    COMMAND
-         ${STRIP} --strip-debug elf_kernel -o ${KERNEL_BIN_FILE}
+         ${STRIP} --strip-debug elf_kernel -o ${KERNEL_FILE}
     DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
     COMMENT
@@ -74,6 +72,6 @@ add_custom_target(
     kernel ALL
 
     DEPENDS
-        ${KERNEL_BIN_FILE}
+        ${KERNEL_FILE}
 )
 

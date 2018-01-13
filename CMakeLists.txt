@@ -113,7 +113,7 @@ set(COMMON_FLAGS "${GENERAL_DEFS} ${OTHER_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 
 set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/bootloader.bin)
 set(EFI_MAIN_FILE ${CMAKE_BINARY_DIR}/BOOTX64.EFI)
-set(KERNEL_BIN_FILE ${CMAKE_BINARY_DIR}/elf_kernel_stripped)
+set(KERNEL_FILE ${CMAKE_BINARY_DIR}/elf_kernel_stripped)
 set(INIT_FILE ${CMAKE_BINARY_DIR}/init)
 set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
 set(GTESTS_FILE ${CMAKE_BINARY_DIR}/gtests)
@@ -145,7 +145,7 @@ add_custom_command(
    DEPENDS
       # We MUST depend on BOTH the wrapper-target AND its OUTPUT in order to this
       # to be re-build when the *.bin files are re-built.
-      bootloader efi_bootloader kernel usermode_init ${BUILD_SCRIPTS}/build_fatpart ${BOOTLOADER_BIN_FILE} ${EFI_MAIN_FILE} ${KERNEL_BIN_FILE} ${INIT_FILE}
+      bootloader efi_bootloader kernel usermode_init ${BUILD_SCRIPTS}/build_fatpart ${BOOTLOADER_BIN_FILE} ${EFI_MAIN_FILE} ${KERNEL_FILE} ${INIT_FILE}
    COMMENT
       "Creating the bootable image file"
    VERBATIM
