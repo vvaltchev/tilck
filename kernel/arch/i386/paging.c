@@ -421,24 +421,17 @@ void pdir_destroy(page_directory_t *pdir)
    kfree(pdir, sizeof(*pdir));
 }
 
+/*
+ * Page directories MUST BE at page-size-aligned locations.
+ */
+char kpdir_buf[sizeof(page_directory_t)] __attribute__ ((aligned(PAGE_SIZE)));
+
 void init_paging()
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
    set_fault_handler(FAULT_GENERAL_PROTECTION, handle_general_protection_fault);
 
-   kernel_page_dir =
-      (page_directory_t *) KERNEL_PA_TO_VA(paging_alloc_pageframe());
-
-   paging_alloc_pageframe(); // The page directory uses 3 pages!
-   paging_alloc_pageframe();
-
-   /*
-    * The above trick of using 3 consecutive calls of paging_alloc_pageframe()
-    * works because in this early stage the frame allocator have all of its
-    * frames free and so it is expected to return consecutive frames.
-    * In general, expecting to have consecutive physical pages is NOT supported
-    * and such tricks should *NOT* be used.
-    */
+   kernel_page_dir = (page_directory_t *) kpdir_buf;
 
    initialize_page_directory(kernel_page_dir,
                              (uptr) KERNEL_VA_TO_PA(kernel_page_dir),
@@ -455,7 +448,7 @@ void init_paging()
       page_dir_entry_t e = { 0 };
       e.present = 1;
       e.rw = 1;
-      e.us = true;
+      e.us = false;
       e.pageTableAddr = page_physical_addr >> PAGE_SHIFT;
 
       kernel_page_dir->page_tables[i] = ptable;
@@ -479,8 +472,8 @@ void init_paging()
     */
 
    size_t pagesframes_refcount_bufsize =
-      sizeof(pageframes_refcount[0]) * MB
-      * get_amount_of_physical_memory_in_mb() / PAGE_SIZE;
+      sizeof(pageframes_refcount[0]) * MB / PAGE_SIZE
+      * get_amount_of_physical_memory_in_mb();
 
    pageframes_refcount = kmalloc(pagesframes_refcount_bufsize);
    bzero(pageframes_refcount, pagesframes_refcount_bufsize);

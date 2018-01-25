@@ -48,7 +48,9 @@ void init_pageframe_allocator()
 {
    int reserved_elems = INITIAL_ELEMS_RESERVED;
 
+#ifdef KERNEL_TEST
    bzero((void *)pageframes_bitfield, sizeof(pageframes_bitfield));
+#endif
 
    for (int i = 0; i < reserved_elems; i++) {
       pageframes_bitfield[i] = FULL_128KB_AREA;
