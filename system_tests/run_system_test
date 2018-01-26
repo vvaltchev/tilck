@@ -29,17 +29,23 @@ def RunTheVM():
    global init_pid
    global init_exit_code
 
+
    print "Running the VM..."
    print "-"*80, "\n"
 
-   process = subprocess.Popen(['qemu-system-i386',
-                               '-m', str(VM_MEMORY_SIZE_IN_MB),
-                               '-drive',
-                               'file=./build/exos.img,'+
-                               'index=0,media=disk,format=raw',
-                               '-nographic', '-device',
-                               'isa-debug-exit,iobase=0xf4,iosize=0x04'],
-                              stdout=subprocess.PIPE)
+   args = ['qemu-system-i386',
+           '-m', str(VM_MEMORY_SIZE_IN_MB),
+           '-drive',
+           'file=./build/exos.img,'+
+           'index=0,media=disk,format=raw',
+           '-nographic', '-device',
+           'isa-debug-exit,iobase=0xf4,iosize=0x04']
+
+   if not os.environ.get('TRAVIS', False):
+	args.append('-enable-kvm')
+
+
+   process = subprocess.Popen(args, stdout=subprocess.PIPE)
 
 
    for line in iter(process.stdout.readline,''):
