@@ -99,6 +99,8 @@ void kmain()
    //kmutex_test();
    //kcond_test();
 
+   //kernel_kmalloc_perf_test();
+
    //kthread_create(&sleeping_kthread, (void *) 123);
    //kthread_create(&sleeping_kthread, (void *) 20);
    //kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));

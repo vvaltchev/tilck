@@ -265,32 +265,29 @@ void map_page(page_directory_t *pdir,
 
       // we have to create a page table for mapping 'vaddr'
 
-      u32 page_physical_addr = (u32)paging_alloc_pageframe();
+      uptr page_physical_addr = paging_alloc_pageframe();
 
       ptable = (void*)KERNEL_PA_TO_VA(page_physical_addr);
 
       initialize_empty_page_table(ptable);
-
-      page_dir_entry_t e = {0};
-      e.present = 1;
-      e.rw = 1;
-      e.us = us;
-      e.pageTableAddr = ((u32)page_physical_addr) >> PAGE_SHIFT;
-
       pdir->page_tables[page_dir_index] = ptable;
-      pdir->entries[page_dir_index] = e;
+
+      pdir->entries[page_dir_index].raw =
+         PG_PRESENT_BIT |
+         PG_RW_BIT |
+         (us << PG_US_BIT_POS) |
+         page_physical_addr;
    }
 
    ASSERT(ptable->pages[page_table_index].present == 0);
 
-   page_t p = {0};
-   p.present = 1;
-   p.us = us;
-   p.rw = rw;
-   p.global = !us; /* All kernel pages are 'global'. */
-   p.pageAddr = paddr >> PAGE_SHIFT;
+   ptable->pages[page_table_index].raw =
+      PG_PRESENT_BIT |
+      (us << PG_US_BIT_POS) |
+      (rw << PG_RW_BIT_POS) |
+      ((!us) << PG_GLOBAL_BIT_POS) | /* All kernel pages are 'global'. */
+      paddr;
 
-   ptable->pages[page_table_index] = p;
    invalidate_page(vaddr);
 }
 
@@ -299,17 +296,10 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
    page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
    new_pdir->paddr = get_mapping(curr_page_dir, new_pdir);
 
-   page_dir_entry_t not_present = { 0 };
-
-   not_present.present = 0;
-   not_present.rw = 1;
-   not_present.us = true;
-   not_present.pageTableAddr = 0;
-
    for (int i = 0; i < 768; i++) {
 
       if (pdir->page_tables[i] == NULL) {
-         new_pdir->entries[i] = not_present;
+         new_pdir->entries[i].raw = PG_RW_BIT | PG_US_BIT;
          new_pdir->page_tables[i] = NULL;
          continue;
       }
@@ -422,7 +412,7 @@ void pdir_destroy(page_directory_t *pdir)
 }
 
 /*
- * Page directories MUST BE at page-size-aligned locations.
+ * Page directories MUST BE page-size-aligned.
  */
 char kpdir_buf[sizeof(page_directory_t)] __attribute__ ((aligned(PAGE_SIZE)));
 
@@ -434,8 +424,8 @@ void init_paging()
    kernel_page_dir = (page_directory_t *) kpdir_buf;
 
    initialize_page_directory(kernel_page_dir,
-                             (uptr) KERNEL_VA_TO_PA(kernel_page_dir),
-                             true);
+                            (uptr) KERNEL_VA_TO_PA(kernel_page_dir),
+                            true);
 
    // Create page entries for the whole 4th GB of virtual memory
    for (int i = 768; i < 1024; i++) {
@@ -445,14 +435,15 @@ void init_paging()
 
       initialize_empty_page_table(ptable);
 
-      page_dir_entry_t e = { 0 };
-      e.present = 1;
-      e.rw = 1;
-      e.us = false;
-      e.pageTableAddr = page_physical_addr >> PAGE_SHIFT;
-
       kernel_page_dir->page_tables[i] = ptable;
-      kernel_page_dir->entries[i] = e;
+
+      /*
+       * NOTE: page_physical_addr has already it's lower 12 bits cleared
+       * so we can just OR it with the rest of the flags.
+       */
+
+      kernel_page_dir->entries[i].raw =
+         PG_PRESENT_BIT | PG_RW_BIT | page_physical_addr;
    }
 
    map_pages(kernel_page_dir,

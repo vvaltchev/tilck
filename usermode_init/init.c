@@ -102,6 +102,8 @@ int main(int argc, char **argv, char **env)
 {
    printf("Hello from init! MY PID IS %i\n", getpid());
 
+   //pause();
+
    args_test(argc, argv);
    bss_var_test();
    fork_test();
