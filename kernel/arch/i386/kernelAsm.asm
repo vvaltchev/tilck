@@ -68,6 +68,13 @@ _start:
    or eax, 0x10000    ; WP ON (write protect for supervisor)
    mov cr0, eax       ; enable paging!
 
+   mov eax, cr4
+   or eax, 16      ; 16 = bit 4. PSE (Page Size Extension)
+                   ; We enable it just in case we decide to use 4-MB pages
+                   ; for the kernel.
+   or eax, 128     ; 128 = bit 7. PGE (Page Global Enabled)
+   mov cr4, eax
+
    mov eax, .next_step
    jmp eax        ; Jump to next instruction using the high virtual address.
 

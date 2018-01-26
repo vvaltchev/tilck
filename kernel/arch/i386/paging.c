@@ -158,27 +158,7 @@ void set_page_directory(page_directory_t *pdir)
 
 static void initialize_empty_page_table(page_table_t *t)
 {
-   for (int i = 0; i < 1024; i++) {
-      t->pages[i].present = 0;
-      t->pages[i].pageAddr = 0;
-   }
-}
-
-void initialize_page_directory(page_directory_t *pdir, uptr paddr, bool us)
-{
-   page_dir_entry_t not_present = {0};
-
-   not_present.present = 0;
-   not_present.rw = 1;
-   not_present.us = us;
-   not_present.pageTableAddr = 0;
-
-   pdir->paddr = paddr;
-
-   for (int i = 0; i < 1024; i++) {
-      pdir->entries[i] = not_present;
-      pdir->page_tables[i] = NULL;
-   }
+   bzero(t, sizeof(page_table_t));
 }
 
 bool is_mapped(page_directory_t *pdir, void *vaddrp)
@@ -244,11 +224,10 @@ uptr get_mapping(page_directory_t *pdir, void *vaddrp)
    return ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 }
 
-void map_page(page_directory_t *pdir,
-              void *vaddrp,
-              uptr paddr,
-              bool us,
-              bool rw)
+void map_page_int(page_directory_t *pdir,
+                  void *vaddrp,
+                  uptr paddr,
+                  u32 flags)
 {
    const u32 vaddr = (u32) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
@@ -275,21 +254,45 @@ void map_page(page_directory_t *pdir,
       pdir->entries[page_dir_index].raw =
          PG_PRESENT_BIT |
          PG_RW_BIT |
-         (us << PG_US_BIT_POS) |
+         (flags & PG_US_BIT) |
          page_physical_addr;
    }
 
    ASSERT(ptable->pages[page_table_index].present == 0);
 
-   ptable->pages[page_table_index].raw =
-      PG_PRESENT_BIT |
-      (us << PG_US_BIT_POS) |
-      (rw << PG_RW_BIT_POS) |
-      ((!us) << PG_GLOBAL_BIT_POS) | /* All kernel pages are 'global'. */
-      paddr;
-
+   ptable->pages[page_table_index].raw = PG_PRESENT_BIT | flags | paddr;
    invalidate_page(vaddr);
 }
+
+void map_page(page_directory_t *pdir,
+              void *vaddrp,
+              uptr paddr,
+              bool us,
+              bool rw)
+{
+   map_page_int(pdir,
+                vaddrp,
+                paddr,
+                (us << PG_US_BIT_POS) |
+                (rw << PG_RW_BIT_POS) |
+                ((!us) << PG_GLOBAL_BIT_POS)); /* Kernel pages are 'global' */
+}
+
+static inline void
+map_pages_int(page_directory_t *pdir,
+              void *vaddr,
+              uptr paddr,
+              int pageCount,
+              u32 flags)
+{
+   for (int i = 0; i < pageCount; i++) {
+      map_page_int(pdir,
+                   (u8 *)vaddr + (i << PAGE_SHIFT),
+                   paddr + (i << PAGE_SHIFT),
+                   flags);
+   }
+}
+
 
 page_directory_t *pdir_clone(page_directory_t *pdir)
 {
@@ -423,9 +426,8 @@ void init_paging()
 
    kernel_page_dir = (page_directory_t *) kpdir_buf;
 
-   initialize_page_directory(kernel_page_dir,
-                            (uptr) KERNEL_VA_TO_PA(kernel_page_dir),
-                            true);
+   /* Note: the content of kernel_page_dir is zeroed. */
+   kernel_page_dir->paddr = (uptr) KERNEL_VA_TO_PA(kernel_page_dir);
 
    // Create page entries for the whole 4th GB of virtual memory
    for (int i = 768; i < 1024; i++) {
@@ -446,9 +448,13 @@ void init_paging()
          PG_PRESENT_BIT | PG_RW_BIT | page_physical_addr;
    }
 
-   map_pages(kernel_page_dir,
-             (void *)KERNEL_PA_TO_VA(0x1000),
-             0x1000, 1024 - 1, false, true);
+   /*
+    * Linear map just the first 4 MB of memory (except the first 4 KB page).
+    * [4KB .. 4MB) => [3GB + 4KB .. 3GB + 4MB)
+    */
+   map_pages_int(kernel_page_dir,
+                 (void *)KERNEL_PA_TO_VA(0x1000),
+                  0x1000, 1024 - 1, PG_RW_BIT | PG_GLOBAL_BIT);
 
    ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 256);
    set_page_directory(kernel_page_dir);

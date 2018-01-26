@@ -44,8 +44,6 @@ typedef struct page_directory_t page_directory_t;
 
 void init_paging();
 
-void initialize_page_directory(page_directory_t *pdir, uptr paddr, bool us);
-
 void map_page(page_directory_t *pdir,
               void *vaddr,
               uptr paddr,
