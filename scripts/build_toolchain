@@ -224,14 +224,19 @@ function build_nasm {
    pushd .
 
    if ! [ -d nasm ]; then
+
+      echo
+      echo "*** NASM ***"
+      echo
+
       tarname=nasm-2.13.02.tar.gz
       wget http://www.nasm.us/pub/nasm/releasebuilds/2.13.02/$tarname
       tar xfz $tarname
       rm $tarname
       mv nasm-2.13.02 nasm
       cd nasm
-      run_command2 ./configure configure_log.txt
-      run_command2 "make -j" build_nasm_log.txt
+      run_command2 ./configure configure.log
+      run_command2 "make -j" build.log
    else
       echo "NOTE: Skipping nasm"
    fi
@@ -248,14 +253,19 @@ function build_mtools {
    pushd .
 
    if ! [ -d mtools ]; then
+
+      echo
+      echo "*** MTOOLS ***"
+      echo
+
       tarname=mtools-4.0.18.tar.gz
       wget ftp://ftp.gnu.org/gnu/mtools/$tarname
       tar xfz $tarname
       rm $tarname
       mv mtools-4.0.18 mtools
       cd mtools
-      run_command2 ./configure configure_log.txt
-      run_command2 "make -j" build_mtools_log.txt
+      run_command2 ./configure configure.log
+      run_command2 "make -j" build.log
    else
       echo "NOTE: Skipping mtools"
    fi
@@ -273,6 +283,11 @@ function download_i686_toolchain {
    pushd .
 
    if ! [ -d x86-i686--glibc--stable ]; then
+
+      echo
+      echo "*** i686 TOOLCHAIN ***"
+      echo
+
       tarname=x86-i686--glibc--stable-2017.05-toolchains-1-1.tar.bz2
       url=http://toolchains.free-electrons.com/downloads/releases/toolchains
       wget $url/x86-i686/tarballs/$tarname
@@ -300,6 +315,11 @@ function download_i686_toolchain {
 ###############################
 
 function build_cmake_internal {
+
+   echo
+   echo "*** CMAKE ***"
+   echo
+
    wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
    tar xf cmake-3.7.0-Linux-x86_64.tar.gz
    mv cmake-3.7.0-Linux-x86_64 cmake
@@ -360,6 +380,11 @@ function build_lcov {
 
    pushd .
    if ! [ -d lcov ]; then
+
+      echo
+      echo "*** LCOV ***"
+      echo
+
       git clone --branch v1.13 --depth 1 https://github.com/linux-test-project/lcov.git
       cd lcov
    else
@@ -379,6 +404,10 @@ function build_dietlibc {
 
    if ! [ -d dietlibc-0.33 ]; then
 
+      echo
+      echo "*** DIETLIBC ***"
+      echo
+
       git clone --branch v0.33 --depth 1 https://github.com/vvaltchev/dietlibc-fork.git
       mv dietlibc-fork dietlibc-0.33
 
@@ -386,7 +415,10 @@ function build_dietlibc {
 
       sed -i 's/#define WANT_SYSENTER/\/\/#define WANT_SYSENTER/g' dietfeatures.h
       sed -i 's/-Wno-unused -Wredundant-decls/-Wno-unused -Wredundant-decls -fno-stack-protector/g' Makefile
-      PATH=$X86_TOOLCHAIN:$PATH make MYARCH=i386 -j i386 DEBUG=1 &> dietlibc_build.log
+
+      set +e
+      PATH=$X86_TOOLCHAIN:$PATH make MYARCH=i386 -j i386 DEBUG=1 &> build.log
+      set -e
 
       popd
 
@@ -408,10 +440,15 @@ function build_gtest {
 
    pushd .
    if ! [ -d googletest ]; then
+
+      echo
+      echo "*** GTEST ***"
+      echo
+
       git clone --branch release-1.8.0 --depth 1 https://github.com/google/googletest.git
       cd googletest/googletest
       $CMAKE -DCMAKE_BUILD_TYPE=Debug .
-      run_command2 "make -j" "gtest_build.log"
+      run_command2 "make -j" build.log
    else
       echo "NOTE: Skipping googletest"
    fi
@@ -428,6 +465,11 @@ function build_libmusl {
    pushd .
 
    if ! [ -d musl ]; then
+
+      echo
+      echo "*** LIBMUSL ***"
+      echo
+
       git clone --branch v1.1.16 --depth 1 git://git.musl-libc.org/musl
       cd musl
 
@@ -438,8 +480,8 @@ function build_libmusl {
       libmusl_opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
       libmusl_opts3="--syslibdir=$TC/musl-install/lib"
 
-      ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3 &> configure_logs.txt
-      run_command2 "make -j" libmusl_build_log.txt
+      ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3 &> configure.log
+      run_command2 "make -j" build.log
       make install
    else
       echo "NOTE: Skipping musl"
@@ -459,9 +501,13 @@ function build_gnuefi {
 
    if ! [ -d gnu-efi ]; then
 
+      echo
+      echo "*** GNU-EFI ***"
+      echo
+
       git clone --branch 3.0.6 --depth 1 https://github.com/vvaltchev/gnu-efi-fork.git gnu-efi
       cd gnu-efi
-      run_command2 "make -j" gnu_efi_build.log
+      run_command2 "make -j" build.log
 
    else
 
