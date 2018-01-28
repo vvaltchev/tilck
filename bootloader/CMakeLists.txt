@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 
+
 if (${ARCH} STREQUAL "i386")
 
    set(GCC_TOOLCHAIN ${TCROOT}/x86-i686--glibc--stable/bin)
@@ -31,6 +32,16 @@ file(
    "stage3_entry.asm"
    "*.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
+)
+
+file(GLOB ARCH_NASM_SOURCES "*.asm")
+
+set_source_files_properties(
+
+   ${ARCH_NASM_SOURCES}
+
+   PROPERTIES
+      LANGUAGE ASM_NASM
 )
 
 # Remove -rdynamic

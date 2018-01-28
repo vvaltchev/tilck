@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
-project (exos C CXX ASM_NASM)
+project (exos C CXX ASM_NASM ASM)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
 
@@ -48,6 +48,7 @@ set(
    CMAKE_ASM_NASM_COMPILE_OBJECT
    "<CMAKE_ASM_NASM_COMPILER> -f ${NASM_ARCH_FORMAT} -o <OBJECT> <SOURCE>"
 )
+
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)

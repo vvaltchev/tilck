@@ -8,7 +8,7 @@ if (${ARCH} STREQUAL "i386")
    set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-gcc)
    set(OBJCOPY ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-objcopy)
    set(STRIP ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-strip)
-
+   set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-gcc)
 
 else()
 
@@ -37,12 +37,26 @@ set(
 )
 JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
 
+file(GLOB ARCH_NASM_SOURCES "${ARCH}/*.asm")
 
-file(GLOB ARCH_SOURCES "${ARCH}/*.asm" "${ARCH}/*.c")
+set_source_files_properties(
+
+   ${ARCH_NASM_SOURCES}
+
+   PROPERTIES
+      LANGUAGE ASM_NASM
+)
+
+file(GLOB ARCH_SOURCES "${ARCH}/*.S" "${ARCH}/*.c")
 file(GLOB ARCH_FAMILY_SOURCES "${ARCH_FAMILY}/*.c")
 file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})
 
-add_executable(elf_kernel ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES})
+add_executable(
+
+   elf_kernel
+
+   ${ARCH_NASM_SOURCES} ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES}
+)
 
 set_target_properties(
 

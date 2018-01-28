@@ -11,7 +11,7 @@ set(SWITCHMODE_BIN ${CMAKE_BINARY_DIR}/switchmode.bin)
 set(
    EFI_CFLAGS_LIST
 
-   -std=c99 -c -fno-stack-protector -fpic -fshort-wchar -mno-red-zone
+   -c -fno-stack-protector -fpic -fshort-wchar -mno-red-zone
    -DEFI_FUNCTION_WRAPPER
    -I${GNUEFI_DIR}/inc
    -I${GNUEFI_DIR}/inc/x86_64
