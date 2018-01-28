@@ -37,16 +37,6 @@ set(
 )
 JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
 
-file(GLOB ARCH_NASM_SOURCES "${ARCH}/*.asm")
-
-set_source_files_properties(
-
-   ${ARCH_NASM_SOURCES}
-
-   PROPERTIES
-      LANGUAGE ASM_NASM
-)
-
 file(GLOB ARCH_SOURCES "${ARCH}/*.S" "${ARCH}/*.c")
 file(GLOB ARCH_FAMILY_SOURCES "${ARCH_FAMILY}/*.c")
 file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})
@@ -55,7 +45,7 @@ add_executable(
 
    elf_kernel
 
-   ${ARCH_NASM_SOURCES} ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES}
+   ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES}
 )
 
 set_target_properties(
