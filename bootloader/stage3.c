@@ -101,5 +101,5 @@ void main(void)
    entry = VADDR_TO_PADDR(entry);
 
    /* Jump to the kernel */
-   ((void (*)(void))entry)();
+   asmVolatile("jmpl *%0" : : "r"(entry));
 }
