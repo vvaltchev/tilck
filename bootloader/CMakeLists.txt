@@ -14,17 +14,17 @@ else()
 
 endif()
 
-file(GLOB EARLY_STAGES_SOURCES "boot.asm" "gas_boot.S")
+file(GLOB EARLY_STAGES_SOURCES "gas_boot.S")
+
+set(BOOT_COMPILE_OPTS -Ttext 0x0 -Wl,--oformat=binary -ffreestanding -nostdlib)
 
 add_custom_command(
    OUTPUT
       boot.o
    DEPENDS
       ${EARLY_STAGES_SOURCES}
-   COMMAND # Temporary building both the versions
-      ${CMAKE_ASM_NASM_COMPILER} -f bin -o boot.o ${CMAKE_SOURCE_DIR}/bootloader/boot.asm
    COMMAND
-      ${CMAKE_C_COMPILER} ${CMAKE_SOURCE_DIR}/bootloader/gas_boot.S -o ${CMAKE_BINARY_DIR}/gas_boot.bin -Ttext 0x0 -Wl,--oformat=binary -ffreestanding -nostdlib
+      ${CMAKE_C_COMPILER} ${EARLY_STAGES_SOURCES} -o boot.o ${BOOT_COMPILE_OPTS}
    COMMENT
       "Building the early stages of the BIOS bootloader"
 )
