@@ -29,7 +29,6 @@ add_custom_command(
 file(
    GLOB STAGE3_SOURCES
 
-   "stage3_entry.asm"
    "*.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
 )
