@@ -14,7 +14,7 @@ else()
 
 endif()
 
-file(GLOB EARLY_STAGES_SOURCES "gas_boot.S")
+file(GLOB EARLY_STAGES_SOURCES "boot.S")
 
 set(BOOT_COMPILE_OPTS -Ttext 0x0 -Wl,--oformat=binary -ffreestanding -nostdlib)
 
