@@ -1,0 +1,2 @@
+#!/bin/sh
+objdump -D -Mintel,i386 -b binary -m i386 $@
