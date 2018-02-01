@@ -409,9 +409,9 @@ stage2_entry:
 
 
    gdt:
-   gdt_null: .byte 0, 0, 0, 0, 0, 0, 0, 0
-   gdt_code: .byte 0xFF, 0xFF, 0, 0, 0, 0x9A, 0xCF, 0
-   gdt_data: .byte 0xFF, 0xFF, 0, 0, 0, 0x92, 0xCF, 0
+   gdt_null: .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+   gdt_code: .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x9A, 0xCF, 0x00
+   gdt_data: .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00
 
    gdtr:
       .word 0x0023
@@ -423,14 +423,18 @@ stage2_entry:
 
    small_buf: .space 8, 0
 
-   load_failed:          .asciz "LBA: "
-   cyl_param:            .asciz "C: "
-   head_param:           .asciz "H: "
-   sector_param:         .asciz "S: "
-   last_op_status:       .asciz "Last op status: "
-
-   newline:              .asciz "\r\n"
-
+   newline:
+      .asciz "\r\n"
+   load_failed:
+      .asciz "LBA: "
+   cyl_param:
+      .asciz "C: "
+   head_param:
+      .asciz "H: "
+   sector_param:
+      .asciz "S: "
+   last_op_status:
+      .asciz "Last op status: "
    str_device:
       .asciz "Device number: "
    str_cylinders:
@@ -470,7 +474,7 @@ enter_unreal_mode:
    lgdt [gdtr]            # load gdt register
 
    mov eax, cr0           # switch to 16-bit pmode by
-   or al, 1                # set pmode bit
+   or al, 1               # set pmode bit
    mov cr0, eax
 
    jmp .+2                # tell 386/486 to not crash
@@ -650,6 +654,9 @@ enter_unreal_mode:
 #
 # Returns: 0 in ax if the a20 line is disabled (memory wraps around)
 #          1 in ax if the a20 line is enabled (memory does not wrap around)
+#
+# Source: https://wiki.osdev.org/A20_Line
+#
 
 check_a20:
    pushf
@@ -700,11 +707,13 @@ check_a20:
 
     ret
 
+# Source: https://wiki.osdev.org/A20_Line
 enable_A20_bios:
    mov ax, 0x2401
    int 0x15
    ret
 
+# Source: https://wiki.osdev.org/A20_Line
 enable_A20_kb:
         cli
 
@@ -750,6 +759,7 @@ enable_A20_kb:
         jz      .a20wait2
         ret
 
+# Source: https://wiki.osdev.org/A20_Line
 enable_A20_fast_gate:
    in al, 0x92
    test al, 2
