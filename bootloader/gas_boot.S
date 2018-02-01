@@ -199,7 +199,7 @@ end:
 
 # MBR data
 
-.space 218 - (.-_start), 0x90 # Pad for disk time stamp
+.space 218 - (.-_start), 0x00 # Pad for disk time stamp
 
 .space 6, 0x00  # Disk Time Stamp (aka "mistery bytes")
                 # See http://thestarman.pcministry.com/asm/mbr/mystery.htm
@@ -672,20 +672,15 @@ check_a20:
    mov al, es:[di]
    push ax
 
-   .byte 0x3E # Force 'ds' in order to have the same instructions as nasm did
    mov al, ds:[si]
    push ax
 
    mov byte ptr es:[di], 0x00
-
-   .byte 0x3E # Force 'ds' in order to have the same instructions as nasm did
    mov byte ptr ds:[si], 0xFF
 
    cmp byte ptr es:[di], 0xFF
 
    pop ax
-
-   .byte 0x3E # Force 'ds' in order to have the same instructions as nasm did
    mov byte ptr ds:[si], al
 
    pop ax
