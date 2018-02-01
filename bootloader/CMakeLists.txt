@@ -5,23 +5,26 @@ if (${ARCH} STREQUAL "i386")
 
    set(GCC_TOOLCHAIN ${TCROOT}/x86-i686--glibc--stable/bin)
    set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-gcc)
+   set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-gcc)
    set(OBJCOPY ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-objcopy)
 
 else()
 
-   set(OBJCOPY objcopy)
+   message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
 
 endif()
 
-file(GLOB EARLY_STAGES_SOURCES "boot.asm")
+file(GLOB EARLY_STAGES_SOURCES "boot.asm" "gas_boot.S")
 
 add_custom_command(
    OUTPUT
       boot.o
    DEPENDS
       ${EARLY_STAGES_SOURCES}
+   COMMAND # Temporary building both the versions
+      ${CMAKE_ASM_NASM_COMPILER} -f bin -o boot.o ${CMAKE_SOURCE_DIR}/bootloader/boot.asm
    COMMAND
-      ${CMAKE_ASM_NASM_COMPILER} -f bin -o boot.o ${EARLY_STAGES_SOURCES}
+      ${CMAKE_C_COMPILER} ${CMAKE_SOURCE_DIR}/bootloader/gas_boot.S -o ${CMAKE_BINARY_DIR}/gas_boot.bin -Ttext 0x0 -Wl,--oformat=binary -ffreestanding -nostdlib
    COMMENT
       "Building the early stages of the BIOS bootloader"
 )
@@ -29,24 +32,16 @@ add_custom_command(
 file(
    GLOB STAGE3_SOURCES
 
+   "stage3_*.S"
    "*.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
 )
 
-file(GLOB ARCH_NASM_SOURCES "*.asm")
-
-set_source_files_properties(
-
-   ${ARCH_NASM_SOURCES}
-
-   PROPERTIES
-      LANGUAGE ASM_NASM
-)
 
 # Remove -rdynamic
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
-add_executable(elf_stage3 ${STAGE3_SOURCES})
+add_executable(elf_stage3   ${STAGE3_SOURCES})
 
 set(
    FLAGS_LIST
