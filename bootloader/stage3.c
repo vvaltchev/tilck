@@ -93,7 +93,7 @@ void main(void)
 
    printk("*** HELLO from the 3rd stage of the BOOTLOADER ***\n");
 
-   root_fs = fat_mount_ramdisk((void *)RAM_DISK_PADDR);
+   root_fs = fat_mount_ramdisk((void *)RAMDISK_PADDR);
 
    void *entry;
    load_elf_kernel(kernel_path, &entry);

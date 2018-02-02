@@ -63,6 +63,3 @@ void enable_preemption();
 bool is_preemption_enabled();
 
 
-#define RAM_DISK_PADDR (0x08000000U) // +128 M
-#define RAM_DISK_VADDR (0xCA000000U)
-#define RAM_DISK_SIZE (16 * MB)

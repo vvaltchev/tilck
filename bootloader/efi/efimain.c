@@ -10,17 +10,13 @@
 #include "efiprot.h"
 
 #include <elf.h>
+#include <config.h>
 
 #define PAGE_SIZE            0x1000    // 4 KB
 #define BOOT_PADDR           0xC000
-#define KERNEL_PADDR       0x100000    // +1 MB
-#define RAMDISK_PADDR    0x08000000    // +128 MB
-#define RAMDISK_SIZE    (35*1024*1024) // 35 MB, size of 'fatpart'
-#define KERNEL_MAX_SIZE (500 * 1024)   // 500 KB, max size of kernel.bin
 #define KERNEL_FILE      L"\\EFI\\BOOT\\elf_kernel_stripped"
 
-#define KERNEL_VADDR_OFFSET (0xC0000000UL)
-#define VADDR_TO_PADDR(x) ((void *)( (UINTN)(x) - KERNEL_VADDR_OFFSET ))
+#define VADDR_TO_PADDR(x) ((void *)( (UINTN)(x) - KERNEL_BASE_VA ))
 
 
 void WaitForKeyPress(EFI_SYSTEM_TABLE *ST)
@@ -180,7 +176,7 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS, EFI_FILE_PROTOCOL *fileProt)
          continue;
       }
 
-      CHECK(phdr->p_vaddr >= KERNEL_VADDR_OFFSET);
+      CHECK(phdr->p_vaddr >= KERNEL_BASE_VA);
 
       bzero(VADDR_TO_PADDR(phdr->p_vaddr), phdr->p_memsz);
 

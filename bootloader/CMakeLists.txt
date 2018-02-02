@@ -16,7 +16,17 @@ endif()
 
 file(GLOB EARLY_STAGES_SOURCES "boot.S")
 
-set(BOOT_COMPILE_OPTS -Ttext 0x0 -Wl,--oformat=binary -ffreestanding -nostdlib)
+set(
+
+   BOOT_COMPILE_OPTS
+
+   -Ttext 0x0
+   -Wl,--oformat=binary
+   -ffreestanding
+   -nostdlib
+   -nostdinc
+   -I${CMAKE_SOURCE_DIR}/common/include
+)
 
 add_custom_command(
    OUTPUT

@@ -149,9 +149,6 @@ typedef u64 uint64_t;
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 
-#define KB (1U << 10)
-#define MB (1U << 20)
-
 #define MIN(x, y) (((x) <= (y)) ? (x) : (y))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 

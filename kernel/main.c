@@ -51,18 +51,18 @@ void load_usermode_init()
 void mount_ramdisk()
 {
    printk("Mapping the ramdisk at %p (%d pages)... ",
-          RAM_DISK_VADDR, RAM_DISK_SIZE / PAGE_SIZE);
+          RAMDISK_VADDR, RAMDISK_SIZE / PAGE_SIZE);
 
    map_pages(get_kernel_page_dir(),
-             (void *) RAM_DISK_VADDR,
-             RAM_DISK_PADDR,
-             RAM_DISK_SIZE / PAGE_SIZE,
+             (void *) RAMDISK_VADDR,
+             RAMDISK_PADDR,
+             RAMDISK_SIZE / PAGE_SIZE,
              false,
              true);
 
    printk("DONE\n");
 
-   filesystem *root_fs = fat_mount_ramdisk((void *)RAM_DISK_VADDR);
+   filesystem *root_fs = fat_mount_ramdisk((void *)RAMDISK_VADDR);
    mountpoint_add(root_fs, "/");
 }
 
