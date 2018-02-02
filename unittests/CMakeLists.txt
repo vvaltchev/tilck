@@ -4,8 +4,9 @@ file(GLOB SOURCES "*.c" "*.cpp")
 
 set(GTEST_DIR "${TCROOT}/googletest/googletest")
 
-include_directories("${CMAKE_SOURCE_DIR}/kernel/include")
-include_directories("${GTEST_DIR}/include")
+include_directories(${CMAKE_SOURCE_DIR}/common/include)
+include_directories(${CMAKE_SOURCE_DIR}/kernel/include)
+include_directories(${GTEST_DIR}/include)
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 add_executable(gtests EXCLUDE_FROM_ALL ${SOURCES})
