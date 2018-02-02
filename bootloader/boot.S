@@ -88,7 +88,7 @@ after_reloc:
 
    jc end
 
-   after_read_params_ok:
+   .after_read_params_ok:
 
    xor ax, ax
    mov al, dh
@@ -568,7 +568,7 @@ enter_unreal_mode:
 
    ###########################################################################
 
-   enter_32bit_protected_mode:
+enter_32bit_protected_mode:
 
    cli
 
@@ -681,49 +681,49 @@ enable_A20_bios:
 
 # Source: https://wiki.osdev.org/A20_Line
 enable_A20_kb:
-        cli
+   cli
 
-        call    .a20wait
-        mov     al,0xAD
-        out     0x64,al
+   call    .a20wait
+   mov     al,0xAD
+   out     0x64,al
 
-        call    .a20wait
-        mov     al,0xD0
-        out     0x64,al
+   call    .a20wait
+   mov     al,0xD0
+   out     0x64,al
 
-        call    .a20wait2
-        in      al,0x60
-        push    eax
+   call    .a20wait2
+   in      al,0x60
+   push    eax
 
-        call    .a20wait
-        mov     al,0xD1
-        out     0x64,al
+   call    .a20wait
+   mov     al,0xD1
+   out     0x64,al
 
-        call    .a20wait
-        pop     eax
-        or      al,2
-        out     0x60,al
+   call    .a20wait
+   pop     eax
+   or      al,2
+   out     0x60,al
 
-        call    .a20wait
-        mov     al,0xAE
-        out     0x64,al
+   call    .a20wait
+   mov     al,0xAE
+   out     0x64,al
 
-        call    .a20wait
-        sti
-        ret
+   call    .a20wait
+   sti
+   ret
 
 .a20wait:
-        in      al,0x64
-        test    al,2
-        jnz     .a20wait
-        ret
+   in      al,0x64
+   test    al,2
+   jnz     .a20wait
+   ret
 
 
 .a20wait2:
-        in      al,0x64
-        test    al,1
-        jz      .a20wait2
-        ret
+   in      al,0x64
+   test    al,1
+   jz      .a20wait2
+   ret
 
 # Source: https://wiki.osdev.org/A20_Line
 enable_A20_fast_gate:
@@ -733,7 +733,7 @@ enable_A20_fast_gate:
    or al, 2
    and al, 0xFE
    out 0x92, al
-   .after:
+.after:
    ret
 
 
@@ -810,20 +810,20 @@ itoa: # convert 16-bit integer to string
 
    .loop:
 
-   xor dx, dx
-   mov ax, [bp+4]
-   mov bx, 10
-   div bx
-   mov [bp+4], ax
+      xor dx, dx
+      mov ax, [bp+4]
+      mov bx, 10
+      div bx
+      mov [bp+4], ax
 
-   mov bx, [bp-2]
-   add dl, 48
-   mov [bx], dl
-   add word ptr [bp-2], 1
+      mov bx, [bp-2]
+      add dl, 48
+      mov [bx], dl
+      add word ptr [bp-2], 1
 
-   mov cx, [bp+4]
-   test cx, cx
-   jne .loop   # JMP if cx != 0
+      mov cx, [bp+4]
+      test cx, cx
+      jne .loop   # JMP if cx != 0
 
    mov bx, [bp-2]
    sub bx, 1
@@ -833,16 +833,16 @@ itoa: # convert 16-bit integer to string
 
    .l2:
 
-   mov ax, [bx]
-   mov [di], ax
+      mov ax, [bx]
+      mov [di], ax
 
-   dec bx
-   inc di
+      dec bx
+      inc di
 
-   mov ax, bp
-   sub ax, 4
-   cmp bx, ax
-   jge .l2
+      mov ax, bp
+      sub ax, 4
+      cmp bx, ax
+      jge .l2
 
    mov byte ptr [di], 0
 
