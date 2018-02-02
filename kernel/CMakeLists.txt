@@ -13,7 +13,9 @@ JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
 
 set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 
-include_directories("include")
+include_directories(${CMAKE_SOURCE_DIR}/kernel/include)
+include_directories(${CMAKE_SOURCE_DIR}/common/include)
+
 
 set(
    KERNEL_NOARCH_SOURCES_GLOB

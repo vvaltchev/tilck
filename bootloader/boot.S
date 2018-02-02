@@ -54,10 +54,10 @@ jmp reloc
 
 bios_parameter_pack:
 
-sectorsize:              .word 512
+sectorsize:              .word SECTOR_SIZE
 sectors_per_cluster:     .byte 1
 reserved_sectors:        .word 2048
-number_of_FATs:          .byte 2
+number_of_FATs:          .byte 1
 root_entries:            .word 240
 small_sector_count:      .word 0    # the other value large_total_sectors is used.
 media_descriptor:        .byte 0xF0 # floppy (even if that's not a real floppy)
@@ -67,7 +67,7 @@ sectors_per_FAT:         .word 9
 phys_sectors_per_track:  .word 63
 num_heads:               .word 16
 hidden_sectors:          .long 2048
-large_total_sectors:     .long (40*1024*1024)/512
+large_total_sectors:     .long (37*MB)/SECTOR_SIZE
 
 drive_number:            .byte 0x80
 bflags:                  .byte 0

@@ -89,7 +89,16 @@ set_target_properties(
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(elf_stage3 gcc)
 
-target_include_directories(elf_stage3 PUBLIC "${CMAKE_SOURCE_DIR}/kernel/include")
+target_include_directories(
+
+   elf_stage3
+
+   PUBLIC
+
+   ${CMAKE_SOURCE_DIR}/common/include
+   ${CMAKE_SOURCE_DIR}/kernel/include
+)
+
 
 add_custom_command(
     OUTPUT

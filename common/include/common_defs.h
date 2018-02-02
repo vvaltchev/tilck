@@ -187,19 +187,26 @@ NORETURN void not_reached(const char *file, int line);
 
 #ifndef NDEBUG
 
-#define ASSERT(x)                                                    \
-   do {                                                              \
-      if (UNLIKELY(!(x))) {                                          \
-         assert_failed(#x , __FILE__, __LINE__);                     \
-      }                                                              \
-   } while (0)
+   #ifndef NO_EXOS_ASSERT
 
-#define DEBUG_ONLY(x) x
+      #define ASSERT(x)                                                    \
+         do {                                                              \
+            if (UNLIKELY(!(x))) {                                          \
+               assert_failed(#x , __FILE__, __LINE__);                     \
+            }                                                              \
+         } while (0)
+
+   #endif
+
+   #define DEBUG_ONLY(x) x
 
 #else
 
-#define ASSERT(x)
-#define DEBUG_ONLY(x)
+   #ifndef NO_EXOS_ASSERT
+      #define ASSERT(x)
+   #endif
+
+   #define DEBUG_ONLY(x)
 
 #endif
 
@@ -215,8 +222,12 @@ NORETURN void not_reached(const char *file, int line);
 #define NOT_REACHED() not_reached(__FILE__, __LINE__)
 
 
-#ifdef KERNEL_TEST
-#define STATIC
-#else
-#define STATIC static
+#ifndef NO_EXOS_STATIC_WRAPPER
+
+   #ifdef KERNEL_TEST
+      #define STATIC
+   #else
+      #define STATIC static
+   #endif
+
 #endif

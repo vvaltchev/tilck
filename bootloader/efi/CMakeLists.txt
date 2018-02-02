@@ -13,6 +13,10 @@ set(
 
    -std=c99 -c -fno-stack-protector -fpic -fshort-wchar -mno-red-zone
    -DEFI_FUNCTION_WRAPPER
+   -nostdinc
+   -DNO_EXOS_ASSERT
+   -DNO_EXOS_STATIC_WRAPPER
+   -I${CMAKE_SOURCE_DIR}/common/include
    -I${GNUEFI_DIR}/inc
    -I${GNUEFI_DIR}/inc/x86_64
 )
