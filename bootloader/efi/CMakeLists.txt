@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 
 file(GLOB C_SOURCES "*.c")
-file(GLOB NASM_SOURCES "*.asm")
 file(GLOB ASM_SOURCES "*.S")
 
 set(GNUEFI_DIR "${CMAKE_SOURCE_DIR}/toolchain/gnu-efi")
@@ -57,11 +56,9 @@ add_custom_command(
    OUTPUT
       ${SWITCHMODE_BIN}
    DEPENDS
-      ${NASM_SOURCES} ${ASM_SOURCES}
+      ${ASM_SOURCES}
    COMMAND
-      ${CMAKE_ASM_NASM_COMPILER} -f bin -o ${SWITCHMODE_BIN} ${NASM_SOURCES}
-   COMMAND
-      ${CMAKE_C_COMPILER} -o ${CMAKE_BINARY_DIR}/switchmode_gas.bin ${SWITCHMODE_COMPILE_OPTS} ${ASM_SOURCES}
+      ${CMAKE_C_COMPILER} -o ${SWITCHMODE_BIN} ${SWITCHMODE_COMPILE_OPTS} ${ASM_SOURCES}
    COMMENT
       "Building switchmode.bin"
 )
