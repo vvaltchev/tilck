@@ -110,7 +110,7 @@ after_reloc:
    .load_loop:
 
 
-   mov ax, [curr_sec]
+   mov eax, [curr_sec]
    call lba_to_chs
 
    mov ax, [curr_data_seg]
@@ -181,8 +181,8 @@ end:
 # DATA (variables)
 # -----------------------------------------------------------
 
-sectors_per_track:    .word 0
-heads_per_cylinder:   .word 0
+sectors_per_track:    .long 0
+heads_per_cylinder:   .long 0
 cylinders_count:      .word 0
 
 curr_data_seg:        .word DEST_DATA_SEGMENT
@@ -199,11 +199,12 @@ str_failed:           .asciz "FAILED\r\n"
 
 
 lba_to_chs:         # Calculate head, track and sector settings for int 13h
-                    # IN: LBA in AX, OUT: correct registers for int 13h
-   push bx
-   push ax
+                    # IN:  LBA in EAX
+                    # OUT: correct registers for int 13h
+   push ebx
+   push eax
 
-   mov bx, ax        # Save logical sector
+   mov ebx, eax        # Save logical sector
 
    # DIV {ARG}
    # divides DX:AX by {ARG}
@@ -211,24 +212,29 @@ lba_to_chs:         # Calculate head, track and sector settings for int 13h
    # reminder => DX
 
 
-   xor dx, dx        # First the sector
-   div word ptr [sectors_per_track]
-   inc dl            # Physical sectors start at 1
+   xor edx, edx      # First the sector
+   div dword ptr [sectors_per_track]
+   inc edx           # Physical sectors start at 1
    mov cl, dl        # Sectors belong in CL for int 13h
    and cl, 63        # Make sure the upper two bits of CL are unset
 
 
-   mov ax, bx        # reload the LBA sector in AX
+   mov eax, ebx      # reload the LBA sector in AX
 
-   xor dx, dx        # reset DX and calculate the head
-   div word ptr [sectors_per_track]
-   xor dx, dx
-   div word ptr [heads_per_cylinder]
+   xor edx, edx      # reset DX and calculate the head
+   div dword ptr [sectors_per_track]
+   xor edx, edx
+   div dword ptr [heads_per_cylinder]
    mov dh, dl        # Head
    mov ch, al        # Cylinder
 
-   pop ax
-   pop bx
+   shr ax, 2         # Move the 2 higher bits of cylinder down
+   and ax, 192       # make only bits 6 and 7 to remain
+   or cl, al         # OR those two bits in CL, since its 2 upper-bits
+                     # are the upper bits of cylinder.
+
+   pop eax
+   pop ebx
 
    mov dl, [current_device]      # Set correct device
 
@@ -470,9 +476,9 @@ enter_unreal_mode:
 
    # Progress by showing dots: faster than full verbose strings
 
-   mov ax, [curr_sec]
-   and ax, 255
-   test ax, ax
+   mov eax, [curr_sec]
+   and eax, 255
+   test eax, eax
    jnz .skip_print_dot # With this skip logic, we print a dot every ~MB.
 
    mov ah, 0x0E # print char
@@ -481,7 +487,7 @@ enter_unreal_mode:
 
    .skip_print_dot:
 
-   mov ax, [curr_sec]
+   mov eax, [curr_sec]
    call lba_to_chs
    mov ax, TEMP_DATA_SEGMENT
    mov es, ax        # set the destination segment
@@ -902,6 +908,8 @@ complete_flush:
 
    # Set the stack for the 3rd stage of the bootloader
    mov esp, 0x0000FFF0
+
+   hlt
 
    # jump to the 3rd stage of the bootloader
    jmp 0x08:(DEST_DATA_SEGMENT * 16 + bootloader_3rd_stage)
