@@ -62,7 +62,6 @@ reloc:
 
 after_reloc:
 
-
    xor ax, ax
    mov ss, ax      # Set stack segment and pointer
    mov sp, 0xFFF0

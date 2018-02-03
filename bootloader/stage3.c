@@ -85,7 +85,6 @@ void load_elf_kernel(const char *filepath, void **entry)
    kfree(phdr, sizeof(*phdr));
 }
 
-
 void main(void)
 {
    /* Necessary in order to PANIC to be able to show something on the screen. */

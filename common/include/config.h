@@ -59,10 +59,10 @@
 
 
 /*
- * We're OK with just 256 sectors (512 bytes each => 128 KB)
+ * We're OK with just 60 KB.
  * That's because now the initial sectors contain just the 3rd stage of the
  * bootloader. The actual kernel file is loaded by the bootloader from the
  * FAT32 ramdisk.
  */
 
-#define INITIAL_SECTORS_TO_READ 256
+#define INITIAL_SECTORS_TO_READ (60*KB/SECTOR_SIZE)

@@ -30,11 +30,11 @@ set(
 
 add_custom_command(
    OUTPUT
-      boot.o
+      early_boot.bin
    DEPENDS
       ${EARLY_STAGES_SOURCES}
    COMMAND
-      ${CMAKE_C_COMPILER} -o boot.o ${BOOT_COMPILE_OPTS} ${EARLY_STAGES_SOURCES}
+      ${CMAKE_C_COMPILER} -o early_boot.bin ${BOOT_COMPILE_OPTS} ${EARLY_STAGES_SOURCES}
    COMMENT
       "Building the early stages of the BIOS bootloader"
 )
@@ -93,8 +93,10 @@ set_target_properties(
 
    PROPERTIES
       COMPILE_FLAGS "${FLAGS}"
-      LINK_FLAGS "-Wl,-Ttext=0x21000 -Wl,--oformat=binary -nostdlib"
+      LINK_FLAGS "-Wl,-T -Wl,${CMAKE_SOURCE_DIR}/bootloader/linker_script.ld -nostdlib"
 )
+
+# -Wl,--oformat=binary
 
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(stage3 gcc)
@@ -113,11 +115,11 @@ add_custom_command(
    OUTPUT
       ${BOOTLOADER_BIN_FILE}
    COMMAND
-      cp boot.o ${BOOTLOADER_BIN_FILE}
-   COMMAND
-      dd status=none conv=notrunc oflag=append if=${CMAKE_CURRENT_BINARY_DIR}/stage3 of=${BOOTLOADER_BIN_FILE}
+      cp early_boot.bin ${BOOTLOADER_BIN_FILE}
+  COMMAND
+     dd status=none conv=notrunc oflag=append if=${CMAKE_CURRENT_BINARY_DIR}/stage3 of=${BOOTLOADER_BIN_FILE}
    DEPENDS
-      ${CMAKE_CURRENT_BINARY_DIR}/boot.o ${CMAKE_CURRENT_BINARY_DIR}/stage3
+      early_boot.bin stage3
    COMMENT
       "Linking the BIOS bootloader"
 )
