@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
-project (exos C CXX ASM_NASM ASM)
+project (exos C CXX ASM)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
 
@@ -33,7 +33,6 @@ set(USE_GCOV CACHE BOOL "Compile the tests for measuring coverage")
 ###########################################################
 
 if (${ARCH} STREQUAL "i386")
-   set(NASM_ARCH_FORMAT "elf32")
    set(ARCH_FAMILY "generic_x86")
 else()
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
@@ -42,12 +41,6 @@ endif()
 set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_SHARED_LIBRARIES off)
 set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
-set(CMAKE_ASM_NASM_COMPILER ${TCROOT}/nasm/nasm)
-
-set(
-   CMAKE_ASM_NASM_COMPILE_OBJECT
-   "<CMAKE_ASM_NASM_COMPILER> -f ${NASM_ARCH_FORMAT} -o <OBJECT> <SOURCE>"
-)
 
 
 set(CMAKE_C_STANDARD 99)

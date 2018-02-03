@@ -594,4 +594,4 @@ build_dietlibc
 build_gtest
 build_gnuefi
 build_mtools
-build_nasm
+
