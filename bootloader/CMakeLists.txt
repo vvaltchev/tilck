@@ -34,7 +34,7 @@ add_custom_command(
    DEPENDS
       ${EARLY_STAGES_SOURCES}
    COMMAND
-      ${CMAKE_C_COMPILER} ${EARLY_STAGES_SOURCES} -o boot.o ${BOOT_COMPILE_OPTS}
+      ${CMAKE_C_COMPILER} -o boot.o ${BOOT_COMPILE_OPTS} ${EARLY_STAGES_SOURCES}
    COMMENT
       "Building the early stages of the BIOS bootloader"
 )
