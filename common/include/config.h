@@ -21,14 +21,14 @@
 #define DEBUG_QEMU_EXIT_ON_INIT_EXIT
 #define DEBUG_QEMU_EXIT_ON_PANIC
 
-#define KERNEL_BASE_VA             (0xC0000000UL)
+#define KERNEL_BASE_VA             0xC0000000
 
 #define RAMDISK_PADDR (128 * MB)
 #define RAMDISK_VADDR (0xCA000000U)
 #define RAMDISK_SIZE  (35 * MB)
 
-#define KERNEL_PADDR               (0x00100000UL)    // +1 MB
-#define KERNEL_INITIAL_STACK_ADDR  (0xC000FFF0UL)
+#define KERNEL_PADDR               0x00100000    // +1 MB
+#define KERNEL_INITIAL_STACK_ADDR  0xC000FFF0
 
 #define KERNEL_MAX_SIZE (500 * KB)
 
