@@ -12,8 +12,8 @@
 const char *kernel_path = "/EFI/BOOT/elf_kernel_stripped";
 
 char small_heap[4096] = {0};
-size_t heap_used = 0;
-filesystem *root_fs = NULL;
+size_t heap_used;
+filesystem *root_fs;
 
 void *kmalloc(size_t n)
 {
@@ -89,6 +89,9 @@ void main(void)
 {
    /* Necessary in order to PANIC to be able to show something on the screen. */
    term_init();
+
+   ASSERT(heap_used == 0);
+   ASSERT(root_fs == NULL);
 
    printk("*** HELLO from the 3rd stage of the BOOTLOADER ***\n");
 

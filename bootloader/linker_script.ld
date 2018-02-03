@@ -32,6 +32,7 @@ SECTIONS
 
   /* Adjust the address for the data segment.  We want to adjust up to
      the same address within the page on the next page up.  */
+
   . = DATA_SEGMENT_ALIGN (CONSTANT (MAXPAGESIZE), CONSTANT (COMMONPAGESIZE));
 
   .data :
@@ -47,7 +48,7 @@ SECTIONS
    __bss_end = .;
 
   . = ALIGN(32 / 8);
-  _end = .; PROVIDE (end = .);
+  _end = .;
   . = DATA_SEGMENT_END (.);
 
   /DISCARD/ : { *(.eh_frame*) }
