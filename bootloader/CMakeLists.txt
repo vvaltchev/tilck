@@ -51,8 +51,6 @@ file(
 # Remove -rdynamic
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
-add_executable(elf_stage3   ${STAGE3_SOURCES})
-
 set(
    FLAGS_LIST
 
@@ -87,40 +85,28 @@ set(
 )
 JOIN("${FLAGS_LIST}" ${SPACE} FLAGS)
 
+add_executable(stage3 ${STAGE3_SOURCES})
+
 set_target_properties(
 
-   elf_stage3
+   stage3
 
    PROPERTIES
       COMPILE_FLAGS "${FLAGS}"
-      LINK_FLAGS "-Wl,-Ttext=0x21000 -nostdlib"
+      LINK_FLAGS "-Wl,-Ttext=0x21000 -Wl,--oformat=binary -nostdlib"
 )
 
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
-target_link_libraries(elf_stage3 gcc)
+target_link_libraries(stage3 gcc)
 
 target_include_directories(
 
-   elf_stage3
+   stage3
 
    PUBLIC
 
    ${CMAKE_SOURCE_DIR}/common/include
    ${CMAKE_SOURCE_DIR}/kernel/include
-)
-
-
-add_custom_command(
-    OUTPUT
-        stage3
-    COMMAND
-        ${BUILD_SCRIPTS}/bss_checker elf_stage3
-    COMMAND
-        ${OBJCOPY} -O binary -j .text -j .rodata -j .data elf_stage3 stage3
-    DEPENDS
-        ${CMAKE_CURRENT_BINARY_DIR}/elf_stage3
-    COMMENT
-        "Preparing bootloaders's flat-binary"
 )
 
 add_custom_command(
