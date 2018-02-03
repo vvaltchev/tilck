@@ -85,6 +85,15 @@ set(
 )
 JOIN("${FLAGS_LIST}" ${SPACE} FLAGS)
 
+set(
+   LINK_FLAGS_LIST
+
+   -nostdlib
+   -Wl,-T
+   -Wl,${CMAKE_SOURCE_DIR}/bootloader/linker_script.ld
+)
+JOIN("${LINK_FLAGS_LIST}" ${SPACE} LINK_FLAGS)
+
 add_executable(stage3 ${STAGE3_SOURCES})
 
 set_target_properties(
@@ -92,11 +101,9 @@ set_target_properties(
    stage3
 
    PROPERTIES
-      COMPILE_FLAGS "${FLAGS}"
-      LINK_FLAGS "-Wl,-T -Wl,${CMAKE_SOURCE_DIR}/bootloader/linker_script.ld -nostdlib"
+      COMPILE_FLAGS ${FLAGS}
+      LINK_FLAGS ${LINK_FLAGS}
 )
-
-# -Wl,--oformat=binary
 
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(stage3 gcc)
@@ -117,7 +124,7 @@ add_custom_command(
    COMMAND
       cp early_boot.bin ${BOOTLOADER_BIN_FILE}
   COMMAND
-     dd status=none conv=notrunc oflag=append if=${CMAKE_CURRENT_BINARY_DIR}/stage3 of=${BOOTLOADER_BIN_FILE}
+     dd status=none conv=notrunc oflag=append if=stage3 of=${BOOTLOADER_BIN_FILE}
    DEPENDS
       early_boot.bin stage3
    COMMENT
