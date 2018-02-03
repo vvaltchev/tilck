@@ -6,12 +6,13 @@
 #include <kmalloc.h>
 #include <elf.h>
 
-#define KERNEL_VADDR_OFFSET (0xC0000000UL)
-#define VADDR_TO_PADDR(x) ((void *)( (uptr)(x) - KERNEL_VADDR_OFFSET ))
+#include <config.h>
+
+#define VADDR_TO_PADDR(x) ((void *)( (uptr)(x) - KERNEL_BASE_VA ))
 
 const char *kernel_path = "/EFI/BOOT/elf_kernel_stripped";
 
-char small_heap[4096] = {0};
+char small_heap[4096];
 size_t heap_used;
 filesystem *root_fs;
 
@@ -68,7 +69,7 @@ void load_elf_kernel(const char *filepath, void **entry)
          continue;
       }
 
-      VERIFY(phdr->p_vaddr >= KERNEL_VADDR_OFFSET);
+      VERIFY(phdr->p_vaddr >= KERNEL_BASE_VA);
 
       bzero(VADDR_TO_PADDR(phdr->p_vaddr), phdr->p_memsz);
 

@@ -16,7 +16,7 @@ _start:
 jmp reloc
 
 # Fill the gap with nops since bios_parameter_pack has to be at offset +0x0B.
-.space 0x0B - (.-_start), 0x90 # nop
+.space 0x0B - (.-_start)
 
 bios_parameter_pack:
 
@@ -484,7 +484,7 @@ enter_unreal_mode:
    mov [saved_cx], cx
    mov [saved_dx], dx
 
-   mov ah, 0x02      # Params for int 13h: read sectors
+   mov ah, 0x02                # Params for int 0x13: read sectors
    mov al, [sectors_per_track] # Read MAX possible sectors
    int 0x13
    jnc .read_ok

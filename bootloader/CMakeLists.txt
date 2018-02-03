@@ -60,7 +60,6 @@ set(
    -fno-builtin
    -fno-omit-frame-pointer
 
-   #-g
    #-O0
    #-fno-inline-functions
 
@@ -89,8 +88,9 @@ set(
    LINK_FLAGS_LIST
 
    -nostdlib
-   -Wl,-T
-   -Wl,${CMAKE_SOURCE_DIR}/bootloader/linker_script.ld
+   -Wl,--strip-all
+   -Wl,--strip-debug
+   -Wl,--script=${CMAKE_SOURCE_DIR}/bootloader/linker_script.ld
 )
 JOIN("${LINK_FLAGS_LIST}" ${SPACE} LINK_FLAGS)
 
@@ -123,8 +123,8 @@ add_custom_command(
       ${BOOTLOADER_BIN_FILE}
    COMMAND
       cp early_boot.bin ${BOOTLOADER_BIN_FILE}
-  COMMAND
-     dd status=none conv=notrunc oflag=append if=stage3 of=${BOOTLOADER_BIN_FILE}
+   COMMAND
+      dd status=none conv=notrunc oflag=append if=stage3 of=${BOOTLOADER_BIN_FILE}
    DEPENDS
       early_boot.bin stage3
    COMMENT
