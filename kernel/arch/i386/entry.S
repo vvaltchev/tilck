@@ -1,6 +1,8 @@
 
 .intel_syntax noprefix
 
+#include <config.h>
+
 .section .text
 
 .global _start
@@ -79,7 +81,7 @@ _start:
                   # 0xC0100000.
 
 .next_step:
-   mov esp, 0xC000FFF0 # +64 KB - 16
+   mov esp, KERNEL_INITIAL_STACK_ADDR
    jmp kmain   # now, really jump to kernel's code which uses 0xC0100000 as ORG
 
 

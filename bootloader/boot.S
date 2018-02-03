@@ -470,9 +470,16 @@ enter_unreal_mode:
 
    # Progress by showing dots: faster than full verbose strings
 
+   mov ax, [curr_sec]
+   and ax, 255
+   test ax, ax
+   jnz .skip_print_dot # With this skip logic, we print a dot every ~MB.
+
    mov ah, 0x0E # print char
    mov al, 46   # dot '.'
    int 0x10
+
+   .skip_print_dot:
 
    mov ax, [curr_sec]
    call lba_to_chs
