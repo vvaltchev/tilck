@@ -535,17 +535,21 @@ enter_unreal_mode:
       int 0x13
       jc read_error
 
-      mov [actual_sectors_read], al
+      mov [actual_sectors_read], al  # save the actual number of sectors read
+
       xor ax, ax
-      mov es, ax
+      mov es, ax # es = 0
 
       mov edi, [ramdisk_dest_addr32]          # dest flat addr
       mov esi, (TEMP_DATA_SEGMENT * 16)       # src flat addr
 
-      mov edx, esi
-      mov eax, [actual_sectors_read]
-      shl eax, 9                       # *= 512 (SECTOR_SIZE)
-      add edx, eax                     # edx = total bytes read
+      mov edx, esi                     # edx = TEMP segment flat addr
+      mov eax, [actual_sectors_read]   # eax = actual_sectors_read
+      add [curr_sec], eax              # curr_sec += actual_sectors_read
+      shl eax, 9                       # eax *= 512 (SECTOR_SIZE)
+                                       # eax = total bytes read in this iter
+      add [ramdisk_dest_addr32], eax   # ramdisk_dest_addr32 += tot_bytes
+      add edx, eax                     # edx = TEMP_DATA_SEGMENT + tot_bytes
 
       .copy_loop:
          mov ebx, es:[esi]  # copy src data in ebx
@@ -555,12 +559,6 @@ enter_unreal_mode:
 
          cmp esi, edx
          jle .copy_loop
-
-      mov eax, [actual_sectors_read]
-      add [curr_sec], eax
-      shl eax, 9                # actual_sectors *= 512 (SECTOR_SIZE)
-      add [ramdisk_dest_addr32], eax
-
 
       cmp dword ptr [curr_sec], RAMDISK_LAST_SECTOR
       jl .load_vdisk_loop
