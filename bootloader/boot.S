@@ -530,8 +530,8 @@ enter_unreal_mode:
       mov [saved_dx], dx
 
       mov ah, 0x02                # Params for int 0x13: read sectors
-      #mov al, [sectors_per_track] # Read MAX possible sectors
-      mov al, 1
+      mov al, [sectors_per_track] # Read MAX possible sectors
+      #mov al, 1
       int 0x13
       jc read_error
 
