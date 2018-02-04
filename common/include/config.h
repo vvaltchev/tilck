@@ -45,24 +45,17 @@
 
 #define RAMDISK_FIRST_SECTOR 2048
 
-/*
- * TODO: fix the number of sectors, since the fatpart is now bigger!
- * This would require to fix the function lba_to_chs to work with LBA addresses
- * bigger than 65535.
- */
 
-//2048 + 16 MB - 1 (TEMPORARY LIE)
-#define RAMDISK_LAST_SECTOR (RAMDISK_FIRST_SECTOR + (32*MB)/SECTOR_SIZE - 1)
+#define RAMDISK_LAST_SECTOR (RAMDISK_FIRST_SECTOR + (35*MB)/SECTOR_SIZE - 1)
 
 //DEBUG VALUE, usable until everything fits in 4 MB
 //#define RAMDISK_LAST_SECTOR (RAMDISK_FIRST_SECTOR + (4 * MB)/SECTOR_SIZE - 1)
 
 
 /*
- * We're OK with just 32 KB.
- * That's because now the initial sectors contain just the 3rd stage of the
- * bootloader. The actual kernel file is loaded by the bootloader from the
- * FAT32 ramdisk.
+ * We're OK with just 32 KB because now the initial sectors contain just the 3rd
+ * stage of the bootloader. The actual kernel file is loaded by the bootloader
+ * from the FAT32 ramdisk.
  */
 
 #define INITIAL_SECTORS_TO_READ (32*KB/SECTOR_SIZE)

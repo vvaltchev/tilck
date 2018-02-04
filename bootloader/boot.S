@@ -564,7 +564,7 @@ enter_unreal_mode:
 
 
    mov eax, [curr_sec]
-   add ax, [sectors_per_track]
+   add eax, [sectors_per_track]
    mov [curr_sec], eax
 
    cmp eax, RAMDISK_LAST_SECTOR
@@ -908,8 +908,6 @@ complete_flush:
 
    # Set the stack for the 3rd stage of the bootloader
    mov esp, 0x0000FFF0
-
-   hlt
 
    # jump to the 3rd stage of the bootloader
    jmp 0x08:(DEST_DATA_SEGMENT * 16 + bootloader_3rd_stage)

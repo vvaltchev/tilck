@@ -48,7 +48,7 @@ void load_usermode_init()
 }
 
 
-void mount_ramdisk()
+void mount_ramdisk(void)
 {
    printk("Mapping the ramdisk at %p (%d pages)... ",
           RAMDISK_VADDR, RAMDISK_SIZE / PAGE_SIZE);
@@ -64,6 +64,23 @@ void mount_ramdisk()
 
    filesystem *root_fs = fat_mount_ramdisk((void *)RAMDISK_VADDR);
    mountpoint_add(root_fs, "/");
+}
+
+void ramdisk_checksum(void)
+{
+   printk("Calculating the RAMDISK's CRC32...\n");
+   u32 result = crc32(0, (void*)RAMDISK_VADDR, RAMDISK_SIZE);
+   printk("CRC32: %p\n", result);
+
+   for (int off = 0x1a*MB; off < 35*MB; off+=MB) {
+
+      printk("[%p]: ", off);
+      for (int i = 0; i < 8; i++) {
+         printk("0x%x ", (int)((u8*)RAMDISK_VADDR+off)[i]);
+      }
+      printk("\n");
+
+   }
 }
 
 void kmain()
@@ -91,6 +108,8 @@ void kmain()
    setup_sysenter_interface();
 
    mount_ramdisk();
+   ramdisk_checksum();
+   while(1) halt();
 
    DEBUG_ONLY(bool tasklet_added =) add_tasklet0(&init_kb);
    ASSERT(tasklet_added);
