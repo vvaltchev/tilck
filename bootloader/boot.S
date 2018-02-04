@@ -3,6 +3,30 @@
 
 #include <config.h>
 
+#define BASE_LOAD_SEG          0x07C0
+#define DEST_DATA_SEGMENT      0x2000
+#define TEMP_DATA_SEGMENT      0x1000
+#define COMPLETE_FLUSH_ADDR    0x1000
+#define COMPLETE_FLUSH_SIZE       128
+
+
+#define RAMDISK_FIRST_SECTOR 2048
+
+
+#define RAMDISK_LAST_SECTOR (RAMDISK_FIRST_SECTOR + (35*MB)/SECTOR_SIZE - 1)
+
+//DEBUG VALUE, usable until everything fits in 4 MB
+//#define RAMDISK_LAST_SECTOR (RAMDISK_FIRST_SECTOR + (4 * MB)/SECTOR_SIZE - 1)
+
+
+/*
+ * We're OK with just 32 KB because now the initial sectors contain just the 3rd
+ * stage of the bootloader. The actual kernel file is loaded by the bootloader
+ * from the FAT32 ramdisk.
+ */
+
+#define INITIAL_SECTORS_TO_READ (32*KB/SECTOR_SIZE)
+
 .org 0x0000
 
 .global _start
@@ -158,7 +182,9 @@ after_reloc:
 end:
    mov si, offset str_failed
    call print_string
-   jmp . # loop forever
+
+   cli
+   hlt # hang forever
 
 
 
@@ -292,7 +318,7 @@ PT1: # First Partition Entry
 
 .byte  0 # head
 .byte 33 # HI cyl num  | sector num
-      # bits [7-6]  | bits [5-0]
+         # bits [7-6]  | bits [5-0]
 
 .byte  2 # LO 8 bits of the cylinder num
 
@@ -373,9 +399,7 @@ stage2_entry:
    saved_cx: .word 0
    saved_dx: .word 0
 
-   error_occured:       .long 0
-   sectors_read:        .long 0
-   bytes_per_track:     .long 0
+   actual_sectors_read: .long 0
    ramdisk_dest_addr32: .long RAMDISK_PADDR
 
 
@@ -424,8 +448,6 @@ stage2_entry:
       .asciz "Current sector num: "
    str_curr_sector_num:
       .asciz "After reading, current sector: "
-   str_bytes_per_track:
-      .asciz "Bytes per track: "
    str_loading_ramdisk:
       .asciz "Loading ramdisk "
 
@@ -467,110 +489,68 @@ enter_unreal_mode:
 
    mov dword ptr [curr_sec], RAMDISK_FIRST_SECTOR
 
-   xor edx, edx
-   mov dx, [sectors_per_track]
-   shl dx, 9 # dx = dx << 9 (2^9 = 512 = sector size)
-   mov [bytes_per_track], edx
-
    .load_vdisk_loop:
 
-   # Progress by showing dots: faster than full verbose strings
+      # Progress by showing dots: faster than full verbose strings
 
-   mov eax, [curr_sec]
-   and eax, 255
-   test eax, eax
-   jnz .skip_print_dot # With this skip logic, we print a dot every ~MB.
+      mov eax, [curr_sec]
+      and eax, 255
+      test eax, eax
+      jnz .skip_print_dot
 
-   mov ah, 0x0E # print char
-   mov al, 46   # dot '.'
-   int 0x10
+      mov ah, 0x0E # print char
+      mov al, 46   # dot '.'
+      int 0x10
 
-   .skip_print_dot:
+      .skip_print_dot:
 
-   mov eax, [curr_sec]
-   call lba_to_chs
-   mov ax, TEMP_DATA_SEGMENT
-   mov es, ax        # set the destination segment
-   mov bx, 0         # set the destination offset
+      mov eax, [curr_sec]
+      call lba_to_chs
+      mov ax, TEMP_DATA_SEGMENT
+      mov es, ax        # set the destination segment
+      mov bx, 0         # set the destination offset
 
-   # save the CHS parameters for error messages
-   mov [saved_cx], cx
-   mov [saved_dx], dx
+      # save the CHS parameters for error messages
+      mov [saved_cx], cx
+      mov [saved_dx], dx
 
-   mov ah, 0x02                # Params for int 0x13: read sectors
-   mov al, [sectors_per_track] # Read MAX possible sectors
-   int 0x13
-   jnc .read_ok
+      mov ah, 0x02                # Params for int 0x13: read sectors
+      #mov al, [sectors_per_track] # Read MAX possible sectors
+      mov al, 1
+      int 0x13
+      jc read_error
 
-   .read_error:
+      mov [actual_sectors_read], al
+      xor ax, ax
+      mov es, ax
 
-   ################################################################
-   # ERROR HANDLING CODE
-   ################################################################
+      mov edi, [ramdisk_dest_addr32]          # dest flat addr
+      mov esi, (TEMP_DATA_SEGMENT * 16)       # src flat addr
 
-   mov word ptr [error_occured], 1
-   mov si, offset err_while_loading_ramdisk
-   call print_string
+      mov edx, esi
+      mov eax, [actual_sectors_read]
+      shl eax, 9                       # *= 512 (SECTOR_SIZE)
+      add edx, eax                     # edx = total bytes read
 
-   # The load failed for some reason
+      .copy_loop:
+         mov ebx, es:[esi]  # copy src data in ebx
+         mov es:[edi], ebx  # copy ebx in dest ptr
+         add edi, 4
+         add esi, 4
 
-   mov ah, 0x01 # Get Status of Last Drive Operation
-   mov dl, [current_device]
-   int 0x13
+         cmp esi, edx
+         jle .copy_loop
 
-   # The carry flag here is always set and people on os-dev say
-   # that one should not rely on it.
-
-   # We have now in AH the last error
-   shr ax, 8 # move AH in AL and make AH=0
-   mov si, offset last_op_status
-   call print_string_and_num
-
-
-   # Print the sector number (LBA)
-   mov si, offset load_failed
-   mov ax, [curr_sec]
-   call print_string_and_num
-
-   # Print the CHS params we actually used
-   call print_chs
-
-   .hang: jmp .
-
-   .read_ok:
-
-   xor ax, ax
-   mov es, ax
-
-   mov edi, [ramdisk_dest_addr32]          # dest flat addr
-   mov esi, (TEMP_DATA_SEGMENT * 16)       # src flat addr
-
-   mov edx, esi
-   add edx, [bytes_per_track]
-
-   .copy_loop:
-      mov ebx, es:[esi]  # copy src data in ebx
-      mov es:[edi], ebx  # copy ebx in dest ptr
-      add edi, 4
-      add esi, 4
-
-      cmp esi, edx
-      jle .copy_loop
+      mov eax, [actual_sectors_read]
+      add [curr_sec], eax
+      shl eax, 9                # actual_sectors *= 512 (SECTOR_SIZE)
+      add [ramdisk_dest_addr32], eax
 
 
-   mov eax, [ramdisk_dest_addr32]
-   add eax, [bytes_per_track]
-   mov [ramdisk_dest_addr32], eax
+      cmp dword ptr [curr_sec], RAMDISK_LAST_SECTOR
+      jl .load_vdisk_loop
 
-
-   mov eax, [curr_sec]
-   add eax, [sectors_per_track]
-   mov [curr_sec], eax
-
-   cmp eax, RAMDISK_LAST_SECTOR
-   jl .load_vdisk_loop
-
-   .load_of_ramdisk_done:
+   # Loading of RAMDISK completed.
 
    mov si, offset newline
    call print_string
@@ -623,6 +603,43 @@ enter_32bit_protected_mode:
 
 
 ##########################################
+
+
+read_error:
+
+   ################################################################
+   # ERROR HANDLING CODE
+   ################################################################
+
+   mov si, offset err_while_loading_ramdisk
+   call print_string
+
+   # The load failed for some reason
+
+   mov ah, 0x01 # Get Status of Last Drive Operation
+   mov dl, [current_device]
+   int 0x13
+
+   # The carry flag here is always set and people on os-dev say
+   # that one should not rely on it.
+
+   # We have now in AH the last error
+   shr ax, 8 # move AH in AL and make AH=0
+   mov si, offset last_op_status
+   call print_string_and_num
+
+
+   # Print the sector number (LBA)
+   mov si, offset load_failed
+   mov ax, [curr_sec]
+   call print_string_and_num
+
+   # Print the CHS params we actually used
+   call print_chs
+
+   .hang:
+   cli
+   hlt
 
 # Function: check_a20
 #
@@ -869,6 +886,11 @@ print_chs:
    call print_string
    mov ax, [saved_cx]
    shr ax, 8     # put 'ch' in al
+
+   mov bx, [saved_cx]
+   and bx, 192   # make only the bits 6 and 7 to remain
+   shl bx, 2
+   or ax, bx
    call print_num
 
    # print the head param

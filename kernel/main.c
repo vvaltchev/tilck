@@ -66,21 +66,27 @@ void mount_ramdisk(void)
    mountpoint_add(root_fs, "/");
 }
 
+// CRC32 failure at 26M + 8K.
 void ramdisk_checksum(void)
 {
    printk("Calculating the RAMDISK's CRC32...\n");
-   u32 result = crc32(0, (void*)RAMDISK_VADDR, RAMDISK_SIZE);
-   printk("CRC32: %p\n", result);
 
-   for (int off = 0x1a*MB; off < 35*MB; off+=MB) {
-
-      printk("[%p]: ", off);
-      for (int i = 0; i < 8; i++) {
-         printk("0x%x ", (int)((u8*)RAMDISK_VADDR+off)[i]);
-      }
-      printk("\n");
-
+   for (int k=0; k <= 16; k++) {
+      u32 result = crc32(0, (void*)RAMDISK_VADDR, 26*MB + k*KB);
+      printk("CRC32 for M=26, K=%u: %p\n", k, result);
    }
+
+   // u32 result = crc32(0, (void*)RAMDISK_VADDR, RAMDISK_SIZE);
+
+   // for (int off = 0x1a*MB; off < 35*MB; off+=MB) {
+
+   //    printk("[%p]: ", off);
+   //    for (int i = 0; i < 8; i++) {
+   //       printk("0x%x ", (int)((u8*)RAMDISK_VADDR+off)[i]);
+   //    }
+   //    printk("\n");
+
+   // }
 }
 
 void kmain()

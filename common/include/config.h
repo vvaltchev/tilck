@@ -36,26 +36,4 @@
 /* Bootloader specific config */
 
 #define SECTOR_SIZE               512
-#define BASE_LOAD_SEG          0x07C0
-#define DEST_DATA_SEGMENT      0x2000
-#define TEMP_DATA_SEGMENT      0x1000
-#define COMPLETE_FLUSH_ADDR    0x1000
-#define COMPLETE_FLUSH_SIZE       128
 
-
-#define RAMDISK_FIRST_SECTOR 2048
-
-
-#define RAMDISK_LAST_SECTOR (RAMDISK_FIRST_SECTOR + (35*MB)/SECTOR_SIZE - 1)
-
-//DEBUG VALUE, usable until everything fits in 4 MB
-//#define RAMDISK_LAST_SECTOR (RAMDISK_FIRST_SECTOR + (4 * MB)/SECTOR_SIZE - 1)
-
-
-/*
- * We're OK with just 32 KB because now the initial sectors contain just the 3rd
- * stage of the bootloader. The actual kernel file is loaded by the bootloader
- * from the FAT32 ramdisk.
- */
-
-#define INITIAL_SECTORS_TO_READ (32*KB/SECTOR_SIZE)
