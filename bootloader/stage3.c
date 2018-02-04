@@ -5,7 +5,7 @@
 #include <fs/fat32.h>
 #include <kmalloc.h>
 #include <elf.h>
-
+#include <utils.h>
 #include <config.h>
 
 #define VADDR_TO_PADDR(x) ((void *)( (uptr)(x) - KERNEL_BASE_VA ))
@@ -86,15 +86,40 @@ void load_elf_kernel(const char *filepath, void **entry)
    kfree(phdr, sizeof(*phdr));
 }
 
+// CRC32 failure at 26M + 8K.
+void ramdisk_checksum(void)
+{
+   printk("Calculating the RAMDISK's CRC32...\n");
+
+   for (int k=0; k <= 16; k++) {
+      u32 result = crc32(0, (void*)RAMDISK_PADDR, 26*MB + k*KB);
+      printk("CRC32 for M=26, K=%u: %p\n", k, result);
+   }
+
+   // u32 result = crc32(0, (void*)RAMDISK_VADDR, RAMDISK_SIZE);
+
+   // for (int off = 0x1a*MB; off < 35*MB; off+=MB) {
+
+   //    printk("[%p]: ", off);
+   //    for (int i = 0; i < 8; i++) {
+   //       printk("0x%x ", (int)((u8*)RAMDISK_VADDR+off)[i]);
+   //    }
+   //    printk("\n");
+
+   // }
+}
+
 void main(void)
 {
-   /* Necessary in order to PANIC to be able to show something on the screen. */
    term_init();
 
-   ASSERT(heap_used == 0);
-   ASSERT(root_fs == NULL);
+   ASSERT(heap_used == 0);  // Be sure that BSS has been zero-ed.
+   ASSERT(root_fs == NULL); // As above.
 
    printk("*** HELLO from the 3rd stage of the BOOTLOADER ***\n");
+
+   ramdisk_checksum();
+   while(1) halt();
 
    root_fs = fat_mount_ramdisk((void *)RAMDISK_PADDR);
 

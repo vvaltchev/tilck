@@ -496,13 +496,28 @@ enter_unreal_mode:
       mov eax, [curr_sec]
       and eax, 255
       test eax, eax
-      jnz .skip_print_dot
+      jnz .after_print_dot
 
+      .print_dot:
       mov ah, 0x0E # print char
       mov al, 46   # dot '.'
       int 0x10
+      .after_print_dot:
 
-      .skip_print_dot:
+      #mov eax, [curr_sec]
+      #cmp eax, 53248
+      #jne .cont
+
+      #call lba_to_chs
+      #mov [saved_cx], cx
+      #mov [saved_dx], dx
+      #mov si, offset newline
+      #call print_string
+      #call print_chs
+
+      #cli
+      #hlt
+      #.cont:
 
       mov eax, [curr_sec]
       call lba_to_chs
