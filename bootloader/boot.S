@@ -12,12 +12,14 @@
 
 #define RAMDISK_FIRST_SECTOR 2048
 
+//#define RAMDISK_SIZE_TO_LOAD RAMDISK_SIZE
 
-#define RAMDISK_LAST_SECTOR (RAMDISK_FIRST_SECTOR + (35*MB)/SECTOR_SIZE - 1)
+//DEBUG value used during development to make the load faster.
+#define RAMDISK_SIZE_TO_LOAD (2*MB)
 
-//DEBUG VALUE, usable until everything fits in 4 MB
-//#define RAMDISK_LAST_SECTOR (RAMDISK_FIRST_SECTOR + (4 * MB)/SECTOR_SIZE - 1)
 
+#define RAMDISK_LAST_SECTOR \
+   (RAMDISK_FIRST_SECTOR + RAMDISK_SIZE_TO_LOAD/SECTOR_SIZE - 1)
 
 /*
  * We're OK with just 32 KB because now the initial sectors contain just the 3rd
