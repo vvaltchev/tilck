@@ -6,10 +6,6 @@
 #define KB (1024)
 #define MB (1024*1024)
 
-#define VALUE_1K        0x400
-#define VALUE_4K       0x1000
-#define VALUE_64K     0x10000
-
 /* ------------------------------- */
 
 /*

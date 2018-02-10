@@ -950,7 +950,7 @@ complete_flush:
    jmp 0x08:(DEST_DATA_SEGMENT * 16 + bootloader_3rd_stage)
 
 .space COMPLETE_FLUSH_SIZE-(.-complete_flush), 0
-.space VALUE_4K-(.-_start), 0
+.space (4*KB)-(.-_start), 0
 
 
 bootloader_3rd_stage:
