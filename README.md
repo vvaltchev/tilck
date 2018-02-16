@@ -74,7 +74,7 @@ FAQ
 -----
 
 
-** Why many commit messages are so short and incomplete? **
+###### Why many commit messages are so short and incomplete?
 
 I perfectly realize that all of the popular open source projects care about having good commit messages.
 It is an investment that pays-off. I even wrote a [blog post](https://blogs.vmware.com/opensource/2017/12/28/open-source-proprietary-software-engineer/) about that.
