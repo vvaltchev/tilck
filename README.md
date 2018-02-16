@@ -22,14 +22,16 @@ The only usermode program loaded by the kernel by now is what will be the actual
 Current state: the bootloader(s)
 ---------------------------------
 
-ExOS includes a 3-stage bootloader able to load in memory the contents of the boot-drive at a pre-defined
+`exOS` includes a 3-stage bootloader able to load in memory the contents of the boot-drive at a pre-defined
 physical address. In its 3rd stage (written in C), the bootloader loads from the (now in-memory) FAT32
-partition the ELF kernel of ExOS [it understands the ELF format] and jumps to its entry-point.
+partition the ELF kernel of `exOS` [it understands the ELF format] and jumps to its entry-point.
 
 In addition to that, the project includes an experimental x86-64 EFI bootloader which allows the kernel to
 boot using EFI, if a CSM (compatibility support module) is available. The CSM is necessary since the EFI
-bootloder switches back to real mode and puts the video card in 'text mode' by using int 0x10, before entering 
-finally in protected mode and jumping into kernel's entry point.
+bootloder switches back to real mode and puts the video card in 'text mode' by using `int 0x10`, before entering 
+finally in protected mode and jumping into kernel's entry point. The issue with the EFI boot is that the
+nice PS/2 emulation available after a "legacy" boot is not available. Therefore, the keyboard driver actually
+does not work.
 
 Hardware support
 --------------------
@@ -80,19 +82,17 @@ It is well-known that all of the popular open source projects care about having 
 It is an investment that pays off. I even wrote a [blog post](https://blogs.vmware.com/opensource/2017/12/28/open-source-proprietary-software-engineer/) about that.
 The problem is that such investment actually starts paying off only when multiple people contribute to the project.
 Even in the case of small teams (2 people) it not obvious that it is worth spending hours in re-ordering and editing all the commits of
-a pull request until its *story* is perfect, especially when the project is not mature enough: the commits in a pull series have to be just *good enough*.
-The focus is on shape of the code *after* the patch series (therefore, limited hacks in the middle of it are allowed).
-Clearly that does **not** mean that commit messages like some of the current ones will be acceptable: as a 2nd contributor comes in, the commit messages need necessarily to become more descriptive, in order to allow the collaboration to work. But, at this stage, going faster towards a milestone makes sense. Still, I'm trying to keep the length of the commits messages proportionate to the complexity of the change. Sometimes, even in this stage, it makes sense to spend some time on describing the reasoning behind a commit. As the projects grows, I'll be spending more and more time on commit messages.
+a pull request until its *story* is perfect, especially when the project is not mature enough: the commits in a pull request have to be just *good enough* in terms of commit message, scope of the change, relative order etc. The focus is on shape of the code *after* the patch series in the sense that limited hacks in the middle of a series are allowed. Clearly that does **not** mean that commit messages like some of the current ones will be acceptable: as a 2nd contributor comes in, the commit messages need necessarily to become more descriptive, in order to allow the collaboration to work. But, at this stage, going faster towards the first milestone makes sense. Still, I'm trying to keep the length of the commit messages proportionate to the complexity of the change. Sometimes, even in this stage, it makes sense to spend some time on describing the reasoning behind a commit. As the projects grows, I'll be spending more and more time on writing better commit messages.
 
 
 ##### Why exOS does not have the abstraction XYZ like other kernels do?
 
-ExOS is **not** meant to be a full-featured production kernel. Refer to Linux for that.
+`exOS` is **not** meant to be a full-featured production kernel. Please, refer to Linux for that.
 The idea is implementing the simplest kernel able to run a class of Linux console applications.
 After that, eventually, it can support more advanced stuff like USB mass storage devices,
-but not necessarily along with all the powerful abstractions that Linux offers.
-The whole point of supporting something is because it is interesting for me to learn how it works and
-to write a proof-of-concept implementation.
+but not necessarily along with all the powerful features that Linux offers.
+The whole point of supporting something is because it is interesting for me (or other contributors)
+to learn how it works and to write a proof-of-concept implementation.
 
 
 ##### Why using FAT32?
