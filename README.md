@@ -67,3 +67,25 @@ You could build kernel's unit tests this way:
 And run them with:
 
     ./build/gtests
+
+
+
+FAQ
+-----
+
+
+** Why many commit messages are so short and incomplete? **
+
+I perfectly realize that all of the popular open source projects care about having good commit messages.
+It is an investment that pays-off. I even wrote a [blog post](https://blogs.vmware.com/opensource/2017/12/28/open-source-proprietary-software-engineer/) about that.
+The problem is that the investment actually starts paying off only when at least two or more people contribute to the project.
+Even in the case of small teams (2-3 people) it not obvious that it is worth spending hours in re-ordering and editing all the commits of
+a pull request until its *story* is perfect, especially when the project is not mature enough. But that does not mean that commit messages
+like the current ones will be acceptable. As a contributor comes in, the commit messages need necessarily to become more descriptive, in order to
+allow the collaboration to work.
+At this stage going faster towards a milestone makes sense. Still, I'm trying to keep the length of commits
+proportionate to the complexity of the change. Sometimes, even in this stage, it makes sense to spend some time on describing the reasoning behind a commit.
+As the projects grows, I'll be spending more and more time on the commit messages.
+
+
+
