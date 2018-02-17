@@ -76,16 +76,16 @@ FAQ (by vvaltchev)
 ---------------------
 
 
-##### Why many commit messages are so short and incomplete?
+#### Why many commit messages are so short and incomplete?
 
 It is well-known that all of the popular open source projects care about having good commit messages.
 It is an investment that pays off. I even wrote a [blog post](https://blogs.vmware.com/opensource/2017/12/28/open-source-proprietary-software-engineer/) about that.
 The problem is that such investment actually starts paying off only when multiple people contribute to the project.
 Even in the case of small teams (2 people) it not obvious that it is worth spending hours in re-ordering and editing all the commits of
-a pull request until its *story* is perfect, especially when the project is not mature enough: the commits in a pull request have to be just *good enough* in terms of commit message, scope of the change, relative order etc. The focus is on shape of the code *after* the patch series in the sense that limited hacks in the middle of a series are allowed. Clearly that does **not** mean that commit messages like some of the current ones will be acceptable: as a 2nd contributor comes in, the commit messages need necessarily to become more descriptive, in order to allow the collaboration to work. But, at this stage, going faster towards the first milestone makes sense. Still, I'm trying to keep the length of the commit messages proportionate to the complexity of the change. Sometimes, even in this stage, it makes sense to spend some time on describing the reasoning behind a commit. As the projects grows, I'll be spending more and more time on writing better commit messages.
+a pull request until its *story* is perfect, especially when the project is not mature enough: the commits in a pull request have to be just *good enough* in terms of commit message, scope of the change, relative order etc. The focus is on shape of the code *after* the patch series in the sense that limited hacks in the middle of a series are allowed. Clearly, that does **not** mean that commit messages like some of the current ones will be acceptable: as a second contributor comes in, the commit messages need necessarily to become more descriptive, in order to allow the collaboration to work. But, at this stage, going as fast as possible towards the first milestone makes sense. Still, I'm trying to keep the length of the commit messages proportionate to the complexity of the change. Sometimes, even in this stage, it makes sense to spend some time on describing the reasoning behind a commit. As the projects grows, I'll be spending more and more time on writing better commit messages.
 
 
-##### Why exOS does not have the abstraction XYZ like other kernels do?
+#### Why exOS does not have the abstraction XYZ like other kernels do?
 
 `exOS` is **not** meant to be a full-featured production kernel. Please, refer to Linux for that.
 The idea is implementing the simplest kernel able to run a class of Linux console applications.
@@ -95,7 +95,7 @@ The whole point of supporting something is because it is interesting for me (or 
 to learn how it works and to write a proof-of-concept implementation.
 
 
-##### Why using FAT32?
+#### Why using FAT32?
 
 Actually FAT32 is not a very good choice for any UNIX system.
 I decided to use it because it was the simplest widely-used filesystem I knew and I did not want to spend to much time implementing support for a more sophisticated filesystem like `ext2`, at least not initially. Also, I was just curious about learning it. Afterall, the whole point of `experimentOs`, is *experimenting*.
