@@ -10,7 +10,10 @@
  */
 #define FULL_128KB_AREA (0xFFFFFFFFU)
 
-
+/*
+ * This bitfields maps 1 bit to 4 KB of the physical memory with
+ * a shift of INITIAL_MB_RESERVED.
+ */
 static u32 bitfield[MB_RESERVED_FOR_PAGING * 8];
 
 void init_paging_pageframe_allocator(void)

@@ -18,10 +18,15 @@
 
 #define PAGEFRAMES_BITFIELD_ELEMS (8 * USABLE_MEM_SIZE_IN_MB)
 
+/*
+ * This bitfield maps 1 bit to 4 KB of the whole physical memory.
+ * The mapping has no shifts: its bit[0] corresponds to the first KB of the
+ * physical memory, as well as its N-th bit corresponds to the N-th pageframe.
+ */
 
-volatile u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
-volatile u32 last_index = 0;
-volatile int pageframes_used = 0;
+u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
+u32 last_index = 0;
+int pageframes_used = 0;
 
 int get_free_pageframes_count(void)
 {
@@ -57,8 +62,7 @@ uptr alloc_pageframe(void)
    u32 free_index;
    bool found = false;
 
-   volatile u32 * const bitfield =
-      pageframes_bitfield + RESERVED_ELEMS;
+   u32 * const bitfield = pageframes_bitfield + RESERVED_ELEMS;
 
    for (int i = 0; i < PAGEFRAMES_BITFIELD_ELEMS; i++) {
 
@@ -74,17 +78,13 @@ uptr alloc_pageframe(void)
       return 0;
    }
 
-   uptr ret;
-
    free_index = get_first_zero_bit_index(bitfield[last_index]);
    bitfield[last_index] |= (1 << free_index);
 
    pageframes_used++;
 
    const u32 actual_index = last_index + RESERVED_ELEMS;
-
-   ret = ((actual_index << 17) + (free_index << PAGE_SHIFT));
-   return ret;
+   return ((actual_index << 17) + (free_index << PAGE_SHIFT));
 }
 
 
