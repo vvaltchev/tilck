@@ -4,8 +4,10 @@
 #include <string_util.h>
 #include <utils.h>
 
-#define USABLE_MEM_SIZE_IN_MB \
-   (MAX_MEM_SIZE_IN_MB - INITIAL_MB_RESERVED - MB_RESERVED_FOR_PAGING)
+#define RESERVED_MB (INITIAL_MB_RESERVED + MB_RESERVED_FOR_PAGING)
+#define RESERVED_ELEMS (RESERVED_MB * 8)
+
+#define USABLE_MEM_SIZE_IN_MB (MAX_MEM_SIZE_IN_MB - RESERVED_MB)
 
 /*
  * By mapping 4096 KB (one page) in 1 bit, a single 32-bit integer maps 128 KB.
@@ -13,9 +15,6 @@
  */
 #define FULL_128KB_AREA (0xFFFFFFFFU)
 
-
-#define INITIAL_ELEMS_RESERVED (INITIAL_MB_RESERVED * 8)
-#define ELEMS_RESERVED_FOR_PAGING (MB_RESERVED_FOR_PAGING * 8)
 
 #define PAGEFRAMES_BITFIELD_ELEMS (8 * USABLE_MEM_SIZE_IN_MB)
 
@@ -32,13 +31,12 @@ int get_free_pageframes_count(void)
 
 void init_pageframe_allocator(void)
 {
-   int reserved_elems = INITIAL_ELEMS_RESERVED;
 
 #ifdef KERNEL_TEST
    bzero((void *)pageframes_bitfield, sizeof(pageframes_bitfield));
 #endif
 
-   for (int i = 0; i < reserved_elems; i++) {
+   for (int i = 0; i < RESERVED_ELEMS; i++) {
       pageframes_bitfield[i] = FULL_128KB_AREA;
    }
 
@@ -60,7 +58,7 @@ uptr alloc_pageframe(void)
    bool found = false;
 
    volatile u32 * const bitfield =
-      pageframes_bitfield + INITIAL_ELEMS_RESERVED + ELEMS_RESERVED_FOR_PAGING;
+      pageframes_bitfield + RESERVED_ELEMS;
 
    for (int i = 0; i < PAGEFRAMES_BITFIELD_ELEMS; i++) {
 
@@ -83,8 +81,7 @@ uptr alloc_pageframe(void)
 
    pageframes_used++;
 
-   const u32 actual_index =
-      last_index + INITIAL_ELEMS_RESERVED + ELEMS_RESERVED_FOR_PAGING;
+   const u32 actual_index = last_index + RESERVED_ELEMS;
 
    ret = ((actual_index << 17) + (free_index << PAGE_SHIFT));
    return ret;
@@ -106,9 +103,7 @@ void free_pageframe(uptr address) {
     * Make the last index to point here, where we have at least 1 page free.
     * This increases the data locality.
     */
-   last_index = (majorIndex
-                 - INITIAL_ELEMS_RESERVED
-                 - ELEMS_RESERVED_FOR_PAGING) % PAGEFRAMES_BITFIELD_ELEMS;
+   last_index = (majorIndex - RESERVED_ELEMS) % PAGEFRAMES_BITFIELD_ELEMS;
 
    pageframes_used--;
 }
