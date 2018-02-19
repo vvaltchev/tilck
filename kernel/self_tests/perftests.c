@@ -114,8 +114,34 @@ void kernel_alloc_pageframe_perftest(void)
    u32 avg = duration / allocated;
    printk("Allocated %u pageframes, AVG cost: %u cycles\n", allocated, avg);
 
-   for (u32 i = 0; i < allocated; i++)
+   // Now let's free just one pageframe in somewhere in the middle
+
+   uptr target = allocated_paddrs[allocated/2];
+
+   // And re-allocate it.
+   const int single_page_iters = 10000;
+
+   start = RDTSC();
+
+   for (int i = 0; i < single_page_iters; i++) {
+      free_pageframe(target);
+      alloc_pageframe();      // returns always 'target'
+   }
+
+   duration = RDTSC() - start;
+
+   u32 one_page_free_avg = duration/single_page_iters;
+   printk("[1-page free] alloc + free: %u cycles\n", one_page_free_avg);
+
+   start = RDTSC();
+
+   for (u32 i = 0; i < allocated; i++) {
       free_pageframe(allocated_paddrs[i]);
+   }
+
+   duration = RDTSC() - start;
+   avg = duration / allocated;
+   printk("Freed %u pageframes, AVG cost: %u cycles\n", allocated, avg);
 
    kfree(allocated_paddrs, max_pages * sizeof(uptr));
 }
