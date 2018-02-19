@@ -29,6 +29,7 @@
       "term.h": "c",
       "x86_utils.h": "c",
       "fat32.h": "c",
-      "paging.h": "c"
+      "paging.h": "c",
+      "utils.h": "c"
    }
 }

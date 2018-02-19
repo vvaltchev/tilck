@@ -63,3 +63,16 @@ CONSTEXPR static inline uptr roundup_next_power_of_2(uptr v)
 }
 
 uint32_t crc32(uint32_t crc, const void *buf, size_t size);
+
+CONSTEXPR static inline u32 get_first_zero_bit_index(u32 num)
+{
+   u32 i;
+
+   ASSERT(num != ~0U);
+
+   for (i = 0; i < 32; i++) {
+      if ((num & (1U << i)) == 0) break;
+   }
+
+   return i;
+}

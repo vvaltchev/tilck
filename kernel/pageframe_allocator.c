@@ -2,6 +2,7 @@
 #include <common_defs.h>
 #include <paging.h>
 #include <string_util.h>
+#include <utils.h>
 
 #define USABLE_MEM_SIZE_IN_MB \
    (MAX_MEM_SIZE_IN_MB - INITIAL_MB_RESERVED - MB_RESERVED_FOR_PAGING)
@@ -23,25 +24,13 @@ volatile u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
 volatile u32 last_index = 0;
 volatile int pageframes_used = 0;
 
-int get_free_pageframes_count()
+int get_free_pageframes_count(void)
 {
    return ((USABLE_MEM_SIZE_IN_MB << 20) / PAGE_SIZE) - pageframes_used;
 }
 
-static u32 get_first_zero_bit_index(u32 num)
-{
-   u32 i;
 
-   ASSERT(num != ~0U);
-
-   for (i = 0; i < 32; i++) {
-      if ((num & (1U << i)) == 0) break;
-   }
-
-   return i;
-}
-
-void init_pageframe_allocator()
+void init_pageframe_allocator(void)
 {
    int reserved_elems = INITIAL_ELEMS_RESERVED;
 
@@ -52,59 +41,9 @@ void init_pageframe_allocator()
    for (int i = 0; i < reserved_elems; i++) {
       pageframes_bitfield[i] = FULL_128KB_AREA;
    }
+
+   init_paging_pageframe_allocator();
 }
-
-/*
- * Paging needs its custom page frame allocator for (kernel) page tables.
- */
-
-uptr paging_alloc_pageframe()
-{
-   u32 idx = 0;
-   bool found = false;
-
-   volatile u32 * const bitfield =
-      pageframes_bitfield + INITIAL_ELEMS_RESERVED;
-
-   for (int i = 0; i < ELEMS_RESERVED_FOR_PAGING; i++) {
-
-      if (bitfield[idx] != FULL_128KB_AREA) {
-         found = true;
-         break;
-      }
-
-      idx = (idx + 1) % ELEMS_RESERVED_FOR_PAGING;
-   }
-
-#ifndef KERNEL_TEST
-   VERIFY(found);
-#else
-   if (!found)
-      return 0;
-#endif
-
-   uptr ret;
-
-   u32 free_index = get_first_zero_bit_index(bitfield[idx]);
-   bitfield[idx] |= (1 << free_index);
-
-   ret = (((idx + INITIAL_ELEMS_RESERVED) << 17) + (free_index << PAGE_SHIFT));
-   return ret;
-}
-
-
-void paging_free_pageframe(uptr address) {
-
-   uptr naddr = address & PAGE_MASK;
-   u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
-   u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
-
-   // Asserts that the page was allocated.
-   ASSERT(pageframes_bitfield[majorIndex] & (1 << bitIndex));
-
-   pageframes_bitfield[majorIndex] &= ~(1 << bitIndex);
-}
-
 
 /*
  * -----------------------------------------------------
@@ -114,7 +53,7 @@ void paging_free_pageframe(uptr address) {
  * ------------------------------------------------------
  */
 
-uptr alloc_pageframe()
+uptr alloc_pageframe(void)
 {
 
    u32 free_index;

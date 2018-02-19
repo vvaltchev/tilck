@@ -26,11 +26,11 @@
 
 /* --- */
 
-void init_pageframe_allocator();
-uptr alloc_pageframe();
+void init_pageframe_allocator(void);
+uptr alloc_pageframe(void);
 void free_pageframe(uptr address);
-int get_free_pageframes_count();
-
+int get_free_pageframes_count(void);
+void init_paging_pageframe_allocator(void);
 
 /*
  * For the moment, we don't know the total amount of RAM present
