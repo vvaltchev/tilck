@@ -30,6 +30,7 @@ void init_pageframe_allocator(void);
 uptr alloc_pageframe(void);
 void free_pageframe(uptr address);
 int get_free_pageframes_count(void);
+int get_total_pageframes_count(void);
 void init_paging_pageframe_allocator(void);
 
 /*

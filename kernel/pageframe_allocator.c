@@ -35,10 +35,14 @@ int pageframes_used;
 
 #define PAGEFRAMES_BITFIELD_ELEMS (ARRAY_SIZE(pageframes_bitfield) - RESERVED_ELEMS)
 
+int get_total_pageframes_count(void)
+{
+   return (memsize_in_mb << 20) >> PAGE_SHIFT;
+}
 
 int get_free_pageframes_count(void)
 {
-   return ((memsize_in_mb << 20) / PAGE_SIZE) - pageframes_used;
+   return get_total_pageframes_count() - pageframes_used;
 }
 
 
