@@ -20,6 +20,11 @@ void init_paging_pageframe_allocator(void)
 {
 #ifdef KERNEL_TEST
    bzero((void *)bitfield, sizeof(bitfield));
+#else
+   /*
+    * In the kernel, bitfield is zeroed because it is in the BSS and this
+    * function is called only ONCE. No point in clearing the bitfield.
+    */
 #endif
 }
 

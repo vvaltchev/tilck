@@ -39,6 +39,11 @@ void init_pageframe_allocator(void)
 
 #ifdef KERNEL_TEST
    bzero((void *)pageframes_bitfield, sizeof(pageframes_bitfield));
+#else
+   /*
+    * In the kernel, pageframes_bitfield is zeroed because it is in the BSS
+    * and this function is called only ONCE. No point in clearing the bitfield.
+    */
 #endif
 
    for (int i = 0; i < RESERVED_ELEMS; i++) {
@@ -62,6 +67,11 @@ uptr alloc_pageframe(void)
    u32 free_index;
    bool found = false;
 
+   /*
+    * Optimization: use a shifted bitfield in order to skip the initial
+    * reserved elems. For example, with the first 4 MB reserved, we're talking
+    * about 32 elems. It's not that much, but still: why doing that extra work?
+    */
    u32 * const bitfield = pageframes_bitfield + RESERVED_ELEMS;
 
    for (int i = 0; i < PAGEFRAMES_BITFIELD_ELEMS; i++) {
@@ -83,6 +93,10 @@ uptr alloc_pageframe(void)
 
    pageframes_used++;
 
+   /*
+    * Because we used a shift-ed bitfield, we have to calculate the index
+    * for the real bitfield.
+    */
    const u32 actual_index = last_index + RESERVED_ELEMS;
    return ((actual_index << 17) + (free_index << PAGE_SHIFT));
 }
