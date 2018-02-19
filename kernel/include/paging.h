@@ -19,6 +19,12 @@
 #define PAGE_DIR_SIZE (2 * PAGE_SIZE + 4)
 #endif
 
+/* Internal defines specific for the pageframe allocator */
+
+#define INITIAL_MB_RESERVED 2
+#define MB_RESERVED_FOR_PAGING 2
+
+/* --- */
 
 void init_pageframe_allocator();
 uptr alloc_pageframe();

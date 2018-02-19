@@ -28,6 +28,7 @@
       "common_defs.h": "c",
       "term.h": "c",
       "x86_utils.h": "c",
-      "fat32.h": "c"
+      "fat32.h": "c",
+      "paging.h": "c"
    }
 }

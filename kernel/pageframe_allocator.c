@@ -3,9 +3,6 @@
 #include <paging.h>
 #include <string_util.h>
 
-#define INITIAL_MB_RESERVED 2
-#define MB_RESERVED_FOR_PAGING 2
-
 #define USABLE_MEM_SIZE_IN_MB \
    (MAX_MEM_SIZE_IN_MB - INITIAL_MB_RESERVED - MB_RESERVED_FOR_PAGING)
 
@@ -79,7 +76,12 @@ uptr paging_alloc_pageframe()
       idx = (idx + 1) % ELEMS_RESERVED_FOR_PAGING;
    }
 
+#ifndef KERNEL_TEST
    VERIFY(found);
+#else
+   if (!found)
+      return 0;
+#endif
 
    uptr ret;
 
