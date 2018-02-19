@@ -7,3 +7,4 @@ void kmutex_test();
 void kcond_test();
 void tasklet_stress_test();
 void kernel_kmalloc_perf_test();
+void kernel_alloc_pageframe_perftest(void);

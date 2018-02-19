@@ -106,7 +106,9 @@ void kmain()
    //kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
    //kthread_create(&tasklet_stress_test, NULL);
 
-   load_usermode_init();
+   kernel_alloc_pageframe_perftest();
+
+   //load_usermode_init();
 
    printk("[kernel main] Starting the scheduler...\n");
    switch_to_idle_task_outside_interrupt_context();

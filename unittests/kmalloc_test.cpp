@@ -15,7 +15,7 @@ extern "C" {
    #include <kmalloc.h>
    #include <paging.h>
    #include <utils.h>
-   void kernel_kmalloc_perf_test();
+   #include <self_tests/self_tests.h>
 }
 
 using namespace std;

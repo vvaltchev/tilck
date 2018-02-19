@@ -87,3 +87,35 @@ void kmalloc_trivial_perf_test()
    ASSERT((uptr)b3 == HEAP_DATA_ADDR + 0x40);
    ASSERT((uptr)b4 == HEAP_DATA_ADDR + 0x0);
 }
+
+void kernel_alloc_pageframe_perftest(void)
+{
+   u32 allocated = 0;
+   u32 max_pages = MAX_MEM_SIZE_IN_MB * MB / PAGE_SIZE;
+   uptr *allocated_paddrs = kmalloc(max_pages * sizeof(uptr));
+
+   u64 start, duration;
+
+   start = RDTSC();
+
+   while (true) {
+
+      uptr paddr = alloc_pageframe();
+
+      if (!paddr)
+         break;
+
+      allocated_paddrs[allocated] = paddr;
+      allocated++;
+   }
+
+   duration = RDTSC() - start;
+
+   u32 avg = duration / allocated;
+   printk("Allocated %u pageframes, AVG cost: %u cycles\n", allocated, avg);
+
+   for (u32 i = 0; i < allocated; i++)
+      free_pageframe(allocated_paddrs[i]);
+
+   kfree(allocated_paddrs, max_pages * sizeof(uptr));
+}

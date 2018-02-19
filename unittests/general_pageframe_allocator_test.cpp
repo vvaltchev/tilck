@@ -1,11 +1,13 @@
 
 #include <gtest/gtest.h>
+#include "kernel_init_funcs.h"
 
 extern "C" {
-#include <common_defs.h>
-#include <paging.h>
-uptr paging_alloc_pageframe();
-void paging_free_pageframe(uptr address);
+   #include <common_defs.h>
+   #include <paging.h>
+   #include <self_tests/self_tests.h>
+   uptr paging_alloc_pageframe();
+   void paging_free_pageframe(uptr address);
 }
 
 #define RESERVED_MB (INITIAL_MB_RESERVED + MB_RESERVED_FOR_PAGING)
@@ -85,4 +87,10 @@ TEST(alloc_pageframe, one_pageframe_free)
 
    // Now re-alloc and expect that very pageframe is returned
    ASSERT_EQ(alloc_pageframe(), paddr);
+}
+
+TEST(alloc_pageframe, perf)
+{
+   initialize_kmalloc_for_tests();
+   kernel_alloc_pageframe_perftest();
 }
