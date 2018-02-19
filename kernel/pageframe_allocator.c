@@ -30,8 +30,8 @@ u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
  */
 u32 memsize_in_mb = 128;
 
-u32 last_index = 0;
-int pageframes_used = (RESERVED_MB * MB) / PAGE_SIZE;
+u32 last_index;
+int pageframes_used;
 
 #define PAGEFRAMES_BITFIELD_ELEMS (ARRAY_SIZE(pageframes_bitfield) - RESERVED_ELEMS)
 
@@ -57,6 +57,9 @@ void init_pageframe_allocator(void)
    for (int i = 0; i < RESERVED_ELEMS; i++) {
       pageframes_bitfield[i] = FULL_128KB_AREA;
    }
+
+   last_index = 0;
+   pageframes_used = (RESERVED_MB * MB) / PAGE_SIZE;
 
    init_paging_pageframe_allocator();
 }
