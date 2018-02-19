@@ -7,8 +7,6 @@
 #define RESERVED_MB (INITIAL_MB_RESERVED + MB_RESERVED_FOR_PAGING)
 #define RESERVED_ELEMS (RESERVED_MB * 8)
 
-#define USABLE_MEM_SIZE_IN_MB (MAX_MEM_SIZE_IN_MB - RESERVED_MB)
-
 /*
  * By mapping 4096 KB (one page) in 1 bit, a single 32-bit integer maps 128 KB.
  * Mapping 1 MB requires 8 integers.
@@ -16,7 +14,6 @@
 #define FULL_128KB_AREA (0xFFFFFFFFU)
 
 
-#define PAGEFRAMES_BITFIELD_ELEMS (8 * USABLE_MEM_SIZE_IN_MB)
 
 /*
  * This bitfield maps 1 bit to 4 KB of the whole physical memory.
@@ -25,12 +22,23 @@
  */
 
 u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
+
+/*
+ * HACK: just assume we have 128 MB of memory.
+ * In the future, this value has to be somehow passed from the bootloader to
+ * the kernel.
+ */
+u32 memsize_in_mb = 128;
+
 u32 last_index = 0;
-int pageframes_used = 0;
+int pageframes_used = (RESERVED_MB * MB) / PAGE_SIZE;
+
+#define PAGEFRAMES_BITFIELD_ELEMS (ARRAY_SIZE(pageframes_bitfield) - RESERVED_ELEMS)
+
 
 int get_free_pageframes_count(void)
 {
-   return ((USABLE_MEM_SIZE_IN_MB << 20) / PAGE_SIZE) - pageframes_used;
+   return ((memsize_in_mb << 20) / PAGE_SIZE) - pageframes_used;
 }
 
 
@@ -74,7 +82,7 @@ uptr alloc_pageframe(void)
     */
    u32 * const bitfield = pageframes_bitfield + RESERVED_ELEMS;
 
-   for (int i = 0; i < PAGEFRAMES_BITFIELD_ELEMS; i++) {
+   for (u32 i = 0; i < PAGEFRAMES_BITFIELD_ELEMS; i++) {
 
       if (bitfield[last_index] != FULL_128KB_AREA) {
          found = true;
