@@ -33,8 +33,6 @@ u32 memsize_in_mb = 128;
 u32 last_index;
 int pageframes_used;
 
-#define PAGEFRAMES_BITFIELD_ELEMS (ARRAY_SIZE(pageframes_bitfield) - RESERVED_ELEMS)
-
 int get_total_pageframes_count(void)
 {
    return (memsize_in_mb << 20) >> PAGE_SHIFT;
@@ -82,38 +80,25 @@ uptr alloc_pageframe(void)
    u32 free_index;
    bool found = false;
 
-   /*
-    * Optimization: use a shifted bitfield in order to skip the initial
-    * reserved elems. For example, with the first 4 MB reserved, we're talking
-    * about 32 elems. It's not that much, but still: why doing that extra work?
-    */
-   u32 * const bitfield = pageframes_bitfield + RESERVED_ELEMS;
+   for (u32 i = 0; i < ARRAY_SIZE(pageframes_bitfield); i++) {
 
-   for (u32 i = 0; i < PAGEFRAMES_BITFIELD_ELEMS; i++) {
-
-      if (bitfield[last_index] != FULL_128KB_AREA) {
+      if (pageframes_bitfield[last_index] != FULL_128KB_AREA) {
          found = true;
          break;
       }
 
-      last_index = (last_index + 1) % PAGEFRAMES_BITFIELD_ELEMS;
+      last_index = (last_index + 1) % ARRAY_SIZE(pageframes_bitfield);
    }
 
    if (!found) {
       return 0;
    }
 
-   free_index = get_first_zero_bit_index(bitfield[last_index]);
-   bitfield[last_index] |= (1 << free_index);
+   free_index = get_first_zero_bit_index(pageframes_bitfield[last_index]);
+   pageframes_bitfield[last_index] |= (1 << free_index);
 
    pageframes_used++;
-
-   /*
-    * Because we used a shift-ed bitfield, we have to calculate the index
-    * for the real bitfield.
-    */
-   const u32 actual_index = last_index + RESERVED_ELEMS;
-   return ((actual_index << 17) + (free_index << PAGE_SHIFT));
+   return ((last_index << 17) + (free_index << PAGE_SHIFT));
 }
 
 
@@ -132,7 +117,7 @@ void free_pageframe(uptr address) {
     * Make the last index to point here, where we have at least 1 page free.
     * This increases the data locality.
     */
-   last_index = (majorIndex - RESERVED_ELEMS) % PAGEFRAMES_BITFIELD_ELEMS;
+   last_index = majorIndex % ARRAY_SIZE(pageframes_bitfield);
 
    pageframes_used--;
 }
