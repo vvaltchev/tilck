@@ -24,11 +24,11 @@
 u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
 
 /*
- * HACK: just assume we have 128 MB of memory.
+ * HACK: just assume we have MAX_MEM_SIZE_IN_MB as memory.
  * In the future, this value has to be somehow passed from the bootloader to
  * the kernel.
  */
-u32 memsize_in_mb = 128;
+u32 memsize_in_mb = MAX_MEM_SIZE_IN_MB;
 
 u32 last_index;
 int pageframes_used;
@@ -101,6 +101,37 @@ uptr alloc_pageframe(void)
    return ((last_index << 17) + (free_index << PAGE_SHIFT));
 }
 
+uptr alloc_32_pageframes(void)
+{
+   bool found = false;
+
+   for (u32 i = 0; i < ARRAY_SIZE(pageframes_bitfield); i++) {
+
+      if (pageframes_bitfield[last_index] == 0) {
+         found = true;
+         break;
+      }
+
+      last_index = (last_index + 1) % ARRAY_SIZE(pageframes_bitfield);
+   }
+
+   if (found) {
+      pageframes_bitfield[last_index] = FULL_128KB_AREA;
+      pageframes_used += 32;
+      return last_index << 17;
+   }
+
+   return 0;
+}
+
+void free_32_pageframes(uptr paddr)
+{
+   u32 majorIndex = (paddr & 0xFFFE0000U) >> 17;
+   ASSERT(pageframes_bitfield[majorIndex] == FULL_128KB_AREA);
+
+   pageframes_bitfield[majorIndex] = 0;
+   pageframes_used -= 32;
+}
 
 void free_pageframe(uptr address) {
 

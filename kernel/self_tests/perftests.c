@@ -101,9 +101,12 @@ static void print_free_pageframes(void)
           calc_perc_free_pageframes());
 }
 
-void kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold)
+static uptr block_paddrs[1024];
+
+void
+kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
+                                          const bool alloc_128k)
 {
-   u32 allocated = 0;
    const u32 max_pages = MAX_MEM_SIZE_IN_MB * MB / PAGE_SIZE;
    uptr *paddrs = kmalloc(max_pages * sizeof(uptr));
 
@@ -111,19 +114,9 @@ void kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold)
 
    // Prepare a random bitfield for tests
 
-   allocated = 0;
-   const int expected_free = RANDOM_VALUES_COUNT/2; // Don't change.
-
-   // Alloc pageframes until only 'expected_free' 32-bit integers remain.
-   for (int i = 0; i < expected_free; i++) {
-      for (int j = 0; j < 32; j++) {
-         uptr paddr = alloc_pageframe();
-         VERIFY(paddr != 0);
-         paddrs[allocated++] = paddr;
-      }
-   }
-
+   u32 allocated = 0;
    int iters = 0;
+   int full_128k_blocks = 0;
 
    for (int i = 0;
         calc_perc_free_pageframes() > free_perc_threshold;
@@ -131,7 +124,7 @@ void kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold)
 
       iters++;
 
-      u32 shift = random_values[i] % 31;
+      u32 shift = (random_values[i] ^ iters) % 31;
       u32 val = random_values[i] | (random_values[i+1] << shift);
       u32 f = 0;
 
@@ -140,9 +133,16 @@ void kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold)
             f++;
       }
 
-      if (f > 16) {
-         f = 32 - f;
-         val = ~val;
+      // This random data used contains mostly small numbers (too many 0s).
+      // Therefore, flip all the bits.
+      f = 32 - f;
+      val = ~val;
+
+
+      // Force the existence of FULL 128 K blocks.
+      if (f <= 6) {
+         f = 0;
+         val = ~0;
       }
 
 
@@ -175,30 +175,58 @@ void kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold)
             paddrs[allocated++] = local_paddrs[j];
       }
 
+      if (f == 0)
+         full_128k_blocks++;
    }
 
-   /*
-    * How many iterations did we before reaching the free_perc_threshold ?
-    * If we did too many iterations (much more than RANDOM_VALUES_COUNT/2)
-    * that means that we reused too many times the random values, therefore
-    * there are repeating patterns and this is bad for the quality of the test.
-    * The check below ensures that we reused not more than 25% of the random
-    * values twice.
-    */
-   VERIFY(100 * iters / (RANDOM_VALUES_COUNT/2) <= 125);
+   //print_free_pageframes();
+   //printk("Iters before hitting the threshold: %i\n", iters);
+
+   //u32 used = get_total_pageframes_count() - get_free_pageframes_count();
+   //printk("Full 128K blocks: %i, %u%% of the total allocated\n",
+   //       full_128k_blocks, 100*full_128k_blocks*32 / used);
 
    const int free_pageframes_count = get_free_pageframes_count();
 
-   start = RDTSC();
-   for (int i = 0; i < free_pageframes_count; i++) {
-      uptr paddr = alloc_pageframe();
-      VERIFY(paddr != 0);
-      paddrs[allocated++] = paddr;
-   }
-   duration = RDTSC() - start;
+   if (!alloc_128k) {
 
-   printk("AVG cost of alloc with %i%% of free pageframes: %i cycles\n",
-          free_perc_threshold, duration/free_pageframes_count);
+      start = RDTSC();
+      for (int i = 0; i < free_pageframes_count; i++) {
+         paddrs[allocated++] = alloc_pageframe();
+      }
+      duration = RDTSC() - start;
+
+      printk("[%i%% free pageframes] AVG cost of 1-alloc: %llu cycles [%u allocs]\n",
+             free_perc_threshold, duration/free_pageframes_count, allocated);
+
+   } else {
+
+      u32 blocks = 0;
+
+      start = RDTSC();
+      for (blocks = 0; blocks < 1024; blocks++) {
+
+         uptr paddr = alloc_32_pageframes();
+
+         if (!paddr)
+            break;
+
+         block_paddrs[blocks] = paddr;
+      }
+      duration = RDTSC() - start;
+
+      for (u32 j = 0; j < blocks; j++)
+        free_32_pageframes(block_paddrs[j]);
+
+      if (blocks) {
+         printk("[%i%% free pageframes] AVG cost of 32-alloc: %llu cycles [%u allocs]\n",
+                free_perc_threshold, duration/blocks, blocks);
+      } else {
+         printk("[%i%% free pageframes] AVG cost of 32-alloc: UNKNOWN [0 allocs]\n",
+                free_perc_threshold);
+      }
+   }
+
 
    for (u32 i = 0; i < allocated; i++) {
       free_pageframe(paddrs[i]);
@@ -227,8 +255,8 @@ void kernel_alloc_pageframe_perftest(void)
    }
    duration = RDTSC() - start;
 
-   u32 avg = duration / allocated;
-   printk("Allocated %u pageframes, AVG cost: %u cycles\n", allocated, avg);
+   u64 avg = duration / allocated;
+   printk("Allocated %u pageframes, AVG cost: %llu cycles\n", allocated, avg);
 
    // Now let's free just one pageframe in somewhere in the middle
 
@@ -244,8 +272,8 @@ void kernel_alloc_pageframe_perftest(void)
    }
    duration = RDTSC() - start;
 
-   u32 one_page_free_avg = duration/single_page_iters;
-   printk("[1-page free] alloc + free: %u cycles\n", one_page_free_avg);
+   u64 one_page_free_avg = duration/single_page_iters;
+   printk("[1-page free] alloc + free: %llu cycles\n", one_page_free_avg);
 
    start = RDTSC();
    for (u32 i = 0; i < allocated; i++) {
@@ -254,14 +282,18 @@ void kernel_alloc_pageframe_perftest(void)
    duration = RDTSC() - start;
 
    avg = duration / allocated;
-   printk("Freed %u pageframes, AVG cost: %u cycles\n", allocated, avg);
+   printk("Freed %u pageframes, AVG cost: %llu cycles\n", allocated, avg);
 
    kfree(paddrs, max_pages * sizeof(uptr));
 
-   kernel_alloc_pageframe_perftest_perc_free(1);
-   kernel_alloc_pageframe_perftest_perc_free(2);
-   kernel_alloc_pageframe_perftest_perc_free(5);
-   kernel_alloc_pageframe_perftest_perc_free(10);
-   kernel_alloc_pageframe_perftest_perc_free(20);
-   kernel_alloc_pageframe_perftest_perc_free(40);
+   kernel_alloc_pageframe_perftest_perc_free(1, false);
+   kernel_alloc_pageframe_perftest_perc_free(2, false);
+   kernel_alloc_pageframe_perftest_perc_free(5, false);
+   kernel_alloc_pageframe_perftest_perc_free(10, false);
+   kernel_alloc_pageframe_perftest_perc_free(20, false);
+   kernel_alloc_pageframe_perftest_perc_free(40, false);
+
+   // Allocation of 128 K blocks.
+   kernel_alloc_pageframe_perftest_perc_free(10, true);
+   kernel_alloc_pageframe_perftest_perc_free(20, true);
 }

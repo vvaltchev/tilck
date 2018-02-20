@@ -3,12 +3,8 @@
 
 #include <common_defs.h>
 
-/*
- * Our simple pageframe allocator supports only 128 MB of RAW,
- * for now. Supporting more than that requires a much more complex
- * implementation in order to keep its performance good.
- */
-#define MAX_MEM_SIZE_IN_MB 128
+// Max memory size supported by the pageframe allocator.
+#define MAX_MEM_SIZE_IN_MB 1024
 
 #define PAGE_SHIFT 12
 #define PAGE_SIZE ((uptr)1 << PAGE_SHIFT)
@@ -28,6 +24,8 @@
 
 void init_pageframe_allocator(void);
 uptr alloc_pageframe(void);
+uptr alloc_32_pageframes(void);
+void free_32_pageframes(uptr paddr);
 void free_pageframe(uptr address);
 int get_free_pageframes_count(void);
 int get_total_pageframes_count(void);

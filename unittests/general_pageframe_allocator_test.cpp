@@ -11,15 +11,15 @@ extern "C" {
 }
 
 #define RESERVED_MB (INITIAL_MB_RESERVED + MB_RESERVED_FOR_PAGING)
-#define AVAIL_MEM_MB (MAX_MEM_SIZE_IN_MB - RESERVED_MB)
+#define POTENTIAL_AVAIL_MEM_MB (MAX_MEM_SIZE_IN_MB - RESERVED_MB)
 
-static const uptr avail_pages = AVAIL_MEM_MB * MB / PAGE_SIZE;
+static const uptr avail_pages = POTENTIAL_AVAIL_MEM_MB * MB / PAGE_SIZE;
 
 TEST(alloc_pageframe, seq_alloc)
 {
    init_pageframe_allocator();
 
-   for (uptr i = 0; i < (AVAIL_MEM_MB * MB / PAGE_SIZE); i++) {
+   for (uptr i = 0; i < (POTENTIAL_AVAIL_MEM_MB * MB / PAGE_SIZE); i++) {
       uptr r = alloc_pageframe();
       ASSERT_EQ(r, RESERVED_MB * MB + i * PAGE_SIZE);
    }
