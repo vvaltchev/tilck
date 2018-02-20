@@ -253,7 +253,7 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
 
 
    for (u32 i = 0; i < allocated; i++) {
-      if (paddrs[i])
+      if (paddrs[i] && is_allocated_pageframe(paddrs[i]))
          free_pageframe(paddrs[i]);
    }
 
