@@ -4,7 +4,7 @@
 #include <string_util.h>
 #include <utils.h>
 
-#define ALLOC_BLOCK_SIZE (8 * PAGE_SIZE)
+#define ALLOC_BLOCK_SIZE (32 * PAGE_SIZE)
 
 // MIN_BLOCK_SIZE has to be a multiple of 32
 STATIC_ASSERT((MIN_BLOCK_SIZE & 31) == 0);
