@@ -115,28 +115,51 @@ uptr alloc_32_pageframes_aligned(void)
       last_index = (last_index + 1) % ARRAY_SIZE(pageframes_bitfield);
    }
 
-   if (found) {
-      pageframes_bitfield[last_index] = FULL_128KB_AREA;
-      pageframes_used += 32;
-      return last_index << 17;
+   if (!found)
+      return 0;
+
+   pageframes_bitfield[last_index] = FULL_128KB_AREA;
+   pageframes_used += 32;
+   return last_index << 17;
+}
+
+uptr alloc_32_pageframes(void)
+{
+   uptr paddr = alloc_32_pageframes_aligned();
+
+   if (paddr)
+      return paddr;
+
+   for (u32 i = 0; i < sizeof(pageframes_bitfield) - 3; i++) {
+
+      u32 *bf = (u32 *)((u8 *)pageframes_bitfield + i);
+
+      if (*bf == 0) {
+         // We've found an unaligned 32-bit integer (=> 128 KB free block).
+
+         // 'i' cannot be divisible by 4, otherwise the aligned code should have
+         // found the free 128K block.
+         ASSERT((i % 4) != 0);
+
+         *bf = FULL_128KB_AREA;
+         pageframes_used += 32;
+
+         /*
+          * In this bitfield 1 bit = 1 page, 1 byte = 8 pages (2^3 pages).
+          * Therefore the corresponding physical address is just:
+          * i * PAGE_SIZE * 8.
+          */
+         return i << (PAGE_SHIFT + 3);
+      }
    }
 
    return 0;
 }
 
-uptr alloc_32_pageframes(void)
-{
-   return alloc_32_pageframes_aligned();
-
-   // TODO: implement unaligned alloc.
-}
-
 void free_32_pageframes(uptr paddr)
 {
-   u32 majorIndex = (paddr & 0xFFFE0000U) >> 17;
-   ASSERT(pageframes_bitfield[majorIndex] == FULL_128KB_AREA);
-
-   pageframes_bitfield[majorIndex] = 0;
+   u32 byte_offset = paddr >> (PAGE_SHIFT + 3);
+   *(u32 *)((u8 *)pageframes_bitfield + byte_offset) = 0;
    pageframes_used -= 32;
 }
 
