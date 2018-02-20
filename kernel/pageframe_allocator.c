@@ -101,7 +101,7 @@ uptr alloc_pageframe(void)
    return ((last_index << 17) + (free_index << PAGE_SHIFT));
 }
 
-uptr alloc_32_pageframes(void)
+uptr alloc_32_pageframes_aligned(void)
 {
    bool found = false;
 
@@ -122,6 +122,13 @@ uptr alloc_32_pageframes(void)
    }
 
    return 0;
+}
+
+uptr alloc_32_pageframes(void)
+{
+   return alloc_32_pageframes_aligned();
+
+   // TODO: implement unaligned alloc.
 }
 
 void free_32_pageframes(uptr paddr)

@@ -140,7 +140,12 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
 
 
       // Force the existence of FULL 128 K blocks.
-      if (f <= 6) {
+      // With f <= 8, 71% of the total allocated mem are 128 K blocks.
+      // With f <= 7, 57% of the total allocated mem are 128 K blocks.
+      // With f <= 6, 43% of the total allocated mem are 128 K blocks.
+      // With f <= 5, 28% of the total allocated mem are 128 K blocks.
+      // With f <= 4, 15% of the total allocated mem are 128 K blocks.
+      if (f <= 7) {
          f = 0;
          val = ~0;
       }
@@ -182,8 +187,8 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
    //print_free_pageframes();
    //printk("Iters before hitting the threshold: %i\n", iters);
 
-   //u32 used = get_total_pageframes_count() - get_free_pageframes_count();
-   //printk("Full 128K blocks: %i, %u%% of the total allocated\n",
+   // u32 used = get_total_pageframes_count() - get_free_pageframes_count();
+   // printk("Full 128K blocks: %i, %u%% of the total allocated\n",
    //       full_128k_blocks, 100*full_128k_blocks*32 / used);
 
    const int free_pageframes_count = get_free_pageframes_count();

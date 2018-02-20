@@ -20,28 +20,27 @@
 #define INITIAL_MB_RESERVED 2
 #define MB_RESERVED_FOR_PAGING 2
 
-/* --- */
+/* Public interface of the pageframe allocator */
 
 void init_pageframe_allocator(void);
 uptr alloc_pageframe(void);
 uptr alloc_32_pageframes(void);
+uptr alloc_32_pageframes_aligned(void);
 void free_32_pageframes(uptr paddr);
 void free_pageframe(uptr address);
 int get_free_pageframes_count(void);
 int get_total_pageframes_count(void);
 void init_paging_pageframe_allocator(void);
 
-/*
- * For the moment, we don't know the total amount of RAM present
- * in the system, so we just assume it to be MAX_MEM_SIZE_IN_MB.
- * In the future, we'll fetch that information during the boot
- * stage and return a real value.
- */
+
+extern u32 memsize_in_mb;
+
 static ALWAYS_INLINE int get_amount_of_physical_memory_in_mb()
 {
-   return MAX_MEM_SIZE_IN_MB;
+   return memsize_in_mb;
 }
 
+/* Paging-related stuff */
 
 // Forward-declaring page_directory_t
 typedef struct page_directory_t page_directory_t;
