@@ -103,69 +103,50 @@ uptr alloc_pageframe(void)
 
 uptr alloc_32_pageframes_aligned(void)
 {
-   bool found = false;
-
    for (u32 i = 0; i < ARRAY_SIZE(pageframes_bitfield); i++) {
 
-      if (pageframes_bitfield[last_index] == 0) {
-         found = true;
-         break;
+      u32 *bf = pageframes_bitfield + last_index;
+
+      if (!*bf) {
+         *bf = FULL_128KB_AREA;
+         pageframes_used += 32;
+         return last_index << 17;
       }
 
       last_index = (last_index + 1) % ARRAY_SIZE(pageframes_bitfield);
    }
 
-   if (!found)
-      return 0;
-
-   pageframes_bitfield[last_index] = FULL_128KB_AREA;
-   pageframes_used += 32;
-   return last_index << 17;
+   return 0;
 }
+
 
 uptr alloc_32_pageframes(void)
 {
    uptr paddr = alloc_32_pageframes_aligned();
+   u8 *bf;
 
    if (paddr)
       return paddr;
 
-   u32 byte_index = (last_index << 2) + 1;
+   for (u32 i = 0; i < ARRAY_SIZE(pageframes_bitfield); i++) {
 
-   for (u32 i = 0; i < sizeof(pageframes_bitfield); i++) {
-
-      if ((byte_index + 4) >= sizeof(pageframes_bitfield)) {
-         byte_index = 1; // Rewind and skip the "aligned" offset.
+      if (LIKELY(last_index != (ARRAY_SIZE(pageframes_bitfield) - 1))) {
+         bf = ((u8 *) &pageframes_bitfield[last_index]) + 1;
+         if (!*(u32 *)bf) goto success;   // check with +1
+         if (!*(u32 *)++bf) goto success; // check with +2
+         if (!*(u32 *)++bf) goto success; // check with +3
       }
 
-      u32 *bf = (u32 *)((u8 *)pageframes_bitfield + byte_index);
-
-      if (*bf == 0) {
-
-         *bf = FULL_128KB_AREA;
-         pageframes_used += 32;
-
-         /*
-          * In this bitfield 1 bit = 1 page, 1 byte = 8 pages (2^3 pages).
-          * Therefore the corresponding physical address is just:
-          * i * PAGE_SIZE * 8.
-          */
-         paddr = byte_index << (PAGE_SHIFT + 3);
-         break;
-      }
-
-      /*
-       * Since alloc_32_pageframes_aligned() failed, there is not point to check
-       * again all the offsets divisible by 4.
-       */
-      if (!(++byte_index & 3)) {
-         ++byte_index;
-         ++i;
-      }
+      last_index = (last_index + 1) % ARRAY_SIZE(pageframes_bitfield);
    }
 
-   last_index = (byte_index >> 2);
-   return paddr;
+   // Default case: failure.
+   return 0;
+
+   success:
+   *(u32 *)bf = FULL_128KB_AREA;
+   pageframes_used += 32;
+   return (bf - (u8 *) pageframes_bitfield) << (PAGE_SHIFT + 3);
 }
 
 void free_32_pageframes(uptr paddr)
