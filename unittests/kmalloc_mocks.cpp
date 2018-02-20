@@ -46,11 +46,11 @@ bool __wrap_is_mapped(void *pdir, uptr vaddr)
    return mappings[vaddr & PAGE_MASK] != 0;
 }
 
-bool __wrap_kbasic_virtual_alloc(uptr vaddr, int pageCount)
+bool __wrap_kbasic_virtual_alloc(uptr vaddr, int page_count)
 {
    assert((vaddr & (PAGE_SIZE - 1)) == 0);
 
-   for (int i = 0; i < pageCount; i++) {
+   for (int i = 0; i < page_count; i++) {
       uptr p = alloc_pageframe();
       mappings[vaddr + i * PAGE_SIZE] = p;
    }
@@ -58,11 +58,11 @@ bool __wrap_kbasic_virtual_alloc(uptr vaddr, int pageCount)
    return true;
 }
 
-bool __wrap_kbasic_virtual_free(uptr vaddr, int pageCount)
+bool __wrap_kbasic_virtual_free(uptr vaddr, int page_count)
 {
    assert((vaddr & (PAGE_SIZE - 1)) == 0);
 
-   for (int i = 0; i < pageCount; i++) {
+   for (int i = 0; i < page_count; i++) {
 
       uptr phys_addr = mappings[vaddr + i * PAGE_SIZE];
       free_pageframe(phys_addr);

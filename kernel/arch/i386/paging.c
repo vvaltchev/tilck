@@ -279,10 +279,10 @@ static inline void
 map_pages_int(page_directory_t *pdir,
               void *vaddr,
               uptr paddr,
-              int pageCount,
+              int page_count,
               u32 flags)
 {
-   for (int i = 0; i < pageCount; i++) {
+   for (int i = 0; i < page_count; i++) {
       map_page_int(pdir,
                    (u8 *)vaddr + (i << PAGE_SHIFT),
                    paddr + (i << PAGE_SHIFT),

@@ -15,8 +15,8 @@ STATIC_ASSERT((HEAP_DATA_SIZE & ((1 << 20) - 1)) == 0);
 // ALLOC_BLOCK_SIZE has to be a multiple of PAGE_SIZE
 STATIC_ASSERT((ALLOC_BLOCK_SIZE & (PAGE_SIZE - 1)) == 0);
 
-bool kbasic_virtual_alloc(uptr vaddr, int pageCount);
-bool kbasic_virtual_free(uptr vaddr, int pageCount);
+bool kbasic_virtual_alloc(uptr vaddr, int page_count);
+bool kbasic_virtual_free(uptr vaddr, int page_count);
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)

@@ -68,11 +68,11 @@ static inline void
 map_pages(page_directory_t *pdir,
           void *vaddr,
           uptr paddr,
-          int pageCount,
+          int page_count,
           bool us,
           bool rw)
 {
-   for (int i = 0; i < pageCount; i++) {
+   for (int i = 0; i < page_count; i++) {
       map_page(pdir,
                (u8 *)vaddr + (i << PAGE_SHIFT),
                paddr + (i << PAGE_SHIFT),
@@ -82,9 +82,9 @@ map_pages(page_directory_t *pdir,
 }
 
 static inline void
-unmap_pages(page_directory_t *pdir, void *vaddr, int pageCount)
+unmap_pages(page_directory_t *pdir, void *vaddr, int page_count)
 {
-   for (int i = 0; i < pageCount; i++) {
+   for (int i = 0; i < page_count; i++) {
       unmap_page(pdir, (u8 *)vaddr + (i << PAGE_SHIFT));
    }
 }
