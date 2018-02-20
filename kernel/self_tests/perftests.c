@@ -204,11 +204,9 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
    //print_free_pageframes();
    //printk("Iters before hitting the threshold: %i\n", iters);
 
-   u32 used = get_total_pageframes_count() - get_free_pageframes_count();
-   printk("Full 128K blocks: %i, %u%% of the total allocated\n",
-         full_128k_blocks, 100*full_128k_blocks*32 / used);
-
-
+   // u32 used = get_total_pageframes_count() - get_free_pageframes_count();
+   // printk("Full 128K blocks: %i, %u%% of the total allocated\n",
+   //       full_128k_blocks, 100*full_128k_blocks*32 / used);
 
    const int free_pageframes_count = get_free_pageframes_count();
 
@@ -314,12 +312,14 @@ void kernel_alloc_pageframe_perftest(void)
 
    kfree(paddrs, max_pages * sizeof(uptr));
 
-   // kernel_alloc_pageframe_perftest_perc_free(1, false);
-   // kernel_alloc_pageframe_perftest_perc_free(2, false);
-   // kernel_alloc_pageframe_perftest_perc_free(5, false);
-   // kernel_alloc_pageframe_perftest_perc_free(10, false);
-   // kernel_alloc_pageframe_perftest_perc_free(20, false);
-   // kernel_alloc_pageframe_perftest_perc_free(40, false);
+   kernel_alloc_pageframe_perftest_perc_free(1, false);
+   kernel_alloc_pageframe_perftest_perc_free(2, false);
+   kernel_alloc_pageframe_perftest_perc_free(5, false);
+   kernel_alloc_pageframe_perftest_perc_free(10, false);
+   kernel_alloc_pageframe_perftest_perc_free(20, false);
+   kernel_alloc_pageframe_perftest_perc_free(40, false);
+
+   printk("\nAllocation of blocks of 32-pageframes:\n");
 
    // Allocation of 128 K blocks.
    kernel_alloc_pageframe_perftest_perc_free(10, true);
