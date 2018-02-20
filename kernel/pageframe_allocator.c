@@ -125,7 +125,7 @@ uptr alloc_32_pageframes(void)
    uptr paddr = alloc_32_pageframes_aligned();
    u8 *bf;
 
-   if (paddr)
+   if (paddr != 0 || get_free_pageframes_count() < 32)
       return paddr;
 
    for (u32 i = 0; i < ARRAY_SIZE(pageframes_bitfield); i++) {

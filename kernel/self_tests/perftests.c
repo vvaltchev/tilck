@@ -185,21 +185,21 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
          full_128k_blocks++;
    }
 
-   {
-      uptr paddr = (157*4+3) << (PAGE_SHIFT + 3); // random addr
+   // {
+   //    uptr paddr = (157*4+3) << (PAGE_SHIFT + 3); // random addr
 
-      int allocated_in_random_128k_block = 0;
-      for (int i = 0; i < 32; i++) {
+   //    int allocated_in_random_128k_block = 0;
+   //    for (int i = 0; i < 32; i++) {
 
-         if (is_allocated_pageframe(paddr)) {
-            free_pageframe(paddr);
-            allocated_in_random_128k_block++;
-         }
+   //       if (is_allocated_pageframe(paddr)) {
+   //          free_pageframe(paddr);
+   //          allocated_in_random_128k_block++;
+   //       }
 
-         paddr += PAGE_SIZE;
-      }
+   //       paddr += PAGE_SIZE;
+   //    }
 
-   }
+   // }
 
    //print_free_pageframes();
    //printk("Iters before hitting the threshold: %i\n", iters);
@@ -245,6 +245,9 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
       if (blocks) {
          printk("[%i%% free pageframes] AVG cost of 32-alloc: %llu cycles [%u allocs]\n",
                 free_perc_threshold, duration/blocks, blocks);
+
+         //printk("Details: total cost: %llu cycles\n", duration);
+
       } else {
          printk("[%i%% free pageframes] AVG cost of 32-alloc: UNKNOWN [0 allocs]\n",
                 free_perc_threshold);
