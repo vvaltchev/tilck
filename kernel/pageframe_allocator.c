@@ -125,20 +125,20 @@ uptr alloc_32_pageframes_aligned(void)
 
 uptr alloc_32_pageframes(void)
 {
-   // uptr paddr = alloc_32_pageframes_aligned();
+   uptr paddr = alloc_32_pageframes_aligned();
 
-   // if (paddr)
-   //    return paddr;
+   if (paddr)
+      return paddr;
 
-   u32 li = last_index << 2;
+   u32 byte_index = (last_index << 2) + 1;
 
    for (u32 i = 0; i < sizeof(pageframes_bitfield); i++) {
 
-      if ((li + 4) >= sizeof(pageframes_bitfield)) {
-         li = 0;
+      if ((byte_index + 4) >= sizeof(pageframes_bitfield)) {
+         byte_index = 1; // Rewind and skip the "aligned" offset.
       }
 
-      u32 *bf = (u32 *)((u8 *)pageframes_bitfield + li);
+      u32 *bf = (u32 *)((u8 *)pageframes_bitfield + byte_index);
 
       if (*bf == 0) {
 
@@ -150,15 +150,22 @@ uptr alloc_32_pageframes(void)
           * Therefore the corresponding physical address is just:
           * i * PAGE_SIZE * 8.
           */
-         last_index = (li >> 2);
-         return li << (PAGE_SHIFT + 3);
+         paddr = byte_index << (PAGE_SHIFT + 3);
+         break;
       }
 
-      li++;
+      /*
+       * Since alloc_32_pageframes_aligned() failed, there is not point to check
+       * again all the offsets divisible by 4.
+       */
+      if (!(++byte_index & 3)) {
+         ++byte_index;
+         ++i;
+      }
    }
 
-   last_index = (li >> 2);
-   return 0;
+   last_index = (byte_index >> 2);
+   return paddr;
 }
 
 void free_32_pageframes(uptr paddr)
