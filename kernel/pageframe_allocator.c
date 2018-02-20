@@ -11,8 +11,8 @@
  * By mapping 4096 KB (one page) in 1 bit, a single 32-bit integer maps 128 KB.
  * Mapping 1 MB requires 8 integers.
  */
-#define FULL_128KB_AREA (0xFFFFFFFFU)
-
+#define FULL_128KB_AREA (0xFFFFFFFF)
+#define FULL_32KB_AREA (0xFF)
 
 
 /*
@@ -147,6 +147,39 @@ uptr alloc_32_pageframes(void)
    *(u32 *)bf = FULL_128KB_AREA;
    pageframes_used += 32;
    return (bf - (u8 *) pageframes_bitfield) << (PAGE_SHIFT + 3);
+}
+
+
+uptr alloc_8_pageframes(void)
+{
+   u8 *bf;
+
+   for (u32 i = 0; i < ARRAY_SIZE(pageframes_bitfield); i++) {
+
+      bf = ((u8 *) &pageframes_bitfield[last_index]);
+      if (!*++bf) goto success;   // check with +0
+      if (!*++bf) goto success;   // check with +1
+      if (!*++bf) goto success;   // check with +2
+      if (!*++bf) goto success;   // check with +3
+
+      last_index = (last_index + 1) % ARRAY_SIZE(pageframes_bitfield);
+   }
+
+   // Default case: failure.
+   return 0;
+
+   success:
+   *bf = FULL_32KB_AREA;
+   pageframes_used += 8;
+   return (bf - (u8 *) pageframes_bitfield) << (PAGE_SHIFT + 3);
+}
+
+void free_8_pageframes(uptr paddr)
+{
+   u32 byte_offset = paddr >> (PAGE_SHIFT + 3);
+   ASSERT(*((u8 *)pageframes_bitfield + byte_offset) == FULL_32KB_AREA);
+   *((u8 *)pageframes_bitfield + byte_offset) = 0;
+   pageframes_used -= 8;
 }
 
 void free_32_pageframes(uptr paddr)

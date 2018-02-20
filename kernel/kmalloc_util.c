@@ -2,73 +2,78 @@
 #include <paging.h>
 #include <string_util.h>
 
+/*
+ * Allocate and map 32 or 8 physically contiguous pageframes at 'vaddr'.
+ * FAILS if such thing is not possible, even if sparse single pageframes are
+ * available in the system.
+ */
 bool kbasic_virtual_alloc(uptr vaddr, int page_count)
 {
    ASSERT(!(vaddr & (PAGE_SIZE - 1))); // the vaddr must be page-aligned
+   ASSERT(page_count == 32 || page_count == 8);
 
    page_directory_t *pdir = get_kernel_page_dir();
 
-   // Ensure that we have enough physical memory.
-   if (get_free_pageframes_count() < page_count) {
-      return false;
-   }
+   uptr paddr =
+      (page_count == 32) ? alloc_32_pageframes() : alloc_8_pageframes();
 
-   VERIFY(page_count == 32 || page_count == 8);
-
-   if (page_count == 32) {
-
-      uptr paddr = alloc_32_pageframes();
-
-      if (paddr != 0) {
-         map_pages(pdir, (void *)vaddr, paddr, 32, false, true);
-         return true;
-      }
-
-      // For testing purposes, let's check that alloc_32 reasonably almost
-      // always succeeds.
-      // TODO: remove the NOT_REACHED below.
-      NOT_REACHED();
-   }
-
-   for (int i = 0; i < page_count; i++) {
-
-      uptr paddr = alloc_pageframe();
-      ASSERT(paddr != 0);
-
-      ASSERT(!is_mapped(pdir, (u8 *)vaddr + (i << PAGE_SHIFT)));
-      map_page(pdir, (u8 *)vaddr + (i << PAGE_SHIFT), paddr, false, true);
-   }
-
-   return true;
-}
-
-bool kbasic_virtual_free(uptr vaddr, int page_count)
-{
-   ASSERT(!(vaddr & (PAGE_SIZE - 1))); // the vaddr must be page-aligned
-
-   page_directory_t *pdir = get_kernel_page_dir();
-
-   if (page_count == 32) {
-      uptr paddr = get_mapping(pdir, (void *) vaddr);
-      unmap_pages(pdir, (void *)vaddr, 32);
-      free_32_pageframes(paddr);
+   if (paddr) {
+      map_pages(pdir, (void *)vaddr, paddr, page_count, false, true);
       return true;
    }
 
-   for (int i = 0; i < page_count; i++) {
+   if (page_count == 32) {
 
-      void *va = (u8 *)vaddr + (i << PAGE_SHIFT);
+      // We failed to allocate 32 physically contiguous pages.
+      // Let's try to allocate them in groups of 8.
 
-      // get_mapping ASSERTs that 'va' is mapped.
-      uptr paddr = get_mapping(pdir, va);
+      uptr paddrs[4] = {0};
 
-      // un-map the virtual address.
-      unmap_page(pdir, va);
+      for (int i = 0; i < 4; i++) {
 
-      // free the physical page as well.
-      free_pageframe(paddr);
+         paddr = alloc_8_pageframes();
+
+         if (!paddr) {
+            // Oops, we failed here too. Rollback.
+            for (i--; i >= 0; i--)
+               free_8_pageframes(paddrs[i]);
+            return false;
+         }
+
+         paddrs[i] = paddr;
+      }
+
+
+      for (int i = 0; i < 4; i++) {
+         map_pages(pdir,
+                   (void *) (vaddr + i * 8 * PAGE_SIZE),
+                   paddrs[i],
+                   8, false, true);
+      }
    }
 
+   return false;
+}
+
+/*
+ * Un-maps and frees a block of 32 or 8 pageframes mapped at 'vaddr'.
+ */
+bool kbasic_virtual_free(uptr vaddr, int page_count)
+{
+   ASSERT(!(vaddr & (PAGE_SIZE - 1))); // the vaddr must be page-aligned
+   ASSERT(page_count == 32 || page_count == 8);
+
+   page_directory_t *pdir = get_kernel_page_dir();
+
+   free_8_pageframes(get_mapping(pdir, (void *) vaddr));
+
+   if (page_count == 32) {
+      free_8_pageframes(get_mapping(pdir, (void *) (vaddr + 8 * PAGE_SIZE)));
+      free_8_pageframes(get_mapping(pdir, (void *) (vaddr + 16 * PAGE_SIZE)));
+      free_8_pageframes(get_mapping(pdir, (void *) (vaddr + 24 * PAGE_SIZE)));
+   }
+
+   unmap_pages(pdir, (void *)vaddr, page_count);
    return true;
 }
 

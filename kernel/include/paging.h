@@ -28,6 +28,8 @@ uptr alloc_32_pageframes(void);
 uptr alloc_32_pageframes_aligned(void);
 void free_32_pageframes(uptr paddr);
 void free_pageframe(uptr address);
+uptr alloc_8_pageframes(void);
+void free_8_pageframes(uptr paddr);
 int get_free_pageframes_count(void);
 int get_total_pageframes_count(void);
 void init_paging_pageframe_allocator(void);
