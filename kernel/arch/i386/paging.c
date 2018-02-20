@@ -15,8 +15,9 @@
 #define KERNEL_PA_TO_VA(pa) ((typeof(pa))((uptr)(pa) + KERNEL_BASE_VA))
 #define KERNEL_VA_TO_PA(va) ((typeof(va))((uptr)(va) - KERNEL_BASE_VA))
 
-#define KERNEL_BASE_MAPPED_VADDR_LIMIT \
-   ((uptr) KERNEL_BASE_VA + 4 * 1024 * 1024 - 1)
+#define KERNEL_BASE_MAPPED_VADDR_LIMIT                        \
+   ((uptr) KERNEL_BASE_VA +                                   \
+   (INITIAL_MB_RESERVED + MB_RESERVED_FOR_PAGING) * MB - 1)
 
 static inline bool is_vaddr_part_of_base_mapping(void *vaddr)
 {
@@ -25,10 +26,6 @@ static inline bool is_vaddr_part_of_base_mapping(void *vaddr)
 
 uptr paging_alloc_pageframe();
 void paging_free_pageframe(uptr address);
-
-#ifdef DEBUG
-bool is_allocated_pageframe(void *address);
-#endif
 
 #define PAGE_COW_FLAG 1
 #define PAGE_COW_ORIG_RW 2

@@ -102,6 +102,8 @@ static void print_free_pageframes(void)
 }
 
 static uptr block_paddrs[1024];
+extern u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
+
 
 void
 kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
@@ -150,7 +152,6 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
          val = ~0;
       }
 
-
       /*
        * Now, ideally we'd like just to set an integer in the pageframe
        * bitfield to have the value 'val'. But, in order to support any further
@@ -184,12 +185,30 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
          full_128k_blocks++;
    }
 
+   {
+      uptr paddr = (157*4+3) << (PAGE_SHIFT + 3); // random addr
+
+      int allocated_in_random_128k_block = 0;
+      for (int i = 0; i < 32; i++) {
+
+         if (is_allocated_pageframe(paddr)) {
+            free_pageframe(paddr);
+            allocated_in_random_128k_block++;
+         }
+
+         paddr += PAGE_SIZE;
+      }
+
+   }
+
    //print_free_pageframes();
    //printk("Iters before hitting the threshold: %i\n", iters);
 
-   // u32 used = get_total_pageframes_count() - get_free_pageframes_count();
-   // printk("Full 128K blocks: %i, %u%% of the total allocated\n",
-   //       full_128k_blocks, 100*full_128k_blocks*32 / used);
+   u32 used = get_total_pageframes_count() - get_free_pageframes_count();
+   printk("Full 128K blocks: %i, %u%% of the total allocated\n",
+         full_128k_blocks, 100*full_128k_blocks*32 / used);
+
+
 
    const int free_pageframes_count = get_free_pageframes_count();
 
@@ -234,7 +253,8 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
 
 
    for (u32 i = 0; i < allocated; i++) {
-      free_pageframe(paddrs[i]);
+      if (paddrs[i])
+         free_pageframe(paddrs[i]);
    }
 
    kfree(paddrs, max_pages * sizeof(uptr));
@@ -291,12 +311,12 @@ void kernel_alloc_pageframe_perftest(void)
 
    kfree(paddrs, max_pages * sizeof(uptr));
 
-   kernel_alloc_pageframe_perftest_perc_free(1, false);
-   kernel_alloc_pageframe_perftest_perc_free(2, false);
-   kernel_alloc_pageframe_perftest_perc_free(5, false);
-   kernel_alloc_pageframe_perftest_perc_free(10, false);
-   kernel_alloc_pageframe_perftest_perc_free(20, false);
-   kernel_alloc_pageframe_perftest_perc_free(40, false);
+   // kernel_alloc_pageframe_perftest_perc_free(1, false);
+   // kernel_alloc_pageframe_perftest_perc_free(2, false);
+   // kernel_alloc_pageframe_perftest_perc_free(5, false);
+   // kernel_alloc_pageframe_perftest_perc_free(10, false);
+   // kernel_alloc_pageframe_perftest_perc_free(20, false);
+   // kernel_alloc_pageframe_perftest_perc_free(40, false);
 
    // Allocation of 128 K blocks.
    kernel_alloc_pageframe_perftest_perc_free(10, true);

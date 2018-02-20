@@ -31,7 +31,7 @@ void free_pageframe(uptr address);
 int get_free_pageframes_count(void);
 int get_total_pageframes_count(void);
 void init_paging_pageframe_allocator(void);
-
+bool is_allocated_pageframe(uptr address);
 
 extern u32 memsize_in_mb;
 
