@@ -8,33 +8,20 @@
 * with custom adaptions.
 */
 
-static inline int CONSTEXPR log2_for_power_of_2(uptr v)
+static ALWAYS_INLINE int CONSTEXPR log2_for_power_of_2(uptr v)
 {
-   static const uptr b[] = {
-      0xAAAAAAAA
-      , 0xCCCCCCCC
-      , 0xF0F0F0F0
-      , 0xFF00FF00
-      , 0xFFFF0000
+   uptr r;
+
+   r = (v & 0xAAAAAAAA) != 0;
 
 #ifdef BITS64
-      , 0xFFFFFFFF00000000ULL
+   r |= ((v & 0xFFFFFFFF00000000ULL) != 0) << 5;
 #endif
-   };
 
-   int i;
-   register uptr r = (v & b[0]) != 0;
-
-
-#ifdef BITS32
-   for (i = 4; i > 0; i--) {
-      r |= ((v & b[i]) != 0) << i;
-   }
-#else
-   for (i = 5; i > 0; i--) {
-      r |= ((v & b[i]) != 0) << i;
-   }
-#endif
+   r |= ((v & 0xFFFF0000) != 0) << 4;
+   r |= ((v & 0xFF00FF00) != 0) << 3;
+   r |= ((v & 0xF0F0F0F0) != 0) << 2;
+   r |= ((v & 0xCCCCCCCC) != 0) << 1;
 
    return r;
 }

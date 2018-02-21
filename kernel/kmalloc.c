@@ -36,17 +36,11 @@ typedef struct {
 
 STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 
-static const block_node new_node; // Just zeros.
-
-
 typedef struct {
 
    block_node nodes[KMALLOC_NODES_COUNT_IN_META_DATA];
 
 } allocator_meta_data;
-
-
-bool kmalloc_initialized; // Zero-initialized => false.
 
 
 /*
@@ -57,6 +51,12 @@ bool kmalloc_initialized; // Zero-initialized => false.
    (sizeof(block_node) * KMALLOC_NODES_COUNT_IN_META_DATA / (8 * PAGE_SIZE))
 
 static bool allocation_for_metadata_nodes[ALLOC_METADATA_SIZE];
+static const block_node new_node; // Just zeros.
+
+static int heap_data_size_log2;
+static int alloc_block_size_log2;
+
+bool kmalloc_initialized; // Zero-initialized => false.
 
 
 #define HALF(x) ((x) >> 1)
@@ -69,11 +69,10 @@ static bool allocation_for_metadata_nodes[ALLOC_METADATA_SIZE];
 
 CONSTEXPR int ptr_to_node(void *ptr, size_t size)
 {
-   const int heapSizeLog = log2_for_power_of_2(HEAP_DATA_SIZE);
    const int sizeLog = log2_for_power_of_2(size);
 
    const uptr raddr = (uptr)ptr - HEAP_DATA_ADDR;
-   const int nodes_before_our = (1 << (heapSizeLog - sizeLog)) - 1;
+   const int nodes_before_our = (1 << (heap_data_size_log2 - sizeLog)) - 1;
    const int position_in_row = raddr >> sizeLog;
 
    return nodes_before_our + position_in_row;
@@ -81,10 +80,9 @@ CONSTEXPR int ptr_to_node(void *ptr, size_t size)
 
 CONSTEXPR void *node_to_ptr(int node, size_t size)
 {
-   const int heapSizeLog = log2_for_power_of_2(HEAP_DATA_SIZE);
    const int sizeLog = log2_for_power_of_2(size);
 
-   const int nodes_before_our = (1 << (heapSizeLog - sizeLog)) - 1;
+   const int nodes_before_our = (1 << (heap_data_size_log2 - sizeLog)) - 1;
    const int position_in_row = node - nodes_before_our;
    const uptr raddr = position_in_row << sizeLog;
 
@@ -194,7 +192,7 @@ static void actual_allocate_node(size_t node_size, int node, uptr vaddr)
 
    uptr alloc_block_vaddr = vaddr & ~(ALLOC_BLOCK_SIZE - 1);
    const int alloc_block_count =
-      1 + ((node_size - 1) >> log2_for_power_of_2(ALLOC_BLOCK_SIZE));
+      1 + ((node_size - 1) >> alloc_block_size_log2);
 
    for (int i = 0; i < alloc_block_count; i++) {
 
@@ -441,8 +439,7 @@ void kfree(void *ptr, size_t size)
    }
 
    uptr alloc_block_vaddr = (uptr)ptr & ~(ALLOC_BLOCK_SIZE - 1);
-   int alloc_block_count =
-      1 + ((size - 1) >> log2_for_power_of_2(ALLOC_BLOCK_SIZE));
+   const int alloc_block_count = 1 + ((size - 1) >> alloc_block_size_log2);
 
    DEBUG_printk("The block node used up to %i pages\n", alloc_block_count);
 
@@ -486,12 +483,17 @@ void initialize_kmalloc() {
 
    ASSERT(!kmalloc_initialized);
 
+#ifdef KERNEL_TEST
    bzero(allocation_for_metadata_nodes, sizeof(allocation_for_metadata_nodes));
+#endif
 
    DEBUG_printk("heap base addr: %p\n", HEAP_BASE_ADDR);
    DEBUG_printk("heap data addr: %p\n", HEAP_DATA_ADDR);
    DEBUG_printk("heap size: %u\n", HEAP_DATA_SIZE);
 
+
+   heap_data_size_log2 = log2_for_power_of_2(HEAP_DATA_SIZE);
+   alloc_block_size_log2 = log2_for_power_of_2(ALLOC_BLOCK_SIZE);
    kmalloc_initialized = true;
 }
 
