@@ -164,7 +164,6 @@ ALWAYS_INLINE static bool node_has_page(int node)
    return allocation_for_metadata_nodes[(node * sizeof(block_node)) >> 15];
 }
 
-
 void evenually_allocate_page_for_node(int node)
 {
    block_node new_node;
@@ -180,9 +179,7 @@ void evenually_allocate_page_for_node(int node)
       DEBUG_ONLY(bool success =) kbasic_virtual_alloc(pagesAddr, 8);
       ASSERT(success);
 
-      for (unsigned i = 0; i < 8 * PAGE_SIZE/sizeof(block_node); i++) {
-         ((block_node *)pagesAddr)[i] = new_node;
-      }
+      memset((void *)pagesAddr, *(u8 *)&new_node, 8 * PAGE_SIZE);
 
       allocation_for_metadata_nodes[index] = true;
    }
