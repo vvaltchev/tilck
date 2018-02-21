@@ -89,24 +89,6 @@ CONSTEXPR void *node_to_ptr(int node, size_t size)
    return (void *)(raddr + HEAP_DATA_ADDR);
 }
 
-static void set_no_free_uplevels(int node)
-{
-   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
-
-   int n = NODE_PARENT(node);
-
-   do {
-
-      if (md->nodes[NODE_LEFT(n)].full &&
-          md->nodes[NODE_RIGHT(n)].full) {
-         md->nodes[n].full = true;
-      }
-
-      n = NODE_PARENT(n);
-
-   } while (n > 0);
-}
-
 CONSTEXPR static ALWAYS_INLINE bool is_block_node_free(block_node n)
 {
    return !n.full && !n.split;
@@ -348,8 +330,15 @@ void *kmalloc(size_t desired_size)
 
          void *vaddr = actual_allocate_node(node_size, node);
 
-         // Walking up to mark the parent node as 'not free' if necessary..
-         set_no_free_uplevels(node);
+         // Walking up to mark the parent nodes as 'full' if necessary..
+
+         for (int ss = stack_size - 2; ss > 0; ss--) {
+
+            const int n = alloc_stack[ss].node;
+
+            if (md->nodes[NODE_LEFT(n)].full && md->nodes[NODE_RIGHT(n)].full)
+               md->nodes[n].full = true;
+         }
 
          return vaddr;
       }

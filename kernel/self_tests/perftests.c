@@ -13,10 +13,10 @@ extern int random_values[RANDOM_VALUES_COUNT];
 
 void kernel_kmalloc_perf_test()
 {
+   void *allocations[RANDOM_VALUES_COUNT];
    const int iters = 1000;
    int memAllocated = 0;
 
-   void *allocations[RANDOM_VALUES_COUNT];
 
    printk("*** kmalloc_perf_test, %d iterations ***\n", iters);
 
