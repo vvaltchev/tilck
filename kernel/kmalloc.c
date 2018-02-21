@@ -28,13 +28,16 @@ typedef struct {
    // otherwise (when split = 1), it means there is some free space.
    u8 has_some_free_space : 1;
 
-   u8 allocated : 1; // used only for nodes having size=ALLOC_BLOCK_SIZE.
+   u8 allocated : 1; // used only for nodes having size = ALLOC_BLOCK_SIZE.
 
    u8 unused : 5;
 
 } block_node;
 
 STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
+
+static const block_node new_node = { false, true, false, 0 };
+
 
 typedef struct {
 
@@ -164,27 +167,21 @@ ALWAYS_INLINE static bool node_has_page(int node)
    return allocation_for_metadata_nodes[(node * sizeof(block_node)) >> 15];
 }
 
-void evenually_allocate_page_for_node(int node)
+static inline void evenually_allocate_page_for_node(int node)
 {
-   block_node new_node;
-   new_node.split = false;
-   new_node.has_some_free_space = true;
-   new_node.allocated = false;
-
-   uptr index = (node * sizeof(block_node)) >> 15;
-   uptr pagesAddr = HEAP_BASE_ADDR + (index << 15);
+   const uptr index = (node * sizeof(block_node)) >> 15;
+   const uptr pages_addr = HEAP_BASE_ADDR + (index << 15);
 
    if (!allocation_for_metadata_nodes[index]) {
 
-      DEBUG_ONLY(bool success =) kbasic_virtual_alloc(pagesAddr, 8);
+      DEBUG_ONLY(bool success =) kbasic_virtual_alloc(pages_addr, 8);
       ASSERT(success);
 
-      memset((void *)pagesAddr, *(u8 *)&new_node, 8 * PAGE_SIZE);
+      memset((void *)pages_addr, *(u8 *)&new_node, 8 * PAGE_SIZE);
 
       allocation_for_metadata_nodes[index] = true;
    }
 }
-
 
 static void actual_allocate_node(size_t node_size, int node, uptr vaddr)
 {
@@ -192,8 +189,6 @@ static void actual_allocate_node(size_t node_size, int node, uptr vaddr)
 
    md->nodes[node].has_some_free_space = false;
 
-   // Walking up to mark the parent node as 'not free' if necessary..
-   set_no_free_uplevels(node);
 
    ASSERT((void *)vaddr == node_to_ptr(node, node_size));
 
@@ -356,6 +351,10 @@ void *kmalloc(size_t desired_size)
          }
 
          actual_allocate_node(node_size, node, vaddr);
+
+         // Walking up to mark the parent node as 'not free' if necessary..
+         set_no_free_uplevels(node);
+
          return (void *) vaddr;
       }
 

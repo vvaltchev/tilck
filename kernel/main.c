@@ -28,7 +28,13 @@ task_info *usermode_init_task = NULL;
 
 void show_hello_message()
 {
-   printk("Hello from exOS!\n");
+
+#ifdef DEBUG
+   printk("Hello from exOS! [DEBUG build]\n");
+#else
+   printk("Hello from exOS! [RELEASE build]\n");
+#endif
+
    printk("TIMER_HZ: %i\n", TIMER_HZ);
 }
 
