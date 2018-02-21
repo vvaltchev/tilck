@@ -24,9 +24,9 @@ typedef struct {
    // 1 if the block has been split. Check its children.
    u8 split : 1;
 
-   // 1 means the chunk is completely free when split = 0,
-   // otherwise (when split = 1), it means there is some free space.
-   u8 has_some_free_space : 1;
+   // 1 means obviously full
+   // 0 means completely empty if split = 0, or partially empty if split = 1
+   u8 full : 1;
 
    u8 allocated : 1; // used only for nodes having size = ALLOC_BLOCK_SIZE.
 
@@ -36,7 +36,7 @@ typedef struct {
 
 STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 
-static const block_node new_node = { false, true, false, 0 };
+static const block_node new_node; // Just zeros.
 
 
 typedef struct {
@@ -99,9 +99,9 @@ static void set_no_free_uplevels(int node)
 
    do {
 
-      if (!md->nodes[NODE_LEFT(n)].has_some_free_space &&
-          !md->nodes[NODE_RIGHT(n)].has_some_free_space) {
-         md->nodes[n].has_some_free_space = false;
+      if (md->nodes[NODE_LEFT(n)].full &&
+          md->nodes[NODE_RIGHT(n)].full) {
+         md->nodes[n].full = true;
       }
 
       n = NODE_PARENT(n);
@@ -111,7 +111,7 @@ static void set_no_free_uplevels(int node)
 
 CONSTEXPR static ALWAYS_INLINE bool is_block_node_free(block_node n)
 {
-   return n.has_some_free_space && !n.split;
+   return !n.full && !n.split;
 }
 
 static size_t set_free_uplevels(int *node, size_t size) {
@@ -120,7 +120,7 @@ static size_t set_free_uplevels(int *node, size_t size) {
    size_t curr_size = size << 1;
    int n = *node;
 
-   md->nodes[n].has_some_free_space = true;
+   md->nodes[n].full = false;
    n = NODE_PARENT(n);
 
    do {
@@ -138,10 +138,10 @@ static size_t set_free_uplevels(int *node, size_t size) {
                       n, curr_size);
 
          DEBUG_printk("node left: free:  %i, split: %i\n",
-                      left.has_some_free_space, left.split);
+                      !left.full, left.split);
 
          DEBUG_printk("node right: free: %i, split: %i\n",
-                      right.has_some_free_space, left.split);
+                      !right.full, left.split);
 
          curr_size >>= 1;
          break;
@@ -151,7 +151,7 @@ static size_t set_free_uplevels(int *node, size_t size) {
 
       DEBUG_printk("Marking node = %i (size: %u) as free\n", n, curr_size);
 
-      md->nodes[n].has_some_free_space = true;
+      md->nodes[n].full = false;
       md->nodes[n].split = false;
 
       n = NODE_PARENT(n);
@@ -177,8 +177,9 @@ static inline void evenually_allocate_page_for_node(int node)
       DEBUG_ONLY(bool success =) kbasic_virtual_alloc(pages_addr, 8);
       ASSERT(success);
 
-      memset((void *)pages_addr, *(u8 *)&new_node, 8 * PAGE_SIZE);
+      // ASSUMPTION: the value of new_node is just 8 zeros.
 
+      bzero((void *)pages_addr, 8 * PAGE_SIZE);
       allocation_for_metadata_nodes[index] = true;
    }
 }
@@ -187,8 +188,7 @@ static void actual_allocate_node(size_t node_size, int node, uptr vaddr)
 {
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
-   md->nodes[node].has_some_free_space = false;
-
+   md->nodes[node].full = true;
 
    ASSERT((void *)vaddr == node_to_ptr(node, node_size));
 
@@ -220,7 +220,7 @@ static void actual_allocate_node(size_t node_size, int node, uptr vaddr)
 
       if (node_size >= ALLOC_BLOCK_SIZE) {
          ASSERT(!md->nodes[alloc_node].split);
-         md->nodes[alloc_node].has_some_free_space = false;
+         md->nodes[alloc_node].full = true;
       } else {
          ASSERT(md->nodes[alloc_node].split);
       }
@@ -240,10 +240,10 @@ ALWAYS_INLINE static void split_node(int node)
    md->nodes[node].split = true;
 
    md->nodes[NODE_LEFT(node)].split = false;
-   md->nodes[NODE_LEFT(node)].has_some_free_space = true;
+   md->nodes[NODE_LEFT(node)].full = false;
 
    md->nodes[NODE_RIGHT(node)].split = false;
-   md->nodes[NODE_RIGHT(node)].has_some_free_space = true;
+   md->nodes[NODE_RIGHT(node)].full = false;
 }
 
 //////////////////////////////////////////////////////////////////
@@ -338,7 +338,7 @@ void *kmalloc(size_t desired_size)
 
       block_node n = md->nodes[node];
 
-      if (!n.has_some_free_space) {
+      if (n.full) {
          DEBUG_printk("Not free, return null\n");
          SIMULATE_RETURN_NULL();
       }
@@ -364,7 +364,7 @@ void *kmalloc(size_t desired_size)
          split_node(node);
       }
 
-      if (md->nodes[left_node].has_some_free_space) {
+      if (!md->nodes[left_node].full) {
 
          DEBUG_printk("going to left..\n");
 
@@ -378,7 +378,7 @@ void *kmalloc(size_t desired_size)
          // The call on the left node returned NULL so, go to the right node.
          SIMULATE_CALL(half_node_size, vaddr + half_node_size, right_node);
 
-      } else if (md->nodes[right_node].has_some_free_space) {
+      } else if (!md->nodes[right_node].full) {
 
          DEBUG_printk("going on right..\n");
 
@@ -457,7 +457,7 @@ void kfree(void *ptr, size_t size)
                    "alloc = %i, free = %i, split = %i\n",
                    i, alloc_block_node, alloc_block_vaddr,
                    md->nodes[alloc_block_node].allocated,
-                   md->nodes[alloc_block_node].has_some_free_space,
+                   !md->nodes[alloc_block_node].full,
                    md->nodes[alloc_block_node].split);
 
       /*
@@ -476,13 +476,7 @@ void kfree(void *ptr, size_t size)
          kbasic_virtual_free(alloc_block_vaddr, ALLOC_BLOCK_SIZE / PAGE_SIZE);
       ASSERT(success);
 
-      block_node new_node_val;
-      new_node_val.allocated = false;
-      new_node_val.has_some_free_space = true;
-      new_node_val.split = false;
-
-      md->nodes[alloc_block_node] = new_node_val;
-
+      md->nodes[alloc_block_node] = new_node;
       alloc_block_vaddr += ALLOC_BLOCK_SIZE;
    }
 }
