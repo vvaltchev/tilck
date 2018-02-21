@@ -4,8 +4,6 @@
 #include <string_util.h>
 #include <utils.h>
 
-#define ALLOC_BLOCK_SIZE (32 * PAGE_SIZE)
-
 // MIN_BLOCK_SIZE has to be a multiple of 32
 STATIC_ASSERT((MIN_BLOCK_SIZE & 31) == 0);
 
@@ -69,11 +67,11 @@ static bool allocation_for_metadata_nodes[ALLOC_METADATA_SIZE];
 CONSTEXPR int ptr_to_node(void *ptr, size_t size)
 {
    const int heapSizeLog = log2_for_power_of_2(HEAP_DATA_SIZE);
+   const int sizeLog = log2_for_power_of_2(size);
 
-   uptr raddr = (uptr)ptr - HEAP_DATA_ADDR;
-   int sizeLog = log2_for_power_of_2(size);
-   int nodes_before_our = (1 << (heapSizeLog - sizeLog)) - 1;
-   int position_in_row = raddr >> sizeLog;
+   const uptr raddr = (uptr)ptr - HEAP_DATA_ADDR;
+   const int nodes_before_our = (1 << (heapSizeLog - sizeLog)) - 1;
+   const int position_in_row = raddr >> sizeLog;
 
    return nodes_before_our + position_in_row;
 }
@@ -81,12 +79,11 @@ CONSTEXPR int ptr_to_node(void *ptr, size_t size)
 CONSTEXPR void *node_to_ptr(int node, size_t size)
 {
    const int heapSizeLog = log2_for_power_of_2(HEAP_DATA_SIZE);
+   const int sizeLog = log2_for_power_of_2(size);
 
-   int sizeLog = log2_for_power_of_2(size);
-   int nodes_before_our = (1 << (heapSizeLog - sizeLog)) - 1;
-
-   int position_in_row = node - nodes_before_our;
-   uptr raddr = position_in_row << sizeLog;
+   const int nodes_before_our = (1 << (heapSizeLog - sizeLog)) - 1;
+   const int position_in_row = node - nodes_before_our;
+   const uptr raddr = position_in_row << sizeLog;
 
    return (void *)(raddr + HEAP_DATA_ADDR);
 }
@@ -204,12 +201,14 @@ static void actual_allocate_node(size_t node_size, int node, uptr vaddr)
    ASSERT((void *)vaddr == node_to_ptr(node, node_size));
 
    uptr alloc_block_vaddr = vaddr & ~(ALLOC_BLOCK_SIZE - 1);
-   int alloc_block_count =
+   const int alloc_block_count =
       1 + ((node_size - 1) >> log2_for_power_of_2(ALLOC_BLOCK_SIZE));
 
    for (int i = 0; i < alloc_block_count; i++) {
 
       int alloc_node = ptr_to_node((void *)alloc_block_vaddr, ALLOC_BLOCK_SIZE);
+      ASSERT(node_to_ptr(alloc_node,
+                         ALLOC_BLOCK_SIZE) == (void *)alloc_block_vaddr);
       evenually_allocate_page_for_node(alloc_node);
 
       DEBUG_printk("For node# %i, using alloc block (%i/%i): %p (node #%u)\n",
@@ -283,6 +282,13 @@ typedef struct {
 void *kmalloc(size_t desired_size)
 {
    ASSERT(kmalloc_initialized);
+
+   /*
+    * ASSERTs that HEAP_BASE_ADDR is aligned at ALLOC_BLOCK_SIZE.
+    * Without that condition the "magic" of ptr_to_node() and node_to_ptr()
+    * does not work.
+    */
+   ASSERT((HEAP_BASE_ADDR & (ALLOC_BLOCK_SIZE - 1)) == 0);
 
    DEBUG_printk("kmalloc(%u)...\n", desired_size);
 

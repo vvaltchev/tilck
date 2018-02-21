@@ -29,8 +29,7 @@ void initialize_test_kernel_heap()
       return;
    }
 
-   uptr align_size = 16 * PAGE_SIZE;
-   kernel_heap_base = aligned_alloc(align_size, HEAP_DATA_SIZE);
+   kernel_heap_base = aligned_alloc(ALLOC_BLOCK_SIZE, HEAP_DATA_SIZE);
 }
 
 void initialize_kmalloc_for_tests()

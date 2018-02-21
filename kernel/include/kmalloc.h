@@ -14,6 +14,7 @@ extern void *kernel_heap_base;
 #endif
 
 #define MIN_BLOCK_SIZE (32)
+#define ALLOC_BLOCK_SIZE (32 * PAGE_SIZE)
 
 
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)
