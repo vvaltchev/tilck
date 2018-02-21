@@ -182,17 +182,15 @@ static inline void evenually_allocate_page_for_node(int node)
    }
 }
 
-static void actual_allocate_node(size_t node_size, int node, uptr vaddr)
+static void *actual_allocate_node(size_t node_size, int node)
 {
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
-
    md->nodes[node].full = true;
 
-   ASSERT((void *)vaddr == node_to_ptr(node, node_size));
+   const uptr vaddr = (uptr)node_to_ptr(node, node_size);
 
    uptr alloc_block_vaddr = vaddr & ~(ALLOC_BLOCK_SIZE - 1);
-   const int alloc_block_count =
-      1 + ((node_size - 1) >> alloc_block_size_log2);
+   const int alloc_block_count = 1 + ((node_size - 1) >> alloc_block_size_log2);
 
    for (int i = 0; i < alloc_block_count; i++) {
 
@@ -229,6 +227,8 @@ static void actual_allocate_node(size_t node_size, int node, uptr vaddr)
    DEBUG_printk("Returning addr %p (%u alloc blocks)\n",
                 vaddr,
                 alloc_block_count);
+
+   return (void *)vaddr;
 }
 
 ALWAYS_INLINE static void split_node(int node)
@@ -249,15 +249,14 @@ ALWAYS_INLINE static void split_node(int node)
 typedef struct {
 
    size_t node_size;
-   uptr vaddr;
    int node;
 
 } stack_elem;
 
 
-#define SIMULATE_CALL(a1, a2, a3)              \
+#define SIMULATE_CALL(a1, a2)                  \
    {                                           \
-      stack_elem _elem_ = {(a1), (a2), (a3)};  \
+      stack_elem _elem_ = {(a1), (a2)};        \
       alloc_stack[stack_size++] = _elem_;      \
       continue;                                \
    }
@@ -296,14 +295,13 @@ void *kmalloc(size_t desired_size)
    bool returned = false;
    stack_elem alloc_stack[32];
 
-   stack_elem base_elem = { HEAP_DATA_SIZE, HEAP_DATA_ADDR, 0 };
+   stack_elem base_elem = { HEAP_DATA_SIZE, 0 };
    alloc_stack[0] = base_elem;
 
    while (stack_size) {
 
       // Load the "stack" (function arguments)
       const size_t node_size = alloc_stack[stack_size - 1].node_size;
-      const uptr vaddr = alloc_stack[stack_size - 1].vaddr;
       const int node = alloc_stack[stack_size - 1].node;
 
       const size_t half_node_size = HALF(node_size);
@@ -348,12 +346,12 @@ void *kmalloc(size_t desired_size)
             SIMULATE_RETURN_NULL();
          }
 
-         actual_allocate_node(node_size, node, vaddr);
+         void *vaddr = actual_allocate_node(node_size, node);
 
          // Walking up to mark the parent node as 'not free' if necessary..
          set_no_free_uplevels(node);
 
-         return (void *) vaddr;
+         return vaddr;
       }
 
 
@@ -366,7 +364,7 @@ void *kmalloc(size_t desired_size)
 
          DEBUG_printk("going to left..\n");
 
-         SIMULATE_CALL(half_node_size, vaddr, left_node);
+         SIMULATE_CALL(half_node_size, left_node);
 
          after_left_call:
 
@@ -374,13 +372,13 @@ void *kmalloc(size_t desired_size)
                       "trying with right..\n");
 
          // The call on the left node returned NULL so, go to the right node.
-         SIMULATE_CALL(half_node_size, vaddr + half_node_size, right_node);
+         SIMULATE_CALL(half_node_size, right_node);
 
       } else if (!md->nodes[right_node].full) {
 
          DEBUG_printk("going on right..\n");
 
-         SIMULATE_CALL(half_node_size, vaddr + half_node_size, right_node);
+         SIMULATE_CALL(half_node_size, right_node);
 
          after_right_call:
          SIMULATE_RETURN_NULL();
