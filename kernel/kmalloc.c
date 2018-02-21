@@ -16,8 +16,7 @@ STATIC_ASSERT((ALLOC_BLOCK_SIZE & (PAGE_SIZE - 1)) == 0);
 bool kbasic_virtual_alloc(uptr vaddr, int page_count);
 bool kbasic_virtual_free(uptr vaddr, int page_count);
 
-//#define DEBUG_printk printk
-#define DEBUG_printk(...)
+#include "kmalloc_debug.h"
 
 typedef struct {
 
@@ -113,24 +112,14 @@ static size_t set_free_uplevels(int *node, size_t size) {
       block_node right = md->nodes[NODE_RIGHT(n)];
 
       if (!is_block_node_free(left) || !is_block_node_free(right)) {
-
-         DEBUG_printk("STOP: unable to make node %i (size %u) as free\n",
-                      n, curr_size);
-
-         DEBUG_printk("node left: free:  %i, split: %i\n",
-                      !left.full, left.split);
-
-         DEBUG_printk("node right: free: %i, split: %i\n",
-                      !right.full, left.split);
-
+         DEBUG_stop_coaleshe;
          curr_size >>= 1;
          break;
       }
 
       *node = n; // last successful coaleshe.
 
-      DEBUG_printk("Marking node = %i (size: %u) as free\n", n, curr_size);
-
+      DEBUG_coaleshe;
       md->nodes[n].full = false;
       md->nodes[n].split = false;
 
@@ -154,11 +143,11 @@ static inline void evenually_allocate_page_for_node(int node)
 
    if (!allocation_for_metadata_nodes[index]) {
 
+      // TODO: handle out-of-memory.
       DEBUG_ONLY(bool success =) kbasic_virtual_alloc(pages_addr, 8);
       ASSERT(success);
 
       // ASSUMPTION: the value of new_node is just 8 zeros.
-
       bzero((void *)pages_addr, 8 * PAGE_SIZE);
       allocation_for_metadata_nodes[index] = true;
    }
@@ -181,13 +170,13 @@ static void *actual_allocate_node(size_t node_size, int node)
                          ALLOC_BLOCK_SIZE) == (void *)alloc_block_vaddr);
       evenually_allocate_page_for_node(alloc_node);
 
-      DEBUG_printk("For node# %i, using alloc block (%i/%i): %p (node #%u)\n",
-                   node, i+1, alloc_block_count, alloc_block_vaddr, alloc_node);
+      DEBUG_allocate_node1;
 
       if (!md->nodes[alloc_node].allocated) {
 
-         DEBUG_printk("Allocating block of pages..\n");
+         DEBUG_allocate_node2;
 
+         // TODO: handle out-of-memory
          DEBUG_ONLY(bool success =)
             kbasic_virtual_alloc(alloc_block_vaddr,
                                  ALLOC_BLOCK_SIZE / PAGE_SIZE);
@@ -206,24 +195,8 @@ static void *actual_allocate_node(size_t node_size, int node)
       alloc_block_vaddr += ALLOC_BLOCK_SIZE;
    }
 
-   DEBUG_printk("Returning addr %p (%u alloc blocks)\n",
-                vaddr,
-                alloc_block_count);
-
+   DEBUG_allocate_node3;
    return (void *)vaddr;
-}
-
-ALWAYS_INLINE static void split_node(int node)
-{
-   allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
-
-   md->nodes[node].split = true;
-
-   md->nodes[NODE_LEFT(node)].split = false;
-   md->nodes[NODE_LEFT(node)].full = false;
-
-   md->nodes[NODE_RIGHT(node)].split = false;
-   md->nodes[NODE_RIGHT(node)].full = false;
 }
 
 //////////////////////////////////////////////////////////////////
@@ -253,6 +226,7 @@ typedef struct {
 void *kmalloc(size_t desired_size)
 {
    ASSERT(kmalloc_initialized);
+   ASSERT(desired_size != 0);
 
    /*
     * ASSERTs that HEAP_BASE_ADDR is aligned at ALLOC_BLOCK_SIZE.
@@ -261,16 +235,12 @@ void *kmalloc(size_t desired_size)
     */
    ASSERT((HEAP_BASE_ADDR & (ALLOC_BLOCK_SIZE - 1)) == 0);
 
-   DEBUG_printk("kmalloc(%u)...\n", desired_size);
+   DEBUG_kmalloc_begin;
 
-   if (UNLIKELY(desired_size > HEAP_DATA_SIZE)) {
+   if (UNLIKELY(desired_size > HEAP_DATA_SIZE))
       return NULL;
-   }
-
-   ASSERT(desired_size != 0);
 
    const size_t size = MAX(desired_size, MIN_BLOCK_SIZE);
-
    allocator_meta_data * const md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
    int stack_size = 1;
@@ -303,9 +273,7 @@ void *kmalloc(size_t desired_size)
       }
 
       // Handling a CALL
-
-      DEBUG_printk("Node# %i, node_size = %u, vaddr = %p\n",
-                   node, node_size, vaddr);
+      DEBUG_kmalloc_call_begin;
 
       evenually_allocate_page_for_node(node);
 
@@ -317,14 +285,14 @@ void *kmalloc(size_t desired_size)
       block_node n = md->nodes[node];
 
       if (n.full) {
-         DEBUG_printk("Not free, return null\n");
+         DEBUG_already_full;
          SIMULATE_RETURN_NULL();
       }
 
       if (half_node_size < size) {
 
          if (n.split) {
-            DEBUG_printk("split, return null\n");
+            DEBUG_already_split;
             SIMULATE_RETURN_NULL();
          }
 
@@ -345,27 +313,30 @@ void *kmalloc(size_t desired_size)
 
 
       if (!n.split) {
-         DEBUG_printk("Splitting node #%u...\n", node);
-         split_node(node);
+         DEBUG_kmalloc_split;
+
+         md->nodes[node].split = true;
+
+         md->nodes[left_node].split = false;
+         md->nodes[left_node].full = false;
+
+         md->nodes[right_node].split = false;
+         md->nodes[right_node].full = false;
       }
 
       if (!md->nodes[left_node].full) {
-
-         DEBUG_printk("going to left..\n");
+         DEBUG_going_left;
 
          SIMULATE_CALL(half_node_size, left_node);
 
          after_left_call:
-
-         DEBUG_printk("allocation on left node not possible, "
-                      "trying with right..\n");
-
          // The call on the left node returned NULL so, go to the right node.
+
+         DEBUG_left_failed;
          SIMULATE_CALL(half_node_size, right_node);
 
       } else if (!md->nodes[right_node].full) {
-
-         DEBUG_printk("going on right..\n");
+         DEBUG_going_right;
 
          SIMULATE_CALL(half_node_size, right_node);
 
@@ -388,17 +359,16 @@ void kfree(void *ptr, size_t size)
 {
    ASSERT(kmalloc_initialized);
 
-   if (ptr == NULL) {
+   if (ptr == NULL)
       return;
-   }
 
+   // ptr == NULL with size == 0 is fine.
    ASSERT(size != 0);
 
    size = roundup_next_power_of_2(MAX(size, MIN_BLOCK_SIZE));
+   const int node = ptr_to_node(ptr, size);
 
-   int node = ptr_to_node(ptr, size);
-
-   DEBUG_printk("free_node: node# %i (size %u)\n", node, size);
+   DEBUG_free1;
 
    ASSERT(node_to_ptr(node, size) == ptr);
    ASSERT(node_has_page(node));
@@ -409,15 +379,13 @@ void kfree(void *ptr, size_t size)
    ASSERT(!md->nodes[node].split);
 
 
-   // Walking up to mark the parent nodes as 'free' if necessary..
+   // Walking up to mark the parent nodes as 'not full' if necessary..
 
    {
       int biggest_free_node = node;
       size_t biggest_free_size = set_free_uplevels(&biggest_free_node, size);
 
-      DEBUG_printk("After coaleshe, biggest_free_node# %i, "
-                   "biggest_free_size = %u\n",
-                   biggest_free_node, biggest_free_size);
+      DEBUG_free_after_coaleshe;
 
       ASSERT(biggest_free_node == node || biggest_free_size != size);
 
@@ -428,21 +396,15 @@ void kfree(void *ptr, size_t size)
    uptr alloc_block_vaddr = (uptr)ptr & ~(ALLOC_BLOCK_SIZE - 1);
    const int alloc_block_count = 1 + ((size - 1) >> alloc_block_size_log2);
 
-   DEBUG_printk("The block node used up to %i pages\n", alloc_block_count);
+   DEBUG_free_alloc_block_count;
 
    for (int i = 0; i < alloc_block_count; i++) {
 
-      int alloc_block_node =
+      const int alloc_node =
          ptr_to_node((void *)alloc_block_vaddr, ALLOC_BLOCK_SIZE);
 
-      ASSERT(node_has_page(alloc_block_node));
-
-      DEBUG_printk("Checking alloc block i = %i, pNode = %i, pAddr = %p, "
-                   "alloc = %i, free = %i, split = %i\n",
-                   i, alloc_block_node, alloc_block_vaddr,
-                   md->nodes[alloc_block_node].allocated,
-                   !md->nodes[alloc_block_node].full,
-                   md->nodes[alloc_block_node].split);
+      ASSERT(node_has_page(alloc_node));
+      DEBUG_check_alloc_block;
 
       /*
        * For nodes smaller than ALLOC_BLOCK_SIZE, the page we're freeing MUST
@@ -450,24 +412,24 @@ void kfree(void *ptr, size_t size)
        * a major block owns its all pages and their flags are irrelevant.
        */
       ASSERT(size >= ALLOC_BLOCK_SIZE ||
-             is_block_node_free(md->nodes[alloc_block_node]));
+             is_block_node_free(md->nodes[alloc_node]));
 
-      ASSERT(md->nodes[alloc_block_node].allocated);
+      ASSERT(md->nodes[alloc_node].allocated);
 
-      DEBUG_printk("---> FREEING the ALLOC BLOCK!\n");
+      DEBUG_free_freeing_block;
 
       DEBUG_ONLY(bool success =)
          kbasic_virtual_free(alloc_block_vaddr, ALLOC_BLOCK_SIZE / PAGE_SIZE);
       ASSERT(success);
 
-      md->nodes[alloc_block_node] = new_node;
+      md->nodes[alloc_node] = new_node;
       alloc_block_vaddr += ALLOC_BLOCK_SIZE;
    }
 }
 
 
-void initialize_kmalloc() {
-
+void initialize_kmalloc()
+{
    ASSERT(!kmalloc_initialized);
 
 #ifdef KERNEL_TEST
