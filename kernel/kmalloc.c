@@ -178,8 +178,7 @@ static void *actual_allocate_node(size_t node_size, int node)
 
          // TODO: handle out-of-memory
          DEBUG_ONLY(bool success =)
-            kbasic_virtual_alloc(alloc_block_vaddr,
-                                 ALLOC_BLOCK_SIZE / PAGE_SIZE);
+            kbasic_virtual_alloc(alloc_block_vaddr, ALLOC_BLOCK_PAGES);
          ASSERT(success);
 
          md->nodes[alloc_node].allocated = true;
@@ -419,7 +418,7 @@ void kfree(void *ptr, size_t size)
       DEBUG_free_freeing_block;
 
       DEBUG_ONLY(bool success =)
-         kbasic_virtual_free(alloc_block_vaddr, ALLOC_BLOCK_SIZE / PAGE_SIZE);
+         kbasic_virtual_free(alloc_block_vaddr, ALLOC_BLOCK_PAGES);
       ASSERT(success);
 
       md->nodes[alloc_node] = new_node;
