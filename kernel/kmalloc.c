@@ -41,15 +41,8 @@ typedef struct {
 
 } allocator_meta_data;
 
-
-/*
- * Each byte represents 8 * PAGE_SIZE bytes = 32 KB.
- */
-
-#define ALLOC_METADATA_SIZE \
-   (sizeof(block_node) * KMALLOC_NODES_COUNT_IN_META_DATA / (8 * PAGE_SIZE))
-
-static bool allocation_for_metadata_nodes[ALLOC_METADATA_SIZE];
+// Each byte represents a block of size KM_METADATA_ALLOC_BS.
+static bool allocation_for_metadata_nodes[KMALLOC_METADATA_SIZE];
 static const block_node new_node; // Just zeros.
 
 static int heap_data_size_log2;
@@ -133,22 +126,26 @@ static size_t set_free_uplevels(int *node, size_t size) {
 
 ALWAYS_INLINE static bool node_has_page(int node)
 {
-   return allocation_for_metadata_nodes[(node * sizeof(block_node)) >> 15];
+   // ASSUMPTION: sizeof(block_node) == 1
+   return allocation_for_metadata_nodes[node >> KM_METADATA_ALLOC_BS_SHIFT];
 }
 
 static inline void evenually_allocate_page_for_node(int node)
 {
-   const uptr index = (node * sizeof(block_node)) >> 15;
-   const uptr pages_addr = HEAP_BASE_ADDR + (index << 15);
+   // ASSUMPTION: sizeof(block_node) == 1
+   const uptr index = node >> KM_METADATA_ALLOC_BS_SHIFT;
+   const uptr pages_addr =
+      HEAP_BASE_ADDR + (index << KM_METADATA_ALLOC_BS_SHIFT);
 
    if (!allocation_for_metadata_nodes[index]) {
 
       // TODO: handle out-of-memory.
-      DEBUG_ONLY(bool success =) kbasic_virtual_alloc(pages_addr, 8);
+      DEBUG_ONLY(bool success =)
+         kbasic_virtual_alloc(pages_addr, KM_METADATA_ALLOC_BS / PAGE_SIZE);
       ASSERT(success);
 
       // ASSUMPTION: the value of new_node is just 8 zeros.
-      bzero((void *)pages_addr, 8 * PAGE_SIZE);
+      bzero((void *)pages_addr, KM_METADATA_ALLOC_BS);
       allocation_for_metadata_nodes[index] = true;
    }
 }
