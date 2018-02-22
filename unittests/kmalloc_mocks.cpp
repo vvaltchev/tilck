@@ -24,7 +24,7 @@ unordered_map<uptr, uptr> mappings;
 void initialize_test_kernel_heap()
 {
    if (kernel_heap_base != nullptr) {
-      memset(kernel_heap_base, 0, HEAP_DATA_SIZE);
+      bzero(kernel_heap_base, HEAP_DATA_SIZE);
       mappings.clear();
       return;
    }

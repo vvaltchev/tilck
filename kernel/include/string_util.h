@@ -18,18 +18,17 @@ static ALWAYS_INLINE void memset(void *ptr, u8 value, size_t num)
    }
 }
 
-// TODO: optimize
 static ALWAYS_INLINE void bzero(void *ptr, size_t len)
 {
-   if (!(len & 3)) {
+   const size_t len4 = len >> 2;
+   for (size_t i = 0; i < len4; i++)
+      ((u32 *)ptr)[i] = 0;
 
-      len >>= 2;
-      for (size_t i = 0; i < len; i++)
-         ((u32*)ptr)[i] = 0;
+   len = len % 4;
+   ptr = ((u8 *)ptr) + (len4 << 2);
 
-   } else {
-      memset(ptr, 0, len);
-   }
+   for (u32 i = 0; i < len; i++)
+      ((u8 *)ptr)[i] = 0;
 }
 
 static ALWAYS_INLINE size_t strlen(const char *str)
