@@ -20,8 +20,9 @@ extern "C" {
 extern bool kmalloc_initialized;
 
 void *kernel_heap_base = nullptr;
-unordered_map<uptr, uptr> mappings;
 bool mock_kmalloc = false;
+
+static unordered_map<uptr, uptr> mappings;
 
 void initialize_test_kernel_heap()
 {
@@ -41,6 +42,8 @@ void initialize_kmalloc_for_tests()
    init_pageframe_allocator();
    initialize_kmalloc();
 }
+
+#ifdef DEBUG
 
 bool __wrap_is_mapped(void *pdir, uptr vaddr)
 {
@@ -72,6 +75,21 @@ bool __wrap_kbasic_virtual_free(uptr vaddr, int page_count)
 
    return true;
 }
+
+#else
+
+/*
+ * In RELEASE builds, now that we have the comparative glibc-malloc perf test,
+ * it is interesting to remove the overhead of the functions below. In DEBUG
+ * builds, the only point of having them implemented as above is to allow
+ * the is_mapped() function return the correct result: that is necessary in
+ * order to many ASSERTs in the kernel to work.
+ */
+bool __wrap_is_mapped(void *pdir, uptr vaddr) { NOT_REACHED(); }
+bool __wrap_kbasic_virtual_alloc(uptr vaddr, int page_count) { return true; }
+bool __wrap_kbasic_virtual_free(uptr vaddr, int page_count) { return true; }
+
+#endif
 
 void *__real_kmalloc(size_t size);
 void __real_kfree(void *ptr, size_t size);
