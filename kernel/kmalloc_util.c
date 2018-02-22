@@ -12,6 +12,9 @@ bool kbasic_virtual_alloc(uptr vaddr, int page_count)
    ASSERT(!(vaddr & (PAGE_SIZE - 1))); // the vaddr must be page-aligned
    ASSERT(page_count == 32 || page_count == 8);
 
+   if (get_free_pageframes_count() < page_count)
+      return false;
+
    page_directory_t *pdir = get_kernel_page_dir();
 
    uptr paddr =
@@ -22,37 +25,37 @@ bool kbasic_virtual_alloc(uptr vaddr, int page_count)
       return true;
    }
 
-   if (page_count == 32) {
+   if (page_count != 32)
+      return false;
 
-      // We failed to allocate 32 physically contiguous pages.
-      // Let's try to allocate them in groups of 8.
+   // We failed to allocate 32 physically contiguous pages.
+   // Let's try to allocate them in groups of 8.
 
-      uptr paddrs[4] = {0};
+   uptr paddrs[4] = {0};
 
-      for (int i = 0; i < 4; i++) {
+   for (int i = 0; i < 4; i++) {
 
-         paddr = alloc_8_pageframes();
+      paddr = alloc_8_pageframes();
 
-         if (!paddr) {
-            // Oops, we failed here too. Rollback.
-            for (i--; i >= 0; i--)
-               free_8_pageframes(paddrs[i]);
-            return false;
-         }
-
-         paddrs[i] = paddr;
+      if (!paddr) {
+         // Oops, we failed here too. Rollback.
+         for (i--; i >= 0; i--)
+            free_8_pageframes(paddrs[i]);
+         return false;
       }
 
-
-      for (int i = 0; i < 4; i++) {
-         map_pages(pdir,
-                   (void *) (vaddr + i * 8 * PAGE_SIZE),
-                   paddrs[i],
-                   8, false, true);
-      }
+      paddrs[i] = paddr;
    }
 
-   return false;
+
+   for (int i = 0; i < 4; i++) {
+      map_pages(pdir,
+                  (void *) (vaddr + i * 8 * PAGE_SIZE),
+                  paddrs[i],
+                  8, false, true);
+   }
+
+   return true;
 }
 
 /*
