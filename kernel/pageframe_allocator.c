@@ -4,7 +4,7 @@
 #include <string_util.h>
 #include <utils.h>
 
-#define RESERVED_MB (INITIAL_MB_RESERVED + MB_RESERVED_FOR_PAGING)
+#define RESERVED_MB (INITIAL_MB_RESERVED + MB_RESERVED_FOR_PAGING + RAMDISK_MB)
 #define RESERVED_ELEMS (RESERVED_MB * 8)
 
 /*

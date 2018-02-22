@@ -19,10 +19,11 @@
 
 #define KERNEL_BASE_VA             0xC0000000
 
-#define RAMDISK_PADDR              (128 * MB)
-#define RAMDISK_VADDR              (KERNEL_BASE_VA + 4 * MB)
+#define RAMDISK_PADDR              (4 * MB)
+#define RAMDISK_VADDR              (KERNEL_BASE_VA + RAMDISK_PADDR)
 
-#define RAMDISK_SIZE               (35 * MB)
+#define RAMDISK_MB                 (35)
+#define RAMDISK_SIZE               (RAMDISK_MB * MB)
 
 #define KERNEL_PADDR               0x00100000    // +1 MB
 #define KERNEL_INITIAL_STACK_ADDR  0xC000FFF0

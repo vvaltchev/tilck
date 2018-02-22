@@ -10,7 +10,7 @@ extern "C" {
    void paging_free_pageframe(uptr address);
 }
 
-#define RESERVED_MB (INITIAL_MB_RESERVED + MB_RESERVED_FOR_PAGING)
+#define RESERVED_MB (INITIAL_MB_RESERVED + MB_RESERVED_FOR_PAGING + RAMDISK_MB)
 #define POTENTIAL_AVAIL_MEM_MB (MAX_MEM_SIZE_IN_MB - RESERVED_MB)
 
 static const uptr avail_pages = POTENTIAL_AVAIL_MEM_MB * MB / PAGE_SIZE;
