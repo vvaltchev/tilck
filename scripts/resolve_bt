@@ -19,7 +19,7 @@ while True:
    for i, vaddr in enumerate(addrs_list):
       out = subprocess.check_output(['addr2line',
                                      '-s', '-f', '-e',
-                                     'build/kernel/elf_kernel', vaddr])
+                                     'build/kernel/arch/elf_kernel', vaddr])
 
       func, f = out.splitlines()
       print "[Frame {}] [{}] {}() in {}\n".format(i, vaddr, func, f)

@@ -19,17 +19,18 @@
 
 #define KERNEL_BASE_VA             0xC0000000
 
-#define RAMDISK_PADDR (128 * MB)
-#define RAMDISK_VADDR              0xCA000000
-#define RAMDISK_SIZE  (35 * MB)
+#define RAMDISK_PADDR              (128 * MB)
+#define RAMDISK_VADDR              (KERNEL_BASE_VA + 4 * MB)
+
+#define RAMDISK_SIZE               (35 * MB)
 
 #define KERNEL_PADDR               0x00100000    // +1 MB
 #define KERNEL_INITIAL_STACK_ADDR  0xC000FFF0
 
-#define KERNEL_MAX_SIZE (500 * KB)
+#define KERNEL_MAX_SIZE            (500 * KB)
 
 
 /* Bootloader specific config */
 
-#define SECTOR_SIZE               512
+#define SECTOR_SIZE                512
 

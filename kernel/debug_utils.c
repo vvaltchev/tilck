@@ -171,7 +171,7 @@ NORETURN void panic(const char *fmt, ...)
 
    dump_stacktrace();
    dump_regs(&current->kernel_state_regs);
-   dump_raw_stack((uptr) &fmt);
+   //dump_raw_stack((uptr) &fmt);
 
 
 #ifdef DEBUG_QEMU_EXIT_ON_PANIC
