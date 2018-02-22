@@ -17,6 +17,7 @@ extern "C" {
    #include <utils.h>
    #include <self_tests/self_tests.h>
    extern bool mock_kmalloc;
+   void kernel_kmalloc_perf_test_per_size(int size);
 }
 
 using namespace std;
@@ -79,6 +80,20 @@ TEST_F(kmalloc_test, perf_test)
    kernel_kmalloc_perf_test();
 }
 
+TEST_F(kmalloc_test, perf32B_test)
+{
+   for (int i = 0; i < 10; i++)
+      kernel_kmalloc_perf_test_per_size(32);
+}
+
+TEST_F(kmalloc_test, perf256K_test)
+{
+   for (int i = 0; i < 10; i++)
+      kernel_kmalloc_perf_test_per_size(256 * KB);
+}
+
+
+
 TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
 {
    mock_kmalloc = true;
@@ -87,7 +102,7 @@ TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
 }
 
 
-TEST_F(kmalloc_test, chaos_test)
+TEST_F(kmalloc_test, DISABLED_chaos_test)
 {
    random_device rdev;
    default_random_engine e(rdev());
@@ -97,4 +112,24 @@ TEST_F(kmalloc_test, chaos_test)
    for (int i = 0; i < 100; i++) {
       kmalloc_chaos_test_sub(e, dist);
    }
+}
+
+extern "C" {
+bool kbasic_virtual_alloc(uptr vaddr, int page_count);
+bool kbasic_virtual_free(uptr vaddr, int page_count);
+}
+
+TEST_F(kmalloc_test, kbasic_virtual_alloc)
+{
+   bool success;
+
+   uptr vaddr = KERNEL_BASE_VA + 5 * MB;
+
+   success = kbasic_virtual_alloc(vaddr, 1);
+   ASSERT_TRUE(success);
+
+   ASSERT_TRUE(is_mapped(get_kernel_page_dir(), (void *)vaddr));
+
+   success = kbasic_virtual_free(vaddr, 1);
+   ASSERT_TRUE(success);
 }

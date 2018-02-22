@@ -207,7 +207,9 @@ static ALWAYS_INLINE void cpuid(int code, u32 *a, u32 *d)
  */
 static ALWAYS_INLINE void invalidate_page(uptr vaddr)
 {
+#ifndef UNIT_TEST_ENVIRONMENT
    asmVolatile("invlpg (%0)" ::"r" (vaddr) : "memory");
+#endif
 }
 
 

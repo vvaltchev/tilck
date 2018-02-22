@@ -4,17 +4,11 @@
 #include <common_defs.h>
 #include <string_util.h>
 
-#if !defined(TESTING) && !defined(KERNEL_TEST)
 #define HEAP_BASE_ADDR (KERNEL_BASE_VA + 64 * MB)
 #define HEAP_DATA_SIZE (64 * MB)
-#else
-extern void *kernel_heap_base;
-#define HEAP_BASE_ADDR ((uptr)kernel_heap_base)
-#define HEAP_DATA_SIZE (64 * MB)
-#endif
 
 #define MIN_BLOCK_SIZE (32)
-#define ALLOC_BLOCK_PAGES (8)
+#define ALLOC_BLOCK_PAGES (1)
 #define ALLOC_BLOCK_SIZE (ALLOC_BLOCK_PAGES * PAGE_SIZE)
 
 

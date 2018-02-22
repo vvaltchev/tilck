@@ -12,8 +12,8 @@
  * address space.
  */
 
-#define KERNEL_PA_TO_VA(pa) ((typeof(pa))((uptr)(pa) + KERNEL_BASE_VA))
-#define KERNEL_VA_TO_PA(va) ((typeof(va))((uptr)(va) - KERNEL_BASE_VA))
+#define KERNEL_PA_TO_VA(pa) ((void *) ((uptr)(pa) + KERNEL_BASE_VA))
+#define KERNEL_VA_TO_PA(va) ((uptr)(va) - KERNEL_BASE_VA)
 
 #define KERNEL_BASE_MAPPED_VADDR_LIMIT                        \
    ((uptr) KERNEL_BASE_VA +                                   \
@@ -37,6 +37,8 @@ extern page_directory_t *kernel_page_dir;
 extern page_directory_t *curr_page_dir;
 extern void *page_size_buf;
 extern u16 *pageframes_refcount;
+
+#ifndef UNIT_TEST_ENVIRONMENT
 
 bool handle_potential_cow(u32 vaddr)
 {
@@ -100,7 +102,6 @@ bool handle_potential_cow(u32 vaddr)
    return true;
 }
 
-
 void handle_page_fault_int(regs *r)
 {
    u32 vaddr;
@@ -152,6 +153,9 @@ void set_page_directory(page_directory_t *pdir)
    curr_page_dir = pdir;
    asmVolatile("mov %0, %%cr3" :: "r"(pdir->paddr));
 }
+
+#endif
+
 
 static void initialize_empty_page_table(page_table_t *t)
 {
@@ -226,7 +230,10 @@ void map_page_int(page_directory_t *pdir,
                   uptr paddr,
                   u32 flags)
 {
-   const u32 vaddr = (u32) vaddrp;
+   const u32 vaddr = (u32) (uptr) vaddrp; // double cast: HACK! allowing the
+                                          // code to compile on x86_64 for
+                                          // unit tests!
+
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
@@ -243,7 +250,7 @@ void map_page_int(page_directory_t *pdir,
 
       uptr page_physical_addr = paging_alloc_pageframe();
 
-      ptable = (void*)KERNEL_PA_TO_VA(page_physical_addr);
+      ptable = KERNEL_PA_TO_VA(page_physical_addr);
 
       initialize_empty_page_table(ptable);
       pdir->page_tables[page_dir_index] = ptable;
@@ -290,6 +297,7 @@ map_pages_int(page_directory_t *pdir,
    }
 }
 
+#ifndef UNIT_TEST_ENVIRONMENT
 
 page_directory_t *pdir_clone(page_directory_t *pdir)
 {
@@ -411,6 +419,8 @@ void pdir_destroy(page_directory_t *pdir)
    kfree(pdir, sizeof(*pdir));
 }
 
+#endif
+
 /*
  * Page directories MUST BE page-size-aligned.
  */
@@ -418,26 +428,27 @@ char kpdir_buf[sizeof(page_directory_t)] __attribute__ ((aligned(PAGE_SIZE)));
 
 void init_paging()
 {
+#ifndef UNIT_TEST_ENVIRONMENT
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
    set_fault_handler(FAULT_GENERAL_PROTECTION, handle_general_protection_fault);
-
+#endif
    kernel_page_dir = (page_directory_t *) kpdir_buf;
 
    /* Note: the content of kernel_page_dir is zeroed. */
-   kernel_page_dir->paddr = (uptr) KERNEL_VA_TO_PA(kernel_page_dir);
+   kernel_page_dir->paddr = KERNEL_VA_TO_PA(kernel_page_dir);
 
    // Create page entries for the whole 4th GB of virtual memory
    for (int i = 768; i < 1024; i++) {
 
-      u32 page_physical_addr = paging_alloc_pageframe();
-      page_table_t *ptable = (void*)KERNEL_PA_TO_VA(page_physical_addr);
+      uptr page_physical_addr = paging_alloc_pageframe();
+      page_table_t *ptable = KERNEL_PA_TO_VA(page_physical_addr);
 
       initialize_empty_page_table(ptable);
 
       kernel_page_dir->page_tables[i] = ptable;
 
       /*
-       * NOTE: page_physical_addr has already it's lower 12 bits cleared
+       * NOTE: page_physical_addr has already its lower 12 bits cleared
        * so we can just OR it with the rest of the flags.
        */
 
@@ -450,14 +461,16 @@ void init_paging()
     * [4KB .. 4MB) => [3GB + 4KB .. 3GB + 4MB)
     */
    map_pages_int(kernel_page_dir,
-                 (void *)KERNEL_PA_TO_VA(0x1000),
-                  0x1000, 1024 - 1, PG_RW_BIT | PG_GLOBAL_BIT);
+                 KERNEL_PA_TO_VA(0x1000),
+                 0x1000, 1024 - 1, PG_RW_BIT | PG_GLOBAL_BIT);
 
+#ifndef UNIT_TEST_ENVIRONMENT
    ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 256);
    set_page_directory(kernel_page_dir);
+#endif
 
    // Page-size buffer used for COW.
-   page_size_buf = (void *) KERNEL_PA_TO_VA(paging_alloc_pageframe());
+   page_size_buf = KERNEL_PA_TO_VA(paging_alloc_pageframe());
 
 
    /*

@@ -17,7 +17,17 @@
 #define DEBUG_QEMU_EXIT_ON_INIT_EXIT
 #define DEBUG_QEMU_EXIT_ON_PANIC
 
+
+#if !defined(TESTING) && !defined(KERNEL_TEST)
+
 #define KERNEL_BASE_VA             0xC0000000
+
+#else
+
+extern void *kernel_va;
+#define KERNEL_BASE_VA             ((uptr)kernel_va)
+
+#endif
 
 #define RAMDISK_PADDR              (4 * MB)
 #define RAMDISK_VADDR              (KERNEL_BASE_VA + RAMDISK_PADDR)

@@ -99,3 +99,4 @@ struct page_directory_t {
 };
 
 STATIC_ASSERT(sizeof(page_directory_t) == PAGE_DIR_SIZE);
+

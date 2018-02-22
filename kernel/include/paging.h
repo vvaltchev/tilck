@@ -6,7 +6,11 @@
 
 #ifdef __i386__
 #define PAGE_DIR_SIZE (2 * PAGE_SIZE + 4)
+#elif defined(UNIT_TEST_ENVIRONMENT)
+#define PAGE_DIR_SIZE (PAGE_SIZE + 1024 * sizeof(uptr) + sizeof(uptr))
 #endif
+
+
 
 // Forward-declaring page_directory_t
 typedef struct page_directory_t page_directory_t;

@@ -83,7 +83,7 @@ bool kbasic_virtual_free(uptr vaddr, int page_count)
 
    if (page_count == 1) {
       free_pageframe(get_mapping(pdir, (void *)vaddr));
-      return true;
+      goto end;
    }
 
    free_8_pageframes(get_mapping(pdir, (void *) vaddr));
@@ -94,6 +94,7 @@ bool kbasic_virtual_free(uptr vaddr, int page_count)
       free_8_pageframes(get_mapping(pdir, (void *) (vaddr + 24 * PAGE_SIZE)));
    }
 
+   end:
    unmap_pages(pdir, (void *)vaddr, page_count);
    return true;
 }

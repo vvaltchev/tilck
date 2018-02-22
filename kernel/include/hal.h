@@ -2,7 +2,7 @@
 #pragma once
 
 
-#if defined(__i386__)
+#if defined(__i386__) || defined(UNIT_TEST_ENVIRONMENT)
 #define __arch__x86__
 
 #include <arch/generic_x86/x86_utils.h>
