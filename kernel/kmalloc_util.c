@@ -20,7 +20,7 @@ bool kbasic_virtual_alloc(uptr vaddr, int page_count)
    uptr paddr =
       (page_count == 32) ? alloc_32_pageframes() : alloc_8_pageframes();
 
-   if (paddr) {
+   if (paddr != INVALID_PADDR) {
       map_pages(pdir, (void *)vaddr, paddr, page_count, false, true);
       return true;
    }
@@ -37,7 +37,7 @@ bool kbasic_virtual_alloc(uptr vaddr, int page_count)
 
       paddr = alloc_8_pageframes();
 
-      if (!paddr) {
+      if (paddr == INVALID_PADDR) {
          // Oops, we failed here too. Rollback.
          for (i--; i >= 0; i--)
             free_8_pageframes(paddrs[i]);

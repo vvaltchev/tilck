@@ -19,7 +19,7 @@ TEST(paging_alloc_pageframe, seq_alloc)
    }
 
    // Now we should be out-of-memory for the paging.
-   ASSERT_EQ(paging_alloc_pageframe(), 0);
+   ASSERT_EQ(paging_alloc_pageframe(), INVALID_PADDR);
 }
 
 
@@ -33,7 +33,7 @@ TEST(paging_alloc_pageframe, seq_alloc_free)
    }
 
    // Now we should be out-of-memory for the paging.
-   ASSERT_EQ(paging_alloc_pageframe(), 0);
+   ASSERT_EQ(paging_alloc_pageframe(), INVALID_PADDR);
 
    // Free everything.
    for (uptr i = 0; i < (MB * MB_RESERVED_FOR_PAGING)/PAGE_SIZE; i++) {
@@ -54,7 +54,7 @@ TEST(paging_alloc_pageframe, one_pageframe_free)
    }
 
    // Now we should be out-of-memory for the paging.
-   ASSERT_EQ(paging_alloc_pageframe(), 0);
+   ASSERT_EQ(paging_alloc_pageframe(), INVALID_PADDR);
 
    // Free an arbtrary pageframe within the rage.
    uptr paddr = INITIAL_MB_RESERVED * MB + (MB * MB_RESERVED_FOR_PAGING)/2;

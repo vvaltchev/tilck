@@ -4,9 +4,6 @@
 #include <string_util.h>
 #include <utils.h>
 
-#define RESERVED_MB (INITIAL_MB_RESERVED + MB_RESERVED_FOR_PAGING + RAMDISK_MB)
-#define RESERVED_ELEMS (RESERVED_MB * 8)
-
 /*
  * By mapping 4096 KB (one page) in 1 bit, a single 32-bit integer maps 128 KB.
  * Mapping 1 MB requires 8 integers.
@@ -24,31 +21,22 @@
 u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
 
 /*
- * HACK: just assume we have 128 MB as memory.
- * In the future, this value has to be somehow passed from the bootloader to
- * the kernel.
+ * HACK: just assume we have 128 MB as memory. In the future, this value has to
+ * be somehow passed from the bootloader to the kernel.
  */
 u32 memsize_in_mb = 128;
-
-u32 last_index;
 int pageframes_used;
+static u32 last_index;
 
-int get_total_pageframes_count(void)
-{
-   return (memsize_in_mb << 20) >> PAGE_SHIFT;
-}
-
-int get_free_pageframes_count(void)
-{
-   return get_total_pageframes_count() - pageframes_used;
-}
-
+#define BITFIELD_ELEMS (memsize_in_mb * 8)
 
 void init_pageframe_allocator(void)
 {
 
 #ifdef KERNEL_TEST
    bzero((void *)pageframes_bitfield, sizeof(pageframes_bitfield));
+   last_index = 0;
+   pageframes_used = 0;
 #else
    /*
     * In the kernel, pageframes_bitfield is zeroed because it is in the BSS
@@ -56,14 +44,22 @@ void init_pageframe_allocator(void)
     */
 #endif
 
-   for (int i = 0; i < RESERVED_ELEMS; i++) {
-      pageframes_bitfield[i] = FULL_128KB_AREA;
-   }
-
-   last_index = 0;
-   pageframes_used = (RESERVED_MB * MB) / PAGE_SIZE;
-
    init_paging_pageframe_allocator();
+}
+
+/*
+ * Use this function only during the initialization, not as a way to allocate
+ * physical memory.
+ */
+void mark_pageframes_as_reserved(uptr paddr, int mb_count)
+{
+   // paddr has to be MB-aligned.
+   ASSERT((paddr & (MB - 1)) == 0);
+
+   for (int i = 0; i < mb_count * 8; i++) {
+      ASSERT(pageframes_bitfield[(paddr >> 3) + i] == 0);
+      pageframes_bitfield[(paddr >> 3) + i] = FULL_128KB_AREA;
+   }
 }
 
 /*
@@ -78,15 +74,15 @@ uptr alloc_pageframe(void)
 {
    u32 free_index;
 
-   for (u32 i = 0; i < ARRAY_SIZE(pageframes_bitfield); i++) {
+   for (u32 i = 0; i < BITFIELD_ELEMS; i++) {
 
       if (pageframes_bitfield[last_index] != FULL_128KB_AREA)
          goto success;
 
-      last_index = (last_index + 1) % ARRAY_SIZE(pageframes_bitfield);
+      last_index = (last_index + 1) % BITFIELD_ELEMS;
    }
 
-   return 0; // default case: failure
+   return INVALID_PADDR; // Default case: failure.
 
    success:
 
@@ -98,7 +94,7 @@ uptr alloc_pageframe(void)
 
 uptr alloc_32_pageframes_aligned(void)
 {
-   for (u32 i = 0; i < ARRAY_SIZE(pageframes_bitfield); i++) {
+   for (u32 i = 0; i < BITFIELD_ELEMS; i++) {
 
       u32 *bf = pageframes_bitfield + last_index;
 
@@ -108,10 +104,10 @@ uptr alloc_32_pageframes_aligned(void)
          return last_index << 17;
       }
 
-      last_index = (last_index + 1) % ARRAY_SIZE(pageframes_bitfield);
+      last_index = (last_index + 1) % BITFIELD_ELEMS;
    }
 
-   return 0;
+   return INVALID_PADDR; // Default case: failure.
 }
 
 
@@ -123,20 +119,19 @@ uptr alloc_32_pageframes(void)
    if (paddr != 0 || get_free_pageframes_count() < 32)
       return paddr;
 
-   for (u32 i = 0; i < ARRAY_SIZE(pageframes_bitfield); i++) {
+   for (u32 i = 0; i < BITFIELD_ELEMS; i++) {
 
-      if (LIKELY(last_index != (ARRAY_SIZE(pageframes_bitfield) - 1))) {
+      if (LIKELY(last_index != (BITFIELD_ELEMS - 1))) {
          bf = ((u8 *) &pageframes_bitfield[last_index]) + 1;
          if (!*(u32 *)bf) goto success;   // check with +1
          if (!*(u32 *)++bf) goto success; // check with +2
          if (!*(u32 *)++bf) goto success; // check with +3
       }
 
-      last_index = (last_index + 1) % ARRAY_SIZE(pageframes_bitfield);
+      last_index = (last_index + 1) % BITFIELD_ELEMS;
    }
 
-   // Default case: failure.
-   return 0;
+   return INVALID_PADDR; // Default case: failure.
 
    success:
    *(u32 *)bf = FULL_128KB_AREA;
@@ -149,7 +144,7 @@ uptr alloc_8_pageframes(void)
 {
    u8 *bf;
 
-   for (u32 i = 0; i < ARRAY_SIZE(pageframes_bitfield); i++) {
+   for (u32 i = 0; i < BITFIELD_ELEMS; i++) {
 
       bf = ((u8 *) &pageframes_bitfield[last_index]);
       if (!*++bf) goto success;   // check with +0
@@ -157,11 +152,10 @@ uptr alloc_8_pageframes(void)
       if (!*++bf) goto success;   // check with +2
       if (!*++bf) goto success;   // check with +3
 
-      last_index = (last_index + 1) % ARRAY_SIZE(pageframes_bitfield);
+      last_index = (last_index + 1) % BITFIELD_ELEMS;
    }
 
-   // Default case: failure.
-   return 0;
+   return INVALID_PADDR;  // Default case: failure.
 
    success:
    *bf = FULL_32KB_AREA;
@@ -200,7 +194,7 @@ void free_pageframe(uptr address) {
     * Make the last index to point here, where we have at least 1 page free.
     * This increases the data locality.
     */
-   last_index = majorIndex % ARRAY_SIZE(pageframes_bitfield);
+   last_index = majorIndex % BITFIELD_ELEMS;
 
    pageframes_used--;
 }

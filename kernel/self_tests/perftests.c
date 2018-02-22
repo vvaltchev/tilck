@@ -123,7 +123,7 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
       // 1. Alloc 32 pageframes.
       for (int j = 0; j < 32; j++) {
          local_paddrs[j] = alloc_pageframe();
-         VERIFY(local_paddrs[j] != 0);
+         VERIFY(local_paddrs[j] != INVALID_PADDR);
       }
 
       // 2. Free 'f' of them, according to the 0s in 'val'.
@@ -189,7 +189,7 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
 
          uptr paddr = alloc_32_pageframes();
 
-         if (!paddr)
+         if (paddr == INVALID_PADDR)
             break;
 
          block_paddrs[blocks] = paddr;
@@ -233,7 +233,7 @@ void kernel_alloc_pageframe_perftest(void)
 
       uptr paddr = alloc_pageframe();
 
-      if (!paddr)
+      if (paddr == INVALID_PADDR)
          break;
 
       paddrs[allocated++] = paddr;

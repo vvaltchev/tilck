@@ -130,7 +130,7 @@ void load_elf_program(const char *filepath,
          }
 
          uptr paddr = alloc_pageframe();
-         VERIFY(paddr != 0);
+         VERIFY(paddr != INVALID_PADDR);
 
          map_page(*pdir_ref, vaddr, paddr, true, true);
          bzero(vaddr, PAGE_SIZE);
@@ -158,7 +158,7 @@ void load_elf_program(const char *filepath,
 
    for (int i = 0; i < pages_for_stack; i++) {
       uptr paddr = alloc_pageframe();
-      VERIFY(paddr != 0);
+      VERIFY(paddr != INVALID_PADDR);
       map_page(*pdir_ref, stack_top + i * PAGE_SIZE, paddr, true, true);
    }
 

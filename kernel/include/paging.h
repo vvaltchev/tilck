@@ -2,47 +2,11 @@
 #pragma once
 
 #include <common_defs.h>
-
-// Max memory size supported by the pageframe allocator.
-#define MAX_MEM_SIZE_IN_MB 1024
-
-#define PAGE_SHIFT 12
-#define PAGE_SIZE ((uptr)1 << PAGE_SHIFT)
-#define OFFSET_IN_PAGE_MASK (PAGE_SIZE - 1)
-#define PAGE_MASK (~OFFSET_IN_PAGE_MASK)
+#include <pageframe_allocator.h>
 
 #ifdef __i386__
 #define PAGE_DIR_SIZE (2 * PAGE_SIZE + 4)
 #endif
-
-/* Internal defines specific for the pageframe allocator */
-
-#define INITIAL_MB_RESERVED 2
-#define MB_RESERVED_FOR_PAGING 2
-
-/* Public interface of the pageframe allocator */
-
-void init_pageframe_allocator(void);
-uptr alloc_pageframe(void);
-uptr alloc_32_pageframes(void);
-uptr alloc_32_pageframes_aligned(void);
-void free_32_pageframes(uptr paddr);
-void free_pageframe(uptr address);
-uptr alloc_8_pageframes(void);
-void free_8_pageframes(uptr paddr);
-int get_free_pageframes_count(void);
-int get_total_pageframes_count(void);
-void init_paging_pageframe_allocator(void);
-bool is_allocated_pageframe(uptr address);
-
-extern u32 memsize_in_mb;
-
-static ALWAYS_INLINE int get_amount_of_physical_memory_in_mb()
-{
-   return memsize_in_mb;
-}
-
-/* Paging-related stuff */
 
 // Forward-declaring page_directory_t
 typedef struct page_directory_t page_directory_t;

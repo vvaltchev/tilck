@@ -81,8 +81,12 @@ void kmain()
    setup_interrupt_handling();
 
    init_pageframe_allocator();
-   initialize_kmalloc();
 
+   mark_pageframes_as_reserved(0, INITIAL_MB_RESERVED +
+                                  MB_RESERVED_FOR_PAGING +
+                                  RAMDISK_MB);
+
+   initialize_kmalloc();
    init_paging();
 
    initialize_scheduler();

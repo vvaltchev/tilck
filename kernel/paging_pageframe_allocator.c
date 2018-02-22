@@ -49,10 +49,12 @@ uptr paging_alloc_pageframe()
    }
 
 #ifndef KERNEL_TEST
+   // In kernel, this call should never fail.
    VERIFY(found);
 #else
+   // In tests, it's OK to fail.
    if (!found)
-      return 0;
+      return INVALID_PADDR;
 #endif
 
    u32 free_index = get_first_zero_bit_index(bitfield[idx]);
