@@ -76,28 +76,23 @@ void init_pageframe_allocator(void)
 
 uptr alloc_pageframe(void)
 {
-
    u32 free_index;
-   bool found = false;
 
    for (u32 i = 0; i < ARRAY_SIZE(pageframes_bitfield); i++) {
 
-      if (pageframes_bitfield[last_index] != FULL_128KB_AREA) {
-         found = true;
-         break;
-      }
+      if (pageframes_bitfield[last_index] != FULL_128KB_AREA)
+         goto success;
 
       last_index = (last_index + 1) % ARRAY_SIZE(pageframes_bitfield);
    }
 
-   if (!found) {
-      return 0;
-   }
+   return 0; // default case: failure
 
-   free_index = get_first_zero_bit_index(pageframes_bitfield[last_index]);
-   pageframes_bitfield[last_index] |= (1 << free_index);
+   success:
 
    pageframes_used++;
+   free_index = get_first_zero_bit_index(pageframes_bitfield[last_index]);
+   pageframes_bitfield[last_index] |= (1 << free_index);
    return ((last_index << 17) + (free_index << PAGE_SHIFT));
 }
 
