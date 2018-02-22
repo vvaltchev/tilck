@@ -39,6 +39,8 @@ set(
    kbasic_virtual_alloc
    kbasic_virtual_free
    is_mapped
+   kmalloc
+   kfree
 )
 
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})

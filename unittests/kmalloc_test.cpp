@@ -16,6 +16,7 @@ extern "C" {
    #include <paging.h>
    #include <utils.h>
    #include <self_tests/self_tests.h>
+   extern bool mock_kmalloc;
 }
 
 using namespace std;
@@ -76,6 +77,13 @@ public:
 TEST_F(kmalloc_test, perf_test)
 {
    kernel_kmalloc_perf_test();
+}
+
+TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
+{
+   mock_kmalloc = true;
+   kernel_kmalloc_perf_test();
+   mock_kmalloc = false;
 }
 
 

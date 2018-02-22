@@ -18,8 +18,10 @@ extern "C" {
 #include <utils.h>
 
 extern bool kmalloc_initialized;
+
 void *kernel_heap_base = nullptr;
 unordered_map<uptr, uptr> mappings;
+bool mock_kmalloc = false;
 
 void initialize_test_kernel_heap()
 {
@@ -69,6 +71,25 @@ bool __wrap_kbasic_virtual_free(uptr vaddr, int page_count)
    }
 
    return true;
+}
+
+void *__real_kmalloc(size_t size);
+void __real_kfree(void *ptr, size_t size);
+
+void *__wrap_kmalloc(size_t size)
+{
+   if (mock_kmalloc)
+      return malloc(size);
+
+   return __real_kmalloc(size);
+}
+
+void __wrap_kfree(void *ptr, size_t size)
+{
+   if (mock_kmalloc)
+      return free(ptr);
+
+   __real_kfree(ptr, size);
 }
 
 }
