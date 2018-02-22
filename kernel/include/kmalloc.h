@@ -14,7 +14,7 @@ extern void *kernel_heap_base;
 #endif
 
 #define MIN_BLOCK_SIZE (32)
-#define ALLOC_BLOCK_PAGES (32)
+#define ALLOC_BLOCK_PAGES (8)
 #define ALLOC_BLOCK_SIZE (ALLOC_BLOCK_PAGES * PAGE_SIZE)
 
 

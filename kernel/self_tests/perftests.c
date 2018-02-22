@@ -11,40 +11,62 @@
 
 extern int random_values[RANDOM_VALUES_COUNT];
 
+void kernel_kmalloc_perf_test_per_size(int size)
+{
+   const int iters = size < 4096 ? 10000 : (size <= 16*KB ? 1000 : 100);
+   void *allocations[iters];
+   u64 start, duration;
+
+   start = RDTSC();
+
+   for (int i = 0; i < iters; i++) {
+
+      allocations[i] = kmalloc(size);
+
+      if (!allocations[i])
+         panic("We were unable to allocate %u bytes\n", size);
+   }
+
+   for (int i = 0; i < iters; i++) {
+      kfree(allocations[i], size);
+   }
+
+   duration = RDTSC() - start;
+   printk("[%i iters] Cycles per kmalloc(%i) + kfree: %llu\n",
+          iters, size, duration  / iters);
+}
+
 void kernel_kmalloc_perf_test()
 {
    void *allocations[RANDOM_VALUES_COUNT];
    const int iters = 1000;
-   int memAllocated = 0;
 
-   printk("*** kmalloc_perf_test, %d iterations ***\n", iters);
+   printk("*** kmalloc perf test ***\n", iters);
 
    u64 start = RDTSC();
 
    for (int i = 0; i < iters; i++) {
 
       for (int j = 0; j < RANDOM_VALUES_COUNT; j++) {
+
          allocations[j] = kmalloc(random_values[j]);
 
          if (!allocations[j])
             panic("We were unable to allocate %u bytes\n", random_values[j]);
-
-         memAllocated +=
-            roundup_next_power_of_2(MAX(random_values[j], MIN_BLOCK_SIZE));
       }
 
-      for (int j = 0; j < RANDOM_VALUES_COUNT; j++) {
-
+      for (int j = 0; j < RANDOM_VALUES_COUNT; j++)
          kfree(allocations[j], random_values[j]);
-
-         memAllocated -=
-            roundup_next_power_of_2(MAX(random_values[j], MIN_BLOCK_SIZE));
-      }
    }
 
    u64 duration = (RDTSC() - start) / (iters * RANDOM_VALUES_COUNT);
 
-   printk("Cycles per kmalloc + kfree: %llu\n", duration);
+   printk("[%i iters] Cycles per kmalloc(RANDOM) + kfree: %llu\n",
+          iters * RANDOM_VALUES_COUNT, duration);
+
+   for (int s = 32; s <= 256*KB; s *= 2) {
+      kernel_kmalloc_perf_test_per_size(s);
+   }
 }
 
 static int calc_perc_free_pageframes(void)
