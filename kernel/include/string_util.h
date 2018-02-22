@@ -10,14 +10,6 @@ typedef unsigned char *va_list;
 #define va_arg(list, type)    (*(type *)((list += sizeof(type)) - sizeof(type)))
 #define va_end(list) // do nothing.
 
-// TODO: optimize
-static ALWAYS_INLINE void memset(void *ptr, u8 value, size_t num)
-{
-   for (size_t i = 0; i < num; ++i) {
-      ((u8 *)ptr)[i] = value;
-   }
-}
-
 static ALWAYS_INLINE void bzero(void *ptr, size_t len)
 {
    const size_t len4 = len >> 2;
@@ -35,7 +27,6 @@ static ALWAYS_INLINE size_t strlen(const char *str)
 {
    const char *ptr = str;
    while (*ptr++) { }
-
    return ptr - str - 1;
 }
 
