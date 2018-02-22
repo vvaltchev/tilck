@@ -3,13 +3,15 @@
 
 .section .text
 .global _start
+.global main
 
 _start:
+main:
 
    # Zero-out the BSS
 
-   mov eax, [__bss_start]
-   mov ebx, [__bss_end]
+   mov eax, offset __bss_start
+   mov ebx, offset __bss_end
    xor ecx, ecx
 
 .loop:
@@ -21,4 +23,4 @@ _start:
    jle .loop
 
    # Jump to main
-   jmp main
+   jmp bootloader_main

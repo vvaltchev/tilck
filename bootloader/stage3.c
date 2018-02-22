@@ -113,7 +113,7 @@ void ramdisk_checksum(void)
    // }
 }
 
-void main(void)
+void bootloader_main(void)
 {
    term_init();
 
