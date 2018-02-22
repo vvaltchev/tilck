@@ -10,15 +10,28 @@
 bool kbasic_virtual_alloc(uptr vaddr, int page_count)
 {
    ASSERT(!(vaddr & (PAGE_SIZE - 1))); // the vaddr must be page-aligned
-   ASSERT(page_count == 32 || page_count == 8);
+   ASSERT(page_count == 32 || page_count == 8 || page_count == 1);
 
    if (get_free_pageframes_count() < page_count)
       return false;
 
    page_directory_t *pdir = get_kernel_page_dir();
 
-   uptr paddr =
-      (page_count == 32) ? alloc_32_pageframes() : alloc_8_pageframes();
+   uptr paddr;
+
+   switch (page_count) {
+   case 32:
+      paddr = alloc_32_pageframes();
+      break;
+   case 8:
+      paddr = alloc_8_pageframes();
+      break;
+   case 1:
+      paddr = alloc_pageframe();
+      break;
+   default:
+      NOT_REACHED();
+   }
 
    if (paddr != INVALID_PADDR) {
       map_pages(pdir, (void *)vaddr, paddr, page_count, false, true);
@@ -50,9 +63,9 @@ bool kbasic_virtual_alloc(uptr vaddr, int page_count)
 
    for (int i = 0; i < 4; i++) {
       map_pages(pdir,
-                  (void *) (vaddr + i * 8 * PAGE_SIZE),
-                  paddrs[i],
-                  8, false, true);
+                (void *) (vaddr + i * 8 * PAGE_SIZE),
+                paddrs[i],
+                8, false, true);
    }
 
    return true;
@@ -64,9 +77,14 @@ bool kbasic_virtual_alloc(uptr vaddr, int page_count)
 bool kbasic_virtual_free(uptr vaddr, int page_count)
 {
    ASSERT(!(vaddr & (PAGE_SIZE - 1))); // the vaddr must be page-aligned
-   ASSERT(page_count == 32 || page_count == 8);
+   ASSERT(page_count == 32 || page_count == 8 || page_count == 1);
 
    page_directory_t *pdir = get_kernel_page_dir();
+
+   if (page_count == 1) {
+      free_pageframe(get_mapping(pdir, (void *)vaddr));
+      return true;
+   }
 
    free_8_pageframes(get_mapping(pdir, (void *) vaddr));
 
