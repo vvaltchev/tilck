@@ -105,7 +105,9 @@ TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
 TEST_F(kmalloc_test, chaos_test)
 {
    random_device rdev;
+   const auto seed = rdev();
    default_random_engine e(rdev());
+   cout << "[ INFO     ] random seed: " << seed << endl;
 
    lognormal_distribution<> dist(5.0, 3);
 
