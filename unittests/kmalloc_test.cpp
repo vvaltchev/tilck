@@ -92,15 +92,12 @@ TEST_F(kmalloc_test, perf256K_test)
       kernel_kmalloc_perf_test_per_size(256 * KB);
 }
 
-
-
 TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
 {
    mock_kmalloc = true;
    kernel_kmalloc_perf_test();
    mock_kmalloc = false;
 }
-
 
 TEST_F(kmalloc_test, chaos_test)
 {
@@ -111,7 +108,7 @@ TEST_F(kmalloc_test, chaos_test)
 
    lognormal_distribution<> dist(5.0, 3);
 
-   for (int i = 0; i < 100; i++) {
+   for (int i = 0; i < 1000; i++) {
       kmalloc_chaos_test_sub(e, dist);
    }
 }
