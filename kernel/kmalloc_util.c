@@ -2,8 +2,6 @@
 #include <paging.h>
 #include <string_util.h>
 
-
-
 bool kbasic_virtual_free(uptr vaddr, int page_count)
 {
    ASSERT(!(vaddr & (PAGE_SIZE - 1))); // vaddr must be page-aligned
@@ -11,18 +9,17 @@ bool kbasic_virtual_free(uptr vaddr, int page_count)
    page_directory_t *pdir = get_kernel_page_dir();
    uptr curr_vaddr = vaddr;
 
-   // const int page_count_div_8 = page_count >> 3;
+   const int page_count_div_8 = page_count >> 3;
 
-   // for (int i = 0; i < page_count_div_8; i++) {
-   //    free_8_pageframes(get_mapping(pdir, (void *)curr_vaddr));
-   //    curr_vaddr += 8 * PAGE_SIZE;
-   // }
+   for (int i = 0; i < page_count_div_8; i++) {
+      free_8_pageframes(get_mapping(pdir, (void *)curr_vaddr));
+      curr_vaddr += 8 * PAGE_SIZE;
+   }
 
-   // const int rem = page_count - page_count_div_8;
+   const int rem = page_count - (page_count_div_8 << 3);
 
-   for (int i = 0; i < page_count; i++) {
-      uptr paddr = get_mapping(pdir, (void *)curr_vaddr);
-      free_pageframe(paddr);
+   for (int i = 0; i < rem; i++) {
+      free_pageframe(get_mapping(pdir, (void *)curr_vaddr));
       curr_vaddr += PAGE_SIZE;
    }
 
@@ -68,9 +65,8 @@ bool kbasic_virtual_alloc(uptr vaddr, int page_count)
          // Oops, we were unable to allocate 8 contiguous page frames.
          // We cannot allocate them one by one, since the free function
          // will free them in blocks of 8.
-         NOT_REACHED();
-         bool res = kbasic_virtual_free(vaddr, allocated);
-         VERIFY(res);
+         DEBUG_ONLY(bool res =) kbasic_virtual_free(vaddr, allocated);
+         ASSERT(res);
          return false;
       }
 
@@ -80,7 +76,6 @@ bool kbasic_virtual_alloc(uptr vaddr, int page_count)
    }
 
    const int rem = page_count - allocated;
-   ASSERT(rem == 0);
 
    for (int i = 0; i < rem; i++) {
 
@@ -88,7 +83,7 @@ bool kbasic_virtual_alloc(uptr vaddr, int page_count)
 
       // We cannot fail here since we checked at the beginning that we have
       // enough free pageframes.
-      VERIFY(paddr != INVALID_PADDR);
+      ASSERT(paddr != INVALID_PADDR);
 
       map_pages(pdir, (void *)curr_vaddr, paddr, 1, false, true);
       curr_vaddr += PAGE_SIZE;

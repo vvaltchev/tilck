@@ -116,8 +116,9 @@ uptr alloc_32_pageframes(void)
    uptr paddr = alloc_32_pageframes_aligned();
    u8 *bf;
 
-   if (paddr != 0 || get_free_pageframes_count() < 32)
+   if (paddr != INVALID_PADDR || get_free_pageframes_count() < 32) {
       return paddr;
+   }
 
    for (u32 i = 0; i < BITFIELD_ELEMS; i++) {
 
@@ -144,10 +145,13 @@ uptr alloc_8_pageframes(void)
 {
    u8 *bf;
 
+   if (get_free_pageframes_count() < 8)
+      return INVALID_PADDR;
+
    for (u32 i = 0; i < BITFIELD_ELEMS; i++) {
 
       bf = ((u8 *) &pageframes_bitfield[last_index]);
-      if (!*++bf) goto success;   // check with +0
+      if (!*bf) goto success;     // check with +0
       if (!*++bf) goto success;   // check with +1
       if (!*++bf) goto success;   // check with +2
       if (!*++bf) goto success;   // check with +3

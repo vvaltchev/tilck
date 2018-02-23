@@ -105,6 +105,19 @@ TEST(alloc_pageframe, one_pageframe_free)
    ASSERT_EQ(alloc_pageframe(), paddr);
 }
 
+TEST(alloc_pageframe, hybrid)
+{
+   init_pageframe_allocator();
+
+   uptr paddr = alloc_32_pageframes();
+   ASSERT_TRUE(paddr != INVALID_PADDR);
+
+   free_8_pageframes(paddr + PAGE_SIZE * 0);
+   free_8_pageframes(paddr + PAGE_SIZE * 8);
+   free_8_pageframes(paddr + PAGE_SIZE * 16);
+   free_8_pageframes(paddr + PAGE_SIZE * 24);
+}
+
 TEST(alloc_pageframe, perf)
 {
    initialize_kmalloc_for_tests();
