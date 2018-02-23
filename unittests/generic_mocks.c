@@ -67,7 +67,3 @@ void irq_install_handler() { }
 void setup_sysenter_interface() { }
 void save_current_task_state() { }
 void switch_to_task() { }
-//void set_page_directory() { }
-//void init_paging() { }
-//void map_page() { }
-//void pdir_clone() { }

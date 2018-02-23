@@ -102,7 +102,7 @@ TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
 }
 
 
-TEST_F(kmalloc_test, DISABLED_chaos_test)
+TEST_F(kmalloc_test, chaos_test)
 {
    random_device rdev;
    default_random_engine e(rdev());

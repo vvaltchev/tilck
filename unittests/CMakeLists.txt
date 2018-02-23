@@ -36,9 +36,6 @@ set(
    assert_failed
    not_reached
    printk
-   kbasic_virtual_alloc
-   kbasic_virtual_free
-   is_mapped
    kmalloc
    kfree
 )

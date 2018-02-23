@@ -24,9 +24,6 @@ set(
    "${CMAKE_SOURCE_DIR}/kernel/fs/*.c"
    "${CMAKE_SOURCE_DIR}/kernel/self_tests/*.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
-
-   # HACK! HACK! HACK!
-   "${CMAKE_SOURCE_DIR}/kernel/arch/i386/paging.c"
 )
 
 file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})

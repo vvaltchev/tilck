@@ -41,79 +41,35 @@ void initialize_kmalloc_for_tests()
    initialize_test_kernel_heap();
    init_pageframe_allocator();
    initialize_kmalloc();
-   init_paging();
 }
 
-// #ifdef DEBUG
+extern "C" {
 
-// bool __wrap_is_mapped(void *pdir, uptr vaddr)
-// {
-//    return mappings[vaddr & PAGE_MASK] != 0;
-// }
-
-// bool __wrap_kbasic_virtual_alloc(uptr vaddr, int page_count)
-// {
-//    assert((vaddr & (PAGE_SIZE - 1)) == 0);
-
-//    for (int i = 0; i < page_count; i++) {
-//       uptr p = alloc_pageframe();
-//       mappings[vaddr + i * PAGE_SIZE] = p;
-//    }
-
-//    return true;
-// }
-
-// bool __wrap_kbasic_virtual_free(uptr vaddr, int page_count)
-// {
-//    assert((vaddr & (PAGE_SIZE - 1)) == 0);
-
-//    for (int i = 0; i < page_count; i++) {
-
-//       uptr phys_addr = mappings[vaddr + i * PAGE_SIZE];
-//       free_pageframe(phys_addr);
-//       mappings[vaddr + i * PAGE_SIZE] = 0;
-//    }
-
-//    return true;
-// }
-
-// #else
-
-// /*
-//  * In RELEASE builds, now that we have the comparative glibc-malloc perf test,
-//  * it is interesting to remove the overhead of the functions below. In DEBUG
-//  * builds, the only point of having them implemented as above is to allow
-//  * the is_mapped() function return the correct result: that is necessary in
-//  * order to many ASSERTs in the kernel to work.
-//  */
-// bool __wrap_is_mapped(void *pdir, uptr vaddr) { NOT_REACHED(); }
-// bool __wrap_kbasic_virtual_alloc(uptr vaddr, int page_count) { return true; }
-// bool __wrap_kbasic_virtual_free(uptr vaddr, int page_count) { return true; }
-
-// #endif
-
-bool __real_is_mapped(void *pdir, uptr vaddr);
-bool __real_kbasic_virtual_alloc(uptr vaddr, int page_count);
-bool __real_kbasic_virtual_free(uptr vaddr, int page_count);
-
-bool __wrap_is_mapped(void *pdir, uptr vaddr)
+void map_page(page_directory_t *, void *vaddr, uptr paddr, bool us, bool rw)
 {
-   vaddr = vaddr - KERNEL_BASE_VA + 0xC0000000;
-   return __real_is_mapped(pdir, vaddr);
+   ASSERT(!((uptr)vaddr & OFFSET_IN_PAGE_MASK)); // check page-aligned
+   ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // check page-aligned
+
+   mappings[(uptr)vaddr] = paddr;
 }
 
-bool __wrap_kbasic_virtual_alloc(uptr vaddr, int page_count)
+void unmap_page(page_directory_t *, void *vaddrp)
 {
-   vaddr = vaddr - KERNEL_BASE_VA + 0xC0000000;
-   return __real_kbasic_virtual_alloc(vaddr, page_count);
+   mappings[(uptr)vaddrp] = INVALID_PADDR;
 }
 
-bool __wrap_kbasic_virtual_free(uptr vaddr, int page_count)
+bool is_mapped(page_directory_t *, void *vaddrp)
 {
-   vaddr = vaddr - KERNEL_BASE_VA + 0xC0000000;
-   return __real_kbasic_virtual_free(vaddr, page_count);
+   uptr vaddr = (uptr)vaddrp & PAGE_MASK;
+   return mappings.find(vaddr) != mappings.end();
 }
 
+uptr get_mapping(page_directory_t *, void *vaddrp)
+{
+   return mappings[(uptr)vaddrp];
+}
+
+}
 
 void *__real_kmalloc(size_t size);
 void __real_kfree(void *ptr, size_t size);

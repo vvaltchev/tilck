@@ -38,8 +38,6 @@ extern page_directory_t *curr_page_dir;
 extern void *page_size_buf;
 extern u16 *pageframes_refcount;
 
-#ifndef UNIT_TEST_ENVIRONMENT
-
 bool handle_potential_cow(u32 vaddr)
 {
    page_table_t *ptable;
@@ -153,9 +151,6 @@ void set_page_directory(page_directory_t *pdir)
    curr_page_dir = pdir;
    asmVolatile("mov %0, %%cr3" :: "r"(pdir->paddr));
 }
-
-#endif
-
 
 static void initialize_empty_page_table(page_table_t *t)
 {
@@ -297,8 +292,6 @@ map_pages_int(page_directory_t *pdir,
    }
 }
 
-#ifndef UNIT_TEST_ENVIRONMENT
-
 page_directory_t *pdir_clone(page_directory_t *pdir)
 {
    page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
@@ -419,7 +412,6 @@ void pdir_destroy(page_directory_t *pdir)
    kfree(pdir, sizeof(*pdir));
 }
 
-#endif
 
 /*
  * Page directories MUST BE page-size-aligned.
@@ -428,10 +420,8 @@ char kpdir_buf[sizeof(page_directory_t)] __attribute__ ((aligned(PAGE_SIZE)));
 
 void init_paging()
 {
-#ifndef UNIT_TEST_ENVIRONMENT
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
    set_fault_handler(FAULT_GENERAL_PROTECTION, handle_general_protection_fault);
-#endif
    kernel_page_dir = (page_directory_t *) kpdir_buf;
 
    /* Note: the content of kernel_page_dir is zeroed. */
@@ -464,10 +454,8 @@ void init_paging()
                  KERNEL_PA_TO_VA(0x1000),
                  0x1000, 1024 - 1, PG_RW_BIT | PG_GLOBAL_BIT);
 
-#ifndef UNIT_TEST_ENVIRONMENT
    ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 256);
    set_page_directory(kernel_page_dir);
-#endif
 
    // Page-size buffer used for COW.
    page_size_buf = KERNEL_PA_TO_VA(paging_alloc_pageframe());
