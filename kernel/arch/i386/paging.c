@@ -206,17 +206,15 @@ void unmap_page(page_directory_t *pdir, void *vaddrp)
 
 uptr get_mapping(page_directory_t *pdir, void *vaddrp)
 {
-   uptr vaddr = (uptr)vaddrp;
    page_table_t *ptable;
-   u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
-   u32 page_dir_index = (vaddr >> 22) & 0x3FF;
-
-   ASSERT(pdir->page_tables[page_dir_index] != NULL);
+   const uptr vaddr = (uptr)vaddrp;
+   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
+   const u32 page_dir_index = (vaddr >> 22) & 0x3FF;
 
    ptable = pdir->page_tables[page_dir_index];
 
+   ASSERT(ptable != NULL);
    ASSERT(ptable->pages[page_table_index].present);
-
    return ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 }
 
@@ -225,10 +223,7 @@ void map_page_int(page_directory_t *pdir,
                   uptr paddr,
                   u32 flags)
 {
-   const u32 vaddr = (u32) (uptr) vaddrp; // double cast: HACK! allowing the
-                                          // code to compile on x86_64 for
-                                          // unit tests!
-
+   const u32 vaddr = (u32) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
