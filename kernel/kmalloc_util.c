@@ -6,6 +6,14 @@ bool kbasic_virtual_free(uptr vaddr, int page_count)
 {
    ASSERT(!(vaddr & (PAGE_SIZE - 1))); // vaddr must be page-aligned
 
+   if (vaddr + (page_count << PAGE_SHIFT) < KERNEL_LINEAR_MAPPING_OVER_END) {
+      // Just nothing to do here.
+      return true;
+   }
+
+   // DISALLOW allocations crossing the linear mapping barrier!!
+   ASSERT(vaddr >= KERNEL_LINEAR_MAPPING_OVER_END);
+
    page_directory_t *pdir = get_kernel_page_dir();
    uptr curr_vaddr = vaddr;
 
@@ -30,6 +38,14 @@ bool kbasic_virtual_free(uptr vaddr, int page_count)
 bool kbasic_virtual_alloc(uptr vaddr, int page_count)
 {
    ASSERT(!(vaddr & (PAGE_SIZE - 1))); // the vaddr must be page-aligned
+
+   if (vaddr + (page_count << PAGE_SHIFT) < KERNEL_LINEAR_MAPPING_OVER_END) {
+      // Just nothing to do here.
+      return true;
+   }
+
+   // DISALLOW allocations crossing the linear mapping barrier!!
+   ASSERT(vaddr >= KERNEL_LINEAR_MAPPING_OVER_END);
 
    if (get_free_pageframes_count() < page_count)
       return false;

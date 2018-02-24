@@ -60,8 +60,6 @@ void dump_elf32_phdrs(Elf32_Ehdr *h)
 
 //////////////////////////////////////////////////////////////////////////////
 
-uptr alloc_pageframe();
-
 void load_elf_program(const char *filepath,
                       page_directory_t **pdir_ref,
                       void **entry,
@@ -129,8 +127,9 @@ void load_elf_program(const char *filepath,
             continue;
          }
 
-         uptr paddr = alloc_pageframe();
-         VERIFY(paddr != INVALID_PADDR);
+         void *p = kmalloc(PAGE_SIZE);
+         VERIFY(p != NULL); // TODO: handle out-of-memory
+         uptr paddr = KERNEL_VA_TO_PA(p);
 
          map_page(*pdir_ref, vaddr, paddr, true, true);
          bzero(vaddr, PAGE_SIZE);
@@ -157,8 +156,9 @@ void load_elf_program(const char *filepath,
       (void *) (OFFLIMIT_USERMODE_ADDR - pages_for_stack * PAGE_SIZE);
 
    for (int i = 0; i < pages_for_stack; i++) {
-      uptr paddr = alloc_pageframe();
-      VERIFY(paddr != INVALID_PADDR);
+      void *p = kmalloc(PAGE_SIZE);
+      VERIFY(p != NULL); // TODO: handle out-of-memory
+      uptr paddr = KERNEL_VA_TO_PA(p);
       map_page(*pdir_ref, stack_top + i * PAGE_SIZE, paddr, true, true);
    }
 

@@ -30,6 +30,7 @@
       "x86_utils.h": "c",
       "fat32.h": "c",
       "paging.h": "c",
-      "utils.h": "c"
+      "utils.h": "c",
+      "paging_int.h": "c"
    }
 }

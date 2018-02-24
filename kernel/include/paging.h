@@ -5,11 +5,15 @@
 #include <pageframe_allocator.h>
 
 #ifdef __i386__
-#define PAGE_DIR_SIZE (2 * PAGE_SIZE + 4)
-#elif defined(UNIT_TEST_ENVIRONMENT)
-#define PAGE_DIR_SIZE (PAGE_SIZE + 1024 * sizeof(uptr) + sizeof(uptr))
+#define PAGE_DIR_SIZE (2 * PAGE_SIZE)
 #endif
 
+/*
+ * These MACROs can be used for the linear mapping region in the kernel space.
+ */
+
+#define KERNEL_PA_TO_VA(pa) ((void *) ((uptr)(pa) + KERNEL_BASE_VA))
+#define KERNEL_VA_TO_PA(va) ((uptr)(va) - KERNEL_BASE_VA)
 
 
 // Forward-declaring page_directory_t

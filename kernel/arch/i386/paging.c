@@ -7,14 +7,6 @@
 #include <hal.h>
 #include <arch/i386/paging_int.h>
 
-/*
- * Theese MACROs can be used only for the first 4 MB of the kernel virtual
- * address space.
- */
-
-#define KERNEL_PA_TO_VA(pa) ((void *) ((uptr)(pa) + KERNEL_BASE_VA))
-#define KERNEL_VA_TO_PA(va) ((uptr)(va) - KERNEL_BASE_VA)
-
 #define KERNEL_BASE_MAPPED_VADDR_LIMIT                        \
    ((uptr) KERNEL_BASE_VA +                                   \
    (INITIAL_MB_RESERVED + MB_RESERVED_FOR_PAGING) * MB - 1)
@@ -83,7 +75,9 @@ bool handle_potential_cow(u32 vaddr)
    memmove(page_size_buf, page_vaddr, PAGE_SIZE);
 
    // Allocate and set a new page.
-   uptr paddr = (uptr)alloc_pageframe();
+   void *new_page_vaddr = kmalloc(PAGE_SIZE);
+   ASSERT(new_page_vaddr != NULL);
+   uptr paddr = KERNEL_VA_TO_PA(new_page_vaddr);
 
    printk("[COW] Allocated new pageframe at %p\n", paddr);
 
@@ -149,7 +143,7 @@ void handle_general_protection_fault(regs *r)
 void set_page_directory(page_directory_t *pdir)
 {
    curr_page_dir = pdir;
-   asmVolatile("mov %0, %%cr3" :: "r"(pdir->paddr));
+   asmVolatile("mov %0, %%cr3" :: "r"(KERNEL_VA_TO_PA(pdir)));
 }
 
 static void initialize_empty_page_table(page_table_t *t)
@@ -290,7 +284,6 @@ map_pages_int(page_directory_t *pdir,
 page_directory_t *pdir_clone(page_directory_t *pdir)
 {
    page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
-   new_pdir->paddr = get_mapping(curr_page_dir, new_pdir);
 
    for (int i = 0; i < 768; i++) {
 
@@ -419,9 +412,6 @@ void init_paging()
    set_fault_handler(FAULT_GENERAL_PROTECTION, handle_general_protection_fault);
    kernel_page_dir = (page_directory_t *) kpdir_buf;
 
-   /* Note: the content of kernel_page_dir is zeroed. */
-   kernel_page_dir->paddr = KERNEL_VA_TO_PA(kernel_page_dir);
-
    // Create page entries for the whole 4th GB of virtual memory
    for (int i = 768; i < 1024; i++) {
 
@@ -442,12 +432,18 @@ void init_paging()
    }
 
    /*
-    * Linear map just the first 4 MB of memory (except the first 4 KB page).
-    * [4KB .. 4MB) => [3GB + 4KB .. 3GB + 4MB)
+    * Linear mapping: map the first KERNEL_LINEAR_MAPPING_MB of the physical
+    * memory in the virtual memory with offset KERNEL_BASE_VA.
+    * TODO: consider adding support for 4 MB pages as use them here.
+    * TODO: if the physical memory is less then KERNEL_LINEAR_MAPPING_MB,
+    * don't waste page tables mapping more then necessary.
     */
+
    map_pages_int(kernel_page_dir,
                  KERNEL_PA_TO_VA(0x1000),
-                 0x1000, 1024 - 1, PG_RW_BIT | PG_GLOBAL_BIT);
+                 0x1000, // Skip the first page (for NULL etc.)
+                 KERNEL_LINEAR_MAPPING_SIZE / PAGE_SIZE - 1,
+                 PG_RW_BIT | PG_GLOBAL_BIT);
 
    ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 256);
    set_page_directory(kernel_page_dir);
