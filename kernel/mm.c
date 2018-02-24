@@ -11,7 +11,7 @@ u16 *pageframes_refcount;
 u8 page_size_buf[PAGE_SIZE];
 
 
-bool kbasic_virtual_free(uptr vaddr, int page_count)
+void kbasic_virtual_free(uptr vaddr, int page_count)
 {
    ASSERT(!(vaddr & (PAGE_SIZE - 1))); // vaddr must be page-aligned
 
@@ -33,7 +33,6 @@ bool kbasic_virtual_free(uptr vaddr, int page_count)
    }
 
    unmap_pages(pdir, (void *)vaddr, page_count);
-   return true;
 }
 
 bool kbasic_virtual_alloc(uptr vaddr, int page_count)
@@ -74,8 +73,7 @@ bool kbasic_virtual_alloc(uptr vaddr, int page_count)
          // Oops, we were unable to allocate 8 contiguous page frames.
          // We cannot allocate them one by one, since the free function
          // will free them in blocks of 8.
-         DEBUG_ONLY(bool res =) kbasic_virtual_free(vaddr, allocated);
-         ASSERT(res);
+         kbasic_virtual_free(vaddr, allocated);
          return false;
       }
 

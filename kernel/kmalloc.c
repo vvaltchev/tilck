@@ -14,7 +14,7 @@ STATIC_ASSERT((HEAP_DATA_SIZE & ((1 << 20) - 1)) == 0);
 STATIC_ASSERT((ALLOC_BLOCK_SIZE & (PAGE_SIZE - 1)) == 0);
 
 bool kbasic_virtual_alloc(uptr vaddr, int page_count);
-bool kbasic_virtual_free(uptr vaddr, int page_count);
+void kbasic_virtual_free(uptr vaddr, int page_count);
 
 #include "kmalloc_debug.h"
 
@@ -402,10 +402,7 @@ void kfree(void *ptr, size_t size)
       ASSERT(md->nodes[alloc_node].allocated);
 
       DEBUG_free_freeing_block;
-
-      DEBUG_ONLY(bool success =)
-         kbasic_virtual_free(alloc_block_vaddr, ALLOC_BLOCK_PAGES);
-      ASSERT(success);
+      kbasic_virtual_free(alloc_block_vaddr, ALLOC_BLOCK_PAGES);
 
       md->nodes[alloc_node] = new_node;
       alloc_block_vaddr += ALLOC_BLOCK_SIZE;

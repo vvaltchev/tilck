@@ -103,7 +103,7 @@ TEST_F(kmalloc_test, chaos_test)
 
 extern "C" {
 bool kbasic_virtual_alloc(uptr vaddr, int page_count);
-bool kbasic_virtual_free(uptr vaddr, int page_count);
+void kbasic_virtual_free(uptr vaddr, int page_count);
 }
 
 TEST_F(kmalloc_test, kbasic_virtual_alloc)
@@ -117,6 +117,5 @@ TEST_F(kmalloc_test, kbasic_virtual_alloc)
 
    ASSERT_TRUE(is_mapped(get_kernel_page_dir(), (void *)vaddr));
 
-   success = kbasic_virtual_free(vaddr, 1);
-   ASSERT_TRUE(success);
+   kbasic_virtual_free(vaddr, 1);
 }
