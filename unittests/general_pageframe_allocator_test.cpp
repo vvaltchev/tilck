@@ -28,7 +28,7 @@ TEST(alloc_pageframe, seq_alloc)
    ASSERT_EQ(get_free_pageframes_count(), 0);
 
    ASSERT_EQ(get_used_pageframes_count(),
-             get_amount_of_physical_memory_in_mb() * MB / PAGE_SIZE);
+             get_phys_mem_mb() * MB / PAGE_SIZE);
 }
 
 TEST(alloc_pageframe, seq_alloc_free)
@@ -98,7 +98,7 @@ TEST(alloc_pageframe, one_pageframe_free)
    ASSERT_EQ(get_free_pageframes_count(), 0);
 
    // Free an arbtrary pageframe
-   uptr paddr = MB * get_amount_of_physical_memory_in_mb() / 2;
+   uptr paddr = MB * get_phys_mem_mb() / 2;
    free_pageframe(paddr);
 
    // Now re-alloc and expect that very pageframe is returned

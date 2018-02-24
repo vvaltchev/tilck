@@ -35,7 +35,7 @@ void mark_pageframes_as_reserved(uptr paddr, int mb_count);
 extern u32 memsize_in_mb;
 extern int pageframes_used;
 
-static ALWAYS_INLINE int get_amount_of_physical_memory_in_mb(void)
+static ALWAYS_INLINE int get_phys_mem_mb(void)
 {
    return memsize_in_mb;
 }

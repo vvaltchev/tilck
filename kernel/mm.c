@@ -5,10 +5,10 @@
 #include <string_util.h>
 #include <paging.h>
 
-page_directory_t *kernel_page_dir = NULL;
-page_directory_t *curr_page_dir = NULL;
-void *page_size_buf = NULL;
-u16 *pageframes_refcount = NULL;
+page_directory_t *kernel_page_dir;
+page_directory_t *curr_page_dir;
+u16 *pageframes_refcount;
+u8 page_size_buf[PAGE_SIZE];
 
 
 bool kbasic_virtual_free(uptr vaddr, int page_count)

@@ -80,18 +80,6 @@ TEST_F(kmalloc_test, perf_test)
    kernel_kmalloc_perf_test();
 }
 
-TEST_F(kmalloc_test, perf32B_test)
-{
-   for (int i = 0; i < 10; i++)
-      kernel_kmalloc_perf_test_per_size(32);
-}
-
-TEST_F(kmalloc_test, perf256K_test)
-{
-   for (int i = 0; i < 10; i++)
-      kernel_kmalloc_perf_test_per_size(256 * KB);
-}
-
 TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
 {
    mock_kmalloc = true;

@@ -27,8 +27,8 @@ void paging_free_pageframe(uptr address);
 
 extern page_directory_t *kernel_page_dir;
 extern page_directory_t *curr_page_dir;
-extern void *page_size_buf;
 extern u16 *pageframes_refcount;
+extern u8 page_size_buf[PAGE_SIZE];
 
 bool handle_potential_cow(u32 vaddr)
 {
@@ -435,32 +435,31 @@ void init_paging()
     * Linear mapping: map the first KERNEL_LINEAR_MAPPING_MB of the physical
     * memory in the virtual memory with offset KERNEL_BASE_VA.
     * TODO: consider adding support for 4 MB pages as use them here.
-    * TODO: if the physical memory is less then KERNEL_LINEAR_MAPPING_MB,
-    * don't waste page tables mapping more then necessary.
     */
+
+   const uptr pages_to_map = MIN(KERNEL_LINEAR_MAPPING_MB,
+                                 get_phys_mem_mb()) * MB / PAGE_SIZE - 1;
 
    map_pages_int(kernel_page_dir,
                  KERNEL_PA_TO_VA(0x1000),
                  0x1000, // Skip the first page (for NULL etc.)
-                 KERNEL_LINEAR_MAPPING_SIZE / PAGE_SIZE - 1,
+                 pages_to_map,
                  PG_RW_BIT | PG_GLOBAL_BIT);
 
    ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 256);
    set_page_directory(kernel_page_dir);
+}
 
-   // Page-size buffer used for COW.
-   page_size_buf = KERNEL_PA_TO_VA(paging_alloc_pageframe());
-
-
+void init_paging_cow(void)
+{
    /*
     * Allocate the buffer used for keeping a ref-count for each pageframe.
     * This is necessary for COW.
     */
 
    size_t pagesframes_refcount_bufsize =
-      sizeof(pageframes_refcount[0]) * MB / PAGE_SIZE
-      * get_amount_of_physical_memory_in_mb();
+      sizeof(pageframes_refcount[0]) * MB / PAGE_SIZE * get_phys_mem_mb();
 
-   pageframes_refcount = kmalloc(pagesframes_refcount_bufsize);
-   bzero(pageframes_refcount, pagesframes_refcount_bufsize);
+   pageframes_refcount = kzmalloc(pagesframes_refcount_bufsize);
+   VERIFY(pageframes_refcount);
 }

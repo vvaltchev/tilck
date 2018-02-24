@@ -27,12 +27,12 @@ static unordered_map<uptr, uptr> mappings;
 void initialize_test_kernel_heap()
 {
    if (kernel_va != nullptr) {
-      bzero(kernel_va, get_amount_of_physical_memory_in_mb() * MB);
+      bzero(kernel_va, get_phys_mem_mb() * MB);
       mappings.clear();
       return;
    }
 
-   kernel_va = aligned_alloc(MB, get_amount_of_physical_memory_in_mb() * MB);
+   kernel_va = aligned_alloc(MB, get_phys_mem_mb() * MB);
 }
 
 void initialize_kmalloc_for_tests()
