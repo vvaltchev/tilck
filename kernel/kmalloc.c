@@ -7,8 +7,8 @@
 // MIN_BLOCK_SIZE has to be a multiple of 32
 STATIC_ASSERT((MIN_BLOCK_SIZE & 31) == 0);
 
-// HEAP_DATA_SIZE has to be a multiple of 1 MB
-STATIC_ASSERT((HEAP_DATA_SIZE & ((1 << 20) - 1)) == 0);
+// HEAP_SIZE has to be a multiple of 1 MB
+STATIC_ASSERT((HEAP_SIZE & ((1 << 20) - 1)) == 0);
 
 // ALLOC_BLOCK_SIZE has to be a multiple of PAGE_SIZE
 STATIC_ASSERT((ALLOC_BLOCK_SIZE & (PAGE_SIZE - 1)) == 0);
@@ -219,7 +219,7 @@ void *kmalloc(size_t desired_size)
 
    DEBUG_kmalloc_begin;
 
-   if (UNLIKELY(desired_size > HEAP_DATA_SIZE))
+   if (UNLIKELY(desired_size > HEAP_SIZE))
       return NULL;
 
    const size_t size = MAX(desired_size, MIN_BLOCK_SIZE);
@@ -229,7 +229,7 @@ void *kmalloc(size_t desired_size)
    bool returned = false;
    stack_elem alloc_stack[32];
 
-   stack_elem base_elem = { HEAP_DATA_SIZE, 0 };
+   stack_elem base_elem = { HEAP_SIZE, 0 };
    alloc_stack[0] = base_elem;
 
    while (stack_size) {
@@ -416,9 +416,9 @@ void initialize_kmalloc()
 
    DEBUG_printk("heap base addr: %p\n", HEAP_BASE_ADDR);
    DEBUG_printk("heap data addr: %p\n", HEAP_DATA_ADDR);
-   DEBUG_printk("heap size: %u\n", HEAP_DATA_SIZE);
+   DEBUG_printk("heap size: %u\n", HEAP_SIZE);
 
-   heap_data_size_log2 = log2_for_power_of_2(HEAP_DATA_SIZE);
+   heap_data_size_log2 = log2_for_power_of_2(HEAP_SIZE);
    alloc_block_size_log2 = log2_for_power_of_2(ALLOC_BLOCK_SIZE);
    kmalloc_initialized = true;
 }
