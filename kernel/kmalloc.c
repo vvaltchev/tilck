@@ -197,9 +197,11 @@ typedef struct {
    }
 
 #define SIMULATE_RETURN_NULL()                 \
-   stack_size--;                               \
-   returned = true;                            \
-   continue
+   {                                           \
+      stack_size--;                            \
+      returned = true;                         \
+      continue;                                \
+   }
 
 //////////////////////////////////////////////////////////////////
 

@@ -56,12 +56,17 @@ void load_usermode_init()
 
 void mount_ramdisk(void)
 {
-   /*
-    * NOTE: no need to map ramdisk's located at RAMDISK_PADDR in kernel's
-    * virtual space. Because of the linear mapping, and because:
-    *    RAMDISK_VADDR = KERNEL_BASE_VA + RAMDISK_PADDR
-    * there is simply no need to do any mapping here.
-    */
+   printk("Mapping the ramdisk at %p (%d pages)... ",
+          RAMDISK_VADDR, RAMDISK_SIZE / PAGE_SIZE);
+
+   map_pages(get_kernel_page_dir(),
+             (void *) RAMDISK_VADDR,
+             RAMDISK_PADDR,
+             RAMDISK_SIZE / PAGE_SIZE,
+             false,
+             true);
+
+   printk("DONE\n");
 
    filesystem *root_fs = fat_mount_ramdisk((void *)RAMDISK_VADDR);
    mountpoint_add(root_fs, "/");
@@ -75,11 +80,11 @@ void kmain()
    setup_segmentation();
    setup_interrupt_handling();
 
-   // Pageframe allocator that will be used (but not now) for the high memory
-   // which is not linearly mapped to physical addresses.
    init_pageframe_allocator();
 
-   mark_pageframes_as_reserved(0, KERNEL_LINEAR_MAPPING_MB);
+   mark_pageframes_as_reserved(0, INITIAL_MB_RESERVED +
+                                  MB_RESERVED_FOR_PAGING +
+                                  RAMDISK_MB);
 
    initialize_kmalloc();
    init_paging();
@@ -104,7 +109,7 @@ void kmain()
    //kmutex_test();
    //kcond_test();
 
-   //kernel_kmalloc_perf_test();
+   kernel_kmalloc_perf_test();
 
    //kthread_create(&sleeping_kthread, (void *) 123);
    //kthread_create(&sleeping_kthread, (void *) 20);
@@ -113,7 +118,7 @@ void kmain()
 
    //kernel_alloc_pageframe_perftest();
 
-   load_usermode_init();
+   //load_usermode_init();
 
    printk("[kernel main] Starting the scheduler...\n");
    switch_to_idle_task_outside_interrupt_context();
