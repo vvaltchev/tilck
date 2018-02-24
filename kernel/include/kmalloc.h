@@ -11,19 +11,8 @@
 #define ALLOC_BLOCK_PAGES (32)
 #define ALLOC_BLOCK_SIZE (ALLOC_BLOCK_PAGES * PAGE_SIZE)
 
-
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)
 #define KMALLOC_NODES_COUNT_IN_META_DATA (2 * HEAP_DATA_SIZE / MIN_BLOCK_SIZE)
-
-
-#define KM_METADATA_ALLOC_BS_SHIFT 15 // 2^15 = 32 K
-#define KM_METADATA_ALLOC_BS (1 << KM_METADATA_ALLOC_BS_SHIFT)
-
-#define KMALLOC_METADATA_SIZE \
-   (KMALLOC_METADATA_BLOCK_NODE_SIZE * KMALLOC_NODES_COUNT_IN_META_DATA /   \
-    KM_METADATA_ALLOC_BS)
-
-
 
 #define HEAP_DATA_ADDR                                                    \
    (HEAP_BASE_ADDR +                                                      \

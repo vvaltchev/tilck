@@ -41,8 +41,6 @@ typedef struct {
 
 } allocator_meta_data;
 
-// Each byte represents a block of size KM_METADATA_ALLOC_BS.
-static bool allocation_for_metadata_nodes[KMALLOC_METADATA_SIZE];
 static const block_node new_node; // Just zeros.
 
 static int heap_data_size_log2;
@@ -124,32 +122,6 @@ static size_t set_free_uplevels(int *node, size_t size) {
    return curr_size;
 }
 
-ALWAYS_INLINE static bool node_has_page(int node)
-{
-   // ASSUMPTION: sizeof(block_node) == 1
-   return allocation_for_metadata_nodes[node >> KM_METADATA_ALLOC_BS_SHIFT];
-}
-
-static inline void evenually_allocate_page_for_node(int node)
-{
-   // ASSUMPTION: sizeof(block_node) == 1
-   const uptr index = node >> KM_METADATA_ALLOC_BS_SHIFT;
-   const uptr pages_addr =
-      HEAP_BASE_ADDR + (index << KM_METADATA_ALLOC_BS_SHIFT);
-
-   if (!allocation_for_metadata_nodes[index]) {
-
-      // TODO: handle out-of-memory.
-      DEBUG_ONLY(bool success =)
-         kbasic_virtual_alloc(pages_addr, KM_METADATA_ALLOC_BS / PAGE_SIZE);
-      ASSERT(success);
-
-      // ASSUMPTION: the value of new_node is just 8 zeros.
-      bzero((void *)pages_addr, KM_METADATA_ALLOC_BS);
-      allocation_for_metadata_nodes[index] = true;
-   }
-}
-
 static void *actual_allocate_node(size_t node_size, int node)
 {
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
@@ -165,7 +137,6 @@ static void *actual_allocate_node(size_t node_size, int node)
       int alloc_node = ptr_to_node((void *)alloc_block_vaddr, ALLOC_BLOCK_SIZE);
       ASSERT(node_to_ptr(alloc_node,
                          ALLOC_BLOCK_SIZE) == (void *)alloc_block_vaddr);
-      evenually_allocate_page_for_node(alloc_node);
 
       DEBUG_allocate_node1;
 
@@ -271,13 +242,6 @@ void *kmalloc(size_t desired_size)
       // Handling a CALL
       DEBUG_kmalloc_call_begin;
 
-      evenually_allocate_page_for_node(node);
-
-      if (node_size > MIN_BLOCK_SIZE) {
-         evenually_allocate_page_for_node(left_node);
-         evenually_allocate_page_for_node(right_node);
-      }
-
       block_node n = md->nodes[node];
 
       if (n.full) {
@@ -367,8 +331,6 @@ void kfree(void *ptr, size_t size)
    DEBUG_free1;
 
    ASSERT(node_to_ptr(node, size) == ptr);
-   ASSERT(node_has_page(node));
-
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
    // A node returned to user cannot be split.
@@ -399,7 +361,6 @@ void kfree(void *ptr, size_t size)
       const int alloc_node =
          ptr_to_node((void *)alloc_block_vaddr, ALLOC_BLOCK_SIZE);
 
-      ASSERT(node_has_page(alloc_node));
       DEBUG_check_alloc_block;
 
       /*
@@ -428,14 +389,9 @@ void initialize_kmalloc()
 {
    ASSERT(!kmalloc_initialized);
 
-#ifdef KERNEL_TEST
-   bzero(allocation_for_metadata_nodes, sizeof(allocation_for_metadata_nodes));
-#endif
-
    DEBUG_printk("heap base addr: %p\n", HEAP_BASE_ADDR);
    DEBUG_printk("heap data addr: %p\n", HEAP_DATA_ADDR);
    DEBUG_printk("heap size: %u\n", HEAP_DATA_SIZE);
-
 
    heap_data_size_log2 = log2_for_power_of_2(HEAP_DATA_SIZE);
    alloc_block_size_log2 = log2_for_power_of_2(ALLOC_BLOCK_SIZE);
