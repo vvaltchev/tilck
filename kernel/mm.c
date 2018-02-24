@@ -4,6 +4,7 @@
 #include <common_defs.h>
 #include <string_util.h>
 #include <paging.h>
+#include <pageframe_allocator.h>
 
 page_directory_t *kernel_page_dir;
 page_directory_t *curr_page_dir;

@@ -5,6 +5,7 @@
 extern "C" {
    #include <common_defs.h>
    #include <paging.h>
+   #include <pageframe_allocator.h>
    #include <self_tests/self_tests.h>
    uptr paging_alloc_pageframe();
    void paging_free_pageframe(uptr address);

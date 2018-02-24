@@ -4,6 +4,7 @@
 #include <string_util.h>
 #include <paging.h>
 #include <utils.h>
+#include <pageframe_allocator.h>
 #include <arch/generic_x86/x86_utils.h>
 
 

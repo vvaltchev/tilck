@@ -3,6 +3,7 @@
 #include <paging.h>
 #include <string_util.h>
 #include <utils.h>
+#include <pageframe_allocator.h>
 
 /*
  * By mapping 4096 KB (one page) in 1 bit, a single 32-bit integer maps 128 KB.

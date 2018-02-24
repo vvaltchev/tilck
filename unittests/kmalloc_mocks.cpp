@@ -16,6 +16,7 @@ extern "C" {
 #include <kmalloc.h>
 #include <paging.h>
 #include <utils.h>
+#include <pageframe_allocator.h>
 
 extern bool kmalloc_initialized;
 

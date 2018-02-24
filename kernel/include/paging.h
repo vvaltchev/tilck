@@ -2,11 +2,23 @@
 #pragma once
 
 #include <common_defs.h>
-#include <pageframe_allocator.h>
 
 #ifdef __i386__
 #define PAGE_DIR_SIZE (2 * PAGE_SIZE)
 #endif
+
+#define PAGE_SHIFT 12
+#define PAGE_SIZE ((uptr)1 << PAGE_SHIFT)
+#define OFFSET_IN_PAGE_MASK (PAGE_SIZE - 1)
+#define PAGE_MASK (~OFFSET_IN_PAGE_MASK)
+
+#define INVALID_PADDR ((uptr)-1)
+
+/* Internal defines specific for the pageframe allocator */
+
+#define INITIAL_MB_RESERVED 2
+#define MB_RESERVED_FOR_PAGING 2
+
 
 /*
  * These MACROs can be used for the linear mapping region in the kernel space.
@@ -79,4 +91,12 @@ static ALWAYS_INLINE page_directory_t *get_kernel_page_dir()
 {
    return kernel_page_dir;
 }
+
+extern u32 memsize_in_mb;
+
+static ALWAYS_INLINE int get_phys_mem_mb(void)
+{
+   return memsize_in_mb;
+}
+
 

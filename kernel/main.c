@@ -21,6 +21,7 @@
 #include <kb.h>
 #include <timer.h>
 #include <term.h>
+#include <pageframe_allocator.h>
 
 #include <self_tests/self_tests.h>
 
