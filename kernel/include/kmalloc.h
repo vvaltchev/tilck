@@ -25,6 +25,10 @@ void kfree(void *ptr, size_t size);
 static inline void *kzmalloc(size_t size)
 {
    void *res = kmalloc(size);
+
+   if (!res)
+      return NULL;
+
    bzero(res, size);
    return res;
 }
