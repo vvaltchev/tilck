@@ -132,6 +132,19 @@ static void *actual_allocate_node(size_t node_size, int node)
    uptr alloc_block_vaddr = vaddr & ~(ALLOC_BLOCK_SIZE - 1);
    const int alloc_block_count = 1 + ((node_size - 1) >> alloc_block_size_log2);
 
+   const uptr alloc_block_over_end =
+      alloc_block_vaddr + (alloc_block_count * ALLOC_BLOCK_SIZE);
+
+   if (alloc_block_over_end <= KERNEL_LINEAR_MAPPING_OVER_END)
+      return (void *)vaddr; // nothing to do!
+
+   // DISALLOW allocations crossing the linear mapping barrier!!
+   ASSERT(alloc_block_vaddr >= KERNEL_LINEAR_MAPPING_OVER_END);
+
+   /*
+    * Code dealing with the tricky allocation logic.
+    */
+
    for (int i = 0; i < alloc_block_count; i++) {
 
       int alloc_node = ptr_to_node((void *)alloc_block_vaddr, ALLOC_BLOCK_SIZE);
@@ -353,6 +366,19 @@ void kfree(void *ptr, size_t size)
 
    uptr alloc_block_vaddr = (uptr)ptr & ~(ALLOC_BLOCK_SIZE - 1);
    const int alloc_block_count = 1 + ((size - 1) >> alloc_block_size_log2);
+
+   const uptr alloc_block_over_end =
+      alloc_block_vaddr + (alloc_block_count * ALLOC_BLOCK_SIZE);
+
+   if (alloc_block_over_end <= KERNEL_LINEAR_MAPPING_OVER_END)
+      return; // nothing to do!
+
+   // DISALLOW allocations crossing the linear mapping barrier!!
+   ASSERT(alloc_block_vaddr >= KERNEL_LINEAR_MAPPING_OVER_END);
+
+   /*
+    * Code dealing with the tricky allocation logic.
+    */
 
    DEBUG_free_alloc_block_count;
 
