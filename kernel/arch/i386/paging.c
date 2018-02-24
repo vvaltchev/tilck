@@ -331,7 +331,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
       // alloc memory for the page table
 
       page_table_t *pt = kmalloc(sizeof(*pt));
-      uptr pt_paddr = get_mapping(curr_page_dir, pt);
+      uptr pt_paddr = KERNEL_VA_TO_PA(pt);
 
       // copy the page table
       memmove(pt, orig_pt, sizeof(*pt));
@@ -361,30 +361,28 @@ void pdir_destroy(page_directory_t *pdir)
 
       page_table_t *pt = pdir->page_tables[i];
 
-      if (pt == NULL) {
+      if (!pt)
          continue;
-      }
 
       for (int j = 0; j < 1024; j++) {
 
-         if (!pt->pages[j].present) {
+         if (!pt->pages[j].present)
             continue;
-         }
 
-         u32 paddr = pt->pages[j].pageAddr;
+         const u32 paddr = pt->pages[j].pageAddr;
 
          if (pt->pages[j].avail & PAGE_COW_FLAG) {
 
             ASSERT(pageframes_refcount[paddr] > 0);
 
             if (pageframes_refcount[paddr] > 1) {
-                pageframes_refcount[paddr]--;
+               pageframes_refcount[paddr]--;
                continue;
             }
          }
 
          // No COW (or COW with ref-count == 1).
-         free_pageframe(paddr << PAGE_SHIFT);
+         kfree(KERNEL_PA_TO_VA(paddr << PAGE_SHIFT), PAGE_SIZE);
       }
 
       // We freed all the pages, now free the whole page-table.

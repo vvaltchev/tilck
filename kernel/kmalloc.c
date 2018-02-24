@@ -344,8 +344,8 @@ void kfree(void *ptr, size_t size)
    const int node = ptr_to_node(ptr, size);
 
    DEBUG_free1;
-
    ASSERT(node_to_ptr(node, size) == ptr);
+
    allocator_meta_data *md = (allocator_meta_data *)HEAP_BASE_ADDR;
 
    // A node returned to user cannot be split.
