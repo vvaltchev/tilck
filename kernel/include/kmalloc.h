@@ -17,6 +17,8 @@ typedef struct {
    size_t heap_data_size_log2;
    size_t alloc_block_size_log2;
 
+   bool linear_mapping;
+
 } kmalloc_heap;
 
 static inline size_t calculate_heap_metadata_size(size_t heap_size,

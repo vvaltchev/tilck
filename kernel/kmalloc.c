@@ -111,17 +111,12 @@ static void *actual_allocate_node(kmalloc_heap *h, size_t node_size, int node)
 
    const uptr vaddr = (uptr)node_to_ptr(h, node, node_size);
 
-   uptr alloc_block_vaddr = vaddr & ~(h->alloc_block_size - 1);
-   const int alloc_block_count = 1 + ((node_size - 1) >> h->alloc_block_size_log2);
-
-   const uptr alloc_block_over_end =
-      alloc_block_vaddr + (alloc_block_count * h->alloc_block_size);
-
-   if (alloc_block_over_end <= KERNEL_LINEAR_MAPPING_OVER_END)
+   if (h->linear_mapping)
       return (void *)vaddr; // nothing to do!
 
-   // DISALLOW allocations crossing the linear mapping barrier!!
-   ASSERT(alloc_block_vaddr >= KERNEL_LINEAR_MAPPING_OVER_END);
+   uptr alloc_block_vaddr = vaddr & ~(h->alloc_block_size - 1);
+   const int alloc_block_count =
+      1 + ((node_size - 1) >> h->alloc_block_size_log2);
 
    /*
     * Code dealing with the tricky allocation logic.
@@ -351,17 +346,11 @@ static void internal_kfree(kmalloc_heap *h, void *ptr, size_t size)
          return;
    }
 
-   uptr alloc_block_vaddr = (uptr)ptr & ~(h->alloc_block_size - 1);
-   const int alloc_block_count = 1 + ((size - 1) >> h->alloc_block_size_log2);
-
-   const uptr alloc_block_over_end =
-      alloc_block_vaddr + (alloc_block_count * h->alloc_block_size);
-
-   if (alloc_block_over_end <= KERNEL_LINEAR_MAPPING_OVER_END)
+   if (h->linear_mapping)
       return; // nothing to do!
 
-   // DISALLOW allocations crossing the linear mapping barrier!!
-   ASSERT(alloc_block_vaddr >= KERNEL_LINEAR_MAPPING_OVER_END);
+   uptr alloc_block_vaddr = (uptr)ptr & ~(h->alloc_block_size - 1);
+   const int alloc_block_count = 1 + ((size - 1) >> h->alloc_block_size_log2);
 
    /*
     * Code dealing with the tricky allocation logic.
@@ -422,6 +411,8 @@ void kmalloc_create_heap(kmalloc_heap *h,
    // alloc block size has to be a multiple of PAGE_SIZE
    ASSERT((alloc_block_size & (PAGE_SIZE - 1)) == 0);
 
+   bzero(h, sizeof(*h));
+
    h->addr = vaddr;
    h->size = size;
    h->min_block_size = min_block_size;
@@ -430,6 +421,13 @@ void kmalloc_create_heap(kmalloc_heap *h,
 
    h->heap_data_size_log2 = log2_for_power_of_2(size);
    h->alloc_block_size_log2 = log2_for_power_of_2(alloc_block_size);
+
+   if (vaddr + size <= KERNEL_LINEAR_MAPPING_OVER_END) {
+      h->linear_mapping = true;
+   } else {
+      // DISALLOW heaps crossing the linear mapping barrier.
+      ASSERT(vaddr >= KERNEL_LINEAR_MAPPING_OVER_END);
+   }
 }
 
 void initialize_kmalloc()
