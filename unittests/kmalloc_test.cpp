@@ -89,7 +89,7 @@ TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
    mock_kmalloc = false;
 }
 
-TEST_F(kmalloc_test, chaos_test)
+TEST_F(kmalloc_test, DISABLED_chaos_test)
 {
    random_device rdev;
    const auto seed = rdev();

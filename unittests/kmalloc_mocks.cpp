@@ -44,8 +44,6 @@ void initialize_kmalloc_for_tests()
    initialize_kmalloc();
 }
 
-extern "C" {
-
 void map_page(page_directory_t *, void *vaddr, uptr paddr, bool us, bool rw)
 {
    ASSERT(!((uptr)vaddr & OFFSET_IN_PAGE_MASK)); // check page-aligned
@@ -72,8 +70,6 @@ bool is_mapped(page_directory_t *, void *vaddrp)
 uptr get_mapping(page_directory_t *, void *vaddrp)
 {
    return mappings[(uptr)vaddrp];
-}
-
 }
 
 void *__real_kmalloc(size_t size);

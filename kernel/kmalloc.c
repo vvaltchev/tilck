@@ -470,26 +470,80 @@ void kmalloc_create_heap(kmalloc_heap *h,
    }
 }
 
+static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
+{
+   size_t curr_max = 512 * MB;
+
+   while (curr_max) {
+
+      if (vaddr + curr_max <= limit)
+         break;
+
+      curr_max >>= 1; // divide by 2.
+   }
+
+   return curr_max;
+}
+
 void initialize_kmalloc()
 {
    ASSERT(!kmalloc_initialized);
 
-   uptr metadata_base = KERNEL_BASE_VA + (INITIAL_MB_RESERVED +
-                                          MB_RESERVED_FOR_PAGING +
-                                          RAMDISK_MB) * MB;
-   const size_t size = 64 * MB;
-   const size_t min_block_size = 32;
+   const uptr limit =
+      KERNEL_BASE_VA + MIN(get_phys_mem_mb(), KERNEL_LINEAR_MAPPING_MB) * MB;
 
-   uptr base = metadata_base + calculate_heap_metadata_size(size,
-                                                            min_block_size);
+   uptr vaddr = KERNEL_BASE_VA + (INITIAL_MB_RESERVED +
+                                  MB_RESERVED_FOR_PAGING +
+                                  RAMDISK_MB) * MB;
+
+   const size_t fixed_size_first_heap_metadata = 1 * MB;
+
+   const size_t first_heap_size =
+      find_biggest_heap_size(vaddr + fixed_size_first_heap_metadata, limit);
+
+   size_t min_block_size =
+      sizeof(block_node) * 2 * first_heap_size / fixed_size_first_heap_metadata;
+
+#ifndef UNIT_TEST_ENVIRONMENT
+   printk("[kmalloc] First heap size: %u MB, min block: %u\n",
+          first_heap_size / MB, min_block_size);
+#endif
+
+   ASSERT(calculate_heap_metadata_size(
+            first_heap_size, min_block_size) == fixed_size_first_heap_metadata);
 
    kmalloc_create_heap(&heaps[0],
-                       base,
-                       size,
+                       vaddr + fixed_size_first_heap_metadata,
+                       first_heap_size,
                        min_block_size,
                        32 * PAGE_SIZE,
-                       (void *)metadata_base);
+                       (void *)vaddr);
 
    kmalloc_initialized = true;
+   vaddr = heaps[0].vaddr + heaps[0].size;
+
+   for (size_t i = 1; i < ARRAY_SIZE(heaps); i++) {
+
+      const size_t heap_size = find_biggest_heap_size(vaddr, limit);
+
+      if (heap_size < MB)
+         break;
+
+      min_block_size = heap_size / (256 * KB);
+
+#ifndef UNIT_TEST_ENVIRONMENT
+      printk("[kmalloc] heap size: %u MB, min block: %u\n",
+             heap_size / MB, min_block_size);
+#endif
+
+      kmalloc_create_heap(&heaps[i],
+                          vaddr,
+                          heap_size,
+                          min_block_size,
+                          32 * PAGE_SIZE,
+                          NULL);
+
+      vaddr = heaps[i].vaddr + heaps[i].size;
+   }
 }
 
