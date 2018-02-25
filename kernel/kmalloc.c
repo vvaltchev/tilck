@@ -413,6 +413,9 @@ void kmalloc_create_heap(kmalloc_heap *h,
                          size_t alloc_block_size,
                          void *metadata_nodes)
 {
+   // vaddr has to be MB-aligned
+   ASSERT((vaddr & (MB - 1)) == 0);
+
    // heap size has to be a multiple of 1 MB
    ASSERT((size & (MB - 1)) == 0);
 
@@ -433,14 +436,17 @@ void initialize_kmalloc()
 {
    ASSERT(!kmalloc_initialized);
 
-   uptr base = KERNEL_BASE_VA + 64 * MB;
+   uptr base = KERNEL_BASE_VA + (INITIAL_MB_RESERVED +
+                                 MB_RESERVED_FOR_PAGING +
+                                 RAMDISK_MB) * MB;
+   size_t size = 64 * MB;
 
    kmalloc_create_heap(&default_heap,
-                       base + calculate_heap_metadata_size(64 * MB, 32),
-                       64 * MB,
+                       base,
+                       size,
                        32,
                        32 * PAGE_SIZE,
-                       (void *)base);
+                       (void*)base + size);
 
 
    kmalloc_initialized = true;

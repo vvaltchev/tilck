@@ -29,14 +29,14 @@ task_info *usermode_init_task = NULL;
 
 void show_hello_message()
 {
-
 #ifdef DEBUG
    printk("Hello from exOS! [DEBUG build]\n");
 #else
    printk("Hello from exOS! [RELEASE build]\n");
 #endif
 
-   printk("TIMER_HZ: %i\n", TIMER_HZ);
+   printk("TIMER_HZ: %i; Supported memory: %i MB\n",
+           TIMER_HZ, get_phys_mem_mb());
 }
 
 void load_usermode_init()
