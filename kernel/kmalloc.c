@@ -4,15 +4,6 @@
 #include <string_util.h>
 #include <utils.h>
 
-// MIN_BLOCK_SIZE has to be a multiple of 32
-STATIC_ASSERT((MIN_BLOCK_SIZE & 31) == 0);
-
-// HEAP_SIZE has to be a multiple of 1 MB
-STATIC_ASSERT((HEAP_SIZE & ((1 << 20) - 1)) == 0);
-
-// ALLOC_BLOCK_SIZE has to be a multiple of PAGE_SIZE
-STATIC_ASSERT((ALLOC_BLOCK_SIZE & (PAGE_SIZE - 1)) == 0);
-
 bool kbasic_virtual_alloc(uptr vaddr, int page_count);
 void kbasic_virtual_free(uptr vaddr, int page_count);
 
@@ -27,7 +18,7 @@ typedef struct {
    // 0 means completely empty if split = 0, or partially empty if split = 1
    u8 full : 1;
 
-   u8 allocated : 1; // used only for nodes having size = ALLOC_BLOCK_SIZE.
+   u8 allocated : 1; // used only for nodes having size = alloc_block_size.
 
    u8 unused : 5;
 
@@ -35,16 +26,7 @@ typedef struct {
 
 STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 
-static inline block_node *get_allocator_metadata_nodes(void)
-{
-   return (block_node *)HEAP_BASE_ADDR;
-}
-
 static const block_node new_node; // Just zeros.
-
-static int heap_data_size_log2;
-static int alloc_block_size_log2;
-
 bool kmalloc_initialized; // Zero-initialized => false.
 
 
@@ -56,26 +38,26 @@ bool kmalloc_initialized; // Zero-initialized => false.
 #define NODE_PARENT(n) (HALF(n-1))
 #define NODE_IS_LEFT(n) (((n) & 1) != 0)
 
-CONSTEXPR int ptr_to_node(void *ptr, size_t size)
+int ptr_to_node(kmalloc_heap *h, void *ptr, size_t size)
 {
-   const int sizeLog = log2_for_power_of_2(size);
+   const int size_log = log2_for_power_of_2(size);
 
-   const uptr raddr = (uptr)ptr - HEAP_DATA_ADDR;
-   const int nodes_before_our = (1 << (heap_data_size_log2 - sizeLog)) - 1;
-   const int position_in_row = raddr >> sizeLog;
+   const uptr offset = (uptr)ptr - h->addr;
+   const int nodes_before_our = (1 << (h->heap_data_size_log2 - size_log)) - 1;
+   const int position_in_row = offset >> size_log;
 
    return nodes_before_our + position_in_row;
 }
 
-CONSTEXPR void *node_to_ptr(int node, size_t size)
+void *node_to_ptr(kmalloc_heap *h, int node, size_t size)
 {
-   const int sizeLog = log2_for_power_of_2(size);
+   const int size_log = log2_for_power_of_2(size);
 
-   const int nodes_before_our = (1 << (heap_data_size_log2 - sizeLog)) - 1;
+   const int nodes_before_our = (1 << (h->heap_data_size_log2 - size_log)) - 1;
    const int position_in_row = node - nodes_before_our;
-   const uptr raddr = position_in_row << sizeLog;
+   const uptr offset = position_in_row << size_log;
 
-   return (void *)(raddr + HEAP_DATA_ADDR);
+   return (void *)(offset + h->addr);
 }
 
 CONSTEXPR static ALWAYS_INLINE bool is_block_node_free(block_node n)
@@ -83,9 +65,9 @@ CONSTEXPR static ALWAYS_INLINE bool is_block_node_free(block_node n)
    return !n.full && !n.split;
 }
 
-static size_t set_free_uplevels(int *node, size_t size)
+static size_t set_free_uplevels(kmalloc_heap *h, int *node, size_t size)
 {
-   block_node *nodes = get_allocator_metadata_nodes();
+   block_node *nodes = h->metadata_nodes;
 
    size_t curr_size = size << 1;
    int n = *node;
@@ -122,18 +104,18 @@ static size_t set_free_uplevels(int *node, size_t size)
    return curr_size;
 }
 
-static void *actual_allocate_node(size_t node_size, int node)
+static void *actual_allocate_node(kmalloc_heap *h, size_t node_size, int node)
 {
-   block_node *nodes = get_allocator_metadata_nodes();
+   block_node *nodes = h->metadata_nodes;
    nodes[node].full = true;
 
-   const uptr vaddr = (uptr)node_to_ptr(node, node_size);
+   const uptr vaddr = (uptr)node_to_ptr(h, node, node_size);
 
-   uptr alloc_block_vaddr = vaddr & ~(ALLOC_BLOCK_SIZE - 1);
-   const int alloc_block_count = 1 + ((node_size - 1) >> alloc_block_size_log2);
+   uptr alloc_block_vaddr = vaddr & ~(h->alloc_block_size - 1);
+   const int alloc_block_count = 1 + ((node_size - 1) >> h->alloc_block_size_log2);
 
    const uptr alloc_block_over_end =
-      alloc_block_vaddr + (alloc_block_count * ALLOC_BLOCK_SIZE);
+      alloc_block_vaddr + (alloc_block_count * h->alloc_block_size);
 
    if (alloc_block_over_end <= KERNEL_LINEAR_MAPPING_OVER_END)
       return (void *)vaddr; // nothing to do!
@@ -147,9 +129,12 @@ static void *actual_allocate_node(size_t node_size, int node)
 
    for (int i = 0; i < alloc_block_count; i++) {
 
-      int alloc_node = ptr_to_node((void *)alloc_block_vaddr, ALLOC_BLOCK_SIZE);
-      ASSERT(node_to_ptr(alloc_node,
-                         ALLOC_BLOCK_SIZE) == (void *)alloc_block_vaddr);
+      int alloc_node = ptr_to_node(h,
+                                   (void *)alloc_block_vaddr,
+                                   h->alloc_block_size);
+
+      ASSERT(node_to_ptr(h, alloc_node,
+                         h->alloc_block_size) == (void *)alloc_block_vaddr);
 
       DEBUG_allocate_node1;
 
@@ -159,20 +144,21 @@ static void *actual_allocate_node(size_t node_size, int node)
 
          // TODO: handle out-of-memory
          DEBUG_ONLY(bool success =)
-            kbasic_virtual_alloc(alloc_block_vaddr, ALLOC_BLOCK_PAGES);
+            kbasic_virtual_alloc(alloc_block_vaddr,
+                                 h->alloc_block_size / PAGE_SIZE);
          ASSERT(success);
 
          nodes[alloc_node].allocated = true;
       }
 
-      if (node_size >= ALLOC_BLOCK_SIZE) {
+      if (node_size >= h->alloc_block_size) {
          ASSERT(!nodes[alloc_node].split);
          nodes[alloc_node].full = true;
       } else {
          ASSERT(nodes[alloc_node].split);
       }
 
-      alloc_block_vaddr += ALLOC_BLOCK_SIZE;
+      alloc_block_vaddr += h->alloc_block_size;
    }
 
    DEBUG_allocate_node3;
@@ -205,31 +191,31 @@ typedef struct {
 
 //////////////////////////////////////////////////////////////////
 
-void *kmalloc(size_t desired_size)
+static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 {
    ASSERT(kmalloc_initialized);
    ASSERT(desired_size != 0);
 
    /*
-    * ASSERTs that HEAP_BASE_ADDR is aligned at ALLOC_BLOCK_SIZE.
+    * ASSERTs that metadata_nodes is aligned at h->alloc_block_size.
     * Without that condition the "magic" of ptr_to_node() and node_to_ptr()
     * does not work.
     */
-   ASSERT((HEAP_BASE_ADDR & (ALLOC_BLOCK_SIZE - 1)) == 0);
+   ASSERT(((uptr)h->metadata_nodes & (h->alloc_block_size - 1)) == 0);
 
    DEBUG_kmalloc_begin;
 
-   if (UNLIKELY(desired_size > HEAP_SIZE))
+   if (UNLIKELY(desired_size > h->size))
       return NULL;
 
-   const size_t size = MAX(desired_size, MIN_BLOCK_SIZE);
-   block_node *nodes = get_allocator_metadata_nodes();
+   const size_t size = MAX(desired_size, h->min_block_size);
+   block_node *nodes = h->metadata_nodes;
 
    int stack_size = 1;
    bool returned = false;
    stack_elem alloc_stack[32];
 
-   stack_elem base_elem = { HEAP_SIZE, 0 };
+   stack_elem base_elem = { h->size, 0 };
    alloc_stack[0] = base_elem;
 
    while (stack_size) {
@@ -271,7 +257,7 @@ void *kmalloc(size_t desired_size)
             SIMULATE_RETURN_NULL();
          }
 
-         void *vaddr = actual_allocate_node(node_size, node);
+         void *vaddr = actual_allocate_node(h, node_size, node);
 
          // Walking up to mark the parent nodes as 'full' if necessary..
 
@@ -329,24 +315,23 @@ void *kmalloc(size_t desired_size)
 #undef SIMULATE_CALL
 #undef SIMULATE_RETURN_NULL
 
-
-void kfree(void *ptr, size_t size)
+static void internal_kfree(kmalloc_heap *h, void *ptr, size_t size)
 {
    ASSERT(kmalloc_initialized);
 
    if (ptr == NULL)
       return;
 
-   // ptr == NULL with size == 0 is fine.
+   // NOTE: ptr == NULL with size == 0 is fine.
    ASSERT(size != 0);
 
-   size = roundup_next_power_of_2(MAX(size, MIN_BLOCK_SIZE));
-   const int node = ptr_to_node(ptr, size);
+   size = roundup_next_power_of_2(MAX(size, h->min_block_size));
+   const int node = ptr_to_node(h, ptr, size);
 
    DEBUG_free1;
-   ASSERT(node_to_ptr(node, size) == ptr);
+   ASSERT(node_to_ptr(h, node, size) == ptr);
 
-   block_node *nodes = get_allocator_metadata_nodes();
+   block_node *nodes = h->metadata_nodes;
 
    // A node returned to user cannot be split.
    ASSERT(!nodes[node].split);
@@ -356,21 +341,21 @@ void kfree(void *ptr, size_t size)
 
    {
       int biggest_free_node = node;
-      size_t biggest_free_size = set_free_uplevels(&biggest_free_node, size);
+      size_t biggest_free_size = set_free_uplevels(h, &biggest_free_node, size);
 
       DEBUG_free_after_coaleshe;
 
       ASSERT(biggest_free_node == node || biggest_free_size != size);
 
-      if (biggest_free_size < ALLOC_BLOCK_SIZE)
+      if (biggest_free_size < h->alloc_block_size)
          return;
    }
 
-   uptr alloc_block_vaddr = (uptr)ptr & ~(ALLOC_BLOCK_SIZE - 1);
-   const int alloc_block_count = 1 + ((size - 1) >> alloc_block_size_log2);
+   uptr alloc_block_vaddr = (uptr)ptr & ~(h->alloc_block_size - 1);
+   const int alloc_block_count = 1 + ((size - 1) >> h->alloc_block_size_log2);
 
    const uptr alloc_block_over_end =
-      alloc_block_vaddr + (alloc_block_count * ALLOC_BLOCK_SIZE);
+      alloc_block_vaddr + (alloc_block_count * h->alloc_block_size);
 
    if (alloc_block_over_end <= KERNEL_LINEAR_MAPPING_OVER_END)
       return; // nothing to do!
@@ -387,39 +372,77 @@ void kfree(void *ptr, size_t size)
    for (int i = 0; i < alloc_block_count; i++) {
 
       const int alloc_node =
-         ptr_to_node((void *)alloc_block_vaddr, ALLOC_BLOCK_SIZE);
+         ptr_to_node(h, (void *)alloc_block_vaddr, h->alloc_block_size);
 
       DEBUG_check_alloc_block;
 
       /*
-       * For nodes smaller than ALLOC_BLOCK_SIZE, the page we're freeing MUST
+       * For nodes smaller than h->alloc_block_size, the page we're freeing MUST
        * be free. For bigger nodes that kind of checking does not make sense:
        * a major block owns its all pages and their flags are irrelevant.
        */
-      ASSERT(size >= ALLOC_BLOCK_SIZE ||
+      ASSERT(size >= h->alloc_block_size ||
              is_block_node_free(nodes[alloc_node]));
 
       ASSERT(nodes[alloc_node].allocated);
 
       DEBUG_free_freeing_block;
-      kbasic_virtual_free(alloc_block_vaddr, ALLOC_BLOCK_PAGES);
+      kbasic_virtual_free(alloc_block_vaddr, h->alloc_block_size / PAGE_SIZE);
 
       nodes[alloc_node] = new_node;
-      alloc_block_vaddr += ALLOC_BLOCK_SIZE;
+      alloc_block_vaddr += h->alloc_block_size;
    }
 }
 
+static kmalloc_heap default_heap;
+
+void *kmalloc(size_t s)
+{
+   return internal_kmalloc(&default_heap, s);
+}
+
+void kfree(void *p, size_t s)
+{
+   internal_kfree(&default_heap, p, s);
+}
+
+void kmalloc_create_heap(kmalloc_heap *h,
+                         uptr vaddr,
+                         size_t size,
+                         size_t min_block_size,
+                         size_t alloc_block_size,
+                         void *metadata_nodes)
+{
+   // heap size has to be a multiple of 1 MB
+   ASSERT((size & (MB - 1)) == 0);
+
+   // alloc block size has to be a multiple of PAGE_SIZE
+   ASSERT((alloc_block_size & (PAGE_SIZE - 1)) == 0);
+
+   h->addr = vaddr;
+   h->size = size;
+   h->min_block_size = min_block_size;
+   h->alloc_block_size = alloc_block_size;
+   h->metadata_nodes = metadata_nodes;
+
+   h->heap_data_size_log2 = log2_for_power_of_2(size);
+   h->alloc_block_size_log2 = log2_for_power_of_2(alloc_block_size);
+}
 
 void initialize_kmalloc()
 {
    ASSERT(!kmalloc_initialized);
 
-   DEBUG_printk("heap base addr: %p\n", HEAP_BASE_ADDR);
-   DEBUG_printk("heap data addr: %p\n", HEAP_DATA_ADDR);
-   DEBUG_printk("heap size: %u\n", HEAP_SIZE);
+   uptr base = KERNEL_BASE_VA + 64 * MB;
 
-   heap_data_size_log2 = log2_for_power_of_2(HEAP_SIZE);
-   alloc_block_size_log2 = log2_for_power_of_2(ALLOC_BLOCK_SIZE);
+   kmalloc_create_heap(&default_heap,
+                       base + calculate_heap_metadata_size(64 * MB, 32),
+                       64 * MB,
+                       32,
+                       32 * PAGE_SIZE,
+                       (void *)base);
+
+
    kmalloc_initialized = true;
 }
 

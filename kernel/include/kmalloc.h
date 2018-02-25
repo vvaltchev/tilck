@@ -4,19 +4,27 @@
 #include <common_defs.h>
 #include <string_util.h>
 
-#define HEAP_BASE_ADDR (KERNEL_BASE_VA + 64 * MB)
-#define HEAP_SIZE (64 * MB)
-
-#define MIN_BLOCK_SIZE (32)
-#define ALLOC_BLOCK_PAGES (32)
-#define ALLOC_BLOCK_SIZE (ALLOC_BLOCK_PAGES * PAGE_SIZE)
-
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)
-#define KMALLOC_NODES_COUNT_IN_META_DATA (2 * HEAP_SIZE / MIN_BLOCK_SIZE)
 
-#define HEAP_DATA_ADDR                                                    \
-   (HEAP_BASE_ADDR +                                                      \
-    KMALLOC_NODES_COUNT_IN_META_DATA * KMALLOC_METADATA_BLOCK_NODE_SIZE)
+typedef struct {
+
+   uptr addr;
+   size_t size;
+   void *metadata_nodes;
+
+   size_t min_block_size;
+   size_t alloc_block_size;
+   size_t heap_data_size_log2;
+   size_t alloc_block_size_log2;
+
+} kmalloc_heap;
+
+static inline size_t calculate_heap_metadata_size(size_t heap_size,
+                                                  size_t min_block_size)
+{
+   return ((2 * heap_size) / min_block_size) * KMALLOC_METADATA_BLOCK_NODE_SIZE;
+}
+
 
 void initialize_kmalloc();
 void *kmalloc(size_t size);

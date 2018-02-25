@@ -23,6 +23,8 @@ extern "C" {
 using namespace std;
 using namespace testing;
 
+#define MIN_BLOCK_SIZE 32
+
 void kmalloc_chaos_test_sub(default_random_engine &e,
                             lognormal_distribution<> &dist)
 {
