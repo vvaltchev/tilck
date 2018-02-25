@@ -38,18 +38,18 @@ bool kmalloc_initialized; // Zero-initialized => false.
 #define NODE_PARENT(n) (HALF(n-1))
 #define NODE_IS_LEFT(n) (((n) & 1) != 0)
 
-int ptr_to_node(kmalloc_heap *h, void *ptr, size_t size)
+static inline int ptr_to_node(kmalloc_heap *h, void *ptr, size_t size)
 {
    const int size_log = log2_for_power_of_2(size);
 
-   const uptr offset = (uptr)ptr - h->addr;
+   const uptr offset = (uptr)ptr - h->vaddr;
    const int nodes_before_our = (1 << (h->heap_data_size_log2 - size_log)) - 1;
    const int position_in_row = offset >> size_log;
 
    return nodes_before_our + position_in_row;
 }
 
-void *node_to_ptr(kmalloc_heap *h, int node, size_t size)
+static inline void *node_to_ptr(kmalloc_heap *h, int node, size_t size)
 {
    const int size_log = log2_for_power_of_2(size);
 
@@ -57,7 +57,7 @@ void *node_to_ptr(kmalloc_heap *h, int node, size_t size)
    const int position_in_row = node - nodes_before_our;
    const uptr offset = position_in_row << size_log;
 
-   return (void *)(offset + h->addr);
+   return (void *)(offset + h->vaddr);
 }
 
 CONSTEXPR static ALWAYS_INLINE bool is_block_node_free(block_node n)
@@ -383,16 +383,45 @@ static void internal_kfree(kmalloc_heap *h, void *ptr, size_t size)
    }
 }
 
-static kmalloc_heap default_heap;
+static kmalloc_heap heaps[8];
 
 void *kmalloc(size_t s)
 {
-   return internal_kmalloc(&default_heap, s);
+   // Iterate in reverse-order because the first heaps are the biggest ones.
+   for (int i = ARRAY_SIZE(heaps) - 1; i >= 0; i--) {
+
+      /*
+       * The heap is too small (unlikely but possible) or the heap has not been
+       * created yet, therefore has size = 0.
+       */
+      if (heaps[i].size < s)
+         continue;
+
+      void *vaddr = internal_kmalloc(&heaps[i], s);
+
+      if (vaddr)
+         return vaddr;
+   }
+
+   return NULL;
 }
 
 void kfree(void *p, size_t s)
 {
-   internal_kfree(&default_heap, p, s);
+   const uptr vaddr = (uptr) p;
+
+   for (int i = ARRAY_SIZE(heaps) - 1; i >= 0; i--) {
+
+      if (heaps[i].size < s)
+         continue;
+
+      if (vaddr >= heaps[i].vaddr && vaddr + s <= heaps[i].heap_over_end) {
+         internal_kfree(&heaps[i], p, s);
+         return;
+      }
+   }
+
+   panic("[kfree] Heap not found for block: %p of size: %u", p, s);
 }
 
 void kmalloc_create_heap(kmalloc_heap *h,
@@ -413,12 +442,23 @@ void kmalloc_create_heap(kmalloc_heap *h,
 
    bzero(h, sizeof(*h));
 
-   h->addr = vaddr;
+   if (!metadata_nodes) {
+      // It is OK to pass NULL as 'metadata_nodes' if at least one heap exists.
+      ASSERT(heaps[0].vaddr != 0);
+
+      metadata_nodes =
+         kmalloc(calculate_heap_metadata_size(size, min_block_size));
+
+      VERIFY(metadata_nodes != NULL);
+   }
+
+   h->vaddr = vaddr;
    h->size = size;
    h->min_block_size = min_block_size;
    h->alloc_block_size = alloc_block_size;
    h->metadata_nodes = metadata_nodes;
 
+   h->heap_over_end = vaddr + size;
    h->heap_data_size_log2 = log2_for_power_of_2(size);
    h->alloc_block_size_log2 = log2_for_power_of_2(alloc_block_size);
 
@@ -434,18 +474,21 @@ void initialize_kmalloc()
 {
    ASSERT(!kmalloc_initialized);
 
-   uptr base = KERNEL_BASE_VA + (INITIAL_MB_RESERVED +
-                                 MB_RESERVED_FOR_PAGING +
-                                 RAMDISK_MB) * MB;
-   size_t size = 64 * MB;
+   uptr metadata_base = KERNEL_BASE_VA + (INITIAL_MB_RESERVED +
+                                          MB_RESERVED_FOR_PAGING +
+                                          RAMDISK_MB) * MB;
+   const size_t size = 64 * MB;
+   const size_t min_block_size = 32;
 
-   kmalloc_create_heap(&default_heap,
+   uptr base = metadata_base + calculate_heap_metadata_size(size,
+                                                            min_block_size);
+
+   kmalloc_create_heap(&heaps[0],
                        base,
                        size,
-                       32,
+                       min_block_size,
                        32 * PAGE_SIZE,
-                       (void*)base + size);
-
+                       (void *)metadata_base);
 
    kmalloc_initialized = true;
 }

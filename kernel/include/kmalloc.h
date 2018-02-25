@@ -8,14 +8,18 @@
 
 typedef struct {
 
-   uptr addr;
+   uptr vaddr;
    size_t size;
    void *metadata_nodes;
 
    size_t min_block_size;
    size_t alloc_block_size;
+
+   /* -- pre-calculated values -- */
    size_t heap_data_size_log2;
    size_t alloc_block_size_log2;
+   uptr heap_over_end; /* addr + size == last_heap_byte + 1 */
+   /* -- */
 
    bool linear_mapping;
 
