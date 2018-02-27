@@ -54,7 +54,7 @@ u32 calculate_node_size(kmalloc_heap *h, int node)
    return h->size >> i;
 }
 
-void save_heaps_metadata(unique_ptr<u8> *meta_before)
+void save_heaps_metadata(unique_ptr<u8[]> *meta_before)
 {
    for (int h = 0; h < KMALLOC_HEAPS_COUNT; h++) {
       memmove(meta_before[h].get(),
@@ -74,7 +74,7 @@ void print_node_info(int h, int node)
    printf("Value:     %u\n", after[node]);
 }
 
-void check_heaps_metadata(unique_ptr<u8> *meta_before)
+void check_heaps_metadata(unique_ptr<u8[]> *meta_before)
 {
    for (int h = 0; h < KMALLOC_HEAPS_COUNT; h++) {
 
@@ -150,14 +150,14 @@ TEST_F(kmalloc_test, chaos_test)
 
    lognormal_distribution<> dist(5.0, 3);
 
-   unique_ptr<u8> meta_before[KMALLOC_HEAPS_COUNT];
+   unique_ptr<u8[]> meta_before[KMALLOC_HEAPS_COUNT];
 
    for (int h = 0; h < KMALLOC_HEAPS_COUNT; h++) {
 
       if (!heaps[h].size)
          continue;
 
-      meta_before[h].reset((u8*)malloc(heaps[h].metadata_size));
+      meta_before[h].reset(new u8[heaps[h].metadata_size]);
    }
 
    for (int i = 0; i < 150; i++) {
