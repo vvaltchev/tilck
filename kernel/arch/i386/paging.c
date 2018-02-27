@@ -7,18 +7,6 @@
 #include <hal.h>
 #include <arch/i386/paging_int.h>
 
-#define KERNEL_BASE_MAPPED_VADDR_LIMIT                        \
-   ((uptr) KERNEL_BASE_VA +                                   \
-   (INITIAL_MB_RESERVED + MB_RESERVED_FOR_PAGING) * MB - 1)
-
-static inline bool is_vaddr_part_of_base_mapping(void *vaddr)
-{
-   return ((uptr)vaddr) <= KERNEL_BASE_MAPPED_VADDR_LIMIT;
-}
-
-uptr paging_alloc_pageframe();
-void paging_free_pageframe(uptr address);
-
 #define PAGE_COW_FLAG 1
 #define PAGE_COW_ORIG_RW 2
 
@@ -212,6 +200,26 @@ uptr get_mapping(page_directory_t *pdir, void *vaddrp)
    return ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 }
 
+static void map_4mb_page_int(page_directory_t *pdir,
+                             void *vaddrp,
+                             uptr paddr,
+                             u32 flags)
+{
+   const u32 vaddr = (u32) vaddrp;
+   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+
+   ASSERT(!(vaddr & (4*MB - 1))); // the vaddr must be 4MB-aligned
+   ASSERT(!(paddr & (4*MB - 1))); // the paddr must be 4MB-aligned
+
+   // Check that the entry has not been used.
+   ASSERT(!pdir->entries[page_dir_index].present);
+
+   // Check that there is no page table associated with this entry.
+   ASSERT(!pdir->page_tables[page_dir_index]);
+
+   pdir->entries[page_dir_index].raw = flags | paddr;
+}
+
 void map_page_int(page_directory_t *pdir,
                   void *vaddrp,
                   uptr paddr,
@@ -230,11 +238,13 @@ void map_page_int(page_directory_t *pdir,
 
    if (UNLIKELY(ptable == NULL)) {
 
-      // we have to create a page table for mapping 'vaddr'
+      // we have to create a page table for mapping 'vaddr'.
+      void *buf = kmalloc(sizeof(page_table_t));
 
-      uptr page_physical_addr = paging_alloc_pageframe();
+      // Don't handle this type of out-of-memory for the moment.
+      VERIFY(buf != NULL);
 
-      ptable = KERNEL_PA_TO_VA(page_physical_addr);
+      ptable = buf;
 
       initialize_empty_page_table(ptable);
       pdir->page_tables[page_dir_index] = ptable;
@@ -243,7 +253,7 @@ void map_page_int(page_directory_t *pdir,
          PG_PRESENT_BIT |
          PG_RW_BIT |
          (flags & PG_US_BIT) |
-         page_physical_addr;
+         KERNEL_VA_TO_PA(ptable);
    }
 
    ASSERT(ptable->pages[page_table_index].present == 0);
@@ -357,6 +367,7 @@ void pdir_destroy(page_directory_t *pdir)
    // Kernel's pdir cannot be destroyed!
    ASSERT(pdir != kernel_page_dir);
 
+   // Assumption: [0, 768) because KERNEL_BASE_VA is 0xC0000000.
    for (int i = 0; i < 768; i++) {
 
       page_table_t *pt = pdir->page_tables[i];
@@ -386,15 +397,10 @@ void pdir_destroy(page_directory_t *pdir)
       }
 
       // We freed all the pages, now free the whole page-table.
-
-      if (!is_vaddr_part_of_base_mapping(pt)) {
-         kfree(pt, sizeof(*pt));
-      }
+      kfree(pt, sizeof(*pt));
    }
 
    // We freed all pages and all the page-tables, now free pdir.
-
-   ASSERT(!is_vaddr_part_of_base_mapping(pdir));
    kfree(pdir, sizeof(*pdir));
 }
 
@@ -410,41 +416,21 @@ void init_paging()
    set_fault_handler(FAULT_GENERAL_PROTECTION, handle_general_protection_fault);
    kernel_page_dir = (page_directory_t *) kpdir_buf;
 
-   // Create page entries for the whole 4th GB of virtual memory
-   for (int i = 768; i < 1024; i++) {
-
-      uptr page_physical_addr = paging_alloc_pageframe();
-      page_table_t *ptable = KERNEL_PA_TO_VA(page_physical_addr);
-
-      initialize_empty_page_table(ptable);
-
-      kernel_page_dir->page_tables[i] = ptable;
-
-      /*
-       * NOTE: page_physical_addr has already its lower 12 bits cleared
-       * so we can just OR it with the rest of the flags.
-       */
-
-      kernel_page_dir->entries[i].raw =
-         PG_PRESENT_BIT | PG_RW_BIT | page_physical_addr;
-   }
-
    /*
     * Linear mapping: map the first LINEAR_MAPPING_MB of the physical
     * memory in the virtual memory with offset KERNEL_BASE_VA.
-    * TODO: consider adding support for 4 MB pages as use them here.
     */
 
-   const uptr pages_to_map = MIN(LINEAR_MAPPING_MB,
-                                 get_phys_mem_mb()) * MB / PAGE_SIZE;
+   for (uptr paddr = 0; paddr < LINEAR_MAPPING_SIZE; paddr += 4 * MB) {
+      if (paddr >= (uptr)get_phys_mem_mb() * MB)
+         break;
 
-   map_pages_int(kernel_page_dir,
-                 KERNEL_PA_TO_VA(0),
-                 0,
-                 pages_to_map,
-                 PG_RW_BIT | PG_GLOBAL_BIT);
+      map_4mb_page_int(kernel_page_dir,
+                       KERNEL_PA_TO_VA(paddr),
+                       paddr,
+                       PG_PRESENT_BIT | PG_RW_BIT | PG_4MB_BIT | paddr);
+   }
 
-   ASSERT(debug_count_used_pdir_entries(kernel_page_dir) == 256);
    set_page_directory(kernel_page_dir);
 }
 
