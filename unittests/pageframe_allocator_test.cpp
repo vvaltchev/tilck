@@ -26,9 +26,9 @@ TEST(alloc_pageframe, seq_alloc)
    }
 
    // Now we should be out-of-memory.
-   ASSERT_EQ(get_free_pageframes_count(), 0);
+   ASSERT_EQ(get_free_pg_count(), 0);
 
-   ASSERT_EQ(get_used_pageframes_count(),
+   ASSERT_EQ(get_used_pg_count(),
              get_phys_mem_mb() * MB / PAGE_SIZE);
 }
 
@@ -47,14 +47,14 @@ TEST(alloc_pageframe, seq_alloc_free)
    }
 
    // Now we should be out-of-memory.
-   ASSERT_EQ(get_free_pageframes_count(), 0);
+   ASSERT_EQ(get_free_pg_count(), 0);
 
    // Free everything.
-   for (uptr i = 0; i < get_total_pageframes_count(); i++) {
+   for (uptr i = 0; i < get_usable_pg_count(); i++) {
       free_pageframe(LINEAR_MAPPING_SIZE + i * PAGE_SIZE);
    }
 
-   ASSERT_EQ(get_free_pageframes_count(), get_total_pageframes_count());
+   ASSERT_EQ(get_free_pg_count(), get_usable_pg_count());
 
    /*
     * Now the whole memory should be free, but we cannot anticipate
@@ -66,7 +66,7 @@ TEST(alloc_pageframe, seq_alloc_free)
 
    while (true) {
 
-      if (allocated > get_total_pageframes_count())
+      if (allocated > get_usable_pg_count())
          FAIL();
 
       uptr r = alloc_pageframe();
@@ -77,8 +77,8 @@ TEST(alloc_pageframe, seq_alloc_free)
       allocated++;
    }
 
-   ASSERT_EQ(allocated, get_total_pageframes_count());
-   ASSERT_EQ(get_free_pageframes_count(), 0);
+   ASSERT_EQ(allocated, get_usable_pg_count());
+   ASSERT_EQ(get_free_pg_count(), 0);
 }
 
 TEST(alloc_pageframe, one_pageframe_free)
@@ -96,7 +96,7 @@ TEST(alloc_pageframe, one_pageframe_free)
    }
 
    // Now we should be out-of-memory.
-   ASSERT_EQ(get_free_pageframes_count(), 0);
+   ASSERT_EQ(get_free_pg_count(), 0);
 
    // Free an arbtrary pageframe
    uptr paddr = LINEAR_MAPPING_SIZE + 5 * MB;

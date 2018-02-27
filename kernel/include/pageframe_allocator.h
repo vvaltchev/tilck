@@ -24,17 +24,17 @@ void mark_pageframes_as_reserved(uptr paddr, int mb_count);
 
 extern int pageframes_used;
 
-static ALWAYS_INLINE int get_total_pageframes_count(void)
+static ALWAYS_INLINE int get_usable_pg_count(void)
 {
    return (memsize_in_mb << 20) >> PAGE_SHIFT;
 }
 
-static ALWAYS_INLINE int get_free_pageframes_count(void)
+static ALWAYS_INLINE int get_free_pg_count(void)
 {
-   return get_total_pageframes_count() - pageframes_used;
+   return get_usable_pg_count() - pageframes_used;
 }
 
-static ALWAYS_INLINE int get_used_pageframes_count(void)
+static ALWAYS_INLINE int get_used_pg_count(void)
 {
    return pageframes_used;
 }

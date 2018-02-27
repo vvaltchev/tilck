@@ -72,14 +72,14 @@ void kernel_kmalloc_perf_test()
 
 static int calc_perc_free_pageframes(void)
 {
-   return 100*get_free_pageframes_count()/get_total_pageframes_count();
+   return 100*get_free_pg_count()/get_usable_pg_count();
 }
 
 static void print_free_pageframes(void)
 {
    printk("Free pageframes: %u/%u [%u%%]\n",
-          get_free_pageframes_count(),
-          get_total_pageframes_count(),
+          get_free_pg_count(),
+          get_usable_pg_count(),
           calc_perc_free_pageframes());
 }
 
@@ -186,11 +186,11 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
    //print_free_pageframes();
    //printk("Iters before hitting the threshold: %i\n", iters);
 
-   // u32 used = get_total_pageframes_count() - get_free_pageframes_count();
+   // u32 used = get_usable_pg_count() - get_free_pg_count();
    // printk("Full 128K blocks: %i, %u%% of the total allocated\n",
    //       full_128k_blocks, 100*full_128k_blocks*32 / used);
 
-   const int free_pageframes_count = get_free_pageframes_count();
+   const int free_pageframes_count = get_free_pg_count();
 
    if (!alloc_128k) {
 

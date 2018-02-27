@@ -40,7 +40,7 @@ bool kbasic_virtual_alloc(uptr vaddr, int page_count)
 {
    ASSERT(!(vaddr & (PAGE_SIZE - 1))); // the vaddr must be page-aligned
 
-   if (get_free_pageframes_count() < page_count)
+   if (get_free_pg_count() < page_count)
       return false;
 
    page_directory_t *pdir = get_kernel_page_dir();
