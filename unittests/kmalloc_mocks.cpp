@@ -20,6 +20,7 @@ extern "C" {
 
 extern bool kmalloc_initialized;
 extern u32 memsize_in_mb;
+extern bool suppress_printk;
 
 void *kernel_va = nullptr;
 bool mock_kmalloc = false;
@@ -44,7 +45,9 @@ void initialize_kmalloc_for_tests()
    kmalloc_initialized = false;
    initialize_test_kernel_heap();
    init_pageframe_allocator();
+   suppress_printk = true;
    initialize_kmalloc();
+   suppress_printk = false;
 }
 
 void map_page(page_directory_t *, void *vaddr, uptr paddr, bool us, bool rw)

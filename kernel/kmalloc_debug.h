@@ -20,7 +20,7 @@
 
 #define DEBUG_allocate_node1                                                \
    DEBUG_printk("For node# %i, using alloc block (%i/%i): %p (node #%u)\n", \
-                ptr_to_node((void *)vaddr, node_size), i+1,                 \
+                ptr_to_node(h, (void *)vaddr, node_size), i+1,              \
                 alloc_block_count, alloc_block_vaddr, alloc_node)           \
 
 #define DEBUG_allocate_node2                                                \
@@ -36,7 +36,7 @@
 
 #define DEBUG_kmalloc_call_begin                                            \
       DEBUG_printk("Node# %i, node_size = %u, vaddr = %p\n",                \
-                   node, node_size, node_to_ptr(node, node_size))           \
+                   node, node_size, node_to_ptr(h, node, node_size))        \
 
 #define DEBUG_already_full                                                  \
    DEBUG_printk("Already FULL, return NULL\n")
@@ -72,9 +72,9 @@
    DEBUG_printk("Checking alloc block i = %i, pNode = %i, pAddr = %p, "     \
                  "alloc = %i, free = %i, split = %i\n",                     \
                  i, alloc_node, alloc_block_vaddr,                          \
-                 md->nodes[alloc_node].allocated,                           \
-                 !md->nodes[alloc_node].full,                               \
-                 md->nodes[alloc_node].split)                               \
+                 nodes[alloc_node].allocated,                               \
+                 !nodes[alloc_node].full,                                   \
+                 nodes[alloc_node].split)                                   \
 
 #define DEBUG_free_freeing_block                                            \
    DEBUG_printk("---> FREEING the ALLOC BLOCK!\n")

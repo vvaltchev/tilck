@@ -72,14 +72,12 @@ static size_t set_free_uplevels(kmalloc_heap *h, int *node, size_t size)
    size_t curr_size = size << 1;
    int n = *node;
 
+   ASSERT(!nodes[n].split);
+
    nodes[n].full = false;
    n = NODE_PARENT(n);
 
-   do {
-
-      if (is_block_node_free(nodes[n])) {
-         break;
-      }
+   while (!is_block_node_free(nodes[n])) {
 
       block_node left = nodes[NODE_LEFT(n)];
       block_node right = nodes[NODE_RIGHT(n)];
@@ -98,8 +96,7 @@ static size_t set_free_uplevels(kmalloc_heap *h, int *node, size_t size)
 
       n = NODE_PARENT(n);
       curr_size <<= 1;
-
-   } while (n != 0);
+   }
 
    return curr_size;
 }
@@ -383,7 +380,7 @@ static void internal_kfree(kmalloc_heap *h, void *ptr, size_t size)
    }
 }
 
-static kmalloc_heap heaps[8];
+STATIC kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
 
 void *kmalloc(size_t s)
 {
@@ -406,6 +403,7 @@ void *kmalloc(size_t s)
       void *vaddr = internal_kmalloc(&heaps[i], s);
 
       if (vaddr) {
+         //printk("kmalloc heap %i: %u bytes => %p\n", i, s, vaddr - KERNEL_BASE_VA);
          heaps[i].mem_allocated += s;
          return vaddr;
       }
@@ -426,6 +424,7 @@ void kfree(void *p, size_t s)
          continue;
 
       if (vaddr >= heaps[i].vaddr && vaddr + s <= heaps[i].heap_over_end) {
+         //printk("kfree heap %i: %u bytes => %p\n", i, s, p - KERNEL_BASE_VA);
          internal_kfree(&heaps[i], p, s);
          heaps[i].mem_allocated -= s;
          return;
@@ -452,14 +451,13 @@ void kmalloc_create_heap(kmalloc_heap *h,
    ASSERT((alloc_block_size & (PAGE_SIZE - 1)) == 0);
 
    bzero(h, sizeof(*h));
+   h->metadata_size = calculate_heap_metadata_size(size, min_block_size);
 
    if (!metadata_nodes) {
       // It is OK to pass NULL as 'metadata_nodes' if at least one heap exists.
       ASSERT(heaps[0].vaddr != 0);
 
-      metadata_nodes =
-         kmalloc(calculate_heap_metadata_size(size, min_block_size));
-
+      metadata_nodes = kmalloc(h->metadata_size);
       VERIFY(metadata_nodes != NULL);
    }
 
@@ -517,10 +515,8 @@ void initialize_kmalloc()
    size_t min_block_size =
       sizeof(block_node) * 2 * first_heap_size / fixed_size_first_heap_metadata;
 
-#ifndef UNIT_TEST_ENVIRONMENT
    printk("[kmalloc] First heap size: %u MB, min block: %u\n",
           first_heap_size / MB, min_block_size);
-#endif
 
    ASSERT(calculate_heap_metadata_size(
             first_heap_size, min_block_size) == fixed_size_first_heap_metadata);
@@ -544,10 +540,8 @@ void initialize_kmalloc()
 
       min_block_size = heap_size / (256 * KB);
 
-#ifndef UNIT_TEST_ENVIRONMENT
       printk("[kmalloc] heap size: %u MB, min block: %u\n",
              heap_size / MB, min_block_size);
-#endif
 
       kmalloc_create_heap(&heaps[i],
                           vaddr,

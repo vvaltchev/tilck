@@ -5,6 +5,7 @@
 #include <string_util.h>
 
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)
+#define KMALLOC_HEAPS_COUNT 2
 
 typedef struct {
 
@@ -19,6 +20,7 @@ typedef struct {
    /* -- pre-calculated values -- */
    size_t heap_data_size_log2;
    size_t alloc_block_size_log2;
+   size_t metadata_size;
    uptr heap_over_end; /* addr + size == last_heap_byte + 1 */
    /* -- */
 

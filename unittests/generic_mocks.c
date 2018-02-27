@@ -2,9 +2,15 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
+bool suppress_printk;
 
 void __wrap_printk(const char *fmt, ...)
 {
+   if (suppress_printk)
+      return;
+
 	printf("[kernel] ");
 
 	va_list args;
