@@ -99,4 +99,7 @@ static ALWAYS_INLINE int get_phys_mem_mb(void)
    return memsize_in_mb;
 }
 
-
+static ALWAYS_INLINE uptr get_phys_mem_size(void)
+{
+   return memsize_in_mb << 20;
+}

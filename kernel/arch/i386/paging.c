@@ -422,7 +422,8 @@ void init_paging()
     */
 
    for (uptr paddr = 0; paddr < LINEAR_MAPPING_SIZE; paddr += 4 * MB) {
-      if (paddr >= (uptr)get_phys_mem_mb() * MB)
+
+      if (paddr >= get_phys_mem_size())
          break;
 
       map_4mb_page_int(kernel_page_dir,

@@ -29,9 +29,9 @@ extern void *kernel_va;
 
 #endif
 
-#define LINEAR_MAPPING_MB        (256)
-#define LINEAR_MAPPING_SIZE      (LINEAR_MAPPING_MB << 20)
-#define LINEAR_MAPPING_OVER_END  (KERNEL_BASE_VA + LINEAR_MAPPING_SIZE)
+#define LINEAR_MAPPING_MB          (512)
+#define LINEAR_MAPPING_SIZE        (LINEAR_MAPPING_MB << 20)
+#define LINEAR_MAPPING_OVER_END    (KERNEL_BASE_VA + LINEAR_MAPPING_SIZE)
 
 #define RAMDISK_PADDR              (4 * MB)
 #define RAMDISK_VADDR              (KERNEL_BASE_VA + RAMDISK_PADDR)
