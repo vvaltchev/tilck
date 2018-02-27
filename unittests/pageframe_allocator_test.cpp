@@ -7,13 +7,14 @@ extern "C" {
    #include <paging.h>
    #include <pageframe_allocator.h>
    #include <self_tests/self_tests.h>
-   uptr paging_alloc_pageframe();
-   void paging_free_pageframe(uptr address);
+   extern u32 memsize_in_mb;
 }
 
 TEST(alloc_pageframe, seq_alloc)
 {
    init_pageframe_allocator();
+
+   ASSERT_EQ(get_usable_pg_count(), 128 * MB / PAGE_SIZE);
 
    for (uptr i = 0; ; i++) {
 
@@ -29,7 +30,7 @@ TEST(alloc_pageframe, seq_alloc)
    ASSERT_EQ(get_free_pg_count(), 0);
 
    ASSERT_EQ(get_used_pg_count(),
-             get_phys_mem_mb() * MB / PAGE_SIZE);
+             (get_phys_mem_mb() - LINEAR_MAPPING_MB) * MB / PAGE_SIZE);
 }
 
 TEST(alloc_pageframe, seq_alloc_free)

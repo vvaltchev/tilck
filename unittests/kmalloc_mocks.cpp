@@ -19,6 +19,7 @@ extern "C" {
 #include <pageframe_allocator.h>
 
 extern bool kmalloc_initialized;
+extern u32 memsize_in_mb;
 
 void *kernel_va = nullptr;
 bool mock_kmalloc = false;
@@ -27,6 +28,8 @@ static unordered_map<uptr, uptr> mappings;
 
 void initialize_test_kernel_heap()
 {
+   memsize_in_mb = 256;
+
    if (kernel_va != nullptr) {
       bzero(kernel_va, get_phys_mem_mb() * MB);
       mappings.clear();

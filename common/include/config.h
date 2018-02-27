@@ -21,15 +21,16 @@
 #if !defined(TESTING) && !defined(KERNEL_TEST)
 
 #define KERNEL_BASE_VA             0xC0000000
+#define LINEAR_MAPPING_MB          (512)
 
 #else
 
 extern void *kernel_va;
 #define KERNEL_BASE_VA             ((uptr)kernel_va)
+#define LINEAR_MAPPING_MB          (128)
 
 #endif
 
-#define LINEAR_MAPPING_MB          (512)
 #define LINEAR_MAPPING_SIZE        (LINEAR_MAPPING_MB << 20)
 #define LINEAR_MAPPING_OVER_END    (KERNEL_BASE_VA + LINEAR_MAPPING_SIZE)
 

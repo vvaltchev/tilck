@@ -24,9 +24,12 @@ void mark_pageframes_as_reserved(uptr paddr, int mb_count);
 
 extern int pageframes_used;
 
+#include <string_util.h>
+
 static ALWAYS_INLINE int get_usable_pg_count(void)
 {
-   return (memsize_in_mb << 20) >> PAGE_SHIFT;
+   const int usable_mb = MAX(0, ((int)memsize_in_mb - LINEAR_MAPPING_MB));
+   return (usable_mb << 20) >> PAGE_SHIFT;
 }
 
 static ALWAYS_INLINE int get_free_pg_count(void)

@@ -29,7 +29,7 @@ u32 memsize_in_mb = 128;
 int pageframes_used;
 static u32 last_index;
 
-#define BITFIELD_ELEMS (memsize_in_mb * 8)
+#define BITFIELD_ELEMS ((memsize_in_mb - LINEAR_MAPPING_MB) * 8)
 
 void init_pageframe_allocator(void)
 {
@@ -37,6 +37,7 @@ void init_pageframe_allocator(void)
    bzero((void *)pageframes_bitfield, sizeof(pageframes_bitfield));
    last_index = 0;
    pageframes_used = 0;
+   memsize_in_mb = 256;
 #else
    /*
     * In the kernel, pageframes_bitfield is zeroed because it is in the BSS
