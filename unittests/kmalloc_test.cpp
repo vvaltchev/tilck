@@ -77,14 +77,17 @@ void print_node_info(int h, int node)
 void check_heaps_metadata(unique_ptr<u8> *meta_before)
 {
    for (int h = 0; h < KMALLOC_HEAPS_COUNT; h++) {
-      for (int i = 0; i < heaps[h].metadata_size; i++) {
-         u8 *after = (u8*)heaps[h].metadata_nodes;
 
-         if (meta_before[h].get()[i] == after[i])
+      u8 *meta_ptr = meta_before[h].get();
+      kmalloc_heap *heap = &heaps[h];
+
+      for (int i = 0; i < heap->metadata_size; i++) {
+
+         if (meta_ptr[i] == ((u8*)heap->metadata_nodes)[i])
             continue;
 
          print_node_info(h, i);
-         printf("Exp value: %i\n", meta_before[h].get()[i]);
+         printf("Exp value: %i\n", meta_ptr[i]);
          FAIL();
       }
    }
@@ -138,7 +141,7 @@ TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
    mock_kmalloc = false;
 }
 
-TEST_F(kmalloc_test, DISABLED_chaos_test)
+TEST_F(kmalloc_test, chaos_test)
 {
    random_device rdev;
    const auto seed = rdev();
@@ -157,9 +160,7 @@ TEST_F(kmalloc_test, DISABLED_chaos_test)
       meta_before[h].reset((u8*)malloc(heaps[h].metadata_size));
    }
 
-   for (int i = 0; i < 100; i++) {
-
-      printk("*** ITER %i ***\n", i);
+   for (int i = 0; i < 150; i++) {
 
       save_heaps_metadata(meta_before);
 
