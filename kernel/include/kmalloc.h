@@ -10,6 +10,7 @@ typedef struct {
 
    uptr vaddr;
    size_t size;
+   size_t mem_allocated;
    void *metadata_nodes;
 
    size_t min_block_size;

@@ -387,20 +387,28 @@ static kmalloc_heap heaps[8];
 
 void *kmalloc(size_t s)
 {
+   s = roundup_next_power_of_2(s);
+
    // Iterate in reverse-order because the first heaps are the biggest ones.
    for (int i = ARRAY_SIZE(heaps) - 1; i >= 0; i--) {
 
+      const size_t heap_size = heaps[i].size;
+      const size_t heap_free = heap_size - heaps[i].mem_allocated;
+
       /*
        * The heap is too small (unlikely but possible) or the heap has not been
-       * created yet, therefore has size = 0.
+       * created yet, therefore has size = 0 or just there is not enough free
+       * space in it.
        */
-      if (heaps[i].size < s)
+      if (heap_size < s || heap_free < s)
          continue;
 
       void *vaddr = internal_kmalloc(&heaps[i], s);
 
-      if (vaddr)
+      if (vaddr) {
+         heaps[i].mem_allocated += s;
          return vaddr;
+      }
    }
 
    return NULL;
@@ -409,14 +417,17 @@ void *kmalloc(size_t s)
 void kfree(void *p, size_t s)
 {
    const uptr vaddr = (uptr) p;
+   s = roundup_next_power_of_2(s);
 
    for (int i = ARRAY_SIZE(heaps) - 1; i >= 0; i--) {
 
+      /* The heap is too small or just uninitialized */
       if (heaps[i].size < s)
          continue;
 
       if (vaddr >= heaps[i].vaddr && vaddr + s <= heaps[i].heap_over_end) {
          internal_kfree(&heaps[i], p, s);
+         heaps[i].mem_allocated -= s;
          return;
       }
    }
