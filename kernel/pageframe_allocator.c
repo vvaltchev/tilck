@@ -33,7 +33,6 @@ static u32 last_index;
 
 void init_pageframe_allocator(void)
 {
-
 #ifdef KERNEL_TEST
    bzero((void *)pageframes_bitfield, sizeof(pageframes_bitfield));
    last_index = 0;
@@ -44,8 +43,6 @@ void init_pageframe_allocator(void)
     * and this function is called only ONCE. No point in clearing the bitfield.
     */
 #endif
-
-   init_paging_pageframe_allocator();
 }
 
 /*
