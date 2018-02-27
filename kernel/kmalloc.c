@@ -462,11 +462,11 @@ void kmalloc_create_heap(kmalloc_heap *h,
    h->heap_data_size_log2 = log2_for_power_of_2(size);
    h->alloc_block_size_log2 = log2_for_power_of_2(alloc_block_size);
 
-   if (vaddr + size <= KERNEL_LINEAR_MAPPING_OVER_END) {
+   if (vaddr + size <= LINEAR_MAPPING_OVER_END) {
       h->linear_mapping = true;
    } else {
       // DISALLOW heaps crossing the linear mapping barrier.
-      ASSERT(vaddr >= KERNEL_LINEAR_MAPPING_OVER_END);
+      ASSERT(vaddr >= LINEAR_MAPPING_OVER_END);
    }
 }
 
@@ -490,7 +490,7 @@ void initialize_kmalloc()
    ASSERT(!kmalloc_initialized);
 
    const uptr limit =
-      KERNEL_BASE_VA + MIN(get_phys_mem_mb(), KERNEL_LINEAR_MAPPING_MB) * MB;
+      KERNEL_BASE_VA + MIN(get_phys_mem_mb(), LINEAR_MAPPING_MB) * MB;
 
    uptr vaddr = KERNEL_BASE_VA + (INITIAL_MB_RESERVED +
                                   MB_RESERVED_FOR_PAGING +

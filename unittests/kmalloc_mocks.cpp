@@ -61,7 +61,7 @@ bool is_mapped(page_directory_t *, void *vaddrp)
 {
    uptr vaddr = (uptr)vaddrp & PAGE_MASK;
 
-   if (vaddr + PAGE_SIZE < KERNEL_LINEAR_MAPPING_OVER_END)
+   if (vaddr + PAGE_SIZE < LINEAR_MAPPING_OVER_END)
       return true;
 
    return mappings.find(vaddr) != mappings.end();

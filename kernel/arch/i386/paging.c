@@ -430,12 +430,12 @@ void init_paging()
    }
 
    /*
-    * Linear mapping: map the first KERNEL_LINEAR_MAPPING_MB of the physical
+    * Linear mapping: map the first LINEAR_MAPPING_MB of the physical
     * memory in the virtual memory with offset KERNEL_BASE_VA.
     * TODO: consider adding support for 4 MB pages as use them here.
     */
 
-   const uptr pages_to_map = MIN(KERNEL_LINEAR_MAPPING_MB,
+   const uptr pages_to_map = MIN(LINEAR_MAPPING_MB,
                                  get_phys_mem_mb()) * MB / PAGE_SIZE - 1;
 
    map_pages_int(kernel_page_dir,
