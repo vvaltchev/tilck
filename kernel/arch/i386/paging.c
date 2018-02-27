@@ -436,11 +436,11 @@ void init_paging()
     */
 
    const uptr pages_to_map = MIN(LINEAR_MAPPING_MB,
-                                 get_phys_mem_mb()) * MB / PAGE_SIZE - 1;
+                                 get_phys_mem_mb()) * MB / PAGE_SIZE;
 
    map_pages_int(kernel_page_dir,
-                 KERNEL_PA_TO_VA(0x1000),
-                 0x1000, // Skip the first page (for NULL etc.)
+                 KERNEL_PA_TO_VA(0),
+                 0,
                  pages_to_map,
                  PG_RW_BIT | PG_GLOBAL_BIT);
 

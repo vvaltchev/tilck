@@ -102,7 +102,7 @@ void kmain()
    //kmutex_test();
    //kcond_test();
 
-   kernel_kmalloc_perf_test();
+   //kernel_kmalloc_perf_test();
 
    //kthread_create(&sleeping_kthread, (void *) 123);
    //kthread_create(&sleeping_kthread, (void *) 20);
@@ -111,7 +111,7 @@ void kmain()
 
    //kernel_alloc_pageframe_perftest();
 
-   //load_usermode_init();
+   load_usermode_init();
 
    printk("[kernel main] Starting the scheduler...\n");
    switch_to_idle_task_outside_interrupt_context();
