@@ -28,6 +28,7 @@ STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 
 static const block_node new_node; // Just zeros.
 bool kmalloc_initialized; // Zero-initialized => false.
+STATIC kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
 
 
 #define HALF(x) ((x) >> 1)
@@ -38,7 +39,7 @@ bool kmalloc_initialized; // Zero-initialized => false.
 #define NODE_PARENT(n) (HALF(n-1))
 #define NODE_IS_LEFT(n) (((n) & 1) != 0)
 
-static inline int ptr_to_node(kmalloc_heap *h, void *ptr, size_t size)
+STATIC_INLINE int ptr_to_node(kmalloc_heap *h, void *ptr, size_t size)
 {
    const int size_log = log2_for_power_of_2(size);
 
@@ -49,7 +50,7 @@ static inline int ptr_to_node(kmalloc_heap *h, void *ptr, size_t size)
    return nodes_before_our + position_in_row;
 }
 
-static inline void *node_to_ptr(kmalloc_heap *h, int node, size_t size)
+STATIC_INLINE void *node_to_ptr(kmalloc_heap *h, int node, size_t size)
 {
    const int size_log = log2_for_power_of_2(size);
 
@@ -261,6 +262,8 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
                nodes[n].full = true;
          }
 
+         DEBUG_printk("kmalloc_end: ptr: %p, node #%i, size: %u\n",
+                      vaddr, node, desired_size);
          return vaddr;
       }
 
@@ -379,8 +382,6 @@ static void internal_kfree(kmalloc_heap *h, void *ptr, size_t size)
       alloc_block_vaddr += h->alloc_block_size;
    }
 }
-
-STATIC kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
 
 void *kmalloc(size_t s)
 {

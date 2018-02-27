@@ -223,8 +223,10 @@ NORETURN void not_reached(const char *file, int line);
 
    #ifdef KERNEL_TEST
       #define STATIC
+      #define STATIC_INLINE
    #else
       #define STATIC static
+      #define STATIC_INLINE static inline
    #endif
 
 #endif

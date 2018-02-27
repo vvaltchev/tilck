@@ -1,25 +1,26 @@
 
 #pragma once
 
-//#define DEBUG_printk printk
-#define DEBUG_printk(...)
+#define DEBUG_COND (h == &heaps[0])
+#define DEBUG_printk(...) if (DEBUG_COND) printk(__VA_ARGS__)
+//#define DEBUG_printk(...)
 
 #define DEBUG_stop_coaleshe                                                 \
                                                                             \
-   DEBUG_printk("STOP: unable to make node %i (size %u) as free\n",         \
+   DEBUG_printk("STOP: unable to mark node #%i (size %u) as free\n",        \
                 n, curr_size);                                              \
                                                                             \
-   DEBUG_printk("node left: free:  %i, split: %i\n",                        \
-                !left.full, left.split);                                    \
+   DEBUG_printk("node left:  full: %i, split: %i\n",                        \
+                left.full, left.split);                                     \
                                                                             \
-   DEBUG_printk("node right: free: %i, split: %i\n",                        \
-                !right.full, left.split)                                    \
+   DEBUG_printk("node right: full: %i, split: %i\n",                        \
+                right.full, left.split)                                     \
 
 #define DEBUG_coaleshe                                                      \
-   DEBUG_printk("Marking node = %i (size: %u) as free\n", n, curr_size)
+   DEBUG_printk("Marking node #%i (size: %u) as free\n", n, curr_size)
 
 #define DEBUG_allocate_node1                                                \
-   DEBUG_printk("For node# %i, using alloc block (%i/%i): %p (node #%u)\n", \
+   DEBUG_printk("For node #%i, using alloc block (%i/%i): %p (node #%u)\n", \
                 ptr_to_node(h, (void *)vaddr, node_size), i+1,              \
                 alloc_block_count, alloc_block_vaddr, alloc_node)           \
 
@@ -35,7 +36,7 @@
    DEBUG_printk("kmalloc(%u)...\n", desired_size)
 
 #define DEBUG_kmalloc_call_begin                                            \
-      DEBUG_printk("Node# %i, node_size = %u, vaddr = %p\n",                \
+      DEBUG_printk("Node #%i, node_size = %u, vaddr = %p\n",                \
                    node, node_size, node_to_ptr(h, node, node_size))        \
 
 #define DEBUG_already_full                                                  \
@@ -57,10 +58,10 @@
    DEBUG_printk("going on right..\n")
 
 #define DEBUG_free1                                                         \
-   DEBUG_printk("free_node: node# %i (size %u)\n", node, size)
+   DEBUG_printk("kfree: ptr: %p, node #%i (size %u)\n", ptr, node, size)
 
 #define DEBUG_free_after_coaleshe                                           \
-   DEBUG_printk("After coaleshe, biggest_free_node# %i, "                   \
+   DEBUG_printk("After coaleshe, biggest_free_node #%i, "                   \
                 "biggest_free_size = %u\n",                                 \
                 biggest_free_node, biggest_free_size)                       \
 
