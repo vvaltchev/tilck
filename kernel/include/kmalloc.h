@@ -5,7 +5,7 @@
 #include <string_util.h>
 
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)
-#define KMALLOC_HEAPS_COUNT 2
+#define KMALLOC_HEAPS_COUNT 8
 
 typedef struct {
 

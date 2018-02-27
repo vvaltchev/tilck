@@ -78,6 +78,7 @@ void check_heaps_metadata(unique_ptr<u8> *meta_before)
 {
    for (int h = 0; h < KMALLOC_HEAPS_COUNT; h++) {
       for (int i = 0; i < heaps[h].metadata_size; i++) {
+         u8 *after = (u8*)heaps[h].metadata_nodes;
 
          if (meta_before[h].get()[i] == after[i])
             continue;
@@ -90,11 +91,9 @@ void check_heaps_metadata(unique_ptr<u8> *meta_before)
 }
 
 void kmalloc_chaos_test_sub(default_random_engine &e,
-                            lognormal_distribution<> &dist,
-                            unique_ptr<u8> *meta_before)
+                            lognormal_distribution<> &dist)
 {
    vector<pair<void *, size_t>> allocations;
-   save_heaps_metadata(meta_before);
 
    for (int i = 0; i < 1000; i++) {
 
@@ -113,10 +112,6 @@ void kmalloc_chaos_test_sub(default_random_engine &e,
    for (const auto& e : allocations) {
       kfree(e.first, e.second);
    }
-
-   ASSERT_NO_FATAL_FAILURE({
-      check_heaps_metadata(meta_before);
-   });
 }
 
 class kmalloc_test : public Test {
@@ -146,8 +141,7 @@ TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
 TEST_F(kmalloc_test, DISABLED_chaos_test)
 {
    random_device rdev;
-   const auto seed = 1394506485;
-   //const auto seed = rdev();
+   const auto seed = rdev();
    default_random_engine e(seed);
    cout << "[ INFO     ] random seed: " << seed << endl;
 
@@ -156,53 +150,27 @@ TEST_F(kmalloc_test, DISABLED_chaos_test)
    unique_ptr<u8> meta_before[KMALLOC_HEAPS_COUNT];
 
    for (int h = 0; h < KMALLOC_HEAPS_COUNT; h++) {
+
+      if (!heaps[h].size)
+         continue;
+
       meta_before[h].reset((u8*)malloc(heaps[h].metadata_size));
    }
 
-   for (int i = 0; i < 10; i++) {
+   for (int i = 0; i < 100; i++) {
 
       printk("*** ITER %i ***\n", i);
 
-      if (i <= 5)
-         suppress_printk = true;
+      save_heaps_metadata(meta_before);
 
       ASSERT_NO_FATAL_FAILURE({
-         kmalloc_chaos_test_sub(e, dist, meta_before);
+         kmalloc_chaos_test_sub(e, dist);
       });
 
-      suppress_printk = false;
+      ASSERT_NO_FATAL_FAILURE({
+         check_heaps_metadata(meta_before);
+      });
    }
-}
-
-TEST_F(kmalloc_test, bug)
-{
-   vector<pair<void *, size_t>> allocations;
-   unique_ptr<u8> meta_before[KMALLOC_HEAPS_COUNT];
-
-   for (int h = 0; h < KMALLOC_HEAPS_COUNT; h++)
-      meta_before[h].reset((u8*)malloc(heaps[h].metadata_size));
-
-   save_heaps_metadata(meta_before);
-
-   size_t s;
-
-   s = 512 * KB;
-   allocations.push_back(make_pair(kmalloc(s), s));
-   s = 64 * KB;
-   allocations.push_back(make_pair(kmalloc(s), s));
-   s = 256 * KB;
-   allocations.push_back(make_pair(kmalloc(s), s));
-   s = 8 * KB;
-   allocations.push_back(make_pair(kmalloc(s), s));
-   s = 64 * KB;
-   allocations.push_back(make_pair(kmalloc(s), s));
-
-   for (const auto& e : allocations)
-      kfree(e.first, e.second);
-
-   ASSERT_NO_FATAL_FAILURE({
-      check_heaps_metadata(meta_before);
-   });
 }
 
 extern "C" {

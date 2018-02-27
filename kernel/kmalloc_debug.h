@@ -1,9 +1,15 @@
 
 #pragma once
 
-#define DEBUG_COND (h == &heaps[0])
-#define DEBUG_printk(...) if (DEBUG_COND) printk(__VA_ARGS__)
-//#define DEBUG_printk(...)
+#define KMALLOC_DEBUG_ENABLED 0
+
+#if KMALLOC_DEBUG_ENABLED
+   #define DEBUG_COND (1)
+   #define DEBUG_printk(...) if (DEBUG_COND) printk(__VA_ARGS__)
+#else
+   #define DEBUG_printk(...)
+#endif
+
 
 #define DEBUG_stop_coaleshe                                                 \
                                                                             \

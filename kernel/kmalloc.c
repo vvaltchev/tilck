@@ -85,6 +85,9 @@ static size_t set_free_uplevels(kmalloc_heap *h, int *node, size_t size)
 
       if (!is_block_node_free(left) || !is_block_node_free(right)) {
          DEBUG_stop_coaleshe;
+         nodes[n].full = left.full && right.full;
+         ASSERT(nodes[n].split);
+         ASSERT((left.full && right.full && nodes[n].full) || !nodes[n].full);
          curr_size >>= 1;
          break;
       }
