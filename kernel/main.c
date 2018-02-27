@@ -76,7 +76,6 @@ void kmain()
    setup_interrupt_handling();
 
    init_pageframe_allocator();
-   mark_pageframes_as_reserved(0, LINEAR_MAPPING_MB);
 
    init_paging();
    initialize_kmalloc();

@@ -19,7 +19,7 @@
  * physical memory, as well as its N-th bit corresponds to the N-th pageframe.
  */
 
-u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
+u32 pageframes_bitfield[8 * (MAX_MEM_SIZE_IN_MB - LINEAR_MAPPING_MB)];
 
 /*
  * HACK: just assume we have 128 MB as memory. In the future, this value has to
@@ -70,7 +70,7 @@ void mark_pageframes_as_reserved(uptr paddr, int mb_count)
 
 uptr alloc_pageframe(void)
 {
-   u32 free_index;
+   u32 free_bit;
 
    for (u32 i = 0; i < BITFIELD_ELEMS; i++) {
 
@@ -85,9 +85,9 @@ uptr alloc_pageframe(void)
    success:
 
    pageframes_used++;
-   free_index = get_first_zero_bit_index(pageframes_bitfield[last_index]);
-   pageframes_bitfield[last_index] |= (1 << free_index);
-   return ((last_index << 17) + (free_index << PAGE_SHIFT));
+   free_bit = get_first_zero_bit_index(pageframes_bitfield[last_index]);
+   pageframes_bitfield[last_index] |= (1 << free_bit);
+   return ((last_index << 17) + (free_bit << PAGE_SHIFT)) + LINEAR_MAPPING_SIZE;
 }
 
 uptr alloc_32_pageframes_aligned(void)
@@ -99,7 +99,7 @@ uptr alloc_32_pageframes_aligned(void)
       if (!*bf) {
          *bf = FULL_128KB_AREA;
          pageframes_used += 32;
-         return last_index << 17;
+         return (last_index << 17) + LINEAR_MAPPING_SIZE;
       }
 
       last_index = (last_index + 1) % BITFIELD_ELEMS;
@@ -135,7 +135,9 @@ uptr alloc_32_pageframes(void)
    success:
    *(u32 *)bf = FULL_128KB_AREA;
    pageframes_used += 32;
-   return (bf - (u8 *) pageframes_bitfield) << (PAGE_SHIFT + 3);
+
+   return LINEAR_MAPPING_SIZE +
+      ((bf - (u8 *) pageframes_bitfield) << (PAGE_SHIFT + 3));
 }
 
 
@@ -162,11 +164,14 @@ uptr alloc_8_pageframes(void)
    success:
    *bf = FULL_32KB_AREA;
    pageframes_used += 8;
-   return (bf - (u8 *) pageframes_bitfield) << (PAGE_SHIFT + 3);
+   return LINEAR_MAPPING_SIZE +
+      ((bf - (u8 *) pageframes_bitfield) << (PAGE_SHIFT + 3));
 }
 
 void free_8_pageframes(uptr paddr)
 {
+   ASSERT(paddr >= LINEAR_MAPPING_SIZE);
+   paddr -= LINEAR_MAPPING_SIZE;
    u32 byte_offset = paddr >> (PAGE_SHIFT + 3);
    ASSERT(*((u8 *)pageframes_bitfield + byte_offset) == FULL_32KB_AREA);
    *((u8 *)pageframes_bitfield + byte_offset) = 0;
@@ -175,15 +180,19 @@ void free_8_pageframes(uptr paddr)
 
 void free_32_pageframes(uptr paddr)
 {
+   ASSERT(paddr >= LINEAR_MAPPING_SIZE);
+   paddr -= LINEAR_MAPPING_SIZE;
    u32 byte_offset = paddr >> (PAGE_SHIFT + 3);
    ASSERT(*(u32 *)((u8 *)pageframes_bitfield + byte_offset) == FULL_128KB_AREA);
    *(u32 *)((u8 *)pageframes_bitfield + byte_offset) = 0;
    pageframes_used -= 32;
 }
 
-void free_pageframe(uptr address) {
-
-   uptr naddr = address & PAGE_MASK;
+void free_pageframe(uptr paddr)
+{
+   ASSERT(paddr >= LINEAR_MAPPING_SIZE);
+   paddr -= LINEAR_MAPPING_SIZE;
+   uptr naddr = paddr & PAGE_MASK;
    u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
    u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
 
@@ -202,9 +211,11 @@ void free_pageframe(uptr address) {
 }
 
 
-bool is_allocated_pageframe(uptr address)
+bool is_allocated_pageframe(uptr paddr)
 {
-   uptr naddr = address & PAGE_MASK;
+   ASSERT(paddr >= LINEAR_MAPPING_SIZE);
+   paddr -= LINEAR_MAPPING_SIZE;
+   uptr naddr = paddr & PAGE_MASK;
    u32 bitIndex = (naddr >> PAGE_SHIFT) & 31;
    u32 majorIndex = (naddr & 0xFFFE0000U) >> 17;
    return !!(pageframes_bitfield[majorIndex] & (1 << bitIndex));

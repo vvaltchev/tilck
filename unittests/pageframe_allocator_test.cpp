@@ -22,7 +22,7 @@ TEST(alloc_pageframe, seq_alloc)
       if (r == INVALID_PADDR)
          break;
 
-      ASSERT_EQ(r, i * PAGE_SIZE);
+      ASSERT_EQ(r, LINEAR_MAPPING_SIZE + i * PAGE_SIZE);
    }
 
    // Now we should be out-of-memory.
@@ -43,7 +43,7 @@ TEST(alloc_pageframe, seq_alloc_free)
       if (r == INVALID_PADDR)
          break;
 
-      ASSERT_EQ(r, i * PAGE_SIZE);
+      ASSERT_EQ(r, LINEAR_MAPPING_SIZE + i * PAGE_SIZE);
    }
 
    // Now we should be out-of-memory.
@@ -51,7 +51,7 @@ TEST(alloc_pageframe, seq_alloc_free)
 
    // Free everything.
    for (uptr i = 0; i < get_total_pageframes_count(); i++) {
-      free_pageframe(i * PAGE_SIZE);
+      free_pageframe(LINEAR_MAPPING_SIZE + i * PAGE_SIZE);
    }
 
    ASSERT_EQ(get_free_pageframes_count(), get_total_pageframes_count());
@@ -92,14 +92,14 @@ TEST(alloc_pageframe, one_pageframe_free)
       if (r == INVALID_PADDR)
          break;
 
-      ASSERT_EQ(r, i * PAGE_SIZE);
+      ASSERT_EQ(r, LINEAR_MAPPING_SIZE + i * PAGE_SIZE);
    }
 
    // Now we should be out-of-memory.
    ASSERT_EQ(get_free_pageframes_count(), 0);
 
    // Free an arbtrary pageframe
-   uptr paddr = MB * get_phys_mem_mb() / 2;
+   uptr paddr = LINEAR_MAPPING_SIZE + 5 * MB;
    free_pageframe(paddr);
 
    // Now re-alloc and expect that very pageframe is returned
