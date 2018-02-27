@@ -462,6 +462,8 @@ void kmalloc_create_heap(kmalloc_heap *h,
    h->heap_data_size_log2 = log2_for_power_of_2(size);
    h->alloc_block_size_log2 = log2_for_power_of_2(alloc_block_size);
 
+   bzero(h->metadata_nodes, calculate_heap_metadata_size(size, min_block_size));
+
    if (vaddr + size <= LINEAR_MAPPING_OVER_END) {
       h->linear_mapping = true;
    } else {
