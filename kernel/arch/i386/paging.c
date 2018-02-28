@@ -294,14 +294,12 @@ map_pages_int(page_directory_t *pdir,
 page_directory_t *pdir_clone(page_directory_t *pdir)
 {
    page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
+   memmove(new_pdir, pdir, sizeof(page_directory_t));
 
-   for (int i = 0; i < 768; i++) {
+   for (int i = 0; i < 1024; i++) {
 
-      if (pdir->page_tables[i] == NULL) {
-         new_pdir->entries[i].raw = PG_RW_BIT | PG_US_BIT;
-         new_pdir->page_tables[i] = NULL;
+      if (!pdir->page_tables[i])
          continue;
-      }
 
       page_table_t *orig_pt = pdir->page_tables[i];
 
@@ -327,35 +325,22 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
 
          // We're making for the first time this page to be COW.
          pageframes_refcount[orig_pt->pages[j].pageAddr] = 2;
-
-         /*
-          * If we wanted to use invalidate_page() instead of reloading CR3,
-          * we would had to invalidate all the affected virtual addresses
-          * this way:
-          * invalidate_page(((uptr)i << 22) | ((uptr)j << 12));
-          * That is too much. At that point, reloading CR3 is more convenient.
-          */
       }
 
 
       // alloc memory for the page table
 
       page_table_t *pt = kmalloc(sizeof(*pt));
-      uptr pt_paddr = KERNEL_VA_TO_PA(pt);
+      ASSERT(((uptr)pt & (PAGE_SIZE - 1)) == 0); // pt must be page-aligned
+      VERIFY(pt); // Don't handle this kind of out-of-memory for the moment.
 
       // copy the page table
       memmove(pt, orig_pt, sizeof(*pt));
 
       new_pdir->page_tables[i] = pt;
 
-      // copy the entry, but use the new page table
-      new_pdir->entries[i] = pdir->entries[i];
-      new_pdir->entries[i].pageTableAddr = pt_paddr >> PAGE_SHIFT;
-   }
-
-   for (int i = 768; i < 1024; i++) {
-      new_pdir->entries[i] = kernel_page_dir->entries[i];
-      new_pdir->page_tables[i] = kernel_page_dir->page_tables[i];
+      /* We've already copied the other members of new_pdir->entries[i] */
+      new_pdir->entries[i].pageTableAddr = KERNEL_VA_TO_PA(pt) >> PAGE_SHIFT;
    }
 
    return new_pdir;
