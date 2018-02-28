@@ -189,13 +189,14 @@ typedef struct {
    alloc_stack[stack_size++] =                                         \
       (stack_elem) {(a1), (a2), &&CONCAT(after_, __LINE__)};           \
    alloc_stack[stack_size].ret_addr = NULL;                            \
-   continue;                                                           \
+   goto loop_end;                                                      \
    CONCAT(after_, __LINE__):                                           \
 
-#define SIMULATE_RETURN_NULL()                 \
-   {                                           \
-      stack_size--;                            \
-      continue;                                \
+#define SIMULATE_RETURN_NULL()                                         \
+   {                                                                   \
+      stack_size--;                                                    \
+      ASSERT(alloc_stack[stack_size].ret_addr || !stack_size);         \
+      continue;                                                        \
    }
 
 #define HANDLE_SIMULATED_RETURN()                      \
@@ -206,6 +207,16 @@ typedef struct {
    }
 
 //////////////////////////////////////////////////////////////////
+
+/*
+ * Explicit stack used by internal_kmalloc().
+ * Keeping it as a global variable helps keeping the amount of stack used by
+ * the kernel to be very small. Also, it does not create any problems since:
+ *    - the kernel does not support SMP
+ *    - the allocator is not reentrant, therefore kmalloc() can be called only
+ *      in contexts where the kernel preemption is disabled.
+ */
+static stack_elem alloc_stack[32];
 
 static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 {
@@ -227,10 +238,9 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
    const size_t size = MAX(desired_size, h->min_block_size);
    block_node *nodes = h->metadata_nodes;
 
-   int stack_size = 1;
-   stack_elem alloc_stack[32];
-   alloc_stack[0] = (stack_elem) { h->size, 0, 0 };
-   alloc_stack[1].ret_addr = NULL;
+   int stack_size = 0;
+
+   SIMULATE_CALL(h->size /* node size */, 0 /* node number */);
 
    while (stack_size) {
 
@@ -263,20 +273,21 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 
          void *vaddr = actual_allocate_node(h, node_size, node);
 
-         // Walking up to mark the parent nodes as 'full' if necessary..
+         // Mark the parent nodes as 'full', when necessary.
 
-         for (int ss = stack_size - 2; ss > 0; ss--) {
+         for (int ss = stack_size - 2; ss >= 0; ss--) {
 
             const int n = alloc_stack[ss].node;
 
-            if (nodes[NODE_LEFT(n)].full && nodes[NODE_RIGHT(n)].full)
+            if (nodes[NODE_LEFT(n)].full && nodes[NODE_RIGHT(n)].full) {
+               ASSERT(!nodes[n].full);
                nodes[n].full = true;
+            }
          }
 
          DEBUG_kmalloc_end;
          return vaddr;
       }
-
 
       if (!n.split) {
          DEBUG_kmalloc_split;
@@ -313,6 +324,9 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 
       // In case both the nodes are full, just return NULL.
       SIMULATE_RETURN_NULL();
+
+      loop_end:; // hack allowing SIMULATE_CALL to be called outside the loop.
+                 // ["continue" cannot be used outside the loop.]
    }
 
    return NULL;
@@ -343,11 +357,9 @@ static void internal_kfree(kmalloc_heap *h, void *ptr, size_t size)
    // A node returned to user cannot be split.
    ASSERT(!nodes[node].split);
 
-
-   // Walking up to mark the parent nodes as 'not full' if necessary..
-
    {
       int biggest_free_node = node;
+      // Mark the parent nodes as free, when necessary.
       size_t biggest_free_size = set_free_uplevels(h, &biggest_free_node, size);
 
       DEBUG_free_after_coaleshe;
