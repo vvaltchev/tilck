@@ -188,20 +188,21 @@ typedef struct {
 #define SIMULATE_CALL(a1, a2)                                          \
    alloc_stack[stack_size++] =                                         \
       (stack_elem) {(a1), (a2), &&CONCAT(after_, __LINE__)};           \
+   alloc_stack[stack_size].ret_addr = NULL;                            \
    continue;                                                           \
    CONCAT(after_, __LINE__):                                           \
 
 #define SIMULATE_RETURN_NULL()                 \
    {                                           \
       stack_size--;                            \
-      returned = true;                         \
       continue;                                \
    }
 
-#define HANDLE_SIMULATED_RETURN()              \
-   if (returned) {                             \
-      returned = false;                        \
-      goto *alloc_stack[stack_size].ret_addr;  \
+#define HANDLE_SIMULATED_RETURN()                      \
+   {                                                   \
+      void *addr = alloc_stack[stack_size].ret_addr;   \
+      if (addr != NULL)                                \
+         goto *addr;                                   \
    }
 
 //////////////////////////////////////////////////////////////////
@@ -227,9 +228,9 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
    block_node *nodes = h->metadata_nodes;
 
    int stack_size = 1;
-   bool returned = false;
    stack_elem alloc_stack[32];
    alloc_stack[0] = (stack_elem) { h->size, 0, 0 };
+   alloc_stack[1].ret_addr = NULL;
 
    while (stack_size) {
 
