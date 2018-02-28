@@ -42,8 +42,13 @@
    DEBUG_printk("kmalloc(%u)...\n", desired_size)
 
 #define DEBUG_kmalloc_call_begin                                            \
-      DEBUG_printk("Node #%i, node_size = %u, vaddr = %p\n",                \
-                   node, node_size, node_to_ptr(h, node, node_size))        \
+   DEBUG_printk("Node #%i, node_size = %u, vaddr = %p\n",                   \
+                node, node_size, node_to_ptr(h, node, node_size))           \
+
+#define DEBUG_kmalloc_end                                                   \
+   DEBUG_printk("kmalloc_end: ptr: %p, node #%i, size: %u\n",               \
+                vaddr, node, desired_size)                                  \
+
 
 #define DEBUG_already_full                                                  \
    DEBUG_printk("Already FULL, return NULL\n")

@@ -9,18 +9,29 @@ void kbasic_virtual_free(uptr vaddr, int page_count);
 
 #include "kmalloc_debug.h"
 
+#define FL_NODE_SPLIT      (1 << 0)
+#define FL_NODE_FULL       (1 << 1)
+#define FL_NODE_ALLOCATED  (1 << 2)
+
 typedef struct {
 
-   // 1 if the block has been split. Check its children.
-   u8 split : 1;
+   union {
 
-   // 1 means obviously full
-   // 0 means completely empty if split = 0, or partially empty if split = 1
-   u8 full : 1;
+      struct {
+         // 1 if the block has been split. Check its children.
+         u8 split : 1;
 
-   u8 allocated : 1; // used only for nodes having size = alloc_block_size.
+         // 1 means obviously completely full
+         // 0 means completely empty if split=0, or partially empty if split=1
+         u8 full : 1;
 
-   u8 unused : 5;
+         u8 allocated : 1; // used only for nodes having size = alloc_block_size
+
+         u8 unused : 5; // Free unused (for now) bits.
+      };
+
+      u8 raw;
+   };
 
 } block_node;
 
@@ -29,6 +40,7 @@ STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 static const block_node new_node; // Just zeros.
 bool kmalloc_initialized; // Zero-initialized => false.
 STATIC kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
+static int used_heaps;
 
 
 #define HALF(x) ((x) >> 1)
@@ -63,7 +75,7 @@ STATIC_INLINE void *node_to_ptr(kmalloc_heap *h, int node, size_t size)
 
 CONSTEXPR static ALWAYS_INLINE bool is_block_node_free(block_node n)
 {
-   return !n.full && !n.split;
+   return !(n.raw & (FL_NODE_FULL | FL_NODE_SPLIT));
 }
 
 static size_t set_free_uplevels(kmalloc_heap *h, int *node, size_t size)
@@ -95,8 +107,7 @@ static size_t set_free_uplevels(kmalloc_heap *h, int *node, size_t size)
       *node = n; // last successful coaleshe.
 
       DEBUG_coaleshe;
-      nodes[n].full = false;
-      nodes[n].split = false;
+      nodes[n].raw &= ~(FL_NODE_SPLIT | FL_NODE_FULL);
 
       n = NODE_PARENT(n);
       curr_size <<= 1;
@@ -265,8 +276,7 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
                nodes[n].full = true;
          }
 
-         DEBUG_printk("kmalloc_end: ptr: %p, node #%i, size: %u\n",
-                      vaddr, node, desired_size);
+         DEBUG_kmalloc_end;
          return vaddr;
       }
 
@@ -275,12 +285,8 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
          DEBUG_kmalloc_split;
 
          nodes[node].split = true;
-
-         nodes[left_node].split = false;
-         nodes[left_node].full = false;
-
-         nodes[right_node].split = false;
-         nodes[right_node].full = false;
+         nodes[left_node].raw &= ~(FL_NODE_SPLIT & FL_NODE_FULL);
+         nodes[right_node].raw &= ~(FL_NODE_SPLIT & FL_NODE_FULL);
       }
 
       if (!nodes[left_node].full) {
@@ -391,7 +397,7 @@ void *kmalloc(size_t s)
    s = roundup_next_power_of_2(s);
 
    // Iterate in reverse-order because the first heaps are the biggest ones.
-   for (int i = ARRAY_SIZE(heaps) - 1; i >= 0; i--) {
+   for (int i = used_heaps - 1; i >= 0; i--) {
 
       const size_t heap_size = heaps[i].size;
       const size_t heap_free = heap_size - heaps[i].mem_allocated;
@@ -407,7 +413,6 @@ void *kmalloc(size_t s)
       void *vaddr = internal_kmalloc(&heaps[i], s);
 
       if (vaddr) {
-         //printk("kmalloc heap %i: %u bytes => %p\n", i, s, vaddr - KERNEL_BASE_VA);
          heaps[i].mem_allocated += s;
          return vaddr;
       }
@@ -421,14 +426,13 @@ void kfree(void *p, size_t s)
    const uptr vaddr = (uptr) p;
    s = roundup_next_power_of_2(s);
 
-   for (int i = ARRAY_SIZE(heaps) - 1; i >= 0; i--) {
+   for (int i = used_heaps - 1; i >= 0; i--) {
 
       /* The heap is too small or just uninitialized */
       if (heaps[i].size < s)
          continue;
 
       if (vaddr >= heaps[i].vaddr && vaddr + s <= heaps[i].heap_over_end) {
-         //printk("kfree heap %i: %u bytes => %p\n", i, s, p - KERNEL_BASE_VA);
          internal_kfree(&heaps[i], p, s);
          heaps[i].mem_allocated -= s;
          return;
@@ -532,6 +536,7 @@ void initialize_kmalloc()
                        32 * PAGE_SIZE,
                        (void *)vaddr);
 
+   used_heaps = 1;
    kmalloc_initialized = true;
    vaddr = heaps[0].vaddr + heaps[0].size;
 
@@ -555,6 +560,7 @@ void initialize_kmalloc()
                           NULL);
 
       vaddr = heaps[i].vaddr + heaps[i].size;
+      used_heaps++;
    }
 }
 
