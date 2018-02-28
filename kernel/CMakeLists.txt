@@ -8,6 +8,7 @@ set(
    -nostdinc
    -fno-builtin
    -fno-omit-frame-pointer
+   -Wno-unused-label
 )
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
 

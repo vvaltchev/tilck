@@ -178,22 +178,30 @@ typedef struct {
 
    size_t node_size;
    int node;
+   void *ret_addr;
 
 } stack_elem;
 
+#define CONCAT_(x,y) x##y
+#define CONCAT(x,y) CONCAT_(x,y)
 
-#define SIMULATE_CALL(a1, a2)                  \
-   {                                           \
-      stack_elem _elem_ = {(a1), (a2)};        \
-      alloc_stack[stack_size++] = _elem_;      \
-      continue;                                \
-   }
+#define SIMULATE_CALL(a1, a2)                                          \
+   alloc_stack[stack_size++] =                                         \
+      (stack_elem) {(a1), (a2), &&CONCAT(after_, __LINE__)};           \
+   continue;                                                           \
+   CONCAT(after_, __LINE__):                                           \
 
 #define SIMULATE_RETURN_NULL()                 \
    {                                           \
       stack_size--;                            \
       returned = true;                         \
       continue;                                \
+   }
+
+#define HANDLE_SIMULATED_RETURN()              \
+   if (returned) {                             \
+      returned = false;                        \
+      goto *alloc_stack[stack_size].ret_addr;  \
    }
 
 //////////////////////////////////////////////////////////////////
@@ -221,9 +229,7 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
    int stack_size = 1;
    bool returned = false;
    stack_elem alloc_stack[32];
-
-   stack_elem base_elem = { h->size, 0 };
-   alloc_stack[0] = base_elem;
+   alloc_stack[0] = (stack_elem) { h->size, 0, 0 };
 
    while (stack_size) {
 
@@ -235,19 +241,9 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
       const int left_node = NODE_LEFT(node);
       const int right_node = NODE_RIGHT(node);
 
-      // Handle a RETURN
+      HANDLE_SIMULATED_RETURN();
 
-      if (returned) {
-
-         returned = false;
-
-         if (alloc_stack[stack_size].node == left_node)
-            goto after_left_call;
-         else
-            goto after_right_call;
-      }
-
-      // Handling a CALL
+      // Handle a SIMULATED "call"
       DEBUG_kmalloc_call_begin;
 
       block_node n = nodes[node];
@@ -290,26 +286,26 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
       }
 
       if (!nodes[left_node].full) {
-         DEBUG_going_left;
 
+         DEBUG_going_left;
          SIMULATE_CALL(half_node_size, left_node);
 
-         after_left_call:
-         // The call on the left node returned NULL so, go to the right node.
+         /*
+          * If we got here, the "call" on the left node "returned" NULL so,
+          * we have to try go to the right node. [In case of success, this
+          * function returns directly.]
+          */
 
          DEBUG_left_failed;
-         SIMULATE_CALL(half_node_size, right_node);
-
-      } else if (!nodes[right_node].full) {
-         DEBUG_going_right;
-
-         SIMULATE_CALL(half_node_size, right_node);
-
-         after_right_call:
-         SIMULATE_RETURN_NULL();
       }
 
-      // In case nor the left nor the right child is free, just return NULL.
+      if (!nodes[right_node].full) {
+         DEBUG_going_right;
+         SIMULATE_CALL(half_node_size, right_node);
+         /* When the above "call" succeeds, we never get here */
+      }
+
+      // In case both the nodes are full, just return NULL.
       SIMULATE_RETURN_NULL();
    }
 
@@ -318,6 +314,7 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 
 #undef SIMULATE_CALL
 #undef SIMULATE_RETURN_NULL
+#undef HANDLE_SIMULATED_RETURN
 
 static void internal_kfree(kmalloc_heap *h, void *ptr, size_t size)
 {
