@@ -302,7 +302,12 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
       if (!nodes[right_node].full) {
          DEBUG_going_right;
          SIMULATE_CALL(half_node_size, right_node);
-         /* When the above "call" succeeds, we never get here */
+
+         /*
+          * When the above "call" succeeds, we don't get here. When it fails,
+          * we get here and just continue the execution.
+          */
+         DEBUG_right_failed;
       }
 
       // In case both the nodes are full, just return NULL.

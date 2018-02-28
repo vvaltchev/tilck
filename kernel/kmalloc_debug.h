@@ -68,6 +68,9 @@
 #define DEBUG_going_right                                                   \
    DEBUG_printk("going on right..\n")
 
+#define DEBUG_right_failed                                                  \
+   DEBUG_printk("allocation on right node was not possible, return NULL.\n")
+
 #define DEBUG_free1                                                         \
    DEBUG_printk("kfree: ptr: %p, node #%i (size %u)\n", ptr, node, size)
 
