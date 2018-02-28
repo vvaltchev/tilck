@@ -64,10 +64,12 @@ bool handle_potential_cow(u32 vaddr)
 
    // Allocate and set a new page.
    void *new_page_vaddr = kmalloc(PAGE_SIZE);
-   ASSERT(new_page_vaddr != NULL);
+   VERIFY(new_page_vaddr != NULL); // Don't handle this out-of-mem for now.
+   ASSERT(PAGE_ALIGNED(new_page_vaddr));
+
    uptr paddr = KERNEL_VA_TO_PA(new_page_vaddr);
 
-   printk("[COW] Allocated new pageframe at %p\n", paddr);
+   printk("[COW] Allocated new pageframe at PADDR: %p\n", paddr);
 
    ptable->pages[page_table_index].pageAddr = paddr >> PAGE_SHIFT;
    ptable->pages[page_table_index].rw = true;
@@ -174,14 +176,12 @@ void unmap_page(page_directory_t *pdir, void *vaddrp)
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
-   ASSERT(pdir->page_tables[page_dir_index] != NULL);
-
    ptable = pdir->page_tables[page_dir_index];
 
+   ASSERT(ptable != NULL);
    ASSERT(ptable->pages[page_table_index].present);
 
-   page_t p = {0};
-   ptable->pages[page_table_index] = p;
+   ptable->pages[page_table_index].raw = 0;
 
    invalidate_page(vaddr);
 }
@@ -193,31 +193,17 @@ uptr get_mapping(page_directory_t *pdir, void *vaddrp)
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
    const u32 page_dir_index = (vaddr >> 22) & 0x3FF;
 
+   /*
+    * This function shall be never called for the linear-mapped zone of the
+    * the kernel virtual memory.
+    */
+   ASSERT(vaddr < KERNEL_BASE_VA || vaddr >= LINEAR_MAPPING_OVER_END);
+
    ptable = pdir->page_tables[page_dir_index];
 
    ASSERT(ptable != NULL);
    ASSERT(ptable->pages[page_table_index].present);
    return ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
-}
-
-static void map_4mb_page_int(page_directory_t *pdir,
-                             void *vaddrp,
-                             uptr paddr,
-                             u32 flags)
-{
-   const u32 vaddr = (u32) vaddrp;
-   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
-
-   ASSERT(!(vaddr & (4*MB - 1))); // the vaddr must be 4MB-aligned
-   ASSERT(!(paddr & (4*MB - 1))); // the paddr must be 4MB-aligned
-
-   // Check that the entry has not been used.
-   ASSERT(!pdir->entries[page_dir_index].present);
-
-   // Check that there is no page table associated with this entry.
-   ASSERT(!pdir->page_tables[page_dir_index]);
-
-   pdir->entries[page_dir_index].raw = flags | paddr;
 }
 
 void map_page_int(page_directory_t *pdir,
@@ -239,12 +225,9 @@ void map_page_int(page_directory_t *pdir,
    if (UNLIKELY(ptable == NULL)) {
 
       // we have to create a page table for mapping 'vaddr'.
-      void *buf = kmalloc(sizeof(page_table_t));
-
-      // Don't handle this type of out-of-memory for the moment.
-      VERIFY(buf != NULL);
-
-      ptable = buf;
+      ptable = kmalloc(sizeof(page_table_t));
+      VERIFY(ptable != NULL); // Don't handle this out-of-memory for now.
+      ASSERT(PAGE_ALIGNED(ptable));
 
       initialize_empty_page_table(ptable);
       pdir->page_tables[page_dir_index] = ptable;
@@ -331,8 +314,8 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
       // alloc memory for the page table
 
       page_table_t *pt = kmalloc(sizeof(*pt));
-      ASSERT(((uptr)pt & (PAGE_SIZE - 1)) == 0); // pt must be page-aligned
       VERIFY(pt); // Don't handle this kind of out-of-memory for the moment.
+      ASSERT(PAGE_ALIGNED(pt));
 
       // copy the page table
       memmove(pt, orig_pt, sizeof(*pt));
@@ -389,6 +372,26 @@ void pdir_destroy(page_directory_t *pdir)
    kfree(pdir, sizeof(*pdir));
 }
 
+
+static void map_4mb_page_int(page_directory_t *pdir,
+                             void *vaddrp,
+                             uptr paddr,
+                             u32 flags)
+{
+   const u32 vaddr = (u32) vaddrp;
+   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+
+   ASSERT(!(vaddr & (4*MB - 1))); // the vaddr must be 4MB-aligned
+   ASSERT(!(paddr & (4*MB - 1))); // the paddr must be 4MB-aligned
+
+   // Check that the entry has not been used.
+   ASSERT(!pdir->entries[page_dir_index].present);
+
+   // Check that there is no page table associated with this entry.
+   ASSERT(!pdir->page_tables[page_dir_index]);
+
+   pdir->entries[page_dir_index].raw = flags | paddr;
+}
 
 /*
  * Page directories MUST BE page-size-aligned.
