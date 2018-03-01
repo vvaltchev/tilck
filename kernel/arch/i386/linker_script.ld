@@ -18,33 +18,23 @@ SECTIONS
     *(.text.startup .text.startup.*)
     *(.text.hot .text.hot.*)
     *(.text .stub .text.* .gnu.linkonce.t.*)
-  }
-
-  .rodata :
-  {
     *(.rodata .rodata.* .gnu.linkonce.r.*)
+    . = ALIGN(4096);
   }
-
-  /* Adjust the address for the data segment.  We want to adjust up to
-     the same address within the page on the next page up.  */
-
-  . = DATA_SEGMENT_ALIGN (CONSTANT (MAXPAGESIZE), CONSTANT (COMMONPAGESIZE));
 
   .data :
   {
     *(.data .data.* .gnu.linkonce.d.*)
+    . = ALIGN(4096);
   }
 
-  __bss_start = .;
   .bss :
   {
    *(.bss .bss.* .gnu.linkonce.b.*)
   }
-   __bss_end = .;
 
-  . = ALIGN(32 / 8);
+  . = ALIGN(4);
   _end = .;
-  . = DATA_SEGMENT_END (.);
 
   /DISCARD/ : { *(.eh_frame*) }
 
