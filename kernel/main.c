@@ -22,12 +22,13 @@
 #include <timer.h>
 #include <term.h>
 #include <pageframe_allocator.h>
+#include <multiboot.h>
 
 #include <self_tests/self_tests.h>
 
 task_info *usermode_init_task = NULL;
 
-void show_hello_message()
+void show_hello_message(u32 magic, void *mbi)
 {
 #ifdef DEBUG
    printk("Hello from exOS! [DEBUG build]\n");
@@ -37,6 +38,15 @@ void show_hello_message()
 
    printk("TIMER_HZ: %i; Supported memory: %i MB\n",
            TIMER_HZ, get_phys_mem_mb());
+
+   if (magic == MULTIBOOT_BOOTLOADER_MAGIC) {
+      printk("*** Detected multiboot 1 magic ***\n");
+
+      struct multiboot_info *m = mbi;
+      printk("Mbi ptr: %p\n", mbi);
+      printk("mem lower: %u KB\n", m->mem_lower);
+      printk("mem upper: %u KB\n", m->mem_upper);
+   }
 }
 
 void load_usermode_init()
@@ -67,10 +77,10 @@ void mount_ramdisk(void)
    mountpoint_add(root_fs, "/");
 }
 
-void kmain()
+void kmain(u32 multiboot_magic, void *mbi)
 {
    term_init();
-   show_hello_message();
+   show_hello_message(multiboot_magic, mbi);
 
    setup_segmentation();
    setup_interrupt_handling();
@@ -110,7 +120,7 @@ void kmain()
 
    //kernel_alloc_pageframe_perftest();
 
-   load_usermode_init();
+   //load_usermode_init();
 
    printk("[kernel main] Starting the scheduler...\n");
    switch_to_idle_task_outside_interrupt_context();

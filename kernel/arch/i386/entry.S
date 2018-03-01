@@ -25,6 +25,9 @@
 
 #define MULTIBOOT_CHECKSUM   -(MULTIBOOT_HEADER_MAGIC+MULTIBOOT_FLAGS)
 
+#define SAVED_EAX_ADDR (32*1024)
+#define SAVED_EBX_ADDR (32*1024+4)
+
 _start:
 
    jmp 1f
@@ -39,6 +42,9 @@ _start:
 /* End multiboot header */
 
 1:
+   mov [SAVED_EAX_ADDR], eax # multiboot magic
+   mov [SAVED_EBX_ADDR], ebx # multiboot information structure
+
    # before jump to kernel, we have to setup a basic paging
    # in order to map the kernel from 0x100000 to 0xC0000000 (+3 GB)
 
@@ -66,9 +72,7 @@ _start:
    cmp edi, 0x3000
    jne .l2
 
-   # xchg bx, bx # bochs magic break
-
-   mov eax, 0x2003    # = 0x2000 | preset,rw
+   mov eax, 0x2003    # = 0x2000 | present, rw
 
    # identity map the first low 4 MB
    # this is necessary for executing the 'jmp eax' below)
@@ -78,19 +82,18 @@ _start:
    mov [0x1C00], eax  # map them also to 0xC0000000
 
    mov ebx, 0x1000
-   mov cr3, ebx     # set page dir physical address
+   mov cr3, ebx       # set page dir physical address
+
+   mov eax, cr4
+   or eax, 16      # bit 4, PSE (Page Size Extension). Allows 4-MB pages.
+   or eax, 128     # bit 7, PGE (Page Global Enabled)
+   mov cr4, eax
 
    mov eax, cr0
    or eax, 0x80000000 # paging ON
    or eax, 0x10000    # WP ON (write protect for supervisor)
    mov cr0, eax       # enable paging!
 
-   mov eax, cr4
-   or eax, 16      # 16 = bit 4. PSE (Page Size Extension)
-                   # We enable it just in case we decide to use 4-MB pages
-                   # for the kernel.
-   or eax, 128     # 128 = bit 7. PGE (Page Global Enabled)
-   mov cr4, eax
 
    mov eax, offset .next_step
    jmp eax        # Jump to next instruction using the high virtual address.
@@ -104,7 +107,12 @@ _start:
 
 .next_step:
    mov esp, KERNEL_INITIAL_STACK_ADDR
-   jmp kmain   # now, really jump to kernel's code which uses 0xC0100000 as ORG
+   mov eax, [SAVED_EAX_ADDR]
+   mov ebx, [SAVED_EBX_ADDR]
+
+   push ebx # Multiboot information structure
+   push eax # Multiboot magic
+   call kmain   # now, really jump to kernel's code which uses 0xC0100000 as ORG
 
 
 gdt_load:
