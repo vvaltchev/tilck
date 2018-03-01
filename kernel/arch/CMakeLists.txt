@@ -48,13 +48,22 @@ add_executable(
    ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES}
 )
 
+set(
+   KERNEL_LINK_FLAGS_LIST
+
+   ${ARCH_FLAGS}
+   -Wl,--script=${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH}/linker_script.ld
+   -nostdlib
+)
+JOIN("${KERNEL_LINK_FLAGS_LIST}" ${SPACE} KERNEL_LINK_FLAGS)
+
 set_target_properties(
 
    elf_kernel
 
    PROPERTIES
       COMPILE_FLAGS "${ARCH_FLAGS} ${KERNEL_FLAGS} ${ACTUAL_KERNEL_ONLY_FLAGS}"
-      LINK_FLAGS "${ARCH_FLAGS} -Wl,-Ttext=${KERNEL_LOAD_VADDR} -nostdlib"
+      LINK_FLAGS ${KERNEL_LINK_FLAGS}
 )
 
 # Remove -rdynamic
