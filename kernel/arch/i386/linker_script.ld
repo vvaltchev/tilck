@@ -6,13 +6,15 @@ SEARCH_DIR("=/tmp/x86-i686--glibc--stable/usr/i686-buildroot-linux-gnu/lib32");
 SEARCH_DIR("=/tmp/x86-i686--glibc--stable/usr/i686-buildroot-linux-gnu/lib");
 
 kernel_base_va = 0xC0000000;
+kernel_paddr   = 0x00100000;
 
 SECTIONS
 {
-  . = SEGMENT_START("text-segment", kernel_base_va + 0x100000);
+  . = SEGMENT_START("text-segment", kernel_base_va + kernel_paddr);
 
-  .text :
+  .text : AT(kernel_paddr)
   {
+    code = .;
     *(.text.unlikely .text.*_unlikely .text.unlikely.*)
     *(.text.exit .text.exit.*)
     *(.text.startup .text.startup.*)
@@ -22,15 +24,17 @@ SECTIONS
     . = ALIGN(4096);
   }
 
-  .data :
+  .data : AT(kernel_paddr + (data - code))
   {
+    data = .;
     *(.data .data.* .gnu.linkonce.d.*)
     . = ALIGN(4096);
   }
 
-  .bss :
+  .bss : AT(kernel_paddr + (bss - code))
   {
-   *(.bss .bss.* .gnu.linkonce.b.*)
+    bss = .;
+    *(.bss .bss.* .gnu.linkonce.b.*)
   }
 
   . = ALIGN(4);
