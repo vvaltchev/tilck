@@ -30,7 +30,7 @@ task_info *usermode_init_task = NULL;
 
 extern u32 memsize_in_mb;
 
-void show_hello_message(u32 magic, void *mbi_addr)
+void show_hello_message(u32 magic, u32 mbi_addr)
 {
 #ifdef DEBUG
    printk("Hello from exOS! [DEBUG build]\n");
@@ -40,7 +40,7 @@ void show_hello_message(u32 magic, void *mbi_addr)
 
    if (magic == MULTIBOOT_BOOTLOADER_MAGIC) {
 
-      struct multiboot_info *mbi = mbi_addr;
+      struct multiboot_info *mbi = (void *)(uptr)mbi_addr;
 
       printk("*** Detected multiboot 1 magic ***\n");
 
@@ -49,7 +49,7 @@ void show_hello_message(u32 magic, void *mbi_addr)
       printk("mem upper: %u MB\n", (mbi->mem_upper)/1024 + 1);
 
       if (mbi->flags & MULTIBOOT_INFO_CMDLINE) {
-         printk("Cmdline: '%s'\n", (char *)mbi->cmdline);
+         printk("Cmdline: '%s'\n", (char *)(uptr)mbi->cmdline);
       }
 
       if (mbi->flags & MULTIBOOT_INFO_VBE_INFO) {
@@ -95,7 +95,7 @@ void mount_ramdisk(void)
    mountpoint_add(root_fs, "/");
 }
 
-void kmain(u32 multiboot_magic, void *mbi_addr)
+void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    term_init();
    show_hello_message(multiboot_magic, mbi_addr);
