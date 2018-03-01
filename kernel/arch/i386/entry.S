@@ -15,8 +15,25 @@
 .global kernel_yield
 .global panic_save_current_state
 
+
+#define MAGIC           0x1BADB002
+#define PAGE_ALIGN      (1 << 0)
+#define MEMORY_INFO     (1 << 1)
+#define FLAGS           (PAGE_ALIGN | MEMORY_INFO)
+#define CHECKSUM        -(MAGIC+FLAGS)
+
 _start:
 
+   jmp 1f
+
+/* Multiboot header */
+.align 4
+   .long   MAGIC
+   .long   FLAGS
+   .long   CHECKSUM
+
+
+1:
    # before jump to kernel, we have to setup a basic paging
    # in order to map the kernel from 0x100000 to 0xC0000000 (+3 GB)
 
