@@ -10,6 +10,7 @@
    #define DEBUG_printk(...)
 #endif
 
+#define KMALLOC_HEAPS_CREATION_DEBUG 0
 
 #define DEBUG_stop_coaleshe                                                 \
                                                                             \

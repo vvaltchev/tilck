@@ -28,7 +28,9 @@
 
 task_info *usermode_init_task = NULL;
 
-void show_hello_message(u32 magic, void *mbi)
+extern u32 memsize_in_mb;
+
+void show_hello_message(u32 magic, void *mbi_addr)
 {
 #ifdef DEBUG
    printk("Hello from exOS! [DEBUG build]\n");
@@ -36,17 +38,33 @@ void show_hello_message(u32 magic, void *mbi)
    printk("Hello from exOS! [RELEASE build]\n");
 #endif
 
-   printk("TIMER_HZ: %i; Supported memory: %i MB\n",
-           TIMER_HZ, get_phys_mem_mb());
-
    if (magic == MULTIBOOT_BOOTLOADER_MAGIC) {
+
+      struct multiboot_info *mbi = mbi_addr;
+
       printk("*** Detected multiboot 1 magic ***\n");
 
-      struct multiboot_info *m = mbi;
       printk("Mbi ptr: %p\n", mbi);
-      printk("mem lower: %u KB\n", m->mem_lower);
-      printk("mem upper: %u KB\n", m->mem_upper);
+      printk("mem lower: %u KB\n", mbi->mem_lower + 1);
+      printk("mem upper: %u MB\n", (mbi->mem_upper)/1024 + 1);
+
+      if (mbi->flags & MULTIBOOT_INFO_CMDLINE) {
+         printk("Cmdline: '%s'\n", (char *)mbi->cmdline);
+      }
+
+      if (mbi->flags & MULTIBOOT_INFO_VBE_INFO) {
+         printk("VBE mode: %p\n", mbi->vbe_mode);
+      }
+
+      if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO) {
+         printk("Framebuffer addr: %p\n", mbi->framebuffer_addr);
+      }
+
+      memsize_in_mb = (mbi->mem_upper)/1024 + 1;
    }
+
+   printk("TIMER_HZ: %i; Supported memory: %i MB\n",
+           TIMER_HZ, get_phys_mem_mb());
 }
 
 void load_usermode_init()
@@ -77,10 +95,10 @@ void mount_ramdisk(void)
    mountpoint_add(root_fs, "/");
 }
 
-void kmain(u32 multiboot_magic, void *mbi)
+void kmain(u32 multiboot_magic, void *mbi_addr)
 {
    term_init();
-   show_hello_message(multiboot_magic, mbi);
+   show_hello_message(multiboot_magic, mbi_addr);
 
    setup_segmentation();
    setup_interrupt_handling();

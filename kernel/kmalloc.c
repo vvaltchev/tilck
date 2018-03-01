@@ -538,8 +538,10 @@ void initialize_kmalloc()
    size_t min_block_size =
       sizeof(block_node) * 2 * first_heap_size / fixed_size_first_heap_metadata;
 
-   printk("[kmalloc] First heap size: %u MB, min block: %u\n",
+#if KMALLOC_HEAPS_CREATION_DEBUG
+   printk("[kmalloc] heap size: %u MB, min block: %u\n",
           first_heap_size / MB, min_block_size);
+#endif
 
    ASSERT(calculate_heap_metadata_size(
             first_heap_size, min_block_size) == fixed_size_first_heap_metadata);
@@ -564,8 +566,10 @@ void initialize_kmalloc()
 
       min_block_size = heap_size / (256 * KB);
 
+#if KMALLOC_HEAPS_CREATION_DEBUG
       printk("[kmalloc] heap size: %u MB, min block: %u\n",
              heap_size / MB, min_block_size);
+#endif
 
       kmalloc_create_heap(&heaps[i],
                           vaddr,
