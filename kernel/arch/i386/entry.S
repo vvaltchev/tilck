@@ -23,21 +23,18 @@
                               MULTIBOOT_MEMORY_INFO |  \
                               MULTIBOOT_VIDEO_MODE)
 
-#define MULTIBOOT_CHECKSUM   -(MULTIBOOT_HEADER_MAGIC+MULTIBOOT_FLAGS)
-
-#define SAVED_EAX_ADDR (16*KB)
-#define SAVED_EBX_ADDR (16*KB+4)
+#define PAGE_DIR_PADDR 0x1000
 
 _start:
 
-   jmp 1f
+   jmp multiboot_entry
 
 /* Multiboot header */
 
 .align 4
    .long   MULTIBOOT_HEADER_MAGIC
    .long   MULTIBOOT_FLAGS
-   .long   MULTIBOOT_CHECKSUM
+   .long   -(MULTIBOOT_HEADER_MAGIC+MULTIBOOT_FLAGS) /* checksum */
 
    .long 0
    .long 0
@@ -52,79 +49,66 @@ _start:
 
 /* End multiboot header */
 
+multiboot_entry:
+
+   /*
+    * Before jump to kernel, we have to setup a basic paging in order to map
+    * the first 4-MB both at 0 and at +KERNEL_BASE_VA. Using 4-MB pages.
+    * NOTE: the registers EAX and EBX cannot be used since they contain
+    * multiboot information!
+    */
+
+   mov edi, PAGE_DIR_PADDR
+   xor ecx, ecx
+
+   # Zero the our page directory
 1:
-   mov [SAVED_EAX_ADDR], eax # multiboot magic
-   mov [SAVED_EBX_ADDR], ebx # multiboot information structure
-
-   # before jump to kernel, we have to setup a basic paging
-   # in order to map the kernel from 0x100000 to 0xC0100000 (+3 GB)
-
-   # let's put the page directory at 0x1000 (+ 4 KB)
-
-   mov edi, 0x1000
-
-   .l1:
-   mov dword ptr [edi], 0
+   mov [edi], ecx
    add edi, 4
-   cmp edi, 0x2000
-   jne .l1
+   cmp edi, PAGE_DIR_PADDR + 4096
+   jne 1b
 
-   # let's put the first page table at 0x2000 (+ 8 KB)
-   mov eax, 0
-   .l2:
+   # Set our flags (note the absence of a paddr since it is 0)
+   mov ecx, 1 /* present */ | 2 /* RW */ | (1 << 7) /* 4-MB page */
 
-   mov ebx, eax
-   or ebx, 3  # present, rw
-   mov [edi], ebx
+   # Identity map the first 4 MB
+   mov [PAGE_DIR_PADDR], ecx
 
-   add eax, 0x1000 # += 4K
-   add edi, 4
+   # Map the first 4 MB at KERNEL_BASE_VA
+   mov [PAGE_DIR_PADDR + (KERNEL_BASE_VA >> 20)], ecx
 
-   cmp edi, 0x3000
-   jne .l2
+   # Set the CR3 register
+   mov ecx, PAGE_DIR_PADDR
+   mov cr3, ecx
 
-   mov eax, 0x2003    # = 0x2000 | present, rw
+   mov ecx, cr4
+   or ecx, 16      # bit 4, PSE (Page Size Extension). Allows 4-MB pages.
+   or ecx, 128     # bit 7, PGE (Page Global Enabled)
+   mov cr4, ecx
 
-   # identity map the first low 4 MB
-   # this is necessary for executing the 'jmp eax' below)
-   # otherwise, just after 'mov cr0, eax', EIP will point to an invalid address
-
-   mov [0x1000], eax
-   mov [0x1C00], eax  # map them also to 0xC0000000
-
-   mov ebx, 0x1000
-   mov cr3, ebx       # set page dir physical address
-
-   mov eax, cr4
-   or eax, 16      # bit 4, PSE (Page Size Extension). Allows 4-MB pages.
-   or eax, 128     # bit 7, PGE (Page Global Enabled)
-   mov cr4, eax
-
-   mov eax, cr0
-   or eax, 0x80000000 # paging ON
-   or eax, 0x10000    # WP ON (write protect for supervisor)
-   mov cr0, eax       # enable paging!
+   mov ecx, cr0
+   or ecx, 0x80000000 # paging ON
+   or ecx, 0x00010000 # WP ON (write protect for supervisor)
+   mov cr0, ecx       # enable paging!
 
 
-   mov eax, offset .next_step
-   jmp eax        # Jump to next instruction using the high virtual address.
+   mov ecx, offset .next_step
+   jmp ecx        # Jump to next instruction using the high virtual address.
 
                   # This is necessary since here the EIP is still a physical
                   # address, while in the kernel the physical identity mapping
                   # is removed. We need to continue using high (+3 GB)
                   # virtual addresses. The trick works because this file is
-                  # part of the kernel ELF binary where the ORGvis set to
-                  # 0xC0100000.
+                  # part of the kernel ELF binary where the ORG is set to
+                  # 0xC0100000 (KERNEL_BASE_VA + KERNEL_PADDR).
 
 .next_step:
    mov esp, KERNEL_INITIAL_STACK_ADDR
-   mov eax, [SAVED_EAX_ADDR]
-   mov ebx, [SAVED_EBX_ADDR]
 
-   push ebx # Multiboot information structure
-   push eax # Multiboot magic
-   call kmain   # now, really jump to kernel's code which uses 0xC0100000 as ORG
-
+   push ebx    # 2st argument: multiboot information structure
+   push eax    # 1nd argument: multiboot magic
+   call kmain  # Now call kernel's kmain() which uses
+               # KERNEL_BASE_VA + KERNEL_PADDR as ORG
 
 gdt_load:
    lgdt [gdt_pointer]

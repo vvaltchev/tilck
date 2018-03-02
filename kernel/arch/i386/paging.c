@@ -417,7 +417,7 @@ void init_paging()
       map_4mb_page_int(kernel_page_dir,
                        KERNEL_PA_TO_VA(paddr),
                        paddr,
-                       PG_PRESENT_BIT | PG_RW_BIT | PG_4MB_BIT | paddr);
+                       PG_PRESENT_BIT | PG_RW_BIT | PG_4MB_BIT);
    }
 
    set_page_directory(kernel_page_dir);
