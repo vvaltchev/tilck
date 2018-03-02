@@ -60,6 +60,33 @@ void show_hello_message(u32 magic, u32 mbi_addr)
          printk("Framebuffer addr: %p\n", mbi->framebuffer_addr);
       }
 
+      if (mbi->flags & MULTIBOOT_INFO_MODS) {
+
+         printk("Mods count: %u\n", mbi->mods_count);
+
+         for (u32 i = 0; i < mbi->mods_count; i++) {
+
+            multiboot_module_t *mod =
+               ((multiboot_module_t *)(uptr)mbi->mods_addr)+i;
+
+            printk("mod cmdline: '%s'\n", mod->cmdline);
+            printk("mod start: %p [+ %u KB]\n", mod->mod_start,
+                                                mod->mod_start/KB);
+            printk("mod end:   %p [+ %u KB]\n", mod->mod_end,
+                                                mod->mod_end/KB);
+            printk("mod size:  %u KB\n", (mod->mod_end-mod->mod_start)/KB);
+         }
+
+      }
+
+      if (mbi->flags & MULTIBOOT_INFO_ELF_SHDR) {
+         printk("ELF section table available\n");
+         printk("num:   %u\n", mbi->u.elf_sec.num);
+         printk("addr:  %p\n", mbi->u.elf_sec.addr);
+         printk("size:  %u\n", mbi->u.elf_sec.size);
+         printk("shndx: %p\n", mbi->u.elf_sec.shndx);
+      }
+
       memsize_in_mb = (mbi->mem_upper)/1024 + 1;
    }
 
