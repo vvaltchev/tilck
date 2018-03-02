@@ -28,7 +28,7 @@ partition the ELF kernel of `exOS` [it understands the ELF format] and jumps to 
 
 In addition to that, the project includes an experimental x86-64 EFI bootloader which allows the kernel to
 boot using EFI, if a CSM (compatibility support module) is available. The CSM is necessary since the EFI
-bootloder switches back to real mode and puts the video card in 'text mode' by using `int 0x10`, before entering 
+bootloder switches back to real mode and puts the video card in 'text mode' by using `int 0x10`, before entering
 finally in protected mode and jumping into kernel's entry point. The issue with the EFI boot is that the
 nice PS/2 emulation available after a "legacy" boot is not available. Therefore, the keyboard driver actually
 does not work.
@@ -36,7 +36,7 @@ does not work.
 Hardware support
 --------------------
 
-From the beginning of its development, `exOS` has been tested both on virtualized hardware (`qemu`, `virtualbox`, `vmware workstation`) and on bare-metal machines, like my own Dell XPS 13" 9360. Therefore `exOS` should work on any `80486+` machine compatible with the IBM-PC architecture that supports legacy boot. At least 144 MB of RAM are required, because of the way the OS partitions the physical memory. Such requirement may be removed later.
+From the beginning of its development, `exOS` has been tested both on virtualized hardware (`qemu`, `virtualbox`, `vmware workstation`) and on bare-metal machines, like my own Dell XPS 13" 9360. Therefore `exOS` should work on any `80486+` machine compatible with the IBM-PC architecture that supports legacy boot. At least 48 MB of RAM are required, because of the size of the ramdisk.
 If you want to try it, just use `dd` to store `exos.img` in a flash drive and than use it for booting.
 
 How to build & run
@@ -57,7 +57,7 @@ The easiest way for actually trying `exOS` at that point is to just run:
 
     ./build/run_qemu
 
-NOTE: in case your kernel don't have KVM support for any reason, you can
+NOTE: in case your kernel doesn't have KVM support for any reason, you can
 always run QEMU using full-software virtualization:
 
     ./build/run_nokvm_qemu
