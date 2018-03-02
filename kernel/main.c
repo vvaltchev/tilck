@@ -27,10 +27,9 @@
 #include <self_tests/self_tests.h>
 
 extern u32 memsize_in_mb;
-
-task_info *usermode_init_task;
-uptr ramdisk_paddr = RAMDISK_PADDR; /* default value in case of no multiboot */
-size_t ramdisk_size = RAMDISK_SIZE; /* default value in case of no multiboot */
+extern uptr ramdisk_paddr;
+extern size_t ramdisk_size;
+extern task_info *usermode_init_task;
 
 void dump_multiboot_info(multiboot_info_t *mbi)
 {
@@ -56,7 +55,8 @@ void dump_multiboot_info(multiboot_info_t *mbi)
 
       for (u32 i = 0; i < mbi->mods_count; i++) {
 
-         multiboot_module_t *mod = ((multiboot_module_t *)mbi->mods_addr)+i;
+         multiboot_module_t *mod =
+            ((multiboot_module_t *)(uptr)mbi->mods_addr)+i;
 
          printk("mod cmdline: '%s'\n", mod->cmdline);
          printk("mod start: %p [+ %u KB]\n", mod->mod_start,
