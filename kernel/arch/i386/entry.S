@@ -39,6 +39,17 @@ _start:
    .long   MULTIBOOT_FLAGS
    .long   MULTIBOOT_CHECKSUM
 
+   .long 0
+   .long 0
+   .long 0
+   .long 0
+   .long 0
+
+   .long 1  /* EGA-standard text mode */
+   .long 80 /* cols */
+   .long 25 /* rows */
+   .long 0  /* color depth (0 in text mode) */
+
 /* End multiboot header */
 
 1:
@@ -46,7 +57,7 @@ _start:
    mov [SAVED_EBX_ADDR], ebx # multiboot information structure
 
    # before jump to kernel, we have to setup a basic paging
-   # in order to map the kernel from 0x100000 to 0xC0000000 (+3 GB)
+   # in order to map the kernel from 0x100000 to 0xC0100000 (+3 GB)
 
    # let's put the page directory at 0x1000 (+ 4 KB)
 

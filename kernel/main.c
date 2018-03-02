@@ -120,7 +120,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    // TODO: make the kernel actually support the sysenter interface
    setup_sysenter_interface();
 
-   mount_ramdisk();
+   //mount_ramdisk();
 
    DEBUG_ONLY(bool tasklet_added =) add_tasklet0(&init_kb);
    ASSERT(tasklet_added);
