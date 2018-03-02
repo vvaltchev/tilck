@@ -15,12 +15,6 @@
 
 #define INVALID_PADDR ((uptr)-1)
 
-/* Internal defines specific for the pageframe allocator */
-
-#define INITIAL_MB_RESERVED 2
-#define MB_RESERVED_FOR_PAGING 2
-
-
 /*
  * These MACROs can be used for the linear mapping region in the kernel space.
  */

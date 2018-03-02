@@ -55,6 +55,12 @@ void mark_pageframes_as_reserved(uptr paddr, int mb_count)
    // paddr has to be MB-aligned.
    ASSERT((paddr & (MB - 1)) == 0);
 
+   /*
+    * The pageframe allocator does not deal with addresses in the
+    * linearly-mapped zone.
+    */
+   ASSERT(paddr >= LINEAR_MAPPING_SIZE);
+
    for (int i = 0; i < mb_count * 8; i++) {
       ASSERT(pageframes_bitfield[(paddr >> 3) + i] == 0);
       pageframes_bitfield[(paddr >> 3) + i] = FULL_128KB_AREA;

@@ -519,6 +519,7 @@ static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
    return curr_max;
 }
 
+extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
 
 void initialize_kmalloc()
@@ -528,8 +529,10 @@ void initialize_kmalloc()
    const uptr limit =
       KERNEL_BASE_VA + MIN(get_phys_mem_mb(), LINEAR_MAPPING_MB) * MB;
 
-   uptr vaddr = KERNEL_BASE_VA + (INITIAL_MB_RESERVED +
-                                  MB_RESERVED_FOR_PAGING) * MB + ramdisk_size;
+   uptr vaddr = ramdisk_size
+                  ? (uptr)KERNEL_PA_TO_VA(ramdisk_paddr) + ramdisk_size
+                  : (uptr)KERNEL_PA_TO_VA(KERNEL_PADDR) + KERNEL_MAX_SIZE;
+   vaddr = round_up_mb(vaddr);
 
    const size_t fixed_size_first_heap_metadata = 1 * MB;
 
