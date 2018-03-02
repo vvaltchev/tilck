@@ -94,10 +94,11 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
 
    if (mbi->flags & MULTIBOOT_INFO_MODS) {
       if (mbi->mods_count >= 1) {
-         multiboot_module_t *mod = ((multiboot_module_t *)(uptr)mbi->mods_addr);
 
+         multiboot_module_t *mod = ((multiboot_module_t *)(uptr)mbi->mods_addr);
          ramdisk_paddr = mod->mod_start;
          ramdisk_size = mod->mod_end - mod->mod_start;
+
       } else {
          ramdisk_paddr = 0;
          ramdisk_size = 0;
@@ -131,7 +132,7 @@ void load_usermode_init()
 void mount_ramdisk(void)
 {
    if (!ramdisk_size) {
-      printk("[ERROR] No RAMDISK found.\n");
+      printk("[WARNING] No RAMDISK found.\n");
       return;
    }
 
