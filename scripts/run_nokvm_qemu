@@ -1,4 +1,7 @@
-#!/bin/sh
-f=./build/exos.img
+#!/bin/bash
+
+BUILD_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+f=$BUILD_DIR/exos.img
+
 qemu-system-i386 -s -m 256 -drive \
 file=$f,index=0,media=disk,format=raw,cyls=74,heads=16,secs=63 $@

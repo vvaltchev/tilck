@@ -1,2 +1,0 @@
-#!/bin/sh
-./run_qemu -enable-kvm -cpu host $@

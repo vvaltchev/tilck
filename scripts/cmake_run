@@ -100,7 +100,9 @@ if [ -z "$USE_GCOV" ]; then
    USE_GCOV=off
 fi
 
-mkdir -p build
-cd build
+mkdir -p $MAIN_DIR/build
+cp $MAIN_DIR/scripts/*run*qemu* $MAIN_DIR/build
+
+cd $MAIN_DIR/build
 $CMAKE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D USE_GCOV:BOOL=$USE_GCOV .. $@
 

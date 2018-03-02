@@ -55,7 +55,12 @@ Step 2. Compile the kernel and prepare the bootable image with just:
 Step 4. Now you should have an image file named `exos.img` in the `build` directory.
 The easiest way for actually trying `exOS` at that point is to just run:
 
-    ./run_qemu
+    ./build/run_qemu
+
+NOTE: in case your kernel don't have KVM support for any reason, you can
+always run QEMU using full-software virtualization:
+
+    ./build/run_nokvm_qemu
 
 Step 5. Enjoy :-)
 
