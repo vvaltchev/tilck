@@ -26,67 +26,89 @@
 
 #include <self_tests/self_tests.h>
 
-task_info *usermode_init_task = NULL;
-
 extern u32 memsize_in_mb;
 
-void show_hello_message(u32 magic, u32 mbi_addr)
+task_info *usermode_init_task;
+uptr ramdisk_paddr = RAMDISK_PADDR; /* default value in case of no multiboot */
+size_t ramdisk_size = RAMDISK_SIZE; /* default value in case of no multiboot */
+
+void dump_multiboot_info(multiboot_info_t *mbi)
 {
-   printk("Hello from exOS! [%s build]\n", BUILDTYPE_STR);
+   printk("MBI ptr: %p [+ %u KB]\n", mbi, ((uptr)mbi)/KB);
+   printk("mem lower: %u KB\n", mbi->mem_lower + 1);
+   printk("mem upper: %u MB\n", (mbi->mem_upper)/1024 + 1);
 
-   if (magic == MULTIBOOT_BOOTLOADER_MAGIC) {
-
-      struct multiboot_info *mbi = (void *)(uptr)mbi_addr;
-
-      printk("*** Detected multiboot 1 magic ***\n");
-
-      printk("Mbi ptr: %p\n", mbi);
-      printk("mem lower: %u KB\n", mbi->mem_lower + 1);
-      printk("mem upper: %u MB\n", (mbi->mem_upper)/1024 + 1);
-
-      if (mbi->flags & MULTIBOOT_INFO_CMDLINE) {
-         printk("Cmdline: '%s'\n", (char *)(uptr)mbi->cmdline);
-      }
-
-      if (mbi->flags & MULTIBOOT_INFO_VBE_INFO) {
-         printk("VBE mode: %p\n", mbi->vbe_mode);
-      }
-
-      if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO) {
-         printk("Framebuffer addr: %p\n", mbi->framebuffer_addr);
-      }
-
-      if (mbi->flags & MULTIBOOT_INFO_MODS) {
-
-         printk("Mods count: %u\n", mbi->mods_count);
-
-         for (u32 i = 0; i < mbi->mods_count; i++) {
-
-            multiboot_module_t *mod =
-               ((multiboot_module_t *)(uptr)mbi->mods_addr)+i;
-
-            printk("mod cmdline: '%s'\n", mod->cmdline);
-            printk("mod start: %p [+ %u KB]\n", mod->mod_start,
-                                                mod->mod_start/KB);
-            printk("mod end:   %p [+ %u KB]\n", mod->mod_end,
-                                                mod->mod_end/KB);
-            printk("mod size:  %u KB\n", (mod->mod_end-mod->mod_start)/KB);
-         }
-
-      }
-
-      if (mbi->flags & MULTIBOOT_INFO_ELF_SHDR) {
-         printk("ELF section table available\n");
-         printk("num:   %u\n", mbi->u.elf_sec.num);
-         printk("addr:  %p\n", mbi->u.elf_sec.addr);
-         printk("size:  %u\n", mbi->u.elf_sec.size);
-         printk("shndx: %p\n", mbi->u.elf_sec.shndx);
-      }
-
-      memsize_in_mb = (mbi->mem_upper)/1024 + 1;
+   if (mbi->flags & MULTIBOOT_INFO_CMDLINE) {
+      printk("Cmdline: '%s'\n", (char *)(uptr)mbi->cmdline);
    }
 
-   printk("TIMER_HZ: %i; Supported memory: %i MB\n",
+   if (mbi->flags & MULTIBOOT_INFO_VBE_INFO) {
+      printk("VBE mode: %p\n", mbi->vbe_mode);
+   }
+
+   if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO) {
+      printk("Framebuffer addr: %p\n", mbi->framebuffer_addr);
+   }
+
+   if (mbi->flags & MULTIBOOT_INFO_MODS) {
+
+      printk("Mods count: %u\n", mbi->mods_count);
+
+      for (u32 i = 0; i < mbi->mods_count; i++) {
+
+         multiboot_module_t *mod = ((multiboot_module_t *)mbi->mods_addr)+i;
+
+         printk("mod cmdline: '%s'\n", mod->cmdline);
+         printk("mod start: %p [+ %u KB]\n", mod->mod_start,
+                                             mod->mod_start/KB);
+         printk("mod end:   %p [+ %u KB]\n", mod->mod_end,
+                                             mod->mod_end/KB);
+         printk("mod size:  %u KB\n", (mod->mod_end-mod->mod_start)/KB);
+      }
+
+   }
+
+   if (mbi->flags & MULTIBOOT_INFO_ELF_SHDR) {
+      printk("ELF section table available\n");
+      printk("num:   %u\n", mbi->u.elf_sec.num);
+      printk("addr:  %p\n", mbi->u.elf_sec.addr);
+      printk("size:  %u\n", mbi->u.elf_sec.size);
+      printk("shndx: %p\n", mbi->u.elf_sec.shndx);
+   }
+}
+
+void show_hello_message(void)
+{
+   printk("Hello from exOS! [%s build]\n", BUILDTYPE_STR);
+}
+
+void read_multiboot_info(u32 magic, u32 mbi_addr)
+{
+   if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
+      return;
+
+   multiboot_info_t *mbi = (void *)(uptr)mbi_addr;
+   memsize_in_mb = (mbi->mem_upper)/1024 + 1;
+
+   printk("*** Detected multiboot ***\n");
+
+   if (mbi->flags & MULTIBOOT_INFO_MODS) {
+      if (mbi->mods_count >= 1) {
+         multiboot_module_t *mod = ((multiboot_module_t *)(uptr)mbi->mods_addr);
+
+         ramdisk_paddr = mod->mod_start;
+         ramdisk_size = mod->mod_end - mod->mod_start;
+      } else {
+         ramdisk_paddr = 0;
+         ramdisk_size = 0;
+      }
+   }
+
+}
+
+void show_additional_info(void)
+{
+   printk("TIMER_HZ: %i; MEM: %i MB\n",
            TIMER_HZ, get_phys_mem_mb());
 }
 
@@ -108,14 +130,22 @@ void load_usermode_init()
 
 void mount_ramdisk(void)
 {
-   filesystem *root_fs = fat_mount_ramdisk(KERNEL_PA_TO_VA(RAMDISK_PADDR));
+   if (!ramdisk_size) {
+      printk("[ERROR] No RAMDISK found.\n");
+      return;
+   }
+
+   printk("Mounting RAMDISK at PADDR %p...\n", ramdisk_paddr);
+   filesystem *root_fs = fat_mount_ramdisk(KERNEL_PA_TO_VA(ramdisk_paddr));
    mountpoint_add(root_fs, "/");
 }
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    term_init();
-   show_hello_message(multiboot_magic, mbi_addr);
+   show_hello_message();
+   read_multiboot_info(multiboot_magic, mbi_addr);
+   show_additional_info();
 
    setup_segmentation();
    setup_interrupt_handling();
@@ -140,7 +170,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    // TODO: make the kernel actually support the sysenter interface
    setup_sysenter_interface();
 
-   //mount_ramdisk();
+   mount_ramdisk();
 
    //kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
    //kmutex_test();
@@ -155,7 +185,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    //kernel_alloc_pageframe_perftest();
 
-   //load_usermode_init();
+   if (ramdisk_size)
+      load_usermode_init();
 
    printk("[kernel main] Starting the scheduler...\n");
    switch_to_idle_task_outside_interrupt_context();

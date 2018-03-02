@@ -41,9 +41,7 @@ extern void *kernel_va;
 #define LINEAR_MAPPING_OVER_END    (KERNEL_BASE_VA + LINEAR_MAPPING_SIZE)
 
 #define RAMDISK_PADDR              (4 * MB)
-
-#define RAMDISK_MB                 (35)
-#define RAMDISK_SIZE               (RAMDISK_MB * MB)
+#define RAMDISK_SIZE               (35 * MB)
 
 #define KERNEL_PADDR               0x00100000    // +1 MB
 #define KERNEL_INITIAL_STACK_ADDR  0xC000FFF0
