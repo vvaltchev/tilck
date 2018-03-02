@@ -32,11 +32,7 @@ extern u32 memsize_in_mb;
 
 void show_hello_message(u32 magic, u32 mbi_addr)
 {
-#ifdef DEBUG
-   printk("Hello from exOS! [DEBUG build]\n");
-#else
-   printk("Hello from exOS! [RELEASE build]\n");
-#endif
+   printk("Hello from exOS! [%s build]\n", BUILDTYPE_STR);
 
    if (magic == MULTIBOOT_BOOTLOADER_MAGIC) {
 
@@ -112,13 +108,7 @@ void load_usermode_init()
 
 void mount_ramdisk(void)
 {
-   /*
-    * NOTE: Now that the kernel supports a wide linear-mapped area in its
-    * virtual space, the RAMDISK can just be there and need no further mapping.
-    * In particular:
-    *    RAMDISK_VADDR = KERNEL_BASE_VA + RAMDISK_PADDR
-    */
-   filesystem *root_fs = fat_mount_ramdisk((void *)RAMDISK_VADDR);
+   filesystem *root_fs = fat_mount_ramdisk(KERNEL_PA_TO_VA(RAMDISK_PADDR));
    mountpoint_add(root_fs, "/");
 }
 
@@ -144,13 +134,13 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
 
+   DEBUG_ONLY(bool tasklet_added =) add_tasklet0(&init_kb);
+   ASSERT(tasklet_added);
+
    // TODO: make the kernel actually support the sysenter interface
    setup_sysenter_interface();
 
    //mount_ramdisk();
-
-   DEBUG_ONLY(bool tasklet_added =) add_tasklet0(&init_kb);
-   ASSERT(tasklet_added);
 
    //kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
    //kmutex_test();

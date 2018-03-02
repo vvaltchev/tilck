@@ -61,7 +61,7 @@ multiboot_entry:
    mov edi, PAGE_DIR_PADDR
    xor ecx, ecx
 
-   # Zero the our page directory
+   # Zero our page directory
 1:
    mov [edi], ecx
    add edi, 4

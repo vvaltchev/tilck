@@ -6,6 +6,12 @@
 #define KB (1024)
 #define MB (1024*1024)
 
+#ifdef DEBUG
+#define BUILDTYPE_STR "DEBUG"
+#else
+#define BUILDTYPE_STR "RELEASE"
+#endif
+
 /* ------------------------------- */
 
 /*
@@ -35,7 +41,6 @@ extern void *kernel_va;
 #define LINEAR_MAPPING_OVER_END    (KERNEL_BASE_VA + LINEAR_MAPPING_SIZE)
 
 #define RAMDISK_PADDR              (4 * MB)
-#define RAMDISK_VADDR              (KERNEL_BASE_VA + RAMDISK_PADDR)
 
 #define RAMDISK_MB                 (35)
 #define RAMDISK_SIZE               (RAMDISK_MB * MB)
