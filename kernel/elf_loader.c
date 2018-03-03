@@ -10,10 +10,6 @@
 #ifdef BITS32
 #ifdef DEBUG
 
-//
-// Debug functions
-//
-
 void dump_elf32_header(Elf32_Ehdr *h)
 {
    printk("Magic: ");
@@ -26,10 +22,10 @@ void dump_elf32_header(Elf32_Ehdr *h)
    printk("Machine: %p\n", h->e_machine);
    printk("Entry point: %p\n", h->e_entry);
    printk("ELF header size: %d\n", h->e_ehsize);
-   printk("Program header entry size: %d\n", h->e_phentsize);
-   printk("Program header num entries: %d\n", h->e_phnum);
-   printk("Section header entry size: %d\n", h->e_shentsize);
-   printk("Section header num entires: %d\n", h->e_shnum);
+   printk("e_phentsize:  %d\n", h->e_phentsize);
+   printk("e_phnum:      %d\n", h->e_phnum);
+   printk("e_shentsize:  %d\n", h->e_shentsize);
+   printk("e_shnum:      %d\n", h->e_shnum);
    printk("Section header string table index: %d\n\n", h->e_shstrndx);
 }
 

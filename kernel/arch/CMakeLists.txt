@@ -51,7 +51,6 @@ add_executable(
 set(
    KERNEL_LINK_FLAGS_LIST
 
-   ${ARCH_FLAGS}
    -Wl,--script=${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH}/linker_script.ld
    -nostdlib
 )
@@ -62,7 +61,7 @@ set_target_properties(
    elf_kernel
 
    PROPERTIES
-      COMPILE_FLAGS "${ARCH_FLAGS} ${KERNEL_FLAGS} ${ACTUAL_KERNEL_ONLY_FLAGS}"
+      COMPILE_FLAGS "${KERNEL_FLAGS} ${ACTUAL_KERNEL_ONLY_FLAGS}"
       LINK_FLAGS ${KERNEL_LINK_FLAGS}
 )
 
