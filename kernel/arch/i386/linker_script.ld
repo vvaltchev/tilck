@@ -14,24 +14,30 @@ SECTIONS
 
   .text : AT(kernel_paddr)
   {
-    code = .;
+    text = .;
     *(.text.unlikely .text.*_unlikely .text.unlikely.*)
     *(.text.exit .text.exit.*)
     *(.text.startup .text.startup.*)
     *(.text.hot .text.hot.*)
     *(.text .stub .text.* .gnu.linkonce.t.*)
-    *(.rodata .rodata.* .gnu.linkonce.r.*)
-    . = ALIGN(4096);
+    . = ALIGN(4);
   }
 
-  .data : AT(kernel_paddr + (data - code))
+   .rodata : AT(kernel_paddr + (rodata - text))
+   {
+      rodata = .;
+      *(.rodata .rodata.* .gnu.linkonce.r.*)
+      . = ALIGN(4096);
+   }
+
+  .data : AT(kernel_paddr + (data - text))
   {
     data = .;
     *(.data .data.* .gnu.linkonce.d.*)
     . = ALIGN(4096);
   }
 
-  .bss : AT(kernel_paddr + (bss - code))
+  .bss : AT(kernel_paddr + (bss - text))
   {
     bss = .;
     *(.bss .bss.* .gnu.linkonce.b.*)
