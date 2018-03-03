@@ -47,7 +47,7 @@ SECTIONS
   _end = .;
 
   /DISCARD/ : { *(.eh_frame*) }
-
+  /DISCARD/ : { *(.comment) }
 }
 
 

@@ -16,41 +16,32 @@ SECTIONS
 
   .text :
   {
-    *(.text.unlikely .text.*_unlikely .text.unlikely.*)
-    *(.text.exit .text.exit.*)
-    *(.text.startup .text.startup.*)
-    *(.text.hot .text.hot.*)
-    *(.text .stub .text.* .gnu.linkonce.t.*)
+    *(.text)
+    . = ALIGN(4);
   }
 
   .rodata :
   {
-    *(.rodata .rodata.* .gnu.linkonce.r.*)
+    *(.rodata)
+    . = ALIGN(4096);
   }
-
-  /* Adjust the address for the data segment.  We want to adjust up to
-     the same address within the page on the next page up.  */
-
-  . = DATA_SEGMENT_ALIGN (CONSTANT (MAXPAGESIZE), CONSTANT (COMMONPAGESIZE));
 
   .data :
   {
-    *(.data .data.* .gnu.linkonce.d.*)
+    *(.data)
+    . = ALIGN(4);
   }
 
   __bss_start = .;
   .bss :
   {
-   *(.bss .bss.* .gnu.linkonce.b.*)
+   *(.bss)
+   . = ALIGN(4);
   }
    __bss_end = .;
-
-  . = ALIGN(32 / 8);
   _end = .;
-  . = DATA_SEGMENT_END (.);
 
   /DISCARD/ : { *(.eh_frame*) }
-
 }
 
 
