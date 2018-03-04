@@ -141,6 +141,11 @@ void mount_ramdisk(void)
    mountpoint_add(root_fs, "/");
 }
 
+<<<<<<< HEAD
+=======
+void dump_kernel_symtab(void);
+
+>>>>>>> 598b52e... Saving work: now we can list the sections by name
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    term_init();
@@ -173,6 +178,13 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    mount_ramdisk();
 
+   ///////////////////////////////////////////
+   // DEBUG STUFF
+
+   dump_kernel_symtab();
+
+   /////////////////////////////////////////
+
    //kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
    //kmutex_test();
    //kcond_test();
@@ -186,8 +198,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    //kernel_alloc_pageframe_perftest();
 
-   if (ramdisk_size)
-      load_usermode_init();
+   //if (ramdisk_size)
+   //   load_usermode_init();
 
    printk("[kernel main] Starting the scheduler...\n");
    switch_to_idle_task_outside_interrupt_context();

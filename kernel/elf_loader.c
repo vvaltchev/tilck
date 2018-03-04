@@ -54,6 +54,44 @@ void dump_elf32_phdrs(Elf32_Ehdr *h)
 
 #endif
 
+
+
+void dump_kernel_symtab(void)
+{
+   fs_handle *elf_file = exvfs_open("/EFI/BOOT/elf_kernel_stripped");
+   char *buf = kmalloc(100*1024);
+   exvfs_read(elf_file, buf, 100*1024);
+
+   Elf32_Ehdr *h = (Elf32_Ehdr*)buf;
+
+   printk("Type: %p\n", h->e_type);
+   printk("Machine: %p\n", h->e_machine);
+   printk("Entry point: %p\n", h->e_entry);
+   printk("ELF header size: %d\n", h->e_ehsize);
+   printk("e_phentsize:  %d\n", h->e_phentsize);
+   printk("e_phnum:      %d\n", h->e_phnum);
+   printk("e_shentsize:  %d\n", h->e_shentsize);
+   printk("e_shnum:      %d\n", h->e_shnum);
+   printk("Section header string table index: %d\n\n", h->e_shstrndx);
+
+   // dump sections
+
+   Elf32_Shdr *sections = (Elf32_Shdr *) ((char *)h + h->e_shoff);
+   VERIFY(h->e_shentsize == sizeof(Elf32_Shdr));
+
+   Elf32_Shdr *section_header_strtab = sections + h->e_shstrndx;
+   (void)section_header_strtab;
+
+   for (u32 i = 0; i < h->e_shnum; i++) {
+      Elf32_Shdr *s = sections + i;
+      char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
+      printk("name: '%s', vaddr: %p, size: %u\n", name, s->sh_addr, s->sh_size);
+   }
+
+   kfree(buf, 100*1024);
+   exvfs_close(elf_file);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 void load_elf_program(const char *filepath,
@@ -88,6 +126,9 @@ void load_elf_program(const char *filepath,
    const ssize_t total_phdrs_size = header.e_phnum * sizeof(Elf32_Phdr);
    Elf32_Phdr *phdr = kmalloc(total_phdrs_size);
    VERIFY(phdr != NULL);
+
+   ret = exvfs_seek(elf_file, header.e_phoff, SEEK_SET);
+   VERIFY(ret == (ssize_t)header.e_phoff);
 
    ret = exvfs_read(elf_file, phdr, total_phdrs_size);
    ASSERT(ret == total_phdrs_size);

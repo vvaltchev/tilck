@@ -64,6 +64,9 @@ void load_elf_kernel(const char *filepath, void **entry)
    Elf32_Phdr *phdr = kmalloc(total_phdrs_size);
    VERIFY(phdr != NULL);
 
+   ret = elf_file->fops.fseek(elf_file, header.e_phoff, SEEK_SET);
+   VERIFY(ret == (ssize_t)header.e_phoff);
+
    ret = elf_file->fops.fread(elf_file, (void *)phdr, total_phdrs_size);
    ASSERT(ret == total_phdrs_size);
 
