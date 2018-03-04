@@ -8,7 +8,7 @@
 #include <fs/exvfs.h>
 
 #ifdef BITS32
-#ifdef DEBUG
+
 
 void dump_elf32_header(Elf32_Ehdr *h)
 {
@@ -52,29 +52,50 @@ void dump_elf32_phdrs(Elf32_Ehdr *h)
    }
 }
 
-#endif
 
 
 
 void dump_kernel_symtab(void)
 {
-   fs_handle *elf_file = exvfs_open("/EFI/BOOT/elf_kernel_stripped");
-   char *buf = kmalloc(100*1024);
-   exvfs_read(elf_file, buf, 100*1024);
+   // fs_handle *elf_file = exvfs_open("/EFI/BOOT/elf_kernel_stripped");
+   // char *buf = kmalloc(100*1024);
+   // exvfs_read(elf_file, buf, 100*1024);
+   // Elf32_Ehdr *h = (Elf32_Ehdr*)buf;
 
-   Elf32_Ehdr *h = (Elf32_Ehdr*)buf;
+   Elf32_Ehdr *h = (Elf32_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
+
+
+   printk("Magic: ");
+   for (int i = 0; i < EI_NIDENT; i++) {
+      printk("%x ", h->e_ident[i]);
+   }
+
+   printk("\n");
+   printk("Type: %p\n", h->e_type);
+   printk("Machine: %p\n", h->e_machine);
+   printk("Entry point: %p\n", h->e_entry);
+   printk("ELF header size: %d\n", h->e_ehsize);
+   printk("e_phentsize:  %d\n", h->e_phentsize);
+   printk("e_phnum:      %d\n", h->e_phnum);
+   printk("e_shentsize:  %d\n", h->e_shentsize);
+   printk("e_shnum:      %d\n", h->e_shnum);
+   printk("e_shoff:      %p\n", h->e_shoff);
+   printk("Section header string table index: %d\n\n", h->e_shstrndx);
+
    VERIFY(h->e_shentsize == sizeof(Elf32_Shdr));
 
+   //dump_elf32_phdrs(h);
+
    Elf32_Shdr *sections = (Elf32_Shdr *) ((char *)h + h->e_shoff);
-   Elf32_Shdr *section_header_strtab = sections + h->e_shstrndx;
+   //Elf32_Shdr *section_header_strtab = sections + h->e_shstrndx;
 
    Elf32_Shdr *symtab = NULL;
    Elf32_Shdr *strtab = NULL;
 
    for (u32 i = 0; i < h->e_shnum; i++) {
       Elf32_Shdr *s = sections + i;
-      char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
-      printk("section: '%s', vaddr: %p, size: %u\n", name, s->sh_addr, s->sh_size);
+      //char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
+      printk("section: [name idx: %u], vaddr: %p, size: %u\n", s->sh_name, s->sh_addr, s->sh_size);
 
       if (s->sh_type == SHT_SYMTAB) {
          symtab = s;
@@ -83,6 +104,7 @@ void dump_kernel_symtab(void)
       }
    }
 
+   return;
    printk("Symbols:\n");
    Elf32_Sym *syms = (Elf32_Sym *) ((char *)h + symtab->sh_offset);
 
@@ -92,8 +114,8 @@ void dump_kernel_symtab(void)
       printk("%p: %s\n", s->st_value, name);
    }
 
-   kfree(buf, 100*1024);
-   exvfs_close(elf_file);
+   // kfree(buf, 100*1024);
+   // exvfs_close(elf_file);
 }
 
 //////////////////////////////////////////////////////////////////////////////

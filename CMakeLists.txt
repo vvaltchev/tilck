@@ -39,6 +39,7 @@ else()
 endif()
 
 set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
+set(BUILD_APPS ${CMAKE_SOURCE_DIR}/scripts/build_apps)
 set(BUILD_SHARED_LIBRARIES off)
 set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
 

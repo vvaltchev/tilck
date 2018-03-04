@@ -70,14 +70,22 @@ SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 target_link_libraries(elf_kernel gcc)
 
 add_custom_command(
-    OUTPUT
-        ${KERNEL_FILE}
-    COMMAND
-         ${STRIP} --strip-debug elf_kernel -o ${KERNEL_FILE}
-    DEPENDS
-        ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
-    COMMENT
-        "Preparing kernel's stripped binary"
+   OUTPUT
+      ${KERNEL_FILE}
+   COMMAND
+      ${STRIP} --strip-debug elf_kernel -o ${KERNEL_FILE}
+   COMMAND
+      gcc ${BUILD_APPS}/elfhack.c -o ${BUILD_APPS}/elfhack
+   COMMAND
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} -d .symtab > ${CMAKE_CURRENT_BINARY_DIR}/symtab
+   COMMAND
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} -d .strtab > ${CMAKE_CURRENT_BINARY_DIR}/strtab
+   COMMAND
+      ${STRIP} -s ${KERNEL_FILE}
+   DEPENDS
+      ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
+   COMMENT
+      "Preparing kernel's stripped binary"
 )
 
 add_custom_target(
