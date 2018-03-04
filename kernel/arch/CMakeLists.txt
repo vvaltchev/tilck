@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
 
-set(KERNEL_LOAD_VADDR 0xC0100000)
-
 if (${ARCH} STREQUAL "i386")
 
    set(GCC_TOOLCHAIN ${TCROOT}/x86-i686--glibc--stable/bin)
@@ -26,7 +24,6 @@ set(
 
    -fno-pic
    -fno-asynchronous-unwind-tables
-   -fno-zero-initialized-in-bss
    -fno-exceptions
    -fno-stack-protector
 

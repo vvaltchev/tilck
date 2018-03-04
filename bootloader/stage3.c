@@ -8,7 +8,10 @@
 #include <utils.h>
 #include <config.h>
 
-#define VADDR_TO_PADDR(x) ((void *)( (uptr)(x) - KERNEL_BASE_VA ))
+/*
+ * Checks if 'addr' is in the range [begin, end).
+ */
+#define IN(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
 
 const char *kernel_path = "/EFI/BOOT/elf_kernel_stripped";
 
@@ -55,6 +58,8 @@ void load_elf_kernel(const char *filepath, void **entry)
 
    ASSERT(header.e_ehsize == sizeof(header));
 
+   *entry = (void *)header.e_entry;
+
    const ssize_t total_phdrs_size = header.e_phnum * sizeof(Elf32_Phdr);
    Elf32_Phdr *phdr = kmalloc(total_phdrs_size);
    VERIFY(phdr != NULL);
@@ -64,25 +69,32 @@ void load_elf_kernel(const char *filepath, void **entry)
 
    for (int i = 0; i < header.e_phnum; i++, phdr++) {
 
-      // Ignore non-load segments.
       if (phdr->p_type != PT_LOAD) {
-         continue;
+         continue; // Ignore non-load segments.
       }
 
       VERIFY(phdr->p_vaddr >= KERNEL_BASE_VA);
+      VERIFY(phdr->p_paddr >= KERNEL_PADDR);
 
-      bzero(VADDR_TO_PADDR(phdr->p_vaddr), phdr->p_memsz);
-
+      bzero((void *)phdr->p_paddr, phdr->p_memsz);
       ret = elf_file->fops.fseek(elf_file, phdr->p_offset, SEEK_SET);
       VERIFY(ret == (ssize_t)phdr->p_offset);
 
-      ret = elf_file->fops.fread(elf_file, VADDR_TO_PADDR(phdr->p_vaddr), phdr->p_filesz);
+      ret = elf_file->fops.fread(elf_file,(void*)phdr->p_paddr,phdr->p_filesz);
       VERIFY(ret == (ssize_t)phdr->p_filesz);
+
+      if (IN(header.e_entry, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz)) {
+         /*
+          * If e_entry is a vaddr (address >= KERNEL_BASE_VA), we need to
+          * calculate its paddr because here paging is OFF. Therefore,
+          * compute its offset from the beginning of the segment and add it
+          * to the paddr of the segment.
+          */
+         *entry = (void *) (phdr->p_paddr + (header.e_entry - phdr->p_vaddr));
+      }
    }
 
    root_fs->fclose(elf_file);
-
-   *entry = (void *) header.e_entry;
    kfree(phdr, sizeof(*phdr));
 }
 
@@ -129,8 +141,6 @@ void bootloader_main(void)
 
    void *entry;
    load_elf_kernel(kernel_path, &entry);
-
-   entry = VADDR_TO_PADDR(entry);
 
    /* Jump to the kernel */
    asmVolatile("jmpl *%0" : : "r"(entry));
