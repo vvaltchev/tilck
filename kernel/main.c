@@ -141,11 +141,8 @@ void mount_ramdisk(void)
    mountpoint_add(root_fs, "/");
 }
 
-<<<<<<< HEAD
-=======
 void dump_kernel_symtab(void);
 
->>>>>>> 598b52e... Saving work: now we can list the sections by name
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    term_init();
@@ -182,7 +179,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    // DEBUG STUFF
 
    dump_kernel_symtab();
-
    /////////////////////////////////////////
 
    //kthread_create(&simple_test_kthread, (void*)0xAA1234BB);

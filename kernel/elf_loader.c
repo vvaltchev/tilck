@@ -63,29 +63,33 @@ void dump_kernel_symtab(void)
    exvfs_read(elf_file, buf, 100*1024);
 
    Elf32_Ehdr *h = (Elf32_Ehdr*)buf;
-
-   printk("Type: %p\n", h->e_type);
-   printk("Machine: %p\n", h->e_machine);
-   printk("Entry point: %p\n", h->e_entry);
-   printk("ELF header size: %d\n", h->e_ehsize);
-   printk("e_phentsize:  %d\n", h->e_phentsize);
-   printk("e_phnum:      %d\n", h->e_phnum);
-   printk("e_shentsize:  %d\n", h->e_shentsize);
-   printk("e_shnum:      %d\n", h->e_shnum);
-   printk("Section header string table index: %d\n\n", h->e_shstrndx);
-
-   // dump sections
-
-   Elf32_Shdr *sections = (Elf32_Shdr *) ((char *)h + h->e_shoff);
    VERIFY(h->e_shentsize == sizeof(Elf32_Shdr));
 
+   Elf32_Shdr *sections = (Elf32_Shdr *) ((char *)h + h->e_shoff);
    Elf32_Shdr *section_header_strtab = sections + h->e_shstrndx;
-   (void)section_header_strtab;
+
+   Elf32_Shdr *symtab = NULL;
+   Elf32_Shdr *strtab = NULL;
 
    for (u32 i = 0; i < h->e_shnum; i++) {
       Elf32_Shdr *s = sections + i;
       char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
-      printk("name: '%s', vaddr: %p, size: %u\n", name, s->sh_addr, s->sh_size);
+      printk("section: '%s', vaddr: %p, size: %u\n", name, s->sh_addr, s->sh_size);
+
+      if (s->sh_type == SHT_SYMTAB) {
+         symtab = s;
+      } else if (s->sh_type == SHT_STRTAB && i != h->e_shstrndx) {
+         strtab = s;
+      }
+   }
+
+   printk("Symbols:\n");
+   Elf32_Sym *syms = (Elf32_Sym *) ((char *)h + symtab->sh_offset);
+
+   for (u32 i = 0; i < 10; i++) {
+      Elf32_Sym *s = syms + i;
+      char *name = (char *)h + strtab->sh_offset + s->st_name;
+      printk("%p: %s\n", s->st_value, name);
    }
 
    kfree(buf, 100*1024);
