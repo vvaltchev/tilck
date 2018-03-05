@@ -14,6 +14,7 @@ PHDRS
 {
    ro_segment PT_LOAD FILEHDR PHDRS;
    rw_segment PT_LOAD;
+   special_ro PT_LOAD;
 }
 
 SECTIONS
@@ -48,7 +49,19 @@ SECTIONS
       *(.bss .bss.* .gnu.linkonce.b.*)
    } : rw_segment
 
-   . = ALIGN(4);
+   .symtab2 ALIGN(4K) : AT(kernel_text_paddr + (symtab2 - text))
+   {
+      symtab2 = .;
+      *(.symtab2)
+   } : special_ro
+
+   .strtab2 ALIGN(4): AT(kernel_text_paddr + (strtab2 - text))
+   {
+      strtab2 = .;
+      *(.strtab2)
+   } : special_ro
+
+
    _end = .;
 
    /DISCARD/ : { *(.eh_frame*) }

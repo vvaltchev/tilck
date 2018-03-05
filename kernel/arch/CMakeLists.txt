@@ -77,11 +77,11 @@ add_custom_command(
    COMMAND
       gcc ${BUILD_APPS}/elfhack.c -o ${BUILD_APPS}/elfhack
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} -d .symtab > ${CMAKE_CURRENT_BINARY_DIR}/symtab
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} -c .symtab .symtab2
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} -d .strtab > ${CMAKE_CURRENT_BINARY_DIR}/strtab
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} -c .strtab .strtab2
    COMMAND
-      ${STRIP} -s ${KERNEL_FILE}
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --move_metadata
    DEPENDS
       ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
    COMMENT

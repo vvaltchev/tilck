@@ -128,6 +128,8 @@ void load_usermode_init()
    printk("[load_usermode_init] Stack: %p\n", stack_addr);
 }
 
+char hack_buf1[16*1024] __attribute__ ((section (".symtab2"))) = {0};
+char hack_buf2[16*1024] __attribute__ ((section (".strtab2"))) = {0};
 
 void mount_ramdisk(void)
 {
