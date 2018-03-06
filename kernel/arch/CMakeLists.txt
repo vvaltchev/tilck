@@ -96,6 +96,8 @@ add_custom_command(
       ${BUILD_APPS}/elfhack ${KERNEL_FILE} --drop-last-section
    COMMAND
       ${BUILD_APPS}/elfhack ${KERNEL_FILE} --drop-last-section
+   COMMAND
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
    DEPENDS
       ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
    COMMENT

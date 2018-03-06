@@ -45,6 +45,11 @@ void copy_section(void *mapped_elf_file, const char *src, const char *dst)
    Elf32_Shdr *s_src = get_section(mapped_elf_file, src);
    Elf32_Shdr *s_dst = get_section(mapped_elf_file, dst);
 
+   if (!dst) {
+      fprintf(stderr, "Missing <dst section> argument\n");
+      exit(1);
+   }
+
    if (s_src->sh_size > s_dst->sh_size) {
       fprintf(stderr, "The source section '%s' is too big "
               "[%u bytes] to fit in the dest section '%s' [%u bytes]\n",
@@ -70,6 +75,7 @@ void show_help(char **argv)
    fprintf(stderr, "       %s <elf_file> [--rename <section> <new_name>]\n", argv[0]);
    fprintf(stderr, "       %s <elf_file> [--link <section> <linked_section>]\n", argv[0]);
    fprintf(stderr, "       %s <elf_file> [--drop-last-section]\n", argv[0]);
+   fprintf(stderr, "       %s <elf_file> [--set-phdr-rwx-flags <phdr index> <rwx flags>]\n", argv[0]);
    exit(1);
 }
 
@@ -80,6 +86,11 @@ void rename_section(void *mapped_elf_file,
    char *hc = (char *)h;
    Elf32_Shdr *sections = (Elf32_Shdr *)(hc + h->e_shoff);
    Elf32_Shdr *shstrtab = sections + h->e_shstrndx;
+
+   if (!new_name) {
+      fprintf(stderr, "Missing <new_name> argument\n");
+      exit(1);
+   }
 
    if (strlen(new_name) > strlen(sec)) {
       fprintf(stderr, "Section rename with length > old one NOT supported.\n");
@@ -97,6 +108,11 @@ void link_sections(void *mapped_elf_file,
    char *hc = (char *)h;
    Elf32_Shdr *sections = (Elf32_Shdr *)(hc + h->e_shoff);
    Elf32_Shdr *shstrtab = sections + h->e_shstrndx;
+
+   if (!linked) {
+      fprintf(stderr, "Missing <linked section> argument\n");
+      exit(1);
+   }
 
    Elf32_Shdr *a = get_section(mapped_elf_file, sec);
    Elf32_Shdr *b = get_section(mapped_elf_file, linked);
@@ -147,6 +163,7 @@ void drop_last_section(void *mapped_elf_file, int fd)
    Elf32_Shdr *shstrtab = sections + h->e_shstrndx;
 
    Elf32_Shdr *last_section = NULL;
+   int last_section_index = 0;
    off_t last_offset = 0;
 
    for (uint32_t i = 0; i < h->e_shnum; i++) {
@@ -156,6 +173,7 @@ void drop_last_section(void *mapped_elf_file, int fd)
       if (s->sh_offset > last_offset) {
          last_section = s;
          last_offset = s->sh_offset;
+         last_section_index = i;
       }
    }
 
@@ -164,6 +182,30 @@ void drop_last_section(void *mapped_elf_file, int fd)
       exit(1);
    }
 
+   if (last_section_index != h->e_shnum - 1) {
+
+      /*
+       * If the last section physically on file is not the last section in
+       * the table, we cannot just decrease h->e_shnum, otherwise we'll remove
+       * from the table an useful section. Therefore, in that case we just
+       * use the slot of the last_section to store the section metainfo of the
+       * section with the biggest index in the section table (last section in
+       * another sense).
+       */
+
+      *last_section = sections[h->e_shnum - 1];
+
+      /*
+       * If we're so unlucky that the section with the biggest index in the
+       * section table is also the special .shstrtab, we have to update its
+       * index in the ELF header as well.
+       */
+      if (h->e_shstrndx == h->e_shnum - 1) {
+         h->e_shstrndx = last_section_index;
+      }
+   }
+
+   /* Drop the last section from the section table */
    h->e_shnum--;
 
    /*
@@ -173,10 +215,71 @@ void drop_last_section(void *mapped_elf_file, int fd)
     * and strtab), it is expected this function to be just used twice.
     */
    for (uint32_t i = 0; i < h->e_shnum; i++)
-      if (sections[i].sh_link == h->e_shnum)
+      if (sections[i].sh_link == last_section_index)
          sections[i].sh_link = 0;
 
-   ftruncate(fd, last_offset);
+   /* Physically remove the last section from the file, by truncating it */
+   if (ftruncate(fd, last_offset) < 0) {
+      perror("ftruncate failed");
+      exit(1);
+   }
+}
+
+void set_phdr_rwx_flags(void *mapped_elf_file,
+                        const char *phdr_index,
+                        const char *flags)
+{
+   Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
+   errno = 0;
+
+   char *endptr = NULL;
+   unsigned long phindex = strtoul(phdr_index, &endptr, 10);
+
+   if (errno || *endptr != '\0') {
+      fprintf(stderr, "Invalid phdr index '%s'\n", phdr_index);
+      exit(1);
+   }
+
+   if (phindex >= h->e_phnum) {
+      fprintf(stderr, "Phdr index %lu out-of-range [0, %u].\n",
+              phindex, h->e_phnum - 1);
+      exit(1);
+   }
+
+   if (!flags) {
+      fprintf(stderr, "Missing <rwx flags> argument.\n");
+      exit(1);
+   }
+
+   char *hc = (char *)h;
+   Elf32_Phdr *phdrs = (Elf32_Phdr *)(hc + h->e_phoff);
+   Elf32_Phdr *phdr = phdrs + phindex;
+
+   unsigned f = 0;
+
+   while (*flags) {
+      switch (*flags) {
+         case 'r':
+            f |= PF_R;
+            break;
+         case 'w':
+            f |= PF_W;
+            break;
+         case 'x':
+            f |= PF_X;
+            break;
+         default:
+            fprintf(stderr, "Invalid flag '%c'. Allowed: r,w,x.\n", *flags);
+            exit(1);
+      }
+      flags++;
+   }
+
+   // First, clear the already set RWX flags (be keep the others!)
+   phdr->p_flags &= ~(PF_R | PF_W | PF_X);
+
+   // Then, set the new RWX flags.
+   phdr->p_flags |= f;
 }
 
 int main(int argc, char **argv)
@@ -193,6 +296,9 @@ int main(int argc, char **argv)
    const char *opt = argv[2];
    const char *opt_arg = argv[3];
    const char *opt_arg2 = argv[4];
+
+   if (argc == 3)
+      opt_arg2 = NULL;
 
    fd = open(file, O_RDWR);
 
@@ -227,6 +333,8 @@ int main(int argc, char **argv)
       link_sections(vaddr, opt_arg, opt_arg2);
    } else if (!strcmp(opt, "--drop-last-section")) {
       drop_last_section(vaddr, fd);
+   } else if (!strcmp(opt, "--set-phdr-rwx-flags")) {
+      set_phdr_rwx_flags(vaddr, opt_arg, opt_arg2);
    } else {
       show_help(argv);
    }
