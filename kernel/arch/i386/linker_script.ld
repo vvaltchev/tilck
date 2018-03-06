@@ -49,16 +49,16 @@ SECTIONS
       *(.bss .bss.* .gnu.linkonce.b.*)
    } : rw_segment
 
-   .symtab2 ALIGN(4K) : AT(kernel_text_paddr + (symtab2 - text))
+   .Symtab ALIGN(4K) : AT(kernel_text_paddr + (Symtab - text))
    {
-      symtab2 = .;
-      *(.symtab2)
+      Symtab = .;
+      *(.Symtab)
    } : special_ro
 
-   .strtab2 ALIGN(4): AT(kernel_text_paddr + (strtab2 - text))
+   .Strtab ALIGN(4): AT(kernel_text_paddr + (Strtab - text))
    {
-      strtab2 = .;
-      *(.strtab2)
+      Strtab = .;
+      *(.Strtab)
    } : special_ro
 
 

@@ -64,10 +64,44 @@ void copy_section(void *mapped_elf_file, const char *src, const char *dst)
 
 void show_help(char **argv)
 {
-   fprintf(stderr, "Usage: %s <elf_file> [-d <section name>]\n", argv[0]);
+   fprintf(stderr, "Usage: %s <elf_file> [--dump <section name>]\n", argv[0]);
    fprintf(stderr, "       %s <elf_file> [--move_metadata]\n", argv[0]);
-   fprintf(stderr, "       %s <elf_file> [-c <src section> <dest section>]\n", argv[0]);
+   fprintf(stderr, "       %s <elf_file> [--copy <src section> <dest section>]\n", argv[0]);
+   fprintf(stderr, "       %s <elf_file> [--rename <section> <new_name>]\n", argv[0]);
+   fprintf(stderr, "       %s <elf_file> [--link <section> <linked_section>]\n", argv[0]);
    exit(1);
+}
+
+void rename_section(void *mapped_elf_file,
+                    const char *sec, const char *new_name)
+{
+   Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
+   char *hc = (char *)h;
+   Elf32_Shdr *sections = (Elf32_Shdr *)(hc + h->e_shoff);
+   Elf32_Shdr *shstrtab = sections + h->e_shstrndx;
+
+   if (strlen(new_name) > strlen(sec)) {
+      fprintf(stderr, "Section rename with length > old one NOT supported.\n");
+      exit(1);
+   }
+
+   Elf32_Shdr *s = get_section(mapped_elf_file, sec);
+   strcpy(hc + shstrtab->sh_offset + s->sh_name, new_name);
+}
+
+void link_sections(void *mapped_elf_file,
+                   const char *sec, const char *linked)
+{
+   Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
+   char *hc = (char *)h;
+   Elf32_Shdr *sections = (Elf32_Shdr *)(hc + h->e_shoff);
+   Elf32_Shdr *shstrtab = sections + h->e_shstrndx;
+
+   Elf32_Shdr *a = get_section(mapped_elf_file, sec);
+   Elf32_Shdr *b = get_section(mapped_elf_file, linked);
+
+   unsigned bidx = (b - sections);
+   a->sh_link = bidx;
 }
 
 void move_metadata(void *mapped_elf_file)
@@ -85,7 +119,7 @@ void move_metadata(void *mapped_elf_file)
    h->e_shoff = off;
    off += h->e_shentsize*h->e_shnum;
 
-   Elf32_Shdr *sections = (Elf32_Shdr *) ((char *)h + h->e_shoff);
+   Elf32_Shdr *sections = (Elf32_Shdr *) (hc + h->e_shoff);
    Elf32_Shdr *shstrtab = sections + h->e_shstrndx;
 
    memcpy(hc + off, hc + shstrtab->sh_offset, shstrtab->sh_size);
@@ -94,38 +128,6 @@ void move_metadata(void *mapped_elf_file)
    Elf32_Phdr *phdrs = (Elf32_Phdr *)(hc + h->e_phoff);
    shstrtab->sh_addr = phdrs[0].p_vaddr + shstrtab->sh_offset;
    shstrtab->sh_flags |= SHF_ALLOC;
-
-   // Link .symtab2 and .strtab2
-   Elf32_Shdr *a = get_section(mapped_elf_file, ".symtab2");
-   Elf32_Shdr *b = get_section(mapped_elf_file, ".strtab2");
-
-   unsigned bidx = (b - sections);
-   a->sh_link = bidx;
-
-   a->sh_flags = SHF_ALLOC;
-   b->sh_flags = SHF_ALLOC;
-
-
-   Elf32_Shdr *o1 = get_section(mapped_elf_file, ".symtab");
-   Elf32_Shdr *o2 = get_section(mapped_elf_file, ".strtab");
-
-   o1->sh_type = SHT_PROGBITS;
-   o2->sh_type = SHT_PROGBITS;
-   o1->sh_link = 0;
-   o2->sh_link = 0;
-   o1->sh_flags = 0;
-   o2->sh_flags = 0;
-   o1->sh_info = 0;
-   o2->sh_info = 0;
-
-   char *name;
-   name = hc + shstrtab->sh_offset + o1->sh_name;
-   name[0] = 'd';
-
-   name = hc + shstrtab->sh_offset + o2->sh_name;
-   name[0] = 'd';
-
-   // TODO: add code to remove .symtab and .strtab
 }
 
 int main(int argc, char **argv)
@@ -164,12 +166,16 @@ int main(int argc, char **argv)
       return 1;
    }
 
-   if (!strcmp(opt, "-d")) {
+   if (!strcmp(opt, "--dump")) {
       section_dump(vaddr, opt_arg);
    } else if (!strcmp(opt, "--move_metadata")) {
       move_metadata(vaddr);
-   } else if (!strcmp(opt, "-c")) {
+   } else if (!strcmp(opt, "--copy")) {
       copy_section(vaddr, opt_arg, opt_arg2);
+   } else if (!strcmp(opt, "--rename")) {
+      rename_section(vaddr, opt_arg, opt_arg2);
+   } else if (!strcmp(opt, "--link")) {
+      link_sections(vaddr, opt_arg, opt_arg2);
    } else {
       show_help(argv);
    }

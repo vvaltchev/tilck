@@ -77,9 +77,19 @@ add_custom_command(
    COMMAND
       gcc ${BUILD_APPS}/elfhack.c -std=c99 -o ${BUILD_APPS}/elfhack
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} -c .symtab .symtab2
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --copy .symtab .Symtab
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} -c .strtab .strtab2
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --copy .strtab .Strtab
+   COMMAND
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --link .Symtab .Strtab
+   COMMAND
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .symtab osymtab
+   COMMAND
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .strtab ostrtab
+   COMMAND
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .Symtab .symtab
+   COMMAND
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .Strtab .strtab
    COMMAND
       ${BUILD_APPS}/elfhack ${KERNEL_FILE} --move_metadata
    DEPENDS
