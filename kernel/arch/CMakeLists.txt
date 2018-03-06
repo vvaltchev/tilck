@@ -75,7 +75,7 @@ add_custom_command(
    COMMAND
       ${STRIP} --strip-debug elf_kernel -o ${KERNEL_FILE}
    COMMAND
-      gcc ${BUILD_APPS}/elfhack.c -std=c99 -o ${BUILD_APPS}/elfhack
+      gcc ${BUILD_APPS}/elfhack.c -std=gnu99 -o ${BUILD_APPS}/elfhack
    COMMAND
       ${BUILD_APPS}/elfhack ${KERNEL_FILE} --copy .symtab .Symtab
    COMMAND
@@ -92,6 +92,10 @@ add_custom_command(
       ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .Strtab .strtab
    COMMAND
       ${BUILD_APPS}/elfhack ${KERNEL_FILE} --move_metadata
+   COMMAND
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --drop-last-section
+   COMMAND
+      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --drop-last-section
    DEPENDS
       ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
    COMMENT

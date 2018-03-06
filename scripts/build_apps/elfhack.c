@@ -69,6 +69,7 @@ void show_help(char **argv)
    fprintf(stderr, "       %s <elf_file> [--copy <src section> <dest section>]\n", argv[0]);
    fprintf(stderr, "       %s <elf_file> [--rename <section> <new_name>]\n", argv[0]);
    fprintf(stderr, "       %s <elf_file> [--link <section> <linked_section>]\n", argv[0]);
+   fprintf(stderr, "       %s <elf_file> [--drop-last-section]\n", argv[0]);
    exit(1);
 }
 
@@ -128,6 +129,54 @@ void move_metadata(void *mapped_elf_file)
    Elf32_Phdr *phdrs = (Elf32_Phdr *)(hc + h->e_phoff);
    shstrtab->sh_addr = phdrs[0].p_vaddr + shstrtab->sh_offset;
    shstrtab->sh_flags |= SHF_ALLOC;
+
+   for (uint32_t i = 0; i < h->e_shnum; i++) {
+      Elf32_Shdr *s = sections + i;
+
+      /* Make sure that all the sections with a vaddr != 0 are 'alloc' */
+      if (s->sh_addr)
+         s->sh_flags |= SHF_ALLOC;
+   }
+}
+
+void drop_last_section(void *mapped_elf_file, int fd)
+{
+   Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
+   char *hc = (char *)h;
+   Elf32_Shdr *sections = (Elf32_Shdr *)(hc + h->e_shoff);
+   Elf32_Shdr *shstrtab = sections + h->e_shstrndx;
+
+   Elf32_Shdr *last_section = NULL;
+   off_t last_offset = 0;
+
+   for (uint32_t i = 0; i < h->e_shnum; i++) {
+
+      Elf32_Shdr *s = sections + i;
+
+      if (s->sh_offset > last_offset) {
+         last_section = s;
+         last_offset = s->sh_offset;
+      }
+   }
+
+   if (last_section == shstrtab) {
+      fprintf(stderr, "The last section is .shstrtab and it cannot be removed!\n");
+      exit(1);
+   }
+
+   h->e_shnum--;
+
+   /*
+    * Unlink all the sections depending on this one. Yes, this is rough,
+    * but it's fine. Users of this script MUST know exactly what they're doing.
+    * In particular, for the main use of this feature (drop of the old symtab
+    * and strtab), it is expected this function to be just used twice.
+    */
+   for (uint32_t i = 0; i < h->e_shnum; i++)
+      if (sections[i].sh_link == h->e_shnum)
+         sections[i].sh_link = 0;
+
+   ftruncate(fd, last_offset);
 }
 
 int main(int argc, char **argv)
@@ -176,6 +225,8 @@ int main(int argc, char **argv)
       rename_section(vaddr, opt_arg, opt_arg2);
    } else if (!strcmp(opt, "--link")) {
       link_sections(vaddr, opt_arg, opt_arg2);
+   } else if (!strcmp(opt, "--drop-last-section")) {
+      drop_last_section(vaddr, fd);
    } else {
       show_help(argv);
    }
