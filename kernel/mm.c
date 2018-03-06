@@ -9,7 +9,7 @@
 page_directory_t *kernel_page_dir;
 page_directory_t *curr_page_dir;
 u16 *pageframes_refcount;
-u8 page_size_buf[PAGE_SIZE];
+u8 page_size_buf[PAGE_SIZE] __attribute__ ((aligned(PAGE_SIZE)));
 
 
 void kbasic_virtual_free(uptr vaddr, int page_count)

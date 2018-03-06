@@ -23,7 +23,7 @@
                               MULTIBOOT_MEMORY_INFO |  \
                               MULTIBOOT_VIDEO_MODE)
 
-#define PAGE_DIR_PADDR 0x1000
+#define PAGE_DIR_PADDR ((offset page_size_buf) - KERNEL_BASE_VA)
 
 _start:
 
@@ -71,15 +71,16 @@ multiboot_entry:
    # Set our flags (note the absence of a paddr since it is 0)
    mov ecx, 1 /* present */ | 2 /* RW */ | (1 << 7) /* 4-MB page */
 
+   mov edx, PAGE_DIR_PADDR
+
    # Identity map the first 4 MB
-   mov [PAGE_DIR_PADDR], ecx
+   mov [edx], ecx
 
    # Map the first 4 MB at KERNEL_BASE_VA
-   mov [PAGE_DIR_PADDR + (KERNEL_BASE_VA >> 20)], ecx
+   mov [edx + (KERNEL_BASE_VA >> 20)], ecx
 
    # Set the CR3 register
-   mov ecx, PAGE_DIR_PADDR
-   mov cr3, ecx
+   mov cr3, edx
 
    mov ecx, cr4
    or ecx, 16      # bit 4, PSE (Page Size Extension). Allows 4-MB pages.
