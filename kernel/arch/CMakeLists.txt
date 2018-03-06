@@ -75,7 +75,7 @@ add_custom_command(
    COMMAND
       ${STRIP} --strip-debug elf_kernel -o ${KERNEL_FILE}
    COMMAND
-      gcc ${BUILD_APPS}/elfhack.c -o ${BUILD_APPS}/elfhack
+      gcc ${BUILD_APPS}/elfhack.c -std=c99 -o ${BUILD_APPS}/elfhack
    COMMAND
       ${BUILD_APPS}/elfhack ${KERNEL_FILE} -c .symtab .symtab2
    COMMAND
