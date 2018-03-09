@@ -39,7 +39,7 @@ else()
 endif()
 
 set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
-set(BUILD_APPS ${CMAKE_SOURCE_DIR}/scripts/build_apps)
+set(BUILD_APPS ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(BUILD_SHARED_LIBRARIES off)
 set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
 
@@ -121,6 +121,7 @@ add_subdirectory(bootloader/efi)
 add_subdirectory(kernel)
 add_subdirectory(usermode_init)
 add_subdirectory(unittests)
+add_subdirectory(scripts/build_apps)
 
 ################################################################################
 
@@ -137,9 +138,18 @@ add_custom_command(
    COMMAND
       dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K
    DEPENDS
-      # We MUST depend on BOTH the wrapper-target AND its OUTPUT in order to this
-      # to be re-build when the *.bin files are re-built.
-      bootloader efi_bootloader kernel usermode_init ${BUILD_SCRIPTS}/build_fatpart ${BOOTLOADER_BIN_FILE} ${EFI_MAIN_FILE} ${KERNEL_FILE} ${INIT_FILE}
+      # We MUST depend on BOTH each wrapper-target AND its OUTPUT in order to
+      # our image file to be re-built when the *.bin files are re-built.
+      elfhack
+      bootloader
+      efi_bootloader
+      kernel
+      usermode_init
+      ${BUILD_SCRIPTS}/build_fatpart
+      ${BOOTLOADER_BIN_FILE}
+      ${EFI_MAIN_FILE}
+      ${KERNEL_FILE}
+      ${INIT_FILE}
    COMMENT
       "Creating the bootable image file"
    VERBATIM
