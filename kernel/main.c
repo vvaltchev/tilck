@@ -128,9 +128,6 @@ void load_usermode_init()
    printk("[load_usermode_init] Stack: %p\n", stack_addr);
 }
 
-char symtab_buf[16*1024] __attribute__ ((section (".Symtab"))) = {0};
-char strtab_buf[16*1024] __attribute__ ((section (".Strtab"))) = {0};
-
 void mount_ramdisk(void)
 {
    if (!ramdisk_size) {

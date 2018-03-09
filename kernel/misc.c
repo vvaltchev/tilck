@@ -11,6 +11,9 @@ task_info *usermode_init_task;
 uptr ramdisk_paddr = RAMDISK_PADDR; /* default value in case of no multiboot */
 size_t ramdisk_size = RAMDISK_SIZE; /* default value in case of no multiboot */
 
+char symtab_buf[16*KB] __attribute__ ((section (".Symtab"))) = {0};
+char strtab_buf[16*KB] __attribute__ ((section (".Strtab"))) = {0};
+
 #ifdef DEBUG
 
 void validate_stack_pointer_int(const char *file, int line)
