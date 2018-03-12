@@ -19,6 +19,8 @@ static bool mapped_in_kernel_or_in_pdir(page_directory_t *pdir, void *vaddr)
    return is_mapped(pdir, vaddr) || is_mapped(get_kernel_page_dir(), vaddr);
 }
 
+#ifdef __i386__
+
 size_t stackwalk32(void **frames,
                    size_t count,
                    void *ebp,
@@ -74,7 +76,6 @@ void dump_stacktrace()
 }
 
 
-#ifdef __i386__
 
 
 uptr find_addr_of_symbol(const char *searched_sym)
@@ -172,7 +173,9 @@ NORETURN void panic(const char *fmt, ...)
 
    printk("\n");
 
-   if (get_current_task()) {
+   task_info *curr = get_current_task();
+
+   if (curr && curr->pid != -1) {
       printk("Current process: %i %s\n",
              get_current_task()->pid,
              is_kernel_thread(get_current_task()) ? "[KERNEL]" : "[USER]");
