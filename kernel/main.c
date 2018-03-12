@@ -24,15 +24,17 @@
 #include <pageframe_allocator.h>
 #include <multiboot.h>
 
-//#include <self_tests/self_tests.h>
-
 extern u32 memsize_in_mb;
 extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
 extern task_info *usermode_init_task;
 
+/* Variables used by the cmdline parsing code */
+
 static bool no_init;
 static void (*self_test_to_run)(void);
+
+/* -- */
 
 void show_hello_message(void)
 {
@@ -191,19 +193,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    if (self_test_to_run)
       self_test_to_run();
-
-   //kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
-   //kmutex_test();
-   //kcond_test();
-
-   //kernel_kmalloc_perf_test();
-
-   //kthread_create(&sleeping_kthread, (void *) 123);
-   //kthread_create(&sleeping_kthread, (void *) 20);
-   //kthread_create(&sleeping_kthread, (void *) (10*TIMER_HZ));
-   //kthread_create(&tasklet_stress_test, NULL);
-
-   //kernel_alloc_pageframe_perftest();
 
    if (ramdisk_size && !no_init)
      load_usermode_init();

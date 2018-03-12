@@ -12,7 +12,7 @@
 
 extern int random_values[RANDOM_VALUES_COUNT];
 
-void kernel_kmalloc_perf_test_per_size(int size)
+void selftest_kmalloc_perf_per_size(int size)
 {
    const int iters = size < 4096 ? 10000 : (size <= 16*KB ? 1000 : 100);
    void *allocations[iters];
@@ -37,7 +37,7 @@ void kernel_kmalloc_perf_test_per_size(int size)
           iters, size, duration  / iters);
 }
 
-void kernel_kmalloc_perf_test()
+void selftest_kmalloc_perf()
 {
    void *allocations[RANDOM_VALUES_COUNT];
    const int iters = 1000;
@@ -66,7 +66,7 @@ void kernel_kmalloc_perf_test()
           iters * RANDOM_VALUES_COUNT, duration);
 
    for (int s = 32; s <= 256*KB; s *= 2) {
-      kernel_kmalloc_perf_test_per_size(s);
+      selftest_kmalloc_perf_per_size(s);
    }
 }
 
@@ -88,7 +88,7 @@ extern u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
 
 
 void
-kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
+selftest_alloc_pageframe_perf_perc_free(const int free_perc_threshold,
                                           const bool alloc_128k)
 {
    const u32 max_pages = MAX_MEM_SIZE_IN_MB * MB / PAGE_SIZE;
@@ -243,7 +243,7 @@ kernel_alloc_pageframe_perftest_perc_free(const int free_perc_threshold,
    kfree(paddrs, max_pages * sizeof(uptr));
 }
 
-void kernel_alloc_pageframe_perftest(void)
+void selftest_alloc_pageframe_perf(void)
 {
    u32 allocated = 0;
    const u32 max_pages = MAX_MEM_SIZE_IN_MB * MB / PAGE_SIZE;
@@ -294,16 +294,16 @@ void kernel_alloc_pageframe_perftest(void)
 
    kfree(paddrs, max_pages * sizeof(uptr));
 
-   kernel_alloc_pageframe_perftest_perc_free(1, false);
-   kernel_alloc_pageframe_perftest_perc_free(2, false);
-   kernel_alloc_pageframe_perftest_perc_free(5, false);
-   kernel_alloc_pageframe_perftest_perc_free(10, false);
-   kernel_alloc_pageframe_perftest_perc_free(20, false);
-   kernel_alloc_pageframe_perftest_perc_free(40, false);
+   selftest_alloc_pageframe_perf_perc_free(1, false);
+   selftest_alloc_pageframe_perf_perc_free(2, false);
+   selftest_alloc_pageframe_perf_perc_free(5, false);
+   selftest_alloc_pageframe_perf_perc_free(10, false);
+   selftest_alloc_pageframe_perf_perc_free(20, false);
+   selftest_alloc_pageframe_perf_perc_free(40, false);
 
    printk("\nAllocation of blocks of 32-pageframes:\n");
 
    // Allocation of 128 K blocks.
-   kernel_alloc_pageframe_perftest_perc_free(10, true);
-   kernel_alloc_pageframe_perftest_perc_free(20, true);
+   selftest_alloc_pageframe_perf_perc_free(10, true);
+   selftest_alloc_pageframe_perf_perc_free(20, true);
 }

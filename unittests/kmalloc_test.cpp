@@ -20,7 +20,7 @@ extern "C" {
    extern bool mock_kmalloc;
    extern bool suppress_printk;
    extern kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
-   void kernel_kmalloc_perf_test_per_size(int size);
+   void selftest_kmalloc_perf_per_size(int size);
    void kmalloc_dump_heap_stats(void);
    void *node_to_ptr(kmalloc_heap *h, int node, size_t size);
 }
@@ -131,13 +131,13 @@ public:
 
 TEST_F(kmalloc_test, perf_test)
 {
-   kernel_kmalloc_perf_test();
+   selftest_kmalloc_perf();
 }
 
 TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
 {
    mock_kmalloc = true;
-   kernel_kmalloc_perf_test();
+   selftest_kmalloc_perf();
    mock_kmalloc = false;
 }
 

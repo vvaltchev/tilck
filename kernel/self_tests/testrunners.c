@@ -20,11 +20,11 @@ void test_tasklet_func()
    }
 }
 
-void tasklet_stress_test()
+void selftest_tasklet()
 {
    const int tot_iters = MAX_TASKLETS * 10;
 
-   printk("[tasklet_stress_test] BEGIN\n");
+   printk("[selftest_tasklet] BEGIN\n");
 
    for (int i = 0; i < tot_iters; i++) {
 
@@ -35,11 +35,11 @@ void tasklet_stress_test()
       } while (!added);
 
       if (!(i % 1000)) {
-         printk("[tasklet_stress_test] %i%%\n", (i*100)/tot_iters);
+         printk("[selftest_tasklet] %i%%\n", (i*100)/tot_iters);
       }
    }
 
-   printk("[tasklet_stress_test] COMPLETED\n");
+   printk("[selftest_tasklet] COMPLETED\n");
 }
 
 void simple_test_kthread(void *arg)
@@ -108,9 +108,10 @@ void test_kmutex_thread_trylock()
 }
 
 
-void kmutex_test()
+void selftest_kmutex()
 {
    kmutex_init(&test_mutex);
+   kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
    kthread_create(test_kmutex_thread, (void *)1);
    kthread_create(test_kmutex_thread, (void *)2);
    kthread_create(test_kmutex_thread_trylock, NULL);
@@ -152,7 +153,7 @@ void kcond_thread_signal_generator()
 }
 
 
-void kcond_test()
+void selftest_kcond()
 {
    kmutex_init(&cond_mutex);
    kcond_init(&cond);
