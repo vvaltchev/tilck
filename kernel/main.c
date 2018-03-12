@@ -24,62 +24,76 @@
 #include <pageframe_allocator.h>
 #include <multiboot.h>
 
-#include <self_tests/self_tests.h>
+//#include <self_tests/self_tests.h>
 
 extern u32 memsize_in_mb;
 extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
 extern task_info *usermode_init_task;
 
-void dump_multiboot_info(multiboot_info_t *mbi)
-{
-   printk("MBI ptr: %p [+ %u KB]\n", mbi, ((uptr)mbi)/KB);
-   printk("mem lower: %u KB\n", mbi->mem_lower + 1);
-   printk("mem upper: %u MB\n", (mbi->mem_upper)/1024 + 1);
-
-   if (mbi->flags & MULTIBOOT_INFO_CMDLINE) {
-      printk("Cmdline: '%s'\n", (char *)(uptr)mbi->cmdline);
-   }
-
-   if (mbi->flags & MULTIBOOT_INFO_VBE_INFO) {
-      printk("VBE mode: %p\n", mbi->vbe_mode);
-   }
-
-   if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO) {
-      printk("Framebuffer addr: %p\n", mbi->framebuffer_addr);
-   }
-
-   if (mbi->flags & MULTIBOOT_INFO_MODS) {
-
-      printk("Mods count: %u\n", mbi->mods_count);
-
-      for (u32 i = 0; i < mbi->mods_count; i++) {
-
-         multiboot_module_t *mod =
-            ((multiboot_module_t *)(uptr)mbi->mods_addr)+i;
-
-         printk("mod cmdline: '%s'\n", mod->cmdline);
-         printk("mod start: %p [+ %u KB]\n", mod->mod_start,
-                                             mod->mod_start/KB);
-         printk("mod end:   %p [+ %u KB]\n", mod->mod_end,
-                                             mod->mod_end/KB);
-         printk("mod size:  %u KB\n", (mod->mod_end-mod->mod_start)/KB);
-      }
-
-   }
-
-   if (mbi->flags & MULTIBOOT_INFO_ELF_SHDR) {
-      printk("ELF section table available\n");
-      printk("num:   %u\n", mbi->u.elf_sec.num);
-      printk("addr:  %p\n", mbi->u.elf_sec.addr);
-      printk("size:  %u\n", mbi->u.elf_sec.size);
-      printk("shndx: %p\n", mbi->u.elf_sec.shndx);
-   }
-}
+static bool no_init;
+static void (*self_test_to_run)(void);
 
 void show_hello_message(void)
 {
    printk("Hello from exOS! [%s build]\n", BUILDTYPE_STR);
+}
+
+void use_kernel_arg(int arg_num, const char *arg)
+{
+   printk("Kernel arg[%i]: '%s'\n", arg_num, arg);
+
+   const size_t arg_len = strlen(arg);
+
+   if (!strcmp(arg, "-noinit")) {
+      no_init = true;
+      return;
+   }
+
+   if (arg_len >= 3) {
+      if (arg[0] == '-' && arg[1] == 's' && arg[2] == '=') {
+         const char *a2 = arg + 3;
+         char buf[256] = "selftest_";
+
+         printk("Run selftest: '%s'\n", a2);
+
+         memcpy(buf+strlen(buf), a2, strlen(a2) + 1);
+         uptr addr = find_addr_of_symbol(buf);
+
+         if (!addr) {
+            panic("Self test function '%s' not found.\n", buf);
+         }
+
+         self_test_to_run = (void (*)(void)) addr;
+         return;
+      }
+   }
+}
+
+void parse_kernel_cmdline(const char *cmdline)
+{
+   char buf[256];
+   char *dptr = buf;
+   const char *ptr = cmdline;
+   int args_count = 0;
+
+   while (*ptr) {
+
+      if (*ptr == ' ' || (dptr-buf >= (sptr)sizeof(buf)-1)) {
+         *dptr = 0;
+         dptr = buf;
+         ptr++;
+         use_kernel_arg(args_count++, buf);
+         continue;
+      }
+
+      *dptr++ = *ptr++;
+   }
+
+   if (dptr != buf) {
+      *dptr = 0;
+      use_kernel_arg(args_count++, buf);
+   }
 }
 
 void read_multiboot_info(u32 magic, u32 mbi_addr)
@@ -105,6 +119,9 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
       }
    }
 
+   if (mbi->flags & MULTIBOOT_INFO_CMDLINE) {
+      parse_kernel_cmdline((const char *)(uptr)mbi->cmdline);
+   }
 }
 
 void show_additional_info(void)
@@ -172,14 +189,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    mount_ramdisk();
 
-   ///////////////////////////////////////////
-   // DEBUG STUFF
-
-   uptr p = find_addr_of_symbol("kernel_kmalloc_perf_test");
-   void (*fooptr)(void) = (void (*)(void))p;
-   fooptr();
-
-   /////////////////////////////////////////
+   if (self_test_to_run)
+      self_test_to_run();
 
    //kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
    //kmutex_test();
@@ -194,8 +205,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    //kernel_alloc_pageframe_perftest();
 
-   //if (ramdisk_size)
-   //   load_usermode_init();
+   if (ramdisk_size && !no_init)
+     load_usermode_init();
 
    printk("[kernel main] Starting the scheduler...\n");
    switch_to_idle_task_outside_interrupt_context();
