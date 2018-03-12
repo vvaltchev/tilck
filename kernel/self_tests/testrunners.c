@@ -162,3 +162,17 @@ void selftest_kcond()
    kthread_create(&kcond_thread_test, (void*) 2);
    kthread_create(&kcond_thread_signal_generator, NULL);
 }
+
+void kthread_panic(void)
+{
+   for (int i = 0; i < 1000*1000*1000; i++) {
+      asmVolatile("nop");
+   }
+
+   panic("test panic");
+}
+
+void selftest_panic(void)
+{
+   kthread_create(&kthread_panic, NULL);
+}

@@ -14,9 +14,18 @@
 void panic_save_current_state();
 volatile bool in_panic = false;
 
-static bool mapped_in_kernel_or_in_pdir(page_directory_t *pdir, void *vaddr)
+static bool mapped_in_pdir(page_directory_t *pdir, void *vaddr)
 {
-   return is_mapped(pdir, vaddr) || is_mapped(get_kernel_page_dir(), vaddr);
+   if (!get_kernel_page_dir()) {
+
+      // Paging has not been initialized yet.
+      // Just check if vaddr is in the first 4 MB (and in BASE_VA + 4 MB).
+
+      uptr va = (uptr)vaddr;
+      return va < (4*MB)||(KERNEL_BASE_VA <= va && va < (KERNEL_BASE_VA+4*MB));
+   }
+
+   return is_mapped(pdir, vaddr);
 }
 
 #ifdef __i386__
@@ -40,8 +49,8 @@ size_t stackwalk32(void **frames,
    for (i = 0; i < count; i++) {
 
       void *addrs_to_deref[2] = { ebp, ebp + 1 };
-      if (!mapped_in_kernel_or_in_pdir(pdir, addrs_to_deref[0]) ||
-          !mapped_in_kernel_or_in_pdir(pdir, addrs_to_deref[1])) {
+      if (!mapped_in_pdir(pdir, addrs_to_deref[0]) ||
+          !mapped_in_pdir(pdir, addrs_to_deref[1])) {
 
          break;
       }
@@ -60,47 +69,76 @@ size_t stackwalk32(void **frames,
 }
 
 
-void dump_stacktrace()
+void dump_stacktrace(regs *r)
 {
    void *frames[32] = {0};
    size_t c = stackwalk32(frames, ARRAY_SIZE(frames), NULL, NULL);
 
-   printk("Stacktrace: ");
+   printk("Stacktrace (%u frames):\n", c);
 
-   /* i starts with 1, in order to skip the frame of this function call. */
-   for (size_t i = 1; i < c; i++) {
-      printk("%p ", frames[i]);
+   for (size_t i = 0; i < c; i++) {
+      ptrdiff_t off;
+      uptr va = (uptr)frames[i];
+      const char *sym_name = find_sym_at_addr(va, &off);
+      printk("[%p] %s + 0x%x\n", va, sym_name, off);
    }
 
    printk("\n");
 }
 
-
-
-
-uptr find_addr_of_symbol(const char *searched_sym)
+void get_symtab_and_strtab(Elf32_Shdr **symtab, Elf32_Shdr **strtab)
 {
    Elf32_Ehdr *h = (Elf32_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
    VERIFY(h->e_shentsize == sizeof(Elf32_Shdr));
 
+   *symtab = NULL;
+   *strtab = NULL;
+
    Elf32_Shdr *sections = (Elf32_Shdr *) ((char *)h + h->e_shoff);
-   Elf32_Shdr *symtab = NULL;
-   Elf32_Shdr *strtab = NULL;
 
    for (u32 i = 0; i < h->e_shnum; i++) {
       Elf32_Shdr *s = sections + i;
 
       if (s->sh_type == SHT_SYMTAB) {
-         ASSERT(!symtab);
-         symtab = s;
+         ASSERT(!*symtab);
+         *symtab = s;
       } else if (s->sh_type == SHT_STRTAB && i != h->e_shstrndx) {
-         ASSERT(!strtab);
-         strtab = s;
+         ASSERT(!*strtab);
+         *strtab = s;
       }
    }
 
-   VERIFY(symtab != NULL);
-   VERIFY(strtab != NULL);
+   VERIFY(*symtab != NULL);
+   VERIFY(*strtab != NULL);
+}
+
+const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset)
+{
+   Elf32_Shdr *symtab;
+   Elf32_Shdr *strtab;
+
+   get_symtab_and_strtab(&symtab, &strtab);
+
+   Elf32_Sym *syms = (Elf32_Sym *) symtab->sh_addr;
+   const int sym_count = symtab->sh_size / sizeof(Elf32_Sym);
+
+   for (int i = 0; i < sym_count; i++) {
+      Elf32_Sym *s = syms + i;
+      if (s->st_value < vaddr && vaddr <= s->st_value + s->st_size) {
+         *offset = vaddr - s->st_value;
+         return (char *)strtab->sh_addr + s->st_name;
+      }
+   }
+
+   return NULL;
+}
+
+uptr find_addr_of_symbol(const char *searched_sym)
+{
+   Elf32_Shdr *symtab;
+   Elf32_Shdr *strtab;
+
+   get_symtab_and_strtab(&symtab, &strtab);
 
    Elf32_Sym *syms = (Elf32_Sym *) symtab->sh_addr;
    const int sym_count = symtab->sh_size / sizeof(Elf32_Sym);
@@ -183,13 +221,15 @@ NORETURN void panic(const char *fmt, ...)
       printk("Current process: NONE\n");
    }
 
-   printk("Interrupts: [ ");
-   for (int i = nested_interrupts_count - 1; i >= 0; i--) {
-      printk("%i ", nested_interrupts[i]);
+   if (nested_interrupts_count > 0) {
+      printk("Interrupts: [ ");
+      for (int i = nested_interrupts_count - 1; i >= 0; i--) {
+         printk("%i ", nested_interrupts[i]);
+      }
+      printk("]\n");
    }
-   printk("]\n");
 
-   dump_stacktrace();
+   dump_stacktrace(&current->kernel_state_regs);
    dump_regs(&current->kernel_state_regs);
    //dump_raw_stack((uptr) &fmt);
 
