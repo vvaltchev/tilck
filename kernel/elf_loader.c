@@ -9,121 +9,6 @@
 
 #ifdef BITS32
 
-
-void dump_elf32_header(Elf32_Ehdr *h)
-{
-   printk("Magic: ");
-   for (int i = 0; i < EI_NIDENT; i++) {
-      printk("%x ", h->e_ident[i]);
-   }
-
-   printk("\n");
-   printk("Type: %p\n", h->e_type);
-   printk("Machine: %p\n", h->e_machine);
-   printk("Entry point: %p\n", h->e_entry);
-   printk("ELF header size: %d\n", h->e_ehsize);
-   printk("e_phentsize:  %d\n", h->e_phentsize);
-   printk("e_phnum:      %d\n", h->e_phnum);
-   printk("e_shentsize:  %d\n", h->e_shentsize);
-   printk("e_shnum:      %d\n", h->e_shnum);
-   printk("Section header string table index: %d\n\n", h->e_shstrndx);
-}
-
-void dump_elf32_program_segment_header(Elf32_Phdr *ph)
-{
-   printk("Segment type: %d\n", ph->p_type);
-   printk("Segment offset in file: %d\n", ph->p_offset);
-   printk("Segment vaddr: %p\n", ph->p_vaddr);
-   printk("Segment paddr: %p\n", ph->p_paddr);
-   printk("Segment size in file: %d\n", ph->p_filesz);
-   printk("Segment size in memory: %d\n", ph->p_memsz);
-   printk("Segment flags: %u\n", ph->p_flags);
-   printk("Segment alignment: %d\n", ph->p_align);
-}
-
-void dump_elf32_phdrs(Elf32_Ehdr *h)
-{
-   Elf32_Phdr *phdr = (Elf32_Phdr *) ((char *)h + sizeof(*h));
-
-   for (int i = 0; i < h->e_phnum; i++, phdr++) {
-      printk("*** SEGMENT %i ***\n", i);
-      dump_elf32_program_segment_header(phdr);
-      printk("\n\n");
-   }
-}
-
-
-
-
-void dump_kernel_symtab(void)
-{
-   Elf32_Ehdr *h = (Elf32_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
-
-   // printk("Magic: ");
-   // for (int i = 0; i < EI_NIDENT; i++) {
-   //    printk("%x ", h->e_ident[i]);
-   // }
-
-   // printk("\n");
-   // printk("Type: %p\n", h->e_type);
-   // printk("Machine: %p\n", h->e_machine);
-   // printk("Entry point: %p\n", h->e_entry);
-   // printk("ELF header size: %d\n", h->e_ehsize);
-   // printk("e_phentsize:  %d\n", h->e_phentsize);
-   // printk("e_phnum:      %d\n", h->e_phnum);
-   // printk("e_shentsize:  %d\n", h->e_shentsize);
-   // printk("e_shnum:      %d\n", h->e_shnum);
-   // printk("e_shoff:      %p\n", h->e_shoff);
-   // printk("Section header string table index: %d\n\n", h->e_shstrndx);
-
-   VERIFY(h->e_shentsize == sizeof(Elf32_Shdr));
-
-   //dump_elf32_phdrs(h);
-
-   Elf32_Shdr *sections = (Elf32_Shdr *) ((char *)h + h->e_shoff);
-   Elf32_Shdr *section_header_strtab = sections + h->e_shstrndx;
-
-   Elf32_Shdr *symtab = NULL;
-   Elf32_Shdr *strtab = NULL;
-
-   for (u32 i = 0; i < h->e_shnum; i++) {
-      Elf32_Shdr *s = sections + i;
-      char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
-      printk("section: %s, vaddr: %p, size: %u, type: %u\n",
-             name, s->sh_addr, s->sh_size, s->sh_type);
-
-      if (s->sh_type == SHT_SYMTAB) {
-         if (!symtab)
-            symtab = s;
-      } else if (s->sh_type == SHT_STRTAB && i != h->e_shstrndx) {
-         if (!strtab)
-            strtab = s;
-      }
-
-      // if (!strcmp(name, ".symtab2"))
-      //    symtab = s;
-      // else if (!strcmp(name, ".strtab2"))
-      //    strtab = s;
-   }
-
-   if (!symtab || !strtab) {
-      printk("no symtab or strtab\n");
-      return;
-   }
-
-   printk("Symbols:\n");
-   Elf32_Sym *syms = (Elf32_Sym *) symtab->sh_addr;
-
-   for (u32 i = 0; i < 10; i++) {
-      Elf32_Sym *s = syms + i;
-      char *name = (char *)strtab->sh_addr + s->st_name;
-      printk("%p: %s\n", s->st_value, name);
-   }
-
-}
-
-//////////////////////////////////////////////////////////////////////////////
-
 void load_elf_program(const char *filepath,
                       page_directory_t **pdir_ref,
                       void **entry,
@@ -141,6 +26,7 @@ void load_elf_program(const char *filepath,
    if (*pdir_ref == NULL) {
       *pdir_ref = pdir_clone(get_kernel_page_dir());
    }
+
    set_page_directory(*pdir_ref);
 
    ret = exvfs_read(elf_file, &header, sizeof(header));
@@ -173,10 +59,6 @@ void load_elf_program(const char *filepath,
       int pages_count =
          ((phdr->p_memsz + PAGE_SIZE) & PAGE_MASK) >> PAGE_SHIFT;
 
-      // printk("[ELF LOADER] Segment %i\n", i);
-      // printk("[ELF LOADER] Mem Size: %i\n", phdr->p_memsz);
-      // printk("[ELF LOADER] Vaddr: %p\n", phdr->p_vaddr);
-
       if ((phdr->p_memsz < PAGE_SIZE) &&
           ((phdr->p_vaddr + phdr->p_memsz) & PAGE_MASK) >
           (phdr->p_vaddr & PAGE_MASK)) {
@@ -184,7 +66,6 @@ void load_elf_program(const char *filepath,
          // Cross-page small segment
          pages_count++;
       }
-
 
       char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
 

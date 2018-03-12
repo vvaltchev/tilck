@@ -8,6 +8,7 @@
 #include <hal.h>
 #include <irq.h>
 #include <process.h>
+#include <elf.h>
 
 void panic_save_current_state();
 volatile bool in_panic = false;
@@ -74,27 +75,42 @@ void dump_stacktrace()
 
 #ifdef __i386__
 
-#include <arch/i386/paging_int.h>
 
-int debug_count_used_pdir_entries(page_directory_t *pdir)
+uptr find_addr_of_symbol(const char *searched_sym)
 {
-   int used = 0;
-   for (int i = 0; i < 1024; i++) {
-      used += (pdir->page_tables[i] != NULL);
-   }
-   return used;
-}
+   Elf32_Ehdr *h = (Elf32_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
+   VERIFY(h->e_shentsize == sizeof(Elf32_Shdr));
 
-void debug_dump_used_pdir_entries(page_directory_t *pdir)
-{
-   printk("Used pdir entries:\n");
+   Elf32_Shdr *sections = (Elf32_Shdr *) ((char *)h + h->e_shoff);
+   Elf32_Shdr *symtab = NULL;
+   Elf32_Shdr *strtab = NULL;
 
-   for (int i = 0; i < 1024; i++) {
-      if (pdir->page_tables[i] != NULL) {
-         printk("Index: %i (= vaddr %p)\n", i, (uptr)i << 22);
+   for (u32 i = 0; i < h->e_shnum; i++) {
+      Elf32_Shdr *s = sections + i;
+
+      if (s->sh_type == SHT_SYMTAB) {
+         ASSERT(!symtab);
+         symtab = s;
+      } else if (s->sh_type == SHT_STRTAB && i != h->e_shstrndx) {
+         ASSERT(!strtab);
+         strtab = s;
       }
    }
+
+   VERIFY(symtab != NULL);
+   VERIFY(strtab != NULL);
+
+   Elf32_Sym *syms = (Elf32_Sym *) symtab->sh_addr;
+   const int sym_count = symtab->sh_size / sizeof(Elf32_Sym);
+
+   for (int i = 0; i < sym_count; i++) {
+      if (!strcmp((char *)strtab->sh_addr + syms[i].st_name, searched_sym))
+         return syms[i].st_value;
+   }
+
+   return 0;
 }
+
 
 void debug_qemu_turn_off_machine()
 {

@@ -140,8 +140,6 @@ void mount_ramdisk(void)
    mountpoint_add(root_fs, "/");
 }
 
-void dump_kernel_symtab(void);
-
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    term_init();
@@ -177,7 +175,10 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    ///////////////////////////////////////////
    // DEBUG STUFF
 
-   dump_kernel_symtab();
+   uptr p = find_addr_of_symbol("kernel_kmalloc_perf_test");
+   void (*fooptr)(void) = (void (*)(void))p;
+   fooptr();
+
    /////////////////////////////////////////
 
    //kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
