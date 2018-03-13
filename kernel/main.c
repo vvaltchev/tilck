@@ -183,7 +183,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
 
-   DEBUG_CHECKED_SUCCESS(add_tasklet0(&init_kb));
+   DEBUG_CHECKED_SUCCESS(enqueue_tasklet0(&init_kb));
 
    // TODO: make the kernel actually support the sysenter interface
    setup_sysenter_interface();

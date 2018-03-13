@@ -31,7 +31,7 @@ void selftest_tasklet()
       bool added;
 
       do {
-         added = add_tasklet0(&test_tasklet_func);
+         added = enqueue_tasklet0(&test_tasklet_func);
       } while (!added);
 
       if (!(i % 1000)) {

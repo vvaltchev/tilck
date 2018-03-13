@@ -34,7 +34,7 @@ void initialize_tasklets()
 }
 
 
-bool add_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
+bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
 {
    disable_interrupts();
    ASSERT(all_tasklets != NULL);
@@ -108,7 +108,7 @@ void tasklet_runner_kthread()
 
       /*
        * Special use of a condition variable without a mutex, see the comment
-       * above in add_tasklet_int().
+       * above in enqueue_tasklet_int().
        */
       kcond_wait(&tasklet_cond, NULL);
    }

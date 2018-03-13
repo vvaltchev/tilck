@@ -147,7 +147,7 @@ void kthread_exit()
 
    task_change_state(ti, TASK_STATE_ZOMBIE);
 
-   add_tasklet1(&remove_dead_kthread_tasklet, ti);
+   enqueue_tasklet1(&remove_dead_kthread_tasklet, ti);
    schedule_outside_interrupt_context();
 }
 

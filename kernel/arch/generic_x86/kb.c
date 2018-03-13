@@ -246,7 +246,7 @@ void handle_key_pressed(u8 scancode)
 
          //printk("you pressed char '%c' creating tasklet\n", c);
          bool success;
-         success = add_tasklet1(&dummy_tasklet, c);
+         success = enqueue_tasklet1(&dummy_tasklet, c);
 
          if (!success) {
             printk("[kb] failed to create tasklet\n");
@@ -254,7 +254,7 @@ void handle_key_pressed(u8 scancode)
 
       } else if (c == '$') {
 
-         add_tasklet0(panic_tasklet);
+         enqueue_tasklet0(panic_tasklet);
 
       } else {
          term_write_char(c);
