@@ -26,6 +26,7 @@ set(
    -nostdlib
    -nostdinc
    -I${CMAKE_SOURCE_DIR}/common/include
+   -I${CMAKE_SOURCE_DIR}/common/system_headers
 )
 
 add_custom_command(
@@ -114,6 +115,7 @@ target_include_directories(
 
    PUBLIC
 
+   ${CMAKE_SOURCE_DIR}/common/system_headers
    ${CMAKE_SOURCE_DIR}/common/include
    ${CMAKE_SOURCE_DIR}/kernel/include
 )
