@@ -134,6 +134,9 @@ TEST(exvfs, fseek)
 
       ASSERT_EQ(exos_pos, linux_pos);
 
+      memset(buf_linux, 0, sizeof(buf_linux));
+      memset(buf_exos, 0, sizeof(buf_exos));
+
       ssize_t linux_read = read(fd, buf_linux, sizeof(buf_linux));
       ssize_t exos_read = exvfs_read(h, buf_exos, sizeof(buf_exos));
 
@@ -154,14 +157,15 @@ TEST(exvfs, fseek)
          cout << "Linux buf: ";
 
          for (size_t i = 0; i < sizeof(buf_linux); i++)
-            printf("%02x ", buf_linux[i]);
+            printf("%02x ", (u8)buf_linux[i]);
 
          cout << endl;
          cout << "ExOS buf:  ";
 
          for (size_t i = 0; i < sizeof(buf_linux); i++)
-            printf("%02x ", buf_exos[i]);
+            printf("%02x ", (u8)buf_exos[i]);
 
+         cout << endl;
          FAIL();
       }
 

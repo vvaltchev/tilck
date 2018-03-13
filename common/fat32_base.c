@@ -624,7 +624,7 @@ STATIC ssize_t fat_read(fs_handle handle,
 
          /*
           * We read less than cluster_rem because the buf was not big enough
-          * of because the file was not big enough. In either case, we cannot
+          * or because the file was not big enough. In either case, we cannot
           * continue.
           */
          break;
@@ -634,15 +634,7 @@ STATIC ssize_t fat_read(fs_handle handle,
       u32 fatval = fat_read_fat_entry(d->hdr, d->type, h->curr_cluster, 0);
 
       if (fat_is_end_of_clusterchain(d->type, fatval)) {
-
-         /*
-          * We should NOT get here, unless the file size was an exact multiple
-          * of cluster_size.
-          */
-
-         ASSERT(to_read == d->cluster_size);
          ASSERT(h->pos == fsize);
-
          break;
       }
 
@@ -702,13 +694,6 @@ STATIC off_t fat_seek_forward(fs_handle handle,
       u32 fatval = fat_read_fat_entry(d->hdr, d->type, h->curr_cluster, 0);
 
       if (fat_is_end_of_clusterchain(d->type, fatval)) {
-
-         /*
-          * We should NOT get here, unless the file size was an exact multiple
-          * of cluster_size.
-          */
-
-         ASSERT(to_move == d->cluster_size);
          ASSERT(h->pos == fsize);
          break;
       }
