@@ -196,6 +196,11 @@ NORETURN void not_reached(const char *file, int line);
    #endif
 
    #define DEBUG_ONLY(x) x
+   #define DEBUG_CHECKED_SUCCESS(x)       \
+      do {                                \
+         bool __checked_success = x;      \
+         ASSERT(__checked_success);       \
+      } while (0)
 
 #else
 
@@ -204,6 +209,7 @@ NORETURN void not_reached(const char *file, int line);
    #endif
 
    #define DEBUG_ONLY(x)
+   #define DEBUG_CHECKED_SUCCESS(x) x
 
 #endif
 
