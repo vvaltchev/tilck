@@ -43,7 +43,7 @@ void show_hello_message(void)
 
 void use_kernel_arg(int arg_num, const char *arg)
 {
-   printk("Kernel arg[%i]: '%s'\n", arg_num, arg);
+   //printk("Kernel arg[%i]: '%s'\n", arg_num, arg);
 
    const size_t arg_len = strlen(arg);
 
@@ -57,7 +57,7 @@ void use_kernel_arg(int arg_num, const char *arg)
          const char *a2 = arg + 3;
          char buf[256] = "selftest_";
 
-         printk("Run selftest: '%s'\n", a2);
+         printk("*** Run selftest: '%s' ***\n", a2);
 
          memcpy(buf+strlen(buf), a2, strlen(a2) + 1);
          uptr addr = find_addr_of_symbol(buf);

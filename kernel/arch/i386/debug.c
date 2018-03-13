@@ -149,9 +149,32 @@ void debug_qemu_turn_off_machine()
    outb(0xf4, 0x00);
 }
 
+void dump_eflags(u32 f)
+{
+   printk("eflags: %p [ %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s ], IOPL: %u\n",
+          f,
+          f & EFLAGS_CF ? "CF" : "",
+          f & EFLAGS_PF ? "PF" : "",
+          f & EFLAGS_AF ? "AF" : "",
+          f & EFLAGS_ZF ? "ZF" : "",
+          f & EFLAGS_SF ? "SF" : "",
+          f & EFLAGS_TF ? "TF" : "",
+          f & EFLAGS_IF ? "IF" : "",
+          f & EFLAGS_DF ? "DF" : "",
+          f & EFLAGS_OF ? "OF" : "",
+          f & EFLAGS_NT ? "NT" : "",
+          f & EFLAGS_RF ? "RF" : "",
+          f & EFLAGS_VM ? "VM" : "",
+          f & EFLAGS_AC ? "AC" : "",
+          f & EFLAGS_VIF ? "VIF" : "",
+          f & EFLAGS_VIP ? "VIP" : "",
+          f & EFLAGS_ID ? "ID" : "",
+          f & EFLAGS_IOPL);
+}
+
 void dump_regs(regs *r)
 {
-   printk("Registers: eflags: %p\n", r->eflags);
+   dump_eflags(r->eflags);
 
    printk("ss:  %p, cs:  %p, ds:  %p, esp: %p\n",
           r->ss, r->cs, r->ds, r->useresp);

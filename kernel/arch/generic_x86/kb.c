@@ -200,7 +200,7 @@ void dummy_tasklet(int arg1)
 
 void panic_tasklet()
 {
-   NOT_REACHED();
+   panic("This is a test code-path for panic within a tasket.");
 }
 
 //////////////////////////////////////////
