@@ -6,7 +6,7 @@ import sys
 from os.path import *
 
 knownExtensions = [
-   ".c", ".cpp", ".cc", ".cxx", ".h", ".py", ".asm", ".txt"
+   ".c", ".cpp", ".cc", ".cxx", ".h", ".py", ".asm", ".txt", ".S"
 ]
 
 destDirs = sys.argv[1:]
