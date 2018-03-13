@@ -49,11 +49,12 @@ size_t stackwalk32(void **frames,
    for (i = 0; i < count; i++) {
 
       void *addrs_to_deref[2] = { ebp, ebp + 1 };
-      if (!mapped_in_pdir(pdir, addrs_to_deref[0]) ||
-          !mapped_in_pdir(pdir, addrs_to_deref[1])) {
 
+      if (!mapped_in_pdir(pdir, addrs_to_deref[0]))
          break;
-      }
+
+      if (!mapped_in_pdir(pdir, addrs_to_deref[1]))
+         break;
 
       retAddr = *((void **)ebp + 1);
       ebp = *(void **)ebp;
@@ -69,7 +70,7 @@ size_t stackwalk32(void **frames,
 }
 
 
-void dump_stacktrace(regs *r)
+void dump_stacktrace(void)
 {
    void *frames[32] = {0};
    size_t c = stackwalk32(frames, ARRAY_SIZE(frames), NULL, NULL);
@@ -80,7 +81,7 @@ void dump_stacktrace(regs *r)
       ptrdiff_t off;
       uptr va = (uptr)frames[i];
       const char *sym_name = find_sym_at_addr(va, &off);
-      printk("[%p] %s + 0x%x\n", va, sym_name, off);
+      printk("[%p] %s + 0x%x\n", va, sym_name ? sym_name : "???", off);
    }
 
    printk("\n");
@@ -229,7 +230,7 @@ NORETURN void panic(const char *fmt, ...)
       printk("]\n");
    }
 
-   dump_stacktrace(&current->kernel_state_regs);
+   dump_stacktrace();
    dump_regs(&current->kernel_state_regs);
    //dump_raw_stack((uptr) &fmt);
 

@@ -147,6 +147,12 @@ bool is_mapped(page_directory_t *pdir, void *vaddrp)
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
+   page_dir_entry_t *e = &pdir->entries[page_dir_index];
+
+   if (e->psize && e->present) {
+      return true; /* 4-MB page */
+   }
+
    if (pdir->page_tables[page_dir_index] == NULL) {
       return false;
    }
