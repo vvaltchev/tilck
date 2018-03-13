@@ -9,6 +9,7 @@
 .section .text
 
 .global _start
+.global isr128
 .global gdt_load
 .global idt_load
 .global tss_flush
@@ -25,7 +26,7 @@
 
 #define PAGE_DIR_PADDR ((offset page_size_buf) - KERNEL_BASE_VA)
 
-_start:
+FUNC(_start):
 
    jmp multiboot_entry
 
@@ -111,35 +112,39 @@ multiboot_entry:
    call kmain  # Now call kernel's kmain() which uses
                # KERNEL_BASE_VA + KERNEL_PADDR as ORG
 
-gdt_load:
+END_FUNC(_start)
+
+FUNC(gdt_load):
    lgdt [gdt_pointer]
    ret
+END_FUNC(gdt_load)
 
-idt_load:
+FUNC(idt_load):
     lidt [idtp]
     ret
+END_FUNC(idt_load)
 
-tss_flush:
+FUNC(tss_flush):
    mov ax, 0x2B      # Load the index of our TSS structure - The index is
                      # 0x28, as it is the 5th selector and each is 8 bytes
                      # long, but we set the bottom two bits (making 0x2B)
                      # so that it has an RPL of 3, not zero.
    ltr ax            # Load 0x2B into the task state register.
    ret
+END_FUNC(tss_flush)
 
-
-.global isr128
 
 # int 0x80: syscall
-isr128:
+FUNC(isr128):
    push 0
    push 0x80
    jmp asm_int_handler
+END_FUNC(isr128)
 
 # This is our common ISR stub. It saves the processor state, sets
 # up for kernel mode segments, calls the C-level fault handler,
 # and finally restores the stack frame.
-asm_int_handler:
+FUNC(asm_int_handler):
 
    pusha          #  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
    push ds
@@ -163,9 +168,9 @@ asm_int_handler:
    popa          # Pops edi,esi,ebp...
    add esp, 8    # Cleans up the pushed error code and pushed ISR number
    iret
+END_FUNC(asm_int_handler)
 
-
-asm_context_switch_x86:
+FUNC(asm_context_switch_x86):
 
    pop eax # return addr (ignored)
 
@@ -202,9 +207,9 @@ asm_context_switch_x86:
    ###########################
 
    iret
+END_FUNC(asm_context_switch_x86)
 
-
-asm_kernel_context_switch_x86:
+FUNC(asm_kernel_context_switch_x86):
 
    pop eax # return addr (ignored)
 
@@ -251,12 +256,12 @@ asm_kernel_context_switch_x86:
        # current->kernel_stack.
 
    ret
-
+END_FUNC(asm_kernel_context_switch_x86)
 
 # Saves the current (kernel) state as if an interrupt occurred while running
 # in kernel mode.
 
-kernel_yield:
+FUNC(kernel_yield):
 
    call disable_preemption
    cli
@@ -283,7 +288,9 @@ kernel_yield:
    sti
    call schedule_outside_interrupt_context
 
-panic_save_current_state:
+END_FUNC(kernel_yield)
+
+FUNC(panic_save_current_state):
 
    pop eax   # pop eip (return addr)
    push eax  # re-push it back to the stack, as if the POP above never happened
@@ -306,3 +313,5 @@ panic_save_current_state:
 
    add esp, 68
    ret
+
+END_FUNC(panic_save_current_state)

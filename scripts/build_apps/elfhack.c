@@ -65,6 +65,7 @@ void copy_section(void *mapped_elf_file, const char *src, const char *dst)
    s_dst->sh_flags = s_src->sh_flags;
    s_dst->sh_type = s_src->sh_type;
    s_dst->sh_entsize = s_src->sh_entsize;
+   s_dst->sh_size = s_src->sh_size;
 }
 
 void show_help(char **argv)

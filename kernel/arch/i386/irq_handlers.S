@@ -4,11 +4,13 @@
 .section .text
 
 .macro irq number
-    .global irq\number
-    irq\number:
-    push 0
-    push 32+\number
-    jmp asm_int_handler
+   .global irq\number
+   .type irq\number, @function
+   irq\number:
+   push 0
+   push 32+\number
+   jmp asm_int_handler
+   .size irq\number, .-irq\number
 .endm
 
 irq 0

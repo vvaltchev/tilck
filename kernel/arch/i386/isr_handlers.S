@@ -1,22 +1,28 @@
 
 .intel_syntax noprefix
 
+#define ASM_FILE 1
+
+#include <config.h>
+
 .section .text
 
 
 .macro isr number
-    .global isr\number
-    isr\number:
-    push 0
-    push \number
-    jmp asm_int_handler
+   .global isr\number
+   FUNC(isr\number):
+   push 0
+   push \number
+   jmp asm_int_handler
+   END_FUNC(isr\number)
 .endm
 
 .macro isr_with_err_code number
-    .global isr\number
-    isr\number:
-    push \number
-    jmp asm_int_handler
+   .global isr\number
+   FUNC(isr\number):
+   push \number
+   jmp asm_int_handler
+   END_FUNC(isr\number)
 .endm
 
 
