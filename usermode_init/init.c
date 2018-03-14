@@ -100,6 +100,32 @@ void args_test(int argc, char ** argv)
    }
 }
 
+// void file_read_test(void)
+// {
+//    char buf[256];
+//    int fd;
+
+//    if (getenv("EXOS")) {
+//       fd = open("/EFI/BOOT/elf_kernel_stripped", O_RDONLY);
+//    } else {
+//       fd = open("build/sysroot/EFI/BOOT/elf_kernel_stripped", O_RDONLY);
+//    }
+
+//    if (fd < 0) {
+//       perror("Open failed");
+//       exit(1);
+//    }
+
+//    read(fd, buf, 256);
+
+//    for (int i = 0; i < 16; i++) {
+//       printf("0x%02x ", (unsigned)buf[i]);
+//    }
+
+//    printf("\n");
+//    close(fd);
+// }
+
 int main(int argc, char **argv, char **env)
 {
    if (getenv("EXOS")) {
@@ -111,7 +137,8 @@ int main(int argc, char **argv, char **env)
 
    printf("Hello from init! MY PID IS %i\n", getpid());
 
-   //pause();
+   //file_read_test();
+   pause();
 
    args_test(argc, argv);
    bss_var_test();

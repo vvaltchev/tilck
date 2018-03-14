@@ -6,26 +6,55 @@
 #include <fs/exvfs.h>
 #include <exos_errno.h>
 
-sptr sys_write(int fd, const void *buf, size_t count)
+sptr sys_read(int fd, void *buf, size_t count)
 {
+   sptr ret;
+
    disable_preemption();
 
-   if (fd < 0) {
-      enable_preemption();
-      return -EBADF;
-   }
+   if (fd < 0)
+      goto badf;
 
    fs_handle *h = current->handles[fd];
 
-   if (!h) {
-      enable_preemption();
-      return -EBADF;
-   }
+   if (!h)
+      goto badf;
 
-   sptr ret = exvfs_write(h, (char *)buf, count);
+   ret = exvfs_read(h, buf, count);
 
+end:
    enable_preemption();
    return ret;
+
+badf:
+   ret = -EBADF;
+   goto end;
+}
+
+
+sptr sys_write(int fd, const void *buf, size_t count)
+{
+   sptr ret;
+
+   disable_preemption();
+
+   if (fd < 0)
+      goto badf;
+
+   fs_handle *h = current->handles[fd];
+
+   if (!h)
+      goto badf;
+
+   ret = exvfs_write(h, (char *)buf, count);
+
+end:
+   enable_preemption();
+   return ret;
+
+badf:
+   ret = -EBADF;
+   goto end;
 }
 
 sptr sys_open(const char *pathname, int flags, int mode)
@@ -70,12 +99,5 @@ sptr sys_close(int fd)
    current->handles[fd] = NULL;
 
    enable_preemption();
-   return 0;
-}
-
-
-sptr sys_read(int fd, void *buf, size_t count)
-{
-   //printk("sys_read(fd = %i, count = %u)\n", fd, count);
    return 0;
 }
