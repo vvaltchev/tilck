@@ -6,6 +6,27 @@
 #include <fs/exvfs.h>
 #include <exos_errno.h>
 
+sptr sys_write(int fd, const void *buf, size_t count)
+{
+   disable_preemption();
+
+   if (fd < 0) {
+      enable_preemption();
+      return -EBADF;
+   }
+
+   fs_handle *h = current->handles[fd];
+
+   if (!h) {
+      enable_preemption();
+      return -EBADF;
+   }
+
+   sptr ret = exvfs_write(h, (char *)buf, count);
+
+   enable_preemption();
+   return ret;
+}
 
 sptr sys_open(const char *pathname, int flags, int mode)
 {

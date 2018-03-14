@@ -86,6 +86,16 @@ NORETURN void sys_exit(int exit_code)
    task_change_state(current, TASK_STATE_ZOMBIE);
    current->exit_code = exit_code;
 
+   // Close all of its opened handles
+
+   for (size_t i = 0; i < ARRAY_SIZE(current->handles); i++) {
+
+      fs_handle *h = current->handles[i];
+
+      if (h)
+         exvfs_close(h);
+   }
+
    // We CANNOT free current->kernel_task here because we're using it!
 
    set_page_directory(get_kernel_page_dir());

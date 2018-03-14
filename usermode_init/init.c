@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <stdbool.h>
 
 
@@ -100,6 +102,13 @@ void args_test(int argc, char ** argv)
 
 int main(int argc, char **argv, char **env)
 {
+   if (getenv("EXOS")) {
+      int in_fd = open("/dev/stdin", O_RDONLY);
+      int out_fd = open("/dev/stdout", O_WRONLY);
+      int err_fd = open("/dev/stderr", O_WRONLY);
+      printf("in: %i, out: %i, err: %i\n", in_fd, out_fd, err_fd);
+   }
+
    printf("Hello from init! MY PID IS %i\n", getpid());
 
    //pause();

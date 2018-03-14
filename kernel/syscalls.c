@@ -13,21 +13,7 @@ sptr sys_exit(int code);
 
 sptr sys_fork();
 sptr sys_read(int fd, void *buf, size_t count);
-
-sptr sys_write(int fd, const void *buf, size_t count)
-{
-   //printk("sys_write(fd = %i, count = %u, buf = '%s')\n", fd, count, buf);
-
-   disable_preemption();
-
-   for (size_t i = 0; i < count; i++) {
-      term_write_char(((char *)buf)[i]);
-   }
-
-   enable_preemption();
-   return count;
-}
-
+sptr sys_write(int fd, const void *buf, size_t count);
 sptr sys_open(const char *pathname, int flags, int mode);
 sptr sys_close(int fd);
 sptr sys_waitpid(int pid, int *wstatus, int options);

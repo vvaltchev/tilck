@@ -17,6 +17,7 @@
 
 #include <fs/fat32.h>
 #include <fs/exvfs.h>
+#include <fs/devfs.h>
 
 #include <kb.h>
 #include <timer.h>
@@ -189,6 +190,13 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    setup_sysenter_interface();
 
    mount_ramdisk();
+
+   // Init devfs
+
+   filesystem *devfs = create_devfs();
+   mountpoint_add(devfs, "/dev/");
+
+   // --------------------
 
    if (self_test_to_run)
       self_test_to_run();
