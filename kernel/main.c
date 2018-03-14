@@ -160,6 +160,8 @@ void mount_ramdisk(void)
    mountpoint_add(root_fs, "/");
 }
 
+extern filesystem *devfs;
+
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    term_init();
@@ -193,7 +195,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    // Init devfs
 
-   filesystem *devfs = create_devfs();
+   devfs = create_devfs();
    mountpoint_add(devfs, "/dev/");
 
    // --------------------

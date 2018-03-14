@@ -36,6 +36,9 @@ add_executable(init ${SOURCES})
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
+# Remove -rdynamic
+SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+
 set_target_properties(
 
    init

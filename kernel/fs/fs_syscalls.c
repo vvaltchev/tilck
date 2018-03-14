@@ -101,3 +101,71 @@ sptr sys_close(int fd)
    enable_preemption();
    return 0;
 }
+
+
+/* ------------ IOCTL hacks ---------------- */
+
+#define TCGETS 0x00005401
+
+typedef unsigned char   cc_t;
+typedef unsigned int    speed_t;
+typedef unsigned int    tcflag_t;
+
+
+#define NCCS 19
+typedef struct {
+   tcflag_t c_iflag;           /* input mode flags */
+   tcflag_t c_oflag;           /* output mode flags */
+   tcflag_t c_cflag;           /* control mode flags */
+   tcflag_t c_lflag;           /* local mode flags */
+   cc_t c_line;                /* line discipline */
+   cc_t c_cc[NCCS];            /* control characters */
+} termios;
+
+static const termios hard_coded_termios =
+{
+   0x4500,
+   0x05,
+   0xbf,
+   0x8a3b,
+   0,
+   {
+      0x3, 0x1c, 0x7f, 0x15, 0x4, 0x0, 0x1, 0x0,
+      0x11, 0x13, 0x1a, 0x0, 0x12, 0xf, 0x17, 0x16,
+      0x0, 0x0, 0x0
+   },
+};
+
+extern filesystem *devfs;
+
+sptr sys_ioctl(int fd, uptr request, void *argp)
+{
+   printk("[kernel] ioctl(fd: %i, request: %p, argp: %p)\n", fd, request, argp);
+
+   disable_preemption();
+
+   if (fd < 0 || fd > (int)ARRAY_SIZE(current->handles)) {
+      enable_preemption();
+      return -EINVAL;
+   }
+
+   fs_handle *h = current->handles[fd];
+
+   if (!h) {
+      enable_preemption();
+      return -EBADF;
+   }
+
+   // This is a DIRTY HACK
+   // TODO: forward this call to ioctl() to the right device in devfs
+   // by adding a proper ioctl func in fileops.
+
+   if (request == TCGETS) {
+      memmove(argp, &hard_coded_termios, sizeof(termios));
+      enable_preemption();
+      return 0;
+   }
+
+   enable_preemption();
+   return -EINVAL;
+}

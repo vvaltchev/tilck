@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdbool.h>
+#include <errno.h>
 
 
 #define FORK_TEST_ITERS (2 * 250 * 1024 * 1024)
@@ -100,31 +101,34 @@ void args_test(int argc, char ** argv)
    }
 }
 
-// void file_read_test(void)
-// {
-//    char buf[256];
-//    int fd;
+void file_read_test(void)
+{
+   char buf[256];
+   int fd;
 
-//    if (getenv("EXOS")) {
-//       fd = open("/EFI/BOOT/elf_kernel_stripped", O_RDONLY);
-//    } else {
-//       fd = open("build/sysroot/EFI/BOOT/elf_kernel_stripped", O_RDONLY);
-//    }
+   if (getenv("EXOS")) {
+      fd = open("/EFI/BOOT/elf_kernel_stripped", O_RDONLY);
+   } else {
+      fd = open("build/sysroot/EFI/BOOT/elf_kernel_stripped", O_RDONLY);
+   }
 
-//    if (fd < 0) {
-//       perror("Open failed");
-//       exit(1);
-//    }
+   printf("open() = %i\n", fd);
 
-//    read(fd, buf, 256);
+   if (fd < 0) {
+      perror("Open failed");
+      exit(1);
+   }
 
-//    for (int i = 0; i < 16; i++) {
-//       printf("0x%02x ", (unsigned)buf[i]);
-//    }
+   int r = read(fd, buf, 256);
+   printf("user: read() returned %i\n", r);
 
-//    printf("\n");
-//    close(fd);
-// }
+   for (int i = 0; i < 16; i++) {
+      printf("0x%02x ", (unsigned)buf[i]);
+   }
+
+   printf("\n");
+   close(fd);
+}
 
 int main(int argc, char **argv, char **env)
 {
@@ -132,12 +136,15 @@ int main(int argc, char **argv, char **env)
       int in_fd = open("/dev/stdin", O_RDONLY);
       int out_fd = open("/dev/stdout", O_WRONLY);
       int err_fd = open("/dev/stderr", O_WRONLY);
-      printf("in: %i, out: %i, err: %i\n", in_fd, out_fd, err_fd);
+      //printf("in: %i, out: %i, err: %i\n", in_fd, out_fd, err_fd);
+      (void)in_fd; (void)out_fd; (void)err_fd;
    }
 
-   printf("Hello from init! MY PID IS %i\n", getpid());
+   const char *hello_msg = "[direct write] Hello from init!\n";
+   write(1, hello_msg, strlen(hello_msg));
+   printf("MY PID IS %i\n", getpid());
 
-   //file_read_test();
+   file_read_test();
    pause();
 
    args_test(argc, argv);

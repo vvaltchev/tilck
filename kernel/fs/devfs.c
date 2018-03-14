@@ -4,17 +4,7 @@
 #include <string_util.h>
 #include <term.h>
 
-typedef struct {
-
-   /* fs_handle_base */
-   filesystem *fs;
-   file_ops fops;
-
-   /* specific fields */
-   int id;
-
-} devfs_file_handle;
-
+filesystem *devfs;
 
 static ssize_t stub_read (fs_handle h, char *buf, size_t size)
 {

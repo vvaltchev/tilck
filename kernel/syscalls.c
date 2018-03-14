@@ -128,6 +128,9 @@ sptr sys_utime()
    return 0;
 }
 
+// 54:
+sptr sys_ioctl(int fd, uptr request, void *argp);
+
 #ifdef __i386__
 
 // The syscall numbers are ARCH-dependent
@@ -163,7 +166,8 @@ syscall_type syscalls_pointers[] =
    [27] = sys_alarm,
    [28] = sys_oldfstat,
    [29] = sys_pause,
-   [30] = sys_utime
+   [30] = sys_utime,
+   [54] = sys_ioctl
 };
 
 const ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
