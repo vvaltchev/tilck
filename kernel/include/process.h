@@ -7,6 +7,7 @@
 #include <irq.h>
 #include <hal.h>
 #include <sync.h>
+#include <fs/exvfs.h>
 
 // This is the biggest usermode addr + 1
 #define OFFLIMIT_USERMODE_ADDR 0xC0000000UL
@@ -44,6 +45,9 @@ struct task_info {
    regs state_regs;
    regs kernel_state_regs;
    page_directory_t *pdir;
+
+   /* Handles */
+   fs_handle handles[16]; /* for the moment, just a fixed small array */
 };
 
 typedef struct task_info task_info;

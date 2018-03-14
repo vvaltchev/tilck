@@ -12,12 +12,7 @@ typedef sptr (*syscall_type)();
 sptr sys_exit(int code);
 
 sptr sys_fork();
-
-sptr sys_read(int fd, void *buf, size_t count)
-{
-   //printk("sys_read(fd = %i, count = %u)\n", fd, count);
-   return 0;
-}
+sptr sys_read(int fd, void *buf, size_t count);
 
 sptr sys_write(int fd, const void *buf, size_t count)
 {
@@ -33,19 +28,8 @@ sptr sys_write(int fd, const void *buf, size_t count)
    return count;
 }
 
-sptr sys_open(const char *pathname, int flags, int mode)
-{
-   printk("[kernel] sys_open(filename = '%s', "
-          "flags = %x, mode = %x)\n", pathname, flags, mode);
-   return 825;
-}
-
-sptr sys_close(int fd)
-{
-   printk("[kernel] sys_close(fd = %d)\n", fd);
-   return 0;
-}
-
+sptr sys_open(const char *pathname, int flags, int mode);
+sptr sys_close(int fd);
 sptr sys_waitpid(int pid, int *wstatus, int options);
 
 sptr sys_creat()

@@ -97,14 +97,23 @@ void handle_page_fault_int(regs *r)
       return;
    }
 
-   printk("*** PAGE FAULT in attempt to %s %p from %s%s\n*** EIP: %p\n",
-          rw ? "WRITE" : "READ",
-          vaddr,
-          us ? "userland" : "kernel",
-          !p ? " (NON present page)." : ".", r->eip);
+   if (!us) {
+      ptrdiff_t off;
+      const char *sym_name = find_sym_at_addr(r->eip, &off);
+      panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p [%s + 0x%x]\n",
+            rw ? "WRITE" : "READ",
+            vaddr,
+            "kernel",
+            !p ? " (NON present page)." : ".", r->eip, sym_name, off);
+   }
+
+   panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p\n",
+         rw ? "WRITE" : "READ",
+         vaddr,
+         "userland",
+         !p ? " (NON present page)." : ".", r->eip);
 
    // We are not really handling 'real' page-faults yet.
-   NOT_REACHED();
 }
 
 extern volatile bool in_panic;
