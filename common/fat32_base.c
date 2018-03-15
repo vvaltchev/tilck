@@ -769,7 +769,7 @@ STATIC fs_handle fat_open(filesystem *fs, const char *path)
       return NULL; /* file not found */
    }
 
-   fat_file_handle *h = kmalloc(sizeof(fat_file_handle));
+   fat_file_handle *h = kzmalloc(sizeof(fat_file_handle));
    VERIFY(h != NULL);
 
    h->fs = fs;

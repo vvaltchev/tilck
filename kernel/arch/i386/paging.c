@@ -98,13 +98,14 @@ void handle_page_fault_int(regs *r)
    }
 
    if (!us) {
-      ptrdiff_t off;
+      ptrdiff_t off = 0;
       const char *sym_name = find_sym_at_addr(r->eip, &off);
       panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p [%s + 0x%x]\n",
             rw ? "WRITE" : "READ",
             vaddr,
             "kernel",
-            !p ? " (NON present page)." : ".", r->eip, sym_name, off);
+            !p ? " (NON present page)." : ".",
+            r->eip, sym_name ? sym_name : "???", off);
    }
 
    panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p\n",

@@ -38,6 +38,7 @@ typedef void (*func_close) (fs_handle);
 typedef ssize_t (*func_read) (fs_handle, char *, size_t);
 typedef ssize_t (*func_write) (fs_handle, char *, size_t);
 typedef off_t (*func_seek) (fs_handle, off_t, int);
+typedef ssize_t (*func_ioctl) (fs_handle, uptr, void *);
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
@@ -56,6 +57,7 @@ typedef struct {
    func_read fread;
    func_write fwrite;
    func_seek fseek;
+   func_ioctl ioctl;
 
 } file_ops;
 
@@ -86,4 +88,6 @@ void exvfs_close(fs_handle h);
 ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size);
 off_t exvfs_seek(fs_handle h, off_t off, int whence);
+ssize_t exvfs_ioctl(fs_handle h, uptr request, void *argp);
+
 

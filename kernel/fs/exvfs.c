@@ -2,6 +2,7 @@
 #include <fs/exvfs.h>
 #include <string_util.h>
 #include <kmalloc.h>
+#include <exos_errno.h>
 
 /* exOS is small: supporting 16 mount points seems more than enough. */
 mountpoint *mps[16];
@@ -159,5 +160,21 @@ ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size)
 off_t exvfs_seek(fs_handle h, off_t off, int whence)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (!hb->fops.fseek) {
+      return -ESPIPE;
+   }
+
    return hb->fops.fseek(h, off, whence);
+}
+
+ssize_t exvfs_ioctl(fs_handle h, uptr request, void *argp)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (!hb->fops.ioctl) {
+      return -ENOTTY;
+   }
+
+   return hb->fops.ioctl(h, request, argp);
 }
