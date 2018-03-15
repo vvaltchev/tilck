@@ -32,6 +32,7 @@
       "paging.h": "c",
       "utils.h": "c",
       "paging_int.h": "c",
-      "self_tests.h": "c"
+      "self_tests.h": "c",
+      "exos_errno.h": "c"
    }
 }

@@ -133,9 +133,9 @@ void file_read_test(void)
 int main(int argc, char **argv, char **env)
 {
    if (getenv("EXOS")) {
-      int in_fd = open("/dev/stdin", O_RDONLY);
-      int out_fd = open("/dev/stdout", O_WRONLY);
-      int err_fd = open("/dev/stderr", O_WRONLY);
+      int in_fd = open("/dev/tty", O_RDONLY);
+      int out_fd = open("/dev/tty", O_WRONLY);
+      int err_fd = open("/dev/tty", O_WRONLY);
       //printf("in: %i, out: %i, err: %i\n", in_fd, out_fd, err_fd);
       (void)in_fd; (void)out_fd; (void)err_fd;
    }
