@@ -6,13 +6,18 @@
 #include <fs/exvfs.h>
 #include <exos_errno.h>
 
+static inline bool is_fd_valid(int fd)
+{
+   return fd >= 0 && fd < (int)ARRAY_SIZE(current->handles);
+}
+
 sptr sys_read(int fd, void *buf, size_t count)
 {
    sptr ret;
 
    disable_preemption();
 
-   if (fd < 0 || !current->handles[fd])
+   if (!is_fd_valid(fd) || !current->handles[fd])
       goto badf;
 
    ret = exvfs_read(current->handles[fd], buf, count);
@@ -33,7 +38,7 @@ sptr sys_write(int fd, const void *buf, size_t count)
 
    disable_preemption();
 
-   if (fd < 0 || !current->handles[fd])
+   if (!is_fd_valid(fd) || !current->handles[fd])
       goto badf;
 
    ret = exvfs_write(current->handles[fd], (char *)buf, count);
@@ -49,6 +54,8 @@ badf:
 
 sptr sys_open(const char *pathname, int flags, int mode)
 {
+   sptr ret;
+
    printk("[kernel] sys_open(filename = '%s', "
           "flags = %x, mode = %x)\n", pathname, flags, mode);
 
@@ -60,21 +67,28 @@ sptr sys_open(const char *pathname, int flags, int mode)
          break;
    }
 
-   if (free_slot == ARRAY_SIZE(current->handles)) {
-      enable_preemption();
-      return -EMFILE;
-   }
+   if (free_slot == ARRAY_SIZE(current->handles))
+      goto no_fds;
 
    fs_handle h = exvfs_open(pathname);
 
-   if (!h) {
-      enable_preemption();
-      return -ENOENT;
-   }
+   if (!h)
+      goto no_ent;
 
    current->handles[free_slot] = h;
+   ret = free_slot;
+
+end:
    enable_preemption();
-   return free_slot;
+   return ret;
+
+no_fds:
+   ret = -EMFILE;
+   goto end;
+
+no_ent:
+   ret = -ENOENT;
+   goto end;
 }
 
 sptr sys_close(int fd)
@@ -83,7 +97,7 @@ sptr sys_close(int fd)
 
    disable_preemption();
 
-   if (fd < 0 || fd > (int)ARRAY_SIZE(current->handles) || !current->handles[fd]) {
+   if (!is_fd_valid(fd) || !current->handles[fd]) {
       enable_preemption();
       return -EBADF;
    }
@@ -95,8 +109,6 @@ sptr sys_close(int fd)
    return 0;
 }
 
-
-
 sptr sys_ioctl(int fd, uptr request, void *argp)
 {
    sptr ret = -EINVAL;
@@ -105,26 +117,14 @@ sptr sys_ioctl(int fd, uptr request, void *argp)
 
    disable_preemption();
 
-   if (fd < 0)
-      goto inval;
-
-   if (fd > (int)ARRAY_SIZE(current->handles))
+   if (!is_fd_valid(fd) || !current->handles[fd])
       goto badf;
 
-   fs_handle h = current->handles[fd];
-
-   if (!h)
-      goto badf;
-
-   ret = exvfs_ioctl(h, request, argp);
+   ret = exvfs_ioctl(current->handles[fd], request, argp);
 
 end:
    enable_preemption();
    return ret;
-
-inval:
-   ret = -EINVAL;
-   goto end;
 
 badf:
    ret = -EBADF;
