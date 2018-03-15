@@ -52,6 +52,15 @@ badf:
    goto end;
 }
 
+int get_free_handle_num(task_info *task)
+{
+   for (u32 free_fd = 0; free_fd < ARRAY_SIZE(task->handles); free_fd++)
+      if (!task->handles[free_fd])
+         return free_fd;
+
+   return -1;
+}
+
 sptr sys_open(const char *pathname, int flags, int mode)
 {
    sptr ret;
@@ -61,13 +70,9 @@ sptr sys_open(const char *pathname, int flags, int mode)
 
    disable_preemption();
 
-   u32 free_slot;
-   for (free_slot = 0; free_slot < ARRAY_SIZE(current->handles); free_slot++) {
-      if (!current->handles[free_slot])
-         break;
-   }
+   int free_fd = get_free_handle_num(current);
 
-   if (free_slot == ARRAY_SIZE(current->handles))
+   if (!is_fd_valid(free_fd))
       goto no_fds;
 
    fs_handle h = exvfs_open(pathname);
@@ -75,8 +80,8 @@ sptr sys_open(const char *pathname, int flags, int mode)
    if (!h)
       goto no_ent;
 
-   current->handles[free_slot] = h;
-   ret = free_slot;
+   current->handles[free_fd] = h;
+   ret = free_fd;
 
 end:
    enable_preemption();
