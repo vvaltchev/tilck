@@ -81,7 +81,7 @@ typedef struct {
          u32 psize : 1;          // page size; 0 = 4 KB, 1 = 4 MB
          u32 ignored : 1;
          u32 avail : 3;
-         u32 pageTableAddr : 20; // aka, 'page_table_t *'
+         u32 ptaddr : 20;        // the paddr of 'page_table_t *'
       };
 
       u32 raw;

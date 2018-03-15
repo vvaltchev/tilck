@@ -24,7 +24,7 @@ bool handle_potential_cow(u32 vaddr)
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
-   ptable = KERNEL_PA_TO_VA(curr_page_dir->entries[page_dir_index].pageTableAddr << 12);
+   ptable = KERNEL_PA_TO_VA(curr_page_dir->entries[page_dir_index].ptaddr<<12);
    u8 flags = ptable->pages[page_table_index].avail;
 
    if (!(flags & (PAGE_COW_FLAG | PAGE_COW_ORIG_RW))) {
@@ -143,6 +143,7 @@ static void initialize_empty_page_table(page_table_t *t)
 
 bool is_mapped(page_directory_t *pdir, void *vaddrp)
 {
+   page_table_t *ptable;
    const uptr vaddr = (uptr) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
@@ -155,7 +156,7 @@ bool is_mapped(page_directory_t *pdir, void *vaddrp)
    if (e->psize)
       return true; /* 4-MB page */
 
-   page_table_t *ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].pageTableAddr << 12);
+   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << 12);
    return ptable->pages[page_table_index].present;
 }
 
@@ -166,7 +167,7 @@ void set_page_rw(page_directory_t *pdir, void *vaddrp, bool rw)
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].pageTableAddr << 12);
+   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << 12);
    ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
    ptable->pages[page_table_index].rw = rw;
    invalidate_page(vaddr);
@@ -179,7 +180,7 @@ void unmap_page(page_directory_t *pdir, void *vaddrp)
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].pageTableAddr << 12);
+   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << 12);
    ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
    ASSERT(ptable->pages[page_table_index].present);
    ptable->pages[page_table_index].raw = 0;
@@ -199,7 +200,7 @@ uptr get_mapping(page_directory_t *pdir, void *vaddrp)
     */
    ASSERT(vaddr < KERNEL_BASE_VA || vaddr >= LINEAR_MAPPING_OVER_END);
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].pageTableAddr << 12);
+   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << 12);
    ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
 
    ASSERT(ptable->pages[page_table_index].present);
@@ -211,6 +212,7 @@ void map_page_int(page_directory_t *pdir,
                   uptr paddr,
                   u32 flags)
 {
+   page_table_t *ptable;
    const u32 vaddr = (u32) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
@@ -218,7 +220,7 @@ void map_page_int(page_directory_t *pdir,
    ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // the paddr must be page-aligned
 
-   page_table_t *ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].pageTableAddr << 12);
+   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << 12);
    ASSERT(PAGE_ALIGNED(ptable));
 
    if (UNLIKELY(KERNEL_VA_TO_PA(ptable) == 0)) {
@@ -286,7 +288,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *orig_pt = KERNEL_PA_TO_VA(pdir->entries[i].pageTableAddr << 12);
+      page_table_t *orig_pt = KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << 12);
 
       /*
        * Mark all the pages in that page-table as COW.
@@ -322,7 +324,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
       memmove(pt, orig_pt, sizeof(*pt));
 
       /* We've already copied the other members of new_pdir->entries[i] */
-      new_pdir->entries[i].pageTableAddr = KERNEL_VA_TO_PA(pt) >> PAGE_SHIFT;
+      new_pdir->entries[i].ptaddr = KERNEL_VA_TO_PA(pt) >> PAGE_SHIFT;
    }
 
    return new_pdir;
@@ -340,7 +342,7 @@ void pdir_destroy(page_directory_t *pdir)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *pt = KERNEL_PA_TO_VA(pdir->entries[i].pageTableAddr << 12);
+      page_table_t *pt = KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << 12);
 
       for (int j = 0; j < 1024; j++) {
 
@@ -387,7 +389,7 @@ static void map_4mb_page_int(page_directory_t *pdir,
    ASSERT(!pdir->entries[page_dir_index].present);
 
    // Check that there is no page table associated with this entry.
-   ASSERT(!pdir->entries[page_dir_index].pageTableAddr);
+   ASSERT(!pdir->entries[page_dir_index].ptaddr);
 
    pdir->entries[page_dir_index].raw = flags | paddr;
 }
