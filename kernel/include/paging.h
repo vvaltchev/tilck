@@ -4,7 +4,7 @@
 #include <common_defs.h>
 
 #ifdef __i386__
-#define PAGE_DIR_SIZE (2 * PAGE_SIZE)
+#define PAGE_DIR_SIZE (PAGE_SIZE)
 #endif
 
 #define PAGE_SHIFT 12
