@@ -5,10 +5,39 @@
 #include <exos_errno.h>
 #include <string_util.h>
 #include <kmalloc.h>
+#include <sync.h>
+
+extern kmutex kb_mutex;
+extern kcond kb_cond;
+
+extern char cooked_mode_buffer[256];
+extern u32 cooked_mode_buffer_used;
+
 
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
-   return 0;
+   enable_preemption();
+   kmutex_lock(&kb_mutex);
+
+   if (!cooked_mode_buffer_used) {
+      kcond_wait(&kb_cond, &kb_mutex);
+   }
+
+   size_t i;
+
+   for (i = 0; i < size && i < cooked_mode_buffer_used; i++) {
+      buf[i] = cooked_mode_buffer[i];
+   }
+
+   if (cooked_mode_buffer_used > size) {
+      char tmp[256];
+      memmove(tmp, cooked_mode_buffer+i, cooked_mode_buffer_used - size);
+      memmove(cooked_mode_buffer, tmp, cooked_mode_buffer_used - size);
+   }
+   cooked_mode_buffer_used -= i;
+   kmutex_unlock(&kb_mutex);
+   disable_preemption();
+   return i;
 }
 
 static ssize_t tty_write(fs_handle h, char *buf, size_t size)

@@ -4,7 +4,7 @@
 #include <common_defs.h>
 
 typedef struct task_info task_info;
-static ALWAYS_INLINE task_info *get_current_task();
+extern task_info *current;
 
 typedef enum {
    WOBJ_NONE = 0,
@@ -55,7 +55,7 @@ void kmutex_destroy(kmutex *m);
 
 static inline bool kmutex_is_curr_task_holding_lock(kmutex *m)
 {
-   return m->owner_task == get_current_task();
+   return m->owner_task == current;
 }
 
 

@@ -17,6 +17,8 @@
 #include <term.h>
 #include <tasklet.h>
 #include <hal.h>
+#include <process.h>
+#include <sync.h>
 
 #define KB_DATA_PORT 0x60
 #define KB_CONTROL_PORT 0x64
@@ -39,16 +41,18 @@
 /* US Keyboard Layout.  */
 unsigned char kbdus[128] =
 {
-   0,  27, '1', '2', '3', '4', '5', '6', '7', '8', /* 9 */
+   0,  27, '1', '2', '3', '4', '5', '6', '7', '8',
    '9', '0', '-', '=', '\b',  /* Backspace */
    '\t',       /* Tab */
    'q', 'w', 'e', 'r',  /* 19 */
-   't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',   /* Enter key */
+   't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
    0,       /* 29   - Control */
    'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';',  /* 39 */
-   '\'', '`',   0,      /* Left shift */
+   '\'', '`',
+   0,      /* Left shift */
    '\\', 'z', 'x', 'c', 'v', 'b', 'n',       /* 49 */
-   'm', ',', '.', '/',   0,            /* Right shift */
+   'm', ',', '.', '/',
+   0,            /* Right shift */
    '*',
    0, /* Alt */
    ' ',  /* Space bar */
@@ -79,16 +83,18 @@ unsigned char kbdus[128] =
 
 unsigned char kbdus_up[128] =
 {
-   0,  27, '!', '@', '#', '$', '%', '^', '&', '*', /* 9 */
-   '(', ')', '_', '+', '\b',  /* Backspace */
+   0,  27, '!', '@', '#', '$', '%', '^', '&', '*',
+   '(', ')', '_', '+', '\b',
    '\t',       /* Tab */
    'Q', 'W', 'E', 'R',  /* 19 */
-   'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',   /* Enter key */
+   'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',
    0,       /* 29   - Control */
    'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':',  /* 39 */
-   '\"', '~',   0,      /* Left shift */
+   '\"', '~',
+   0,      /* Left shift */
    '|', 'Z', 'X', 'C', 'V', 'B', 'N',       /* 49 */
-   'M', '<', '>', '?',   0,            /* Right shift */
+   'M', '<', '>', '?',
+   0,            /* Right shift */
    '*',
    0, /* Alt */
    ' ',  /* Space bar */
@@ -143,8 +149,8 @@ u8 numkey[128] = {
 #define KEY_ALT 0x38
 #define KEY_E0_DEL 0x53
 
-bool pkeys[128] = { false };
-bool e0pkeys[128] = { false };
+bool pkeys[128];
+bool e0pkeys[128];
 
 bool *pkeysArrays[2] = { pkeys, e0pkeys };
 
@@ -192,18 +198,37 @@ void caps_lock_switch(bool val)
 //////////////////////////////////////////
 // TEMP EXPERIMENT STUFF
 
-void dummy_tasklet(int arg1)
-{
-   //printk(" ### Running dummy_tasklet, key = '%c' ###\n", arg1);
-   term_write_char(arg1);
-}
-
-void panic_tasklet()
+void panic_tasklet(void)
 {
    panic("This is a test code-path for panic within a tasket.");
 }
 
 //////////////////////////////////////////
+
+// TODO: make this buffer a RING BUFFER!!
+char cooked_mode_buffer[256];
+u32 cooked_mode_buffer_used;
+
+/*
+ * Condition variable on which tasks interested in keyboard input, wait.
+ */
+kmutex kb_mutex;
+kcond kb_cond;
+
+void add_char_to_cooked_buffer(char c)
+{
+   kmutex_lock(&kb_mutex);
+
+   if (cooked_mode_buffer_used < ARRAY_SIZE(cooked_mode_buffer) - 1) {
+      cooked_mode_buffer[cooked_mode_buffer_used++] = (char)c;
+      if (c == '\n' || cooked_mode_buffer_used == ARRAY_SIZE(cooked_mode_buffer)) {
+         kcond_signal_one(&kb_cond);
+      }
+   }
+
+   kmutex_unlock(&kb_mutex);
+   term_write_char(c);
+}
 
 void handle_key_pressed(u8 scancode)
 {
@@ -242,22 +267,15 @@ void handle_key_pressed(u8 scancode)
 
    if (c) {
 
-      if (c == '!' || c == '@') {
+      if (c == '$') {
 
-         //printk("you pressed char '%c' creating tasklet\n", c);
-         bool success;
-         success = enqueue_tasklet1(&dummy_tasklet, c);
-
-         if (!success) {
-            printk("[kb] failed to create tasklet\n");
-         }
-
-      } else if (c == '$') {
-
+         // demo panic
          enqueue_tasklet0(panic_tasklet);
 
       } else {
-         term_write_char(c);
+
+         enqueue_tasklet1(add_char_to_cooked_buffer, c);
+
       }
 
    } else {
@@ -297,17 +315,12 @@ void (*keyPressHandlers[2])(u8) = {
    handle_key_pressed, handle_E0_key_pressed
 };
 
-//extern volatile u64 jiffies;
+
 
 void keyboard_handler()
 {
    u8 scancode;
    ASSERT(are_interrupts_enabled());
-   // printk("keyboard handler begin (ticks: %llu) <", jiffies);
-
-   // for (int i = 0; i < 100*1000*1000; i++) {
-   //    asmVolatile("nop");
-   // }
 
    while (inb(KB_CONTROL_PORT) & 2) {
       //check if scancode is ready
@@ -318,16 +331,17 @@ void keyboard_handler()
    /* Read from the keyboard's data buffer */
    scancode = inb(KB_DATA_PORT);
 
+   // Hack used to avoid handling 0xE1 two-scancode sequences
    if (next_kb_interrupts_to_ignore) {
       next_kb_interrupts_to_ignore--;
       return;
    }
 
+   // Hack used to avoid handling 0xE1 two-scancode sequences
    if (scancode == 0xE1) {
       next_kb_interrupts_to_ignore = 2;
       return;
    }
-
 
    if (scancode == 0xE0) {
       lastWasE0 = true;
@@ -342,20 +356,16 @@ void keyboard_handler()
       }
    }
 
-   if (scancode & 0x80) {
+   int is_pressed = !(scancode & 0x80);
+   scancode &= ~0x80;
 
-      pkeysArrays[lastWasE0][scancode & ~0x80] = false;
+   pkeysArrays[lastWasE0][scancode] = is_pressed;
 
-   } else {
-
-      pkeysArrays[lastWasE0][scancode] = true;
+   if (is_pressed)
       keyPressHandlers[lastWasE0](scancode);
-   }
 
 end:
    lastWasE0 = false;
-
-   //printk("> END.\n");
 }
 
 // Reboot procedure using the keyboard controller
@@ -396,6 +406,9 @@ void kb_set_typematic_byte(u8 val)
 void init_kb()
 {
    disable_preemption();
+
+   kmutex_init(&kb_mutex);
+   kcond_init(&kb_cond);
 
    num_lock_switch(numLock);
    caps_lock_switch(capsLock);

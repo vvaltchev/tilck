@@ -17,7 +17,7 @@
 // high debug value
 //#define TIME_SLOT_JIFFIES (1)
 
-task_info *volatile current = NULL;
+task_info *current = NULL;
 int current_max_pid = 0;
 
 // Our linked list for all the tasks (processes, threads, etc.)

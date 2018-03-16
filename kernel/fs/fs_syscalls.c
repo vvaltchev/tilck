@@ -118,7 +118,7 @@ sptr sys_ioctl(int fd, uptr request, void *argp)
 {
    sptr ret = -EINVAL;
 
-   printk("[kernel] ioctl(fd: %i, request: %p, argp: %p)\n", fd, request, argp);
+   //printk("[kernel] ioctl(fd: %i, request: %p, argp: %p)\n", fd, request, argp);
 
    disable_preemption();
 

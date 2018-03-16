@@ -47,14 +47,14 @@ struct task_info {
    page_directory_t *pdir;
 
    /* Handles */
-   fs_handle handles[16]; /* for the moment, just a fixed small array */
+   fs_handle handles[16]; /* for the moment, just a fixed-size small array */
 };
 
 typedef struct task_info task_info;
 
 extern volatile u64 jiffies;
 extern int current_max_pid;
-extern task_info *volatile current;
+extern task_info *current;
 
 extern list_node tasks_list;
 extern list_node runnable_tasks_list;

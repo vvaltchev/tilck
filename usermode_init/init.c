@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -130,6 +131,26 @@ void file_read_test(void)
    close(fd);
 }
 
+void test_read_stdin(void)
+{
+
+   char buf[256];
+   printf("Enter a string: ");
+   fflush(stdout);
+   int ret = read(0, buf, 256);
+   printf("You entered: %s", buf);
+   for (int i = 0; i < ret; i++)
+      buf[i] = toupper(buf[i]);
+
+   printf("upper is: %s", buf);
+
+   int n;
+   printf("Tell me a number: ");
+   fflush(stdout);
+   fscanf(stdin, "%i", &n);
+   printf("OK, %i * %i = %i\n", n, n, n * n);
+}
+
 int main(int argc, char **argv, char **env)
 {
    if (getenv("EXOS")) {
@@ -144,7 +165,8 @@ int main(int argc, char **argv, char **env)
    write(1, hello_msg, strlen(hello_msg));
    printf("MY PID IS %i\n", getpid());
 
-   file_read_test();
+   //file_read_test();
+   test_read_stdin();
    pause();
 
    args_test(argc, argv);

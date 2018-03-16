@@ -7,7 +7,7 @@
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
 
-extern task_info *volatile current;
+extern task_info *current;
 extern int current_max_pid;
 
 
