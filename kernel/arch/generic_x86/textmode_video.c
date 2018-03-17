@@ -9,31 +9,62 @@
 #define VIDEO_ROWS 25
 #define ROW_SIZE (VIDEO_COLS * 2)
 #define SCREEN_SIZE (ROW_SIZE * VIDEO_ROWS)
-#define BUFFER_ROWS 1024
+#define BUFFER_ROWS (VIDEO_ROWS * 10)
+#define EXTRA_BUFFER_ROWS (BUFFER_ROWS - VIDEO_ROWS)
 
-static u16 video_buffer[BUFFER_ROWS * 80];
-static int scroll = 0;
-static int max_scroll = 0;
+STATIC_ASSERT(EXTRA_BUFFER_ROWS >= 0);
 
-int video_get_scroll(void)
+static u16 video_buffer[BUFFER_ROWS * VIDEO_COLS];
+static u32 scroll;
+static u32 max_scroll;
+
+bool video_is_at_bottom(void)
 {
-   return scroll;
+   return scroll == max_scroll;
 }
 
-int video_get_max_scroll(void)
+static void video_set_scroll(u32 requested_scroll)
 {
-   return max_scroll;
+   /*
+    * 1. scroll cannot be > max_scroll
+    * 2. scroll cannot be < max_scroll - EXTRA_BUFFER_ROWS, where
+    *    EXTRA_BUFFER_ROWS = BUFFER_ROWS - VIDEO_ROWS.
+    *    In other words, if for example BUFFER_ROWS is 26, and max_scroll is
+    *    1000, scroll cannot be less than 1000 + 25 - 26 = 999, which means
+    *    exactly 1 scroll row (EXTRA_BUFFER_ROWS == 1).
+    */
+
+   const u32 min_scroll =
+      max_scroll > EXTRA_BUFFER_ROWS
+         ? max_scroll - EXTRA_BUFFER_ROWS
+         : 0;
+
+   requested_scroll = MIN(MAX(requested_scroll, min_scroll), max_scroll);
+
+   if (requested_scroll == scroll)
+      return; /* nothing to do */
+
+   scroll = requested_scroll;
+
+   for (u32 i = 0; i < VIDEO_ROWS; i++) {
+      u32 buffer_row = (scroll + i) % BUFFER_ROWS;
+      memmove((void *)( VIDEO_ADDR + VIDEO_COLS * i ),
+              (const void *) (video_buffer + VIDEO_COLS * buffer_row),
+              ROW_SIZE);
+   }
 }
 
-void video_set_scroll(int s)
+void video_scroll_up(u32 lines)
 {
-   s = MIN(MAX(s, 0), max_scroll);
+   if (lines > scroll)
+      video_set_scroll(0);
+   else
+      video_set_scroll(scroll - lines);
+}
 
-   memmove((void *) VIDEO_ADDR,
-           (const void *) (video_buffer + s * VIDEO_COLS),
-           SCREEN_SIZE);
-
-   scroll = s;
+void video_scroll_down(u32 lines)
+{
+   video_set_scroll(scroll + lines);
 }
 
 void video_scroll_to_bottom(void)
@@ -50,8 +81,8 @@ void video_clear_row(int row_num)
    volatile u16 *row = VIDEO_ADDR + VIDEO_COLS * row_num;
    bzero((void *)row, ROW_SIZE);
 
-   u16 *buf_row = video_buffer + VIDEO_COLS * (row_num + scroll);
-   bzero(buf_row, ROW_SIZE);
+   u16 *rowb = video_buffer + VIDEO_COLS * ((row_num + scroll) % BUFFER_ROWS);
+   bzero(rowb, ROW_SIZE);
 }
 
 void video_set_char_at(char c, u8 color, int row, int col)
@@ -62,9 +93,8 @@ void video_set_char_at(char c, u8 color, int row, int col)
    volatile u16 *video = VIDEO_ADDR;
    u16 val = make_vgaentry(c, color);
    video[row * VIDEO_COLS + col] = val;
-   video_buffer[(row + scroll) * VIDEO_COLS + col] = val;
+   video_buffer[(row + scroll) % BUFFER_ROWS * VIDEO_COLS + col] = val;
 }
-
 
 void video_add_row_and_scroll(void)
 {
@@ -73,8 +103,9 @@ void video_add_row_and_scroll(void)
    video_clear_row(VIDEO_ROWS - 1);
 }
 
+/* -------- cursor management functions ----------- */
 
-void video_movecur(int row, int col)
+void video_move_cursor(int row, int col)
 {
    u16 position = (row * VIDEO_COLS) + col;
 
