@@ -223,6 +223,7 @@ bool kb_cbuf_is_full(void)
 void kb_cbuf_write_elem(char c)
 {
    ASSERT(!kb_cbuf_is_full());
+   ASSERT(!are_interrupts_enabled());
 
    kb_cooked_buffer[kb_cbuf_writer_pos++] = c;
    kb_cbuf_writer_pos %= ARRAY_SIZE(kb_cooked_buffer);
@@ -233,9 +234,13 @@ char kb_cbuf_read_elem(void)
 {
    ASSERT(!kb_cbuf_is_empty());
 
+   disable_interrupts();
+
    char res = kb_cooked_buffer[kb_cbuf_reader_pos++];
    kb_cbuf_reader_pos %= ARRAY_SIZE(kb_cooked_buffer);
    kb_cbuf_elems--;
+
+   enable_interrupts();
 
    return res;
 }
@@ -246,21 +251,11 @@ char kb_cbuf_read_elem(void)
 kmutex kb_mutex;
 kcond kb_cond;
 
-void add_char_to_cooked_buffer(char c)
+void notify_kb_one_listener(void)
 {
    kmutex_lock(&kb_mutex);
-
-   if (!kb_cbuf_is_full()) {
-
-      kb_cbuf_write_elem(c);
-
-      if (c == '\n' || kb_cbuf_is_full()) {
-         kcond_signal_one(&kb_cond);
-      }
-   }
-
+   kcond_signal_one(&kb_cond);
    kmutex_unlock(&kb_mutex);
-   term_write_char(c);
 }
 
 void handle_key_pressed(u8 scancode)
@@ -307,8 +302,18 @@ void handle_key_pressed(u8 scancode)
 
       } else {
 
-         enqueue_tasklet1(add_char_to_cooked_buffer, c);
+         disable_interrupts();
 
+         if (!kb_cbuf_is_full()) {
+
+            kb_cbuf_write_elem(c);
+            term_write_char(c);
+
+            if (c == '\n' || kb_cbuf_is_full())
+               enqueue_tasklet0(notify_kb_one_listener);
+         }
+
+         enable_interrupts();
       }
 
    } else {
