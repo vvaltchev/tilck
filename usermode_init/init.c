@@ -135,20 +135,28 @@ void test_read_stdin(void)
 {
 
    char buf[256];
-   printf("Enter a string: ");
-   fflush(stdout);
-   int ret = read(0, buf, 256);
-   printf("You entered: %s", buf);
-   for (int i = 0; i < ret; i++)
-      buf[i] = toupper(buf[i]);
 
-   printf("upper is: %s", buf);
+   while (1) {
+      printf("Enter a string: ");
+      fflush(stdout);
 
-   int n;
-   printf("Tell me a number: ");
-   fflush(stdout);
-   fscanf(stdin, "%i", &n);
-   printf("OK, %i * %i = %i\n", n, n, n * n);
+      int ret = read(0, buf, 256);
+      buf[ret] = 0;
+
+      if (!strcmp(buf, "stop\n"))
+         break;
+      for (int i = 0; i < ret; i++)
+         buf[i] = toupper(buf[i]);
+      printf("upper is: %s", buf);
+   }
+
+   printf("-- end --\n");
+
+   // int n;
+   // printf("Tell me a number: ");
+   // fflush(stdout);
+   // fscanf(stdin, "%i", &n);
+   // printf("OK, %i * %i = %i\n", n, n, n * n);
 }
 
 int main(int argc, char **argv, char **env)
