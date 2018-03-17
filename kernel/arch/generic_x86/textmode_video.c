@@ -4,7 +4,7 @@
 #include <hal.h>
 #include <arch/generic_x86/textmode_video.h>
 
-#define VIDEO_ADDR ((volatile u16*) KERNEL_PA_TO_VA(0xB8000))
+#define VIDEO_ADDR ((u16 *) KERNEL_PA_TO_VA(0xB8000))
 #define VIDEO_COLS 80
 #define VIDEO_ROWS 25
 #define ROW_SIZE (VIDEO_COLS * 2)
@@ -48,7 +48,7 @@ static void video_set_scroll(u32 requested_scroll)
 
    for (u32 i = 0; i < VIDEO_ROWS; i++) {
       u32 buffer_row = (scroll + i) % BUFFER_ROWS;
-      memmove((void *)( VIDEO_ADDR + VIDEO_COLS * i ),
+      memmove(VIDEO_ADDR + VIDEO_COLS * i,
               (const void *) (video_buffer + VIDEO_COLS * buffer_row),
               ROW_SIZE);
    }
@@ -85,8 +85,8 @@ void video_clear_row(int row_num)
    for (int i = 0; i < VIDEO_COLS; i++)
       rowb[i] = ch_space;
 
-   volatile u16 *row = VIDEO_ADDR + VIDEO_COLS * row_num;
-   memmove((void *)row, rowb, ROW_SIZE);
+   u16 *row = VIDEO_ADDR + VIDEO_COLS * row_num;
+   memmove(row, rowb, ROW_SIZE);
 }
 
 void video_set_char_at(char c, u8 color, int row, int col)
@@ -94,7 +94,7 @@ void video_set_char_at(char c, u8 color, int row, int col)
    ASSERT(0 <= row && row < VIDEO_ROWS);
    ASSERT(0 <= col && col < VIDEO_COLS);
 
-   volatile u16 *video = VIDEO_ADDR;
+   volatile u16 *video = (volatile u16 *)VIDEO_ADDR;
    u16 val = make_vgaentry(c, color);
    video[row * VIDEO_COLS + col] = val;
    video_buffer[(row + scroll) % BUFFER_ROWS * VIDEO_COLS + col] = val;
