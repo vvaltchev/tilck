@@ -15,14 +15,51 @@
 #include <serial.h>
 
 #define TERMINAL_VIDEO_ADDR ((volatile u16*) KERNEL_PA_TO_VA(0xB8000))
-
-#define TERMINAL_BUFFER_ROWS 1024
-u16 term_buffer[TERMINAL_BUFFER_ROWS * 80];
+#define TERM_ROW_SIZE (term_width * 2)
 
 static s8 term_width = 80;
 static s8 term_height = 25;
 
-#define TERM_ROW_SIZE (term_width * 2)
+void video_scroll_up(void)
+{
+   memmove((void *) TERMINAL_VIDEO_ADDR,
+           (const void *) (TERMINAL_VIDEO_ADDR + term_width),
+           TERM_ROW_SIZE * (term_height - 1));
+}
+
+void video_clear_row(int row_num)
+{
+   ASSERT(0 <= row_num && row_num < term_height);
+   volatile u16 *row = TERMINAL_VIDEO_ADDR + term_width * row_num;
+   bzero((void *)row, TERM_ROW_SIZE);
+}
+
+void video_set_char_at(char c, u8 color, int row, int col)
+{
+   ASSERT(0 <= row && row < term_height);
+   ASSERT(0 <= col && col < term_width);
+
+   volatile u16 *video = TERMINAL_VIDEO_ADDR;
+   video[row * term_width + col] = make_vgaentry(c, color);
+}
+
+void video_movecur(int row, int col)
+{
+   u16 position = (row * term_width) + col;
+
+   // cursor LOW port to vga INDEX register
+   outb(0x3D4, 0x0F);
+   outb(0x3D5, (unsigned char)(position & 0xFF));
+   // cursor HIGH port to vga INDEX register
+   outb(0x3D4, 0x0E);
+   outb(0x3D5, (unsigned char)((position >> 8) & 0xFF));
+}
+
+
+
+#define TERMINAL_BUFFER_ROWS 1024
+u16 term_buffer[TERMINAL_BUFFER_ROWS * 80];
+
 
 u8 terminal_row;
 u8 terminal_column;
@@ -39,18 +76,6 @@ int term_get_scroll_value()
 
 void term_setcolor(u8 color) {
    terminal_color = color;
-}
-
-void term_movecur(int row, int col)
-{
-   u16 position = (row * term_width) + col;
-
-   // cursor LOW port to vga INDEX register
-   outb(0x3D4, 0x0F);
-   outb(0x3D5, (unsigned char)(position & 0xFF));
-   // cursor HIGH port to vga INDEX register
-   outb(0x3D4, 0x0E);
-   outb(0x3D5, (unsigned char)((position >> 8) & 0xFF));
 }
 
 
@@ -166,19 +191,8 @@ static void term_incr_row()
    }
 
    push_line_in_buffer(0);
-
-   // We have to scroll...
-
-   memmove((void *) TERMINAL_VIDEO_ADDR,
-           (const void *) (TERMINAL_VIDEO_ADDR + term_width),
-           TERM_ROW_SIZE * (term_height - 1));
-
-   volatile u16 *lastRow =
-      TERMINAL_VIDEO_ADDR + term_width * (term_height - 1);
-
-   for (int i = 0; i < term_width; i++) {
-      lastRow[i] = make_vgaentry(' ', terminal_color);
-   }
+   video_scroll_up();
+   video_clear_row(term_height - 1);
 }
 
 void term_write_char_unsafe(char c)
@@ -192,13 +206,13 @@ void term_write_char_unsafe(char c)
    if (c == '\n') {
       terminal_column = 0;
       term_incr_row();
-      term_movecur(terminal_row, terminal_column);
+      video_movecur(terminal_row, terminal_column);
       return;
    }
 
    if (c == '\r') {
       terminal_column = 0;
-      term_movecur(terminal_row, terminal_column);
+      video_movecur(terminal_row, terminal_column);
       return;
    }
 
@@ -206,23 +220,7 @@ void term_write_char_unsafe(char c)
       return;
    }
 
-   volatile u16 *video = TERMINAL_VIDEO_ADDR;
-
-   if (c == '\b') {
-
-      if (terminal_column > 0) {
-         --terminal_column;
-      }
-
-      const size_t offset = terminal_row * term_width + terminal_column;
-      video[offset] = make_vgaentry(' ', terminal_color);
-
-      term_movecur(terminal_row, terminal_column);
-      return;
-   }
-
-   const size_t offset = terminal_row * term_width + terminal_column;
-   video[offset] = make_vgaentry(c, terminal_color);
+   video_set_char_at(c, terminal_color, terminal_row, terminal_column);
    ++terminal_column;
 
    if (terminal_column == term_width) {
@@ -230,7 +228,7 @@ void term_write_char_unsafe(char c)
       term_incr_row();
    }
 
-   term_movecur(terminal_row, terminal_column);
+   video_movecur(terminal_row, terminal_column);
 }
 
 void term_write_char(char c)
@@ -256,20 +254,16 @@ void term_move_ch(int row, int col)
    terminal_row = row;
    terminal_column = col;
 
-   term_movecur(row, col);
+   video_movecur(row, col);
 }
 
-void term_init() {
+void term_init()
+{
+   video_movecur(0, 0);
+   term_setcolor(make_color(COLOR_WHITE, COLOR_BLACK));
 
-   u8 default_color = make_color(COLOR_WHITE, COLOR_BLACK);
-   term_movecur(0, 0);
+   for (int i = 0; i < term_height; i++)
+      video_clear_row(i);
 
-   volatile u16 *ptr = TERMINAL_VIDEO_ADDR;
-
-   for (int i = 0; i < term_width*term_height; ++i) {
-      *ptr++ = make_vgaentry(' ', default_color);
-   }
-
-   term_setcolor(default_color);
    init_serial_port();
 }
