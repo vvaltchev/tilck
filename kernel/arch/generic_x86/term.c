@@ -1,29 +1,14 @@
 
 /*
  * This is a DEMO/DEBUG version of the tty driver.
- * Until the concept of character devices is implemented in exOS, that's
- * good enough for basic experiments.
  *
  * Useful info:
  * http://www.linusakesson.net/programming/tty/index.php
  */
 
 #include <term.h>
-#include <string_util.h>
-#include <paging.h>
-#include <arch/generic_x86/x86_utils.h>
+#include <arch/generic_x86/textmode_video.h>
 #include <serial.h>
-
-void video_scroll_up(u32 lines);
-void video_scroll_down(u32 lines);
-bool video_is_at_bottom(void);
-void video_scroll_to_bottom(void);
-void video_add_row_and_scroll(void);
-void video_clear_row(int row_num);
-void video_set_char_at(char c, u8 color, int row, int col);
-void video_move_cursor(int row, int col);
-void video_enable_cursor(void);
-void video_disable_cursor(void);
 
 u8 term_width = 80;
 u8 term_height = 25;
@@ -57,7 +42,6 @@ void term_scroll_down(u32 lines)
 void term_setcolor(u8 color) {
    terminal_color = color;
 }
-
 
 static void term_incr_row()
 {

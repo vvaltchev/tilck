@@ -1,16 +1,16 @@
 #include <common_defs.h>
 #include <arch/generic_x86/x86_utils.h>
-#include <term.h>
+#include <arch/generic_x86/textmode_video.h>
 #include <string_util.h>
 
-#define TERMINAL_VIDEO_ADDR ((u16*)(0 + 0xB8000))
+#define TERMINAL_VIDEO_ADDR ((u16*)(0xB8000))
 
 #define TERM_WIDTH  80
 #define TERM_HEIGHT 25
 
-volatile uint8_t terminal_row = 0;
-volatile uint8_t terminal_column = 0;
-volatile uint8_t terminal_color = 0;
+uint8_t terminal_row = 0;
+uint8_t terminal_column = 0;
+uint8_t terminal_color = 0;
 
 void term_setcolor(uint8_t color) {
    terminal_color = color;
@@ -32,7 +32,6 @@ void term_movecur(int row, int col)
 static void term_incr_row()
 {
    if (terminal_row < TERM_HEIGHT - 1) {
-
       ++terminal_row;
       return;
    }
@@ -49,7 +48,6 @@ static void term_incr_row()
    for (int i = 0; i < TERM_WIDTH; i++) {
       lastRow[i] = make_vgaentry(' ', terminal_color);
    }
-
 }
 
 void term_write_char(char c) {

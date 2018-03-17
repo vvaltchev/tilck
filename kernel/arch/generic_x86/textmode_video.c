@@ -1,8 +1,8 @@
 
-#include <term.h>
 #include <paging.h>
 #include <string_util.h>
-#include <arch/generic_x86/x86_utils.h>
+#include <hal.h>
+#include <arch/generic_x86/textmode_video.h>
 
 #define VIDEO_ADDR ((volatile u16*) KERNEL_PA_TO_VA(0xB8000))
 #define VIDEO_COLS 80
@@ -122,15 +122,15 @@ void video_enable_cursor(void)
    uint8_t cursor_start=0;
    uint8_t cursor_end=0;
 
-	outb(0x3D4, 0x0A);
-	outb(0x3D5, (inb(0x3D5) & 0xC0) | cursor_start);
+   outb(0x3D4, 0x0A);
+   outb(0x3D5, (inb(0x3D5) & 0xC0) | cursor_start);
 
-	outb(0x3D4, 0x0B);
-	outb(0x3D5, (inb(0x3E0) & 0xE0) | cursor_end);
+   outb(0x3D4, 0x0B);
+   outb(0x3D5, (inb(0x3E0) & 0xE0) | cursor_end);
 }
 
 void video_disable_cursor(void)
 {
-	outb(0x3D4, 0x0A);
-	outb(0x3D5, 0x20);
+   outb(0x3D4, 0x0A);
+   outb(0x3D5, 0x20);
 }
