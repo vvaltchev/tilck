@@ -321,11 +321,11 @@ void handle_E0_key_pressed(u8 scancode)
    switch (scancode) {
 
    case KEY_PAGE_UP:
-      term_scroll(term_get_scroll_value() + 5);
+      term_scroll(term_get_scroll_value() - 1);
       break;
 
    case KEY_PAGE_DOWN:
-      term_scroll(term_get_scroll_value() - 5);
+      term_scroll(term_get_scroll_value() + 1);
       break;
 
    case KEY_E0_DEL:

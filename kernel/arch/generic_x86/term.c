@@ -14,31 +14,44 @@
 #include <arch/generic_x86/x86_utils.h>
 #include <serial.h>
 
-void video_scroll_up_one_line(void);
+int video_get_scroll(void);
+int video_get_max_scroll(void);
+void video_set_scroll(int scroll);
+void video_scroll_to_bottom(void);
+void video_add_row_and_scroll(void);
 void video_clear_row(int row_num);
 void video_set_char_at(char c, u8 color, int row, int col);
 void video_movecur(int row, int col);
+void video_enable_cursor(void);
+void video_disable_cursor(void);
 
-#define term_width 80
-#define term_height 25
+u8 term_width = 80;
+u8 term_height = 25;
 
 u8 terminal_row;
 u8 terminal_column;
 u8 terminal_color;
 
-int buf_next_slot;
-int scroll_value;
-bool buf_full;
-
 int term_get_scroll_value()
 {
-   return scroll_value;
+   return video_get_scroll();
+}
+
+void term_scroll(int s)
+{
+   video_set_scroll(s);
+
+   if (s < video_get_max_scroll()) {
+      video_disable_cursor();
+   } else {
+      video_enable_cursor();
+      video_movecur(terminal_row, terminal_column);
+   }
 }
 
 void term_setcolor(u8 color) {
    terminal_color = color;
 }
-
 
 // static void increase_buf_next_slot(int val)
 // {
@@ -144,9 +157,6 @@ void term_setcolor(u8 color) {
 //    scroll_value = lines;
 // }
 
-void term_scroll(int lines)
-{
-}
 
 static void term_incr_row()
 {
@@ -155,17 +165,14 @@ static void term_incr_row()
       return;
    }
 
-   video_scroll_up_one_line();
-   video_clear_row(term_height - 1);
+   video_add_row_and_scroll();
 }
 
 void term_write_char_unsafe(char c)
 {
    write_serial(c);
-
-   if (scroll_value != 0) {
-      term_scroll(0);
-   }
+   video_scroll_to_bottom();
+   video_enable_cursor();
 
    if (c == '\n') {
       terminal_column = 0;
@@ -181,6 +188,16 @@ void term_write_char_unsafe(char c)
    }
 
    if (c == '\t') {
+      return;
+   }
+
+   if (c == '\b') {
+      if (terminal_column > 0) {
+         terminal_column--;
+      }
+
+      video_set_char_at(' ', terminal_color, terminal_row, terminal_column);
+      video_movecur(terminal_row, terminal_column);
       return;
    }
 
