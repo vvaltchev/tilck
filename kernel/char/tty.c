@@ -12,10 +12,9 @@
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
    enable_preemption();
-   kmutex_lock(&kb_mutex);
 
    while (kb_cbuf_is_empty()) {
-      kcond_wait(&kb_cond, &kb_mutex);
+      kcond_wait(&kb_cond, NULL);
    }
 
    size_t i = 0;
@@ -24,7 +23,6 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
       buf[i++] = kb_cbuf_read_elem();
    }
 
-   kmutex_unlock(&kb_mutex);
    disable_preemption();
    return i;
 }

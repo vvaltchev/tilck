@@ -248,15 +248,7 @@ char kb_cbuf_read_elem(void)
 /*
  * Condition variable on which tasks interested in keyboard input, wait.
  */
-kmutex kb_mutex;
 kcond kb_cond;
-
-void notify_kb_one_listener(void)
-{
-   kmutex_lock(&kb_mutex);
-   kcond_signal_one(&kb_cond);
-   kmutex_unlock(&kb_mutex);
-}
 
 void handle_key_pressed(u8 scancode)
 {
@@ -310,7 +302,7 @@ void handle_key_pressed(u8 scancode)
             term_write_char(c);
 
             if (c == '\n' || kb_cbuf_is_full())
-               enqueue_tasklet0(notify_kb_one_listener);
+               enqueue_tasklet1(kcond_signal_one, &kb_cond);
          }
 
          enable_interrupts();
@@ -445,7 +437,6 @@ void init_kb()
 {
    disable_preemption();
 
-   kmutex_init(&kb_mutex);
    kcond_init(&kb_cond);
 
    num_lock_switch(numLock);

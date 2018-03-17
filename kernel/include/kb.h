@@ -2,7 +2,6 @@
 
 #include <hal.h>
 
-extern kmutex kb_mutex;
 extern kcond kb_cond;
 
 void init_kb();
