@@ -12,16 +12,17 @@
 #include <string_util.h>
 #include <paging.h>
 #include <arch/generic_x86/x86_utils.h>
+#include <serial.h>
 
 #define TERMINAL_VIDEO_ADDR ((volatile u16*) KERNEL_PA_TO_VA(0xB8000))
 
 #define TERMINAL_BUFFER_ROWS 1024
 u16 term_buffer[TERMINAL_BUFFER_ROWS * 80];
 
-#define TERMINAL_SCREEN_SIZE (term_width * term_height * 2)
-
 static s8 term_width = 80;
 static s8 term_height = 25;
+
+#define TERM_ROW_SIZE (term_width * 2)
 
 u8 terminal_row;
 u8 terminal_column;
@@ -80,7 +81,7 @@ static void from_buffer_to_video(int bufRow, int videoRow)
 
    memcpy((void *)(TERMINAL_VIDEO_ADDR + videoRow * term_width),
           (const void *)(term_buffer + bufRow * term_width),
-          term_width * 2);
+          TERM_ROW_SIZE);
 }
 
 static void push_line_in_buffer(int videoRow)
@@ -89,7 +90,7 @@ static void push_line_in_buffer(int videoRow)
 
    memcpy((void *)(term_buffer + destIndex * term_width),
           (const void *)(TERMINAL_VIDEO_ADDR + videoRow * term_width),
-          term_width * 2);
+          TERM_ROW_SIZE);
 
    increase_buf_next_slot(1);
 }
@@ -170,7 +171,7 @@ static void term_incr_row()
 
    memmove((void *) TERMINAL_VIDEO_ADDR,
            (const void *) (TERMINAL_VIDEO_ADDR + term_width),
-           term_width * (term_height - 1) * 2);
+           TERM_ROW_SIZE * (term_height - 1));
 
    volatile u16 *lastRow =
       TERMINAL_VIDEO_ADDR + term_width * (term_height - 1);
@@ -179,41 +180,6 @@ static void term_incr_row()
       lastRow[i] = make_vgaentry(' ', terminal_color);
    }
 }
-
-///////////////////////////
-
-#define COM1 0x3f8
-
-void init_serial_port()
-{
-   outb(COM1 + 1, 0x00);    // Disable all interrupts
-   outb(COM1 + 3, 0x80);    // Enable DLAB (set baud rate divisor)
-   outb(COM1 + 0, 0x03);    // Set divisor to 3 (lo byte) 38400 baud
-   outb(COM1 + 1, 0x00);    //                  (hi byte)
-   outb(COM1 + 3, 0x03);    // 8 bits, no parity, one stop bit
-   outb(COM1 + 2, 0xC7);    // Enable FIFO, clear them, with 14-byte threshold
-   outb(COM1 + 4, 0x0B);    // IRQs enabled, RTS/DSR set
-}
-
-int serial_received() {
-   return inb(COM1 + 5) & 1;
-}
-
-char read_serial() {
-   while (serial_received() == 0);
-   return inb(COM1);
-}
-
-int is_transmit_empty() {
-   return inb(COM1 + 5) & 0x20;
-}
-
-void write_serial(char a) {
-   while (is_transmit_empty() == 0);
-   outb(COM1, a);
-}
-
-//////////////////////////
 
 void term_write_char_unsafe(char c)
 {
@@ -295,15 +261,15 @@ void term_move_ch(int row, int col)
 
 void term_init() {
 
-   u8 defColor = make_color(COLOR_WHITE, COLOR_BLACK);
+   u8 default_color = make_color(COLOR_WHITE, COLOR_BLACK);
    term_movecur(0, 0);
 
    volatile u16 *ptr = TERMINAL_VIDEO_ADDR;
 
    for (int i = 0; i < term_width*term_height; ++i) {
-      *ptr++ = make_vgaentry(' ', defColor);
+      *ptr++ = make_vgaentry(' ', default_color);
    }
 
-   term_setcolor(defColor);
+   term_setcolor(default_color);
    init_serial_port();
 }
