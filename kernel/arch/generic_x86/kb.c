@@ -205,9 +205,40 @@ void panic_tasklet(void)
 
 //////////////////////////////////////////
 
-// TODO: make this buffer a RING BUFFER!!
-char cooked_mode_buffer[256];
-u32 cooked_mode_buffer_used;
+static char kb_cooked_buffer[256];
+static u32 kb_cbuf_writer_pos; // pos where the writer will write next time
+static u32 kb_cbuf_reader_pos; // pos where the reader will read next time
+static u32 kb_cbuf_elems;
+
+bool kb_cbuf_is_empty(void)
+{
+   return kb_cbuf_elems == 0;
+}
+
+bool kb_cbuf_is_full(void)
+{
+   return kb_cbuf_elems == ARRAY_SIZE(kb_cooked_buffer);
+}
+
+void kb_cbuf_write_elem(char c)
+{
+   ASSERT(!kb_cbuf_is_full());
+
+   kb_cooked_buffer[kb_cbuf_writer_pos++] = c;
+   kb_cbuf_writer_pos %= ARRAY_SIZE(kb_cooked_buffer);
+   kb_cbuf_elems++;
+}
+
+char kb_cbuf_read_elem(void)
+{
+   ASSERT(!kb_cbuf_is_empty());
+
+   char res = kb_cooked_buffer[kb_cbuf_reader_pos++];
+   kb_cbuf_reader_pos %= ARRAY_SIZE(kb_cooked_buffer);
+   kb_cbuf_elems--;
+
+   return res;
+}
 
 /*
  * Condition variable on which tasks interested in keyboard input, wait.
@@ -219,9 +250,11 @@ void add_char_to_cooked_buffer(char c)
 {
    kmutex_lock(&kb_mutex);
 
-   if (cooked_mode_buffer_used < ARRAY_SIZE(cooked_mode_buffer) - 1) {
-      cooked_mode_buffer[cooked_mode_buffer_used++] = (char)c;
-      if (c == '\n' || cooked_mode_buffer_used == ARRAY_SIZE(cooked_mode_buffer)) {
+   if (!kb_cbuf_is_full()) {
+
+      kb_cbuf_write_elem(c);
+
+      if (c == '\n' || kb_cbuf_is_full()) {
          kcond_signal_one(&kb_cond);
       }
    }

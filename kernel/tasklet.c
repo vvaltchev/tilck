@@ -17,9 +17,9 @@ typedef struct {
 
 
 tasklet *all_tasklets;
-static volatile int first_free_slot_index;
-static volatile int slots_used;
-static volatile int tasklet_to_execute;
+static int first_free_slot_index;
+static int slots_used;
+static int tasklet_to_execute;
 static kcond tasklet_cond;
 
 void initialize_tasklets()
