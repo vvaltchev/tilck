@@ -13,22 +13,23 @@
 #include <paging.h>
 #include <arch/generic_x86/x86_utils.h>
 
-#define TERMINAL_VIDEO_ADDR ((volatile u16*)(KERNEL_BASE_VA + 0xB8000))
-#define TERMINAL_BUFFER_ADDR ((volatile u16*)(KERNEL_BASE_VA + 0x10000))
+#define TERMINAL_VIDEO_ADDR ((volatile u16*) KERNEL_PA_TO_VA(0xB8000))
 
 #define TERMINAL_BUFFER_ROWS 1024
+u16 term_buffer[TERMINAL_BUFFER_ROWS * 80];
+
 #define TERMINAL_SCREEN_SIZE (term_width * term_height * 2)
 
 static s8 term_width = 80;
 static s8 term_height = 25;
 
-volatile u8 terminal_row;
-volatile u8 terminal_column;
-volatile u8 terminal_color;
+u8 terminal_row;
+u8 terminal_column;
+u8 terminal_color;
 
-volatile int buf_next_slot;
-volatile int scroll_value;
-volatile bool buf_full = false;
+int buf_next_slot;
+int scroll_value;
+bool buf_full;
 
 int term_get_scroll_value()
 {
@@ -78,7 +79,7 @@ static void from_buffer_to_video(int bufRow, int videoRow)
    }
 
    memcpy((void *)(TERMINAL_VIDEO_ADDR + videoRow * term_width),
-          (const void *)(TERMINAL_BUFFER_ADDR + bufRow * term_width),
+          (const void *)(term_buffer + bufRow * term_width),
           term_width * 2);
 }
 
@@ -86,7 +87,7 @@ static void push_line_in_buffer(int videoRow)
 {
    int destIndex = buf_next_slot % TERMINAL_BUFFER_ROWS;
 
-   memcpy((void *)(TERMINAL_BUFFER_ADDR + destIndex * term_width),
+   memcpy((void *)(term_buffer + destIndex * term_width),
           (const void *)(TERMINAL_VIDEO_ADDR + videoRow * term_width),
           term_width * 2);
 
@@ -275,9 +276,13 @@ void term_write_char(char c)
 
 void term_write_string(const char *str)
 {
+   disable_interrupts();
+
    while (*str) {
-      term_write_char(*str++);
+      term_write_char_unsafe(*str++);
    }
+
+   enable_interrupts();
 }
 
 void term_move_ch(int row, int col)
@@ -300,6 +305,5 @@ void term_init() {
    }
 
    term_setcolor(defColor);
-
    init_serial_port();
 }
