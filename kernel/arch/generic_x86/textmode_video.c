@@ -76,13 +76,17 @@ void video_scroll_to_bottom(void)
 
 void video_clear_row(int row_num)
 {
+   const u16 ch_space =
+      make_vgaentry(' ', make_color(COLOR_WHITE, COLOR_BLACK));
+
    ASSERT(0 <= row_num && row_num < VIDEO_ROWS);
+   u16 *rowb = video_buffer + VIDEO_COLS * ((row_num + scroll) % BUFFER_ROWS);
+
+   for (int i = 0; i < VIDEO_COLS; i++)
+      rowb[i] = ch_space;
 
    volatile u16 *row = VIDEO_ADDR + VIDEO_COLS * row_num;
-   bzero((void *)row, ROW_SIZE);
-
-   u16 *rowb = video_buffer + VIDEO_COLS * ((row_num + scroll) % BUFFER_ROWS);
-   bzero(rowb, ROW_SIZE);
+   memmove((void *)row, rowb, ROW_SIZE);
 }
 
 void video_set_char_at(char c, u8 color, int row, int col)
@@ -119,14 +123,14 @@ void video_move_cursor(int row, int col)
 
 void video_enable_cursor(void)
 {
-   uint8_t cursor_start=0;
-   uint8_t cursor_end=0;
+   const u8 scanline_start = 0;
+   const u8 scanline_end = 15;
 
    outb(0x3D4, 0x0A);
-   outb(0x3D5, (inb(0x3D5) & 0xC0) | cursor_start);
+   outb(0x3D5, (inb(0x3D5) & 0xC0) | scanline_start);
 
    outb(0x3D4, 0x0B);
-   outb(0x3D5, (inb(0x3E0) & 0xE0) | cursor_end);
+   outb(0x3D5, (inb(0x3E0) & 0xE0) | scanline_end);
 }
 
 void video_disable_cursor(void)
