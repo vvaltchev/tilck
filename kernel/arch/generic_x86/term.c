@@ -106,13 +106,14 @@ void term_write_char(char c)
 
 void term_write_string(const char *str)
 {
-   disable_interrupts();
-
+   /*
+    * NOTE: This function uses intentionally the 'safe' version of
+    * term_write_char() in order to keep the interrupts-disabled periods
+    * shorter.
+    */
    while (*str) {
-      term_write_char_unsafe(*str++);
+      term_write_char(*str++);
    }
-
-   enable_interrupts();
 }
 
 void term_move_ch(int row, int col)

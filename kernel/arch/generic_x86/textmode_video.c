@@ -76,7 +76,7 @@ void video_scroll_to_bottom(void)
 
 void video_clear_row(int row_num)
 {
-   const u16 ch_space =
+   static const u16 ch_space =
       make_vgaentry(' ', make_color(COLOR_WHITE, COLOR_BLACK));
 
    ASSERT(0 <= row_num && row_num < VIDEO_ROWS);

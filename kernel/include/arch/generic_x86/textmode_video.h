@@ -25,15 +25,8 @@ enum vga_color {
    COLOR_WHITE = 15,
 };
 
-static inline u8 make_color(enum vga_color fg, enum vga_color bg) {
-   return fg | bg << 4;
-}
-
-static inline u16 make_vgaentry(char c, u8 color) {
-   u16 c16 = c;
-   u16 color16 = color;
-   return c16 | color16 << 8;
-}
+#define make_color(fg, bg) ((fg) | (bg) << 4)
+#define make_vgaentry(c, color) (((u16)c) | ((u16)color << 8))
 
 /* Main functions */
 void video_set_char_at(char c, u8 color, int row, int col);
