@@ -12,7 +12,6 @@
 #include <stdbool.h>
 #include <errno.h>
 
-
 #define FORK_TEST_ITERS (2 * 250 * 1024 * 1024)
 
 void fork_test(void)

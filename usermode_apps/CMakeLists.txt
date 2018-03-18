@@ -18,8 +18,6 @@ cmake_minimum_required(VERSION 3.2)
 
 #########################################################################
 
-file(GLOB SOURCES "*.c")
-
 if (${ARCH} STREQUAL "i386")
 
    set(CMAKE_C_COMPILER
@@ -27,25 +25,18 @@ if (${ARCH} STREQUAL "i386")
 
 endif()
 
-
 set(DIET_LIBC_PATH ${TCROOT}/dietlibc-0.33)
-
+set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS) # Remove -rdynamic
 include_directories(SYSTEM ${DIET_LIBC_PATH}/include)
 
-add_executable(init ${SOURCES})
+link_libraries("${DIET_LIBC_PATH}/bin-i386/dietlibc.a")
+link_libraries(gcc)
 
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__dietlibc__ ${ARCH_FLAGS} ${COMMON_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ARCH_FLAGS} -nostdlib ${DIET_LIBC_PATH}/bin-i386/start.o")
 
-# Remove -rdynamic
-SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+file(GLOB INIT_SOURCES "init*.c")
+add_executable(init ${INIT_SOURCES})
 
-set_target_properties(
-
-   init
-
-   PROPERTIES
-      COMPILE_FLAGS "-D__dietlibc__ ${ARCH_FLAGS} ${COMMON_FLAGS}"
-      LINK_FLAGS "${ARCH_FLAGS} -nostdlib ${DIET_LIBC_PATH}/bin-i386/start.o"
-)
-
-target_link_libraries(init "${DIET_LIBC_PATH}/bin-i386/dietlibc.a" gcc)
+file(GLOB SHELL_SOURCES "shell*.c")
+add_executable(shell ${SHELL_SOURCES})

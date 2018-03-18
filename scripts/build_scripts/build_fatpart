@@ -34,11 +34,11 @@ cp -r $maindir/sysroot $bdir/
 cd $bdir/sysroot
 
 # hard-link init to sysroot/sbin
-ln $bdir/init sbin/
+ln $bdir/usermode_apps/init sbin/
 
 # hard-link EFI files
-ln $bdir/BOOTX64.EFI EFI/BOOT/
-ln $bdir/switchmode.bin EFI/BOOT/
+ln $bdir/bootloader/efi/BOOTX64.EFI EFI/BOOT/
+ln $bdir/bootloader/efi/switchmode.bin EFI/BOOT/
 ln $bdir/elf_kernel_stripped EFI/BOOT/elf_kernel_stripped
 
 # first, create the directories

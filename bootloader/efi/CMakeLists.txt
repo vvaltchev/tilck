@@ -6,7 +6,7 @@ file(GLOB ASM_SOURCES "*.S")
 set(GNUEFI_DIR "${CMAKE_SOURCE_DIR}/toolchain/gnu-efi")
 set(EFI_MAIN_SO "efimain.so")
 set(EFI_MAIN_OBJ "efimain.o")
-set(SWITCHMODE_BIN ${CMAKE_BINARY_DIR}/switchmode.bin)
+set(SWITCHMODE_BIN "switchmode.bin")
 
 set(
    EFI_CFLAGS_LIST
