@@ -50,8 +50,9 @@ void fork_test(void)
             } else {
                printf("############## I'm the parent, child's pid = %i\n", pid);
                printf("[parent] waiting the child to exit...\n");
-               int p = waitpid(pid, NULL, 0);
-               printf("[parent] child (pid: %i) exited!\n", p);
+               int wstatus=0;
+               int p = waitpid(pid, &wstatus, 0);
+               printf("[parent] child (pid: %i) exited with status: %i!\n", p, WEXITSTATUS(wstatus));
                exit_on_next_FORK_TEST_ITERS_hit = true;
             }
 
@@ -174,11 +175,11 @@ int main(int argc, char **argv, char **env)
    printf("MY PID IS %i\n", getpid());
 
    //file_read_test();
-   test_read_stdin();
-   pause();
+   //test_read_stdin();
+   //pause();
 
-   args_test(argc, argv);
-   bss_var_test();
+   //args_test(argc, argv);
+   //bss_var_test();
    fork_test();
 
    return 0;

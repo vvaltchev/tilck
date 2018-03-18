@@ -3,6 +3,7 @@
 #include <string_util.h>
 #include <process.h>
 #include <hal.h>
+#include <exos_errno.h>
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
@@ -10,6 +11,10 @@
 extern task_info *current;
 extern int current_max_pid;
 
+#define EXITCODE(ret, sig)  ((ret) << 8 | (sig))
+#define STOPCODE(sig) ((sig) << 8 | 0x7f)
+#define CONTINUED 0xffff
+#define COREFLAG 0x80
 
 /*
  * ***************************************************************
@@ -40,34 +45,43 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
           current->pid, pid);
 
    ASSERT(are_interrupts_enabled());
-
-   volatile task_info *waited_task = (volatile task_info *)get_task(pid);
-
-   if (!waited_task) {
-      return -1;
-   }
-
    DEBUG_VALIDATE_STACK_PTR();
 
-   /*
-    * This is just a DEMO implementation of waitpid() having the goal
-    * to test the preemption of kernel code running for user applications.
-    */
+   if (pid > 0) {
 
-   while (true) {
+      /* Wait for a specific PID */
 
-      if (waited_task->state == TASK_STATE_ZOMBIE) {
-         break;
+      volatile task_info *waited_task = (volatile task_info *)get_task(pid);
+
+      if (!waited_task) {
+         return -ECHILD;
       }
 
-      ASSERT(are_interrupts_enabled());
-      halt();
+      while (waited_task->state != TASK_STATE_ZOMBIE) {
+         wait_obj_set(&current->wobj, WOBJ_PID, (task_info *)waited_task);
+         task_change_state(current, TASK_STATE_SLEEPING);
+         kernel_yield();
+      }
 
-      DEBUG_VALIDATE_STACK_PTR();
+      if (wstatus) {
+         *wstatus = EXITCODE(waited_task->exit_status, 0);
+      }
+
+      remove_task((task_info *)waited_task);
+      return pid;
+
+   } else {
+
+      /*
+       * Since exOS does not support UIDs and GIDs != 0, the values of
+       *    pid < -1
+       *    pid == -1
+       *    pid == 0
+       * are treated in the same way.
+       */
+
+      NOT_IMPLEMENTED();
    }
-
-   remove_task((task_info *)waited_task);
-   return pid;
 }
 
 
@@ -75,16 +89,16 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
 extern task_info *usermode_init_task;
 #endif
 
-NORETURN void sys_exit(int exit_code)
+NORETURN void sys_exit(int exit_status)
 {
    disable_preemption();
 
    printk("[kernel] Exit process %i with code = %i\n",
           current->pid,
-          exit_code);
+          exit_status);
 
    task_change_state(current, TASK_STATE_ZOMBIE);
-   current->exit_code = exit_code;
+   current->exit_status = exit_status;
 
    // Close all of its opened handles
 
@@ -94,6 +108,22 @@ NORETURN void sys_exit(int exit_code)
 
       if (h)
          exvfs_close(h);
+   }
+
+
+   // Wake-up all the tasks waiting on this task to exit
+
+   task_info *pos;
+
+   list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
+
+      ASSERT(pos->state == TASK_STATE_SLEEPING);
+
+      if (pos->wobj.ptr == current) {
+         ASSERT(pos->wobj.type == WOBJ_PID);
+         wait_obj_reset(&pos->wobj);
+         task_change_state(pos, TASK_STATE_RUNNABLE);
+      }
    }
 
    // We CANNOT free current->kernel_task here because we're using it!

@@ -29,7 +29,7 @@ struct task_info {
 
    int pid; /* global user/kernel thread identifier */
    task_state_enum state;
-   int exit_code;
+   u8 exit_status;
 
    u64 ticks;
    u64 total_ticks;

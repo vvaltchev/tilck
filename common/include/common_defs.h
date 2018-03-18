@@ -223,7 +223,7 @@ NORETURN void not_reached(const char *file, int line);
 
 
 #define NOT_REACHED() not_reached(__FILE__, __LINE__)
-
+#define NOT_IMPLEMENTED() panic("Code path not implemented yet.")
 
 #ifndef NO_EXOS_STATIC_WRAPPER
 

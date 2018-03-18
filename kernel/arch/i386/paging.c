@@ -35,8 +35,8 @@ bool handle_potential_cow(u32 vaddr)
    void *page_vaddr = (void *)(vaddr & PAGE_MASK);
    u32 orig_page_paddr = ptable->pages[page_table_index].pageAddr;
 
-   printk("*** DEBUG: attempt to write COW page at %p (addr: %p)\n",
-          page_vaddr, vaddr);
+   // printk("*** DEBUG: attempt to write COW page at %p (addr: %p)\n",
+   //        page_vaddr, vaddr);
 
    if (pageframes_refcount[orig_page_paddr] == 1) {
 
@@ -48,8 +48,8 @@ bool handle_potential_cow(u32 vaddr)
       ptable->pages[page_table_index].avail = 0;
       invalidate_page(vaddr);
 
-      printk("*** DEBUG: the page was not shared anymore. "
-             "Making it writable.\n");
+      // printk("*** DEBUG: the page was not shared anymore. "
+      //        "Making it writable.\n");
 
       return true;
    }
@@ -69,7 +69,7 @@ bool handle_potential_cow(u32 vaddr)
 
    uptr paddr = KERNEL_VA_TO_PA(new_page_vaddr);
 
-   printk("[COW] Allocated new pageframe at PADDR: %p\n", paddr);
+   // printk("[COW] Allocated new pageframe at PADDR: %p\n", paddr);
 
    ptable->pages[page_table_index].pageAddr = paddr >> PAGE_SHIFT;
    ptable->pages[page_table_index].rw = true;

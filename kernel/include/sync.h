@@ -9,7 +9,8 @@ extern task_info *current;
 typedef enum {
    WOBJ_NONE = 0,
    WOBJ_KMUTEX = 1,
-   WOBJ_KCOND = 2
+   WOBJ_KCOND = 2,
+   WOBJ_PID = 3
 } wo_type;
 
 /*
