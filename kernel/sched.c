@@ -61,7 +61,7 @@ bool is_kernel_thread(task_info *ti)
 void set_current_task_in_kernel()
 {
    ASSERT(!is_preemption_enabled());
-   current->running_in_kernel = 1;
+   current->running_in_kernel = true;
 }
 
 

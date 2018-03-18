@@ -159,7 +159,8 @@ sptr sys_fork()
    child->pid = ++current_max_pid;
 
    child->owning_process_pid = child->pid;
-   child->running_in_kernel = 0;
+   child->running_in_kernel = false;
+   child->parent_pid = current->pid;
 
    // The other members of task_info have been copied by the memmove() above
    bzero(&child->kernel_state_regs, sizeof(child->kernel_state_regs));

@@ -28,16 +28,17 @@ struct task_info {
    list_node sleeping_list;
 
    int pid; /* global user/kernel thread identifier */
+   int owning_process_pid; /* The pid of the process owning this thread. */
+   int parent_pid;
+
    task_state_enum state;
    u8 exit_status;
+   bool running_in_kernel;
 
    u64 ticks;
    u64 total_ticks;
    u64 kernel_ticks;
 
-   int running_in_kernel;
-
-   int owning_process_pid; /* The pid of the process owning this thread. */
    void *kernel_stack;
 
    wait_obj wobj;
