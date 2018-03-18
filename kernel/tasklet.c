@@ -104,7 +104,13 @@ void tasklet_runner_kthread()
 
    while (true) {
 
-      run_one_tasklet();
+      bool tasklet_run;
+
+      do {
+
+         tasklet_run = run_one_tasklet();
+
+      } while (tasklet_run);
 
       /*
        * Special use of a condition variable without a mutex, see the comment
