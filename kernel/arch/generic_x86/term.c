@@ -1,6 +1,6 @@
 
 /*
- * This is a DEMO/DEBUG version of the tty driver.
+ * This is a DEMO/DEBUG version of the tty device.
  *
  * Useful info:
  * http://www.linusakesson.net/programming/tty/index.php
@@ -19,24 +19,32 @@ u8 terminal_color;
 
 void term_scroll_up(u32 lines)
 {
-   video_scroll_up(lines);
+   disable_interrupts();
+   {
+      video_scroll_up(lines);
 
-   if (!video_is_at_bottom()) {
-      video_disable_cursor();
-   } else {
-      video_enable_cursor();
-      video_move_cursor(terminal_row, terminal_column);
+      if (!video_is_at_bottom()) {
+         video_disable_cursor();
+      } else {
+         video_enable_cursor();
+         video_move_cursor(terminal_row, terminal_column);
+      }
    }
+   enable_interrupts();
 }
 
 void term_scroll_down(u32 lines)
 {
-   video_scroll_down(lines);
+   disable_interrupts();
+   {
+      video_scroll_down(lines);
 
-   if (video_is_at_bottom()) {
-      video_enable_cursor();
-      video_move_cursor(terminal_row, terminal_column);
+      if (video_is_at_bottom()) {
+         video_enable_cursor();
+         video_move_cursor(terminal_row, terminal_column);
+      }
    }
+   enable_interrupts();
 }
 
 void term_setcolor(u8 color) {
@@ -100,7 +108,9 @@ void term_write_char_unsafe(char c)
 void term_write_char(char c)
 {
    disable_interrupts();
-   term_write_char_unsafe(c);
+   {
+      term_write_char_unsafe(c);
+   }
    enable_interrupts();
 }
 
@@ -118,13 +128,18 @@ void term_write_string(const char *str)
 
 void term_move_ch(int row, int col)
 {
-   terminal_row = row;
-   terminal_column = col;
-   video_move_cursor(row, col);
+   disable_interrupts();
+   {
+      terminal_row = row;
+      terminal_column = col;
+      video_move_cursor(row, col);
+   }
 }
 
 void term_init()
 {
+   ASSERT(!are_interrupts_enabled());
+
    term_move_ch(0, 0);
    term_setcolor(make_color(COLOR_WHITE, COLOR_BLACK));
 
