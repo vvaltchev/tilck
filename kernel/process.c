@@ -142,7 +142,7 @@ NORETURN void sys_exit(int exit_status)
 }
 
 // Returns child's pid
-sptr sys_fork()
+sptr sys_fork(void)
 {
    disable_preemption();
 

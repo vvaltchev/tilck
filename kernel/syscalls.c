@@ -9,9 +9,9 @@
 
 typedef sptr (*syscall_type)();
 
+// 1:
 sptr sys_exit(int code);
-
-sptr sys_fork();
+sptr sys_fork(void);
 sptr sys_read(int fd, void *buf, size_t count);
 sptr sys_write(int fd, const void *buf, size_t count);
 sptr sys_open(const char *pathname, int flags, int mode);
@@ -85,18 +85,22 @@ sptr sys_mount()
    return -1;
 }
 
-sptr sys_umount()
+sptr sys_oldumount()
 {
    return -1;
 }
 
-sptr sys_setuid()
+/* Actual implementation: accept only 0 as UID. */
+sptr sys_setuid16(uptr uid)
 {
-   return -1;
+   if (uid == 0)
+      return 0;
+
+   return -EINVAL;
 }
 
 /* Actual implementation, not a stub: only the root user exists. */
-sptr sys_getuid()
+sptr sys_getuid16()
 {
    return 0;
 }
@@ -131,6 +135,12 @@ sptr sys_utime()
 // 54:
 sptr sys_ioctl(int fd, uptr request, void *argp);
 
+//183:
+sptr sys_getcwd(char *buf, size_t buf_size)
+{
+   return 0;
+}
+
 #ifdef __i386__
 
 // The syscall numbers are ARCH-dependent
@@ -158,16 +168,18 @@ syscall_type syscalls_pointers[] =
    [19] = sys_lseek,
    [20] = sys_getpid,
    [21] = sys_mount,
-   [22] = sys_umount,
-   [23] = sys_setuid,
-   [24] = sys_getuid,
+   [22] = sys_oldumount,
+   [23] = sys_setuid16,
+   [24] = sys_getuid16,
    [25] = sys_stime,
    [26] = sys_ptrace,
    [27] = sys_alarm,
    [28] = sys_oldfstat,
    [29] = sys_pause,
    [30] = sys_utime,
-   [54] = sys_ioctl
+   [54] = sys_ioctl,
+
+   [183] = sys_getcwd
 };
 
 const ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);

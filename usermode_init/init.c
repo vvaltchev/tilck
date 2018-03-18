@@ -176,11 +176,11 @@ int main(int argc, char **argv, char **env)
 
    //file_read_test();
    //test_read_stdin();
-   //pause();
+   pause();
 
    //args_test(argc, argv);
    //bss_var_test();
-   fork_test();
+   //fork_test();
 
    return 0;
 }
