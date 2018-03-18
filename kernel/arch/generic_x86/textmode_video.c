@@ -107,7 +107,13 @@ void textmode_add_row_and_scroll(void)
    textmode_clear_row(VIDEO_ROWS - 1);
 }
 
-/* -------- cursor management functions ----------- */
+
+/*
+ * -------- cursor management functions -----------
+ *
+ * Here: http://www.osdever.net/FreeVGA/vga/textcur.htm
+ * There is a lot of precious information about how to work with the cursor.
+ */
 
 void textmode_move_cursor(int row, int col)
 {
@@ -127,14 +133,29 @@ void textmode_enable_cursor(void)
    const u8 scanline_end = 15;
 
    outb(0x3D4, 0x0A);
-   outb(0x3D5, (inb(0x3D5) & 0xC0) | scanline_start);
+   outb(0x3D5, (inb(0x3D5) & 0xC0) | scanline_start); // Note: mask with 0xC0
+                                                      // which keeps only the
+                                                      // higher 2 bits in order
+                                                      // to set bit 5 to 0.
 
    outb(0x3D4, 0x0B);
-   outb(0x3D5, (inb(0x3E0) & 0xE0) | scanline_end);
+   outb(0x3D5, (inb(0x3D5) & 0xE0) | scanline_end);   // Mask with 0xE0 keeps
+                                                      // the higher 3 bits.
 }
 
 void textmode_disable_cursor(void)
 {
-   outb(0x3D4, 0x0A);
-   outb(0x3D5, 0x20);
+   /*
+    * Move the cursor off-screen. Yes, it seems an ugly way to do that, but it
+    * seems to be the most compatible way to "disable" the cursor.
+    * As claimed here: http://www.osdever.net/FreeVGA/vga/textcur.htm#enable
+    * the "official" method below (commented) does not work on some hardware.
+    * On my Hannspree SN10E1, I can confirm that the code below causes strange
+    * effects: the cursor is offset-ed 3 chars at the right of the position
+    * it should be.
+    */
+   textmode_move_cursor(VIDEO_ROWS, VIDEO_COLS);
+
+   // outb(0x3D4, 0x0A);
+   // outb(0x3D5, inb(0x3D5) | 0x20);
 }

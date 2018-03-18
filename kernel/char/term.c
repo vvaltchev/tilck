@@ -144,6 +144,7 @@ void term_init(const video_interface *interface, u8 default_color)
 
    vi = interface;
 
+   vi->enable_cursor();
    term_move_ch(0, 0);
    term_setcolor(default_color);
 
