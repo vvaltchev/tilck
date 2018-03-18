@@ -1,12 +1,11 @@
 
 #include <common_defs.h>
 #include <string_util.h>
-#include <term.h>
 #include <fs/fat32.h>
-#include <kmalloc.h>
 #include <elf.h>
 #include <utils.h>
-#include <config.h>
+
+void term_init(void);
 
 /*
  * Checks if 'addr' is in the range [begin, end).
@@ -137,8 +136,8 @@ void bootloader_main(void)
 
    printk("*** HELLO from the 3rd stage of the BOOTLOADER ***\n");
 
-   // ramdisk_checksum();
-   // while(1) halt();
+   //ramdisk_checksum();
+   //while(1) asmVolatile("hlt");
 
    root_fs = fat_mount_ramdisk((void *)RAMDISK_PADDR);
 

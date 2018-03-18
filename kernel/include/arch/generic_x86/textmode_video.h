@@ -29,17 +29,17 @@ enum vga_color {
 #define make_vgaentry(c, color) (((u16)c) | ((u16)color << 8))
 
 /* Main functions */
-void video_set_char_at(char c, u8 color, int row, int col);
-void video_clear_row(int row_num);
+void textmode_set_char_at(char c, u8 color, int row, int col);
+void textmode_clear_row(int row_num);
 
 /* Scrolling */
-void video_scroll_up(u32 lines);
-void video_scroll_down(u32 lines);
-bool video_is_at_bottom(void);
-void video_scroll_to_bottom(void);
-void video_add_row_and_scroll(void);
+void textmode_scroll_up(u32 lines);
+void textmode_scroll_down(u32 lines);
+bool textmode_is_at_bottom(void);
+void textmode_scroll_to_bottom(void);
+void textmode_add_row_and_scroll(void);
 
 /* Cursor management */
-void video_move_cursor(int row, int col);
-void video_enable_cursor(void);
-void video_disable_cursor(void);
+void textmode_move_cursor(int row, int col);
+void textmode_enable_cursor(void);
+void textmode_disable_cursor(void);

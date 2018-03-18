@@ -25,6 +25,8 @@
 #include <pageframe_allocator.h>
 #include <multiboot.h>
 
+#include <arch/generic_x86/textmode_video.h>
+
 extern u32 memsize_in_mb;
 extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
@@ -144,8 +146,8 @@ void load_usermode_init()
    usermode_init_task =
       create_first_usermode_task(pdir, entry_point, stack_addr);
 
-   printk("[load_usermode_init] Entry: %p\n", entry_point);
-   printk("[load_usermode_init] Stack: %p\n", stack_addr);
+   //printk("[load_usermode_init] Entry: %p\n", entry_point);
+   //printk("[load_usermode_init] Stack: %p\n", stack_addr);
 }
 
 void mount_ramdisk(void)
@@ -163,9 +165,28 @@ void mount_ramdisk(void)
 
 void init_tty(void);
 
+/*
+ * For the moment, exOS supports only the standard PC text mode (80x25),
+ * but, thanks to the video_interface, term can work with anything, even
+ * with a graphical framebuffer.
+ */
+static const video_interface x86_pc_text_mode_vi =
+{
+   textmode_set_char_at,
+   textmode_clear_row,
+   textmode_scroll_up,
+   textmode_scroll_down,
+   textmode_is_at_bottom,
+   textmode_scroll_to_bottom,
+   textmode_add_row_and_scroll,
+   textmode_move_cursor,
+   textmode_enable_cursor,
+   textmode_disable_cursor
+};
+
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
-   term_init();
+   term_init(&x86_pc_text_mode_vi, make_color(COLOR_WHITE, COLOR_BLACK));
    show_hello_message();
    read_multiboot_info(multiboot_magic, mbi_addr);
    show_additional_info();

@@ -6,28 +6,30 @@
  * http://www.linusakesson.net/programming/tty/index.php
  */
 
+#include <hal.h>
 #include <term.h>
-#include <arch/generic_x86/textmode_video.h>
 #include <serial.h>
 
-u8 term_width = 80;
-u8 term_height = 25;
+static u8 term_width = 80;
+static u8 term_height = 25;
 
-u8 terminal_row;
-u8 terminal_column;
-u8 terminal_color;
+static u8 terminal_row;
+static u8 terminal_column;
+static u8 terminal_color;
+
+static const video_interface *vi;
 
 void term_scroll_up(u32 lines)
 {
    disable_interrupts();
    {
-      video_scroll_up(lines);
+      vi->scroll_up(lines);
 
-      if (!video_is_at_bottom()) {
-         video_disable_cursor();
+      if (!vi->is_at_bottom()) {
+         vi->disable_cursor();
       } else {
-         video_enable_cursor();
-         video_move_cursor(terminal_row, terminal_column);
+         vi->enable_cursor();
+         vi->move_cursor(terminal_row, terminal_column);
       }
    }
    enable_interrupts();
@@ -37,11 +39,11 @@ void term_scroll_down(u32 lines)
 {
    disable_interrupts();
    {
-      video_scroll_down(lines);
+      vi->scroll_down(lines);
 
-      if (video_is_at_bottom()) {
-         video_enable_cursor();
-         video_move_cursor(terminal_row, terminal_column);
+      if (vi->is_at_bottom()) {
+         vi->enable_cursor();
+         vi->move_cursor(terminal_row, terminal_column);
       }
    }
    enable_interrupts();
@@ -58,25 +60,25 @@ static void term_incr_row()
       return;
    }
 
-   video_add_row_and_scroll();
+   vi->add_row_and_scroll();
 }
 
 void term_write_char_unsafe(char c)
 {
    write_serial(c);
-   video_scroll_to_bottom();
-   video_enable_cursor();
+   vi->scroll_to_bottom();
+   vi->enable_cursor();
 
    if (c == '\n') {
       terminal_column = 0;
       term_incr_row();
-      video_move_cursor(terminal_row, terminal_column);
+      vi->move_cursor(terminal_row, terminal_column);
       return;
    }
 
    if (c == '\r') {
       terminal_column = 0;
-      video_move_cursor(terminal_row, terminal_column);
+      vi->move_cursor(terminal_row, terminal_column);
       return;
    }
 
@@ -89,12 +91,12 @@ void term_write_char_unsafe(char c)
          terminal_column--;
       }
 
-      video_set_char_at(' ', terminal_color, terminal_row, terminal_column);
-      video_move_cursor(terminal_row, terminal_column);
+      vi->set_char_at(' ', terminal_color, terminal_row, terminal_column);
+      vi->move_cursor(terminal_row, terminal_column);
       return;
    }
 
-   video_set_char_at(c, terminal_color, terminal_row, terminal_column);
+   vi->set_char_at(c, terminal_color, terminal_row, terminal_column);
    ++terminal_column;
 
    if (terminal_column == term_width) {
@@ -102,7 +104,7 @@ void term_write_char_unsafe(char c)
       term_incr_row();
    }
 
-   video_move_cursor(terminal_row, terminal_column);
+   vi->move_cursor(terminal_row, terminal_column);
 }
 
 void term_write_char(char c)
@@ -132,19 +134,21 @@ void term_move_ch(int row, int col)
    {
       terminal_row = row;
       terminal_column = col;
-      video_move_cursor(row, col);
+      vi->move_cursor(row, col);
    }
 }
 
-void term_init()
+void term_init(const video_interface *interface, u8 default_color)
 {
    ASSERT(!are_interrupts_enabled());
 
+   vi = interface;
+
    term_move_ch(0, 0);
-   term_setcolor(make_color(COLOR_WHITE, COLOR_BLACK));
+   term_setcolor(default_color);
 
    for (int i = 0; i < term_height; i++)
-      video_clear_row(i);
+      vi->clear_row(i);
 
    init_serial_port();
 }
