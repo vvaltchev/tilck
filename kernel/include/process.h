@@ -115,8 +115,6 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg);
 // It is called when each kernel thread returns. May be called explicitly too.
 void kthread_exit();
 
-void kernel_sleep(u64 ticks);
-
 /*
  * Saves the current state and calls schedule().
  * That after, typically after some time, the scheduler will restore the thread
@@ -124,3 +122,8 @@ void kernel_sleep(u64 ticks);
  */
 
 void kernel_yield();
+
+void kernel_sleep(u64 ticks);
+
+int set_task_to_wake_after(task_info *task, u64 ticks);
+void cancel_timer(int timer_num);

@@ -28,31 +28,44 @@ bool is_preemption_enabled() {
 typedef struct {
 
    u64 ticks_to_sleep;
-   task_info *task;     // where NULL, the slot is unused.
+   task_info *task;     // task == NULL means that the slot is unused.
 
 } kthread_timer_sleep_obj;
 
-kthread_timer_sleep_obj timers_array[64] = { 0 };
+kthread_timer_sleep_obj timers_array[64];
 
 /*
  * TODO: consider making this logic reentrant: avoid disabling interrupts
  * and disable just the preemption.
  */
 
-static void register_curr_task_for_timer_sleep(u64 ticks)
+int set_task_to_wake_after(task_info *task, u64 ticks)
 {
-   ASSERT(!are_interrupts_enabled());
-
-   for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
-      if (!timers_array[i].task) {
-         timers_array[i].ticks_to_sleep = ticks;
-         timers_array[i].task = get_current_task();
-         task_change_state(get_current_task(), TASK_STATE_SLEEPING);
-         return;
+   disable_interrupts();
+   {
+      for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
+         if (!timers_array[i].task) {
+            timers_array[i].ticks_to_sleep = ticks;
+            timers_array[i].task = task;
+            task_change_state(get_current_task(), TASK_STATE_SLEEPING);
+            return i;
+         }
       }
    }
+   enable_interrupts();
 
-   NOT_REACHED(); // TODO: fallback to a linked list here
+   // TODO: consider implementing a fallback here. For example use a linkedlist.
+   panic("Unable to find a free slot in timers_array.");
+}
+
+void cancel_timer(int timer_num)
+{
+   disable_interrupts();
+   {
+      ASSERT(timers_array[timer_num].task != NULL);
+      timers_array[timer_num].task = NULL;
+   }
+   enable_interrupts();
 }
 
 static task_info *tick_all_timers(void *context)
@@ -61,9 +74,8 @@ static task_info *tick_all_timers(void *context)
 
    for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
 
-      if (!timers_array[i].task) {
+      if (!timers_array[i].task)
          continue;
-      }
 
       if (--timers_array[i].ticks_to_sleep == 0) {
          last_ready_task = timers_array[i].task;
@@ -81,10 +93,7 @@ static task_info *tick_all_timers(void *context)
 
 void kernel_sleep(u64 ticks)
 {
-   disable_interrupts();
-   register_curr_task_for_timer_sleep(ticks);
-   enable_interrupts();
-
+   set_task_to_wake_after(current, ticks);
    kernel_yield();
 }
 

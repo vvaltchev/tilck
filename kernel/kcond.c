@@ -14,24 +14,37 @@ void kcond_init(kcond *c)
    enable_preemption();
 }
 
-void kcond_wait(kcond *c, kmutex *m)
+bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
 {
    disable_preemption();
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
 
    wait_obj_set(&current->wobj, WOBJ_KCOND, c);
-   task_change_state(current, TASK_STATE_SLEEPING);
+
+   if (timeout_ticks != KCOND_WAIT_FOREVER) {
+      c->timer_num = set_task_to_wake_after(current, timeout_ticks);
+   } else {
+      c->timer_num = -1;
+      task_change_state(current, TASK_STATE_SLEEPING);
+   }
 
    if (m) {
       kmutex_unlock(m);
    }
 
    enable_preemption();
-   kernel_yield(); // Go to sleep until a signal is fired.
+   kernel_yield(); // Go to sleep until a signal is fired or timeout happens.
 
    if (m) {
       kmutex_lock(m); // Re-acquire the lock back
    }
+
+   /*
+    * If a signal really woke up this task, then wobj.ptr must be NULL.
+    * If it isn't NULL, that means that the task has been weaken up because
+    * the timeout expired.
+    */
+   return !current->wobj.ptr;
 }
 
 void kcond_signal_int(kcond *c, bool all)
@@ -40,24 +53,23 @@ void kcond_signal_int(kcond *c, bool all)
 
    disable_preemption();
 
-   // TODO: make that we iterate only among sleeping tasks
-
    list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
 
       ASSERT(pos->state == TASK_STATE_SLEEPING);
 
-      if (pos->wobj.ptr != c) {
+      if (pos->wobj.ptr != c)
          continue;
-      }
 
       // pos->wobj.ptr == c
+
+      if (c->timer_num >= 0)
+         cancel_timer(c->timer_num);
 
       wait_obj_reset(&pos->wobj);
       task_change_state(pos, TASK_STATE_RUNNABLE);
 
-      if (!all) {
+      if (!all)
          break;
-      }
    }
 
    enable_preemption();

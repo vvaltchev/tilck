@@ -66,13 +66,16 @@ static inline bool kmutex_is_curr_task_holding_lock(kmutex *m)
 typedef struct {
 
    uptr id;
+   int timer_num;
 
 } kcond;
+
+#define KCOND_WAIT_FOREVER 0
 
 void kcond_signal_int(kcond *c, bool all);
 
 void kcond_init(kcond *c);
-void kcond_wait(kcond *c, kmutex *m);
+bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks);
 void kcond_destory(kcond *c);
 
 static inline void kcond_signal_one(kcond *c)

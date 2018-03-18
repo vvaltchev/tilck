@@ -14,7 +14,7 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
    enable_preemption();
 
    while (kb_cbuf_is_empty()) {
-      kcond_wait(&kb_cond, NULL);
+      kcond_wait(&kb_cond, NULL, KCOND_WAIT_FOREVER);
    }
 
    size_t i = 0;

@@ -110,6 +110,6 @@ void tasklet_runner_kthread()
        * Special use of a condition variable without a mutex, see the comment
        * above in enqueue_tasklet_int().
        */
-      kcond_wait(&tasklet_cond, NULL);
+      kcond_wait(&tasklet_cond, NULL, TIMER_HZ / 10);
    }
 }
