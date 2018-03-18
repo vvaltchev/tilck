@@ -20,79 +20,79 @@ sptr sys_waitpid(int pid, int *wstatus, int options);
 
 sptr sys_creat()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_link()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_unlink()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_execve()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_chdir()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_time()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_mknod()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_chmod()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_lchown()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_break()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_oldstat()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_lseek()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_getpid();
 
 sptr sys_mount()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_umount()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_setuid()
 {
-   return 0;
+   return -1;
 }
 
 /* Actual implementation, not a stub: only the root user exists. */
@@ -103,29 +103,29 @@ sptr sys_getuid()
 
 sptr sys_stime()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_ptrace()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_alarm()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_oldfstat()
 {
-   return 0;
+   return -1;
 }
 
 sptr sys_pause();
 
 sptr sys_utime()
 {
-   return 0;
+   return -1;
 }
 
 // 54:
@@ -179,10 +179,10 @@ void handle_syscall(regs *r)
 {
    save_current_task_state(r);
 
-   sptr syscall_no = (sptr) r->eax;
+   sptr sn = (sptr) r->eax;
 
-   if (syscall_no < 0 || syscall_no >= syscall_count) {
-      printk("INVALID syscall #%i\n", syscall_no);
+   if (sn < 0 || sn >= syscall_count || !syscalls_pointers[sn]) {
+      printk("INVALID syscall #%i\n", sn);
       r->eax = (uptr) -ENOSYS;
       return;
    }
