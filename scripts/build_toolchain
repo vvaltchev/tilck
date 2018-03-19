@@ -414,6 +414,7 @@ function build_dietlibc {
       pushd dietlibc-0.33
 
       sed -i 's/#define WANT_SYSENTER/\/\/#define WANT_SYSENTER/g' dietfeatures.h
+      sed -i 's/#define WANT_LINKER_WARNINGS/\/\/#define WANT_LINKER_WARNINGS/g' dietfeatures.h
       sed -i 's/-Wno-unused -Wredundant-decls/-Wno-unused -Wredundant-decls -fno-stack-protector/g' Makefile
 
       set +e
