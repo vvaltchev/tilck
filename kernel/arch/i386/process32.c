@@ -37,8 +37,11 @@ void push_string_on_user_stack(regs *r, const char *str)
    }
 }
 
-void push_args_on_user_stack(regs *r, char **argv, int argc,
-                             char **env, int envc)
+static void push_args_on_user_stack(regs *r,
+                                    const char *const *argv,
+                                    int argc,
+                                    const char *const *env,
+                                    int envc)
 {
    uptr pointers[argc]; // VLA
    uptr env_pointers[envc]; // VLA
@@ -154,13 +157,15 @@ void kthread_exit()
 task_info *create_usermode_task(page_directory_t *pdir,
                                 void *entry,
                                 void *stack_addr,
-                                char **argv,
-                                size_t argv_elems,
-                                char **env,
-                                size_t env_elems,
-                                bool use_current_pid)
+                                task_info *task_to_use,
+                                const char *const *argv,
+                                const char *const *env)
 {
+   size_t argv_elems = 0;
+   size_t env_elems = 0;
+   task_info *ti;
    regs r;
+
    bzero(&r, sizeof(r));
 
    // User data selector with bottom 2 bits set for ring 3.
@@ -172,31 +177,36 @@ task_info *create_usermode_task(page_directory_t *pdir,
    r.eip = (u32) entry;
    r.useresp = (u32) stack_addr;
 
+   while (argv[argv_elems]) argv_elems++;
+   while (env[env_elems]) env_elems++;
    push_args_on_user_stack(&r, argv, argv_elems, env, env_elems);
 
    r.eflags = get_eflags() | EFLAGS_IF;
 
-   task_info *ti = kzmalloc(sizeof(task_info));
-   list_node_init(&ti->list);
-
-   if (!use_current_pid) {
+   if (!task_to_use) {
+      ti = kzmalloc(sizeof(task_info));
+      list_node_init(&ti->list);
       ti->pid = ++current_max_pid;
+      add_task(ti);
+      ti->state = TASK_STATE_RUNNABLE;
    } else {
-      ti->pid = current->pid;
+      ti = task_to_use;
+      ASSERT(ti->state == TASK_STATE_RUNNABLE);
    }
 
    ti->pdir = pdir;
-   ti->state = TASK_STATE_RUNNABLE;
 
    ti->owning_process_pid = ti->pid;
    ti->running_in_kernel = false;
-   ti->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
+
+   if (!task_to_use) {
+      ti->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
+   }
 
    memmove(&ti->state_regs, &r, sizeof(r));
    bzero(&ti->kernel_state_regs, sizeof(r));
 
    task_info_reset_kernel_stack(ti);
-   add_task(ti);
    return ti;
 }
 

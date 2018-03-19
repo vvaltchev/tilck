@@ -19,7 +19,7 @@
  * return codes. In no case an invalid ELF file, a read error or an out of
  * memory error should make the kernel to panic.
  */
-void load_elf_program(const char *filepath,
-                      page_directory_t **pdir_ref,
-                      void **entry,
-                      void **stack_addr);
+int load_elf_program(const char *filepath,
+                     page_directory_t **pdir_ref,
+                     void **entry,
+                     void **stack_addr);

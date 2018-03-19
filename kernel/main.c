@@ -141,19 +141,21 @@ void load_usermode_init()
    void *stack_addr = NULL;
    page_directory_t *pdir = NULL;
 
-   load_elf_program("/sbin/init", &pdir, &entry_point, &stack_addr);
+   int r = load_elf_program("/sbin/init", &pdir, &entry_point, &stack_addr);
 
-   char *argv[] = { "init", "test_arg_1" };
-   char *env[] = { "OSTYPE=linux-gnu", "PWD=/", "EXOS=1" };
+   if (r < 0) {
+      panic("Unable to open /sbin/init!\n");
+   }
+
+   const char *const argv[] = { "init", "test_arg_1", NULL };
+   const char *const env[] = { "OSTYPE=linux-gnu", "EXOS=1", NULL };
 
    usermode_init_task = create_usermode_task(pdir,
                                              entry_point,
                                              stack_addr,
+                                             NULL,
                                              argv,
-                                             ARRAY_SIZE(argv),
-                                             env,
-                                             ARRAY_SIZE(env),
-                                             false);
+                                             env);
 
    //printk("[load_usermode_init] Entry: %p\n", entry_point);
    //printk("[load_usermode_init] Stack: %p\n", stack_addr);

@@ -6,13 +6,14 @@
 
 #include <string_util.h>
 #include <fs/exvfs.h>
+#include <exos_errno.h>
 
 #ifdef BITS32
 
-void load_elf_program(const char *filepath,
-                      page_directory_t **pdir_ref,
-                      void **entry,
-                      void **stack_addr)
+int load_elf_program(const char *filepath,
+                     page_directory_t **pdir_ref,
+                     void **entry,
+                     void **stack_addr)
 {
    ssize_t ret;
    Elf32_Ehdr header;
@@ -20,7 +21,7 @@ void load_elf_program(const char *filepath,
    fs_handle *elf_file = exvfs_open(filepath);
 
    if (!elf_file) {
-      panic("[kernel] Unable to open '%s'!\n", filepath);
+      return -ENOENT;
    }
 
    if (*pdir_ref == NULL) {
@@ -116,6 +117,7 @@ void load_elf_program(const char *filepath,
    *entry = (void *) header.e_entry;
 
    kfree(phdr, sizeof(*phdr));
+   return 0;
 }
 
 #endif // BITS32

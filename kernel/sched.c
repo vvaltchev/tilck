@@ -207,7 +207,7 @@ NORETURN void switch_to_idle_task_outside_interrupt_context()
 }
 
 
-void schedule()
+void schedule(void)
 {
    task_info *selected = NULL;
    task_info *pos;

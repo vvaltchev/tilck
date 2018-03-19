@@ -33,7 +33,9 @@ sptr sys_unlink()
    return -1;
 }
 
-sptr sys_execve(const char *filename, char *const argv[], char *const envp[]);
+sptr sys_execve(const char *filename,
+                const char *const *argv,
+                const char *const *env);
 
 sptr sys_chdir()
 {
@@ -191,7 +193,7 @@ void handle_syscall(regs *r)
    sptr sn = (sptr) r->eax;
 
    if (sn < 0 || sn >= syscall_count || !syscalls_pointers[sn]) {
-      printk("INVALID syscall #%i\n", sn);
+      printk("[kernel] invalid syscall #%i\n", sn);
       r->eax = (uptr) -ENOSYS;
       return;
    }

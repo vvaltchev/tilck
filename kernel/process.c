@@ -3,6 +3,7 @@
 #include <string_util.h>
 #include <process.h>
 #include <hal.h>
+#include <elf_loader.h>
 #include <exos_errno.h>
 
 //#define DEBUG_printk printk
@@ -24,15 +25,53 @@ extern int current_max_pid;
  * ***************************************************************
  */
 
-NORETURN void sys_exit(int exit_status);
-sptr sys_execve(const char *filename, char *const argv[], char *const envp[])
+static const char *default_env[] =
 {
-   sys_exit(199);
+   "OSTYPE=linux-gnu", "EXOS=1", NULL
+};
+
+sptr sys_execve(const char *filename,
+                const char *const *argv,
+                const char *const *env)
+{
+   int rc = -ENOENT; /* default, kind-of random, error */
 
    disable_preemption();
+   {
+      void *entry_point = NULL;
+      void *stack_addr = NULL;
+      page_directory_t *pdir = NULL;
 
+      rc = load_elf_program(filename, &pdir, &entry_point, &stack_addr);
+
+      if (rc < 0)
+         goto errend;
+
+      const char *const default_argv[] = { filename, NULL };
+
+      if (!argv)
+         argv = default_argv;
+
+      if (!env)
+         env = default_env;
+
+      task_change_state(current, TASK_STATE_RUNNABLE);
+      pdir_destroy(current->pdir);
+
+      create_usermode_task(pdir,
+                           entry_point,
+                           stack_addr,
+                           current,
+                           argv,
+                           env);
+
+      pop_nested_interrupt();
+      switch_to_idle_task_outside_interrupt_context();
+    }
+
+errend:
    enable_preemption();
-   return -ENOENT;
+   return rc;
 }
 
 sptr sys_pause()
