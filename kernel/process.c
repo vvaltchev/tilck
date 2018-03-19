@@ -30,6 +30,27 @@ static const char *default_env[] =
    "OSTYPE=linux-gnu", "EXOS=1", NULL
 };
 
+sptr sys_chdir(const char *path)
+{
+   sptr rc = 0;
+
+   disable_preemption();
+   {
+      size_t path_len = strlen(path) + 1;
+
+      if (path_len > ARRAY_SIZE(current->cwd)) {
+         rc = -ENAMETOOLONG;
+         goto out;
+      }
+
+      memmove(current->cwd, path, path_len);
+   }
+
+out:
+   enable_preemption();
+   return rc;
+}
+
 sptr sys_getcwd(char *buf, size_t buf_size)
 {
    size_t cwd_len;

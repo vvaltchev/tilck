@@ -19,13 +19,27 @@ int main(int argc, char **argv, char **env)
    printf("\n");
 
    char buf[256];
-   char *res = getcwd(buf, sizeof(buf));
+   char *res;
+
+   res = getcwd(buf, sizeof(buf));
 
    if (res != buf) {
       perror("Shell: getcwd failed");
       return 1;
    }
 
-   printf("CWD: '%s'\n'", buf);
+   printf("CWD: '%s'\n", buf);
+
+   chdir("/testdir");
+
+   res = getcwd(buf, sizeof(buf));
+
+   if (res != buf) {
+      perror("Shell: getcwd failed");
+      return 1;
+   }
+
+   printf("CWD: '%s'\n", buf);
+
    return 0;
 }

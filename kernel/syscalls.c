@@ -37,10 +37,7 @@ sptr sys_execve(const char *filename,
                 const char *const *argv,
                 const char *const *env);
 
-sptr sys_chdir()
-{
-   return -1;
-}
+sptr sys_chdir(const char *path);
 
 sptr sys_time()
 {

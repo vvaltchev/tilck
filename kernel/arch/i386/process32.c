@@ -189,7 +189,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
       ti->pid = ++current_max_pid;
       add_task(ti);
       ti->state = TASK_STATE_RUNNABLE;
-      ti->cwd = "/";
+      memmove(ti->cwd, "/", 2);
    } else {
       ti = task_to_use;
       ASSERT(ti->state == TASK_STATE_RUNNABLE);
