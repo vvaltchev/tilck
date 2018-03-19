@@ -37,8 +37,8 @@ void push_string_on_user_stack(regs *r, const char *str)
    }
 }
 
-void push_args_on_user_stack(regs *r, int argc,
-                             char **argv, int envc, char **env)
+void push_args_on_user_stack(regs *r, char **argv, int argc,
+                             char **env, int envc)
 {
    uptr pointers[argc]; // VLA
    uptr env_pointers[envc]; // VLA
@@ -151,9 +151,14 @@ void kthread_exit()
    schedule_outside_interrupt_context();
 }
 
-task_info *create_first_usermode_task(page_directory_t *pdir,
-                                      void *entry,
-                                      void *stack_addr)
+task_info *create_usermode_task(page_directory_t *pdir,
+                                void *entry,
+                                void *stack_addr,
+                                char **argv,
+                                size_t argv_elems,
+                                char **env,
+                                size_t env_elems,
+                                bool use_current_pid)
 {
    regs r;
    bzero(&r, sizeof(r));
@@ -167,23 +172,25 @@ task_info *create_first_usermode_task(page_directory_t *pdir,
    r.eip = (u32) entry;
    r.useresp = (u32) stack_addr;
 
-   char *argv[] = { "init", "test_arg_1" };
-   char *env[] = { "OSTYPE=linux-gnu", "PWD=/", "EXOS=1" };
-   push_args_on_user_stack(&r, ARRAY_SIZE(argv), argv, ARRAY_SIZE(env), env);
+   push_args_on_user_stack(&r, argv, argv_elems, env, env_elems);
 
-   r.eflags = get_eflags() | (1 << 9);
+   r.eflags = get_eflags() | EFLAGS_IF;
 
    task_info *ti = kzmalloc(sizeof(task_info));
    list_node_init(&ti->list);
 
+   if (!use_current_pid) {
+      ti->pid = ++current_max_pid;
+   } else {
+      ti->pid = current->pid;
+   }
+
    ti->pdir = pdir;
-   ti->pid = ++current_max_pid;
    ti->state = TASK_STATE_RUNNABLE;
 
    ti->owning_process_pid = ti->pid;
-   ti->running_in_kernel = 0;
-   ti->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
-   bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
+   ti->running_in_kernel = false;
+   ti->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
 
    memmove(&ti->state_regs, &r, sizeof(r));
    bzero(&ti->kernel_state_regs, sizeof(r));
@@ -321,7 +328,7 @@ NORETURN void switch_to_task(task_info *ti)
        * IRET the CPU will enable the interrupts.
        */
 
-      ASSERT(state->eflags & X86_EFLAGS_IF);
+      ASSERT(state->eflags & EFLAGS_IF);
 
       current = ti;
       context_switch(state);
@@ -339,7 +346,7 @@ NORETURN void switch_to_task(task_info *ti)
        * finally enabling them. See the comment in asm_kernel_context_switch_x86
        * for more about this.
        */
-      state->eflags &= ~X86_EFLAGS_IF;
+      state->eflags &= ~EFLAGS_IF;
 
       set_kernel_stack(ti->kernel_state_regs.useresp);
       current = ti;

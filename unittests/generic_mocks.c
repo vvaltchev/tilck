@@ -64,7 +64,7 @@ void irq_clear_mask() { }
 void kthread_create() { }
 void debug_qemu_turn_off_machine() { }
 void load_elf_program() { }
-void create_first_usermode_task() { }
+void create_usermode_task() { }
 void gdt_install() { }
 void idt_install() { }
 void irq_install() { }

@@ -15,13 +15,24 @@
 #define X86_PC_ACPI_IRQ        9
 #define X86_PC_PS2_MOUSE_IRQ  12
 
-#define X86_EFLAGS_CF (1 << 0) // carry flag
-#define X86_EFLAGS_ZF (1 << 6) // zero flag
-#define X86_EFLAGS_SF (1 << 7) // sign flag
-#define X86_EFLAGS_IF (1 << 9) // interrupts enabled flag
-#define X86_EFLAGS_DF (1 << 10) // direction flag
-#define X86_EFLAGS_OF (1 << 11) // overflow flag
+#define EFLAGS_CF    0x0001
+#define EFLAGS_PF    0x0004
+#define EFLAGS_AF    0x0010
+#define EFLAGS_ZF    0x0040
+#define EFLAGS_SF    0x0080
+#define EFLAGS_TF    0x0100
+#define EFLAGS_IF    0x0200
+#define EFLAGS_DF    0x0400
+#define EFLAGS_OF    0x0800
+#define EFLAGS_NT    0x4000
+#define EFLAGS_RF   0x10000
+#define EFLAGS_VM   0x20000
+#define EFLAGS_AC   0x40000
+#define EFLAGS_VIF  0x80000
+#define EFLAGS_VIP 0x100000
+#define EFLAGS_ID  0x200000
 
+#define EFLAGS_IOPL 0x3000
 
 static ALWAYS_INLINE u64 RDTSC()
 {
@@ -116,7 +127,7 @@ extern volatile int disable_interrupts_count;
 static inline bool are_interrupts_enabled_int(const char *file, int line)
 {
    uptr eflags = get_eflags();
-   bool interrupts_on = !!(eflags & X86_EFLAGS_IF);
+   bool interrupts_on = !!(eflags & EFLAGS_IF);
 
 #ifdef DEBUG
 
@@ -174,7 +185,7 @@ static ALWAYS_INLINE void disable_interrupts()
 {
    uptr eflags = get_eflags();
 
-   if (eflags & X86_EFLAGS_IF) {
+   if (eflags & EFLAGS_IF) {
 
       // interrupts are enabled: disable them first.
       HW_disable_interrupts();

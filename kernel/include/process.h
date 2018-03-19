@@ -88,9 +88,14 @@ void schedule_outside_interrupt_context();
 
 NORETURN void switch_to_idle_task_outside_interrupt_context();
 
-task_info *create_first_usermode_task(page_directory_t *pdir,
-                                      void *entry,
-                                      void *stack_addr);
+task_info *create_usermode_task(page_directory_t *pdir,
+                                void *entry,
+                                void *stack_addr,
+                                char **argv,
+                                size_t argv_elems,
+                                char **env,
+                                size_t env_elems,
+                                bool use_current_pid);
 
 bool is_kernel_thread(task_info *ti);
 

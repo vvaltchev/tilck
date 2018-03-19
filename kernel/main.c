@@ -143,8 +143,17 @@ void load_usermode_init()
 
    load_elf_program("/sbin/init", &pdir, &entry_point, &stack_addr);
 
-   usermode_init_task =
-      create_first_usermode_task(pdir, entry_point, stack_addr);
+   char *argv[] = { "init", "test_arg_1" };
+   char *env[] = { "OSTYPE=linux-gnu", "PWD=/", "EXOS=1" };
+
+   usermode_init_task = create_usermode_task(pdir,
+                                             entry_point,
+                                             stack_addr,
+                                             argv,
+                                             ARRAY_SIZE(argv),
+                                             env,
+                                             ARRAY_SIZE(env),
+                                             false);
 
    //printk("[load_usermode_init] Entry: %p\n", entry_point);
    //printk("[load_usermode_init] Stack: %p\n", stack_addr);
