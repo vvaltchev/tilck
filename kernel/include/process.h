@@ -47,6 +47,8 @@ struct task_info {
    regs kernel_state_regs;
    page_directory_t *pdir;
 
+   const char *cwd; /* current working directory */
+
    /* Handles */
    fs_handle handles[16]; /* for the moment, just a fixed-size small array */
 };

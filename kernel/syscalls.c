@@ -135,10 +135,8 @@ sptr sys_utime()
 sptr sys_ioctl(int fd, uptr request, void *argp);
 
 //183:
-sptr sys_getcwd(char *buf, size_t buf_size)
-{
-   return 0;
-}
+sptr sys_getcwd(char *buf, size_t buf_size);
+
 
 #ifdef __i386__
 

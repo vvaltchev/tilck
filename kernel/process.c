@@ -30,6 +30,25 @@ static const char *default_env[] =
    "OSTYPE=linux-gnu", "EXOS=1", NULL
 };
 
+sptr sys_getcwd(char *buf, size_t buf_size)
+{
+   size_t cwd_len;
+   disable_preemption();
+   {
+      cwd_len = strlen(current->cwd) + 1;
+
+      if (!buf)
+         return -EINVAL;
+
+      if (buf_size < cwd_len)
+         return -ERANGE;
+
+      memmove(buf, current->cwd, cwd_len);
+   }
+   enable_preemption();
+   return cwd_len;
+}
+
 sptr sys_execve(const char *filename,
                 const char *const *argv,
                 const char *const *env)
