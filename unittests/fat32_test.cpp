@@ -117,7 +117,7 @@ TEST(fat32, read_whole_file)
    free(content);
 
    size_t fsize;
-   const char *buf = load_once_file("build/init", &fsize);
+   const char *buf = load_once_file("build/sysroot/sbin/init", &fsize);
    uint32_t actual_file_crc = crc32(0, buf, fsize);
    ASSERT_EQ(fat_crc, actual_file_crc);
 }
@@ -137,7 +137,7 @@ TEST(fat32, fread)
    char *buf2 = (char *) calloc(1, buf2_size);
    ssize_t read_offset = 0;
 
-   FILE *fp = fopen("build/init", "rb");
+   FILE *fp = fopen("build/sysroot/sbin/init", "rb");
    char tmpbuf[1024];
 
    while (true) {
