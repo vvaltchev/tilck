@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Project's root directory
-MAIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-MAIN_DIR=$MAIN_DIR/..
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 
 if [ -z "$CC" ]; then
 
@@ -100,9 +100,17 @@ if [ -z "$USE_GCOV" ]; then
    USE_GCOV=off
 fi
 
-mkdir -p $MAIN_DIR/build
-cp $MAIN_DIR/scripts/*run*qemu* $MAIN_DIR/build
+curr_dir="`pwd`"
 
-cd $MAIN_DIR/build
-$CMAKE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D USE_GCOV:BOOL=$USE_GCOV .. $@
+if [ "$curr_dir" = "$MAIN_DIR" ]; then
+   build_dir="$MAIN_DIR/build"
+   mkdir -p $MAIN_DIR/build
+else
+   build_dir="$curr_dir"
+fi
+
+cp $MAIN_DIR/scripts/*run*qemu* $build_dir
+cd $build_dir
+
+$CMAKE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D USE_GCOV:BOOL=$USE_GCOV $MAIN_DIR $@
 
