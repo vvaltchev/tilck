@@ -33,10 +33,7 @@ sptr sys_unlink()
    return -1;
 }
 
-sptr sys_execve()
-{
-   return -1;
-}
+sptr sys_execve(const char *filename, char *const argv[], char *const envp[]);
 
 sptr sys_chdir()
 {

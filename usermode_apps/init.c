@@ -175,7 +175,18 @@ int main(int argc, char **argv, char **env)
 
    //file_read_test();
    //test_read_stdin();
-   pause();
+
+   int shell_pid = fork();
+
+   if (!shell_pid) {
+      printf("[init forked child] running shell\n");
+      execve("/bin/shell", NULL, NULL);
+   }
+
+   printf("[init] wait for the shell to exit\n");
+   int wstatus;
+   waitpid(shell_pid, &wstatus, 0);
+   printf("[init] the shell exited with status: %d\n", WEXITSTATUS(wstatus));
 
    //args_test(argc, argv);
    //bss_var_test();

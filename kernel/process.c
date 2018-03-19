@@ -24,6 +24,17 @@ extern int current_max_pid;
  * ***************************************************************
  */
 
+NORETURN void sys_exit(int exit_status);
+sptr sys_execve(const char *filename, char *const argv[], char *const envp[])
+{
+   sys_exit(199);
+
+   disable_preemption();
+
+   enable_preemption();
+   return -ENOENT;
+}
+
 sptr sys_pause()
 {
    task_change_state(current, TASK_STATE_SLEEPING);

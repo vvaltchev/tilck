@@ -36,9 +36,14 @@ cd $bdir/sysroot
 # hard-link init to sysroot/sbin
 ln $bdir/usermode_apps/init sbin/
 
+# hard-link shell to sysroot/bin
+ln $bdir/usermode_apps/shell bin/
+
 # hard-link EFI files
 ln $bdir/bootloader/efi/BOOTX64.EFI EFI/BOOT/
 ln $bdir/bootloader/efi/switchmode.bin EFI/BOOT/
+
+# hard-link the kernel file (used also by the legacy bootloader)
 ln $bdir/elf_kernel_stripped EFI/BOOT/elf_kernel_stripped
 
 # first, create the directories
