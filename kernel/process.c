@@ -41,13 +41,21 @@ sptr sys_execve(const char *filename,
       void *entry_point = NULL;
       void *stack_addr = NULL;
       page_directory_t *pdir = NULL;
+      char filename_copy[256];
 
+      /*
+       * We need to copy the filename in a kernel buffer, if we want to keep
+       * it after load_elf_program() because that function will zero the
+       * pages of the new process, which have the same vaddrs as the old one.
+       * The filename pointer comes from an user-mapped address.
+       */
+      memmove(filename_copy, filename, strlen(filename) + 1);
       rc = load_elf_program(filename, &pdir, &entry_point, &stack_addr);
 
       if (rc < 0)
          goto errend;
 
-      const char *const default_argv[] = { filename, NULL };
+      const char *const default_argv[] = { filename_copy, NULL };
 
       if (!argv)
          argv = default_argv;
