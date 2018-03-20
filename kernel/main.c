@@ -147,8 +147,8 @@ void load_usermode_init()
       panic("Unable to open /sbin/init!\n");
    }
 
-   const char *const argv[] = { "init", "test_arg_1", NULL };
-   const char *const env[] = { "OSTYPE=linux-gnu", "EXOS=1", NULL };
+   char *const argv[] = { "/sbin/init", NULL };
+   char *const env[] = { "OSTYPE=linux-gnu", "EXOS=1", NULL };
 
    usermode_init_task = create_usermode_task(pdir,
                                              entry_point,

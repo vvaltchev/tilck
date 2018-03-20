@@ -25,7 +25,7 @@ extern int current_max_pid;
  * ***************************************************************
  */
 
-static const char *default_env[] =
+static char *const default_env[] =
 {
    "OSTYPE=linux-gnu", "EXOS=1", NULL
 };
@@ -81,27 +81,17 @@ sptr sys_execve(const char *filename,
       void *entry_point = NULL;
       void *stack_addr = NULL;
       page_directory_t *pdir = NULL;
-      char filename_copy[256];
 
-      /*
-       * We need to copy the filename in a kernel buffer, if we want to keep
-       * it after load_elf_program() because that function will zero the
-       * pages of the new process, which have the same vaddrs as the old one.
-       * The filename pointer comes from an user-mapped address.
-       */
-      memmove(filename_copy, filename, strlen(filename) + 1);
+      char *filename_copy = strdup(filename);
+      char *const *argv_copy = dcopy_strarray(argv);
+      char *const *env_copy = dcopy_strarray(env);
+
       rc = load_elf_program(filename, &pdir, &entry_point, &stack_addr);
 
       if (rc < 0)
          goto errend;
 
-      const char *const default_argv[] = { filename_copy, NULL };
-
-      if (!argv)
-         argv = default_argv;
-
-      if (!env)
-         env = default_env;
+      char *const default_argv[] = { filename_copy, NULL };
 
       task_change_state(current, TASK_STATE_RUNNABLE);
       pdir_destroy(current->pdir);
@@ -110,10 +100,18 @@ sptr sys_execve(const char *filename,
                            entry_point,
                            stack_addr,
                            current,
-                           argv,
-                           env);
+                           argv_copy ? argv_copy : default_argv,
+                           env_copy ? env_copy : default_env);
 
+      /* Free the duplicated buffers */
+      kfree(filename_copy, strlen(filename_copy) + 1);
+      dfree_strarray(argv_copy);
+      dfree_strarray(env_copy);
+
+      /* Remove the "int 0x80" from the nested_interrupts stack */
       pop_nested_interrupt();
+
+      /* Switch to the idle task */
       switch_to_idle_task_outside_interrupt_context();
     }
 
@@ -139,8 +137,8 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
 {
    ASSERT(are_interrupts_enabled());
 
-   printk("[kernel] Pid %i will WAIT until pid %i dies\n",
-          current->pid, pid);
+   // printk("[kernel] Pid %i will WAIT until pid %i dies\n",
+   //        current->pid, pid);
 
    ASSERT(are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
@@ -191,9 +189,9 @@ NORETURN void sys_exit(int exit_status)
 {
    disable_preemption();
 
-   printk("[kernel] Exit process %i with code = %i\n",
-          current->pid,
-          exit_status);
+   // printk("[kernel] Exit process %i with code = %i\n",
+   //        current->pid,
+   //        exit_status);
 
    task_change_state(current, TASK_STATE_ZOMBIE);
    current->exit_status = exit_status;

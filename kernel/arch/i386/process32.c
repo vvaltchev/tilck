@@ -38,9 +38,9 @@ void push_string_on_user_stack(regs *r, const char *str)
 }
 
 static void push_args_on_user_stack(regs *r,
-                                    const char *const *argv,
+                                    char *const *argv,
                                     int argc,
-                                    const char *const *env,
+                                    char *const *env,
                                     int envc)
 {
    uptr pointers[argc]; // VLA
@@ -158,8 +158,8 @@ task_info *create_usermode_task(page_directory_t *pdir,
                                 void *entry,
                                 void *stack_addr,
                                 task_info *task_to_use,
-                                const char *const *argv,
-                                const char *const *env)
+                                char *const *argv,
+                                char *const *env)
 {
    size_t argv_elems = 0;
    size_t env_elems = 0;

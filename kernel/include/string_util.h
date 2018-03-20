@@ -35,6 +35,9 @@ int stricmp(const char *s1, const char *s2);
 void memcpy(void *dest, const void *src, size_t n);
 void memmove(void *dest, const void *src, size_t n);
 
+char *strdup(const char *s);
+char *const *dcopy_strarray(const char *const *argv);
+void dfree_strarray(char *const *argv);
 
 void itoa32(s32 value, char *destBuf);
 void itoa64(s64 value, char *destBuf);

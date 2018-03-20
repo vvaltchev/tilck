@@ -1,5 +1,6 @@
 
 #include <string_util.h>
+#include <kmalloc.h>
 #include <term.h>
 
 #define MAGIC_ITOA_STRING \
@@ -78,6 +79,57 @@ int stricmp(const char *s1, const char *s2)
    }
 
    return (int)lower(*s1) - (int)lower(*s2);
+}
+
+char *strdup(const char *s)
+{
+   size_t len = strlen(s) + 1;
+   char *copy = kmalloc(len);
+
+   if (!copy)
+      return NULL;
+
+   memmove(copy, s, len);
+   return copy;
+}
+
+char *const *dcopy_strarray(const char *const *argv)
+{
+   int argc = 0;
+   const char *const *p = argv;
+   char **res;
+
+   if (!argv)
+      return NULL;
+
+   while (*p) argc++;
+
+   res = kmalloc(sizeof(uptr) * (argc + 1));
+   VERIFY(res != NULL);
+
+   for (int i = 0; i < argc; i++) {
+      res[i] = strdup(argv[i]);
+      VERIFY(res[i] != NULL);
+   }
+
+   res[argc + 1] = NULL;
+   return res;
+}
+
+void dfree_strarray(char *const *argv)
+{
+   char *const *p = argv;
+   int elems = 0;
+
+   if (!argv)
+      return;
+
+   while (*p) {
+      kfree(*p, strlen(*p) + 1);
+      elems++;
+   }
+
+   kfree((void *) argv, sizeof(uptr) * (elems + 1));
 }
 
 void vprintk(const char *fmt, va_list args)

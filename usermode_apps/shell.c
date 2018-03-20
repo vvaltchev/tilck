@@ -1,45 +1,89 @@
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <errno.h>
+
+char cmd_arg_buffers[16][256];
+char *cmd_argv[16];
+char **shell_env;
+
+void process_cmd_line(const char *cmd_line)
+{
+   int argc = 0;
+
+   const char *p = cmd_line;
+
+   while (*p && argc < 16) {
+
+      char *ap = cmd_arg_buffers[argc];
+
+      while (*p == ' ') p++;
+
+      while (*p && *p != ' ' && *p != '\n') {
+         *ap++ = *p++;
+      }
+
+      *ap = 0;
+      cmd_argv[argc] = cmd_arg_buffers[argc];
+      argc++;
+
+      if (*p == '\n')
+         break;
+   }
+
+   cmd_argv[argc] = NULL;
+
+   printf("args(%i):\n", argc);
+   for (int i = 0; cmd_argv[i] != NULL; i++)
+      printf("argv[%i] = '%s'\n", i, cmd_argv[i]);
+
+
+   if (!strcmp(cmd_argv[0], "exit")) {
+      printf("[shell] regular exit\n");
+      exit(0);
+   }
+
+   int wstatus;
+   int child_pid = fork();
+
+   if (!child_pid) {
+      execve(cmd_argv[0], NULL, NULL);
+      int saved_errno = errno;
+      perror("execve() failed");
+      exit(saved_errno);
+   }
+
+   waitpid(child_pid, &wstatus, 0);
+   printf("[shell] command exited with status: %d\n", WEXITSTATUS(wstatus));
+}
 
 int main(int argc, char **argv, char **env)
 {
-   printf("Hello from my simple shell!\n");
-
-   printf("env:\n");
-
-   while (*env)
-      printf("%s\n", *env++);
-
-   printf("\n");
-   printf("args (%d):\n", argc);
-
-   for (int i = 0; i < argc; i++)
-      printf("argv[%i] = '%s'\n", i, argv[i]);
-   printf("\n");
-
    char buf[256];
-   char *res;
+   char cwd[256];
 
-   res = getcwd(buf, sizeof(buf));
+   shell_env = env;
 
-   if (res != buf) {
+   printf("[PID: %i] Hello from ExOS's simple shell!\n", getpid());
+
+   if (getcwd(cwd, sizeof(cwd)) != cwd) {
       perror("Shell: getcwd failed");
       return 1;
    }
 
-   printf("CWD: '%s'\n", buf);
+   while (true) {
 
-   chdir("/testdir");
+      printf("root@exOS:%s# ", cwd);
 
-   res = getcwd(buf, sizeof(buf));
+      int r = read(1, buf, sizeof(buf));
+      buf[r] = 0;
 
-   if (res != buf) {
-      perror("Shell: getcwd failed");
-      return 1;
+      process_cmd_line(buf);
    }
-
-   printf("CWD: '%s'\n", buf);
 
    return 0;
 }

@@ -116,6 +116,11 @@ fs_handle exvfs_open(const char *path)
    int best_match_index = -1;
    int best_match_len = 0;
 
+   if (*path != '/') {
+      /* We work only with absolute paths */
+      return NULL;
+   }
+
    for (u32 i = 0; i < ARRAY_SIZE(mps); i++) {
 
       if (!mps[i]) {

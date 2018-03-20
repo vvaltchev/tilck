@@ -94,8 +94,8 @@ task_info *create_usermode_task(page_directory_t *pdir,
                                 void *entry,
                                 void *stack_addr,
                                 task_info *task_to_use,
-                                const char *const *argv,
-                                const char *const *env);
+                                char *const *argv,
+                                char *const *env);
 
 bool is_kernel_thread(task_info *ti);
 

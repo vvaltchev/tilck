@@ -173,7 +173,7 @@ int main(int argc, char **argv, char **env)
    write(1, hello_msg, strlen(hello_msg));
    printf("MY PID IS %i\n", getpid());
 
-   args_test(argc, argv);
+   //args_test(argc, argv);
    //file_read_test();
    //test_read_stdin();
 
