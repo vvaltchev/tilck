@@ -473,33 +473,55 @@ void kfree(void *ptr, size_t size)
 
    kmutex_lock(&kmalloc_mutex);
 
+   int heap_num = -1;
+
    for (int i = used_heaps - 1; i >= 0; i--) {
 
-      /* The heap is uninitialized */
+      uptr hva = heaps[i].vaddr;
+
+      if (vaddr < hva)
+         continue; /* not in this heap, for sure */
+
+      if (heap_num < 0 || hva > heaps[heap_num].vaddr)
+         heap_num = i;
+   }
+
+   if (heap_num < 0)
+      goto out; /* no need to release the lock, we're going to panic */
+
+
+   // DEBUG
+   for (int i = used_heaps - 1; i >= 0; i--) {
       if (!heaps[i].size)
          continue;
 
       if (vaddr >= heaps[i].vaddr && vaddr + size <= heaps[i].heap_over_end) {
-
-         size = roundup_next_power_of_2(MAX(size, heaps[i].min_block_size));
-
-         u32 cs = calculate_block_size(&heaps[i], vaddr);
-         VERIFY(cs == size);
-
-         internal_kfree(&heaps[i], ptr, size);
-         heaps[i].mem_allocated -= size;
-
-         // if (KMALLOC_FREE_MEM_POISONING) {
-         //    for (u32 i = 0; i < size / 4; i++)
-         //       ((u32 *)p)[i] = KMALLOC_FREE_MEM_POISON_VAL;
-         // }
-
-         kmutex_unlock(&kmalloc_mutex);
-         return;
+         VERIFY(i == heap_num);
       }
    }
+   // END DEBUG
 
-   panic("[kfree] Heap not found for block: %p of size: %u", ptr, size);
+   size = roundup_next_power_of_2(MAX(size, heaps[heap_num].min_block_size));
+
+   u32 cs = calculate_block_size(&heaps[heap_num], vaddr);
+
+   if (cs != size) {
+      panic("Block at: %p, size: %u, cs: %u\n", vaddr, size, cs);
+   }
+
+   internal_kfree(&heaps[heap_num], ptr, size);
+   heaps[heap_num].mem_allocated -= size;
+
+   // if (KMALLOC_FREE_MEM_POISONING) {
+   //    for (u32 i = 0; i < size / 4; i++)
+   //       ((u32 *)p)[i] = KMALLOC_FREE_MEM_POISON_VAL;
+   // }
+
+   kmutex_unlock(&kmalloc_mutex);
+   return;
+
+out:
+   panic("[kfree] Heap not found for block: %p\n", ptr);
 }
 
 void kmalloc_create_heap(kmalloc_heap *h,
