@@ -3,6 +3,7 @@
 #include <paging.h>
 #include <string_util.h>
 #include <utils.h>
+#include <sync.h>
 
 bool kbasic_virtual_alloc(uptr vaddr, int page_count);
 void kbasic_virtual_free(uptr vaddr, int page_count);
@@ -37,11 +38,13 @@ typedef struct {
 
 STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 
-static const block_node new_node; // Just zeros.
 bool kmalloc_initialized; // Zero-initialized => false.
-STATIC kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
-static int used_heaps;
 
+static const block_node new_node; // Just zeros.
+STATIC kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
+STATIC int used_heaps;
+
+static kmutex kmalloc_mutex;
 
 #define HALF(x) ((x) >> 1)
 #define TWICE(x) ((x) << 1)
@@ -400,7 +403,10 @@ static void internal_kfree(kmalloc_heap *h, void *ptr, size_t size)
 
 void *kmalloc(size_t s)
 {
+   void *ret = NULL;
    s = roundup_next_power_of_2(s);
+
+   kmutex_lock(&kmalloc_mutex);
 
    // Iterate in reverse-order because the first heaps are the biggest ones.
    for (int i = used_heaps - 1; i >= 0; i--) {
@@ -420,11 +426,13 @@ void *kmalloc(size_t s)
 
       if (vaddr) {
          heaps[i].mem_allocated += s;
-         return vaddr;
+         ret = vaddr;
+         break;
       }
    }
 
-   return NULL;
+   kmutex_unlock(&kmalloc_mutex);
+   return ret;
 }
 
 void kfree(void *ptr, size_t size)
@@ -437,6 +445,8 @@ void kfree(void *ptr, size_t size)
    ASSERT(size != 0); /* NOTE: ptr == NULL with size == 0 is fine. */
 
    const uptr vaddr = (uptr) ptr;
+
+   kmutex_lock(&kmalloc_mutex);
 
    for (int i = used_heaps - 1; i >= 0; i--) {
 
@@ -455,6 +465,7 @@ void kfree(void *ptr, size_t size)
          //       ((u32 *)p)[i] = KMALLOC_FREE_MEM_POISON_VAL;
          // }
 
+         kmutex_unlock(&kmalloc_mutex);
          return;
       }
    }
@@ -530,6 +541,7 @@ extern size_t ramdisk_size;
 void initialize_kmalloc()
 {
    ASSERT(!kmalloc_initialized);
+   kmutex_init(&kmalloc_mutex);
 
    const uptr limit =
       KERNEL_BASE_VA + MIN(get_phys_mem_mb(), LINEAR_MAPPING_MB) * MB;
