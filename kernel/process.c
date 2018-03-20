@@ -77,17 +77,16 @@ sptr sys_execve(const char *filename,
                 const char *const *env)
 {
    int rc = -ENOENT; /* default, kind-of random, error */
+   void *entry_point = NULL;
+   void *stack_addr = NULL;
+   page_directory_t *pdir = NULL;
+
+   char *filename_copy = strdup(filename);
+   char *const *argv_copy = dcopy_strarray(argv);
+   char *const *env_copy = dcopy_strarray(env);
 
    disable_preemption();
    {
-      void *entry_point = NULL;
-      void *stack_addr = NULL;
-      page_directory_t *pdir = NULL;
-
-      char *filename_copy = strdup(filename);
-      char *const *argv_copy = dcopy_strarray(argv);
-      char *const *env_copy = dcopy_strarray(env);
-
       rc = load_elf_program(filename, &pdir, &entry_point, &stack_addr);
 
       if (rc < 0)
@@ -107,19 +106,30 @@ sptr sys_execve(const char *filename,
                            argv_copy ? argv_copy : default_argv,
                            env_copy ? env_copy : default_env);
 
-      /* Free the duplicated buffers */
-      kfree(filename_copy, strlen(filename_copy) + 1);
-      dfree_strarray(argv_copy);
-      dfree_strarray(env_copy);
+   }
+   enable_preemption();
 
-      if (UNLIKELY(!current)) {
-         /* Compensate the pop_nested_interrupt() in switch_to_task() */
-         push_nested_interrupt(-1);
-         enable_preemption();
-      }
+   /* Free the duplicated buffers */
+   kfree(filename_copy, strlen(filename_copy) + 1);
+   dfree_strarray(argv_copy);
+   dfree_strarray(env_copy);
 
-      switch_to_task(idle_task);
-    }
+   if (LIKELY(current != NULL)) {
+
+      ASSERT(is_preemption_enabled());
+      disable_preemption(); /* switch_to_task() requires that */
+
+   } else {
+
+      /* We're still in the initialization and preemption is disabled */
+      ASSERT(!is_preemption_enabled());
+
+      /* Compensate the pop_nested_interrupt() in switch_to_task() */
+      push_nested_interrupt(-1);
+   }
+
+   switch_to_task(idle_task);
+   /* this point is unreachable */
 
 errend:
    enable_preemption();

@@ -216,5 +216,4 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    }
 
    switch_to_idle_task_outside_interrupt_context();
-   NOT_REACHED(); /* We should never get here! */
 }
