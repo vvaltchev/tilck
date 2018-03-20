@@ -195,16 +195,6 @@ void caps_lock_switch(bool val)
    kb_led_set(numLock << 1 | val << 2);
 }
 
-//////////////////////////////////////////
-// TEMP EXPERIMENT STUFF
-
-void panic_tasklet(void)
-{
-   panic("This is a test code-path for panic within a tasket.");
-}
-
-//////////////////////////////////////////
-
 static char kb_cooked_buffer[256];
 static u32 kb_cbuf_writer_pos; // pos where the writer will write next time
 static u32 kb_cbuf_reader_pos; // pos where the reader will read next time
@@ -218,6 +208,20 @@ bool kb_cbuf_is_empty(void)
 bool kb_cbuf_is_full(void)
 {
    return kb_cbuf_elems == ARRAY_SIZE(kb_cooked_buffer);
+}
+
+static bool kb_cbuf_drop_last_written_elem(void)
+{
+   ASSERT(!are_interrupts_enabled());
+
+   if (!kb_cbuf_elems) {
+      return false;
+   }
+
+   kb_cbuf_writer_pos--;
+   kb_cbuf_writer_pos %= ARRAY_SIZE(kb_cooked_buffer);
+   kb_cbuf_elems--;
+   return true;
 }
 
 void kb_cbuf_write_elem(char c)
@@ -287,26 +291,25 @@ void handle_key_pressed(u8 scancode)
 
    if (c) {
 
-      if (c == '$') {
+      disable_interrupts();
 
-         // demo panic
-         enqueue_tasklet0(panic_tasklet);
+         if (c != '\b') {
 
-      } else {
+            if (!kb_cbuf_is_full()) {
 
-         disable_interrupts();
+               kb_cbuf_write_elem(c);
+               term_write_char(c);
 
-         if (!kb_cbuf_is_full()) {
+               if (c == '\n' || kb_cbuf_is_full())
+                  enqueue_tasklet1(kcond_signal_one, &kb_cond);
+            }
 
-            kb_cbuf_write_elem(c);
-            term_write_char(c);
-
-            if (c == '\n' || kb_cbuf_is_full())
-               enqueue_tasklet1(kcond_signal_one, &kb_cond);
+         } else {
+            if (kb_cbuf_drop_last_written_elem())
+               term_write_char(c);
          }
 
-         enable_interrupts();
-      }
+      enable_interrupts();
 
    } else {
       printk("PRESSED scancode: 0x%x (%i)\n", scancode, scancode);
