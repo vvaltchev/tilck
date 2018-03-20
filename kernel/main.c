@@ -135,32 +135,6 @@ void show_additional_info(void)
            TIMER_HZ, get_phys_mem_mb());
 }
 
-void load_usermode_init()
-{
-   void *entry_point = NULL;
-   void *stack_addr = NULL;
-   page_directory_t *pdir = NULL;
-
-   int r = load_elf_program("/sbin/init", &pdir, &entry_point, &stack_addr);
-
-   if (r < 0) {
-      panic("Unable to open /sbin/init!\n");
-   }
-
-   char *const argv[] = { "/sbin/init", NULL };
-   char *const env[] = { "OSTYPE=linux-gnu", "EXOS=1", NULL };
-
-   usermode_init_task = create_usermode_task(pdir,
-                                             entry_point,
-                                             stack_addr,
-                                             NULL,
-                                             argv,
-                                             env);
-
-   //printk("[load_usermode_init] Entry: %p\n", entry_point);
-   //printk("[load_usermode_init] Stack: %p\n", stack_addr);
-}
-
 void mount_ramdisk(void)
 {
    if (!ramdisk_size) {
@@ -194,6 +168,10 @@ static const video_interface x86_pc_text_mode_vi =
    textmode_enable_cursor,
    textmode_disable_cursor
 };
+
+sptr sys_execve(const char *filename,
+                const char *const *argv,
+                const char *const *env);
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
@@ -232,12 +210,11 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    if (self_test_to_run)
       self_test_to_run();
 
-   if (ramdisk_size && !no_init)
-     load_usermode_init();
+   if (ramdisk_size && !no_init) {
+     sys_execve("/sbin/init", NULL, NULL);
+     panic("Unable to load /sbin/init.\n");
+   }
 
-   printk("[kernel main] Starting the scheduler...\n");
    switch_to_idle_task_outside_interrupt_context();
-
-   // We should never get here!
-   NOT_REACHED();
+   NOT_REACHED(); /* We should never get here! */
 }

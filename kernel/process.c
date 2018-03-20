@@ -70,6 +70,8 @@ sptr sys_getcwd(char *buf, size_t buf_size)
    return cwd_len;
 }
 
+extern task_info *idle_task;
+
 sptr sys_execve(const char *filename,
                 const char *const *argv,
                 const char *const *env)
@@ -93,8 +95,10 @@ sptr sys_execve(const char *filename,
 
       char *const default_argv[] = { filename_copy, NULL };
 
-      task_change_state(current, TASK_STATE_RUNNABLE);
-      pdir_destroy(current->pdir);
+      if (LIKELY(current != NULL)) {
+         task_change_state(current, TASK_STATE_RUNNABLE);
+         pdir_destroy(current->pdir);
+      }
 
       create_usermode_task(pdir,
                            entry_point,
@@ -108,11 +112,13 @@ sptr sys_execve(const char *filename,
       dfree_strarray(argv_copy);
       dfree_strarray(env_copy);
 
-      /* Remove the "int 0x80" from the nested_interrupts stack */
-      pop_nested_interrupt();
+      if (UNLIKELY(!current)) {
+         /* Compensate the pop_nested_interrupt() in switch_to_task() */
+         push_nested_interrupt(-1);
+         enable_preemption();
+      }
 
-      /* Switch to the idle task */
-      switch_to_idle_task_outside_interrupt_context();
+      switch_to_task(idle_task);
     }
 
 errend:

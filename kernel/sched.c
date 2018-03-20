@@ -17,8 +17,8 @@
 // high debug value
 //#define TIME_SLOT_JIFFIES (1)
 
-task_info *current = NULL;
-int current_max_pid = 0;
+task_info *current;
+int current_max_pid;
 
 // Our linked list for all the tasks (processes, threads, etc.)
 list_node tasks_list = make_list_node(tasks_list);
@@ -27,8 +27,8 @@ list_node sleeping_tasks_list = make_list_node(sleeping_tasks_list);
 volatile int runnable_tasks_count = 0;
 
 
-task_info *idle_task = NULL;
-volatile u64 idle_ticks = 0;
+task_info *idle_task;
+volatile u64 idle_ticks;
 
 void idle_task_kthread()
 {
@@ -126,7 +126,6 @@ void task_change_state(task_info *ti, task_state_enum new_state)
 
 void add_task(task_info *ti)
 {
-   ASSERT(!is_preemption_enabled());
    disable_preemption();
    {
       list_add_tail(&tasks_list, &ti->list);

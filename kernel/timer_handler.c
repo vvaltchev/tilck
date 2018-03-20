@@ -8,7 +8,7 @@
  * This will keep track of how many ticks that the system
  * has been running for.
  */
-volatile u64 jiffies = 0;
+volatile u64 jiffies;
 
 volatile u32 disable_preemption_count = 1;
 

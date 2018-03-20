@@ -506,7 +506,10 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
       return root; // abspath was just '/'.
    }
 
-   fat_search_ctx ctx = {0};
+   //fat_search_ctx ctx = {0};
+   fat_search_ctx ctx;
+   bzero(&ctx, sizeof(ctx));
+
    ctx.path = abspath;
 
    fat_walk_directory(&ctx.walk_ctx, hdr, ft, root, root_dir_cluster,
