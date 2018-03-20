@@ -189,9 +189,9 @@ NORETURN void sys_exit(int exit_status)
 {
    disable_preemption();
 
-   // printk("[kernel] Exit process %i with code = %i\n",
-   //        current->pid,
-   //        exit_status);
+   printk("[kernel] Exit process %i with code = %i\n",
+          current->pid,
+          exit_status);
 
    task_change_state(current, TASK_STATE_ZOMBIE);
    current->exit_status = exit_status;
@@ -202,8 +202,10 @@ NORETURN void sys_exit(int exit_status)
 
       fs_handle *h = current->handles[i];
 
-      if (h)
+      if (h) {
          exvfs_close(h);
+         current->handles[i] = NULL;
+      }
    }
 
 

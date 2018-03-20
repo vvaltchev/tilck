@@ -441,6 +441,14 @@ void kfree(void *p, size_t s)
    const uptr vaddr = (uptr) p;
    s = roundup_next_power_of_2(s);
 
+#ifdef DEBUG2
+   {
+      u32 *up = p;
+      for (size_t i = 0; i < s / 4; i++)
+         up[i] = 0xFAABCAFE;
+   }
+#endif
+
    for (int i = used_heaps - 1; i >= 0; i--) {
 
       /* The heap is too small or just uninitialized */
