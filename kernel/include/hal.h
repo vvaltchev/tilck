@@ -58,8 +58,4 @@ void setup_sysenter_interface();
 void set_kernel_stack(uptr stack);
 uptr get_kernel_stack();
 
-void disable_preemption();
-void enable_preemption();
-bool is_preemption_enabled();
-
 

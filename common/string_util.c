@@ -217,7 +217,7 @@ void vprintk(const char *fmt, va_list args)
    }
 }
 
-#include <hal.h>
+#include <process.h>
 
 void printk(const char *fmt, ...)
 {

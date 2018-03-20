@@ -12,19 +12,6 @@ volatile u64 jiffies;
 
 volatile u32 disable_preemption_count = 1;
 
-void disable_preemption() {
-   disable_preemption_count++;
-}
-
-void enable_preemption() {
-   ASSERT(disable_preemption_count > 0);
-   disable_preemption_count--;
-}
-
-bool is_preemption_enabled() {
-   return disable_preemption_count == 0;
-}
-
 typedef struct {
 
    u64 ticks_to_sleep;

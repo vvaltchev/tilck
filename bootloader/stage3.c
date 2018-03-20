@@ -7,6 +7,9 @@
 
 void term_init(void);
 
+// Hack to make the linker happy (printk() in string_utils needs it).
+u32 disable_preemption_count = 1;
+
 /*
  * Checks if 'addr' is in the range [begin, end).
  */

@@ -133,3 +133,21 @@ void kernel_sleep(u64 ticks);
 
 int set_task_to_wake_after(task_info *task, u64 ticks);
 void cancel_timer(int timer_num);
+
+
+// TODO: consider moving these functions and the sched ones in sched.h
+
+extern volatile u32 disable_preemption_count;
+
+static ALWAYS_INLINE void disable_preemption(void) {
+   disable_preemption_count++;
+}
+
+static ALWAYS_INLINE void enable_preemption(void) {
+   ASSERT(disable_preemption_count > 0);
+   disable_preemption_count--;
+}
+
+static ALWAYS_INLINE bool is_preemption_enabled(void) {
+   return disable_preemption_count == 0;
+}

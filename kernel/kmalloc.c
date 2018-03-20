@@ -490,8 +490,8 @@ void kfree(void *ptr, size_t size)
 
          size = roundup_next_power_of_2(MAX(size, heaps[i].min_block_size));
 
-         u32 cs = calculate_block_size(&heaps[i], vaddr);
-         VERIFY(cs == size);
+         //u32 cs = calculate_block_size(&heaps[i], vaddr);
+         //VERIFY(cs == size);
 
 
          internal_kfree(&heaps[i], ptr, size);

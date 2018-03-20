@@ -7,6 +7,7 @@
 #include <term.h>
 #include <utils.h>
 #include <hal.h>
+#include <process.h>
 
 void idt_set_gate(u8 num, void *handler, u16 sel, u8 flags);
 

@@ -263,7 +263,7 @@ END_FUNC(asm_kernel_context_switch_x86)
 
 FUNC(kernel_yield):
 
-   call disable_preemption
+   inc dword ptr [disable_preemption_count]
    cli
 
    pop eax   # pop eip (return addr)

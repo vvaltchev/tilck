@@ -7,6 +7,7 @@
 #include <kmalloc.h>
 #include <sync.h>
 #include <kb.h>
+#include <process.h>
 
 
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)

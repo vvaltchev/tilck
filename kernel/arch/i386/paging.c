@@ -6,6 +6,7 @@
 #include <debug_utils.h>
 #include <hal.h>
 #include <arch/i386/paging_int.h>
+#include <process.h>
 
 #define PAGE_COW_FLAG 1
 #define PAGE_COW_ORIG_RW 2
