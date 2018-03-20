@@ -67,7 +67,7 @@ int create_dev_file(const char *filename, int major, int minor)
    return 0;
 }
 
-fs_handle devfs_open(filesystem *fs, const char *path)
+static fs_handle devfs_open(filesystem *fs, const char *path)
 {
    /*
     * Path is expected to be striped from the mountpoint prefix, but the '/'
@@ -97,10 +97,19 @@ fs_handle devfs_open(filesystem *fs, const char *path)
    return NULL;
 }
 
-void devfs_close(fs_handle h)
+static void devfs_close(fs_handle h)
 {
    devfs_file_handle *devh = h;
    kfree(devh, sizeof(devfs_file_handle));
+}
+
+static fs_handle devfs_dup(fs_handle h)
+{
+   devfs_file_handle *new_h;
+   new_h = kzmalloc(sizeof(devfs_file_handle));
+   VERIFY(new_h != NULL);
+   memmove(new_h, h, sizeof(devfs_file_handle));
+   return new_h;
 }
 
 filesystem *create_devfs(void)
@@ -116,6 +125,7 @@ filesystem *create_devfs(void)
    fs->device_data = d;
    fs->fopen = devfs_open;
    fs->fclose = devfs_close;
+   fs->dup = devfs_dup;
 
    return fs;
 }

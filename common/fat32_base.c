@@ -784,6 +784,14 @@ STATIC fs_handle fat_open(filesystem *fs, const char *path)
    return h;
 }
 
+STATIC fs_handle fat_dup(fs_handle h)
+{
+   fat_file_handle *new_h = kzmalloc(sizeof(fat_file_handle));
+   VERIFY(new_h != NULL);
+   memmove(new_h, h, sizeof(fat_file_handle));
+   return new_h;
+}
+
 filesystem *fat_mount_ramdisk(void *vaddr)
 {
    fat_fs_device_data *d = kmalloc(sizeof(fat_fs_device_data));
@@ -793,12 +801,14 @@ filesystem *fat_mount_ramdisk(void *vaddr)
    d->type = fat_get_type(d->hdr);
    d->cluster_size = d->hdr->BPB_SecPerClus * d->hdr->BPB_BytsPerSec;
 
-   filesystem *fs = kmalloc(sizeof(filesystem));
+   filesystem *fs = kzmalloc(sizeof(filesystem));
    VERIFY(fs != NULL);
 
    fs->device_data = d;
    fs->fopen = fat_open;
    fs->fclose = fat_close;
+   fs->dup = fat_dup;
+
    return fs;
 }
 

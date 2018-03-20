@@ -189,9 +189,9 @@ NORETURN void sys_exit(int exit_status)
 {
    disable_preemption();
 
-   printk("[kernel] Exit process %i with code = %i\n",
-          current->pid,
-          exit_status);
+   // printk("[kernel] Exit process %i with code = %i\n",
+   //        current->pid,
+   //        exit_status);
 
    task_change_state(current, TASK_STATE_ZOMBIE);
    current->exit_status = exit_status;
@@ -273,6 +273,12 @@ sptr sys_fork(void)
 
    // Make the parent to get child's pid as return value.
    set_return_register(&current->state_regs, child->pid);
+
+   /* Duplicate all the handles */
+   for (size_t i = 0; i < ARRAY_SIZE(child->handles); i++) {
+      if (child->handles[i])
+         child->handles[i] = exvfs_dup(child->handles[i]);
+   }
 
    /*
     * Force the CR3 reflush using the current (parent's) pdir.

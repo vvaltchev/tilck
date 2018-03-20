@@ -150,6 +150,16 @@ void exvfs_close(fs_handle h)
    hb->fs->fclose(h);
 }
 
+fs_handle exvfs_dup(fs_handle h)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (!hb)
+      return NULL;
+
+   return hb->fs->dup(h);
+}
+
 ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size)
 {
    fs_handle_base *hb = (fs_handle_base *) h;

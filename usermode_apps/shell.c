@@ -14,7 +14,6 @@ char **shell_env;
 void process_cmd_line(const char *cmd_line)
 {
    int argc = 0;
-
    const char *p = cmd_line;
 
    while (*p && argc < 16) {
@@ -37,10 +36,13 @@ void process_cmd_line(const char *cmd_line)
 
    cmd_argv[argc] = NULL;
 
-   printf("args(%i):\n", argc);
-   for (int i = 0; cmd_argv[i] != NULL; i++)
-      printf("argv[%i] = '%s'\n", i, cmd_argv[i]);
+   if (cmd_argv[0][0] == '\0') {
+      return;
+   }
 
+   // printf("args(%i):\n", argc);
+   // for (int i = 0; cmd_argv[i] != NULL; i++)
+   //    printf("argv[%i] = '%s'\n", i, cmd_argv[i]);
 
    if (!strcmp(cmd_argv[0], "exit")) {
       printf("[shell] regular exit\n");
@@ -53,7 +55,7 @@ void process_cmd_line(const char *cmd_line)
    if (!child_pid) {
       execve(cmd_argv[0], NULL, NULL);
       int saved_errno = errno;
-      perror("execve() failed");
+      perror(cmd_argv[0]);
       exit(saved_errno);
    }
 
