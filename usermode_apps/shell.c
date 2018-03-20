@@ -36,7 +36,33 @@ void process_cmd_line(const char *cmd_line)
 
    cmd_argv[argc] = NULL;
 
-   if (cmd_argv[0][0] == '\0') {
+   if (!cmd_argv[0][0]) {
+      return;
+   }
+
+   if (!strcmp(cmd_argv[0], "cd")) {
+
+      int rc = 0;
+      const char *dest_dir = "/";
+
+      if (argc == 2 && strlen(cmd_argv[1])) {
+         dest_dir = cmd_argv[1];
+      }
+
+      if (argc > 2) {
+         printf("cd: too many arguments\n");
+         return;
+      }
+
+      rc = chdir(dest_dir);
+
+      if (rc < 0)
+         goto cd_error;
+
+      return;
+
+cd_error:
+      perror("cd");
       return;
    }
 
@@ -72,12 +98,12 @@ int main(int argc, char **argv, char **env)
 
    printf("[PID: %i] Hello from ExOS's simple shell!\n", getpid());
 
-   if (getcwd(cwd, sizeof(cwd)) != cwd) {
-      perror("Shell: getcwd failed");
-      return 1;
-   }
-
    while (true) {
+
+      if (getcwd(cwd, sizeof(cwd)) != cwd) {
+         perror("Shell: getcwd failed");
+         return 1;
+      }
 
       printf("root@exOS:%s# ", cwd);
 
