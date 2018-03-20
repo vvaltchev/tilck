@@ -7,9 +7,17 @@
 #define MB (1024*1024)
 
 #ifdef DEBUG
-#define BUILDTYPE_STR "DEBUG"
+#  define BUILDTYPE_STR "DEBUG"
 #else
-#define BUILDTYPE_STR "RELEASE"
+#  define BUILDTYPE_STR "RELEASE"
+#endif
+
+#define KMALLOC_FREE_MEM_POISON_VAL 0xFAABCAFE
+
+#ifdef DEBUG
+#  define KMALLOC_FREE_MEM_POISONING 1
+#else
+#  define KMALLOC_FREE_MEM_POISONING 0
 #endif
 
 /* ------------------------------- */

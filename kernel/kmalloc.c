@@ -338,15 +338,6 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 
 static void internal_kfree(kmalloc_heap *h, void *ptr, size_t size)
 {
-   ASSERT(kmalloc_initialized);
-
-   if (ptr == NULL)
-      return;
-
-   // NOTE: ptr == NULL with size == 0 is fine.
-   ASSERT(size != 0);
-
-   size = roundup_next_power_of_2(MAX(size, h->min_block_size));
    const int node = ptr_to_node(h, ptr, size);
 
    DEBUG_free1;
@@ -436,33 +427,39 @@ void *kmalloc(size_t s)
    return NULL;
 }
 
-void kfree(void *p, size_t s)
+void kfree(void *ptr, size_t size)
 {
-   const uptr vaddr = (uptr) p;
-   s = roundup_next_power_of_2(s);
+   ASSERT(kmalloc_initialized);
 
-#ifdef DEBUG2
-   {
-      u32 *up = p;
-      for (size_t i = 0; i < s / 4; i++)
-         up[i] = 0xFAABCAFE;
-   }
-#endif
+   if (ptr == NULL)
+      return;
+
+   ASSERT(size != 0); /* NOTE: ptr == NULL with size == 0 is fine. */
+
+   const uptr vaddr = (uptr) ptr;
 
    for (int i = used_heaps - 1; i >= 0; i--) {
 
-      /* The heap is too small or just uninitialized */
-      if (heaps[i].size < s)
+      /* The heap is uninitialized */
+      if (!heaps[i].size)
          continue;
 
-      if (vaddr >= heaps[i].vaddr && vaddr + s <= heaps[i].heap_over_end) {
-         internal_kfree(&heaps[i], p, s);
-         heaps[i].mem_allocated -= s;
+      if (vaddr >= heaps[i].vaddr && vaddr + size <= heaps[i].heap_over_end) {
+
+         size = roundup_next_power_of_2(MAX(size, heaps[i].min_block_size));
+         internal_kfree(&heaps[i], ptr, size);
+         heaps[i].mem_allocated -= size;
+
+         // if (KMALLOC_FREE_MEM_POISONING) {
+         //    for (u32 i = 0; i < size / 4; i++)
+         //       ((u32 *)p)[i] = KMALLOC_FREE_MEM_POISON_VAL;
+         // }
+
          return;
       }
    }
 
-   panic("[kfree] Heap not found for block: %p of size: %u", p, s);
+   panic("[kfree] Heap not found for block: %p of size: %u", ptr, size);
 }
 
 void kmalloc_create_heap(kmalloc_heap *h,
