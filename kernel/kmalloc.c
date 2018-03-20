@@ -435,23 +435,12 @@ void *kmalloc(size_t s)
    return ret;
 }
 
-u32 get_trailing_zeros(u32 v)
+size_t calculate_block_size(kmalloc_heap *h, uptr vaddr)
 {
-   static const int MulDeBruijnBitPos[32] =
-   {
-      0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
-      31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
-   };
-
-   return MulDeBruijnBitPos[((u32)((v & -v) * 0x077CB531U)) >> 27];
-}
-
-u32 calculate_block_size(kmalloc_heap *h, uptr vaddr)
-{
-   u32 size = h->size;
    block_node *nodes = h->metadata_nodes;
-
-   int n = ptr_to_node(h, (void *)vaddr, size);
+   int n = 0; /* root's node index */
+   uptr va = h->vaddr; /* root's node data address == heap's address */
+   size_t size = h->size; /* root's node size == heap's size */
 
    while (size > h->min_block_size) {
 
@@ -459,9 +448,13 @@ u32 calculate_block_size(kmalloc_heap *h, uptr vaddr)
          break;
 
       size >>= 1;
-      uptr r = (uptr)node_to_ptr(h, NODE_RIGHT(n), size);
 
-      n = vaddr >= r ? NODE_RIGHT(n) : NODE_LEFT(n);
+      if (vaddr >= (va + size)) {
+         va += size;
+         n = NODE_RIGHT(n);
+      } else {
+         n = NODE_LEFT(n);
+      }
    }
 
    return size;
@@ -490,9 +483,8 @@ void kfree(void *ptr, size_t size)
 
          size = roundup_next_power_of_2(MAX(size, heaps[i].min_block_size));
 
-         //u32 cs = calculate_block_size(&heaps[i], vaddr);
-         //VERIFY(cs == size);
-
+         u32 cs = calculate_block_size(&heaps[i], vaddr);
+         VERIFY(cs == size);
 
          internal_kfree(&heaps[i], ptr, size);
          heaps[i].mem_allocated -= size;
