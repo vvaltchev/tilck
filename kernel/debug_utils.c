@@ -1,6 +1,8 @@
 
 #include <common_defs.h>
 
+volatile bool in_panic;
+
 #ifndef UNIT_TEST_ENVIRONMENT
 
 #include <debug_utils.h>
@@ -12,7 +14,6 @@
 #include <multiboot.h>
 
 void panic_save_current_state();
-volatile bool in_panic = false;
 
 NORETURN void panic(const char *fmt, ...)
 {

@@ -122,4 +122,71 @@ int load_elf_program(const char *filepath,
    return 0;
 }
 
+/* ------------------- Debug utils ---------------------- */
+
+void get_symtab_and_strtab(Elf32_Shdr **symtab, Elf32_Shdr **strtab)
+{
+   Elf32_Ehdr *h = (Elf32_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
+   VERIFY(h->e_shentsize == sizeof(Elf32_Shdr));
+
+   *symtab = NULL;
+   *strtab = NULL;
+
+   Elf32_Shdr *sections = (Elf32_Shdr *) ((char *)h + h->e_shoff);
+
+   for (u32 i = 0; i < h->e_shnum; i++) {
+      Elf32_Shdr *s = sections + i;
+
+      if (s->sh_type == SHT_SYMTAB) {
+         ASSERT(!*symtab);
+         *symtab = s;
+      } else if (s->sh_type == SHT_STRTAB && i != h->e_shstrndx) {
+         ASSERT(!*strtab);
+         *strtab = s;
+      }
+   }
+
+   VERIFY(*symtab != NULL);
+   VERIFY(*strtab != NULL);
+}
+
+const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset)
+{
+   Elf32_Shdr *symtab;
+   Elf32_Shdr *strtab;
+
+   get_symtab_and_strtab(&symtab, &strtab);
+
+   Elf32_Sym *syms = (Elf32_Sym *) symtab->sh_addr;
+   const int sym_count = symtab->sh_size / sizeof(Elf32_Sym);
+
+   for (int i = 0; i < sym_count; i++) {
+      Elf32_Sym *s = syms + i;
+      if (s->st_value < vaddr && vaddr <= s->st_value + s->st_size) {
+         *offset = vaddr - s->st_value;
+         return (char *)strtab->sh_addr + s->st_name;
+      }
+   }
+
+   return NULL;
+}
+
+uptr find_addr_of_symbol(const char *searched_sym)
+{
+   Elf32_Shdr *symtab;
+   Elf32_Shdr *strtab;
+
+   get_symtab_and_strtab(&symtab, &strtab);
+
+   Elf32_Sym *syms = (Elf32_Sym *) symtab->sh_addr;
+   const int sym_count = symtab->sh_size / sizeof(Elf32_Sym);
+
+   for (int i = 0; i < sym_count; i++) {
+      if (!strcmp((char *)strtab->sh_addr + syms[i].st_name, searched_sym))
+         return syms[i].st_value;
+   }
+
+   return 0;
+}
+
 #endif // BITS32
