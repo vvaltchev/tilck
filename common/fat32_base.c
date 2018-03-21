@@ -36,7 +36,12 @@ static u8 shortname_checksum(u8 *shortname)
    return sum;
 }
 
-static void reverse_long_name(fat_walk_dir_ctx *ctx)
+/*
+ * Without the NO_INLINE here, in RELEASE builds, this function gets
+ * inlined in fat_walk_directory() in an apparently buggy way and it triggers
+ * a triple fault.
+ */
+static void NO_INLINE reverse_long_name(fat_walk_dir_ctx *ctx)
 {
    char tmp[256] = {0};
    int di = 0;

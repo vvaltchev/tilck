@@ -68,6 +68,7 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 #define asm(...)
 
 #define ALWAYS_INLINE inline
+#define NO_INLINE
 #define typeof(x) void *
 
 #define STATIC_ASSERT(s, err)
@@ -89,7 +90,7 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 #define OFFSET_OF(st, m) __builtin_offsetof(st, m)
 
 #define ALWAYS_INLINE __attribute__((always_inline)) inline
-
+#define NO_INLINE __attribute__((noinline))
 #define asmVolatile __asm__ volatile
 #define asm __asm__
 
