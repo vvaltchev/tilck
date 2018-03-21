@@ -110,7 +110,7 @@ sptr sys_execve(const char *filename,
    enable_preemption();
 
    /* Free the duplicated buffers */
-   kfree2(filename_copy, strlen(filename_copy) + 1);
+   kfree(filename_copy);
    dfree_strarray(argv_copy);
    dfree_strarray(env_copy);
 

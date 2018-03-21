@@ -39,6 +39,11 @@ void initialize_kmalloc();
 void *kmalloc(size_t size);
 void kfree2(void *ptr, size_t size);
 
+static ALWAYS_INLINE void kfree(void *ptr)
+{
+   kfree2(ptr, 0);
+}
+
 static inline void *kzmalloc(size_t size)
 {
    void *res = kmalloc(size);
