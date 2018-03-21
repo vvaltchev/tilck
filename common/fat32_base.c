@@ -499,6 +499,11 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
    ASSERT(*abspath == '/');
    abspath++;
 
+   if (!*abspath) {
+      /* the whole abspath was just '/', which is not a file */
+      return NULL;
+   }
+
    u32 root_dir_cluster;
    fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
 
