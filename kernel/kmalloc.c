@@ -435,7 +435,7 @@ void *kmalloc(size_t s)
    return ret;
 }
 
-size_t calculate_block_size(kmalloc_heap *h, uptr vaddr)
+static size_t calculate_block_size(kmalloc_heap *h, uptr vaddr)
 {
    block_node *nodes = h->metadata_nodes;
    int n = 0; /* root's node index */
@@ -460,20 +460,19 @@ size_t calculate_block_size(kmalloc_heap *h, uptr vaddr)
    return size;
 }
 
-void kfree(void *ptr, size_t size)
+void kfree(void *ptr, size_t user_size)
 {
+   const uptr vaddr = (uptr) ptr;
+   size_t size;
+
    ASSERT(kmalloc_initialized);
 
-   if (ptr == NULL)
+   if (!ptr)
       return;
-
-   ASSERT(size != 0); /* NOTE: ptr == NULL with size == 0 is fine. */
-
-   const uptr vaddr = (uptr) ptr;
 
    kmutex_lock(&kmalloc_mutex);
 
-   int heap_num = -1;
+   int hn = -1; /* the heap with the highest vaddr >= our block vaddr */
 
    for (int i = used_heaps - 1; i >= 0; i--) {
 
@@ -482,35 +481,25 @@ void kfree(void *ptr, size_t size)
       if (vaddr < hva)
          continue; /* not in this heap, for sure */
 
-      if (heap_num < 0 || hva > heaps[heap_num].vaddr)
-         heap_num = i;
+      if (hn < 0 || hva > heaps[hn].vaddr)
+         hn = i;
    }
 
-   if (heap_num < 0)
+   if (hn < 0)
       goto out; /* no need to release the lock, we're going to panic */
 
+   if (user_size) {
 
-   // DEBUG
-   for (int i = used_heaps - 1; i >= 0; i--) {
-      if (!heaps[i].size)
-         continue;
+      size = roundup_next_power_of_2(MAX(user_size, heaps[hn].min_block_size));
+      ASSERT(calculate_block_size(&heaps[hn], vaddr) == size);
 
-      if (vaddr >= heaps[i].vaddr && vaddr + size <= heaps[i].heap_over_end) {
-         VERIFY(i == heap_num);
-      }
-   }
-   // END DEBUG
-
-   size = roundup_next_power_of_2(MAX(size, heaps[heap_num].min_block_size));
-
-   u32 cs = calculate_block_size(&heaps[heap_num], vaddr);
-
-   if (cs != size) {
-      panic("Block at: %p, size: %u, cs: %u\n", vaddr, size, cs);
+   } else {
+      size = calculate_block_size(&heaps[hn], vaddr);
    }
 
-   internal_kfree(&heaps[heap_num], ptr, size);
-   heaps[heap_num].mem_allocated -= size;
+   ASSERT(vaddr >= heaps[hn].vaddr && vaddr + size <= heaps[hn].heap_over_end);
+   internal_kfree(&heaps[hn], ptr, size);
+   heaps[hn].mem_allocated -= size;
 
    // if (KMALLOC_FREE_MEM_POISONING) {
    //    for (u32 i = 0; i < size / 4; i++)
