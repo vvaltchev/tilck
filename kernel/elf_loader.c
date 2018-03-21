@@ -41,16 +41,18 @@ int load_elf_program(const char *filepath,
    ASSERT(header.e_ehsize == sizeof(header));
 
    const ssize_t total_phdrs_size = header.e_phnum * sizeof(Elf32_Phdr);
-   Elf32_Phdr *phdr = kmalloc(total_phdrs_size);
-   VERIFY(phdr != NULL);
+   Elf32_Phdr *phdrs = kmalloc(total_phdrs_size);
+   VERIFY(phdrs != NULL);
 
    ret = exvfs_seek(elf_file, header.e_phoff, SEEK_SET);
    VERIFY(ret == (ssize_t)header.e_phoff);
 
-   ret = exvfs_read(elf_file, phdr, total_phdrs_size);
+   ret = exvfs_read(elf_file, phdrs, total_phdrs_size);
    ASSERT(ret == total_phdrs_size);
 
-   for (int i = 0; i < header.e_phnum; i++, phdr++) {
+   for (int i = 0; i < header.e_phnum; i++) {
+
+      Elf32_Phdr *phdr = phdrs + i;
 
       // Ignore non-load segments.
       if (phdr->p_type != PT_LOAD) {
@@ -116,7 +118,7 @@ int load_elf_program(const char *filepath,
    *stack_addr = (void *) ((OFFLIMIT_USERMODE_ADDR - 1) & ~15);
    *entry = (void *) header.e_entry;
 
-   kfree(phdr, sizeof(*phdr));
+   kfree(phdrs, total_phdrs_size);
    return 0;
 }
 
