@@ -11,6 +11,19 @@ void handle_irq(regs *r);
 volatile int nested_interrupts_count = 0;
 volatile int nested_interrupts[32] = { [0 ... 31] = -1 };
 
+void check_not_in_irq_handler(void)
+{
+   if (!in_panic) {
+      disable_interrupts();
+      {
+         if (nested_interrupts_count > 0)
+            if (is_irq(nested_interrupts[nested_interrupts_count - 1]))
+               panic("NOT expected to be in an interrupt handler.");
+      }
+      enable_interrupts();
+   }
+}
+
 void push_nested_interrupt(int int_num)
 {
    ASSERT(nested_interrupts_count < (int)ARRAY_SIZE(nested_interrupts));

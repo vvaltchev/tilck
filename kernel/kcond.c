@@ -16,6 +16,7 @@ void kcond_init(kcond *c)
 
 bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
 {
+   DEBUG_ONLY(check_not_in_irq_handler());
    disable_preemption();
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
 
@@ -50,7 +51,6 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
 void kcond_signal_int(kcond *c, bool all)
 {
    task_info *pos;
-
    disable_preemption();
 
    list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
@@ -59,8 +59,6 @@ void kcond_signal_int(kcond *c, bool all)
 
       if (pos->wobj.ptr != c)
          continue;
-
-      // pos->wobj.ptr == c
 
       if (c->timer_num >= 0)
          cancel_timer(c->timer_num);

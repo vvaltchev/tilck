@@ -263,8 +263,12 @@ END_FUNC(asm_kernel_context_switch_x86)
 
 FUNC(kernel_yield):
 
-   inc dword ptr [disable_preemption_count]
+#ifdef DEBUG
+   call check_not_in_irq_handler
+#endif
+
    cli
+   inc dword ptr [disable_preemption_count]
 
    pop eax   # pop eip (return addr)
    push eax  # re-push it back to the stack, as if the POP above never happened

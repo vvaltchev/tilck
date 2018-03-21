@@ -70,14 +70,7 @@ static ALWAYS_INLINE bool is_irq(int interrupt_num)
           interrupt_num != SYSCALL_SOFT_INTERRUPT;
 }
 
-static inline bool in_interrupt_handler()
-{
-   bool res;
-   disable_interrupts();
-   res = is_irq(get_curr_interrupt());
-   enable_interrupts();
-   return res;
-}
+void check_not_in_irq_handler(void);
 
 // TODO: re-implement this when SYSENTER is supported as well.
 static inline bool in_syscall()

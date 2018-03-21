@@ -23,6 +23,7 @@ void kmutex_destroy(kmutex *m)
 
 void kmutex_lock(kmutex *m)
 {
+   DEBUG_ONLY(check_not_in_irq_handler());
    disable_preemption();
 
    if (m->owner_task) {
@@ -56,6 +57,7 @@ bool kmutex_trylock(kmutex *m)
 {
    bool success = false;
 
+   DEBUG_ONLY(check_not_in_irq_handler());
    disable_preemption();
 
    if (!m->owner_task) {
@@ -72,6 +74,7 @@ void kmutex_unlock(kmutex *m)
 {
    task_info *pos;
 
+   DEBUG_ONLY(check_not_in_irq_handler());
    disable_preemption();
    {
       ASSERT(kmutex_is_curr_task_holding_lock(m));
