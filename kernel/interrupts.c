@@ -56,7 +56,7 @@ static bool is_same_interrupt_nested(int int_num)
  */
 static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode()
 {
-   if (!running_in_kernel(current)) {
+   if (current && !running_in_kernel(current)) {
       if (nested_interrupts_count == 0) {
          ASSERT(is_preemption_enabled());
       }

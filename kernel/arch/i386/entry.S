@@ -9,7 +9,7 @@
 #define KERNEL_INITIAL_STACK_SIZE (64*KB)
 
 .section bss
-.align 4
+.align 4096
 .lcomm kernel_initial_stack, KERNEL_INITIAL_STACK_SIZE
 
 .section .text
