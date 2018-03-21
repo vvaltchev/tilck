@@ -32,16 +32,18 @@ set(USE_GCOV CACHE BOOL "Compile the tests for measuring coverage")
 
 ###########################################################
 
-if (${ARCH} STREQUAL "i386")
-   set(ARCH_FAMILY "generic_x86")
-else()
-   message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
-endif()
-
 set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_APPS ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(BUILD_SHARED_LIBRARIES off)
 set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
+
+if (${ARCH} STREQUAL "i386")
+   set(ARCH_FAMILY "generic_x86")
+   set(GCC_TOOLCHAIN ${TCROOT}/x86-i686--glibc--stable-2018.02-2/bin)
+else()
+   message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
+endif()
+
 
 
 set(CMAKE_C_STANDARD 99)

@@ -20,8 +20,7 @@ cmake_minimum_required(VERSION 3.2)
 
 if (${ARCH} STREQUAL "i386")
 
-   set(CMAKE_C_COMPILER
-       ${TCROOT}/x86-i686--glibc--stable/bin/i686-buildroot-linux-gnu-gcc)
+   set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-gcc)
 
 endif()
 
