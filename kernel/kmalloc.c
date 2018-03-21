@@ -112,6 +112,9 @@ static size_t set_free_uplevels(kmalloc_heap *h, int *node, size_t size)
       DEBUG_coaleshe;
       nodes[n].raw &= ~(FL_NODE_SPLIT | FL_NODE_FULL);
 
+      if (n == 0)
+         break; /* we processed the root node, cannot go further */
+
       n = NODE_PARENT(n);
       curr_size <<= 1;
    }
@@ -507,10 +510,10 @@ void kfree2(void *ptr, size_t user_size)
    internal_kfree2(&heaps[hn], ptr, size);
    heaps[hn].mem_allocated -= size;
 
-   // if (KMALLOC_FREE_MEM_POISONING) {
-   //    for (u32 i = 0; i < size / 4; i++)
-   //       ((u32 *)p)[i] = KMALLOC_FREE_MEM_POISON_VAL;
-   // }
+   if (KMALLOC_FREE_MEM_POISONING) {
+      for (u32 i = 0; i < size / 4; i++)
+         ((u32 *)ptr)[i] = KMALLOC_FREE_MEM_POISON_VAL;
+   }
 
    kmutex_unlock(&kmalloc_mutex);
    return;
