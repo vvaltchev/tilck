@@ -6,6 +6,12 @@
 #include <config.h>
 #include <multiboot.h>
 
+#define KERNEL_INITIAL_STACK_SIZE (64*KB)
+
+.section bss
+.align 4
+.lcomm kernel_initial_stack, KERNEL_INITIAL_STACK_SIZE
+
 .section .text
 
 .global _start
@@ -105,7 +111,7 @@ multiboot_entry:
                   # 0xC0100000 (KERNEL_BASE_VA + KERNEL_PADDR).
 
 .next_step:
-   mov esp, KERNEL_INITIAL_STACK_ADDR
+   mov esp, offset kernel_initial_stack + KERNEL_INITIAL_STACK_SIZE - 4
 
    push ebx    # 2st argument: multiboot information structure
    push eax    # 1nd argument: multiboot magic
