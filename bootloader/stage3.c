@@ -33,7 +33,7 @@ void *kmalloc(size_t n)
    return result;
 }
 
-void kfree(void *ptr, size_t n)
+void kfree2(void *ptr, size_t n)
 {
    /* DO NOTHING */
 }
@@ -100,7 +100,7 @@ void load_elf_kernel(const char *filepath, void **entry)
    }
 
    root_fs->fclose(elf_file);
-   kfree(phdr, sizeof(*phdr));
+   kfree2(phdr, sizeof(*phdr));
 }
 
 /*

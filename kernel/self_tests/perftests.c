@@ -29,7 +29,7 @@ void selftest_kmalloc_perf_per_size(int size)
    }
 
    for (int i = 0; i < iters; i++) {
-      kfree(allocations[i], size);
+      kfree2(allocations[i], size);
    }
 
    duration = RDTSC() - start;
@@ -57,7 +57,7 @@ void selftest_kmalloc_perf()
       }
 
       for (int j = 0; j < RANDOM_VALUES_COUNT; j++)
-         kfree(allocations[j], random_values[j]);
+         kfree2(allocations[j], random_values[j]);
    }
 
    u64 duration = (RDTSC() - start) / (iters * RANDOM_VALUES_COUNT);
@@ -240,7 +240,7 @@ selftest_alloc_pageframe_perf_perc_free(const int free_perc_threshold,
          free_pageframe(paddrs[i]);
    }
 
-   kfree(paddrs, max_pages * sizeof(uptr));
+   kfree2(paddrs, max_pages * sizeof(uptr));
 }
 
 void selftest_alloc_pageframe_perf(void)
@@ -292,7 +292,7 @@ void selftest_alloc_pageframe_perf(void)
    avg = duration / allocated;
    printk("Freed %u pageframes, AVG cost: %llu cycles\n", allocated, avg);
 
-   kfree(paddrs, max_pages * sizeof(uptr));
+   kfree2(paddrs, max_pages * sizeof(uptr));
 
    selftest_alloc_pageframe_perf_perc_free(1, false);
    selftest_alloc_pageframe_perf_perc_free(2, false);

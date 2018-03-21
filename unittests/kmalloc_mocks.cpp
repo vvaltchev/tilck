@@ -79,7 +79,7 @@ uptr get_mapping(page_directory_t *, void *vaddrp)
 }
 
 void *__real_kmalloc(size_t size);
-void __real_kfree(void *ptr, size_t size);
+void __real_kfree2(void *ptr, size_t size);
 
 void *__wrap_kmalloc(size_t size)
 {
@@ -89,12 +89,12 @@ void *__wrap_kmalloc(size_t size)
    return __real_kmalloc(size);
 }
 
-void __wrap_kfree(void *ptr, size_t size)
+void __wrap_kfree2(void *ptr, size_t size)
 {
    if (mock_kmalloc)
       return free(ptr);
 
-   __real_kfree(ptr, size);
+   __real_kfree2(ptr, size);
 }
 
 }

@@ -339,7 +339,7 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 #undef SIMULATE_RETURN_NULL
 #undef HANDLE_SIMULATED_RETURN
 
-static void internal_kfree(kmalloc_heap *h, void *ptr, size_t size)
+static void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size)
 {
    const int node = ptr_to_node(h, ptr, size);
 
@@ -460,7 +460,7 @@ static size_t calculate_block_size(kmalloc_heap *h, uptr vaddr)
    return size;
 }
 
-void kfree(void *ptr, size_t user_size)
+void kfree2(void *ptr, size_t user_size)
 {
    const uptr vaddr = (uptr) ptr;
    size_t size;
@@ -498,7 +498,7 @@ void kfree(void *ptr, size_t user_size)
    }
 
    ASSERT(vaddr >= heaps[hn].vaddr && vaddr + size <= heaps[hn].heap_over_end);
-   internal_kfree(&heaps[hn], ptr, size);
+   internal_kfree2(&heaps[hn], ptr, size);
    heaps[hn].mem_allocated -= size;
 
    // if (KMALLOC_FREE_MEM_POISONING) {

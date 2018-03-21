@@ -373,15 +373,15 @@ void pdir_destroy(page_directory_t *pdir)
          }
 
          // No COW (or COW with ref-count == 1).
-         kfree(KERNEL_PA_TO_VA(paddr << PAGE_SHIFT), PAGE_SIZE);
+         kfree2(KERNEL_PA_TO_VA(paddr << PAGE_SHIFT), PAGE_SIZE);
       }
 
       // We freed all the pages, now free the whole page-table.
-      kfree(pt, sizeof(*pt));
+      kfree2(pt, sizeof(*pt));
    }
 
    // We freed all pages and all the page-tables, now free pdir.
-   kfree(pdir, sizeof(*pdir));
+   kfree2(pdir, sizeof(*pdir));
 }
 
 

@@ -37,7 +37,7 @@ set(
    not_reached
    printk
    kmalloc
-   kfree
+   kfree2
 )
 
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})

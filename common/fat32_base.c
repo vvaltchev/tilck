@@ -588,7 +588,7 @@ STATIC ssize_t fat_write(fs_handle h,
 STATIC void fat_close(fs_handle handle)
 {
    fat_file_handle *h = (fat_file_handle *)handle;
-   kfree(h, sizeof(fat_file_handle));
+   kfree2(h, sizeof(fat_file_handle));
 }
 
 STATIC ssize_t fat_read(fs_handle handle,
@@ -817,6 +817,6 @@ filesystem *fat_mount_ramdisk(void *vaddr)
 
 void fat_umount_ramdisk(filesystem *fs)
 {
-   kfree(fs->device_data, sizeof(fat_fs_device_data));
-   kfree(fs, sizeof(filesystem));
+   kfree2(fs->device_data, sizeof(fat_fs_device_data));
+   kfree2(fs, sizeof(filesystem));
 }

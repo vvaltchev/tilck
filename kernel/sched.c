@@ -144,8 +144,8 @@ void remove_task(task_info *ti)
       task_remove_from_state_list(ti);
       list_remove(&ti->list);
 
-      kfree(ti->kernel_stack, KTHREAD_STACK_SIZE);
-      kfree(ti, sizeof(task_info));
+      kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
+      kfree2(ti, sizeof(task_info));
    }
    enable_preemption();
 }

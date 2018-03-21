@@ -125,11 +125,11 @@ void dfree_strarray(char *const *argv)
       return;
 
    while (*p) {
-      kfree(*p, strlen(*p) + 1);
+      kfree2(*p, strlen(*p) + 1);
       elems++;
    }
 
-   kfree((void *) argv, sizeof(uptr) * (elems + 1));
+   kfree2((void *) argv, sizeof(uptr) * (elems + 1));
 }
 
 void vprintk(const char *fmt, va_list args)

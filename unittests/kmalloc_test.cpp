@@ -113,7 +113,7 @@ void kmalloc_chaos_test_sub(default_random_engine &e,
    }
 
    for (const auto& e : allocations) {
-      kfree(e.first, e.second);
+      kfree2(e.first, e.second);
    }
 }
 

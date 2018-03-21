@@ -59,7 +59,7 @@ int create_dev_file(const char *filename, int major, int minor)
    int res = dinfo->create_dev_file(minor, &f->fops);
 
    if (res < 0) {
-      kfree(f, sizeof(devfs_file));
+      kfree2(f, sizeof(devfs_file));
       return res;
    }
 
@@ -100,7 +100,7 @@ static fs_handle devfs_open(filesystem *fs, const char *path)
 static void devfs_close(fs_handle h)
 {
    devfs_file_handle *devh = h;
-   kfree(devh, sizeof(devfs_file_handle));
+   kfree2(devh, sizeof(devfs_file_handle));
 }
 
 static fs_handle devfs_dup(fs_handle h)

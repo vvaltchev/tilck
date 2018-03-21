@@ -46,7 +46,7 @@ void mountpoint_remove(filesystem *fs)
 {
    for (u32 i = 0; i < ARRAY_SIZE(mps); i++) {
       if (mps[i] && mps[i]->fs == fs) {
-         kfree(mps[i], sizeof(mountpoint) + strlen(mps[i]->path) + 1);
+         kfree2(mps[i], sizeof(mountpoint) + strlen(mps[i]->path) + 1);
          mps[i] = NULL;
          return;
       }

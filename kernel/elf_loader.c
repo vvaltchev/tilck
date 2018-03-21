@@ -118,7 +118,7 @@ int load_elf_program(const char *filepath,
    *stack_addr = (void *) ((OFFLIMIT_USERMODE_ADDR - 1) & ~15);
    *entry = (void *) header.e_entry;
 
-   kfree(phdrs, total_phdrs_size);
+   kfree2(phdrs, total_phdrs_size);
    return 0;
 }
 

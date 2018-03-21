@@ -23,7 +23,7 @@ void pqueue_init(pqueue *pq, size_t capacity)
 
 void pqueue_destroy(pqueue *pq)
 {
-   kfree(pq->elems, pq->capacity);
+   kfree2(pq->elems, pq->capacity);
    bzero(pq, sizeof(pqueue_elem));
 }
 
