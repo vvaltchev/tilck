@@ -4,33 +4,6 @@
 #include <common_defs.h>
 #include <hal.h>
 
-
-/*
- * The following FAULTs are valid both for x86 (i386+) and for x86_64.
- */
-#define FAULT_DIVISION_BY_ZERO      0
-#define FAULT_DEBUG                 1
-#define FAULT_NMI                   2
-#define FAULT_BREAKPOINT            3
-#define FAULT_INTO_DEC_OVERFLOW     4
-#define FAULT_OUT_OF_BOUNDS         5
-#define FAULT_INVALID_OPCODE        6
-#define FAULT_NO_COPROC             7
-
-#define FAULT_DOUBLE_FAULT          8
-#define FAULT_COPROC_SEG_OVERRRUN   9
-#define FAULT_BAD_TSS              10
-#define FAULT_SEG_NOT_PRESENT      11
-#define FAULT_STACK_FAULT          12
-#define FAULT_GENERAL_PROTECTION   13
-#define FAULT_PAGE_FAULT           14
-#define FAULT_UNKNOWN_INTERRUPT    15
-#define FAULT_COPROC_FAULT         16
-#define FAULT_ALIGN_FAULT          17
-#define FAULT_MACHINE_CHECK        18
-
-#define SYSCALL_SOFT_INTERRUPT   0x80
-
 // Forward-declaring regs
 typedef struct regs regs;
 
