@@ -34,6 +34,7 @@ int strcmp(const char *s1, const char *s2);
 int stricmp(const char *s1, const char *s2);
 void memcpy(void *dest, const void *src, size_t n);
 void memmove(void *dest, const void *src, size_t n);
+void str_reverse(char *str, size_t len);
 
 char *strdup(const char *s);
 char *const *dcopy_strarray(const char *const *argv);

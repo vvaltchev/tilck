@@ -132,6 +132,31 @@ void dfree_strarray(char *const *argv)
    kfree((void *) argv);
 }
 
+/*
+ * Reverse a string in-place.
+ * NOTE: len == strlen(str): it does NOT include the final \0.
+ */
+void str_reverse(char *str, size_t len)
+{
+   ASSERT(len == strlen(str));
+
+   if (!len)
+      return;
+
+   char *end = str + len - 1;
+
+   while (str < end) {
+
+      *str ^= *end;
+      *end ^= *str;
+      *str ^= *end;
+
+      str++;
+      end--;
+   }
+}
+
+
 void vprintk(const char *fmt, va_list args)
 {
    const char *ptr = fmt;
