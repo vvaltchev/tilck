@@ -169,9 +169,7 @@ int main(int argc, char **argv, char **env)
       (void)in_fd; (void)out_fd; (void)err_fd;
    }
 
-   const char *hello_msg = "[direct write] Hello from init!\n";
-   write(1, hello_msg, strlen(hello_msg));
-   printf("MY PID IS %i\n", getpid());
+   printf("Hello from init! MY PID IS %i\n", getpid());
 
    //args_test(argc, argv);
    //file_read_test();

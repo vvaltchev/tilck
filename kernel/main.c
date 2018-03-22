@@ -30,7 +30,6 @@
 extern u32 memsize_in_mb;
 extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
-extern task_info *usermode_init_task;
 
 /* Variables used by the cmdline parsing code */
 

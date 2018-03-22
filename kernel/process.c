@@ -196,11 +196,6 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
    }
 }
 
-
-#ifdef DEBUG_QEMU_EXIT_ON_INIT_EXIT
-extern task_info *usermode_init_task;
-#endif
-
 NORETURN void sys_exit(int exit_status)
 {
    disable_preemption();
@@ -246,7 +241,7 @@ NORETURN void sys_exit(int exit_status)
    pdir_destroy(current->pdir);
 
 #ifdef DEBUG_QEMU_EXIT_ON_INIT_EXIT
-   if (current == usermode_init_task) {
+   if (current->pid == 3) {
       debug_qemu_turn_off_machine();
    }
 #endif

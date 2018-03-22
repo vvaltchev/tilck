@@ -7,7 +7,6 @@
 /* the kernel starts with interrupts disabled */
 volatile int disable_interrupts_count = 1;
 
-task_info *usermode_init_task;
 uptr ramdisk_paddr = RAMDISK_PADDR; /* default value in case of no multiboot */
 size_t ramdisk_size = RAMDISK_SIZE; /* default value in case of no multiboot */
 
