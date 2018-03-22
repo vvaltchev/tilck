@@ -39,7 +39,7 @@ set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
 
 if (${ARCH} STREQUAL "i386")
    set(ARCH_FAMILY "generic_x86")
-   set(GCC_TOOLCHAIN ${TCROOT}/x86-i686--glibc--stable-2018.02-2/bin)
+   set(GCC_TOOLCHAIN ${TCROOT}/x86_gcc_toolchain/bin)
 else()
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
 endif()

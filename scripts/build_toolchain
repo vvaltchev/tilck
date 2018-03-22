@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# GLOBAL VARIABLES
+
+X86_TOOLCHAIN_DIR_NAME="x86_gcc_toolchain"
+
 ##############################################
 # Internal utility functions
 ##############################################
@@ -278,21 +282,27 @@ function build_mtools {
 # x86-i686 GNU toolchain
 ###############################
 
-function download_i686_toolchain {
+function download_x86_gcc_toolchain {
 
    pushd .
 
-   if ! [ -d x86-i686--glibc--stable ]; then
+   if ! [ -d $X86_TOOLCHAIN_DIR_NAME ]; then
 
       echo
-      echo "*** i686 TOOLCHAIN ***"
+      echo "*** i686 GCC TOOLCHAIN ***"
       echo
 
-      tarname=x86-i686--glibc--stable-2018.02-2.tar.bz2
-      url=http://toolchains.free-electrons.com/downloads/releases/toolchains
+      # bleeding-edge
+      #tcname=x86-i686--glibc--bleeding-edge-2018.02-1
+
+      # stable
+      tcname=x86-i686--glibc--stable-2018.02-2
+      tarname=$tcname.tar.bz2
+      url=http://toolchains.bootlin.com/downloads/releases/toolchains
       wget $url/x86-i686/tarballs/$tarname
       tar xfj $tarname
       rm $tarname
+      mv $tcname $X86_TOOLCHAIN_DIR_NAME
       cd $X86_TOOLCHAIN
 
       for x in *; do
@@ -549,7 +559,7 @@ else
    CMAKE=cmake
 fi
 
-X86_TOOLCHAIN=$TC/x86-i686--glibc--stable-2018.02-2/bin
+X86_TOOLCHAIN=$TC/$X86_TOOLCHAIN_DIR_NAME/bin
 
 if [ "$1" == "-s" ]; then
 
@@ -588,7 +598,7 @@ echo
 echo "*** Building the custom toolchain ***"
 echo
 
-download_i686_toolchain
+download_x86_gcc_toolchain
 build_cmake
 build_lcov
 build_dietlibc

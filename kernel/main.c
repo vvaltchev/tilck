@@ -41,7 +41,8 @@ static void (*self_test_to_run)(void);
 
 void show_hello_message(void)
 {
-   printk("Hello from exOS! [%s build]\n", BUILDTYPE_STR);
+   printk("Hello from exOS! [%s build, GCC %i.%i.%i]\n",
+          BUILDTYPE_STR, __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 }
 
 void use_kernel_arg(int arg_num, const char *arg)
