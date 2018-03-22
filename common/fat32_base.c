@@ -36,20 +36,9 @@ static u8 shortname_checksum(u8 *shortname)
    return sum;
 }
 
-/*
- * Without the NO_INLINE here, in RELEASE builds, this function gets
- * inlined in fat_walk_directory() in an apparently buggy way and it triggers
- * a triple fault.
- * Update 1: if the = {0} initialization of tmp is replaced by a call to bzero,
- * everything works, even without the NO_INLINE attribute.
- * Update 2: even if bzero() call is kept, and the only difference is declaring:
- *    char tmp[256] vs char tmp[256] = {0}
- * The '= {0}' version leads to an incorrect code.
- * Update 3: actually, the code itself does not even need tmp to be zero-ed.
- */
 static void reverse_long_name(fat_walk_dir_ctx *ctx)
 {
-   char tmp[256];
+   char tmp[256] = {0};
    int di = 0;
 
    for (int i = ctx->long_name_size-1; i >= 0; i--)

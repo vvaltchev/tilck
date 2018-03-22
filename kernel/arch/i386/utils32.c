@@ -29,6 +29,7 @@ void memmove(void *dest, const void *src, size_t n)
    } else {
       asmVolatile ("std\n\t"
                    "rep movsb\n\t"
+                   "cld\n\t"
                    : // no output
                    :"c" (n), "S" (src+n-1), "D" (dest+n-1)
                    :"memory");

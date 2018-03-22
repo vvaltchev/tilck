@@ -943,6 +943,10 @@ complete_flush:
    mov gs, ax
    mov ss, ax
 
+   # Clear the direction flag since the C compiler has the right
+   # to assume that is set to 0 (forward).
+   cld
+
    # Set the stack for the 3rd stage of the bootloader
    mov esp, 0x0000FFF0
 

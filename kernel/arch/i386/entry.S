@@ -58,6 +58,9 @@ FUNC(_start):
 
 multiboot_entry:
 
+   /* Clear the direction flag */
+   cld
+
    /*
     * Before jump to kernel, we have to setup a basic paging in order to map
     * the first 4-MB both at 0 and at +KERNEL_BASE_VA. Using 4-MB pages.
