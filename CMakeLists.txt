@@ -3,6 +3,13 @@ project (exos C CXX ASM)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
 
+# Reset the default flags
+
+set(CMAKE_C_FLAGS_DEBUG "")
+set(CMAKE_C_FLAGS_MINSIZEREL "")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "")
+set(CMAKE_C_FLAGS_RELEASE "")
+
 ###########################################################
 # Generic CMake Utilities
 
