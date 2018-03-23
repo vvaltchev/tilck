@@ -1,7 +1,26 @@
 
 #include <common_defs.h>
 #include <string_util.h>
-#include <arch/generic_x86/x86_utils.h>
+
+char small_heap[4 * KB];
+size_t heap_used;
+
+void *kmalloc(size_t n)
+{
+   if (heap_used + n >= sizeof(small_heap)) {
+      panic("kmalloc: unable to allocate %u bytes!", n);
+   }
+
+   void *result = small_heap + heap_used;
+   heap_used += n;
+
+   return result;
+}
+
+void kfree2(void *ptr, size_t n)
+{
+   /* DO NOTHING */
+}
 
 void memmove(void *dest, const void *src, size_t n)
 {
@@ -27,10 +46,9 @@ NORETURN void panic(const char *fmt, ...)
    printk("\n");
 
    while (true) {
-      halt();
+      asmVolatile("hlt");
    }
 }
 
-void enable_preemption() { }
-void disable_preemption() { }
-
+// Hack to make the linker happy (printk() in string_utils needs it).
+u32 disable_preemption_count = 1;

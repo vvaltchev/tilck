@@ -7,37 +7,13 @@
 
 void term_init(void);
 
-// Hack to make the linker happy (printk() in string_utils needs it).
-u32 disable_preemption_count = 1;
-
 /*
  * Checks if 'addr' is in the range [begin, end).
  */
 #define IN(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
 
-const char *kernel_path = "/EFI/BOOT/elf_kernel_stripped";
-
-char small_heap[4096];
-size_t heap_used;
+Elf32_Phdr phdrs[64];
 filesystem *root_fs;
-
-void *kmalloc(size_t n)
-{
-   if (heap_used + n >= sizeof(small_heap)) {
-      panic("kmalloc: unable to allocate %u bytes!", n);
-   }
-
-   void *result = small_heap + heap_used;
-   heap_used += n;
-
-   return result;
-}
-
-void kfree2(void *ptr, size_t n)
-{
-   /* DO NOTHING */
-}
-
 
 void load_elf_kernel(const char *filepath, void **entry)
 {
@@ -63,16 +39,17 @@ void load_elf_kernel(const char *filepath, void **entry)
    *entry = (void *)header.e_entry;
 
    const ssize_t total_phdrs_size = header.e_phnum * sizeof(Elf32_Phdr);
-   Elf32_Phdr *phdr = kmalloc(total_phdrs_size);
-   VERIFY(phdr != NULL);
+   VERIFY(header.e_phnum <= ARRAY_SIZE(phdrs));
 
    ret = elf_file->fops.fseek(elf_file, header.e_phoff, SEEK_SET);
    VERIFY(ret == (ssize_t)header.e_phoff);
 
-   ret = elf_file->fops.fread(elf_file, (void *)phdr, total_phdrs_size);
+   ret = elf_file->fops.fread(elf_file, (void *)phdrs, total_phdrs_size);
    ASSERT(ret == total_phdrs_size);
 
-   for (int i = 0; i < header.e_phnum; i++, phdr++) {
+   for (int i = 0; i < header.e_phnum; i++) {
+
+      Elf32_Phdr *phdr = phdrs + i;
 
       if (phdr->p_type != PT_LOAD) {
          continue; // Ignore non-load segments.
@@ -100,7 +77,6 @@ void load_elf_kernel(const char *filepath, void **entry)
    }
 
    root_fs->fclose(elf_file);
-   kfree2(phdr, sizeof(*phdr));
 }
 
 /*
@@ -133,19 +109,12 @@ void ramdisk_checksum(void)
 void bootloader_main(void)
 {
    term_init();
-
-   ASSERT(heap_used == 0);  // Be sure that BSS has been zero-ed.
-   ASSERT(root_fs == NULL); // As above.
-
-   printk("*** HELLO from the 3rd stage of the BOOTLOADER ***\n");
-
-   //ramdisk_checksum();
-   //while(1) asmVolatile("hlt");
+   ASSERT(!root_fs); // Be sure that BSS has been zero-ed.
 
    root_fs = fat_mount_ramdisk((void *)RAMDISK_PADDR);
 
    void *entry;
-   load_elf_kernel(kernel_path, &entry);
+   load_elf_kernel(KERNEL_FILE_PATH, &entry);
 
    /* Jump to the kernel */
    asmVolatile("jmpl *%0" : : "r"(entry));
