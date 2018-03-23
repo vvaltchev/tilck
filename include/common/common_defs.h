@@ -78,6 +78,7 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 #define NORETURN
 
 #define OFFSET_OF(st, m)
+#define WEAK
 
 #else
 
@@ -98,6 +99,7 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 
 #define PURE __attribute__((pure))
 #define CONSTEXPR __attribute__((const))
+#define WEAK __attribute__((weak))
 
 #endif
 

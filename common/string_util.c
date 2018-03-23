@@ -190,28 +190,10 @@ void vprintk(const char *fmt, va_list args)
    }
 }
 
-#ifdef __EXOS_KERNEL__
-
-#include <process.h>
-
-void printk(const char *fmt, ...)
-{
-   disable_preemption();
-   {
-      va_list args;
-      va_start(args, fmt);
-      vprintk(fmt, args);
-   }
-   enable_preemption();
-}
-
-#else
-
-void printk(const char *fmt, ...)
+void WEAK printk(const char *fmt, ...)
 {
    va_list args;
    va_start(args, fmt);
    vprintk(fmt, args);
 }
 
-#endif

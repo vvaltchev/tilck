@@ -2,16 +2,6 @@
 #include <common/common_defs.h>
 #include <common/string_util.h>
 
-void *kmalloc(size_t n)
-{
-   NOT_IMPLEMENTED();
-}
-
-void kfree2(void *ptr, size_t n)
-{
-   NOT_IMPLEMENTED();
-}
-
 void memmove(void *dest, const void *src, size_t n)
 {
    for (size_t i = 0; i < n; i++) {
@@ -39,6 +29,3 @@ NORETURN void panic(const char *fmt, ...)
       asmVolatile("hlt");
    }
 }
-
-// Hack to make the linker happy (printk() in string_utils needs it).
-u32 disable_preemption_count = 1;
