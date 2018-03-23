@@ -59,6 +59,8 @@ bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
 
    enable_interrupts();
 
+#ifndef UNIT_TEST_ENVIRONMENT
+
    /*
     * Special way of signalling a condition variable, without holding its lock:
     * this code will be often often called by higher-halfs of interrupt handlers
@@ -68,6 +70,8 @@ bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
     * in a while(true) loop.
     */
    kcond_signal_single(&tasklet_cond, tasklet_runner_task);
+
+#endif
 
    return true;
 }
