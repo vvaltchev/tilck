@@ -2,7 +2,7 @@
 #pragma once
 
 #include <common/common_defs.h>
-#include <exos/arch/generic_x86/x86_utils.h>
+#include <arch/generic_x86/x86_utils.h>
 
 
 // Forward-declaring regs

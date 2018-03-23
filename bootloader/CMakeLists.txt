@@ -54,6 +54,8 @@ SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 set(
    FLAGS_LIST
 
+   -D__EXOS_BOOTLOADER__
+
    -mno-red-zone
    -ffreestanding
    -nostdinc
@@ -116,7 +118,6 @@ target_include_directories(
 
    ${CMAKE_SOURCE_DIR}/include
    ${CMAKE_SOURCE_DIR}/include/system_headers
-   ${CMAKE_SOURCE_DIR}/include/exos
 )
 
 add_custom_command(

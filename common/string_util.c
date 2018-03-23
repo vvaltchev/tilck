@@ -1,7 +1,7 @@
 
 #include <common/string_util.h>
-#include <kmalloc.h>
-#include <term.h>
+#include <exos/kmalloc.h>
+#include <exos/term.h>
 
 #define MAGIC_ITOA_STRING \
    "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"
@@ -242,6 +242,8 @@ void vprintk(const char *fmt, va_list args)
    }
 }
 
+#ifdef __EXOS_KERNEL__
+
 #include <process.h>
 
 void printk(const char *fmt, ...)
@@ -254,3 +256,14 @@ void printk(const char *fmt, ...)
    }
    enable_preemption();
 }
+
+#else
+
+void printk(const char *fmt, ...)
+{
+   va_list args;
+   va_start(args, fmt);
+   vprintk(fmt, args);
+}
+
+#endif
