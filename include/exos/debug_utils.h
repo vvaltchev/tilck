@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include <paging.h>
-#include <hal.h>
+#include <exos/paging.h>
+#include <exos/hal.h>
 
 size_t stackwalk32(void **frames, size_t count,
                    void *ebp, page_directory_t *pdir);

@@ -1,6 +1,7 @@
 #pragma once
 
-#include <hal.h>
+#include <exos/hal.h>
+#include <exos/sync.h>
 
 extern kcond kb_cond;
 

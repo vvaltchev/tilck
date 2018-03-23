@@ -178,9 +178,6 @@ syscall_type syscalls_pointers[] =
 
 const ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
 
-
-#include <hal.h>
-
 void handle_syscall(regs *r)
 {
    save_current_task_state(r);

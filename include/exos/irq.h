@@ -2,7 +2,7 @@
 #pragma once
 
 #include <common/basic_defs.h>
-#include <hal.h>
+#include <exos/hal.h>
 
 // Forward-declaring regs
 typedef struct regs regs;

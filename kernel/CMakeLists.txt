@@ -18,7 +18,6 @@ set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/include/system_headers)
-include_directories(${CMAKE_SOURCE_DIR}/include/exos)
 
 set(
    KERNEL_NOARCH_SOURCES_GLOB

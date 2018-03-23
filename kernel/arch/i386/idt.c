@@ -2,7 +2,7 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
-#include <hal.h>
+#include <exos/hal.h>
 
 /* Defines an IDT entry */
 struct idt_entry

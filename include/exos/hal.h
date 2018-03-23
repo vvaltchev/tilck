@@ -1,13 +1,11 @@
 
 #pragma once
 
-
 #if defined(__i386__) || defined(UNIT_TEST_ENVIRONMENT)
 #define __arch__x86__
 
 #include <arch/generic_x86/x86_utils.h>
-#include <arch/i386/arch_utils.h>
-
+#include <exos/arch/i386/arch_utils.h>
 
 static ALWAYS_INLINE int regs_intnum(regs *r)
 {

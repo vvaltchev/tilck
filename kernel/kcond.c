@@ -1,7 +1,7 @@
 
-#include <sync.h>
-#include <hal.h>
-#include <process.h>
+#include <exos/sync.h>
+#include <exos/hal.h>
+#include <exos/process.h>
 
 volatile uptr new_cond_id = 0;
 
