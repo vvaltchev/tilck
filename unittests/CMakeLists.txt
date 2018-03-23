@@ -5,7 +5,6 @@ file(GLOB SOURCES "*.c" "*.cpp")
 set(GTEST_DIR "${TCROOT}/googletest/googletest")
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_SOURCE_DIR}/include/exos)
 include_directories(${GTEST_DIR}/include)
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
