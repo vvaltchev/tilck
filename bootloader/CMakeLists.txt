@@ -24,8 +24,8 @@ set(
    -ffreestanding
    -nostdlib
    -nostdinc
-   -I${CMAKE_SOURCE_DIR}/common/include
-   -I${CMAKE_SOURCE_DIR}/common/system_headers
+   -I${CMAKE_SOURCE_DIR}/include/common
+   -I${CMAKE_SOURCE_DIR}/include/system_headers
 )
 
 add_custom_command(
@@ -114,9 +114,9 @@ target_include_directories(
 
    PUBLIC
 
-   ${CMAKE_SOURCE_DIR}/common/system_headers
-   ${CMAKE_SOURCE_DIR}/common/include
-   ${CMAKE_SOURCE_DIR}/kernel/include
+   ${CMAKE_SOURCE_DIR}/include/system_headers
+   ${CMAKE_SOURCE_DIR}/include/common
+   ${CMAKE_SOURCE_DIR}/include/exos
 )
 
 add_custom_command(
