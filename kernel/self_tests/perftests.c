@@ -2,7 +2,7 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 #include <common/utils.h>
-#include <arch/generic_x86/x86_utils.h>
+#include <common/arch/generic_x86/x86_utils.h>
 
 #include <exos/kmalloc.h>
 #include <exos/paging.h>

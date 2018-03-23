@@ -2,8 +2,7 @@
 #pragma once
 
 #include <common/basic_defs.h>
-#include <arch/generic_x86/x86_utils.h>
-
+#include <common/arch/generic_x86/x86_utils.h>
 
 // Forward-declaring regs
 typedef struct regs regs;
