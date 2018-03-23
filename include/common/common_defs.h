@@ -1,6 +1,6 @@
 
 #pragma once
-#include <config.h>
+#include <common/config.h>
 
 /*
  * TESTING is defined when kernel unit tests are compiled and it affects

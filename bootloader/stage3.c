@@ -1,9 +1,9 @@
 
-#include <common_defs.h>
-#include <string_util.h>
-#include <fat32_base.h>
+#include <common/common_defs.h>
+#include <common/string_util.h>
+#include <common/fat32_base.h>
+#include <common/utils.h>
 #include <elf.h>
-#include <utils.h>
 
 void term_init(void);
 

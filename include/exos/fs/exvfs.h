@@ -18,7 +18,7 @@
  *
  */
 
-#include <common_defs.h>
+#include <common/common_defs.h>
 
 typedef ssize_t off_t;
 

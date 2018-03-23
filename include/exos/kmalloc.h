@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include <common_defs.h>
-#include <string_util.h>
+#include <common/common_defs.h>
+#include <common/string_util.h>
 
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)
 #define KMALLOC_HEAPS_COUNT 8

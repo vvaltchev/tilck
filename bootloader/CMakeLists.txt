@@ -24,7 +24,7 @@ set(
    -ffreestanding
    -nostdlib
    -nostdinc
-   -I${CMAKE_SOURCE_DIR}/include/common
+   -I${CMAKE_SOURCE_DIR}/include
    -I${CMAKE_SOURCE_DIR}/include/system_headers
 )
 
@@ -114,8 +114,8 @@ target_include_directories(
 
    PUBLIC
 
+   ${CMAKE_SOURCE_DIR}/include
    ${CMAKE_SOURCE_DIR}/include/system_headers
-   ${CMAKE_SOURCE_DIR}/include/common
    ${CMAKE_SOURCE_DIR}/include/exos
 )
 

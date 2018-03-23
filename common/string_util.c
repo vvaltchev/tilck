@@ -1,5 +1,5 @@
 
-#include <string_util.h>
+#include <common/string_util.h>
 #include <kmalloc.h>
 #include <term.h>
 

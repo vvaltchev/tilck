@@ -16,7 +16,7 @@ set(
    -nostdinc
    -DNO_EXOS_ASSERT
    -DNO_EXOS_STATIC_WRAPPER
-   -I${CMAKE_SOURCE_DIR}/include/common
+   -I${CMAKE_SOURCE_DIR}/include
    -I${CMAKE_SOURCE_DIR}/include/system_headers
    -I${GNUEFI_DIR}/inc
    -I${GNUEFI_DIR}/inc/x86_64

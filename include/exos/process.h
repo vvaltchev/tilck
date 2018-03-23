@@ -1,13 +1,13 @@
 
 #pragma once
 
-#include <common_defs.h>
-#include <list.h>
-#include <paging.h>
-#include <irq.h>
-#include <hal.h>
-#include <sync.h>
-#include <fs/exvfs.h>
+#include <common/common_defs.h>
+#include <exos/list.h>
+#include <exos/paging.h>
+#include <exos/irq.h>
+#include <exos/hal.h>
+#include <exos/sync.h>
+#include <exos/fs/exvfs.h>
 
 // This is the biggest usermode addr + 1
 #define OFFLIMIT_USERMODE_ADDR 0xC0000000UL

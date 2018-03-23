@@ -1,7 +1,7 @@
 
 .intel_syntax noprefix
 
-#include <config.h>
+#include <common/config.h>
 
 #define BASE_LOAD_SEG          0x07C0
 #define DEST_DATA_SEGMENT      0x2000

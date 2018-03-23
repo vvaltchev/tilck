@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <common_defs.h>
+#include <common/common_defs.h>
 
 #ifdef __i386__
 #define PAGE_DIR_SIZE (PAGE_SIZE)

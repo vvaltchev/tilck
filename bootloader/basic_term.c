@@ -1,7 +1,7 @@
-#include <common_defs.h>
+#include <common/common_defs.h>
+#include <common/string_util.h>
 #include <arch/generic_x86/x86_utils.h>
 #include <arch/generic_x86/textmode_video.h>
-#include <string_util.h>
 
 #define TERMINAL_VIDEO_ADDR ((u16*)(0xB8000))
 

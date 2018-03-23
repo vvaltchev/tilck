@@ -1,4 +1,5 @@
-#include <common_defs.h>
+
+#include <common/common_defs.h>
 
 #ifndef UNIT_TEST_ENVIRONMENT
 

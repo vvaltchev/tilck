@@ -1,7 +1,7 @@
 
-#include <common_defs.h>
-#include <string_util.h>
-#include <fat32_base.h>
+#include <common/common_defs.h>
+#include <common/string_util.h>
+#include <common/fat32_base.h>
 
 /*
  * The following code uses in many cases the CamelCase naming convention

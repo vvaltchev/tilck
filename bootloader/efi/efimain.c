@@ -10,7 +10,7 @@
 #include "efiprot.h"
 
 #include <elf.h>
-#include <config.h>
+#include <common/config.h>
 
 #define PAGE_SIZE            0x1000    // 4 KB
 #define BOOT_PADDR           0xC000
