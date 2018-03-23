@@ -2,24 +2,14 @@
 #include <common_defs.h>
 #include <string_util.h>
 
-char small_heap[4 * KB];
-size_t heap_used;
-
 void *kmalloc(size_t n)
 {
-   if (heap_used + n >= sizeof(small_heap)) {
-      panic("kmalloc: unable to allocate %u bytes!", n);
-   }
-
-   void *result = small_heap + heap_used;
-   heap_used += n;
-
-   return result;
+   NOT_IMPLEMENTED();
 }
 
 void kfree2(void *ptr, size_t n)
 {
-   /* DO NOTHING */
+   NOT_IMPLEMENTED();
 }
 
 void memmove(void *dest, const void *src, size_t n)
