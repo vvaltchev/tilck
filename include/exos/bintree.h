@@ -1,7 +1,8 @@
 
 #pragma once
-#include <basic_defs.h>
-#include <string_util.h>
+
+#include <common/basic_defs.h>
+#include <common/string_util.h>
 
 typedef struct bintree_node bintree_node;
 

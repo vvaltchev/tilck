@@ -1,10 +1,13 @@
-#include <list.h>
-#include <kmalloc.h>
-#include <string_util.h>
-#include <process.h>
-#include <hal.h>
-#include <elf_loader.h>
-#include <exos_errno.h>
+
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/list.h>
+#include <exos/kmalloc.h>
+#include <exos/process.h>
+#include <exos/hal.h>
+#include <exos/elf_loader.h>
+#include <exos/exos_errno.h>
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)

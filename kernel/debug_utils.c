@@ -1,15 +1,16 @@
 
-#include <basic_defs.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
 
 volatile bool in_panic;
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
-#include <debug_utils.h>
-#include <string_util.h>
-#include <hal.h>
-#include <irq.h>
-#include <process.h>
+#include <exos/debug_utils.h>
+#include <exos/hal.h>
+#include <exos/irq.h>
+#include <exos/process.h>
+
 #include <elf.h>
 #include <multiboot.h>
 

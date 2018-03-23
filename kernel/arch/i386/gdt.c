@@ -1,6 +1,6 @@
 
-#include <basic_defs.h>
-#include <string_util.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
 
 void gdt_load();
 void tss_flush();

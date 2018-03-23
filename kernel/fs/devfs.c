@@ -1,10 +1,11 @@
 
-#include <kmalloc.h>
-#include <fs/devfs.h>
-#include <string_util.h>
-#include <term.h>
-#include <exos_errno.h>
-#include <list.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/kmalloc.h>
+#include <exos/fs/devfs.h>
+#include <exos/exos_errno.h>
+#include <exos/list.h>
 
 filesystem *devfs;
 

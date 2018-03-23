@@ -1,13 +1,12 @@
-#include <basic_defs.h>
 
-#include <irq.h>
-#include <arch/i386/arch_utils.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+#include <common/utils.h>
 
-#include <string_util.h>
-#include <term.h>
-#include <utils.h>
-#include <hal.h>
-#include <process.h>
+#include <exos/hal.h>
+#include <exos/irq.h>
+#include <exos/term.h>
+#include <exos/process.h>
 
 void idt_set_gate(u8 num, void *handler, u16 sel, u8 flags);
 

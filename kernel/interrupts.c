@@ -1,8 +1,9 @@
 
-#include <basic_defs.h>
-#include <string_util.h>
-#include <process.h>
-#include <hal.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/process.h>
+#include <exos/hal.h>
 
 void handle_syscall(regs *);
 void handle_fault(regs *);

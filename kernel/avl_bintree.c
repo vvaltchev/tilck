@@ -1,5 +1,5 @@
 
-#include <bintree.h>
+#include <exos/bintree.h>
 
 #define MAX_TREE_HEIGHT 32
 #define ALLOWED_IMBALANCE 1

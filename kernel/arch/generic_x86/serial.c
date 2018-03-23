@@ -1,7 +1,7 @@
 
-#include <basic_defs.h>
-#include <serial.h>
-#include <hal.h>
+#include <common/basic_defs.h>
+#include <exos/serial.h>
+#include <exos/hal.h>
 
 void init_serial_port()
 {

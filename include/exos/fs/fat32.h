@@ -1,9 +1,9 @@
 
 #pragma once
 
-#include <basic_defs.h>
-#include <fat32_base.h>
-#include <fs/exvfs.h>
+#include <common/basic_defs.h>
+#include <common/fat32_base.h>
+#include <exos/fs/exvfs.h>
 
 typedef struct {
 

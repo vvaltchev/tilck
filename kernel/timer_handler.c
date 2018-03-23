@@ -1,8 +1,9 @@
 
-#include <basic_defs.h>
-#include <process.h>
-#include <hal.h>
-#include <irq.h>
+#include <common/basic_defs.h>
+
+#include <exos/process.h>
+#include <exos/hal.h>
+#include <exos/irq.h>
 
 /*
  * This will keep track of how many ticks that the system

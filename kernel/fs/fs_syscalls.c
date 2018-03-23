@@ -1,10 +1,11 @@
 
-#include <basic_defs.h>
-#include <string_util.h>
-#include <process.h>
-#include <hal.h>
-#include <fs/exvfs.h>
-#include <exos_errno.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/process.h>
+#include <exos/hal.h>
+#include <exos/fs/exvfs.h>
+#include <exos/exos_errno.h>
 
 static inline bool is_fd_valid(int fd)
 {

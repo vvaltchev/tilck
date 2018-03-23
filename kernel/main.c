@@ -1,31 +1,27 @@
 
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+#include <common/utils.h>
 
-#include <basic_defs.h>
-#include <string_util.h>
-#include <hal.h>
-
-#include <irq.h>
-#include <kmalloc.h>
-#include <paging.h>
-#include <debug_utils.h>
-#include <process.h>
-#include <elf_loader.h>
-
-#include <utils.h>
-#include <tasklet.h>
-#include <sync.h>
-
-#include <fs/fat32.h>
-#include <fs/exvfs.h>
-#include <fs/devfs.h>
-
-#include <kb.h>
-#include <timer.h>
-#include <term.h>
-#include <pageframe_allocator.h>
 #include <multiboot.h>
 
-#include <arch/generic_x86/textmode_video.h>
+#include <exos/hal.h>
+#include <exos/irq.h>
+#include <exos/kmalloc.h>
+#include <exos/paging.h>
+#include <exos/debug_utils.h>
+#include <exos/process.h>
+#include <exos/elf_loader.h>
+#include <exos/tasklet.h>
+#include <exos/sync.h>
+#include <exos/fs/fat32.h>
+#include <exos/fs/exvfs.h>
+#include <exos/fs/devfs.h>
+#include <exos/kb.h>
+#include <exos/timer.h>
+#include <exos/term.h>
+#include <exos/pageframe_allocator.h>
+#include <exos/arch/generic_x86/textmode_video.h>
 
 extern u32 memsize_in_mb;
 extern uptr ramdisk_paddr;

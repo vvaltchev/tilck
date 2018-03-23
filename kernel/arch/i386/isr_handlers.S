@@ -2,8 +2,7 @@
 .intel_syntax noprefix
 
 #define ASM_FILE 1
-
-#include <config.h>
+#include <common/config.h>
 
 .section .text
 

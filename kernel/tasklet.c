@@ -1,10 +1,12 @@
 
-#include <tasklet.h>
-#include <kmalloc.h>
-#include <string_util.h>
-#include <hal.h>
-#include <sync.h>
-#include <process.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/tasklet.h>
+#include <exos/kmalloc.h>
+#include <exos/hal.h>
+#include <exos/sync.h>
+#include <exos/process.h>
 
 typedef void (*tasklet_func)(uptr, uptr, uptr);
 

@@ -6,9 +6,9 @@
  * http://www.linusakesson.net/programming/tty/index.php
  */
 
-#include <hal.h>
-#include <term.h>
-#include <serial.h>
+#include <exos/hal.h>
+#include <exos/term.h>
+#include <exos/serial.h>
 
 static u8 term_width = 80;
 static u8 term_height = 25;

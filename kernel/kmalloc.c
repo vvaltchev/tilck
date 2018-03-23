@@ -1,9 +1,10 @@
 
-#include <kmalloc.h>
-#include <paging.h>
-#include <string_util.h>
-#include <utils.h>
-#include <sync.h>
+#include <common/string_util.h>
+#include <common/utils.h>
+
+#include <exos/kmalloc.h>
+#include <exos/paging.h>
+#include <exos/sync.h>
 
 bool kbasic_virtual_alloc(uptr vaddr, int page_count);
 void kbasic_virtual_free(uptr vaddr, int page_count);

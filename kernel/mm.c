@@ -1,10 +1,11 @@
 
 // Arch independent memory management stuff
 
-#include <basic_defs.h>
-#include <string_util.h>
-#include <paging.h>
-#include <pageframe_allocator.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/paging.h>
+#include <exos/pageframe_allocator.h>
 
 page_directory_t *kernel_page_dir;
 page_directory_t *curr_page_dir;

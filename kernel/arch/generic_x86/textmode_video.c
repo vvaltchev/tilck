@@ -1,8 +1,9 @@
 
-#include <paging.h>
-#include <string_util.h>
-#include <hal.h>
-#include <arch/generic_x86/textmode_video.h>
+#include <common/string_util.h>
+
+#include <exos/arch/generic_x86/textmode_video.h>
+#include <exos/paging.h>
+#include <exos/hal.h>
 
 #define VIDEO_ADDR ((u16 *) KERNEL_PA_TO_VA(0xB8000))
 #define VIDEO_COLS 80

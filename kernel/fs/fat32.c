@@ -1,10 +1,11 @@
 
-#include <basic_defs.h>
-#include <string_util.h>
-#include <fs/fat32.h>
-#include <fs/exvfs.h>
-#include <kmalloc.h>
-#include <exos_errno.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/fs/fat32.h>
+#include <exos/fs/exvfs.h>
+#include <exos/kmalloc.h>
+#include <exos/exos_errno.h>
 
 STATIC ssize_t fat_write(fs_handle h,
                          char *buf,

@@ -1,12 +1,14 @@
 
-#include <paging.h>
-#include <irq.h>
-#include <string_util.h>
-#include <kmalloc.h>
-#include <debug_utils.h>
-#include <hal.h>
-#include <arch/i386/paging_int.h>
-#include <process.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/paging.h>
+#include <exos/irq.h>
+#include <exos/kmalloc.h>
+#include <exos/debug_utils.h>
+#include <exos/process.h>
+#include <exos/hal.h>
+#include <exos/arch/i386/paging_int.h>
 
 #define PAGE_COW_FLAG 1
 #define PAGE_COW_ORIG_RW 2

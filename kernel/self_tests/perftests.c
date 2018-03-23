@@ -1,12 +1,12 @@
 
-#include <basic_defs.h>
-#include <kmalloc.h>
-#include <string_util.h>
-#include <paging.h>
-#include <utils.h>
-#include <pageframe_allocator.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+#include <common/utils.h>
 #include <arch/generic_x86/x86_utils.h>
 
+#include <exos/kmalloc.h>
+#include <exos/paging.h>
+#include <exos/pageframe_allocator.h>
 
 #define RANDOM_VALUES_COUNT 1000
 

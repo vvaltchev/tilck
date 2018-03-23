@@ -1,11 +1,11 @@
 
-#include <basic_defs.h>
-#include <string_util.h>
-#include <term.h>
-#include <irq.h>
-#include <process.h>
-#include <hal.h>
-#include <exos_errno.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/irq.h>
+#include <exos/process.h>
+#include <exos/hal.h>
+#include <exos/exos_errno.h>
 
 typedef sptr (*syscall_type)();
 

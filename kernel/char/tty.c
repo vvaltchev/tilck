@@ -1,14 +1,15 @@
 
-#include <fs/exvfs.h>
-#include <fs/devfs.h>
-#include <term.h>
-#include <exos_errno.h>
-#include <string_util.h>
-#include <kmalloc.h>
-#include <sync.h>
-#include <kb.h>
-#include <process.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
 
+#include <exos/fs/exvfs.h>
+#include <exos/fs/devfs.h>
+#include <exos/exos_errno.h>
+#include <exos/kmalloc.h>
+#include <exos/sync.h>
+#include <exos/kb.h>
+#include <exos/process.h>
+#include <exos/term.h>
 
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {

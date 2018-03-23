@@ -1,6 +1,6 @@
 
-#include <basic_defs.h>
-#include <hal.h>
+#include <common/basic_defs.h>
+#include <exos/hal.h>
 
 /*
  * Sets timer's frequency.

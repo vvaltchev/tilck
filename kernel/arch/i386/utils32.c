@@ -1,7 +1,5 @@
 
-#include <string_util.h>
-#include <hal.h>
-#include <process.h>
+#include <common/string_util.h>
 
 void memcpy(void *dest, const void *src, size_t n)
 {

@@ -12,13 +12,14 @@
  */
 
 
-#include <basic_defs.h>
-#include <string_util.h>
-#include <term.h>
-#include <tasklet.h>
-#include <hal.h>
-#include <process.h>
-#include <sync.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/term.h>
+#include <exos/tasklet.h>
+#include <exos/hal.h>
+#include <exos/process.h>
+#include <exos/sync.h>
 
 #define KB_DATA_PORT 0x60
 #define KB_CONTROL_PORT 0x64

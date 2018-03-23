@@ -1,8 +1,10 @@
 
 #pragma once
 
-#include <basic_defs.h>
-#include <paging.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/paging.h>
 
 // Max memory size supported by the pageframe allocator.
 #define MAX_MEM_SIZE_IN_MB 1024
@@ -23,8 +25,6 @@ bool is_allocated_pageframe(uptr address);
 void mark_pageframes_as_reserved(uptr paddr, int mb_count);
 
 extern int pageframes_used;
-
-#include <string_util.h>
 
 static ALWAYS_INLINE int get_usable_pg_count(void)
 {

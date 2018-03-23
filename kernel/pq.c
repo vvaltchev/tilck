@@ -1,8 +1,8 @@
 
+#include <common/basic_defs.h>
 
-#include <basic_defs.h>
-#include <kmalloc.h>
-#include <pq.h>
+#include <exos/kmalloc.h>
+#include <exos/pq.h>
 
 #define LEFT(i) (2*(i)+1)
 #define RIGHT(i) (2*(i)+2)

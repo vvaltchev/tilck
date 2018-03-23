@@ -1,17 +1,17 @@
 
-#include <basic_defs.h>
-#include <string_util.h>
-#include <term.h>
-#include <irq.h>
-#include <kmalloc.h>
-#include <paging.h>
-#include <debug_utils.h>
-#include <process.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+#include <common/utils.h>
 
-#include <hal.h>
-#include <utils.h>
-#include <tasklet.h>
-#include <sync.h>
+#include <exos/irq.h>
+#include <exos/kmalloc.h>
+#include <exos/paging.h>
+#include <exos/debug_utils.h>
+#include <exos/process.h>
+
+#include <exos/hal.h>
+#include <exos/tasklet.h>
+#include <exos/sync.h>
 
 void test_tasklet_func()
 {

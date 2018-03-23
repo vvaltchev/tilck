@@ -1,8 +1,9 @@
 
-#include <process.h>
-#include <string_util.h>
-#include <kmalloc.h>
-#include <tasklet.h>
+#include <common/string_util.h>
+
+#include <exos/process.h>
+#include <exos/kmalloc.h>
+#include <exos/tasklet.h>
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)

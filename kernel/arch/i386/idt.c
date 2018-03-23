@@ -1,9 +1,7 @@
 
-#include <basic_defs.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
 
-#include <arch/i386/arch_utils.h>
-#include <string_util.h>
-#include <term.h>
 #include <hal.h>
 
 /* Defines an IDT entry */

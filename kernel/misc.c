@@ -1,8 +1,9 @@
 
-#include <basic_defs.h>
-#include <string_util.h>
-#include <process.h>
-#include <hal.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/process.h>
+#include <exos/hal.h>
 
 /* the kernel starts with interrupts disabled */
 volatile int disable_interrupts_count = 1;

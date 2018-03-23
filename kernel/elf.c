@@ -1,12 +1,13 @@
 
-#include <elf.h>
-#include <paging.h>
-#include <process.h>
-#include <kmalloc.h>
+#include <common/string_util.h>
 
-#include <string_util.h>
-#include <fs/exvfs.h>
-#include <exos_errno.h>
+#include <exos/paging.h>
+#include <exos/process.h>
+#include <exos/kmalloc.h>
+#include <exos/fs/exvfs.h>
+#include <exos/exos_errno.h>
+
+#include <elf.h>
 
 #ifdef BITS32
 

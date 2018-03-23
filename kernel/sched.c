@@ -1,8 +1,11 @@
-#include <list.h>
-#include <kmalloc.h>
-#include <string_util.h>
-#include <process.h>
-#include <hal.h>
+
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+
+#include <exos/list.h>
+#include <exos/kmalloc.h>
+#include <exos/process.h>
+#include <exos/hal.h>
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)

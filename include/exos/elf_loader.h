@@ -1,7 +1,8 @@
 
 #pragma once
-#include <basic_defs.h>
-#include <paging.h>
+
+#include <common/basic_defs.h>
+#include <exos/paging.h>
 
 /*
  * Loads the ELF file 'filepath' in memory.

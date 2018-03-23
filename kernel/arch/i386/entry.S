@@ -3,7 +3,7 @@
 
 #define ASM_FILE 1
 
-#include <config.h>
+#include <common/config.h>
 #include <multiboot.h>
 
 #define KERNEL_INITIAL_STACK_SIZE (64*KB)

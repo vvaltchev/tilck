@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include <basic_defs.h>
-#include <paging.h>
+#include <common/basic_defs.h>
+#include <exos/paging.h>
 
 #define PG_PRESENT_BIT_POS      0
 #define PG_RW_BIT_POS           1

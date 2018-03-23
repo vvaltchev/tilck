@@ -1,9 +1,10 @@
 
-#include <basic_defs.h>
-#include <paging.h>
-#include <string_util.h>
-#include <utils.h>
-#include <pageframe_allocator.h>
+#include <common/basic_defs.h>
+#include <common/string_util.h>
+#include <common/utils.h>
+
+#include <exos/paging.h>
+#include <exos/pageframe_allocator.h>
 
 /*
  * By mapping 4096 KB (one page) in 1 bit, a single 32-bit integer maps 128 KB.
@@ -14,9 +15,9 @@
 
 
 /*
- * This bitfield maps 1 bit to 4 KB of the whole physical memory.
- * The mapping has no shifts: its bit[0] corresponds to the first KB of the
- * physical memory, as well as its N-th bit corresponds to the N-th pageframe.
+ * This bitfield maps 1 bit to 4 KB of the "whole" physical memory after the
+ * "linear mapping" zone. The mapping is shifted by LINEAR_MAPPING_MB:
+ * bitfield's bit[0] corresponds to the pageframe at address LINEAR_MAPPING_MB.
  */
 
 u32 pageframes_bitfield[8 * (MAX_MEM_SIZE_IN_MB - LINEAR_MAPPING_MB)];
