@@ -13,10 +13,13 @@
 #include "kernel_init_funcs.h"
 
 extern "C" {
-   #include <kmalloc.h>
-   #include <paging.h>
-   #include <utils.h>
-   #include <self_tests/self_tests.h>
+
+   #include <common/utils.h>
+
+   #include <exos/kmalloc.h>
+   #include <exos/paging.h>
+   #include <exos/self_tests/self_tests.h>
+
    extern bool mock_kmalloc;
    extern bool suppress_printk;
    extern kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];

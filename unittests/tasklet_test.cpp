@@ -1,5 +1,5 @@
 
-#include <common_defs.h>
+#include <common/basic_defs.h>
 
 #include <cstdio>
 #include <cstdint>
@@ -15,7 +15,7 @@
 #include "kernel_init_funcs.h"
 
 extern "C" {
-   #include <tasklet.h>
+   #include <exos/tasklet.h>
 }
 
 using namespace std;
