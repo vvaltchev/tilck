@@ -1,6 +1,6 @@
 
 #include <common/string_util.h>
-#include <exos/term.h>
+#include <common/basic_term.h>
 
 #define MAGIC_ITOA_STRING \
    "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"
