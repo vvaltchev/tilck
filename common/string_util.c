@@ -5,7 +5,6 @@
 #define MAGIC_ITOA_STRING \
    "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"
 
-
 // Two kind-of ugly macros to avoid code duplication.
 
 #define instantiate_generic_itoa(function_name, integer_type)   \
@@ -103,7 +102,6 @@ void str_reverse(char *str, size_t len)
       end--;
    }
 }
-
 
 void vprintk(const char *fmt, va_list args)
 {

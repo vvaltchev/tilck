@@ -10,6 +10,7 @@ typedef unsigned char *va_list;
 #define va_arg(list, type)    (*(type *)((list += sizeof(type)) - sizeof(type)))
 #define va_end(list) // do nothing.
 
+
 static ALWAYS_INLINE void bzero(void *ptr, size_t len)
 {
    const size_t len4 = len >> 2;
@@ -21,13 +22,6 @@ static ALWAYS_INLINE void bzero(void *ptr, size_t len)
 
    for (u32 i = 0; i < len; i++)
       ((u8 *)ptr)[i] = 0;
-}
-
-static ALWAYS_INLINE size_t strlen(const char *str)
-{
-   const char *ptr = str;
-   while (*ptr++) { }
-   return ptr - str - 1;
 }
 
 int strcmp(const char *s1, const char *s2);
@@ -69,6 +63,10 @@ static ALWAYS_INLINE bool isdigit(int c) {
    return c >= '0' && c <= '9';
 }
 
+#if defined(__i386__) || defined(__x86_64__)
+#include <common/arch/generic_x86/x86_utils.h>
+#endif
+
 #else
 
 /* Add here any necessary #include for the tests. */
@@ -77,3 +75,5 @@ static ALWAYS_INLINE bool isdigit(int c) {
 
 void vprintk(const char *fmt, va_list args);
 void printk(const char *fmt, ...);
+
+
