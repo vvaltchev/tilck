@@ -17,8 +17,9 @@ typedef struct {
 
 } tasklet;
 
-
 tasklet *all_tasklets;
+
+static task_info *tasklet_runner_task;
 static int first_free_slot_index;
 static int slots_used;
 static int tasklet_to_execute;
@@ -32,7 +33,7 @@ void initialize_tasklets()
    bzero(all_tasklets, sizeof(tasklet) * MAX_TASKLETS);
 
    kcond_init(&tasklet_cond);
-   kthread_create(tasklet_runner_kthread, NULL);
+   tasklet_runner_task = kthread_create(tasklet_runner_kthread, NULL);
 }
 
 
@@ -66,7 +67,7 @@ bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
     * here) but that's OK since the tasklet runner thread calls run_one_tasklet
     * in a while(true) loop.
     */
-   kcond_signal_all(&tasklet_cond);
+   kcond_signal_single(&tasklet_cond, tasklet_runner_task);
 
    return true;
 }

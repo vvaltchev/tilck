@@ -74,6 +74,7 @@ typedef struct {
 #define KCOND_WAIT_FOREVER 0
 
 void kcond_signal_int(kcond *c, bool all);
+void kcond_signal_single(kcond *c, task_info *ti);
 
 void kcond_init(kcond *c);
 bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks);

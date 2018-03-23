@@ -48,6 +48,22 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
    return !current->wobj.ptr;
 }
 
+void kcond_signal_single(kcond *c, task_info *ti)
+{
+   ASSERT(!is_preemption_enabled());
+
+   if (ti->wobj.ptr == c) {
+
+      ASSERT(ti->state == TASK_STATE_SLEEPING);
+
+      if (c->timer_num >= 0)
+         cancel_timer(c->timer_num);
+
+      wait_obj_reset(&ti->wobj);
+      task_change_state(ti, TASK_STATE_RUNNABLE);
+   }
+}
+
 void kcond_signal_int(kcond *c, bool all)
 {
    task_info *pos;
@@ -55,19 +71,13 @@ void kcond_signal_int(kcond *c, bool all)
 
    list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
 
-      ASSERT(pos->state == TASK_STATE_SLEEPING);
+      if (pos->wobj.ptr == c) {
 
-      if (pos->wobj.ptr != c)
-         continue;
+         kcond_signal_single(c, pos);
 
-      if (c->timer_num >= 0)
-         cancel_timer(c->timer_num);
-
-      wait_obj_reset(&pos->wobj);
-      task_change_state(pos, TASK_STATE_RUNNABLE);
-
-      if (!all)
-         break;
+         if (!all)
+            break;
+      }
    }
 
    enable_preemption();
