@@ -115,8 +115,6 @@ static int dump_dir_entry(fat_header *hdr,
    return 0;
 }
 
-
-
 void fat_dump_info(void *fatpart_begin)
 {
    fat_header *hdr = fatpart_begin;

@@ -12,73 +12,6 @@ void term_init(void);
  */
 #define IN(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
 
-Elf32_Phdr phdrs[64];
-filesystem *root_fs;
-
-void load_elf_kernel(const char *filepath, void **entry)
-{
-   ssize_t ret;
-   Elf32_Ehdr header;
-
-   fat_file_handle *elf_file = root_fs->fopen(root_fs, filepath);
-
-   if (!elf_file) {
-      panic("Unable to open '%s'!\n", filepath);
-   }
-
-   ret = elf_file->fops.fread(elf_file, (void *)&header, sizeof(header));
-   ASSERT(ret == sizeof(header));
-
-   ASSERT(header.e_ident[EI_MAG0] == ELFMAG0);
-   ASSERT(header.e_ident[EI_MAG1] == ELFMAG1);
-   ASSERT(header.e_ident[EI_MAG2] == ELFMAG2);
-   ASSERT(header.e_ident[EI_MAG3] == ELFMAG3);
-
-   ASSERT(header.e_ehsize == sizeof(header));
-
-   *entry = (void *)header.e_entry;
-
-   const ssize_t total_phdrs_size = header.e_phnum * sizeof(Elf32_Phdr);
-   VERIFY(header.e_phnum <= ARRAY_SIZE(phdrs));
-
-   ret = elf_file->fops.fseek(elf_file, header.e_phoff, SEEK_SET);
-   VERIFY(ret == (ssize_t)header.e_phoff);
-
-   ret = elf_file->fops.fread(elf_file, (void *)phdrs, total_phdrs_size);
-   ASSERT(ret == total_phdrs_size);
-
-   for (int i = 0; i < header.e_phnum; i++) {
-
-      Elf32_Phdr *phdr = phdrs + i;
-
-      if (phdr->p_type != PT_LOAD) {
-         continue; // Ignore non-load segments.
-      }
-
-      VERIFY(phdr->p_vaddr >= KERNEL_BASE_VA);
-      VERIFY(phdr->p_paddr >= KERNEL_PADDR);
-
-      bzero((void *)phdr->p_paddr, phdr->p_memsz);
-      ret = elf_file->fops.fseek(elf_file, phdr->p_offset, SEEK_SET);
-      VERIFY(ret == (ssize_t)phdr->p_offset);
-
-      ret = elf_file->fops.fread(elf_file,(void*)phdr->p_paddr,phdr->p_filesz);
-      VERIFY(ret == (ssize_t)phdr->p_filesz);
-
-      if (IN(header.e_entry, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz)) {
-         /*
-          * If e_entry is a vaddr (address >= KERNEL_BASE_VA), we need to
-          * calculate its paddr because here paging is OFF. Therefore,
-          * compute its offset from the beginning of the segment and add it
-          * to the paddr of the segment.
-          */
-         *entry = (void *) (phdr->p_paddr + (header.e_entry - phdr->p_vaddr));
-      }
-   }
-
-   root_fs->fclose(elf_file);
-}
-
 /*
  * Without forcing the CHS parameters, on QEMU the 40 MB image has the following
  * weird parameters:
@@ -106,14 +39,66 @@ void ramdisk_checksum(void)
    // }
 }
 
+void load_elf_kernel(const char *filepath, void **entry)
+{
+   fat_header *hdr = (fat_header *)RAMDISK_PADDR;
+   void *free_space = (void *) (RAMDISK_PADDR + RAMDISK_SIZE);
+
+   fat_entry *e = fat_search_entry(hdr, fat_get_type(hdr), filepath);
+
+   if (!e)
+      panic("Unable to open '%s'!\n", filepath);
+
+   fat_read_whole_file(hdr, e, free_space, KERNEL_MAX_SIZE);
+
+   Elf32_Ehdr *header = (Elf32_Ehdr *)free_space;
+
+   VERIFY(header->e_ident[EI_MAG0] == ELFMAG0);
+   VERIFY(header->e_ident[EI_MAG1] == ELFMAG1);
+   VERIFY(header->e_ident[EI_MAG2] == ELFMAG2);
+   VERIFY(header->e_ident[EI_MAG3] == ELFMAG3);
+   VERIFY(header->e_ehsize == sizeof(*header));
+
+   *entry = (void *)header->e_entry;
+
+   Elf32_Phdr *phdrs = (Elf32_Phdr *)((char *)header + header->e_phoff);
+
+   for (int i = 0; i < header->e_phnum; i++) {
+
+      Elf32_Phdr *phdr = phdrs + i;
+
+      if (phdr->p_type != PT_LOAD) {
+         continue; // Ignore non-load segments.
+      }
+
+      VERIFY(phdr->p_vaddr >= KERNEL_BASE_VA);
+      VERIFY(phdr->p_paddr >= KERNEL_PADDR);
+
+      bzero((void *)phdr->p_paddr, phdr->p_memsz);
+
+      memmove((void *)phdr->p_paddr,
+              (char *)header + phdr->p_offset, phdr->p_filesz);
+
+      if (IN(header->e_entry, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz)) {
+         /*
+          * If e_entry is a vaddr (address >= KERNEL_BASE_VA), we need to
+          * calculate its paddr because here paging is OFF. Therefore,
+          * compute its offset from the beginning of the segment and add it
+          * to the paddr of the segment.
+          */
+         *entry = (void *) (phdr->p_paddr + (header->e_entry - phdr->p_vaddr));
+      }
+   }
+}
+
 void bootloader_main(void)
 {
-   term_init();
-   ASSERT(!root_fs); // Be sure that BSS has been zero-ed.
-
-   root_fs = fat_mount_ramdisk((void *)RAMDISK_PADDR);
-
    void *entry;
+
+   /* Clear the screen in case we need to show a panic message */
+   term_init();
+
+   /* Load the actual kernel ELF file */
    load_elf_kernel(KERNEL_FILE_PATH, &entry);
 
    /* Jump to the kernel */
