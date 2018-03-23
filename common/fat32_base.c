@@ -1,10 +1,7 @@
 
 #include <common_defs.h>
 #include <string_util.h>
-#include <fs/fat32.h>
-
-#include <kmalloc.h>
-#include <exos_errno.h>
+#include <fat32_base.h>
 
 /*
  * The following code uses in many cases the CamelCase naming convention

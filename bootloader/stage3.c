@@ -1,7 +1,7 @@
 
 #include <common_defs.h>
 #include <string_util.h>
-#include <fs/fat32.h>
+#include <fat32_base.h>
 #include <elf.h>
 #include <utils.h>
 
