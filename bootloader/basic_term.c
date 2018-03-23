@@ -1,4 +1,4 @@
-#include <common/common_defs.h>
+#include <common/basic_defs.h>
 #include <common/string_util.h>
 #include <arch/generic_x86/x86_utils.h>
 #include <arch/generic_x86/vga_textmode_defs.h>

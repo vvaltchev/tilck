@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <common/common_defs.h>
+#include <common/basic_defs.h>
 #include <hal.h>
 
 // Forward-declaring regs

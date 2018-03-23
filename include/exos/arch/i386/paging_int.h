@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <common_defs.h>
+#include <basic_defs.h>
 #include <paging.h>
 
 #define PG_PRESENT_BIT_POS      0

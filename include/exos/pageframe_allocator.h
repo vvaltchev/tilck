@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <common_defs.h>
+#include <basic_defs.h>
 #include <paging.h>
 
 // Max memory size supported by the pageframe allocator.

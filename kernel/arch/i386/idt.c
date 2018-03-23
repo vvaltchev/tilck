@@ -1,5 +1,5 @@
 
-#include <common_defs.h>
+#include <basic_defs.h>
 
 #include <arch/i386/arch_utils.h>
 #include <string_util.h>

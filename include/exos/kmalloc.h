@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <common/common_defs.h>
+#include <common/basic_defs.h>
 #include <common/string_util.h>
 
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)

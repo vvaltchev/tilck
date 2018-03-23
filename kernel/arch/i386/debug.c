@@ -1,4 +1,4 @@
-#include <common_defs.h>
+#include <basic_defs.h>
 #include <debug_utils.h>
 #include <string_util.h>
 #include <hal.h>

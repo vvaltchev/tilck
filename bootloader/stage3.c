@@ -1,5 +1,5 @@
 
-#include <common/common_defs.h>
+#include <common/basic_defs.h>
 #include <common/basic_term.h>
 #include <common/string_util.h>
 #include <common/fat32_base.h>

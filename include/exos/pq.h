@@ -1,5 +1,5 @@
 
-#include <common_defs.h>
+#include <basic_defs.h>
 
 typedef struct pqueue_elem pqueue_elem;
 typedef struct pqueue pqueue;

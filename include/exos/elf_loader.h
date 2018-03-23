@@ -1,6 +1,6 @@
 
 #pragma once
-#include <common_defs.h>
+#include <basic_defs.h>
 #include <paging.h>
 
 /*

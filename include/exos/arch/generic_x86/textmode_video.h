@@ -1,6 +1,6 @@
 
 #pragma once
-#include <common/common_defs.h>
+#include <common/basic_defs.h>
 #include <arch/generic_x86/vga_textmode_defs.h>
 
 /* Main functions */

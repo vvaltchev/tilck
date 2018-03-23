@@ -1,6 +1,6 @@
 
 #pragma once
-#include <common/common_defs.h>
+#include <common/basic_defs.h>
 
 struct list_node {
    struct list_node *next;

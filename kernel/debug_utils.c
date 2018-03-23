@@ -1,5 +1,5 @@
 
-#include <common_defs.h>
+#include <basic_defs.h>
 
 volatile bool in_panic;
 

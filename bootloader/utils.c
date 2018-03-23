@@ -1,5 +1,5 @@
 
-#include <common/common_defs.h>
+#include <common/basic_defs.h>
 #include <common/string_util.h>
 
 void memmove(void *dest, const void *src, size_t n)

@@ -1,7 +1,7 @@
 
 // Arch independent memory management stuff
 
-#include <common_defs.h>
+#include <basic_defs.h>
 #include <string_util.h>
 #include <paging.h>
 #include <pageframe_allocator.h>

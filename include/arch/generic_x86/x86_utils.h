@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <common/common_defs.h>
+#include <common/basic_defs.h>
 
 #if !defined(__i386__) && !defined(__x86_64__)
 #error This header can be used only for x86 and x86-64 architectures.

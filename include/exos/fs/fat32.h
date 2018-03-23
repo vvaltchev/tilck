@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <common_defs.h>
+#include <basic_defs.h>
 #include <fat32_base.h>
 #include <fs/exvfs.h>
 
