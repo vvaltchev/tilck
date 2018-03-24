@@ -41,24 +41,20 @@ static inline size_t strlen(const char *str)
    return count;
 }
 
-#ifdef  __EXOS_KERNEL__
-
 // dest and src CANNOT overloap
 static inline void memcpy(void *dest, const void *src, size_t n)
 {
    u32 unused;
 
-   asmVolatile("rep movsb\n\t"
-               "mov %[ndiv4], %%ecx\n\t"
-               "rep movsd\n\t"
-               : [ndiv4] "=q" (unused), "=c" (n), "=S" (src), "=D" (dest)
-               : "[ndiv4]" "q" (n / 4), "c" (n % 4), "S"(src), "D"(dest)
-               : "cc", "memory");
+   /* No-overlap check */
+   ASSERT( ((uptr)dest + n <= (uptr)src) || ((uptr)src + n <= (uptr)dest) );
 
-   // asmVolatile ("rep movsd\n\t"
-   //              : "=c" (n), "=S" (src), "=D" (dest)
-   //              : "c" (n / 4)
-   //              : "cc", "memory");
+   asmVolatile("rep movsb\n\t"      // first, copy 1 byte at a time (n%4) times
+               "mov %0, %%ecx\n\t"  // then: ecx = n/4
+               "rep movsd\n\t"      // copy 4 bytes at a time, n/4 times
+               : "=q" (unused), "=c" (n), "=S" (src), "=D" (dest)
+               : "0q" (n >> 2), "c" (n % 4), "S"(src), "D"(dest)
+               : "cc", "memory");
 }
 
 // dest and src could overlap
@@ -79,4 +75,3 @@ static inline void memmove(void *dest, const void *src, size_t n)
    }
 }
 
-#endif

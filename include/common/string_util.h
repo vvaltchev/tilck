@@ -78,4 +78,3 @@ void memmove(void *dest, const void *src, size_t n);
 
 void vprintk(const char *fmt, va_list args);
 void printk(const char *fmt, ...);
-
