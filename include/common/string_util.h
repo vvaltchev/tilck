@@ -64,7 +64,7 @@ static ALWAYS_INLINE bool isdigit(int c) {
 }
 
 #if defined(__i386__) || defined(__x86_64__)
-#include <common/arch/generic_x86/x86_utils.h>
+#include <common/arch/generic_x86/asm_x86_strings.h>
 #endif
 
 #else
@@ -75,5 +75,3 @@ static ALWAYS_INLINE bool isdigit(int c) {
 
 void vprintk(const char *fmt, va_list args);
 void printk(const char *fmt, ...);
-
-
