@@ -49,9 +49,9 @@ static inline void memcpy(void *dest, const void *src, size_t n)
    /* No-overlap check */
    ASSERT( ((uptr)dest + n <= (uptr)src) || ((uptr)src + n <= (uptr)dest) );
 
-   asmVolatile("rep movsb\n\t"      // first, copy 1 byte at a time (n%4) times
+   asmVolatile("rep movsb\n\t"         // copy 1 byte at a time (n%4) times
                "mov %%ebx, %%ecx\n\t"  // then: ecx = n/4
-               "rep movsd\n\t"      // copy 4 bytes at a time, n/4 times
+               "rep movsd\n\t"         // copy 4 bytes at a time, n/4 times
                : "=b" (unused), "=c" (n), "=S" (src), "=D" (dest)
                : "b" (n >> 2), "c" (n % 4), "S"(src), "D"(dest)
                : "cc", "memory");
@@ -60,7 +60,7 @@ static inline void memcpy(void *dest, const void *src, size_t n)
 // dest and src could overlap
 static inline void memmove(void *dest, const void *src, size_t n)
 {
-   if (dest < src) {
+   if (dest < src || ((uptr)src + n <= (uptr)dest)) {
 
       memcpy(dest, src, n);
 
