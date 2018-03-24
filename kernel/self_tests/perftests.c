@@ -11,11 +11,11 @@
 #define RANDOM_VALUES_COUNT 1000
 
 extern int random_values[RANDOM_VALUES_COUNT];
+static void *allocations[10000];
 
 void selftest_kmalloc_perf_per_size(int size)
 {
    const int iters = size < 4096 ? 10000 : (size <= 16*KB ? 1000 : 100);
-   void *allocations[iters];
    u64 start, duration;
 
    start = RDTSC();
@@ -39,7 +39,6 @@ void selftest_kmalloc_perf_per_size(int size)
 
 void selftest_kmalloc_perf()
 {
-   void *allocations[RANDOM_VALUES_COUNT];
    const int iters = 1000;
 
    printk("*** kmalloc perf test ***\n", iters);

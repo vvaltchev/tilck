@@ -6,7 +6,7 @@
 #include <common/config.h>
 #include <multiboot.h>
 
-#define KERNEL_INITIAL_STACK_SIZE (64*KB)
+#define KERNEL_INITIAL_STACK_SIZE (4*KB)
 
 .section bss
 .align 4096
