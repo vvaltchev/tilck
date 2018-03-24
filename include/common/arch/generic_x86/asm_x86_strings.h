@@ -50,10 +50,10 @@ static inline void memcpy(void *dest, const void *src, size_t n)
    ASSERT( ((uptr)dest + n <= (uptr)src) || ((uptr)src + n <= (uptr)dest) );
 
    asmVolatile("rep movsb\n\t"      // first, copy 1 byte at a time (n%4) times
-               "mov %0, %%ecx\n\t"  // then: ecx = n/4
+               "mov %%ebx, %%ecx\n\t"  // then: ecx = n/4
                "rep movsd\n\t"      // copy 4 bytes at a time, n/4 times
-               : "=q" (unused), "=c" (n), "=S" (src), "=D" (dest)
-               : "0q" (n >> 2), "c" (n % 4), "S"(src), "D"(dest)
+               : "=b" (unused), "=c" (n), "=S" (src), "=D" (dest)
+               : "b" (n >> 2), "c" (n % 4), "S"(src), "D"(dest)
                : "cc", "memory");
 }
 
