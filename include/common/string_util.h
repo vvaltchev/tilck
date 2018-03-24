@@ -26,8 +26,6 @@ static ALWAYS_INLINE void bzero(void *ptr, size_t len)
 
 int strcmp(const char *s1, const char *s2);
 int stricmp(const char *s1, const char *s2);
-void memcpy(void *dest, const void *src, size_t n);
-void memmove(void *dest, const void *src, size_t n);
 void str_reverse(char *str, size_t len);
 
 char *strdup(const char *s);
@@ -67,6 +65,11 @@ static ALWAYS_INLINE bool isdigit(int c) {
 #include <common/arch/generic_x86/asm_x86_strings.h>
 #endif
 
+#ifndef __EXOS_KERNEL__
+void memcpy(void *dest, const void *src, size_t n);
+void memmove(void *dest, const void *src, size_t n);
+#endif
+
 #else
 
 /* Add here any necessary #include for the tests. */
@@ -75,3 +78,4 @@ static ALWAYS_INLINE bool isdigit(int c) {
 
 void vprintk(const char *fmt, va_list args);
 void printk(const char *fmt, ...);
+
