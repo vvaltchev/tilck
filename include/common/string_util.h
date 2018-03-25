@@ -10,20 +10,6 @@ typedef unsigned char *va_list;
 #define va_arg(list, type)    (*(type *)((list += sizeof(type)) - sizeof(type)))
 #define va_end(list) // do nothing.
 
-
-static ALWAYS_INLINE void bzero(void *ptr, size_t len)
-{
-   const size_t len4 = len >> 2;
-   for (size_t i = 0; i < len4; i++)
-      ((u32 *)ptr)[i] = 0;
-
-   len = len % 4;
-   ptr = ((u8 *)ptr) + (len4 << 2);
-
-   for (u32 i = 0; i < len; i++)
-      ((u8 *)ptr)[i] = 0;
-}
-
 int strcmp(const char *s1, const char *s2);
 int stricmp(const char *s1, const char *s2);
 void str_reverse(char *str, size_t len);

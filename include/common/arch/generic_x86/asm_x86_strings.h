@@ -19,7 +19,7 @@
 EXTERN inline size_t strlen(const char *str)
 {
    register u32 count asm("ecx");
-   u32 unused;
+   uptr unused;
 
    /*
     * 0. ASSUME DF = 0 (the compiler assumes that already everywhere!)
@@ -115,14 +115,34 @@ EXTERN inline void *memmove(void *dest, const void *src, size_t n)
 
       u32 unused;
 
-      asmVolatile ("std\n\t"
-                   "rep movsb\n\t"
-                   "cld\n\t"
-                   : "=c" (n), "=S" (src), "=D" (unused)
-                   : "c" (n), "S" (src+n-1), "D" (dest+n-1)
-                   : "cc", "memory");
+      asmVolatile("std\n\t"
+                  "rep movsb\n\t"
+                  "cld\n\t"
+                  : "=c" (n), "=S" (src), "=D" (unused)
+                  : "c" (n), "S" (src+n-1), "D" (dest+n-1)
+                  : "cc", "memory");
    }
 
    return dest;
 }
 
+EXTERN inline void *memset(void *s, int c, size_t n)
+{
+   uptr unused;
+
+   asmVolatile("rep stosb"
+               : "=D" (unused), "=a" (c), "=c" (n)
+               :  "D" (s), "a" (c), "c" (n)
+               : "cc", "memory");
+
+   return s;
+}
+
+EXTERN inline void bzero(void *s, size_t n)
+{
+   asmVolatile("xor %%eax, %%eax\n\t"
+               "rep stosb\n\t"
+               : "=D" (s), "=c" (n)
+               :  "D" (s), "c" (n)
+               : "cc", "memory", "%eax");
+}
