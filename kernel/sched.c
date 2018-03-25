@@ -193,16 +193,23 @@ bool need_reschedule()
 void schedule_outside_interrupt_context()
 {
    // HACK: push a fake interrupt to compensate the call to
-   // pop_nested_interrupt() in switch_to_process().
+   // pop_nested_interrupt() in switch_to_task(task_info *).
 
    push_nested_interrupt(-1);
+
    schedule();
+
+   /*
+    * If we're here it's because schedule() just returned: this happens
+    * when the only runnable task is the current one.
+    */
+   pop_nested_interrupt();
 }
 
 NORETURN void switch_to_idle_task_outside_interrupt_context()
 {
    // HACK: push a fake interrupt to compensate the call to
-   // pop_nested_interrupt() in switch_to_process().
+   // pop_nested_interrupt() in switch_to_task(task_info *).
 
    push_nested_interrupt(-1);
    switch_to_task(idle_task);
@@ -246,6 +253,12 @@ void schedule(void)
    if (!selected) {
       selected = idle_task;
       DEBUG_printk("[sched] Selected 'idle'\n");
+   }
+
+   if (selected == current) {
+      task_change_state(selected, TASK_STATE_RUNNING);
+      selected->ticks = 0;
+      return;
    }
 
    switch_to_task(selected);

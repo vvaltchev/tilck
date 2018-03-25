@@ -67,7 +67,7 @@ bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
     * so it won't be possible to acquire a lock there. This means that the wait
     * on the other side may miss a signal (not waiting while we fire the signal
     * here) but that's OK since the tasklet runner thread calls run_one_tasklet
-    * in a while(true) loop.
+    * in a while(true) loop and it uses a timeout.
     */
    kcond_signal_single(&tasklet_cond, tasklet_runner_task);
 

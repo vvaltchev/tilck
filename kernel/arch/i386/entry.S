@@ -298,6 +298,11 @@ FUNC(kernel_yield):
    call eax
    call schedule_outside_interrupt_context
 
+   # In case schedule() returned, restore ESP and just return
+   add esp, 68
+   dec dword ptr [disable_preemption_count]
+   ret
+
 END_FUNC(kernel_yield)
 
 FUNC(panic_save_current_state):

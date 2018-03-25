@@ -274,7 +274,7 @@ NORETURN void switch_to_task(task_info *ti)
 {
    ASSERT(!current || current->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
-
+   ASSERT(ti != current);
 
    DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
                 ti->pid,
