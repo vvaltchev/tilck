@@ -81,13 +81,10 @@ void textmode_clear_row(int row_num)
       make_vgaentry(' ', make_color(COLOR_WHITE, COLOR_BLACK));
 
    ASSERT(0 <= row_num && row_num < VIDEO_ROWS);
-   u16 *rowb = textmode_buffer + VIDEO_COLS * ((row_num + scroll) % BUFFER_ROWS);
+   u16 *rowb = textmode_buffer + VIDEO_COLS * ((row_num + scroll)%BUFFER_ROWS);
 
-   for (int i = 0; i < VIDEO_COLS; i++)
-      rowb[i] = ch_space;
-
-   u16 *row = VIDEO_ADDR + VIDEO_COLS * row_num;
-   memcpy(row, rowb, ROW_SIZE);
+   memset16(rowb, ch_space, VIDEO_COLS);
+   memcpy(VIDEO_ADDR + VIDEO_COLS * row_num, rowb, ROW_SIZE);
 }
 
 void textmode_set_char_at(char c, u8 color, int row, int col)

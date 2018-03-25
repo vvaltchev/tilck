@@ -126,6 +126,9 @@ EXTERN inline void *memmove(void *dest, const void *src, size_t n)
    return dest;
 }
 
+/*
+ * Set 'n' bytes pointed by 's' to 'c'.
+ */
 EXTERN inline void *memset(void *s, u8 c, size_t n)
 {
    uptr unused; /* See the comment in strlen() about the unused variable */
@@ -137,6 +140,22 @@ EXTERN inline void *memset(void *s, u8 c, size_t n)
 
    return s;
 }
+
+/*
+ * Set 'n' 16-bit elems pointed by 's' to 'val'.
+ */
+EXTERN inline void *memset16(u16 *s, u16 val, size_t n)
+{
+   uptr unused; /* See the comment in strlen() about the unused variable */
+
+   asmVolatile("rep stosw"
+               : "=D" (unused), "=a" (val), "=c" (n)
+               :  "D" (s), "a" (val), "c" (n)
+               : "cc", "memory");
+
+   return s;
+}
+
 
 EXTERN inline void bzero(void *s, size_t n)
 {
