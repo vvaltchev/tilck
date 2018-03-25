@@ -248,12 +248,6 @@ void schedule(void)
       DEBUG_printk("[sched] Selected 'idle'\n");
    }
 
-   if (selected == current) {
-      task_change_state(selected, TASK_STATE_RUNNING);
-      selected->ticks = 0;
-      return;
-   }
-
    switch_to_task(selected);
 }
 

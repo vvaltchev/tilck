@@ -276,7 +276,6 @@ FUNC(kernel_yield):
    call check_not_in_irq_handler
 #endif
 
-   cli
    inc dword ptr [disable_preemption_count]
 
    pop eax   # pop eip (return addr)
@@ -297,8 +296,6 @@ FUNC(kernel_yield):
    push eax
    mov eax, offset save_current_task_state
    call eax
-
-   sti
    call schedule_outside_interrupt_context
 
 END_FUNC(kernel_yield)
