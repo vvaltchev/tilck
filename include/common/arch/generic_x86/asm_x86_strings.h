@@ -2,7 +2,21 @@
 #pragma once
 #include <common/basic_defs.h>
 
-static inline size_t strlen(const char *str)
+/*
+ * This nice trick allows the code for the following functions to be emitted,
+ * when not inlined, in only one translation unit, the one that declare them
+ * as "extern". This is a little better than just using static inline because
+ * avoids code duplication when the compiler decide to not inline a given
+ * function. Compared to using static + ALWAYS_INLINE this gives the compiler
+ * the maximum freedom to optimize.
+ */
+#ifdef __STRING_UTIL_C__
+#define EXTERN extern
+#else
+#define EXTERN
+#endif
+
+EXTERN inline size_t strlen(const char *str)
 {
    register u32 count asm("ecx");
    u32 unused;
@@ -42,9 +56,10 @@ static inline size_t strlen(const char *str)
 }
 
 /* dest and src can overloap only partially */
-static inline void memcpy(void *dest, const void *src, size_t n)
+EXTERN inline void *memcpy(void *dest, const void *src, size_t n)
 {
    u32 unused; /* See the comment in strlen() about the unused variable */
+   u32 unused2;
 
    /*
     * (Partial) No-overlap check.
@@ -66,13 +81,15 @@ static inline void memcpy(void *dest, const void *src, size_t n)
    asmVolatile("rep movsd\n\t"         // copy 4 bytes at a time, n/4 times
                "mov %%ebx, %%ecx\n\t"  // then: ecx = ebx = n % 4
                "rep movsb\n\t"         // copy 1 byte at a time, n%4 times
-               : "=b" (unused), "=c" (n), "=S" (src), "=D" (dest)
+               : "=b" (unused), "=c" (n), "=S" (src), "=D" (unused2)
                : "b" (n & 3), "c" (n >> 2), "S"(src), "D"(dest)
                : "cc", "memory");
+
+   return dest;
 }
 
 /* dest and src might overlap anyhow */
-static inline void memmove(void *dest, const void *src, size_t n)
+EXTERN inline void *memmove(void *dest, const void *src, size_t n)
 {
    if (dest < src || ((uptr)src + n <= (uptr)dest)) {
 
@@ -96,12 +113,16 @@ static inline void memmove(void *dest, const void *src, size_t n)
        * while, the backwards direction solves the problem.
        */
 
+      u32 unused;
+
       asmVolatile ("std\n\t"
                    "rep movsb\n\t"
                    "cld\n\t"
-                   : "=c" (n), "=S" (src), "=D" (dest)
+                   : "=c" (n), "=S" (src), "=D" (unused)
                    : "c" (n), "S" (src+n-1), "D" (dest+n-1)
                    : "cc", "memory");
    }
+
+   return dest;
 }
 

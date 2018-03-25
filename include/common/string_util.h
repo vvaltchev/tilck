@@ -65,16 +65,11 @@ static ALWAYS_INLINE bool isdigit(int c) {
 #include <common/arch/generic_x86/asm_x86_strings.h>
 #endif
 
-#ifndef __EXOS_KERNEL__
-void memcpy(void *dest, const void *src, size_t n);
-void memmove(void *dest, const void *src, size_t n);
-#endif
-
 #else
 
 /* Add here any necessary #include for the tests. */
 
-#endif
+#endif /* !defined(TESTING) */
 
 void vprintk(const char *fmt, va_list args);
 void printk(const char *fmt, ...);

@@ -1,4 +1,6 @@
 
+#define __STRING_UTIL_C__
+
 #include <common/string_util.h>
 #include <common/basic_term.h>
 
