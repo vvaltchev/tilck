@@ -78,7 +78,7 @@ EXTERN inline void *memcpy(void *dest, const void *src, size_t n)
     */
    ASSERT( dest < src || ((uptr)src + n <= (uptr)dest) );
 
-   asmVolatile("rep movsd\n\t"         // copy 4 bytes at a time, n/4 times
+   asmVolatile("rep movsl\n\t"         // copy 4 bytes at a time, n/4 times
                "mov %%ebx, %%ecx\n\t"  // then: ecx = ebx = n % 4
                "rep movsb\n\t"         // copy 1 byte at a time, n%4 times
                : "=b" (unused), "=c" (n), "=S" (src), "=D" (unused2)
@@ -128,7 +128,7 @@ EXTERN inline void *memmove(void *dest, const void *src, size_t n)
 
 EXTERN inline void *memset(void *s, int c, size_t n)
 {
-   uptr unused;
+   uptr unused; /* See the comment in strlen() about the unused variable */
 
    asmVolatile("rep stosb"
                : "=D" (unused), "=a" (c), "=c" (n)
@@ -140,9 +140,13 @@ EXTERN inline void *memset(void *s, int c, size_t n)
 
 EXTERN inline void bzero(void *s, size_t n)
 {
-   asmVolatile("xor %%eax, %%eax\n\t"
-               "rep stosb\n\t"
-               : "=D" (s), "=c" (n)
-               :  "D" (s), "c" (n)
+   uptr unused; /* See the comment in strlen() about the unused variable */
+
+   asmVolatile("xor %%eax, %%eax\n\t"    // eax = 0
+               "rep stosl\n\t"           // zero 4 byte at a time, n / 4 times
+               "mov %%ebx, %%ecx\n\t"    // ecx = ebx = n % 4
+               "rep stosb\n\t"           // zero 1 byte at a time, n % 3 times
+               : "=D" (s), "=c" (n), "=b" (unused)
+               :  "D" (s), "c" (n >> 2), "b" (n & 3)
                : "cc", "memory", "%eax");
 }
