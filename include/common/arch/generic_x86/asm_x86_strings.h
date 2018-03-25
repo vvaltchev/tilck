@@ -5,7 +5,7 @@
 static inline size_t strlen(const char *str)
 {
    register u32 count asm("ecx");
-   u32 unused_var;
+   u32 unused;
 
    /*
     * 0. ASSUME DF = 0 (the compiler assumes that already everywhere!)
@@ -23,7 +23,7 @@ static inline size_t strlen(const char *str)
     *
     * For more details: https://stackoverflow.com/questions/26783797/
     *
-    * The story behind "unused_var": because of the way repne scasb works,
+    * The story behind "unused": because of the way repne scasb works,
     * the pointer has to be stored in EDI, but it will also be modified by it.
     * At that point, it would sound reasonable to put EDI in clobbers, but gcc
     * does not allow that. The work-around suggested by the official
@@ -34,30 +34,44 @@ static inline size_t strlen(const char *str)
    asm("repne scasb\n\t"
        "notl %%ecx\n\t"
        "decl %%ecx\n\t"
-      : "=c" (count), "=D" (unused_var)
+      : "=c" (count), "=D" (unused)
       : "a" (0), "c" (-1), "D" (str)
       : "cc");
 
    return count;
 }
 
-// dest and src CANNOT overloap
+/* dest and src can overloap only partially */
 static inline void memcpy(void *dest, const void *src, size_t n)
 {
-   u32 unused;
+   u32 unused; /* See the comment in strlen() about the unused variable */
 
-   /* No-overlap check */
-   ASSERT( ((uptr)dest + n <= (uptr)src) || ((uptr)src + n <= (uptr)dest) );
+   /*
+    * (Partial) No-overlap check.
+    * NOTE: this check allows intentionally an overlap in the case where
+    *
+    *                         [ dest + n >= src ]
+    *
+    *    +----------------+
+    *    |      DEST      |
+    *    +----------------+
+    *            +----------------+
+    *            |       SRC      |
+    *            +----------------+
+    *
+    * But, given the forward direction of copy this is perfectly fine.
+    */
+   ASSERT( dest < src || ((uptr)src + n <= (uptr)dest) );
 
-   asmVolatile("rep movsb\n\t"         // copy 1 byte at a time (n%4) times
-               "mov %%ebx, %%ecx\n\t"  // then: ecx = n/4
-               "rep movsd\n\t"         // copy 4 bytes at a time, n/4 times
+   asmVolatile("rep movsd\n\t"         // copy 4 bytes at a time, n/4 times
+               "mov %%ebx, %%ecx\n\t"  // then: ecx = ebx = n % 4
+               "rep movsb\n\t"         // copy 1 byte at a time, n%4 times
                : "=b" (unused), "=c" (n), "=S" (src), "=D" (dest)
-               : "b" (n >> 2), "c" (n % 4), "S"(src), "D"(dest)
+               : "b" (n & 3), "c" (n >> 2), "S"(src), "D"(dest)
                : "cc", "memory");
 }
 
-// dest and src could overlap
+/* dest and src might overlap anyhow */
 static inline void memmove(void *dest, const void *src, size_t n)
 {
    if (dest < src || ((uptr)src + n <= (uptr)dest)) {
@@ -65,6 +79,22 @@ static inline void memmove(void *dest, const void *src, size_t n)
       memcpy(dest, src, n);
 
    } else {
+
+      /*
+       * In this case dest > src but they overlap this way:
+       *
+       *                   [ src + n <= dest ]
+       *
+       *            +----------------+
+       *            |       DEST     |
+       *            +----------------+
+       *    +----------------+
+       *    |       SRC      |
+       *    +----------------+
+       *
+       * Using the forward direction will cause a corruption of the src buffer,
+       * while, the backwards direction solves the problem.
+       */
 
       asmVolatile ("std\n\t"
                    "rep movsb\n\t"
