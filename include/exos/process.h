@@ -68,27 +68,30 @@ static ALWAYS_INLINE bool running_in_kernel(task_info *t)
    return t->running_in_kernel;
 }
 
-static ALWAYS_INLINE u64 get_ticks()
+static ALWAYS_INLINE u64 get_ticks(void)
 {
    return jiffies;
 }
 
-static ALWAYS_INLINE task_info *get_current_task()
+static ALWAYS_INLINE task_info *get_current_task(void)
 {
    return current;
 }
 
-void save_current_task_state(regs *);
+static ALWAYS_INLINE bool is_kernel_thread(task_info *ti)
+{
+   return ti->owning_process_pid == 0;
+}
 
-void account_ticks();
-bool need_reschedule();
+void save_current_task_state(regs *);
+void account_ticks(void);
+bool need_reschedule(void);
 
 NORETURN void switch_to_task(task_info *ti);
 
 void schedule(void);
-void schedule_outside_interrupt_context();
-
-NORETURN void switch_to_idle_task_outside_interrupt_context();
+void schedule_outside_interrupt_context(void);
+NORETURN void switch_to_idle_task_outside_interrupt_context(void);
 
 task_info *create_usermode_task(page_directory_t *pdir,
                                 void *entry,
@@ -97,10 +100,8 @@ task_info *create_usermode_task(page_directory_t *pdir,
                                 char *const *argv,
                                 char *const *env);
 
-bool is_kernel_thread(task_info *ti);
-
-void set_current_task_in_kernel();
-void set_current_task_in_user_mode();
+void set_current_task_in_kernel(void);
+void set_current_task_in_user_mode(void);
 
 task_info *get_task(int pid);
 
@@ -108,8 +109,6 @@ void task_info_reset_kernel_stack(task_info *ti);
 
 void add_task(task_info *ti);
 void remove_task(task_info *ti);
-
-task_info *get_current_task();
 void initialize_scheduler(void);
 
 void task_change_state(task_info *ti, task_state_enum new_state);
@@ -119,7 +118,7 @@ typedef void (*kthread_func_ptr)();
 task_info *kthread_create(kthread_func_ptr fun, void *arg);
 
 // It is called when each kernel thread returns. May be called explicitly too.
-void kthread_exit();
+void kthread_exit(void);
 
 /*
  * Saves the current state and calls schedule().
@@ -127,7 +126,7 @@ void kthread_exit();
  * as if kernel_yield() returned and nothing else happened.
  */
 
-void kernel_yield();
+void kernel_yield(void);
 
 void kernel_sleep(u64 ticks);
 

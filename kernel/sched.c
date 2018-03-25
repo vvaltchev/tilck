@@ -29,11 +29,10 @@ list_node runnable_tasks_list = make_list_node(runnable_tasks_list);
 list_node sleeping_tasks_list = make_list_node(sleeping_tasks_list);
 volatile int runnable_tasks_count = 0;
 
-
 task_info *idle_task;
 volatile u64 idle_ticks;
 
-void idle_task_kthread()
+void idle_task_kthread(void)
 {
    while (true) {
 
@@ -56,17 +55,11 @@ void initialize_scheduler(void)
    idle_task = kthread_create(&idle_task_kthread, NULL);
 }
 
-bool is_kernel_thread(task_info *ti)
-{
-   return ti->owning_process_pid == 0;
-}
-
-void set_current_task_in_kernel()
+void set_current_task_in_kernel(void)
 {
    ASSERT(!is_preemption_enabled());
    current->running_in_kernel = true;
 }
-
 
 void task_add_to_state_list(task_info *ti)
 {
@@ -153,9 +146,7 @@ void remove_task(task_info *ti)
    enable_preemption();
 }
 
-
-
-void account_ticks()
+void account_ticks(void)
 {
    if (!current) {
       return;
@@ -169,7 +160,7 @@ void account_ticks()
    }
 }
 
-bool need_reschedule()
+bool need_reschedule(void)
 {
    if (!current) {
       // The kernel is still initializing and we cannot call schedule() yet.
@@ -190,7 +181,7 @@ bool need_reschedule()
    return true;
 }
 
-void schedule_outside_interrupt_context()
+void schedule_outside_interrupt_context(void)
 {
    // HACK: push a fake interrupt to compensate the call to
    // pop_nested_interrupt() in switch_to_task(task_info *).
@@ -206,7 +197,7 @@ void schedule_outside_interrupt_context()
    pop_nested_interrupt();
 }
 
-NORETURN void switch_to_idle_task_outside_interrupt_context()
+NORETURN void switch_to_idle_task_outside_interrupt_context(void)
 {
    // HACK: push a fake interrupt to compensate the call to
    // pop_nested_interrupt() in switch_to_task(task_info *).

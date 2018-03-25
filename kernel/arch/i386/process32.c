@@ -142,7 +142,7 @@ void remove_dead_kthread_tasklet(task_info *task)
    }
 }
 
-void kthread_exit()
+void kthread_exit(void)
 {
    disable_preemption();
 
@@ -260,7 +260,7 @@ void save_current_task_state(regs *r)
  * Sched functions that are here beacuse of arch-specific statements.
  */
 
-void set_current_task_in_user_mode()
+void set_current_task_in_user_mode(void)
 {
    ASSERT(!is_preemption_enabled());
    current->running_in_kernel = 0;
