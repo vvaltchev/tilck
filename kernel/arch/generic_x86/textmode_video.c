@@ -87,7 +87,7 @@ void textmode_clear_row(int row_num)
       rowb[i] = ch_space;
 
    u16 *row = VIDEO_ADDR + VIDEO_COLS * row_num;
-   memmove(row, rowb, ROW_SIZE);
+   memcpy(row, rowb, ROW_SIZE);
 }
 
 void textmode_set_char_at(char c, u8 color, int row, int col)

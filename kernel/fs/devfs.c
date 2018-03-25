@@ -109,7 +109,7 @@ static fs_handle devfs_dup(fs_handle h)
    devfs_file_handle *new_h;
    new_h = kzmalloc(sizeof(devfs_file_handle));
    VERIFY(new_h != NULL);
-   memmove(new_h, h, sizeof(devfs_file_handle));
+   memcpy(new_h, h, sizeof(devfs_file_handle));
    return new_h;
 }
 

@@ -75,7 +75,7 @@ static ssize_t tty_ioctl(fs_handle h, uptr request, void *argp)
 {
 
    if (request == TCGETS) {
-      memmove(argp, &hard_coded_termios, sizeof(termios));
+      memcpy(argp, &hard_coded_termios, sizeof(termios));
       return 0;
    }
 

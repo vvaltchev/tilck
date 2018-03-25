@@ -126,7 +126,7 @@ EXTERN inline void *memmove(void *dest, const void *src, size_t n)
    return dest;
 }
 
-EXTERN inline void *memset(void *s, int c, size_t n)
+EXTERN inline void *memset(void *s, u8 c, size_t n)
 {
    uptr unused; /* See the comment in strlen() about the unused variable */
 

@@ -89,7 +89,7 @@ bool run_one_tasklet(void)
 
    ASSERT(all_tasklets[tasklet_to_execute].fptr != NULL);
 
-   memmove(&t, &all_tasklets[tasklet_to_execute], sizeof(tasklet));
+   memcpy(&t, &all_tasklets[tasklet_to_execute], sizeof(tasklet));
    all_tasklets[tasklet_to_execute].fptr = NULL;
 
    slots_used--;

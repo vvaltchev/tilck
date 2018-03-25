@@ -49,7 +49,7 @@ STATIC ssize_t fat_read(fs_handle handle,
       const ssize_t cluster_rem = d->cluster_size - cluster_offset;
       const ssize_t to_read = MIN(cluster_rem, MIN(buf_rem, file_rem));
 
-      memmove(buf + written_to_buf, data + cluster_offset, to_read);
+      memcpy(buf + written_to_buf, data + cluster_offset, to_read);
       written_to_buf += to_read;
       h->pos += to_read;
 
@@ -221,7 +221,7 @@ STATIC fs_handle fat_dup(fs_handle h)
 {
    fat_file_handle *new_h = kzmalloc(sizeof(fat_file_handle));
    VERIFY(new_h != NULL);
-   memmove(new_h, h, sizeof(fat_file_handle));
+   memcpy(new_h, h, sizeof(fat_file_handle));
    return new_h;
 }
 

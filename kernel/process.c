@@ -46,7 +46,7 @@ sptr sys_chdir(const char *path)
          goto out;
       }
 
-      memmove(current->cwd, path, path_len);
+      memcpy(current->cwd, path, path_len);
    }
 
 out:
@@ -67,7 +67,7 @@ sptr sys_getcwd(char *buf, size_t buf_size)
       if (buf_size < cwd_len)
          return -ERANGE;
 
-      memmove(buf, current->cwd, cwd_len);
+      memcpy(buf, current->cwd, cwd_len);
    }
    enable_preemption();
    return cwd_len;
@@ -259,7 +259,7 @@ sptr sys_fork(void)
    disable_preemption();
 
    task_info *child = kmalloc(sizeof(task_info));
-   memmove(child, current, sizeof(task_info));
+   memcpy(child, current, sizeof(task_info));
 
    list_node_init(&child->list);
 
@@ -274,7 +274,7 @@ sptr sys_fork(void)
    child->running_in_kernel = false;
    child->parent_pid = current->pid;
 
-   // The other members of task_info have been copied by the memmove() above
+   // The other members of task_info have been copied by the memcpy() above
    bzero(&child->kernel_state_regs, sizeof(child->kernel_state_regs));
 
    child->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);

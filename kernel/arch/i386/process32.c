@@ -97,11 +97,11 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
 
    ti->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
    ti->running_in_kernel = 1;
-   ti->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
-   bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
+   ti->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
+   VERIFY(ti->kernel_stack != NULL);
 
    bzero(&ti->state_regs, sizeof(r));
-   memmove(&ti->kernel_state_regs, &r, sizeof(r));
+   memcpy(&ti->kernel_state_regs, &r, sizeof(r));
 
    task_info_reset_kernel_stack(ti);
 
@@ -190,7 +190,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
       ti->pid = ++current_max_pid;
       add_task(ti);
       ti->state = TASK_STATE_RUNNABLE;
-      memmove(ti->cwd, "/", 2);
+      memcpy(ti->cwd, "/", 2);
    } else {
       ti = task_to_use;
       ASSERT(ti->state == TASK_STATE_RUNNABLE);
@@ -205,7 +205,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
       ti->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
    }
 
-   memmove(&ti->state_regs, &r, sizeof(r));
+   memcpy(&ti->state_regs, &r, sizeof(r));
    bzero(&ti->kernel_state_regs, sizeof(r));
 
    task_info_reset_kernel_stack(ti);
@@ -232,7 +232,7 @@ void save_current_task_state(regs *r)
                     ? &current->kernel_state_regs
                     : &current->state_regs;
 
-   memmove(state, r, sizeof(*r));
+   memcpy(state, r, sizeof(*r));
 
    if (current->running_in_kernel) {
 

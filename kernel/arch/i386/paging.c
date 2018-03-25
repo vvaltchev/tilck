@@ -63,7 +63,7 @@ bool handle_potential_cow(u32 vaddr)
    ASSERT(pageframes_refcount[orig_page_paddr] > 0);
 
    // Copy the whole page to our temporary buffer.
-   memmove(page_size_buf, page_vaddr, PAGE_SIZE);
+   memcpy(page_size_buf, page_vaddr, PAGE_SIZE);
 
    // Allocate and set a new page.
    void *new_page_vaddr = kmalloc(PAGE_SIZE);
@@ -81,7 +81,7 @@ bool handle_potential_cow(u32 vaddr)
    invalidate_page(vaddr);
 
    // Copy back the page.
-   memmove(page_vaddr, page_size_buf, PAGE_SIZE);
+   memcpy(page_vaddr, page_size_buf, PAGE_SIZE);
 
    // This was actually a COW-caused page-fault.
    return true;
@@ -290,7 +290,7 @@ map_pages_int(page_directory_t *pdir,
 page_directory_t *pdir_clone(page_directory_t *pdir)
 {
    page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
-   memmove(new_pdir, pdir, sizeof(page_directory_t));
+   memcpy(new_pdir, pdir, sizeof(page_directory_t));
 
    for (int i = 0; i < 1024; i++) {
 
@@ -334,7 +334,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
       ASSERT(PAGE_ALIGNED(pt));
 
       // copy the page table
-      memmove(pt, orig_pt, sizeof(*pt));
+      memcpy(pt, orig_pt, sizeof(*pt));
 
       /* We've already copied the other members of new_pdir->entries[i] */
       new_pdir->entries[i].ptaddr = KERNEL_VA_TO_PA(pt) >> PAGE_SHIFT;
