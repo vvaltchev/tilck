@@ -167,8 +167,7 @@ FUNC(asm_int_handler):
    mov gs, ax
    mov eax, esp
    push eax
-   mov eax, offset generic_interrupt_handler
-   call eax
+   call generic_interrupt_handler
    pop eax
    pop gs
    pop fs
@@ -207,13 +206,15 @@ FUNC(asm_context_switch_x86):
    # eip, cs, eflags, useresp and ss
    # are already on stack, passed by the caller.
 
-   # debug ###################
-   #pop eax # entry point (eip)
-   #pop eax # 0x1b (cs)
-   #pop eax # eflags
-   #pop eax # stack
-   #pop eax # 0x23 (ss)
-   ###########################
+   #######################################################################
+   # The following is a simulates what the CPU will do with 'iret'
+   # (clearly it cannot replace 'iret' but it is useful to keep in mind)
+   # pop eax # entry point (eip)
+   # pop eax # 0x1b (cs)
+   # pop eax # eflags
+   # pop eax # stack
+   # pop eax # 0x23 (ss)
+   #######################################################################
 
    iret
 END_FUNC(asm_context_switch_x86)
@@ -294,8 +295,7 @@ FUNC(kernel_yield):
 
    mov eax, esp
    push eax
-   mov eax, offset save_current_task_state
-   call eax
+   call save_current_task_state
    call schedule_outside_interrupt_context
 
    # In case schedule() returned, restore ESP and just return
@@ -323,8 +323,7 @@ FUNC(panic_save_current_state):
 
    mov eax, esp
    push eax
-   mov eax, offset save_current_task_state
-   call eax
+   call save_current_task_state
 
    add esp, 68
    ret
