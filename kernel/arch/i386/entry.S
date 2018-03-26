@@ -142,7 +142,6 @@ FUNC(tss_flush):
    ret
 END_FUNC(tss_flush)
 
-
 # int 0x80: syscall
 FUNC(isr128):
    push 0
@@ -150,9 +149,7 @@ FUNC(isr128):
    jmp asm_int_handler
 END_FUNC(isr128)
 
-# This is our common ISR stub. It saves the processor state, sets
-# up for kernel mode segments, calls the C-level fault handler,
-# and finally restores the stack frame.
+# Common interrupt handler (exceptions, IRQs, int 0x80, ...)
 FUNC(asm_int_handler):
 
    pusha          #  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
@@ -181,7 +178,7 @@ END_FUNC(asm_int_handler)
 
 FUNC(asm_context_switch_x86):
 
-   pop eax # return addr (ignored)
+   add esp, 4 # discard the return-addr
 
    pop eax # gs
    mov gs, ax
@@ -199,16 +196,19 @@ FUNC(asm_context_switch_x86):
    pop edi
    pop esi
    pop ebp
+   add esp, 4 # skip 'esp'
    pop ebx
    pop edx
    pop ecx
    pop eax
 
+   add esp, 8 # discard err_code and int_num
+
    # eip, cs, eflags, useresp and ss
    # are already on stack, passed by the caller.
 
    #######################################################################
-   # The following is a simulates what the CPU will do with 'iret'
+   # The following POPs simulate what the CPU will do with 'iret'
    # (clearly it cannot replace 'iret' but it is useful to keep in mind)
    # pop eax # entry point (eip)
    # pop eax # 0x1b (cs)
