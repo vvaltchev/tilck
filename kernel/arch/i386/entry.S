@@ -180,17 +180,10 @@ FUNC(asm_context_switch_x86):
 
    add esp, 4 # discard the return-addr
 
-   pop eax # gs
-   mov gs, ax
-
-   pop eax # fs
-   mov fs, ax
-
-   pop eax # es
-   mov es, ax
-
-   pop eax # ds
-   mov ds, ax
+   pop gs
+   pop fs
+   pop es
+   pop ds
 
    # We can't do 'popa' here because it will restore ESP
    pop edi
@@ -224,26 +217,17 @@ FUNC(asm_kernel_context_switch_x86):
 
    add esp, 4 # discard the return-addr
 
-   mov eax, [esp + 14*4] # eax = eip
-   mov ebx, [esp + 17*4] # ebx = useresp
+   mov eax, [esp + 14*4] # eax = regs->eip
+   mov ebx, [esp + 17*4] # ebx = regs->useresp
 
    # we have to simulate a push of the eip, but using the stack in EBX in order
    # to allow the final RET to work.
-
    mov [ebx], eax
-   sub ebx, 4
 
-   pop eax # gs
-   mov gs, ax
-
-   pop eax # fs
-   mov fs, ax
-
-   pop eax # es
-   mov es, ax
-
-   pop eax # ds
-   mov ds, ax
+   pop gs
+   pop fs
+   pop es
+   pop ds
 
    # We can't do 'popa' here because it will restore ESP
    pop edi
