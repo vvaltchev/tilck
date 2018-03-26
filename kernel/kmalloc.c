@@ -5,6 +5,7 @@
 #include <exos/kmalloc.h>
 #include <exos/paging.h>
 #include <exos/sync.h>
+#include <exos/process.h>
 
 bool kbasic_virtual_alloc(uptr vaddr, int page_count);
 void kbasic_virtual_free(uptr vaddr, int page_count);
@@ -44,8 +45,6 @@ bool kmalloc_initialized; // Zero-initialized => false.
 static const block_node new_node; // Just zeros.
 STATIC kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
 STATIC int used_heaps;
-
-static kmutex kmalloc_mutex;
 
 #define HALF(x) ((x) >> 1)
 #define TWICE(x) ((x) << 1)
@@ -410,7 +409,7 @@ void *kmalloc(size_t s)
    void *ret = NULL;
    s = roundup_next_power_of_2(s);
 
-   kmutex_lock(&kmalloc_mutex);
+   disable_preemption();
 
    // Iterate in reverse-order because the first heaps are the biggest ones.
    for (int i = used_heaps - 1; i >= 0; i--) {
@@ -435,7 +434,7 @@ void *kmalloc(size_t s)
       }
    }
 
-   kmutex_unlock(&kmalloc_mutex);
+   enable_preemption();
    return ret;
 }
 
@@ -474,7 +473,7 @@ void kfree2(void *ptr, size_t user_size)
    if (!ptr)
       return;
 
-   kmutex_lock(&kmalloc_mutex);
+   disable_preemption();
 
    int hn = -1; /* the heap with the highest vaddr >= our block vaddr */
 
@@ -516,7 +515,7 @@ void kfree2(void *ptr, size_t user_size)
          ((u32 *)ptr)[i] = KMALLOC_FREE_MEM_POISON_VAL;
    }
 
-   kmutex_unlock(&kmalloc_mutex);
+   enable_preemption();
    return;
 
 out:
@@ -591,7 +590,6 @@ extern size_t ramdisk_size;
 void initialize_kmalloc()
 {
    ASSERT(!kmalloc_initialized);
-   kmutex_init(&kmalloc_mutex);
 
    const uptr limit =
       KERNEL_BASE_VA + MIN(get_phys_mem_mb(), LINEAR_MAPPING_MB) * MB;
