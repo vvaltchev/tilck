@@ -168,14 +168,15 @@ FUNC(asm_int_handler):
    mov eax, esp
    push eax
    call generic_interrupt_handler
-   pop eax
+   add esp, 4 # Discard the previousy-pushed 'eax'
    pop gs
    pop fs
    pop es
    pop ds
-   popa          # Pops edi,esi,ebp...
-   add esp, 8    # Cleans up the pushed error code and pushed ISR number
+   popa
+   add esp, 8    # Discards the pushed err_code and int_num
    iret
+
 END_FUNC(asm_int_handler)
 
 FUNC(asm_context_switch_x86):
@@ -221,7 +222,7 @@ END_FUNC(asm_context_switch_x86)
 
 FUNC(asm_kernel_context_switch_x86):
 
-   pop eax # return addr (ignored)
+   add esp, 4 # discard the return-addr
 
    mov eax, [esp + 14*4] # eax = eip
    mov ebx, [esp + 17*4] # ebx = useresp
@@ -254,13 +255,12 @@ FUNC(asm_kernel_context_switch_x86):
    pop ecx
    pop eax
 
-   add esp, 8 # skip int_num, err_code
-   add esp, 8 # eip, cs
+   add esp, 16 # skip int_num, err_code, eip, cs
 
    popf # pop the eflags register
 
-   # Now we can finally pop the 2nd copy of the ESP and just do RET since
-   # the right EIP is already on the new stack.
+   # Now we can finally pop the ESP and just do RET: the right return-addr EIP
+   # is already on the new stack.
    pop esp
 
    sti # This is mandatory here, after setting ESP since the eflags register
@@ -271,6 +271,29 @@ FUNC(asm_kernel_context_switch_x86):
 
    ret
 END_FUNC(asm_kernel_context_switch_x86)
+
+
+.macro asm_save_current_state
+
+   mov eax, [esp] # save caller's return-addr EIP
+
+   push cs
+   push eax  # eip (we saved before)
+   push 0    # err_code
+   push -1   # int_num
+
+   pusha     # Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+   push ds
+   push es
+   push fs
+   push gs
+
+   mov eax, esp
+   push eax
+   call save_current_task_state
+
+.endm
+
 
 
 # Saves the current (kernel) state as if an interrupt occurred while running
@@ -284,23 +307,9 @@ FUNC(kernel_yield):
 
    inc dword ptr [disable_preemption_count]
 
-   pop eax   # pop eip (return addr)
-   push eax  # re-push it back to the stack, as if the POP above never happened
+   # See the macro's definition above
+   asm_save_current_state
 
-   push cs
-   push eax  # eip (we saved before)
-   push 0    # err_code
-   push -1   # int_num
-
-   pusha     # Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
-   push ds
-   push es
-   push fs
-   push gs
-
-   mov eax, esp
-   push eax
-   call save_current_task_state
    call schedule_outside_interrupt_context
 
    # In case schedule() returned, restore ESP and just return
@@ -312,23 +321,8 @@ END_FUNC(kernel_yield)
 
 FUNC(panic_save_current_state):
 
-   pop eax   # pop eip (return addr)
-   push eax  # re-push it back to the stack, as if the POP above never happened
-
-   push cs
-   push eax  # eip (we saved before)
-   push 0    # err_code
-   push -1   # int_num
-
-   pusha     # Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
-   push ds
-   push es
-   push fs
-   push gs
-
-   mov eax, esp
-   push eax
-   call save_current_task_state
+   # See the macro's definition above
+   asm_save_current_state
 
    add esp, 68
    ret
