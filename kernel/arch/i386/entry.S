@@ -223,8 +223,8 @@ FUNC(asm_kernel_context_switch_x86):
 
    pop eax # return addr (ignored)
 
-   pop eax # eip
-   pop ebx # new esp
+   mov eax, [esp + 14*4] # eax = eip
+   mov ebx, [esp + 17*4] # ebx = useresp
 
    # we have to simulate a push of the eip, but using the stack in EBX in order
    # to allow the final RET.
@@ -248,10 +248,14 @@ FUNC(asm_kernel_context_switch_x86):
    pop edi
    pop esi
    pop ebp
+   add esp, 4 # skip esp
    pop ebx
    pop edx
    pop ecx
    pop eax
+
+   add esp, 8 # skip int_num, err_code
+   add esp, 8 # eip, cs
 
    popf # pop the eflags register
 

@@ -57,9 +57,6 @@ NORETURN static ALWAYS_INLINE void context_switch(regs *r)
 NORETURN static ALWAYS_INLINE void kernel_context_switch(regs *r)
 {
    asm_kernel_context_switch_x86(
-                                 r->eip,
-                                 r->useresp,
-
                                  // Segment registers
                                  r->gs,
                                  r->fs,
@@ -70,16 +67,23 @@ NORETURN static ALWAYS_INLINE void kernel_context_switch(regs *r)
                                  r->edi,
                                  r->esi,
                                  r->ebp,
-                                 /* skipping ESP */
+
+                                 r->esp,
+
                                  r->ebx,
                                  r->edx,
                                  r->ecx,
                                  r->eax,
 
-                                 // The eflags register
-                                 r->eflags,
+                                 0, // int_num
+                                 0, // err_code
 
-                                 // The useresp is repeated. See the assembly.
-                                 r->useresp);
+                                 r->eip,
+                                 r->cs,
+                                 r->eflags,
+                                 r->useresp,
+                                 r->ss
+
+                                 );
 }
 
