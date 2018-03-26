@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -106,6 +107,7 @@ int main(int argc, char **argv, char **env)
       }
 
       printf("root@exOS:%s# ", cwd);
+      fflush(stdout);
 
       int r = read(1, buf, sizeof(buf));
       buf[r] = 0;
