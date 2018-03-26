@@ -312,6 +312,15 @@ function download_x86_gcc_toolchain {
          fi
       done
 
+      # To make musl-gcc happy
+
+      for x in *; do
+         if [[ $x == i386-linux-* ]]; then
+            new_name=`echo $x | sed 's/i386-linux-/i386-/g' -`
+            ln -s $x $new_name
+         fi
+      done
+
    else
       echo "NOTE: Skipping x86-i686 GNU toolchain"
    fi
@@ -481,15 +490,17 @@ function build_libmusl {
       echo "*** LIBMUSL ***"
       echo
 
-      git clone --branch v1.1.16 --depth 1 git://git.musl-libc.org/musl
+      git clone --branch v1.1.19 --depth 1 git://git.musl-libc.org/musl
       cd musl
 
       mkdir ../musl-install
       mkdir ../musl-install/lib
 
+      CROSS_COMPILE="$X86_TOOLCHAIN"
+
       libmusl_opts1="--target=i386 --host=i386 --build=x86_64 --disable-shared"
       libmusl_opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
-      libmusl_opts3="--syslibdir=$TC/musl-install/lib"
+      libmusl_opts3="--enable-debug --syslibdir=$TC/musl-install/lib"
 
       ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3 &> configure.log
       run_command2 "make -j" build.log

@@ -1,6 +1,8 @@
 #!/bin/bash
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJ_DIR=$SCRIPT_DIR/..
 
-export PATH=$SCRIPT_DIR:$PATH
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJ_DIR=$SCRIPT_DIR/../..
+TC=$PROJ_DIR/toolchain/x86_gcc_toolchain/bin
+
+export PATH=$TC:$PATH
 $PROJ_DIR/toolchain/musl-install/bin/musl-gcc $@
