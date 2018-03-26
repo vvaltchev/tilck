@@ -21,13 +21,14 @@ int load_elf_program(const char *filepath,
 
    fs_handle *elf_file = exvfs_open(filepath);
 
-   if (!elf_file) {
+   if (!elf_file)
       return -ENOENT;
-   }
 
    if (*pdir_ref == NULL) {
       *pdir_ref = pdir_clone(get_kernel_page_dir());
    }
+
+   //printk("[kernel] elf loader: '%s'\n", filepath);
 
    set_page_directory(*pdir_ref);
 
@@ -60,20 +61,23 @@ int load_elf_program(const char *filepath,
          continue;
       }
 
-      int pages_count =
+      int page_count =
          ((phdr->p_memsz + PAGE_SIZE) & PAGE_MASK) >> PAGE_SHIFT;
 
-      if ((phdr->p_memsz < PAGE_SIZE) &&
-          ((phdr->p_vaddr + phdr->p_memsz) & PAGE_MASK) >
-          (phdr->p_vaddr & PAGE_MASK)) {
+      char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
+      uptr end_vaddr = (uptr)vaddr + (page_count << PAGE_SHIFT);
 
-         // Cross-page small segment
-         pages_count++;
+      if (end_vaddr < (phdr->p_vaddr + phdr->p_memsz)) {
+         page_count++;
+         end_vaddr += PAGE_SIZE;
       }
 
-      char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
+      // printk("seg at %p, m: %u, p: %i, end: %p, me: %p\n",
+      //        phdr->p_vaddr, phdr->p_memsz, page_count,
+      //        phdr->p_vaddr + phdr->p_memsz,
+      //        (phdr->p_vaddr & PAGE_MASK) + page_count * PAGE_SIZE);
 
-      for (int j = 0; j < pages_count; j++, vaddr += PAGE_SIZE) {
+      for (int j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
 
          if (is_mapped(*pdir_ref, vaddr)) {
             continue;
@@ -94,7 +98,9 @@ int load_elf_program(const char *filepath,
       VERIFY(ret == (ssize_t)phdr->p_filesz);
 
       vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
-      for (int j = 0; j < pages_count; j++, vaddr += PAGE_SIZE) {
+
+      /* Make the read-only pages to be read-only */
+      for (int j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
          set_page_rw(*pdir_ref, vaddr, !!(phdr->p_flags & PF_W));
       }
    }
