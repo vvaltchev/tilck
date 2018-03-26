@@ -89,40 +89,35 @@ sptr sys_execve(const char *filename,
    char *const *env_copy = dcopy_strarray(env);
 
    disable_preemption();
-   {
-      rc = load_elf_program(filename, &pdir, &entry_point, &stack_addr);
 
-      if (rc < 0)
-         goto errend;
+   rc = load_elf_program(filename, &pdir, &entry_point, &stack_addr);
 
-      char *const default_argv[] = { filename_copy, NULL };
+   if (rc < 0)
+      goto errend;
 
-      if (LIKELY(current != NULL)) {
-         task_change_state(current, TASK_STATE_RUNNABLE);
-         pdir_destroy(current->pdir);
-      }
+   char *const default_argv[] = { filename_copy, NULL };
 
-      create_usermode_task(pdir,
-                           entry_point,
-                           stack_addr,
-                           current,
-                           argv_copy ? argv_copy : default_argv,
-                           env_copy ? env_copy : default_env);
-
+   if (LIKELY(current != NULL)) {
+      task_change_state(current, TASK_STATE_RUNNABLE);
+      pdir_destroy(current->pdir);
    }
-   enable_preemption();
+
+   create_usermode_task(pdir,
+                        entry_point,
+                        stack_addr,
+                        current,
+                        argv_copy ? argv_copy : default_argv,
+                        env_copy ? env_copy : default_env);
 
    /* Free the duplicated buffers */
    kfree(filename_copy);
    dfree_strarray(argv_copy);
    dfree_strarray(env_copy);
 
-   if (LIKELY(current != NULL)) {
+   if (UNLIKELY(!current)) {
 
-      ASSERT(is_preemption_enabled());
-      disable_preemption(); /* switch_to_task() requires that */
-
-   } else {
+      /* Just counter-balance the disable_preemption() above */
+      enable_preemption();
 
       /* We're still in the initialization and preemption is disabled */
       ASSERT(!is_preemption_enabled());
