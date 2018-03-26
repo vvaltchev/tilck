@@ -12,7 +12,7 @@ typedef enum {
 
 } fat_type;
 
-typedef struct __attribute__(( packed )) {
+typedef struct PACKED {
 
    u8 BS_jmpBoot[3];
    s8 BS_OEMName[8];
@@ -32,7 +32,7 @@ typedef struct __attribute__(( packed )) {
 } fat_header;
 
 
-typedef struct __attribute__(( packed )) {
+typedef struct PACKED {
 
    u8 BS_DrvNum;
    u8 BS_Reserved1;
@@ -43,7 +43,7 @@ typedef struct __attribute__(( packed )) {
 
 } fat16_header2;
 
-typedef struct __attribute__(( packed )) {
+typedef struct PACKED {
 
    u32 BPB_FATSz32;
    u16 BPB_ExtFlags;
@@ -62,7 +62,7 @@ typedef struct __attribute__(( packed )) {
 } fat32_header2;
 
 
-typedef struct __attribute__(( packed )) {
+typedef struct PACKED {
 
    u8 DIR_Name[11];
 
@@ -72,26 +72,26 @@ typedef struct __attribute__(( packed )) {
    u8 volume_id : 1;
    u8 directory : 1;
    u8 archive : 1;
-   u8 unused1 : 2;  // higher 2 bits
+   u8 resbit1 : 1;  // reserved bit
+   u8 resbit2 : 1;  // reserved bit
 
-   u8 DIR_NTRes;
-   u8 DIR_CrtTimeTenth;
+   u8 DIR_NTRes;        // reserved to be used by Windows NT
+   u8 DIR_CrtTimeTenth; // creation time, tenth of seconds (0-199)
+   u16 DIR_CrtTime;     // creation time, granularity: 2 seconds
+   u16 DIR_CrtDate;     // creation date
+   u16 DIR_LstAccDate;  // last access date
 
-   u8 unused2[6];
-
-   u16 DIR_FstClusHI;
-
-   u16 DIR_WrtTime;
-   u16 DIR_WrtDate;
-
-   u16 DIR_FstClusLO;
+   u16 DIR_FstClusHI;   // high word of entry's first cluster
+   u16 DIR_WrtTime;     // time of last write
+   u16 DIR_WrtDate;     // date of last write
+   u16 DIR_FstClusLO;   // low word of entry's first cluster
    u32 DIR_FileSize;
 
 } fat_entry;
 
 #define LAST_LONG_ENTRY_MASK (0x40)
 
-typedef struct __attribute__(( packed )) {
+typedef struct PACKED {
 
    u8 LDIR_Ord;
    u8 LDIR_Name1[10];
