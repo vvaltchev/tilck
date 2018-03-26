@@ -23,7 +23,7 @@ static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
 
 
 NORETURN void asm_context_switch_x86(u32 first_reg, ...);
-NORETURN void asm_kernel_context_switch_x86(u32 first_reg, ...);
+NORETURN void asm_kernel_context_switch_x86(regs state_copy);
 
 NORETURN static ALWAYS_INLINE void context_switch(regs *r)
 {
@@ -56,34 +56,6 @@ NORETURN static ALWAYS_INLINE void context_switch(regs *r)
 
 NORETURN static ALWAYS_INLINE void kernel_context_switch(regs *r)
 {
-   asm_kernel_context_switch_x86(
-                                 // Segment registers
-                                 r->gs,
-                                 r->fs,
-                                 r->es,
-                                 r->ds,
-
-                                 // General purpose registers
-                                 r->edi,
-                                 r->esi,
-                                 r->ebp,
-
-                                 r->esp,
-
-                                 r->ebx,
-                                 r->edx,
-                                 r->ecx,
-                                 r->eax,
-
-                                 0, // int_num
-                                 0, // err_code
-
-                                 r->eip,
-                                 r->cs,
-                                 r->eflags,
-                                 r->useresp,
-                                 r->ss
-
-                                 );
+   asm_kernel_context_switch_x86(*r);
 }
 

@@ -227,7 +227,7 @@ FUNC(asm_kernel_context_switch_x86):
    mov ebx, [esp + 17*4] # ebx = useresp
 
    # we have to simulate a push of the eip, but using the stack in EBX in order
-   # to allow the final RET.
+   # to allow the final RET to work.
 
    mov [ebx], eax
    sub ebx, 4
@@ -271,6 +271,7 @@ FUNC(asm_kernel_context_switch_x86):
 
    ret
 END_FUNC(asm_kernel_context_switch_x86)
+
 
 # Saves the current (kernel) state as if an interrupt occurred while running
 # in kernel mode.
