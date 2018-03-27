@@ -65,11 +65,22 @@ instantiate_generic_uitoa(uitoa64, u64)
 
 int strcmp(const char *s1, const char *s2)
 {
-    while(*s1 && *s1 == *s2) {
-        s1++; s2++;
+   while(*s1 && *s1 == *s2) {
+      s1++; s2++;
    }
 
-    return (int)*s1 - (int)*s2;
+   return (int)*s1 - (int)*s2;
+}
+
+int strncmp(const char *s1, const char *s2, size_t n)
+{
+   size_t i = 0;
+
+   while(i < n && *s1 && *s1 == *s2) {
+      s1++; s2++; i++;
+   }
+
+   return i == n ? 0 : (int)*s1 - (int)*s2;
 }
 
 int stricmp(const char *s1, const char *s2)

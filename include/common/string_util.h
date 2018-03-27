@@ -11,6 +11,7 @@ typedef unsigned char *va_list;
 #define va_end(list) // do nothing.
 
 int strcmp(const char *s1, const char *s2);
+int strncmp(const char *s1, const char *s2, size_t n);
 int stricmp(const char *s1, const char *s2);
 void str_reverse(char *str, size_t len);
 
