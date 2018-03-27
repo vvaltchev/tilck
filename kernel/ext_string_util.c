@@ -28,11 +28,19 @@ char *const *dcopy_strarray(const char *const *argv)
       argc++;
 
    res = kmalloc(sizeof(uptr) * (argc + 1));
-   VERIFY(res != NULL);
+
+   if (!res)
+      return NULL;
 
    for (int i = 0; i < argc; i++) {
+
       res[i] = strdup(argv[i]);
-      VERIFY(res[i] != NULL);
+
+      if (!res[i]) {
+         for (i--; i >= 0; i--)
+            kfree(res[i]);
+         return NULL;
+      }
    }
 
    res[argc + 1] = NULL;

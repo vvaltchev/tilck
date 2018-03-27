@@ -80,13 +80,33 @@ sptr sys_execve(const char *filename,
                 const char *const *env)
 {
    int rc = -ENOENT; /* default, kind-of random, error */
-   void *entry_point = NULL;
-   void *stack_addr = NULL;
    page_directory_t *pdir = NULL;
+   char *filename_copy;
+   char *const *argv_copy;
+   char *const *env_copy;
+   void *entry_point;
+   void *stack_addr;
 
-   char *filename_copy = strdup(filename);
-   char *const *argv_copy = dcopy_strarray(argv);
-   char *const *env_copy = dcopy_strarray(env);
+   filename_copy = strdup(filename);
+
+   if (filename && !filename_copy) {
+      rc = -ENOMEM;
+      goto errend2;
+   }
+
+   argv_copy = dcopy_strarray(argv);
+
+   if (argv && !argv_copy) {
+      rc = -ENOMEM;
+      goto errend2;
+   }
+
+   env_copy = dcopy_strarray(env);
+
+   if (env && !env_copy) {
+      rc = -ENOMEM;
+      goto errend2;
+   }
 
    disable_preemption();
 
@@ -128,6 +148,7 @@ sptr sys_execve(const char *filename,
 errend:
    enable_preemption();
 
+errend2:
    /* Free the duplicated buffers */
    kfree(filename_copy);
    dfree_strarray(argv_copy);
