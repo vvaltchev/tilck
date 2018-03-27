@@ -92,8 +92,9 @@ sptr sys_execve(const char *filename,
 
    rc = load_elf_program(filename, &pdir, &entry_point, &stack_addr);
 
-   if (rc < 0)
+   if (rc < 0) {
       goto errend;
+   }
 
    char *const default_argv[] = { filename_copy, NULL };
 

@@ -290,6 +290,10 @@ map_pages_int(page_directory_t *pdir,
 page_directory_t *pdir_clone(page_directory_t *pdir)
 {
    page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
+
+   if (!new_pdir)
+      return NULL;
+
    memcpy(new_pdir, pdir, sizeof(page_directory_t));
 
    for (int i = 0; i < 1024; i++) {
