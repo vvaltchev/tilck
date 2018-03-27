@@ -81,9 +81,9 @@ sptr sys_execve(const char *filename,
 {
    int rc = -ENOENT; /* default, kind-of random, error */
    page_directory_t *pdir = NULL;
-   char *filename_copy;
-   char *const *argv_copy;
-   char *const *env_copy;
+   char *filename_copy = NULL;
+   char *const *argv_copy = NULL;
+   char *const *env_copy = NULL;
    void *entry_point;
    void *stack_addr;
 
