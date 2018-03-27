@@ -67,9 +67,10 @@ cd_error:
       return;
    }
 
-   // printf("args(%i):\n", argc);
-   // for (int i = 0; cmd_argv[i] != NULL; i++)
-   //    printf("argv[%i] = '%s'\n", i, cmd_argv[i]);
+
+   printf("[process_cmd_line] args(%i):\n", argc);
+   for (int i = 0; cmd_argv[i] != NULL; i++)
+      printf("[process_cmd_line] argv[%i] = '%s'\n", i, cmd_argv[i]);
 
    if (!strcmp(cmd_argv[0], "exit")) {
       printf("[shell] regular exit\n");
@@ -80,7 +81,7 @@ cd_error:
    int child_pid = fork();
 
    if (!child_pid) {
-      execve(cmd_argv[0], NULL, NULL);
+      execve(cmd_argv[0], cmd_argv, NULL);
       int saved_errno = errno;
       perror(cmd_argv[0]);
       exit(saved_errno);
@@ -98,6 +99,9 @@ int main(int argc, char **argv, char **env)
    shell_env = env;
 
    printf("[PID: %i] Hello from ExOS's simple shell!\n", getpid());
+   printf("My input args[%i]:\n", argc);
+   for (int i = 0; i < argc; i++)
+      printf("argv[%i] = '%s'\n", i, argv[i]);
 
    while (true) {
 

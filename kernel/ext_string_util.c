@@ -19,13 +19,13 @@ char *strdup(const char *s)
 char *const *dcopy_strarray(const char *const *argv)
 {
    int argc = 0;
-   const char *const *p = argv;
    char **res;
 
    if (!argv)
       return NULL;
 
-   while (*p) argc++;
+   while (argv[argc])
+      argc++;
 
    res = kmalloc(sizeof(uptr) * (argc + 1));
    VERIFY(res != NULL);
@@ -42,15 +42,12 @@ char *const *dcopy_strarray(const char *const *argv)
 void dfree_strarray(char *const *argv)
 {
    char *const *p = argv;
-   int elems = 0;
 
    if (!argv)
       return;
 
-   while (*p) {
-      kfree(*p);
-      elems++;
-   }
+   while (*p)
+      kfree(*p++);
 
    kfree((void *) argv);
 }
