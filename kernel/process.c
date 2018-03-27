@@ -130,6 +130,11 @@ sptr sys_execve(const char *filename,
                         argv_copy ? argv_copy : default_argv,
                         env_copy ? env_copy : default_env);
 
+   /* Free the duplicated buffers */
+   kfree(filename_copy);
+   dfree_strarray(argv_copy);
+   dfree_strarray(env_copy);
+
    if (UNLIKELY(!current)) {
 
       /* Just counter-balance the disable_preemption() above */
@@ -149,6 +154,8 @@ errend:
    enable_preemption();
 
 errend2:
+   VERIFY(rc != 0);
+
    /* Free the duplicated buffers */
    kfree(filename_copy);
    dfree_strarray(argv_copy);

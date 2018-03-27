@@ -43,7 +43,7 @@ char *const *dcopy_strarray(const char *const *argv)
       }
    }
 
-   res[argc + 1] = NULL;
+   res[argc] = NULL;
    return res;
 }
 
