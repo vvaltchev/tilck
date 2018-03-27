@@ -16,41 +16,61 @@ int load_elf_program(const char *filepath,
                      void **entry,
                      void **stack_addr)
 {
-   ssize_t ret;
+   Elf32_Phdr *phdrs = NULL;
    Elf32_Ehdr header;
+   ssize_t ret;
+   int rc = 0;
 
    fs_handle *elf_file = exvfs_open(filepath);
 
    if (!elf_file)
       return -ENOENT;
 
-   if (*pdir_ref == NULL) {
+   if (*pdir_ref == NULL)
       *pdir_ref = pdir_clone(get_kernel_page_dir());
-   }
 
    //printk("[kernel] elf loader: '%s'\n", filepath);
 
    set_page_directory(*pdir_ref);
 
    ret = exvfs_read(elf_file, &header, sizeof(header));
-   ASSERT(ret == sizeof(header));
 
-   ASSERT(header.e_ident[EI_MAG0] == ELFMAG0);
-   ASSERT(header.e_ident[EI_MAG1] == ELFMAG1);
-   ASSERT(header.e_ident[EI_MAG2] == ELFMAG2);
-   ASSERT(header.e_ident[EI_MAG3] == ELFMAG3);
+   if (ret < (int)sizeof(header)) {
+      rc = -ENOEXEC;
+      goto out;
+   }
 
-   ASSERT(header.e_ehsize == sizeof(header));
+   if (strncmp((const char *)header.e_ident, ELFMAG, 4)) {
+      rc = -ENOEXEC;
+      goto out;
+   }
+
+   if (header.e_ehsize < sizeof(header)) {
+      rc = -ENOEXEC;
+      goto out;
+   }
 
    const ssize_t total_phdrs_size = header.e_phnum * sizeof(Elf32_Phdr);
-   Elf32_Phdr *phdrs = kmalloc(total_phdrs_size);
-   VERIFY(phdrs != NULL);
+   phdrs = kmalloc(total_phdrs_size);
+
+   if (!phdrs) {
+      rc = -ENOMEM;
+      goto out;
+   }
 
    ret = exvfs_seek(elf_file, header.e_phoff, SEEK_SET);
-   VERIFY(ret == (ssize_t)header.e_phoff);
+
+   if (ret != (ssize_t)header.e_phoff) {
+      rc = -ENOEXEC;
+      goto out;
+   }
 
    ret = exvfs_read(elf_file, phdrs, total_phdrs_size);
-   ASSERT(ret == total_phdrs_size);
+
+   if (ret != total_phdrs_size) {
+      rc = -ENOEXEC;
+      goto out;
+   }
 
    for (int i = 0; i < header.e_phnum; i++) {
 
@@ -83,12 +103,11 @@ int load_elf_program(const char *filepath,
             continue;
          }
 
-         void *p = kmalloc(PAGE_SIZE);
+         void *p = kzmalloc(PAGE_SIZE);
          VERIFY(p != NULL); // TODO: handle out-of-memory
          uptr paddr = KERNEL_VA_TO_PA(p);
 
          map_page(*pdir_ref, vaddr, paddr, true, true);
-         bzero(vaddr, PAGE_SIZE);
       }
 
       ret = exvfs_seek(elf_file, phdr->p_offset, SEEK_SET);
@@ -105,7 +124,6 @@ int load_elf_program(const char *filepath,
       }
    }
 
-   exvfs_close(elf_file);
 
    // Allocating memory for the user stack.
 
@@ -114,7 +132,7 @@ int load_elf_program(const char *filepath,
       (void *) (OFFLIMIT_USERMODE_ADDR - pages_for_stack * PAGE_SIZE);
 
    for (int i = 0; i < pages_for_stack; i++) {
-      void *p = kmalloc(PAGE_SIZE);
+      void *p = kzmalloc(PAGE_SIZE);
       VERIFY(p != NULL); // TODO: handle out-of-memory
       uptr paddr = KERNEL_VA_TO_PA(p);
       map_page(*pdir_ref, stack_top + i * PAGE_SIZE, paddr, true, true);
@@ -125,8 +143,10 @@ int load_elf_program(const char *filepath,
    *stack_addr = (void *) ((OFFLIMIT_USERMODE_ADDR - 1) & ~15);
    *entry = (void *) header.e_entry;
 
-   kfree2(phdrs, total_phdrs_size);
-   return 0;
+out:
+   exvfs_close(elf_file);
+   kfree(phdrs);
+   return rc;
 }
 
 /* ------------------- Debug utils ---------------------- */

@@ -207,8 +207,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
       self_test_to_run();
 
    if (ramdisk_size && !no_init) {
-     sys_execve("/sbin/init", NULL, NULL);
-     panic("Unable to load /sbin/init.\n");
+     sptr rc = sys_execve("/sbin/init", NULL, NULL);
+     panic("execve(\"/sbin/init\") failed with %i\n", rc);
    }
 
    switch_to_idle_task_outside_interrupt_context();
