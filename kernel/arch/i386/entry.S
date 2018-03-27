@@ -206,7 +206,7 @@ FUNC(asm_context_switch_x86):
    # pop eax # entry point (eip)
    # pop eax # 0x1b (cs)
    # pop eax # eflags
-   # pop eax # stack
+   # pop eax # esp
    # pop eax # 0x23 (ss)
    #######################################################################
 
@@ -257,24 +257,40 @@ FUNC(asm_kernel_context_switch_x86):
 END_FUNC(asm_kernel_context_switch_x86)
 
 
-.macro asm_save_current_state
 
-   mov eax, [esp] # save caller's return-addr EIP
+.macro asm_macro_save_current_kernel_state
 
-   push cs
-   push eax  # eip (we saved before)
-   push 0    # err_code
-   push -1   # int_num
+   push ss           # stack segment
+   push 0xaabbccdd   # placeholder for caller's ESP (aka regs->useresp)
+   pushf             # push EFLAGS
+   push cs           # code segment
+   push 0xaabbccd2   # placeholder for caller's return-addr EIP (regs->eip)
 
-   pusha     # Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+   push 0       # err_code
+   push -1      # int_num
+
+   pusha        # Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
    push ds
    push es
    push fs
    push gs
 
    mov eax, esp
+
+   mov ebx, [esp + 76]
+   mov [eax + 14*4], ebx  # 14*4 = 56 = offsetof(regs, eip)
+
+   # NOTE: in regs->useresp we are NOT storing caller's ESP before the
+   # call kernel_yield() instruction, but caller's ESP + 4. In order words,
+   # value of ESP we see at the beginning of kernel_yield(). That is correct
+   # because asm_kernel_context_switch_x86() uses a 'ret' at the end to resume
+   # the caller, and that ret removes this + 4.
+
+   lea ebx, [esp + 76]
+   mov [eax + 17*4], ebx  # 17*4 = 68 = offsetof(regs, useresp)
+
    push eax
-   call save_current_task_state
+   call save_current_kernel_task_state
 
 .endm
 
@@ -285,19 +301,18 @@ END_FUNC(asm_kernel_context_switch_x86)
 
 FUNC(kernel_yield):
 
+   inc dword ptr [disable_preemption_count]
+
+   asm_macro_save_current_kernel_state
+
 #ifdef DEBUG
    call check_not_in_irq_handler
 #endif
 
-   inc dword ptr [disable_preemption_count]
-
-   # See the macro's definition above
-   asm_save_current_state
-
    call schedule_outside_interrupt_context
 
    # In case schedule() returned, restore ESP and just return
-   add esp, 68
+   add esp, 80
    dec dword ptr [disable_preemption_count]
    ret
 
@@ -305,10 +320,8 @@ END_FUNC(kernel_yield)
 
 FUNC(panic_save_current_state):
 
-   # See the macro's definition above
-   asm_save_current_state
-
-   add esp, 68
+   asm_macro_save_current_kernel_state
+   add esp, 80
    ret
 
 END_FUNC(panic_save_current_state)

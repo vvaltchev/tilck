@@ -212,22 +212,8 @@ task_info *create_usermode_task(page_directory_t *pdir,
    return ti;
 }
 
-
-task_info fake_current_proccess;
-
 void save_current_task_state(regs *r)
 {
-   if (!current) {
-      /*
-       * PANIC occurred before the first task is started.
-       * Create a fake current task just to store the registers.
-       */
-
-      fake_current_proccess.pid = -1;
-      fake_current_proccess.running_in_kernel = true;
-      current = &fake_current_proccess;
-   }
-
    regs *state = current->running_in_kernel
                     ? &current->kernel_state_regs
                     : &current->state_regs;
@@ -239,14 +225,11 @@ void save_current_task_state(regs *r)
       /*
        * If the current task was running in kernel, than the useresp has not
        * be saved on the stack by the CPU, since there has been not priviledge
-       * change. So, we have to use the actual value of ESP as 'useresp' and
-       * adjust it by +16. That's because when the interrupt occured, the CPU
-       * pushed on the stack CS+EIP and we pushed int_num + err_code; in total,
-       * 4 pointer-size integers.
+       * change. The CPU pushed on stack only EFLAGS+CS+EIP instead of:
+       * SS, ESP, EFLAGS, CS, EIP. Therefore, we have to use the value of ESP
+       * saved by 'pusha' and adjust it accordingly.
        */
       state->useresp = r->esp + 16;
-
-      state->eflags = get_eflags();
       state->ss = 0x10;
 
       if (!is_kernel_thread(current)) {
@@ -254,6 +237,26 @@ void save_current_task_state(regs *r)
          DEBUG_VALIDATE_STACK_PTR();
       }
    }
+}
+
+static task_info fake_current_proccess;
+
+void save_current_kernel_task_state(regs *r)
+{
+   if (UNLIKELY(current == NULL)) {
+
+      /*
+       * PANIC occurred before the first task is started.
+       * Create a fake current task just to store the registers.
+       */
+
+      fake_current_proccess.pid = -1;
+      fake_current_proccess.running_in_kernel = true;
+      current = &fake_current_proccess;
+   }
+
+   ASSERT(current->running_in_kernel);   // ASSERT that, just in case :-)
+   memcpy(&current->kernel_state_regs, r, sizeof(*r));
 }
 
 /*
