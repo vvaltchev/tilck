@@ -11,6 +11,55 @@
 
 #ifdef BITS32
 
+static int load_phdr(fs_handle *elf_file,
+                     page_directory_t *pdir,
+                     Elf32_Phdr *phdr)
+{
+   ssize_t ret;
+   char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
+
+   int page_count = ((phdr->p_memsz + PAGE_SIZE) & PAGE_MASK) >> PAGE_SHIFT;
+
+   {
+      uptr end_vaddr = (uptr)vaddr + (page_count << PAGE_SHIFT);
+
+      if (end_vaddr < (phdr->p_vaddr + phdr->p_memsz))
+         page_count++;
+   }
+
+   // printk("seg at %p, m: %u, p: %i, end: %p, me: %p\n",
+   //        phdr->p_vaddr, phdr->p_memsz, page_count,
+   //        phdr->p_vaddr + phdr->p_memsz,
+   //        (phdr->p_vaddr & PAGE_MASK) + page_count * PAGE_SIZE);
+
+   for (int j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
+
+      if (is_mapped(pdir, vaddr))
+         continue;
+
+      void *p = kzmalloc(PAGE_SIZE);
+      VERIFY(p != NULL); // TODO: handle out-of-memory
+      uptr paddr = KERNEL_VA_TO_PA(p);
+
+      map_page(pdir, vaddr, paddr, true, true);
+   }
+
+   ret = exvfs_seek(elf_file, phdr->p_offset, SEEK_SET);
+   VERIFY(ret == (ssize_t)phdr->p_offset);
+
+   ret = exvfs_read(elf_file, (void *) phdr->p_vaddr, phdr->p_filesz);
+   VERIFY(ret == (ssize_t)phdr->p_filesz);
+
+   vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
+
+   /* Make the read-only pages to be read-only */
+   for (int j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
+      set_page_rw(pdir, vaddr, !!(phdr->p_flags & PF_W));
+   }
+
+   return 0;
+}
+
 int load_elf_program(const char *filepath,
                      page_directory_t **pdir_ref,
                      void **entry,
@@ -76,52 +125,8 @@ int load_elf_program(const char *filepath,
 
       Elf32_Phdr *phdr = phdrs + i;
 
-      // Ignore non-load segments.
-      if (phdr->p_type != PT_LOAD) {
-         continue;
-      }
-
-      int page_count =
-         ((phdr->p_memsz + PAGE_SIZE) & PAGE_MASK) >> PAGE_SHIFT;
-
-      char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
-      uptr end_vaddr = (uptr)vaddr + (page_count << PAGE_SHIFT);
-
-      if (end_vaddr < (phdr->p_vaddr + phdr->p_memsz)) {
-         page_count++;
-         end_vaddr += PAGE_SIZE;
-      }
-
-      // printk("seg at %p, m: %u, p: %i, end: %p, me: %p\n",
-      //        phdr->p_vaddr, phdr->p_memsz, page_count,
-      //        phdr->p_vaddr + phdr->p_memsz,
-      //        (phdr->p_vaddr & PAGE_MASK) + page_count * PAGE_SIZE);
-
-      for (int j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
-
-         if (is_mapped(*pdir_ref, vaddr)) {
-            continue;
-         }
-
-         void *p = kzmalloc(PAGE_SIZE);
-         VERIFY(p != NULL); // TODO: handle out-of-memory
-         uptr paddr = KERNEL_VA_TO_PA(p);
-
-         map_page(*pdir_ref, vaddr, paddr, true, true);
-      }
-
-      ret = exvfs_seek(elf_file, phdr->p_offset, SEEK_SET);
-      VERIFY(ret == (ssize_t)phdr->p_offset);
-
-      ret = exvfs_read(elf_file, (void *) phdr->p_vaddr, phdr->p_filesz);
-      VERIFY(ret == (ssize_t)phdr->p_filesz);
-
-      vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
-
-      /* Make the read-only pages to be read-only */
-      for (int j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
-         set_page_rw(*pdir_ref, vaddr, !!(phdr->p_flags & PF_W));
-      }
+      if (phdr->p_type == PT_LOAD)
+         load_phdr(elf_file, *pdir_ref, phdr);
    }
 
 
