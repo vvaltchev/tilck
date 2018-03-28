@@ -16,6 +16,11 @@ struct regs {
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
 
+static ALWAYS_INLINE int regs_intnum(regs *r)
+{
+   return r->int_num;
+}
+
 static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
 {
    r->eax = value;
