@@ -119,10 +119,15 @@ void tasklet_runner_kthread()
 
       } while (tasklet_run);
 
-      /*
-       * Special use of a condition variable without a mutex, see the comment
-       * above in enqueue_tasklet_int().
-       */
+#ifndef DEBUG
       kcond_wait(&tasklet_cond, NULL, TIMER_HZ / 10);
+#else
+      /*
+       * In debug builds, use kernel_yield() in order to keep this task always
+       * runnable and force the kernel to do much more context switches. This
+       * helps some nasty bugs easier to reproduce.
+       */
+      kernel_yield();
+#endif
    }
 }
