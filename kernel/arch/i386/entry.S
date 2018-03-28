@@ -164,14 +164,15 @@ FUNC(asm_int_handler):
    mov gs, ax
    mov eax, esp
    push eax
+   cld            # Set DF = 0, as C compilers by default assume that.
    call generic_interrupt_handler
-   add esp, 4 # Discard the previousy-pushed 'eax'
+   add esp, 4     # Discard the previousy-pushed 'eax'
    pop gs
    pop fs
    pop es
    pop ds
    popa
-   add esp, 8    # Discards the pushed err_code and int_num
+   add esp, 8     # Discards the pushed err_code and int_num
    iret
 
 END_FUNC(asm_int_handler)
