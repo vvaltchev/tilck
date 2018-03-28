@@ -217,12 +217,13 @@ FUNC(asm_kernel_context_switch_x86):
 
    add esp, 4 # discard the return-addr
 
-   mov eax, [esp + 14*4] # eax = regs->eip
-   mov ebx, [esp + 17*4] # ebx = regs->useresp
-
-   # we have to simulate a push of the eip, but using the stack in EBX in order
-   # to allow the final RET to work.
-   mov [ebx], eax
+   # This code relies that at the address [regs->useresp] there is a valid EIP
+   # (return address). It has been either pushed on the stack by the caller of
+   # kernel_yield() or it has been pushed on the stack by
+   # save_current_task_state(). DEBUG NOTE: to that check value here, just do:
+   #
+   #     mov ebx, [esp + 17*4] # ebx = regs->useresp
+   #     mov eax, [ebx]
 
    pop gs
    pop fs
@@ -264,7 +265,11 @@ END_FUNC(asm_kernel_context_switch_x86)
    push 0xaabbccdd   # placeholder for caller's ESP (aka regs->useresp)
    pushf             # push EFLAGS
    push cs           # code segment
-   push 0xcafebabe   # placeholder for caller's return-addr EIP (regs->eip)
+   push 0xcafebabe   # using an invalid magic value for regs->eip
+                     # since regs->eip is NOT used in kernel context switches:
+                     # the right EIP has been already pushed on the stack by
+                     # the caller of kernel_yield(), or by the function
+                     # save_current_task_state() in case of preemption.
 
    push 0       # err_code
    push -1      # int_num
@@ -277,17 +282,14 @@ END_FUNC(asm_kernel_context_switch_x86)
 
    mov eax, esp
 
-   mov ebx, [esp + 76]
-   mov [eax + 14*4], ebx  # regs->eip = ebx
-
    # NOTE: in regs->useresp we are NOT storing caller's ESP before the
    # call kernel_yield() instruction, but caller's ESP + 4. In order words,
    # value of ESP we see at the beginning of kernel_yield(). That is correct
    # because asm_kernel_context_switch_x86() uses a 'ret' at the end to resume
-   # the caller, and that ret removes this + 4.
+   # the caller, and that 'ret' removes this + 4.
 
    lea ebx, [esp + 76]
-   mov [eax + 17*4], ebx  # regs->useresp = esp
+   mov [eax + 17*4], ebx  # regs->useresp = original esp to save.
 
    push eax
    call save_current_kernel_task_state

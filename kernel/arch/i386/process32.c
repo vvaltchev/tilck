@@ -229,8 +229,10 @@ void save_current_task_state(regs *r)
        * SS, ESP, EFLAGS, CS, EIP. Therefore, we have to use the value of ESP
        * saved by 'pusha' and adjust it accordingly.
        */
-      state->useresp = r->esp + 16;
+      state->useresp = r->esp + 16 + 4;
       state->ss = 0x10;
+
+      push_on_user_stack(state, state->eip);
 
       if (!is_kernel_thread(current)) {
          DEBUG_printk("[kernel] PREEMPTING kernel code for user program!\n");
