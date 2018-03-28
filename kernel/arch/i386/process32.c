@@ -86,7 +86,7 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    r.cs = 0x08;
 
    r.eip = (u32) fun;
-   r.eflags = get_eflags() | (1 << 9);
+   r.eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF;
 
    task_info *ti = kzmalloc(sizeof(task_info));
 
@@ -116,7 +116,7 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
     */
 
    push_on_user_stack(&ti->kernel_state_regs, (uptr) &kthread_exit);
-   ti->kernel_state_regs.useresp -= sizeof(uptr);
+   push_on_user_stack(&ti->kernel_state_regs, (uptr) fun);
 
    add_task(ti);
    return ti;

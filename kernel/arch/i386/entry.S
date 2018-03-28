@@ -264,7 +264,7 @@ END_FUNC(asm_kernel_context_switch_x86)
    push 0xaabbccdd   # placeholder for caller's ESP (aka regs->useresp)
    pushf             # push EFLAGS
    push cs           # code segment
-   push 0xaabbccd2   # placeholder for caller's return-addr EIP (regs->eip)
+   push 0xcafebabe   # placeholder for caller's return-addr EIP (regs->eip)
 
    push 0       # err_code
    push -1      # int_num
@@ -278,7 +278,7 @@ END_FUNC(asm_kernel_context_switch_x86)
    mov eax, esp
 
    mov ebx, [esp + 76]
-   mov [eax + 14*4], ebx  # 14*4 = 56 = offsetof(regs, eip)
+   mov [eax + 14*4], ebx  # regs->eip = ebx
 
    # NOTE: in regs->useresp we are NOT storing caller's ESP before the
    # call kernel_yield() instruction, but caller's ESP + 4. In order words,
@@ -287,7 +287,7 @@ END_FUNC(asm_kernel_context_switch_x86)
    # the caller, and that ret removes this + 4.
 
    lea ebx, [esp + 76]
-   mov [eax + 17*4], ebx  # 17*4 = 68 = offsetof(regs, useresp)
+   mov [eax + 17*4], ebx  # regs->useresp = esp
 
    push eax
    call save_current_kernel_task_state

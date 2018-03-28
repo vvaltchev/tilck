@@ -53,6 +53,11 @@ void simple_test_kthread(void *arg)
    }
 }
 
+void selftest_kthread(void)
+{
+   kthread_create(simple_test_kthread, (void *)0xAA0011FF);
+}
+
 void sleeping_kthread(void *arg)
 {
    u64 wait_ticks = (uptr) arg;
