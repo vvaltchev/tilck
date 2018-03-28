@@ -42,11 +42,27 @@ void selftest_tasklet()
    printk("[selftest_tasklet] COMPLETED\n");
 }
 
+
 void simple_test_kthread(void *arg)
 {
+   int i;
+   uptr saved_esp;
+   uptr esp;
+
    printk("[kernel thread] This is a kernel thread, arg = %p\n", arg);
 
-   for (int i = 0; i < 1024*(int)MB; i++) {
+   saved_esp = get_curr_stack_ptr();
+
+   for (i = 0; i < 1024*(int)MB; i++) {
+
+      /*
+       * This VERY IMPORTANT check ensures us that in NO WAY functions like
+       * save_current_task_state() and kernel_context_switch() changed value
+       * of the stack pointer.
+       */
+      esp = get_curr_stack_ptr();
+      VERIFY(esp == saved_esp);
+
       if (!(i % (256*MB))) {
          printk("[kernel thread] i = %i\n", i/MB);
       }
@@ -57,6 +73,7 @@ void selftest_kthread(void)
 {
    kthread_create(simple_test_kthread, (void *)0xAA0011FF);
 }
+
 
 void sleeping_kthread(void *arg)
 {

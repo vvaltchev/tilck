@@ -77,6 +77,14 @@ cd_error:
       exit(0);
    }
 
+   if (!strcmp(cmd_argv[0], "loop")) {
+      printf("[shell] do a long loop\n");
+      for (int i = 0; i < 500*1000*1000; i++) {
+         __asm__ volatile ("nop");
+      }
+      return;
+   }
+
    int wstatus;
    int child_pid = fork();
 

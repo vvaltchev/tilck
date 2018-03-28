@@ -21,6 +21,17 @@ static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
    r->eax = value;
 }
 
+static ALWAYS_INLINE uptr get_curr_stack_ptr(void)
+{
+   uptr esp;
+
+   asmVolatile("mov %%esp, %0"
+               : "=r" (esp)
+               : /* no input */
+               : /* no clobber */);
+
+   return esp;
+}
 
 NORETURN void asm_context_switch_x86(regs state_copy);
 NORETURN void asm_kernel_context_switch_x86(regs state_copy);

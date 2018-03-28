@@ -116,7 +116,22 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
     */
 
    push_on_user_stack(&ti->kernel_state_regs, (uptr) &kthread_exit);
+
+   /*
+    * The same comment of above applies here. Just, in this case the RET is the
+    * one executed by asm_kernel_context_switch_x86().
+    */
    push_on_user_stack(&ti->kernel_state_regs, (uptr) fun);
+
+   /*
+    * Overall, with this 3 pushes + ret of asm_kernel_context_switch_x86()
+    * the stack will look to 'fun' as if the following happened:
+    *
+    *    kthread_exit:
+    *       push arg
+    *       call fun
+    *       <other instructions of kthread_exit>
+    */
 
    add_task(ti);
    return ti;
@@ -229,7 +244,9 @@ void save_current_task_state(regs *r)
        * SS, ESP, EFLAGS, CS, EIP. Therefore, we have to use the value of ESP
        * saved by 'pusha' and adjust it accordingly.
        */
-      state->useresp = r->esp + 16 + 4;
+
+      state->useresp = r->esp + (  3 /* eflags, cs, eip */
+                                 + 2 /* err_code, int_num */) * 4;
       state->ss = 0x10;
 
       push_on_user_stack(state, state->eip);
