@@ -1,5 +1,8 @@
 
 #pragma once
+#define __EXOS_HAL__
+
+#include <common/basic_defs.h>
 
 #if defined(__i386__)
 

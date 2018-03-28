@@ -1,7 +1,10 @@
 
 #pragma once
 
-#include <common/basic_defs.h>
+#if defined(__EXOS_KERNEL__) && !defined(__EXOS_HAL__)
+#error Never include this header directly. Do #include <exos/hal.h>.
+#endif
+
 #include <common/arch/generic_x86/x86_utils.h>
 
 // Forward-declaring regs
