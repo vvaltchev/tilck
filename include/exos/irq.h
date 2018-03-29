@@ -25,16 +25,24 @@ u32 pic_get_imr(void);
 extern volatile int nested_interrupts_count;
 extern volatile int nested_interrupts[32];
 
-void pop_nested_interrupt();
-void push_nested_interrupt(int int_num);
-
-
 static inline int get_curr_interrupt()
 {
    ASSERT(!are_interrupts_enabled());
    return nested_interrupts[nested_interrupts_count - 1];
 }
 
+inline void push_nested_interrupt(int int_num)
+{
+   ASSERT(nested_interrupts_count < (int)ARRAY_SIZE(nested_interrupts));
+   ASSERT(nested_interrupts_count >= 0);
+   nested_interrupts[nested_interrupts_count++] = int_num;
+}
+
+inline void pop_nested_interrupt(void)
+{
+   nested_interrupts_count--;
+   ASSERT(nested_interrupts_count >= 0);
+}
 
 static ALWAYS_INLINE bool is_irq(int interrupt_num)
 {

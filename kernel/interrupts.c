@@ -1,7 +1,6 @@
 
 #include <common/basic_defs.h>
 #include <common/string_util.h>
-
 #include <exos/process.h>
 #include <exos/hal.h>
 
@@ -11,6 +10,9 @@ void handle_irq(regs *r);
 
 volatile int nested_interrupts_count = 0;
 volatile int nested_interrupts[32] = { [0 ... 31] = -1 };
+
+extern inline void push_nested_interrupt(int int_num);
+extern inline void pop_nested_interrupt(void);
 
 void check_not_in_irq_handler(void)
 {
@@ -25,28 +27,13 @@ void check_not_in_irq_handler(void)
    }
 }
 
-void push_nested_interrupt(int int_num)
-{
-   ASSERT(nested_interrupts_count < (int)ARRAY_SIZE(nested_interrupts));
-   ASSERT(nested_interrupts_count >= 0);
-   nested_interrupts[nested_interrupts_count++] = int_num;
-}
-
-void pop_nested_interrupt()
-{
-   nested_interrupts_count--;
-   ASSERT(nested_interrupts_count >= 0);
-}
-
 static bool is_same_interrupt_nested(int int_num)
 {
    ASSERT(!are_interrupts_enabled());
 
-   for (int i = nested_interrupts_count - 1; i >= 0; i--) {
-      if (nested_interrupts[i] == int_num) {
+   for (int i = nested_interrupts_count - 1; i >= 0; i--)
+      if (nested_interrupts[i] == int_num)
          return true;
-      }
-   }
 
    return false;
 }
@@ -57,10 +44,8 @@ static bool is_same_interrupt_nested(int int_num)
  */
 static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode()
 {
-   if (current && !running_in_kernel(current)) {
-      if (nested_interrupts_count == 0) {
-         ASSERT(is_preemption_enabled());
-      }
+   if (current && !running_in_kernel(current) && !nested_interrupts_count) {
+      ASSERT(is_preemption_enabled());
    }
 }
 

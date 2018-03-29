@@ -197,7 +197,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
    while (env[env_elems]) env_elems++;
    push_args_on_user_stack(&r, argv, argv_elems, env, env_elems);
 
-   r.eflags = get_eflags() | EFLAGS_IF;
+   r.eflags = 0x2 /* reserved, always set */ | EFLAGS_IF;
 
    if (!task_to_use) {
       ti = kzmalloc(sizeof(task_info));
