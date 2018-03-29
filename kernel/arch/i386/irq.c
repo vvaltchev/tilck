@@ -57,7 +57,7 @@ void irq_uninstall_handler(u8 irq)
 #define PIC_READ_IRR        0x0a    /* OCW3 irq ready next CMD read */
 #define PIC_READ_ISR        0x0b    /* OCW3 irq service next CMD read */
 
-void PIC_sendEOI(u8 irq)
+void pic_send_eoi(u8 irq)
 {
    if (irq >= 8) {
       outb(PIC2_COMMAND, PIC_EOI);
@@ -280,7 +280,7 @@ void handle_irq(regs *r)
     * We MUST send EOI to the PIC here, before starting the interrupt handler
     * otherwise, the PIC will just not allow nested interrupts to happen.
     */
-   PIC_sendEOI(irq);
+   pic_send_eoi(irq);
    ASSERT(are_interrupts_enabled());
 
    if (irq_routines[irq] != NULL) {

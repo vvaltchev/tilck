@@ -8,11 +8,16 @@ void handle_syscall(regs *);
 void handle_fault(regs *);
 void handle_irq(regs *r);
 
+extern volatile u64 jiffies;
+extern volatile int disable_interrupts_count;
+
 volatile int nested_interrupts_count = 0;
 volatile int nested_interrupts[32] = { [0 ... 31] = -1 };
 
 extern inline void push_nested_interrupt(int int_num);
 extern inline void pop_nested_interrupt(void);
+extern inline bool in_syscall(void);
+extern inline int get_curr_interrupt(void);
 
 void check_not_in_irq_handler(void)
 {
@@ -25,6 +30,31 @@ void check_not_in_irq_handler(void)
       }
       enable_interrupts();
    }
+}
+
+int get_curr_interrupt(void)
+{
+   ASSERT(!are_interrupts_enabled());
+   return nested_interrupts[nested_interrupts_count - 1];
+}
+
+/*
+ * TODO: re-implement this when SYSENTER is supported as well
+ */
+bool in_syscall(void)
+{
+   bool res = false;
+   disable_interrupts();
+
+   for (int i = nested_interrupts_count - 1; i >= 0; i--) {
+      if (nested_interrupts[i] == 0x80) {
+         res = true;
+         break;
+      }
+   }
+
+   enable_interrupts();
+   return res;
 }
 
 static bool is_same_interrupt_nested(int int_num)
@@ -49,6 +79,27 @@ static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode()
    }
 }
 
+static inline void DEBUG_check_disable_interrupts_count_is_0(int int_num)
+{
+#ifdef DEBUG
+
+   int disable_int_c = disable_interrupts_count;
+
+   if (disable_int_c != 0) {
+
+      /*
+       * Disable the interrupts in case, for any reason, they are enabled.
+       */
+      HW_disable_interrupts();
+
+      panic("[generic_interrupt_handler] int_num: %i\n"
+            "disable_interrupts_count: %i (expected: 0)\n"
+            "total system ticks: %llu\n",
+            int_num, disable_int_c, jiffies);
+   }
+
+#endif
+}
 
 void generic_interrupt_handler(regs *r)
 {

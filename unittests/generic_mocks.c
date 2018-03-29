@@ -57,7 +57,7 @@ void term_write_string(const char *str)
 void handle_fault() { }
 void handle_syscall() { }
 void handle_irq() { }
-void PIC_sendEOI() { }
+void pic_send_eoi() { }
 void task_info_reset_kernel_stack() { }
 void set_kernel_stack() { }
 void irq_clear_mask() { }
