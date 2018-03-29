@@ -198,19 +198,7 @@ FUNC(asm_context_switch_x86):
 
    add esp, 8 # discard err_code and int_num
 
-   # eip, cs, eflags, useresp and ss
-   # are already on stack, passed by the caller.
-
-   #######################################################################
-   # The following POPs simulate what the CPU will do with 'iret'
-   # (clearly it cannot replace 'iret' but it is useful to keep in mind)
-   # pop eax # entry point (eip)
-   # pop eax # 0x1b (cs)
-   # pop eax # eflags
-   # pop eax # esp
-   # pop eax # 0x23 (ss)
-   #######################################################################
-
+   # The following iret will pop in order: eip, cs, eflags, esp, ss.
    iret
 END_FUNC(asm_context_switch_x86)
 
@@ -229,6 +217,11 @@ FUNC(asm_kernel_context_switch_x86):
    popa
 
    add esp, 8 # skip int_num, err_code
+
+   # The following iret will pop in order: eip, cs, eflags.
+   # Note the missing 'esp' and 'ss'. That's because there is no privilege
+   # level change.
+
    iret
 
 END_FUNC(asm_kernel_context_switch_x86)
@@ -241,10 +234,12 @@ END_FUNC(asm_kernel_context_switch_x86)
    push cs           # code segment
    push 0xcafebabe   # placeholder for EIP
 
-   push 0       # err_code
-   push -1      # int_num
+   push 0            # err_code
+   push -1           # int_num
 
-   pusha        # Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+   pusha             # Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+                     # Note: the value of the pushed ESP is the one before
+                     # the pusha instruction.
    push ds
    push es
    push fs
