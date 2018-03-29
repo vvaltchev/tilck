@@ -225,21 +225,9 @@ task_info *create_usermode_task(page_directory_t *pdir,
    return ti;
 }
 
-void save_current_task_state(regs *r)
-{
-   if (current->running_in_kernel) {
-
-      current->kernel_state_regs = r;
-      DEBUG_VALIDATE_STACK_PTR();
-
-   } else {
-      memcpy(&current->state_regs, r, sizeof(*r));
-   }
-}
-
 static task_info fake_current_proccess;
 
-void save_current_kernel_task_state(regs *r)
+void save_current_task_state(regs *r)
 {
    if (UNLIKELY(current == NULL)) {
 
@@ -253,8 +241,14 @@ void save_current_kernel_task_state(regs *r)
       current = &fake_current_proccess;
    }
 
-   ASSERT(current->running_in_kernel);   // ASSERT that, just in case :-)
-   current->kernel_state_regs = r;
+   if (current->running_in_kernel) {
+
+      current->kernel_state_regs = r;
+      DEBUG_VALIDATE_STACK_PTR();
+
+   } else {
+      memcpy(&current->state_regs, r, sizeof(*r));
+   }
 }
 
 /*

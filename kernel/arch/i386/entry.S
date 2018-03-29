@@ -251,7 +251,7 @@ END_FUNC(asm_kernel_context_switch_x86)
    mov [esp + 14*4], ebx  # regs->eip = ebx
 
    push eax
-   call save_current_kernel_task_state
+   call save_current_task_state
 
 .endm
 
