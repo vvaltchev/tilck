@@ -214,63 +214,32 @@ FUNC(asm_context_switch_x86):
    iret
 END_FUNC(asm_context_switch_x86)
 
+
 FUNC(asm_kernel_context_switch_x86):
 
    add esp, 4 # discard the return-addr
 
-   # This code relies that at the address [regs->useresp] there is a valid EIP
-   # (return address). It has been either pushed on the stack by the caller of
-   # kernel_yield() or it has been pushed on the stack by
-   # save_current_task_state(). DEBUG NOTE: to that check value here, just do:
-   #
-   #     mov ebx, [esp + 17*4] # ebx = regs->useresp
-   #     mov eax, [ebx]
+   pop esp
 
    pop gs
    pop fs
    pop es
    pop ds
 
-   # We can't do 'popa' here because it will restore ESP
-   pop edi
-   pop esi
-   pop ebp
-   add esp, 4 # skip esp
-   pop ebx
-   pop edx
-   pop ecx
-   pop eax
+   popa
 
-   add esp, 16 # skip int_num, err_code, eip, cs
+   add esp, 8 # skip int_num, err_code
+   iret
 
-   popf # pop the eflags register
-
-   # Now we can finally pop the ESP and just do RET: the right return-addr EIP
-   # is already on the new stack.
-   pop esp
-
-   sti # This is mandatory here, after setting ESP since the eflags register
-       # for kernel context switches needs to have interrupts disabled.
-       # That's in order to allow the above 'pop esp' to happen, otherwise,
-       # we won't be able to ASSERT that the ESP's page is the same as
-       # current->kernel_stack.
-
-   ret
 END_FUNC(asm_kernel_context_switch_x86)
 
 
 
 .macro asm_macro_save_current_kernel_state
 
-   push ss           # stack segment
-   push 0xaabbccdd   # placeholder for caller's ESP (aka regs->useresp)
    pushf             # push EFLAGS
    push cs           # code segment
-   push 0xcafebabe   # using an invalid magic value for regs->eip
-                     # since regs->eip is NOT used in kernel context switches:
-                     # the right EIP has been already pushed on the stack by
-                     # the caller of kernel_yield(), or by the function
-                     # save_current_task_state() in case of preemption.
+   push 0xcafebabe   # placeholder for EIP
 
    push 0       # err_code
    push -1      # int_num
@@ -283,14 +252,8 @@ END_FUNC(asm_kernel_context_switch_x86)
 
    mov eax, esp
 
-   # NOTE: in regs->useresp we are NOT storing caller's ESP before the
-   # call kernel_yield() instruction, but caller's ESP + 4. In order words,
-   # value of ESP we see at the beginning of kernel_yield(). That is correct
-   # because asm_kernel_context_switch_x86() uses a 'ret' at the end to resume
-   # the caller, and that 'ret' removes this + 4.
-
-   lea ebx, [esp + 76]
-   mov [eax + 17*4], ebx  # regs->useresp = original esp to save.
+   mov ebx, [esp + 17*4]  # caller's EIP
+   mov [esp + 14*4], ebx  # regs->eip = ebx
 
    push eax
    call save_current_kernel_task_state
@@ -315,7 +278,7 @@ FUNC(kernel_yield):
    call schedule_outside_interrupt_context
 
    # In case schedule() returned, restore ESP and just return
-   add esp, 80
+   add esp, 72
    dec dword ptr [disable_preemption_count]
    ret
 
@@ -324,7 +287,7 @@ END_FUNC(kernel_yield)
 FUNC(panic_save_current_state):
 
    asm_macro_save_current_kernel_state
-   add esp, 80
+   add esp, 72
    ret
 
 END_FUNC(panic_save_current_state)

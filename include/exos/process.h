@@ -44,7 +44,7 @@ struct task_info {
    wait_obj wobj;
 
    regs state_regs;
-   regs kernel_state_regs;
+   regs *kernel_state_regs;
    page_directory_t *pdir;
 
    char cwd[256]; /* current working directory */

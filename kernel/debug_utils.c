@@ -55,7 +55,7 @@ NORETURN void panic(const char *fmt, ...)
    }
 
    //dump_raw_stack((uptr) &fmt);
-   dump_regs(&current->kernel_state_regs);
+   dump_regs(current->kernel_state_regs);
    dump_stacktrace();
 
 

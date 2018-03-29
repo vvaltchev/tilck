@@ -10,15 +10,20 @@
 
 void task_info_reset_kernel_stack(task_info *ti)
 {
-   ti->kernel_state_regs.useresp = \
-      ((uptr) ti->kernel_stack +
-      KTHREAD_STACK_SIZE - 1) & POINTER_ALIGN_MASK;
+   ti->kernel_state_regs =
+      (void *) (((uptr) ti->kernel_stack + KTHREAD_STACK_SIZE - 1) & POINTER_ALIGN_MASK);
 }
 
 void push_on_user_stack(regs *r, uptr val)
 {
    r->useresp -= sizeof(val);
    memcpy((void *)r->useresp, &val, sizeof(val));
+}
+
+void push_on_stack(uptr *stack_ptr_ref, uptr val)
+{
+   *stack_ptr_ref -= sizeof(uptr);
+   memcpy((void *)*stack_ptr_ref, &val, sizeof(val));
 }
 
 void push_string_on_user_stack(regs *r, const char *str)
@@ -101,11 +106,10 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    VERIFY(ti->kernel_stack != NULL);
 
    bzero(&ti->state_regs, sizeof(r));
-   memcpy(&ti->kernel_state_regs, &r, sizeof(r));
 
    task_info_reset_kernel_stack(ti);
 
-   push_on_user_stack(&ti->kernel_state_regs, (uptr) arg);
+   push_on_stack((uptr *)&ti->kernel_state_regs, (uptr) arg);
 
    /*
     * Pushes the address of kthread_exit() into thread's stack in order to
@@ -115,16 +119,10 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
     * jump in the begging of kthread_exit().
     */
 
-   push_on_user_stack(&ti->kernel_state_regs, (uptr) &kthread_exit);
+   push_on_stack((uptr *)&ti->kernel_state_regs, (uptr) &kthread_exit);
 
    /*
-    * The same comment of above applies here. Just, in this case the RET is the
-    * one executed by asm_kernel_context_switch_x86().
-    */
-   push_on_user_stack(&ti->kernel_state_regs, (uptr) fun);
-
-   /*
-    * Overall, with this 3 pushes + ret of asm_kernel_context_switch_x86()
+    * Overall, with these pushes + the iret of asm_kernel_context_switch_x86()
     * the stack will look to 'fun' as if the following happened:
     *
     *    kthread_exit:
@@ -132,6 +130,9 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
     *       call fun
     *       <other instructions of kthread_exit>
     */
+
+   ti->kernel_state_regs = (void *)ti->kernel_state_regs - sizeof(regs) + 8;
+   memcpy(ti->kernel_state_regs, &r, sizeof(r) - 8);
 
    add_task(ti);
    return ti;
@@ -221,40 +222,19 @@ task_info *create_usermode_task(page_directory_t *pdir,
    }
 
    memcpy(&ti->state_regs, &r, sizeof(r));
-   bzero(&ti->kernel_state_regs, sizeof(r));
-
    task_info_reset_kernel_stack(ti);
    return ti;
 }
 
 void save_current_task_state(regs *r)
 {
-   regs *state = current->running_in_kernel
-                    ? &current->kernel_state_regs
-                    : &current->state_regs;
-
-   memcpy(state, r, sizeof(*r));
-
    if (current->running_in_kernel) {
 
-      /*
-       * If the current task was running in kernel, than the useresp has not
-       * be saved on the stack by the CPU, since there has been not priviledge
-       * change. The CPU pushed on stack only EFLAGS+CS+EIP instead of:
-       * SS, ESP, EFLAGS, CS, EIP. Therefore, we have to use the value of ESP
-       * saved by 'pusha' and adjust it accordingly.
-       */
+      current->kernel_state_regs = r;
+      DEBUG_VALIDATE_STACK_PTR();
 
-      state->useresp = r->esp + (  3 /* eflags, cs, eip */
-                                 + 2 /* err_code, int_num */) * 4;
-      state->ss = 0x10;
-
-      push_on_user_stack(state, state->eip);
-
-      if (!is_kernel_thread(current)) {
-         DEBUG_printk("[kernel] PREEMPTING kernel code for user program!\n");
-         DEBUG_VALIDATE_STACK_PTR();
-      }
+   } else {
+      memcpy(&current->state_regs, r, sizeof(*r));
    }
 }
 
@@ -275,7 +255,7 @@ void save_current_kernel_task_state(regs *r)
    }
 
    ASSERT(current->running_in_kernel);   // ASSERT that, just in case :-)
-   memcpy(&current->kernel_state_regs, r, sizeof(*r));
+   current->kernel_state_regs = r;
 }
 
 /*
@@ -288,7 +268,7 @@ void set_current_task_in_user_mode(void)
    current->running_in_kernel = 0;
 
    task_info_reset_kernel_stack(current);
-   set_kernel_stack(current->kernel_state_regs.useresp);
+   set_kernel_stack((u32)current->kernel_state_regs);
 }
 
 
@@ -330,11 +310,6 @@ NORETURN void switch_to_task(task_info *ti)
 
    enable_preemption();
    ASSERT(is_preemption_enabled());
-
-   regs *state = ti->running_in_kernel
-                    ? &ti->kernel_state_regs
-                    : &ti->state_regs;
-
    ASSERT(!are_interrupts_enabled());
 
    /*
@@ -354,17 +329,17 @@ NORETURN void switch_to_task(task_info *ti)
       bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
 
       task_info_reset_kernel_stack(ti);
-      set_kernel_stack(ti->kernel_state_regs.useresp);
+      set_kernel_stack((u32) ti->kernel_state_regs);
 
       /*
        * ASSERT that the 9th bit in task's eflags is 1, which means that on
        * IRET the CPU will enable the interrupts.
        */
 
-      ASSERT(state->eflags & EFLAGS_IF);
+      ASSERT(ti->state_regs.eflags & EFLAGS_IF);
 
       current = ti;
-      context_switch(state);
+      context_switch(&ti->state_regs);
 
    } else {
 
@@ -372,17 +347,8 @@ NORETURN void switch_to_task(task_info *ti)
          push_nested_interrupt(0x80);
       }
 
-      /*
-       * Forcibily disable interrupts: that because we don't want them to be
-       * automatically enabled when asm_kernel_context_switch_x86 runs POPF.
-       * And that's because asm_kernel_context_switch_x86 has to POP ESP before
-       * finally enabling them. See the comment in asm_kernel_context_switch_x86
-       * for more about this.
-       */
-      state->eflags &= ~EFLAGS_IF;
-
-      set_kernel_stack(ti->kernel_state_regs.useresp);
+      set_kernel_stack((u32) ti->kernel_state_regs);
       current = ti;
-      kernel_context_switch(state);
+      kernel_context_switch(ti->kernel_state_regs);
    }
 }
