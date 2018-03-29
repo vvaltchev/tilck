@@ -247,12 +247,6 @@ END_FUNC(asm_kernel_context_switch_x86)
 
    mov eax, esp
 
-   mov ebx, [esp + 17*4]  # caller's EIP
-   mov [esp + 14*4], ebx  # regs->eip = ebx
-
-   push eax
-   call save_current_task_state
-
 .endm
 
 
@@ -265,6 +259,12 @@ FUNC(kernel_yield):
    inc dword ptr [disable_preemption_count]
 
    asm_macro_save_current_kernel_state
+
+   mov ebx, [esp + 17*4]  # caller's EIP
+   mov [eax + 14*4], ebx  # regs->eip = ebx
+
+   push eax
+   call save_current_task_state
 
 #ifdef DEBUG
    call check_not_in_irq_handler
@@ -281,8 +281,20 @@ END_FUNC(kernel_yield)
 
 FUNC(panic_save_current_state):
 
+   push ss
+   push 0xcafebabe # placeholder for useresp
+
    asm_macro_save_current_kernel_state
-   add esp, 72
+
+   mov ebx, [esp + 19*4]  # caller's EIP
+   mov [eax + 14*4], ebx  # regs->eip = ebx
+
+   lea ebx, [esp + 19*4]
+   mov [eax + 17*4], ebx  # regs->useresp = ebx
+
+   push eax
+   call panic_save_current_task_state
+   add esp, 80
    ret
 
 END_FUNC(panic_save_current_state)

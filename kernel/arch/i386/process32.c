@@ -225,21 +225,9 @@ task_info *create_usermode_task(page_directory_t *pdir,
    return ti;
 }
 
-static task_info fake_current_proccess;
-
 void save_current_task_state(regs *r)
 {
-   if (UNLIKELY(current == NULL)) {
-
-      /*
-       * PANIC occurred before the first task is started.
-       * Create a fake current task just to store the registers.
-       */
-
-      fake_current_proccess.pid = -1;
-      fake_current_proccess.running_in_kernel = true;
-      current = &fake_current_proccess;
-   }
+   ASSERT(current != NULL);
 
    if (current->running_in_kernel) {
 
@@ -249,6 +237,46 @@ void save_current_task_state(regs *r)
    } else {
       memcpy(&current->state_regs, r, sizeof(*r));
    }
+}
+
+static task_info fake_current_proccess;
+
+void panic_save_current_task_state(regs *r)
+{
+   if (UNLIKELY(current == NULL)) {
+
+      /*
+       * PANIC occurred before the first task is started.
+       * Create a fake current task just to allow the rest of the panic code
+       * to not handle the current == NULL case.
+       */
+
+      fake_current_proccess.pid = -1;
+      fake_current_proccess.running_in_kernel = true;
+      current = &fake_current_proccess;
+   }
+
+   /*
+    * Clear the higher (unused) bits of the segment registers for a nicer
+    * panic regs dump.
+    */
+   r->ss &= 0xffff;
+   r->cs &= 0xffff;
+   r->ds &= 0xffff;
+   r->es &= 0xffff;
+   r->fs &= 0xffff;
+   r->gs &= 0xffff;
+
+   /*
+    * Since in panic we need just to save the state without doing a context
+    * switch, just saving the ESP in kernel_state_regs won't work, because
+    * we'll going to continue using the same stack. In this particular corner
+    * case, just store the regs in state_regs and make kernel_state_regs point
+    * there.
+    */
+
+   memcpy(&current->state_regs, r, sizeof(*r));
+   current->kernel_state_regs = &current->state_regs;
 }
 
 /*
