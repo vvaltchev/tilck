@@ -58,22 +58,21 @@ void check_not_in_irq_handler(void)
 }
 
 /*
- * TODO: re-implement this when SYSENTER is supported as well
+ * TODO: update when the SYSENTER interface is supported
  */
 bool in_syscall(void)
 {
-   uptr var;
+   ASSERT(!are_interrupts_enabled());
    bool res = false;
-   disable_interrupts(&var);
 
    for (int i = nested_interrupts_count - 1; i >= 0; i--) {
-      if (nested_interrupts[i] == 0x80) {
+      if (nested_interrupts[i] == SYSCALL_SOFT_INTERRUPT) {
          res = true;
          break;
       }
    }
 
-   enable_interrupts(&var);
+
    return res;
 }
 
@@ -89,7 +88,7 @@ static bool is_same_interrupt_nested(int int_num)
 }
 
 /*
- * This sanity check is very fundamental: it assures us that in no case
+ * This sanity check is essential: it assures us that in no case
  * we're running an usermode thread with preemption disabled.
  */
 static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode()
@@ -147,24 +146,21 @@ void generic_interrupt_handler(regs *r)
       return;
    }
 
+   push_nested_interrupt(regs_intnum(r));
    disable_preemption();
    {
-
-      push_nested_interrupt(regs_intnum(r));
       enable_interrupts_forced();
 
-      if (LIKELY(int_num == SYSCALL_SOFT_INTERRUPT)) {
+      if (int_num == SYSCALL_SOFT_INTERRUPT) {
          ASSERT(current != NULL);
          handle_syscall(r);
       } else {
          VERIFY(is_fault(int_num));
          handle_fault(r);
       }
-
    }
    enable_preemption();
-
-   DEBUG_check_preemption_enabled_for_usermode();
    pop_nested_interrupt();
+   DEBUG_check_preemption_enabled_for_usermode();
 }
 

@@ -320,7 +320,6 @@ NORETURN void switch_to_task(task_info *ti)
 
    enable_preemption();
    ASSERT(is_preemption_enabled());
-   ASSERT(!are_interrupts_enabled());
 
    DEBUG_VALIDATE_STACK_PTR();
 
