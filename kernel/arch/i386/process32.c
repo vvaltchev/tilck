@@ -326,31 +326,23 @@ NORETURN void switch_to_task(task_info *ti)
    // We have to be SURE that the timer IRQ is NOT masked!
    irq_clear_mask(X86_PC_TIMER_IRQ);
 
-   if (!ti->running_in_kernel) {
+   current = ti; /* this is safe here: the interrupts are disabled! */
 
-      bzero(ti->kernel_stack, KTHREAD_STACK_SIZE);
+   if (!ti->running_in_kernel) {
 
       task_info_reset_kernel_stack(ti);
       set_kernel_stack((u32) ti->kernel_state_regs);
-
-      /*
-       * ASSERT that the 9th bit in task's eflags is 1, which means that on
-       * IRET the CPU will enable the interrupts.
-       */
-
       ASSERT(ti->state_regs.eflags & EFLAGS_IF);
 
-      current = ti;
       context_switch(&ti->state_regs);
 
    } else {
 
       if (!is_kernel_thread(ti)) {
-         push_nested_interrupt(0x80);
+         push_nested_interrupt(SYSCALL_SOFT_INTERRUPT);
       }
 
       set_kernel_stack((u32) ti->kernel_state_regs);
-      current = ti;
       kernel_context_switch(ti->kernel_state_regs);
    }
 }

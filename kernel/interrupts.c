@@ -72,7 +72,6 @@ bool in_syscall(void)
       }
    }
 
-
    return res;
 }
 
