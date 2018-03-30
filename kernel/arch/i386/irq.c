@@ -273,9 +273,6 @@ void handle_irq(regs *r)
 
    ASSERT(!are_interrupts_enabled());
    HW_enable_interrupts();
-   disable_interrupts_count = 0;
-
-   ASSERT(disable_interrupts_count == 0);
 
    /*
     * We MUST send EOI to the PIC here, before starting the interrupt handler

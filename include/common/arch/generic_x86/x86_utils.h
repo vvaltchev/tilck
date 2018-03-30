@@ -119,10 +119,19 @@ static ALWAYS_INLINE uptr get_eflags()
 {
    uptr eflags;
    asmVolatile("pushf\n\t"
-               "pop %0"
+               "pop %0\n\t"
                : "=g"(eflags) );
 
    return eflags;
+}
+
+static ALWAYS_INLINE void set_eflags(uptr f)
+{
+   asmVolatile("push %0\n\t"
+               "popf\n\t"
+               : /* no output */
+               : "r" (f)
+               : "cc");
 }
 
 #else
@@ -147,19 +156,48 @@ static ALWAYS_INLINE uptr get_eflags()
 
 
 extern volatile bool in_panic;
-extern volatile int disable_interrupts_count;
 
 static ALWAYS_INLINE void enable_interrupts_forced()
 {
-   disable_interrupts_count = 0;
    HW_enable_interrupts();
 }
 
 static ALWAYS_INLINE void disable_interrupts_forced()
 {
    HW_disable_interrupts();
-   disable_interrupts_count = 1;
 }
+
+
+#ifndef UNIT_TEST_ENVIRONMENT
+
+static ALWAYS_INLINE bool are_interrupts_enabled(void)
+{
+   return !!(get_eflags() & EFLAGS_IF);
+}
+
+static ALWAYS_INLINE void disable_interrupts(uptr *const var)
+{
+   *var = get_eflags();
+
+   if (*var & EFLAGS_IF) {
+      HW_disable_interrupts();
+   }
+}
+
+static ALWAYS_INLINE void enable_interrupts(const uptr *const var)
+{
+   if (*var & EFLAGS_IF) {
+      HW_enable_interrupts();
+   }
+}
+
+#else
+
+static ALWAYS_INLINE void disable_interrupts(uptr *stack_var) { }
+static ALWAYS_INLINE void enable_interrupts(uptr *stack_var) { }
+static ALWAYS_INLINE bool are_interrupts_enabled(void) { NOT_REACHED(); }
+
+#endif // ifndef UNIT_TEST_ENVIRONMENT
 
 static ALWAYS_INLINE void cpuid(int code, u32 *a, u32 *d)
 {

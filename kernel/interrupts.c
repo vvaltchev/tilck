@@ -9,7 +9,6 @@ void handle_fault(regs *);
 void handle_irq(regs *r);
 
 extern volatile u64 jiffies;
-extern volatile int disable_interrupts_count;
 
 volatile int nested_interrupts_count = 0;
 volatile int nested_interrupts[32] = { [0 ... 31] = -1 };
@@ -80,41 +79,8 @@ static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode()
    }
 }
 
-static inline void DEBUG_check_disable_interrupts_count_is_0(int int_num)
-{
-#ifdef DEBUG
-
-   int disable_int_c = disable_interrupts_count;
-
-   if (disable_int_c != 0) {
-
-      /*
-       * Disable the interrupts in case, for any reason, they are enabled.
-       */
-      HW_disable_interrupts();
-
-      panic("[generic_interrupt_handler] int_num: %i\n"
-            "disable_interrupts_count: %i (expected: 0)\n"
-            "total system ticks: %llu\n",
-            int_num, disable_int_c, jiffies);
-   }
-
-#endif
-}
-
 void generic_interrupt_handler(regs *r)
 {
-   DEBUG_check_disable_interrupts_count_is_0(regs_intnum(r));
-
-   /*
-    * We know that interrupts have been disabled exactly once at this point
-    * by the CPU or the low-level assembly interrupt handler so we have to
-    * set disable_interrupts_count = 1, in order to the counter to be consistent
-    * with the actual CPU state.
-    */
-
-   disable_interrupts_count = 1;
-
    ASSERT(!are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
    ASSERT(!is_same_interrupt_nested(regs_intnum(r)));
@@ -126,9 +92,6 @@ void generic_interrupt_handler(regs *r)
 
       handle_irq(r);
       DEBUG_check_preemption_enabled_for_usermode();
-
-      /* Restore the value of disable_interrupts_count to 0. */
-      disable_interrupts_count = 0;
       return;
    }
 
@@ -137,7 +100,6 @@ void generic_interrupt_handler(regs *r)
 
    enable_interrupts_forced();
    ASSERT(are_interrupts_enabled());
-   ASSERT(disable_interrupts_count == 0);
 
    if (LIKELY(regs_intnum(r) == SYSCALL_SOFT_INTERRUPT)) {
       handle_syscall(r);
@@ -150,8 +112,5 @@ void generic_interrupt_handler(regs *r)
 
    DEBUG_check_preemption_enabled_for_usermode();
    pop_nested_interrupt();
-
-   /* Restore the value of disable_interrupts_count to 0. */
-   disable_interrupts_count = 0;
 }
 

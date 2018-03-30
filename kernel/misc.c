@@ -5,9 +5,6 @@
 #include <exos/process.h>
 #include <exos/hal.h>
 
-/* the kernel starts with interrupts disabled */
-volatile int disable_interrupts_count = 1;
-
 uptr ramdisk_paddr = RAMDISK_PADDR; /* default value in case of no multiboot */
 size_t ramdisk_size = RAMDISK_SIZE; /* default value in case of no multiboot */
 

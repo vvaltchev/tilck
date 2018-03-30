@@ -23,53 +23,6 @@ static ALWAYS_INLINE bool is_fault(int int_num)
    return 0 <= int_num && int_num < 32;
 }
 
-static inline bool are_interrupts_enabled_int(const char *file, int line)
-{
-   return !!(get_eflags() & EFLAGS_IF);
-}
-
-#define are_interrupts_enabled() are_interrupts_enabled_int(__FILE__, __LINE__)
-
-
-#ifndef UNIT_TEST_ENVIRONMENT
-
-static inline void enable_interrupts(uptr *stack_var)
-{
-   ASSERT(!are_interrupts_enabled());
-   ASSERT(disable_interrupts_count > 0);
-
-   if (--disable_interrupts_count == 0) {
-      HW_enable_interrupts();
-   }
-}
-
-static inline void disable_interrupts(uptr *stack_var)
-{
-   uptr eflags = get_eflags();
-
-   if (eflags & EFLAGS_IF) {
-
-      // interrupts are enabled: disable them first.
-      HW_disable_interrupts();
-
-      ASSERT(disable_interrupts_count == 0);
-
-   } else {
-
-      // interrupts are already disabled: just increase the counter.
-      ASSERT(disable_interrupts_count > 0);
-   }
-
-   ++disable_interrupts_count;
-}
-
-#else
-
-static inline void enable_interrupts(uptr *stack_var) { }
-static inline void disable_interrupts(uptr *stack_var) { }
-
-#endif // ifndef UNIT_TEST_ENVIRONMENT
-
 static inline void push_nested_interrupt(int int_num)
 {
    ASSERT(nested_interrupts_count < (int)ARRAY_SIZE(nested_interrupts));

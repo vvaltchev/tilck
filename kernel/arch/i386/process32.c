@@ -312,10 +312,6 @@ NORETURN void switch_to_task(task_info *ti)
    }
 
    disable_interrupts_forced();
-
-   ASSERT(disable_interrupts_count == 1);
-   ASSERT(!are_interrupts_enabled());
-
    pop_nested_interrupt();
 
    if (current &&
@@ -332,13 +328,6 @@ NORETURN void switch_to_task(task_info *ti)
    enable_preemption();
    ASSERT(is_preemption_enabled());
    ASSERT(!are_interrupts_enabled());
-
-   /*
-    * The interrupts will be enabled after the context switch even if they are
-    * disabled now, so only in this special context is OK to make that counter
-    * equal to 0, without enabling the interrupts.
-    */
-   disable_interrupts_count = 0;
 
    DEBUG_VALIDATE_STACK_PTR();
 
