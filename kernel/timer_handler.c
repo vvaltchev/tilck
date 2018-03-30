@@ -110,14 +110,14 @@ void timer_handler(void *context)
 
    /*
     * We CANNOT allow the timer to call the scheduler if it interrupted an
-    * interrupt handler. Interrupt handlers have always to run with preemption
+    * interrupt handler. Interrupt handlers MUST always to run with preemption
     * disabled.
     *
     * Therefore, the ASSERT checks that:
     *
     * nested_interrupts_count == 1
-    *     meaning the timer is the only current interrupt because a kernel
-    *     thread was running)
+    *     meaning the timer is the only current interrupt: a kernel or an user
+    *     task was running regularly.
     *
     * OR
     *
@@ -126,8 +126,15 @@ void timer_handler(void *context)
     *     enabled.
     */
 
-   ASSERT(nested_interrupts_count == 1 ||
-          (nested_interrupts_count == 2 && in_syscall()));
+#ifdef DEBUG
+   {
+      uptr var;
+      disable_interrupts(&var);
+      int c = get_nested_interrupts_count();
+      ASSERT(c == 1 || (c == 2 && in_syscall()));
+      enable_interrupts(&var);
+   }
+#endif
 
    if (last_ready_task) {
       ASSERT(current->state == TASK_STATE_RUNNING);

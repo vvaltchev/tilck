@@ -46,15 +46,7 @@ NORETURN void panic(const char *fmt, ...)
       printk("Current process: NONE\n");
    }
 
-   if (nested_interrupts_count > 0) {
-      printk("Interrupts: [ ");
-      for (int i = nested_interrupts_count - 1; i >= 0; i--) {
-         printk("%i ", nested_interrupts[i]);
-      }
-      printk("]\n");
-   }
-
-   //dump_raw_stack((uptr) &fmt);
+   panic_dump_nested_interrupts();
    dump_regs(current->kernel_state_regs);
    dump_stacktrace();
 

@@ -314,15 +314,8 @@ NORETURN void switch_to_task(task_info *ti)
    disable_interrupts_forced();
    pop_nested_interrupt();
 
-   if (current &&
-       current->running_in_kernel && !is_kernel_thread(current)) {
-
-      if (nested_interrupts_count > 0) {
-
-         ASSERT(nested_interrupts_count == 1);
-         ASSERT(nested_interrupts[0] == 0x80); // int 0x80 (syscall)
-         pop_nested_interrupt();
-      }
+   if (current && current->running_in_kernel && !is_kernel_thread(current)) {
+      nested_interrupts_drop_top_syscall();
    }
 
    enable_preemption();

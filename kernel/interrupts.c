@@ -10,11 +10,37 @@ void handle_irq(regs *r);
 
 extern volatile u64 jiffies;
 
-volatile int nested_interrupts_count = 0;
-volatile int nested_interrupts[32] = { [0 ... 31] = -1 };
+static int nested_interrupts_count;
+static int nested_interrupts[MAX_NESTED_INTERRUPTS] =
+{
+   [0 ... MAX_NESTED_INTERRUPTS-1] = -1
+};
 
 extern inline bool in_syscall(void);
-extern inline int get_curr_interrupt(void);
+
+inline void push_nested_interrupt(int int_num)
+{
+   uptr var;
+   disable_interrupts(&var);
+   {
+      ASSERT(nested_interrupts_count < MAX_NESTED_INTERRUPTS);
+      ASSERT(nested_interrupts_count >= 0);
+      nested_interrupts[nested_interrupts_count++] = int_num;
+   }
+   enable_interrupts(&var);
+}
+
+inline void pop_nested_interrupt(void)
+{
+   uptr var;
+   disable_interrupts(&var);
+   {
+      nested_interrupts_count--;
+      ASSERT(nested_interrupts_count >= 0);
+   }
+   enable_interrupts(&var);
+}
+
 
 void check_not_in_irq_handler(void)
 {
@@ -25,16 +51,10 @@ void check_not_in_irq_handler(void)
       {
          if (nested_interrupts_count > 0)
             if (is_irq(nested_interrupts[nested_interrupts_count - 1]))
-               panic("NOT expected to be in an interrupt handler.");
+               panic("NOT expected to be in an IRQ handler");
       }
       enable_interrupts(&var);
    }
-}
-
-int get_curr_interrupt(void)
-{
-   ASSERT(!are_interrupts_enabled());
-   return nested_interrupts[nested_interrupts_count - 1];
 }
 
 /*
@@ -77,6 +97,38 @@ static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode()
    if (current && !running_in_kernel(current) && !nested_interrupts_count) {
       ASSERT(is_preemption_enabled());
    }
+}
+
+void nested_interrupts_drop_top_syscall(void)
+{
+   if (nested_interrupts_count > 0) {
+      ASSERT(nested_interrupts_count == 1);
+      ASSERT(nested_interrupts[0] == SYSCALL_SOFT_INTERRUPT);
+      pop_nested_interrupt();
+   }
+}
+
+void panic_dump_nested_interrupts(void)
+{
+   VERIFY(in_panic);
+   ASSERT(!are_interrupts_enabled());
+
+   if (!nested_interrupts_count)
+      return;
+
+   printk("Interrupts: [ ");
+
+   for (int i = nested_interrupts_count - 1; i >= 0; i--) {
+      printk("%i ", nested_interrupts[i]);
+   }
+
+   printk("]\n");
+}
+
+int get_nested_interrupts_count(void)
+{
+   ASSERT(!are_interrupts_enabled());
+   return nested_interrupts_count;
 }
 
 void generic_interrupt_handler(regs *r)
