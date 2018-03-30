@@ -272,7 +272,8 @@ void handle_irq(regs *r)
    push_nested_interrupt(r->int_num);
 
    ASSERT(!are_interrupts_enabled());
-   enable_interrupts();
+   HW_enable_interrupts();
+   disable_interrupts_count = 0;
 
    ASSERT(disable_interrupts_count == 0);
 

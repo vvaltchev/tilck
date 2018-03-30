@@ -25,33 +25,7 @@ static ALWAYS_INLINE bool is_fault(int int_num)
 
 static inline bool are_interrupts_enabled_int(const char *file, int line)
 {
-   uptr eflags = get_eflags();
-   bool interrupts_on = !!(eflags & EFLAGS_IF);
-
-#ifdef DEBUG
-
-   if (interrupts_on) {
-      // If the interrupts are ON, we have to disable them just in order to
-      // check the value of disable_interrupts_count.
-      HW_disable_interrupts();
-   }
-
-   if (interrupts_on != (disable_interrupts_count == 0)) {
-      if (!in_panic) {
-         panic("FAILED interrupts check.\nFile: %s on line %i.\n"
-               "interrupts_on: %s\ndisable_interrupts_count: %i",
-               file, line, interrupts_on ? "TRUE" : "FALSE",
-               disable_interrupts_count);
-      }
-   }
-
-   if (interrupts_on) {
-      HW_enable_interrupts();
-   }
-
-#endif
-
-   return interrupts_on;
+   return !!(get_eflags() & EFLAGS_IF);
 }
 
 #define are_interrupts_enabled() are_interrupts_enabled_int(__FILE__, __LINE__)
@@ -59,7 +33,7 @@ static inline bool are_interrupts_enabled_int(const char *file, int line)
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
-static inline void enable_interrupts(void)
+static inline void enable_interrupts(uptr *stack_var)
 {
    ASSERT(!are_interrupts_enabled());
    ASSERT(disable_interrupts_count > 0);
@@ -69,7 +43,7 @@ static inline void enable_interrupts(void)
    }
 }
 
-static inline void disable_interrupts(void)
+static inline void disable_interrupts(uptr *stack_var)
 {
    uptr eflags = get_eflags();
 
@@ -91,8 +65,8 @@ static inline void disable_interrupts(void)
 
 #else
 
-static inline void enable_interrupts(void) { }
-static inline void disable_interrupts(void) { }
+static inline void enable_interrupts(uptr *stack_var) { }
+static inline void disable_interrupts(uptr *stack_var) { }
 
 #endif // ifndef UNIT_TEST_ENVIRONMENT
 

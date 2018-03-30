@@ -237,15 +237,17 @@ void kb_cbuf_write_elem(char c)
 
 char kb_cbuf_read_elem(void)
 {
+   uptr var;
+
    ASSERT(!kb_cbuf_is_empty());
 
-   disable_interrupts();
+   disable_interrupts(&var);
 
    char res = kb_cooked_buffer[kb_cbuf_reader_pos++];
    kb_cbuf_reader_pos %= ARRAY_SIZE(kb_cooked_buffer);
    kb_cbuf_elems--;
 
-   enable_interrupts();
+   enable_interrupts(&var);
 
    return res;
 }
@@ -292,7 +294,8 @@ void handle_key_pressed(u8 scancode)
 
    if (c) {
 
-      disable_interrupts();
+      uptr var;
+      disable_interrupts(&var);
 
          if (c != '\b') {
 
@@ -310,7 +313,7 @@ void handle_key_pressed(u8 scancode)
                term_write_char(c);
          }
 
-      enable_interrupts();
+      enable_interrupts(&var);
 
    } else {
       printk("PRESSED scancode: 0x%x (%i)\n", scancode, scancode);
@@ -406,7 +409,7 @@ end:
 
 void reboot() {
 
-   disable_interrupts();
+   HW_disable_interrupts();
    kbd_wait();
 
    outb(KB_CONTROL_PORT, KBRD_RESET);

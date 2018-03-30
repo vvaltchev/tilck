@@ -22,7 +22,8 @@ static const video_interface *vi;
 
 void term_scroll_up(u32 lines)
 {
-   disable_interrupts();
+   uptr var;
+   disable_interrupts(&var);
    {
       vi->scroll_up(lines);
 
@@ -33,12 +34,13 @@ void term_scroll_up(u32 lines)
          vi->move_cursor(terminal_row, terminal_column);
       }
    }
-   enable_interrupts();
+   enable_interrupts(&var);
 }
 
 void term_scroll_down(u32 lines)
 {
-   disable_interrupts();
+   uptr var;
+   disable_interrupts(&var);
    {
       vi->scroll_down(lines);
 
@@ -47,7 +49,7 @@ void term_scroll_down(u32 lines)
          vi->move_cursor(terminal_row, terminal_column);
       }
    }
-   enable_interrupts();
+   enable_interrupts(&var);
 }
 
 void term_setcolor(u8 color) {
@@ -110,11 +112,12 @@ void term_write_char_unsafe(char c)
 
 void term_write_char(char c)
 {
-   disable_interrupts();
+   uptr var;
+   disable_interrupts(&var);
    {
       term_write_char_unsafe(c);
    }
-   enable_interrupts();
+   enable_interrupts(&var);
 }
 
 void term_write_string(const char *str)
@@ -131,12 +134,14 @@ void term_write_string(const char *str)
 
 void term_move_ch(int row, int col)
 {
-   disable_interrupts();
+   uptr var;
+   disable_interrupts(&var);
    {
       terminal_row = row;
       terminal_column = col;
       vi->move_cursor(row, col);
    }
+   enable_interrupts(&var);
 }
 
 void term_init(const video_interface *interface, u8 default_color)

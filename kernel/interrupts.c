@@ -16,20 +16,19 @@ volatile int nested_interrupts[32] = { [0 ... 31] = -1 };
 
 extern inline bool in_syscall(void);
 extern inline int get_curr_interrupt(void);
-extern inline void enable_interrupts(void);
-extern inline void disable_interrupts(void);
-extern inline bool are_interrupts_enabled_int(const char *file, int line);
 
 void check_not_in_irq_handler(void)
 {
+   uptr var;
+
    if (!in_panic) {
-      disable_interrupts();
+      disable_interrupts(&var);
       {
          if (nested_interrupts_count > 0)
             if (is_irq(nested_interrupts[nested_interrupts_count - 1]))
                panic("NOT expected to be in an interrupt handler.");
       }
-      enable_interrupts();
+      enable_interrupts(&var);
    }
 }
 
@@ -44,8 +43,9 @@ int get_curr_interrupt(void)
  */
 bool in_syscall(void)
 {
+   uptr var;
    bool res = false;
-   disable_interrupts();
+   disable_interrupts(&var);
 
    for (int i = nested_interrupts_count - 1; i >= 0; i--) {
       if (nested_interrupts[i] == 0x80) {
@@ -54,7 +54,7 @@ bool in_syscall(void)
       }
    }
 
-   enable_interrupts();
+   enable_interrupts(&var);
    return res;
 }
 

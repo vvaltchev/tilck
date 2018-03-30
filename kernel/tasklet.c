@@ -39,11 +39,12 @@ void initialize_tasklets()
 
 bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
 {
-   disable_interrupts();
+   uptr var;
+   disable_interrupts(&var);
    ASSERT(all_tasklets != NULL);
 
    if (slots_used >= MAX_TASKLETS) {
-      enable_interrupts();
+      enable_interrupts(&var);
       return false;
    }
 
@@ -57,7 +58,7 @@ bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
    first_free_slot_index = (first_free_slot_index + 1) % MAX_TASKLETS;
    slots_used++;
 
-   enable_interrupts();
+   enable_interrupts(&var);
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
@@ -79,11 +80,12 @@ bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
 bool run_one_tasklet(void)
 {
    tasklet t;
-   disable_interrupts();
+   uptr var;
+   disable_interrupts(&var);
    ASSERT(all_tasklets != NULL);
 
    if (slots_used == 0) {
-      enable_interrupts();
+      enable_interrupts(&var);
       return false;
    }
 
@@ -95,7 +97,7 @@ bool run_one_tasklet(void)
    slots_used--;
    tasklet_to_execute = (tasklet_to_execute + 1) % MAX_TASKLETS;
 
-   enable_interrupts();
+   enable_interrupts(&var);
 
    /* Execute the tasklet with preemption ENABLED */
    t.fptr(t.ctx.arg1, t.ctx.arg2, t.ctx.arg3);

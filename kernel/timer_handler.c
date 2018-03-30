@@ -29,7 +29,8 @@ kthread_timer_sleep_obj timers_array[64];
 
 int set_task_to_wake_after(task_info *task, u64 ticks)
 {
-   disable_interrupts();
+   uptr var;
+   disable_interrupts(&var);
    {
       for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
          if (!timers_array[i].task) {
@@ -40,7 +41,7 @@ int set_task_to_wake_after(task_info *task, u64 ticks)
          }
       }
    }
-   enable_interrupts();
+   enable_interrupts(&var);
 
    // TODO: consider implementing a fallback here. For example use a linkedlist.
    panic("Unable to find a free slot in timers_array.");
@@ -48,12 +49,13 @@ int set_task_to_wake_after(task_info *task, u64 ticks)
 
 void cancel_timer(int timer_num)
 {
-   disable_interrupts();
+   uptr var;
+   disable_interrupts(&var);
    {
       ASSERT(timers_array[timer_num].task != NULL);
       timers_array[timer_num].task = NULL;
    }
-   enable_interrupts();
+   enable_interrupts(&var);
 }
 
 static task_info *tick_all_timers(void *context)
