@@ -81,33 +81,35 @@ static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode()
 
 void generic_interrupt_handler(regs *r)
 {
+   const int int_num = regs_intnum(r);
+
    ASSERT(!are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
-   ASSERT(!is_same_interrupt_nested(regs_intnum(r)));
-   ASSERT(current != NULL);
-
    DEBUG_check_preemption_enabled_for_usermode();
+   ASSERT(is_fault(int_num) || !is_same_interrupt_nested(regs_intnum(r)));
 
-   if (is_irq(regs_intnum(r))) {
-
+   if (is_irq(int_num)) {
+      ASSERT(current != NULL);
       handle_irq(r);
       DEBUG_check_preemption_enabled_for_usermode();
       return;
    }
 
    disable_preemption();
-   push_nested_interrupt(regs_intnum(r));
+   {
 
-   enable_interrupts_forced();
-   ASSERT(are_interrupts_enabled());
+      push_nested_interrupt(regs_intnum(r));
+      enable_interrupts_forced();
 
-   if (LIKELY(regs_intnum(r) == SYSCALL_SOFT_INTERRUPT)) {
-      handle_syscall(r);
-   } else {
-      VERIFY(is_fault(regs_intnum(r)));
-      handle_fault(r);
+      if (LIKELY(int_num == SYSCALL_SOFT_INTERRUPT)) {
+         ASSERT(current != NULL);
+         handle_syscall(r);
+      } else {
+         VERIFY(is_fault(int_num));
+         handle_fault(r);
+      }
+
    }
-
    enable_preemption();
 
    DEBUG_check_preemption_enabled_for_usermode();

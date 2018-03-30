@@ -25,13 +25,23 @@ static ALWAYS_INLINE bool is_fault(int int_num)
 
 static inline void push_nested_interrupt(int int_num)
 {
-   ASSERT(nested_interrupts_count < (int)ARRAY_SIZE(nested_interrupts));
-   ASSERT(nested_interrupts_count >= 0);
-   nested_interrupts[nested_interrupts_count++] = int_num;
+   uptr var;
+   disable_interrupts(&var);
+   {
+      ASSERT(nested_interrupts_count < (int)ARRAY_SIZE(nested_interrupts));
+      ASSERT(nested_interrupts_count >= 0);
+      nested_interrupts[nested_interrupts_count++] = int_num;
+   }
+   enable_interrupts(&var);
 }
 
 static inline void pop_nested_interrupt(void)
 {
-   nested_interrupts_count--;
-   ASSERT(nested_interrupts_count >= 0);
+   uptr var;
+   disable_interrupts(&var);
+   {
+      nested_interrupts_count--;
+      ASSERT(nested_interrupts_count >= 0);
+   }
+   enable_interrupts(&var);
 }
