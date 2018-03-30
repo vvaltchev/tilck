@@ -409,7 +409,7 @@ end:
 
 void reboot() {
 
-   HW_disable_interrupts();
+   disable_interrupts_forced();
    kbd_wait();
 
    outb(KB_CONTROL_PORT, KBRD_RESET);

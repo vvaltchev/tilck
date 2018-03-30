@@ -272,7 +272,7 @@ void handle_irq(regs *r)
    push_nested_interrupt(r->int_num);
 
    ASSERT(!are_interrupts_enabled());
-   HW_enable_interrupts();
+   enable_interrupts_forced();
 
    /*
     * We MUST send EOI to the PIC here, before starting the interrupt handler

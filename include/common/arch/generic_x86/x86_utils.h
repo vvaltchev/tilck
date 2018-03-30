@@ -60,6 +60,9 @@
 
 #define SYSCALL_SOFT_INTERRUPT   0x80
 
+extern volatile bool in_panic;
+
+
 static ALWAYS_INLINE u64 RDTSC()
 {
 #ifdef BITS64
@@ -136,39 +139,24 @@ static ALWAYS_INLINE void set_eflags(uptr f)
 
 #else
 
-static ALWAYS_INLINE uptr get_eflags()
-{
-   NOT_REACHED();
-   return 0;
-}
+static ALWAYS_INLINE uptr get_eflags() { NOT_REACHED(); }
+static ALWAYS_INLINE void set_eflags(uptr f) { NOT_REACHED(); }
 
 #endif
 
-
-
-#if !defined(TESTING) && !defined(KERNEL_TEST)
-#  define HW_disable_interrupts() asmVolatile("cli")
-#  define HW_enable_interrupts() asmVolatile("sti")
-#else
-#  define HW_disable_interrupts()
-#  define HW_enable_interrupts()
-#endif
-
-
-extern volatile bool in_panic;
-
-static ALWAYS_INLINE void enable_interrupts_forced()
-{
-   HW_enable_interrupts();
-}
-
-static ALWAYS_INLINE void disable_interrupts_forced()
-{
-   HW_disable_interrupts();
-}
 
 
 #ifndef UNIT_TEST_ENVIRONMENT
+
+static ALWAYS_INLINE void enable_interrupts_forced(void)
+{
+   asmVolatile("sti");
+}
+
+static ALWAYS_INLINE void disable_interrupts_forced(void)
+{
+   asmVolatile("cli");
+}
 
 static ALWAYS_INLINE bool are_interrupts_enabled(void)
 {
@@ -180,21 +168,23 @@ static ALWAYS_INLINE void disable_interrupts(uptr *const var)
    *var = get_eflags();
 
    if (*var & EFLAGS_IF) {
-      HW_disable_interrupts();
+      disable_interrupts_forced();
    }
 }
 
 static ALWAYS_INLINE void enable_interrupts(const uptr *const var)
 {
    if (*var & EFLAGS_IF) {
-      HW_enable_interrupts();
+      enable_interrupts_forced();
    }
 }
 
 #else
 
-static ALWAYS_INLINE void disable_interrupts(uptr *stack_var) { }
-static ALWAYS_INLINE void enable_interrupts(uptr *stack_var) { }
+static ALWAYS_INLINE void enable_interrupts_forced(void) { NOT_REACHED(); }
+static ALWAYS_INLINE void disable_interrupts_forced(void) { NOT_REACHED(); }
+static ALWAYS_INLINE void disable_interrupts(uptr *stack_var) { NOT_REACHED(); }
+static ALWAYS_INLINE void enable_interrupts(uptr *stack_var) { NOT_REACHED(); }
 static ALWAYS_INLINE bool are_interrupts_enabled(void) { NOT_REACHED(); }
 
 #endif // ifndef UNIT_TEST_ENVIRONMENT
