@@ -14,10 +14,11 @@ extern volatile int disable_interrupts_count;
 volatile int nested_interrupts_count = 0;
 volatile int nested_interrupts[32] = { [0 ... 31] = -1 };
 
-extern inline void push_nested_interrupt(int int_num);
-extern inline void pop_nested_interrupt(void);
 extern inline bool in_syscall(void);
 extern inline int get_curr_interrupt(void);
+extern inline void enable_interrupts(void);
+extern inline void disable_interrupts(void);
+extern inline bool are_interrupts_enabled_int(const char *file, int line);
 
 void check_not_in_irq_handler(void)
 {
@@ -122,6 +123,7 @@ void generic_interrupt_handler(regs *r)
    DEBUG_check_preemption_enabled_for_usermode();
 
    if (is_irq(regs_intnum(r))) {
+
       handle_irq(r);
       DEBUG_check_preemption_enabled_for_usermode();
 
@@ -129,8 +131,6 @@ void generic_interrupt_handler(regs *r)
       disable_interrupts_count = 0;
       return;
    }
-
-   DEBUG_check_preemption_enabled_for_usermode();
 
    disable_preemption();
    push_nested_interrupt(regs_intnum(r));
@@ -140,11 +140,9 @@ void generic_interrupt_handler(regs *r)
    ASSERT(disable_interrupts_count == 0);
 
    if (LIKELY(regs_intnum(r) == SYSCALL_SOFT_INTERRUPT)) {
-
       handle_syscall(r);
-
    } else {
-
+      VERIFY(is_fault(regs_intnum(r)));
       handle_fault(r);
    }
 

@@ -9,6 +9,7 @@
 #include <exos/hal.h>
 #include <exos/term.h>
 #include <exos/serial.h>
+#include <exos/interrupts.h>
 
 static u8 term_width = 80;
 static u8 term_height = 25;
