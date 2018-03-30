@@ -44,16 +44,8 @@ void __wrap_not_reached(const char *file, int line)
    abort();
 }
 
-void term_write_char(char c)
-{
-   putchar(c);
-}
-
-void term_write_string(const char *str)
-{
-   printf("%s", str);
-}
-
+void init_serial_port() { }
+void write_serial() { }
 void handle_fault() { }
 void handle_syscall() { }
 void handle_irq() { }
