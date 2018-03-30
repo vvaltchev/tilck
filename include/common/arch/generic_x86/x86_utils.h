@@ -181,10 +181,10 @@ static ALWAYS_INLINE void enable_interrupts(const uptr *const var)
 
 #else
 
-static ALWAYS_INLINE void enable_interrupts_forced(void) { NOT_REACHED(); }
-static ALWAYS_INLINE void disable_interrupts_forced(void) { NOT_REACHED(); }
-static ALWAYS_INLINE void disable_interrupts(uptr *stack_var) { NOT_REACHED(); }
-static ALWAYS_INLINE void enable_interrupts(uptr *stack_var) { NOT_REACHED(); }
+static ALWAYS_INLINE void enable_interrupts_forced(void) { }
+static ALWAYS_INLINE void disable_interrupts_forced(void) { }
+static ALWAYS_INLINE void disable_interrupts(uptr *stack_var) { }
+static ALWAYS_INLINE void enable_interrupts(uptr *stack_var) { }
 static ALWAYS_INLINE bool are_interrupts_enabled(void) { NOT_REACHED(); }
 
 #endif // ifndef UNIT_TEST_ENVIRONMENT
