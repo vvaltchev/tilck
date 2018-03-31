@@ -20,8 +20,7 @@
 .global idt_load
 .global tss_flush
 .global asm_int_handler
-.global asm_context_switch_x86
-.global asm_kernel_context_switch_x86
+.global context_switch
 .global kernel_yield
 .global panic_save_current_state
 
@@ -177,33 +176,7 @@ FUNC(asm_int_handler):
 
 END_FUNC(asm_int_handler)
 
-FUNC(asm_context_switch_x86):
-
-   add esp, 4 # discard the return-addr
-
-   pop gs
-   pop fs
-   pop es
-   pop ds
-
-   # We can't do 'popa' here because it will restore ESP
-   pop edi
-   pop esi
-   pop ebp
-   add esp, 4 # skip 'esp'
-   pop ebx
-   pop edx
-   pop ecx
-   pop eax
-
-   add esp, 8 # discard err_code and int_num
-
-   # The following iret will pop in order: eip, cs, eflags, esp, ss.
-   iret
-END_FUNC(asm_context_switch_x86)
-
-
-FUNC(asm_kernel_context_switch_x86):
+FUNC(context_switch):
 
    add esp, 4 # discard the return-addr
 
@@ -218,13 +191,13 @@ FUNC(asm_kernel_context_switch_x86):
 
    add esp, 8 # skip int_num, err_code
 
-   # The following iret will pop in order: eip, cs, eflags.
-   # Note the missing 'esp' and 'ss'. That's because there is no privilege
-   # level change.
+   # The following iret will pop in order: eip, cs, eflags, esp, ss in case of a
+   # switch to a user task (change of privilege level) and: eip, cs, eflags
+   # otherwise (no change in the privilege level).
 
    iret
 
-END_FUNC(asm_kernel_context_switch_x86)
+END_FUNC(context_switch)
 
 
 

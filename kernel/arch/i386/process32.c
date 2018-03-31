@@ -326,15 +326,15 @@ NORETURN void switch_to_task(task_info *ti)
    // We have to be SURE that the timer IRQ is NOT masked!
    irq_clear_mask(X86_PC_TIMER_IRQ);
 
-   current = ti; /* this is safe here: the interrupts are disabled! */
+   regs *state = ti->running_in_kernel
+                  ? ti->kernel_state_regs
+                  : &ti->state_regs;
+
+   ASSERT(state->eflags & EFLAGS_IF);
 
    if (!ti->running_in_kernel) {
 
       task_info_reset_kernel_stack(ti);
-      set_kernel_stack((u32) ti->kernel_state_regs);
-      ASSERT(ti->state_regs.eflags & EFLAGS_IF);
-
-      context_switch(&ti->state_regs);
 
    } else {
 
@@ -342,7 +342,9 @@ NORETURN void switch_to_task(task_info *ti)
          push_nested_interrupt(SYSCALL_SOFT_INTERRUPT);
       }
 
-      set_kernel_stack((u32) ti->kernel_state_regs);
-      kernel_context_switch(ti->kernel_state_regs);
    }
+
+   current = ti; /* this is safe here: the interrupts are disabled! */
+   set_kernel_stack((u32) current->kernel_state_regs);
+   context_switch(state);
 }

@@ -41,16 +41,5 @@ static ALWAYS_INLINE uptr get_curr_stack_ptr(void)
    return esp;
 }
 
-NORETURN void asm_context_switch_x86(regs state_copy);
-NORETURN void asm_kernel_context_switch_x86(regs *r);
-
-NORETURN static ALWAYS_INLINE void context_switch(regs *r)
-{
-   asm_context_switch_x86(*r);
-}
-
-NORETURN static ALWAYS_INLINE void kernel_context_switch(regs *r)
-{
-   asm_kernel_context_switch_x86(r);
-}
+NORETURN void context_switch(regs *r);
 
