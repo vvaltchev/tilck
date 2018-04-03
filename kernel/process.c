@@ -296,7 +296,7 @@ sptr sys_fork(void)
 
    child->owning_process_pid = child->tid;
    child->running_in_kernel = false;
-   child->parent_pid = current->tid;
+   child->parent_tid = current->tid;
 
    child->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
    VERIFY(child->kernel_stack != NULL); // TODO: handle this OOM condition
