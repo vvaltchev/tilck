@@ -298,15 +298,10 @@ sptr sys_fork(void)
    child->running_in_kernel = false;
    child->parent_pid = current->pid;
 
-   // The other members of task_info have been copied by the memcpy() above
-   bzero(&child->kernel_state_regs, sizeof(child->kernel_state_regs));
-
-   child->kernel_stack = kmalloc(KTHREAD_STACK_SIZE);
-   bzero(child->kernel_stack, KTHREAD_STACK_SIZE);
+   child->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
+   VERIFY(child->kernel_stack != NULL); // TODO: handle this OOM condition
    task_info_reset_kernel_stack(child);
-
    set_return_register(&child->state_regs, 0);
-
    add_task(child);
 
    // Make the parent to get child's pid as return value.
