@@ -33,38 +33,24 @@ bool handle_potential_cow(u32 vaddr)
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
    ptable = KERNEL_PA_TO_VA(curr_page_dir->entries[page_dir_index].ptaddr<<12);
-   u8 flags = ptable->pages[page_table_index].avail;
 
-   if (!(flags & PAGE_COW_ORIG_RW))
+   if (!(ptable->pages[page_table_index].avail & PAGE_COW_ORIG_RW))
       return false; /* Not a COW page */
 
    void *page_vaddr = (void *)(vaddr & PAGE_MASK);
    u32 orig_page_paddr = ptable->pages[page_table_index].pageAddr;
 
-   // printk("*** DEBUG: attempt to write COW page at %p (addr: %p)\n",
-   //        page_vaddr, vaddr);
-
    if (pageframes_refcount[orig_page_paddr] == 1) {
 
-      /*
-       * This page is not shared anymore. No need for copying it.
-       */
-
+      /* This page is not shared anymore. No need for copying it. */
       ptable->pages[page_table_index].rw = true;
       ptable->pages[page_table_index].avail = 0;
-
       invalidate_page(vaddr);
-
-      // printk("*** DEBUG: the page was not shared anymore. "
-      //        "Making it writable.\n");
-
       return true;
    }
 
    // Decrease the ref-count of the original pageframe.
    pageframes_refcount[orig_page_paddr]--;
-
-   ASSERT(pageframes_refcount[orig_page_paddr] > 0);
 
    // Copy the whole page to our temporary buffer.
    memcpy(page_size_buf, page_vaddr, PAGE_SIZE);
@@ -78,8 +64,6 @@ bool handle_potential_cow(u32 vaddr)
    ASSERT(pageframes_refcount[paddr >> PAGE_SHIFT] == 0);
    pageframes_refcount[paddr >> PAGE_SHIFT]++;
 
-   // printk("[COW] Allocated new pageframe at PADDR: %p\n", paddr);
-
    ptable->pages[page_table_index].pageAddr = paddr >> PAGE_SHIFT;
    ptable->pages[page_table_index].rw = true;
    ptable->pages[page_table_index].avail = 0;
@@ -88,8 +72,6 @@ bool handle_potential_cow(u32 vaddr)
 
    // Copy back the page.
    memcpy(page_vaddr, page_size_buf, PAGE_SIZE);
-
-   // This was actually a COW-caused page-fault.
    return true;
 }
 
@@ -153,11 +135,6 @@ void set_page_directory(page_directory_t *pdir)
 {
    curr_page_dir = pdir;
    asmVolatile("mov %0, %%cr3" :: "r"(KERNEL_VA_TO_PA(pdir)));
-}
-
-static void initialize_empty_page_table(page_table_t *t)
-{
-   bzero(t, sizeof(page_table_t));
 }
 
 bool is_mapped(page_directory_t *pdir, void *vaddrp)
@@ -253,11 +230,9 @@ void map_page_int(page_directory_t *pdir,
    if (UNLIKELY(KERNEL_VA_TO_PA(ptable) == 0)) {
 
       // we have to create a page table for mapping 'vaddr'.
-      ptable = kmalloc(sizeof(page_table_t));
+      ptable = kzmalloc(sizeof(page_table_t));
       VERIFY(ptable != NULL); // Don't handle this out-of-memory for now.
       ASSERT(PAGE_ALIGNED(ptable));
-
-      initialize_empty_page_table(ptable);
 
       pdir->entries[page_dir_index].raw =
          PG_PRESENT_BIT |
