@@ -4,7 +4,7 @@
 
 #include <exos/fs/exvfs.h>
 #include <exos/kmalloc.h>
-#include <exos/exos_errno.h>
+#include <exos/errno.h>
 
 /* exOS is small: supporting 16 mount points seems more than enough. */
 mountpoint *mps[16];

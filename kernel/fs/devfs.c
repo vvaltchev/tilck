@@ -4,7 +4,7 @@
 
 #include <exos/kmalloc.h>
 #include <exos/fs/devfs.h>
-#include <exos/exos_errno.h>
+#include <exos/errno.h>
 #include <exos/list.h>
 
 filesystem *devfs;

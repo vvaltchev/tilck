@@ -5,7 +5,7 @@
 #include <exos/process.h>
 #include <exos/kmalloc.h>
 #include <exos/fs/exvfs.h>
-#include <exos/exos_errno.h>
+#include <exos/errno.h>
 
 #include <elf.h>
 

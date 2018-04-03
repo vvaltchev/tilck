@@ -5,7 +5,7 @@
 #include <exos/irq.h>
 #include <exos/process.h>
 #include <exos/hal.h>
-#include <exos/exos_errno.h>
+#include <exos/errno.h>
 
 typedef sptr (*syscall_type)();
 

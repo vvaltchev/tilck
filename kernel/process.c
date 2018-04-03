@@ -7,7 +7,7 @@
 #include <exos/process.h>
 #include <exos/hal.h>
 #include <exos/elf_loader.h>
-#include <exos/exos_errno.h>
+#include <exos/errno.h>
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)

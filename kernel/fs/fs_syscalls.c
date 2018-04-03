@@ -5,7 +5,7 @@
 #include <exos/process.h>
 #include <exos/hal.h>
 #include <exos/fs/exvfs.h>
-#include <exos/exos_errno.h>
+#include <exos/errno.h>
 
 static inline bool is_fd_valid(int fd)
 {

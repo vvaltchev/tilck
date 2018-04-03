@@ -4,7 +4,7 @@
 
 #include <exos/fs/exvfs.h>
 #include <exos/fs/devfs.h>
-#include <exos/exos_errno.h>
+#include <exos/errno.h>
 #include <exos/kmalloc.h>
 #include <exos/sync.h>
 #include <exos/kb.h>

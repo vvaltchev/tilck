@@ -5,7 +5,7 @@
 #include <exos/fs/fat32.h>
 #include <exos/fs/exvfs.h>
 #include <exos/kmalloc.h>
-#include <exos/exos_errno.h>
+#include <exos/errno.h>
 
 STATIC ssize_t fat_write(fs_handle h,
                          char *buf,
