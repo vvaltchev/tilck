@@ -256,7 +256,7 @@ void schedule(void)
 }
 
 // TODO: make this function much faster (e.g. indexing by pid)
-task_info *get_task(int pid)
+task_info *get_task(int tid)
 {
    task_info *pos;
    task_info *res = NULL;
@@ -264,7 +264,7 @@ task_info *get_task(int pid)
    disable_preemption();
 
    list_for_each(pos, &tasks_list, list) {
-      if (pos->pid == pid) {
+      if (pos->tid == tid) {
          res = pos;
          break;
       }

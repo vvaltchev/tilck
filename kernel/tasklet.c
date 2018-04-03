@@ -108,8 +108,8 @@ bool run_one_tasklet(void)
 
 void tasklet_runner_kthread()
 {
-   printk("[kernel thread] tasklet runner kthread (pid: %i)\n",
-          get_current_task()->pid);
+   printk("[kernel thread] tasklet runner kthread (tid: %i)\n",
+          get_current_task()->tid);
 
    while (true) {
 

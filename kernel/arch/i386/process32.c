@@ -96,7 +96,7 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
 
    list_node_init(&ti->list);
    ti->pdir = get_kernel_page_dir();
-   ti->pid = ++current_max_pid;
+   ti->tid = ++current_max_pid;
    ti->state = TASK_STATE_RUNNABLE;
 
    ti->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
@@ -137,17 +137,17 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    return ti;
 }
 
-void remove_dead_kthread_tasklet(task_info *task)
+void remove_dead_kthread_tasklet(task_info *ti)
 {
-   ASSERT(task->state == TASK_STATE_ZOMBIE);
+   ASSERT(ti->state == TASK_STATE_ZOMBIE);
 
    while (true) {
 
       disable_preemption();
 
-      if (current != task) {
-         printk("[kernel] remove_dead_kthread_tasklet (pid: %i)\n", task->pid);
-         remove_task(task);
+      if (current != ti) {
+         printk("[kernel] remove_dead_kthread_tasklet (tid: %i)\n", ti->tid);
+         remove_task(ti);
          enable_preemption();
          break;
       }
@@ -162,7 +162,7 @@ void kthread_exit(void)
    disable_preemption();
 
    task_info *ti = get_current_task();
-   printk("****** [kernel thread] EXIT (pid: %i)\n", ti->pid);
+   printk("****** [kernel thread] EXIT (tid: %i)\n", ti->tid);
 
    task_change_state(ti, TASK_STATE_ZOMBIE);
 
@@ -202,7 +202,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
    if (!task_to_use) {
       ti = kzmalloc(sizeof(task_info));
       list_node_init(&ti->list);
-      ti->pid = ++current_max_pid;
+      ti->tid = ++current_max_pid;
       add_task(ti);
       ti->state = TASK_STATE_RUNNABLE;
       memcpy(ti->cwd, "/", 2);
@@ -213,7 +213,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
 
    ti->pdir = pdir;
 
-   ti->owning_process_pid = ti->pid;
+   ti->owning_process_pid = ti->tid;
    ti->running_in_kernel = false;
 
    if (!task_to_use) {
@@ -251,7 +251,7 @@ void panic_save_current_task_state(regs *r)
        * to not handle the current == NULL case.
        */
 
-      fake_current_proccess.pid = -1;
+      fake_current_proccess.tid = -1;
       fake_current_proccess.running_in_kernel = true;
       current = &fake_current_proccess;
    }
@@ -299,8 +299,8 @@ NORETURN void switch_to_task(task_info *ti)
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
    ASSERT(ti != current);
 
-   DEBUG_printk("[sched] Switching to pid: %i %s %s\n",
-                ti->pid,
+   DEBUG_printk("[sched] Switching to tid: %i %s %s\n",
+                ti->tid,
                 is_kernel_thread(ti) ? "[KTHREAD]" : "[USER]",
                 ti->running_in_kernel ? "(kernel mode)" : "(usermode)");
 

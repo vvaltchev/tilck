@@ -173,7 +173,7 @@ sptr sys_pause()
 sptr sys_getpid()
 {
    ASSERT(current != NULL);
-   return current->pid;
+   return current->tid;
 }
 
 sptr sys_waitpid(int pid, int *wstatus, int options)
@@ -268,7 +268,7 @@ NORETURN void sys_exit(int exit_status)
    pdir_destroy(current->pdir);
 
 #ifdef DEBUG_QEMU_EXIT_ON_INIT_EXIT
-   if (current->pid == 3) {
+   if (current->tid == 3) {
       debug_qemu_turn_off_machine();
    }
 #endif
@@ -292,11 +292,11 @@ sptr sys_fork(void)
    }
 
    child->pdir = pdir_clone(current->pdir);
-   child->pid = ++current_max_pid;
+   child->tid = ++current_max_pid;
 
-   child->owning_process_pid = child->pid;
+   child->owning_process_pid = child->tid;
    child->running_in_kernel = false;
-   child->parent_pid = current->pid;
+   child->parent_pid = current->tid;
 
    child->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
    VERIFY(child->kernel_stack != NULL); // TODO: handle this OOM condition
@@ -305,7 +305,7 @@ sptr sys_fork(void)
    add_task(child);
 
    // Make the parent to get child's pid as return value.
-   set_return_register(&current->state_regs, child->pid);
+   set_return_register(&current->state_regs, child->tid);
 
    /* Duplicate all the handles */
    for (size_t i = 0; i < ARRAY_SIZE(child->handles); i++) {
@@ -323,5 +323,5 @@ sptr sys_fork(void)
    set_page_directory(current->pdir);
 
    enable_preemption();
-   return child->pid;
+   return child->tid;
 }
