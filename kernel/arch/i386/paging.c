@@ -31,14 +31,15 @@ bool handle_potential_cow(u32 vaddr)
    page_table_t *ptable;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+   void *const page_vaddr = (void *)(vaddr & PAGE_MASK);
 
-   ptable = KERNEL_PA_TO_VA(curr_page_dir->entries[page_dir_index].ptaddr<<12);
+   ptable =
+   KERNEL_PA_TO_VA(curr_page_dir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
 
    if (!(ptable->pages[page_table_index].avail & PAGE_COW_ORIG_RW))
       return false; /* Not a COW page */
 
-   void *page_vaddr = (void *)(vaddr & PAGE_MASK);
-   u32 orig_page_paddr = ptable->pages[page_table_index].pageAddr;
+   const u32 orig_page_paddr = ptable->pages[page_table_index].pageAddr;
 
    if (pageframes_refcount[orig_page_paddr] == 1) {
 
@@ -60,11 +61,13 @@ bool handle_potential_cow(u32 vaddr)
    VERIFY(new_page_vaddr != NULL); // Don't handle this out-of-mem for now.
    ASSERT(PAGE_ALIGNED(new_page_vaddr));
 
-   uptr paddr = KERNEL_VA_TO_PA(new_page_vaddr);
-   ASSERT(pageframes_refcount[paddr >> PAGE_SHIFT] == 0);
-   pageframes_refcount[paddr >> PAGE_SHIFT]++;
+   const uptr shifted_paddr = KERNEL_VA_TO_PA(new_page_vaddr) >> PAGE_SHIFT;
 
-   ptable->pages[page_table_index].pageAddr = paddr >> PAGE_SHIFT;
+   /* Sanity-check: a newly allocated pageframe MUST have ref-count == 0 */
+   ASSERT(!pageframes_refcount[shifted_paddr]);
+   pageframes_refcount[shifted_paddr]++;
+
+   ptable->pages[page_table_index].pageAddr = shifted_paddr;
    ptable->pages[page_table_index].rw = true;
    ptable->pages[page_table_index].avail = 0;
 
@@ -152,7 +155,7 @@ bool is_mapped(page_directory_t *pdir, void *vaddrp)
    if (e->psize)
       return true; /* 4-MB page */
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << 12);
+   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
    return ptable->pages[page_table_index].present;
 }
 
@@ -163,7 +166,7 @@ void set_page_rw(page_directory_t *pdir, void *vaddrp, bool rw)
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << 12);
+   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
    ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
    ptable->pages[page_table_index].rw = rw;
    invalidate_page(vaddr);
@@ -204,7 +207,7 @@ uptr get_mapping(page_directory_t *pdir, void *vaddrp)
     */
    ASSERT(vaddr < KERNEL_BASE_VA || vaddr >= LINEAR_MAPPING_OVER_END);
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << 12);
+   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
    ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
 
    ASSERT(ptable->pages[page_table_index].present);
@@ -224,7 +227,7 @@ void map_page_int(page_directory_t *pdir,
    ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // the paddr must be page-aligned
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << 12);
+   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
    ASSERT(PAGE_ALIGNED(ptable));
 
    if (UNLIKELY(KERNEL_VA_TO_PA(ptable) == 0)) {
@@ -295,11 +298,10 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *orig_pt = KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << 12);
+      page_table_t *orig_pt =
+         KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 
-      /*
-       * Mark all the pages in that page-table as COW.
-       */
+      /* Mark all the pages in that page-table as COW. */
       for (int j = 0; j < 1024; j++) {
 
          if (!orig_pt->pages[j].present)
@@ -346,7 +348,7 @@ void pdir_destroy(page_directory_t *pdir)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *pt = KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << 12);
+      page_table_t *pt = KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 
       for (int j = 0; j < 1024; j++) {
 
