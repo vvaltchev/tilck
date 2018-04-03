@@ -7,30 +7,19 @@
 #include <exos/process.h>
 #include <exos/hal.h>
 
-//#define DEBUG_printk printk
-#define DEBUG_printk(...)
-
-
-// low debug value
-//#define TIME_SLOT_JIFFIES (TIMER_HZ * 1)
-
-// correct value (20 ms)
-#define TIME_SLOT_JIFFIES (TIMER_HZ / 50)
-
-// high debug value
-//#define TIME_SLOT_JIFFIES (1)
+#define TIME_SLOT_JIFFIES (TIMER_HZ / 50) /* 20 ms */
 
 task_info *current;
-static int current_max_pid;
 
 // Our linked list for all the tasks (processes, threads, etc.)
 list_node tasks_list = make_list_node(tasks_list);
 list_node runnable_tasks_list = make_list_node(runnable_tasks_list);
 list_node sleeping_tasks_list = make_list_node(sleeping_tasks_list);
-volatile int runnable_tasks_count = 0;
 
-task_info *idle_task;
-volatile u64 idle_ticks;
+static int runnable_tasks_count;
+static int current_max_pid;
+static task_info *idle_task;
+static u64 idle_ticks;
 
 int create_new_pid(void)
 {
@@ -58,14 +47,8 @@ void idle_task_kthread(void)
       idle_ticks++;
       halt();
 
-      if (!(idle_ticks % TIMER_HZ)) {
-         DEBUG_printk("[idle task] ticks: %llu\n", idle_ticks);
-      }
-
-      if (runnable_tasks_count > 0) {
-         DEBUG_printk("[idle task] runnable > 0, yield!\n");
+      if (runnable_tasks_count > 0)
          kernel_yield();
-      }
    }
 }
 
@@ -154,7 +137,6 @@ void remove_task(task_info *ti)
    disable_preemption();
    {
       ASSERT(ti->state == TASK_STATE_ZOMBIE);
-      DEBUG_printk("[remove_task] pid = %i\n", ti->pid);
 
       task_remove_from_state_list(ti);
       list_remove(&ti->list);
@@ -191,12 +173,6 @@ bool need_reschedule(void)
       return false;
    }
 
-   DEBUG_printk("\n\n[sched] Current pid: %i, "
-                "used %llu ticks (user: %llu, kernel: %llu) [runnable: %i]\n",
-                current->pid, current->ticks,
-                current->total_ticks - current->kernel_ticks,
-                current->kernel_ticks, runnable_tasks_count);
-
    return true;
 }
 
@@ -214,6 +190,11 @@ void schedule_outside_interrupt_context(void)
     * when the only runnable task is the current one.
     */
    pop_nested_interrupt();
+}
+
+NORETURN void switch_to_idle_task(void)
+{
+   switch_to_task(idle_task);
 }
 
 NORETURN void switch_to_idle_task_outside_interrupt_context(void)
@@ -241,28 +222,19 @@ void schedule(void)
 
    list_for_each(pos, &runnable_tasks_list, runnable_list) {
 
-      DEBUG_printk("   [sched] checking pid %i (ticks = %llu): ",
-                   pos->pid, pos->total_ticks);
-
       ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
-      if (pos == idle_task) {
-         DEBUG_printk("SKIP\n");
+      if (pos == idle_task)
          continue;
-      }
 
       if (pos->total_ticks < least_ticks_for_task) {
-         DEBUG_printk("GOOD\n");
          selected = pos;
          least_ticks_for_task = pos->total_ticks;
-      } else {
-         DEBUG_printk("BAD\n");
       }
    }
 
    if (!selected) {
       selected = idle_task;
-      DEBUG_printk("[sched] Selected 'idle'\n");
    }
 
    if (selected == current) {

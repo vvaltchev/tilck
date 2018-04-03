@@ -91,6 +91,7 @@ NORETURN void switch_to_task(task_info *ti);
 
 void schedule(void);
 void schedule_outside_interrupt_context(void);
+NORETURN void switch_to_idle_task(void);
 NORETURN void switch_to_idle_task_outside_interrupt_context(void);
 
 task_info *create_usermode_task(page_directory_t *pdir,

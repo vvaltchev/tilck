@@ -73,8 +73,6 @@ sptr sys_getcwd(char *buf, size_t buf_size)
    return cwd_len;
 }
 
-extern task_info *idle_task;
-
 sptr sys_execve(const char *filename,
                 const char *const *argv,
                 const char *const *env)
@@ -147,7 +145,7 @@ sptr sys_execve(const char *filename,
       push_nested_interrupt(-1);
    }
 
-   switch_to_task(idle_task);
+   switch_to_idle_task();
    /* this point is unreachable */
 
 errend:
