@@ -173,7 +173,7 @@ sptr sys_pause()
 sptr sys_getpid()
 {
    ASSERT(current != NULL);
-   return current->tid;
+   return current->owning_process_pid;
 }
 
 sptr sys_waitpid(int pid, int *wstatus, int options)
@@ -268,7 +268,7 @@ NORETURN void sys_exit(int exit_status)
    pdir_destroy(current->pdir);
 
 #ifdef DEBUG_QEMU_EXIT_ON_INIT_EXIT
-   if (current->tid == 3) {
+   if (current->tid == 1) {
       debug_qemu_turn_off_machine();
    }
 #endif

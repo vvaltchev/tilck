@@ -96,9 +96,9 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
 
    list_node_init(&ti->list);
    ti->pdir = get_kernel_page_dir();
-   ti->tid = ++current_max_pid;
    ti->state = TASK_STATE_RUNNABLE;
 
+   ti->tid = MAX_PID + (sptr)ti - KERNEL_BASE_VA;
    ti->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
    ti->running_in_kernel = 1;
    ti->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);

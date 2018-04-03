@@ -21,7 +21,7 @@
 //#define TIME_SLOT_JIFFIES (1)
 
 task_info *current;
-int current_max_pid;
+static int current_max_pid;
 
 // Our linked list for all the tasks (processes, threads, etc.)
 list_node tasks_list = make_list_node(tasks_list);
@@ -34,7 +34,21 @@ volatile u64 idle_ticks;
 
 int create_new_pid(void)
 {
-   return ++current_max_pid;
+   int r = -1;
+   ASSERT(!is_preemption_enabled());
+
+   for (int i = 1; i <= MAX_PID; i++) {
+
+      int pid = (current_max_pid + i) % MAX_PID;
+
+      if (!get_task(pid)) {
+         current_max_pid = pid;
+         r = pid;
+         break;
+      }
+   }
+
+   return r;
 }
 
 void idle_task_kthread(void)

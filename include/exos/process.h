@@ -13,6 +13,7 @@
 #define OFFLIMIT_USERMODE_ADDR 0xC0000000UL
 
 #define KTHREAD_STACK_SIZE (PAGE_SIZE)
+#define MAX_PID 65535
 
 typedef enum {
    TASK_STATE_RUNNABLE = 0,
@@ -56,7 +57,6 @@ struct task_info {
 typedef struct task_info task_info;
 
 extern volatile u64 jiffies;
-extern int current_max_pid;
 extern task_info *current;
 
 extern list_node tasks_list;
