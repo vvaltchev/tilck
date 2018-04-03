@@ -28,7 +28,7 @@ struct task_info {
    list_node sleeping_list;
 
    int tid; /* global user/kernel task (thread) identifier */
-   int owning_process_pid; /* The pid of the process owning this thread */
+   int owning_process_pid; /* The ID of the owner process (like Linux's tgid) */
    int parent_tid;
 
    task_state_enum state;

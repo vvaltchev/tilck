@@ -292,12 +292,17 @@ sptr sys_fork(void)
    }
 
    child->pdir = pdir_clone(current->pdir);
-   child->tid = ++current_max_pid;
 
+   /*
+    * When a new process is created, its tid == its pid. After that, when that
+    * process will create threads, the owning_process_pid will remain the same
+    * but the tid will change.
+    */
    child->owning_process_pid = create_new_pid();
-   child->running_in_kernel = false;
+   child->tid = child->owning_process_pid;
    child->parent_tid = current->tid;
 
+   child->running_in_kernel = false;
    child->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
    VERIFY(child->kernel_stack != NULL); // TODO: handle this OOM condition
    task_info_reset_kernel_stack(child);

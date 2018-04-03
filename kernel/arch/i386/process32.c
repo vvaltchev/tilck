@@ -199,7 +199,8 @@ task_info *create_usermode_task(page_directory_t *pdir,
    if (!task_to_use) {
       ti = kzmalloc(sizeof(task_info));
       list_node_init(&ti->list);
-      ti->tid = ++current_max_pid;
+      ti->owning_process_pid = create_new_pid();
+      ti->tid = ti->owning_process_pid;
       add_task(ti);
       ti->state = TASK_STATE_RUNNABLE;
       memcpy(ti->cwd, "/", 2);
@@ -209,8 +210,6 @@ task_info *create_usermode_task(page_directory_t *pdir,
    }
 
    ti->pdir = pdir;
-
-   ti->owning_process_pid = create_new_pid();
    ti->running_in_kernel = false;
 
    if (!task_to_use) {

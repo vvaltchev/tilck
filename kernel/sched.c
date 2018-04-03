@@ -260,7 +260,7 @@ void schedule(void)
    switch_to_task(selected);
 }
 
-// TODO: make this function much faster (e.g. indexing by pid)
+// TODO: make this function much faster (e.g. indexing by tid)
 task_info *get_task(int tid)
 {
    task_info *pos;
