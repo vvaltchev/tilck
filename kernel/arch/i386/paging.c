@@ -31,10 +31,8 @@ bool handle_potential_cow(u32 vaddr)
    ptable = KERNEL_PA_TO_VA(curr_page_dir->entries[page_dir_index].ptaddr<<12);
    u8 flags = ptable->pages[page_table_index].avail;
 
-   if (!(flags & (PAGE_COW_FLAG | PAGE_COW_ORIG_RW))) {
-      // That was not a page-fault caused by COW.
-      return false;
-   }
+   if (!(flags & (PAGE_COW_FLAG | PAGE_COW_ORIG_RW)))
+      return false; /* Not a COW page */
 
    void *page_vaddr = (void *)(vaddr & PAGE_MASK);
    u32 orig_page_paddr = ptable->pages[page_table_index].pageAddr;
@@ -73,6 +71,8 @@ bool handle_potential_cow(u32 vaddr)
    ASSERT(PAGE_ALIGNED(new_page_vaddr));
 
    uptr paddr = KERNEL_VA_TO_PA(new_page_vaddr);
+   ASSERT(pageframes_refcount[paddr >> PAGE_SHIFT] == 0);
+   pageframes_refcount[paddr >> PAGE_SHIFT]++;
 
    // printk("[COW] Allocated new pageframe at PADDR: %p\n", paddr);
 
@@ -195,10 +195,18 @@ void unmap_page(page_directory_t *pdir, void *vaddrp)
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << 12);
+   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
    ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
    ASSERT(ptable->pages[page_table_index].present);
    ptable->pages[page_table_index].raw = 0;
+
+   uptr shifted_paddr = ptable->pages[page_table_index].pageAddr;
+   ASSERT(pageframes_refcount[shifted_paddr] > 0);
+
+   if (--pageframes_refcount[shifted_paddr] == 0) {
+      kfree2(KERNEL_PA_TO_VA(shifted_paddr << PAGE_SHIFT), PAGE_SIZE);
+   }
+
    invalidate_page(vaddr);
 }
 
@@ -257,6 +265,7 @@ void map_page_int(page_directory_t *pdir,
    ASSERT(ptable->pages[page_table_index].present == 0);
 
    ptable->pages[page_table_index].raw = PG_PRESENT_BIT | flags | paddr;
+   pageframes_refcount[ptable->pages[page_table_index].pageAddr]++;
    invalidate_page(vaddr);
 }
 
@@ -314,11 +323,10 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
        */
       for (int j = 0; j < 1024; j++) {
 
-         if (orig_pt->pages[j].avail & PAGE_COW_FLAG) {
-            // The page is already COW. Just increase its ref-count.
-            pageframes_refcount[orig_pt->pages[j].pageAddr]++;
+         if (!orig_pt->pages[j].present)
             continue;
-         }
+
+         ASSERT(pageframes_refcount[orig_pt->pages[j].pageAddr] > 0);
 
          int flags = PAGE_COW_FLAG;
 
@@ -330,7 +338,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
          orig_pt->pages[j].rw = false;
 
          // We're making for the first time this page to be COW.
-         pageframes_refcount[orig_pt->pages[j].pageAddr] = 2;
+         pageframes_refcount[orig_pt->pages[j].pageAddr]++;
       }
 
       // alloc memory for the page table
@@ -370,18 +378,8 @@ void pdir_destroy(page_directory_t *pdir)
 
          const u32 paddr = pt->pages[j].pageAddr;
 
-         if (pt->pages[j].avail & PAGE_COW_FLAG) {
-
-            ASSERT(pageframes_refcount[paddr] > 0);
-
-            if (pageframes_refcount[paddr] > 1) {
-               pageframes_refcount[paddr]--;
-               continue;
-            }
-         }
-
-         // No COW (or COW with ref-count == 1).
-         kfree2(KERNEL_PA_TO_VA(paddr << PAGE_SHIFT), PAGE_SIZE);
+         if (--pageframes_refcount[paddr] == 0)
+            kfree2(KERNEL_PA_TO_VA(paddr << PAGE_SHIFT), PAGE_SIZE);
       }
 
       // We freed all the pages, now free the whole page-table.
