@@ -8,7 +8,8 @@
 #include <exos/debug_utils.h>
 #include <exos/process.h>
 #include <exos/hal.h>
-#include <exos/arch/i386/paging_int.h>
+
+#include "paging_int.h"
 
 #define PAGE_COW_FLAG 1
 #define PAGE_COW_ORIG_RW 2
@@ -49,6 +50,7 @@ bool handle_potential_cow(u32 vaddr)
 
       ptable->pages[page_table_index].rw = true;
       ptable->pages[page_table_index].avail = 0;
+
       invalidate_page(vaddr);
 
       // printk("*** DEBUG: the page was not shared anymore. "

@@ -30,7 +30,7 @@
 #define PG_CUSTOM_B0   (1 << PG_CUSTOM_B0_POS)
 #define PG_CUSTOM_B1   (1 << PG_CUSTOM_B1_POS)
 #define PG_CUSTOM_B2   (1 << PG_CUSTOM_B2_POS)
-
+#define PG_CUSTOM_BITS (PG_CUSTOM_B0 | PG_CUSTOM_B1 | PG_CUSTOM_B2)
 
 // A page table entry
 typedef struct {
