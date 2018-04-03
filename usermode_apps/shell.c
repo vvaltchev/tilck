@@ -12,6 +12,74 @@ char cmd_arg_buffers[16][256];
 char *cmd_argv[16];
 char **shell_env;
 
+void cmd_loop(void)
+{
+   printf("[shell] do a long loop\n");
+   for (int i = 0; i < 500*1000*1000; i++) {
+      __asm__ volatile ("nop");
+   }
+
+   exit(0);
+}
+
+#define FORK_TEST_ITERS (2 * 250 * 1024 * 1024)
+
+void cmd_fork_test(void)
+{
+   printf("Running infinite loop..\n");
+
+   unsigned n = 1;
+   int FORK_TEST_ITERS_hits_count = 0;
+   bool inchild = false;
+   bool exit_on_next_FORK_TEST_ITERS_hit = false;
+
+   while (true) {
+
+      if (!(n % FORK_TEST_ITERS)) {
+
+         printf("[PID: %i] FORK_TEST_ITERS hit!\n", getpid());
+
+         if (exit_on_next_FORK_TEST_ITERS_hit) {
+            break;
+         }
+
+         FORK_TEST_ITERS_hits_count++;
+
+         if (FORK_TEST_ITERS_hits_count == 1) {
+
+            printf("forking..\n");
+
+            int pid = fork();
+
+            printf("Fork returned %i\n", pid);
+
+            if (pid == 0) {
+               printf("############## I'm the child!\n");
+               inchild = true;
+            } else {
+               printf("############## I'm the parent, child's pid = %i\n", pid);
+               printf("[parent] waiting the child to exit...\n");
+               int wstatus=0;
+               int p = waitpid(pid, &wstatus, 0);
+               printf("[parent] child (pid: %i) exited with status: %i!\n", p, WEXITSTATUS(wstatus));
+               exit_on_next_FORK_TEST_ITERS_hit = true;
+            }
+
+         }
+
+         if (FORK_TEST_ITERS_hits_count == 2 && inchild) {
+            printf("child: 2 iter hits, exit!\n");
+            exit(123);
+         }
+      }
+
+      n++;
+   }
+
+   exit(0);
+}
+
+
 void process_cmd_line(const char *cmd_line)
 {
    int argc = 0;
@@ -77,18 +145,20 @@ cd_error:
       exit(0);
    }
 
-   if (!strcmp(cmd_argv[0], "loop")) {
-      printf("[shell] do a long loop\n");
-      for (int i = 0; i < 500*1000*1000; i++) {
-         __asm__ volatile ("nop");
-      }
-      return;
-   }
 
    int wstatus;
    int child_pid = fork();
 
    if (!child_pid) {
+
+      if (!strcmp(cmd_argv[0], "loop")) {
+         cmd_loop();
+      }
+
+      if (!strcmp(cmd_argv[0], "fork_test")) {
+         cmd_fork_test();
+      }
+
       execve(cmd_argv[0], cmd_argv, NULL);
       int saved_errno = errno;
       perror(cmd_argv[0]);
