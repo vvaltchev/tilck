@@ -32,6 +32,11 @@ volatile int runnable_tasks_count = 0;
 task_info *idle_task;
 volatile u64 idle_ticks;
 
+int create_new_pid(void)
+{
+   return ++current_max_pid;
+}
+
 void idle_task_kthread(void)
 {
    while (true) {

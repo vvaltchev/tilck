@@ -294,7 +294,7 @@ sptr sys_fork(void)
    child->pdir = pdir_clone(current->pdir);
    child->tid = ++current_max_pid;
 
-   child->owning_process_pid = child->tid;
+   child->owning_process_pid = create_new_pid();
    child->running_in_kernel = false;
    child->parent_tid = current->tid;
 

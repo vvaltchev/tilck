@@ -103,7 +103,9 @@ task_info *create_usermode_task(page_directory_t *pdir,
 void set_current_task_in_kernel(void);
 void set_current_task_in_user_mode(void);
 
-task_info *get_task(int pid);
+int create_new_pid(void);
+
+task_info *get_task(int tid);
 
 void task_info_reset_kernel_stack(task_info *ti);
 

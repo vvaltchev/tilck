@@ -103,9 +103,6 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    ti->running_in_kernel = 1;
    ti->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
    VERIFY(ti->kernel_stack != NULL);
-
-   bzero(&ti->state_regs, sizeof(r));
-
    task_info_reset_kernel_stack(ti);
 
    push_on_stack((uptr **)&ti->kernel_state_regs, (uptr) arg);
@@ -213,7 +210,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
 
    ti->pdir = pdir;
 
-   ti->owning_process_pid = ti->tid;
+   ti->owning_process_pid = create_new_pid();
    ti->running_in_kernel = false;
 
    if (!task_to_use) {
