@@ -11,8 +11,12 @@
 
 #include "paging_int.h"
 
-#define PAGE_COW_FLAG 1
-#define PAGE_COW_ORIG_RW 2
+/*
+ * When this flag is set in the 'avail' bits in page_t, in means that the page
+ * is writeable even if it marked as read-only and that, on a write attempt
+ * the page has to be copied (copy-on-write).
+ */
+#define PAGE_COW_ORIG_RW 1
 
 
 /* ---------------------------------------------- */
@@ -31,7 +35,7 @@ bool handle_potential_cow(u32 vaddr)
    ptable = KERNEL_PA_TO_VA(curr_page_dir->entries[page_dir_index].ptaddr<<12);
    u8 flags = ptable->pages[page_table_index].avail;
 
-   if (!(flags & (PAGE_COW_FLAG | PAGE_COW_ORIG_RW)))
+   if (!(flags & PAGE_COW_ORIG_RW))
       return false; /* Not a COW page */
 
    void *page_vaddr = (void *)(vaddr & PAGE_MASK);
@@ -326,15 +330,13 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
          if (!orig_pt->pages[j].present)
             continue;
 
+         /* Sanity-check: a mapped page MUST have ref-count > 0 */
          ASSERT(pageframes_refcount[orig_pt->pages[j].pageAddr] > 0);
 
-         int flags = PAGE_COW_FLAG;
-
          if (orig_pt->pages[j].rw) {
-            flags |= PAGE_COW_ORIG_RW;
+            orig_pt->pages[j].avail |= PAGE_COW_ORIG_RW;
          }
 
-         orig_pt->pages[j].avail = flags;
          orig_pt->pages[j].rw = false;
 
          // We're making for the first time this page to be COW.
