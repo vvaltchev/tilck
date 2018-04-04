@@ -12,16 +12,14 @@
 
 task_info *current;
 
-// Our linked list for all the tasks (processes, threads, etc.)
-list_node tasks_list = make_list_node(tasks_list);
-list_node runnable_tasks_list = make_list_node(runnable_tasks_list);
-list_node sleeping_tasks_list = make_list_node(sleeping_tasks_list);
+list_node runnable_tasks_list;
+list_node sleeping_tasks_list;
+static task_info *tree_by_tid_root;
 
 static u64 idle_ticks;
 static int runnable_tasks_count;
 static int current_max_pid;
 static task_info *idle_task;
-static task_info *tree_by_tid_root;
 
 static int ti_insert_remove_cmp(const void *a, const void *b)
 {
@@ -70,6 +68,9 @@ void idle_task_kthread(void)
 
 void initialize_scheduler(void)
 {
+   list_node_init(&runnable_tasks_list);
+   list_node_init(&sleeping_tasks_list);
+
    idle_task = kthread_create(&idle_task_kthread, NULL);
 }
 
@@ -146,7 +147,6 @@ void add_task(task_info *ti)
 {
    disable_preemption();
    {
-      list_add_tail(&tasks_list, &ti->list);
       task_add_to_state_list(ti);
 
       bintree_insert(&tree_by_tid_root,
@@ -165,7 +165,6 @@ void remove_task(task_info *ti)
       ASSERT(ti->state == TASK_STATE_ZOMBIE);
 
       task_remove_from_state_list(ti);
-      list_remove(&ti->list);
 
       bintree_remove(&tree_by_tid_root,
                      ti,

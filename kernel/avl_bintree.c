@@ -137,7 +137,6 @@ bintree_insert_internal(void **root_obj_ref,
       return true;
    }
 
-
    /*
     * It will contain the whole reverse path leaf to root objects traversed:
     * that is needed for the balance at the end (it simulates the stack

@@ -23,10 +23,9 @@ typedef enum {
 
 struct task_info {
 
-   list_node list;
+   bintree_node tree_by_tid;
    list_node runnable_list;
    list_node sleeping_list;
-   bintree_node tree_by_tid;
 
    int tid;                 /* User/kernel task ID (pid in the Linux kernel) */
    int owning_process_pid;  /* ID of the owner process (tgid in Linux)       */
@@ -59,7 +58,6 @@ typedef struct task_info task_info;
 extern volatile u64 jiffies;
 extern task_info *current;
 
-extern list_node tasks_list;
 extern list_node runnable_tasks_list;
 extern list_node sleeping_tasks_list;
 

@@ -280,10 +280,9 @@ sptr sys_fork(void)
    task_info *child = kmalloc(sizeof(task_info));
    memcpy(child, current, sizeof(task_info));
 
-   list_node_init(&child->list);
+   bintree_node_init(&child->tree_by_tid);
    list_node_init(&child->runnable_list);
    list_node_init(&child->sleeping_list);
-   bintree_node_init(&child->tree_by_tid);
 
    if (child->state == TASK_STATE_RUNNING) {
       child->state = TASK_STATE_RUNNABLE;
