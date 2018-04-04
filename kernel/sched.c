@@ -7,6 +7,7 @@
 #include <exos/process.h>
 #include <exos/hal.h>
 
+
 #define TIME_SLOT_JIFFIES (TIMER_HZ / 50) /* 20 ms */
 
 task_info *current;
@@ -16,10 +17,25 @@ list_node tasks_list = make_list_node(tasks_list);
 list_node runnable_tasks_list = make_list_node(runnable_tasks_list);
 list_node sleeping_tasks_list = make_list_node(sleeping_tasks_list);
 
+static u64 idle_ticks;
 static int runnable_tasks_count;
 static int current_max_pid;
 static task_info *idle_task;
-static u64 idle_ticks;
+static task_info *tree_by_tid_root;
+
+static int ti_insert_remove_cmp(const void *a, const void *b)
+{
+   const task_info *t1 = a;
+   const task_info *t2 = b;
+   return t1->tid - t2->tid;
+}
+
+static int ti_find_cmp(const void *obj, const void *valptr)
+{
+   const task_info *task = obj;
+   int searched_tid = *(const int *)valptr;
+   return task->tid - searched_tid;
+}
 
 int create_new_pid(void)
 {
@@ -132,6 +148,12 @@ void add_task(task_info *ti)
    {
       list_add_tail(&tasks_list, &ti->list);
       task_add_to_state_list(ti);
+
+      bintree_insert(&tree_by_tid_root,
+                     ti,
+                     ti_insert_remove_cmp,
+                     task_info,
+                     tree_by_tid);
    }
    enable_preemption();
 }
@@ -144,6 +166,12 @@ void remove_task(task_info *ti)
 
       task_remove_from_state_list(ti);
       list_remove(&ti->list);
+
+      bintree_remove(&tree_by_tid_root,
+                     ti,
+                     ti_insert_remove_cmp,
+                     task_info,
+                     tree_by_tid);
 
       kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
       kfree2(ti, sizeof(task_info));
@@ -250,19 +278,18 @@ void schedule(void)
    switch_to_task(selected);
 }
 
-// TODO: make this function much faster (e.g. indexing by tid)
+
 task_info *get_task(int tid)
 {
-   task_info *pos;
    task_info *res = NULL;
 
    disable_preemption();
-
-   list_for_each(pos, &tasks_list, list) {
-      if (pos->tid == tid) {
-         res = pos;
-         break;
-      }
+   {
+      res = bintree_find(tree_by_tid_root,
+                         &tid,
+                         ti_find_cmp,
+                         task_info,
+                         tree_by_tid);
    }
 
    enable_preemption();

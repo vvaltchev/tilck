@@ -8,6 +8,7 @@
 #include <exos/hal.h>
 #include <exos/sync.h>
 #include <exos/fs/exvfs.h>
+#include <exos/bintree.h>
 
 #define OFFLIMIT_USERMODE_ADDR (KERNEL_BASE_VA) /* biggest usermode vaddr + 1 */
 #define KTHREAD_STACK_SIZE (PAGE_SIZE)
@@ -25,6 +26,7 @@ struct task_info {
    list_node list;
    list_node runnable_list;
    list_node sleeping_list;
+   bintree_node tree_by_tid;
 
    int tid;                 /* User/kernel task ID (pid in the Linux kernel) */
    int owning_process_pid;  /* ID of the owner process (tgid in Linux)       */
