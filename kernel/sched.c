@@ -77,7 +77,11 @@ void task_add_to_state_list(task_info *ti)
       break;
 
    case TASK_STATE_RUNNING:
+      /* no dedicated list: without SMP there's only one 'running' task */
+      break;
+
    case TASK_STATE_ZOMBIE:
+      /* no dedicated list for 'zombie' tasks at the moment */
       break;
 
    default:

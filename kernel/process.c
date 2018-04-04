@@ -12,9 +12,6 @@
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
 
-extern task_info *current;
-extern int current_max_pid;
-
 #define EXITCODE(ret, sig)  ((ret) << 8 | (sig))
 #define STOPCODE(sig) ((sig) << 8 | 0x7f)
 #define CONTINUED 0xffff

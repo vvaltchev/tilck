@@ -9,9 +9,7 @@
 #include <exos/sync.h>
 #include <exos/fs/exvfs.h>
 
-// This is the biggest usermode addr + 1
-#define OFFLIMIT_USERMODE_ADDR 0xC0000000UL
-
+#define OFFLIMIT_USERMODE_ADDR (KERNEL_BASE_VA) /* biggest usermode vaddr + 1 */
 #define KTHREAD_STACK_SIZE (PAGE_SIZE)
 #define MAX_PID 65535
 
@@ -28,8 +26,8 @@ struct task_info {
    list_node runnable_list;
    list_node sleeping_list;
 
-   int tid; /* global user/kernel task (thread) identifier */
-   int owning_process_pid; /* The ID of the owner process (like Linux's tgid) */
+   int tid;                 /* User/kernel task ID (pid in the Linux kernel) */
+   int owning_process_pid;  /* ID of the owner process (tgid in Linux)       */
    int parent_tid;
 
    task_state_enum state;
