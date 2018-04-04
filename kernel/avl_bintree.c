@@ -296,3 +296,37 @@ bintree_remove_internal(void **root_obj_ref,
 
    return deleted_obj;
 }
+
+// TODO: implement this without recursion
+
+int
+bintree_in_order_visit_internal(void *root_obj,
+                                bintree_visit_cb visit_cb,
+                                void *visit_cb_arg,
+                                ptrdiff_t bintree_offset)
+{
+   int stop;
+
+   if (!root_obj)
+      return 0;
+
+   stop = bintree_in_order_visit_internal(LEFT_OF(root_obj),
+                                          visit_cb,
+                                          visit_cb_arg,
+                                          bintree_offset);
+
+   if (stop)
+      return stop;
+
+   stop = visit_cb(root_obj, visit_cb_arg);
+
+   if (stop)
+      return stop;
+
+   stop = bintree_in_order_visit_internal(RIGHT_OF(root_obj),
+                                          visit_cb,
+                                          visit_cb_arg,
+                                          bintree_offset);
+
+   return stop;
+}

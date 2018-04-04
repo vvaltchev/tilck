@@ -76,22 +76,21 @@ static void node_dump(int_struct *obj, int level)
    }
 }
 
-static void
-in_order_visit_int(int_struct *obj,
-                   int *arr,
-                   int arr_size,
-                   int *curr_size)
+struct visit_ctx {
+   int *arr;
+   int arr_size;
+   int curr_size;
+};
+
+static int visit_add_val_to_arr(void *obj, void *arg)
 {
-   if (!obj) return;
+   int_struct *s = (int_struct *)obj;
+   visit_ctx *ctx = (visit_ctx *)arg;
 
-   bintree_node *n = &obj->node;
+   assert(ctx->curr_size < ctx->arr_size);
+   ctx->arr[ctx->curr_size++] = s->val;
 
-   in_order_visit_int((int_struct*)n->left_obj, arr, arr_size, curr_size);
-
-   assert(*curr_size < arr_size);
-   arr[(*curr_size)++] = obj->val;
-
-   in_order_visit_int((int_struct*)n->right_obj, arr, arr_size, curr_size);
+   return 0;
 }
 
 static void
@@ -99,8 +98,13 @@ in_order_visit(int_struct *obj,
                int *arr,
                int arr_size)
 {
-   int curr_size = 0;
-   in_order_visit_int(obj, arr, arr_size, &curr_size);
+   visit_ctx ctx = {arr, arr_size, 0};
+
+   bintree_in_order_visit(obj,
+                          visit_add_val_to_arr,
+                          (void *)&ctx,
+                          int_struct,
+                          node);
 }
 
 static bool
