@@ -19,7 +19,7 @@ static task_info *tree_by_tid_root;
 
 static u64 idle_ticks;
 static int runnable_tasks_count;
-static int current_max_pid;
+static int current_max_pid = -1;
 static task_info *idle_task;
 
 
@@ -76,7 +76,10 @@ void initialize_scheduler(void)
    kernel_process = allocate_new_process(NULL);
    VERIFY(kernel_process != NULL); // This failure CANNOT be handled.
 
-   // NOTE: tid, owning_process_pid and parent_pid are already set to 0.
+   ASSERT(kernel_process->tid == 0);
+   ASSERT(kernel_process->owning_process_pid == 0);
+   ASSERT(kernel_process->pi->parent_pid == 0);
+
    kernel_process->running_in_kernel = true;
    kernel_process->pi->pdir = get_kernel_page_dir();
    memcpy(kernel_process->pi->cwd, "/", 2);

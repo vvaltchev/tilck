@@ -195,8 +195,6 @@ task_info *create_usermode_task(page_directory_t *pdir,
    if (!task_to_use) {
       ti = allocate_new_process(NULL);
       VERIFY(ti != NULL); // TODO: handle this
-      ti->owning_process_pid = create_new_pid();
-      ti->tid = ti->owning_process_pid;
       ti->state = TASK_STATE_RUNNABLE;
       add_task(ti);
       memcpy(ti->pi->cwd, "/", 2);

@@ -37,6 +37,9 @@ task_info *allocate_new_process(task_info *parent)
       /* NOTE: parent_pid in this case is 0 as kernel_process->pi->tid */
    }
 
+   ti->tid = create_new_pid(); /* here tid is a PID */
+   ti->owning_process_pid = ti->tid;
+
    ti->pi = pi;
    bintree_node_init(&ti->tree_by_tid);
    list_node_init(&ti->runnable_list);
@@ -345,14 +348,6 @@ sptr sys_fork(void)
    }
 
    child->pi->pdir = pdir_clone(current->pi->pdir);
-
-   /*
-    * When a new process is created, its tid == its pid. After that, when that
-    * process will create threads, the owning_process_pid will remain the same
-    * but the tid will change.
-    */
-   child->owning_process_pid = create_new_pid();
-   child->tid = child->owning_process_pid;
    child->running_in_kernel = false;
    child->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
    VERIFY(child->kernel_stack != NULL); // TODO: handle this OOM condition
