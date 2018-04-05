@@ -69,6 +69,9 @@ struct task_info {
 
 typedef struct task_info task_info;
 
+STATIC_ASSERT((sizeof(task_info) & ~POINTER_ALIGN_MASK) == 0);
+STATIC_ASSERT((sizeof(process_info) & ~POINTER_ALIGN_MASK) == 0);
+
 extern volatile u64 jiffies;
 extern task_info *current;
 

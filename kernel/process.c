@@ -19,26 +19,20 @@
 
 task_info *allocate_new_process(task_info *parent)
 {
-   task_info *ti = kmalloc(sizeof(task_info));
+   task_info *ti = kmalloc(sizeof(task_info) + sizeof(process_info));
    process_info *pi;
 
    if (!ti)
       return NULL;
 
-   pi = kzmalloc(sizeof(process_info));
-
-   if (!pi) {
-      kfree2(ti, sizeof(task_info));
-      return NULL;
-   }
-
+   pi = (process_info *)(ti + 1);
    pi->ref_count = 1;
 
    if (parent) {
       memcpy(ti, parent, sizeof(task_info));
       memcpy(pi, parent->pi, sizeof(process_info));
    } else {
-      bzero(ti, sizeof(task_info));
+      bzero(ti, sizeof(task_info) + sizeof(process_info));
    }
 
    ti->pi = pi;
@@ -58,10 +52,8 @@ void free_task(task_info *ti)
    if (ti->tid == ti->owning_process_pid) {
 
       if (--ti->pi->ref_count == 0)
-         kfree2(ti->pi, sizeof(process_info));
+         kfree2(ti, sizeof(task_info) + sizeof(process_info));
    }
-
-   kfree2(ti, sizeof(task_info));
 }
 
 
