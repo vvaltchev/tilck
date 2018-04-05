@@ -96,7 +96,7 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    task_info *ti = allocate_new_process(NULL);
    VERIFY(ti != NULL); // TODO: handle this
 
-   ti->pdir = get_kernel_page_dir();
+   ti->pi->pdir = get_kernel_page_dir();
    ti->state = TASK_STATE_RUNNABLE;
 
    ti->tid = MAX_PID + (sptr)ti - KERNEL_BASE_VA;
@@ -204,13 +204,13 @@ task_info *create_usermode_task(page_directory_t *pdir,
       ti->tid = ti->owning_process_pid;
       ti->state = TASK_STATE_RUNNABLE;
       add_task(ti);
-      memcpy(ti->cwd, "/", 2);
+      memcpy(ti->pi->cwd, "/", 2);
    } else {
       ti = task_to_use;
       ASSERT(ti->state == TASK_STATE_RUNNABLE);
    }
 
-   ti->pdir = pdir;
+   ti->pi->pdir = pdir;
    ti->running_in_kernel = false;
 
    if (!task_to_use) {
@@ -304,8 +304,8 @@ NORETURN void switch_to_task(task_info *ti)
    task_change_state(ti, TASK_STATE_RUNNING);
    ti->time_slot_ticks = 0;
 
-   if (get_curr_page_dir() != ti->pdir) {
-      set_page_directory(ti->pdir);
+   if (get_curr_page_dir() != ti->pi->pdir) {
+      set_page_directory(ti->pi->pdir);
    }
 
    disable_interrupts_forced();

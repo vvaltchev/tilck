@@ -20,15 +20,28 @@
 task_info *allocate_new_process(task_info *parent)
 {
    task_info *ti = kmalloc(sizeof(task_info));
+   process_info *pi;
 
    if (!ti)
       return NULL;
 
-   if (parent)
-      memcpy(ti, parent, sizeof(task_info));
-   else
-      bzero(ti, sizeof(task_info));
+   pi = kzmalloc(sizeof(process_info));
 
+   if (!pi) {
+      kfree2(ti, sizeof(task_info));
+      return NULL;
+   }
+
+   pi->ref_count = 1;
+
+   if (parent) {
+      memcpy(ti, parent, sizeof(task_info));
+      memcpy(pi, parent->pi, sizeof(process_info));
+   } else {
+      bzero(ti, sizeof(task_info));
+   }
+
+   ti->pi = pi;
    bintree_node_init(&ti->tree_by_tid);
    list_node_init(&ti->runnable_list);
    list_node_init(&ti->sleeping_list);
@@ -41,6 +54,13 @@ void free_task(task_info *ti)
    ASSERT(ti->state == TASK_STATE_ZOMBIE);
 
    kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
+
+   if (ti->tid == ti->owning_process_pid) {
+
+      if (--ti->pi->ref_count == 0)
+         kfree2(ti->pi, sizeof(process_info));
+   }
+
    kfree2(ti, sizeof(task_info));
 }
 
@@ -66,12 +86,12 @@ sptr sys_chdir(const char *path)
    {
       size_t path_len = strlen(path) + 1;
 
-      if (path_len > ARRAY_SIZE(current->cwd)) {
+      if (path_len > ARRAY_SIZE(current->pi->cwd)) {
          rc = -ENAMETOOLONG;
          goto out;
       }
 
-      memcpy(current->cwd, path, path_len);
+      memcpy(current->pi->cwd, path, path_len);
    }
 
 out:
@@ -84,7 +104,7 @@ sptr sys_getcwd(char *buf, size_t buf_size)
    size_t cwd_len;
    disable_preemption();
    {
-      cwd_len = strlen(current->cwd) + 1;
+      cwd_len = strlen(current->pi->cwd) + 1;
 
       if (!buf)
          return -EINVAL;
@@ -92,7 +112,7 @@ sptr sys_getcwd(char *buf, size_t buf_size)
       if (buf_size < cwd_len)
          return -ERANGE;
 
-      memcpy(buf, current->cwd, cwd_len);
+      memcpy(buf, current->pi->cwd, cwd_len);
    }
    enable_preemption();
    return cwd_len;
@@ -143,7 +163,7 @@ sptr sys_execve(const char *filename,
 
    if (LIKELY(current != NULL)) {
       task_change_state(current, TASK_STATE_RUNNABLE);
-      pdir_destroy(current->pdir);
+      pdir_destroy(current->pi->pdir);
    }
 
    create_usermode_task(pdir,
@@ -259,13 +279,13 @@ NORETURN void sys_exit(int exit_status)
 
    // Close all of its opened handles
 
-   for (size_t i = 0; i < ARRAY_SIZE(current->handles); i++) {
+   for (size_t i = 0; i < ARRAY_SIZE(current->pi->handles); i++) {
 
-      fs_handle *h = current->handles[i];
+      fs_handle *h = current->pi->handles[i];
 
       if (h) {
          exvfs_close(h);
-         current->handles[i] = NULL;
+         current->pi->handles[i] = NULL;
       }
    }
 
@@ -288,7 +308,7 @@ NORETURN void sys_exit(int exit_status)
    // We CANNOT free current->kernel_task here because we're using it!
 
    set_page_directory(get_kernel_page_dir());
-   pdir_destroy(current->pdir);
+   pdir_destroy(current->pi->pdir);
 
 #ifdef DEBUG_QEMU_EXIT_ON_INIT_EXIT
    if (current->tid == 1) {
@@ -312,7 +332,7 @@ sptr sys_fork(void)
       child->state = TASK_STATE_RUNNABLE;
    }
 
-   child->pdir = pdir_clone(current->pdir);
+   child->pi->pdir = pdir_clone(current->pi->pdir);
 
    /*
     * When a new process is created, its tid == its pid. After that, when that
@@ -334,9 +354,9 @@ sptr sys_fork(void)
    set_return_register(&current->state_regs, child->tid);
 
    /* Duplicate all the handles */
-   for (size_t i = 0; i < ARRAY_SIZE(child->handles); i++) {
-      if (child->handles[i])
-         child->handles[i] = exvfs_dup(child->handles[i]);
+   for (size_t i = 0; i < ARRAY_SIZE(child->pi->handles); i++) {
+      if (child->pi->handles[i])
+         child->pi->handles[i] = exvfs_dup(child->pi->handles[i]);
    }
 
    /*
@@ -346,7 +366,7 @@ sptr sys_fork(void)
     * one by one.
     */
 
-   set_page_directory(current->pdir);
+   set_page_directory(current->pi->pdir);
 
    enable_preemption();
    return child->tid;

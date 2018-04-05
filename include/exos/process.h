@@ -21,6 +21,19 @@ typedef enum {
    TASK_STATE_ZOMBIE = 3
 } task_state_enum;
 
+struct process_info {
+
+   int ref_count;
+
+   page_directory_t *pdir;
+
+   char cwd[256]; /* current working directory */
+
+   fs_handle handles[16]; /* for the moment, just a fixed-size small array */
+};
+
+typedef struct process_info process_info;
+
 struct task_info {
 
    bintree_node tree_by_tid;
@@ -51,17 +64,7 @@ struct task_info {
    regs state_regs;
    regs *kernel_state_regs;
 
-   /*
-    * Process-only attributes. TODO: move them out of here.
-    */
-
-   page_directory_t *pdir;
-
-   char cwd[256]; /* current working directory */
-
-   /* Handles */
-   fs_handle handles[16]; /* for the moment, just a fixed-size small array */
-
+   process_info *pi;
 };
 
 typedef struct task_info task_info;

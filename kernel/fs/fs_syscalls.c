@@ -9,7 +9,7 @@
 
 static inline bool is_fd_valid(int fd)
 {
-   return fd >= 0 && fd < (int)ARRAY_SIZE(current->handles);
+   return fd >= 0 && fd < (int)ARRAY_SIZE(current->pi->handles);
 }
 
 sptr sys_read(int fd, void *buf, size_t count)
@@ -18,10 +18,10 @@ sptr sys_read(int fd, void *buf, size_t count)
 
    disable_preemption();
 
-   if (!is_fd_valid(fd) || !current->handles[fd])
+   if (!is_fd_valid(fd) || !current->pi->handles[fd])
       goto badf;
 
-   ret = exvfs_read(current->handles[fd], buf, count);
+   ret = exvfs_read(current->pi->handles[fd], buf, count);
 
 end:
    enable_preemption();
@@ -39,10 +39,10 @@ sptr sys_write(int fd, const void *buf, size_t count)
 
    disable_preemption();
 
-   if (!is_fd_valid(fd) || !current->handles[fd])
+   if (!is_fd_valid(fd) || !current->pi->handles[fd])
       goto badf;
 
-   ret = exvfs_write(current->handles[fd], (char *)buf, count);
+   ret = exvfs_write(current->pi->handles[fd], (char *)buf, count);
 
 end:
    enable_preemption();
@@ -55,8 +55,8 @@ badf:
 
 int get_free_handle_num(task_info *task)
 {
-   for (u32 free_fd = 0; free_fd < ARRAY_SIZE(task->handles); free_fd++)
-      if (!task->handles[free_fd])
+   for (u32 free_fd = 0; free_fd < ARRAY_SIZE(task->pi->handles); free_fd++)
+      if (!task->pi->handles[free_fd])
          return free_fd;
 
    return -1;
@@ -81,7 +81,7 @@ sptr sys_open(const char *pathname, int flags, int mode)
    if (!h)
       goto no_ent;
 
-   current->handles[free_fd] = h;
+   current->pi->handles[free_fd] = h;
    ret = free_fd;
 
 end:
@@ -103,13 +103,13 @@ sptr sys_close(int fd)
 
    disable_preemption();
 
-   if (!is_fd_valid(fd) || !current->handles[fd]) {
+   if (!is_fd_valid(fd) || !current->pi->handles[fd]) {
       enable_preemption();
       return -EBADF;
    }
 
-   exvfs_close(current->handles[fd]);
-   current->handles[fd] = NULL;
+   exvfs_close(current->pi->handles[fd]);
+   current->pi->handles[fd] = NULL;
 
    enable_preemption();
    return 0;
@@ -123,10 +123,10 @@ sptr sys_ioctl(int fd, uptr request, void *argp)
 
    disable_preemption();
 
-   if (!is_fd_valid(fd) || !current->handles[fd])
+   if (!is_fd_valid(fd) || !current->pi->handles[fd])
       goto badf;
 
-   ret = exvfs_ioctl(current->handles[fd], request, argp);
+   ret = exvfs_ioctl(current->pi->handles[fd], request, argp);
 
 end:
    enable_preemption();
