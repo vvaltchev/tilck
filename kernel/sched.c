@@ -42,9 +42,9 @@ int create_new_pid(void)
    int r = -1;
    ASSERT(!is_preemption_enabled());
 
-   for (int i = 1; i <= MAX_PID; i++) {
+   for (int i = 1; i <= (MAX_PID + 1); i++) {
 
-      int pid = (current_max_pid + i) % MAX_PID;
+      int pid = (current_max_pid + i) % (MAX_PID + 1);
 
       if (!get_task(pid)) {
          current_max_pid = pid;
@@ -53,6 +53,7 @@ int create_new_pid(void)
       }
    }
 
+   //printk("[kernel] create_new_pid: %i\n", r);
    return r;
 }
 
@@ -73,16 +74,19 @@ void initialize_scheduler(void)
    list_node_init(&runnable_tasks_list);
    list_node_init(&sleeping_tasks_list);
 
-   kernel_process = allocate_new_process(NULL);
-   VERIFY(kernel_process != NULL); // This failure CANNOT be handled.
+   int kernel_pid = create_new_pid();
+   ASSERT(kernel_pid == 0);
 
-   ASSERT(kernel_process->tid == 0);
-   ASSERT(kernel_process->owning_process_pid == 0);
+   kernel_process = allocate_new_process(NULL, kernel_pid);
+   VERIFY(kernel_process != NULL); // This failure CANNOT be handled.
    ASSERT(kernel_process->pi->parent_pid == 0);
 
    kernel_process->running_in_kernel = true;
    kernel_process->pi->pdir = get_kernel_page_dir();
    memcpy(kernel_process->pi->cwd, "/", 2);
+
+   kernel_process->state = TASK_STATE_SLEEPING;
+   add_task(kernel_process);
 
    idle_task = kthread_create(&idle_task_kthread, NULL);
 }

@@ -193,7 +193,9 @@ task_info *create_usermode_task(page_directory_t *pdir,
    r.eflags = 0x2 /* reserved, always set */ | EFLAGS_IF;
 
    if (!task_to_use) {
-      ti = allocate_new_process(NULL);
+      int pid = create_new_pid();
+      VERIFY(pid != -1); // We CANNOT handle this.
+      ti = allocate_new_process(NULL, pid);
       VERIFY(ti != NULL); // TODO: handle this
       ti->state = TASK_STATE_RUNNABLE;
       add_task(ti);

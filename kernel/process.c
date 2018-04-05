@@ -17,7 +17,7 @@
 #define CONTINUED 0xffff
 #define COREFLAG 0x80
 
-task_info *allocate_new_process(task_info *parent)
+task_info *allocate_new_process(task_info *parent, int pid)
 {
    task_info *ti = kmalloc(sizeof(task_info) + sizeof(process_info));
    process_info *pi;
@@ -37,8 +37,8 @@ task_info *allocate_new_process(task_info *parent)
       /* NOTE: parent_pid in this case is 0 as kernel_process->pi->tid */
    }
 
-   ti->tid = create_new_pid(); /* here tid is a PID */
-   ti->owning_process_pid = ti->tid;
+   ti->tid = pid; /* here tid is a PID */
+   ti->owning_process_pid = pid;
 
    ti->pi = pi;
    bintree_node_init(&ti->tree_by_tid);
@@ -340,7 +340,14 @@ sptr sys_fork(void)
 {
    disable_preemption();
 
-   task_info *child = allocate_new_process(current);
+   int pid = create_new_pid();
+
+   if (pid == -1) {
+      enable_preemption();
+      return -EAGAIN;
+   }
+
+   task_info *child = allocate_new_process(current, pid);
    VERIFY(child != NULL); // TODO: handle this
 
    if (child->state == TASK_STATE_RUNNING) {

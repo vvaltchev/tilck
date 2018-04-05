@@ -165,6 +165,11 @@ cd_error:
       exit(saved_errno);
    }
 
+   if (child_pid == -1) {
+      perror("fork failed");
+      return;
+   }
+
    waitpid(child_pid, &wstatus, 0);
    printf("[shell] command exited with status: %d\n", WEXITSTATUS(wstatus));
 }

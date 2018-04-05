@@ -12,7 +12,7 @@
 
 #define OFFLIMIT_USERMODE_ADDR (KERNEL_BASE_VA) /* biggest usermode vaddr + 1 */
 #define KTHREAD_STACK_SIZE (PAGE_SIZE)
-#define MAX_PID 65535
+#define MAX_PID 32768
 
 typedef enum {
    TASK_STATE_RUNNABLE = 0,
@@ -138,7 +138,7 @@ void task_info_reset_kernel_stack(task_info *ti);
 void add_task(task_info *ti);
 void remove_task(task_info *ti);
 void initialize_scheduler(void);
-task_info *allocate_new_process(task_info *parent);
+task_info *allocate_new_process(task_info *parent, int pid);
 task_info *allocate_new_thread(process_info *pi);
 void free_task(task_info *ti);
 
