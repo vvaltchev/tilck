@@ -180,16 +180,14 @@ void remove_task(task_info *ti)
 
 void account_ticks(void)
 {
-   if (!current) {
+   if (!current)
       return;
-   }
 
-   current->ticks++;
+   current->time_slot_ticks++;
    current->total_ticks++;
 
-   if (current->running_in_kernel) {
-      current->kernel_ticks++;
-   }
+   if (current->running_in_kernel)
+      current->total_kernel_ticks++;
 }
 
 bool need_reschedule(void)
@@ -199,7 +197,7 @@ bool need_reschedule(void)
       return false;
    }
 
-   if (current->ticks < TIME_SLOT_JIFFIES &&
+   if (current->time_slot_ticks < TIME_SLOT_JIFFIES &&
        current->state == TASK_STATE_RUNNING) {
       return false;
    }
@@ -270,7 +268,7 @@ void schedule(void)
 
    if (selected == current) {
       task_change_state(selected, TASK_STATE_RUNNING);
-      selected->ticks = 0;
+      selected->time_slot_ticks = 0;
       return;
    }
 

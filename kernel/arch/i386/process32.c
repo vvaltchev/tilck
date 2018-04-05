@@ -305,7 +305,7 @@ NORETURN void switch_to_task(task_info *ti)
                 ti->running_in_kernel ? "(kernel mode)" : "(usermode)");
 
    task_change_state(ti, TASK_STATE_RUNNING);
-   ti->ticks = 0;
+   ti->time_slot_ticks = 0;
 
    if (get_curr_page_dir() != ti->pdir) {
       set_page_directory(ti->pdir);

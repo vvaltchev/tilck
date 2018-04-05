@@ -35,9 +35,14 @@ struct task_info {
    u8 exit_status;
    bool running_in_kernel;
 
-   u64 ticks;
+
+   u32 time_slot_ticks; /*
+                         * ticks counter for the current time-slot: it's reset
+                         * each time the task is selected by the scheduler.
+                         */
+
    u64 total_ticks;
-   u64 kernel_ticks;
+   u64 total_kernel_ticks;
 
    void *kernel_stack;
 
@@ -45,12 +50,18 @@ struct task_info {
 
    regs state_regs;
    regs *kernel_state_regs;
+
+   /*
+    * Process-only attributes. TODO: move them out of here.
+    */
+
    page_directory_t *pdir;
 
    char cwd[256]; /* current working directory */
 
    /* Handles */
    fs_handle handles[16]; /* for the moment, just a fixed-size small array */
+
 };
 
 typedef struct task_info task_info;
