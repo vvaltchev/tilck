@@ -31,8 +31,10 @@ task_info *allocate_new_process(task_info *parent)
    if (parent) {
       memcpy(ti, parent, sizeof(task_info));
       memcpy(pi, parent->pi, sizeof(process_info));
+      pi->parent_pid = parent->tid;
    } else {
       bzero(ti, sizeof(task_info) + sizeof(process_info));
+      /* NOTE: parent_pid in this case is 0 as kernel_process->pi->tid */
    }
 
    ti->pi = pi;
@@ -40,6 +42,20 @@ task_info *allocate_new_process(task_info *parent)
    list_node_init(&ti->runnable_list);
    list_node_init(&ti->sleeping_list);
 
+   return ti;
+}
+
+task_info *allocate_new_thread(process_info *pi)
+{
+   task_info *proc = get_process_task(pi);
+   task_info *ti = kzmalloc(sizeof(task_info));
+
+   if (!ti)
+      return NULL;
+
+   ti->pi = pi;
+   ti->tid = MAX_PID + (sptr)ti - KERNEL_BASE_VA;
+   ti->owning_process_pid = proc->tid;
    return ti;
 }
 
@@ -53,6 +69,10 @@ void free_task(task_info *ti)
 
       if (--ti->pi->ref_count == 0)
          kfree2(ti, sizeof(task_info) + sizeof(process_info));
+
+   } else {
+
+      kfree2(ti, sizeof(task_info));
    }
 }
 
@@ -333,8 +353,6 @@ sptr sys_fork(void)
     */
    child->owning_process_pid = create_new_pid();
    child->tid = child->owning_process_pid;
-   child->parent_tid = current->tid;
-
    child->running_in_kernel = false;
    child->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
    VERIFY(child->kernel_stack != NULL); // TODO: handle this OOM condition

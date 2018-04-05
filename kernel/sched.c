@@ -76,11 +76,8 @@ void initialize_scheduler(void)
    kernel_process = allocate_new_process(NULL);
    VERIFY(kernel_process != NULL); // This failure CANNOT be handled.
 
-   kernel_process->tid = 0;
-   kernel_process->owning_process_pid = 0;
-   kernel_process->parent_tid = 0;
+   // NOTE: tid, owning_process_pid and parent_pid are already set to 0.
    kernel_process->running_in_kernel = true;
-
    kernel_process->pi->pdir = get_kernel_page_dir();
    memcpy(kernel_process->pi->cwd, "/", 2);
 

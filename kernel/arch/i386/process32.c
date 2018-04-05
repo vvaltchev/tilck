@@ -92,15 +92,10 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    r.eip = (u32) fun;
    r.eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF;
 
-   // TODO: replace with allocate_new_task().
-   task_info *ti = allocate_new_process(NULL);
+   task_info *ti = allocate_new_thread(kernel_process->pi);
    VERIFY(ti != NULL); // TODO: handle this
 
-   ti->pi->pdir = get_kernel_page_dir();
    ti->state = TASK_STATE_RUNNABLE;
-
-   ti->tid = MAX_PID + (sptr)ti - KERNEL_BASE_VA;
-   ti->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
    ti->running_in_kernel = 1;
    ti->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
    VERIFY(ti->kernel_stack != NULL); // TODO: handle this

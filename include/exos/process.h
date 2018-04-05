@@ -25,6 +25,7 @@ struct process_info {
 
    int ref_count;
 
+   int parent_pid;
    page_directory_t *pdir;
 
    char cwd[256]; /* current working directory */
@@ -42,7 +43,6 @@ struct task_info {
 
    int tid;                 /* User/kernel task ID (pid in the Linux kernel) */
    int owning_process_pid;  /* ID of the owner process (tgid in Linux)       */
-   int parent_tid;
 
    task_state_enum state;
    u8 exit_status;
@@ -78,6 +78,15 @@ extern task_info *kernel_process;
 
 extern list_node runnable_tasks_list;
 extern list_node sleeping_tasks_list;
+
+static ALWAYS_INLINE task_info *get_process_task(process_info *pi)
+{
+   /*
+    * allocate_new_process() allocates task_info and process_info in one chunk
+    * placing process_info immediately after task_info.
+    */
+   return ((task_info *)pi) - 1;
+}
 
 static ALWAYS_INLINE bool running_in_kernel(task_info *t)
 {
@@ -130,6 +139,7 @@ void add_task(task_info *ti);
 void remove_task(task_info *ti);
 void initialize_scheduler(void);
 task_info *allocate_new_process(task_info *parent);
+task_info *allocate_new_thread(process_info *pi);
 void free_task(task_info *ti);
 
 void task_change_state(task_info *ti, task_state_enum new_state);
