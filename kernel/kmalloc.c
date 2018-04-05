@@ -192,11 +192,13 @@ typedef struct {
 #define CONCAT(x,y) CONCAT_(x,y)
 
 #define SIMULATE_CALL(a1, a2)                                          \
-   alloc_stack[stack_size++] =                                         \
-      (stack_elem) {(a1), (a2), &&CONCAT(after_, __LINE__)};           \
-   alloc_stack[stack_size].ret_addr = NULL;                            \
-   goto loop_end;                                                      \
-   CONCAT(after_, __LINE__):                                           \
+   {                                                                   \
+      alloc_stack[stack_size++] =                                      \
+         (stack_elem) {(a1), (a2), &&CONCAT(after_, __LINE__)};        \
+      alloc_stack[stack_size].ret_addr = NULL;                         \
+      goto loop_end;                                                   \
+      CONCAT(after_, __LINE__):;                                       \
+   }
 
 #define SIMULATE_RETURN_NULL()                                         \
    {                                                                   \

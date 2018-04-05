@@ -297,7 +297,41 @@ bintree_remove_internal(void **root_obj_ref,
    return deleted_obj;
 }
 
-// TODO: implement this without recursion
+typedef struct {
+
+   void *obj;
+   void *ret_addr;
+
+} stack_elem;
+
+
+#define CONCAT_(x,y) x##y
+#define CONCAT(x,y) CONCAT_(x,y)
+
+#define SIMULATE_CALL(a1)                                              \
+   {                                                                   \
+      visit_stack[stack_size++] =                                      \
+         (stack_elem) {(a1), &&CONCAT(after_, __LINE__)};              \
+      visit_stack[stack_size].ret_addr = NULL;                         \
+      goto loop_end;                                                   \
+      CONCAT(after_, __LINE__):;                                       \
+   }
+
+
+#define SIMULATE_RETURN_NULL()                                         \
+   {                                                                   \
+      stack_size--;                                                    \
+      ASSERT(visit_stack[stack_size].ret_addr || !stack_size);         \
+      continue;                                                        \
+   }
+
+#define HANDLE_SIMULATED_RETURN()                      \
+   {                                                   \
+      void *addr = visit_stack[stack_size].ret_addr;   \
+      if (addr != NULL)                                \
+         goto *addr;                                   \
+   }
+
 
 int
 bintree_in_order_visit_internal(void *root_obj,
@@ -305,28 +339,32 @@ bintree_in_order_visit_internal(void *root_obj,
                                 void *visit_cb_arg,
                                 ptrdiff_t bintree_offset)
 {
-   int stop;
+   stack_elem visit_stack[MAX_TREE_HEIGHT];
+   int stack_size = 0;
+   int r;
 
-   if (!root_obj)
-      return 0;
+   SIMULATE_CALL(root_obj);
 
-   stop = bintree_in_order_visit_internal(LEFT_OF(root_obj),
-                                          visit_cb,
-                                          visit_cb_arg,
-                                          bintree_offset);
+   while (stack_size) {
 
-   if (stop)
-      return stop;
+      root_obj = visit_stack[stack_size - 1].obj;
+      void *left_obj = LEFT_OF(root_obj);
+      void *right_obj = RIGHT_OF(root_obj);
 
-   stop = visit_cb(root_obj, visit_cb_arg);
+      HANDLE_SIMULATED_RETURN();
 
-   if (stop)
-      return stop;
+      if (left_obj)
+         SIMULATE_CALL(left_obj);
 
-   stop = bintree_in_order_visit_internal(RIGHT_OF(root_obj),
-                                          visit_cb,
-                                          visit_cb_arg,
-                                          bintree_offset);
+      if ((r = visit_cb(root_obj, visit_cb_arg)))
+         return r;
 
-   return stop;
+      if (right_obj)
+         SIMULATE_CALL(right_obj);
+
+      SIMULATE_RETURN_NULL();
+      loop_end:;
+   }
+
+   return 0;
 }
