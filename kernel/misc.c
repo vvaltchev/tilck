@@ -15,7 +15,7 @@ char strtab_buf[16*KB] __attribute__ ((section (".Strtab"))) = {0};
 
 void validate_stack_pointer_int(const char *file, int line)
 {
-   if (!current || current->tid == -1 /* fake current task */) {
+   if (!current || current == kernel_process) {
       return;
    }
 

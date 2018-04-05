@@ -103,7 +103,7 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    ti->owning_process_pid = 0; /* The pid of the "kernel process" is 0 */
    ti->running_in_kernel = 1;
    ti->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
-   VERIFY(ti->kernel_stack != NULL);
+   VERIFY(ti->kernel_stack != NULL); // TODO: handle this
    task_info_reset_kernel_stack(ti);
 
    push_on_stack((uptr **)&ti->kernel_state_regs, (uptr) arg);
@@ -236,21 +236,17 @@ void save_current_task_state(regs *r)
    }
 }
 
-static task_info fake_current_proccess;
-
 void panic_save_current_task_state(regs *r)
 {
    if (UNLIKELY(current == NULL)) {
 
       /*
        * PANIC occurred before the first task is started.
-       * Create a fake current task just to allow the rest of the panic code
+       * Set current = kernel_process to allow the rest of the panic code
        * to not handle the current == NULL case.
        */
 
-      fake_current_proccess.tid = -1;
-      fake_current_proccess.running_in_kernel = true;
-      current = &fake_current_proccess;
+      current = kernel_process;
    }
 
    /*

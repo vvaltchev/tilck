@@ -74,6 +74,7 @@ STATIC_ASSERT((sizeof(process_info) & ~POINTER_ALIGN_MASK) == 0);
 
 extern volatile u64 jiffies;
 extern task_info *current;
+extern task_info *kernel_process;
 
 extern list_node runnable_tasks_list;
 extern list_node sleeping_tasks_list;

@@ -11,6 +11,7 @@
 #define TIME_SLOT_JIFFIES (TIMER_HZ / 50) /* 20 ms */
 
 task_info *current;
+task_info *kernel_process;
 
 list_node runnable_tasks_list;
 list_node sleeping_tasks_list;
@@ -20,6 +21,7 @@ static u64 idle_ticks;
 static int runnable_tasks_count;
 static int current_max_pid;
 static task_info *idle_task;
+
 
 static int ti_insert_remove_cmp(const void *a, const void *b)
 {
@@ -70,6 +72,17 @@ void initialize_scheduler(void)
 {
    list_node_init(&runnable_tasks_list);
    list_node_init(&sleeping_tasks_list);
+
+   kernel_process = allocate_new_process(NULL);
+   VERIFY(kernel_process != NULL); // This failure CANNOT be handled.
+
+   kernel_process->tid = 0;
+   kernel_process->owning_process_pid = 0;
+   kernel_process->parent_tid = 0;
+   kernel_process->running_in_kernel = true;
+
+   kernel_process->pi->pdir = get_kernel_page_dir();
+   memcpy(kernel_process->pi->cwd, "/", 2);
 
    idle_task = kthread_create(&idle_task_kthread, NULL);
 }
