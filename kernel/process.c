@@ -272,17 +272,32 @@ NORETURN void sys_exit(int exit_status)
    NOT_REACHED();
 }
 
+task_info *allocate_new_process(task_info *parent)
+{
+   task_info *ti = kmalloc(sizeof(task_info));
+
+   if (!ti)
+      return NULL;
+
+   if (parent)
+      memcpy(ti, parent, sizeof(task_info));
+   else
+      bzero(ti, sizeof(task_info));
+
+   bintree_node_init(&ti->tree_by_tid);
+   list_node_init(&ti->runnable_list);
+   list_node_init(&ti->sleeping_list);
+
+   return ti;
+}
+
 // Returns child's pid
 sptr sys_fork(void)
 {
    disable_preemption();
 
-   task_info *child = kmalloc(sizeof(task_info));
-   memcpy(child, current, sizeof(task_info));
-
-   bintree_node_init(&child->tree_by_tid);
-   list_node_init(&child->runnable_list);
-   list_node_init(&child->sleeping_list);
+   task_info *child = allocate_new_process(current);
+   VERIFY(child != NULL); // TODO: handle this
 
    if (child->state == TASK_STATE_RUNNING) {
       child->state = TASK_STATE_RUNNABLE;

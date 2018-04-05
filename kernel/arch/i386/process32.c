@@ -92,10 +92,9 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    r.eip = (u32) fun;
    r.eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF;
 
-   task_info *ti = kzmalloc(sizeof(task_info));
-   bintree_node_init(&ti->tree_by_tid);
-   list_node_init(&ti->runnable_list);
-   list_node_init(&ti->sleeping_list);
+   // TODO: replace with allocate_new_task().
+   task_info *ti = allocate_new_process(NULL);
+   VERIFY(ti != NULL); // TODO: handle this
 
    ti->pdir = get_kernel_page_dir();
    ti->state = TASK_STATE_RUNNABLE;
@@ -199,14 +198,12 @@ task_info *create_usermode_task(page_directory_t *pdir,
    r.eflags = 0x2 /* reserved, always set */ | EFLAGS_IF;
 
    if (!task_to_use) {
-      ti = kzmalloc(sizeof(task_info));
-      bintree_node_init(&ti->tree_by_tid);
-      list_node_init(&ti->runnable_list);
-      list_node_init(&ti->sleeping_list);
+      ti = allocate_new_process(NULL);
+      VERIFY(ti != NULL); // TODO: handle this
       ti->owning_process_pid = create_new_pid();
       ti->tid = ti->owning_process_pid;
-      add_task(ti);
       ti->state = TASK_STATE_RUNNABLE;
+      add_task(ti);
       memcpy(ti->cwd, "/", 2);
    } else {
       ti = task_to_use;
