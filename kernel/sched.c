@@ -172,8 +172,7 @@ void remove_task(task_info *ti)
                      task_info,
                      tree_by_tid);
 
-      kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
-      kfree2(ti, sizeof(task_info));
+      free_task(ti);
    }
    enable_preemption();
 }

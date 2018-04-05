@@ -17,6 +17,34 @@
 #define CONTINUED 0xffff
 #define COREFLAG 0x80
 
+task_info *allocate_new_process(task_info *parent)
+{
+   task_info *ti = kmalloc(sizeof(task_info));
+
+   if (!ti)
+      return NULL;
+
+   if (parent)
+      memcpy(ti, parent, sizeof(task_info));
+   else
+      bzero(ti, sizeof(task_info));
+
+   bintree_node_init(&ti->tree_by_tid);
+   list_node_init(&ti->runnable_list);
+   list_node_init(&ti->sleeping_list);
+
+   return ti;
+}
+
+void free_task(task_info *ti)
+{
+   ASSERT(ti->state == TASK_STATE_ZOMBIE);
+
+   kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
+   kfree2(ti, sizeof(task_info));
+}
+
+
 /*
  * ***************************************************************
  *
@@ -270,25 +298,6 @@ NORETURN void sys_exit(int exit_status)
 
    schedule();
    NOT_REACHED();
-}
-
-task_info *allocate_new_process(task_info *parent)
-{
-   task_info *ti = kmalloc(sizeof(task_info));
-
-   if (!ti)
-      return NULL;
-
-   if (parent)
-      memcpy(ti, parent, sizeof(task_info));
-   else
-      bzero(ti, sizeof(task_info));
-
-   bintree_node_init(&ti->tree_by_tid);
-   list_node_init(&ti->runnable_list);
-   list_node_init(&ti->sleeping_list);
-
-   return ti;
 }
 
 // Returns child's pid

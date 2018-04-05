@@ -123,6 +123,7 @@ void add_task(task_info *ti);
 void remove_task(task_info *ti);
 void initialize_scheduler(void);
 task_info *allocate_new_process(task_info *parent);
+void free_task(task_info *ti);
 
 void task_change_state(task_info *ti, task_state_enum new_state);
 
