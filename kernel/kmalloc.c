@@ -178,43 +178,9 @@ static void *actual_allocate_node(kmalloc_heap *h, size_t node_size, int node)
    return (void *)vaddr;
 }
 
-//////////////////////////////////////////////////////////////////
 
-typedef struct {
-
-   size_t node_size;
-   int node;
-   void *ret_addr;
-
-} stack_elem;
-
-#define CONCAT_(x,y) x##y
-#define CONCAT(x,y) CONCAT_(x,y)
-
-#define SIMULATE_CALL(a1, a2)                                          \
-   {                                                                   \
-      alloc_stack[stack_size++] =                                      \
-         (stack_elem) {(a1), (a2), &&CONCAT(after_, __LINE__)};        \
-      alloc_stack[stack_size].ret_addr = NULL;                         \
-      goto loop_end;                                                   \
-      CONCAT(after_, __LINE__):;                                       \
-   }
-
-#define SIMULATE_RETURN_NULL()                                         \
-   {                                                                   \
-      stack_size--;                                                    \
-      ASSERT(alloc_stack[stack_size].ret_addr || !stack_size);         \
-      continue;                                                        \
-   }
-
-#define HANDLE_SIMULATED_RETURN()                      \
-   {                                                   \
-      void *addr = alloc_stack[stack_size].ret_addr;   \
-      if (addr != NULL)                                \
-         goto *addr;                                   \
-   }
-
-//////////////////////////////////////////////////////////////////
+#define STACK_VAR alloc_stack
+#include <common/norec.h>
 
 /*
  * Explicit stack used by internal_kmalloc().
@@ -224,7 +190,7 @@ typedef struct {
  *    - the allocator is not reentrant, therefore kmalloc() can be called only
  *      in contexts where the kernel preemption is disabled.
  */
-static stack_elem alloc_stack[32];
+static struct explicit_stack_elem2 alloc_stack[32];
 
 static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 {
@@ -248,13 +214,13 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 
    int stack_size = 0;
 
-   SIMULATE_CALL(h->size /* node size */, 0 /* node number */);
+   SIMULATE_CALL2(h->size /* node size */, 0 /* node number */);
 
    while (stack_size) {
 
       // Load the "stack" (function arguments)
-      const size_t node_size = alloc_stack[stack_size - 1].node_size;
-      const int node = alloc_stack[stack_size - 1].node;
+      const size_t node_size = LOAD_ARG_FROM_STACK(1, size_t);
+      const int node = LOAD_ARG_FROM_STACK(2, int);
 
       const size_t half_node_size = HALF(node_size);
       const int left_node = NODE_LEFT(node);
@@ -285,7 +251,7 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 
          for (int ss = stack_size - 2; ss >= 0; ss--) {
 
-            const int n = alloc_stack[ss].node;
+            const int n = (uptr) alloc_stack[ss].arg2; /* arg2: node */
 
             if (nodes[NODE_LEFT(n)].full && nodes[NODE_RIGHT(n)].full) {
                ASSERT(!nodes[n].full);
@@ -308,7 +274,7 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
       if (!nodes[left_node].full) {
 
          DEBUG_going_left;
-         SIMULATE_CALL(half_node_size, left_node);
+         SIMULATE_CALL2(half_node_size, left_node);
 
          /*
           * If we got here, the "call" on the left node "returned" NULL so,
@@ -321,7 +287,7 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 
       if (!nodes[right_node].full) {
          DEBUG_going_right;
-         SIMULATE_CALL(half_node_size, right_node);
+         SIMULATE_CALL2(half_node_size, right_node);
 
          /*
           * When the above "call" succeeds, we don't get here. When it fails,
@@ -332,17 +298,12 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 
       // In case both the nodes are full, just return NULL.
       SIMULATE_RETURN_NULL();
-
-      loop_end:; // hack allowing SIMULATE_CALL to be called outside the loop.
-                 // ["continue" cannot be used outside the loop.]
+      NOREC_LOOP_END();
    }
 
    return NULL;
 }
 
-#undef SIMULATE_CALL
-#undef SIMULATE_RETURN_NULL
-#undef HANDLE_SIMULATED_RETURN
 
 static void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size)
 {
