@@ -307,6 +307,9 @@ bintree_in_order_visit_internal(void *obj,
 {
    int r;
 
+   if (!obj)
+      return 0;
+
    CREATE_SHADOW_STACK(MAX_TREE_HEIGHT, 1);
    SIMULATE_CALL1(obj);
 

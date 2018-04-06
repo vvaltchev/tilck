@@ -37,21 +37,64 @@ static int ti_find_cmp(const void *obj, const void *valptr)
    return task->tid - searched_tid;
 }
 
+typedef struct {
+
+   int lowest_available;
+   int lowest_after_current_max;
+
+} create_pid_visit_ctx;
+
+static int create_new_pid_visit_cb(void *obj, void *arg)
+{
+   task_info *ti = obj;
+   create_pid_visit_ctx *ctx = arg;
+
+   if (ti->tid != ti->owning_process_pid)
+      return 0; /* skip threads */
+
+   /*
+    * Algorithm: we start with lowest_available (L) == 0. When we hit
+    * tid == L, that means L is not really the lowest, therefore, we guess
+    * the right value of L is L + 1. The first time tid skips one, for example
+    * jumping from 3 to 5, the value of L set by the iteration with tid == 3,
+    * will stuck. That value will be clearly 4.
+    */
+
+   if (ctx->lowest_available == ti->tid)
+      ctx->lowest_available = ti->tid + 1;
+
+   /*
+    * For lowest_after_current_max (A) the logic is similar.
+    * We start with A = current_max_pid + 1. The first time A is == tid, will
+    * be when tid is current_max_pid + 1. We continue to update A, until the
+    * first whole is found. In case tid never reaches current_max_pid + 1,
+    * A will be just be current_max_pid + 1, as expected.
+    */
+
+   if (ctx->lowest_after_current_max == ti->tid)
+      ctx->lowest_after_current_max = ti->tid + 1;
+
+   return 0;
+}
+
 int create_new_pid(void)
 {
-   int r = -1;
    ASSERT(!is_preemption_enabled());
+   create_pid_visit_ctx ctx = { 0, current_max_pid + 1 };
+   int r;
 
-   for (int i = 1; i <= (MAX_PID + 1); i++) {
+   bintree_in_order_visit(tree_by_tid_root,
+                          create_new_pid_visit_cb,
+                          &ctx,
+                          task_info,
+                          tree_by_tid);
 
-      int pid = (current_max_pid + i) % (MAX_PID + 1);
+   r = ctx.lowest_after_current_max <= MAX_PID
+         ? ctx.lowest_after_current_max
+         : (ctx.lowest_available <= MAX_PID ? ctx.lowest_available : -1);
 
-      if (!get_task(pid)) {
-         current_max_pid = pid;
-         r = pid;
-         break;
-      }
-   }
+   if (r >= 0)
+      current_max_pid = r;
 
    //printk("[kernel] create_new_pid: %i\n", r);
    return r;
