@@ -297,73 +297,39 @@ bintree_remove_internal(void **root_obj_ref,
    return deleted_obj;
 }
 
-typedef struct {
-
-   void *obj;
-   void *ret_addr;
-
-} stack_elem;
-
-
-#define CONCAT_(x,y) x##y
-#define CONCAT(x,y) CONCAT_(x,y)
-
-#define SIMULATE_CALL(a1)                                              \
-   {                                                                   \
-      visit_stack[stack_size++] =                                      \
-         (stack_elem) {(a1), &&CONCAT(after_, __LINE__)};              \
-      visit_stack[stack_size].ret_addr = NULL;                         \
-      goto loop_end;                                                   \
-      CONCAT(after_, __LINE__):;                                       \
-   }
-
-
-#define SIMULATE_RETURN_NULL()                                         \
-   {                                                                   \
-      stack_size--;                                                    \
-      ASSERT(visit_stack[stack_size].ret_addr || !stack_size);         \
-      continue;                                                        \
-   }
-
-#define HANDLE_SIMULATED_RETURN()                      \
-   {                                                   \
-      void *addr = visit_stack[stack_size].ret_addr;   \
-      if (addr != NULL)                                \
-         goto *addr;                                   \
-   }
-
+#include <common/norec.h>
 
 int
-bintree_in_order_visit_internal(void *root_obj,
+bintree_in_order_visit_internal(void *obj,
                                 bintree_visit_cb visit_cb,
                                 void *visit_cb_arg,
                                 ptrdiff_t bintree_offset)
 {
-   stack_elem visit_stack[MAX_TREE_HEIGHT];
-   int stack_size = 0;
    int r;
 
-   SIMULATE_CALL(root_obj);
+   CREATE_SHADOW_STACK(MAX_TREE_HEIGHT, 1);
+   SIMULATE_CALL1(obj);
 
    while (stack_size) {
 
-      root_obj = visit_stack[stack_size - 1].obj;
-      void *left_obj = LEFT_OF(root_obj);
-      void *right_obj = RIGHT_OF(root_obj);
+      obj = LOAD_ARG_FROM_STACK(1, void *);
+
+      void *left_obj = LEFT_OF(obj);
+      void *right_obj = RIGHT_OF(obj);
 
       HANDLE_SIMULATED_RETURN();
 
       if (left_obj)
-         SIMULATE_CALL(left_obj);
+         SIMULATE_CALL1(left_obj);
 
-      if ((r = visit_cb(root_obj, visit_cb_arg)))
+      if ((r = visit_cb(obj, visit_cb_arg)))
          return r;
 
       if (right_obj)
-         SIMULATE_CALL(right_obj);
+         SIMULATE_CALL1(right_obj);
 
       SIMULATE_RETURN_NULL();
-      loop_end:;
+      NOREC_LOOP_END();
    }
 
    return 0;
