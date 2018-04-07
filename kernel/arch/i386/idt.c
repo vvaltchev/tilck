@@ -5,23 +5,22 @@
 #include <exos/hal.h>
 
 /* Defines an IDT entry */
-struct idt_entry
+typedef struct
 {
+
    u16 base_lo;
    u16 sel;
    u8 always0;
    u8 flags;
    u16 base_hi;
-} __attribute__((packed));
 
-struct idt_ptr
+} PACKED idt_entry;
+
+typedef struct
 {
    u16 limit;
    void *base;
-} __attribute__((packed));
-
-typedef struct idt_entry idt_entry;
-typedef struct idt_ptr idt_ptr;
+} PACKED idt_ptr;
 
 /*
  * Declare an IDT of 256 entries. Although we will only use the
@@ -34,8 +33,15 @@ typedef struct idt_ptr idt_ptr;
 idt_entry idt[256];
 idt_ptr idtp;
 
-/* This exists in 'start.asm', and is used to load our IDT */
-void idt_load();
+void idt_load(void)
+{
+   asmVolatile("lidt (%0)"
+               : /* no output */
+               : "q" (&idtp)
+               : "memory");
+}
+
+
 
 /*
  * Use this function to set an entry in the IDT.

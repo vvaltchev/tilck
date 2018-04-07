@@ -16,7 +16,6 @@
 
 .global _start
 .global isr128
-.global idt_load
 .global asm_int_handler
 .global context_switch
 .global kernel_yield
@@ -119,11 +118,6 @@ multiboot_entry:
                # KERNEL_BASE_VA + KERNEL_PADDR as ORG
 
 END_FUNC(_start)
-
-FUNC(idt_load):
-    lidt [idtp]
-    ret
-END_FUNC(idt_load)
 
 # int 0x80: syscall
 FUNC(isr128):
