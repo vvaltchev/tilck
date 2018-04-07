@@ -1,51 +1,26 @@
 
 #include <common/basic_defs.h>
 #include <common/string_util.h>
-
 #include <exos/hal.h>
 
-/* Defines an IDT entry */
-typedef struct
+#include "idt_int.h"
+
+static idt_entry idt[256];
+
+void idt_load(idt_entry *entries, u32 entries_count)
 {
+   struct {
+      u16 offset_of_last_byte; /* a.k.a total_size - 1 */
+      idt_entry *idt_addr;
+   } PACKED idt_ptr = { sizeof(idt_entry) * entries_count - 1, entries };
 
-   u16 base_lo;
-   u16 sel;
-   u8 always0;
-   u8 flags;
-   u16 base_hi;
-
-} PACKED idt_entry;
-
-typedef struct
-{
-   u16 limit;
-   void *base;
-} PACKED idt_ptr;
-
-/*
- * Declare an IDT of 256 entries. Although we will only use the
- * first 32 entries in this tutorial, the rest exists as a bit
- * of a trap. If any undefined IDT entry is hit, it normally
- * will cause an "Unhandled Interrupt" exception. Any descriptor
- * for which the 'presence' bit is cleared (0) will generate an
- * "Unhandled Interrupt" exception
- */
-idt_entry idt[256];
-idt_ptr idtp;
-
-void idt_load(void)
-{
    asmVolatile("lidt (%0)"
                : /* no output */
-               : "q" (&idtp)
+               : "q" (&idt_ptr)
                : "memory");
 }
 
 
-
-/*
- * Use this function to set an entry in the IDT.
- */
 void idt_set_gate(u8 num, void *handler, u16 sel, u8 flags)
 {
    const u32 base = (u32)handler;
@@ -160,11 +135,7 @@ void isrs_install()
    idt_set_gate(0x80, isr128, 0x08, 0xEE);
 }
 
-/* This is a simple string array. It contains the message that
-*  corresponds to each and every exception. We get the correct
-*  message by accessing like:
-*  exception_message[interrupt_number] */
-char *exception_messages[] =
+const char *exception_messages[] =
 {
    "Division By Zero",
    "Debug",
@@ -203,7 +174,7 @@ char *exception_messages[] =
    "Reserved"
 };
 
-interrupt_handler fault_handlers[32] = { NULL };
+static interrupt_handler fault_handlers[32];
 
 
 void handle_fault(regs *r)
@@ -221,22 +192,18 @@ void handle_fault(regs *r)
    }
 }
 
-void set_fault_handler(int exceptionNum, void *ptr)
+void set_fault_handler(int ex_num, void *ptr)
 {
-   fault_handlers[exceptionNum] = (interrupt_handler) ptr;
+   fault_handlers[ex_num] = (interrupt_handler) ptr;
 }
 
 
 /* Installs the IDT */
-void idt_install()
+void idt_install(void)
 {
-   /* Sets the special IDT pointer up, just like in 'gdt.c' */
-   idtp.limit = sizeof(idt) - 1;
-   idtp.base = &idt;
-
    /* Add any new ISRs to the IDT here using idt_set_gate */
    isrs_install();
 
    /* Points the processor's internal register to the new IDT */
-   idt_load();
+   idt_load(idt, ARRAY_SIZE(idt));
 }
