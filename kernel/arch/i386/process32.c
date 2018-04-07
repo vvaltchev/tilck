@@ -83,11 +83,9 @@ static void push_args_on_user_stack(regs *r,
 
 task_info *kthread_create(kthread_func_ptr fun, void *arg)
 {
-   regs r;
-   bzero(&r, sizeof(r));
-
-   r.gs = r.fs = r.es = r.ds = r.ss = 0x10;
-   r.cs = 0x08;
+   regs r = {0};
+   r.gs = r.fs = r.es = r.ds = r.ss = X86_SELECTOR(2, 0, 0);
+   r.cs = X86_SELECTOR(1, 0, 0);
 
    r.eip = (u32) fun;
    r.eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF;
@@ -173,15 +171,13 @@ task_info *create_usermode_task(page_directory_t *pdir,
    size_t argv_elems = 0;
    size_t env_elems = 0;
    task_info *ti;
-   regs r;
+   regs r = {0};
 
-   bzero(&r, sizeof(r));
+   // User data GDT selector with bottom 2 bits set for ring 3.
+   r.gs = r.fs = r.es = r.ds = r.ss = X86_SELECTOR(4, 0, 3);
 
-   // User data selector with bottom 2 bits set for ring 3.
-   r.gs = r.fs = r.es = r.ds = r.ss = 0x23;
-
-   // User code selector with bottom 2 bits set for ring 3.
-   r.cs = 0x1b;
+   // User code GDT selector with bottom 2 bits set for ring 3.
+   r.cs = X86_SELECTOR(3, 0, 3);
 
    r.eip = (u32) entry;
    r.useresp = (u32) stack_addr;
