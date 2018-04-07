@@ -12,6 +12,54 @@
 
 #define GDT_REGULAR_32BIT_SEG (GDT_GRAN_4KB | GDT_32BIT)
 
+#define GDT_ACCESS_ACC     (1 << 0)  /*
+                                      * Accessed bit. The CPU sets it to 1 when
+                                      * the segment is accessed.
+                                      */
+
+#define GDT_ACCESS_RW      (1 << 1)  /*
+                                      * For code segments it means readable,
+                                      * otherwise the segment is unreadable.
+                                      * [code segments cannot be writable.]
+                                      *
+                                      * For data segments, it means writable.
+                                      */
+
+#define GDT_ACCESS_DC      (1 << 2)  /*
+                                      * Direction/Conforming bit
+                                      *
+                                      * For data segments: direction.
+                                      *   0 the segment grows up (regular)
+                                      *   1 the segment grown down
+                                      *
+                                      * For code segments: conforming.
+                                      *
+                                      *   0 the code can be executed only from
+                                      *     the ring set in PL.
+                                      *
+                                      *   1 the code can be executed also from
+                                      *     a lower priv. level. E.g. code in
+                                      *     ring 3 can far-jump to conforming
+                                      *     code in ring 2.
+                                      */
+
+#define GDT_ACCESS_EX       (1 << 3)  /*
+                                       * Executable bit.
+                                       *  0 means a data segment
+                                       *  1 means a code segment
+                                       */
+
+#define GDT_ACCESS_ALWAYS1  (1 << 4)   /* Reserved: must be always 1 */
+
+#define GDT_ACCESS_PRIV_0   (0 << 5)   /* Ring 0 */
+#define GDT_ACCESS_PRIV_1   (1 << 5)   /* Ring 1 */
+#define GDT_ACCESS_PRIV_2   (2 << 5)   /* Ring 2 */
+#define GDT_ACCESS_PRIV_3   (3 << 5)   /* Ring 3 */
+
+#define GDT_ACCESS_PRESENT  (1 << 7)   /* Must be set for valid segments */
+
+
+
 typedef struct
 {
    u16 limit_low;
