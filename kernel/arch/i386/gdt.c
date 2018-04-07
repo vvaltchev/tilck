@@ -2,6 +2,8 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
+#define GDT_LIMIT_MAX (0x000FFFFF)
+
 typedef struct
 {
    u16 limit_low;
@@ -51,11 +53,12 @@ typedef struct
 static gdt_entry gdt[6];
 
 void gdt_set_entry(int num,
-                   size_t base,
-                   size_t limit,
+                   uptr base,
+                   uptr limit,
                    u8 access,
                    u8 gran)
 {
+   ASSERT(limit <= GDT_LIMIT_MAX); /* limit is only 20 bits */
    gdt[num].base_low = (base & 0xFFFF);
    gdt[num].base_middle = (base >> 16) & 0xFF;
    gdt[num].base_high = (base >> 24) & 0xFF;
@@ -68,8 +71,8 @@ void gdt_set_entry(int num,
 }
 
 /*
- * ExOS does use i386's tasks because they do not exist in many architectures
- * like x86_64. Therefore, only a single TSS entry is needed.
+ * ExOS does use i386's tasks because they do not exist in many architectures.
+ * Therefore, we have just a single TSS entry.
  */
 static tss_entry_t tss_entry;
 
@@ -83,24 +86,15 @@ u32 get_kernel_stack()
    return tss_entry.esp0;
 }
 
-
-// Initialize our task state segment structure.
-static void write_tss(s32 num, u16 ss0, u32 esp0)
+static void tss_init(tss_entry_t *entry, u16 ss0, u32 esp0)
 {
-    // First, let's compute the base and limit of our entry into the GDT.
-    u32 base = (u32) &tss_entry;
-    u32 limit = base + sizeof(tss_entry);
+   tss_entry.ss0 = ss0;   // Set the kernel stack segment.
+   tss_entry.esp0 = esp0; // Set the kernel stack pointer.
 
-    // Now, add our TSS descriptor's address to the GDT.
-    gdt_set_entry(num, base, limit, 0xE9, 0x00);
-
-    tss_entry.ss0  = ss0;  // Set the kernel stack segment.
-    tss_entry.esp0 = esp0; // Set the kernel stack pointer.
-
-    tss_entry.cs = 0x08 + 3;
-    tss_entry.ds = 0x10 + 3;
-    tss_entry.ss = 0x10 + 3;
-    tss_entry.es = tss_entry.fs = tss_entry.gs = 0x10 + 3;
+   tss_entry.cs = 0x08 + 3;
+   tss_entry.ds = 0x10 + 3;
+   tss_entry.ss = 0x10 + 3;
+   tss_entry.es = tss_entry.fs = tss_entry.gs = 0x10 + 3;
 }
 
 void gdt_load(gdt_entry *gdt, u32 entries_count)
@@ -144,20 +138,21 @@ void gdt_install(void)
     * is 0, the limit is 4GBytes, it uses 4KByte granularity,
     * uses 32-bit opcodes, and is a Code Segment descriptor.
    */
-   gdt_set_entry(1, 0, 0xFFFFFFFF, 0x9A, 0xCF);
+   gdt_set_entry(1, 0, GDT_LIMIT_MAX, 0x9A, 0xCF);
 
    /*
     * The third entry is our Data Segment. It's EXACTLY the
     * same as our code segment, but the descriptor type in
     * this entry's access byte says it's a Data Segment.
     */
-   gdt_set_entry(2, 0, 0xFFFFFFFF, 0x92, 0xCF);
+   gdt_set_entry(2, 0, GDT_LIMIT_MAX, 0x92, 0xCF);
 
 
-   gdt_set_entry(3, 0, 0xFFFFFFFF, 0xFA, 0xCF); // User mode code segment
-   gdt_set_entry(4, 0, 0xFFFFFFFF, 0xF2, 0xCF); // User mode data segment
+   gdt_set_entry(3, 0, GDT_LIMIT_MAX, 0xFA, 0xCF); // User mode code segment
+   gdt_set_entry(4, 0, GDT_LIMIT_MAX, 0xF2, 0xCF); // User mode data segment
 
-   write_tss(5, 0x10, 0x0);
+   tss_init(&tss_entry, 0x10, 0x0);
+   gdt_set_entry(5, (u32) &tss_entry, sizeof(tss_entry), 0xE9, 0x00);
 
 
    gdt_load(gdt, 6);
