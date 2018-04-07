@@ -26,8 +26,8 @@
 
 #ifdef __arch__x86__
 
-   void gdt_install();
-   void idt_install();
+   void gdt_install(void);
+   void idt_install(void);
 
    #define setup_segmentation() gdt_install()
    #define setup_interrupt_handling() idt_install(); irq_install()

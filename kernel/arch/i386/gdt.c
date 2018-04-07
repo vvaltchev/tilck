@@ -2,9 +2,6 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
-void gdt_load();
-void tss_flush();
-
 typedef struct
 {
     u16 limit_low;
@@ -15,12 +12,8 @@ typedef struct
     u8 base_high;
 } PACKED gdt_entry;
 
-
-
-typedef struct gdt_entry_bits gdt_entry_bits;
-
 // A struct describing a Task State Segment.
-struct tss_entry_struct
+typedef struct
 {
    u32 prev_tss;   // The previous TSS - if we used hardware task switching this
                    // would form a linked list.
@@ -50,15 +43,10 @@ struct tss_entry_struct
    u32 ldt;
    u16 trap;
    u16 iomap_base;
-} __attribute__((packed));
-
-typedef struct tss_entry_struct tss_entry_t;
+} PACKED tss_entry_t;
 
 
-
-/* Our GDT, with 3 entries, and finally our special GDT pointer */
-gdt_entry gdt[6];
-
+static gdt_entry gdt[6];
 
 void gdt_set_entry(int num,
                    size_t base,
@@ -80,7 +68,11 @@ void gdt_set_entry(int num,
     gdt[num].access = access;
 }
 
-tss_entry_t tss_entry;
+/*
+ * ExOS does use i386's tasks because they do not exist in many architectures
+ * like x86_64. Therefore, only a single TSS entry is needed.
+ */
+static tss_entry_t tss_entry;
 
 void set_kernel_stack(u32 stack)
 {
@@ -103,21 +95,9 @@ static void write_tss(s32 num, u16 ss0, u32 esp0)
     // Now, add our TSS descriptor's address to the GDT.
     gdt_set_entry(num, base, limit, 0xE9, 0x00);
 
-    // Ensure the descriptor is initially zero.
-    bzero(&tss_entry, sizeof(tss_entry));
-
     tss_entry.ss0  = ss0;  // Set the kernel stack segment.
     tss_entry.esp0 = esp0; // Set the kernel stack pointer.
 
-    /*
-     * Here we set the cs, ss, ds, es, fs and gs entries in the TSS. These
-     * specify what segments should be loaded when the processor switches to
-     * kernel mode. Therefore they are just our normal kernel code/data segments
-     * 0x08 and 0x10 respectively, but with the last two bits set, making 0x0b
-     * and 0x13. The setting of these bits sets the RPL (requested privilege
-     * level) to 3, meaning that this TSS can be used to switch to kernel mode
-     * from ring 3.
-     */
     tss_entry.cs = 0x08 + 3;
     tss_entry.ds = 0x10 + 3;
     tss_entry.ss = 0x10 + 3;
@@ -139,7 +119,23 @@ void gdt_load(gdt_entry *gdt, u32 entries_count)
                : "memory");
 }
 
-void gdt_install()
+void load_tss(u32 entry_index_in_gdt, u32 dpl)
+{
+   ASSERT(dpl <= 3); /* descriptor privilege level [0..3] */
+
+   /*
+    * Inline assembly comments: here we need to use %w0 instead of %0
+    * beacuse 'ltr' requires a 16-bit register, like AX. That's what does
+    * the 'w' modifier [https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html].
+    */
+
+   asmVolatile("ltr %w0"
+               : /* no output */
+               : "q" (entry_index_in_gdt * sizeof(gdt_entry) | dpl)
+               : "memory");
+}
+
+void gdt_install(void)
 {
    /* Our NULL descriptor */
    gdt_set_entry(0, 0, 0, 0, 0);
@@ -166,5 +162,5 @@ void gdt_install()
 
 
    gdt_load(gdt, 6);
-   tss_flush();
+   load_tss(5, 3);
 }
