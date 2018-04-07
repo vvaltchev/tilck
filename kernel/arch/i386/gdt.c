@@ -1,6 +1,7 @@
 
 #include <common/basic_defs.h>
 #include <common/string_util.h>
+#include <exos/hal.h>
 
 #define GDT_LIMIT_MAX (0x000FFFFF)
 
@@ -87,25 +88,13 @@ static tss_entry_t tss_entry;
 
 void set_kernel_stack(u32 stack)
 {
+   tss_entry.ss0 = X86_SELECTOR(2, 0, 0);   // Kernel stack segment [0x10]
    tss_entry.esp0 = stack;
 }
 
 u32 get_kernel_stack()
 {
    return tss_entry.esp0;
-}
-
-static void tss_init(tss_entry_t *entry, u16 ss0, u32 esp0)
-{
-   tss_entry.ss0 = ss0;   // Set the kernel stack segment.
-   tss_entry.esp0 = esp0; // Set the kernel stack pointer.
-
-   tss_entry.cs = 0x08 + 3;
-   tss_entry.ds = 0x10 + 3;
-   tss_entry.ss = 0x10 + 3;
-   tss_entry.es = 0x10 + 3;
-   tss_entry.fs = 0x10 + 3;
-   tss_entry.gs = 0x10 + 3;
 }
 
 void gdt_load(gdt_entry *gdt, u32 entries_count)
@@ -162,9 +151,7 @@ void gdt_install(void)
    gdt_set_entry(3, 0, GDT_LIMIT_MAX, 0xFA, GDT_REGULAR_32BIT_SEG); // User code
    gdt_set_entry(4, 0, GDT_LIMIT_MAX, 0xF2, GDT_REGULAR_32BIT_SEG); // User data
 
-   tss_init(&tss_entry, 0x10, 0x0);
    gdt_set_entry(5, (u32) &tss_entry, sizeof(tss_entry), 0xE9, 0);
-
 
    gdt_load(gdt, 6);
    load_tss(5, 3);

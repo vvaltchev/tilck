@@ -62,6 +62,23 @@
 
 extern volatile bool in_panic;
 
+/*
+ * x86 selectors are 16 bit integers:
+ *
+ * +------------------+----------------+--------------+
+ * | index [13 bits]  | table [1 bit]  | RPL [2 bits] |
+ * +------- ----------+----------------+--------------+
+ *
+ * table:
+ *    0 means the index is in GDT
+ *    1 means the index is in LDT
+ *
+ * RPL: requested privilege level [0..3]
+ */
+
+#define TABLE_GDT 0
+#define TABLE_LDT 1
+#define X86_SELECTOR(idx, table, rpl) ((idx << 3) | (table << 2) | (rpl))
 
 static ALWAYS_INLINE u64 RDTSC()
 {
