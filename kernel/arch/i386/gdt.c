@@ -3,62 +3,15 @@
 #include <common/string_util.h>
 #include <exos/hal.h>
 
-#define GDT_LIMIT_MAX (0x000FFFFF)
-
-#define GDT_GRAN_4KB (1 << 3)
-#define GDT_GRAN_BYTE (0)
-#define GDT_32BIT (1 << 2)
-#define GDT_16BIT (0)
-
-#define GDT_REGULAR_32BIT_SEG (GDT_GRAN_4KB | GDT_32BIT)
-
-typedef struct
-{
-   u16 limit_low;
-   u16 base_low;
-   u8 base_middle;
-   u8 access;
-   u8 limit_high: 4;
-   u8 flags: 4;
-   u8 base_high;
-
-} PACKED gdt_entry;
-
-// A struct describing a Task State Segment.
-typedef struct
-{
-   u32 prev_tss;   // The previous TSS - if we used hardware task switching this
-                   // would form a linked list.
-   u32 esp0;       // The stack pointer to load when we change to kernel mode.
-   u32 ss0;        // The stack segment to load when we change to kernel mode.
-   u32 esp1;       // everything below here is unusued now..
-   u32 ss1;
-   u32 esp2;
-   u32 ss2;
-   u32 cr3;
-   u32 eip;
-   u32 eflags;
-   u32 eax;
-   u32 ecx;
-   u32 edx;
-   u32 ebx;
-   u32 esp;
-   u32 ebp;
-   u32 esi;
-   u32 edi;
-   u32 es;
-   u32 cs;
-   u32 ss;
-   u32 ds;
-   u32 fs;
-   u32 gs;
-   u32 ldt;
-   u16 trap;
-   u16 iomap_base;
-} PACKED tss_entry_t;
-
+#include "gdt_int.h"
 
 static gdt_entry gdt[6];
+
+/*
+ * ExOS does use i386's tasks because they do not exist in many architectures.
+ * Therefore, we have just need a single TSS entry.
+ */
+static tss_entry_t tss_entry;
 
 void gdt_set_entry(int num,
                    uptr base,
@@ -80,11 +33,6 @@ void gdt_set_entry(int num,
    gdt[num].flags = flags;
 }
 
-/*
- * ExOS does use i386's tasks because they do not exist in many architectures.
- * Therefore, we have just a single TSS entry.
- */
-static tss_entry_t tss_entry;
 
 void set_kernel_stack(u32 stack)
 {
@@ -151,7 +99,7 @@ void gdt_install(void)
    gdt_set_entry(3, 0, GDT_LIMIT_MAX, 0xFA, GDT_REGULAR_32BIT_SEG); // User code
    gdt_set_entry(4, 0, GDT_LIMIT_MAX, 0xF2, GDT_REGULAR_32BIT_SEG); // User data
 
-   gdt_set_entry(5, (u32) &tss_entry, sizeof(tss_entry), 0xE9, 0);
+   gdt_set_entry(5, (uptr) &tss_entry, sizeof(tss_entry), 0xE9, 0);
 
    gdt_load(gdt, 6);
    load_tss(5, 3);
