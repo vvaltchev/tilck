@@ -37,9 +37,8 @@ void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags)
 }
 
 /*
- * These are function prototypes for all of the exception
- * handlers: The first 32 entries in the IDT are reserved
- * by Intel and are designed to service exceptions.
+ * Entry-points for exception handlers. Their stub code is in isr_handlers.S.
+ * The exceptions (faults) are actually handled by handle_fault() [see below].
  */
 
 void isr0();
@@ -75,6 +74,13 @@ void isr29();
 void isr30();
 void isr31();
 
+static void (*ex_handlers_array[32])() =
+{
+   isr0, isr1, isr2, isr3, isr4, isr5, isr6, isr7, isr8, isr9, isr10, isr11,
+   isr12, isr13, isr14, isr15, isr16, isr17, isr18, isr19, isr20, isr21,
+   isr22, isr23, isr24, isr25, isr26, isr27, isr28, isr29, isr30, isr31
+};
+
 // This is used for int 0x80 (syscalls)
 void isr128();
 
@@ -84,43 +90,10 @@ void isr128();
  * set to the required '14', which is represented by 'E' in hex.
  */
 
-void isrs_install()
+void isrs_install(void)
 {
-   idt_set_entry(0, isr0, 0x08, 0x8E);
-   idt_set_entry(1, isr1, 0x08, 0x8E);
-   idt_set_entry(2, isr2, 0x08, 0x8E);
-   idt_set_entry(3, isr3, 0x08, 0x8E);
-   idt_set_entry(4, isr4, 0x08, 0x8E);
-   idt_set_entry(5, isr5, 0x08, 0x8E);
-   idt_set_entry(6, isr6, 0x08, 0x8E);
-   idt_set_entry(7, isr7, 0x08, 0x8E);
-
-   idt_set_entry(8, isr8, 0x08, 0x8E);
-   idt_set_entry(9, isr9, 0x08, 0x8E);
-   idt_set_entry(10, isr10, 0x08, 0x8E);
-   idt_set_entry(11, isr11, 0x08, 0x8E);
-   idt_set_entry(12, isr12, 0x08, 0x8E);
-   idt_set_entry(13, isr13, 0x08, 0x8E);
-   idt_set_entry(14, isr14, 0x08, 0x8E);
-   idt_set_entry(15, isr15, 0x08, 0x8E);
-
-   idt_set_entry(16, isr16, 0x08, 0x8E);
-   idt_set_entry(17, isr17, 0x08, 0x8E);
-   idt_set_entry(18, isr18, 0x08, 0x8E);
-   idt_set_entry(19, isr19, 0x08, 0x8E);
-   idt_set_entry(20, isr20, 0x08, 0x8E);
-   idt_set_entry(21, isr21, 0x08, 0x8E);
-   idt_set_entry(22, isr22, 0x08, 0x8E);
-   idt_set_entry(23, isr23, 0x08, 0x8E);
-
-   idt_set_entry(24, isr24, 0x08, 0x8E);
-   idt_set_entry(25, isr25, 0x08, 0x8E);
-   idt_set_entry(26, isr26, 0x08, 0x8E);
-   idt_set_entry(27, isr27, 0x08, 0x8E);
-   idt_set_entry(28, isr28, 0x08, 0x8E);
-   idt_set_entry(29, isr29, 0x08, 0x8E);
-   idt_set_entry(30, isr30, 0x08, 0x8E);
-   idt_set_entry(31, isr31, 0x08, 0x8E);
+   for (int i = 0; i < 32; i++)
+      idt_set_entry(i, ex_handlers_array[i], 0x08, 0x8E);
 
    // Syscall with int 0x80.
 
