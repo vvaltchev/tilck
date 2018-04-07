@@ -4,12 +4,14 @@
 
 typedef struct
 {
-    u16 limit_low;
-    u16 base_low;
-    u8 base_middle;
-    u8 access;
-    u8 granularity;
-    u8 base_high;
+   u16 limit_low;
+   u16 base_low;
+   u8 base_middle;
+   u8 access;
+   u8 limit_high: 4;
+   u8 granularity: 4;
+   u8 base_high;
+
 } PACKED gdt_entry;
 
 // A struct describing a Task State Segment.
@@ -54,18 +56,15 @@ void gdt_set_entry(int num,
                    u8 access,
                    u8 gran)
 {
-    /* Setup the descriptor base address */
-    gdt[num].base_low = (base & 0xFFFF);
-    gdt[num].base_middle = (base >> 16) & 0xFF;
-    gdt[num].base_high = (base >> 24) & 0xFF;
+   gdt[num].base_low = (base & 0xFFFF);
+   gdt[num].base_middle = (base >> 16) & 0xFF;
+   gdt[num].base_high = (base >> 24) & 0xFF;
 
-    /* Setup the descriptor limits */
-    gdt[num].limit_low = (limit & 0xFFFF);
-    gdt[num].granularity = ((limit >> 16) & 0x0F);
+   gdt[num].limit_low = (limit & 0xFFFF);
+   gdt[num].limit_high = ((limit >> 16) & 0x0F);
 
-    /* Finally, set up the granularity and access flags */
-    gdt[num].granularity |= (gran & 0xF0);
-    gdt[num].access = access;
+   gdt[num].access = access;
+   gdt[num].granularity = (gran >> 4);
 }
 
 /*
