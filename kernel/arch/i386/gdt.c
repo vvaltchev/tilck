@@ -81,26 +81,48 @@ void gdt_install(void)
    /* Our NULL descriptor */
    gdt_set_entry(0, 0, 0, 0, 0);
 
-   /*
-    * The second entry is our Code Segment. The base address
-    * is 0, the limit is 4GBytes, it uses 4KByte granularity,
-    * uses 32-bit opcodes, and is a Code Segment descriptor.
-   */
-   gdt_set_entry(1, 0, GDT_LIMIT_MAX, 0x9A, GDT_REGULAR_32BIT_SEG);
+   /* Kernel code segment */
+   gdt_set_entry(1,              /* index */
+                 0,              /* base addr */
+                 GDT_LIMIT_MAX,  /* full 4-GB segment */
+                 GDT_ACC_REG | GDT_ACCESS_PL0 | GDT_ACCESS_RW | GDT_ACCESS_EX,
+                 GDT_GRAN_4KB | GDT_32BIT);
 
-   /*
-    * The third entry is our Data Segment. It's EXACTLY the
-    * same as our code segment, but the descriptor type in
-    * this entry's access byte says it's a Data Segment.
-    */
-   gdt_set_entry(2, 0, GDT_LIMIT_MAX, 0x92, GDT_REGULAR_32BIT_SEG);
+   /* Kernel data segment */
+   gdt_set_entry(2,
+                 0,
+                 GDT_LIMIT_MAX,
+                 GDT_ACC_REG | GDT_ACCESS_PL0 | GDT_ACCESS_RW,
+                 GDT_GRAN_4KB | GDT_32BIT);
 
+   /* Usermode code segment */
+   gdt_set_entry(3,
+                 0,
+                 GDT_LIMIT_MAX,
+                 GDT_ACC_REG | GDT_ACCESS_PL3 | GDT_ACCESS_RW | GDT_ACCESS_EX,
+                 GDT_GRAN_4KB | GDT_32BIT);
 
-   gdt_set_entry(3, 0, GDT_LIMIT_MAX, 0xFA, GDT_REGULAR_32BIT_SEG); // User code
-   gdt_set_entry(4, 0, GDT_LIMIT_MAX, 0xF2, GDT_REGULAR_32BIT_SEG); // User data
+   /* Usermode data segment */
+   gdt_set_entry(4,
+                 0,
+                 GDT_LIMIT_MAX,
+                 GDT_ACC_REG | GDT_ACCESS_PL3 | GDT_ACCESS_RW,
+                 GDT_GRAN_4KB | GDT_32BIT);
 
-   gdt_set_entry(5, (uptr) &tss_entry, sizeof(tss_entry), 0xE9, 0);
+   /* GDT entry for our TSS */
+   gdt_set_entry(5,                   /* index */
+                 (uptr) &tss_entry,   /* TSS addr */
+                 sizeof(tss_entry),   /* limit: struct TSS size */
 
-   gdt_load(gdt, 6);
-   load_tss(5, 3);
+                 /*
+                  * Special flags for the TSS entry. NOTE: the bit 'S', set by
+                  * GDT_ACC_REG is unsed here, beacuse the descriptor is of
+                  * type 'system'.
+                  */
+
+                 GDT_ACCESS_PRESENT | GDT_ACCESS_EX | GDT_ACCESS_ACC,
+                 GDT_GRAN_BYTE | GDT_32BIT);
+
+   gdt_load(gdt, 6 /* entries count */);
+   load_tss(5 /* TSS index in GDT */, 3 /* priv. level */);
 }

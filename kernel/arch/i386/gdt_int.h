@@ -2,15 +2,16 @@
 #pragma once
 #include <common/basic_defs.h>
 
-
+/* Limit is 20 bit */
 #define GDT_LIMIT_MAX (0x000FFFFF)
 
+/* GDT 'flags' (4 bits) */
 #define GDT_GRAN_4KB (1 << 3)
 #define GDT_GRAN_BYTE (0)
 #define GDT_32BIT (1 << 2)
 #define GDT_16BIT (0)
 
-#define GDT_REGULAR_32BIT_SEG (GDT_GRAN_4KB | GDT_32BIT)
+/* GDT 'access' flags (8 bits) */
 
 #define GDT_ACCESS_ACC     (1 << 0)  /*
                                       * Accessed bit. The CPU sets it to 1 when
@@ -45,20 +46,26 @@
 
 #define GDT_ACCESS_EX       (1 << 3)  /*
                                        * Executable bit.
-                                       *  0 means a data segment
-                                       *  1 means a code segment
+                                       *   0 means a data segment
+                                       *   1 means a code segment
                                        */
 
-#define GDT_ACCESS_ALWAYS1  (1 << 4)   /* Reserved: must be always 1 */
+#define GDT_ACCESS_S        (1 << 4)   /*
+                                        * Descriptor type.
+                                        *   0 means system (e.g. TSS, LDT)
+                                        *   1 means regular (code/data)
+                                        */
 
-#define GDT_ACCESS_PRIV_0   (0 << 5)   /* Ring 0 */
-#define GDT_ACCESS_PRIV_1   (1 << 5)   /* Ring 1 */
-#define GDT_ACCESS_PRIV_2   (2 << 5)   /* Ring 2 */
-#define GDT_ACCESS_PRIV_3   (3 << 5)   /* Ring 3 */
+#define GDT_ACCESS_PL0      (0 << 5)   /* Ring 0 */
+#define GDT_ACCESS_PL1      (1 << 5)   /* Ring 1 */
+#define GDT_ACCESS_PL2      (2 << 5)   /* Ring 2 */
+#define GDT_ACCESS_PL3      (3 << 5)   /* Ring 3 */
 
 #define GDT_ACCESS_PRESENT  (1 << 7)   /* Must be set for valid segments */
 
 
+/* An useful shortcut for saving some space */
+#define GDT_ACC_REG (GDT_ACCESS_PRESENT | GDT_ACCESS_S)
 
 typedef struct
 {
