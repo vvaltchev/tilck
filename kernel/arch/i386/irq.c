@@ -8,7 +8,7 @@
 #include <exos/term.h>
 #include <exos/process.h>
 
-void idt_set_gate(u8 num, void *handler, u16 sel, u8 flags);
+void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags);
 
 
 /* These are own ISRs that point to our special IRQ handler
@@ -211,22 +211,22 @@ void irq_install()
 {
    PIC_remap(32, 40);
 
-   idt_set_gate(32, irq0, 0x08, 0x8E);
-   idt_set_gate(33, irq1, 0x08, 0x8E);
-   idt_set_gate(34, irq2, 0x08, 0x8E);
-   idt_set_gate(35, irq3, 0x08, 0x8E);
-   idt_set_gate(36, irq4, 0x08, 0x8E);
-   idt_set_gate(37, irq5, 0x08, 0x8E);
-   idt_set_gate(38, irq6, 0x08, 0x8E);
-   idt_set_gate(39, irq7, 0x08, 0x8E);
-   idt_set_gate(40, irq8, 0x08, 0x8E);
-   idt_set_gate(41, irq9, 0x08, 0x8E);
-   idt_set_gate(42, irq10, 0x08, 0x8E);
-   idt_set_gate(43, irq11, 0x08, 0x8E);
-   idt_set_gate(44, irq12, 0x08, 0x8E);
-   idt_set_gate(45, irq13, 0x08, 0x8E);
-   idt_set_gate(46, irq14, 0x08, 0x8E);
-   idt_set_gate(47, irq15, 0x08, 0x8E);
+   idt_set_entry(32, irq0, 0x08, 0x8E);
+   idt_set_entry(33, irq1, 0x08, 0x8E);
+   idt_set_entry(34, irq2, 0x08, 0x8E);
+   idt_set_entry(35, irq3, 0x08, 0x8E);
+   idt_set_entry(36, irq4, 0x08, 0x8E);
+   idt_set_entry(37, irq5, 0x08, 0x8E);
+   idt_set_entry(38, irq6, 0x08, 0x8E);
+   idt_set_entry(39, irq7, 0x08, 0x8E);
+   idt_set_entry(40, irq8, 0x08, 0x8E);
+   idt_set_entry(41, irq9, 0x08, 0x8E);
+   idt_set_entry(42, irq10, 0x08, 0x8E);
+   idt_set_entry(43, irq11, 0x08, 0x8E);
+   idt_set_entry(44, irq12, 0x08, 0x8E);
+   idt_set_entry(45, irq13, 0x08, 0x8E);
+   idt_set_entry(46, irq14, 0x08, 0x8E);
+   idt_set_entry(47, irq15, 0x08, 0x8E);
 }
 
 void handle_irq(regs *r)
