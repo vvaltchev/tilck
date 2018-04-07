@@ -16,7 +16,6 @@
 
 .global _start
 .global isr128
-.global gdt_load
 .global idt_load
 .global tss_flush
 .global asm_int_handler
@@ -121,11 +120,6 @@ multiboot_entry:
                # KERNEL_BASE_VA + KERNEL_PADDR as ORG
 
 END_FUNC(_start)
-
-FUNC(gdt_load):
-   lgdt [gdt_pointer]
-   ret
-END_FUNC(gdt_load)
 
 FUNC(idt_load):
     lidt [idtp]

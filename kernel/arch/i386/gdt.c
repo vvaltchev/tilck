@@ -5,7 +5,7 @@
 void gdt_load();
 void tss_flush();
 
-struct gdt_entry
+typedef struct
 {
     u16 limit_low;
     u16 base_low;
@@ -13,28 +13,9 @@ struct gdt_entry
     u8 access;
     u8 granularity;
     u8 base_high;
-} __attribute__((packed));
+} PACKED gdt_entry;
 
-struct gdt_entry_bits
-{
-   u32 limit_low:16;
-   u32 base_low : 24;
-   //attribute byte split into bitfields
-   u32 accessed :1;
-   u32 read_write :1; //readable for code, writable for data
-   u32 conforming_expand_down :1; //conforming for code, expand down for data
-   u32 code :1; //1 for code, 0 for data
-   u32 always_1 :1; //should be 1 for everything but TSS and LDT
-   u32 DPL :2; //priviledge level
-   u32 present :1;
-   //and now into granularity
-   u32 limit_high :4;
-   u32 available :1;
-   u32 always_0 :1; //should always be 0
-   u32 big :1; //32bit opcodes for code, u32 stack for data
-   u32 gran :1; //1 to use 4k page addressing, 0 for byte addressing
-   u32 base_high :8;
-} __attribute__((packed));
+
 
 typedef struct gdt_entry_bits gdt_entry_bits;
 
@@ -74,27 +55,16 @@ struct tss_entry_struct
 typedef struct tss_entry_struct tss_entry_t;
 
 
-/*
- * Special pointer which includes the limit: The max bytes
- * taken up by the GDT, minus 1. This NEEDS to be packed.
- */
-
-struct gdt_ptr
-{
-   u16 limit; // 2 bytes
-   u32 base;  // 4 bytes
-} __attribute__((packed));
 
 /* Our GDT, with 3 entries, and finally our special GDT pointer */
-struct gdt_entry gdt[6];
-struct gdt_ptr gdt_pointer;
+gdt_entry gdt[6];
 
-/* Setup a descriptor in the Global Descriptor Table */
-void gdt_set_gate(int num,
-                  size_t base,
-                  size_t limit,
-                  u8 access,
-                  u8 gran)
+
+void gdt_set_entry(int num,
+                   size_t base,
+                   size_t limit,
+                   u8 access,
+                   u8 gran)
 {
     /* Setup the descriptor base address */
     gdt[num].base_low = (base & 0xFFFF);
@@ -131,7 +101,7 @@ static void write_tss(s32 num, u16 ss0, u32 esp0)
     u32 limit = base + sizeof(tss_entry);
 
     // Now, add our TSS descriptor's address to the GDT.
-    gdt_set_gate(num, base, limit, 0xE9, 0x00);
+    gdt_set_entry(num, base, limit, 0xE9, 0x00);
 
     // Ensure the descriptor is initially zero.
     bzero(&tss_entry, sizeof(tss_entry));
@@ -154,43 +124,47 @@ static void write_tss(s32 num, u16 ss0, u32 esp0)
     tss_entry.es = tss_entry.fs = tss_entry.gs = 0x10 + 3;
 }
 
+void gdt_load(gdt_entry *gdt, u32 entries_count)
+{
+   struct {
 
-/* Should be called by main. This will setup the special GDT
-*  pointer, set up the first 3 entries in our GDT, and then
-*  finally call gdt_flush() in our assembler file in order
-*  to tell the processor where the new GDT is and update the
-*  new segment registers */
+      u16 offset_of_last_byte;
+      gdt_entry *gdt_vaddr;
+
+   } PACKED gdt_ptr = { sizeof(gdt_entry) * entries_count - 1, gdt };
+
+   asmVolatile("lgdt (%0)"
+               : /* no output */
+               : "q" (&gdt_ptr)
+               : "memory");
+}
+
 void gdt_install()
 {
-   /* Setup the GDT pointer and limit */
-   gdt_pointer.limit = (sizeof(struct gdt_entry) * 6) - 1;
-   gdt_pointer.base = (u32)&gdt;
-
    /* Our NULL descriptor */
-   gdt_set_gate(0, 0, 0, 0, 0);
+   gdt_set_entry(0, 0, 0, 0, 0);
 
    /*
     * The second entry is our Code Segment. The base address
     * is 0, the limit is 4GBytes, it uses 4KByte granularity,
     * uses 32-bit opcodes, and is a Code Segment descriptor.
    */
-   gdt_set_gate(1, 0, 0xFFFFFFFF, 0x9A, 0xCF);
+   gdt_set_entry(1, 0, 0xFFFFFFFF, 0x9A, 0xCF);
 
    /*
     * The third entry is our Data Segment. It's EXACTLY the
     * same as our code segment, but the descriptor type in
     * this entry's access byte says it's a Data Segment.
     */
-   gdt_set_gate(2, 0, 0xFFFFFFFF, 0x92, 0xCF);
+   gdt_set_entry(2, 0, 0xFFFFFFFF, 0x92, 0xCF);
 
 
-   gdt_set_gate(3, 0, 0xFFFFFFFF, 0xFA, 0xCF); // User mode code segment
-   gdt_set_gate(4, 0, 0xFFFFFFFF, 0xF2, 0xCF); // User mode data segment
+   gdt_set_entry(3, 0, 0xFFFFFFFF, 0xFA, 0xCF); // User mode code segment
+   gdt_set_entry(4, 0, 0xFFFFFFFF, 0xF2, 0xCF); // User mode data segment
 
    write_tss(5, 0x10, 0x0);
 
-   /* Flush out the old GDT and install the new changes! */
-   gdt_load();
 
+   gdt_load(gdt, 6);
    tss_flush();
 }
