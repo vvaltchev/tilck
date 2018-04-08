@@ -24,8 +24,8 @@ using namespace testing;
 class tasklet_test : public Test {
 
    void SetUp() override {
-      initialize_kmalloc_for_tests();
-      initialize_tasklets();
+      init_kmalloc_for_tests();
+      init_tasklets();
    }
 
    void TearDown() override {

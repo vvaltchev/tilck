@@ -550,7 +550,7 @@ static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
 extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
 
-void initialize_kmalloc()
+void init_kmalloc()
 {
    ASSERT(!kmalloc_initialized);
 

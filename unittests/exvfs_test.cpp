@@ -36,7 +36,7 @@ TEST(exvfs, check_mountpoint_match)
 
 TEST(exvfs, read_content_of_longname_file)
 {
-   initialize_kmalloc_for_tests();
+   init_kmalloc_for_tests();
 
    const char *buf = load_once_file("build/fatpart");
    char data[128] = {0};
@@ -64,7 +64,7 @@ TEST(exvfs, read_content_of_longname_file)
 
 TEST(exvfs, fseek)
 {
-   initialize_kmalloc_for_tests();
+   init_kmalloc_for_tests();
 
    random_device rdev;
    const auto seed = rdev();

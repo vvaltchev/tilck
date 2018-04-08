@@ -137,7 +137,7 @@ void task_info_reset_kernel_stack(task_info *ti);
 
 void add_task(task_info *ti);
 void remove_task(task_info *ti);
-void initialize_scheduler(void);
+void init_sched(void);
 task_info *allocate_new_process(task_info *parent, int pid);
 task_info *allocate_new_thread(process_info *pi);
 void free_task(task_info *ti);

@@ -7,7 +7,7 @@
  * Default value: 18.222 Hz.
  */
 
-void set_timer_freq(int hz)
+void timer_set_freq(int hz)
 {
    ASSERT(hz >= 1 && hz <= 1000);
 

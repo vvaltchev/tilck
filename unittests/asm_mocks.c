@@ -52,8 +52,8 @@ void irq13() { }
 void irq14() { }
 void irq15() { }
 
-void idt_load() { }
-void gdt_load() { }
+void load_idt() { }
+void load_gdt() { }
 void tss_flush() { }
 void switch_to_usermode_asm(void *entryPoint, void *stackAddr) { }
 

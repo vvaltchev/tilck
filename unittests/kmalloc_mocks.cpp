@@ -41,13 +41,13 @@ void initialize_test_kernel_heap()
    kernel_va = aligned_alloc(MB, get_phys_mem_mb() * MB);
 }
 
-void initialize_kmalloc_for_tests()
+void init_kmalloc_for_tests()
 {
    kmalloc_initialized = false;
    initialize_test_kernel_heap();
    init_pageframe_allocator();
    suppress_printk = true;
-   initialize_kmalloc();
+   init_kmalloc();
    suppress_printk = false;
 }
 

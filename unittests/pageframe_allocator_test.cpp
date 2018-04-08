@@ -122,6 +122,6 @@ TEST(alloc_pageframe, hybrid)
 
 TEST(alloc_pageframe, perf)
 {
-   initialize_kmalloc_for_tests();
+   init_kmalloc_for_tests();
    selftest_alloc_pageframe_perf();
 }

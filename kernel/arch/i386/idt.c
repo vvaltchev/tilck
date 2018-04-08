@@ -11,7 +11,7 @@ void syscall_int80_entry(void);
 static idt_entry idt[256];
 static interrupt_handler fault_handlers[32];
 
-void idt_load(idt_entry *entries, u32 entries_count)
+void load_idt(idt_entry *entries, u32 entries_count)
 {
    struct {
       u16 offset_of_last_byte; /* a.k.a total_size - 1 */
@@ -47,7 +47,7 @@ void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags)
  * set to the required '14', which is represented by 'E' in hex.
  */
 
-void isrs_install(void)
+static void isrs_install(void)
 {
    for (int i = 0; i < 32; i++)
       idt_set_entry(i, isr_entry_points[i], 0x08, 0x8E);
@@ -124,13 +124,8 @@ void set_fault_handler(int ex_num, void *ptr)
    fault_handlers[ex_num] = (interrupt_handler) ptr;
 }
 
-
-/* Installs the IDT */
-void idt_install(void)
+void setup_soft_interrupt_handling(void)
 {
-   /* Add any new ISRs to the IDT here using idt_set_entry */
    isrs_install();
-
-   /* Points the processor's internal register to the new IDT */
-   idt_load(idt, ARRAY_SIZE(idt));
+   load_idt(idt, ARRAY_SIZE(idt));
 }

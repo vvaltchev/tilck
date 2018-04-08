@@ -188,7 +188,7 @@ u32 pic_get_imr(void)
  * is just like installing the exception handlers.
  */
 
-void irq_install()
+void setup_irq_handling(void)
 {
    PIC_remap(32, 40);
 

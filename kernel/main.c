@@ -171,32 +171,32 @@ sptr sys_execve(const char *filename,
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
-   term_init(&x86_pc_text_mode_vi, make_color(COLOR_WHITE, COLOR_BLACK));
+   init_term(&x86_pc_text_mode_vi, make_color(COLOR_WHITE, COLOR_BLACK));
    show_hello_message();
    read_multiboot_info(multiboot_magic, mbi_addr);
    show_additional_info();
 
    setup_segmentation();
-   setup_interrupt_handling();
+   setup_soft_interrupt_handling();
+   setup_irq_handling();
 
-   init_pageframe_allocator();
+   init_pageframe_allocator(); /* NOTE: unused at the moment */
 
    init_paging();
-   initialize_kmalloc();
+   init_kmalloc();
    init_paging_cow();
 
-   initialize_scheduler();
-   initialize_tasklets();
+   init_sched();
+   init_tasklets();
 
-   set_timer_freq(TIMER_HZ);
+   timer_set_freq(TIMER_HZ);
 
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
 
    DEBUG_CHECKED_SUCCESS(enqueue_tasklet0(&init_kb));
 
-   // TODO: make the kernel actually support the sysenter interface
-   setup_sysenter_interface();
+   setup_sysenter_interface(); /* TODO: complete the sysenter support */
 
    mount_ramdisk();
 

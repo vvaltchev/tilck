@@ -90,7 +90,7 @@ void term_write_string(const char *str)
    }
 }
 
-void term_init() {
+void init_term() {
 
    term_movecur(0, 0);
 

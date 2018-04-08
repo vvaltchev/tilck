@@ -144,7 +144,7 @@ void term_move_ch(int row, int col)
    enable_interrupts(&var);
 }
 
-void term_init(const video_interface *interface, u8 default_color)
+void init_term(const video_interface *interface, u8 default_color)
 {
    ASSERT(!are_interrupts_enabled());
 

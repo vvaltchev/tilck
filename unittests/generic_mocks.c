@@ -60,7 +60,7 @@ void create_usermode_task() { }
 void gdt_install() { }
 void idt_install() { }
 void irq_install() { }
-void set_timer_freq() { }
+void timer_set_freq() { }
 void irq_install_handler() { }
 void setup_sysenter_interface() { }
 void save_current_task_state() { }

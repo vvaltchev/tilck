@@ -124,7 +124,7 @@ TEST(fat32, read_whole_file)
 
 TEST(fat32, fread)
 {
-   initialize_kmalloc_for_tests();
+   init_kmalloc_for_tests();
 
    filesystem *fs = fat_mount_ramdisk((void *) load_once_file("build/fatpart"));
 

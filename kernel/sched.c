@@ -112,7 +112,7 @@ void idle_task_kthread(void)
    }
 }
 
-void initialize_scheduler(void)
+void init_sched(void)
 {
    list_node_init(&runnable_tasks_list);
    list_node_init(&sleeping_tasks_list);

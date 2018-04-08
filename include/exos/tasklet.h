@@ -13,7 +13,7 @@ typedef struct {
 } tasklet_context;
 
 
-void initialize_tasklets();
+void init_tasklets();
 
 bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3);
 bool run_one_tasklet(void);

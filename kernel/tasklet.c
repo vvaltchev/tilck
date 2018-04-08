@@ -25,7 +25,7 @@ static int slots_used;
 static int tasklet_to_execute;
 static kcond tasklet_cond;
 
-void initialize_tasklets()
+void init_tasklets()
 {
    all_tasklets = kmalloc(sizeof(tasklet) * MAX_TASKLETS);
 

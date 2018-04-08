@@ -45,7 +45,7 @@ u32 get_kernel_stack()
    return tss_entry.esp0;
 }
 
-void gdt_load(gdt_entry *gdt, u32 entries_count)
+void load_gdt(gdt_entry *gdt, u32 entries_count)
 {
    struct {
 
@@ -76,7 +76,7 @@ void load_tss(u32 entry_index_in_gdt, u32 dpl)
                : "memory");
 }
 
-void gdt_install(void)
+void setup_segmentation(void)
 {
    /* Our NULL descriptor */
    gdt_set_entry(0, 0, 0, 0, 0);
@@ -123,6 +123,6 @@ void gdt_install(void)
                  GDT_ACCESS_PRESENT | GDT_ACCESS_EX | GDT_ACCESS_ACC,
                  GDT_GRAN_BYTE | GDT_32BIT);
 
-   gdt_load(gdt, 6 /* entries count */);
+   load_gdt(gdt, 6 /* entries count */);
    load_tss(5 /* TSS index in GDT */, 3 /* priv. level */);
 }

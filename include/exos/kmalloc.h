@@ -35,7 +35,7 @@ static inline size_t calculate_heap_metadata_size(size_t heap_size,
 }
 
 
-void initialize_kmalloc();
+void init_kmalloc();
 void *kmalloc(size_t size);
 void kfree2(void *ptr, size_t size);
 

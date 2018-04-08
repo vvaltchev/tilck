@@ -124,7 +124,7 @@ class kmalloc_test : public Test {
 public:
 
    void SetUp() override {
-      initialize_kmalloc_for_tests();
+      init_kmalloc_for_tests();
    }
 
    void TearDown() override {

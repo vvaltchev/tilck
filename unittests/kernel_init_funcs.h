@@ -5,8 +5,8 @@
 
 extern "C" {
    void init_pageframe_allocator();
-   void initialize_kmalloc();
-   void initialize_tasklets();
-   void initialize_kmalloc_for_tests();
+   void init_kmalloc();
+   void init_tasklets();
+   void init_kmalloc_for_tests();
 }
 

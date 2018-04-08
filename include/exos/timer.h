@@ -4,4 +4,4 @@
 #include <exos/hal.h>
 
 void timer_handler(regs *r);
-void set_timer_freq(int hz);
+void timer_set_freq(int hz);
