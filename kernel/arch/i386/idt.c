@@ -5,7 +5,11 @@
 
 #include "idt_int.h"
 
+extern void (*isr_entry_points[32])();
+void isr128();
+
 static idt_entry idt[256];
+static interrupt_handler fault_handlers[32];
 
 void idt_load(idt_entry *entries, u32 entries_count)
 {
@@ -36,10 +40,6 @@ void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags)
    idt[num].flags = flags;
 }
 
-extern void (*ex_entry_points_array[32])();
-
-// This is used for int 0x80 (syscalls)
-void isr128();
 
 /*
  * We set the access flags to 0x8E. This means that the entry is
@@ -50,7 +50,7 @@ void isr128();
 void isrs_install(void)
 {
    for (int i = 0; i < 32; i++)
-      idt_set_entry(i, ex_entry_points_array[i], 0x08, 0x8E);
+      idt_set_entry(i, isr_entry_points[i], 0x08, 0x8E);
 
    // Syscall with int 0x80.
 
@@ -103,9 +103,6 @@ const char *exception_messages[] =
    "Reserved",
    "Reserved"
 };
-
-static interrupt_handler fault_handlers[32];
-
 
 void handle_fault(regs *r)
 {
