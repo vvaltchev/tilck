@@ -36,11 +36,11 @@ void gdt_set_entry(int num,
 
 void set_kernel_stack(u32 stack)
 {
-   tss_entry.ss0 = X86_SELECTOR(2, 0, 0);   // Kernel stack segment [0x10]
+   tss_entry.ss0 = X86_KERNEL_DATA_SEL;  /* Kernel stack segment = data seg */
    tss_entry.esp0 = stack;
 }
 
-u32 get_kernel_stack()
+u32 get_kernel_stack(void)
 {
    return tss_entry.esp0;
 }

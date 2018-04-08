@@ -174,10 +174,10 @@ task_info *create_usermode_task(page_directory_t *pdir,
    regs r = {0};
 
    // User data GDT selector with bottom 2 bits set for ring 3.
-   r.gs = r.fs = r.es = r.ds = r.ss = X86_SELECTOR(4, 0, 3);
+   r.gs = r.fs = r.es = r.ds = r.ss = X86_USER_DATA_SEL;
 
    // User code GDT selector with bottom 2 bits set for ring 3.
-   r.cs = X86_SELECTOR(3, 0, 3);
+   r.cs = X86_USER_CODE_SEL;
 
    r.eip = (u32) entry;
    r.useresp = (u32) stack_addr;

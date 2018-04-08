@@ -80,6 +80,11 @@ extern volatile bool in_panic;
 #define TABLE_LDT 1
 #define X86_SELECTOR(idx, table, rpl) ((idx << 3) | (table << 2) | (rpl))
 
+#define X86_KERNEL_CODE_SEL X86_SELECTOR(1, TABLE_GDT, 0)
+#define X86_KERNEL_DATA_SEL X86_SELECTOR(2, TABLE_GDT, 0)
+#define X86_USER_CODE_SEL X86_SELECTOR(3, TABLE_GDT, 3)
+#define X86_USER_DATA_SEL X86_SELECTOR(4, TABLE_GDT, 3)
+
 static ALWAYS_INLINE u64 RDTSC()
 {
 #ifdef BITS64

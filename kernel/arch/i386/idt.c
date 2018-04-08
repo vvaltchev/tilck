@@ -105,14 +105,14 @@ void setup_soft_interrupt_handling(void)
    for (int i = 0; i < 32; i++) {
       idt_set_entry(i,
                     isr_entry_points[i],
-                    X86_SELECTOR(1, 0, 0),
+                    X86_KERNEL_CODE_SEL,
                     IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL0);
    }
 
    /* Set the entry for the int 0x80 syscall interface */
    idt_set_entry(0x80,
                  syscall_int80_entry,
-                 X86_SELECTOR(1, 0, 0),
+                 X86_KERNEL_CODE_SEL,
                  IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL3);
 
    load_idt(idt, ARRAY_SIZE(idt));
