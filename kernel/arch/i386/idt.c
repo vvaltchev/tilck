@@ -5,7 +5,7 @@
 
 #include "idt_int.h"
 
-extern void (*isr_entry_points[32])();
+extern void (*isr_entry_points[32])(void);
 void isr128();
 
 static idt_entry idt[256];

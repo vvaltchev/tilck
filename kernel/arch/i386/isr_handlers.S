@@ -65,7 +65,6 @@ isr 29
 isr 30
 isr 31
 
-isr_entry_points:
 
 .altmacro
 
@@ -73,6 +72,7 @@ isr_entry_points:
    .long isr\num
 .endm
 
+isr_entry_points:
 .set i, 0
 .rept 32
    insert_isr_addr %i

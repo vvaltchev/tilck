@@ -8,32 +8,10 @@
 #include <exos/term.h>
 #include <exos/process.h>
 
+extern void (*irq_entry_points[16])(void);
+static interrupt_handler irq_routines[16];
+
 void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags);
-
-
-/* These are own ISRs that point to our special IRQ handler
-*  instead of the regular 'fault_handler' function */
-void irq0();
-void irq1();
-void irq2();
-void irq3();
-void irq4();
-void irq5();
-void irq6();
-void irq7();
-void irq8();
-void irq9();
-void irq10();
-void irq11();
-void irq12();
-void irq13();
-void irq14();
-void irq15();
-
-/* This array is actually an array of function pointers. We use
-*  this to handle custom IRQ handlers for a given IRQ */
-interrupt_handler irq_routines[16] = { NULL };
-
 
 /* This installs a custom IRQ handler for the given IRQ */
 void irq_install_handler(u8 irq, interrupt_handler h)
@@ -134,7 +112,8 @@ void PIC_remap(u8 offset1, u8 offset2)
    outb(PIC2_DATA, a2);
 }
 
-void irq_set_mask(u8 IRQline) {
+void irq_set_mask(u8 IRQline)
+{
    u16 port;
    u8 value;
 
@@ -148,7 +127,8 @@ void irq_set_mask(u8 IRQline) {
    outb(port, value);
 }
 
-void irq_clear_mask(u8 IRQline) {
+void irq_clear_mask(u8 IRQline)
+{
    u16 port;
    u8 value;
 
@@ -201,6 +181,7 @@ u32 pic_get_imr(void)
 }
 
 
+
 /*
  * We first remap the interrupt controllers, and then we install
  * the appropriate ISRs to the correct entries in the IDT. This
@@ -211,22 +192,8 @@ void irq_install()
 {
    PIC_remap(32, 40);
 
-   idt_set_entry(32, irq0, 0x08, 0x8E);
-   idt_set_entry(33, irq1, 0x08, 0x8E);
-   idt_set_entry(34, irq2, 0x08, 0x8E);
-   idt_set_entry(35, irq3, 0x08, 0x8E);
-   idt_set_entry(36, irq4, 0x08, 0x8E);
-   idt_set_entry(37, irq5, 0x08, 0x8E);
-   idt_set_entry(38, irq6, 0x08, 0x8E);
-   idt_set_entry(39, irq7, 0x08, 0x8E);
-   idt_set_entry(40, irq8, 0x08, 0x8E);
-   idt_set_entry(41, irq9, 0x08, 0x8E);
-   idt_set_entry(42, irq10, 0x08, 0x8E);
-   idt_set_entry(43, irq11, 0x08, 0x8E);
-   idt_set_entry(44, irq12, 0x08, 0x8E);
-   idt_set_entry(45, irq13, 0x08, 0x8E);
-   idt_set_entry(46, irq14, 0x08, 0x8E);
-   idt_set_entry(47, irq15, 0x08, 0x8E);
+   for (int i = 0; i < 16; i++)
+      idt_set_entry(32 + i, irq_entry_points[i], 0x08, 0x8E);
 }
 
 void handle_irq(regs *r)

@@ -1,31 +1,35 @@
 
 .intel_syntax noprefix
 
-.section .text
+#define ASM_FILE 1
+#include <common/config.h>
 
-.macro irq number
-   .global irq\number
-   .type irq\number, @function
-   irq\number:
+.section .text
+.global irq_entry_points
+
+.macro create_irq_entry_point number
+   FUNC(irq\number):
    push 0
    push 32+\number
    jmp asm_int_handler
-   .size irq\number, .-irq\number
+   END_FUNC(irq\number)
 .endm
 
-irq 0
-irq 1
-irq 2
-irq 3
-irq 4
-irq 5
-irq 6
-irq 7
-irq 8
-irq 9
-irq 10
-irq 11
-irq 12
-irq 13
-irq 14
-irq 15
+.altmacro
+
+.set i, 0
+.rept 16
+   create_irq_entry_point %i
+   .set i, i+1
+.endr
+
+.macro insert_irq_addr num
+   .long irq\num
+.endm
+
+irq_entry_points:
+.set i, 0
+.rept 16
+   insert_irq_addr %i
+   .set i, i+1
+.endr
