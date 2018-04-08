@@ -16,7 +16,7 @@
 
 .global _start
 .global isr128
-.global asm_int_handler
+.global asm_soft_interrupt_entry
 .global context_switch
 .global kernel_yield
 .global panic_save_current_state
@@ -123,11 +123,11 @@ END_FUNC(_start)
 FUNC(isr128):
    push 0
    push 0x80
-   jmp asm_int_handler
+   jmp asm_soft_interrupt_entry
 END_FUNC(isr128)
 
-# Common interrupt handler (exceptions, IRQs, int 0x80, ...)
-FUNC(asm_int_handler):
+# Soft interrupts common entry point
+FUNC(asm_soft_interrupt_entry):
 
    pusha          #  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
    push ds
@@ -142,7 +142,7 @@ FUNC(asm_int_handler):
    mov eax, esp
    push eax
    cld            # Set DF = 0, as C compilers by default assume that.
-   call generic_interrupt_handler
+   call soft_interrupt_entry
    add esp, 4     # Discard the previousy-pushed 'eax'
    pop gs
    pop fs
@@ -152,7 +152,7 @@ FUNC(asm_int_handler):
    add esp, 8     # Discards the pushed err_code and int_num
    iret
 
-END_FUNC(asm_int_handler)
+END_FUNC(asm_soft_interrupt_entry)
 
 FUNC(context_switch):
 

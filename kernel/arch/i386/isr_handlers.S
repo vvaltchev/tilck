@@ -7,19 +7,18 @@
 .section .text
 .global isr_entry_points
 
-
 .macro isr number
    FUNC(isr\number):
    push 0
    push \number
-   jmp asm_int_handler
+   jmp asm_soft_interrupt_entry
    END_FUNC(isr\number)
 .endm
 
 .macro isr_with_err_code number
    FUNC(isr\number):
    push \number
-   jmp asm_int_handler
+   jmp asm_soft_interrupt_entry
    END_FUNC(isr\number)
 .endm
 

@@ -129,21 +129,26 @@ int get_nested_interrupts_count(void)
    return nested_interrupts_count;
 }
 
-void generic_interrupt_handler(regs *r)
+void irq_entry(regs *r)
+{
+   ASSERT(!are_interrupts_enabled());
+   DEBUG_VALIDATE_STACK_PTR();
+   DEBUG_check_preemption_enabled_for_usermode();
+   ASSERT(!is_same_interrupt_nested(regs_intnum(r)));
+   ASSERT(current != NULL);
+
+   handle_irq(r);
+
+   DEBUG_check_preemption_enabled_for_usermode();
+}
+
+void soft_interrupt_entry(regs *r)
 {
    const int int_num = regs_intnum(r);
 
    ASSERT(!are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
    DEBUG_check_preemption_enabled_for_usermode();
-   ASSERT(is_fault(int_num) || !is_same_interrupt_nested(regs_intnum(r)));
-
-   if (is_irq(int_num)) {
-      ASSERT(current != NULL);
-      handle_irq(r);
-      DEBUG_check_preemption_enabled_for_usermode();
-      return;
-   }
 
    push_nested_interrupt(regs_intnum(r));
    disable_preemption();
