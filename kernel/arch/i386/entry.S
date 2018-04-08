@@ -15,7 +15,7 @@
 .section .text
 
 .global _start
-.global isr128
+.global syscall_int80_entry
 .global asm_soft_interrupt_entry
 .global context_switch
 .global kernel_yield
@@ -119,12 +119,17 @@ multiboot_entry:
 
 END_FUNC(_start)
 
-# int 0x80: syscall
-FUNC(isr128):
+FUNC(syscall_int80_entry):
+
    push 0
    push 0x80
-   jmp asm_soft_interrupt_entry
-END_FUNC(isr128)
+
+   /*
+    * No need to jump here because asm_soft_interrupt_entry is right
+    * below this function. We're happy to easily skip an useless jump.
+    */
+
+END_FUNC(syscall_int80_entry)
 
 # Soft interrupts common entry point
 FUNC(asm_soft_interrupt_entry):

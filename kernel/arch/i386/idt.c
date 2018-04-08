@@ -6,7 +6,7 @@
 #include "idt_int.h"
 
 extern void (*isr_entry_points[32])(void);
-void isr128();
+void syscall_int80_entry(void);
 
 static idt_entry idt[256];
 static interrupt_handler fault_handlers[32];
@@ -62,7 +62,7 @@ void isrs_install(void)
    // P = Segment is present, 1 = Yes
    // DPL = Ring
    //
-   idt_set_entry(0x80, isr128, 0x08, 0xEE);
+   idt_set_entry(0x80, syscall_int80_entry, 0x08, 0xEE);
 }
 
 const char *exception_messages[] =

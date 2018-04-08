@@ -213,13 +213,13 @@ void handle_syscall(regs *r)
 #define MSR_IA32_SYSENTER_ESP           0x175
 #define MSR_IA32_SYSENTER_EIP           0x176
 
-void isr128();
+void syscall_int80_entry();
 
 void setup_sysenter_interface()
 {
    wrmsr(MSR_IA32_SYSENTER_CS, 0x08 + 3);
    wrmsr(MSR_IA32_SYSENTER_ESP, get_kernel_stack());
-   wrmsr(MSR_IA32_SYSENTER_EIP, (uptr) &isr128);
+   wrmsr(MSR_IA32_SYSENTER_EIP, (uptr) &syscall_int80_entry);
 }
 
 #endif
