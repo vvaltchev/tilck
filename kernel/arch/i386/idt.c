@@ -25,44 +25,19 @@ void load_idt(idt_entry *entries, u32 entries_count)
 }
 
 
-void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags)
+void idt_set_entry(u8 num, void *handler, u16 selector, u8 flags)
 {
-   const u32 base = (u32)handler;
+   const u32 base = (u32) handler;
 
-   /* The interrupt routine's base address */
-   idt[num].base_lo = (base & 0xFFFF);
-   idt[num].base_hi = (base >> 16) & 0xFFFF;
+   /* The interrupt routine address (offset in the code segment) */
+   idt[num].offset_low = (base & 0xFFFF);
+   idt[num].offset_high = (base >> 16) & 0xFFFF;
 
-   /* The segment or 'selector' that this IDT entry will use
-   *  is set here, along with any access flags */
-   idt[num].sel = sel;
+   /* Selector of the code segment to use for the 'offset' address */
+   idt[num].selector = selector;
+
    idt[num].always0 = 0;
    idt[num].flags = flags;
-}
-
-
-/*
- * We set the access flags to 0x8E. This means that the entry is
- * present, is running in ring 0 (kernel level), and has the lower 5 bits
- * set to the required '14', which is represented by 'E' in hex.
- */
-
-static void isrs_install(void)
-{
-   for (int i = 0; i < 32; i++)
-      idt_set_entry(i, isr_entry_points[i], 0x08, 0x8E);
-
-   // Syscall with int 0x80.
-
-   // Note: flags is 0xEE, in order to allow this interrupt
-   // to be used from ring 3.
-
-   // Flags:
-   // P | DPL | Always 01110 (14)
-   // P = Segment is present, 1 = Yes
-   // DPL = Ring
-   //
-   idt_set_entry(0x80, syscall_int80_entry, 0x08, 0xEE);
 }
 
 const char *exception_messages[] =
@@ -126,6 +101,19 @@ void set_fault_handler(int ex_num, void *ptr)
 
 void setup_soft_interrupt_handling(void)
 {
-   isrs_install();
+   /* Set the entries for the x86 faults (exceptions) */
+   for (int i = 0; i < 32; i++) {
+      idt_set_entry(i,
+                    isr_entry_points[i],
+                    X86_SELECTOR(1, 0, 0),
+                    IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL0);
+   }
+
+   /* Set the entry for the int 0x80 syscall interface */
+   idt_set_entry(0x80,
+                 syscall_int80_entry,
+                 X86_SELECTOR(1, 0, 0),
+                 IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL3);
+
    load_idt(idt, ARRAY_SIZE(idt));
 }
