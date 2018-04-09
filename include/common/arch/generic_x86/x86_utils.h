@@ -85,18 +85,7 @@ extern volatile bool in_panic;
 #define X86_USER_CODE_SEL X86_SELECTOR(3, TABLE_GDT, 3)
 #define X86_USER_DATA_SEL X86_SELECTOR(4, TABLE_GDT, 3)
 
-static ALWAYS_INLINE u64 RDTSC()
-{
-#ifdef BITS64
-   uptr lo, hi;
-   asm("rdtsc" : "=a" (lo), "=d" (hi));
-   return lo | (hi << 32);
-#else
-   u64 val;
-   asm("rdtsc" : "=A" (val));
-   return val;
-#endif
-}
+#define RDTSC() __builtin_ia32_rdtsc()
 
 static ALWAYS_INLINE void outb(u16 port, u8 val)
 {
