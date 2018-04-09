@@ -16,6 +16,7 @@
 
 .global _start
 .global syscall_int80_entry
+.global sysenter_entry
 .global asm_soft_interrupt_entry
 .global context_switch
 .global kernel_yield
@@ -118,6 +119,45 @@ multiboot_entry:
                # KERNEL_BASE_VA + KERNEL_PADDR as ORG
 
 END_FUNC(_start)
+
+FUNC(sysenter_entry):
+
+   push 0x23   # SS: user data sel
+   push ecx    # esp
+   pushf
+   push 0x1B   # CS: user code sel
+   push edx    # eip
+
+   push 0         # "err code"
+   push 0x80
+
+   pusha
+   push ds
+   push es
+   push fs
+   push gs
+   mov ax, 0x10
+   mov ds, ax
+   mov es, ax
+   mov fs, ax
+   mov gs, ax
+   mov eax, esp
+   push eax
+   cld            # Set DF = 0, as C compilers by default assume that.
+   call soft_interrupt_entry
+   add esp, 4     # Discard the previousy-pushed 'eax'
+   pop gs
+   pop fs
+   pop es
+   pop ds
+   popa
+
+   add esp, 8     # Discards the pushed err_code and int_num
+   add esp, 20
+
+   sysexit
+
+END_FUNC(sysenter_entry)
 
 FUNC(syscall_int80_entry):
 

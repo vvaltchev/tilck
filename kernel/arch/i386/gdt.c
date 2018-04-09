@@ -38,6 +38,7 @@ void set_kernel_stack(u32 stack)
 {
    tss_entry.ss0 = X86_KERNEL_DATA_SEL;  /* Kernel stack segment = data seg */
    tss_entry.esp0 = stack;
+   wrmsr(MSR_IA32_SYSENTER_ESP, stack);
 }
 
 u32 get_kernel_stack(void)

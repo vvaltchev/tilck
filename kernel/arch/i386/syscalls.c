@@ -210,13 +210,13 @@ void handle_syscall(regs *r)
 #include "idt_int.h"
 
 void syscall_int80_entry(void);
+void sysenter_entry(void);
 
 /* TODO: complete the sysenter support */
 void setup_sysenter_interface(void)
 {
-   wrmsr(MSR_IA32_SYSENTER_CS, 0x08 + 3);
-   wrmsr(MSR_IA32_SYSENTER_ESP, get_kernel_stack());
-   wrmsr(MSR_IA32_SYSENTER_EIP, (uptr) &syscall_int80_entry);
+   wrmsr(MSR_IA32_SYSENTER_CS, X86_KERNEL_CODE_SEL);
+   wrmsr(MSR_IA32_SYSENTER_EIP, (uptr) &sysenter_entry);
 }
 
 void setup_syscall_interfaces(void)
