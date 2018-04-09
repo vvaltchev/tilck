@@ -1,6 +1,5 @@
 
 #pragma once
-
 #include <common/basic_defs.h>
 
 #if !defined(__i386__) && !defined(__x86_64__)
@@ -109,7 +108,7 @@ static ALWAYS_INLINE u8 inb(u16 port)
    return ret_val;
 }
 
-static ALWAYS_INLINE void halt()
+static ALWAYS_INLINE void halt(void)
 {
    asmVolatile("hlt");
 }
@@ -126,10 +125,7 @@ static ALWAYS_INLINE u64 rdmsr(u32 msr_id)
    return msr_value;
 }
 
-
-#if defined(BITS32) && !defined(UNIT_TEST_ENVIRONMENT)
-
-static ALWAYS_INLINE uptr get_eflags()
+static ALWAYS_INLINE uptr get_eflags(void)
 {
    uptr eflags;
    asmVolatile("pushf\n\t"
@@ -148,25 +144,18 @@ static ALWAYS_INLINE void set_eflags(uptr f)
                : "cc");
 }
 
-#else
-
-static ALWAYS_INLINE uptr get_eflags() { NOT_REACHED(); }
-static ALWAYS_INLINE void set_eflags(uptr f) { NOT_REACHED(); }
-
-#endif
-
-
-
-#ifndef UNIT_TEST_ENVIRONMENT
-
 static ALWAYS_INLINE void enable_interrupts_forced(void)
 {
+#ifndef UNIT_TEST_ENVIRONMENT
    asmVolatile("sti");
+#endif
 }
 
 static ALWAYS_INLINE void disable_interrupts_forced(void)
 {
+#ifndef UNIT_TEST_ENVIRONMENT
    asmVolatile("cli");
+#endif
 }
 
 static ALWAYS_INLINE bool are_interrupts_enabled(void)
@@ -190,19 +179,12 @@ static ALWAYS_INLINE void enable_interrupts(const uptr *const var)
    }
 }
 
-#else
-
-static ALWAYS_INLINE void enable_interrupts_forced(void) { }
-static ALWAYS_INLINE void disable_interrupts_forced(void) { }
-static ALWAYS_INLINE void disable_interrupts(uptr *stack_var) { }
-static ALWAYS_INLINE void enable_interrupts(uptr *stack_var) { }
-static ALWAYS_INLINE bool are_interrupts_enabled(void) { NOT_REACHED(); }
-
-#endif // ifndef UNIT_TEST_ENVIRONMENT
-
 static ALWAYS_INLINE void cpuid(int code, u32 *a, u32 *d)
 {
-    asmVolatile( "cpuid" : "=a"(*a), "=d"(*d) : "0"(code) : "ebx", "ecx" );
+    asmVolatile("cpuid"
+                : "=a"(*a), "=d"(*d)
+                : "0"(code)
+                : "ebx", "ecx");
 }
 
 /*
@@ -210,7 +192,10 @@ static ALWAYS_INLINE void cpuid(int code, u32 *a, u32 *d)
  */
 static ALWAYS_INLINE void invalidate_page(uptr vaddr)
 {
-   asmVolatile("invlpg (%0)" ::"r" (vaddr) : "memory");
+   asmVolatile("invlpg (%0)"
+               : /* no output */
+               :"r" (vaddr)
+               : "memory");
 }
 
 
