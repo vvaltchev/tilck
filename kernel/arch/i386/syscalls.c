@@ -135,8 +135,6 @@ sptr sys_ioctl(int fd, uptr request, void *argp);
 sptr sys_getcwd(char *buf, size_t buf_size);
 
 
-#ifdef __i386__
-
 // The syscall numbers are ARCH-dependent
 syscall_type syscalls_pointers[] =
 {
@@ -209,17 +207,26 @@ void handle_syscall(regs *r)
    set_current_task_in_user_mode();
 }
 
-#define MSR_IA32_SYSENTER_CS            0x174
-#define MSR_IA32_SYSENTER_ESP           0x175
-#define MSR_IA32_SYSENTER_EIP           0x176
+#include "idt_int.h"
 
-void syscall_int80_entry();
+void syscall_int80_entry(void);
 
-void setup_sysenter_interface()
+/* TODO: complete the sysenter support */
+void setup_sysenter_interface(void)
 {
    wrmsr(MSR_IA32_SYSENTER_CS, 0x08 + 3);
    wrmsr(MSR_IA32_SYSENTER_ESP, get_kernel_stack());
    wrmsr(MSR_IA32_SYSENTER_EIP, (uptr) &syscall_int80_entry);
 }
 
-#endif
+void setup_syscall_interfaces(void)
+{
+   /* Set the entry for the int 0x80 syscall interface */
+   idt_set_entry(0x80,
+                 syscall_int80_entry,
+                 X86_KERNEL_CODE_SEL,
+                 IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL3);
+
+   setup_sysenter_interface();
+}
+

@@ -23,15 +23,11 @@
 #endif
 
 
-
-#ifdef __arch__x86__
-
-   void setup_segmentation(void);
-   void setup_soft_interrupt_handling(void);
-
-#endif
-
 typedef void (*interrupt_handler)(regs *);
-void setup_sysenter_interface();
+
+
+void setup_segmentation(void);
+void setup_soft_interrupt_handling(void);
+void setup_syscall_interfaces();
 void set_kernel_stack(uptr stack);
-uptr get_kernel_stack();
+uptr get_kernel_stack(void);

@@ -196,10 +196,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    DEBUG_CHECKED_SUCCESS(enqueue_tasklet0(&init_kb));
 
-   setup_sysenter_interface(); /* TODO: complete the sysenter support */
-
+   setup_syscall_interfaces();
    mount_ramdisk();
-
    create_and_register_devfs();
    init_tty();
 
