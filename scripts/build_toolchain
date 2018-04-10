@@ -492,18 +492,13 @@ function build_libmusl {
       git clone --branch v1.1.19 --depth 1 git://git.musl-libc.org/musl
       cd musl
 
-      mkdir ../musl-install
-      mkdir ../musl-install/lib
+      opts1="--target=i386 --host=i386 --build=x86_64 --disable-shared"
+      opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
+      opts3="--enable-debug --syslibdir=$TC/musl-install/lib"
 
-      CROSS_COMPILE="$X86_TOOLCHAIN"
-
-      libmusl_opts1="--target=i386 --host=i386 --build=x86_64 --disable-shared"
-      libmusl_opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
-      libmusl_opts3="--enable-debug --syslibdir=$TC/musl-install/lib"
-
-      ./configure $libmusl_opts1 $libmusl_opts2 $libmusl_opts3 &> configure.log
+      run_command2 "./configure $opts1 $opts2 $opts3" configure.log
       run_command2 "make -j" build.log
-      make install
+      run_command2 "make install" make_install.log
    else
       echo "NOTE: Skipping musl"
    fi
@@ -556,20 +551,19 @@ MAIN_DIR=$MAIN_DIR/..
 # Toolchain dir
 TC=$MAIN_DIR/toolchain
 
-# Make the scripts in build_scripts runnable from everywhere
-export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
+X86_TOOLCHAIN=$TC/$X86_TOOLCHAIN_DIR_NAME/bin
+export PATH="$MAIN_DIR/scripts/build_scripts:$X86_TOOLCHAIN:$PATH"
 
 mkdir -p $TC
 cd $TC
 
-# Export the CMAKE variable in order to single functions to be able to use it
+# Set the CMAKE variable in order to single functions to be able to use it
 if [ -f $TC/cmake/bin/cmake ]; then
    CMAKE=$TC/cmake/bin/cmake
 else
    CMAKE=cmake
 fi
 
-X86_TOOLCHAIN=$TC/$X86_TOOLCHAIN_DIR_NAME/bin
 
 if [ "$1" == "-s" ]; then
 
