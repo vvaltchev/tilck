@@ -212,7 +212,6 @@ void handle_syscall(regs *r)
 void syscall_int80_entry(void);
 void sysenter_entry(void);
 
-/* TODO: complete the sysenter support */
 void setup_sysenter_interface(void)
 {
    wrmsr(MSR_IA32_SYSENTER_CS, X86_KERNEL_CODE_SEL);

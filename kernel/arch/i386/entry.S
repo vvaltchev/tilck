@@ -122,13 +122,31 @@ END_FUNC(_start)
 
 FUNC(sysenter_entry):
 
-   push 0x23   # SS: user data sel
-   push ecx    # esp
-   pushf
-   push 0x1B   # CS: user code sel
-   push edx    # eip
+   /*
+    * The following handling of sysenter expects the user code to call sysenter
+    * this way:
+    *
+    * 1. Set eax = syscall number
+    * 2. Set ebx, ecx, etc. the parameters like for int 0x80
+    * 3. push return_eip
+    * 4. push ecx   # save ecx because the kernel will change it
+    * 5. push edx   # save edx because the kenrel will change it
+    * 6. push ebp   # save ebp because we'll going to use it to store ESP
+    * 7. ebp = esp
+    * 8. sysenter
+    *
+    * Note: in Linux sysenter is used by the libc through VDSO, when it is
+    * available. ExOS does not have a feature like VSDO therefore, applications
+    * have to explicitly use this convention in order to sysenter to work.
+    */
 
-   push 0         # "err code"
+   push 0x23     # SS: user data sel
+   push ebp      # user esp
+   pushf
+   push 0x1B     # CS: user code sel
+   push [ebp+12] # eip
+
+   push 0x0      # "err code" (clearly unused in this context)
    push 0x80
 
    pusha
@@ -153,8 +171,14 @@ FUNC(sysenter_entry):
    popa
 
    add esp, 8     # Discards the pushed err_code and int_num
-   add esp, 20
 
+   pop edx     # eip
+   add esp, 4  # skip CS
+   popf
+   pop ecx
+   add esp, 4  # skip SS
+
+   sti
    sysexit
 
 END_FUNC(sysenter_entry)

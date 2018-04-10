@@ -89,6 +89,12 @@ extern volatile bool in_panic;
 #define X86_USER_CODE_SEL X86_SELECTOR(3, TABLE_GDT, 3)
 #define X86_USER_DATA_SEL X86_SELECTOR(4, TABLE_GDT, 3)
 
+STATIC_ASSERT(X86_KERNEL_CODE_SEL == 0x08);
+STATIC_ASSERT(X86_KERNEL_DATA_SEL == 0x10);
+STATIC_ASSERT(X86_USER_CODE_SEL == 0x1b);
+STATIC_ASSERT(X86_USER_DATA_SEL == 0x23);
+
+
 #define RDTSC() __builtin_ia32_rdtsc()
 
 static ALWAYS_INLINE void outb(u16 port, u8 val)
