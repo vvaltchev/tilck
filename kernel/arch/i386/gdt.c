@@ -1,11 +1,15 @@
 
 #include <common/basic_defs.h>
 #include <common/string_util.h>
+#include <exos/kmalloc.h>
 #include <exos/hal.h>
 
 #include "gdt_int.h"
 
-static gdt_entry gdt[6];
+static gdt_entry initial_gdt_in_bss[64];
+
+static int gdt_size = ARRAY_SIZE(initial_gdt_in_bss);
+static gdt_entry *gdt = initial_gdt_in_bss;
 
 /*
  * ExOS does use i386's tasks because they do not exist in many architectures.
@@ -13,7 +17,7 @@ static gdt_entry gdt[6];
  */
 static tss_entry_t tss_entry;
 
-void gdt_set_entry(int num,
+void gdt_set_entry(gdt_entry *e,
                    uptr base,
                    uptr limit,
                    u8 access,
@@ -21,33 +25,77 @@ void gdt_set_entry(int num,
 {
    ASSERT(limit <= GDT_LIMIT_MAX); /* limit is only 20 bits */
    ASSERT(flags <= 0xF); /* flags is 4 bits */
+   ASSERT(!are_interrupts_enabled());
 
-   gdt[num].base_low = (base & 0xFFFF);
-   gdt[num].base_middle = (base >> 16) & 0xFF;
-   gdt[num].base_high = (base >> 24) & 0xFF;
+   e->base_low = (base & 0xFFFF);
+   e->base_middle = (base >> 16) & 0xFF;
+   e->base_high = (base >> 24) & 0xFF;
 
-   gdt[num].limit_low = (limit & 0xFFFF);
-   gdt[num].limit_high = ((limit >> 16) & 0x0F);
+   e->limit_low = (limit & 0xFFFF);
+   e->limit_high = ((limit >> 16) & 0x0F);
 
-   gdt[num].access = access;
-   gdt[num].flags = flags;
+   e->access = access;
+   e->flags = flags;
 }
 
+void gdt_expand(int new_size)
+{
+   ASSERT(new_size > gdt_size);
+
+   uptr var;
+   void *old_gdt_ptr;
+   void *new_gdt = kzmalloc(sizeof(gdt_entry) * new_size);
+
+   if (!new_gdt)
+      panic("Unable to allocate memory for a larger GDT");
+
+   disable_interrupts(&var);
+   {
+      old_gdt_ptr = gdt;
+      memcpy(new_gdt, gdt, sizeof(gdt_entry) * gdt_size);
+      gdt = new_gdt;
+      gdt_size = new_size;
+      load_gdt(new_gdt, new_size);
+   }
+   enable_interrupts(&var);
+
+   if (old_gdt_ptr != initial_gdt_in_bss)
+      kfree(old_gdt_ptr);
+}
+
+int gdt_add_entry(uptr base,
+                  uptr limit,
+                  u8 access,
+                  u8 flags)
+{
+   ASSERT(!are_interrupts_enabled());
+
+   for (int n = 1; n < gdt_size; n++) {
+      if (!gdt[n].access) {
+         gdt_set_entry(&gdt[n], base, limit, access, flags);
+         return n;
+      }
+   }
+
+   return -1; /* the caller has to handle this by using gdt_expand() */
+}
 
 void set_kernel_stack(u32 stack)
 {
-   tss_entry.ss0 = X86_KERNEL_DATA_SEL;  /* Kernel stack segment = data seg */
-   tss_entry.esp0 = stack;
-   wrmsr(MSR_IA32_SYSENTER_ESP, stack);
-}
-
-u32 get_kernel_stack(void)
-{
-   return tss_entry.esp0;
+   uptr var;
+   disable_interrupts(&var);
+   {
+      tss_entry.ss0 = X86_KERNEL_DATA_SEL; /* Kernel stack segment = data seg */
+      tss_entry.esp0 = stack;
+      wrmsr(MSR_IA32_SYSENTER_ESP, stack);
+   }
+   enable_interrupts(&var);
 }
 
 void load_gdt(gdt_entry *gdt, u32 entries_count)
 {
+   ASSERT(!are_interrupts_enabled());
+
    struct {
 
       u16 offset_of_last_byte;
@@ -63,6 +111,7 @@ void load_gdt(gdt_entry *gdt, u32 entries_count)
 
 void load_tss(u32 entry_index_in_gdt, u32 dpl)
 {
+   ASSERT(!are_interrupts_enabled());
    ASSERT(dpl <= 3); /* descriptor privilege level [0..3] */
 
    /*
@@ -79,39 +128,41 @@ void load_tss(u32 entry_index_in_gdt, u32 dpl)
 
 void setup_segmentation(void)
 {
+   ASSERT(!are_interrupts_enabled());
+
    /* Our NULL descriptor */
-   gdt_set_entry(0, 0, 0, 0, 0);
+   gdt_set_entry(&gdt[0], 0, 0, 0, 0);
 
    /* Kernel code segment */
-   gdt_set_entry(1,              /* index */
+   gdt_set_entry(&gdt[1],
                  0,              /* base addr */
                  GDT_LIMIT_MAX,  /* full 4-GB segment */
                  GDT_ACC_REG | GDT_ACCESS_PL0 | GDT_ACCESS_RW | GDT_ACCESS_EX,
                  GDT_GRAN_4KB | GDT_32BIT);
 
    /* Kernel data segment */
-   gdt_set_entry(2,
+   gdt_set_entry(&gdt[2],
                  0,
                  GDT_LIMIT_MAX,
                  GDT_ACC_REG | GDT_ACCESS_PL0 | GDT_ACCESS_RW,
                  GDT_GRAN_4KB | GDT_32BIT);
 
    /* Usermode code segment */
-   gdt_set_entry(3,
+   gdt_set_entry(&gdt[3],
                  0,
                  GDT_LIMIT_MAX,
                  GDT_ACC_REG | GDT_ACCESS_PL3 | GDT_ACCESS_RW | GDT_ACCESS_EX,
                  GDT_GRAN_4KB | GDT_32BIT);
 
    /* Usermode data segment */
-   gdt_set_entry(4,
+   gdt_set_entry(&gdt[4],
                  0,
                  GDT_LIMIT_MAX,
                  GDT_ACC_REG | GDT_ACCESS_PL3 | GDT_ACCESS_RW,
                  GDT_GRAN_4KB | GDT_32BIT);
 
    /* GDT entry for our TSS */
-   gdt_set_entry(5,                   /* index */
+   gdt_set_entry(&gdt[5],
                  (uptr) &tss_entry,   /* TSS addr */
                  sizeof(tss_entry),   /* limit: struct TSS size */
 
@@ -124,6 +175,6 @@ void setup_segmentation(void)
                  GDT_ACCESS_PRESENT | GDT_ACCESS_EX | GDT_ACCESS_ACC,
                  GDT_GRAN_BYTE | GDT_32BIT);
 
-   load_gdt(gdt, 6 /* entries count */);
+   load_gdt(gdt, gdt_size);
    load_tss(5 /* TSS index in GDT */, 3 /* priv. level */);
 }
