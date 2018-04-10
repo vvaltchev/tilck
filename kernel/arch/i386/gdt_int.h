@@ -72,9 +72,35 @@ typedef struct
    u16 limit_low;
    u16 base_low;
    u8 base_middle;
-   u8 access;
-   u8 limit_high: 4;
-   u8 flags: 4;
+
+   union {
+
+      struct {
+         u8 type: 4;  /* EX + DC + RW + ACC */
+         u8 s : 1;    /* 0 = system desc, 1 = regular desc */
+         u8 dpl : 2;  /* desc privilege level */
+         u8 p : 1;    /* present */
+      };
+
+      u8 access;
+   };
+
+   union {
+
+      struct {
+         u8 lim_high: 4;
+         u8 avl : 1; /* available bit */
+         u8 l : 1;   /* 64-bit segment (IA-32e only) */
+         u8 d : 1;   /* default operation size. 0 = 16 bit, 1 = 32 bit */
+         u8 g : 1;   /* granularity: 0 = byte, 1 = 4 KB */
+      };
+
+      struct {
+         u8 limit_high: 4;
+         u8 flags: 4;
+      };
+   };
+
    u8 base_high;
 
 } PACKED gdt_entry;
