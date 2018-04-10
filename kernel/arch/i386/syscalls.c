@@ -134,6 +134,8 @@ sptr sys_ioctl(int fd, uptr request, void *argp);
 //183:
 sptr sys_getcwd(char *buf, size_t buf_size);
 
+//243:
+sptr sys_set_thread_area(void *u_info);
 
 // The syscall numbers are ARCH-dependent
 syscall_type syscalls_pointers[] =
@@ -171,7 +173,8 @@ syscall_type syscalls_pointers[] =
    [30] = sys_utime,
    [54] = sys_ioctl,
 
-   [183] = sys_getcwd
+   [183] = sys_getcwd,
+   [243] = sys_set_thread_area
 };
 
 const ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
