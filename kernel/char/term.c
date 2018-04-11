@@ -120,18 +120,6 @@ void term_write_char(char c)
    enable_interrupts(&var);
 }
 
-void term_write_string(const char *str)
-{
-   /*
-    * NOTE: This function uses intentionally the 'safe' version of
-    * term_write_char() in order to keep the interrupts-disabled periods
-    * shorter.
-    */
-   while (*str) {
-      term_write_char(*str++);
-   }
-}
-
 void term_move_ch(int row, int col)
 {
    uptr var;

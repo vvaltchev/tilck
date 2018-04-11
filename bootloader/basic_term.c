@@ -83,13 +83,6 @@ void term_write_char(char c) {
    term_movecur(terminal_row, terminal_column);
 }
 
-void term_write_string(const char *str)
-{
-   while (*str) {
-      term_write_char(*str++);
-   }
-}
-
 void init_term() {
 
    term_movecur(0, 0);

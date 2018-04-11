@@ -116,6 +116,12 @@ void str_reverse(char *str, size_t len)
    }
 }
 
+static void print_string(const char *s)
+{
+   while (*s)
+      term_write_char(*s++);
+}
+
 void vprintk(const char *fmt, va_list args)
 {
    const char *ptr = fmt;
@@ -145,10 +151,10 @@ void vprintk(const char *fmt, va_list args)
             if (*ptr) {
                if (*ptr == 'u') {
                   uitoa64(va_arg(args, u64), buf, 10);
-                  term_write_string(buf);
+                  print_string(buf);
                } else if (*ptr == 'i' || *ptr == 'd') {
                   itoa64(va_arg(args, s64), buf);
-                  term_write_string(buf);
+                  print_string(buf);
                }
             }
          }
@@ -157,17 +163,17 @@ void vprintk(const char *fmt, va_list args)
       case 'd':
       case 'i':
          itoa32(va_arg(args, s32), buf);
-         term_write_string(buf);
+         print_string(buf);
          break;
 
       case 'u':
          uitoa32(va_arg(args, u32), buf, 10);
-         term_write_string(buf);
+         print_string(buf);
          break;
 
       case 'x':
          uitoa32(va_arg(args, u32), buf, 16);
-         term_write_string(buf);
+         print_string(buf);
          break;
 
       case 'c':
@@ -175,7 +181,7 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 's':
-         term_write_string(va_arg(args, const char *));
+         print_string(va_arg(args, const char *));
          break;
 
       case 'p':
@@ -183,13 +189,13 @@ void vprintk(const char *fmt, va_list args)
          size_t len = strlen(buf);
          size_t fixedLen = 2 * sizeof(void*);
 
-         term_write_string("0x");
+         print_string("0x");
 
          while (fixedLen-- > len) {
             term_write_char('0');
          }
 
-         term_write_string(buf);
+         print_string(buf);
          break;
 
       default:
