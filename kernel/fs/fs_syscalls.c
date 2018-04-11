@@ -118,9 +118,6 @@ sptr sys_close(int fd)
 sptr sys_ioctl(int fd, uptr request, void *argp)
 {
    sptr ret = -EINVAL;
-
-   //printk("[kernel] ioctl(fd: %i, request: %p, argp: %p)\n", fd, request, argp);
-
    disable_preemption();
 
    if (!is_fd_valid(fd) || !current->pi->handles[fd])
@@ -135,4 +132,21 @@ end:
 badf:
    ret = -EBADF;
    goto end;
+}
+
+sptr sys_writev(int fd, const iovec *iov, int iovcnt)
+{
+   sptr written = 0;
+
+   for (int i = 0; i < iovcnt; i++) {
+
+      sptr rc = sys_write(fd, iov[i].iov_base, iov[i].iov_len);
+
+      if (rc < 0)
+         return rc;
+
+      written += rc;
+   }
+
+   return written;
 }

@@ -219,7 +219,7 @@ void setup_segmentation(void)
    load_tss(5 /* TSS index in GDT */, 3 /* priv. level */);
 }
 
-void DEBUG_set_thread_area(user_desc *d)
+static void DEBUG_set_thread_area(user_desc *d)
 {
    printk("[kernel] set_thread_area(e: %i,\n"
           "                         base: %p,\n"
@@ -265,7 +265,7 @@ sptr sys_set_thread_area(user_desc *d)
    gdt_entry e = {0};
 
    disable_preemption();
-   DEBUG_set_thread_area(d);
+   //DEBUG_set_thread_area(d);
 
    if (!(d->flags == USER_DESC_FLAGS_EMPTY && !d->base_addr && !d->limit)) {
       gdt_set_entry(&e, d->base_addr, d->limit, 0, 0);

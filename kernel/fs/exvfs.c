@@ -54,7 +54,7 @@ void mountpoint_remove(filesystem *fs)
       }
    }
 
-   NOT_REACHED();
+   panic("Unable to find mount point for filesystem at %p", fs);
 }
 
 /*

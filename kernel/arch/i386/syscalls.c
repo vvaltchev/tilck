@@ -132,11 +132,7 @@ sptr sys_utime()
 sptr sys_ioctl(int fd, uptr request, void *argp);
 
 // 146:
-sptr sys_writev(int fd, void *iov, int iovcnt)
-{
-   printk("[kernel] writev: fd: %i\n", fd);
-   return -EBADF;
-}
+sptr sys_writev(int fd, const void *iov, int iovcnt);
 
 //183:
 sptr sys_getcwd(char *buf, size_t buf_size);
