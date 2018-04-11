@@ -8,7 +8,7 @@
 
 #include "gdt_int.h"
 
-static gdt_entry initial_gdt_in_bss[64];
+static gdt_entry initial_gdt_in_bss[8];
 
 static u32 gdt_size = ARRAY_SIZE(initial_gdt_in_bss);
 static gdt_entry *gdt = initial_gdt_in_bss;
@@ -91,7 +91,7 @@ int gdt_add_entry(gdt_entry *e)
    disable_interrupts(&var);
    {
 
-      for (u32 n = 0; n < gdt_size; n++) {
+      for (u32 n = 1; n < gdt_size; n++) {
          if (!gdt[n].access) {
             gdt[n] = *e;
             rc = n;
@@ -297,8 +297,15 @@ sptr sys_set_thread_area(user_desc *d)
       d->entry_number = gdt_add_entry(&e);
 
       if (d->entry_number == INVALID_ENTRY_NUM) {
-         // TODO: handle this with gdt_expand()
-         NOT_REACHED();
+
+         rc = gdt_expand();
+
+         if (rc < 0) {
+            rc = -ESRCH;
+            goto out;
+         }
+
+         d->entry_number = gdt_add_entry(&e);
       }
 
       current->gdt_entries[slot] = d->entry_number;
