@@ -334,34 +334,27 @@ NORETURN void switch_to_task(task_info *ti)
    current = ti; /* this is safe here: the interrupts are disabled! */
    set_kernel_stack((u32) current->kernel_state_regs);
 
-   load_ldt(ti->ldt_index_in_gdt, 3);
+   if (ti->ldt) {
+      load_ldt(ti->ldt_index_in_gdt, ti->ldt_size);
+   }
+
    context_switch(state);
 }
 
 
 void arch_specific_new_task_setup(task_info *ti)
 {
-   uptr var;
-   int n;
-
-   bzero(ti->ldt_raw, sizeof(ti->ldt_raw));
-
-   disable_interrupts(&var);
-   {
-      n = gdt_add_ldt_entry(ti->ldt_raw, sizeof(ti->ldt_raw));
-      VERIFY(n != -1); // TODO: handle this
-
-      ti->ldt_index_in_gdt = n;
-   }
-   enable_interrupts(&var);
+   ti->ldt = NULL;
+   ti->pi->tidptr = NULL;
 }
 
 void arch_specific_free_task(task_info *ti)
 {
    uptr var;
-   disable_interrupts(&var);
-   {
+
+   if (ti->ldt) {
+      disable_interrupts(&var);
       gdt_clear_entry(ti->ldt_index_in_gdt);
+      enable_interrupts(&var);
    }
-   enable_interrupts(&var);
 }

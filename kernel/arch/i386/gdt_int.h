@@ -141,11 +141,39 @@ typedef struct
    u16 iomap_base;
 } PACKED tss_entry_t;
 
-void load_gdt(gdt_entry *gdt, u32 entries_count);
-void gdt_set_entry(gdt_entry *e, uptr base, uptr limit, u8 access, u8 flags);
-int gdt_add_entry(uptr base, uptr limit, u8 access, u8 flags);
-NODISCARD int gdt_expand(int new_size);
-int gdt_add_ldt_entry(void *ldt_ptr, u32 size);
-void gdt_clear_entry(int n);
+#define INVALID_ENTRY_NUM ((u32) -1)
+#define USER_DESC_FLAGS_EMPTY ((1 << 3) | (1 << 5))
 
+typedef struct {
+
+   u32 entry_number;
+   uptr base_addr;
+   u32 limit;
+
+   union {
+
+      struct {
+         u32 seg_32bit : 1;       /* Controls GDT_32BIT */
+         u32 contents : 2;        /* Controls GDT_ACCESS_DC and GDT_ACCESS_EX */
+         u32 read_exec_only : 1;  /* Controls GDT_ACCESS_RW */
+         u32 limit_in_pages : 1;  /* Controls GDT_GRAN_4KB */
+         u32 seg_not_present : 1; /* Controls GDT_ACCESS_PRESENT */
+         u32 useable : 1;
+         u32 ignored : 25;
+      };
+
+      u32 flags;
+   };
+
+} user_desc;
+
+
+void gdt_set_entry(gdt_entry *e, uptr base, uptr limit, u8 access, u8 flags);
+int gdt_add_entry(gdt_entry *e);
+NODISCARD int gdt_set_entry_num(u32 n, gdt_entry *e);
+NODISCARD int gdt_expand(void);
+void gdt_clear_entry(u32 n);
+void load_gdt(gdt_entry *gdt, u32 entries_count);
+
+int gdt_add_ldt_entry(void *ldt_ptr, u32 size);
 void load_ldt(u32 entry_index_in_gdt, u32 dpl);

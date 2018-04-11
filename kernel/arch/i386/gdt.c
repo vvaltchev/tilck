@@ -3,12 +3,14 @@
 #include <common/string_util.h>
 #include <exos/kmalloc.h>
 #include <exos/hal.h>
+#include <exos/errno.h>
+#include <exos/process.h>
 
 #include "gdt_int.h"
 
 static gdt_entry initial_gdt_in_bss[64];
 
-static int gdt_size = ARRAY_SIZE(initial_gdt_in_bss);
+static u32 gdt_size = ARRAY_SIZE(initial_gdt_in_bss);
 static gdt_entry *gdt = initial_gdt_in_bss;
 
 /*
@@ -25,7 +27,6 @@ void gdt_set_entry(gdt_entry *e,
 {
    ASSERT(limit <= GDT_LIMIT_MAX); /* limit is only 20 bits */
    ASSERT(flags <= 0xF); /* flags is 4 bits */
-   ASSERT(!are_interrupts_enabled());
 
    e->base_low = (base & 0xFFFF);
    e->base_middle = (base >> 16) & 0xFF;
@@ -38,12 +39,22 @@ void gdt_set_entry(gdt_entry *e,
    e->flags = flags;
 }
 
-int gdt_expand(int new_size)
+int gdt_set_entry_num(u32 n, gdt_entry *e)
 {
-   ASSERT(new_size > gdt_size);
+   ASSERT(!are_interrupts_enabled());
 
+   if (n >= gdt_size)
+      return -1;
+
+   gdt[n] = *e;
+   return 0;
+}
+
+int gdt_expand(void)
+{
    uptr var;
    void *old_gdt_ptr;
+   const u32 new_size = gdt_size * 2;
    void *new_gdt = kzmalloc(sizeof(gdt_entry) * new_size);
 
    if (!new_gdt)
@@ -65,16 +76,13 @@ int gdt_expand(int new_size)
    return 0;
 }
 
-int gdt_add_entry(uptr base,
-                  uptr limit,
-                  u8 access,
-                  u8 flags)
+int gdt_add_entry(gdt_entry *e)
 {
    ASSERT(!are_interrupts_enabled());
 
-   for (int n = 1; n < gdt_size; n++) {
+   for (u32 n = 1; n < gdt_size; n++) {
       if (!gdt[n].access) {
-         gdt_set_entry(&gdt[n], base, limit, access, flags);
+         gdt[n] = *e;
          return n;
       }
    }
@@ -84,17 +92,20 @@ int gdt_add_entry(uptr base,
 
 int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
 {
-   return gdt_add_entry((uptr) ldt_ptr,
-                        size,
-                        GDT_DESC_TYPE_LDT,
-                        GDT_GRAN_BYTE | GDT_32BIT);
+   gdt_entry e;
+
+   gdt_set_entry(&e,
+                (uptr) ldt_ptr,
+                size,
+                GDT_DESC_TYPE_LDT,
+                GDT_GRAN_BYTE | GDT_32BIT);
+
+   return gdt_add_entry(&e);
 }
 
-void gdt_clear_entry(int n)
+void gdt_clear_entry(u32 n)
 {
    ASSERT(!are_interrupts_enabled());
-   ASSERT(n > 0);
-
    bzero(&gdt[n], sizeof(gdt_entry));
 }
 
@@ -188,4 +199,86 @@ void setup_segmentation(void)
 
    load_gdt(gdt, gdt_size);
    load_tss(5 /* TSS index in GDT */, 3 /* priv. level */);
+}
+
+void DEBUG_set_thread_area(user_desc *d)
+{
+   printk("[kernel] set_thread_area(e: %i,\n"
+          "                         base: %p,\n"
+          "                         lim: %p,\n"
+          "                         32-bit: %u,\n"
+          "                         contents: %u,\n"
+          "                         re_only: %u,\n"
+          "                         lim in pag: %u,\n"
+          "                         seg_not_pres: %u,\n"
+          "                         useable: %u)\n",
+          d->entry_number,
+          d->base_addr,
+          d->limit,
+          d->seg_32bit,
+          d->contents,
+          d->read_exec_only,
+          d->limit_in_pages,
+          d->seg_not_present,
+          d->useable);
+}
+
+sptr sys_set_thread_area(user_desc *d)
+{
+   uptr var;
+   int rc = 0;
+   gdt_entry e = {0};
+
+   disable_preemption();
+   DEBUG_set_thread_area(d);
+
+   if (!(d->flags == USER_DESC_FLAGS_EMPTY && !d->base_addr && !d->limit)) {
+      gdt_set_entry(&e, d->base_addr, d->limit, 0, 0);
+      e.s = 1;
+      e.dpl = 3;
+      e.d = d->seg_32bit;
+      e.type |= (d->contents << 2);
+      e.type |= !d->read_exec_only ? GDT_ACCESS_RW : 0;
+      e.g = d->limit_in_pages;
+      e.avl = d->useable;
+      e.p = !d->seg_not_present;
+   } else {
+      /* The user passed an empty descriptor: entry_number cannot be -1 */
+      if (d->entry_number == INVALID_ENTRY_NUM) {
+         rc = -EINVAL;
+         goto out;
+      }
+   }
+
+   if (d->entry_number == INVALID_ENTRY_NUM) {
+
+      disable_interrupts(&var);
+      {
+         d->entry_number = gdt_add_entry(&e);
+      }
+      enable_interrupts(&var);
+
+      if (d->entry_number == INVALID_ENTRY_NUM) {
+         // TODO: handle this with gdt_expand()
+         NOT_REACHED();
+      }
+
+   } else {
+
+      // TODO: [CRITICAL] enforce checking on which entries can the user touch!
+      disable_interrupts(&var);
+      {
+         rc = gdt_set_entry_num(d->entry_number, &e);
+         if (rc < 0) {
+            rc = -EINVAL;
+            goto out;
+         }
+      }
+      enable_interrupts(&var);
+
+   }
+
+out:
+   enable_preemption();
+   return rc;
 }

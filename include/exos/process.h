@@ -66,8 +66,9 @@ struct task_info {
    regs *kernel_state_regs;
 
 #ifdef __arch__x86__
-   u64 ldt_raw[3];
-   int ldt_index_in_gdt;
+   void *ldt;
+   int ldt_size; /* Number of entries. Valid only if ldt != NULL. */
+   int ldt_index_in_gdt; /* Index in gdt, valid only if ldt != NULL. */
 #endif
 };
 
