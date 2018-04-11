@@ -41,13 +41,20 @@ void gdt_set_entry(gdt_entry *e,
 
 int gdt_set_entry_num(u32 n, gdt_entry *e)
 {
-   ASSERT(!are_interrupts_enabled());
+   uptr var;
+   int rc = 0;
+   disable_interrupts(&var);
 
-   if (n >= gdt_size)
-      return -1;
+   if (n >= gdt_size) {
+      rc = -1;
+      goto out;
+   }
 
    gdt[n] = *e;
-   return 0;
+
+out:
+   enable_interrupts(&var);
+   return rc;
 }
 
 int gdt_expand(void)
@@ -78,16 +85,23 @@ int gdt_expand(void)
 
 int gdt_add_entry(gdt_entry *e)
 {
-   ASSERT(!are_interrupts_enabled());
+   int rc = -1;
+   uptr var;
 
-   for (u32 n = 1; n < gdt_size; n++) {
-      if (!gdt[n].access) {
-         gdt[n] = *e;
-         return n;
+   disable_interrupts(&var);
+   {
+
+      for (u32 n = 0; n < gdt_size; n++) {
+         if (!gdt[n].access) {
+            gdt[n] = *e;
+            rc = n;
+            break;
+         }
       }
-   }
 
-   return -1; /* the caller has to handle this by using gdt_expand() */
+   }
+   enable_interrupts(&var);
+   return rc;
 }
 
 int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
@@ -105,8 +119,12 @@ int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
 
 void gdt_clear_entry(u32 n)
 {
-   ASSERT(!are_interrupts_enabled());
-   bzero(&gdt[n], sizeof(gdt_entry));
+   uptr var;
+   disable_interrupts(&var);
+   {
+      bzero(&gdt[n], sizeof(gdt_entry));
+   }
+   enable_interrupts(&var);
 }
 
 void set_kernel_stack(u32 stack)
@@ -223,9 +241,26 @@ void DEBUG_set_thread_area(user_desc *d)
           d->useable);
 }
 
+static int find_available_slot_in_user_task(void)
+{
+   for (u32 i = 0; i < ARRAY_SIZE(current->gdt_entries); i++)
+      if (!current->gdt_entries[i])
+         return i;
+
+   return -1;
+}
+
+static int get_user_task_slot_for_gdt_entry(int gdt_entry_num)
+{
+   for (u32 i = 0; i < ARRAY_SIZE(current->gdt_entries); i++)
+      if (current->gdt_entries[i] == gdt_entry_num)
+         return i;
+
+   return -1;
+}
+
 sptr sys_set_thread_area(user_desc *d)
 {
-   uptr var;
    int rc = 0;
    gdt_entry e = {0};
 
@@ -252,31 +287,59 @@ sptr sys_set_thread_area(user_desc *d)
 
    if (d->entry_number == INVALID_ENTRY_NUM) {
 
-      disable_interrupts(&var);
-      {
-         d->entry_number = gdt_add_entry(&e);
+      int slot = find_available_slot_in_user_task();
+
+      if (slot < 0) {
+         rc = -ESRCH;
+         goto out;
       }
-      enable_interrupts(&var);
+
+      d->entry_number = gdt_add_entry(&e);
 
       if (d->entry_number == INVALID_ENTRY_NUM) {
          // TODO: handle this with gdt_expand()
          NOT_REACHED();
       }
 
-   } else {
-
-      // TODO: [CRITICAL] enforce checking on which entries can the user touch!
-      disable_interrupts(&var);
-      {
-         rc = gdt_set_entry_num(d->entry_number, &e);
-         if (rc < 0) {
-            rc = -EINVAL;
-            goto out;
-         }
-      }
-      enable_interrupts(&var);
-
+      current->gdt_entries[slot] = d->entry_number;
+      goto out;
    }
+
+   /* Handling the case where the user specified a GDT entry number */
+
+   int slot = get_user_task_slot_for_gdt_entry(d->entry_number);
+
+   if (slot < 0) {
+      /* A GDT entry with that index has never been allocated by this task */
+
+      if (d->entry_number >= gdt_size || gdt[d->entry_number].access) {
+         /* The entry is out-of-bounds or it's used by another task */
+         rc = -EINVAL;
+         goto out;
+      }
+
+      /* The entry is available, now find a slot */
+      slot = find_available_slot_in_user_task();
+
+      if (slot < 0) {
+         /* Unable to find a free slot in this task_info struct */
+         rc = -ESRCH;
+         goto out;
+      }
+
+      current->gdt_entries[slot] = d->entry_number;
+   }
+
+   ASSERT(d->entry_number < gdt_size);
+
+   rc = gdt_set_entry_num(d->entry_number, &e);
+
+   /*
+    * We're here because either we found a slot already containing this index
+    * (therefore it must be valid) or the index is in-bounds and it is free.
+    */
+
+   ASSERT(rc == 0);
 
 out:
    enable_preemption();

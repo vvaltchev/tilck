@@ -346,15 +346,15 @@ void arch_specific_new_task_setup(task_info *ti)
 {
    ti->ldt = NULL;
    ti->pi->tidptr = NULL;
+   bzero(ti->gdt_entries, sizeof(ti->gdt_entries));
 }
 
 void arch_specific_free_task(task_info *ti)
 {
-   uptr var;
-
-   if (ti->ldt) {
-      disable_interrupts(&var);
+   if (ti->ldt)
       gdt_clear_entry(ti->ldt_index_in_gdt);
-      enable_interrupts(&var);
-   }
+
+   for (u32 i = 0; i < ARRAY_SIZE(ti->gdt_entries); i++)
+      if (ti->gdt_entries[i])
+         gdt_clear_entry(ti->gdt_entries[i]);
 }
