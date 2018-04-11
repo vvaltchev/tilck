@@ -141,7 +141,7 @@ sptr sys_set_thread_area(void *u_info);
 sptr sys_set_tid_address(int *tidptr);
 
 // The syscall numbers are ARCH-dependent
-syscall_type syscalls_pointers[] =
+syscall_type syscalls[] =
 {
    [0] = NULL,
    [1] = sys_exit,
@@ -181,38 +181,28 @@ syscall_type syscalls_pointers[] =
    [258] = sys_set_tid_address
 };
 
-const ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
-
 void handle_syscall(regs *r)
 {
    ASSERT(current != NULL);
    DEBUG_VALIDATE_STACK_PTR();
    save_current_task_state(r);
 
-   sptr sn = (sptr) r->eax;
+   const u32 sn = r->eax;
 
-   if (sn < 0 || sn >= syscall_count || !syscalls_pointers[sn]) {
+   if (sn >= ARRAY_SIZE(syscalls) || !syscalls[sn]) {
       printk("[kernel] invalid syscall #%i\n", sn);
       r->eax = (uptr) -ENOSYS;
       return;
    }
 
-   //printk("Syscall #%i\n", r->eax);
-   //printk("Arg 1 (ebx): %p\n", r->ebx);
-   //printk("Arg 2 (ecx): %p\n", r->ecx);
-   //printk("Arg 3 (edx): %p\n", r->edx);
-   //printk("Arg 4 (esi): %p\n", r->esi);
-   //printk("Arg 5 (edi): %p\n", r->edi);
-   //printk("Arg 6 (ebp): %p\n\n", r->ebp);
-
    set_current_task_in_kernel();
+   DEBUG_VALIDATE_STACK_PTR();
    enable_preemption();
-
-   r->eax =
-      syscalls_pointers[r->eax](r->ebx, r->ecx, r->edx,
-                                r->esi, r->edi, r->ebp);
-
+   {
+      r->eax = syscalls[sn](r->ebx, r->ecx, r->edx, r->esi, r->edi, r->ebp);
+   }
    disable_preemption();
+   DEBUG_VALIDATE_STACK_PTR();
    set_current_task_in_user_mode();
 }
 
@@ -220,12 +210,6 @@ void handle_syscall(regs *r)
 
 void syscall_int80_entry(void);
 void sysenter_entry(void);
-
-void setup_sysenter_interface(void)
-{
-   wrmsr(MSR_IA32_SYSENTER_CS, X86_KERNEL_CODE_SEL);
-   wrmsr(MSR_IA32_SYSENTER_EIP, (uptr) &sysenter_entry);
-}
 
 void setup_syscall_interfaces(void)
 {
@@ -235,6 +219,8 @@ void setup_syscall_interfaces(void)
                  X86_KERNEL_CODE_SEL,
                  IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL3);
 
-   setup_sysenter_interface();
+   /* Setup the sysenter interface */
+   wrmsr(MSR_IA32_SYSENTER_CS, X86_KERNEL_CODE_SEL);
+   wrmsr(MSR_IA32_SYSENTER_EIP, (uptr) &sysenter_entry);
 }
 
