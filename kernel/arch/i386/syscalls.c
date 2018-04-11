@@ -131,6 +131,13 @@ sptr sys_utime()
 // 54:
 sptr sys_ioctl(int fd, uptr request, void *argp);
 
+// 146:
+sptr sys_writev(int fd, void *iov, int iovcnt)
+{
+   printk("[kernel] writev: fd: %i\n", fd);
+   return -EBADF;
+}
+
 //183:
 sptr sys_getcwd(char *buf, size_t buf_size);
 
@@ -176,6 +183,7 @@ syscall_type syscalls[] =
    [30] = sys_utime,
    [54] = sys_ioctl,
 
+   [146] = sys_writev,
    [183] = sys_getcwd,
    [243] = sys_set_thread_area,
    [258] = sys_set_tid_address
