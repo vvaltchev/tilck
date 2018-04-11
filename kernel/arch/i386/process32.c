@@ -84,8 +84,8 @@ static void push_args_on_user_stack(regs *r,
 task_info *kthread_create(kthread_func_ptr fun, void *arg)
 {
    regs r = {0};
-   r.gs = r.fs = r.es = r.ds = r.ss = X86_SELECTOR(2, 0, 0);
-   r.cs = X86_SELECTOR(1, 0, 0);
+   r.gs = r.fs = r.es = r.ds = r.ss = X86_KERNEL_DATA_SEL;
+   r.cs = X86_KERNEL_CODE_SEL;
 
    r.eip = (u32) fun;
    r.eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF;
