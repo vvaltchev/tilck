@@ -134,6 +134,11 @@ badf:
    goto end;
 }
 
+typedef struct {
+   void *iov_base;    /* Starting address */
+   size_t iov_len;    /* Number of bytes to transfer */
+} iovec;
+
 sptr sys_writev(int fd, const iovec *iov, int iovcnt)
 {
    sptr written = 0;

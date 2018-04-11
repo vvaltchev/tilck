@@ -81,12 +81,6 @@ typedef struct {
 
 } fs_handle_base;
 
-typedef struct {
-   void *iov_base;    /* Starting address */
-   size_t iov_len;     /* Number of bytes to transfer */
-} iovec;
-
-
 int mountpoint_add(filesystem *fs, const char *path);
 void mountpoint_remove(filesystem *fs);
 
