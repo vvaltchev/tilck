@@ -86,7 +86,7 @@ void handle_fault(regs *r)
 
    } else {
 
-      panic("Fault #%i: %s [errCode: %i]",
+      panic("Fault #%i: %s [errCode: %p]",
             r->int_num,
             exception_messages[r->int_num],
             r->err_code);

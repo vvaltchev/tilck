@@ -334,9 +334,7 @@ NORETURN void switch_to_task(task_info *ti)
    current = ti; /* this is safe here: the interrupts are disabled! */
    set_kernel_stack((u32) current->kernel_state_regs);
 
-   //if (!is_kernel_thread(ti))
-   //   load_ldt(ti->ldt_index_in_gdt, 3);
-
+   load_ldt(ti->ldt_index_in_gdt, 3);
    context_switch(state);
 }
 

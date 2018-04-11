@@ -63,6 +63,8 @@
 
 #define GDT_ACCESS_PRESENT  (1 << 7)   /* Must be set for valid segments */
 
+#define GDT_DESC_TYPE_TSS (GDT_ACCESS_PRESENT | GDT_ACCESS_EX | GDT_ACCESS_ACC)
+#define GDT_DESC_TYPE_LDT (GDT_ACCESS_PRESENT | GDT_ACCESS_RW)
 
 /* An useful shortcut for saving some space */
 #define GDT_ACC_REG (GDT_ACCESS_PRESENT | GDT_ACCESS_S)

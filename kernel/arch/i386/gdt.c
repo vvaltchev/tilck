@@ -86,7 +86,7 @@ int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
 {
    return gdt_add_entry((uptr) ldt_ptr,
                         size,
-                        GDT_ACCESS_PRESENT | GDT_ACCESS_EX | GDT_ACCESS_ACC,
+                        GDT_DESC_TYPE_LDT,
                         GDT_GRAN_BYTE | GDT_32BIT);
 }
 
@@ -183,14 +183,7 @@ void setup_segmentation(void)
    gdt_set_entry(&gdt[5],
                  (uptr) &tss_entry,   /* TSS addr */
                  sizeof(tss_entry),   /* limit: struct TSS size */
-
-                 /*
-                  * Special flags for the TSS entry. NOTE: the bit 'S', set by
-                  * GDT_ACC_REG is unsed here, beacuse the descriptor is of
-                  * type 'system'.
-                  */
-
-                 GDT_ACCESS_PRESENT | GDT_ACCESS_EX | GDT_ACCESS_ACC,
+                 GDT_DESC_TYPE_TSS,
                  GDT_GRAN_BYTE | GDT_32BIT);
 
    load_gdt(gdt, gdt_size);
