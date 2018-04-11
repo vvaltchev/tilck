@@ -2,6 +2,9 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 #include <exos/errno.h>
+#include <exos/process.h>
+
+#include "gdt_int.h"
 
 typedef struct {
    u32 entry_number;
@@ -14,6 +17,16 @@ typedef struct {
    u32 seg_not_present:1;
    u32 useable:1;
 } user_desc;
+
+void load_ldt(u32 entry_index_in_gdt, u32 dpl)
+{
+   ASSERT(!are_interrupts_enabled());
+
+   asmVolatile("lldt %w0"
+               : /* no output */
+               : "q" (X86_SELECTOR(entry_index_in_gdt, TABLE_GDT, dpl))
+               : "memory");
+}
 
 sptr sys_set_thread_area(user_desc *d)
 {
@@ -35,5 +48,8 @@ sptr sys_set_thread_area(user_desc *d)
           d->limit_in_pages,
           d->seg_not_present,
           d->useable);
+
+   //gdt_entry *e = (gdt_entry *)&current->ldt_raw[0];
+
    return -ENOSYS;
 }

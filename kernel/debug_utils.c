@@ -39,7 +39,7 @@ NORETURN void panic(const char *fmt, ...)
    task_info *curr = get_current_task();
 
    if (curr && curr->tid != -1) {
-      printk("Current process: %i %s\n",
+      printk("Current task: %i %s\n",
              get_current_task()->tid,
              is_kernel_thread(get_current_task()) ? "[KERNEL]" : "[USER]");
    } else {

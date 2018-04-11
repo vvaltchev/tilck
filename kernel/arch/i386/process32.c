@@ -277,6 +277,8 @@ void set_current_task_in_user_mode(void)
    set_kernel_stack((u32)current->kernel_state_regs);
 }
 
+#include "gdt_int.h"
+
 
 NORETURN void switch_to_task(task_info *ti)
 {
@@ -331,5 +333,37 @@ NORETURN void switch_to_task(task_info *ti)
 
    current = ti; /* this is safe here: the interrupts are disabled! */
    set_kernel_stack((u32) current->kernel_state_regs);
+
+   //if (!is_kernel_thread(ti))
+   //   load_ldt(ti->ldt_index_in_gdt, 3);
+
    context_switch(state);
+}
+
+
+void arch_specific_new_task_setup(task_info *ti)
+{
+   uptr var;
+   int n;
+
+   bzero(ti->ldt_raw, sizeof(ti->ldt_raw));
+
+   disable_interrupts(&var);
+   {
+      n = gdt_add_ldt_entry(ti->ldt_raw, sizeof(ti->ldt_raw));
+      VERIFY(n != -1); // TODO: handle this
+
+      ti->ldt_index_in_gdt = n;
+   }
+   enable_interrupts(&var);
+}
+
+void arch_specific_free_task(task_info *ti)
+{
+   uptr var;
+   disable_interrupts(&var);
+   {
+      gdt_clear_entry(ti->ldt_index_in_gdt);
+   }
+   enable_interrupts(&var);
 }

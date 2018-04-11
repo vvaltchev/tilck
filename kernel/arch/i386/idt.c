@@ -13,7 +13,7 @@ static interrupt_handler fault_handlers[32];
 void load_idt(idt_entry *entries, u32 entries_count)
 {
    struct {
-      u16 offset_of_last_byte; /* a.k.a total_size - 1 */
+      u16 size_minus_one;
       idt_entry *idt_addr;
    } PACKED idt_ptr = { sizeof(idt_entry) * entries_count - 1, entries };
 

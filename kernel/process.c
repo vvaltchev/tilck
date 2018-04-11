@@ -45,6 +45,7 @@ task_info *allocate_new_process(task_info *parent, int pid)
    list_node_init(&ti->runnable_list);
    list_node_init(&ti->sleeping_list);
 
+   arch_specific_new_task_setup(ti);
    return ti;
 }
 
@@ -59,12 +60,16 @@ task_info *allocate_new_thread(process_info *pi)
    ti->pi = pi;
    ti->tid = MAX_PID + (sptr)ti - KERNEL_BASE_VA;
    ti->owning_process_pid = proc->tid;
+
+   arch_specific_new_task_setup(ti);
    return ti;
 }
 
 void free_task(task_info *ti)
 {
    ASSERT(ti->state == TASK_STATE_ZOMBIE);
+
+   arch_specific_free_task(ti);
 
    kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
 

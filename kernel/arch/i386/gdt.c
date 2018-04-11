@@ -82,6 +82,22 @@ int gdt_add_entry(uptr base,
    return -1; /* the caller has to handle this by using gdt_expand() */
 }
 
+int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
+{
+   return gdt_add_entry((uptr) ldt_ptr,
+                        size,
+                        GDT_ACCESS_PRESENT | GDT_ACCESS_EX | GDT_ACCESS_ACC,
+                        GDT_GRAN_BYTE | GDT_32BIT);
+}
+
+void gdt_clear_entry(int n)
+{
+   ASSERT(!are_interrupts_enabled());
+   ASSERT(n > 0);
+
+   bzero(&gdt[n], sizeof(gdt_entry));
+}
+
 void set_kernel_stack(u32 stack)
 {
    uptr var;
@@ -100,7 +116,7 @@ void load_gdt(gdt_entry *gdt, u32 entries_count)
 
    struct {
 
-      u16 offset_of_last_byte;
+      u16 size_minus_one;
       gdt_entry *gdt_vaddr;
 
    } PACKED gdt_ptr = { sizeof(gdt_entry) * entries_count - 1, gdt };
@@ -124,7 +140,7 @@ void load_tss(u32 entry_index_in_gdt, u32 dpl)
 
    asmVolatile("ltr %w0"
                : /* no output */
-               : "q" (entry_index_in_gdt * sizeof(gdt_entry) | dpl)
+               : "q" (X86_SELECTOR(entry_index_in_gdt, TABLE_GDT, dpl))
                : "memory");
 }
 

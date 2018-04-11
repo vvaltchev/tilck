@@ -48,6 +48,7 @@ struct task_info {
    u8 exit_status;
    bool running_in_kernel;
 
+   process_info *pi;
 
    u32 time_slot_ticks; /*
                          * ticks counter for the current time-slot: it's reset
@@ -64,7 +65,10 @@ struct task_info {
    regs state_regs;
    regs *kernel_state_regs;
 
-   process_info *pi;
+#ifdef __arch__x86__
+   u64 ldt_raw[3];
+   int ldt_index_in_gdt;
+#endif
 };
 
 typedef struct task_info task_info;
@@ -141,6 +145,8 @@ void init_sched(void);
 task_info *allocate_new_process(task_info *parent, int pid);
 task_info *allocate_new_thread(process_info *pi);
 void free_task(task_info *ti);
+void arch_specific_new_task_setup(task_info *ti);
+void arch_specific_free_task(task_info *ti);
 
 void task_change_state(task_info *ti, task_state_enum new_state);
 
