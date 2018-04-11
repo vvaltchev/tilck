@@ -31,6 +31,10 @@ struct process_info {
    char cwd[256]; /* current working directory */
 
    fs_handle handles[16]; /* for the moment, just a fixed-size small array */
+
+#ifdef __arch__x86__
+   int *tidptr;
+#endif
 };
 
 typedef struct process_info process_info;

@@ -341,6 +341,11 @@ NORETURN void switch_to_task(task_info *ti)
    context_switch(state);
 }
 
+sptr sys_set_tid_address(int *tidptr)
+{
+   current->pi->tidptr = tidptr;
+   return current->tid;
+}
 
 void arch_specific_new_task_setup(task_info *ti)
 {
