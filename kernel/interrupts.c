@@ -147,7 +147,6 @@ void soft_interrupt_entry(regs *r)
    const int int_num = regs_intnum(r);
 
    ASSERT(!are_interrupts_enabled());
-   DEBUG_VALIDATE_STACK_PTR();
    DEBUG_check_preemption_enabled_for_usermode();
 
    push_nested_interrupt(regs_intnum(r));
@@ -157,6 +156,7 @@ void soft_interrupt_entry(regs *r)
 
       if (int_num == SYSCALL_SOFT_INTERRUPT) {
          ASSERT(current != NULL);
+         DEBUG_VALIDATE_STACK_PTR();
          handle_syscall(r);
       } else {
          VERIFY(is_fault(int_num));
