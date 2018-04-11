@@ -452,7 +452,7 @@ void init_kb()
    caps_lock_switch(capsLock);
    kb_set_typematic_byte(0);
 
-   printk("[kernel] keyboard initialized.\n");
+   printk("keyboard initialized.\n");
 
    enable_preemption();
 }

@@ -49,7 +49,7 @@ void simple_test_kthread(void *arg)
    uptr saved_esp;
    uptr esp;
 
-   printk("[kernel thread] This is a kernel thread, arg = %p\n", arg);
+   printk("[kthread] This is a kernel thread, arg = %p\n", arg);
 
    saved_esp = get_curr_stack_ptr();
 
@@ -64,7 +64,7 @@ void simple_test_kthread(void *arg)
       VERIFY(esp == saved_esp);
 
       if (!(i % (256*MB))) {
-         printk("[kernel thread] i = %i\n", i/MB);
+         printk("[kthread] i = %i\n", i/MB);
       }
    }
 }

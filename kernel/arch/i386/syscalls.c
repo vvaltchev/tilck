@@ -194,7 +194,7 @@ void handle_syscall(regs *r)
    const u32 sn = r->eax;
 
    if (sn >= ARRAY_SIZE(syscalls) || !syscalls[sn]) {
-      printk("[kernel] invalid syscall #%i\n", sn);
+      printk("invalid syscall #%i\n", sn);
       r->eax = (uptr) -ENOSYS;
       return;
    }

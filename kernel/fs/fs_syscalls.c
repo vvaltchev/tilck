@@ -66,7 +66,7 @@ sptr sys_open(const char *pathname, int flags, int mode)
 {
    sptr ret;
 
-   printk("[kernel] sys_open(filename = '%s', "
+   printk("sys_open(filename = '%s', "
           "flags = %x, mode = %x)\n", pathname, flags, mode);
 
    disable_preemption();
@@ -99,7 +99,7 @@ no_ent:
 
 sptr sys_close(int fd)
 {
-   printk("[kernel] sys_close(fd = %d)\n", fd);
+   printk("sys_close(fd = %d)\n", fd);
 
    disable_preemption();
 

@@ -243,7 +243,7 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
 {
    ASSERT(are_interrupts_enabled());
 
-   // printk("[kernel] Pid %i will WAIT until pid %i dies\n",
+   // printk("Pid %i will WAIT until pid %i dies\n",
    //        current->pid, pid);
 
    ASSERT(are_interrupts_enabled());
@@ -290,7 +290,7 @@ NORETURN void sys_exit(int exit_status)
 {
    disable_preemption();
 
-   // printk("[kernel] Exit process %i with code = %i\n",
+   // printk("Exit process %i with code = %i\n",
    //        current->pid,
    //        exit_status);
 

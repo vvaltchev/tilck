@@ -84,7 +84,7 @@ int load_elf_program(const char *filepath,
          return -ENOMEM;
    }
 
-   //printk("[kernel] elf loader: '%s'\n", filepath);
+   //printk("elf loader: '%s'\n", filepath);
 
    set_page_directory(*pdir_ref);
 

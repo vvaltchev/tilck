@@ -96,7 +96,7 @@ int create_new_pid(void)
    if (r >= 0)
       current_max_pid = r;
 
-   //printk("[kernel] create_new_pid: %i\n", r);
+   //printk("create_new_pid: %i\n", r);
    return r;
 }
 

@@ -11,7 +11,7 @@ void __wrap_printk(const char *fmt, ...)
    if (suppress_printk)
       return;
 
-	printf("[kernel] ");
+	printf("");
 
 	va_list args;
 	va_start(args, fmt);

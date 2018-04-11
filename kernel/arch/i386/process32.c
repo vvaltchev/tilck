@@ -137,7 +137,7 @@ void remove_dead_kthread_tasklet(task_info *ti)
       disable_preemption();
 
       if (current != ti) {
-         printk("[kernel] remove_dead_kthread_tasklet (tid: %i)\n", ti->tid);
+         printk("remove_dead_kthread_tasklet (tid: %i)\n", ti->tid);
          remove_task(ti);
          enable_preemption();
          break;
@@ -153,8 +153,6 @@ void kthread_exit(void)
    disable_preemption();
 
    task_info *ti = get_current_task();
-   printk("****** [kernel thread] EXIT (tid: %i)\n", ti->tid);
-
    task_change_state(ti, TASK_STATE_ZOMBIE);
 
    bool success = enqueue_tasklet1(&remove_dead_kthread_tasklet, ti);

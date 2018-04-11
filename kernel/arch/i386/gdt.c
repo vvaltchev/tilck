@@ -221,7 +221,7 @@ void setup_segmentation(void)
 
 static void DEBUG_set_thread_area(user_desc *d)
 {
-   printk("[kernel] set_thread_area(e: %i,\n"
+   printk("set_thread_area(e: %i,\n"
           "                         base: %p,\n"
           "                         lim: %p,\n"
           "                         32-bit: %u,\n"
