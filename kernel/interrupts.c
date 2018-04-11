@@ -57,9 +57,6 @@ void check_not_in_irq_handler(void)
    }
 }
 
-/*
- * TODO: update when the SYSENTER interface is supported
- */
 bool in_syscall(void)
 {
    ASSERT(!are_interrupts_enabled());
@@ -145,24 +142,19 @@ void irq_entry(regs *r)
 void soft_interrupt_entry(regs *r)
 {
    const int int_num = regs_intnum(r);
-
    ASSERT(!are_interrupts_enabled());
+
    DEBUG_check_preemption_enabled_for_usermode();
-
-   push_nested_interrupt(regs_intnum(r));
+   push_nested_interrupt(int_num);
    disable_preemption();
+   enable_interrupts_forced();
    {
-      enable_interrupts_forced();
-
-      if (int_num == SYSCALL_SOFT_INTERRUPT) {
-         ASSERT(current != NULL);
-         DEBUG_VALIDATE_STACK_PTR();
+      if (int_num == SYSCALL_SOFT_INTERRUPT)
          handle_syscall(r);
-      } else {
-         VERIFY(is_fault(int_num));
+      else
          handle_fault(r);
-      }
    }
+   disable_interrupts_forced();
    enable_preemption();
    pop_nested_interrupt();
    DEBUG_check_preemption_enabled_for_usermode();

@@ -181,6 +181,8 @@ const ssize_t syscall_count = ARRAY_SIZE(syscalls_pointers);
 
 void handle_syscall(regs *r)
 {
+   ASSERT(current != NULL);
+   DEBUG_VALIDATE_STACK_PTR();
    save_current_task_state(r);
 
    sptr sn = (sptr) r->eax;

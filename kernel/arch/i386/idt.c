@@ -2,6 +2,7 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 #include <exos/hal.h>
+#include <exos/interrupts.h>
 
 #include "idt_int.h"
 
@@ -80,6 +81,8 @@ const char *exception_messages[] =
 
 void handle_fault(regs *r)
 {
+   VERIFY(is_fault(r->int_num));
+
    if (fault_handlers[r->int_num] != NULL) {
 
       fault_handlers[r->int_num](r);
