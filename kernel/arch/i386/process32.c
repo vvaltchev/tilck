@@ -157,7 +157,8 @@ void kthread_exit(void)
 
    task_change_state(ti, TASK_STATE_ZOMBIE);
 
-   enqueue_tasklet1(&remove_dead_kthread_tasklet, ti);
+   bool success = enqueue_tasklet1(&remove_dead_kthread_tasklet, ti);
+   VERIFY(success); // TODO: any better way to handle this?
    schedule_outside_interrupt_context();
 }
 

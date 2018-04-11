@@ -38,7 +38,7 @@ void gdt_set_entry(gdt_entry *e,
    e->flags = flags;
 }
 
-void gdt_expand(int new_size)
+int gdt_expand(int new_size)
 {
    ASSERT(new_size > gdt_size);
 
@@ -47,7 +47,7 @@ void gdt_expand(int new_size)
    void *new_gdt = kzmalloc(sizeof(gdt_entry) * new_size);
 
    if (!new_gdt)
-      panic("Unable to allocate memory for a larger GDT");
+      return -1;
 
    disable_interrupts(&var);
    {
@@ -61,6 +61,8 @@ void gdt_expand(int new_size)
 
    if (old_gdt_ptr != initial_gdt_in_bss)
       kfree(old_gdt_ptr);
+
+   return 0;
 }
 
 int gdt_add_entry(uptr base,

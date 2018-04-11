@@ -304,8 +304,10 @@ void handle_key_pressed(u8 scancode)
                kb_cbuf_write_elem(c);
                term_write_char(c);
 
-               if (c == '\n' || kb_cbuf_is_full())
-                  enqueue_tasklet1(kcond_signal_one, &kb_cond);
+               if (c == '\n' || kb_cbuf_is_full()) {
+                  bool success = enqueue_tasklet1(kcond_signal_one, &kb_cond);
+                  VERIFY(success); // TODO: any better way to handle this?
+               }
             }
 
          } else {

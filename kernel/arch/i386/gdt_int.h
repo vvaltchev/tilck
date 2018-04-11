@@ -142,4 +142,4 @@ typedef struct
 void load_gdt(gdt_entry *gdt, u32 entries_count);
 void gdt_set_entry(gdt_entry *e, uptr base, uptr limit, u8 access, u8 flags);
 int gdt_add_entry(uptr base, uptr limit, u8 access, u8 flags);
-void gdt_expand(int new_size);
+NODISCARD int gdt_expand(int new_size);

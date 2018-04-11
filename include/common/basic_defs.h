@@ -77,6 +77,7 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 #define CONSTEXPR
 #define NORETURN
 #define WEAK
+#define NODISCARD
 
 #define OFFSET_OF(st, m)
 
@@ -101,6 +102,7 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 #define CONSTEXPR __attribute__((const))
 #define WEAK __attribute__((weak))
 #define PACKED __attribute__((packed))
+#define NODISCARD __attribute__((warn_unused_result))
 
 #endif
 
