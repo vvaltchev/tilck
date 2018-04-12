@@ -2,7 +2,8 @@
 #include <iostream>
 #include <limits>
 #include <random>
-
+#include <string>
+#include <type_traits>
 #include <gtest/gtest.h>
 
 using namespace std;
@@ -11,220 +12,246 @@ extern "C" {
    #include <common/string_util.h>
 }
 
-#define CHECK_hex(num, bits)                      \
-   do {                                           \
-      memset(expected, 0xff, sizeof(expected));   \
-      memset(got, 0xff, sizeof(got));             \
-      u64 __val = num;                            \
-      sprintf(expected, "%lx", __val);            \
-      uitoa##bits##_hex(__val, got);              \
-      ASSERT_STREQ(got, expected);                \
-   } while (0)
+inline void itoa_wrapper(s32 val, char *buf) { itoa32(val, buf); }
+inline void itoa_wrapper(s64 val, char *buf) { itoa64(val, buf); }
+inline void itoa_wrapper(u32 val, char *buf) { uitoa32_dec(val, buf); }
+inline void itoa_wrapper(u64 val, char *buf) { uitoa64_dec(val, buf); }
 
-#define CHECK_hex_fixed(num, bits)                \
-   do {                                           \
-      memset(expected, 0xff, sizeof(expected));   \
-      memset(got, 0xff, sizeof(got));             \
-      u64 __val = num;                            \
-      if (bits == 32)                             \
-         sprintf(expected, "%08lx", __val);       \
-      else                                        \
-         sprintf(expected, "%016lx", __val);      \
-      uitoa##bits##_hex_fixed(__val, got);        \
-      ASSERT_STREQ(got, expected);                \
-   } while (0)
+template <typename T>
+inline void uitoa_hex_wrapper(T val, char *buf, bool fixed)
+{
+   abort();
+}
 
-#define CHECK_udec(num, bits)                    \
-   do {                                          \
-      memset(expected, 0xff, sizeof(expected));  \
-      memset(got, 0xff, sizeof(got));            \
-      u64 __val = num;                           \
-      sprintf(expected, "%lu", __val);           \
-      uitoa##bits##_dec(__val, got);             \
-      ASSERT_STREQ(got, expected);               \
-   } while (0)
+template<>
+inline void uitoa_hex_wrapper<u32>(u32 val, char *buf, bool fixed)
+{
+   if (!fixed)
+      uitoa32_hex(val, buf);
+   else
+      uitoa32_hex_fixed(val, buf);
+}
+
+template<>
+inline void uitoa_hex_wrapper<u64>(u64 val, char *buf, bool fixed)
+{
+   if (!fixed)
+      uitoa64_hex(val, buf);
+   else
+      uitoa64_hex_fixed(val, buf);
+}
 
 
-#define CHECK_sdec(num, bits)                    \
-   do {                                          \
-      memset(expected, 0xff, sizeof(expected));  \
-      memset(got, 0xff, sizeof(got));            \
-      u64 __val = num;                           \
-      sprintf(expected, "%ld", __val);           \
-      itoa##bits(__val, got);                    \
-      ASSERT_STREQ(got, expected);               \
-   } while (0)
+template <typename T>
+inline void sprintf_hex_wrapper(T val, char *buf, bool fixed)
+{
+   abort();
+}
 
+template <>
+inline void sprintf_hex_wrapper<u32>(u32 val, char *buf, bool fixed)
+{
+   if (fixed)
+      sprintf(buf, "%08x", val);
+   else
+      sprintf(buf, "%x", val);
+}
+
+template <>
+inline void sprintf_hex_wrapper<u64>(u64 val, char *buf, bool fixed)
+{
+   if (fixed)
+      sprintf(buf, "%016lx", val);
+   else
+      sprintf(buf, "%lx", val);
+}
+
+
+template <typename T, bool hex = false, bool fixed = false>
+void check(T val)
+{
+   char expected[64];
+   char got[64];
+
+   memset(expected, '*', sizeof(expected));
+   memset(got, '*', sizeof(got));
+
+   if (!hex) {
+
+      strcpy(expected, to_string(val).c_str());
+      itoa_wrapper(val, got);
+
+   } else {
+
+      sprintf_hex_wrapper<T>(val, expected, fixed);
+      uitoa_hex_wrapper<T>(val, got, fixed);
+
+   }
+
+   ASSERT_STREQ(got, expected);
+}
+
+template <typename T, bool hex = false, bool fixed = false>
+void check_set()
+{
+   auto check_func = check<T, hex, fixed>;
+
+   check_func(0);
+   check_func(numeric_limits<u32>::min());
+   check_func(numeric_limits<u32>::max());
+   check_func(numeric_limits<u32>::min() + 1);
+   check_func(numeric_limits<u32>::max() - 1);
+}
 
 TEST(itoa, u32_hex)
 {
-   char expected[32];
-   char got[32];
+   typedef u32 T;
+   auto check_func = check<T, true>;
+   auto check_set_func = check_set<T, true>;
 
-   CHECK_hex(0, 32);
-   CHECK_hex(numeric_limits<u32>::min(), 32);
-   CHECK_hex(numeric_limits<u32>::max(), 32);
-   CHECK_hex(numeric_limits<u32>::min() + 1, 32);
-   CHECK_hex(numeric_limits<u32>::max() - 1, 32);
+   ASSERT_NO_FATAL_FAILURE({ check_set_func(); });
 
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   lognormal_distribution<> dist(5.0, 3);
 
-   for (int i = 0; i < 100000; i++) {
-      CHECK_hex((u32)dist(e), 32);
-   }
+   uniform_int_distribution<T>
+      dist(numeric_limits<T>::min(), numeric_limits<T>::max());
+
+   for (int i = 0; i < 100000; i++)
+      ASSERT_NO_FATAL_FAILURE({ check_func(dist(e)); });
 }
 
 TEST(itoa, u64_hex)
 {
-   char expected[64];
-   char got[64];
+   typedef u64 T;
+   auto check_func = check<T, true>;
+   auto check_set_func = check_set<T, true>;
 
-   CHECK_hex(0, 64);
-   CHECK_hex(numeric_limits<u64>::min(), 64);
-   CHECK_hex(numeric_limits<u64>::max(), 64);
-   CHECK_hex(numeric_limits<u64>::min() + 1, 64);
-   CHECK_hex(numeric_limits<u64>::max() - 1, 64);
+   ASSERT_NO_FATAL_FAILURE({ check_set_func(); });
 
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   lognormal_distribution<> dist(12.0, 4);
 
-   for (int i = 0; i < 100000; i++) {
-      CHECK_hex((u64)dist(e), 64);
-   }
+   uniform_int_distribution<T>
+      dist(numeric_limits<T>::min(), numeric_limits<T>::max());
+
+   for (int i = 0; i < 100000; i++)
+      ASSERT_NO_FATAL_FAILURE({ check_func(dist(e)); });
 }
 
 TEST(itoa, u32_dec)
 {
-   char expected[32];
-   char got[32];
+   typedef u32 T;
+   auto check_func = check<T>;
+   auto check_set_func = check_set<T>;
 
-   CHECK_udec(0, 32);
-   CHECK_udec(numeric_limits<u32>::min(), 32);
-   CHECK_udec(numeric_limits<u32>::max(), 32);
-   CHECK_udec(numeric_limits<u32>::min() + 1, 32);
-   CHECK_udec(numeric_limits<u32>::max() - 1, 32);
+   ASSERT_NO_FATAL_FAILURE({ check_set_func(); });
 
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   lognormal_distribution<> dist(5.0, 3);
 
-   for (int i = 0; i < 100000; i++) {
-      CHECK_udec((u32)dist(e), 32);
-   }
+   uniform_int_distribution<T>
+      dist(numeric_limits<T>::min(), numeric_limits<T>::max());
+
+   for (int i = 0; i < 100000; i++)
+      ASSERT_NO_FATAL_FAILURE({ check_func(dist(e)); });
 }
 
 TEST(itoa, u64_dec)
 {
-   char expected[64];
-   char got[64];
+   typedef u64 T;
+   auto check_func = check<T>;
+   auto check_set_func = check_set<T>;
 
-   CHECK_udec(0, 64);
-   CHECK_udec(numeric_limits<u64>::min(), 64);
-   CHECK_udec(numeric_limits<u64>::max(), 64);
-   CHECK_udec(numeric_limits<u64>::min() + 1, 64);
-   CHECK_udec(numeric_limits<u64>::max() - 1, 64);
+   ASSERT_NO_FATAL_FAILURE({ check_set_func(); });
 
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   lognormal_distribution<> dist(12.0, 4.0);
 
-   for (int i = 0; i < 100000; i++) {
-      CHECK_udec((u32)dist(e), 64);
-   }
+   uniform_int_distribution<T>
+      dist(numeric_limits<T>::min(), numeric_limits<T>::max());
+
+   for (int i = 0; i < 100000; i++)
+      ASSERT_NO_FATAL_FAILURE({ check_func(dist(e)); });
 }
 
 TEST(itoa, u32_hex_fixed)
 {
-   char expected[32];
-   char got[32];
+   typedef u32 T;
+   auto check_func = check<T, true, true>;
+   auto check_set_func = check_set<T, true, true>;
 
-   CHECK_hex_fixed(0, 32);
-   CHECK_hex_fixed(numeric_limits<u32>::min(), 32);
-   CHECK_hex_fixed(numeric_limits<u32>::max(), 32);
-   CHECK_hex_fixed(numeric_limits<u32>::min() + 1, 32);
-   CHECK_hex_fixed(numeric_limits<u32>::max() - 1, 32);
+   ASSERT_NO_FATAL_FAILURE({ check_set_func(); });
 
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   lognormal_distribution<> dist(5.0, 3);
 
-   for (int i = 0; i < 100000; i++) {
-      CHECK_hex_fixed((u32)dist(e), 32);
-   }
+   uniform_int_distribution<T>
+      dist(numeric_limits<T>::min(), numeric_limits<T>::max());
+
+   for (int i = 0; i < 100000; i++)
+      ASSERT_NO_FATAL_FAILURE({ check_func(dist(e)); });
 }
 
 TEST(itoa, u64_hex_fixed)
 {
-   char expected[64];
-   char got[64];
+   typedef u64 T;
+   auto check_func = check<T, true, true>;
+   auto check_set_func = check_set<T, true, true>;
 
-   CHECK_hex_fixed(0, 64);
-   CHECK_hex_fixed(numeric_limits<u64>::min(), 64);
-   CHECK_hex_fixed(numeric_limits<u64>::max(), 64);
-   CHECK_hex_fixed(numeric_limits<u64>::min() + 1, 64);
-   CHECK_hex_fixed(numeric_limits<u64>::max() - 1, 64);
+   ASSERT_NO_FATAL_FAILURE({ check_set_func(); });
 
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   lognormal_distribution<> dist(12.0, 4);
 
-   for (int i = 0; i < 100000; i++) {
-      CHECK_hex_fixed((u64)dist(e), 64);
-   }
+   uniform_int_distribution<T>
+      dist(numeric_limits<T>::min(), numeric_limits<T>::max());
+
+   for (int i = 0; i < 100000; i++)
+      ASSERT_NO_FATAL_FAILURE({ check_func(dist(e)); });
 }
 
 TEST(itoa, s32_dec)
 {
-   char expected[32];
-   char got[32];
+   typedef s32 T;
+   auto check_func = check<T>;
+   auto check_set_func = check_set<T>;
 
-   CHECK_sdec(0, 32);
-   CHECK_sdec(numeric_limits<s32>::min(), 32);
-   CHECK_sdec(numeric_limits<s32>::max(), 32);
-   CHECK_sdec(numeric_limits<s32>::min() + 1, 32);
-   CHECK_sdec(numeric_limits<s32>::max() - 1, 32);
+   ASSERT_NO_FATAL_FAILURE({ check_set_func(); });
 
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
 
-   uniform_int_distribution<s32>
-      dist(numeric_limits<s32>::min(), numeric_limits<s32>::max());
+   uniform_int_distribution<T>
+      dist(numeric_limits<T>::min(), numeric_limits<T>::max());
 
-   for (int i = 0; i < 100000; i++) {
-      CHECK_sdec((s32)dist(e), 32);
-   }
+   for (int i = 0; i < 100000; i++)
+      ASSERT_NO_FATAL_FAILURE({ check_func(dist(e)); });
 }
 
 TEST(itoa, s64_dec)
 {
-   char expected[64];
-   char got[64];
+   typedef s32 T;
+   auto check_func = check<T>;
+   auto check_set_func = check_set<T>;
 
-   CHECK_sdec(0, 64);
-   CHECK_sdec(numeric_limits<s64>::min(), 64);
-   CHECK_sdec(numeric_limits<s64>::max(), 64);
-   CHECK_sdec(numeric_limits<s64>::min() + 1, 64);
-   CHECK_sdec(numeric_limits<s64>::max() - 1, 64);
+   ASSERT_NO_FATAL_FAILURE({ check_set_func(); });
 
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
 
-   uniform_int_distribution<s64>
-      dist(numeric_limits<s64>::min(), numeric_limits<s64>::max());
+   uniform_int_distribution<T>
+      dist(numeric_limits<T>::min(), numeric_limits<T>::max());
 
-   for (int i = 0; i < 100000; i++) {
-      CHECK_sdec((s64)dist(e), 64);
-   }
+   for (int i = 0; i < 100000; i++)
+      ASSERT_NO_FATAL_FAILURE({ check_func(dist(e)); });
 }
 
