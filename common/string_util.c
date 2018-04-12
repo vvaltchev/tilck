@@ -37,24 +37,7 @@
 instantiate_generic_itoa(itoa32, s32)
 instantiate_generic_itoa(itoa64, s64)
 
-static const char digits[] = "0123456789abcdef";
-
-#define instantiate_uitoa_hex(func_name, int_type)       \
-   void func_name(int_type value, char *buf)             \
-   {                                                     \
-      char *ptr = buf;                                   \
-                                                         \
-      for (u32 i = 0; i < sizeof(value) * 2; i++) {      \
-         *ptr++ = digits[value & 0xf];                   \
-         value >>= 4;                                    \
-      }                                                  \
-                                                         \
-      ptr--;                                             \
-      while (*ptr == '0' && ptr > buf) { *ptr-- = 0; }   \
-      *++ptr = 0;                                        \
-                                                         \
-      str_reverse(buf, ptr - buf);                       \
-   }
+#define DIGITS "0123456789abcdef"
 
 #define instantiate_uitoa_hex_fixed(func_name, int_type)   \
    void func_name(int_type value, char *buf)               \
@@ -63,36 +46,36 @@ static const char digits[] = "0123456789abcdef";
       char *ptr = buf;                                     \
                                                            \
       for (u32 i = 0; i < sizeof(value) * 2; i++, j-=4) {  \
-         *ptr++ = digits[(value >> j) & 0xf];              \
+         *ptr++ = DIGITS[(value >> j) & 0xf];              \
       }                                                    \
                                                            \
       *ptr = 0;                                            \
    }
 
-#define instantiate_uitoa_dec(func_name, int_type)       \
-   void func_name(int_type value, char *buf)             \
-   {                                                     \
-      char *ptr = buf;                                   \
-                                                         \
-      while (value) {                                    \
-         *ptr++ = digits[value % 10];                    \
-         value /= 10;                                    \
-      }                                                  \
-                                                         \
-      if (ptr == buf)                                    \
-         *ptr++ = digits[0];                             \
-                                                         \
-      *ptr = 0;                                          \
-      str_reverse(buf, ptr - buf);                       \
+#define instantiate_uitoa(func_name, int_type, base)       \
+   void func_name(int_type value, char *buf)               \
+   {                                                       \
+      char *ptr = buf;                                     \
+                                                           \
+      while (value) {                                      \
+         *ptr++ = DIGITS[value % base];                    \
+         value /= base;                                    \
+      }                                                    \
+                                                           \
+      if (ptr == buf)                                      \
+         *ptr++ = DIGITS[0];                               \
+                                                           \
+      *ptr = 0;                                            \
+      str_reverse(buf, ptr - buf);                         \
    }
 
-instantiate_uitoa_hex(uitoa32_hex, u32)
 instantiate_uitoa_hex_fixed(uitoa32_hex_fixed, u32)
-instantiate_uitoa_hex(uitoa64_hex, u64)
 instantiate_uitoa_hex_fixed(uitoa64_hex_fixed, u64)
 
-instantiate_uitoa_dec(uitoa32_dec, u32)
-instantiate_uitoa_dec(uitoa64_dec, u64)
+instantiate_uitoa(uitoa32_dec, u32, 10)
+instantiate_uitoa(uitoa64_dec, u64, 10)
+instantiate_uitoa(uitoa32_hex, u32, 16)
+instantiate_uitoa(uitoa64_hex, u64, 16)
 
 
 int strcmp(const char *s1, const char *s2)
@@ -128,7 +111,7 @@ int stricmp(const char *s1, const char *s2)
  * Reverse a string in-place.
  * NOTE: len == strlen(str): it does NOT include the final \0.
  */
-void str_reverse(char *str, size_t len)
+inline void str_reverse(char *str, size_t len)
 {
    ASSERT(len == strlen(str));
 
