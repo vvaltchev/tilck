@@ -37,15 +37,15 @@
    }
 
 #define instantiate_generic_uitoa(function_name, integer_type)     \
-   void function_name(integer_type value, char *destBuf, u32 base) \
+   void function_name(integer_type value, char *destBuf)           \
    {                                                               \
       char *ptr = destBuf;                                         \
       char *low = ptr;                                             \
                                                                    \
       do {                                                         \
          /* Mod(x, b) < 0 if x < 0: no need for abs(). */          \
-         *ptr++ = MAGIC_ITOA_STRING[35 + value % base];            \
-         value /= base;                                            \
+         *ptr++ = MAGIC_ITOA_STRING[35 + value % 10];              \
+         value /= 10;                                              \
       } while (value);                                             \
                                                                    \
       *ptr-- = '\0';                                               \
@@ -59,8 +59,30 @@
 
 instantiate_generic_itoa(itoa32, s32)
 instantiate_generic_itoa(itoa64, s64)
-instantiate_generic_uitoa(uitoa32, u32)
-instantiate_generic_uitoa(uitoa64, u64)
+instantiate_generic_uitoa(uitoa32_dec, u32)
+instantiate_generic_uitoa(uitoa64_dec, u64)
+
+static const char digits[] = "0123456789abcdef";
+
+#define instantiate_uitoa_hex(func_name, int_type)       \
+   void func_name(int_type value, char *buf)             \
+   {                                                     \
+      char *ptr = buf;                                   \
+                                                         \
+      for (u32 i = 0; i < sizeof(value) * 2; i++) {      \
+         *ptr++ = digits[value & 0xf];                   \
+         value >>= 4;                                    \
+      }                                                  \
+                                                         \
+      ptr--;                                             \
+      while (*ptr == '0' && ptr > buf) { *ptr-- = 0; }   \
+      *++ptr = 0;                                        \
+                                                         \
+      str_reverse(buf, ptr - buf);                       \
+   }
+
+instantiate_uitoa_hex(uitoa32_hex, u32)
+instantiate_uitoa_hex(uitoa64_hex, u64)
 
 
 int strcmp(const char *s1, const char *s2)
@@ -152,7 +174,7 @@ void vprintk(const char *fmt, va_list args)
             ++ptr;
             if (*ptr) {
                if (*ptr == 'u') {
-                  uitoa64(va_arg(args, u64), buf, 10);
+                  uitoa64_dec(va_arg(args, u64), buf);
                   print_string(buf);
                } else if (*ptr == 'i' || *ptr == 'd') {
                   itoa64(va_arg(args, s64), buf);
@@ -169,12 +191,12 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 'u':
-         uitoa32(va_arg(args, u32), buf, 10);
+         uitoa32_dec(va_arg(args, u32), buf);
          print_string(buf);
          break;
 
       case 'x':
-         uitoa32(va_arg(args, u32), buf, 16);
+         uitoa32_hex(va_arg(args, u32), buf);
          print_string(buf);
          break;
 
@@ -187,7 +209,7 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 'p':
-         uitoa32(va_arg(args, uptr), buf, 16);
+         uitoa32_hex(va_arg(args, uptr), buf);
          size_t len = strlen(buf);
          size_t fixedLen = 2 * sizeof(void*);
 

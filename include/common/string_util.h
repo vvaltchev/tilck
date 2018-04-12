@@ -55,8 +55,12 @@ static ALWAYS_INLINE bool isdigit(int c) {
 
 void itoa32(s32 value, char *destBuf);
 void itoa64(s64 value, char *destBuf);
-void uitoa32(u32 value, char *destBuf, u32 base);
-void uitoa64(u64 value, char *destBuf, u32 base);
+
+void uitoa32_dec(u32 value, char *destBuf);
+void uitoa64_dec(u64 value, char *destBuf);
+
+void uitoa32_hex(u32 value, char *buf);
+void uitoa64_hex(u64 value, char *buf);
 
 void vprintk(const char *fmt, va_list args);
 void printk(const char *fmt, ...);
