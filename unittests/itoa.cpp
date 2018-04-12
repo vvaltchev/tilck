@@ -45,6 +45,16 @@ extern "C" {
    } while (0)
 
 
+#define CHECK_sdec(num, bits)                    \
+   do {                                          \
+      memset(expected, 0xff, sizeof(expected));  \
+      memset(got, 0xff, sizeof(got));            \
+      u64 __val = num;                           \
+      sprintf(expected, "%ld", __val);           \
+      itoa##bits(__val, got);                    \
+      ASSERT_STREQ(got, expected);               \
+   } while (0)
+
 
 TEST(itoa, u32_hex)
 {
@@ -171,3 +181,50 @@ TEST(itoa, u64_hex_fixed)
       CHECK_hex_fixed((u64)dist(e), 64);
    }
 }
+
+TEST(itoa, s32_dec)
+{
+   char expected[32];
+   char got[32];
+
+   CHECK_sdec(0, 32);
+   CHECK_sdec(numeric_limits<s32>::min(), 32);
+   CHECK_sdec(numeric_limits<s32>::max(), 32);
+   CHECK_sdec(numeric_limits<s32>::min() + 1, 32);
+   CHECK_sdec(numeric_limits<s32>::max() - 1, 32);
+
+   random_device rdev;
+   const auto seed = rdev();
+   default_random_engine e(seed);
+
+   uniform_int_distribution<s32>
+      dist(numeric_limits<s32>::min(), numeric_limits<s32>::max());
+
+   for (int i = 0; i < 100000; i++) {
+      CHECK_sdec((s32)dist(e), 32);
+   }
+}
+
+TEST(itoa, s64_dec)
+{
+   char expected[64];
+   char got[64];
+
+   CHECK_sdec(0, 64);
+   CHECK_sdec(numeric_limits<s64>::min(), 64);
+   CHECK_sdec(numeric_limits<s64>::max(), 64);
+   CHECK_sdec(numeric_limits<s64>::min() + 1, 64);
+   CHECK_sdec(numeric_limits<s64>::max() - 1, 64);
+
+   random_device rdev;
+   const auto seed = rdev();
+   default_random_engine e(seed);
+
+   uniform_int_distribution<s64>
+      dist(numeric_limits<s64>::min(), numeric_limits<s64>::max());
+
+   for (int i = 0; i < 100000; i++) {
+      CHECK_sdec((s64)dist(e), 64);
+   }
+}
+
