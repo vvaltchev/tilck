@@ -7,8 +7,6 @@
 #define MAGIC_ITOA_STRING \
    "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"
 
-// Two kind-of ugly macros to avoid code duplication.
-
 #define instantiate_generic_itoa(function_name, integer_type)   \
    void function_name(integer_type value, char *destBuf)        \
    {                                                            \
@@ -36,31 +34,8 @@
       }                                                         \
    }
 
-#define instantiate_generic_uitoa(function_name, integer_type)     \
-   void function_name(integer_type value, char *destBuf)           \
-   {                                                               \
-      char *ptr = destBuf;                                         \
-      char *low = ptr;                                             \
-                                                                   \
-      do {                                                         \
-         /* Mod(x, b) < 0 if x < 0: no need for abs(). */          \
-         *ptr++ = MAGIC_ITOA_STRING[35 + value % 10];              \
-         value /= 10;                                              \
-      } while (value);                                             \
-                                                                   \
-      *ptr-- = '\0';                                               \
-      while (low < ptr) {                                          \
-         char tmp = *low;                                          \
-         *low++ = *ptr;                                            \
-         *ptr-- = tmp;                                             \
-      }                                                            \
-   }                                                               \
-
-
 instantiate_generic_itoa(itoa32, s32)
 instantiate_generic_itoa(itoa64, s64)
-instantiate_generic_uitoa(uitoa32_dec, u32)
-instantiate_generic_uitoa(uitoa64_dec, u64)
 
 static const char digits[] = "0123456789abcdef";
 
@@ -81,8 +56,27 @@ static const char digits[] = "0123456789abcdef";
       str_reverse(buf, ptr - buf);                       \
    }
 
+#define instantiate_uitoa_dec(func_name, int_type)       \
+   void func_name(int_type value, char *buf)             \
+   {                                                     \
+      char *ptr = buf;                                   \
+                                                         \
+      while (value) {                                    \
+         *ptr++ = digits[value % 10];                    \
+         value /= 10;                                    \
+      }                                                  \
+                                                         \
+      if (ptr == buf)                                    \
+         *ptr++ = digits[0];                             \
+                                                         \
+      *ptr = 0;                                          \
+      str_reverse(buf, ptr - buf);                       \
+   }
+
 instantiate_uitoa_hex(uitoa32_hex, u32)
 instantiate_uitoa_hex(uitoa64_hex, u64)
+instantiate_uitoa_dec(uitoa32_dec, u32)
+instantiate_uitoa_dec(uitoa64_dec, u64)
 
 
 int strcmp(const char *s1, const char *s2)
