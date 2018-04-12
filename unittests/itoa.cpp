@@ -21,6 +21,19 @@ extern "C" {
       ASSERT_STREQ(got, expected);            \
    } while (0)
 
+#define CHECK_hex_fixed(num, bits)            \
+   do {                                       \
+      memset(expected, 0, sizeof(expected));  \
+      memset(got, 0, sizeof(got));            \
+      u64 __val = num;                        \
+      if (bits == 32)                         \
+         sprintf(expected, "%08lx", __val);   \
+      else                                    \
+         sprintf(expected, "%016lx", __val);  \
+      uitoa##bits##_hex_fixed(__val, got);    \
+      ASSERT_STREQ(got, expected);            \
+   } while (0)
+
 #define CHECK_udec(num, bits)                 \
    do {                                       \
       memset(expected, 0, sizeof(expected));  \
@@ -125,3 +138,25 @@ TEST(itoa, u64_dec)
    }
 }
 
+TEST(itoa, u32_hex_fixed)
+{
+   char expected[32];
+   char got[32];
+
+   CHECK_hex_fixed(0, 32);
+   CHECK_hex_fixed(numeric_limits<u32>::min(), 32);
+   CHECK_hex_fixed(numeric_limits<u32>::max(), 32);
+   CHECK_hex_fixed(numeric_limits<u32>::min() + 1, 32);
+   CHECK_hex_fixed(numeric_limits<u32>::max() - 1, 32);
+
+   random_device rdev;
+   const auto seed = rdev();
+   default_random_engine e(seed);
+   cout << "[ INFO     ] random seed: " << seed << endl;
+
+   lognormal_distribution<> dist(5.0, 3);
+
+   for (int i = 0; i < 100000; i++) {
+      CHECK_hex_fixed((u32)dist(e), 32);
+   }
+}

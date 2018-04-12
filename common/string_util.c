@@ -56,6 +56,19 @@ static const char digits[] = "0123456789abcdef";
       str_reverse(buf, ptr - buf);                       \
    }
 
+#define instantiate_uitoa_hex_fixed(func_name, int_type)   \
+   void func_name(int_type value, char *buf)               \
+   {                                                       \
+      u32 j = sizeof(value) * 8 - 4;                       \
+      char *ptr = buf;                                     \
+                                                           \
+      for (u32 i = 0; i < sizeof(value) * 2; i++, j-=4) {  \
+         *ptr++ = digits[(value >> j) & 0xf];              \
+      }                                                    \
+                                                           \
+      *ptr = 0;                                            \
+   }
+
 #define instantiate_uitoa_dec(func_name, int_type)       \
    void func_name(int_type value, char *buf)             \
    {                                                     \
@@ -74,7 +87,10 @@ static const char digits[] = "0123456789abcdef";
    }
 
 instantiate_uitoa_hex(uitoa32_hex, u32)
+instantiate_uitoa_hex_fixed(uitoa32_hex_fixed, u32)
 instantiate_uitoa_hex(uitoa64_hex, u64)
+instantiate_uitoa_hex_fixed(uitoa64_hex_fixed, u64)
+
 instantiate_uitoa_dec(uitoa32_dec, u32)
 instantiate_uitoa_dec(uitoa64_dec, u64)
 
@@ -203,16 +219,8 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 'p':
-         uitoa32_hex(va_arg(args, uptr), buf);
-         size_t len = strlen(buf);
-         size_t fixedLen = 2 * sizeof(void*);
-
+         uitoa32_hex_fixed(va_arg(args, uptr), buf);
          print_string("0x");
-
-         while (fixedLen-- > len) {
-            term_write_char('0');
-         }
-
          print_string(buf);
          break;
 
