@@ -19,11 +19,6 @@ char *strdup(const char *s);
 char *const *dcopy_strarray(const char *const *argv);
 void dfree_strarray(char *const *argv);
 
-void itoa32(s32 value, char *destBuf);
-void itoa64(s64 value, char *destBuf);
-void uitoa32(u32 value, char *destBuf, u32 base);
-void uitoa64(u64 value, char *destBuf, u32 base);
-
 static ALWAYS_INLINE bool isalpha_lower(int c) {
    return (c >= 'a' && c <= 'z');
 }
@@ -57,6 +52,11 @@ static ALWAYS_INLINE bool isdigit(int c) {
 /* Add here any necessary #include for the tests. */
 
 #endif /* !defined(TESTING) */
+
+void itoa32(s32 value, char *destBuf);
+void itoa64(s64 value, char *destBuf);
+void uitoa32(u32 value, char *destBuf, u32 base);
+void uitoa64(u64 value, char *destBuf, u32 base);
 
 void vprintk(const char *fmt, va_list args);
 void printk(const char *fmt, ...);
