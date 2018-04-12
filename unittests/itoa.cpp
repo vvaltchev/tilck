@@ -11,37 +11,37 @@ extern "C" {
    #include <common/string_util.h>
 }
 
-#define CHECK_hex(num, bits)                  \
-   do {                                       \
-      memset(expected, 0, sizeof(expected));  \
-      memset(got, 0, sizeof(got));            \
-      u64 __val = num;                        \
-      sprintf(expected, "%lx", __val);        \
-      uitoa##bits##_hex(__val, got);          \
-      ASSERT_STREQ(got, expected);            \
+#define CHECK_hex(num, bits)                      \
+   do {                                           \
+      memset(expected, 0xff, sizeof(expected));   \
+      memset(got, 0xff, sizeof(got));             \
+      u64 __val = num;                            \
+      sprintf(expected, "%lx", __val);            \
+      uitoa##bits##_hex(__val, got);              \
+      ASSERT_STREQ(got, expected);                \
    } while (0)
 
-#define CHECK_hex_fixed(num, bits)            \
-   do {                                       \
-      memset(expected, 0, sizeof(expected));  \
-      memset(got, 0, sizeof(got));            \
-      u64 __val = num;                        \
-      if (bits == 32)                         \
-         sprintf(expected, "%08lx", __val);   \
-      else                                    \
-         sprintf(expected, "%016lx", __val);  \
-      uitoa##bits##_hex_fixed(__val, got);    \
-      ASSERT_STREQ(got, expected);            \
+#define CHECK_hex_fixed(num, bits)                \
+   do {                                           \
+      memset(expected, 0xff, sizeof(expected));   \
+      memset(got, 0xff, sizeof(got));             \
+      u64 __val = num;                            \
+      if (bits == 32)                             \
+         sprintf(expected, "%08lx", __val);       \
+      else                                        \
+         sprintf(expected, "%016lx", __val);      \
+      uitoa##bits##_hex_fixed(__val, got);        \
+      ASSERT_STREQ(got, expected);                \
    } while (0)
 
-#define CHECK_udec(num, bits)                 \
-   do {                                       \
-      memset(expected, 0, sizeof(expected));  \
-      memset(got, 0, sizeof(got));            \
-      u64 __val = num;                        \
-      sprintf(expected, "%lu", __val);        \
-      uitoa##bits##_dec(__val, got);          \
-      ASSERT_STREQ(got, expected);            \
+#define CHECK_udec(num, bits)                    \
+   do {                                          \
+      memset(expected, 0xff, sizeof(expected));  \
+      memset(got, 0xff, sizeof(got));            \
+      u64 __val = num;                           \
+      sprintf(expected, "%lu", __val);           \
+      uitoa##bits##_dec(__val, got);             \
+      ASSERT_STREQ(got, expected);               \
    } while (0)
 
 
@@ -148,5 +148,26 @@ TEST(itoa, u32_hex_fixed)
 
    for (int i = 0; i < 100000; i++) {
       CHECK_hex_fixed((u32)dist(e), 32);
+   }
+}
+
+TEST(itoa, u64_hex_fixed)
+{
+   char expected[64];
+   char got[64];
+
+   CHECK_hex_fixed(0, 64);
+   CHECK_hex_fixed(numeric_limits<u64>::min(), 64);
+   CHECK_hex_fixed(numeric_limits<u64>::max(), 64);
+   CHECK_hex_fixed(numeric_limits<u64>::min() + 1, 64);
+   CHECK_hex_fixed(numeric_limits<u64>::max() - 1, 64);
+
+   random_device rdev;
+   const auto seed = rdev();
+   default_random_engine e(seed);
+   lognormal_distribution<> dist(12.0, 4);
+
+   for (int i = 0; i < 100000; i++) {
+      CHECK_hex_fixed((u64)dist(e), 64);
    }
 }
