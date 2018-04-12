@@ -60,8 +60,6 @@ TEST(itoa, u32_hex)
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   cout << "[ INFO     ] random seed: " << seed << endl;
-
    lognormal_distribution<> dist(5.0, 3);
 
    for (int i = 0; i < 100000; i++) {
@@ -83,8 +81,6 @@ TEST(itoa, u64_hex)
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   cout << "[ INFO     ] random seed: " << seed << endl;
-
    lognormal_distribution<> dist(12.0, 4);
 
    for (int i = 0; i < 100000; i++) {
@@ -106,8 +102,6 @@ TEST(itoa, u32_dec)
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   cout << "[ INFO     ] random seed: " << seed << endl;
-
    lognormal_distribution<> dist(5.0, 3);
 
    for (int i = 0; i < 100000; i++) {
@@ -129,8 +123,6 @@ TEST(itoa, u64_dec)
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   cout << "[ INFO     ] random seed: " << seed << endl;
-
    lognormal_distribution<> dist(12.0, 4.0);
 
    for (int i = 0; i < 100000; i++) {
@@ -152,8 +144,6 @@ TEST(itoa, u32_hex_fixed)
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   cout << "[ INFO     ] random seed: " << seed << endl;
-
    lognormal_distribution<> dist(5.0, 3);
 
    for (int i = 0; i < 100000; i++) {
