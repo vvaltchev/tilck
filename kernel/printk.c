@@ -1,8 +1,10 @@
 
 #include <common/basic_defs.h>
 #include <common/string_util.h>
+#include <common/arch/generic_x86/vga_textmode_defs.h>
 #include <exos/term.h>
 #include <exos/process.h>
+
 
 static bool
 write_in_buf_str(char **buf_ref, char *buf_end, const char *s)
@@ -147,8 +149,13 @@ void vprintk(const char *fmt, va_list args)
 
    disable_preemption();
    {
+      u8 curr_color = term_get_color();
+      term_set_color(make_color(COLOR_LIGHT_RED, COLOR_BLACK));
+
       while (*p)
          term_write_char(*p++);
+
+      term_set_color(curr_color);
    }
    enable_preemption();
 }
