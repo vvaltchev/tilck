@@ -6,7 +6,7 @@
 static void print_string(const char *s)
 {
    while (*s)
-      term_write_char(*s++);
+      bt_write_char(*s++);
 }
 
 void vprintk(const char *fmt, va_list args)
@@ -19,7 +19,7 @@ void vprintk(const char *fmt, va_list args)
    while (*ptr) {
 
       if (*ptr != '%') {
-         term_write_char(*ptr++);
+         bt_write_char(*ptr++);
          continue;
       }
 
@@ -66,7 +66,7 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 'c':
-         term_write_char(va_arg(args, s32));
+         bt_write_char(va_arg(args, s32));
          break;
 
       case 's':
@@ -80,8 +80,8 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       default:
-         term_write_char('%');
-         term_write_char(*ptr);
+         bt_write_char('%');
+         bt_write_char(*ptr);
       }
 
       ++ptr;

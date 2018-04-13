@@ -95,7 +95,7 @@ void bootloader_main(void)
    void *entry;
 
    /* Clear the screen in case we need to show a panic message */
-   init_term();
+   init_bt();
 
    /* Load the actual kernel ELF file */
    load_elf_kernel(KERNEL_FILE_PATH, &entry);

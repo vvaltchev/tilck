@@ -12,11 +12,12 @@ uint8_t terminal_row = 0;
 uint8_t terminal_column = 0;
 uint8_t terminal_color = 0;
 
-void term_setcolor(uint8_t color) {
+void bt_setcolor(uint8_t color)
+{
    terminal_color = color;
 }
 
-void term_movecur(int row, int col)
+void bt_movecur(int row, int col)
 {
    uint16_t position = (row * 80) + col;
 
@@ -29,7 +30,7 @@ void term_movecur(int row, int col)
 }
 
 
-static void term_incr_row()
+static void bt_incr_row()
 {
    if (terminal_row < TERM_HEIGHT - 1) {
       ++terminal_row;
@@ -50,18 +51,18 @@ static void term_incr_row()
    }
 }
 
-void term_write_char(char c) {
-
+void bt_write_char(char c)
+{
    if (c == '\n') {
       terminal_column = 0;
-      term_incr_row();
-      term_movecur(terminal_row, terminal_column);
+      bt_incr_row();
+      bt_movecur(terminal_row, terminal_column);
       return;
    }
 
    if (c == '\r') {
       terminal_column = 0;
-      term_movecur(terminal_row, terminal_column);
+      bt_movecur(terminal_row, terminal_column);
       return;
    }
 
@@ -77,17 +78,17 @@ void term_write_char(char c) {
 
    if (terminal_column == TERM_WIDTH) {
       terminal_column = 0;
-      term_incr_row();
+      bt_incr_row();
    }
 
-   term_movecur(terminal_row, terminal_column);
+   bt_movecur(terminal_row, terminal_column);
 }
 
-void init_term() {
+void init_bt(void)
+{
+   bt_movecur(0, 0);
 
-   term_movecur(0, 0);
-
-   term_setcolor(make_color(COLOR_WHITE, COLOR_BLACK));
+   bt_setcolor(make_color(COLOR_WHITE, COLOR_BLACK));
    volatile uint16_t *ptr = (volatile uint16_t *)TERMINAL_VIDEO_ADDR;
 
    for (int i = 0; i < TERM_WIDTH*TERM_HEIGHT; ++i) {
