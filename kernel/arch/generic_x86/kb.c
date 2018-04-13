@@ -297,6 +297,10 @@ void handle_key_pressed(u8 scancode)
       uptr var;
       disable_interrupts(&var);
 
+         // debug way to trigger a panic
+         // if (c == '$')
+         //    NOT_REACHED();
+
          if (c != '\b') {
 
             if (!kb_cbuf_is_full()) {

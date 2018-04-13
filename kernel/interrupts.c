@@ -41,6 +41,19 @@ inline void pop_nested_interrupt(void)
    enable_interrupts(&var);
 }
 
+bool in_irq(void)
+{
+   uptr var;
+   bool r = false;
+   disable_interrupts(&var);
+   {
+      if (nested_interrupts_count > 0)
+         if (is_irq(nested_interrupts[nested_interrupts_count - 1]))
+            r = true;
+   }
+   enable_interrupts(&var);
+   return r;
+}
 
 void check_not_in_irq_handler(void)
 {
@@ -111,13 +124,18 @@ void panic_dump_nested_interrupts(void)
    if (!nested_interrupts_count)
       return;
 
-   printk("Interrupts: [ ");
+   char buf[80];
+   int written = 0;
+
+   written += snprintk(buf + written, sizeof(buf) - written, "Interrupts: [ ");
 
    for (int i = nested_interrupts_count - 1; i >= 0; i--) {
-      printk("%i ", nested_interrupts[i]);
+      written += snprintk(buf  + written, sizeof(buf) - written,
+                          "%i ", nested_interrupts[i]);
    }
 
-   printk("]\n");
+   written += snprintk(buf + written, sizeof(buf) - written, "]\n");
+   printk("%s", buf);
 }
 
 int get_nested_interrupts_count(void)

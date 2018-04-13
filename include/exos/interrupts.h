@@ -6,6 +6,7 @@
 
 void set_fault_handler(int fault, void *ptr);
 void check_not_in_irq_handler(void);
+bool in_irq(void);
 bool in_syscall(void);
 void push_nested_interrupt(int int_num);
 void pop_nested_interrupt(void);
