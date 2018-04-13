@@ -4,66 +4,97 @@
 #include <exos/term.h>
 #include <exos/process.h>
 
-static void print_string(const char *s)
+static bool
+write_in_buf_str(char **buf_ref, char *buf_end, const char *s)
 {
-   while (*s)
-      term_write_char(*s++);
+   char *ptr = *buf_ref;
+
+   while (*s && ptr < buf_end) {
+      *ptr++ = *s++;
+   }
+
+   *buf_ref = ptr;
+   return ptr < buf_end;
 }
 
-void vprintk(const char *fmt, va_list args)
+static inline bool
+write_in_buf_char(char **buf_ref, char *buf_end, char c)
 {
-   const char *ptr = fmt;
-   char buf[64];
+   char *ptr = *buf_ref;
+   *ptr++ = c;
+   *buf_ref = ptr;
+   return ptr < buf_end;
+}
 
-   print_string("[kernel] ");
+#define WRITE_STR(s)                                 \
+   do {                                              \
+      if (!write_in_buf_str(&buf, buf_end, (s)))     \
+         goto out;                                   \
+   } while (0)
 
-   while (*ptr) {
+#define WRITE_CHAR(c)                                \
+   do {                                              \
+      if (!write_in_buf_char(&buf, buf_end, (c)))    \
+         goto out;                                   \
+   } while (0)
 
-      if (*ptr != '%') {
-         term_write_char(*ptr++);
+
+int vsnprintk(char *buf, size_t size, const char *fmt, va_list args)
+{
+   char *const initial_buf = buf;
+   char *buf_end = buf + size;
+   char intbuf[32];
+
+   while (*fmt) {
+
+      if (*fmt != '%') {
+         WRITE_CHAR(*fmt++);
          continue;
       }
 
-      // *ptr is '%'
+      // *fmt is '%'
+      ++fmt;
 
-      ++ptr;
-
-      if (*ptr == '%')
+      if (*fmt == '%')
          continue;
 
-      switch (*ptr) {
+      switch (*fmt) {
 
       case 'l':
-         ++ptr;
 
-         if (*ptr && *ptr == 'l') {
-            ++ptr;
-            if (*ptr) {
-               if (*ptr == 'u') {
-                  uitoa64_dec(va_arg(args, u64), buf);
-                  print_string(buf);
-               } else if (*ptr == 'i' || *ptr == 'd') {
-                  itoa64(va_arg(args, s64), buf);
-                  print_string(buf);
-               }
+         if (!*++fmt)
+            goto out;
+
+         if (*fmt == 'l') {
+
+            if (!*++fmt)
+               goto out;
+
+            if (*fmt == 'u') {
+               uitoa64_dec(va_arg(args, u64), intbuf);
+               WRITE_STR(intbuf);
+            } else if (*fmt == 'i' || *fmt == 'd') {
+               itoa64(va_arg(args, s64), intbuf);
+               WRITE_STR(intbuf);
             }
+
          }
          break;
 
       case 'd':
       case 'i':
-         itoa32(va_arg(args, s32), buf);
-         print_string(buf);
+         itoa32(va_arg(args, s32), intbuf);
+         WRITE_STR(intbuf);
          break;
 
       case 'u':
-         uitoa32_dec(va_arg(args, u32), buf);
-         print_string(buf);
+         uitoa32_dec(va_arg(args, u32), intbuf);
+         WRITE_STR(intbuf);
          break;
 
       case 'x':
-         uitoa32_hex(va_arg(args, u32), buf);
-         print_string(buf);
+         uitoa32_hex(va_arg(args, u32), intbuf);
+         WRITE_STR(intbuf);
          break;
 
       case 'c':
@@ -71,31 +102,61 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 's':
-         print_string(va_arg(args, const char *));
+         WRITE_STR(va_arg(args, const char *));
          break;
 
       case 'p':
-         uitoa32_hex_fixed(va_arg(args, uptr), buf);
-         print_string("0x");
-         print_string(buf);
+         uitoa32_hex_fixed(va_arg(args, uptr), intbuf);
+         WRITE_STR("0x");
+         WRITE_STR(intbuf);
          break;
 
       default:
-         term_write_char('%');
-         term_write_char(*ptr);
+         WRITE_CHAR('%');
+         WRITE_CHAR(*fmt);
       }
 
-      ++ptr;
+      ++fmt;
    }
+
+out:
+   buf[ buf < buf_end ? 0 : -1 ] = 0;
+   return (buf - initial_buf + 1);
+}
+
+int snprintk(char *buf, size_t size, const char *fmt, ...)
+{
+   int written;
+
+   va_list args;
+   va_start(args, fmt);
+   written = vsnprintk(buf, size, fmt, args);
+   va_end(args);
+
+   return written;
+}
+
+void vprintk(const char *fmt, va_list args)
+{
+   char buf[256];
+   char *p = buf;
+   int written;
+
+   written = snprintk(buf, sizeof(buf), "[kernel] ");
+   vsnprintk(buf + written - 1, sizeof(buf) - written + 1, fmt, args);
+
+   disable_preemption();
+   {
+      while (*p)
+         term_write_char(*p++);
+   }
+   enable_preemption();
 }
 
 void printk(const char *fmt, ...)
 {
-   disable_preemption();
-   {
-      va_list args;
-      va_start(args, fmt);
-      vprintk(fmt, args);
-   }
-   enable_preemption();
+   va_list args;
+   va_start(args, fmt);
+   vprintk(fmt, args);
+   va_end(args);
 }

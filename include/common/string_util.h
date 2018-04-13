@@ -3,7 +3,7 @@
 
 #include <common/basic_defs.h>
 
-#if !defined(TESTING)
+#ifndef TESTING
 
 typedef unsigned char *va_list;
 #define va_start(list, param) (list = (((va_list)&param) + sizeof(param)))
@@ -51,7 +51,7 @@ static ALWAYS_INLINE bool isdigit(int c) {
 
 /* Add here any necessary #include for the tests. */
 
-#endif /* !defined(TESTING) */
+#endif // #ifndef TESTING
 
 void itoa32(s32 value, char *destBuf);
 void itoa64(s64 value, char *destBuf);
@@ -65,3 +65,8 @@ void uitoa64_hex_fixed(u64 value, char *buf);
 
 void vprintk(const char *fmt, va_list args);
 void printk(const char *fmt, ...);
+
+#ifdef __EXOS_KERNEL__
+int vsnprintk(char *buf, size_t size, const char *fmt, va_list args);
+int snprintk(char *buf, size_t size, const char *fmt, ...);
+#endif
