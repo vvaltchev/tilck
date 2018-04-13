@@ -20,6 +20,16 @@ static u8 terminal_color;
 
 static const video_interface *vi;
 
+void term_set_color(u8 color)
+{
+   terminal_color = color;
+}
+
+u8 term_get_color(void)
+{
+   return terminal_color;
+}
+
 void term_scroll_up(u32 lines)
 {
    uptr var;
@@ -50,10 +60,6 @@ void term_scroll_down(u32 lines)
       }
    }
    enable_interrupts(&var);
-}
-
-void term_setcolor(u8 color) {
-   terminal_color = color;
 }
 
 static void term_incr_row()
@@ -140,7 +146,7 @@ void init_term(const video_interface *interface, u8 default_color)
 
    vi->enable_cursor();
    term_move_ch(0, 0);
-   term_setcolor(default_color);
+   term_set_color(default_color);
 
    for (int i = 0; i < term_height; i++)
       vi->clear_row(i);
