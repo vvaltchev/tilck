@@ -142,16 +142,21 @@ typedef struct {
 sptr sys_writev(int fd, const iovec *iov, int iovcnt)
 {
    sptr written = 0;
+   disable_preemption();
 
    for (int i = 0; i < iovcnt; i++) {
 
       sptr rc = sys_write(fd, iov[i].iov_base, iov[i].iov_len);
 
-      if (rc < 0)
-         return rc;
+      if (rc < 0) {
+         written = rc;
+         goto out;
+      }
 
       written += rc;
    }
 
+out:
+   enable_preemption();
    return written;
 }
