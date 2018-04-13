@@ -8,6 +8,7 @@
 #include <exos/interrupts.h>
 
 #define PRINTK_COLOR COLOR_GREEN
+#define PRINTK_RINGBUF_FLUSH_COLOR COLOR_BLUE
 #define PRINTK_PANIC_COLOR COLOR_GREEN
 
 static bool
@@ -167,19 +168,27 @@ STATIC_ASSERT(sizeof(printk_ringbuf) <= 1024);
 
 static void printk_raw_flush(char *buf, size_t size)
 {
-   for (u32 i = 0; i < size; i++)
+   for (u32 i = 0; i < size; i++) {
       term_write_char(buf[i]);
+   }
 }
 
 static void printk_flush(char *buf, size_t size)
 {
    u8 curr_color = term_get_color();
+
+   // Use a different color for printk() messages for a better readability.
    term_set_color(make_color(PRINTK_COLOR, COLOR_BLACK));
 
+   // First, write to screen the 'buf' buffer.
    printk_raw_flush(buf, size);
 
-   // flush the ring buffer ...
+   // Then, flush the text in the ring buffer (if any).
    ringbuf_stat cs, ns;
+
+   // Use a different color for the text in the ring buffer, for debugging
+   // purposes. Clearly, this can be commented out.
+   term_set_color(make_color(PRINTK_RINGBUF_FLUSH_COLOR, COLOR_BLACK));
 
    while (true) {
 

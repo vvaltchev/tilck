@@ -96,6 +96,11 @@ void timer_handler(void *context)
    account_ticks();
    task_info *last_ready_task = tick_all_timers(context);
 
+   // [DEBUG] Useful to trigger nested printk calls
+   // if (!(jiffies % 100)) {
+   //    printk("[TIMER TICK]\n");
+   // }
+
    /*
     * Here we have to check that disabled_preemption_count is > 1, not > 0
     * since as the way the handle_irq() is implemented, that counter will be
