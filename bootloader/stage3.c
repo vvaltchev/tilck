@@ -1,10 +1,10 @@
 
 #include <common/basic_defs.h>
-#include <common/basic_term.h>
 #include <common/string_util.h>
 #include <common/fat32_base.h>
 #include <common/utils.h>
 #include <elf.h>
+#include "basic_term.h"
 
 /*
  * Checks if 'addr' is in the range [begin, end).

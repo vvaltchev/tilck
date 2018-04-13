@@ -1,8 +1,7 @@
 
 #include <common/basic_defs.h>
 #include <common/string_util.h>
-#include <exos/term.h>
-#include <exos/process.h>
+#include "basic_term.h"
 
 static void print_string(const char *s)
 {
@@ -91,11 +90,8 @@ void vprintk(const char *fmt, va_list args)
 
 void printk(const char *fmt, ...)
 {
-   disable_preemption();
-   {
-      va_list args;
-      va_start(args, fmt);
-      vprintk(fmt, args);
-   }
-   enable_preemption();
+   va_list args;
+   va_start(args, fmt);
+   vprintk(fmt, args);
 }
+
