@@ -12,16 +12,23 @@ extern "C" {
    #include <common/string_util.h>
 }
 
-inline void itoa_wrapper(s32 val, char *buf) { itoa32(val, buf); }
-inline void itoa_wrapper(s64 val, char *buf) { itoa64(val, buf); }
-inline void itoa_wrapper(u32 val, char *buf) { uitoa32_dec(val, buf); }
-inline void itoa_wrapper(u64 val, char *buf) { uitoa64_dec(val, buf); }
+template <typename T>
+inline void itoa_wrapper(T val, char *buf) { abort(); }
+
+template <>
+inline void itoa_wrapper<s32>(s32 val, char *buf) { itoa32(val, buf); }
+
+template <>
+inline void itoa_wrapper<s64>(s64 val, char *buf) { itoa64(val, buf); }
+
+template <>
+inline void itoa_wrapper<u32>(u32 val, char *buf) { uitoa32_dec(val, buf); }
+
+template <>
+inline void itoa_wrapper<u64>(u64 val, char *buf) { uitoa64_dec(val, buf); }
 
 template <typename T>
-inline void uitoa_hex_wrapper(T val, char *buf, bool fixed)
-{
-   abort();
-}
+inline void uitoa_hex_wrapper(T val, char *buf, bool fixed) { abort(); }
 
 template<>
 inline void uitoa_hex_wrapper<u32>(u32 val, char *buf, bool fixed)
@@ -43,10 +50,7 @@ inline void uitoa_hex_wrapper<u64>(u64 val, char *buf, bool fixed)
 
 
 template <typename T>
-inline void sprintf_hex_wrapper(T val, char *buf, bool fixed)
-{
-   abort();
-}
+inline void sprintf_hex_wrapper(T val, char *buf, bool fixed) { abort(); }
 
 template <>
 inline void sprintf_hex_wrapper<u32>(u32 val, char *buf, bool fixed)
@@ -97,10 +101,10 @@ void check_set()
    auto check_func = check<T, hex, fixed>;
 
    check_func(0);
-   check_func(numeric_limits<u32>::min());
-   check_func(numeric_limits<u32>::max());
-   check_func(numeric_limits<u32>::min() + 1);
-   check_func(numeric_limits<u32>::max() - 1);
+   check_func(numeric_limits<T>::min());
+   check_func(numeric_limits<T>::max());
+   check_func(numeric_limits<T>::min() + 1);
+   check_func(numeric_limits<T>::max() - 1);
 }
 
 TEST(itoa, u32_hex)
