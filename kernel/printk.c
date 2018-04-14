@@ -160,11 +160,10 @@ typedef struct {
 
 } ringbuf_stat;
 
-static volatile bool in_printk;
-static char printk_ringbuf[1024];
-static volatile ringbuf_stat printk_ringbuf_stat;
+static char printk_rbuf[1024];
+static volatile ringbuf_stat printk_rbuf_stat;
 
-STATIC_ASSERT(sizeof(printk_ringbuf) <= 1024);
+STATIC_ASSERT(sizeof(printk_rbuf) <= 1024);
 
 static void printk_raw_flush(char *buf, size_t size)
 {
@@ -193,21 +192,21 @@ static void printk_flush(char *buf, size_t size)
    while (true) {
 
       do {
-         cs = printk_ringbuf_stat;
-         ns = printk_ringbuf_stat;
+         cs = printk_rbuf_stat;
+         ns = printk_rbuf_stat;
 
-         ns.read_pos = (ns.read_pos + ns.used) % sizeof(printk_ringbuf);
+         ns.read_pos = (ns.read_pos + ns.used) % sizeof(printk_rbuf);
          ns.used = 0;
          ns.in_printk = 0;
 
-      } while (!BOOL_COMPARE_AND_SWAP(&printk_ringbuf_stat.raw, cs.raw, ns.raw));
+      } while (!BOOL_COMPARE_AND_SWAP(&printk_rbuf_stat.raw, cs.raw, ns.raw));
 
       if (!cs.in_printk)
          goto out;
 
       const u32 rp = cs.read_pos;
       for (u32 i = 0; i < cs.used; i++) {
-         term_write_char(printk_ringbuf[(rp + i) % sizeof(printk_ringbuf)]);
+         term_write_char(printk_rbuf[(rp + i) % sizeof(printk_rbuf)]);
       }
    }
 
@@ -220,23 +219,23 @@ static void printk_append_to_ringbuf(char *buf, size_t size)
    ringbuf_stat cs, ns;
 
    do {
-      cs = printk_ringbuf_stat;
-      ns = printk_ringbuf_stat;
+      cs = printk_rbuf_stat;
+      ns = printk_rbuf_stat;
 
-      if (cs.used + size > sizeof(printk_ringbuf)) {
+      if (cs.used + size > sizeof(printk_rbuf)) {
          printk_raw_flush(buf, size);
          return;
       }
 
       ns.used += size;
-      ns.write_pos = (ns.write_pos + size) % sizeof(printk_ringbuf);
+      ns.write_pos = (ns.write_pos + size) % sizeof(printk_rbuf);
 
-   } while (!BOOL_COMPARE_AND_SWAP(&printk_ringbuf_stat.raw, cs.raw, ns.raw));
+   } while (!BOOL_COMPARE_AND_SWAP(&printk_rbuf_stat.raw, cs.raw, ns.raw));
 
    // Now we have some allocated space in the ringbuf
 
    for (u32 i = 0; i < size; i++)
-      printk_ringbuf[(cs.write_pos + i) % sizeof(printk_ringbuf)] = buf[i];
+      printk_rbuf[(cs.write_pos + i) % sizeof(printk_rbuf)] = buf[i];
 }
 
 void vprintk(const char *fmt, va_list args)
@@ -258,10 +257,10 @@ void vprintk(const char *fmt, va_list args)
       ringbuf_stat cs, ns;
 
       do {
-         cs = printk_ringbuf_stat;
-         ns = printk_ringbuf_stat;
+         cs = printk_rbuf_stat;
+         ns = printk_rbuf_stat;
          ns.in_printk = 1;
-      } while (!BOOL_COMPARE_AND_SWAP(&printk_ringbuf_stat.raw, cs.raw, ns.raw));
+      } while (!BOOL_COMPARE_AND_SWAP(&printk_rbuf_stat.raw, cs.raw, ns.raw));
 
       if (!cs.in_printk) {
 
