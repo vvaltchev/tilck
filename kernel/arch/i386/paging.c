@@ -8,6 +8,7 @@
 #include <exos/debug_utils.h>
 #include <exos/process.h>
 #include <exos/hal.h>
+#include <exos/user.h>
 
 #include "paging_int.h"
 
@@ -25,6 +26,8 @@ extern page_directory_t *kernel_page_dir;
 extern page_directory_t *curr_page_dir;
 extern u16 *pageframes_refcount;
 extern u8 page_size_buf[PAGE_SIZE];
+extern volatile bool in_panic;
+DEBUG_ONLY(static volatile bool in_page_fault);
 
 bool handle_potential_cow(u32 vaddr)
 {
@@ -92,13 +95,20 @@ void handle_page_fault_int(regs *r)
    }
 
    if (!us) {
+
+      if (is_in_user_copy()) {
+         DEBUG_ONLY(in_page_fault = false);
+         handle_user_copy_fault();
+         NOT_REACHED();
+      }
+
       ptrdiff_t off = 0;
       const char *sym_name = find_sym_at_addr(r->eip, &off);
       panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p [%s + 0x%x]\n",
             rw ? "WRITE" : "READ",
             vaddr,
             "kernel",
-            !p ? " (NON present page)." : ".",
+            !p ? " (NON present)." : ".",
             r->eip, sym_name ? sym_name : "???", off);
    }
 
@@ -106,13 +116,11 @@ void handle_page_fault_int(regs *r)
          rw ? "WRITE" : "READ",
          vaddr,
          "userland",
-         !p ? " (NON present page)." : ".", r->eip);
+         !p ? " (NON present)." : ".", r->eip);
 
    // We are not really handling 'real' page-faults yet.
 }
 
-extern volatile bool in_panic;
-DEBUG_ONLY(volatile bool in_page_fault = false);
 
 void handle_page_fault(regs *r)
 {

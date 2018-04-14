@@ -6,6 +6,9 @@
 #include <exos/hal.h>
 #include <exos/fs/exvfs.h>
 #include <exos/errno.h>
+#include <exos/user.h>
+
+static char fs_user_buf[PAGE_SIZE];
 
 static inline bool is_fd_valid(int fd)
 {
@@ -32,17 +35,24 @@ badf:
    goto end;
 }
 
-
 sptr sys_write(int fd, const void *buf, size_t count)
 {
    sptr ret;
+   count = MIN(count, sizeof(fs_user_buf));
 
    disable_preemption();
+
+   ret = copy_from_user(fs_user_buf, buf, count);
+
+   if (ret < 0) {
+      ret = -EFAULT;
+      goto end;
+   }
 
    if (!is_fd_valid(fd) || !current->pi->handles[fd])
       goto badf;
 
-   ret = exvfs_write(current->pi->handles[fd], (char *)buf, count);
+   ret = exvfs_write(current->pi->handles[fd], (char *)fs_user_buf, count);
 
 end:
    enable_preemption();

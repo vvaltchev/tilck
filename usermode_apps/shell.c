@@ -81,13 +81,23 @@ void cmd_fork_test(void)
 
 void cmd_invalid_read(void)
 {
-   void *addr = (void *) 0xC0000000;
-   printf("[cmd] requesting kernel to read unaccessibile user addr: %p\n", addr);
+   int ret;
+   void *addr = (void *) 0xB0000000;
+   printf("[cmd] req. kernel to read unaccessibile user addr: %p\n", addr);
 
    /* write to stdout a buffer unaccessibile for the user */
    errno = 0;
-   int ret = write(1, addr, 64);
+   ret = write(1, addr, 16);
    printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
+
+   addr = (void *) 0xC0000000;
+   printf("[cmd] req. kernel to read unaccessible user addr: %p\n", addr);
+
+   /* write to stdout a buffer unaccessibile for the user */
+   errno = 0;
+   ret = write(1, addr, 16);
+   printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
+
    exit(0);
 }
 

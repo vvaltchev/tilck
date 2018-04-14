@@ -27,7 +27,9 @@ NORETURN void panic(const char *fmt, ...)
    in_panic = true;
    panic_save_current_state();
 
-   printk("\n************************ KERNEL PANIC ************************\n");
+   printk("*********************************"
+          " KERNEL PANIC "
+          "********************************\n");
 
    va_list args;
    va_start(args, fmt);

@@ -249,9 +249,11 @@ static void printk_append_to_ringbuf(char *buf, size_t size)
 void vprintk(const char *fmt, va_list args)
 {
    char buf[256];
-   int written;
+   int written = 0;
 
-   written = snprintk(buf, sizeof(buf), "[kernel] ");
+   if (!in_panic)
+      written = snprintk(buf, sizeof(buf), "[kernel] ");
+
    written += vsnprintk(buf + written, sizeof(buf) - written, fmt, args);
 
    if (in_panic) {
