@@ -9,6 +9,7 @@
 
 #define PRINTK_COLOR COLOR_GREEN
 #define PRINTK_RINGBUF_FLUSH_COLOR COLOR_BLUE
+#define PRINTK_NOSPACE_IN_RBUF_FLUSH_COLOR COLOR_MAGENTA
 #define PRINTK_PANIC_COLOR COLOR_GREEN
 
 static bool
@@ -163,31 +164,31 @@ typedef struct {
 static char printk_rbuf[1024];
 static volatile ringbuf_stat printk_rbuf_stat;
 
+/*
+ * NOTE: the ring buf cannot be larger than 1024 elems because the fields
+ * 'used', 'read_pos' and 'write_pos' and 10 bits long and we CANNOT extend
+ * them in 32 bits. Such approach is convenient because with everything packed
+ * in 32 bits, we can do atomic operations.
+ */
 STATIC_ASSERT(sizeof(printk_rbuf) <= 1024);
 
-static void printk_raw_flush(char *buf, size_t size)
+static void printk_raw_flush(char *buf, size_t size, u8 color)
 {
    for (u32 i = 0; i < size; i++) {
-      term_write_char(buf[i]);
+      term_write_char2(buf[i], color);
    }
 }
 
 static void printk_flush(char *buf, size_t size)
 {
-   u8 curr_color = term_get_color();
-
-   // Use a different color for printk() messages for a better readability.
-   term_set_color(make_color(PRINTK_COLOR, COLOR_BLACK));
-
    // First, write to screen the 'buf' buffer.
-   printk_raw_flush(buf, size);
+   printk_raw_flush(buf, size, PRINTK_COLOR);
 
    // Then, flush the text in the ring buffer (if any).
    ringbuf_stat cs, ns;
 
-   // Use a different color for the text in the ring buffer, for debugging
-   // purposes. Clearly, this can be commented out.
-   term_set_color(make_color(PRINTK_RINGBUF_FLUSH_COLOR, COLOR_BLACK));
+   char minibuf[80];
+   u32 to_read = 0;
 
    while (true) {
 
@@ -195,23 +196,30 @@ static void printk_flush(char *buf, size_t size)
          cs = printk_rbuf_stat;
          ns = printk_rbuf_stat;
 
-         ns.read_pos = (ns.read_pos + ns.used) % sizeof(printk_rbuf);
-         ns.used = 0;
-         ns.in_printk = 0;
+         /* We at most 'sizeof(minibuf)' bytes at a time */
+         to_read = MIN(sizeof(minibuf), ns.used);
+
+         /* And copy them to our minibuf */
+         for (u32 i = 0; i < to_read; i++)
+            minibuf[i] = printk_rbuf[(cs.read_pos + i) % sizeof(printk_rbuf)];
+
+         /* Increase read_pos and decrease used */
+         ns.read_pos = (ns.read_pos + to_read) % sizeof(printk_rbuf);
+         ns.used -= to_read;
+
+         if (!to_read)
+            ns.in_printk = 0;
+
+         /* Repeat that until we were able to do that atomically */
 
       } while (!BOOL_COMPARE_AND_SWAP(&printk_rbuf_stat.raw, cs.raw, ns.raw));
 
+      /* Note: we check that in_printk in cs (current state) is unset! */
       if (!cs.in_printk)
-         goto out;
+         break;
 
-      const u32 rp = cs.read_pos;
-      for (u32 i = 0; i < cs.used; i++) {
-         term_write_char(printk_rbuf[(rp + i) % sizeof(printk_rbuf)]);
-      }
+      printk_raw_flush(minibuf, to_read, PRINTK_RINGBUF_FLUSH_COLOR);
    }
-
-out:
-   term_set_color(curr_color);
 }
 
 static void printk_append_to_ringbuf(char *buf, size_t size)
@@ -223,7 +231,7 @@ static void printk_append_to_ringbuf(char *buf, size_t size)
       ns = printk_rbuf_stat;
 
       if (cs.used + size > sizeof(printk_rbuf)) {
-         printk_raw_flush(buf, size);
+         printk_raw_flush(buf, size, PRINTK_NOSPACE_IN_RBUF_FLUSH_COLOR);
          return;
       }
 
@@ -247,8 +255,7 @@ void vprintk(const char *fmt, va_list args)
    written += vsnprintk(buf + written, sizeof(buf) - written, fmt, args);
 
    if (in_panic) {
-      term_set_color(make_color(PRINTK_PANIC_COLOR, COLOR_BLACK));
-      printk_raw_flush(buf, written);
+      printk_raw_flush(buf, written, PRINTK_PANIC_COLOR);
       return;
    }
 

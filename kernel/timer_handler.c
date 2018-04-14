@@ -97,7 +97,7 @@ void timer_handler(void *context)
    task_info *last_ready_task = tick_all_timers(context);
 
    // [DEBUG] Useful to trigger nested printk calls
-   // if (!(jiffies % 100)) {
+   // if (!(jiffies % 40)) {
    //    printk("[TIMER TICK]\n");
    // }
 

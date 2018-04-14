@@ -72,7 +72,7 @@ static void term_incr_row()
    vi->add_row_and_scroll();
 }
 
-void term_write_char_unsafe(char c)
+static void term_write_char_unsafe(char c, u8 color)
 {
    write_serial(c);
    vi->scroll_to_bottom();
@@ -100,12 +100,12 @@ void term_write_char_unsafe(char c)
          terminal_column--;
       }
 
-      vi->set_char_at(' ', terminal_color, terminal_row, terminal_column);
+      vi->set_char_at(' ', color, terminal_row, terminal_column);
       vi->move_cursor(terminal_row, terminal_column);
       return;
    }
 
-   vi->set_char_at(c, terminal_color, terminal_row, terminal_column);
+   vi->set_char_at(c, color, terminal_row, terminal_column);
    ++terminal_column;
 
    if (terminal_column == term_width) {
@@ -121,7 +121,17 @@ void term_write_char(char c)
    uptr var;
    disable_interrupts(&var);
    {
-      term_write_char_unsafe(c);
+      term_write_char_unsafe(c, terminal_color);
+   }
+   enable_interrupts(&var);
+}
+
+void term_write_char2(char c, u8 color)
+{
+   uptr var;
+   disable_interrupts(&var);
+   {
+      term_write_char_unsafe(c, color);
    }
    enable_interrupts(&var);
 }
