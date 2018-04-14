@@ -12,6 +12,8 @@
 
 #define OFFLIMIT_USERMODE_ADDR (KERNEL_BASE_VA) /* biggest usermode vaddr + 1 */
 #define KTHREAD_STACK_SIZE (PAGE_SIZE)
+#define IO_COPYBUF_SIZE (PAGE_SIZE)
+#define ARGS_COPYBUF_SIZE (PAGE_SIZE)
 #define MAX_PID 32768
 
 typedef enum {
@@ -63,6 +65,8 @@ struct task_info {
    u64 total_kernel_ticks;
 
    void *kernel_stack;
+   void *io_copybuf;
+   void *args_copybuf;
 
    wait_obj wobj;
 

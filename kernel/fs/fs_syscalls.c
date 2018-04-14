@@ -13,9 +13,6 @@ typedef struct {
    size_t iov_len;    /* Number of bytes to transfer */
 } iovec;
 
-static char rw_copybuf[PAGE_SIZE];
-static iovec iovec_copybuf[32];
-
 static inline bool is_fd_valid(int fd)
 {
    return fd >= 0 && fd < (int)ARRAY_SIZE(current->pi->handles);
@@ -49,14 +46,14 @@ end:
    return ret;
 }
 
-sptr sys_write(int fd, const void *buf, size_t count)
+sptr sys_write(int fd, const void *user_buf, size_t count)
 {
    sptr ret;
-   count = MIN(count, sizeof(rw_copybuf));
+   count = MIN(count, IO_COPYBUF_SIZE);
 
    disable_preemption();
 
-   ret = copy_from_user(rw_copybuf, buf, count);
+   ret = copy_from_user(current->io_copybuf, user_buf, count);
 
    if (ret < 0) {
       ret = -EFAULT;
@@ -69,7 +66,10 @@ sptr sys_write(int fd, const void *buf, size_t count)
    }
 
    // TODO: make the exvfs call runnable with preemption enabled
-   ret = exvfs_write(current->pi->handles[fd], (char *)rw_copybuf, count);
+
+   ret = exvfs_write(current->pi->handles[fd],
+                     (char *)current->io_copybuf,
+                     count);
 
 end:
    enable_preemption();
@@ -150,23 +150,23 @@ end:
    return ret;
 }
 
-sptr sys_writev(int fd, const iovec *iov, int iovcnt)
+sptr sys_writev(int fd, const iovec *user_iov, int iovcnt)
 {
    sptr rc;
    sptr ret = 0;
    disable_preemption();
 
-   if (iovcnt > (int)ARRAY_SIZE(iovec_copybuf))
+   if (sizeof(iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
 
-   rc = copy_from_user(iovec_copybuf, iov, sizeof(iovec) * iovcnt);
+   rc = copy_from_user(current->args_copybuf, user_iov, sizeof(iovec) * iovcnt);
 
    if (rc != 0) {
       ret = -EFAULT;
       goto out;
    }
 
-   iov = (const iovec *)&iovec_copybuf;
+   const iovec *iov = (const iovec *)current->args_copybuf;
 
    // TODO: make the rest of the syscall run with preemption enabled.
    // In order to achieve that, it might be necessary to expose from exvfs

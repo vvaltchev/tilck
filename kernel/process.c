@@ -24,6 +24,21 @@ static bool do_common_task_allocations(task_info *ti)
    if (!ti->kernel_stack)
       return false;
 
+   ti->io_copybuf = kmalloc(IO_COPYBUF_SIZE);
+
+   if (!ti->io_copybuf) {
+      kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
+      return false;
+   }
+
+   ti->args_copybuf = kmalloc(ARGS_COPYBUF_SIZE);
+
+   if (!ti->args_copybuf) {
+      kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
+      kfree2(ti->io_copybuf, PAGE_SIZE);
+      return false;
+   }
+
    return true;
 }
 
@@ -89,6 +104,8 @@ void free_task(task_info *ti)
    arch_specific_free_task(ti);
 
    kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
+   kfree2(ti->io_copybuf, IO_COPYBUF_SIZE);
+   kfree2(ti->args_copybuf, ARGS_COPYBUF_SIZE);
 
    if (ti->tid == ti->owning_process_pid) {
 
