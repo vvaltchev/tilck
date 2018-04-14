@@ -27,7 +27,7 @@ int get_free_handle_num(task_info *task)
    return -1;
 }
 
-sptr sys_read(int fd, void *buf, size_t count)
+sptr sys_read(int fd, void *user_buf, size_t count)
 {
    sptr ret;
 
@@ -38,8 +38,18 @@ sptr sys_read(int fd, void *buf, size_t count)
       goto end;
    }
 
+   count = MIN(count, IO_COPYBUF_SIZE);
+
    // TODO: make the exvfs call runnable with preemption enabled
-   ret = exvfs_read(current->pi->handles[fd], buf, count);
+   ret = exvfs_read(current->pi->handles[fd], current->io_copybuf, count);
+
+   if (ret > 0) {
+      if (copy_to_user(user_buf, current->io_copybuf, ret) < 0) {
+         // TODO: do we have to rewind the stream in this case?
+         ret = -EFAULT;
+         goto end;
+      }
+   }
 
 end:
    enable_preemption();

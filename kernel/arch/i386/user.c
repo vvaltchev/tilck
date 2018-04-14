@@ -58,5 +58,11 @@ int copy_to_user(void *user_ptr, const void *src, size_t n)
 {
    ASSERT(!is_preemption_enabled());
 
-   NOT_IMPLEMENTED();
+   if (((uptr)user_ptr + n) >= KERNEL_BASE_VA)
+      return -1;
+
+   in_user_copy = true;
+   memcpy(user_ptr, src, n);
+   in_user_copy = false;
+   return 0;
 }

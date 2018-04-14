@@ -105,6 +105,18 @@ void cmd_invalid_read(void)
    exit(0);
 }
 
+void cmd_invalid_write(void)
+{
+   int ret;
+   void *addr = (void *) 0xB0000000;
+
+   printf("read from stdin into a invalid user buffer:\n");
+
+   errno = 0;
+   ret = read(0, addr, 32);
+   printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
+}
+
 void process_cmd_line(const char *cmd_line)
 {
    int argc = 0;
@@ -186,6 +198,10 @@ cd_error:
 
       if (!strcmp(cmd_argv[0], "invalid_read")) {
          cmd_invalid_read();
+      }
+
+      if (!strcmp(cmd_argv[0], "invalid_write")) {
+         cmd_invalid_write();
       }
 
       execve(cmd_argv[0], cmd_argv, NULL);
