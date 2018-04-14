@@ -79,6 +79,17 @@ void cmd_fork_test(void)
    exit(0);
 }
 
+void cmd_invalid_read(void)
+{
+   void *addr = (void *) 0xC0000000;
+   printf("[cmd] requesting kernel to read unaccessibile user addr: %p\n", addr);
+
+   /* write to stdout a buffer unaccessibile for the user */
+   errno = 0;
+   int ret = write(1, addr, 64);
+   printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
+   exit(0);
+}
 
 void process_cmd_line(const char *cmd_line)
 {
@@ -157,6 +168,10 @@ cd_error:
 
       if (!strcmp(cmd_argv[0], "fork_test")) {
          cmd_fork_test();
+      }
+
+      if (!strcmp(cmd_argv[0], "invalid_read")) {
+         cmd_invalid_read();
       }
 
       execve(cmd_argv[0], cmd_argv, NULL);
