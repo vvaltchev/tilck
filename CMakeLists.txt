@@ -146,7 +146,6 @@ add_custom_command(
    DEPENDS
       # We MUST depend on BOTH each wrapper-target AND its OUTPUT in order to
       # our image file to be re-built when the *.bin files are re-built.
-      elfhack
       bootloader
       efi_bootloader
       kernel

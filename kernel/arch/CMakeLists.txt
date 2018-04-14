@@ -96,7 +96,7 @@ add_custom_command(
    COMMAND
       ${BUILD_APPS}/elfhack ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
    DEPENDS
-      ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
+      elfhack ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
    COMMENT
       "Preparing kernel's stripped binary"
 )
