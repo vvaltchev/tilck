@@ -13,60 +13,12 @@ typedef struct {
    size_t iov_len;    /* Number of bytes to transfer */
 } iovec;
 
-static char fs_copybuf[PAGE_SIZE];
-static iovec writev_iovec_buf[32];
+static char rw_copybuf[PAGE_SIZE];
+static iovec iovec_copybuf[32];
 
 static inline bool is_fd_valid(int fd)
 {
    return fd >= 0 && fd < (int)ARRAY_SIZE(current->pi->handles);
-}
-
-sptr sys_read(int fd, void *buf, size_t count)
-{
-   sptr ret;
-
-   disable_preemption();
-
-   if (!is_fd_valid(fd) || !current->pi->handles[fd])
-      goto badf;
-
-   ret = exvfs_read(current->pi->handles[fd], buf, count);
-
-end:
-   enable_preemption();
-   return ret;
-
-badf:
-   ret = -EBADF;
-   goto end;
-}
-
-sptr sys_write(int fd, const void *buf, size_t count)
-{
-   sptr ret;
-   count = MIN(count, sizeof(fs_copybuf));
-
-   disable_preemption();
-
-   ret = copy_from_user(fs_copybuf, buf, count);
-
-   if (ret < 0) {
-      ret = -EFAULT;
-      goto end;
-   }
-
-   if (!is_fd_valid(fd) || !current->pi->handles[fd])
-      goto badf;
-
-   ret = exvfs_write(current->pi->handles[fd], (char *)fs_copybuf, count);
-
-end:
-   enable_preemption();
-   return ret;
-
-badf:
-   ret = -EBADF;
-   goto end;
 }
 
 int get_free_handle_num(task_info *task)
@@ -76,6 +28,52 @@ int get_free_handle_num(task_info *task)
          return free_fd;
 
    return -1;
+}
+
+sptr sys_read(int fd, void *buf, size_t count)
+{
+   sptr ret;
+
+   disable_preemption();
+
+   if (!is_fd_valid(fd) || !current->pi->handles[fd]) {
+      ret = -EBADF;
+      goto end;
+   }
+
+   // TODO: make the exvfs call runnable with preemption enabled
+   ret = exvfs_read(current->pi->handles[fd], buf, count);
+
+end:
+   enable_preemption();
+   return ret;
+}
+
+sptr sys_write(int fd, const void *buf, size_t count)
+{
+   sptr ret;
+   count = MIN(count, sizeof(rw_copybuf));
+
+   disable_preemption();
+
+   ret = copy_from_user(rw_copybuf, buf, count);
+
+   if (ret < 0) {
+      ret = -EFAULT;
+      goto end;
+   }
+
+   if (!is_fd_valid(fd) || !current->pi->handles[fd]) {
+      ret = -EBADF;
+      goto end;
+   }
+
+   // TODO: make the exvfs call runnable with preemption enabled
+   ret = exvfs_write(current->pi->handles[fd], (char *)rw_copybuf, count);
+
+end:
+   enable_preemption();
+   return ret;
 }
 
 sptr sys_open(const char *pathname, int flags, int mode)
@@ -91,6 +89,7 @@ sptr sys_open(const char *pathname, int flags, int mode)
    if (!is_fd_valid(free_fd))
       goto no_fds;
 
+   // TODO: make the exvfs call runnable with preemption enabled
    fs_handle h = exvfs_open(pathname);
 
    if (!h)
@@ -114,20 +113,23 @@ no_ent:
 
 sptr sys_close(int fd)
 {
+   sptr ret = 0;
    printk("sys_close(fd = %d)\n", fd);
 
    disable_preemption();
 
    if (!is_fd_valid(fd) || !current->pi->handles[fd]) {
-      enable_preemption();
-      return -EBADF;
+      ret = -EBADF;
+      goto end;
    }
 
+   // TODO: make the exvfs call runnable with preemption enabled
    exvfs_close(current->pi->handles[fd]);
    current->pi->handles[fd] = NULL;
 
+end:
    enable_preemption();
-   return 0;
+   return ret;
 }
 
 sptr sys_ioctl(int fd, uptr request, void *argp)
@@ -135,52 +137,54 @@ sptr sys_ioctl(int fd, uptr request, void *argp)
    sptr ret = -EINVAL;
    disable_preemption();
 
-   if (!is_fd_valid(fd) || !current->pi->handles[fd])
-      goto badf;
+   if (!is_fd_valid(fd) || !current->pi->handles[fd]) {
+      ret = -EBADF;
+      goto end;
+   }
 
+   // TODO: make the exvfs call runnable with preemption enabled
    ret = exvfs_ioctl(current->pi->handles[fd], request, argp);
 
 end:
    enable_preemption();
    return ret;
-
-badf:
-   ret = -EBADF;
-   goto end;
 }
-
-
 
 sptr sys_writev(int fd, const iovec *iov, int iovcnt)
 {
-   sptr written = 0;
+   sptr rc;
+   sptr ret = 0;
    disable_preemption();
 
-   if (iovcnt > (int)ARRAY_SIZE(writev_iovec_buf))
+   if (iovcnt > (int)ARRAY_SIZE(iovec_copybuf))
       return -EINVAL;
 
-   written = copy_from_user(writev_iovec_buf, iov, sizeof(iovec) * iovcnt);
+   rc = copy_from_user(iovec_copybuf, iov, sizeof(iovec) * iovcnt);
 
-   if (written != 0) {
-      written = -EFAULT;
+   if (rc != 0) {
+      ret = -EFAULT;
       goto out;
    }
 
-   iov = (const iovec *)&writev_iovec_buf;
+   iov = (const iovec *)&iovec_copybuf;
+
+   // TODO: make the rest of the syscall run with preemption enabled.
+   // In order to achieve that, it might be necessary to expose from exvfs
+   // a lock/unlock interface, or to entirely implement sys_writev in exvfs.
 
    for (int i = 0; i < iovcnt; i++) {
 
-      sptr rc = sys_write(fd, iov[i].iov_base, iov[i].iov_len);
+      rc = sys_write(fd, iov[i].iov_base, iov[i].iov_len);
 
       if (rc < 0) {
-         written = rc;
+         ret = rc;
          goto out;
       }
 
-      written += rc;
+      ret += rc;
    }
 
 out:
    enable_preemption();
-   return written;
+   return ret;
 }
