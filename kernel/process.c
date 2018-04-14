@@ -17,10 +17,20 @@
 #define CONTINUED 0xffff
 #define COREFLAG 0x80
 
+static bool do_common_task_allocations(task_info *ti)
+{
+   ti->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
+
+   if (!ti->kernel_stack)
+      return false;
+
+   return true;
+}
+
 task_info *allocate_new_process(task_info *parent, int pid)
 {
-   task_info *ti = kmalloc(sizeof(task_info) + sizeof(process_info));
    process_info *pi;
+   task_info *ti = kmalloc(sizeof(task_info) + sizeof(process_info));
 
    if (!ti)
       return NULL;
@@ -35,6 +45,11 @@ task_info *allocate_new_process(task_info *parent, int pid)
    } else {
       bzero(ti, sizeof(task_info) + sizeof(process_info));
       /* NOTE: parent_pid in this case is 0 as kernel_process->pi->tid */
+   }
+
+   if (!do_common_task_allocations(ti)) {
+      kfree2(ti, sizeof(task_info) + sizeof(process_info));
+      return NULL;
    }
 
    ti->tid = pid; /* here tid is a PID */
@@ -54,8 +69,10 @@ task_info *allocate_new_thread(process_info *pi)
    task_info *proc = get_process_task(pi);
    task_info *ti = kzmalloc(sizeof(task_info));
 
-   if (!ti)
+   if (!ti || !do_common_task_allocations(ti)) {
+      kfree2(ti, sizeof(task_info));
       return NULL;
+   }
 
    ti->pi = pi;
    ti->tid = MAX_PID + (sptr)ti - KERNEL_BASE_VA;
@@ -361,8 +378,7 @@ sptr sys_fork(void)
 
    child->pi->pdir = pdir_clone(current->pi->pdir);
    child->running_in_kernel = false;
-   child->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
-   VERIFY(child->kernel_stack != NULL); // TODO: handle this OOM condition
+   ASSERT(child->kernel_stack != NULL);
    task_info_reset_kernel_stack(child);
    set_return_register(&child->state_regs, 0);
    add_task(child);
