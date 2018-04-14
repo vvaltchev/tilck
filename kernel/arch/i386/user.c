@@ -31,6 +31,29 @@ int copy_from_user(void *dest, const void *user_ptr, size_t n)
    return 0;
 }
 
+int copy_str_from_user(void *dest, const void *user_ptr)
+{
+   ASSERT(!is_preemption_enabled());
+   in_user_copy = true;
+
+   const char *ptr = user_ptr;
+   char *d = dest;
+
+   do {
+
+      if ((uptr)ptr >= KERNEL_BASE_VA) {
+         in_user_copy = false;
+         return -1;
+      }
+
+      *d++ = *ptr++;
+
+   } while (*ptr);
+
+   in_user_copy = false;
+   return 0;
+}
+
 int copy_to_user(void *user_ptr, const void *src, size_t n)
 {
    ASSERT(!is_preemption_enabled());

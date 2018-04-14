@@ -81,6 +81,13 @@ sptr sys_open(const char *pathname, int flags, int mode)
    sptr ret;
    disable_preemption();
 
+   ret = copy_str_from_user(current->args_copybuf, pathname);
+
+   if (ret != 0) {
+      ret = -EFAULT;
+      goto end;
+   }
+
    printk("sys_open(filename = '%s', "
           "flags = %x, mode = %x)\n", pathname, flags, mode);
 

@@ -98,6 +98,10 @@ void cmd_invalid_read(void)
    ret = write(1, addr, 16);
    printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
 
+   printf("Open with filename invalid ptr\n");
+   ret = open((char*)0xB0000000, 0);
+
+   printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
    exit(0);
 }
 
