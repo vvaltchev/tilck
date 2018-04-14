@@ -8,7 +8,13 @@
 #include <exos/errno.h>
 #include <exos/user.h>
 
-static char fs_user_buf[PAGE_SIZE];
+typedef struct {
+   void *iov_base;    /* Starting address */
+   size_t iov_len;    /* Number of bytes to transfer */
+} iovec;
+
+static char fs_copybuf[PAGE_SIZE];
+static iovec writev_iovec_buf[32];
 
 static inline bool is_fd_valid(int fd)
 {
@@ -38,11 +44,11 @@ badf:
 sptr sys_write(int fd, const void *buf, size_t count)
 {
    sptr ret;
-   count = MIN(count, sizeof(fs_user_buf));
+   count = MIN(count, sizeof(fs_copybuf));
 
    disable_preemption();
 
-   ret = copy_from_user(fs_user_buf, buf, count);
+   ret = copy_from_user(fs_copybuf, buf, count);
 
    if (ret < 0) {
       ret = -EFAULT;
@@ -52,7 +58,7 @@ sptr sys_write(int fd, const void *buf, size_t count)
    if (!is_fd_valid(fd) || !current->pi->handles[fd])
       goto badf;
 
-   ret = exvfs_write(current->pi->handles[fd], (char *)fs_user_buf, count);
+   ret = exvfs_write(current->pi->handles[fd], (char *)fs_copybuf, count);
 
 end:
    enable_preemption();
@@ -75,11 +81,10 @@ int get_free_handle_num(task_info *task)
 sptr sys_open(const char *pathname, int flags, int mode)
 {
    sptr ret;
+   disable_preemption();
 
    printk("sys_open(filename = '%s', "
           "flags = %x, mode = %x)\n", pathname, flags, mode);
-
-   disable_preemption();
 
    int free_fd = get_free_handle_num(current);
 
@@ -144,15 +149,24 @@ badf:
    goto end;
 }
 
-typedef struct {
-   void *iov_base;    /* Starting address */
-   size_t iov_len;    /* Number of bytes to transfer */
-} iovec;
+
 
 sptr sys_writev(int fd, const iovec *iov, int iovcnt)
 {
    sptr written = 0;
    disable_preemption();
+
+   if (iovcnt > (int)ARRAY_SIZE(writev_iovec_buf))
+      return -EINVAL;
+
+   written = copy_from_user(writev_iovec_buf, iov, sizeof(iovec) * iovcnt);
+
+   if (written != 0) {
+      written = -EFAULT;
+      goto out;
+   }
+
+   iov = (const iovec *)&writev_iovec_buf;
 
    for (int i = 0; i < iovcnt; i++) {
 
