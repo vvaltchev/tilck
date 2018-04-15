@@ -280,8 +280,12 @@ FUNC(kernel_yield):
 
    asm_macro_save_current_kernel_state
 
-   mov ebx, [esp + 17*4]  # caller's EIP
-   mov [eax + 14*4], ebx  # regs->eip = ebx
+   # When the thread is resumed in context_switch(), we'll be again in this
+   # function (form the ESP point-of-view) and caller's EIP will be (as it is
+   # now) already on the stack. We just have to set the EIP in a way to do just
+   # a 'ret'. For the caller, after the switch, it would be as if kernel_yield()
+   # did nothing but just returning.
+   mov dword ptr [eax + 14*4], offset .do_ret # regs->eip = .do_ret
 
    push eax
    call save_current_task_state
@@ -295,6 +299,8 @@ FUNC(kernel_yield):
    # In case schedule() returned, restore ESP and just return
    add esp, 72
    dec dword ptr [disable_preemption_count]
+
+.do_ret:
    ret
 
 END_FUNC(kernel_yield)

@@ -209,6 +209,17 @@ static ALWAYS_INLINE void invalidate_page(uptr vaddr)
                : "memory");
 }
 
+static ALWAYS_INLINE uptr get_stack_ptr(void)
+{
+
+#ifdef BITS32
+   register uptr res asm("esp");
+#else
+   register uptr res asm("rsp");
+#endif
+
+   return res;
+}
 
 void validate_stack_pointer_int(const char *file, int line);
 
