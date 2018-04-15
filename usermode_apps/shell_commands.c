@@ -116,7 +116,7 @@ void cmd_invalid_write(void)
 
 void cmd_fork_perf(void)
 {
-   const int iters = 10000;
+   const int iters = 100000;
    int wstatus, child_pid;
    unsigned long long start, duration;
 

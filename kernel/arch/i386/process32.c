@@ -93,6 +93,7 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    task_info *ti = allocate_new_thread(kernel_process->pi);
    VERIFY(ti != NULL); // TODO: handle this
 
+   ti->what = fun;
    ti->state = TASK_STATE_RUNNABLE;
    ti->running_in_kernel = 1;
    task_info_reset_kernel_stack(ti);

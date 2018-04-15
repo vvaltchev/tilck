@@ -73,6 +73,14 @@ struct task_info {
    regs state_regs;
    regs *kernel_state_regs;
 
+   /*
+    * For kernel threads, this is a function pointer of the thread's entry
+    * point. For user processes/threads, it is unused for the moment. In the
+    * future, for processes it could be a path to the executable and for threads
+    * still the entry-point.
+    */
+   void *what;
+
 #ifdef __arch__x86__
    void *ldt;
    int ldt_size; /* Number of entries. Valid only if ldt != NULL. */
