@@ -10,7 +10,7 @@
 
 #define TIME_SLOT_JIFFIES (TIMER_HZ / 50) /* 20 ms */
 
-task_info *current;
+task_info *__current;
 task_info *kernel_process;
 
 list_node runnable_tasks_list;
@@ -137,7 +137,7 @@ void init_sched(void)
 void set_current_task_in_kernel(void)
 {
    ASSERT(!is_preemption_enabled());
-   current->running_in_kernel = true;
+   get_current_task()->running_in_kernel = true;
 }
 
 void task_add_to_state_list(task_info *ti)
@@ -241,25 +241,31 @@ void remove_task(task_info *ti)
 
 void account_ticks(void)
 {
-   if (!current)
+   task_info *curr = get_current_task();
+
+   // TODO: can we turn this 'if' into an assert curr != NULL ?
+   if (!curr)
       return;
 
-   current->time_slot_ticks++;
-   current->total_ticks++;
+   curr->time_slot_ticks++;
+   curr->total_ticks++;
 
-   if (current->running_in_kernel)
-      current->total_kernel_ticks++;
+   if (curr->running_in_kernel)
+      curr->total_kernel_ticks++;
 }
 
 bool need_reschedule(void)
 {
-   if (!current) {
+   task_info *curr = get_current_task();
+
+   // TODO: can we turn this 'if' into an assert curr != NULL ?
+   if (!curr) {
       // The kernel is still initializing and we cannot call schedule() yet.
       return false;
    }
 
-   if (current->time_slot_ticks < TIME_SLOT_JIFFIES &&
-       current->state == TASK_STATE_RUNNING) {
+   if (curr->time_slot_ticks < TIME_SLOT_JIFFIES &&
+       curr->state == TASK_STATE_RUNNING) {
       return false;
    }
 
@@ -306,8 +312,8 @@ void schedule(void)
    ASSERT(!is_preemption_enabled());
 
    // If we preempted the process, it is still runnable.
-   if (current->state == TASK_STATE_RUNNING) {
-      task_change_state(current, TASK_STATE_RUNNABLE);
+   if (get_current_task()->state == TASK_STATE_RUNNING) {
+      task_change_state(get_current_task(), TASK_STATE_RUNNABLE);
    }
 
    list_for_each(pos, &runnable_tasks_list, runnable_list) {
@@ -327,7 +333,7 @@ void schedule(void)
       selected = idle_task;
    }
 
-   if (selected == current) {
+   if (selected == get_current_task()) {
       task_change_state(selected, TASK_STATE_RUNNING);
       selected->time_slot_ticks = 0;
       return;

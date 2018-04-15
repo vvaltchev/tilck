@@ -243,8 +243,9 @@ static void DEBUG_set_thread_area(user_desc *d)
 
 static int find_available_slot_in_user_task(void)
 {
-   for (u32 i = 0; i < ARRAY_SIZE(current->gdt_entries); i++)
-      if (!current->gdt_entries[i])
+   task_info *curr = get_current_task();
+   for (u32 i = 0; i < ARRAY_SIZE(curr->gdt_entries); i++)
+      if (!curr->gdt_entries[i])
          return i;
 
    return -1;
@@ -252,8 +253,9 @@ static int find_available_slot_in_user_task(void)
 
 static int get_user_task_slot_for_gdt_entry(int gdt_entry_num)
 {
-   for (u32 i = 0; i < ARRAY_SIZE(current->gdt_entries); i++)
-      if (current->gdt_entries[i] == gdt_entry_num)
+   task_info *curr = get_current_task();
+   for (u32 i = 0; i < ARRAY_SIZE(curr->gdt_entries); i++)
+      if (curr->gdt_entries[i] == gdt_entry_num)
          return i;
 
    return -1;
@@ -308,7 +310,7 @@ sptr sys_set_thread_area(user_desc *d)
          d->entry_number = gdt_add_entry(&e);
       }
 
-      current->gdt_entries[slot] = d->entry_number;
+      get_current_task()->gdt_entries[slot] = d->entry_number;
       goto out;
    }
 
@@ -334,7 +336,7 @@ sptr sys_set_thread_area(user_desc *d)
          goto out;
       }
 
-      current->gdt_entries[slot] = d->entry_number;
+      get_current_task()->gdt_entries[slot] = d->entry_number;
    }
 
    ASSERT(d->entry_number < gdt_size);

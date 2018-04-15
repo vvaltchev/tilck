@@ -3,7 +3,12 @@
 #include <exos/hal.h>
 #include <exos/process.h>
 
-static uptr new_mutex_id = 0;
+static uptr new_mutex_id;
+
+inline bool kmutex_is_curr_task_holding_lock(kmutex *m)
+{
+   return m->owner_task == get_current_task();
+}
 
 void kmutex_init(kmutex *m)
 {
@@ -29,8 +34,8 @@ void kmutex_lock(kmutex *m)
        */
       ASSERT(!kmutex_is_curr_task_holding_lock(m));
 
-      wait_obj_set(&current->wobj, WOBJ_KMUTEX, m);
-      task_change_state(current, TASK_STATE_SLEEPING);
+      wait_obj_set(&get_current_task()->wobj, WOBJ_KMUTEX, m);
+      task_change_state(get_current_task(), TASK_STATE_SLEEPING);
 
       enable_preemption();
       kernel_yield(); // Go to sleep until someone else holding is the lock.

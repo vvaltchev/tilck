@@ -41,21 +41,21 @@ NORETURN void panic(const char *fmt, ...)
    task_info *curr = get_current_task();
 
    if (curr && curr->tid != -1) {
-      if (!is_kernel_thread(current)) {
+      if (!is_kernel_thread(curr)) {
          printk("Current task [USER]: tid: %i, pid: %i\n",
-                current->tid, current->owning_process_pid);
+                curr->tid, curr->owning_process_pid);
       } else {
          ptrdiff_t off;
-         const char *sym_name = find_sym_at_addr((uptr)current->what, &off);
+         const char *sym_name = find_sym_at_addr((uptr)curr->what, &off);
          printk("Current task [KERNEL]: tid: %i [%s]\n",
-                current->tid, sym_name ? sym_name : "???");
+                curr->tid, sym_name ? sym_name : "???");
       }
    } else {
       printk("Current task: NONE\n");
    }
 
    panic_dump_nested_interrupts();
-   dump_regs(current->kernel_state_regs);
+   dump_regs(curr->kernel_state_regs);
    dump_stacktrace();
 
 

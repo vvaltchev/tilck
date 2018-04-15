@@ -4,7 +4,6 @@
 #include <common/basic_defs.h>
 
 typedef struct task_info task_info;
-extern task_info *current;
 
 typedef enum {
    WOBJ_NONE = 0,
@@ -54,11 +53,9 @@ bool kmutex_trylock(kmutex *m);
 void kmutex_unlock(kmutex *m);
 void kmutex_destroy(kmutex *m);
 
-static inline bool kmutex_is_curr_task_holding_lock(kmutex *m)
-{
-   return m->owner_task == current;
-}
-
+#ifdef DEBUG
+bool kmutex_is_curr_task_holding_lock(kmutex *m);
+#endif
 
 /*
  * A basic implementation of condition variables similar to the pthread ones.

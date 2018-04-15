@@ -84,7 +84,7 @@ static task_info *tick_all_timers(void *context)
 
 void kernel_sleep(u64 ticks)
 {
-   set_task_to_wake_after(current, ticks);
+   set_task_to_wake_after(get_current_task(), ticks);
    kernel_yield();
 }
 
@@ -143,8 +143,8 @@ void timer_handler(void *context)
 #endif
 
    if (last_ready_task) {
-      ASSERT(current->state == TASK_STATE_RUNNING);
-      task_change_state(current, TASK_STATE_RUNNABLE);
+      ASSERT(get_current_task()->state == TASK_STATE_RUNNING);
+      task_change_state(get_current_task(), TASK_STATE_RUNNABLE);
       save_current_task_state(context);
       switch_to_task(last_ready_task);
    }

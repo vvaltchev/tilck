@@ -140,7 +140,8 @@ int get_nested_interrupts_count(void)
  */
 static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode(void)
 {
-   if (current && !running_in_kernel(current) && !nested_interrupts_count) {
+   task_info *curr = get_current_task();
+   if (curr && !running_in_kernel(curr) && !nested_interrupts_count) {
       ASSERT(is_preemption_enabled());
    }
 }
@@ -157,7 +158,7 @@ void irq_entry(regs *r)
    ASSERT(!are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
    DEBUG_check_preemption_enabled_for_usermode();
-   ASSERT(current != NULL);
+   ASSERT(get_current_task() != NULL);
 
 #if KERNEL_TRACK_NESTED_INTERRUPTS
    ASSERT(!is_same_interrupt_nested(regs_intnum(r)));

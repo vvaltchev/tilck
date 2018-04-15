@@ -95,7 +95,7 @@ STATIC_ASSERT((sizeof(task_info) & ~POINTER_ALIGN_MASK) == 0);
 STATIC_ASSERT((sizeof(process_info) & ~POINTER_ALIGN_MASK) == 0);
 
 extern volatile u64 jiffies;
-extern task_info *current;
+extern task_info *__current;
 extern task_info *kernel_process;
 
 extern list_node runnable_tasks_list;
@@ -122,7 +122,7 @@ static ALWAYS_INLINE u64 get_ticks(void)
 
 static ALWAYS_INLINE task_info *get_current_task(void)
 {
-   return current;
+   return __current;
 }
 
 static ALWAYS_INLINE bool is_kernel_thread(task_info *ti)
@@ -218,3 +218,7 @@ static ALWAYS_INLINE bool is_preemption_enabled(void)
 /* Internal stuff (used by process.c and process32.c) */
 extern char *kernel_initial_stack[KERNEL_INITIAL_STACK_SIZE];
 void switch_to_initial_kernel_stack(void);
+static ALWAYS_INLINE void set_current_task(task_info *ti)
+{
+   __current = ti;
+}

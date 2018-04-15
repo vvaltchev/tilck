@@ -155,12 +155,12 @@ sptr sys_chdir(const char *path)
    {
       size_t path_len = strlen(path) + 1;
 
-      if (path_len > ARRAY_SIZE(current->pi->cwd)) {
+      if (path_len > ARRAY_SIZE(get_current_task()->pi->cwd)) {
          rc = -ENAMETOOLONG;
          goto out;
       }
 
-      memcpy(current->pi->cwd, path, path_len);
+      memcpy(get_current_task()->pi->cwd, path, path_len);
    }
 
 out:
@@ -173,7 +173,7 @@ sptr sys_getcwd(char *buf, size_t buf_size)
    size_t cwd_len;
    disable_preemption();
    {
-      cwd_len = strlen(current->pi->cwd) + 1;
+      cwd_len = strlen(get_current_task()->pi->cwd) + 1;
 
       if (!buf)
          return -EINVAL;
@@ -181,7 +181,7 @@ sptr sys_getcwd(char *buf, size_t buf_size)
       if (buf_size < cwd_len)
          return -ERANGE;
 
-      memcpy(buf, current->pi->cwd, cwd_len);
+      memcpy(buf, get_current_task()->pi->cwd, cwd_len);
    }
    enable_preemption();
    return cwd_len;
@@ -230,15 +230,15 @@ sptr sys_execve(const char *filename,
 
    char *const default_argv[] = { filename_copy, NULL };
 
-   if (LIKELY(current != NULL)) {
-      task_change_state(current, TASK_STATE_RUNNABLE);
-      pdir_destroy(current->pi->pdir);
+   if (LIKELY(get_current_task() != NULL)) {
+      task_change_state(get_current_task(), TASK_STATE_RUNNABLE);
+      pdir_destroy(get_current_task()->pi->pdir);
    }
 
    create_usermode_task(pdir,
                         entry_point,
                         stack_addr,
-                        current,
+                        get_current_task(),
                         argv_copy ? argv_copy : default_argv,
                         env_copy ? env_copy : default_env);
 
@@ -247,7 +247,7 @@ sptr sys_execve(const char *filename,
    dfree_strarray(argv_copy);
    dfree_strarray(env_copy);
 
-   if (UNLIKELY(!current)) {
+   if (UNLIKELY(!get_current_task())) {
 
       /* Just counter-balance the disable_preemption() above */
       enable_preemption();
@@ -277,15 +277,15 @@ errend2:
 
 sptr sys_pause()
 {
-   task_change_state(current, TASK_STATE_SLEEPING);
+   task_change_state(get_current_task(), TASK_STATE_SLEEPING);
    kernel_yield();
    return 0;
 }
 
 sptr sys_getpid()
 {
-   ASSERT(current != NULL);
-   return current->owning_process_pid;
+   ASSERT(get_current_task() != NULL);
+   return get_current_task()->owning_process_pid;
 }
 
 sptr sys_waitpid(int pid, int *wstatus, int options)
@@ -304,8 +304,11 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
       }
 
       while (waited_task->state != TASK_STATE_ZOMBIE) {
-         wait_obj_set(&current->wobj, WOBJ_PID, (task_info *)waited_task);
-         task_change_state(current, TASK_STATE_SLEEPING);
+
+         wait_obj_set(&get_current_task()->wobj,
+                      WOBJ_PID,
+                      (task_info *)waited_task);
+         task_change_state(get_current_task(), TASK_STATE_SLEEPING);
          kernel_yield();
       }
 
@@ -341,23 +344,24 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
 NORETURN void sys_exit(int exit_status)
 {
    disable_preemption();
+   task_info *curr = get_current_task();
 
    // printk("Exit process %i with code = %i\n",
    //        current->pid,
    //        exit_status);
 
-   task_change_state(current, TASK_STATE_ZOMBIE);
-   current->exit_status = exit_status;
+   task_change_state(curr, TASK_STATE_ZOMBIE);
+   curr->exit_status = exit_status;
 
    // Close all of its opened handles
 
-   for (size_t i = 0; i < ARRAY_SIZE(current->pi->handles); i++) {
+   for (size_t i = 0; i < ARRAY_SIZE(curr->pi->handles); i++) {
 
-      fs_handle *h = current->pi->handles[i];
+      fs_handle *h = curr->pi->handles[i];
 
       if (h) {
          exvfs_close(h);
-         current->pi->handles[i] = NULL;
+         curr->pi->handles[i] = NULL;
       }
    }
 
@@ -370,7 +374,7 @@ NORETURN void sys_exit(int exit_status)
 
       ASSERT(pos->state == TASK_STATE_SLEEPING);
 
-      if (pos->wobj.ptr == current) {
+      if (pos->wobj.ptr == curr) {
          ASSERT(pos->wobj.type == WOBJ_PID);
          wait_obj_reset(&pos->wobj);
          task_change_state(pos, TASK_STATE_RUNNABLE);
@@ -378,10 +382,10 @@ NORETURN void sys_exit(int exit_status)
    }
 
    set_page_directory(get_kernel_page_dir());
-   pdir_destroy(current->pi->pdir);
+   pdir_destroy(curr->pi->pdir);
 
 #ifdef DEBUG_QEMU_EXIT_ON_INIT_EXIT
-   if (current->tid == 1) {
+   if (curr->tid == 1) {
       debug_qemu_turn_off_machine();
    }
 #endif
@@ -390,7 +394,7 @@ NORETURN void sys_exit(int exit_status)
    switch_to_initial_kernel_stack();
 
    /* Free the heap allocations used by the task, including the kernel stack */
-   free_mem_for_zombie_task(current);
+   free_mem_for_zombie_task(curr);
    schedule();
 
    /* Necessary to guarantee to the compiler that we won't return. */
@@ -401,7 +405,7 @@ NORETURN void sys_exit(int exit_status)
 sptr sys_fork(void)
 {
    disable_preemption();
-   //printk("heap allocation: %u bytes\n", kmalloc_get_total_heap_allocation());
+   task_info *curr = get_current_task();
 
    int pid = create_new_pid();
 
@@ -410,14 +414,14 @@ sptr sys_fork(void)
       return -EAGAIN;
    }
 
-   task_info *child = allocate_new_process(current, pid);
+   task_info *child = allocate_new_process(curr, pid);
    VERIFY(child != NULL); // TODO: handle this
 
    if (child->state == TASK_STATE_RUNNING) {
       child->state = TASK_STATE_RUNNABLE;
    }
 
-   child->pi->pdir = pdir_clone(current->pi->pdir);
+   child->pi->pdir = pdir_clone(curr->pi->pdir);
    child->running_in_kernel = false;
    ASSERT(child->kernel_stack != NULL);
    task_info_reset_kernel_stack(child);
@@ -425,7 +429,7 @@ sptr sys_fork(void)
    add_task(child);
 
    // Make the parent to get child's pid as return value.
-   set_return_register(&current->state_regs, child->tid);
+   set_return_register(&curr->state_regs, child->tid);
 
    /* Duplicate all the handles */
    for (size_t i = 0; i < ARRAY_SIZE(child->pi->handles); i++) {
@@ -440,7 +444,7 @@ sptr sys_fork(void)
     * one by one.
     */
 
-   set_page_directory(current->pi->pdir);
+   set_page_directory(curr->pi->pdir);
 
    enable_preemption();
    return child->tid;

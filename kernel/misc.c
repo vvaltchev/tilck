@@ -16,8 +16,9 @@ char strtab_buf[16*KB] __attribute__ ((section (".Strtab"))) = {0};
 void validate_stack_pointer_int(const char *file, int line)
 {
    uptr stack_var = 123;
+   const uptr stack_var_page = (uptr)&stack_var & PAGE_MASK;
 
-   if (((uptr)&stack_var & PAGE_MASK) == (uptr)&kernel_initial_stack) {
+   if (stack_var_page == (uptr)&kernel_initial_stack) {
 
       /*
        * That's fine: we are in the initialization or in task_switch() called
@@ -26,17 +27,17 @@ void validate_stack_pointer_int(const char *file, int line)
       return;
    }
 
-   if (((uptr)&stack_var & PAGE_MASK) != (uptr)current->kernel_stack) {
+   if (stack_var_page != (uptr)get_current_task()->kernel_stack) {
 
       disable_interrupts_forced();
 
       panic("Invalid kernel stack pointer.\n"
             "File %s at line %i\n"
-            "[validate stack] real stack page:       %p\n"
-            "[validate stack] current->kernel_stack: %p\n",
+            "[validate stack] stack page: %p\n"
+            "[validate stack] expected:   %p\n",
             file, line,
             ((uptr)&stack_var & PAGE_MASK),
-            current->kernel_stack);
+            get_current_task()->kernel_stack);
    }
 }
 

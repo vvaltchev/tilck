@@ -12,17 +12,18 @@ void kcond_init(kcond *c)
 
 bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
 {
-   DEBUG_ONLY(check_not_in_irq_handler());
    disable_preemption();
+   DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
 
-   wait_obj_set(&current->wobj, WOBJ_KCOND, c);
+   task_info *curr = get_current_task();
+   wait_obj_set(&curr->wobj, WOBJ_KCOND, c);
 
    if (timeout_ticks != KCOND_WAIT_FOREVER) {
-      c->timer_num = set_task_to_wake_after(current, timeout_ticks);
+      c->timer_num = set_task_to_wake_after(curr, timeout_ticks);
    } else {
       c->timer_num = -1;
-      task_change_state(current, TASK_STATE_SLEEPING);
+      task_change_state(curr, TASK_STATE_SLEEPING);
    }
 
    if (m) {
@@ -41,7 +42,7 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
     * If it isn't NULL, that means that the task has been weaken up because
     * the timeout expired.
     */
-   return !current->wobj.ptr;
+   return !curr->wobj.ptr;
 }
 
 void kcond_signal_single(kcond *c, task_info *ti)

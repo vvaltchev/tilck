@@ -187,7 +187,7 @@ syscall_type syscalls[] =
 
 void handle_syscall(regs *r)
 {
-   ASSERT(current != NULL);
+   ASSERT(get_current_task() != NULL);
    DEBUG_VALIDATE_STACK_PTR();
    save_current_task_state(r);
 
