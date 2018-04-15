@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 
 bool suppress_printk;
 
@@ -40,6 +41,34 @@ void __wrap_not_reached(const char *file, int line)
 {
    printf("Kernel NOT_REACHED statement in %s at line %d\n", file, line);
    abort();
+}
+
+int copy_from_user(void *dest, const void *user_ptr, size_t n)
+{
+   memcpy(dest, user_ptr, n);
+   return 0;
+}
+
+int copy_str_from_user(void *dest, const void *user_ptr)
+{
+   strcpy(dest, user_ptr);
+   return 0;
+}
+
+int copy_to_user(void *user_ptr, const void *src, size_t n)
+{
+   memcpy(user_ptr, src, n);
+   return 0;
+}
+
+int check_user_ptr_size_writable(void *user_ptr)
+{
+   return 0;
+}
+
+int check_user_ptr_size_readable(void *user_ptr)
+{
+   return 0;
 }
 
 void init_serial_port() { }

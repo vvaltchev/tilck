@@ -8,6 +8,7 @@
 #include <exos/hal.h>
 #include <exos/elf_loader.h>
 #include <exos/errno.h>
+#include <exos/user.h>
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
@@ -290,11 +291,6 @@ sptr sys_getpid()
 sptr sys_waitpid(int pid, int *wstatus, int options)
 {
    ASSERT(are_interrupts_enabled());
-
-   // printk("Pid %i will WAIT until pid %i dies\n",
-   //        current->pid, pid);
-
-   ASSERT(are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
 
    if (pid > 0) {
@@ -314,6 +310,14 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
       }
 
       if (wstatus) {
+
+         disable_preemption();
+         {
+            if (check_user_ptr_size_writable(wstatus) < 0)
+               return -EFAULT;
+         }
+         enable_preemption();
+
          *wstatus = EXITCODE(waited_task->exit_status, 0);
       }
 

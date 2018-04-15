@@ -3,11 +3,26 @@
 #include <exos/process.h>
 #include <exos/errno.h>
 
-volatile bool in_user_copy;
+static volatile bool in_user_copy;
+
+bool is_in_user_copy(void)
+{
+   return in_user_copy;
+}
+
+static inline void enter_in_user_copy(void)
+{
+   in_user_copy = true;
+}
+
+static inline void exit_in_user_copy(void)
+{
+   in_user_copy = false;
+}
 
 void handle_user_copy_fault(void)
 {
-   in_user_copy = false;
+   exit_in_user_copy();
    task_change_state(current, TASK_STATE_RUNNABLE);
    set_current_task_in_user_mode();
    set_return_register(&current->state_regs, -EFAULT);
@@ -25,32 +40,36 @@ int copy_from_user(void *dest, const void *user_ptr, size_t n)
    if (p >= KERNEL_BASE_VA)
       return -1;
 
-   in_user_copy = true;
-   memcpy(dest, user_ptr, n);
-   in_user_copy = false;
+   enter_in_user_copy();
+   {
+      memcpy(dest, user_ptr, n);
+   }
+   exit_in_user_copy();
    return 0;
 }
 
 int copy_str_from_user(void *dest, const void *user_ptr)
 {
    ASSERT(!is_preemption_enabled());
-   in_user_copy = true;
 
-   const char *ptr = user_ptr;
-   char *d = dest;
+   enter_in_user_copy();
+   {
+      const char *ptr = user_ptr;
+      char *d = dest;
 
-   do {
+      do {
 
-      if ((uptr)ptr >= KERNEL_BASE_VA) {
-         in_user_copy = false;
-         return -1;
-      }
+         if ((uptr)ptr >= KERNEL_BASE_VA) {
+            in_user_copy = false;
+            return -1;
+         }
 
-      *d++ = *ptr++;
+         *d++ = *ptr++;
 
-   } while (*ptr);
+      } while (*ptr);
 
-   in_user_copy = false;
+   }
+   exit_in_user_copy();
    return 0;
 }
 
@@ -61,8 +80,41 @@ int copy_to_user(void *user_ptr, const void *src, size_t n)
    if (((uptr)user_ptr + n) >= KERNEL_BASE_VA)
       return -1;
 
-   in_user_copy = true;
-   memcpy(user_ptr, src, n);
-   in_user_copy = false;
+   enter_in_user_copy();
+   {
+      memcpy(user_ptr, src, n);
+   }
+   exit_in_user_copy();
+   return 0;
+}
+
+int check_user_ptr_size_writable(void *user_ptr)
+{
+   if (((uptr)user_ptr + sizeof(void *)) >= KERNEL_BASE_VA)
+      return -1;
+
+   enter_in_user_copy();
+   {
+      uptr saved_val;
+      /* Just read and write the user_ptr to check that it is writable */
+      memcpy(&saved_val, user_ptr, sizeof(void *));
+      memcpy(user_ptr, &saved_val, sizeof(void *));
+   }
+   exit_in_user_copy();
+   return 0;
+}
+
+int check_user_ptr_size_readable(void *user_ptr)
+{
+   if (((uptr)user_ptr + sizeof(void *)) >= KERNEL_BASE_VA)
+      return -1;
+
+   enter_in_user_copy();
+   {
+      uptr saved_val;
+      /* Just read the user_ptr to check that we won't get a page fault */
+      memcpy(&saved_val, user_ptr, sizeof(void *));
+   }
+   exit_in_user_copy();
    return 0;
 }
