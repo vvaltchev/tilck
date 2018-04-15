@@ -5,9 +5,9 @@
 
 static uptr new_mutex_id;
 
-inline bool kmutex_is_curr_task_holding_lock(kmutex *m)
+bool kmutex_is_curr_task_holding_lock(kmutex *m)
 {
-   return m->owner_task == get_current_task();
+   return m->owner_task == get_curr_task();
 }
 
 void kmutex_init(kmutex *m)
@@ -34,8 +34,8 @@ void kmutex_lock(kmutex *m)
        */
       ASSERT(!kmutex_is_curr_task_holding_lock(m));
 
-      wait_obj_set(&get_current_task()->wobj, WOBJ_KMUTEX, m);
-      task_change_state(get_current_task(), TASK_STATE_SLEEPING);
+      wait_obj_set(&get_curr_task()->wobj, WOBJ_KMUTEX, m);
+      task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
 
       enable_preemption();
       kernel_yield(); // Go to sleep until someone else holding is the lock.
@@ -47,7 +47,7 @@ void kmutex_lock(kmutex *m)
    } else {
 
       // Nobody owns this mutex, just set the owner
-      m->owner_task = get_current_task();
+      m->owner_task = get_curr_task();
    }
 
    enable_preemption();
@@ -62,7 +62,7 @@ bool kmutex_trylock(kmutex *m)
 
    if (!m->owner_task) {
       // Nobody owns this mutex, just set the owner
-      m->owner_task = get_current_task();
+      m->owner_task = get_curr_task();
       success = true;
    }
 

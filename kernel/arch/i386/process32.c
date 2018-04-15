@@ -133,16 +133,16 @@ void kthread_exit(void)
 
    //printk("[kthread exit] tid: %i\n", current->tid);
 
-   task_change_state(get_current_task(), TASK_STATE_ZOMBIE);
+   task_change_state(get_curr_task(), TASK_STATE_ZOMBIE);
 
    /* WARNING: the following call discards the whole stack! */
    switch_to_initial_kernel_stack();
 
    /* Free the heap allocations used by the task, including the kernel stack */
-   free_mem_for_zombie_task(get_current_task());
+   free_mem_for_zombie_task(get_curr_task());
 
    /* Remove the from the scheduler and free its struct */
-   remove_task(get_current_task());
+   remove_task(get_curr_task());
 
    set_current_task(NULL);
    switch_to_idle_task_outside_interrupt_context();
@@ -200,7 +200,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
 
 void save_current_task_state(regs *r)
 {
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
    ASSERT(curr != NULL);
 
    if (curr->running_in_kernel) {
@@ -215,7 +215,7 @@ void save_current_task_state(regs *r)
 
 void panic_save_current_task_state(regs *r)
 {
-   if (!get_current_task()) {
+   if (!get_curr_task()) {
 
       /*
        * PANIC occurred before the first task is started.
@@ -245,7 +245,7 @@ void panic_save_current_task_state(regs *r)
     * there.
     */
 
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
    memcpy(&curr->state_regs, r, sizeof(*r));
    curr->kernel_state_regs = &curr->state_regs;
 }
@@ -257,7 +257,7 @@ void panic_save_current_task_state(regs *r)
 void set_current_task_in_user_mode(void)
 {
    ASSERT(!is_preemption_enabled());
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
 
    curr->running_in_kernel = 0;
 
@@ -270,9 +270,9 @@ void set_current_task_in_user_mode(void)
 
 NORETURN void switch_to_task(task_info *ti)
 {
-   ASSERT(!get_current_task() || get_current_task()->state != TASK_STATE_RUNNING);
+   ASSERT(!get_curr_task() || get_curr_task()->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
-   ASSERT(ti != get_current_task());
+   ASSERT(ti != get_curr_task());
 
    DEBUG_printk("[sched] Switching to tid: %i %s %s\n",
                 ti->tid,
@@ -291,9 +291,9 @@ NORETURN void switch_to_task(task_info *ti)
 #if KERNEL_TRACK_NESTED_INTERRUPTS
    pop_nested_interrupt();
 
-   if (get_current_task()) {
-      if (get_current_task()->running_in_kernel)
-         if (!is_kernel_thread(get_current_task()))
+   if (get_curr_task()) {
+      if (get_curr_task()->running_in_kernel)
+         if (!is_kernel_thread(get_curr_task()))
             nested_interrupts_drop_top_syscall();
    }
 #endif
@@ -336,8 +336,8 @@ NORETURN void switch_to_task(task_info *ti)
 
 sptr sys_set_tid_address(int *tidptr)
 {
-   get_current_task()->pi->tidptr = tidptr;
-   return get_current_task()->tid;
+   get_curr_task()->pi->tidptr = tidptr;
+   return get_curr_task()->tid;
 }
 
 void arch_specific_new_task_setup(task_info *ti)

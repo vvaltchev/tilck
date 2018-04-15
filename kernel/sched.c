@@ -137,7 +137,7 @@ void init_sched(void)
 void set_current_task_in_kernel(void)
 {
    ASSERT(!is_preemption_enabled());
-   get_current_task()->running_in_kernel = true;
+   get_curr_task()->running_in_kernel = true;
 }
 
 void task_add_to_state_list(task_info *ti)
@@ -241,7 +241,7 @@ void remove_task(task_info *ti)
 
 void account_ticks(void)
 {
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
 
    // TODO: can we turn this 'if' into an assert curr != NULL ?
    if (!curr)
@@ -256,7 +256,7 @@ void account_ticks(void)
 
 bool need_reschedule(void)
 {
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
 
    // TODO: can we turn this 'if' into an assert curr != NULL ?
    if (!curr) {
@@ -312,8 +312,8 @@ void schedule(void)
    ASSERT(!is_preemption_enabled());
 
    // If we preempted the process, it is still runnable.
-   if (get_current_task()->state == TASK_STATE_RUNNING) {
-      task_change_state(get_current_task(), TASK_STATE_RUNNABLE);
+   if (get_curr_task()->state == TASK_STATE_RUNNING) {
+      task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
    }
 
    list_for_each(pos, &runnable_tasks_list, runnable_list) {
@@ -333,7 +333,7 @@ void schedule(void)
       selected = idle_task;
    }
 
-   if (selected == get_current_task()) {
+   if (selected == get_curr_task()) {
       task_change_state(selected, TASK_STATE_RUNNING);
       selected->time_slot_ticks = 0;
       return;

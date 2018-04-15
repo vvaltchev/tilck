@@ -37,7 +37,7 @@ int set_task_to_wake_after(task_info *task, u64 ticks)
          if (!timers_array[i].task) {
             timers_array[i].ticks_to_sleep = ticks;
             timers_array[i].task = task;
-            task_change_state(get_current_task(), TASK_STATE_SLEEPING);
+            task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
             return i;
          }
       }
@@ -72,7 +72,7 @@ static task_info *tick_all_timers(void *context)
          last_ready_task = timers_array[i].task;
 
          /* In no case a sleeping task could go to kernel and get here */
-         ASSERT(get_current_task() != last_ready_task);
+         ASSERT(get_curr_task() != last_ready_task);
 
          timers_array[i].task = NULL;
          task_change_state(last_ready_task, TASK_STATE_RUNNABLE);
@@ -84,7 +84,7 @@ static task_info *tick_all_timers(void *context)
 
 void kernel_sleep(u64 ticks)
 {
-   set_task_to_wake_after(get_current_task(), ticks);
+   set_task_to_wake_after(get_curr_task(), ticks);
    kernel_yield();
 }
 
@@ -143,8 +143,8 @@ void timer_handler(void *context)
 #endif
 
    if (last_ready_task) {
-      ASSERT(get_current_task()->state == TASK_STATE_RUNNING);
-      task_change_state(get_current_task(), TASK_STATE_RUNNABLE);
+      ASSERT(get_curr_task()->state == TASK_STATE_RUNNING);
+      task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
       save_current_task_state(context);
       switch_to_task(last_ready_task);
    }

@@ -38,7 +38,7 @@ NORETURN void panic(const char *fmt, ...)
 
    printk("\n");
 
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
 
    if (curr && curr->tid != -1) {
       if (!is_kernel_thread(curr)) {

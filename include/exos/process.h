@@ -120,7 +120,7 @@ static ALWAYS_INLINE u64 get_ticks(void)
    return jiffies;
 }
 
-static ALWAYS_INLINE task_info *get_current_task(void)
+static ALWAYS_INLINE task_info *get_curr_task(void)
 {
    return __current;
 }

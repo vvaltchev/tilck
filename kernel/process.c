@@ -155,12 +155,12 @@ sptr sys_chdir(const char *path)
    {
       size_t path_len = strlen(path) + 1;
 
-      if (path_len > ARRAY_SIZE(get_current_task()->pi->cwd)) {
+      if (path_len > ARRAY_SIZE(get_curr_task()->pi->cwd)) {
          rc = -ENAMETOOLONG;
          goto out;
       }
 
-      memcpy(get_current_task()->pi->cwd, path, path_len);
+      memcpy(get_curr_task()->pi->cwd, path, path_len);
    }
 
 out:
@@ -173,7 +173,7 @@ sptr sys_getcwd(char *buf, size_t buf_size)
    size_t cwd_len;
    disable_preemption();
    {
-      cwd_len = strlen(get_current_task()->pi->cwd) + 1;
+      cwd_len = strlen(get_curr_task()->pi->cwd) + 1;
 
       if (!buf)
          return -EINVAL;
@@ -181,7 +181,7 @@ sptr sys_getcwd(char *buf, size_t buf_size)
       if (buf_size < cwd_len)
          return -ERANGE;
 
-      memcpy(buf, get_current_task()->pi->cwd, cwd_len);
+      memcpy(buf, get_curr_task()->pi->cwd, cwd_len);
    }
    enable_preemption();
    return cwd_len;
@@ -230,15 +230,15 @@ sptr sys_execve(const char *filename,
 
    char *const default_argv[] = { filename_copy, NULL };
 
-   if (LIKELY(get_current_task() != NULL)) {
-      task_change_state(get_current_task(), TASK_STATE_RUNNABLE);
-      pdir_destroy(get_current_task()->pi->pdir);
+   if (LIKELY(get_curr_task() != NULL)) {
+      task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
+      pdir_destroy(get_curr_task()->pi->pdir);
    }
 
    create_usermode_task(pdir,
                         entry_point,
                         stack_addr,
-                        get_current_task(),
+                        get_curr_task(),
                         argv_copy ? argv_copy : default_argv,
                         env_copy ? env_copy : default_env);
 
@@ -247,7 +247,7 @@ sptr sys_execve(const char *filename,
    dfree_strarray(argv_copy);
    dfree_strarray(env_copy);
 
-   if (UNLIKELY(!get_current_task())) {
+   if (UNLIKELY(!get_curr_task())) {
 
       /* Just counter-balance the disable_preemption() above */
       enable_preemption();
@@ -277,15 +277,15 @@ errend2:
 
 sptr sys_pause()
 {
-   task_change_state(get_current_task(), TASK_STATE_SLEEPING);
+   task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
    kernel_yield();
    return 0;
 }
 
 sptr sys_getpid()
 {
-   ASSERT(get_current_task() != NULL);
-   return get_current_task()->owning_process_pid;
+   ASSERT(get_curr_task() != NULL);
+   return get_curr_task()->owning_process_pid;
 }
 
 sptr sys_waitpid(int pid, int *wstatus, int options)
@@ -305,10 +305,10 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
 
       while (waited_task->state != TASK_STATE_ZOMBIE) {
 
-         wait_obj_set(&get_current_task()->wobj,
+         wait_obj_set(&get_curr_task()->wobj,
                       WOBJ_PID,
                       (task_info *)waited_task);
-         task_change_state(get_current_task(), TASK_STATE_SLEEPING);
+         task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
          kernel_yield();
       }
 
@@ -344,7 +344,7 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
 NORETURN void sys_exit(int exit_status)
 {
    disable_preemption();
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
 
    // printk("Exit process %i with code = %i\n",
    //        current->pid,
@@ -405,7 +405,7 @@ NORETURN void sys_exit(int exit_status)
 sptr sys_fork(void)
 {
    disable_preemption();
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
 
    int pid = create_new_pid();
 

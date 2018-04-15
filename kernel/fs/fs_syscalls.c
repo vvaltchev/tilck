@@ -15,7 +15,7 @@ typedef struct {
 
 static inline bool is_fd_valid(int fd)
 {
-   return fd >= 0 && fd < (int)ARRAY_SIZE(get_current_task()->pi->handles);
+   return fd >= 0 && fd < (int)ARRAY_SIZE(get_curr_task()->pi->handles);
 }
 
 int get_free_handle_num(task_info *task)
@@ -30,7 +30,7 @@ int get_free_handle_num(task_info *task)
 sptr sys_read(int fd, void *user_buf, size_t count)
 {
    sptr ret;
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
 
    disable_preemption();
 
@@ -60,7 +60,7 @@ end:
 sptr sys_write(int fd, const void *user_buf, size_t count)
 {
    sptr ret;
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
 
    count = MIN(count, IO_COPYBUF_SIZE);
 
@@ -92,7 +92,7 @@ end:
 sptr sys_open(const char *pathname, int flags, int mode)
 {
    sptr ret;
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
 
    disable_preemption();
 
@@ -136,7 +136,7 @@ no_ent:
 sptr sys_close(int fd)
 {
    sptr ret = 0;
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
 
    printk("sys_close(fd = %d)\n", fd);
 
@@ -159,7 +159,7 @@ end:
 sptr sys_ioctl(int fd, uptr request, void *argp)
 {
    sptr ret = -EINVAL;
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
 
    disable_preemption();
 
@@ -180,7 +180,7 @@ sptr sys_writev(int fd, const iovec *user_iov, int iovcnt)
 {
    sptr rc;
    sptr ret = 0;
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
 
    disable_preemption();
 

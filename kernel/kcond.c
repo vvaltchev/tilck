@@ -16,7 +16,7 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
    DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
 
-   task_info *curr = get_current_task();
+   task_info *curr = get_curr_task();
    wait_obj_set(&curr->wobj, WOBJ_KCOND, c);
 
    if (timeout_ticks != KCOND_WAIT_FOREVER) {

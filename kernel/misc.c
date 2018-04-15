@@ -27,7 +27,7 @@ void validate_stack_pointer_int(const char *file, int line)
       return;
    }
 
-   if (stack_var_page != (uptr)get_current_task()->kernel_stack) {
+   if (stack_var_page != (uptr)get_curr_task()->kernel_stack) {
 
       disable_interrupts_forced();
 
@@ -37,7 +37,7 @@ void validate_stack_pointer_int(const char *file, int line)
             "[validate stack] expected:   %p\n",
             file, line,
             ((uptr)&stack_var & PAGE_MASK),
-            get_current_task()->kernel_stack);
+            get_curr_task()->kernel_stack);
    }
 }
 

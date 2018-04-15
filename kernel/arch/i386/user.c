@@ -23,9 +23,9 @@ static inline void exit_in_user_copy(void)
 void handle_user_copy_fault(void)
 {
    exit_in_user_copy();
-   task_change_state(get_current_task(), TASK_STATE_RUNNABLE);
+   task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
    set_current_task_in_user_mode();
-   set_return_register(&get_current_task()->state_regs, -EFAULT);
+   set_return_register(&get_curr_task()->state_regs, -EFAULT);
    pop_nested_interrupt(); // The page fault
    enable_preemption();
    switch_to_idle_task();
