@@ -20,6 +20,8 @@
 #  define KMALLOC_FREE_MEM_POISONING 0
 #endif
 
+#define KERNEL_TRACK_NESTED_INTERRUPTS 1
+
 /* ------------------------------- */
 
 /*

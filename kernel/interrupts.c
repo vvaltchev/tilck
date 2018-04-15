@@ -10,13 +10,13 @@ void handle_irq(regs *r);
 
 extern volatile u64 jiffies;
 
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+
 static int nested_interrupts_count;
 static int nested_interrupts[MAX_NESTED_INTERRUPTS] =
 {
    [0 ... MAX_NESTED_INTERRUPTS-1] = -1
 };
-
-extern inline bool in_syscall(void);
 
 inline void push_nested_interrupt(int int_num)
 {
@@ -96,16 +96,6 @@ static bool is_same_interrupt_nested(int int_num)
    return false;
 }
 
-/*
- * This sanity check is essential: it assures us that in no case
- * we're running an usermode thread with preemption disabled.
- */
-static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode()
-{
-   if (current && !running_in_kernel(current) && !nested_interrupts_count) {
-      ASSERT(is_preemption_enabled());
-   }
-}
 
 void nested_interrupts_drop_top_syscall(void)
 {
@@ -144,13 +134,35 @@ int get_nested_interrupts_count(void)
    return nested_interrupts_count;
 }
 
+/*
+ * This sanity check is essential: it assures us that in no case
+ * we're running an usermode thread with preemption disabled.
+ */
+static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode(void)
+{
+   if (current && !running_in_kernel(current) && !nested_interrupts_count) {
+      ASSERT(is_preemption_enabled());
+   }
+}
+
+#else
+
+static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode(void) { }
+
+#endif // KERNEL_TRACK_NESTED_INTERRUPTS
+
+
 void irq_entry(regs *r)
 {
    ASSERT(!are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
    DEBUG_check_preemption_enabled_for_usermode();
-   ASSERT(!is_same_interrupt_nested(regs_intnum(r)));
    ASSERT(current != NULL);
+
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+   ASSERT(!is_same_interrupt_nested(regs_intnum(r)));
+#endif
+
 
    handle_irq(r);
 

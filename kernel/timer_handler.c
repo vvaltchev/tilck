@@ -132,7 +132,7 @@ void timer_handler(void *context)
     *     enabled.
     */
 
-#ifdef DEBUG
+#if defined(DEBUG) && KERNEL_TRACK_NESTED_INTERRUPTS
    {
       uptr var;
       disable_interrupts(&var);

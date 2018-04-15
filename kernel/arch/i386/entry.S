@@ -290,7 +290,7 @@ FUNC(kernel_yield):
    push eax
    call save_current_task_state
 
-#ifdef DEBUG
+#if defined(DEBUG) && KERNEL_TRACK_NESTED_INTERRUPTS
    call check_not_in_irq_handler
 #endif
 

@@ -48,7 +48,7 @@ NORETURN void panic(const char *fmt, ...)
          ptrdiff_t off;
          const char *sym_name = find_sym_at_addr((uptr)current->what, &off);
          printk("Current task [KERNEL]: tid: %i [%s]\n",
-                current->tid, sym_name);
+                current->tid, sym_name ? sym_name : "???");
       }
    } else {
       printk("Current task: NONE\n");

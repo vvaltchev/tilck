@@ -219,7 +219,7 @@ const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset)
 
    for (int i = 0; i < sym_count; i++) {
       Elf32_Sym *s = syms + i;
-      if (s->st_value < vaddr && vaddr <= s->st_value + s->st_size) {
+      if (s->st_value <= vaddr && vaddr <= s->st_value + s->st_size) {
          *offset = vaddr - s->st_value;
          return (char *)strtab->sh_addr + s->st_name;
       }
