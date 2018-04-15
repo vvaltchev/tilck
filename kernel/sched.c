@@ -194,6 +194,8 @@ void task_change_state(task_info *ti, task_state_enum new_state)
    disable_preemption();
    {
       ASSERT(ti->state != new_state);
+      ASSERT(ti->state != TASK_STATE_ZOMBIE);
+
       task_remove_from_state_list(ti);
 
       ti->state = new_state;

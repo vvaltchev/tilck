@@ -24,22 +24,24 @@ static bool do_common_task_allocations(task_info *ti)
    if (!ti->kernel_stack)
       return false;
 
-   ti->io_copybuf = kmalloc(IO_COPYBUF_SIZE);
+   ti->io_copybuf = kmalloc(IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE);
 
    if (!ti->io_copybuf) {
       kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
       return false;
    }
 
-   ti->args_copybuf = kmalloc(ARGS_COPYBUF_SIZE);
-
-   if (!ti->args_copybuf) {
-      kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
-      kfree2(ti->io_copybuf, PAGE_SIZE);
-      return false;
-   }
-
+   ti->args_copybuf = (void *)((uptr)ti->io_copybuf + IO_COPYBUF_SIZE);
    return true;
+}
+
+void free_mem_for_zombie_task(task_info *ti)
+{
+   ASSERT(ti->state == TASK_STATE_ZOMBIE);
+
+   kfree2(ti->io_copybuf, IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE);
+   ti->io_copybuf = NULL;
+   ti->args_copybuf = NULL;
 }
 
 task_info *allocate_new_process(task_info *parent, int pid)
@@ -108,8 +110,9 @@ void free_task(task_info *ti)
    arch_specific_free_task(ti);
 
    kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
-   kfree2(ti->io_copybuf, IO_COPYBUF_SIZE);
-   kfree2(ti->args_copybuf, ARGS_COPYBUF_SIZE);
+
+   ASSERT(!ti->io_copybuf);
+   ASSERT(!ti->args_copybuf);
 
    if (ti->tid == ti->owning_process_pid) {
 
@@ -365,7 +368,10 @@ NORETURN void sys_exit(int exit_status)
       }
    }
 
-   // We CANNOT free current->kernel_task here because we're using it!
+   // We CANNOT free current->kernel_stack here because we're using it!
+   // But we can free other stuff.
+
+   free_mem_for_zombie_task(current);
 
    set_page_directory(get_kernel_page_dir());
    pdir_destroy(current->pi->pdir);

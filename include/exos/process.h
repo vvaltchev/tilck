@@ -155,6 +155,7 @@ void init_sched(void);
 task_info *allocate_new_process(task_info *parent, int pid);
 task_info *allocate_new_thread(process_info *pi);
 void free_task(task_info *ti);
+void free_mem_for_zombie_task(task_info *ti);
 void arch_specific_new_task_setup(task_info *ti);
 void arch_specific_free_task(task_info *ti);
 

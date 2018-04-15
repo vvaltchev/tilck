@@ -152,6 +152,7 @@ void kthread_exit(void)
 
    task_info *ti = get_current_task();
    task_change_state(ti, TASK_STATE_ZOMBIE);
+   free_mem_for_zombie_task(ti);
 
    bool success = enqueue_tasklet1(&remove_dead_kthread_tasklet, ti);
    VERIFY(success); // TODO: any better way to handle this?
