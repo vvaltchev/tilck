@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <errno.h>
 
+#define RDTSC() __builtin_ia32_rdtsc()
 #define FORK_TEST_ITERS (2 * 250 * 1024 * 1024)
 
 void cmd_loop(void)
@@ -113,6 +114,30 @@ void cmd_invalid_write(void)
    printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
 }
 
+void cmd_fork_perf(void)
+{
+   const int iters = 1000;
+   int wstatus, child_pid;
+   unsigned long long start, duration;
+
+   start = RDTSC();
+
+   for (int i = 0; i < iters; i++) {
+
+      child_pid = fork();
+
+      if (!child_pid) {
+         exit(0);
+      }
+
+   }
+
+   duration = RDTSC() - start;
+   waitpid(child_pid, &wstatus, 0);
+
+   printf("duration: %llu\n", duration/iters);
+}
+
 /* ------------------------------------------- */
 
 typedef void (*cmd_func_type)(void);
@@ -127,7 +152,8 @@ struct {
    {"loop", cmd_loop},
    {"fork_test", cmd_fork_test},
    {"invalid_read", cmd_invalid_read},
-   {"invalid_write", cmd_invalid_write}
+   {"invalid_write", cmd_invalid_write},
+   {"fork_perf", cmd_fork_perf}
 
 };
 
