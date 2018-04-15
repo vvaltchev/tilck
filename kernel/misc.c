@@ -15,11 +15,16 @@ char strtab_buf[16*KB] __attribute__ ((section (".Strtab"))) = {0};
 
 void validate_stack_pointer_int(const char *file, int line)
 {
-   if (!current || current == kernel_process) {
+   uptr stack_var = 123;
+
+   if (((uptr)&stack_var & PAGE_MASK) == (uptr)&kernel_initial_stack) {
+
+      /*
+       * That's fine: we are in the initialization or in task_switch() called
+       * by sys_exit().
+       */
       return;
    }
-
-   uptr stack_var = 123;
 
    if (((uptr)&stack_var & PAGE_MASK) != (uptr)current->kernel_stack) {
 

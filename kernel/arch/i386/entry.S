@@ -6,9 +6,9 @@
 #include <common/config.h>
 #include <multiboot.h>
 
-#define KERNEL_INITIAL_STACK_SIZE (4*KB)
-
 .section bss
+.global kernel_initial_stack
+
 .align 4096
 .lcomm kernel_initial_stack, KERNEL_INITIAL_STACK_SIZE
 
@@ -21,7 +21,7 @@
 .global context_switch
 .global kernel_yield
 .global panic_save_current_state
-
+.global switch_to_initial_kernel_stack
 
 #define MULTIBOOT_FLAGS      (MULTIBOOT_PAGE_ALIGN |   \
                               MULTIBOOT_MEMORY_INFO |  \
@@ -318,3 +318,12 @@ FUNC(panic_save_current_state):
    ret
 
 END_FUNC(panic_save_current_state)
+
+FUNC(switch_to_initial_kernel_stack):
+
+   pop eax # save the return-addr in eax
+   mov esp, offset kernel_initial_stack + KERNEL_INITIAL_STACK_SIZE - 4
+   push eax
+   ret
+
+END_FUNC(switch_to_initial_kernel_stack)

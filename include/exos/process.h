@@ -151,6 +151,8 @@ void task_info_reset_kernel_stack(task_info *ti);
 
 void add_task(task_info *ti);
 void remove_task(task_info *ti);
+void task_change_state(task_info *ti, task_state_enum new_state);
+
 void init_sched(void);
 task_info *allocate_new_process(task_info *parent, int pid);
 task_info *allocate_new_thread(process_info *pi);
@@ -158,8 +160,6 @@ void free_task(task_info *ti);
 void free_mem_for_zombie_task(task_info *ti);
 void arch_specific_new_task_setup(task_info *ti);
 void arch_specific_free_task(task_info *ti);
-
-void task_change_state(task_info *ti, task_state_enum new_state);
 
 typedef void (*kthread_func_ptr)();
 
@@ -198,3 +198,8 @@ static ALWAYS_INLINE void enable_preemption(void) {
 static ALWAYS_INLINE bool is_preemption_enabled(void) {
    return disable_preemption_count == 0;
 }
+
+
+/* Internal stuff (used by process.c and process32.c) */
+extern char *kernel_initial_stack[KERNEL_INITIAL_STACK_SIZE];
+void switch_to_initial_kernel_stack(void);

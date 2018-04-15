@@ -126,37 +126,25 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    return ti;
 }
 
-void remove_dead_kthread_tasklet(task_info *ti)
-{
-   ASSERT(ti->state == TASK_STATE_ZOMBIE);
-
-   while (true) {
-
-      disable_preemption();
-
-      if (current != ti) {
-         printk("remove_dead_kthread_tasklet (tid: %i)\n", ti->tid);
-         remove_task(ti);
-         enable_preemption();
-         break;
-      }
-
-      enable_preemption();
-      kernel_yield();
-   }
-}
-
 void kthread_exit(void)
 {
    disable_preemption();
 
-   task_info *ti = get_current_task();
-   task_change_state(ti, TASK_STATE_ZOMBIE);
-   free_mem_for_zombie_task(ti);
+   //printk("[kthread exit] tid: %i\n", current->tid);
 
-   bool success = enqueue_tasklet1(&remove_dead_kthread_tasklet, ti);
-   VERIFY(success); // TODO: any better way to handle this?
-   schedule_outside_interrupt_context();
+   task_change_state(current, TASK_STATE_ZOMBIE);
+
+   /* WARNING: the following call discards the whole stack! */
+   switch_to_initial_kernel_stack();
+
+   /* Free the heap allocations used by the task, including the kernel stack */
+   free_mem_for_zombie_task(current);
+
+   /* Remove the from the scheduler and free its struct */
+   remove_task(current);
+
+   current = NULL;
+   switch_to_idle_task_outside_interrupt_context();
 }
 
 task_info *create_usermode_task(page_directory_t *pdir,

@@ -31,6 +31,7 @@
 #define DEBUG_QEMU_EXIT_ON_INIT_EXIT
 #define DEBUG_QEMU_EXIT_ON_PANIC
 
+#define KERNEL_INITIAL_STACK_SIZE (4 * KB)
 
 #if !defined(TESTING) && !defined(KERNEL_TEST)
 

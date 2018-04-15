@@ -39,9 +39,20 @@ void free_mem_for_zombie_task(task_info *ti)
 {
    ASSERT(ti->state == TASK_STATE_ZOMBIE);
 
+#ifdef DEBUG
+
+   uptr stack_var = 123;
+   if (((uptr)&stack_var & PAGE_MASK) != (uptr)&kernel_initial_stack)
+      panic("free_mem_for_zombie_task() called w/o switch to initial stack");
+
+#endif
+
    kfree2(ti->io_copybuf, IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE);
+   kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
+
    ti->io_copybuf = NULL;
    ti->args_copybuf = NULL;
+   ti->kernel_stack = NULL;
 }
 
 task_info *allocate_new_process(task_info *parent, int pid)
@@ -78,8 +89,6 @@ task_info *allocate_new_process(task_info *parent, int pid)
    list_node_init(&ti->sleeping_list);
 
    arch_specific_new_task_setup(ti);
-
-   //printk("allocate process: %i\n", ti->tid);
    return ti;
 }
 
@@ -104,13 +113,9 @@ task_info *allocate_new_thread(process_info *pi)
 void free_task(task_info *ti)
 {
    ASSERT(ti->state == TASK_STATE_ZOMBIE);
-
-   //printk("free task: %i\n", ti->tid);
-
    arch_specific_free_task(ti);
 
-   kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
-
+   ASSERT(!ti->kernel_stack);
    ASSERT(!ti->io_copybuf);
    ASSERT(!ti->args_copybuf);
 
@@ -368,11 +373,6 @@ NORETURN void sys_exit(int exit_status)
       }
    }
 
-   // We CANNOT free current->kernel_stack here because we're using it!
-   // But we can free other stuff.
-
-   free_mem_for_zombie_task(current);
-
    set_page_directory(get_kernel_page_dir());
    pdir_destroy(current->pi->pdir);
 
@@ -382,7 +382,14 @@ NORETURN void sys_exit(int exit_status)
    }
 #endif
 
+   /* WARNING: the following call discards the whole stack! */
+   switch_to_initial_kernel_stack();
+
+   /* Free the heap allocations used by the task, including the kernel stack */
+   free_mem_for_zombie_task(current);
    schedule();
+
+   /* Necessary to guarantee to the compiler that we won't return. */
    NOT_REACHED();
 }
 
