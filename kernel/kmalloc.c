@@ -391,6 +391,7 @@ void *kmalloc(size_t s)
       void *vaddr = internal_kmalloc(&heaps[i], s);
 
       if (vaddr) {
+         s = MAX(s, heaps[i].min_block_size);
          heaps[i].mem_allocated += s;
          ret = vaddr;
          break;
@@ -483,6 +484,19 @@ void kfree2(void *ptr, size_t user_size)
 
 out:
    panic("[kfree] Heap not found for block: %p\n", ptr);
+}
+
+size_t kmalloc_get_total_heap_allocation(void)
+{
+   size_t tot = 0;
+   disable_preemption();
+
+   for (int i = 0; i < used_heaps; i++) {
+      tot += heaps[i].mem_allocated;
+   }
+
+   enable_preemption();
+   return tot;
 }
 
 void kmalloc_create_heap(kmalloc_heap *h,

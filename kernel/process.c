@@ -51,7 +51,6 @@ task_info *allocate_new_process(task_info *parent, int pid)
       return NULL;
 
    pi = (process_info *)(ti + 1);
-   pi->ref_count = 1;
 
    if (parent) {
       memcpy(ti, parent, sizeof(task_info));
@@ -67,6 +66,7 @@ task_info *allocate_new_process(task_info *parent, int pid)
       return NULL;
    }
 
+   pi->ref_count = 1;
    ti->tid = pid; /* here tid is a PID */
    ti->owning_process_pid = pid;
 
@@ -76,6 +76,8 @@ task_info *allocate_new_process(task_info *parent, int pid)
    list_node_init(&ti->sleeping_list);
 
    arch_specific_new_task_setup(ti);
+
+   //printk("allocate process: %i\n", ti->tid);
    return ti;
 }
 
@@ -101,6 +103,8 @@ void free_task(task_info *ti)
 {
    ASSERT(ti->state == TASK_STATE_ZOMBIE);
 
+   //printk("free task: %i\n", ti->tid);
+
    arch_specific_free_task(ti);
 
    kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
@@ -108,6 +112,8 @@ void free_task(task_info *ti)
    kfree2(ti->args_copybuf, ARGS_COPYBUF_SIZE);
 
    if (ti->tid == ti->owning_process_pid) {
+
+      ASSERT(ti->pi->ref_count > 0);
 
       if (--ti->pi->ref_count == 0)
          kfree2(ti, sizeof(task_info) + sizeof(process_info));
@@ -378,6 +384,7 @@ NORETURN void sys_exit(int exit_status)
 sptr sys_fork(void)
 {
    disable_preemption();
+   //printk("heap allocation: %u bytes\n", kmalloc_get_total_heap_allocation());
 
    int pid = create_new_pid();
 

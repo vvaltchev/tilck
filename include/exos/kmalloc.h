@@ -38,6 +38,7 @@ static inline size_t calculate_heap_metadata_size(size_t heap_size,
 void init_kmalloc();
 void *kmalloc(size_t size);
 void kfree2(void *ptr, size_t size);
+size_t kmalloc_get_total_heap_allocation(void);
 
 static ALWAYS_INLINE void kfree(void *ptr)
 {

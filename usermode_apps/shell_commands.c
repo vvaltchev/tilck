@@ -116,7 +116,7 @@ void cmd_invalid_write(void)
 
 void cmd_fork_perf(void)
 {
-   const int iters = 1000;
+   const int iters = 10000;
    int wstatus, child_pid;
    unsigned long long start, duration;
 
@@ -130,11 +130,11 @@ void cmd_fork_perf(void)
          exit(0);
       }
 
+      waitpid(child_pid, &wstatus, 0);
    }
 
-   duration = RDTSC() - start;
-   waitpid(child_pid, &wstatus, 0);
 
+   duration = RDTSC() - start;
    printf("duration: %llu\n", duration/iters);
 }
 
