@@ -13,7 +13,8 @@
         "**/.d": true,
         "toolchain/**": true,
         "build/**": true,
-        "CMakeFiles/**": true
+        "CMakeFiles/**": true,
+        "src/**": true
     },
     "files.eol": "\n",
     "files.trimTrailingWhitespace": true,

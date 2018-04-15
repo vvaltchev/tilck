@@ -177,6 +177,18 @@ typedef int (*cmpfun_ptr)(const void *a, const void *b);
 #define BOOL_COMPARE_AND_SWAP(ptr, oldval, newval) \
    __sync_bool_compare_and_swap((ptr), (oldval), (newval))
 
+#define ATOMIC_FETCH_AND_ADD(ptr, val) \
+   __sync_fetch_and_add((ptr), (val))
+
+#define ATOMIC_ADD_AND_FETCH(ptr, val) \
+   __sync_add_and_fetch((ptr), (val))
+
+#define ATOMIC_FETCH_AND_SUB(ptr, val) \
+   __sync_fetch_and_sub((ptr), (val))
+
+#define ATOMIC_SUB_AND_FETCH(ptr, val) \
+   __sync_sub_and_fetch((ptr), (val))
+
 /*
  * ********************************************
  *

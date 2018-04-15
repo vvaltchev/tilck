@@ -3,16 +3,12 @@
 #include <exos/hal.h>
 #include <exos/process.h>
 
-volatile uptr new_mutex_id = 0;
+static uptr new_mutex_id = 0;
 
 void kmutex_init(kmutex *m)
 {
-   disable_preemption();
-   {
-      m->id = new_mutex_id++;
-      m->owner_task = NULL;
-   }
-   enable_preemption();
+   m->owner_task = NULL;
+   m->id = ATOMIC_FETCH_AND_ADD(&new_mutex_id, 1);
 }
 
 void kmutex_destroy(kmutex *m)

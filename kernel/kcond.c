@@ -3,15 +3,11 @@
 #include <exos/hal.h>
 #include <exos/process.h>
 
-volatile uptr new_cond_id = 0;
+static uptr new_cond_id;
 
 void kcond_init(kcond *c)
 {
-   disable_preemption();
-   {
-      c->id = new_cond_id++;
-   }
-   enable_preemption();
+   c->id = ATOMIC_FETCH_AND_ADD(&new_cond_id, 1);
 }
 
 bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)

@@ -276,7 +276,7 @@ END_FUNC(context_switch)
 
 FUNC(kernel_yield):
 
-   inc dword ptr [disable_preemption_count]
+   lock inc dword ptr [disable_preemption_count]
 
    asm_macro_save_current_kernel_state
 
@@ -298,7 +298,7 @@ FUNC(kernel_yield):
 
    # In case schedule() returned, restore ESP and just return
    add esp, 72
-   dec dword ptr [disable_preemption_count]
+   lock dec dword ptr [disable_preemption_count]
 
 .do_ret:
    ret

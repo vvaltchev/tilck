@@ -194,19 +194,26 @@ void cancel_timer(int timer_num);
 
 extern volatile u32 disable_preemption_count;
 
-static ALWAYS_INLINE void disable_preemption(void) {
-   disable_preemption_count++;
+static ALWAYS_INLINE void disable_preemption(void)
+{
+   ATOMIC_ADD_AND_FETCH(&disable_preemption_count, 1);
 }
 
-static ALWAYS_INLINE void enable_preemption(void) {
-   ASSERT(disable_preemption_count > 0);
-   disable_preemption_count--;
+static ALWAYS_INLINE void enable_preemption(void)
+{
+   u32 oldval = ATOMIC_FETCH_AND_SUB(&disable_preemption_count, 1);
+   ASSERT(oldval > 0);
+   (void)oldval;
 }
 
-static ALWAYS_INLINE bool is_preemption_enabled(void) {
+#ifdef DEBUG
+
+static ALWAYS_INLINE bool is_preemption_enabled(void)
+{
    return disable_preemption_count == 0;
 }
 
+#endif
 
 /* Internal stuff (used by process.c and process32.c) */
 extern char *kernel_initial_stack[KERNEL_INITIAL_STACK_SIZE];
