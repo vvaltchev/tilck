@@ -242,10 +242,7 @@ void remove_task(task_info *ti)
 void account_ticks(void)
 {
    task_info *curr = get_curr_task();
-
-   // TODO: can we turn this 'if' into an assert curr != NULL ?
-   if (!curr)
-      return;
+   ASSERT(curr != NULL);
 
    curr->time_slot_ticks++;
    curr->total_ticks++;
@@ -257,12 +254,7 @@ void account_ticks(void)
 bool need_reschedule(void)
 {
    task_info *curr = get_curr_task();
-
-   // TODO: can we turn this 'if' into an assert curr != NULL ?
-   if (!curr) {
-      // The kernel is still initializing and we cannot call schedule() yet.
-      return false;
-   }
+   ASSERT(curr != NULL);
 
    if (curr->time_slot_ticks < TIME_SLOT_JIFFIES &&
        curr->state == TASK_STATE_RUNNING) {

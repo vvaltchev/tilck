@@ -260,7 +260,7 @@ sptr sys_execve(const char *filename,
    }
 
    switch_to_idle_task();
-   /* this point is unreachable */
+   NOT_REACHED();
 
 errend:
    enable_preemption();
@@ -284,7 +284,6 @@ sptr sys_pause()
 
 sptr sys_getpid()
 {
-   ASSERT(get_curr_task() != NULL);
    return get_curr_task()->owning_process_pid;
 }
 
