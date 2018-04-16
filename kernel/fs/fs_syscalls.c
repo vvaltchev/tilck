@@ -96,10 +96,15 @@ sptr sys_open(const char *pathname, int flags, int mode)
 
    disable_preemption();
 
-   ret = copy_str_from_user(curr->args_copybuf, pathname);
+   ret = copy_str_from_user(curr->args_copybuf, pathname, ARGS_COPYBUF_SIZE);
 
-   if (ret != 0) {
+   if (ret < 0) {
       ret = -EFAULT;
+      goto end;
+   }
+
+   if (ret > 0) {
+      ret = -ENAMETOOLONG;
       goto end;
    }
 

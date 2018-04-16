@@ -48,7 +48,14 @@ int copy_from_user(void *dest, const void *user_ptr, size_t n)
    return 0;
 }
 
-int copy_str_from_user(void *dest, const void *user_ptr)
+/*
+ * Copy an user-space NUL-terminated string into 'dest'. Destination's buffer
+ * size is 'max_size'. Returns:
+ *     0  if everything is alright
+ *    -1  if the read from the user pointer causes a page fault
+ *     1  if max_size is not enough
+ */
+int copy_str_from_user(void *dest, const void *user_ptr, size_t max_size)
 {
    ASSERT(!is_preemption_enabled());
 
@@ -56,17 +63,22 @@ int copy_str_from_user(void *dest, const void *user_ptr)
    {
       const char *ptr = user_ptr;
       char *d = dest;
+      size_t curr_size = 0;
 
       do {
+
+         if (curr_size > max_size)
+            return 1;
 
          if ((uptr)ptr >= KERNEL_BASE_VA) {
             in_user_copy = false;
             return -1;
          }
 
-         *d++ = *ptr++;
+         *d++ = *ptr;
+         curr_size++;
 
-      } while (*ptr);
+      } while (*ptr++);
 
    }
    exit_in_user_copy();

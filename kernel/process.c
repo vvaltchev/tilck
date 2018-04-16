@@ -150,17 +150,23 @@ static char *const default_env[] =
 sptr sys_chdir(const char *path)
 {
    sptr rc = 0;
+   task_info *curr = get_curr_task();
+   process_info *pi = curr->pi;
+   const size_t max_size = ARRAY_SIZE(pi->cwd);
 
    disable_preemption();
    {
-      size_t path_len = strlen(path) + 1;
+      rc = copy_str_from_user(pi->cwd, path, max_size);
 
-      if (path_len > ARRAY_SIZE(get_curr_task()->pi->cwd)) {
-         rc = -ENAMETOOLONG;
+      if (rc < 0) {
+         rc = -EFAULT;
          goto out;
       }
 
-      memcpy(get_curr_task()->pi->cwd, path, path_len);
+      if (rc > 0) {
+         rc = -ENAMETOOLONG;
+         goto out;
+      }
    }
 
 out:
