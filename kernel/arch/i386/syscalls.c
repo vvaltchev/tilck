@@ -33,6 +33,7 @@ sptr sys_unlink()
    return -1;
 }
 
+// TODO: use 'user' functions to validate the pointers
 sptr sys_execve(const char *filename,
                 const char *const *argv,
                 const char *const *env);
@@ -129,6 +130,7 @@ sptr sys_utime()
 }
 
 // 54:
+// TODO: use 'user' functions to validate the pointer (argp)
 sptr sys_ioctl(int fd, uptr request, void *argp);
 
 // 146:
@@ -138,9 +140,12 @@ sptr sys_writev(int fd, const void *iov, int iovcnt);
 sptr sys_getcwd(char *buf, size_t buf_size);
 
 //243:
+// TODO: use 'user' functions to validate the pointer (u_info)
 sptr sys_set_thread_area(void *u_info);
 
 //258:
+
+// TODO: use 'user' functions to validate the pointer (tidptr)
 sptr sys_set_tid_address(int *tidptr);
 
 // The syscall numbers are ARCH-dependent
