@@ -176,21 +176,35 @@ out:
 
 sptr sys_getcwd(char *buf, size_t buf_size)
 {
+   sptr ret;
    size_t cwd_len;
    disable_preemption();
    {
       cwd_len = strlen(get_curr_task()->pi->cwd) + 1;
 
-      if (!buf)
-         return -EINVAL;
+      if (!buf || !buf_size) {
+         ret = -EINVAL;
+         goto out;
+      }
 
-      if (buf_size < cwd_len)
-         return -ERANGE;
+      if (buf_size < cwd_len) {
+         ret = -ERANGE;
+         goto out;
+      }
 
-      memcpy(buf, get_curr_task()->pi->cwd, cwd_len);
+      ret = copy_to_user(buf, get_curr_task()->pi->cwd, cwd_len);
+
+      if (ret < 0) {
+         ret = -EFAULT;
+         goto out;
+      }
+
+      ret = cwd_len;
    }
+
+out:
    enable_preemption();
-   return cwd_len;
+   return ret;
 }
 
 sptr sys_execve(const char *filename,
