@@ -10,6 +10,7 @@
 #include <exos/kb.h>
 #include <exos/process.h>
 #include <exos/term.h>
+#include <exos/user.h>
 
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
@@ -73,9 +74,15 @@ static const termios hard_coded_termios =
 
 static ssize_t tty_ioctl(fs_handle h, uptr request, void *argp)
 {
+   printk("tty_ioctl(request: %p)\n", request);
 
    if (request == TCGETS) {
-      memcpy(argp, &hard_coded_termios, sizeof(termios));
+
+      int rc = copy_to_user(argp, &hard_coded_termios, sizeof(termios));
+
+      if (rc < 0)
+         return -EFAULT;
+
       return 0;
    }
 

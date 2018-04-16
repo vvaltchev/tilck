@@ -130,7 +130,6 @@ sptr sys_utime()
 }
 
 // 54:
-// TODO: use 'user' functions to validate the pointer (argp)
 sptr sys_ioctl(int fd, uptr request, void *argp);
 
 // 146:
