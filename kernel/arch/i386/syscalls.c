@@ -143,7 +143,7 @@ sptr sys_set_thread_area(void *u_info);
 
 //258:
 
-// TODO: use 'user' functions to validate the pointer (tidptr)
+// TODO: complete the implementation when thread creation is implemented.
 sptr sys_set_tid_address(int *tidptr);
 
 // The syscall numbers are ARCH-dependent

@@ -336,14 +336,19 @@ NORETURN void switch_to_task(task_info *ti)
 
 sptr sys_set_tid_address(int *tidptr)
 {
-   get_curr_task()->pi->tidptr = tidptr;
+   /*
+    * NOTE: this syscall must always succeed. In case the user pointer
+    * is not valid, we'll send SIGSEGV to the just created thread.
+    */
+
+   get_curr_task()->pi->set_child_tid = tidptr;
    return get_curr_task()->tid;
 }
 
 void arch_specific_new_task_setup(task_info *ti)
 {
    ti->ldt = NULL;
-   ti->pi->tidptr = NULL;
+   ti->pi->set_child_tid = NULL;
    bzero(ti->gdt_entries, sizeof(ti->gdt_entries));
 }
 

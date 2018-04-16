@@ -35,7 +35,14 @@ struct process_info {
    fs_handle handles[16]; /* for the moment, just a fixed-size small array */
 
 #ifdef __arch__x86__
-   int *tidptr;
+
+   /*
+    * TODO: when thread creation is implemented, use
+    * copy_to_user() when writing to this address.
+    */
+
+   int *set_child_tid; /* NOTE: this is an user pointer */
+
 #endif
 };
 
