@@ -139,7 +139,6 @@ sptr sys_writev(int fd, const void *iov, int iovcnt);
 sptr sys_getcwd(char *buf, size_t buf_size);
 
 //243:
-// TODO: use 'user' functions to validate the pointer (u_info)
 sptr sys_set_thread_area(void *u_info);
 
 //258:

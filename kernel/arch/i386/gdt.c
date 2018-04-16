@@ -5,6 +5,7 @@
 #include <exos/hal.h>
 #include <exos/errno.h>
 #include <exos/process.h>
+#include <exos/user.h>
 
 #include "gdt_int.h"
 
@@ -261,33 +262,40 @@ static int get_user_task_slot_for_gdt_entry(int gdt_entry_num)
    return -1;
 }
 
-sptr sys_set_thread_area(user_desc *d)
+sptr sys_set_thread_area(user_desc *ud)
 {
    int rc = 0;
    gdt_entry e = {0};
+   user_desc dc;
 
    disable_preemption();
-   //DEBUG_set_thread_area(d);
 
-   if (!(d->flags == USER_DESC_FLAGS_EMPTY && !d->base_addr && !d->limit)) {
-      gdt_set_entry(&e, d->base_addr, d->limit, 0, 0);
+   rc = copy_from_user(&dc, ud, sizeof(user_desc));
+
+   if (rc != 0) {
+      rc = -EFAULT;
+      goto out;
+   }
+
+   if (!(dc.flags == USER_DESC_FLAGS_EMPTY && !dc.base_addr && !dc.limit)) {
+      gdt_set_entry(&e, dc.base_addr, dc.limit, 0, 0);
       e.s = 1;
       e.dpl = 3;
-      e.d = d->seg_32bit;
-      e.type |= (d->contents << 2);
-      e.type |= !d->read_exec_only ? GDT_ACCESS_RW : 0;
-      e.g = d->limit_in_pages;
-      e.avl = d->useable;
-      e.p = !d->seg_not_present;
+      e.d = dc.seg_32bit;
+      e.type |= (dc.contents << 2);
+      e.type |= !dc.read_exec_only ? GDT_ACCESS_RW : 0;
+      e.g = dc.limit_in_pages;
+      e.avl = dc.useable;
+      e.p = !dc.seg_not_present;
    } else {
       /* The user passed an empty descriptor: entry_number cannot be -1 */
-      if (d->entry_number == INVALID_ENTRY_NUM) {
+      if (dc.entry_number == INVALID_ENTRY_NUM) {
          rc = -EINVAL;
          goto out;
       }
    }
 
-   if (d->entry_number == INVALID_ENTRY_NUM) {
+   if (dc.entry_number == INVALID_ENTRY_NUM) {
 
       int slot = find_available_slot_in_user_task();
 
@@ -296,9 +304,9 @@ sptr sys_set_thread_area(user_desc *d)
          goto out;
       }
 
-      d->entry_number = gdt_add_entry(&e);
+      dc.entry_number = gdt_add_entry(&e);
 
-      if (d->entry_number == INVALID_ENTRY_NUM) {
+      if (dc.entry_number == INVALID_ENTRY_NUM) {
 
          rc = gdt_expand();
 
@@ -307,21 +315,21 @@ sptr sys_set_thread_area(user_desc *d)
             goto out;
          }
 
-         d->entry_number = gdt_add_entry(&e);
+         dc.entry_number = gdt_add_entry(&e);
       }
 
-      get_curr_task()->gdt_entries[slot] = d->entry_number;
+      get_curr_task()->gdt_entries[slot] = dc.entry_number;
       goto out;
    }
 
    /* Handling the case where the user specified a GDT entry number */
 
-   int slot = get_user_task_slot_for_gdt_entry(d->entry_number);
+   int slot = get_user_task_slot_for_gdt_entry(dc.entry_number);
 
    if (slot < 0) {
       /* A GDT entry with that index has never been allocated by this task */
 
-      if (d->entry_number >= gdt_size || gdt[d->entry_number].access) {
+      if (dc.entry_number >= gdt_size || gdt[dc.entry_number].access) {
          /* The entry is out-of-bounds or it's used by another task */
          rc = -EINVAL;
          goto out;
@@ -336,12 +344,12 @@ sptr sys_set_thread_area(user_desc *d)
          goto out;
       }
 
-      get_curr_task()->gdt_entries[slot] = d->entry_number;
+      get_curr_task()->gdt_entries[slot] = dc.entry_number;
    }
 
-   ASSERT(d->entry_number < gdt_size);
+   ASSERT(dc.entry_number < gdt_size);
 
-   rc = gdt_set_entry_num(d->entry_number, &e);
+   rc = gdt_set_entry_num(dc.entry_number, &e);
 
    /*
     * We're here because either we found a slot already containing this index
@@ -351,6 +359,19 @@ sptr sys_set_thread_area(user_desc *d)
    ASSERT(rc == 0);
 
 out:
+
+   if (!rc) {
+
+      /*
+       * Positive case: we get here with rc = SUCCESS, now flush back the
+       * the user_desc struct (we might have changed its entry_number).
+       */
+      rc = copy_to_user(ud, &dc, sizeof(user_desc));
+
+      if (rc < 0)
+         rc = -EFAULT;
+   }
+
    enable_preemption();
    return rc;
 }
