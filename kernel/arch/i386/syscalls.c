@@ -20,17 +20,17 @@ sptr sys_waitpid(int pid, int *wstatus, int options);
 
 sptr sys_creat()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_link()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_unlink()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 // TODO: use 'user' functions to validate the pointers
@@ -42,49 +42,49 @@ sptr sys_chdir(const char *path);
 
 sptr sys_time()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_mknod()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_chmod()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_lchown()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_break()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_oldstat()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_lseek()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_getpid();
 
 sptr sys_mount()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_oldumount()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 /* Actual implementation: accept only 0 as UID. */
@@ -104,29 +104,29 @@ sptr sys_getuid16()
 
 sptr sys_stime()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_ptrace()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_alarm()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_oldfstat()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 sptr sys_pause();
 
 sptr sys_utime()
 {
-   return -1;
+   return -ENOSYS;
 }
 
 // 54:
