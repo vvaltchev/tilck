@@ -85,15 +85,13 @@ bool in_syscall(void)
    return res;
 }
 
-static bool is_same_interrupt_nested(int int_num)
+static void DEBUG_check_not_same_interrupt_nested(int int_num)
 {
    ASSERT(!are_interrupts_enabled());
 
    for (int i = nested_interrupts_count - 1; i >= 0; i--)
       if (nested_interrupts[i] == int_num)
-         return true;
-
-   return false;
+         panic("Unexpected same interrupt twice in nested_interrupts[]");
 }
 
 
@@ -138,7 +136,7 @@ int get_nested_interrupts_count(void)
  * This sanity check is essential: it assures us that in no case
  * we're running an usermode thread with preemption disabled.
  */
-static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode(void)
+static void DEBUG_check_preemption_enabled_for_usermode(void)
 {
    task_info *curr = get_curr_task();
    if (curr && !running_in_kernel(curr) && !nested_interrupts_count) {
@@ -148,6 +146,7 @@ static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode(void)
 
 #else
 
+static ALWAYS_INLINE void DEBUG_check_not_same_interrupt_nested(int n) { }
 static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode(void) { }
 
 #endif // KERNEL_TRACK_NESTED_INTERRUPTS
@@ -159,11 +158,7 @@ void irq_entry(regs *r)
    DEBUG_VALIDATE_STACK_PTR();
    DEBUG_check_preemption_enabled_for_usermode();
    ASSERT(get_curr_task() != NULL);
-
-#if KERNEL_TRACK_NESTED_INTERRUPTS
-   ASSERT(!is_same_interrupt_nested(regs_intnum(r)));
-#endif
-
+   DEBUG_check_not_same_interrupt_nested(regs_intnum(r));
 
    handle_irq(r);
 
