@@ -35,9 +35,7 @@ int copy_from_user(void *dest, const void *user_ptr, size_t n)
 {
    ASSERT(!is_preemption_enabled());
 
-   uptr p = (uptr) user_ptr;
-
-   if (p >= KERNEL_BASE_VA)
+   if (user_out_of_range(user_ptr, n))
       return -1;
 
    enter_in_user_copy();
@@ -61,7 +59,7 @@ static int internal_copy_user_str(void *dest,
       if (d >= (char *)dest_end)
          return 1;
 
-      if ((uptr)ptr >= KERNEL_BASE_VA)
+      if (user_out_of_range(ptr, 1))
          return -1;
 
       *d++ = *ptr;
@@ -106,7 +104,7 @@ int copy_to_user(void *user_ptr, const void *src, size_t n)
 {
    ASSERT(!is_preemption_enabled());
 
-   if (((uptr)user_ptr + n) >= KERNEL_BASE_VA)
+   if (user_out_of_range(user_ptr, n))
       return -1;
 
    enter_in_user_copy();
@@ -119,7 +117,7 @@ int copy_to_user(void *user_ptr, const void *src, size_t n)
 
 int check_user_ptr_size_writable(void *user_ptr)
 {
-   if (((uptr)user_ptr + sizeof(void *)) > KERNEL_BASE_VA)
+   if (user_out_of_range(user_ptr, sizeof(void *)))
       return -1;
 
    enter_in_user_copy();
@@ -135,7 +133,7 @@ int check_user_ptr_size_writable(void *user_ptr)
 
 int check_user_ptr_size_readable(void *user_ptr)
 {
-   if (((uptr)user_ptr + sizeof(void *)) > KERNEL_BASE_VA)
+   if (user_out_of_range(user_ptr, sizeof(void *)))
       return -1;
 
    enter_in_user_copy();
@@ -164,12 +162,10 @@ int copy_str_array_from_user(void *dest,
 
    for (argc = 0; ; argc++) {
 
-      uptr pval = (uptr)(user_arr + argc);
+      void *pval = (void *)(user_arr + argc);
 
-      if ((pval + sizeof(void*)) > KERNEL_BASE_VA) {
-         rc = -1;
-         goto out;
-      }
+      if (user_out_of_range(pval, sizeof(void *)))
+         return -1;
 
       char *pval_deref = *(char **)pval;
 
