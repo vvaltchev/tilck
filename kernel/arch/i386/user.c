@@ -102,7 +102,7 @@ int copy_to_user(void *user_ptr, const void *src, size_t n)
 
 int check_user_ptr_size_writable(void *user_ptr)
 {
-   if (((uptr)user_ptr + sizeof(void *)) >= KERNEL_BASE_VA)
+   if (((uptr)user_ptr + sizeof(void *)) > KERNEL_BASE_VA)
       return -1;
 
    enter_in_user_copy();
@@ -118,7 +118,7 @@ int check_user_ptr_size_writable(void *user_ptr)
 
 int check_user_ptr_size_readable(void *user_ptr)
 {
-   if (((uptr)user_ptr + sizeof(void *)) >= KERNEL_BASE_VA)
+   if (((uptr)user_ptr + sizeof(void *)) > KERNEL_BASE_VA)
       return -1;
 
    enter_in_user_copy();
@@ -129,4 +129,77 @@ int check_user_ptr_size_readable(void *user_ptr)
    }
    exit_in_user_copy();
    return 0;
+}
+
+int copy_str_array_from_user(void *dest,
+                             const char *const *user_arr,
+                             size_t max_size, size_t *written_ptr)
+{
+   int rc = 0;
+   int argc;
+   char **dest_arr = (char **)dest;
+   char *dest_end = (char *)dest + max_size;
+   char *after_ptrs_arr;
+   size_t written = 0;
+
+   enter_in_user_copy();
+   {
+      for (argc = 0; ; argc++) {
+
+         uptr pval = (uptr)(user_arr + argc);
+
+         if ((pval + sizeof(void*)) > KERNEL_BASE_VA) {
+            rc = -1;
+            goto out;
+         }
+
+         char *pval_deref = *(char **)pval;
+
+         if (!pval_deref)
+            break;
+      }
+
+      after_ptrs_arr = (char *) &dest_arr[argc + 1];
+
+      if (after_ptrs_arr > dest_end) {
+         rc = 1;
+         goto out;
+      }
+
+      dest_arr[argc + 1] = NULL;
+
+      after_ptrs_arr += sizeof(char *);
+      written += (argc + 1) * sizeof(char *);
+
+      for (int i = 0; i < argc; i++) {
+
+         dest_arr[i] = after_ptrs_arr;
+
+         const char *p = user_arr[i];
+
+         do {
+
+            if ((uptr)p >= KERNEL_BASE_VA) {
+               rc = -1;
+               goto out;
+            }
+
+            if (after_ptrs_arr >= dest_end) {
+               rc = 1;
+               goto out;
+            }
+
+            *after_ptrs_arr++ = *p;
+            written++;
+
+         } while (*p++);
+
+      }
+
+   }
+
+out:
+   *written_ptr = written;
+   exit_in_user_copy();
+   return rc;
 }

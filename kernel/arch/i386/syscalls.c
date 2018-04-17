@@ -33,7 +33,6 @@ sptr sys_unlink()
    return -ENOSYS;
 }
 
-// TODO: use 'user' functions to validate the pointers
 sptr sys_execve(const char *filename,
                 const char *const *argv,
                 const char *const *env);

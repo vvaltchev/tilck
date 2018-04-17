@@ -207,42 +207,103 @@ out:
    return ret;
 }
 
-sptr sys_execve(const char *filename,
-                const char *const *argv,
-                const char *const *env)
+sptr sys_execve(const char *user_filename,
+                const char *const *user_argv,
+                const char *const *user_env)
 {
    int rc = -ENOENT; /* default, kind-of random, error */
    page_directory_t *pdir = NULL;
    char *filename_copy = NULL;
    char *const *argv_copy = NULL;
    char *const *env_copy = NULL;
+   task_info *curr = get_curr_task();
    void *entry_point;
    void *stack_addr;
 
-   filename_copy = strdup(filename);
-
-   if (filename && !filename_copy) {
-      rc = -ENOMEM;
-      goto errend2;
-   }
-
-   argv_copy = dcopy_strarray(argv);
-
-   if (argv && !argv_copy) {
-      rc = -ENOMEM;
-      goto errend2;
-   }
-
-   env_copy = dcopy_strarray(env);
-
-   if (env && !env_copy) {
-      rc = -ENOMEM;
-      goto errend2;
-   }
-
    disable_preemption();
 
-   rc = load_elf_program(filename, &pdir, &entry_point, &stack_addr);
+   if (LIKELY(curr != NULL)) {
+
+      char *dest = (char *)curr->args_copybuf;
+      size_t buf_written = 0;
+
+      if (!user_filename) {
+         rc = -EINVAL;
+         goto errend;
+      }
+
+      rc = copy_str_from_user(dest,
+                              user_filename,
+                              MIN(MAX_PATH, ARGS_COPYBUF_SIZE));
+
+      if (rc < 0) {
+         rc = -EFAULT;
+         goto errend;
+      }
+
+      if (rc > 0) {
+         rc = -ENAMETOOLONG;
+         goto errend;
+      }
+
+      filename_copy = dest;
+      buf_written += strlen(filename_copy) + 1;
+
+      if (user_argv != NULL) {
+
+         size_t written = 0;
+
+         rc = copy_str_array_from_user(dest + buf_written,
+                                       user_argv,
+                                       ARGS_COPYBUF_SIZE - buf_written,
+                                       &written);
+
+         if (rc < 0) {
+            rc = -EFAULT;
+            goto errend;
+         }
+
+         if (rc > 0) {
+            rc = -E2BIG;
+            goto errend;
+         }
+
+         argv_copy = (char *const *)(dest + buf_written);
+         buf_written += written;
+      }
+
+      if (user_env != NULL) {
+
+         size_t written = 0;
+
+         rc = copy_str_array_from_user(dest + buf_written,
+                                       user_env,
+                                       ARGS_COPYBUF_SIZE - buf_written,
+                                       &written);
+
+         if (rc < 0) {
+            rc = -EFAULT;
+            goto errend;
+         }
+
+         if (rc > 0) {
+            rc = -E2BIG;
+            goto errend;
+         }
+
+         env_copy = (char *const *)(dest + buf_written);
+         buf_written += written;
+      }
+
+
+   } else {
+
+      filename_copy = (char *) user_filename;
+      argv_copy = (char *const *) user_argv;
+      env_copy = (char *const *) user_env;
+   }
+
+   rc = load_elf_program(filename_copy, &pdir, &entry_point, &stack_addr);
 
    if (rc < 0) {
       goto errend;
@@ -250,24 +311,19 @@ sptr sys_execve(const char *filename,
 
    char *const default_argv[] = { filename_copy, NULL };
 
-   if (LIKELY(get_curr_task() != NULL)) {
-      task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
-      pdir_destroy(get_curr_task()->pi->pdir);
+   if (LIKELY(curr != NULL)) {
+      task_change_state(curr, TASK_STATE_RUNNABLE);
+      pdir_destroy(curr->pi->pdir);
    }
 
    create_usermode_task(pdir,
                         entry_point,
                         stack_addr,
-                        get_curr_task(),
+                        curr,
                         argv_copy ? argv_copy : default_argv,
                         env_copy ? env_copy : default_env);
 
-   /* Free the duplicated buffers */
-   kfree(filename_copy);
-   dfree_strarray(argv_copy);
-   dfree_strarray(env_copy);
-
-   if (UNLIKELY(!get_curr_task())) {
+   if (UNLIKELY(!curr)) {
 
       /* Just counter-balance the disable_preemption() above */
       enable_preemption();
@@ -284,14 +340,7 @@ sptr sys_execve(const char *filename,
 
 errend:
    enable_preemption();
-
-errend2:
    VERIFY(rc != 0);
-
-   /* Free the duplicated buffers */
-   kfree(filename_copy);
-   dfree_strarray(argv_copy);
-   dfree_strarray(env_copy);
    return rc;
 }
 

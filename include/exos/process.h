@@ -15,6 +15,7 @@
 #define IO_COPYBUF_SIZE (PAGE_SIZE)
 #define ARGS_COPYBUF_SIZE (PAGE_SIZE)
 #define MAX_PID 32768
+#define MAX_PATH 256
 
 typedef enum {
    TASK_STATE_RUNNABLE = 0,
@@ -30,7 +31,7 @@ struct process_info {
    int parent_pid;
    page_directory_t *pdir;
 
-   char cwd[256]; /* current working directory */
+   char cwd[MAX_PATH]; /* current working directory */
 
    fs_handle handles[16]; /* for the moment, just a fixed-size small array */
 

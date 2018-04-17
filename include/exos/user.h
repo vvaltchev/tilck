@@ -10,3 +10,8 @@ int copy_str_from_user(void *dest, const void *user_ptr, size_t max_size);
 int copy_to_user(void *user_ptr, const void *src, size_t n);
 int check_user_ptr_size_writable(void *user_ptr);
 int check_user_ptr_size_readable(void *user_ptr);
+
+int copy_str_array_from_user(void *dest,
+                             const char *const *argv,
+                             size_t max_size,
+                             size_t *written_ptr);
