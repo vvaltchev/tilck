@@ -48,6 +48,32 @@ int copy_from_user(void *dest, const void *user_ptr, size_t n)
    return 0;
 }
 
+static int internal_copy_user_str(void *dest,
+                                  const void *user_ptr,
+                                  void *dest_end,
+                                  size_t *written_ptr)
+{
+   const char *ptr = user_ptr;
+   char *d = dest;
+
+   do {
+
+      if (d >= (char *)dest_end)
+         return 1;
+
+      if ((uptr)ptr >= KERNEL_BASE_VA)
+         return -1;
+
+      *d++ = *ptr;
+
+   } while (*ptr++);
+
+   *written_ptr = (d - (char *)dest);
+
+   printk("dest: '%s', len: %u\n", dest, *written_ptr);
+   return 0;
+}
+
 /*
  * Copy an user-space NUL-terminated string into 'dest'. Destination's buffer
  * size is 'max_size'. Returns:
@@ -57,32 +83,19 @@ int copy_from_user(void *dest, const void *user_ptr, size_t n)
  */
 int copy_str_from_user(void *dest, const void *user_ptr, size_t max_size)
 {
+   int rc;
+   size_t written;
    ASSERT(!is_preemption_enabled());
 
    enter_in_user_copy();
    {
-      const char *ptr = user_ptr;
-      char *d = dest;
-      size_t curr_size = 0;
-
-      do {
-
-         if (curr_size > max_size)
-            return 1;
-
-         if ((uptr)ptr >= KERNEL_BASE_VA) {
-            in_user_copy = false;
-            return -1;
-         }
-
-         *d++ = *ptr;
-         curr_size++;
-
-      } while (*ptr++);
-
+      rc = internal_copy_user_str(dest,
+                                  user_ptr,
+                                  (char *)dest + max_size,
+                                  &written);
    }
    exit_in_user_copy();
-   return 0;
+   return rc;
 }
 
 int copy_to_user(void *user_ptr, const void *src, size_t n)
@@ -143,59 +156,49 @@ int copy_str_array_from_user(void *dest,
    size_t written = 0;
 
    enter_in_user_copy();
-   {
-      for (argc = 0; ; argc++) {
 
-         uptr pval = (uptr)(user_arr + argc);
+   for (argc = 0; ; argc++) {
 
-         if ((pval + sizeof(void*)) > KERNEL_BASE_VA) {
-            rc = -1;
-            goto out;
-         }
+      uptr pval = (uptr)(user_arr + argc);
 
-         char *pval_deref = *(char **)pval;
-
-         if (!pval_deref)
-            break;
-      }
-
-      after_ptrs_arr = (char *) &dest_arr[argc + 1];
-
-      if (after_ptrs_arr > dest_end) {
-         rc = 1;
+      if ((pval + sizeof(void*)) > KERNEL_BASE_VA) {
+         rc = -1;
          goto out;
       }
 
-      dest_arr[argc + 1] = NULL;
+      char *pval_deref = *(char **)pval;
 
-      after_ptrs_arr += sizeof(char *);
-      written += (argc + 1) * sizeof(char *);
+      if (!pval_deref)
+         break;
+   }
 
-      for (int i = 0; i < argc; i++) {
+   after_ptrs_arr = (char *) &dest_arr[argc + 1];
 
-         dest_arr[i] = after_ptrs_arr;
+   if (after_ptrs_arr > dest_end) {
+      rc = 1;
+      goto out;
+   }
 
-         const char *p = user_arr[i];
+   dest_arr[argc + 1] = NULL;
 
-         do {
+   after_ptrs_arr += sizeof(char *);
+   written += (argc + 1) * sizeof(char *);
 
-            if ((uptr)p >= KERNEL_BASE_VA) {
-               rc = -1;
-               goto out;
-            }
+   for (int i = 0; i < argc; i++) {
 
-            if (after_ptrs_arr >= dest_end) {
-               rc = 1;
-               goto out;
-            }
+      size_t local_written = 0;
+      dest_arr[i] = after_ptrs_arr;
 
-            *after_ptrs_arr++ = *p;
-            written++;
+      rc = internal_copy_user_str(after_ptrs_arr,
+                                  user_arr[i],
+                                  dest_end,
+                                  &local_written);
 
-         } while (*p++);
+      written += local_written;
+      after_ptrs_arr += local_written;
 
-      }
-
+      if (rc != 0)
+         break;
    }
 
 out:
