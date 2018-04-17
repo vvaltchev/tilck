@@ -56,6 +56,7 @@ static int internal_copy_user_str(void *dest,
 
    const char *ptr = user_ptr;
    char *d = dest;
+   *written_ptr = 0;
 
    do {
 
