@@ -44,41 +44,6 @@ void __wrap_not_reached(const char *file, int line)
    abort();
 }
 
-int copy_from_user(void *dest, const void *user_ptr, size_t n)
-{
-   memcpy(dest, user_ptr, n);
-   return 0;
-}
-
-int copy_str_from_user(void *dest, const void *user_ptr)
-{
-   strcpy(dest, user_ptr);
-   return 0;
-}
-
-int copy_to_user(void *user_ptr, const void *src, size_t n)
-{
-   memcpy(user_ptr, src, n);
-   return 0;
-}
-
-int check_user_ptr_size_writable(void *user_ptr)
-{
-   return 0;
-}
-
-int check_user_ptr_size_readable(void *user_ptr)
-{
-   return 0;
-}
-
-int copy_str_array_from_user(void *dest,
-                             const char *const *user_arr,
-                             size_t max_size, size_t *written_ptr)
-{
-   NOT_IMPLEMENTED();
-}
-
 void init_serial_port() { }
 void write_serial() { }
 void handle_fault() { }
@@ -103,3 +68,4 @@ void switch_to_task() { }
 void pdir_clone() { }
 void pdir_destroy() { }
 void set_page_directory() { }
+void set_current_task_in_user_mode() { }
