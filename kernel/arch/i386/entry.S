@@ -8,15 +8,18 @@
 
 .section bss
 .global kernel_initial_stack
+.global vsdo_like_page
 
 .align 4096
 .lcomm kernel_initial_stack, KERNEL_INITIAL_STACK_SIZE
+.lcomm vsdo_like_page, 4096
 
 .section .text
 
 .global _start
 .global syscall_int80_entry
 .global sysenter_entry
+.global asm_sysenter_setup
 .global asm_soft_interrupt_entry
 .global context_switch
 .global kernel_yield
@@ -172,20 +175,51 @@ FUNC(sysenter_entry):
 
    add esp, 8  # Discards the pushed err_code and int_num
 
-   pop edx     # eip
-   add esp, 4  # skip CS
+   add esp, 8  # skip eip, cs
    popf
    pop ecx     # esp
    add esp, 4  # skip SS
 
-   mov ebp, [ecx]  # Restore ebp, the only register that we can restore here.
-   add ecx, 16     # In order to restore ecx and edx (used by the CPU) we need
-                   # to execute some userspace code, after sysexit.
-
+   mov edx, USER_VSDO_LIKE_PAGE_VADDR
    sti
    sysexit
 
 END_FUNC(sysenter_entry)
+
+FUNC(asm_sysenter_setup):
+
+   push edi
+   push esi
+
+   # Copy the code at sysexit_user_code at vsdo_like_page
+   # that will be mapped at user vaddr USER_VSDO_LIKE_PAGE_VADDR.
+   # Sysexit will jump to that address when returning to usermode and will
+   # do EXACTLY what the Linux kernel does in VSDO after sysexit.
+
+   mov edi, offset vsdo_like_page
+   mov esi, offset sysexit_user_code
+
+2:
+   mov eax, [esi]
+   mov [edi], eax
+   add esi, 4
+   add edi, 4
+   cmp esi, offset sysexit_user_code_end
+   jne 2b
+
+   pop esi
+   pop edi
+   ret
+
+   .align 4
+   sysexit_user_code:
+   pop ebp
+   pop edx
+   pop ecx
+   ret
+   sysexit_user_code_end:
+
+END_FUNC(asm_sysenter_setup)
 
 FUNC(syscall_int80_entry):
 
