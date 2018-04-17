@@ -211,14 +211,14 @@ sptr sys_execve(const char *user_filename,
                 const char *const *user_argv,
                 const char *const *user_env)
 {
-   int rc = -ENOENT; /* default, kind-of random, error */
-   page_directory_t *pdir = NULL;
-   char *filename_copy = NULL;
-   char *const *argv_copy = NULL;
-   char *const *env_copy = NULL;
-   task_info *curr = get_curr_task();
+   int rc;
    void *entry_point;
    void *stack_addr;
+   char *file_path;
+   char *const *argv = NULL;
+   char *const *env = NULL;
+   task_info *curr = get_curr_task();
+   page_directory_t *pdir = NULL;
 
    disable_preemption();
 
@@ -227,7 +227,7 @@ sptr sys_execve(const char *user_filename,
       char *dest = (char *)curr->args_copybuf;
       size_t written = 0;
 
-      filename_copy = dest;
+      file_path = dest;
       rc = duplicate_user_path(dest,
                                user_filename,
                                MIN(MAX_PATH, ARGS_COPYBUF_SIZE),
@@ -236,10 +236,10 @@ sptr sys_execve(const char *user_filename,
       if (rc != 0)
          goto errend;
 
-      written += strlen(filename_copy) + 1;
+      written += strlen(file_path) + 1;
 
       if (user_argv) {
-         argv_copy = (char *const *) (dest + written);
+         argv = (char *const *) (dest + written);
          rc = duplicate_user_argv(dest,
                                   user_argv,
                                   ARGS_COPYBUF_SIZE,
@@ -249,7 +249,7 @@ sptr sys_execve(const char *user_filename,
       }
 
       if (user_env) {
-         env_copy = (char *const *) (dest + written);
+         env = (char *const *) (dest + written);
          rc = duplicate_user_argv(dest,
                                   user_env,
                                   ARGS_COPYBUF_SIZE,
@@ -261,18 +261,18 @@ sptr sys_execve(const char *user_filename,
 
    } else {
 
-      filename_copy = (char *) user_filename;
-      argv_copy = (char *const *) user_argv;
-      env_copy = (char *const *) user_env;
+      file_path = (char *) user_filename;
+      argv = (char *const *) user_argv;
+      env = (char *const *) user_env;
+
    }
 
-   rc = load_elf_program(filename_copy, &pdir, &entry_point, &stack_addr);
+   rc = load_elf_program(file_path, &pdir, &entry_point, &stack_addr);
 
-   if (rc < 0) {
+   if (rc < 0)
       goto errend;
-   }
 
-   char *const default_argv[] = { filename_copy, NULL };
+   char *const default_argv[] = { file_path, NULL };
 
    if (LIKELY(curr != NULL)) {
       task_change_state(curr, TASK_STATE_RUNNABLE);
@@ -283,20 +283,8 @@ sptr sys_execve(const char *user_filename,
                         entry_point,
                         stack_addr,
                         curr,
-                        argv_copy ? argv_copy : default_argv,
-                        env_copy ? env_copy : default_env);
-
-   if (UNLIKELY(!curr)) {
-
-      /* Just counter-balance the disable_preemption() above */
-      enable_preemption();
-
-      /* We're still in the initialization and preemption is disabled */
-      ASSERT(!is_preemption_enabled());
-
-      /* Compensate the pop_nested_interrupt() in switch_to_task() */
-      push_nested_interrupt(-1);
-   }
+                        argv ? argv : default_argv,
+                        env ? env : default_env);
 
    switch_to_idle_task();
    NOT_REACHED();
