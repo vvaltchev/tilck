@@ -16,7 +16,7 @@ char *strdup(const char *s)
    return copy;
 }
 
-char *const *dcopy_strarray(const char *const *argv)
+char *const *dup_strarray(const char *const *argv)
 {
    int argc = 0;
    char **res;
@@ -47,7 +47,7 @@ char *const *dcopy_strarray(const char *const *argv)
    return res;
 }
 
-void dfree_strarray(char *const *argv)
+void free_strarray(char *const *argv)
 {
    char *const *p = argv;
 

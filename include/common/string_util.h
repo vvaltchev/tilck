@@ -16,8 +16,8 @@ int stricmp(const char *s1, const char *s2);
 void str_reverse(char *str, size_t len);
 
 char *strdup(const char *s);
-char *const *dcopy_strarray(const char *const *argv);
-void dfree_strarray(char *const *argv);
+char *const *dup_strarray(const char *const *argv);
+void free_strarray(char *const *argv);
 
 static ALWAYS_INLINE bool isalpha_lower(int c) {
    return (c >= 'a' && c <= 'z');
