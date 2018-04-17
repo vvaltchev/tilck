@@ -2,8 +2,9 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
+
+#include <common/basic_defs.h>
 
 bool suppress_printk;
 
@@ -69,6 +70,13 @@ int check_user_ptr_size_writable(void *user_ptr)
 int check_user_ptr_size_readable(void *user_ptr)
 {
    return 0;
+}
+
+int copy_str_array_from_user(void *dest,
+                             const char *const *user_arr,
+                             size_t max_size, size_t *written_ptr)
+{
+   NOT_IMPLEMENTED();
 }
 
 void init_serial_port() { }
