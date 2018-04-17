@@ -151,6 +151,42 @@ void cmd_fork_perf(void)
    printf("duration: %llu\n", duration/iters);
 }
 
+
+
+int do_sysenter_call(int syscall, void *arg1, void *arg2, void *arg3)
+{
+   int ret;
+
+   __asm__ volatile ("pushl $ret\n\t"
+                     "pushl %%ecx\n\t"
+                     "pushl %%edx\n\t"
+                     "pushl %%ebp\n\t"
+                     "movl %%esp, %%ebp\n\t"
+                     "sysenter\n\t"
+                     "ret:\n\t"
+                     : "=a" (ret)
+                     : "a" (syscall), "b" (arg1), "c" (arg2), "d" (arg3)
+                     : "memory", "cc");
+
+   return ret;
+}
+
+#define sysenter_call(n, a1, a2, a3) \
+   do_sysenter_call((n), (void*)(a1), (void*)(a2), (void*)(a3))
+
+void cmd_sysenter(void)
+{
+   const char *str = "hello from a sysenter call!\n";
+   size_t len = strlen(str);
+
+   int ret = sysenter_call(4  /* write */,
+                           1  /* stdout */,
+                           str,
+                           len);
+
+   printf("The syscall returned: %i\n", ret);
+}
+
 /* ------------------------------------------- */
 
 typedef void (*cmd_func_type)(void);
@@ -166,8 +202,8 @@ struct {
    {"fork_test", cmd_fork_test},
    {"invalid_read", cmd_invalid_read},
    {"invalid_write", cmd_invalid_write},
-   {"fork_perf", cmd_fork_perf}
-
+   {"fork_perf", cmd_fork_perf},
+   {"sysenter", cmd_sysenter}
 };
 
 void run_if_known_command(const char *cmd)

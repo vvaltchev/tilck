@@ -132,7 +132,7 @@ FUNC(sysenter_entry):
     * 4. push ecx   # save ecx because the kernel will change it
     * 5. push edx   # save edx because the kenrel will change it
     * 6. push ebp   # save ebp because we'll going to use it to store ESP
-    * 7. ebp = esp
+    * 7. mov ebp, esp
     * 8. sysenter
     *
     * Note: in Linux sysenter is used by the libc through VDSO, when it is
@@ -170,13 +170,17 @@ FUNC(sysenter_entry):
    pop ds
    popa
 
-   add esp, 8     # Discards the pushed err_code and int_num
+   add esp, 8  # Discards the pushed err_code and int_num
 
    pop edx     # eip
    add esp, 4  # skip CS
    popf
-   pop ecx
+   pop ecx     # esp
    add esp, 4  # skip SS
+
+   mov ebp, [ecx]  # Restore ebp, the only register that we can restore here.
+   add ecx, 16     # In order to restore ecx and edx (used by the CPU) we need
+                   # to execute some userspace code, after sysexit.
 
    sti
    sysexit
