@@ -68,9 +68,7 @@ static int internal_copy_user_str(void *dest,
 
    } while (*ptr++);
 
-   *written_ptr = (d - (char *)dest);
-
-   printk("dest: '%s', len: %u\n", dest, *written_ptr);
+   *written_ptr = (d - (char *)dest); /* written includes the final \0 */
    return 0;
 }
 
@@ -146,7 +144,8 @@ int check_user_ptr_size_readable(void *user_ptr)
 
 int copy_str_array_from_user(void *dest,
                              const char *const *user_arr,
-                             size_t max_size, size_t *written_ptr)
+                             size_t max_size,
+                             size_t *written_ptr)
 {
    int rc = 0;
    int argc;

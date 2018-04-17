@@ -207,6 +207,51 @@ out:
    return ret;
 }
 
+static int duplicate_user_path(char *dest,
+                               const char *user_path,
+                               size_t dest_size,
+                               size_t *written_ptr)
+{
+   int rc;
+
+   if (!user_path)
+      return -EINVAL;
+
+   rc = copy_str_from_user(dest + *written_ptr,
+                           user_path,
+                           dest_size - *written_ptr);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -ENAMETOOLONG;
+
+   *written_ptr += strlen(user_path) + 1;
+   return 0;
+}
+
+static int duplicate_user_argv(char *dest,
+                               const char *const *user_argv,
+                               size_t dest_size,
+                               size_t *written_ptr /* IN/OUT */)
+{
+   int rc;
+
+   rc = copy_str_array_from_user(dest + *written_ptr,
+                                 user_argv,
+                                 dest_size - *written_ptr,
+                                 written_ptr);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -E2BIG;
+
+   return 0;
+}
+
 sptr sys_execve(const char *user_filename,
                 const char *const *user_argv,
                 const char *const *user_env)
@@ -225,74 +270,37 @@ sptr sys_execve(const char *user_filename,
    if (LIKELY(curr != NULL)) {
 
       char *dest = (char *)curr->args_copybuf;
-      size_t buf_written = 0;
-
-      if (!user_filename) {
-         rc = -EINVAL;
-         goto errend;
-      }
-
-      rc = copy_str_from_user(dest,
-                              user_filename,
-                              MIN(MAX_PATH, ARGS_COPYBUF_SIZE));
-
-      if (rc < 0) {
-         rc = -EFAULT;
-         goto errend;
-      }
-
-      if (rc > 0) {
-         rc = -ENAMETOOLONG;
-         goto errend;
-      }
+      size_t written = 0;
 
       filename_copy = dest;
-      buf_written += strlen(filename_copy) + 1;
+      rc = duplicate_user_path(dest,
+                               user_filename,
+                               MIN(MAX_PATH, ARGS_COPYBUF_SIZE),
+                               &written);
 
-      if (user_argv != NULL) {
+      if (rc != 0)
+         goto errend;
 
-         size_t written = 0;
+      written += strlen(filename_copy) + 1;
 
-         rc = copy_str_array_from_user(dest + buf_written,
-                                       user_argv,
-                                       ARGS_COPYBUF_SIZE - buf_written,
-                                       &written);
-
-         if (rc < 0) {
-            rc = -EFAULT;
+      if (user_argv) {
+         argv_copy = (char *const *) (dest + written);
+         rc = duplicate_user_argv(dest,
+                                  user_argv,
+                                  ARGS_COPYBUF_SIZE,
+                                  &written);
+         if (rc != 0)
             goto errend;
-         }
-
-         if (rc > 0) {
-            rc = -E2BIG;
-            goto errend;
-         }
-
-         argv_copy = (char *const *)(dest + buf_written);
-         buf_written += written;
       }
 
-      if (user_env != NULL) {
-
-         size_t written = 0;
-
-         rc = copy_str_array_from_user(dest + buf_written,
-                                       user_env,
-                                       ARGS_COPYBUF_SIZE - buf_written,
-                                       &written);
-
-         if (rc < 0) {
-            rc = -EFAULT;
+      if (user_env) {
+         env_copy = (char *const *) (dest + written);
+         rc = duplicate_user_argv(dest,
+                                  user_env,
+                                  ARGS_COPYBUF_SIZE,
+                                  &written);
+         if (rc != 0)
             goto errend;
-         }
-
-         if (rc > 0) {
-            rc = -E2BIG;
-            goto errend;
-         }
-
-         env_copy = (char *const *)(dest + buf_written);
-         buf_written += written;
       }
 
 
