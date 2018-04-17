@@ -327,8 +327,8 @@ NORETURN void switch_to_task(task_info *ti)
    set_current_task(ti); /* this is safe here: the interrupts are disabled! */
    set_kernel_stack((u32) ti->kernel_state_regs);
 
-   if (ti->ldt) {
-      load_ldt(ti->ldt_index_in_gdt, ti->ldt_size);
+   if (ti->arch.ldt) {
+      load_ldt(ti->arch.ldt_index_in_gdt, ti->arch.ldt_size);
    }
 
    context_switch(state);
@@ -347,17 +347,17 @@ sptr sys_set_tid_address(int *tidptr)
 
 void arch_specific_new_task_setup(task_info *ti)
 {
-   ti->ldt = NULL;
+   ti->arch.ldt = NULL;
    ti->pi->set_child_tid = NULL;
-   bzero(ti->gdt_entries, sizeof(ti->gdt_entries));
+   bzero(ti->arch.gdt_entries, sizeof(ti->arch.gdt_entries));
 }
 
 void arch_specific_free_task(task_info *ti)
 {
-   if (ti->ldt)
-      gdt_clear_entry(ti->ldt_index_in_gdt);
+   if (ti->arch.ldt)
+      gdt_clear_entry(ti->arch.ldt_index_in_gdt);
 
-   for (u32 i = 0; i < ARRAY_SIZE(ti->gdt_entries); i++)
-      if (ti->gdt_entries[i])
-         gdt_clear_entry(ti->gdt_entries[i]);
+   for (u32 i = 0; i < ARRAY_SIZE(ti->arch.gdt_entries); i++)
+      if (ti->arch.gdt_entries[i])
+         gdt_clear_entry(ti->arch.gdt_entries[i]);
 }

@@ -7,9 +7,7 @@
 
 #include <common/arch/generic_x86/x86_utils.h>
 
-// Forward-declaring regs
 typedef struct regs regs;
-
 
 /* This defines what the stack looks like after an ISR ran */
 struct regs {
@@ -18,6 +16,15 @@ struct regs {
    u32 int_num, err_code;    /* our 'push byte #' and error codes do this */
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
+
+typedef struct {
+
+   void *ldt;
+   int ldt_size; /* Number of entries. Valid only if ldt != NULL. */
+   int ldt_index_in_gdt; /* Index in gdt, valid only if ldt != NULL. */
+   int gdt_entries[3];
+
+} arch_task_info_members;
 
 static ALWAYS_INLINE int regs_intnum(regs *r)
 {

@@ -11,6 +11,12 @@ struct regs {
 
 typedef struct regs regs;
 
+typedef struct {
+
+   /* STUB struct */
+
+} arch_task_info_members;
+
 static ALWAYS_INLINE int regs_intnum(regs *r)
 {
    NOT_IMPLEMENTED();

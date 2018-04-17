@@ -35,7 +35,6 @@ struct process_info {
 
    fs_handle handles[16]; /* for the moment, just a fixed-size small array */
 
-#ifdef __arch__x86__
 
    /*
     * TODO: when thread creation is implemented, use
@@ -43,8 +42,6 @@ struct process_info {
     */
 
    int *set_child_tid; /* NOTE: this is an user pointer */
-
-#endif
 };
 
 typedef struct process_info process_info;
@@ -89,12 +86,7 @@ struct task_info {
     */
    void *what;
 
-#ifdef __arch__x86__
-   void *ldt;
-   int ldt_size; /* Number of entries. Valid only if ldt != NULL. */
-   int ldt_index_in_gdt; /* Index in gdt, valid only if ldt != NULL. */
-   int gdt_entries[3];
-#endif
+   arch_task_info_members arch; /* arch-specific fields */
 };
 
 typedef struct task_info task_info;
