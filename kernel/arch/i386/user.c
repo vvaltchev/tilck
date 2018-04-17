@@ -51,6 +51,9 @@ static int internal_copy_user_str(void *dest,
                                   void *dest_end,
                                   size_t *written_ptr)
 {
+   ASSERT(!is_preemption_enabled());
+   ASSERT(in_user_copy());
+
    const char *ptr = user_ptr;
    char *d = dest;
 
@@ -62,7 +65,7 @@ static int internal_copy_user_str(void *dest,
       if (user_out_of_range(ptr, 1))
          return -1;
 
-      *d++ = *ptr;
+      *d++ = *ptr; /* note: ptr is NOT increased here */
 
    } while (*ptr++);
 
@@ -82,9 +85,10 @@ int copy_str_from_user(void *dest,
                        size_t max_size,
                        size_t *written_ptr)
 {
+   ASSERT(!is_preemption_enabled());
+
    int rc;
    size_t written;
-   ASSERT(!is_preemption_enabled());
 
    enter_in_user_copy();
    {
@@ -162,28 +166,32 @@ int copy_str_array_from_user(void *dest,
 
    for (argc = 0; ; argc++) {
 
-      void *pval = (void *)(user_arr + argc);
+      const char *const *ptr_ptr = user_arr + argc;
 
-      if (user_out_of_range(pval, sizeof(void *)))
-         return -1;
+      if (user_out_of_range(ptr_ptr, sizeof(void *))) {
+         rc = -1;
+         goto out;
+      }
 
-      char *pval_deref = *(char **)pval;
+      /*
+       * OK, the double-pointer is in range, so we can de-reference it to
+       * read the single (char *) pointer. We don't care at the moment if the
+       * single pointer is valid, but we can whenever it is NULL in order to
+       * calculate 'argc'.
+       */
 
-      if (!pval_deref)
+      if (!*ptr_ptr)
          break;
    }
 
-   after_ptrs_arr = (char *) &dest_arr[argc + 1];
-
-   if (after_ptrs_arr > dest_end) {
+   if ((char *)&dest_arr[argc + 1] > dest_end) {
       rc = 1;
       goto out;
    }
 
    dest_arr[argc + 1] = NULL;
-
-   after_ptrs_arr += sizeof(char *);
-   written += (argc + 1) * sizeof(char *);
+   after_ptrs_arr = (char *) &dest_arr[argc + 2];
+   written += (after_ptrs_arr - (char *)dest_arr);
 
    for (int i = 0; i < argc; i++) {
 
@@ -212,7 +220,7 @@ out:
 int duplicate_user_path(char *dest,
                         const char *user_path,
                         size_t dest_size,
-                        size_t *written_ptr)
+                        size_t *written_ptr /* IN/OUT */)
 {
    int rc;
 
