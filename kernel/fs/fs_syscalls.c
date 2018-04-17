@@ -89,27 +89,22 @@ end:
    return ret;
 }
 
-sptr sys_open(const char *pathname, int flags, int mode)
+sptr sys_open(const char *user_path, int flags, int mode)
 {
    sptr ret;
    task_info *curr = get_curr_task();
+   char *path = curr->args_copybuf;
+   size_t written = 0;
 
    disable_preemption();
 
-   ret = copy_str_from_user(curr->args_copybuf, pathname, ARGS_COPYBUF_SIZE);
+   ret = duplicate_user_path(path, user_path, ARGS_COPYBUF_SIZE, &written);
 
-   if (ret < 0) {
-      ret = -EFAULT;
+   if (ret != 0)
       goto end;
-   }
-
-   if (ret > 0) {
-      ret = -ENAMETOOLONG;
-      goto end;
-   }
 
    printk("sys_open(filename = '%s', "
-          "flags = %x, mode = %x)\n", pathname, flags, mode);
+          "flags = %x, mode = %x)\n", path, flags, mode);
 
    int free_fd = get_free_handle_num(curr);
 
@@ -117,7 +112,7 @@ sptr sys_open(const char *pathname, int flags, int mode)
       goto no_fds;
 
    // TODO: make the exvfs call runnable with preemption enabled
-   fs_handle h = exvfs_open(pathname);
+   fs_handle h = exvfs_open(path);
 
    if (!h)
       goto no_ent;

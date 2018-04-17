@@ -156,7 +156,7 @@ sptr sys_chdir(const char *path)
 
    disable_preemption();
    {
-      rc = copy_str_from_user(pi->cwd, path, max_size);
+      rc = copy_str_from_user(pi->cwd, path, max_size, NULL);
 
       if (rc < 0) {
          rc = -EFAULT;
@@ -205,51 +205,6 @@ sptr sys_getcwd(char *buf, size_t buf_size)
 out:
    enable_preemption();
    return ret;
-}
-
-static int duplicate_user_path(char *dest,
-                               const char *user_path,
-                               size_t dest_size,
-                               size_t *written_ptr)
-{
-   int rc;
-
-   if (!user_path)
-      return -EINVAL;
-
-   rc = copy_str_from_user(dest + *written_ptr,
-                           user_path,
-                           dest_size - *written_ptr);
-
-   if (rc < 0)
-      return -EFAULT;
-
-   if (rc > 0)
-      return -ENAMETOOLONG;
-
-   *written_ptr += strlen(user_path) + 1;
-   return 0;
-}
-
-static int duplicate_user_argv(char *dest,
-                               const char *const *user_argv,
-                               size_t dest_size,
-                               size_t *written_ptr /* IN/OUT */)
-{
-   int rc;
-
-   rc = copy_str_array_from_user(dest + *written_ptr,
-                                 user_argv,
-                                 dest_size - *written_ptr,
-                                 written_ptr);
-
-   if (rc < 0)
-      return -EFAULT;
-
-   if (rc > 0)
-      return -E2BIG;
-
-   return 0;
 }
 
 sptr sys_execve(const char *user_filename,

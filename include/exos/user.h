@@ -2,16 +2,30 @@
 #pragma once
 #include <common/basic_defs.h>
 
-bool is_in_user_copy(void);
+bool in_user_copy(void);
 void handle_user_copy_fault(void);
 
 int copy_from_user(void *dest, const void *user_ptr, size_t n);
-int copy_str_from_user(void *dest, const void *user_ptr, size_t max_size);
 int copy_to_user(void *user_ptr, const void *src, size_t n);
 int check_user_ptr_size_writable(void *user_ptr);
 int check_user_ptr_size_readable(void *user_ptr);
+
+int copy_str_from_user(void *dest,
+                       const void *user_ptr,
+                       size_t max_size,
+                       size_t *written_ptr);
 
 int copy_str_array_from_user(void *dest,
                              const char *const *argv,
                              size_t max_size,
                              size_t *written_ptr);
+
+int duplicate_user_path(char *dest,
+                        const char *user_path,
+                        size_t dest_size,
+                        size_t *written_ptr /* IN/OUT */);
+
+int duplicate_user_argv(char *dest,
+                        const char *const *user_argv,
+                        size_t dest_size,
+                        size_t *written_ptr /* IN/OUT */);

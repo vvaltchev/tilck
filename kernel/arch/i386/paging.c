@@ -96,7 +96,7 @@ void handle_page_fault_int(regs *r)
 
    if (!us) {
 
-      if (is_in_user_copy()) {
+      if (in_user_copy()) {
          DEBUG_ONLY(in_page_fault = false);
          handle_user_copy_fault();
          NOT_REACHED();

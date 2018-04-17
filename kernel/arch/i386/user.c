@@ -3,21 +3,21 @@
 #include <exos/process.h>
 #include <exos/errno.h>
 
-static volatile bool in_user_copy;
+static volatile bool __in_user_copy;
 
-bool is_in_user_copy(void)
+bool in_user_copy(void)
 {
-   return in_user_copy;
+   return __in_user_copy;
 }
 
 static inline void enter_in_user_copy(void)
 {
-   in_user_copy = true;
+   __in_user_copy = true;
 }
 
 static inline void exit_in_user_copy(void)
 {
-   in_user_copy = false;
+   __in_user_copy = false;
 }
 
 void handle_user_copy_fault(void)
@@ -79,7 +79,10 @@ static int internal_copy_user_str(void *dest,
  *    -1  if the read from the user pointer causes a page fault
  *     1  if max_size is not enough
  */
-int copy_str_from_user(void *dest, const void *user_ptr, size_t max_size)
+int copy_str_from_user(void *dest,
+                       const void *user_ptr,
+                       size_t max_size,
+                       size_t *written_ptr)
 {
    int rc;
    size_t written;
@@ -91,6 +94,9 @@ int copy_str_from_user(void *dest, const void *user_ptr, size_t max_size)
                                   user_ptr,
                                   (char *)dest + max_size,
                                   &written);
+
+      if (written_ptr)
+         *written_ptr = written;
    }
    exit_in_user_copy();
    return rc;
@@ -204,4 +210,50 @@ out:
    *written_ptr = written;
    exit_in_user_copy();
    return rc;
+}
+
+
+int duplicate_user_path(char *dest,
+                        const char *user_path,
+                        size_t dest_size,
+                        size_t *written_ptr)
+{
+   int rc;
+
+   if (!user_path)
+      return -EINVAL;
+
+   rc = copy_str_from_user(dest + *written_ptr,
+                           user_path,
+                           dest_size - *written_ptr,
+                           written_ptr);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -ENAMETOOLONG;
+
+   return 0;
+}
+
+int duplicate_user_argv(char *dest,
+                        const char *const *user_argv,
+                        size_t dest_size,
+                        size_t *written_ptr /* IN/OUT */)
+{
+   int rc;
+
+   rc = copy_str_array_from_user(dest + *written_ptr,
+                                 user_argv,
+                                 dest_size - *written_ptr,
+                                 written_ptr);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -E2BIG;
+
+   return 0;
 }
