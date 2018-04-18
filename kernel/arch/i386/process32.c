@@ -193,24 +193,18 @@ task_info *create_usermode_task(page_directory_t *pdir,
 
    ASSERT(ti->kernel_stack != NULL);
 
-   memcpy(&ti->user_regs, &r, sizeof(r));
    task_info_reset_kernel_stack(ti);
+   ti->kernel_regs--;    // make room for a regs struct in the stack
+   *ti->kernel_regs = r; // copy the regs struct we just prepared
+
    return ti;
 }
 
 void save_current_task_state(regs *r)
 {
-   task_info *curr = get_curr_task();
-   ASSERT(curr != NULL);
-
-   if (curr->running_in_kernel) {
-
-      curr->kernel_regs = r;
-      DEBUG_VALIDATE_STACK_PTR();
-
-   } else {
-      memcpy(&curr->user_regs, r, sizeof(*r));
-   }
+   ASSERT(get_curr_task() != NULL);
+   get_curr_task()->kernel_regs = r;
+   DEBUG_VALIDATE_STACK_PTR();
 }
 
 
@@ -308,10 +302,7 @@ NORETURN void switch_to_task(task_info *ti)
    // We have to be SURE that the timer IRQ is NOT masked!
    irq_clear_mask(X86_PC_TIMER_IRQ);
 
-   regs *state = ti->running_in_kernel
-                  ? ti->kernel_regs
-                  : &ti->user_regs;
-
+   regs *state = ti->kernel_regs;
    ASSERT(state->eflags & EFLAGS_IF);
 
    if (!ti->running_in_kernel) {

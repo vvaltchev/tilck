@@ -75,7 +75,6 @@ struct task_info {
 
    wait_obj wobj;
 
-   regs user_regs;
    regs *kernel_regs;
 
    /*

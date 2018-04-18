@@ -337,10 +337,10 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
          {
             if (check_user_ptr_size_writable(wstatus) < 0)
                return -EFAULT;
+
+            *wstatus = EXITCODE(waited_task->exit_status, 0);
          }
          enable_preemption();
-
-         *wstatus = EXITCODE(waited_task->exit_status, 0);
       }
 
       remove_task((task_info *)waited_task);
@@ -435,6 +435,7 @@ sptr sys_fork(void)
 
    task_info *child = allocate_new_process(curr, pid);
    VERIFY(child != NULL); // TODO: handle this
+   ASSERT(child->kernel_stack != NULL);
 
    if (child->state == TASK_STATE_RUNNING) {
       child->state = TASK_STATE_RUNNABLE;
@@ -442,13 +443,16 @@ sptr sys_fork(void)
 
    child->pi->pdir = pdir_clone(curr->pi->pdir);
    child->running_in_kernel = false;
-   ASSERT(child->kernel_stack != NULL);
    task_info_reset_kernel_stack(child);
-   set_return_register(&child->user_regs, 0);
+
+   child->kernel_regs--; // make room for a regs struct in child's stack
+   *child->kernel_regs = *curr->kernel_regs; // copy parent's regs
+   set_return_register(child->kernel_regs, 0);
+
    add_task(child);
 
    // Make the parent to get child's pid as return value.
-   set_return_register(&curr->user_regs, child->tid);
+   set_return_register(curr->kernel_regs, child->tid);
 
    /* Duplicate all the handles */
    for (size_t i = 0; i < ARRAY_SIZE(child->pi->handles); i++) {
