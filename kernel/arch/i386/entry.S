@@ -143,13 +143,14 @@ FUNC(sysenter_entry):
     * have to explicitly use this convention in order to sysenter to work.
     */
 
-   push 0x23     # SS: user data sel
-   push ebp      # user esp
+   push 0x23        # SS: user data sel
+   push ebp         # user esp
    pushf
-   push 0x1B     # CS: user code sel
-   push [ebp+12] # eip
+   push 0x1B        # CS: user code sel
+   push 0xcafebabe  # eip: don't save it. It is saved by the user
 
-   push 0x0      # "err code" (clearly unused in this context)
+   push 1           # use 1 as "err_code" to distinguish a context saved
+                    # with sysenter from a context saved with int 0x80.
    push 0x80
 
    pusha
@@ -173,9 +174,7 @@ FUNC(sysenter_entry):
    pop ds
    popa
 
-   add esp, 8  # Discards the pushed err_code and int_num
-
-   add esp, 8  # skip eip, cs
+   add esp, 16 # Discards err_code and int_num, eip, cs
    popf
    pop ecx     # esp
    add esp, 4  # skip SS
