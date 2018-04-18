@@ -25,8 +25,8 @@ FUNC(asm_irq_entry):
    push offset .irq_resume
 
    mov eax, esp
-   push eax
    cld            # Set DF = 0, as C compilers by default assume that.
+   push eax
    call irq_entry
 
    add esp, 8     # Discard the previousy-pushed 'eax' and kernel_resume_eip

@@ -165,10 +165,9 @@ FUNC(sysenter_entry):
    mov gs, ax
 
    push offset .sysenter_resume
-
    mov eax, esp
-   push eax
    cld            # set DF = 0, as C compilers by default assume that.
+   push eax
    call soft_interrupt_entry
 
    add esp, 8     # skip the previousy-pushed 'eax' and kernel_resume_eip
@@ -253,10 +252,9 @@ FUNC(asm_soft_interrupt_entry):
    mov gs, ax
 
    push offset .soft_interrupt_resume
-
    mov eax, esp
-   push eax
    cld            # Set DF = 0, as C compilers by default assume that.
+   push eax
    call soft_interrupt_entry
 
    add esp, 8     # Discard the previousy-pushed 'eax' and kernel_resume_eip
@@ -289,8 +287,8 @@ END_FUNC(context_switch)
 .macro asm_macro_save_current_kernel_state
 
    pushf             # push EFLAGS
-   push cs           # code segment
-   push 0xcafebabe   # placeholder for EIP
+   push 0xcafecafe   # CS: unused for kernel_yield
+   push 0xcafecafe   # EIP: unused for kernel_yield
 
    push 0            # err_code
    push -1           # int_num
@@ -303,8 +301,7 @@ END_FUNC(context_switch)
    push fs
    push gs
 
-   push offset .soft_interrupt_resume
-
+   push offset .kernel_yield_resume
    mov eax, esp
 
 .endm
@@ -320,13 +317,6 @@ FUNC(kernel_yield):
 
    asm_macro_save_current_kernel_state
 
-   # When the thread is resumed in context_switch(), we'll be again in this
-   # function (form the ESP point-of-view) and caller's EIP will be (as it is
-   # now) already on the stack. We just have to set the EIP in a way to do just
-   # a 'ret'. For the caller, after the switch, it would be as if kernel_yield()
-   # did nothing but just returning.
-   mov dword ptr [eax + 14*4+4], offset .do_ret # regs->eip = .do_ret
-
    push eax
    call save_current_task_state
 
@@ -339,8 +329,16 @@ FUNC(kernel_yield):
    # In case schedule() returned, restore ESP and just return
    add esp, 72+4
    lock dec dword ptr [disable_preemption_count]
+   ret
 
-.do_ret:
+.kernel_yield_resume:
+   pop gs
+   pop fs
+   pop es
+   pop ds
+   popa
+   add esp, 16     # Discard int_num, err_code, eip, cs
+   popf
    ret
 
 END_FUNC(kernel_yield)
