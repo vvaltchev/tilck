@@ -193,7 +193,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
 
    ASSERT(ti->kernel_stack != NULL);
 
-   memcpy(&ti->state_regs, &r, sizeof(r));
+   memcpy(&ti->user_regs, &r, sizeof(r));
    task_info_reset_kernel_stack(ti);
    return ti;
 }
@@ -209,7 +209,7 @@ void save_current_task_state(regs *r)
       DEBUG_VALIDATE_STACK_PTR();
 
    } else {
-      memcpy(&curr->state_regs, r, sizeof(*r));
+      memcpy(&curr->user_regs, r, sizeof(*r));
    }
 }
 
@@ -310,7 +310,7 @@ NORETURN void switch_to_task(task_info *ti)
 
    regs *state = ti->running_in_kernel
                   ? ti->kernel_regs
-                  : &ti->state_regs;
+                  : &ti->user_regs;
 
    ASSERT(state->eflags & EFLAGS_IF);
 

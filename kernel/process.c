@@ -444,11 +444,11 @@ sptr sys_fork(void)
    child->running_in_kernel = false;
    ASSERT(child->kernel_stack != NULL);
    task_info_reset_kernel_stack(child);
-   set_return_register(&child->state_regs, 0);
+   set_return_register(&child->user_regs, 0);
    add_task(child);
 
    // Make the parent to get child's pid as return value.
-   set_return_register(&curr->state_regs, child->tid);
+   set_return_register(&curr->user_regs, child->tid);
 
    /* Duplicate all the handles */
    for (size_t i = 0; i < ARRAY_SIZE(child->pi->handles); i++) {
