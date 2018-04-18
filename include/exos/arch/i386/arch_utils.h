@@ -11,6 +11,7 @@ typedef struct regs regs;
 
 /* This defines what the stack looks like after an ISR ran */
 struct regs {
+   u32 kernel_resume_eip;
    u32 gs, fs, es, ds;      /* pushed the segs last */
    u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;  /* pushed by 'pusha' */
    u32 int_num, err_code;    /* our 'push byte #' and error codes do this */

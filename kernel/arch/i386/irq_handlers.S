@@ -21,11 +21,17 @@ FUNC(asm_irq_entry):
    mov es, ax
    mov fs, ax
    mov gs, ax
+
+   push 0xcafebabe
+
    mov eax, esp
    push eax
    cld            # Set DF = 0, as C compilers by default assume that.
    call irq_entry
+
    add esp, 4     # Discard the previousy-pushed 'eax'
+   add esp, 4     # skip
+
    pop gs
    pop fs
    pop es

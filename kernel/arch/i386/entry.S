@@ -163,11 +163,15 @@ FUNC(sysenter_entry):
    mov es, ax
    mov fs, ax
    mov gs, ax
+
+   push 0xcafebabe
+
    mov eax, esp
    push eax
    cld            # set DF = 0, as C compilers by default assume that.
    call soft_interrupt_entry
    add esp, 4     # skip the previousy-pushed 'eax'
+   add esp, 4     # skip
    pop gs
    pop fs
    pop es
@@ -245,11 +249,18 @@ FUNC(asm_soft_interrupt_entry):
    mov es, ax
    mov fs, ax
    mov gs, ax
+
+   push 0xcafebabe
+
    mov eax, esp
    push eax
    cld            # Set DF = 0, as C compilers by default assume that.
    call soft_interrupt_entry
+
+
    add esp, 4     # Discard the previousy-pushed 'eax'
+   add esp, 4     # skip
+
    pop gs
    pop fs
    pop es
@@ -263,8 +274,9 @@ END_FUNC(asm_soft_interrupt_entry)
 FUNC(context_switch):
 
    add esp, 4 # discard the return-addr
-
    pop esp
+
+   add esp, 4 # skip the first integer
 
    pop gs
    pop fs
@@ -302,6 +314,8 @@ END_FUNC(context_switch)
    push fs
    push gs
 
+   push 0xcafebabe
+
    mov eax, esp
 
 .endm
@@ -322,7 +336,7 @@ FUNC(kernel_yield):
    # now) already on the stack. We just have to set the EIP in a way to do just
    # a 'ret'. For the caller, after the switch, it would be as if kernel_yield()
    # did nothing but just returning.
-   mov dword ptr [eax + 14*4], offset .do_ret # regs->eip = .do_ret
+   mov dword ptr [eax + 14*4+4], offset .do_ret # regs->eip = .do_ret
 
    push eax
    call save_current_task_state
@@ -334,7 +348,7 @@ FUNC(kernel_yield):
    call schedule_outside_interrupt_context
 
    # In case schedule() returned, restore ESP and just return
-   add esp, 72
+   add esp, 72+4
    lock dec dword ptr [disable_preemption_count]
 
 .do_ret:
@@ -349,15 +363,15 @@ FUNC(panic_save_current_state):
 
    asm_macro_save_current_kernel_state
 
-   mov ebx, [esp + 19*4]  # caller's EIP
-   mov [eax + 14*4], ebx  # regs->eip = ebx
+   mov ebx, [esp + 19*4+4]  # caller's EIP
+   mov [eax + 14*4+4], ebx  # regs->eip = ebx
 
-   lea ebx, [esp + 19*4]
-   mov [eax + 17*4], ebx  # regs->useresp = ebx
+   lea ebx, [esp + 19*4+4]
+   mov [eax + 17*4+4], ebx  # regs->useresp = ebx
 
    push eax
    call panic_save_current_task_state
-   add esp, 80
+   add esp, 80+4
    ret
 
 END_FUNC(panic_save_current_state)
