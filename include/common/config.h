@@ -22,7 +22,7 @@
 
 #define KERNEL_TRACK_NESTED_INTERRUPTS 1
 
-#define USER_VSDO_LIKE_PAGE_VADDR (0xB0000000)
+#define USER_VSDO_LIKE_PAGE_VADDR (0xB8000000)
 
 /* ------------------------------- */
 
