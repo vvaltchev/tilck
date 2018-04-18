@@ -144,7 +144,7 @@ FUNC(sysenter_entry):
     */
 
    push 0x23        # SS: user data sel
-   push ebp         # user esp
+   push 0xcafebabe  # user esp
    pushf
    push 0x1B        # CS: user code sel
    push 0xcafebabe  # eip: don't save it. It is saved by the user
@@ -165,20 +165,20 @@ FUNC(sysenter_entry):
    mov gs, ax
    mov eax, esp
    push eax
-   cld            # Set DF = 0, as C compilers by default assume that.
+   cld            # set DF = 0, as C compilers by default assume that.
    call soft_interrupt_entry
-   add esp, 4     # Discard the previousy-pushed 'eax'
+   add esp, 4     # skip the previousy-pushed 'eax'
    pop gs
    pop fs
    pop es
    pop ds
    popa
 
-   add esp, 16 # Discards err_code and int_num, eip, cs
+   add esp, 16   # skip err_code and int_num, eip, cs
    popf
-   pop ecx     # esp
-   add esp, 4  # skip SS
+   add esp, 8    # skip esp, SS
 
+   mov ecx, ebp  # ecx = user esp (which is saved in ebp)
    mov edx, USER_VSDO_LIKE_PAGE_VADDR
    sti
    sysexit

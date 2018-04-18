@@ -209,7 +209,7 @@ void cmd_sysenter(void)
    printf("after sleep, everything is fine.\n");
    printf("same sleep, but with sysenter:\n");
    sysenter_call3(162 /* nanosleep */, NULL, NULL, NULL);
-   printf("after sleep, everything is fine.\n");
+   printf("after sleep, everything is fine. Prev ret: %i\n", ret);
 }
 
 void cmd_syscall_perf(void)
