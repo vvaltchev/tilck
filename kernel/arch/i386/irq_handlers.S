@@ -29,8 +29,7 @@ FUNC(asm_irq_entry):
    cld            # Set DF = 0, as C compilers by default assume that.
    call irq_entry
 
-   add esp, 4     # Discard the previousy-pushed 'eax'
-   add esp, 4     # skip
+   add esp, 8     # Discard the previousy-pushed 'eax' and kernel_resume_eip
 
 .irq_resume:
    pop gs
@@ -38,7 +37,7 @@ FUNC(asm_irq_entry):
    pop es
    pop ds
    popa
-   add esp, 8     # Discards the pushed err_code and int_num
+   add esp, 8     # Discard err_code and int_num
    iret
 
 END_FUNC(asm_irq_entry)

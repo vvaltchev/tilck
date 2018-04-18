@@ -143,11 +143,11 @@ FUNC(sysenter_entry):
     * have to explicitly use this convention in order to sysenter to work.
     */
 
-   push 0x23        # SS: user data sel
-   push 0xcafebabe  # user esp
+   push 0xcafecafe   # SS: unused for sysenter context regs
+   push 0xcafecafe   # ESP: unused for sysenter context regs
    pushf
-   push 0x1B        # CS: user code sel
-   push 0xcafebabe  # eip: don't save it. It is saved by the user
+   push 0xcafecafe   # CS: unused for sysenter context regs
+   push 0xcafecafe   # EIP: unused for sysenter context regs
 
    push 1           # use 1 as "err_code" to distinguish a context saved
                     # with sysenter from a context saved with int 0x80.
@@ -171,8 +171,7 @@ FUNC(sysenter_entry):
    cld            # set DF = 0, as C compilers by default assume that.
    call soft_interrupt_entry
 
-   add esp, 4     # skip the previousy-pushed 'eax'
-   add esp, 4     # skip
+   add esp, 8     # skip the previousy-pushed 'eax' and kernel_resume_eip
 
 .sysenter_resume:
    pop gs
@@ -260,8 +259,7 @@ FUNC(asm_soft_interrupt_entry):
    cld            # Set DF = 0, as C compilers by default assume that.
    call soft_interrupt_entry
 
-   add esp, 4     # Discard the previousy-pushed 'eax'
-   add esp, 4     # skip
+   add esp, 8     # Discard the previousy-pushed 'eax' and kernel_resume_eip
 
 .soft_interrupt_resume:
    pop gs
