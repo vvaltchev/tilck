@@ -134,6 +134,14 @@ sptr sys_ioctl(int fd, uptr request, void *argp);
 // 146:
 sptr sys_writev(int fd, const void *iov, int iovcnt);
 
+// 162:
+sptr sys_nanosleep(/* ignored arguments for the moment */)
+{
+   // This is a stub implementation. TODO: actually implement nanosleep().
+   kernel_sleep(TIMER_HZ/10);
+   return 0;
+}
+
 //183:
 sptr sys_getcwd(char *buf, size_t buf_size);
 
@@ -182,6 +190,7 @@ syscall_type syscalls[] =
    [54] = sys_ioctl,
 
    [146] = sys_writev,
+   [162] = sys_nanosleep,
    [183] = sys_getcwd,
    [243] = sys_set_thread_area,
    [258] = sys_set_tid_address
