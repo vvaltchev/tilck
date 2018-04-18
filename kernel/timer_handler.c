@@ -38,6 +38,7 @@ int set_task_to_wake_after(task_info *task, u64 ticks)
             timers_array[i].ticks_to_sleep = ticks;
             timers_array[i].task = task;
             task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+            enable_interrupts(&var);
             return i;
          }
       }
