@@ -22,7 +22,7 @@ FUNC(asm_irq_entry):
    mov fs, ax
    mov gs, ax
 
-   push 0xcafebabe
+   push offset .irq_resume
 
    mov eax, esp
    push eax
@@ -32,6 +32,7 @@ FUNC(asm_irq_entry):
    add esp, 4     # Discard the previousy-pushed 'eax'
    add esp, 4     # skip
 
+.irq_resume:
    pop gs
    pop fs
    pop es

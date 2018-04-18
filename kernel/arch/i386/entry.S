@@ -164,14 +164,17 @@ FUNC(sysenter_entry):
    mov fs, ax
    mov gs, ax
 
-   push 0xcafebabe
+   push offset .sysenter_resume
 
    mov eax, esp
    push eax
    cld            # set DF = 0, as C compilers by default assume that.
    call soft_interrupt_entry
+
    add esp, 4     # skip the previousy-pushed 'eax'
    add esp, 4     # skip
+
+.sysenter_resume:
    pop gs
    pop fs
    pop es
@@ -202,13 +205,13 @@ FUNC(asm_sysenter_setup):
    mov edi, offset vsdo_like_page
    mov esi, offset sysexit_user_code
 
-2:
+1:
    mov eax, [esi]
    mov [edi], eax
    add esi, 4
    add edi, 4
    cmp esi, offset sysexit_user_code_end
-   jne 2b
+   jne 1b
 
    pop esi
    pop edi
@@ -250,17 +253,17 @@ FUNC(asm_soft_interrupt_entry):
    mov fs, ax
    mov gs, ax
 
-   push 0xcafebabe
+   push offset .soft_interrupt_resume
 
    mov eax, esp
    push eax
    cld            # Set DF = 0, as C compilers by default assume that.
    call soft_interrupt_entry
 
-
    add esp, 4     # Discard the previousy-pushed 'eax'
    add esp, 4     # skip
 
+.soft_interrupt_resume:
    pop gs
    pop fs
    pop es
@@ -276,22 +279,10 @@ FUNC(context_switch):
    add esp, 4 # discard the return-addr
    pop esp
 
-   add esp, 4 # skip the first integer
-
-   pop gs
-   pop fs
-   pop es
-   pop ds
-
-   popa
-
-   add esp, 8 # skip int_num, err_code
-
-   # The following iret will pop in order: eip, cs, eflags, esp, ss in case of a
-   # switch to a user task (change of privilege level) and: eip, cs, eflags
-   # otherwise (no change in the privilege level).
-
-   iret
+   pop eax
+   test eax, eax                  # if (eax == 0) jump .soft_interrupt_resume
+   jz .soft_interrupt_resume      # else jump eax
+   jmp eax
 
 END_FUNC(context_switch)
 
@@ -314,7 +305,7 @@ END_FUNC(context_switch)
    push fs
    push gs
 
-   push 0xcafebabe
+   push offset .soft_interrupt_resume
 
    mov eax, esp
 
