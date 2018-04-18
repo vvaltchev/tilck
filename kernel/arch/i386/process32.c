@@ -11,7 +11,7 @@
 void task_info_reset_kernel_stack(task_info *ti)
 {
    uptr bottom = (uptr) ti->kernel_stack + KTHREAD_STACK_SIZE - 1;
-   ti->kernel_state_regs = (regs *) (bottom & POINTER_ALIGN_MASK);
+   ti->kernel_regs = (regs *) (bottom & POINTER_ALIGN_MASK);
 }
 
 static inline void push_on_stack(uptr **stack_ptr_ref, uptr val)
@@ -98,7 +98,7 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    ti->running_in_kernel = 1;
    task_info_reset_kernel_stack(ti);
 
-   push_on_stack((uptr **)&ti->kernel_state_regs, (uptr) arg);
+   push_on_stack((uptr **)&ti->kernel_regs, (uptr) arg);
 
    /*
     * Pushes the address of kthread_exit() into thread's stack in order to
@@ -108,7 +108,7 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
     * jump in the begging of kthread_exit().
     */
 
-   push_on_stack((uptr **)&ti->kernel_state_regs, (uptr) &kthread_exit);
+   push_on_stack((uptr **)&ti->kernel_regs, (uptr) &kthread_exit);
 
    /*
     * Overall, with these pushes + the iret of asm_kernel_context_switch_x86()
@@ -120,8 +120,8 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
     *       <other instructions of kthread_exit>
     */
 
-   ti->kernel_state_regs = (void *)ti->kernel_state_regs - sizeof(regs) + 8;
-   memcpy(ti->kernel_state_regs, &r, sizeof(r) - 8);
+   ti->kernel_regs = (void *)ti->kernel_regs - sizeof(regs) + 8;
+   memcpy(ti->kernel_regs, &r, sizeof(r) - 8);
 
    add_task(ti);
    return ti;
@@ -205,7 +205,7 @@ void save_current_task_state(regs *r)
 
    if (curr->running_in_kernel) {
 
-      curr->kernel_state_regs = r;
+      curr->kernel_regs = r;
       DEBUG_VALIDATE_STACK_PTR();
 
    } else {
@@ -242,14 +242,14 @@ void panic_save_current_task_state(regs *r)
 
    /*
     * Since in panic we need just to save the state without doing a context
-    * switch, just saving the ESP in kernel_state_regs won't work, because
+    * switch, just saving the ESP in kernel_regs won't work, because
     * we'll going to continue using the same stack. In this particular corner
     * case, just store the regs a static regs instance.
     */
 
    task_info *curr = get_curr_task();
    memcpy(&panic_kernel_regs, r, sizeof(regs));
-   curr->kernel_state_regs = &panic_kernel_regs;
+   curr->kernel_regs = &panic_kernel_regs;
 }
 
 /*
@@ -264,7 +264,7 @@ void set_current_task_in_user_mode(void)
    curr->running_in_kernel = 0;
 
    task_info_reset_kernel_stack(curr);
-   set_kernel_stack((u32)curr->kernel_state_regs);
+   set_kernel_stack((u32)curr->kernel_regs);
 }
 
 #include "gdt_int.h"
@@ -309,7 +309,7 @@ NORETURN void switch_to_task(task_info *ti)
    irq_clear_mask(X86_PC_TIMER_IRQ);
 
    regs *state = ti->running_in_kernel
-                  ? ti->kernel_state_regs
+                  ? ti->kernel_regs
                   : &ti->state_regs;
 
    ASSERT(state->eflags & EFLAGS_IF);
@@ -327,7 +327,7 @@ NORETURN void switch_to_task(task_info *ti)
    }
 
    set_current_task(ti); /* this is safe here: the interrupts are disabled! */
-   set_kernel_stack((u32) ti->kernel_state_regs);
+   set_kernel_stack((u32) ti->kernel_regs);
 
    if (ti->arch.ldt) {
       load_ldt(ti->arch.ldt_index_in_gdt, ti->arch.ldt_size);
