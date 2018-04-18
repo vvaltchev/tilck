@@ -151,19 +151,35 @@ void cmd_fork_perf(void)
    printf("duration: %llu\n", duration/iters);
 }
 
-
-
-int do_sysenter_call(int syscall, void *arg1, void *arg2, void *arg3)
+int do_sysenter_call1(int syscall, void *arg1)
 {
    int ret;
 
-   __asm__ volatile ("pushl $ret\n\t"
+   __asm__ volatile ("pushl $1f\n\t"
                      "pushl %%ecx\n\t"
                      "pushl %%edx\n\t"
                      "pushl %%ebp\n\t"
                      "movl %%esp, %%ebp\n\t"
                      "sysenter\n\t"
-                     "ret:\n\t"
+                     "1:\n\t"
+                     : "=a" (ret)
+                     : "a" (syscall), "b" (arg1)
+                     : "memory", "cc");
+
+   return ret;
+}
+
+int do_sysenter_call3(int syscall, void *arg1, void *arg2, void *arg3)
+{
+   int ret;
+
+   __asm__ volatile ("pushl $1f\n\t"
+                     "pushl %%ecx\n\t"
+                     "pushl %%edx\n\t"
+                     "pushl %%ebp\n\t"
+                     "movl %%esp, %%ebp\n\t"
+                     "sysenter\n\t"
+                     "1:\n\t"
                      : "=a" (ret)
                      : "a" (syscall), "b" (arg1), "c" (arg2), "d" (arg3)
                      : "memory", "cc");
@@ -171,20 +187,54 @@ int do_sysenter_call(int syscall, void *arg1, void *arg2, void *arg3)
    return ret;
 }
 
-#define sysenter_call(n, a1, a2, a3) \
-   do_sysenter_call((n), (void*)(a1), (void*)(a2), (void*)(a3))
+#define sysenter_call1(n, a1) \
+   do_sysenter_call1((n), (void*)(a1))
+
+#define sysenter_call3(n, a1, a2, a3) \
+   do_sysenter_call3((n), (void*)(a1), (void*)(a2), (void*)(a3))
 
 void cmd_sysenter(void)
 {
    const char *str = "hello from a sysenter call!\n";
    size_t len = strlen(str);
 
-   int ret = sysenter_call(4  /* write */,
-                           1  /* stdout */,
-                           str,
-                           len);
+   int ret = sysenter_call3(4  /* write */,
+                            1  /* stdout */,
+                            str,
+                            len);
 
    printf("The syscall returned: %i\n", ret);
+   printf("sleep (int 0x80)..\n");
+   usleep(100*1000);
+   printf("after sleep, everything is fine.\n");
+   printf("same sleep, but with sysenter:\n");
+   sysenter_call3(162 /* nanosleep */, NULL, NULL, NULL);
+   printf("after sleep, everything is fine.\n");
+}
+
+void cmd_syscall_perf(void)
+{
+   const int iters = 1000;
+   unsigned long long start, duration;
+   pid_t uid = getuid();
+
+   start = RDTSC();
+
+   for (int i = 0; i < iters; i++)
+      setuid(uid);
+
+   duration = RDTSC() - start;
+
+   printf("int 0x80 setuid(): %llu cycles\n", duration/iters);
+
+   start = RDTSC();
+
+   for (int i = 0; i < iters; i++)
+      sysenter_call1(23 /* setuid */, uid /* uid */);
+
+   duration = RDTSC() - start;
+
+   printf("sysenter setuid(): %llu cycles\n", duration/iters);
 }
 
 /* ------------------------------------------- */
@@ -203,7 +253,8 @@ struct {
    {"invalid_read", cmd_invalid_read},
    {"invalid_write", cmd_invalid_write},
    {"fork_perf", cmd_fork_perf},
-   {"sysenter", cmd_sysenter}
+   {"sysenter", cmd_sysenter},
+   {"syscall_perf", cmd_syscall_perf}
 };
 
 void run_if_known_command(const char *cmd)
