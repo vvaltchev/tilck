@@ -213,8 +213,11 @@ void save_current_task_state(regs *r)
    }
 }
 
+
 void panic_save_current_task_state(regs *r)
 {
+   static regs panic_kernel_regs;
+
    if (!get_curr_task()) {
 
       /*
@@ -241,13 +244,12 @@ void panic_save_current_task_state(regs *r)
     * Since in panic we need just to save the state without doing a context
     * switch, just saving the ESP in kernel_state_regs won't work, because
     * we'll going to continue using the same stack. In this particular corner
-    * case, just store the regs in state_regs and make kernel_state_regs point
-    * there.
+    * case, just store the regs a static regs instance.
     */
 
    task_info *curr = get_curr_task();
-   memcpy(&curr->state_regs, r, sizeof(*r));
-   curr->kernel_state_regs = &curr->state_regs;
+   memcpy(&panic_kernel_regs, r, sizeof(regs));
+   curr->kernel_state_regs = &panic_kernel_regs;
 }
 
 /*
