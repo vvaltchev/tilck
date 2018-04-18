@@ -28,14 +28,14 @@ void handle_user_copy_fault(void)
    set_current_task_in_user_mode();
 
    /*
-    * Move back kernel_regs 1 struct regs up, since we have to preserve the
+    * Move back state_regs 1 struct regs up, since we have to preserve the
     * user regs, for switch_to_task(). This is special case: usually
     * set_current_task_in_user_mode() is called at the end of handle_syscall(),
-    * where completely resetting the kernel_regs pointer is what we want (we
+    * where completely resetting the state_regs pointer is what we want (we
     * already keep that in ESP).
     */
-   get_curr_task()->kernel_regs--;
-   set_return_register(get_curr_task()->kernel_regs, -EFAULT);
+   get_curr_task()->state_regs--;
+   set_return_register(get_curr_task()->state_regs, -EFAULT);
 
    pop_nested_interrupt(); // The page fault
    enable_preemption();

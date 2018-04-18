@@ -75,7 +75,7 @@ struct task_info {
 
    wait_obj wobj;
 
-   regs *kernel_regs;
+   regs *state_regs;
 
    /*
     * For kernel threads, this is a function pointer of the thread's entry
