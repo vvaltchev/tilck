@@ -251,12 +251,12 @@ void vprintk(const char *fmt, va_list args)
    char buf[256];
    int written = 0;
 
-   if (!in_panic)
+   if (!in_panic())
       written = snprintk(buf, sizeof(buf), "[kernel] ");
 
    written += vsnprintk(buf + written, sizeof(buf) - written, fmt, args);
 
-   if (in_panic) {
+   if (in_panic()) {
       printk_raw_flush(buf, written, PRINTK_PANIC_COLOR);
       return;
    }

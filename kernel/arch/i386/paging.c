@@ -26,7 +26,6 @@ extern page_directory_t *kernel_page_dir;
 extern page_directory_t *curr_page_dir;
 extern u16 *pageframes_refcount;
 extern u8 page_size_buf[PAGE_SIZE];
-extern volatile bool in_panic;
 DEBUG_ONLY(static volatile bool in_page_fault);
 
 bool handle_potential_cow(u32 vaddr)
@@ -128,7 +127,7 @@ void handle_page_fault(regs *r)
    DEBUG_ONLY(in_page_fault = true);
    ASSERT(!is_preemption_enabled());
 
-   if (!in_panic) {
+   if (!in_panic()) {
       handle_page_fault_int(r);
    }
 

@@ -63,9 +63,6 @@
 #define MSR_IA32_SYSENTER_ESP           0x175
 #define MSR_IA32_SYSENTER_EIP           0x176
 
-
-extern volatile bool in_panic;
-
 /*
  * x86 selectors are 16 bit integers:
  *

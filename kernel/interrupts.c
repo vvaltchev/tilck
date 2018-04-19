@@ -59,7 +59,7 @@ void check_not_in_irq_handler(void)
 {
    uptr var;
 
-   if (!in_panic) {
+   if (!in_panic()) {
       disable_interrupts(&var);
       {
          if (nested_interrupts_count > 0)
@@ -106,7 +106,7 @@ void nested_interrupts_drop_top_syscall(void)
 
 void panic_dump_nested_interrupts(void)
 {
-   VERIFY(in_panic);
+   VERIFY(in_panic());
    ASSERT(!are_interrupts_enabled());
 
    if (!nested_interrupts_count)

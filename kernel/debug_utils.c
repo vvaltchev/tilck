@@ -2,7 +2,7 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
-volatile bool in_panic;
+volatile bool __in_panic;
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
@@ -20,11 +20,11 @@ NORETURN void panic(const char *fmt, ...)
 {
    disable_interrupts_forced();
 
-   if (in_panic) {
+   if (__in_panic) {
       goto end;
    }
 
-   in_panic = true;
+   __in_panic = true;
    panic_save_current_state();
 
    printk("*********************************"

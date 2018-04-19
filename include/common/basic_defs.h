@@ -197,9 +197,16 @@ typedef int (*cmpfun_ptr)(const void *a, const void *b);
  * ********************************************
  */
 
+extern volatile bool __in_panic;
+
 NORETURN void panic(const char *fmt, ...);
 NORETURN void assert_failed(const char *expr, const char *file, int line);
 NORETURN void not_reached(const char *file, int line);
+
+static inline bool in_panic(void)
+{
+   return __in_panic;
+}
 
 #ifndef NDEBUG
 
