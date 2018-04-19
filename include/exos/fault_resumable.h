@@ -19,4 +19,4 @@ static inline bool is_fault_resumable(u32 fault_num)
 }
 
 void handle_resumable_fault(regs *r);
-int fault_resumable(u32 faults_mask, void *func, u32 nargs, ...);
+int fault_resumable_call(u32 faults_mask, void *func, u32 nargs, ...);

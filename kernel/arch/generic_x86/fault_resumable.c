@@ -79,7 +79,7 @@ static void (*call_wrappers[6])(call_ctx *) =
 
 int asm_do_fault_resumable_call(void (*func)(call_ctx *), call_ctx *ctx);
 
-int fault_resumable(u32 faults_mask, void *func, u32 nargs, ...)
+int fault_resumable_call(u32 faults_mask, void *func, u32 nargs, ...)
 {
    int r;
    ASSERT(is_preemption_enabled());

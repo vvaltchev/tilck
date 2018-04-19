@@ -249,16 +249,19 @@ void selftest_fault_resumable(void)
    enable_preemption();
 
    printk("fault_resumable with just printk()\n");
-   r = fault_resumable((u32)-1,
-                       printk, 2, "hi from fault resumable: %s\n", "arg1");
+   r = fault_resumable_call((u32)-1,
+                            printk,
+                            2,
+                            "hi from fault resumable: %s\n",
+                            "arg1");
    printk("returned %i\n", r);
 
    printk("fault_resumable with code causing div by 0\n");
-   r = fault_resumable(1 << FAULT_DIVISION_BY_ZERO, faulting_code, 0);
+   r = fault_resumable_call(1 << FAULT_DIVISION_BY_ZERO, faulting_code, 0);
    printk("returned %i\n", r);
 
    printk("fault_resumable with code causing page fault\n");
-   r = fault_resumable(1 << FAULT_PAGE_FAULT, faulting_code2, 0);
+   r = fault_resumable_call(1 << FAULT_PAGE_FAULT, faulting_code2, 0);
    printk("returned %i\n", r);
    disable_preemption();
 }
@@ -287,7 +290,7 @@ void selftest_fault_resumable_perf(void)
       start = RDTSC();
 
       for (int i = 0; i < iters; i++)
-         fault_resumable(0, do_nothing, 0);
+         fault_resumable_call(0, do_nothing, 0);
 
       duration = RDTSC() - start;
    }
