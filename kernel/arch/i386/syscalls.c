@@ -200,6 +200,14 @@ void handle_syscall(regs *r)
 {
    ASSERT(get_curr_task() != NULL);
    DEBUG_VALIDATE_STACK_PTR();
+
+   /*
+    * In case of a sysenter syscall, the eflags are saved in kernel mode after
+    * the cpu disabled the interrupts. Therefore, with the statement below we
+    * force the IF flag to be set in any case (for the int 0x80 case it is not
+    * necessary).
+    */
+   r->eflags |= EFLAGS_IF;
    save_current_task_state(r);
 
    const u32 sn = r->eax;

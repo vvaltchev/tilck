@@ -21,7 +21,7 @@ void cmd_loop(void)
    exit(0);
 }
 
-void cmd_fork_test(void)
+void fork_test(int (*fork_func)(void))
 {
    printf("Running infinite loop..\n");
 
@@ -46,7 +46,7 @@ void cmd_fork_test(void)
 
             printf("forking..\n");
 
-            int pid = fork();
+            int pid = fork_func();
 
             printf("Fork returned %i\n", pid);
 
@@ -58,7 +58,8 @@ void cmd_fork_test(void)
                printf("[parent] waiting the child to exit...\n");
                int wstatus=0;
                int p = waitpid(pid, &wstatus, 0);
-               printf("[parent] child (pid: %i) exited with status: %i!\n", p, WEXITSTATUS(wstatus));
+               printf("[parent] child (pid: %i) exited with status: %i!\n",
+                      p, WEXITSTATUS(wstatus));
                exit_on_next_FORK_TEST_ITERS_hit = true;
             }
 
@@ -74,6 +75,11 @@ void cmd_fork_test(void)
    }
 
    exit(0);
+}
+
+void cmd_fork_test(void)
+{
+   fork_test(&fork);
 }
 
 void cmd_invalid_read(void)
@@ -151,6 +157,24 @@ void cmd_fork_perf(void)
    printf("duration: %llu\n", duration/iters);
 }
 
+int do_sysenter_call0(int syscall)
+{
+   int ret;
+
+   __asm__ volatile ("pushl $1f\n\t"
+                     "pushl %%ecx\n\t"
+                     "pushl %%edx\n\t"
+                     "pushl %%ebp\n\t"
+                     "movl %%esp, %%ebp\n\t"
+                     "sysenter\n\t"
+                     "1:\n\t"
+                     : "=a" (ret)
+                     : "a" (syscall)
+                     : "memory", "cc");
+
+   return ret;
+}
+
 int do_sysenter_call1(int syscall, void *arg1)
 {
    int ret;
@@ -187,11 +211,24 @@ int do_sysenter_call3(int syscall, void *arg1, void *arg2, void *arg3)
    return ret;
 }
 
+#define sysenter_call0(n) \
+   do_sysenter_call0((n))
+
 #define sysenter_call1(n, a1) \
    do_sysenter_call1((n), (void*)(a1))
 
 #define sysenter_call3(n, a1, a2, a3) \
    do_sysenter_call3((n), (void*)(a1), (void*)(a2), (void*)(a3))
+
+int sysenter_fork(void)
+{
+   return sysenter_call0(2 /* fork */);
+}
+
+void cmd_sysenter_fork_test(void)
+{
+   fork_test(&sysenter_fork);
+}
 
 void cmd_sysenter(void)
 {
@@ -254,7 +291,8 @@ struct {
    {"invalid_write", cmd_invalid_write},
    {"fork_perf", cmd_fork_perf},
    {"sysenter", cmd_sysenter},
-   {"syscall_perf", cmd_syscall_perf}
+   {"syscall_perf", cmd_syscall_perf},
+   {"sysenter_fork_test", cmd_sysenter_fork_test}
 };
 
 void run_if_known_command(const char *cmd)
