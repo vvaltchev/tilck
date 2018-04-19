@@ -263,4 +263,37 @@ void selftest_fault_resumable(void)
    disable_preemption();
 }
 
+static NO_INLINE void do_nothing(void)
+{
+   asmVolatile("nop");
+}
+
+void selftest_fault_resumable_perf(void)
+{
+   const int iters = 100000;
+   u64 start, duration;
+
+   start = RDTSC();
+
+   for (int i = 0; i < iters; i++)
+      do_nothing();
+
+   duration = RDTSC() - start;
+
+   printk("regular call: %llu cycles\n", duration/iters);
+
+   enable_preemption();
+   {
+      start = RDTSC();
+
+      for (int i = 0; i < iters; i++)
+         fault_resumable(0, do_nothing, 0);
+
+      duration = RDTSC() - start;
+   }
+   disable_preemption();
+
+   printk("fault resumable call: %llu cycles\n", duration/iters);
+}
+
 #endif
