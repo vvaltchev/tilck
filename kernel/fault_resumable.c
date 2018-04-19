@@ -15,7 +15,7 @@ void handle_resumable_fault(regs *r)
    ASSERT(!are_interrupts_enabled());
    pop_nested_interrupt(); // the fault
    disable_preemption_count = saved_disable_preemption_count;
-   saved_fault_resumable_regs->eax = 1 << regs_intnum(r);
+   set_return_register(saved_fault_resumable_regs, 1 << regs_intnum(r));
    context_switch(saved_fault_resumable_regs);
 }
 

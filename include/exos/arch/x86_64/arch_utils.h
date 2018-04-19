@@ -31,3 +31,8 @@ static ALWAYS_INLINE uptr get_curr_stack_ptr(void)
 {
    NOT_IMPLEMENTED();
 }
+
+static ALWAYS_INLINE NORETURN void context_switch(regs *r)
+{
+   NOT_IMPLEMENTED();
+}
