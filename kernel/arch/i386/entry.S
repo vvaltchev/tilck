@@ -25,6 +25,7 @@
 .global kernel_yield
 .global panic_save_current_state
 .global switch_to_initial_kernel_stack
+.global asm_do_fault_resumable_call
 
 #define MULTIBOOT_FLAGS      (MULTIBOOT_PAGE_ALIGN |   \
                               MULTIBOOT_MEMORY_INFO |  \
@@ -373,7 +374,6 @@ FUNC(switch_to_initial_kernel_stack):
 END_FUNC(switch_to_initial_kernel_stack)
 
 
-.global asm_do_fault_resumable_call
 FUNC(asm_do_fault_resumable_call):
 
    xor eax, eax
@@ -387,39 +387,28 @@ FUNC(asm_do_fault_resumable_call):
 
    mov [saved_fault_resumable_regs], esp
 
-   push ebx          # ebx and edi are callee-saved registers (cdecl)
-   push edi
+   push ebp
+   mov ebp, esp
 
-   mov eax, [esp + 21*4+8]  # func
-   mov ebx, [esp + 22*4+8]  # nargs_ref
-   mov ecx, [ebx]           # nargs (value)
+   mov eax, [esp + 21*4+4]  # func
+   mov edx, [esp + 22*4+4]  # nargs_ref
+   mov ecx, [edx]           # nargs (value)
    shl ecx, 2               # nargs *= 4
-   add ebx, ecx             # set ebx += nargs * 4
-
-   # save ecx in a edi
-   mov edi, ecx
 
 1:
    test ecx, ecx
-   jz 2f
-
-   mov edx, [ebx]
-   push edx
-
-   sub ecx, 4
-   sub ebx, 4
-   jmp 1b
-
+   jz 3f
 2:
+   push [edx + ecx]
+   sub ecx, 4
+   jnz 2b
+3:
    call eax
-   add esp, edi
-
-   pop edi
-   pop ebx
+   leave      # pop mov esp, ebp
+              # pop ebp
 
    add esp, 80
    ret
-
 
 .asm_resumable_call_resume:
    add esp, 16
