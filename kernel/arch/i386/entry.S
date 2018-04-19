@@ -387,14 +387,39 @@ FUNC(asm_do_fault_resumable_call):
 
    mov [saved_fault_resumable_regs], esp
 
-   mov eax, [esp + 21*4]  # func
-   mov ebx, [esp + 22*4]  # ctx
+   push ebx          # ebx and edi are callee-saved registers (cdecl)
+   push edi
 
-   push ebx
+   mov eax, [esp + 21*4+8]  # func
+   mov ebx, [esp + 22*4+8]  # nargs_ref
+   mov ecx, [ebx]           # nargs (value)
+   shl ecx, 2               # nargs *= 4
+   add ebx, ecx             # set ebx += nargs * 4
+
+   # save ecx in a edi
+   mov edi, ecx
+
+1:
+   test ecx, ecx
+   jz 2f
+
+   mov edx, [ebx]
+   push edx
+
+   sub ecx, 4
+   sub ebx, 4
+   jmp 1b
+
+2:
    call eax
+   add esp, edi
 
-   add esp, 80+4
+   pop edi
+   pop ebx
+
+   add esp, 80
    ret
+
 
 .asm_resumable_call_resume:
    add esp, 16
