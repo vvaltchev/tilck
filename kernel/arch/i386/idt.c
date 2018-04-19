@@ -3,6 +3,7 @@
 #include <common/string_util.h>
 #include <exos/hal.h>
 #include <exos/interrupts.h>
+#include <exos/fault_resumable.h>
 
 #include "idt_int.h"
 
@@ -82,6 +83,11 @@ const char *exception_messages[] =
 void handle_fault(regs *r)
 {
    VERIFY(is_fault(r->int_num));
+
+   if (is_fault_resumable(r->int_num)) {
+      handle_resumable_fault(r);
+      return;
+   }
 
    if (fault_handlers[r->int_num] != NULL) {
 

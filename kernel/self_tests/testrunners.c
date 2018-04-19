@@ -12,6 +12,7 @@
 #include <exos/hal.h>
 #include <exos/tasklet.h>
 #include <exos/sync.h>
+#include <exos/fault_resumable.h>
 
 void test_tasklet_func()
 {
@@ -73,7 +74,6 @@ void selftest_kthread(void)
 {
    kthread_create(simple_test_kthread, (void *)0xAA0011FF);
 }
-
 
 void sleeping_kthread(void *arg)
 {
@@ -222,3 +222,45 @@ void selftest_panic(void)
 {
    kthread_create(&kthread_panic, NULL);
 }
+
+#ifdef __i386__
+
+static void faulting_code(void)
+{
+   printk("hello from div by 0 faulting code\n");
+
+   disable_preemption();
+
+   asmVolatile("mov $0, %edx\n\t"
+               "mov $1, %eax\n\t"
+               "mov $0, %ecx\n\t"
+               "div %ecx\n\t");
+}
+
+static void faulting_code2(void)
+{
+   void **null_ptr = NULL;
+   *null_ptr = NULL;
+}
+
+void selftest_fault_resumable(void)
+{
+   int r;
+   enable_preemption();
+
+   printk("fault_resumable with just printk()\n");
+   r = fault_resumable((u32)-1,
+                       printk, 2, "hi from fault resumable: %s\n", "arg1");
+   printk("returned %i\n", r);
+
+   printk("fault_resumable with code causing div by 0\n");
+   r = fault_resumable(1 << FAULT_DIVISION_BY_ZERO, faulting_code, 0);
+   printk("returned %i\n", r);
+
+   printk("fault_resumable with code causing page fault\n");
+   r = fault_resumable(1 << FAULT_PAGE_FAULT, faulting_code2, 0);
+   printk("returned %i\n", r);
+   disable_preemption();
+}
+
+#endif

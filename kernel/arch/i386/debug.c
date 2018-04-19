@@ -88,7 +88,7 @@ void debug_qemu_turn_off_machine()
 
 void dump_eflags(u32 f)
 {
-   printk("eflags: %p [ %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s ], IOPL: %u\n",
+   printk("eflags: %p [ %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s], IOPL: %u\n",
           f,
           f & EFLAGS_CF ? "CF " : "",
           f & EFLAGS_PF ? "PF " : "",

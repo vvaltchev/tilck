@@ -173,14 +173,15 @@ void soft_interrupt_entry(regs *r)
    DEBUG_check_preemption_enabled_for_usermode();
    push_nested_interrupt(int_num);
    disable_preemption();
-   enable_interrupts_forced();
-   {
-      if (int_num == SYSCALL_SOFT_INTERRUPT)
-         handle_syscall(r);
-      else
-         handle_fault(r);
+
+   if (int_num == SYSCALL_SOFT_INTERRUPT) {
+      enable_interrupts_forced();
+      handle_syscall(r);
+      disable_interrupts_forced();
+   } else {
+      handle_fault(r);
    }
-   disable_interrupts_forced();
+
    enable_preemption();
    pop_nested_interrupt();
    DEBUG_check_preemption_enabled_for_usermode();

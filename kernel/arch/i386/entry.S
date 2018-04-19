@@ -371,3 +371,37 @@ FUNC(switch_to_initial_kernel_stack):
    ret
 
 END_FUNC(switch_to_initial_kernel_stack)
+
+
+.global asm_do_fault_resumable_call
+FUNC(asm_do_fault_resumable_call):
+
+   xor eax, eax
+
+   sub esp, 8        # skip 'ss', 'esp'
+   pushf             # push EFLAGS
+   sub esp, 16       # skip cs, eip, err_code and int_num
+   pusha
+   sub esp, 16       # skip pushing ds, es, fs, gs
+   push offset .asm_resumable_call_resume
+
+   mov [saved_fault_resumable_regs], esp
+
+   mov eax, [esp + 21*4]  # func
+   mov ebx, [esp + 22*4]  # ctx
+
+   push ebx
+   call eax
+
+   add esp, 80+4
+   ret
+
+.asm_resumable_call_resume:
+   add esp, 16
+   popa
+   add esp, 16
+   popf
+   add esp, 8
+   ret
+
+END_FUNC(asm_do_fault_resumable_call)
