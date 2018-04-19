@@ -72,9 +72,9 @@ static void do_call6(call_ctx *ctx)
                       ctx->args[2], ctx->args[3], ctx->args[4], ctx->args[5]);
 }
 
-static void (*call_wrappers[6])(call_ctx *) =
+static void (*call_wrappers[7])(call_ctx *) =
 {
-   do_call0, do_call1, do_call2, do_call3, do_call4, do_call5
+   do_call0, do_call1, do_call2, do_call3, do_call4, do_call5, do_call6
 };
 
 int asm_do_fault_resumable_call(void (*func)(call_ctx *), call_ctx *ctx);

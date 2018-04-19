@@ -266,9 +266,15 @@ void selftest_fault_resumable(void)
    disable_preemption();
 }
 
-static NO_INLINE void do_nothing(void)
+static NO_INLINE void do_nothing(uptr a1, uptr a2, uptr a3,
+                                 uptr a4, uptr a5, uptr a6)
 {
-   asmVolatile("nop");
+   DO_NOT_OPTIMIZE_AWAY(a1);
+   DO_NOT_OPTIMIZE_AWAY(a2);
+   DO_NOT_OPTIMIZE_AWAY(a3);
+   DO_NOT_OPTIMIZE_AWAY(a4);
+   DO_NOT_OPTIMIZE_AWAY(a5);
+   DO_NOT_OPTIMIZE_AWAY(a6);
 }
 
 void selftest_fault_resumable_perf(void)
@@ -279,7 +285,7 @@ void selftest_fault_resumable_perf(void)
    start = RDTSC();
 
    for (int i = 0; i < iters; i++)
-      do_nothing();
+      do_nothing(1,2,3,4,5,6);
 
    duration = RDTSC() - start;
 
@@ -290,7 +296,7 @@ void selftest_fault_resumable_perf(void)
       start = RDTSC();
 
       for (int i = 0; i < iters; i++)
-         fault_resumable_call(0, do_nothing, 0);
+         fault_resumable_call(0, do_nothing, 6, 1, 2, 3, 4, 5, 6);
 
       duration = RDTSC() - start;
    }
