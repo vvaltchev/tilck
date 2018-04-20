@@ -289,8 +289,8 @@ END_FUNC(context_switch)
 .macro asm_macro_save_current_kernel_state
 
    pushf             # push EFLAGS
-   push 0xcafecafe   # CS: unused for kernel_yield
-   push 0xcafecafe   # EIP: unused for kernel_yield
+   push cs           # CS: unused by kernel_yield, used by panic
+   push 0xcafecafe   # EIP: unused by kernel_yield, used by panic
 
    push 0            # err_code
    push -1           # int_num
@@ -352,15 +352,15 @@ FUNC(panic_save_current_state):
 
    asm_macro_save_current_kernel_state
 
-   mov ebx, [esp + 19*4+4]  # caller's EIP
-   mov [eax + 14*4+4], ebx  # regs->eip = ebx
+   mov ebx, [esp + SIZEOF_REGS]             # ebx = caller's EIP
+   mov [eax + REGS_EIP_OFF], ebx            # regs->eip = ebx
 
-   lea ebx, [esp + 19*4+4]
-   mov [eax + 17*4+4], ebx  # regs->useresp = ebx
+   lea ebx, [esp + SIZEOF_REGS]
+   mov [eax + REGS_USERESP_OFF], ebx        # regs->useresp = ebx
 
    push eax
    call panic_save_current_task_state
-   add esp, 80+4
+   add esp, SIZEOF_REGS + 4                 # +4 because the last push eax here
    ret
 
 END_FUNC(panic_save_current_state)
@@ -395,13 +395,13 @@ FUNC(fault_resumable_call):
    mov ecx, [__current]
    mov [ecx + TI_F_RESUME_RS_OFF], esp
 
-   mov eax, [ebp + 8+8]   # arg1: faults_mask
+   mov eax, [ebp + EBP_OFFSET_ARG1 + 8]  # arg1: faults_mask
    mov [ecx + TI_FAULTS_MASK_OFF], eax
 
-   mov eax, [ebp + 12+8]  # arg2: func
-   lea edx, [ebp + 16+8]  # &arg3: &nargs
-   mov ecx, [edx]         # arg3: nargs
-   shl ecx, 2             # nargs *= 4
+   mov eax, [ebp + EBP_OFFSET_ARG2 + 8]  # arg2: func
+   lea edx, [ebp + EBP_OFFSET_ARG3 + 8]  # &arg3: &nargs
+   mov ecx, [edx]                        # arg3: nargs
+   shl ecx, 2                            # nargs *= 4
 
    test ecx, ecx
    jz 2f

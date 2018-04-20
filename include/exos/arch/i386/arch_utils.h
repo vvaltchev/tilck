@@ -6,6 +6,7 @@
 #endif
 
 #include <common/arch/generic_x86/x86_utils.h>
+#include <exos/arch/i386/asm_defs.h>
 
 typedef struct regs regs;
 
@@ -17,6 +18,10 @@ struct regs {
    u32 int_num, err_code;    /* our 'push byte #' and error codes do this */
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
+
+STATIC_ASSERT(SIZEOF_REGS == sizeof(regs));
+STATIC_ASSERT(REGS_EIP_OFF == OFFSET_OF(regs, eip));
+STATIC_ASSERT(REGS_USERESP_OFF == OFFSET_OF(regs, useresp));
 
 typedef struct {
 
