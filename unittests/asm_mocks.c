@@ -6,6 +6,5 @@
 void *kernel_initial_stack = NULL;
 
 void kernel_yield() { NOT_REACHED(); }
-void arch_specific_new_task_setup() { NOT_REACHED(); }
-void arch_specific_free_task() { NOT_REACHED(); }
 void switch_to_initial_kernel_stack() { NOT_REACHED(); }
+void fault_resumable_call() { NOT_REACHED(); }
