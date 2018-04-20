@@ -17,7 +17,7 @@ FUNC(asm_irq_entry):
    push es
    push fs
    push gs
-   mov ax, 0x10
+   mov ax, X86_KERNEL_DATA_SEL
    mov ds, ax
    mov es, ax
    mov fs, ax

@@ -8,6 +8,12 @@
 #define REGS_EIP_OFF 60
 #define REGS_USERESP_OFF 72
 
+#define X86_KERNEL_CODE_SEL 0x08
+#define X86_KERNEL_DATA_SEL 0x10
+#define X86_USER_CODE_SEL   0x1b
+#define X86_USER_DATA_SEL   0x23
+
+
 /* Some useful asm macros */
 #ifdef ASM_FILE
 
