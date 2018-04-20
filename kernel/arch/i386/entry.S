@@ -26,7 +26,7 @@
 .global kernel_yield
 .global panic_save_current_state
 .global switch_to_initial_kernel_stack
-.global asm_do_fault_resumable_call
+.global fault_resumable_call
 
 #define MULTIBOOT_FLAGS      (MULTIBOOT_PAGE_ALIGN |   \
                               MULTIBOOT_MEMORY_INFO |  \
@@ -375,7 +375,7 @@ FUNC(switch_to_initial_kernel_stack):
 END_FUNC(switch_to_initial_kernel_stack)
 
 
-FUNC(asm_do_fault_resumable_call):
+FUNC(fault_resumable_call):
 
    mov ecx, [__current]
    push [ecx + TI_F_RESUME_RS_OFF]   # push current->fault_resume_regs
@@ -390,7 +390,7 @@ FUNC(asm_do_fault_resumable_call):
    sub esp, 16       # skip cs, eip, err_code and int_num
    pusha
    sub esp, 16       # skip pushing ds, es, fs, gs
-   push offset .asm_resumable_call_resume
+   push offset .asm_fault_resumable_call_resume
 
    mov ecx, [__current]
    mov [ecx + TI_F_RESUME_RS_OFF], esp
@@ -399,8 +399,8 @@ FUNC(asm_do_fault_resumable_call):
    mov [ecx + TI_FAULTS_MASK_OFF], eax
 
    mov eax, [ebp + 12+8]  # arg2: func
-   mov edx, [ebp + 16+8]  # arg3: nargs_ref
-   mov ecx, [edx]         # nargs (value)
+   lea edx, [ebp + 16+8]  # &arg3: &nargs
+   mov ecx, [edx]         # arg3: nargs
    shl ecx, 2             # nargs *= 4
 
    test ecx, ecx
@@ -419,7 +419,7 @@ FUNC(asm_do_fault_resumable_call):
    pop [ecx + TI_F_RESUME_RS_OFF]
    ret
 
-.asm_resumable_call_resume:
+.asm_fault_resumable_call_resume:
 
    add esp, 16
    popa
@@ -434,4 +434,4 @@ FUNC(asm_do_fault_resumable_call):
    pop [ecx + TI_F_RESUME_RS_OFF]
    ret
 
-END_FUNC(asm_do_fault_resumable_call)
+END_FUNC(fault_resumable_call)

@@ -80,6 +80,16 @@ const char *exception_messages[] =
    "Reserved"
 };
 
+void handle_resumable_fault(regs *r)
+{
+   task_info *curr = get_curr_task();
+
+   ASSERT(!are_interrupts_enabled());
+   pop_nested_interrupt(); // the fault
+   set_return_register(curr->fault_resume_regs, 1 << regs_intnum(r));
+   context_switch(curr->fault_resume_regs);
+}
+
 void handle_fault(regs *r)
 {
    VERIFY(is_fault(r->int_num));
