@@ -76,6 +76,8 @@ struct task_info {
    wait_obj wobj;
 
    regs *state_regs;
+   regs *fault_resume_regs;
+   u32 faults_resume_mask;
 
    /*
     * For kernel threads, this is a function pointer of the thread's entry
@@ -92,6 +94,11 @@ typedef struct task_info task_info;
 
 STATIC_ASSERT((sizeof(task_info) & ~POINTER_ALIGN_MASK) == 0);
 STATIC_ASSERT((sizeof(process_info) & ~POINTER_ALIGN_MASK) == 0);
+
+#ifdef __i386__
+STATIC_ASSERT(OFFSET_OF(task_info, fault_resume_regs) == TI_F_RESUME_RS_OFF);
+STATIC_ASSERT(OFFSET_OF(task_info, faults_resume_mask) == TI_FAULTS_MASK_OFF);
+#endif
 
 extern volatile u64 jiffies;
 extern task_info *__current;

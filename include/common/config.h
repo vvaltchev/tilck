@@ -64,12 +64,3 @@ extern void *kernel_va;
 /* Bootloader specific config */
 
 #define SECTOR_SIZE                512
-
-
-/* Some useful asm macros */
-#ifdef ASM_FILE
-
-#define FUNC(x) .type x, @function; x
-#define END_FUNC(x) .size x, .-(x)
-
-#endif

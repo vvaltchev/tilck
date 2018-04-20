@@ -8,6 +8,7 @@
 
    #define __arch__x86__
    #include <common/arch/generic_x86/x86_utils.h>
+   #include <exos/arch/i386/asm_defs.h>
    #include <exos/arch/i386/arch_utils.h>
 
 #elif defined(__x86_64__)

@@ -4,6 +4,7 @@
 #define ASM_FILE 1
 
 #include <common/config.h>
+#include <exos/arch/i386/asm_defs.h>
 #include <multiboot.h>
 
 .section bss
@@ -376,7 +377,9 @@ END_FUNC(switch_to_initial_kernel_stack)
 
 FUNC(asm_do_fault_resumable_call):
 
-   push [saved_fault_resumable_regs]
+   mov ecx, [__current]
+   push [ecx + TI_F_RESUME_RS_OFF]   # push current->fault_resume_regs
+   push [ecx + TI_FAULTS_MASK_OFF]   # push current->faults_resume_mask
 
    push ebp
    mov ebp, esp
@@ -389,10 +392,14 @@ FUNC(asm_do_fault_resumable_call):
    sub esp, 16       # skip pushing ds, es, fs, gs
    push offset .asm_resumable_call_resume
 
-   mov [saved_fault_resumable_regs], esp
+   mov ecx, [__current]
+   mov [ecx + TI_F_RESUME_RS_OFF], esp
 
-   mov eax, [ebp + 8+4]   # arg1: func
-   mov edx, [ebp + 12+4]  # arg2: nargs_ref
+   mov eax, [ebp + 8+8]   # arg1: faults_mask
+   mov [ecx + TI_FAULTS_MASK_OFF], eax
+
+   mov eax, [ebp + 12+8]  # arg2: func
+   mov edx, [ebp + 16+8]  # arg3: nargs_ref
    mov ecx, [edx]         # nargs (value)
    shl ecx, 2             # nargs *= 4
 
@@ -406,7 +413,10 @@ FUNC(asm_do_fault_resumable_call):
    call eax
    xor eax, eax      # return value: set to 0 (= no faults)
    leave
-   pop [saved_fault_resumable_regs]
+
+   mov ecx, [__current]
+   pop [ecx + TI_FAULTS_MASK_OFF]
+   pop [ecx + TI_F_RESUME_RS_OFF]
    ret
 
 .asm_resumable_call_resume:
@@ -419,7 +429,9 @@ FUNC(asm_do_fault_resumable_call):
    pop [disable_preemption_count]
    leave
 
-   pop [saved_fault_resumable_regs]
+   mov ecx, [__current]
+   pop [ecx + TI_FAULTS_MASK_OFF]
+   pop [ecx + TI_F_RESUME_RS_OFF]
    ret
 
 END_FUNC(asm_do_fault_resumable_call)

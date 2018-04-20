@@ -4,20 +4,17 @@
 #include <exos/hal.h>
 #include <exos/process.h>
 
-volatile u32 __fault_resume_mask;
-
-/* This cannot be static since asm_do_fault_resumable_call() writes to it */
-regs *saved_fault_resumable_regs;
-
 void handle_resumable_fault(regs *r)
 {
+   task_info *curr = get_curr_task();
+
    ASSERT(!are_interrupts_enabled());
    pop_nested_interrupt(); // the fault
-   set_return_register(saved_fault_resumable_regs, 1 << regs_intnum(r));
-   context_switch(saved_fault_resumable_regs);
+   set_return_register(curr->fault_resume_regs, 1 << regs_intnum(r));
+   context_switch(curr->fault_resume_regs);
 }
 
-int asm_do_fault_resumable_call(void *func, u32 *nargs_ref);
+int asm_do_fault_resumable_call(u32 faults_mask, void *func, u32 *nargs_ref);
 
 int fault_resumable_call(u32 faults_mask, void *func, u32 nargs, ...)
 {
@@ -27,9 +24,7 @@ int fault_resumable_call(u32 faults_mask, void *func, u32 nargs, ...)
 
    disable_preemption();
    {
-      __fault_resume_mask = faults_mask;
-      r = asm_do_fault_resumable_call(func, &nargs);
-      __fault_resume_mask = 0;
+      r = asm_do_fault_resumable_call(faults_mask, func, &nargs);
    }
    enable_preemption();
    return r;

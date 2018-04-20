@@ -3,6 +3,7 @@
 
 #define ASM_FILE 1
 #include <common/config.h>
+#include <exos/arch/i386/asm_defs.h>
 
 .section .text
 .global isr_entry_points
