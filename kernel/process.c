@@ -217,7 +217,7 @@ sptr sys_execve(const char *user_filename,
    char *file_path;
    char *const *argv = NULL;
    char *const *env = NULL;
-   task_info *curr = get_curr_task();
+   task_info *curr = get_curr_task() != kernel_process ? get_curr_task() : NULL;
    page_directory_t *pdir = NULL;
 
    disable_preemption();

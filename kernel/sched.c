@@ -132,6 +132,8 @@ void init_sched(void)
    add_task(kernel_process);
 
    idle_task = kthread_create(&idle_task_kthread, NULL);
+
+   set_current_task(kernel_process);
 }
 
 void set_current_task_in_kernel(void)
