@@ -268,14 +268,12 @@ sptr sys_set_thread_area(user_desc *ud)
    gdt_entry e = {0};
    user_desc dc;
 
-   disable_preemption();
-
    rc = copy_from_user(&dc, ud, sizeof(user_desc));
 
-   if (rc != 0) {
-      rc = -EFAULT;
-      goto out;
-   }
+   if (rc != 0)
+      return -EFAULT;
+
+   disable_preemption();
 
    if (!(dc.flags == USER_DESC_FLAGS_EMPTY && !dc.base_addr && !dc.limit)) {
       gdt_set_entry(&e, dc.base_addr, dc.limit, 0, 0);
@@ -359,6 +357,7 @@ sptr sys_set_thread_area(user_desc *ud)
    ASSERT(rc == 0);
 
 out:
+   enable_preemption();
 
    if (!rc) {
 
@@ -372,6 +371,5 @@ out:
          rc = -EFAULT;
    }
 
-   enable_preemption();
    return rc;
 }

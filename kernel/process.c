@@ -332,18 +332,12 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
       }
 
       if (wstatus) {
+         int value = EXITCODE(waited_task->exit_status, 0);
 
-         disable_preemption();
-         {
-            int value = EXITCODE(waited_task->exit_status, 0);
-
-            if (copy_to_user(wstatus, &value, sizeof(int)) < 0) {
-               remove_task((task_info *)waited_task);
-               enable_preemption();
-               return -EFAULT;
-            }
+         if (copy_to_user(wstatus, &value, sizeof(int)) < 0) {
+            remove_task((task_info *)waited_task);
+            return -EFAULT;
          }
-         enable_preemption();
       }
 
       remove_task((task_info *)waited_task);

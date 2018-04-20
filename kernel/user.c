@@ -6,8 +6,6 @@
 
 int copy_from_user(void *dest, const void *user_ptr, size_t n)
 {
-   ASSERT(!is_preemption_enabled());
-
    if (user_out_of_range(user_ptr, n))
       return -1;
 
@@ -17,8 +15,6 @@ int copy_from_user(void *dest, const void *user_ptr, size_t n)
 
 int copy_to_user(void *user_ptr, const void *src, size_t n)
 {
-   ASSERT(!is_preemption_enabled());
-
    if (user_out_of_range(user_ptr, n))
       return -1;
 
@@ -32,7 +28,6 @@ static void internal_copy_user_str(void *dest,
                                    size_t *written_ptr,
                                    int *rc)
 {
-   ASSERT(!is_preemption_enabled());
    ASSERT(in_fault_resumable_code());
 
    const char *ptr = user_ptr;
@@ -71,8 +66,6 @@ int copy_str_from_user(void *dest,
                        size_t max_size,
                        size_t *written_ptr)
 {
-   ASSERT(!is_preemption_enabled());
-
    int rc;
    u32 faults;
    size_t written;
