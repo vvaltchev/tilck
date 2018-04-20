@@ -357,11 +357,11 @@ FUNC(panic_save_current_state):
    push offset .kernel_yield_resume
    mov eax, esp
 
-   mov ebx, [esp + SIZEOF_REGS]             # ebx = caller's EIP
-   mov [eax + REGS_EIP_OFF], ebx            # regs->eip = ebx
+   mov ecx, [esp + SIZEOF_REGS]             # ecx = caller's EIP
+   mov [eax + REGS_EIP_OFF], ecx            # regs->eip = ecx
 
-   lea ebx, [esp + SIZEOF_REGS]
-   mov [eax + REGS_USERESP_OFF], ebx        # regs->useresp = ebx
+   lea ecx, [esp + SIZEOF_REGS]
+   mov [eax + REGS_USERESP_OFF], ecx        # regs->useresp = ecx
 
    push eax
    call panic_save_current_task_state
