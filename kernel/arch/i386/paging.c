@@ -26,7 +26,6 @@ extern page_directory_t *kernel_page_dir;
 extern page_directory_t *curr_page_dir;
 extern u16 *pageframes_refcount;
 extern u8 page_size_buf[PAGE_SIZE];
-DEBUG_ONLY(static volatile bool in_page_fault);
 
 bool handle_potential_cow(u32 vaddr)
 {
@@ -96,7 +95,6 @@ void handle_page_fault_int(regs *r)
    if (!us) {
 
       if (in_user_copy()) {
-         DEBUG_ONLY(in_page_fault = false);
          handle_user_copy_fault();
          NOT_REACHED();
       }
@@ -117,22 +115,32 @@ void handle_page_fault_int(regs *r)
          "userland",
          !p ? " (NON present)." : ".", r->eip);
 
-   // We are not really handling 'real' page-faults yet.
+   // We are not really handling yet user page-faults.
 }
 
 
 void handle_page_fault(regs *r)
 {
-   ASSERT(!in_page_fault);
-   DEBUG_ONLY(in_page_fault = true);
-   ASSERT(!is_preemption_enabled());
+   if (in_panic()) {
 
-   if (!in_panic()) {
-      handle_page_fault_int(r);
+      printk("Page fault while already in panic state.\n");
+
+      while (true) {
+         halt();
+      }
    }
 
-   DEBUG_ONLY(in_page_fault = false);
+   ASSERT(!is_preemption_enabled());
+   ASSERT(!are_interrupts_enabled());
+
+   enable_interrupts_forced();
+   {
+      /* Page fault are processed with IF = 1 */
+      handle_page_fault_int(r);
+   }
+   disable_interrupts_forced();
 }
+
 
 void handle_general_protection_fault(regs *r)
 {

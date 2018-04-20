@@ -175,11 +175,23 @@ void soft_interrupt_entry(regs *r)
    disable_preemption();
 
    if (int_num == SYSCALL_SOFT_INTERRUPT) {
+
       enable_interrupts_forced();
       handle_syscall(r);
       disable_interrupts_forced();
+
    } else {
+
+      /*
+       * General rule: fault handlers get control with interrupts disabled but
+       * they are supposed to call enable_interrupts_forced() ASAP.
+       */
       handle_fault(r);
+
+      /*
+       * Faults are expected to return with interrupts disabled.
+       */
+      ASSERT(!are_interrupts_enabled());
    }
 
    enable_preemption();
