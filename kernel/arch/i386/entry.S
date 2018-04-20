@@ -285,15 +285,15 @@ FUNC(context_switch):
 END_FUNC(context_switch)
 
 
+# Saves the current (kernel) state as if an interrupt occurred while running
+# in kernel mode.
 
-.macro asm_macro_save_current_kernel_state
+FUNC(kernel_yield):
+
+   lock inc dword ptr [disable_preemption_count]
 
    pushf             # push EFLAGS
-   push cs           # CS: unused by kernel_yield, used by panic
-   push 0xcafecafe   # EIP: unused by kernel_yield, used by panic
-
-   push 0            # err_code
-   push -1           # int_num
+   sub esp, 16       # skip cs, eip, err_code, int_num
 
    pusha             # Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
                      # Note: the value of the pushed ESP is the one before
@@ -306,19 +306,6 @@ END_FUNC(context_switch)
    push offset .kernel_yield_resume
    mov eax, esp
 
-.endm
-
-
-
-# Saves the current (kernel) state as if an interrupt occurred while running
-# in kernel mode.
-
-FUNC(kernel_yield):
-
-   lock inc dword ptr [disable_preemption_count]
-
-   asm_macro_save_current_kernel_state
-
    push eax
    call save_current_task_state
 
@@ -328,8 +315,11 @@ FUNC(kernel_yield):
 
    call schedule_outside_interrupt_context
 
-   # In case schedule() returned, restore ESP and just return
-   add esp, 72+4
+   # schedule() just returned: restore ESP and just return
+
+   add esp, SIZEOF_REGS - 8 + 4 # -8 : we skipped ss, useresp
+                                # +4 : compensate the last push eax above
+
    lock dec dword ptr [disable_preemption_count]
    ret
 
@@ -348,9 +338,24 @@ END_FUNC(kernel_yield)
 FUNC(panic_save_current_state):
 
    push ss
-   push 0xcafebabe # placeholder for useresp
+   push 0xcafebabe   # placeholder for useresp
+   pushf             # push EFLAGS
+   push cs
+   push 0xcafecafe   # placeholder for eip
 
-   asm_macro_save_current_kernel_state
+   push 0            # err_code
+   push -1           # int_num
+
+   pusha             # Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+                     # Note: the value of the pushed ESP is the one before
+                     # the pusha instruction.
+   push ds
+   push es
+   push fs
+   push gs
+
+   push offset .kernel_yield_resume
+   mov eax, esp
 
    mov ebx, [esp + SIZEOF_REGS]             # ebx = caller's EIP
    mov [eax + REGS_EIP_OFF], ebx            # regs->eip = ebx
