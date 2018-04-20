@@ -376,10 +376,11 @@ END_FUNC(switch_to_initial_kernel_stack)
 
 FUNC(asm_do_fault_resumable_call):
 
-   xor eax, eax
+   push ebp
+   mov ebp, esp
 
    sub esp, 8        # skip 'ss', 'esp'
-   pushf             # push EFLAGS
+   pushf
    sub esp, 16       # skip cs, eip, err_code and int_num
    pusha
    sub esp, 16       # skip pushing ds, es, fs, gs
@@ -387,35 +388,33 @@ FUNC(asm_do_fault_resumable_call):
 
    mov [saved_fault_resumable_regs], esp
 
-   push ebp
-   mov ebp, esp
+   mov eax, [ebp + 8]   # arg1: func
+   mov edx, [ebp + 12]  # arg2: nargs_ref
+   mov ecx, [edx]       # nargs (value)
+   shl ecx, 2           # nargs *= 4
 
-   mov eax, [esp + 21*4+4]  # func
-   mov edx, [esp + 22*4+4]  # nargs_ref
-   mov ecx, [edx]           # nargs (value)
-   shl ecx, 2               # nargs *= 4
-
-1:
    test ecx, ecx
-   jz 3f
-2:
+   jz 2f
+1:
    push [edx + ecx]
    sub ecx, 4
-   jnz 2b
-3:
+   jnz 1b
+2:
    call eax
-   leave      # pop mov esp, ebp
-              # pop ebp
-
-   add esp, 80
+   xor eax, eax      # return value: set to 0 (= no faults)
+   leave
    ret
 
 .asm_resumable_call_resume:
+
    add esp, 16
    popa
    add esp, 16
    popf
    add esp, 8
+
+   # Eax has been set by handle_resumable_fault() to (1 << fault_num)
+   leave
    ret
 
 END_FUNC(asm_do_fault_resumable_call)
