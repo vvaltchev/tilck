@@ -57,6 +57,21 @@ int copy_from_user(void *dest, const void *user_ptr, size_t n)
    return 0;
 }
 
+int copy_to_user(void *user_ptr, const void *src, size_t n)
+{
+   ASSERT(!is_preemption_enabled());
+
+   if (user_out_of_range(user_ptr, n))
+      return -1;
+
+   enter_in_user_copy();
+   {
+      memcpy(user_ptr, src, n);
+   }
+   exit_in_user_copy();
+   return 0;
+}
+
 static int internal_copy_user_str(void *dest,
                                   const void *user_ptr,
                                   void *dest_end,
@@ -116,51 +131,6 @@ int copy_str_from_user(void *dest,
    return rc;
 }
 
-int copy_to_user(void *user_ptr, const void *src, size_t n)
-{
-   ASSERT(!is_preemption_enabled());
-
-   if (user_out_of_range(user_ptr, n))
-      return -1;
-
-   enter_in_user_copy();
-   {
-      memcpy(user_ptr, src, n);
-   }
-   exit_in_user_copy();
-   return 0;
-}
-
-int check_user_ptr_size_writable(void *user_ptr)
-{
-   if (user_out_of_range(user_ptr, sizeof(void *)))
-      return -1;
-
-   enter_in_user_copy();
-   {
-      uptr saved_val;
-      /* Just read and write the user_ptr to check that it is writable */
-      memcpy(&saved_val, user_ptr, sizeof(void *));
-      memcpy(user_ptr, &saved_val, sizeof(void *));
-   }
-   exit_in_user_copy();
-   return 0;
-}
-
-int check_user_ptr_size_readable(void *user_ptr)
-{
-   if (user_out_of_range(user_ptr, sizeof(void *)))
-      return -1;
-
-   enter_in_user_copy();
-   {
-      uptr saved_val;
-      /* Just read the user_ptr to check that we won't get a page fault */
-      memcpy(&saved_val, user_ptr, sizeof(void *));
-   }
-   exit_in_user_copy();
-   return 0;
-}
 
 int copy_str_array_from_user(void *dest,
                              const char *const *user_arr,
