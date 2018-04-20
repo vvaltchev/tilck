@@ -2,9 +2,6 @@
 #pragma once
 #include <common/basic_defs.h>
 
-bool in_user_copy(void);
-void handle_user_copy_fault(void);
-
 static inline bool user_out_of_range(const void *user_ptr, size_t n)
 {
    return ((uptr)user_ptr + n) > KERNEL_BASE_VA;

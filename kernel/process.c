@@ -339,6 +339,7 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
 
             if (copy_to_user(wstatus, &value, sizeof(int)) < 0) {
                remove_task((task_info *)waited_task);
+               enable_preemption();
                return -EFAULT;
             }
          }

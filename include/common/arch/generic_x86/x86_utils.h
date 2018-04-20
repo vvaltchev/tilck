@@ -81,6 +81,10 @@
 #define TABLE_LDT 1
 #define X86_SELECTOR(idx, table, rpl) ((idx << 3) | (table << 2) | (rpl))
 
+/* Defines useful when calling fault_resumable_call() */
+#define ALL_FAULTS_MASK (0xFFFFFFFF)
+#define PAGE_FAULT_MASK (1 << FAULT_PAGE_FAULT)
+
 #ifdef __i386__
 
 #include <exos/arch/i386/asm_defs.h>

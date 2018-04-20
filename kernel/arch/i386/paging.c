@@ -93,12 +93,6 @@ void handle_page_fault_int(regs *r)
    }
 
    if (!us) {
-
-      if (in_user_copy()) {
-         handle_user_copy_fault();
-         NOT_REACHED();
-      }
-
       ptrdiff_t off = 0;
       const char *sym_name = find_sym_at_addr(r->eip, &off);
       panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p [%s + 0x%x]\n",

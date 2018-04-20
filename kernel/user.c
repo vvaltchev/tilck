@@ -2,45 +2,7 @@
 #include <exos/user.h>
 #include <exos/process.h>
 #include <exos/errno.h>
-
-static volatile bool __in_user_copy;
-
-bool in_user_copy(void)
-{
-   return __in_user_copy;
-}
-
-static inline void enter_in_user_copy(void)
-{
-   __in_user_copy = true;
-}
-
-static inline void exit_in_user_copy(void)
-{
-   __in_user_copy = false;
-}
-
-void handle_user_copy_fault(void)
-{
-   exit_in_user_copy();
-   task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
-
-   set_current_task_in_user_mode();
-
-   /*
-    * Move back state_regs 1 struct regs up, since we have to preserve the
-    * user regs, for switch_to_task(). This is special case: usually
-    * set_current_task_in_user_mode() is called at the end of handle_syscall(),
-    * where completely resetting the state_regs pointer is what we want (we
-    * already keep that in ESP).
-    */
-   get_curr_task()->state_regs--;
-   set_return_register(get_curr_task()->state_regs, -EFAULT);
-
-   pop_nested_interrupt(); // The page fault
-   enable_preemption();
-   switch_to_idle_task();
-}
+#include <exos/fault_resumable.h>
 
 int copy_from_user(void *dest, const void *user_ptr, size_t n)
 {
@@ -49,12 +11,8 @@ int copy_from_user(void *dest, const void *user_ptr, size_t n)
    if (user_out_of_range(user_ptr, n))
       return -1;
 
-   enter_in_user_copy();
-   {
-      memcpy(dest, user_ptr, n);
-   }
-   exit_in_user_copy();
-   return 0;
+   int r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, dest, user_ptr, n);
+   return !r ? 0 : -1;
 }
 
 int copy_to_user(void *user_ptr, const void *src, size_t n)
@@ -64,40 +22,41 @@ int copy_to_user(void *user_ptr, const void *src, size_t n)
    if (user_out_of_range(user_ptr, n))
       return -1;
 
-   enter_in_user_copy();
-   {
-      memcpy(user_ptr, src, n);
-   }
-   exit_in_user_copy();
-   return 0;
+   int r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, user_ptr, src, n);
+   return !r ? 0 : -1;
 }
 
-static int internal_copy_user_str(void *dest,
-                                  const void *user_ptr,
-                                  void *dest_end,
-                                  size_t *written_ptr)
+static void internal_copy_user_str(void *dest,
+                                   const void *user_ptr,
+                                   void *dest_end,
+                                   size_t *written_ptr,
+                                   int *rc)
 {
    ASSERT(!is_preemption_enabled());
-   ASSERT(in_user_copy());
+   ASSERT(in_fault_resumable_code());
 
    const char *ptr = user_ptr;
    char *d = dest;
    *written_ptr = 0;
+   *rc = 0;
 
    do {
 
-      if (d >= (char *)dest_end)
-         return 1;
+      if (d >= (char *)dest_end) {
+         *rc = 1;
+         return;
+      }
 
-      if (user_out_of_range(ptr, 1))
-         return -1;
+      if (user_out_of_range(ptr, 1)) {
+         *rc = -1;
+         return;
+      }
 
       *d++ = *ptr; /* note: ptr is NOT increased here */
 
    } while (*ptr++);
 
    *written_ptr = (d - (char *)dest); /* written includes the final \0 */
-   return 0;
 }
 
 /*
@@ -115,43 +74,50 @@ int copy_str_from_user(void *dest,
    ASSERT(!is_preemption_enabled());
 
    int rc;
+   u32 faults;
    size_t written;
 
-   enter_in_user_copy();
-   {
-      rc = internal_copy_user_str(dest,
-                                  user_ptr,
-                                  (char *)dest + max_size,
-                                  &written);
+   faults = fault_resumable_call(PAGE_FAULT_MASK,
+                                 internal_copy_user_str,
+                                 5,
+                                 dest,
+                                 user_ptr,
+                                 (char *)dest + max_size,
+                                 &written,
+                                 &rc);
 
-      if (written_ptr)
-         *written_ptr = written;
-   }
-   exit_in_user_copy();
+   if (written_ptr)
+      *written_ptr = written;
+
+   if (faults)
+      return -1;
+
    return rc;
 }
 
 
-int copy_str_array_from_user(void *dest,
-                             const char *const *user_arr,
-                             size_t max_size,
-                             size_t *written_ptr)
+static void
+internal_copy_str_array_from_user(void *dest,
+                                  const char *const *user_arr,
+                                  size_t max_size,
+                                  size_t *written_ptr,
+                                  int *rc)
 {
-   int rc = 0;
    int argc;
    char **dest_arr = (char **)dest;
    char *dest_end = (char *)dest + max_size;
    char *after_ptrs_arr;
    size_t written = 0;
+   *rc = 0;
 
-   enter_in_user_copy();
+   ASSERT(in_fault_resumable_code());
 
    for (argc = 0; ; argc++) {
 
       const char *const *ptr_ptr = user_arr + argc;
 
       if (user_out_of_range(ptr_ptr, sizeof(void *))) {
-         rc = -1;
+         *rc = -1;
          goto out;
       }
 
@@ -167,7 +133,7 @@ int copy_str_array_from_user(void *dest,
    }
 
    if ((char *)&dest_arr[argc + 1] > dest_end) {
-      rc = 1;
+      *rc = 1;
       goto out;
    }
 
@@ -180,24 +146,46 @@ int copy_str_array_from_user(void *dest,
       size_t local_written = 0;
       dest_arr[i] = after_ptrs_arr;
 
-      rc = internal_copy_user_str(after_ptrs_arr,
-                                  user_arr[i],
-                                  dest_end,
-                                  &local_written);
+      internal_copy_user_str(after_ptrs_arr,
+                             user_arr[i],
+                             dest_end,
+                             &local_written,
+                             rc);
 
       written += local_written;
       after_ptrs_arr += local_written;
 
-      if (rc != 0)
+      if (*rc != 0)
          break;
    }
 
 out:
    *written_ptr = written;
-   exit_in_user_copy();
-   return rc;
 }
 
+
+int copy_str_array_from_user(void *dest,
+                             const char *const *user_arr,
+                             size_t max_size,
+                             size_t *written_ptr)
+{
+   int rc;
+   u32 faults;
+
+   faults = fault_resumable_call(PAGE_FAULT_MASK,
+                                 internal_copy_str_array_from_user,
+                                 5,
+                                 dest,
+                                 user_arr,
+                                 max_size,
+                                 written_ptr,
+                                 &rc);
+
+   if (faults)
+      return -1;
+
+   return rc;
+}
 
 int duplicate_user_path(char *dest,
                         const char *user_path,
