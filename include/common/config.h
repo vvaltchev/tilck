@@ -22,8 +22,6 @@
 
 #define KERNEL_TRACK_NESTED_INTERRUPTS 1
 
-#define USER_VSDO_LIKE_PAGE_VADDR (0xB8000000)
-
 /* ------------------------------- */
 
 /*
@@ -60,6 +58,9 @@ extern void *kernel_va;
 #define RAMDISK_SIZE               (35 * MB)
 
 #define KERNEL_FILE_PATH            "/EFI/BOOT/elf_kernel_stripped"
+
+
+#define USER_VSDO_LIKE_PAGE_VADDR (LINEAR_MAPPING_OVER_END)
 
 /* Bootloader specific config */
 

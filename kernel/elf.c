@@ -171,8 +171,6 @@ int load_elf_program(const char *filepath,
             true,
             false);
 
-   //ASSERT(is_mapped(*pdir_ref, (void *)USER_VSDO_LIKE_PAGE_VADDR));
-
    // Finally setting the output-params.
 
    *stack_addr = (void *) ((OFFLIMIT_USERMODE_ADDR - 1) & POINTER_ALIGN_MASK);
