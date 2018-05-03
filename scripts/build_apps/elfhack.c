@@ -12,6 +12,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#define MMAP_SIZE (1024*1024)
+
 Elf32_Shdr *get_section(void *mapped_elf_file, const char *section_name)
 {
    Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
@@ -156,9 +158,9 @@ void move_metadata(void *mapped_elf_file)
    }
 }
 
-void drop_last_section(void *mapped_elf_file, int fd)
+void drop_last_section(void **mapped_elf_file_ref, int fd)
 {
-   Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
+   Elf32_Ehdr *h = (Elf32_Ehdr*)*mapped_elf_file_ref;
    char *hc = (char *)h;
    Elf32_Shdr *sections = (Elf32_Shdr *)(hc + h->e_shoff);
    Elf32_Shdr *shstrtab = sections + h->e_shstrndx;
@@ -219,9 +221,25 @@ void drop_last_section(void *mapped_elf_file, int fd)
       if (sections[i].sh_link == last_section_index)
          sections[i].sh_link = 0;
 
+   /*
+    * Unfortunately, the "bash for Windows" subsystem does not support
+    * ftruncate on memory-mapped files. Even if having the exOS to work there
+    * is _not_ a must (users are supposed to use Linux), it is a nice-to-have
+    * feature. Therefore, here we first unmap the memory-mapped ELF file and
+    * then we truncate it.
+    */
+   if (munmap(*mapped_elf_file_ref, MMAP_SIZE) < 0) {
+      perror("munmap() failed");
+      exit(1);
+   }
+
+   *mapped_elf_file_ref = NULL;
+
    /* Physically remove the last section from the file, by truncating it */
    if (ftruncate(fd, last_offset) < 0) {
-      perror("ftruncate failed");
+
+      fprintf(stderr, "ftruncate(%i, %li) failed with '%s'\n",
+              fd, last_offset, strerror(errno));
       exit(1);
    }
 }
@@ -311,7 +329,7 @@ int main(int argc, char **argv)
    errno = 0;
 
    vaddr = mmap(NULL,                   /* addr */
-                1024 * 1024,            /* length */
+                MMAP_SIZE,              /* length */
                 PROT_READ | PROT_WRITE, /* prot */
                 MAP_SHARED,             /* flags */
                 fd,                     /* fd */
@@ -333,17 +351,16 @@ int main(int argc, char **argv)
    } else if (!strcmp(opt, "--link")) {
       link_sections(vaddr, opt_arg, opt_arg2);
    } else if (!strcmp(opt, "--drop-last-section")) {
-      drop_last_section(vaddr, fd);
+      drop_last_section(&vaddr, fd);
    } else if (!strcmp(opt, "--set-phdr-rwx-flags")) {
       set_phdr_rwx_flags(vaddr, opt_arg, opt_arg2);
    } else {
       show_help(argv);
    }
 
-   ret = munmap(vaddr, 1024 * 1024);
-
-   if (ret < 0) {
-      perror(NULL);
+   /* Do munmap only if vaddr != NULL */
+   if (vaddr && munmap(vaddr, MMAP_SIZE) < 0) {
+      perror("munmap() failed");
    }
 
    close(fd);
