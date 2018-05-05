@@ -147,8 +147,10 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    create_and_register_devfs();
    init_tty();
 
-   if (self_test_to_run)
+   if (self_test_to_run) {
       self_test_to_run();
+      debug_qemu_turn_off_machine();
+   }
 
    if (ramdisk_size && !no_init) {
       enable_preemption();

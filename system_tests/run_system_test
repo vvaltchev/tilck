@@ -35,15 +35,22 @@ def RunTheVM():
    args = ['qemu-system-i386',
            '-m', str(VM_MEMORY_SIZE_IN_MB),
            '-kernel', KERNEL_FILE,
-           '-initrd', FATPART_FILE,
            '-nographic', '-device',
            'isa-debug-exit,iobase=0xf4,iosize=0x04']
 
    if not os.environ.get('TRAVIS', False):
       args.append('-enable-kvm')
 
-   args.append('-append')
-   args.append('-cmd /sbin/init -- -c {0}'.format(sys.argv[1]))
+   if sys.argv[1] == 'shellcmd':
+      args.append('-initrd')
+      args.append(FATPART_FILE)
+      args.append('-append')
+      args.append('-cmd /sbin/init -- -c {0}'.format(sys.argv[2]))
+   elif sys.argv[1] == 'selftest':
+      args.append('-append')
+      args.append('-s={0}'.format(sys.argv[2]))
+   else:
+      sys.exit(1)
 
    process = subprocess.Popen(args, stdout=subprocess.PIPE)
 
@@ -78,10 +85,18 @@ def RunTheVM():
 ###############################################################################
 # MAIN
 
-if len(sys.argv) < 2:
-   print "Syntax run_system_test <test name>"
+def show_help_and_exit():
+   print "Syntax: "
+   print "  run_system_test selftest <selftest name>"
+   print "  run_system_test shellcmd <shell cmd name>"
    sys.exit(1)
 
+
+if len(sys.argv) < 3:
+   show_help_and_exit()
+
+if sys.argv[1] not in ['selftest', 'shellcmd']:
+   show_help_and_exit()
 
 start_time = time.time()
 
