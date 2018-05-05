@@ -11,14 +11,14 @@ import threading
 TEST_TIMEOUT = 20
 VM_MEMORY_SIZE_IN_MB = 256
 KERNEL_HELLO_MSG = 'Hello from exOS!'
-OS_IMG_FILE = './build/exos.img'
+KERNEL_FILE = './build/elf_kernel_stripped'
+FATPART_FILE = './build/fatpart'
 
 output = ""
 process = None
 failed = False
 hello_msg_found = False
-init_pid = -1
-init_exit_code = -1
+shell_exit_code = -1
 
 def RunTheVM():
 
@@ -26,27 +26,26 @@ def RunTheVM():
    global process
    global failed
    global hello_msg_found
-   global init_pid
-   global init_exit_code
+   global shell_exit_code
 
 
-   print "Running the VM..."
+   print "Running the VM with shell command '{0}'...".format(sys.argv[1])
    print "-"*80, "\n"
 
    args = ['qemu-system-i386',
            '-m', str(VM_MEMORY_SIZE_IN_MB),
-           '-drive',
-           'file=./build/exos.img,'+
-           'index=0,media=disk,format=raw',
+           '-kernel', KERNEL_FILE,
+           '-initrd', FATPART_FILE,
            '-nographic', '-device',
            'isa-debug-exit,iobase=0xf4,iosize=0x04']
 
    if not os.environ.get('TRAVIS', False):
-	args.append('-enable-kvm')
+      args.append('-enable-kvm')
 
+   args.append('-append')
+   args.append('-cmd /sbin/init -- -c {0}'.format(sys.argv[1]))
 
    process = subprocess.Popen(args, stdout=subprocess.PIPE)
-
 
    for line in iter(process.stdout.readline,''):
       output += line
@@ -54,20 +53,11 @@ def RunTheVM():
 
       print stripped
 
-      m = re.search('Hello from init! MY PID IS ([0-9]+)', stripped)
-
-      if m and m.group(1):
-         init_pid = int(m.group(1))
-         continue
-
-      m = re.search(r'\[kernel\] Exit process ([0-9]+) with code = ([0-9]+)',
+      m = re.search(r'\[init\] the shell exited with status: ([0-9]+)',
                     stripped)
 
       if m:
-         pid = int(m.group(1))
-         code = int(m.group(2))
-         if pid == init_pid:
-            init_exit_code = code
+         shell_exit_code = int(m.group(1))
          continue
 
       if stripped.find(KERNEL_HELLO_MSG) != -1:
@@ -85,6 +75,14 @@ def RunTheVM():
    print "\n"
    print "-"*80
 
+###############################################################################
+# MAIN
+
+if len(sys.argv) < 2:
+   print "Syntax run_system_test <test name>"
+   sys.exit(1)
+
+
 start_time = time.time()
 
 thread = threading.Thread(target = RunTheVM)
@@ -100,22 +98,13 @@ if thread.is_alive():
    process.send_signal(signal.SIGINT)
    thread.join()
 
-
-
-################################################################################
-
 elapsed = time.time() - start_time
-
 
 if output.find("KERNEL PANIC") != -1:
    failed = True
 
-if init_pid == -1:
-   print "Note: Unable to read init's PID"
-   failed = True
-
-if init_exit_code != 0:
-   print "Note: init exited with code {0}.".format(init_exit_code)
+if shell_exit_code != 0:
+   print "Note: shell exited with code {0}.".format(shell_exit_code)
    failed = True
 
 if failed:
