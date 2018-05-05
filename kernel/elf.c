@@ -9,8 +9,6 @@
 
 #include <elf.h>
 
-extern char vsdo_like_page[4096];
-
 #ifdef BITS32
 
 static int load_phdr(fs_handle *elf_file,
@@ -162,14 +160,6 @@ int load_elf_program(const char *filepath,
                true,
                true);
    }
-
-   // Map a special vdso-like page used for the sysenter interface
-
-   map_page(*pdir_ref,
-            (void *)USER_VSDO_LIKE_PAGE_VADDR,
-            KERNEL_VA_TO_PA(&vsdo_like_page),
-            true,
-            false);
 
    // Finally setting the output-params.
 

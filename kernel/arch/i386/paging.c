@@ -26,6 +26,7 @@ extern page_directory_t *kernel_page_dir;
 extern page_directory_t *curr_page_dir;
 extern u16 *pageframes_refcount;
 extern u8 page_size_buf[PAGE_SIZE];
+extern char vsdo_like_page[PAGE_SIZE];
 
 bool handle_potential_cow(u32 vaddr)
 {
@@ -298,11 +299,10 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
 
    memcpy(new_pdir, pdir, sizeof(page_directory_t));
 
-   for (int i = 0; i < 1024; i++) {
+   for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
 
-      /* 4-MB pages don't have page tables, so we already copied them. */
-      if (pdir->entries[i].psize)
-         continue;
+      /* User-space cannot use 4-MB pages */
+      ASSERT(!pdir->entries[i].psize);
 
       if (!pdir->entries[i].present)
          continue;
@@ -311,7 +311,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
          KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 
       /* Mark all the pages in that page-table as COW. */
-      for (int j = 0; j < 1024; j++) {
+      for (u32 j = 0; j < 1024; j++) {
 
          if (!orig_pt->pages[j].present)
             continue;
@@ -332,7 +332,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
       // alloc memory for the page table
 
       page_table_t *pt = kmalloc(sizeof(*pt));
-      VERIFY(pt); // Don't handle this kind of out-of-memory for the moment.
+      VERIFY(pt != NULL); // Don't handle this for the moment.
       ASSERT(PAGE_ALIGNED(pt));
 
       // copy the page table
@@ -351,15 +351,14 @@ void pdir_destroy(page_directory_t *pdir)
    // Kernel's pdir cannot be destroyed!
    ASSERT(pdir != kernel_page_dir);
 
-   // Assumption: [0, 768) because KERNEL_BASE_VA is 0xC0000000.
-   for (int i = 0; i < 768; i++) {
+   for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
 
       if (!pdir->entries[i].present)
          continue;
 
       page_table_t *pt = KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 
-      for (int j = 0; j < 1024; j++) {
+      for (u32 j = 0; j < 1024; j++) {
 
          if (!pt->pages[j].present)
             continue;
@@ -441,4 +440,14 @@ void init_paging_cow(void)
 
    pageframes_refcount = kzmalloc(pagesframes_refcount_bufsize);
    VERIFY(pageframes_refcount);
+
+   /*
+    * Map a special vdso-like page used for the sysenter interface.
+    * This is the only user-mapped page with a vaddr in the kernel space.
+    */
+   map_page(kernel_page_dir,
+            (void *)USER_VSDO_LIKE_PAGE_VADDR,
+            KERNEL_VA_TO_PA(&vsdo_like_page),
+            true,
+            false);
 }
