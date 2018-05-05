@@ -10,6 +10,8 @@
 #include <stdbool.h>
 #include <errno.h>
 
+#define ARRAY_SIZE(x) ((int)sizeof(x)/(int)sizeof(x[0]))
+
 void call_exit(int code)
 {
    printf("[init] exit with code: %i\n", code);
@@ -38,21 +40,37 @@ void open_std_handles(void)
    }
 }
 
+char *shell_args[16] = { "/bin/shell", NULL };
+
+
 int main(int argc, char **argv, char **env)
 {
    int shell_pid;
    int wstatus;
 
-   if (getenv("EXOS"))
+   if (getenv("EXOS")) {
+
       open_std_handles();
 
-   printf("[init] Hello from init! MY PID IS %i\n", getpid());
+      if (getpid() != 1) {
+         printf("[init] ERROR: my pid is %i instead of 1\n", getpid());
+         call_exit(1);
+      }
+   }
+
+   printf("[init] Hello from init!\n");
+
+   if (argc > 1 && !strcmp(argv[1], "--")) {
+      for (int i = 1; i < ARRAY_SIZE(shell_args)-1 && i + 1 < argc; i++) {
+         shell_args[i] = argv[i + 1];
+      }
+   }
 
    shell_pid = fork();
 
    if (!shell_pid) {
       printf("[init forked child] running shell\n");
-      execve("/bin/shell", NULL, NULL);
+      execve("/bin/shell", shell_args, NULL);
    }
 
    printf("[init] wait for the shell to exit\n");
