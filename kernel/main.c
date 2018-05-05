@@ -31,6 +31,7 @@ extern size_t ramdisk_size;
 
 extern bool no_init;
 extern void (*self_test_to_run)(void);
+extern const char *const cmd_args[16];
 
 void parse_kernel_cmdline(const char *cmdline);
 
@@ -152,8 +153,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    if (ramdisk_size && !no_init) {
       enable_preemption();
       push_nested_interrupt(-1);
-      sptr rc = sys_execve("/sbin/init", NULL, NULL);
-      panic("execve(\"/sbin/init\") failed with %i\n", rc);
+      sptr rc = sys_execve(cmd_args[0], cmd_args, NULL);
+      panic("execve('%s') failed with %i\n", cmd_args[0], rc);
    }
 
    switch_to_idle_task_outside_interrupt_context();

@@ -40,7 +40,7 @@ void open_std_handles(void)
    }
 }
 
-char *shell_args[16] = { "/bin/shell", NULL };
+char *shell_args[16] = { "/bin/shell", [1 ... 15] = NULL };
 
 
 int main(int argc, char **argv, char **env)

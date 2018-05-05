@@ -369,6 +369,8 @@ static void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size)
 
 void *kmalloc(size_t s)
 {
+   ASSERT(kmalloc_initialized);
+
    void *ret = NULL;
    s = roundup_next_power_of_2(s);
 
