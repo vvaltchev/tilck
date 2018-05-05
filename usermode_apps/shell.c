@@ -111,8 +111,16 @@ int main(int argc, char **argv, char **env)
 
    printf("[PID: %i] Hello from ExOS's simple shell!\n", getpid());
    printf("My input args[%i]:\n", argc);
+
    for (int i = 0; i < argc; i++)
       printf("argv[%i] = '%s'\n", i, argv[i]);
+
+   if (argc > 2 && !strcmp(argv[1], "-c")) {
+      printf("[shell] Executing built-in command '%s'\n", argv[2]);
+      run_if_known_command(argv[2]);
+      printf("[shell] Unknown built-in command '%s'\n", argv[2]);
+      exit(1);
+   }
 
    while (true) {
 
