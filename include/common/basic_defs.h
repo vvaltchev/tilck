@@ -78,7 +78,7 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 #define NORETURN
 #define WEAK
 #define NODISCARD
-
+#define PAGE_SIZE_ALIGNED
 #define OFFSET_OF(st, m)
 
 #else
@@ -103,7 +103,7 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 #define WEAK __attribute__((weak))
 #define PACKED __attribute__((packed))
 #define NODISCARD __attribute__((warn_unused_result))
-
+#define PAGE_SIZE_ALIGNED __attribute__ ((aligned(PAGE_SIZE)))
 #endif
 
 typedef char s8;

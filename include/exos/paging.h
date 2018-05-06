@@ -11,7 +11,7 @@
 #define PAGE_SIZE ((uptr)1 << PAGE_SHIFT)
 #define OFFSET_IN_PAGE_MASK (PAGE_SIZE - 1)
 #define PAGE_MASK (~OFFSET_IN_PAGE_MASK)
-#define PAGE_ALIGNED(x) (!((uptr)x & OFFSET_IN_PAGE_MASK))
+#define IS_PAGE_ALIGNED(x) (!((uptr)x & OFFSET_IN_PAGE_MASK))
 
 #define INVALID_PADDR ((uptr)-1)
 

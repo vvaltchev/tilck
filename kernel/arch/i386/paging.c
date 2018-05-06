@@ -61,7 +61,7 @@ bool handle_potential_cow(u32 vaddr)
    // Allocate and set a new page.
    void *new_page_vaddr = kmalloc(PAGE_SIZE);
    VERIFY(new_page_vaddr != NULL); // Don't handle this out-of-mem for now.
-   ASSERT(PAGE_ALIGNED(new_page_vaddr));
+   ASSERT(IS_PAGE_ALIGNED(new_page_vaddr));
 
    const uptr shifted_paddr = KERNEL_VA_TO_PA(new_page_vaddr) >> PAGE_SHIFT;
 
@@ -238,14 +238,14 @@ void map_page_int(page_directory_t *pdir,
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // the paddr must be page-aligned
 
    ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
-   ASSERT(PAGE_ALIGNED(ptable));
+   ASSERT(IS_PAGE_ALIGNED(ptable));
 
    if (UNLIKELY(KERNEL_VA_TO_PA(ptable) == 0)) {
 
       // we have to create a page table for mapping 'vaddr'.
       ptable = kzmalloc(sizeof(page_table_t));
       VERIFY(ptable != NULL); // Don't handle this out-of-memory for now.
-      ASSERT(PAGE_ALIGNED(ptable));
+      ASSERT(IS_PAGE_ALIGNED(ptable));
 
       pdir->entries[page_dir_index].raw =
          PG_PRESENT_BIT |
@@ -333,7 +333,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
 
       page_table_t *pt = kmalloc(sizeof(*pt));
       VERIFY(pt != NULL); // Don't handle this for the moment.
-      ASSERT(PAGE_ALIGNED(pt));
+      ASSERT(IS_PAGE_ALIGNED(pt));
 
       // copy the page table
       memcpy(pt, orig_pt, sizeof(*pt));
@@ -401,7 +401,7 @@ static void map_4mb_page_int(page_directory_t *pdir,
 /*
  * Page directories MUST BE page-size-aligned.
  */
-char kpdir_buf[sizeof(page_directory_t)] __attribute__ ((aligned(PAGE_SIZE)));
+static char kpdir_buf[sizeof(page_directory_t)] PAGE_SIZE_ALIGNED;
 
 void init_paging()
 {
