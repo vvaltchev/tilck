@@ -6,14 +6,14 @@
 #include <exos/tasklet.h>
 #include <exos/process.h>
 
-void test_tasklet_func()
+static void test_tasklet_func()
 {
    for (int i = 0; i < 10; i++) {
       asmVolatile("nop");
    }
 }
 
-void tasklet_test_thread(void *unused)
+static void tasklet_test_thread(void *unused)
 {
    const int tot_iters = MAX_TASKLETS * 10;
    printk("[selftest_tasklet] BEGIN\n");

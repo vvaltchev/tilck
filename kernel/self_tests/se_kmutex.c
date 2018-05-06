@@ -10,7 +10,7 @@ void simple_test_kthread(void *arg);
 
 static kmutex test_mutex = { 0 };
 
-void test_kmutex_thread(void *arg)
+static void test_kmutex_thread(void *arg)
 {
    printk("%i) before lock\n", arg);
 
@@ -24,7 +24,7 @@ void test_kmutex_thread(void *arg)
    printk("%i) after lock\n", arg);
 }
 
-void test_kmutex_thread_trylock()
+static void test_kmutex_thread_trylock()
 {
    printk("3) before trylock\n");
 
