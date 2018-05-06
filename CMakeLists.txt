@@ -142,6 +142,8 @@ add_custom_command(
    COMMAND
       ${BUILD_SCRIPTS}/build_fatpart ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} fatpart
    COMMAND
+      ${BUILD_APPS}/fat_get_used_bytes --truncate fatpart
+   COMMAND
       dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K
    DEPENDS
       # We MUST depend on BOTH each wrapper-target AND its OUTPUT in order to
