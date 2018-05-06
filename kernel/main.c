@@ -149,7 +149,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    if (self_test_to_run) {
       self_test_to_run();
-      debug_qemu_turn_off_machine();
    }
 
    if (ramdisk_size && !no_init) {

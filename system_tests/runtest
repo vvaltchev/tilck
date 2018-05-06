@@ -8,15 +8,22 @@ import signal
 import subprocess
 import threading
 
-TEST_TIMEOUT = 20
+TEST_TIMEOUT = 8
 VM_MEMORY_SIZE_IN_MB = 256
 KERNEL_HELLO_MSG = 'Hello from exOS!'
 KERNEL_FILE = './build/elf_kernel_stripped'
 FATPART_FILE = './build/fatpart'
 
+# Fail codes:
+FAIL_SUCCESS = 0
+FAIL_REBOOT = 2
+FAIL_TIMEOUT = 3
+FAIL_PANIC = 4
+FAIL_SHELL_NO_ZERO_EXIT = 5
+
 output = ""
 process = None
-failed = False
+failed = FAIL_SUCCESS
 hello_msg_found = False
 shell_exit_code = -1
 
@@ -41,14 +48,14 @@ def RunTheVM():
 
    if sys.argv[1] == 'shellcmd':
 
-      print "Running the VM with shell command '{0}'...".format(sys.argv[1])
+      print "Running the VM with shell command '{0}'...".format(sys.argv[2])
 
       args += ['-initrd', FATPART_FILE,
                '-append', '-cmd /sbin/init -- -c {0}'.format(sys.argv[2])]
 
    elif sys.argv[1] == 'selftest':
 
-      print "Running the VM with selftest '{0}'...".format(sys.argv[1])
+      print "Running the VM with selftest '{0}'...".format(sys.argv[2])
       args += ['-append', '-s={0}'.format(sys.argv[2])]
 
    else:
@@ -78,11 +85,10 @@ def RunTheVM():
                   "hello msg: likely the machine rebooted."
             print "[system test runner] KILLING the VM."
 
-            failed = True
+            failed = FAIL_REBOOT
             process.send_signal(signal.SIGINT)
          continue
 
-   print "\n"
    print "-"*80
 
 ###############################################################################
@@ -94,41 +100,32 @@ def show_help_and_exit():
    print "  run_system_test shellcmd <shell cmd name>"
    sys.exit(1)
 
-
 if len(sys.argv) < 3:
    show_help_and_exit()
 
 if sys.argv[1] not in ['selftest', 'shellcmd']:
    show_help_and_exit()
 
-start_time = time.time()
-
 thread = threading.Thread(target = RunTheVM)
 thread.start()
 thread.join(TEST_TIMEOUT)
 
 if thread.is_alive():
-   failed = True
+   failed = FAIL_TIMEOUT
 
-   print "The VM is alive after the timeout " + \
+   print "[system test runner] The VM is alive after the timeout " + \
          "of {0} seconds. KILLING IT.".format(TEST_TIMEOUT)
 
    process.send_signal(signal.SIGINT)
    thread.join()
 
-elapsed = time.time() - start_time
-
 if output.find("KERNEL PANIC") != -1:
-   failed = True
+   failed = FAIL_PANIC
 
-if shell_exit_code != 0:
-   print "Note: shell exited with code {0}.".format(shell_exit_code)
-   failed = True
+if sys.argv[1] == 'shellcmd' and failed == 0 and shell_exit_code != 0:
+   print "Shell exited with code {0}.".format(shell_exit_code)
+   failed = FAIL_SHELL_NO_ZERO_EXIT
 
-if failed:
-   print "TEST FAILED after %.2f seconds" % elapsed
-   sys.exit(1)
 
-print "TEST PASSED in %.2f seconds" % elapsed
-sys.exit(0)
+sys.exit(failed)
 

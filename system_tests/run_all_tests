@@ -1,0 +1,77 @@
+#!/usr/bin/python
+
+import os
+import re
+import sys
+import time
+import signal
+import subprocess
+import threading
+
+error_codes_strings = {
+   0: 'success',
+   1: 'invalid_arguments',
+   2: 'reboot',
+   3: 'timeout',
+   4: 'panic',
+   5: 'shell_no_zero_exit'
+}
+
+
+shell_cmd_tests = [
+   'loop',
+   'fork_test',
+   'invalid_read',
+   'sysenter',
+   'sysenter_fork_test',
+   'syscall_perf'
+]
+
+selftests = [
+   'fault_resumable',
+   'fault_resumable_perf',
+   'kthread'
+]
+
+def run_test(test_type, test):
+
+   print "[ RUNNING ] {0}: '{1}'".format(test_type, x)
+   start_time = time.time()
+
+   try:
+      output = subprocess.check_output(['./system_tests/runtest',
+                                        test_type,
+                                        test],
+                                        stderr=subprocess.STDOUT)
+   except subprocess.CalledProcessError as e:
+      elapsed = time.time() - start_time
+      print e.output
+      print "[ FAILED  ] after %.2f seconds with: %s\n" % \
+            (elapsed, error_codes_strings[e.returncode])
+      return False
+
+   elapsed = time.time() - start_time
+   print "[ PASSED  ] after %.2f seconds\n" % elapsed
+   return True
+
+################################################################################
+
+print "\n*********** MASTER EXOS SYSTEM TESTS RUNNER ************\n"
+
+shell_cmd_tests_passed = 0
+selftests_passed = 0
+
+for x in selftests:
+   if run_test('selftest', x):
+      selftests_passed += 1
+
+for x in shell_cmd_tests:
+   if run_test('shellcmd', x):
+      shell_cmd_tests_passed += 1
+
+print "-"*80, "\n"
+print "Shell cmd tests passed: {0}/{1}".format(shell_cmd_tests_passed,
+                                               len(shell_cmd_tests))
+
+print "Selftests passed: {0}/{1}".format(selftests_passed,
+                                         len(selftests))

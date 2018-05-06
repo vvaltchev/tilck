@@ -21,6 +21,7 @@ void test_tasklet_func()
    }
 }
 
+// The test does NOT work as expected. TODO: fix the issue.
 void selftest_tasklet()
 {
    const int tot_iters = MAX_TASKLETS * 10;
@@ -41,6 +42,7 @@ void selftest_tasklet()
    }
 
    printk("[selftest_tasklet] COMPLETED\n");
+   debug_qemu_turn_off_machine();
 }
 
 
@@ -68,6 +70,8 @@ void simple_test_kthread(void *arg)
          printk("[kthread] i = %i\n", i/MB);
       }
    }
+
+   debug_qemu_turn_off_machine();
 }
 
 void selftest_kthread(void)
@@ -129,7 +133,7 @@ void test_kmutex_thread_trylock()
    }
 }
 
-
+// The test does NOT work as expected. TODO: fix the issue.
 void selftest_kmutex()
 {
    kmutex_init(&test_mutex);
@@ -313,7 +317,7 @@ void selftest_fault_resumable(void)
                             1,  // nargs
                             1); // arg1: level
    printk("[level 0]: call returned %i\n", r);
-
+   debug_qemu_turn_off_machine();
 }
 
 static NO_INLINE void do_nothing(uptr a1, uptr a2, uptr a3,
@@ -353,6 +357,7 @@ void selftest_fault_resumable_perf(void)
    disable_preemption();
 
    printk("fault resumable call: %llu cycles\n", duration/iters);
+   debug_qemu_turn_off_machine();
 }
 
 #endif
