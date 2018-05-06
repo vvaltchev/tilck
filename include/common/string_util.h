@@ -3,7 +3,7 @@
 
 #include <common/basic_defs.h>
 
-#ifndef TESTING
+#if !defined(TESTING) && !defined(USERMODE_APP)
 
 typedef unsigned char *va_list;
 #define va_start(list, param) (list = (((va_list)&param) + sizeof(param)))
@@ -12,12 +12,8 @@ typedef unsigned char *va_list;
 
 int strcmp(const char *s1, const char *s2);
 int strncmp(const char *s1, const char *s2, size_t n);
-int stricmp(const char *s1, const char *s2);
-void str_reverse(char *str, size_t len);
 
 char *strdup(const char *s);
-char *const *dup_strarray(const char *const *argv);
-void free_strarray(char *const *argv);
 
 static ALWAYS_INLINE bool isalpha_lower(int c) {
    return (c >= 'a' && c <= 'z');
@@ -31,11 +27,11 @@ static ALWAYS_INLINE bool isalpha(int c) {
    return isalpha_lower(c) || isalpha_upper(c);
 }
 
-static ALWAYS_INLINE char lower(int c) {
+static ALWAYS_INLINE char tolower(int c) {
    return isalpha_upper(c) ? c + 32 : c;
 }
 
-static ALWAYS_INLINE char upper(int c) {
+static ALWAYS_INLINE char toupper(int c) {
    return isalpha_lower(c) ? c - 32 : c;
 }
 
@@ -49,9 +45,16 @@ static ALWAYS_INLINE bool isdigit(int c) {
 
 #else
 
-/* Add here any necessary #include for the tests. */
+#include <string.h>
+#include <ctype.h>
+#include <stdarg.h>
 
-#endif // #ifndef TESTING
+#endif // #if !defined(TESTING) && !defined(USERMODE_APP)
+
+int stricmp(const char *s1, const char *s2);
+void str_reverse(char *str, size_t len);
+char *const *dup_strarray(const char *const *argv);
+void free_strarray(char *const *argv);
 
 void itoa32(s32 value, char *destBuf);
 void itoa64(s64 value, char *destBuf);

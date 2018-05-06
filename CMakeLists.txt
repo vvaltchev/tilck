@@ -151,6 +151,7 @@ add_custom_command(
       kernel
       init
       shell
+      fat_get_used_bytes
       ${BUILD_SCRIPTS}/build_fatpart
       ${BOOTLOADER_BIN_FILE}
       ${EFI_MAIN_FILE}

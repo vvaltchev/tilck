@@ -125,7 +125,7 @@ typedef u64 uptr;
 typedef s64 sptr;
 #endif
 
-#ifndef TESTING
+#if !defined(TESTING) && !defined(USERMODE_APP)
 
 typedef long ssize_t; // signed pointer-size integer
 typedef unsigned long size_t; // unsigned pointer-size integer
@@ -150,7 +150,7 @@ typedef u64 uint64_t;
 #include <stddef.h>
 #endif
 
-#endif
+#endif // !defined(TESTING) && !defined(USERMODE_APP)
 
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));

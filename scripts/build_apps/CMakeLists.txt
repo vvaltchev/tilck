@@ -1,10 +1,32 @@
 cmake_minimum_required(VERSION 3.2)
 
-file(GLOB SOURCES "elfhack.c")
+file(GLOB ELFHACK_SOURCES "elfhack.c")
 
-add_executable(
+add_executable(elfhack ${ELFHACK_SOURCES})
 
-   elfhack
-
-   ${SOURCES}
+file(
+   GLOB FAT_GET_USED_BYTES_SRC
+   "fat_get_used_bytes.c"
+   "${CMAKE_SOURCE_DIR}/common/*.c"
 )
+
+add_executable(fat_get_used_bytes ${FAT_GET_USED_BYTES_SRC})
+
+target_include_directories(
+
+   fat_get_used_bytes
+
+   PUBLIC
+
+   ${CMAKE_SOURCE_DIR}/include
+)
+
+set_target_properties(
+
+   fat_get_used_bytes
+
+   PROPERTIES
+      COMPILE_FLAGS -DUSERMODE_APP
+
+)
+

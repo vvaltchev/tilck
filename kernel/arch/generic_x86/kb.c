@@ -289,7 +289,7 @@ void handle_key_pressed(u8 scancode)
    }
 
    if (capsLock) {
-      c = upper(c);
+      c = toupper(c);
    }
 
    if (c) {

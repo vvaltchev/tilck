@@ -95,11 +95,11 @@ int strncmp(const char *s1, const char *s2, size_t n)
 
 int stricmp(const char *s1, const char *s2)
 {
-   while(*s1 && lower(*s1) == lower(*s2)) {
+   while(*s1 && tolower(*s1) == tolower(*s2)) {
       s1++; s2++;
    }
 
-   return (int)lower(*s1) - (int)lower(*s2);
+   return (int)tolower(*s1) - (int)tolower(*s2);
 }
 
 /*

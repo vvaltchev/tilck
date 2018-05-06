@@ -358,7 +358,12 @@ int main(int argc, char **argv)
       show_help(argv);
    }
 
-   /* Do munmap only if vaddr != NULL */
+   /*
+    * Do munmap() only if vaddr != NULL.
+    * Reason: some functions (at the moment only drop_last_section()) may
+    * have their reasons for calling munmap() earlier. Do avoid double-calling
+    * it and getting an error, such functions will just set vaddr to NULL.
+    */
    if (vaddr && munmap(vaddr, MMAP_SIZE) < 0) {
       perror("munmap() failed");
    }
