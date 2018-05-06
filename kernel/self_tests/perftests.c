@@ -13,7 +13,7 @@
 extern int random_values[RANDOM_VALUES_COUNT];
 static void *allocations[10000];
 
-void selftest_kmalloc_perf_per_size(int size)
+static void kmalloc_perf_per_size(int size)
 {
    const int iters = size < 4096 ? 10000 : (size <= 16*KB ? 1000 : 100);
    u64 start, duration;
@@ -37,7 +37,7 @@ void selftest_kmalloc_perf_per_size(int size)
           iters, size, duration  / iters);
 }
 
-void selftest_kmalloc_perf()
+void selftest_kmalloc_perf(void)
 {
    const int iters = 1000;
 
@@ -65,7 +65,7 @@ void selftest_kmalloc_perf()
           iters * RANDOM_VALUES_COUNT, duration);
 
    for (int s = 32; s <= 256*KB; s *= 2) {
-      selftest_kmalloc_perf_per_size(s);
+      kmalloc_perf_per_size(s);
    }
 }
 
@@ -86,9 +86,9 @@ static uptr block_paddrs[1024];
 extern u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
 
 
-void
-selftest_alloc_pageframe_perf_perc_free(const int free_perc_threshold,
-                                          const bool alloc_128k)
+static void
+alloc_pageframe_perf_perc_free(const int free_perc_threshold,
+                                        const bool alloc_128k)
 {
    const u32 max_pages = MAX_MEM_SIZE_IN_MB * MB / PAGE_SIZE;
    uptr *paddrs = kmalloc(max_pages * sizeof(uptr));
@@ -293,16 +293,16 @@ void selftest_alloc_pageframe_perf(void)
 
    kfree2(paddrs, max_pages * sizeof(uptr));
 
-   selftest_alloc_pageframe_perf_perc_free(1, false);
-   selftest_alloc_pageframe_perf_perc_free(2, false);
-   selftest_alloc_pageframe_perf_perc_free(5, false);
-   selftest_alloc_pageframe_perf_perc_free(10, false);
-   selftest_alloc_pageframe_perf_perc_free(20, false);
-   selftest_alloc_pageframe_perf_perc_free(40, false);
+   alloc_pageframe_perf_perc_free(1, false);
+   alloc_pageframe_perf_perc_free(2, false);
+   alloc_pageframe_perf_perc_free(5, false);
+   alloc_pageframe_perf_perc_free(10, false);
+   alloc_pageframe_perf_perc_free(20, false);
+   alloc_pageframe_perf_perc_free(40, false);
 
    printk("\nAllocation of blocks of 32-pageframes:\n");
 
    // Allocation of 128 K blocks.
-   selftest_alloc_pageframe_perf_perc_free(10, true);
-   selftest_alloc_pageframe_perf_perc_free(20, true);
+   alloc_pageframe_perf_perc_free(10, true);
+   alloc_pageframe_perf_perc_free(20, true);
 }
