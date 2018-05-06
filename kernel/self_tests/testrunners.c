@@ -97,12 +97,18 @@ void sleeping_kthread(void *arg)
    u64 after = get_ticks();
    u64 elapsed = after - before;
 
-   printk("[Sleeping kthread] elapsed ticks: %llu (expected: %llu)\n",
+   printk("[sleeping_kthread] elapsed ticks: %llu (expected: %llu)\n",
           elapsed, wait_ticks);
 
-   ASSERT((elapsed - wait_ticks) <= 2);
+   VERIFY((elapsed - wait_ticks) <= 2);
+
+   debug_qemu_turn_off_machine();
 }
 
+void selftest_kernel_sleep(void)
+{
+   kthread_create(sleeping_kthread, (void *)TIMER_HZ);
+}
 
 static kmutex test_mutex = { 0 };
 
@@ -113,7 +119,7 @@ void test_kmutex_thread(void *arg)
    kmutex_lock(&test_mutex);
 
    printk("%i) under lock..\n", arg);
-   for (int i=0; i < 1024*1024*1024; i++) { }
+   for (int i=0; i < 256*MB; i++) { }
 
    kmutex_unlock(&test_mutex);
 
@@ -130,18 +136,15 @@ void test_kmutex_thread_trylock()
 
       printk("3) trylock SUCCEEDED: under lock..\n");
 
-      if (locked) {
-         kmutex_unlock(&test_mutex);
-      }
+      kmutex_unlock(&test_mutex);
 
       printk("3) after lock\n");
 
    } else {
-      printk("trylock returned FALSE\n");
+      printk("3) trylock returned FALSE\n");
    }
 }
 
-// The test does NOT work as expected. TODO: fix the issue.
 void selftest_kmutex()
 {
    kmutex_init(&test_mutex);

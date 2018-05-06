@@ -31,7 +31,9 @@ selftests = [
    'fault_resumable',
    'fault_resumable_perf',
    'kthread',
-   'tasklet'
+   'tasklet',
+   'kmutex',
+   'kernel_sleep'
 ]
 
 def run_test(test_type, test):
