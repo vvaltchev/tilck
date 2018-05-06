@@ -2,17 +2,13 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 #include <common/utils.h>
-#include <common/arch/generic_x86/x86_utils.h>
 
+#include <exos/hal.h>
 #include <exos/kmalloc.h>
 #include <exos/paging.h>
 #include <exos/pageframe_allocator.h>
 
-#define RANDOM_VALUES_COUNT 1000
-
-extern int random_values[RANDOM_VALUES_COUNT];
-extern void *allocations[10000];
-
+#include "se_data.h"
 
 static int calc_perc_free_pageframes(void)
 {
@@ -187,6 +183,7 @@ alloc_pageframe_perf_perc_free(const int free_perc_threshold,
    kfree2(paddrs, max_pages * sizeof(uptr));
 }
 
+// This perf test leads to a KVM internal error. TODO: investigate and fix.
 void selftest_alloc_pageframe_perf(void)
 {
    u32 allocated = 0;

@@ -1,16 +1,12 @@
 
-
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 #include <common/utils.h>
-#include <common/arch/generic_x86/x86_utils.h>
 
+#include <exos/hal.h>
 #include <exos/kmalloc.h>
 
-#define RANDOM_VALUES_COUNT 1000
-
-extern int random_values[RANDOM_VALUES_COUNT];
-extern void *allocations[10000];
+#include "se_data.h"
 
 static void kmalloc_perf_per_size(int size)
 {
