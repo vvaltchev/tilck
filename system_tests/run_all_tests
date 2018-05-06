@@ -30,7 +30,8 @@ shell_cmd_tests = [
 selftests = [
    'fault_resumable',
    'fault_resumable_perf',
-   'kthread'
+   'kthread',
+   'tasklet'
 ]
 
 def run_test(test_type, test):

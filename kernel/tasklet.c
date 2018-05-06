@@ -27,10 +27,8 @@ static kcond tasklet_cond;
 
 void init_tasklets()
 {
-   all_tasklets = kmalloc(sizeof(tasklet) * MAX_TASKLETS);
-
-   ASSERT(all_tasklets != NULL);
-   bzero(all_tasklets, sizeof(tasklet) * MAX_TASKLETS);
+   all_tasklets = kzmalloc(sizeof(tasklet) * MAX_TASKLETS);
+   VERIFY(all_tasklets != NULL); // This cannot be handled.
 
    kcond_init(&tasklet_cond);
    tasklet_runner_task = kthread_create(tasklet_runner_kthread, NULL);
