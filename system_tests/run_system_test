@@ -29,8 +29,6 @@ def RunTheVM():
    global shell_exit_code
 
 
-   print "Running the VM with shell command '{0}'...".format(sys.argv[1])
-   print "-"*80, "\n"
 
    args = ['qemu-system-i386',
            '-m', str(VM_MEMORY_SIZE_IN_MB),
@@ -42,16 +40,21 @@ def RunTheVM():
       args.append('-enable-kvm')
 
    if sys.argv[1] == 'shellcmd':
-      args.append('-initrd')
-      args.append(FATPART_FILE)
-      args.append('-append')
-      args.append('-cmd /sbin/init -- -c {0}'.format(sys.argv[2]))
+
+      print "Running the VM with shell command '{0}'...".format(sys.argv[1])
+
+      args += ['-initrd', FATPART_FILE,
+               '-append', '-cmd /sbin/init -- -c {0}'.format(sys.argv[2])]
+
    elif sys.argv[1] == 'selftest':
-      args.append('-append')
-      args.append('-s={0}'.format(sys.argv[2]))
+
+      print "Running the VM with selftest '{0}'...".format(sys.argv[1])
+      args += ['-append', '-s={0}'.format(sys.argv[2])]
+
    else:
       sys.exit(1)
 
+   print "-"*80, "\n"
    process = subprocess.Popen(args, stdout=subprocess.PIPE)
 
    for line in iter(process.stdout.readline,''):
