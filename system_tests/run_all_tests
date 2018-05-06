@@ -33,7 +33,8 @@ selftests = [
    'kthread',
    'tasklet',
    'kmutex',
-   'kernel_sleep'
+   'kernel_sleep',
+   'kmalloc_perf'
 ]
 
 def run_test(test_type, test):

@@ -62,4 +62,6 @@ void selftest_kmalloc_perf(void)
    for (int s = 32; s <= 256*KB; s *= 2) {
       kmalloc_perf_per_size(s);
    }
+
+   debug_qemu_turn_off_machine();
 }
