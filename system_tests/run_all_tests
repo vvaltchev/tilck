@@ -19,33 +19,34 @@ error_codes_strings = {
 
 
 shell_cmd_tests = [
-   'loop',
-   'fork_test',
-   'invalid_read',
-   'sysenter',
-   'sysenter_fork_test',
-   'syscall_perf'
+   ['invalid_read', 2],
+   ['sysenter', 2],
+   ['sysenter_fork_test', 2],
+   ['syscall_perf', 2],
+   ['loop', 8],
+   ['fork_test', 8],
 ]
 
 selftests = [
-   'fault_resumable',
-   'fault_resumable_perf',
-   'kthread',
-   'tasklet',
-   'kmutex',
-   'kernel_sleep',
-   'kmalloc_perf'
+   ['fault_resumable', 2],
+   ['fault_resumable_perf', 2],
+   ['tasklet', 2],
+   ['kernel_sleep', 2],
+   ['kmalloc_perf', 2],
+   ['kmutex', 8],
+   ['kthread', 8],
 ]
 
-def run_test(test_type, test):
+def run_test(test_type, test, timeout):
 
-   print "[ RUNNING ] {0}: '{1}'".format(test_type, x)
+   print "[ RUNNING ] {0}: '{1}' [timeout: {2}]".format(test_type, x[0], x[1])
    start_time = time.time()
 
    try:
       output = subprocess.check_output(['./system_tests/runtest',
                                         test_type,
-                                        test],
+                                        test,
+                                        str(timeout)],
                                         stderr=subprocess.STDOUT)
    except subprocess.CalledProcessError as e:
       elapsed = time.time() - start_time
@@ -62,15 +63,15 @@ def run_test(test_type, test):
 
 print "\n*********** MASTER EXOS SYSTEM TESTS RUNNER ************\n"
 
-shell_cmd_tests_passed = 0
 selftests_passed = 0
+shell_cmd_tests_passed = 0
 
 for x in selftests:
-   if run_test('selftest', x):
+   if run_test('selftest', x[0], x[1]):
       selftests_passed += 1
 
 for x in shell_cmd_tests:
-   if run_test('shellcmd', x):
+   if run_test('shellcmd', x[0], x[1]):
       shell_cmd_tests_passed += 1
 
 print "-"*80, "\n"

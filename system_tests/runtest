@@ -96,15 +96,17 @@ def RunTheVM():
 
 def show_help_and_exit():
    print "Syntax: "
-   print "  run_system_test selftest <selftest name>"
-   print "  run_system_test shellcmd <shell cmd name>"
+   print "  run_system_test selftest <selftest name> <timeout>"
+   print "  run_system_test shellcmd <shell cmd name> <timeout>"
    sys.exit(1)
 
-if len(sys.argv) < 3:
+if len(sys.argv) < 4:
    show_help_and_exit()
 
 if sys.argv[1] not in ['selftest', 'shellcmd']:
    show_help_and_exit()
+
+TIMEOUT = int(sys.argv[3])
 
 thread = threading.Thread(target = RunTheVM)
 thread.start()
