@@ -29,7 +29,6 @@ extern size_t ramdisk_size;
 
 /* Variables used by the cmdline parsing code */
 
-extern bool no_init;
 extern void (*self_test_to_run)(void);
 extern const char *const cmd_args[16];
 
@@ -115,6 +114,11 @@ sptr sys_execve(const char *filename,
                 const char *const *argv,
                 const char *const *env);
 
+void selftest_runner_thread()
+{
+   self_test_to_run();
+}
+
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    init_term(&x86_pc_text_mode_vi, make_color(COLOR_WHITE, COLOR_BLACK));
@@ -148,15 +152,16 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_tty();
 
    if (self_test_to_run) {
-      self_test_to_run();
+      VERIFY(kthread_create(selftest_runner_thread, NULL) != NULL);
+      switch_to_idle_task_outside_interrupt_context();
    }
 
-   if (ramdisk_size && !no_init) {
-      enable_preemption();
-      push_nested_interrupt(-1);
-      sptr rc = sys_execve(cmd_args[0], cmd_args, NULL);
-      panic("execve('%s') failed with %i\n", cmd_args[0], rc);
+   if (!ramdisk_size) {
+      panic("No ramdisk and not selftest requested. Nothing to do.");
    }
 
-   switch_to_idle_task_outside_interrupt_context();
+   enable_preemption();
+   push_nested_interrupt(-1);
+   sptr rc = sys_execve(cmd_args[0], cmd_args, NULL);
+   panic("execve('%s') failed with %i\n", cmd_args[0], rc);
 }

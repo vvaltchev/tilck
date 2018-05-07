@@ -4,7 +4,6 @@
 
 #include <exos/debug_utils.h>
 
-bool no_init;
 void (*self_test_to_run)(void);
 const char *cmd_args[16] = { "/sbin/init", [1 ... 15] = NULL };
 
@@ -30,11 +29,6 @@ void use_kernel_arg(int arg_num, const char *arg)
       memcpy(args_buffer + args_buffer_used, arg, arg_len + 1);
       cmd_args[custom_cmd_arg++] = args_buffer + args_buffer_used;
       args_buffer_used += arg_len + 1;
-      return;
-   }
-
-   if (!strcmp(arg, "-noinit")) {
-      no_init = true;
       return;
    }
 

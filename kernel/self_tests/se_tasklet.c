@@ -13,7 +13,7 @@ static void test_tasklet_func()
    }
 }
 
-static void tasklet_test_thread(void *unused)
+static void selftest_tasklet(void)
 {
    const int tot_iters = MAX_TASKLETS * 10;
    printk("[selftest_tasklet] BEGIN\n");
@@ -39,9 +39,4 @@ static void tasklet_test_thread(void *unused)
 
    printk("[selftest_tasklet] COMPLETED\n");
    debug_qemu_turn_off_machine();
-}
-
-void selftest_tasklet(void)
-{
-   kthread_create(tasklet_test_thread, NULL);
 }

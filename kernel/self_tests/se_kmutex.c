@@ -43,7 +43,7 @@ static void test_kmutex_thread_trylock()
    }
 }
 
-void thread_for_kmutex_selftest()
+void selftest_kmutex()
 {
    kmutex_init(&test_mutex);
 
@@ -58,9 +58,4 @@ void thread_for_kmutex_selftest()
    join_kernel_thread(tid4);
 
    debug_qemu_turn_off_machine();
-}
-
-void selftest_kmutex(void)
-{
-   kthread_create(thread_for_kmutex_selftest, NULL);
 }

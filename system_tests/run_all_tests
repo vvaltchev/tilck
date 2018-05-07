@@ -36,6 +36,7 @@ selftests = [
    ['kmalloc_perf', 2],
    ['alloc_pageframe_perf', 2],
    ['kcond', 2],
+   ['join', 8],
    ['kmutex', 8],
    ['kthread', 8],
 ]

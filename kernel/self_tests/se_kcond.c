@@ -64,7 +64,7 @@ static void kcond_thread_signal_generator()
    enable_preemption();
 }
 
-void thread_for_kcond_selftest()
+void selftest_kcond()
 {
    kmutex_init(&cond_mutex);
    kcond_init(&cond);
@@ -78,9 +78,4 @@ void thread_for_kcond_selftest()
    join_kernel_thread(tid3);
 
    debug_qemu_turn_off_machine();
-}
-
-void selftest_kcond(void)
-{
-   kthread_create(thread_for_kcond_selftest, NULL);
 }

@@ -52,9 +52,9 @@ void selftest_kthread(void)
    kthread_create(simple_test_kthread, (void *)1);
 }
 
-void sleeping_kthread(void *arg)
+void selftest_kernel_sleep()
 {
-   u64 wait_ticks = (uptr) arg;
+   const u64 wait_ticks = TIMER_HZ;
    u64 before = get_ticks();
 
    kernel_sleep(wait_ticks);
@@ -70,27 +70,18 @@ void sleeping_kthread(void *arg)
    debug_qemu_turn_off_machine();
 }
 
-void selftest_kernel_sleep(void)
+void selftest_panic(void)
 {
-   kthread_create(sleeping_kthread, (void *)TIMER_HZ);
-}
+   printk("[panic selftest] In a while, I'll panic\n");
 
-
-void kthread_panic(void)
-{
-   for (int i = 0; i < 1000*1000*1000; i++) {
+   for (int i = 0; i < 500*1000*1000; i++) {
       asmVolatile("nop");
    }
 
    panic("test panic");
 }
 
-void selftest_panic(void)
-{
-   kthread_create(&kthread_panic, NULL);
-}
-
-void thread_for_join_selftest()
+void selftest_join()
 {
    printk("[selftest join] create the simple thread\n");
 
@@ -104,7 +95,3 @@ void thread_for_join_selftest()
    debug_qemu_turn_off_machine();
 }
 
-void selftest_join(void)
-{
-   kthread_create(thread_for_join_selftest, NULL);
-}
