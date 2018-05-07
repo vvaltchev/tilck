@@ -41,7 +41,7 @@ void simple_test_kthread(void *arg)
 
    printk("[kthread] completed\n");
 
-   if ((int)arg == 1) {
+   if ((uptr)arg == 1) {
       printk("[kthread] DEBUG QEMU turn off machine\n");
       debug_qemu_turn_off_machine();
    }
