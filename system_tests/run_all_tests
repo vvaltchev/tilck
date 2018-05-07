@@ -21,10 +21,11 @@ error_codes_strings = {
 shell_cmd_tests = [
    ['invalid_read', 2],
    ['sysenter', 2],
-   ['sysenter_fork_test', 2],
    ['syscall_perf', 2],
    ['loop', 8],
    ['fork_test', 8],
+   ['sysenter_fork_test', 8],
+   ['fork_perf', 14],
 ]
 
 selftests = [
@@ -63,20 +64,32 @@ def run_test(test_type, test, timeout):
 
 print "\n*********** MASTER EXOS SYSTEM TESTS RUNNER ************\n"
 
+max_test_timeout = 8
+
+selftests_to_run = 0
 selftests_passed = 0
+
+shell_cmd_tests_to_run = 0
 shell_cmd_tests_passed = 0
 
+if len(sys.argv) == 2:
+   max_test_timeout = int(sys.argv[1])
+
 for x in selftests:
-   if run_test('selftest', x[0], x[1]):
-      selftests_passed += 1
+   if x[1] <= max_test_timeout:
+      selftests_to_run += 1
+      if run_test('selftest', x[0], x[1]):
+         selftests_passed += 1
 
 for x in shell_cmd_tests:
-   if run_test('shellcmd', x[0], x[1]):
-      shell_cmd_tests_passed += 1
+   if x[1] <= max_test_timeout:
+      shell_cmd_tests_to_run += 1
+      if run_test('shellcmd', x[0], x[1]):
+         shell_cmd_tests_passed += 1
 
-print "-"*80, "\n"
+print "-" * 80, "\n"
 print "Shell cmd tests passed: {0}/{1}".format(shell_cmd_tests_passed,
-                                               len(shell_cmd_tests))
+                                               shell_cmd_tests_to_run)
 
 print "Selftests passed: {0}/{1}".format(selftests_passed,
-                                         len(selftests))
+                                         selftests_to_run)

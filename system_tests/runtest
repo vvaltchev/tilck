@@ -8,18 +8,22 @@ import signal
 import subprocess
 import threading
 
-TEST_TIMEOUT = 8
-VM_MEMORY_SIZE_IN_MB = 256
-KERNEL_HELLO_MSG = 'Hello from exOS!'
-KERNEL_FILE = './build/elf_kernel_stripped'
-FATPART_FILE = './build/fatpart'
-
 # Fail codes:
 FAIL_SUCCESS = 0
 FAIL_REBOOT = 2
 FAIL_TIMEOUT = 3
 FAIL_PANIC = 4
 FAIL_SHELL_NO_ZERO_EXIT = 5
+##################################
+
+TEST_TIMEOUT = 8
+TEST_TYPE = None
+
+VM_MEMORY_SIZE_IN_MB = 256
+KERNEL_HELLO_MSG = 'Hello from exOS!'
+KERNEL_FILE = './build/elf_kernel_stripped'
+FATPART_FILE = './build/fatpart'
+
 
 output = ""
 process = None
@@ -46,17 +50,17 @@ def RunTheVM():
    if not os.environ.get('TRAVIS', False):
       args.append('-enable-kvm')
 
-   if sys.argv[1] == 'shellcmd':
+   if TEST_TYPE == 'shellcmd':
 
-      print "Running the VM with shell command '{0}'...".format(sys.argv[2])
+      print "Running the VM with shell command '{0}'...".format(TEST_NAME)
 
       args += ['-initrd', FATPART_FILE,
-               '-append', '-cmd /sbin/init -- -c {0}'.format(sys.argv[2])]
+               '-append', '-cmd /sbin/init -- -c {0}'.format(TEST_NAME)]
 
-   elif sys.argv[1] == 'selftest':
+   elif TEST_TYPE == 'selftest':
 
-      print "Running the VM with selftest '{0}'...".format(sys.argv[2])
-      args += ['-append', '-s={0}'.format(sys.argv[2])]
+      print "Running the VM with selftest '{0}'...".format(TEST_NAME)
+      args += ['-append', '-s={0}'.format(TEST_NAME)]
 
    else:
       sys.exit(1)
@@ -96,8 +100,8 @@ def RunTheVM():
 
 def show_help_and_exit():
    print "Syntax: "
-   print "  run_system_test selftest <selftest name> <timeout>"
-   print "  run_system_test shellcmd <shell cmd name> <timeout>"
+   print "  run_system_test selftest <name> <timeout>"
+   print "  run_system_test shellcmd <name> <timeout>"
    sys.exit(1)
 
 if len(sys.argv) < 4:
@@ -106,7 +110,9 @@ if len(sys.argv) < 4:
 if sys.argv[1] not in ['selftest', 'shellcmd']:
    show_help_and_exit()
 
-TIMEOUT = int(sys.argv[3])
+TEST_TYPE = sys.argv[1]
+TEST_NAME = sys.argv[2]
+TEST_TIMEOUT = int(sys.argv[3])
 
 thread = threading.Thread(target = RunTheVM)
 thread.start()
