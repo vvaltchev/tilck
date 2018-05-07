@@ -24,12 +24,12 @@ static void print_free_pageframes(void)
 }
 
 static uptr block_paddrs[1024];
-extern u32 pageframes_bitfield[8 * MAX_MEM_SIZE_IN_MB];
+extern u32 pageframes_bitfield[8 * (MAX_MEM_SIZE_IN_MB - LINEAR_MAPPING_MB)];
 
 
 static void
 alloc_pageframe_perf_perc_free(const int free_perc_threshold,
-                                        const bool alloc_128k)
+                               const bool alloc_128k)
 {
    const u32 max_pages = MAX_MEM_SIZE_IN_MB * MB / PAGE_SIZE;
    uptr *paddrs = kmalloc(max_pages * sizeof(uptr));
@@ -183,11 +183,18 @@ alloc_pageframe_perf_perc_free(const int free_perc_threshold,
    kfree2(paddrs, max_pages * sizeof(uptr));
 }
 
-// This perf test leads to a KVM internal error. TODO: investigate and fix.
 void selftest_alloc_pageframe_perf(void)
 {
+   /*
+    * HACK: make memsize_in_mb = LINEAR_MAPPING_MB + 128, in order to test
+    * the performance of the physical pageframe allocator with 128 MB to
+    * operate with.
+    */
+
+   memsize_in_mb = LINEAR_MAPPING_MB + 128;
+
    u32 allocated = 0;
-   const u32 max_pages = MAX_MEM_SIZE_IN_MB * MB / PAGE_SIZE;
+   const u32 max_pages = 128 * MB / PAGE_SIZE;
    uptr *paddrs = kmalloc(max_pages * sizeof(uptr));
 
    u64 start, duration;
@@ -247,4 +254,6 @@ void selftest_alloc_pageframe_perf(void)
    // Allocation of 128 K blocks.
    alloc_pageframe_perf_perc_free(10, true);
    alloc_pageframe_perf_perc_free(20, true);
+
+   debug_qemu_turn_off_machine();
 }

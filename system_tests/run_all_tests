@@ -34,6 +34,7 @@ selftests = [
    ['tasklet', 2],
    ['kernel_sleep', 2],
    ['kmalloc_perf', 2],
+   ['alloc_pageframe_perf', 2],
    ['kmutex', 8],
    ['kthread', 8],
 ]

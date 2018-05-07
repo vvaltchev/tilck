@@ -30,7 +30,10 @@ u32 memsize_in_mb = 128;
 int pageframes_used;
 static u32 last_index;
 
-#define BITFIELD_ELEMS ((memsize_in_mb - LINEAR_MAPPING_MB) * 8)
+#define BITFIELD_ELEMS                              \
+   (8 * (memsize_in_mb > LINEAR_MAPPING_MB          \
+            ? (memsize_in_mb - LINEAR_MAPPING_MB)   \
+            : 0))
 
 void init_pageframe_allocator(void)
 {
