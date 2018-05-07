@@ -191,6 +191,7 @@ void kthread_exit(void);
 void kernel_yield(void);
 
 void kernel_sleep(u64 ticks);
+void join_kernel_thread(int tid);
 
 int set_task_to_wake_after(task_info *task, u64 ticks);
 void cancel_timer(int timer_num);

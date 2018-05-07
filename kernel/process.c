@@ -307,6 +307,22 @@ sptr sys_getpid()
    return get_curr_task()->owning_process_pid;
 }
 
+void join_kernel_thread(int tid)
+{
+   ASSERT(is_preemption_enabled());
+
+   task_info *ti = get_task(tid);
+
+   if (!ti)
+      return; /* the thread already exited */
+
+   while (get_task(tid) != NULL) {
+      wait_obj_set(&get_curr_task()->wobj, WOBJ_TASK, ti);
+      task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+      kernel_yield();
+   }
+}
+
 sptr sys_waitpid(int pid, int *wstatus, int options)
 {
    ASSERT(are_interrupts_enabled());

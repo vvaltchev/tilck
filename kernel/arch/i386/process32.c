@@ -129,9 +129,16 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
 
 void kthread_exit(void)
 {
+   task_info *pos;
    disable_preemption();
 
-   //printk("[kthread exit] tid: %i\n", current->tid);
+   list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
+      if (pos->wobj.ptr == get_curr_task()) {
+         ASSERT(pos->wobj.type == WOBJ_TASK);
+         wait_obj_reset(&pos->wobj);
+         task_change_state(pos, TASK_STATE_RUNNABLE);
+      }
+   }
 
    task_change_state(get_curr_task(), TASK_STATE_ZOMBIE);
 
