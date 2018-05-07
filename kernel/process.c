@@ -325,7 +325,7 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
       while (waited_task->state != TASK_STATE_ZOMBIE) {
 
          wait_obj_set(&get_curr_task()->wobj,
-                      WOBJ_PID,
+                      WOBJ_TASK,
                       (task_info *)waited_task);
          task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
          kernel_yield();
@@ -391,7 +391,7 @@ NORETURN void sys_exit(int exit_status)
       ASSERT(pos->state == TASK_STATE_SLEEPING);
 
       if (pos->wobj.ptr == curr) {
-         ASSERT(pos->wobj.type == WOBJ_PID);
+         ASSERT(pos->wobj.type == WOBJ_TASK);
          wait_obj_reset(&pos->wobj);
          task_change_state(pos, TASK_STATE_RUNNABLE);
       }
