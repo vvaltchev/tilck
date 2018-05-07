@@ -43,11 +43,24 @@ static void test_kmutex_thread_trylock()
    }
 }
 
-void selftest_kmutex()
+void thread_for_kmutex_selftest()
 {
    kmutex_init(&test_mutex);
-   kthread_create(&simple_test_kthread, (void*)0xAA1234BB);
-   kthread_create(test_kmutex_thread, (void *)1);
-   kthread_create(test_kmutex_thread, (void *)2);
-   kthread_create(test_kmutex_thread_trylock, NULL);
+
+   int tid1 = kthread_create(&simple_test_kthread, NULL)->tid;
+   int tid2 = kthread_create(test_kmutex_thread, (void *)1)->tid;
+   int tid3 = kthread_create(test_kmutex_thread, (void *)2)->tid;
+   int tid4 = kthread_create(test_kmutex_thread_trylock, NULL)->tid;
+
+   join_kernel_thread(tid1);
+   join_kernel_thread(tid2);
+   join_kernel_thread(tid3);
+   join_kernel_thread(tid4);
+
+   debug_qemu_turn_off_machine();
+}
+
+void selftest_kmutex(void)
+{
+   kthread_create(thread_for_kmutex_selftest, NULL);
 }

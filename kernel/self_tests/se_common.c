@@ -39,12 +39,17 @@ void simple_test_kthread(void *arg)
       }
    }
 
-   debug_qemu_turn_off_machine();
+   printk("[kthread] completed\n");
+
+   if ((int)arg == 1) {
+      printk("[kthread] DEBUG QEMU turn off machine\n");
+      debug_qemu_turn_off_machine();
+   }
 }
 
 void selftest_kthread(void)
 {
-   kthread_create(simple_test_kthread, (void *)0xAA0011FF);
+   kthread_create(simple_test_kthread, (void *)1);
 }
 
 void sleeping_kthread(void *arg)
@@ -83,4 +88,23 @@ void kthread_panic(void)
 void selftest_panic(void)
 {
    kthread_create(&kthread_panic, NULL);
+}
+
+void thread_for_join_selftest()
+{
+   printk("[selftest join] create the simple thread\n");
+
+   task_info *ti = kthread_create(simple_test_kthread, (void *)0xAA0011FF);
+
+   printk("[selftest join] join()\n");
+
+   join_kernel_thread(ti->tid);
+
+   printk("[selftest join] kernel thread exited\n");
+   debug_qemu_turn_off_machine();
+}
+
+void selftest_join(void)
+{
+   kthread_create(thread_for_join_selftest, NULL);
 }

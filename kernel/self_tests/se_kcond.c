@@ -64,13 +64,23 @@ static void kcond_thread_signal_generator()
    enable_preemption();
 }
 
-// TODO: make this selftest to terminate at the right moment (implement join)
-void selftest_kcond(void)
+void thread_for_kcond_selftest()
 {
    kmutex_init(&cond_mutex);
    kcond_init(&cond);
 
-   kthread_create(&kcond_thread_test, (void*) 1);
-   kthread_create(&kcond_thread_test, (void*) 2);
-   kthread_create(&kcond_thread_signal_generator, NULL);
+   int tid1 = kthread_create(&kcond_thread_test, (void*) 1)->tid;
+   int tid2 = kthread_create(&kcond_thread_test, (void*) 2)->tid;
+   int tid3 = kthread_create(&kcond_thread_signal_generator, NULL)->tid;
+
+   join_kernel_thread(tid1);
+   join_kernel_thread(tid2);
+   join_kernel_thread(tid3);
+
+   debug_qemu_turn_off_machine();
+}
+
+void selftest_kcond(void)
+{
+   kthread_create(thread_for_kcond_selftest, NULL);
 }
