@@ -33,18 +33,6 @@ static u8 shortname_checksum(u8 *shortname)
    return sum;
 }
 
-static void reverse_long_name(fat_walk_dir_ctx *ctx)
-{
-   char tmp[256] = {0};
-   int di = 0;
-
-   for (int i = ctx->long_name_size-1; i >= 0; i--)
-      tmp[di++] = ctx->long_name_buf[i];
-
-   for (int i = 0; i < ctx->long_name_size; i++)
-      ctx->long_name_buf[i] = tmp[i];
-}
-
 static const bool fat32_valid_chars[256] =
 {
    [0 ... 32] = 0,
@@ -300,7 +288,8 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
 
             s16 entry_checksum = shortname_checksum(entry[i].DIR_Name);
             if (ctx->long_name_chksum == entry_checksum) {
-               reverse_long_name(ctx);
+               ctx->long_name_buf[ctx->long_name_size] = 0;
+               str_reverse((char *)ctx->long_name_buf, ctx->long_name_size);
                long_name_ptr = (const char *) ctx->long_name_buf;
             }
          }
