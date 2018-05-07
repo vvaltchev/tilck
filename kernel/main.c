@@ -157,7 +157,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    }
 
    if (!ramdisk_size) {
-      panic("No ramdisk and not selftest requested. Nothing to do.");
+      panic("No ramdisk and no selftest requested: nothing to do.");
    }
 
    enable_preemption();
