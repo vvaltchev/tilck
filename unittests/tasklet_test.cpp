@@ -33,13 +33,6 @@ class tasklet_test : public Test {
    }
 };
 
-void simple_func(void *p1, void *p2, void *p3)
-{
-   ASSERT_EQ(p1, (void*) 1);
-   ASSERT_EQ(p2, (void*) 2);
-   ASSERT_EQ(p3, (void*) 3);
-}
-
 void simple_func2(void *p1, void *p2)
 {
    ASSERT_EQ(p1, (void*) 1);
@@ -54,10 +47,6 @@ void simple_func1(void *p1)
 TEST_F(tasklet_test, essential)
 {
    bool res = false;
-
-   ASSERT_TRUE(enqueue_tasklet3(&simple_func, 1, 2, 3));
-   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
-   ASSERT_TRUE(res);
 
    ASSERT_TRUE(enqueue_tasklet2(&simple_func2, 1, 2));
    ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
@@ -74,11 +63,11 @@ TEST_F(tasklet_test, base)
    bool res;
 
    for (int i = 0; i < MAX_TASKLETS; i++) {
-      res = enqueue_tasklet3(&simple_func, 1, 2, 3);
+      res = enqueue_tasklet2(&simple_func2, 1, 2);
       ASSERT_TRUE(res);
    }
 
-   res = enqueue_tasklet3(&simple_func, 1, 2, 3);
+   res = enqueue_tasklet2(&simple_func2, 1, 2);
 
    // There is no more space left, expecting the ADD failed.
    ASSERT_FALSE(res);
@@ -101,7 +90,7 @@ TEST_F(tasklet_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < MAX_TASKLETS/2; i++) {
-      res = enqueue_tasklet3(&simple_func, 1, 2, 3);
+      res = enqueue_tasklet2(&simple_func2, 1, 2);
       ASSERT_TRUE(res);
    }
 
@@ -113,7 +102,7 @@ TEST_F(tasklet_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < MAX_TASKLETS/2; i++) {
-      res = enqueue_tasklet3(&simple_func, 1, 2, 3);
+      res = enqueue_tasklet2(&simple_func2, 1, 2);
       ASSERT_TRUE(res);
    }
 
@@ -125,7 +114,7 @@ TEST_F(tasklet_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < MAX_TASKLETS/2; i++) {
-      res = enqueue_tasklet3(&simple_func, 1, 2, 3);
+      res = enqueue_tasklet2(&simple_func2, 1, 2);
       ASSERT_TRUE(res);
    }
 
@@ -161,11 +150,11 @@ TEST_F(tasklet_test, chaos)
       for (int i = 0; i < c; i++) {
 
          if (slots_used == MAX_TASKLETS) {
-            ASSERT_FALSE(enqueue_tasklet3(&simple_func, NULL, NULL, NULL));
+            ASSERT_FALSE(enqueue_tasklet2(&simple_func2, NULL, NULL));
             break;
          }
 
-         res = enqueue_tasklet3(&simple_func, 1, 2, 3);
+         res = enqueue_tasklet2(&simple_func2, 1, 2);
          ASSERT_TRUE(res);
          slots_used++;
       }

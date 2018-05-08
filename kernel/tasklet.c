@@ -8,7 +8,7 @@
 #include <exos/sync.h>
 #include <exos/process.h>
 
-typedef void (*tasklet_func)(uptr, uptr, uptr);
+typedef void (*tasklet_func)(uptr, uptr);
 
 typedef struct {
 
@@ -25,17 +25,18 @@ static int slots_used;
 static int tasklet_to_execute;
 static kcond tasklet_cond;
 
-void init_tasklets()
+void init_tasklets(void)
 {
    all_tasklets = kzmalloc(sizeof(tasklet) * MAX_TASKLETS);
    VERIFY(all_tasklets != NULL); // This cannot be handled.
 
    kcond_init(&tasklet_cond);
    tasklet_runner_task = kthread_create(tasklet_runner_kthread, NULL);
+   VERIFY(tasklet_runner_task != NULL); // This cannot be handled.
 }
 
 
-bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
+bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2)
 {
    uptr var;
    disable_interrupts(&var);
@@ -51,7 +52,6 @@ bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2, uptr arg3)
    all_tasklets[first_free_slot_index].fptr = (tasklet_func)func;
    all_tasklets[first_free_slot_index].ctx.arg1 = arg1;
    all_tasklets[first_free_slot_index].ctx.arg2 = arg2;
-   all_tasklets[first_free_slot_index].ctx.arg3 = arg3;
 
    first_free_slot_index = (first_free_slot_index + 1) % MAX_TASKLETS;
    slots_used++;
@@ -98,7 +98,7 @@ bool run_one_tasklet(void)
    enable_interrupts(&var);
 
    /* Execute the tasklet with preemption ENABLED */
-   t.fptr(t.ctx.arg1, t.ctx.arg2, t.ctx.arg3);
+   t.fptr(t.ctx.arg1, t.ctx.arg2);
 
    return true;
 }
