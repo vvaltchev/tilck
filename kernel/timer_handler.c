@@ -7,8 +7,7 @@
 #include <exos/irq.h>
 
 /*
- * This will keep track of how many ticks that the system
- * has been running for.
+ * This will keep track of how many ticks that the system has been running for.
  */
 volatile u64 jiffies;
 
@@ -23,27 +22,17 @@ typedef struct {
 
 kthread_timer_sleep_obj timers_array[64];
 
-/*
- * TODO: consider making this logic reentrant: avoid disabling interrupts
- * and disable just the preemption.
- */
-
 int set_task_to_wake_after(task_info *task, u64 ticks)
 {
-   uptr var;
-   disable_interrupts(&var);
-   {
-      for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
-         if (!timers_array[i].task) {
-            timers_array[i].ticks_to_sleep = ticks;
-            timers_array[i].task = task;
-            task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
-            enable_interrupts(&var);
-            return i;
-         }
+   ASSERT(!in_irq());
+
+   for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
+      if (BOOL_COMPARE_AND_SWAP(&timers_array[i].task, NULL, task)) {
+         timers_array[i].ticks_to_sleep = ticks;
+         task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+         return i;
       }
    }
-   enable_interrupts(&var);
 
    // TODO: consider implementing a fallback here. For example use a linkedlist.
    panic("Unable to find a free slot in timers_array.");
@@ -51,16 +40,11 @@ int set_task_to_wake_after(task_info *task, u64 ticks)
 
 void cancel_timer(int timer_num)
 {
-   uptr var;
-   disable_interrupts(&var);
-   {
-      ASSERT(timers_array[timer_num].task != NULL);
-      timers_array[timer_num].task = NULL;
-   }
-   enable_interrupts(&var);
+   ASSERT(timers_array[timer_num].task != NULL);
+   timers_array[timer_num].task = NULL;
 }
 
-static task_info *tick_all_timers(void *context)
+static task_info *tick_all_timers(void)
 {
    task_info *last_ready_task = NULL;
 
@@ -95,7 +79,7 @@ void timer_handler(void *context)
    jiffies++;
 
    account_ticks();
-   task_info *last_ready_task = tick_all_timers(context);
+   task_info *last_ready_task = tick_all_timers();
 
    // [DEBUG] Useful to trigger nested printk calls
    // if (!(jiffies % 40)) {
@@ -105,9 +89,8 @@ void timer_handler(void *context)
    /*
     * Here we have to check that disabled_preemption_count is > 1, not > 0
     * since as the way the handle_irq() is implemented, that counter will be
-    * always 1 when this function is called. We have avoid calling schedule()
-    * if there has been another part of the code that disabled the preemption
-    * and we're running in a nested interrupt.
+    * always 1 when this function is called. We must not call schedule()
+    * if there has been another part of the code that disabled the preemption.
     */
    if (disable_preemption_count > 1) {
       return;
