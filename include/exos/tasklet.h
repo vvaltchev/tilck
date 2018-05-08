@@ -4,6 +4,12 @@
 
 #define MAX_TASKLETS 1000
 
+/*
+ * Because of the number of bits allocated in the implementation, MAX_TASKLETS
+ * cannot be more than 1000 on 32-bit systems.
+ */
+STATIC_ASSERT(MAX_TASKLETS <= 1000);
+
 typedef struct {
 
    uptr arg1;
@@ -16,7 +22,7 @@ void init_tasklets();
 
 NODISCARD bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2);
 bool run_one_tasklet(void);
-void tasklet_runner_kthread();
+void tasklet_runner_kthread(void);
 
 #define enqueue_tasklet2(f, a1, a2) \
    enqueue_tasklet_int((void *)(f), (uptr)(a1), (uptr)(a2))

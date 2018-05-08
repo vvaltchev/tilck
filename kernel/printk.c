@@ -162,7 +162,7 @@ typedef struct {
 } ringbuf_stat;
 
 static char printk_rbuf[1024];
-static ringbuf_stat printk_rbuf_stat;
+static volatile ringbuf_stat printk_rbuf_stat;
 
 /*
  * NOTE: the ring buf cannot be larger than 1024 elems because the fields

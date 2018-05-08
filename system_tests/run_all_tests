@@ -32,6 +32,7 @@ selftests = [
    ['fault_resumable', 2],
    ['fault_resumable_perf', 2],
    ['tasklet', 2],
+   ['tasklet_perf', 2],
    ['kernel_sleep', 2],
    ['kmalloc_perf', 2],
    ['alloc_pageframe_perf', 2],

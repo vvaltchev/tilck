@@ -8,46 +8,66 @@
 
 static volatile int counter = 0;
 static const int tot_iters = MAX_TASKLETS * 10;
+static u32 cycles_begin;
 
 static void test_tasklet_func()
 {
-   for (int i = 0; i < 10; i++) {
-      counter++;
-   }
+   counter++;
 }
 
 static void end_test()
 {
-   VERIFY(counter == tot_iters * 10);
-   printk("[selftest_tasklet] COMPLETED\n");
+   u64 elapsed = RDTSC() - cycles_begin;
+   VERIFY(counter == tot_iters);
+   printk("[selftest_tasklet] END\n");
+   printk("[selftest_tasklet] Avg cycles per tasklet "
+          "(enqueue + execute): %llu\n", elapsed/counter);
    debug_qemu_turn_off_machine();
 }
 
-static void selftest_tasklet(void)
+void selftest_tasklet(void)
 {
    bool added;
    counter = 0;
 
+   ASSERT(is_preemption_enabled());
    printk("[selftest_tasklet] BEGIN\n");
+
+   cycles_begin = RDTSC();
 
    for (int i = 0; i < tot_iters; i++) {
 
-      ASSERT(is_preemption_enabled());
-
       do {
-         disable_preemption();
          added = enqueue_tasklet0(&test_tasklet_func);
-         enable_preemption();
       } while (!added);
 
-      if (!(i % 1000)) {
-         printk("[selftest_tasklet] %i%%\n", (i*100)/tot_iters);
-      }
    }
 
    do {
-      disable_preemption();
       added = enqueue_tasklet0(&end_test);
-      enable_preemption();
    } while (!added);
+}
+
+void selftest_tasklet_perf(void)
+{
+   bool added;
+   int n = 0;
+
+   u64 start, elapsed;
+
+   start = RDTSC();
+
+   while (true) {
+
+      added = enqueue_tasklet0(&test_tasklet_func);
+
+      if (!added)
+         break;
+
+      n++;
+   }
+
+   elapsed = RDTSC() - start;
+   printk("Avg. tasklet enqueue cycles: %llu [%i tasklets]\n", elapsed/n, n);
+   debug_qemu_turn_off_machine();
 }
