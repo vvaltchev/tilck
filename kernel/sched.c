@@ -6,7 +6,7 @@
 #include <exos/kmalloc.h>
 #include <exos/process.h>
 #include <exos/hal.h>
-
+#include <exos/tasklet.h>
 
 #define TIME_SLOT_JIFFIES (TIMER_HZ / 50) /* 20 ms */
 
@@ -258,6 +258,9 @@ bool need_reschedule(void)
    task_info *curr = get_curr_task();
    ASSERT(curr != NULL);
 
+   if (!is_tasklet(curr) && any_tasklets_to_run())
+      return true;
+
    if (curr->time_slot_ticks < TIME_SLOT_JIFFIES &&
        curr->state == TASK_STATE_RUNNING) {
       return false;
@@ -308,6 +311,11 @@ void schedule(void)
    // If we preempted the process, it is still runnable.
    if (get_curr_task()->state == TASK_STATE_RUNNING) {
       task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
+   }
+
+   if (!is_tasklet(get_curr_task()) && any_tasklets_to_run()) {
+      /* tasklets have absolute priority */
+      switch_to_task(get_tasklet_runner());
    }
 
    list_for_each(pos, &runnable_tasks_list, runnable_list) {

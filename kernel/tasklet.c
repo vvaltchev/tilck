@@ -8,6 +8,8 @@
 #include <exos/sync.h>
 #include <exos/process.h>
 
+task_info *__tasklet_runner_task;
+
 typedef void (*tasklet_func)(uptr, uptr);
 
 typedef struct {
@@ -17,7 +19,6 @@ typedef struct {
 
 } tasklet;
 
-static task_info *tasklet_runner_task;
 static tasklet *all_tasklets;
 static kcond tasklet_cond;
 
@@ -39,6 +40,11 @@ typedef struct {
 
 static volatile ringbuf_stat tasklet_rbuf_stat;
 
+bool any_tasklets_to_run(void)
+{
+   return tasklet_rbuf_stat.used != 0;
+}
+
 void init_tasklets(void)
 {
    all_tasklets = kzmalloc(sizeof(tasklet) * MAX_TASKLETS);
@@ -46,10 +52,10 @@ void init_tasklets(void)
 
    kcond_init(&tasklet_cond);
 
-   tasklet_runner_task = kthread_create(tasklet_runner_kthread, NULL);
+   __tasklet_runner_task = kthread_create(tasklet_runner_kthread, NULL);
 
 #ifndef UNIT_TEST_ENVIRONMENT
-   VERIFY(tasklet_runner_task != NULL); // This cannot be handled.
+   VERIFY(__tasklet_runner_task != NULL); // This cannot be handled.
 #endif
 }
 
@@ -101,7 +107,7 @@ bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2)
     * here) but that's OK since the tasklet runner thread calls run_one_tasklet
     * in a while(true) loop and it uses a timeout.
     */
-   kcond_signal_single(&tasklet_cond, tasklet_runner_task);
+   kcond_signal_single(&tasklet_cond, __tasklet_runner_task);
 
 #endif
 
