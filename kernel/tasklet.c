@@ -45,8 +45,12 @@ void init_tasklets(void)
    VERIFY(all_tasklets != NULL); // This cannot be handled.
 
    kcond_init(&tasklet_cond);
+
    tasklet_runner_task = kthread_create(tasklet_runner_kthread, NULL);
+
+#ifndef UNIT_TEST_ENVIRONMENT
    VERIFY(tasklet_runner_task != NULL); // This cannot be handled.
+#endif
 }
 
 
