@@ -2,4 +2,4 @@
 
 BUILD_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 kfile=$BUILD_DIR/elf_kernel_stripped
-qemu-system-i386 -s -m 256 -kernel $kfile $@
+qemu-system-i386 -s -m 256 -kernel $kfile "$@"

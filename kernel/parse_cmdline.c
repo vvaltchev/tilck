@@ -66,7 +66,7 @@ void parse_kernel_cmdline(const char *cmdline)
 
    while (*ptr) {
 
-      if (*ptr == '+' || *ptr == ' ' || (dptr-buf >= (sptr)sizeof(buf)-1)) {
+      if (*ptr == ' ' || (dptr-buf >= (sptr)sizeof(buf)-1)) {
          *dptr = 0;
          dptr = buf;
          ptr++;

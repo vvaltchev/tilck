@@ -1,4 +1,4 @@
 #!/bin/bash
 
 BUILD_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-$BUILD_DIR/run_multiboot_nokvm_qemu -enable-kvm $@
+$BUILD_DIR/run_multiboot_nokvm_qemu -enable-kvm "$@"
