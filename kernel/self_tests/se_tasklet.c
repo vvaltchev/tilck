@@ -6,29 +6,37 @@
 #include <exos/tasklet.h>
 #include <exos/process.h>
 
+static volatile int counter = 0;
+static const int tot_iters = MAX_TASKLETS * 10;
+
 static void test_tasklet_func()
 {
    for (int i = 0; i < 10; i++) {
-      asmVolatile("nop");
+      counter++;
    }
+}
+
+static void end_test()
+{
+   VERIFY(counter == tot_iters * 10);
+   printk("[selftest_tasklet] COMPLETED\n");
+   debug_qemu_turn_off_machine();
 }
 
 static void selftest_tasklet(void)
 {
-   const int tot_iters = MAX_TASKLETS * 10;
+   bool added;
+   counter = 0;
+
    printk("[selftest_tasklet] BEGIN\n");
 
    for (int i = 0; i < tot_iters; i++) {
 
       ASSERT(is_preemption_enabled());
 
-      bool added;
-
       do {
          disable_preemption();
-         {
-            added = enqueue_tasklet0(&test_tasklet_func);
-         }
+         added = enqueue_tasklet0(&test_tasklet_func);
          enable_preemption();
       } while (!added);
 
@@ -37,6 +45,9 @@ static void selftest_tasklet(void)
       }
    }
 
-   printk("[selftest_tasklet] COMPLETED\n");
-   debug_qemu_turn_off_machine();
+   do {
+      disable_preemption();
+      added = enqueue_tasklet0(&end_test);
+      enable_preemption();
+   } while (!added);
 }
