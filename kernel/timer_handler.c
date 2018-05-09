@@ -27,7 +27,8 @@ int set_task_to_wake_after(task_info *task, u64 ticks)
    ASSERT(!in_irq());
 
    for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
-      if (BOOL_COMPARE_AND_SWAP(&timers_array[i].task, NULL, task)) {
+      if (BOOL_COMPARE_AND_SWAP(&timers_array[i].task, NULL, 1)) {
+         timers_array[i].task = task;
          timers_array[i].ticks_to_sleep = ticks;
          task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
          return i;
@@ -50,7 +51,12 @@ static task_info *tick_all_timers(void)
 
    for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
 
-      if (!timers_array[i].task)
+      /*
+       * Ignore 0 (NULL) and 1 as values of task.
+       * We need such a check because in set_task_to_wake_after() we temporarely
+       * set task to 1, in order to reserve the slot.
+       */
+      if ((uptr)timers_array[i].task <= 1)
          continue;
 
       if (--timers_array[i].ticks_to_sleep == 0) {
