@@ -70,10 +70,15 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
    }
 }
 
+
+void cmos_read_datetime(void);
+
 void show_additional_info(void)
 {
    printk("TIMER_HZ: %i; MEM: %i MB\n",
            TIMER_HZ, get_phys_mem_mb());
+
+   cmos_read_datetime();
 }
 
 void mount_ramdisk(void)
