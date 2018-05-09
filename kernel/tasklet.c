@@ -7,6 +7,7 @@
 #include <exos/hal.h>
 #include <exos/sync.h>
 #include <exos/process.h>
+#include <exos/ringbuf.h>
 
 task_info *__tasklet_runner_task;
 
@@ -21,28 +22,11 @@ typedef struct {
 
 static tasklet *all_tasklets;
 static kcond tasklet_cond;
-
-typedef struct {
-
-   union {
-
-      struct {
-         u32 used : 10;
-         u32 read_pos : 10;
-         u32 write_pos : 10;
-         u32 unused : 2;
-      };
-
-      u32 raw;
-   };
-
-} ringbuf_stat;
-
-static volatile ringbuf_stat tasklet_rbuf_stat;
+static ringbuf tasklet_ringbuf;
 
 bool any_tasklets_to_run(void)
 {
-   return tasklet_rbuf_stat.used != 0;
+   return !ringbuf_is_empty(&tasklet_ringbuf);
 }
 
 void init_tasklets(void)
@@ -51,6 +35,7 @@ void init_tasklets(void)
    VERIFY(all_tasklets != NULL); // This cannot be handled.
 
    kcond_init(&tasklet_cond);
+   ringbuf_init(&tasklet_ringbuf, MAX_TASKLETS, sizeof(tasklet), all_tasklets);
 
    __tasklet_runner_task = kthread_create(tasklet_runner_kthread, NULL);
 
@@ -62,7 +47,7 @@ void init_tasklets(void)
 
 bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2)
 {
-   ringbuf_stat cs, ns;
+   bool success;
 
    tasklet new_tasklet = {
       .fptr = func,
@@ -74,27 +59,7 @@ bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2)
 
    disable_preemption();
 
-   do {
-
-      cs = tasklet_rbuf_stat;
-      ns = tasklet_rbuf_stat;
-
-      if (cs.used == MAX_TASKLETS) {
-         enable_preemption();
-         return false;
-      }
-
-      ns.used++;
-      ns.write_pos = (ns.write_pos + 1) % MAX_TASKLETS;
-
-   } while (!BOOL_COMPARE_AND_SWAP(&tasklet_rbuf_stat.raw, cs.raw, ns.raw));
-
-   /*
-    * We succeeded to reserve a slot for our new tasklet. Now we can safely
-    * write the new_tasklet to its slot without worrying about racing with the
-    * tasklet runner thread: preemption is disabled.
-    */
-   all_tasklets[cs.write_pos] = new_tasklet;
+   success = ringbuf_write_elem(&tasklet_ringbuf, &new_tasklet);
 
 
 #ifndef UNIT_TEST_ENVIRONMENT
@@ -113,37 +78,26 @@ bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2)
 
 
    enable_preemption();
-   return true;
+   return success;
 }
 
 bool run_one_tasklet(void)
 {
-   ringbuf_stat cs, ns;
+   bool success;
    tasklet tasklet_to_run;
 
    disable_preemption();
 
-   do {
-      cs = tasklet_rbuf_stat;
-      ns = tasklet_rbuf_stat;
-
-      if (!cs.used) {
-         enable_preemption();
-         return false;
-      }
-
-      tasklet_to_run = all_tasklets[cs.read_pos];
-
-      ns.read_pos = (ns.read_pos + 1) % MAX_TASKLETS;
-      ns.used--;
-
-   } while (!BOOL_COMPARE_AND_SWAP(&tasklet_rbuf_stat.raw, cs.raw, ns.raw));
+   success = ringbuf_read_elem(&tasklet_ringbuf, &tasklet_to_run);
 
    enable_preemption();
 
-   /* Run the tasklet with preemption enabled */
-   tasklet_to_run.fptr(tasklet_to_run.ctx.arg1, tasklet_to_run.ctx.arg2);
-   return true;
+   if (success) {
+      /* Run the tasklet with preemption enabled */
+      tasklet_to_run.fptr(tasklet_to_run.ctx.arg1, tasklet_to_run.ctx.arg2);
+   }
+
+   return success;
 }
 
 /*

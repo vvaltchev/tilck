@@ -22,12 +22,23 @@ typedef struct {
 
    u16 max_elems;
    u16 elem_size;
-   char *buf;
    generic_ringbuf_stat s;
+   char *buf;
 
 } ringbuf;
+
+static inline bool ringbuf_is_empty(ringbuf *rb)
+{
+   return rb->s.read_pos == rb->s.write_pos && !rb->s.full;
+}
+
+static inline bool ringbuf_is_full(ringbuf *rb)
+{
+   return rb->s.full;
+}
 
 void ringbuf_init(ringbuf *rb, u16 max_elems, u16 elem_size, void *buf);
 void ringbuf_destory(ringbuf *rb);
 bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr);
 bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */);
+

@@ -5,12 +5,6 @@
 
 #define MAX_TASKLETS 1000
 
-/*
- * Because of the number of bits allocated in the implementation, MAX_TASKLETS
- * cannot be more than 1000 on 32-bit systems.
- */
-STATIC_ASSERT(MAX_TASKLETS <= 1000);
-
 extern task_info *__tasklet_runner_task;
 
 static inline task_info *get_tasklet_runner(void)
