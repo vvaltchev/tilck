@@ -19,10 +19,9 @@ void ringbuf_destory(ringbuf *rb)
    bzero(rb, sizeof(ringbuf));
 }
 
-bool ringbuf_write_elem(ringbuf *_rb, void *elem_ptr)
+bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr)
 {
    generic_ringbuf_stat cs, ns;
-   volatile ringbuf *rb = (volatile ringbuf *)_rb;
 
    do {
 
@@ -43,18 +42,37 @@ bool ringbuf_write_elem(ringbuf *_rb, void *elem_ptr)
    return true;
 }
 
-bool ringbuf_read_elem(ringbuf *_rb, void *elem_ptr /* out */)
+bool ringbuf_unwrite_elem(ringbuf *rb)
 {
    generic_ringbuf_stat cs, ns;
-   volatile ringbuf *rb = (volatile ringbuf *)_rb;
 
    do {
 
       cs = rb->s;
       ns = rb->s;
 
-      if (ns.write_pos == ns.read_pos && !ns.full)
-         return false; // the buf is empty
+      if (ringbuf_is_empty(rb))
+         return false;
+
+      ns.write_pos = (ns.write_pos - 1) % rb->max_elems;
+      ns.full = false;
+
+   } while (!BOOL_COMPARE_AND_SWAP(&rb->s.raw, cs.raw, ns.raw));
+
+   return true;
+}
+
+bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */)
+{
+   generic_ringbuf_stat cs, ns;
+
+   do {
+
+      cs = rb->s;
+      ns = rb->s;
+
+      if (ringbuf_is_empty(rb))
+         return false;
 
       memcpy(elem_ptr, rb->buf + cs.read_pos * rb->elem_size, rb->elem_size);
 

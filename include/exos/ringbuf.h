@@ -22,7 +22,7 @@ typedef struct {
 
    u16 max_elems;
    u16 elem_size;
-   generic_ringbuf_stat s;
+   volatile generic_ringbuf_stat s;
    char *buf;
 
 } ringbuf;
@@ -41,4 +41,4 @@ void ringbuf_init(ringbuf *rb, u16 max_elems, u16 elem_size, void *buf);
 void ringbuf_destory(ringbuf *rb);
 bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr);
 bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */);
-
+bool ringbuf_unwrite_elem(ringbuf *rb);
