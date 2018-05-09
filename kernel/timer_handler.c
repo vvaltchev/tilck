@@ -5,6 +5,7 @@
 #include <exos/process.h>
 #include <exos/hal.h>
 #include <exos/irq.h>
+#include <exos/timer.h>
 
 /*
  * This will keep track of how many ticks that the system has been running for.
@@ -80,12 +81,20 @@ void kernel_sleep(u64 ticks)
 }
 
 
-void timer_handler(void *context)
+void cmos_read_datetime(void);
+
+void timer_handler(regs *context)
 {
    jiffies++;
 
    account_ticks();
    task_info *last_ready_task = tick_all_timers();
+
+#ifndef UNIT_TEST_ENVIRONMENT
+   if (!(jiffies % TIMER_HZ)) {
+      cmos_read_datetime();
+   }
+#endif
 
    // [DEBUG] Useful to trigger nested printk calls
    // if (!(jiffies % 40)) {
