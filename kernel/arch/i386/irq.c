@@ -196,6 +196,8 @@ void setup_irq_handling(void)
       idt_set_entry(32 + i, irq_entry_points[i], 0x08, 0x8E);
 }
 
+u32 spur_irq_count = 0;
+
 void handle_irq(regs *r)
 {
    const int irq = r->int_num - 32;
@@ -230,10 +232,10 @@ void handle_irq(regs *r)
        * PIC to reset the ISR flag.
        */
 
-       if (!(pic_get_isr() & (1 << irq))) {
-          //printk("Spurious IRQ #%i\n", irq);
-          goto clear_mask_end;
-       }
+      if (!(pic_get_isr() & (1 << irq))) {
+         spur_irq_count++;
+         goto clear_mask_end;
+      }
    }
 
    push_nested_interrupt(r->int_num);

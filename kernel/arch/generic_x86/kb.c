@@ -242,6 +242,8 @@ static u64 total_cycles = 0;
 
 #endif
 
+extern u32 spur_irq_count;
+
 void handle_key_pressed(u8 scancode)
 {
    switch(scancode) {
@@ -287,6 +289,12 @@ void handle_key_pressed(u8 scancode)
    //    NOT_REACHED();
 
 #ifdef DEBUG
+
+   if (c == '!') {
+      printk("Spurious IRQ count: %u (%u / sec)\n",
+             spur_irq_count, spur_irq_count / (jiffies / TIMER_HZ));
+      return;
+   }
 
    if (c == '@') {
       printk("\nkey press int handler avg. cycles = %llu [%i samples]\n",
