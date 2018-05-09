@@ -20,6 +20,40 @@
 #include <exos/hal.h>
 #include <exos/process.h>
 #include <exos/sync.h>
+#include <exos/ringbuf.h>
+
+#define KB_CBUF_SIZE 256
+
+static char kb_cooked_buf[256];
+static ringbuf kb_cooked_ringbuf;
+
+bool kb_cbuf_is_empty(void)
+{
+   return ringbuf_is_empty(&kb_cooked_ringbuf);
+}
+
+bool kb_cbuf_is_full(void)
+{
+   return ringbuf_is_full(&kb_cooked_ringbuf);
+}
+
+char kb_cbuf_read_elem(void)
+{
+   char ret;
+   ASSERT(!kb_cbuf_is_empty());
+   DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&kb_cooked_ringbuf, &ret));
+   return ret;
+}
+
+static ALWAYS_INLINE bool kb_cbuf_drop_last_written_elem(void)
+{
+   return ringbuf_unwrite_elem(&kb_cooked_ringbuf);
+}
+
+static ALWAYS_INLINE bool kb_cbuf_write_elem(char c)
+{
+   return ringbuf_write_elem1(&kb_cooked_ringbuf, c);
+}
 
 #define KB_DATA_PORT 0x60
 #define KB_CONTROL_PORT 0x64
@@ -196,66 +230,17 @@ void caps_lock_switch(bool val)
    kb_led_set(numLock << 1 | val << 2);
 }
 
-static char kb_cooked_buffer[256];
-static u32 kb_cbuf_writer_pos; // pos where the writer will write next time
-static u32 kb_cbuf_reader_pos; // pos where the reader will read next time
-static u32 kb_cbuf_elems;
-
-bool kb_cbuf_is_empty(void)
-{
-   return kb_cbuf_elems == 0;
-}
-
-bool kb_cbuf_is_full(void)
-{
-   return kb_cbuf_elems == ARRAY_SIZE(kb_cooked_buffer);
-}
-
-static bool kb_cbuf_drop_last_written_elem(void)
-{
-   ASSERT(!are_interrupts_enabled());
-
-   if (!kb_cbuf_elems) {
-      return false;
-   }
-
-   kb_cbuf_writer_pos--;
-   kb_cbuf_writer_pos %= ARRAY_SIZE(kb_cooked_buffer);
-   kb_cbuf_elems--;
-   return true;
-}
-
-void kb_cbuf_write_elem(char c)
-{
-   ASSERT(!kb_cbuf_is_full());
-   ASSERT(!are_interrupts_enabled());
-
-   kb_cooked_buffer[kb_cbuf_writer_pos++] = c;
-   kb_cbuf_writer_pos %= ARRAY_SIZE(kb_cooked_buffer);
-   kb_cbuf_elems++;
-}
-
-char kb_cbuf_read_elem(void)
-{
-   uptr var;
-
-   ASSERT(!kb_cbuf_is_empty());
-
-   disable_interrupts(&var);
-
-   char res = kb_cooked_buffer[kb_cbuf_reader_pos++];
-   kb_cbuf_reader_pos %= ARRAY_SIZE(kb_cooked_buffer);
-   kb_cbuf_elems--;
-
-   enable_interrupts(&var);
-
-   return res;
-}
-
 /*
  * Condition variable on which tasks interested in keyboard input, wait.
  */
 kcond kb_cond;
+
+#ifdef DEBUG
+
+static int chars_count = 0;
+static u64 total_cycles = 0;
+
+#endif
 
 void handle_key_pressed(u8 scancode)
 {
@@ -292,38 +277,48 @@ void handle_key_pressed(u8 scancode)
       c = toupper(c);
    }
 
-   if (c) {
+   if (!c) {
+      printk("PRESSED scancode: 0x%x (%i)\n", scancode, scancode);
+      return;
+   }
 
-      uptr var;
-      disable_interrupts(&var);
+   // debug way to trigger a panic
+   // if (c == '$')
+   //    NOT_REACHED();
 
-         // debug way to trigger a panic
-         // if (c == '$')
-         //    NOT_REACHED();
+#ifdef DEBUG
 
-         if (c != '\b') {
+   if (c == '@') {
+      printk("\nkey press int handler avg. cycles = %llu [%i samples]\n",
+             total_cycles/chars_count, chars_count);
+      return;
+   }
 
-            if (!kb_cbuf_is_full()) {
+   u64 start, end;
+   start = RDTSC();
 
-               kb_cbuf_write_elem(c);
-               term_write_char(c);
+#endif
 
-               if (c == '\n' || kb_cbuf_is_full()) {
-                  bool success = enqueue_tasklet1(kcond_signal_one, &kb_cond);
-                  VERIFY(success); // TODO: any better way to handle this?
-               }
-            }
+   if (c != '\b') {
 
-         } else {
-            if (kb_cbuf_drop_last_written_elem())
-               term_write_char(c);
+      if (kb_cbuf_write_elem(c)) {
+         term_write_char(c);
+         if (c == '\n' || kb_cbuf_is_full()) {
+            bool success = enqueue_tasklet1(kcond_signal_one, &kb_cond);
+            VERIFY(success); // TODO: any better way to handle this?
          }
-
-      enable_interrupts(&var);
+      }
 
    } else {
-      printk("PRESSED scancode: 0x%x (%i)\n", scancode, scancode);
+      if (kb_cbuf_drop_last_written_elem())
+         term_write_char(c);
    }
+
+#ifdef DEBUG
+   end = RDTSC();
+   chars_count++;
+   total_cycles += (end - start);
+#endif
 }
 
 void handle_E0_key_pressed(u8 scancode)
@@ -450,6 +445,7 @@ void init_kb()
 {
    disable_preemption();
 
+   ringbuf_init(&kb_cooked_ringbuf, KB_CBUF_SIZE, 1, kb_cooked_buf);
    kcond_init(&kb_cond);
 
    num_lock_switch(numLock);
