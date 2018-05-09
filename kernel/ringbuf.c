@@ -4,6 +4,12 @@
 #include <exos/ringbuf.h>
 #include <exos/kmalloc.h>
 
+extern inline bool ringbuf_is_empty(ringbuf *rb);
+extern bool ringbuf_is_full(ringbuf *rb);
+extern inline bool ringbuf_write_elem1(ringbuf *rb, u8 val);
+extern inline bool ringbuf_read_elem1(ringbuf *rb, void *elem_ptr);
+extern inline bool ringbuf_unwrite_elem(ringbuf *rb);
+
 void ringbuf_init(ringbuf *rb, u16 max_elems, u16 elem_size, void *buf)
 {
    ASSERT(max_elems <= 32768);
@@ -42,25 +48,7 @@ bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr)
    return true;
 }
 
-bool ringbuf_unwrite_elem(ringbuf *rb)
-{
-   generic_ringbuf_stat cs, ns;
 
-   do {
-
-      cs = rb->s;
-      ns = rb->s;
-
-      if (ringbuf_is_empty(rb))
-         return false;
-
-      ns.write_pos = (ns.write_pos - 1) % rb->max_elems;
-      ns.full = false;
-
-   } while (!BOOL_COMPARE_AND_SWAP(&rb->s.raw, cs.raw, ns.raw));
-
-   return true;
-}
 
 bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */)
 {
