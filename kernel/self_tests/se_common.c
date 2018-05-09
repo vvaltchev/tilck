@@ -13,6 +13,7 @@
 #include <exos/tasklet.h>
 #include <exos/sync.h>
 #include <exos/fault_resumable.h>
+#include <exos/timer.h>
 
 void simple_test_kthread(void *arg)
 {

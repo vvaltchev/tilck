@@ -21,6 +21,7 @@
 #include <exos/process.h>
 #include <exos/sync.h>
 #include <exos/ringbuf.h>
+#include <exos/timer.h>
 
 #define KB_CBUF_SIZE 256
 

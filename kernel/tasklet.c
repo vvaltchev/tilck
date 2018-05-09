@@ -8,6 +8,7 @@
 #include <exos/sync.h>
 #include <exos/process.h>
 #include <exos/ringbuf.h>
+#include <exos/timer.h>
 
 task_info *__tasklet_runner_task;
 

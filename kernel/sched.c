@@ -7,6 +7,7 @@
 #include <exos/process.h>
 #include <exos/hal.h>
 #include <exos/tasklet.h>
+#include <exos/timer.h>
 
 #define TIME_SLOT_JIFFIES (TIMER_HZ / 50) /* 20 ms */
 
