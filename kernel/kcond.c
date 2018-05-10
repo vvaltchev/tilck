@@ -51,7 +51,10 @@ void kcond_signal_single(kcond *c, task_info *ti)
 
    if (ti->wobj.ptr == c) {
 
-      ASSERT(ti->state == TASK_STATE_SLEEPING);
+      if (ti->state != TASK_STATE_SLEEPING) {
+         /* the signal is lost, that's typical for conditions */
+         return;
+      }
 
       if (c->timer_num >= 0)
          cancel_timer(c->timer_num);
