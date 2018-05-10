@@ -201,8 +201,6 @@ u32 spur_irq_count = 0;
 void handle_irq(regs *r)
 {
    const int irq = r->int_num - 32;
-   irq_set_mask(irq);
-   disable_preemption();
 
    if (irq == 7 || irq == 15) {
 
@@ -234,9 +232,12 @@ void handle_irq(regs *r)
 
       if (!(pic_get_isr() & (1 << irq))) {
          spur_irq_count++;
-         goto clear_mask_end;
+         return;
       }
    }
+
+   irq_set_mask(irq);
+   disable_preemption();
 
    push_nested_interrupt(r->int_num);
 
@@ -264,7 +265,6 @@ void handle_irq(regs *r)
     */
    pop_nested_interrupt();
 
-clear_mask_end:
    enable_preemption();
    irq_clear_mask(irq);
 }
