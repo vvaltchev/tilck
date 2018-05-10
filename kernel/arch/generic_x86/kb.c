@@ -292,14 +292,18 @@ void handle_key_pressed(u8 scancode)
 #ifdef DEBUG
 
    if (c == '!') {
-      printk("Spurious IRQ count: %u (%u / sec)\n",
-             spur_irq_count, spur_irq_count / (jiffies / TIMER_HZ));
+      if (jiffies > TIMER_HZ)
+         printk("Spurious IRQ count: %u (%u / sec)\n",
+               spur_irq_count, spur_irq_count / (jiffies / TIMER_HZ));
+      else
+         printk("Spurious IRQ count: %u (< 1 sec)\n",
+                spur_irq_count, spur_irq_count);
       return;
    }
 
    if (c == '@') {
       printk("\nkey press int handler avg. cycles = %llu [%i samples]\n",
-             total_cycles/chars_count, chars_count);
+             chars_count ? total_cycles/chars_count : 0, chars_count);
       return;
    }
 

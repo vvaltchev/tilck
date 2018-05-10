@@ -91,7 +91,7 @@ void timer_handler(regs *context)
    task_info *last_ready_task = tick_all_timers();
 
 #ifndef UNIT_TEST_ENVIRONMENT
-   if (!(jiffies % TIMER_HZ)) {
+   if (!(jiffies % (TIMER_HZ * 1))) {
       cmos_read_datetime();
    }
 #endif
