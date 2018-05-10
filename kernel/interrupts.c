@@ -55,6 +55,21 @@ bool in_irq(void)
    return r;
 }
 
+bool in_nested_irq0(void)
+{
+   uptr var;
+   bool r = false;
+   disable_interrupts(&var);
+   {
+      for (int i = nested_interrupts_count - 2; i >= 0; i--) {
+         if (nested_interrupts[i] == 32)
+            r = true;
+      }
+   }
+   enable_interrupts(&var);
+   return r;
+}
+
 void check_not_in_irq_handler(void)
 {
    uptr var;
@@ -85,13 +100,22 @@ bool in_syscall(void)
    return res;
 }
 
+extern u32 slow_timer_handler_count;
+
 static void DEBUG_check_not_same_interrupt_nested(int int_num)
 {
    ASSERT(!are_interrupts_enabled());
 
    for (int i = nested_interrupts_count - 1; i >= 0; i--)
-      if (nested_interrupts[i] == int_num)
-         panic("Unexpected same interrupt twice in nested_interrupts[]");
+      if (nested_interrupts[i] == int_num) {
+
+         if (int_num == 32) {
+            /* tollarate nested IRQ 0 for debug purposes */
+            return;
+         }
+
+         panic("Same interrupt (%i) twice in nested_interrupts[]", int_num);
+      }
 }
 
 

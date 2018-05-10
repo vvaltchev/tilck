@@ -112,33 +112,33 @@ void PIC_remap(u8 offset1, u8 offset2)
    outb(PIC2_DATA, a2);
 }
 
-void irq_set_mask(u8 IRQline)
+void irq_set_mask(u8 irq_line)
 {
    u16 port;
    u8 value;
 
-   if (IRQline < 8) {
+   if (irq_line < 8) {
       port = PIC1_DATA;
    } else {
       port = PIC2_DATA;
-      IRQline -= 8;
+      irq_line -= 8;
    }
-   value = inb(port) | (1 << IRQline);
+   value = inb(port) | (1 << irq_line);
    outb(port, value);
 }
 
-void irq_clear_mask(u8 IRQline)
+void irq_clear_mask(u8 irq_line)
 {
    u16 port;
    u8 value;
 
-   if (IRQline < 8) {
+   if (irq_line < 8) {
       port = PIC1_DATA;
    } else {
       port = PIC2_DATA;
-      IRQline -= 8;
+      irq_line -= 8;
    }
-   value = inb(port) & ~(1 << IRQline);
+   value = inb(port) & ~(1 << irq_line);
    outb(port, value);
 }
 
@@ -201,8 +201,6 @@ u32 spur_irq_count = 0;
 void handle_irq(regs *r)
 {
    const int irq = r->int_num - 32;
-   irq_set_mask(irq);
-   disable_preemption();
 
    if (irq == 7 || irq == 15) {
 
@@ -234,10 +232,14 @@ void handle_irq(regs *r)
 
       if (!(pic_get_isr() & (1 << irq))) {
          spur_irq_count++;
-         goto clear_mask_end;
+         return;
       }
    }
 
+   if (irq != 0)
+      irq_set_mask(irq);
+
+   disable_preemption();
    push_nested_interrupt(r->int_num);
 
    ASSERT(!are_interrupts_enabled());
@@ -259,12 +261,9 @@ void handle_irq(regs *r)
       printk("Unhandled IRQ #%i\n", irq);
    }
 
-   /*
-    * We MUST call pop_nested_interrupt() here, BEFORE irq_clear_mask(irq).
-    */
    pop_nested_interrupt();
-
-clear_mask_end:
    enable_preemption();
-   irq_clear_mask(irq);
+
+   if (irq != 0)
+      irq_clear_mask(irq);
 }

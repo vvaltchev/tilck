@@ -102,8 +102,7 @@ sptr sys_open(const char *user_path, int flags, int mode)
    if (ret != 0)
       goto end;
 
-   printk("sys_open(filename = '%s', "
-          "flags = %x, mode = %x)\n", path, flags, mode);
+   printk("[TID: %i] sys_open('%s', %x, %x)\n", curr->tid, path, flags, mode);
 
    int free_fd = get_free_handle_num(curr);
 
@@ -137,7 +136,7 @@ sptr sys_close(int fd)
    sptr ret = 0;
    task_info *curr = get_curr_task();
 
-   printk("sys_close(fd = %d)\n", fd);
+   printk("[TID: %i] sys_close(fd = %d)\n", curr->tid, fd);
 
    disable_preemption();
 

@@ -125,13 +125,13 @@ internal_copy_str_array_from_user(void *dest,
          break;
    }
 
-   if ((char *)&dest_arr[argc + 1] > dest_end) {
+   if ((char *)&dest_arr[argc] > dest_end) {
       *rc = 1;
       goto out;
    }
 
-   dest_arr[argc + 1] = NULL;
-   after_ptrs_arr = (char *) &dest_arr[argc + 2];
+   dest_arr[argc] = NULL;
+   after_ptrs_arr = (char *) &dest_arr[argc + 1];
    written += (after_ptrs_arr - (char *)dest_arr);
 
    for (int i = 0; i < argc; i++) {
