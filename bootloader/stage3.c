@@ -43,6 +43,9 @@ void load_elf_kernel(const char *filepath, void **entry)
    fat_header *hdr = (fat_header *)RAMDISK_PADDR;
    void *free_space = (void *) (RAMDISK_PADDR + RAMDISK_SIZE);
 
+   /* DEBUG: poison the free memory, up to 128 MB */
+   memset(free_space, 0xFA, (128 * MB - RAMDISK_PADDR - RAMDISK_SIZE));
+
    fat_entry *e = fat_search_entry(hdr, fat_get_type(hdr), filepath);
 
    if (!e)
