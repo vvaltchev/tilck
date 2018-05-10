@@ -88,9 +88,9 @@ void mount_ramdisk(void)
       return;
    }
 
-   printk("Mounting RAMDISK at PADDR %p...\n", ramdisk_paddr);
    filesystem *root_fs = fat_mount_ramdisk(KERNEL_PA_TO_VA(ramdisk_paddr));
    mountpoint_add(root_fs, "/");
+   printk("Mounted RAMDISK at PADDR %p.\n", ramdisk_paddr);
 }
 
 
@@ -167,6 +167,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    enable_preemption();
    push_nested_interrupt(-1);
+   printk("[main] sys_execve('%s')\n", cmd_args[0]);
    sptr rc = sys_execve(cmd_args[0], cmd_args, NULL);
    panic("execve('%s') failed with %i\n", cmd_args[0], rc);
 }
