@@ -243,6 +243,8 @@ static u64 total_cycles = 0;
 
 #endif
 
+void print_slow_timer_handler_counter(void);
+
 extern u32 spur_irq_count;
 
 void handle_key_pressed(u8 scancode)
@@ -289,17 +291,24 @@ void handle_key_pressed(u8 scancode)
    // if (c == '$')
    //    NOT_REACHED();
 
-#ifdef DEBUG
 
    if (c == '!') {
+
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+      print_slow_timer_handler_counter();
+#endif
+
       if (jiffies > TIMER_HZ)
-         printk("Spurious IRQ count: %u (%u / sec)\n",
-               spur_irq_count, spur_irq_count / (jiffies / TIMER_HZ));
+         printk("Spur IRQ count: %u (%u/sec)\n",
+                spur_irq_count,
+                spur_irq_count / (jiffies / TIMER_HZ));
       else
          printk("Spurious IRQ count: %u (< 1 sec)\n",
                 spur_irq_count, spur_irq_count);
       return;
    }
+
+#ifdef DEBUG
 
    if (c == '@') {
       printk("\nkey press int handler avg. cycles = %llu [%i samples]\n",

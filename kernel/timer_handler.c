@@ -25,7 +25,9 @@ kthread_timer_sleep_obj timers_array[64];
 
 int set_task_to_wake_after(task_info *task, u64 ticks)
 {
+#if KERNEL_TRACK_NESTED_INTERRUPTS
    ASSERT(!in_irq());
+#endif
 
    for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
       if (BOOL_COMPARE_AND_SWAP(&timers_array[i].task, NULL, 1)) {
@@ -83,17 +85,36 @@ void kernel_sleep(u64 ticks)
 
 void cmos_read_datetime(void);
 
+
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+
+u32 slow_timer_handler_count = 0;
+
+void print_slow_timer_handler_counter(void)
+{
+   printk("slow_timer_handler_counter: %u\n", slow_timer_handler_count);
+}
+
+#endif
+
 void timer_handler(regs *context)
 {
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+   if (in_nested_irq0()) {
+      slow_timer_handler_count++;
+      return;
+   }
+#endif
+
    jiffies++;
 
    account_ticks();
    task_info *last_ready_task = tick_all_timers();
 
 #ifndef UNIT_TEST_ENVIRONMENT
-   if (!(jiffies % (TIMER_HZ * 1))) {
-      cmos_read_datetime();
-   }
+   // if (!(jiffies % (TIMER_HZ * 1))) {
+   //    cmos_read_datetime();
+   // }
 #endif
 
    // [DEBUG] Useful to trigger nested printk calls

@@ -236,9 +236,10 @@ void handle_irq(regs *r)
       }
    }
 
-   irq_set_mask(irq);
-   disable_preemption();
+   if (irq != 0)
+      irq_set_mask(irq);
 
+   disable_preemption();
    push_nested_interrupt(r->int_num);
 
    ASSERT(!are_interrupts_enabled());
@@ -260,11 +261,9 @@ void handle_irq(regs *r)
       printk("Unhandled IRQ #%i\n", irq);
    }
 
-   /*
-    * We MUST call pop_nested_interrupt() here, BEFORE irq_clear_mask(irq).
-    */
    pop_nested_interrupt();
-
    enable_preemption();
-   irq_clear_mask(irq);
+
+   if (irq != 0)
+      irq_clear_mask(irq);
 }
