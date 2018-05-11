@@ -132,14 +132,63 @@ end:
    return status;
 }
 
-void *saved_fb_addr;
+UINTN saved_fb_addr;
 UINTN saved_fb_size;
 EFI_GRAPHICS_OUTPUT_MODE_INFORMATION saved_mode_info;
+
+void draw_pixel(int x, int y, UINTN color)
+{
+   const UINTN PixelElementSize = sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
+   const UINTN PixelsPerScanLine = saved_mode_info.PixelsPerScanLine;
+
+   UINTN addr = saved_fb_addr +
+                ( (PixelsPerScanLine * y) + x ) * PixelElementSize;
+   *(volatile UINTN *)(addr) = color;
+}
+
+UINTN my_make_color(int r, int g, int b)
+{
+   return (r << 16) | (g << 8) | b;
+}
+
+void draw_something()
+{
+   UINTN white_val = my_make_color(255, 255, 255);
+   UINTN red_val = my_make_color(255, 0, 0);
+   UINTN green_val = my_make_color(0, 255, 0);
+   UINTN blue_val = my_make_color(0, 0, 255);
+
+   int iy = 20;
+   int ix = 600;
+   int w = 200;
+
+   for (int y = iy; y < iy+10; y++)
+      for (int x = ix; x < ix+w; x++)
+         draw_pixel(x, y, red_val);
+
+   iy+=20;
+
+   for (int y = iy; y < iy+10; y++)
+      for (int x = ix; x < ix+w; x++)
+         draw_pixel(x, y, white_val);
+
+   iy+=20;
+
+   for (int y = iy; y < iy+10; y++)
+      for (int x = ix; x < ix+w; x++)
+         draw_pixel(x, y, green_val);
+
+   iy+=20;
+
+   for (int y = iy; y < iy+10; y++)
+      for (int x = ix; x < ix+w; x++)
+         draw_pixel(x, y, blue_val);
+}
 
 void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
 {
    saved_mode_info = *mode->Info;
-   saved_fb_addr = (void *)mode->FrameBufferBase;
+   saved_fb_addr = mode->FrameBufferBase;
    saved_fb_size = mode->FrameBufferSize;
 
    Print(L"Framebuffer addr: 0x%x\n", mode->FrameBufferBase);
@@ -154,6 +203,8 @@ void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
       Print(L"PixelFormat: BGR + reserved\n");
    else
       Print(L"PixelFormat: other\n");
+
+   Print(L"PixelsPerScanLine: %u\n", saved_mode_info.PixelsPerScanLine);
 }
 
 bool is_pixelformat_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
@@ -237,9 +288,9 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
       goto end;
    }
 
-   Print(L"About to switch to mode %u [%u x %u]. Press any key\n",
-         wanted_mode, DESIRED_RES_X, DESIRED_RES_Y);
-   WaitForKeyPress(ST);
+   // Print(L"About to switch to mode %u [%u x %u]. Press any key\n",
+   //       wanted_mode, DESIRED_RES_X, DESIRED_RES_Y);
+   // WaitForKeyPress(ST);
 
    status = uefi_call_wrapper(ST->ConOut->ClearScreen,
                               1,
@@ -353,7 +404,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                               RAMDISK_SIZE /* buffer size */,
                               ramdisk_paddr);
    HANDLE_EFI_ERROR("ReadDisk");
-   //Print(L"Read OK\r\n");
    Print(L"RAMDISK paddr: 0x%lx\r\n", ramdisk_paddr);
 
    crc32 = 0;
@@ -384,8 +434,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    HANDLE_EFI_ERROR("LoadFileFromDisk");
 
    // Prepare for the actual boot
-
    Print(L"Press ANY key to boot the kernel...\r\n");
+
+   // debug
+   draw_something();
+
    WaitForKeyPress(ST);
 
 
@@ -408,21 +461,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                  (UINTN*)ramdisk_paddr,
                   RAMDISK_SIZE);
    }
-
-/////////////////////////////////////////
-
-   UINTN pixel_val = 0x00FFFFFF;
-
-   int y = 100;
-
-   for (int x = 0; x < DESIRED_RES_X; x++) {
-      *(volatile UINTN *)(saved_fb_addr + (saved_mode_info.PixelsPerScanLine * y) + x*4) = pixel_val;
-   }
-
-   while (1);
-
-/////////////////////////////////////////
-
 
    ((void (*)())BOOT_PADDR)();
 
