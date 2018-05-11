@@ -12,47 +12,11 @@
 #include <elf.h>
 #include <common/config.h>
 
+#include "utils.h"
+
 #define PAGE_SIZE            0x1000    // 4 KB
 #define BOOT_PADDR           0xC000
 #define KERNEL_FILE      L"\\EFI\\BOOT\\elf_kernel_stripped"
-
-#define VADDR_TO_PADDR(x) ((void *)( (UINTN)(x) - KERNEL_BASE_VA ))
-
-
-void WaitForKeyPress(EFI_SYSTEM_TABLE *ST)
-{
-    UINTN index, k;
-    EFI_EVENT event = ST->ConIn->WaitForKey;
-    uefi_call_wrapper(BS->WaitForEvent,
-                      3, // args count
-                      1, // number of events in the array pointed by &event
-                      &event, // pointer to events array (1 elem in our case).
-                      &index); // index of the last matching event in the array
-
-    // Read the key, allowing WaitForKey to block again.
-    uefi_call_wrapper(ST->ConIn->ReadKeyStroke,
-                      2,
-                      ST->ConIn,
-                      &k);
-}
-
-#define CHECK(cond)                                  \
-   do {                                              \
-      if (!(cond)) {                                 \
-         Print(L"CHECK '%a' FAILED\n", #cond);       \
-         status = EFI_LOAD_ERROR;                    \
-         goto end;                                   \
-      }                                              \
-   } while(0)
-
-#define HANDLE_EFI_ERROR(op)                                 \
-    do {                                                     \
-       if (EFI_ERROR(status)) {                              \
-          Print(L"[%a] Error: %r ", op, status);             \
-          goto end;                                          \
-       }                                                     \
-    } while (0)
-
 
 EFI_STATUS
 LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
@@ -99,34 +63,6 @@ LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
 
 end:
    return status;
-}
-
-void AlignedMemCpy(UINTN *dst, UINTN *src, INTN count)
-{
-   for (INTN i = count - 1; i >= 0; i--) {
-      dst[i] = src[i];
-   }
-}
-
-void DumpFirst16Bytes(char *buf)
-{
-   Print(L"First 16 bytes in hex: \r\n");
-   for (int i = 0; i < 16; i++) {
-      Print(L"%02x ", (unsigned char)buf[i]);
-   }
-   Print(L"\r\n");
-}
-
-void bzero(void *ptr, UINTN len)
-{
-   for (UINTN i = 0; i < len; i++)
-      ((char*)ptr)[i] = 0;
-}
-
-void BasicMemmove(void *dest, void *src, UINTN len)
-{
-   for (UINTN i = 0; i < len; i++)
-      ((char*)dest)[i] = ((char*)src)[i];
 }
 
 EFI_STATUS
@@ -178,11 +114,11 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS, EFI_FILE_PROTOCOL *fileProt)
 
       CHECK(phdr->p_vaddr >= KERNEL_BASE_VA);
 
-      bzero(VADDR_TO_PADDR(phdr->p_vaddr), phdr->p_memsz);
+      bzero((void *)(UINTN)phdr->p_paddr, phdr->p_memsz);
 
-      BasicMemmove(VADDR_TO_PADDR(phdr->p_vaddr),
-                   (char *) header + phdr->p_offset,
-                   phdr->p_filesz);
+      my_memmove((void *)(UINTN)phdr->p_paddr,
+                 (char *) header + phdr->p_offset,
+                 phdr->p_filesz);
    }
 
    Print(L"ELF kernel loaded\n");
@@ -318,9 +254,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
 
    if (ramdisk_paddr != RAMDISK_PADDR) {
-      AlignedMemCpy((UINTN*)RAMDISK_PADDR,
-                    (UINTN*)ramdisk_paddr,
-                    RAMDISK_SIZE / sizeof(UINTN));
+      my_memmove((UINTN*)RAMDISK_PADDR,
+                 (UINTN*)ramdisk_paddr,
+                  RAMDISK_SIZE);
    }
 
    ((void (*)())BOOT_PADDR)();
