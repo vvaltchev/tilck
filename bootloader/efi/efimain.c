@@ -132,8 +132,16 @@ end:
    return status;
 }
 
+void *saved_fb_addr;
+UINTN saved_fb_size;
+EFI_GRAPHICS_OUTPUT_MODE_INFORMATION saved_mode_info;
+
 void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
 {
+   saved_mode_info = *mode->Info;
+   saved_fb_addr = (void *)mode->FrameBufferBase;
+   saved_fb_size = mode->FrameBufferSize;
+
    Print(L"Framebuffer addr: 0x%x\n", mode->FrameBufferBase);
    Print(L"Framebuffer size: %u\n", mode->FrameBufferSize);
    Print(L"Resolution: %u x %u\n",
