@@ -75,8 +75,8 @@ void cmos_read_datetime(void);
 
 void show_additional_info(void)
 {
-   printk("TIMER_HZ: %i; MEM: %i MB\n",
-           TIMER_HZ, get_phys_mem_mb());
+   printk("TIMER_HZ: %i; TIME_SLOT: %i ms; MEM: %i MB\n",
+          TIMER_HZ, 1000 / (TIMER_HZ / TIME_SLOT_JIFFIES), get_phys_mem_mb());
 
    cmos_read_datetime();
 }
