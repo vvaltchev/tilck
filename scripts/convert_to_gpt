@@ -1,4 +1,0 @@
-#!/bin/sh
-parted ./build/exos.img -s -a minimal mklabel gpt
-parted ./build/exos.img -s -a minimal mkpart EFI FAT32 2048s 73727s
-parted ./build/exos.img -s -a minimal toggle 1 boot

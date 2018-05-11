@@ -118,6 +118,8 @@ set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/bootloader/bootloader.bin)
 set(EFI_MAIN_FILE ${CMAKE_BINARY_DIR}/bootloader/efi/BOOTX64.EFI)
 set(KERNEL_FILE ${CMAKE_BINARY_DIR}/elf_kernel_stripped)
 set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
+set(GPT_IMG_FILE ${CMAKE_BINARY_DIR}/gpt_exos.img)
+
 
 ################################################################################
 # Include sub-directories
@@ -136,7 +138,7 @@ add_custom_command(
    OUTPUT
       ${IMG_FILE}
    COMMAND
-      ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${IMG_FILE} 37296 # ~36 MB
+      ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${IMG_FILE} 4096 #37296 # ~36 MB
    COMMAND
       dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
    COMMAND
@@ -159,7 +161,7 @@ add_custom_command(
       ${EFI_MAIN_FILE}
       ${KERNEL_FILE}
    COMMENT
-      "Creating the bootable image file"
+      "Creating the bootable image file (MBR)"
    VERBATIM
 )
 
@@ -173,3 +175,31 @@ add_custom_target(
 )
 
 add_dependencies(gtests exos_image)
+
+add_custom_command(
+
+   OUTPUT
+      ${GPT_IMG_FILE}
+   COMMAND
+      ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${GPT_IMG_FILE} 37296 #36MB
+   COMMAND
+      parted ${GPT_IMG_FILE} -s -a minimal mklabel gpt
+   COMMAND
+      parted ${GPT_IMG_FILE} -s -a minimal mkpart EFI FAT32 2048s 73727s
+   COMMAND
+      parted ${GPT_IMG_FILE} -s -a minimal toggle 1 boot
+   COMMAND
+      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${GPT_IMG_FILE} seek=1024 bs=1K
+   DEPENDS
+      ${IMG_FILE}
+   COMMENT
+      "Creating the bootable image file (GPT)"
+)
+
+add_custom_target(
+
+   gpt_image
+
+   DEPENDS
+      ${GPT_IMG_FILE}
+)

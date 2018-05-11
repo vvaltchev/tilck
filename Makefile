@@ -19,6 +19,9 @@ rebuild_img: $(PREREQUISITES)
 	@rm -rf ./build/fatpart ./build/exos.img
 	@$(MAKE) -C build
 
+gpt_image: $(PREREQUISITES)
+	@$(MAKE) -C build gpt_image
+
 toolchain:
 	$(error Before building exOS, you need to build the toolchain by running ./scripts/build_toolchain)
 
