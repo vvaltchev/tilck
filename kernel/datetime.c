@@ -8,10 +8,9 @@ static const char *weekdays[] =
    "Monday",
    "Tuesday",
    "Wednesday",
-   "Thrusday",
+   "Thursday",
    "Friday",
    "Saturday",
-   "Sunday"
 };
 
 #if defined(__i386__) || defined(__x86_64__)
