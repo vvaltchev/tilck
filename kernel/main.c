@@ -21,6 +21,7 @@
 #include <exos/timer.h>
 #include <exos/term.h>
 #include <exos/pageframe_allocator.h>
+#include <exos/datetime.h>
 #include <exos/arch/generic_x86/textmode_video.h>
 
 extern u32 memsize_in_mb;
@@ -71,14 +72,15 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
 }
 
 
-void cmos_read_datetime(void);
 
 void show_additional_info(void)
 {
    printk("TIMER_HZ: %i; TIME_SLOT: %i ms; MEM: %i MB\n",
           TIMER_HZ, 1000 / (TIMER_HZ / TIME_SLOT_JIFFIES), get_phys_mem_mb());
 
-   cmos_read_datetime();
+   datetime_t d;
+   read_system_clock_datetime(&d);
+   print_datetime(d);
 }
 
 void mount_ramdisk(void)

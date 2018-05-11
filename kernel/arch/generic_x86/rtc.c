@@ -1,6 +1,8 @@
 
 #include <common/string_util.h>
+
 #include <exos/hal.h>
+#include <exos/datetime.h>
 
 #define CMOS_CONTROL_PORT 0x70
 #define CMOS_DATA_PORT 0x71
@@ -16,24 +18,6 @@
 #define REG_STATUS_REG_A 0x0A
 #define REG_STATUS_REG_B 0x0B
 
-typedef struct {
-
-   union {
-
-      struct {
-         u8 sec;
-         u8 min;
-         u8 hour;
-         u8 weekday;
-         u8 day;
-         u8 month;
-         u16 year;
-      };
-
-      u64 raw;
-   };
-
-} datetime_t;
 
 static inline u32 bcd_to_dec(u32 bcd)
 {
@@ -59,6 +43,9 @@ static void cmod_read_datetime_raw(datetime_t *d)
    outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | REG_HOURS);
    d->hour = inb(CMOS_DATA_PORT);
 
+   outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | REG_WEEKDAY);
+   d->weekday = inb(CMOS_DATA_PORT);
+
    outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | REG_DAY);
    d->day = inb(CMOS_DATA_PORT);
 
@@ -69,7 +56,7 @@ static void cmod_read_datetime_raw(datetime_t *d)
    d->year = inb(CMOS_DATA_PORT);
 }
 
-void cmos_read_datetime(void)
+void cmos_read_datetime(datetime_t *out)
 {
    int NMI_disable_bit = 0; // temporary
 
@@ -78,7 +65,6 @@ void cmos_read_datetime(void)
    bool use_24h;
    bool use_binary;
    bool hour_pm_bit;
-
 
    outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | REG_STATUS_REG_B);
    reg_b = inb(CMOS_DATA_PORT);
@@ -95,7 +81,7 @@ void cmos_read_datetime(void)
       cmod_read_datetime_raw(&d);
 
       /*
-       * read until we get the same result twice: this is necessary to get a
+       * Read until we get the same result twice: this is necessary to get a
        * consistent set of values.
        */
 
@@ -123,8 +109,17 @@ void cmos_read_datetime(void)
       }
    }
 
-   d.year += 2000;
+   /*
+    * This allows to support years from 1970 to 2069,
+    * without knowing the century. Yes, knowing the century is a mess and
+    * requires asking through ACPI (if supported) for the "century" register.
+    * See: https://wiki.osdev.org/CMOS.
+    */
 
-   printk("date & time [24h: %i, bin: %i]: %i/%i/%i %i:%i:%i\n",
-          use_24h, use_binary, d.day, d.month, d.year, d.hour, d.min, d.sec);
+   if (d.year < 70)
+      d.year += 2000;
+   else
+      d.year += 1900;
+
+   *out = d;
 }
