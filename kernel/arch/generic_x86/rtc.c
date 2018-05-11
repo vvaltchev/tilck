@@ -18,56 +18,45 @@
 #define REG_STATUS_REG_A 0x0A
 #define REG_STATUS_REG_B 0x0B
 
+#define STATUS_REG_A_UPDATE_IN_PROGRESS 0x80
 
 static inline u32 bcd_to_dec(u32 bcd)
 {
    return ((bcd & 0xF0) >> 1) + ((bcd & 0xF0) >> 3) + (bcd & 0xf);
 }
 
+static inline u32 cmos_read_reg(u32 reg)
+{
+   int NMI_disable_bit = 0; // temporary
+   outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | reg);
+   return inb(CMOS_DATA_PORT);
+}
+
 static inline bool cmos_is_update_in_progress(void)
 {
-   outb(CMOS_CONTROL_PORT, REG_STATUS_REG_A);
-   return inb(CMOS_DATA_PORT) & 0x80;
+   return cmos_read_reg(REG_STATUS_REG_A) & STATUS_REG_A_UPDATE_IN_PROGRESS;
 }
 
 static void cmod_read_datetime_raw(datetime_t *d)
 {
-   int NMI_disable_bit = 0; // temporary
-
-   outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | REG_SECONDS);
-   d->sec = inb(CMOS_DATA_PORT);
-
-   outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | REG_MINUTES);
-   d->min = inb(CMOS_DATA_PORT);
-
-   outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | REG_HOURS);
-   d->hour = inb(CMOS_DATA_PORT);
-
-   outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | REG_WEEKDAY);
-   d->weekday = inb(CMOS_DATA_PORT);
-
-   outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | REG_DAY);
-   d->day = inb(CMOS_DATA_PORT);
-
-   outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | REG_MONTH);
-   d->month = inb(CMOS_DATA_PORT);
-
-   outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | REG_YEAR);
-   d->year = inb(CMOS_DATA_PORT);
+   d->sec = cmos_read_reg(REG_SECONDS);
+   d->min = cmos_read_reg(REG_MINUTES);
+   d->hour = cmos_read_reg(REG_HOURS);
+   d->weekday = cmos_read_reg(REG_WEEKDAY);
+   d->day = cmos_read_reg(REG_DAY);
+   d->month = cmos_read_reg(REG_MONTH);
+   d->year = cmos_read_reg(REG_YEAR);
 }
 
 void cmos_read_datetime(datetime_t *out)
 {
-   int NMI_disable_bit = 0; // temporary
-
    datetime_t d, dlast;
-   int reg_b;
+   u32 reg_b;
    bool use_24h;
    bool use_binary;
    bool hour_pm_bit;
 
-   outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | REG_STATUS_REG_B);
-   reg_b = inb(CMOS_DATA_PORT);
+   reg_b = cmos_read_reg(REG_STATUS_REG_B);
    use_24h = !!(reg_b & (1 << 1));
    use_binary = !!(reg_b & (1 << 2));
 
