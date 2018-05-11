@@ -236,8 +236,20 @@ void handle_irq(regs *r)
       }
    }
 
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+
+   /*
+    * We can really allow nested IRQ 0 only if we track the nested interrupts,
+    * otherwise, the timer handler won't be able to know it's running in a
+    * nested way and "bad things may happen".
+    */
+
    if (irq != 0)
       irq_set_mask(irq);
+
+#else
+   irq_set_mask(irq);
+#endif
 
    disable_preemption();
    push_nested_interrupt(r->int_num);
@@ -264,6 +276,12 @@ void handle_irq(regs *r)
    pop_nested_interrupt();
    enable_preemption();
 
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+
    if (irq != 0)
       irq_clear_mask(irq);
+
+#else
+   irq_clear_mask(irq);
+#endif
 }
