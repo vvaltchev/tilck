@@ -148,6 +148,12 @@ void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
       Print(L"PixelFormat: other\n");
 }
 
+bool is_pixelformat_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
+{
+   return mode_info->PixelFormat == PixelRedGreenBlueReserved8BitPerColor ||
+          mode_info->PixelFormat == PixelBlueGreenRedReserved8BitPerColor;
+}
+
 EFI_STATUS
 SetupGraphicMode(EFI_BOOT_SERVICES *BS)
 {
@@ -183,6 +189,7 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
    HANDLE_EFI_ERROR("HandleProtocol() failed");
 
    EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode = graphicsProtocol->Mode;
+
    print_mode_info(mode);
 
    UINTN wanted_mode = (UINTN)-1;
@@ -202,23 +209,46 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
 
       HANDLE_EFI_ERROR("QueryMode() failed");
 
-      Print(L"Mode [%u]: %u x %u\n",
-            i,
-            mode_info->HorizontalResolution,
-            mode_info->VerticalResolution);
+      // Print(L"Mode [%u]: %u x %u\n",
+      //       i,
+      //       mode_info->HorizontalResolution,
+      //       mode_info->VerticalResolution);
 
       if (mode_info->HorizontalResolution == DESIRED_RES_X &&
-          mode_info->VerticalResolution == DESIRED_RES_Y) {
+          mode_info->VerticalResolution == DESIRED_RES_Y &&
+          is_pixelformat_supported(mode_info)) {
 
          wanted_mode = i;
       }
    }
 
-   if (wanted_mode != (UINTN)-1) {
+   if (wanted_mode == (UINTN)-1) {
+      Print(L"Wanted mode %u x %u NOT AVAILABLE.\n",
+            DESIRED_RES_X, DESIRED_RES_Y);
+      status = EFI_LOAD_ERROR;
+      goto end;
+   }
 
-      Print(L"About to switch to mode %u [%u x %u]. Press any key\n",
-            wanted_mode, DESIRED_RES_X, DESIRED_RES_Y);
-      WaitForKeyPress(ST);
+   Print(L"About to switch to mode %u [%u x %u]. Press any key\n",
+         wanted_mode, DESIRED_RES_X, DESIRED_RES_Y);
+   WaitForKeyPress(ST);
+
+   status = uefi_call_wrapper(ST->ConOut->ClearScreen,
+                              1,
+                              ST->ConOut);
+
+   HANDLE_EFI_ERROR("ClearScreen() failed");
+
+   status = uefi_call_wrapper(graphicsProtocol->SetMode,
+                              2,
+                              graphicsProtocol,
+                              wanted_mode);
+
+   if (EFI_ERROR(status)) {
+      status = uefi_call_wrapper(graphicsProtocol->SetMode,
+                                 2,
+                                 graphicsProtocol,
+                                 orig_mode);
 
       status = uefi_call_wrapper(ST->ConOut->ClearScreen,
                                  1,
@@ -226,22 +256,11 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
 
       HANDLE_EFI_ERROR("ClearScreen() failed");
 
-      status = uefi_call_wrapper(graphicsProtocol->SetMode,
-                                 2,
-                                 graphicsProtocol,
-                                 wanted_mode);
-
-      if (EFI_ERROR(status) && status == EFI_NOT_STARTED) {
-         status = uefi_call_wrapper(graphicsProtocol->SetMode,
-                                    2,
-                                    graphicsProtocol,
-                                    orig_mode);
-
-         Print(L"Restored orig mode after error\n");
-      }
-
-      print_mode_info(mode);
+      Print(L"Loader failed: unable to set desired mode\n");
+      status = EFI_LOAD_ERROR;
    }
+
+   print_mode_info(mode);
 
 end:
    return status;
