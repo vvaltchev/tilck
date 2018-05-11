@@ -409,6 +409,21 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                   RAMDISK_SIZE);
    }
 
+/////////////////////////////////////////
+
+   UINTN pixel_val = 0x00FFFFFF;
+
+   int y = 100;
+
+   for (int x = 0; x < DESIRED_RES_X; x++) {
+      *(volatile UINTN *)(saved_fb_addr + (saved_mode_info.PixelsPerScanLine * y) + x*4) = pixel_val;
+   }
+
+   while (1);
+
+/////////////////////////////////////////
+
+
    ((void (*)())BOOT_PADDR)();
 
    /* --- we should never get here in the normal case --- */
