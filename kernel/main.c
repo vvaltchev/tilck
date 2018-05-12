@@ -24,6 +24,8 @@
 #include <exos/datetime.h>
 #include <exos/arch/generic_x86/textmode_video.h>
 
+static bool multiboot;
+
 extern u32 memsize_in_mb;
 extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
@@ -37,12 +39,6 @@ void parse_kernel_cmdline(const char *cmdline);
 
 /* -- */
 
-void show_hello_message(void)
-{
-   printk("Hello from exOS! [%s build, GCC %i.%i.%i]\n",
-          BUILDTYPE_STR, __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-}
-
 void read_multiboot_info(u32 magic, u32 mbi_addr)
 {
    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
@@ -51,7 +47,7 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
    multiboot_info_t *mbi = (void *)(uptr)mbi_addr;
    memsize_in_mb = (mbi->mem_upper)/1024 + 1;
 
-   printk("*** Detected multiboot ***\n");
+   multiboot = true;
 
    if (mbi->flags & MULTIBOOT_INFO_MODS) {
       if (mbi->mods_count >= 1) {
@@ -73,14 +69,20 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
 
 
 
-void show_additional_info(void)
+void show_hello_message(void)
 {
+   printk("Hello from exOS! [%s build, GCC %i.%i.%i]\n",
+          BUILDTYPE_STR, __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+
    printk("TIMER_HZ: %i; TIME_SLOT: %i ms; MEM: %i MB\n",
           TIMER_HZ, 1000 / (TIMER_HZ / TIME_SLOT_JIFFIES), get_phys_mem_mb());
 
    datetime_t d;
    read_system_clock_datetime(&d);
    print_datetime(d);
+
+   if (multiboot)
+      printk("*** Detected multiboot ***\n");
 }
 
 void mount_ramdisk(void)
@@ -128,10 +130,9 @@ void selftest_runner_thread()
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
+   read_multiboot_info(multiboot_magic, mbi_addr);
    init_term(&x86_pc_text_mode_vi, make_color(COLOR_WHITE, COLOR_BLACK));
    show_hello_message();
-   read_multiboot_info(multiboot_magic, mbi_addr);
-   show_additional_info();
 
    setup_segmentation();
    setup_soft_interrupt_handling();

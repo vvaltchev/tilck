@@ -29,8 +29,7 @@
 .global fault_resumable_call
 
 #define MULTIBOOT_FLAGS      (MULTIBOOT_PAGE_ALIGN |   \
-                              MULTIBOOT_MEMORY_INFO |  \
-                              MULTIBOOT_VIDEO_MODE)
+                              MULTIBOOT_MEMORY_INFO)
 
 #define PAGE_DIR_PADDR ((offset page_size_buf) - KERNEL_BASE_VA)
 
@@ -51,10 +50,10 @@ FUNC(_start):
    .long 0
    .long 0
 
-   .long 1  /* EGA-standard text mode */
-   .long 80 /* cols */
-   .long 25 /* rows */
-   .long 0  /* color depth (0 in text mode) */
+   .long 0 /* mode_type: unset */
+   .long 0 /* cols: unset */
+   .long 0 /* rows: unset */
+   .long 0 /* color depth: unset */
 
 /* End multiboot header */
 
