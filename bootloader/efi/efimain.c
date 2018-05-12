@@ -304,7 +304,12 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
 #ifdef BITS64
    /* Jump to the switchmode code */
-   asmVolatile("jmp *%0" : : "a"((UINTN)SWITCHMODE_PADDR));
+   asmVolatile("jmp *%%rcx"
+               : /* no output */
+               : "a" (MULTIBOOT_BOOTLOADER_MAGIC),
+                 "b" (mbi),
+                 "c" ((UINTN)SWITCHMODE_PADDR)
+               : /* no clobber */);
 #else
    /* Jump to the kernel */
    asmVolatile("jmp *%%ecx"

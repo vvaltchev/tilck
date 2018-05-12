@@ -360,7 +360,7 @@ function build_cmake {
       else
 
          # CMake is installed: let's check its version
-         ver=`cmake --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
+         ver=`cmake --version | head -1 | grep -Eo '[0-9]+[.][0-9]+[.][0-9]+' | head -1`
          major=`echo -ne $ver | grep -Eo '[0-9]+' | head -1`
          minor=`echo -ne $ver | grep -Eo '[0-9]+' | head -2 | tail -1`
 
