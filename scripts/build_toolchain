@@ -535,6 +535,39 @@ function build_gnuefi {
    popd
 }
 
+
+##################################
+# Download OVMF
+##################################
+
+function download_ovmf {
+
+   pushd .
+
+   if ! [ -d ovmf ]; then
+
+      mkdir ovmf
+      cd ovmf
+
+      wget -nd -r --no-parent -A 'edk2.git-ovmf-ia32*' https://www.kraxel.org/repos/jenkins/edk2/
+      wget -nd -r --no-parent -A 'edk2.git-ovmf-x64*' https://www.kraxel.org/repos/jenkins/edk2/
+
+      rpm2cpio edk2.git-ovmf-ia32* | cpio -idmv
+      rpm2cpio edk2.git-ovmf-x64* | cpio -idmv
+
+      mv ./usr/share/edk2.git/* .
+      rm -rf ./usr
+      rm -rf ./robots*
+      rm -rf *.rpm
+
+   else
+
+      echo "NOTE: Skipping OVMF"
+   fi
+
+   popd
+}
+
 ##########################################################
 #
 # MAIN
