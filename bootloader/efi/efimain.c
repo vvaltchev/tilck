@@ -15,7 +15,7 @@
 #include "utils.h"
 
 #define PAGE_SIZE            0x1000    // 4 KB
-#define BOOT_PADDR           0xC000
+#define SWITCHMODE_PADDR     0xC000
 #define KERNEL_FILE      L"\\EFI\\BOOT\\elf_kernel_stripped"
 
 #define DESIRED_RES_X 800
@@ -116,6 +116,8 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS, EFI_FILE_PROTOCOL *fileProt)
       }
 
       CHECK(phdr->p_vaddr >= KERNEL_BASE_VA);
+      CHECK(phdr->p_paddr >= KERNEL_PADDR);
+      CHECK(phdr->p_paddr < KERNEL_PADDR + KERNEL_MAX_SIZE);
 
       bzero((void *)(UINTN)phdr->p_paddr, phdr->p_memsz);
 
@@ -430,11 +432,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = LoadElfKernel(BS, fileProt);
    HANDLE_EFI_ERROR("LoadElfKernel");
 
-   // Load switchmode.bin as a file from the 'fatpart'.
-
+#ifdef BITS64
    status = LoadFileFromDisk(BS, fileProt, 1,
-                             BOOT_PADDR, L"\\EFI\\BOOT\\switchmode.bin");
+                             SWITCHMODE_PADDR, L"\\EFI\\BOOT\\switchmode.bin");
    HANDLE_EFI_ERROR("LoadFileFromDisk");
+#endif
 
    // Prepare for the actual boot
    Print(L"Press ANY key to boot the kernel...\r\n");
@@ -465,7 +467,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                   RAMDISK_SIZE);
    }
 
-   ((void (*)())BOOT_PADDR)();
+#ifdef BITS64
+   /* Jump to the switchmode code */
+   asmVolatile("jmp *%0" : : "a"((UINTN)SWITCHMODE_PADDR));
+#else
+   /* Jump to the kernel */
+   asmVolatile("jmp *%0" : : "r"(KERNEL_PADDR));
+#endif
 
    /* --- we should never get here in the normal case --- */
 
