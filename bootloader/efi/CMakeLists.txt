@@ -9,6 +9,8 @@ set(SWITCHMODE_BIN "switchmode.bin")
 # Remove -rdynamic
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
+set(EFI_ARCH x86_64)
+
 set(
    SWITCHMODE_COMPILE_OPTS
 
@@ -48,13 +50,13 @@ set(
    -I${CMAKE_SOURCE_DIR}/include
    -I${CMAKE_SOURCE_DIR}/include/system_headers
    -I${GNUEFI_DIR}/inc
-   -I${GNUEFI_DIR}/inc/x86_64
+   -I${GNUEFI_DIR}/inc/${EFI_ARCH}
 )
 
 set(
    LINK_FLAGS_LIST
 
-   -T${GNUEFI_DIR}/gnuefi/elf_x86_64_efi.lds
+   -T${GNUEFI_DIR}/gnuefi/elf_${EFI_ARCH}_efi.lds
    -nostdlib
    -Wl,-znocombreloc
    -Wl,-Bsymbolic
@@ -69,7 +71,7 @@ set(
    -j .text -j .sdata -j .data -j .dynamic
    -j .dynsym -j .rel -j .rela -j .reloc
 
-   --target=efi-app-x86_64
+   --target=efi-app-${EFI_ARCH}
 )
 
 add_library(
@@ -89,9 +91,9 @@ set_target_properties(
       LINK_FLAGS ${LINK_FLAGS}
 )
 
-target_link_libraries(efi_app ${GNUEFI_DIR}/x86_64/gnuefi/crt0-efi-x86_64.o)
-target_link_libraries(efi_app ${GNUEFI_DIR}/x86_64/lib/libefi.a)
-target_link_libraries(efi_app ${GNUEFI_DIR}/x86_64/gnuefi/libgnuefi.a)
+target_link_libraries(efi_app ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/crt0-efi-${EFI_ARCH}.o)
+target_link_libraries(efi_app ${GNUEFI_DIR}/${EFI_ARCH}/lib/libefi.a)
+target_link_libraries(efi_app ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/libgnuefi.a)
 
 add_custom_command(
    OUTPUT
