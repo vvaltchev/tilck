@@ -4,44 +4,12 @@ file(GLOB C_SOURCES "*.c")
 file(GLOB ASM_SOURCES "*.S")
 
 set(GNUEFI_DIR "${CMAKE_SOURCE_DIR}/toolchain/gnu-efi")
-set(EFI_MAIN_SO "efimain.so")
-set(EFI_MAIN_OBJ "efimain.o")
 set(SWITCHMODE_BIN "switchmode.bin")
 
-set(
-   EFI_CFLAGS_LIST
-
-   -std=c99 -c -fno-stack-protector -fpic -fshort-wchar -mno-red-zone
-   -DEFI_FUNCTION_WRAPPER
-   -nostdinc
-   -DNO_EXOS_ASSERT
-   -DNO_EXOS_STATIC_WRAPPER
-   -I${CMAKE_SOURCE_DIR}/include
-   -I${CMAKE_SOURCE_DIR}/include/system_headers
-   -I${GNUEFI_DIR}/inc
-   -I${GNUEFI_DIR}/inc/x86_64
-)
+# Remove -rdynamic
+SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
 set(
-   EFI_SO_LINK_OPTS
-
-   ${GNUEFI_DIR}/x86_64/gnuefi/crt0-efi-x86_64.o -nostdlib -znocombreloc
-   -T ${GNUEFI_DIR}/gnuefi/elf_x86_64_efi.lds -shared -Bsymbolic
-   -L${GNUEFI_DIR}/x86_64/lib -L${GNUEFI_DIR}/x86_64/gnuefi
-   -l:libgnuefi.a -l:libefi.a
-)
-
-set(
-   OBJCOPY_OPTS
-
-   -j .text -j .sdata -j .data -j .dynamic
-   -j .dynsym -j .rel -j .rela -j .reloc
-
-   --target=efi-app-x86_64
-)
-
-set(
-
    SWITCHMODE_COMPILE_OPTS
 
    -Ttext 0xC000
@@ -63,38 +31,77 @@ add_custom_command(
       "Building switchmode.bin"
 )
 
-add_custom_command(
-   OUTPUT
-      ${EFI_MAIN_OBJ}
-   DEPENDS
-      ${C_SOURCES}
-   COMMAND
-      ${CMAKE_C_COMPILER} -o ${EFI_MAIN_OBJ} ${C_SOURCES} ${EFI_CFLAGS_LIST}
-   COMMENT
-      "Building ${EFI_MAIN_OBJ}"
+################################################################################
+
+set(
+   COMPILE_FLAGS_LIST
+
+   -DEFI_FUNCTION_WRAPPER
+   -DNO_EXOS_ASSERT
+   -DNO_EXOS_STATIC_WRAPPER
+   -std=c99
+   -fno-stack-protector
+   -fpic
+   -fshort-wchar
+   -mno-red-zone
+   -nostdinc
+   -I${CMAKE_SOURCE_DIR}/include
+   -I${CMAKE_SOURCE_DIR}/include/system_headers
+   -I${GNUEFI_DIR}/inc
+   -I${GNUEFI_DIR}/inc/x86_64
 )
 
-add_custom_command(
-   OUTPUT
-      ${EFI_MAIN_SO}
-   DEPENDS
-      ${CMAKE_CURRENT_BINARY_DIR}/${EFI_MAIN_OBJ}
-   COMMAND
-     ld -o ${EFI_MAIN_SO} ${EFI_MAIN_OBJ} ${EFI_SO_LINK_OPTS}
-   COMMENT
-      "Linking ${EFI_MAIN_SO}"
+set(
+   LINK_FLAGS_LIST
+
+   -T${GNUEFI_DIR}/gnuefi/elf_x86_64_efi.lds
+   -nostdlib
+   -Wl,-znocombreloc
+   -Wl,-Bsymbolic
 )
 
+JOIN("${COMPILE_FLAGS_LIST}" ${SPACE} COMPILE_FLAGS)
+JOIN("${LINK_FLAGS_LIST}" ${SPACE} LINK_FLAGS)
+
+set(
+   OBJCOPY_OPTS
+
+   -j .text -j .sdata -j .data -j .dynamic
+   -j .dynsym -j .rel -j .rela -j .reloc
+
+   --target=efi-app-x86_64
+)
+
+add_library(
+
+   efi_app
+   SHARED
+
+   ${C_SOURCES}
+)
+
+set_target_properties(
+
+   efi_app
+
+   PROPERTIES
+      COMPILE_FLAGS ${COMPILE_FLAGS}
+      LINK_FLAGS ${LINK_FLAGS}
+)
+
+target_link_libraries(efi_app ${GNUEFI_DIR}/x86_64/gnuefi/crt0-efi-x86_64.o)
+target_link_libraries(efi_app ${GNUEFI_DIR}/x86_64/lib/libefi.a)
+target_link_libraries(efi_app ${GNUEFI_DIR}/x86_64/gnuefi/libgnuefi.a)
 
 add_custom_command(
    OUTPUT
       ${EFI_MAIN_FILE}
    COMMAND
-      objcopy ${OBJCOPY_OPTS} ${EFI_MAIN_SO} ${EFI_MAIN_FILE}
+      objcopy ${OBJCOPY_OPTS} libefi_app.so ${EFI_MAIN_FILE}
    DEPENDS
-      ${SWITCHMODE_BIN} ${CMAKE_CURRENT_BINARY_DIR}/${EFI_MAIN_SO}
+      ${SWITCHMODE_BIN} efi_app
    COMMENT
-      "Creating BOOTX64.EFI from ${EFI_MAIN_SO}"
+      "Creating BOOTX64.EFI from libefi_app.so"
 )
 
 add_custom_target(
