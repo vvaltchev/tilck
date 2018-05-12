@@ -1,7 +1,4 @@
 
-
-file(GLOB C_SOURCES "../*.c")
-
 # Remove -rdynamic
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
@@ -50,7 +47,7 @@ add_library(
    efi_app_${EFI_ARCH}
    SHARED
 
-   ${C_SOURCES}
+   ${SOURCES}
 )
 
 set_target_properties(
