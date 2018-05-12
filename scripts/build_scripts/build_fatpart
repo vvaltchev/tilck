@@ -41,7 +41,7 @@ ln $bdir/usermode_apps/shell bin/
 
 # hard-link EFI files
 ln $bdir/bootloader/efi/BOOTX64.EFI EFI/BOOT/
-ln $bdir/bootloader/efi/switchmode.bin EFI/BOOT/
+ln $bdir/bootloader/efi/x86_64/switchmode.bin EFI/BOOT/
 
 # hard-link the kernel file (used also by the legacy bootloader)
 ln $bdir/elf_kernel_stripped EFI/BOOT/elf_kernel_stripped
