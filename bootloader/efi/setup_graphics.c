@@ -1,6 +1,7 @@
 
 #include <efi.h>
 #include <efilib.h>
+#include <multiboot.h>
 
 #include "efibind.h"
 #include "efidef.h"
@@ -18,6 +19,18 @@
 UINTN saved_fb_addr;
 UINTN saved_fb_size;
 EFI_GRAPHICS_OUTPUT_MODE_INFORMATION saved_mode_info;
+
+void set_mbi_framebuffer_info(multiboot_info_t *mbi)
+{
+   mbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
+   mbi->framebuffer_addr = saved_fb_addr;
+   mbi->framebuffer_pitch =
+      saved_mode_info.PixelsPerScanLine * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
+   mbi->framebuffer_width = DESIRED_RES_X;
+   mbi->framebuffer_height = DESIRED_RES_Y;
+   mbi->framebuffer_bpp = sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) * 8;
+   mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
+}
 
 void draw_pixel(int x, int y, UINTN color)
 {
@@ -92,6 +105,9 @@ void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
 
 bool is_pixelformat_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
 {
+   if (sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) != 4)
+      return false;
+
    return mode_info->PixelFormat == PixelRedGreenBlueReserved8BitPerColor ||
           mode_info->PixelFormat == PixelBlueGreenRedReserved8BitPerColor;
 }

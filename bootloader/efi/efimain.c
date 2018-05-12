@@ -10,7 +10,9 @@
 #include "efiprot.h"
 
 #include <elf.h>
+
 #include <common/config.h>
+#include <multiboot.h>
 
 #include "utils.h"
 
@@ -19,7 +21,11 @@
 #define KERNEL_FILE      L"\\EFI\\BOOT\\elf_kernel_stripped"
 
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS);
+void set_mbi_framebuffer_info(multiboot_info_t *mbi);
 void draw_something(void);
+
+const UINTN temp_kernel_addr = KERNEL_PADDR + KERNEL_MAX_SIZE * 4;
+
 
 EFI_STATUS
 LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
@@ -74,7 +80,6 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS,
               void **entry)
 {
    EFI_STATUS status = EFI_LOAD_ERROR;
-   UINTN temp_kernel_addr = KERNEL_PADDR+KERNEL_MAX_SIZE*4;
    EFI_PHYSICAL_ADDRESS kernel_paddr = KERNEL_PADDR;
 
    /*
@@ -171,7 +176,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    void *kernel_entry = NULL;
    EFI_PHYSICAL_ADDRESS ramdisk_paddr = RAMDISK_PADDR;
    EFI_BOOT_SERVICES *BS = ST->BootServices;
-
+   multiboot_info_t *mbi = NULL;
 
    InitializeLib(image, ST);
 
@@ -262,6 +267,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    HANDLE_EFI_ERROR("LoadFileFromDisk");
 #endif
 
+   mbi = (multiboot_info_t *)temp_kernel_addr;
+   Print(L"MBI: 0x%x\n", (UINTN)mbi);
+
    // Prepare for the actual boot
    Print(L"Press ANY key to boot the kernel...\r\n");
 
@@ -284,19 +292,25 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = uefi_call_wrapper(BS->ExitBootServices, 2, image, mapkey);
    HANDLE_EFI_ERROR("BS->ExitBootServices");
 
-
    if (ramdisk_paddr != RAMDISK_PADDR) {
       my_memmove((void *)RAMDISK_PADDR,
                  (void *)(UINTN)ramdisk_paddr,
                   RAMDISK_SIZE);
    }
 
+   /* Setup the multiboot info */
+   set_mbi_framebuffer_info(mbi);
+   mbi->mem_upper = 127*1024; /* temp hack */
+
 #ifdef BITS64
    /* Jump to the switchmode code */
    asmVolatile("jmp *%0" : : "a"((UINTN)SWITCHMODE_PADDR));
 #else
    /* Jump to the kernel */
-   asmVolatile("jmp *%0" : : "r"(kernel_entry));
+   asmVolatile("jmp *%%ecx"
+               : /* no output */
+               : "a" (MULTIBOOT_BOOTLOADER_MAGIC), "b" (mbi), "c"(kernel_entry)
+               : /* no clobber */);
 #endif
 
    /* --- we should never get here in the normal case --- */

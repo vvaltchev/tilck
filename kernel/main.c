@@ -25,6 +25,7 @@
 #include <exos/arch/generic_x86/textmode_video.h>
 
 static bool multiboot;
+static bool use_framebuffer;
 
 extern u32 memsize_in_mb;
 extern uptr ramdisk_paddr;
@@ -34,10 +35,61 @@ extern size_t ramdisk_size;
 
 extern void (*self_test_to_run)(void);
 extern const char *const cmd_args[16];
-
 void parse_kernel_cmdline(const char *cmdline);
 
 /* -- */
+
+uptr fb_addr;
+u32 fb_pitch;
+u32 fb_width;
+u32 fb_height;
+u8 fb_bpp;
+u32 fb_size;
+
+u32 my_make_color(int r, int g, int b)
+{
+   return (r << 16) | (g << 8) | b;
+}
+
+void draw_pixel(int x, int y, u32 color)
+{
+   // bpp is assumed to be == 32.
+
+   uptr addr = fb_addr + (fb_pitch * y) + x * 4;
+   *(volatile u32 *)(addr) = color;
+}
+
+
+void draw_something(void)
+{
+   u32 red_val = my_make_color(255, 0, 0);
+
+   // u32 white_val = my_make_color(255, 255, 255);
+   // u32 green_val = my_make_color(0, 255, 0);
+   // u32 blue_val = my_make_color(0, 0, 255);
+
+   int iy = 300;
+   int ix = 300;
+   int w = 200;
+
+   for (int y = iy; y < iy+10; y++)
+      for (int x = ix; x < ix+w; x++)
+         draw_pixel(x, y, red_val);
+
+}
+
+void handle_framebuffer_info(multiboot_info_t *mbi)
+{
+   use_framebuffer = true;
+
+   fb_addr = mbi->framebuffer_addr;
+   fb_pitch = mbi->framebuffer_pitch;
+   fb_width = mbi->framebuffer_width;
+   fb_height = mbi->framebuffer_height;
+   fb_bpp = mbi->framebuffer_bpp;
+
+   fb_size = fb_pitch * fb_height;
+}
 
 void read_multiboot_info(u32 magic, u32 mbi_addr)
 {
@@ -64,6 +116,12 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
 
    if (mbi->flags & MULTIBOOT_INFO_CMDLINE) {
       parse_kernel_cmdline((const char *)(uptr)mbi->cmdline);
+   }
+
+   if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO) {
+      if (mbi->framebuffer_type != MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT) {
+         handle_framebuffer_info(mbi);
+      }
    }
 }
 
@@ -131,8 +189,11 @@ void selftest_runner_thread()
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    read_multiboot_info(multiboot_magic, mbi_addr);
-   init_term(&x86_pc_text_mode_vi, make_color(COLOR_WHITE, COLOR_BLACK));
-   show_hello_message();
+
+   if (!use_framebuffer) {
+      init_term(&x86_pc_text_mode_vi, make_color(COLOR_WHITE, COLOR_BLACK));
+      show_hello_message();
+   }
 
    setup_segmentation();
    setup_soft_interrupt_handling();
@@ -143,6 +204,21 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_paging();
    init_kmalloc();
    init_paging_cow();
+
+
+   if (use_framebuffer) {
+      map_pages(get_curr_page_dir(),
+                (void *)fb_addr,
+                fb_addr,
+                (fb_size/PAGE_SIZE) + 1,
+                false,
+                true);
+
+      draw_something();
+
+      while (true)
+         halt();
+   }
 
    init_sched();
    init_tasklets();
