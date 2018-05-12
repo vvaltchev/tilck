@@ -181,7 +181,7 @@ pm32:
    mov ss, ax
 
    # jump to kernel
-   jmp 0x08:KERNEL_PADDR
+   jmp 0x08:(KERNEL_PADDR+0x1000)
 
    # --- we should hever get past this point ---
 

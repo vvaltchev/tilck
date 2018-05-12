@@ -4,6 +4,11 @@
 #include <efi.h>
 #include <efilib.h>
 
+/*
+ * Checks if 'addr' is in the range [begin, end).
+ */
+#define IN_RANGE(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
+
 #define CHECK(cond)                                  \
    do {                                              \
       if (!(cond)) {                                 \

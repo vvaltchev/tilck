@@ -69,7 +69,9 @@ end:
 }
 
 EFI_STATUS
-LoadElfKernel(EFI_BOOT_SERVICES *BS, EFI_FILE_PROTOCOL *fileProt)
+LoadElfKernel(EFI_BOOT_SERVICES *BS,
+              EFI_FILE_PROTOCOL *fileProt,
+              void **entry)
 {
    EFI_STATUS status = EFI_LOAD_ERROR;
    UINTN temp_kernel_addr = KERNEL_PADDR+KERNEL_MAX_SIZE*4;
@@ -124,9 +126,23 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS, EFI_FILE_PROTOCOL *fileProt)
       my_memmove((void *)(UINTN)phdr->p_paddr,
                  (char *) header + phdr->p_offset,
                  phdr->p_filesz);
+
+      if (IN_RANGE(header->e_entry,
+                   phdr->p_vaddr,
+                   phdr->p_vaddr + phdr->p_filesz)) {
+         /*
+          * If e_entry is a vaddr (address >= KERNEL_BASE_VA), we need to
+          * calculate its paddr because here paging is OFF. Therefore,
+          * compute its offset from the beginning of the segment and add it
+          * to the paddr of the segment.
+          */
+
+         *entry =
+            (void *)(UINTN)(phdr->p_paddr + (header->e_entry - phdr->p_vaddr));
+      }
    }
 
-   Print(L"ELF kernel loaded\n");
+   Print(L"ELF kernel loaded. Entry: 0x%x\n", *entry);
    status = EFI_SUCCESS;
 
 end:
@@ -152,6 +168,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    UINTN bufSize;
    UINTN crc32;
+   void *kernel_entry = NULL;
    EFI_PHYSICAL_ADDRESS ramdisk_paddr = RAMDISK_PADDR;
    EFI_BOOT_SERVICES *BS = ST->BootServices;
 
@@ -236,7 +253,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = uefi_call_wrapper(fileFsProt->OpenVolume, 2, fileFsProt, &fileProt);
    HANDLE_EFI_ERROR("OpenVolume");
 
-   status = LoadElfKernel(BS, fileProt);
+   status = LoadElfKernel(BS, fileProt, &kernel_entry);
    HANDLE_EFI_ERROR("LoadElfKernel");
 
 #ifdef BITS64
@@ -279,7 +296,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    asmVolatile("jmp *%0" : : "a"((UINTN)SWITCHMODE_PADDR));
 #else
    /* Jump to the kernel */
-   asmVolatile("jmp *%0" : : "r"(KERNEL_PADDR));
+   asmVolatile("jmp *%0" : : "r"(kernel_entry));
 #endif
 
    /* --- we should never get here in the normal case --- */
