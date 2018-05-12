@@ -12,13 +12,14 @@ _start:
 
    cli
 
-   lea ecx, [gdtr+2]
-   mov dword ptr [ecx], offset gdt32
-   lgdt [gdtr]
+   lea ecx, [rip+gdtr+2]
+   lea edx, [rip+gdt32]
+   mov dword ptr [ecx], edx
+   lgdt [rip+gdtr]
 
 
    # With NASM that was simply: jmp far [far_ptr]
-   rex.W jmp FWORD PTR [far_ptr]
+   rex.W jmp FWORD PTR [rip+far_ptr]
 
 far_ptr:
    .quad compat32
@@ -61,15 +62,8 @@ compat32:
    xor ecx, ecx
    mov cr3, ecx # it's a good practice to reset cr3, as well
 
-   jmp 0x08:pm32
-
-pm32:
-   # Here we are in the proper "32-bit protected mode".
-
-   # Now jump to kernel's entry point
+   # Jump to kernel's entry point and enter in proper "32-bit protected mode"
    jmp 0x08:(KERNEL_PADDR+0x1000)
-
-   # --- we should hever get past this point ---
 
 # GDT selectors:
 #
