@@ -521,7 +521,7 @@ function build_gnuefi {
       echo "*** GNU-EFI ***"
       echo
 
-      git clone --branch 3.0.6 --depth 1 https://github.com/vvaltchev/gnu-efi-fork.git gnu-efi
+      git clone --branch 3.0.8 --depth 1 https://github.com/vvaltchev/gnu-efi-fork.git gnu-efi
       cd gnu-efi
       run_command2 "make ARCH=x86_64 -j" build_x86_64.log
       run_command2 "make ARCH=ia32 prefix=i686-linux- -j" build_ia32.log
