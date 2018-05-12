@@ -66,3 +66,22 @@ target_link_libraries(efi_app ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/crt0-efi-${EFI_AR
 target_link_libraries(efi_app ${GNUEFI_DIR}/${EFI_ARCH}/lib/libefi.a)
 target_link_libraries(efi_app ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/libgnuefi.a)
 
+add_custom_command(
+   OUTPUT
+      ${EFI_${EFI_ARCH}_FILE}
+   COMMAND
+      objcopy ${OBJCOPY_OPTS} libefi_app.so ${EFI_${EFI_ARCH}_FILE}
+   DEPENDS
+      ${SWITCHMODE_BIN} efi_app
+   COMMENT
+      "Creating the final EFI file for ${EFI_ARCH}"
+)
+
+add_custom_target(
+
+   efi_${EFI_ARCH}_bootloader
+
+   DEPENDS
+      ${EFI_${EFI_ARCH}_FILE}
+)
+

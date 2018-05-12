@@ -30,24 +30,4 @@ add_custom_command(
 
 include (../GenericBuild.cmake)
 
-add_custom_command(
-   OUTPUT
-      ${EFI_MAIN_FILE}
-   COMMAND
-      objcopy ${OBJCOPY_OPTS} libefi_app.so ${EFI_MAIN_FILE}
-   DEPENDS
-      ${SWITCHMODE_BIN} efi_app
-   COMMENT
-      "Creating the final EFI file for ${EFI_ARCH}"
-)
-
-add_custom_target(
-
-   efi_${EFI_ARCH}_bootloader
-
-   DEPENDS
-      ${EFI_MAIN_FILE}
-)
-
-
 
