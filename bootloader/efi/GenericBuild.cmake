@@ -15,6 +15,7 @@ set(
    -fshort-wchar
    -mno-red-zone
    -nostdinc
+   -g
    -I${CMAKE_SOURCE_DIR}/include
    -I${CMAKE_SOURCE_DIR}/include/system_headers
    -I${GNUEFI_DIR}/inc

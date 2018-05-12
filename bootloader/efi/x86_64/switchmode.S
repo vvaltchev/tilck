@@ -3,26 +3,29 @@
 
 #include <common/config.h>
 
-.global _start
+.global switch_to_pm32_and_jump_to_kernel
 
 .section .text
 .code64
 
-_start:
+switch_to_pm32_and_jump_to_kernel:
 
    cli
 
-   lea ecx, [rip+gdtr+2]
-   lea edx, [rip+gdt32]
-   mov dword ptr [ecx], edx
-   lgdt [rip+gdtr]
+   lea rcx, [rip + gdtr + 2]     # rcx = gdtr + 2 (using rip addressing)
+   lea rdx, [rip + gdt32]        # rdx = gdt32 (using rip addressing)
+   mov [rcx], rdx                # *rcx = rdx [gdtr->ptr = gdt32]
+   lgdt [rip + gdtr]             # lgdt [gdtr]
 
+   lea rcx, [rip + far_ptr]      # rcx = far_ptr (using rip addressing)
+   lea rdx, [rip + compat32]     # rdx = compat32 (using rip addressing)
+   mov [rcx], rdx                # *rcx = rdx [far_ptr->ptr = compat32]
 
    # With NASM that was simply: jmp far [far_ptr]
-   rex.W jmp FWORD PTR [rip+far_ptr]
+   rex.W jmp FWORD PTR [rip + far_ptr]
 
 far_ptr:
-   .quad compat32
+   .quad 0
    .word 0x08 # cs
 
 .code32
@@ -80,18 +83,17 @@ compat32:
 # for gdt:
 # http://wiki.osdev.org/Global_Descriptor_Table
 
+.align 8
+
 gdt32:
    .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 # sel 0x00.
    .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x9A, 0xCF, 0x00 # sel 0x08. 32-bit code
    .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00 # sel 0x10. 32-bit data
 
-
 # GDTR format
 # size-1 [ 2 bytes ], gdt addr [ 4 bytes ]
-
 gdtr:
-   .word 0x0023
-   .long 0x00000000
-
+   .word 0x23
+   .quad 0
 
 .end

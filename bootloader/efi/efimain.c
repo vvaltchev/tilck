@@ -17,8 +17,9 @@
 #include "utils.h"
 
 #define PAGE_SIZE            0x1000    // 4 KB
-#define SWITCHMODE_PADDR     0xC000
 #define KERNEL_FILE      L"\\EFI\\BOOT\\elf_kernel_stripped"
+
+void switch_to_pm32_and_jump_to_kernel(void);
 
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS);
 void set_mbi_framebuffer_info(multiboot_info_t *mbi);
@@ -154,6 +155,7 @@ end:
    return status;
 }
 
+
 /**
  * efi_main - The entry point for the EFI application
  * @image: firmware-allocated handle that identifies the image
@@ -261,14 +263,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = LoadElfKernel(BS, fileProt, &kernel_entry);
    HANDLE_EFI_ERROR("LoadElfKernel");
 
-#ifdef BITS64
-   status = LoadFileFromDisk(BS, fileProt, 1,
-                             SWITCHMODE_PADDR, L"\\EFI\\BOOT\\switchmode.bin");
-   HANDLE_EFI_ERROR("LoadFileFromDisk");
-#endif
-
    mbi = (multiboot_info_t *)temp_kernel_addr;
    Print(L"MBI: 0x%x\n", (UINTN)mbi);
+   Print(L"switch_to_pm32_and_jump_to_kernel: 0x%x\n", &switch_to_pm32_and_jump_to_kernel);
 
    // Prepare for the actual boot
    Print(L"Press ANY key to boot the kernel...\r\n");
@@ -304,11 +301,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
 #ifdef BITS64
    /* Jump to the switchmode code */
-   asmVolatile("jmp *%%rcx"
+   asmVolatile("jmp switch_to_pm32_and_jump_to_kernel"
                : /* no output */
                : "a" (MULTIBOOT_BOOTLOADER_MAGIC),
-                 "b" (mbi),
-                 "c" ((UINTN)SWITCHMODE_PADDR)
+                 "b" (mbi)
                : /* no clobber */);
 #else
    /* Jump to the kernel */
