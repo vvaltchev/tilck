@@ -1,27 +1,12 @@
 
 .intel_syntax noprefix
 
-#include <config.h>
+#include <common/config.h>
 
 .global _start
 
 .section .text
-
 .code64
-
-
-# DEBUGGING with GDB
-# in order to debug mode switches, we need manually to tell GDB the right mode
-#
-# force 64 bit
-# set arch i386:x86-64:intel
-#
-# force 32 bit
-# set arch i386
-#
-# see current architecture
-# show architecture
-#
 
 _start:
 
@@ -36,18 +21,14 @@ _start:
    rex.W jmp FWORD PTR [far_ptr]
 
 far_ptr:
-   .quad CompatibilityMode64_32
+   .quad compat32
    .word 0x08 # cs
 
 .code32
+compat32:
 
-   # here we are in a compatibility 32 bit mode of long mode
+   # Here we are in a compatibility 32 bit mode of long mode
    # so, we're using 32 bit, but we're still (kind of) in long mode.
-   # here in GDB, change the arch with:
-   # > set arch i386
-   # for further debugging.
-
-CompatibilityMode64_32:
 
    mov ax, 0x10
    mov ds, ax
@@ -75,22 +56,12 @@ CompatibilityMode64_32:
    xor eax, eax
    mov cr3, eax # it's a good practice to reset cr3, as well
 
-
    jmp 0x08:pm32
 
-
-.code32
-
 pm32:
+   # Here we are in the proper "32-bit protected mode".
 
-   mov ax, 0x10
-   mov ds, ax
-   mov es, ax
-   mov fs, ax
-   mov gs, ax
-   mov ss, ax
-
-   # jump to kernel
+   # Now jump to kernel's entry point
    mov eax, 0x2BADB002 # MULTIBOOT_BOOTLOADER_MAGIC
    jmp 0x08:(KERNEL_PADDR+0x1000)
 

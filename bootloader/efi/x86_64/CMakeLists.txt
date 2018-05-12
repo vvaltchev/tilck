@@ -13,7 +13,7 @@ set(
    -ffreestanding
    -nostdlib
    -nostdinc
-   -I${CMAKE_SOURCE_DIR}/include/common
+   -I${CMAKE_SOURCE_DIR}/include
 )
 
 add_custom_command(

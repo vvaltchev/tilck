@@ -148,7 +148,8 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
 
    EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode = graphicsProtocol->Mode;
 
-   print_mode_info(mode);
+   // Debug: display current mode before changing it.
+   // print_mode_info(mode);
 
    UINTN wanted_mode = (UINTN)-1;
    UINTN orig_mode = mode->Mode;
@@ -177,6 +178,7 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
           is_pixelformat_supported(mode_info)) {
 
          wanted_mode = i;
+         break;
       }
    }
 
@@ -216,6 +218,7 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
 
       Print(L"Loader failed: unable to set desired mode\n");
       status = EFI_LOAD_ERROR;
+      goto end;
    }
 
    print_mode_info(mode);
