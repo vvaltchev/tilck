@@ -116,6 +116,7 @@ set(COMMON_FLAGS "${GENERAL_DEFS} ${OTHER_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 
 set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/bootloader/bootloader.bin)
 set(EFI_x86_64_FILE ${CMAKE_BINARY_DIR}/bootloader/efi/BOOTX64.EFI)
+set(EFI_ia32_FILE ${CMAKE_BINARY_DIR}/bootloader/efi/BOOTIA32.EFI)
 set(KERNEL_FILE ${CMAKE_BINARY_DIR}/elf_kernel_stripped)
 set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
 set(GPT_IMG_FILE ${CMAKE_BINARY_DIR}/gpt_exos.img)
@@ -159,6 +160,7 @@ add_custom_command(
       ${BUILD_SCRIPTS}/build_fatpart
       ${BOOTLOADER_BIN_FILE}
       ${EFI_x86_64_FILE}
+      ${EFI_ia32_FILE}
       ${KERNEL_FILE}
    COMMENT
       "Creating the bootable image file (MBR)"

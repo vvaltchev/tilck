@@ -21,7 +21,6 @@
 #define DESIRED_RES_X 800
 #define DESIRED_RES_Y 600
 
-
 EFI_STATUS
 LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
                  EFI_FILE_PROTOCOL *fileProt,
@@ -53,13 +52,13 @@ LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
    Print(L"File Read()...\r\n");
 
    status = uefi_call_wrapper(fileProt->Read, 3,
-                              fileHandle, &bufSize, (void *)paddr);
+                              fileHandle, &bufSize, (void *)(UINTN)paddr);
    HANDLE_EFI_ERROR("fileProt->Read");
 
 
    Print(L"Size read: %d\r\n", bufSize);
 
-   uefi_call_wrapper(BS->CalculateCrc32, 3, paddr, bufSize, &crc32);
+   uefi_call_wrapper(BS->CalculateCrc32, 3, (void*)(UINTN)paddr, bufSize, &crc32);
    Print(L"Crc32: 0x%x\r\n", crc32);
 
    status = uefi_call_wrapper(fileHandle->Close, 1, fileHandle);
@@ -74,7 +73,7 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS, EFI_FILE_PROTOCOL *fileProt)
 {
    EFI_STATUS status = EFI_LOAD_ERROR;
    UINTN temp_kernel_addr = KERNEL_PADDR+KERNEL_MAX_SIZE*4;
-   UINTN kernel_paddr = KERNEL_PADDR;
+   EFI_PHYSICAL_ADDRESS kernel_paddr = KERNEL_PADDR;
 
    /*
     * Temporary load the whole kernel file in a safe location.
@@ -243,7 +242,7 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
                               3,
                               handles[0],
                               &GraphicsOutputProtocol,
-                              &graphicsProtocol);
+                              (void **)&graphicsProtocol);
 
    HANDLE_EFI_ERROR("HandleProtocol() failed");
 
@@ -344,7 +343,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    UINTN bufSize;
    UINTN crc32;
-   UINTN ramdisk_paddr = RAMDISK_PADDR;
+   EFI_PHYSICAL_ADDRESS ramdisk_paddr = RAMDISK_PADDR;
    EFI_BOOT_SERVICES *BS = ST->BootServices;
 
 
@@ -359,7 +358,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                               6,                                  // #args
                               image,                              // arg 1
                               &LoadedImageProtocol,               // arg 2
-                              &loaded_image,                      // arg 3
+                              (void**)&loaded_image,              // arg 3
                               image,                              // arg 4
                               NULL,                               // arg 5
                               EFI_OPEN_PROTOCOL_GET_PROTOCOL);    // arg 6
@@ -370,7 +369,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                               6,
                               loaded_image->DeviceHandle,
                               &BlockIoProtocol,
-                              &blockio,
+                              (void **)&blockio,
                               image,
                               NULL,
                               EFI_OPEN_PROTOCOL_GET_PROTOCOL);
@@ -379,7 +378,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = uefi_call_wrapper(BS->OpenProtocol, 6,
                               loaded_image->DeviceHandle,
                               &DiskIoProtocol,
-                              &ioprot,
+                              (void **)&ioprot,
                               image,
                               NULL,
                               EFI_OPEN_PROTOCOL_GET_PROTOCOL);
@@ -402,22 +401,26 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                               blockio->Media->MediaId,
                               0, // offset from the beginnig of the partition!
                               RAMDISK_SIZE /* buffer size */,
-                              ramdisk_paddr);
+                              (void *)(UINTN)ramdisk_paddr);
    HANDLE_EFI_ERROR("ReadDisk");
    Print(L"RAMDISK paddr: 0x%lx\r\n", ramdisk_paddr);
 
    crc32 = 0;
    uefi_call_wrapper(BS->CalculateCrc32, 3,
-                     ramdisk_paddr, RAMDISK_SIZE, &crc32);
+                     (void *)(UINTN)ramdisk_paddr, RAMDISK_SIZE, &crc32);
    Print(L"RAMDISK CRC32: 0x%x\r\n", crc32);
 
    // ------------------------------------------------------------------ //
 
    Print(L"OpenProtocol (EFI_SIMPLE_FILE_SYSTEM_PROTOCOL)...\r\n");
-   status = uefi_call_wrapper(BS->OpenProtocol, 6,
+   status = uefi_call_wrapper(BS->OpenProtocol,
+                              6,
                               loaded_image->DeviceHandle,
-                              &FileSystemProtocol, &fileFsProt,
-                              image, NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+                              &FileSystemProtocol,
+                              (void **)&fileFsProt,
+                              image,
+                              NULL,
+                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("OpenProtocol FileSystemProtocol");
 
    Print(L"OpenVolume()...\r\n");
@@ -457,8 +460,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
 
    if (ramdisk_paddr != RAMDISK_PADDR) {
-      my_memmove((UINTN*)RAMDISK_PADDR,
-                 (UINTN*)ramdisk_paddr,
+      my_memmove((void *)RAMDISK_PADDR,
+                 (void *)(UINTN)ramdisk_paddr,
                   RAMDISK_SIZE);
    }
 
@@ -470,4 +473,5 @@ end:
    WaitForKeyPress(ST);
    return EFI_SUCCESS;
 }
+
 

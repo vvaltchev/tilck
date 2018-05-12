@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.2)
 
-file(GLOB ASM_SOURCES "*.S")
+set(EFI_ARCH x86_64)
 
+file(GLOB ASM_SOURCES "*.S")
 set(SWITCHMODE_BIN "switchmode.bin")
 
 set(
@@ -25,8 +26,6 @@ add_custom_command(
    COMMENT
       "Building switchmode.bin"
 )
-
-################################################################################
 
 include (../GenericBuild.cmake)
 

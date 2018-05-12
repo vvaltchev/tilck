@@ -47,7 +47,7 @@ set(
 
 add_library(
 
-   efi_app
+   efi_app_${EFI_ARCH}
    SHARED
 
    ${C_SOURCES}
@@ -55,24 +55,24 @@ add_library(
 
 set_target_properties(
 
-   efi_app
+   efi_app_${EFI_ARCH}
 
    PROPERTIES
       COMPILE_FLAGS ${COMPILE_FLAGS}
       LINK_FLAGS ${LINK_FLAGS}
 )
 
-target_link_libraries(efi_app ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/crt0-efi-${EFI_ARCH}.o)
-target_link_libraries(efi_app ${GNUEFI_DIR}/${EFI_ARCH}/lib/libefi.a)
-target_link_libraries(efi_app ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/libgnuefi.a)
+target_link_libraries(efi_app_${EFI_ARCH} ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/crt0-efi-${EFI_ARCH}.o)
+target_link_libraries(efi_app_${EFI_ARCH} ${GNUEFI_DIR}/${EFI_ARCH}/lib/libefi.a)
+target_link_libraries(efi_app_${EFI_ARCH} ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/libgnuefi.a)
 
 add_custom_command(
    OUTPUT
       ${EFI_${EFI_ARCH}_FILE}
    COMMAND
-      objcopy ${OBJCOPY_OPTS} libefi_app.so ${EFI_${EFI_ARCH}_FILE}
+      objcopy ${OBJCOPY_OPTS} libefi_app_${EFI_ARCH}.so ${EFI_${EFI_ARCH}_FILE}
    DEPENDS
-      ${SWITCHMODE_BIN} efi_app
+      ${SWITCHMODE_BIN} efi_app_${EFI_ARCH}
    COMMENT
       "Creating the final EFI file for ${EFI_ARCH}"
 )

@@ -1,10 +1,6 @@
 
-#include <efi.h>
-#include <efilib.h>
-
 #include "utils.h"
 
-#define asmVolatile __asm__ volatile
 typedef UINTN uptr;
 
 void bzero(void *ptr, UINTN len)
@@ -24,7 +20,8 @@ void DumpFirst16Bytes(char *buf)
 
 void WaitForKeyPress(EFI_SYSTEM_TABLE *ST)
 {
-    UINTN index, k;
+    UINTN index;
+    EFI_INPUT_KEY k;
     EFI_EVENT event = ST->ConIn->WaitForKey;
     uefi_call_wrapper(BS->WaitForEvent,
                       3, // args count
@@ -76,3 +73,4 @@ void *my_memmove(void *dest, const void *src, size_t n)
 
    return dest;
 }
+

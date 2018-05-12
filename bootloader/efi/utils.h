@@ -1,4 +1,6 @@
 
+#include <common/basic_defs.h>
+
 #include <efi.h>
 #include <efilib.h>
 
