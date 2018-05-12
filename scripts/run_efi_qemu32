@@ -1,4 +1,4 @@
 #!/bin/bash
 
 BUILD_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-$BUILD_DIR/run_efi_nokvm_qemu -enable-kvm -cpu host "$@"
+$BUILD_DIR/run_efi_nokvm_qemu32 -enable-kvm -cpu host "$@"
