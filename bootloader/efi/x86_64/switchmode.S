@@ -30,12 +30,12 @@ compat32:
    # Here we are in a compatibility 32 bit mode of long mode
    # so, we're using 32 bit, but we're still (kind of) in long mode.
 
-   mov ax, 0x10
-   mov ds, ax
-   mov es, ax
-   mov fs, ax
-   mov gs, ax
-   mov ss, ax
+   mov cx, 0x10
+   mov ds, cx
+   mov es, cx
+   mov fs, cx
+   mov gs, cx
+   mov ss, cx
    mov esp, 0xFFF0
 
    # Disable Paging to get out of Long Mode
@@ -44,17 +44,22 @@ compat32:
    mov cr0, ecx # Write CR0.
 
    # Deactivate Long Mode
+
+   push eax
+
    mov ecx, 0xC0000080 # EFER MSR number.
    rdmsr # Read EFER.
    btc eax, 8 # Set LME=0.
    wrmsr # Write EFER.
 
-   mov eax, cr4
-   and eax, 0xFFFFFFDF # disable PAE
-   mov cr4, eax
+   pop eax
 
-   xor eax, eax
-   mov cr3, eax # it's a good practice to reset cr3, as well
+   mov ecx, cr4
+   and ecx, 0xFFFFFFDF # disable PAE
+   mov cr4, ecx
+
+   xor ecx, ecx
+   mov cr3, ecx # it's a good practice to reset cr3, as well
 
    jmp 0x08:pm32
 
@@ -62,7 +67,6 @@ pm32:
    # Here we are in the proper "32-bit protected mode".
 
    # Now jump to kernel's entry point
-   mov eax, 0x2BADB002 # MULTIBOOT_BOOTLOADER_MAGIC
    jmp 0x08:(KERNEL_PADDR+0x1000)
 
    # --- we should hever get past this point ---

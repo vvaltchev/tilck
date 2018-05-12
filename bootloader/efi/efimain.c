@@ -314,7 +314,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    /* Jump to the kernel */
    asmVolatile("jmp *%%ecx"
                : /* no output */
-               : "a" (MULTIBOOT_BOOTLOADER_MAGIC), "b" (mbi), "c"(kernel_entry)
+               : "a" (MULTIBOOT_BOOTLOADER_MAGIC),
+                 "b" (mbi),
+                 "c" (kernel_entry)
                : /* no clobber */);
 #endif
 
