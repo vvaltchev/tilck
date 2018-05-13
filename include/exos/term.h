@@ -24,6 +24,7 @@ typedef struct {
 
 
 void init_term(const video_interface *vi, u8 default_color);
+bool term_is_initialized(void);
 void term_movecur(int row, int col);
 void term_write_char(char c);
 void term_write_char2(char c, u8 color);

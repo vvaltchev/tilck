@@ -163,3 +163,8 @@ void init_term(const video_interface *interface, u8 default_color)
 
    init_serial_port();
 }
+
+bool term_is_initialized(void)
+{
+   return vi != NULL;
+}

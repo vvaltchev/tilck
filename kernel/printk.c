@@ -251,6 +251,17 @@ void vprintk(const char *fmt, va_list args)
    char buf[256];
    int written = 0;
 
+   if (!term_is_initialized()) {
+
+      /*
+       * The term is not initialized: at most we can write in the ringbuf,
+       * but let's make this a TODO task. For the moment, just don't do
+       * anything at all.
+       */
+
+       return;
+   }
+
    if (!in_panic())
       written = snprintk(buf, sizeof(buf), "[kernel] ");
 
