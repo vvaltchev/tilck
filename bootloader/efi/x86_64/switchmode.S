@@ -22,16 +22,10 @@ switch_to_pm32_and_jump_to_kernel:
    mov [rcx], rdx                # *rcx = rdx [gdtr->ptr = gdt32]
    lgdt [rip + gdtr]             # lgdt [gdtr]
 
-   lea rcx, [rip + far_ptr]      # rcx = far_ptr (using rip addressing)
-   lea rdx, [rip + compat32]     # rdx = compat32 (using rip addressing)
-   mov [rcx], rdx                # *rcx = rdx [far_ptr->ptr = compat32]
-
-   # With NASM that was simply: jmp far [rip + far_ptr]
-   rex.W jmp FWORD PTR [rip + far_ptr]
-
-far_ptr:
-   .quad 0
-   .word 0x08 # cs
+   lea rdx, [rip + compat32]
+   push 0x08
+   push rdx
+   rex.W retf # perform a 32-bit far ret (=> far jmp to 0x08:compat32)
 
 .code32
 compat32:
