@@ -19,8 +19,6 @@
 #define PAGE_SIZE            0x1000    // 4 KB
 #define KERNEL_FILE      L"\\EFI\\BOOT\\elf_kernel_stripped"
 
-void switch_to_pm32_and_jump_to_kernel(multiboot_info_t *mbi, void *entry);
-
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS);
 void set_mbi_framebuffer_info(multiboot_info_t *mbi);
 void draw_something(void);
@@ -263,10 +261,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = LoadElfKernel(BS, fileProt, &kernel_entry);
    HANDLE_EFI_ERROR("LoadElfKernel");
 
-   mbi = (multiboot_info_t *)temp_kernel_addr;
-   Print(L"MBI: 0x%x\n", (UINTN)mbi);
-   Print(L"switch_to_pm32_and_jump_to_kernel: 0x%x\n", &switch_to_pm32_and_jump_to_kernel);
-
    // Prepare for the actual boot
    Print(L"Press ANY key to boot the kernel...\r\n");
 
@@ -275,10 +269,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    WaitForKeyPress(ST);
 
-
    EFI_MEMORY_DESCRIPTOR mmap[128];
    UINTN mmap_size, mapkey, desc_size, desc_ver;
-
 
    mmap_size = sizeof(mmap);
 
@@ -296,23 +288,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    }
 
    /* Setup the multiboot info */
+   mbi = (multiboot_info_t *)temp_kernel_addr;
    set_mbi_framebuffer_info(mbi);
    mbi->mem_upper = 127*1024; /* temp hack */
 
-#ifdef BITS64
-
-   switch_to_pm32_and_jump_to_kernel(mbi, kernel_entry);
-
-#else
-   /* Jump to the kernel */
-   asmVolatile("jmp *%%ecx"
-               : /* no output */
-               : "a" (MULTIBOOT_BOOTLOADER_MAGIC),
-                 "b" (mbi),
-                 "c" (kernel_entry)
-               : /* no clobber */);
-#endif
-
+   jump_to_kernel(mbi, kernel_entry);
    /* --- we should never get here in the normal case --- */
 
 end:

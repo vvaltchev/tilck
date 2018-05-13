@@ -3,6 +3,7 @@
 
 #include <efi.h>
 #include <efilib.h>
+#include <multiboot.h>
 
 /*
  * Checks if 'addr' is in the range [begin, end).
@@ -31,4 +32,4 @@ void DumpFirst16Bytes(char *buf);
 void WaitForKeyPress(EFI_SYSTEM_TABLE *ST);
 void *my_memcpy(void *dest, const void *src, size_t n);
 void *my_memmove(void *dest, const void *src, size_t n);
-
+void jump_to_kernel(multiboot_info_t *mbi, void *entry_point);

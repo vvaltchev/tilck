@@ -3,6 +3,31 @@
 
 typedef UINTN uptr;
 
+#ifdef BITS32
+
+void jump_to_kernel(multiboot_info_t *mbi, void *entry_point)
+{
+   /* Jump to the kernel */
+   asmVolatile("jmp *%%ecx"
+               : /* no output */
+               : "a" (MULTIBOOT_BOOTLOADER_MAGIC),
+                 "b" (mbi),
+                 "c" (entry_point)
+               : /* no clobber */);
+}
+
+#else
+
+/* Defined in switchmode.S */
+void switch_to_pm32_and_jump_to_kernel(multiboot_info_t *mbi, void *entry);
+
+void jump_to_kernel(multiboot_info_t *mbi, void *entry_point)
+{
+   switch_to_pm32_and_jump_to_kernel(mbi, entry_point);
+}
+
+#endif
+
 void bzero(void *ptr, UINTN len)
 {
    for (UINTN i = 0; i < len; i++)
