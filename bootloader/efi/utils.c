@@ -46,17 +46,12 @@ void WaitForKeyPress(EFI_SYSTEM_TABLE *ST)
     UINTN index;
     EFI_INPUT_KEY k;
     EFI_EVENT event = ST->ConIn->WaitForKey;
-    uefi_call_wrapper(BS->WaitForEvent,
-                      3, // args count
-                      1, // number of events in the array pointed by &event
-                      &event, // pointer to events array (1 elem in our case).
-                      &index); // index of the last matching event in the array
+    BS->WaitForEvent(1,       // number of events in the array pointed by &event
+                     &event,  // pointer to events array (1 elem in our case).
+                     &index); // index of the last matching event in the array
 
     // Read the key, allowing WaitForKey to block again.
-    uefi_call_wrapper(ST->ConIn->ReadKeyStroke,
-                      2,
-                      ST->ConIn,
-                      &k);
+    ST->ConIn->ReadKeyStroke(ST->ConIn, &k);
 }
 
 /* dest and src can overloap only partially */

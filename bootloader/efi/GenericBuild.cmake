@@ -9,6 +9,8 @@ set(
    -DEFI_FUNCTION_WRAPPER
    -DNO_EXOS_ASSERT
    -DNO_EXOS_STATIC_WRAPPER
+   -DGNU_EFI_USE_MS_ABI        # allows to call UEFI funcs without the wrapper
+   -maccumulate-outgoing-args  # necessary in order to use MS_ABI
    -std=c99
    -fno-stack-protector
    -fpic

@@ -37,33 +37,25 @@ LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
 
    Print(L"AllocatePages for '%s'..\r\n", filePath);
 
-   status = uefi_call_wrapper(BS->AllocatePages,
-                              4,
-                              AllocateAddress,
-                              EfiBootServicesData,
-                              pagesCount,
-                              &paddr);
+   BS->AllocatePages(AllocateAddress, EfiBootServicesData, pagesCount, &paddr);
+
    HANDLE_EFI_ERROR("AllocatePages");
 
    Print(L"File Open('%s')...\r\n", filePath);
-   status = uefi_call_wrapper(fileProt->Open, 5, fileProt,
-                              &fileHandle, filePath,
-                              EFI_FILE_MODE_READ, 0);
+   status =
+      fileProt->Open(fileProt, &fileHandle, filePath, EFI_FILE_MODE_READ, 0);
    HANDLE_EFI_ERROR("fileProt->Open");
 
    Print(L"File Read()...\r\n");
-
-   status = uefi_call_wrapper(fileProt->Read, 3,
-                              fileHandle, &bufSize, (void *)(UINTN)paddr);
+   status = fileProt->Read(fileHandle, &bufSize, (void *)(UINTN)paddr);
    HANDLE_EFI_ERROR("fileProt->Read");
-
 
    Print(L"Size read: %d\r\n", bufSize);
 
-   uefi_call_wrapper(BS->CalculateCrc32, 3, (void*)(UINTN)paddr, bufSize, &crc32);
+   BS->CalculateCrc32((void*)(UINTN)paddr, bufSize, &crc32);
    Print(L"Crc32: 0x%x\r\n", crc32);
 
-   status = uefi_call_wrapper(fileHandle->Close, 1, fileHandle);
+   status = fileHandle->Close(fileHandle);
    HANDLE_EFI_ERROR("fileHandle->Close");
 
 end:
@@ -88,12 +80,11 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS,
    Print(L"Kernel loaded in temporary paddr.\n");
    Print(L"Allocating memory for final kernel's location...\n");
 
-   status = uefi_call_wrapper(BS->AllocatePages,
-                              4,
-                              AllocateAddress,
+   status = BS->AllocatePages(AllocateAddress,
                               EfiBootServicesData,
                               KERNEL_MAX_SIZE / PAGE_SIZE,
                               &kernel_paddr);
+
    HANDLE_EFI_ERROR("AllocatePages");
    Print(L"Memory allocated.\n");
 
@@ -169,7 +160,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    EFI_FILE_PROTOCOL *fileHandle;
 
    UINTN bufSize;
-   UINTN crc32;
+   UINT32 crc32;
    void *kernel_entry = NULL;
    EFI_PHYSICAL_ADDRESS ramdisk_paddr = RAMDISK_PADDR;
    EFI_BOOT_SERVICES *BS = ST->BootServices;
@@ -179,80 +170,67 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    Print(L"--- exOS bootloader ---\r\n");
 
-   SetupGraphicMode(BS);
+   status = SetupGraphicMode(BS);
    HANDLE_EFI_ERROR("SetupGraphicMode() failed");
 
-   status = uefi_call_wrapper(BS->OpenProtocol,
-                              6,                                  // #args
-                              image,                              // arg 1
-                              &LoadedImageProtocol,               // arg 2
-                              (void**)&loaded_image,              // arg 3
-                              image,                              // arg 4
-                              NULL,                               // arg 5
-                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);    // arg 6
-
+   status = BS->OpenProtocol(image,
+                             &LoadedImageProtocol,
+                             (void**) &loaded_image,
+                             image,
+                             NULL,
+                             EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("Getting a LoadedImageProtocol handle");
 
-   status = uefi_call_wrapper(BS->OpenProtocol,
-                              6,
-                              loaded_image->DeviceHandle,
-                              &BlockIoProtocol,
-                              (void **)&blockio,
-                              image,
-                              NULL,
-                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+   status = BS->OpenProtocol(loaded_image->DeviceHandle,
+                             &BlockIoProtocol,
+                             (void **)&blockio,
+                             image,
+                             NULL,
+                             EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("Getting a BlockIoProtocol handle");
 
-   status = uefi_call_wrapper(BS->OpenProtocol, 6,
-                              loaded_image->DeviceHandle,
-                              &DiskIoProtocol,
-                              (void **)&ioprot,
-                              image,
-                              NULL,
-                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+   status = BS->OpenProtocol(loaded_image->DeviceHandle,
+                             &DiskIoProtocol,
+                             (void **)&ioprot,
+                             image,
+                             NULL,
+                             EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("Getting a DiskIOProtocol handle");
 
    Print(L"Loading ramdisk...\r\n");
 
-   status = uefi_call_wrapper(BS->AllocatePages,
-                              4,
-                              AllocateAnyPages,
+   status = BS->AllocatePages(AllocateAnyPages,
                               EfiBootServicesData,
                               RAMDISK_SIZE / PAGE_SIZE,
                               &ramdisk_paddr);
-
    HANDLE_EFI_ERROR("AllocatePages");
 
-   status = uefi_call_wrapper(ioprot->ReadDisk,
-                              5, /* #args */
-                              ioprot,
-                              blockio->Media->MediaId,
-                              0, // offset from the beginnig of the partition!
-                              RAMDISK_SIZE /* buffer size */,
-                              (void *)(UINTN)ramdisk_paddr);
+   status = ioprot->ReadDisk(ioprot,
+                             blockio->Media->MediaId,
+                             0, // offset from the beginnig of the partition!
+                             RAMDISK_SIZE /* buffer size */,
+                             (void *)(UINTN)ramdisk_paddr);
    HANDLE_EFI_ERROR("ReadDisk");
+
    Print(L"RAMDISK paddr: 0x%lx\r\n", ramdisk_paddr);
 
    crc32 = 0;
-   uefi_call_wrapper(BS->CalculateCrc32, 3,
-                     (void *)(UINTN)ramdisk_paddr, RAMDISK_SIZE, &crc32);
+   BS->CalculateCrc32((void *)(UINTN)ramdisk_paddr, RAMDISK_SIZE, &crc32);
    Print(L"RAMDISK CRC32: 0x%x\r\n", crc32);
 
    // ------------------------------------------------------------------ //
 
    Print(L"OpenProtocol (EFI_SIMPLE_FILE_SYSTEM_PROTOCOL)...\r\n");
-   status = uefi_call_wrapper(BS->OpenProtocol,
-                              6,
-                              loaded_image->DeviceHandle,
-                              &FileSystemProtocol,
-                              (void **)&fileFsProt,
-                              image,
-                              NULL,
-                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+   status = BS->OpenProtocol(loaded_image->DeviceHandle,
+                             &FileSystemProtocol,
+                             (void **)&fileFsProt,
+                             image,
+                             NULL,
+                             EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("OpenProtocol FileSystemProtocol");
 
    Print(L"OpenVolume()...\r\n");
-   status = uefi_call_wrapper(fileFsProt->OpenVolume, 2, fileFsProt, &fileProt);
+   status = fileFsProt->OpenVolume(fileFsProt, &fileProt);
    HANDLE_EFI_ERROR("OpenVolume");
 
    status = LoadElfKernel(BS, fileProt, &kernel_entry);
@@ -263,15 +241,15 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    WaitForKeyPress(ST);
 
    EFI_MEMORY_DESCRIPTOR mmap[128];
-   UINTN mmap_size, mapkey, desc_size, desc_ver;
+   UINTN mmap_size, mapkey, desc_size;
+   UINT32 desc_ver;
 
    mmap_size = sizeof(mmap);
 
-   status = uefi_call_wrapper(BS->GetMemoryMap, 5, &mmap_size,
-                              mmap, &mapkey, &desc_size, &desc_ver);
+   status = BS->GetMemoryMap(&mmap_size, mmap, &mapkey, &desc_size, &desc_ver);
    HANDLE_EFI_ERROR("BS->GetMemoryMap");
 
-   status = uefi_call_wrapper(BS->ExitBootServices, 2, image, mapkey);
+   status = BS->ExitBootServices(image, mapkey);
    HANDLE_EFI_ERROR("BS->ExitBootServices");
 
    if (ramdisk_paddr != RAMDISK_PADDR) {
@@ -280,15 +258,20 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                   RAMDISK_SIZE);
    }
 
-   /* Setup the multiboot info */
+   /*
+    * Setup the multiboot info.
+    * Note: we have to do this here, after calling ExitBootServices() because
+    * that call wipes out all the data segments.
+    */
+
    mbi = (multiboot_info_t *)TEMP_KERNEL_ADDR;
    SetMbiFramebufferInfo(mbi);
    mbi->mem_upper = 127*1024; /* temp hack */
 
    jump_to_kernel(mbi, kernel_entry);
-   /* --- we should never get here in the normal case --- */
 
 end:
+   /* --- we should never get here in the normal case --- */
    WaitForKeyPress(ST);
    return EFI_SUCCESS;
 }

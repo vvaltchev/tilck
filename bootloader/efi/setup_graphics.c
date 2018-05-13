@@ -71,17 +71,15 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
    EFI_HANDLE handles[32];
    UINTN handles_buf_size;
    UINTN handles_count;
-   EFI_GRAPHICS_OUTPUT_PROTOCOL *graphicsProtocol;
+   EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
 
    handles_buf_size = sizeof(handles);
 
-   status = uefi_call_wrapper(BS->LocateHandle,
-                              5,
-                              ByProtocol,
-                              &GraphicsOutputProtocol,
-                              NULL,
-                              &handles_buf_size,
-                              handles);
+   status = BS->LocateHandle(ByProtocol,
+                             &GraphicsOutputProtocol,
+                             NULL,
+                             &handles_buf_size,
+                             handles);
 
    HANDLE_EFI_ERROR("LocateHandle() failed");
 
@@ -89,15 +87,13 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
 
    CHECK(handles_count > 0);
 
-   status = uefi_call_wrapper(BS->HandleProtocol,
-                              3,
-                              handles[0],
-                              &GraphicsOutputProtocol,
-                              (void **)&graphicsProtocol);
+   status = BS->HandleProtocol(handles[0],
+                               &GraphicsOutputProtocol,
+                               (void **)&gProt);
 
    HANDLE_EFI_ERROR("HandleProtocol() failed");
 
-   EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode = graphicsProtocol->Mode;
+   EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode = gProt->Mode;
 
    // Debug: display current mode before changing it.
    // print_mode_info(mode);
@@ -107,26 +103,20 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
 
    for (UINTN i = 0; i < mode->MaxMode; i++) {
 
-      EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info = NULL;
+      EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
       UINTN sizeof_info = 0;
 
-      status = uefi_call_wrapper(graphicsProtocol->QueryMode,
-                                 4,
-                                 graphicsProtocol,
-                                 i,
-                                 &sizeof_info,
-                                 &mode_info);
-
+      status = gProt->QueryMode(gProt, i, &sizeof_info, &mi);
       HANDLE_EFI_ERROR("QueryMode() failed");
 
       // Print(L"Mode [%u]: %u x %u\n",
       //       i,
-      //       mode_info->HorizontalResolution,
-      //       mode_info->VerticalResolution);
+      //       mi->HorizontalResolution,
+      //       mi->VerticalResolution);
 
-      if (mode_info->HorizontalResolution == DESIRED_RES_X &&
-          mode_info->VerticalResolution == DESIRED_RES_Y &&
-          is_pixelformat_supported(mode_info)) {
+      if (mi->HorizontalResolution == DESIRED_RES_X &&
+          mi->VerticalResolution == DESIRED_RES_Y &&
+          is_pixelformat_supported(mi)) {
 
          wanted_mode = i;
          break;
@@ -144,27 +134,15 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
    //       wanted_mode, DESIRED_RES_X, DESIRED_RES_Y);
    // WaitForKeyPress(ST);
 
-   status = uefi_call_wrapper(ST->ConOut->ClearScreen,
-                              1,
-                              ST->ConOut);
-
+   status = ST->ConOut->ClearScreen(ST->ConOut);
    HANDLE_EFI_ERROR("ClearScreen() failed");
 
-   status = uefi_call_wrapper(graphicsProtocol->SetMode,
-                              2,
-                              graphicsProtocol,
-                              wanted_mode);
+   status = gProt->SetMode(gProt, wanted_mode);
 
    if (EFI_ERROR(status)) {
-      status = uefi_call_wrapper(graphicsProtocol->SetMode,
-                                 2,
-                                 graphicsProtocol,
-                                 orig_mode);
 
-      status = uefi_call_wrapper(ST->ConOut->ClearScreen,
-                                 1,
-                                 ST->ConOut);
-
+      status = gProt->SetMode(gProt, orig_mode);
+      status = ST->ConOut->ClearScreen(ST->ConOut);
       HANDLE_EFI_ERROR("ClearScreen() failed");
 
       Print(L"Loader failed: unable to set desired mode\n");
