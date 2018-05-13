@@ -19,7 +19,7 @@
 #define PAGE_SIZE            0x1000    // 4 KB
 #define KERNEL_FILE      L"\\EFI\\BOOT\\elf_kernel_stripped"
 
-void switch_to_pm32_and_jump_to_kernel(void);
+void switch_to_pm32_and_jump_to_kernel(multiboot_info_t *mbi, void *entry);
 
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS);
 void set_mbi_framebuffer_info(multiboot_info_t *mbi);
@@ -300,12 +300,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    mbi->mem_upper = 127*1024; /* temp hack */
 
 #ifdef BITS64
-   /* Jump to the switchmode code */
-   asmVolatile("jmp switch_to_pm32_and_jump_to_kernel"
-               : /* no output */
-               : "a" (MULTIBOOT_BOOTLOADER_MAGIC),
-                 "b" (mbi)
-               : /* no clobber */);
+
+   switch_to_pm32_and_jump_to_kernel(mbi, kernel_entry);
+
 #else
    /* Jump to the kernel */
    asmVolatile("jmp *%%ecx"

@@ -2,13 +2,18 @@
 .intel_syntax noprefix
 
 #include <common/config.h>
+#define MULTIBOOT_BOOTLOADER_MAGIC 0x2BADB002
 
 .global switch_to_pm32_and_jump_to_kernel
 
 .section .text
 .code64
 
+
 switch_to_pm32_and_jump_to_kernel:
+
+   # arg1 in RDI: mbi
+   # arg2 in RSI: kernel's entry point
 
    cli
 
@@ -21,7 +26,7 @@ switch_to_pm32_and_jump_to_kernel:
    lea rdx, [rip + compat32]     # rdx = compat32 (using rip addressing)
    mov [rcx], rdx                # *rcx = rdx [far_ptr->ptr = compat32]
 
-   # With NASM that was simply: jmp far [far_ptr]
+   # With NASM that was simply: jmp far [rip + far_ptr]
    rex.W jmp FWORD PTR [rip + far_ptr]
 
 far_ptr:
@@ -65,23 +70,13 @@ compat32:
    xor ecx, ecx
    mov cr3, ecx # it's a good practice to reset cr3, as well
 
+   mov eax, MULTIBOOT_BOOTLOADER_MAGIC
+   mov ebx, edi # edi: arg1 = mbi
+
+   push 0x08
+   push esi # esi: arg2 = kernel's entry point
    # Jump to kernel's entry point and enter in proper "32-bit protected mode"
-   jmp 0x08:(KERNEL_PADDR+0x1000)
-
-# GDT selectors:
-#
-# [bits 15 .. 3] | [bit 2]  | [bits 1..0]
-#   GDT index    | GDT/LDT  |    RPL
-#
-# GDT/LDT: GDT=0, LDT=1
-# RPL: requested priv. level
-# 00 = ring 0
-# 01 = ring 1
-# 10 = ring 2
-# 11 = ring 3
-
-# for gdt:
-# http://wiki.osdev.org/Global_Descriptor_Table
+   retf
 
 .align 8
 
@@ -90,8 +85,6 @@ gdt32:
    .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x9A, 0xCF, 0x00 # sel 0x08. 32-bit code
    .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00 # sel 0x10. 32-bit data
 
-# GDTR format
-# size-1 [ 2 bytes ], gdt addr [ 4 bytes ]
 gdtr:
    .word 0x23
    .quad 0
