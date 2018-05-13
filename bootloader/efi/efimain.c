@@ -265,6 +265,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
     */
 
    mbi = (multiboot_info_t *)TEMP_KERNEL_ADDR;
+   bzero(mbi, sizeof(*mbi));
    SetMbiFramebufferInfo(mbi);
    mbi->mem_upper = 127*1024; /* temp hack */
 
