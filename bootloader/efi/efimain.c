@@ -1,3 +1,8 @@
+
+#include <common/config.h>
+#include <multiboot.h>
+#include <elf.h>
+
 #include <efi.h>
 #include <efilib.h>
 
@@ -9,22 +14,14 @@
 #include "efierr.h"
 #include "efiprot.h"
 
-#include <elf.h>
-
-#include <common/config.h>
-#include <multiboot.h>
-
 #include "utils.h"
 
-#define PAGE_SIZE            0x1000    // 4 KB
-#define KERNEL_FILE      L"\\EFI\\BOOT\\elf_kernel_stripped"
+#define PAGE_SIZE         4096
+#define TEMP_KERNEL_ADDR  (KERNEL_PADDR + KERNEL_MAX_SIZE * 4)
+#define KERNEL_FILE       L"\\EFI\\BOOT\\elf_kernel_stripped"
 
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS);
-void set_mbi_framebuffer_info(multiboot_info_t *mbi);
-void draw_something(void);
-
-const UINTN temp_kernel_addr = KERNEL_PADDR + KERNEL_MAX_SIZE * 4;
-
+void SetMbiFramebufferInfo(multiboot_info_t *mbi);
 
 EFI_STATUS
 LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
@@ -85,7 +82,7 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS,
     * Temporary load the whole kernel file in a safe location.
     */
    status = LoadFileFromDisk(BS, fileProt, KERNEL_MAX_SIZE / PAGE_SIZE,
-                             temp_kernel_addr, KERNEL_FILE);
+                             TEMP_KERNEL_ADDR, KERNEL_FILE);
    HANDLE_EFI_ERROR("LoadFileFromDisk");
 
    Print(L"Kernel loaded in temporary paddr.\n");
@@ -102,7 +99,7 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS,
 
    CHECK(kernel_paddr == KERNEL_PADDR);
 
-   Elf32_Ehdr *header = (Elf32_Ehdr *)temp_kernel_addr;
+   Elf32_Ehdr *header = (Elf32_Ehdr *)TEMP_KERNEL_ADDR;
 
    CHECK(header->e_ident[EI_MAG0] == ELFMAG0);
    CHECK(header->e_ident[EI_MAG1] == ELFMAG1);
@@ -263,10 +260,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    // Prepare for the actual boot
    Print(L"Press ANY key to boot the kernel...\r\n");
-
-   // debug
-   draw_something();
-
    WaitForKeyPress(ST);
 
    EFI_MEMORY_DESCRIPTOR mmap[128];
@@ -288,8 +281,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    }
 
    /* Setup the multiboot info */
-   mbi = (multiboot_info_t *)temp_kernel_addr;
-   set_mbi_framebuffer_info(mbi);
+   mbi = (multiboot_info_t *)TEMP_KERNEL_ADDR;
+   SetMbiFramebufferInfo(mbi);
    mbi->mem_upper = 127*1024; /* temp hack */
 
    jump_to_kernel(mbi, kernel_entry);

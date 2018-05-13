@@ -20,7 +20,7 @@ UINTN saved_fb_addr;
 UINTN saved_fb_size;
 EFI_GRAPHICS_OUTPUT_MODE_INFORMATION saved_mode_info;
 
-void set_mbi_framebuffer_info(multiboot_info_t *mbi)
+void SetMbiFramebufferInfo(multiboot_info_t *mbi)
 {
    mbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
    mbi->framebuffer_addr = saved_fb_addr;
@@ -30,55 +30,6 @@ void set_mbi_framebuffer_info(multiboot_info_t *mbi)
    mbi->framebuffer_height = DESIRED_RES_Y;
    mbi->framebuffer_bpp = sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) * 8;
    mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
-}
-
-void draw_pixel(int x, int y, UINTN color)
-{
-   const UINTN PixelElementSize = sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
-   const UINTN PixelsPerScanLine = saved_mode_info.PixelsPerScanLine;
-
-   UINTN addr = saved_fb_addr +
-                ( (PixelsPerScanLine * y) + x ) * PixelElementSize;
-   *(volatile UINTN *)(addr) = color;
-}
-
-UINTN my_make_color(int r, int g, int b)
-{
-   return (r << 16) | (g << 8) | b;
-}
-
-void draw_something(void)
-{
-   UINTN white_val = my_make_color(255, 255, 255);
-   UINTN red_val = my_make_color(255, 0, 0);
-   UINTN green_val = my_make_color(0, 255, 0);
-   UINTN blue_val = my_make_color(0, 0, 255);
-
-   int iy = 20;
-   int ix = 600;
-   int w = 200;
-
-   for (int y = iy; y < iy+10; y++)
-      for (int x = ix; x < ix+w; x++)
-         draw_pixel(x, y, red_val);
-
-   iy+=20;
-
-   for (int y = iy; y < iy+10; y++)
-      for (int x = ix; x < ix+w; x++)
-         draw_pixel(x, y, white_val);
-
-   iy+=20;
-
-   for (int y = iy; y < iy+10; y++)
-      for (int x = ix; x < ix+w; x++)
-         draw_pixel(x, y, green_val);
-
-   iy+=20;
-
-   for (int y = iy; y < iy+10; y++)
-      for (int x = ix; x < ix+w; x++)
-         draw_pixel(x, y, blue_val);
 }
 
 void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)

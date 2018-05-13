@@ -1,8 +1,6 @@
 
 #include "utils.h"
 
-typedef UINTN uptr;
-
 #ifdef BITS32
 
 void jump_to_kernel(multiboot_info_t *mbi, void *entry_point)
