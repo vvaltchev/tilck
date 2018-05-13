@@ -25,11 +25,6 @@ void term_set_color(u8 color)
    terminal_color = color;
 }
 
-u8 term_get_color(void)
-{
-   return terminal_color;
-}
-
 void term_scroll_up(u32 lines)
 {
    uptr var;
