@@ -20,12 +20,12 @@ static u8 terminal_color;
 
 static const video_interface *vi;
 
-void term_set_color(u8 color)
+static void term_action_set_color(u8 color)
 {
    terminal_color = color;
 }
 
-void term_scroll_up(u32 lines)
+static void term_action_scroll_up(u32 lines)
 {
    uptr var;
    disable_interrupts(&var);
@@ -42,7 +42,7 @@ void term_scroll_up(u32 lines)
    enable_interrupts(&var);
 }
 
-void term_scroll_down(u32 lines)
+static void term_action_scroll_down(u32 lines)
 {
    uptr var;
    disable_interrupts(&var);
@@ -111,17 +111,8 @@ static void term_write_char_unsafe(char c, u8 color)
    vi->move_cursor(terminal_row, terminal_column);
 }
 
-void term_write_char(char c)
-{
-   uptr var;
-   disable_interrupts(&var);
-   {
-      term_write_char_unsafe(c, terminal_color);
-   }
-   enable_interrupts(&var);
-}
 
-void term_write_char2(char c, u8 color)
+static void term_action_write_char2(char c, u8 color)
 {
    uptr var;
    disable_interrupts(&var);
@@ -131,7 +122,7 @@ void term_write_char2(char c, u8 color)
    enable_interrupts(&var);
 }
 
-void term_move_ch(int row, int col)
+static void term_action_move_ch(int row, int col)
 {
    uptr var;
    disable_interrupts(&var);
@@ -143,6 +134,141 @@ void term_move_ch(int row, int col)
    enable_interrupts(&var);
 }
 
+////////////////////////////////////////////
+
+
+typedef enum {
+
+   a_write_char2  = 0,
+   a_move_ch      = 1,
+   a_scroll_up    = 2,
+   a_scroll_down  = 3,
+   a_set_color    = 4
+
+} term_action_type;
+
+typedef struct {
+
+   union {
+
+      struct {
+         u32 type2 : 8;
+         u32 arg1 : 12;
+         u32 arg2 : 12;
+      };
+
+      struct {
+         u32 type1 : 8;
+         u32 arg : 24;
+      };
+
+      u32 raw;
+   };
+
+} term_action;
+
+typedef void (*action_func)();
+typedef void (*action_func1)(uptr);
+typedef void (*action_func2)(uptr, uptr);
+
+typedef struct {
+
+   action_func f;
+   u32 args_count;
+
+} actions_table_item;
+
+static actions_table_item actions_table[] = {
+
+   [a_write_char2] = {(action_func)term_action_write_char2, 2},
+   [a_move_ch] = {(action_func)term_action_move_ch, 2},
+   [a_scroll_up] = {(action_func)term_action_scroll_up, 1},
+   [a_scroll_down] = {(action_func)term_action_scroll_down, 1},
+   [a_set_color] = {(action_func)term_action_set_color, 1}
+};
+
+static void term_execute_action(term_action a)
+{
+   actions_table_item *it = &actions_table[a.type2];
+
+   if (it->args_count == 2) {
+      action_func2 f = (action_func2) it->f;
+      f(a.arg1, a.arg2);
+   } else if (it->args_count == 1) {
+      action_func1 f = (action_func1) it->f;
+      f(a.arg);
+   } else {
+      NOT_REACHED();
+   }
+}
+
+
+/////////////////////////////////////////////
+
+void term_write_char2(char c, u8 color)
+{
+   term_action a = {
+      .type2 = a_write_char2,
+      .arg1 = c,
+      .arg2 = color
+   };
+
+   term_execute_action(a);
+}
+
+void term_move_ch(int row, int col)
+{
+   term_action a = {
+      .type2 = a_move_ch,
+      .arg1 = row,
+      .arg2 = col
+   };
+
+   term_execute_action(a);
+}
+
+void term_scroll_up(u32 lines)
+{
+   term_action a = {
+      .type1 = a_scroll_up,
+      .arg = lines
+   };
+
+   term_execute_action(a);
+}
+
+void term_scroll_down(u32 lines)
+{
+   term_action a = {
+      .type1 = a_scroll_down,
+      .arg = lines
+   };
+
+   term_execute_action(a);
+}
+
+void term_set_color(u8 color)
+{
+   term_action a = {
+      .type1 = a_set_color,
+      .arg = color
+   };
+
+   term_execute_action(a);
+}
+
+/////////////////////////////////////////////
+
+void term_write_char(char c)
+{
+   term_write_char2(c, terminal_color);
+}
+
+bool term_is_initialized(void)
+{
+   return vi != NULL;
+}
+
 void init_term(const video_interface *interface, u8 default_color)
 {
    ASSERT(!are_interrupts_enabled());
@@ -150,16 +276,11 @@ void init_term(const video_interface *interface, u8 default_color)
    vi = interface;
 
    vi->enable_cursor();
-   term_move_ch(0, 0);
-   term_set_color(default_color);
+   term_action_move_ch(0, 0);
+   term_action_set_color(default_color);
 
    for (int i = 0; i < term_height; i++)
       vi->clear_row(i);
 
    init_serial_port();
-}
-
-bool term_is_initialized(void)
-{
-   return vi != NULL;
 }
