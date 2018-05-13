@@ -90,7 +90,7 @@ bool ringbuf_write_elem1(ringbuf *rb, u8 val)
    return true;
 }
 
-bool ringbuf_read_elem1(ringbuf *rb, void *elem_ptr)
+bool ringbuf_read_elem1(ringbuf *rb, u8 *elem_ptr)
 {
    generic_ringbuf_stat cs, ns;
 
@@ -102,7 +102,7 @@ bool ringbuf_read_elem1(ringbuf *rb, void *elem_ptr)
       if (ringbuf_is_empty(rb))
          return false;
 
-      *(u8 *)elem_ptr = rb->buf[cs.read_pos];
+      *elem_ptr = rb->buf[cs.read_pos];
 
       ns.read_pos = (ns.read_pos + 1) % rb->max_elems;
       ns.full = false;

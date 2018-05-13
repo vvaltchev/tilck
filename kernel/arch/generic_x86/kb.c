@@ -40,10 +40,10 @@ bool kb_cbuf_is_full(void)
 
 char kb_cbuf_read_elem(void)
 {
-   char ret;
+   u8 ret;
    ASSERT(!kb_cbuf_is_empty());
    DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&kb_cooked_ringbuf, &ret));
-   return ret;
+   return (char)ret;
 }
 
 static ALWAYS_INLINE bool kb_cbuf_drop_last_written_elem(void)

@@ -20,6 +20,8 @@ static u8 terminal_color;
 
 static const video_interface *vi;
 
+/* ---------------- term actions --------------------- */
+
 static void term_action_set_color(u8 color)
 {
    terminal_color = color;
@@ -111,7 +113,6 @@ static void term_write_char_unsafe(char c, u8 color)
    vi->move_cursor(terminal_row, terminal_column);
 }
 
-
 static void term_action_write_char2(char c, u8 color)
 {
    uptr var;
@@ -134,8 +135,7 @@ static void term_action_move_ch(int row, int col)
    enable_interrupts(&var);
 }
 
-////////////////////////////////////////////
-
+/* ---------------- term action engine --------------------- */
 
 typedef enum {
 
@@ -202,8 +202,24 @@ static void term_execute_action(term_action a)
    }
 }
 
+static volatile u32 term_call_running;
 
-/////////////////////////////////////////////
+void term_enqueue_or_execute_action(term_action a)
+{
+   if (BOOL_COMPARE_AND_SWAP(&term_call_running, 0, 1)) {
+
+      term_execute_action(a);
+
+      DEBUG_CHECKED_SUCCESS(BOOL_COMPARE_AND_SWAP(&term_call_running, 1, 0));
+
+   } else {
+      /* we're not the first term call in the stack: we have to enqueue */
+      NOT_REACHED();
+   }
+}
+
+/* ---------------- term interface --------------------- */
+
 
 void term_write_char2(char c, u8 color)
 {
@@ -213,7 +229,7 @@ void term_write_char2(char c, u8 color)
       .arg2 = color
    };
 
-   term_execute_action(a);
+   term_enqueue_or_execute_action(a);
 }
 
 void term_move_ch(int row, int col)
@@ -224,7 +240,7 @@ void term_move_ch(int row, int col)
       .arg2 = col
    };
 
-   term_execute_action(a);
+   term_enqueue_or_execute_action(a);
 }
 
 void term_scroll_up(u32 lines)
@@ -234,7 +250,7 @@ void term_scroll_up(u32 lines)
       .arg = lines
    };
 
-   term_execute_action(a);
+   term_enqueue_or_execute_action(a);
 }
 
 void term_scroll_down(u32 lines)
@@ -244,7 +260,7 @@ void term_scroll_down(u32 lines)
       .arg = lines
    };
 
-   term_execute_action(a);
+   term_enqueue_or_execute_action(a);
 }
 
 void term_set_color(u8 color)
@@ -254,15 +270,15 @@ void term_set_color(u8 color)
       .arg = color
    };
 
-   term_execute_action(a);
+   term_enqueue_or_execute_action(a);
 }
-
-/////////////////////////////////////////////
 
 void term_write_char(char c)
 {
    term_write_char2(c, terminal_color);
 }
+
+/* ---------------- term non-action interface funcs --------------------- */
 
 bool term_is_initialized(void)
 {
