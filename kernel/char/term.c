@@ -10,6 +10,7 @@
 #include <exos/term.h>
 #include <exos/serial.h>
 #include <exos/interrupts.h>
+#include <exos/ringbuf.h>
 
 static u8 term_width = 80;
 static u8 term_height = 25;
@@ -29,34 +30,24 @@ static void term_action_set_color(u8 color)
 
 static void term_action_scroll_up(u32 lines)
 {
-   uptr var;
-   disable_interrupts(&var);
-   {
-      vi->scroll_up(lines);
+   vi->scroll_up(lines);
 
-      if (!vi->is_at_bottom()) {
-         vi->disable_cursor();
-      } else {
-         vi->enable_cursor();
-         vi->move_cursor(terminal_row, terminal_column);
-      }
+   if (!vi->is_at_bottom()) {
+      vi->disable_cursor();
+   } else {
+      vi->enable_cursor();
+      vi->move_cursor(terminal_row, terminal_column);
    }
-   enable_interrupts(&var);
 }
 
 static void term_action_scroll_down(u32 lines)
 {
-   uptr var;
-   disable_interrupts(&var);
-   {
-      vi->scroll_down(lines);
+   vi->scroll_down(lines);
 
-      if (vi->is_at_bottom()) {
-         vi->enable_cursor();
-         vi->move_cursor(terminal_row, terminal_column);
-      }
+   if (vi->is_at_bottom()) {
+      vi->enable_cursor();
+      vi->move_cursor(terminal_row, terminal_column);
    }
-   enable_interrupts(&var);
 }
 
 static void term_incr_row()
@@ -69,11 +60,17 @@ static void term_incr_row()
    vi->add_row_and_scroll();
 }
 
-static void term_write_char_unsafe(char c, u8 color)
+static void term_action_write_char2(char c, u8 color)
 {
    write_serial(c);
    vi->scroll_to_bottom();
    vi->enable_cursor();
+
+/* temp debug stuff */
+   if (c == '~') {
+      for (int i = 0; i < 100*1000*1000; i++) { }
+   }
+/* end temp debug stuff */
 
    if (c == '\n') {
       terminal_column = 0;
@@ -113,26 +110,11 @@ static void term_write_char_unsafe(char c, u8 color)
    vi->move_cursor(terminal_row, terminal_column);
 }
 
-static void term_action_write_char2(char c, u8 color)
-{
-   uptr var;
-   disable_interrupts(&var);
-   {
-      term_write_char_unsafe(c, color);
-   }
-   enable_interrupts(&var);
-}
-
 static void term_action_move_ch(int row, int col)
 {
-   uptr var;
-   disable_interrupts(&var);
-   {
-      terminal_row = row;
-      terminal_column = col;
-      vi->move_cursor(row, col);
-   }
-   enable_interrupts(&var);
+   terminal_row = row;
+   terminal_column = col;
+   vi->move_cursor(row, col);
 }
 
 /* ---------------- term action engine --------------------- */
@@ -202,19 +184,31 @@ static void term_execute_action(term_action a)
    }
 }
 
-static volatile u32 term_call_running;
+static volatile u32 term_actions_count;
+static ringbuf term_ringbuf;
+static term_action term_actions_buf[32];
 
 void term_enqueue_or_execute_action(term_action a)
 {
-   if (BOOL_COMPARE_AND_SWAP(&term_call_running, 0, 1)) {
+   if (BOOL_COMPARE_AND_SWAP(&term_actions_count, 0, 1)) {
 
       term_execute_action(a);
 
-      DEBUG_CHECKED_SUCCESS(BOOL_COMPARE_AND_SWAP(&term_call_running, 1, 0));
+      /* now we have to execute any other eventual enqueued actions */
+      do {
+
+         if (ringbuf_read_elem(&term_ringbuf, &a)) {
+            term_execute_action(a);
+            ATOMIC_SUB_AND_FETCH(&term_actions_count, 1);
+         }
+
+      } while (!BOOL_COMPARE_AND_SWAP(&term_actions_count, 1, 0));
 
    } else {
+
       /* we're not the first term call in the stack: we have to enqueue */
-      NOT_REACHED();
+      ringbuf_write_elem(&term_ringbuf, &a);
+      ATOMIC_ADD_AND_FETCH(&term_actions_count, 1);
    }
 }
 
@@ -290,6 +284,11 @@ void init_term(const video_interface *interface, u8 default_color)
    ASSERT(!are_interrupts_enabled());
 
    vi = interface;
+
+   ringbuf_init(&term_ringbuf,
+                ARRAY_SIZE(term_actions_buf),
+                sizeof(term_action),
+                term_actions_buf);
 
    vi->enable_cursor();
    term_action_move_ch(0, 0);
