@@ -51,18 +51,41 @@ u32 fb_make_color(int r, int g, int b)
    return (r << 16) | (g << 8) | b;
 }
 
-void fb_draw_pixel(int x, int y, u32 color)
+static ALWAYS_INLINE void fb_draw_pixel(int x, int y, u32 color)
 {
-   // bpp is assumed to be == 32.
-
-   uptr addr = fb_addr + (fb_pitch * y) + x * 4;
-   *(volatile u32 *)(addr) = color;
+   // ASSUMPTION: bpp is assumed to be == 32.
+   *(volatile u32 *)(fb_addr + (fb_pitch * y) + (x << 2)) = color;
 }
 
+void fb_draw_char(u32 x, u32 y, u32 color, u32 c)
+{
+   u32 black = fb_make_color(0, 0, 0);
+   psf2_header *h = (void *)&_binary_font_psf_start;
+   ASSERT(c < h->glyphs_count);
+
+   u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
+
+   for (u32 row = 0; row < h->height; row++) {
+
+      // ASSUMPTION: width is divisible by 8
+      u8 d = *(data + row * (h->width >> 3));
+
+      for (u32 bit = 0; bit < h->width; bit++)
+         fb_draw_pixel(x + bit, y + row, d & (1 << bit) ? color : black);
+   }
+}
 
 void draw_something(void)
 {
+   u32 black = fb_make_color(0, 0, 0);
+
+   for (u32 y = 0; y < fb_height; y++)
+      for (u32 x = 0; x < fb_width; x++)
+         fb_draw_pixel(x, y, black);
+
    u32 red_val = fb_make_color(255, 0, 0);
+
+   fb_draw_char(100, 100, red_val, 'A');
 
    // u32 white_val = my_make_color(255, 255, 255);
    // u32 green_val = my_make_color(0, 255, 0);
@@ -72,7 +95,7 @@ void draw_something(void)
    int ix = 300;
    int w = 200;
 
-   for (int y = iy; y < iy+10; y++)
+   for (int y = iy; y < iy+20; y++)
       for (int x = ix; x < ix+w; x++)
          fb_draw_pixel(x, y, red_val);
 
