@@ -14,20 +14,27 @@
 
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
+   size_t read_count = 0;
+
+   if (!size)
+      return read_count;
+
    enable_preemption();
 
-   while (kb_cbuf_is_empty()) {
-      kcond_wait(&kb_cond, NULL, KCOND_WAIT_FOREVER);
-   }
+   do {
 
-   size_t i = 0;
+      while (kb_cbuf_is_empty()) {
+         kcond_wait(&kb_cond, NULL, KCOND_WAIT_FOREVER);
+      }
 
-   while (i < size && !kb_cbuf_is_empty()) {
-      buf[i++] = kb_cbuf_read_elem();
-   }
+      while (read_count < size && !kb_cbuf_is_empty()) {
+         buf[read_count++] = kb_cbuf_read_elem();
+      }
+
+   } while (buf[read_count - 1] != '\n' || kb_cbuf_is_full());
 
    disable_preemption();
-   return i;
+   return read_count;
 }
 
 static ssize_t tty_write(fs_handle h, char *buf, size_t size)
