@@ -29,8 +29,6 @@ void validate_stack_pointer_int(const char *file, int line)
 
    if (stack_var_page != (uptr)get_curr_task()->kernel_stack) {
 
-      disable_interrupts_forced();
-
       panic("Invalid kernel stack pointer.\n"
             "File %s at line %i\n"
             "[validate stack] stack page: %p\n"
