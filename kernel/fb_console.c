@@ -3,6 +3,7 @@
 #include <common/string_util.h>
 
 #include <exos/term.h>
+#include <exos/hal.h>
 
 #define PSF2_FONT_MAGIC 0x864ab572
 
@@ -19,14 +20,36 @@ typedef struct {
 
 extern char _binary_font_psf_start;
 
+void dump_glyph(int n)
+{
+   psf2_header *h = (void *)&_binary_font_psf_start;
+   char *data = (char *)h + h->header_size + h->bytes_per_glyph * n;
+   ASSERT(!(h->width % 8));
+
+   for (u32 row = 0; row < h->height; row++) {
+
+      u8 d = *(u8 *)(data + row * (h->width >> 3));
+
+      for (u32 bit = 0; bit < h->width; bit++) {
+
+         u32 val = 1 << bit;
+         if (d & val)
+            term_write_char('#');
+         else
+            term_write_char('-');
+      }
+
+      term_write_char('\n');
+   }
+}
+
 void dump_psf2_header(void)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
    printk("magic: %p\n", h->magic);
 
-   if (h->magic != PSF2_FONT_MAGIC) {
-      printk("Magic != PSF2\n");
-   }
+   if (h->magic != PSF2_FONT_MAGIC)
+      panic("Magic != PSF2\n");
 
    printk("header size: %u%s\n",
           h->header_size,
@@ -35,5 +58,12 @@ void dump_psf2_header(void)
    printk("glyphs count: %u\n", h->glyphs_count);
    printk("bytes per glyph: %u\n", h->bytes_per_glyph);
    printk("font size: %u x %u\n", h->width, h->height);
+
+   if (h->width % 8) {
+      panic("Only fonts with width divisible by 8 are supported");
+   }
+
+   printk("---- dump glyph ----\n");
+   dump_glyph('A');
 }
 
