@@ -48,6 +48,30 @@ bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr)
 }
 
 
+bool ringbuf_write_elem_ex(ringbuf *rb, void *elem_ptr, bool *was_empty)
+{
+   generic_ringbuf_stat cs, ns;
+
+   do {
+
+      cs = rb->s;
+      ns = rb->s;
+
+      if (cs.full)
+         return false;
+
+      *was_empty = is_empty(&cs);
+      ns.write_pos = (ns.write_pos + 1) % rb->max_elems;
+
+      if (ns.write_pos == ns.read_pos)
+         ns.full = true;
+
+   } while (!BOOL_COMPARE_AND_SWAP(&rb->s.raw, cs.raw, ns.raw));
+
+   memcpy(rb->buf + cs.write_pos * rb->elem_size, elem_ptr, rb->elem_size);
+   return true;
+}
+
 
 bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */)
 {
