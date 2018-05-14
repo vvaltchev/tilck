@@ -103,9 +103,20 @@ set(
 set(
    WARN_FLAGS_LIST
 
-   -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Werror
-   -Wno-missing-braces # See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53119
+   -Wall
+   -Wextra
+   -Werror
+   -Wno-unused-function
+   -Wno-unused-parameter
 )
+
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "5.0.0")
+      # See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53119
+      list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
+      list(APPEND WARN_FLAGS_LIST "-Wno-missing-field-initializers")
+   endif()
+endif()
 
 JOIN("${GENERAL_DEFS_LIST}" ${SPACE} GENERAL_DEFS)
 JOIN("${OTHER_CFLAGS_LIST}" ${SPACE} OTHER_CFLAGS)
