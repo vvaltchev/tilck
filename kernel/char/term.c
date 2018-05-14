@@ -134,14 +134,14 @@ typedef struct {
    union {
 
       struct {
-         u32 type2 : 8;
-         u32 arg1 : 12;
-         u32 arg2 : 12;
+         u32 type2 :  8;
+         u32 arg1  : 12;
+         u32 arg2  : 12;
       };
 
       struct {
-         u32 type1 : 8;
-         u32 arg : 24;
+         u32 type1 :  8;
+         u32 arg   : 24;
       };
 
       u32 raw;
@@ -150,12 +150,10 @@ typedef struct {
 } term_action;
 
 typedef void (*action_func)();
-typedef void (*action_func1)(uptr);
-typedef void (*action_func2)(uptr, uptr);
 
 typedef struct {
 
-   action_func f;
+   action_func func;
    u32 args_count;
 
 } actions_table_item;
@@ -173,14 +171,16 @@ static void term_execute_action(term_action a)
 {
    actions_table_item *it = &actions_table[a.type2];
 
-   if (it->args_count == 2) {
-      action_func2 f = (action_func2) it->f;
-      f(a.arg1, a.arg2);
-   } else if (it->args_count == 1) {
-      action_func1 f = (action_func1) it->f;
-      f(a.arg);
-   } else {
-      NOT_REACHED();
+   switch (it->args_count) {
+      case 2:
+         it->func(a.arg1, a.arg2);
+         break;
+      case 1:
+         it->func(a.arg);
+         break;
+      default:
+         NOT_REACHED();
+      break;
    }
 }
 
