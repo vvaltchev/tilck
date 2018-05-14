@@ -2,23 +2,81 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
+#include <exos/fb_console.h>
 #include <exos/term.h>
+#include <exos/paging.h>
 #include <exos/hal.h>
 
-#define PSF2_FONT_MAGIC 0x864ab572
+bool use_framebuffer;
 
-typedef struct {
-    u32 magic;
-    u32 version;          /* zero */
-    u32 header_size;
-    u32 flags;            /* 0 if there's no unicode table */
-    u32 glyphs_count;
-    u32 bytes_per_glyph;
-    u32 height;          /* height in pixels */
-    u32 width;           /* width in pixels */
-} psf2_header;
+uptr fb_addr;
+u32 fb_pitch;
+u32 fb_width;
+u32 fb_height;
+u8 fb_bpp;
+u32 fb_size;
 
-extern char _binary_font_psf_start;
+void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
+{
+   use_framebuffer = true;
+
+   fb_addr = mbi->framebuffer_addr;
+   fb_pitch = mbi->framebuffer_pitch;
+   fb_width = mbi->framebuffer_width;
+   fb_height = mbi->framebuffer_height;
+   fb_bpp = mbi->framebuffer_bpp;
+   fb_size = fb_pitch * fb_height;
+}
+
+// temp
+void draw_something(void);
+
+void init_framebuffer_console(void)
+{
+   map_pages(get_kernel_page_dir(),
+             (void *)fb_addr,
+             fb_addr,
+             (fb_size/PAGE_SIZE) + 1,
+             false,
+             true);
+
+   draw_something();
+
+   while (true)
+      halt();
+}
+
+u32 fb_make_color(int r, int g, int b)
+{
+   return (r << 16) | (g << 8) | b;
+}
+
+void fb_draw_pixel(int x, int y, u32 color)
+{
+   // bpp is assumed to be == 32.
+
+   uptr addr = fb_addr + (fb_pitch * y) + x * 4;
+   *(volatile u32 *)(addr) = color;
+}
+
+
+void draw_something(void)
+{
+   u32 red_val = fb_make_color(255, 0, 0);
+
+   // u32 white_val = my_make_color(255, 255, 255);
+   // u32 green_val = my_make_color(0, 255, 0);
+   // u32 blue_val = my_make_color(0, 0, 255);
+
+   int iy = 300;
+   int ix = 300;
+   int w = 200;
+
+   for (int y = iy; y < iy+10; y++)
+      for (int x = ix; x < ix+w; x++)
+         fb_draw_pixel(x, y, red_val);
+
+}
 
 void dump_glyph(int n)
 {
