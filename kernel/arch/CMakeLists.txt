@@ -14,6 +14,9 @@ else()
 
 endif()
 
+# Remove -rdynamic
+SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+
 
 # Options that will be used only when building the actual kernel, not when
 # building kernel's code for unit testing.
@@ -52,6 +55,29 @@ set(
 )
 JOIN("${KERNEL_LINK_FLAGS_LIST}" ${SPACE} KERNEL_LINK_FLAGS)
 
+
+add_custom_command(
+
+   OUTPUT
+      font.o
+   COMMAND
+      ${OBJCOPY} -O elf32-i386 -B i386 -I binary font.psf ${CMAKE_CURRENT_BINARY_DIR}/font.o
+   WORKING_DIRECTORY
+      ${CMAKE_SOURCE_DIR}/kernel
+   DEPENDS
+      ${CMAKE_SOURCE_DIR}/kernel/font.psf
+   COMMENT
+      "Copying the psf font file into an ELF object file"
+)
+
+add_custom_target(
+
+    font
+
+    DEPENDS
+      font.o
+)
+
 set_target_properties(
 
    elf_kernel
@@ -61,8 +87,9 @@ set_target_properties(
       LINK_FLAGS ${KERNEL_LINK_FLAGS}
 )
 
-# Remove -rdynamic
-SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+add_dependencies(elf_kernel font)
+target_link_libraries(elf_kernel ${CMAKE_CURRENT_BINARY_DIR}/font.o)
+
 
 
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.

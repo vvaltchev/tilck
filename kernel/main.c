@@ -186,6 +186,9 @@ void selftest_runner_thread()
    self_test_to_run();
 }
 
+// temp
+void dump_psf2_header(void);
+
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    read_multiboot_info(multiboot_magic, mbi_addr);
@@ -234,6 +237,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    mount_ramdisk();
    create_and_register_devfs();
    init_tty();
+
+   dump_psf2_header();
 
    if (self_test_to_run) {
       VERIFY(kthread_create(selftest_runner_thread, NULL) != NULL);
