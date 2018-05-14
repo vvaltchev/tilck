@@ -430,9 +430,9 @@ end:
 
 // Reboot procedure using the keyboard controller
 
-void reboot() {
-
-   disable_interrupts_forced();
+void reboot(void)
+{
+   disable_interrupts_forced(); /* Disable the interrupts before rebooting */
    kbd_wait();
 
    outb(KB_CONTROL_PORT, KBRD_RESET);

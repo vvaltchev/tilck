@@ -289,7 +289,7 @@ NORETURN void switch_to_task(task_info *ti)
       set_page_directory(ti->pi->pdir);
    }
 
-   disable_interrupts_forced();
+   disable_interrupts_forced(); /* IF = 0 before the context switch */
 
 #if KERNEL_TRACK_NESTED_INTERRUPTS
    pop_nested_interrupt();

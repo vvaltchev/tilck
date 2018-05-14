@@ -18,7 +18,7 @@ void panic_save_current_state();
 
 NORETURN void panic(const char *fmt, ...)
 {
-   disable_interrupts_forced();
+   disable_interrupts_forced(); /* No interrupts: we're in a panic state */
 
    if (__in_panic) {
       goto end;

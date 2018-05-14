@@ -21,7 +21,7 @@ static int nested_interrupts[MAX_NESTED_INTERRUPTS] =
 inline void push_nested_interrupt(int int_num)
 {
    uptr var;
-   disable_interrupts(&var);
+   disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
    {
       ASSERT(nested_interrupts_count < MAX_NESTED_INTERRUPTS);
       ASSERT(nested_interrupts_count >= 0);
@@ -33,7 +33,7 @@ inline void push_nested_interrupt(int int_num)
 inline void pop_nested_interrupt(void)
 {
    uptr var;
-   disable_interrupts(&var);
+   disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
    {
       nested_interrupts_count--;
       ASSERT(nested_interrupts_count >= 0);
@@ -45,7 +45,7 @@ bool in_irq(void)
 {
    uptr var;
    bool r = false;
-   disable_interrupts(&var);
+   disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
    {
       if (nested_interrupts_count > 0)
          if (is_irq(nested_interrupts[nested_interrupts_count - 1]))
@@ -59,7 +59,7 @@ bool in_nested_irq0(void)
 {
    uptr var;
    bool r = false;
-   disable_interrupts(&var);
+   disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
    {
       for (int i = nested_interrupts_count - 2; i >= 0; i--) {
          if (nested_interrupts[i] == 32)
@@ -75,7 +75,7 @@ void check_not_in_irq_handler(void)
    uptr var;
 
    if (!in_panic()) {
-      disable_interrupts(&var);
+      disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
       {
          if (nested_interrupts_count > 0)
             if (is_irq(nested_interrupts[nested_interrupts_count - 1]))
@@ -202,7 +202,7 @@ void soft_interrupt_entry(regs *r)
 
       enable_interrupts_forced();
       handle_syscall(r);
-      disable_interrupts_forced();
+      disable_interrupts_forced(); /* restore IF = 0 */
 
    } else {
 

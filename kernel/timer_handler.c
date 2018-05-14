@@ -155,7 +155,7 @@ void timer_handler(regs *context)
 #if defined(DEBUG) && KERNEL_TRACK_NESTED_INTERRUPTS
    {
       uptr var;
-      disable_interrupts(&var);
+      disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
       int c = get_nested_interrupts_count();
       ASSERT(c == 1 || (c == 2 && in_syscall()));
       enable_interrupts(&var);

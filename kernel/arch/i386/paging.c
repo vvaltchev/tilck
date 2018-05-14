@@ -133,15 +133,19 @@ void handle_page_fault(regs *r)
       /* Page fault are processed with IF = 1 */
       handle_page_fault_int(r);
    }
-   disable_interrupts_forced();
+   disable_interrupts_forced(); /* restore IF = 0 */
 }
 
 
 void handle_general_protection_fault(regs *r)
 {
-   disable_interrupts_forced();
-   printk("General protection fault. Error: %p\n", r->err_code);
-   halt();
+   /*
+    * For the moment, we don't properly handle GPF yet.
+    *
+    * TODO: handle GPF caused by user applications with by sending SIGSEGV.
+    * Example: user code attempts to execute privileged instructions.
+    */
+   panic("General protection fault. Error: %p\n", r->err_code);
 }
 
 void set_page_directory(page_directory_t *pdir)
