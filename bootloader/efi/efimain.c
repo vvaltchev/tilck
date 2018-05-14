@@ -20,6 +20,9 @@
 #define TEMP_KERNEL_ADDR  (KERNEL_PADDR + KERNEL_MAX_SIZE * 4)
 #define KERNEL_FILE       L"\\EFI\\BOOT\\elf_kernel_stripped"
 
+#undef RAMDISK_SIZE
+#define RAMDISK_SIZE (2 * MB) // Temporary hack to speed up loading
+
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS);
 void SetMbiFramebufferInfo(multiboot_info_t *mbi);
 
