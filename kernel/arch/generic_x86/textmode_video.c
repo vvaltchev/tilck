@@ -4,6 +4,7 @@
 #include <exos/arch/generic_x86/textmode_video.h>
 #include <exos/paging.h>
 #include <exos/hal.h>
+#include <exos/term.h>
 
 #define VIDEO_ADDR ((u16 *) KERNEL_PA_TO_VA(0xB8000))
 #define VIDEO_COLS 80
@@ -18,6 +19,28 @@ STATIC_ASSERT(EXTRA_BUFFER_ROWS >= 0);
 static u16 textmode_buffer[BUFFER_ROWS * VIDEO_COLS];
 static u32 scroll;
 static u32 max_scroll;
+
+static const video_interface ega_text_mode_i =
+{
+   textmode_set_char_at,
+   textmode_clear_row,
+   textmode_scroll_up,
+   textmode_scroll_down,
+   textmode_is_at_bottom,
+   textmode_scroll_to_bottom,
+   textmode_add_row_and_scroll,
+   textmode_move_cursor,
+   textmode_enable_cursor,
+   textmode_disable_cursor
+};
+
+void init_textmode_console(void)
+{
+   init_term(&ega_text_mode_i,
+             VIDEO_ROWS,
+             VIDEO_COLS,
+             make_color(COLOR_WHITE, COLOR_BLACK));
+}
 
 bool textmode_is_at_bottom(void)
 {

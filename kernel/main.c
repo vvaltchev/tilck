@@ -104,27 +104,7 @@ void mount_ramdisk(void)
    printk("Mounted RAMDISK at PADDR %p.\n", ramdisk_paddr);
 }
 
-
 void init_tty(void);
-
-/*
- * For the moment, exOS supports only the EGA text mode (80x25),
- * but, thanks to the video_interface, term can work with anything, even
- * with a graphical framebuffer.
- */
-static const video_interface ega_text_mode_i =
-{
-   textmode_set_char_at,
-   textmode_clear_row,
-   textmode_scroll_up,
-   textmode_scroll_down,
-   textmode_is_at_bottom,
-   textmode_scroll_to_bottom,
-   textmode_add_row_and_scroll,
-   textmode_move_cursor,
-   textmode_enable_cursor,
-   textmode_disable_cursor
-};
 
 sptr sys_execve(const char *filename,
                 const char *const *argv,
@@ -140,7 +120,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    read_multiboot_info(multiboot_magic, mbi_addr);
 
    if (!use_framebuffer) {
-      init_term(&ega_text_mode_i, 80, 25, make_color(COLOR_WHITE, COLOR_BLACK));
+      init_textmode_console();
       show_hello_message();
    }
 
