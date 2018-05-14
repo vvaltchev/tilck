@@ -9,13 +9,14 @@
 
 bool use_framebuffer;
 
-static uptr fb_addr;
+static uptr fb_paddr;
 static u32 fb_pitch;
 static u32 fb_width;
 static u32 fb_height;
 static u8 fb_bpp;
 static u32 fb_size;
 
+static uptr fb_vaddr;
 static u32 fb_term_rows;
 static u32 fb_term_cols;
 
@@ -54,7 +55,7 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
 {
    use_framebuffer = true;
 
-   fb_addr = mbi->framebuffer_addr;
+   fb_paddr = mbi->framebuffer_addr;
    fb_pitch = mbi->framebuffer_pitch;
    fb_width = mbi->framebuffer_width;
    fb_height = mbi->framebuffer_height;
@@ -64,9 +65,11 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
 
 void init_framebuffer_console(void)
 {
+   fb_vaddr = KERNEL_BASE_VA + (1024 - 64) * MB;
+
    map_pages(get_kernel_page_dir(),
-             (void *)fb_addr,
-             fb_addr,
+             (void *)fb_vaddr,
+             fb_paddr,
              (fb_size/PAGE_SIZE) + 1,
              false,
              true);
@@ -88,7 +91,7 @@ static ALWAYS_INLINE u32 fb_make_color(int r, int g, int b)
 static ALWAYS_INLINE void fb_draw_pixel(int x, int y, u32 color)
 {
    // ASSUMPTION: bpp is assumed to be == 32.
-   *(volatile u32 *)(fb_addr + (fb_pitch * y) + (x << 2)) = color;
+   *(volatile u32 *)(fb_vaddr + (fb_pitch * y) + (x << 2)) = color;
 }
 
 void fb_draw_char(u32 x, u32 y, u32 color, u32 c)

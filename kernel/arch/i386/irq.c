@@ -192,8 +192,10 @@ void setup_irq_handling(void)
 {
    PIC_remap(32, 40);
 
-   for (int i = 0; i < 16; i++)
+   for (int i = 0; i < 16; i++) {
       idt_set_entry(32 + i, irq_entry_points[i], 0x08, 0x8E);
+      irq_clear_mask(i);
+   }
 }
 
 u32 spur_irq_count = 0;
