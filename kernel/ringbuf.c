@@ -4,6 +4,11 @@
 #include <exos/ringbuf.h>
 #include <exos/kmalloc.h>
 
+static inline bool is_empty(generic_ringbuf_stat *s)
+{
+   return s->read_pos == s->write_pos && !s->full;
+}
+
 void ringbuf_init(ringbuf *rb, u16 max_elems, u16 elem_size, void *buf)
 {
    ASSERT(max_elems <= 32768);
@@ -53,7 +58,7 @@ bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */)
       cs = rb->s;
       ns = rb->s;
 
-      if (ringbuf_is_empty(rb))
+      if (is_empty(&cs))
          return false;
 
       memcpy(elem_ptr, rb->buf + cs.read_pos * rb->elem_size, rb->elem_size);
@@ -99,7 +104,7 @@ bool ringbuf_read_elem1(ringbuf *rb, u8 *elem_ptr)
       cs = rb->s;
       ns = rb->s;
 
-      if (ringbuf_is_empty(rb))
+      if (is_empty(&cs))
          return false;
 
       *elem_ptr = rb->buf[cs.read_pos];
@@ -121,7 +126,7 @@ bool ringbuf_unwrite_elem(ringbuf *rb)
       cs = rb->s;
       ns = rb->s;
 
-      if (ringbuf_is_empty(rb))
+      if (is_empty(&cs))
          return false;
 
       ns.write_pos = (ns.write_pos - 1) % rb->max_elems;
