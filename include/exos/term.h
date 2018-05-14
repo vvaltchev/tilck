@@ -23,7 +23,7 @@ typedef struct {
 } video_interface;
 
 
-void init_term(const video_interface *vi, u8 default_color);
+void init_term(const video_interface *vi, int rows, int cols, u8 default_color);
 bool term_is_initialized(void);
 void term_write_char(char c);
 void term_write_char2(char c, u8 color);

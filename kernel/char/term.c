@@ -12,8 +12,8 @@
 #include <exos/interrupts.h>
 #include <exos/ringbuf.h>
 
-static u8 term_width = 80;
-static u8 term_height = 25;
+static u8 term_width;
+static u8 term_height;
 
 static u8 terminal_row;
 static u8 terminal_column;
@@ -270,11 +270,14 @@ bool term_is_initialized(void)
    return vi != NULL;
 }
 
-void init_term(const video_interface *interface, u8 default_color)
+void
+init_term(const video_interface *intf, int rows, int cols, u8 default_color)
 {
    ASSERT(!are_interrupts_enabled());
 
-   vi = interface;
+   vi = intf;
+   term_width = rows;
+   term_height = cols;
 
    ringbuf_init(&term_ringbuf,
                 ARRAY_SIZE(term_actions_buf),

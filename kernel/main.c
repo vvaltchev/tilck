@@ -159,11 +159,11 @@ void mount_ramdisk(void)
 void init_tty(void);
 
 /*
- * For the moment, exOS supports only the standard PC text mode (80x25),
+ * For the moment, exOS supports only the EGA text mode (80x25),
  * but, thanks to the video_interface, term can work with anything, even
  * with a graphical framebuffer.
  */
-static const video_interface x86_pc_text_mode_vi =
+static const video_interface ega_text_mode_i =
 {
    textmode_set_char_at,
    textmode_clear_row,
@@ -191,7 +191,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    read_multiboot_info(multiboot_magic, mbi_addr);
 
    if (!use_framebuffer) {
-      init_term(&x86_pc_text_mode_vi, make_color(COLOR_WHITE, COLOR_BLACK));
+      init_term(&ega_text_mode_i, 80, 25, make_color(COLOR_WHITE, COLOR_BLACK));
       show_hello_message();
    }
 
