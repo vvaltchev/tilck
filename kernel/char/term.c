@@ -187,7 +187,7 @@ static void term_execute_action(term_action a)
 static ringbuf term_ringbuf;
 static term_action term_actions_buf[32];
 
-void term_enqueue_or_execute_action(term_action a)
+void term_execute_or_enqueue_action(term_action a)
 {
    bool written;
    bool was_empty;
@@ -220,7 +220,7 @@ void term_write_char2(char c, u8 color)
       .arg2 = color
    };
 
-   term_enqueue_or_execute_action(a);
+   term_execute_or_enqueue_action(a);
 }
 
 void term_move_ch(int row, int col)
@@ -231,7 +231,7 @@ void term_move_ch(int row, int col)
       .arg2 = col
    };
 
-   term_enqueue_or_execute_action(a);
+   term_execute_or_enqueue_action(a);
 }
 
 void term_scroll_up(u32 lines)
@@ -241,7 +241,7 @@ void term_scroll_up(u32 lines)
       .arg = lines
    };
 
-   term_enqueue_or_execute_action(a);
+   term_execute_or_enqueue_action(a);
 }
 
 void term_scroll_down(u32 lines)
@@ -251,7 +251,7 @@ void term_scroll_down(u32 lines)
       .arg = lines
    };
 
-   term_enqueue_or_execute_action(a);
+   term_execute_or_enqueue_action(a);
 }
 
 void term_set_color(u8 color)
@@ -261,7 +261,7 @@ void term_set_color(u8 color)
       .arg = color
    };
 
-   term_enqueue_or_execute_action(a);
+   term_execute_or_enqueue_action(a);
 }
 
 void term_write_char(char c)
