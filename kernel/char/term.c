@@ -66,12 +66,6 @@ static void term_action_write_char2(char c, u8 color)
    vi->scroll_to_bottom();
    vi->enable_cursor();
 
-/* temp debug stuff */
-   if (c == '~') {
-      for (int i = 0; i < 100*1000*1000; i++) { }
-   }
-/* end temp debug stuff */
-
    if (c == '\n') {
       terminal_column = 0;
       term_incr_row();

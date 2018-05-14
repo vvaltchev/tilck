@@ -274,12 +274,6 @@ void cmd_syscall_perf(void)
    printf("sysenter setuid(): %llu cycles\n", duration/iters);
 }
 
-void cmd_temp(void)
-{
-   for (int i = 0; i < 20; i++)
-      printf("~");
-}
-
 /* ------------------------------------------- */
 
 typedef void (*cmd_func_type)(void);
@@ -298,8 +292,8 @@ struct {
    {"fork_perf", cmd_fork_perf},
    {"sysenter", cmd_sysenter},
    {"syscall_perf", cmd_syscall_perf},
-   {"sysenter_fork_test", cmd_sysenter_fork_test},
-   {"temp", cmd_temp},
+   {"sysenter_fork_test", cmd_sysenter_fork_test}
+
 };
 
 void run_if_known_command(const char *cmd)
