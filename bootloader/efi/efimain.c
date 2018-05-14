@@ -240,8 +240,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    HANDLE_EFI_ERROR("LoadElfKernel");
 
    // Prepare for the actual boot
-   Print(L"Press ANY key to boot the kernel...\r\n");
-   WaitForKeyPress(ST);
+   // Print(L"Press ANY key to boot the kernel...\r\n");
+   // WaitForKeyPress(ST);
 
    EFI_MEMORY_DESCRIPTOR mmap[128];
    UINTN mmap_size, mapkey, desc_size;
