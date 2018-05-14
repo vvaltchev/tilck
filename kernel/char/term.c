@@ -184,31 +184,28 @@ static void term_execute_action(term_action a)
    }
 }
 
-static volatile u32 term_actions_count;
 static ringbuf term_ringbuf;
 static term_action term_actions_buf[32];
 
 void term_enqueue_or_execute_action(term_action a)
 {
-   if (BOOL_COMPARE_AND_SWAP(&term_actions_count, 0, 1)) {
+   bool written;
+   bool was_empty;
 
-      term_execute_action(a);
+   written = ringbuf_write_elem_ex(&term_ringbuf, &a, &was_empty);
 
-      /* now we have to execute any other eventual enqueued actions */
-      do {
+   /*
+    * written would be false only if the ringbuf was full. In order that to
+    * happen, we'll need ARRAY_SIZE(term_actions_buf) nested interrupts and
+    * all of them need to issue a term_* call. Virtually "impossible".
+    */
+   VERIFY(written);
 
-         if (ringbuf_read_elem(&term_ringbuf, &a)) {
-            term_execute_action(a);
-            ATOMIC_SUB_AND_FETCH(&term_actions_count, 1);
-         }
+   if (was_empty) {
 
-      } while (!BOOL_COMPARE_AND_SWAP(&term_actions_count, 1, 0));
+      while (ringbuf_read_elem(&term_ringbuf, &a))
+         term_execute_action(a);
 
-   } else {
-
-      /* we're not the first term call in the stack: we have to enqueue */
-      ringbuf_write_elem(&term_ringbuf, &a);
-      ATOMIC_ADD_AND_FETCH(&term_actions_count, 1);
    }
 }
 
