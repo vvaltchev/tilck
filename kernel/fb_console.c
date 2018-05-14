@@ -9,12 +9,46 @@
 
 bool use_framebuffer;
 
-uptr fb_addr;
-u32 fb_pitch;
-u32 fb_width;
-u32 fb_height;
-u8 fb_bpp;
-u32 fb_size;
+static uptr fb_addr;
+static u32 fb_pitch;
+static u32 fb_width;
+static u32 fb_height;
+static u8 fb_bpp;
+static u32 fb_size;
+
+static u32 fb_term_rows;
+static u32 fb_term_cols;
+
+/* video_interface */
+
+void fb_set_char_at(char c, u8 color, int row, int col);
+void fb_clear_row(int row_num);
+
+void fb_scroll_up(u32 lines);
+void fb_scroll_down(u32 lines);
+bool fb_is_at_bottom(void);
+void fb_scroll_to_bottom(void);
+void fb_add_row_and_scroll(void);
+
+void fb_move_cursor(int row, int col);
+void fb_enable_cursor(void);
+void fb_disable_cursor(void);
+
+/* end video_interface */
+
+static const video_interface framebuffer_vi =
+{
+   fb_set_char_at,
+   fb_clear_row,
+   fb_scroll_up,
+   fb_scroll_down,
+   fb_is_at_bottom,
+   fb_scroll_to_bottom,
+   fb_add_row_and_scroll,
+   fb_move_cursor,
+   fb_enable_cursor,
+   fb_disable_cursor
+};
 
 void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
 {
@@ -28,9 +62,6 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
    fb_size = fb_pitch * fb_height;
 }
 
-// temp
-void draw_something(void);
-
 void init_framebuffer_console(void)
 {
    map_pages(get_kernel_page_dir(),
@@ -40,13 +71,16 @@ void init_framebuffer_console(void)
              false,
              true);
 
-   draw_something();
+   psf2_header *h = (void *)&_binary_font_psf_start;
 
-   while (true)
-      halt();
+   fb_term_rows = fb_height / h->height;
+   fb_term_cols = fb_width / h->width;
+
+   init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, 0);
+   printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 }
 
-u32 fb_make_color(int r, int g, int b)
+static ALWAYS_INLINE u32 fb_make_color(int r, int g, int b)
 {
    return (r << 16) | (g << 8) | b;
 }
@@ -71,56 +105,9 @@ void fb_draw_char(u32 x, u32 y, u32 color, u32 c)
       u8 d = *(data + row * (h->width >> 3));
 
       for (u32 bit = 0; bit < h->width; bit++)
-         fb_draw_pixel(x + bit, y + row, d & (1 << bit) ? color : black);
-   }
-}
-
-void draw_something(void)
-{
-   u32 black = fb_make_color(0, 0, 0);
-
-   for (u32 y = 0; y < fb_height; y++)
-      for (u32 x = 0; x < fb_width; x++)
-         fb_draw_pixel(x, y, black);
-
-   u32 red_val = fb_make_color(255, 0, 0);
-
-   fb_draw_char(100, 100, red_val, 'A');
-
-   // u32 white_val = my_make_color(255, 255, 255);
-   // u32 green_val = my_make_color(0, 255, 0);
-   // u32 blue_val = my_make_color(0, 0, 255);
-
-   int iy = 300;
-   int ix = 300;
-   int w = 200;
-
-   for (int y = iy; y < iy+20; y++)
-      for (int x = ix; x < ix+w; x++)
-         fb_draw_pixel(x, y, red_val);
-
-}
-
-void dump_glyph(int n)
-{
-   psf2_header *h = (void *)&_binary_font_psf_start;
-   char *data = (char *)h + h->header_size + h->bytes_per_glyph * n;
-   ASSERT(!(h->width % 8));
-
-   for (u32 row = 0; row < h->height; row++) {
-
-      u8 d = *(u8 *)(data + row * (h->width >> 3));
-
-      for (u32 bit = 0; bit < h->width; bit++) {
-
-         u32 val = 1 << bit;
-         if (d & val)
-            term_write_char('#');
-         else
-            term_write_char('-');
-      }
-
-      term_write_char('\n');
+         fb_draw_pixel(x + (h->width - bit),
+                       y + row,
+                       d & (1 << bit) ? color : black);
    }
 }
 
@@ -143,8 +130,61 @@ void dump_psf2_header(void)
    if (h->width % 8) {
       panic("Only fonts with width divisible by 8 are supported");
    }
-
-   printk("---- dump glyph ----\n");
-   dump_glyph('A');
 }
 
+/* video_interface */
+
+void fb_set_char_at(char c, u8 color, int row, int col)
+{
+   psf2_header *h = (void *)&_binary_font_psf_start;
+   u32 red_val = fb_make_color(255, 0, 0);
+
+   fb_draw_char(col * h->width, row * h->height, red_val, c);
+}
+
+void fb_clear_row(int row_num)
+{
+   // Stub impl
+   for (u32 i = 0; i < fb_term_cols; i++)
+      fb_set_char_at(' ', 0, row_num, i);
+}
+
+void fb_scroll_up(u32 lines)
+{
+
+}
+
+void fb_scroll_down(u32 lines)
+{
+
+}
+
+bool fb_is_at_bottom(void)
+{
+   return true;
+}
+
+void fb_scroll_to_bottom(void)
+{
+
+}
+
+void fb_add_row_and_scroll(void)
+{
+
+}
+
+void fb_move_cursor(int row, int col)
+{
+
+}
+
+void fb_enable_cursor(void)
+{
+
+}
+
+void fb_disable_cursor(void)
+{
+
+}

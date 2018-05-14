@@ -276,8 +276,8 @@ init_term(const video_interface *intf, int rows, int cols, u8 default_color)
    ASSERT(!are_interrupts_enabled());
 
    vi = intf;
-   term_width = rows;
-   term_height = cols;
+   term_width = cols;
+   term_height = rows;
 
    ringbuf_init(&term_ringbuf,
                 ARRAY_SIZE(term_actions_buf),
