@@ -63,9 +63,9 @@ add_custom_command(
    COMMAND
       ${OBJCOPY} -O elf32-i386 -B i386 -I binary font.psf ${CMAKE_CURRENT_BINARY_DIR}/font.o
    WORKING_DIRECTORY
-      ${CMAKE_SOURCE_DIR}/kernel
+      ${CMAKE_SOURCE_DIR}/kernel/fb
    DEPENDS
-      ${CMAKE_SOURCE_DIR}/kernel/font.psf
+      ${CMAKE_SOURCE_DIR}/kernel/fb/font.psf
    COMMENT
       "Copying the psf font file into an ELF object file"
 )
