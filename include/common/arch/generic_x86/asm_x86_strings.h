@@ -88,6 +88,19 @@ EXTERN inline void *memcpy(void *dest, const void *src, size_t n)
    return dest;
 }
 
+EXTERN inline void *memcpy32(void *dest, const void *src, size_t n)
+{
+   u32 unused;
+   ASSERT( dest < src || ((uptr)src + n <= (uptr)dest) );
+
+   asmVolatile("rep movsl\n\t"         // copy 4 bytes at a time, n times
+               : "=c" (n), "=S" (src), "=D" (unused)
+               : "c" (n), "S"(src), "D"(dest)
+               : "cc", "memory");
+
+   return dest;
+}
+
 /* dest and src might overlap anyhow */
 EXTERN inline void *memmove(void *dest, const void *src, size_t n)
 {

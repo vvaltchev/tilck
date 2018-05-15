@@ -160,15 +160,15 @@ void fb_draw_w8_char_raw(u32 x, u32 y, u16 entry)
    const u8 bg = vgaentry_color_bg(color);
 
    u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
+   uptr vaddr = fb_vaddr + (fb_pitch * (y)) + (x << 2);
 
    for (u32 row = 0; row < h->height; row++) {
 
       const u8 sl = data[row];
       const u32 offset = (sl << 11) + (fg << 7) + (bg << 3);
 
-      memcpy((void *)(fb_vaddr + (fb_pitch * (y + row)) + (x << 2)),
-             &fb_w8_char_scanlines[offset],
-             PSZ * SL_SIZE);
+      memcpy32((void *)vaddr, &fb_w8_char_scanlines[offset], SL_SIZE);
+      vaddr += fb_pitch;
    }
 }
 
