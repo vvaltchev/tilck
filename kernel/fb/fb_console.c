@@ -1,6 +1,7 @@
 
 #include <common/basic_defs.h>
 #include <common/string_util.h>
+#include <common/arch/generic_x86/vga_textmode_defs.h>
 
 #include <exos/fb_console.h>
 #include <exos/term.h>
@@ -22,6 +23,26 @@ static bool cursor_enabled;
 static int cursor_row;
 static int cursor_col;
 static u32 *under_cursor_buf;
+
+static u32 vga_rgb_colors[16] =
+{
+   [COLOR_BLACK] = fb_make_color(0, 0, 0),
+   [COLOR_BLUE] = fb_make_color(0, 0, 168),
+   [COLOR_GREEN] = fb_make_color(0, 168, 0),
+   [COLOR_CYAN] = fb_make_color(0, 168, 168),
+   [COLOR_RED] = fb_make_color(168, 0, 0),
+   [COLOR_MAGENTA] = fb_make_color(168, 0, 168),
+   [COLOR_BROWN] = fb_make_color(168, 168, 0),
+   [COLOR_LIGHT_GREY] = fb_make_color(208, 208, 208),
+   [COLOR_DARK_GREY] = fb_make_color(168, 168, 168),
+   [COLOR_LIGHT_BLUE] = fb_make_color(0, 0, 252),
+   [COLOR_LIGHT_GREEN] = fb_make_color(0, 252, 0),
+   [COLOR_LIGHT_CYAN] = fb_make_color(0, 252, 252),
+   [COLOR_LIGHT_RED] = fb_make_color(252, 0, 0),
+   [COLOR_LIGHT_MAGENTA] = fb_make_color(252, 0, 252),
+   [COLOR_LIGHT_BROWN] = fb_make_color(252, 252, 0),
+   [COLOR_WHITE] = fb_make_color(252, 252, 252)
+};
 
 void dump_psf2_header(void)
 {
@@ -91,7 +112,7 @@ void init_framebuffer_console(void)
    VERIFY(under_cursor_buf != NULL);
 
 
-   init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, 0);
+   init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, COLOR_WHITE);
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 }
 
@@ -123,8 +144,8 @@ void fb_set_char_at(char c, u8 color, int row, int col)
 
    fb_draw_char_raw(col * h->width,
                     fb_offset_y + row * h->height,
-                    color_white,
-                    color_black,
+                    vga_rgb_colors[color & 15],
+                    vga_rgb_colors[color >> 4],
                     c);
 
    if (row == cursor_row && col == cursor_col)
