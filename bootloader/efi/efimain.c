@@ -38,10 +38,7 @@ LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
    UINTN bufSize = pagesCount * PAGE_SIZE;
    UINT32 crc32 = 0;
 
-   Print(L"AllocatePages for '%s'..\r\n", filePath);
-
-   BS->AllocatePages(AllocateAddress, EfiBootServicesData, pagesCount, &paddr);
-
+   BS->AllocatePages(AllocateAddress, EfiLoaderData, pagesCount, &paddr);
    HANDLE_EFI_ERROR("AllocatePages");
 
    Print(L"File Open('%s')...\r\n", filePath);
@@ -84,7 +81,7 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS,
    Print(L"Allocating memory for final kernel's location...\n");
 
    status = BS->AllocatePages(AllocateAddress,
-                              EfiBootServicesData,
+                              EfiLoaderData,
                               KERNEL_MAX_SIZE / PAGE_SIZE,
                               &kernel_paddr);
 
@@ -203,7 +200,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    Print(L"Loading ramdisk...\r\n");
 
    status = BS->AllocatePages(AllocateAnyPages,
-                              EfiBootServicesData,
+                              EfiLoaderData,
                               RAMDISK_SIZE / PAGE_SIZE,
                               &ramdisk_paddr);
    HANDLE_EFI_ERROR("AllocatePages");
