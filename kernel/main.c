@@ -119,11 +119,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    read_multiboot_info(multiboot_magic, mbi_addr);
 
-   if (!use_framebuffer) {
-      init_textmode_console();
-      show_hello_message();
-   }
-
    setup_segmentation();
    setup_soft_interrupt_handling();
    setup_irq_handling();
@@ -134,9 +129,12 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_kmalloc();
    init_paging_cow();
 
-   if (use_framebuffer) {
+   if (use_framebuffer)
       init_framebuffer_console();
-   }
+   else
+      init_textmode_console();
+
+   show_hello_message();
 
    init_sched();
    init_tasklets();

@@ -9,14 +9,14 @@
 #include <common/arch/generic_x86/vga_textmode_defs.h>
 #include <common/string_util.h>
 
-#include <exos/hal.h>
 #include <exos/term.h>
 #include <exos/serial.h>
-#include <exos/interrupts.h>
 #include <exos/ringbuf.h>
+#include <exos/kmalloc.h>
+#include <exos/interrupts.h>
 
-static u8 term_width;
-static u8 term_height;
+static u8 term_cols;
+static u8 term_rows;
 
 static u8 terminal_row;
 static u8 terminal_column;
@@ -27,21 +27,13 @@ static const video_interface *vi;
 //////////////////////////
 
 
-#define VIDEO_COLS 80
-#define VIDEO_ROWS 25
-#define ROW_SIZE (VIDEO_COLS * 2)
-#define SCREEN_SIZE (ROW_SIZE * VIDEO_ROWS)
-#define BUFFER_ROWS (VIDEO_ROWS * 10)
-#define EXTRA_BUFFER_ROWS (BUFFER_ROWS - VIDEO_ROWS)
+#define ROW_SIZE (term_cols * 2)
+#define BUFFER_ROWS (term_rows * 1 + 9 * term_rows)
+#define EXTRA_BUFFER_ROWS (BUFFER_ROWS - term_rows)
 
-STATIC_ASSERT(EXTRA_BUFFER_ROWS >= 0);
-
-static u16 scroll_buffer[BUFFER_ROWS * VIDEO_COLS];
+static u16 *scroll_buffer;
 static u32 scroll;
 static u32 max_scroll;
-
-
-/////////////////////////
 
 static bool ts_is_at_bottom(void)
 {
@@ -72,13 +64,13 @@ static void ts_set_scroll(u32 requested_scroll)
 
    scroll = requested_scroll;
 
-   for (u32 i = 0; i < VIDEO_ROWS; i++) {
+   for (u32 row = 0; row < term_rows; row++) {
 
-      u32 buffer_row = (scroll + i) % BUFFER_ROWS;
+      u32 buffer_row = (scroll + row) % BUFFER_ROWS;
 
-      for (u32 col = 0; col < VIDEO_COLS; col++) {
-         u16 e = scroll_buffer[VIDEO_COLS * buffer_row + col];
-         vi->set_char_at(vgaentry_char(e), vgaentry_color(e), i, col);
+      for (u32 col = 0; col < term_cols; col++) {
+         u16 e = scroll_buffer[term_cols * buffer_row + col];
+         vi->set_char_at(vgaentry_char(e), vgaentry_color(e), row, col);
       }
    }
 }
@@ -105,8 +97,8 @@ static void ts_scroll_to_bottom(void)
 
 static void ts_clear_row(int row_num, u8 color)
 {
-   u16 *rowb = scroll_buffer + VIDEO_COLS * ((row_num + scroll)%BUFFER_ROWS);
-   memset16(rowb, make_vgaentry(' ', color), VIDEO_COLS);
+   u16 *rowb = scroll_buffer + term_cols * ((row_num + scroll) % BUFFER_ROWS);
+   memset16(rowb, make_vgaentry(' ', color), term_cols);
    vi->clear_row(row_num, color);
 }
 
@@ -114,7 +106,7 @@ static void ts_add_row_and_scroll(u8 color)
 {
    max_scroll++;
    ts_set_scroll(max_scroll);
-   ts_clear_row(VIDEO_ROWS - 1, color);
+   ts_clear_row(term_rows - 1, color);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -150,7 +142,7 @@ static void term_action_scroll_down(u32 lines)
 
 static void term_incr_row()
 {
-   if (terminal_row < term_height - 1) {
+   if (terminal_row < term_rows - 1) {
       ++terminal_row;
       return;
    }
@@ -186,17 +178,17 @@ static void term_action_write_char2(char c, u8 color)
          terminal_column--;
       }
 
-      scroll_buffer[(terminal_row + scroll) % BUFFER_ROWS * VIDEO_COLS + terminal_column] = make_vgaentry(' ', color);
+      scroll_buffer[(terminal_row + scroll) % BUFFER_ROWS * term_cols + terminal_column] = make_vgaentry(' ', color);
       vi->set_char_at(' ', color, terminal_row, terminal_column);
       vi->move_cursor(terminal_row, terminal_column);
       return;
    }
 
-   scroll_buffer[(terminal_row + scroll) % BUFFER_ROWS * VIDEO_COLS + terminal_column] = make_vgaentry(c, color);
+   scroll_buffer[(terminal_row + scroll) % BUFFER_ROWS * term_cols + terminal_column] = make_vgaentry(c, color);
    vi->set_char_at(c, color, terminal_row, terminal_column);
    ++terminal_column;
 
-   if (terminal_column == term_width) {
+   if (terminal_column == term_cols) {
       terminal_column = 0;
       term_incr_row();
    }
@@ -376,19 +368,22 @@ init_term(const video_interface *intf, int rows, int cols, u8 default_color)
    ASSERT(!are_interrupts_enabled());
 
    vi = intf;
-   term_width = cols;
-   term_height = rows;
+   term_cols = cols;
+   term_rows = rows;
 
    ringbuf_init(&term_ringbuf,
                 ARRAY_SIZE(term_actions_buf),
                 sizeof(term_action),
                 term_actions_buf);
 
+   scroll_buffer = kmalloc(2 * BUFFER_ROWS * term_cols);
+   VERIFY(scroll_buffer != NULL); // We cannot handle this.
+
    vi->enable_cursor();
    term_action_move_ch_and_cur(0, 0);
    term_action_set_color(default_color);
 
-   for (int i = 0; i < term_height; i++)
+   for (int i = 0; i < term_rows; i++)
       ts_clear_row(i, default_color);
 
    init_serial_port();
