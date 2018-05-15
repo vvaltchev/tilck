@@ -27,7 +27,7 @@ void init_term(const video_interface *vi, int rows, int cols, u8 default_color);
 bool term_is_initialized(void);
 void term_write_char(char c);
 void term_write_char2(char c, u8 color);
-void term_move_ch(int row, int col);
+void term_move_ch_and_cur(int row, int col);
 void term_scroll_up(u32 lines);
 void term_scroll_down(u32 lines);
 void term_set_color(u8 color);

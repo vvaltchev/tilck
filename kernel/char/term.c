@@ -104,7 +104,7 @@ static void term_action_write_char2(char c, u8 color)
    vi->move_cursor(terminal_row, terminal_column);
 }
 
-static void term_action_move_ch(int row, int col)
+static void term_action_move_ch_and_cur(int row, int col)
 {
    terminal_row = row;
    terminal_column = col;
@@ -115,11 +115,11 @@ static void term_action_move_ch(int row, int col)
 
 typedef enum {
 
-   a_write_char2  = 0,
-   a_move_ch      = 1,
-   a_scroll_up    = 2,
-   a_scroll_down  = 3,
-   a_set_color    = 4
+   a_write_char2      = 0,
+   a_move_ch_and_cur  = 1,
+   a_scroll_up        = 2,
+   a_scroll_down      = 3,
+   a_set_color        = 4
 
 } term_action_type;
 
@@ -155,7 +155,7 @@ typedef struct {
 static actions_table_item actions_table[] = {
 
    [a_write_char2] = {(action_func)term_action_write_char2, 2},
-   [a_move_ch] = {(action_func)term_action_move_ch, 2},
+   [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
    [a_scroll_up] = {(action_func)term_action_scroll_up, 1},
    [a_scroll_down] = {(action_func)term_action_scroll_down, 1},
    [a_set_color] = {(action_func)term_action_set_color, 1}
@@ -217,10 +217,10 @@ void term_write_char2(char c, u8 color)
    term_execute_or_enqueue_action(a);
 }
 
-void term_move_ch(int row, int col)
+void term_move_ch_and_cur(int row, int col)
 {
    term_action a = {
-      .type2 = a_move_ch,
+      .type2 = a_move_ch_and_cur,
       .arg1 = row,
       .arg2 = col
    };
@@ -285,7 +285,7 @@ init_term(const video_interface *intf, int rows, int cols, u8 default_color)
                 term_actions_buf);
 
    vi->enable_cursor();
-   term_action_move_ch(0, 0);
+   term_action_move_ch_and_cur(0, 0);
    term_action_set_color(default_color);
 
    for (int i = 0; i < term_height; i++)
