@@ -57,7 +57,7 @@ static void term_incr_row()
       return;
    }
 
-   vi->add_row_and_scroll();
+   vi->add_row_and_scroll(terminal_color);
 }
 
 static void term_action_write_char2(char c, u8 color)
@@ -289,7 +289,7 @@ init_term(const video_interface *intf, int rows, int cols, u8 default_color)
    term_action_set_color(default_color);
 
    for (int i = 0; i < term_height; i++)
-      vi->clear_row(i);
+      vi->clear_row(i, default_color);
 
    init_serial_port();
 }

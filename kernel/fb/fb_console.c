@@ -16,13 +16,11 @@ static u32 fb_term_rows;
 static u32 fb_term_cols;
 static u32 fb_offset_y;
 
-static const u32 color_black = fb_make_color(0, 0, 0);
-static const u32 color_white = fb_make_color(255, 255, 255);
-
 static bool cursor_enabled;
 static int cursor_row;
 static int cursor_col;
 static u32 *under_cursor_buf;
+static u32 cursor_color = fb_make_color(255, 255, 255);
 
 static u32 vga_rgb_colors[16] =
 {
@@ -68,13 +66,13 @@ void dump_psf2_header(void)
 /* video_interface */
 
 void fb_set_char_at(char c, u8 color, int row, int col);
-void fb_clear_row(int row_num);
+void fb_clear_row(int row_num, u8 color);
 
 void fb_scroll_up(u32 lines);
 void fb_scroll_down(u32 lines);
 bool fb_is_at_bottom(void);
 void fb_scroll_to_bottom(void);
-void fb_add_row_and_scroll(void);
+void fb_add_row_and_scroll(u8 color);
 
 void fb_move_cursor(int row, int col);
 void fb_enable_cursor(void);
@@ -152,11 +150,11 @@ void fb_set_char_at(char c, u8 color, int row, int col)
       fb_save_under_cursor_buf();
 }
 
-void fb_clear_row(int row_num)
+void fb_clear_row(int row_num, u8 color)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
    const u32 iy = fb_offset_y + row_num * h->height;
-   fb_raw_color_lines(iy, h->height, color_black);
+   fb_raw_color_lines(iy, h->height, vga_rgb_colors[color >> 4]);
 }
 
 void fb_scroll_up(u32 lines)
@@ -179,7 +177,7 @@ void fb_scroll_to_bottom(void)
 
 }
 
-void fb_add_row_and_scroll(void)
+void fb_add_row_and_scroll(u8 color)
 {
 
 }
@@ -197,7 +195,7 @@ void fb_move_cursor(int row, int col)
       fb_save_under_cursor_buf();
       fb_draw_cursor_raw(cursor_col * h->width,
                          fb_offset_y + cursor_row * h->height,
-                         color_white);
+                         cursor_color);
    }
 }
 

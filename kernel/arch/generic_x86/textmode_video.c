@@ -98,15 +98,12 @@ void textmode_scroll_to_bottom(void)
    }
 }
 
-void textmode_clear_row(int row_num)
+void textmode_clear_row(int row_num, u8 color)
 {
-   static const u16 ch_space =
-      make_vgaentry(' ', make_color(COLOR_WHITE, COLOR_BLACK));
-
    ASSERT(0 <= row_num && row_num < VIDEO_ROWS);
    u16 *rowb = textmode_buffer + VIDEO_COLS * ((row_num + scroll)%BUFFER_ROWS);
 
-   memset16(rowb, ch_space, VIDEO_COLS);
+   memset16(rowb, make_vgaentry(' ', color), VIDEO_COLS);
    memcpy(VIDEO_ADDR + VIDEO_COLS * row_num, rowb, ROW_SIZE);
 }
 
@@ -121,11 +118,11 @@ void textmode_set_char_at(char c, u8 color, int row, int col)
    textmode_buffer[(row + scroll) % BUFFER_ROWS * VIDEO_COLS + col] = val;
 }
 
-void textmode_add_row_and_scroll(void)
+void textmode_add_row_and_scroll(u8 color)
 {
    max_scroll++;
    textmode_set_scroll(max_scroll);
-   textmode_clear_row(VIDEO_ROWS - 1);
+   textmode_clear_row(VIDEO_ROWS - 1, color);
 }
 
 
