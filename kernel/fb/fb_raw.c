@@ -64,8 +64,11 @@ void fb_map_in_kernel_space(void)
 
 void fb_precompute_fb_w8_char_scanlines(void)
 {
+
+#ifdef DEBUG
    psf2_header *h = (void *)&_binary_font_psf_start;
    ASSERT(h->width == SL_SIZE);
+#endif
 
    fb_w8_char_scanlines = kmalloc(TOT_CHAR_SCANLINES_SIZE);
    VERIFY(fb_w8_char_scanlines != NULL);

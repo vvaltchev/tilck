@@ -126,10 +126,10 @@ static void term_action_set_color(u8 color)
 
 static void term_action_scroll_up(u32 lines)
 {
-#ifdef DEBUG
+//#ifdef DEBUG
    u64 start, end;
    start = RDTSC();
-#endif
+//#endif
 
    ts_scroll_up(lines);
 
@@ -140,19 +140,19 @@ static void term_action_scroll_up(u32 lines)
       vi->move_cursor(current_row, current_col);
    }
 
-#ifdef DEBUG
+//#ifdef DEBUG
    end = RDTSC();
    scroll_cycles += (end - start);
    scroll_count++;
-#endif
+//#endif
 }
 
 static void term_action_scroll_down(u32 lines)
 {
-#ifdef DEBUG
+//#ifdef DEBUG
    u64 start, end;
    start = RDTSC();
-#endif
+//#endif
 
    ts_scroll_down(lines);
 
@@ -161,11 +161,11 @@ static void term_action_scroll_down(u32 lines)
       vi->move_cursor(current_row, current_col);
    }
 
-#ifdef DEBUG
+//#ifdef DEBUG
    end = RDTSC();
    scroll_cycles += (end - start);
    scroll_count++;
-#endif
+//#endif
 }
 
 static void term_incr_row(void)

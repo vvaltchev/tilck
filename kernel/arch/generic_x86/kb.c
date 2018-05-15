@@ -295,8 +295,10 @@ void handle_key_pressed(u8 scancode)
       return;
 
    case KEY_F2:
+#ifdef DEBUG
       printk("\nkey press int handler avg. cycles = %llu [%i samples]\n",
              chars_count ? total_cycles/chars_count : 0, chars_count);
+#endif
       return;
 
    case KEY_F3:
