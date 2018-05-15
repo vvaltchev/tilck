@@ -49,9 +49,10 @@ void fb_map_in_kernel_space(void)
              true);
 }
 
-void fb_raw_bzero_lines(u32 iy, u32 h)
+void fb_raw_color_lines(u32 iy, u32 h, u32 color)
 {
-   bzero((void *)(fb_vaddr + (fb_pitch * iy)), fb_pitch * h);
+   // Assumption bbp is 32
+   memset32((void *)(fb_vaddr + (fb_pitch * iy)), color, (fb_pitch * h) >> 2);
 }
 
 static ALWAYS_INLINE void fb_draw_pixel(u32 x, u32 y, u32 color)

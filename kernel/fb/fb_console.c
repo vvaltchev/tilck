@@ -135,7 +135,7 @@ void fb_clear_row(int row_num)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
    const u32 iy = fb_offset_y + row_num * h->height;
-   fb_raw_bzero_lines(iy, h->height);
+   fb_raw_color_lines(iy, h->height, color_black);
 }
 
 void fb_scroll_up(u32 lines)
