@@ -43,13 +43,13 @@ static u32 max_scroll;
 
 /////////////////////////
 
-static bool term_scroll_is_at_bottom(void)
+static bool ts_is_at_bottom(void)
 {
    return scroll == max_scroll;
 }
 
 
-static void term_scroll_set_scroll(u32 requested_scroll)
+static void ts_set_scroll(u32 requested_scroll)
 {
    /*
     * 1. scroll cannot be > max_scroll
@@ -83,38 +83,38 @@ static void term_scroll_set_scroll(u32 requested_scroll)
    }
 }
 
-void term_scroll_scroll_up(u32 lines)
+static void ts_scroll_up(u32 lines)
 {
    if (lines > scroll)
-      term_scroll_set_scroll(0);
+      ts_set_scroll(0);
    else
-      term_scroll_set_scroll(scroll - lines);
+      ts_set_scroll(scroll - lines);
 }
 
-void term_scroll_scroll_down(u32 lines)
+static void ts_scroll_down(u32 lines)
 {
-   term_scroll_set_scroll(scroll + lines);
+   ts_set_scroll(scroll + lines);
 }
 
-void term_scroll_scroll_to_bottom(void)
+static void ts_scroll_to_bottom(void)
 {
    if (scroll != max_scroll) {
-      term_scroll_set_scroll(max_scroll);
+      ts_set_scroll(max_scroll);
    }
 }
 
-static void term_clear_row(int row_num, u8 color)
+static void ts_clear_row(int row_num, u8 color)
 {
    u16 *rowb = scroll_buffer + VIDEO_COLS * ((row_num + scroll)%BUFFER_ROWS);
    memset16(rowb, make_vgaentry(' ', color), VIDEO_COLS);
    vi->clear_row(row_num, color);
 }
 
-void term_scroll_add_row_and_scroll(u8 color)
+static void ts_add_row_and_scroll(u8 color)
 {
    max_scroll++;
-   term_scroll_set_scroll(max_scroll);
-   term_clear_row(VIDEO_ROWS - 1, color);
+   ts_set_scroll(max_scroll);
+   ts_clear_row(VIDEO_ROWS - 1, color);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -128,9 +128,9 @@ static void term_action_set_color(u8 color)
 
 static void term_action_scroll_up(u32 lines)
 {
-   term_scroll_scroll_up(lines);
+   ts_scroll_up(lines);
 
-   if (!term_scroll_is_at_bottom()) {
+   if (!ts_is_at_bottom()) {
       vi->disable_cursor();
    } else {
       vi->enable_cursor();
@@ -140,9 +140,9 @@ static void term_action_scroll_up(u32 lines)
 
 static void term_action_scroll_down(u32 lines)
 {
-   term_scroll_scroll_down(lines);
+   ts_scroll_down(lines);
 
-   if (term_scroll_is_at_bottom()) {
+   if (ts_is_at_bottom()) {
       vi->enable_cursor();
       vi->move_cursor(terminal_row, terminal_column);
    }
@@ -155,13 +155,13 @@ static void term_incr_row()
       return;
    }
 
-   term_scroll_add_row_and_scroll(terminal_color);
+   ts_add_row_and_scroll(terminal_color);
 }
 
 static void term_action_write_char2(char c, u8 color)
 {
    write_serial(c);
-   term_scroll_scroll_to_bottom();
+   ts_scroll_to_bottom();
    vi->enable_cursor();
 
    if (c == '\n') {
@@ -389,7 +389,7 @@ init_term(const video_interface *intf, int rows, int cols, u8 default_color)
    term_action_set_color(default_color);
 
    for (int i = 0; i < term_height; i++)
-      term_clear_row(i, default_color);
+      ts_clear_row(i, default_color);
 
    init_serial_port();
 }
