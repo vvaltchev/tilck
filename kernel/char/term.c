@@ -24,13 +24,18 @@ static u8 current_color;
 
 static const video_interface *vi;
 
-static u16 *scroll_buffer;
+static u16 *buffer;
 static u32 scroll;
 static u32 max_scroll;
 static u32 total_buffer_rows;
 static u32 extra_buffer_rows;
 
-static bool ts_is_at_bottom(void)
+static ALWAYS_INLINE void buffer_set_entry(int row, int col, u16 e)
+{
+   buffer[(row + scroll) % total_buffer_rows * term_cols + col] = e;
+}
+
+static ALWAYS_INLINE bool ts_is_at_bottom(void)
 {
    return scroll == max_scroll;
 }
@@ -63,13 +68,13 @@ static void ts_set_scroll(u32 requested_scroll)
       u32 buffer_row = (scroll + row) % total_buffer_rows;
 
       for (u32 col = 0; col < term_cols; col++) {
-         u16 e = scroll_buffer[term_cols * buffer_row + col];
+         u16 e = buffer[term_cols * buffer_row + col];
          vi->set_char_at(vgaentry_char(e), vgaentry_color(e), row, col);
       }
    }
 }
 
-static void ts_scroll_up(u32 lines)
+static ALWAYS_INLINE void ts_scroll_up(u32 lines)
 {
    if (lines > scroll)
       ts_set_scroll(0);
@@ -77,12 +82,12 @@ static void ts_scroll_up(u32 lines)
       ts_set_scroll(scroll - lines);
 }
 
-static void ts_scroll_down(u32 lines)
+static ALWAYS_INLINE void ts_scroll_down(u32 lines)
 {
    ts_set_scroll(scroll + lines);
 }
 
-static void ts_scroll_to_bottom(void)
+static ALWAYS_INLINE void ts_scroll_to_bottom(void)
 {
    if (scroll != max_scroll) {
       ts_set_scroll(max_scroll);
@@ -91,7 +96,7 @@ static void ts_scroll_to_bottom(void)
 
 static void ts_clear_row(int row_num, u8 color)
 {
-   u16 *rowb = scroll_buffer + term_cols * ((row_num + scroll) % total_buffer_rows);
+   u16 *rowb = buffer + term_cols * ((row_num + scroll) % total_buffer_rows);
    memset16(rowb, make_vgaentry(' ', color), term_cols);
    vi->clear_row(row_num, color);
 }
@@ -171,13 +176,13 @@ static void term_action_write_char2(char c, u8 color)
          current_col--;
       }
 
-      scroll_buffer[(current_row + scroll) % total_buffer_rows * term_cols + current_col] = make_vgaentry(' ', color);
+      buffer_set_entry(current_row, current_col, make_vgaentry(' ', color));
       vi->set_char_at(' ', color, current_row, current_col);
       vi->move_cursor(current_row, current_col);
       return;
    }
 
-   scroll_buffer[(current_row + scroll) % total_buffer_rows * term_cols + current_col] = make_vgaentry(c, color);
+   buffer_set_entry(current_row, current_col, make_vgaentry(c, color));
    vi->set_char_at(c, color, current_row, current_col);
    ++current_col;
 
@@ -371,8 +376,8 @@ init_term(const video_interface *intf, int rows, int cols, u8 default_color)
 
    extra_buffer_rows = 9 * term_rows;
    total_buffer_rows = term_rows + extra_buffer_rows;
-   scroll_buffer = kmalloc(2 * total_buffer_rows * term_cols);
-   VERIFY(scroll_buffer != NULL); // We cannot handle this.
+   buffer = kmalloc(2 * total_buffer_rows * term_cols);
+   VERIFY(buffer != NULL); // We cannot handle this.
 
    vi->enable_cursor();
    term_action_move_ch_and_cur(0, 0);
