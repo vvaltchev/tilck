@@ -6,6 +6,7 @@
 #include <exos/fb_console.h>
 #include <exos/paging.h>
 #include <exos/kmalloc.h>
+#include <exos/pageframe_allocator.h>
 
 #include "fb_int.h"
 
@@ -51,6 +52,8 @@ void fb_map_in_kernel_space(void)
              (fb_size/PAGE_SIZE) + 1,
              false,
              true);
+
+   mark_pageframes_as_reserved(fb_paddr, fb_size + 1);
 }
 
 

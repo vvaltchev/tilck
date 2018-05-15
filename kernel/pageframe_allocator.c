@@ -65,6 +65,9 @@ void mark_pageframes_as_reserved(uptr paddr, int mb_count)
     */
    ASSERT(paddr >= LINEAR_MAPPING_SIZE);
 
+   if (paddr >= MAX_MEM_SIZE_IN_MB * MB)
+      return;
+
    for (int i = 0; i < mb_count * 8; i++) {
       ASSERT(pageframes_bitfield[(paddr >> 3) + i] == 0);
       pageframes_bitfield[(paddr >> 3) + i] = FULL_128KB_AREA;

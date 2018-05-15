@@ -136,6 +136,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    show_hello_message();
 
+
+
    init_sched();
    init_tasklets();
 
