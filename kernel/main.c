@@ -120,9 +120,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    read_multiboot_info(multiboot_magic, mbi_addr);
 
    setup_segmentation();
-   setup_soft_interrupt_handling();
-   setup_irq_handling();
-
    init_pageframe_allocator(); /* NOTE: unused at the moment */
 
    init_paging();
@@ -136,16 +133,14 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    show_hello_message();
 
-
-
+   setup_soft_interrupt_handling();
+   setup_irq_handling();
    init_sched();
    init_tasklets();
 
    timer_set_freq(TIMER_HZ);
-
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
-
    VERIFY(enqueue_tasklet0(&init_kb));
 
    setup_syscall_interfaces();
