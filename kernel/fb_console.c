@@ -110,20 +110,17 @@ static ALWAYS_INLINE void fb_draw_pixel(u32 x, u32 y, u32 color)
    *(volatile u32 *)(fb_vaddr + (fb_pitch * y) + (x << 2)) = color;
 }
 
-static ALWAYS_INLINE u32 fb_read_pixel(u32 x, u32 y)
-{
-   ASSERT(x < fb_width);
-   ASSERT(y < fb_height);
-
-   return *(volatile u32 *)(fb_vaddr + (fb_pitch * y) + (x << 2));
-}
-
-void fb_draw_cursor(u32 x, u32 y, u32 color)
+void fb_draw_cursor(u32 ix, u32 iy, u32 color)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
-   for (u32 row = 0; row < h->height; row++)
-      for (u32 col = 0; col < h->width; col++)
-         fb_draw_pixel(x + col, y + row, color);
+   ix <<= 2; // Assumption: bbp is 32
+
+   for (u32 y = 0; y < h->height; y++) {
+
+      memset32((u32 *)(fb_vaddr + (fb_pitch * (iy + y)) + ix),
+               color,
+               h->width);
+   }
 }
 
 void fb_draw_char(u32 x, u32 y, u32 color, u32 c)
@@ -131,12 +128,14 @@ void fb_draw_char(u32 x, u32 y, u32 color, u32 c)
    psf2_header *h = (void *)&_binary_font_psf_start;
    ASSERT(c < h->glyphs_count);
 
+   // ASSUMPTION: width is divisible by 8
+   const u32 width_div_8 = h->width >> 3;
+
    u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
 
    for (u32 row = 0; row < h->height; row++) {
 
-      // ASSUMPTION: width is divisible by 8
-      u8 d = *(data + row * (h->width >> 3));
+      u8 d = *(data + row * width_div_8);
 
       for (u32 bit = 0; bit < h->width; bit++)
          fb_draw_pixel(x + h->width - bit - 1,
@@ -168,26 +167,34 @@ void dump_psf2_header(void)
 
 void fb_save_under_cursor_buf(void)
 {
+   // Assumption: bbp is 32
    psf2_header *h = (void *)&_binary_font_psf_start;
 
-   u32 ix = cursor_col * h->width;
-   u32 iy = cursor_row * h->height;
+   const u32 ix4 = cursor_col * h->width * 4;
+   const u32 iy = cursor_row * h->height;
+   const u32 w4 = h->width * 4;
 
-   for (u32 y = 0; y < h->height; y++)
-      for (u32 x = 0; x < h->width; x++)
-         under_cursor_buf[y * h->width + x] = fb_read_pixel(ix + x, iy + y);
+   for (u32 y = 0; y < h->height; y++) {
+      memcpy(&under_cursor_buf[y * h->width],
+             (void *)(fb_vaddr + (fb_pitch * (iy + y)) + ix4),
+             w4);
+   }
 }
 
 void fb_restore_under_cursor_buf(void)
 {
+   // Assumption: bbp is 32
    psf2_header *h = (void *)&_binary_font_psf_start;
 
-   u32 ix = cursor_col * h->width;
-   u32 iy = cursor_row * h->height;
+   const u32 ix4 = cursor_col * h->width * 4;
+   const u32 iy = cursor_row * h->height;
+   const u32 w4 = h->width * 4;
 
-   for (u32 y = 0; y < h->height; y++)
-      for (u32 x = 0; x < h->width; x++)
-         fb_draw_pixel(ix + x, iy + y, under_cursor_buf[y * h->width + x]);
+   for (u32 y = 0; y < h->height; y++) {
+      memcpy((void *)(fb_vaddr + (fb_pitch * (iy + y)) + ix4),
+             &under_cursor_buf[y * h->width],
+             w4);
+   }
 }
 
 /* video_interface */
@@ -203,9 +210,9 @@ void fb_set_char_at(char c, u8 color, int row, int col)
 
 void fb_clear_row(int row_num)
 {
-   // Stub impl
-   for (u32 i = 0; i < fb_term_cols; i++)
-      fb_set_char_at(' ', 0, row_num, i);
+   psf2_header *h = (void *)&_binary_font_psf_start;
+   const u32 iy = row_num * h->height;
+   bzero((void *)(fb_vaddr + (fb_pitch * iy)), fb_pitch * h->height);
 }
 
 void fb_scroll_up(u32 lines)

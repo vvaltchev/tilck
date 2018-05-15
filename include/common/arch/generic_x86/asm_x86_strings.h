@@ -156,6 +156,22 @@ EXTERN inline void *memset16(u16 *s, u16 val, size_t n)
    return s;
 }
 
+/*
+ * Set 'n' 32-bit elems pointed by 's' to 'val'.
+ */
+EXTERN inline void *memset32(u32 *s, u32 val, size_t n)
+{
+   uptr unused; /* See the comment in strlen() about the unused variable */
+
+   asmVolatile("rep stosl"
+               : "=D" (unused), "=a" (val), "=c" (n)
+               :  "D" (s), "a" (val), "c" (n)
+               : "cc", "memory");
+
+   return s;
+}
+
+
 
 EXTERN inline void bzero(void *s, size_t n)
 {
