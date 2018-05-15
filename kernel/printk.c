@@ -8,7 +8,7 @@
 #include <exos/interrupts.h>
 
 #define PRINTK_COLOR COLOR_GREEN
-#define PRINTK_RINGBUF_FLUSH_COLOR COLOR_BLUE
+#define PRINTK_RINGBUF_FLUSH_COLOR COLOR_LIGHT_BLUE
 #define PRINTK_NOSPACE_IN_RBUF_FLUSH_COLOR COLOR_MAGENTA
 #define PRINTK_PANIC_COLOR COLOR_GREEN
 
@@ -179,12 +179,8 @@ static void printk_raw_flush(char *buf, size_t size, u8 color)
    }
 }
 
-static void printk_flush(char *buf, size_t size)
+void printk_flush_ringbuf(void)
 {
-   // First, write to screen the 'buf' buffer.
-   printk_raw_flush(buf, size, PRINTK_COLOR);
-
-   // Then, flush the text in the ring buffer (if any).
    ringbuf_stat cs, ns;
 
    char minibuf[80];
@@ -215,7 +211,7 @@ static void printk_flush(char *buf, size_t size)
       } while (!BOOL_COMPARE_AND_SWAP(&printk_rbuf_stat.raw, cs.raw, ns.raw));
 
       /* Note: we check that in_printk in cs (current state) is unset! */
-      if (!cs.in_printk)
+      if (!to_read)
          break;
 
       printk_raw_flush(minibuf, to_read, PRINTK_RINGBUF_FLUSH_COLOR);
@@ -251,21 +247,15 @@ void vprintk(const char *fmt, va_list args)
    char buf[256];
    int written = 0;
 
-   if (!term_is_initialized()) {
-
-      /*
-       * The term is not initialized: at most we can write in the ringbuf,
-       * but let's make this a TODO task. For the moment, just don't do
-       * anything at all.
-       */
-
-       return;
-   }
-
    if (!in_panic())
       written = snprintk(buf, sizeof(buf), "[kernel] ");
 
    written += vsnprintk(buf + written, sizeof(buf) - written, fmt, args);
+
+   if (!term_is_initialized()) {
+      printk_append_to_ringbuf(buf, written);
+      return;
+   }
 
    if (in_panic()) {
       printk_raw_flush(buf, written, PRINTK_PANIC_COLOR);
@@ -284,11 +274,8 @@ void vprintk(const char *fmt, va_list args)
 
       if (!cs.in_printk) {
 
-         /*
-          * in_printk was 0 and we set it to 1.
-          * printk_flush() will restore it to 0.
-          */
-         printk_flush(buf, written);
+         printk_raw_flush(buf, written, PRINTK_COLOR);
+         printk_flush_ringbuf();
 
       } else {
 

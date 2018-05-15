@@ -117,6 +117,7 @@ void selftest_runner_thread()
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
+   printk("super early printk\n");
    read_multiboot_info(multiboot_magic, mbi_addr);
 
    setup_segmentation();

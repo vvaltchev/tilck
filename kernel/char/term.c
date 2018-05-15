@@ -419,4 +419,5 @@ init_term(const video_interface *intf, int rows, int cols, u8 default_color)
       ts_clear_row(i, default_color);
 
    init_serial_port();
+   printk_flush_ringbuf();
 }
