@@ -139,6 +139,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_sched();
    init_tasklets();
 
+   post_sched_init_framebuffer_console();
+
    timer_set_freq(TIMER_HZ);
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);

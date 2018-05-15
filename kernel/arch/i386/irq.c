@@ -17,6 +17,7 @@ void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags);
 void irq_install_handler(u8 irq, interrupt_handler h)
 {
    irq_routines[irq] = h;
+   irq_clear_mask(irq);
 }
 
 /* This clears the handler for a given IRQ */
@@ -194,7 +195,6 @@ void setup_irq_handling(void)
 
    for (int i = 0; i < 16; i++) {
       idt_set_entry(32 + i, irq_entry_points[i], 0x08, 0x8E);
-      irq_clear_mask(i);
    }
 }
 

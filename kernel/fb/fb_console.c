@@ -7,6 +7,8 @@
 #include <exos/term.h>
 #include <exos/hal.h>
 #include <exos/kmalloc.h>
+#include <exos/process.h>
+#include <exos/timer.h>
 
 #include "fb_int.h"
 
@@ -20,7 +22,10 @@ static bool cursor_enabled;
 static int cursor_row;
 static int cursor_col;
 static u32 *under_cursor_buf;
+static bool cursor_visible = true;
 static u32 cursor_color = fb_make_color(255, 255, 255);
+
+static video_interface framebuffer_vi;
 
 u32 vga_rgb_colors[16] =
 {
@@ -125,10 +130,13 @@ void fb_move_cursor(int row, int col)
    cursor_col = col;
 
    if (cursor_enabled) {
+
       fb_save_under_cursor_buf();
-      fb_draw_cursor_raw(cursor_col * h->width,
-                         fb_offset_y + cursor_row * h->height,
-                         cursor_color);
+
+      if (cursor_visible)
+         fb_draw_cursor_raw(cursor_col * h->width,
+                           fb_offset_y + cursor_row * h->height,
+                           cursor_color);
    }
 }
 
@@ -144,7 +152,11 @@ void fb_disable_cursor(void)
    fb_move_cursor(cursor_row, cursor_col);
 }
 
-static void fb_set_row(int row, u16 *data);
+static void fb_set_row(int row, u16 *data)
+{
+   for (u32 i = 0; i < fb_term_cols; i++)
+      framebuffer_vi.set_char_at(row, i, data[i]);
+}
 
 // ---------------------------------------------
 
@@ -158,12 +170,14 @@ static video_interface framebuffer_vi =
    fb_disable_cursor
 };
 
-static void fb_set_row(int row, u16 *data)
+static void fb_blink_thread()
 {
-   for (u32 i = 0; i < fb_term_cols; i++)
-      framebuffer_vi.set_char_at(row, i, data[i]);
+   while (true) {
+      cursor_visible = !cursor_visible;
+      fb_move_cursor(cursor_row, cursor_col);
+      kernel_sleep((TIMER_HZ * 60)/100);
+   }
 }
-
 
 void init_framebuffer_console(void)
 {
@@ -190,5 +204,15 @@ void init_framebuffer_console(void)
          framebuffer_vi.set_char_at = fb_set_char_at_w8;
       else
          printk("WARNING: fb_precompute_fb_w8_char_scanlines failed.\n");
+   }
+}
+
+void post_sched_init_framebuffer_console(void)
+{
+   if (!use_framebuffer())
+      return;
+
+   if (!kthread_create(fb_blink_thread, NULL)) {
+      printk("WARNING: unable to create the fb_blink_thread\n");
    }
 }
