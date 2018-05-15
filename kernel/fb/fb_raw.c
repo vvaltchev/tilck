@@ -62,7 +62,7 @@ void fb_map_in_kernel_space(void)
 
 #define TOT_CHAR_SCANLINES_SIZE (PSZ * SL_COUNT * FG_COLORS * BG_COLORS * SL_SIZE)
 
-void fb_precompute_fb_w8_char_scanlines(void)
+bool fb_precompute_fb_w8_char_scanlines(void)
 {
 
 #ifdef DEBUG
@@ -71,7 +71,9 @@ void fb_precompute_fb_w8_char_scanlines(void)
 #endif
 
    fb_w8_char_scanlines = kmalloc(TOT_CHAR_SCANLINES_SIZE);
-   VERIFY(fb_w8_char_scanlines != NULL);
+
+   if (!fb_w8_char_scanlines)
+      return false;
 
    for (u32 sl = 0; sl < SL_COUNT; sl++) {
       for (u32 fg = 0; fg < FG_COLORS; fg++) {
@@ -90,6 +92,8 @@ void fb_precompute_fb_w8_char_scanlines(void)
          }
       }
    }
+
+   return true;
 }
 
 void fb_raw_color_lines(u32 iy, u32 h, u32 color)

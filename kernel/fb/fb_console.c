@@ -186,7 +186,9 @@ void init_framebuffer_console(void)
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 
    if (h->width == 8) {
-      fb_precompute_fb_w8_char_scanlines();
-      framebuffer_vi.set_char_at = fb_set_char_at_w8;
+      if (fb_precompute_fb_w8_char_scanlines())
+         framebuffer_vi.set_char_at = fb_set_char_at_w8;
+      else
+         printk("WARNING: fb_precompute_fb_w8_char_scanlines failed.\n");
    }
 }

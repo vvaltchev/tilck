@@ -20,10 +20,10 @@ u32 fb_get_width(void);
 u32 fb_get_height(void);
 
 void fb_map_in_kernel_space(void);
-void fb_precompute_fb_w8_char_scanlines(void);
 void fb_raw_color_lines(u32 iy, u32 h, u32 color);
 void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color);
 void fb_draw_char_raw(u32 x, u32 y, u16 entry);
 void fb_draw_w8_char_raw(u32 x, u32 y, u16 entry);
 void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf);
 void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf);
+bool fb_precompute_fb_w8_char_scanlines(void);
