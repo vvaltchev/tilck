@@ -23,6 +23,7 @@ static u32 fb_size;
 static uptr fb_vaddr;
 static u32 fb_term_rows;
 static u32 fb_term_cols;
+static u32 fb_offset_y;
 
 static const u32 color_black = fb_make_color(0, 0, 0);
 static const u32 color_white = fb_make_color(255, 255, 255);
@@ -32,6 +33,26 @@ static int cursor_row;
 static int cursor_col;
 static u32 *under_cursor_buf;
 
+void dump_psf2_header(void)
+{
+   psf2_header *h = (void *)&_binary_font_psf_start;
+   printk("magic: %p\n", h->magic);
+
+   if (h->magic != PSF2_FONT_MAGIC)
+      panic("Magic != PSF2\n");
+
+   printk("header size: %u%s\n",
+          h->header_size,
+          h->header_size > sizeof(psf2_header) ? " > sizeof(psf2_header)" : "");
+   printk("flags: %p\n", h->flags);
+   printk("glyphs count: %u\n", h->glyphs_count);
+   printk("bytes per glyph: %u\n", h->bytes_per_glyph);
+   printk("font size: %u x %u\n", h->width, h->height);
+
+   if (h->width % 8) {
+      panic("Only fonts with width divisible by 8 are supported");
+   }
+}
 
 /* video_interface */
 
@@ -92,14 +113,16 @@ void init_framebuffer_console(void)
    fb_term_rows = fb_height / h->height;
    fb_term_cols = fb_width / h->width;
 
+   fb_offset_y = h->height;
+   fb_term_rows--;
+
    under_cursor_buf = kmalloc(sizeof(u32) * h->width * h->height);
    VERIFY(under_cursor_buf != NULL);
+
 
    init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, 0);
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 }
-
-
 
 static ALWAYS_INLINE void fb_draw_pixel(u32 x, u32 y, u32 color)
 {
@@ -110,7 +133,7 @@ static ALWAYS_INLINE void fb_draw_pixel(u32 x, u32 y, u32 color)
    *(volatile u32 *)(fb_vaddr + (fb_pitch * y) + (x << 2)) = color;
 }
 
-void fb_draw_cursor(u32 ix, u32 iy, u32 color)
+void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
    ix <<= 2; // Assumption: bbp is 32
@@ -123,7 +146,7 @@ void fb_draw_cursor(u32 ix, u32 iy, u32 color)
    }
 }
 
-void fb_draw_char(u32 x, u32 y, u32 color, u32 c)
+void fb_draw_char_raw(u32 x, u32 y, u32 color, u32 c)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
    ASSERT(c < h->glyphs_count);
@@ -144,34 +167,13 @@ void fb_draw_char(u32 x, u32 y, u32 color, u32 c)
    }
 }
 
-void dump_psf2_header(void)
-{
-   psf2_header *h = (void *)&_binary_font_psf_start;
-   printk("magic: %p\n", h->magic);
-
-   if (h->magic != PSF2_FONT_MAGIC)
-      panic("Magic != PSF2\n");
-
-   printk("header size: %u%s\n",
-          h->header_size,
-          h->header_size > sizeof(psf2_header) ? " > sizeof(psf2_header)" : "");
-   printk("flags: %p\n", h->flags);
-   printk("glyphs count: %u\n", h->glyphs_count);
-   printk("bytes per glyph: %u\n", h->bytes_per_glyph);
-   printk("font size: %u x %u\n", h->width, h->height);
-
-   if (h->width % 8) {
-      panic("Only fonts with width divisible by 8 are supported");
-   }
-}
-
 void fb_save_under_cursor_buf(void)
 {
    // Assumption: bbp is 32
    psf2_header *h = (void *)&_binary_font_psf_start;
 
    const u32 ix4 = cursor_col * h->width * 4;
-   const u32 iy = cursor_row * h->height;
+   const u32 iy = fb_offset_y + cursor_row * h->height;
    const u32 w4 = h->width * 4;
 
    for (u32 y = 0; y < h->height; y++) {
@@ -187,7 +189,7 @@ void fb_restore_under_cursor_buf(void)
    psf2_header *h = (void *)&_binary_font_psf_start;
 
    const u32 ix4 = cursor_col * h->width * 4;
-   const u32 iy = cursor_row * h->height;
+   const u32 iy = fb_offset_y + cursor_row * h->height;
    const u32 w4 = h->width * 4;
 
    for (u32 y = 0; y < h->height; y++) {
@@ -202,7 +204,11 @@ void fb_restore_under_cursor_buf(void)
 void fb_set_char_at(char c, u8 color, int row, int col)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
-   fb_draw_char(col * h->width, row * h->height, color_white, c);
+
+   fb_draw_char_raw(col * h->width,
+                    fb_offset_y + row * h->height,
+                    color_white,
+                    c);
 
    if (row == cursor_row && col == cursor_col)
       fb_save_under_cursor_buf();
@@ -211,7 +217,7 @@ void fb_set_char_at(char c, u8 color, int row, int col)
 void fb_clear_row(int row_num)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
-   const u32 iy = row_num * h->height;
+   const u32 iy = fb_offset_y + row_num * h->height;
    bzero((void *)(fb_vaddr + (fb_pitch * iy)), fb_pitch * h->height);
 }
 
@@ -251,7 +257,9 @@ void fb_move_cursor(int row, int col)
 
    if (cursor_enabled) {
       fb_save_under_cursor_buf();
-      fb_draw_cursor(cursor_col * h->width, cursor_row * h->height, color_white);
+      fb_draw_cursor_raw(cursor_col * h->width,
+                         fb_offset_y + cursor_row * h->height,
+                         color_white);
    }
 }
 
