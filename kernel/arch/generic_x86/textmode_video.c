@@ -20,13 +20,13 @@ static void textmode_clear_row(int row_num, u8 color)
             VIDEO_COLS);
 }
 
-static void textmode_set_char_at(char c, u8 color, int row, int col)
+static void textmode_set_char_at(int row, int col, u16 entry)
 {
    ASSERT(0 <= row && row < VIDEO_ROWS);
    ASSERT(0 <= col && col < VIDEO_COLS);
 
    volatile u16 *video = (volatile u16 *)VIDEO_ADDR;
-   video[row * VIDEO_COLS + col] = make_vgaentry(c, color);
+   video[row * VIDEO_COLS + col] = entry;
 }
 
 /*

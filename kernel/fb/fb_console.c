@@ -63,45 +63,6 @@ void dump_psf2_header(void)
    }
 }
 
-/* video_interface */
-
-void fb_set_char_at(char c, u8 color, int row, int col);
-void fb_clear_row(int row_num, u8 color);
-void fb_move_cursor(int row, int col);
-void fb_enable_cursor(void);
-void fb_disable_cursor(void);
-
-/* end video_interface */
-
-static const video_interface framebuffer_vi =
-{
-   fb_set_char_at,
-   fb_clear_row,
-   fb_move_cursor,
-   fb_enable_cursor,
-   fb_disable_cursor
-};
-
-void init_framebuffer_console(void)
-{
-   fb_map_in_kernel_space();
-
-   psf2_header *h = (void *)&_binary_font_psf_start;
-
-   fb_term_rows = fb_get_height() / h->height;
-   fb_term_cols = fb_get_width() / h->width;
-
-   fb_offset_y = h->height;
-   fb_term_rows--;
-
-   under_cursor_buf = kmalloc(sizeof(u32) * h->width * h->height);
-   VERIFY(under_cursor_buf != NULL);
-
-
-   init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, COLOR_WHITE);
-   printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
-}
-
 void fb_save_under_cursor_buf(void)
 {
    // Assumption: bbp is 32
@@ -124,15 +85,17 @@ void fb_restore_under_cursor_buf(void)
 
 /* video_interface */
 
-void fb_set_char_at(char c, u8 color, int row, int col)
+void fb_set_char_at(int row, int col, u16 entry)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
+
+   u8 color = vgaentry_color(entry);
 
    fb_draw_char_raw(col * h->width,
                     fb_offset_y + row * h->height,
                     vga_rgb_colors[color & 15],
                     vga_rgb_colors[color >> 4],
-                    c);
+                    vgaentry_char(entry));
 
    if (row == cursor_row && col == cursor_col)
       fb_save_under_cursor_buf();
@@ -172,4 +135,35 @@ void fb_disable_cursor(void)
 {
    cursor_enabled = false;
    fb_move_cursor(cursor_row, cursor_col);
+}
+
+// ---------------------------------------------
+
+static const video_interface framebuffer_vi =
+{
+   fb_set_char_at,
+   fb_clear_row,
+   fb_move_cursor,
+   fb_enable_cursor,
+   fb_disable_cursor
+};
+
+void init_framebuffer_console(void)
+{
+   fb_map_in_kernel_space();
+
+   psf2_header *h = (void *)&_binary_font_psf_start;
+
+   fb_term_rows = fb_get_height() / h->height;
+   fb_term_cols = fb_get_width() / h->width;
+
+   fb_offset_y = h->height;
+   fb_term_rows--;
+
+   under_cursor_buf = kmalloc(sizeof(u32) * h->width * h->height);
+   VERIFY(under_cursor_buf != NULL);
+
+
+   init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, COLOR_WHITE);
+   printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 }

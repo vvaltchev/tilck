@@ -69,7 +69,7 @@ static void ts_set_scroll(u32 requested_scroll)
 
       for (u32 col = 0; col < term_cols; col++) {
          u16 e = buffer[term_cols * buffer_row + col];
-         vi->set_char_at(vgaentry_char(e), vgaentry_color(e), row, col);
+         vi->set_char_at(row, col, e);
       }
    }
 }
@@ -120,8 +120,8 @@ void debug_term_print_scroll_cycles(void)
       return;
    }
 
-   printk("Avg. cycles per term scroll: %llu [%u scrolls]\n",
-          scroll_cycles / scroll_count, scroll_count);
+   printk("Avg. cycles per term scroll: %llu K [%u scrolls]\n",
+          (scroll_cycles / scroll_count) / 1000, scroll_count);
 }
 
 static void term_action_set_color(u8 color)
@@ -211,14 +211,16 @@ static void term_action_write_char2(char c, u8 color)
          current_col--;
       }
 
-      buffer_set_entry(current_row, current_col, make_vgaentry(' ', color));
-      vi->set_char_at(' ', color, current_row, current_col);
+      u16 entry = make_vgaentry(' ', color);
+      buffer_set_entry(current_row, current_col, entry);
+      vi->set_char_at(current_row, current_col, entry);
       vi->move_cursor(current_row, current_col);
       return;
    }
 
-   buffer_set_entry(current_row, current_col, make_vgaentry(c, color));
-   vi->set_char_at(c, color, current_row, current_col);
+   u16 entry = make_vgaentry(c, color);
+   buffer_set_entry(current_row, current_col, entry);
+   vi->set_char_at(current_row, current_col, entry);
    ++current_col;
 
    if (current_col == term_cols) {

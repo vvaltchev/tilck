@@ -5,7 +5,7 @@
 typedef struct {
 
    /* Main functions */
-   void (*set_char_at)(char c, u8 color, int row, int col);
+   void (*set_char_at)(int row, int col, u16 entry);
    void (*clear_row)(int row_num, u8 color);
 
    /* Cursor management */
