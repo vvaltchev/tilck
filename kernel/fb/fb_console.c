@@ -167,20 +167,39 @@ void fb_draw_char_raw(u32 x, u32 y, u32 color, u32 c)
    }
 }
 
+void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
+{
+   const u32 ix4 = ix << 2;
+   const u32 w4 = w << 2;
+
+   for (u32 y = 0; y < h; y++) {
+      memcpy(&buf[y * w],
+             (void *)(fb_vaddr + (fb_pitch * (iy + y)) + ix4),
+             w4);
+   }
+}
+
+void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
+{
+   const u32 ix4 = ix << 2;
+   const u32 w4 = w << 2;
+
+   for (u32 y = 0; y < h; y++) {
+      memcpy((void *)(fb_vaddr + (fb_pitch * (iy + y)) + ix4),
+             &buf[y * w],
+             w4);
+   }
+}
+
 void fb_save_under_cursor_buf(void)
 {
    // Assumption: bbp is 32
    psf2_header *h = (void *)&_binary_font_psf_start;
 
-   const u32 ix4 = cursor_col * h->width * 4;
+   const u32 ix = cursor_col * h->width;
    const u32 iy = fb_offset_y + cursor_row * h->height;
-   const u32 w4 = h->width * 4;
 
-   for (u32 y = 0; y < h->height; y++) {
-      memcpy(&under_cursor_buf[y * h->width],
-             (void *)(fb_vaddr + (fb_pitch * (iy + y)) + ix4),
-             w4);
-   }
+   fb_copy_from_screen(ix, iy, h->width, h->height, under_cursor_buf);
 }
 
 void fb_restore_under_cursor_buf(void)
@@ -188,15 +207,10 @@ void fb_restore_under_cursor_buf(void)
    // Assumption: bbp is 32
    psf2_header *h = (void *)&_binary_font_psf_start;
 
-   const u32 ix4 = cursor_col * h->width * 4;
+   const u32 ix = cursor_col * h->width;
    const u32 iy = fb_offset_y + cursor_row * h->height;
-   const u32 w4 = h->width * 4;
 
-   for (u32 y = 0; y < h->height; y++) {
-      memcpy((void *)(fb_vaddr + (fb_pitch * (iy + y)) + ix4),
-             &under_cursor_buf[y * h->width],
-             w4);
-   }
+   fb_copy_to_screen(ix, iy, h->width, h->height, under_cursor_buf);
 }
 
 /* video_interface */
