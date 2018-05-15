@@ -185,6 +185,18 @@ u8 numkey[128] = {
 #define KEY_ALT 0x38
 #define KEY_E0_DEL 0x53
 
+#define KEY_F1  (0x3b)
+#define KEY_F2  (KEY_F1 + 1)
+#define KEY_F3  (KEY_F1 + 2)
+#define KEY_F4  (KEY_F1 + 3)
+#define KEY_F5  (KEY_F1 + 4)
+#define KEY_F6  (KEY_F1 + 5)
+#define KEY_F7  (KEY_F1 + 6)
+#define KEY_F8  (KEY_F1 + 7)
+#define KEY_F9  (KEY_F1 + 8)
+#define KEY_F10 (KEY_F1 + 9)
+
+
 bool pkeys[128];
 bool e0pkeys[128];
 
@@ -237,13 +249,12 @@ void caps_lock_switch(bool val)
 kcond kb_cond;
 
 #ifdef DEBUG
-
 static int chars_count = 0;
 static u64 total_cycles = 0;
-
 #endif
 
 void print_slow_timer_handler_counter(void);
+void debug_term_print_scroll_cycles(void);
 
 extern u32 spur_irq_count;
 
@@ -267,6 +278,31 @@ void handle_key_pressed(u8 scancode)
    case KEY_R_SHIFT:
       return;
 
+   case KEY_F1:
+
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+      print_slow_timer_handler_counter();
+#endif
+
+      if (jiffies > TIMER_HZ)
+         printk("Spur IRQ count: %u (%u/sec)\n",
+               spur_irq_count,
+               spur_irq_count / (jiffies / TIMER_HZ));
+      else
+         printk("Spurious IRQ count: %u (< 1 sec)\n",
+               spur_irq_count, spur_irq_count);
+
+      return;
+
+   case KEY_F2:
+      printk("\nkey press int handler avg. cycles = %llu [%i samples]\n",
+             chars_count ? total_cycles/chars_count : 0, chars_count);
+      return;
+
+   case KEY_F3:
+      debug_term_print_scroll_cycles();
+      return;
+
    default:
       break;
    }
@@ -287,38 +323,9 @@ void handle_key_pressed(u8 scancode)
       return;
    }
 
-   // debug way to trigger a panic
-   // if (c == '$')
-   //    NOT_REACHED();
-
-
-   if (c == '!') {
-
-#if KERNEL_TRACK_NESTED_INTERRUPTS
-      print_slow_timer_handler_counter();
-#endif
-
-      if (jiffies > TIMER_HZ)
-         printk("Spur IRQ count: %u (%u/sec)\n",
-                spur_irq_count,
-                spur_irq_count / (jiffies / TIMER_HZ));
-      else
-         printk("Spurious IRQ count: %u (< 1 sec)\n",
-                spur_irq_count, spur_irq_count);
-      return;
-   }
-
 #ifdef DEBUG
-
-   if (c == '@') {
-      printk("\nkey press int handler avg. cycles = %llu [%i samples]\n",
-             chars_count ? total_cycles/chars_count : 0, chars_count);
-      return;
-   }
-
    u64 start, end;
    start = RDTSC();
-
 #endif
 
    if (c != '\b') {

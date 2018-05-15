@@ -108,8 +108,21 @@ static void ts_add_row_and_scroll(u8 color)
    ts_clear_row(term_rows - 1, color);
 }
 
-
 /* ---------------- term actions --------------------- */
+
+static u32 scroll_count;
+static u64 scroll_cycles;
+
+void debug_term_print_scroll_cycles(void)
+{
+   if (!scroll_count) {
+      printk("No term scrolls yet.\n");
+      return;
+   }
+
+   printk("Avg. cycles per term scroll: %llu [%u scrolls]\n",
+          scroll_cycles / scroll_count, scroll_count);
+}
 
 static void term_action_set_color(u8 color)
 {
@@ -118,6 +131,11 @@ static void term_action_set_color(u8 color)
 
 static void term_action_scroll_up(u32 lines)
 {
+#ifdef DEBUG
+   u64 start, end;
+   start = RDTSC();
+#endif
+
    ts_scroll_up(lines);
 
    if (!ts_is_at_bottom()) {
@@ -126,19 +144,36 @@ static void term_action_scroll_up(u32 lines)
       vi->enable_cursor();
       vi->move_cursor(current_row, current_col);
    }
+
+#ifdef DEBUG
+   end = RDTSC();
+   scroll_cycles += (end - start);
+   scroll_count++;
+#endif
 }
 
 static void term_action_scroll_down(u32 lines)
 {
+#ifdef DEBUG
+   u64 start, end;
+   start = RDTSC();
+#endif
+
    ts_scroll_down(lines);
 
    if (ts_is_at_bottom()) {
       vi->enable_cursor();
       vi->move_cursor(current_row, current_col);
    }
+
+#ifdef DEBUG
+   end = RDTSC();
+   scroll_cycles += (end - start);
+   scroll_count++;
+#endif
 }
 
-static void term_incr_row()
+static void term_incr_row(void)
 {
    if (current_row < term_rows - 1) {
       ++current_row;
