@@ -24,37 +24,31 @@ static u8 current_color;
 
 static const video_interface *vi;
 
-//////////////////////////
-
-
-#define ROW_SIZE (term_cols * 2)
-#define BUFFER_ROWS (term_rows * 1 + 9 * term_rows)
-#define EXTRA_BUFFER_ROWS (BUFFER_ROWS - term_rows)
-
 static u16 *scroll_buffer;
 static u32 scroll;
 static u32 max_scroll;
+static u32 total_buffer_rows;
+static u32 extra_buffer_rows;
 
 static bool ts_is_at_bottom(void)
 {
    return scroll == max_scroll;
 }
 
-
 static void ts_set_scroll(u32 requested_scroll)
 {
    /*
     * 1. scroll cannot be > max_scroll
-    * 2. scroll cannot be < max_scroll - EXTRA_BUFFER_ROWS, where
-    *    EXTRA_BUFFER_ROWS = BUFFER_ROWS - VIDEO_ROWS.
-    *    In other words, if for example BUFFER_ROWS is 26, and max_scroll is
+    * 2. scroll cannot be < max_scroll - extra_buffer_rows, where
+    *    extra_buffer_rows = total_buffer_rows - VIDEO_ROWS.
+    *    In other words, if for example total_buffer_rows is 26, and max_scroll is
     *    1000, scroll cannot be less than 1000 + 25 - 26 = 999, which means
-    *    exactly 1 scroll row (EXTRA_BUFFER_ROWS == 1).
+    *    exactly 1 scroll row (extra_buffer_rows == 1).
     */
 
    const u32 min_scroll =
-      max_scroll > EXTRA_BUFFER_ROWS
-         ? max_scroll - EXTRA_BUFFER_ROWS
+      max_scroll > extra_buffer_rows
+         ? max_scroll - extra_buffer_rows
          : 0;
 
    requested_scroll = MIN(MAX(requested_scroll, min_scroll), max_scroll);
@@ -66,7 +60,7 @@ static void ts_set_scroll(u32 requested_scroll)
 
    for (u32 row = 0; row < term_rows; row++) {
 
-      u32 buffer_row = (scroll + row) % BUFFER_ROWS;
+      u32 buffer_row = (scroll + row) % total_buffer_rows;
 
       for (u32 col = 0; col < term_cols; col++) {
          u16 e = scroll_buffer[term_cols * buffer_row + col];
@@ -97,7 +91,7 @@ static void ts_scroll_to_bottom(void)
 
 static void ts_clear_row(int row_num, u8 color)
 {
-   u16 *rowb = scroll_buffer + term_cols * ((row_num + scroll) % BUFFER_ROWS);
+   u16 *rowb = scroll_buffer + term_cols * ((row_num + scroll) % total_buffer_rows);
    memset16(rowb, make_vgaentry(' ', color), term_cols);
    vi->clear_row(row_num, color);
 }
@@ -109,7 +103,6 @@ static void ts_add_row_and_scroll(u8 color)
    ts_clear_row(term_rows - 1, color);
 }
 
-////////////////////////////////////////////////////////////////////
 
 /* ---------------- term actions --------------------- */
 
@@ -178,13 +171,13 @@ static void term_action_write_char2(char c, u8 color)
          current_col--;
       }
 
-      scroll_buffer[(current_row + scroll) % BUFFER_ROWS * term_cols + current_col] = make_vgaentry(' ', color);
+      scroll_buffer[(current_row + scroll) % total_buffer_rows * term_cols + current_col] = make_vgaentry(' ', color);
       vi->set_char_at(' ', color, current_row, current_col);
       vi->move_cursor(current_row, current_col);
       return;
    }
 
-   scroll_buffer[(current_row + scroll) % BUFFER_ROWS * term_cols + current_col] = make_vgaentry(c, color);
+   scroll_buffer[(current_row + scroll) % total_buffer_rows * term_cols + current_col] = make_vgaentry(c, color);
    vi->set_char_at(c, color, current_row, current_col);
    ++current_col;
 
@@ -376,7 +369,9 @@ init_term(const video_interface *intf, int rows, int cols, u8 default_color)
                 sizeof(term_action),
                 term_actions_buf);
 
-   scroll_buffer = kmalloc(2 * BUFFER_ROWS * term_cols);
+   extra_buffer_rows = 9 * term_rows;
+   total_buffer_rows = term_rows + extra_buffer_rows;
+   scroll_buffer = kmalloc(2 * total_buffer_rows * term_cols);
    VERIFY(scroll_buffer != NULL); // We cannot handle this.
 
    vi->enable_cursor();
