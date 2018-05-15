@@ -20,8 +20,6 @@
 #define TEMP_KERNEL_ADDR  (KERNEL_PADDR + KERNEL_MAX_SIZE * 4)
 #define KERNEL_FILE       L"\\EFI\\BOOT\\elf_kernel_stripped"
 
-#undef RAMDISK_SIZE
-#define RAMDISK_SIZE (2 * MB) // Temporary hack to speed up loading
 
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS);
 void SetMbiFramebufferInfo(multiboot_info_t *mbi);
@@ -141,45 +139,16 @@ end:
    return status;
 }
 
-
-/**
- * efi_main - The entry point for the EFI application
- * @image: firmware-allocated handle that identifies the image
- * @ST: EFI system table
- */
 EFI_STATUS
-efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
+LoadRamdisk(EFI_HANDLE image,
+            EFI_LOADED_IMAGE *loaded_image,
+            EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref)
 {
-   EFI_STATUS status;
-   EFI_LOADED_IMAGE *loaded_image;
-   EFI_DEVICE_PATH *device_path;
+   EFI_STATUS status = EFI_SUCCESS;
    EFI_BLOCK_IO_PROTOCOL *blockio;
    EFI_DISK_IO_PROTOCOL *ioprot;
-   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fileFsProt;
-   EFI_FILE_PROTOCOL *fileProt;
-   EFI_FILE_PROTOCOL *fileHandle;
-
-   UINTN bufSize;
    UINT32 crc32;
-   void *kernel_entry = NULL;
-   EFI_PHYSICAL_ADDRESS ramdisk_paddr = RAMDISK_PADDR;
-   EFI_BOOT_SERVICES *BS = ST->BootServices;
-   multiboot_info_t *mbi = NULL;
 
-   InitializeLib(image, ST);
-
-   Print(L"--- exOS bootloader ---\r\n");
-
-   status = SetupGraphicMode(BS);
-   HANDLE_EFI_ERROR("SetupGraphicMode() failed");
-
-   status = BS->OpenProtocol(image,
-                             &LoadedImageProtocol,
-                             (void**) &loaded_image,
-                             image,
-                             NULL,
-                             EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-   HANDLE_EFI_ERROR("Getting a LoadedImageProtocol handle");
 
    status = BS->OpenProtocol(loaded_image->DeviceHandle,
                              &BlockIoProtocol,
@@ -202,21 +171,65 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
                               RAMDISK_SIZE / PAGE_SIZE,
-                              &ramdisk_paddr);
+                              ramdisk_paddr_ref);
    HANDLE_EFI_ERROR("AllocatePages");
 
    status = ioprot->ReadDisk(ioprot,
                              blockio->Media->MediaId,
                              0, // offset from the beginnig of the partition!
                              RAMDISK_SIZE /* buffer size */,
-                             (void *)(UINTN)ramdisk_paddr);
+                             (void *)(UINTN)*ramdisk_paddr_ref);
    HANDLE_EFI_ERROR("ReadDisk");
 
-   Print(L"RAMDISK paddr: 0x%lx\r\n", ramdisk_paddr);
+   Print(L"RAMDISK paddr: 0x%lx\r\n", *ramdisk_paddr_ref);
 
-   crc32 = 0;
-   BS->CalculateCrc32((void *)(UINTN)ramdisk_paddr, RAMDISK_SIZE, &crc32);
-   Print(L"RAMDISK CRC32: 0x%x\r\n", crc32);
+   // crc32 = 0;
+   // BS->CalculateCrc32((void *)(UINTN)*ramdisk_paddr_ref, RAMDISK_SIZE, &crc32);
+   // Print(L"RAMDISK CRC32: 0x%x\r\n", crc32);
+
+end:
+   return status;
+}
+
+/**
+ * efi_main - The entry point for the EFI application
+ * @image: firmware-allocated handle that identifies the image
+ * @ST: EFI system table
+ */
+EFI_STATUS
+efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
+{
+   EFI_STATUS status;
+   EFI_LOADED_IMAGE *loaded_image;
+   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fileFsProt;
+   EFI_FILE_PROTOCOL *fileProt;
+   EFI_FILE_PROTOCOL *fileHandle;
+   EFI_BOOT_SERVICES *BS = ST->BootServices;
+
+   EFI_PHYSICAL_ADDRESS ramdisk_paddr;
+
+   UINTN bufSize;
+   void *kernel_entry = NULL;
+   multiboot_info_t *mbi;
+   multiboot_module_t *mod;
+
+   InitializeLib(image, ST);
+
+   Print(L"--- exOS bootloader ---\r\n");
+
+   status = SetupGraphicMode(BS);
+   HANDLE_EFI_ERROR("SetupGraphicMode() failed");
+
+   status = BS->OpenProtocol(image,
+                             &LoadedImageProtocol,
+                             (void**) &loaded_image,
+                             image,
+                             NULL,
+                             EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+   HANDLE_EFI_ERROR("Getting a LoadedImageProtocol handle");
+
+   status = LoadRamdisk(image, loaded_image, &ramdisk_paddr);
+   HANDLE_EFI_ERROR("LoadRamdisk failed");
 
    // ------------------------------------------------------------------ //
 
@@ -252,11 +265,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = BS->ExitBootServices(image, mapkey);
    HANDLE_EFI_ERROR("BS->ExitBootServices");
 
-   if (ramdisk_paddr != RAMDISK_PADDR) {
-      my_memmove((void *)RAMDISK_PADDR,
-                 (void *)(UINTN)ramdisk_paddr,
-                  RAMDISK_SIZE);
-   }
+
+   my_memmove((void *)RAMDISK_PADDR,
+               (void *)(UINTN)ramdisk_paddr,
+               RAMDISK_SIZE);
+
+   ramdisk_paddr = RAMDISK_PADDR;
+
 
    /*
     * Setup the multiboot info.
@@ -266,8 +281,18 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    mbi = (multiboot_info_t *)TEMP_KERNEL_ADDR;
    bzero(mbi, sizeof(*mbi));
+
+   mod = (multiboot_module_t *)(TEMP_KERNEL_ADDR + sizeof(*mbi));
+   bzero(mod, sizeof(*mod));
+
    SetMbiFramebufferInfo(mbi);
    mbi->mem_upper = 127*1024; /* temp hack */
+
+   mbi->flags |= MULTIBOOT_INFO_MODS;
+   mbi->mods_addr = (UINTN)mod;
+   mbi->mods_count = 1;
+   mod->mod_start = ramdisk_paddr;
+   mod->mod_end = mod->mod_start + RAMDISK_SIZE;
 
    jump_to_kernel(mbi, kernel_entry);
 
