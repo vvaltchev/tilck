@@ -31,8 +31,7 @@ static void textmode_set_char_at(int row, int col, u16 entry)
 
 static void textmode_set_row(int row, u16 *data)
 {
-   for (int i = 0; i < VIDEO_COLS; i++)
-      textmode_set_char_at(row, i, data[i]);
+   memcpy((u16 *)VIDEO_ADDR + row * VIDEO_COLS, data, VIDEO_COLS * 2);
 }
 
 /*
