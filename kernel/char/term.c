@@ -18,9 +18,9 @@
 static u8 term_cols;
 static u8 term_rows;
 
-static u8 terminal_row;
-static u8 terminal_column;
-static u8 terminal_color;
+static u8 current_row;
+static u8 current_col;
+static u8 current_color;
 
 static const video_interface *vi;
 
@@ -115,7 +115,7 @@ static void ts_add_row_and_scroll(u8 color)
 
 static void term_action_set_color(u8 color)
 {
-   terminal_color = color;
+   current_color = color;
 }
 
 static void term_action_scroll_up(u32 lines)
@@ -126,7 +126,7 @@ static void term_action_scroll_up(u32 lines)
       vi->disable_cursor();
    } else {
       vi->enable_cursor();
-      vi->move_cursor(terminal_row, terminal_column);
+      vi->move_cursor(current_row, current_col);
    }
 }
 
@@ -136,18 +136,18 @@ static void term_action_scroll_down(u32 lines)
 
    if (ts_is_at_bottom()) {
       vi->enable_cursor();
-      vi->move_cursor(terminal_row, terminal_column);
+      vi->move_cursor(current_row, current_col);
    }
 }
 
 static void term_incr_row()
 {
-   if (terminal_row < term_rows - 1) {
-      ++terminal_row;
+   if (current_row < term_rows - 1) {
+      ++current_row;
       return;
    }
 
-   ts_add_row_and_scroll(terminal_color);
+   ts_add_row_and_scroll(current_color);
 }
 
 static void term_action_write_char2(char c, u8 color)
@@ -157,15 +157,15 @@ static void term_action_write_char2(char c, u8 color)
    vi->enable_cursor();
 
    if (c == '\n') {
-      terminal_column = 0;
+      current_col = 0;
       term_incr_row();
-      vi->move_cursor(terminal_row, terminal_column);
+      vi->move_cursor(current_row, current_col);
       return;
    }
 
    if (c == '\r') {
-      terminal_column = 0;
-      vi->move_cursor(terminal_row, terminal_column);
+      current_col = 0;
+      vi->move_cursor(current_row, current_col);
       return;
    }
 
@@ -174,32 +174,32 @@ static void term_action_write_char2(char c, u8 color)
    }
 
    if (c == '\b') {
-      if (terminal_column > 0) {
-         terminal_column--;
+      if (current_col > 0) {
+         current_col--;
       }
 
-      scroll_buffer[(terminal_row + scroll) % BUFFER_ROWS * term_cols + terminal_column] = make_vgaentry(' ', color);
-      vi->set_char_at(' ', color, terminal_row, terminal_column);
-      vi->move_cursor(terminal_row, terminal_column);
+      scroll_buffer[(current_row + scroll) % BUFFER_ROWS * term_cols + current_col] = make_vgaentry(' ', color);
+      vi->set_char_at(' ', color, current_row, current_col);
+      vi->move_cursor(current_row, current_col);
       return;
    }
 
-   scroll_buffer[(terminal_row + scroll) % BUFFER_ROWS * term_cols + terminal_column] = make_vgaentry(c, color);
-   vi->set_char_at(c, color, terminal_row, terminal_column);
-   ++terminal_column;
+   scroll_buffer[(current_row + scroll) % BUFFER_ROWS * term_cols + current_col] = make_vgaentry(c, color);
+   vi->set_char_at(c, color, current_row, current_col);
+   ++current_col;
 
-   if (terminal_column == term_cols) {
-      terminal_column = 0;
+   if (current_col == term_cols) {
+      current_col = 0;
       term_incr_row();
    }
 
-   vi->move_cursor(terminal_row, terminal_column);
+   vi->move_cursor(current_row, current_col);
 }
 
 static void term_action_move_ch_and_cur(int row, int col)
 {
-   terminal_row = row;
-   terminal_column = col;
+   current_row = row;
+   current_col = col;
    vi->move_cursor(row, col);
 }
 
@@ -352,7 +352,7 @@ void term_set_color(u8 color)
 
 void term_write_char(char c)
 {
-   term_write_char2(c, terminal_color);
+   term_write_char2(c, current_color);
 }
 
 /* ---------------- term non-action interface funcs --------------------- */
