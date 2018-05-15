@@ -22,7 +22,7 @@ static int cursor_col;
 static u32 *under_cursor_buf;
 static u32 cursor_color = fb_make_color(255, 255, 255);
 
-static u32 vga_rgb_colors[16] =
+u32 vga_rgb_colors[16] =
 {
    [COLOR_BLACK] = fb_make_color(0, 0, 0),
    [COLOR_BLUE] = fb_make_color(0, 0, 168),
@@ -85,26 +85,27 @@ void fb_restore_under_cursor_buf(void)
 
 /* video_interface */
 
-void fb_set_char_at(int row, int col, u16 entry)
+void fb_set_char_at_generic(int row, int col, u16 entry)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
 
-   u8 color = vgaentry_color(entry);
-
    fb_draw_char_raw(col * h->width,
                     fb_offset_y + row * h->height,
-                    vga_rgb_colors[color & 15],
-                    vga_rgb_colors[color >> 4],
-                    vgaentry_char(entry));
-
+                    entry);
    if (row == cursor_row && col == cursor_col)
       fb_save_under_cursor_buf();
 }
 
-static void fb_set_row(int row, u16 *data)
+void fb_set_char_at_w8(int row, int col, u16 entry)
 {
-   for (u32 i = 0; i < fb_term_cols; i++)
-      fb_set_char_at(row, i, data[i]);
+   psf2_header *h = (void *)&_binary_font_psf_start;
+
+   fb_draw_w8_char_raw(col << 3,
+                       fb_offset_y + row * h->height,
+                       entry);
+
+   if (row == cursor_row && col == cursor_col)
+      fb_save_under_cursor_buf();
 }
 
 void fb_clear_row(int row_num, u8 color)
@@ -143,17 +144,26 @@ void fb_disable_cursor(void)
    fb_move_cursor(cursor_row, cursor_col);
 }
 
+static void fb_set_row(int row, u16 *data);
+
 // ---------------------------------------------
 
-static const video_interface framebuffer_vi =
+static video_interface framebuffer_vi =
 {
-   fb_set_char_at,
+   fb_set_char_at_generic,
    fb_set_row,
    fb_clear_row,
    fb_move_cursor,
    fb_enable_cursor,
    fb_disable_cursor
 };
+
+static void fb_set_row(int row, u16 *data)
+{
+   for (u32 i = 0; i < fb_term_cols; i++)
+      framebuffer_vi.set_char_at(row, i, data[i]);
+}
+
 
 void init_framebuffer_console(void)
 {
@@ -164,13 +174,19 @@ void init_framebuffer_console(void)
    fb_term_rows = fb_get_height() / h->height;
    fb_term_cols = fb_get_width() / h->width;
 
-   fb_offset_y = h->height;
-   fb_term_rows--;
+   /* offset_y is useful for adding a fixed banner/bar */
+   //fb_offset_y = 2 * h->height;
+   //fb_term_rows -= 2;
+   //fb_raw_color_lines(0, fb_offset_y, 0 /* black */);
 
    under_cursor_buf = kmalloc(sizeof(u32) * h->width * h->height);
    VERIFY(under_cursor_buf != NULL);
 
-
    init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, COLOR_WHITE);
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
+
+   if (h->width == 8) {
+      fb_precompute_fb_w8_char_scanlines();
+      framebuffer_vi.set_char_at = fb_set_char_at_w8;
+   }
 }
