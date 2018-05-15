@@ -21,7 +21,7 @@ static u32 *fb_w8_char_scanlines;
 
 void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
 {
-   use_framebuffer = true;
+   __use_framebuffer = true;
 
    fb_paddr = mbi->framebuffer_addr;
    fb_pitch = mbi->framebuffer_pitch;

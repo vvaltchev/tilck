@@ -10,7 +10,7 @@
 
 #include "fb_int.h"
 
-bool use_framebuffer;
+bool __use_framebuffer;
 
 static u32 fb_term_rows;
 static u32 fb_term_cols;

@@ -129,7 +129,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_kmalloc();
    init_paging_cow();
 
-   if (use_framebuffer)
+   if (use_framebuffer())
       init_framebuffer_console();
    else
       init_textmode_console();
