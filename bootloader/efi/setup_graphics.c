@@ -59,8 +59,7 @@ bool is_pixelformat_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
    if (sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) != 4)
       return false;
 
-   return mode_info->PixelFormat == PixelRedGreenBlueReserved8BitPerColor ||
-          mode_info->PixelFormat == PixelBlueGreenRedReserved8BitPerColor;
+   return mode_info->PixelFormat == PixelBlueGreenRedReserved8BitPerColor;
 }
 
 EFI_STATUS
@@ -124,7 +123,7 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
    }
 
    if (wanted_mode == (UINTN)-1) {
-      Print(L"Wanted mode %u x %u NOT AVAILABLE.\n",
+      Print(L"Wanted mode %u x %u BGR: NOT AVAILABLE.\n",
             DESIRED_RES_X, DESIRED_RES_Y);
       status = EFI_LOAD_ERROR;
       goto end;
