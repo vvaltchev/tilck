@@ -8,8 +8,6 @@ void handle_syscall(regs *);
 void handle_fault(regs *);
 void handle_irq(regs *r);
 
-extern volatile u64 jiffies;
-
 #if KERNEL_TRACK_NESTED_INTERRUPTS
 
 static int nested_interrupts_count;

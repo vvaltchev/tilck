@@ -100,7 +100,6 @@ STATIC_ASSERT(OFFSET_OF(task_info, fault_resume_regs) == TI_F_RESUME_RS_OFF);
 STATIC_ASSERT(OFFSET_OF(task_info, faults_resume_mask) == TI_FAULTS_MASK_OFF);
 #endif
 
-extern volatile u64 jiffies;
 extern task_info *__current;
 extern task_info *kernel_process;
 
@@ -119,11 +118,6 @@ static ALWAYS_INLINE task_info *get_process_task(process_info *pi)
 static ALWAYS_INLINE bool running_in_kernel(task_info *t)
 {
    return t->running_in_kernel;
-}
-
-static ALWAYS_INLINE u64 get_ticks(void)
-{
-   return jiffies;
 }
 
 static ALWAYS_INLINE task_info *get_curr_task(void)

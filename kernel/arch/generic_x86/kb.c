@@ -284,10 +284,10 @@ void handle_key_pressed(u8 scancode)
       print_slow_timer_handler_counter();
 #endif
 
-      if (jiffies > TIMER_HZ)
+      if (get_ticks() > TIMER_HZ)
          printk("Spur IRQ count: %u (%u/sec)\n",
                spur_irq_count,
-               spur_irq_count / (jiffies / TIMER_HZ));
+               spur_irq_count / (get_ticks() / TIMER_HZ));
       else
          printk("Spurious IRQ count: %u (< 1 sec)\n",
                spur_irq_count, spur_irq_count);
