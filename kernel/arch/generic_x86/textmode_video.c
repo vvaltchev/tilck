@@ -29,6 +29,12 @@ static void textmode_set_char_at(int row, int col, u16 entry)
    video[row * VIDEO_COLS + col] = entry;
 }
 
+static void textmode_set_row(int row, u16 *data)
+{
+   for (int i = 0; i < VIDEO_COLS; i++)
+      textmode_set_char_at(row, i, data[i]);
+}
+
 /*
  * -------- cursor management functions -----------
  *
@@ -84,6 +90,7 @@ static void textmode_disable_cursor(void)
 static const video_interface ega_text_mode_i =
 {
    textmode_set_char_at,
+   textmode_set_row,
    textmode_clear_row,
    textmode_move_cursor,
    textmode_enable_cursor,

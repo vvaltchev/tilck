@@ -101,6 +101,12 @@ void fb_set_char_at(int row, int col, u16 entry)
       fb_save_under_cursor_buf();
 }
 
+static void fb_set_row(int row, u16 *data)
+{
+   for (u32 i = 0; i < fb_term_cols; i++)
+      fb_set_char_at(row, i, data[i]);
+}
+
 void fb_clear_row(int row_num, u8 color)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
@@ -142,6 +148,7 @@ void fb_disable_cursor(void)
 static const video_interface framebuffer_vi =
 {
    fb_set_char_at,
+   fb_set_row,
    fb_clear_row,
    fb_move_cursor,
    fb_enable_cursor,
