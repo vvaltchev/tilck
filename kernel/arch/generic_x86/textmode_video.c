@@ -1,5 +1,6 @@
 
 #include <common/string_util.h>
+#include <common/arch/generic_x86/vga_textmode_defs.h>
 
 #include <exos/arch/generic_x86/textmode_video.h>
 #include <exos/paging.h>
@@ -9,122 +10,24 @@
 #define VIDEO_ADDR ((u16 *) KERNEL_PA_TO_VA(0xB8000))
 #define VIDEO_COLS 80
 #define VIDEO_ROWS 25
-#define ROW_SIZE (VIDEO_COLS * 2)
-#define SCREEN_SIZE (ROW_SIZE * VIDEO_ROWS)
-#define BUFFER_ROWS (VIDEO_ROWS * 10)
-#define EXTRA_BUFFER_ROWS (BUFFER_ROWS - VIDEO_ROWS)
 
-STATIC_ASSERT(EXTRA_BUFFER_ROWS >= 0);
-
-static u16 textmode_buffer[BUFFER_ROWS * VIDEO_COLS];
-static u32 scroll;
-static u32 max_scroll;
-
-static const video_interface ega_text_mode_i =
-{
-   textmode_set_char_at,
-   textmode_clear_row,
-   textmode_scroll_up,
-   textmode_scroll_down,
-   textmode_is_at_bottom,
-   textmode_scroll_to_bottom,
-   textmode_add_row_and_scroll,
-   textmode_move_cursor,
-   textmode_enable_cursor,
-   textmode_disable_cursor
-};
-
-void init_textmode_console(void)
-{
-   init_term(&ega_text_mode_i,
-             VIDEO_ROWS,
-             VIDEO_COLS,
-             make_color(COLOR_WHITE, COLOR_BLACK));
-}
-
-bool textmode_is_at_bottom(void)
-{
-   return scroll == max_scroll;
-}
-
-static void textmode_set_scroll(u32 requested_scroll)
-{
-   /*
-    * 1. scroll cannot be > max_scroll
-    * 2. scroll cannot be < max_scroll - EXTRA_BUFFER_ROWS, where
-    *    EXTRA_BUFFER_ROWS = BUFFER_ROWS - VIDEO_ROWS.
-    *    In other words, if for example BUFFER_ROWS is 26, and max_scroll is
-    *    1000, scroll cannot be less than 1000 + 25 - 26 = 999, which means
-    *    exactly 1 scroll row (EXTRA_BUFFER_ROWS == 1).
-    */
-
-   const u32 min_scroll =
-      max_scroll > EXTRA_BUFFER_ROWS
-         ? max_scroll - EXTRA_BUFFER_ROWS
-         : 0;
-
-   requested_scroll = MIN(MAX(requested_scroll, min_scroll), max_scroll);
-
-   if (requested_scroll == scroll)
-      return; /* nothing to do */
-
-   scroll = requested_scroll;
-
-   for (u32 i = 0; i < VIDEO_ROWS; i++) {
-      u32 buffer_row = (scroll + i) % BUFFER_ROWS;
-      memmove(VIDEO_ADDR + VIDEO_COLS * i,
-              (const void *) (textmode_buffer + VIDEO_COLS * buffer_row),
-              ROW_SIZE);
-   }
-}
-
-void textmode_scroll_up(u32 lines)
-{
-   if (lines > scroll)
-      textmode_set_scroll(0);
-   else
-      textmode_set_scroll(scroll - lines);
-}
-
-void textmode_scroll_down(u32 lines)
-{
-   textmode_set_scroll(scroll + lines);
-}
-
-void textmode_scroll_to_bottom(void)
-{
-   if (scroll != max_scroll) {
-      textmode_set_scroll(max_scroll);
-   }
-}
-
-void textmode_clear_row(int row_num, u8 color)
+static void textmode_clear_row(int row_num, u8 color)
 {
    ASSERT(0 <= row_num && row_num < VIDEO_ROWS);
-   u16 *rowb = textmode_buffer + VIDEO_COLS * ((row_num + scroll)%BUFFER_ROWS);
 
-   memset16(rowb, make_vgaentry(' ', color), VIDEO_COLS);
-   memcpy(VIDEO_ADDR + VIDEO_COLS * row_num, rowb, ROW_SIZE);
+   memset16(VIDEO_ADDR + VIDEO_COLS * row_num,
+            make_vgaentry(' ', color),
+            VIDEO_COLS);
 }
 
-void textmode_set_char_at(char c, u8 color, int row, int col)
+static void textmode_set_char_at(char c, u8 color, int row, int col)
 {
    ASSERT(0 <= row && row < VIDEO_ROWS);
    ASSERT(0 <= col && col < VIDEO_COLS);
 
    volatile u16 *video = (volatile u16 *)VIDEO_ADDR;
-   u16 val = make_vgaentry(c, color);
-   video[row * VIDEO_COLS + col] = val;
-   textmode_buffer[(row + scroll) % BUFFER_ROWS * VIDEO_COLS + col] = val;
+   video[row * VIDEO_COLS + col] = make_vgaentry(c, color);
 }
-
-void textmode_add_row_and_scroll(u8 color)
-{
-   max_scroll++;
-   textmode_set_scroll(max_scroll);
-   textmode_clear_row(VIDEO_ROWS - 1, color);
-}
-
 
 /*
  * -------- cursor management functions -----------
@@ -133,7 +36,7 @@ void textmode_add_row_and_scroll(u8 color)
  * There is a lot of precious information about how to work with the cursor.
  */
 
-void textmode_move_cursor(int row, int col)
+static void textmode_move_cursor(int row, int col)
 {
    u16 position = (row * VIDEO_COLS) + col;
 
@@ -145,7 +48,7 @@ void textmode_move_cursor(int row, int col)
    outb(0x3D5, (u8)((position >> 8) & 0xFF));
 }
 
-void textmode_enable_cursor(void)
+static void textmode_enable_cursor(void)
 {
    const u8 scanline_start = 0;
    const u8 scanline_end = 15;
@@ -161,7 +64,7 @@ void textmode_enable_cursor(void)
                                                       // the higher 3 bits.
 }
 
-void textmode_disable_cursor(void)
+static void textmode_disable_cursor(void)
 {
    /*
     * Move the cursor off-screen. Yes, it seems an ugly way to do that, but it
@@ -176,4 +79,21 @@ void textmode_disable_cursor(void)
 
    // outb(0x3D4, 0x0A);
    // outb(0x3D5, inb(0x3D5) | 0x20);
+}
+
+static const video_interface ega_text_mode_i =
+{
+   textmode_set_char_at,
+   textmode_clear_row,
+   textmode_move_cursor,
+   textmode_enable_cursor,
+   textmode_disable_cursor
+};
+
+void init_textmode_console(void)
+{
+   init_term(&ega_text_mode_i,
+             VIDEO_ROWS,
+             VIDEO_COLS,
+             make_color(COLOR_WHITE, COLOR_BLACK));
 }

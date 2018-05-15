@@ -67,13 +67,6 @@ void dump_psf2_header(void)
 
 void fb_set_char_at(char c, u8 color, int row, int col);
 void fb_clear_row(int row_num, u8 color);
-
-void fb_scroll_up(u32 lines);
-void fb_scroll_down(u32 lines);
-bool fb_is_at_bottom(void);
-void fb_scroll_to_bottom(void);
-void fb_add_row_and_scroll(u8 color);
-
 void fb_move_cursor(int row, int col);
 void fb_enable_cursor(void);
 void fb_disable_cursor(void);
@@ -84,11 +77,6 @@ static const video_interface framebuffer_vi =
 {
    fb_set_char_at,
    fb_clear_row,
-   fb_scroll_up,
-   fb_scroll_down,
-   fb_is_at_bottom,
-   fb_scroll_to_bottom,
-   fb_add_row_and_scroll,
    fb_move_cursor,
    fb_enable_cursor,
    fb_disable_cursor
@@ -155,31 +143,6 @@ void fb_clear_row(int row_num, u8 color)
    psf2_header *h = (void *)&_binary_font_psf_start;
    const u32 iy = fb_offset_y + row_num * h->height;
    fb_raw_color_lines(iy, h->height, vga_rgb_colors[color >> 4]);
-}
-
-void fb_scroll_up(u32 lines)
-{
-
-}
-
-void fb_scroll_down(u32 lines)
-{
-
-}
-
-bool fb_is_at_bottom(void)
-{
-   return true;
-}
-
-void fb_scroll_to_bottom(void)
-{
-
-}
-
-void fb_add_row_and_scroll(u8 color)
-{
-
 }
 
 void fb_move_cursor(int row, int col)

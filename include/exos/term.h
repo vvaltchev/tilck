@@ -8,13 +8,6 @@ typedef struct {
    void (*set_char_at)(char c, u8 color, int row, int col);
    void (*clear_row)(int row_num, u8 color);
 
-   /* Scrolling */
-   void (*scroll_up)(u32 lines);
-   void (*scroll_down)(u32 lines);
-   bool (*is_at_bottom)(void);
-   void (*scroll_to_bottom)(void);
-   void (*add_row_and_scroll)(u8 color);
-
    /* Cursor management */
    void (*move_cursor)(int row, int col);
    void (*enable_cursor)(void);

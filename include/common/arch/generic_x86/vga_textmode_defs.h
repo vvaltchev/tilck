@@ -23,3 +23,6 @@ enum vga_color {
 
 #define make_color(fg, bg) ((fg) | (bg) << 4)
 #define make_vgaentry(c, color) (((u16)c) | ((u16)color << 8))
+
+#define vgaentry_char(e) ((e) & 0xFF)
+#define vgaentry_color(e) ((e) >> 8)
