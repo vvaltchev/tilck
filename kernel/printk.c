@@ -172,7 +172,7 @@ static volatile ringbuf_stat printk_rbuf_stat;
  */
 STATIC_ASSERT(sizeof(printk_rbuf) <= 1024);
 
-static void printk_raw_flush(char *buf, size_t size, u8 color)
+static void printk_direct_flush(char *buf, size_t size, u8 color)
 {
    term_write2(buf, size, color);
 }
@@ -212,7 +212,7 @@ void printk_flush_ringbuf(void)
       if (!to_read)
          break;
 
-      printk_raw_flush(minibuf, to_read, PRINTK_RINGBUF_FLUSH_COLOR);
+      printk_direct_flush(minibuf, to_read, PRINTK_RINGBUF_FLUSH_COLOR);
    }
 }
 
@@ -225,7 +225,7 @@ static void printk_append_to_ringbuf(char *buf, size_t size)
       ns = printk_rbuf_stat;
 
       if (cs.used + size > sizeof(printk_rbuf)) {
-         printk_raw_flush(buf, size, PRINTK_NOSPACE_IN_RBUF_FLUSH_COLOR);
+         printk_direct_flush(buf, size, PRINTK_NOSPACE_IN_RBUF_FLUSH_COLOR);
          return;
       }
 
@@ -256,7 +256,7 @@ void vprintk(const char *fmt, va_list args)
    }
 
    if (in_panic()) {
-      printk_raw_flush(buf, written, PRINTK_PANIC_COLOR);
+      printk_direct_flush(buf, written, PRINTK_PANIC_COLOR);
       return;
    }
 
@@ -272,7 +272,7 @@ void vprintk(const char *fmt, va_list args)
 
       if (!cs.in_printk) {
 
-         printk_raw_flush(buf, written, PRINTK_COLOR);
+         printk_direct_flush(buf, written, PRINTK_COLOR);
          printk_flush_ringbuf();
 
       } else {
