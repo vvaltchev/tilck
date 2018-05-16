@@ -230,6 +230,17 @@ static void term_action_write_char2(char c, u8 color)
    vi->move_cursor(current_row, current_col);
 }
 
+static void term_action_write2(char *buf, u32 len, u8 color)
+{
+   ts_scroll_to_bottom();
+   vi->enable_cursor();
+
+   for (u32 i = 0; i < len; i++)
+      term_internal_write_char2(buf[i], color);
+
+   vi->move_cursor(current_row, current_col);
+}
+
 static void term_action_move_ch_and_cur(int row, int col)
 {
    current_row = row;
@@ -241,11 +252,12 @@ static void term_action_move_ch_and_cur(int row, int col)
 
 typedef enum {
 
-   a_write_char2      = 0,
-   a_move_ch_and_cur  = 1,
-   a_scroll_up        = 2,
-   a_scroll_down      = 3,
-   a_set_color        = 4
+   a_write2           = 0,
+   a_write_char2      = 1,
+   a_move_ch_and_cur  = 2,
+   a_scroll_up        = 3,
+   a_scroll_down      = 4,
+   a_set_color        = 5
 
 } term_action_type;
 
@@ -254,17 +266,25 @@ typedef struct {
    union {
 
       struct {
-         u32 type2 :  8;
-         u32 arg1  : 12;
-         u32 arg2  : 12;
+         u64 type3 :  4;
+         u64 len   : 20;
+         u64 col   :  8;
+         u64 ptr   : 32;
       };
 
       struct {
-         u32 type1 :  8;
-         u32 arg   : 24;
+         u64 type2 :  4;
+         u64 arg1  : 30;
+         u64 arg2  : 30;
       };
 
-      u32 raw;
+      struct {
+         u64 type1  :  4;
+         u64 arg    : 32;
+         u64 unused : 28;
+      };
+
+      u64 raw;
    };
 
 } term_action;
@@ -279,7 +299,7 @@ typedef struct {
 } actions_table_item;
 
 static actions_table_item actions_table[] = {
-
+   [a_write2] = {(action_func)term_action_write2, 3},
    [a_write_char2] = {(action_func)term_action_write_char2, 2},
    [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
    [a_scroll_up] = {(action_func)term_action_scroll_up, 1},
@@ -289,9 +309,12 @@ static actions_table_item actions_table[] = {
 
 static void term_execute_action(term_action a)
 {
-   actions_table_item *it = &actions_table[a.type2];
+   actions_table_item *it = &actions_table[a.type3];
 
    switch (it->args_count) {
+      case 3:
+         it->func(a.ptr, a.len, a.col);
+         break;
       case 2:
          it->func(a.arg1, a.arg2);
          break;
@@ -331,6 +354,19 @@ void term_execute_or_enqueue_action(term_action a)
 
 /* ---------------- term interface --------------------- */
 
+void term_write2(char *buf, u32 len, u8 color)
+{
+   ASSERT(len < MB);
+
+   term_action a = {
+      .type3 = a_write2,
+      .ptr = (uptr)buf,
+      .len = MIN(len, MB - 1),
+      .col = color
+   };
+
+   term_execute_or_enqueue_action(a);
+}
 
 void term_write_char2(char c, u8 color)
 {
@@ -387,6 +423,11 @@ void term_set_color(u8 color)
 void term_write_char(char c)
 {
    term_write_char2(c, current_color);
+}
+
+void term_write(char *buf, u32 len)
+{
+   term_write2(buf, len, current_color);
 }
 
 /* ---------------- term non-action interface funcs --------------------- */

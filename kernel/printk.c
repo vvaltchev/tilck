@@ -174,9 +174,7 @@ STATIC_ASSERT(sizeof(printk_rbuf) <= 1024);
 
 static void printk_raw_flush(char *buf, size_t size, u8 color)
 {
-   for (u32 i = 0; i < size; i++) {
-      term_write_char2(buf[i], color);
-   }
+   term_write2(buf, size, color);
 }
 
 void printk_flush_ringbuf(void)
