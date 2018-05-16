@@ -7,19 +7,8 @@
 #include <exos/irq.h>
 #include <exos/timer.h>
 
-/*
- * This will keep track of how many ticks that the system has been running for.
- */
-volatile u64 jiffies;
-
+volatile u64 jiffies; /* ticks since the timer started */
 volatile u32 disable_preemption_count = 1;
-
-typedef struct {
-
-   u64 ticks_to_sleep;
-   task_info *task;     // task == NULL means that the slot is unused.
-
-} kthread_timer_sleep_obj;
 
 kthread_timer_sleep_obj timers_array[64];
 
@@ -33,6 +22,7 @@ int set_task_to_wake_after(task_info *task, u64 ticks)
       if (BOOL_COMPARE_AND_SWAP(&timers_array[i].task, NULL, 1)) {
          timers_array[i].task = task;
          timers_array[i].ticks_to_sleep = ticks;
+         wait_obj_set(&get_curr_task()->wobj, WOBJ_TIMER, &timers_array[i]);
          task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
          return i;
       }
@@ -45,14 +35,16 @@ int set_task_to_wake_after(task_info *task, u64 ticks)
 void cancel_timer(int timer_num)
 {
    ASSERT(timers_array[timer_num].task != NULL);
+   task_info *t = timers_array[timer_num].task;
    timers_array[timer_num].task = NULL;
+   wait_obj_reset(&t->wobj);
 }
 
 static task_info *tick_all_timers(void)
 {
    task_info *last_ready_task = NULL;
 
-   for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
+   for (u32 i = 0; i < ARRAY_SIZE(timers_array); i++) {
 
       /*
        * Ignore 0 (NULL) and 1 as values of task.
@@ -68,7 +60,7 @@ static task_info *tick_all_timers(void)
          /* In no case a sleeping task could go to kernel and get here */
          ASSERT(get_curr_task() != last_ready_task);
 
-         timers_array[i].task = NULL;
+         cancel_timer(i);
          task_change_state(last_ready_task, TASK_STATE_RUNNABLE);
       }
    }
@@ -110,17 +102,6 @@ void timer_handler(regs *context)
 
    account_ticks();
    task_info *last_ready_task = tick_all_timers();
-
-#ifndef UNIT_TEST_ENVIRONMENT
-   // if (!(jiffies % (TIMER_HZ * 1))) {
-   //    cmos_read_datetime();
-   // }
-#endif
-
-   // [DEBUG] Useful to trigger nested printk calls
-   // if (!(jiffies % 40)) {
-   //    printk("[TIMER TICK]\n");
-   // }
 
    /*
     * Here we have to check that disabled_preemption_count is > 1, not > 0

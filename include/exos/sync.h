@@ -6,10 +6,11 @@
 typedef struct task_info task_info;
 
 typedef enum {
-   WOBJ_NONE = 0,
-   WOBJ_KMUTEX = 1,
-   WOBJ_KCOND = 2,
-   WOBJ_TASK = 3
+   WOBJ_NONE    = 0,
+   WOBJ_KMUTEX  = 1,
+   WOBJ_KCOND   = 2,
+   WOBJ_TASK    = 3,
+   WOBJ_TIMER   = 4
 } wo_type;
 
 /*
