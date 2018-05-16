@@ -217,10 +217,20 @@ static void fb_draw_string_at_raw(u32 x, u32 y, const char *str, u8 color)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
 
-   while (*str) {
-      fb_draw_char_raw(x, y, make_vgaentry(*str, color));
-      x += h->width;
-      str++;
+   if (framebuffer_vi.set_char_at == fb_set_char8x16_at) {
+
+      while (*str) {
+         fb_draw_char8x16(x, y, make_vgaentry(*str++, color));
+         x += h->width;
+      }
+
+   } else {
+
+      while (*str) {
+         fb_draw_char_raw(x, y, make_vgaentry(*str++, color));
+         x += h->width;
+      }
+
    }
 }
 
@@ -235,6 +245,7 @@ static void fb_setup_banner(void)
 
 static void fb_draw_banner(void)
 {
+   psf2_header *h = (void *)&_binary_font_psf_start;
    char lbuf[fb_term_cols + 1];
    char rbuf[fb_term_cols + 1];
    int llen, rlen, padding, i;
@@ -245,13 +256,11 @@ static void fb_draw_banner(void)
 
    read_system_clock_datetime(&d);
 
-   // TODO: make the banner to automatically update
+   llen = snprintk(lbuf, sizeof(lbuf) - 1 - 1,
+                   "exOS [%s build] framebuffer console", BUILDTYPE_STR);
 
-   llen = snprintk(lbuf, sizeof(lbuf) - 1,
-                   " exOS [%s build] framebuffer console", BUILDTYPE_STR);
-
-   rlen = snprintk(rbuf, sizeof(rbuf) - 1 - llen,
-                   "%s%i/%s%i/%i %s%i:%s%i ",
+   rlen = snprintk(rbuf, sizeof(rbuf) - 1 - llen - 1,
+                   "%s%i/%s%i/%i %s%i:%s%i",
                    d.day < 10 ? "0" : "",
                    d.day,
                    d.month < 10 ? "0" : "",
@@ -262,14 +271,23 @@ static void fb_draw_banner(void)
                    d.min < 10 ? "0" : "",
                    d.min);
 
-   padding = (fb_term_cols - llen - rlen);
+   padding = (fb_term_cols - llen - rlen - 1);
 
    for (i = llen; i < llen + padding; i++)
       lbuf[i] = ' ';
 
    memcpy(lbuf + i, rbuf, rlen);
-   lbuf[fb_term_cols] = 0;
-   fb_draw_string_at_raw(0, 7, lbuf, COLOR_LIGHT_BROWN);
+   lbuf[fb_term_cols - 1] = 0;
+
+   fb_draw_string_at_raw(h->width/2, 7, lbuf, COLOR_LIGHT_BROWN);
+}
+
+static void fb_update_banner_kthread()
+{
+   while (true) {
+      fb_draw_banner();
+      kernel_sleep(60 * TIMER_HZ);
+   }
 }
 
 void init_framebuffer_console(void)
@@ -277,6 +295,7 @@ void init_framebuffer_console(void)
    psf2_header *h = (void *)&_binary_font_psf_start;
 
    fb_map_in_kernel_space();
+
    fb_setup_banner();
 
    fb_term_rows = (fb_get_height() - fb_offset_y) / h->height;
@@ -310,5 +329,9 @@ void post_sched_init_framebuffer_console(void)
 
    if (!blink_thread_ti) {
       printk("WARNING: unable to create the fb_blink_thread\n");
+   }
+
+   if (fb_offset_y) {
+      kthread_create(fb_update_banner_kthread, NULL);
    }
 }
