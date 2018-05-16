@@ -9,6 +9,7 @@
 #include <exos/kmalloc.h>
 #include <exos/process.h>
 #include <exos/timer.h>
+#include <exos/datetime.h>
 
 #include "fb_int.h"
 
@@ -212,19 +213,67 @@ static void fb_blink_thread()
    }
 }
 
-void init_framebuffer_console(void)
+static void fb_draw_string_at_raw(u32 x, u32 y, const char *str, u8 color)
 {
-   fb_map_in_kernel_space();
-
    psf2_header *h = (void *)&_binary_font_psf_start;
 
-   fb_term_rows = fb_get_height() / h->height;
-   fb_term_cols = fb_get_width() / h->width;
+   while (*str) {
+      fb_draw_char_raw(x, y, make_vgaentry(*str, color));
+      x += h->width;
+      str++;
+   }
+}
 
-   /* offset_y is useful for adding a fixed banner/bar */
-   //fb_offset_y = 2 * h->height;
-   //fb_term_rows -= 2;
-   //fb_raw_color_lines(0, fb_offset_y, 0 /* black */);
+static void fb_setup_banner(void)
+{
+   psf2_header *h = (void *)&_binary_font_psf_start;
+
+   fb_offset_y = (20 * h->height)/10;
+   fb_raw_color_lines(0, fb_offset_y, 0 /* black */);
+   fb_raw_color_lines(fb_offset_y - 4, 1, vga_rgb_colors[COLOR_WHITE]);
+}
+
+static void fb_draw_banner(void)
+{
+   datetime_t d;
+   char buf[128];
+
+   if (!fb_offset_y)
+      return;
+
+   read_system_clock_datetime(&d);
+
+   // TODO: calculate automatically the position of the date/time
+   // TODO: make the banner to automatically update
+
+   snprintk(buf, sizeof(buf),
+            "exOS [%s build] framebuffer console"
+            "                                             "
+            "%s%i/%s%i/%i %s%i:%s%i",
+            BUILDTYPE_STR,
+            d.day < 10 ? "0" : "",
+            d.day,
+            d.month < 10 ? "0" : "",
+            d.month,
+            d.year,
+            d.hour < 10 ? "0" : "",
+            d.hour,
+            d.min < 10 ? "0" : "",
+            d.min);
+
+   fb_draw_string_at_raw(2, 7, buf, COLOR_LIGHT_BROWN);
+}
+
+void init_framebuffer_console(void)
+{
+   psf2_header *h = (void *)&_binary_font_psf_start;
+
+   fb_map_in_kernel_space();
+   fb_setup_banner();
+
+   fb_term_rows = (fb_get_height() - fb_offset_y) / h->height;
+   fb_term_cols = fb_get_width() / h->width;
+   fb_draw_banner();
 
    under_cursor_buf = kmalloc(sizeof(u32) * h->width * h->height);
    VERIFY(under_cursor_buf != NULL);

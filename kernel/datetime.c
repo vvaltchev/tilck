@@ -2,7 +2,7 @@
 #include <common/string_util.h>
 #include <exos/datetime.h>
 
-static const char *weekdays[] =
+const char *weekdays[7] =
 {
    "Sunday",
    "Monday",

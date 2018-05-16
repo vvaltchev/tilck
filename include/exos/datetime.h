@@ -21,5 +21,7 @@ typedef struct {
 
 } datetime_t;
 
+extern const char *weekdays[7];
+
 void print_datetime(datetime_t d);
 void read_system_clock_datetime(datetime_t *out);
