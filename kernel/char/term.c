@@ -178,51 +178,55 @@ static void term_incr_row(void)
    ts_add_row_and_scroll(current_color);
 }
 
-static void term_action_write_char2(char c, u8 color)
+static void term_internal_write_char2(char c, u8 color)
 {
+   u16 entry;
    write_serial(c);
-   ts_scroll_to_bottom();
-   vi->enable_cursor();
 
-   if (c == '\n') {
+   switch (c) {
+
+   case '\n':
       current_col = 0;
       term_incr_row();
-      vi->move_cursor(current_row, current_col);
-      return;
-   }
+      break;
 
-   if (c == '\r') {
+   case '\r':
       current_col = 0;
-      vi->move_cursor(current_row, current_col);
-      return;
-   }
+      break;
 
-   if (c == '\t') {
-      return;
-   }
+   case '\t':
+      break;
 
-   if (c == '\b') {
-      if (current_col > 0) {
+   case '\b':
+
+      if (current_col > 0)
          current_col--;
-      }
 
-      u16 entry = make_vgaentry(' ', color);
+      entry = make_vgaentry(' ', color);
       buffer_set_entry(current_row, current_col, entry);
       vi->set_char_at(current_row, current_col, entry);
-      vi->move_cursor(current_row, current_col);
-      return;
+      break;
+
+   default:
+      entry = make_vgaentry(c, color);
+      buffer_set_entry(current_row, current_col, entry);
+      vi->set_char_at(current_row, current_col, entry);
+      ++current_col;
+
+      if (current_col == term_cols) {
+         current_col = 0;
+         term_incr_row();
+      }
+
+      break;
    }
+}
 
-   u16 entry = make_vgaentry(c, color);
-   buffer_set_entry(current_row, current_col, entry);
-   vi->set_char_at(current_row, current_col, entry);
-   ++current_col;
-
-   if (current_col == term_cols) {
-      current_col = 0;
-      term_incr_row();
-   }
-
+static void term_action_write_char2(char c, u8 color)
+{
+   ts_scroll_to_bottom();
+   vi->enable_cursor();
+   term_internal_write_char2(c, color);
    vi->move_cursor(current_row, current_col);
 }
 
