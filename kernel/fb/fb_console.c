@@ -106,9 +106,9 @@ void fb_set_char8x16_at(int row, int col, u16 entry)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
 
-   fb_draw_char8x16_raw(col << 3,
-                        fb_offset_y + row * h->height,
-                        entry);
+   fb_draw_char8x16(col << 3,
+                    fb_offset_y + row * h->height,
+                    entry);
 
    if (row == cursor_row && col == cursor_col)
       fb_save_under_cursor_buf();

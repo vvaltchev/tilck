@@ -155,10 +155,11 @@ void fb_draw_char_raw(u32 x, u32 y, u16 entry)
 }
 
 /* fg and bg here are VGA colors [0..15] */
-void fb_draw_char8x16_raw(u32 x, u32 y, u16 entry)
+void fb_draw_char8x16(u32 x, u32 y, u16 entry)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
 
+   /* fb_bpp must be 32 */
    /* h->width must be 8 */
    /* h->height must be 16 */
    /* h->bytes_per_glyph must be 16 */
@@ -169,7 +170,7 @@ void fb_draw_char8x16_raw(u32 x, u32 y, u16 entry)
    const u8 bg = vgaentry_color_bg(color);
 
    u8 *data = (u8 *)h + h->header_size + (c << 4);
-   uptr vaddr = fb_vaddr + (fb_pitch * (y)) + (x << 2);
+   uptr vaddr = fb_vaddr + (fb_pitch * y) + (x << 2);
    const u32 color_offset = (fg << 7) + (bg << 3);
 
    for (u32 r = 0; r < 16; r++) {
@@ -184,8 +185,39 @@ void fb_draw_char8x16_raw(u32 x, u32 y, u16 entry)
 
 void fb_draw_char8x16_row(u32 y, u16 *entries, u32 count)
 {
-   for (u32 i = 0; i < count; i++) {
-      fb_draw_char8x16_raw(i << 3, y, entries[i]);
+   const psf2_header *const h = (void *)&_binary_font_psf_start;
+   const u8 *data = (u8 *)h + h->header_size;
+   const uptr vaddr_base = fb_vaddr + (fb_pitch * y);
+
+   /* fb_bpp must be 32 */
+   /* h->width must be 8 */
+   /* h->height must be 16 */
+   /* h->bytes_per_glyph must be 16 */
+
+   for (u32 ei = 0; ei < count; ei++) {
+
+      const u16 entry = entries[ei];
+      const u32 c16 = vgaentry_char(entry) << 4;
+      const u32 c_off = (vgaentry_fg(entry) << 7) + (vgaentry_bg(entry) << 3);
+
+      uptr vaddr = vaddr_base + (ei << 5);
+
+      for (u32 r = 0; r < 16; r++) {
+
+         u32 *v32 = (u32 *)vaddr;
+         const u32 off = (data[c16 + r] << 11) + c_off;
+
+         v32[0] = fb_w8_char_scanlines[off + 0];
+         v32[1] = fb_w8_char_scanlines[off + 1];
+         v32[2] = fb_w8_char_scanlines[off + 2];
+         v32[3] = fb_w8_char_scanlines[off + 3];
+         v32[4] = fb_w8_char_scanlines[off + 4];
+         v32[5] = fb_w8_char_scanlines[off + 5];
+         v32[6] = fb_w8_char_scanlines[off + 6];
+         v32[7] = fb_w8_char_scanlines[off + 7];
+
+         vaddr += fb_pitch;
+      }
    }
 }
 

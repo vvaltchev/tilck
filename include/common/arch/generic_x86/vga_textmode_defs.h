@@ -29,3 +29,6 @@ enum vga_color {
 
 #define vgaentry_color_fg(color) ((color) & 0xF)
 #define vgaentry_color_bg(color) (((color) >> 4) & 0xF)
+
+#define vgaentry_fg(e) (((e) >> 8) & 0xF)
+#define vgaentry_bg(e) (((e) >> 12) & 0xF)
