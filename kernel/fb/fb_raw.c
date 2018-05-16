@@ -78,19 +78,16 @@ bool fb_precompute_fb_w8_char_scanlines(void)
    if (!fb_w8_char_scanlines)
       return false;
 
-   for (u32 sl = 0; sl < SL_COUNT; sl++) {
-      for (u32 fg = 0; fg < FG_COLORS; fg++) {
-         for (u32 bg = 0; bg < BG_COLORS; bg++) {
-            for (u32 pixel = 0; pixel < SL_SIZE; pixel++) {
-
+   for (u32 fg = 0; fg < FG_COLORS; fg++) {
+      for (u32 bg = 0; bg < BG_COLORS; bg++) {
+         for (u32 sl = 0; sl < SL_COUNT; sl++) {
+            for (u32 pix = 0; pix < SL_SIZE; pix++) {
                fb_w8_char_scanlines[
-                  sl * (FG_COLORS * BG_COLORS * SL_SIZE) +
-                  fg * (BG_COLORS * SL_SIZE) +
-                  bg * SL_SIZE +
-                  (SL_SIZE - pixel - 1)
-               ] = (sl & (1 << pixel))
-                  ? vga_rgb_colors[fg]
-                  : vga_rgb_colors[bg];
+                  fg * (BG_COLORS * SL_COUNT * SL_SIZE) +
+                  bg * (SL_COUNT * SL_SIZE) +
+                  sl * SL_SIZE +
+                  (SL_SIZE - pix - 1)
+               ] = (sl & (1 << pix)) ? vga_rgb_colors[fg] : vga_rgb_colors[bg];
             }
          }
       }
@@ -166,12 +163,12 @@ void fb_draw_char8x16(u32 x, u32 y, u16 e)
 
    u8 *data = (u8 *)h + h->header_size + (vgaentry_char(e) << 4);
    uptr vaddr = fb_vaddr + (fb_pitch * y) + (x << 2);
-   const u32 c_off = (vgaentry_fg(e) << 7) + (vgaentry_bg(e) << 3);
+   const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
 
    for (u32 r = 0; r < 16; r++) {
 
       memcpy32((void *)vaddr,
-               &fb_w8_char_scanlines[(data[r] << 11) + c_off],
+               &fb_w8_char_scanlines[c_off + (data[r] << 3)],
                SL_SIZE);
 
       vaddr += fb_pitch;
@@ -191,16 +188,16 @@ void fb_draw_char8x16_row(u32 y, u16 *entries, u32 count)
 
    for (u32 ei = 0; ei < count; ei++) {
 
-      const u16 entry = entries[ei];
-      const u32 c16 = vgaentry_char(entry) << 4;
-      const u32 c_off = (vgaentry_fg(entry) << 7) + (vgaentry_bg(entry) << 3);
+      const u16 e = entries[ei];
+      const u32 c16 = vgaentry_char(e) << 4;
+      const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
 
       uptr vaddr = vaddr_base + (ei << 5);
 
       for (u32 r = 0; r < 16; r++) {
 
          u32 *v32 = (u32 *)vaddr;
-         const u32 off = (data[c16 + r] << 11) + c_off;
+         const u32 off = c_off + (data[c16 + r] << 3);
 
          v32[0] = fb_w8_char_scanlines[off + 0];
          v32[1] = fb_w8_char_scanlines[off + 1];
