@@ -22,7 +22,9 @@ static bool cursor_enabled;
 static int cursor_row;
 static int cursor_col;
 static u32 *under_cursor_buf;
-static bool cursor_visible = true;
+static volatile bool cursor_visible = true;
+static task_info *blink_thread_ti;
+static const u32 blink_half_period = (TIMER_HZ * 60)/100;
 static u32 cursor_color = fb_make_color(255, 255, 255);
 
 static video_interface framebuffer_vi;
@@ -88,6 +90,20 @@ void fb_restore_under_cursor_buf(void)
    fb_copy_to_screen(ix, iy, h->width, h->height, under_cursor_buf);
 }
 
+static void fb_reset_blink_timer(void)
+{
+   if (!blink_thread_ti)
+      return;
+
+   cursor_visible = true;
+   wait_obj *w = &blink_thread_ti->wobj;
+   kthread_timer_sleep_obj *timer = w->ptr;
+
+   if (timer) {
+      timer->ticks_to_sleep = blink_half_period;
+   }
+}
+
 /* video_interface */
 
 void fb_set_char_at_generic(int row, int col, u16 entry)
@@ -100,6 +116,8 @@ void fb_set_char_at_generic(int row, int col, u16 entry)
 
    if (row == cursor_row && col == cursor_col)
       fb_save_under_cursor_buf();
+
+   fb_reset_blink_timer();
 }
 
 void fb_set_char8x16_at(int row, int col, u16 entry)
@@ -112,6 +130,8 @@ void fb_set_char8x16_at(int row, int col, u16 entry)
 
    if (row == cursor_row && col == cursor_col)
       fb_save_under_cursor_buf();
+
+   fb_reset_blink_timer();
 }
 
 void fb_clear_row(int row_num, u8 color)
@@ -157,6 +177,8 @@ static void fb_set_row_generic(int row, u16 *data)
 {
    for (u32 i = 0; i < fb_term_cols; i++)
       fb_set_char_at_generic(row, i, data[i]);
+
+   fb_reset_blink_timer();
 }
 
 static void fb_set_row_char8x16(int row, u16 *data)
@@ -164,6 +186,8 @@ static void fb_set_row_char8x16(int row, u16 *data)
    fb_draw_char8x16_row(fb_offset_y + (row << 4),
                         data,
                         fb_term_cols);
+
+   fb_reset_blink_timer();
 }
 
 // ---------------------------------------------
@@ -178,12 +202,13 @@ static video_interface framebuffer_vi =
    fb_disable_cursor
 };
 
+
 static void fb_blink_thread()
 {
    while (true) {
       cursor_visible = !cursor_visible;
       fb_move_cursor(cursor_row, cursor_col);
-      kernel_sleep((TIMER_HZ * 60)/100);
+      kernel_sleep(blink_half_period);
    }
 }
 
@@ -223,7 +248,9 @@ void post_sched_init_framebuffer_console(void)
    if (!use_framebuffer())
       return;
 
-   if (!kthread_create(fb_blink_thread, NULL)) {
+   blink_thread_ti = kthread_create(fb_blink_thread, NULL);
+
+   if (!blink_thread_ti) {
       printk("WARNING: unable to create the fb_blink_thread\n");
    }
 }
