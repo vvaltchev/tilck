@@ -160,20 +160,24 @@ void fb_draw_char8x16_raw(u32 x, u32 y, u16 entry)
    psf2_header *h = (void *)&_binary_font_psf_start;
 
    /* h->width must be 8 */
+   /* h->height must be 16 */
+   /* h->bytes_per_glyph must be 16 */
 
    const u8 c = vgaentry_char(entry);
    const u8 color = vgaentry_color(entry);
    const u8 fg = vgaentry_color_fg(color);
    const u8 bg = vgaentry_color_bg(color);
 
-   u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
+   u8 *data = (u8 *)h + h->header_size + (c << 4);
    uptr vaddr = fb_vaddr + (fb_pitch * (y)) + (x << 2);
+   const u32 color_offset = (fg << 7) + (bg << 3);
 
-   for (u32 r = 0; r < h->height; r++) {
+   for (u32 r = 0; r < 16; r++) {
 
       memcpy32((void *)vaddr,
-               &fb_w8_char_scanlines[(data[r] << 11) + (fg << 7) + (bg << 3)],
+               &fb_w8_char_scanlines[(data[r] << 11) + color_offset],
                SL_SIZE);
+
       vaddr += fb_pitch;
    }
 }
