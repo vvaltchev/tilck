@@ -182,6 +182,13 @@ void fb_draw_char8x16_raw(u32 x, u32 y, u16 entry)
    }
 }
 
+void fb_draw_char8x16_row(u32 y, u16 *entries, u32 count)
+{
+   for (u32 i = 0; i < count; i++) {
+      fb_draw_char8x16_raw(i << 3, y, entries[i]);
+   }
+}
+
 void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 {
    const u32 ix4 = ix << 2;

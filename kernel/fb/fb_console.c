@@ -97,6 +97,7 @@ void fb_set_char_at_generic(int row, int col, u16 entry)
    fb_draw_char_raw(col * h->width,
                     fb_offset_y + row * h->height,
                     entry);
+
    if (row == cursor_row && col == cursor_col)
       fb_save_under_cursor_buf();
 }
@@ -135,8 +136,8 @@ void fb_move_cursor(int row, int col)
 
       if (cursor_visible)
          fb_draw_cursor_raw(cursor_col * h->width,
-                           fb_offset_y + cursor_row * h->height,
-                           cursor_color);
+                            fb_offset_y + cursor_row * h->height,
+                            cursor_color);
    }
 }
 
@@ -152,10 +153,17 @@ void fb_disable_cursor(void)
    fb_move_cursor(cursor_row, cursor_col);
 }
 
-static void fb_set_row(int row, u16 *data)
+static void fb_set_row_generic(int row, u16 *data)
 {
    for (u32 i = 0; i < fb_term_cols; i++)
-      framebuffer_vi.set_char_at(row, i, data[i]);
+      fb_set_char_at_generic(row, i, data[i]);
+}
+
+static void fb_set_row_char8x16(int row, u16 *data)
+{
+   fb_draw_char8x16_row(fb_offset_y + (row << 4),
+                        data,
+                        fb_term_cols);
 }
 
 // ---------------------------------------------
@@ -163,7 +171,7 @@ static void fb_set_row(int row, u16 *data)
 static video_interface framebuffer_vi =
 {
    fb_set_char_at_generic,
-   fb_set_row,
+   fb_set_row_generic,
    fb_clear_row,
    fb_move_cursor,
    fb_enable_cursor,
@@ -200,10 +208,13 @@ void init_framebuffer_console(void)
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 
    if (h->width == 8 && h->height == 16) {
-      if (fb_precompute_fb_w8_char_scanlines())
+      if (fb_precompute_fb_w8_char_scanlines()) {
          framebuffer_vi.set_char_at = fb_set_char8x16_at;
-      else
+         framebuffer_vi.set_row = fb_set_row_char8x16;
+         printk("[fb_console] Use code optimized for 8x16 fonts\n");
+      } else {
          printk("WARNING: fb_precompute_fb_w8_char_scanlines failed.\n");
+      }
    }
 }
 
