@@ -235,33 +235,41 @@ static void fb_setup_banner(void)
 
 static void fb_draw_banner(void)
 {
+   char lbuf[fb_term_cols + 1];
+   char rbuf[fb_term_cols + 1];
+   int llen, rlen, padding, i;
    datetime_t d;
-   char buf[128];
 
    if (!fb_offset_y)
       return;
 
    read_system_clock_datetime(&d);
 
-   // TODO: calculate automatically the position of the date/time
    // TODO: make the banner to automatically update
 
-   snprintk(buf, sizeof(buf),
-            "exOS [%s build] framebuffer console"
-            "                                             "
-            "%s%i/%s%i/%i %s%i:%s%i",
-            BUILDTYPE_STR,
-            d.day < 10 ? "0" : "",
-            d.day,
-            d.month < 10 ? "0" : "",
-            d.month,
-            d.year,
-            d.hour < 10 ? "0" : "",
-            d.hour,
-            d.min < 10 ? "0" : "",
-            d.min);
+   llen = snprintk(lbuf, sizeof(lbuf) - 1,
+                   " exOS [%s build] framebuffer console", BUILDTYPE_STR);
 
-   fb_draw_string_at_raw(2, 7, buf, COLOR_LIGHT_BROWN);
+   rlen = snprintk(rbuf, sizeof(rbuf) - 1 - llen,
+                   "%s%i/%s%i/%i %s%i:%s%i ",
+                   d.day < 10 ? "0" : "",
+                   d.day,
+                   d.month < 10 ? "0" : "",
+                   d.month,
+                   d.year,
+                   d.hour < 10 ? "0" : "",
+                   d.hour,
+                   d.min < 10 ? "0" : "",
+                   d.min);
+
+   padding = (fb_term_cols - llen - rlen);
+
+   for (i = llen; i < llen + padding; i++)
+      lbuf[i] = ' ';
+
+   memcpy(lbuf + i, rbuf, rlen);
+   lbuf[fb_term_cols] = 0;
+   fb_draw_string_at_raw(0, 7, lbuf, COLOR_LIGHT_BROWN);
 }
 
 void init_framebuffer_console(void)
@@ -273,7 +281,6 @@ void init_framebuffer_console(void)
 
    fb_term_rows = (fb_get_height() - fb_offset_y) / h->height;
    fb_term_cols = fb_get_width() / h->width;
-   fb_draw_banner();
 
    under_cursor_buf = kmalloc(sizeof(u32) * h->width * h->height);
    VERIFY(under_cursor_buf != NULL);
@@ -290,6 +297,8 @@ void init_framebuffer_console(void)
          printk("WARNING: fb_precompute_fb_w8_char_scanlines failed.\n");
       }
    }
+
+   fb_draw_banner();
 }
 
 void post_sched_init_framebuffer_console(void)
