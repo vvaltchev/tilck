@@ -155,7 +155,7 @@ void fb_draw_char_raw(u32 x, u32 y, u16 entry)
 }
 
 /* fg and bg here are VGA colors [0..15] */
-void fb_draw_w8_char_raw(u32 x, u32 y, u16 entry)
+void fb_draw_char8x16_raw(u32 x, u32 y, u16 entry)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
 
@@ -169,12 +169,11 @@ void fb_draw_w8_char_raw(u32 x, u32 y, u16 entry)
    u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
    uptr vaddr = fb_vaddr + (fb_pitch * (y)) + (x << 2);
 
-   for (u32 row = 0; row < h->height; row++) {
+   for (u32 r = 0; r < h->height; r++) {
 
-      const u8 sl = data[row];
-      const u32 offset = (sl << 11) + (fg << 7) + (bg << 3);
-
-      memcpy32((void *)vaddr, &fb_w8_char_scanlines[offset], SL_SIZE);
+      memcpy32((void *)vaddr,
+               &fb_w8_char_scanlines[(data[r] << 11) + (fg << 7) + (bg << 3)],
+               SL_SIZE);
       vaddr += fb_pitch;
    }
 }

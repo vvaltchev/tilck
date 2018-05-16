@@ -101,13 +101,13 @@ void fb_set_char_at_generic(int row, int col, u16 entry)
       fb_save_under_cursor_buf();
 }
 
-void fb_set_char_at_w8(int row, int col, u16 entry)
+void fb_set_char8x16_at(int row, int col, u16 entry)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
 
-   fb_draw_w8_char_raw(col << 3,
-                       fb_offset_y + row * h->height,
-                       entry);
+   fb_draw_char8x16_raw(col << 3,
+                        fb_offset_y + row * h->height,
+                        entry);
 
    if (row == cursor_row && col == cursor_col)
       fb_save_under_cursor_buf();
@@ -199,9 +199,9 @@ void init_framebuffer_console(void)
    init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, COLOR_WHITE);
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 
-   if (h->width == 8) {
+   if (h->width == 8 && h->height == 16) {
       if (fb_precompute_fb_w8_char_scanlines())
-         framebuffer_vi.set_char_at = fb_set_char_at_w8;
+         framebuffer_vi.set_char_at = fb_set_char8x16_at;
       else
          printk("WARNING: fb_precompute_fb_w8_char_scanlines failed.\n");
    }
