@@ -198,7 +198,7 @@ static void fb_set_row_char8x16(int row, u16 *data)
  * UEFI framebuffer is extremely slow, that's why it is more convenient to
  * only write from it. Also, the use of a non-native resolution like 800x600
  * may be (part of or enterely) the problem [my test machine has a native
- * resolution of 3200 x 1600].
+ * resolution of 3200 x 1800].
  */
 static void fb_scroll_one_line_up(void)
 {

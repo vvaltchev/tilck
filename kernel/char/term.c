@@ -15,11 +15,11 @@
 #include <exos/kmalloc.h>
 #include <exos/interrupts.h>
 
-static u8 term_cols;
-static u8 term_rows;
+static u16 term_cols;
+static u16 term_rows;
+static u16 current_row;
+static u16 current_col;
 
-static u8 current_row;
-static u8 current_col;
 static u8 current_color;
 
 static const video_interface *vi;
