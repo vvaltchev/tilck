@@ -173,6 +173,33 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
    }
 }
 
+
+void fb_draw_char16x32(u32 x, u32 y, u16 e)
+{
+   psf2_header *h = fb_font_header;
+
+   const u8 c = vgaentry_char(e);
+   ASSERT(c < h->glyphs_count);
+
+   uptr vaddr = fb_vaddr + (fb_pitch * y) + (x << 2);
+   u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
+   const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
+
+   for (u32 row = 0; row < 32; row++) {
+
+      memcpy32((void *)(vaddr),
+               &fb_w8_char_scanlines[c_off + (data[row << 1] << 3)],
+               SL_SIZE);
+
+      memcpy32((void *)(vaddr + 32),
+               &fb_w8_char_scanlines[c_off + (data[1 + (row << 1)] << 3)],
+               SL_SIZE);
+
+      vaddr += fb_pitch;
+   }
+}
+
+
 void fb_draw_char8x16(u32 x, u32 y, u16 e)
 {
    psf2_header *h = fb_font_header;

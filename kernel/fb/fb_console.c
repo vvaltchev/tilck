@@ -143,11 +143,21 @@ void fb_set_char_at_optimized(int row, int col, u16 entry)
 
 void fb_set_char8x16_at(int row, int col, u16 entry)
 {
-   psf2_header *h = fb_font_header;
-
    fb_draw_char8x16(col << 3,
-                    fb_offset_y + row * h->height,
+                    fb_offset_y + (row << 4),
                     entry);
+
+   if (row == cursor_row && col == cursor_col)
+      fb_save_under_cursor_buf();
+
+   fb_reset_blink_timer();
+}
+
+void fb_set_char16x32_at(int row, int col, u16 entry)
+{
+   fb_draw_char16x32(col << 4,
+                     fb_offset_y + (row << 5),
+                     entry);
 
    if (row == cursor_row && col == cursor_col)
       fb_save_under_cursor_buf();
@@ -371,6 +381,10 @@ void init_framebuffer_console(void)
          framebuffer_vi.set_char_at = fb_set_char8x16_at;
          framebuffer_vi.set_row = fb_set_row_char8x16;
          printk("[fb_console] Use code optimized for 8x16 fonts\n");
+      } else if (h->width == 16 && h->height == 32) {
+         framebuffer_vi.set_char_at = fb_set_char16x32_at;
+         framebuffer_vi.set_row = fb_set_row_optimized;
+         printk("[fb_console] Use code optimized for 16x32 fonts\n");
       } else {
          framebuffer_vi.set_char_at = fb_set_char_at_optimized;
          framebuffer_vi.set_row = fb_set_row_optimized;
