@@ -67,8 +67,23 @@ add_custom_command(
    DEPENDS
       ${CMAKE_SOURCE_DIR}/kernel/fb/font8x16.psf
    COMMENT
-      "Copying the psf font file into an ELF object file"
+      "Copying the psf font (8x16) file into an ELF object file"
 )
+
+add_custom_command(
+
+   OUTPUT
+      font16x32.o
+   COMMAND
+      ${OBJCOPY} -O elf32-i386 -B i386 -I binary font16x32.psf ${CMAKE_CURRENT_BINARY_DIR}/font16x32.o
+   WORKING_DIRECTORY
+      ${CMAKE_SOURCE_DIR}/kernel/fb
+   DEPENDS
+      ${CMAKE_SOURCE_DIR}/kernel/fb/font16x32.psf
+   COMMENT
+      "Copying the psf font (16x32) file into an ELF object file"
+)
+
 
 add_custom_target(
 
@@ -76,6 +91,7 @@ add_custom_target(
 
     DEPENDS
       font8x16.o
+      font16x32.o
 )
 
 set_target_properties(
@@ -89,7 +105,7 @@ set_target_properties(
 
 add_dependencies(elf_kernel fonts)
 target_link_libraries(elf_kernel ${CMAKE_CURRENT_BINARY_DIR}/font8x16.o)
-
+target_link_libraries(elf_kernel ${CMAKE_CURRENT_BINARY_DIR}/font16x32.o)
 
 
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
