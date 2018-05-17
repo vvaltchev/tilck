@@ -191,6 +191,15 @@ static void fb_set_row_char8x16(int row, u16 *data)
    fb_reset_blink_timer();
 }
 
+/*
+ * This function works but, unfortunately, on bare-metal it seems to be much
+ * slower (3x) than just re-drawing the whole screen character by character,
+ * which is what the term scroll does. My theory is that reading from the
+ * UEFI framebuffer is extremely slow, that's why it is more convenient to
+ * only write from it. Also, the use of a non-native resolution like 800x600
+ * may be (part of or enterely) the problem [my test machine has a native
+ * resolution of 3200 x 1600].
+ */
 static void fb_scroll_one_line_up(void)
 {
    psf2_header *h = (void *)&_binary_font_psf_start;
@@ -218,7 +227,7 @@ static video_interface framebuffer_vi =
    fb_move_cursor,
    fb_enable_cursor,
    fb_disable_cursor,
-   fb_scroll_one_line_up,
+   NULL /* fb_scroll_one_line_up: see the comment above the function */
 };
 
 

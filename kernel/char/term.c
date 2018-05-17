@@ -168,6 +168,12 @@ static void term_internal_incr_row(void)
       return;
    }
 
+//#ifdef DEBUG
+   u64 start, end;
+   start = RDTSC();
+//#endif
+
+
    max_scroll++;
 
    if (vi->scroll_one_line_up) {
@@ -178,6 +184,12 @@ static void term_internal_incr_row(void)
    }
 
    ts_clear_row(term_rows - 1, current_color);
+
+//#ifdef DEBUG
+   end = RDTSC();
+   scroll_cycles += (end - start);
+   scroll_count++;
+//#endif
 }
 
 static void term_internal_write_char2(char c, u8 color)
