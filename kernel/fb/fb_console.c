@@ -18,6 +18,7 @@ extern char _binary_font16x32_psf_start;
 
 bool __use_framebuffer;
 psf2_header *fb_font_header;
+bool use_optimized;
 
 static u32 fb_term_rows;
 static u32 fb_term_cols;
@@ -271,20 +272,16 @@ static void fb_draw_string_at_raw(u32 x, u32 y, const char *str, u8 color)
 {
    psf2_header *h = fb_font_header;
 
-   if (framebuffer_vi.set_char_at == fb_set_char8x16_at) {
-
+   if (use_optimized) {
       while (*str) {
-         fb_draw_char8x16(x, y, make_vgaentry(*str++, color));
+         fb_draw_char_optimized(x, y, make_vgaentry(*str++, color));
          x += h->width;
       }
-
    } else {
-
       while (*str) {
          fb_draw_char_failsafe(x, y, make_vgaentry(*str++, color));
          x += h->width;
       }
-
    }
 }
 
@@ -367,6 +364,9 @@ void init_framebuffer_console(void)
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 
    if (fb_precompute_fb_w8_char_scanlines()) {
+
+      use_optimized = true;
+
       if (h->width == 8 && h->height == 16) {
          framebuffer_vi.set_char_at = fb_set_char8x16_at;
          framebuffer_vi.set_row = fb_set_row_char8x16;
@@ -376,6 +376,7 @@ void init_framebuffer_console(void)
          framebuffer_vi.set_row = fb_set_row_optimized;
          printk("[fb_console] Use optimized functions\n");
       }
+
    } else {
       printk("WARNING: fb_precompute_fb_w8_char_scanlines failed.\n");
    }
