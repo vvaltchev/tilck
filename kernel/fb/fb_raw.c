@@ -217,11 +217,11 @@ void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 {
    const u32 ix4 = ix << 2;
    const u32 w4 = w << 2;
+   uptr vaddr = fb_vaddr + (fb_pitch * iy) + ix4;
 
    for (u32 y = 0; y < h; y++) {
-      memcpy(&buf[y * w],
-             (void *)(fb_vaddr + (fb_pitch * (iy + y)) + ix4),
-             w4);
+      memcpy(&buf[y * w], (void *)vaddr, w4);
+      vaddr += fb_pitch;
    }
 }
 
@@ -229,10 +229,10 @@ void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 {
    const u32 ix4 = ix << 2;
    const u32 w4 = w << 2;
+   uptr vaddr = fb_vaddr + (fb_pitch * iy) + ix4;
 
    for (u32 y = 0; y < h; y++) {
-      memcpy((void *)(fb_vaddr + (fb_pitch * (iy + y)) + ix4),
-             &buf[y * w],
-             w4);
+      memcpy((void *)vaddr, &buf[y * w], w4);
+      vaddr += fb_pitch;
    }
 }
