@@ -69,7 +69,7 @@ bool fb_precompute_fb_w8_char_scanlines(void)
 {
 
 #ifdef DEBUG
-   psf2_header *h = (void *)&_binary_font8x16_psf_start;
+   psf2_header *h = fb_font_header;
    ASSERT(h->width == SL_SIZE);
 #endif
 
@@ -113,7 +113,7 @@ static ALWAYS_INLINE void fb_draw_pixel(u32 x, u32 y, u32 color)
 
 void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
 {
-   psf2_header *h = (void *)&_binary_font8x16_psf_start;
+   psf2_header *h = fb_font_header;
    ix <<= 2; // Assumption: bbp is 32
 
    for (u32 y = 0; y < h->height; y++) {
@@ -126,7 +126,7 @@ void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
 
 void fb_draw_char_raw(u32 x, u32 y, u16 entry)
 {
-   psf2_header *h = (void *)&_binary_font8x16_psf_start;
+   psf2_header *h = fb_font_header;
 
    const u8 c = vgaentry_char(entry);
    const u8 color = vgaentry_color(entry);
@@ -154,7 +154,7 @@ void fb_draw_char_raw(u32 x, u32 y, u16 entry)
 /* fg and bg here are VGA colors [0..15] */
 void fb_draw_char8x16(u32 x, u32 y, u16 e)
 {
-   psf2_header *h = (void *)&_binary_font8x16_psf_start;
+   psf2_header *h = fb_font_header;
 
    /* fb_bpp must be 32 */
    /* h->width must be 8 */
@@ -177,7 +177,7 @@ void fb_draw_char8x16(u32 x, u32 y, u16 e)
 
 void fb_draw_char8x16_row(u32 y, u16 *entries, u32 count)
 {
-   const psf2_header *const h = (void *)&_binary_font8x16_psf_start;
+   const psf2_header *h = fb_font_header;
    const u8 *data = (u8 *)h + h->header_size;
    const uptr vaddr_base = fb_vaddr + (fb_pitch * y);
 

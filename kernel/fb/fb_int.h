@@ -13,7 +13,7 @@ typedef struct {
     u32 width;           /* width in pixels */
 } psf2_header;
 
-extern char _binary_font8x16_psf_start;
+extern psf2_header *fb_font_header;
 extern u32 vga_rgb_colors[16];
 
 u32 fb_get_width(void);
