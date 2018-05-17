@@ -1,7 +1,14 @@
 
 #pragma once
 
-/* Hardware text mode color constants. */
+/*
+ * VGA text mode color constants.
+ *
+ * These colors and macros however are also used for the fb_console: afterall,
+ * it is convenient for any console implementation to use the same set of colors
+ * and the format of entry (char + color). This will apply (very likely) even
+ * for non-x86 architectures like ARM.
+ */
 enum vga_color {
    COLOR_BLACK = 0,
    COLOR_BLUE = 1,

@@ -1,7 +1,7 @@
 
 #include <common/basic_defs.h>
 #include <common/string_util.h>
-#include <common/arch/generic_x86/vga_textmode_defs.h>
+#include <common/vga_textmode_defs.h>
 
 #include <exos/fb_console.h>
 #include <exos/paging.h>
