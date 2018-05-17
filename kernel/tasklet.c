@@ -148,15 +148,6 @@ void tasklet_runner_kthread(void)
 
       } while (tasklet_run);
 
-#ifndef DEBUG
       kcond_wait(&tasklet_cond, NULL, TIMER_HZ / 10);
-#else
-      /*
-       * In debug builds, use kernel_yield() in order to keep this task always
-       * runnable and force the kernel to do much more context switches. This
-       * helps some nasty bugs easier to reproduce.
-       */
-      kernel_yield();
-#endif
    }
 }
