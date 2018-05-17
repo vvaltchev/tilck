@@ -200,7 +200,8 @@ static video_interface framebuffer_vi =
    fb_clear_row,
    fb_move_cursor,
    fb_enable_cursor,
-   fb_disable_cursor
+   fb_disable_cursor,
+   NULL /* scroll_one_line_up */
 };
 
 

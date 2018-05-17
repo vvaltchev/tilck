@@ -14,6 +14,9 @@ typedef struct {
    void (*enable_cursor)(void);
    void (*disable_cursor)(void);
 
+   /* Other (optional) */
+   void (*scroll_one_line_up)(void);
+
 } video_interface;
 
 

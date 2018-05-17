@@ -96,13 +96,6 @@ static void ts_clear_row(int row_num, u8 color)
    vi->clear_row(row_num, color);
 }
 
-static void ts_add_row_and_scroll(u8 color)
-{
-   max_scroll++;
-   ts_set_scroll(max_scroll);
-   ts_clear_row(term_rows - 1, color);
-}
-
 /* ---------------- term actions --------------------- */
 
 static u32 scroll_count;
@@ -168,14 +161,20 @@ static void term_action_scroll_down(u32 lines)
 //#endif
 }
 
-static void term_incr_row(void)
+static void term_internal_incr_row(void)
 {
    if (current_row < term_rows - 1) {
       ++current_row;
       return;
    }
 
-   ts_add_row_and_scroll(current_color);
+   if (vi->scroll_one_line_up) {
+      vi->scroll_one_line_up();
+   } else {
+      max_scroll++;
+      ts_set_scroll(max_scroll);
+      ts_clear_row(term_rows - 1, current_color);
+   }
 }
 
 static void term_internal_write_char2(char c, u8 color)
@@ -187,7 +186,7 @@ static void term_internal_write_char2(char c, u8 color)
 
    case '\n':
       current_col = 0;
-      term_incr_row();
+      term_internal_incr_row();
       break;
 
    case '\r':
@@ -215,7 +214,7 @@ static void term_internal_write_char2(char c, u8 color)
 
       if (current_col == term_cols) {
          current_col = 0;
-         term_incr_row();
+         term_internal_incr_row();
       }
 
       break;
