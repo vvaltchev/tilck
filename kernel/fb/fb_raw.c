@@ -129,9 +129,8 @@ void fb_draw_char_raw(u32 x, u32 y, u16 entry)
    psf2_header *h = fb_font_header;
 
    const u8 c = vgaentry_char(entry);
-   const u8 color = vgaentry_color(entry);
-   const u32 fg = vga_rgb_colors[vgaentry_color_fg(color)];
-   const u32 bg = vga_rgb_colors[vgaentry_color_bg(color)];
+   const u32 fg = vga_rgb_colors[vgaentry_fg(entry)];
+   const u32 bg = vga_rgb_colors[vgaentry_bg(entry)];
 
    ASSERT(c < h->glyphs_count);
 
@@ -142,7 +141,14 @@ void fb_draw_char_raw(u32 x, u32 y, u16 entry)
 
    for (u32 row = 0; row < h->height; row++) {
 
-      u8 sl = *(data + row * width_div_8);
+      u32 sl;
+
+      if (width_div_8 == 1) {
+         sl = data[row];
+      } else {
+         sl = ((u16 *)data)[row];
+         sl = (sl << 8) | (sl >> 8);
+      }
 
       for (u32 bit = 0; bit < h->width; bit++)
          fb_draw_pixel(x + h->width - bit - 1,
