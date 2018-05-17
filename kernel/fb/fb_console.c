@@ -52,7 +52,7 @@ u32 vga_rgb_colors[16] =
 
 void dump_psf2_header(void)
 {
-   psf2_header *h = (void *)&_binary_font_psf_start;
+   psf2_header *h = (void *)&_binary_font8x16_psf_start;
    printk("magic: %p\n", h->magic);
 
    if (h->magic != PSF2_FONT_MAGIC)
@@ -74,7 +74,7 @@ void dump_psf2_header(void)
 void fb_save_under_cursor_buf(void)
 {
    // Assumption: bbp is 32
-   psf2_header *h = (void *)&_binary_font_psf_start;
+   psf2_header *h = (void *)&_binary_font8x16_psf_start;
 
    const u32 ix = cursor_col * h->width;
    const u32 iy = fb_offset_y + cursor_row * h->height;
@@ -84,7 +84,7 @@ void fb_save_under_cursor_buf(void)
 void fb_restore_under_cursor_buf(void)
 {
    // Assumption: bbp is 32
-   psf2_header *h = (void *)&_binary_font_psf_start;
+   psf2_header *h = (void *)&_binary_font8x16_psf_start;
 
    const u32 ix = cursor_col * h->width;
    const u32 iy = fb_offset_y + cursor_row * h->height;
@@ -109,7 +109,7 @@ static void fb_reset_blink_timer(void)
 
 void fb_set_char_at_generic(int row, int col, u16 entry)
 {
-   psf2_header *h = (void *)&_binary_font_psf_start;
+   psf2_header *h = (void *)&_binary_font8x16_psf_start;
 
    fb_draw_char_raw(col * h->width,
                     fb_offset_y + row * h->height,
@@ -123,7 +123,7 @@ void fb_set_char_at_generic(int row, int col, u16 entry)
 
 void fb_set_char8x16_at(int row, int col, u16 entry)
 {
-   psf2_header *h = (void *)&_binary_font_psf_start;
+   psf2_header *h = (void *)&_binary_font8x16_psf_start;
 
    fb_draw_char8x16(col << 3,
                     fb_offset_y + row * h->height,
@@ -137,14 +137,14 @@ void fb_set_char8x16_at(int row, int col, u16 entry)
 
 void fb_clear_row(int row_num, u8 color)
 {
-   psf2_header *h = (void *)&_binary_font_psf_start;
+   psf2_header *h = (void *)&_binary_font8x16_psf_start;
    const u32 iy = fb_offset_y + row_num * h->height;
    fb_raw_color_lines(iy, h->height, vga_rgb_colors[color >> 4]);
 }
 
 void fb_move_cursor(int row, int col)
 {
-   psf2_header *h = (void *)&_binary_font_psf_start;
+   psf2_header *h = (void *)&_binary_font8x16_psf_start;
 
    fb_restore_under_cursor_buf();
 
@@ -202,7 +202,7 @@ static void fb_set_row_char8x16(int row, u16 *data)
  */
 static void fb_scroll_one_line_up(void)
 {
-   psf2_header *h = (void *)&_binary_font_psf_start;
+   psf2_header *h = (void *)&_binary_font8x16_psf_start;
 
    bool enabled = cursor_enabled;
 
@@ -242,7 +242,7 @@ static void fb_blink_thread()
 
 static void fb_draw_string_at_raw(u32 x, u32 y, const char *str, u8 color)
 {
-   psf2_header *h = (void *)&_binary_font_psf_start;
+   psf2_header *h = (void *)&_binary_font8x16_psf_start;
 
    if (framebuffer_vi.set_char_at == fb_set_char8x16_at) {
 
@@ -263,7 +263,7 @@ static void fb_draw_string_at_raw(u32 x, u32 y, const char *str, u8 color)
 
 static void fb_setup_banner(void)
 {
-   psf2_header *h = (void *)&_binary_font_psf_start;
+   psf2_header *h = (void *)&_binary_font8x16_psf_start;
 
    fb_offset_y = (20 * h->height)/10;
    fb_raw_color_lines(0, fb_offset_y, 0 /* black */);
@@ -272,7 +272,7 @@ static void fb_setup_banner(void)
 
 static void fb_draw_banner(void)
 {
-   psf2_header *h = (void *)&_binary_font_psf_start;
+   psf2_header *h = (void *)&_binary_font8x16_psf_start;
    char lbuf[fb_term_cols + 1];
    char rbuf[fb_term_cols + 1];
    int llen, rlen, padding, i;
@@ -319,7 +319,7 @@ static void fb_update_banner_kthread()
 
 void init_framebuffer_console(void)
 {
-   psf2_header *h = (void *)&_binary_font_psf_start;
+   psf2_header *h = (void *)&_binary_font8x16_psf_start;
 
    fb_map_in_kernel_space();
 

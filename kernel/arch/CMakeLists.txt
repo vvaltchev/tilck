@@ -59,23 +59,23 @@ JOIN("${KERNEL_LINK_FLAGS_LIST}" ${SPACE} KERNEL_LINK_FLAGS)
 add_custom_command(
 
    OUTPUT
-      font.o
+      font8x16.o
    COMMAND
-      ${OBJCOPY} -O elf32-i386 -B i386 -I binary font.psf ${CMAKE_CURRENT_BINARY_DIR}/font.o
+      ${OBJCOPY} -O elf32-i386 -B i386 -I binary font8x16.psf ${CMAKE_CURRENT_BINARY_DIR}/font8x16.o
    WORKING_DIRECTORY
       ${CMAKE_SOURCE_DIR}/kernel/fb
    DEPENDS
-      ${CMAKE_SOURCE_DIR}/kernel/fb/font.psf
+      ${CMAKE_SOURCE_DIR}/kernel/fb/font8x16.psf
    COMMENT
       "Copying the psf font file into an ELF object file"
 )
 
 add_custom_target(
 
-    font
+    fonts
 
     DEPENDS
-      font.o
+      font8x16.o
 )
 
 set_target_properties(
@@ -87,8 +87,8 @@ set_target_properties(
       LINK_FLAGS ${KERNEL_LINK_FLAGS}
 )
 
-add_dependencies(elf_kernel font)
-target_link_libraries(elf_kernel ${CMAKE_CURRENT_BINARY_DIR}/font.o)
+add_dependencies(elf_kernel fonts)
+target_link_libraries(elf_kernel ${CMAKE_CURRENT_BINARY_DIR}/font8x16.o)
 
 
 
