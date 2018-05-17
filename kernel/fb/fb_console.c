@@ -282,8 +282,7 @@ static void fb_draw_banner(void)
    int llen, rlen, padding, i;
    datetime_t d;
 
-   if (!fb_offset_y)
-      return;
+   ASSERT(fb_offset_y >= h->height);
 
    read_system_clock_datetime(&d);
 
@@ -310,7 +309,7 @@ static void fb_draw_banner(void)
    memcpy(lbuf + i, rbuf, rlen);
    lbuf[fb_term_cols - 1] = 0;
 
-   fb_draw_string_at_raw(h->width/2, 7, lbuf, COLOR_LIGHT_BROWN);
+   fb_draw_string_at_raw(h->width/2, h->height/2, lbuf, COLOR_LIGHT_BROWN);
 }
 
 static void fb_update_banner_kthread()
@@ -323,7 +322,10 @@ static void fb_update_banner_kthread()
 
 void init_framebuffer_console(void)
 {
-   fb_font_header = (void *)&_binary_font8x16_psf_start;
+   fb_font_header = fb_get_width() / 8 < 160
+                        ? (void *)&_binary_font8x16_psf_start
+                        : (void *)&_binary_font16x32_psf_start;
+
    psf2_header *h = fb_font_header;
 
    fb_map_in_kernel_space();
@@ -338,6 +340,7 @@ void init_framebuffer_console(void)
 
    init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, COLOR_WHITE);
    printk("[fb_console] resolution: %ix%i\n", fb_get_width(), fb_get_height());
+   printk("[fb_console] font size: %i x %i\n", h->width, h->height);
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 
    if (h->width == 8 && h->height == 16) {
@@ -349,8 +352,6 @@ void init_framebuffer_console(void)
          printk("WARNING: fb_precompute_fb_w8_char_scanlines failed.\n");
       }
    }
-
-   fb_draw_banner();
 }
 
 void post_sched_init_framebuffer_console(void)
