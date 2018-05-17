@@ -229,6 +229,16 @@ static void fb_set_row_char8x16(int row, u16 *data)
    fb_reset_blink_timer();
 }
 
+static void fb_set_row_char16x32(int row, u16 *data)
+{
+   fb_draw_char16x32_row(fb_offset_y + (row << 5),
+                         data,
+                         fb_term_cols);
+
+   fb_reset_blink_timer();
+}
+
+
 /*
  * This function works but, unfortunately, on bare-metal it seems to be much
  * slower (3x) than just re-drawing the whole screen character by character,
@@ -383,7 +393,7 @@ void init_framebuffer_console(void)
          printk("[fb_console] Use code optimized for 8x16 fonts\n");
       } else if (h->width == 16 && h->height == 32) {
          framebuffer_vi.set_char_at = fb_set_char16x32_at;
-         framebuffer_vi.set_row = fb_set_row_optimized;
+         framebuffer_vi.set_row = fb_set_row_char16x32;
          printk("[fb_console] Use code optimized for 16x32 fonts\n");
       } else {
          framebuffer_vi.set_char_at = fb_set_char_at_optimized;

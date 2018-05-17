@@ -199,6 +199,11 @@ void fb_draw_char16x32(u32 x, u32 y, u16 e)
    }
 }
 
+void fb_draw_char16x32_row(u32 y, u16 *entries, u32 count)
+{
+   for (u32 i = 0; i < count; i++)
+      fb_draw_char16x32(i << 4, y, entries[i]);
+}
 
 void fb_draw_char8x16(u32 x, u32 y, u16 e)
 {

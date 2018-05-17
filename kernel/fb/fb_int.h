@@ -27,6 +27,7 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e);
 void fb_draw_char8x16(u32 x, u32 y, u16 entry);
 void fb_draw_char8x16_row(u32 y, u16 *entries, u32 len);
 void fb_draw_char16x32(u32 x, u32 y, u16 e);
+void fb_draw_char16x32_row(u32 y, u16 *entries, u32 count);
 void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf);
 void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf);
 void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 count);
