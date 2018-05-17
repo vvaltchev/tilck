@@ -191,6 +191,23 @@ static void fb_set_row_char8x16(int row, u16 *data)
    fb_reset_blink_timer();
 }
 
+static void fb_scroll_one_line_up(void)
+{
+   psf2_header *h = (void *)&_binary_font_psf_start;
+
+   bool enabled = cursor_enabled;
+
+   if (enabled)
+      fb_disable_cursor();
+
+   fb_lines_shift_up(fb_offset_y + h->height, /* source: row 1 (+ following) */
+                     fb_offset_y,             /* destination: row 0 */
+                     fb_get_height() - fb_offset_y - h->height);
+
+   if (enabled)
+      fb_enable_cursor();
+}
+
 // ---------------------------------------------
 
 static video_interface framebuffer_vi =
@@ -201,7 +218,7 @@ static video_interface framebuffer_vi =
    fb_move_cursor,
    fb_enable_cursor,
    fb_disable_cursor,
-   NULL /* scroll_one_line_up */
+   fb_scroll_one_line_up,
 };
 
 

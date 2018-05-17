@@ -168,13 +168,16 @@ static void term_internal_incr_row(void)
       return;
    }
 
+   max_scroll++;
+
    if (vi->scroll_one_line_up) {
+      scroll++;
       vi->scroll_one_line_up();
    } else {
-      max_scroll++;
       ts_set_scroll(max_scroll);
-      ts_clear_row(term_rows - 1, current_color);
    }
+
+   ts_clear_row(term_rows - 1, current_color);
 }
 
 static void term_internal_write_char2(char c, u8 color)
