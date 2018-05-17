@@ -146,7 +146,33 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
    }
 }
 
-/* fg and bg here are VGA colors [0..15] */
+void fb_draw_char_optimized(u32 x, u32 y, u16 e)
+{
+   psf2_header *h = fb_font_header;
+
+   const u8 c = vgaentry_char(e);
+   ASSERT(c < h->glyphs_count);
+
+   // ASSUMPTION: width is divisible by 8
+   const u32 width_bytes = h->width >> 3;
+
+   uptr vaddr = fb_vaddr + (fb_pitch * y) + (x << 2);
+   u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
+   const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
+
+   for (u32 row = 0; row < h->height; row++) {
+      for (u32 b = 0; b < width_bytes; b++) {
+
+         u32 sl = data[b + width_bytes * row];
+
+         memcpy32((void *)(vaddr + (b << 5)),
+                  &fb_w8_char_scanlines[c_off + (sl << 3)],
+                  SL_SIZE);
+      }
+      vaddr += fb_pitch;
+   }
+}
+
 void fb_draw_char8x16(u32 x, u32 y, u16 e)
 {
    psf2_header *h = fb_font_header;

@@ -125,6 +125,21 @@ void fb_set_char_at_failsafe(int row, int col, u16 entry)
    fb_reset_blink_timer();
 }
 
+void fb_set_char_at_optimized(int row, int col, u16 entry)
+{
+   psf2_header *h = fb_font_header;
+
+   fb_draw_char_optimized(col * h->width,
+                          fb_offset_y + row * h->height,
+                          entry);
+
+   if (row == cursor_row && col == cursor_col)
+      fb_save_under_cursor_buf();
+
+   fb_reset_blink_timer();
+}
+
+
 void fb_set_char8x16_at(int row, int col, u16 entry)
 {
    psf2_header *h = fb_font_header;
@@ -182,6 +197,14 @@ static void fb_set_row_failsafe(int row, u16 *data)
 {
    for (u32 i = 0; i < fb_term_cols; i++)
       fb_set_char_at_failsafe(row, i, data[i]);
+
+   fb_reset_blink_timer();
+}
+
+static void fb_set_row_optimized(int row, u16 *data)
+{
+   for (u32 i = 0; i < fb_term_cols; i++)
+      fb_set_char_at_optimized(row, i, data[i]);
 
    fb_reset_blink_timer();
 }
@@ -348,6 +371,10 @@ void init_framebuffer_console(void)
          framebuffer_vi.set_char_at = fb_set_char8x16_at;
          framebuffer_vi.set_row = fb_set_row_char8x16;
          printk("[fb_console] Use code optimized for 8x16 fonts\n");
+      } else {
+         framebuffer_vi.set_char_at = fb_set_char_at_optimized;
+         framebuffer_vi.set_row = fb_set_row_optimized;
+         printk("[fb_console] Use optimized functions\n");
       }
    } else {
       printk("WARNING: fb_precompute_fb_w8_char_scanlines failed.\n");
