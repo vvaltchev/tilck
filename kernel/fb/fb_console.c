@@ -111,13 +111,13 @@ static void fb_reset_blink_timer(void)
 
 /* video_interface */
 
-void fb_set_char_at_generic(int row, int col, u16 entry)
+void fb_set_char_at_failsafe(int row, int col, u16 entry)
 {
    psf2_header *h = fb_font_header;
 
-   fb_draw_char_raw(col * h->width,
-                    fb_offset_y + row * h->height,
-                    entry);
+   fb_draw_char_failsafe(col * h->width,
+                         fb_offset_y + row * h->height,
+                         entry);
 
    if (row == cursor_row && col == cursor_col)
       fb_save_under_cursor_buf();
@@ -178,10 +178,10 @@ void fb_disable_cursor(void)
    fb_move_cursor(cursor_row, cursor_col);
 }
 
-static void fb_set_row_generic(int row, u16 *data)
+static void fb_set_row_failsafe(int row, u16 *data)
 {
    for (u32 i = 0; i < fb_term_cols; i++)
-      fb_set_char_at_generic(row, i, data[i]);
+      fb_set_char_at_failsafe(row, i, data[i]);
 
    fb_reset_blink_timer();
 }
@@ -225,8 +225,8 @@ static void fb_scroll_one_line_up(void)
 
 static video_interface framebuffer_vi =
 {
-   fb_set_char_at_generic,
-   fb_set_row_generic,
+   fb_set_char_at_failsafe,
+   fb_set_row_failsafe,
    fb_clear_row,
    fb_move_cursor,
    fb_enable_cursor,
@@ -258,7 +258,7 @@ static void fb_draw_string_at_raw(u32 x, u32 y, const char *str, u8 color)
    } else {
 
       while (*str) {
-         fb_draw_char_raw(x, y, make_vgaentry(*str++, color));
+         fb_draw_char_failsafe(x, y, make_vgaentry(*str++, color));
          x += h->width;
       }
 
@@ -343,15 +343,16 @@ void init_framebuffer_console(void)
    printk("[fb_console] font size: %i x %i\n", h->width, h->height);
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 
-   if (h->width == 8 && h->height == 16) {
-      if (fb_precompute_fb_w8_char_scanlines()) {
+   if (fb_precompute_fb_w8_char_scanlines()) {
+      if (h->width == 8 && h->height == 16) {
          framebuffer_vi.set_char_at = fb_set_char8x16_at;
          framebuffer_vi.set_row = fb_set_row_char8x16;
          printk("[fb_console] Use code optimized for 8x16 fonts\n");
-      } else {
-         printk("WARNING: fb_precompute_fb_w8_char_scanlines failed.\n");
       }
+   } else {
+      printk("WARNING: fb_precompute_fb_w8_char_scanlines failed.\n");
    }
+
 }
 
 void post_sched_init_framebuffer_console(void)

@@ -67,12 +67,6 @@ void fb_map_in_kernel_space(void)
 
 bool fb_precompute_fb_w8_char_scanlines(void)
 {
-
-#ifdef DEBUG
-   psf2_header *h = fb_font_header;
-   ASSERT(h->width == SL_SIZE);
-#endif
-
    fb_w8_char_scanlines = kmalloc(TOT_CHAR_SCANLINES_SIZE);
 
    if (!fb_w8_char_scanlines)
@@ -124,36 +118,31 @@ void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
    }
 }
 
-void fb_draw_char_raw(u32 x, u32 y, u16 entry)
+void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 {
    psf2_header *h = fb_font_header;
 
-   const u8 c = vgaentry_char(entry);
-   const u32 fg = vga_rgb_colors[vgaentry_fg(entry)];
-   const u32 bg = vga_rgb_colors[vgaentry_bg(entry)];
-
+   const u8 c = vgaentry_char(e);
    ASSERT(c < h->glyphs_count);
 
+   const u32 fg = vga_rgb_colors[vgaentry_fg(e)];
+   const u32 bg = vga_rgb_colors[vgaentry_bg(e)];
+
    // ASSUMPTION: width is divisible by 8
-   const u32 width_div_8 = h->width >> 3;
+   const u32 width_bytes = h->width >> 3;
 
    u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
 
    for (u32 row = 0; row < h->height; row++) {
+      for (u32 b = 0; b < width_bytes; b++) {
 
-      u32 sl;
+         u8 sl = data[b + width_bytes * row];
 
-      if (width_div_8 == 1) {
-         sl = data[row];
-      } else {
-         sl = ((u16 *)data)[row];
-         sl = (sl << 8) | (sl >> 8);
+         for (u32 bit = 0; bit < 8; bit++)
+            fb_draw_pixel(x + (b << 3) + 8 - bit - 1,
+                          y + row,
+                          (sl & (1 << bit)) ? fg : bg);
       }
-
-      for (u32 bit = 0; bit < h->width; bit++)
-         fb_draw_pixel(x + h->width - bit - 1,
-                       y + row,
-                       (sl & (1 << bit)) ? fg : bg);
    }
 }
 

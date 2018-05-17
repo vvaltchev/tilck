@@ -22,7 +22,7 @@ u32 fb_get_height(void);
 void fb_map_in_kernel_space(void);
 void fb_raw_color_lines(u32 iy, u32 h, u32 color);
 void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color);
-void fb_draw_char_raw(u32 x, u32 y, u16 entry);
+void fb_draw_char_failsafe(u32 x, u32 y, u16 entry);
 void fb_draw_char8x16(u32 x, u32 y, u16 entry);
 void fb_draw_char8x16_row(u32 y, u16 *entries, u32 len);
 void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf);
