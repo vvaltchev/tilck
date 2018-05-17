@@ -27,9 +27,10 @@
        }                                                     \
     } while (0)
 
+EFI_INPUT_KEY WaitForKeyPress(EFI_SYSTEM_TABLE *ST);
+
 void bzero(void *ptr, UINTN len);
 void DumpFirst16Bytes(char *buf);
-void WaitForKeyPress(EFI_SYSTEM_TABLE *ST);
 void *my_memcpy(void *dest, const void *src, size_t n);
 void *my_memmove(void *dest, const void *src, size_t n);
 void jump_to_kernel(multiboot_info_t *mbi, void *entry_point);

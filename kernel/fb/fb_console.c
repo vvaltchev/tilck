@@ -332,6 +332,7 @@ void init_framebuffer_console(void)
    VERIFY(under_cursor_buf != NULL);
 
    init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, COLOR_WHITE);
+   printk("[fb_console] resolution: %ix%i\n", fb_get_width(), fb_get_height());
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 
    if (h->width == 8 && h->height == 16) {

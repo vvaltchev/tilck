@@ -13,21 +13,18 @@
 
 #include "utils.h"
 
-#define DESIRED_RES_X 800
-#define DESIRED_RES_Y 600
-
 UINTN saved_fb_addr;
 UINTN saved_fb_size;
 EFI_GRAPHICS_OUTPUT_MODE_INFORMATION saved_mode_info;
 
-void SetMbiFramebufferInfo(multiboot_info_t *mbi)
+void SetMbiFramebufferInfo(multiboot_info_t *mbi, u32 xres, u32 yres)
 {
    mbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
    mbi->framebuffer_addr = saved_fb_addr;
    mbi->framebuffer_pitch =
       saved_mode_info.PixelsPerScanLine * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
-   mbi->framebuffer_width = DESIRED_RES_X;
-   mbi->framebuffer_height = DESIRED_RES_Y;
+   mbi->framebuffer_width = xres;
+   mbi->framebuffer_height = yres;
    mbi->framebuffer_bpp = sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) * 8;
    mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
 }
@@ -54,16 +51,36 @@ void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
    Print(L"PixelsPerScanLine: %u\n", saved_mode_info.PixelsPerScanLine);
 }
 
-bool is_pixelformat_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
+bool is_pixelformat_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
    if (sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) != 4)
       return false;
 
-   return mode_info->PixelFormat == PixelBlueGreenRedReserved8BitPerColor;
+   return mi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor;
+}
+
+bool is_mode_known(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
+{
+   if (mi->HorizontalResolution == 640 && mi->VerticalResolution == 480)
+      return is_pixelformat_supported(mi);
+
+   if (mi->HorizontalResolution == 800 && mi->VerticalResolution == 600)
+      return is_pixelformat_supported(mi);
+
+   if (mi->HorizontalResolution == 1024 && mi->VerticalResolution == 768)
+      return is_pixelformat_supported(mi);
+
+   if (mi->HorizontalResolution == 1280 && mi->VerticalResolution == 1024)
+      return is_pixelformat_supported(mi);
+
+   if (mi->HorizontalResolution == 1920 && mi->VerticalResolution == 1080)
+      return is_pixelformat_supported(mi);
+
+   return false;
 }
 
 EFI_STATUS
-SetupGraphicMode(EFI_BOOT_SERVICES *BS)
+SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres)
 {
    UINTN status = EFI_SUCCESS;
 
@@ -100,6 +117,9 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
    UINTN wanted_mode = (UINTN)-1;
    UINTN orig_mode = mode->Mode;
 
+   u32 my_modes[10];
+   u32 my_modes_count = 0;
+
    for (UINTN i = 0; i < mode->MaxMode; i++) {
 
       EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
@@ -108,30 +128,42 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
       status = gProt->QueryMode(gProt, i, &sizeof_info, &mi);
       HANDLE_EFI_ERROR("QueryMode() failed");
 
-      // Print(L"Mode [%u]: %u x %u\n",
-      //       i,
-      //       mi->HorizontalResolution,
-      //       mi->VerticalResolution);
+      if (is_mode_known(mi)) {
+         Print(L"Mode [%u]: %u x %u\n",
+               my_modes_count,
+               mi->HorizontalResolution,
+               mi->VerticalResolution);
 
-      if (mi->HorizontalResolution == DESIRED_RES_X &&
-          mi->VerticalResolution == DESIRED_RES_Y &&
-          is_pixelformat_supported(mi)) {
-
-         wanted_mode = i;
-         break;
+         my_modes[my_modes_count++] = i;
       }
+
    }
 
-   if (wanted_mode == (UINTN)-1) {
-      Print(L"Wanted mode %u x %u BGR: NOT AVAILABLE.\n",
-            DESIRED_RES_X, DESIRED_RES_Y);
+   if (!my_modes_count) {
+      Print(L"Not supported modes available\n");
       status = EFI_LOAD_ERROR;
       goto end;
    }
 
-   // Print(L"About to switch to mode %u [%u x %u]. Press any key\n",
-   //       wanted_mode, DESIRED_RES_X, DESIRED_RES_Y);
-   // WaitForKeyPress(ST);
+   EFI_INPUT_KEY k;
+
+   do {
+
+      Print(L"Enter desired mode [0-9]: ");
+      k = WaitForKeyPress(ST);
+
+      if (k.UnicodeChar < '0' || k.UnicodeChar > '9') {
+         Print(L"Invalid selection\n");
+         continue;
+      }
+
+   } while (0);
+
+   Print(L"Selected mode: %d\n", k.UnicodeChar - '0');
+   wanted_mode = my_modes[k.UnicodeChar - '0'];
+
+   Print(L"About to switch the video mode. Press any key to continue.\n");
+   WaitForKeyPress(ST);
 
    status = ST->ConOut->ClearScreen(ST->ConOut);
    HANDLE_EFI_ERROR("ClearScreen() failed");
@@ -150,6 +182,9 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS)
    }
 
    print_mode_info(mode);
+
+   *xres = mode->Info->HorizontalResolution;
+   *yres = mode->Info->VerticalResolution;
 
 end:
    return status;

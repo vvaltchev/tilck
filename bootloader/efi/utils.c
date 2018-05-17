@@ -41,7 +41,7 @@ void DumpFirst16Bytes(char *buf)
    Print(L"\r\n");
 }
 
-void WaitForKeyPress(EFI_SYSTEM_TABLE *ST)
+EFI_INPUT_KEY WaitForKeyPress(EFI_SYSTEM_TABLE *ST)
 {
     UINTN index;
     EFI_INPUT_KEY k;
@@ -52,6 +52,7 @@ void WaitForKeyPress(EFI_SYSTEM_TABLE *ST)
 
     // Read the key, allowing WaitForKey to block again.
     ST->ConIn->ReadKeyStroke(ST->ConIn, &k);
+    return k;
 }
 
 /* dest and src can overloap only partially */

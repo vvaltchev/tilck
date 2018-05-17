@@ -21,8 +21,8 @@
 #define KERNEL_FILE       L"\\EFI\\BOOT\\elf_kernel_stripped"
 
 
-EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS);
-void SetMbiFramebufferInfo(multiboot_info_t *mbi);
+EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres);
+void SetMbiFramebufferInfo(multiboot_info_t *mbi, u32 xres, u32 yres);
 
 EFI_STATUS
 LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
@@ -213,11 +213,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    multiboot_info_t *mbi;
    multiboot_module_t *mod;
 
+   UINTN xres, yres;
+
    InitializeLib(image, ST);
 
    Print(L"--- exOS bootloader ---\r\n");
 
-   status = SetupGraphicMode(BS);
+   status = SetupGraphicMode(BS, &xres, &yres);
    HANDLE_EFI_ERROR("SetupGraphicMode() failed");
 
    status = BS->OpenProtocol(image,
@@ -285,7 +287,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    mod = (multiboot_module_t *)(TEMP_KERNEL_ADDR + sizeof(*mbi));
    bzero(mod, sizeof(*mod));
 
-   SetMbiFramebufferInfo(mbi);
+   SetMbiFramebufferInfo(mbi, xres, yres);
    mbi->mem_upper = 127*1024; /* temp hack */
 
    mbi->flags |= MULTIBOOT_INFO_MODS;
