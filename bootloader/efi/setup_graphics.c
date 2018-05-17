@@ -29,12 +29,15 @@ void SetMbiFramebufferInfo(multiboot_info_t *mbi, u32 xres, u32 yres)
    mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
 }
 
-void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
+void save_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
 {
    saved_mode_info = *mode->Info;
    saved_fb_addr = mode->FrameBufferBase;
    saved_fb_size = mode->FrameBufferSize;
+}
 
+void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
+{
    Print(L"Framebuffer addr: 0x%x\n", mode->FrameBufferBase);
    Print(L"Framebuffer size: %u\n", mode->FrameBufferSize);
    Print(L"Resolution: %u x %u\n",
@@ -51,7 +54,7 @@ void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
    Print(L"PixelsPerScanLine: %u\n", saved_mode_info.PixelsPerScanLine);
 }
 
-bool is_pixelformat_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
+bool is_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
    if (sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) != 4)
       return false;
@@ -62,19 +65,19 @@ bool is_pixelformat_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 bool is_mode_known(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
    if (mi->HorizontalResolution == 640 && mi->VerticalResolution == 480)
-      return is_pixelformat_supported(mi);
+      return is_supported(mi);
 
    if (mi->HorizontalResolution == 800 && mi->VerticalResolution == 600)
-      return is_pixelformat_supported(mi);
+      return is_supported(mi);
 
    if (mi->HorizontalResolution == 1024 && mi->VerticalResolution == 768)
-      return is_pixelformat_supported(mi);
+      return is_supported(mi);
 
    if (mi->HorizontalResolution == 1280 && mi->VerticalResolution == 1024)
-      return is_pixelformat_supported(mi);
+      return is_supported(mi);
 
    if (mi->HorizontalResolution == 1920 && mi->VerticalResolution == 1080)
-      return is_pixelformat_supported(mi);
+      return is_supported(mi);
 
    return false;
 }
@@ -88,6 +91,19 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres)
    UINTN handles_buf_size;
    UINTN handles_count;
    EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
+   EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode;
+   EFI_INPUT_KEY k;
+
+   UINTN wanted_mode;
+   UINTN orig_mode;
+
+   u32 my_modes[10];
+   u32 my_modes_count = 0;
+   u32 max_mode_pixels = 0;
+   u32 max_mode_num = 0;
+   u32 max_mode_xres = 0;
+   u32 max_mode_yres = 0;
+
 
    handles_buf_size = sizeof(handles);
 
@@ -99,26 +115,16 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres)
 
    HANDLE_EFI_ERROR("LocateHandle() failed");
 
-   handles_count = handles_buf_size/sizeof(EFI_HANDLE);
-
+   handles_count = handles_buf_size / sizeof(EFI_HANDLE);
    CHECK(handles_count > 0);
 
    status = BS->HandleProtocol(handles[0],
                                &GraphicsOutputProtocol,
                                (void **)&gProt);
-
    HANDLE_EFI_ERROR("HandleProtocol() failed");
 
-   EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode = gProt->Mode;
-
-   // Debug: display current mode before changing it.
-   // print_mode_info(mode);
-
-   UINTN wanted_mode = (UINTN)-1;
-   UINTN orig_mode = mode->Mode;
-
-   u32 my_modes[10];
-   u32 my_modes_count = 0;
+   mode = gProt->Mode;
+   orig_mode = mode->Mode;
 
    for (UINTN i = 0; i < mode->MaxMode; i++) {
 
@@ -128,59 +134,87 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres)
       status = gProt->QueryMode(gProt, i, &sizeof_info, &mi);
       HANDLE_EFI_ERROR("QueryMode() failed");
 
-      if (is_mode_known(mi)) {
-         Print(L"Mode [%u]: %u x %u\n",
+      if (is_mode_known(mi) || (is_supported(mi) && i == mode->MaxMode - 1)) {
+         Print(L"Mode [%u]: %u x %u%s\n",
                my_modes_count,
                mi->HorizontalResolution,
-               mi->VerticalResolution);
+               mi->VerticalResolution,
+               i == orig_mode ? L" [CURRENT]" : L"");
 
          my_modes[my_modes_count++] = i;
       }
 
+      u32 pixels = mi->HorizontalResolution * mi->VerticalResolution;
+
+      if (is_supported(mi) && pixels > max_mode_pixels) {
+         max_mode_pixels = pixels;
+         max_mode_num = i;
+         max_mode_xres = mi->HorizontalResolution;
+         max_mode_yres = mi->VerticalResolution;
+      }
    }
 
    if (!my_modes_count) {
-      Print(L"Not supported modes available\n");
+      Print(L"No supported modes available\n");
       status = EFI_LOAD_ERROR;
       goto end;
    }
 
-   EFI_INPUT_KEY k;
+   if (max_mode_num != my_modes[my_modes_count - 1]) {
+      Print(L"Mode [%u]: %u x %u%s\n",
+            my_modes_count, max_mode_xres,
+            max_mode_yres, max_mode_num == orig_mode ? L" [CURRENT]" : L"");
+      my_modes[my_modes_count++] = max_mode_num;
+   }
 
-   do {
+   int my_mode_sel;
 
-      Print(L"Enter desired mode [0-9]: ");
+   while (true) {
+
+      Print(L"Select desired mode [0-%d]: ", my_modes_count - 1);
       k = WaitForKeyPress(ST);
 
-      if (k.UnicodeChar < '0' || k.UnicodeChar > '9') {
+      if (k.UnicodeChar == '\n' || k.UnicodeChar == '\r') {
+          wanted_mode = orig_mode;
+          //Print(L"[CURRENT]\n");
+          break;
+      }
+
+      my_mode_sel = k.UnicodeChar - '0';
+
+      if (my_mode_sel < 0 || my_mode_sel >= my_modes_count) {
          Print(L"Invalid selection\n");
          continue;
       }
 
-   } while (0);
+      wanted_mode = my_modes[my_mode_sel];
+      //Print(L"%d\n", my_mode_sel);
+      break;
+   }
 
-   Print(L"Selected mode: %d\n", k.UnicodeChar - '0');
-   wanted_mode = my_modes[k.UnicodeChar - '0'];
-
-   Print(L"About to switch the video mode. Press any key to continue.\n");
-   WaitForKeyPress(ST);
+   //Print(L"About to switch the video mode. Press any key to continue.\n");
+   //WaitForKeyPress(ST);
 
    status = ST->ConOut->ClearScreen(ST->ConOut);
    HANDLE_EFI_ERROR("ClearScreen() failed");
 
-   status = gProt->SetMode(gProt, wanted_mode);
+   if (wanted_mode != orig_mode) {
 
-   if (EFI_ERROR(status)) {
+      status = gProt->SetMode(gProt, wanted_mode);
 
-      status = gProt->SetMode(gProt, orig_mode);
-      status = ST->ConOut->ClearScreen(ST->ConOut);
-      HANDLE_EFI_ERROR("ClearScreen() failed");
+      if (EFI_ERROR(status)) {
 
-      Print(L"Loader failed: unable to set desired mode\n");
-      status = EFI_LOAD_ERROR;
-      goto end;
+         status = gProt->SetMode(gProt, orig_mode);
+         status = ST->ConOut->ClearScreen(ST->ConOut);
+         HANDLE_EFI_ERROR("ClearScreen() failed");
+
+         Print(L"Loader failed: unable to set desired mode\n");
+         status = EFI_LOAD_ERROR;
+         goto end;
+      }
    }
 
+   save_mode_info(mode);
    print_mode_info(mode);
 
    *xres = mode->Info->HorizontalResolution;
