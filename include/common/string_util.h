@@ -23,19 +23,19 @@ static ALWAYS_INLINE bool isalpha_upper(int c) {
    return (c >= 'A' && c <= 'Z');
 }
 
-static ALWAYS_INLINE bool isalpha(int c) {
+static ALWAYS_INLINE int isalpha(int c) {
    return isalpha_lower(c) || isalpha_upper(c);
 }
 
-static ALWAYS_INLINE char tolower(int c) {
+static ALWAYS_INLINE int tolower(int c) {
    return isalpha_upper(c) ? c + 32 : c;
 }
 
-static ALWAYS_INLINE char toupper(int c) {
+static ALWAYS_INLINE int toupper(int c) {
    return isalpha_lower(c) ? c - 32 : c;
 }
 
-static ALWAYS_INLINE bool isdigit(int c) {
+static ALWAYS_INLINE int isdigit(int c) {
    return c >= '0' && c <= '9';
 }
 
