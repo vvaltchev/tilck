@@ -186,12 +186,6 @@ static void term_internal_incr_row(void)
       return;
    }
 
-//#ifdef DEBUG
-   u64 start, end;
-   start = RDTSC();
-//#endif
-
-
    max_scroll++;
 
    if (vi->scroll_one_line_up) {
@@ -202,12 +196,6 @@ static void term_internal_incr_row(void)
    }
 
    ts_clear_row(term_rows - 1, current_color);
-
-//#ifdef DEBUG
-   end = RDTSC();
-   sc_one_line_cycles += (end - start);
-   sc_one_line_count++;
-//#endif
 }
 
 static void term_internal_write_char2(char c, u8 color)
@@ -257,15 +245,35 @@ static void term_internal_write_char2(char c, u8 color)
 static void term_action_write2(char *buf, u32 len, u8 color)
 {
    ts_scroll_to_bottom();
+
+//#ifdef DEBUG
+   bool has_new_line = false;
+   u64 start, end;
+   start = RDTSC();
+//#endif
+
    vi->enable_cursor();
 
-   for (u32 i = 0; i < len; i++)
+   for (u32 i = 0; i < len; i++) {
+      // debug
+      if (buf[i] == '\n')
+         has_new_line = true;
+      // end debug
       term_internal_write_char2(buf[i], color);
+   }
 
    vi->move_cursor(current_row, current_col);
 
    if (vi->flush_buffers)
       vi->flush_buffers();
+
+//#ifdef DEBUG
+   end = RDTSC();
+   if (has_new_line && current_row == term_rows - 1) {
+      sc_one_line_cycles += (end - start);
+      sc_one_line_count++;
+   }
+//#endif
 }
 
 static void term_action_move_ch_and_cur(int row, int col)
