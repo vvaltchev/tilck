@@ -2,15 +2,20 @@
 # Remove -rdynamic
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
+file(GLOB COMMON_SOURCES "${CMAKE_SOURCE_DIR}/common/*.c")
+
+add_library(
+
+   efi_app_${EFI_ARCH}
+   SHARED
+
+   ${SOURCES}
+   ${COMMON_SOURCES}
+)
 
 set(
    COMPILE_FLAGS_LIST
 
-   -DSTATIC_EXOS_ASM_STRING
-   -DEFI_FUNCTION_WRAPPER
-   -DNO_EXOS_ASSERT
-   -DNO_EXOS_STATIC_WRAPPER
-   -DGNU_EFI_USE_MS_ABI        # allows to call UEFI funcs without the wrapper
    -maccumulate-outgoing-args  # necessary in order to use MS_ABI
    -std=c99
    -fno-stack-protector
@@ -19,10 +24,6 @@ set(
    -mno-red-zone
    -nostdinc
    -g
-   -I${CMAKE_SOURCE_DIR}/include
-   -I${CMAKE_SOURCE_DIR}/include/system_headers
-   -I${GNUEFI_DIR}/inc
-   -I${GNUEFI_DIR}/inc/${EFI_ARCH}
 )
 
 set(
@@ -37,26 +38,6 @@ set(
 JOIN("${COMPILE_FLAGS_LIST}" ${SPACE} COMPILE_FLAGS)
 JOIN("${LINK_FLAGS_LIST}" ${SPACE} LINK_FLAGS)
 
-set(
-   OBJCOPY_OPTS
-
-   -j .text -j .sdata -j .data -j .dynamic
-   -j .dynsym -j .rel -j .rela -j .reloc
-
-   --target=efi-app-${EFI_ARCH}
-)
-
-file(GLOB COMMON_SOURCES "${CMAKE_SOURCE_DIR}/common/*.c")
-
-add_library(
-
-   efi_app_${EFI_ARCH}
-   SHARED
-
-   ${SOURCES}
-   ${COMMON_SOURCES}
-)
-
 set_target_properties(
 
    efi_app_${EFI_ARCH}
@@ -66,9 +47,48 @@ set_target_properties(
       LINK_FLAGS ${LINK_FLAGS}
 )
 
-target_link_libraries(efi_app_${EFI_ARCH} ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/crt0-efi-${EFI_ARCH}.o)
-target_link_libraries(efi_app_${EFI_ARCH} ${GNUEFI_DIR}/${EFI_ARCH}/lib/libefi.a)
-target_link_libraries(efi_app_${EFI_ARCH} ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/libgnuefi.a)
+target_include_directories(
+
+   efi_app_${EFI_ARCH}
+
+   PRIVATE
+
+   ${CMAKE_SOURCE_DIR}/include
+   ${CMAKE_SOURCE_DIR}/include/system_headers
+   ${GNUEFI_DIR}/inc
+   ${GNUEFI_DIR}/inc/${EFI_ARCH}
+)
+
+target_compile_definitions(
+
+   efi_app_${EFI_ARCH}
+
+   PRIVATE
+
+   STATIC_EXOS_ASM_STRING
+   EFI_FUNCTION_WRAPPER
+   NO_EXOS_ASSERT
+   NO_EXOS_STATIC_WRAPPER
+   GNU_EFI_USE_MS_ABI        # allows to call UEFI funcs without the wrapper
+)
+
+target_link_libraries(
+
+   efi_app_${EFI_ARCH}
+
+   ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/crt0-efi-${EFI_ARCH}.o
+   ${GNUEFI_DIR}/${EFI_ARCH}/lib/libefi.a
+   ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/libgnuefi.a
+)
+
+set(
+   OBJCOPY_OPTS
+
+   -j .text -j .sdata -j .data -j .dynamic
+   -j .dynsym -j .rel -j .rela -j .reloc
+
+   --target=efi-app-${EFI_ARCH}
+)
 
 add_custom_command(
    OUTPUT
