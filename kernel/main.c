@@ -74,13 +74,14 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
    }
 }
 
-
-
 void show_hello_message(void)
 {
    printk("Hello from exOS! [%s build, GCC %i.%i.%i]\n",
           BUILDTYPE_STR, __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+}
 
+void show_system_info(void)
+{
    printk("TIMER_HZ: %i; TIME_SLOT: %i ms; MEM: %i MB\n",
           TIMER_HZ, 1000 / (TIMER_HZ / TIME_SLOT_JIFFIES), get_phys_mem_mb());
 
@@ -117,7 +118,7 @@ void selftest_runner_thread()
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
-   printk("super early printk\n");
+   show_hello_message();
    read_multiboot_info(multiboot_magic, mbi_addr);
 
    setup_segmentation();
@@ -132,7 +133,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    else
       init_textmode_console();
 
-   show_hello_message();
+   show_system_info();
 
    setup_soft_interrupt_handling();
    setup_irq_handling();
