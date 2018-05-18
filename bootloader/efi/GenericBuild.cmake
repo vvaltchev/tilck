@@ -6,6 +6,7 @@ SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 set(
    COMPILE_FLAGS_LIST
 
+   -DSTATIC_EXOS_ASM_STRING
    -DEFI_FUNCTION_WRAPPER
    -DNO_EXOS_ASSERT
    -DNO_EXOS_STATIC_WRAPPER
@@ -45,12 +46,15 @@ set(
    --target=efi-app-${EFI_ARCH}
 )
 
+file(GLOB COMMON_SOURCES "${CMAKE_SOURCE_DIR}/common/*.c")
+
 add_library(
 
    efi_app_${EFI_ARCH}
    SHARED
 
    ${SOURCES}
+   ${COMMON_SOURCES}
 )
 
 set_target_properties(
