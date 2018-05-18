@@ -106,7 +106,7 @@ int vsnprintk(char *buf, size_t size, const char *fmt, va_list args)
          break;
 
       case 'c':
-         term_write_char(va_arg(args, s32));
+         WRITE_CHAR(va_arg(args, s32));
          break;
 
       case 's':
