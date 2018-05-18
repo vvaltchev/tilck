@@ -82,6 +82,15 @@ bool is_mode_known(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
    return false;
 }
 
+bool is_exos_default_mode(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
+{
+   if (is_supported(mi))
+      if (mi->HorizontalResolution == 800 && mi->VerticalResolution == 600)
+         return true;
+
+   return false;
+}
+
 EFI_STATUS
 SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres)
 {
@@ -96,6 +105,7 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres)
 
    UINTN wanted_mode;
    UINTN orig_mode;
+   UINTN default_mode;
 
    u32 my_modes[10];
    u32 my_modes_count = 0;
@@ -134,12 +144,16 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres)
       status = gProt->QueryMode(gProt, i, &sizeof_info, &mi);
       HANDLE_EFI_ERROR("QueryMode() failed");
 
+      if (is_exos_default_mode(mi)) {
+         default_mode = i;
+      }
+
       if (is_mode_known(mi) || (is_supported(mi) && i == mode->MaxMode - 1)) {
          Print(L"Mode [%u]: %u x %u%s\n",
                my_modes_count,
                mi->HorizontalResolution,
                mi->VerticalResolution,
-               i == orig_mode ? L" [CURRENT]" : L"");
+               i == default_mode ? L" [DEFAULT]" : L"");
 
          my_modes[my_modes_count++] = i;
       }
@@ -163,7 +177,7 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres)
    if (max_mode_num != my_modes[my_modes_count - 1]) {
       Print(L"Mode [%u]: %u x %u%s\n",
             my_modes_count, max_mode_xres,
-            max_mode_yres, max_mode_num == orig_mode ? L" [CURRENT]" : L"");
+            max_mode_yres, max_mode_num == default_mode ? L" [DEFAULT]" : L"");
       my_modes[my_modes_count++] = max_mode_num;
    }
 
@@ -171,11 +185,11 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres)
 
    while (true) {
 
-      Print(L"Select desired mode [0-%d]: ", my_modes_count - 1);
+      Print(L"Select mode [0-%d] (or ENTER for default): ", my_modes_count - 1);
       k = WaitForKeyPress(ST);
 
       if (k.UnicodeChar == '\n' || k.UnicodeChar == '\r') {
-          wanted_mode = orig_mode;
+          wanted_mode = default_mode;
           //Print(L"[CURRENT]\n");
           break;
       }
