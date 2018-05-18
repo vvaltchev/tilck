@@ -10,10 +10,19 @@
  * function. Compared to using static + ALWAYS_INLINE this gives the compiler
  * the maximum freedom to optimize.
  */
+
+#ifndef STATIC_EXOS_ASM_STRING
+
 #ifdef __STRING_UTIL_C__
 #define EXTERN extern
 #else
 #define EXTERN
+#endif
+
+#else
+
+#define EXTERN static
+
 #endif
 
 EXTERN inline size_t strlen(const char *str)
@@ -142,7 +151,7 @@ EXTERN inline void *memmove(void *dest, const void *src, size_t n)
 /*
  * Set 'n' bytes pointed by 's' to 'c'.
  */
-EXTERN inline void *memset(void *s, u8 c, size_t n)
+EXTERN inline void *memset(void *s, int c, size_t n)
 {
    uptr unused; /* See the comment in strlen() about the unused variable */
 
@@ -198,3 +207,5 @@ EXTERN inline void bzero(void *s, size_t n)
                :  "D" (s), "c" (n >> 2), "b" (n & 3)
                : "cc", "memory", "%eax");
 }
+
+#undef EXTERN
