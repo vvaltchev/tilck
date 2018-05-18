@@ -5,10 +5,10 @@
 
 #if !defined(TESTING) && !defined(USERMODE_APP)
 
-typedef unsigned char *va_list;
-#define va_start(list, param) (list = (((va_list)&param) + sizeof(param)))
-#define va_arg(list, type)    (*(type *)((list += sizeof(type)) - sizeof(type)))
-#define va_end(list) // do nothing.
+typedef __builtin_va_list va_list;
+#define va_start(v,l)  __builtin_va_start(v,l)
+#define va_end(v)      __builtin_va_end(v)
+#define va_arg(v,l)    __builtin_va_arg(v,l)
 
 int strcmp(const char *s1, const char *s2);
 int strncmp(const char *s1, const char *s2, size_t n);
