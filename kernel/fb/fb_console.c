@@ -238,16 +238,6 @@ static void fb_set_row_char16x32(int row, u16 *data)
    fb_reset_blink_timer();
 }
 
-
-/*
- * This function works but, unfortunately, on bare-metal it seems to be much
- * slower (3x) than just re-drawing the whole screen character by character,
- * which is what the term scroll does. My theory is that reading from the
- * UEFI framebuffer is extremely slow, that's why it is more convenient to
- * only write from it. Also, the use of a non-native resolution like 800x600
- * may be (part of or enterely) the problem [my test machine has a native
- * resolution of 3200 x 1800].
- */
 static void fb_scroll_one_line_up(void)
 {
    psf2_header *h = fb_font_header;
@@ -265,6 +255,11 @@ static void fb_scroll_one_line_up(void)
       fb_enable_cursor();
 }
 
+static void fb_flush(void)
+{
+   fb_flush_lines(0, fb_get_height());
+}
+
 // ---------------------------------------------
 
 static video_interface framebuffer_vi =
@@ -275,7 +270,8 @@ static video_interface framebuffer_vi =
    fb_move_cursor,
    fb_enable_cursor,
    fb_disable_cursor,
-   NULL /* fb_scroll_one_line_up: see the comment above the function */
+   NULL, //fb_scroll_one_line_up,
+   NULL //fb_flush
 };
 
 
@@ -405,6 +401,11 @@ void init_framebuffer_console(void)
       printk("WARNING: fb_pre_render_char_scanlines failed.\n");
    }
 
+   if (framebuffer_vi.flush_buffers) {
+      if (!fb_switch_to_shadow_buffer()) {
+         printk("WARNING: unable to use a shadow buffer for the framebuffer");
+      }
+   }
 }
 
 void post_sched_init_framebuffer_console(void)

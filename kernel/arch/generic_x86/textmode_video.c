@@ -94,7 +94,8 @@ static const video_interface ega_text_mode_i =
    textmode_move_cursor,
    textmode_enable_cursor,
    textmode_disable_cursor,
-   NULL /* scroll_one_line_up */
+   NULL, /* scroll_one_line_up */
+   NULL /* flush_buffers */
 };
 
 void init_textmode_console(void)

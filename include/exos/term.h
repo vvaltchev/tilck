@@ -16,6 +16,7 @@ typedef struct {
 
    /* Other (optional) */
    void (*scroll_one_line_up)(void);
+   void (*flush_buffers)(void);
 
 } video_interface;
 

@@ -16,7 +16,8 @@ static u32 fb_width;
 static u32 fb_height;
 static u8 fb_bpp;
 static u32 fb_size;
-static uptr fb_vaddr;
+static uptr fb_vaddr; /* != fb_real_vaddr when a shadow buffer is used */
+static uptr fb_real_vaddr;
 
 static u32 *fb_w8_char_scanlines;
 
@@ -32,6 +33,28 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
    fb_size = fb_pitch * fb_height;
 }
 
+bool fb_switch_to_shadow_buffer(void)
+{
+   void *shadow_buf = kmalloc(fb_size);
+
+   if (!shadow_buf)
+      return false;
+
+   memcpy32(shadow_buf, (void *)fb_real_vaddr, fb_size >> 2);
+   fb_vaddr = (uptr) shadow_buf;
+   return true;
+}
+
+void fb_flush_lines(u32 y, u32 lines_count)
+{
+   if (fb_vaddr == fb_real_vaddr)
+      return;
+
+   memcpy32((void *)(fb_real_vaddr + y * fb_pitch),
+            (void *)(fb_vaddr + y * fb_pitch),
+            (lines_count * fb_pitch) >> 2);
+}
+
 u32 fb_get_width(void)
 {
    return fb_width;
@@ -44,16 +67,17 @@ u32 fb_get_height(void)
 
 void fb_map_in_kernel_space(void)
 {
-   fb_vaddr = KERNEL_BASE_VA + (1024 - 64) * MB;
+   fb_real_vaddr = KERNEL_BASE_VA + (1024 - 64) * MB;
+   fb_vaddr = fb_real_vaddr; /* here fb_vaddr == fb_real_vaddr */
 
    map_pages(get_kernel_page_dir(),
-             (void *)fb_vaddr,
+             (void *)fb_real_vaddr,
              fb_paddr,
-             (fb_size/PAGE_SIZE) + 1,
+             (fb_size / PAGE_SIZE) + 1,
              false,
              true);
 
-   mark_pageframes_as_reserved(fb_paddr, fb_size + 1);
+   mark_pageframes_as_reserved(fb_paddr, (fb_size / MB) + 1);
 }
 
 

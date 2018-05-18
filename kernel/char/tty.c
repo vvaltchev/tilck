@@ -39,9 +39,10 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 
 static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 {
-   for (size_t i = 0; i < size; i++)
-      term_write_char(buf[i]);
+   // NOTE: the 'size' arg passed to term_write cannot be bigger than 1 MB.
+   // TODO: call term_write() in a loop in order to handle size > 1 MB.
 
+   term_write(buf, size);
    return size;
 }
 

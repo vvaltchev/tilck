@@ -133,6 +133,9 @@ static void term_action_scroll_up(u32 lines)
       vi->move_cursor(current_row, current_col);
    }
 
+   if (vi->flush_buffers)
+      vi->flush_buffers();
+
 //#ifdef DEBUG
    end = RDTSC();
    scroll_cycles += (end - start);
@@ -153,6 +156,9 @@ static void term_action_scroll_down(u32 lines)
       vi->enable_cursor();
       vi->move_cursor(current_row, current_col);
    }
+
+   if (vi->flush_buffers)
+      vi->flush_buffers();
 
 //#ifdef DEBUG
    end = RDTSC();
@@ -242,6 +248,9 @@ static void term_action_write_char2(char c, u8 color)
    vi->enable_cursor();
    term_internal_write_char2(c, color);
    vi->move_cursor(current_row, current_col);
+
+   if (vi->flush_buffers)
+      vi->flush_buffers();
 }
 
 static void term_action_write2(char *buf, u32 len, u8 color)
@@ -253,6 +262,9 @@ static void term_action_write2(char *buf, u32 len, u8 color)
       term_internal_write_char2(buf[i], color);
 
    vi->move_cursor(current_row, current_col);
+
+   if (vi->flush_buffers)
+      vi->flush_buffers();
 }
 
 static void term_action_move_ch_and_cur(int row, int col)
@@ -260,6 +272,9 @@ static void term_action_move_ch_and_cur(int row, int col)
    current_row = row;
    current_col = col;
    vi->move_cursor(row, col);
+
+   if (vi->flush_buffers)
+      vi->flush_buffers();
 }
 
 /* ---------------- term action engine --------------------- */
