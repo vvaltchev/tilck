@@ -121,6 +121,11 @@ void fat_get_short_name(fat_entry *entry, char *destbuf);
 u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N);
 u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, int clusterN, int fatNum);
 
+static inline u32 fat_get_sector_size(fat_header *hdr)
+{
+   return hdr->BPB_BytsPerSec;
+}
+
 // FATSz is the number of sectors per FAT
 static inline u32 fat_get_FATSz(fat_header *hdr)
 {

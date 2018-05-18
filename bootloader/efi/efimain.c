@@ -1,5 +1,11 @@
 
-#include <common/config.h>
+#include <common/basic_defs.h>
+#include <common/failsafe_assert.h>
+#include <common/fat32_base.h>
+
+/* We HAVE to undef our ASSERT because the gnu-efi headers define it */
+#undef ASSERT
+
 #include <multiboot.h>
 #include <elf.h>
 
@@ -147,8 +153,6 @@ LoadRamdisk(EFI_HANDLE image,
    EFI_STATUS status = EFI_SUCCESS;
    EFI_BLOCK_IO_PROTOCOL *blockio;
    EFI_DISK_IO_PROTOCOL *ioprot;
-   UINT32 crc32;
-
 
    status = BS->OpenProtocol(loaded_image->DeviceHandle,
                              &BlockIoProtocol,
@@ -173,19 +177,39 @@ LoadRamdisk(EFI_HANDLE image,
                               RAMDISK_SIZE / PAGE_SIZE,
                               ramdisk_paddr_ref);
    HANDLE_EFI_ERROR("AllocatePages");
+   //Print(L"RAMDISK paddr: 0x%lx\r\n", *ramdisk_paddr_ref);
+
+   void *fat_hdr = (void *)(UINTN)*ramdisk_paddr_ref;
 
    status = ioprot->ReadDisk(ioprot,
                              blockio->Media->MediaId,
                              0, // offset from the beginnig of the partition!
-                             RAMDISK_SIZE /* buffer size */,
-                             (void *)(UINTN)*ramdisk_paddr_ref);
+                             1 * KB, /* just the header */
+                             fat_hdr);
    HANDLE_EFI_ERROR("ReadDisk");
 
-   Print(L"RAMDISK paddr: 0x%lx\r\n", *ramdisk_paddr_ref);
 
-   // crc32 = 0;
-   // BS->CalculateCrc32((void *)(UINTN)*ramdisk_paddr_ref, RAMDISK_SIZE, &crc32);
-   // Print(L"RAMDISK CRC32: 0x%x\r\n", crc32);
+   u32 sector_size = fat_get_sector_size(fat_hdr);
+   u32 sectors_per_fat = fat_get_FATSz(fat_hdr);
+   u32 total_fat_size = sectors_per_fat * sector_size;
+   u32 total_used_bytes;
+
+   status = ioprot->ReadDisk(ioprot,
+                             blockio->Media->MediaId,
+                             0,
+                             total_fat_size, /* only the FAT table */
+                             fat_hdr);
+   HANDLE_EFI_ERROR("ReadDisk");
+
+   total_used_bytes = fat_get_used_bytes(fat_hdr);
+   Print(L"RAMDISK used bytes: %u\n", total_used_bytes);
+
+   status = ioprot->ReadDisk(ioprot,
+                             blockio->Media->MediaId,
+                             0,
+                             total_used_bytes,
+                             fat_hdr);
+   HANDLE_EFI_ERROR("ReadDisk");
 
 end:
    return status;
