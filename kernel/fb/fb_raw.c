@@ -306,8 +306,10 @@ void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
    }
 }
 
+/* NOTE: it is required that: dst_y < src_y */
 void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 count)
 {
-   memmove((void *)(fb_vaddr + fb_pitch * dst_y),
-           (void *)(fb_vaddr + fb_pitch * src_y), fb_pitch * count);
+   memcpy32((void *)(fb_vaddr + fb_pitch * dst_y),
+            (void *)(fb_vaddr + fb_pitch * src_y),
+            (fb_pitch * count) >> 2);
 }

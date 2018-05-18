@@ -31,7 +31,18 @@ static void textmode_set_char_at(int row, int col, u16 entry)
 
 static void textmode_set_row(int row, u16 *data)
 {
-   memcpy((u16 *)VIDEO_ADDR + row * VIDEO_COLS, data, VIDEO_COLS * 2);
+   memcpy32(VIDEO_ADDR + row * VIDEO_COLS, data, VIDEO_COLS >> 1);
+}
+
+/*
+ * This function works, but in practice is 2x slower than just using term's
+ * generic scroll and re-draw the whole screen.
+ */
+static void textmode_scroll_one_line_up(void)
+{
+   memcpy32(VIDEO_ADDR,
+            VIDEO_ADDR + VIDEO_COLS,
+            (VIDEO_ROWS * VIDEO_COLS - 1) >> 1);
 }
 
 /*
@@ -94,7 +105,7 @@ static const video_interface ega_text_mode_i =
    textmode_move_cursor,
    textmode_enable_cursor,
    textmode_disable_cursor,
-   NULL, /* scroll_one_line_up */
+   NULL, /* textmode_scroll_one_line_up (see the comment) */
    NULL /* flush_buffers */
 };
 

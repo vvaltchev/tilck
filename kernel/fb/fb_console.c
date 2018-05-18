@@ -238,6 +238,13 @@ static void fb_set_row_char16x32(int row, u16 *data)
    fb_reset_blink_timer();
 }
 
+/*
+ * This function works faster on QEMU but is much slower on bare-metal than just
+ * making 'term' to re-draw the whole screen with the regular scroll. It looks
+ * like the performance bottleneck is the framebuffer itself. This function
+ * (when the shadow buffer is not used) uses the framebuffer both for reading
+ * and writing.
+ */
 static void fb_scroll_one_line_up(void)
 {
    psf2_header *h = fb_font_header;
@@ -270,7 +277,7 @@ static video_interface framebuffer_vi =
    fb_move_cursor,
    fb_enable_cursor,
    fb_disable_cursor,
-   NULL, //fb_scroll_one_line_up,
+   NULL, //fb_scroll_one_line_up (see the comment),
    NULL //fb_flush
 };
 
