@@ -18,8 +18,8 @@ extern char _binary_font16x32_psf_start;
 
 bool __use_framebuffer;
 psf2_header *fb_font_header;
-bool use_optimized;
 
+static bool use_optimized;
 static u32 fb_term_rows;
 static u32 fb_term_cols;
 static u32 fb_offset_y;
@@ -32,6 +32,8 @@ static volatile bool cursor_visible = true;
 static task_info *blink_thread_ti;
 static const u32 blink_half_period = (TIMER_HZ * 60)/100;
 static u32 cursor_color = fb_make_color(255, 255, 255);
+
+static bool *rows_to_flush;
 
 static video_interface framebuffer_vi;
 
@@ -73,6 +75,8 @@ void fb_restore_under_cursor_buf(void)
    const u32 ix = cursor_col * h->width;
    const u32 iy = fb_offset_y + cursor_row * h->height;
    fb_copy_to_screen(ix, iy, h->width, h->height, under_cursor_buf);
+
+   rows_to_flush[cursor_row] = true;
 }
 
 static void fb_reset_blink_timer(void)
@@ -103,6 +107,7 @@ void fb_set_char_at_failsafe(int row, int col, u16 entry)
       fb_save_under_cursor_buf();
 
    fb_reset_blink_timer();
+   rows_to_flush[row] = true;
 }
 
 void fb_set_char_at_optimized(int row, int col, u16 entry)
@@ -117,6 +122,7 @@ void fb_set_char_at_optimized(int row, int col, u16 entry)
       fb_save_under_cursor_buf();
 
    fb_reset_blink_timer();
+   rows_to_flush[row] = true;
 }
 
 
@@ -130,6 +136,7 @@ void fb_set_char8x16_at(int row, int col, u16 entry)
       fb_save_under_cursor_buf();
 
    fb_reset_blink_timer();
+   rows_to_flush[row] = true;
 }
 
 void fb_set_char16x32_at(int row, int col, u16 entry)
@@ -142,6 +149,7 @@ void fb_set_char16x32_at(int row, int col, u16 entry)
       fb_save_under_cursor_buf();
 
    fb_reset_blink_timer();
+   rows_to_flush[row] = true;
 }
 
 void fb_clear_row(int row_num, u8 color)
@@ -152,6 +160,8 @@ void fb_clear_row(int row_num, u8 color)
 
    if (cursor_row == row_num)
       fb_save_under_cursor_buf();
+
+   rows_to_flush[row_num] = true;
 }
 
 void fb_move_cursor(int row, int col)
@@ -159,6 +169,9 @@ void fb_move_cursor(int row, int col)
    psf2_header *h = fb_font_header;
 
    fb_restore_under_cursor_buf();
+
+   rows_to_flush[row] = true;
+   rows_to_flush[cursor_row] = true;
 
    cursor_row = row;
    cursor_col = col;
@@ -192,6 +205,7 @@ static void fb_set_row_failsafe(int row, u16 *data)
       fb_set_char_at_failsafe(row, i, data[i]);
 
    fb_reset_blink_timer();
+   rows_to_flush[row] = true;
 }
 
 static void fb_set_row_optimized(int row, u16 *data)
@@ -200,6 +214,7 @@ static void fb_set_row_optimized(int row, u16 *data)
       fb_set_char_at_optimized(row, i, data[i]);
 
    fb_reset_blink_timer();
+   rows_to_flush[row] = true;
 }
 
 static void fb_set_row_char8x16(int row, u16 *data)
@@ -209,6 +224,7 @@ static void fb_set_row_char8x16(int row, u16 *data)
                         fb_term_cols);
 
    fb_reset_blink_timer();
+   rows_to_flush[row] = true;
 }
 
 static void fb_set_row_char16x32(int row, u16 *data)
@@ -218,15 +234,9 @@ static void fb_set_row_char16x32(int row, u16 *data)
                          fb_term_cols);
 
    fb_reset_blink_timer();
+   rows_to_flush[row] = true;
 }
 
-/*
- * This function works faster on QEMU but is much slower on bare-metal than just
- * making 'term' to re-draw the whole screen with the regular scroll. It looks
- * like the performance bottleneck is the framebuffer itself. This function
- * (when the shadow buffer is not used) uses the framebuffer both for reading
- * and writing.
- */
 static void fb_scroll_one_line_up(void)
 {
    psf2_header *h = fb_font_header;
@@ -242,6 +252,9 @@ static void fb_scroll_one_line_up(void)
 
    if (enabled)
       fb_enable_cursor();
+
+   for (u32 r = 0; r < fb_term_rows; r++)
+      rows_to_flush[r] = true;
 }
 
 static u32 flush_count = 0;
@@ -257,7 +270,16 @@ static void fb_flush(void)
 {
    flush_count++;
 
-   fb_flush_lines(0, fb_get_height());
+   for (u32 r = 0; r < fb_term_rows; r++) {
+
+      if (!rows_to_flush[r])
+         continue;
+
+      fb_flush_lines(fb_offset_y + fb_font_header->height * r,
+                     fb_font_header->height);
+
+      rows_to_flush[r] = false;
+   }
 }
 
 // ---------------------------------------------
@@ -270,11 +292,8 @@ static video_interface framebuffer_vi =
    fb_move_cursor,
    fb_enable_cursor,
    fb_disable_cursor,
-
-   NULL,
-   NULL
-   //fb_scroll_one_line_up,
-   //fb_flush
+   fb_scroll_one_line_up,
+   fb_flush
 };
 
 
@@ -382,6 +401,14 @@ void init_framebuffer_console(void)
    under_cursor_buf = kmalloc(sizeof(u32) * h->width * h->height);
    VERIFY(under_cursor_buf != NULL);
 
+   /*
+    * Alloc this buffer no matter if we use flush_buffer or not, in order to
+    * save all the functions from checking if it's NULL or not.
+    */
+
+   rows_to_flush = kzmalloc(fb_term_rows);
+   VERIFY(rows_to_flush != NULL);
+
    init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, COLOR_WHITE);
    printk("[fb_console] resolution: %ix%i\n", fb_get_width(), fb_get_height());
    printk("[fb_console] font size: %i x %i\n", h->width, h->height);
@@ -409,8 +436,11 @@ void init_framebuffer_console(void)
       printk("WARNING: fb_pre_render_char_scanlines failed.\n");
    }
 
+
    if (framebuffer_vi.flush_buffers) {
-      if (!fb_switch_to_shadow_buffer()) {
+      if (fb_switch_to_shadow_buffer()) {
+         printk("[fb_console] Using a shadow buffer\n");
+      } else {
          printk("WARNING: unable to use a shadow buffer for the framebuffer");
       }
    }
