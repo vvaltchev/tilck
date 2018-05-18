@@ -65,7 +65,7 @@ void fb_map_in_kernel_space(void)
 
 #define TOT_CHAR_SCANLINES_SIZE (PSZ * SL_COUNT * FG_COLORS * BG_COLORS * SL_SIZE)
 
-bool fb_precompute_fb_w8_char_scanlines(void)
+bool fb_pre_render_char_scanlines(void)
 {
    fb_w8_char_scanlines = kmalloc(TOT_CHAR_SCANLINES_SIZE);
 

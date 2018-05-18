@@ -31,4 +31,4 @@ void fb_draw_char16x32_row(u32 y, u16 *entries, u32 count);
 void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf);
 void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf);
 void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 count);
-bool fb_precompute_fb_w8_char_scanlines(void);
+bool fb_pre_render_char_scanlines(void);

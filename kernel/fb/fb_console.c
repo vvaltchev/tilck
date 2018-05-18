@@ -383,7 +383,7 @@ void init_framebuffer_console(void)
    printk("[fb_console] font size: %i x %i\n", h->width, h->height);
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 
-   if (fb_precompute_fb_w8_char_scanlines()) {
+   if (fb_pre_render_char_scanlines()) {
 
       use_optimized = true;
 
@@ -402,7 +402,7 @@ void init_framebuffer_console(void)
       }
 
    } else {
-      printk("WARNING: fb_precompute_fb_w8_char_scanlines failed.\n");
+      printk("WARNING: fb_pre_render_char_scanlines failed.\n");
    }
 
 }
