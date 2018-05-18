@@ -242,17 +242,6 @@ static void term_internal_write_char2(char c, u8 color)
    }
 }
 
-static void term_action_write_char2(char c, u8 color)
-{
-   ts_scroll_to_bottom();
-   vi->enable_cursor();
-   term_internal_write_char2(c, color);
-   vi->move_cursor(current_row, current_col);
-
-   if (vi->flush_buffers)
-      vi->flush_buffers();
-}
-
 static void term_action_write2(char *buf, u32 len, u8 color)
 {
    ts_scroll_to_bottom();
@@ -329,7 +318,6 @@ typedef struct {
 
 static actions_table_item actions_table[] = {
    [a_write2] = {(action_func)term_action_write2, 3},
-   [a_write_char2] = {(action_func)term_action_write_char2, 2},
    [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
    [a_scroll_up] = {(action_func)term_action_scroll_up, 1},
    [a_scroll_down] = {(action_func)term_action_scroll_down, 1},
@@ -397,17 +385,6 @@ void term_write2(char *buf, u32 len, u8 color)
    term_execute_or_enqueue_action(a);
 }
 
-void term_write_char2(char c, u8 color)
-{
-   term_action a = {
-      .type2 = a_write_char2,
-      .arg1 = c,
-      .arg2 = color
-   };
-
-   term_execute_or_enqueue_action(a);
-}
-
 void term_move_ch_and_cur(int row, int col)
 {
    term_action a = {
@@ -447,11 +424,6 @@ void term_set_color(u8 color)
    };
 
    term_execute_or_enqueue_action(a);
-}
-
-void term_write_char(char c)
-{
-   term_write_char2(c, current_color);
 }
 
 void term_write(char *buf, u32 len)

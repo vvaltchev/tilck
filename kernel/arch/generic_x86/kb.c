@@ -333,7 +333,8 @@ void handle_key_pressed(u8 scancode)
    if (c != '\b') {
 
       if (kb_cbuf_write_elem(c)) {
-         term_write_char(c);
+         term_write((char *)&c, 1);
+
          if (c == '\n' || kb_cbuf_is_full()) {
             bool success = enqueue_tasklet1(kcond_signal_one, &kb_cond);
             VERIFY(success); // TODO: any better way to handle this?
@@ -342,7 +343,7 @@ void handle_key_pressed(u8 scancode)
 
    } else {
       if (kb_cbuf_drop_last_written_elem())
-         term_write_char(c);
+         term_write((char *)&c, 1);
    }
 
 #ifdef DEBUG
