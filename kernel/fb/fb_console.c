@@ -169,7 +169,10 @@ void fb_clear_row(int row_num, u8 color)
 {
    psf2_header *h = fb_font_header;
    const u32 iy = fb_offset_y + row_num * h->height;
-   fb_raw_color_lines(iy, h->height, vga_rgb_colors[color >> 4]);
+   fb_raw_color_lines(iy, h->height, vga_rgb_colors[vgaentry_color_bg(color)]);
+
+   if (cursor_row == row_num)
+      fb_save_under_cursor_buf();
 }
 
 void fb_move_cursor(int row, int col)
@@ -262,8 +265,19 @@ static void fb_scroll_one_line_up(void)
       fb_enable_cursor();
 }
 
+static u32 flush_count = 0;
+
+void debug_fb_print_flush_count(void)
+{
+   u32 saved = flush_count;
+   printk("[fb_console] Flush count: %u\n", flush_count);
+   flush_count = saved; // Don't count the flush for this printk
+}
+
 static void fb_flush(void)
 {
+   flush_count++;
+
    fb_flush_lines(0, fb_get_height());
 }
 
@@ -277,8 +291,11 @@ static video_interface framebuffer_vi =
    fb_move_cursor,
    fb_enable_cursor,
    fb_disable_cursor,
-   NULL, //fb_scroll_one_line_up (see the comment),
-   NULL //fb_flush
+
+   NULL,
+   NULL
+   //fb_scroll_one_line_up,
+   //fb_flush
 };
 
 
@@ -287,6 +304,7 @@ static void fb_blink_thread()
    while (true) {
       cursor_visible = !cursor_visible;
       fb_move_cursor(cursor_row, cursor_col);
+      fb_flush();
       kernel_sleep(blink_half_period);
    }
 }
