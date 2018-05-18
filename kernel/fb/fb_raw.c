@@ -249,17 +249,9 @@ void fb_draw_char8x16_row(u32 y, u16 *entries, u32 count)
 
       for (u32 r = 0; r < 16; r++) {
 
-         u32 *v32 = (u32 *)vaddr;
-         const u32 off = c_off + (data[c16 + r] << 3);
-
-         v32[0] = fb_w8_char_scanlines[off + 0];
-         v32[1] = fb_w8_char_scanlines[off + 1];
-         v32[2] = fb_w8_char_scanlines[off + 2];
-         v32[3] = fb_w8_char_scanlines[off + 3];
-         v32[4] = fb_w8_char_scanlines[off + 4];
-         v32[5] = fb_w8_char_scanlines[off + 5];
-         v32[6] = fb_w8_char_scanlines[off + 6];
-         v32[7] = fb_w8_char_scanlines[off + 7];
+         memcpy32((void *)vaddr,
+                  &fb_w8_char_scanlines[c_off + (data[c16 + r] << 3)],
+                  SL_SIZE);
 
          vaddr += fb_pitch;
       }
