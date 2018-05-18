@@ -55,27 +55,6 @@ u32 vga_rgb_colors[16] =
    [COLOR_WHITE] = fb_make_color(252, 252, 252)
 };
 
-void dump_psf2_header(void)
-{
-   psf2_header *h = fb_font_header;
-   printk("magic: %p\n", h->magic);
-
-   if (h->magic != PSF2_FONT_MAGIC)
-      panic("Magic != PSF2\n");
-
-   printk("header size: %u%s\n",
-          h->header_size,
-          h->header_size > sizeof(psf2_header) ? " > sizeof(psf2_header)" : "");
-   printk("flags: %p\n", h->flags);
-   printk("glyphs count: %u\n", h->glyphs_count);
-   printk("bytes per glyph: %u\n", h->bytes_per_glyph);
-   printk("font size: %u x %u\n", h->width, h->height);
-
-   if (h->width % 8) {
-      panic("Only fonts with width divisible by 8 are supported");
-   }
-}
-
 void fb_save_under_cursor_buf(void)
 {
    // Assumption: bbp is 32
@@ -389,6 +368,9 @@ void init_framebuffer_console(void)
                         : (void *)&_binary_font16x32_psf_start;
 
    psf2_header *h = fb_font_header;
+
+   ASSERT(h->magic == PSF2_FONT_MAGIC); // Support only PSF2
+   ASSERT(!(h->width % 8)); // Support only fonts with width = 8, 16, 24, 32, ..
 
    fb_map_in_kernel_space();
 
