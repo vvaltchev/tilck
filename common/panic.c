@@ -7,6 +7,7 @@
  */
 
 #include <common/basic_defs.h>
+#include <common/failsafe_assert.h>
 
 #ifndef USERMODE_APP
 

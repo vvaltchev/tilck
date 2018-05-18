@@ -1,5 +1,7 @@
 
 #pragma once
+#define _EXOS_BASIC_DEFS_H
+
 #include <common/config.h>
 
 /*

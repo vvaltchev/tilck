@@ -1,6 +1,8 @@
 
 #define __STRING_UTIL_C__
 
+#include <common/basic_defs.h>
+#include <common/failsafe_assert.h>
 #include <common/string_util.h>
 
 #define DIGITS "0123456789abcdef"
