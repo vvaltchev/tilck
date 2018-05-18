@@ -377,6 +377,7 @@ static void fb_update_banner_kthread()
 {
    while (true) {
       fb_draw_banner();
+      fb_flush_lines(0, fb_offset_y);
       kernel_sleep(60 * TIMER_HZ);
    }
 }
