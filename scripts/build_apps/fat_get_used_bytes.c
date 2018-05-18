@@ -68,17 +68,7 @@ int main(int argc, char **argv)
       return 1;
    }
 
-   u32 clusterN;
-   fat_header *h = vaddr;
-   const u32 cluster_count = fat_get_TotSec(h) / h->BPB_SecPerClus;
-
-   for (clusterN = 0; clusterN < cluster_count; clusterN++) {
-      if (!fat_read_fat_entry(vaddr, fat_unknown, clusterN, 0))
-         break;
-   }
-
-   u32 first_free_sector = fat_get_sector_for_cluster(h, clusterN);
-   u32 used_bytes = first_free_sector * h->BPB_BytsPerSec;
+   u32 used_bytes = fat_get_used_bytes(vaddr);
 
    if (!trunc)
       printf("%u\n", used_bytes);

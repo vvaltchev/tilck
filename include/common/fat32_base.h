@@ -206,3 +206,5 @@ fat_read_whole_file(fat_header *hdr,
                     fat_entry *entry,
                     char *dest_buf,
                     size_t dest_buf_size);
+
+u32 fat_get_used_bytes(fat_header *hdr);

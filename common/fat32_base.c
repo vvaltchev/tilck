@@ -665,3 +665,18 @@ fat_read_whole_file(fat_header *hdr,
 
    } while (written < fsize);
 }
+
+u32
+fat_get_used_bytes(fat_header *hdr)
+{
+   u32 clusterN;
+   const u32 cluster_count = fat_get_TotSec(hdr) / hdr->BPB_SecPerClus;
+
+   for (clusterN = 0; clusterN < cluster_count; clusterN++) {
+      if (!fat_read_fat_entry(hdr, fat_unknown, clusterN, 0))
+         break;
+   }
+
+   u32 first_free_sector = fat_get_sector_for_cluster(hdr, clusterN);
+   return first_free_sector * hdr->BPB_BytsPerSec;
+}
