@@ -52,7 +52,7 @@ extern void *kernel_va;
 #define LINEAR_MAPPING_OVER_END    (KERNEL_BASE_VA + LINEAR_MAPPING_SIZE)
 
 #define KERNEL_PADDR               0x00100000    // +1 MB
-#define KERNEL_MAX_SIZE            (500 * KB)
+#define KERNEL_MAX_SIZE            (1024 * KB)
 
 #define RAMDISK_PADDR              (2 * MB)
 #define RAMDISK_SIZE               (35 * MB)

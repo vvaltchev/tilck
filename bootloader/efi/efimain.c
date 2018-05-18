@@ -23,11 +23,12 @@
 #include "utils.h"
 
 #define PAGE_SIZE         4096
-#define TEMP_KERNEL_ADDR  (KERNEL_PADDR + KERNEL_MAX_SIZE * 4)
+#define TEMP_KERNEL_ADDR  (KERNEL_PADDR + KERNEL_MAX_SIZE)
 #define KERNEL_FILE       L"\\EFI\\BOOT\\elf_kernel_stripped"
 
-// This bootloader does not need (anymore) RAMDISK_SIZE
+// This bootloader does not need (anymore) RAMDISK_PADDR and RAMDISK_SIZE.
 #undef RAMDISK_SIZE
+#undef RAMDISK_PADDR
 
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres);
 void SetMbiFramebufferInfo(multiboot_info_t *mbi, u32 xres, u32 yres);
@@ -235,7 +236,7 @@ LoadRamdisk(EFI_HANDLE image,
    status = BS->FreePages(*ramdisk_paddr_ref, (total_fat_size / PAGE_SIZE) + 1);
    HANDLE_EFI_ERROR("FreePages");
 
-   *ramdisk_paddr_ref = RAMDISK_PADDR;
+   *ramdisk_paddr_ref = KERNEL_PADDR + KERNEL_MAX_SIZE;
 
    status = BS->AllocatePages(AllocateAddress,
                               EfiLoaderData,
@@ -330,6 +331,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    // Prepare for the actual boot
    Print(L"mbi buffer: 0x%x\n", multiboot_buffer);
+   Print(L"RAMDISK paddr: 0x%x\n", ramdisk_paddr);
    Print(L"RAMDISK size: %u\n", ramdisk_size);
    //Print(L"Press ANY key to boot the kernel...\r\n");
    //WaitForKeyPress(ST);
