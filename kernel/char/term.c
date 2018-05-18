@@ -101,15 +101,27 @@ static void ts_clear_row(int row_num, u8 color)
 static u32 scroll_count;
 static u64 scroll_cycles;
 
+static u32 sc_one_line_count;
+static u64 sc_one_line_cycles;
+
 void debug_term_print_scroll_cycles(void)
 {
-   if (!scroll_count) {
-      printk("No term scrolls yet.\n");
-      return;
+   printk("\n");
+
+   if (sc_one_line_count) {
+      printk("Avg. cycles per 1-line fast term scroll: %llu K [%u scrolls]\n",
+             (sc_one_line_cycles / sc_one_line_count) / 1000,
+             sc_one_line_count);
+   } else {
+      printk("No 1-line fast term scrolls yet.\n");
    }
 
-   printk("Avg. cycles per term scroll: %llu K [%u scrolls]\n",
-          (scroll_cycles / scroll_count) / 1000, scroll_count);
+   if (scroll_count) {
+      printk("Avg. cycles per term scroll: %llu K [%u scrolls]\n",
+             (scroll_cycles / scroll_count) / 1000, scroll_count);
+   } else {
+      printk("No term scrolls yet.\n");
+   }
 }
 
 static void term_action_set_color(u8 color)
@@ -193,8 +205,8 @@ static void term_internal_incr_row(void)
 
 //#ifdef DEBUG
    end = RDTSC();
-   scroll_cycles += (end - start);
-   scroll_count++;
+   sc_one_line_cycles += (end - start);
+   sc_one_line_count++;
 //#endif
 }
 

@@ -257,19 +257,8 @@ static void fb_scroll_one_line_up(void)
       rows_to_flush[r] = true;
 }
 
-static u32 flush_count = 0;
-
-void debug_fb_print_flush_count(void)
-{
-   u32 saved = flush_count;
-   printk("[fb_console] Flush count: %u\n", flush_count);
-   flush_count = saved; // Don't count the flush for this printk
-}
-
 static void fb_flush(void)
 {
-   flush_count++;
-
    for (u32 r = 0; r < fb_term_rows; r++) {
 
       if (!rows_to_flush[r])

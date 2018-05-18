@@ -255,7 +255,6 @@ static u64 total_cycles = 0;
 
 void print_slow_timer_handler_counter(void);
 void debug_term_print_scroll_cycles(void);
-void debug_fb_print_flush_count(void);
 
 extern u32 spur_irq_count;
 
@@ -307,7 +306,6 @@ void handle_key_pressed(u8 scancode)
       return;
 
    case KEY_F4:
-      debug_fb_print_flush_count();
       return;
 
    default:
