@@ -26,6 +26,8 @@
 #define TEMP_KERNEL_ADDR  (KERNEL_PADDR + KERNEL_MAX_SIZE * 4)
 #define KERNEL_FILE       L"\\EFI\\BOOT\\elf_kernel_stripped"
 
+// This bootloader does not need (anymore) RAMDISK_SIZE
+#undef RAMDISK_SIZE
 
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres);
 void SetMbiFramebufferInfo(multiboot_info_t *mbi, u32 xres, u32 yres);
@@ -138,6 +140,9 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS,
       }
    }
 
+   status = BS->FreePages(TEMP_KERNEL_ADDR, KERNEL_MAX_SIZE / PAGE_SIZE);
+   HANDLE_EFI_ERROR("FreePages");
+
    Print(L"ELF kernel loaded. Entry: 0x%x\n", *entry);
    status = EFI_SUCCESS;
 
@@ -148,11 +153,18 @@ end:
 EFI_STATUS
 LoadRamdisk(EFI_HANDLE image,
             EFI_LOADED_IMAGE *loaded_image,
-            EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref)
+            EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,
+            UINTN *ramdisk_size)
 {
    EFI_STATUS status = EFI_SUCCESS;
    EFI_BLOCK_IO_PROTOCOL *blockio;
    EFI_DISK_IO_PROTOCOL *ioprot;
+
+   u32 sector_size;
+   u32 sectors_per_fat;
+   u32 total_fat_size;
+   u32 total_used_bytes;
+   void *fat_hdr;
 
    status = BS->OpenProtocol(loaded_image->DeviceHandle,
                              &BlockIoProtocol,
@@ -174,12 +186,10 @@ LoadRamdisk(EFI_HANDLE image,
 
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
-                              RAMDISK_SIZE / PAGE_SIZE,
+                              1, /* just 1 page */
                               ramdisk_paddr_ref);
    HANDLE_EFI_ERROR("AllocatePages");
-   //Print(L"RAMDISK paddr: 0x%lx\r\n", *ramdisk_paddr_ref);
-
-   void *fat_hdr = (void *)(UINTN)*ramdisk_paddr_ref;
+   fat_hdr = (void *)(UINTN)*ramdisk_paddr_ref;
 
    status = ioprot->ReadDisk(ioprot,
                              blockio->Media->MediaId,
@@ -189,10 +199,22 @@ LoadRamdisk(EFI_HANDLE image,
    HANDLE_EFI_ERROR("ReadDisk");
 
 
-   u32 sector_size = fat_get_sector_size(fat_hdr);
-   u32 sectors_per_fat = fat_get_FATSz(fat_hdr);
-   u32 total_fat_size = sectors_per_fat * sector_size;
-   u32 total_used_bytes;
+   sector_size = fat_get_sector_size(fat_hdr);
+   sectors_per_fat = fat_get_FATSz(fat_hdr);
+   total_fat_size = sectors_per_fat * sector_size;
+   *ramdisk_size = fat_get_TotSec(fat_hdr) * sector_size;
+
+   status = BS->FreePages(*ramdisk_paddr_ref, 1);
+   HANDLE_EFI_ERROR("FreePages");
+
+   /* Now allocate memory for storing the whole FAT table */
+
+   status = BS->AllocatePages(AllocateAnyPages,
+                              EfiLoaderData,
+                              (total_fat_size / PAGE_SIZE) + 1,
+                              ramdisk_paddr_ref);
+   HANDLE_EFI_ERROR("AllocatePages");
+   fat_hdr = (void *)(UINTN)*ramdisk_paddr_ref;
 
    status = ioprot->ReadDisk(ioprot,
                              blockio->Media->MediaId,
@@ -203,6 +225,24 @@ LoadRamdisk(EFI_HANDLE image,
 
    total_used_bytes = fat_get_used_bytes(fat_hdr);
    Print(L"RAMDISK used bytes: %u\n", total_used_bytes);
+
+   /*
+    * Now we know everything. Free the memory used so far and allocate the
+    * big buffer to store all the "used" clusters of the FAT32 partition,
+    * including clearly the header and the FAT table.
+    */
+
+   status = BS->FreePages(*ramdisk_paddr_ref, (total_fat_size / PAGE_SIZE) + 1);
+   HANDLE_EFI_ERROR("FreePages");
+
+   *ramdisk_paddr_ref = RAMDISK_PADDR;
+
+   status = BS->AllocatePages(AllocateAddress,
+                              EfiLoaderData,
+                              (total_used_bytes / PAGE_SIZE) + 1,
+                              ramdisk_paddr_ref);
+   HANDLE_EFI_ERROR("AllocatePages");
+   fat_hdr = (void *)(UINTN)*ramdisk_paddr_ref;
 
    status = ioprot->ReadDisk(ioprot,
                              blockio->Media->MediaId,
@@ -231,6 +271,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    EFI_BOOT_SERVICES *BS = ST->BootServices;
 
    EFI_PHYSICAL_ADDRESS ramdisk_paddr;
+   UINTN ramdisk_size;
 
    UINTN bufSize;
    void *kernel_entry = NULL;
@@ -254,8 +295,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("Getting a LoadedImageProtocol handle");
 
-   status = LoadRamdisk(image, loaded_image, &ramdisk_paddr);
-   HANDLE_EFI_ERROR("LoadRamdisk failed");
 
    // ------------------------------------------------------------------ //
 
@@ -275,9 +314,25 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = LoadElfKernel(BS, fileProt, &kernel_entry);
    HANDLE_EFI_ERROR("LoadElfKernel");
 
+   // ------------------------------------------------------------------ //
+
+   status = LoadRamdisk(image, loaded_image, &ramdisk_paddr, &ramdisk_size);
+   HANDLE_EFI_ERROR("LoadRamdisk failed");
+
+   EFI_PHYSICAL_ADDRESS multiboot_buffer = 4 * MB;
+
+   status = BS->AllocatePages(AllocateMaxAddress,
+                              EfiLoaderData,
+                              1,
+                              &multiboot_buffer);
+   HANDLE_EFI_ERROR("AllocatePages");
+
+
    // Prepare for the actual boot
-   // Print(L"Press ANY key to boot the kernel...\r\n");
-   // WaitForKeyPress(ST);
+   Print(L"mbi buffer: 0x%x\n", multiboot_buffer);
+   Print(L"RAMDISK size: %u\n", ramdisk_size);
+   //Print(L"Press ANY key to boot the kernel...\r\n");
+   //WaitForKeyPress(ST);
 
    EFI_MEMORY_DESCRIPTOR mmap[128];
    UINTN mmap_size, mapkey, desc_size;
@@ -291,24 +346,16 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = BS->ExitBootServices(image, mapkey);
    HANDLE_EFI_ERROR("BS->ExitBootServices");
 
-
-   my_memmove((void *)RAMDISK_PADDR,
-               (void *)(UINTN)ramdisk_paddr,
-               RAMDISK_SIZE);
-
-   ramdisk_paddr = RAMDISK_PADDR;
-
-
    /*
     * Setup the multiboot info.
     * Note: we have to do this here, after calling ExitBootServices() because
     * that call wipes out all the data segments.
     */
 
-   mbi = (multiboot_info_t *)TEMP_KERNEL_ADDR;
+   mbi = (multiboot_info_t *)(UINTN)multiboot_buffer;
    bzero(mbi, sizeof(*mbi));
 
-   mod = (multiboot_module_t *)(TEMP_KERNEL_ADDR + sizeof(*mbi));
+   mod = (multiboot_module_t *)(UINTN)(multiboot_buffer + sizeof(*mbi));
    bzero(mod, sizeof(*mod));
 
    SetMbiFramebufferInfo(mbi, xres, yres);
@@ -318,7 +365,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    mbi->mods_addr = (UINTN)mod;
    mbi->mods_count = 1;
    mod->mod_start = ramdisk_paddr;
-   mod->mod_end = mod->mod_start + RAMDISK_SIZE;
+   mod->mod_end = mod->mod_start + ramdisk_size;
 
    jump_to_kernel(mbi, kernel_entry);
 
