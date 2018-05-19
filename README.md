@@ -5,7 +5,7 @@ exOS
 
 
 
-A Linux-compatible x86 kernel written for educational purposes and fun.
+**A Linux-compatible x86 kernel written for educational purposes and fun**
 
 From the technical point of view, the goal of this project is writing a kernel
 being able to run *natively* x86 Linux console applications (like shells, text
@@ -136,7 +136,7 @@ System tests
 
 You can run kernel's system tests this way:
 
-   ./system_tests/run_all_tests
+    ./system_tests/run_all_tests
 
 NOTE: in order the script to work, you need to have python 2.7.x installed in
 /usr/bin/python.
