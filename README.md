@@ -29,7 +29,7 @@ partition the ELF kernel of `exOS` [it understands the ELF format] and jumps to 
 Current state: the UEFI bootloader
 ------------------------------------
 
-`exOS` includes also a fully-working EFI bootloader which boots the kernel in 
+`exOS` includes also a fully-working EFI bootloader which boots the kernel in
 graphics mode. [Yes, the kernel has a nice graphics console as well.]
 
 
@@ -69,24 +69,24 @@ How to build & run (UEFI boot with graphics console)
 ------------------------------------------------------
 
 Step 0: as above
-Step 1: as above
 
-Step 2.
+Step 1. Build the toolchain by running:
+    ./scripts/build_toolchian
 
+Step 2. Download OVMF (not downloaded by default)
+    ./scripts/build_toolchian -s download_ovmf
+
+Step 3. Build the kernel and the image using a GPT partition table
     make gpt_image
 
-Step 3.
-
+Step 4. Run QEMU using the OVMF firmware
     ./build/run_efi_qemu32
 
-
 NOTE: in case you cannot use KVM:
-
     ./build/run_efi_nokvm_qemu32
 
-
-Step 4. Enjoy :-)
-
+Step 5.
+    Enjoy :-)
 
 
 Unit tests
