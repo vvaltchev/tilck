@@ -26,12 +26,6 @@ void jump_to_kernel(multiboot_info_t *mbi, void *entry_point)
 
 #endif
 
-void bzero(void *ptr, UINTN len)
-{
-   for (UINTN i = 0; i < len; i++)
-      ((char*)ptr)[i] = 0;
-}
-
 void DumpFirst16Bytes(char *buf)
 {
    Print(L"First 16 bytes in hex: \r\n");
@@ -54,42 +48,3 @@ EFI_INPUT_KEY WaitForKeyPress(EFI_SYSTEM_TABLE *ST)
     ST->ConIn->ReadKeyStroke(ST->ConIn, &k);
     return k;
 }
-
-/* dest and src can overloap only partially */
-void *my_memcpy(void *dest, const void *src, size_t n)
-{
-   u32 unused;
-   u32 unused2;
-
-   asmVolatile("rep movsl\n\t"         // copy 4 bytes at a time, n/4 times
-               "mov %%ebx, %%ecx\n\t"  // then: ecx = ebx = n % 4
-               "rep movsb\n\t"         // copy 1 byte at a time, n%4 times
-               : "=b" (unused), "=c" (n), "=S" (src), "=D" (unused2)
-               : "b" (n & 3), "c" (n >> 2), "S"(src), "D"(dest)
-               : "cc", "memory");
-
-   return dest;
-}
-
-/* dest and src might overlap anyhow */
-void *my_memmove(void *dest, const void *src, size_t n)
-{
-   if (dest < src || ((uptr)src + n <= (uptr)dest)) {
-
-      my_memcpy(dest, src, n);
-
-   } else {
-
-      u32 unused;
-
-      asmVolatile("std\n\t"
-                  "rep movsb\n\t"
-                  "cld\n\t"
-                  : "=c" (n), "=S" (src), "=D" (unused)
-                  : "c" (n), "S" (src+n-1), "D" (dest+n-1)
-                  : "cc", "memory");
-   }
-
-   return dest;
-}
-

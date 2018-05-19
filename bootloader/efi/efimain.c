@@ -112,19 +112,18 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS,
    for (int i = 0; i < header->e_phnum; i++, phdr++) {
 
       // Ignore non-load segments.
-      if (phdr->p_type != PT_LOAD) {
+      if (phdr->p_type != PT_LOAD)
          continue;
-      }
 
       CHECK(phdr->p_vaddr >= KERNEL_BASE_VA);
       CHECK(phdr->p_paddr >= KERNEL_PADDR);
       CHECK(phdr->p_paddr < KERNEL_PADDR + KERNEL_MAX_SIZE);
 
-      bzero((void *)(UINTN)phdr->p_paddr, phdr->p_memsz);
+      BS->SetMem((void *)(UINTN)phdr->p_paddr, phdr->p_memsz, 0);
 
-      my_memmove((void *)(UINTN)phdr->p_paddr,
-                 (char *) header + phdr->p_offset,
-                 phdr->p_filesz);
+      BS->CopyMem((void *)(UINTN)phdr->p_paddr,
+                  (char *) header + phdr->p_offset,
+                  phdr->p_filesz);
 
       if (IN_RANGE(header->e_entry,
                    phdr->p_vaddr,
@@ -328,6 +327,20 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                               &multiboot_buffer);
    HANDLE_EFI_ERROR("AllocatePages");
 
+   BS->SetMem((void *)(UINTN)multiboot_buffer, PAGE_SIZE, 0);
+
+   mbi = (multiboot_info_t *)(UINTN)multiboot_buffer;
+   mod = (multiboot_module_t *)(UINTN)(multiboot_buffer + sizeof(*mbi));
+
+   SetMbiFramebufferInfo(mbi, xres, yres);
+   mbi->mem_upper = 127*1024; /* temp hack */
+
+   mbi->flags |= MULTIBOOT_INFO_MODS;
+   mbi->mods_addr = (UINTN)mod;
+   mbi->mods_count = 1;
+   mod->mod_start = ramdisk_paddr;
+   mod->mod_end = mod->mod_start + ramdisk_size;
+
 
    // Prepare for the actual boot
    Print(L"mbi buffer: 0x%x\n", multiboot_buffer);
@@ -347,27 +360,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    status = BS->ExitBootServices(image, mapkey);
    HANDLE_EFI_ERROR("BS->ExitBootServices");
-
-   /*
-    * Setup the multiboot info.
-    * Note: we have to do this here, after calling ExitBootServices() because
-    * that call wipes out all the data segments.
-    */
-
-   mbi = (multiboot_info_t *)(UINTN)multiboot_buffer;
-   bzero(mbi, sizeof(*mbi));
-
-   mod = (multiboot_module_t *)(UINTN)(multiboot_buffer + sizeof(*mbi));
-   bzero(mod, sizeof(*mod));
-
-   SetMbiFramebufferInfo(mbi, xres, yres);
-   mbi->mem_upper = 127*1024; /* temp hack */
-
-   mbi->flags |= MULTIBOOT_INFO_MODS;
-   mbi->mods_addr = (UINTN)mod;
-   mbi->mods_count = 1;
-   mod->mod_start = ramdisk_paddr;
-   mod->mod_end = mod->mod_start + ramdisk_size;
 
    jump_to_kernel(mbi, kernel_entry);
 
