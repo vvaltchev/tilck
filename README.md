@@ -73,7 +73,7 @@ Step 1. Build the toolchain by running:
 
 Step 2. Compile the kernel and prepare the bootable image with just:
 
-    make
+    make -j
 
 Step 3. Now you should have an image file named `exos.img` in the `build`
 directory. The easiest way for actually trying `exOS` at that point is to run:
@@ -87,7 +87,7 @@ always run QEMU using full-software virtualization:
 
 Step 4.
 
-   Enjoy :-)
+    Enjoy :-)
 
 
 How to build & run (UEFI boot with graphics console)
@@ -105,7 +105,7 @@ Step 2. Download OVMF (not downloaded by default)
 
 Step 3. Build the kernel and the image using a GPT partition table
 
-    make gpt_image
+    make -j gpt_image
 
 Step 4. Run QEMU using the OVMF firmware
 
@@ -125,12 +125,21 @@ Unit tests
 
 You could build kernel's unit tests this way:
 
-    make gtests
+    make -j gtests
 
 And run them with:
 
     ./build/gtests
 
+System tests
+--------------
+
+You can run kernel's system tests this way:
+
+   ./system_tests/run_all_tests
+
+NOTE: in order the script to work, you need to have python 2.7.x installed in
+/usr/bin/python.
 
 
 FAQ (by vvaltchev)
