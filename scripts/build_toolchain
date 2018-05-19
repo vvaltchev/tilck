@@ -112,6 +112,7 @@ function install_fedora {
    packages_list+=(make)
    packages_list+=(binutils)
    packages_list+=(bzip2)
+   packages_list+=(cpio)
    packages_list+=(qemu-system-x86)
 
    to_install=()
@@ -260,6 +261,8 @@ function install_packages {
          echo "  * Mint"
          echo "  * Debian"
          echo "  * Fedora"
+         echo "  * Arch"
+         echo "  * Manjaro"
          echo "In order to compile exOS on this distro, please make sure the "
          echo "following packages (ubuntu package names) are installed:"
 
