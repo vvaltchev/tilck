@@ -138,6 +138,43 @@ function install_fedora {
    fi
 }
 
+function install_arch {
+
+   pkg_list=()
+   pkg_list+=(wget)
+   pkg_list+=(git)
+   pkg_list+=(gcc)
+   pkg_list+=(make)
+   pkg_list+=(binutils)
+   pkg_list+=(bzip2)
+   pkg_list+=(rpmextract)
+   pkg_list+=(cpio)
+   pkg_list+=(qemu)
+   pkg_list+=(qemu-arch-extra)
+
+   to_install=()
+
+   echo Checking the packages that need to be installed
+
+   for x in ${pkg_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if pacman -Q $x &> /dev/null; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "sudo pacman -S $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
 
 function install_packages {
 
@@ -166,6 +203,10 @@ function install_packages {
    elif echo $rel_files | grep -Ei 'fedora' - &> /dev/null; then
 
       install_fedora
+
+   elif echo $rel_files | grep -Ei 'arch|manjaro' - &> /dev/null; then
+
+      install_arch
 
    else
 
