@@ -29,6 +29,7 @@ static u32 scroll;
 static u32 max_scroll;
 static u32 total_buffer_rows;
 static u32 extra_buffer_rows;
+static u16 failsafe_buffer[80 * 25];
 
 static ALWAYS_INLINE void buffer_set_entry(int row, int col, u16 e)
 {
@@ -472,10 +473,23 @@ init_term(const video_interface *intf, int rows, int cols, u8 default_color)
                 sizeof(term_action),
                 term_actions_buf);
 
-   extra_buffer_rows = 9 * term_rows;
-   total_buffer_rows = term_rows + extra_buffer_rows;
-   buffer = kmalloc(2 * total_buffer_rows * term_cols);
-   VERIFY(buffer != NULL); // We cannot handle this.
+   if (!in_panic()) {
+      extra_buffer_rows = 9 * term_rows;
+      total_buffer_rows = term_rows + extra_buffer_rows;
+
+      if (kmalloc_initialized)
+         buffer = kmalloc(2 * total_buffer_rows * term_cols);
+   }
+
+   if (!buffer) {
+      /* We're in panic or we were unable to allocate the buffer */
+      extra_buffer_rows = 0;
+      total_buffer_rows = term_rows;
+      buffer = failsafe_buffer;
+
+      if (!in_panic())
+         printk("ERROR: unable to allocate the term buffer.\n");
+   }
 
    vi->enable_cursor();
    term_action_move_ch_and_cur(0, 0);

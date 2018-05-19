@@ -9,6 +9,9 @@
 #define COMPLETE_FLUSH_ADDR    0x1000
 #define COMPLETE_FLUSH_SIZE       128
 
+#define RAMDISK_PADDR              (2 * MB)
+#define RAMDISK_SIZE               (35 * MB)
+
 
 #define RAMDISK_FIRST_SECTOR 2048
 

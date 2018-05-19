@@ -3,8 +3,15 @@
 #include <common/string_util.h>
 #include <common/fat32_base.h>
 #include <common/utils.h>
+
 #include <elf.h>
+#include <multiboot.h>
+
 #include "basic_term.h"
+
+#define RAMDISK_PADDR              (2 * MB)
+#define RAMDISK_SIZE               (35 * MB)
+#define MBI_PADDR (0x10000)
 
 /*
  * Checks if 'addr' is in the range [begin, end).
@@ -93,9 +100,40 @@ void load_elf_kernel(const char *filepath, void **entry)
    }
 }
 
+multiboot_info_t *setup_multiboot_info(void)
+{
+   multiboot_info_t *mbi;
+   multiboot_module_t *mod;
+
+   mbi = (multiboot_info_t *) MBI_PADDR;
+   bzero(mbi, sizeof(*mbi));
+
+   mod = (multiboot_module_t *)(MBI_PADDR + sizeof(*mbi));
+   bzero(mod, sizeof(*mod));
+
+   mbi->mem_lower = 0;
+   mbi->mem_upper = 127*1024; /* temp hack */
+
+   mbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
+   mbi->framebuffer_addr = 0xB8000;
+   mbi->framebuffer_pitch = 80 * 2;
+   mbi->framebuffer_width = 80;
+   mbi->framebuffer_height = 25;
+   mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT;
+
+   mbi->flags |= MULTIBOOT_INFO_MODS;
+   mbi->mods_addr = (u32)mod;
+   mbi->mods_count = 1;
+   mod->mod_start = RAMDISK_PADDR;
+   mod->mod_end = mod->mod_start + RAMDISK_SIZE;
+
+   return mbi;
+}
+
 void bootloader_main(void)
 {
    void *entry;
+   multiboot_info_t *mbi;
 
    /* Clear the screen in case we need to show a panic message */
    init_bt();
@@ -103,6 +141,13 @@ void bootloader_main(void)
    /* Load the actual kernel ELF file */
    load_elf_kernel(KERNEL_FILE_PATH, &entry);
 
+   mbi = setup_multiboot_info();
+
    /* Jump to the kernel */
-   asmVolatile("jmpl *%0" : : "r"(entry));
+   asmVolatile("jmp *%%ecx"
+               : /* no output */
+               : "a" (MULTIBOOT_BOOTLOADER_MAGIC),
+                 "b" (mbi),
+                 "c" (entry)
+               : /* no clobber */);
 }

@@ -53,12 +53,7 @@ extern void *kernel_va;
 
 #define KERNEL_PADDR               0x00100000    // +1 MB
 #define KERNEL_MAX_SIZE            (1024 * KB)
-
-#define RAMDISK_PADDR              (2 * MB)
-#define RAMDISK_SIZE               (35 * MB)
-
 #define KERNEL_FILE_PATH            "/EFI/BOOT/elf_kernel_stripped"
-
 
 #define USER_VSDO_LIKE_PAGE_VADDR (LINEAR_MAPPING_OVER_END)
 

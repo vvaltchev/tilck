@@ -333,6 +333,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    mod = (multiboot_module_t *)(UINTN)(multiboot_buffer + sizeof(*mbi));
 
    SetMbiFramebufferInfo(mbi, xres, yres);
+
+   mbi->mem_lower = 0;
    mbi->mem_upper = 127*1024; /* temp hack */
 
    mbi->flags |= MULTIBOOT_INFO_MODS;

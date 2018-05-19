@@ -5,8 +5,8 @@
 #include <exos/process.h>
 #include <exos/hal.h>
 
-uptr ramdisk_paddr = RAMDISK_PADDR; /* default value in case of no multiboot */
-size_t ramdisk_size = RAMDISK_SIZE; /* default value in case of no multiboot */
+uptr ramdisk_paddr;
+size_t ramdisk_size;
 
 char symtab_buf[16*KB] __attribute__ ((section (".Symtab"))) = {0};
 char strtab_buf[16*KB] __attribute__ ((section (".Strtab"))) = {0};

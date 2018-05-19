@@ -25,8 +25,6 @@
 #include <exos/arch/generic_x86/textmode_video.h>
 #include <exos/fb_console.h>
 
-static bool multiboot;
-
 extern u32 memsize_in_mb;
 extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
@@ -42,13 +40,14 @@ void parse_kernel_cmdline(const char *cmdline);
 
 void read_multiboot_info(u32 magic, u32 mbi_addr)
 {
-   if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
+   if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
+      init_textmode_console();
+      panic("The exOS kernel requires a multiboot-compatible bootloader.");
       return;
+   }
 
    multiboot_info_t *mbi = (void *)(uptr)mbi_addr;
    memsize_in_mb = (mbi->mem_upper)/1024 + 1;
-
-   multiboot = true;
 
    if (mbi->flags & MULTIBOOT_INFO_MODS) {
       if (mbi->mods_count >= 1) {
@@ -57,9 +56,6 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
          ramdisk_paddr = mod->mod_start;
          ramdisk_size = mod->mod_end - mod->mod_start;
 
-      } else {
-         ramdisk_paddr = 0;
-         ramdisk_size = 0;
       }
    }
 
@@ -88,9 +84,6 @@ void show_system_info(void)
    datetime_t d;
    read_system_clock_datetime(&d);
    print_datetime(d);
-
-   if (multiboot)
-      printk("*** Detected multiboot ***\n");
 }
 
 void mount_ramdisk(void)
