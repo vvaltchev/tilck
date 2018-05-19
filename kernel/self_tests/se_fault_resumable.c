@@ -123,16 +123,12 @@ void selftest_fault_resumable_perf(void)
 
    printk("regular call: %llu cycles\n", duration/iters);
 
-   enable_preemption();
-   {
-      start = RDTSC();
+   start = RDTSC();
 
-      for (int i = 0; i < iters; i++)
-         fault_resumable_call(0, do_nothing, 6, 1, 2, 3, 4, 5, 6);
+   for (int i = 0; i < iters; i++)
+      fault_resumable_call(0, do_nothing, 6, 1, 2, 3, 4, 5, 6);
 
-      duration = RDTSC() - start;
-   }
-   disable_preemption();
+   duration = RDTSC() - start;
 
    printk("fault resumable call: %llu cycles\n", duration/iters);
    debug_qemu_turn_off_machine();
