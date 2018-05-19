@@ -85,7 +85,9 @@ always run QEMU using full-software virtualization:
 
     ./build/run_nokvm_qemu
 
-Step 4. Enjoy :-)
+Step 4.
+
+   Enjoy :-)
 
 
 How to build & run (UEFI boot with graphics console)
@@ -94,21 +96,27 @@ How to build & run (UEFI boot with graphics console)
 Step 0: as above
 
 Step 1. Build the toolchain by running:
+
     ./scripts/build_toolchian
 
 Step 2. Download OVMF (not downloaded by default)
+
     ./scripts/build_toolchian -s download_ovmf
 
 Step 3. Build the kernel and the image using a GPT partition table
+
     make gpt_image
 
 Step 4. Run QEMU using the OVMF firmware
+
     ./build/run_efi_qemu32
 
 NOTE: in case you cannot use KVM:
+
     ./build/run_efi_nokvm_qemu32
 
 Step 5.
+
     Enjoy :-)
 
 
