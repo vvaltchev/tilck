@@ -9,8 +9,7 @@
 
 #include "basic_term.h"
 
-#define RAMDISK_PADDR              (2 * MB)
-#define RAMDISK_SIZE               (35 * MB)
+#define RAMDISK_PADDR              (KERNEL_PADDR + KERNEL_MAX_SIZE)
 #define MBI_PADDR (0x10000)
 
 /*
@@ -18,40 +17,23 @@
  */
 #define IN(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
 
-/*
- * Without forcing the CHS parameters, on QEMU the 40 MB image has the following
- * weird parameters:
- *
- * Cyclinders count:   49407
- * Heads per cylinder: 3
- * Sectors per track:  18
- *
- * Considering that: 49407*3*18*512 = ~1.27 GB, there must be something WRONG.
- *
- * And we get a CRC32 failure at 26M + 8K.
- *
- * On REAL HARDWARE, we get no checksum failures whatsoever.
- */
 
-void ramdisk_checksum(void)
+static u32 ramdisk_size;
+
+void calculate_ramdisk_size(void)
 {
-   u32 result = crc32(0, (void*)RAMDISK_PADDR, RAMDISK_SIZE);
-   printk("RAMDISK CRC32: %p\n", result);
-
-   // printk("Calculating the RAMDISK's CRC32...\n");
-   // for (int k=0; k <= 16; k++) {
-   //    u32 result = crc32(0, (void*)RAMDISK_PADDR, 26*MB + k*KB);
-   //    printk("CRC32 for M=26, K=%u: %p\n", k, result);
-   // }
+   fat_header *fat_hdr = (fat_header *)RAMDISK_PADDR;
+   u32 sector_size = fat_get_sector_size(fat_hdr);
+   ramdisk_size = fat_get_TotSec(fat_hdr) * sector_size;
 }
 
 void load_elf_kernel(const char *filepath, void **entry)
 {
    fat_header *hdr = (fat_header *)RAMDISK_PADDR;
-   void *free_space = (void *) (RAMDISK_PADDR + RAMDISK_SIZE);
+   void *free_space = (void *) (RAMDISK_PADDR + ramdisk_size);
 
    /* DEBUG: poison the free memory, up to 128 MB */
-   memset(free_space, 0xFA, (128 * MB - RAMDISK_PADDR - RAMDISK_SIZE));
+   memset(free_space, 0xFA, (128 * MB - RAMDISK_PADDR - ramdisk_size));
 
    fat_entry *e = fat_search_entry(hdr, fat_get_type(hdr), filepath);
 
@@ -125,7 +107,7 @@ multiboot_info_t *setup_multiboot_info(void)
    mbi->mods_addr = (u32)mod;
    mbi->mods_count = 1;
    mod->mod_start = RAMDISK_PADDR;
-   mod->mod_end = mod->mod_start + RAMDISK_SIZE;
+   mod->mod_end = mod->mod_start + ramdisk_size;
 
    return mbi;
 }
@@ -137,6 +119,8 @@ void bootloader_main(void)
 
    /* Clear the screen in case we need to show a panic message */
    init_bt();
+
+   calculate_ramdisk_size();
 
    /* Load the actual kernel ELF file */
    load_elf_kernel(KERNEL_FILE_PATH, &entry);
