@@ -949,7 +949,7 @@ complete_flush:
    cld
 
    # Set the stack for the 3rd stage of the bootloader
-   mov esp, 0x0000FFF0
+   mov esp, 0x0003FFF0
 
    # jump to the 3rd stage of the bootloader
    jmp 0x08:(DEST_DATA_SEGMENT * 16 + bootloader_3rd_stage)

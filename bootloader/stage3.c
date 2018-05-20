@@ -112,6 +112,8 @@ multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
+void go_to_real_mode_and_back();
+
 void bootloader_main(void)
 {
    void *entry;
@@ -119,6 +121,15 @@ void bootloader_main(void)
 
    /* Clear the screen in case we need to show a panic message */
    init_bt();
+
+   //printk("before switch to real mode\n");
+
+   go_to_real_mode_and_back();
+
+   //printk("after switch to real mode\n");
+
+   //asmVolatile("cli");
+   //asmVolatile("hlt");
 
    calculate_ramdisk_size();
 
