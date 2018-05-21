@@ -10,6 +10,7 @@
 #define BASE_SEG (BASE_ADDR / 16)
 
 #define RELOC_ADDR 0x2000
+#define REALMODE_STACK 0xFFF0
 
 _start:
 main:
@@ -42,9 +43,7 @@ call_realmode_func:
    mov [realmode_func_addr], eax
 
    # load the new gdt, with 16-bit entries
-   lea eax, [gdtr+2]
-   mov dword ptr [eax], offset gdt16
-   lgdt [gdtr]
+   lgdt [gdtr16]
 
    # Load ds, es, fs, gs, ss with a 16-bit data segment.
    mov ax, 0x10
@@ -64,7 +63,7 @@ code16_seg:
 
 .code16
    mov ebx, (offset realmode - BASE_ADDR + RELOC_ADDR)
-   push 0x2100
+   push BASE_SEG
    push ebx
    retf # jumps to realmode
 
@@ -75,7 +74,7 @@ realmode:
    mov gs, ax
    mov ss, ax
 
-   mov sp, 0xFFF0
+   mov sp, REALMODE_STACK
 
    mov ax, BASE_SEG
    mov fs, ax
@@ -98,9 +97,7 @@ realmode:
    lidt [di]
 
    # load the a gdt with 32-bit segments
-   mov ebx, (offset gdtr - BASE_ADDR + RELOC_ADDR)
-   lea eax, [ebx + 2]
-   mov dword ptr [eax], (offset gdt32 - BASE_ADDR + RELOC_ADDR)
+   mov ebx, (offset gdtr32 - BASE_ADDR + RELOC_ADDR)
    lgdt [ebx]
 
    mov eax, cr0
@@ -196,8 +193,12 @@ gdt16:
    # sel 0x10. 64k 16-bit data
    .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0x00, 0x00
 
-gdtr:
+gdtr16:
    .word 0x23
-   .long 0
+   .long gdt16
+
+gdtr32:
+   .word 0x23
+   .long gdt32
 
 .space (4096)-(.-_start), 0
