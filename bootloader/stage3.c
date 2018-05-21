@@ -164,20 +164,12 @@ void check_rm_out_regs(void)
 
    call_realmode(realmode_test_out, &eax, &ebx, &ecx, &edx, &esi, &edi);
 
-   eax &= 0xFFFF;
-   ebx &= 0xFFFF;
-   ecx &= 0xFFFF;
-   edx &= 0xFFFF;
-   esi &= 0xFFFF;
-   edi &= 0xFFFF;
-
    printk("eax: %d\n", eax);
    printk("ebx: %d\n", ebx);
    printk("ecx: %d\n", ecx);
    printk("edx: %d\n", edx);
    printk("esi: %d\n", esi);
    printk("edi: %d\n", edi);
-
 }
 
 void bootloader_main(void)

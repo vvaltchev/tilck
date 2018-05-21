@@ -10,18 +10,11 @@
 #define BASE_SEG (BASE_ADDR / 16)
 
 #define RELOC_ADDR 0x2000
-#define REALMODE_STACK 0xFFF0
 
 _start:
 main:
 
 1:
-   # Copy this code to RELOC_ADDR in order to allow switch back to realmode
-   mov esi, offset _start
-   mov edi, RELOC_ADDR
-   mov ecx, 0x400  # 1024
-   rep movsd
-
    # Zero-out the BSS
    mov ecx, offset __bss_end
    sub ecx, offset __bss_start
@@ -61,7 +54,7 @@ call_realmode_func_asm:
    # Note: don't touch es: it's 0x10 (32-bit data segment)
 
    # Jump to a CODE16 segment
-   jmp 0x08:(code16_seg - BASE_ADDR + RELOC_ADDR)
+   jmp 0x08:(code16_seg - BASE_ADDR)
 
 code16_seg:
    mov eax, cr0
@@ -81,11 +74,11 @@ realmode:
    mov ax, 0x00
    mov fs, ax
    mov gs, ax
-   mov ss, ax
-   mov sp, REALMODE_STACK
 
    mov ax, BASE_SEG
    mov ds, ax
+   mov ss, ax
+   mov esp, (offset rm16_stack - BASE_ADDR + 0x3F0)
 
    mov     edi, (offset idt16 - BASE_ADDR)
    lidt    [di]
@@ -103,7 +96,6 @@ realmode:
    # 2. save on stack the return address
    mov ebx, (offset after_call - BASE_ADDR)
    push bx
-
 
    # 3. push func's addr on stack in order the ending ret to make the "call"
    push ax
@@ -145,7 +137,8 @@ after_call:
 
    # now here we must save back the values of the registers
 
-   mov esp, (offset rm_ret_ax - BASE_ADDR + RELOC_ADDR + 2)
+   mov bp, sp
+   mov esp, (offset rm_ret_ax - BASE_ADDR + 2)
 
    push ax
    push bx
@@ -154,9 +147,7 @@ after_call:
    push si
    push di
 
-   mov ax, 0
-   mov ss, ax
-   mov sp, REALMODE_STACK
+   mov sp, bp
 
    ##################################################################
    # now we have to go back to protected mode
@@ -176,14 +167,11 @@ after_call:
    mov cr0, eax
 
 
-   mov eax, (offset pm32 - BASE_ADDR + RELOC_ADDR)
-   push 0x08
-   push ax
-   retf
-
-/*
-   # Alternative: use 0x66 (Operand Size Override Prefix)
-   # before push and retf to use the 32-bit version of those instructions.
+   # Use 0x66 (Operand Size Override Prefix) before push and retf to use the
+   # 32-bit version of those instructions. That is NECESSARY if we want to do
+   # a 32-bit far jump. Otherwise, the pm32 code has to be copied to a low
+   # address (< 64 K), in order to the 16-bit far jump to able able to get
+   # there.
 
    mov eax, (offset pm32)
    push 0x08
@@ -191,7 +179,7 @@ after_call:
    push eax
    .byte 0x66
    retf
-*/
+
 
 .code32
 
@@ -205,27 +193,27 @@ pm32:
 
    xor eax, eax
 
-   mov ax, [rm_ret_ax - BASE_ADDR + RELOC_ADDR]
+   mov ax, [rm_ret_ax]
    mov ebx, [realmode_func_eax_ref]
    mov [ebx], eax
 
-   mov ax, [rm_ret_bx - BASE_ADDR + RELOC_ADDR]
+   mov ax, [rm_ret_bx]
    mov ebx, [realmode_func_ebx_ref]
    mov [ebx], eax
 
-   mov ax, [rm_ret_cx - BASE_ADDR + RELOC_ADDR]
+   mov ax, [rm_ret_cx]
    mov ebx, [realmode_func_ecx_ref]
    mov [ebx], eax
 
-   mov ax, [rm_ret_dx - BASE_ADDR + RELOC_ADDR]
+   mov ax, [rm_ret_dx]
    mov ebx, [realmode_func_edx_ref]
    mov [ebx], eax
 
-   mov ax, [rm_ret_si - BASE_ADDR + RELOC_ADDR]
+   mov ax, [rm_ret_si]
    mov ebx, [realmode_func_esi_ref]
    mov [ebx], eax
 
-   mov ax, [rm_ret_di - BASE_ADDR + RELOC_ADDR]
+   mov ax, [rm_ret_di]
    mov ebx, [realmode_func_edi_ref]
    mov [ebx], eax
 
@@ -307,8 +295,11 @@ gdt16:
 
    # sel 0x08. 64k 16-bit code
    .word 0xFFFF # segment limit first 0-15 bits
-   .word 0x0000 # base first 0-15 bits
-   .byte 0x00   # base 16-23 bits
+
+   .byte 0x00   # base (24 bits) = 0x021000
+   .byte 0x10
+   .byte 0x02
+
    .byte 0x9A   # access byte
                 # | present | priv (2) | 1 (reserved) | exec | dc | rw | ac
 
@@ -331,5 +322,8 @@ gdtr16:
 gdtr32:
    .word 0x23
    .long gdt32
+
+rm16_stack:
+   .space 1024, 0
 
 .space (4096)-(.-_start), 0
