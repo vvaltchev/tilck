@@ -116,7 +116,22 @@ multiboot_info_t *setup_multiboot_info(void)
 void realmode_func_set_video_mode();
 void realmode_write_char();
 
-void call_realmode_func(void *func, u32 eax, u32 ebx);
+void call_realmode_func_asm(void *func, u32 *eax_ref, u32 *ebx_ref);
+
+void call_realmode(void *func, u32 *eax_ref, u32 *ebx_ref)
+{
+   ASSERT(func != NULL);
+   ASSERT(eax_ref != NULL);
+   ASSERT(ebx_ref != NULL);
+   call_realmode_func_asm(func, eax_ref, ebx_ref);
+}
+
+void call_realmode_by_val(void *func, u32 eax, u32 ebx)
+{
+   ASSERT(func != NULL);
+   call_realmode_func_asm(func, &eax, &ebx);
+}
+
 
 void bootloader_main(void)
 {
@@ -129,17 +144,17 @@ void bootloader_main(void)
    printk("before switch to real mode\n\n\n");
 
    const char *str = "Hi from C\r\n";
-   call_realmode_func(realmode_func_set_video_mode, 0, 0);
+   call_realmode_by_val(realmode_func_set_video_mode, 0, 0);
 
    while (*str) {
-      call_realmode_func(realmode_write_char, *str, 0);
+      call_realmode_by_val(realmode_write_char, (u32)*str, 0);
       str++;
    }
 
    printk("after switch to real mode\n");
 
-   //asmVolatile("cli");
-   //asmVolatile("hlt");
+   asmVolatile("cli");
+   asmVolatile("hlt");
 
    calculate_ramdisk_size();
 

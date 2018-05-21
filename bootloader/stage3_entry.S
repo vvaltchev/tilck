@@ -4,7 +4,7 @@
 .section .text
 .global _start
 .global main
-.global call_realmode_func
+.global call_realmode_func_asm
 
 #define BASE_ADDR 0x21000
 #define BASE_SEG (BASE_ADDR / 16)
@@ -35,20 +35,19 @@ main:
 
 # Actually, we're going to use the "unreal" mode
 
-call_realmode_func:
+call_realmode_func_asm:
 
    pusha
    mov [saved_pm32_esp], esp
 
    mov eax, [esp + 36]               # arg1 : func to call
-   sub eax, (BASE_ADDR - RELOC_ADDR) # adjust the address
    mov [realmode_func_addr], eax
 
    mov eax, [esp + 40]               # arg2: eax
-   mov [realmode_func_eax], eax
+   mov [realmode_func_eax_ref], eax
 
    mov eax, [esp + 44]               # arg3: ebx
-   mov [realmode_func_ebx], eax
+   mov [realmode_func_ebx_ref], eax
 
 
    # load the new gdt, with 16-bit entries + 32-bit data (entry 0x10)
@@ -72,12 +71,15 @@ code16_seg:
    mov cr0, eax
 
 .code16
-   mov ebx, (offset realmode - BASE_ADDR + RELOC_ADDR)
+   # here cs is still 0x08
+   mov ebx, (offset realmode - BASE_ADDR)
    push BASE_SEG
-   push ebx
-   retf # jumps to realmode
+   push bx
+   retf
 
 realmode:
+   # here CS is BASE_SEG
+
    mov ax, 0x00
    mov ds, ax
    mov gs, ax
@@ -96,15 +98,40 @@ realmode:
    #################################################################
    # Call the requested function
 
-   mov eax, (offset realmode_func_eax)
+   # 1. store in 'ax' the address of the function to call
+   mov eax, (offset realmode_func_addr)
+   mov eax, es:[eax]
+   sub eax, BASE_ADDR
+
+   # 2. save on stack the return address
+   mov ebx, (offset after_call - BASE_ADDR)
+   push bx
+
+   # 3. push func's addr on stack in order the ending ret to make the "call"
+   push ax
+
+   # 4. now that we're ready to call the function, we can load the registers,
+   # as specified from the C caller. Note: we couldn't just do a call at the
+   # end instead: that would require using at least a register for computing
+   # the address and we don't want that. The C caller should be able to set
+   # all of the 6 registers: eax, ebx, ecx, edx, esi, edi.
+
+   mov eax, (offset realmode_func_eax_ref)
+   mov eax, es:[eax]
    mov eax, es:[eax]
 
-   mov ebx, (offset realmode_func_ebx)
+   mov ebx, (offset realmode_func_ebx_ref)
+   mov ebx, es:[ebx]
    mov ebx, es:[ebx]
 
-   mov esi, (offset realmode_func_addr)
-   mov di, es:[esi]
-   call di
+   # Call the function pointed at realmode_func_addr
+   ret
+
+after_call:
+
+   # now here we must save back the values of the registers
+   # TODO: finish
+
 
    ##################################################################
    # now we have to go back to protected mode
@@ -142,6 +169,9 @@ pm32:
    popa
    ret
 
+###############################################################################
+# Usable (un)real mode functions
+
 .code16
 
 .global realmode_func_set_video_mode
@@ -163,8 +193,8 @@ realmode_write_char:
 
 saved_pm32_esp:     .long 0
 realmode_func_addr: .long 0
-realmode_func_eax:  .long 0
-realmode_func_ebx:  .long 0
+realmode_func_eax_ref:  .long 0
+realmode_func_ebx_ref:  .long 0
 
 idt16:
    .word 0x03ff          # 256 entries, 4b each = 1K
