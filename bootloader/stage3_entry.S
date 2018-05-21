@@ -78,32 +78,16 @@ realmode:
    lidt    [di]
 
    sti
+   #################################################################
 
-   mov ah, 0x00 # set video mode
-   mov al, 0x03 # 80x25
-   int 0x10     #
+   mov edi, (offset realmode_func_set_video_mode - BASE_ADDR + RELOC_ADDR)
+   call di
 
-   mov ah, 0x0E    # int 10h 'print char' function
+   mov edi, (offset realmode_func_hello - BASE_ADDR + RELOC_ADDR)
+   call di
 
-   mov al, 'B'
-   int 0x10
-   mov al, 'O'
-   int 0x10
-   mov al, 'O'
-   int 0x10
-   mov al, 'T'
-   int 0x10
-   mov al, 'E'
-   int 0x10
-   mov al, 'D'
-   int 0x10
-   mov al, 13 # \r
-   int 0x10
-   mov al, 10 # \n
-   int 0x10
-
+   ##################################################################
    # now we have to go back to protected mode
-
    cli
 
    # load the 32-bit NULL IDT
@@ -137,6 +121,37 @@ pm32:
 
    mov esp, [saved_pm32_esp]
    popa
+   ret
+
+.code16
+
+realmode_func_set_video_mode:
+   mov ah, 0x00 # set video mode
+   mov al, 0x03 # 80x25
+   int 0x10     #
+   ret
+
+realmode_func_hello:
+
+   mov ah, 0x0E    # int 10h 'print char' function
+
+   mov al, 'B'
+   int 0x10
+   mov al, 'O'
+   int 0x10
+   mov al, 'O'
+   int 0x10
+   mov al, 'T'
+   int 0x10
+   mov al, 'E'
+   int 0x10
+   mov al, 'D'
+   int 0x10
+   mov al, 13 # \r
+   int 0x10
+   mov al, 10 # \n
+   int 0x10
+
    ret
 
 # Data

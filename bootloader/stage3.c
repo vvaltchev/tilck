@@ -122,11 +122,11 @@ void bootloader_main(void)
    /* Clear the screen in case we need to show a panic message */
    init_bt();
 
-   //printk("before switch to real mode\n");
+   printk("before switch to real mode\n");
 
    go_to_real_mode_and_back();
 
-   //printk("after switch to real mode\n");
+   printk("after switch to real mode\n");
 
    //asmVolatile("cli");
    //asmVolatile("hlt");
