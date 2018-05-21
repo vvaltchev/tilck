@@ -40,9 +40,16 @@ call_realmode_func:
    pusha
    mov [saved_pm32_esp], esp
 
-   mov eax, [esp+36]                 # arg1 : func to call
+   mov eax, [esp + 36]               # arg1 : func to call
    sub eax, (BASE_ADDR - RELOC_ADDR) # adjust the address
    mov [realmode_func_addr], eax
+
+   mov eax, [esp + 40]               # arg2: eax
+   mov [realmode_func_eax], eax
+
+   mov eax, [esp + 44]               # arg3: ebx
+   mov [realmode_func_ebx], eax
+
 
    # load the new gdt, with 16-bit entries + 32-bit data (entry 0x10)
    lgdt [gdtr16]
@@ -73,7 +80,6 @@ code16_seg:
 realmode:
    mov ax, 0x00
    mov ds, ax
-   #mov es, ax
    mov gs, ax
    mov ss, ax
 
@@ -86,10 +92,15 @@ realmode:
    lidt    fs:[di]
 
    sti
-   #################################################################
 
-#   mov esi, (offset realmode_func_addr - BASE_ADDR)
-#   call fs:[si]
+   #################################################################
+   # Call the requested function
+
+   mov eax, (offset realmode_func_eax)
+   mov eax, es:[eax]
+
+   mov ebx, (offset realmode_func_ebx)
+   mov ebx, es:[ebx]
 
    mov esi, (offset realmode_func_addr)
    mov di, es:[esi]
@@ -97,6 +108,7 @@ realmode:
 
    ##################################################################
    # now we have to go back to protected mode
+
    cli
 
    # load the 32-bit NULL IDT
@@ -139,35 +151,20 @@ realmode_func_set_video_mode:
    int 0x10     #
    ret
 
-.global realmode_func_hello
-realmode_func_hello:
+.global realmode_write_char
+realmode_write_char:
 
-   mov ah, 0x0E    # int 10h 'print char' function
-
-   mov al, 'B'
+   mov ah, 0x0E
    int 0x10
-   mov al, 'O'
-   int 0x10
-   mov al, 'O'
-   int 0x10
-   mov al, 'T'
-   int 0x10
-   mov al, 'E'
-   int 0x10
-   mov al, 'D'
-   int 0x10
-   mov al, 13 # \r
-   int 0x10
-   mov al, 10 # \n
-   int 0x10
-
    ret
 
 # Data
 #################################
 
-saved_pm32_esp: .long 0
+saved_pm32_esp:     .long 0
 realmode_func_addr: .long 0
+realmode_func_eax:  .long 0
+realmode_func_ebx:  .long 0
 
 idt16:
    .word 0x03ff          # 256 entries, 4b each = 1K

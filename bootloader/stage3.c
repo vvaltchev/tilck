@@ -114,9 +114,9 @@ multiboot_info_t *setup_multiboot_info(void)
 
 
 void realmode_func_set_video_mode();
-void realmode_func_hello();
+void realmode_write_char();
 
-void call_realmode_func(void *func);
+void call_realmode_func(void *func, u32 eax, u32 ebx);
 
 void bootloader_main(void)
 {
@@ -128,9 +128,14 @@ void bootloader_main(void)
 
    printk("before switch to real mode\n\n\n");
 
-   call_realmode_func(realmode_func_set_video_mode);
-   call_realmode_func(realmode_func_hello);
-   call_realmode_func(realmode_func_hello);
+   const char *str = "Hi from C\r\n";
+   call_realmode_func(realmode_func_set_video_mode, 0, 0);
+
+   while (*str) {
+      call_realmode_func(realmode_write_char, *str, 0);
+      str++;
+   }
+
    printk("after switch to real mode\n");
 
    //asmVolatile("cli");
