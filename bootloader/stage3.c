@@ -130,7 +130,7 @@ void bootloader_main(void)
 
    call_realmode_func(realmode_func_set_video_mode);
    call_realmode_func(realmode_func_hello);
-
+   call_realmode_func(realmode_func_hello);
    printk("after switch to real mode\n");
 
    //asmVolatile("cli");

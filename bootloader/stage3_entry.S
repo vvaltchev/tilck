@@ -33,6 +33,8 @@ main:
 
 ########################################
 
+# Actually, we're going to use the "unreal" mode
+
 call_realmode_func:
 
    pusha
@@ -42,16 +44,17 @@ call_realmode_func:
    sub eax, (BASE_ADDR - RELOC_ADDR) # adjust the address
    mov [realmode_func_addr], eax
 
-   # load the new gdt, with 16-bit entries
+   # load the new gdt, with 16-bit entries + 32-bit data (entry 0x10)
    lgdt [gdtr16]
 
-   # Load ds, es, fs, gs, ss with a 16-bit data segment.
-   mov ax, 0x10
+   # Load ds, fs, gs, ss with a 16-bit data segment.
+   mov ax, 0x18
    mov ds, ax
-   mov es, ax
    mov fs, ax
    mov gs, ax
    mov ss, ax
+
+   # Note: don't touch es: it's 0x10 (32-bit data segment)
 
    # Jump to a CODE16 segment
    jmp 0x08:(code16_seg - BASE_ADDR + RELOC_ADDR)
@@ -70,7 +73,7 @@ code16_seg:
 realmode:
    mov ax, 0x00
    mov ds, ax
-   mov es, ax
+   #mov es, ax
    mov gs, ax
    mov ss, ax
 
@@ -79,26 +82,30 @@ realmode:
    mov ax, BASE_SEG
    mov fs, ax
 
-   mov     edi, (offset idt16 - BASE_ADDR + RELOC_ADDR)
-   lidt    [di]
+   mov     edi, (offset idt16 - BASE_ADDR)
+   lidt    fs:[di]
 
    sti
    #################################################################
 
-   mov esi, (offset realmode_func_addr - BASE_ADDR)
-   call fs:[si]
+#   mov esi, (offset realmode_func_addr - BASE_ADDR)
+#   call fs:[si]
+
+   mov esi, (offset realmode_func_addr)
+   mov di, es:[esi]
+   call di
 
    ##################################################################
    # now we have to go back to protected mode
    cli
 
    # load the 32-bit NULL IDT
-   mov edi, (offset idt32 - BASE_ADDR + RELOC_ADDR)
-   lidt [di]
+   mov edi, (offset idt32 - BASE_ADDR)
+   lidt fs:[di]
 
    # load the a gdt with 32-bit segments
-   mov ebx, (offset gdtr32 - BASE_ADDR + RELOC_ADDR)
-   lgdt [ebx]
+   mov ebx, (offset gdtr32 - BASE_ADDR)
+   lgdt fs:[ebx]
 
    mov eax, cr0
    or al, 1 # PE bit
@@ -190,8 +197,12 @@ gdt16:
 
    .byte 0x00   # base 24-31 bits
 
-   # sel 0x10. 64k 16-bit data
+   # sel 0x10: 32-bit data
+   .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00
+
+   # sel 0x18. 64k 16-bit data
    .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0x00, 0x00
+
 
 gdtr16:
    .word 0x23
