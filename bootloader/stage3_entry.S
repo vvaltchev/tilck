@@ -70,19 +70,18 @@ code16_seg:
 
 .code16
    # here CS is still 0x08
-   mov ebx, (offset realmode - BASE_ADDR + RELOC_ADDR)
-   push 0
+   mov ebx, (offset realmode - BASE_ADDR)
+   push BASE_SEG
    push bx
    retf
 
 realmode:
-   # here CS is 0
+   # here CS is BASE_SEG
 
    mov ax, 0x00
    mov fs, ax
    mov gs, ax
    mov ss, ax
-
    mov sp, REALMODE_STACK
 
    mov ax, BASE_SEG
@@ -100,16 +99,13 @@ realmode:
    mov eax, (offset realmode_func_addr)
    mov eax, es:[eax]
    sub eax, BASE_ADDR
-   add eax, RELOC_ADDR
 
    # 2. save on stack the return address
-   mov ebx, (offset after_call - BASE_ADDR + RELOC_ADDR)
-   push 0
+   mov ebx, (offset after_call - BASE_ADDR)
    push bx
 
 
    # 3. push func's addr on stack in order the ending ret to make the "call"
-   push 0
    push ax
 
    # 4. now that we're ready to call the function, we can load the registers,
@@ -143,12 +139,11 @@ realmode:
    mov edi, es:[edi]
 
    # Call the function pointed at realmode_func_addr
-   retf
+   ret
 
 after_call:
 
    # now here we must save back the values of the registers
-   # TODO: finish
 
    mov esp, (offset rm_ret_ax - BASE_ADDR + RELOC_ADDR + 2)
 
@@ -180,10 +175,23 @@ after_call:
    or al, 1 # PE bit
    mov cr0, eax
 
+
    mov eax, (offset pm32 - BASE_ADDR + RELOC_ADDR)
    push 0x08
    push ax
    retf
+
+/*
+   # Alternative: use 0x66 (Operand Size Override Prefix)
+   # before push and retf to use the 32-bit version of those instructions.
+
+   mov eax, (offset pm32)
+   push 0x08
+   .byte 0x66
+   push eax
+   .byte 0x66
+   retf
+*/
 
 .code32
 
@@ -228,7 +236,6 @@ pm32:
 
 ###############################################################################
 # Usable (un)real mode functions
-# NOTE: funcs MUST use 'retf' and NOT 'ret' to return
 
 .code16
 
@@ -243,7 +250,7 @@ realmode_test_out:
    mov si, 300
    mov di, 350
 
-   retf
+   ret
 
 
 .global realmode_func_set_video_mode
@@ -251,14 +258,14 @@ realmode_func_set_video_mode:
    mov ah, 0x00 # set video mode
    mov al, 0x03 # 80x25
    int 0x10     #
-   retf
+   ret
 
 .global realmode_write_char
 realmode_write_char:
 
    mov ah, 0x0E
    int 0x10
-   retf
+   ret
 
 # Data
 #################################
