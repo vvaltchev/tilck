@@ -13,43 +13,34 @@ _start:
 main:
 
 1:
+   # Copy this code to RELOC_ADDR in order to allow switch back to realmode
+   mov esi, offset _start
+   mov edi, RELOC_ADDR
+   mov ecx, 0x400  # 1024
+   rep movsd
+
    # Zero-out the BSS
+   mov ecx, offset __bss_end
+   sub ecx, offset __bss_start
+   xor eax, eax
+   rep stosb
 
-   mov eax, offset __bss_start
-   mov ebx, offset __bss_end
-   xor ecx, ecx
-
-2:
-   mov [eax], ecx
-   add eax, 4
-
-   cmp eax, ebx
-   jle 2b
-
-   # Jump to main
+   # Jump to bootloader's main
    jmp bootloader_main
 
 ########################################
 
 go_to_real_mode_and_back:
 
-
+   pusha
    mov [saved_pm32_esp], esp
 
-   mov esi, offset _start
-   mov edi, RELOC_ADDR
-   mov ecx, 0x400  # 1024
-   rep movsd
-
    # load the new gdt, with 16-bit entries
-
    lea eax, [gdtr+2]
    mov dword ptr [eax], offset gdt16
    lgdt [gdtr]
 
-
    # Load ds, es, fs, gs, ss with a 16-bit data segment.
-
    mov ax, 0x10
    mov ds, ax
    mov es, ax
@@ -79,8 +70,8 @@ realmode:
    mov es, ax
    mov fs, ax
    mov gs, ax
+   mov ss, ax
 
-   mov ss, ax      # Set stack segment and pointer
    mov sp, 0xFFF0
 
    mov     edi, (offset idt16 - BASE_ADDR + RELOC_ADDR)
@@ -137,7 +128,6 @@ realmode:
 .code32
 
 pm32:
-
    mov ax, 0x10
    mov ds, ax
    mov es, ax
@@ -146,6 +136,7 @@ pm32:
    mov ss, ax
 
    mov esp, [saved_pm32_esp]
+   popa
    ret
 
 # Data
