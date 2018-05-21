@@ -43,12 +43,10 @@ call_realmode_func_asm:
    mov eax, [esp + 36]               # arg1 : func to call
    mov [realmode_func_addr], eax
 
-   mov eax, [esp + 40]               # arg2: eax
-   mov [realmode_func_eax_ref], eax
-
-   mov eax, [esp + 44]               # arg3: ebx
-   mov [realmode_func_ebx_ref], eax
-
+   mov ecx, 6
+   lea esi, [esp + 40]
+   mov edi, offset realmode_func_eax_ref
+   rep movsd
 
    # load the new gdt, with 16-bit entries + 32-bit data (entry 0x10)
    lgdt [gdtr16]
@@ -71,27 +69,27 @@ code16_seg:
    mov cr0, eax
 
 .code16
-   # here cs is still 0x08
-   mov ebx, (offset realmode - BASE_ADDR)
-   push BASE_SEG
+   # here CS is still 0x08
+   mov ebx, (offset realmode - BASE_ADDR + RELOC_ADDR)
+   push 0
    push bx
    retf
 
 realmode:
-   # here CS is BASE_SEG
+   # here CS is 0
 
    mov ax, 0x00
-   mov ds, ax
+   mov fs, ax
    mov gs, ax
    mov ss, ax
 
    mov sp, REALMODE_STACK
 
    mov ax, BASE_SEG
-   mov fs, ax
+   mov ds, ax
 
    mov     edi, (offset idt16 - BASE_ADDR)
-   lidt    fs:[di]
+   lidt    [di]
 
    sti
 
@@ -102,12 +100,16 @@ realmode:
    mov eax, (offset realmode_func_addr)
    mov eax, es:[eax]
    sub eax, BASE_ADDR
+   add eax, RELOC_ADDR
 
    # 2. save on stack the return address
-   mov ebx, (offset after_call - BASE_ADDR)
+   mov ebx, (offset after_call - BASE_ADDR + RELOC_ADDR)
+   push 0
    push bx
 
+
    # 3. push func's addr on stack in order the ending ret to make the "call"
+   push 0
    push ax
 
    # 4. now that we're ready to call the function, we can load the registers,
@@ -124,14 +126,42 @@ realmode:
    mov ebx, es:[ebx]
    mov ebx, es:[ebx]
 
+   mov ecx, (offset realmode_func_ecx_ref)
+   mov ecx, es:[ecx]
+   mov ecx, es:[ecx]
+
+   mov edx, (offset realmode_func_edx_ref)
+   mov edx, es:[edx]
+   mov edx, es:[edx]
+
+   mov esi, (offset realmode_func_esi_ref)
+   mov esi, es:[esi]
+   mov esi, es:[esi]
+
+   mov edi, (offset realmode_func_edi_ref)
+   mov edi, es:[edi]
+   mov edi, es:[edi]
+
    # Call the function pointed at realmode_func_addr
-   ret
+   retf
 
 after_call:
 
    # now here we must save back the values of the registers
    # TODO: finish
 
+   mov esp, (offset rm_ret_ax - BASE_ADDR + RELOC_ADDR + 2)
+
+   push ax
+   push bx
+   push cx
+   push dx
+   push si
+   push di
+
+   mov ax, 0
+   mov ss, ax
+   mov sp, REALMODE_STACK
 
    ##################################################################
    # now we have to go back to protected mode
@@ -140,11 +170,11 @@ after_call:
 
    # load the 32-bit NULL IDT
    mov edi, (offset idt32 - BASE_ADDR)
-   lidt fs:[di]
+   lidt [di]
 
    # load the a gdt with 32-bit segments
    mov ebx, (offset gdtr32 - BASE_ADDR)
-   lgdt fs:[ebx]
+   lgdt [ebx]
 
    mov eax, cr0
    or al, 1 # PE bit
@@ -165,36 +195,92 @@ pm32:
    mov gs, ax
    mov ss, ax
 
+   xor eax, eax
+
+   mov ax, [rm_ret_ax - BASE_ADDR + RELOC_ADDR]
+   mov ebx, [realmode_func_eax_ref]
+   mov [ebx], eax
+
+   mov ax, [rm_ret_bx - BASE_ADDR + RELOC_ADDR]
+   mov ebx, [realmode_func_ebx_ref]
+   mov [ebx], eax
+
+   mov ax, [rm_ret_cx - BASE_ADDR + RELOC_ADDR]
+   mov ebx, [realmode_func_ecx_ref]
+   mov [ebx], eax
+
+   mov ax, [rm_ret_dx - BASE_ADDR + RELOC_ADDR]
+   mov ebx, [realmode_func_edx_ref]
+   mov [ebx], eax
+
+   mov ax, [rm_ret_si - BASE_ADDR + RELOC_ADDR]
+   mov ebx, [realmode_func_esi_ref]
+   mov [ebx], eax
+
+   mov ax, [rm_ret_di - BASE_ADDR + RELOC_ADDR]
+   mov ebx, [realmode_func_edi_ref]
+   mov [ebx], eax
+
+
    mov esp, [saved_pm32_esp]
    popa
    ret
 
 ###############################################################################
 # Usable (un)real mode functions
+# NOTE: funcs MUST use 'retf' and NOT 'ret' to return
 
 .code16
+
+
+.global realmode_test_out
+realmode_test_out:
+
+   mov ax, 23
+   mov bx, 99
+   mov cx, 100
+   mov dx, 102
+   mov si, 300
+   mov di, 350
+
+   retf
+
 
 .global realmode_func_set_video_mode
 realmode_func_set_video_mode:
    mov ah, 0x00 # set video mode
    mov al, 0x03 # 80x25
    int 0x10     #
-   ret
+   retf
 
 .global realmode_write_char
 realmode_write_char:
 
    mov ah, 0x0E
    int 0x10
-   ret
+   retf
 
 # Data
 #################################
 
 saved_pm32_esp:     .long 0
 realmode_func_addr: .long 0
+
 realmode_func_eax_ref:  .long 0
 realmode_func_ebx_ref:  .long 0
+realmode_func_ecx_ref:  .long 0
+realmode_func_edx_ref:  .long 0
+realmode_func_esi_ref:  .long 0
+realmode_func_edi_ref:  .long 0
+
+
+rm_ret_di: .word 0
+rm_ret_si: .word 0
+rm_ret_dx: .word 0
+rm_ret_cx: .word 0
+rm_ret_bx: .word 0
+rm_ret_ax: .word 0
+
 
 idt16:
    .word 0x03ff          # 256 entries, 4b each = 1K
