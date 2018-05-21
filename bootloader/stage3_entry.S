@@ -4,9 +4,11 @@
 .section .text
 .global _start
 .global main
-.global go_to_real_mode_and_back
+.global call_realmode_func
 
 #define BASE_ADDR 0x21000
+#define BASE_SEG (BASE_ADDR / 16)
+
 #define RELOC_ADDR 0x2000
 
 _start:
@@ -30,10 +32,14 @@ main:
 
 ########################################
 
-go_to_real_mode_and_back:
+call_realmode_func:
 
    pusha
    mov [saved_pm32_esp], esp
+
+   mov eax, [esp+36]                 # arg1 : func to call
+   sub eax, (BASE_ADDR - RELOC_ADDR) # adjust the address
+   mov [realmode_func_addr], eax
 
    # load the new gdt, with 16-bit entries
    lea eax, [gdtr+2]
@@ -52,7 +58,6 @@ go_to_real_mode_and_back:
    jmp 0x08:(code16_seg - BASE_ADDR + RELOC_ADDR)
 
 code16_seg:
-
    mov eax, cr0
    and al, 0xfe # Disable protected mode.
    mov cr0, eax
@@ -64,15 +69,16 @@ code16_seg:
    retf # jumps to realmode
 
 realmode:
-
    mov ax, 0x00
    mov ds, ax
    mov es, ax
-   mov fs, ax
    mov gs, ax
    mov ss, ax
 
    mov sp, 0xFFF0
+
+   mov ax, BASE_SEG
+   mov fs, ax
 
    mov     edi, (offset idt16 - BASE_ADDR + RELOC_ADDR)
    lidt    [di]
@@ -80,11 +86,8 @@ realmode:
    sti
    #################################################################
 
-   mov edi, (offset realmode_func_set_video_mode - BASE_ADDR + RELOC_ADDR)
-   call di
-
-   mov edi, (offset realmode_func_hello - BASE_ADDR + RELOC_ADDR)
-   call di
+   mov esi, (offset realmode_func_addr - BASE_ADDR)
+   call fs:[si]
 
    ##################################################################
    # now we have to go back to protected mode
@@ -125,12 +128,14 @@ pm32:
 
 .code16
 
+.global realmode_func_set_video_mode
 realmode_func_set_video_mode:
    mov ah, 0x00 # set video mode
    mov al, 0x03 # 80x25
    int 0x10     #
    ret
 
+.global realmode_func_hello
 realmode_func_hello:
 
    mov ah, 0x0E    # int 10h 'print char' function
@@ -157,8 +162,8 @@ realmode_func_hello:
 # Data
 #################################
 
-saved_pm32_esp:
-   .long 0
+saved_pm32_esp: .long 0
+realmode_func_addr: .long 0
 
 idt16:
    .word 0x03ff          # 256 entries, 4b each = 1K

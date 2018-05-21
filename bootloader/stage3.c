@@ -112,7 +112,11 @@ multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
-void go_to_real_mode_and_back();
+
+void realmode_func_set_video_mode();
+void realmode_func_hello();
+
+void call_realmode_func(void *func);
 
 void bootloader_main(void)
 {
@@ -122,9 +126,10 @@ void bootloader_main(void)
    /* Clear the screen in case we need to show a panic message */
    init_bt();
 
-   printk("before switch to real mode\n");
+   printk("before switch to real mode\n\n\n");
 
-   go_to_real_mode_and_back();
+   call_realmode_func(realmode_func_set_video_mode);
+   call_realmode_func(realmode_func_hello);
 
    printk("after switch to real mode\n");
 
