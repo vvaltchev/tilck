@@ -38,10 +38,23 @@ void check_rm_out_regs(void)
 
    realmode_call(&realmode_test_out, &eax, &ebx, &ecx, &edx, &esi, &edi);
 
-   printk("eax: %d\n", eax);
-   printk("ebx: %d\n", ebx);
-   printk("ecx: %d\n", ecx);
-   printk("edx: %d\n", edx);
-   printk("esi: %d\n", esi);
-   printk("edi: %d\n", edi);
+   ASSERT(eax == 23);
+   ASSERT(ebx == 99);
+   ASSERT(ecx == 100);
+   ASSERT(edx == 102);
+   ASSERT(esi == 300);
+   ASSERT(edi == 350);
+}
+
+void bios_get_vbe_info_block(VbeInfoBlock *vb)
+{
+   u32 eax, ebx, ecx, edx, esi, edi;
+
+   eax = 0x4f00;
+   edi = (u32) vb;
+
+   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
+
+   if (eax != 0x004f)
+      panic("VBE get info failed");
 }

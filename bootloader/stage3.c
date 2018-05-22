@@ -114,6 +114,21 @@ multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
+void *get_flat_ptr(u32 seg, u32 off)
+{
+   return (void *)(seg * 16 + off);
+}
+
+void query_video_modes(void)
+{
+   VbeInfoBlock vb;
+   bios_get_vbe_info_block(&vb);
+
+   printk("Vbe version: %u\n", vb.VbeVersion);
+   printk("Total memory: %u\n", vb.TotalMemory * 64 * KB);
+   printk("EOM string: '%s'\n", get_flat_ptr(vb.OemStringPtr[0], vb.OemStringPtr[1]));
+}
+
 void bootloader_main(void)
 {
    void *entry;
@@ -122,7 +137,11 @@ void bootloader_main(void)
    /* Clear the screen in case we need to show a panic message */
    init_bt();
 
+   printk("Hello from the 3rd stage of the exOS bootloader!\n");
+   printk("Query video modes\n");
+
    check_rm_out_regs();
+   query_video_modes();
    //asmVolatile("hlt");
 
    calculate_ramdisk_size();

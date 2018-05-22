@@ -31,3 +31,9 @@ realmode_write_char:
    mov ah, 0x0E
    int 0x10
    ret
+
+.global realmode_int_10h
+realmode_int_10h:
+
+   int 0x10
+   ret
