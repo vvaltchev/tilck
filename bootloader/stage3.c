@@ -3,11 +3,13 @@
 #include <common/string_util.h>
 #include <common/fat32_base.h>
 #include <common/utils.h>
+#include <common/arch/generic_x86/x86_utils.h>
 
 #include <elf.h>
 #include <multiboot.h>
 
 #include "basic_term.h"
+#include "realmode_call.h"
 
 #define RAMDISK_PADDR              (KERNEL_PADDR + KERNEL_MAX_SIZE)
 #define MBI_PADDR (0x10000)
@@ -112,66 +114,6 @@ multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
-
-void realmode_func_set_video_mode();
-void realmode_write_char();
-void realmode_test_out();
-
-void call_realmode_func_asm(void *func,
-                            u32 *eax_ref,
-                            u32 *ebx_ref,
-                            u32 *ecx_ref,
-                            u32 *edx_ref,
-                            u32 *esi_ref,
-                            u32 *edi_ref);
-
-void call_realmode(void *func,
-                   u32 *eax_ref,
-                   u32 *ebx_ref,
-                   u32 *ecx_ref,
-                   u32 *edx_ref,
-                   u32 *esi_ref,
-                   u32 *edi_ref)
-{
-   ASSERT(func != NULL);
-   ASSERT(eax_ref != NULL);
-   ASSERT(ebx_ref != NULL);
-   ASSERT(ecx_ref != NULL);
-   ASSERT(edx_ref != NULL);
-   ASSERT(esi_ref != NULL);
-   ASSERT(edi_ref != NULL);
-
-   call_realmode_func_asm(func, eax_ref, ebx_ref,
-                          ecx_ref, edx_ref, esi_ref, edi_ref);
-}
-
-void call_realmode_by_val(void *func,
-                          u32 eax,
-                          u32 ebx,
-                          u32 ecx,
-                          u32 edx,
-                          u32 esi,
-                          u32 edi)
-{
-   ASSERT(func != NULL);
-   call_realmode_func_asm(func, &eax, &ebx, &ecx, &edx, &esi, &edi);
-}
-
-
-void check_rm_out_regs(void)
-{
-   u32 eax, ebx, ecx, edx, esi, edi;
-
-   call_realmode(realmode_test_out, &eax, &ebx, &ecx, &edx, &esi, &edi);
-
-   printk("eax: %d\n", eax);
-   printk("ebx: %d\n", ebx);
-   printk("ecx: %d\n", ecx);
-   printk("edx: %d\n", edx);
-   printk("esi: %d\n", esi);
-   printk("edi: %d\n", edi);
-}
-
 void bootloader_main(void)
 {
    void *entry;
@@ -180,19 +122,19 @@ void bootloader_main(void)
    /* Clear the screen in case we need to show a panic message */
    init_bt();
 
-   printk("before switch to real mode\n\n\n\n\n\n\n\n\n");
-
-   check_rm_out_regs();
-
    const char *str = "Hi from C\r\n";
-   //call_realmode_by_val(realmode_func_set_video_mode, 0, 0, 0, 0, 0, 0);
+   const char *ptr = str;
 
-   while (*str) {
-      call_realmode_by_val(realmode_write_char, (u32)*str, 0, 0, 0, 0, 0);
-      str++;
+   u64 start, end;
+   start = RDTSC();
+
+   while (*ptr) {
+      realmode_call_by_val(realmode_write_char, (u32)*ptr++, 0, 0, 0, 0, 0);
    }
 
-   printk("after switch to real mode\n");
+   end = RDTSC();
+   printk("cycles/rm_call: %llu\n", (end-start)/strlen(str));
+   //printk("after switch to real mode\n");
 
    //asmVolatile("cli");
    //asmVolatile("hlt");

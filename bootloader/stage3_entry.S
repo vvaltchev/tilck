@@ -4,7 +4,7 @@
 .section .text
 .global _start
 .global main
-.global call_realmode_func_asm
+.global realmode_call_asm
 
 #define BASE_ADDR 0x21000
 #define BASE_SEG (BASE_ADDR / 16)
@@ -28,7 +28,7 @@ main:
 
 # Actually, we're going to use the "unreal" mode
 
-call_realmode_func_asm:
+realmode_call_asm:
 
    pusha
    mov [saved_pm32_esp], esp
@@ -243,9 +243,10 @@ realmode_test_out:
 
 .global realmode_func_set_video_mode
 realmode_func_set_video_mode:
+
    mov ah, 0x00 # set video mode
    mov al, 0x03 # 80x25
-   int 0x10     #
+   int 0x10
    ret
 
 .global realmode_write_char
