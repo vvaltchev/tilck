@@ -43,36 +43,36 @@ realmode_call_asm:
    # load the new gdt, with 16-bit entries + 32-bit data (entry 0x10)
    lgdt [gdtr16]
 
-   # Load ds, fs, gs, ss with a 16-bit data segment.
-   mov ax, 0x18
-   mov ds, ax
-   mov fs, ax
-   mov gs, ax
-   mov ss, ax
-
-   # Note: don't touch es: it's 0x10 (32-bit data segment)
-
    # Jump to a CODE16 segment
+
+   # Note: we haven't touched the other segment registers (ds, ss, fs, gs, es).
+   # They will remain "cached" as 32-bit selectors (we want UNREAL mode).
+
+   # Note(2): we're jumping to 'code16_seg' with addressing relative to 0,
+   # because in the gdt16, the code segment has BASE_ADDR as 'base'.
    jmp 0x08:(code16_seg - BASE_ADDR)
 
 code16_seg:
+
+   # If we set here all the segment registers (not only CS) here we would be
+   # in 16-bit protected mode.
+
    mov eax, cr0
    and al, 0xfe # Disable protected mode.
    mov cr0, eax
 
 .code16
-   # here CS is still 0x08
+   # here CS is still 0x08, time to switch to proper 16-bit segmentation.
    mov ebx, (offset realmode - BASE_ADDR)
    push BASE_SEG
    push bx
    retf
 
 realmode:
-   # here CS is BASE_SEG
+   # here CS is BASE_SEG and we are properly in (un)real mode.
 
-   mov ax, 0x00
-   mov fs, ax
-   mov gs, ax
+   # Now we just need to set 'ds' and 'ss' to BASE_SEG, using the 16-bit
+   # segmentation mechanism. This makes everything simpler.
 
    mov ax, BASE_SEG
    mov ds, ax
@@ -274,10 +274,7 @@ gdt16:
 
    .byte 0x00   # base 24-31 bits
 
-   # sel 0x10: 32-bit data
-   .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00
-
-   # sel 0x18. 64k 16-bit data
+   # sel 0x10. 64k 16-bit data (unused)
    .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0x00, 0x00
 
 
