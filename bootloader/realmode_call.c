@@ -36,7 +36,7 @@ void check_rm_out_regs(void)
 {
    u32 eax, ebx, ecx, edx, esi, edi;
 
-   realmode_call(realmode_test_out, &eax, &ebx, &ecx, &edx, &esi, &edi);
+   realmode_call(&realmode_test_out, &eax, &ebx, &ecx, &edx, &esi, &edi);
 
    printk("eax: %d\n", eax);
    printk("ebx: %d\n", ebx);

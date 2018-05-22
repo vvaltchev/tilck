@@ -14,7 +14,6 @@
 _start:
 main:
 
-1:
    # Zero-out the BSS
    mov ecx, offset __bss_end
    sub ecx, offset __bss_start
@@ -192,30 +191,19 @@ pm32:
 
    xor eax, eax
 
-   mov ax, [rm_ret_ax]
-   mov ebx, [realmode_func_eax_ref]
-   mov [ebx], eax
+   # Copy rm_ret_* at the address pointed by each realmode_func_*_ref
 
-   mov ax, [rm_ret_bx]
-   mov ebx, [realmode_func_ebx_ref]
-   mov [ebx], eax
+   lea esi, [rm_ret_ax]
+   lea edi, [realmode_func_eax_ref]
+   mov ecx, 6
 
-   mov ax, [rm_ret_cx]
-   mov ebx, [realmode_func_ecx_ref]
+1:
+   mov ax, [esi]
+   mov ebx, [edi]
    mov [ebx], eax
-
-   mov ax, [rm_ret_dx]
-   mov ebx, [realmode_func_edx_ref]
-   mov [ebx], eax
-
-   mov ax, [rm_ret_si]
-   mov ebx, [realmode_func_esi_ref]
-   mov [ebx], eax
-
-   mov ax, [rm_ret_di]
-   mov ebx, [realmode_func_edi_ref]
-   mov [ebx], eax
-
+   sub esi, 2
+   add edi, 4
+   loop 1b
 
    mov esp, [saved_pm32_esp]
    popa

@@ -122,21 +122,7 @@ void bootloader_main(void)
    /* Clear the screen in case we need to show a panic message */
    init_bt();
 
-   const char *str = "Hi from C\r\n";
-   const char *ptr = str;
-
-   u64 start, end;
-   start = RDTSC();
-
-   while (*ptr) {
-      realmode_call_by_val(realmode_write_char, (u32)*ptr++, 0, 0, 0, 0, 0);
-   }
-
-   end = RDTSC();
-   printk("cycles/rm_call: %llu\n", (end-start)/strlen(str));
-   //printk("after switch to real mode\n");
-
-   //asmVolatile("cli");
+   check_rm_out_regs();
    //asmVolatile("hlt");
 
    calculate_ramdisk_size();
