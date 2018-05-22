@@ -42,7 +42,7 @@ static void textmode_scroll_one_line_up(void)
 {
    memcpy32(VIDEO_ADDR,
             VIDEO_ADDR + VIDEO_COLS,
-            (VIDEO_ROWS * VIDEO_COLS - 1) >> 1);
+            ((VIDEO_ROWS - 1) * VIDEO_COLS) >> 1);
 }
 
 /*

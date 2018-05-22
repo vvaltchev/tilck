@@ -14,8 +14,6 @@ void vprintk(const char *fmt, va_list args)
    const char *ptr = fmt;
    char buf[64];
 
-   print_string("[kernel] ");
-
    while (*ptr) {
 
       if (*ptr != '%') {

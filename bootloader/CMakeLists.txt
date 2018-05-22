@@ -56,6 +56,7 @@ set(
 
    -D__EXOS_BOOTLOADER__
 
+   -g
    -mno-red-zone
    -ffreestanding
    -nostdinc

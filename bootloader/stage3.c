@@ -114,19 +114,48 @@ multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
-void *get_flat_ptr(u32 seg, u32 off)
+void *get_flat_ptr(u16 far_ptr[2])
 {
-   return (void *)(seg * 16 + off);
+   return (void *)((u32)far_ptr[0] + (u32)far_ptr[1] * 16);
 }
+
 
 void query_video_modes(void)
 {
-   VbeInfoBlock vb;
-   bios_get_vbe_info_block(&vb);
+   VbeInfoBlock *vb = (void *)0x2000;
+   ModeInfoBlock *mi = (void *)0x3000;
 
-   printk("Vbe version: %u\n", vb.VbeVersion);
-   printk("Total memory: %u\n", vb.TotalMemory * 64 * KB);
-   printk("EOM string: '%s'\n", get_flat_ptr(vb.OemStringPtr[0], vb.OemStringPtr[1]));
+   printk("Query video modes\n");
+
+   bzero(vb, sizeof(*vb));
+   memcpy(vb->VbeSignature, "VBE2", 4);
+
+   bios_get_vbe_info_block((void *)vb);
+
+   printk("Vbe version: 0x%x\n", vb->VbeVersion);
+   printk("EOM string: '%s'\n", get_flat_ptr(vb->OemStringPtr));
+
+   u16 *modes = get_flat_ptr(vb->VideoModePtr);
+
+   for (u32 i = 0; modes[i] != 0xffff; i++) {
+
+      if (!bios_get_vbe_info_mode(modes[i], (void *)mi))
+         continue;
+
+      if (mi->attributes & (1 << 4)) { // bit 4: text/graphics mode
+
+         /* skip graphics mode not supporting a linear framebuffer */
+         if (!(mi->attributes & (1 << 7)))
+            continue;
+
+         /* skip graphics modes with bbp != 32 */
+         if (mi->bpp != 32)
+            continue;
+      }
+
+      printk("Mode [%u -> 0x%x]: %d x %d\n",
+             i, modes[i], mi->Xres, mi->Yres);
+   }
 }
 
 void bootloader_main(void)
@@ -137,11 +166,10 @@ void bootloader_main(void)
    /* Clear the screen in case we need to show a panic message */
    init_bt();
 
-   printk("Hello from the 3rd stage of the exOS bootloader!\n");
-   printk("Query video modes\n");
+   //printk("Hello from the 3rd stage of the exOS bootloader!\n");
 
    check_rm_out_regs();
-   query_video_modes();
+   //query_video_modes();
    //asmVolatile("hlt");
 
    calculate_ramdisk_size();

@@ -9,8 +9,6 @@
 #define BASE_ADDR 0x21000
 #define BASE_SEG (BASE_ADDR / 16)
 
-#define RELOC_ADDR 0x2000
-
 _start:
 main:
 
@@ -70,8 +68,11 @@ code16_seg:
 realmode:
    # here CS is BASE_SEG and we are properly in (un)real mode.
 
-   # Now we just need to set 'ds' and 'ss' to BASE_SEG, using the 16-bit
+   # Now we just need to set ds, es, ss to BASE_SEG, using the 16-bit
    # segmentation mechanism. This makes everything simpler.
+
+   mov ax, 0
+   mov es, ax
 
    mov ax, BASE_SEG
    mov ds, ax
@@ -88,7 +89,7 @@ realmode:
 
    # 1. store in 'ax' the address of the function to call
    mov eax, (offset realmode_func_addr)
-   mov eax, es:[eax]
+   mov eax, fs:[eax]
    sub eax, BASE_ADDR
 
    # 2. save on stack the return address
@@ -105,28 +106,28 @@ realmode:
    # all of the 6 registers: eax, ebx, ecx, edx, esi, edi.
 
    mov eax, (offset realmode_func_eax_ref)
-   mov eax, es:[eax]
-   mov eax, es:[eax]
+   mov eax, fs:[eax]
+   mov eax, fs:[eax]
 
    mov ebx, (offset realmode_func_ebx_ref)
-   mov ebx, es:[ebx]
-   mov ebx, es:[ebx]
+   mov ebx, fs:[ebx]
+   mov ebx, fs:[ebx]
 
    mov ecx, (offset realmode_func_ecx_ref)
-   mov ecx, es:[ecx]
-   mov ecx, es:[ecx]
+   mov ecx, fs:[ecx]
+   mov ecx, fs:[ecx]
 
    mov edx, (offset realmode_func_edx_ref)
-   mov edx, es:[edx]
-   mov edx, es:[edx]
+   mov edx, fs:[edx]
+   mov edx, fs:[edx]
 
    mov esi, (offset realmode_func_esi_ref)
-   mov esi, es:[esi]
-   mov esi, es:[esi]
+   mov esi, fs:[esi]
+   mov esi, fs:[esi]
 
    mov edi, (offset realmode_func_edi_ref)
-   mov edi, es:[edi]
-   mov edi, es:[edi]
+   mov edi, fs:[edi]
+   mov edi, fs:[edi]
 
    # Call the function pointed at realmode_func_addr
    ret

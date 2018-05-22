@@ -40,8 +40,8 @@ static void bt_incr_row()
    // We have to scroll...
 
    memmove(TERMINAL_VIDEO_ADDR,
-           TERMINAL_VIDEO_ADDR + 2 * TERM_WIDTH,
-           TERM_WIDTH * TERM_HEIGHT * 2);
+           TERMINAL_VIDEO_ADDR + TERM_WIDTH,
+           TERM_WIDTH * (TERM_HEIGHT - 1) * 2);
 
    volatile uint16_t *lastRow =
       (volatile uint16_t *)TERMINAL_VIDEO_ADDR + TERM_WIDTH * (TERM_HEIGHT - 1);
