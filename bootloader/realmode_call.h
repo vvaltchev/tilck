@@ -21,49 +21,19 @@ realmode_call_by_val(void *func, u32 a, u32 b, u32 c, u32 d, u32 si, u32 di);
  */
 extern u32 realmode_set_video_mode;
 extern u32 realmode_write_char;
-extern u32 realmode_test_out;
 extern u32 realmode_int_10h;
 
-
-// TEST func
-void check_rm_out_regs(void);
-
-typedef struct {
-   char VbeSignature[4];
-   u16 VbeVersion;
-   u16 OemStringPtr[2];         // far ptr
-   u8 Capabilities[4];
-   u16 VideoModePtr[2];         // far ptr
-   u16 TotalVideoMemory;        // in number of 64KB blocks
-} PACKED VbeInfoBlock;
+void test_rm_call_working(void);
 
 typedef struct {
 
-   u16 attributes;
-   u8 winA,winB;
-   u16 granularity;
-   u16 winsize;
-   u16 segmentA, segmentB;
-   u16 realFctPtr[2]; // far ptr
+   u16 off;
+   u16 seg;
 
-   u16 pitch;
+} PACKED far_ptr;
 
-   u16 Xres, Yres;
-   u8 Wchar, Ychar, planes, bpp, banks;
-   u8 memory_model, bank_size, image_pages;
-   u8 reserved0;
+static ALWAYS_INLINE void *get_flat_ptr(far_ptr fp)
+{
+   return (void *)((u32)fp.off + ((u32)fp.seg) * 16);
+}
 
-   u8 red_mask, red_position;
-   u8 green_mask, green_position;
-   u8 blue_mask, blue_position;
-   u8 rsv_mask, rsv_position;
-   u8 directcolor_attributes;
-
-   u32 physbase;
-   u32 reserved1;
-   u16 reserved2;
-
-} PACKED ModeInfoBlock;
-
-void bios_get_vbe_info_block(VbeInfoBlock *vb);
-bool bios_get_vbe_info_mode(u16 mode, ModeInfoBlock *mi);

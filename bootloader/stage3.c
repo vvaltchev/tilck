@@ -10,6 +10,7 @@
 
 #include "basic_term.h"
 #include "realmode_call.h"
+#include "vbe.h"
 
 #define RAMDISK_PADDR              (KERNEL_PADDR + KERNEL_MAX_SIZE)
 #define MBI_PADDR (0x10000)
@@ -114,11 +115,6 @@ multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
-void *get_flat_ptr(u16 far_ptr[2])
-{
-   return (void *)((u32)far_ptr[0] + (u32)far_ptr[1] * 16);
-}
-
 
 void query_video_modes(void)
 {
@@ -168,7 +164,7 @@ void bootloader_main(void)
 
    //printk("Hello from the 3rd stage of the exOS bootloader!\n");
 
-   check_rm_out_regs();
+   test_rm_call_working();
    //query_video_modes();
    //asmVolatile("hlt");
 
