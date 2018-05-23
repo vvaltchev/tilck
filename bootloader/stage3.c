@@ -194,8 +194,12 @@ void ask_user_video_mode(void)
       if (!is_resolution_known(mi->XResolution, mi->YResolution))
          continue;
 
+      if (mi->MemoryModel != 0x6 /* direct color */)
+         continue;
+
       printk("Mode [%d]: %d x %d x %d\n",
-             known_modes_count, mi->XResolution, mi->YResolution, mi->BitsPerPixel);
+             known_modes_count, mi->XResolution, mi->YResolution,
+             mi->BitsPerPixel);
 
       known_modes[known_modes_count++] = modes[i];
    }
@@ -238,6 +242,37 @@ void ask_user_video_mode(void)
    fb_width = mi->XResolution;
    fb_height = mi->YResolution;
    fb_pitch = mi->BytesPerScanLine;
+   fb_bpp = mi->BitsPerPixel;
+
+
+   // printk("[red] mask size: %u, pos: %u\n", mi->RedMaskSize, mi->RedFieldPosition);
+   // printk("[green] mask size: %u, pos: %u\n", mi->GreenMaskSize, mi->GreenFieldPosition);
+   // printk("[blue] mask size: %u, pos: %u\n", mi->BlueMaskSize, mi->BlueFieldPosition);
+
+   printk("fb_paddr: %p\n", fb_paddr);
+   printk("fb_width: %u\n", fb_width);
+   printk("fb_height: %u\n", fb_height);
+   printk("fb_pitch: %u\n", fb_pitch);
+   printk("fb_bpp: %u\n", fb_bpp);
+   printk("press any key to continue");
+   bios_read_char();
+}
+
+// debug
+static inline void fb_draw_pixel(u32 x, u32 y, u32 color)
+{
+   ASSERT(x < fb_width);
+   ASSERT(y < fb_height);
+
+
+      // bpp is 24
+      volatile u8 *p =
+         (volatile u8 *)(fb_paddr + (fb_pitch * y) + (x * 4));
+
+      p[0] = ((u8*)&color)[0];
+      p[1] = ((u8*)&color)[1];
+      p[2] = ((u8*)&color)[2];
+
 }
 
 void bootloader_main(void)
@@ -271,6 +306,9 @@ void bootloader_main(void)
 
       break;
    }
+
+   //fb_draw_pixel(10, 10, 0x00ffffff);
+   //asmVolatile("hlt");
 
    mbi = setup_multiboot_info();
 

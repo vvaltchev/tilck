@@ -14,8 +14,10 @@ static uptr fb_paddr;
 static u32 fb_pitch;
 static u32 fb_width;
 static u32 fb_height;
-static u8 fb_bpp;
+static u8 fb_bpp; /* bits per pixel */
 static u32 fb_size;
+
+static u32 fb_bytes_per_pixel;
 static uptr fb_vaddr; /* != fb_real_vaddr when a shadow buffer is used */
 static uptr fb_real_vaddr;
 
@@ -30,6 +32,7 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
    fb_width = mbi->framebuffer_width;
    fb_height = mbi->framebuffer_height;
    fb_bpp = mbi->framebuffer_bpp;
+   fb_bytes_per_pixel = fb_bpp / 8;
    fb_size = fb_pitch * fb_height;
 }
 
@@ -65,6 +68,11 @@ u32 fb_get_height(void)
    return fb_height;
 }
 
+u32 fb_get_bpp(void)
+{
+   return fb_bpp;
+}
+
 void fb_map_in_kernel_space(void)
 {
    fb_real_vaddr = KERNEL_BASE_VA + (1024 - 64) * MB;
@@ -80,6 +88,144 @@ void fb_map_in_kernel_space(void)
    mark_pageframes_as_reserved(fb_paddr, (fb_size / MB) + 1);
 }
 
+
+
+static inline void fb_draw_pixel(u32 x, u32 y, u32 color)
+{
+   ASSERT(x < fb_width);
+   ASSERT(y < fb_height);
+
+   if (fb_bpp == 32) {
+
+      *(volatile u32 *)
+         (fb_vaddr + (fb_pitch * y) + (x << 2)) = color;
+
+   } else {
+
+      // bpp is 24
+
+   }
+}
+
+void fb_raw_color_lines(u32 iy, u32 h, u32 color)
+{
+   if (fb_bpp == 32) {
+
+      memset32((void *)(fb_vaddr + (fb_pitch * iy)), color, (fb_pitch * h) >> 2);
+
+   } else {
+
+      // bpp is 24
+      for (u32 y = iy; y < (iy + h); y++)
+         for (u32 x = 0; x < fb_width; x++)
+            fb_draw_pixel(x, y, color);
+   }
+}
+
+
+void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
+{
+   psf2_header *h = fb_font_header;
+
+   if (fb_bpp == 32) {
+
+      ix <<= 2;
+
+      for (u32 y = 0; y < h->height; y++) {
+
+         memset32((u32 *)(fb_vaddr + (fb_pitch * (iy + y)) + ix),
+                  color,
+                  h->width);
+      }
+
+   } else {
+
+      // bpp is 24
+      // NOT IMPLEMENTED
+   }
+}
+
+void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
+{
+   psf2_header *h = fb_font_header;
+
+   const u8 c = vgaentry_char(e);
+   ASSERT(c < h->glyphs_count);
+
+   const u32 fg = vga_rgb_colors[vgaentry_fg(e)];
+   const u32 bg = vga_rgb_colors[vgaentry_bg(e)];
+
+   // ASSUMPTION: width is divisible by 8
+   const u32 width_bytes = h->width >> 3;
+
+   u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
+
+   for (u32 row = 0; row < h->height; row++) {
+      for (u32 b = 0; b < width_bytes; b++) {
+
+         u8 sl = data[b + width_bytes * row];
+
+         for (u32 bit = 0; bit < 8; bit++)
+            fb_draw_pixel(x + (b << 3) + 8 - bit - 1,
+                          y + row,
+                          (sl & (1 << bit)) ? fg : bg);
+      }
+   }
+}
+
+void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
+{
+   if (fb_bpp == 32) {
+
+      uptr vaddr = fb_vaddr + (fb_pitch * iy) + (ix << 2);
+
+      for (u32 y = 0; y < h; y++) {
+         memcpy32(&buf[y * w], (void *)vaddr, w);
+         vaddr += fb_pitch;
+      }
+
+   } else {
+
+      // bpp is 24
+      // NOT IMPLEMENTED
+   }
+}
+
+void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
+{
+   if (fb_bpp == 32) {
+
+      uptr vaddr = fb_vaddr + (fb_pitch * iy) + (ix << 2);
+
+      for (u32 y = 0; y < h; y++) {
+         memcpy32((void *)vaddr, &buf[y * w], w);
+         vaddr += fb_pitch;
+      }
+
+   } else {
+
+      // bpp is 24
+      // NOT IMPLEMENTED
+   }
+}
+
+/* NOTE: it is required that: dst_y < src_y */
+void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 count)
+{
+   memcpy32((void *)(fb_vaddr + fb_pitch * dst_y),
+            (void *)(fb_vaddr + fb_pitch * src_y),
+            (fb_pitch * count) >> 2);
+}
+
+
+
+/*
+ * -------------------------------------------
+ *
+ * Optimized funcs
+ *
+ * -------------------------------------------
+ */
 
 #define PSZ         4     /* pixel size = bbp/8 =  4 */
 #define SL_COUNT  256     /* all possible 8-pixel scanlines */
@@ -112,62 +258,6 @@ bool fb_pre_render_char_scanlines(void)
    }
 
    return true;
-}
-
-void fb_raw_color_lines(u32 iy, u32 h, u32 color)
-{
-   // Assumption bbp is 32
-   memset32((void *)(fb_vaddr + (fb_pitch * iy)), color, (fb_pitch * h) >> 2);
-}
-
-static ALWAYS_INLINE void fb_draw_pixel(u32 x, u32 y, u32 color)
-{
-   ASSERT(x < fb_width);
-   ASSERT(y < fb_height);
-
-   // ASSUMPTION: bpp is assumed to be == 32.
-   *(volatile u32 *)(fb_vaddr + (fb_pitch * y) + (x << 2)) = color;
-}
-
-void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
-{
-   psf2_header *h = fb_font_header;
-   ix <<= 2; // Assumption: bbp is 32
-
-   for (u32 y = 0; y < h->height; y++) {
-
-      memset32((u32 *)(fb_vaddr + (fb_pitch * (iy + y)) + ix),
-               color,
-               h->width);
-   }
-}
-
-void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
-{
-   psf2_header *h = fb_font_header;
-
-   const u8 c = vgaentry_char(e);
-   ASSERT(c < h->glyphs_count);
-
-   const u32 fg = vga_rgb_colors[vgaentry_fg(e)];
-   const u32 bg = vga_rgb_colors[vgaentry_bg(e)];
-
-   // ASSUMPTION: width is divisible by 8
-   const u32 width_bytes = h->width >> 3;
-
-   u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
-
-   for (u32 row = 0; row < h->height; row++) {
-      for (u32 b = 0; b < width_bytes; b++) {
-
-         u8 sl = data[b + width_bytes * row];
-
-         for (u32 bit = 0; bit < 8; bit++)
-            fb_draw_pixel(x + (b << 3) + 8 - bit - 1,
-                          y + row,
-                          (sl & (1 << bit)) ? fg : bg);
-      }
-   }
 }
 
 void fb_draw_char_optimized(u32 x, u32 y, u16 e)
@@ -282,34 +372,3 @@ void fb_draw_char8x16_row(u32 y, u16 *entries, u32 count)
    }
 }
 
-void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
-{
-   const u32 ix4 = ix << 2;
-   const u32 w4 = w << 2;
-   uptr vaddr = fb_vaddr + (fb_pitch * iy) + ix4;
-
-   for (u32 y = 0; y < h; y++) {
-      memcpy(&buf[y * w], (void *)vaddr, w4);
-      vaddr += fb_pitch;
-   }
-}
-
-void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
-{
-   const u32 ix4 = ix << 2;
-   const u32 w4 = w << 2;
-   uptr vaddr = fb_vaddr + (fb_pitch * iy) + ix4;
-
-   for (u32 y = 0; y < h; y++) {
-      memcpy((void *)vaddr, &buf[y * w], w4);
-      vaddr += fb_pitch;
-   }
-}
-
-/* NOTE: it is required that: dst_y < src_y */
-void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 count)
-{
-   memcpy32((void *)(fb_vaddr + fb_pitch * dst_y),
-            (void *)(fb_vaddr + fb_pitch * src_y),
-            (fb_pitch * count) >> 2);
-}

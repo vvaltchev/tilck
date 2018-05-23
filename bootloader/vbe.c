@@ -57,7 +57,7 @@ bool vbe_set_video_mode(u8 mode)
    u32 eax, ebx, ecx, edx, esi, edi;
 
    eax = 0x4f02;
-   ebx = mode | (1 << 14);
+   ebx = mode | VBE_SET_MODE_FLAG_USE_LINEAR_FB;
 
    realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
 

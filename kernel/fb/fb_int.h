@@ -18,6 +18,7 @@ extern u32 vga_rgb_colors[16];
 
 u32 fb_get_width(void);
 u32 fb_get_height(void);
+u32 fb_get_bpp(void);
 
 void fb_map_in_kernel_space(void);
 void fb_raw_color_lines(u32 iy, u32 h, u32 color);

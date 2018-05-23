@@ -71,6 +71,9 @@ typedef struct {
    u32 Reserved1;
    u16 Reserved2;
 
+   /* VBE 3.0+ */
+   u16 BytesPerScanLineLinModes;
+
 } PACKED ModeInfoBlock;
 
 /*
@@ -86,6 +89,7 @@ typedef struct {
 #define VBE_MODE_ATTRS_GFX_MODE   (1 << 4)
 #define VBE_MODE_ATTRS_LIN_FB     (1 << 7)
 
+#define VBE_SET_MODE_FLAG_USE_LINEAR_FB (1 << 14)
 
 void vga_set_video_mode(u8 mode);
 void vbe_get_info_block(VbeInfoBlock *vb);

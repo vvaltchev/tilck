@@ -369,6 +369,38 @@ static void fb_update_banner_kthread()
    }
 }
 
+static void fb_use_optimized_funcs_if_possible(void)
+{
+   psf2_header *h = fb_font_header;
+
+   if (fb_get_bpp() != 32) {
+      printk("[fb_console] WARNING: using NON-optimized code for bpp = %d\n",
+             fb_get_bpp());
+      return;
+   }
+
+   if (!fb_pre_render_char_scanlines()) {
+      printk("WARNING: fb_pre_render_char_scanlines failed.\n");
+      return;
+   }
+
+   use_optimized = true;
+
+   if (h->width == 8 && h->height == 16) {
+      framebuffer_vi.set_char_at = fb_set_char8x16_at;
+      framebuffer_vi.set_row = fb_set_row_char8x16;
+      printk("[fb_console] Use code optimized for 8x16 fonts\n");
+   } else if (h->width == 16 && h->height == 32) {
+      framebuffer_vi.set_char_at = fb_set_char16x32_at;
+      framebuffer_vi.set_row = fb_set_row_char16x32;
+      printk("[fb_console] Use code optimized for 16x32 fonts\n");
+   } else {
+      framebuffer_vi.set_char_at = fb_set_char_at_optimized;
+      framebuffer_vi.set_row = fb_set_row_optimized;
+      printk("[fb_console] Use optimized functions\n");
+   }
+}
+
 void init_framebuffer_console(void)
 {
    fb_font_header = fb_get_width() / 8 < 160
@@ -403,28 +435,7 @@ void init_framebuffer_console(void)
    printk("[fb_console] font size: %i x %i\n", h->width, h->height);
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 
-   if (fb_pre_render_char_scanlines()) {
-
-      use_optimized = true;
-
-      if (h->width == 8 && h->height == 16) {
-         framebuffer_vi.set_char_at = fb_set_char8x16_at;
-         framebuffer_vi.set_row = fb_set_row_char8x16;
-         printk("[fb_console] Use code optimized for 8x16 fonts\n");
-      } else if (h->width == 16 && h->height == 32) {
-         framebuffer_vi.set_char_at = fb_set_char16x32_at;
-         framebuffer_vi.set_row = fb_set_row_char16x32;
-         printk("[fb_console] Use code optimized for 16x32 fonts\n");
-      } else {
-         framebuffer_vi.set_char_at = fb_set_char_at_optimized;
-         framebuffer_vi.set_row = fb_set_row_optimized;
-         printk("[fb_console] Use optimized functions\n");
-      }
-
-   } else {
-      printk("WARNING: fb_pre_render_char_scanlines failed.\n");
-   }
-
+   fb_use_optimized_funcs_if_possible();
 
    if (framebuffer_vi.flush_buffers) {
       if (fb_switch_to_shadow_buffer()) {
