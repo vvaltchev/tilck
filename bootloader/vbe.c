@@ -66,3 +66,18 @@ bool vbe_set_video_mode(u8 mode)
 
    return true;
 }
+
+bool vbe_get_current_mode(u16 *mode)
+{
+   u32 eax, ebx, ecx, edx, esi, edi;
+
+   eax = 0x4f03;
+
+   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
+
+   if (eax != 0x004f)
+      return false;
+
+   *mode = ebx & 0xffff;
+   return true;
+}

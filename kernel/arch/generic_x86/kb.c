@@ -1,9 +1,13 @@
 
 
 /*
- * This is a DEMO/DEBUG version of the KB driver.
- * Until the concept of character devices is implemented in exOS, that's
- * good enough for basic experiments.
+ * This is a DEMO/DEBUG version of the KB driver good enough ONLY for basic
+ * experiments.
+ *
+ * TODO: reimplement this driver in a proper way. As per today, this is the
+ * oldest (and NOT-refactored) code in exOS, by far worse than anything else in
+ * the project.
+ *
  *
  * Useful info:
  * http://wiki.osdev.org/PS/2_Keyboard

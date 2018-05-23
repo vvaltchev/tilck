@@ -8,9 +8,9 @@
 #define TERM_WIDTH  80
 #define TERM_HEIGHT 25
 
-uint8_t terminal_row = 0;
-uint8_t terminal_column = 0;
-uint8_t terminal_color = 0;
+u16 terminal_row = 0;
+u16 terminal_column = 0;
+u16 terminal_color = 0;
 
 void bt_setcolor(uint8_t color)
 {
@@ -19,7 +19,7 @@ void bt_setcolor(uint8_t color)
 
 void bt_movecur(int row, int col)
 {
-   uint16_t position = (row * 80) + col;
+   uint16_t position = (row * TERM_WIDTH) + col;
 
    // cursor LOW port to vga INDEX register
    outb(0x3D4, 0x0F);
@@ -27,6 +27,9 @@ void bt_movecur(int row, int col)
    // cursor HIGH port to vga INDEX register
    outb(0x3D4, 0x0E);
    outb(0x3D5, (unsigned char)((position >> 8) & 0xFF));
+
+   terminal_row = row;
+   terminal_column = col;
 }
 
 
