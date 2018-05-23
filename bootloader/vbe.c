@@ -4,6 +4,20 @@
 #include "realmode_call.h"
 #include "vbe.h"
 
+void vga_set_video_mode(u8 mode)
+{
+   u32 eax, ebx, ecx, edx, esi, edi;
+
+   /*
+    * ah = 0x0   => set video mode
+    * al = mode  => mode [0 .. 0x13]
+    */
+
+   eax = mode;
+
+   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
+}
+
 void vbe_get_info_block(VbeInfoBlock *vb)
 {
    u32 eax, ebx, ecx, edx, esi, edi;
@@ -38,16 +52,17 @@ bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi)
    return true;
 }
 
-void vga_set_video_mode(u8 mode)
+bool vbe_set_video_mode(u8 mode)
 {
    u32 eax, ebx, ecx, edx, esi, edi;
 
-   /*
-    * ah = 0x0   => set video mode
-    * al = mode  => mode [0 .. 0x13]
-    */
-
-   eax = mode;
+   eax = 0x4f02;
+   ebx = mode | (1 << 14);
 
    realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
+
+   if (eax != 0x004f)
+      return false;
+
+   return true;
 }

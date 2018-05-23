@@ -85,6 +85,14 @@ void load_elf_kernel(const char *filepath, void **entry)
    }
 }
 
+static bool graphics_mode = false; // false = text mode
+static u32 fb_paddr = 0xB8000;
+static u32 fb_pitch = 80 * 2;
+static u32 fb_width = 80;
+static u32 fb_height = 25;
+
+static u32 selected_mode = VGA_COLOR_TEXT_MODE_80x25; /* default */
+
 multiboot_info_t *setup_multiboot_info(void)
 {
    multiboot_info_t *mbi;
@@ -100,11 +108,19 @@ multiboot_info_t *setup_multiboot_info(void)
    mbi->mem_upper = 127*1024; /* temp hack */
 
    mbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
-   mbi->framebuffer_addr = 0xB8000;
-   mbi->framebuffer_pitch = 80 * 2;
-   mbi->framebuffer_width = 80;
-   mbi->framebuffer_height = 25;
-   mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT;
+
+
+   if (!graphics_mode) {
+      mbi->framebuffer_addr = 0xB8000;
+      mbi->framebuffer_pitch = 80 * 2;
+      mbi->framebuffer_width = 80;
+      mbi->framebuffer_height = 25;
+      mbi->framebuffer_bpp = 4;
+      mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT;
+   } else {
+      mbi->framebuffer_bpp = 32;
+      mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
+   }
 
    mbi->flags |= MULTIBOOT_INFO_MODS;
    mbi->mods_addr = (u32)mod;
@@ -115,28 +131,53 @@ multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
-void query_video_modes(void)
+bool is_resolution_known(u16 xres, u16 yres)
+{
+   if (xres == 640 && yres == 480)
+      return true;
+
+   if (xres == 800 && yres == 600)
+      return true;
+
+   if (xres == 1024 && yres == 768)
+      return true;
+
+   if (xres == 1280 && yres == 1024)
+      return true;
+
+   if (xres == 1920 && yres == 1080)
+      return true;
+
+   return false;
+}
+
+void user_select_video_mode(void)
 {
    VbeInfoBlock *vb = (void *)0x2000;
    ModeInfoBlock *mi = (void *)0x3000;
 
-   vga_set_video_mode(VGA_COLOR_TEXT_MODE_80x25);
+   u32 known_modes[10];
+   int known_modes_count = 0;
 
-   printk("Query video modes\n");
+   printk("----- Hello from exOS's legacy bootloader! -----\n\n");
+   //printk("Available video modes:\n");
 
-   vbe_get_info_block((void *)vb);
+   known_modes[known_modes_count++] = VGA_COLOR_TEXT_MODE_80x25;
+   printk("Mode [0]: text mode 80 x 25 [DEFAULT]\n");
 
-   printk("Vbe version: 0x%x\n", vb->VbeVersion);
-   printk("Vbe sig: %c%c%c%c\n", vb->VbeSignature[0],
-          vb->VbeSignature[1], vb->VbeSignature[2], vb->VbeSignature[3]);
+   vbe_get_info_block(vb);
 
-   printk("EOM string: '%s'\n", get_flat_ptr(vb->OemStringPtr));
+   // printk("Query video modes\n");
+   // printk("Vbe version: 0x%x\n", vb->VbeVersion);
+   // printk("Vbe sig: %c%c%c%c\n", vb->VbeSignature[0],
+   //        vb->VbeSignature[1], vb->VbeSignature[2], vb->VbeSignature[3]);
+   // printk("EOM string: '%s'\n", get_flat_ptr(vb->OemStringPtr));
 
    u16 *modes = get_flat_ptr(vb->VideoModePtr);
 
    for (u32 i = 0; modes[i] != 0xffff; i++) {
 
-      if (!vbe_get_mode_info(modes[i], (void *)mi))
+      if (!vbe_get_mode_info(modes[i], mi))
          continue;
 
       /* skip text modes */
@@ -151,9 +192,51 @@ void query_video_modes(void)
       if (mi->BitsPerPixel != 32)
          continue;
 
-      printk("Mode [%u -> 0x%x]: %d x %d\n",
-             i, modes[i], mi->XResolution, mi->YResolution);
+      /* skip any evenutal fancy resolutions not known by exOS */
+      if (!is_resolution_known(mi->XResolution, mi->YResolution))
+         continue;
+
+      printk("Mode [%d]: %d x %d\n",
+             known_modes_count, mi->XResolution, mi->YResolution);
+
+      known_modes[known_modes_count++] = modes[i];
    }
+
+   printk("\n");
+
+   while (true) {
+
+      printk("Select a video mode [%d - %d]: ", 0, known_modes_count - 1);
+
+      char sel = bios_read_char();
+      int s = sel - '0';
+
+      if (sel == '\r') {
+         printk("DEFAULT\n");
+         break;
+      }
+
+      if (s < 0 || s > known_modes_count - 1) {
+         printk("Invalid selection.\n");
+         continue;
+      }
+
+      printk("%d\n\n", s);
+      selected_mode = known_modes[s];
+      break;
+   }
+
+   if (selected_mode == VGA_COLOR_TEXT_MODE_80x25)
+      return;
+
+   if (!vbe_get_mode_info(selected_mode, mi))
+      panic("vbe_get_mode_info(0x%x) failed", selected_mode);
+
+   graphics_mode = true;
+   fb_paddr = mi->PhysBasePtr;
+   fb_width = mi->XResolution;
+   fb_height = mi->YResolution;
+   fb_pitch = mi->BytesPerScanLine;
 }
 
 void bootloader_main(void)
@@ -161,19 +244,25 @@ void bootloader_main(void)
    void *entry;
    multiboot_info_t *mbi;
 
-   /* Clear the screen in case we need to show a panic message */
+   vga_set_video_mode(VGA_COLOR_TEXT_MODE_80x25);
    init_bt();
 
-   //printk("Hello from the 3rd stage of the exOS bootloader!\n");
-
    test_rm_call_working();
-   //query_video_modes();
-   //asmVolatile("hlt");
+   user_select_video_mode();
 
    calculate_ramdisk_size();
 
    /* Load the actual kernel ELF file */
    load_elf_kernel(KERNEL_FILE_PATH, &entry);
+
+   if (graphics_mode) {
+      if (!vbe_set_video_mode(selected_mode)) {
+         printk("ERROR: vbe_set_video_mode(0x%x) failed.\n", selected_mode);
+         printk("PRESS ANY KEY to boot in text mode");
+         bios_read_char();
+         graphics_mode = false;
+      }
+   }
 
    mbi = setup_multiboot_info();
 

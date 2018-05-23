@@ -90,3 +90,4 @@ typedef struct {
 void vga_set_video_mode(u8 mode);
 void vbe_get_info_block(VbeInfoBlock *vb);
 bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi);
+bool vbe_set_video_mode(u8 mode);

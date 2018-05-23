@@ -16,16 +16,14 @@ realmode_test_out:
    mov di, 350
    ret
 
-
-.global realmode_write_char
-realmode_write_char:
-
-   mov ah, 0x0E
-   int 0x10
-   ret
-
 .global realmode_int_10h
 realmode_int_10h:
 
    int 0x10
+   ret
+
+.global realmode_int_16h
+realmode_int_16h:
+
+   int 0x16
    ret

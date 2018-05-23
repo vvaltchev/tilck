@@ -2,6 +2,8 @@
 #include <common/basic_defs.h>
 #include "realmode_call.h"
 
+extern u32 realmode_test_out;
+
 void
 realmode_call_asm(void *f, u32 *a, u32 *b, u32 *c, u32 *d, u32 *si, u32 *di);
 
@@ -32,8 +34,6 @@ realmode_call_by_val(void *func, u32 a, u32 b, u32 c, u32 d, u32 si, u32 di)
    realmode_call_asm(func, &a, &b, &c, &d, &si, &di);
 }
 
-extern u32 realmode_test_out;
-
 void test_rm_call_working(void)
 {
    u32 eax, ebx, ecx, edx, esi, edi;
@@ -46,4 +46,24 @@ void test_rm_call_working(void)
    ASSERT(edx == 102);
    ASSERT(esi == 300);
    ASSERT(edi == 350);
+}
+
+char bios_read_char(void)
+{
+   u32 eax, ebx, ecx, edx, esi, edi;
+
+   /*
+    * ah = 0x0 => read key press
+    */
+   eax = 0;
+
+   realmode_call(&realmode_int_16h, &eax, &ebx, &ecx, &edx, &esi, &edi);
+
+   /*
+    * Return:
+    *    ah => scan code of the key pressed down
+    *    al => ASCII char
+    */
+
+   return eax & 0xFF; /* return just the ASCII char */
 }
