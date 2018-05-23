@@ -123,34 +123,34 @@ void query_video_modes(void)
 
    printk("Query video modes\n");
 
-   bzero(vb, sizeof(*vb));
-   memcpy(vb->VbeSignature, "VBE2", 4);
-
-   bios_get_vbe_info_block((void *)vb);
+   vbe_get_info_block((void *)vb);
 
    printk("Vbe version: 0x%x\n", vb->VbeVersion);
+   printk("Vbe sig: %c%c%c%c\n", vb->VbeSignature[0],
+          vb->VbeSignature[1], vb->VbeSignature[2], vb->VbeSignature[3]);
+
    printk("EOM string: '%s'\n", get_flat_ptr(vb->OemStringPtr));
 
    u16 *modes = get_flat_ptr(vb->VideoModePtr);
 
    for (u32 i = 0; modes[i] != 0xffff; i++) {
 
-      if (!bios_get_vbe_info_mode(modes[i], (void *)mi))
+      if (!vbe_get_mode_info(modes[i], (void *)mi))
          continue;
 
-      if (mi->attributes & (1 << 4)) { // bit 4: text/graphics mode
+      if (mi->ModeAttributes & (1 << 4)) { // bit 4: text/graphics mode
 
          /* skip graphics mode not supporting a linear framebuffer */
-         if (!(mi->attributes & (1 << 7)))
+         if (!(mi->ModeAttributes & (1 << 7)))
             continue;
 
          /* skip graphics modes with bbp != 32 */
-         if (mi->bpp != 32)
+         if (mi->BitsPerPixel != 32)
             continue;
       }
 
-      printk("Mode [%u -> 0x%x]: %d x %d\n",
-             i, modes[i], mi->Xres, mi->Yres);
+      printk("Mode [%u -> 0x%x]: %d x %d, attrs: %p\n",
+             i, modes[i], mi->XResolution, mi->YResolution, mi->ModeAttributes);
    }
 }
 

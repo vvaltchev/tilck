@@ -30,9 +30,9 @@ typedef struct {
    u16 off;
    u16 seg;
 
-} PACKED far_ptr;
+} PACKED VbeFarPtr;
 
-static ALWAYS_INLINE void *get_flat_ptr(far_ptr fp)
+static ALWAYS_INLINE void *get_flat_ptr(VbeFarPtr fp)
 {
    return (void *)((u32)fp.off + ((u32)fp.seg) * 16);
 }

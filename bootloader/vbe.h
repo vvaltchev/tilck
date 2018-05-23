@@ -2,42 +2,76 @@
 #pragma once
 #include "realmode_call.h"
 
+/*
+ * Struct defines taken from:
+ *
+ *          VESA BIOS EXTENSION (VBE)
+ *             Core Functions
+ *                Standard
+ *
+ *             Version: 3.0
+ *         Date: September 16, 1998
+ */
+
 typedef struct {
    char VbeSignature[4];
    u16 VbeVersion;
-   far_ptr OemStringPtr;
+   VbeFarPtr OemStringPtr;
    u8 Capabilities[4];
-   far_ptr VideoModePtr;
-   u16 TotalVideoMemory;        // in number of 64KB blocks
+   VbeFarPtr VideoModePtr;
+   u16 TotalMemory;        /* in number of 64KB blocks */
+
+   /* VBE 2.0+ */
+   u16 OemSoftwareRev;
+   u32 OemVendorNamePtr;
+   u32 OemProductNamePtr;
+   u32 OemProductRevPtr;
+   u8 reserved[222];
+   u8 OemData[256];
+
 } PACKED VbeInfoBlock;
 
 typedef struct {
 
-   u16 attributes;
-   u8 winA,winB;
-   u16 granularity;
-   u16 winsize;
-   u16 segmentA, segmentB;
-   far_ptr realFctPtr;
+   u16 ModeAttributes;
+   u8 WinAAttributes;
+   u8 WinBAttributes;
+   u16 WinGranularity;
+   u16 WinSize;
+   u16 WinASegment;
+   u16 WinBSegment;
+   VbeFarPtr WinFuncPtr;
+   u16 BytesPerScanLine;
 
-   u16 pitch;
+   /* VBE 1.2+ */
 
-   u16 Xres, Yres;
-   u8 Wchar, Ychar, planes, bpp, banks;
-   u8 memory_model, bank_size, image_pages;
-   u8 reserved0;
+   u16 XResolution;
+   u16 YResolution;
+   u8 XCharSize;
+   u8 YCharSize;
+   u8 NumberOfPlanes;
+   u8 BitsPerPixel;
+   u8 NumberOfBanks;
+   u8 MemoryModel;
+   u8 BankSize;
+   u8 NumberOfImagePages;
+   u8 Reserved0;
 
-   u8 red_mask, red_position;
-   u8 green_mask, green_position;
-   u8 blue_mask, blue_position;
-   u8 rsv_mask, rsv_position;
-   u8 directcolor_attributes;
+   /* Direct Color fields (required for direct/6 and YUV/7 memory models) */
 
-   u32 physbase;
-   u32 reserved1;
-   u16 reserved2;
+   u8 RedMaskSize, RedFieldPosition;
+   u8 GreenMaskSize, GreenFieldPosition;
+   u8 BlueMaskSize, BlueFieldPosition;
+   u8 RsvdMaskSize, RsvdFieldPosition;
+   u8 DirectColorModeInfo;
+
+   /* VBE 2.0+ */
+
+   u32 PhysBasePtr;
+   u32 Reserved1;
+   u16 Reserved2;
 
 } PACKED ModeInfoBlock;
 
-void bios_get_vbe_info_block(VbeInfoBlock *vb);
-bool bios_get_vbe_info_mode(u16 mode, ModeInfoBlock *mi);
+void vbe_get_info_block(VbeInfoBlock *vb);
+bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi);
