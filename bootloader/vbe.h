@@ -73,5 +73,20 @@ typedef struct {
 
 } PACKED ModeInfoBlock;
 
+/*
+ * NOTE: the VGA standard modes (0x00 .. 0x13) are reliable, BUT the old
+ * VESA 1.2 modes are NOT. Therefore, for the typical VGA text mode, we can just
+ * hard-code it, while for the graphical VESA modes, we cannot (we must query
+ * the BIOS for the available modes).
+ */
+#define VGA_COLOR_TEXT_MODE_80x25 (0x03)
+
+#define VBE_MODE_ATTRS_TTY_OUTPUT (1 << 2)
+#define VBE_MODE_ATTRS_COLOR_MODE (1 << 3)
+#define VBE_MODE_ATTRS_GFX_MODE   (1 << 4)
+#define VBE_MODE_ATTRS_LIN_FB     (1 << 7)
+
+
+void vga_set_video_mode(u8 mode);
 void vbe_get_info_block(VbeInfoBlock *vb);
 bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi);

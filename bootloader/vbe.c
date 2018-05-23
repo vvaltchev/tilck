@@ -37,3 +37,17 @@ bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi)
 
    return true;
 }
+
+void vga_set_video_mode(u8 mode)
+{
+   u32 eax, ebx, ecx, edx, esi, edi;
+
+   /*
+    * ah = 0x0   => set video mode
+    * al = mode  => mode [0 .. 0x13]
+    */
+
+   eax = mode;
+
+   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
+}

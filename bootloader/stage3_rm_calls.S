@@ -17,14 +17,6 @@ realmode_test_out:
    ret
 
 
-.global realmode_set_video_mode
-realmode_set_video_mode:
-
-   mov ah, 0x00 # set video mode
-   mov al, 0x03 # 80x25
-   int 0x10
-   ret
-
 .global realmode_write_char
 realmode_write_char:
 

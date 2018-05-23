@@ -115,11 +115,12 @@ multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
-
 void query_video_modes(void)
 {
    VbeInfoBlock *vb = (void *)0x2000;
    ModeInfoBlock *mi = (void *)0x3000;
+
+   vga_set_video_mode(VGA_COLOR_TEXT_MODE_80x25);
 
    printk("Query video modes\n");
 
@@ -138,19 +139,20 @@ void query_video_modes(void)
       if (!vbe_get_mode_info(modes[i], (void *)mi))
          continue;
 
-      if (mi->ModeAttributes & (1 << 4)) { // bit 4: text/graphics mode
+      /* skip text modes */
+      if (!(mi->ModeAttributes & VBE_MODE_ATTRS_GFX_MODE))
+         continue;
 
-         /* skip graphics mode not supporting a linear framebuffer */
-         if (!(mi->ModeAttributes & (1 << 7)))
-            continue;
+      /* skip graphics mode not supporting a linear framebuffer */
+      if (!(mi->ModeAttributes & VBE_MODE_ATTRS_LIN_FB))
+         continue;
 
-         /* skip graphics modes with bbp != 32 */
-         if (mi->BitsPerPixel != 32)
-            continue;
-      }
+      /* skip graphics modes with bpp != 32 */
+      if (mi->BitsPerPixel != 32)
+         continue;
 
-      printk("Mode [%u -> 0x%x]: %d x %d, attrs: %p\n",
-             i, modes[i], mi->XResolution, mi->YResolution, mi->ModeAttributes);
+      printk("Mode [%u -> 0x%x]: %d x %d\n",
+             i, modes[i], mi->XResolution, mi->YResolution);
    }
 }
 

@@ -47,4 +47,3 @@ void test_rm_call_working(void)
    ASSERT(esi == 300);
    ASSERT(edi == 350);
 }
-
