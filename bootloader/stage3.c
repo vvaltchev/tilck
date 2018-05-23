@@ -287,7 +287,7 @@ static inline void draw_pixel(u32 x, u32 y, u32 color)
        * appears. On real hardware, the effect is identical.
        */
 
-      u32 bytes_per_pixel = 3;
+      u32 bytes_per_pixel = fb_bpp / 8;
 
       volatile u8 *p =
          (volatile u8 *)(fb_paddr + (fb_pitch * y) + (x * bytes_per_pixel));
@@ -353,8 +353,17 @@ void bootloader_main(void)
       */
 
 
-      /* draw just one white pixel at (10, 10) */
-      draw_pixel(10, 10, 0x00ffffff);
+      /* draw one white pixel */
+      draw_pixel(0, 10, 0x00ffffff);
+
+      /* draw one red pixel */
+      draw_pixel(0, 11, 0x00ff0000);
+
+      /* draw one green pixel */
+      draw_pixel(0, 12, 0x0000ff00);
+
+      /* draw one blue pixel */
+      draw_pixel(0, 13, 0x000000ff);
 
       asmVolatile("hlt");
    }
