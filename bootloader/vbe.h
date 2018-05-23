@@ -72,7 +72,7 @@ typedef struct {
    u16 Reserved2;
 
    /* VBE 3.0+ */
-   u16 BytesPerScanLineLinModes;
+   u16 LinBytesPerScanLine;
 
 } PACKED ModeInfoBlock;
 
@@ -84,10 +84,12 @@ typedef struct {
  */
 #define VGA_COLOR_TEXT_MODE_80x25 (0x03)
 
-#define VBE_MODE_ATTRS_TTY_OUTPUT (1 << 2)
-#define VBE_MODE_ATTRS_COLOR_MODE (1 << 3)
-#define VBE_MODE_ATTRS_GFX_MODE   (1 << 4)
-#define VBE_MODE_ATTRS_LIN_FB     (1 << 7)
+#define VBE_MODE_ATTRS_SUPPORTED                       (1 << 0)
+#define VBE_MODE_ATTRS_TTY_OUTPUT                      (1 << 2)
+#define VBE_MODE_ATTRS_COLOR_MODE                      (1 << 3)
+#define VBE_MODE_ATTRS_GFX_MODE                        (1 << 4)
+#define VBE_MODE_ATTRS_VGA_COMPAT_WINDOWED_MODE_AVAIL  (1 << 6)
+#define VBE_MODE_ATTRS_LINEAR_FB                       (1 << 7)
 
 #define VBE_SET_MODE_FLAG_USE_LINEAR_FB (1 << 14)
 

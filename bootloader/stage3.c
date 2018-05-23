@@ -86,11 +86,11 @@ void load_elf_kernel(const char *filepath, void **entry)
 }
 
 static bool graphics_mode = false; // false = text mode
-static u32 fb_paddr = 0xB8000;
-static u32 fb_pitch = 80 * 2;
-static u32 fb_width = 80;
-static u32 fb_height = 25;
-static u32 fb_bpp = 4;
+static u32 fb_paddr;
+static u32 fb_pitch;
+static u32 fb_width;
+static u32 fb_height;
+static u32 fb_bpp;
 
 static u32 selected_mode = VGA_COLOR_TEXT_MODE_80x25; /* default */
 
@@ -183,10 +183,12 @@ void ask_user_video_mode(void)
          continue;
 
       /* skip graphics mode not supporting a linear framebuffer */
-      if (!(mi->ModeAttributes & VBE_MODE_ATTRS_LIN_FB))
+      if (!(mi->ModeAttributes & VBE_MODE_ATTRS_LINEAR_FB))
          continue;
 
-      /* skip graphics modes with bpp != 32 */
+      if (!(mi->ModeAttributes & VBE_MODE_ATTRS_SUPPORTED))
+         continue;
+
       if (mi->BitsPerPixel < 24)
          continue;
 
@@ -244,36 +246,54 @@ void ask_user_video_mode(void)
    fb_pitch = mi->BytesPerScanLine;
    fb_bpp = mi->BitsPerPixel;
 
-
-   // printk("[red] mask size: %u, pos: %u\n", mi->RedMaskSize, mi->RedFieldPosition);
-   // printk("[green] mask size: %u, pos: %u\n", mi->GreenMaskSize, mi->GreenFieldPosition);
-   // printk("[blue] mask size: %u, pos: %u\n", mi->BlueMaskSize, mi->BlueFieldPosition);
-
+   printk("Detailed mode info:\n");
    printk("fb_paddr: %p\n", fb_paddr);
    printk("fb_width: %u\n", fb_width);
    printk("fb_height: %u\n", fb_height);
    printk("fb_pitch: %u\n", fb_pitch);
    printk("fb_bpp: %u\n", fb_bpp);
-   printk("press any key to continue");
+   printk("LinBytesPerScanLine: %u\n", mi->LinBytesPerScanLine);
+   printk("MemoryModel: 0x%x\n", mi->MemoryModel);
+   printk("NumberOfPlanes: %u\n", mi->NumberOfPlanes);
+   printk("NumberOfImagePages: %u\n", mi->NumberOfImagePages);
+
+   printk("[ red ] mask size: %u, pos: %u\n", mi->RedMaskSize, mi->RedFieldPosition);
+   printk("[green] mask size: %u, pos: %u\n", mi->GreenMaskSize, mi->GreenFieldPosition);
+   printk("[blue ] mask size: %u, pos: %u\n", mi->BlueMaskSize, mi->BlueFieldPosition);
+
+   printk("press any key to continue\n");
    bios_read_char();
 }
 
-// debug
-static inline void fb_draw_pixel(u32 x, u32 y, u32 color)
+/* temporary debug code */
+static inline void draw_pixel(u32 x, u32 y, u32 color)
 {
-   ASSERT(x < fb_width);
-   ASSERT(y < fb_height);
+   if (fb_bpp == 32) {
 
+      *(volatile u32 *)
+         (fb_paddr + (fb_pitch * y) + (x << 2)) = color;
 
-      // bpp is 24
+   } else if (fb_bpp == 24) {
+
+      /*
+       * NOTE: bytes_per_pixel=3 produces 2 dashes (instead of a single point!)
+       * having also different colors, while using bytes_per_pixel=4
+       * produces at least a single dash having the right color. It looks like
+       * that bpp is 32, even if when it should be 24.
+       */
+
+      u32 bytes_per_pixel = 3;
+
       volatile u8 *p =
-         (volatile u8 *)(fb_paddr + (fb_pitch * y) + (x * 4));
+         (volatile u8 *)(fb_paddr + (fb_pitch * y) + (x * bytes_per_pixel));
 
       p[0] = ((u8*)&color)[0];
       p[1] = ((u8*)&color)[1];
       p[2] = ((u8*)&color)[2];
 
+   }
 }
+/* END of temporary debug code */
 
 void bootloader_main(void)
 {
@@ -307,8 +327,13 @@ void bootloader_main(void)
       break;
    }
 
-   //fb_draw_pixel(10, 10, 0x00ffffff);
-   //asmVolatile("hlt");
+   /* temporary debug code (graphic VBE mode does not work as supposed) */
+   if (graphics_mode) {
+      /* draw just one white pixel at (10, 10) */
+      draw_pixel(10, 10, 0x00ffffff);
+      asmVolatile("hlt");
+   }
+   /* end of temporary debug code */
 
    mbi = setup_multiboot_info();
 
