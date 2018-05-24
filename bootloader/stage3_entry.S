@@ -1,13 +1,14 @@
 
 .intel_syntax noprefix
 
+#define BASE_ADDR 0x21000
+#define BASE_SEG (BASE_ADDR / 16)
+
+
 .section .text
 .global _start
 .global main
 .global realmode_call_asm
-
-#define BASE_ADDR 0x21000
-#define BASE_SEG (BASE_ADDR / 16)
 
 _start:
 main:
@@ -18,6 +19,9 @@ main:
    sub ecx, edi
    xor eax, eax
    rep stosb
+
+   # Save current device's number
+   mov [current_device], dx
 
    # Jump to bootloader's main
    jmp bootloader_main

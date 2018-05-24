@@ -128,7 +128,7 @@ after_reloc:
    xor ax, ax
    mov al, ch  # higher 8 bits of CX = lower bits for cyclinders count
    and cx, 192 # bits 6 and 7 of CX = higher 2 bits for cyclinders count
-   shl cx, 8
+   shl cx, 2   # bugfix: before, the left shift was 8.
    or ax, cx
    inc ax      # the 10 bits in CX are the MAX cyl number, so we have to add +1.
    mov [cylinders_count], ax
@@ -950,6 +950,9 @@ complete_flush:
 
    # Set the stack for the 3rd stage of the bootloader
    mov esp, 0x0003FFF0
+
+   # Move in dx the current device
+   mov dx, [DEST_DATA_SEGMENT * 16 + current_device]
 
    # jump to the 3rd stage of the bootloader
    jmp 0x08:(DEST_DATA_SEGMENT * 16 + bootloader_3rd_stage)

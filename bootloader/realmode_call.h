@@ -20,6 +20,7 @@ realmode_call_by_val(void *func, u32 a, u32 b, u32 c, u32 d, u32 si, u32 di);
  * Usage: realmode_call(&realmode_func_name, <registers>);
  */
 extern u32 realmode_int_10h;
+extern u32 realmode_int_13h;
 extern u32 realmode_int_16h;
 
 void test_rm_call_working(void);
@@ -37,3 +38,8 @@ static ALWAYS_INLINE void *get_flat_ptr(VbeFarPtr fp)
 }
 
 char bios_read_char(void);
+
+bool read_drive_params(u8 drive,
+                       u32 *sectors_per_track,
+                       u32 *heads_per_cylinder,
+                       u32 *cylinder_count);

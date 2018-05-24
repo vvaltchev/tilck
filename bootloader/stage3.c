@@ -29,7 +29,13 @@ u32 fb_bpp;
 
 u32 selected_mode = VGA_COLOR_TEXT_MODE_80x25; /* default */
 
+u16 current_device;
+u32 sectors_per_track;
+u32 heads_per_cylinder;
+u32 cylinders_count;
+
 static u32 ramdisk_size;
+void ask_user_video_mode(void);
 
 void calculate_ramdisk_size(void)
 {
@@ -136,8 +142,6 @@ multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
-void ask_user_video_mode(void);
-
 void bootloader_main(void)
 {
    void *entry;
@@ -155,6 +159,16 @@ void bootloader_main(void)
 
    /* Sanity check: realmode_call should be able to return all reg values */
    test_rm_call_working();
+
+   read_drive_params(current_device,
+                     &sectors_per_track,
+                     &heads_per_cylinder,
+                     &cylinders_count);
+
+   // printk("cylinders_count:    %d\n", cylinders_count);
+   // printk("heads_per_cylinder: %d\n", heads_per_cylinder);
+   // printk("sectors_per_track:  %d\n", sectors_per_track);
+   // bios_read_char();
 
    calculate_ramdisk_size();
 

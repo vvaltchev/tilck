@@ -67,3 +67,29 @@ char bios_read_char(void)
 
    return eax & 0xFF; /* return just the ASCII char */
 }
+
+
+bool read_drive_params(u8 drive,
+                       u32 *sectors_per_track,
+                       u32 *heads_per_cylinder,
+                       u32 *cylinder_count)
+{
+   u32 eax, ebx, ecx, edx, esi, edi;
+
+   edx = drive;    /* DL = drive number */
+   eax = 0x8 << 8; /* AH = read drive params */
+
+   realmode_call(&realmode_int_13h, &eax, &ebx, &ecx, &edx, &esi, &edi);
+
+   *heads_per_cylinder = ((edx >> 8) & 0xff) + 1; /* DH = MAX head num */
+
+   /* sector count = lower 6 bits of CX (actual count, not MAX sector) */
+   *sectors_per_track = ecx & 63;
+
+   /* cyl is max cylinder number (therefore count + cyl + 1) */
+   /* higher 8 bits of CX => lower 8 bits of cyl */
+   /* bits 6, 7 of CX => bits 8, 9 of cyl (higher 2 bits) */
+   *cylinder_count = 1 + (((ecx >> 8) & 0xff) | ((ecx & 192) << 2));
+
+   return true;
+}

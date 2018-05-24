@@ -1,6 +1,8 @@
 
 .intel_syntax noprefix
 
+#define BASE_ADDR 0x21000
+
 # Usable (un)real mode functions
 
 .code16
@@ -20,6 +22,12 @@ realmode_test_out:
 realmode_int_10h:
 
    int 0x10
+   ret
+
+.global realmode_int_13h
+realmode_int_13h:
+
+   int 0x13
    ret
 
 .global realmode_int_16h
