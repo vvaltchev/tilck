@@ -374,8 +374,9 @@ static void fb_use_optimized_funcs_if_possible(void)
    psf2_header *h = fb_font_header;
 
    if (fb_get_bpp() != 32) {
-      printk("[fb_console] WARNING: using NON-optimized code for bpp = %d\n",
+      printk("[fb_console] WARNING: using slower code for bpp = %d\n",
              fb_get_bpp());
+      printk("[fb_console] switch to a resolution with bpp = 32 if possible\n");
       return;
    }
 

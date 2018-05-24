@@ -88,8 +88,10 @@ void fb_map_in_kernel_space(void)
    mark_pageframes_as_reserved(fb_paddr, (fb_size / MB) + 1);
 }
 
-
-
+/*
+ * This function is used only by the failsafe functions: normally, there are
+ * faster ways to draw on-screen than using a pixel by pixel method.
+ */
 static inline void fb_draw_pixel(u32 x, u32 y, u32 color)
 {
    ASSERT(x < fb_width);
@@ -102,26 +104,27 @@ static inline void fb_draw_pixel(u32 x, u32 y, u32 color)
 
    } else {
 
-      // bpp is 24
+      // Assumption: bpp is 24
 
+      volatile u8 *p = (volatile u8 *) (fb_vaddr + (fb_pitch * y) + (x * 3));
+      *((volatile u16*)p) = *((volatile u16*)&color);
+      p[2] = ((u8*)&color)[2];
    }
 }
 
 void fb_raw_color_lines(u32 iy, u32 h, u32 color)
 {
    if (fb_bpp == 32) {
-
-      memset32((void *)(fb_vaddr + (fb_pitch * iy)), color, (fb_pitch * h) >> 2);
-
+      memset32((void *)(fb_vaddr + (fb_pitch * iy)),
+               color, (fb_pitch * h) >> 2);
    } else {
 
-      // bpp is 24
+      // Generic (but slower version)
       for (u32 y = iy; y < (iy + h); y++)
          for (u32 x = 0; x < fb_width; x++)
             fb_draw_pixel(x, y, color);
    }
 }
-
 
 void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
 {
@@ -131,18 +134,58 @@ void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
 
       ix <<= 2;
 
-      for (u32 y = 0; y < h->height; y++) {
+      for (u32 y = iy; y < (iy + h->height); y++) {
 
-         memset32((u32 *)(fb_vaddr + (fb_pitch * (iy + y)) + ix),
+         memset32((u32 *)(fb_vaddr + (fb_pitch * y) + ix),
                   color,
                   h->width);
       }
 
    } else {
 
-      // bpp is 24
-      // NOT IMPLEMENTED
+      // Generic (but slower version)
+      for (u32 y = iy; y < (iy + h->height); y++)
+         for (u32 x = ix; x < (ix + h->width); x++)
+            fb_draw_pixel(x, y, color);
    }
+}
+
+void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
+{
+   uptr vaddr = fb_vaddr + (fb_pitch * iy) + (ix * fb_bytes_per_pixel);
+
+   if (fb_bpp == 32) {
+
+      for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
+         memcpy32(&buf[y * w], (void *)vaddr, w);
+
+      return;
+   }
+
+   // Generic (but slower version)
+   for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
+      memcpy((u8 *)buf + y * w * fb_bytes_per_pixel,
+             (void *)vaddr,
+             w * fb_bytes_per_pixel);
+}
+
+void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
+{
+   uptr vaddr = fb_vaddr + (fb_pitch * iy) + (ix * fb_bytes_per_pixel);
+
+   if (fb_bpp == 32) {
+
+       for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
+         memcpy32((void *)vaddr, &buf[y * w], w);
+
+      return;
+   }
+
+   // Generic (but slower version)
+   for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
+      memcpy((void *)vaddr,
+             (u8 *)buf + y * w * fb_bytes_per_pixel,
+             w * fb_bytes_per_pixel);
 }
 
 void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
@@ -170,42 +213,6 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
                           y + row,
                           (sl & (1 << bit)) ? fg : bg);
       }
-   }
-}
-
-void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
-{
-   if (fb_bpp == 32) {
-
-      uptr vaddr = fb_vaddr + (fb_pitch * iy) + (ix << 2);
-
-      for (u32 y = 0; y < h; y++) {
-         memcpy32(&buf[y * w], (void *)vaddr, w);
-         vaddr += fb_pitch;
-      }
-
-   } else {
-
-      // bpp is 24
-      // NOT IMPLEMENTED
-   }
-}
-
-void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
-{
-   if (fb_bpp == 32) {
-
-      uptr vaddr = fb_vaddr + (fb_pitch * iy) + (ix << 2);
-
-      for (u32 y = 0; y < h; y++) {
-         memcpy32((void *)vaddr, &buf[y * w], w);
-         vaddr += fb_pitch;
-      }
-
-   } else {
-
-      // bpp is 24
-      // NOT IMPLEMENTED
    }
 }
 
