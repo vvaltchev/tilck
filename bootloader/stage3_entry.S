@@ -1,9 +1,7 @@
 
 .intel_syntax noprefix
 
-#define BASE_ADDR 0x21000
-#define BASE_SEG (BASE_ADDR / 16)
-
+#include <common/config.h>
 
 .section .text
 .global _start
@@ -50,8 +48,8 @@ realmode_call_asm:
    # They will remain "cached" as 32-bit selectors (we want UNREAL mode).
 
    # Note(2): we're jumping to 'code16_seg' with addressing relative to 0,
-   # because in the gdt16, the code segment has BASE_ADDR as 'base'.
-   jmp 0x08:(code16_seg - BASE_ADDR)
+   # because in the gdt16, the code segment has BL_BASE_ADDR as 'base'.
+   jmp 0x08:(code16_seg - BL_BASE_ADDR)
 
 code16_seg:
 
@@ -64,26 +62,26 @@ code16_seg:
 
 .code16
    # here CS is still 0x08, time to switch to proper 16-bit segmentation.
-   mov ebx, (offset realmode - BASE_ADDR)
-   push BASE_SEG
+   mov ebx, (offset realmode - BL_BASE_ADDR)
+   push BL_BASE_SEG
    push bx
    retf
 
 realmode:
-   # here CS is BASE_SEG and we are properly in (un)real mode.
+   # here CS is BL_BASE_SEG and we are properly in (un)real mode.
 
-   # Now we just need to set ds, es, ss to BASE_SEG, using the 16-bit
+   # Now we just need to set ds, es, ss to BL_BASE_SEG, using the 16-bit
    # segmentation mechanism. This makes everything simpler.
 
    mov ax, 0
    mov es, ax
 
-   mov ax, BASE_SEG
+   mov ax, BL_BASE_SEG
    mov ds, ax
    mov ss, ax
-   mov esp, (offset rm16_stack - BASE_ADDR + 0x3F0)
+   mov esp, (offset rm16_stack - BL_BASE_ADDR + 0x3F0)
 
-   mov     edi, (offset idt16 - BASE_ADDR)
+   mov     edi, (offset idt16 - BL_BASE_ADDR)
    lidt    [di]
 
    sti
@@ -94,10 +92,10 @@ realmode:
    # 1. store in 'ax' the address of the function to call
    mov eax, (offset realmode_func_addr)
    mov eax, fs:[eax]
-   sub eax, BASE_ADDR
+   sub eax, BL_BASE_ADDR
 
    # 2. save on stack the return address
-   mov ebx, (offset after_call - BASE_ADDR)
+   mov ebx, (offset after_call - BL_BASE_ADDR)
    push bx
 
    # 3. push func's addr on stack in order the ending ret to make the "call"
@@ -141,7 +139,7 @@ after_call:
    # now here we must save back the values of the registers
 
    mov bp, sp
-   mov esp, (offset rm_ret_ax - BASE_ADDR + 2)
+   mov esp, (offset rm_ret_ax - BL_BASE_ADDR + 2)
 
    push ax
    push bx
@@ -158,11 +156,11 @@ after_call:
    cli
 
    # load the 32-bit NULL IDT
-   mov edi, (offset idt32 - BASE_ADDR)
+   mov edi, (offset idt32 - BL_BASE_ADDR)
    lidt [di]
 
    # load the a gdt with 32-bit segments
-   mov ebx, (offset gdtr32 - BASE_ADDR)
+   mov ebx, (offset gdtr32 - BL_BASE_ADDR)
    lgdt [ebx]
 
    mov eax, cr0

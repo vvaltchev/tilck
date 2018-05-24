@@ -59,4 +59,6 @@ extern void *kernel_va;
 
 /* Bootloader specific config */
 
-#define SECTOR_SIZE                512
+#define SECTOR_SIZE          512
+#define BL_BASE_ADDR         0x21000
+#define BL_BASE_SEG          (BL_BASE_ADDR / 16)

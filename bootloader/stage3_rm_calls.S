@@ -1,8 +1,6 @@
 
 .intel_syntax noprefix
 
-#define BASE_ADDR 0x21000
-
 # Usable (un)real mode functions
 
 .code16
