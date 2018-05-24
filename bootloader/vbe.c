@@ -6,7 +6,7 @@
 
 void vga_set_video_mode(u8 mode)
 {
-   u32 eax, ebx, ecx, edx, esi, edi;
+   u32 eax, ebx, ecx, edx, esi, edi, flags;
 
    /*
     * ah = 0x0   => set video mode
@@ -15,12 +15,12 @@ void vga_set_video_mode(u8 mode)
 
    eax = mode;
 
-   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
+   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi, &flags);
 }
 
 bool vbe_get_info_block(VbeInfoBlock *vb)
 {
-   u32 eax, ebx, ecx, edx, esi, edi;
+   u32 eax, ebx, ecx, edx, esi, edi, flags;
 
    bzero(vb, sizeof(*vb));
 
@@ -28,7 +28,7 @@ bool vbe_get_info_block(VbeInfoBlock *vb)
    edi = (u32) vb;
 
    memcpy(vb->VbeSignature, "VBE2", 4);
-   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
+   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi, &flags);
 
    if (eax != 0x004f)
       return false;
@@ -38,7 +38,7 @@ bool vbe_get_info_block(VbeInfoBlock *vb)
 
 bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi)
 {
-   u32 eax, ebx, ecx, edx, esi, edi;
+   u32 eax, ebx, ecx, edx, esi, edi, flags;
 
    bzero(mi, sizeof(*mi));
 
@@ -46,7 +46,7 @@ bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi)
    ecx = mode;
    edi = (u32) mi;
 
-   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
+   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi, &flags);
 
    if (eax != 0x004f)
       return false;
@@ -56,12 +56,12 @@ bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi)
 
 bool vbe_set_video_mode(u16 mode)
 {
-   u32 eax, ebx, ecx, edx, esi, edi;
+   u32 eax, ebx, ecx, edx, esi, edi, flags;
 
    eax = 0x4f02;
    ebx = mode | VBE_SET_MODE_FLAG_USE_LINEAR_FB;
 
-   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
+   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi, &flags);
 
    if (eax != 0x004f)
       return false;
@@ -71,11 +71,11 @@ bool vbe_set_video_mode(u16 mode)
 
 bool vbe_get_current_mode(u16 *mode)
 {
-   u32 eax, ebx, ecx, edx, esi, edi;
+   u32 eax, ebx, ecx, edx, esi, edi, flags;
 
    eax = 0x4f03;
 
-   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
+   realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi, &flags);
 
    if (eax != 0x004f)
       return false;

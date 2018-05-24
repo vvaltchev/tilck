@@ -9,7 +9,8 @@ realmode_call(void *func,
               u32 *ecx_ref,
               u32 *edx_ref,
               u32 *esi_ref,
-              u32 *edi_ref);
+              u32 *edi_ref,
+              u32 *flags_ref);
 
 void
 realmode_call_by_val(void *func, u32 a, u32 b, u32 c, u32 d, u32 si, u32 di);

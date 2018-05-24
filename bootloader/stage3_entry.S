@@ -34,7 +34,7 @@ realmode_call_asm:
    mov eax, [esp + 36]               # arg1 : func to call
    mov [realmode_func_addr], eax
 
-   mov ecx, 6
+   mov ecx, 7
    lea esi, [esp + 40]
    mov edi, offset realmode_func_eax_ref
    rep movsd
@@ -147,6 +147,7 @@ after_call:
    push dx
    push si
    push di
+   pushf
 
    mov sp, bp
 
@@ -198,7 +199,7 @@ pm32:
 
    lea esi, [rm_ret_ax]
    lea edi, [realmode_func_eax_ref]
-   mov ecx, 6
+   mov ecx, 7
 
 1:
    mov ax, [esi]
@@ -218,20 +219,21 @@ pm32:
 saved_pm32_esp:     .long 0
 realmode_func_addr: .long 0
 
-realmode_func_eax_ref:  .long 0
-realmode_func_ebx_ref:  .long 0
-realmode_func_ecx_ref:  .long 0
-realmode_func_edx_ref:  .long 0
-realmode_func_esi_ref:  .long 0
-realmode_func_edi_ref:  .long 0
+realmode_func_eax_ref:    .long 0
+realmode_func_ebx_ref:    .long 0
+realmode_func_ecx_ref:    .long 0
+realmode_func_edx_ref:    .long 0
+realmode_func_esi_ref:    .long 0
+realmode_func_edi_ref:    .long 0
+realmode_func_flags_ref:  .long 0
 
-
-rm_ret_di: .word 0
-rm_ret_si: .word 0
-rm_ret_dx: .word 0
-rm_ret_cx: .word 0
-rm_ret_bx: .word 0
-rm_ret_ax: .word 0
+rm_ret_flags:  .word 0
+rm_ret_di:     .word 0
+rm_ret_si:     .word 0
+rm_ret_dx:     .word 0
+rm_ret_cx:     .word 0
+rm_ret_bx:     .word 0
+rm_ret_ax:     .word 0
 
 
 idt16:

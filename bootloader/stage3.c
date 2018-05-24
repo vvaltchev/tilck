@@ -160,10 +160,14 @@ void bootloader_main(void)
    /* Sanity check: realmode_call should be able to return all reg values */
    test_rm_call_working();
 
-   read_drive_params(current_device,
-                     &sectors_per_track,
-                     &heads_per_cylinder,
-                     &cylinders_count);
+   bool success =
+      read_drive_params(current_device,
+                        &sectors_per_track,
+                        &heads_per_cylinder,
+                        &cylinders_count);
+
+   if (!success)
+      panic("read_write_params failed");
 
    // printk("cylinders_count:    %d\n", cylinders_count);
    // printk("heads_per_cylinder: %d\n", heads_per_cylinder);
