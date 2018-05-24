@@ -246,59 +246,22 @@ void ask_user_video_mode(void)
    fb_pitch = mi->BytesPerScanLine;
    fb_bpp = mi->BitsPerPixel;
 
-   printk("Detailed mode info:\n");
-   printk("fb_paddr: %p\n", fb_paddr);
-   printk("fb_width: %u\n", fb_width);
-   printk("fb_height: %u\n", fb_height);
-   printk("fb_pitch: %u\n", fb_pitch);
-   printk("fb_bpp: %u\n", fb_bpp);
-   printk("LinBytesPerScanLine: %u\n", mi->LinBytesPerScanLine);
-   printk("MemoryModel: 0x%x\n", mi->MemoryModel);
+   // printk("Detailed mode info:\n");
+   // printk("fb_paddr: %p\n", fb_paddr);
+   // printk("fb_width: %u\n", fb_width);
+   // printk("fb_height: %u\n", fb_height);
+   // printk("fb_pitch: %u\n", fb_pitch);
+   // printk("fb_bpp: %u\n", fb_bpp);
+   // printk("LinBytesPerScanLine: %u\n", mi->LinBytesPerScanLine);
+   // printk("MemoryModel: 0x%x\n", mi->MemoryModel);
 
-   printk("[ red ] mask size: %u, pos: %u\n", mi->RedMaskSize, mi->RedFieldPosition);
-   printk("[green] mask size: %u, pos: %u\n", mi->GreenMaskSize, mi->GreenFieldPosition);
-   printk("[blue ] mask size: %u, pos: %u\n", mi->BlueMaskSize, mi->BlueFieldPosition);
+   // printk("[ red ] mask size: %u, pos: %u\n", mi->RedMaskSize, mi->RedFieldPosition);
+   // printk("[green] mask size: %u, pos: %u\n", mi->GreenMaskSize, mi->GreenFieldPosition);
+   // printk("[blue ] mask size: %u, pos: %u\n", mi->BlueMaskSize, mi->BlueFieldPosition);
 
-   printk("press any key to continue\n");
-   bios_read_char();
+   // printk("press any key to continue\n");
+   // bios_read_char();
 }
-
-/* temporary debug code */
-static inline void draw_pixel(u32 x, u32 y, u32 color)
-{
-   if (fb_bpp == 32) {
-
-      /*
-       * This code works perfectly when a UEFI framebuffer is used. In case of
-       * a VBE framebuffer instead, it still causes a dash to appear instead
-       * of a single point.
-       */
-      *(volatile u32 *)
-         (fb_paddr + (fb_pitch * y) + (x << 2)) = color;
-
-   } else if (fb_bpp == 24) {
-
-      /*
-       * NOTE: bytes_per_pixel=3 produces 2 dashes (instead of a single point!)
-       * having also different colors, while using bytes_per_pixel=4
-       * produces a single dash having the right color. It looks like that bpp
-       * is 32, even if when it should be 24. Anyway, the biggest problem is
-       * that even by writing a single byte (e.g. p[0] = ...) a whole dash
-       * appears. On real hardware, the effect is identical.
-       */
-
-      u32 bytes_per_pixel = fb_bpp / 8;
-
-      volatile u8 *p =
-         (volatile u8 *)(fb_paddr + (fb_pitch * y) + (x * bytes_per_pixel));
-
-      p[0] = ((u8*)&color)[0];
-      p[1] = ((u8*)&color)[1];
-      p[2] = ((u8*)&color)[2];
-
-   }
-}
-/* END of temporary debug code */
 
 void bootloader_main(void)
 {
@@ -331,43 +294,6 @@ void bootloader_main(void)
 
       break;
    }
-
-   /* temporary debug code (graphic VBE mode does not work as supposed) */
-   if (graphics_mode) {
-
-      /*
-         // By running the following commented code it is possible to observe
-         // that the bit 14 in 'mode' is set (linear frame buffer is used).
-
-         u16 mode;
-         bool success = vbe_get_current_mode(&mode);
-
-         vga_set_video_mode(VGA_COLOR_TEXT_MODE_80x25);
-         init_bt();
-
-         if (success) {
-            printk("vbe mode: %p\n", mode);
-         } else {
-            printk("vbe get current mode failed\n");
-         }
-      */
-
-
-      /* draw one white pixel */
-      draw_pixel(0, 10, 0x00ffffff);
-
-      /* draw one red pixel */
-      draw_pixel(0, 11, 0x00ff0000);
-
-      /* draw one green pixel */
-      draw_pixel(0, 12, 0x0000ff00);
-
-      /* draw one blue pixel */
-      draw_pixel(0, 13, 0x000000ff);
-
-      asmVolatile("hlt");
-   }
-   /* end of temporary debug code */
 
    mbi = setup_multiboot_info();
 

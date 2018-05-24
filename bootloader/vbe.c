@@ -52,7 +52,7 @@ bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi)
    return true;
 }
 
-bool vbe_set_video_mode(u8 mode)
+bool vbe_set_video_mode(u16 mode)
 {
    u32 eax, ebx, ecx, edx, esi, edi;
 
