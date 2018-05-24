@@ -12,15 +12,15 @@
 _start:
 main:
 
-   # Zero-out the BSS
+   # Zero the BSS
+   mov edi, offset __bss_start
    mov ecx, offset __bss_end
-   sub ecx, offset __bss_start
+   sub ecx, edi
    xor eax, eax
    rep stosb
 
    # Jump to bootloader's main
    jmp bootloader_main
-
 
 
 # Actually, in our case it's "unreal" mode

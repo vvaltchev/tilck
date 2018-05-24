@@ -20,7 +20,7 @@
  */
 #define IN(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
 
-bool graphics_mode = false; // false = text mode
+bool graphics_mode; // false = text mode
 u32 fb_paddr;
 u32 fb_pitch;
 u32 fb_width;
@@ -146,8 +146,14 @@ void bootloader_main(void)
    vga_set_video_mode(VGA_COLOR_TEXT_MODE_80x25);
    init_bt();
 
+   /* Sanity check: the variables in BSS should be zero-filled */
+   ASSERT(!graphics_mode);
+   ASSERT(!fb_paddr);
+   ASSERT(!ramdisk_size);
+
    printk("----- Hello from exOS's legacy bootloader! -----\n\n");
 
+   /* Sanity check: realmode_call should be able to return all reg values */
    test_rm_call_working();
 
    calculate_ramdisk_size();
