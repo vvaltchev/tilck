@@ -44,3 +44,5 @@ bool read_drive_params(u8 drive,
                        u32 *sectors_per_track,
                        u32 *heads_per_cylinder,
                        u32 *cylinder_count);
+
+void read_sectors(void);

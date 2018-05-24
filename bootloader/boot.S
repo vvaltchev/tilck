@@ -5,22 +5,10 @@
 
 #define BASE_LOAD_SEG          0x07C0
 #define DEST_DATA_SEGMENT      0x2000
-#define TEMP_DATA_SEGMENT      0x1000
 #define COMPLETE_FLUSH_ADDR    0x1000
 #define COMPLETE_FLUSH_SIZE       128
 
-#define RAMDISK_PADDR          (KERNEL_PADDR + KERNEL_MAX_SIZE)
 
-#define RAMDISK_FIRST_SECTOR 2048
-
-//#define RAMDISK_SIZE_TO_LOAD RAMDISK_SIZE
-
-//DEBUG value used during development to make the load faster.
-#define RAMDISK_SIZE_TO_LOAD (2*MB)
-
-
-#define RAMDISK_LAST_SECTOR \
-   (RAMDISK_FIRST_SECTOR + RAMDISK_SIZE_TO_LOAD/SECTOR_SIZE - 1)
 
 /*
  * We're OK with just 32 KB because now the initial sectors contain just the 3rd
@@ -226,7 +214,6 @@ str_failed:           .asciz "FAILED\r\n"
 # Utility functions
 ##############################################
 
-
 lba_to_chs:         # Calculate head, track and sector settings for int 13h
                     # IN:  LBA in EAX
                     # OUT: correct registers for int 13h
@@ -397,14 +384,11 @@ stage2_entry:
 
    call smart_enable_A20
 
-   jmp enter_unreal_mode
+   jmp enter_32bit_protected_mode
 
-   saved_cx: .word 0
-   saved_dx: .word 0
 
-   actual_sectors_read: .long 0
-   ramdisk_dest_addr32: .long RAMDISK_PADDR
-
+   saved_cx: .word 0 # TODO: remove
+   saved_dx: .word 0 # TODO: remove
 
    gdt:
    gdt_null: .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
@@ -454,8 +438,7 @@ stage2_entry:
    str_loading_ramdisk:
       .asciz "Loading ramdisk "
 
-
-enter_unreal_mode:
+enter_32bit_protected_mode:
 
    # calculate the absolute 32 bit address of GDT
    # since flat addr = SEG << 4 + OFF
@@ -466,117 +449,6 @@ enter_unreal_mode:
    shl eax, 4
    add eax, offset gdt
    mov dword ptr [gdtr+2], eax
-
-   lgdt [gdtr]            # load gdt register
-
-   mov eax, cr0           # switch to 16-bit pmode by
-   or al, 1               # set pmode bit
-   mov cr0, eax
-
-   jmp .+2                # tell 386/486 to not crash
-
-   mov bx, 0x10           # select descriptor 2
-   mov es, bx             # store it in 'es'.
-                          # After that, only it can be used for indexing
-                          # 32-bit addresses from "unreal mode".
-
-   and al, 0xFE           # back to realmode
-   mov cr0, eax           # by toggling bit again
-
-   ###########################################################################
-
-   sti # re-enable interrupts
-
-   mov si, offset str_loading_ramdisk
-   call print_string
-
-   mov dword ptr [curr_sec], RAMDISK_FIRST_SECTOR
-
-   .load_vdisk_loop:
-
-      # Progress by showing dots: faster than full verbose strings
-
-      mov eax, [curr_sec]
-      and eax, 255
-      test eax, eax
-      jnz .after_print_dot
-
-      .print_dot:
-      mov ah, 0x0E # print char
-      mov al, 46   # dot '.'
-      int 0x10
-      .after_print_dot:
-
-      #mov eax, [curr_sec]
-      #cmp eax, 53248
-      #jne .cont
-
-      #call lba_to_chs
-      #mov [saved_cx], cx
-      #mov [saved_dx], dx
-      #mov si, offset newline
-      #call print_string
-      #call print_chs
-
-      #cli
-      #hlt
-      #.cont:
-
-      mov eax, [curr_sec]
-      call lba_to_chs
-      mov ax, TEMP_DATA_SEGMENT
-      mov es, ax        # set the destination segment
-      mov bx, 0         # set the destination offset
-
-      # save the CHS parameters for error messages
-      mov [saved_cx], cx
-      mov [saved_dx], dx
-
-      mov ah, 0x02                # Params for int 0x13: read sectors
-      mov al, [sectors_per_track] # Read MAX possible sectors
-      #mov al, 1
-      int 0x13
-      jc read_error
-
-      mov [actual_sectors_read], al  # save the actual number of sectors read
-
-      xor ax, ax
-      mov es, ax # es = 0
-
-      mov edi, [ramdisk_dest_addr32]          # dest flat addr
-      mov esi, (TEMP_DATA_SEGMENT * 16)       # src flat addr
-
-      mov edx, esi                     # edx = TEMP segment flat addr
-      mov eax, [actual_sectors_read]   # eax = actual_sectors_read
-      add [curr_sec], eax              # curr_sec += actual_sectors_read
-      shl eax, 9                       # eax *= 512 (SECTOR_SIZE)
-                                       # eax = total bytes read in this iter
-      add [ramdisk_dest_addr32], eax   # ramdisk_dest_addr32 += tot_bytes
-      add edx, eax                     # edx = TEMP_DATA_SEGMENT + tot_bytes
-
-      .copy_loop:
-         mov ebx, es:[esi]  # copy src data in ebx
-         mov es:[edi], ebx  # copy ebx in dest ptr
-         add edi, 4
-         add esi, 4
-
-         cmp esi, edx
-         jle .copy_loop
-
-      cmp dword ptr [curr_sec], RAMDISK_LAST_SECTOR
-      jl .load_vdisk_loop
-
-   # Loading of RAMDISK completed.
-
-   mov si, offset newline
-   call print_string
-
-   mov si, offset str_load_of_ramdisk_completed
-   call print_string
-
-   ###########################################################################
-
-enter_32bit_protected_mode:
 
    cli
 
@@ -593,26 +465,11 @@ enter_32bit_protected_mode:
    rep movsw  # copies 2*CX bytes from [ds:si] to [es:di]
 
    lidt [idtr]
-
-
-   # layout of segments:
-   # http://stackoverflow.com/questions/23978486/far-jump-in-gdt-in-bootloader
-
-   # index (13b) | TI (2b) | RPL (2b)
-   # TI = table indicator# 0 = GDT, 1 = LDT
-   # RPL = Requestor priviledge level# 00 = highest, 11 = lowest
-
-   lgdt [gdtr]  # load GDT register with start address of Global Descriptor Table
-
-   # FIRST switch to protected mode and THEN do the FAR JUMP to 32 bit code
+   lgdt [gdtr]
 
    mov eax, cr0
-   or al, 1     # set PE (Protection Enable) bit in CR0 (Control Register 0)
+   or al, 1      # enable protected mode
    mov cr0, eax
-
-   # 0x08 is the first selector
-   # 0000000000001     0         00
-   # index 1 (code)   GDT    privileged
 
    cli
    jmp 0x08:0x1000 # the JMP sets CS (code selector)#
@@ -620,42 +477,6 @@ enter_32bit_protected_mode:
 
 ##########################################
 
-
-read_error:
-
-   ################################################################
-   # ERROR HANDLING CODE
-   ################################################################
-
-   mov si, offset err_while_loading_ramdisk
-   call print_string
-
-   # The load failed for some reason
-
-   mov ah, 0x01 # Get Status of Last Drive Operation
-   mov dl, [current_device]
-   int 0x13
-
-   # The carry flag here is always set and people on os-dev say
-   # that one should not rely on it.
-
-   # We have now in AH the last error
-   shr ax, 8 # move AH in AL and make AH=0
-   mov si, offset last_op_status
-   call print_string_and_num
-
-
-   # Print the sector number (LBA)
-   mov si, offset load_failed
-   mov ax, [curr_sec]
-   call print_string_and_num
-
-   # Print the CHS params we actually used
-   call print_chs
-
-   .hang:
-   cli
-   hlt
 
 # Function: check_a20
 #
@@ -809,6 +630,7 @@ smart_enable_A20:
    .end:
    ret
 
+# TODO: remove
 print_num:
 
    pusha
@@ -828,7 +650,7 @@ print_num:
    ret
 
 
-
+# TODO: remove
 # IN: string in SI
 # IN: number in AX
 
@@ -837,6 +659,7 @@ print_string_and_num:
    call print_num
    ret
 
+# TODO: remove
 itoa: # convert 16-bit integer to string
 
 #  USAGE:
@@ -894,6 +717,7 @@ itoa: # convert 16-bit integer to string
    leave
    ret
 
+# TODO: remove
 print_chs:
    pusha
 

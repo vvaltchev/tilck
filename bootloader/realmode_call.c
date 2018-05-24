@@ -105,3 +105,16 @@ bool read_drive_params(u8 drive,
 
    return true;
 }
+
+extern u32 realmode_read_sectors;
+
+void read_sectors(void)
+{
+   u32 eax, ebx, ecx, edx, esi, edi, flags;
+
+   realmode_call(&realmode_read_sectors,
+                 &eax, &ebx, &ecx, &edx, &esi, &edi, &flags);
+
+   if (eax)
+      panic("Read sectors failed. Last Operation Error: %p\n", eax >> 8);
+}

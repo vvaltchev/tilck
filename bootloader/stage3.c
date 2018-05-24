@@ -142,6 +142,9 @@ multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
+uint32_t
+crc32(uint32_t crc, const void *buf, size_t size);
+
 void bootloader_main(void)
 {
    void *entry;
@@ -173,6 +176,13 @@ void bootloader_main(void)
    // printk("heads_per_cylinder: %d\n", heads_per_cylinder);
    // printk("sectors_per_track:  %d\n", sectors_per_track);
    // bios_read_char();
+
+
+   printk("Loading ramdisk...\n");
+
+   read_sectors();
+
+   //printk("Ramdisk CRC32: %p\n", crc32(0, (const void *)RAMDISK_PADDR, 33 * MB));
 
    calculate_ramdisk_size();
 
