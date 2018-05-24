@@ -431,7 +431,8 @@ void init_framebuffer_console(void)
    VERIFY(rows_to_flush != NULL);
 
    init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, COLOR_WHITE);
-   printk("[fb_console] resolution: %ix%i\n", fb_get_width(), fb_get_height());
+   printk("[fb_console] resolution: %i x %i x %i bpp\n",
+          fb_get_width(), fb_get_height(), fb_get_bpp());
    printk("[fb_console] font size: %i x %i\n", h->width, h->height);
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 
@@ -439,9 +440,9 @@ void init_framebuffer_console(void)
 
    if (framebuffer_vi.flush_buffers) {
       if (fb_switch_to_shadow_buffer()) {
-         printk("[fb_console] Using a shadow buffer\n");
+         printk("[fb_console] Using double buffering\n");
       } else {
-         printk("WARNING: unable to use a shadow buffer for the framebuffer");
+         printk("WARNING: unable to use double buffering for the framebuffer");
       }
    }
 }

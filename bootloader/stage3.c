@@ -189,14 +189,14 @@ void ask_user_video_mode(void)
       if (!(mi->ModeAttributes & VBE_MODE_ATTRS_SUPPORTED))
          continue;
 
+      if (mi->MemoryModel != VB_MEM_MODEL_DIRECT_COLOR)
+         continue;
+
       if (mi->BitsPerPixel < 24)
          continue;
 
       /* skip any evenutal fancy resolutions not known by exOS */
       if (!is_resolution_known(mi->XResolution, mi->YResolution))
-         continue;
-
-      if (mi->MemoryModel != 0x6 /* direct color */)
          continue;
 
       printk("Mode [%d]: %d x %d x %d\n",
@@ -282,17 +282,11 @@ void bootloader_main(void)
 
    ask_user_video_mode();
 
-   while (true) {
-
-      if (!vbe_set_video_mode(selected_mode)) {
-         printk("ERROR: unable to set the selected video mode!\n");
-         printk("       vbe_set_video_mode(0x%x) failed.\n\n", selected_mode);
-         printk("Please select a different video mode.\n\n");
-         ask_user_video_mode();
-         continue;
-      }
-
-      break;
+   while (!vbe_set_video_mode(selected_mode)) {
+      printk("ERROR: unable to set the selected video mode!\n");
+      printk("       vbe_set_video_mode(0x%x) failed.\n\n", selected_mode);
+      printk("Please select a different video mode.\n\n");
+      ask_user_video_mode();
    }
 
    mbi = setup_multiboot_info();

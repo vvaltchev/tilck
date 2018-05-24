@@ -93,6 +93,10 @@ typedef struct {
 
 #define VBE_SET_MODE_FLAG_USE_LINEAR_FB (1 << 14)
 
+#define VB_MEM_MODEL_TEXT_MODE     (0x0)
+#define VB_MEM_MODEL_PACKED_PIXEL  (0x4)
+#define VB_MEM_MODEL_DIRECT_COLOR  (0x6)
+
 void vga_set_video_mode(u8 mode);
 void vbe_get_info_block(VbeInfoBlock *vb);
 bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi);
