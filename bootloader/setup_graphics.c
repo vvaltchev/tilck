@@ -5,13 +5,13 @@
 #include "realmode_call.h"
 #include "vbe.h"
 
-extern bool graphics_mode;
 extern u32 fb_paddr;
 extern u32 fb_pitch;
 extern u32 fb_width;
 extern u32 fb_height;
 extern u32 fb_bpp;
 
+extern bool graphics_mode;
 extern u32 selected_mode;
 
 
@@ -54,37 +54,12 @@ void debug_show_detailed_mode_info(ModeInfoBlock *mi)
    bios_read_char();
 }
 
-void ask_user_video_mode(void)
+static void show_modes_aux(u16 *modes,
+                           ModeInfoBlock *mi,
+                           u16 *known_modes,
+                           int *known_modes_count,
+                           int min_bpp)
 {
-   VbeInfoBlock *vb = (void *)0x2000;
-   ModeInfoBlock *mi = (void *)0x3000;
-
-   u32 known_modes[10];
-   int known_modes_count = 0;
-   int min_bpp = 32;
-
-   if (!vbe_get_info_block(vb)) {
-      printk("VBE get info failed. Only the text mode is available.\n");
-      printk("Press ANY key to boot in text mode\n");
-      bios_read_char();
-      return;
-   }
-
-   if (vb->VbeVersion < 0x200) {
-      printk("VBE older than 2.0 is not supported.\n");
-      printk("Press ANY key to boot in text mode\n");
-      bios_read_char();
-      return;
-   }
-
-   known_modes[known_modes_count++] = VGA_COLOR_TEXT_MODE_80x25;
-   printk("Mode [0]: text mode 80 x 25 [DEFAULT]\n");
-
-
-   u16 *modes = get_flat_ptr(vb->VideoModePtr);
-
-show_modes:
-
    for (u32 i = 0; modes[i] != 0xffff; i++) {
 
       if (!vbe_get_mode_info(modes[i], mi))
@@ -112,21 +87,51 @@ show_modes:
          continue;
 
       printk("Mode [%d]: %d x %d x %d\n",
-             known_modes_count, mi->XResolution, mi->YResolution,
+             *known_modes_count, mi->XResolution, mi->YResolution,
              mi->BitsPerPixel);
 
-      known_modes[known_modes_count++] = modes[i];
+      known_modes[(*known_modes_count)++] = modes[i];
+   }
+}
+
+void ask_user_video_mode(void)
+{
+   VbeInfoBlock *vb = (void *)0x2000;
+   ModeInfoBlock *mi = (void *)0x3000;
+
+   u16 known_modes[10];
+   int known_modes_count = 0;
+
+   if (!vbe_get_info_block(vb)) {
+      printk("VBE get info failed. Only the text mode is available.\n");
+      printk("Press ANY key to boot in text mode\n");
+      bios_read_char();
+      return;
    }
 
-   if (known_modes_count == 1 && min_bpp == 32) {
+   if (vb->VbeVersion < 0x200) {
+      printk("VBE older than 2.0 is not supported.\n");
+      printk("Press ANY key to boot in text mode\n");
+      bios_read_char();
+      return;
+   }
+
+   known_modes[known_modes_count++] = VGA_COLOR_TEXT_MODE_80x25;
+   printk("Mode [0]: text mode 80 x 25 [DEFAULT]\n");
+
+
+   u16 *modes = get_flat_ptr(vb->VideoModePtr);
+   show_modes_aux(modes, mi, known_modes, &known_modes_count, 32);
+
+   if (known_modes_count == 1) {
 
       /*
        * Extremely unfortunate case: no modes with bpp = 32 are available.
        * Therefore, allow modes with bpp = 24 and iterate again all of over
        * the available modes.
        */
-      min_bpp = 24;
-      goto show_modes;
+
+      show_modes_aux(modes, mi, known_modes, &known_modes_count, 24);
    }
 
    printk("\n");
