@@ -119,6 +119,12 @@ show_modes:
    }
 
    if (known_modes_count == 1 && min_bpp == 32) {
+
+      /*
+       * Extremely unfortunate case: no modes with bpp = 32 are available.
+       * Therefore, allow modes with bpp = 24 and iterate again all of over
+       * the available modes.
+       */
       min_bpp = 24;
       goto show_modes;
    }

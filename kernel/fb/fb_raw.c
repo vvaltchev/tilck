@@ -105,10 +105,7 @@ static inline void fb_draw_pixel(u32 x, u32 y, u32 color)
    } else {
 
       // Assumption: bpp is 24
-
-      volatile u8 *p = (volatile u8 *) (fb_vaddr + (fb_pitch * y) + (x * 3));
-      *((volatile u16*)p) = *((volatile u16*)&color);
-      p[2] = ((u8*)&color)[2];
+      memcpy((void *) (fb_vaddr + (fb_pitch * y) + (x * 3)), &color, 3);
    }
 }
 
