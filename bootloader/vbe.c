@@ -18,7 +18,7 @@ void vga_set_video_mode(u8 mode)
    realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
 }
 
-void vbe_get_info_block(VbeInfoBlock *vb)
+bool vbe_get_info_block(VbeInfoBlock *vb)
 {
    u32 eax, ebx, ecx, edx, esi, edi;
 
@@ -31,7 +31,9 @@ void vbe_get_info_block(VbeInfoBlock *vb)
    realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi);
 
    if (eax != 0x004f)
-      panic("VBE get info failed");
+      return false;
+
+   return true;
 }
 
 bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi)

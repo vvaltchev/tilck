@@ -149,6 +149,9 @@ bool is_resolution_known(u16 xres, u16 yres)
    if (xres == 1280 && yres == 1024)
       return true;
 
+   if (xres == 1920 && yres == 1080)
+      return true;
+
    return false;
 }
 
@@ -159,19 +162,29 @@ void ask_user_video_mode(void)
 
    u32 known_modes[10];
    int known_modes_count = 0;
+   int min_bpp = 32;
+
+   if (!vbe_get_info_block(vb)) {
+      printk("VBE get info failed. Only the text mode is available.\n");
+      printk("Press ANY key to boot in text mode\n");
+      bios_read_char();
+      return;
+   }
+
+   if (vb->VbeVersion < 0x200) {
+      printk("VBE older than 2.0 is not supported.\n");
+      printk("Press ANY key to boot in text mode\n");
+      bios_read_char();
+      return;
+   }
 
    known_modes[known_modes_count++] = VGA_COLOR_TEXT_MODE_80x25;
    printk("Mode [0]: text mode 80 x 25 [DEFAULT]\n");
 
-   vbe_get_info_block(vb);
-
-   // printk("Query video modes\n");
-   // printk("Vbe version: 0x%x\n", vb->VbeVersion);
-   // printk("Vbe sig: %c%c%c%c\n", vb->VbeSignature[0],
-   //        vb->VbeSignature[1], vb->VbeSignature[2], vb->VbeSignature[3]);
-   // printk("EOM string: '%s'\n", get_flat_ptr(vb->OemStringPtr));
 
    u16 *modes = get_flat_ptr(vb->VideoModePtr);
+
+show_modes:
 
    for (u32 i = 0; modes[i] != 0xffff; i++) {
 
@@ -192,7 +205,7 @@ void ask_user_video_mode(void)
       if (mi->MemoryModel != VB_MEM_MODEL_DIRECT_COLOR)
          continue;
 
-      if (mi->BitsPerPixel < 24)
+      if (mi->BitsPerPixel < min_bpp)
          continue;
 
       /* skip any evenutal fancy resolutions not known by exOS */
@@ -204,6 +217,11 @@ void ask_user_video_mode(void)
              mi->BitsPerPixel);
 
       known_modes[known_modes_count++] = modes[i];
+   }
+
+   if (known_modes_count == 1 && min_bpp == 32) {
+      min_bpp = 24;
+      goto show_modes;
    }
 
    printk("\n");
@@ -245,6 +263,9 @@ void ask_user_video_mode(void)
    fb_height = mi->YResolution;
    fb_pitch = mi->BytesPerScanLine;
    fb_bpp = mi->BitsPerPixel;
+
+   if (vb->VbeVersion >= 0x300)
+      fb_pitch = mi->LinBytesPerScanLine;
 
    // printk("Detailed mode info:\n");
    // printk("fb_paddr: %p\n", fb_paddr);
