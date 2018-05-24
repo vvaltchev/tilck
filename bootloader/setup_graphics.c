@@ -54,12 +54,21 @@ void debug_show_detailed_mode_info(ModeInfoBlock *mi)
    bios_read_char();
 }
 
+static void show_single_mode(int num, ModeInfoBlock *mi)
+{
+   printk("Mode [%d]: %d x %d x %d\n",
+          num, mi->XResolution, mi->YResolution, mi->BitsPerPixel);
+}
+
 static void show_modes_aux(u16 *modes,
                            ModeInfoBlock *mi,
                            u16 *known_modes,
                            int *known_modes_count,
                            int min_bpp)
 {
+   u32 max_width = 0;
+   u16 max_width_mode;
+
    for (u32 i = 0; modes[i] != 0xffff; i++) {
 
       if (!vbe_get_mode_info(modes[i], mi))
@@ -82,15 +91,27 @@ static void show_modes_aux(u16 *modes,
       if (mi->BitsPerPixel < min_bpp)
          continue;
 
-      /* skip any evenutal fancy resolutions not known by exOS */
-      if (!is_resolution_known(mi->XResolution, mi->YResolution))
+      if (!is_resolution_known(mi->XResolution, mi->YResolution)) {
+
+         if (mi->XResolution > max_width) {
+            max_width = mi->XResolution;
+            max_width_mode = modes[i];
+         }
+
          continue;
+      }
 
-      printk("Mode [%d]: %d x %d x %d\n",
-             *known_modes_count, mi->XResolution, mi->YResolution,
-             mi->BitsPerPixel);
-
+      show_single_mode(*known_modes_count, mi);
       known_modes[(*known_modes_count)++] = modes[i];
+   }
+
+   if (max_width) {
+
+      if (!vbe_get_mode_info(max_width_mode, mi))
+         panic("vbe_get_mode_info(0x%x) failed", max_width_mode);
+
+      show_single_mode(*known_modes_count, mi);
+      known_modes[(*known_modes_count)++] = max_width_mode;
    }
 }
 
