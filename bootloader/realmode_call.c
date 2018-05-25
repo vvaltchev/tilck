@@ -107,6 +107,23 @@ bool read_drive_params(u8 drive,
 }
 
 extern u32 realmode_read_sectors;
+extern u32 curr_sec;
+
+u16 saved_cx;
+u16 saved_dx;
+
+void dump_chs(void)
+{
+   /*
+    * the higher 8 bits of CX are the lower 8 bits of cyl
+    * the bits 6, 7 of CX are the higher (8, 9) bits of cyl
+    */
+   u32 cyl = saved_cx >> 8 | ((saved_cx & 192) << 2);
+   u32 head = saved_dx >> 8;
+   u32 sec = saved_cx & 63; /* the lower 6 bits of CX */
+
+   printk("CHS used: %u, %u, %u\n", cyl, head, sec);
+}
 
 void read_sectors(u32 dest_paddr, u32 lba_sector, u32 sector_count)
 {
@@ -119,6 +136,11 @@ void read_sectors(u32 dest_paddr, u32 lba_sector, u32 sector_count)
    realmode_call(&realmode_read_sectors,
                  &eax, &ebx, &ecx, &edx, &esi, &edi, &flags);
 
-   if (eax)
-      panic("Read sectors failed. Last Operation Error: %p\n", eax >> 8);
+   if (eax) {
+      printk("[ FAILED ]\n");
+      printk("Read failed with last op err: %p\n", eax >> 8);
+      printk("LBA sector: %u\n", curr_sec);
+      dump_chs();
+      panic("Unrecoverable read error");
+   }
 }

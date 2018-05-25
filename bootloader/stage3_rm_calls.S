@@ -43,8 +43,6 @@ lba_to_chs:         # Calculate head, track and sector settings for int 13h
                     # OUT: correct registers for int 13h
    push ebx
    push edi
-
-   .byte 0x66
    push eax        # Save LBA
 
    # DIV {ARG}
@@ -61,7 +59,6 @@ lba_to_chs:         # Calculate head, track and sector settings for int 13h
    mov cl, dl        # Sectors belong in CL for int 13h
    and cl, 63        # Make sure the upper two bits of CL are unset
 
-   .byte 0x66
    pop eax           # reload the LBA sector in AX
 
    xor edx, edx      # reset DX and calculate the head
@@ -211,8 +208,7 @@ end:
 #####################################
 # Data
 
-saved_cx: .word 0
-saved_dx: .word 0
+.global curr_sec
 
 curr_sec:             .long 0
 last_sec:             .long 0

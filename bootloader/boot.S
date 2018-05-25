@@ -361,23 +361,6 @@ stage2_entry:
    mov si, offset str_hello
    call print_string
 
-   mov si, offset str_device
-   mov ax, [current_device]
-   call print_string_and_num
-
-   mov si, offset str_cylinders
-   mov ax, [cylinders_count]
-   call print_string_and_num
-
-   mov si, offset str_heads_per_cyl
-   mov ax, [heads_per_cylinder]
-   call print_string_and_num
-
-   mov si, offset str_sectors_per_track
-   mov ax, [sectors_per_track]
-   call print_string_and_num
-
-
    #########################################################################
 
    cli          # disable interrupts
@@ -385,10 +368,6 @@ stage2_entry:
    call smart_enable_A20
 
    jmp enter_32bit_protected_mode
-
-
-   saved_cx: .word 0 # TODO: remove
-   saved_dx: .word 0 # TODO: remove
 
    gdt:
    gdt_null: .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
@@ -403,40 +382,9 @@ stage2_entry:
       .word 0x0000
       .long 0x00000000
 
-   small_buf: .space 8, 0
-
-   newline:
-      .asciz "\r\n"
-   load_failed:
-      .asciz "LBA: "
-   cyl_param:
-      .asciz "C: "
-   head_param:
-      .asciz "H: "
-   sector_param:
-      .asciz "S: "
-   last_op_status:
-      .asciz "Last op status: "
-   str_device:
-      .asciz "Device number: "
-   str_cylinders:
-      .asciz "Cyclinders count:   "
-   str_heads_per_cyl:
-      .asciz "Heads per cylinder: "
-   str_sectors_per_track:
-      .asciz "Sectors per track:  "
    str_hello:
       .asciz "Hello, I am the 2nd stage-bootloader!\r\n"
-   err_while_loading_ramdisk:
-      .asciz "Error while loading ramdisk\r\n"
-   str_load_of_ramdisk_completed:
-      .asciz "Loading of ramdisk completed.\r\n"
-   str_before_reading_curr_sec:
-      .asciz "Current sector num: "
-   str_curr_sector_num:
-      .asciz "After reading, current sector: "
-   str_loading_ramdisk:
-      .asciz "Loading ramdisk "
+
 
 enter_32bit_protected_mode:
 
@@ -628,126 +576,6 @@ smart_enable_A20:
    jne .end
 
    .end:
-   ret
-
-# TODO: remove
-print_num:
-
-   pusha
-
-   push offset small_buf
-   push ax # the input number
-   call itoa
-   add sp, 4
-
-   mov si, offset small_buf
-   call print_string
-
-   mov si, offset newline
-   call print_string
-
-   popa
-   ret
-
-
-# TODO: remove
-# IN: string in SI
-# IN: number in AX
-
-print_string_and_num:
-   call print_string
-   call print_num
-   ret
-
-# TODO: remove
-itoa: # convert 16-bit integer to string
-
-#  USAGE:
-#  push destbuffer
-#  push number
-#
-#  call itoa
-#  add sp, 4
-
-   push bp
-   mov bp, sp
-   sub sp, 24
-
-   mov [bp-2], bp
-   sub word ptr [bp-2], 4
-
-   .loop:
-
-      xor dx, dx
-      mov ax, [bp+4]
-      mov bx, 10
-      div bx
-      mov [bp+4], ax
-
-      mov bx, [bp-2]
-      add dl, 48
-      mov [bx], dl
-      add word ptr [bp-2], 1
-
-      mov cx, [bp+4]
-      test cx, cx
-      jne .loop   # JMP if cx != 0
-
-   mov bx, [bp-2]
-   sub bx, 1
-
-
-   mov di, [bp+6]
-
-   .l2:
-
-      mov ax, [bx]
-      mov [di], ax
-
-      dec bx
-      inc di
-
-      mov ax, bp
-      sub ax, 4
-      cmp bx, ax
-      jge .l2
-
-   mov byte ptr [di], 0
-
-   leave
-   ret
-
-# TODO: remove
-print_chs:
-   pusha
-
-   # print the cylinder param
-   mov si, offset cyl_param
-   call print_string
-   mov ax, [saved_cx]
-   shr ax, 8     # put 'ch' in al
-
-   mov bx, [saved_cx]
-   and bx, 192   # make only the bits 6 and 7 to remain
-   shl bx, 2
-   or ax, bx
-   call print_num
-
-   # print the head param
-   mov si, offset head_param
-   call print_string
-   mov ax, [saved_dx]
-   shr ax, 8    # put 'dh' in al
-   call print_num
-
-   # print the sector param
-   mov si, offset sector_param
-   call print_string
-   mov ax, [saved_cx]
-   and ax, 63      # only the first 6 bits matter
-   call print_num
-
-   popa
    ret
 
 #########################################################
