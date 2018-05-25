@@ -396,10 +396,9 @@ u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, int clusterN, int fatNum)
    return (*(u32*)(SecBuf+ThisFATEntOffset)) & 0x0FFFFFFF;
 }
 
-u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N)
+u32 fat_get_first_data_sector(fat_header *hdr)
 {
    u32 RootDirSectors = fat_get_RootDirSectors(hdr);
-
    u32 FATSz;
 
    if (hdr->BPB_FATSz16 != 0) {
@@ -411,6 +410,13 @@ u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N)
 
    u32 FirstDataSector = hdr->BPB_RsvdSecCnt +
       (hdr->BPB_NumFATs * FATSz) + RootDirSectors;
+
+   return FirstDataSector;
+}
+
+u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N)
+{
+   u32 FirstDataSector = fat_get_first_data_sector(hdr);
 
    // FirstSectorofCluster
    return ((N - 2) * hdr->BPB_SecPerClus) + FirstDataSector;

@@ -201,7 +201,7 @@ LoadRamdisk(EFI_HANDLE image,
 
    sector_size = fat_get_sector_size(fat_hdr);
    sectors_per_fat = fat_get_FATSz(fat_hdr);
-   total_fat_size = sectors_per_fat * sector_size;
+   total_fat_size = (fat_get_first_data_sector(fat_hdr) + 1) * sector_size;
    *ramdisk_size = fat_get_TotSec(fat_hdr) * sector_size;
 
    status = BS->FreePages(*ramdisk_paddr_ref, 1);

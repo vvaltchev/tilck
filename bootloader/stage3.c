@@ -34,28 +34,35 @@ u32 sectors_per_track;
 u32 heads_per_cylinder;
 u32 cylinders_count;
 
-static u32 ramdisk_size;
+static u32 ramdisk_max_size;
+static u32 ramdisk_used_bytes;
+static u32 ramdisk_first_data_sector;
+
 void ask_user_video_mode(void);
 
-void calculate_ramdisk_size(void)
+void calculate_ramdisk_fat_size(void)
 {
-   fat_header *fat_hdr = (fat_header *)RAMDISK_PADDR;
-   u32 sector_size = fat_get_sector_size(fat_hdr);
-   ramdisk_size = fat_get_TotSec(fat_hdr) * sector_size;
+   fat_header *hdr = (fat_header *)RAMDISK_PADDR;
+   const u32 sector_size = fat_get_sector_size(hdr);
+
+   ramdisk_first_data_sector = fat_get_first_data_sector(hdr);
+   ramdisk_max_size = fat_get_TotSec(hdr) * sector_size;
 }
 
 void load_elf_kernel(const char *filepath, void **entry)
 {
    fat_header *hdr = (fat_header *)RAMDISK_PADDR;
-   void *free_space = (void *) (RAMDISK_PADDR + ramdisk_size);
+   void *free_space = (void *) (RAMDISK_PADDR + ramdisk_max_size);
 
    /* DEBUG: poison the free memory, up to 128 MB */
-   memset(free_space, 0xFA, (128 * MB - RAMDISK_PADDR - ramdisk_size));
+   memset(free_space, 0xFA, (128 * MB - RAMDISK_PADDR - ramdisk_max_size));
 
    fat_entry *e = fat_search_entry(hdr, fat_get_type(hdr), filepath);
 
-   if (!e)
+   if (!e) {
+      printk("\n");
       panic("Unable to open '%s'!\n", filepath);
+   }
 
    fat_read_whole_file(hdr, e, free_space, KERNEL_MAX_SIZE);
 
@@ -137,7 +144,7 @@ multiboot_info_t *setup_multiboot_info(void)
    mbi->mods_addr = (u32)mod;
    mbi->mods_count = 1;
    mod->mod_start = RAMDISK_PADDR;
-   mod->mod_end = mod->mod_start + ramdisk_size;
+   mod->mod_end = mod->mod_start + ramdisk_max_size;
 
    return mbi;
 }
@@ -156,7 +163,7 @@ void bootloader_main(void)
    /* Sanity check: the variables in BSS should be zero-filled */
    ASSERT(!graphics_mode);
    ASSERT(!fb_paddr);
-   ASSERT(!ramdisk_size);
+   ASSERT(!ramdisk_max_size);
 
    printk("----- Hello from exOS's legacy bootloader! -----\n\n");
 
@@ -172,21 +179,33 @@ void bootloader_main(void)
    if (!success)
       panic("read_write_params failed");
 
-   // printk("cylinders_count:    %d\n", cylinders_count);
-   // printk("heads_per_cylinder: %d\n", heads_per_cylinder);
-   // printk("sectors_per_track:  %d\n", sectors_per_track);
-   // bios_read_char();
+   printk("Loading ramdisk... ");
 
+   // Read FAT's header
+   read_sectors(RAMDISK_PADDR, 2048, 1 /* read just 1 sector */);
 
-   printk("Loading ramdisk...\n");
+   calculate_ramdisk_fat_size();
 
-   read_sectors(RAMDISK_PADDR, 2048, (2 * MB) / SECTOR_SIZE);
-   printk("Ramdisk CRC32: %p\n", crc32(0, (const void *)RAMDISK_PADDR, (2 * MB)));
+   // Now read all the meta-data up to the first data sector.
+   read_sectors(RAMDISK_PADDR, 2048, ramdisk_first_data_sector + 1);
 
-   calculate_ramdisk_size();
+   // Finally we're able to determine how big is the fatpart (pure data)
+   ramdisk_used_bytes = fat_get_used_bytes((void *)RAMDISK_PADDR);
+   //printk("[debug] Ramdisk used bytes: %u\n", ramdisk_used_bytes);
 
-   /* Load the actual kernel ELF file */
+   u32 ramdisk_used_sectors = (ramdisk_used_bytes + (SECTOR_SIZE - 1)) / SECTOR_SIZE;
+   read_sectors(RAMDISK_PADDR, 2048, ramdisk_used_sectors);
+
+   // printk("[debug] Ramdisk CRC32: %p\n",
+   //        crc32(0, (const void *)RAMDISK_PADDR,
+   //              ramdisk_used_sectors * SECTOR_SIZE));
+
+   printk("[ OK ]\n");
+   printk("Loading the ELF kernel... ");
+
    load_elf_kernel(KERNEL_FILE_PATH, &entry);
+
+   printk("[ OK ]\n\n");
 
    ask_user_video_mode();
 
