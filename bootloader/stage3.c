@@ -180,8 +180,8 @@ void bootloader_main(void)
 
    printk("Loading ramdisk...\n");
 
-   read_sectors(RAMDISK_PADDR, 2048, (4 * MB) / SECTOR_SIZE);
-   printk("Ramdisk CRC32: %p\n", crc32(0, (const void *)RAMDISK_PADDR, (4 * MB)));
+   read_sectors(RAMDISK_PADDR, 2048, (2 * MB) / SECTOR_SIZE);
+   printk("Ramdisk CRC32: %p\n", crc32(0, (const void *)RAMDISK_PADDR, (2 * MB)));
 
    calculate_ramdisk_size();
 

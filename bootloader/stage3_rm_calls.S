@@ -111,17 +111,37 @@ realmode_read_sectors:
    mov [di], ecx
 
    push es
+   mov ax, TEMP_DATA_SEGMENT
+   mov es, ax        # set the destination segment
 
    .load_vdisk_loop:
 
       mov ebx, (offset curr_sec - BL_BASE_ADDR)
       mov eax, [bx]
 
-      call lba_to_chs
+      mov ebx, (offset last_sec - BL_BASE_ADDR)
+      mov ebx, [bx]
+      inc ebx
+      sub ebx, eax # ebx = remaining sectors to read
 
-      mov ax, TEMP_DATA_SEGMENT
-      mov es, ax        # set the destination segment
-      mov bx, 0         # set the destination offset
+      mov edi, (offset sectors_per_track - BL_BASE_ADDR)
+      mov ecx, [di] # ecx = max sectors per read
+
+      cmp ebx, ecx  # compare 'remaining sectors' with 'max sectors'
+      jge .many_sectors_remaining
+
+      # A few sectors remaining
+      # NOTE: In 'bl' we already have the number of sectors value we need
+      jmp .call_lba_to_chs
+
+.many_sectors_remaining:
+      mov bx, cx       # set sectors to read to MAX (=> sectors per track)
+
+.call_lba_to_chs:
+
+      push bx
+      call lba_to_chs
+      pop bx
 
       # save the CHS parameters for error messages
       mov edi, (offset saved_cx - BL_BASE_ADDR)
@@ -129,18 +149,14 @@ realmode_read_sectors:
       mov [di], cx
       mov [si], dx
 
-      mov edi, (offset sectors_per_track - BL_BASE_ADDR)
-
       mov ah, 0x02      # Params for int 0x13: read sectors in ES:BX
-      mov al, [di]      # Read MAX possible sectors
+      mov al, bl        # Set number of sectors to read
+      mov bx, 0         # set the destination offset
       int 0x13
       jc read_error
 
       mov edi, (offset actual_sectors_read - BL_BASE_ADDR)
       mov [di], al  # save the actual number of sectors read
-
-      xor ax, ax
-      mov es, ax # es = 0
 
       mov edi, (offset ramdisk_dest_addr32 - BL_BASE_ADDR)
       mov edi, [di]                           # dest flat addr
