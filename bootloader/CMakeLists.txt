@@ -91,13 +91,30 @@ set(
    LINK_FLAGS_LIST
 
    -nostdlib
+   -L${CMAKE_SOURCE_DIR}/bootloader
    -Wl,--strip-all
    -Wl,--strip-debug
-   -Wl,--script=${CMAKE_SOURCE_DIR}/bootloader/linker_script.ld
+   -Wl,--script=${CMAKE_SOURCE_DIR}/bootloader/stage3_script.ld
 )
 JOIN("${LINK_FLAGS_LIST}" ${SPACE} LINK_FLAGS)
 
+set(
+   ELF_LINK_FLAGS_LIST
+
+   -nostdlib
+   -L${CMAKE_SOURCE_DIR}/bootloader
+   -Wl,--script=${CMAKE_SOURCE_DIR}/bootloader/elf_stage3_script.ld
+)
+JOIN("${ELF_LINK_FLAGS_LIST}" ${SPACE} ELF_LINK_FLAGS)
+
+
 add_executable(stage3 ${STAGE3_SOURCES})
+add_executable(elf_stage3 EXCLUDE_FROM_ALL ${STAGE3_SOURCES})
+
+include_directories(
+   ${CMAKE_SOURCE_DIR}/include
+   ${CMAKE_SOURCE_DIR}/include/system_headers
+)
 
 set_target_properties(
 
@@ -108,18 +125,20 @@ set_target_properties(
       LINK_FLAGS ${LINK_FLAGS}
 )
 
+set_target_properties(
+
+   elf_stage3
+
+   PROPERTIES
+      COMPILE_FLAGS ${FLAGS}
+      LINK_FLAGS ${ELF_LINK_FLAGS}
+)
+
+
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(stage3 gcc)
+target_link_libraries(elf_stage3 gcc)
 
-target_include_directories(
-
-   stage3
-
-   PUBLIC
-
-   ${CMAKE_SOURCE_DIR}/include
-   ${CMAKE_SOURCE_DIR}/include/system_headers
-)
 
 add_custom_command(
    OUTPUT

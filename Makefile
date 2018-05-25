@@ -22,6 +22,9 @@ rebuild_img: $(PREREQUISITES)
 gpt_image: $(PREREQUISITES)
 	@$(MAKE) -C build gpt_image
 
+elf_stage3: $(PREREQUISITES)
+	@$(MAKE) -C build elf_stage3
+
 toolchain:
 	$(error Before building exOS, you need to build the toolchain by running ./scripts/build_toolchain)
 
