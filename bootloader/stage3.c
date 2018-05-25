@@ -144,7 +144,12 @@ multiboot_info_t *setup_multiboot_info(void)
    mbi->mods_addr = (u32)mod;
    mbi->mods_count = 1;
    mod->mod_start = RAMDISK_PADDR;
-   mod->mod_end = mod->mod_start + ramdisk_max_size;
+
+   /*
+    * Pass via multiboot 'used bytes' as RAMDISK size instead of the real
+    * RAMDISK size. This is useful if the kernel uses the RAMDISK read-only.
+    */
+   mod->mod_end = mod->mod_start + ramdisk_used_bytes;
 
    return mbi;
 }

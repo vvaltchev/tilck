@@ -202,7 +202,6 @@ LoadRamdisk(EFI_HANDLE image,
    sector_size = fat_get_sector_size(fat_hdr);
    sectors_per_fat = fat_get_FATSz(fat_hdr);
    total_fat_size = (fat_get_first_data_sector(fat_hdr) + 1) * sector_size;
-   *ramdisk_size = fat_get_TotSec(fat_hdr) * sector_size;
 
    status = BS->FreePages(*ramdisk_paddr_ref, 1);
    HANDLE_EFI_ERROR("FreePages");
@@ -225,6 +224,15 @@ LoadRamdisk(EFI_HANDLE image,
 
    total_used_bytes = fat_get_used_bytes(fat_hdr);
    Print(L"RAMDISK used bytes: %u\n", total_used_bytes);
+
+   //*ramdisk_size = fat_get_TotSec(fat_hdr) * sector_size;
+
+   /*
+    * Pass via multiboot 'used bytes' as RAMDISK size instead of the real
+    * RAMDISK size. This is useful if the kernel uses the RAMDISK read-only.
+    */
+   *ramdisk_size = total_used_bytes;
+
 
    /*
     * Now we know everything. Free the memory used so far and allocate the
