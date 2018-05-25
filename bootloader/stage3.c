@@ -52,10 +52,10 @@ void calculate_ramdisk_fat_size(void)
 void load_elf_kernel(const char *filepath, void **entry)
 {
    fat_header *hdr = (fat_header *)RAMDISK_PADDR;
-   void *free_space = (void *) (RAMDISK_PADDR + ramdisk_max_size);
+   void *free_space = (void *) (RAMDISK_PADDR + ramdisk_used_bytes);
 
    /* DEBUG: poison the free memory, up to 128 MB */
-   memset(free_space, 0xFA, (128 * MB - RAMDISK_PADDR - ramdisk_max_size));
+   memset(free_space, 0xFA, (128 * MB - RAMDISK_PADDR - ramdisk_used_bytes));
 
    fat_entry *e = fat_search_entry(hdr, fat_get_type(hdr), filepath);
 
@@ -168,7 +168,6 @@ void bootloader_main(void)
    /* Sanity check: the variables in BSS should be zero-filled */
    ASSERT(!graphics_mode);
    ASSERT(!fb_paddr);
-   ASSERT(!ramdisk_max_size);
 
    printk("----- Hello from exOS's legacy bootloader! -----\n\n");
 
