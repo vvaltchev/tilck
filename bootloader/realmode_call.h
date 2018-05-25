@@ -45,4 +45,4 @@ bool read_drive_params(u8 drive,
                        u32 *heads_per_cylinder,
                        u32 *cylinder_count);
 
-void read_sectors(void);
+void read_sectors(u32 dest_paddr, u32 lba_sector, u32 sector_count);

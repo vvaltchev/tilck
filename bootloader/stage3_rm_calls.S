@@ -88,22 +88,29 @@ lba_to_chs:         # Calculate head, track and sector settings for int 13h
    ret
 
 
-#define RAMDISK_PADDR          (KERNEL_PADDR + KERNEL_MAX_SIZE)
 #define TEMP_DATA_SEGMENT           0x1000
-#define RAMDISK_FIRST_SECTOR          2048
-#define RAMDISK_SIZE_TO_LOAD      (2 * MB)
 
-#define RAMDISK_LAST_SECTOR \
-   (RAMDISK_FIRST_SECTOR + RAMDISK_SIZE_TO_LOAD/SECTOR_SIZE - 1)
+#
+# Input:
+#
+# eax => dest paddr
+# ebx => first logical sector
+# ecx => last logical sector (inclusive)
+#
 
 .global realmode_read_sectors
 realmode_read_sectors:
 
-   push es
-   push edi
+   mov edi, (offset ramdisk_dest_addr32 - BL_BASE_ADDR)
+   mov [di], eax
 
    mov edi, (offset curr_sec - BL_BASE_ADDR)
-   mov dword ptr [di], RAMDISK_FIRST_SECTOR
+   mov [di], ebx
+
+   mov edi, (offset last_sec - BL_BASE_ADDR)
+   mov [di], ecx
+
+   push es
 
    .load_vdisk_loop:
 
@@ -124,7 +131,7 @@ realmode_read_sectors:
 
       mov edi, (offset sectors_per_track - BL_BASE_ADDR)
 
-      mov ah, 0x02      # Params for int 0x13: read sectors
+      mov ah, 0x02      # Params for int 0x13: read sectors in ES:BX
       mov al, [di]      # Read MAX possible sectors
       int 0x13
       jc read_error
@@ -163,7 +170,11 @@ realmode_read_sectors:
 
       mov ebx, (offset curr_sec - BL_BASE_ADDR)
       mov ebx, [bx]
-      cmp ebx, RAMDISK_LAST_SECTOR
+
+      mov edi, (offset last_sec - BL_BASE_ADDR)
+      mov ecx, [di]
+
+      cmp ebx, ecx
       jl .load_vdisk_loop
 
    # Loading of RAMDISK completed.
@@ -178,7 +189,6 @@ read_error:
    # We have now in AH the last error
 
 end:
-   pop edi
    pop es
    ret
 
@@ -189,5 +199,6 @@ saved_cx: .word 0
 saved_dx: .word 0
 
 curr_sec:             .long 0
+last_sec:             .long 0
 actual_sectors_read:  .long 0
-ramdisk_dest_addr32:  .long RAMDISK_PADDR
+ramdisk_dest_addr32:  .long 0

@@ -108,9 +108,13 @@ bool read_drive_params(u8 drive,
 
 extern u32 realmode_read_sectors;
 
-void read_sectors(void)
+void read_sectors(u32 dest_paddr, u32 lba_sector, u32 sector_count)
 {
    u32 eax, ebx, ecx, edx, esi, edi, flags;
+
+   eax = dest_paddr;
+   ebx = lba_sector;
+   ecx = lba_sector + sector_count - 1;
 
    realmode_call(&realmode_read_sectors,
                  &eax, &ebx, &ecx, &edx, &esi, &edi, &flags);
