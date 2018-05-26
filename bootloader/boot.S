@@ -5,9 +5,6 @@
 
 #define BASE_LOAD_SEG          0x07C0
 #define DEST_DATA_SEGMENT      0x2000
-#define COMPLETE_FLUSH_ADDR    0x1000
-#define COMPLETE_FLUSH_SIZE       128
-
 
 
 /*
@@ -369,18 +366,23 @@ stage2_entry:
 
    jmp enter_32bit_protected_mode
 
-   gdt:
-   gdt_null: .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-   gdt_code: .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x9A, 0xCF, 0x00
-   gdt_data: .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00
+   gdt_base_0x20000:
+   .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 # NULL segment
+   .byte 0xFF, 0xFF, 0x00, 0x00, 0x02, 0x9A, 0xCF, 0x00 # code base = 0x20000
+   .byte 0xFF, 0xFF, 0x00, 0x00, 0x02, 0x92, 0xCF, 0x00 # data base = 0x20000
+
+   gdt32_flat:
+   .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 # NULL segment
+   .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x9A, 0xCF, 0x00 # code base = 0
+   .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00 # data base = 0
 
    gdtr:
-      .word 0x0023
-      .long 0x00000000
+      .word 0x23
+      .long 0
 
    idtr:
-      .word 0x0000
-      .long 0x00000000
+      .word 0
+      .long 0
 
    str_hello:
       .asciz "Hello, I am the 2nd stage-bootloader!\r\n"
@@ -388,43 +390,51 @@ stage2_entry:
 
 enter_32bit_protected_mode:
 
-   # calculate the absolute 32 bit address of GDT
-   # since flat addr = SEG << 4 + OFF
-   # that's exactly what we do below (SEG is DS)
-
-   xor eax, eax
-   mov ax, cs
-   shl eax, 4
-   add eax, offset gdt
-   mov dword ptr [gdtr+2], eax
-
    cli
 
-   # now we have to copy the text from
-   # complete_flush + 0x0 to complete_flush + 128
-   # into 0x0000:COMPLETE_FLUSH_ADDR
-
-   mov si, offset complete_flush
-   mov di, COMPLETE_FLUSH_ADDR
-   mov cx, COMPLETE_FLUSH_SIZE/2 # 2-byte words
-
-   mov ax, 0
-   mov es, ax # using extra segment for 0x0
-   rep movsw  # copies 2*CX bytes from [ds:si] to [es:di]
+   mov dword ptr [gdtr+2], (DEST_DATA_SEGMENT * 16 + offset gdt_base_0x20000)
 
    lidt [idtr]
    lgdt [gdtr]
 
+   # enable protected mode
    mov eax, cr0
-   or al, 1      # enable protected mode
+   or al, 1
    mov cr0, eax
 
-   cli
-   jmp 0x08:0x1000 # the JMP sets CS (code selector)#
+   jmp 0x08:complete_flush
 
+.code32
 
-##########################################
+complete_flush:
 
+   mov dword ptr [gdtr+2], (DEST_DATA_SEGMENT * 16 + offset gdt32_flat)
+   lgdt [gdtr]
+   jmp 0x08:(DEST_DATA_SEGMENT * 16 + complete_flush2)
+
+complete_flush2:
+
+   mov ax, 0x10
+   mov ds, ax
+   mov es, ax
+   mov fs, ax
+   mov gs, ax
+   mov ss, ax
+
+   # Clear the direction flag since the C compiler has the right
+   # to assume that is set to 0 (forward).
+   cld
+
+   # Set the stack for the 3rd stage of the bootloader
+   mov esp, 0x0003FFF0
+
+   # Move in dx the current device
+   mov dx, [DEST_DATA_SEGMENT * 16 + current_device]
+
+   # jump to the 3rd stage of the bootloader
+   jmp 0x08:(DEST_DATA_SEGMENT * 16 + bootloader_3rd_stage)
+
+.code16
 
 # Function: check_a20
 #
@@ -580,38 +590,7 @@ smart_enable_A20:
 
 #########################################################
 
-.code32
-
-complete_flush:
-
-
-   # 0x10:
-   # 0000000000010     0         00
-   # index 2 (data)   GDT    privileged
-
-   mov ax, 0x10
-   mov ds, ax
-   mov es, ax
-   mov fs, ax
-   mov gs, ax
-   mov ss, ax
-
-   # Clear the direction flag since the C compiler has the right
-   # to assume that is set to 0 (forward).
-   cld
-
-   # Set the stack for the 3rd stage of the bootloader
-   mov esp, 0x0003FFF0
-
-   # Move in dx the current device
-   mov dx, [DEST_DATA_SEGMENT * 16 + current_device]
-
-   # jump to the 3rd stage of the bootloader
-   jmp 0x08:(DEST_DATA_SEGMENT * 16 + bootloader_3rd_stage)
-
-.space COMPLETE_FLUSH_SIZE-(.-complete_flush), 0
-.space (4*KB)-(.-_start), 0
-
+.space (4 * KB) - (. - _start), 0
 
 bootloader_3rd_stage:
 # !!! DON'T ADD CODE HERE: this label is just a placeholder !!!

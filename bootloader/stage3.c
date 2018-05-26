@@ -60,7 +60,6 @@ void load_elf_kernel(const char *filepath, void **entry)
    fat_entry *e = fat_search_entry(hdr, fat_get_type(hdr), filepath);
 
    if (!e) {
-      printk("\n");
       panic("Unable to open '%s'!\n", filepath);
    }
 
