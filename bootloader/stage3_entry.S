@@ -28,6 +28,8 @@ main:
    # Save current device's number
    mov [current_device], dx
 
+   call setup_realmode_ivt
+
    # Jump to bootloader's main
    jmp bootloader_main
 
@@ -219,6 +221,106 @@ pm32:
    mov esp, [saved_pm32_esp]
    popa
    ret
+
+setup_realmode_ivt:
+
+   mov eax, (BL_BASE_SEG << 16)
+
+   mov ebx, (offset ex0 - BL_BASE_ADDR)
+   mov ax, bx
+   mov [0*4], eax
+
+   mov ebx, (offset ex2 - BL_BASE_ADDR)
+   mov ax, bx
+   mov [2*4], eax
+
+   mov ebx, (offset ex3 - BL_BASE_ADDR)
+   mov ax, bx
+   mov [3*4], eax
+
+   mov ebx, (offset ex4 - BL_BASE_ADDR)
+   mov ax, bx
+   mov [4*4], eax
+
+   mov ebx, (offset ex5 - BL_BASE_ADDR)
+   mov ax, bx
+   mov [5*4], eax
+
+   mov ebx, (offset ex6 - BL_BASE_ADDR)
+   mov ax, bx
+   mov [6*4], eax
+
+   mov ebx, (offset ex7 - BL_BASE_ADDR)
+   mov ax, bx
+   mov [7*4], eax
+
+   mov ebx, (offset ex10 - BL_BASE_ADDR)
+   mov ax, bx
+   mov [10*4], eax
+
+   mov ebx, (offset ex11 - BL_BASE_ADDR)
+   mov ax, bx
+   mov [11*4], eax
+
+   mov ebx, (offset ex12 - BL_BASE_ADDR)
+   mov ax, bx
+   mov [12*4], eax
+
+   mov ebx, (offset ex13 - BL_BASE_ADDR)
+   mov ax, bx
+   mov [13*4], eax
+
+   mov ebx, (offset ex14 - BL_BASE_ADDR)
+   mov ax, bx
+   mov [14*4], eax
+
+   ret
+
+.code16
+
+ex0:
+   mov dx, 0
+   jmp common_exception
+ex2:
+   mov dx, 2
+   jmp common_exception
+ex3:
+   mov dx, 3
+   jmp common_exception
+ex4:
+   mov dx, 4
+   jmp common_exception
+ex5:
+   mov dx, 5
+   jmp common_exception
+ex6:
+   mov dx, 6
+   jmp common_exception
+ex7:
+   mov dx, 7
+   jmp common_exception
+ex10:
+   mov dx, 10
+   jmp common_exception
+ex11:
+   mov dx, 11
+   jmp common_exception
+ex12:
+   mov dx, 12
+   jmp common_exception
+ex13:
+   mov dx, 13
+   jmp common_exception
+ex14:
+   mov dx, 14
+   jmp common_exception
+
+common_exception:
+   mov eax, 0xBAAD
+   mov ebx, 0xCAFE
+   mov ecx, 0xFAAF
+   jmp after_call
+
 
 #################################
 # Data

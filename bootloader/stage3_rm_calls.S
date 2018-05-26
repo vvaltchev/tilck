@@ -16,6 +16,7 @@ realmode_test_out:
    mov dx, 102
    mov si, 300
    mov di, 350
+
    ret
 
 .global realmode_int_10h

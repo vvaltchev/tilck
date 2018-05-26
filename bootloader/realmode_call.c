@@ -31,6 +31,9 @@ void realmode_call(void *func,
 
    realmode_call_asm(func, eax_ref, ebx_ref, ecx_ref,
                      edx_ref, esi_ref, edi_ref, flags_ref);
+
+   if (*eax_ref == 0xBAAD && *ebx_ref == 0xCAFE && *ecx_ref == 0xFAAF)
+      panic("Realmode fault: 0x%x\n", *edx_ref);
 }
 
 void
