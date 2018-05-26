@@ -33,7 +33,12 @@ void realmode_call(void *func,
                      edx_ref, esi_ref, edi_ref, flags_ref);
 
    if (*eax_ref == 0xBAADCAFE && *ebx_ref == 0xCAFEBABE)
-      panic("Realmode fault: 0x%x\n", *edx_ref);
+      panic("RM fault: 0x%x\n"
+            "eip:      %p\n"
+            "flags:    %p\n",
+            *ecx_ref,
+            (*edx_ref >> 16) * 16 + (*edx_ref & 0xffff),
+            *esi_ref & 0xffff);
 }
 
 void
@@ -42,10 +47,7 @@ realmode_call_by_val(void *func, u32 a, u32 b, u32 c, u32 d, u32 si, u32 di)
    u32 flags_ignored;
    ASSERT(func != NULL);
 
-   realmode_call_asm(func, &a, &b, &c, &d, &si, &di, &flags_ignored);
-
-   if (a == 0xBAADCAFE && b == 0xCAFEBABE)
-      panic("Realmode fault: 0x%x\n", d);
+   realmode_call(func, &a, &b, &c, &d, &si, &di, &flags_ignored);
 }
 
 void test_rm_call_working(void)

@@ -281,45 +281,47 @@ setup_realmode_ivt:
 .code16
 
 ex0:
-   mov edx, 0
+   mov ecx, 0
    jmp common_exception
 ex2:
-   mov edx, 2
+   mov ecx, 2
    jmp common_exception
 ex3:
-   mov edx, 3
+   mov ecx, 3
    jmp common_exception
 ex4:
-   mov edx, 4
+   mov ecx, 4
    jmp common_exception
 ex5:
-   mov edx, 5
+   mov ecx, 5
    jmp common_exception
 ex6:
-   mov edx, 6
+   mov ecx, 6
    jmp common_exception
 ex7:
-   mov edx, 7
+   mov ecx, 7
    jmp common_exception
 ex10:
-   mov edx, 10
+   mov ecx, 10
    jmp common_exception
 ex11:
-   mov edx, 11
+   mov ecx, 11
    jmp common_exception
 ex12:
-   mov edx, 12
+   mov ecx, 12
    jmp common_exception
 ex13:
-   mov edx, 13
+   mov ecx, 13
    jmp common_exception
 ex14:
-   mov edx, 14
+   mov ecx, 14
    jmp common_exception
 
 common_exception:
    mov eax, 0xBAADCAFE
    mov ebx, 0xCAFEBABE
+   mov edx, [esp]       # contains (cs << 16 | ip)
+   mov esi, [esp+4]
    jmp after_call
 
 
