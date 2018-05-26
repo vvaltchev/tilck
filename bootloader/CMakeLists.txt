@@ -6,6 +6,7 @@ if (${ARCH} STREQUAL "i386")
    set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-gcc)
    set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-gcc)
    set(OBJCOPY ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-objcopy)
+   set(STRIP ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-strip)
 
 else()
 
@@ -88,17 +89,6 @@ set(
 JOIN("${FLAGS_LIST}" ${SPACE} FLAGS)
 
 set(
-   LINK_FLAGS_LIST
-
-   -nostdlib
-   -L${CMAKE_SOURCE_DIR}/bootloader
-   -Wl,--strip-all
-   -Wl,--strip-debug
-   -Wl,--script=${CMAKE_SOURCE_DIR}/bootloader/stage3_script.ld
-)
-JOIN("${LINK_FLAGS_LIST}" ${SPACE} LINK_FLAGS)
-
-set(
    ELF_LINK_FLAGS_LIST
 
    -nostdlib
@@ -107,22 +97,11 @@ set(
 )
 JOIN("${ELF_LINK_FLAGS_LIST}" ${SPACE} ELF_LINK_FLAGS)
 
-
-add_executable(stage3 ${STAGE3_SOURCES})
 add_executable(elf_stage3 EXCLUDE_FROM_ALL ${STAGE3_SOURCES})
 
 include_directories(
    ${CMAKE_SOURCE_DIR}/include
    ${CMAKE_SOURCE_DIR}/include/system_headers
-)
-
-set_target_properties(
-
-   stage3
-
-   PROPERTIES
-      COMPILE_FLAGS ${FLAGS}
-      LINK_FLAGS ${LINK_FLAGS}
 )
 
 set_target_properties(
@@ -136,8 +115,16 @@ set_target_properties(
 
 
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
-target_link_libraries(stage3 gcc)
 target_link_libraries(elf_stage3 gcc)
+
+add_custom_command(
+   OUTPUT
+      elf_stage3_stripped
+   COMMAND
+      ${STRIP} --strip-debug elf_stage3 -o elf_stage3_stripped
+   DEPENDS
+      elf_stage3
+)
 
 
 add_custom_command(
@@ -146,9 +133,9 @@ add_custom_command(
    COMMAND
       cp early_boot.bin ${BOOTLOADER_BIN_FILE}
    COMMAND
-      dd status=none conv=notrunc oflag=append if=stage3 of=${BOOTLOADER_BIN_FILE}
+      dd status=none conv=notrunc oflag=append if=elf_stage3 of=${BOOTLOADER_BIN_FILE}
    DEPENDS
-      early_boot.bin stage3
+      early_boot.bin elf_stage3_stripped
    COMMENT
       "Linking the BIOS bootloader"
 )

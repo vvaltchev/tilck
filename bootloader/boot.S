@@ -397,7 +397,7 @@ complete_flush2:
    mov dx, [DEST_DATA_SEGMENT * 16 + current_device]
 
    # jump to the 3rd stage of the bootloader
-   jmp 0x08:(DEST_DATA_SEGMENT * 16 + bootloader_3rd_stage)
+   jmp 0x08:BL_BASE_ADDR
 
 #########################################################
 
@@ -581,7 +581,7 @@ str_hello:
 
 .space (4 * KB) - (. - _start), 0
 
-bootloader_3rd_stage:
+elf_stage3_header:
 # !!! DON'T ADD CODE HERE: this label is just a placeholder !!!
 # !!! NOTE: The execution continues in stage3_entry.asm     !!!
 
