@@ -358,35 +358,7 @@ stage2_entry:
    mov si, offset str_hello
    call print_string
 
-   #########################################################################
-
-   cli          # disable interrupts
-
    call smart_enable_A20
-
-   jmp enter_32bit_protected_mode
-
-   gdt_base_0x20000:
-   .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 # NULL segment
-   .byte 0xFF, 0xFF, 0x00, 0x00, 0x02, 0x9A, 0xCF, 0x00 # code base = 0x20000
-   .byte 0xFF, 0xFF, 0x00, 0x00, 0x02, 0x92, 0xCF, 0x00 # data base = 0x20000
-
-   gdt32_flat:
-   .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 # NULL segment
-   .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x9A, 0xCF, 0x00 # code base = 0
-   .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00 # data base = 0
-
-   gdtr:
-      .word 0x23
-      .long 0
-
-   idtr:
-      .word 0
-      .long 0
-
-   str_hello:
-      .asciz "Hello, I am the 2nd stage-bootloader!\r\n"
-
 
 enter_32bit_protected_mode:
 
@@ -421,20 +393,16 @@ complete_flush2:
    mov gs, ax
    mov ss, ax
 
-   # Clear the direction flag since the C compiler has the right
-   # to assume that is set to 0 (forward).
-   cld
-
-   # Set the stack for the 3rd stage of the bootloader
-   mov esp, 0x0003FFF0
-
    # Move in dx the current device
    mov dx, [DEST_DATA_SEGMENT * 16 + current_device]
 
    # jump to the 3rd stage of the bootloader
    jmp 0x08:(DEST_DATA_SEGMENT * 16 + bootloader_3rd_stage)
 
+#########################################################
+
 .code16
+
 
 # Function: check_a20
 #
@@ -560,7 +528,6 @@ enable_A20_fast_gate:
 .after:
    ret
 
-
 smart_enable_A20:
 
    call check_a20
@@ -585,10 +552,32 @@ smart_enable_A20:
    cmp ax, 0
    jne .end
 
-   .end:
+.end:
    ret
 
 #########################################################
+
+gdt_base_0x20000:
+.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 # NULL segment
+.byte 0xFF, 0xFF, 0x00, 0x00, 0x02, 0x9A, 0xCF, 0x00 # code base = 0x20000
+.byte 0xFF, 0xFF, 0x00, 0x00, 0x02, 0x92, 0xCF, 0x00 # data base = 0x20000
+
+gdt32_flat:
+.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 # NULL segment
+.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x9A, 0xCF, 0x00 # code base = 0
+.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00 # data base = 0
+
+gdtr:
+   .word 0x23
+   .long 0
+
+idtr:
+   .word 0
+   .long 0
+
+str_hello:
+   .asciz "Hello, I am the 2nd stage-bootloader!\r\n"
+
 
 .space (4 * KB) - (. - _start), 0
 

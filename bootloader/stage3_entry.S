@@ -11,6 +11,13 @@
 _start:
 main:
 
+   # Clear the direction flag since the C compiler has the right
+   # to assume that is set to 0 (forward).
+   cld
+
+   # Set the stack for the 3rd stage of the bootloader
+   mov esp, 0x0003FFF0
+
    # Zero the BSS
    mov edi, offset __bss_start
    mov ecx, offset __bss_end
