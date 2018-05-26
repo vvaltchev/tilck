@@ -10,12 +10,12 @@
 .global realmode_test_out
 realmode_test_out:
 
-   mov ax, 23
-   mov bx, 99
-   mov cx, 100
-   mov dx, 102
-   mov si, 300
-   mov di, 350
+   mov eax, 2*1024*1024
+   mov ebx, 99
+   mov ecx, 100
+   mov edx, 102
+   mov esi, 300
+   mov edi, 350
 
    ret
 

@@ -32,7 +32,7 @@ void realmode_call(void *func,
    realmode_call_asm(func, eax_ref, ebx_ref, ecx_ref,
                      edx_ref, esi_ref, edi_ref, flags_ref);
 
-   if (*eax_ref == 0xBAAD && *ebx_ref == 0xCAFE && *ecx_ref == 0xFAAF)
+   if (*eax_ref == 0xBAADCAFE && *ebx_ref == 0xCAFEBABE)
       panic("Realmode fault: 0x%x\n", *edx_ref);
 }
 
@@ -43,6 +43,9 @@ realmode_call_by_val(void *func, u32 a, u32 b, u32 c, u32 d, u32 si, u32 di)
    ASSERT(func != NULL);
 
    realmode_call_asm(func, &a, &b, &c, &d, &si, &di, &flags_ignored);
+
+   if (a == 0xBAADCAFE && b == 0xCAFEBABE)
+      panic("Realmode fault: 0x%x\n", d);
 }
 
 void test_rm_call_working(void)
@@ -52,7 +55,7 @@ void test_rm_call_working(void)
    realmode_call(&realmode_test_out, &eax, &ebx,
                  &ecx, &edx, &esi, &edi, &flags);
 
-   ASSERT(eax == 23);
+   ASSERT(eax == 2*1024*1024);
    ASSERT(ebx == 99);
    ASSERT(ecx == 100);
    ASSERT(edx == 102);

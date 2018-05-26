@@ -148,14 +148,16 @@ after_call:
    # now here we must save back the values of the registers
 
    mov bp, sp
-   mov esp, (offset rm_ret_ax - BL_BASE_ADDR + 2)
+   mov esp, (offset rm_ret_eax - BL_BASE_ADDR + 4)
 
-   push ax
-   push bx
-   push cx
-   push dx
-   push si
-   push di
+   push eax
+   push ebx
+   push ecx
+   push edx
+   push esi
+   push edi
+
+   sub sp, 2
    pushf
 
    mov sp, bp
@@ -206,15 +208,15 @@ pm32:
 
    # Copy rm_ret_* at the address pointed by each realmode_func_*_ref
 
-   lea esi, [rm_ret_ax]
+   lea esi, [rm_ret_eax]
    lea edi, [realmode_func_eax_ref]
    mov ecx, 7
 
 1:
-   mov ax, [esi]
+   mov eax, [esi]
    mov ebx, [edi]
    mov [ebx], eax
-   sub esi, 2
+   sub esi, 4
    add edi, 4
    loop 1b
 
@@ -279,46 +281,45 @@ setup_realmode_ivt:
 .code16
 
 ex0:
-   mov dx, 0
+   mov edx, 0
    jmp common_exception
 ex2:
-   mov dx, 2
+   mov edx, 2
    jmp common_exception
 ex3:
-   mov dx, 3
+   mov edx, 3
    jmp common_exception
 ex4:
-   mov dx, 4
+   mov edx, 4
    jmp common_exception
 ex5:
-   mov dx, 5
+   mov edx, 5
    jmp common_exception
 ex6:
-   mov dx, 6
+   mov edx, 6
    jmp common_exception
 ex7:
-   mov dx, 7
+   mov edx, 7
    jmp common_exception
 ex10:
-   mov dx, 10
+   mov edx, 10
    jmp common_exception
 ex11:
-   mov dx, 11
+   mov edx, 11
    jmp common_exception
 ex12:
-   mov dx, 12
+   mov edx, 12
    jmp common_exception
 ex13:
-   mov dx, 13
+   mov edx, 13
    jmp common_exception
 ex14:
-   mov dx, 14
+   mov edx, 14
    jmp common_exception
 
 common_exception:
-   mov eax, 0xBAAD
-   mov ebx, 0xCAFE
-   mov ecx, 0xFAAF
+   mov eax, 0xBAADCAFE
+   mov ebx, 0xCAFEBABE
    jmp after_call
 
 
@@ -336,13 +337,13 @@ realmode_func_esi_ref:    .long 0
 realmode_func_edi_ref:    .long 0
 realmode_func_flags_ref:  .long 0
 
-rm_ret_flags:  .word 0
-rm_ret_di:     .word 0
-rm_ret_si:     .word 0
-rm_ret_dx:     .word 0
-rm_ret_cx:     .word 0
-rm_ret_bx:     .word 0
-rm_ret_ax:     .word 0
+rm_ret_flags:   .long 0
+rm_ret_edi:     .long 0
+rm_ret_esi:     .long 0
+rm_ret_edx:     .long 0
+rm_ret_ecx:     .long 0
+rm_ret_ebx:     .long 0
+rm_ret_eax:     .long 0
 
 
 idt16:
