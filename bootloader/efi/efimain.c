@@ -290,7 +290,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    InitializeLib(image, ST);
 
-   Print(L"--- exOS bootloader ---\r\n");
+   Print(L"----- Hello from exOS's UEFI bootloader! -----\r\n\r\n");
 
    status = SetupGraphicMode(BS, &xres, &yres);
    HANDLE_EFI_ERROR("SetupGraphicMode() failed");
