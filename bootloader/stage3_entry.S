@@ -53,8 +53,14 @@ realmode_call_asm:
 
    # Jump to a CODE16 segment
 
-   # Note: we haven't touched the other segment registers (ds, ss, fs, gs, es).
-   # They will remain "cached" as 32-bit selectors (we want UNREAL mode).
+   # Note: we haven't touched the 'fs' segment register.
+   # It will remain "cached" as a 32-bit selector (we want UNREAL mode).
+
+   mov ax, 0x10
+   mov ds, ax
+   mov ss, ax
+   mov es, ax
+   mov gs, ax
 
    # Note(2): we're jumping to 'code16_seg' with addressing relative to 0,
    # because in the gdt16, the code segment has BL_BASE_ADDR as 'base'.
@@ -62,8 +68,8 @@ realmode_call_asm:
 
 code16_seg:
 
-   # If we set here all the segment registers (not only CS) here we would be
-   # in 16-bit protected mode.
+   # If we set all the segment registers here we would be properly in
+   # 16-bit protected mode.
 
    mov eax, cr0
    and al, 0xfe # Disable protected mode.
