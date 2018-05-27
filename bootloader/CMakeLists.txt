@@ -22,7 +22,7 @@ include_directories(
    ${CMAKE_SOURCE_DIR}/include/system_headers
 )
 
-file(GLOB EARLY_STAGES_SOURCES "boot.S")
+file(GLOB EARLY_STAGES_SOURCES "boot*.S")
 
 set(
    EARLY_BOOT_LINK_FLAGS_LIST
@@ -133,7 +133,7 @@ add_custom_command(
    COMMAND
       cp early_boot ${BOOTLOADER_BIN_FILE}
    COMMAND
-      dd status=none conv=notrunc oflag=append if=elf_stage3 of=${BOOTLOADER_BIN_FILE}
+      dd status=none conv=notrunc oflag=append if=elf_stage3_stripped of=${BOOTLOADER_BIN_FILE}
    DEPENDS
       early_boot elf_stage3_stripped
    COMMENT

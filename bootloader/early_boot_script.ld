@@ -13,9 +13,8 @@ SECTIONS
   .text :
   {
     *(.text)
+    . = 4096;
   }
-
-  _end = .;
 
   /DISCARD/ : { *(*) }
 }
