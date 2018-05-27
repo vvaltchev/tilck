@@ -368,10 +368,8 @@ enter_32bit_protected_mode:
 
    cli
 
-   mov dword ptr [gdtr+2], (DEST_DATA_SEGMENT * 16 + offset gdt_base_0x20000)
-
    lidt [idtr]
-   lgdt [gdtr]
+   lgdt [gdtr_base_0x20000]
 
    # enable protected mode
    mov eax, cr0
@@ -384,8 +382,7 @@ enter_32bit_protected_mode:
 
 complete_flush:
 
-   mov dword ptr [gdtr+2], (DEST_DATA_SEGMENT * 16 + offset gdt32_flat)
-   lgdt [gdtr]
+   lgdt [gdtr_flat]
    jmp 0x08:(DEST_DATA_SEGMENT * 16 + complete_flush2)
 
 complete_flush2:
@@ -415,9 +412,13 @@ gdt32_flat:
 .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x9A, 0xCF, 0x00 # code base = 0
 .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00 # data base = 0
 
-gdtr:
+gdtr_base_0x20000:
    .word 0x23
-   .long 0
+   .long (DEST_DATA_SEGMENT * 16 + offset gdt_base_0x20000)
+
+gdtr_flat:
+   .word 0x23
+   .long (DEST_DATA_SEGMENT * 16 + offset gdt32_flat)
 
 idtr:
    .word 0
