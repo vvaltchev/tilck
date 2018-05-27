@@ -8,9 +8,9 @@
 
 
 /*
- * We're OK with just 40 KB because now the initial sectors contain just the 3rd
- * stage of the bootloader. The actual kernel file is loaded by the bootloader
- * from the FAT32 ramdisk.
+ * We're OK with just 40 KB, a little more than the size of the 3rd stage of
+ * the bootloader + 4 KB for this code. All the rest (the whole ramdisk
+ * and the ELF kernel) is loaded by the 3rd stage.
  */
 
 #define INITIAL_SECTORS_TO_READ (40 * KB / SECTOR_SIZE)
@@ -151,6 +151,10 @@ after_reloc:
    # If the current sector num have the bits 0-7 unset,
    # we loaded 128 sectors * 512 bytes = 64K.
    # We have to change the segment in order to continue.
+   #
+   # NOTE: at the moment we don't need to load more then 64 KB here, but it's
+   # better to just leave the code to support that, in case it is necessary
+   # in the future.
 
    and ax, 0x7F
    test ax, ax
