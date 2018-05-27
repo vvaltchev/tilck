@@ -230,100 +230,62 @@ pm32:
    popa
    ret
 
+# NOTE: this macro assumes that the higher 16 bits of EAX contain the CS segment
+.macro set_ivt num
+   mov ebx, (offset ex\num - BL_BASE_ADDR)
+   mov ax, bx
+   mov [4 * \num], eax
+.endm
+
 setup_realmode_ivt:
 
    mov eax, (BL_BASE_SEG << 16)
 
-   mov ebx, (offset ex0 - BL_BASE_ADDR)
-   mov ax, bx
-   mov [0*4], eax
-
-   mov ebx, (offset ex2 - BL_BASE_ADDR)
-   mov ax, bx
-   mov [2*4], eax
-
-   mov ebx, (offset ex3 - BL_BASE_ADDR)
-   mov ax, bx
-   mov [3*4], eax
-
-   mov ebx, (offset ex4 - BL_BASE_ADDR)
-   mov ax, bx
-   mov [4*4], eax
-
-   mov ebx, (offset ex5 - BL_BASE_ADDR)
-   mov ax, bx
-   mov [5*4], eax
-
-   mov ebx, (offset ex6 - BL_BASE_ADDR)
-   mov ax, bx
-   mov [6*4], eax
-
-   mov ebx, (offset ex7 - BL_BASE_ADDR)
-   mov ax, bx
-   mov [7*4], eax
-
-   mov ebx, (offset ex10 - BL_BASE_ADDR)
-   mov ax, bx
-   mov [10*4], eax
-
-   mov ebx, (offset ex11 - BL_BASE_ADDR)
-   mov ax, bx
-   mov [11*4], eax
-
-   mov ebx, (offset ex12 - BL_BASE_ADDR)
-   mov ax, bx
-   mov [12*4], eax
-
-   mov ebx, (offset ex13 - BL_BASE_ADDR)
-   mov ax, bx
-   mov [13*4], eax
-
-   mov ebx, (offset ex14 - BL_BASE_ADDR)
-   mov ax, bx
-   mov [14*4], eax
+   set_ivt  0
+   # skip   1
+   set_ivt  2
+   set_ivt  3
+   set_ivt  4
+   set_ivt  5
+   set_ivt  6
+   set_ivt  7
+   # skip   8
+   # skip   9
+   set_ivt 10
+   set_ivt 11
+   set_ivt 12
+   set_ivt 13
+   set_ivt 14
 
    ret
 
 .code16
 
-ex0:
-   mov ecx, 0
-   jmp common_exception
-ex2:
-   mov ecx, 2
-   jmp common_exception
-ex3:
-   mov ecx, 3
-   jmp common_exception
-ex4:
-   mov ecx, 4
-   jmp common_exception
-ex5:
-   mov ecx, 5
-   jmp common_exception
-ex6:
-   mov ecx, 6
-   jmp common_exception
-ex7:
-   mov ecx, 7
-   jmp common_exception
-ex10:
-   mov ecx, 10
-   jmp common_exception
-ex11:
-   mov ecx, 11
-   jmp common_exception
-ex12:
-   mov ecx, 12
-   jmp common_exception
-ex13:
-   mov ecx, 13
-   jmp common_exception
-ex14:
-   mov ecx, 14
-   jmp common_exception
+.macro emit_rm_ex_handler num
+   ex\num:
+   mov ecx, \num
+   jmp common_rm_exception_handler
+.endm
 
-common_exception:
+emit_rm_ex_handler  0
+# skip              1
+emit_rm_ex_handler  2
+emit_rm_ex_handler  3
+emit_rm_ex_handler  4
+emit_rm_ex_handler  5
+emit_rm_ex_handler  6
+emit_rm_ex_handler  7
+# skip              8
+# skip              9
+emit_rm_ex_handler 10
+emit_rm_ex_handler 11
+emit_rm_ex_handler 12
+emit_rm_ex_handler 13
+emit_rm_ex_handler 14
+# skip             15
+# the rest (0x10 and so on) are part of the BIOS interface
+
+common_rm_exception_handler:
    mov eax, 0xBAADCAFE
    mov ebx, 0xCAFEBABE
    mov edx, [esp]       # contains (cs << 16 | ip)
