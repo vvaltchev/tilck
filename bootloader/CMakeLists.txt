@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.2)
 
+# Remove -rdynamic
+SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
 if (${ARCH} STREQUAL "i386")
 
@@ -14,31 +16,34 @@ else()
 
 endif()
 
+# Common include directories, both for early_boot and for elf_stage3
+include_directories(
+   ${CMAKE_SOURCE_DIR}/include
+   ${CMAKE_SOURCE_DIR}/include/system_headers
+)
+
 file(GLOB EARLY_STAGES_SOURCES "boot.S")
 
 set(
+   EARLY_BOOT_LINK_FLAGS_LIST
 
-   BOOT_COMPILE_OPTS
-
-   -Ttext 0x0
-   -Wl,--oformat=binary
-   -ffreestanding
    -nostdlib
-   -nostdinc
-   -I${CMAKE_SOURCE_DIR}/include
-   -I${CMAKE_SOURCE_DIR}/include/system_headers
+   -L${CMAKE_SOURCE_DIR}/bootloader
+   -Wl,--script=early_boot_script.ld
+)
+JOIN("${EARLY_BOOT_LINK_FLAGS_LIST}" ${SPACE} EARLY_BOOT_LINK_FLAGS)
+
+add_executable(early_boot ${EARLY_STAGES_SOURCES})
+
+set_target_properties(
+
+   early_boot
+
+   PROPERTIES
+      COMPILE_FLAGS "-ffreestanding -nostdinc"
+      LINK_FLAGS ${EARLY_BOOT_LINK_FLAGS}
 )
 
-add_custom_command(
-   OUTPUT
-      early_boot.bin
-   DEPENDS
-      ${EARLY_STAGES_SOURCES}
-   COMMAND
-      ${CMAKE_C_COMPILER} -o early_boot.bin ${BOOT_COMPILE_OPTS} ${EARLY_STAGES_SOURCES}
-   COMMENT
-      "Building the early stages of the BIOS bootloader"
-)
 
 file(
    GLOB STAGE3_SOURCES
@@ -49,8 +54,6 @@ file(
 )
 
 
-# Remove -rdynamic
-SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
 set(
    FLAGS_LIST
@@ -93,16 +96,13 @@ set(
 
    -nostdlib
    -L${CMAKE_SOURCE_DIR}/bootloader
-   -Wl,--script=${CMAKE_SOURCE_DIR}/bootloader/elf_stage3_script.ld
+   -Wl,--script=elf_stage3_script.ld
 )
 JOIN("${ELF_LINK_FLAGS_LIST}" ${SPACE} ELF_LINK_FLAGS)
 
-add_executable(elf_stage3 EXCLUDE_FROM_ALL ${STAGE3_SOURCES})
+add_executable(elf_stage3 ${STAGE3_SOURCES})
 
-include_directories(
-   ${CMAKE_SOURCE_DIR}/include
-   ${CMAKE_SOURCE_DIR}/include/system_headers
-)
+
 
 set_target_properties(
 
@@ -131,11 +131,11 @@ add_custom_command(
    OUTPUT
       ${BOOTLOADER_BIN_FILE}
    COMMAND
-      cp early_boot.bin ${BOOTLOADER_BIN_FILE}
+      cp early_boot ${BOOTLOADER_BIN_FILE}
    COMMAND
       dd status=none conv=notrunc oflag=append if=elf_stage3 of=${BOOTLOADER_BIN_FILE}
    DEPENDS
-      early_boot.bin elf_stage3_stripped
+      early_boot elf_stage3_stripped
    COMMENT
       "Linking the BIOS bootloader"
 )
