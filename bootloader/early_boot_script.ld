@@ -18,5 +18,3 @@ SECTIONS
 
   /DISCARD/ : { *(*) }
 }
-
-

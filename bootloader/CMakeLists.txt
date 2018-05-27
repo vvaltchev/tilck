@@ -16,22 +16,17 @@ else()
 
 endif()
 
-# Common include directories, both for early_boot and for elf_stage3
+# Common directories, both for early_boot and for elf_stage3
 include_directories(
    ${CMAKE_SOURCE_DIR}/include
    ${CMAKE_SOURCE_DIR}/include/system_headers
 )
 
-file(GLOB EARLY_STAGES_SOURCES "boot*.S")
-
-set(
-   EARLY_BOOT_LINK_FLAGS_LIST
-
-   -nostdlib
-   -L${CMAKE_SOURCE_DIR}/bootloader
-   -Wl,--script=early_boot_script.ld
+link_directories(
+   ${CMAKE_SOURCE_DIR}/bootloader
 )
-JOIN("${EARLY_BOOT_LINK_FLAGS_LIST}" ${SPACE} EARLY_BOOT_LINK_FLAGS)
+
+file(GLOB EARLY_STAGES_SOURCES "boot*.S")
 
 add_executable(early_boot ${EARLY_STAGES_SOURCES})
 
@@ -41,7 +36,8 @@ set_target_properties(
 
    PROPERTIES
       COMPILE_FLAGS "-ffreestanding -nostdinc"
-      LINK_FLAGS ${EARLY_BOOT_LINK_FLAGS}
+      LINK_FLAGS "-nostdlib -Wl,--script=early_boot_script.ld"
+      LINK_DEPENDS "${CMAKE_SOURCE_DIR}/bootloader/early_boot_script.ld"
 )
 
 
@@ -91,18 +87,7 @@ set(
 )
 JOIN("${FLAGS_LIST}" ${SPACE} FLAGS)
 
-set(
-   ELF_LINK_FLAGS_LIST
-
-   -nostdlib
-   -L${CMAKE_SOURCE_DIR}/bootloader
-   -Wl,--script=elf_stage3_script.ld
-)
-JOIN("${ELF_LINK_FLAGS_LIST}" ${SPACE} ELF_LINK_FLAGS)
-
 add_executable(elf_stage3 ${STAGE3_SOURCES})
-
-
 
 set_target_properties(
 
@@ -110,7 +95,8 @@ set_target_properties(
 
    PROPERTIES
       COMPILE_FLAGS ${FLAGS}
-      LINK_FLAGS ${ELF_LINK_FLAGS}
+      LINK_FLAGS "-nostdlib -Wl,--script=elf_stage3_script.ld"
+      LINK_DEPENDS "${CMAKE_SOURCE_DIR}/bootloader/elf_stage3_script.ld"
 )
 
 
