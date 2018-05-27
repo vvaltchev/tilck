@@ -85,11 +85,13 @@ code16_seg:
 realmode:
    # here CS is BL_BASE_SEG and we are properly in (un)real mode.
 
-   # Now we just need to set ds, es, ss to BL_BASE_SEG, using the 16-bit
-   # segmentation mechanism. This makes everything simpler.
-
    mov ax, 0
    mov es, ax
+   mov fs, ax
+   mov gs, ax
+
+   # Now we just need to set ds, ss to BL_BASE_SEG, using the 16-bit
+   # segmentation mechanism. This makes everything simpler.
 
    mov ax, BL_BASE_SEG
    mov ds, ax
