@@ -127,7 +127,17 @@ typedef u64 uptr;
 typedef s64 sptr;
 #endif
 
+/* BEGIN SSE2 types */
+typedef long long __v2di __attribute__ ((__vector_size__ (16)));
+typedef unsigned long long __v2du __attribute__ ((__vector_size__ (16)));
+typedef int __v4si __attribute__ ((__vector_size__ (16)));
+typedef unsigned int __v4su __attribute__ ((__vector_size__ (16)));
+typedef short __v8hi __attribute__ ((__vector_size__ (16)));
+typedef unsigned short __v8hu __attribute__ ((__vector_size__ (16)));
+typedef char __v16qi __attribute__ ((__vector_size__ (16)));
+typedef unsigned char __v16qu __attribute__ ((__vector_size__ (16)));
 typedef long long __m128i __attribute__ ((__vector_size__ (16), __may_alias__));
+/* END SSE2 types */
 
 #if !defined(TESTING) && !defined(USERMODE_APP)
 

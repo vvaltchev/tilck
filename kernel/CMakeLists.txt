@@ -16,6 +16,7 @@ set(
    -mmmx
    -msse
    -msse2
+   -msse4.1
    -fno-tree-loop-vectorize
    -fno-tree-vectorize
    -fno-tree-slp-vectorize

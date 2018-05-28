@@ -56,27 +56,39 @@ void fb_flush_lines(u32 y, u32 lines_count)
 
 #if defined(__i386__) || defined(__x86_64__)
 
+   // ASSUMPTION fb_pitch is ALWAYS divisible by 16
+
    register char *dest = (char *)(fb_real_vaddr + y * fb_pitch);
    register char *src = (char *)(fb_vaddr + y * fb_pitch);
 
-   if (x86_cpu_features.edx1.sse2) {
+   if (x86_cpu_features.ecx1.sse41) {
 
-      const u32 len = (lines_count * fb_pitch) / 16;
+      const u32 len16 = (lines_count * fb_pitch) / 16;
 
-      for (register u32 i = 0; i < len; i++, dest += 16, src += 16)
-         __builtin_ia32_movntdq((__m128i *) dest, *(__m128i *)src);
+      for (register u32 i = 0; i < len16; i++, src += 16, dest += 16)
+         asmVolatile("movntdqa   (%0), %%xmm0\n\t"
+                     "movntdq %%xmm0, (%1)\n\t"
+                     : /* no output */
+                     : "r" (src), "r" (dest)
+                     : "memory");
+
+   } else if (x86_cpu_features.edx1.sse2) {
+
+      const u32 len16 = (lines_count * fb_pitch) / 16;
+
+      for (register u32 i = 0; i < len16; i++, dest += 16, src += 16)
+         __builtin_ia32_movntdq((__v2di *) dest, *(__v2di *)src);
 
    } else if (x86_cpu_features.edx1.sse) {
 
-      const u32 len = (lines_count * fb_pitch) / 8;
+      const u32 len8 = (lines_count * fb_pitch) / 8;
 
-      for (register u32 i = 0; i < len; i++, dest += 8, src += 8)
+      for (register u32 i = 0; i < len8; i++, dest += 8, src += 8)
          __builtin_ia32_movntq((u64 *)dest, *(u64 *)src);
 
    } else {
 
       goto failsafe;
-
    }
 
 #else
