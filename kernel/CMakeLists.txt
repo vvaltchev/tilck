@@ -11,6 +11,12 @@ set(
    -fno-builtin
    -fno-omit-frame-pointer
    -Wno-unused-label
+
+   # Enable the SSE intrisics, but prevent ANY auto-vectorization.
+   -msse
+   -fno-tree-loop-vectorize
+   -fno-tree-vectorize
+   -fno-tree-slp-vectorize
 )
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
 

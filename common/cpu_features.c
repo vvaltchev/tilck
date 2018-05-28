@@ -25,6 +25,9 @@ void get_x86_cpu_features(void)
 
    for (u32 bit = 0; bit < 32; bit++)
       ((bool *)&f->edx1)[bit] = !!(d & (1 << bit));
+
+   for (u32 bit = 0; bit < 32; bit++)
+      ((bool *)&f->ecx1)[bit] = !!(d & (1 << bit));
 }
 
 #ifdef __EXOS_KERNEL__
@@ -69,23 +72,70 @@ static const char *edx1_features[] =
    "pbe"
 };
 
+static const char *ecx1_features[] =
+{
+   "sse3",
+   "pclmulqdq",
+   "dtes64",
+   "monitor",
+   "ds_cpl",
+   "vmx",
+   "smx",
+   "est",
+   "tm2",
+   "ssse3",
+   "cnxt_id",
+   "sdbg",
+   "fma",
+   "cx16",
+   "xtpr",
+   "pdcm",
+
+   NULL,
+
+   "pcid",
+   "dca",
+   "sse41",
+   "sse42",
+   "x2apic",
+   "movbe",
+   "popcnt",
+   "tsc_deadline",
+   "aes",
+   "xsave",
+   "osxsave",
+   "avx",
+   "f16c",
+   "rdrnd",
+   "hypervisor"
+};
+
 void dump_x86_features(void)
 {
    char buf[256];
    u32 w = 0;
 
-   for (u32 i = 0; i < 32; i++) {
+   bool *flags[] = {
+      (bool *)&x86_cpu_features.edx1,
+      (bool *)&x86_cpu_features.ecx1
+   };
 
-      if (!edx1_features[i])
-         continue;
+   const char **strings[] = {edx1_features, ecx1_features};
 
-      if (((bool *)&x86_cpu_features.edx1)[i])
-         w += snprintk(buf + w, sizeof(buf) - w, "%s ", edx1_features[i]);
+   for (u32 j = 0; j < 2; j++) {
+      for (u32 i = 0; i < 32; i++) {
 
-      if (w >= 60) {
-         printk("%s\n", buf);
-         w = 0;
-         buf[0] = 0;
+         if (!strings[j][i])
+            continue;
+
+         if (flags[j][i])
+            w += snprintk(buf + w, sizeof(buf) - w, "%s ", strings[j][i]);
+
+         if (w >= 60) {
+            printk("%s\n", buf);
+            w = 0;
+            buf[0] = 0;
+         }
       }
    }
 
