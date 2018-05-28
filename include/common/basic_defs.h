@@ -127,6 +127,8 @@ typedef u64 uptr;
 typedef s64 sptr;
 #endif
 
+typedef unsigned long long ull_t;
+
 /* BEGIN SSE2 types */
 typedef long long __v2di __attribute__ ((__vector_size__ (16)));
 typedef unsigned long long __v2du __attribute__ ((__vector_size__ (16)));

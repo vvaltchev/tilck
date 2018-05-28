@@ -84,7 +84,7 @@ void fb_flush_lines(u32 y, u32 lines_count)
       const u32 len8 = (lines_count * fb_pitch) / 8;
 
       for (register u32 i = 0; i < len8; i++, dest += 8, src += 8)
-         __builtin_ia32_movntq((u64 *)dest, *(u64 *)src);
+         __builtin_ia32_movntq((ull_t *)dest, *(ull_t *)src);
 
    } else {
 
