@@ -86,6 +86,8 @@ typedef struct {
 
    } ecx1;
 
+   bool avx2;
+
 } x86_cpu_features_t;
 
 extern x86_cpu_features_t x86_cpu_features;

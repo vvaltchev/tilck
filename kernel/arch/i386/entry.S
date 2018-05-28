@@ -19,6 +19,7 @@
 
 .global _start
 .global asm_enable_sse
+.global asm_enable_avx
 .global syscall_int80_entry
 .global sysenter_entry
 .global asm_sysenter_setup
@@ -137,6 +138,16 @@ FUNC(asm_enable_sse):
    ret
 
 END_FUNC(asm_enable_sse)
+
+FUNC(asm_enable_avx):
+
+   xor ecx, ecx
+   xgetbv    # Load XCR0 in eax
+   or eax, 7 # Set the AVX, SSE, X87 bits
+   xsetbv    # save back to XCR0
+   ret
+
+END_FUNC(asm_enable_avx)
 
 FUNC(sysenter_entry):
 

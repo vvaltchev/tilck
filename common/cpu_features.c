@@ -28,6 +28,11 @@ void get_x86_cpu_features(void)
 
    for (u32 bit = 0; bit < 32; bit++)
       ((bool *)&f->ecx1)[bit] = !!(d & (1 << bit));
+
+   if (f->ecx1.avx) {
+      cpuid(7, &a, &b, &c, &d);
+      f->avx2 = !!(b & (1 << 5)) && !!(b & (1 << 3)) && !!(b & (1 << 8));
+   }
 }
 
 #ifdef __EXOS_KERNEL__
@@ -140,6 +145,9 @@ void dump_x86_features(void)
          }
       }
    }
+
+   if (x86_cpu_features.avx2)
+      w += snprintk(buf + w, sizeof(buf) - w, "avx2 ");
 
    if (w)
       printk("%s\n", buf);
