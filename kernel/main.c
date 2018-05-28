@@ -2,6 +2,7 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 #include <common/utils.h>
+#include <common/arch/generic_x86/cpu_features.h>
 
 #include <multiboot.h>
 
@@ -22,8 +23,8 @@
 #include <exos/term.h>
 #include <exos/pageframe_allocator.h>
 #include <exos/datetime.h>
-#include <exos/arch/generic_x86/textmode_video.h>
 #include <exos/fb_console.h>
+#include <exos/arch/generic_x86/textmode_video.h>
 
 extern u32 memsize_in_mb;
 extern uptr ramdisk_paddr;
@@ -78,6 +79,11 @@ void show_hello_message(void)
 
 void show_system_info(void)
 {
+   get_x86_cpu_features();
+
+   printk("CPU: %s\n", x86_cpu_features.vendor_id);
+   dump_x86_features();
+
    printk("TIMER_HZ: %i; TIME_SLOT: %i ms; MEM: %i MB\n",
           TIMER_HZ, 1000 / (TIMER_HZ / TIME_SLOT_JIFFIES), get_phys_mem_mb());
 

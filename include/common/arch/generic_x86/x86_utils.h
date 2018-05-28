@@ -191,14 +191,6 @@ static ALWAYS_INLINE void enable_interrupts(const uptr *const var)
    }
 }
 
-static ALWAYS_INLINE void cpuid(int code, u32 *a, u32 *d)
-{
-    asmVolatile("cpuid"
-                : "=a"(*a), "=d"(*d)
-                : "0"(code)
-                : "ebx", "ecx");
-}
-
 /*
  * Invalidates the TLB entry used for resolving the page containing 'vaddr'.
  */
@@ -221,6 +213,15 @@ static ALWAYS_INLINE uptr get_stack_ptr(void)
 
    return res;
 }
+
+static ALWAYS_INLINE void cpuid(u32 code, u32 *a, u32 *b, u32 *c, u32 *d)
+{
+    asmVolatile("cpuid"
+                : "=a"(*a), "=b" (*b), "=c" (*c), "=d"(*d)
+                : "0"(code)
+                : /* no clobber */);
+}
+
 
 // Reboot the system
 void reboot();

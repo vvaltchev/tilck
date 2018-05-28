@@ -4,6 +4,7 @@
 #include <common/fat32_base.h>
 #include <common/utils.h>
 #include <common/arch/generic_x86/x86_utils.h>
+#include <common/arch/generic_x86/cpu_features.h>
 
 #include <elf.h>
 #include <multiboot.h>
@@ -172,6 +173,11 @@ void bootloader_main(void)
 
    /* Sanity check: realmode_call should be able to return all reg values */
    test_rm_call_working();
+
+   get_x86_cpu_features();
+
+   if (!x86_cpu_features.edx1.sse)
+      panic("exOS requires a CPU supporting SSE (Pentium III and later)");
 
    bool success =
       read_drive_params(current_device,
