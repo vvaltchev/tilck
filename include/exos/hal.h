@@ -29,5 +29,6 @@ typedef void (*interrupt_handler)(regs *);
 
 void setup_segmentation(void);
 void setup_soft_interrupt_handling(void);
-void setup_syscall_interfaces();
+void setup_syscall_interfaces(void);
 void set_kernel_stack(uptr stack);
+void enable_cpu_features(void);

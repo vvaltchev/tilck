@@ -127,6 +127,8 @@ typedef u64 uptr;
 typedef s64 sptr;
 #endif
 
+typedef long long __m128i __attribute__ ((__vector_size__ (16), __may_alias__));
+
 #if !defined(TESTING) && !defined(USERMODE_APP)
 
 typedef long ssize_t; // signed pointer-size integer

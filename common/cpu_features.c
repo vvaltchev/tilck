@@ -115,6 +115,8 @@ void dump_x86_features(void)
    char buf[256];
    u32 w = 0;
 
+   printk("CPU: %s\n", x86_cpu_features.vendor_id);
+
    bool *flags[] = {
       (bool *)&x86_cpu_features.edx1,
       (bool *)&x86_cpu_features.ecx1

@@ -176,12 +176,6 @@ void bootloader_main(void)
 
    get_x86_cpu_features();
 
-   if (!x86_cpu_features.edx1.sse)
-      panic("exOS requires a CPU supporting SSE (Pentium III and later)");
-
-   if (!x86_cpu_features.edx1.fxsr)
-      panic("exOS requires a CPU supporting FXSR (Pentium III and later)");
-
    bool success =
       read_drive_params(current_device,
                         &sectors_per_track,

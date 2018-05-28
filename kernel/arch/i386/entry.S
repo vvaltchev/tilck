@@ -18,6 +18,7 @@
 .section .text
 
 .global _start
+.global asm_enable_sse
 .global syscall_int80_entry
 .global sysenter_entry
 .global asm_sysenter_setup
@@ -123,6 +124,19 @@ multiboot_entry:
                # KERNEL_BASE_VA + KERNEL_PADDR as ORG
 
 END_FUNC(_start)
+
+FUNC(asm_enable_sse):
+
+   mov edx, cr0
+   and dx, 0xFFFB  # clear coprocessor emulation CR0.EM
+   or dx, 0x2      # set coprocessor monitoring  CR0.MP
+   mov cr0, edx
+   mov edx, cr4
+   or dx, 3 << 9   # set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
+   mov cr4, edx
+   ret
+
+END_FUNC(asm_enable_sse)
 
 FUNC(sysenter_entry):
 

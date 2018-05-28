@@ -79,9 +79,6 @@ void show_hello_message(void)
 
 void show_system_info(void)
 {
-   get_x86_cpu_features();
-
-   printk("CPU: %s\n", x86_cpu_features.vendor_id);
    dump_x86_features();
 
    printk("TIMER_HZ: %i; TIME_SLOT: %i ms; MEM: %i MB\n",
@@ -91,6 +88,7 @@ void show_system_info(void)
    read_system_clock_datetime(&d);
    print_datetime(d);
 }
+
 
 void mount_ramdisk(void)
 {
@@ -119,6 +117,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    show_hello_message();
    read_multiboot_info(multiboot_magic, mbi_addr);
+
+   enable_cpu_features();
 
    setup_segmentation();
    init_pageframe_allocator(); /* NOTE: unused at the moment */

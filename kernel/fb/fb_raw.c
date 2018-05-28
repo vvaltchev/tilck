@@ -2,6 +2,7 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 #include <common/vga_textmode_defs.h>
+#include <common/arch/generic_x86/cpu_features.h>
 
 #include <exos/fb_console.h>
 #include <exos/paging.h>
@@ -53,9 +54,45 @@ void fb_flush_lines(u32 y, u32 lines_count)
    if (fb_vaddr == fb_real_vaddr)
       return;
 
+#if defined(__i386__) || defined(__x86_64__)
+
+   register char *dest = (char *)(fb_real_vaddr + y * fb_pitch);
+   register char *src = (char *)(fb_vaddr + y * fb_pitch);
+
+   if (x86_cpu_features.edx1.sse2) {
+
+      const u32 len = (lines_count * fb_pitch) / 16;
+
+      for (register u32 i = 0; i < len; i++, dest += 16, src += 16)
+         __builtin_ia32_movntdq((__m128i *) dest, *(__m128i *)src);
+
+   } else if (x86_cpu_features.edx1.sse) {
+
+      const u32 len = (lines_count * fb_pitch) / 8;
+
+      for (register u32 i = 0; i < len; i++, dest += 8, src += 8)
+         __builtin_ia32_movntq((u64 *)dest, *(u64 *)src);
+
+   } else {
+
+      goto failsafe;
+
+   }
+
+#else
+
+   goto failsafe;
+
+#endif
+
+   return;
+
+failsafe:
+
    memcpy32((void *)(fb_real_vaddr + y * fb_pitch),
             (void *)(fb_vaddr + y * fb_pitch),
             (lines_count * fb_pitch) >> 2);
+
 }
 
 u32 fb_get_width(void)

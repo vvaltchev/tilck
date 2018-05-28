@@ -13,7 +13,9 @@ set(
    -Wno-unused-label
 
    # Enable the SSE intrisics, but prevent ANY auto-vectorization.
+   -mmmx
    -msse
+   -msse2
    -fno-tree-loop-vectorize
    -fno-tree-vectorize
    -fno-tree-slp-vectorize
