@@ -4,6 +4,7 @@
 #include <common/utils.h>
 
 #include <exos/fault_resumable.h>
+#include <exos/debug_utils.h>
 
 #ifdef __i386__
 

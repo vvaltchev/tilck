@@ -5,6 +5,7 @@
 
 #include <exos/tasklet.h>
 #include <exos/process.h>
+#include <exos/debug_utils.h>
 
 static volatile int counter = 0;
 static const int tot_iters = MAX_TASKLETS * 10;

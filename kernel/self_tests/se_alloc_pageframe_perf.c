@@ -7,6 +7,7 @@
 #include <exos/kmalloc.h>
 #include <exos/paging.h>
 #include <exos/pageframe_allocator.h>
+#include <exos/debug_utils.h>
 
 #include "se_data.h"
 

@@ -9,6 +9,7 @@
 #include <exos/elf_loader.h>
 #include <exos/errno.h>
 #include <exos/user.h>
+#include <exos/debug_utils.h>
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)

@@ -5,6 +5,7 @@
 
 #include <exos/hal.h>
 #include <exos/kmalloc.h>
+#include <exos/debug_utils.h>
 
 #include "se_data.h"
 

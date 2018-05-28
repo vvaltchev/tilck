@@ -1,6 +1,8 @@
 
 #include <common/basic_defs.h>
 #include <common/string_util.h>
+
+#include <exos/debug_utils.h>
 #include <exos/process.h>
 #include <exos/hal.h>
 

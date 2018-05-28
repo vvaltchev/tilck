@@ -5,6 +5,7 @@
 
 #include <exos/process.h>
 #include <exos/sync.h>
+#include <exos/debug_utils.h>
 
 void simple_test_kthread(void *arg);
 

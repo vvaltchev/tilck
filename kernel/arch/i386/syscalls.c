@@ -7,6 +7,7 @@
 #include <exos/hal.h>
 #include <exos/errno.h>
 #include <exos/timer.h>
+#include <exos/debug_utils.h>
 
 typedef sptr (*syscall_type)();
 

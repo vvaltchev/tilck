@@ -5,6 +5,7 @@
 #include <exos/process.h>
 #include <exos/sync.h>
 #include <exos/timer.h>
+#include <exos/debug_utils.h>
 
 static kcond cond = { 0 };
 static kmutex cond_mutex = { 0 };

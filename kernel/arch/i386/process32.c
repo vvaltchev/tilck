@@ -4,6 +4,7 @@
 #include <exos/process.h>
 #include <exos/kmalloc.h>
 #include <exos/tasklet.h>
+#include <exos/debug_utils.h>
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
