@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.2)
 project (exos C CXX ASM)
 
+include(CheckCCompilerFlag)
+
 set(CMAKE_VERBOSE_MAKEFILE off)
 
 # Reset the default flags
@@ -61,6 +63,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 message(STATUS "C compiler: ${CMAKE_C_COMPILER_ID}")
 message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER_ID}")
+
+
+CHECK_C_COMPILER_FLAG(-fno-tree-loop-vectorize FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
+CHECK_C_COMPILER_FLAG(-fno-tree-vectorize FLAG_NO_TREE_VEC_SUPPORTED)
+CHECK_C_COMPILER_FLAG(-fno-tree-slp-vectorize FLAG_NO_TREE_SLP_VEC_SUPPORTED)
 
 #message("CMAKE_ASM-ATT_COMPILE_OBJECT: ${CMAKE_ASM-ATT_COMPILE_OBJECT}")
 #message("CMAKE_C_LINK_EXECUTABLE: ${CMAKE_C_LINK_EXECUTABLE}")

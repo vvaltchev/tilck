@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 
+
 set(
    GENERAL_KERNEL_FLAGS_LIST
 
@@ -17,10 +18,20 @@ set(
    -msse
    -msse2
    -msse4.1
-   -fno-tree-loop-vectorize
-   -fno-tree-vectorize
-   -fno-tree-slp-vectorize
 )
+
+if (FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
+   LIST(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-loop-vectorize)
+endif()
+
+if (FLAG_NO_TREE_VEC_SUPPORTED)
+   LIST(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-vectorize)
+endif()
+
+if (FLAG_NO_TREE_SLP_VEC_SUPPORTED)
+   LIST(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-slp-vectorize)
+endif()
+
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
 
 set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
