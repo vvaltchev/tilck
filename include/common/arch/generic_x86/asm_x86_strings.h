@@ -293,7 +293,7 @@ EXTERN inline void memcpy256_nt_sse(void *dest, const void *src, u32 n)
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
 EXTERN inline void x86_memcpy256_nt_smart(void *dest, const void *src, u32 n)
 {
-   if (0 && x86_cpu_features.can_use_avx2)
+   if (x86_cpu_features.can_use_avx2)
       memcpy256_nt_avx2(dest, src, n);
    else if (x86_cpu_features.can_use_sse2)
       memcpy256_nt_sse2(dest, src, n);
