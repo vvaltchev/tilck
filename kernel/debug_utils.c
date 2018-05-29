@@ -1,6 +1,7 @@
 
 #include <common/basic_defs.h>
 #include <common/string_util.h>
+#include <common/arch/generic_x86/cpu_features.h>
 
 volatile bool __in_panic;
 
@@ -25,6 +26,12 @@ NORETURN void panic(const char *fmt, ...)
    }
 
    __in_panic = true;
+
+   x86_cpu_features.can_use_sse = false;
+   x86_cpu_features.can_use_sse2 = false;
+   x86_cpu_features.can_use_avx = false;
+   x86_cpu_features.can_use_avx2 = false;
+
    panic_save_current_state();
 
    printk("*********************************"

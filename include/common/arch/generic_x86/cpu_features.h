@@ -89,6 +89,13 @@ typedef struct {
 
    bool avx2;
 
+   // Features allowed:
+
+   bool can_use_sse;
+   bool can_use_sse2;
+   bool can_use_avx;
+   bool can_use_avx2;
+
 } x86_cpu_features_t;
 
 extern x86_cpu_features_t x86_cpu_features;

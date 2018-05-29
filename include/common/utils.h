@@ -64,6 +64,18 @@ CONSTEXPR static inline u32 get_first_zero_bit_index(u32 num)
    return i;
 }
 
+CONSTEXPR static inline u32 get_first_set_bit_index(u32 num)
+{
+   u32 i;
+   ASSERT(num != 0);
+
+   for (i = 0; i < 32; i++)
+      if (num & (1U << i))
+         break;
+
+   return i;
+}
+
 CONSTEXPR static ALWAYS_INLINE uptr round_up_mb(uptr n)
 {
    return (n + MB - 1) & -MB;

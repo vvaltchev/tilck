@@ -129,15 +129,23 @@ multiboot_entry:
 
 END_FUNC(_start)
 
+
+# This function initialize both the x87 FPU and SSE
 FUNC(asm_enable_sse):
 
-   mov edx, cr0
-   and dx, 0xFFFB  # clear coprocessor emulation CR0.EM
-   or dx, 0x2      # set coprocessor monitoring  CR0.MP
-   mov cr0, edx
-   mov edx, cr4
-   or dx, 3 << 9   # set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
-   mov cr4, edx
+   mov eax, cr0
+   and eax, ~(1 << 2) # set CR0.EM = 0 [coprocessor emulation]
+   and eax, ~(1 << 3) # set CR0.TS = 0 [Task switched]
+   or eax, (1 << 1)   # set CR0.MP = 1 [coprocessor monitoring]
+   or eax, (1 << 5)   # set CR0.NE = 1 [Native Exception handling]
+   mov cr0, eax
+   fninit
+
+   mov eax, cr4
+   or eax, (1 << 9)   # set CR4.OSFXSR
+   or eax, (1 << 10)  # set CR4.OSXMMEXCPT
+   mov cr4, eax
+
    ret
 
 END_FUNC(asm_enable_sse)
@@ -148,14 +156,22 @@ FUNC(asm_enable_osxsave):
    or eax, (1 << 18)  # Enable XSAVE and Processor Extended States (XCR{n})
    mov cr4, eax
 
+   xor ecx, ecx
+   xgetbv            # Load XCR0 in eax
+   or eax, (1 << 0)  # FPU/MMX x87 enabled
+   or eax, (1 << 1)  # Set SSE enabled
+   xsetbv            # Save eax back to XCR0
+   ret
+
+
 END_FUNC(asm_enable_osxsave)
 
 FUNC(asm_enable_avx):
 
    xor ecx, ecx
-   xgetbv    # Load XCR0 in eax
-   or eax, 7 # Set the AVX, SSE, X87 bits
-   xsetbv    # save back to XCR0
+   xgetbv            # Load XCR0 in eax
+   or eax, (1 << 2)  # Set AVX enabled
+   xsetbv            # Save eax back to XCR0
    ret
 
 END_FUNC(asm_enable_avx)

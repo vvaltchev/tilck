@@ -41,7 +41,7 @@ void idt_set_entry(u8 num, void *handler, u16 selector, u8 flags)
    idt[num].flags = flags;
 }
 
-const char *exception_messages[] =
+const char *exception_messages[32] =
 {
    "Division By Zero",
    "Debug",

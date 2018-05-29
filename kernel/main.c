@@ -84,9 +84,9 @@ void show_system_info(void)
    printk("TIMER_HZ: %i; TIME_SLOT: %i ms; MEM: %i MB\n",
           TIMER_HZ, 1000 / (TIMER_HZ / TIME_SLOT_JIFFIES), get_phys_mem_mb());
 
-   datetime_t d;
-   read_system_clock_datetime(&d);
-   print_datetime(d);
+   //datetime_t d;
+   //read_system_clock_datetime(&d);
+   //print_datetime(d);
 }
 
 
@@ -118,10 +118,11 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    show_hello_message();
    read_multiboot_info(multiboot_magic, mbi_addr);
 
-   enable_cpu_features();
+   get_x86_cpu_features();
 
    setup_segmentation();
    init_pageframe_allocator(); /* NOTE: unused at the moment */
+
 
    init_paging();
    init_kmalloc();
@@ -133,12 +134,12 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
       init_textmode_console();
 
    show_system_info();
-
    setup_soft_interrupt_handling();
    setup_irq_handling();
    init_sched();
    init_tasklets();
 
+   enable_cpu_features();
    post_sched_init_framebuffer_console();
 
    timer_set_freq(TIMER_HZ);
