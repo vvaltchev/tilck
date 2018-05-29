@@ -1,6 +1,7 @@
 
 #pragma once
 #include <common/basic_defs.h>
+#include <common/arch/generic_x86/cpu_features.h>
 
 /*
  * This nice trick allows the code for the following functions to be emitted,
@@ -206,6 +207,72 @@ EXTERN inline void bzero(void *s, size_t n)
                : "=D" (s), "=c" (n), "=b" (unused)
                :  "D" (s), "c" (n >> 2), "b" (n & 3)
                : "cc", "memory", "%eax");
+}
+
+/*
+ * -----------------------------------------------
+ *
+ * Extra performant memcpy versions
+ *
+ * -----------------------------------------------
+ */
+
+/* 'n' is the number of 32-byte (256-bit) data packets to copy */
+EXTERN inline void memcpy256_nt_avx2(void *dest, const void *src, u32 n)
+{
+   for (register u32 i = 0; i < n; i++, src += 32, dest += 32) {
+      asmVolatile("vmovdqa (%0), %%ymm0\n\t"
+                  "vmovntdq %%ymm0, (%1)\n\t"
+                  : /* no output */
+                  : "r" (src), "r" (dest)
+                  : "memory");
+   }
+}
+
+/* 'n' is the number of 32-byte (256-bit) data packets to copy */
+EXTERN inline void memcpy256_nt_sse2(void *dest, const void *src, u32 n)
+{
+   for (register u32 i = 0; i < n; i++, src += 32, dest += 32) {
+
+      asmVolatile("movdqa (%0), %%xmm0\n\t"
+                  "movdqa 16(%0), %%xmm1\n\t"
+                  "movntdq %%xmm0, (%1)\n\t"
+                  "movntdq %%xmm1, 16(%1)\n\t"
+                  : /* no output */
+                  : "r" (src), "r" (dest)
+                  : "memory");
+   }
+}
+
+/* 'n' is the number of 32-byte (256-bit) data packets to copy */
+EXTERN inline void memcpy256_nt_sse(void *dest, const void *src, u32 n)
+{
+   for (register u32 i = 0; i < n; i++, src += 32, dest += 32) {
+      asmVolatile("movq (%0), %%mm0\n\t"
+                  "movq 8(%0), %%mm1\n\t"
+                  "movq 16(%0), %%mm2\n\t"
+                  "movq 24(%0), %%mm3\n\t"
+                  "movntq %%mm0, (%1)\n\t"
+                  "movntq %%mm1, 8(%1)\n\t"
+                  "movntq %%mm2, 16(%1)\n\t"
+                  "movntq %%mm3, 24(%1)\n\t"
+                  : /* no output */
+                  : "r" (src), "r" (dest)
+                  : "memory");
+   }
+}
+
+/* 'n' is the number of 32-byte (256-bit) data packets to copy */
+EXTERN inline void x86_memcpy256_nt_smart(void *dest, const void *src, u32 n)
+{
+   if (x86_cpu_features.avx2)
+      memcpy256_nt_avx2(dest, src, n);
+   else if (x86_cpu_features.edx1.sse2)
+      memcpy256_nt_sse2(dest, src, n);
+   else if (x86_cpu_features.edx1.sse)
+      memcpy256_nt_sse(dest, src, n);
+   else
+      memcpy32(dest, src, n * 8);
 }
 
 #undef EXTERN

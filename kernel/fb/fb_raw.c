@@ -2,7 +2,7 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 #include <common/vga_textmode_defs.h>
-#include <common/arch/generic_x86/cpu_features.h>
+
 
 #include <exos/fb_console.h>
 #include <exos/paging.h>
@@ -57,70 +57,18 @@ void fb_flush_lines(u32 y, u32 lines_count)
 #if defined(__i386__) || defined(__x86_64__)
 
    // ASSUMPTION fb_pitch is ALWAYS divisible by 32
-   const u32 len32 = (lines_count * fb_pitch) / 32;
 
-   register char *dest = (char *)(fb_real_vaddr + y * fb_pitch);
-   register char *src = (char *)(fb_vaddr + y * fb_pitch);
-
-   if (x86_cpu_features.avx2) {
-
-      for (register u32 i = 0; i < len32; i++, src += 32, dest += 32) {
-         asmVolatile("vmovdqa (%0), %%ymm0\n\t"
-                     "vmovntdq %%ymm0, (%1)\n\t"
-                     : /* no output */
-                     : "r" (src), "r" (dest)
-                     : "memory");
-      }
-
-
-   } else if (x86_cpu_features.edx1.sse2) {
-
-      for (register u32 i = 0; i < len32; i++, src += 32, dest += 32) {
-
-         asmVolatile("movdqa (%0), %%xmm0\n\t"
-                     "movdqa 16(%0), %%xmm1\n\t"
-                     "movntdq %%xmm0, (%1)\n\t"
-                     "movntdq %%xmm1, 16(%1)\n\t"
-                     : /* no output */
-                     : "r" (src), "r" (dest)
-                     : "memory");
-      }
-
-   } else if (x86_cpu_features.edx1.sse) {
-
-      for (register u32 i = 0; i < len32; i++, src += 32, dest += 32) {
-
-         asmVolatile("movq (%0), %%mm0\n\t"
-                     "movq 8(%0), %%mm1\n\t"
-                     "movq 16(%0), %%mm2\n\t"
-                     "movq 24(%0), %%mm3\n\t"
-                     "movntq %%mm0, (%1)\n\t"
-                     "movntq %%mm1, 8(%1)\n\t"
-                     "movntq %%mm2, 16(%1)\n\t"
-                     "movntq %%mm3, 24(%1)\n\t"
-                     : /* no output */
-                     : "r" (src), "r" (dest)
-                     : "memory");
-      }
-
-   } else {
-
-      goto failsafe;
-   }
+   x86_memcpy256_nt_smart((void *)(fb_real_vaddr + y * fb_pitch),
+                          (void *)(fb_vaddr + y * fb_pitch),
+                          (lines_count * fb_pitch) >> 5);
 
 #else
-
-   goto failsafe;
-
-#endif
-
-   return;
-
-failsafe:
 
    memcpy32((void *)(fb_real_vaddr + y * fb_pitch),
             (void *)(fb_vaddr + y * fb_pitch),
             (lines_count * fb_pitch) >> 2);
+
+#endif
 
 }
 
