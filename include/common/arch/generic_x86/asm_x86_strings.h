@@ -220,9 +220,21 @@ EXTERN inline void bzero(void *s, size_t n)
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
 EXTERN inline void memcpy256_nt_avx2(void *dest, const void *src, u32 n)
 {
-   for (register u32 i = 0; i < n; i++, src += 32, dest += 32) {
-      asmVolatile("vmovdqa (%0), %%ymm0\n\t"
-                  "vmovntdq %%ymm0, (%1)\n\t"
+   u32 len64 = n / 2;
+
+   for (register u32 i = 0; i < len64; i++, src += 64, dest += 64) {
+      asmVolatile("vmovdqa   (%0), %%ymm0\n\t"
+                  "vmovdqa 32(%0), %%ymm1\n\t"
+                  "vmovntdq %%ymm0,   (%1)\n\t"
+                  "vmovntdq %%ymm1, 32(%1)\n\t"
+                  : /* no output */
+                  : "r" (src), "r" (dest)
+                  : "memory");
+   }
+
+   if (n % 2) {
+      asmVolatile("vmovdqa     (%0), %%ymm0\n\t"
+                  "vmovntdq  %%ymm0,   (%1)\n\t"
                   : /* no output */
                   : "r" (src), "r" (dest)
                   : "memory");
@@ -232,11 +244,27 @@ EXTERN inline void memcpy256_nt_avx2(void *dest, const void *src, u32 n)
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
 EXTERN inline void memcpy256_nt_sse2(void *dest, const void *src, u32 n)
 {
-   for (register u32 i = 0; i < n; i++, src += 32, dest += 32) {
+   u32 len64 = n / 2;
 
-      asmVolatile("movdqa (%0), %%xmm0\n\t"
+   for (register u32 i = 0; i < len64; i++, src += 64, dest += 64) {
+
+      asmVolatile("movdqa   (%0), %%xmm0\n\t"
                   "movdqa 16(%0), %%xmm1\n\t"
-                  "movntdq %%xmm0, (%1)\n\t"
+                  "movdqa 32(%0), %%xmm2\n\t"
+                  "movdqa 48(%0), %%xmm3\n\t"
+                  "movntdq %%xmm0,   (%1)\n\t"
+                  "movntdq %%xmm1, 16(%1)\n\t"
+                  "movntdq %%xmm2, 32(%1)\n\t"
+                  "movntdq %%xmm3, 48(%1)\n\t"
+                  : /* no output */
+                  : "r" (src), "r" (dest)
+                  : "memory");
+   }
+
+   if (n % 2) {
+      asmVolatile("movdqa   (%0), %%xmm0\n\t"
+                  "movdqa 16(%0), %%xmm1\n\t"
+                  "movntdq %%xmm0,   (%1)\n\t"
                   "movntdq %%xmm1, 16(%1)\n\t"
                   : /* no output */
                   : "r" (src), "r" (dest)

@@ -44,7 +44,12 @@ bool fb_switch_to_shadow_buffer(void)
    if (!shadow_buf)
       return false;
 
+#if defined(__i386__) || defined(__x86_64__)
+   x86_memcpy256_nt_smart(shadow_buf, (void *)fb_real_vaddr, fb_size >> 5);
+#else
    memcpy32(shadow_buf, (void *)fb_real_vaddr, fb_size >> 2);
+#endif
+
    fb_vaddr = (uptr) shadow_buf;
    return true;
 }
