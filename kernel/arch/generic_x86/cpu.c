@@ -6,7 +6,7 @@
 
 #include <exos/fault_resumable.h>
 
-extern const char *exception_messages[32];
+extern const char *x86_exception_names[32];
 
 void asm_enable_osxsave(void);
 void asm_enable_sse(void);
@@ -21,7 +21,7 @@ static bool enable_sse(void)
       u32 n = get_first_set_bit_index(res);
 
       printk("Enable SSE failed: fault %i [%s]\n",
-             n, exception_messages[n]);
+             n, x86_exception_names[n]);
 
       return false;
    }
@@ -59,7 +59,7 @@ static bool enable_osxsave(void)
       u32 n = get_first_set_bit_index(res);
 
       printk("Enable OSXSAVE failed: fault %i [%s]\n",
-             n, exception_messages[n]);
+             n, x86_exception_names[n]);
 
       return false;
    }
@@ -76,7 +76,7 @@ static bool enable_avx(void)
       u32 n = get_first_set_bit_index(res);
 
       printk("Enable AVX failed: fault %i [%s]\n",
-             n, exception_messages[n]);
+             n, x86_exception_names[n]);
 
       return false;
    }

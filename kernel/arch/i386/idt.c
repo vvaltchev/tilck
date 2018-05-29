@@ -41,7 +41,7 @@ void idt_set_entry(u8 num, void *handler, u16 selector, u8 flags)
    idt[num].flags = flags;
 }
 
-const char *exception_messages[32] =
+const char *x86_exception_names[32] =
 {
    "Division By Zero",
    "Debug",
@@ -107,7 +107,7 @@ void handle_fault(regs *r)
 
       panic("Fault #%i: %s [errCode: %p]",
             r->int_num,
-            exception_messages[r->int_num],
+            x86_exception_names[r->int_num],
             r->err_code);
    }
 }
