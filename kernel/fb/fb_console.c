@@ -438,6 +438,12 @@ void init_framebuffer_console(void)
    printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
 
    fb_use_optimized_funcs_if_possible();
+}
+
+void post_sched_init_framebuffer_console(void)
+{
+   if (!use_framebuffer())
+      return;
 
    if (framebuffer_vi.flush_buffers) {
       if (fb_switch_to_shadow_buffer()) {
@@ -446,12 +452,6 @@ void init_framebuffer_console(void)
          printk("WARNING: unable to use double buffering for the framebuffer");
       }
    }
-}
-
-void post_sched_init_framebuffer_console(void)
-{
-   if (!use_framebuffer())
-      return;
 
    blink_thread_ti = kthread_create(fb_blink_thread, NULL);
 

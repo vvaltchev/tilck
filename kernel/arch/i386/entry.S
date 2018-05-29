@@ -427,7 +427,7 @@ FUNC(switch_to_initial_kernel_stack):
 
 END_FUNC(switch_to_initial_kernel_stack)
 
-
+# TODO: make fault_resumable_call() usable even when __current is NULL
 FUNC(fault_resumable_call):
 
    mov ecx, [__current]

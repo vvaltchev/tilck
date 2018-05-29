@@ -79,7 +79,7 @@ void show_hello_message(void)
 
 void show_system_info(void)
 {
-   dump_x86_features();
+   //dump_x86_features();
 
    printk("TIMER_HZ: %i; TIME_SLOT: %i ms; MEM: %i MB\n",
           TIMER_HZ, 1000 / (TIMER_HZ / TIME_SLOT_JIFFIES), get_phys_mem_mb());
@@ -123,7 +123,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    setup_segmentation();
    init_pageframe_allocator(); /* NOTE: unused at the moment */
 
-
    init_paging();
    init_kmalloc();
    init_paging_cow();
@@ -133,7 +132,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    else
       init_textmode_console();
 
-   show_system_info();
    setup_soft_interrupt_handling();
    setup_irq_handling();
    init_sched();
@@ -141,6 +139,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    enable_cpu_features();
    post_sched_init_framebuffer_console();
+
+   show_system_info();
 
    timer_set_freq(TIMER_HZ);
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
