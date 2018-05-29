@@ -7,6 +7,8 @@
 #include <exos/arch/i386/asm_defs.h>
 #include <multiboot.h>
 
+.code32
+
 .section bss
 .global kernel_initial_stack
 .global vsdo_like_page
@@ -19,6 +21,7 @@
 
 .global _start
 .global asm_enable_sse
+.global asm_enable_osxsave
 .global asm_enable_avx
 .global syscall_int80_entry
 .global sysenter_entry
@@ -138,6 +141,14 @@ FUNC(asm_enable_sse):
    ret
 
 END_FUNC(asm_enable_sse)
+
+FUNC(asm_enable_osxsave):
+
+   mov eax, cr4
+   or eax, (1 << 18)  # Enable XSAVE and Processor Extended States (XCR{n})
+   mov cr4, eax
+
+END_FUNC(asm_enable_osxsave)
 
 FUNC(asm_enable_avx):
 

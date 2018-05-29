@@ -13,11 +13,13 @@ set(
    -fno-omit-frame-pointer
    -Wno-unused-label
 
-   # Enable the SSE intrisics, but prevent ANY auto-vectorization.
+   # Enable the SIMD intrisics, but prevent ANY auto-vectorization.
    -mmmx
    -msse
    -msse2
    -msse4.1
+   -mavx
+   -mavx2
 )
 
 if (FLAG_NO_TREE_LOOP_VEC_SUPPORTED)

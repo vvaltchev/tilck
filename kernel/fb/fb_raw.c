@@ -56,35 +56,52 @@ void fb_flush_lines(u32 y, u32 lines_count)
 
 #if defined(__i386__) || defined(__x86_64__)
 
-   // ASSUMPTION fb_pitch is ALWAYS divisible by 16
+   // ASSUMPTION fb_pitch is ALWAYS divisible by 32
+   const u32 len32 = (lines_count * fb_pitch) / 32;
 
    register char *dest = (char *)(fb_real_vaddr + y * fb_pitch);
    register char *src = (char *)(fb_vaddr + y * fb_pitch);
 
-   if (x86_cpu_features.ecx1.sse41) {
+   if (x86_cpu_features.avx2) {
 
-      const u32 len16 = (lines_count * fb_pitch) / 16;
-
-      for (register u32 i = 0; i < len16; i++, src += 16, dest += 16)
-         asmVolatile("movntdqa   (%0), %%xmm0\n\t"
-                     "movntdq %%xmm0, (%1)\n\t"
+      for (register u32 i = 0; i < len32; i++, src += 32, dest += 32) {
+         asmVolatile("vmovdqa (%0), %%ymm0\n\t"
+                     "vmovntdq %%ymm0, (%1)\n\t"
                      : /* no output */
                      : "r" (src), "r" (dest)
                      : "memory");
+      }
+
 
    } else if (x86_cpu_features.edx1.sse2) {
 
-      const u32 len16 = (lines_count * fb_pitch) / 16;
+      for (register u32 i = 0; i < len32; i++, src += 32, dest += 32) {
 
-      for (register u32 i = 0; i < len16; i++, dest += 16, src += 16)
-         __builtin_ia32_movntdq((__v2di *) dest, *(__v2di *)src);
+         asmVolatile("movdqa (%0), %%xmm0\n\t"
+                     "movdqa 16(%0), %%xmm1\n\t"
+                     "movntdq %%xmm0, (%1)\n\t"
+                     "movntdq %%xmm1, 16(%1)\n\t"
+                     : /* no output */
+                     : "r" (src), "r" (dest)
+                     : "memory");
+      }
 
    } else if (x86_cpu_features.edx1.sse) {
 
-      const u32 len8 = (lines_count * fb_pitch) / 8;
+      for (register u32 i = 0; i < len32; i++, src += 32, dest += 32) {
 
-      for (register u32 i = 0; i < len8; i++, dest += 8, src += 8)
-         __builtin_ia32_movntq((ull_t *)dest, *(ull_t *)src);
+         asmVolatile("movq (%0), %%mm0\n\t"
+                     "movq 8(%0), %%mm1\n\t"
+                     "movq 16(%0), %%mm2\n\t"
+                     "movq 24(%0), %%mm3\n\t"
+                     "movntq %%mm0, (%1)\n\t"
+                     "movntq %%mm1, 8(%1)\n\t"
+                     "movntq %%mm2, 16(%1)\n\t"
+                     "movntq %%mm3, 24(%1)\n\t"
+                     : /* no output */
+                     : "r" (src), "r" (dest)
+                     : "memory");
+      }
 
    } else {
 
