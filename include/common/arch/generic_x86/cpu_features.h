@@ -71,8 +71,8 @@ typedef struct {
 
       bool pcid;         // 17
       bool dca;          // 18
-      bool sse41;        // 19
-      bool sse42;        // 20
+      bool sse4_1;       // 19
+      bool sse4_2;       // 20
       bool x2apic;       // 21
       bool movbe;        // 22
       bool popcnt;       // 23

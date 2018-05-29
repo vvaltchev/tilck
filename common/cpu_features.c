@@ -27,10 +27,10 @@ void get_x86_cpu_features(void)
       ((bool *)&f->edx1)[bit] = !!(d & (1 << bit));
 
    for (u32 bit = 0; bit < 32; bit++)
-      ((bool *)&f->ecx1)[bit] = !!(d & (1 << bit));
+      ((bool *)&f->ecx1)[bit] = !!(c & (1 << bit));
 
    if (f->max_basic_cpuid_cmd >= 7) {
-      if (f->ecx1.avx && f->ecx1.osxsave) {
+      if (f->ecx1.avx) {
          cpuid(7, &a, &b, &c, &d);
          f->avx2 = !!(b & (1 << 5)) && !!(b & (1 << 3)) && !!(b & (1 << 8));
       }

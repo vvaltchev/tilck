@@ -156,11 +156,6 @@ FUNC(asm_enable_osxsave):
    or eax, (1 << 18)  # Enable XSAVE and Processor Extended States (XCR{n})
    mov cr4, eax
 
-   xor ecx, ecx
-   xgetbv            # Load XCR0 in eax
-   or eax, (1 << 0)  # FPU/MMX x87 enabled
-   or eax, (1 << 1)  # Set SSE enabled
-   xsetbv            # Save eax back to XCR0
    ret
 
 
@@ -170,7 +165,9 @@ FUNC(asm_enable_avx):
 
    xor ecx, ecx
    xgetbv            # Load XCR0 in eax
-   or eax, (1 << 2)  # Set AVX enabled
+   or eax, (1 << 0)  # FPU/MMX x87 enabled [must be 1]
+   or eax, (1 << 1)  # Set SSE enabled     [can be 0 if AVX is 0]
+   or eax, (1 << 2)  # Set AVX enabled     [must be 1, if SSE is 1]
    xsetbv            # Save eax back to XCR0
    ret
 

@@ -26,12 +26,27 @@ static bool enable_sse(void)
       return false;
    }
 
+   const char *max_sse = "SSE 1";
    x86_cpu_features.can_use_sse = true;
 
-   if (x86_cpu_features.edx1.sse2)
+   if (x86_cpu_features.edx1.sse2) {
       x86_cpu_features.can_use_sse2 = true;
+      max_sse = "SSE 2";
+   }
 
-   printk("[CPU features] SSE enabled\n");
+   if (x86_cpu_features.ecx1.sse3)
+      max_sse = "SSE 3";
+
+   if (x86_cpu_features.ecx1.ssse3)
+      max_sse = "SSE 3+ (ssse 3)";
+
+   if (x86_cpu_features.ecx1.sse4_1)
+      max_sse = "SSE 4.1";
+
+   if (x86_cpu_features.ecx1.sse4_2)
+      max_sse = "SSE 4.2";
+
+   printk("[CPU features] %s enabled\n", max_sse);
    return true;
 }
 
@@ -49,7 +64,6 @@ static bool enable_osxsave(void)
       return false;
    }
 
-   printk("[CPU features] OSXSAVE enabled\n");
    return true;
 }
 
@@ -69,10 +83,13 @@ static bool enable_avx(void)
 
    x86_cpu_features.can_use_avx = true;
 
-   if (x86_cpu_features.avx2)
+   if (x86_cpu_features.avx2) {
       x86_cpu_features.can_use_avx2 = true;
+      printk("[CPU features] AVX 2 enabled\n");
+   } else {
+      printk("[CPU features] AVX 1 enabled\n");
+   }
 
-   printk("[CPU features] AVX enabled\n");
    return true;
 }
 
@@ -83,7 +100,7 @@ void enable_cpu_features(void)
          return;
    }
 
-   if (x86_cpu_features.ecx1.osxsave) {
+   if (x86_cpu_features.ecx1.xsave) {
 
       if (!enable_osxsave())
          return;
