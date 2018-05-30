@@ -79,10 +79,38 @@ u32 fb_get_bpp(void)
    return fb_bpp;
 }
 
+#ifdef __i386__
+#include "../arch/i386/paging_int.h"
+#endif
+
 void fb_map_in_kernel_space(void)
 {
    fb_real_vaddr = KERNEL_BASE_VA + (1024 - 64) * MB;
    fb_vaddr = fb_real_vaddr; /* here fb_vaddr == fb_real_vaddr */
+
+#ifdef __i386__
+   if (!get_kernel_page_dir()) {
+
+      /*
+       * Paging has not been initialized yet: probably we're in panic.
+       * At this point, the kernel still uses page_size_buf as pdir, with only
+       * the first 4 MB of the physical mapped at KERNEL_BASE_VA.
+       */
+
+      kernel_page_dir = (page_directory_t *)page_size_buf;
+
+      u32 big_pages_to_use = fb_size / (4 * MB) + 1;
+
+      for (u32 i = 0; i < big_pages_to_use; i++) {
+         map_4mb_page_int(kernel_page_dir,
+                          (void *)fb_real_vaddr + i * 4 * MB,
+                          fb_paddr + i * 4 * MB,
+                          PG_PRESENT_BIT | PG_RW_BIT | PG_4MB_BIT);
+      }
+
+      return;
+   }
+#endif
 
    map_pages(get_kernel_page_dir(),
              (void *)fb_real_vaddr,

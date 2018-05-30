@@ -67,12 +67,12 @@ void init_fpu_memcpy(void)
    func_name = find_sym_at_addr2((uptr)func, &offset, &size);
 
    if (!func_name) {
-      printk("init_fpu_memcpy: failed to find the symbol for %p\n", func);
+      panic("init_fpu_memcpy: failed to find the symbol at %p\n", func);
       return;
    }
 
    if (size > 128) {
-      printk("init_fpu_memcpy: the source function at %p is too big!\n", func);
+      panic("init_fpu_memcpy: the source function at %p is too big!\n", func);
       return;
    }
 

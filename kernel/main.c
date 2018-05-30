@@ -121,9 +121,9 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    create_kernel_process();
    setup_soft_interrupt_handling();
+   read_multiboot_info(multiboot_magic, mbi_addr);
 
    show_hello_message();
-   read_multiboot_info(multiboot_magic, mbi_addr);
 
    get_x86_cpu_features();
    enable_cpu_features();

@@ -382,10 +382,10 @@ void pdir_destroy(page_directory_t *pdir)
 }
 
 
-static void map_4mb_page_int(page_directory_t *pdir,
-                             void *vaddrp,
-                             uptr paddr,
-                             u32 flags)
+void map_4mb_page_int(page_directory_t *pdir,
+                      void *vaddrp,
+                      uptr paddr,
+                      u32 flags)
 {
    const u32 vaddr = (u32) vaddrp;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));

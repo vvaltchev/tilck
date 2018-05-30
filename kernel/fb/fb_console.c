@@ -428,7 +428,7 @@ void init_framebuffer_console(void)
 
    fb_map_in_kernel_space();
 
-   if (framebuffer_vi.flush_buffers && !in_hypervisor()) {
+   if (framebuffer_vi.flush_buffers && !in_hypervisor() && !in_panic()) {
 
       /*
        * In hypervisors, using double buffering just slows the fb_console,
@@ -438,7 +438,7 @@ void init_framebuffer_console(void)
       if (fb_alloc_shadow_buffer()) {
          printk("[fb_console] Using double buffering\n");
       } else {
-         printk("WARNING: unable to use double buffering for the framebuffer");
+         printk("WARNING: unable to use double buffering for the framebuffer\n");
       }
    }
 
