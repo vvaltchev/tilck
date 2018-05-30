@@ -220,17 +220,6 @@ void panic_save_current_task_state(regs *r)
 {
    static regs panic_state_regs;
 
-   if (!get_curr_task()) {
-
-      /*
-       * PANIC occurred before the first task is started.
-       * Set current = kernel_process to allow the rest of the panic code
-       * to not handle the current == NULL case.
-       */
-
-      set_current_task(kernel_process);
-   }
-
    /*
     * Clear the higher (unused) bits of the segment registers for a nicer
     * panic regs dump.

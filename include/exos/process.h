@@ -162,6 +162,7 @@ void remove_task(task_info *ti);
 void task_change_state(task_info *ti, task_state_enum new_state);
 
 void init_sched(void);
+void create_kernel_process(void);
 task_info *allocate_new_process(task_info *parent, int pid);
 task_info *allocate_new_thread(process_info *pi);
 void free_task(task_info *ti);

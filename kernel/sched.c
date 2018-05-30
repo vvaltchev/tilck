@@ -111,28 +111,43 @@ void idle_task_kthread(void)
    }
 }
 
-void init_sched(void)
+void create_kernel_process(void)
 {
+   static task_info s_kernel_ti;
+   static process_info s_kernel_pi;
+
    list_node_init(&runnable_tasks_list);
    list_node_init(&sleeping_tasks_list);
 
    int kernel_pid = create_new_pid();
    ASSERT(kernel_pid == 0);
 
-   kernel_process = allocate_new_process(NULL, kernel_pid);
-   VERIFY(kernel_process != NULL); // This failure CANNOT be handled.
-   ASSERT(kernel_process->pi->parent_pid == 0);
+   s_kernel_pi.ref_count = 1;
+   s_kernel_ti.tid = kernel_pid;
+   s_kernel_ti.owning_process_pid = kernel_pid;
 
-   kernel_process->running_in_kernel = true;
-   kernel_process->pi->pdir = get_kernel_page_dir();
-   memcpy(kernel_process->pi->cwd, "/", 2);
+   s_kernel_ti.pi = &s_kernel_pi;
+   bintree_node_init(&s_kernel_ti.tree_by_tid);
+   list_node_init(&s_kernel_ti.runnable_list);
+   list_node_init(&s_kernel_ti.sleeping_list);
 
-   kernel_process->state = TASK_STATE_SLEEPING;
+   arch_specific_new_task_setup(&s_kernel_ti);
+   ASSERT(s_kernel_pi.parent_pid == 0);
+
+   s_kernel_ti.running_in_kernel = true;
+   memcpy(s_kernel_pi.cwd, "/", 2);
+
+   s_kernel_ti.state = TASK_STATE_SLEEPING;
+
+   kernel_process = &s_kernel_ti;
    add_task(kernel_process);
-
-   idle_task = kthread_create(&idle_task_kthread, NULL);
-
    set_current_task(kernel_process);
+}
+
+void init_sched(void)
+{
+   kernel_process->pi->pdir = get_kernel_page_dir();
+   idle_task = kthread_create(&idle_task_kthread, NULL);
 }
 
 void set_current_task_in_kernel(void)

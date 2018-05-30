@@ -482,7 +482,11 @@ init_term(const video_interface *intf, int rows, int cols, u8 default_color)
    }
 
    if (!buffer) {
+
       /* We're in panic or we were unable to allocate the buffer */
+      term_cols = MIN(80, term_cols);
+      term_rows = MIN(25, term_rows);
+
       extra_buffer_rows = 0;
       total_buffer_rows = term_rows;
       buffer = failsafe_buffer;

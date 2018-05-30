@@ -11,6 +11,9 @@ volatile bool __in_panic;
 #include <exos/hal.h>
 #include <exos/irq.h>
 #include <exos/process.h>
+#include <exos/term.h>
+#include <exos/fb_console.h>
+#include <exos/arch/generic_x86/textmode_video.h>
 
 #include <elf.h>
 #include <multiboot.h>
@@ -34,6 +37,14 @@ NORETURN void panic(const char *fmt, ...)
 
    panic_save_current_state();
 
+   if (!term_is_initialized()) {
+      if (use_framebuffer())
+         init_framebuffer_console();
+      else
+         init_textmode_console();
+   }
+
+
    printk("*********************************"
           " KERNEL PANIC "
           "********************************\n");
@@ -47,7 +58,7 @@ NORETURN void panic(const char *fmt, ...)
 
    task_info *curr = get_curr_task();
 
-   if (curr && curr->tid != -1) {
+   if (curr && curr != kernel_process && curr->tid != -1) {
       if (!is_kernel_thread(curr)) {
          printk("Current task [USER]: tid: %i, pid: %i\n",
                 curr->tid, curr->owning_process_pid);

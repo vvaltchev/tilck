@@ -115,10 +115,14 @@ void selftest_runner_thread()
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
+   create_kernel_process();
+   setup_soft_interrupt_handling();
+
    show_hello_message();
    read_multiboot_info(multiboot_magic, mbi_addr);
 
    get_x86_cpu_features();
+   enable_cpu_features();
 
    setup_segmentation();
    init_pageframe_allocator(); /* NOTE: unused at the moment */
@@ -132,14 +136,11 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    else
       init_textmode_console();
 
-   setup_soft_interrupt_handling();
    setup_irq_handling();
    init_sched();
    init_tasklets();
 
-   enable_cpu_features();
    post_sched_init_framebuffer_console();
-
    show_system_info();
 
    timer_set_freq(TIMER_HZ);
