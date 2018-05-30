@@ -20,7 +20,7 @@
 #define FUNC(x) .type x, @function; x
 #define END_FUNC(x) .size x, .-(x)
 
-#define EBP_OFFSET_ARG1 8
+#define EBP_OFFSET_ARG1  8
 #define EBP_OFFSET_ARG2 12
 #define EBP_OFFSET_ARG3 16
 

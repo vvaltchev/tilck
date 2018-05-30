@@ -259,3 +259,14 @@ FUNC(switch_to_initial_kernel_stack):
    ret
 
 END_FUNC(switch_to_initial_kernel_stack)
+
+
+
+.global fpu_memcpy_single_256_nt
+
+FUNC(fpu_memcpy_single_256_nt):
+   jmp memcpy_single_256_failsafe
+   .space 128
+END_FUNC(fpu_memcpy_single_256_nt)
+
+
