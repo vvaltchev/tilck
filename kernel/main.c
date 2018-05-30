@@ -123,6 +123,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    get_x86_cpu_features();
    enable_cpu_features();
+   init_fpu_memcpy();
 
    setup_segmentation();
    init_pageframe_allocator(); /* NOTE: unused at the moment */

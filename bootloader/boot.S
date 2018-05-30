@@ -13,7 +13,7 @@
  * and the ELF kernel) is loaded by the 3rd stage.
  */
 
-#define INITIAL_SECTORS_TO_READ (40 * KB / SECTOR_SIZE)
+#define INITIAL_SECTORS_TO_READ (48 * KB / SECTOR_SIZE)
 
 .org 0x0000
 
