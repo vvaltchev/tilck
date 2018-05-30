@@ -37,7 +37,15 @@ set(
 JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
 
 file(GLOB ARCH_SOURCES "${ARCH}/*.S" "${ARCH}/*.c")
-file(GLOB ARCH_FAMILY_SOURCES "${ARCH_FAMILY}/*.c")
+
+file(
+      GLOB
+      ARCH_FAMILY_SOURCES
+
+      "${ARCH_FAMILY}/*.c"
+      "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
+)
+
 file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})
 
 add_executable(

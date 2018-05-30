@@ -47,6 +47,7 @@ file(
    "stage3_*.S"
    "*.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
+   "${CMAKE_SOURCE_DIR}/common/arch/generic_x86/*.c"
 )
 
 
