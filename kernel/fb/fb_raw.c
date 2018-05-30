@@ -3,11 +3,11 @@
 #include <common/string_util.h>
 #include <common/vga_textmode_defs.h>
 
-
 #include <exos/fb_console.h>
 #include <exos/paging.h>
 #include <exos/kmalloc.h>
 #include <exos/pageframe_allocator.h>
+#include <exos/arch/generic_x86/fpu_memcpy.h>
 
 #include "fb_int.h"
 

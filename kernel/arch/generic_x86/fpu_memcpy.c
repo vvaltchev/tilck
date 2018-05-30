@@ -1,6 +1,7 @@
 
 #include <common/basic_defs.h>
 #include <common/string_util.h>
+#include <exos/arch/generic_x86/fpu_memcpy.h>
 
 void init_fpu_memcpy(void)
 {

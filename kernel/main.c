@@ -25,6 +25,7 @@
 #include <exos/datetime.h>
 #include <exos/fb_console.h>
 #include <exos/arch/generic_x86/textmode_video.h>
+#include <exos/arch/generic_x86/fpu_memcpy.h>
 
 extern u32 memsize_in_mb;
 extern uptr ramdisk_paddr;

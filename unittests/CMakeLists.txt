@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.2)
 
-file(GLOB SOURCES "*.c" "*.cpp")
+file(
+   GLOB SOURCES
+
+   "*.c"
+   "*.cpp"
+   "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
+)
 
 set(GTEST_DIR "${TCROOT}/googletest/googletest")
 
