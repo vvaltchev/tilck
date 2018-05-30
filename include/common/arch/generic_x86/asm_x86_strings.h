@@ -324,59 +324,34 @@ memcpy_single_256_failsafe(void *dest, const void *src)
    memcpy32(dest, src, 8);
 }
 
-typedef enum {
-
-   FPU_MEMCPY_unknown = 0,
-   FPU_MEMCPY_avx2 = 1,
-   FPU_MEMCPY_sse2 = 2,
-   FPU_MEMCPY_sse = 3,
-   FPU_MEMCPY_failsafe = 4,
-
-} fpu_memcpy_type;
-
-extern fpu_memcpy_type fpu_memcpy_type_to_use;
 
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
 EXTERN ALWAYS_INLINE void
 fpu_memcpy256_nt(void *dest, const void *src, u32 n)
 {
-   switch (fpu_memcpy_type_to_use) {
-      case FPU_MEMCPY_avx2:
-         fpu_memcpy256_nt_avx2(dest, src, n);
-         break;
-      case FPU_MEMCPY_sse2:
-         fpu_memcpy256_nt_sse2(dest, src, n);
-         break;
-      case FPU_MEMCPY_sse:
-         fpu_memcpy256_nt_sse(dest, src, n);
-         break;
-      case FPU_MEMCPY_failsafe:
-         memcpy256_failsafe(dest, src, n);
-         break;
-      default:
-         NOT_REACHED();
-   }
+   /* Note: using IFs this way is faster than using a function pointer. */
+   if (x86_cpu_features.can_use_avx2)
+      fpu_memcpy256_nt_avx2(dest, src, n);
+   else if (x86_cpu_features.can_use_sse2)
+      fpu_memcpy256_nt_sse2(dest, src, n);
+   else if (x86_cpu_features.can_use_sse)
+      fpu_memcpy256_nt_sse(dest, src, n);
+   else
+      memcpy256_failsafe(dest, src, n);
 }
 
 EXTERN ALWAYS_INLINE void
 fpu_memcpy_single_256_nt(void *dest, const void *src)
 {
-   switch (fpu_memcpy_type_to_use) {
-      case FPU_MEMCPY_avx2:
-         fpu_memcpy_single_256_nt_avx2(dest, src);
-         break;
-      case FPU_MEMCPY_sse2:
-         fpu_memcpy_single_256_nt_sse2(dest, src);
-         break;
-      case FPU_MEMCPY_sse:
-         fpu_memcpy_single_256_nt_sse(dest, src);
-         break;
-      case FPU_MEMCPY_failsafe:
-         memcpy_single_256_failsafe(dest, src);
-         break;
-      default:
-         NOT_REACHED();
-   }
+   /* Note: using IFs this way is faster than using a function pointer. */
+   if (x86_cpu_features.can_use_avx2)
+      fpu_memcpy_single_256_nt_avx2(dest, src);
+   else if (x86_cpu_features.can_use_sse2)
+      fpu_memcpy_single_256_nt_sse2(dest, src);
+   else if (x86_cpu_features.can_use_sse)
+      fpu_memcpy_single_256_nt_sse(dest, src);
+   else
+      memcpy_single_256_failsafe(dest, src);
 }
 
 void init_fpu_memcpy(void);

@@ -2,18 +2,9 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
-fpu_memcpy_type fpu_memcpy_type_to_use;
-
 void init_fpu_memcpy(void)
 {
-   if (x86_cpu_features.can_use_avx2)
-      fpu_memcpy_type_to_use = FPU_MEMCPY_avx2;
-   else if (x86_cpu_features.can_use_sse2)
-      fpu_memcpy_type_to_use = FPU_MEMCPY_sse2;
-   else if (x86_cpu_features.can_use_sse)
-      fpu_memcpy_type_to_use = FPU_MEMCPY_sse;
-   else
-      fpu_memcpy_type_to_use = FPU_MEMCPY_failsafe;
+   /* Do nothing, for the moment. */
 }
 
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
