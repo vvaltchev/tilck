@@ -55,9 +55,13 @@ void fb_flush_lines(u32 y, u32 lines_count)
 
    // ASSUMPTION fb_pitch is ALWAYS divisible by 32
 
+   // TODO: add fpu_save_context here
+
    fpu_memcpy256_nt((void *)(fb_real_vaddr + y * fb_pitch),
                     (void *)(fb_vaddr + y * fb_pitch),
                     (lines_count * fb_pitch) >> 5);
+
+   // TODO: add fpu_restore_context here
 }
 
 u32 fb_get_width(void)
@@ -219,9 +223,14 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 count)
 {
    // ASSUMPTION fb_pitch is ALWAYS divisible by 32
+
+   // TODO: add fpu_save_context here
+
    fpu_memcpy256_nt((void *)(fb_vaddr + fb_pitch * dst_y),
                     (void *)(fb_vaddr + fb_pitch * src_y),
                     (fb_pitch * count) >> 5);
+
+   // TODO: add fpu_restore_context here
 }
 
 
@@ -320,8 +329,40 @@ void fb_draw_char16x32(u32 x, u32 y, u16 e)
 
 void fb_draw_char16x32_row(u32 y, u16 *entries, u32 count)
 {
-   for (u32 i = 0; i < count; i++)
-      fb_draw_char16x32(i << 4, y, entries[i]);
+   const psf2_header *h = fb_font_header;
+   const u8 *data = (u8 *)h + h->header_size;
+   const uptr vaddr_base = fb_vaddr + (fb_pitch * y);
+
+   /* fb_bpp must be 32 */
+   /* h->width must be 16 */
+   /* h->height must be 32 */
+   /* h->bytes_per_glyph must be 16 */
+   /* SL_SIZE is 8 */
+
+   // TODO: add fpu_save_context here
+
+   for (u32 ei = 0; ei < count; ei++) {
+
+      const u16 e = entries[ei];
+      const u32 c32 = vgaentry_char(e) << 6;
+      const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
+      uptr vaddr = vaddr_base + (ei << 6);
+
+      for (u32 row = 0; row < 32; row++) {
+
+         fpu_memcpy_single_256_nt(
+                  (void *)(vaddr),
+                  &fb_w8_char_scanlines[c_off + (data[c32+(row << 1)] << 3)]);
+
+         fpu_memcpy_single_256_nt(
+                  (void *)(vaddr + 32),
+                  &fb_w8_char_scanlines[c_off + (data[c32+1+(row << 1)] << 3)]);
+
+         vaddr += fb_pitch;
+      }
+   }
+
+   // TODO: add fpu_restore_context here
 }
 
 void fb_draw_char8x16(u32 x, u32 y, u16 e)
@@ -358,6 +399,8 @@ void fb_draw_char8x16_row(u32 y, u16 *entries, u32 count)
    /* h->height must be 16 */
    /* h->bytes_per_glyph must be 16 */
 
+   // TODO: add fpu_save_context here
+
    for (u32 ei = 0; ei < count; ei++) {
 
       const u16 e = entries[ei];
@@ -368,12 +411,14 @@ void fb_draw_char8x16_row(u32 y, u16 *entries, u32 count)
 
       for (u32 r = 0; r < 16; r++) {
 
-         memcpy32((void *)vaddr,
-                  &fb_w8_char_scanlines[c_off + (data[c16 + r] << 3)],
-                  SL_SIZE);
+         fpu_memcpy_single_256_nt(
+            (void *)vaddr,
+            &fb_w8_char_scanlines[c_off + (data[c16 + r] << 3)]);
 
          vaddr += fb_pitch;
       }
    }
+
+   // TODO: add fpu_restore_context here
 }
 

@@ -209,6 +209,8 @@ EXTERN inline void bzero(void *s, size_t n)
                : "cc", "memory", "%eax");
 }
 
+#ifdef __EXOS_KERNEL__
+
 /*
  * -----------------------------------------------
  *
@@ -221,7 +223,7 @@ void fpu_memcpy256_nt_avx2(void *dest, const void *src, u32 n);
 void fpu_memcpy256_nt_sse2(void *dest, const void *src, u32 n);
 void fpu_memcpy256_nt_sse(void *dest, const void *src, u32 n);
 
-static ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE void
 fpu_memcpy_single_512_nt_avx2(void *dest, const void *src)
 {
    asmVolatile("vmovdqa   (%0), %%ymm0\n\t"
@@ -233,18 +235,18 @@ fpu_memcpy_single_512_nt_avx2(void *dest, const void *src)
                : "memory");
 }
 
-static ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE void
 fpu_memcpy_single_256_nt_avx2(void *dest, const void *src)
 {
    asmVolatile("vmovdqa   (%0), %%ymm0\n\t"
-               "vmovdqa 32(%0), %%ymm1\n\t"
+               "vmovntdq %%ymm0,   (%1)\n\t"
                : /* no output */
                : "r" (src), "r" (dest)
                : "memory");
 }
 
 
-static ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE void
 fpu_memcpy_single_512_nt_sse2(void *dest, const void *src)
 {
    asmVolatile("movdqa   (%0), %%xmm0\n\t"
@@ -260,7 +262,7 @@ fpu_memcpy_single_512_nt_sse2(void *dest, const void *src)
                : "memory");
 }
 
-static ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE void
 fpu_memcpy_single_256_nt_sse2(void *dest, const void *src)
 {
    asmVolatile("movdqa   (%0), %%xmm0\n\t"
@@ -272,17 +274,17 @@ fpu_memcpy_single_256_nt_sse2(void *dest, const void *src)
                : "memory");
 }
 
-static ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE void
 fpu_memcpy_single_128_nt_sse2(void *dest, const void *src)
 {
    asmVolatile("movdqa   (%0), %%xmm0\n\t"
-               "movdqa 16(%0), %%xmm1\n\t"
+               "movntdq %%xmm0,   (%1)\n\t"
                : /* no output */
                : "r" (src), "r" (dest)
                : "memory");
 }
 
-static ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE void
 fpu_memcpy_single_256_nt_sse(void *dest, const void *src)
 {
    asmVolatile("movq (%0), %%mm0\n\t"
@@ -298,15 +300,86 @@ fpu_memcpy_single_256_nt_sse(void *dest, const void *src)
                : "memory");
 }
 
-static ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE void
+fpu_memcpy_single_128_nt_sse(void *dest, const void *src)
+{
+   asmVolatile("movq (%0), %%mm0\n\t"
+               "movq 8(%0), %%mm1\n\t"
+               "movntq %%mm0, (%1)\n\t"
+               "movntq %%mm1, 8(%1)\n\t"
+               : /* no output */
+               : "r" (src), "r" (dest)
+               : "memory");
+}
+
+EXTERN ALWAYS_INLINE void
 memcpy256_failsafe(void *dest, const void *src, u32 n)
 {
    memcpy32(dest, src, n * 8);
 }
 
+EXTERN ALWAYS_INLINE void
+memcpy_single_256_failsafe(void *dest, const void *src)
+{
+   memcpy32(dest, src, 8);
+}
+
+typedef enum {
+
+   FPU_MEMCPY_unknown = 0,
+   FPU_MEMCPY_avx2 = 1,
+   FPU_MEMCPY_sse2 = 2,
+   FPU_MEMCPY_sse = 3,
+   FPU_MEMCPY_failsafe = 4,
+
+} fpu_memcpy_type;
+
+extern fpu_memcpy_type fpu_memcpy_type_to_use;
+
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
-extern void (*fpu_memcpy256_nt)(void *dest, const void *src, u32 n);
+EXTERN ALWAYS_INLINE void
+fpu_memcpy256_nt(void *dest, const void *src, u32 n)
+{
+   switch (fpu_memcpy_type_to_use) {
+      case FPU_MEMCPY_avx2:
+         fpu_memcpy256_nt_avx2(dest, src, n);
+         break;
+      case FPU_MEMCPY_sse2:
+         fpu_memcpy256_nt_sse2(dest, src, n);
+         break;
+      case FPU_MEMCPY_sse:
+         fpu_memcpy256_nt_sse(dest, src, n);
+         break;
+      case FPU_MEMCPY_failsafe:
+         memcpy256_failsafe(dest, src, n);
+         break;
+      default:
+         NOT_REACHED();
+   }
+}
+
+EXTERN ALWAYS_INLINE void
+fpu_memcpy_single_256_nt(void *dest, const void *src)
+{
+   switch (fpu_memcpy_type_to_use) {
+      case FPU_MEMCPY_avx2:
+         fpu_memcpy_single_256_nt_avx2(dest, src);
+         break;
+      case FPU_MEMCPY_sse2:
+         fpu_memcpy_single_256_nt_sse2(dest, src);
+         break;
+      case FPU_MEMCPY_sse:
+         fpu_memcpy_single_256_nt_sse(dest, src);
+         break;
+      case FPU_MEMCPY_failsafe:
+         memcpy_single_256_failsafe(dest, src);
+         break;
+      default:
+         NOT_REACHED();
+   }
+}
 
 void init_fpu_memcpy(void);
 
+#endif // __EXOS_KERNEL__
 #undef EXTERN
