@@ -33,7 +33,8 @@ static task_info *blink_thread_ti;
 static const u32 blink_half_period = (TIMER_HZ * 60)/100;
 static u32 cursor_color = fb_make_color(255, 255, 255);
 
-static bool *rows_to_flush;
+/* Could we really need more than 256 rows? Probably we won't. */
+static bool rows_to_flush[256];
 
 static video_interface framebuffer_vi;
 
@@ -59,6 +60,9 @@ u32 vga_rgb_colors[16] =
 
 void fb_save_under_cursor_buf(void)
 {
+   if (!under_cursor_buf)
+      return;
+
    // Assumption: bbp is 32
    psf2_header *h = fb_font_header;
 
@@ -69,6 +73,9 @@ void fb_save_under_cursor_buf(void)
 
 void fb_restore_under_cursor_buf(void)
 {
+   if (!under_cursor_buf)
+      return;
+
    // Assumption: bbp is 32
    psf2_header *h = fb_font_header;
 
@@ -166,6 +173,9 @@ void fb_clear_row(int row_num, u8 color)
 
 void fb_move_cursor(int row, int col)
 {
+   if (!under_cursor_buf)
+      return;
+
    psf2_header *h = fb_font_header;
 
    fb_restore_under_cursor_buf();
@@ -373,6 +383,9 @@ static void fb_use_optimized_funcs_if_possible(void)
 {
    psf2_header *h = fb_font_header;
 
+   if (in_panic())
+      return;
+
    if (fb_get_bpp() != 32) {
       printk("[fb_console] WARNING: using slower code for bpp = %d\n",
              fb_get_bpp());
@@ -434,16 +447,12 @@ void init_framebuffer_console(void)
    fb_term_rows = (fb_get_height() - fb_offset_y) / h->height;
    fb_term_cols = fb_get_width() / h->width;
 
-   under_cursor_buf = kmalloc(sizeof(u32) * h->width * h->height);
-   VERIFY(under_cursor_buf != NULL);
+   if (!in_panic()) {
+      under_cursor_buf = kmalloc(sizeof(u32) * h->width * h->height);
 
-   /*
-    * Alloc this buffer no matter if we use flush_buffer or not, in order to
-    * save all the functions from checking if it's NULL or not.
-    */
-
-   rows_to_flush = kzmalloc(fb_term_rows);
-   VERIFY(rows_to_flush != NULL);
+      if (!under_cursor_buf)
+         printk("WARNING: fb_console: unable to allocate under_cursor_buf!\n");
+   }
 
    init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, COLOR_WHITE);
    printk("[fb_console] resolution: %i x %i x %i bpp\n",
