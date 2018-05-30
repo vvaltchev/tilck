@@ -218,7 +218,7 @@ EXTERN inline void bzero(void *s, size_t n)
  */
 
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
-EXTERN inline void memcpy256_nt_avx2(void *dest, const void *src, u32 n)
+EXTERN inline void fpu_memcpy256_nt_avx2(void *dest, const void *src, u32 n)
 {
    u32 len64 = n / 2;
 
@@ -242,7 +242,7 @@ EXTERN inline void memcpy256_nt_avx2(void *dest, const void *src, u32 n)
 }
 
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
-EXTERN inline void memcpy256_nt_sse2(void *dest, const void *src, u32 n)
+EXTERN inline void fpu_memcpy256_nt_sse2(void *dest, const void *src, u32 n)
 {
    u32 len64 = n / 2;
 
@@ -273,7 +273,7 @@ EXTERN inline void memcpy256_nt_sse2(void *dest, const void *src, u32 n)
 }
 
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
-EXTERN inline void memcpy256_nt_sse(void *dest, const void *src, u32 n)
+EXTERN inline void fpu_memcpy256_nt_sse(void *dest, const void *src, u32 n)
 {
    for (register u32 i = 0; i < n; i++, src += 32, dest += 32) {
       asmVolatile("movq (%0), %%mm0\n\t"
@@ -291,14 +291,14 @@ EXTERN inline void memcpy256_nt_sse(void *dest, const void *src, u32 n)
 }
 
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
-EXTERN inline void x86_memcpy256_nt_smart(void *dest, const void *src, u32 n)
+EXTERN inline void fpu_memcpy256_nt(void *dest, const void *src, u32 n)
 {
    if (x86_cpu_features.can_use_avx2)
-      memcpy256_nt_avx2(dest, src, n);
+      fpu_memcpy256_nt_avx2(dest, src, n);
    else if (x86_cpu_features.can_use_sse2)
-      memcpy256_nt_sse2(dest, src, n);
+      fpu_memcpy256_nt_sse2(dest, src, n);
    else if (x86_cpu_features.can_use_sse)
-      memcpy256_nt_sse(dest, src, n);
+      fpu_memcpy256_nt_sse(dest, src, n);
    else
       memcpy32(dest, src, n * 8);
 }

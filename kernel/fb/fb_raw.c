@@ -37,18 +37,12 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
    fb_size = fb_pitch * fb_height;
 }
 
-bool fb_switch_to_shadow_buffer(void)
+bool fb_alloc_shadow_buffer(void)
 {
-   void *shadow_buf = kmalloc(fb_size);
+   void *shadow_buf = kzmalloc(fb_size);
 
    if (!shadow_buf)
       return false;
-
-#if defined(__i386__) || defined(__x86_64__)
-   x86_memcpy256_nt_smart(shadow_buf, (void *)fb_real_vaddr, fb_size >> 5);
-#else
-   memcpy32(shadow_buf, (void *)fb_real_vaddr, fb_size >> 2);
-#endif
 
    fb_vaddr = (uptr) shadow_buf;
    return true;
@@ -59,22 +53,11 @@ void fb_flush_lines(u32 y, u32 lines_count)
    if (fb_vaddr == fb_real_vaddr)
       return;
 
-#if defined(__i386__) || defined(__x86_64__)
-
    // ASSUMPTION fb_pitch is ALWAYS divisible by 32
 
-   x86_memcpy256_nt_smart((void *)(fb_real_vaddr + y * fb_pitch),
-                          (void *)(fb_vaddr + y * fb_pitch),
-                          (lines_count * fb_pitch) >> 5);
-
-#else
-
-   memcpy32((void *)(fb_real_vaddr + y * fb_pitch),
-            (void *)(fb_vaddr + y * fb_pitch),
-            (lines_count * fb_pitch) >> 2);
-
-#endif
-
+   fpu_memcpy256_nt((void *)(fb_real_vaddr + y * fb_pitch),
+                    (void *)(fb_vaddr + y * fb_pitch),
+                    (lines_count * fb_pitch) >> 5);
 }
 
 u32 fb_get_width(void)
@@ -235,9 +218,10 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 /* NOTE: it is required that: dst_y < src_y */
 void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 count)
 {
-   memcpy32((void *)(fb_vaddr + fb_pitch * dst_y),
-            (void *)(fb_vaddr + fb_pitch * src_y),
-            (fb_pitch * count) >> 2);
+   // ASSUMPTION fb_pitch is ALWAYS divisible by 32
+   fpu_memcpy256_nt((void *)(fb_vaddr + fb_pitch * dst_y),
+                    (void *)(fb_vaddr + fb_pitch * src_y),
+                    (fb_pitch * count) >> 5);
 }
 
 
@@ -316,8 +300,6 @@ void fb_draw_char16x32(u32 x, u32 y, u16 e)
    psf2_header *h = fb_font_header;
 
    const u8 c = vgaentry_char(e);
-   ASSERT(c < h->glyphs_count);
-
    uptr vaddr = fb_vaddr + (fb_pitch * y) + (x << 2);
    u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
    const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);

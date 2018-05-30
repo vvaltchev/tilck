@@ -33,5 +33,5 @@ void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf);
 void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf);
 void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 count);
 bool fb_pre_render_char_scanlines(void);
-bool fb_switch_to_shadow_buffer(void);
+bool fb_alloc_shadow_buffer(void);
 void fb_flush_lines(u32 y, u32 lines_count);

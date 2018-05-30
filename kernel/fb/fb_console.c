@@ -415,6 +415,14 @@ void init_framebuffer_console(void)
 
    fb_map_in_kernel_space();
 
+   if (framebuffer_vi.flush_buffers) {
+      if (fb_alloc_shadow_buffer()) {
+         printk("[fb_console] Using double buffering\n");
+      } else {
+         printk("WARNING: unable to use double buffering for the framebuffer");
+      }
+   }
+
    fb_setup_banner();
 
    fb_term_rows = (fb_get_height() - fb_offset_y) / h->height;
@@ -444,14 +452,6 @@ void post_sched_init_framebuffer_console(void)
 {
    if (!use_framebuffer())
       return;
-
-   if (framebuffer_vi.flush_buffers) {
-      if (fb_switch_to_shadow_buffer()) {
-         printk("[fb_console] Using double buffering\n");
-      } else {
-         printk("WARNING: unable to use double buffering for the framebuffer");
-      }
-   }
 
    blink_thread_ti = kthread_create(fb_blink_thread, NULL);
 
