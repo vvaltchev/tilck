@@ -415,7 +415,13 @@ void init_framebuffer_console(void)
 
    fb_map_in_kernel_space();
 
-   if (framebuffer_vi.flush_buffers) {
+   if (framebuffer_vi.flush_buffers && !in_hypervisor()) {
+
+      /*
+       * In hypervisors, using double buffering just slows the fb_console,
+       * therefore, we enable it only when running on bare-metal.
+       */
+
       if (fb_alloc_shadow_buffer()) {
          printk("[fb_console] Using double buffering\n");
       } else {

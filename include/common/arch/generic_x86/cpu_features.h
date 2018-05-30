@@ -102,3 +102,8 @@ extern x86_cpu_features_t x86_cpu_features;
 
 void get_x86_cpu_features(void);
 void dump_x86_features(void);
+
+static ALWAYS_INLINE bool in_hypervisor(void)
+{
+   return x86_cpu_features.ecx1.hypervisor;
+}

@@ -82,8 +82,11 @@ void show_system_info(void)
 {
    //dump_x86_features();
 
-   printk("TIMER_HZ: %i; TIME_SLOT: %i ms; MEM: %i MB\n",
-          TIMER_HZ, 1000 / (TIMER_HZ / TIME_SLOT_JIFFIES), get_phys_mem_mb());
+   printk("TIMER_HZ: %i; TIME_SLOT: %i ms; MEM: %i MB %s\n",
+          TIMER_HZ,
+          1000 / (TIMER_HZ / TIME_SLOT_JIFFIES),
+          get_phys_mem_mb(),
+          in_hypervisor() ? "[IN HYPERVISOR]" : "");
 
    //datetime_t d;
    //read_system_clock_datetime(&d);
