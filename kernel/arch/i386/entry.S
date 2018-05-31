@@ -268,5 +268,3 @@ FUNC(fpu_cpy_single_256_nt):
    jmp memcpy_single_256_failsafe
    .space 128
 END_FUNC(fpu_cpy_single_256_nt)
-
-
