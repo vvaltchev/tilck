@@ -274,6 +274,8 @@ void cmd_syscall_perf(void)
    printf("sysenter setuid(): %llu cycles\n", duration/iters);
 }
 
+void cmd_help(void);
+
 /* ------------------------------------------- */
 
 typedef void (*cmd_func_type)(void);
@@ -285,6 +287,8 @@ struct {
 
 } cmds_table[] = {
 
+   {"help", cmd_help},
+   {"?", cmd_help},
    {"loop", cmd_loop},
    {"fork_test", cmd_fork_test},
    {"invalid_read", cmd_invalid_read},
@@ -295,6 +299,25 @@ struct {
    {"sysenter_fork_test", cmd_sysenter_fork_test}
 
 };
+
+void cmd_help(void)
+{
+   printf("\n");
+   printf("--- exOS development shell ----\n\n");
+   printf("Regular commands\n");
+   printf("-------------------------------\n");
+   printf("    cd <directory>\n\n");
+   printf("Self tests\n");
+   printf("-------------------------------\n");
+
+   const int elems = sizeof(cmds_table) / sizeof(cmds_table[0]);
+
+   for (int i = 0; i < elems; i++) {
+      printf("    %s\n", cmds_table[i].name);
+   }
+
+   printf("\n");
+}
 
 void run_if_known_command(const char *cmd)
 {
