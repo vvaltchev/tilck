@@ -267,6 +267,15 @@ static void fb_scroll_one_line_up(void)
       rows_to_flush[r] = true;
 }
 
+/*
+ * After many experiments and optimizations, it turned out that, double
+ * buffering is not faster even for fb_scroll_one_line_up if the fastest
+ * SIMD move instructions are used. For scroll in particular, double buffering
+ * makes it slower in any case because the CPU has first to write a huge amount
+ * of data in the shadow buffer and then to copy that in the real framebuffer:
+ * data locality plays a relevant role here. It's faster to just generate the
+ * characters on-the-fly and only write to the huge framebuffer.
+ */
 static void fb_flush(void)
 {
    for (u32 r = 0; r < fb_term_rows; r++) {
@@ -291,8 +300,8 @@ static video_interface framebuffer_vi =
    fb_move_cursor,
    fb_enable_cursor,
    fb_disable_cursor,
-   fb_scroll_one_line_up,
-   fb_flush
+   NULL, //fb_scroll_one_line_up [see the comment on fb_flush]
+   NULL //fb_flush [see comment]
 };
 
 
@@ -427,6 +436,10 @@ void init_framebuffer_console(void)
    ASSERT(!(h->width % 8)); // Support only fonts with width = 8, 16, 24, 32, ..
 
    fb_map_in_kernel_space();
+
+   if (!in_panic())
+      if (framebuffer_vi.scroll_one_line_up || framebuffer_vi.flush_buffers)
+         fb_alloc_pitch_size_buf();
 
    if (framebuffer_vi.flush_buffers && !in_hypervisor() && !in_panic()) {
 
