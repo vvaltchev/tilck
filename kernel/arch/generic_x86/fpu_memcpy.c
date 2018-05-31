@@ -50,6 +50,37 @@ void fpu_memcpy256_nt_sse(void *dest, const void *src, u32 n)
       fpu_cpy_single_256_nt_sse(dest, src);
 }
 
+/* 'n' is the number of 32-byte (256-bit) data packets to copy */
+void fpu_memcpy256_avx2(void *dest, const void *src, u32 n)
+{
+   u32 len64 = n / 2;
+
+   for (register u32 i = 0; i < len64; i++, src += 64, dest += 64)
+      fpu_cpy_single_512_avx2(dest, src);
+
+   if (n % 2)
+      fpu_cpy_single_256_avx2(dest, src);
+}
+
+/* 'n' is the number of 32-byte (256-bit) data packets to copy */
+void fpu_memcpy256_sse2(void *dest, const void *src, u32 n)
+{
+   u32 len64 = n / 2;
+
+   for (register u32 i = 0; i < len64; i++, src += 64, dest += 64)
+      fpu_cpy_single_512_sse2(dest, src);
+
+   if (n % 2)
+      fpu_cpy_single_256_sse2(dest, src);
+}
+
+/* 'n' is the number of 32-byte (256-bit) data packets to copy */
+void fpu_memcpy256_sse(void *dest, const void *src, u32 n)
+{
+   for (register u32 i = 0; i < n; i++, src += 32, dest += 32)
+      fpu_cpy_single_256_sse(dest, src);
+}
+
 void init_fpu_memcpy(void)
 {
    const char *func_name;

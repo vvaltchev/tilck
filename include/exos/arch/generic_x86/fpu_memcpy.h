@@ -21,6 +21,10 @@ void fpu_memcpy256_nt_avx2(void *dest, const void *src, u32 n);
 void fpu_memcpy256_nt_sse2(void *dest, const void *src, u32 n);
 void fpu_memcpy256_nt_sse(void *dest, const void *src, u32 n);
 
+void fpu_memcpy256_avx2(void *dest, const void *src, u32 n);
+void fpu_memcpy256_sse2(void *dest, const void *src, u32 n);
+void fpu_memcpy256_sse(void *dest, const void *src, u32 n);
+
 EXTERN ALWAYS_INLINE void
 fpu_cpy_single_512_nt_avx2(void *dest, const void *src)
 {
@@ -211,6 +215,19 @@ EXTERN inline void fpu_memcpy256_nt(void *dest, const void *src, u32 n)
       fpu_memcpy256_nt_sse2(dest, src, n);
    else if (x86_cpu_features.can_use_sse)
       fpu_memcpy256_nt_sse(dest, src, n);
+   else
+      memcpy256_failsafe(dest, src, n);
+}
+
+/* 'n' is the number of 32-byte (256-bit) data packets to copy */
+EXTERN inline void fpu_memcpy256(void *dest, const void *src, u32 n)
+{
+   if (x86_cpu_features.can_use_avx2)
+      fpu_memcpy256_avx2(dest, src, n);
+   else if (x86_cpu_features.can_use_sse2)
+      fpu_memcpy256_sse2(dest, src, n);
+   else if (x86_cpu_features.can_use_sse)
+      fpu_memcpy256_sse(dest, src, n);
    else
       memcpy256_failsafe(dest, src, n);
 }
