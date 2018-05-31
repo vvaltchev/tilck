@@ -19,24 +19,34 @@ prefix = " "*3
 
 def count_lines_in_file(f):
    res = 0
+   print 'file:', f
    with open(f, 'r') as fd:
       for line in fd:
          res += 1
    return res
 
-for destDir in destDirs:
-   if not os.path.isdir(destDir):
-      print "The directory '{0}' does not exist!".format(destDir)
-      sys.exit(1)
+def should_exclude(f):
+   ex = ['toolchain', 'build', 'sysroot', 'system_headers']
+   for e in ex:
+      if f.find(e) != -1:
+         return True
+   return False
 
 print # print an empty line
 
 for destDir in destDirs:
 
+   if not os.path.isdir(destDir):
+      continue
+
+   if should_exclude(destDir): continue
+
    linesByExtention = {ext: 0 for ext in knownExtensions}
    total = 0
 
    for folder, subfolders, files in os.walk(destDir):
+
+      if should_exclude(folder): continue
 
       for f in files:
          fname, fext = splitext(f)
@@ -50,7 +60,7 @@ for destDir in destDirs:
          globalTotal += c
 
 
-   print "Number of lines in '"+destDir+"':"
+   print "\nNumber of lines in '"+destDir+"':"
 
    for ext in linesByExtention:
       val = linesByExtention[ext]
@@ -72,7 +82,7 @@ for destDir in destDirs:
 
 
 if len(destDirs) > 1:
-   print "Cumulative number of lines:"
+   print "\nCumulative number of lines:"
 
    for ext in globalLinesCount:
       val = globalLinesCount[ext]
