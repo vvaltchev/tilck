@@ -2,6 +2,7 @@
 #pragma once
 #include <common/basic_defs.h>
 #include <common/string_util.h>
+#include <common/arch/generic_x86/cpu_features.h>
 
 #ifdef __FPU_MEMCPY_C__
 #define EXTERN extern

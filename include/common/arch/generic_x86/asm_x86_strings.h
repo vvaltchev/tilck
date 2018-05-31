@@ -1,7 +1,6 @@
 
 #pragma once
 #include <common/basic_defs.h>
-#include <common/arch/generic_x86/cpu_features.h>
 
 /*
  * This nice trick allows the code for the following functions to be emitted,

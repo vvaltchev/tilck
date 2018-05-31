@@ -37,12 +37,21 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
    fb_size = fb_pitch * fb_height;
 }
 
+static void *fb_pitch_size_buf;
+
 bool fb_alloc_shadow_buffer(void)
 {
    void *shadow_buf = kzmalloc(fb_size);
 
    if (!shadow_buf)
       return false;
+
+   fb_pitch_size_buf = kmalloc(fb_pitch);
+
+   if (!fb_pitch_size_buf) {
+      kfree2(shadow_buf, fb_size);
+      return false;
+   }
 
    fb_vaddr = (uptr) shadow_buf;
    return true;
@@ -57,9 +66,18 @@ void fb_flush_lines(u32 y, u32 lines_count)
 
    // TODO: add fpu_save_context here
 
-   fpu_memcpy256_nt((void *)(fb_real_vaddr + y * fb_pitch),
-                    (void *)(fb_vaddr + y * fb_pitch),
-                    (lines_count * fb_pitch) >> 5);
+   for (u32 i = 0; i < lines_count; i++) {
+      fpu_memcpy256(fb_pitch_size_buf,
+                    (void *)(fb_vaddr + (y + i) * fb_pitch),
+                    fb_pitch >> 5);
+
+      if (x86_cpu_features.can_use_sse2)
+         asmVolatile("mfence");
+
+      fpu_memcpy256_nt((void *)(fb_real_vaddr + (y + i) * fb_pitch),
+                       fb_pitch_size_buf,
+                       fb_pitch >> 5);
+   }
 
    // TODO: add fpu_restore_context here
 }
