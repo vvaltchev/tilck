@@ -377,8 +377,8 @@ void fb_draw_char16x32_row(u32 y, u16 *entries, u32 count)
       u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
       for (u32 row = 0; row < 32; row++) {
-         fpu_memcpy_single_256_nt((void *)(vaddr), &scanlines[d[0] << 3]);
-         fpu_memcpy_single_256_nt((void *)(vaddr + 32), &scanlines[d[1] << 3]);
+         fpu_cpy_single_256_nt((void *)(vaddr), &scanlines[d[0] << 3]);
+         fpu_cpy_single_256_nt((void *)(vaddr + 32), &scanlines[d[1] << 3]);
          vaddr += fb_pitch;
          d += 2;
       }
@@ -430,7 +430,7 @@ void fb_draw_char8x16_row(u32 y, u16 *entries, u32 count)
       u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
       for (u32 r = 0; r < 16; r++) {
-         fpu_memcpy_single_256_nt((void *)vaddr, &scanlines[d[r] << 3]);
+         fpu_cpy_single_256_nt((void *)vaddr, &scanlines[d[r] << 3]);
          vaddr += fb_pitch;
       }
    }

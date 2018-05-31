@@ -3,6 +3,12 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
+#ifdef __FPU_MEMCPY_C__
+#define EXTERN extern
+#else
+#define EXTERN
+#endif
+
 /*
  * -----------------------------------------------
  *
@@ -15,8 +21,8 @@ void fpu_memcpy256_nt_avx2(void *dest, const void *src, u32 n);
 void fpu_memcpy256_nt_sse2(void *dest, const void *src, u32 n);
 void fpu_memcpy256_nt_sse(void *dest, const void *src, u32 n);
 
-static ALWAYS_INLINE void
-fpu_memcpy_single_512_nt_avx2(void *dest, const void *src)
+EXTERN ALWAYS_INLINE void
+fpu_cpy_single_512_nt_avx2(void *dest, const void *src)
 {
    asmVolatile("vmovdqa   (%0), %%ymm0\n\t"
                "vmovdqa 32(%0), %%ymm1\n\t"
@@ -27,8 +33,8 @@ fpu_memcpy_single_512_nt_avx2(void *dest, const void *src)
                : "memory");
 }
 
-static ALWAYS_INLINE void
-fpu_memcpy_single_256_nt_avx2(void *dest, const void *src)
+EXTERN ALWAYS_INLINE void
+fpu_cpy_single_256_nt_avx2(void *dest, const void *src)
 {
    asmVolatile("vmovdqa   (%0), %%ymm0\n\t"
                "vmovntdq %%ymm0,   (%1)\n\t"
@@ -38,8 +44,8 @@ fpu_memcpy_single_256_nt_avx2(void *dest, const void *src)
 }
 
 
-static ALWAYS_INLINE void
-fpu_memcpy_single_512_nt_sse2(void *dest, const void *src)
+EXTERN ALWAYS_INLINE void
+fpu_cpy_single_512_nt_sse2(void *dest, const void *src)
 {
    asmVolatile("movdqa   (%0), %%xmm0\n\t"
                "movdqa 16(%0), %%xmm1\n\t"
@@ -54,8 +60,8 @@ fpu_memcpy_single_512_nt_sse2(void *dest, const void *src)
                : "memory");
 }
 
-static ALWAYS_INLINE void
-fpu_memcpy_single_256_nt_sse2(void *dest, const void *src)
+EXTERN ALWAYS_INLINE void
+fpu_cpy_single_256_nt_sse2(void *dest, const void *src)
 {
    asmVolatile("movdqa   (%0), %%xmm0\n\t"
                "movdqa 16(%0), %%xmm1\n\t"
@@ -66,8 +72,8 @@ fpu_memcpy_single_256_nt_sse2(void *dest, const void *src)
                : "memory");
 }
 
-static ALWAYS_INLINE void
-fpu_memcpy_single_128_nt_sse2(void *dest, const void *src)
+EXTERN ALWAYS_INLINE void
+fpu_cpy_single_128_nt_sse2(void *dest, const void *src)
 {
    asmVolatile("movdqa   (%0), %%xmm0\n\t"
                "movntdq %%xmm0,   (%1)\n\t"
@@ -76,8 +82,8 @@ fpu_memcpy_single_128_nt_sse2(void *dest, const void *src)
                : "memory");
 }
 
-static ALWAYS_INLINE void
-fpu_memcpy_single_256_nt_sse(void *dest, const void *src)
+EXTERN ALWAYS_INLINE void
+fpu_cpy_single_256_nt_sse(void *dest, const void *src)
 {
    asmVolatile("movq (%0), %%mm0\n\t"
                "movq 8(%0), %%mm1\n\t"
@@ -92,8 +98,8 @@ fpu_memcpy_single_256_nt_sse(void *dest, const void *src)
                : "memory");
 }
 
-static ALWAYS_INLINE void
-fpu_memcpy_single_128_nt_sse(void *dest, const void *src)
+EXTERN ALWAYS_INLINE void
+fpu_cpy_single_128_nt_sse(void *dest, const void *src)
 {
    asmVolatile("movq (%0), %%mm0\n\t"
                "movq 8(%0), %%mm1\n\t"
@@ -108,7 +114,7 @@ void memcpy256_failsafe(void *dest, const void *src, u32 n);
 void memcpy_single_256_failsafe(void *dest, const void *src);
 
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
-static inline void fpu_memcpy256_nt(void *dest, const void *src, u32 n)
+EXTERN inline void fpu_memcpy256_nt(void *dest, const void *src, u32 n)
 {
    if (x86_cpu_features.can_use_avx2)
       fpu_memcpy256_nt_avx2(dest, src, n);
@@ -120,6 +126,6 @@ static inline void fpu_memcpy256_nt(void *dest, const void *src, u32 n)
       memcpy256_failsafe(dest, src, n);
 }
 
-void fpu_memcpy_single_256_nt(void *dest, const void *src);
+void fpu_cpy_single_256_nt(void *dest, const void *src);
 
 void init_fpu_memcpy(void);
