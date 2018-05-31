@@ -31,7 +31,7 @@ void fpu_memcpy256_nt_sse(void *dest, const void *src, u32 n);
 void fpu_memcpy256_nt_read_avx2(void *dest, const void *src, u32 n);
 void fpu_memcpy256_nt_read_sse4_1(void *dest, const void *src, u32 n);
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_512_nt_avx2(void *dest, const void *src)
 {
    asmVolatile("vmovdqa   (%0), %%ymm0\n\t"
@@ -43,7 +43,7 @@ fpu_cpy_single_512_nt_avx2(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_512_nt_read_avx2(void *dest, const void *src)
 {
    asmVolatile("vmovntdqa   (%0), %%ymm0\n\t"
@@ -55,7 +55,7 @@ fpu_cpy_single_512_nt_read_avx2(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_512_avx2(void *dest, const void *src)
 {
    asmVolatile("vmovdqa   (%0), %%ymm0\n\t"
@@ -67,7 +67,7 @@ fpu_cpy_single_512_avx2(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_256_nt_avx2(void *dest, const void *src)
 {
    asmVolatile("vmovdqa   (%0), %%ymm0\n\t"
@@ -77,7 +77,7 @@ fpu_cpy_single_256_nt_avx2(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_256_nt_read_avx2(void *dest, const void *src)
 {
    asmVolatile("vmovntdqa   (%0), %%ymm0\n\t"
@@ -88,7 +88,7 @@ fpu_cpy_single_256_nt_read_avx2(void *dest, const void *src)
 }
 
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_256_avx2(void *dest, const void *src)
 {
    asmVolatile("vmovdqa   (%0), %%ymm0\n\t"
@@ -98,7 +98,7 @@ fpu_cpy_single_256_avx2(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_512_nt_sse2(void *dest, const void *src)
 {
    asmVolatile("movdqa   (%0), %%xmm0\n\t"
@@ -115,7 +115,7 @@ fpu_cpy_single_512_nt_sse2(void *dest, const void *src)
 }
 
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_512_sse2(void *dest, const void *src)
 {
    asmVolatile("movdqa   (%0), %%xmm0\n\t"
@@ -131,7 +131,7 @@ fpu_cpy_single_512_sse2(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_512_nt_read_sse4_1(void *dest, const void *src)
 {
    asmVolatile("movntdqa    (%0), %%xmm0\n\t"
@@ -147,7 +147,7 @@ fpu_cpy_single_512_nt_read_sse4_1(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_256_nt_read_sse4_1(void *dest, const void *src)
 {
    asmVolatile("movntdqa    (%0), %%xmm0\n\t"
@@ -160,7 +160,7 @@ fpu_cpy_single_256_nt_read_sse4_1(void *dest, const void *src)
 }
 
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_256_nt_sse2(void *dest, const void *src)
 {
    asmVolatile("movdqa   (%0), %%xmm0\n\t"
@@ -172,7 +172,7 @@ fpu_cpy_single_256_nt_sse2(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_256_sse2(void *dest, const void *src)
 {
    asmVolatile("movdqa   (%0), %%xmm0\n\t"
@@ -185,7 +185,7 @@ fpu_cpy_single_256_sse2(void *dest, const void *src)
 }
 
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_128_nt_sse2(void *dest, const void *src)
 {
    asmVolatile("movdqa   (%0), %%xmm0\n\t"
@@ -195,7 +195,7 @@ fpu_cpy_single_128_nt_sse2(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_128_sse2(void *dest, const void *src)
 {
    asmVolatile("movdqa   (%0), %%xmm0\n\t"
@@ -205,7 +205,7 @@ fpu_cpy_single_128_sse2(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_256_nt_sse(void *dest, const void *src)
 {
    asmVolatile("movq (%0), %%mm0\n\t"
@@ -221,7 +221,7 @@ fpu_cpy_single_256_nt_sse(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_256_sse(void *dest, const void *src)
 {
    asmVolatile("movq (%0), %%mm0\n\t"
@@ -237,7 +237,7 @@ fpu_cpy_single_256_sse(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_128_nt_sse(void *dest, const void *src)
 {
    asmVolatile("movq (%0), %%mm0\n\t"
@@ -249,7 +249,7 @@ fpu_cpy_single_128_nt_sse(void *dest, const void *src)
                : "memory");
 }
 
-EXTERN ALWAYS_INLINE void
+EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_128_sse(void *dest, const void *src)
 {
    asmVolatile("movq (%0), %%mm0\n\t"
@@ -307,5 +307,19 @@ EXTERN inline void fpu_memcpy256_nt_read(void *dest, const void *src, u32 n)
       memcpy256_failsafe(dest, src, n);
 }
 
-void fpu_cpy_single_256_nt(void *dest, const void *src);
+void FASTCALL __asm_fpu_cpy_single_256_nt(void *dest, const void *src);
+void FASTCALL __asm_fpu_cpy_single_256_nt_read(void *dest, const void *src);
+
+EXTERN ALWAYS_INLINE FASTCALL void
+fpu_cpy_single_256_nt(void *dest, const void *src)
+{
+   __asm_fpu_cpy_single_256_nt(dest, src);
+}
+
+EXTERN ALWAYS_INLINE FASTCALL void
+fpu_cpy_single_256_nt_read(void *dest, const void *src)
+{
+   __asm_fpu_cpy_single_256_nt_read(dest, src);
+}
+
 void init_fpu_memcpy(void);

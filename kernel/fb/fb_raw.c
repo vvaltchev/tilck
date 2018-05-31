@@ -246,25 +246,23 @@ void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
       return;
    }
 
-/*
-   if (w == 16) {
+   if (w == 16)
 
       for (u32 y = 0; y < h; y++, vaddr += fb_pitch) {
-         fpu_cpy_single_256_nt(&buf[y * w], (void *)vaddr);
-         fpu_cpy_single_256_nt(&buf[y * w + 8], (void *)vaddr + 32);
+         fpu_cpy_single_256_nt_read(&buf[y * w], (void *)vaddr);
+         fpu_cpy_single_256_nt_read(&buf[y * w + 8], (void *)vaddr + 32);
       }
 
-   } else if (w == 8) {
+   else if (w == 8)
 
       for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
-         fpu_cpy_single_256_nt(&buf[y * w], (void *)vaddr);
+         fpu_cpy_single_256_nt_read(&buf[y * w], (void *)vaddr);
 
-   } else {
-*/
+   else
+
       for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
          memcpy32(&buf[y * w], (void *)vaddr, w);
 
-//   }
 }
 
 void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
@@ -280,23 +278,24 @@ void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
       return;
    }
 
-   if (w == 16) {
+
+   if (w == 16)
 
       for (u32 y = 0; y < h; y++, vaddr += fb_pitch) {
          fpu_cpy_single_256_nt((void *)vaddr, &buf[y * w]);
          fpu_cpy_single_256_nt((void *)vaddr + 32, &buf[y * w + 8]);
       }
 
-   } else if (w == 8) {
+   else if (w == 8)
 
       for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
          fpu_cpy_single_256_nt((void *)vaddr, &buf[y * w]);
 
-   } else {
+   else
 
       for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
          memcpy32((void *)vaddr, &buf[y * w], w);
-   }
+
 }
 
 void fb_draw_char_failsafe(u32 x, u32 y, u16 e)

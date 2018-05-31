@@ -262,9 +262,17 @@ END_FUNC(switch_to_initial_kernel_stack)
 
 
 
-.global fpu_cpy_single_256_nt
+.global __asm_fpu_cpy_single_256_nt
 
-FUNC(fpu_cpy_single_256_nt):
+FUNC(__asm_fpu_cpy_single_256_nt):
    jmp memcpy_single_256_failsafe
    .space 128
-END_FUNC(fpu_cpy_single_256_nt)
+END_FUNC(__asm_fpu_cpy_single_256_nt)
+
+
+.global __asm_fpu_cpy_single_256_nt_read
+
+FUNC(__asm_fpu_cpy_single_256_nt_read):
+   jmp memcpy_single_256_failsafe
+   .space 128
+END_FUNC(__asm_fpu_cpy_single_256_nt_read)

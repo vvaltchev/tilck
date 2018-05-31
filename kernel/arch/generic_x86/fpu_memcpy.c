@@ -105,6 +105,19 @@ void fpu_memcpy256_nt_read_sse4_1(void *dest, const void *src, u32 n)
 }
 
 
+void init_fpu_memcpy_internal_check(void *func, const char *fname, u32 size)
+{
+   if (!fname) {
+      panic("init_fpu_memcpy: failed to find the symbol at %p\n", func);
+      return;
+   }
+
+   if (size > 128) {
+      panic("init_fpu_memcpy: the source function at %p is too big!\n", func);
+      return;
+   }
+}
+
 void init_fpu_memcpy(void)
 {
    const char *func_name;
@@ -123,15 +136,24 @@ void init_fpu_memcpy(void)
 
    func_name = find_sym_at_addr((uptr)func, &offset, &size);
 
-   if (!func_name) {
-      panic("init_fpu_memcpy: failed to find the symbol at %p\n", func);
-      return;
-   }
+   init_fpu_memcpy_internal_check(func, func_name, size);
+   memcpy(&__asm_fpu_cpy_single_256_nt, func, size);
 
-   if (size > 128) {
-      panic("init_fpu_memcpy: the source function at %p is too big!\n", func);
-      return;
-   }
+   // --------------------------------------------------------------
 
-   memcpy(&fpu_cpy_single_256_nt, func, size);
+   func = &memcpy_single_256_failsafe;
+
+   if (x86_cpu_features.can_use_avx2)
+      func = &fpu_cpy_single_256_nt_read_avx2;
+   else if (x86_cpu_features.can_use_sse4_1)
+      func = &fpu_cpy_single_256_nt_read_sse4_1;
+   else if (x86_cpu_features.can_use_sse2)
+      func = &fpu_cpy_single_256_sse2;     /* no "nt" read here */
+   else if (x86_cpu_features.can_use_sse)
+      func = &fpu_cpy_single_256_sse;      /* no "nt" read here */
+
+   func_name = find_sym_at_addr((uptr)func, &offset, &size);
+
+   init_fpu_memcpy_internal_check(func, func_name, size);
+   memcpy(&__asm_fpu_cpy_single_256_nt_read, func, size);
 }

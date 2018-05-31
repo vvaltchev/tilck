@@ -82,6 +82,7 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 #define NODISCARD
 #define PAGE_SIZE_ALIGNED
 #define OFFSET_OF(st, m)
+#define FASTCALL
 
 #else
 
@@ -106,6 +107,13 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 #define PACKED __attribute__((packed))
 #define NODISCARD __attribute__((warn_unused_result))
 #define PAGE_SIZE_ALIGNED __attribute__ ((aligned(PAGE_SIZE)))
+
+#ifdef BITS32
+#define FASTCALL __attribute__((fastcall))
+#else
+#define FASTCALL
+#endif
+
 #endif
 
 typedef char s8;
