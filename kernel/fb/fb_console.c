@@ -474,17 +474,14 @@ void init_framebuffer_console(void)
    }
 
    init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, COLOR_WHITE);
-   printk("[fb_console] resolution: %i x %i x %i bpp\n",
+   printk("[fb_console] screen resolution: %i x %i x %i bpp\n",
           fb_get_width(), fb_get_height(), fb_get_bpp());
-   printk("[fb_console] font size: %i x %i\n", h->width, h->height);
-   printk("[fb_console] rows: %i, cols: %i\n", fb_term_rows, fb_term_cols);
+   printk("[fb_console] font size: %i x %i, term size: %i x %i\n",
+          h->width, h->height, fb_term_cols, fb_term_rows);
 
    fb_use_optimized_funcs_if_possible();
-}
 
-void post_sched_init_framebuffer_console(void)
-{
-   if (!use_framebuffer())
+   if (in_panic())
       return;
 
    blink_thread_ti = kthread_create(fb_blink_thread, NULL);

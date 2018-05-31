@@ -15,5 +15,4 @@ static ALWAYS_INLINE bool use_framebuffer(void)
 
 void set_framebuffer_info_from_mbi(multiboot_info_t *mbi);
 void init_framebuffer_console(void);
-void post_sched_init_framebuffer_console(void);
-void fb_cursor_blink(void);
+

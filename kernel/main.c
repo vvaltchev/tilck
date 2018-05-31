@@ -39,6 +39,12 @@ void parse_kernel_cmdline(const char *cmdline);
 
 /* -- */
 
+void init_tty(void);
+
+sptr sys_execve(const char *filename,
+                const char *const *argv,
+                const char *const *env);
+
 
 void read_multiboot_info(u32 magic, u32 mbi_addr)
 {
@@ -106,15 +112,17 @@ void mount_ramdisk(void)
    printk("Mounted RAMDISK at PADDR %p.\n", ramdisk_paddr);
 }
 
-void init_tty(void);
-
-sptr sys_execve(const char *filename,
-                const char *const *argv,
-                const char *const *env);
-
 void selftest_runner_thread()
 {
    self_test_to_run();
+}
+
+void init_console(void)
+{
+   if (use_framebuffer())
+      init_framebuffer_console();
+   else
+      init_textmode_console();
 }
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)
@@ -136,16 +144,12 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_kmalloc();
    init_paging_cow();
 
-   if (use_framebuffer())
-      init_framebuffer_console();
-   else
-      init_textmode_console();
+   init_console();
 
    setup_irq_handling();
    init_sched();
    init_tasklets();
 
-   post_sched_init_framebuffer_console();
    show_system_info();
 
    timer_set_freq(TIMER_HZ);
