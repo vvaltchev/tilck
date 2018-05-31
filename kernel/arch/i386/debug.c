@@ -73,8 +73,33 @@ void dump_stacktrace(void)
 
    for (size_t i = 0; i < c; i++) {
       ptrdiff_t off;
+      u32 sym_size;
       uptr va = (uptr)frames[i];
-      const char *sym_name = find_sym_at_addr(va, &off);
+      const char *sym_name;
+
+      sym_name = find_sym_at_addr(va, &off, &sym_size);
+
+      if (off == 0) {
+
+         /*
+          * Since we're resolving return addresses, not addresses, we have to
+          * keep in mind that offset == 0 means that the next instruction after
+          * a call was the beginning of a new function. This happens when a
+          * function calls a NORETURN function like panic(). In this case, in
+          * order to correctly resolve the caller's function name, we need to
+          * decrease the vaddr when searching for the symbol name.
+          */
+
+         sym_name = find_sym_at_addr(va - 1, &off, &sym_size);
+
+         /*
+          * Now we have to increase the offset value because in the backtrace
+          * the original vaddr will be shown.
+          */
+
+         off++;
+      }
+
       printk("[%p] %s + 0x%x\n", va, sym_name ? sym_name : "???", off);
    }
 

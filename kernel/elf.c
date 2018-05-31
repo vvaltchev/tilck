@@ -205,7 +205,7 @@ void get_symtab_and_strtab(Elf32_Shdr **symtab, Elf32_Shdr **strtab)
    VERIFY(*strtab != NULL);
 }
 
-const char *find_sym_at_addr2(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
+const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
 {
    Elf32_Shdr *symtab;
    Elf32_Shdr *strtab;
@@ -217,7 +217,8 @@ const char *find_sym_at_addr2(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
 
    for (int i = 0; i < sym_count; i++) {
       Elf32_Sym *s = syms + i;
-      if (s->st_value <= vaddr && vaddr <= s->st_value + s->st_size) {
+
+      if (s->st_value <= vaddr && vaddr < s->st_value + s->st_size) {
 
          *offset = vaddr - s->st_value;
 

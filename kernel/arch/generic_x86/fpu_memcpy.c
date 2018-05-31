@@ -64,7 +64,7 @@ void init_fpu_memcpy(void)
    else if (x86_cpu_features.can_use_sse)
       func = &fpu_memcpy_single_256_nt_sse;
 
-   func_name = find_sym_at_addr2((uptr)func, &offset, &size);
+   func_name = find_sym_at_addr((uptr)func, &offset, &size);
 
    if (!func_name) {
       panic("init_fpu_memcpy: failed to find the symbol at %p\n", func);

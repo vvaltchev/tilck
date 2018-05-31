@@ -11,12 +11,7 @@ void dump_stacktrace(void);
 void dump_regs(regs *r);
 
 uptr find_addr_of_symbol(const char *searched_sym);
-const char *find_sym_at_addr2(uptr vaddr, ptrdiff_t *offset, u32 *sym_size);
-
-static inline const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset)
-{
-   return find_sym_at_addr2(vaddr, offset, NULL);
-}
+const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset, u32 *sym_size);
 
 void validate_stack_pointer_int(const char *file, int line);
 
