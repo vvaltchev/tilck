@@ -67,9 +67,9 @@ void fb_flush_lines(u32 y, u32 lines_count)
    // TODO: add fpu_save_context here
 
    for (u32 i = 0; i < lines_count; i++) {
-      fpu_memcpy256(fb_pitch_size_buf,
-                    (void *)(fb_vaddr + (y + i) * fb_pitch),
-                    fb_pitch >> 5);
+      fpu_memcpy256_nt_read(fb_pitch_size_buf,
+                            (void *)(fb_vaddr + (y + i) * fb_pitch),
+                            fb_pitch >> 5);
 
       if (x86_cpu_features.can_use_sse2)
          asmVolatile("mfence");

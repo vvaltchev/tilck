@@ -18,13 +18,18 @@
  * -----------------------------------------------
  */
 
+void fpu_memcpy256_avx2(void *dest, const void *src, u32 n);
+void fpu_memcpy256_sse2(void *dest, const void *src, u32 n);
+void fpu_memcpy256_sse(void *dest, const void *src, u32 n);
+
+/* Non-temporal hint for the destination */
 void fpu_memcpy256_nt_avx2(void *dest, const void *src, u32 n);
 void fpu_memcpy256_nt_sse2(void *dest, const void *src, u32 n);
 void fpu_memcpy256_nt_sse(void *dest, const void *src, u32 n);
 
-void fpu_memcpy256_avx2(void *dest, const void *src, u32 n);
-void fpu_memcpy256_sse2(void *dest, const void *src, u32 n);
-void fpu_memcpy256_sse(void *dest, const void *src, u32 n);
+/* Non-temporal hint for the source */
+void fpu_memcpy256_nt_read_avx2(void *dest, const void *src, u32 n);
+void fpu_memcpy256_nt_read_sse4_1(void *dest, const void *src, u32 n);
 
 EXTERN ALWAYS_INLINE void
 fpu_cpy_single_512_nt_avx2(void *dest, const void *src)
@@ -33,6 +38,18 @@ fpu_cpy_single_512_nt_avx2(void *dest, const void *src)
                "vmovdqa 32(%0), %%ymm1\n\t"
                "vmovntdq %%ymm0,   (%1)\n\t"
                "vmovntdq %%ymm1, 32(%1)\n\t"
+               : /* no output */
+               : "r" (src), "r" (dest)
+               : "memory");
+}
+
+EXTERN ALWAYS_INLINE void
+fpu_cpy_single_512_nt_read_avx2(void *dest, const void *src)
+{
+   asmVolatile("vmovntdqa   (%0), %%ymm0\n\t"
+               "vmovntdqa 32(%0), %%ymm1\n\t"
+               "vmovdqa   %%ymm0,   (%1)\n\t"
+               "vmovdqa   %%ymm1, 32(%1)\n\t"
                : /* no output */
                : "r" (src), "r" (dest)
                : "memory");
@@ -59,6 +76,17 @@ fpu_cpy_single_256_nt_avx2(void *dest, const void *src)
                : "r" (src), "r" (dest)
                : "memory");
 }
+
+EXTERN ALWAYS_INLINE void
+fpu_cpy_single_256_nt_read_avx2(void *dest, const void *src)
+{
+   asmVolatile("vmovntdqa   (%0), %%ymm0\n\t"
+               "vmovdqa    %%ymm0,   (%1)\n\t"
+               : /* no output */
+               : "r" (src), "r" (dest)
+               : "memory");
+}
+
 
 EXTERN ALWAYS_INLINE void
 fpu_cpy_single_256_avx2(void *dest, const void *src)
@@ -102,6 +130,35 @@ fpu_cpy_single_512_sse2(void *dest, const void *src)
                : "r" (src), "r" (dest)
                : "memory");
 }
+
+EXTERN ALWAYS_INLINE void
+fpu_cpy_single_512_nt_read_sse4_1(void *dest, const void *src)
+{
+   asmVolatile("movntdqa    (%0), %%xmm0\n\t"
+               "movntdqa  16(%0), %%xmm1\n\t"
+               "movntdqa  32(%0), %%xmm2\n\t"
+               "movntdqa  48(%0), %%xmm3\n\t"
+               "movdqa    %%xmm0,   (%1)\n\t"
+               "movdqa    %%xmm1, 16(%1)\n\t"
+               "movdqa    %%xmm2, 32(%1)\n\t"
+               "movdqa    %%xmm3, 48(%1)\n\t"
+               : /* no output */
+               : "r" (src), "r" (dest)
+               : "memory");
+}
+
+EXTERN ALWAYS_INLINE void
+fpu_cpy_single_256_nt_read_sse4_1(void *dest, const void *src)
+{
+   asmVolatile("movntdqa    (%0), %%xmm0\n\t"
+               "movntdqa  16(%0), %%xmm1\n\t"
+               "movdqa    %%xmm0,   (%1)\n\t"
+               "movdqa    %%xmm1, 16(%1)\n\t"
+               : /* no output */
+               : "r" (src), "r" (dest)
+               : "memory");
+}
+
 
 EXTERN ALWAYS_INLINE void
 fpu_cpy_single_256_nt_sse2(void *dest, const void *src)
@@ -207,6 +264,7 @@ fpu_cpy_single_128_sse(void *dest, const void *src)
 void memcpy256_failsafe(void *dest, const void *src, u32 n);
 void memcpy_single_256_failsafe(void *dest, const void *src);
 
+/* Non-temporal hint for the destination */
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
 EXTERN inline void fpu_memcpy256_nt(void *dest, const void *src, u32 n)
 {
@@ -225,6 +283,22 @@ EXTERN inline void fpu_memcpy256(void *dest, const void *src, u32 n)
 {
    if (x86_cpu_features.can_use_avx2)
       fpu_memcpy256_avx2(dest, src, n);
+   else if (x86_cpu_features.can_use_sse2)
+      fpu_memcpy256_sse2(dest, src, n);
+   else if (x86_cpu_features.can_use_sse)
+      fpu_memcpy256_sse(dest, src, n);
+   else
+      memcpy256_failsafe(dest, src, n);
+}
+
+/* Non-temporal hint for the source */
+/* 'n' is the number of 32-byte (256-bit) data packets to copy */
+EXTERN inline void fpu_memcpy256_nt_read(void *dest, const void *src, u32 n)
+{
+   if (x86_cpu_features.can_use_avx2)
+      fpu_memcpy256_nt_read_avx2(dest, src, n);
+   else if (x86_cpu_features.can_use_sse4_1)
+      fpu_memcpy256_nt_read_sse4_1(dest, src, n);
    else if (x86_cpu_features.can_use_sse2)
       fpu_memcpy256_sse2(dest, src, n);
    else if (x86_cpu_features.can_use_sse)

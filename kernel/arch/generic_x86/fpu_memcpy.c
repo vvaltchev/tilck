@@ -81,6 +81,30 @@ void fpu_memcpy256_sse(void *dest, const void *src, u32 n)
       fpu_cpy_single_256_sse(dest, src);
 }
 
+
+void fpu_memcpy256_nt_read_avx2(void *dest, const void *src, u32 n)
+{
+   u32 len64 = n / 2;
+
+   for (register u32 i = 0; i < len64; i++, src += 64, dest += 64)
+      fpu_cpy_single_512_nt_read_avx2(dest, src);
+
+   if (n % 2)
+      fpu_cpy_single_256_nt_read_avx2(dest, src);
+}
+
+void fpu_memcpy256_nt_read_sse4_1(void *dest, const void *src, u32 n)
+{
+   u32 len64 = n / 2;
+
+   for (register u32 i = 0; i < len64; i++, src += 64, dest += 64)
+      fpu_cpy_single_512_nt_read_sse4_1(dest, src);
+
+   if (n % 2)
+      fpu_cpy_single_256_nt_read_sse4_1(dest, src);
+}
+
+
 void init_fpu_memcpy(void)
 {
    const char *func_name;

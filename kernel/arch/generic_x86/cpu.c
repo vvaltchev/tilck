@@ -40,8 +40,10 @@ static bool enable_sse(void)
    if (x86_cpu_features.ecx1.ssse3)
       max_sse = "SSE 3+ (ssse 3)";
 
-   if (x86_cpu_features.ecx1.sse4_1)
+   if (x86_cpu_features.ecx1.sse4_1) {
       max_sse = "SSE 4.1";
+      x86_cpu_features.can_use_sse4_1 = true;
+   }
 
    if (x86_cpu_features.ecx1.sse4_2)
       max_sse = "SSE 4.2";

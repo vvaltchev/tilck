@@ -93,6 +93,7 @@ typedef struct {
 
    bool can_use_sse;
    bool can_use_sse2;
+   bool can_use_sse4_1;
    bool can_use_avx;
    bool can_use_avx2;
 
