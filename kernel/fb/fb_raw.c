@@ -1,4 +1,10 @@
 
+/*
+ * Following the same philosophy described in fpu_memcpy.c, we want this code
+ * to be optimized even in debug builds.
+ */
+#pragma GCC optimize "-O3"
+
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 #include <common/vga_textmode_defs.h>

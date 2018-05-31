@@ -247,6 +247,12 @@ static void fb_set_row_char16x32(int row, u16 *data)
    rows_to_flush[row] = true;
 }
 
+
+/*
+ * This function is not used, by default, at the moment.
+ * See the comment on fb_flush(), below.
+ */
+
 static void fb_scroll_one_line_up(void)
 {
    psf2_header *h = fb_font_header;
