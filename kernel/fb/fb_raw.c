@@ -317,15 +317,12 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
    uptr vaddr = fb_vaddr + (fb_pitch * y) + (x << 2);
    u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
    const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
+   u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
    for (u32 row = 0; row < h->height; row++) {
       for (u32 b = 0; b < width_bytes; b++) {
-
          u32 sl = data[b + width_bytes * row];
-
-         memcpy32((void *)(vaddr + (b << 5)),
-                  &fb_w8_char_scanlines[c_off + (sl << 3)],
-                  SL_SIZE);
+         memcpy32((void *)(vaddr + (b << 5)), &scanlines[sl << 3], SL_SIZE);
       }
       vaddr += fb_pitch;
    }
@@ -340,15 +337,16 @@ void fb_draw_char16x32(u32 x, u32 y, u16 e)
    uptr vaddr = fb_vaddr + (fb_pitch * y) + (x << 2);
    u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
    const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
+   u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
    for (u32 row = 0; row < 32; row++) {
 
       memcpy32((void *)(vaddr),
-               &fb_w8_char_scanlines[c_off + (data[row << 1] << 3)],
+               &scanlines[data[row << 1] << 3],
                SL_SIZE);
 
       memcpy32((void *)(vaddr + 32),
-               &fb_w8_char_scanlines[c_off + (data[1 + (row << 1)] << 3)],
+               &scanlines[data[1 + (row << 1)] << 3],
                SL_SIZE);
 
       vaddr += fb_pitch;
@@ -358,7 +356,7 @@ void fb_draw_char16x32(u32 x, u32 y, u16 e)
 void fb_draw_char16x32_row(u32 y, u16 *entries, u32 count)
 {
    const psf2_header *h = fb_font_header;
-   const u8 *data = (u8 *)h + h->header_size;
+   const u8 *data_base = (u8 *)h + h->header_size;
    const uptr vaddr_base = fb_vaddr + (fb_pitch * y);
 
    /* fb_bpp must be 32 */
@@ -372,21 +370,17 @@ void fb_draw_char16x32_row(u32 y, u16 *entries, u32 count)
    for (u32 ei = 0; ei < count; ei++) {
 
       const u16 e = entries[ei];
-      const u32 c32 = vgaentry_char(e) << 6;
+      const u32 c64 = vgaentry_char(e) << 6;
       const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
       uptr vaddr = vaddr_base + (ei << 6);
+      const u8 *d = &data_base[c64];
+      u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
       for (u32 row = 0; row < 32; row++) {
-
-         fpu_memcpy_single_256_nt(
-                  (void *)(vaddr),
-                  &fb_w8_char_scanlines[c_off + (data[c32+(row << 1)] << 3)]);
-
-         fpu_memcpy_single_256_nt(
-                  (void *)(vaddr + 32),
-                  &fb_w8_char_scanlines[c_off + (data[c32+1+(row << 1)] << 3)]);
-
+         fpu_memcpy_single_256_nt((void *)(vaddr), &scanlines[d[0] << 3]);
+         fpu_memcpy_single_256_nt((void *)(vaddr + 32), &scanlines[d[1] << 3]);
          vaddr += fb_pitch;
+         d += 2;
       }
    }
 
@@ -405,13 +399,10 @@ void fb_draw_char8x16(u32 x, u32 y, u16 e)
    u8 *data = (u8 *)h + h->header_size + (vgaentry_char(e) << 4);
    uptr vaddr = fb_vaddr + (fb_pitch * y) + (x << 2);
    const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
+   u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
    for (u32 r = 0; r < 16; r++) {
-
-      memcpy32((void *)vaddr,
-               &fb_w8_char_scanlines[c_off + (data[r] << 3)],
-               SL_SIZE);
-
+      memcpy32((void *)vaddr, &scanlines[data[r] << 3], SL_SIZE);
       vaddr += fb_pitch;
    }
 }
@@ -434,15 +425,12 @@ void fb_draw_char8x16_row(u32 y, u16 *entries, u32 count)
       const u16 e = entries[ei];
       const u32 c16 = vgaentry_char(e) << 4;
       const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
-
       uptr vaddr = vaddr_base + (ei << 5);
+      const u8 *d = &data[c16];
+      u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
       for (u32 r = 0; r < 16; r++) {
-
-         fpu_memcpy_single_256_nt(
-            (void *)vaddr,
-            &fb_w8_char_scanlines[c_off + (data[c16 + r] << 3)]);
-
+         fpu_memcpy_single_256_nt((void *)vaddr, &scanlines[d[r] << 3]);
          vaddr += fb_pitch;
       }
    }
