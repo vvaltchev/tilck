@@ -22,13 +22,67 @@ function(JOIN VALUES GLUE OUTPUT)
   set (${OUTPUT} "${_TMP_STR}" PARENT_SCOPE)
 endfunction()
 
-FUNCTION(PREPEND var prefix)
-   SET(listVar "")
-   FOREACH(f ${ARGN})
-      LIST(APPEND listVar "${prefix}${f}")
-   ENDFOREACH(f)
-   SET(${var} "${listVar}" PARENT_SCOPE)
-ENDFUNCTION(PREPEND)
+function(PREPEND var prefix)
+   set(listVar "")
+   foreach(f ${ARGN})
+      list(APPEND listVar "${prefix}${f}")
+   endforeach(f)
+   set(${var} "${listVar}" PARENT_SCOPE)
+endfunction(PREPEND)
+
+
+function(h2d_char hc dec_out)
+
+   if ("${hc}" MATCHES "[0-9]")
+      set(${dec_out} ${hc} PARENT_SCOPE)
+   elseif ("${hc}" STREQUAL "a")
+      set(${dec_out} 10 PARENT_SCOPE)
+   elseif("${hc}" STREQUAL "b")
+      set(${dec_out} 11 PARENT_SCOPE)
+   elseif("${hc}" STREQUAL "c")
+      set(${dec_out} 12 PARENT_SCOPE)
+   elseif("${hc}" STREQUAL "d")
+      set(${dec_out} 13 PARENT_SCOPE)
+   elseif("${hc}" STREQUAL "e")
+      set(${dec_out} 14 PARENT_SCOPE)
+   elseif("${hc}" STREQUAL "f")
+      set(${dec_out} 15 PARENT_SCOPE)
+   else()
+      message(FATAL_ERROR "Invalid digit '${hc}'")
+   endif()
+
+endfunction()
+
+function(hex2dec val out)
+
+   if (NOT "${val}" MATCHES "^0x[0-9a-f]+$")
+      message(FATAL_ERROR "Invalid hex number '${val}'")
+   endif()
+
+   string(LENGTH "${val}" len)
+   math(EXPR len "${len} - 2")
+   string(SUBSTRING "${val}" 2 ${len} val) # skip the "0x" prefix
+
+
+   set(res 0)
+   set(mul 1)
+   math(EXPR len "${len} - 1")
+
+   foreach (i RANGE "${len}")
+
+      math(EXPR j "${len} - ${i}")
+      string(SUBSTRING "${val}" ${j} 1 c)
+
+      h2d_char(${c} c)
+
+      math(EXPR res "${res} + ${c} * ${mul}")
+      math(EXPR mul "${mul} * 16")
+
+   endforeach()
+
+   set(${out} ${res} PARENT_SCOPE)
+
+endfunction()
 
 ###########################################################
 # Architecture setting. Only x86 is accepted by now.
