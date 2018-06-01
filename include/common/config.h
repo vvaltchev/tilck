@@ -57,8 +57,4 @@ extern void *kernel_va;
 /* Bootloader specific config */
 
 #define SECTOR_SIZE          512
-#define BL_ST2_DATA_SEG      0x2000
-#define STAGES_1_AND_2_SIZE  4096
-#define STAGE3_ENTRY_OFFSET  4096
-#define BL_BASE_ADDR         (BL_ST2_DATA_SEG * 16 + STAGES_1_AND_2_SIZE + STAGE3_ENTRY_OFFSET)
 #define BL_BASE_SEG          (BL_BASE_ADDR / 16)

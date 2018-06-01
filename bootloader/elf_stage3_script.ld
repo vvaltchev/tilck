@@ -8,7 +8,7 @@ SEARCH_DIR("=/tmp/x86-i686--glibc--stable/usr/i686-buildroot-linux-gnu/lib");
 
 SECTIONS
 {
-  . = SEGMENT_START("text-segment", 0x22000);
+  . = SEGMENT_START("text-segment", @BL_BASE_ADDR@);
 
   .text :
   {

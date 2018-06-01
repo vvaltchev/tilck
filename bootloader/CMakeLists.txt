@@ -36,8 +36,8 @@ set_target_properties(
 
    PROPERTIES
       COMPILE_FLAGS "-ffreestanding -nostdinc"
-      LINK_FLAGS "-nostdlib -Wl,--script=early_boot_script.ld"
-      LINK_DEPENDS "${CMAKE_SOURCE_DIR}/bootloader/early_boot_script.ld"
+      LINK_FLAGS "-nostdlib -Wl,--script=${EARLY_BOOT_SCRIPT}"
+      LINK_DEPENDS ${EARLY_BOOT_SCRIPT}
 )
 
 
@@ -96,8 +96,8 @@ set_target_properties(
 
    PROPERTIES
       COMPILE_FLAGS ${FLAGS}
-      LINK_FLAGS "-nostdlib -Wl,--script=elf_stage3_script.ld"
-      LINK_DEPENDS "${CMAKE_SOURCE_DIR}/bootloader/elf_stage3_script.ld"
+      LINK_FLAGS "-nostdlib -Wl,--script=${STAGE3_SCRIPT}"
+      LINK_DEPENDS ${STAGE3_SCRIPT}
 )
 
 

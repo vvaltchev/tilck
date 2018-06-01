@@ -13,7 +13,7 @@ SECTIONS
   .text :
   {
     *(.text)
-    . = 4096;
+    . = @STAGES_1_AND_2_SIZE@;
   }
 
   /DISCARD/ : { *(*) }
