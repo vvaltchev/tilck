@@ -29,7 +29,7 @@ static void textmode_set_char_at(int row, int col, u16 entry)
    video[row * VIDEO_COLS + col] = entry;
 }
 
-static void textmode_set_row(int row, u16 *data)
+static void textmode_set_row(int row, u16 *data, bool flush)
 {
    memcpy32(VIDEO_ADDR + row * VIDEO_COLS, data, VIDEO_COLS >> 1);
 }

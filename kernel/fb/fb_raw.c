@@ -53,9 +53,6 @@ bool fb_alloc_pitch_size_buf(void)
 
 bool fb_alloc_shadow_buffer(void)
 {
-   if (!fb_pitch_size_buf)
-      return false;
-
    void *shadow_buf = kzmalloc(fb_size);
 
    if (!shadow_buf)
@@ -74,18 +71,9 @@ void fb_flush_lines(u32 y, u32 lines_count)
 
    // TODO: add fpu_save_context here
 
-   for (u32 i = 0; i < lines_count; i++) {
-      fpu_memcpy256_nt_read(fb_pitch_size_buf,
-                            (void *)(fb_vaddr + (y + i) * fb_pitch),
-                            fb_pitch >> 5);
-
-      if (x86_cpu_features.can_use_sse2)
-         asmVolatile("mfence");
-
-      fpu_memcpy256_nt((void *)(fb_real_vaddr + (y + i) * fb_pitch),
-                       fb_pitch_size_buf,
-                       fb_pitch >> 5);
-   }
+   fpu_memcpy256_nt((void *)(fb_real_vaddr + y * fb_pitch),
+                    (void *)(fb_vaddr + y * fb_pitch),
+                    (lines_count * fb_pitch) >> 5);
 
    // TODO: add fpu_restore_context here
 }
@@ -104,7 +92,6 @@ void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 lines_count)
       return;
    }
 
-
    for (u32 i = 0; i < lines_count; i++) {
 
       fpu_memcpy256_nt_read(fb_pitch_size_buf,
@@ -118,7 +105,6 @@ void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 lines_count)
                        fb_pitch_size_buf,
                        fb_pitch >> 5);
    }
-
 
    // TODO: add fpu_restore_context here
 }
@@ -253,23 +239,8 @@ void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
       return;
    }
 
-   if (w == 16)
-
-      for (u32 y = 0; y < h; y++, vaddr += fb_pitch) {
-         fpu_cpy_single_256_nt_read(&buf[y * w], (void *)vaddr);
-         fpu_cpy_single_256_nt_read(&buf[y * w + 8], (void *)vaddr + 32);
-      }
-
-   else if (w == 8)
-
-      for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
-         fpu_cpy_single_256_nt_read(&buf[y * w], (void *)vaddr);
-
-   else
-
-      for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
-         memcpy32(&buf[y * w], (void *)vaddr, w);
-
+   for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
+      memcpy32(&buf[y * w], (void *)vaddr, w);
 }
 
 void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
@@ -285,24 +256,8 @@ void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
       return;
    }
 
-
-   if (w == 16)
-
-      for (u32 y = 0; y < h; y++, vaddr += fb_pitch) {
-         fpu_cpy_single_256_nt((void *)vaddr, &buf[y * w]);
-         fpu_cpy_single_256_nt((void *)vaddr + 32, &buf[y * w + 8]);
-      }
-
-   else if (w == 8)
-
-      for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
-         fpu_cpy_single_256_nt((void *)vaddr, &buf[y * w]);
-
-   else
-
-      for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
-         memcpy32((void *)vaddr, &buf[y * w], w);
-
+   for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
+      memcpy32((void *)vaddr, &buf[y * w], w);
 }
 
 void fb_draw_char_failsafe(u32 x, u32 y, u16 e)

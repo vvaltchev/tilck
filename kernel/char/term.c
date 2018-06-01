@@ -66,7 +66,7 @@ static void ts_set_scroll(u32 requested_scroll)
 
    for (u32 row = 0; row < term_rows; row++) {
       u32 buffer_row = (scroll + row) % total_buffer_rows;
-      vi->set_row(row, &buffer[term_cols * buffer_row]);
+      vi->set_row(row, &buffer[term_cols * buffer_row], true);
    }
 }
 

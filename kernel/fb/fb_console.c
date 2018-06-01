@@ -184,7 +184,7 @@ void fb_disable_cursor(void)
    fb_move_cursor(cursor_row, cursor_col);
 }
 
-static void fb_set_row_failsafe(int row, u16 *data)
+static void fb_set_row_failsafe(int row, u16 *data, bool flush)
 {
    for (u32 i = 0; i < fb_term_cols; i++)
       fb_set_char_at_failsafe(row, i, data[i]);
@@ -193,7 +193,7 @@ static void fb_set_row_failsafe(int row, u16 *data)
    rows_to_flush[row] = true;
 }
 
-static void fb_set_row_optimized(int row, u16 *data)
+static void fb_set_row_optimized(int row, u16 *data, bool flush)
 {
    psf2_header *h = fb_font_header;
 
@@ -201,14 +201,15 @@ static void fb_set_row_optimized(int row, u16 *data)
                               data,
                               fb_term_cols);
 
-   fb_reset_blink_timer();
-   rows_to_flush[row] = true;
-}
+   if (flush) {
+      fb_flush_lines(fb_offset_y + fb_font_header->height * row,
+                     fb_font_header->height);
+   } else {
+      rows_to_flush[row] = true;
+   }
 
-/*
- * This function is not used, by default, at the moment.
- * See the comment on fb_flush(), below.
- */
+   fb_reset_blink_timer();
+}
 
 static void fb_scroll_one_line_up(void)
 {
@@ -230,15 +231,6 @@ static void fb_scroll_one_line_up(void)
       rows_to_flush[r] = true;
 }
 
-/*
- * After many experiments and optimizations, it turned out that, double
- * buffering is not faster even for fb_scroll_one_line_up if the fastest
- * SIMD move instructions are used. For scroll in particular, double buffering
- * makes it slower in any case because the CPU has first to write a huge amount
- * of data in the shadow buffer and then to copy that in the real framebuffer:
- * data locality plays a relevant role here. It's faster to just generate the
- * characters on-the-fly and only write to the huge framebuffer.
- */
 static void fb_flush(void)
 {
    for (u32 r = 0; r < fb_term_rows; r++) {
@@ -263,8 +255,8 @@ static video_interface framebuffer_vi =
    fb_move_cursor,
    fb_enable_cursor,
    fb_disable_cursor,
-   NULL, //fb_scroll_one_line_up [see the comment on fb_flush]
-   NULL //fb_flush [see comment]
+   fb_scroll_one_line_up,
+   fb_flush
 };
 
 
@@ -384,11 +376,12 @@ void init_framebuffer_console(void)
 
    fb_map_in_kernel_space();
 
-   if (!in_panic())
-      if (framebuffer_vi.scroll_one_line_up || framebuffer_vi.flush_buffers)
-         fb_alloc_pitch_size_buf();
+   // For the moment, the pitch_size_buf is not used.
+   // if (!in_panic())
+   //    if (framebuffer_vi.scroll_one_line_up || framebuffer_vi.flush_buffers)
+   //       fb_alloc_pitch_size_buf();
 
-   if (framebuffer_vi.flush_buffers && !in_hypervisor() && !in_panic()) {
+   if (framebuffer_vi.flush_buffers && !in_panic()) {
 
       /*
        * In hypervisors, using double buffering just slows the fb_console,
