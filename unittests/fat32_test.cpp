@@ -60,7 +60,7 @@ const char *load_once_file(const char *filepath, size_t *fsize = nullptr)
 
 TEST(fat32, dumpinfo)
 {
-   const char *buf = load_once_file("build/fatpart");
+   const char *buf = load_once_file(PROJ_BUILD_DIR "/fatpart");
    fat_dump_info((void *) buf);
 
    fat_header *hdr = (fat_header*)buf;
@@ -70,7 +70,7 @@ TEST(fat32, dumpinfo)
 
 TEST(fat32, read_content_of_shortname_file)
 {
-   const char *buf = load_once_file("build/fatpart");
+   const char *buf = load_once_file(PROJ_BUILD_DIR "/fatpart");
    char data[128] = {0};
    fat_header *hdr;
    fat_entry *e;
@@ -88,7 +88,7 @@ TEST(fat32, read_content_of_shortname_file)
 
 TEST(fat32, read_content_of_longname_file)
 {
-   const char *buf = load_once_file("build/fatpart");
+   const char *buf = load_once_file(PROJ_BUILD_DIR "/fatpart");
    char data[128] = {0};
    fat_header *hdr;
    fat_entry *e;
@@ -108,7 +108,9 @@ TEST(fat32, read_content_of_longname_file)
 
 TEST(fat32, read_whole_file)
 {
-   fat_header *hdr = (fat_header*)load_once_file("build/fatpart");
+   fat_header *hdr = (fat_header*)
+      load_once_file(PROJ_BUILD_DIR "/fatpart");
+
    fat_entry *e = fat_search_entry(hdr, fat_unknown, "/sbin/init");
 
    char *content = (char*)calloc(1, e->DIR_FileSize);
@@ -117,7 +119,8 @@ TEST(fat32, read_whole_file)
    free(content);
 
    size_t fsize;
-   const char *buf = load_once_file("build/sysroot/sbin/init", &fsize);
+   const char *buf =
+      load_once_file(PROJ_BUILD_DIR "/sysroot/sbin/init", &fsize);
    uint32_t actual_file_crc = crc32(0, buf, fsize);
    ASSERT_EQ(fat_crc, actual_file_crc);
 }
@@ -126,7 +129,8 @@ TEST(fat32, fread)
 {
    init_kmalloc_for_tests();
 
-   filesystem *fs = fat_mount_ramdisk((void *) load_once_file("build/fatpart"));
+   filesystem *fs =
+      fat_mount_ramdisk((void *) load_once_file(PROJ_BUILD_DIR "/fatpart"));
 
    fs_handle h = fs->fopen(fs, "/sbin/init");
    ASSERT_TRUE(h != NULL);
@@ -137,7 +141,7 @@ TEST(fat32, fread)
    char *buf2 = (char *) calloc(1, buf2_size);
    ssize_t read_offset = 0;
 
-   FILE *fp = fopen("build/sysroot/sbin/init", "rb");
+   FILE *fp = fopen(PROJ_BUILD_DIR "/sysroot/sbin/init", "rb");
    char tmpbuf[1024];
 
    while (true) {

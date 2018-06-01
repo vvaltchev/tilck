@@ -132,6 +132,14 @@ JOIN("${WARN_FLAGS_LIST}" ${SPACE} WARN_FLAGS)
 
 set(COMMON_FLAGS "${GENERAL_DEFS} ${OTHER_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 
+
+configure_file(
+   ${PROJECT_SOURCE_DIR}/include/common/generated_config_template.h
+   ${PROJECT_BINARY_DIR}/generated_config.h
+)
+
+include_directories(${CMAKE_BINARY_DIR})
+
 set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/bootloader/bootloader.bin)
 set(EFI_x86_64_FILE ${CMAKE_BINARY_DIR}/bootloader/efi/BOOTX64.EFI)
 set(EFI_ia32_FILE ${CMAKE_BINARY_DIR}/bootloader/efi/BOOTIA32.EFI)

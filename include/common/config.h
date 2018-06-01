@@ -61,4 +61,7 @@ extern void *kernel_va;
 
 #define SECTOR_SIZE          512
 #define BL_BASE_ADDR         0x22000
+
+#include <generated_config.h>
+
 #define BL_BASE_SEG          (BL_BASE_ADDR / 16)

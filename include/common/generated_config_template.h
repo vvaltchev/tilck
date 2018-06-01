@@ -1,0 +1,2 @@
+
+#define PROJ_BUILD_DIR "@CMAKE_BINARY_DIR@"

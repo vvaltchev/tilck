@@ -38,7 +38,7 @@ TEST(exvfs, read_content_of_longname_file)
 {
    init_kmalloc_for_tests();
 
-   const char *buf = load_once_file("build/fatpart");
+   const char *buf = load_once_file(PROJ_BUILD_DIR "/fatpart");
    char data[128] = {0};
 
    filesystem *fat_fs = fat_mount_ramdisk((void *) buf);
@@ -74,7 +74,7 @@ TEST(exvfs, fseek)
    cout << "[ INFO     ] random seed: " << seed << endl;
 
    size_t fatpart_size;
-   const char *fatpart = load_once_file("build/fatpart", &fatpart_size);
+   const char *fatpart = load_once_file(PROJ_BUILD_DIR "/fatpart", &fatpart_size);
 
    filesystem *fat_fs = fat_mount_ramdisk((void *) fatpart);
    ASSERT_TRUE(fat_fs != NULL);
@@ -83,7 +83,7 @@ TEST(exvfs, fseek)
    ASSERT_EQ(r, 0);
 
    const char *fatpart_file_path = "/EFI/BOOT/elf_kernel_stripped";
-   const char *real_file_path = "build/sysroot/EFI/BOOT/elf_kernel_stripped";
+   const char *real_file_path = PROJ_BUILD_DIR "/sysroot/EFI/BOOT/elf_kernel_stripped";
 
    int fd = open(real_file_path, O_RDONLY);
 
