@@ -133,31 +133,6 @@ void fb_set_char_at_optimized(int row, int col, u16 entry)
 }
 
 
-void fb_set_char8x16_at(int row, int col, u16 entry)
-{
-   fb_draw_char8x16(col << 3,
-                    fb_offset_y + (row << 4),
-                    entry);
-
-   if (row == cursor_row && col == cursor_col)
-      fb_save_under_cursor_buf();
-
-   fb_reset_blink_timer();
-   rows_to_flush[row] = true;
-}
-
-void fb_set_char16x32_at(int row, int col, u16 entry)
-{
-   fb_draw_char16x32(col << 4,
-                     fb_offset_y + (row << 5),
-                     entry);
-
-   if (row == cursor_row && col == cursor_col)
-      fb_save_under_cursor_buf();
-
-   fb_reset_blink_timer();
-   rows_to_flush[row] = true;
-}
 
 void fb_clear_row(int row_num, u8 color)
 {
@@ -220,33 +195,15 @@ static void fb_set_row_failsafe(int row, u16 *data)
 
 static void fb_set_row_optimized(int row, u16 *data)
 {
-   for (u32 i = 0; i < fb_term_cols; i++)
-      fb_set_char_at_optimized(row, i, data[i]);
+   psf2_header *h = fb_font_header;
+
+   fb_draw_char_optimized_row(fb_offset_y + row * h->height,
+                              data,
+                              fb_term_cols);
 
    fb_reset_blink_timer();
    rows_to_flush[row] = true;
 }
-
-static void fb_set_row_char8x16(int row, u16 *data)
-{
-   fb_draw_char8x16_row(fb_offset_y + (row << 4),
-                        data,
-                        fb_term_cols);
-
-   fb_reset_blink_timer();
-   rows_to_flush[row] = true;
-}
-
-static void fb_set_row_char16x32(int row, u16 *data)
-{
-   fb_draw_char16x32_row(fb_offset_y + (row << 5),
-                         data,
-                         fb_term_cols);
-
-   fb_reset_blink_timer();
-   rows_to_flush[row] = true;
-}
-
 
 /*
  * This function is not used, by default, at the moment.
@@ -325,17 +282,14 @@ static void fb_draw_string_at_raw(u32 x, u32 y, const char *str, u8 color)
 {
    psf2_header *h = fb_font_header;
 
-   if (use_optimized) {
-      while (*str) {
-         fb_draw_char_optimized(x, y, make_vgaentry(*str++, color));
-         x += h->width;
-      }
-   } else {
-      while (*str) {
-         fb_draw_char_failsafe(x, y, make_vgaentry(*str++, color));
-         x += h->width;
-      }
-   }
+   if (use_optimized)
+
+      for (; *str; str++, x += h->width)
+         fb_draw_char_optimized(x, y, make_vgaentry(*str, color));
+   else
+
+      for (; *str; str++, x += h->width)
+         fb_draw_char_failsafe(x, y, make_vgaentry(*str, color));
 }
 
 static void fb_setup_banner(void)
@@ -396,8 +350,6 @@ static void fb_update_banner_kthread()
 
 static void fb_use_optimized_funcs_if_possible(void)
 {
-   psf2_header *h = fb_font_header;
-
    if (in_panic())
       return;
 
@@ -414,20 +366,9 @@ static void fb_use_optimized_funcs_if_possible(void)
    }
 
    use_optimized = true;
-
-   if (h->width == 8 && h->height == 16) {
-      framebuffer_vi.set_char_at = fb_set_char8x16_at;
-      framebuffer_vi.set_row = fb_set_row_char8x16;
-      printk("[fb_console] Use code optimized for 8x16 fonts\n");
-   } else if (h->width == 16 && h->height == 32) {
-      framebuffer_vi.set_char_at = fb_set_char16x32_at;
-      framebuffer_vi.set_row = fb_set_row_char16x32;
-      printk("[fb_console] Use code optimized for 16x32 fonts\n");
-   } else {
-      framebuffer_vi.set_char_at = fb_set_char_at_optimized;
-      framebuffer_vi.set_row = fb_set_row_optimized;
-      printk("[fb_console] Use optimized functions\n");
-   }
+   framebuffer_vi.set_char_at = fb_set_char_at_optimized;
+   framebuffer_vi.set_row = fb_set_row_optimized;
+   printk("[fb_console] Use optimized functions\n");
 }
 
 void init_framebuffer_console(void)

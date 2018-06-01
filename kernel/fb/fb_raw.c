@@ -6,6 +6,7 @@
 #pragma GCC optimize "-O3"
 
 #include <common/basic_defs.h>
+#include <common/utils.h>
 #include <common/string_util.h>
 #include <common/vga_textmode_defs.h>
 
@@ -374,135 +375,80 @@ bool fb_pre_render_char_scanlines(void)
    return true;
 }
 
+
 void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 {
    psf2_header *h = fb_font_header;
 
    const u8 c = vgaentry_char(e);
-   ASSERT(c < h->glyphs_count);
-
-   // ASSUMPTION: width is divisible by 8
    const u32 width_bytes = h->width >> 3;
 
-   uptr vaddr = fb_vaddr + (fb_pitch * y) + (x << 2);
-   u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
+   ASSUME_WITHOUT_CHECK(!(h->width % 8));
+   ASSUME_WITHOUT_CHECK(width_bytes == 1 || width_bytes == 2);
+   ASSUME_WITHOUT_CHECK(h->height == 16 || h->height == 32);
+   ASSUME_WITHOUT_CHECK(h->bytes_per_glyph == 16 || h->bytes_per_glyph == 64);
+
+   void *vaddr = (void *)fb_vaddr + (fb_pitch * y) + (x << 2);
+   u8 *d = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
    const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
    u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
-   for (u32 row = 0; row < h->height; row++) {
-      for (u32 b = 0; b < width_bytes; b++) {
-         u32 sl = data[b + width_bytes * row];
-         memcpy32((void *)(vaddr + (b << 5)), &scanlines[sl << 3], SL_SIZE);
+   if (width_bytes == 1)
+
+      for (u32 r = 0; r < h->height; r++, d++, vaddr += fb_pitch)
+         memcpy32(vaddr, &scanlines[*d << 3], SL_SIZE);
+
+   else
+
+      // width_bytes == 2
+
+      for (u32 r = 0; r < h->height; r++, d+=2, vaddr += fb_pitch) {
+         memcpy32(vaddr, &scanlines[d[0] << 3], SL_SIZE);
+         memcpy32(vaddr + 32, &scanlines[d[1] << 3], SL_SIZE);
       }
-      vaddr += fb_pitch;
-   }
 }
 
-
-void fb_draw_char16x32(u32 x, u32 y, u16 e)
-{
-   psf2_header *h = fb_font_header;
-
-   const u8 c = vgaentry_char(e);
-   uptr vaddr = fb_vaddr + (fb_pitch * y) + (x << 2);
-   u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
-   const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
-   u32 *scanlines = &fb_w8_char_scanlines[c_off];
-
-   for (u32 row = 0; row < 32; row++) {
-
-      memcpy32((void *)(vaddr),
-               &scanlines[data[row << 1] << 3],
-               SL_SIZE);
-
-      memcpy32((void *)(vaddr + 32),
-               &scanlines[data[1 + (row << 1)] << 3],
-               SL_SIZE);
-
-      vaddr += fb_pitch;
-   }
-}
-
-void fb_draw_char16x32_row(u32 y, u16 *entries, u32 count)
+void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count)
 {
    const psf2_header *h = fb_font_header;
    const u8 *data_base = (u8 *)h + h->header_size;
    const uptr vaddr_base = fb_vaddr + (fb_pitch * y);
 
-   /* fb_bpp must be 32 */
-   /* h->width must be 16 */
-   /* h->height must be 32 */
-   /* h->bytes_per_glyph must be 16 */
-   /* SL_SIZE is 8 */
+   // ASSUMPTION: SL_SIZE is 8
+   const u32 width_bytes = h->width >> 3;
+
+   ASSUME_WITHOUT_CHECK(!(h->width % 8));
+   ASSUME_WITHOUT_CHECK(width_bytes == 1 || width_bytes == 2);
+   ASSUME_WITHOUT_CHECK(h->height == 16 || h->height == 32);
+   ASSUME_WITHOUT_CHECK(h->bytes_per_glyph == 16 || h->bytes_per_glyph == 64);
+
+   const u32 w4_shift = h->width == 8 ? 2 + 3 : 2 + 4;
+   const u32 bpg_shift = h->bytes_per_glyph == 16 ? 4 : 6;
 
    // TODO: add fpu_save_context here
 
    for (u32 ei = 0; ei < count; ei++) {
 
       const u16 e = entries[ei];
-      const u32 c64 = vgaentry_char(e) << 6;
       const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
-      uptr vaddr = vaddr_base + (ei << 6);
-      const u8 *d = &data_base[c64];
+      void *vaddr = (void *)vaddr_base + (ei << w4_shift);
+      const u8 *d = &data_base[vgaentry_char(e) << bpg_shift];
       u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
-      for (u32 row = 0; row < 32; row++) {
-         fpu_cpy_single_256_nt((void *)(vaddr), &scanlines[d[0] << 3]);
-         fpu_cpy_single_256_nt((void *)(vaddr + 32), &scanlines[d[1] << 3]);
-         vaddr += fb_pitch;
-         d += 2;
-      }
-   }
+      if (width_bytes == 1)
 
-   // TODO: add fpu_restore_context here
-}
+         for (u32 r = 0; r < h->height; r++, d++, vaddr += fb_pitch)
+            fpu_cpy_single_256_nt(vaddr, &scanlines[*d << 3]);
 
-void fb_draw_char8x16(u32 x, u32 y, u16 e)
-{
-   psf2_header *h = fb_font_header;
+      else
 
-   /* fb_bpp must be 32 */
-   /* h->width must be 8 */
-   /* h->height must be 16 */
-   /* h->bytes_per_glyph must be 16 */
+         // width_bytes == 2
 
-   u8 *data = (u8 *)h + h->header_size + (vgaentry_char(e) << 4);
-   uptr vaddr = fb_vaddr + (fb_pitch * y) + (x << 2);
-   const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
-   u32 *scanlines = &fb_w8_char_scanlines[c_off];
+         for (u32 r = 0; r < h->height; r++, d+=2, vaddr += fb_pitch) {
+            fpu_cpy_single_256_nt(vaddr, &scanlines[d[0] << 3]);
+            fpu_cpy_single_256_nt(vaddr + 32, &scanlines[d[1] << 3]);
+         }
 
-   for (u32 r = 0; r < 16; r++) {
-      memcpy32((void *)vaddr, &scanlines[data[r] << 3], SL_SIZE);
-      vaddr += fb_pitch;
-   }
-}
-
-void fb_draw_char8x16_row(u32 y, u16 *entries, u32 count)
-{
-   const psf2_header *h = fb_font_header;
-   const u8 *data = (u8 *)h + h->header_size;
-   const uptr vaddr_base = fb_vaddr + (fb_pitch * y);
-
-   /* fb_bpp must be 32 */
-   /* h->width must be 8 */
-   /* h->height must be 16 */
-   /* h->bytes_per_glyph must be 16 */
-
-   // TODO: add fpu_save_context here
-
-   for (u32 ei = 0; ei < count; ei++) {
-
-      const u16 e = entries[ei];
-      const u32 c16 = vgaentry_char(e) << 4;
-      const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
-      uptr vaddr = vaddr_base + (ei << 5);
-      const u8 *d = &data[c16];
-      u32 *scanlines = &fb_w8_char_scanlines[c_off];
-
-      for (u32 r = 0; r < 16; r++) {
-         fpu_cpy_single_256_nt((void *)vaddr, &scanlines[d[r] << 3]);
-         vaddr += fb_pitch;
-      }
    }
 
    // TODO: add fpu_restore_context here

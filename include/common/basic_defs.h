@@ -83,6 +83,7 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 #define PAGE_SIZE_ALIGNED
 #define OFFSET_OF(st, m)
 #define FASTCALL
+#define ASSUME_WITHOUT_CHECK(x)
 
 #else
 
@@ -107,6 +108,7 @@ STATIC_ASSERT(sizeof(long) == sizeof(void *));
 #define PACKED __attribute__((packed))
 #define NODISCARD __attribute__((warn_unused_result))
 #define PAGE_SIZE_ALIGNED __attribute__ ((aligned(PAGE_SIZE)))
+#define ASSUME_WITHOUT_CHECK(x) if (!(x)) __builtin_unreachable();
 
 #ifdef BITS32
 #define FASTCALL __attribute__((fastcall))
