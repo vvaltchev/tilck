@@ -4,7 +4,6 @@
 #include <common/config.h>
 
 #define BASE_LOAD_SEG          0x07C0
-#define DEST_DATA_SEGMENT      0x2000
 
 
 /*
@@ -58,11 +57,11 @@ reloc:
    cld               # The default direction for string operations
                      # will be 'up' - incrementing address in RAM
 
-   # relocate to DEST_DATA_SEGMENT
+   # relocate to BL_ST2_DATA_SEG
 
    mov ax, BASE_LOAD_SEG
    mov ds, ax
-   mov ax, DEST_DATA_SEGMENT
+   mov ax, BL_ST2_DATA_SEG
    mov es, ax
 
    xor si, si # si = 0
@@ -70,7 +69,7 @@ reloc:
    mov cx, 256 # 256 words = 512 bytes
    rep movsw
 
-   jmp DEST_DATA_SEGMENT:after_reloc
+   jmp BL_ST2_DATA_SEG:after_reloc
 
 after_reloc:
 
@@ -79,7 +78,7 @@ after_reloc:
    mov sp, 0xFFF0
    sti             # Restore interrupts
 
-   mov ax, DEST_DATA_SEGMENT # Update ds to match the new cs segment.
+   mov ax, BL_ST2_DATA_SEG # Update ds to match the new cs segment.
    mov ds, ax
 
    mov [current_device], dl # Save the current device
@@ -169,7 +168,7 @@ after_reloc:
    jmp .load_loop
 
 .load_OK:
-   jmp DEST_DATA_SEGMENT:stage2_entry
+   jmp BL_ST2_DATA_SEG:stage2_entry
 
 end:
    mov si, offset str_failed
@@ -203,7 +202,7 @@ sectors_per_track:    .long 0
 heads_per_cylinder:   .long 0
 cylinders_count:      .word 0
 
-curr_data_seg:        .word DEST_DATA_SEGMENT
+curr_data_seg:        .word BL_ST2_DATA_SEG
 current_device:       .word 0
 curr_sec:             .long 1
 
@@ -349,7 +348,7 @@ PT4: .space 16, 0x00             # Fourth Partition Entry
 stage2_entry:
 
    # Set all segments to match where this code is loaded
-   mov ax, DEST_DATA_SEGMENT
+   mov ax, BL_ST2_DATA_SEG
    mov es, ax
    mov fs, ax
    mov gs, ax
@@ -383,7 +382,7 @@ enter_32bit_protected_mode:
 complete_flush:
 
    lgdt [gdtr_flat]
-   jmp 0x08:(DEST_DATA_SEGMENT * 16 + complete_flush2)
+   jmp 0x08:(BL_ST2_DATA_SEG * 16 + complete_flush2)
 
 complete_flush2:
 
@@ -395,7 +394,7 @@ complete_flush2:
    mov ss, ax
 
    # Move in dx the current device
-   mov dx, [DEST_DATA_SEGMENT * 16 + current_device]
+   mov dx, [BL_ST2_DATA_SEG * 16 + current_device]
 
    # jump to the 3rd stage of the bootloader
    jmp 0x08:BL_BASE_ADDR
@@ -414,11 +413,11 @@ gdt32_flat:
 
 gdtr_base_0x20000:
    .word 0x23
-   .long (DEST_DATA_SEGMENT * 16 + offset gdt_base_0x20000)
+   .long (BL_ST2_DATA_SEG * 16 + offset gdt_base_0x20000)
 
 gdtr_flat:
    .word 0x23
-   .long (DEST_DATA_SEGMENT * 16 + offset gdt32_flat)
+   .long (BL_ST2_DATA_SEG * 16 + offset gdt32_flat)
 
 idtr:
    .word 0

@@ -1,2 +1,5 @@
 
+#pragma once
+
 #define PROJ_BUILD_DIR "@CMAKE_BINARY_DIR@"
+#define BUILDTYPE_STR "@CMAKE_BUILD_TYPE@"

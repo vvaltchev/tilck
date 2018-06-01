@@ -6,11 +6,7 @@
 #define KB (1024)
 #define MB (1024*1024)
 
-#ifdef DEBUG
-#  define BUILDTYPE_STR "DEBUG"
-#else
-#  define BUILDTYPE_STR "RELEASE"
-#endif
+#include <generated_config.h>
 
 #define KMALLOC_FREE_MEM_POISON_VAL 0xFAABCAFE
 
@@ -54,14 +50,15 @@ extern void *kernel_va;
 #define KERNEL_PADDR               0x00100000    // +1 MB
 #define KERNEL_MAX_SIZE            (1024 * KB)
 #define KERNEL_FILE_PATH            "/EFI/BOOT/elf_kernel_stripped"
+#define KERNEL_FILE_PATH_EFI        "\\EFI\\BOOT\\elf_kernel_stripped"
 
 #define USER_VSDO_LIKE_PAGE_VADDR (LINEAR_MAPPING_OVER_END)
 
 /* Bootloader specific config */
 
 #define SECTOR_SIZE          512
-#define BL_BASE_ADDR         0x22000
-
-#include <generated_config.h>
-
+#define BL_ST2_DATA_SEG      0x2000
+#define STAGES_1_AND_2_SIZE  4096
+#define STAGE3_ENTRY_OFFSET  4096
+#define BL_BASE_ADDR         (BL_ST2_DATA_SEG * 16 + STAGES_1_AND_2_SIZE + STAGE3_ENTRY_OFFSET)
 #define BL_BASE_SEG          (BL_BASE_ADDR / 16)

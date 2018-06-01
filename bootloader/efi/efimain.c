@@ -22,13 +22,13 @@
 
 #include "utils.h"
 
+#define _CONCAT(a, b) a##b
+#define CONCAT(a, b) _CONCAT(a, b)
+
 #define PAGE_SIZE         4096
 #define TEMP_KERNEL_ADDR  (KERNEL_PADDR + KERNEL_MAX_SIZE)
-#define KERNEL_FILE       L"\\EFI\\BOOT\\elf_kernel_stripped"
 
-// This bootloader does not need (anymore) RAMDISK_PADDR and RAMDISK_SIZE.
-#undef RAMDISK_SIZE
-#undef RAMDISK_PADDR
+#define KERNEL_FILE CONCAT(L, KERNEL_FILE_PATH_EFI)
 
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres);
 void SetMbiFramebufferInfo(multiboot_info_t *mbi, u32 xres, u32 yres);
