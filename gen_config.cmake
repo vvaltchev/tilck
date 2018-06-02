@@ -113,5 +113,56 @@ configure_file(
    ${STAGE3_SCRIPT}
 )
 
+# Run qemu scripts
+
+configure_file(
+   ${PROJECT_SOURCE_DIR}/scripts/run_nokvm_qemu
+   ${PROJECT_BINARY_DIR}/run_nokvm_qemu
+)
+
+configure_file(
+   ${PROJECT_SOURCE_DIR}/scripts/run_qemu
+   ${PROJECT_BINARY_DIR}/run_qemu
+)
+
+configure_file(
+   ${PROJECT_SOURCE_DIR}/scripts/run_nokvm_qemu_with_usbdisk
+   ${PROJECT_BINARY_DIR}/run_nokvm_qemu_with_usbdisk
+)
+
+configure_file(
+   ${PROJECT_SOURCE_DIR}/scripts/run_multiboot_nokvm_qemu
+   ${PROJECT_BINARY_DIR}/run_multiboot_nokvm_qemu
+)
+
+configure_file(
+   ${PROJECT_SOURCE_DIR}/scripts/run_multiboot_qemu
+   ${PROJECT_BINARY_DIR}/run_multiboot_qemu
+)
+
+configure_file(
+   ${PROJECT_SOURCE_DIR}/scripts/run_efi_nokvm_qemu32
+   ${PROJECT_BINARY_DIR}/run_efi_nokvm_qemu32
+)
+
+configure_file(
+   ${PROJECT_SOURCE_DIR}/scripts/run_efi_qemu32
+   ${PROJECT_BINARY_DIR}/run_efi_qemu32
+)
+
+configure_file(
+   ${PROJECT_SOURCE_DIR}/scripts/run_efi_nokvm_qemu64
+   ${PROJECT_BINARY_DIR}/run_efi_nokvm_qemu64
+)
+
+configure_file(
+   ${PROJECT_SOURCE_DIR}/scripts/run_efi_qemu64
+   ${PROJECT_BINARY_DIR}/run_efi_qemu64
+)
+
+configure_file(
+   ${PROJECT_SOURCE_DIR}/scripts/debug_run_qemu
+   ${PROJECT_BINARY_DIR}/debug_run_qemu
+)
 
 include_directories(${CMAKE_BINARY_DIR})

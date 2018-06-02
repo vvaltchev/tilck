@@ -1,10 +1,10 @@
 #!/bin/bash
 
-BUILD_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-f=$BUILD_DIR/gpt_exos.img
+BUILD_DIR="@PROJECT_BINARY_DIR@"
+f="@GPT_IMG_FILE@"
+tc="@TCROOT@"
 
-# ASSUMPTION: the build dir is under the project's main dir.
-if ! [ -d $BUILD_DIR/../toolchain/ovmf ]; then
+if ! [ -d $tc/ovmf ]; then
    echo "In order to boot with EFI, you need to download OVMF first."
    echo "To do that, just run in project's main directory:"
    echo "   ./scripts/build_toolchain -s download_ovmf"
@@ -17,6 +17,6 @@ if ! [ -f $f ]; then
    exit 1
 fi
 
-qemu-system-x86_64 -s -m 256 \
--bios $BUILD_DIR/../toolchain/ovmf/ovmf-x64/OVMF-pure-efi.fd -drive \
-file=$f,index=0,media=disk,format=raw,cyls=74,heads=16,secs=63 "$@"
+qemu-system-x86_64 -s @QEMU_RAM_OPT@ \
+-bios $tc/ovmf/ovmf-x64/OVMF-pure-efi.fd -drive \
+"file=$f,index=0,media=disk,format=raw,cyls=74,heads=16,secs=63" "$@"

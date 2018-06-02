@@ -1,2 +1,4 @@
 #!/bin/sh
-qemu-system-i386 -s -m 256 -usb -usbdevice disk:format=raw:./build/exos.img "$@"
+
+BUILD_DIR="@PROJECT_BINARY_DIR@"
+qemu-system-i386 -s @QEMU_RAM_OPT@ -usb -usbdevice "disk:format=raw:@IMG_FILE@" "$@"

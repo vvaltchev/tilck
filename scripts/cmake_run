@@ -109,8 +109,6 @@ else
    build_dir="$curr_dir"
 fi
 
-cp $MAIN_DIR/scripts/*run*qemu* $build_dir
 cd $build_dir
-
-$CMAKE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D USE_GCOV:BOOL=$USE_GCOV $MAIN_DIR $@
+$CMAKE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D USE_GCOV:BOOL=$USE_GCOV $MAIN_DIR "$@"
 

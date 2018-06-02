@@ -1,4 +1,4 @@
 #!/bin/bash
 
-BUILD_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+BUILD_DIR="@PROJECT_BINARY_DIR@"
 $BUILD_DIR/run_nokvm_qemu -enable-kvm -cpu host "$@"
