@@ -33,7 +33,7 @@
 
 #if !defined(TESTING) && !defined(KERNEL_TEST)
 
-#define KERNEL_BASE_VA             0xC0000000
+#define KERNEL_BASE_VA             CMAKE_KERNEL_BASE_VA
 #define LINEAR_MAPPING_MB          (512)
 
 #else
@@ -47,7 +47,6 @@ extern void *kernel_va;
 #define LINEAR_MAPPING_SIZE        (LINEAR_MAPPING_MB << 20)
 #define LINEAR_MAPPING_OVER_END    (KERNEL_BASE_VA + LINEAR_MAPPING_SIZE)
 
-#define KERNEL_PADDR               0x00100000    // +1 MB
 #define KERNEL_MAX_SIZE            (1024 * KB)
 #define KERNEL_FILE_PATH            "/EFI/BOOT/elf_kernel_stripped"
 #define KERNEL_FILE_PATH_EFI        "\\EFI\\BOOT\\elf_kernel_stripped"

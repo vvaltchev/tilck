@@ -95,7 +95,7 @@ endfunction()
 
 set(EARLY_BOOT_SCRIPT ${PROJECT_BINARY_DIR}/bootloader/early_boot_script.ld)
 set(STAGE3_SCRIPT ${PROJECT_BINARY_DIR}/bootloader/elf_stage3_script.ld)
-set(KERNEL_SCRIPT ${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH}/linker_script.ld)
+set(KERNEL_SCRIPT ${PROJECT_BINARY_DIR}/kernel/arch/linker_script.ld)
 
 hex2dec(${BL_ST2_DATA_SEG} BL_ST2_DATA_SEG_DEC)
 
@@ -118,6 +118,12 @@ configure_file(
    ${PROJECT_SOURCE_DIR}/bootloader/elf_stage3_script.ld
    ${STAGE3_SCRIPT}
 )
+
+configure_file(
+   ${PROJECT_SOURCE_DIR}/kernel/arch/i386/linker_script.ld
+   ${KERNEL_SCRIPT}
+)
+
 
 # Run qemu scripts
 

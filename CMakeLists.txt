@@ -142,13 +142,16 @@ set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
 set(GPT_IMG_FILE ${CMAKE_BINARY_DIR}/gpt_exos.img)
 
 ################################################################################
-# Bootloaders & build-scripts config
+# Bootloaders, build-scripts and link-scripts config
 
 set(BL_ST2_DATA_SEG 0x2000)
 set(EARLY_BOOT_SZ 4096)
 set(STAGE3_ENTRY_OFF 4096)
 
 set(QEMU_RAM_OPT "-m 256")
+set(CMAKE_KERNEL_BASE_VA  0xC0000000)
+set(CMAKE_KERNEL_PADDR    0x00100000)
+
 include("gen_config.cmake")
 
 ################################################################################
