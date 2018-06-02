@@ -127,54 +127,26 @@ configure_file(
 
 # Run qemu scripts
 
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_nokvm_qemu
-   ${CMAKE_BINARY_DIR}/run_nokvm_qemu
+list(
+   APPEND run_qemu_files
+
+   run_nokvm_qemu
+   run_qemu
+   run_nokvm_qemu_with_usbdisk
+   run_multiboot_nokvm_qemu
+   run_multiboot_qemu
+   run_efi_nokvm_qemu32
+   run_efi_qemu32
+   run_efi_nokvm_qemu64
+   run_efi_qemu64
+   debug_run_qemu
 )
 
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_qemu
-   ${CMAKE_BINARY_DIR}/run_qemu
-)
-
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_nokvm_qemu_with_usbdisk
-   ${CMAKE_BINARY_DIR}/run_nokvm_qemu_with_usbdisk
-)
-
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_multiboot_nokvm_qemu
-   ${CMAKE_BINARY_DIR}/run_multiboot_nokvm_qemu
-)
-
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_multiboot_qemu
-   ${CMAKE_BINARY_DIR}/run_multiboot_qemu
-)
-
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_efi_nokvm_qemu32
-   ${CMAKE_BINARY_DIR}/run_efi_nokvm_qemu32
-)
-
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_efi_qemu32
-   ${CMAKE_BINARY_DIR}/run_efi_qemu32
-)
-
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_efi_nokvm_qemu64
-   ${CMAKE_BINARY_DIR}/run_efi_nokvm_qemu64
-)
-
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_efi_qemu64
-   ${CMAKE_BINARY_DIR}/run_efi_qemu64
-)
-
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/qemu/debug_run_qemu
-   ${CMAKE_BINARY_DIR}/debug_run_qemu
-)
+foreach(script_file ${run_qemu_files})
+   configure_file(
+      ${CMAKE_SOURCE_DIR}/scripts/qemu/${script_file}
+      ${CMAKE_BINARY_DIR}/${script_file}
+   )
+endforeach()
 
 include_directories(${CMAKE_BINARY_DIR})
