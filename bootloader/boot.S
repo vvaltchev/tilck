@@ -368,7 +368,7 @@ enter_32bit_protected_mode:
    cli
 
    lidt [idtr]
-   lgdt [gdtr_base_0x20000]
+   lgdt [gdtr_base_X]
 
    # enable protected mode
    mov eax, cr0
@@ -401,19 +401,37 @@ complete_flush2:
 
 #########################################################
 
-gdt_base_0x20000:
+gdt_base_X:
 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 # NULL segment
-.byte 0xFF, 0xFF, 0x00, 0x00, 0x02, 0x9A, 0xCF, 0x00 # code base = 0x20000
-.byte 0xFF, 0xFF, 0x00, 0x00, 0x02, 0x92, 0xCF, 0x00 # data base = 0x20000
+
+# code base = BL_ST2_DATA_SEG*16
+.byte 0xFF, 0xFF # limit
+
+# base (first 24-bit bits)
+.byte ((BL_ST2_DATA_SEG * 16) & 0xff)
+.byte (((BL_ST2_DATA_SEG * 16) >> 8) & 0xff)
+.byte (((BL_ST2_DATA_SEG * 16) >> 16) & 0xff)
+
+.byte 0x9A, 0xCF, 0x00 # access, granularity and high base
+
+# data base = BL_ST2_DATA_SEG*16
+.byte 0xFF, 0xFF # limit
+
+# base (first 24-bit bits)
+.byte ((BL_ST2_DATA_SEG * 16) & 0xff)
+.byte (((BL_ST2_DATA_SEG * 16) >> 8) & 0xff)
+.byte (((BL_ST2_DATA_SEG * 16) >> 16) & 0xff)
+
+.byte 0x92, 0xCF, 0x00 # access, granularity and high base
 
 gdt32_flat:
 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 # NULL segment
 .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x9A, 0xCF, 0x00 # code base = 0
 .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00 # data base = 0
 
-gdtr_base_0x20000:
+gdtr_base_X:
    .word 0x23
-   .long (BL_ST2_DATA_SEG * 16 + offset gdt_base_0x20000)
+   .long (BL_ST2_DATA_SEG * 16 + offset gdt_base_X)
 
 gdtr_flat:
    .word 0x23

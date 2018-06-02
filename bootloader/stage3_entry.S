@@ -337,9 +337,10 @@ gdt16:
    # sel 0x08. 64k 16-bit code
    .word 0xFFFF # segment limit first 0-15 bits
 
-   .byte 0x00   # base (24 bits) = 0x022000
-   .byte 0x20
-   .byte 0x02
+   # base (first 24-bit bits)
+   .byte (BL_BASE_ADDR & 0xff)
+   .byte ((BL_BASE_ADDR >> 8) & 0xff)
+   .byte ((BL_BASE_ADDR >> 16) & 0xff)
 
    .byte 0x9A   # access byte
                 # | present | priv (2) | 1 (reserved) | exec | dc | rw | ac
