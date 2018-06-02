@@ -55,15 +55,6 @@ add_executable(
    ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES}
 )
 
-set(
-   KERNEL_LINK_FLAGS_LIST
-
-   -Wl,--script=${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH}/linker_script.ld
-   -nostdlib
-)
-JOIN("${KERNEL_LINK_FLAGS_LIST}" ${SPACE} KERNEL_LINK_FLAGS)
-
-
 add_custom_command(
 
    OUTPUT
@@ -108,7 +99,8 @@ set_target_properties(
 
    PROPERTIES
       COMPILE_FLAGS "${KERNEL_FLAGS} ${ACTUAL_KERNEL_ONLY_FLAGS}"
-      LINK_FLAGS ${KERNEL_LINK_FLAGS}
+      LINK_FLAGS "-nostdlib -Wl,--script=${KERNEL_SCRIPT}"
+      LINK_DEPENDS ${KERNEL_SCRIPT}
 )
 
 add_dependencies(elf_kernel fonts)
