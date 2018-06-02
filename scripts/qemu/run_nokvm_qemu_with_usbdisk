@@ -1,4 +1,4 @@
 #!/bin/sh
 
-BUILD_DIR="@PROJECT_BINARY_DIR@"
+BUILD_DIR="@CMAKE_BINARY_DIR@"
 qemu-system-i386 -s @QEMU_RAM_OPT@ -usb -usbdevice "disk:format=raw:@IMG_FILE@" "$@"

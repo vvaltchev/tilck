@@ -93,9 +93,9 @@ endfunction()
 
 ################################################################################
 
-set(EARLY_BOOT_SCRIPT ${PROJECT_BINARY_DIR}/bootloader/early_boot_script.ld)
-set(STAGE3_SCRIPT ${PROJECT_BINARY_DIR}/bootloader/elf_stage3_script.ld)
-set(KERNEL_SCRIPT ${PROJECT_BINARY_DIR}/kernel/arch/linker_script.ld)
+set(EARLY_BOOT_SCRIPT ${CMAKE_BINARY_DIR}/bootloader/early_boot_script.ld)
+set(STAGE3_SCRIPT ${CMAKE_BINARY_DIR}/bootloader/elf_stage3_script.ld)
+set(KERNEL_SCRIPT ${CMAKE_BINARY_DIR}/kernel/arch/${ARCH}/linker_script.ld)
 
 hex2dec(${BL_ST2_DATA_SEG} BL_ST2_DATA_SEG_DEC)
 
@@ -105,22 +105,22 @@ math(EXPR BL_BASE_ADDR_DEC
 dec2hex(${BL_BASE_ADDR_DEC} BL_BASE_ADDR)
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/include/common/generated_config_template.h
-   ${PROJECT_BINARY_DIR}/generated_config.h
+   ${CMAKE_SOURCE_DIR}/include/common/generated_config_template.h
+   ${CMAKE_BINARY_DIR}/generated_config.h
 )
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/bootloader/early_boot_script.ld
+   ${CMAKE_SOURCE_DIR}/bootloader/early_boot_script.ld
    ${EARLY_BOOT_SCRIPT}
 )
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/bootloader/elf_stage3_script.ld
+   ${CMAKE_SOURCE_DIR}/bootloader/elf_stage3_script.ld
    ${STAGE3_SCRIPT}
 )
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/kernel/arch/i386/linker_script.ld
+   ${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH}/linker_script.ld
    ${KERNEL_SCRIPT}
 )
 
@@ -128,53 +128,53 @@ configure_file(
 # Run qemu scripts
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/scripts/run_nokvm_qemu
-   ${PROJECT_BINARY_DIR}/run_nokvm_qemu
+   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_nokvm_qemu
+   ${CMAKE_BINARY_DIR}/run_nokvm_qemu
 )
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/scripts/run_qemu
-   ${PROJECT_BINARY_DIR}/run_qemu
+   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_qemu
+   ${CMAKE_BINARY_DIR}/run_qemu
 )
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/scripts/run_nokvm_qemu_with_usbdisk
-   ${PROJECT_BINARY_DIR}/run_nokvm_qemu_with_usbdisk
+   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_nokvm_qemu_with_usbdisk
+   ${CMAKE_BINARY_DIR}/run_nokvm_qemu_with_usbdisk
 )
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/scripts/run_multiboot_nokvm_qemu
-   ${PROJECT_BINARY_DIR}/run_multiboot_nokvm_qemu
+   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_multiboot_nokvm_qemu
+   ${CMAKE_BINARY_DIR}/run_multiboot_nokvm_qemu
 )
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/scripts/run_multiboot_qemu
-   ${PROJECT_BINARY_DIR}/run_multiboot_qemu
+   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_multiboot_qemu
+   ${CMAKE_BINARY_DIR}/run_multiboot_qemu
 )
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/scripts/run_efi_nokvm_qemu32
-   ${PROJECT_BINARY_DIR}/run_efi_nokvm_qemu32
+   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_efi_nokvm_qemu32
+   ${CMAKE_BINARY_DIR}/run_efi_nokvm_qemu32
 )
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/scripts/run_efi_qemu32
-   ${PROJECT_BINARY_DIR}/run_efi_qemu32
+   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_efi_qemu32
+   ${CMAKE_BINARY_DIR}/run_efi_qemu32
 )
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/scripts/run_efi_nokvm_qemu64
-   ${PROJECT_BINARY_DIR}/run_efi_nokvm_qemu64
+   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_efi_nokvm_qemu64
+   ${CMAKE_BINARY_DIR}/run_efi_nokvm_qemu64
 )
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/scripts/run_efi_qemu64
-   ${PROJECT_BINARY_DIR}/run_efi_qemu64
+   ${CMAKE_SOURCE_DIR}/scripts/qemu/run_efi_qemu64
+   ${CMAKE_BINARY_DIR}/run_efi_qemu64
 )
 
 configure_file(
-   ${PROJECT_SOURCE_DIR}/scripts/debug_run_qemu
-   ${PROJECT_BINARY_DIR}/debug_run_qemu
+   ${CMAKE_SOURCE_DIR}/scripts/qemu/debug_run_qemu
+   ${CMAKE_BINARY_DIR}/debug_run_qemu
 )
 
 include_directories(${CMAKE_BINARY_DIR})

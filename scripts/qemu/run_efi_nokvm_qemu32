@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BUILD_DIR="@PROJECT_BINARY_DIR@"
+BUILD_DIR="@CMAKE_BINARY_DIR@"
 f="@GPT_IMG_FILE@"
 tc="@TCROOT@"
 

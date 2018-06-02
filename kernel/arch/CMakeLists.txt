@@ -7,60 +7,26 @@ if (${ARCH} STREQUAL "i386")
    set(OBJCOPY ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-objcopy)
    set(STRIP ${GCC_TOOLCHAIN}/i686-buildroot-linux-gnu-strip)
 
+   set(ARCH_ELF_NAME "elf32-i386")
+
 else()
 
-   set(OBJCOPY objcopy)
-   set(STRIP strip)
+   message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
 
 endif()
 
-# Remove -rdynamic
-SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+# B2O = Binary to Object file [options]
+list(APPEND B2O -O ${ARCH_ELF_NAME} -B ${ARCH} -I binary)
 
-
-# Options that will be used only when building the actual kernel, not when
-# building kernel's code for unit testing.
-
-set(
-   ACTUAL_KERNEL_ONLY_FLAGS_LIST
-
-   -fno-pic
-   -fno-asynchronous-unwind-tables
-   -fno-exceptions
-   -fno-stack-protector
-
-   # Allow easier disassembly debugging
-   -mpush-args
-   -mno-accumulate-outgoing-args
-   -mno-stack-arg-probe
-)
-JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
-
-file(GLOB ARCH_SOURCES "${ARCH}/*.S" "${ARCH}/*.c")
-
-file(
-      GLOB
-      ARCH_FAMILY_SOURCES
-
-      "${ARCH_FAMILY}/*.c"
-      "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
-)
-
-file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})
-
-add_executable(
-
-   elf_kernel
-
-   ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES}
-)
+set(FONT8x16 ${CMAKE_CURRENT_BINARY_DIR}/${ARCH}/font8x16.o)
+set(FONT16x32 ${CMAKE_CURRENT_BINARY_DIR}/${ARCH}/font16x32.o)
 
 add_custom_command(
 
    OUTPUT
-      font8x16.o
+      ${FONT8x16}
    COMMAND
-      ${OBJCOPY} -O elf32-i386 -B i386 -I binary font8x16.psf ${CMAKE_CURRENT_BINARY_DIR}/font8x16.o
+      ${OBJCOPY} ${B2O} font8x16.psf ${FONT8x16}
    WORKING_DIRECTORY
       ${CMAKE_SOURCE_DIR}/kernel/fb
    DEPENDS
@@ -72,9 +38,9 @@ add_custom_command(
 add_custom_command(
 
    OUTPUT
-      font16x32.o
+      ${FONT16x32}
    COMMAND
-      ${OBJCOPY} -O elf32-i386 -B i386 -I binary font16x32.psf ${CMAKE_CURRENT_BINARY_DIR}/font16x32.o
+      ${OBJCOPY} ${B2O} font16x32.psf ${FONT16x32}
    WORKING_DIRECTORY
       ${CMAKE_SOURCE_DIR}/kernel/fb
    DEPENDS
@@ -83,72 +49,13 @@ add_custom_command(
       "Copying the psf font (16x32) file into an ELF object file"
 )
 
-
 add_custom_target(
 
     fonts
 
     DEPENDS
-      font8x16.o
-      font16x32.o
+      ${FONT8x16}
+      ${FONT16x32}
 )
 
-set_target_properties(
-
-   elf_kernel
-
-   PROPERTIES
-      COMPILE_FLAGS "${KERNEL_FLAGS} ${ACTUAL_KERNEL_ONLY_FLAGS}"
-      LINK_FLAGS "-nostdlib -Wl,--script=${KERNEL_SCRIPT}"
-      LINK_DEPENDS ${KERNEL_SCRIPT}
-)
-
-add_dependencies(elf_kernel fonts)
-target_link_libraries(elf_kernel ${CMAKE_CURRENT_BINARY_DIR}/font8x16.o)
-target_link_libraries(elf_kernel ${CMAKE_CURRENT_BINARY_DIR}/font16x32.o)
-
-
-# -lgcc is necessary for things like 64 bit integers in 32 bit mode.
-target_link_libraries(elf_kernel gcc)
-
-add_custom_command(
-   OUTPUT
-      ${KERNEL_FILE}
-   COMMAND
-      ${STRIP} --strip-debug elf_kernel -o ${KERNEL_FILE}
-   COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --copy .symtab .Symtab
-   COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --copy .strtab .Strtab
-   COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --link .Symtab .Strtab
-   COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .symtab osymtab
-   COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .strtab ostrtab
-   COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .Symtab .symtab
-   COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .Strtab .strtab
-   COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --move_metadata
-   COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --drop-last-section
-   COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --drop-last-section
-   COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
-   DEPENDS
-      elfhack ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
-   COMMENT
-      "Preparing kernel's stripped binary"
-)
-
-add_custom_target(
-
-    kernel ALL
-
-    DEPENDS
-        ${KERNEL_FILE}
-)
-
+add_subdirectory(${ARCH})

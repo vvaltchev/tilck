@@ -152,7 +152,7 @@ set(QEMU_RAM_OPT "-m 256")
 set(CMAKE_KERNEL_BASE_VA  0xC0000000)
 set(CMAKE_KERNEL_PADDR    0x00100000)
 
-include(${PROJECT_SOURCE_DIR}/scripts/gen_config.cmake)
+include(${CMAKE_SOURCE_DIR}/scripts/gen_config.cmake)
 
 ################################################################################
 # Include sub-directories
