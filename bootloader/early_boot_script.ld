@@ -13,7 +13,7 @@ SECTIONS
   .text :
   {
     *(.text)
-    . = @STAGES_1_AND_2_SIZE@;
+    . = @EARLY_BOOT_SZ@;
   }
 
   /DISCARD/ : { *(*) }

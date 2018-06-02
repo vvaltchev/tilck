@@ -136,7 +136,7 @@ set(COMMON_FLAGS "${GENERAL_DEFS} ${OTHER_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 # Bootloaders & build-scripts config
 
 set(BL_ST2_DATA_SEG 0x2000)
-set(STAGES_1_AND_2_SIZE 4096)
+set(EARLY_BOOT_SZ 4096)
 set(STAGE3_ENTRY_OFF 4096)
 
 include("gen_config.cmake")
