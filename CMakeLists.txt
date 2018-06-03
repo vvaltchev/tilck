@@ -141,6 +141,9 @@ set(KERNEL_FILE ${CMAKE_BINARY_DIR}/elf_kernel_stripped)
 set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
 set(GPT_IMG_FILE ${CMAKE_BINARY_DIR}/gpt_exos.img)
 
+set(KERNEL_FATPART_PATH "EFI/BOOT/elf_kernel_stripped")
+string(REPLACE "/" "\\\\" KERNEL_FATPART_PATH_EFI "${KERNEL_FATPART_PATH}")
+
 ################################################################################
 # Bootloaders, build-scripts and link-scripts config
 
@@ -151,6 +154,7 @@ set(STAGE3_ENTRY_OFF 4096)
 set(QEMU_RAM_OPT "-m 256")
 set(CMAKE_KERNEL_BASE_VA  0xC0000000)
 set(CMAKE_KERNEL_PADDR    0x00100000)
+
 
 include(${CMAKE_SOURCE_DIR}/scripts/gen_config.cmake)
 
@@ -175,7 +179,7 @@ add_custom_command(
    COMMAND
       dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
    COMMAND
-      ${BUILD_SCRIPTS}/build_fatpart ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} fatpart
+      ${BUILD_FATPART}
    COMMAND
       ${BUILD_APPS}/fat_get_used_bytes --truncate fatpart
    COMMAND

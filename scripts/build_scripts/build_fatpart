@@ -1,19 +1,17 @@
 #!/bin/bash
 
-# Args: <project's root dir> <build dir> <dest img file>
+maindir="@CMAKE_SOURCE_DIR@"
+bdir="@CMAKE_BINARY_DIR@"
+dest="@CMAKE_BINARY_DIR@/fatpart"
+tc="@TCROOT@"
 
-maindir=$1
-bdir=$2
-dest=$2/$3
-
-tc=$maindir/toolchain
 mtoolsdir=$tc/mtools
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd
 mcopy=$mtoolsdir/mcopy
 
-if [ ! -f $1 ]; then
+if [ ! -f $dest ]; then
    # If the 'fatpart' file does not already exist
    dd status=none if=/dev/zero of=$dest bs=1M count=35
 fi
@@ -40,11 +38,11 @@ ln $bdir/usermode_apps/init sbin/
 ln $bdir/usermode_apps/shell bin/
 
 # hard-link EFI files
-ln $bdir/bootloader/efi/BOOTX64.EFI EFI/BOOT/
-ln $bdir/bootloader/efi/BOOTIA32.EFI EFI/BOOT/
+ln @EFI_x86_64_FILE@ EFI/BOOT/
+ln @EFI_ia32_FILE@ EFI/BOOT/
 
 # hard-link the kernel file (used also by the legacy bootloader)
-ln $bdir/elf_kernel_stripped EFI/BOOT/elf_kernel_stripped
+ln @KERNEL_FILE@ @KERNEL_FATPART_PATH@
 
 # first, create the directories
 for f in $(find * -type d); do

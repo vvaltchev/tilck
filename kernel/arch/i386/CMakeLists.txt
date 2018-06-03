@@ -65,27 +65,27 @@ add_custom_command(
    COMMAND
       ${STRIP} --strip-debug elf_kernel -o ${KERNEL_FILE}
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --copy .symtab .Symtab
+      elfhack ${KERNEL_FILE} --copy .symtab .Symtab
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --copy .strtab .Strtab
+      elfhack ${KERNEL_FILE} --copy .strtab .Strtab
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --link .Symtab .Strtab
+      elfhack ${KERNEL_FILE} --link .Symtab .Strtab
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .symtab osymtab
+      elfhack ${KERNEL_FILE} --rename .symtab osymtab
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .strtab ostrtab
+      elfhack ${KERNEL_FILE} --rename .strtab ostrtab
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .Symtab .symtab
+      elfhack ${KERNEL_FILE} --rename .Symtab .symtab
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --rename .Strtab .strtab
+      elfhack ${KERNEL_FILE} --rename .Strtab .strtab
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --move_metadata
+      elfhack ${KERNEL_FILE} --move_metadata
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --drop-last-section
+      elfhack ${KERNEL_FILE} --drop-last-section
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --drop-last-section
+      elfhack ${KERNEL_FILE} --drop-last-section
    COMMAND
-      ${BUILD_APPS}/elfhack ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
+      elfhack ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
    DEPENDS
       elfhack ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
    COMMENT

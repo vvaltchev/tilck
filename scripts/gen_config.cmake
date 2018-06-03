@@ -96,6 +96,7 @@ endfunction()
 set(EARLY_BOOT_SCRIPT ${CMAKE_BINARY_DIR}/bootloader/early_boot_script.ld)
 set(STAGE3_SCRIPT ${CMAKE_BINARY_DIR}/bootloader/elf_stage3_script.ld)
 set(KERNEL_SCRIPT ${CMAKE_BINARY_DIR}/kernel/arch/${ARCH}/linker_script.ld)
+set(BUILD_FATPART ${CMAKE_BINARY_DIR}/scripts/build_fatpart)
 
 hex2dec(${BL_ST2_DATA_SEG} BL_ST2_DATA_SEG_DEC)
 
@@ -105,25 +106,33 @@ math(EXPR BL_BASE_ADDR_DEC
 dec2hex(${BL_BASE_ADDR_DEC} BL_BASE_ADDR)
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/include/common/generated_config_template.h
+   ${CMAKE_SOURCE_DIR}/include/common/generated_config.h
    ${CMAKE_BINARY_DIR}/generated_config.h
 )
 
 configure_file(
    ${CMAKE_SOURCE_DIR}/bootloader/early_boot_script.ld
    ${EARLY_BOOT_SCRIPT}
+   @ONLY
 )
 
 configure_file(
    ${CMAKE_SOURCE_DIR}/bootloader/elf_stage3_script.ld
    ${STAGE3_SCRIPT}
+   @ONLY
 )
 
 configure_file(
    ${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH}/linker_script.ld
    ${KERNEL_SCRIPT}
+   @ONLY
 )
 
+configure_file(
+   ${CMAKE_SOURCE_DIR}/scripts/build_scripts/build_fatpart
+   ${BUILD_FATPART}
+   @ONLY
+)
 
 # Run qemu scripts
 
@@ -146,6 +155,7 @@ foreach(script_file ${run_qemu_files})
    configure_file(
       ${CMAKE_SOURCE_DIR}/scripts/qemu/${script_file}
       ${CMAKE_BINARY_DIR}/${script_file}
+      @ONLY
    )
 endforeach()
 

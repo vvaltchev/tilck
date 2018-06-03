@@ -48,9 +48,6 @@ extern void *kernel_va;
 #define LINEAR_MAPPING_OVER_END    (KERNEL_BASE_VA + LINEAR_MAPPING_SIZE)
 
 #define KERNEL_MAX_SIZE            (1024 * KB)
-#define KERNEL_FILE_PATH            "/EFI/BOOT/elf_kernel_stripped"
-#define KERNEL_FILE_PATH_EFI        "\\EFI\\BOOT\\elf_kernel_stripped"
-
 #define USER_VSDO_LIKE_PAGE_VADDR (LINEAR_MAPPING_OVER_END)
 
 /* Bootloader specific config */
