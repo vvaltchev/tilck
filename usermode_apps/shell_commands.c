@@ -274,6 +274,17 @@ void cmd_syscall_perf(void)
    printf("sysenter setuid(): %llu cycles\n", duration/iters);
 }
 
+void cmd_fpu(void)
+{
+   double num;
+
+   printf("Enter real number: ");
+   fflush(stdout);
+
+   fscanf(stdin, "%lf", &num);
+   printf("n^2 = %lf\n", num * 2.0);
+}
+
 void cmd_help(void);
 
 /* ------------------------------------------- */
@@ -296,8 +307,8 @@ struct {
    {"fork_perf", cmd_fork_perf},
    {"sysenter", cmd_sysenter},
    {"syscall_perf", cmd_syscall_perf},
-   {"sysenter_fork_test", cmd_sysenter_fork_test}
-
+   {"sysenter_fork_test", cmd_sysenter_fork_test},
+   {"fpu", cmd_fpu}
 };
 
 void cmd_help(void)
