@@ -61,6 +61,20 @@
 #define MSR_IA32_SYSENTER_ESP           0x175
 #define MSR_IA32_SYSENTER_EIP           0x176
 
+#define CR0_PE              (1 << 0)
+#define CR0_MP              (1 << 1)
+#define CR0_EM              (1 << 2)
+#define CR0_TS              (1 << 3)
+#define CR0_ET              (1 << 4)
+#define CR0_NE              (1 << 5)
+
+#define CR0_WP              (1 << 16)
+#define CR0_AM              (1 << 18)
+#define CR0_NW              (1 << 29)
+#define CR0_CD              (1 << 30)
+#define CR0_PG              (1 << 31)
+
+
 /*
  * x86 selectors are 16 bit integers:
  *
@@ -222,6 +236,24 @@ static ALWAYS_INLINE void cpuid(u32 code, u32 *a, u32 *b, u32 *c, u32 *d)
                 : "memory");
 }
 
+static ALWAYS_INLINE u32 read_cr0(void)
+{
+   u32 res;
+   asmVolatile("mov %%cr0, %0"
+               : "=r" (res)
+               : /* no input */
+               : /* no clobber */);
+
+   return res;
+}
+
+static ALWAYS_INLINE void write_cr0(u32 val)
+{
+   asmVolatile("mov %0, %%cr0"
+               : /* no output */
+               : "r" (val)
+               : /* no clobber */);
+}
 
 // Reboot the system
 void reboot();
