@@ -176,6 +176,10 @@ void bootloader_main(void)
 
    get_x86_cpu_features();
 
+   if (!x86_cpu_features.edx1.pse) {
+      panic("Sorry, but your CPU is too old: no PSE");
+   }
+
    bool success =
       read_drive_params(current_device,
                         &sectors_per_track,
