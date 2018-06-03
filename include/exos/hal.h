@@ -12,6 +12,7 @@
    #include <common/arch/generic_x86/cpu_features.h>
    #include <exos/arch/i386/asm_defs.h>
    #include <exos/arch/i386/arch_utils.h>
+   #include <exos/arch/generic_x86/fpu_memcpy.h>
 
 #elif defined(__x86_64__)
 
@@ -20,6 +21,7 @@
    #include <common/arch/generic_x86/x86_utils.h>
    #include <common/arch/generic_x86/cpu_features.h>
    #include <exos/arch/x86_64/arch_utils.h>
+   #include <exos/arch/generic_x86/fpu_memcpy.h>
 
 #else
 
@@ -36,3 +38,5 @@ void setup_soft_interrupt_handling(void);
 void setup_syscall_interfaces(void);
 void set_kernel_stack(uptr stack);
 void enable_cpu_features(void);
+void fpu_context_begin(void);
+void fpu_context_end(void);
