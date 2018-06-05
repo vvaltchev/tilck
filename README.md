@@ -4,6 +4,8 @@ exOS
 [![Build Status](https://travis-ci.org/vvaltchev/experimentOs.svg?branch=master)](https://travis-ci.org/vvaltchev/experimentOs)
 
 
+![Alt text](other/screenshot.png?raw=true "exOS")
+
 
 **A Linux-compatible x86 kernel written for educational purposes and fun**
 
