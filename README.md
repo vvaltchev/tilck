@@ -4,8 +4,9 @@ exOS
 [![Build Status](https://travis-ci.org/vvaltchev/experimentOs.svg?branch=master)](https://travis-ci.org/vvaltchev/experimentOs)
 
 
-
 **A Linux-compatible x86 kernel written for educational purposes and fun**
+
+![Alt text](other/screenshot.png?raw=true "exOS")
 
 From the technical point of view, the goal of this project is writing a kernel
 being able to run *natively* x86 Linux console applications (like shells, text
