@@ -2,6 +2,7 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
+#include <exos/syscalls.h>
 #include <exos/irq.h>
 #include <exos/process.h>
 #include <exos/hal.h>
@@ -10,15 +11,6 @@
 #include <exos/debug_utils.h>
 
 typedef sptr (*syscall_type)();
-
-// 1:
-sptr sys_exit(int code);
-sptr sys_fork(void);
-sptr sys_read(int fd, void *buf, size_t count);
-sptr sys_write(int fd, const void *buf, size_t count);
-sptr sys_open(const char *pathname, int flags, int mode);
-sptr sys_close(int fd);
-sptr sys_waitpid(int pid, int *wstatus, int options);
 
 sptr sys_creat()
 {
@@ -34,12 +26,6 @@ sptr sys_unlink()
 {
    return -ENOSYS;
 }
-
-sptr sys_execve(const char *filename,
-                const char *const *argv,
-                const char *const *env);
-
-sptr sys_chdir(const char *path);
 
 sptr sys_time()
 {
@@ -75,8 +61,6 @@ sptr sys_lseek()
 {
    return -ENOSYS;
 }
-
-sptr sys_getpid();
 
 sptr sys_mount()
 {
@@ -123,37 +107,17 @@ sptr sys_oldfstat()
    return -ENOSYS;
 }
 
-sptr sys_pause();
-
 sptr sys_utime()
 {
    return -ENOSYS;
 }
 
-// 54:
-sptr sys_ioctl(int fd, uptr request, void *argp);
-
-// 146:
-sptr sys_writev(int fd, const void *iov, int iovcnt);
-
-// 162:
 sptr sys_nanosleep(/* ignored arguments for the moment */)
 {
    // This is a stub implementation. TODO: actually implement nanosleep().
    kernel_sleep(TIMER_HZ/10);
    return 0;
 }
-
-//183:
-sptr sys_getcwd(char *buf, size_t buf_size);
-
-//243:
-sptr sys_set_thread_area(void *u_info);
-
-//258:
-
-// TODO: complete the implementation when thread creation is implemented.
-sptr sys_set_tid_address(int *tidptr);
 
 // The syscall numbers are ARCH-dependent
 syscall_type syscalls[] =

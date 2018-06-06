@@ -23,6 +23,7 @@
 #include <exos/term.h>
 #include <exos/pageframe_allocator.h>
 #include <exos/datetime.h>
+#include <exos/syscalls.h>
 #include <exos/fb_console.h>
 #include <exos/arch/generic_x86/textmode_video.h>
 #include <exos/arch/generic_x86/fpu_memcpy.h>
@@ -40,11 +41,6 @@ void parse_kernel_cmdline(const char *cmdline);
 /* -- */
 
 void init_tty(void);
-
-sptr sys_execve(const char *filename,
-                const char *const *argv,
-                const char *const *env);
-
 
 void read_multiboot_info(u32 magic, u32 mbi_addr)
 {
