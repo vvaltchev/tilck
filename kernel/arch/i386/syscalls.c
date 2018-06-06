@@ -12,65 +12,34 @@
 
 typedef sptr (*syscall_type)();
 
-sptr sys_creat()
-{
-   return -ENOSYS;
-}
+#define CREATE_STUB_IMPL(name)                          \
+   sptr name()                                          \
+   {                                                    \
+      printk("NOT IMPLEMENTED: %s()\n", #name);         \
+      return -ENOSYS;                                   \
+   }
 
-sptr sys_link()
-{
-   return -ENOSYS;
-}
-
-sptr sys_unlink()
-{
-   return -ENOSYS;
-}
-
-sptr sys_time()
-{
-   return -ENOSYS;
-}
-
-sptr sys_mknod()
-{
-   return -ENOSYS;
-}
-
-sptr sys_chmod()
-{
-   return -ENOSYS;
-}
-
-sptr sys_lchown()
-{
-   return -ENOSYS;
-}
-
-sptr sys_break()
-{
-   return -ENOSYS;
-}
-
-sptr sys_oldstat()
-{
-   return -ENOSYS;
-}
-
-sptr sys_lseek()
-{
-   return -ENOSYS;
-}
-
-sptr sys_mount()
-{
-   return -ENOSYS;
-}
-
-sptr sys_oldumount()
-{
-   return -ENOSYS;
-}
+CREATE_STUB_IMPL(sys_creat)
+CREATE_STUB_IMPL(sys_link)
+CREATE_STUB_IMPL(sys_unlink)
+CREATE_STUB_IMPL(sys_time)
+CREATE_STUB_IMPL(sys_mknod)
+CREATE_STUB_IMPL(sys_chmod)
+CREATE_STUB_IMPL(sys_lchown)
+CREATE_STUB_IMPL(sys_break)
+CREATE_STUB_IMPL(sys_oldstat)
+CREATE_STUB_IMPL(sys_lseek)
+CREATE_STUB_IMPL(sys_mount)
+CREATE_STUB_IMPL(sys_oldumount)
+CREATE_STUB_IMPL(sys_stime)
+CREATE_STUB_IMPL(sys_ptrace)
+CREATE_STUB_IMPL(sys_alarm)
+CREATE_STUB_IMPL(sys_oldfstat)
+CREATE_STUB_IMPL(sys_utime)
+CREATE_STUB_IMPL(sys_rt_sigprocmask)
+CREATE_STUB_IMPL(sys_wait4)
+CREATE_STUB_IMPL(sys_gettid)
+CREATE_STUB_IMPL(sys_exit_group)
 
 /* Actual implementation: accept only 0 as UID. */
 sptr sys_setuid16(uptr uid)
@@ -85,31 +54,6 @@ sptr sys_setuid16(uptr uid)
 sptr sys_getuid16()
 {
    return 0;
-}
-
-sptr sys_stime()
-{
-   return -ENOSYS;
-}
-
-sptr sys_ptrace()
-{
-   return -ENOSYS;
-}
-
-sptr sys_alarm()
-{
-   return -ENOSYS;
-}
-
-sptr sys_oldfstat()
-{
-   return -ENOSYS;
-}
-
-sptr sys_utime()
-{
-   return -ENOSYS;
 }
 
 sptr sys_nanosleep(/* ignored arguments for the moment */)
@@ -153,12 +97,16 @@ syscall_type syscalls[] =
    [28] = sys_oldfstat,
    [29] = sys_pause,
    [30] = sys_utime,
-   [54] = sys_ioctl,
 
+   [54] = sys_ioctl,
+   [114] = sys_wait4,
    [146] = sys_writev,
    [162] = sys_nanosleep,
+   [175] = sys_rt_sigprocmask,
    [183] = sys_getcwd,
+   [224] = sys_gettid,
    [243] = sys_set_thread_area,
+   [252] = sys_exit_group,
    [258] = sys_set_tid_address
 };
 
@@ -179,7 +127,7 @@ void handle_syscall(regs *r)
    const u32 sn = r->eax;
 
    if (sn >= ARRAY_SIZE(syscalls) || !syscalls[sn]) {
-      printk("invalid syscall #%i\n", sn);
+      printk("Unknown syscall #%i\n", sn);
       r->eax = (uptr) -ENOSYS;
       return;
    }
