@@ -28,20 +28,30 @@ extern u8 page_size_buf[PAGE_SIZE];
 extern char vsdo_like_page[PAGE_SIZE];
 
 static u16 *pageframes_refcount;
+static uptr phys_mem_lim;
 
 static ALWAYS_INLINE u32 pf_ref_count_inc(u32 paddr)
 {
+   if (paddr >= phys_mem_lim)
+      return 0;
+
    return ++pageframes_refcount[paddr >> PAGE_SHIFT];
 }
 
 static ALWAYS_INLINE u32 pf_ref_count_dec(u32 paddr)
 {
+   if (paddr >= phys_mem_lim)
+      return 0;
+
    ASSERT(pageframes_refcount[paddr >> PAGE_SHIFT] > 0);
    return --pageframes_refcount[paddr >> PAGE_SHIFT];
 }
 
 static ALWAYS_INLINE u32 pf_ref_count_get(u32 paddr)
 {
+   if (paddr >= phys_mem_lim)
+      return 0;
+
    return pageframes_refcount[paddr >> PAGE_SHIFT];
 }
 
@@ -454,6 +464,8 @@ void init_paging()
 
 void init_paging_cow(void)
 {
+   phys_mem_lim = get_phys_mem_mb() * MB;
+
    /*
     * Allocate the buffer used for keeping a ref-count for each pageframe.
     * This is necessary for COW.
