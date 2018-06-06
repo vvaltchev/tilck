@@ -24,9 +24,27 @@
 
 extern page_directory_t *kernel_page_dir;
 extern page_directory_t *curr_page_dir;
-extern u16 *pageframes_refcount;
 extern u8 page_size_buf[PAGE_SIZE];
 extern char vsdo_like_page[PAGE_SIZE];
+
+static u16 *pageframes_refcount;
+
+static ALWAYS_INLINE u32 pf_ref_count_inc(u32 paddr)
+{
+   return ++pageframes_refcount[paddr >> PAGE_SHIFT];
+}
+
+static ALWAYS_INLINE u32 pf_ref_count_dec(u32 paddr)
+{
+   ASSERT(pageframes_refcount[paddr >> PAGE_SHIFT] > 0);
+   return --pageframes_refcount[paddr >> PAGE_SHIFT];
+}
+
+static ALWAYS_INLINE u32 pf_ref_count_get(u32 paddr)
+{
+   return pageframes_refcount[paddr >> PAGE_SHIFT];
+}
+
 
 bool handle_potential_cow(u32 vaddr)
 {
@@ -41,9 +59,10 @@ bool handle_potential_cow(u32 vaddr)
    if (!(ptable->pages[page_table_index].avail & PAGE_COW_ORIG_RW))
       return false; /* Not a COW page */
 
-   const u32 orig_page_paddr = ptable->pages[page_table_index].pageAddr;
+   const u32 orig_page_paddr =
+      ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 
-   if (pageframes_refcount[orig_page_paddr] == 1) {
+   if (pf_ref_count_get(orig_page_paddr) == 1) {
 
       /* This page is not shared anymore. No need for copying it. */
       ptable->pages[page_table_index].rw = true;
@@ -53,7 +72,8 @@ bool handle_potential_cow(u32 vaddr)
    }
 
    // Decrease the ref-count of the original pageframe.
-   pageframes_refcount[orig_page_paddr]--;
+   pf_ref_count_dec(orig_page_paddr);
+
 
    // Copy the whole page to our temporary buffer.
    memcpy(page_size_buf, page_vaddr, PAGE_SIZE);
@@ -63,13 +83,13 @@ bool handle_potential_cow(u32 vaddr)
    VERIFY(new_page_vaddr != NULL); // Don't handle this out-of-mem for now.
    ASSERT(IS_PAGE_ALIGNED(new_page_vaddr));
 
-   const uptr shifted_paddr = KERNEL_VA_TO_PA(new_page_vaddr) >> PAGE_SHIFT;
+   const uptr paddr = KERNEL_VA_TO_PA(new_page_vaddr);
 
    /* Sanity-check: a newly allocated pageframe MUST have ref-count == 0 */
-   ASSERT(!pageframes_refcount[shifted_paddr]);
-   pageframes_refcount[shifted_paddr]++;
+   ASSERT(pf_ref_count_get(paddr) == 0);
+   pf_ref_count_inc(paddr);
 
-   ptable->pages[page_table_index].pageAddr = shifted_paddr;
+   ptable->pages[page_table_index].pageAddr = paddr >> PAGE_SHIFT;
    ptable->pages[page_table_index].rw = true;
    ptable->pages[page_table_index].avail = 0;
 
@@ -198,12 +218,10 @@ void unmap_page(page_directory_t *pdir, void *vaddrp)
    ASSERT(ptable->pages[page_table_index].present);
    ptable->pages[page_table_index].raw = 0;
 
-   uptr shifted_paddr = ptable->pages[page_table_index].pageAddr;
-   ASSERT(pageframes_refcount[shifted_paddr] > 0);
+   const uptr paddr = ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 
-   if (--pageframes_refcount[shifted_paddr] == 0) {
-      kfree2(KERNEL_PA_TO_VA(shifted_paddr << PAGE_SHIFT), PAGE_SIZE);
-   }
+   if (pf_ref_count_dec(paddr) == 0)
+      kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
 
    invalidate_page(vaddr);
 }
@@ -261,7 +279,7 @@ void map_page_int(page_directory_t *pdir,
    ASSERT(ptable->pages[page_table_index].present == 0);
 
    ptable->pages[page_table_index].raw = PG_PRESENT_BIT | flags | paddr;
-   pageframes_refcount[ptable->pages[page_table_index].pageAddr]++;
+   pf_ref_count_inc(paddr);
    invalidate_page(vaddr);
 }
 
@@ -320,8 +338,10 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
          if (!orig_pt->pages[j].present)
             continue;
 
+         const uptr orig_paddr = orig_pt->pages[j].pageAddr << PAGE_SHIFT;
+
          /* Sanity-check: a mapped page MUST have ref-count > 0 */
-         ASSERT(pageframes_refcount[orig_pt->pages[j].pageAddr] > 0);
+         ASSERT(pf_ref_count_get(orig_paddr) > 0);
 
          if (orig_pt->pages[j].rw) {
             orig_pt->pages[j].avail |= PAGE_COW_ORIG_RW;
@@ -330,7 +350,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
          orig_pt->pages[j].rw = false;
 
          // We're making for the first time this page to be COW.
-         pageframes_refcount[orig_pt->pages[j].pageAddr]++;
+         pf_ref_count_inc(orig_paddr);
       }
 
       // alloc memory for the page table
@@ -367,10 +387,10 @@ void pdir_destroy(page_directory_t *pdir)
          if (!pt->pages[j].present)
             continue;
 
-         const u32 paddr = pt->pages[j].pageAddr;
+         const u32 paddr = pt->pages[j].pageAddr << PAGE_SHIFT;
 
-         if (--pageframes_refcount[paddr] == 0)
-            kfree2(KERNEL_PA_TO_VA(paddr << PAGE_SHIFT), PAGE_SIZE);
+         if (pf_ref_count_dec(paddr) == 0)
+            kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
       }
 
       // We freed all the pages, now free the whole page-table.
