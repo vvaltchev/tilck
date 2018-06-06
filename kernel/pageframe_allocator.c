@@ -22,11 +22,7 @@
 
 u32 pageframes_bitfield[8 * (MAX_MEM_SIZE_IN_MB - LINEAR_MAPPING_MB)];
 
-/*
- * HACK: just assume we have 128 MB as memory. In the future, this value has to
- * be somehow passed from the bootloader to the kernel.
- */
-u32 memsize_in_mb = 128;
+u32 memsize_in_mb;
 int pageframes_used;
 static u32 last_index;
 
