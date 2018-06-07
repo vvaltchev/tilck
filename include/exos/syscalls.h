@@ -50,7 +50,7 @@ DEFINE_STUB_SYSCALL(sys_utime);
 
 sptr sys_ioctl(int fd, uptr request, void *argp);
 
-DEFINE_STUB_SYSCALL(sys_wait4);
+sptr sys_wait4(int pid, int *wstatus, int options, void *user_rusage);
 
 sptr sys_writev(int fd, const void *iov, int iovcnt);
 
@@ -59,9 +59,11 @@ DEFINE_STUB_SYSCALL(sys_rt_sigprocmask);
 
 
 sptr sys_getcwd(char *buf, size_t buf_size);
+
+sptr sys_gettid();
 sptr sys_set_thread_area(void *u_info);
 
-DEFINE_STUB_SYSCALL(sys_exit_group);
+NORETURN sptr sys_exit_group(int status);
 
 // TODO: complete the implementation when thread creation is implemented.
 sptr sys_set_tid_address(int *tidptr);

@@ -308,6 +308,11 @@ sptr sys_getpid()
    return get_curr_task()->owning_process_pid;
 }
 
+sptr sys_gettid()
+{
+   return get_curr_task()->tid;
+}
+
 void join_kernel_thread(int tid)
 {
    ASSERT(is_preemption_enabled());
@@ -374,7 +379,21 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
    }
 }
 
-NORETURN void sys_exit(int exit_status)
+sptr sys_wait4(int pid, int *wstatus, int options, void *user_rusage)
+
+{
+   char zero_buf[136] = {0};
+
+   if (user_rusage) {
+      // TODO: update when rusage is actually supported
+      if (copy_to_user(user_rusage, zero_buf, sizeof(zero_buf)) < 0)
+         return -EFAULT;
+   }
+
+   return sys_waitpid(pid, wstatus, options);
+}
+
+NORETURN sptr sys_exit(int exit_status)
 {
    disable_preemption();
    task_info *curr = get_curr_task();
@@ -432,6 +451,12 @@ NORETURN void sys_exit(int exit_status)
 
    /* Necessary to guarantee to the compiler that we won't return. */
    NOT_REACHED();
+}
+
+NORETURN sptr sys_exit_group(int status)
+{
+   // TODO: update when user threads are supported
+   sys_exit(status);
 }
 
 // Returns child's pid
