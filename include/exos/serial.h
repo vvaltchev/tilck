@@ -2,7 +2,8 @@
 #pragma once
 
 void init_serial_port(void);
-int serial_received(void);
-char read_serial(void);
-int is_transmit_empty(void);
-void write_serial(char a);
+bool serial_received(void);
+bool serial_transmitted(void);
+
+char serial_read(void);
+void serial_write(char a);

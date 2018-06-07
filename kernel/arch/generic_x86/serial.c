@@ -16,20 +16,24 @@ void init_serial_port(void)
    outb(COM1 + 4, 0x0B);    // IRQs enabled, RTS/DSR set
 }
 
-int serial_received(void) {
-   return inb(COM1 + 5) & 1;
+bool serial_received(void)
+{
+   return !!(inb(COM1 + 5) & 1);
 }
 
-char read_serial(void) {
-   while (serial_received() == 0);
+bool serial_transmitted(void)
+{
+   return !!(inb(COM1 + 5) & 0x20);
+}
+
+char serial_read(void)
+{
+   while (!serial_received()) { }
    return inb(COM1);
 }
 
-int is_transmit_empty(void) {
-   return inb(COM1 + 5) & 0x20;
-}
-
-void write_serial(char a) {
-   while (is_transmit_empty() == 0);
+void serial_write(char a)
+{
+   while (!serial_transmitted()) { }
    outb(COM1, a);
 }

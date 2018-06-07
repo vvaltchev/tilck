@@ -45,7 +45,7 @@ void __wrap_not_reached(const char *file, int line)
 }
 
 void init_serial_port() { }
-void write_serial() { }
+void serial_write() { }
 void handle_fault() { }
 void handle_syscall() { }
 void handle_irq() { }

@@ -206,7 +206,7 @@ static void term_internal_write_char2(char c, u8 color)
    u16 entry;
 
    if (term_use_serial)
-      write_serial(c);
+      serial_write(c);
 
    switch (c) {
 
