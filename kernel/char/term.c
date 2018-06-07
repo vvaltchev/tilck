@@ -33,6 +33,16 @@ static u32 total_buffer_rows;
 static u32 extra_buffer_rows;
 static u16 failsafe_buffer[80 * 25];
 
+u32 term_get_rows(void)
+{
+   return term_rows;
+}
+
+u32 term_get_cols(void)
+{
+   return term_cols;
+}
+
 static ALWAYS_INLINE void buffer_set_entry(int row, int col, u16 e)
 {
    buffer[(row + scroll) % total_buffer_rows * term_cols + col] = e;

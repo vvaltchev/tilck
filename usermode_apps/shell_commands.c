@@ -3,10 +3,13 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <errno.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 
 #define RDTSC() __builtin_ia32_rdtsc()
 #define FORK_TEST_ITERS (2 * 250 * 1024 * 1024)

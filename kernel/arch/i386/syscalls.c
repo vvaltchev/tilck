@@ -37,7 +37,12 @@ CREATE_STUB_IMPL(sys_ptrace)
 CREATE_STUB_IMPL(sys_alarm)
 CREATE_STUB_IMPL(sys_oldfstat)
 CREATE_STUB_IMPL(sys_utime)
-CREATE_STUB_IMPL(sys_rt_sigprocmask)
+
+sptr sys_rt_sigprocmask(/* args ignored at the moment */)
+{
+   // TODO: implement sys_rt_sigprocmask
+   return 0;
+}
 
 /* Actual implementation: accept only 0 as UID. */
 sptr sys_setuid16(uptr uid)

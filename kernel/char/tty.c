@@ -49,7 +49,8 @@ static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 /* -------------- TTY ioctl ------------- */
 
 
-#define TCGETS 0x00005401
+#define TCGETS      0x00005401
+#define TIOCGWINSZ  0x00005413
 
 typedef unsigned char   cc_t;
 typedef unsigned int    speed_t;
@@ -65,6 +66,14 @@ typedef struct {
    cc_t c_line;                /* line discipline */
    cc_t c_cc[NCCS];            /* control characters */
 } termios;
+
+typedef struct
+{
+   u16 ws_row;       /* rows, in characters */
+   u16 ws_col;       /* columns, in characters */
+   u16 ws_xpixel;    /* horizontal size, pixels */
+   u16 ws_ypixel;    /* vertical size, pixels */
+} winsize;
 
 static const termios hard_coded_termios =
 {
@@ -82,7 +91,7 @@ static const termios hard_coded_termios =
 
 static ssize_t tty_ioctl(fs_handle h, uptr request, void *argp)
 {
-   printk("tty_ioctl(request: %p)\n", request);
+   //printk("tty_ioctl(request: %p)\n", request);
 
    if (request == TCGETS) {
 
@@ -94,6 +103,24 @@ static ssize_t tty_ioctl(fs_handle h, uptr request, void *argp)
       return 0;
    }
 
+   if (request == TIOCGWINSZ) {
+
+      winsize sz = {
+         .ws_row = term_get_rows(),
+         .ws_col = term_get_cols(),
+         .ws_xpixel = 0,
+         .ws_ypixel = 0
+      };
+
+      int rc = copy_to_user(argp, &sz, sizeof(winsize));
+
+      if (rc < 0)
+         return -EFAULT;
+
+      return 0;
+   }
+
+   printk("WARNING: unknown tty_ioctl() request: %p\n", request);
    return -EINVAL;
 }
 
