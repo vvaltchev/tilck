@@ -15,7 +15,8 @@ typedef sptr (*syscall_type)();
 #define CREATE_STUB_IMPL(name)                          \
    sptr name()                                          \
    {                                                    \
-      printk("NOT IMPLEMENTED: %s()\n", #name);         \
+      printk("[TID: %d] NOT IMPLEMENTED: %s()\n",       \
+             get_curr_task()->tid, #name);              \
       return -ENOSYS;                                   \
    }
 

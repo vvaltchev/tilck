@@ -79,12 +79,17 @@ cd_error:
       exit(0);
    }
 
+   printf("[shell, pid: %d] before fork()\n", getpid());
+   fflush(stdout);
 
    int wstatus;
    int child_pid = fork();
 
+   printf("[shell, pid: %d] fork() returned: %d\n", getpid(), child_pid);
+
    if (!child_pid) {
 
+      printf("[shell, pid: %d] I'm the child\n", getpid());
       run_if_known_command(cmd_argv[0]);
 
       execve(cmd_argv[0], cmd_argv, NULL);
@@ -92,6 +97,8 @@ cd_error:
       perror(cmd_argv[0]);
       exit(saved_errno);
    }
+
+   printf("[shell, pid: %d] after fork()\n", getpid());
 
    if (child_pid == -1) {
       perror("fork failed");
