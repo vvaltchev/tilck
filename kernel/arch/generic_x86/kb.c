@@ -79,7 +79,7 @@ static ALWAYS_INLINE bool kb_cbuf_write_elem(char c)
 #define CHECK_FLAG(flags, n) ((flags) & BIT(n))
 
 /* US Keyboard Layout.  */
-unsigned char kbdus[128] =
+static u8 kbd_us[128] =
 {
    0,  27, '1', '2', '3', '4', '5', '6', '7', '8',
    '9', '0', '-', '=', '\b',  /* Backspace */
@@ -121,7 +121,7 @@ unsigned char kbdus[128] =
    0, /* All other keys are undefined */
 };
 
-unsigned char kbdus_up[128] =
+static u8 kbd_us_up[128] =
 {
    0,  27, '!', '@', '#', '$', '%', '^', '&', '*',
    '(', ')', '_', '+', '\b',
@@ -163,16 +163,7 @@ unsigned char kbdus_up[128] =
    0, /* All other keys are undefined */
 };
 
-unsigned char *us_kb_layouts[2] = {
-   kbdus, kbdus_up
-};
 
-u8 numkey[128] = {
-   [71] = '7', '8', '9',
-   [75] = '4', '5', '6',
-   [79] = '1', '2', '3',
-   [82] = '0', '.'
-};
 
 #define KEY_L_SHIFT 42
 #define KEY_R_SHIFT 54
@@ -200,19 +191,28 @@ u8 numkey[128] = {
 #define KEY_F9  (KEY_F1 + 8)
 #define KEY_F10 (KEY_F1 + 9)
 
+static unsigned char *us_kb_layouts[2] = {
+   kbd_us, kbd_us_up
+};
 
-bool pkeys[128];
-bool e0pkeys[128];
+static u8 numkey[128] = {
+   [71] = '7', '8', '9',
+   [75] = '4', '5', '6',
+   [79] = '1', '2', '3',
+   [82] = '0', '.'
+};
 
-bool *pkeysArrays[2] = { pkeys, e0pkeys };
+static bool pkeys[128];
+static bool e0pkeys[128];
+static bool *pkeysArrays[2] = { pkeys, e0pkeys };
 
-bool numLock = false;
-bool capsLock = false;
-bool lastWasE0 = false;
+static bool numLock = false;
+static bool capsLock = false;
+static bool lastWasE0 = false;
 
-u8 next_kb_interrupts_to_ignore = 0;
+static u8 next_kb_interrupts_to_ignore = 0; // HACK to skip 0xE1 sequences
 
-void kbd_wait()
+static void kbd_wait(void)
 {
    u8 temp;
 
@@ -252,14 +252,8 @@ void caps_lock_switch(bool val)
  */
 kcond kb_cond;
 
-#ifdef DEBUG
-static int chars_count = 0;
-static u64 total_cycles = 0;
-#endif
-
 void print_slow_timer_handler_counter(void);
 void debug_term_print_scroll_cycles(void);
-
 extern u32 spur_irq_count;
 
 void handle_key_pressed(u8 scancode)
@@ -299,10 +293,6 @@ void handle_key_pressed(u8 scancode)
       return;
 
    case KEY_F2:
-#ifdef DEBUG
-      printk("\nkey press int handler avg. cycles = %llu [%i samples]\n",
-             chars_count ? total_cycles/chars_count : 0, chars_count);
-#endif
       return;
 
    case KEY_F3:
@@ -332,11 +322,6 @@ void handle_key_pressed(u8 scancode)
       return;
    }
 
-#ifdef DEBUG
-   u64 start, end;
-   start = RDTSC();
-#endif
-
    if (c != '\b') {
 
       if (kb_cbuf_write_elem(c)) {
@@ -352,12 +337,6 @@ void handle_key_pressed(u8 scancode)
       if (kb_cbuf_drop_last_written_elem())
          term_write((char *)&c, 1);
    }
-
-#ifdef DEBUG
-   end = RDTSC();
-   chars_count++;
-   total_cycles += (end - start);
-#endif
 }
 
 void handle_E0_key_pressed(u8 scancode)
@@ -388,7 +367,7 @@ void handle_E0_key_pressed(u8 scancode)
    }
 }
 
-void (*keyPressHandlers[2])(u8) = {
+static void (*keyPressHandlers[2])(u8) = {
    handle_key_pressed, handle_E0_key_pressed
 };
 
@@ -480,7 +459,7 @@ void kb_set_typematic_byte(u8 val)
 }
 
 /* This will be executed in a tasklet */
-void init_kb()
+void init_kb(void)
 {
    disable_preemption();
 
