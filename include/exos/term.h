@@ -21,7 +21,12 @@ typedef struct {
 } video_interface;
 
 
-void init_term(const video_interface *vi, int rows, int cols, u8 default_color);
+void init_term(const video_interface *vi,
+               int rows,
+               int cols,
+               u8 default_color,
+               bool use_serial_port);
+
 bool term_is_initialized(void);
 
 void term_write(char *buf, u32 len);

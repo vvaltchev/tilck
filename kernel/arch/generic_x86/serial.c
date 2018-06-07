@@ -3,7 +3,9 @@
 #include <exos/serial.h>
 #include <exos/hal.h>
 
-void init_serial_port()
+#define COM1 0x3f8
+
+void init_serial_port(void)
 {
    outb(COM1 + 1, 0x00);    // Disable all interrupts
    outb(COM1 + 3, 0x80);    // Enable DLAB (set baud rate divisor)
@@ -14,16 +16,16 @@ void init_serial_port()
    outb(COM1 + 4, 0x0B);    // IRQs enabled, RTS/DSR set
 }
 
-int serial_received() {
+int serial_received(void) {
    return inb(COM1 + 5) & 1;
 }
 
-char read_serial() {
+char read_serial(void) {
    while (serial_received() == 0);
    return inb(COM1);
 }
 
-int is_transmit_empty() {
+int is_transmit_empty(void) {
    return inb(COM1 + 5) & 0x20;
 }
 

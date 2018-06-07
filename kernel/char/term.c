@@ -15,6 +15,8 @@
 #include <exos/kmalloc.h>
 #include <exos/interrupts.h>
 
+static bool term_use_serial;
+
 static u16 term_cols;
 static u16 term_rows;
 static u16 current_row;
@@ -202,7 +204,9 @@ static void term_internal_incr_row(void)
 static void term_internal_write_char2(char c, u8 color)
 {
    u16 entry;
-   write_serial(c);
+
+   if (term_use_serial)
+      write_serial(c);
 
    switch (c) {
 
@@ -460,9 +464,15 @@ bool term_is_initialized(void)
 }
 
 void
-init_term(const video_interface *intf, int rows, int cols, u8 default_color)
+init_term(const video_interface *intf,
+          int rows,
+          int cols,
+          u8 default_color,
+          bool use_serial_port)
 {
    ASSERT(!are_interrupts_enabled());
+
+   term_use_serial = use_serial_port;
 
    vi = intf;
    term_cols = cols;
@@ -502,6 +512,5 @@ init_term(const video_interface *intf, int rows, int cols, u8 default_color)
    for (int i = 0; i < term_rows; i++)
       ts_clear_row(i, default_color);
 
-   init_serial_port();
    printk_flush_ringbuf();
 }

@@ -25,6 +25,7 @@
 #include <exos/datetime.h>
 #include <exos/syscalls.h>
 #include <exos/fb_console.h>
+#include <exos/serial.h>
 #include <exos/arch/generic_x86/textmode_video.h>
 #include <exos/arch/generic_x86/fpu_memcpy.h>
 
@@ -45,7 +46,7 @@ void init_tty(void);
 void read_multiboot_info(u32 magic, u32 mbi_addr)
 {
    if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
-      init_textmode_console();
+      init_textmode_console(true);
       panic("The exOS kernel requires a multiboot-compatible bootloader.");
       return;
    }
@@ -116,13 +117,14 @@ void selftest_runner_thread()
 void init_console(void)
 {
    if (use_framebuffer())
-      init_framebuffer_console();
+      init_framebuffer_console(in_hypervisor());
    else
-      init_textmode_console();
+      init_textmode_console(in_hypervisor());
 }
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
+   init_serial_port();
    create_kernel_process();
    setup_soft_interrupt_handling();
    read_multiboot_info(multiboot_magic, mbi_addr);

@@ -363,7 +363,7 @@ static void fb_use_optimized_funcs_if_possible(void)
    printk("[fb_console] Use optimized functions\n");
 }
 
-void init_framebuffer_console(void)
+void init_framebuffer_console(bool use_also_serial_port)
 {
    fb_font_header = fb_get_width() / 8 < 160
                         ? (void *)&_binary_font8x16_psf_start
@@ -407,7 +407,12 @@ void init_framebuffer_console(void)
          printk("WARNING: fb_console: unable to allocate under_cursor_buf!\n");
    }
 
-   init_term(&framebuffer_vi, fb_term_rows, fb_term_cols, COLOR_WHITE);
+   init_term(&framebuffer_vi,
+             fb_term_rows,
+             fb_term_cols,
+             make_color(COLOR_WHITE, COLOR_BLACK),
+             use_also_serial_port);
+
    printk("[fb_console] screen resolution: %i x %i x %i bpp\n",
           fb_get_width(), fb_get_height(), fb_get_bpp());
    printk("[fb_console] font size: %i x %i, term size: %i x %i\n",
