@@ -69,10 +69,9 @@ cd_error:
       return;
    }
 
-
-   printf("[process_cmd_line] args(%i):\n", argc);
-   for (int i = 0; cmd_argv[i] != NULL; i++)
-      printf("[process_cmd_line] argv[%i] = '%s'\n", i, cmd_argv[i]);
+   // printf("[process_cmd_line] args(%i):\n", argc);
+   // for (int i = 0; cmd_argv[i] != NULL; i++)
+   //    printf("[process_cmd_line] argv[%i] = '%s'\n", i, cmd_argv[i]);
 
    if (!strcmp(cmd_argv[0], "exit")) {
       printf("[shell] regular exit\n");
@@ -109,10 +108,10 @@ int main(int argc, char **argv, char **env)
    shell_env = env;
 
    printf("[PID: %i] Hello from ExOS's simple shell!\n", getpid());
-   printf("My input args[%i]:\n", argc);
 
-   for (int i = 0; i < argc; i++)
-      printf("argv[%i] = '%s'\n", i, argv[i]);
+   // printf("My input args[%i]:\n", argc);
+   // for (int i = 0; i < argc; i++)
+   //    printf("argv[%i] = '%s'\n", i, argv[i]);
 
    if (argc > 2 && !strcmp(argv[1], "-c")) {
       printf("[shell] Executing built-in command '%s'\n", argv[2]);

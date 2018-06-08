@@ -21,6 +21,8 @@
 
 #endif
 
+CREATE_STUB_SYSCALL_IMPL(sys_restart_syscall)
+
 sptr sys_exit(int code);
 sptr sys_fork(void);
 sptr sys_read(int fd, void *buf, size_t count);
@@ -97,7 +99,48 @@ CREATE_STUB_SYSCALL_IMPL(sys_setsid)
 CREATE_STUB_SYSCALL_IMPL(sys_sigaction)
 CREATE_STUB_SYSCALL_IMPL(sys_sgetmask)
 CREATE_STUB_SYSCALL_IMPL(sys_ssetmask)
-
+CREATE_STUB_SYSCALL_IMPL(sys_setreuid16)
+CREATE_STUB_SYSCALL_IMPL(sys_setregid16)
+CREATE_STUB_SYSCALL_IMPL(sys_sigsuspend)
+CREATE_STUB_SYSCALL_IMPL(sys_sigpending)
+CREATE_STUB_SYSCALL_IMPL(sys_sethostname)
+CREATE_STUB_SYSCALL_IMPL(sys_setrlimit)
+CREATE_STUB_SYSCALL_IMPL(sys_old_getrlimit)
+CREATE_STUB_SYSCALL_IMPL(sys_getrusage)
+CREATE_STUB_SYSCALL_IMPL(sys_gettimeofday)
+CREATE_STUB_SYSCALL_IMPL(sys_settimeofday)
+CREATE_STUB_SYSCALL_IMPL(sys_getgroups16)
+CREATE_STUB_SYSCALL_IMPL(sys_setgroups16)
+CREATE_STUB_SYSCALL_IMPL(sys_old_select)
+CREATE_STUB_SYSCALL_IMPL(sys_symlink)
+CREATE_STUB_SYSCALL_IMPL(sys_lstat)
+CREATE_STUB_SYSCALL_IMPL(sys_readlink)
+CREATE_STUB_SYSCALL_IMPL(sys_uselib)
+CREATE_STUB_SYSCALL_IMPL(sys_swapon)
+CREATE_STUB_SYSCALL_IMPL(sys_reboot)
+CREATE_STUB_SYSCALL_IMPL(sys_old_readdir)
+CREATE_STUB_SYSCALL_IMPL(sys_old_mmap)
+CREATE_STUB_SYSCALL_IMPL(sys_munmap)
+CREATE_STUB_SYSCALL_IMPL(sys_truncate)
+CREATE_STUB_SYSCALL_IMPL(sys_ftruncate)
+CREATE_STUB_SYSCALL_IMPL(sys_fchmod)
+CREATE_STUB_SYSCALL_IMPL(sys_fchown16)
+CREATE_STUB_SYSCALL_IMPL(sys_getpriority)
+CREATE_STUB_SYSCALL_IMPL(sys_setpriority)
+CREATE_STUB_SYSCALL_IMPL(sys_statfs)
+CREATE_STUB_SYSCALL_IMPL(sys_fstatfs)
+CREATE_STUB_SYSCALL_IMPL(sys_ioperm)
+CREATE_STUB_SYSCALL_IMPL(sys_socketcall)
+CREATE_STUB_SYSCALL_IMPL(sys_syslog)
+CREATE_STUB_SYSCALL_IMPL(sys_setitimer)
+CREATE_STUB_SYSCALL_IMPL(sys_getitimer)
+CREATE_STUB_SYSCALL_IMPL(sys_newstat)
+CREATE_STUB_SYSCALL_IMPL(sys_newlstat)
+CREATE_STUB_SYSCALL_IMPL(sys_newfstat)
+CREATE_STUB_SYSCALL_IMPL(sys_uname)
+CREATE_STUB_SYSCALL_IMPL(sys_iopl)
+CREATE_STUB_SYSCALL_IMPL(sys_vhangup)
+CREATE_STUB_SYSCALL_IMPL(sys_vm86old)
 
 sptr sys_wait4(int pid, int *wstatus, int options, void *user_rusage);
 sptr sys_writev(int fd, const void *iov, int iovcnt);
