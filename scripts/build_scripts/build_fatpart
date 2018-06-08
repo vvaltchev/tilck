@@ -45,7 +45,7 @@ ln @EFI_ia32_FILE@ EFI/BOOT/
 ln @KERNEL_FILE@ @KERNEL_FATPART_PATH@
 
 if [ -d $tc/busybox ]; then
-   ln $tc/busybox/busybox .
+   ln $tc/busybox/busybox bin/
 fi
 
 # first, create the directories

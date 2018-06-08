@@ -14,6 +14,32 @@ char **shell_env;
 
 void run_if_known_command(const char *cmd);
 
+void shell_builtin_cd(int argc)
+{
+   int rc = 0;
+   const char *dest_dir = "/";
+
+   if (argc == 2 && strlen(cmd_argv[1])) {
+      dest_dir = cmd_argv[1];
+   }
+
+   if (argc > 2) {
+      printf("cd: too many arguments\n");
+      return;
+   }
+
+   rc = chdir(dest_dir);
+
+   if (rc < 0)
+      goto cd_error;
+
+   return;
+
+cd_error:
+   perror("cd");
+   return;
+}
+
 void process_cmd_line(const char *cmd_line)
 {
    int argc = 0;
@@ -44,39 +70,23 @@ void process_cmd_line(const char *cmd_line)
    }
 
    if (!strcmp(cmd_argv[0], "cd")) {
-
-      int rc = 0;
-      const char *dest_dir = "/";
-
-      if (argc == 2 && strlen(cmd_argv[1])) {
-         dest_dir = cmd_argv[1];
-      }
-
-      if (argc > 2) {
-         printf("cd: too many arguments\n");
-         return;
-      }
-
-      rc = chdir(dest_dir);
-
-      if (rc < 0)
-         goto cd_error;
-
-      return;
-
-cd_error:
-      perror("cd");
+      shell_builtin_cd(argc);
       return;
    }
-
-   // printf("[process_cmd_line] args(%i):\n", argc);
-   // for (int i = 0; cmd_argv[i] != NULL; i++)
-   //    printf("[process_cmd_line] argv[%i] = '%s'\n", i, cmd_argv[i]);
 
    if (!strcmp(cmd_argv[0], "exit")) {
       printf("[shell] regular exit\n");
       exit(0);
    }
+
+   // busybox alias
+   if (!strcmp(cmd_argv[0], "bb")) {
+      cmd_argv[0] = "/bin/busybox";
+   }
+
+   // printf("[process_cmd_line] args(%i):\n", argc);
+   // for (int i = 0; cmd_argv[i] != NULL; i++)
+   //    printf("[process_cmd_line] argv[%i] = '%s'\n", i, cmd_argv[i]);
 
    int wstatus;
    int child_pid = fork();
