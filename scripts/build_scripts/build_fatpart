@@ -44,6 +44,10 @@ ln @EFI_ia32_FILE@ EFI/BOOT/
 # hard-link the kernel file (used also by the legacy bootloader)
 ln @KERNEL_FILE@ @KERNEL_FATPART_PATH@
 
+if [ -d $tc/busybox ]; then
+   ln $tc/busybox/busybox .
+fi
+
 # first, create the directories
 for f in $(find * -type d); do
    $mmd -i $dest $f
