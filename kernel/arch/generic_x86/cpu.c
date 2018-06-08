@@ -4,6 +4,7 @@
 #include <common/utils.h>
 #include <common/arch/generic_x86/cpu_features.h>
 
+#include <exos/process.h>
 #include <exos/fault_resumable.h>
 
 extern const char *x86_exception_names[32];
@@ -138,9 +139,14 @@ out:
    write_cr0(read_cr0() | CR0_TS);
 }
 
+static u32 fpu_context_count;
+
 void fpu_context_begin(void)
 {
-   write_cr0(read_cr0() & ~CR0_TS);
+   disable_preemption();
+
+   if (++fpu_context_count == 1)
+      write_cr0(read_cr0() & ~CR0_TS);
 
    // TODO: use FXSAVE [SSE] or XSAVE [AVX] to save the FPU regs.
 }
@@ -150,5 +156,11 @@ void fpu_context_end(void)
    // TODO: use FXRSTOR [SSE] or XRSTOR [AVX] to restore the FPU regs.
 
    /* Disable the FPU: any attempt to touch FPU registers triggers a fault. */
-   write_cr0(read_cr0() | CR0_TS);
+
+   ASSERT(fpu_context_count > 0);
+
+   if (--fpu_context_count == 0)
+      write_cr0(read_cr0() | CR0_TS);
+
+   enable_preemption();
 }

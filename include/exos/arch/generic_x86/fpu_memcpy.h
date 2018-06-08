@@ -322,4 +322,5 @@ fpu_cpy_single_256_nt_read(void *dest, const void *src)
    __asm_fpu_cpy_single_256_nt_read(dest, src);
 }
 
+
 void init_fpu_memcpy(void);

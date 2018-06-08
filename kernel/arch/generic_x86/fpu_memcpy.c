@@ -119,7 +119,8 @@ void fpu_memcpy256_nt_read_sse4_1(void *dest, const void *src, u32 n)
 }
 
 
-void init_fpu_memcpy_internal_check(void *func, const char *fname, u32 size)
+static void
+init_fpu_memcpy_internal_check(void *func, const char *fname, u32 size)
 {
    if (!fname) {
       panic("init_fpu_memcpy: failed to find the symbol at %p\n", func);
