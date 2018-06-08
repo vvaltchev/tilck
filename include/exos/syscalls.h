@@ -42,7 +42,7 @@ sptr sys_chdir(const char *path);
 CREATE_STUB_SYSCALL_IMPL(sys_time)
 CREATE_STUB_SYSCALL_IMPL(sys_mknod)
 CREATE_STUB_SYSCALL_IMPL(sys_chmod)
-CREATE_STUB_SYSCALL_IMPL(sys_lchown)
+CREATE_STUB_SYSCALL_IMPL(sys_lchown16)
 CREATE_STUB_SYSCALL_IMPL(sys_break)
 CREATE_STUB_SYSCALL_IMPL(sys_oldstat)
 CREATE_STUB_SYSCALL_IMPL(sys_lseek)
@@ -63,8 +63,42 @@ CREATE_STUB_SYSCALL_IMPL(sys_oldfstat)
 sptr sys_pause(); // TODO: update once signals are implemented
 
 CREATE_STUB_SYSCALL_IMPL(sys_utime)
+CREATE_STUB_SYSCALL_IMPL(sys_access)
+CREATE_STUB_SYSCALL_IMPL(sys_nice)
+CREATE_STUB_SYSCALL_IMPL(sys_sync)
+CREATE_STUB_SYSCALL_IMPL(sys_kill)
+CREATE_STUB_SYSCALL_IMPL(sys_rename)
+CREATE_STUB_SYSCALL_IMPL(sys_mkdir)
+CREATE_STUB_SYSCALL_IMPL(sys_rmdir)
+CREATE_STUB_SYSCALL_IMPL(sys_dup)
+CREATE_STUB_SYSCALL_IMPL(sys_pipe)
+CREATE_STUB_SYSCALL_IMPL(sys_times)
+CREATE_STUB_SYSCALL_IMPL(sys_brk)
+CREATE_STUB_SYSCALL_IMPL(sys_setgid16)
+CREATE_STUB_SYSCALL_IMPL(sys_getgid16)
+CREATE_STUB_SYSCALL_IMPL(sys_signal)
+CREATE_STUB_SYSCALL_IMPL(sys_geteuid16)
+CREATE_STUB_SYSCALL_IMPL(sys_getegid16)
+CREATE_STUB_SYSCALL_IMPL(sys_acct)
+CREATE_STUB_SYSCALL_IMPL(sys_umount)
 
 sptr sys_ioctl(int fd, uptr request, void *argp);
+
+CREATE_STUB_SYSCALL_IMPL(sys_fcntl)
+CREATE_STUB_SYSCALL_IMPL(sys_setpgid)
+CREATE_STUB_SYSCALL_IMPL(sys_olduname)
+CREATE_STUB_SYSCALL_IMPL(sys_umask)
+CREATE_STUB_SYSCALL_IMPL(sys_chroot)
+CREATE_STUB_SYSCALL_IMPL(sys_ustat)
+CREATE_STUB_SYSCALL_IMPL(sys_dup2)
+CREATE_STUB_SYSCALL_IMPL(sys_getppid)
+CREATE_STUB_SYSCALL_IMPL(sys_getpgrp)
+CREATE_STUB_SYSCALL_IMPL(sys_setsid)
+CREATE_STUB_SYSCALL_IMPL(sys_sigaction)
+CREATE_STUB_SYSCALL_IMPL(sys_sgetmask)
+CREATE_STUB_SYSCALL_IMPL(sys_ssetmask)
+
+
 sptr sys_wait4(int pid, int *wstatus, int options, void *user_rusage);
 sptr sys_writev(int fd, const void *iov, int iovcnt);
 sptr sys_nanosleep();   // not fully implemented
