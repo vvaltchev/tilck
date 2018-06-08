@@ -1,4 +1,6 @@
 
+#define __SYSCALLS_C__
+
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
@@ -11,32 +13,6 @@
 #include <exos/debug_utils.h>
 
 typedef sptr (*syscall_type)();
-
-#define CREATE_STUB_IMPL(name)                          \
-   sptr name()                                          \
-   {                                                    \
-      printk("[TID: %d] NOT IMPLEMENTED: %s()\n",       \
-             get_curr_task()->tid, #name);              \
-      return -ENOSYS;                                   \
-   }
-
-CREATE_STUB_IMPL(sys_creat)
-CREATE_STUB_IMPL(sys_link)
-CREATE_STUB_IMPL(sys_unlink)
-CREATE_STUB_IMPL(sys_time)
-CREATE_STUB_IMPL(sys_mknod)
-CREATE_STUB_IMPL(sys_chmod)
-CREATE_STUB_IMPL(sys_lchown)
-CREATE_STUB_IMPL(sys_break)
-CREATE_STUB_IMPL(sys_oldstat)
-CREATE_STUB_IMPL(sys_lseek)
-CREATE_STUB_IMPL(sys_mount)
-CREATE_STUB_IMPL(sys_oldumount)
-CREATE_STUB_IMPL(sys_stime)
-CREATE_STUB_IMPL(sys_ptrace)
-CREATE_STUB_IMPL(sys_alarm)
-CREATE_STUB_IMPL(sys_oldfstat)
-CREATE_STUB_IMPL(sys_utime)
 
 sptr sys_rt_sigprocmask(/* args ignored at the moment */)
 {
