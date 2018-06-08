@@ -143,6 +143,20 @@ CREATE_STUB_SYSCALL_IMPL(sys_vhangup)
 CREATE_STUB_SYSCALL_IMPL(sys_vm86old)
 
 sptr sys_wait4(int pid, int *wstatus, int options, void *user_rusage);
+
+CREATE_STUB_SYSCALL_IMPL(sys_swapoff)
+CREATE_STUB_SYSCALL_IMPL(sys_sysinfo)
+CREATE_STUB_SYSCALL_IMPL(sys_ipc)
+CREATE_STUB_SYSCALL_IMPL(sys_fsync)
+CREATE_STUB_SYSCALL_IMPL(sys_sigreturn)
+CREATE_STUB_SYSCALL_IMPL(sys_clone)
+CREATE_STUB_SYSCALL_IMPL(sys_setsetdomainname)
+CREATE_STUB_SYSCALL_IMPL(sys_setnewuname)
+CREATE_STUB_SYSCALL_IMPL(sys_modify_ldt)
+CREATE_STUB_SYSCALL_IMPL(sys_adjtimex)
+CREATE_STUB_SYSCALL_IMPL(sys_mprotect)
+CREATE_STUB_SYSCALL_IMPL(sys_sigprocmask)
+
 sptr sys_writev(int fd, const void *iov, int iovcnt);
 sptr sys_nanosleep();   // not fully implemented
 sptr sys_rt_sigprocmask();
