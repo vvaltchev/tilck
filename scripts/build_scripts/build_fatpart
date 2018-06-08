@@ -27,18 +27,6 @@ $mformat -i $dest -d 1 -F -c 1 -t 70 -h 16 -s 63 ::
 $mlabel -i $dest ::EXOS
 
 rm -rf $bdir/sysroot
-
-
-#####################################################
-# TEMP HACK: always rebuild the shell with libmusl
-
-if [ -d $tc/musl-install ]; then
-   $maindir/scripts/build_scripts/musl-gcc -o $maindir/sysroot/ms -g -static $maindir/usermode_apps/shell*.c
-fi
-
-# END HACK
-######################################################
-
 cp -r $maindir/sysroot $bdir/
 
 cd $bdir/sysroot

@@ -352,10 +352,10 @@ function download_x86_gcc_toolchain {
       echo
 
       # bleeding-edge
-      #tcname=x86-i686--glibc--bleeding-edge-2018.02-1
+      #tcname=x86-i686--musl--bleeding-edge-2018.02-1
 
       # stable
-      tcname=x86-i686--glibc--stable-2018.02-2
+      tcname=x86-i686--musl--stable-2018.02-2
       tarname=$tcname.tar.bz2
       url=http://toolchains.bootlin.com/downloads/releases/toolchains
       wget $url/x86-i686/tarballs/$tarname
@@ -363,22 +363,6 @@ function download_x86_gcc_toolchain {
       rm $tarname
       mv $tcname $X86_TOOLCHAIN_DIR_NAME
       cd $X86_TOOLCHAIN
-
-      for x in *; do
-         if [[ $x == i686* ]]; then
-            new_name=`echo $x | sed 's/i686/i386/g' -`
-            ln -s $x $new_name
-         fi
-      done
-
-      # To make musl-gcc happy
-
-      for x in *; do
-         if [[ $x == i386-linux-* ]]; then
-            new_name=`echo $x | sed 's/i386-linux-/i386-/g' -`
-            ln -s $x $new_name
-         fi
-      done
 
    else
       echo "NOTE: Skipping x86-i686 GNU toolchain"
@@ -473,7 +457,7 @@ function build_lcov {
 }
 
 ###############################
-# Build dietlibc
+# Build dietlibc [unused now]
 ###############################
 
 function build_dietlibc {
@@ -530,38 +514,6 @@ function build_gtest {
    else
       echo "NOTE: Skipping googletest"
    fi
-   popd
-
-}
-
-##################################
-# Build libmusl (unused for now)
-##################################
-
-function build_libmusl {
-
-   pushd .
-
-   if ! [ -d musl ]; then
-
-      echo
-      echo "*** LIBMUSL ***"
-      echo
-
-      git clone --branch v1.1.19 --depth 1 git://git.musl-libc.org/musl
-      cd musl
-
-      opts1="--target=i386 --host=i386 --build=x86_64 --disable-shared"
-      opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
-      opts3="--enable-debug --syslibdir=$TC/musl-install/lib"
-
-      run_command2 "./configure $opts1 $opts2 $opts3" configure.log
-      run_command2 "make -j" build.log
-      run_command2 "make install" make_install.log
-   else
-      echo "NOTE: Skipping musl"
-   fi
-
    popd
 
 }
@@ -698,7 +650,6 @@ echo
 download_x86_gcc_toolchain
 build_cmake
 build_lcov
-build_dietlibc
 build_gtest
 build_gnuefi
 build_mtools

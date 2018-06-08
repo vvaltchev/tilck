@@ -41,6 +41,7 @@ CREATE_STUB_IMPL(sys_utime)
 sptr sys_rt_sigprocmask(/* args ignored at the moment */)
 {
    // TODO: implement sys_rt_sigprocmask
+   // printk("rt_sigprocmask\n");
    return 0;
 }
 
