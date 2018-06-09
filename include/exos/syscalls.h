@@ -201,7 +201,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_poll)
 CREATE_STUB_SYSCALL_IMPL(sys_nfsservctl)
 CREATE_STUB_SYSCALL_IMPL(sys_setresgid16)
 CREATE_STUB_SYSCALL_IMPL(sys_getresgid16)
-CREATE_STUB_SYSCALL_IMPL(sys_prctl)
+
+sptr sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5);
+
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigreturn)
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigaction)
 
