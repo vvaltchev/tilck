@@ -2,7 +2,9 @@
 #pragma once
 #include <common/basic_defs.h>
 #include <common/string_util.h>
+
 #include <exos/errno.h>
+#include <exos/datetime.h>
 #include <exos/process.h>
 
 #ifdef __SYSCALLS_C__
@@ -107,7 +109,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_sethostname)
 CREATE_STUB_SYSCALL_IMPL(sys_setrlimit)
 CREATE_STUB_SYSCALL_IMPL(sys_old_getrlimit)
 CREATE_STUB_SYSCALL_IMPL(sys_getrusage)
-CREATE_STUB_SYSCALL_IMPL(sys_gettimeofday)
+
+sptr sys_gettimeofday(timeval *tv, timezone *tz);
+
 CREATE_STUB_SYSCALL_IMPL(sys_settimeofday)
 CREATE_STUB_SYSCALL_IMPL(sys_getgroups16)
 CREATE_STUB_SYSCALL_IMPL(sys_setgroups16)
