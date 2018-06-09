@@ -2,7 +2,8 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
-#include <exos/debug_utils.h>
+#include <exos/paging.h>
+#include <exos/elf_utils.h>
 
 void (*self_test_to_run)(void);
 const char *cmd_args[16] = { "/sbin/init", [1 ... 15] = NULL };

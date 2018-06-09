@@ -9,6 +9,7 @@
 #include <exos/process.h>
 #include <exos/hal.h>
 #include <exos/user.h>
+#include <exos/elf_utils.h>
 
 #include "paging_int.h"
 

@@ -6,6 +6,7 @@
 #include <exos/hal.h>
 #include <exos/irq.h>
 #include <exos/process.h>
+#include <exos/elf_utils.h>
 
 #include <elf.h>
 #include <multiboot.h>

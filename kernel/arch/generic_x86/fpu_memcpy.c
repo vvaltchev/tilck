@@ -17,7 +17,7 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
-#include <exos/debug_utils.h>
+#include <exos/elf_utils.h>
 #include <exos/arch/generic_x86/fpu_memcpy.h>
 
 

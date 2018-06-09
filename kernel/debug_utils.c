@@ -13,6 +13,7 @@ volatile bool __in_panic;
 #include <exos/process.h>
 #include <exos/term.h>
 #include <exos/fb_console.h>
+#include <exos/elf_utils.h>
 #include <exos/arch/generic_x86/textmode_video.h>
 
 #include <elf.h>
