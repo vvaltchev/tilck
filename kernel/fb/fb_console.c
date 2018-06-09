@@ -174,12 +174,26 @@ void fb_move_cursor(int row, int col)
 
 void fb_enable_cursor(void)
 {
+   if (cursor_enabled)
+      return;
+
+   /*
+    * The cursor was disabled and now we have to re-enable it again. In the
+    * meanwhile many thing might happened, like the whole screen scrolled.
+    * Therefore, before enabling the cursor, we have to update the
+    * under_cursor_buf.
+    */
+
+   fb_save_under_cursor_buf();
    cursor_enabled = true;
    fb_move_cursor(cursor_row, cursor_col);
 }
 
 void fb_disable_cursor(void)
 {
+   if (!cursor_enabled)
+      return;
+
    cursor_enabled = false;
    fb_move_cursor(cursor_row, cursor_col);
 }
@@ -218,7 +232,7 @@ static void fb_scroll_one_line_up(void)
    bool enabled = cursor_enabled;
 
    if (enabled)
-      fb_disable_cursor();
+     fb_disable_cursor();
 
    fb_lines_shift_up(fb_offset_y + h->height, /* source: row 1 (+ following) */
                      fb_offset_y,             /* destination: row 0 */
