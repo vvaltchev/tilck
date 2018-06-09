@@ -341,6 +341,26 @@ function build_mtools {
 # x86-i686 GNU toolchain
 ###############################
 
+# $1 dir name
+# $2 arch name
+# $3 tc file name
+
+function download_toolchain_internal {
+
+   dest="$1"
+   arch="$2"
+   tcname_suffix="$3"
+
+   tcname="${arch}--${tcname_suffix}"
+   tarname=$tcname.tar.bz2
+   url=http://toolchains.bootlin.com/downloads/releases/toolchains
+   wget $url/$arch/tarballs/$tarname
+   tar xfj $tarname
+   rm $tarname
+   mv $tcname $dest
+   cd $dest/bin
+}
+
 function download_x86_gcc_toolchain {
 
    pushd .
@@ -348,24 +368,55 @@ function download_x86_gcc_toolchain {
    if ! [ -d $X86_TOOLCHAIN_DIR_NAME ]; then
 
       echo
-      echo "*** i686 GCC TOOLCHAIN ***"
+      echo "*** i686 GCC TOOLCHAIN (libmusl) ***"
       echo
 
-      # bleeding-edge
-      #tcname=x86-i686--musl--bleeding-edge-2018.02-1
-
-      # stable
-      tcname=x86-i686--musl--stable-2018.02-2
-      tarname=$tcname.tar.bz2
-      url=http://toolchains.bootlin.com/downloads/releases/toolchains
-      wget $url/x86-i686/tarballs/$tarname
-      tar xfj $tarname
-      rm $tarname
-      mv $tcname $X86_TOOLCHAIN_DIR_NAME
-      cd $X86_TOOLCHAIN
+      download_toolchain_internal            \
+         "$X86_TOOLCHAIN_DIR_NAME"           \
+         "x86-i686"                          \
+         "musl--stable-2018.02-2"
 
    else
-      echo "NOTE: Skipping x86-i686 GNU toolchain"
+      echo "NOTE: Skipping x86-i686 GNU toolchain (libmusl)"
+   fi
+
+   popd
+}
+
+
+function download_x86_gcc_glibc_toolchain {
+
+   pushd .
+
+   if ! [ -d ${X86_TOOLCHAIN_DIR_NAME}_glibc ]; then
+
+      echo
+      echo "*** i686 GCC TOOLCHAIN (glibc) ***"
+      echo
+
+      download_toolchain_internal              \
+         "${X86_TOOLCHAIN_DIR_NAME}_glibc"     \
+         "x86-i686"                            \
+         "glibc--stable-2018.02-2"
+
+      # To make musl-gcc happy
+
+      for x in *; do
+         if [[ $x == i686* ]]; then
+            new_name=`echo $x | sed 's/i686/i386/g' -`
+            ln -s $x $new_name
+         fi
+      done
+
+      for x in *; do
+         if [[ $x == i386-linux-* ]]; then
+            new_name=`echo $x | sed 's/i386-linux-/i386-/g' -`
+            ln -s $x $new_name
+         fi
+      done
+
+   else
+      echo "NOTE: Skipping x86-i686 GNU toolchain (glibc)"
    fi
 
    popd
@@ -514,6 +565,56 @@ function build_gtest {
    else
       echo "NOTE: Skipping googletest"
    fi
+   popd
+
+}
+
+##################################
+# Build libmusl
+##################################
+
+function build_libmusl {
+
+   pushd .
+
+   if ! [ -d musl ]; then
+
+      # The glibc gcc toolchain is necessary in order to build libmusl and make
+      # its build system generate the musl-gcc script. Attempting to build
+      # libmusl with the musl gcc toolchain succeeds BUT the bin/musl-gcc script
+      # and the lib/musl-gcc.specs file ARE NOT generated, because the build
+      # system detected that the toolchain is already using libmusl. In our case
+      # building libmusl and compiling programs with musl-gcc is essential since
+      # it allows debugging libmusl itself (the pre-compiled toolchain uses an
+      # optimized non-debug version of libmusl).
+
+      download_x86_gcc_glibc_toolchain
+
+      tc="$TC/${X86_TOOLCHAIN_DIR_NAME}_glibc/bin"
+      saved_path="$PATH"
+      export PATH="$tc:$PATH"
+
+      echo
+      echo "*** LIBMUSL ***"
+      echo
+
+      git clone --branch v1.1.19 --depth 1 git://git.musl-libc.org/musl
+      cd musl
+
+      opts1="--target=i386 --host=i386 --build=x86_64 --disable-shared"
+      opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
+      opts3="--enable-debug --syslibdir=$TC/musl-install/lib"
+
+      run_command2 "./configure $opts1 $opts2 $opts3" configure.log
+      run_command2 "make -j" build.log
+      run_command2 "make install" make_install.log
+
+      export PATH="$saved_path"
+
+   else
+      echo "NOTE: Skipping musl"
+   fi
+
    popd
 
 }
