@@ -24,6 +24,7 @@ static u16 current_row;
 static u16 current_col;
 
 static u8 current_color;
+static u16 term_col_offset;
 
 static const video_interface *vi;
 
@@ -47,6 +48,16 @@ u32 term_get_rows(void)
 u32 term_get_cols(void)
 {
    return term_cols;
+}
+
+u32 term_get_curr_row(void)
+{
+   return current_row;
+}
+
+u32 term_get_curr_col(void)
+{
+   return current_col;
 }
 
 static ALWAYS_INLINE void buffer_set_entry(int row, int col, u16 e)
@@ -200,6 +211,8 @@ static void term_action_scroll_down(u32 lines)
 
 static void term_internal_incr_row(void)
 {
+   term_col_offset = 0;
+
    if (current_row < term_rows - 1) {
       ++current_row;
       return;
@@ -259,7 +272,7 @@ static void term_internal_write_char2(char c, u8 color)
 
    case '\b':
 
-      if (!current_col)
+      if (!current_col || current_col <= term_col_offset)
          break;
 
       current_col--;
@@ -324,6 +337,11 @@ static void term_action_move_ch_and_cur(int row, int col)
       vi->flush_buffers();
 }
 
+static void term_action_set_col_offset(u32 off)
+{
+   term_col_offset = off;
+}
+
 /* ---------------- term action engine --------------------- */
 
 typedef enum {
@@ -333,7 +351,8 @@ typedef enum {
    a_move_ch_and_cur  = 2,
    a_scroll_up        = 3,
    a_scroll_down      = 4,
-   a_set_color        = 5
+   a_set_color        = 5,
+   a_set_col_offset   = 6
 
 } term_action_type;
 
@@ -379,7 +398,8 @@ static actions_table_item actions_table[] = {
    [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
    [a_scroll_up] = {(action_func)term_action_scroll_up, 1},
    [a_scroll_down] = {(action_func)term_action_scroll_down, 1},
-   [a_set_color] = {(action_func)term_action_set_color, 1}
+   [a_set_color] = {(action_func)term_action_set_color, 1},
+   [a_set_col_offset] = {(action_func)term_action_set_col_offset, 1}
 };
 
 static void term_execute_action(term_action a)
@@ -443,7 +463,7 @@ void term_write2(char *buf, u32 len, u8 color)
    term_execute_or_enqueue_action(a);
 }
 
-void term_move_ch_and_cur(int row, int col)
+void term_move_ch_and_cur(u32 row, u32 col)
 {
    term_action a = {
       .type2 = a_move_ch_and_cur,
@@ -483,6 +503,18 @@ void term_set_color(u8 color)
 
    term_execute_or_enqueue_action(a);
 }
+
+void term_set_col_offset(u32 off)
+{
+   term_action a = {
+      .type1 = a_set_col_offset,
+      .arg = off
+   };
+
+   term_execute_or_enqueue_action(a);
+}
+
+/* ---------- wrappers ------------ */
 
 void term_write(char *buf, u32 len)
 {

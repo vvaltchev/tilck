@@ -33,10 +33,13 @@ u32 term_get_tab_size(void);
 u32 term_get_rows(void);
 u32 term_get_cols(void);
 
+u32 term_get_curr_row(void);
+u32 term_get_curr_col(void);
 
 void term_write(char *buf, u32 len);
 void term_write2(char *buf, u32 len, u8 color);
-void term_move_ch_and_cur(int row, int col);
+void term_move_ch_and_cur(u32 row, u32 col);
 void term_scroll_up(u32 lines);
 void term_scroll_down(u32 lines);
 void term_set_color(u8 color);
+void term_set_col_offset(u32 off);

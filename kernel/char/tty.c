@@ -19,6 +19,8 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
    if (!size)
       return read_count;
 
+   term_set_col_offset(term_get_curr_col());
+
    enable_preemption();
 
    do {
