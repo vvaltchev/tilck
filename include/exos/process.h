@@ -30,6 +30,7 @@ struct process_info {
 
    int parent_pid;
    page_directory_t *pdir;
+   void *brk;
 
    char cwd[MAX_PATH]; /* current working directory */
 

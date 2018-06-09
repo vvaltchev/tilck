@@ -215,6 +215,7 @@ sptr sys_execve(const char *user_filename,
    int rc;
    void *entry_point;
    void *stack_addr;
+   void *brk;
    char *file_path;
    char *const *argv = NULL;
    char *const *env = NULL;
@@ -268,7 +269,7 @@ sptr sys_execve(const char *user_filename,
 
    }
 
-   rc = load_elf_program(file_path, &pdir, &entry_point, &stack_addr);
+   rc = load_elf_program(file_path, &pdir, &entry_point, &stack_addr, &brk);
 
    if (rc < 0)
       goto errend;
@@ -280,13 +281,20 @@ sptr sys_execve(const char *user_filename,
       pdir_destroy(curr->pi->pdir);
    }
 
-   create_usermode_task(pdir,
-                        entry_point,
-                        stack_addr,
-                        curr,
-                        argv ? argv : default_argv,
-                        env ? env : default_env);
+   task_info *ti =
+      create_usermode_task(pdir,
+                           entry_point,
+                           stack_addr,
+                           curr,
+                           argv ? argv : default_argv,
+                           env ? env : default_env);
 
+   if (!ti) {
+      rc = -ENOMEM;
+      goto errend;
+   }
+
+   ti->pi->brk = brk;
    switch_to_idle_task();
    NOT_REACHED();
 

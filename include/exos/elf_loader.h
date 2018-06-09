@@ -13,14 +13,10 @@
  *
  * 'entry': OUT arg, the address of program's entry point.
  * 'stack_addr': OUT arg, the initial value of the stack pointer.
- *
- * TODO: this function needs a lot of work. For example, all the "error
- * handling" today is just done with VERIFY() which, expect for early testing,
- * makes really no sense. All the error paths have to explicitly handled with
- * return codes. In no case an invalid ELF file, a read error or an out of
- * memory error should make the kernel to panic.
+ * 'brk': OUT arg, the first invalid vaddr (program break).
  */
 int load_elf_program(const char *filepath,
                      page_directory_t **pdir_ref,
                      void **entry,
-                     void **stack_addr);
+                     void **stack_addr,
+                     void **brk);
