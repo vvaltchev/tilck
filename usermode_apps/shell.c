@@ -107,7 +107,9 @@ void process_cmd_line(const char *cmd_line)
    }
 
    waitpid(child_pid, &wstatus, 0);
-   printf("[shell] command exited with status: %d\n", WEXITSTATUS(wstatus));
+
+   if (WEXITSTATUS(wstatus))
+      printf("[shell] command exited with status: %d\n", WEXITSTATUS(wstatus));
 }
 
 int main(int argc, char **argv, char **env)

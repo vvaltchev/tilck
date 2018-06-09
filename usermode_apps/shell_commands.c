@@ -307,7 +307,6 @@ struct {
 } cmds_table[] = {
 
    {"help", cmd_help},
-   {"?", cmd_help},
    {"loop", cmd_loop},
    {"fork_test", cmd_fork_test},
    {"invalid_read", cmd_invalid_read},
@@ -325,13 +324,15 @@ void cmd_help(void)
    printf("--- exOS development shell ----\n\n");
    printf("Regular commands\n");
    printf("-------------------------------\n");
-   printf("    cd <directory>\n\n");
+   printf("    help: shows this help\n");
+   printf("    cd <directory>: change the current working directory\n");
+   printf("    bb [args...]: alias for /bin/busybox [args...] \n\n");
    printf("Self tests\n");
    printf("-------------------------------\n");
 
    const int elems = sizeof(cmds_table) / sizeof(cmds_table[0]);
 
-   for (int i = 0; i < elems; i++) {
+   for (int i = 1 /* skip help */; i < elems; i++) {
       printf("    %s\n", cmds_table[i].name);
    }
 
