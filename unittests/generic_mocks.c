@@ -71,3 +71,5 @@ void set_page_directory() { }
 void set_current_task_in_user_mode() { }
 void arch_specific_new_task_setup() { NOT_REACHED(); }
 void arch_specific_free_task() { NOT_REACHED(); }
+void fpu_context_begin(void) { }
+void fpu_context_end(void) { }

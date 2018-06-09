@@ -69,13 +69,9 @@ void fb_flush_lines(u32 y, u32 lines_count)
 
    // ASSUMPTION fb_pitch is ALWAYS divisible by 32
 
-   fpu_context_begin();
-
    fpu_memcpy256_nt((void *)(fb_real_vaddr + y * fb_pitch),
                     (void *)(fb_vaddr + y * fb_pitch),
                     (lines_count * fb_pitch) >> 5);
-
-   fpu_context_end();
 }
 
 /* NOTE: it is required that: dst_y < src_y */
@@ -381,8 +377,6 @@ void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count)
    const u32 w4_shift = h->width == 8 ? 2 + 3 : 2 + 4;
    const u32 bpg_shift = h->bytes_per_glyph == 16 ? 4 : 6;
 
-   fpu_context_begin();
-
    for (u32 ei = 0; ei < count; ei++) {
 
       const u16 e = entries[ei];
@@ -406,7 +400,5 @@ void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count)
          }
 
    }
-
-   fpu_context_end();
 }
 

@@ -31,7 +31,15 @@ static void textmode_set_char_at(int row, int col, u16 entry)
 
 static void textmode_set_row(int row, u16 *data, bool flush)
 {
-   memcpy32(VIDEO_ADDR + row * VIDEO_COLS, data, VIDEO_COLS >> 1);
+   ASSERT(0 <= row && row < VIDEO_ROWS);
+
+   void *dest_addr = VIDEO_ADDR + row * VIDEO_COLS;
+   void *src_addr = data;
+
+   if (x86_cpu_features.can_use_sse2 && !in_panic())
+      fpu_memcpy256_nt_sse2(dest_addr, src_addr, VIDEO_COLS >> 4);
+   else
+      memcpy32(dest_addr, src_addr, VIDEO_COLS >> 1);
 }
 
 /*

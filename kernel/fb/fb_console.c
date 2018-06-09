@@ -247,6 +247,8 @@ static void fb_scroll_one_line_up(void)
 
 static void fb_flush(void)
 {
+   fpu_context_begin();
+
    for (u32 r = 0; r < fb_term_rows; r++) {
 
       if (!rows_to_flush[r])
@@ -257,6 +259,8 @@ static void fb_flush(void)
 
       rows_to_flush[r] = false;
    }
+
+   fpu_context_end();
 }
 
 // ---------------------------------------------
@@ -349,7 +353,11 @@ static void fb_update_banner_kthread()
 {
    while (true) {
       fb_draw_banner();
-      fb_flush_lines(0, fb_offset_y);
+      fpu_context_begin();
+      {
+         fb_flush_lines(0, fb_offset_y);
+      }
+      fpu_context_end();
       kernel_sleep(60 * TIMER_HZ);
    }
 }

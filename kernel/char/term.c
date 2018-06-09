@@ -9,6 +9,7 @@
 #include <common/vga_textmode_defs.h>
 #include <common/string_util.h>
 
+#include <exos/hal.h>
 #include <exos/term.h>
 #include <exos/serial.h>
 #include <exos/ringbuf.h>
@@ -93,10 +94,14 @@ static void ts_set_scroll(u32 requested_scroll)
 
    scroll = requested_scroll;
 
+   fpu_context_begin();
+
    for (u32 row = 0; row < term_rows; row++) {
       u32 buffer_row = (scroll + row) % total_buffer_rows;
       vi->set_row(row, &buffer[term_cols * buffer_row], true);
    }
+
+   fpu_context_end();
 }
 
 static ALWAYS_INLINE void ts_scroll_up(u32 lines)

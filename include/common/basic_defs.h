@@ -229,7 +229,7 @@ NORETURN void panic(const char *fmt, ...);
 NORETURN void assert_failed(const char *expr, const char *file, int line);
 NORETURN void not_reached(const char *file, int line);
 
-static inline bool in_panic(void)
+static ALWAYS_INLINE bool in_panic(void)
 {
    return __in_panic;
 }
