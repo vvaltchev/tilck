@@ -11,6 +11,7 @@
 #include <exos/bintree.h>
 
 #define OFFLIMIT_USERMODE_ADDR (KERNEL_BASE_VA) /* biggest usermode vaddr + 1 */
+#define MAX_BRK ((uptr)0xB0000000)
 #define KTHREAD_STACK_SIZE (PAGE_SIZE)
 #define IO_COPYBUF_SIZE (PAGE_SIZE)
 #define ARGS_COPYBUF_SIZE (PAGE_SIZE)
@@ -31,6 +32,7 @@ struct process_info {
    int parent_pid;
    page_directory_t *pdir;
    void *brk;
+   void *initial_brk;
 
    char cwd[MAX_PATH]; /* current working directory */
 

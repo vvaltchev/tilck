@@ -295,6 +295,8 @@ sptr sys_execve(const char *user_filename,
    }
 
    ti->pi->brk = brk;
+   ti->pi->initial_brk = brk;
+
    switch_to_idle_task();
    NOT_REACHED();
 
@@ -518,6 +520,81 @@ sptr sys_fork(void)
 
    enable_preemption();
    return child->tid;
+}
+
+sptr sys_brk(void *new_brk)
+{
+   task_info *ti = get_curr_task();
+   process_info *pi = ti->pi;
+
+   printk("[TID: %d] brk(%p), current_brk: %p\n", ti->tid, new_brk, pi->brk);
+
+   if (!new_brk)
+      goto ret;
+
+   if (new_brk < pi->initial_brk)
+      goto ret;
+
+   if ((uptr)new_brk >= MAX_BRK)
+      goto ret;
+
+   if (new_brk == pi->brk)
+      goto ret;
+
+   disable_preemption();
+
+   /*
+    * Disable preemption to avoid any threads to mess-up with the address space
+    * of the current process (i.e. they might call brk(), mmap() etc.)
+    */
+
+   if (new_brk < pi->brk) {
+
+      /* we have to free pages */
+
+      NOT_IMPLEMENTED();
+      goto out;
+   }
+
+   printk("brk: alloc new mem: %u KB\n", (new_brk - pi->brk) / KB);
+
+   void *vaddr = pi->brk;
+
+   while (vaddr < new_brk) {
+
+      if (is_mapped(pi->pdir, vaddr))
+         goto out;
+
+      vaddr += PAGE_SIZE;
+   }
+
+   /* OK, everything looks good here */
+
+   vaddr = pi->brk;
+
+   while (vaddr < new_brk) {
+
+      void *page_vaddr = kmalloc(PAGE_SIZE);
+
+      if (!page_vaddr) {
+         // TODO: handle this OOM case!!!
+         NOT_IMPLEMENTED();
+      }
+
+      uptr paddr = KERNEL_VA_TO_PA(page_vaddr);
+      map_page(pi->pdir, vaddr, paddr, true, true);
+      vaddr += PAGE_SIZE;
+   }
+
+   /* We're done. */
+   pi->brk = new_brk;
+   printk("brk(%p) SUCCESSFUL\n", new_brk);
+
+out:
+   enable_preemption();
+
+ret:
+   return (sptr)pi->brk;
 }
 
 #define PR_SET_NAME 15
