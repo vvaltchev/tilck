@@ -156,10 +156,65 @@ CREATE_STUB_SYSCALL_IMPL(sys_modify_ldt)
 CREATE_STUB_SYSCALL_IMPL(sys_adjtimex)
 CREATE_STUB_SYSCALL_IMPL(sys_mprotect)
 CREATE_STUB_SYSCALL_IMPL(sys_sigprocmask)
+CREATE_STUB_SYSCALL_IMPL(sys_init_module)
+CREATE_STUB_SYSCALL_IMPL(sys_delete_module)
+CREATE_STUB_SYSCALL_IMPL(sys_quotactl)
+CREATE_STUB_SYSCALL_IMPL(sys_getpgid)
+CREATE_STUB_SYSCALL_IMPL(sys_fchdir)
+CREATE_STUB_SYSCALL_IMPL(sys_bdflush)
+CREATE_STUB_SYSCALL_IMPL(sys_sysfs)
+CREATE_STUB_SYSCALL_IMPL(sys_personality)
+CREATE_STUB_SYSCALL_IMPL(sys_setfsuid16)
+CREATE_STUB_SYSCALL_IMPL(sys_setfsgid16)
+CREATE_STUB_SYSCALL_IMPL(sys_llseek)
+CREATE_STUB_SYSCALL_IMPL(sys_getdents)
+CREATE_STUB_SYSCALL_IMPL(sys_select)
+CREATE_STUB_SYSCALL_IMPL(sys_flock)
+CREATE_STUB_SYSCALL_IMPL(sys_msync)
+CREATE_STUB_SYSCALL_IMPL(sys_readv)
 
 sptr sys_writev(int fd, const void *iov, int iovcnt);
+
+CREATE_STUB_SYSCALL_IMPL(sys_getsid)
+CREATE_STUB_SYSCALL_IMPL(sys_fdatasync)
+CREATE_STUB_SYSCALL_IMPL(sys_sysctl)
+CREATE_STUB_SYSCALL_IMPL(sys_mlock)
+CREATE_STUB_SYSCALL_IMPL(sys_munlock)
+CREATE_STUB_SYSCALL_IMPL(sys_mlockall)
+CREATE_STUB_SYSCALL_IMPL(sys_munlockall)
+CREATE_STUB_SYSCALL_IMPL(sys_sched_setparam)
+CREATE_STUB_SYSCALL_IMPL(sys_sched_getparam)
+CREATE_STUB_SYSCALL_IMPL(sys_sched_setscheduler)
+CREATE_STUB_SYSCALL_IMPL(sys_sched_getscheduler)
+CREATE_STUB_SYSCALL_IMPL(sys_sched_yield)
+CREATE_STUB_SYSCALL_IMPL(sys_sched_get_priority_max)
+CREATE_STUB_SYSCALL_IMPL(sys_sched_set_priority_min)
+CREATE_STUB_SYSCALL_IMPL(sys_sched_rr_get_interval)
+
 sptr sys_nanosleep();   // not fully implemented
+
+CREATE_STUB_SYSCALL_IMPL(sys_mremap)
+CREATE_STUB_SYSCALL_IMPL(sys_setresuid16)
+CREATE_STUB_SYSCALL_IMPL(sys_getresuid16)
+CREATE_STUB_SYSCALL_IMPL(sys_vm86)
+CREATE_STUB_SYSCALL_IMPL(sys_poll)
+CREATE_STUB_SYSCALL_IMPL(sys_nfsservctl)
+CREATE_STUB_SYSCALL_IMPL(sys_setresgid16)
+CREATE_STUB_SYSCALL_IMPL(sys_getresgid16)
+CREATE_STUB_SYSCALL_IMPL(sys_prctl)
+CREATE_STUB_SYSCALL_IMPL(sys_rt_sigreturn)
+CREATE_STUB_SYSCALL_IMPL(sys_rt_sigaction)
+
 sptr sys_rt_sigprocmask();
+
+CREATE_STUB_SYSCALL_IMPL(sys_rt_sigpending)
+CREATE_STUB_SYSCALL_IMPL(sys_rt_sigtimedwait)
+CREATE_STUB_SYSCALL_IMPL(sys_rt_sigqueueinfo)
+CREATE_STUB_SYSCALL_IMPL(sys_rt_sigsuspend)
+CREATE_STUB_SYSCALL_IMPL(sys_pread64)
+CREATE_STUB_SYSCALL_IMPL(sys_pwrite64)
+CREATE_STUB_SYSCALL_IMPL(sys_chown16)
+
 sptr sys_getcwd(char *buf, size_t buf_size);
 sptr sys_gettid();
 sptr sys_set_thread_area(void *u_info);
