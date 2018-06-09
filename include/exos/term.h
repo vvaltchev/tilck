@@ -28,8 +28,11 @@ void init_term(const video_interface *vi,
                bool use_serial_port);
 
 bool term_is_initialized(void);
+
+u32 term_get_tab_size(void);
 u32 term_get_rows(void);
 u32 term_get_cols(void);
+
 
 void term_write(char *buf, u32 len);
 void term_write2(char *buf, u32 len, u8 color);

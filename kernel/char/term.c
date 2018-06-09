@@ -16,6 +16,7 @@
 #include <exos/interrupts.h>
 
 static bool term_use_serial;
+static int term_tab_size = 8;
 
 static u16 term_cols;
 static u16 term_rows;
@@ -32,6 +33,11 @@ static u32 max_scroll;
 static u32 total_buffer_rows;
 static u32 extra_buffer_rows;
 static u16 failsafe_buffer[80 * 25];
+
+u32 term_get_tab_size(void)
+{
+   return term_tab_size;
+}
 
 u32 term_get_rows(void)
 {
@@ -211,10 +217,28 @@ static void term_internal_incr_row(void)
    ts_clear_row(term_rows - 1, current_color);
 }
 
+static void term_internal_write_printable_char(char c, u8 color)
+{
+   u16 entry = make_vgaentry(c, color);
+   buffer_set_entry(current_row, current_col, entry);
+   vi->set_char_at(current_row, current_col, entry);
+   current_col++;
+}
+
+static void term_internal_write_tab(u8 color)
+{
+   int rem = term_cols - current_col - 1;
+
+   if (rem < term_tab_size)
+      return;
+
+   for (int i = 0; i < term_tab_size; i++) {
+      term_internal_write_printable_char(' ', color);
+   }
+}
+
 static void term_internal_write_char2(char c, u8 color)
 {
-   u16 entry;
-
    if (term_use_serial)
       serial_write(c);
 
@@ -230,23 +254,22 @@ static void term_internal_write_char2(char c, u8 color)
       break;
 
    case '\t':
+      term_internal_write_tab(color);
       break;
 
    case '\b':
 
-      if (current_col > 0)
-         current_col--;
+      if (!current_col)
+         break;
 
-      entry = make_vgaentry(' ', color);
-      buffer_set_entry(current_row, current_col, entry);
-      vi->set_char_at(current_row, current_col, entry);
+      current_col--;
+      term_internal_write_printable_char(' ', color);
+      current_col--; /* compensate the current_col++ in the call */
       break;
 
    default:
-      entry = make_vgaentry(c, color);
-      buffer_set_entry(current_row, current_col, entry);
-      vi->set_char_at(current_row, current_col, entry);
-      ++current_col;
+
+      term_internal_write_printable_char(c, color);
 
       if (current_col == term_cols) {
          current_col = 0;
