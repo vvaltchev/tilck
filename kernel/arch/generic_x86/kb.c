@@ -50,9 +50,9 @@ char kb_cbuf_read_elem(void)
    return (char)ret;
 }
 
-static ALWAYS_INLINE bool kb_cbuf_drop_last_written_elem(void)
+static ALWAYS_INLINE bool kb_cbuf_drop_last_written_elem(char *c)
 {
-   return ringbuf_unwrite_elem(&kb_cooked_ringbuf);
+   return ringbuf_unwrite_elem(&kb_cooked_ringbuf, c);
 }
 
 static ALWAYS_INLINE bool kb_cbuf_write_elem(char c)
@@ -334,8 +334,19 @@ void handle_key_pressed(u8 scancode)
       }
 
    } else {
-      if (kb_cbuf_drop_last_written_elem())
-         term_write((char *)&c, 1);
+
+      char last_char;
+
+      if (kb_cbuf_drop_last_written_elem(&last_char)) {
+
+         int iters = 1;
+
+         if (last_char == '\t')
+            iters = term_get_tab_size();
+
+         for (int i = 0; i < iters; i++)
+            term_write((char *)&c, 1);
+      }
    }
 }
 

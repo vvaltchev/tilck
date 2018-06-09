@@ -141,7 +141,7 @@ bool ringbuf_read_elem1(ringbuf *rb, u8 *elem_ptr)
    return true;
 }
 
-bool ringbuf_unwrite_elem(ringbuf *rb)
+bool ringbuf_unwrite_elem(ringbuf *rb, void *elem_ptr /* out */)
 {
    generic_ringbuf_stat cs, ns;
 
@@ -153,6 +153,7 @@ bool ringbuf_unwrite_elem(ringbuf *rb)
       if (is_empty(&cs))
          return false;
 
+      memcpy(elem_ptr, rb->buf + cs.read_pos * rb->elem_size, rb->elem_size);
       ns.write_pos = (ns.write_pos - 1) % rb->max_elems;
       ns.full = false;
 

@@ -41,7 +41,7 @@ void ringbuf_init(ringbuf *rb, u16 max_elems, u16 elem_size, void *buf);
 void ringbuf_destory(ringbuf *rb);
 bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr);
 bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */);
-bool ringbuf_unwrite_elem(ringbuf *rb);
+bool ringbuf_unwrite_elem(ringbuf *rb, void *elem_ptr /* out */);
 
 bool ringbuf_write_elem1(ringbuf *rb, u8 val);
 bool ringbuf_read_elem1(ringbuf *rb, u8 *elem_ptr);
