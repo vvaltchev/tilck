@@ -529,17 +529,30 @@ sptr sys_brk(void *new_brk)
 
    printk("[TID: %d] brk(%p), current_brk: %p\n", ti->tid, new_brk, pi->brk);
 
-   if (!new_brk)
+   if (!new_brk) {
+      printk("new_brk == NULL\n");
       goto ret;
+   }
 
-   if (new_brk < pi->initial_brk)
+   if ((uptr)new_brk & OFFSET_IN_PAGE_MASK) {
+      printk("new_brk NOT page-aligned\n");
       goto ret;
+   }
 
-   if ((uptr)new_brk >= MAX_BRK)
+   if (new_brk < pi->initial_brk) {
+      printk("brk error: new_brk < initial_brk\n");
       goto ret;
+   }
 
-   if (new_brk == pi->brk)
+   if ((uptr)new_brk >= MAX_BRK) {
+      printk("brk error: new_brk > MAX_BRK\n");
       goto ret;
+   }
+
+   if (new_brk == pi->brk) {
+      printk("brk: new_brk == brk\n");
+      goto ret;
+   }
 
    disable_preemption();
 
@@ -552,7 +565,20 @@ sptr sys_brk(void *new_brk)
 
       /* we have to free pages */
 
-      NOT_IMPLEMENTED();
+      printk("brk: free mem: %u KB (%u MB)\n",
+             (pi->brk - new_brk) / KB, (pi->brk - new_brk) / MB);
+
+      void *vaddr = pi->brk;
+
+      while (vaddr > new_brk) {
+         uptr paddr = get_mapping(pi->pdir, vaddr - PAGE_SIZE);
+         void *kernel_vaddr = KERNEL_PA_TO_VA(paddr);
+         kfree2(kernel_vaddr, PAGE_SIZE);
+         unmap_page(pi->pdir, vaddr - PAGE_SIZE);
+         vaddr -= PAGE_SIZE;
+      }
+
+      pi->brk = vaddr;
       goto out;
    }
 
@@ -562,8 +588,10 @@ sptr sys_brk(void *new_brk)
 
    while (vaddr < new_brk) {
 
-      if (is_mapped(pi->pdir, vaddr))
+      if (is_mapped(pi->pdir, vaddr)) {
+         printk("brk error: vaddr %p already mapped\n", vaddr);
          goto out;
+      }
 
       vaddr += PAGE_SIZE;
    }
@@ -576,10 +604,8 @@ sptr sys_brk(void *new_brk)
 
       void *page_vaddr = kmalloc(PAGE_SIZE);
 
-      if (!page_vaddr) {
-         // TODO: handle this OOM case!!!
-         NOT_IMPLEMENTED();
-      }
+      if (!page_vaddr)
+         break;
 
       uptr paddr = KERNEL_VA_TO_PA(page_vaddr);
       map_page(pi->pdir, vaddr, paddr, true, true);
@@ -587,8 +613,12 @@ sptr sys_brk(void *new_brk)
    }
 
    /* We're done. */
-   pi->brk = new_brk;
-   printk("brk(%p) SUCCESSFUL\n", new_brk);
+   pi->brk = vaddr;
+
+   if (vaddr == new_brk)
+      printk("brk(%p) SUCCESSFUL\n", new_brk);
+   else
+      printk("brk(%p) PARTIALLY successful: brk now: %p\n", new_brk, pi->brk);
 
 out:
    enable_preemption();

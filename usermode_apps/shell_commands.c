@@ -5,10 +5,11 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <sys/syscall.h>
 
 
 #define RDTSC() __builtin_ia32_rdtsc()
@@ -293,6 +294,35 @@ void cmd_fpu(void)
    printf("n^2 = %lf\n", num * 2.0);
 }
 
+void cmd_brk_test(void)
+{
+   const size_t alloc_size = 1024 * 1024;
+
+   void *orig_brk = (void *)syscall(SYS_brk, 0);
+   void *b = orig_brk;
+
+   size_t tot_allocated = 0;
+
+   for (int i = 0; i < 128; i++) {
+
+      void *new_brk = b + alloc_size;
+
+      b = (void *)syscall(SYS_brk, b + alloc_size);
+
+      if (b != new_brk)
+         break;
+
+      tot_allocated += alloc_size;
+   }
+
+   printf("tot allocated: %u MB\n", tot_allocated / (1024 * 1024));
+
+   b = (void *)syscall(SYS_brk, orig_brk);
+
+   if (b != orig_brk)
+      printf("Unable to free mem with brk()\n");
+}
+
 void cmd_help(void);
 
 /* ------------------------------------------- */
@@ -315,7 +345,8 @@ struct {
    {"sysenter", cmd_sysenter},
    {"syscall_perf", cmd_syscall_perf},
    {"sysenter_fork_test", cmd_sysenter_fork_test},
-   {"fpu", cmd_fpu}
+   {"fpu", cmd_fpu},
+   {"brk_test", cmd_brk_test}
 };
 
 void cmd_help(void)
