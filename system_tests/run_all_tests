@@ -26,6 +26,7 @@ shell_cmd_tests = [
    ['fork_test', 8],
    ['sysenter_fork_test', 8],
    ['fork_perf', 14],
+   ['brk_test', 2],
 ]
 
 selftests = [

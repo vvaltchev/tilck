@@ -527,32 +527,22 @@ sptr sys_brk(void *new_brk)
    task_info *ti = get_curr_task();
    process_info *pi = ti->pi;
 
-   printk("[TID: %d] brk(%p), current_brk: %p\n", ti->tid, new_brk, pi->brk);
-
-   if (!new_brk) {
-      printk("new_brk == NULL\n");
+   if (!new_brk)
       goto ret;
-   }
 
-   if ((uptr)new_brk & OFFSET_IN_PAGE_MASK) {
-      printk("new_brk NOT page-aligned\n");
+   // TODO: check if Linux accepts non-page aligned addresses.
+   // If yes, what to do? how to approx? truncation, round-up/round-down?
+   if ((uptr)new_brk & OFFSET_IN_PAGE_MASK)
       goto ret;
-   }
 
-   if (new_brk < pi->initial_brk) {
-      printk("brk error: new_brk < initial_brk\n");
+   if (new_brk < pi->initial_brk)
       goto ret;
-   }
 
-   if ((uptr)new_brk >= MAX_BRK) {
-      printk("brk error: new_brk > MAX_BRK\n");
+   if ((uptr)new_brk >= MAX_BRK)
       goto ret;
-   }
 
-   if (new_brk == pi->brk) {
-      printk("brk: new_brk == brk\n");
+   if (new_brk == pi->brk)
       goto ret;
-   }
 
    disable_preemption();
 
@@ -565,15 +555,14 @@ sptr sys_brk(void *new_brk)
 
       /* we have to free pages */
 
-      printk("brk: free mem: %u KB (%u MB)\n",
-             (pi->brk - new_brk) / KB, (pi->brk - new_brk) / MB);
+      //printk("brk: free mem: %u KB (%u MB)\n",
+      //       (pi->brk - new_brk) / KB, (pi->brk - new_brk) / MB);
 
       void *vaddr = pi->brk;
 
       while (vaddr > new_brk) {
-         uptr paddr = get_mapping(pi->pdir, vaddr - PAGE_SIZE);
-         void *kernel_vaddr = KERNEL_PA_TO_VA(paddr);
-         kfree2(kernel_vaddr, PAGE_SIZE);
+         const uptr paddr = get_mapping(pi->pdir, vaddr - PAGE_SIZE);
+         kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
          unmap_page(pi->pdir, vaddr - PAGE_SIZE);
          vaddr -= PAGE_SIZE;
       }
@@ -582,16 +571,14 @@ sptr sys_brk(void *new_brk)
       goto out;
    }
 
-   printk("brk: alloc new mem: %u KB\n", (new_brk - pi->brk) / KB);
+   //printk("brk: alloc new mem: %u KB\n", (new_brk - pi->brk) / KB);
 
    void *vaddr = pi->brk;
 
    while (vaddr < new_brk) {
 
-      if (is_mapped(pi->pdir, vaddr)) {
-         printk("brk error: vaddr %p already mapped\n", vaddr);
-         goto out;
-      }
+      if (is_mapped(pi->pdir, vaddr))
+         goto out; // error: vaddr is already mapped!
 
       vaddr += PAGE_SIZE;
    }
@@ -602,12 +589,12 @@ sptr sys_brk(void *new_brk)
 
    while (vaddr < new_brk) {
 
-      void *page_vaddr = kmalloc(PAGE_SIZE);
+      void *kernel_vaddr = kmalloc(PAGE_SIZE);
 
-      if (!page_vaddr)
-         break;
+      if (!kernel_vaddr)
+         break; /* we've allocated as much as possible */
 
-      uptr paddr = KERNEL_VA_TO_PA(page_vaddr);
+      const uptr paddr = KERNEL_VA_TO_PA(kernel_vaddr);
       map_page(pi->pdir, vaddr, paddr, true, true);
       vaddr += PAGE_SIZE;
    }
@@ -615,14 +602,8 @@ sptr sys_brk(void *new_brk)
    /* We're done. */
    pi->brk = vaddr;
 
-   if (vaddr == new_brk)
-      printk("brk(%p) SUCCESSFUL\n", new_brk);
-   else
-      printk("brk(%p) PARTIALLY successful: brk now: %p\n", new_brk, pi->brk);
-
 out:
    enable_preemption();
-
 ret:
    return (sptr)pi->brk;
 }

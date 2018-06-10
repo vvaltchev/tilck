@@ -315,12 +315,14 @@ void cmd_brk_test(void)
       tot_allocated += alloc_size;
    }
 
-   printf("tot allocated: %u MB\n", tot_allocated / (1024 * 1024));
+   //printf("tot allocated: %u KB\n", tot_allocated / 1024);
 
    b = (void *)syscall(SYS_brk, orig_brk);
 
-   if (b != orig_brk)
+   if (b != orig_brk) {
       printf("Unable to free mem with brk()\n");
+      exit(1);
+   }
 }
 
 void cmd_help(void);

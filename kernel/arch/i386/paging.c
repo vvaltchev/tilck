@@ -227,13 +227,11 @@ void unmap_page(page_directory_t *pdir, void *vaddrp)
    ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
    ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
    ASSERT(ptable->pages[page_table_index].present);
-   ptable->pages[page_table_index].raw = 0;
 
    const uptr paddr = ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
+   ptable->pages[page_table_index].raw = 0;
 
-   if (pf_ref_count_dec(paddr) == 0)
-      kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
-
+   pf_ref_count_dec(paddr);
    invalidate_page(vaddr);
 }
 
