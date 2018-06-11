@@ -126,7 +126,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_swapon)
 CREATE_STUB_SYSCALL_IMPL(sys_reboot)
 CREATE_STUB_SYSCALL_IMPL(sys_old_readdir)
 CREATE_STUB_SYSCALL_IMPL(sys_old_mmap)
-CREATE_STUB_SYSCALL_IMPL(sys_munmap)
+
+sptr sys_munmap(void *vaddr, size_t len);
+
 CREATE_STUB_SYSCALL_IMPL(sys_truncate)
 CREATE_STUB_SYSCALL_IMPL(sys_ftruncate)
 CREATE_STUB_SYSCALL_IMPL(sys_fchmod)
@@ -231,7 +233,10 @@ CREATE_STUB_SYSCALL_IMPL(sys_sigaltstack)
 CREATE_STUB_SYSCALL_IMPL(sys_sendfile)
 CREATE_STUB_SYSCALL_IMPL(sys_vfork)
 CREATE_STUB_SYSCALL_IMPL(sys_getrlimit)
-CREATE_STUB_SYSCALL_IMPL(sys_mmap_pgoff)
+
+sptr sys_mmap_pgoff(void *addr, size_t length, int prot,
+                    int flags, int fd, off_t pgoffset);
+
 CREATE_STUB_SYSCALL_IMPL(sys_truncate64)
 CREATE_STUB_SYSCALL_IMPL(sys_ftruncate64)
 CREATE_STUB_SYSCALL_IMPL(sys_stat64)

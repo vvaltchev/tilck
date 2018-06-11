@@ -11,7 +11,12 @@
 #include <exos/bintree.h>
 
 #define OFFLIMIT_USERMODE_ADDR (KERNEL_BASE_VA) /* biggest usermode vaddr + 1 */
-#define MAX_BRK ((uptr)0xB0000000)
+
+#define MAX_BRK ((uptr)0x40000000)          // +1 GB
+
+#define USER_MMAP_BEGIN MAX_BRK
+#define USER_MMAP_END   ((uptr)0xA0000000)  // +2.5 GB
+
 #define KTHREAD_STACK_SIZE (PAGE_SIZE)
 #define IO_COPYBUF_SIZE (PAGE_SIZE)
 #define ARGS_COPYBUF_SIZE (PAGE_SIZE)
