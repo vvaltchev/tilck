@@ -500,7 +500,7 @@ size_t kmalloc_get_total_heap_allocation(void)
 bool pg_alloc_and_map(uptr vaddr, int page_count);
 void pg_free_and_unmap(uptr vaddr, int page_count);
 
-void kmalloc_create_heap(kmalloc_heap *h,
+bool kmalloc_create_heap(kmalloc_heap *h,
                          uptr vaddr,
                          size_t size,
                          size_t min_block_size,
@@ -529,7 +529,9 @@ void kmalloc_create_heap(kmalloc_heap *h,
       ASSERT(heaps[0].vaddr != 0);
 
       metadata_nodes = kmalloc(h->metadata_size);
-      VERIFY(metadata_nodes != NULL);
+
+      if (!metadata_nodes)
+         return false;
    }
 
    h->vaddr = vaddr;
@@ -550,6 +552,8 @@ void kmalloc_create_heap(kmalloc_heap *h,
       // DISALLOW heaps crossing the linear mapping barrier.
       ASSERT(vaddr >= LINEAR_MAPPING_OVER_END);
    }
+
+   return true;
 }
 
 static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
@@ -598,14 +602,17 @@ void init_kmalloc(void)
    ASSERT(calculate_heap_metadata_size(
             first_heap_size, min_block_size) == fixed_size_first_heap_metadata);
 
-   kmalloc_create_heap(&heaps[0],
-                       vaddr + fixed_size_first_heap_metadata,
-                       first_heap_size,
-                       min_block_size,
-                       32 * PAGE_SIZE,
-                       (void *)vaddr,
-                       NULL,
-                       NULL);
+   bool success =
+      kmalloc_create_heap(&heaps[0],
+                          vaddr + fixed_size_first_heap_metadata,
+                          first_heap_size,
+                          min_block_size,
+                          32 * PAGE_SIZE,
+                          (void *)vaddr,
+                          NULL,
+                          NULL);
+
+   VERIFY(success);
 
    used_heaps = 1;
    kmalloc_initialized = true;
@@ -625,12 +632,15 @@ void init_kmalloc(void)
              heap_size / MB, min_block_size);
 #endif
 
-      kmalloc_create_heap(&heaps[i],
-                          vaddr,
-                          heap_size,
-                          min_block_size,
-                          32 * PAGE_SIZE,
-                          NULL, NULL, NULL);
+      bool success =
+         kmalloc_create_heap(&heaps[i],
+                             vaddr,
+                             heap_size,
+                             min_block_size,
+                             32 * PAGE_SIZE,
+                             NULL, NULL, NULL);
+
+      VERIFY(success);
 
       vaddr = heaps[i].vaddr + heaps[i].size;
       used_heaps++;

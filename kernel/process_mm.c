@@ -128,6 +128,9 @@ sptr
 sys_mmap_pgoff(void *addr, size_t len, int prot,
                int flags, int fd, off_t pgoffset)
 {
+   task_info *curr = get_curr_task();
+   process_info *pi = curr->pi;
+
    printk("mmap2(addr: %p, len: %u, prot: %u, flags: %p, fd: %d, off: %d)\n",
           addr, len, prot, flags, fd, pgoffset);
 
@@ -142,6 +145,27 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
    if (!(prot & PROT_READ))
       return -EINVAL;
+
+
+   if (!pi->mmap_heap) {
+
+      pi->mmap_heap = kzmalloc(sizeof(kmalloc_heap));
+
+      if (!pi->mmap_heap)
+         return -ENOMEM;
+
+      bool success =
+         kmalloc_create_heap(pi->mmap_heap,
+                             USER_MMAP_BEGIN,
+                             USER_MMAP_END - USER_MMAP_BEGIN,
+                             PAGE_SIZE,
+                             32 * PAGE_SIZE,
+                             NULL, // metadata_nodes
+                             user_valloc_and_map,
+                             user_vfree_and_unmap);
+      if (!success)
+         return -ENOMEM;
+   }
 
    return -ENOSYS;
 }

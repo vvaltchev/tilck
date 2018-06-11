@@ -48,7 +48,7 @@ void *kmalloc(size_t size);
 void kfree2(void *ptr, size_t size);
 size_t kmalloc_get_total_heap_allocation(void);
 
-void kmalloc_create_heap(kmalloc_heap *h,
+bool kmalloc_create_heap(kmalloc_heap *h,
                          uptr vaddr,
                          size_t size,
                          size_t min_block_size,

@@ -9,6 +9,7 @@
 #include <exos/sync.h>
 #include <exos/fs/exvfs.h>
 #include <exos/bintree.h>
+#include <exos/kmalloc.h>
 
 #define OFFLIMIT_USERMODE_ADDR (KERNEL_BASE_VA) /* biggest usermode vaddr + 1 */
 
@@ -38,6 +39,7 @@ struct process_info {
    page_directory_t *pdir;
    void *brk;
    void *initial_brk;
+   kmalloc_heap *mmap_heap;
 
    char cwd[MAX_PATH]; /* current working directory */
 
