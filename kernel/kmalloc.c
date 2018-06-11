@@ -7,9 +7,6 @@
 #include <exos/sync.h>
 #include <exos/process.h>
 
-bool kbasic_virtual_alloc(uptr vaddr, int page_count);
-void kbasic_virtual_free(uptr vaddr, int page_count);
-
 #include "kmalloc_debug.h"
 
 #define FL_NODE_SPLIT      (1 << 0)
@@ -155,12 +152,11 @@ static void *actual_allocate_node(kmalloc_heap *h, size_t node_size, int node)
 
          DEBUG_allocate_node2;
 
-         // TODO: handle out-of-memory
-         DEBUG_ONLY(bool success =)
-            kbasic_virtual_alloc(alloc_block_vaddr,
-                                 h->alloc_block_size / PAGE_SIZE);
-         ASSERT(success);
+         bool success =
+            h->valloc_and_map(alloc_block_vaddr,
+                              h->alloc_block_size / PAGE_SIZE);
 
+         VERIFY(success); // TODO: handle out-of-memory
          nodes[alloc_node].allocated = true;
       }
 
@@ -360,7 +356,7 @@ static void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size)
       ASSERT(nodes[alloc_node].allocated);
 
       DEBUG_free_freeing_block;
-      kbasic_virtual_free(alloc_block_vaddr, h->alloc_block_size / PAGE_SIZE);
+      h->vfree_and_unmap(alloc_block_vaddr, h->alloc_block_size / PAGE_SIZE);
 
       nodes[alloc_node] = new_node;
       alloc_block_vaddr += h->alloc_block_size;
@@ -501,12 +497,17 @@ size_t kmalloc_get_total_heap_allocation(void)
    return tot;
 }
 
+bool pg_alloc_and_map(uptr vaddr, int page_count);
+void pg_free_and_unmap(uptr vaddr, int page_count);
+
 void kmalloc_create_heap(kmalloc_heap *h,
                          uptr vaddr,
                          size_t size,
                          size_t min_block_size,
                          size_t alloc_block_size,
-                         void *metadata_nodes)
+                         void *metadata_nodes,
+                         virtual_alloc_and_map_func valloc,
+                         virtual_free_and_unmap_func vfree)
 {
    // vaddr has to be MB-aligned
    ASSERT((vaddr & (MB - 1)) == 0);
@@ -519,6 +520,9 @@ void kmalloc_create_heap(kmalloc_heap *h,
 
    bzero(h, sizeof(*h));
    h->metadata_size = calculate_heap_metadata_size(size, min_block_size);
+
+   h->valloc_and_map = valloc ? valloc : pg_alloc_and_map;
+   h->vfree_and_unmap = vfree ? vfree : pg_free_and_unmap;
 
    if (!metadata_nodes) {
       // It is OK to pass NULL as 'metadata_nodes' if at least one heap exists.
@@ -566,7 +570,7 @@ static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
 extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
 
-void init_kmalloc()
+void init_kmalloc(void)
 {
    ASSERT(!kmalloc_initialized);
 
@@ -599,7 +603,9 @@ void init_kmalloc()
                        first_heap_size,
                        min_block_size,
                        32 * PAGE_SIZE,
-                       (void *)vaddr);
+                       (void *)vaddr,
+                       NULL,
+                       NULL);
 
    used_heaps = 1;
    kmalloc_initialized = true;
@@ -624,7 +630,7 @@ void init_kmalloc()
                           heap_size,
                           min_block_size,
                           32 * PAGE_SIZE,
-                          NULL);
+                          NULL, NULL, NULL);
 
       vaddr = heaps[i].vaddr + heaps[i].size;
       used_heaps++;

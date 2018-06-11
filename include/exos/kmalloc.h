@@ -9,6 +9,9 @@
 
 extern bool kmalloc_initialized;
 
+typedef bool (*virtual_alloc_and_map_func)(uptr vaddr, int page_count);
+typedef void (*virtual_free_and_unmap_func)(uptr vaddr, int page_count);
+
 typedef struct {
 
    uptr vaddr;
@@ -18,6 +21,9 @@ typedef struct {
 
    size_t min_block_size;
    size_t alloc_block_size;
+
+   virtual_alloc_and_map_func valloc_and_map;
+   virtual_free_and_unmap_func vfree_and_unmap;
 
    /* -- pre-calculated values -- */
    size_t heap_data_size_log2;
@@ -41,6 +47,15 @@ void init_kmalloc();
 void *kmalloc(size_t size);
 void kfree2(void *ptr, size_t size);
 size_t kmalloc_get_total_heap_allocation(void);
+
+void kmalloc_create_heap(kmalloc_heap *h,
+                         uptr vaddr,
+                         size_t size,
+                         size_t min_block_size,
+                         size_t alloc_block_size,
+                         void *metadata_nodes,               // optional
+                         virtual_alloc_and_map_func valloc,  // optional
+                         virtual_free_and_unmap_func vfree); // optional
 
 static ALWAYS_INLINE void kfree(void *ptr)
 {
