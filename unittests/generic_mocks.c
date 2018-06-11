@@ -44,6 +44,9 @@ void __wrap_not_reached(const char *file, int line)
    abort();
 }
 
+void __wrap_kmutex_lock(void *m) { }
+void __wrap_kmutex_unlock(void *m) { }
+
 void init_serial_port() { }
 void serial_write() { }
 void handle_fault() { }

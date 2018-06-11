@@ -225,8 +225,6 @@ STATIC fs_handle fat_dup(fs_handle h)
    return new_h;
 }
 
-#include <exos/process.h>
-
 STATIC void fat_exclusive_lock(filesystem *fs)
 {
    fat_fs_device_data *d = fs->device_data;

@@ -43,6 +43,8 @@ set(
    printk
    kmalloc
    kfree2
+   kmutex_lock
+   kmutex_unlock
 )
 
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})
