@@ -105,6 +105,10 @@ void mount_ramdisk(void)
    }
 
    filesystem *root_fs = fat_mount_ramdisk(KERNEL_PA_TO_VA(ramdisk_paddr));
+
+   if (!root_fs)
+      panic("Unable to mount the fat32 RAMDISK");
+
    mountpoint_add(root_fs, "/");
    printk("Mounted RAMDISK at PADDR %p.\n", ramdisk_paddr);
 }

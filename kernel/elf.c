@@ -72,12 +72,18 @@ int load_elf_program(const char *filepath,
 {
    page_directory_t *old_pdir = get_curr_page_dir();
    Elf32_Phdr *phdrs = NULL;
+   fs_handle *elf_file;
    Elf32_Ehdr header;
    ssize_t ret;
    uptr brk = 0;
    int rc = 0;
 
-   fs_handle *elf_file = exvfs_open(filepath);
+   ASSERT(!is_preemption_enabled());
+   enable_preemption();
+   {
+      elf_file = exvfs_open(filepath);
+   }
+   disable_preemption();
 
    if (!elf_file)
       return -ENOENT;

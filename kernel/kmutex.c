@@ -12,7 +12,7 @@ bool kmutex_is_curr_task_holding_lock(kmutex *m)
 
 void kmutex_init(kmutex *m, u32 flags)
 {
-   m->owner_task = NULL;
+   bzero(m, sizeof(kmutex));
    m->id = ATOMIC_FETCH_AND_ADD(&new_mutex_id, 1);
    m->flags = flags;
 }

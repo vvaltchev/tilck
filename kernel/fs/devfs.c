@@ -109,7 +109,7 @@ static fs_handle devfs_dup(fs_handle h)
 {
    devfs_file_handle *new_h;
    new_h = kzmalloc(sizeof(devfs_file_handle));
-   VERIFY(new_h != NULL);
+   VERIFY(new_h != NULL); // TODO: handle this OOM condition
    memcpy(new_h, h, sizeof(devfs_file_handle));
    return new_h;
 }
@@ -124,14 +124,22 @@ static void devfs_exclusive_unlock(filesystem *fs)
    enable_preemption();
 }
 
-
 filesystem *create_devfs(void)
 {
    /* Disallow multiple instances of devfs */
    ASSERT(devfs == NULL);
 
    filesystem *fs = kzmalloc(sizeof(filesystem));
+
+   if (!fs)
+      return NULL;
+
    devfs_data *d = kzmalloc(sizeof(devfs_data));
+
+   if (!d) {
+      kfree2(fs, sizeof(filesystem));
+      return NULL;
+   }
 
    list_node_init(&d->files_list);
 
@@ -149,5 +157,9 @@ filesystem *create_devfs(void)
 void create_and_register_devfs(void)
 {
    devfs = create_devfs();
+
+   if (!devfs)
+      panic("Unable to create devfs");
+
    mountpoint_add(devfs, "/dev/");
 }

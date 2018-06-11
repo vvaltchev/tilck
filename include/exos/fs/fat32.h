@@ -3,6 +3,8 @@
 
 #include <common/basic_defs.h>
 #include <common/fat32_base.h>
+
+#include <exos/sync.h>
 #include <exos/fs/exvfs.h>
 
 typedef struct {
@@ -10,6 +12,9 @@ typedef struct {
    fat_header *hdr; /* vaddr of the beginning of the FAT partition */
    fat_type type;
    ssize_t cluster_size;
+
+   kmutex ex_mutex; // big exclusive whole-filesystem lock
+                    // TODO: use a rw-lock when available in the kernel
 
 } fat_fs_device_data;
 

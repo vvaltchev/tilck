@@ -225,30 +225,38 @@ STATIC fs_handle fat_dup(fs_handle h)
    return new_h;
 }
 
-#include <exos/process.h> // for enable/disable preemption
+#include <exos/process.h>
 
 STATIC void fat_exclusive_lock(filesystem *fs)
 {
-   disable_preemption();
+   fat_fs_device_data *d = fs->device_data;
+   kmutex_lock(&d->ex_mutex);
 }
 
 STATIC void fat_exclusive_unlock(filesystem *fs)
 {
-   enable_preemption();
+   fat_fs_device_data *d = fs->device_data;
+   kmutex_unlock(&d->ex_mutex);
 }
-
 
 filesystem *fat_mount_ramdisk(void *vaddr)
 {
    fat_fs_device_data *d = kmalloc(sizeof(fat_fs_device_data));
-   VERIFY(d != NULL);
+
+   if (!d)
+      return NULL;
 
    d->hdr = (fat_header *) vaddr;
    d->type = fat_get_type(d->hdr);
    d->cluster_size = d->hdr->BPB_SecPerClus * d->hdr->BPB_BytsPerSec;
+   kmutex_init(&d->ex_mutex, KMUTEX_FL_RECURSIVE);
 
    filesystem *fs = kzmalloc(sizeof(filesystem));
-   VERIFY(fs != NULL);
+
+   if (!fs) {
+      kfree2(d, sizeof(fat_fs_device_data));
+      return NULL;
+   }
 
    fs->device_data = d;
    fs->fopen = fat_open;
@@ -263,6 +271,9 @@ filesystem *fat_mount_ramdisk(void *vaddr)
 
 void fat_umount_ramdisk(filesystem *fs)
 {
+   fat_fs_device_data *d = fs->device_data;
+
+   kmutex_destroy(&d->ex_mutex);
    kfree2(fs->device_data, sizeof(fat_fs_device_data));
    kfree2(fs, sizeof(filesystem));
 }
