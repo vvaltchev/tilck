@@ -16,7 +16,7 @@
 #define MAX_BRK ((uptr)0x40000000)          // +1 GB
 
 #define USER_MMAP_BEGIN MAX_BRK
-#define USER_MMAP_END   ((uptr)0xA0000000)  // +2.5 GB
+#define USER_MMAP_END   ((uptr)0x80000000)  // +2 GB
 
 #define KTHREAD_STACK_SIZE (PAGE_SIZE)
 #define IO_COPYBUF_SIZE (PAGE_SIZE)

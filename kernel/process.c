@@ -68,10 +68,14 @@ task_info *allocate_new_process(task_info *parent, int pid)
    pi = (process_info *)(ti + 1);
 
    if (parent) {
+
       memcpy(ti, parent, sizeof(task_info));
       memcpy(pi, parent->pi, sizeof(process_info));
       pi->parent_pid = parent->tid;
+      pi->mmap_heap = kmalloc_heap_dup(parent->pi->mmap_heap);
+
    } else {
+
       bzero(ti, sizeof(task_info) + sizeof(process_info));
       /* NOTE: parent_pid in this case is 0 as kernel_process->pi->tid */
    }
@@ -124,6 +128,9 @@ void free_task(task_info *ti)
    if (ti->tid == ti->owning_process_pid) {
 
       ASSERT(ti->pi->ref_count > 0);
+
+      if (ti->pi->mmap_heap)
+         kmalloc_destroy_heap(ti->pi->mmap_heap);
 
       if (--ti->pi->ref_count == 0)
          kfree2(ti, sizeof(task_info) + sizeof(process_info));

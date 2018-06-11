@@ -131,21 +131,20 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
 
-   printk("mmap2(addr: %p, len: %u, prot: %u, flags: %p, fd: %d, off: %d)\n",
-          addr, len, prot, flags, fd, pgoffset);
+   //printk("mmap2(addr: %p, len: %u, prot: %u, flags: %p, fd: %d, off: %d)\n",
+   //       addr, len, prot, flags, fd, pgoffset);
 
    if (addr != NULL)
       return -EINVAL;
 
    if (flags != (MAP_ANONYMOUS | MAP_PRIVATE))
-      return -EINVAL;
+      return -EINVAL; /* support only anon + private mappings */
 
    if (fd != -1 || pgoffset != 0)
       return -EINVAL;
 
-   if (!(prot & PROT_READ))
-      return -EINVAL;
-
+   if (prot != (PROT_READ | PROT_WRITE))
+      return -EINVAL; /* support only read/write allocs */
 
    if (!pi->mmap_heap) {
 
@@ -160,6 +159,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
                              USER_MMAP_END - USER_MMAP_BEGIN,
                              PAGE_SIZE,
                              32 * PAGE_SIZE,
+                             false, /* linear mapping */
                              NULL, // metadata_nodes
                              user_valloc_and_map,
                              user_vfree_and_unmap);
@@ -167,7 +167,12 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
          return -ENOMEM;
    }
 
-   return -ENOSYS;
+   void *res = internal_kmalloc(pi->mmap_heap, len);
+
+   if (!res)
+      return -ENOMEM;
+
+   return (sptr)res;
 }
 
 sptr sys_munmap(void *vaddr, size_t len)

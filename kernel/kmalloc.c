@@ -505,6 +505,7 @@ bool kmalloc_create_heap(kmalloc_heap *h,
                          size_t size,
                          size_t min_block_size,
                          size_t alloc_block_size,
+                         bool linear_mapping,
                          void *metadata_nodes,
                          virtual_alloc_and_map_func valloc,
                          virtual_free_and_unmap_func vfree)
@@ -545,15 +546,37 @@ bool kmalloc_create_heap(kmalloc_heap *h,
    h->alloc_block_size_log2 = log2_for_power_of_2(alloc_block_size);
 
    bzero(h->metadata_nodes, calculate_heap_metadata_size(size, min_block_size));
+   h->linear_mapping = linear_mapping;
+   return true;
+}
 
-   if (vaddr + size <= LINEAR_MAPPING_OVER_END) {
-      h->linear_mapping = true;
-   } else {
-      // DISALLOW heaps crossing the linear mapping barrier.
-      ASSERT(vaddr >= LINEAR_MAPPING_OVER_END);
+void kmalloc_destroy_heap(kmalloc_heap *h)
+{
+   kfree2(h->metadata_nodes, h->metadata_size);
+   bzero(h, sizeof(kmalloc_heap));
+}
+
+kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h)
+{
+   if (!h)
+      return NULL;
+
+   kmalloc_heap *new_heap = kmalloc(sizeof(kmalloc_heap));
+
+   if (!new_heap)
+      return NULL;
+
+   memcpy(new_heap, h, sizeof(kmalloc_heap));
+
+   new_heap->metadata_nodes = kmalloc(h->metadata_size);
+
+   if (!new_heap->metadata_nodes) {
+      kfree2(new_heap, sizeof(kmalloc_heap));
+      return NULL;
    }
 
-   return true;
+   memcpy(new_heap->metadata_nodes, h->metadata_nodes, h->metadata_size);
+   return new_heap;
 }
 
 static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
@@ -608,6 +631,7 @@ void init_kmalloc(void)
                           first_heap_size,
                           min_block_size,
                           32 * PAGE_SIZE,
+                          true, /* linear mapping */
                           (void *)vaddr,
                           NULL,
                           NULL);
@@ -638,6 +662,7 @@ void init_kmalloc(void)
                              heap_size,
                              min_block_size,
                              32 * PAGE_SIZE,
+                             true, /* linear mapping */
                              NULL, NULL, NULL);
 
       VERIFY(success);

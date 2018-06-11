@@ -53,9 +53,13 @@ bool kmalloc_create_heap(kmalloc_heap *h,
                          size_t size,
                          size_t min_block_size,
                          size_t alloc_block_size,
+                         bool linear_mapping,
                          void *metadata_nodes,               // optional
                          virtual_alloc_and_map_func valloc,  // optional
                          virtual_free_and_unmap_func vfree); // optional
+
+void kmalloc_destroy_heap(kmalloc_heap *h);
+kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h);
 
 void *internal_kmalloc(kmalloc_heap *h, size_t desired_size);
 void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size);
