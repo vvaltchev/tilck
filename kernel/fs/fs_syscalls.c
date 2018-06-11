@@ -176,9 +176,9 @@ end:
 
 sptr sys_writev(int fd, const iovec *user_iov, int iovcnt)
 {
-   sptr rc;
-   sptr ret = 0;
    task_info *curr = get_curr_task();
+   sptr ret = 0;
+   sptr rc;
 
    if (sizeof(iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
@@ -202,13 +202,55 @@ sptr sys_writev(int fd, const iovec *user_iov, int iovcnt)
 
       if (rc < 0) {
          ret = rc;
-         goto out;
+         break;
       }
 
       ret += rc;
+
+      if (rc < (sptr)iov[i].iov_len) {
+         // For some reason (perfectly legit) we couldn't write the whole
+         // user data (i.e. network card's buffers are full).
+         break;
+      }
    }
 
-out:
+   enable_preemption();
+   return ret;
+}
+
+sptr sys_readv(int fd, const iovec *user_iov, int iovcnt)
+{
+   task_info *curr = get_curr_task();
+   sptr ret = 0;
+   sptr rc;
+
+   if (sizeof(iovec) * iovcnt > ARGS_COPYBUF_SIZE)
+      return -EINVAL;
+
+   rc = copy_from_user(curr->args_copybuf, user_iov, sizeof(iovec) * iovcnt);
+
+   if (rc != 0)
+      return -EFAULT;
+
+   disable_preemption();
+
+   const iovec *iov = (const iovec *)curr->args_copybuf;
+
+   for (int i = 0; i < iovcnt; i++) {
+
+      rc = sys_read(fd, iov[i].iov_base, iov[i].iov_len);
+
+      if (rc < 0) {
+         ret = rc;
+         break;
+      }
+
+      ret += rc;
+
+      if (rc < (sptr)iov[i].iov_len)
+         break; // Not enough data to fill all the user buffers.
+   }
+
    enable_preemption();
    return ret;
 }

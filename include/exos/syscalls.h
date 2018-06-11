@@ -177,8 +177,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_getdents)
 CREATE_STUB_SYSCALL_IMPL(sys_select)
 CREATE_STUB_SYSCALL_IMPL(sys_flock)
 CREATE_STUB_SYSCALL_IMPL(sys_msync)
-CREATE_STUB_SYSCALL_IMPL(sys_readv)
 
+sptr sys_readv(int fd, const void *iov, int iovcnt);
 sptr sys_writev(int fd, const void *iov, int iovcnt);
 
 CREATE_STUB_SYSCALL_IMPL(sys_getsid)
