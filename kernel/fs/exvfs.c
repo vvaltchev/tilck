@@ -190,8 +190,26 @@ ssize_t exvfs_ioctl(fs_handle h, uptr request, void *argp)
    fs_handle_base *hb = (fs_handle_base *) h;
 
    if (!hb->fops.ioctl) {
-      return -ENOTTY;
+      return -ENOTTY; // TODO: that can't be valid in general. Maybe -EINVAL?
    }
 
    return hb->fops.ioctl(h, request, argp);
+}
+
+void exvfs_exlock(fs_handle h)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+   ASSERT(hb != NULL);
+   ASSERT(hb->fs->exlock != NULL);
+
+   hb->fs->exlock(hb->fs);
+}
+
+void exvfs_exunlock(fs_handle h)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+   ASSERT(hb != NULL);
+   ASSERT(hb->fs->exunlock != NULL);
+
+   hb->fs->exunlock(hb->fs);
 }

@@ -11,7 +11,7 @@ STATIC ssize_t fat_write(fs_handle h,
                          char *buf,
                          size_t bufsize)
 {
-   // TODO: implement
+   NOT_IMPLEMENTED();
    return -1;
 }
 
@@ -225,6 +225,19 @@ STATIC fs_handle fat_dup(fs_handle h)
    return new_h;
 }
 
+#include <exos/process.h> // for enable/disable preemption
+
+STATIC void fat_exclusive_lock(filesystem *fs)
+{
+   disable_preemption();
+}
+
+STATIC void fat_exclusive_unlock(filesystem *fs)
+{
+   enable_preemption();
+}
+
+
 filesystem *fat_mount_ramdisk(void *vaddr)
 {
    fat_fs_device_data *d = kmalloc(sizeof(fat_fs_device_data));
@@ -241,6 +254,9 @@ filesystem *fat_mount_ramdisk(void *vaddr)
    fs->fopen = fat_open;
    fs->fclose = fat_close;
    fs->dup = fat_dup;
+
+   fs->exlock = fat_exclusive_lock;
+   fs->exunlock = fat_exclusive_unlock;
 
    return fs;
 }

@@ -2,6 +2,7 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
+#include <exos/process.h> // for enable/disable preemption
 #include <exos/kmalloc.h>
 #include <exos/fs/devfs.h>
 #include <exos/errno.h>
@@ -113,6 +114,17 @@ static fs_handle devfs_dup(fs_handle h)
    return new_h;
 }
 
+static void devfs_exclusive_lock(filesystem *fs)
+{
+   disable_preemption();
+}
+
+static void devfs_exclusive_unlock(filesystem *fs)
+{
+   enable_preemption();
+}
+
+
 filesystem *create_devfs(void)
 {
    /* Disallow multiple instances of devfs */
@@ -127,6 +139,9 @@ filesystem *create_devfs(void)
    fs->fopen = devfs_open;
    fs->fclose = devfs_close;
    fs->dup = devfs_dup;
+
+   fs->exlock = devfs_exclusive_lock;
+   fs->exunlock = devfs_exclusive_unlock;
 
    return fs;
 }

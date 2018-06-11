@@ -39,6 +39,10 @@ typedef ssize_t (*func_read) (fs_handle, char *, size_t);
 typedef ssize_t (*func_write) (fs_handle, char *, size_t);
 typedef off_t (*func_seek) (fs_handle, off_t, int);
 typedef ssize_t (*func_ioctl) (fs_handle, uptr, void *);
+
+typedef void (*func_fs_ex_lock)(filesystem *);
+typedef void (*func_fs_ex_unlock)(filesystem *);
+
 typedef fs_handle (*func_dup) (fs_handle);
 
 #define SEEK_SET 0
@@ -52,6 +56,9 @@ struct filesystem {
    func_open fopen;
    func_close fclose;
    func_dup dup;
+
+   func_fs_ex_lock exlock;
+   func_fs_ex_unlock exunlock;
 };
 
 typedef struct {
@@ -92,3 +99,5 @@ off_t exvfs_seek(fs_handle h, off_t off, int whence);
 ssize_t exvfs_ioctl(fs_handle h, uptr request, void *argp);
 fs_handle exvfs_dup(fs_handle h);
 
+void exvfs_exlock(fs_handle h);
+void exvfs_exunlock(fs_handle h);
