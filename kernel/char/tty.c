@@ -15,13 +15,12 @@
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
    size_t read_count = 0;
+   ASSERT(is_preemption_enabled());
 
    if (!size)
       return read_count;
 
    term_set_col_offset(term_get_curr_col());
-
-   enable_preemption();
 
    do {
 
@@ -35,7 +34,6 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 
    } while (buf[read_count - 1] != '\n' || kb_cbuf_is_full());
 
-   disable_preemption();
    return read_count;
 }
 

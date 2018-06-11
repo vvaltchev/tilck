@@ -41,6 +41,9 @@ typedef struct {
 
    list_node files_list;
 
+   kmutex ex_mutex; // big exclusive whole-filesystem lock
+                    // TODO: use a rw-lock when available in the kernel
+
 } devfs_data;
 
 int create_dev_file(const char *filename, int major, int minor)
@@ -116,12 +119,14 @@ static fs_handle devfs_dup(fs_handle h)
 
 static void devfs_exclusive_lock(filesystem *fs)
 {
-   disable_preemption();
+   devfs_data *d = fs->device_data;
+   kmutex_lock(&d->ex_mutex);
 }
 
 static void devfs_exclusive_unlock(filesystem *fs)
 {
-   enable_preemption();
+   devfs_data *d = fs->device_data;
+   kmutex_unlock(&d->ex_mutex);
 }
 
 filesystem *create_devfs(void)
@@ -142,6 +147,7 @@ filesystem *create_devfs(void)
    }
 
    list_node_init(&d->files_list);
+   kmutex_init(&d->ex_mutex, KMUTEX_FL_RECURSIVE);
 
    fs->device_data = d;
    fs->fopen = devfs_open;
