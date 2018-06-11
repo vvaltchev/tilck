@@ -68,7 +68,7 @@ static void kcond_thread_signal_generator()
 
 void selftest_kcond()
 {
-   kmutex_init(&cond_mutex);
+   kmutex_init(&cond_mutex, 0);
    kcond_init(&cond);
 
    int tid1 = kthread_create(&kcond_thread_test, (void*) 1)->tid;

@@ -45,10 +45,14 @@ typedef struct {
 
    uptr id;
    task_info *owner_task;
+   u32 flags;
+   u32 lock_count; // Valid when the mutex is recursive
 
 } kmutex;
 
-void kmutex_init(kmutex *m);
+#define KMUTEX_FL_RECURSIVE (1 << 0)
+
+void kmutex_init(kmutex *m, u32 flags);
 void kmutex_lock(kmutex *m);
 bool kmutex_trylock(kmutex *m);
 void kmutex_unlock(kmutex *m);
