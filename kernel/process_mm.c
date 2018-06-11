@@ -5,6 +5,36 @@
 #include <exos/kmalloc.h>
 #include <exos/errno.h>
 
+void user_vfree_and_unmap(uptr user_vaddr, int page_count)
+{
+   for (int i = 0; i < page_count; i++) {
+      uptr va = user_vaddr + i * PAGE_SIZE;
+      uptr pa = get_mapping(get_curr_page_dir(), (void *)va);
+      kfree2(KERNEL_PA_TO_VA(pa), PAGE_SIZE);
+      unmap_page(get_curr_page_dir(), (void *)va);
+   }
+}
+
+bool user_valloc_and_map(uptr user_vaddr, int page_count)
+{
+   for (int i = 0; i < page_count; i++) {
+
+      void *kernel_vaddr = kmalloc(PAGE_SIZE);
+
+      if (!kernel_vaddr) {
+         user_vfree_and_unmap(user_vaddr, i);
+         return false;
+      }
+
+      uptr pa = KERNEL_VA_TO_PA(kernel_vaddr);
+      uptr va = user_vaddr + i * PAGE_SIZE;
+      map_page(get_curr_page_dir(), (void *)va, pa, true, true);
+   }
+
+   return true;
+}
+
+
 sptr sys_brk(void *new_brk)
 {
    task_info *ti = get_curr_task();
@@ -37,10 +67,6 @@ sptr sys_brk(void *new_brk)
    if (new_brk < pi->brk) {
 
       /* we have to free pages */
-
-      //printk("brk: free mem: %u KB (%u MB)\n",
-      //       (pi->brk - new_brk) / KB, (pi->brk - new_brk) / MB);
-
       void *vaddr = pi->brk;
 
       while (vaddr > new_brk) {
@@ -53,8 +79,6 @@ sptr sys_brk(void *new_brk)
       pi->brk = vaddr;
       goto out;
    }
-
-   //printk("brk: alloc new mem: %u KB\n", (new_brk - pi->brk) / KB);
 
    void *vaddr = pi->brk;
 
