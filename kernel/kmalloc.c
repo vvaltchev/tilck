@@ -188,7 +188,7 @@ static void *actual_allocate_node(kmalloc_heap *h, size_t node_size, int node)
  */
 static struct explicit_stack_elem2 alloc_stack[32];
 
-static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
+void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 {
    ASSERT(kmalloc_initialized);
    ASSERT(desired_size != 0);
@@ -301,7 +301,7 @@ static void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 }
 
 
-static void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size)
+void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size)
 {
    const int node = ptr_to_node(h, ptr, size);
 

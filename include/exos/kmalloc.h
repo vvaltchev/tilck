@@ -57,6 +57,10 @@ void kmalloc_create_heap(kmalloc_heap *h,
                          virtual_alloc_and_map_func valloc,  // optional
                          virtual_free_and_unmap_func vfree); // optional
 
+void *internal_kmalloc(kmalloc_heap *h, size_t desired_size);
+void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size);
+
+
 static ALWAYS_INLINE void kfree(void *ptr)
 {
    kfree2(ptr, 0);
