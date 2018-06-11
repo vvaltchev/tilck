@@ -27,66 +27,20 @@ int get_free_handle_num(task_info *task)
    return -1;
 }
 
-sptr sys_read(int fd, void *user_buf, size_t count)
+static fs_handle get_fs_handle(int fd)
 {
-   sptr ret;
    task_info *curr = get_curr_task();
-
-   if (!is_fd_valid(fd) || !curr->pi->handles[fd]) {
-      ret = -EBADF;
-      goto end;
-   }
-
-   count = MIN(count, IO_COPYBUF_SIZE);
+   fs_handle handle = NULL;
 
    disable_preemption();
    {
-      // TODO: make the exvfs call runnable with preemption enabled
-      ret = exvfs_read(curr->pi->handles[fd], curr->io_copybuf, count);
+      if (is_fd_valid(fd) && curr->pi->handles[fd])
+         handle = curr->pi->handles[fd];
    }
    enable_preemption();
-
-   if (ret > 0) {
-      if (copy_to_user(user_buf, curr->io_copybuf, ret) < 0) {
-         // TODO: do we have to rewind the stream in this case?
-         ret = -EFAULT;
-         goto end;
-      }
-   }
-
-end:
-   return ret;
+   return handle;
 }
 
-sptr sys_write(int fd, const void *user_buf, size_t count)
-{
-   sptr ret;
-   task_info *curr = get_curr_task();
-
-   count = MIN(count, IO_COPYBUF_SIZE);
-
-   ret = copy_from_user(curr->io_copybuf, user_buf, count);
-
-   if (ret < 0)
-      return -EFAULT;
-
-   disable_preemption();
-
-   if (!is_fd_valid(fd) || !curr->pi->handles[fd]) {
-      ret = -EBADF;
-      goto end;
-   }
-
-   // TODO: make the exvfs call runnable with preemption enabled
-
-   ret = exvfs_write(curr->pi->handles[fd],
-                     (char *)curr->io_copybuf,
-                     count);
-
-end:
-   enable_preemption();
-   return ret;
-}
 
 sptr sys_open(const char *user_path, int flags, int mode)
 {
@@ -95,14 +49,14 @@ sptr sys_open(const char *user_path, int flags, int mode)
    char *path = curr->args_copybuf;
    size_t written = 0;
 
-   disable_preemption();
-
    ret = duplicate_user_path(path, user_path, ARGS_COPYBUF_SIZE, &written);
 
    if (ret != 0)
-      goto end;
+      return ret;
 
    printk("[TID: %i] sys_open('%s', %x, %x)\n", curr->tid, path, flags, mode);
+
+   disable_preemption();
 
    int free_fd = get_free_handle_num(curr);
 
@@ -110,6 +64,7 @@ sptr sys_open(const char *user_path, int flags, int mode)
       goto no_fds;
 
    // TODO: make the exvfs call runnable with preemption enabled
+   // In order to achieve that, we'll need a per-process "fs" lock.
    fs_handle h = exvfs_open(path);
 
    if (!h)
@@ -133,50 +88,118 @@ no_ent:
 
 sptr sys_close(int fd)
 {
-   sptr ret = 0;
    task_info *curr = get_curr_task();
+   fs_handle handle;
+   sptr ret = 0;
 
    printk("[TID: %i] sys_close(fd = %d)\n", curr->tid, fd);
 
    disable_preemption();
 
-   if (!is_fd_valid(fd) || !curr->pi->handles[fd]) {
+   handle = get_fs_handle(fd);
+
+   if (!handle) {
       ret = -EBADF;
       goto end;
    }
 
-   // TODO: make the exvfs call runnable with preemption enabled
-   exvfs_close(curr->pi->handles[fd]);
-   curr->pi->handles[fd] = NULL;
+   // TODO: in order to run with preemption enabled here, we'd need to have
+   // a kind-of per-process (not per-task!) "fs" lock. Otherwise, if we make
+   // this section preemptable, a close(handle) from other thread in the same
+   // process could race with the one here below. At that point, the handle
+   // object would be destroyed and we'll panic.
+
+   exvfs_exlock(handle);
+   {
+      exvfs_close(handle);
+      curr->pi->handles[fd] = NULL;
+   }
+   exvfs_exunlock(handle);
+
+   enable_preemption();
+end:
+   return ret;
+}
+
+sptr sys_read(int fd, void *user_buf, size_t count)
+{
+   sptr ret;
+   task_info *curr = get_curr_task();
+   fs_handle handle;
+
+   handle = get_fs_handle(fd);
+
+   if (!handle)
+      return -EBADF;
+
+   count = MIN(count, IO_COPYBUF_SIZE);
+
+   exvfs_exlock(handle);
+   {
+      ret = exvfs_read(curr->pi->handles[fd], curr->io_copybuf, count);
+   }
+   exvfs_exunlock(handle);
+
+   if (ret > 0) {
+      if (copy_to_user(user_buf, curr->io_copybuf, ret) < 0) {
+         // TODO: do we have to rewind the stream in this case?
+         ret = -EFAULT;
+         goto end;
+      }
+   }
 
 end:
-   enable_preemption();
+   return ret;
+}
+
+sptr sys_write(int fd, const void *user_buf, size_t count)
+{
+   task_info *curr = get_curr_task();
+   fs_handle handle;
+   sptr ret;
+
+   count = MIN(count, IO_COPYBUF_SIZE);
+   ret = copy_from_user(curr->io_copybuf, user_buf, count);
+
+   if (ret < 0)
+      return -EFAULT;
+
+   handle = get_fs_handle(fd);
+
+   if (!handle)
+      return -EBADF;
+
+   exvfs_exlock(handle);
+   {
+      ret = exvfs_write(handle, (char *)curr->io_copybuf, count);
+   }
+   exvfs_exunlock(handle);
+
    return ret;
 }
 
 sptr sys_ioctl(int fd, uptr request, void *argp)
 {
-   sptr ret = -EINVAL;
-   task_info *curr = get_curr_task();
+   sptr ret;
+   fs_handle handle;
 
-   disable_preemption();
+   handle = get_fs_handle(fd);
 
-   if (!is_fd_valid(fd) || !curr->pi->handles[fd]) {
-      ret = -EBADF;
-      goto end;
+   if (!handle)
+      return -EBADF;
+
+   exvfs_exlock(handle);
+   {
+      ret = exvfs_ioctl(handle, request, argp);
    }
-
-   // TODO: make the exvfs call runnable with preemption enabled
-   ret = exvfs_ioctl(curr->pi->handles[fd], request, argp);
-
-end:
-   enable_preemption();
+   exvfs_exunlock(handle);
    return ret;
 }
 
 sptr sys_writev(int fd, const iovec *user_iov, int iovcnt)
 {
    task_info *curr = get_curr_task();
+   fs_handle handle;
    sptr ret = 0;
    sptr rc;
 
@@ -188,7 +211,12 @@ sptr sys_writev(int fd, const iovec *user_iov, int iovcnt)
    if (rc != 0)
       return -EFAULT;
 
-   disable_preemption();
+   handle = get_fs_handle(fd);
+
+   if (!handle)
+      return -EBADF;
+
+   exvfs_exlock(handle);
 
    const iovec *iov = (const iovec *)curr->args_copybuf;
 
@@ -214,13 +242,14 @@ sptr sys_writev(int fd, const iovec *user_iov, int iovcnt)
       }
    }
 
-   enable_preemption();
+   exvfs_exunlock(handle);
    return ret;
 }
 
 sptr sys_readv(int fd, const iovec *user_iov, int iovcnt)
 {
    task_info *curr = get_curr_task();
+   fs_handle handle;
    sptr ret = 0;
    sptr rc;
 
@@ -232,7 +261,12 @@ sptr sys_readv(int fd, const iovec *user_iov, int iovcnt)
    if (rc != 0)
       return -EFAULT;
 
-   disable_preemption();
+   handle = get_fs_handle(fd);
+
+   if (!handle)
+      return -EBADF;
+
+   exvfs_exlock(handle);
 
    const iovec *iov = (const iovec *)curr->args_copybuf;
 
@@ -251,6 +285,6 @@ sptr sys_readv(int fd, const iovec *user_iov, int iovcnt)
          break; // Not enough data to fill all the user buffers.
    }
 
-   enable_preemption();
+   exvfs_exunlock(handle);
    return ret;
 }

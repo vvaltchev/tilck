@@ -114,7 +114,7 @@ STATIC int check_mountpoint_match(const char *mp, const char *path)
 
 fs_handle exvfs_open(const char *path)
 {
-   fs_handle res = {0};
+   fs_handle res = NULL;
    int best_match_index = -1;
    int best_match_len = 0;
 
@@ -138,11 +138,19 @@ fs_handle exvfs_open(const char *path)
       }
    }
 
-   if (best_match_index >= 0) {
-      filesystem *fs = mps[best_match_index]->fs;
+   if (best_match_index < 0)
+      return NULL;
+
+   filesystem *fs = mps[best_match_index]->fs;
+
+   ASSERT(fs->exlock != NULL);
+   ASSERT(fs->exunlock != NULL);
+
+   fs->exlock(fs);
+   {
       res = fs->fopen(fs, path + best_match_len - 1);
    }
-
+   fs->exunlock(fs);
    return res;
 }
 
@@ -190,7 +198,7 @@ ssize_t exvfs_ioctl(fs_handle h, uptr request, void *argp)
    fs_handle_base *hb = (fs_handle_base *) h;
 
    if (!hb->fops.ioctl) {
-      return -ENOTTY; // TODO: that can't be valid in general. Maybe -EINVAL?
+      return -ENOTTY; // Yes, ENOTTY IS the right error. See the man page.
    }
 
    return hb->fops.ioctl(h, request, argp);
