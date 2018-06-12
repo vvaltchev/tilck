@@ -46,11 +46,7 @@ u32 calculate_node_size(kmalloc_heap *h, int node)
    int i;
    int curr = node;
 
-   for (i = 0; ; i++) {
-
-      if (curr == 0)
-         break;
-
+   for (i = 0; curr; i++) {
       curr = NODE_PARENT(curr);
    }
 

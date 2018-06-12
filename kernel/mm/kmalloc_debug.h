@@ -3,9 +3,9 @@
 
 static bool kmalloc_debug_log;
 
-#define KMALLOC_DEBUG_ENABLED 0
+#define KMALLOC_DEBUG_LOG_ENABLED 0
 
-#if KMALLOC_DEBUG_ENABLED
+#if KMALLOC_DEBUG_LOG_ENABLED
    #define DEBUG_COND (kmalloc_debug_log)
    #define DEBUG_printk(...) if (DEBUG_COND) printk(__VA_ARGS__)
 #else
@@ -16,7 +16,7 @@ static bool kmalloc_debug_log;
 
 void debug_kmalloc_start_log(void)
 {
-   if (!KMALLOC_DEBUG_ENABLED)
+   if (!KMALLOC_DEBUG_LOG_ENABLED)
       panic("kmalloc debug logs funcs are NOT compiled in");
 
    kmalloc_debug_log = true;
@@ -24,7 +24,7 @@ void debug_kmalloc_start_log(void)
 
 void debug_kmalloc_stop_log(void)
 {
-   if (!KMALLOC_DEBUG_ENABLED)
+   if (!KMALLOC_DEBUG_LOG_ENABLED)
       panic("kmalloc debug logs funcs are NOT compiled in");
 
    kmalloc_debug_log = false;

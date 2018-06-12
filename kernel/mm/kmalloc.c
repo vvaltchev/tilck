@@ -115,6 +115,18 @@ static size_t set_free_uplevels(kmalloc_heap *h, int *node, size_t size)
       curr_size <<= 1;
    }
 
+   /*
+    * We have coaleshed as much nodes as possible, now we have to continue
+    * up to the root just to mark the higher nodes as NOT full, even if they
+    * cannot be coaleshed.
+    */
+
+   while (n >= 0) {
+      nodes[n].full = false;
+      n = NODE_PARENT(n);
+   }
+
+
    return curr_size;
 }
 
