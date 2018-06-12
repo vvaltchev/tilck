@@ -10,7 +10,8 @@ include_directories(SYSTEM ${DIET_LIBC_PATH}/include)
 
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS) # Remove -rdynamic
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-link_libraries(gcc)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
 
 file(GLOB INIT_SOURCES "init*.c")
 add_executable(init ${INIT_SOURCES})
