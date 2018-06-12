@@ -16,6 +16,14 @@
 #define KMALLOC_FIRST_METADATA_SIZE (512 * KB)
 #define KMALLOC_FIRST_METADATA (KERNEL_PA_TO_VA(0x10000)) // +64 KB
 
+STATIC kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
+STATIC int used_heaps;
+
+static char extra_low_mem_heap_metadata[8 * KB];
+
+bool pg_alloc_and_map(uptr vaddr, int page_count);
+void pg_free_and_unmap(uptr vaddr, int page_count);
+
 void *kmalloc(size_t s)
 {
    ASSERT(kmalloc_initialized);
@@ -150,8 +158,6 @@ size_t kmalloc_get_total_heap_allocation(void)
    return tot;
 }
 
-bool pg_alloc_and_map(uptr vaddr, int page_count);
-void pg_free_and_unmap(uptr vaddr, int page_count);
 
 bool kmalloc_create_heap(kmalloc_heap *h,
                          uptr vaddr,
@@ -275,7 +281,29 @@ static inline bool extra_low_mem_system(void)
    return get_phys_mem_mb() <= 4;
 }
 
-static char extra_low_mem_heap_metadata[8 * KB];
+void debug_kmalloc_dump_mem_usage(void)
+{
+   static size_t heaps_alloc[KMALLOC_HEAPS_COUNT];
+
+   printk("\n-------------------- kmalloc heaps --------------------\n");
+
+   for (u32 i = 0; i < ARRAY_SIZE(heaps); i++) {
+
+      if (!heaps[i].size)
+         break;
+
+      uptr size_kb = heaps[i].size / KB;
+      uptr allocated_kb = heaps[i].mem_allocated / KB;
+
+      printk("[heap %d] size: %u KB, allocated: %u KB [%u %%], diff: %d B\n",
+             i, size_kb, allocated_kb, allocated_kb * 100 / size_kb,
+             heaps[i].mem_allocated - heaps_alloc[i]);
+   }
+
+   for (u32 i = 0; i < ARRAY_SIZE(heaps); i++) {
+      heaps_alloc[i] = heaps[i].mem_allocated;
+   }
+}
 
 void init_kmalloc(void)
 {

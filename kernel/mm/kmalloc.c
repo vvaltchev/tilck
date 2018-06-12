@@ -40,10 +40,7 @@ typedef struct {
 STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 
 bool kmalloc_initialized; // Zero-initialized => false.
-
 static const block_node new_node; // Just zeros.
-STATIC kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
-STATIC int used_heaps;
 
 #define HALF(x) ((x) >> 1)
 #define TWICE(x) ((x) << 1)

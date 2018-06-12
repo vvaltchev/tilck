@@ -293,6 +293,7 @@ void handle_key_pressed(u8 scancode)
       return;
 
    case KEY_F2:
+      debug_kmalloc_dump_mem_usage();
       return;
 
    case KEY_F3:

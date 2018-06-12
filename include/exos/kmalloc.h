@@ -69,6 +69,7 @@ kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h);
 void *internal_kmalloc(kmalloc_heap *h, size_t desired_size);
 void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size);
 
+void debug_kmalloc_dump_mem_usage(void);
 
 static ALWAYS_INLINE void kfree(void *ptr)
 {

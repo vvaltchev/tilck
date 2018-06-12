@@ -120,7 +120,8 @@ multiboot_info_t *setup_multiboot_info(void)
    bzero(mod, sizeof(*mod));
 
    mbi->mem_lower = 0;
-   mbi->mem_upper = 127*1024; /* temp hack */
+   mbi->mem_upper = (128-1)*1024; /* temp hack */
+   //mbi->mem_upper = (4-1)*1024; /* temp hack */
 
    mbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
 
