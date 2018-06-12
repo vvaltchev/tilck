@@ -7,17 +7,31 @@
 
 void user_vfree_and_unmap(uptr user_vaddr, int page_count)
 {
-   for (int i = 0; i < page_count; i++) {
-      uptr va = user_vaddr + i * PAGE_SIZE;
-      uptr pa = get_mapping(get_curr_page_dir(), (void *)va);
+   page_directory_t *pdir = get_curr_page_dir();
+   uptr va = user_vaddr;
+
+   for (int i = 0; i < page_count; i++, va += PAGE_SIZE) {
+
+      if (!is_mapped(pdir, (void *)va))
+         continue;
+
+      uptr pa = get_mapping(pdir, (void *)va);
       kfree2(KERNEL_PA_TO_VA(pa), PAGE_SIZE);
-      unmap_page(get_curr_page_dir(), (void *)va);
+      unmap_page(pdir, (void *)va);
    }
 }
 
 bool user_valloc_and_map(uptr user_vaddr, int page_count)
 {
-   for (int i = 0; i < page_count; i++) {
+   page_directory_t *pdir = get_curr_page_dir();
+   uptr va = user_vaddr;
+
+   for (int i = 0; i < page_count; i++, va += PAGE_SIZE) {
+
+      if (is_mapped(pdir, (void *)va)) {
+         user_vfree_and_unmap(user_vaddr, i);
+         return false;
+      }
 
       void *kernel_vaddr = kmalloc(PAGE_SIZE);
 
@@ -27,8 +41,7 @@ bool user_valloc_and_map(uptr user_vaddr, int page_count)
       }
 
       uptr pa = KERNEL_VA_TO_PA(kernel_vaddr);
-      uptr va = user_vaddr + i * PAGE_SIZE;
-      map_page(get_curr_page_dir(), (void *)va, pa, true, true);
+      map_page(pdir, (void *)va, pa, true, true);
    }
 
    return true;
