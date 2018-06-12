@@ -195,12 +195,15 @@ void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
    ASSERT(kmalloc_initialized);
    ASSERT(desired_size != 0);
 
-   /*
-    * ASSERTs that metadata_nodes is aligned at h->alloc_block_size.
-    * Without that condition the "magic" of ptr_to_node() and node_to_ptr()
-    * does not work.
-    */
-   ASSERT(((uptr)h->metadata_nodes & (h->alloc_block_size - 1)) == 0);
+   if (!h->linear_mapping) {
+
+      /*
+       * ASSERTs that metadata_nodes is aligned at h->alloc_block_size.
+       * Without that condition the "magic" of ptr_to_node() and node_to_ptr()
+       * does not work.
+       */
+      ASSERT(((uptr)h->metadata_nodes & (h->alloc_block_size - 1)) == 0);
+   }
 
    DEBUG_kmalloc_begin;
 

@@ -12,6 +12,9 @@
 
 #endif
 
+#define KMALLOC_MIN_HEAP_SIZE (64 * KB)
+#define KMALLOC_FIRST_METADATA_SIZE (512 * KB)
+#define KMALLOC_FIRST_METADATA (KERNEL_PA_TO_VA(0x10000)) // +64 KB
 
 void *kmalloc(size_t s)
 {
@@ -160,14 +163,15 @@ bool kmalloc_create_heap(kmalloc_heap *h,
                          virtual_alloc_and_map_func valloc,
                          virtual_free_and_unmap_func vfree)
 {
-   // vaddr has to be MB-aligned
-   ASSERT((vaddr & (MB - 1)) == 0);
+   // heap size has to be a multiple of KMALLOC_MIN_HEAP_SIZE
+   ASSERT((size & (KMALLOC_MIN_HEAP_SIZE - 1)) == 0);
 
-   // heap size has to be a multiple of 1 MB
-   ASSERT((size & (MB - 1)) == 0);
-
-   // alloc block size has to be a multiple of PAGE_SIZE
-   ASSERT((alloc_block_size & (PAGE_SIZE - 1)) == 0);
+   if (!linear_mapping) {
+      // alloc block size has to be a multiple of PAGE_SIZE
+      ASSERT((alloc_block_size & (PAGE_SIZE - 1)) == 0);
+   } else {
+      ASSERT(alloc_block_size == 0);
+   }
 
    bzero(h, sizeof(*h));
    h->metadata_size = calculate_heap_metadata_size(size, min_block_size);
@@ -247,6 +251,17 @@ static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
 extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
 
+static void
+debug_print_heap_info(uptr vaddr, u32 heap_size, u32 min_block_size)
+{
+   if (heap_size >= 4 * MB)
+      printk("[kmalloc] heap size: %u MB, min block: %u, at %p\n",
+             heap_size / MB, min_block_size, vaddr);
+   else
+      printk("[kmalloc] heap size: %u KB, min block: %u, at %p\n",
+             heap_size / KB, min_block_size, vaddr);
+}
+
 void init_kmalloc(void)
 {
    ASSERT(!kmalloc_initialized);
@@ -258,32 +273,26 @@ void init_kmalloc(void)
                   ? (uptr)KERNEL_PA_TO_VA(ramdisk_paddr) + ramdisk_size
                   : (uptr)KERNEL_PA_TO_VA(KERNEL_PADDR) + KERNEL_MAX_SIZE;
 
-   vaddr = round_up_at(vaddr, MB);
-
-   const size_t first_metadata_size = 512 * KB;
-   void *const first_heap_metadata = KERNEL_PA_TO_VA(0x10000);
+   vaddr = round_up_at(vaddr, KMALLOC_MIN_HEAP_SIZE);
 
    const size_t first_heap_size = find_biggest_heap_size(vaddr, limit);
-
-   size_t min_block_size =
-      sizeof(block_node) * 2 * first_heap_size / first_metadata_size;
+   size_t min_block_size = 2 * first_heap_size / KMALLOC_FIRST_METADATA_SIZE;
 
 #if KMALLOC_HEAPS_CREATION_DEBUG
-   printk("[kmalloc] heap size: %u MB, min block: %u\n",
-          first_heap_size / MB, min_block_size);
+   debug_print_heap_info(vaddr, first_heap_size, min_block_size);
 #endif
 
    ASSERT(calculate_heap_metadata_size(
-            first_heap_size, min_block_size) == first_metadata_size);
+            first_heap_size, min_block_size) == KMALLOC_FIRST_METADATA_SIZE);
 
    bool success =
       kmalloc_create_heap(&heaps[0],
                           vaddr,
                           first_heap_size,
                           min_block_size,
-                          16 * PAGE_SIZE,
+                          0,    /* alloc_block_size */
                           true, /* linear mapping */
-                          first_heap_metadata,
+                          KMALLOC_FIRST_METADATA,
                           NULL,
                           NULL);
 
@@ -297,14 +306,13 @@ void init_kmalloc(void)
 
       const size_t heap_size = find_biggest_heap_size(vaddr, limit);
 
-      if (heap_size < MB)
+      if (heap_size < KMALLOC_MIN_HEAP_SIZE)
          break;
 
-      min_block_size = heap_size / (256 * KB);
+      min_block_size = MAX(heap_size / (256 * KB), 8);
 
 #if KMALLOC_HEAPS_CREATION_DEBUG
-      printk("[kmalloc] heap size: %u MB, min block: %u\n",
-             heap_size / MB, min_block_size);
+      debug_print_heap_info(vaddr, heap_size, min_block_size);
 #endif
 
       bool success =
@@ -312,7 +320,7 @@ void init_kmalloc(void)
                              vaddr,
                              heap_size,
                              min_block_size,
-                             32 * PAGE_SIZE,
+                             0,    /* alloc_block_size */
                              true, /* linear mapping */
                              NULL, NULL, NULL);
 
