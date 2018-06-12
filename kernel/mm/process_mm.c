@@ -80,16 +80,17 @@ sptr sys_brk(void *new_brk)
    if (new_brk < pi->brk) {
 
       /* we have to free pages */
-      void *vaddr = pi->brk;
 
-      while (vaddr > new_brk) {
-         const uptr paddr = get_mapping(pi->pdir, vaddr - PAGE_SIZE);
+      void *vaddr = new_brk;
+
+      while (vaddr < pi->brk) {
+         const uptr paddr = get_mapping(pi->pdir, vaddr);
          kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
-         unmap_page(pi->pdir, vaddr - PAGE_SIZE);
-         vaddr -= PAGE_SIZE;
+         unmap_page(pi->pdir, vaddr);
+         vaddr += PAGE_SIZE;
       }
 
-      pi->brk = vaddr;
+      pi->brk = new_brk;
       goto out;
    }
 
