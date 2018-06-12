@@ -3,12 +3,12 @@
 
    #error This is NOT a header file and it is not meant to be included
 
-/*
- * The only purpose of this file is to keep kmalloc.c shorter.
- * Yes, this file could be turned into a regular C source file, but at the price
- * of making several static functions and variables in kmalloc.c to be just
- * non-static. We don't want that. Code isolation is a GOOD thing.
- */
+   /*
+    * The only purpose of this file is to keep kmalloc.c shorter.
+    * Yes, this file could be turned into a regular C source file, but at the
+    * price of making several static functions and variables in kmalloc.c to be
+    * just non-static. We don't want that. Code isolation is a GOOD thing.
+    */
 
 #endif
 
@@ -24,98 +24,7 @@ static char extra_low_mem_heap_metadata[8 * KB];
 bool pg_alloc_and_map(uptr vaddr, int page_count);
 void pg_free_and_unmap(uptr vaddr, int page_count);
 
-//////////////////////////////////////////////////////////
-
-typedef struct {
-
-   void *vaddr;
-   size_t size;
-   void *caller_eip;
-   bool leaked;
-
-} alloc_entry;
-
-static bool leak_detector_enabled;
-static u32 alloc_entries_count;
-static alloc_entry alloc_entries[1024];
-
-void debug_kmalloc_start_leak_detector(void)
-{
-   disable_preemption();
-
-   bzero(alloc_entries, sizeof(alloc_entries));
-   alloc_entries_count = 0;
-   leak_detector_enabled = true;
-
-   enable_preemption();
-}
-
-void debug_kmalloc_stop_leak_detector(bool show_leaks)
-{
-   leak_detector_enabled = false;
-
-   if (!show_leaks)
-      return;
-
-   disable_preemption();
-
-   u32 leak_count = 0;
-
-   for (u32 i = 0; i < alloc_entries_count; i++) {
-
-      if (!alloc_entries[i].leaked)
-         continue;
-
-      printk("Leaked block at %p (%u B), caller eip: %p\n",
-             alloc_entries[i].vaddr,
-             alloc_entries[i].size,
-             alloc_entries[i].caller_eip);
-
-      leak_count++;
-   }
-
-   printk("Total allocs: %u\n", alloc_entries_count);
-   printk("Leak count: %u\n", leak_count);
-
-   enable_preemption();
-}
-
-static void debug_kmalloc_register_alloc(void *vaddr, size_t s, void *eip)
-{
-   disable_preemption();
-
-   VERIFY(alloc_entries_count < ARRAY_SIZE(alloc_entries) - 1);
-
-   alloc_entries[alloc_entries_count++] = (alloc_entry){
-      .vaddr = vaddr,
-      .size = s,
-      .caller_eip = eip,
-      .leaked = true
-   };
-
-   enable_preemption();
-}
-
-static void debug_kmalloc_register_free(void *vaddr, size_t s)
-{
-   disable_preemption();
-
-   for (u32 i = 0; i < alloc_entries_count; i++) {
-      if (alloc_entries[i].vaddr == vaddr) {
-         VERIFY(alloc_entries[i].size == s);
-         alloc_entries[i].leaked = false;
-         enable_preemption();
-         return;
-      }
-   }
-
-   panic("free block at %p, allocated (probably) "
-         "before the start of the leak detector\n", vaddr);
-
-   enable_preemption(); // in case 'panic' is replaced with a warning.
-}
-
-//////////////////////////////////////////////////////////
+#include "kmalloc_leak_detector.c.h"
 
 void *kmalloc(size_t s)
 {
@@ -148,7 +57,8 @@ void *kmalloc(size_t s)
          ret = vaddr;
 
          if (leak_detector_enabled) {
-            void *eip = __builtin_extract_return_addr(__builtin_return_address(0));
+            void *eip_raw = __builtin_return_address(0);
+            void *eip = __builtin_extract_return_addr(eip_raw);
             debug_kmalloc_register_alloc(vaddr, s, eip);
          }
 
