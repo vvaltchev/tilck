@@ -259,13 +259,13 @@ void init_kmalloc(void)
                   : (uptr)KERNEL_PA_TO_VA(KERNEL_PADDR) + KERNEL_MAX_SIZE;
    vaddr = round_up_mb(vaddr);
 
-   const size_t fixed_size_first_heap_metadata = 1 * MB;
+   const size_t first_metadata_size = 512 * KB;
+   void *const first_heap_metadata = KERNEL_PA_TO_VA(0x10000);
 
-   const size_t first_heap_size =
-      find_biggest_heap_size(vaddr + fixed_size_first_heap_metadata, limit);
+   const size_t first_heap_size = find_biggest_heap_size(vaddr, limit);
 
    size_t min_block_size =
-      sizeof(block_node) * 2 * first_heap_size / fixed_size_first_heap_metadata;
+      sizeof(block_node) * 2 * first_heap_size / first_metadata_size;
 
 #if KMALLOC_HEAPS_CREATION_DEBUG
    printk("[kmalloc] heap size: %u MB, min block: %u\n",
@@ -273,16 +273,16 @@ void init_kmalloc(void)
 #endif
 
    ASSERT(calculate_heap_metadata_size(
-            first_heap_size, min_block_size) == fixed_size_first_heap_metadata);
+            first_heap_size, min_block_size) == first_metadata_size);
 
    bool success =
       kmalloc_create_heap(&heaps[0],
-                          vaddr + fixed_size_first_heap_metadata,
+                          vaddr,
                           first_heap_size,
                           min_block_size,
-                          32 * PAGE_SIZE,
+                          16 * PAGE_SIZE,
                           true, /* linear mapping */
-                          (void *)vaddr,
+                          first_heap_metadata,
                           NULL,
                           NULL);
 
