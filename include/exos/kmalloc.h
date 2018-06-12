@@ -36,12 +36,17 @@ typedef struct {
 
 } kmalloc_heap;
 
-static inline size_t calculate_heap_metadata_size(size_t heap_size,
-                                                  size_t min_block_size)
+static inline size_t
+calculate_heap_metadata_size(size_t heap_size, size_t min_block_size)
 {
-   return ((2 * heap_size) / min_block_size) * KMALLOC_METADATA_BLOCK_NODE_SIZE;
+   return 2 * heap_size / min_block_size;
 }
 
+static inline size_t
+calculate_heap_min_block_size(size_t heap_size, size_t metadata_size)
+{
+   return 2 * heap_size / metadata_size;
+}
 
 void init_kmalloc();
 void *kmalloc(size_t size);

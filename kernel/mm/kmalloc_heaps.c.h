@@ -254,36 +254,73 @@ extern size_t ramdisk_size;
 static void
 debug_print_heap_info(uptr vaddr, u32 heap_size, u32 min_block_size)
 {
+#if KMALLOC_HEAPS_CREATION_DEBUG
+
+   u32 metadata_size = calculate_heap_metadata_size(heap_size, min_block_size);
+
    if (heap_size >= 4 * MB)
-      printk("[kmalloc] heap size: %u MB, min block: %u, at %p\n",
-             heap_size / MB, min_block_size, vaddr);
+      printk("[heap: %p] size: %u MB, "
+             "min block: %u, metadata size: %u KB\n",
+             vaddr, heap_size / MB, min_block_size, metadata_size / KB);
    else
-      printk("[kmalloc] heap size: %u KB, min block: %u, at %p\n",
-             heap_size / KB, min_block_size, vaddr);
+      printk("[heap: %p] size: %u KB, "
+             "min block: %u, metadata size: %u KB\n",
+             vaddr, heap_size / KB, min_block_size, metadata_size / KB);
+
+#endif
 }
+
+static inline bool extra_low_mem_system(void)
+{
+   return get_phys_mem_mb() <= 4;
+}
+
+static char extra_low_mem_heap_metadata[8 * KB];
 
 void init_kmalloc(void)
 {
+   uptr vaddr;
+   size_t min_block_size;
+   size_t first_heap_size;
+   size_t first_metadata_size = KMALLOC_FIRST_METADATA_SIZE;
+   void *first_heap_metadata = KMALLOC_FIRST_METADATA;
+
    ASSERT(!kmalloc_initialized);
 
    const uptr limit =
       KERNEL_BASE_VA + MIN(get_phys_mem_mb(), LINEAR_MAPPING_MB) * MB;
 
-   uptr vaddr = ramdisk_size
-                  ? (uptr)KERNEL_PA_TO_VA(ramdisk_paddr) + ramdisk_size
-                  : (uptr)KERNEL_PA_TO_VA(KERNEL_PADDR) + KERNEL_MAX_SIZE;
+   const uptr base_vaddr =
+      ramdisk_size
+         ? (uptr)KERNEL_PA_TO_VA(ramdisk_paddr) + ramdisk_size
+         : (uptr)KERNEL_PA_TO_VA(KERNEL_PADDR) + KERNEL_MAX_SIZE;
 
-   vaddr = round_up_at(vaddr, KMALLOC_MIN_HEAP_SIZE);
+   if (!extra_low_mem_system()) {
 
-   const size_t first_heap_size = find_biggest_heap_size(vaddr, limit);
-   size_t min_block_size = 2 * first_heap_size / KMALLOC_FIRST_METADATA_SIZE;
+      vaddr = round_up_at(base_vaddr, KMALLOC_MIN_HEAP_SIZE);
+      first_heap_size = find_biggest_heap_size(vaddr, limit);
 
-#if KMALLOC_HEAPS_CREATION_DEBUG
+   } else {
+
+      /*
+       * If we have so few memory (<= 4 MB), than use the metadata space
+       * in the low-mem for the first heap and use extra_low_mem_heap_metadata
+       * for its metadata nodes.
+       */
+
+      first_metadata_size = sizeof(extra_low_mem_heap_metadata);
+      first_heap_metadata = extra_low_mem_heap_metadata;
+      first_heap_size = KMALLOC_FIRST_METADATA_SIZE;
+      vaddr = (uptr)KMALLOC_FIRST_METADATA;
+   }
+
+   min_block_size =
+      calculate_heap_min_block_size(first_heap_size, first_metadata_size);
+
    debug_print_heap_info(vaddr, first_heap_size, min_block_size);
-#endif
 
    ASSERT(calculate_heap_metadata_size(
-            first_heap_size, min_block_size) == KMALLOC_FIRST_METADATA_SIZE);
+            first_heap_size, min_block_size) == first_metadata_size);
 
    bool success =
       kmalloc_create_heap(&heaps[0],
@@ -292,7 +329,7 @@ void init_kmalloc(void)
                           min_block_size,
                           0,    /* alloc_block_size */
                           true, /* linear mapping */
-                          KMALLOC_FIRST_METADATA,
+                          first_heap_metadata,
                           NULL,
                           NULL);
 
@@ -300,7 +337,12 @@ void init_kmalloc(void)
 
    used_heaps = 1;
    kmalloc_initialized = true;
-   vaddr = heaps[0].vaddr + heaps[0].size;
+
+   if (!extra_low_mem_system()) {
+      vaddr = heaps[0].vaddr + heaps[0].size;
+   } else {
+      vaddr = round_up_at(base_vaddr, KMALLOC_MIN_HEAP_SIZE);
+   }
 
    for (size_t i = 1; i < ARRAY_SIZE(heaps); i++) {
 
@@ -309,11 +351,8 @@ void init_kmalloc(void)
       if (heap_size < KMALLOC_MIN_HEAP_SIZE)
          break;
 
-      min_block_size = MAX(heap_size / (256 * KB), 8);
-
-#if KMALLOC_HEAPS_CREATION_DEBUG
+      min_block_size = calculate_heap_min_block_size(heap_size, heap_size / 32);
       debug_print_heap_info(vaddr, heap_size, min_block_size);
-#endif
 
       bool success =
          kmalloc_create_heap(&heaps[i],
