@@ -37,6 +37,16 @@ static bool do_common_task_allocations(task_info *ti)
    return true;
 }
 
+static void internal_free_mem_for_zombie_task(task_info *ti)
+{
+   kfree2(ti->io_copybuf, IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE);
+   kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
+
+   ti->io_copybuf = NULL;
+   ti->args_copybuf = NULL;
+   ti->kernel_stack = NULL;
+}
+
 void free_mem_for_zombie_task(task_info *ti)
 {
    ASSERT(ti->state == TASK_STATE_ZOMBIE);
@@ -49,12 +59,7 @@ void free_mem_for_zombie_task(task_info *ti)
 
 #endif
 
-   kfree2(ti->io_copybuf, IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE);
-   kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
-
-   ti->io_copybuf = NULL;
-   ti->args_copybuf = NULL;
-   ti->kernel_stack = NULL;
+   internal_free_mem_for_zombie_task(ti);
 }
 
 task_info *allocate_new_process(task_info *parent, int pid)
@@ -490,7 +495,12 @@ sptr sys_fork(void)
    }
 
    task_info *child = allocate_new_process(curr, pid);
-   VERIFY(child != NULL); // TODO: handle this
+
+   if (!child) {
+      enable_preemption();
+      return -ENOMEM;
+   }
+
    ASSERT(child->kernel_stack != NULL);
 
    if (child->state == TASK_STATE_RUNNING) {
@@ -498,6 +508,10 @@ sptr sys_fork(void)
    }
 
    child->pi->pdir = pdir_clone(curr->pi->pdir);
+
+   if (!child->pi->pdir)
+      goto no_mem_exit;
+
    child->running_in_kernel = false;
    task_info_reset_kernel_stack(child);
 
@@ -505,16 +519,31 @@ sptr sys_fork(void)
    *child->state_regs = *curr->state_regs; // copy parent's regs
    set_return_register(child->state_regs, 0);
 
-   add_task(child);
-
    // Make the parent to get child's pid as return value.
    set_return_register(curr->state_regs, child->tid);
 
    /* Duplicate all the handles */
-   for (size_t i = 0; i < ARRAY_SIZE(child->pi->handles); i++) {
-      if (child->pi->handles[i])
-         child->pi->handles[i] = exvfs_dup(child->pi->handles[i]);
+   for (u32 i = 0; i < ARRAY_SIZE(child->pi->handles); i++) {
+
+      fs_handle h = child->pi->handles[i];
+
+      if (!h)
+         continue;
+
+      fs_handle dup_h = exvfs_dup(h);
+
+      if (!dup_h) {
+
+         for (u32 j = 0; j < i; j++)
+            exvfs_close(child->pi->handles[j]);
+
+         goto no_mem_exit;
+      }
+
+      child->pi->handles[i] = dup_h;
    }
+
+   add_task(child);
 
    /*
     * Force the CR3 reflush using the current (parent's) pdir.
@@ -527,6 +556,13 @@ sptr sys_fork(void)
 
    enable_preemption();
    return child->tid;
+
+no_mem_exit:
+   child->state = TASK_STATE_ZOMBIE;
+   internal_free_mem_for_zombie_task(child);
+   free_task(child);
+   enable_preemption();
+   return -ENOMEM;
 }
 
 #define PR_SET_NAME 15

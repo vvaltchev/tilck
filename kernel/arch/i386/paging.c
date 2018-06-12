@@ -324,6 +324,7 @@ map_pages_int(page_directory_t *pdir,
 page_directory_t *pdir_clone(page_directory_t *pdir)
 {
    page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
+   ASSERT(IS_PAGE_ALIGNED(new_pdir));
 
    if (!new_pdir)
       return NULL;
@@ -365,7 +366,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
       // alloc memory for the page table
 
       page_table_t *pt = kmalloc(sizeof(*pt));
-      VERIFY(pt != NULL); // Don't handle this for the moment.
+      VERIFY(pt != NULL); // TODO: handle this OOM condition!
       ASSERT(IS_PAGE_ALIGNED(pt));
 
       // copy the page table
