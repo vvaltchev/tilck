@@ -76,7 +76,7 @@ CONSTEXPR static inline u32 get_first_set_bit_index(u32 num)
    return i;
 }
 
-CONSTEXPR static ALWAYS_INLINE uptr round_up_mb(uptr n)
+CONSTEXPR static ALWAYS_INLINE uptr round_up_at(uptr n, uptr unit)
 {
-   return (n + MB - 1) & -MB;
+   return (n + unit - 1) & -unit;
 }

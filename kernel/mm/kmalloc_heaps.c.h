@@ -257,7 +257,8 @@ void init_kmalloc(void)
    uptr vaddr = ramdisk_size
                   ? (uptr)KERNEL_PA_TO_VA(ramdisk_paddr) + ramdisk_size
                   : (uptr)KERNEL_PA_TO_VA(KERNEL_PADDR) + KERNEL_MAX_SIZE;
-   vaddr = round_up_mb(vaddr);
+
+   vaddr = round_up_at(vaddr, MB);
 
    const size_t first_metadata_size = 512 * KB;
    void *const first_heap_metadata = KERNEL_PA_TO_VA(0x10000);
