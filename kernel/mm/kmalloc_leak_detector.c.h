@@ -34,6 +34,7 @@ void debug_kmalloc_start_leak_detector(bool save_metadata)
    alloc_entries_count = 0;
 
    if (save_metadata) {
+
       for (u32 i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
 
          if (!heaps[i].metadata_size)
@@ -44,8 +45,17 @@ void debug_kmalloc_start_leak_detector(bool save_metadata)
          if (!buf)
             panic("leak detector: unable to alloc buffer for metadata copy");
 
-         memcpy(buf, heaps[i].metadata_nodes, heaps[i].metadata_size);
          metadata_copies[i] = buf;
+      }
+
+      for (u32 i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
+
+         if (!heaps[i].metadata_size)
+            continue;
+
+         memcpy(metadata_copies[i],
+                heaps[i].metadata_nodes,
+                heaps[i].metadata_size);
       }
    }
 
