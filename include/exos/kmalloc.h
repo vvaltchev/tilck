@@ -69,10 +69,6 @@ kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h);
 void *internal_kmalloc(kmalloc_heap *h, size_t desired_size);
 void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size);
 
-void debug_kmalloc_dump_mem_usage(void);
-void debug_kmalloc_start_leak_detector(bool save_metadata);
-void debug_kmalloc_stop_leak_detector(bool show_leaks);
-
 static ALWAYS_INLINE void kfree(void *ptr)
 {
    kfree2(ptr, 0);
@@ -88,3 +84,12 @@ static inline void *kzmalloc(size_t size)
    bzero(res, size);
    return res;
 }
+
+/* kmalloc debug helpers */
+
+void debug_kmalloc_dump_mem_usage(void);
+void debug_kmalloc_start_leak_detector(bool save_metadata);
+void debug_kmalloc_stop_leak_detector(bool show_leaks);
+
+void debug_kmalloc_start_log(void);
+void debug_kmalloc_stop_log(void);
