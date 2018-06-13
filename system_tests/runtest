@@ -19,7 +19,7 @@ FAIL_SHELL_NO_ZERO_EXIT = 5
 TEST_TIMEOUT = 8
 TEST_TYPE = None
 
-VM_MEMORY_SIZE_IN_MB = 256
+VM_MEMORY_SIZE_IN_MB = int(os.environ.get('EXOS_VM_MEM', '256'))
 KERNEL_HELLO_MSG = 'Hello from exOS!'
 KERNEL_FILE = './build/elf_kernel_stripped'
 FATPART_FILE = './build/fatpart'
