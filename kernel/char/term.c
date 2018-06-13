@@ -16,6 +16,7 @@
 #include <exos/kmalloc.h>
 #include <exos/interrupts.h>
 
+static bool term_initialized;
 static bool term_use_serial;
 static int term_tab_size = 8;
 
@@ -454,7 +455,7 @@ void term_execute_or_enqueue_action(term_action a)
 
 /* ---------------- term interface --------------------- */
 
-void term_write2(char *buf, u32 len, u8 color)
+void term_write2(const char *buf, u32 len, u8 color)
 {
    ASSERT(len < MB);
 
@@ -521,7 +522,7 @@ void term_set_col_offset(u32 off)
 
 /* ---------- wrappers ------------ */
 
-void term_write(char *buf, u32 len)
+void term_write(const char *buf, u32 len)
 {
    term_write2(buf, len, current_color);
 }
@@ -530,7 +531,7 @@ void term_write(char *buf, u32 len)
 
 bool term_is_initialized(void)
 {
-   return vi != NULL;
+   return term_initialized;
 }
 
 void
@@ -582,5 +583,6 @@ init_term(const video_interface *intf,
    for (int i = 0; i < term_rows; i++)
       ts_clear_row(i, default_color);
 
+   term_initialized = true;
    printk_flush_ringbuf();
 }

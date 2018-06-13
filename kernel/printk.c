@@ -172,7 +172,7 @@ static volatile ringbuf_stat printk_rbuf_stat;
  */
 STATIC_ASSERT(sizeof(printk_rbuf) <= 1024);
 
-static void printk_direct_flush(char *buf, size_t size, u8 color)
+static void printk_direct_flush(const char *buf, size_t size, u8 color)
 {
    term_write2(buf, size, color);
 }
@@ -216,16 +216,28 @@ void printk_flush_ringbuf(void)
    }
 }
 
-static void printk_append_to_ringbuf(char *buf, size_t size)
+static void printk_append_to_ringbuf(const char *buf, size_t size)
 {
+   static const char err_msg[] = "{_DROPPED_}\n";
+
    ringbuf_stat cs, ns;
 
    do {
       cs = printk_rbuf_stat;
       ns = printk_rbuf_stat;
 
-      if (cs.used + size > sizeof(printk_rbuf)) {
-         printk_direct_flush(buf, size, PRINTK_NOSPACE_IN_RBUF_FLUSH_COLOR);
+      if (cs.used + size >= sizeof(printk_rbuf)) {
+
+         if (term_is_initialized()) {
+            printk_direct_flush(buf, size, PRINTK_NOSPACE_IN_RBUF_FLUSH_COLOR);
+            return;
+         }
+
+         if (buf != err_msg && cs.used < sizeof(printk_rbuf) - 1) {
+            size = MIN(sizeof(printk_rbuf) - cs.used - 1, sizeof(err_msg));
+            printk_append_to_ringbuf(err_msg, size);
+         }
+
          return;
       }
 
