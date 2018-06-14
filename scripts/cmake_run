@@ -88,16 +88,10 @@ else
    export CMAKE=cmake
 fi
 
-export ASM_NASM=$MAIN_DIR/toolchain/nasm/nasm
-
-if [ -n "$RELEASE" ] && [ "$RELEASE" -eq 1 ]; then
+if [[ "$RELEASE" -eq 1 || "$REL" -eq 1 ]]; then
    BUILD_TYPE=Release
 else
    BUILD_TYPE=Debug
-fi
-
-if [ -z "$USE_GCOV" ]; then
-   USE_GCOV=off
 fi
 
 curr_dir="`pwd`"
@@ -110,5 +104,4 @@ else
 fi
 
 cd $build_dir
-$CMAKE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D USE_GCOV:BOOL=$USE_GCOV $MAIN_DIR "$@"
-
+$CMAKE -DCMAKE_BUILD_TYPE=$BUILD_TYPE "$CMAKE_ARGS" "$@" $MAIN_DIR

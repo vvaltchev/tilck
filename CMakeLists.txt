@@ -37,7 +37,7 @@ set(ARCH "i386")
 
 # Other general config variables.
 
-set(USE_GCOV CACHE BOOL "Compile the tests for measuring coverage")
+set(USE_GCOV off CACHE BOOL "Compile the tests for measuring coverage")
 
 ###########################################################
 

@@ -23,7 +23,7 @@ matrix:
       dist: trusty
       sudo: false
       language: generic
-      env: RELEASE=0 USE_GCOV=on
+      env: RELEASE=0 CMAKE_ARGS='-DUSE_GCOV=on'
     - os: linux
       dist: trusty
       sudo: false
