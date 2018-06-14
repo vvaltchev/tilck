@@ -22,6 +22,9 @@ typedef struct {
 } alloc_entry;
 
 static bool leak_detector_enabled;
+
+#if KMALLOC_SUPPORT_LEAK_DETECTOR
+
 static u32 alloc_entries_count;
 static alloc_entry alloc_entries[1024];
 static void *metadata_copies[KMALLOC_HEAPS_COUNT];
@@ -123,11 +126,18 @@ end:
    enable_preemption();
 }
 
-static void debug_kmalloc_register_alloc(void *vaddr, size_t s, void *eip)
+static NO_INLINE void debug_kmalloc_register_alloc(void *vaddr, size_t s)
 {
    disable_preemption();
-
    VERIFY(alloc_entries_count < ARRAY_SIZE(alloc_entries) - 1);
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wframe-address"
+
+   void *eip_raw = __builtin_return_address(1);
+   void *eip = __builtin_extract_return_addr(eip_raw);
+
+#pragma GCC diagnostic pop
 
    alloc_entries[alloc_entries_count++] = (alloc_entry){
       .vaddr = vaddr,
@@ -139,7 +149,7 @@ static void debug_kmalloc_register_alloc(void *vaddr, size_t s, void *eip)
    enable_preemption();
 }
 
-static void debug_kmalloc_register_free(void *vaddr, size_t s)
+static NO_INLINE void debug_kmalloc_register_free(void *vaddr, size_t s)
 {
    disable_preemption();
 
@@ -157,3 +167,10 @@ static void debug_kmalloc_register_free(void *vaddr, size_t s)
 
    enable_preemption(); // in case 'panic' is replaced with a warning.
 }
+
+#else
+
+#define debug_kmalloc_register_alloc(...)
+#define debug_kmalloc_register_free(...)
+
+#endif

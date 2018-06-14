@@ -56,10 +56,8 @@ void *kmalloc(size_t s)
          heaps[i].mem_allocated += s;
          ret = vaddr;
 
-         if (leak_detector_enabled) {
-            void *eip_raw = __builtin_return_address(0);
-            void *eip = __builtin_extract_return_addr(eip_raw);
-            debug_kmalloc_register_alloc(vaddr, s, eip);
+         if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
+            debug_kmalloc_register_alloc(vaddr, s);
          }
 
          break;
@@ -148,7 +146,7 @@ void kfree2(void *ptr, size_t user_size)
    }
 
 
-   if (leak_detector_enabled) {
+   if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
       debug_kmalloc_register_free((void *)vaddr, size);
    }
 

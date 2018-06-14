@@ -3,20 +3,21 @@
 
 static bool kmalloc_debug_log;
 
-#define KMALLOC_DEBUG_LOG_ENABLED 0
+#define KMALLOC_SUPPORT_DEBUG_LOG 0
+#define KMALLOC_SUPPORT_LEAK_DETECTOR 0
+#define KMALLOC_HEAPS_CREATION_DEBUG 0
 
-#if KMALLOC_DEBUG_LOG_ENABLED
+#if KMALLOC_SUPPORT_DEBUG_LOG
    #define DEBUG_COND (kmalloc_debug_log)
    #define DEBUG_printk(...) if (DEBUG_COND) printk(__VA_ARGS__)
 #else
    #define DEBUG_printk(...)
 #endif
 
-#define KMALLOC_HEAPS_CREATION_DEBUG 0
 
 void debug_kmalloc_start_log(void)
 {
-   if (!KMALLOC_DEBUG_LOG_ENABLED)
+   if (!KMALLOC_SUPPORT_DEBUG_LOG)
       panic("kmalloc debug logs funcs are NOT compiled in");
 
    kmalloc_debug_log = true;
@@ -24,7 +25,7 @@ void debug_kmalloc_start_log(void)
 
 void debug_kmalloc_stop_log(void)
 {
-   if (!KMALLOC_DEBUG_LOG_ENABLED)
+   if (!KMALLOC_SUPPORT_DEBUG_LOG)
       panic("kmalloc debug logs funcs are NOT compiled in");
 
    kmalloc_debug_log = false;
