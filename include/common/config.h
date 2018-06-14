@@ -9,9 +9,6 @@
 #include <generated_config.h>
 
 #define KMALLOC_FREE_MEM_POISON_VAL 0xFAABCAFE
-#define KMALLOC_FREE_MEM_POISONING 0
-
-#define KERNEL_TRACK_NESTED_INTERRUPTS 1
 
 /* ------------------------------- */
 

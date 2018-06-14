@@ -31,13 +31,15 @@ function(PREPEND var prefix)
 endfunction(PREPEND)
 
 ###########################################################
-# Architecture setting. Only x86 is accepted by now.
+# Architecture setting. Only i386 is accepted by now.
 
 set(ARCH "i386")
 
 # Other general config variables.
 
 set(USE_GCOV off CACHE BOOL "Compile the tests for measuring coverage")
+set(KMALLOC_FREE_MEM_POISONING 0 CACHE BOOL "Make kfree() to poison the memory")
+set(KERNEL_TRACK_NESTED_INTERRUPTS 1 CACHE BOOL "Track the nested interrupts")
 
 ###########################################################
 
@@ -52,8 +54,6 @@ if (${ARCH} STREQUAL "i386")
 else()
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
 endif()
-
-
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -90,13 +90,20 @@ else()
 
 endif()
 
-set (GCOV_COMPILE_FLAGS "")
-set (GCOV_LINK_FLAGS "")
-
 if (${USE_GCOV})
-   message(STATUS "Using GCOV for code coverage")
+   message(STATUS "USE_GCOV = 1")
    set(GCOV_COMPILE_FLAGS "-fprofile-arcs -ftest-coverage")
    set(GCOV_LINK_FLAGS "-fprofile-arcs -lgcov")
+endif()
+
+if (${KMALLOC_FREE_MEM_POISONING})
+   message(STATUS "KMALLOC_FREE_MEM_POISONING = 1")
+endif()
+
+if (${KERNEL_TRACK_NESTED_INTERRUPTS})
+   message(STATUS "KERNEL_TRACK_NESTED_INTERRUPTS = 1")
+else()
+   message(STATUS "KERNEL_TRACK_NESTED_INTERRUPTS = 0")
 endif()
 
 
@@ -105,7 +112,6 @@ set(
 
    -g
 )
-
 
 set(
    WARN_FLAGS_LIST
