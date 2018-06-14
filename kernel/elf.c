@@ -92,8 +92,10 @@ int load_elf_program(const char *filepath,
 
       *pdir_ref = pdir_clone(get_kernel_page_dir());
 
-      if (!*pdir_ref)
+      if (!*pdir_ref) {
+         exvfs_close(elf_file);
          return -ENOMEM;
+      }
    }
 
    //printk("elf loader: '%s'\n", filepath);
