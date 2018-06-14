@@ -17,7 +17,7 @@
 
 void simple_test_kthread(void *arg)
 {
-   int i;
+   u32 i;
    uptr saved_esp;
    uptr esp;
 
@@ -25,7 +25,7 @@ void simple_test_kthread(void *arg)
 
    saved_esp = get_curr_stack_ptr();
 
-   for (i = 0; i < 1024*(int)MB; i++) {
+   for (i = 0; i < 1024*MB; i++) {
 
       /*
        * This VERY IMPORTANT check ensures us that in NO WAY functions like
@@ -33,7 +33,9 @@ void simple_test_kthread(void *arg)
        * of the stack pointer.
        */
       esp = get_curr_stack_ptr();
-      VERIFY(esp == saved_esp);
+
+      if (esp != saved_esp)
+         panic("esp: %p != saved_esp: %p", esp, saved_esp);
 
       if (!(i % (256*MB))) {
          printk("[kthread] i = %i\n", i/MB);
