@@ -12,9 +12,37 @@
 
 #endif
 
-#define KMALLOC_MIN_HEAP_SIZE (64 * KB)
+#if defined(__i386__) || defined(__x86_64__)
+#define KMALLOC_LOW_MEM_UPPER_LIM 0xA0000 // + 640 KB [arch-limit, don't touch!]
+#else
+#error Architecture not supported
+#endif
+
+/*
+ * NOTE how all of below defines depend somehow on:
+ *
+ *    - KMALLOC_LOW_MEM_UPPER_LIM
+ *    - KMALLOC_MAX_ALIGN
+ *
+ * In summary:
+ *
+ *    - We cannot get a bigger MAX ALIGN than KMALLOC_FIRST_METADATA_PA.
+ *      Unless we stop using the low mem, but that would mean wasting 512 KB.
+ *      In alternative, we have to tollerate different heaps to have a different
+ *      max align value. For the moment, that is not necessary.
+ *
+ *    - KMALLOC_FIRST_METADATA_SIZE cannot be more than 512 KB, since:
+ *          - it has to be a power of 2 (limitation by design of the allocator)
+ *          - it is limited by KMALLOC_LOW_MEM_UPPER_LIM (arch-specific limit)
+ */
+
+#define KMALLOC_FIRST_METADATA_PA (KMALLOC_MAX_ALIGN)
+#define KMALLOC_FIRST_METADATA (KERNEL_PA_TO_VA(KMALLOC_FIRST_METADATA_PA))
 #define KMALLOC_FIRST_METADATA_SIZE (512 * KB)
-#define KMALLOC_FIRST_METADATA (KERNEL_PA_TO_VA(0x10000)) // +64 KB
+#define KMALLOC_MIN_HEAP_SIZE KMALLOC_MAX_ALIGN
+
+STATIC_ASSERT(KMALLOC_FIRST_METADATA_PA +
+              KMALLOC_FIRST_METADATA_SIZE <= KMALLOC_LOW_MEM_UPPER_LIM);
 
 STATIC kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
 STATIC int used_heaps;
@@ -185,6 +213,7 @@ bool kmalloc_create_heap(kmalloc_heap *h,
    if (!linear_mapping) {
       // alloc block size has to be a multiple of PAGE_SIZE
       ASSERT((alloc_block_size & (PAGE_SIZE - 1)) == 0);
+      ASSERT(alloc_block_size <= KMALLOC_MAX_ALIGN);
    } else {
       ASSERT(alloc_block_size == 0);
    }
@@ -335,7 +364,7 @@ void init_kmalloc(void)
 
    if (!extra_low_mem_system()) {
 
-      vaddr = round_up_at(base_vaddr, KMALLOC_MIN_HEAP_SIZE);
+      vaddr = round_up_at(base_vaddr, KMALLOC_MAX_ALIGN);
       first_heap_size = find_biggest_heap_size(vaddr, limit);
 
    } else {
@@ -379,7 +408,7 @@ void init_kmalloc(void)
    if (!extra_low_mem_system()) {
       vaddr = heaps[0].vaddr + heaps[0].size;
    } else {
-      vaddr = round_up_at(base_vaddr, KMALLOC_MIN_HEAP_SIZE);
+      vaddr = round_up_at(base_vaddr, KMALLOC_MAX_ALIGN);
    }
 
    for (size_t i = 1; i < ARRAY_SIZE(heaps); i++) {

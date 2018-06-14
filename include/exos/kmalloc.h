@@ -7,6 +7,9 @@
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)
 #define KMALLOC_HEAPS_COUNT 8
 
+/* Don't touch this. See the comment in kmalloc_heaps.c.h. */
+#define KMALLOC_MAX_ALIGN (128 * KB)
+
 extern bool kmalloc_initialized;
 
 typedef bool (*virtual_alloc_and_map_func)(uptr vaddr, int page_count);

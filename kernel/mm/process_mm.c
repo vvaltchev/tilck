@@ -172,9 +172,9 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
                              USER_MMAP_BEGIN,
                              USER_MMAP_END - USER_MMAP_BEGIN,
                              PAGE_SIZE,
-                             32 * PAGE_SIZE,
-                             false, /* linear mapping */
-                             NULL,  /* metadata_nodes */
+                             KMALLOC_MAX_ALIGN,    /* alloc block size */
+                             false,                /* linear mapping */
+                             NULL,                 /* metadata_nodes */
                              user_valloc_and_map,
                              user_vfree_and_unmap);
       if (!success)
