@@ -18,24 +18,29 @@
 void simple_test_kthread(void *arg)
 {
    u32 i;
-   uptr saved_esp;
-   uptr esp;
+   DEBUG_ONLY(uptr esp);
+   DEBUG_ONLY(uptr saved_esp = get_curr_stack_ptr());
 
    printk("[kthread] This is a kernel thread, arg = %p\n", arg);
 
-   saved_esp = get_curr_stack_ptr();
-
    for (i = 0; i < 1024*MB; i++) {
+
+#ifdef DEBUG
 
       /*
        * This VERY IMPORTANT check ensures us that in NO WAY functions like
        * save_current_task_state() and kernel_context_switch() changed value
-       * of the stack pointer.
+       * of the stack pointer. Unfortunately, we cannot reliably do this check
+       * in RELEASE (= optimized) builds because the compiler plays with the
+       * stack pointer and 'esp' and 'saved_esp' differ by a constant value.
        */
       esp = get_curr_stack_ptr();
 
       if (esp != saved_esp)
-         panic("esp: %p != saved_esp: %p", esp, saved_esp);
+         panic("esp: %p != saved_esp: %p [curr-saved: %d], i = %u",
+               esp, saved_esp, esp - saved_esp, i);
+
+#endif
 
       if (!(i % (256*MB))) {
          printk("[kthread] i = %i\n", i/MB);
