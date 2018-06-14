@@ -57,11 +57,11 @@ Hardware support
 --------------------
 
 From the beginning of its development, `exOS` has been tested both on
-virtualized hardware (`qemu`, `virtualbox`, `vmware workstation`) and on
-bare-metal machines, like my own Dell XPS 13" 9360. Therefore `exOS` should work
-on any `80486+` machine compatible with the IBM-PC architecture. At least 48 MB
-of RAM are required, because of the size of the ramdisk. If you want to try it,
-just use `dd` to store `exos.img` in a flash drive and than use it for booting.
+virtualized hardware (`qemu`, `virtualbox`, `vmware workstation`) and on several
+hardware machines. Therefore, `exOS` should work on any `i686+` machine
+compatible with the IBM-PC architecture, supporting the PSE (page-size extension)
+feature (introduced in Pentium Pro, 1995). If you want to try it, just use `dd`
+to store `exos.img` in a flash drive and than use it for booting.
 
 How to build & run
 ---------------------
@@ -137,9 +137,9 @@ System tests
 
 You can run kernel's system tests this way:
 
-    ./system_tests/run_all_tests
+    ./build/st/run_all_tests
 
-NOTE: in order the script to work, you need to have python 2.7.x installed in
+NOTE: in order the script to work, you need to have python 2.7.x installed as
 /usr/bin/python.
 
 

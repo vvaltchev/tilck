@@ -21,8 +21,8 @@ TEST_TYPE = None
 
 VM_MEMORY_SIZE_IN_MB = int(os.environ.get('EXOS_VM_MEM', '128'))
 KERNEL_HELLO_MSG = 'Hello from exOS!'
-KERNEL_FILE = './build/elf_kernel_stripped'
-FATPART_FILE = './build/fatpart'
+KERNEL_FILE = '@KERNEL_FILE@'
+FATPART_FILE = '@CMAKE_BINARY_DIR@/fatpart'
 
 
 output = ""

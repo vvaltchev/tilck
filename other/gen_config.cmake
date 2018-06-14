@@ -141,6 +141,18 @@ configure_file(
    @ONLY
 )
 
+configure_file(
+   ${CMAKE_SOURCE_DIR}/other/system_tests/runtest
+   ${CMAKE_BINARY_DIR}/st/runtest
+   @ONLY
+)
+
+configure_file(
+   ${CMAKE_SOURCE_DIR}/other/system_tests/run_all_tests
+   ${CMAKE_BINARY_DIR}/st/run_all_tests
+   @ONLY
+)
+
 # Run qemu scripts
 
 list(
