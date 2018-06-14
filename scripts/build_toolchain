@@ -279,35 +279,6 @@ function install_packages {
 }
 
 ###############################
-# Nasm
-###############################
-
-function build_nasm {
-
-   pushd .
-
-   if ! [ -d nasm ]; then
-
-      echo
-      echo "*** NASM ***"
-      echo
-
-      tarname=nasm-2.13.02.tar.gz
-      wget http://www.nasm.us/pub/nasm/releasebuilds/2.13.02/$tarname
-      tar xfz $tarname
-      rm $tarname
-      mv nasm-2.13.02 nasm
-      cd nasm
-      run_command2 ./configure configure.log
-      run_command2 "make -j" build.log
-   else
-      echo "NOTE: Skipping nasm"
-   fi
-
-   popd
-}
-
-###############################
 # Mtools
 ###############################
 
