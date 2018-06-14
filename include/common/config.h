@@ -9,12 +9,7 @@
 #include <generated_config.h>
 
 #define KMALLOC_FREE_MEM_POISON_VAL 0xFAABCAFE
-
-#ifdef DEBUG
-#  define KMALLOC_FREE_MEM_POISONING 0
-#else
-#  define KMALLOC_FREE_MEM_POISONING 0
-#endif
+#define KMALLOC_FREE_MEM_POISONING 0
 
 #define KERNEL_TRACK_NESTED_INTERRUPTS 1
 
@@ -50,7 +45,7 @@ extern void *kernel_va;
 #define KERNEL_MAX_SIZE            (1024 * KB)
 #define USER_VSDO_LIKE_PAGE_VADDR (LINEAR_MAPPING_OVER_END)
 
-/* Bootloader specific config */
+/* Bootloader-specific config */
 
 #define SECTOR_SIZE          512
 #define BL_BASE_SEG          (BL_BASE_ADDR / 16)

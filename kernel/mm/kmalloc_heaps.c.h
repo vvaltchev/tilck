@@ -141,10 +141,8 @@ void kfree2(void *ptr, size_t user_size)
    heaps[hn].mem_allocated -= size;
 
    if (KMALLOC_FREE_MEM_POISONING) {
-      for (u32 i = 0; i < size / 4; i++)
-         ((u32 *)ptr)[i] = KMALLOC_FREE_MEM_POISON_VAL;
+      memset32(ptr, KMALLOC_FREE_MEM_POISON_VAL, size / 4);
    }
-
 
    if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
       debug_kmalloc_register_free((void *)vaddr, size);
