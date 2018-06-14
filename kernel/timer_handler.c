@@ -14,9 +14,7 @@ kthread_timer_sleep_obj timers_array[64];
 
 int set_task_to_wake_after(task_info *task, u64 ticks)
 {
-#if KERNEL_TRACK_NESTED_INTERRUPTS
-   ASSERT(!in_irq());
-#endif
+   DEBUG_ONLY(check_not_in_irq_handler());
 
    for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
       if (BOOL_COMPARE_AND_SWAP(&timers_array[i].task, NULL, 1)) {

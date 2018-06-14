@@ -8,18 +8,20 @@ void set_fault_handler(int fault, void *ptr);
 
 #if KERNEL_TRACK_NESTED_INTERRUPTS
 void check_not_in_irq_handler(void);
-bool in_irq(void);
-bool in_syscall(void);
 void push_nested_interrupt(int int_num);
 void pop_nested_interrupt(void);
 void nested_interrupts_drop_top_syscall(void);
 void panic_dump_nested_interrupts(void);
-int get_nested_interrupts_count(void);
+
+/* the following funcs are not defined when !KERNEL_TRACK_NESTED_INTERRUPTS */
+bool in_syscall(void);
 bool in_nested_irq0(void);
+int get_nested_interrupts_count(void);
+
 #else
-static inline void check_not_in_irq_handler(void) { }
-static inline void push_nested_interrupt(int int_num) { (void) int_num; }
+static inline void push_nested_interrupt(int int_num) { }
 static inline void pop_nested_interrupt(void) { }
+static inline void check_not_in_irq_handler(void) { }
 static inline void nested_interrupts_drop_top_syscall(void) { }
 static inline void panic_dump_nested_interrupts(void) { }
 #endif

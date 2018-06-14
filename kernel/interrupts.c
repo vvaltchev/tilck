@@ -41,20 +41,6 @@ inline void pop_nested_interrupt(void)
    enable_interrupts(&var);
 }
 
-bool in_irq(void)
-{
-   uptr var;
-   bool r = false;
-   disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
-   {
-      if (nested_interrupts_count > 0)
-         if (is_irq(nested_interrupts[nested_interrupts_count - 1]))
-            r = true;
-   }
-   enable_interrupts(&var);
-   return r;
-}
-
 bool in_nested_irq0(void)
 {
    uptr var;
