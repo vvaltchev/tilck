@@ -296,6 +296,11 @@ NORETURN void switch_to_task(task_info *ti)
 
    DEBUG_VALIDATE_STACK_PTR();
 
+#if !KERNEL_TRACK_NESTED_INTERRUPTS
+   // We have to be SURE that the timer IRQ is NOT masked!
+   irq_clear_mask(X86_PC_TIMER_IRQ);
+#endif
+
    regs *state = ti->state_regs;
    ASSERT(state->eflags & EFLAGS_IF);
 
