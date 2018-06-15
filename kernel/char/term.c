@@ -134,9 +134,10 @@ static void ts_clear_row(int row_num, u8 color)
 
 /* ---------------- term actions --------------------- */
 
+#if TERM_PERF_METRICS
+
 static u32 scroll_count;
 static u64 scroll_cycles;
-
 static u32 sc_one_line_count;
 static u64 sc_one_line_cycles;
 
@@ -160,6 +161,12 @@ void debug_term_print_scroll_cycles(void)
    }
 }
 
+#else
+
+void debug_term_print_scroll_cycles(void) { }
+
+#endif
+
 static void term_action_set_color(u8 color)
 {
    current_color = color;
@@ -167,10 +174,10 @@ static void term_action_set_color(u8 color)
 
 static void term_action_scroll_up(u32 lines)
 {
-//#ifdef DEBUG
+#if TERM_PERF_METRICS
    u64 start, end;
    start = RDTSC();
-//#endif
+#endif
 
    ts_scroll_up(lines);
 
@@ -184,19 +191,19 @@ static void term_action_scroll_up(u32 lines)
    if (vi->flush_buffers)
       vi->flush_buffers();
 
-//#ifdef DEBUG
+#if TERM_PERF_METRICS
    end = RDTSC();
    scroll_cycles += (end - start);
    scroll_count++;
-//#endif
+#endif
 }
 
 static void term_action_scroll_down(u32 lines)
 {
-//#ifdef DEBUG
+#if TERM_PERF_METRICS
    u64 start, end;
    start = RDTSC();
-//#endif
+#endif
 
    ts_scroll_down(lines);
 
@@ -208,11 +215,11 @@ static void term_action_scroll_down(u32 lines)
    if (vi->flush_buffers)
       vi->flush_buffers();
 
-//#ifdef DEBUG
+#if TERM_PERF_METRICS
    end = RDTSC();
    scroll_cycles += (end - start);
    scroll_count++;
-//#endif
+#endif
 }
 
 static void term_internal_incr_row(void)
@@ -303,19 +310,21 @@ static void term_action_write2(char *buf, u32 len, u8 color)
 {
    ts_scroll_to_bottom();
 
-//#ifdef DEBUG
+#if TERM_PERF_METRICS
    bool has_new_line = false;
    u64 start, end;
    start = RDTSC();
-//#endif
+#endif
 
    vi->enable_cursor();
 
    for (u32 i = 0; i < len; i++) {
-      // debug
+
+#if TERM_PERF_METRICS
       if (buf[i] == '\n')
          has_new_line = true;
-      // end debug
+#endif
+
       term_internal_write_char2(buf[i], color);
    }
 
@@ -324,13 +333,13 @@ static void term_action_write2(char *buf, u32 len, u8 color)
    if (vi->flush_buffers)
       vi->flush_buffers();
 
-//#ifdef DEBUG
+#if TERM_PERF_METRICS
    end = RDTSC();
    if (has_new_line && current_row == term_rows - 1) {
       sc_one_line_cycles += (end - start);
       sc_one_line_count++;
    }
-//#endif
+#endif
 }
 
 static void term_action_move_ch_and_cur(int row, int col)

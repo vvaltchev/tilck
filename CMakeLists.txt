@@ -42,6 +42,9 @@ set(USE_GCOV OFF CACHE BOOL "Compile the tests for measuring coverage")
 set(KERNEL_TRACK_NESTED_INTERRUPTS ON CACHE BOOL
     "Track the nested interrupts")
 
+set(TERM_PERF_METRICS ON CACHE BOOL
+    "Compile-in code measuring the performance of the console (scrolling)")
+
 # Kernel options (disabled by default)
 set(KMALLOC_FREE_MEM_POISONING OFF CACHE BOOL
     "Make kfree() to poison the memory")
@@ -59,6 +62,7 @@ list(
    APPEND kernel_opts_enabled_by_default
 
    KERNEL_TRACK_NESTED_INTERRUPTS
+   TERM_PERF_METRICS
 )
 
 list(

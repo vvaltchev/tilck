@@ -20,6 +20,7 @@
 
 /* enabled by default */
 #cmakedefine01 KERNEL_TRACK_NESTED_INTERRUPTS
+#cmakedefine01 TERM_PERF_METRICS
 
 /* disabled by default */
 #cmakedefine01 KMALLOC_FREE_MEM_POISONING
