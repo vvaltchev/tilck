@@ -201,7 +201,6 @@ static struct explicit_stack_elem2 alloc_stack[32];
 
 void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 {
-   ASSERT(kmalloc_initialized);
    ASSERT(desired_size != 0);
 
    if (!h->linear_mapping) {

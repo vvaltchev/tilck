@@ -13,10 +13,7 @@
 #endif
 
 #if defined(__i386__) || defined(__x86_64__)
-#define KMALLOC_LOW_MEM_UPPER_LIM 0xA0000 // + 640 KB [arch-limit, don't touch!]
-#else
-#error Architecture not supported
-#endif
+#define X86_LOW_MEM_UPPER_LIM 0xA0000 // + 640 KB [arch-limit, don't touch!]
 
 /*
  * NOTE how all of below defines depend somehow on:
@@ -26,28 +23,29 @@
  *
  * In summary:
  *
- *    - We cannot get a bigger MAX ALIGN than KMALLOC_FIRST_METADATA_PA.
- *      Unless we stop using the low mem, but that would mean wasting 512 KB.
+ *    - We cannot get a bigger MAX ALIGN than LOW_MEM_HEAP_PA, unless we avoid
+ *      using the low mem, but that would mean wasting 512 KB.
  *      In alternative, we have to tollerate different heaps to have a different
  *      max align value. For the moment, that is not necessary.
  *
- *    - KMALLOC_FIRST_METADATA_SIZE cannot be more than 512 KB, since:
+ *    - LOW_MEM_HEAP_SIZE cannot be more than 512 KB, since:
  *          - it has to be a power of 2 (limitation by design of the allocator)
- *          - it is limited by KMALLOC_LOW_MEM_UPPER_LIM (arch-specific limit)
+ *          - it is limited by X86_LOW_MEM_UPPER_LIM (arch-specific limit)
  */
 
-#define KMALLOC_FIRST_METADATA_PA (KMALLOC_MAX_ALIGN)
-#define KMALLOC_FIRST_METADATA (KERNEL_PA_TO_VA(KMALLOC_FIRST_METADATA_PA))
-#define KMALLOC_FIRST_METADATA_SIZE (512 * KB)
-#define KMALLOC_MIN_HEAP_SIZE KMALLOC_MAX_ALIGN
+#define LOW_MEM_HEAP_PA (KMALLOC_MAX_ALIGN)
+#define LOW_MEM_HEAP (KERNEL_PA_TO_VA(LOW_MEM_HEAP_PA))
+#define LOW_MEM_HEAP_SIZE (512 * KB)
 
-STATIC_ASSERT(KMALLOC_FIRST_METADATA_PA +
-              KMALLOC_FIRST_METADATA_SIZE <= KMALLOC_LOW_MEM_UPPER_LIM);
+STATIC_ASSERT(LOW_MEM_HEAP_PA + LOW_MEM_HEAP_SIZE <= X86_LOW_MEM_UPPER_LIM);
+
+#endif
+
+#define KMALLOC_MIN_HEAP_SIZE KMALLOC_MAX_ALIGN
 
 STATIC kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
 STATIC int used_heaps;
-
-static char extra_low_mem_heap_metadata[8 * KB];
+STATIC char first_heap[256 * KB] __attribute__ ((aligned(KMALLOC_MAX_ALIGN)));
 
 bool pg_alloc_and_map(uptr vaddr, int page_count);
 void pg_free_and_unmap(uptr vaddr, int page_count);
@@ -315,11 +313,6 @@ debug_print_heap_info(uptr vaddr, u32 heap_size, u32 min_block_size)
 #endif
 }
 
-static inline bool extra_low_mem_system(void)
-{
-   return get_phys_mem_mb() <= 4;
-}
-
 void debug_kmalloc_dump_mem_usage(void)
 {
    static size_t heaps_alloc[KMALLOC_HEAPS_COUNT];
@@ -344,15 +337,59 @@ void debug_kmalloc_dump_mem_usage(void)
    }
 }
 
+static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
+{
+   const size_t metadata_size = heap_size / 32;
+   size_t min_block_size;
+
+   if (used_heaps >= (int)ARRAY_SIZE(heaps))
+      return -1;
+
+   min_block_size = calculate_heap_min_block_size(heap_size, metadata_size);
+   debug_print_heap_info((uptr)vaddr, heap_size, min_block_size);
+
+   bool success =
+      kmalloc_create_heap(&heaps[used_heaps],
+                          (uptr)vaddr,
+                          heap_size,
+                          min_block_size,
+                          0,              /* alloc_block_size */
+                          true,           /* linear mapping */
+                          vaddr,          /* metadata_nodes */
+                          NULL, NULL);
+
+   VERIFY(success);
+
+   /*
+    * We passed to kmalloc_create_heap() the begining of the heap as 'metadata'
+    * in order to avoid using another heap (that might not be large enough) for
+    * that. Now we MUST register that area in the metadata itself, by doing an
+    * allocation using internal_kmalloc().
+    */
+
+   void *md_allocated = internal_kmalloc(&heaps[used_heaps], metadata_size);
+
+   /*
+    * We have to be SURE that the allocation returned the very beginning of
+    * the heap, as we expected.
+    */
+
+   VERIFY(md_allocated == vaddr);
+   return used_heaps++;
+}
+
 void init_kmalloc(void)
 {
+   int heap_index;
    uptr vaddr;
-   size_t min_block_size;
-   size_t first_heap_size;
-   size_t first_metadata_size = KMALLOC_FIRST_METADATA_SIZE;
-   void *first_heap_metadata = KMALLOC_FIRST_METADATA;
 
    ASSERT(!kmalloc_initialized);
+
+   used_heaps = 0;
+   heap_index = kmalloc_internal_add_heap(&first_heap, sizeof(first_heap));
+   VERIFY(heap_index == 0);
+
+   kmalloc_initialized = true; /* we have at least 1 heap */
 
    const uptr limit =
       KERNEL_BASE_VA + MIN(get_phys_mem_mb(), LINEAR_MAPPING_MB) * MB;
@@ -362,78 +399,35 @@ void init_kmalloc(void)
          ? (uptr)KERNEL_PA_TO_VA(ramdisk_paddr) + ramdisk_size
          : (uptr)KERNEL_PA_TO_VA(KERNEL_PADDR) + KERNEL_MAX_SIZE;
 
-   if (!extra_low_mem_system()) {
+   vaddr = round_up_at(base_vaddr, KMALLOC_MAX_ALIGN);
 
-      vaddr = round_up_at(base_vaddr, KMALLOC_MAX_ALIGN);
-      first_heap_size = find_biggest_heap_size(vaddr, limit);
+   while (true) {
 
-   } else {
-
-      /*
-       * If we have so few memory (<= 4 MB), than use the metadata space
-       * in the low-mem for the first heap and use extra_low_mem_heap_metadata
-       * for its metadata nodes.
-       */
-
-      first_metadata_size = sizeof(extra_low_mem_heap_metadata);
-      first_heap_metadata = extra_low_mem_heap_metadata;
-      first_heap_size = KMALLOC_FIRST_METADATA_SIZE;
-      vaddr = (uptr)KMALLOC_FIRST_METADATA;
-   }
-
-   min_block_size =
-      calculate_heap_min_block_size(first_heap_size, first_metadata_size);
-
-   debug_print_heap_info(vaddr, first_heap_size, min_block_size);
-
-   ASSERT(calculate_heap_metadata_size(
-            first_heap_size, min_block_size) == first_metadata_size);
-
-   bool success =
-      kmalloc_create_heap(&heaps[0],
-                          vaddr,
-                          first_heap_size,
-                          min_block_size,
-                          0,    /* alloc_block_size */
-                          true, /* linear mapping */
-                          first_heap_metadata,
-                          NULL,
-                          NULL);
-
-   VERIFY(success);
-
-   used_heaps = 1;
-   kmalloc_initialized = true;
-
-   if (!extra_low_mem_system()) {
-      vaddr = heaps[0].vaddr + heaps[0].size;
-   } else {
-      vaddr = round_up_at(base_vaddr, KMALLOC_MAX_ALIGN);
-   }
-
-   for (size_t i = 1; i < ARRAY_SIZE(heaps); i++) {
-
-      const size_t heap_size = find_biggest_heap_size(vaddr, limit);
+      size_t heap_size = find_biggest_heap_size(vaddr, limit);
 
       if (heap_size < KMALLOC_MIN_HEAP_SIZE)
          break;
 
-      min_block_size = calculate_heap_min_block_size(heap_size, heap_size / 32);
-      debug_print_heap_info(vaddr, heap_size, min_block_size);
+      heap_index = kmalloc_internal_add_heap((void *)vaddr, heap_size);
 
-      bool success =
-         kmalloc_create_heap(&heaps[i],
-                             vaddr,
-                             heap_size,
-                             min_block_size,
-                             0,    /* alloc_block_size */
-                             true, /* linear mapping */
-                             NULL, NULL, NULL);
+      if (heap_index < 0) {
+         printk("kmalloc: no heap slot for heap at %p, size: %u KB\n",
+                vaddr, heap_size / KB);
+         break;
+      }
 
-      VERIFY(success);
-
-      vaddr = heaps[i].vaddr + heaps[i].size;
-      used_heaps++;
+      vaddr = heaps[heap_index].vaddr + heaps[heap_index].size;
    }
+
+#if defined(__i386__) || defined(__x86_64__)
+
+   heap_index =
+      kmalloc_internal_add_heap((void *)LOW_MEM_HEAP, LOW_MEM_HEAP_SIZE);
+
+   if (heap_index < 0) {
+      printk("kmalloc: no heap slot for the low-mem heap\n");
+   }
+
+#endif
 }
 

@@ -5,7 +5,7 @@
 #include <common/string_util.h>
 
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)
-#define KMALLOC_HEAPS_COUNT 8
+#define KMALLOC_HEAPS_COUNT 16
 
 /* Don't touch this. See the comment in kmalloc_heaps.c.h. */
 #define KMALLOC_MAX_ALIGN (128 * KB)
