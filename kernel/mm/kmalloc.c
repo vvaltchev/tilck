@@ -8,6 +8,7 @@
 #include <exos/paging.h>
 #include <exos/sync.h>
 #include <exos/process.h>
+#include <exos/sort.h>
 
 #include "kmalloc_debug.h"
 

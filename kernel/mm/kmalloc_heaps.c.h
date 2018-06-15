@@ -299,6 +299,11 @@ debug_print_heap_info(uptr vaddr, u32 heap_size, u32 min_block_size)
 {
 #if KMALLOC_HEAPS_CREATION_DEBUG
 
+   if (!heap_size) {
+      printk("empty heap\n");
+      return;
+   }
+
    u32 metadata_size = calculate_heap_metadata_size(heap_size, min_block_size);
 
    if (heap_size >= 4 * MB)
@@ -311,6 +316,25 @@ debug_print_heap_info(uptr vaddr, u32 heap_size, u32 min_block_size)
              vaddr, heap_size / KB, min_block_size, metadata_size / KB);
 
 #endif
+}
+
+static void
+debug_dump_all_heaps_info(void)
+{
+   for (u32 i = 0; i < ARRAY_SIZE(heaps); i++) {
+
+      if (!heaps[i].size) {
+
+         for (u32 j = i; j < ARRAY_SIZE(heaps); j++)
+            ASSERT(!heaps[j].size);
+
+         break;
+      }
+
+      debug_print_heap_info(heaps[i].vaddr,
+                            heaps[i].size,
+                            heaps[i].min_block_size);
+   }
 }
 
 void debug_kmalloc_dump_mem_usage(void)
@@ -346,7 +370,6 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
       return -1;
 
    min_block_size = calculate_heap_min_block_size(heap_size, metadata_size);
-   debug_print_heap_info((uptr)vaddr, heap_size, min_block_size);
 
    bool success =
       kmalloc_create_heap(&heaps[used_heaps],
@@ -378,6 +401,20 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
    return used_heaps++;
 }
 
+static int greater_than_heap_cmp(const void *a, const void *b)
+{
+   const kmalloc_heap *ha = a;
+   const kmalloc_heap *hb = b;
+
+   if (ha->size < hb->size)
+      return 1;
+
+   if (ha->size == hb->size)
+      return 0;
+
+   return -1;
+}
+
 void init_kmalloc(void)
 {
    int heap_index;
@@ -386,6 +423,8 @@ void init_kmalloc(void)
    ASSERT(!kmalloc_initialized);
 
    used_heaps = 0;
+   bzero(heaps, sizeof(heaps));
+
    heap_index = kmalloc_internal_add_heap(&first_heap, sizeof(first_heap));
    VERIFY(heap_index == 0);
 
@@ -429,5 +468,12 @@ void init_kmalloc(void)
    }
 
 #endif
+
+   insertion_sort_generic(&heaps,
+                          sizeof(kmalloc_heap),
+                          ARRAY_SIZE(heaps),
+                          greater_than_heap_cmp);
+
+   debug_dump_all_heaps_info();
 }
 
