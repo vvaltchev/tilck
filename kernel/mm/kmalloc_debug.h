@@ -5,7 +5,7 @@ static bool kmalloc_debug_log;
 
 #define KMALLOC_SUPPORT_DEBUG_LOG 0
 #define KMALLOC_SUPPORT_LEAK_DETECTOR 0
-#define KMALLOC_HEAPS_CREATION_DEBUG 1
+#define KMALLOC_HEAPS_CREATION_DEBUG 0
 
 #if KMALLOC_SUPPORT_DEBUG_LOG
    #define DEBUG_COND (kmalloc_debug_log)
