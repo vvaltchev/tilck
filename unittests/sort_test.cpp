@@ -11,8 +11,8 @@ extern "C" {
 
 static int less_than_cmp_int(const void *a, const void *b)
 {
-   const int *a_val = (const int *)a;
-   const int *b_val = (const int *)b;
+   const sptr *a_val = (const sptr *)a;
+   const sptr *b_val = (const sptr *)b;
 
    if (a < b)
       return -1;
@@ -37,7 +37,7 @@ static bool my_is_sorted(uptr *arr, int len, cmpfun_ptr cmp)
 
 TEST(insertion_sort_ptr, basic_test)
 {
-   int vec[] = { 3, 4, 1, 0, -3, 10, 2 };
+   sptr vec[] = { 3, 4, 1, 0, -3, 10, 2 };
 
    insertion_sort_ptr((uptr *)&vec, ARRAY_SIZE(vec), less_than_cmp_int);
    ASSERT_TRUE(my_is_sorted((uptr *)vec, ARRAY_SIZE(vec), less_than_cmp_int));
@@ -46,9 +46,9 @@ TEST(insertion_sort_ptr, basic_test)
 
 TEST(insertion_sort_generic, basic_test)
 {
-   int vec[] = { 3, 4, 1, 0, -3, 10, 2 };
+   sptr vec[] = { 3, 4, 1, 0, -3, 10, 2 };
 
-   insertion_sort_generic((uptr *)&vec, sizeof(int),
+   insertion_sort_generic((uptr *)&vec, sizeof(sptr),
                           ARRAY_SIZE(vec), less_than_cmp_int);
    ASSERT_TRUE(my_is_sorted((uptr *)vec, ARRAY_SIZE(vec), less_than_cmp_int));
 }
