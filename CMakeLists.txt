@@ -35,11 +35,40 @@ endfunction(PREPEND)
 
 set(ARCH "i386")
 
-# Other general config variables.
+# Compile options
+set(USE_GCOV OFF CACHE BOOL "Compile the tests for measuring coverage")
 
-set(USE_GCOV off CACHE BOOL "Compile the tests for measuring coverage")
-set(KMALLOC_FREE_MEM_POISONING 0 CACHE BOOL "Make kfree() to poison the memory")
-set(KERNEL_TRACK_NESTED_INTERRUPTS 1 CACHE BOOL "Track the nested interrupts")
+# Kernel options (enabled by default)
+set(KERNEL_TRACK_NESTED_INTERRUPTS ON CACHE BOOL
+    "Track the nested interrupts")
+
+# Kernel options (disabled by default)
+set(KMALLOC_FREE_MEM_POISONING OFF CACHE BOOL
+    "Make kfree() to poison the memory")
+
+set(KMALLOC_SUPPORT_DEBUG_LOG OFF CACHE BOOL
+    "Compile-in kmalloc debug messages")
+
+set(KMALLOC_SUPPORT_LEAK_DETECTOR OFF CACHE BOOL
+    "Compile-in kmalloc's leak detector")
+
+set(KMALLOC_HEAPS_CREATION_DEBUG OFF CACHE BOOL
+    "Make init_kmalloc() to list the heaps")
+
+list(
+   APPEND kernel_opts_enabled_by_default
+
+   KERNEL_TRACK_NESTED_INTERRUPTS
+)
+
+list(
+   APPEND kernel_opts_disabled_by_default
+
+   KMALLOC_FREE_MEM_POISONING
+   KMALLOC_SUPPORT_DEBUG_LOG
+   KMALLOC_SUPPORT_LEAK_DETECTOR
+   KMALLOC_HEAPS_CREATION_DEBUG
+)
 
 ###########################################################
 
@@ -91,21 +120,20 @@ else()
 endif()
 
 if (${USE_GCOV})
-   message(STATUS "USE_GCOV = 1")
+   message(STATUS "USE_GCOV = ON")
    set(GCOV_COMPILE_FLAGS "-fprofile-arcs -ftest-coverage")
    set(GCOV_LINK_FLAGS "-fprofile-arcs -lgcov")
 endif()
 
-if (${KMALLOC_FREE_MEM_POISONING})
-   message(STATUS "KMALLOC_FREE_MEM_POISONING = 1")
-endif()
+foreach (opt ${kernel_opts_enabled_by_default})
+   message(STATUS "${opt} = ${${opt}}")
+endforeach()
 
-if (${KERNEL_TRACK_NESTED_INTERRUPTS})
-   message(STATUS "KERNEL_TRACK_NESTED_INTERRUPTS = 1")
-else()
-   message(STATUS "KERNEL_TRACK_NESTED_INTERRUPTS = 0")
-endif()
-
+foreach (opt ${kernel_opts_disabled_by_default})
+   if (${${opt}})
+      message(STATUS "${opt} = ${${opt}}")
+   endif()
+endforeach()
 
 set(
    OTHER_CFLAGS_LIST
