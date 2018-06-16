@@ -1,4 +1,11 @@
 #!/bin/bash
 
 BUILD_DIR="@CMAKE_BINARY_DIR@"
+
+if uname -a | grep Microsoft &> /dev/null; then
+   echo -n "It looks like you're using WSL (a.k.a. \"Bash for Windows\"): "
+   echo "therefore, KVM is not available. Just run the *nokvm* version of this script."
+   exit 1
+fi
+
 $BUILD_DIR/run_nokvm_qemu -enable-kvm -cpu host "$@"

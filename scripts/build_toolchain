@@ -398,7 +398,7 @@ function download_x86_gcc_glibc_toolchain {
 # CMake
 ###############################
 
-function build_cmake_internal {
+function download_cmake_internal {
 
    echo
    echo "*** CMAKE ***"
@@ -411,7 +411,7 @@ function build_cmake_internal {
    rm cmake-3.7.0-Linux-x86_64.tar.gz
 }
 
-function build_cmake {
+function download_cmake {
 
    pushd .
 
@@ -420,7 +420,7 @@ function build_cmake {
       if ! which cmake &> /dev/null; then
 
          # CMake is not installed on the machine, download it.
-         build_cmake_internal
+         download_cmake_internal
 
       else
 
@@ -432,12 +432,12 @@ function build_cmake {
          if [ $major -lt 3 ]; then
 
             # The installed CMake is too old.
-            build_cmake_internal
+            download_cmake_internal
 
          elif [ $minor -lt 2 ]; then
 
             # The installed CMake is too old. Ver >= 3.2 is required.
-            build_cmake_internal
+            download_cmake_internal
 
          else
 
@@ -663,16 +663,27 @@ function build_busybox {
 
       ver=1.28.4
       tarname=busybox-$ver.tar.bz2
-      wget https://busybox.net/downloads/$tarname
 
+      if ! [ -f $tarname ]; then
+         wget https://busybox.net/downloads/$tarname
+      else
+         echo "NOTE: Skpping the download of $tarname"
+      fi
+
+      echo "Extracting the package... "
       tar xfj $tarname
 
       mv busybox-$ver busybox
-      cd busybox
+      pushd busybox
+
+      echo "Building busybox... "
 
       cp $MAIN_DIR/other/busybox.config .config
       export CROSS_COMPILE="i686-linux-"
       run_command2 "make -j" build.log
+
+      popd
+      rm $tarname
 
    else
 
@@ -752,7 +763,7 @@ echo "*** Building the custom toolchain ***"
 echo
 
 download_x86_gcc_toolchain
-build_cmake
+download_cmake
 build_lcov
 build_gtest
 build_gnuefi
