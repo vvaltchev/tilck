@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# ---------------------------------------------------------------
+# NOTE
+#
+# This "script" is NOT meant to be executed directly.
+# It is included as a source file by scripts/build_toolchian.
+#
+# ---------------------------------------------------------------
+
+CMAKE_VERSION="3.2.3"
+
+function download_cmake_internal {
+
+   echo
+   echo "*** CMAKE ***"
+   echo
+
+   ver1=$(get_version_comp $CMAKE_VERSION 1)
+   ver2=$(get_version_comp $CMAKE_VERSION 2)
+   ver3=$(get_version_comp $CMAKE_VERSION 3)
+
+   filename=cmake-${ver1}.${ver2}.${ver3}-Linux-x86_64
+   tarname=$filename.tar.gz
+   wget https://cmake.org/files/v${ver1}.${ver2}/$tarname
+   tar xf $filename.tar.gz
+   mv $filename cmake
+   rm $tarname
+
+   CMAKE=$TC/cmake/bin/cmake
+}
+
+function download_cmake {
+
+   pushd .
+
+   if ! [ -d cmake ]; then
+
+      if ! which cmake &> /dev/null; then
+
+         # CMake is not installed on the machine, download it.
+         download_cmake_internal
+
+      else
+
+         # CMake is installed: let's check its version
+         ver=`cmake --version | head -1 | grep -Eo '[0-9]+[.][0-9]+[.][0-9]+' | head -1`
+         major=$(get_version_comp $cmake_version 1)
+         minor=$(get_version_comp $cmake_version 2)
+
+         if [ $major -lt 3 ]; then
+
+            # The installed CMake is too old.
+            download_cmake_internal
+
+         elif [ $minor -lt 2 ]; then
+
+            # The installed CMake is too old. Ver >= 3.2 is required.
+            download_cmake_internal
+
+         else
+
+            # The installed version is >= 3.2. Using it.
+            CMAKE=cmake
+            echo "NOTE: Using system's CMake (version $major.$minor)"
+
+         fi
+
+      fi
+
+   else
+      echo "NOTE: Skipping CMake"
+   fi
+
+   popd
+}

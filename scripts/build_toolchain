@@ -10,7 +10,8 @@ X86_TOOLCHAIN_DIR_NAME="x86_gcc_toolchain"
 
 source $MAIN_DIR/scripts/script_utils
 source $MAIN_DIR/scripts/tc/install_pkgs
-
+source $MAIN_DIR/scripts/tc/gcc_tc
+source $MAIN_DIR/scripts/tc/cmake_download
 
 ###############################
 # Mtools
@@ -43,163 +44,6 @@ function build_mtools {
 
 
 ###############################
-# x86-i686 GNU toolchain
-###############################
-
-# $1 dir name
-# $2 arch name
-# $3 tc file name
-
-function download_toolchain_internal {
-
-   dest="$1"
-   arch="$2"
-   tcname_suffix="$3"
-
-   tcname="${arch}--${tcname_suffix}"
-   tarname=$tcname.tar.bz2
-   url=http://toolchains.bootlin.com/downloads/releases/toolchains
-   wget $url/$arch/tarballs/$tarname
-   tar xfj $tarname
-   rm $tarname
-   mv $tcname $dest
-   cd $dest/bin
-}
-
-function download_x86_gcc_toolchain {
-
-   pushd .
-
-   if ! [ -d $X86_TOOLCHAIN_DIR_NAME ]; then
-
-      echo
-      echo "*** i686 GCC TOOLCHAIN (libmusl) ***"
-      echo
-
-      download_toolchain_internal            \
-         "$X86_TOOLCHAIN_DIR_NAME"           \
-         "x86-i686"                          \
-         "musl--stable-2018.02-2"
-
-   else
-      echo "NOTE: Skipping x86-i686 GNU toolchain (libmusl)"
-   fi
-
-   popd
-}
-
-
-function download_x86_gcc_glibc_toolchain {
-
-   pushd .
-
-   if ! [ -d ${X86_TOOLCHAIN_DIR_NAME}_glibc ]; then
-
-      echo
-      echo "*** i686 GCC TOOLCHAIN (glibc) ***"
-      echo
-
-      download_toolchain_internal              \
-         "${X86_TOOLCHAIN_DIR_NAME}_glibc"     \
-         "x86-i686"                            \
-         "glibc--stable-2018.02-2"
-
-      # To make musl-gcc happy
-
-      for x in *; do
-         if [[ $x == i686* ]]; then
-            new_name=`echo $x | sed 's/i686/i386/g' -`
-            ln -s $x $new_name
-         fi
-      done
-
-      for x in *; do
-         if [[ $x == i386-linux-* ]]; then
-            new_name=`echo $x | sed 's/i386-linux-/i386-/g' -`
-            ln -s $x $new_name
-         fi
-      done
-
-   else
-      echo "NOTE: Skipping x86-i686 GNU toolchain (glibc)"
-   fi
-
-   popd
-}
-
-
-###############################
-# CMake
-###############################
-
-function download_cmake_internal {
-
-   cmake_version="3.2.3"
-
-   echo
-   echo "*** CMAKE ***"
-   echo
-
-   ver1=$(get_version_comp $cmake_version 1)
-   ver2=$(get_version_comp $cmake_version 2)
-   ver3=$(get_version_comp $cmake_version 3)
-
-   filename=cmake-${ver1}.${ver2}.${ver3}-Linux-x86_64
-   tarname=$filename.tar.gz
-   wget https://cmake.org/files/v${ver1}.${ver2}/$tarname
-   tar xf $filename.tar.gz
-   mv $filename cmake
-   rm $tarname
-
-   CMAKE=$TC/cmake/bin/cmake
-}
-
-function download_cmake {
-
-   pushd .
-
-   if ! [ -d cmake ]; then
-
-      if ! which cmake &> /dev/null; then
-
-         # CMake is not installed on the machine, download it.
-         download_cmake_internal
-
-      else
-
-         # CMake is installed: let's check its version
-         ver=`cmake --version | head -1 | grep -Eo '[0-9]+[.][0-9]+[.][0-9]+' | head -1`
-         major=$(get_version_comp $cmake_version 1)
-         minor=$(get_version_comp $cmake_version 2)
-
-         if [ $major -lt 3 ]; then
-
-            # The installed CMake is too old.
-            download_cmake_internal
-
-         elif [ $minor -lt 2 ]; then
-
-            # The installed CMake is too old. Ver >= 3.2 is required.
-            download_cmake_internal
-
-         else
-
-            # The installed version is >= 3.2. Using it.
-            CMAKE=cmake
-            echo "NOTE: Using system's CMake (version $major.$minor)"
-
-         fi
-
-      fi
-
-   else
-      echo "NOTE: Skipping CMake"
-   fi
-
-   popd
-}
-
-###############################
 # LCOV (front end for GCOV)
 ###############################
 
@@ -212,7 +56,8 @@ function build_lcov {
       echo "*** LCOV ***"
       echo
 
-      git clone --branch v1.13 --depth 1 https://github.com/linux-test-project/lcov.git
+      url="https://github.com/linux-test-project/lcov.git"
+      git clone --branch v1.13 --depth 1 "$url"
       cd lcov
    else
       echo "NOTE: Skipping lcov"
@@ -272,7 +117,8 @@ function build_gtest {
       echo "*** GTEST ***"
       echo
 
-      git clone --branch release-1.8.0 --depth 1 https://github.com/google/googletest.git
+      url="https://github.com/google/googletest.git"
+      git clone --branch release-1.8.0 --depth 1 "$url"
       cd googletest/googletest
       $CMAKE -DCMAKE_BUILD_TYPE=Debug .
       run_command2 "make -j" build.log
@@ -347,7 +193,8 @@ function build_gnuefi {
       echo "*** GNU-EFI ***"
       echo
 
-      git clone --branch 3.0.8 --depth 1 https://github.com/vvaltchev/gnu-efi-fork.git gnu-efi
+      url="https://github.com/vvaltchev/gnu-efi-fork.git"
+      git clone --branch 3.0.8 --depth 1 "$url" gnu-efi
       cd gnu-efi
       run_command2 "make ARCH=x86_64 -j" build_x86_64.log
       run_command2 "make ARCH=ia32 prefix=i686-linux- -j" build_ia32.log
@@ -375,8 +222,9 @@ function download_ovmf {
       mkdir ovmf
       cd ovmf
 
-      wget -nd -r --no-parent -A 'edk2.git-ovmf-ia32*' https://www.kraxel.org/repos/jenkins/edk2/
-      wget -nd -r --no-parent -A 'edk2.git-ovmf-x64*' https://www.kraxel.org/repos/jenkins/edk2/
+      url="https://www.kraxel.org/repos/jenkins/edk2/"
+      wget -nd -r --no-parent -A 'edk2.git-ovmf-ia32*' "$url"
+      wget -nd -r --no-parent -A 'edk2.git-ovmf-x64*' "$url"
 
       rpm2cpio edk2.git-ovmf-ia32* | cpio -idmv
       rpm2cpio edk2.git-ovmf-x64* | cpio -idmv

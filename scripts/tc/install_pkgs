@@ -1,8 +1,12 @@
 #!/bin/bash
 
-##############################################
-# Install the necessary packages using apt
-##############################################
+# ---------------------------------------------------------------
+# NOTE
+#
+# This "script" is NOT meant to be executed directly.
+# It is included as a source file by scripts/build_toolchian.
+#
+# ---------------------------------------------------------------
 
 ubuntu_pkg_list=()
 ubuntu_pkg_list+=(wget)
