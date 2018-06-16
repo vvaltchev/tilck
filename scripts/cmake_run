@@ -4,32 +4,27 @@
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 
+source $MAIN_DIR/scripts/script_utils
+
 if [ -z "$CC" ]; then
-
-   CC=gcc
-
-   if which gcc-6 &> /dev/null; then
-      CC=gcc-6
-   fi
-
    if which gcc-7 &> /dev/null; then
       CC=gcc-7
+   elif which gcc-6 &> /dev/null; then
+      CC=gcc-6
+   else
+      CC=gcc
    fi
 fi
 
 if [ -z "$CXX" ]; then
-
-   CXX=g++
-
-   if which g++-6 &> /dev/null; then
-      CXX=g++-6
-   fi
-
    if which g++-7 &> /dev/null; then
       CXX=g++-7
+   elif which g++-6 &> /dev/null; then
+      CXX=g++-6
+   else
+      CXX=g++
    fi
 fi
-
 
 if ! which $CC &> /dev/null; then
    echo "CC compiler '$CC' not found."
@@ -44,8 +39,8 @@ fi
 if $CC --version | grep gcc &> /dev/null; then
 
    cc_ver=`$CC --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
-   cc_major=`echo -ne $cc_ver | grep -Eo '[0-9]+' | head -1`
-   cc_minor=`echo -ne $cc_ver | grep -Eo '[0-9]+' | head -2 | tail -1`
+   cc_major=$(get_version_comp $cc_ver 1)
+   cc_minor=$(get_version_comp $cc_ver 2)
    echo "[cmake_run] gcc version (parsed): $cc_major.$cc_minor"
 
    if [ $cc_major -lt 4 ]; then
@@ -63,8 +58,9 @@ fi
 if $CXX --version | grep g++ &> /dev/null; then
 
    cxx_ver=`$CXX --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
-   cxx_major=`echo -ne $cxx_ver | grep -Eo '[0-9]+' | head -1`
-   cxx_minor=`echo -ne $cxx_ver | grep -Eo '[0-9]+' | head -2 | tail -1`
+   cxx_major=$(get_version_comp $cxx_ver 1)
+   cxx_minor=$(get_version_comp $cxx_ver 2)
+
    echo "[cmake_run] g++ version (parsed): $cxx_major.$cxx_minor"
 
    if [ $cxx_major -lt 4 ]; then

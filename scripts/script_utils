@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# $1 version in the format "major.minor.patchlevel"
+# $2 component number to get (1 => major, 2 => minor, 3 => patchlevel)
+
+function get_version_comp {
+   echo -ne $1 | grep -Eo '[0-9]+' | head -$2 | tail -1
+}
+
+function run_command {
+   echo "Running command: $1"
+   $1
+}
+
+function run_command2 {
+   echo "Running command: $1 &> $2"
+   $1 &> $2
+}
+
+pushd () {
+    command pushd "$@" > /dev/null
+}
+
+popd () {
+    command popd "$@" > /dev/null
+}

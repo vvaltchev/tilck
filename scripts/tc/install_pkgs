@@ -1,0 +1,253 @@
+#!/bin/bash
+
+##############################################
+# Install the necessary packages using apt
+##############################################
+
+ubuntu_pkg_list=()
+ubuntu_pkg_list+=(wget)
+ubuntu_pkg_list+=(git)
+ubuntu_pkg_list+=(gcc)
+ubuntu_pkg_list+=(g++)
+ubuntu_pkg_list+=(make)
+ubuntu_pkg_list+=(binutils)
+ubuntu_pkg_list+=(bzip2)
+ubuntu_pkg_list+=(rpm2cpio)
+ubuntu_pkg_list+=(cpio)
+ubuntu_pkg_list+=(qemu-system-x86)
+
+function install_ubuntu_family {
+
+   packages_list=( "${ubuntu_pkg_list[@]}" )
+   to_install=()
+
+   echo Checking the packages that need to be installed
+
+   for x in ${packages_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if [ "`dpkg -s $x 2>&1 | grep Status`" ]; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   echo
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "sudo apt install $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
+
+function install_debian_family {
+
+   packages_list=( "${ubuntu_pkg_list[@]}" )
+   to_install=()
+
+   echo Checking the packages that need to be installed
+
+   for x in ${packages_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if [ "`dpkg -s $x 2>&1 | grep Status`" ]; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   echo
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      echo Running the command:
+      echo su -c \"apt install $tmp\"
+      su -c "apt install $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
+
+function install_fedora {
+
+   packages_list=()
+   packages_list+=(wget)
+   packages_list+=(git)
+   packages_list+=(gcc)
+   packages_list+=(gcc-c++)
+   packages_list+=(make)
+   packages_list+=(binutils)
+   packages_list+=(bzip2)
+   packages_list+=(cpio)
+   packages_list+=(qemu-system-x86)
+
+   to_install=()
+
+   echo Checking the packages that need to be installed
+
+   for x in ${packages_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if dnf list installed $x &> /dev/null; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "sudo dnf install $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
+
+function install_arch {
+
+   pkg_list=()
+   pkg_list+=(wget)
+   pkg_list+=(git)
+   pkg_list+=(gcc)
+   pkg_list+=(make)
+   pkg_list+=(binutils)
+   pkg_list+=(bzip2)
+   pkg_list+=(rpmextract)
+   pkg_list+=(cpio)
+   pkg_list+=(qemu)
+   pkg_list+=(qemu-arch-extra)
+
+   to_install=()
+
+   echo Checking the packages that need to be installed
+
+   for x in ${pkg_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if pacman -Q $x &> /dev/null; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "sudo pacman -S $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
+
+function install_packages {
+
+   rel_files=`echo /etc/*release`
+   lsb="/etc/lsb-release"
+   os_rel="/etc/os-release"
+
+   # Where lsb-release exists, use only it.
+   # On Mint doing grep /etc/*release reports an error because there is an
+   # upstream-release directory matching that wildcard. Using grep -r is not
+   # a solution since in /etc/upstream-release/* on Mint, Ubuntu is mentioned.
+   if [ -f $lsb ] && [ "$(grep -Ei 'buntu|mint' $lsb)" ]; then
+
+      install_ubuntu_family
+
+   # Debian does not contain the lsb-release file. Also, it needs a special
+   # handling since it does not have 'sudo' by default. Installing sudo is not
+   # a solution since the current use still won't be a sudoer and in general
+   # does not make sense in such a script. The ubuntu script cannot made to use
+   # su -c since by default the login to root is disabled. Only sudo -i works.
+   elif [ -f $os_rel ] && [ "$(grep -Ei 'debian' $os_rel)" ]; then
+
+      install_debian_family
+
+   # On Fedora, we need to check if exactly a [Ff]edora-release file exists.
+   elif echo $rel_files | grep -Ei 'fedora' - &> /dev/null; then
+
+      install_fedora
+
+   elif echo $rel_files | grep -Ei 'arch|manjaro' - &> /dev/null; then
+
+      install_arch
+
+   else
+
+      pkg_list=()
+
+      if ! which wget &> /dev/null; then
+         pkg_list+=(wget)
+      fi
+
+      if ! which git &> /dev/null; then
+         pkg_list+=(git)
+      fi
+
+      if ! which gcc &> /dev/null; then
+         pkg_list+=(gcc)
+      fi
+
+      if ! which g++ &> /dev/null; then
+         pkg_list+=(g++)
+      fi
+
+      if ! which make &> /dev/null; then
+         pkg_list+=(make)
+      fi
+
+      if ! which objdump &> /dev/null; then
+         pkg_list+=(binutils)
+      fi
+
+      if ! which rpm2cpio &> /dev/null; then
+         pkg_list+=(rpm2cpio)
+      fi
+
+      if ! which cpio &> /dev/null; then
+         pkg_list+=(cpio)
+      fi
+
+      if ! which bzip2 &> /dev/null; then
+         pkg_list+=(bzip2)
+      fi
+
+      if ! which qemu-system-x86_64 &> /dev/null; then
+         pkg_list+=(qemu-system-x86)
+      fi
+
+      if [ ${#pkg_list[@]} -ne 0 ]; then
+
+         echo "Your distribution is not fully supported by this script."
+         echo "The supported distros are:"
+         echo "  * Ubuntu"
+         echo "  * Mint"
+         echo "  * Debian"
+         echo "  * Fedora"
+         echo "  * Arch"
+         echo "  * Manjaro"
+         echo "In order to compile exOS on this distro, please make sure the "
+         echo "following packages (ubuntu package names) are installed:"
+
+         for x in ${pkg_list[@]}; do
+            echo "  * $x"
+         done
+
+         echo "After that, re-run this script with the option --skip-install-pkgs"
+         exit 1
+
+      fi
+   fi
+
+}
