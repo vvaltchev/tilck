@@ -6,6 +6,9 @@ MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 
 source $MAIN_DIR/scripts/script_utils
 
+GCC_MIN_VERSION="4.8.0"
+GXX_MIN_VERSION="4.8.0"
+
 if [ -z "$CC" ]; then
    if which gcc-7 &> /dev/null; then
       CC=gcc-7
@@ -37,42 +40,13 @@ if ! which $CXX &> /dev/null; then
 fi
 
 if $CC --version | grep gcc &> /dev/null; then
-
-   cc_ver=`$CC --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
-   cc_major=$(get_version_comp $cc_ver 1)
-   cc_minor=$(get_version_comp $cc_ver 2)
-   echo "[cmake_run] gcc version (parsed): $cc_major.$cc_minor"
-
-   if [ $cc_major -lt 4 ]; then
-      echo "Your gcc compiler is too old. Version >= 4.8 is required."
-      exit 1
-   fi
-
-   if [ $cc_major -eq 4 ] && [ $cc_minor -lt 8 ]; then
-      echo "Your gcc compiler is too old. Version >= 4.8 is required."
-      exit 1
-   fi
-
+   ver=$(generic_get_version_str $CC)
+   fail_if_too_old $CC $ver $GCC_MIN_VERSION
 fi
 
 if $CXX --version | grep g++ &> /dev/null; then
-
-   cxx_ver=`$CXX --version | head -1 | grep -Eo '[0-9]+[.][0-9][.][0-9]+' | head -1`
-   cxx_major=$(get_version_comp $cxx_ver 1)
-   cxx_minor=$(get_version_comp $cxx_ver 2)
-
-   echo "[cmake_run] g++ version (parsed): $cxx_major.$cxx_minor"
-
-   if [ $cxx_major -lt 4 ]; then
-      echo "Your g++ compiler is too old. Version >= 4.8 is required."
-      exit 1
-   fi
-
-   if [ $cxx_major -eq 4 ] && [ $cxx_minor -lt 8 ]; then
-      echo "Your g++ compiler is too old. Version >= 4.8 is required."
-      exit 1
-   fi
-
+   ver=$(generic_get_version_str $CXX)
+   fail_if_too_old $CXX $ver $GXX_MIN_VERSION
 fi
 
 export CC

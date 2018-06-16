@@ -43,3 +43,29 @@ function show_work_on_component_msg {
 function show_skip_component_msg {
    echo "NOTE: Skipping $1"
 }
+
+# $1 = program name
+# $2 = min version string
+function show_too_old_and_exit {
+   echo "System's $1 is too old. Version >= $2 is required."
+   exit 1
+}
+
+# $1 = program name
+# $2 = current version string (i.e. "1.2.3")
+# $3 = min version string (i.e. "1.2.3")
+function fail_if_too_old {
+
+   major=$(get_version_comp $2 1)
+   minor=$(get_version_comp $2 2)
+   echo "[cmake_run] $1 version (parsed): $major.$minor"
+
+   min_major=$(get_version_comp $3 1)
+   min_minor=$(get_version_comp $3 2)
+
+   if [ $major -lt $min_major ]; then
+      show_too_old_and_exit $1 $3
+   elif [ $major -eq $min_major ] && [ $minor -lt $min_minor ]; then
+      show_too_old_and_exit $1 $3
+   fi
+}
