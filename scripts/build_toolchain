@@ -23,9 +23,7 @@ function build_mtools {
 
    if ! [ -d mtools ]; then
 
-      echo
-      echo "*** MTOOLS ***"
-      echo
+      show_work_on_component_msg "MTOOLS"
 
       tarname=mtools-4.0.18.tar.gz
       wget ftp://ftp.gnu.org/gnu/mtools/$tarname
@@ -36,7 +34,7 @@ function build_mtools {
       run_command2 ./configure configure.log
       run_command2 "make -j" build.log
    else
-      echo "NOTE: Skipping mtools"
+      show_skip_component_msg "MTOOLS"
    fi
 
    popd
@@ -52,15 +50,13 @@ function build_lcov {
    pushd .
    if ! [ -d lcov ]; then
 
-      echo
-      echo "*** LCOV ***"
-      echo
+      show_work_on_component_msg "LCOV"
 
       url="https://github.com/linux-test-project/lcov.git"
       git clone --branch v1.13 --depth 1 "$url"
       cd lcov
    else
-      echo "NOTE: Skipping lcov"
+      show_skip_component_msg "LCOV"
    fi
    popd
 
@@ -76,9 +72,7 @@ function build_dietlibc {
 
    if ! [ -d dietlibc-0.33 ]; then
 
-      echo
-      echo "*** DIETLIBC ***"
-      echo
+      show_work_on_component_msg "DIETLIBC"
 
       git clone --branch v0.33 --depth 1 https://github.com/vvaltchev/dietlibc-fork.git
       mv dietlibc-fork dietlibc-0.33
@@ -96,7 +90,7 @@ function build_dietlibc {
 
    else
 
-      echo "NOTE: Skipping dietlibc"
+      show_skip_component_msg "DIETLIBC"
 
    fi
 
@@ -113,9 +107,7 @@ function build_gtest {
    pushd .
    if ! [ -d googletest ]; then
 
-      echo
-      echo "*** GTEST ***"
-      echo
+      show_work_on_component_msg "GOOGLE TEST"
 
       url="https://github.com/google/googletest.git"
       git clone --branch release-1.8.0 --depth 1 "$url"
@@ -123,7 +115,7 @@ function build_gtest {
       $CMAKE -DCMAKE_BUILD_TYPE=Debug .
       run_command2 "make -j" build.log
    else
-      echo "NOTE: Skipping googletest"
+      show_skip_component_msg "GOOGLE TEST"
    fi
    popd
 
@@ -154,9 +146,7 @@ function build_libmusl {
       saved_path="$PATH"
       export PATH="$tc:$PATH"
 
-      echo
-      echo "*** LIBMUSL ***"
-      echo
+      show_work_on_component_msg "LIBMUSL"
 
       git clone --branch v1.1.19 --depth 1 git://git.musl-libc.org/musl
       cd musl
@@ -172,7 +162,7 @@ function build_libmusl {
       export PATH="$saved_path"
 
    else
-      echo "NOTE: Skipping musl"
+      show_skip_component_msg "LIBMUSL"
    fi
 
    popd
@@ -189,9 +179,7 @@ function build_gnuefi {
 
    if ! [ -d gnu-efi ]; then
 
-      echo
-      echo "*** GNU-EFI ***"
-      echo
+      show_work_on_component_msg "GNU-EFI"
 
       url="https://github.com/vvaltchev/gnu-efi-fork.git"
       git clone --branch 3.0.8 --depth 1 "$url" gnu-efi
@@ -200,9 +188,7 @@ function build_gnuefi {
       run_command2 "make ARCH=ia32 prefix=i686-linux- -j" build_ia32.log
 
    else
-
-      echo "NOTE: Skipping gnu-efi"
-
+      show_skip_component_msg "GNU-EFI"
    fi
 
    popd
@@ -218,6 +204,8 @@ function download_ovmf {
    pushd .
 
    if ! [ -d ovmf ]; then
+
+      show_work_on_component_msg "OVMF"
 
       mkdir ovmf
       cd ovmf
@@ -236,7 +224,7 @@ function download_ovmf {
 
    else
 
-      echo "NOTE: Skipping OVMF"
+      show_skip_component_msg "OVMF"
    fi
 
    popd
@@ -252,13 +240,15 @@ function build_busybox {
 
    if ! [ -d busybox ]; then
 
+      show_work_on_component_msg "BUSYBOX"
+
       ver=1.28.4
       tarname=busybox-$ver.tar.bz2
 
       if ! [ -f $tarname ]; then
          wget https://busybox.net/downloads/$tarname
       else
-         echo "NOTE: Skpping the download of $tarname"
+         echo "NOTE: Skipping the download of $tarname"
       fi
 
       echo "Extracting the package... "
@@ -277,8 +267,7 @@ function build_busybox {
       rm $tarname
 
    else
-
-      echo "NOTE: Skipping busybox"
+      show_skip_component_msg "BUSYBOX"
    fi
 
    popd

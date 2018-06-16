@@ -12,9 +12,7 @@ CMAKE_VERSION="3.2.3"
 
 function download_cmake_internal {
 
-   echo
-   echo "*** CMAKE ***"
-   echo
+   show_work_on_component_msg "CMAKE"
 
    ver1=$(get_version_comp $CMAKE_VERSION 1)
    ver2=$(get_version_comp $CMAKE_VERSION 2)
@@ -69,7 +67,7 @@ function download_cmake {
       fi
 
    else
-      echo "NOTE: Skipping CMake"
+      show_skip_component_msg "CMAKE"
    fi
 
    popd

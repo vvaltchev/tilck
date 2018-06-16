@@ -24,3 +24,13 @@ pushd () {
 popd () {
     command popd "$@" > /dev/null
 }
+
+function show_work_on_component_msg {
+   echo
+   echo "*** $1 ***"
+   echo
+}
+
+function show_skip_component_msg {
+   echo "NOTE: Skipping $1"
+}

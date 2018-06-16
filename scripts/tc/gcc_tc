@@ -39,9 +39,7 @@ function download_x86_gcc_toolchain {
 
    if ! [ -d $X86_TOOLCHAIN_DIR_NAME ]; then
 
-      echo
-      echo "*** i686 GCC TOOLCHAIN (libmusl) ***"
-      echo
+      show_work_on_component_msg "i686 GCC TOOLCHAIN (libmusl)"
 
       download_toolchain_internal            \
          "$X86_TOOLCHAIN_DIR_NAME"           \
@@ -49,7 +47,7 @@ function download_x86_gcc_toolchain {
          "musl--stable-2018.02-2"
 
    else
-      echo "NOTE: Skipping x86-i686 GNU toolchain (libmusl)"
+      show_skip_component_msg "i686 GCC TOOLCHAIN (libmusl)"
    fi
 
    popd
@@ -62,9 +60,7 @@ function download_x86_gcc_glibc_toolchain {
 
    if ! [ -d ${X86_TOOLCHAIN_DIR_NAME}_glibc ]; then
 
-      echo
-      echo "*** i686 GCC TOOLCHAIN (glibc) ***"
-      echo
+      show_work_on_component_msg "i686 GCC TOOLCHAIN (glibc)"
 
       download_toolchain_internal              \
          "${X86_TOOLCHAIN_DIR_NAME}_glibc"     \
@@ -88,7 +84,7 @@ function download_x86_gcc_glibc_toolchain {
       done
 
    else
-      echo "NOTE: Skipping x86-i686 GNU toolchain (glibc)"
+      show_skip_component_msg "i686 GCC TOOLCHAIN (glibc)"
    fi
 
    popd
