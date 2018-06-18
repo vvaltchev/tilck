@@ -34,6 +34,8 @@ file(
 
 file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})
 
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+
 add_executable(
 
    elf_kernel
@@ -63,7 +65,7 @@ add_custom_command(
    OUTPUT
       ${KERNEL_FILE}
    COMMAND
-      ${STRIP} --strip-debug elf_kernel -o ${KERNEL_FILE}
+      ${STRIP} --strip-debug ${EXECUTABLE_OUTPUT_PATH}/elf_kernel -o ${KERNEL_FILE}
    COMMAND
       elfhack ${KERNEL_FILE} --copy .symtab .Symtab
    COMMAND
@@ -87,7 +89,7 @@ add_custom_command(
    COMMAND
       elfhack ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
    DEPENDS
-      elfhack ${CMAKE_CURRENT_BINARY_DIR}/elf_kernel
+      elfhack elf_kernel
    COMMENT
       "Preparing kernel's stripped binary"
 )
