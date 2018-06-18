@@ -8,6 +8,7 @@
 
 #include <common/vga_textmode_defs.h>
 #include <common/string_util.h>
+#include <common/utils.h>
 
 #include <exos/hal.h>
 #include <exos/term.h>
@@ -24,9 +25,8 @@ static u16 term_cols;
 static u16 term_rows;
 static u16 current_row;
 static u16 current_col;
-
-static u8 current_color;
 static u16 term_col_offset;
+static u8 current_color;
 
 static const video_interface *vi;
 
@@ -36,6 +36,7 @@ static u32 max_scroll;
 static u32 total_buffer_rows;
 static u32 extra_buffer_rows;
 static u16 failsafe_buffer[80 * 25];
+static bool *term_tabs;
 
 u32 term_get_tab_size(void)
 {
@@ -255,11 +256,47 @@ static void term_internal_write_tab(u8 color)
 {
    int rem = term_cols - current_col - 1;
 
-   if (rem < term_tab_size)
+   if (!term_tabs) {
+
+      if (rem)
+         term_internal_write_printable_char(' ', color);
+
+      return;
+   }
+
+   int tab_col =
+      MIN(round_up_at(current_col+1, term_tab_size), (u32)term_cols - 2);
+   term_tabs[current_row * term_cols + tab_col] = 1;
+   current_col = tab_col + 1;
+}
+
+static void term_internal_write_backspace(u8 color)
+{
+   if (!current_col || current_col <= term_col_offset)
       return;
 
-   for (int i = 0; i < term_tab_size; i++) {
-      term_internal_write_printable_char(' ', color);
+   const u16 space_entry = make_vgaentry(' ', color);
+   current_col--;
+
+   if (!term_tabs || !term_tabs[current_row * term_cols + current_col]) {
+      buffer_set_entry(current_row, current_col, space_entry);
+      vi->set_char_at(current_row, current_col, space_entry);
+      return;
+   }
+
+   /* we hit the end of a tab */
+   term_tabs[current_row * term_cols + current_col] = 0;
+
+   for (int i = term_tab_size - 1; i >= 0; i--) {
+
+      if (!current_col || current_col == term_col_offset)
+         break;
+
+      if (term_tabs[current_row * term_cols + current_col - 1])
+         break; /* we hit the previous tab */
+
+      if (i)
+         current_col--;
    }
 }
 
@@ -284,13 +321,7 @@ static void term_internal_write_char2(char c, u8 color)
       break;
 
    case '\b':
-
-      if (!current_col || current_col <= term_col_offset)
-         break;
-
-      current_col--;
-      term_internal_write_printable_char(' ', color);
-      current_col--; /* compensate the current_col++ in the call */
+      term_internal_write_backspace(color);
       break;
 
    default:
@@ -571,7 +602,14 @@ init_term(const video_interface *intf,
          buffer = kmalloc(2 * total_buffer_rows * term_cols);
    }
 
-   if (!buffer) {
+   if (buffer) {
+
+      term_tabs = kzmalloc(term_cols * term_rows);
+
+      if (!term_tabs)
+         printk("WARNING: unable to allocate the term_tabs buffer\n");
+
+   } else {
 
       /* We're in panic or we were unable to allocate the buffer */
       term_cols = MIN(80, term_cols);
