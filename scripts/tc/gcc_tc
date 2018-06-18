@@ -1,0 +1,91 @@
+#!/bin/bash
+
+# ---------------------------------------------------------------
+# NOTE
+#
+# This "script" is NOT meant to be executed directly.
+# It is included as a source file by scripts/build_toolchian.
+#
+# ---------------------------------------------------------------
+
+
+###############################
+# x86-i686 GNU toolchain
+###############################
+
+# $1 dir name
+# $2 arch name
+# $3 tc file name
+
+function download_toolchain_internal {
+
+   dest="$1"
+   arch="$2"
+   tcname_suffix="$3"
+
+   tcname="${arch}--${tcname_suffix}"
+   tarname=$tcname.tar.bz2
+   url=http://toolchains.bootlin.com/downloads/releases/toolchains
+   wget $url/$arch/tarballs/$tarname
+   tar xfj $tarname
+   rm $tarname
+   mv $tcname $dest
+   cd $dest/bin
+}
+
+function download_x86_gcc_toolchain {
+
+   pushd .
+
+   if ! [ -d $X86_TOOLCHAIN_DIR_NAME ]; then
+
+      show_work_on_component_msg "i686 GCC TOOLCHAIN (libmusl)"
+
+      download_toolchain_internal            \
+         "$X86_TOOLCHAIN_DIR_NAME"           \
+         "x86-i686"                          \
+         "musl--stable-2018.02-2"
+
+   else
+      show_skip_component_msg "i686 GCC TOOLCHAIN (libmusl)"
+   fi
+
+   popd
+}
+
+
+function download_x86_gcc_glibc_toolchain {
+
+   pushd .
+
+   if ! [ -d ${X86_TOOLCHAIN_DIR_NAME}_glibc ]; then
+
+      show_work_on_component_msg "i686 GCC TOOLCHAIN (glibc)"
+
+      download_toolchain_internal              \
+         "${X86_TOOLCHAIN_DIR_NAME}_glibc"     \
+         "x86-i686"                            \
+         "glibc--stable-2018.02-2"
+
+      # To make musl-gcc happy
+
+      for x in *; do
+         if [[ $x == i686* ]]; then
+            new_name=`echo $x | sed 's/i686/i386/g' -`
+            ln -s $x $new_name
+         fi
+      done
+
+      for x in *; do
+         if [[ $x == i386-linux-* ]]; then
+            new_name=`echo $x | sed 's/i386-linux-/i386-/g' -`
+            ln -s $x $new_name
+         fi
+      done
+
+   else
+      show_skip_component_msg "i686 GCC TOOLCHAIN (glibc)"
+   fi
+
+   popd
+}

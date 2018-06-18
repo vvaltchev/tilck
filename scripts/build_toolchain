@@ -2,281 +2,16 @@
 
 # GLOBAL VARIABLES
 
+# Project's root directory
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
+
 X86_TOOLCHAIN_DIR_NAME="x86_gcc_toolchain"
 
-##############################################
-# Internal utility functions
-##############################################
-
-function run_command {
-   echo "Running command: $1"
-   $1
-}
-
-function run_command2 {
-   echo "Running command: $1 &> $2"
-   $1 &> $2
-}
-
-pushd () {
-    command pushd "$@" > /dev/null
-}
-
-popd () {
-    command popd "$@" > /dev/null
-}
-
-##############################################
-# Install the necessary packages using apt
-##############################################
-
-ubuntu_pkg_list=()
-ubuntu_pkg_list+=(wget)
-ubuntu_pkg_list+=(git)
-ubuntu_pkg_list+=(gcc)
-ubuntu_pkg_list+=(g++)
-ubuntu_pkg_list+=(make)
-ubuntu_pkg_list+=(binutils)
-ubuntu_pkg_list+=(bzip2)
-ubuntu_pkg_list+=(rpm2cpio)
-ubuntu_pkg_list+=(cpio)
-ubuntu_pkg_list+=(qemu-system-x86)
-
-function install_ubuntu_family {
-
-   packages_list=( "${ubuntu_pkg_list[@]}" )
-   to_install=()
-
-   echo Checking the packages that need to be installed
-
-   for x in ${packages_list[@]}; do
-      echo -ne "Checking $x... "
-
-      if [ "`dpkg -s $x 2>&1 | grep Status`" ]; then
-         echo OK
-      else
-         echo NOT found
-         to_install+=($x)
-      fi
-   done
-
-   echo
-
-   if [ ${#to_install[@]} -ne 0 ]; then
-      echo ${#to_install[@]} packages need to be installed
-      tmp="${to_install[@]}"
-      run_command "sudo apt install $tmp"
-   else
-      echo "You are all set, no packages need to be installed."
-   fi
-}
-
-function install_debian_family {
-
-   packages_list=( "${ubuntu_pkg_list[@]}" )
-   to_install=()
-
-   echo Checking the packages that need to be installed
-
-   for x in ${packages_list[@]}; do
-      echo -ne "Checking $x... "
-
-      if [ "`dpkg -s $x 2>&1 | grep Status`" ]; then
-         echo OK
-      else
-         echo NOT found
-         to_install+=($x)
-      fi
-   done
-
-   echo
-
-   if [ ${#to_install[@]} -ne 0 ]; then
-      echo ${#to_install[@]} packages need to be installed
-      tmp="${to_install[@]}"
-      echo Running the command:
-      echo su -c \"apt install $tmp\"
-      su -c "apt install $tmp"
-   else
-      echo "You are all set, no packages need to be installed."
-   fi
-}
-
-function install_fedora {
-
-   packages_list=()
-   packages_list+=(wget)
-   packages_list+=(git)
-   packages_list+=(gcc)
-   packages_list+=(gcc-c++)
-   packages_list+=(make)
-   packages_list+=(binutils)
-   packages_list+=(bzip2)
-   packages_list+=(cpio)
-   packages_list+=(qemu-system-x86)
-
-   to_install=()
-
-   echo Checking the packages that need to be installed
-
-   for x in ${packages_list[@]}; do
-      echo -ne "Checking $x... "
-
-      if dnf list installed $x &> /dev/null; then
-         echo OK
-      else
-         echo NOT found
-         to_install+=($x)
-      fi
-   done
-
-   if [ ${#to_install[@]} -ne 0 ]; then
-      echo ${#to_install[@]} packages need to be installed
-      tmp="${to_install[@]}"
-      run_command "sudo dnf install $tmp"
-   else
-      echo "You are all set, no packages need to be installed."
-   fi
-}
-
-function install_arch {
-
-   pkg_list=()
-   pkg_list+=(wget)
-   pkg_list+=(git)
-   pkg_list+=(gcc)
-   pkg_list+=(make)
-   pkg_list+=(binutils)
-   pkg_list+=(bzip2)
-   pkg_list+=(rpmextract)
-   pkg_list+=(cpio)
-   pkg_list+=(qemu)
-   pkg_list+=(qemu-arch-extra)
-
-   to_install=()
-
-   echo Checking the packages that need to be installed
-
-   for x in ${pkg_list[@]}; do
-      echo -ne "Checking $x... "
-
-      if pacman -Q $x &> /dev/null; then
-         echo OK
-      else
-         echo NOT found
-         to_install+=($x)
-      fi
-   done
-
-   if [ ${#to_install[@]} -ne 0 ]; then
-      echo ${#to_install[@]} packages need to be installed
-      tmp="${to_install[@]}"
-      run_command "sudo pacman -S $tmp"
-   else
-      echo "You are all set, no packages need to be installed."
-   fi
-}
-
-function install_packages {
-
-   rel_files=`echo /etc/*release`
-   lsb="/etc/lsb-release"
-   os_rel="/etc/os-release"
-
-   # Where lsb-release exists, use only it.
-   # On Mint doing grep /etc/*release reports an error because there is an
-   # upstream-release directory matching that wildcard. Using grep -r is not
-   # a solution since in /etc/upstream-release/* on Mint, Ubuntu is mentioned.
-   if [ -f $lsb ] && [ "$(grep -Ei 'buntu|mint' $lsb)" ]; then
-
-      install_ubuntu_family
-
-   # Debian does not contain the lsb-release file. Also, it needs a special
-   # handling since it does not have 'sudo' by default. Installing sudo is not
-   # a solution since the current use still won't be a sudoer and in general
-   # does not make sense in such a script. The ubuntu script cannot made to use
-   # su -c since by default the login to root is disabled. Only sudo -i works.
-   elif [ -f $os_rel ] && [ "$(grep -Ei 'debian' $os_rel)" ]; then
-
-      install_debian_family
-
-   # On Fedora, we need to check if exactly a [Ff]edora-release file exists.
-   elif echo $rel_files | grep -Ei 'fedora' - &> /dev/null; then
-
-      install_fedora
-
-   elif echo $rel_files | grep -Ei 'arch|manjaro' - &> /dev/null; then
-
-      install_arch
-
-   else
-
-      pkg_list=()
-
-      if ! which wget &> /dev/null; then
-         pkg_list+=(wget)
-      fi
-
-      if ! which git &> /dev/null; then
-         pkg_list+=(git)
-      fi
-
-      if ! which gcc &> /dev/null; then
-         pkg_list+=(gcc)
-      fi
-
-      if ! which g++ &> /dev/null; then
-         pkg_list+=(g++)
-      fi
-
-      if ! which make &> /dev/null; then
-         pkg_list+=(make)
-      fi
-
-      if ! which objdump &> /dev/null; then
-         pkg_list+=(binutils)
-      fi
-
-      if ! which rpm2cpio &> /dev/null; then
-         pkg_list+=(rpm2cpio)
-      fi
-
-      if ! which cpio &> /dev/null; then
-         pkg_list+=(cpio)
-      fi
-
-      if ! which bzip2 &> /dev/null; then
-         pkg_list+=(bzip2)
-      fi
-
-      if ! which qemu-system-x86_64 &> /dev/null; then
-         pkg_list+=(qemu-system-x86)
-      fi
-
-      if [ ${#pkg_list[@]} -ne 0 ]; then
-
-         echo "Your distribution is not fully supported by this script."
-         echo "The supported distros are:"
-         echo "  * Ubuntu"
-         echo "  * Mint"
-         echo "  * Debian"
-         echo "  * Fedora"
-         echo "  * Arch"
-         echo "  * Manjaro"
-         echo "In order to compile exOS on this distro, please make sure the "
-         echo "following packages (ubuntu package names) are installed:"
-
-         for x in ${pkg_list[@]}; do
-            echo "  * $x"
-         done
-
-         echo "After that, re-run this script with the option --skip-install-pkgs"
-         exit 1
-
-      fi
-   fi
-
-}
+source $MAIN_DIR/scripts/script_utils
+source $MAIN_DIR/scripts/tc/install_pkgs
+source $MAIN_DIR/scripts/tc/gcc_tc
+source $MAIN_DIR/scripts/tc/cmake_download
 
 ###############################
 # Mtools
@@ -288,9 +23,7 @@ function build_mtools {
 
    if ! [ -d mtools ]; then
 
-      echo
-      echo "*** MTOOLS ***"
-      echo
+      show_work_on_component_msg "MTOOLS"
 
       tarname=mtools-4.0.18.tar.gz
       wget ftp://ftp.gnu.org/gnu/mtools/$tarname
@@ -301,160 +34,12 @@ function build_mtools {
       run_command2 ./configure configure.log
       run_command2 "make -j" build.log
    else
-      echo "NOTE: Skipping mtools"
+      show_skip_component_msg "MTOOLS"
    fi
 
    popd
 }
 
-
-###############################
-# x86-i686 GNU toolchain
-###############################
-
-# $1 dir name
-# $2 arch name
-# $3 tc file name
-
-function download_toolchain_internal {
-
-   dest="$1"
-   arch="$2"
-   tcname_suffix="$3"
-
-   tcname="${arch}--${tcname_suffix}"
-   tarname=$tcname.tar.bz2
-   url=http://toolchains.bootlin.com/downloads/releases/toolchains
-   wget $url/$arch/tarballs/$tarname
-   tar xfj $tarname
-   rm $tarname
-   mv $tcname $dest
-   cd $dest/bin
-}
-
-function download_x86_gcc_toolchain {
-
-   pushd .
-
-   if ! [ -d $X86_TOOLCHAIN_DIR_NAME ]; then
-
-      echo
-      echo "*** i686 GCC TOOLCHAIN (libmusl) ***"
-      echo
-
-      download_toolchain_internal            \
-         "$X86_TOOLCHAIN_DIR_NAME"           \
-         "x86-i686"                          \
-         "musl--stable-2018.02-2"
-
-   else
-      echo "NOTE: Skipping x86-i686 GNU toolchain (libmusl)"
-   fi
-
-   popd
-}
-
-
-function download_x86_gcc_glibc_toolchain {
-
-   pushd .
-
-   if ! [ -d ${X86_TOOLCHAIN_DIR_NAME}_glibc ]; then
-
-      echo
-      echo "*** i686 GCC TOOLCHAIN (glibc) ***"
-      echo
-
-      download_toolchain_internal              \
-         "${X86_TOOLCHAIN_DIR_NAME}_glibc"     \
-         "x86-i686"                            \
-         "glibc--stable-2018.02-2"
-
-      # To make musl-gcc happy
-
-      for x in *; do
-         if [[ $x == i686* ]]; then
-            new_name=`echo $x | sed 's/i686/i386/g' -`
-            ln -s $x $new_name
-         fi
-      done
-
-      for x in *; do
-         if [[ $x == i386-linux-* ]]; then
-            new_name=`echo $x | sed 's/i386-linux-/i386-/g' -`
-            ln -s $x $new_name
-         fi
-      done
-
-   else
-      echo "NOTE: Skipping x86-i686 GNU toolchain (glibc)"
-   fi
-
-   popd
-}
-
-
-###############################
-# CMake
-###############################
-
-function build_cmake_internal {
-
-   echo
-   echo "*** CMAKE ***"
-   echo
-
-   wget https://cmake.org/files/v3.7/cmake-3.7.0-Linux-x86_64.tar.gz
-   tar xf cmake-3.7.0-Linux-x86_64.tar.gz
-   mv cmake-3.7.0-Linux-x86_64 cmake
-   CMAKE=$TC/cmake/bin/cmake
-   rm cmake-3.7.0-Linux-x86_64.tar.gz
-}
-
-function build_cmake {
-
-   pushd .
-
-   if ! [ -d cmake ]; then
-
-      if ! which cmake &> /dev/null; then
-
-         # CMake is not installed on the machine, download it.
-         build_cmake_internal
-
-      else
-
-         # CMake is installed: let's check its version
-         ver=`cmake --version | head -1 | grep -Eo '[0-9]+[.][0-9]+[.][0-9]+' | head -1`
-         major=`echo -ne $ver | grep -Eo '[0-9]+' | head -1`
-         minor=`echo -ne $ver | grep -Eo '[0-9]+' | head -2 | tail -1`
-
-         if [ $major -lt 3 ]; then
-
-            # The installed CMake is too old.
-            build_cmake_internal
-
-         elif [ $minor -lt 2 ]; then
-
-            # The installed CMake is too old. Ver >= 3.2 is required.
-            build_cmake_internal
-
-         else
-
-            # The installed version is >= 3.2. Using it.
-            CMAKE=cmake
-            echo "NOTE: Using system's CMake (version $major.$minor)"
-
-         fi
-
-      fi
-
-   else
-      echo "NOTE: Skipping CMake"
-   fi
-
-   popd
-}
 
 ###############################
 # LCOV (front end for GCOV)
@@ -465,14 +50,13 @@ function build_lcov {
    pushd .
    if ! [ -d lcov ]; then
 
-      echo
-      echo "*** LCOV ***"
-      echo
+      show_work_on_component_msg "LCOV"
 
-      git clone --branch v1.13 --depth 1 https://github.com/linux-test-project/lcov.git
+      url="https://github.com/linux-test-project/lcov.git"
+      git clone --branch v1.13 --depth 1 "$url"
       cd lcov
    else
-      echo "NOTE: Skipping lcov"
+      show_skip_component_msg "LCOV"
    fi
    popd
 
@@ -488,9 +72,7 @@ function build_dietlibc {
 
    if ! [ -d dietlibc-0.33 ]; then
 
-      echo
-      echo "*** DIETLIBC ***"
-      echo
+      show_work_on_component_msg "DIETLIBC"
 
       git clone --branch v0.33 --depth 1 https://github.com/vvaltchev/dietlibc-fork.git
       mv dietlibc-fork dietlibc-0.33
@@ -508,7 +90,7 @@ function build_dietlibc {
 
    else
 
-      echo "NOTE: Skipping dietlibc"
+      show_skip_component_msg "DIETLIBC"
 
    fi
 
@@ -525,16 +107,15 @@ function build_gtest {
    pushd .
    if ! [ -d googletest ]; then
 
-      echo
-      echo "*** GTEST ***"
-      echo
+      show_work_on_component_msg "GOOGLE TEST"
 
-      git clone --branch release-1.8.0 --depth 1 https://github.com/google/googletest.git
+      url="https://github.com/google/googletest.git"
+      git clone --branch release-1.8.0 --depth 1 "$url"
       cd googletest/googletest
       $CMAKE -DCMAKE_BUILD_TYPE=Debug .
       run_command2 "make -j" build.log
    else
-      echo "NOTE: Skipping googletest"
+      show_skip_component_msg "GOOGLE TEST"
    fi
    popd
 
@@ -565,9 +146,7 @@ function build_libmusl {
       saved_path="$PATH"
       export PATH="$tc:$PATH"
 
-      echo
-      echo "*** LIBMUSL ***"
-      echo
+      show_work_on_component_msg "LIBMUSL"
 
       git clone --branch v1.1.19 --depth 1 git://git.musl-libc.org/musl
       cd musl
@@ -583,7 +162,7 @@ function build_libmusl {
       export PATH="$saved_path"
 
    else
-      echo "NOTE: Skipping musl"
+      show_skip_component_msg "LIBMUSL"
    fi
 
    popd
@@ -600,19 +179,16 @@ function build_gnuefi {
 
    if ! [ -d gnu-efi ]; then
 
-      echo
-      echo "*** GNU-EFI ***"
-      echo
+      show_work_on_component_msg "GNU-EFI"
 
-      git clone --branch 3.0.8 --depth 1 https://github.com/vvaltchev/gnu-efi-fork.git gnu-efi
+      url="https://github.com/vvaltchev/gnu-efi-fork.git"
+      git clone --branch 3.0.8 --depth 1 "$url" gnu-efi
       cd gnu-efi
       run_command2 "make ARCH=x86_64 -j" build_x86_64.log
       run_command2 "make ARCH=ia32 prefix=i686-linux- -j" build_ia32.log
 
    else
-
-      echo "NOTE: Skipping gnu-efi"
-
+      show_skip_component_msg "GNU-EFI"
    fi
 
    popd
@@ -629,11 +205,14 @@ function download_ovmf {
 
    if ! [ -d ovmf ]; then
 
+      show_work_on_component_msg "OVMF"
+
       mkdir ovmf
       cd ovmf
 
-      wget -nd -r --no-parent -A 'edk2.git-ovmf-ia32*' https://www.kraxel.org/repos/jenkins/edk2/
-      wget -nd -r --no-parent -A 'edk2.git-ovmf-x64*' https://www.kraxel.org/repos/jenkins/edk2/
+      url="https://www.kraxel.org/repos/jenkins/edk2/"
+      wget -nd -r --no-parent -A 'edk2.git-ovmf-ia32*' "$url"
+      wget -nd -r --no-parent -A 'edk2.git-ovmf-x64*' "$url"
 
       rpm2cpio edk2.git-ovmf-ia32* | cpio -idmv
       rpm2cpio edk2.git-ovmf-x64* | cpio -idmv
@@ -645,7 +224,7 @@ function download_ovmf {
 
    else
 
-      echo "NOTE: Skipping OVMF"
+      show_skip_component_msg "OVMF"
    fi
 
    popd
@@ -661,22 +240,34 @@ function build_busybox {
 
    if ! [ -d busybox ]; then
 
+      show_work_on_component_msg "BUSYBOX"
+
       ver=1.28.4
       tarname=busybox-$ver.tar.bz2
-      wget https://busybox.net/downloads/$tarname
 
+      if ! [ -f $tarname ]; then
+         wget https://busybox.net/downloads/$tarname
+      else
+         echo "NOTE: Skipping the download of $tarname"
+      fi
+
+      echo "Extracting the package... "
       tar xfj $tarname
 
       mv busybox-$ver busybox
-      cd busybox
+      pushd busybox
+
+      echo "Building busybox... "
 
       cp $MAIN_DIR/other/busybox.config .config
       export CROSS_COMPILE="i686-linux-"
       run_command2 "make -j" build.log
 
-   else
+      popd
+      rm $tarname
 
-      echo "NOTE: Skipping busybox"
+   else
+      show_skip_component_msg "BUSYBOX"
    fi
 
    popd
@@ -692,10 +283,6 @@ function build_busybox {
 
 # Exit on the first failure
 set -e
-
-# Project's root directory
-MAIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-MAIN_DIR=$MAIN_DIR/..
 
 # Toolchain dir
 TC=$MAIN_DIR/toolchain
@@ -752,7 +339,7 @@ echo "*** Building the custom toolchain ***"
 echo
 
 download_x86_gcc_toolchain
-build_cmake
+download_cmake
 build_lcov
 build_gtest
 build_gnuefi
