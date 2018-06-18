@@ -6,6 +6,8 @@
 #include <exos/errno.h>
 #include <exos/datetime.h>
 #include <exos/process.h>
+#include <exos/sys_types.h>
+
 
 #ifdef __SYSCALLS_C__
 
@@ -180,8 +182,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_select)
 CREATE_STUB_SYSCALL_IMPL(sys_flock)
 CREATE_STUB_SYSCALL_IMPL(sys_msync)
 
-sptr sys_readv(int fd, const void *iov, int iovcnt);
-sptr sys_writev(int fd, const void *iov, int iovcnt);
+sptr sys_readv(int fd, const struct iovec *iov, int iovcnt);
+sptr sys_writev(int fd, const struct iovec *iov, int iovcnt);
 
 CREATE_STUB_SYSCALL_IMPL(sys_getsid)
 CREATE_STUB_SYSCALL_IMPL(sys_fdatasync)

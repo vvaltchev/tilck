@@ -8,11 +8,6 @@
 #include <exos/errno.h>
 #include <exos/user.h>
 
-typedef struct {
-   void *iov_base;    /* Starting address */
-   size_t iov_len;    /* Number of bytes to transfer */
-} iovec;
-
 static inline bool is_fd_valid(int fd)
 {
    return fd >= 0 && fd < (int)ARRAY_SIZE(get_curr_task()->pi->handles);
@@ -196,17 +191,17 @@ sptr sys_ioctl(int fd, uptr request, void *argp)
    return ret;
 }
 
-sptr sys_writev(int fd, const iovec *user_iov, int iovcnt)
+sptr sys_writev(int fd, const struct iovec *user_iov, int iovcnt)
 {
    task_info *curr = get_curr_task();
    fs_handle handle;
    sptr ret = 0;
    sptr rc;
 
-   if (sizeof(iovec) * iovcnt > ARGS_COPYBUF_SIZE)
+   if (sizeof(struct iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
 
-   rc = copy_from_user(curr->args_copybuf, user_iov, sizeof(iovec) * iovcnt);
+   rc = copy_from_user(curr->args_copybuf, user_iov, sizeof(struct iovec) * iovcnt);
 
    if (rc != 0)
       return -EFAULT;
@@ -218,7 +213,7 @@ sptr sys_writev(int fd, const iovec *user_iov, int iovcnt)
 
    exvfs_exlock(handle);
 
-   const iovec *iov = (const iovec *)curr->args_copybuf;
+   const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
 
    // TODO: make the rest of the syscall run with preemption enabled.
    // In order to achieve that, it might be necessary to expose from exvfs
@@ -246,17 +241,17 @@ sptr sys_writev(int fd, const iovec *user_iov, int iovcnt)
    return ret;
 }
 
-sptr sys_readv(int fd, const iovec *user_iov, int iovcnt)
+sptr sys_readv(int fd, const struct iovec *user_iov, int iovcnt)
 {
    task_info *curr = get_curr_task();
    fs_handle handle;
    sptr ret = 0;
    sptr rc;
 
-   if (sizeof(iovec) * iovcnt > ARGS_COPYBUF_SIZE)
+   if (sizeof(struct iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
 
-   rc = copy_from_user(curr->args_copybuf, user_iov, sizeof(iovec) * iovcnt);
+   rc = copy_from_user(curr->args_copybuf, user_iov, sizeof(struct iovec) * iovcnt);
 
    if (rc != 0)
       return -EFAULT;
@@ -268,7 +263,7 @@ sptr sys_readv(int fd, const iovec *user_iov, int iovcnt)
 
    exvfs_exlock(handle);
 
-   const iovec *iov = (const iovec *)curr->args_copybuf;
+   const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
 
    for (int i = 0; i < iovcnt; i++) {
 
