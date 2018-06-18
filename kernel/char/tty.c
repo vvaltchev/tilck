@@ -48,34 +48,10 @@ static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 
 /* -------------- TTY ioctl ------------- */
 
+#include <termios.h>      // system header
+#include <sys/ioctl.h>    // system header
 
-#define TCGETS      0x00005401
-#define TIOCGWINSZ  0x00005413
-
-typedef unsigned char   cc_t;
-typedef unsigned int    speed_t;
-typedef unsigned int    tcflag_t;
-
-
-#define NCCS 19
-typedef struct {
-   tcflag_t c_iflag;           /* input mode flags */
-   tcflag_t c_oflag;           /* output mode flags */
-   tcflag_t c_cflag;           /* control mode flags */
-   tcflag_t c_lflag;           /* local mode flags */
-   cc_t c_line;                /* line discipline */
-   cc_t c_cc[NCCS];            /* control characters */
-} termios;
-
-typedef struct
-{
-   u16 ws_row;       /* rows, in characters */
-   u16 ws_col;       /* columns, in characters */
-   u16 ws_xpixel;    /* horizontal size, pixels */
-   u16 ws_ypixel;    /* vertical size, pixels */
-} winsize;
-
-static const termios hard_coded_termios =
+static const struct termios hard_coded_termios =
 {
    0x4500,
    0x05,
@@ -87,6 +63,8 @@ static const termios hard_coded_termios =
       0x11, 0x13, 0x1a, 0x0, 0x12, 0xf, 0x17, 0x16,
       0x0, 0x0, 0x0
    },
+   0, // ispeed
+   0  // ospeed
 };
 
 static ssize_t tty_ioctl(fs_handle h, uptr request, void *argp)
@@ -95,7 +73,7 @@ static ssize_t tty_ioctl(fs_handle h, uptr request, void *argp)
 
    if (request == TCGETS) {
 
-      int rc = copy_to_user(argp, &hard_coded_termios, sizeof(termios));
+      int rc = copy_to_user(argp, &hard_coded_termios, sizeof(struct termios));
 
       if (rc < 0)
          return -EFAULT;
@@ -105,14 +83,14 @@ static ssize_t tty_ioctl(fs_handle h, uptr request, void *argp)
 
    if (request == TIOCGWINSZ) {
 
-      winsize sz = {
+      struct winsize sz = {
          .ws_row = term_get_rows(),
          .ws_col = term_get_cols(),
          .ws_xpixel = 0,
          .ws_ypixel = 0
       };
 
-      int rc = copy_to_user(argp, &sz, sizeof(winsize));
+      int rc = copy_to_user(argp, &sz, sizeof(struct winsize));
 
       if (rc < 0)
          return -EFAULT;

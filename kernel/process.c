@@ -565,8 +565,8 @@ no_mem_exit:
    return -ENOMEM;
 }
 
-#define PR_SET_NAME 15
-#define PR_GET_NAME 16
+
+#include <sys/prctl.h>
 
 sptr sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5)
 {

@@ -7,6 +7,8 @@
 #include <exos/timer.h>
 #include <exos/sys_types.h>
 
+#include <time.h> // system header
+
 const char *weekdays[7] =
 {
    "Sunday",
