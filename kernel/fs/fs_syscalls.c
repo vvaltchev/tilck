@@ -288,3 +288,9 @@ sptr sys_readv(int fd, const iovec *user_iov, int iovcnt)
    exvfs_exunlock(handle);
    return ret;
 }
+
+sptr sys_stat64(const char *pathname, stat64 *statbuf)
+{
+   printk("stat64('%s')\n", pathname);
+   return -ENOSYS;
+}

@@ -1,6 +1,7 @@
 
 #pragma once
 #include <common/basic_defs.h>
+#include <exos/sys_types.h>
 
 typedef struct {
 
@@ -20,26 +21,6 @@ typedef struct {
    };
 
 } datetime_t;
-
-typedef uptr time_t;
-typedef uptr suseconds_t;
-
-typedef struct {
-   time_t      tv_sec;     /* seconds */
-   suseconds_t tv_usec;    /* microseconds */
-} timeval;
-
-typedef struct {
-   int tz_minuteswest;     /* minutes west of Greenwich */
-   int tz_dsttime;         /* type of DST correction */
-} timezone;
-
-typedef int clockid_t;
-
-typedef struct {
-   time_t tv_sec;
-   u64    tv_nsec;   /* nanoseconds */
-} timespec;
 
 extern const char *weekdays[7];
 

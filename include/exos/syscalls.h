@@ -239,7 +239,9 @@ sptr sys_mmap_pgoff(void *addr, size_t length, int prot,
 
 CREATE_STUB_SYSCALL_IMPL(sys_truncate64)
 CREATE_STUB_SYSCALL_IMPL(sys_ftruncate64)
-CREATE_STUB_SYSCALL_IMPL(sys_stat64)
+
+sptr sys_stat64(const char *pathname, stat64 *statbuf);
+
 CREATE_STUB_SYSCALL_IMPL(sys_lstat64)
 CREATE_STUB_SYSCALL_IMPL(sys_fstat64)
 CREATE_STUB_SYSCALL_IMPL(sys_lchown)

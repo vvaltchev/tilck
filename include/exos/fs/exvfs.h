@@ -19,8 +19,7 @@
  */
 
 #include <common/basic_defs.h>
-
-typedef ssize_t off_t;
+#include <exos/sys_types.h>
 
 /*
  * Opaque type for file handles.
