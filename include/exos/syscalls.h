@@ -315,7 +315,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_timer_gettime)
 CREATE_STUB_SYSCALL_IMPL(sys_timer_getoverrun)
 CREATE_STUB_SYSCALL_IMPL(sys_timer_delete)
 CREATE_STUB_SYSCALL_IMPL(sys_clock_settime)
-CREATE_STUB_SYSCALL_IMPL(sys_clock_gettime)
+
+sptr sys_clock_gettime(clockid_t clk_id, timespec *tp);
+
 CREATE_STUB_SYSCALL_IMPL(sys_clock_getres)
 CREATE_STUB_SYSCALL_IMPL(sys_clock_nanosleep)
 CREATE_STUB_SYSCALL_IMPL(sys_statfs64)

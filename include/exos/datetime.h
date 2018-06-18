@@ -34,6 +34,13 @@ typedef struct {
    int tz_dsttime;         /* type of DST correction */
 } timezone;
 
+typedef int clockid_t;
+
+typedef struct {
+   time_t tv_sec;
+   u64    tv_nsec;   /* nanoseconds */
+} timespec;
+
 extern const char *weekdays[7];
 
 static inline bool is_leap_year(u32 year)
