@@ -8,7 +8,6 @@ set(
 
    -mno-red-zone
    -ffreestanding
-   -nostdinc
    -fno-builtin
    -fno-omit-frame-pointer
    -Wno-unused-label

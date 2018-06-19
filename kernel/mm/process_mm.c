@@ -140,13 +140,13 @@ ret:
 
 sptr
 sys_mmap_pgoff(void *addr, size_t len, int prot,
-               int flags, int fd, off_t pgoffset)
+               int flags, int fd, size_t pgoffset)
 {
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
 
-   //printk("mmap2(addr: %p, len: %u, prot: %u, flags: %p, fd: %d, off: %d)\n",
-   //       addr, len, prot, flags, fd, pgoffset);
+   printk("mmap2(addr: %p, len: %u, prot: %u, flags: %p, fd: %d, off: %d)\n",
+         addr, len, prot, flags, fd, pgoffset);
 
    if (addr != NULL)
       return -EINVAL;

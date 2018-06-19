@@ -139,44 +139,14 @@ typedef s64 sptr;
 
 typedef unsigned long long ull_t;
 
-/* BEGIN SSE2 types */
-typedef long long __v2di __attribute__ ((__vector_size__ (16)));
-typedef unsigned long long __v2du __attribute__ ((__vector_size__ (16)));
-typedef int __v4si __attribute__ ((__vector_size__ (16)));
-typedef unsigned int __v4su __attribute__ ((__vector_size__ (16)));
-typedef short __v8hi __attribute__ ((__vector_size__ (16)));
-typedef unsigned short __v8hu __attribute__ ((__vector_size__ (16)));
-typedef char __v16qi __attribute__ ((__vector_size__ (16)));
-typedef unsigned char __v16qu __attribute__ ((__vector_size__ (16)));
-typedef long long __m128i __attribute__ ((__vector_size__ (16), __may_alias__));
-/* END SSE2 types */
-
-#if !defined(TESTING) && !defined(USERMODE_APP)
-
-typedef long ssize_t; // signed pointer-size integer
-typedef unsigned long size_t; // unsigned pointer-size integer
-typedef ssize_t ptrdiff_t;
-#define NULL ((void *) 0)
-
-typedef s8 int8_t;
-typedef u8 uint8_t;
-typedef s16 int16_t;
-typedef u16 uint16_t;
-typedef s32 int32_t;
-typedef u32 uint32_t;
-typedef s64 int64_t;
-typedef u64 uint64_t;
-
-#else
-
 #ifdef __cplusplus
-#include <cstdint>
+   #include <cstdint>
 #else
-#include <stdint.h>
-#include <stddef.h>
+   #include <stdint.h>
+   #include <stddef.h>
 #endif
 
-#endif // !defined(TESTING) && !defined(USERMODE_APP)
+#include <unistd.h>
 
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));

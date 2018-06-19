@@ -60,7 +60,6 @@ set(
    -g
    -mno-red-zone
    -ffreestanding
-   -nostdinc
    -fno-builtin
    -fno-omit-frame-pointer
 

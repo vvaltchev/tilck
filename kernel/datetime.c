@@ -5,6 +5,7 @@
 #include <exos/user.h>
 #include <exos/errno.h>
 #include <exos/timer.h>
+#include <exos/sys_types.h>
 
 const char *weekdays[7] =
 {
@@ -88,7 +89,7 @@ uptr datetime_to_timestamp(datetime_t d)
    return result;
 }
 
-static void read_timeval(timeval *tv)
+static void read_timeval(struct timeval *tv)
 {
    datetime_t d;
 
@@ -97,10 +98,10 @@ static void read_timeval(timeval *tv)
    tv->tv_usec = (get_ticks() % TIMER_HZ) * 1000 / TIMER_HZ;
 }
 
-sptr sys_gettimeofday(timeval *user_tv, timezone *user_tz)
+sptr sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
 {
-   timezone tz;
-   timeval tv;
+   struct timezone tz;
+   struct timeval tv;
    int rc;
 
    read_timeval(&tv);
@@ -151,12 +152,12 @@ sptr sys_gettimeofday(timeval *user_tv, timezone *user_tz)
 
 /* End of copy-pasted defines */
 
-sptr sys_clock_gettime(clockid_t clk_id, timespec *user_tp)
+sptr sys_clock_gettime(clockid_t clk_id, struct timespec *user_tp)
 {
    if (clk_id == CLOCK_REALTIME) {
 
-      timeval tv;
-      timespec tp;
+      struct timeval tv;
+      struct timespec tp;
 
       if (!user_tp)
          return -EINVAL;

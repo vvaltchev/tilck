@@ -289,7 +289,7 @@ sptr sys_readv(int fd, const iovec *user_iov, int iovcnt)
    return ret;
 }
 
-sptr sys_stat64(const char *pathname, stat64 *statbuf)
+sptr sys_stat64(const char *pathname, struct stat *statbuf)
 {
    printk("stat64('%s')\n", pathname);
    return -ENOSYS;

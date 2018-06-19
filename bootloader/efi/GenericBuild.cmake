@@ -22,7 +22,6 @@ set(
    -fpic
    -fshort-wchar
    -mno-red-zone
-   -nostdinc
    -g
 )
 

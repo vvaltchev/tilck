@@ -112,7 +112,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_setrlimit)
 CREATE_STUB_SYSCALL_IMPL(sys_old_getrlimit)
 CREATE_STUB_SYSCALL_IMPL(sys_getrusage)
 
-sptr sys_gettimeofday(timeval *tv, timezone *tz);
+sptr sys_gettimeofday(struct timeval *tv, struct timezone *tz);
 
 CREATE_STUB_SYSCALL_IMPL(sys_settimeofday)
 CREATE_STUB_SYSCALL_IMPL(sys_getgroups16)
@@ -235,12 +235,12 @@ CREATE_STUB_SYSCALL_IMPL(sys_vfork)
 CREATE_STUB_SYSCALL_IMPL(sys_getrlimit)
 
 sptr sys_mmap_pgoff(void *addr, size_t length, int prot,
-                    int flags, int fd, off_t pgoffset);
+                    int flags, int fd, size_t pgoffset);
 
 CREATE_STUB_SYSCALL_IMPL(sys_truncate64)
 CREATE_STUB_SYSCALL_IMPL(sys_ftruncate64)
 
-sptr sys_stat64(const char *pathname, stat64 *statbuf);
+sptr sys_stat64(const char *pathname, struct stat *statbuf);
 
 CREATE_STUB_SYSCALL_IMPL(sys_lstat64)
 CREATE_STUB_SYSCALL_IMPL(sys_fstat64)
@@ -318,7 +318,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_timer_getoverrun)
 CREATE_STUB_SYSCALL_IMPL(sys_timer_delete)
 CREATE_STUB_SYSCALL_IMPL(sys_clock_settime)
 
-sptr sys_clock_gettime(clockid_t clk_id, timespec *tp);
+sptr sys_clock_gettime(clockid_t clk_id, struct timespec *tp);
 
 CREATE_STUB_SYSCALL_IMPL(sys_clock_getres)
 CREATE_STUB_SYSCALL_IMPL(sys_clock_nanosleep)
