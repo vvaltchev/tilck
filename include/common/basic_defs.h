@@ -19,102 +19,94 @@
  */
 
 #if defined(TESTING) || defined(KERNEL_TEST)
-#define UNIT_TEST_ENVIRONMENT
+   #define UNIT_TEST_ENVIRONMENT
 #endif
 
 
-
-#ifndef __cplusplus
-
-typedef _Bool bool;
-#define true ((bool)1)
-#define false ((bool)0)
-#define STATIC_ASSERT(s) _Static_assert(s, "Static assertion failed")
-
+#ifdef __cplusplus
+   #include <cstdint>
+   #define STATIC_ASSERT(s) static_assert(s, "Static assertion failed")
 #else
-
-#define STATIC_ASSERT(s) static_assert(s, "Static assertion failed")
-
+   #include <stdint.h>
+   #include <stddef.h>
+   #include <stdbool.h>
+   #define STATIC_ASSERT(s) _Static_assert(s, "Static assertion failed")
 #endif
+
 
 #ifdef __i386__
 
-STATIC_ASSERT(sizeof(void *) == 4);
-STATIC_ASSERT(sizeof(long) == sizeof(void *));
-
-#define BITS32
+   STATIC_ASSERT(sizeof(void *) == 4);
+   STATIC_ASSERT(sizeof(long) == sizeof(void *));
+   #define BITS32
 
 #elif defined(__x86_64__)
 
-STATIC_ASSERT(sizeof(void *) == 8);
-STATIC_ASSERT(sizeof(long) == sizeof(void *));
-
-#define BITS64
+   STATIC_ASSERT(sizeof(void *) == 8);
+   STATIC_ASSERT(sizeof(long) == sizeof(void *));
+   #define BITS64
 
 #else
 
-#error Platform not supported.
+   #error Architecture not supported.
 
 #endif
 
 #ifdef _MSC_VER
 
-#define inline __inline
-#define __i386__
+   #define inline __inline
+   #define __i386__
 
-// Make the Microsoft Intellisense happy: this does not have to work
-// since we use GCC. Just, we'd like to avoid to confuse intellisense.
-#define asmVolatile(...)
-#define __attribute__(...)
+   // Make the Microsoft Intellisense happy: this does not have to work
+   // since we use GCC. Just, we'd like to avoid to confuse intellisense.
+   #define asmVolatile(...)
+   #define __attribute__(...)
 
-#define asm(...)
+   #define asm(...)
 
-#define ALWAYS_INLINE inline
-#define NO_INLINE
-#define typeof(x) void *
+   #define ALWAYS_INLINE inline
+   #define NO_INLINE
+   #define typeof(x) void *
 
-#define STATIC_ASSERT(s, err)
+   #define STATIC_ASSERT(s, err)
 
-#define PURE
-#define CONSTEXPR
-#define NORETURN
-#define WEAK
-#define NODISCARD
-#define PAGE_SIZE_ALIGNED
-#define OFFSET_OF(st, m)
-#define FASTCALL
-#define ASSUME_WITHOUT_CHECK(x)
+   #define PURE
+   #define CONSTEXPR
+   #define NORETURN
+   #define WEAK
+   #define NODISCARD
+   #define PAGE_SIZE_ALIGNED
+   #define OFFSET_OF(st, m)
+   #define FASTCALL
+   #define ASSUME_WITHOUT_CHECK(x)
 
 #else
 
-#ifndef TESTING
-#define NORETURN _Noreturn /* C11 standard no return attribute. */
-#else
-#define NORETURN
-#endif
+   #ifndef TESTING
+      #define NORETURN _Noreturn /* C11 standard no return attribute. */
+   #else
+      #define NORETURN
+   #endif
 
-#define OFFSET_OF(st, m) __builtin_offsetof(st, m)
+   #define OFFSET_OF(st, m) __builtin_offsetof(st, m)
+   #define ALWAYS_INLINE __attribute__((always_inline)) inline
+   #define NO_INLINE __attribute__((noinline))
+   #define asmVolatile __asm__ volatile
+   #define asm __asm__
+   #define typeof(x) __typeof__(x)
+   #define PURE __attribute__((pure))
+   #define CONSTEXPR __attribute__((const))
+   #define WEAK __attribute__((weak))
+   #define PACKED __attribute__((packed))
+   #define NODISCARD __attribute__((warn_unused_result))
+   #define PAGE_SIZE_ALIGNED __attribute__ ((aligned(PAGE_SIZE)))
+   #define ASSUME_WITHOUT_CHECK(x) if (!(x)) __builtin_unreachable();
 
-#define ALWAYS_INLINE __attribute__((always_inline)) inline
-#define NO_INLINE __attribute__((noinline))
-#define asmVolatile __asm__ volatile
-#define asm __asm__
-
-#define typeof(x) __typeof__(x)
-
-#define PURE __attribute__((pure))
-#define CONSTEXPR __attribute__((const))
-#define WEAK __attribute__((weak))
-#define PACKED __attribute__((packed))
-#define NODISCARD __attribute__((warn_unused_result))
-#define PAGE_SIZE_ALIGNED __attribute__ ((aligned(PAGE_SIZE)))
-#define ASSUME_WITHOUT_CHECK(x) if (!(x)) __builtin_unreachable();
-
-#ifdef BITS32
-#define FASTCALL __attribute__((fastcall))
-#else
-#define FASTCALL
-#endif
+   #ifdef BITS32
+      #define FASTCALL __attribute__((fastcall))
+   #else
+      #define FASTCALL
+   #endif
 
 #endif
 
@@ -126,27 +118,19 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 
 #ifdef BITS32
-typedef unsigned long long u64;
-typedef long long s64;
-typedef u32 uptr;
-typedef s32 sptr;
+   typedef unsigned long long u64;
+   typedef long long s64;
+   typedef u32 uptr;
+   typedef s32 sptr;
 #else
-typedef unsigned long u64;
-typedef long s64;
-typedef u64 uptr;
-typedef s64 sptr;
+   typedef unsigned long u64;
+   typedef long s64;
+   typedef u64 uptr;
+   typedef s64 sptr;
 #endif
 
 typedef unsigned long long ull_t;
 
-#ifdef __cplusplus
-   #include <cstdint>
-#else
-   #include <stdint.h>
-   #include <stddef.h>
-#endif
-
-#include <unistd.h>
 
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
@@ -185,68 +169,6 @@ typedef int (*cmpfun_ptr)(const void *a, const void *b);
 #define ATOMIC_SUB_AND_FETCH(ptr, val) \
    __sync_sub_and_fetch((ptr), (val))
 
-/*
- * ********************************************
- *
- * Panic-related stuff
- *
- * ********************************************
- */
-
-extern volatile bool __in_panic;
-
-NORETURN void panic(const char *fmt, ...);
-NORETURN void assert_failed(const char *expr, const char *file, int line);
-NORETURN void not_reached(const char *file, int line);
-
-static ALWAYS_INLINE bool in_panic(void)
-{
-   return __in_panic;
-}
-
-#ifndef NDEBUG
-
-   #ifndef NO_EXOS_ASSERT
-
-      #define ASSERT(x)                                                    \
-         do {                                                              \
-            if (UNLIKELY(!(x))) {                                          \
-               assert_failed(#x , __FILE__, __LINE__);                     \
-            }                                                              \
-         } while (0)
-
-   #endif
-
-   #define DEBUG_ONLY(x) x
-   #define DEBUG_CHECKED_SUCCESS(x)       \
-      do {                                \
-         bool __checked_success = x;      \
-         ASSERT(__checked_success);       \
-      } while (0)
-
-#else
-
-   #ifndef NO_EXOS_ASSERT
-      #define ASSERT(x)
-   #endif
-
-   #define DEBUG_ONLY(x)
-   #define DEBUG_CHECKED_SUCCESS(x) x
-
-#endif
-
-/* VERIFY is like ASSERT, but is enabled on release builds as well */
-#define VERIFY(x)                                                    \
-   do {                                                              \
-      if (UNLIKELY(!(x))) {                                          \
-         assert_failed(#x , __FILE__, __LINE__);                     \
-      }                                                              \
-   } while (0)
-
-
-#define NOT_REACHED() not_reached(__FILE__, __LINE__)
-#define NOT_IMPLEMENTED() panic("Code path not implemented yet.")
-
 #ifndef NO_EXOS_STATIC_WRAPPER
 
    #ifdef KERNEL_TEST
@@ -258,3 +180,5 @@ static ALWAYS_INLINE bool in_panic(void)
    #endif
 
 #endif
+
+#include <common/panic.h>
