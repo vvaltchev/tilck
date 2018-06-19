@@ -178,3 +178,62 @@ TEST(exvfs, fseek)
    mountpoint_remove(fat_fs);
    fat_umount_ramdisk(fat_fs);
 }
+
+
+string compute_abs_path_wrapper(const char *cwd, const char *path)
+{
+   char dest[256];
+   int rc = compute_abs_path(path, cwd, dest, sizeof(dest));
+
+   if (rc < 0)
+      return "<error>";
+
+   return dest;
+}
+
+TEST(compute_abs_path, tests)
+{
+   /* path is absolute */
+   EXPECT_EQ(compute_abs_path_wrapper("/", "/a/b/c"), "/a/b/c");
+   EXPECT_EQ(compute_abs_path_wrapper("/", "/a/b/c/"), "/a/b/c");
+   EXPECT_EQ(compute_abs_path_wrapper("/", "/a/b/c/.."), "/a/b");
+   EXPECT_EQ(compute_abs_path_wrapper("/", "/a/b/c/../"), "/a/b");
+
+   /* path is relative */
+   EXPECT_EQ(compute_abs_path_wrapper("/", "a/b/c"), "/a/b/c");
+   EXPECT_EQ(compute_abs_path_wrapper("/", "a/b/c/"), "/a/b/c");
+   EXPECT_EQ(compute_abs_path_wrapper("/", "a/b/c/.."), "/a/b");
+   EXPECT_EQ(compute_abs_path_wrapper("/", "a/b/c/../"), "/a/b");
+
+   /* path is relative starting with ./ */
+   EXPECT_EQ(compute_abs_path_wrapper("/", "./a/b/c"), "/a/b/c");
+   EXPECT_EQ(compute_abs_path_wrapper("/", "./a/b/c/"), "/a/b/c");
+   EXPECT_EQ(compute_abs_path_wrapper("/", "./a/b/c/.."), "/a/b");
+   EXPECT_EQ(compute_abs_path_wrapper("/", "./a/b/c/../"), "/a/b");
+
+   /* path is relative, cwd != / */
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "a"), "/a/b/c/a");
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "a/"), "/a/b/c/a");
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", ".."), "/a/b");
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../"), "/a/b");
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../.."), "/a");
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../../"), "/a");
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../../."), "/a");
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../.././"), "/a");
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../../.."), "/");
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../../../"), "/");
+
+   /* try to go beyond / */
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../../../.."), "/");
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../../../../"), "/");
+
+   /* double slash */
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "d//e"), "/a/b/c/d/e");
+
+   /* triple slash */
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "d///e"), "/a/b/c/d/e");
+
+   /* other */
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", ".a"), "/a/b/c/.a");
+   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "..a"), "/a/b/c/..a");
+}

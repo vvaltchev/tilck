@@ -280,7 +280,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
           * simple check, we skip the directories '.' and '..'.
           */
          if (entry[i].DIR_Name[0] == '.') {
-            continue;
+           continue;
          }
 
 

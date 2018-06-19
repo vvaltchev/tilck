@@ -100,3 +100,6 @@ fs_handle exvfs_dup(fs_handle h);
 
 void exvfs_exlock(fs_handle h);
 void exvfs_exunlock(fs_handle h);
+
+int
+compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size);

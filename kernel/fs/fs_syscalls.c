@@ -41,15 +41,23 @@ sptr sys_open(const char *user_path, int flags, int mode)
 {
    sptr ret;
    task_info *curr = get_curr_task();
-   char *path = curr->args_copybuf;
+   char *orig_path = curr->args_copybuf;
+   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
    size_t written = 0;
 
-   ret = duplicate_user_path(path, user_path, ARGS_COPYBUF_SIZE, &written);
+   STATIC_ASSERT((ARGS_COPYBUF_SIZE / 2) >= MAX_PATH);
+
+   ret = duplicate_user_path(orig_path, user_path, MAX_PATH, &written);
 
    if (ret != 0)
       return ret;
 
-   printk("[TID: %i] sys_open('%s', %x, %x)\n", curr->tid, path, flags, mode);
+   printk("[TID: %i] sys_open('%s', %x, %x)\n", curr->tid, orig_path, flags, mode);
+
+   ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
+
+   if (ret < 0)
+      return -ENAMETOOLONG;
 
    disable_preemption();
 
