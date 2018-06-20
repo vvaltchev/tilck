@@ -292,8 +292,31 @@ sptr sys_readv(int fd, const struct iovec *user_iov, int iovcnt)
    return ret;
 }
 
-sptr sys_stat64(const char *pathname, struct stat *statbuf)
+sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
 {
-   printk("stat64('%s')\n", pathname);
-   return -ENOSYS;
+   task_info *curr = get_curr_task();
+   char *orig_path = curr->args_copybuf;
+   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
+   int rc;
+
+   rc = copy_str_from_user(orig_path, user_path, MAX_PATH, NULL);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -ENAMETOOLONG;
+
+   rc = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
+   VERIFY(rc == 0); /* orig_path is at most MAX_PATH and cannot get longer */
+
+   printk("sys_stat64('%s')\n", path);
+
+   fs_handle h = exvfs_open(path);
+
+   if (!h)
+      return -ENOENT;
+
+   exvfs_close(h);
+   return 0;
 }

@@ -112,6 +112,7 @@ static int tty_create_device_file(int minor, file_ops *ops)
    ops->fwrite = tty_write;
    ops->fseek = NULL;
    ops->ioctl = tty_ioctl;
+   ops->fstat = NULL; /* TODO: implement this */
 
    return 0;
 }

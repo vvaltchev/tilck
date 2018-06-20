@@ -204,6 +204,13 @@ ssize_t exvfs_ioctl(fs_handle h, uptr request, void *argp)
    return hb->fops.ioctl(h, request, argp);
 }
 
+ssize_t exvfs_stat(fs_handle h, struct stat *statbuf)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+   VERIFY(hb->fops.fstat != NULL);
+   return hb->fops.fstat(h, statbuf);
+}
+
 void exvfs_exlock(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;

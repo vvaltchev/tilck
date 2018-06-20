@@ -585,6 +585,9 @@ static int fat_search_entry_cb(fat_header *hdr,
 fat_entry *
 fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
 {
+   u32 root_dir_cluster;
+   fat_entry *root;
+
    if (ft == fat_unknown) {
        ft = fat_get_type(hdr);
    }
@@ -592,19 +595,13 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
    ASSERT(*abspath == '/');
    abspath++;
 
+   root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
+
    if (!*abspath) {
-      /* the whole abspath was just '/', which is not a file */
-      return NULL;
+      /* the whole abspath was just '/' */
+      return root;
    }
 
-   u32 root_dir_cluster;
-   fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
-
-   if (*abspath == 0) {
-      return root; // abspath was just '/'.
-   }
-
-   //fat_search_ctx ctx = {0};
    fat_search_ctx ctx;
    bzero(&ctx, sizeof(ctx));
 

@@ -192,6 +192,11 @@ STATIC off_t fat_seek(fs_handle handle,
    return fat_seek_forward(handle, off);
 }
 
+STATIC ssize_t fat_stat(fs_handle h, struct stat *statbuf)
+{
+   return 0;
+}
+
 STATIC fs_handle fat_open(filesystem *fs, const char *path)
 {
    fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
@@ -209,6 +214,7 @@ STATIC fs_handle fat_open(filesystem *fs, const char *path)
    h->fops.fread = fat_read;
    h->fops.fwrite = fat_write;
    h->fops.fseek = fat_seek;
+   h->fops.fstat = fat_stat;
 
    h->e = e;
    h->pos = 0;

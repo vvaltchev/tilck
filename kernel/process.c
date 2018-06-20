@@ -184,6 +184,15 @@ sptr sys_chdir(const char *user_path)
       rc = compute_abs_path(orig_path, pi->cwd, path, MAX_PATH);
       VERIFY(rc == 0); /* orig_path is at most MAX_PATH and cannot get longer */
 
+      fs_handle h = exvfs_open(path);
+
+      if (!h) {
+         rc = -ENOENT;
+         goto out;
+      }
+
+      exvfs_close(h);
+
       u32 pl = strlen(path);
       memcpy(pi->cwd, path, pl + 1);
 
@@ -197,8 +206,10 @@ sptr sys_chdir(const char *user_path)
          pi->cwd[pl + 1] = 0;
       }
    }
+
+out:
    enable_preemption();
-   return 0;
+   return rc;
 }
 
 sptr sys_getcwd(char *user_buf, size_t buf_size)

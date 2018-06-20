@@ -2,13 +2,13 @@
 #pragma once
 
 /*
- * exOS's toy virtual file system
+ * exOS's virtual file system
  *
  * As this project's goals are by far different from the Linux ones, this
  * layer won't provide anything close to the Linux's VFS. Its purpose is to
  * provide the MINIMUM NECESSARY to allow basic operations like open, read,
- * write, close to work both on FAT32 and on character devices like /dev/tty0
- * (when it will implemented). In particular:
+ * write, close to work both on FAT32 and on character devices like /dev/tty.
+ * In particular:
  *
  *    - No real disk I/O will be supported
  *    - No disk cache
@@ -38,15 +38,12 @@ typedef ssize_t (*func_read) (fs_handle, char *, size_t);
 typedef ssize_t (*func_write) (fs_handle, char *, size_t);
 typedef off_t (*func_seek) (fs_handle, off_t, int);
 typedef ssize_t (*func_ioctl) (fs_handle, uptr, void *);
+typedef ssize_t (*func_stat) (fs_handle, struct stat *);
 
 typedef void (*func_fs_ex_lock)(filesystem *);
 typedef void (*func_fs_ex_unlock)(filesystem *);
 
 typedef fs_handle (*func_dup) (fs_handle);
-
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
 
 struct filesystem {
 
@@ -66,6 +63,7 @@ typedef struct {
    func_write fwrite;
    func_seek fseek;
    func_ioctl ioctl;
+   func_stat fstat;
 
 } file_ops;
 
@@ -96,6 +94,7 @@ ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size);
 off_t exvfs_seek(fs_handle h, off_t off, int whence);
 ssize_t exvfs_ioctl(fs_handle h, uptr request, void *argp);
+ssize_t exvfs_stat(fs_handle h, struct stat *statbuf);
 fs_handle exvfs_dup(fs_handle h);
 
 void exvfs_exlock(fs_handle h);
