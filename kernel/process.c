@@ -160,16 +160,20 @@ static char *const default_env[] =
    "OSTYPE=linux-gnu", "EXOS=1", NULL
 };
 
-sptr sys_chdir(const char *path)
+sptr sys_chdir(const char *user_path)
 {
    sptr rc = 0;
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
-   const size_t max_size = ARRAY_SIZE(pi->cwd);
+   char *orig_path = curr->args_copybuf;
+   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
+
+   STATIC_ASSERT(ARRAY_SIZE(pi->cwd) == MAX_PATH);
+   STATIC_ASSERT((ARGS_COPYBUF_SIZE / 2) >= MAX_PATH);
 
    disable_preemption();
    {
-      rc = copy_str_from_user(pi->cwd, path, max_size, NULL);
+      rc = copy_str_from_user(orig_path, user_path, MAX_PATH, NULL);
 
       if (rc < 0) {
          rc = -EFAULT;
@@ -179,6 +183,17 @@ sptr sys_chdir(const char *path)
       if (rc > 0) {
          rc = -ENAMETOOLONG;
          goto out;
+      }
+
+      rc = compute_abs_path(orig_path, pi->cwd, path, MAX_PATH);
+      VERIFY(rc == 0); /* orig_path is at most MAX_PATH and cannot get longer */
+
+      u32 pl = strlen(path);
+      memcpy(pi->cwd, path, pl + 1);
+
+      if (pl > 1) {
+         pi->cwd[pl] = '/';
+         pi->cwd[pl+1] = 0;
       }
    }
 
