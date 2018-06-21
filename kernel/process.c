@@ -329,12 +329,14 @@ sptr sys_execve(const char *user_filename,
    char *abs_path;
    char *const *argv = NULL;
    char *const *env = NULL;
-   task_info *curr = get_curr_task() != kernel_process ? get_curr_task() : NULL;
    page_directory_t *pdir = NULL;
+
+   task_info *curr = get_curr_task();
+   ASSERT(curr != NULL);
 
    disable_preemption();
 
-   if (LIKELY(curr != NULL)) {
+   if (LIKELY(curr != kernel_process)) {
 
       rc = execve_get_path_and_args(user_filename,
                                     user_argv,
@@ -364,7 +366,7 @@ sptr sys_execve(const char *user_filename,
 
    char *const default_argv[] = { abs_path, NULL };
 
-   if (LIKELY(curr != NULL)) {
+   if (LIKELY(curr != kernel_process)) {
       task_change_state(curr, TASK_STATE_RUNNABLE);
       pdir_destroy(curr->pi->pdir);
    }
@@ -373,7 +375,7 @@ sptr sys_execve(const char *user_filename,
       create_usermode_task(pdir,
                            entry_point,
                            stack_addr,
-                           curr,
+                           curr != kernel_process ? curr : NULL,
                            argv ? argv : default_argv,
                            env ? env : default_env);
 
