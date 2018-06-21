@@ -47,6 +47,7 @@ typedef fs_handle (*func_dup) (fs_handle);
 
 struct filesystem {
 
+   u32 device_id;
    void *device_data;
 
    func_open fopen;
@@ -102,3 +103,5 @@ void exvfs_exunlock(fs_handle h);
 
 int
 compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size);
+
+u32 exvfs_get_new_device_id(void);

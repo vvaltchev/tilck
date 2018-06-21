@@ -8,6 +8,7 @@
 
 /* exOS is small: supporting 16 mount points seems more than enough. */
 mountpoint *mps[16];
+static u32 next_device_id;
 
 int mountpoint_add(filesystem *fs, const char *path)
 {
@@ -328,4 +329,10 @@ copy_char:
    ASSERT(d > dest); // dest must contain at least 1 char, '/'.
    *d = 0;
    return 0;
+}
+
+
+u32 exvfs_get_new_device_id(void)
+{
+   return next_device_id++;
 }

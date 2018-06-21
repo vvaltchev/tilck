@@ -149,6 +149,7 @@ filesystem *create_devfs(void)
    list_node_init(&d->files_list);
    kmutex_init(&d->ex_mutex, KMUTEX_FL_RECURSIVE);
 
+   fs->device_id = exvfs_get_new_device_id();
    fs->device_data = d;
    fs->fopen = devfs_open;
    fs->fclose = devfs_close;

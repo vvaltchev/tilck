@@ -297,7 +297,8 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
    task_info *curr = get_curr_task();
    char *orig_path = curr->args_copybuf;
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
-   int rc;
+   struct stat statbuf;
+   int rc = 0;
 
    rc = copy_str_from_user(orig_path, user_path, MAX_PATH, NULL);
 
@@ -317,6 +318,17 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
    if (!h)
       return -ENOENT;
 
+   rc = exvfs_stat(h, &statbuf);
+
+   if (rc < 0)
+      goto out;
+
+   rc = copy_to_user(user_statbuf, &statbuf, sizeof(struct stat));
+
+   if (rc < 0)
+      return -EFAULT;
+
+out:
    exvfs_close(h);
-   return 0;
+   return rc;
 }
