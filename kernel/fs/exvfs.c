@@ -119,7 +119,9 @@ int exvfs_open(const char *path, fs_handle *out)
    int best_match_len = 0;
 
    ASSERT(path != NULL);
-   ASSERT(*path == '/');  /* exvfs works only with absolute paths */
+
+   if (*path != '/')
+      panic("exvfs_open() works only with absolute paths");
 
    for (u32 i = 0; i < ARRAY_SIZE(mps); i++) {
 

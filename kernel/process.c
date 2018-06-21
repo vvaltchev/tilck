@@ -262,7 +262,7 @@ sptr sys_execve(const char *user_filename,
    void *entry_point;
    void *stack_addr;
    void *brk;
-   char *file_path;
+   char *abs_path;
    char *const *argv = NULL;
    char *const *env = NULL;
    task_info *curr = get_curr_task() != kernel_process ? get_curr_task() : NULL;
@@ -272,6 +272,7 @@ sptr sys_execve(const char *user_filename,
 
    if (LIKELY(curr != NULL)) {
 
+      char *file_path;
       char *dest = (char *)curr->args_copybuf;
       size_t written = 0;
 
@@ -280,6 +281,12 @@ sptr sys_execve(const char *user_filename,
                                user_filename,
                                MIN(MAX_PATH, ARGS_COPYBUF_SIZE),
                                &written);
+
+      if (rc != 0)
+         goto errend;
+
+      abs_path = curr->io_copybuf;
+      rc = compute_abs_path(file_path, curr->pi->cwd, abs_path, MAX_PATH);
 
       if (rc != 0)
          goto errend;
@@ -309,18 +316,21 @@ sptr sys_execve(const char *user_filename,
 
    } else {
 
-      file_path = (char *) user_filename;
+      abs_path = (char *) user_filename;
       argv = (char *const *) user_argv;
       env = (char *const *) user_env;
 
    }
 
-   rc = load_elf_program(file_path, &pdir, &entry_point, &stack_addr, &brk);
+   STATIC_ASSERT(IO_COPYBUF_SIZE >= MAX_PATH);
+
+
+   rc = load_elf_program(abs_path, &pdir, &entry_point, &stack_addr, &brk);
 
    if (rc < 0)
       goto errend;
 
-   char *const default_argv[] = { file_path, NULL };
+   char *const default_argv[] = { abs_path, NULL };
 
    if (LIKELY(curr != NULL)) {
       task_change_state(curr, TASK_STATE_RUNNABLE);
