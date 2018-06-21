@@ -182,7 +182,11 @@ sptr sys_chdir(const char *user_path)
    disable_preemption();
    {
       rc = compute_abs_path(orig_path, pi->cwd, path, MAX_PATH);
-      VERIFY(rc == 0); /* orig_path is at most MAX_PATH and cannot get longer */
+
+      if (rc < 0) {
+         rc = -ENAMETOOLONG;
+         goto out;
+      }
 
       fs_handle h = exvfs_open(path);
 

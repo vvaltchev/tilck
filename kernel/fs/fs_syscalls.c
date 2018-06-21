@@ -8,6 +8,8 @@
 #include <exos/errno.h>
 #include <exos/user.h>
 
+#include <fcntl.h> // system header
+
 static inline bool is_fd_valid(int fd)
 {
    return fd >= 0 && fd < (int)ARRAY_SIZE(get_curr_task()->pi->handles);
@@ -52,14 +54,14 @@ sptr sys_open(const char *user_path, int flags, int mode)
    if (ret != 0)
       return ret;
 
-   printk("[TID: %i] sys_open('%s', %x, %x)\n", curr->tid, orig_path, flags, mode);
+   disable_preemption();
 
    ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
 
-   if (ret < 0)
-      return -ENAMETOOLONG;
-
-   disable_preemption();
+   if (ret < 0) {
+      ret = -ENAMETOOLONG;
+      goto end;
+   }
 
    int free_fd = get_free_handle_num(curr);
 
@@ -77,6 +79,9 @@ sptr sys_open(const char *user_path, int flags, int mode)
    ret = free_fd;
 
 end:
+   printk("[TID: %i] sys_open('%s', %x, %x) => %d\n",
+          curr->tid, orig_path, flags, mode, ret);
+
    enable_preemption();
    return ret;
 
@@ -308,8 +313,14 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
    if (rc > 0)
       return -ENAMETOOLONG;
 
-   rc = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
-   VERIFY(rc == 0); /* orig_path is at most MAX_PATH and cannot get longer */
+   disable_preemption();
+   {
+      rc = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
+   }
+   enable_preemption();
+
+   if (rc < 0)
+      return -ENAMETOOLONG;
 
    printk("sys_stat64('%s')\n", path);
 
@@ -340,4 +351,56 @@ sptr sys_lstat64(const char *user_path, struct stat *user_statbuf)
     * behave exactly as stat().
     */
    return sys_stat64(user_path, user_statbuf);
+}
+
+static void debug_print_fcntl_command(int cmd)
+{
+   switch (cmd) {
+
+      case F_DUPFD:
+         printk("fcntl: F_DUPFD\n");
+         break;
+      case F_DUPFD_CLOEXEC:
+         printk("fcntl: F_DUPFD_CLOEXEC\n");
+         break;
+      case F_GETFD:
+         printk("fcntl: F_GETFD\n");
+         break;
+      case F_SETFD:
+         printk("fcntl: F_SETFD\n");
+         break;
+      case F_GETFL:
+         printk("fcntl: F_GETFL\n");
+         break;
+      case F_SETFL:
+         printk("fcntl: F_SETFL\n");
+         break;
+      case F_SETLK:
+         printk("fcntl: F_SETLK\n");
+         break;
+      case F_SETLKW:
+         printk("fcntl: F_SETLKW\n");
+         break;
+      case F_GETLK:
+         printk("fcntl: F_GETLK\n");
+         break;
+
+      /* Skipping several other commands */
+
+      default:
+         printk("fcntl: unknown command\n");
+   }
+}
+
+sptr sys_fcntl64(int fd, int cmd, uptr arg)
+{
+   printk("fcntl(fd = %d, cmd = %d, arg: %p)\n", fd, cmd, arg);
+   debug_print_fcntl_command(cmd);
+
+   if (cmd == F_SETFD) {
+      if (arg & FD_CLOEXEC)
+         printk("fcntl: set FD_CLOEXEC flag\n");
+   }
+
+   return -EINVAL; // we don't support any commands, for now.
 }

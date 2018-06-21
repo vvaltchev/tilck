@@ -269,8 +269,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_pivot_root)
 CREATE_STUB_SYSCALL_IMPL(sys_mincore)
 CREATE_STUB_SYSCALL_IMPL(sys_madvise)
 CREATE_STUB_SYSCALL_IMPL(sys_getdents64)
-CREATE_STUB_SYSCALL_IMPL(sys_fcntl64)
 
+sptr sys_fcntl64(int fd, int cmd, uptr arg);
 sptr sys_gettid();
 
 CREATE_STUB_SYSCALL_IMPL(sys_readahead)
