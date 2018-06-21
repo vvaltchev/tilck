@@ -254,6 +254,70 @@ out:
    return ret;
 }
 
+static int
+execve_get_path_and_args(const char *user_filename,
+                         const char *const *user_argv,
+                         const char *const *user_env,
+                         char **abs_path_ref,
+                         char *const **argv_ref,
+                         char *const **env_ref)
+{
+   int rc = 0;
+   char *abs_path = NULL;
+   char *const *argv = NULL;
+   char *const *env = NULL;
+   char *orig_file_path;
+   task_info *curr = get_curr_task();
+
+   char *dest = (char *)curr->args_copybuf;
+   size_t written = 0;
+
+   orig_file_path = dest;
+   rc = duplicate_user_path(dest,
+                            user_filename,
+                            MIN(MAX_PATH, ARGS_COPYBUF_SIZE),
+                            &written);
+
+   if (rc != 0)
+      goto errend;
+
+   abs_path = curr->io_copybuf;
+   rc = compute_abs_path(orig_file_path, curr->pi->cwd, abs_path, MAX_PATH);
+
+   if (rc != 0)
+      goto errend;
+
+   written += strlen(orig_file_path) + 1;
+
+   if (user_argv) {
+      argv = (char *const *) (dest + written);
+      rc = duplicate_user_argv(dest,
+                               user_argv,
+                               ARGS_COPYBUF_SIZE,
+                               &written);
+      if (rc != 0)
+         goto errend;
+   }
+
+   if (user_env) {
+      env = (char *const *) (dest + written);
+      rc = duplicate_user_argv(dest,
+                               user_env,
+                               ARGS_COPYBUF_SIZE,
+                               &written);
+      if (rc != 0)
+         goto errend;
+   }
+
+   *abs_path_ref = abs_path;
+   *argv_ref = argv;
+   *env_ref = env;
+
+errend:
+   return rc;
+}
+
+
 sptr sys_execve(const char *user_filename,
                 const char *const *user_argv,
                 const char *const *user_env)
@@ -272,47 +336,15 @@ sptr sys_execve(const char *user_filename,
 
    if (LIKELY(curr != NULL)) {
 
-      char *file_path;
-      char *dest = (char *)curr->args_copybuf;
-      size_t written = 0;
-
-      file_path = dest;
-      rc = duplicate_user_path(dest,
-                               user_filename,
-                               MIN(MAX_PATH, ARGS_COPYBUF_SIZE),
-                               &written);
+      rc = execve_get_path_and_args(user_filename,
+                                    user_argv,
+                                    user_env,
+                                    &abs_path,
+                                    &argv,
+                                    &env);
 
       if (rc != 0)
          goto errend;
-
-      abs_path = curr->io_copybuf;
-      rc = compute_abs_path(file_path, curr->pi->cwd, abs_path, MAX_PATH);
-
-      if (rc != 0)
-         goto errend;
-
-      written += strlen(file_path) + 1;
-
-      if (user_argv) {
-         argv = (char *const *) (dest + written);
-         rc = duplicate_user_argv(dest,
-                                  user_argv,
-                                  ARGS_COPYBUF_SIZE,
-                                  &written);
-         if (rc != 0)
-            goto errend;
-      }
-
-      if (user_env) {
-         env = (char *const *) (dest + written);
-         rc = duplicate_user_argv(dest,
-                                  user_env,
-                                  ARGS_COPYBUF_SIZE,
-                                  &written);
-         if (rc != 0)
-            goto errend;
-      }
-
 
    } else {
 
