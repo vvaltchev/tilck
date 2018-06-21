@@ -272,6 +272,13 @@ execve_get_path_and_args(const char *user_filename,
    char *dest = (char *)curr->args_copybuf;
    size_t written = 0;
 
+   if (UNLIKELY(curr == kernel_process)) {
+      *abs_path_ref = (char *)user_filename;
+      *argv_ref = (char *const *)user_argv;
+      *env_ref = (char *const *)user_env;
+      goto out;
+   }
+
    orig_file_path = dest;
    rc = duplicate_user_path(dest,
                             user_filename,
@@ -279,13 +286,15 @@ execve_get_path_and_args(const char *user_filename,
                             &written);
 
    if (rc != 0)
-      goto errend;
+      goto out;
+
+   STATIC_ASSERT(IO_COPYBUF_SIZE >= MAX_PATH);
 
    abs_path = curr->io_copybuf;
    rc = compute_abs_path(orig_file_path, curr->pi->cwd, abs_path, MAX_PATH);
 
    if (rc != 0)
-      goto errend;
+      goto out;
 
    written += strlen(orig_file_path) + 1;
 
@@ -296,7 +305,7 @@ execve_get_path_and_args(const char *user_filename,
                                ARGS_COPYBUF_SIZE,
                                &written);
       if (rc != 0)
-         goto errend;
+         goto out;
    }
 
    if (user_env) {
@@ -306,17 +315,16 @@ execve_get_path_and_args(const char *user_filename,
                                ARGS_COPYBUF_SIZE,
                                &written);
       if (rc != 0)
-         goto errend;
+         goto out;
    }
 
    *abs_path_ref = abs_path;
    *argv_ref = argv;
    *env_ref = env;
 
-errend:
+out:
    return rc;
 }
-
 
 sptr sys_execve(const char *user_filename,
                 const char *const *user_argv,
@@ -336,28 +344,15 @@ sptr sys_execve(const char *user_filename,
 
    disable_preemption();
 
-   if (LIKELY(curr != kernel_process)) {
+   rc = execve_get_path_and_args(user_filename,
+                                 user_argv,
+                                 user_env,
+                                 &abs_path,
+                                 &argv,
+                                 &env);
 
-      rc = execve_get_path_and_args(user_filename,
-                                    user_argv,
-                                    user_env,
-                                    &abs_path,
-                                    &argv,
-                                    &env);
-
-      if (rc != 0)
-         goto errend;
-
-   } else {
-
-      abs_path = (char *) user_filename;
-      argv = (char *const *) user_argv;
-      env = (char *const *) user_env;
-
-   }
-
-   STATIC_ASSERT(IO_COPYBUF_SIZE >= MAX_PATH);
-
+   if (rc != 0)
+      goto errend;
 
    rc = load_elf_program(abs_path, &pdir, &entry_point, &stack_addr, &brk);
 
