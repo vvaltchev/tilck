@@ -67,7 +67,7 @@ static const struct termios hard_coded_termios =
    0  // ospeed
 };
 
-static ssize_t tty_ioctl(fs_handle h, uptr request, void *argp)
+static int tty_ioctl(fs_handle h, uptr request, void *argp)
 {
    //printk("tty_ioctl(request: %p)\n", request);
 

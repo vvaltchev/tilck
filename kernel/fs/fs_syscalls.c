@@ -46,6 +46,7 @@ sptr sys_open(const char *user_path, int flags, int mode)
    char *orig_path = curr->args_copybuf;
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
    size_t written = 0;
+   fs_handle h = NULL;
 
    STATIC_ASSERT((ARGS_COPYBUF_SIZE / 2) >= MAX_PATH);
 
@@ -70,10 +71,12 @@ sptr sys_open(const char *user_path, int flags, int mode)
 
    // TODO: make the exvfs call runnable with preemption enabled
    // In order to achieve that, we'll need a per-process "fs" lock.
-   fs_handle h = exvfs_open(path);
+   ret = exvfs_open(path, &h);
 
-   if (!h)
-      goto no_ent;
+   if (ret < 0)
+      goto end;
+
+   ASSERT(h != NULL);
 
    curr->pi->handles[free_fd] = h;
    ret = free_fd;
@@ -87,10 +90,6 @@ end:
 
 no_fds:
    ret = -EMFILE;
-   goto end;
-
-no_ent:
-   ret = -ENOENT;
    goto end;
 }
 
@@ -304,6 +303,7 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
    struct stat statbuf;
    int rc = 0;
+   fs_handle h = NULL;
 
    rc = copy_str_from_user(orig_path, user_path, MAX_PATH, NULL);
 
@@ -315,6 +315,10 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
 
    disable_preemption();
    {
+      /*
+       * No preemption because CWD may change.
+       * TODO: introduce a per-process "big" lock.
+       */
       rc = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
    }
    enable_preemption();
@@ -324,11 +328,12 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
 
    printk("sys_stat64('%s')\n", path);
 
-   fs_handle h = exvfs_open(path);
+   rc = exvfs_open(path, &h);
 
-   if (!h)
-      return -ENOENT;
+   if (rc < 0)
+      return rc;
 
+   ASSERT(h != NULL);
    rc = exvfs_stat(h, &statbuf);
 
    if (rc < 0)

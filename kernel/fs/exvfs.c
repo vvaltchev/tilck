@@ -112,16 +112,14 @@ STATIC int check_mountpoint_match(const char *mp, const char *path)
    return m;
 }
 
-fs_handle exvfs_open(const char *path)
+int exvfs_open(const char *path, fs_handle *out)
 {
-   fs_handle res = NULL;
+   int rc;
    int best_match_index = -1;
    int best_match_len = 0;
 
-   if (*path != '/') {
-      /* We work only with absolute paths */
-      return NULL;
-   }
+   ASSERT(path != NULL);
+   ASSERT(*path == '/');  /* exvfs works only with absolute paths */
 
    for (u32 i = 0; i < ARRAY_SIZE(mps); i++) {
 
@@ -139,7 +137,7 @@ fs_handle exvfs_open(const char *path)
    }
 
    if (best_match_index < 0)
-      return NULL;
+      return -ENOENT;
 
    filesystem *fs = mps[best_match_index]->fs;
 
@@ -148,10 +146,10 @@ fs_handle exvfs_open(const char *path)
 
    fs->exlock(fs);
    {
-      res = fs->fopen(fs, path + best_match_len - 1);
+      rc = fs->fopen(fs, path + best_match_len - 1, out);
    }
    fs->exunlock(fs);
-   return res;
+   return rc;
 }
 
 void exvfs_close(fs_handle h)
@@ -160,14 +158,19 @@ void exvfs_close(fs_handle h)
    hb->fs->fclose(h);
 }
 
-fs_handle exvfs_dup(fs_handle h)
+int exvfs_dup(fs_handle h, fs_handle *dup_h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
 
    if (!hb)
-      return NULL;
+      return -EBADF;
 
-   return hb->fs->dup(h);
+   *dup_h = hb->fs->dup(h);
+
+   if (!*dup_h)
+      return -ENOMEM;
+
+   return 0;
 }
 
 ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size)
@@ -186,25 +189,23 @@ off_t exvfs_seek(fs_handle h, off_t off, int whence)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (!hb->fops.fseek) {
+   if (!hb->fops.fseek)
       return -ESPIPE;
-   }
 
    return hb->fops.fseek(h, off, whence);
 }
 
-ssize_t exvfs_ioctl(fs_handle h, uptr request, void *argp)
+int exvfs_ioctl(fs_handle h, uptr request, void *argp)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (!hb->fops.ioctl) {
+   if (!hb->fops.ioctl)
       return -ENOTTY; // Yes, ENOTTY IS the right error. See the man page.
-   }
 
    return hb->fops.ioctl(h, request, argp);
 }
 
-ssize_t exvfs_stat(fs_handle h, struct stat *statbuf)
+int exvfs_stat(fs_handle h, struct stat *statbuf)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    VERIFY(hb->fops.fstat != NULL);
@@ -329,7 +330,6 @@ copy_char:
    *d = 0;
    return 0;
 }
-
 
 u32 exvfs_get_new_device_id(void)
 {

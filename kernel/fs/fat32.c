@@ -8,14 +8,6 @@
 #include <exos/errno.h>
 #include <exos/datetime.h>
 
-STATIC ssize_t fat_write(fs_handle h,
-                         char *buf,
-                         size_t bufsize)
-{
-   NOT_IMPLEMENTED();
-   return -1;
-}
-
 STATIC void fat_close(fs_handle handle)
 {
    fat_file_handle *h = (fat_file_handle *)handle;
@@ -211,10 +203,13 @@ fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
    return d;
 }
 
-STATIC ssize_t fat_stat(fs_handle h, struct stat *statbuf)
+STATIC int fat_stat(fs_handle h, struct stat *statbuf)
 {
    fat_file_handle *fh = h;
    datetime_t crt_time, wrt_time;
+
+   if (!h)
+      return -ENOENT;
 
    bzero(statbuf, sizeof(struct stat));
 
@@ -250,30 +245,31 @@ STATIC ssize_t fat_stat(fs_handle h, struct stat *statbuf)
    return 0;
 }
 
-STATIC fs_handle fat_open(filesystem *fs, const char *path)
+STATIC int fat_open(filesystem *fs, const char *path, fs_handle *out)
 {
    fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
-
    fat_entry *e = fat_search_entry(d->hdr, d->type, path);
 
-   if (!e) {
-      return NULL; /* file not found */
-   }
+   if (!e)
+      return -ENOENT; /* file not found */
 
    fat_file_handle *h = kzmalloc(sizeof(fat_file_handle));
-   VERIFY(h != NULL);
+
+   if (!h)
+      return -ENOMEM;
 
    h->fs = fs;
    h->fops.fread = fat_read;
-   h->fops.fwrite = fat_write;
    h->fops.fseek = fat_seek;
    h->fops.fstat = fat_stat;
+   h->fops.fwrite = NULL;
 
    h->e = e;
    h->pos = 0;
    h->curr_cluster = fat_get_first_cluster(e);
 
-   return h;
+   *out = h;
+   return 0;
 }
 
 STATIC fs_handle fat_dup(fs_handle h)

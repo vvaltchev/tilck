@@ -132,7 +132,9 @@ TEST(fat32, fread)
    filesystem *fs =
       fat_mount_ramdisk((void *) load_once_file(PROJ_BUILD_DIR "/fatpart"));
 
-   fs_handle h = fs->fopen(fs, "/sbin/init");
+   fs_handle h = NULL;
+   int rc = fs->fopen(fs, "/sbin/init", &h);
+   ASSERT_TRUE(rc == 0);
    ASSERT_TRUE(h != NULL);
 
    fat_file_handle *fat_handle = (fat_file_handle *)h;

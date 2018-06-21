@@ -188,13 +188,13 @@ sptr sys_chdir(const char *user_path)
          goto out;
       }
 
-      fs_handle h = exvfs_open(path);
+      fs_handle h = NULL;
+      rc = exvfs_open(path, &h);
 
-      if (!h) {
-         rc = -ENOENT;
-         goto out;
-      }
+      if (rc < 0)
+         goto out; /* keep the same rc */
 
+      ASSERT(h != NULL);
       exvfs_close(h);
 
       u32 pl = strlen(path);
@@ -564,9 +564,10 @@ sptr sys_fork(void)
       if (!h)
          continue;
 
-      fs_handle dup_h = exvfs_dup(h);
+      fs_handle dup_h = NULL;
+      int rc = exvfs_dup(h, &dup_h);
 
-      if (!dup_h) {
+      if (rc < 0 || !dup_h) {
 
          for (u32 j = 0; j < i; j++)
             exvfs_close(child->pi->handles[j]);

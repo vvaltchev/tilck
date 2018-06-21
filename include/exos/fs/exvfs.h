@@ -32,13 +32,14 @@ typedef void *fs_handle;
 
 typedef struct filesystem filesystem;
 
-typedef fs_handle (*func_open) (filesystem *, const char *);
 typedef void (*func_close) (fs_handle);
+typedef int (*func_open) (filesystem *, const char *, fs_handle *out);
+typedef int (*func_ioctl) (fs_handle, uptr, void *);
+typedef int (*func_stat) (fs_handle, struct stat *);
+
 typedef ssize_t (*func_read) (fs_handle, char *, size_t);
 typedef ssize_t (*func_write) (fs_handle, char *, size_t);
 typedef off_t (*func_seek) (fs_handle, off_t, int);
-typedef ssize_t (*func_ioctl) (fs_handle, uptr, void *);
-typedef ssize_t (*func_stat) (fs_handle, struct stat *);
 
 typedef void (*func_fs_ex_lock)(filesystem *);
 typedef void (*func_fs_ex_unlock)(filesystem *);
@@ -89,14 +90,15 @@ typedef struct {
 int mountpoint_add(filesystem *fs, const char *path);
 void mountpoint_remove(filesystem *fs);
 
-fs_handle exvfs_open(const char *path);
+int exvfs_open(const char *path, fs_handle *out);
+int exvfs_ioctl(fs_handle h, uptr request, void *argp);
+int exvfs_stat(fs_handle h, struct stat *statbuf);
+int exvfs_dup(fs_handle h, fs_handle *dup_h);
 void exvfs_close(fs_handle h);
+
 ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size);
 off_t exvfs_seek(fs_handle h, off_t off, int whence);
-ssize_t exvfs_ioctl(fs_handle h, uptr request, void *argp);
-ssize_t exvfs_stat(fs_handle h, struct stat *statbuf);
-fs_handle exvfs_dup(fs_handle h);
 
 void exvfs_exlock(fs_handle h);
 void exvfs_exunlock(fs_handle h);

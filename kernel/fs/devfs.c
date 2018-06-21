@@ -72,7 +72,7 @@ int create_dev_file(const char *filename, int major, int minor)
    return 0;
 }
 
-static fs_handle devfs_open(filesystem *fs, const char *path)
+static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
 {
    /*
     * Path is expected to be striped from the mountpoint prefix, but the '/'
@@ -92,14 +92,18 @@ static fs_handle devfs_open(filesystem *fs, const char *path)
 
          devfs_file_handle *h;
          h = kzmalloc(sizeof(devfs_file_handle));
+
+         if (!h)
+            return -ENOMEM;
+
          h->fs = fs;
          h->fops = pos->fops;
-
-         return h;
+         *out = h;
+         return 0;
       }
    }
 
-   return NULL;
+   return -ENOENT;
 }
 
 static void devfs_close(fs_handle h)
