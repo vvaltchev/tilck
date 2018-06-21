@@ -203,7 +203,7 @@ STATIC ssize_t fat_stat(fs_handle h, struct stat *statbuf)
 
    statbuf->st_dev = fh->fs->device_id;
    statbuf->st_ino = (ino_t)(uptr)&fh->e; /* use fat's entry as inode number */
-   statbuf->st_mode = is_dir ? S_IFDIR : S_IFREG;
+   statbuf->st_mode = 0777 | (is_dir ? S_IFDIR : S_IFREG);
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
    statbuf->st_gid = 0; /* root */
@@ -211,6 +211,8 @@ STATIC ssize_t fat_stat(fs_handle h, struct stat *statbuf)
    statbuf->st_size = fh->e->DIR_FileSize;
    statbuf->st_blksize = 4096;
    statbuf->st_blocks = statbuf->st_size / 512;
+
+
 
    return 0;
 }

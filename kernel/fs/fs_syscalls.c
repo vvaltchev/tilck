@@ -332,3 +332,12 @@ out:
    exvfs_close(h);
    return rc;
 }
+
+sptr sys_lstat64(const char *user_path, struct stat *user_statbuf)
+{
+   /*
+    * For moment, symlinks are not supported in exOS. Therefore, make lstat()
+    * behave exactly as stat().
+    */
+   return sys_stat64(user_path, user_statbuf);
+}
