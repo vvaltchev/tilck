@@ -168,5 +168,8 @@ void create_and_register_devfs(void)
    if (!devfs)
       panic("Unable to create devfs");
 
-   mountpoint_add(devfs, "/dev/");
+   int rc = mountpoint_add(devfs, "/dev/");
+
+   if (rc != 0)
+      panic("mountpoint_add() failed with error: %d", rc);
 }

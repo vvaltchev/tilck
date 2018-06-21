@@ -7,7 +7,7 @@
 #include <exos/errno.h>
 
 /* exOS is small: supporting 16 mount points seems more than enough. */
-mountpoint *mps[16];
+static mountpoint *mps[16];
 static u32 next_device_id;
 
 int mountpoint_add(filesystem *fs, const char *path)
@@ -17,20 +17,19 @@ int mountpoint_add(filesystem *fs, const char *path)
    for (i = 0; i < ARRAY_SIZE(mps); i++) {
 
       if (!mps[i])
-         break;
+         break; /* we've found a free slot */
 
-      if (mps[i]->fs == fs) {
-         return -1;
-      }
+      if (mps[i]->fs == fs)
+         return -EBUSY;
 
-      if (!strcmp(mps[i]->path, path)) {
-         return -2;
-      }
+      if (!strcmp(mps[i]->path, path))
+         return -EBUSY;
    }
 
-   VERIFY(i < ARRAY_SIZE(mps));
+   if (i == ARRAY_SIZE(mps))
+      return -ENOMEM;
 
-   const size_t path_len = strlen(path);
+   const u32 path_len = strlen(path);
 
    /*
     * Mount points MUST end with '/'.

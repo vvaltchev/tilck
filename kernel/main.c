@@ -103,7 +103,11 @@ void mount_ramdisk(void)
    if (!root_fs)
       panic("Unable to mount the fat32 RAMDISK");
 
-   mountpoint_add(root_fs, "/");
+   int rc = mountpoint_add(root_fs, "/");
+
+   if (rc != 0)
+      panic("mountpoint_add() failed with error: %d", rc);
+
    printk("Mounted RAMDISK at PADDR %p.\n", ramdisk_paddr);
 }
 
