@@ -6,6 +6,7 @@
 #include <exos/fs/exvfs.h>
 #include <exos/kmalloc.h>
 #include <exos/errno.h>
+#include <exos/datetime.h>
 
 STATIC ssize_t fat_write(fs_handle h,
                          char *buf,
@@ -192,18 +193,34 @@ STATIC off_t fat_seek(fs_handle handle,
    return fat_seek_forward(handle, off);
 }
 
+datetime_t
+fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
+{
+   datetime_t d;
+
+   d.day = date & 0b11111;           // 5 bits: [0..4]
+   d.month = (date >> 5) & 0b1111;   // 4 bits: [5..8]
+   d.year = (date >> 9) & 0b1111111; // 7 bits: [9..15]
+   d.year += 1980;
+
+   d.sec = time & 0b11111;           // 5 bits: [0..4]
+   d.min = (time >> 5) & 0b111111;   // 6 bits: [5..10]
+   d.hour = (time >> 11) & 0b11111;  // 5 bits: [11..15]
+
+   d.sec += timetenth / 10;
+   return d;
+}
+
 STATIC ssize_t fat_stat(fs_handle h, struct stat *statbuf)
 {
    fat_file_handle *fh = h;
+   datetime_t crt_time, wrt_time;
 
-   printk("fat stat\n");
    bzero(statbuf, sizeof(struct stat));
-
-   const bool is_dir = fh->e->directory || fh->e->volume_id;
 
    statbuf->st_dev = fh->fs->device_id;
    statbuf->st_ino = (ino_t)(uptr)&fh->e; /* use fat's entry as inode number */
-   statbuf->st_mode = 0777 | (is_dir ? S_IFDIR : S_IFREG);
+   statbuf->st_mode = 0555;
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
    statbuf->st_gid = 0; /* root */
@@ -212,8 +229,24 @@ STATIC ssize_t fat_stat(fs_handle h, struct stat *statbuf)
    statbuf->st_blksize = 4096;
    statbuf->st_blocks = statbuf->st_size / 512;
 
+   if (fh->e->directory || fh->e->volume_id)
+      statbuf->st_mode |= S_IFDIR;
+   else
+      statbuf->st_mode |= S_IFREG;
 
+   crt_time =
+      fat_datetime_to_regular_datetime(fh->e->DIR_CrtDate,
+                                       fh->e->DIR_CrtTime,
+                                       fh->e->DIR_CrtTimeTenth);
 
+   wrt_time =
+      fat_datetime_to_regular_datetime(fh->e->DIR_WrtDate,
+                                       fh->e->DIR_WrtTime,
+                                       0 /* No WrtTimeTenth */);
+
+   statbuf->st_ctim.tv_sec = datetime_to_timestamp(crt_time);
+   statbuf->st_mtim.tv_sec = datetime_to_timestamp(wrt_time);
+   statbuf->st_atim = statbuf->st_mtim;
    return 0;
 }
 

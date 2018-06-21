@@ -6,6 +6,7 @@
 
 #include <exos/sync.h>
 #include <exos/fs/exvfs.h>
+#include <exos/datetime.h>
 
 typedef struct {
 
@@ -33,3 +34,4 @@ typedef struct {
 
 filesystem *fat_mount_ramdisk(void *vaddr);
 void fat_umount_ramdisk(filesystem *fs);
+datetime_t fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth);
