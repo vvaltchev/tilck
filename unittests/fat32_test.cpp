@@ -130,7 +130,9 @@ TEST(fat32, fread)
    init_kmalloc_for_tests();
 
    filesystem *fs =
-      fat_mount_ramdisk((void *) load_once_file(PROJ_BUILD_DIR "/fatpart"));
+      fat_mount_ramdisk(
+         (void *) load_once_file(PROJ_BUILD_DIR "/fatpart"),
+         EXVFS_FS_READ_ONLY);
 
    fs_handle h = NULL;
    int rc = fs->fopen(fs, "/sbin/init", &h);

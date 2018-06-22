@@ -282,18 +282,27 @@ STATIC fs_handle fat_dup(fs_handle h)
 
 STATIC void fat_exclusive_lock(filesystem *fs)
 {
+   if (!(fs->flags & EXVFS_FS_RW))
+      return; /* read-only: no lock is needed */
+
    fat_fs_device_data *d = fs->device_data;
    kmutex_lock(&d->ex_mutex);
 }
 
 STATIC void fat_exclusive_unlock(filesystem *fs)
 {
+   if (!(fs->flags & EXVFS_FS_RW))
+      return; /* read-only: no lock is needed */
+
    fat_fs_device_data *d = fs->device_data;
    kmutex_unlock(&d->ex_mutex);
 }
 
-filesystem *fat_mount_ramdisk(void *vaddr)
+filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
 {
+   if (flags & EXVFS_FS_RW)
+      panic("fat_mount_ramdisk: r/w mode is NOT currently supported");
+
    fat_fs_device_data *d = kmalloc(sizeof(fat_fs_device_data));
 
    if (!d)
@@ -311,6 +320,7 @@ filesystem *fat_mount_ramdisk(void *vaddr)
       return NULL;
    }
 
+   fs->flags = flags;
    fs->device_id = exvfs_get_new_device_id();
    fs->device_data = d;
    fs->fopen = fat_open;

@@ -46,10 +46,14 @@ typedef void (*func_fs_ex_unlock)(filesystem *);
 
 typedef fs_handle (*func_dup) (fs_handle);
 
+#define EXVFS_FS_READ_ONLY  (0)
+#define EXVFS_FS_RW         (1 << 0)
+
 struct filesystem {
 
    u32 device_id;
    void *device_data;
+   u32 flags;
 
    func_open fopen;
    func_close fclose;

@@ -32,6 +32,6 @@ typedef struct {
 
 } fat_file_handle;
 
-filesystem *fat_mount_ramdisk(void *vaddr);
+filesystem *fat_mount_ramdisk(void *vaddr, u32 flags);
 void fat_umount_ramdisk(filesystem *fs);
 datetime_t fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth);
