@@ -141,11 +141,11 @@ sptr sys_read(int fd, void *user_buf, size_t count)
 
    count = MIN(count, IO_COPYBUF_SIZE);
 
-   exvfs_exlock(handle);
+   exvfs_shlock(handle);
    {
       ret = exvfs_read(curr->pi->handles[fd], curr->io_copybuf, count);
    }
-   exvfs_exunlock(handle);
+   exvfs_shunlock(handle);
 
    if (ret > 0) {
       if (copy_to_user(user_buf, curr->io_copybuf, ret) < 0) {
@@ -273,7 +273,7 @@ sptr sys_readv(int fd, const struct iovec *user_iov, int iovcnt)
    if (!handle)
       return -EBADF;
 
-   exvfs_exlock(handle);
+   exvfs_shlock(handle);
 
    const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
 
@@ -292,7 +292,7 @@ sptr sys_readv(int fd, const struct iovec *user_iov, int iovcnt)
          break; // Not enough data to fill all the user buffers.
    }
 
-   exvfs_exunlock(handle);
+   exvfs_shunlock(handle);
    return ret;
 }
 
@@ -334,7 +334,12 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
       return rc;
 
    ASSERT(h != NULL);
-   rc = exvfs_stat(h, &statbuf);
+
+   exvfs_shlock(h);
+   {
+      rc = exvfs_stat(h, &statbuf);
+   }
+   exvfs_shunlock(h);
 
    if (rc < 0)
       goto out;

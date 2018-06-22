@@ -137,6 +137,16 @@ static void devfs_exclusive_unlock(filesystem *fs)
    kmutex_unlock(&d->ex_mutex);
 }
 
+static void devfs_shared_lock(filesystem *fs)
+{
+   devfs_exclusive_lock(fs);
+}
+
+static void devfs_shared_unlock(filesystem *fs)
+{
+   devfs_exclusive_unlock(fs);
+}
+
 filesystem *create_devfs(void)
 {
    /* Disallow multiple instances of devfs */
@@ -164,8 +174,10 @@ filesystem *create_devfs(void)
    fs->fclose = devfs_close;
    fs->dup = devfs_dup;
 
-   fs->exlock = devfs_exclusive_lock;
-   fs->exunlock = devfs_exclusive_unlock;
+   fs->fs_exlock = devfs_exclusive_lock;
+   fs->fs_exunlock = devfs_exclusive_unlock;
+   fs->fs_shlock = devfs_shared_lock;
+   fs->fs_shunlock = devfs_shared_unlock;
 
    return fs;
 }

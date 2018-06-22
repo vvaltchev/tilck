@@ -143,14 +143,12 @@ int exvfs_open(const char *path, fs_handle *out)
 
    filesystem *fs = mps[best_match_index]->fs;
 
-   ASSERT(fs->exlock != NULL);
-   ASSERT(fs->exunlock != NULL);
-
-   fs->exlock(fs);
+   exvfs_fs_shlock(fs);
    {
       rc = fs->fopen(fs, path + best_match_len - 1, out);
    }
-   fs->exunlock(fs);
+   exvfs_fs_shunlock(fs);
+
    return rc;
 }
 
@@ -228,8 +226,8 @@ void exvfs_exlock(fs_handle h)
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
 
-   if (hb->fs->exlock)
-      hb->fs->exlock(hb->fs);
+   if (hb->fs->fs_exlock)
+      hb->fs->fs_exlock(hb->fs);
 }
 
 void exvfs_exunlock(fs_handle h)
@@ -237,8 +235,8 @@ void exvfs_exunlock(fs_handle h)
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
 
-   if (hb->fs->exunlock)
-      hb->fs->exunlock(hb->fs);
+   if (hb->fs->fs_exunlock)
+      hb->fs->fs_exunlock(hb->fs);
 }
 
 void exvfs_shlock(fs_handle h)
@@ -246,8 +244,8 @@ void exvfs_shlock(fs_handle h)
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
 
-   if (hb->fs->shlock)
-      hb->fs->shlock(hb->fs);
+   if (hb->fs->fs_shlock)
+      hb->fs->fs_shlock(hb->fs);
 }
 
 void exvfs_shunlock(fs_handle h)
@@ -255,10 +253,25 @@ void exvfs_shunlock(fs_handle h)
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
 
-   if (hb->fs->shunlock)
-      hb->fs->shunlock(hb->fs);
+   if (hb->fs->fs_shunlock)
+      hb->fs->fs_shunlock(hb->fs);
 }
 
+void exvfs_fs_shlock(filesystem *fs)
+{
+   ASSERT(fs != NULL);
+
+   if (fs->fs_shlock)
+      fs->fs_shlock(fs);
+}
+
+void exvfs_fs_shunlock(filesystem *fs)
+{
+   ASSERT(fs != NULL);
+
+   if (fs->fs_shunlock)
+      fs->fs_shunlock(fs);
+}
 
 static void drop_last_component(char **d_ref, char *const dest)
 {

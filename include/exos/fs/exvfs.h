@@ -62,11 +62,11 @@ struct filesystem {
    func_close fclose;
    func_dup dup;
 
-   func_fs_ex_lock exlock;
-   func_fs_ex_unlock exunlock;
+   func_fs_ex_lock fs_exlock;
+   func_fs_ex_unlock fs_exunlock;
 
-   func_fs_sh_lock shlock;
-   func_fs_sh_unlock shunlock;
+   func_fs_sh_lock fs_shlock;
+   func_fs_sh_unlock fs_shunlock;
 };
 
 typedef struct {
@@ -115,6 +115,9 @@ void exvfs_exunlock(fs_handle h);
 
 void exvfs_shlock(fs_handle h);
 void exvfs_shunlock(fs_handle h);
+
+void exvfs_fs_shlock(filesystem *fs);
+void exvfs_fs_shunlock(filesystem *fs);
 
 int
 compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size);

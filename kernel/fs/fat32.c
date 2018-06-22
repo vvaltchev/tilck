@@ -302,6 +302,22 @@ STATIC void fat_exclusive_unlock(filesystem *fs)
    kmutex_unlock(&d->ex_mutex);
 }
 
+STATIC void fat_shared_lock(filesystem *fs)
+{
+   if (!(fs->flags & EXVFS_FS_RW))
+      return; /* read-only: no lock is needed */
+
+   NOT_IMPLEMENTED();
+}
+
+STATIC void fat_shared_unlock(filesystem *fs)
+{
+   if (!(fs->flags & EXVFS_FS_RW))
+      return; /* read-only: no lock is needed */
+
+   NOT_IMPLEMENTED();
+}
+
 filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
 {
    if (flags & EXVFS_FS_RW)
@@ -331,9 +347,10 @@ filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
    fs->fclose = fat_close;
    fs->dup = fat_dup;
 
-   fs->exlock = fat_exclusive_lock;
-   fs->exunlock = fat_exclusive_unlock;
-
+   fs->fs_exlock = fat_exclusive_lock;
+   fs->fs_exunlock = fat_exclusive_unlock;
+   fs->fs_shlock = fat_shared_lock;
+   fs->fs_shunlock = fat_shared_unlock;
    return fs;
 }
 
