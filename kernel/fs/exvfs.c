@@ -219,7 +219,7 @@ int exvfs_ioctl(fs_handle h, uptr request, void *argp)
 int exvfs_stat(fs_handle h, struct stat *statbuf)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
-   VERIFY(hb->fops.fstat != NULL);
+   VERIFY(hb->fops.fstat != NULL); /* stat is NOT optional */
    return hb->fops.fstat(h, statbuf);
 }
 
@@ -227,18 +227,18 @@ void exvfs_exlock(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
-   ASSERT(hb->fs->exlock != NULL);
 
-   hb->fs->exlock(hb->fs);
+   if (hb->fs->exlock)
+      hb->fs->exlock(hb->fs);
 }
 
 void exvfs_exunlock(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
-   ASSERT(hb->fs->exunlock != NULL);
 
-   hb->fs->exunlock(hb->fs);
+   if (hb->fs->exunlock)
+      hb->fs->exunlock(hb->fs);
 }
 
 static void drop_last_component(char **d_ref, char *const dest)
@@ -284,10 +284,14 @@ compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size)
 
       memcpy(dest, cwd, cl + 1);
       d = dest + cl;
+
+   } else {
+
+      /* path is absolute */
+      if (dest_size < strlen(path) + 1)
+         return -1;
    }
 
-   if (dest_size < strlen(path) + 1)
-      return -1;
 
    for (p = path; *p;) {
 
