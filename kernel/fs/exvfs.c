@@ -241,6 +241,25 @@ void exvfs_exunlock(fs_handle h)
       hb->fs->exunlock(hb->fs);
 }
 
+void exvfs_shlock(fs_handle h)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+   ASSERT(hb != NULL);
+
+   if (hb->fs->shlock)
+      hb->fs->shlock(hb->fs);
+}
+
+void exvfs_shunlock(fs_handle h)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+   ASSERT(hb != NULL);
+
+   if (hb->fs->shunlock)
+      hb->fs->shunlock(hb->fs);
+}
+
+
 static void drop_last_component(char **d_ref, char *const dest)
 {
    char *d = *d_ref;

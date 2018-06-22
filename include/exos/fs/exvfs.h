@@ -45,6 +45,9 @@ typedef off_t (*func_seek) (fs_handle, off_t, int);
 typedef void (*func_fs_ex_lock)(filesystem *);
 typedef void (*func_fs_ex_unlock)(filesystem *);
 
+typedef void (*func_fs_sh_lock)(filesystem *);
+typedef void (*func_fs_sh_unlock)(filesystem *);
+
 
 #define EXVFS_FS_READ_ONLY  (0)
 #define EXVFS_FS_RW         (1 << 0)
@@ -61,6 +64,9 @@ struct filesystem {
 
    func_fs_ex_lock exlock;
    func_fs_ex_unlock exunlock;
+
+   func_fs_sh_lock shlock;
+   func_fs_sh_unlock shunlock;
 };
 
 typedef struct {
@@ -106,6 +112,9 @@ off_t exvfs_seek(fs_handle h, off_t off, int whence);
 
 void exvfs_exlock(fs_handle h);
 void exvfs_exunlock(fs_handle h);
+
+void exvfs_shlock(fs_handle h);
+void exvfs_shunlock(fs_handle h);
 
 int
 compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size);
