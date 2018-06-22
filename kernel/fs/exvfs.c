@@ -167,11 +167,12 @@ int exvfs_dup(fs_handle h, fs_handle *dup_h)
    if (!hb)
       return -EBADF;
 
-   *dup_h = hb->fs->dup(h);
+   int rc = hb->fs->dup(h, dup_h);
 
-   if (!*dup_h)
-      return -ENOMEM;
+   if (rc)
+      return rc;
 
+   ASSERT(*dup_h != NULL);
    return 0;
 }
 

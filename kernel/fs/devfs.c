@@ -112,13 +112,17 @@ static void devfs_close(fs_handle h)
    kfree2(devh, sizeof(devfs_file_handle));
 }
 
-static fs_handle devfs_dup(fs_handle h)
+static int devfs_dup(fs_handle h, fs_handle *dup_h)
 {
    devfs_file_handle *new_h;
-   new_h = kzmalloc(sizeof(devfs_file_handle));
-   VERIFY(new_h != NULL); // TODO: handle this OOM condition
+   new_h = kmalloc(sizeof(devfs_file_handle));
+
+   if (!new_h)
+      return -ENOMEM;
+
    memcpy(new_h, h, sizeof(devfs_file_handle));
-   return new_h;
+   *dup_h = new_h;
+   return 0;
 }
 
 static void devfs_exclusive_lock(filesystem *fs)

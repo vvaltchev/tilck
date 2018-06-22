@@ -272,12 +272,16 @@ STATIC int fat_open(filesystem *fs, const char *path, fs_handle *out)
    return 0;
 }
 
-STATIC fs_handle fat_dup(fs_handle h)
+STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
 {
-   fat_file_handle *new_h = kzmalloc(sizeof(fat_file_handle));
-   VERIFY(new_h != NULL);
+   fat_file_handle *new_h = kmalloc(sizeof(fat_file_handle));
+
+   if (!new_h)
+      return -ENOMEM;
+
    memcpy(new_h, h, sizeof(fat_file_handle));
-   return new_h;
+   *dup_h = new_h;
+   return 0;
 }
 
 STATIC void fat_exclusive_lock(filesystem *fs)

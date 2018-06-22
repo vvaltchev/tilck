@@ -36,6 +36,7 @@ typedef void (*func_close) (fs_handle);
 typedef int (*func_open) (filesystem *, const char *, fs_handle *out);
 typedef int (*func_ioctl) (fs_handle, uptr, void *);
 typedef int (*func_stat) (fs_handle, struct stat *);
+typedef int (*func_dup) (fs_handle, fs_handle *out);
 
 typedef ssize_t (*func_read) (fs_handle, char *, size_t);
 typedef ssize_t (*func_write) (fs_handle, char *, size_t);
@@ -44,7 +45,6 @@ typedef off_t (*func_seek) (fs_handle, off_t, int);
 typedef void (*func_fs_ex_lock)(filesystem *);
 typedef void (*func_fs_ex_unlock)(filesystem *);
 
-typedef fs_handle (*func_dup) (fs_handle);
 
 #define EXVFS_FS_READ_ONLY  (0)
 #define EXVFS_FS_RW         (1 << 0)
