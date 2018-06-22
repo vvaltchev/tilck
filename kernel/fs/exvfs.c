@@ -178,12 +178,20 @@ int exvfs_dup(fs_handle h, fs_handle *dup_h)
 ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (!hb->fops.fread)
+      return -EINVAL;
+
    return hb->fops.fread(h, buf, buf_size);
 }
 
 ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (!hb->fops.fwrite)
+      return -EINVAL;
+
    return hb->fops.fwrite(h, buf, buf_size);
 }
 
