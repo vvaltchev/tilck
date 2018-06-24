@@ -339,6 +339,33 @@ sptr sys_lstat64(const char *user_path, struct stat *user_statbuf)
    return sys_stat64(user_path, user_statbuf);
 }
 
+sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
+{
+   fs_handle handle;
+   s64 new_off;
+   int rc;
+
+   STATIC_ASSERT(sizeof(new_off) >= sizeof(off_t));
+
+   handle = get_fs_handle(fd);
+
+   if (!handle)
+      return -EBADF;
+
+   // NOTE: this won't really work for big offsets in case off_t is 32-bit.
+   new_off = exvfs_seek(handle, (s64)off_hi << 32 | off_low, whence);
+
+   if (new_off < 0)
+      return new_off;
+
+   rc = copy_to_user(result, &new_off, sizeof(*result));
+
+   if (rc != 0)
+      return -EBADF;
+
+   return 0;
+}
+
 static void debug_print_fcntl_command(int cmd)
 {
    switch (cmd) {

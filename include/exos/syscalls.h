@@ -176,7 +176,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_sysfs)
 CREATE_STUB_SYSCALL_IMPL(sys_personality)
 CREATE_STUB_SYSCALL_IMPL(sys_setfsuid16)
 CREATE_STUB_SYSCALL_IMPL(sys_setfsgid16)
-CREATE_STUB_SYSCALL_IMPL(sys_llseek)
+
+sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence);
+
 CREATE_STUB_SYSCALL_IMPL(sys_getdents)
 CREATE_STUB_SYSCALL_IMPL(sys_select)
 CREATE_STUB_SYSCALL_IMPL(sys_flock)

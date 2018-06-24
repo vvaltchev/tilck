@@ -117,6 +117,8 @@ void exvfs_close(fs_handle h);
 
 ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size);
+
+// TODO: consider using 's64' instead of off_t.
 off_t exvfs_seek(fs_handle h, off_t off, int whence);
 
 static ALWAYS_INLINE filesystem *get_fs(fs_handle h)
