@@ -37,6 +37,10 @@ int mountpoint_add(filesystem *fs, const char *path)
    ASSERT(path[path_len-1] == '/');
 
    mountpoint *mp = kmalloc(sizeof(mountpoint) + path_len + 1);
+
+   if (!mp)
+      return -ENOMEM;
+
    mp->fs = fs;
    memcpy(mp->path, path, path_len + 1);
    mps[i] = mp;
@@ -145,7 +149,7 @@ int exvfs_open(const char *path, fs_handle *out)
 
    exvfs_fs_shlock(fs);
    {
-      rc = fs->fopen(fs, path + best_match_len - 1, out);
+      rc = fs->open(fs, path + best_match_len - 1, out);
    }
    exvfs_fs_shunlock(fs);
 
@@ -155,7 +159,7 @@ int exvfs_open(const char *path, fs_handle *out)
 void exvfs_close(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
-   hb->fs->fclose(h);
+   hb->fs->close(h);
 }
 
 int exvfs_dup(fs_handle h, fs_handle *dup_h)

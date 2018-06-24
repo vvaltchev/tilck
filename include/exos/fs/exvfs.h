@@ -62,8 +62,8 @@ struct filesystem {
    void *device_data;
    u32 flags;
 
-   func_open fopen;
-   func_close fclose;
+   func_open open;
+   func_close close;
    func_dup dup;
 
    /* Whole-filesystem locks */

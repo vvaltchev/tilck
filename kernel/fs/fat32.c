@@ -373,8 +373,8 @@ filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
    fs->flags = flags;
    fs->device_id = exvfs_get_new_device_id();
    fs->device_data = d;
-   fs->fopen = fat_open;
-   fs->fclose = fat_close;
+   fs->open = fat_open;
+   fs->close = fat_close;
    fs->dup = fat_dup;
 
    fs->fs_exlock = fat_exclusive_lock;

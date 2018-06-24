@@ -135,7 +135,7 @@ TEST(fat32, fread)
          EXVFS_FS_READ_ONLY);
 
    fs_handle h = NULL;
-   int rc = fs->fopen(fs, "/sbin/init", &h);
+   int rc = fs->open(fs, "/sbin/init", &h);
    ASSERT_TRUE(rc == 0);
    ASSERT_TRUE(h != NULL);
 
@@ -183,7 +183,7 @@ TEST(fat32, fread)
    }
 
    fclose(fp);
-   fs->fclose(h);
+   fs->close(h);
 
    fat_umount_ramdisk(fs);
    free(buf2);

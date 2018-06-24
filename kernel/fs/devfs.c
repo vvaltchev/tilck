@@ -170,8 +170,8 @@ filesystem *create_devfs(void)
    fs->flags = EXVFS_FS_RW;
    fs->device_id = exvfs_get_new_device_id();
    fs->device_data = d;
-   fs->fopen = devfs_open;
-   fs->fclose = devfs_close;
+   fs->open = devfs_open;
+   fs->close = devfs_close;
    fs->dup = devfs_dup;
 
    fs->fs_exlock = devfs_exclusive_lock;
