@@ -151,9 +151,9 @@ TEST(fat32, fread)
    while (true) {
 
       ssize_t read_block_size = 1023; /* 1023 is a prime number */
-      ssize_t bytes_read = fat_handle->fops.fread(h,
-                                                  buf2+read_offset,
-                                                  read_block_size);
+      ssize_t bytes_read = fat_handle->fops.read(h,
+                                                 buf2+read_offset,
+                                                 read_block_size);
       ssize_t bytes_read_real_file = fread(tmpbuf, 1, read_block_size, fp);
 
       ASSERT_EQ(bytes_read_real_file, bytes_read);

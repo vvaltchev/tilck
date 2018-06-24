@@ -75,11 +75,11 @@ struct filesystem {
 
 typedef struct {
 
-   func_read fread;
-   func_write fwrite;
-   func_seek fseek;
+   func_read read;
+   func_write write;
+   func_seek seek;
    func_ioctl ioctl;
-   func_stat fstat;
+   func_stat stat;
 
    func_ex_lock exlock;
    func_ex_unlock exunlock;

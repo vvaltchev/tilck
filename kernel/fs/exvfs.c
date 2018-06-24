@@ -183,12 +183,12 @@ ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size)
    fs_handle_base *hb = (fs_handle_base *) h;
    ssize_t ret;
 
-   if (!hb->fops.fread)
+   if (!hb->fops.read)
       return -EINVAL;
 
    exvfs_shlock(h);
    {
-      ret = hb->fops.fread(h, buf, buf_size);
+      ret = hb->fops.read(h, buf, buf_size);
    }
    exvfs_shunlock(h);
    return ret;
@@ -199,12 +199,12 @@ ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size)
    fs_handle_base *hb = (fs_handle_base *) h;
    ssize_t ret;
 
-   if (!hb->fops.fwrite)
+   if (!hb->fops.write)
       return -EINVAL;
 
    exvfs_exlock(h);
    {
-      ret = hb->fops.fwrite(h, buf, buf_size);
+      ret = hb->fops.write(h, buf, buf_size);
    }
    exvfs_exunlock(h);
    return ret;
@@ -214,10 +214,10 @@ off_t exvfs_seek(fs_handle h, off_t off, int whence)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (!hb->fops.fseek)
+   if (!hb->fops.seek)
       return -ESPIPE;
 
-   return hb->fops.fseek(h, off, whence);
+   return hb->fops.seek(h, off, whence);
 }
 
 int exvfs_ioctl(fs_handle h, uptr request, void *argp)
@@ -241,11 +241,11 @@ int exvfs_stat(fs_handle h, struct stat *statbuf)
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;
 
-   ASSERT(hb->fops.fstat != NULL); /* stat is NOT optional */
+   ASSERT(hb->fops.stat != NULL); /* stat is NOT optional */
 
    exvfs_shlock(h);
    {
-      ret = hb->fops.fstat(h, statbuf);
+      ret = hb->fops.stat(h, statbuf);
    }
    exvfs_shunlock(h);
    return ret;

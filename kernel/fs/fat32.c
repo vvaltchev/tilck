@@ -318,10 +318,10 @@ STATIC int fat_open(filesystem *fs, const char *path, fs_handle *out)
       return -ENOMEM;
 
    h->fs = fs;
-   h->fops.fread = fat_read;
-   h->fops.fseek = fat_seek;
-   h->fops.fstat = fat_stat;
-   h->fops.fwrite = NULL;
+   h->fops.read = fat_read;
+   h->fops.seek = fat_seek;
+   h->fops.stat = fat_stat;
+   h->fops.write = NULL;
 
    h->fops.exlock = fat_file_exlock;
    h->fops.exunlock = fat_file_exunlock;
