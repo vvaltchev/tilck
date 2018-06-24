@@ -177,21 +177,33 @@ int exvfs_dup(fs_handle h, fs_handle *dup_h)
 ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+   ssize_t ret;
 
    if (!hb->fops.fread)
       return -EINVAL;
 
-   return hb->fops.fread(h, buf, buf_size);
+   exvfs_shlock(h);
+   {
+      ret = hb->fops.fread(h, buf, buf_size);
+   }
+   exvfs_shunlock(h);
+   return ret;
 }
 
 ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+   ssize_t ret;
 
    if (!hb->fops.fwrite)
       return -EINVAL;
 
-   return hb->fops.fwrite(h, buf, buf_size);
+   exvfs_exlock(h);
+   {
+      ret = hb->fops.fwrite(h, buf, buf_size);
+   }
+   exvfs_exunlock(h);
+   return ret;
 }
 
 off_t exvfs_seek(fs_handle h, off_t off, int whence)
@@ -207,18 +219,32 @@ off_t exvfs_seek(fs_handle h, off_t off, int whence)
 int exvfs_ioctl(fs_handle h, uptr request, void *argp)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+   int ret;
 
    if (!hb->fops.ioctl)
       return -ENOTTY; // Yes, ENOTTY IS the right error. See the man page.
 
-   return hb->fops.ioctl(h, request, argp);
+   exvfs_exlock(h);
+   {
+      ret = hb->fops.ioctl(h, request, argp);
+   }
+   exvfs_exunlock(h);
+   return ret;
 }
 
 int exvfs_stat(fs_handle h, struct stat *statbuf)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
-   VERIFY(hb->fops.fstat != NULL); /* stat is NOT optional */
-   return hb->fops.fstat(h, statbuf);
+   int ret;
+
+   ASSERT(hb->fops.fstat != NULL); /* stat is NOT optional */
+
+   exvfs_shlock(h);
+   {
+      ret = hb->fops.fstat(h, statbuf);
+   }
+   exvfs_shunlock(h);
+   return ret;
 }
 
 void exvfs_exlock(fs_handle h)

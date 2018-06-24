@@ -136,12 +136,7 @@ sptr sys_read(int fd, void *user_buf, size_t count)
       return -EBADF;
 
    count = MIN(count, IO_COPYBUF_SIZE);
-
-   exvfs_shlock(handle);
-   {
-      ret = exvfs_read(curr->pi->handles[fd], curr->io_copybuf, count);
-   }
-   exvfs_shunlock(handle);
+   ret = exvfs_read(curr->pi->handles[fd], curr->io_copybuf, count);
 
    if (ret > 0) {
       if (copy_to_user(user_buf, curr->io_copybuf, ret) < 0) {
@@ -172,31 +167,17 @@ sptr sys_write(int fd, const void *user_buf, size_t count)
    if (!handle)
       return -EBADF;
 
-   exvfs_exlock(handle);
-   {
-      ret = exvfs_write(handle, (char *)curr->io_copybuf, count);
-   }
-   exvfs_exunlock(handle);
-
-   return ret;
+   return exvfs_write(handle, (char *)curr->io_copybuf, count);
 }
 
 sptr sys_ioctl(int fd, uptr request, void *argp)
 {
-   sptr ret;
-   fs_handle handle;
-
-   handle = get_fs_handle(fd);
+   fs_handle handle = get_fs_handle(fd);
 
    if (!handle)
       return -EBADF;
 
-   exvfs_exlock(handle);
-   {
-      ret = exvfs_ioctl(handle, request, argp);
-   }
-   exvfs_exunlock(handle);
-   return ret;
+   return exvfs_ioctl(handle, request, argp);
 }
 
 sptr sys_writev(int fd, const struct iovec *user_iov, int iovcnt)
@@ -209,7 +190,9 @@ sptr sys_writev(int fd, const struct iovec *user_iov, int iovcnt)
    if (sizeof(struct iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
 
-   rc = copy_from_user(curr->args_copybuf, user_iov, sizeof(struct iovec) * iovcnt);
+   rc = copy_from_user(curr->args_copybuf,
+                       user_iov,
+                       sizeof(struct iovec) * iovcnt);
 
    if (rc != 0)
       return -EFAULT;
@@ -259,7 +242,9 @@ sptr sys_readv(int fd, const struct iovec *user_iov, int iovcnt)
    if (sizeof(struct iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
 
-   rc = copy_from_user(curr->args_copybuf, user_iov, sizeof(struct iovec) * iovcnt);
+   rc = copy_from_user(curr->args_copybuf,
+                       user_iov,
+                       sizeof(struct iovec) * iovcnt);
 
    if (rc != 0)
       return -EFAULT;
@@ -330,12 +315,7 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
       return rc;
 
    ASSERT(h != NULL);
-
-   exvfs_shlock(h);
-   {
-      rc = exvfs_stat(h, &statbuf);
-   }
-   exvfs_shunlock(h);
+   rc = exvfs_stat(h, &statbuf);
 
    if (rc < 0)
       goto out;
