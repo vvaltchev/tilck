@@ -116,12 +116,8 @@ sptr sys_close(int fd)
    // process could race with the one here below. At that point, the handle
    // object would be destroyed and we'll panic.
 
-   exvfs_exlock(handle);
-   {
-      exvfs_close(handle);
-      curr->pi->handles[fd] = NULL;
-   }
-   exvfs_exunlock(handle);
+   exvfs_close(handle);
+   curr->pi->handles[fd] = NULL;
 
    enable_preemption();
 end:

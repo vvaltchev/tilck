@@ -226,8 +226,12 @@ void exvfs_exlock(fs_handle h)
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
 
-   if (hb->fs->fs_exlock)
-      hb->fs->fs_exlock(hb->fs);
+   if (hb->fops.exlock) {
+      hb->fops.exlock(h);
+   } else {
+      ASSERT(!hb->fops.exunlock);
+      exvfs_fs_exlock(get_fs(h));
+   }
 }
 
 void exvfs_exunlock(fs_handle h)
@@ -235,8 +239,12 @@ void exvfs_exunlock(fs_handle h)
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
 
-   if (hb->fs->fs_exunlock)
-      hb->fs->fs_exunlock(hb->fs);
+   if (hb->fops.exunlock) {
+      hb->fops.exunlock(h);
+   } else {
+      ASSERT(!hb->fops.exlock);
+      exvfs_fs_exunlock(get_fs(h));
+   }
 }
 
 void exvfs_shlock(fs_handle h)
@@ -244,8 +252,12 @@ void exvfs_shlock(fs_handle h)
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
 
-   if (hb->fs->fs_shlock)
-      hb->fs->fs_shlock(hb->fs);
+   if (hb->fops.shlock) {
+      hb->fops.shlock(h);
+   } else {
+      ASSERT(!hb->fops.shunlock);
+      exvfs_fs_shlock(get_fs(h));
+   }
 }
 
 void exvfs_shunlock(fs_handle h)
@@ -253,24 +265,44 @@ void exvfs_shunlock(fs_handle h)
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
 
-   if (hb->fs->fs_shunlock)
-      hb->fs->fs_shunlock(hb->fs);
+   if (hb->fops.shunlock) {
+      hb->fops.shunlock(h);
+   } else {
+      ASSERT(!hb->fops.shlock);
+      exvfs_fs_shunlock(get_fs(h));
+   }
+}
+
+void exvfs_fs_exlock(filesystem *fs)
+{
+   ASSERT(fs != NULL);
+   ASSERT(fs->fs_exlock);
+
+   fs->fs_exlock(fs);
+}
+
+void exvfs_fs_exunlock(filesystem *fs)
+{
+   ASSERT(fs != NULL);
+   ASSERT(fs->fs_exunlock);
+
+   fs->fs_exunlock(fs);
 }
 
 void exvfs_fs_shlock(filesystem *fs)
 {
    ASSERT(fs != NULL);
+   ASSERT(fs->fs_shlock);
 
-   if (fs->fs_shlock)
-      fs->fs_shlock(fs);
+   fs->fs_shlock(fs);
 }
 
 void exvfs_fs_shunlock(filesystem *fs)
 {
    ASSERT(fs != NULL);
+   ASSERT(fs->fs_shunlock);
 
-   if (fs->fs_shunlock)
-      fs->fs_shunlock(fs);
+   fs->fs_shunlock(fs);
 }
 
 static void drop_last_component(char **d_ref, char *const dest)

@@ -245,44 +245,6 @@ STATIC int fat_stat(fs_handle h, struct stat *statbuf)
    return 0;
 }
 
-STATIC int fat_open(filesystem *fs, const char *path, fs_handle *out)
-{
-   fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
-   fat_entry *e = fat_search_entry(d->hdr, d->type, path);
-
-   if (!e)
-      return -ENOENT; /* file not found */
-
-   fat_file_handle *h = kzmalloc(sizeof(fat_file_handle));
-
-   if (!h)
-      return -ENOMEM;
-
-   h->fs = fs;
-   h->fops.fread = fat_read;
-   h->fops.fseek = fat_seek;
-   h->fops.fstat = fat_stat;
-   h->fops.fwrite = NULL;
-
-   h->e = e;
-   h->pos = 0;
-   h->curr_cluster = fat_get_first_cluster(e);
-
-   *out = h;
-   return 0;
-}
-
-STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
-{
-   fat_file_handle *new_h = kmalloc(sizeof(fat_file_handle));
-
-   if (!new_h)
-      return -ENOMEM;
-
-   memcpy(new_h, h, sizeof(fat_file_handle));
-   *dup_h = new_h;
-   return 0;
-}
 
 STATIC void fat_exclusive_lock(filesystem *fs)
 {
@@ -316,6 +278,74 @@ STATIC void fat_shared_unlock(filesystem *fs)
       return; /* read-only: no lock is needed */
 
    NOT_IMPLEMENTED();
+}
+
+STATIC void fat_file_exlock(fs_handle h)
+{
+   // TODO: introduce a real per-file lock
+   fat_exclusive_lock(get_fs(h));
+}
+
+STATIC void fat_file_exunlock(fs_handle h)
+{
+   // TODO: introduce a real per-file lock
+   fat_exclusive_unlock(get_fs(h));
+}
+
+STATIC void fat_file_shlock(fs_handle h)
+{
+   // TODO: introduce a real per-file lock
+   fat_shared_lock(get_fs(h));
+}
+
+STATIC void fat_file_shunlock(fs_handle h)
+{
+   // TODO: introduce a real per-file lock
+   fat_shared_unlock(get_fs(h));
+}
+
+STATIC int fat_open(filesystem *fs, const char *path, fs_handle *out)
+{
+   fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
+   fat_entry *e = fat_search_entry(d->hdr, d->type, path);
+
+   if (!e)
+      return -ENOENT; /* file not found */
+
+   fat_file_handle *h = kzmalloc(sizeof(fat_file_handle));
+
+   if (!h)
+      return -ENOMEM;
+
+   h->fs = fs;
+   h->fops.fread = fat_read;
+   h->fops.fseek = fat_seek;
+   h->fops.fstat = fat_stat;
+   h->fops.fwrite = NULL;
+
+   h->fops.exlock = fat_file_exlock;
+   h->fops.exunlock = fat_file_exunlock;
+   h->fops.shlock = fat_file_shlock;
+   h->fops.shunlock = fat_file_shunlock;
+
+   h->e = e;
+   h->pos = 0;
+   h->curr_cluster = fat_get_first_cluster(e);
+
+   *out = h;
+   return 0;
+}
+
+STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
+{
+   fat_file_handle *new_h = kmalloc(sizeof(fat_file_handle));
+
+   if (!new_h)
+      return -ENOMEM;
+
+   memcpy(new_h, h, sizeof(fat_file_handle));
+   *dup_h = new_h;
+   return 0;
 }
 
 filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)

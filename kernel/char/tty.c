@@ -108,6 +108,8 @@ static int tty_create_device_file(int minor, file_ops *ops)
 {
    (void)minor; /* ignored */
 
+   bzero(ops, sizeof(file_ops));
+
    ops->fread = tty_read;
    ops->fwrite = tty_write;
    ops->fseek = NULL;
