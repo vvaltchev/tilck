@@ -61,6 +61,8 @@ typedef struct PACKED {
 
 } fat32_header2;
 
+#define FAT_ENTRY_NTRES_BASE_LOW_CASE  0x08
+#define FAT_ENTRY_NTRES_EXT_LOW_CASE   0x10
 
 typedef struct PACKED {
 
@@ -76,6 +78,7 @@ typedef struct PACKED {
    u8 resbit2 : 1;  // reserved bit
 
    u8 DIR_NTRes;        // reserved to be used by Windows NT
+
    u8 DIR_CrtTimeTenth; // creation time, tenth of seconds (0-199)
    u16 DIR_CrtTime;     // creation time, granularity: 2 seconds
    u16 DIR_CrtDate;     // creation date

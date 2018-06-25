@@ -454,7 +454,11 @@ void fat_get_short_name(fat_entry *entry, char *destbuf)
    u32 d = 0;
 
    for (i = 0; i < 8 && entry->DIR_Name[i] != ' '; i++) {
-      destbuf[d++] = entry->DIR_Name[i];
+
+      char c = entry->DIR_Name[i];
+
+      destbuf[d++] =
+         entry->DIR_NTRes & FAT_ENTRY_NTRES_BASE_LOW_CASE ? tolower(c) : c;
    }
 
    i = 8; // beginning of the extension part.
@@ -462,7 +466,10 @@ void fat_get_short_name(fat_entry *entry, char *destbuf)
    if (entry->DIR_Name[i] != ' ') {
       destbuf[d++] = '.';
       for (; i < 11 && entry->DIR_Name[i] != ' '; i++) {
-         destbuf[d++] = entry->DIR_Name[i];
+
+         char c = entry->DIR_Name[i];
+         destbuf[d++] =
+            entry->DIR_NTRes & FAT_ENTRY_NTRES_EXT_LOW_CASE ? tolower(c) : c;
       }
    }
 
