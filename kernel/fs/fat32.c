@@ -7,6 +7,7 @@
 #include <exos/kmalloc.h>
 #include <exos/errno.h>
 #include <exos/datetime.h>
+#include <exos/user.h>
 
 #include <dirent.h> // system header
 
@@ -272,18 +273,18 @@ fat_getdents64_cb(fat_header *hdr,
                   int level)
 {
    char short_name[16];
-   const char *file_name = short_name;
+   const char *file_name = long_name ? long_name : short_name;
    getdents64_walk_ctx *ctx = arg;
+   struct linux_dirent64 ent;
+   int rc;
 
    if (ctx->curr_file_index < ctx->fh->curr_file_index) {
       ctx->curr_file_index++;
       return 0;
    }
 
-   fat_get_short_name(entry, short_name);
-
-   if (long_name)
-      file_name = long_name;
+   if (file_name == short_name)
+      fat_get_short_name(entry, short_name);
 
    const u32 fl = strlen(file_name);
    const u32 entry_size = fl + 1 + sizeof(struct linux_dirent64);
@@ -293,19 +294,27 @@ fat_getdents64_cb(fat_header *hdr,
       return -1; /* stop the walk */
    }
 
-   struct linux_dirent64 *ent = (void *)((char *)ctx->dirp + ctx->offset);
+   ent.d_ino = 0;
+   ent.d_off = ctx->offset + entry_size;
+   ent.d_reclen = entry_size;
+   ent.d_type = entry->directory ? DT_DIR : DT_REG;
 
-   // TODO: use fault resumable
+   struct linux_dirent64 *user_ent = (void *)((char *)ctx->dirp + ctx->offset);
+   rc = copy_to_user(user_ent, &ent, sizeof(ent));
 
-   ent->d_ino = 0;
-   ent->d_off = ctx->offset + entry_size;
-   ent->d_reclen = entry_size;
-   ent->d_type = entry->directory ? DT_DIR : DT_REG;
-   memcpy(ent->d_name, file_name, fl + 1);
+   if (rc < 0) {
+      ctx->rc = -EBADF;
+      return -1; /* stop the walk */
+   }
 
-   // TODO: end fault resumable area
+   rc = copy_to_user(user_ent->d_name, file_name, fl + 1);
 
-   ctx->offset = ent->d_off;
+   if (rc < 0) {
+      ctx->rc = -EBADF;
+      return -1; /* stop the walk */
+   }
+
+   ctx->offset = ent.d_off;
    ctx->curr_file_index++;
    ctx->fh->curr_file_index++;
    return 0;
