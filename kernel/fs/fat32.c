@@ -247,7 +247,21 @@ STATIC int fat_stat(fs_handle h, struct stat *statbuf)
    return 0;
 }
 
+typedef struct {
 
+   /* input variables */
+   struct linux_dirent64 *dirp;
+   u32 buf_size;
+   fat_file_handle *fh;
+
+   /* context variables */
+   u32 offset;
+   u32 curr_file_index;
+
+   /* output variables */
+   u32 rc;
+
+} getdents64_walk_ctx;
 
 STATIC int
 fat_getdents64_cb(fat_header *hdr,
@@ -257,15 +271,43 @@ fat_getdents64_cb(fat_header *hdr,
                   void *arg,
                   int level)
 {
-   char shortname[16];
-   fat_get_short_name(entry, shortname);
+   char short_name[16];
+   const char *file_name = short_name;
+   getdents64_walk_ctx *ctx = arg;
 
-   if (!entry->directory) {
-      printk("%s: %u bytes\n", long_name ? long_name : shortname, entry->DIR_FileSize);
-   } else {
-      printk("%s\n", long_name ? long_name : shortname);
+   if (ctx->curr_file_index < ctx->fh->curr_file_index) {
+      ctx->curr_file_index++;
+      return 0;
    }
 
+   fat_get_short_name(entry, short_name);
+
+   if (long_name)
+      file_name = long_name;
+
+   const u32 fl = strlen(file_name);
+   const u32 entry_size = fl + 1 + sizeof(struct linux_dirent64);
+
+   if (ctx->offset + entry_size > ctx->buf_size) {
+      ctx->rc = -EINVAL; /* the buffer is too small */
+      return -1; /* stop the walk */
+   }
+
+   struct linux_dirent64 *ent = (void *)((char *)ctx->dirp + ctx->offset);
+
+   // TODO: use fault resumable
+
+   ent->d_ino = 0;
+   ent->d_off = ctx->offset + entry_size;
+   ent->d_reclen = entry_size;
+   ent->d_type = entry->directory ? DT_DIR : DT_REG;
+   memcpy(ent->d_name, file_name, fl + 1);
+
+   // TODO: end fault resumable area
+
+   ctx->offset = ent->d_off;
+   ctx->curr_file_index++;
+   ctx->fh->curr_file_index++;
    return 0;
 }
 
@@ -279,26 +321,38 @@ fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
       return -ENOTDIR;
 
    fat_fs_device_data *dd = fh->fs->device_data;
-
-   // dirp->d_ino = 1;
-   // dirp->d_off = 0;
-   // dirp->d_type = DT_REG;
-   // memcpy(dirp->d_name, "fake_file", strlen("fake_file")+1);
-   // dirp->d_reclen = strlen("fake_file") + 1 + sizeof(*dirp);
-
    fat_walk_dir_ctx walk_ctx = {0};
+
+   getdents64_walk_ctx ctx = {
+      .dirp = dirp,
+      .buf_size = buf_size,
+      .fh = fh,
+      .offset = 0,
+      .curr_file_index = 0,
+      .rc = 0
+   };
+
+   u32 cluster_to_use = 0;
+
+   if (fh->e == dd->root_entry) {
+      cluster_to_use = dd->root_cluster;
+   } else {
+      cluster_to_use = fat_get_first_cluster(fh->e);
+   }
+
    rc = fat_walk_directory(&walk_ctx,
                            dd->hdr,
                            dd->type,
-                           fh->e,
-                           0, /* cluster */
+                           NULL,
+                           cluster_to_use,
                            fat_getdents64_cb,
-                           NULL, /* arg */
+                           &ctx, /* arg */
                            0 /* depth level */);
 
-   (void)rc;
+   if (rc != 0)
+      return rc;
 
-   return -ENOSYS;
+   return ctx.offset;
 }
 
 STATIC void fat_exclusive_lock(filesystem *fs)
@@ -416,6 +470,8 @@ filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
    d->hdr = (fat_header *) vaddr;
    d->type = fat_get_type(d->hdr);
    d->cluster_size = d->hdr->BPB_SecPerClus * d->hdr->BPB_BytsPerSec;
+   d->root_entry = fat_get_rootdir(d->hdr, d->type, &d->root_cluster);
+
    kmutex_init(&d->ex_mutex, KMUTEX_FL_RECURSIVE);
 
    filesystem *fs = kzmalloc(sizeof(filesystem));

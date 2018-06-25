@@ -14,6 +14,9 @@ typedef struct {
    fat_type type;
    ssize_t cluster_size;
 
+   fat_entry *root_entry;
+   u32 root_cluster;
+
    kmutex ex_mutex; // big exclusive whole-filesystem lock
                     // TODO: use a rw-lock when available in the kernel
 
@@ -29,6 +32,7 @@ typedef struct {
    fat_entry *e;
    u32 pos;
    u32 curr_cluster;
+   u32 curr_file_index; /* used by fat_getdents64 */
 
 } fat_file_handle;
 

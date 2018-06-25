@@ -316,7 +316,7 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
    if (rc < 0)
       return -ENAMETOOLONG;
 
-   printk("sys_stat64('%s')\n", path);
+   //printk("sys_stat64('%s')\n", path);
 
    rc = exvfs_open(path, &h);
 
