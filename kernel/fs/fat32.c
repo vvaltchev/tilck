@@ -245,6 +245,10 @@ STATIC int fat_stat(fs_handle h, struct stat *statbuf)
    return 0;
 }
 
+STATIC int fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
+{
+   NOT_IMPLEMENTED();
+}
 
 STATIC void fat_exclusive_lock(filesystem *fs)
 {
@@ -376,6 +380,7 @@ filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
    fs->open = fat_open;
    fs->close = fat_close;
    fs->dup = fat_dup;
+   fs->getdents64 = fat_getdents64;
 
    fs->fs_exlock = fat_exclusive_lock;
    fs->fs_exunlock = fat_exclusive_unlock;

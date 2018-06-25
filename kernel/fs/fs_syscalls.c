@@ -7,8 +7,9 @@
 #include <exos/fs/exvfs.h>
 #include <exos/errno.h>
 #include <exos/user.h>
+#include <exos/fault_resumable.h>
 
-#include <fcntl.h> // system header
+#include <fcntl.h>      // system header
 
 static inline bool is_fd_valid(int fd)
 {
@@ -24,6 +25,14 @@ int get_free_handle_num(task_info *task)
    return -1;
 }
 
+/*
+ * Even if getting the fs_handle this way is safe, using it won't be anymore
+ * after thread supported is added to the kernel. For example, a thread might
+ * work with given handle while another might destroy it.
+ *
+ * TODO: introduce a ref-count in the fs_base_handle struct and function like
+ * put_fs_handle() or rename both to something like acquire/release_fs_handle.
+ */
 static fs_handle get_fs_handle(int fd)
 {
    task_info *curr = get_curr_task();
@@ -364,6 +373,22 @@ sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
       return -EBADF;
 
    return 0;
+}
+
+sptr sys_getdents64(int fd, struct linux_dirent64 *user_dirp, u32 buf_size)
+{
+   fs_handle handle;
+   int rc;
+
+   printk("getdents64(fd: %d, dirp: %p, buf_size: %u\n", fd, user_dirp, buf_size);
+
+   handle = get_fs_handle(fd);
+
+   if (!handle)
+      return -EBADF;
+
+   rc = exvfs_getdents64(handle, user_dirp, buf_size);
+   return rc;
 }
 
 static void debug_print_fcntl_command(int cmd)

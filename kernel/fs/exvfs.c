@@ -286,6 +286,21 @@ void exvfs_fs_shunlock(filesystem *fs)
    fs->fs_shunlock(fs);
 }
 
+int exvfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+   ASSERT(hb != NULL);
+   ASSERT(hb->fs->getdents64);
+
+   exvfs_fs_shlock(hb->fs);
+   {
+      // NOTE: the fs implementation MUST handle an invalid user 'dirp' pointer.
+      hb->fs->getdents64(h, dirp, buf_size);
+   }
+   exvfs_fs_shunlock(hb->fs);
+   return -ENOSYS;
+}
+
 u32 exvfs_get_new_device_id(void)
 {
    return next_device_id++;

@@ -33,10 +33,11 @@ typedef void *fs_handle;
 typedef struct filesystem filesystem;
 
 typedef void (*func_close) (fs_handle);
-typedef int (*func_open) (filesystem *, const char *, fs_handle *out);
+typedef int (*func_open) (filesystem *, const char *, fs_handle *);
 typedef int (*func_ioctl) (fs_handle, uptr, void *);
 typedef int (*func_stat) (fs_handle, struct stat *);
-typedef int (*func_dup) (fs_handle, fs_handle *out);
+typedef int (*func_dup) (fs_handle, fs_handle *);
+typedef int (*func_getdents64) (fs_handle, struct linux_dirent64 *, u32);
 
 typedef ssize_t (*func_read) (fs_handle, char *, size_t);
 typedef ssize_t (*func_write) (fs_handle, char *, size_t);
@@ -65,6 +66,7 @@ struct filesystem {
    func_open open;
    func_close close;
    func_dup dup;
+   func_getdents64 getdents64;
 
    /* Whole-filesystem locks */
    func_fs_ex_lock fs_exlock;
@@ -98,6 +100,9 @@ typedef struct {
 /*
  * Each fs_handle struct should contain at its beginning the fields of the
  * following base struct [a rough attempt to emulate inheritance in C].
+ *
+ * TODO: introduce a ref-count in the fs_base_handle struct when implementing
+ * thread support.
  */
 typedef struct {
 
@@ -113,6 +118,7 @@ int exvfs_open(const char *path, fs_handle *out);
 int exvfs_ioctl(fs_handle h, uptr request, void *argp);
 int exvfs_stat(fs_handle h, struct stat *statbuf);
 int exvfs_dup(fs_handle h, fs_handle *dup_h);
+int exvfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
 void exvfs_close(fs_handle h);
 
 ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size);
