@@ -6,60 +6,9 @@
 #include <exos/kmalloc.h>
 #include <exos/errno.h>
 
-/* exOS is small: supporting 16 mount points seems more than enough. */
-static mountpoint *mps[16];
+#include "fs_int.h"
+
 static u32 next_device_id;
-
-int mountpoint_add(filesystem *fs, const char *path)
-{
-   u32 i;
-
-   for (i = 0; i < ARRAY_SIZE(mps); i++) {
-
-      if (!mps[i])
-         break; /* we've found a free slot */
-
-      if (mps[i]->fs == fs)
-         return -EBUSY;
-
-      if (!strcmp(mps[i]->path, path))
-         return -EBUSY;
-   }
-
-   if (i == ARRAY_SIZE(mps))
-      return -ENOMEM;
-
-   const u32 path_len = strlen(path);
-
-   /*
-    * Mount points MUST end with '/'.
-    */
-   ASSERT(path[path_len-1] == '/');
-
-   mountpoint *mp = kmalloc(sizeof(mountpoint) + path_len + 1);
-
-   if (!mp)
-      return -ENOMEM;
-
-   mp->fs = fs;
-   memcpy(mp->path, path, path_len + 1);
-   mps[i] = mp;
-
-   return 0;
-}
-
-void mountpoint_remove(filesystem *fs)
-{
-   for (u32 i = 0; i < ARRAY_SIZE(mps); i++) {
-      if (mps[i] && mps[i]->fs == fs) {
-         kfree(mps[i]);
-         mps[i] = NULL;
-         return;
-      }
-   }
-
-   panic("Unable to find mount point for filesystem at %p", fs);
-}
 
 /*
  * Returns:
@@ -118,34 +67,34 @@ STATIC int check_mountpoint_match(const char *mp, const char *path)
 
 int exvfs_open(const char *path, fs_handle *out)
 {
-   int rc;
-   int best_match_index = -1;
+   mountpoint *mp, *best_match = NULL;
    int best_match_len = 0;
+   mp_cursor cur;
+   int rc;
 
    ASSERT(path != NULL);
 
    if (*path != '/')
       panic("exvfs_open() works only with absolute paths");
 
-   for (u32 i = 0; i < ARRAY_SIZE(mps); i++) {
+   mountpoint_iter_begin(&cur);
 
-      if (!mps[i]) {
-         /* Not a valid mount point, skip. */
-         continue;
-      }
+   while ((mp = mountpoint_get_next(&cur))) {
 
-      int len = check_mountpoint_match(mps[i]->path, path);
+      int len = check_mountpoint_match(mp->path, path);
 
       if (len > best_match_len) {
-         best_match_index = i;
+         best_match = mp;
          best_match_len = len;
       }
    }
 
-   if (best_match_index < 0)
-      return -ENOENT;
+   if (!best_match) {
+      rc = -ENOENT;
+      goto out;
+   }
 
-   filesystem *fs = mps[best_match_index]->fs;
+   filesystem *fs = best_match->fs;
 
    exvfs_fs_shlock(fs);
    {
@@ -153,6 +102,8 @@ int exvfs_open(const char *path, fs_handle *out)
    }
    exvfs_fs_shunlock(fs);
 
+out:
+   mountpoint_iter_end(&cur);
    return rc;
 }
 

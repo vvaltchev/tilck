@@ -53,8 +53,8 @@ typedef void (*func_fs_sh_lock)(filesystem *);
 typedef void (*func_fs_sh_unlock)(filesystem *);
 
 
-#define EXVFS_FS_READ_ONLY  (0)
-#define EXVFS_FS_RW         (1 << 0)
+#define EXVFS_FS_RO        (0)
+#define EXVFS_FS_RW        (1 << 0)
 
 struct filesystem {
 

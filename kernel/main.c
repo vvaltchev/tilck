@@ -99,7 +99,7 @@ void mount_ramdisk(void)
    }
 
    filesystem *root_fs =
-      fat_mount_ramdisk(KERNEL_PA_TO_VA(ramdisk_paddr), EXVFS_FS_READ_ONLY);
+      fat_mount_ramdisk(KERNEL_PA_TO_VA(ramdisk_paddr), EXVFS_FS_RO);
 
    if (!root_fs)
       panic("Unable to mount the fat32 RAMDISK");

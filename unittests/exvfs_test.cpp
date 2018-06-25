@@ -41,7 +41,7 @@ TEST(exvfs, read_content_of_longname_file)
    const char *buf = load_once_file(PROJ_BUILD_DIR "/fatpart");
    char data[128] = {0};
 
-   filesystem *fat_fs = fat_mount_ramdisk((void *) buf, EXVFS_FS_READ_ONLY);
+   filesystem *fat_fs = fat_mount_ramdisk((void *) buf, EXVFS_FS_RO);
    ASSERT_TRUE(fat_fs != NULL);
 
    int r = mountpoint_add(fat_fs, "/");
@@ -78,7 +78,7 @@ TEST(exvfs, fseek)
    size_t fatpart_size;
    const char *fatpart = load_once_file(PROJ_BUILD_DIR "/fatpart", &fatpart_size);
 
-   filesystem *fat_fs = fat_mount_ramdisk((void *) fatpart, EXVFS_FS_READ_ONLY);
+   filesystem *fat_fs = fat_mount_ramdisk((void *) fatpart, EXVFS_FS_RO);
    ASSERT_TRUE(fat_fs != NULL);
 
    int r = mountpoint_add(fat_fs, "/");

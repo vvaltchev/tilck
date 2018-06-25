@@ -132,7 +132,7 @@ TEST(fat32, fread)
    filesystem *fs =
       fat_mount_ramdisk(
          (void *) load_once_file(PROJ_BUILD_DIR "/fatpart"),
-         EXVFS_FS_READ_ONLY);
+         EXVFS_FS_RO);
 
    fs_handle h = NULL;
    int rc = fs->open(fs, "/sbin/init", &h);
