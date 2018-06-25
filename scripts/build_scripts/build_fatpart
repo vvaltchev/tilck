@@ -29,6 +29,9 @@ $mlabel -i $dest ::EXOS
 rm -rf $bdir/sysroot
 cp -r $maindir/sysroot $bdir/
 
+# Remove the README file that is not supposed to be in the actual sysroot
+rm $bdir/sysroot/README
+
 cd $bdir/sysroot
 
 # hard-link init to sysroot/sbin
