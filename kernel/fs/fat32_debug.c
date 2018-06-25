@@ -99,16 +99,17 @@ static int dump_dir_entry(fat_header *hdr,
    }
 
    if (entry->directory) {
+      if (strcmp(shortname, ".") && strcmp(shortname, "..")) {
 
-      fat_walk_directory((fat_walk_dir_ctx*)arg,
-                         hdr,
-                         ft,
-                         NULL,
-                         fat_get_first_cluster(entry),
-                         &dump_dir_entry,
-                         arg,
-                         level + 1);
-      return 0;
+         fat_walk_directory((fat_walk_dir_ctx*)arg,
+                            hdr,
+                            ft,
+                            NULL,
+                            fat_get_first_cluster(entry),
+                            &dump_dir_entry,
+                            arg,
+                            level + 1);
+      }
    }
 
    return 0;

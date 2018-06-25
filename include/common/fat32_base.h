@@ -61,8 +61,17 @@ typedef struct PACKED {
 
 } fat32_header2;
 
+/*
+ * Special flags in DIR_NTRes telling us if the base part or the extention of
+ * a short name is entirely in lower case.
+ */
+
 #define FAT_ENTRY_NTRES_BASE_LOW_CASE  0x08
 #define FAT_ENTRY_NTRES_EXT_LOW_CASE   0x10
+
+/* In case an extact comparison using DIR_Name is needed */
+#define FAT_DIR_DOT      ".          "
+#define FAT_DIR_DOT_DOT  "..         "
 
 typedef struct PACKED {
 

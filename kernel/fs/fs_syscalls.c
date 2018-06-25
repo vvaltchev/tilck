@@ -380,7 +380,8 @@ sptr sys_getdents64(int fd, struct linux_dirent64 *user_dirp, u32 buf_size)
    fs_handle handle;
    int rc;
 
-   printk("getdents64(fd: %d, dirp: %p, buf_size: %u)\n", fd, user_dirp, buf_size);
+   printk("[TID: %d] getdents64(fd: %d, dirp: %p, buf_size: %u)\n",
+          get_curr_task()->tid, fd, user_dirp, buf_size);
 
    handle = get_fs_handle(fd);
 
@@ -432,13 +433,15 @@ static void debug_print_fcntl_command(int cmd)
 
 sptr sys_fcntl64(int fd, int cmd, uptr arg)
 {
-   printk("fcntl(fd = %d, cmd = %d, arg: %p)\n", fd, cmd, arg);
-   debug_print_fcntl_command(cmd);
+   // TODO: add support for FD_CLOEXEC
 
-   if (cmd == F_SETFD) {
-      if (arg & FD_CLOEXEC)
-         printk("fcntl: set FD_CLOEXEC flag\n");
-   }
+   //printk("fcntl(fd = %d, cmd = %d, arg: %p)\n", fd, cmd, arg);
+   //debug_print_fcntl_command(cmd);
+
+   // if (cmd == F_SETFD) {
+   //    if (arg & FD_CLOEXEC)
+   //       printk("fcntl: set FD_CLOEXEC flag\n");
+   // }
 
    return -EINVAL; // we don't support any commands, for now.
 }

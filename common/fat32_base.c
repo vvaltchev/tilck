@@ -275,15 +275,6 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
             return 0;
          }
 
-         /*
-          * '.' is NOT a legal char in the short name. Therefore, with this
-          * simple check, we skip the directories '.' and '..'.
-          */
-         if (entry[i].DIR_Name[0] == '.') {
-           continue;
-         }
-
-
          const char *long_name_ptr = NULL;
 
          if (ctx->long_name_size > 0 && ctx->is_valid) {
