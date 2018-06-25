@@ -8,6 +8,8 @@
 #include <exos/errno.h>
 #include <exos/datetime.h>
 
+#include <dirent.h> // system header
+
 STATIC void fat_close(fs_handle handle)
 {
    fat_file_handle *h = (fat_file_handle *)handle;
@@ -245,9 +247,58 @@ STATIC int fat_stat(fs_handle h, struct stat *statbuf)
    return 0;
 }
 
-STATIC int fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
+
+
+STATIC int
+fat_getdents64_cb(fat_header *hdr,
+                  fat_type ft,
+                  fat_entry *entry,
+                  const char *long_name,
+                  void *arg,
+                  int level)
 {
-   NOT_IMPLEMENTED();
+   char shortname[16];
+   fat_get_short_name(entry, shortname);
+
+   if (!entry->directory) {
+      printk("%s: %u bytes\n", long_name ? long_name : shortname, entry->DIR_FileSize);
+   } else {
+      printk("%s\n", long_name ? long_name : shortname);
+   }
+
+   return 0;
+}
+
+STATIC int
+fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
+{
+   fat_file_handle *fh = h;
+   int rc;
+
+   if (!fh->e->directory && !fh->e->volume_id)
+      return -ENOTDIR;
+
+   fat_fs_device_data *dd = fh->fs->device_data;
+
+   // dirp->d_ino = 1;
+   // dirp->d_off = 0;
+   // dirp->d_type = DT_REG;
+   // memcpy(dirp->d_name, "fake_file", strlen("fake_file")+1);
+   // dirp->d_reclen = strlen("fake_file") + 1 + sizeof(*dirp);
+
+   fat_walk_dir_ctx walk_ctx = {0};
+   rc = fat_walk_directory(&walk_ctx,
+                           dd->hdr,
+                           dd->type,
+                           fh->e,
+                           0, /* cluster */
+                           fat_getdents64_cb,
+                           NULL, /* arg */
+                           0 /* depth level */);
+
+   (void)rc;
+
+   return -ENOSYS;
 }
 
 STATIC void fat_exclusive_lock(filesystem *fs)

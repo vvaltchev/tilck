@@ -380,7 +380,7 @@ sptr sys_getdents64(int fd, struct linux_dirent64 *user_dirp, u32 buf_size)
    fs_handle handle;
    int rc;
 
-   printk("getdents64(fd: %d, dirp: %p, buf_size: %u\n", fd, user_dirp, buf_size);
+   printk("getdents64(fd: %d, dirp: %p, buf_size: %u)\n", fd, user_dirp, buf_size);
 
    handle = get_fs_handle(fd);
 
