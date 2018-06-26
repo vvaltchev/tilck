@@ -15,12 +15,11 @@ static u32 next_device_id;
  *  - 0 in case of non match.
  *  - strlen(mp) in case of a match
  */
-STATIC int check_mountpoint_match(const char *mp, const char *path)
+STATIC int
+check_mountpoint_match(const char *mp, u32 lm, const char *path, u32 lp)
 {
    int m = 0;
-   const size_t lm = strlen(mp);
-   const size_t lp = strlen(path);
-   const size_t min_len = MIN(lm, lp);
+   const u32 min_len = MIN(lm, lp);
 
    /*
     * Mount points MUST end with '/'.
@@ -41,13 +40,17 @@ STATIC int check_mountpoint_match(const char *mp, const char *path)
     */
    ASSERT(m > 0);
 
-   if (mp[m] != 0) {
+   if (mp[m]) {
+
+      if (mp[m] == '/' && !mp[m + 1] && !path[m]) {
+         /* path is like '/dev' while mp is like '/dev/' */
+         return m;
+      }
 
       /*
        * The match stopped before the end of mount point's path.
        * Therefore, there is no match.
        */
-
       return 0;
    }
 
@@ -68,20 +71,21 @@ STATIC int check_mountpoint_match(const char *mp, const char *path)
 int exvfs_open(const char *path, fs_handle *out)
 {
    mountpoint *mp, *best_match = NULL;
-   int best_match_len = 0;
+   int pl, rc, best_match_len = 0;
    mp_cursor cur;
-   int rc;
 
    ASSERT(path != NULL);
 
    if (*path != '/')
       panic("exvfs_open() works only with absolute paths");
 
+   pl = strlen(path);
+
    mountpoint_iter_begin(&cur);
 
    while ((mp = mountpoint_get_next(&cur))) {
 
-      int len = check_mountpoint_match(mp->path, path);
+      int len = check_mountpoint_match(mp->path, mp->path_len, path, pl);
 
       if (len > best_match_len) {
          best_match = mp;
@@ -98,7 +102,8 @@ int exvfs_open(const char *path, fs_handle *out)
 
    exvfs_fs_shlock(fs);
    {
-      rc = fs->open(fs, path + best_match_len - 1, out);
+      path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
+      rc = fs->open(fs, path, out);
    }
    exvfs_fs_shunlock(fs);
 

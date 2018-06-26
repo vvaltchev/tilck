@@ -19,7 +19,12 @@ using namespace std;
 extern "C" {
    #include <exos/fs/fat32.h>
    #include <exos/fs/exvfs.h>
-   int check_mountpoint_match(const char *mp, const char *path);
+   int check_mountpoint_match(const char *mp, u32 lm, const char *path, u32 lp);
+}
+
+static int mountpoint_match_wrapper(const char *mp, const char *path)
+{
+   return check_mountpoint_match(mp, strlen(mp), path, strlen(path));
 }
 
 // Implemented in fat32_test.cpp
@@ -27,11 +32,12 @@ const char *load_once_file(const char *filepath, size_t *fsize = nullptr);
 
 TEST(exvfs, check_mountpoint_match)
 {
-   EXPECT_EQ(check_mountpoint_match("/", "/"), 1);
-   EXPECT_EQ(check_mountpoint_match("/", "/file"), 1);
-   EXPECT_EQ(check_mountpoint_match("/", "/dir1/file2"), 1);
-   EXPECT_EQ(check_mountpoint_match("/dev/", "/dev/tty0"), 5);
-   EXPECT_EQ(check_mountpoint_match("/devices/", "/dev"), 0);
+   EXPECT_EQ(mountpoint_match_wrapper("/", "/"), 1);
+   EXPECT_EQ(mountpoint_match_wrapper("/", "/file"), 1);
+   EXPECT_EQ(mountpoint_match_wrapper("/", "/dir1/file2"), 1);
+   EXPECT_EQ(mountpoint_match_wrapper("/dev/", "/dev/tty0"), 5);
+   EXPECT_EQ(mountpoint_match_wrapper("/devices/", "/dev"), 0);
+   EXPECT_EQ(mountpoint_match_wrapper("/dev/", "/dev"), 4);
 }
 
 TEST(exvfs, read_content_of_longname_file)

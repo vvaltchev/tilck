@@ -61,6 +61,7 @@ int mountpoint_add(filesystem *fs, const char *path)
    }
 
    mp->fs = fs;
+   mp->path_len = path_len;
    memcpy(mp->path, path, path_len + 1);
    mps[i] = mp;
 

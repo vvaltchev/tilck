@@ -93,6 +93,7 @@ typedef struct {
 typedef struct {
 
    filesystem *fs;
+   u32 path_len;
    char path[0];
 
 } mountpoint;

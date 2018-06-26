@@ -91,8 +91,8 @@ sptr sys_open(const char *user_path, int flags, int mode)
    ret = free_fd;
 
 end:
-   printk("[TID: %i] sys_open('%s', %x, %x) => %d\n",
-          curr->tid, orig_path, flags, mode, ret);
+   printk("[TID: %i] sys_open('%s' => '%s', %x, %x) => %d\n",
+          curr->tid, orig_path, path, flags, mode, ret);
 
    enable_preemption();
    return ret;
