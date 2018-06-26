@@ -245,14 +245,14 @@ function build_busybox {
       ver=1.28.4
       tarname=busybox-$ver.tar.bz2
 
-      if ! [ -f $tarname ]; then
-         wget https://busybox.net/downloads/$tarname
+      if ! [ -f cache/$tarname ]; then
+         (cd cache && wget https://busybox.net/downloads/$tarname)
       else
          echo "NOTE: Skipping the download of $tarname"
       fi
 
       echo "Extracting the package... "
-      tar xfj $tarname
+      tar xfj cache/$tarname
 
       mv busybox-$ver busybox
       pushd busybox
@@ -264,7 +264,11 @@ function build_busybox {
       run_command2 "make -j" build.log
 
       popd
-      rm $tarname
+
+      # For busybox in particular, it is never convenient to remove the tar file
+      # from the cache.
+
+      # rm $tarname
 
    else
       show_skip_component_msg "BUSYBOX"
@@ -291,6 +295,7 @@ X86_TOOLCHAIN=$TC/$X86_TOOLCHAIN_DIR_NAME/bin
 export PATH="$MAIN_DIR/scripts/build_scripts:$X86_TOOLCHAIN:$PATH"
 
 mkdir -p $TC
+mkdir -p $TC/cache
 cd $TC
 
 # Set the CMAKE variable in order to single functions to be able to use it
