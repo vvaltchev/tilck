@@ -290,7 +290,19 @@ fat_getdents64_cb(fat_header *hdr,
    const u32 entry_size = fl + 1 + sizeof(struct linux_dirent64);
 
    if (ctx->offset + entry_size > ctx->buf_size) {
-      ctx->rc = -EINVAL; /* the buffer is too small */
+
+      if (!ctx->offset) {
+
+         /*
+          * We haven't "returned" any entries yet and the buffer is too small
+          * for our first entry.
+          */
+
+         ctx->rc = -EINVAL;
+         return -1; /* stop the walk */
+      }
+
+      /* We "returned" at least one entry */
       return -1; /* stop the walk */
    }
 
@@ -360,6 +372,9 @@ fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
 
    if (rc != 0)
       return rc;
+
+   if (ctx.rc != 0)
+      return ctx.rc;
 
    return ctx.offset;
 }
