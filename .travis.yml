@@ -18,17 +18,17 @@ matrix:
       dist: trusty
       sudo: false
       language: generic
-      env: RELEASE=1
+      env: NO_BUSYBOX=1 RELEASE=1
     - os: linux
       dist: trusty
       sudo: false
       language: generic
-      env: RELEASE=0 CMAKE_ARGS='-DUSE_GCOV=on'
+      env: NO_BUSYBOX=1 RELEASE=0 CMAKE_ARGS='-DUSE_GCOV=on'
     - os: linux
       dist: trusty
       sudo: false
       language: generic
-      env: RELEASE=0 CXX=clang++
+      env: NO_BUSYBOX=1 RELEASE=0 CXX=clang++
 
 
 before_install:

@@ -345,3 +345,6 @@ build_gtest
 build_gnuefi
 build_mtools
 
+if [ -z "$NO_BUSYBOX" ]; then
+   build_busybox
+fi
