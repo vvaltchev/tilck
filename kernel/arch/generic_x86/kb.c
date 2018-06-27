@@ -164,29 +164,13 @@ static bool lastWasE0 = false;
 
 static u8 next_kb_interrupts_to_ignore = 0; // HACK to skip 0xE1 sequences
 
-static void kbd_wait(void)
-{
-   u8 temp;
-
-   /* Clear all keyboard buffers (output and command buffers) */
-   do
-   {
-      temp = inb(KB_CONTROL_PORT);
-
-      if (temp & KB_CTRL_OUTPUT_FULL) {
-         inb(KB_DATA_PORT);
-      }
-
-   } while (temp & KB_CTRL_INPUT_FULL);
-}
-
 void kb_led_set(u8 val)
 {
-   kbd_wait();
+   kb_ctrl_full_wait();
    outb(KB_DATA_PORT, 0xED);
-   kbd_wait();
+   kb_ctrl_full_wait();
    outb(KB_DATA_PORT, val & 7);
-   kbd_wait();
+   kb_ctrl_full_wait();
 }
 
 void num_lock_switch(bool val)
@@ -327,8 +311,6 @@ static void (*keyPressHandlers[2])(u8) = {
    handle_key_pressed, handle_E0_key_pressed
 };
 
-
-
 void keyboard_handler()
 {
    u8 scancode;
@@ -360,7 +342,6 @@ void keyboard_handler()
       return;
    }
 
-
    if (lastWasE0) {
       // Fake lshift pressed (2A) or released (AA)
       if (scancode == 0x2A || scancode == 0xAA) {
@@ -380,14 +361,14 @@ end:
    lastWasE0 = false;
 }
 
-// Reboot procedure using the keyboard controller
+// Reboot procedure using the 8042 PS/2 controller
 
 void reboot(void)
 {
    disable_interrupts_forced(); /* Disable the interrupts before rebooting */
-   kbd_wait();
 
-   outb(KB_CONTROL_PORT, KB_CMD_CPU_RESET);
+   if (!kb_ctrl_send_cmd(KB_CMD_CPU_RESET))
+      panic("Unable to reboot using the 8042 controller: timeout in send cmd");
 
    while (true) {
       halt();
@@ -407,11 +388,11 @@ void reboot(void)
 
 void kb_set_typematic_byte(u8 val)
 {
-   kbd_wait();
+   kb_ctrl_full_wait();
    outb(KB_DATA_PORT, 0xF3);
-   kbd_wait();
+   kb_ctrl_full_wait();
    outb(KB_DATA_PORT, 0);
-   kbd_wait();
+   kb_ctrl_full_wait();
 }
 
 /* This will be executed in a tasklet */
@@ -422,24 +403,15 @@ void init_kb(void)
    ringbuf_init(&kb_cooked_ringbuf, KB_CBUF_SIZE, 1, kb_cooked_buf);
    kcond_init(&kb_cond);
 
-   if (!kb_ctrl_send_cmd(0xAD))
-      panic("KB: send cmd timed out");
-
-   if (!kb_ctrl_send_cmd(0xA7))
-      panic("KB: send cmd timed out");
-
-
    if (!kb_ctrl_self_test()) {
+
+      printk("Warning: PS/2 controller self-test failed, trying a reset\n");
+
       if (!kb_ctrl_reset())
-         panic("Unable to initialize the keyboard controller");
+         panic("Unable to initialize the PS/2 controller");
+
+      printk("PS/2 controller: reset successful\n");
    }
-
-   if (!kb_ctrl_send_cmd(0xAD + 1))
-      panic("KB: send cmd timed out");
-
-   if (!kb_ctrl_send_cmd(0xA7 + 1))
-      panic("KB: send cmd timed out");
-
 
    num_lock_switch(numLock);
    caps_lock_switch(capsLock);

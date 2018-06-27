@@ -16,6 +16,12 @@
 #define KB_CTRL_CMD_RESET            0xFF
 #define KB_CTRL_CMD_SELFTEST         0xAA
 
+#define KB_CTRL_CMD_PORT1_DISABLE    0xAD
+#define KB_CTRL_CMD_PORT1_ENABLE     0xAE
+#define KB_CTRL_CMD_PORT2_DISABLE    0xA7
+#define KB_CTRL_CMD_PORT2_ENABLE     0xA8
+
+
 #define KB_RESPONSE_ACK              0xFA
 #define KB_RESPONSE_RESEND           0xFE
 #define KB_RESPONSE_BAT_OK           0xAA
@@ -84,12 +90,44 @@ static NODISCARD bool kb_ctrl_send_cmd_and_wait_response(u8 cmd)
    return true;
 }
 
+static void kb_ctrl_disable_ports(void)
+{
+   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT1_DISABLE))
+      panic("KB: send cmd timed out");
+
+   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT2_DISABLE))
+      panic("KB: send cmd timed out");
+}
+
+static void kb_ctrl_enable_ports(void)
+{
+   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT1_ENABLE))
+      panic("KB: send cmd timed out");
+
+   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT2_ENABLE))
+      panic("KB: send cmd timed out");
+}
+
+static void kb_ctrl_full_wait(void)
+{
+   u8 temp;
+
+   /* Clear all keyboard buffers (output and command buffers) */
+   do
+   {
+      temp = inb(KB_CONTROL_PORT);
+
+      if (temp & KB_CTRL_OUTPUT_FULL) {
+         inb(KB_DATA_PORT);
+      }
+
+   } while (temp & KB_CTRL_INPUT_FULL);
+}
+
 static NODISCARD bool kb_ctrl_self_test(void)
 {
    u8 res, resend_count = 0;
    bool success = false;
-
-   printk("KB: self test\n");
 
    do {
 
@@ -108,7 +146,6 @@ static NODISCARD bool kb_ctrl_self_test(void)
       success = true;
 
 out:
-   printk("KB: self test success: %u\n", success);
    return success;
 }
 
@@ -121,6 +158,7 @@ static NODISCARD bool kb_ctrl_reset(void)
 
    kb_ctrl = inb(KB_CONTROL_PORT);
 
+   printk("KB: reset procedure\n");
    printk("KB: initial status: 0x%x\n", kb_ctrl);
    printk("KB: sending 0xFF (reset) to KB (data)\n");
 
@@ -133,7 +171,7 @@ static NODISCARD bool kb_ctrl_reset(void)
          break;
 
       res = inb(KB_DATA_PORT);
-      printk("response (data): 0x%x\n", res);
+      printk("KB: response: 0x%x\n", res);
       resend_count++;
 
    } while (res == KB_RESPONSE_RESEND);
@@ -152,7 +190,7 @@ static NODISCARD bool kb_ctrl_reset(void)
       goto out;
 
    res = inb(KB_DATA_PORT);
-   printk("response (data): 0x%x\n", res);
+   printk("KB: response: 0x%x\n", res);
 
    if (res == KB_RESPONSE_BAT_OK)
       success = true;
