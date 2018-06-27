@@ -27,61 +27,8 @@
 #include <exos/ringbuf.h>
 #include <exos/timer.h>
 
-#define KB_CBUF_SIZE 256
-
-static char kb_cooked_buf[256];
-static ringbuf kb_cooked_ringbuf;
-
-bool kb_cbuf_is_empty(void)
-{
-   return ringbuf_is_empty(&kb_cooked_ringbuf);
-}
-
-bool kb_cbuf_is_full(void)
-{
-   return ringbuf_is_full(&kb_cooked_ringbuf);
-}
-
-char kb_cbuf_read_elem(void)
-{
-   u8 ret;
-   ASSERT(!kb_cbuf_is_empty());
-   DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&kb_cooked_ringbuf, &ret));
-   return (char)ret;
-}
-
-static ALWAYS_INLINE bool kb_cbuf_drop_last_written_elem(char *c)
-{
-   char unused;
-
-   if (!c)
-      c = &unused;
-
-   return ringbuf_unwrite_elem(&kb_cooked_ringbuf, c);
-}
-
-static ALWAYS_INLINE bool kb_cbuf_write_elem(char c)
-{
-   return ringbuf_write_elem1(&kb_cooked_ringbuf, c);
-}
-
-#define KB_DATA_PORT 0x60
-#define KB_CONTROL_PORT 0x64
-
-/* keyboard interface bits */
-#define KBRD_BIT_KDATA 0     // keyboard data is in buffer
-                             // (output buffer is empty) (bit 0)
-
-#define KBRD_BIT_UDATA 1     // user data is in buffer
-                             // (command buffer is empty) (bit 1)
-
-#define KBRD_RESET 0xFE /* reset CPU command */
-
-#define KB_ACK 0xFA
-#define KB_RESEND 0xFE
-
-#define BIT(n) (1 << (n))
-#define CHECK_FLAG(flags, n) ((flags) & BIT(n))
+#include "kb_int_cbuf.h"
+#include "kb_int.h"
 
 /* US Keyboard Layout.  */
 static u8 kbd_us[128] =
@@ -224,20 +171,20 @@ static void kbd_wait(void)
    /* Clear all keyboard buffers (output and command buffers) */
    do
    {
-      temp = inb(KB_CONTROL_PORT); /* empty user data */
-      if (CHECK_FLAG(temp, KBRD_BIT_KDATA) != 0) {
-         inb(KB_DATA_PORT); /* empty keyboard data */
+      temp = inb(KB_CONTROL_PORT);
+
+      if (CHECK_FLAG(temp, KB_CTRL_BIT_OUTPUT_FULL)) {
+         inb(KB_DATA_PORT);
       }
-   } while (CHECK_FLAG(temp, KBRD_BIT_UDATA) != 0);
+
+   } while (CHECK_FLAG(temp, KB_CTRL_BIT_INPUT_FULL));
 }
 
 void kb_led_set(u8 val)
 {
    kbd_wait();
-
    outb(KB_DATA_PORT, 0xED);
    kbd_wait();
-
    outb(KB_DATA_PORT, val & 7);
    kbd_wait();
 }
@@ -387,11 +334,14 @@ void keyboard_handler()
    u8 scancode;
    ASSERT(are_interrupts_enabled());
 
-   while (inb(KB_CONTROL_PORT) & 2) {
+   while (CHECK_FLAG(inb(KB_CONTROL_PORT), KB_CTRL_BIT_INPUT_FULL)) {
       //check if scancode is ready
       //this is useful since sometimes the IRQ is triggered before
       //the data is available.
    }
+
+   if (!CHECK_FLAG(inb(KB_CONTROL_PORT), KB_CTRL_BIT_OUTPUT_FULL))
+      return;
 
    /* Read from the keyboard's data buffer */
    scancode = inb(KB_DATA_PORT);
@@ -440,7 +390,7 @@ void reboot(void)
    disable_interrupts_forced(); /* Disable the interrupts before rebooting */
    kbd_wait();
 
-   outb(KB_CONTROL_PORT, KBRD_RESET);
+   outb(KB_CONTROL_PORT, KB_CMD_CPU_RESET);
 
    while (true) {
       halt();
@@ -475,11 +425,15 @@ void init_kb(void)
    ringbuf_init(&kb_cooked_ringbuf, KB_CBUF_SIZE, 1, kb_cooked_buf);
    kcond_init(&kb_cond);
 
+   if (!kb_ctrl_self_test()) {
+      if (!kb_ctrl_reset())
+         panic("Unable to initialize the keyboard controller");
+   }
+
    num_lock_switch(numLock);
    caps_lock_switch(capsLock);
    kb_set_typematic_byte(0);
 
    printk("keyboard initialized.\n");
-
    enable_preemption();
 }
