@@ -36,10 +36,28 @@ static void textmode_set_row(int row, u16 *data, bool flush)
    void *dest_addr = VIDEO_ADDR + row * VIDEO_COLS;
    void *src_addr = data;
 
-   if (x86_cpu_features.can_use_sse2 && !in_panic())
-      fpu_memcpy256_nt_sse2(dest_addr, src_addr, VIDEO_COLS >> 4);
-   else
-      memcpy32(dest_addr, src_addr, VIDEO_COLS >> 1);
+  /*
+   * TODO: investigate why here SSE+ instructions cannot always be used,
+   * even if we are in a FPU context, while the fb_console (fb_raw.c) can use
+   * them without issues in (apparently) the same context.
+   *
+   * Details: while using QEMU + KVM, we get a "KVM internal error. Suberror: 1"
+   * if any AVX mov instructions are used, while SSE 2 instructions work fine.
+   * Without KVM, QEMU does not support AVX therefore we can use only up to SSE3
+   * and no issues are experiences. On real hardware, in most of the cases, SSE
+   * instructions work, while AVX don't. On Intel Celeron N3160 not even SSE
+   * instruction can be used in this context. This is certainly an issue related
+   * with this specific context, as in general both SSE+ and AVX+ instructions
+   * can be used in exOS, as fb_raw.c shows. In theory textmode_set_row() is
+   * executed exactly in the same context as fb_set_row_optimized(), but in
+   * practice there seems to be at least one difference.
+   *
+   * My current (random) guess: could the difference be that in this case we're
+   * accessing the low-mem (< 1 MB) ? The fb_console accesses high IO-mapped
+   * memory instead.
+   *
+   */
+   memcpy32(dest_addr, src_addr, VIDEO_COLS >> 1);
 }
 
 /*

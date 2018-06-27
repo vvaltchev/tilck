@@ -6,12 +6,12 @@
 #include <common/arch/generic_x86/x86_utils.h>
 #include <common/arch/generic_x86/cpu_features.h>
 
-x86_cpu_features_t x86_cpu_features;
+volatile x86_cpu_features_t x86_cpu_features;
 
 void get_x86_cpu_features(void)
 {
    u32 a = 0, b = 0, c = 0, d = 0;
-   x86_cpu_features_t *f = &x86_cpu_features;
+   x86_cpu_features_t *f = (void *)&x86_cpu_features;
 
    cpuid(0, &a, &b, &c, &d);
 

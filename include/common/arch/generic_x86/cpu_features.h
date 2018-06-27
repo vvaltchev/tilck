@@ -99,7 +99,7 @@ typedef struct {
 
 } x86_cpu_features_t;
 
-extern x86_cpu_features_t x86_cpu_features;
+extern volatile x86_cpu_features_t x86_cpu_features;
 
 void get_x86_cpu_features(void);
 void dump_x86_features(void);
