@@ -7,10 +7,10 @@
 /* keyboard interface bits */
 
 /* ctrl bit 0: must be set before attempting to read data from data port */
-#define KB_CTRL_BIT_OUTPUT_FULL 0
+#define KB_CTRL_OUTPUT_FULL       (1 << 0)
 
 /* ctrl bit 1: must be clear before attempting to write data to the data or control port */
-#define KB_CTRL_BIT_INPUT_FULL  1
+#define KB_CTRL_INPUT_FULL        (1 << 1)
 
 #define KB_CMD_CPU_RESET             0xFE
 #define KB_CTRL_CMD_RESET            0xFF
@@ -21,18 +21,14 @@
 #define KB_RESPONSE_BAT_OK           0xAA
 #define KB_RESPONSE_SELF_TEST_OK     0x55
 
-
-#define BIT(n) (1 << (n))
-#define CHECK_FLAG(flags, n) ((flags) & BIT(n))
-
 static ALWAYS_INLINE NODISCARD bool kb_ctrl_is_pending_data(void)
 {
-   return CHECK_FLAG(inb(KB_CONTROL_PORT), KB_CTRL_BIT_OUTPUT_FULL);
+   return !!(inb(KB_CONTROL_PORT) & KB_CTRL_OUTPUT_FULL);
 }
 
 static ALWAYS_INLINE NODISCARD bool kb_ctrl_is_read_for_next_cmd(void)
 {
-   return !CHECK_FLAG(inb(KB_CONTROL_PORT), KB_CTRL_BIT_INPUT_FULL);
+   return !(inb(KB_CONTROL_PORT) & KB_CTRL_INPUT_FULL);
 }
 
 static ALWAYS_INLINE NODISCARD bool kb_wait_cmd_fetched(void)

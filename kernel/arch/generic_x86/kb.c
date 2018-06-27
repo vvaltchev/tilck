@@ -173,11 +173,11 @@ static void kbd_wait(void)
    {
       temp = inb(KB_CONTROL_PORT);
 
-      if (CHECK_FLAG(temp, KB_CTRL_BIT_OUTPUT_FULL)) {
+      if (temp & KB_CTRL_OUTPUT_FULL) {
          inb(KB_DATA_PORT);
       }
 
-   } while (CHECK_FLAG(temp, KB_CTRL_BIT_INPUT_FULL));
+   } while (temp & KB_CTRL_INPUT_FULL);
 }
 
 void kb_led_set(u8 val)
@@ -334,13 +334,10 @@ void keyboard_handler()
    u8 scancode;
    ASSERT(are_interrupts_enabled());
 
-   while (CHECK_FLAG(inb(KB_CONTROL_PORT), KB_CTRL_BIT_INPUT_FULL)) {
-      //check if scancode is ready
-      //this is useful since sometimes the IRQ is triggered before
-      //the data is available.
-   }
+   if (!kb_wait_cmd_fetched())
+      panic("KB: fatal error: timeout in kb_wait_cmd_fetched");
 
-   if (!CHECK_FLAG(inb(KB_CONTROL_PORT), KB_CTRL_BIT_OUTPUT_FULL))
+   if (!kb_ctrl_is_pending_data())
       return;
 
    /* Read from the keyboard's data buffer */
