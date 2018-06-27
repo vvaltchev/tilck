@@ -86,45 +86,38 @@ static NODISCARD bool kb_ctrl_send_cmd_and_wait_response(u8 cmd)
 
 static NODISCARD bool kb_ctrl_self_test(void)
 {
-   uptr var;
    u8 res, resend_count = 0;
    bool success = false;
 
-   disable_interrupts(&var);
-   {
-      printk("KB: self test\n");
+   printk("KB: self test\n");
 
-      do {
+   do {
 
-         if (resend_count >= 3)
-            break;
+      if (resend_count >= 3)
+         break;
 
-         if (!kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_SELFTEST))
-            goto out;
+      if (!kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_SELFTEST))
+         goto out;
 
-         res = inb(KB_DATA_PORT);
-         resend_count++;
+      res = inb(KB_DATA_PORT);
+      resend_count++;
 
-      } while (res == KB_RESPONSE_RESEND);
+   } while (res == KB_RESPONSE_RESEND);
 
-      if (res == KB_RESPONSE_SELF_TEST_OK)
-         success = true;
-   }
+   if (res == KB_RESPONSE_SELF_TEST_OK)
+      success = true;
+
 out:
    printk("KB: self test success: %u\n", success);
-   enable_interrupts(&var);
    return success;
 }
 
 static NODISCARD bool kb_ctrl_reset(void)
 {
-   uptr var;
    u8 res;
    u8 kb_ctrl;
    u8 resend_count = 0;
    bool success = false;
-
-   disable_interrupts(&var);
 
    kb_ctrl = inb(KB_CONTROL_PORT);
 
@@ -165,6 +158,5 @@ static NODISCARD bool kb_ctrl_reset(void)
       success = true;
 
 out:
-   enable_interrupts(&var);
    return success;
 }
