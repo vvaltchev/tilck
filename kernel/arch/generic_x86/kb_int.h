@@ -60,19 +60,22 @@ static ALWAYS_INLINE void kb_drain_any_data(void)
    }
 }
 
-static ALWAYS_INLINE void kb_ctrl_send_cmd(u8 cmd)
-{
-   outb(KB_CONTROL_PORT, cmd);
-}
-
-static NODISCARD bool kb_ctrl_send_cmd_and_wait_response(u8 cmd)
+static NODISCARD bool kb_ctrl_send_cmd(u8 cmd)
 {
    if (!kb_wait_cmd_fetched())
       return false;
 
-   kb_ctrl_send_cmd(cmd);
+   outb(KB_CONTROL_PORT, cmd);
 
    if (!kb_wait_cmd_fetched())
+      return false;
+
+   return true;
+}
+
+static NODISCARD bool kb_ctrl_send_cmd_and_wait_response(u8 cmd)
+{
+   if (!kb_ctrl_send_cmd(cmd))
       return false;
 
    if (!kb_wait_for_data())

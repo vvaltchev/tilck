@@ -422,10 +422,24 @@ void init_kb(void)
    ringbuf_init(&kb_cooked_ringbuf, KB_CBUF_SIZE, 1, kb_cooked_buf);
    kcond_init(&kb_cond);
 
+   if (!kb_ctrl_send_cmd(0xAD))
+      panic("KB: send cmd timed out");
+
+   if (!kb_ctrl_send_cmd(0xA7))
+      panic("KB: send cmd timed out");
+
+
    if (!kb_ctrl_self_test()) {
       if (!kb_ctrl_reset())
          panic("Unable to initialize the keyboard controller");
    }
+
+   if (!kb_ctrl_send_cmd(0xAD + 1))
+      panic("KB: send cmd timed out");
+
+   if (!kb_ctrl_send_cmd(0xA7 + 1))
+      panic("KB: send cmd timed out");
+
 
    num_lock_switch(numLock);
    caps_lock_switch(capsLock);
