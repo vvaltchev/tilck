@@ -1,26 +1,27 @@
 
-#define KB_ITERS_TIMEOUT (1000*1000)
+#define KB_ITERS_TIMEOUT (100*1000)
 
 #define KB_DATA_PORT     0x60
 #define KB_CONTROL_PORT  0x64
 
 /* keyboard interface bits */
 
-/* ctrl bit 0: must be set before attempting to read data from data port */
+/* The output buffer is full: it must be 1 before reading from KB_DATA_PORT */
 #define KB_CTRL_OUTPUT_FULL       (1 << 0)
 
-/* ctrl bit 1: must be clear before attempting to write data to the data or control port */
+/*
+ * The input buffer is full: it must be 0 before writing data to KB_DATA_PORT or
+ * KB_CONTROL_PORT.
+ */
 #define KB_CTRL_INPUT_FULL        (1 << 1)
 
-#define KB_CMD_CPU_RESET             0xFE
+#define KB_CTRL_CMD_CPU_RESET        0xFE
 #define KB_CTRL_CMD_RESET            0xFF
 #define KB_CTRL_CMD_SELFTEST         0xAA
-
 #define KB_CTRL_CMD_PORT1_DISABLE    0xAD
 #define KB_CTRL_CMD_PORT1_ENABLE     0xAE
 #define KB_CTRL_CMD_PORT2_DISABLE    0xA7
 #define KB_CTRL_CMD_PORT2_ENABLE     0xA8
-
 
 #define KB_RESPONSE_ACK              0xFA
 #define KB_RESPONSE_RESEND           0xFE
@@ -90,44 +91,121 @@ static NODISCARD bool kb_ctrl_send_cmd_and_wait_response(u8 cmd)
    return true;
 }
 
-static void kb_ctrl_disable_ports(void)
+static NODISCARD bool kb_ctrl_disable_ports(void)
 {
+   irq_set_mask(X86_PC_KEYBOARD_IRQ);
+
    if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT1_DISABLE))
-      panic("KB: send cmd timed out");
+      return false;
 
    if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT2_DISABLE))
-      panic("KB: send cmd timed out");
+      return false;
+
+   return true;
 }
 
-static void kb_ctrl_enable_ports(void)
+static NODISCARD bool kb_ctrl_enable_ports(void)
 {
    if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT1_ENABLE))
-      panic("KB: send cmd timed out");
+      return false;
 
    if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT2_ENABLE))
-      panic("KB: send cmd timed out");
+      return false;
+
+   irq_clear_mask(X86_PC_KEYBOARD_IRQ);
+   return true;
 }
 
-static void kb_ctrl_full_wait(void)
+static NODISCARD bool kb_ctrl_full_wait(void)
 {
-   u8 temp;
+   u8 ctrl;
+   u32 iters = 0;
 
-   /* Clear all keyboard buffers (output and command buffers) */
    do
    {
-      temp = inb(KB_CONTROL_PORT);
+      if (iters > KB_ITERS_TIMEOUT)
+         return false;
 
-      if (temp & KB_CTRL_OUTPUT_FULL) {
-         inb(KB_DATA_PORT);
+      ctrl = inb(KB_CONTROL_PORT);
+
+      if (ctrl & KB_CTRL_OUTPUT_FULL) {
+         inb(KB_DATA_PORT); /* drain the KB's output */
       }
 
-   } while (temp & KB_CTRL_INPUT_FULL);
+      iters++;
+
+   } while (ctrl & KB_CTRL_INPUT_FULL);
+
+   return true;
+}
+
+bool kb_led_set(u8 val)
+{
+   if (!kb_ctrl_disable_ports()) {
+      printk("kb_led_set() failed: kb_ctrl_disable_ports() fail\n");
+      return false;
+   }
+
+   if (!kb_ctrl_full_wait()) goto err;
+   outb(KB_DATA_PORT, 0xED);
+   if (!kb_ctrl_full_wait()) goto err;
+   outb(KB_DATA_PORT, val & 7);
+   if (!kb_ctrl_full_wait()) goto err;
+
+   if (!kb_ctrl_enable_ports()) {
+      printk("kb_led_set() failed: kb_ctrl_enable_ports() fail\n");
+      return false;
+   }
+
+   return true;
+
+err:
+   printk("kb_led_set() failed: timeout in kb_ctrl_full_wait()\n");
+   return false;
+}
+
+/*
+ * From http://wiki.osdev.org/PS/2_Keyboard
+ *
+ * BITS [0,4]: Repeat rate (00000b = 30 Hz, ..., 11111b = 2 Hz)
+ * BITS [5,6]: Delay before keys repeat (00b = 250 ms, ..., 11b = 1000 ms)
+ * BIT [7]: Must be zero
+ * BIT [8]: I'm assuming is ignored.
+ *
+ */
+
+bool kb_set_typematic_byte(u8 val)
+{
+   if (!kb_ctrl_disable_ports()) {
+      printk("kb_set_typematic_byte() failed: kb_ctrl_disable_ports() fail\n");
+      return false;
+   }
+
+   if (!kb_ctrl_full_wait()) goto err;
+   outb(KB_DATA_PORT, 0xF3);
+   if (!kb_ctrl_full_wait()) goto err;
+   outb(KB_DATA_PORT, 0);
+   if (!kb_ctrl_full_wait()) goto err;
+
+   if (!kb_ctrl_enable_ports()) {
+      printk("kb_set_typematic_byte() failed: kb_ctrl_enable_ports() fail\n");
+      return false;
+   }
+
+   return true;
+
+err:
+   printk("kb_set_typematic_byte() failed: timeout in kb_ctrl_full_wait()\n");
+   return false;
 }
 
 static NODISCARD bool kb_ctrl_self_test(void)
 {
    u8 res, resend_count = 0;
    bool success = false;
+
+   if (!kb_ctrl_disable_ports())
+      goto out;
 
    do {
 
@@ -146,6 +224,9 @@ static NODISCARD bool kb_ctrl_self_test(void)
       success = true;
 
 out:
+   if (!kb_ctrl_enable_ports())
+      success = false;
+
    return success;
 }
 
@@ -156,11 +237,14 @@ static NODISCARD bool kb_ctrl_reset(void)
    u8 resend_count = 0;
    bool success = false;
 
+   if (!kb_ctrl_disable_ports())
+      goto out;
+
    kb_ctrl = inb(KB_CONTROL_PORT);
 
    printk("KB: reset procedure\n");
    printk("KB: initial status: 0x%x\n", kb_ctrl);
-   printk("KB: sending 0xFF (reset) to KB (data)\n");
+   printk("KB: sending 0xFF (reset) to the controller\n");
 
    if (!kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_RESET))
       goto out;
@@ -196,5 +280,22 @@ static NODISCARD bool kb_ctrl_reset(void)
       success = true;
 
 out:
+   if (!kb_ctrl_enable_ports())
+      success = false;
+
+   printk("KB: reset success: %u\n", success);
    return success;
+}
+
+// Reboot procedure using the 8042 PS/2 controller
+void reboot(void)
+{
+   disable_interrupts_forced(); /* Disable the interrupts before rebooting */
+
+   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_CPU_RESET))
+      panic("Unable to reboot using the 8042 controller: timeout in send cmd");
+
+   while (true) {
+      halt();
+   }
 }

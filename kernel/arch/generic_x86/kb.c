@@ -164,15 +164,6 @@ static bool lastWasE0 = false;
 
 static u8 next_kb_interrupts_to_ignore = 0; // HACK to skip 0xE1 sequences
 
-void kb_led_set(u8 val)
-{
-   kb_ctrl_full_wait();
-   outb(KB_DATA_PORT, 0xED);
-   kb_ctrl_full_wait();
-   outb(KB_DATA_PORT, val & 7);
-   kb_ctrl_full_wait();
-}
-
 void num_lock_switch(bool val)
 {
    kb_led_set(capsLock << 2 | val << 1);
@@ -359,40 +350,6 @@ void keyboard_handler()
 
 end:
    lastWasE0 = false;
-}
-
-// Reboot procedure using the 8042 PS/2 controller
-
-void reboot(void)
-{
-   disable_interrupts_forced(); /* Disable the interrupts before rebooting */
-
-   if (!kb_ctrl_send_cmd(KB_CMD_CPU_RESET))
-      panic("Unable to reboot using the 8042 controller: timeout in send cmd");
-
-   while (true) {
-      halt();
-   }
-}
-
-
-/*
- * From http://wiki.osdev.org/PS/2_Keyboard
- *
- * BITS [0,4]: Repeat rate (00000b = 30 Hz, ..., 11111b = 2 Hz)
- * BITS [5,6]: Delay before keys repeat (00b = 250 ms, ..., 11b = 1000 ms)
- * BIT [7]: Must be zero
- * BIT [8]: I'm assuming is ignored.
- *
- */
-
-void kb_set_typematic_byte(u8 val)
-{
-   kb_ctrl_full_wait();
-   outb(KB_DATA_PORT, 0xF3);
-   kb_ctrl_full_wait();
-   outb(KB_DATA_PORT, 0);
-   kb_ctrl_full_wait();
 }
 
 /* This will be executed in a tasklet */
