@@ -20,13 +20,13 @@ error_codes_strings = {
 
 shell_cmd_tests = [
    ['invalid_read', 2],
+   ['brk_test', 2],
    ['sysenter', 2],
    ['syscall_perf', 2],
    ['loop', 8],
-   ['fork_test', 8],
-   ['sysenter_fork_test', 8],
-   ['fork_perf', 14],
-   ['brk_test', 2],
+   ['fork_test', 18],
+   ['sysenter_fork_test', 18],
+   ['fork_perf', 25],
 ]
 
 selftests = [
@@ -35,12 +35,12 @@ selftests = [
    ['tasklet', 2],
    ['tasklet_perf', 2],
    ['kernel_sleep', 2],
-   ['kmalloc_perf', 2],
    ['alloc_pageframe_perf', 2],
    ['kcond', 2],
-   ['join', 8],
-   ['kmutex', 8],
-   ['kthread', 8],
+   ['kmalloc_perf', 8],
+   ['join', 18],
+   ['kmutex', 18],
+   ['kthread', 18],
 ]
 
 def run_test(test_type, test, timeout, show_output = False):
@@ -126,7 +126,7 @@ def show_tests_and_exit():
 
 #############################
 # options
-max_test_timeout = 8
+max_test_timeout = 18
 reg = ".*"
 show_output = False
 ##############################
@@ -184,3 +184,9 @@ if shell_cmd_tests_to_run:
 if selftests_to_run:
    print "Selftests passed: {0}/{1}".format(selftests_passed,
                                             selftests_to_run)
+
+total_to_run = shell_cmd_tests_to_run + selftests_to_run
+total_passed = shell_cmd_tests_passed + selftests_passed
+
+if total_passed != total_to_run:
+   sys.exit(1)
