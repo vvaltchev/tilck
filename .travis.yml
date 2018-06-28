@@ -42,4 +42,24 @@ script:
   - MALLOC_CHECK_=2 ./build/gtests
   - ./scripts/generate_coverage_report # Does nothing if not USE_GCOV.
 
+# Just in case we want to use build on Travis with docker images:
+#
+# os: linux
+# dist: trusty
+# sudo: required
+# language: generic
 
+# before_install:
+#   - docker pull vvaltchev/exos_build:ver2
+#   - docker run -it -d --name exos_build vvaltchev/exos_build:ver2 bash
+#   - docker exec exos_build git clone https://github.com/vvaltchev/experimentOs
+#   - docker exec exos_build mv /exos_toolchain /experimentOs/toolchain
+
+# install:
+#   - docker exec exos_build make -C /experimentOs -j
+#   - docker exec exos_build make -C /experimentOs -j gtests
+
+# script:
+#   - docker exec exos_build /experimentOs/build/gtests
+#
+#

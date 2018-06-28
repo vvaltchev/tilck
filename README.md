@@ -34,25 +34,27 @@ Current state: the kernel
 
 Currently, the project is growing very fast with major patch series being merged
 once or twice at week. Therefore, keeping an accurate track of kernel's features
-and capabilities in this section is too time-consuming at the moment. In order to
-get an idea of what it can do, just take a look at its code and try it.
+and capabilities in this section is too time-consuming at the moment. In order
+to get an idea of what it can do, just take a look at its code and try it.
 Building it takes less than 1 minute (~5 minutes if we consider also running
-scripts/build_toolchain).
+./scripts/build_toolchain).
 
-Current state: the legacy bootloader
---------------------------------------
+The legacy bootloader
+----------------------------------------
 
 `exOS` includes a 3-stage bootloader able to load in memory the contents of the
 boot-drive at a pre-defined physical address. In its 3rd stage (written in C),
-the bootloader loads from the (now in-memory) FAT32 partition the ELF kernel of
-`exOS` [it understands the ELF format] and jumps to its entry-point.
+the bootloader loads from an in-memory FAT32 partition the ELF kernel of
+`exOS` [it understands the ELF format] and jumps to its entry-point. Before
+the final jump to the kernel, the bootloader allows the user the choose the
+a video mode among several standard resolutions (graphics mode) + the original
+VGA-compatible text mode.
 
-Current state: the UEFI bootloader
-------------------------------------
+The UEFI bootloader
+----------------------------------------
 
 `exOS` includes also a fully-working EFI bootloader which boots the kernel in
-graphics mode. [Yes, the kernel has a nice graphics console as well.]
-
+graphics mode (text mode is not available when booting using UEFI).
 
 Hardware support
 --------------------
@@ -92,7 +94,7 @@ Step 4.
     Enjoy :-)
 
 
-How to build & run (UEFI boot with graphics console)
+How to build & run (UEFI)
 ------------------------------------------------------
 
 Step 0: as above
