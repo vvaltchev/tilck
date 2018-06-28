@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  build:
+  debug_build:
     docker:
       - image: vvaltchev/exos_build:ver2
     environment:
@@ -12,8 +12,9 @@ jobs:
       - run: make -j
       - run: make -j gtests
       - run: ./build/gtests
+      - run: ./scripts/generate_coverage_report
       - run: ./build/st/run_all_tests
-  build:
+  release_build:
     docker:
       - image: vvaltchev/exos_build:ver2
     environment:
@@ -26,5 +27,11 @@ jobs:
       - run: make -j gtests
       - run: ./build/gtests
       - run: ./build/st/run_all_tests
+workflows:
+  version: 2
+  debug_and_release:
+    jobs:
+      - debug_build
+      - release_build
 
 
