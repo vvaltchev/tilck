@@ -1,0 +1,28 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: vvaltchev/exos_build:ver1
+    environment:
+      - RELEASE: 0
+      - CMAKE_ARGS: -DUSE_GCOV=on
+    steps:
+      - checkout
+      - run: mv /exos_toolchain ./toolchain
+      - run: make -j
+      - run: make -j gtests
+      - run: ./build/gtests
+  build:
+    docker:
+      - image: vvaltchev/exos_build:ver1
+    environment:
+      - RELEASE: 1
+      - CMAKE_ARGS:
+    steps:
+      - checkout
+      - run: mv /exos_toolchain ./toolchain
+      - run: make -j
+      - run: make -j gtests
+      - run: ./build/gtests
+
+
