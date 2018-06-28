@@ -23,7 +23,7 @@ void simple_test_kthread(void *arg)
 
    printk("[kthread] This is a kernel thread, arg = %p\n", arg);
 
-   for (i = 0; i < 1024*MB; i++) {
+   for (i = 0; i < 256*MB; i++) {
 
 #ifdef DEBUG
 
@@ -42,7 +42,7 @@ void simple_test_kthread(void *arg)
 
 #endif
 
-      if (!(i % (256*MB))) {
+      if (!(i % (64*MB))) {
          printk("[kthread] i = %i\n", i/MB);
       }
    }

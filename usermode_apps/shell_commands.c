@@ -13,12 +13,12 @@
 
 
 #define RDTSC() __builtin_ia32_rdtsc()
-#define FORK_TEST_ITERS (2 * 250 * 1024 * 1024)
+#define FORK_TEST_ITERS (1 * 250 * 1024 * 1024)
 
 void cmd_loop(void)
 {
    printf("[shell] do a long loop\n");
-   for (int i = 0; i < 500*1000*1000; i++) {
+   for (int i = 0; i < FORK_TEST_ITERS; i++) {
       __asm__ volatile ("nop");
    }
 
