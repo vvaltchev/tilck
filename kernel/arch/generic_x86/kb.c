@@ -29,130 +29,7 @@
 
 #include "kb_int_cbuf.h"
 #include "kb_int.h"
-
-/* US Keyboard Layout.  */
-static u8 kbd_us[128] =
-{
-   0,  27, '1', '2', '3', '4', '5', '6', '7', '8',
-   '9', '0', '-', '=', '\b',  /* Backspace */
-   '\t',       /* Tab */
-   'q', 'w', 'e', 'r',  /* 19 */
-   't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
-   0,       /* 29   - Control */
-   'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';',  /* 39 */
-   '\'', '`',
-   0,      /* Left shift */
-   '\\', 'z', 'x', 'c', 'v', 'b', 'n',       /* 49 */
-   'm', ',', '.', '/',
-   0,            /* Right shift */
-   '*',
-   0, /* Alt */
-   ' ',  /* Space bar */
-   0, /* Caps lock */
-   0, /* 59 - F1 key ... > */
-   0,   0,   0,   0,   0,   0,   0,   0,
-   0, /* < ... F10 */
-   0, /* 69 - Num lock*/
-   0, /* Scroll Lock */
-   0, /* Home key */
-   0, /* Up Arrow */
-   0, /* Page Up */
-   '-',
-   0, /* Left Arrow */
-   0,
-   0, /* Right Arrow */
-   '+',
-   0, /* 79 - End key*/
-   0, /* Down Arrow */
-   0, /* Page Down */
-   0, /* Insert Key */
-   0, /* Delete Key */
-   0,   0,   '\\',
-   0, /* F11 Key */
-   0, /* F12 Key */
-   0, /* All other keys are undefined */
-};
-
-static u8 kbd_us_up[128] =
-{
-   0,  27, '!', '@', '#', '$', '%', '^', '&', '*',
-   '(', ')', '_', '+', '\b',
-   '\t',       /* Tab */
-   'Q', 'W', 'E', 'R',  /* 19 */
-   'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',
-   0,       /* 29   - Control */
-   'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':',  /* 39 */
-   '\"', '~',
-   0,      /* Left shift */
-   '|', 'Z', 'X', 'C', 'V', 'B', 'N',       /* 49 */
-   'M', '<', '>', '?',
-   0,            /* Right shift */
-   '*',
-   0, /* Alt */
-   ' ',  /* Space bar */
-   0, /* Caps lock */
-   0, /* 59 - F1 key ... > */
-   0,   0,   0,   0,   0,   0,   0,   0,
-   0, /* < ... F10 */
-   0, /* 69 - Num lock*/
-   0, /* Scroll Lock */
-   0, /* Home key */
-   0, /* Up Arrow */
-   0, /* Page Up */
-   '-',
-   0, /* Left Arrow */
-   0,
-   0, /* Right Arrow */
-   '+',
-   0, /* 79 - End key*/
-   0, /* Down Arrow */
-   0, /* Page Down */
-   0, /* Insert Key */
-   0, /* Delete Key */
-   0,   0,  '|',
-   0, /* F11 Key */
-   0, /* F12 Key */
-   0, /* All other keys are undefined */
-};
-
-
-
-#define KEY_L_SHIFT 42
-#define KEY_R_SHIFT 54
-#define NUM_LOCK 69
-#define CAPS_LOCK 58
-#define KEY_PAGE_UP 0x49
-#define KEY_PAGE_DOWN 0x51
-#define KEY_LEFT 0x4b
-#define KEY_RIGHT 0x4d
-#define KEY_UP 0x48
-#define KEY_DOWN 0x50
-
-#define KEY_CTRL 0x1d
-#define KEY_ALT 0x38
-#define KEY_E0_DEL 0x53
-
-#define KEY_F1  (0x3b)
-#define KEY_F2  (KEY_F1 + 1)
-#define KEY_F3  (KEY_F1 + 2)
-#define KEY_F4  (KEY_F1 + 3)
-#define KEY_F5  (KEY_F1 + 4)
-#define KEY_F6  (KEY_F1 + 5)
-#define KEY_F7  (KEY_F1 + 6)
-#define KEY_F8  (KEY_F1 + 7)
-#define KEY_F9  (KEY_F1 + 8)
-#define KEY_F10 (KEY_F1 + 9)
-
-static unsigned char *us_kb_layouts[2] = {
-   kbd_us, kbd_us_up
-};
-
-static u8 numkey[128] = {
-   [71] = '7', '8', '9',
-   [75] = '4', '5', '6',
-   [79] = '1', '2', '3',
-   [82] = '0', '.'
-};
+#include "kb_layouts.h"
 
 static bool pkeys[128];
 static bool e0pkeys[128];
@@ -162,14 +39,14 @@ static bool numLock = false;
 static bool capsLock = false;
 static bool lastWasE0 = false;
 
-static u8 next_kb_interrupts_to_ignore = 0; // HACK to skip 0xE1 sequences
+static u8 next_scancodes_to_ignore = 0; // HACK to skip 0xE1 sequences
 
-void num_lock_switch(bool val)
+static void numlock_set_led(bool val)
 {
    kb_led_set(capsLock << 2 | val << 1);
 }
 
-void caps_lock_switch(bool val)
+static void capslock_set_led(bool val)
 {
    kb_led_set(numLock << 1 | val << 2);
 }
@@ -183,19 +60,34 @@ void print_slow_timer_handler_counter(void);
 void debug_term_print_scroll_cycles(void);
 extern u32 spur_irq_count;
 
+void debug_show_spurious_irq_count(void)
+{
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+      print_slow_timer_handler_counter();
+#endif
+
+   if (get_ticks() > TIMER_HZ)
+      printk("Spur IRQ count: %u (%u/sec)\n",
+               spur_irq_count,
+               spur_irq_count / (get_ticks() / TIMER_HZ));
+   else
+      printk("Spurious IRQ count: %u (< 1 sec)\n",
+               spur_irq_count, spur_irq_count);
+}
+
 void handle_key_pressed(u8 scancode)
 {
    switch(scancode) {
 
    case NUM_LOCK:
       numLock = !numLock;
-      num_lock_switch(numLock);
+      numlock_set_led(numLock);
       printk("\nNUM LOCK is %s\n", numLock ? "ON" : "OFF");
       return;
 
    case CAPS_LOCK:
       capsLock = !capsLock;
-      caps_lock_switch(capsLock);
+      capslock_set_led(capsLock);
       printk("\nCAPS LOCK is %s\n", capsLock ? "ON" : "OFF");
       return;
 
@@ -204,19 +96,7 @@ void handle_key_pressed(u8 scancode)
       return;
 
    case KEY_F1:
-
-#if KERNEL_TRACK_NESTED_INTERRUPTS
-      print_slow_timer_handler_counter();
-#endif
-
-      if (get_ticks() > TIMER_HZ)
-         printk("Spur IRQ count: %u (%u/sec)\n",
-               spur_irq_count,
-               spur_irq_count / (get_ticks() / TIMER_HZ));
-      else
-         printk("Spurious IRQ count: %u (< 1 sec)\n",
-               spur_irq_count, spur_irq_count);
-
+      debug_show_spurious_irq_count();
       return;
 
    case KEY_F2:
@@ -317,14 +197,14 @@ void keyboard_handler()
    scancode = inb(KB_DATA_PORT);
 
    // Hack used to avoid handling 0xE1 two-scancode sequences
-   if (next_kb_interrupts_to_ignore) {
-      next_kb_interrupts_to_ignore--;
+   if (next_scancodes_to_ignore) {
+      next_scancodes_to_ignore--;
       return;
    }
 
    // Hack used to avoid handling 0xE1 two-scancode sequences
    if (scancode == 0xE1) {
-      next_kb_interrupts_to_ignore = 2;
+      next_scancodes_to_ignore = 2;
       return;
    }
 
@@ -370,8 +250,8 @@ void init_kb(void)
       printk("PS/2 controller: reset successful\n");
    }
 
-   num_lock_switch(numLock);
-   caps_lock_switch(capsLock);
+   numlock_set_led(numLock);
+   capslock_set_led(capsLock);
    kb_set_typematic_byte(0);
 
    printk("keyboard initialized.\n");
