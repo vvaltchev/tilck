@@ -37,7 +37,7 @@ selftests = [
    ['kernel_sleep', 2],
    ['alloc_pageframe_perf', 2],
    ['kcond', 2],
-   ['kmalloc_perf', 8],
+   ['kmalloc_perf', 14],
    ['join', 18],
    ['kmutex', 18],
    ['kthread', 18],
