@@ -29,6 +29,7 @@ file(
       ARCH_FAMILY_SOURCES
 
       "${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH_FAMILY}/*.c"
+      "${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH_FAMILY}/*/*.c"
       "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
 )
 
