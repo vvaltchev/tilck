@@ -19,10 +19,10 @@ error_codes_strings = {
 
 
 shell_cmd_tests = [
-   ['invalid_read', 2],
-   ['brk_test', 2],
-   ['sysenter', 2],
-   ['syscall_perf', 2],
+   ['invalid_read', 8],
+   ['brk_test', 8],
+   ['sysenter', 8],
+   ['syscall_perf', 8],
    ['loop', 8],
    ['fork_test', 18],
    ['sysenter_fork_test', 18],
@@ -30,13 +30,13 @@ shell_cmd_tests = [
 ]
 
 selftests = [
-   ['fault_resumable', 2],
-   ['fault_resumable_perf', 2],
-   ['tasklet', 2],
-   ['tasklet_perf', 2],
-   ['kernel_sleep', 2],
-   ['alloc_pageframe_perf', 2],
-   ['kcond', 2],
+   ['fault_resumable', 8],
+   ['fault_resumable_perf', 8],
+   ['tasklet', 8],
+   ['tasklet_perf', 8],
+   ['kernel_sleep', 8],
+   ['alloc_pageframe_perf', 8],
+   ['kcond', 8],
    ['kmalloc_perf', 14],
    ['join', 18],
    ['kmutex', 18],
