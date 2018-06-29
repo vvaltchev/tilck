@@ -72,6 +72,7 @@ int exvfs_open(const char *path, fs_handle *out)
 {
    mountpoint *mp, *best_match = NULL;
    int pl, rc, best_match_len = 0;
+   const char *fs_path;
    mp_cursor cur;
 
    ASSERT(path != NULL);
@@ -102,8 +103,10 @@ int exvfs_open(const char *path, fs_handle *out)
 
    exvfs_fs_shlock(fs);
    {
-      path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
-      rc = fs->open(fs, path, out);
+      fs_path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
+      printk("exvfs_open('%s' as '%s' in '%s'@%u)\n",
+             path, fs_path, fs->fs_type_name, fs->device_id);
+      rc = fs->open(fs, fs_path, out);
    }
    exvfs_fs_shunlock(fs);
 

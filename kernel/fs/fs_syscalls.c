@@ -316,8 +316,7 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
    if (rc < 0)
       return -ENAMETOOLONG;
 
-   //printk("sys_stat64('%s')\n", path);
-
+   //printk("sys_stat64('%s') => exvfs_open(%s)\n", orig_path, path);
    rc = exvfs_open(path, &h);
 
    if (rc < 0)
@@ -345,6 +344,8 @@ sptr sys_lstat64(const char *user_path, struct stat *user_statbuf)
     * For moment, symlinks are not supported in exOS. Therefore, make lstat()
     * behave exactly as stat().
     */
+
+   //printk("sys_lstat64('%s')\n", user_path);
    return sys_stat64(user_path, user_statbuf);
 }
 

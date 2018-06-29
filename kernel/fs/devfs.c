@@ -2,11 +2,12 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
+#include <exos/fs/devfs.h>
 #include <exos/process.h> // for enable/disable preemption
 #include <exos/kmalloc.h>
-#include <exos/fs/devfs.h>
 #include <exos/errno.h>
 #include <exos/list.h>
+#include <exos/datetime.h>
 
 filesystem *devfs;
 
@@ -39,10 +40,19 @@ typedef struct {
 
 typedef struct {
 
+   /* Yes, sub-directories are NOT supported at the moment */
    list_node files_list;
+
+} devfs_directory;
+
+typedef struct {
+
+   devfs_directory root_dir;
 
    kmutex ex_mutex; // big exclusive whole-filesystem lock
                     // TODO: use a rw-lock when available in the kernel
+
+   datetime_t wrt_time;
 
 } devfs_data;
 
@@ -58,6 +68,10 @@ int create_dev_file(const char *filename, int major, int minor)
 
    devfs_data *d = fs->device_data;
    devfs_file *f = kmalloc(sizeof(devfs_file));
+
+   if (!f)
+      return -ENOMEM;
+
    list_node_init(&f->list);
    f->name = filename;
 
@@ -68,7 +82,54 @@ int create_dev_file(const char *filename, int major, int minor)
       return res;
    }
 
-   list_add_tail(&d->files_list, &f->list);
+   list_add_tail(&d->root_dir.files_list, &f->list);
+   return 0;
+}
+
+ssize_t devfs_dir_read(fs_handle h, char *buf, size_t len)
+{
+   return -EINVAL;
+}
+
+ssize_t devfs_dir_write(fs_handle h, char *buf, size_t len)
+{
+   return -EINVAL;
+}
+
+off_t devfs_dir_seek(fs_handle h, off_t offset, int whence)
+{
+   return -EINVAL;
+}
+
+int devfs_dir_ioctl(fs_handle h, uptr request, void *arg)
+{
+   return -EINVAL;
+}
+
+int devfs_dir_stat(fs_handle h, struct stat *statbuf)
+{
+   devfs_file_handle *dh = h;
+   devfs_data *devfs_data = dh->fs->device_data;
+
+   if (!h)
+      return -ENOENT;
+
+   bzero(statbuf, sizeof(struct stat));
+   statbuf->st_dev = dh->fs->device_id;
+   statbuf->st_ino = 1;
+   statbuf->st_mode = 0555 | S_IFDIR;
+   statbuf->st_nlink = 1;
+   statbuf->st_uid = 0; /* root */
+   statbuf->st_gid = 0; /* root */
+   statbuf->st_rdev = 0; /* device ID, if a special file */
+   statbuf->st_size = 0;
+   statbuf->st_blksize = 4096;
+   statbuf->st_blocks = statbuf->st_size / 512;
+
+   statbuf->st_ctim.tv_sec = datetime_to_timestamp(devfs_data->wrt_time);
+   statbuf->st_mtim.tv_sec = datetime_to_timestamp(devfs_data->wrt_time);
+   statbuf->st_atim = statbuf->st_mtim;
+
    return 0;
 }
 
@@ -82,12 +143,41 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
    ASSERT(*path == '/');
    path++;
 
+   if (!*path) {
+
+      /* path was "/" */
+      devfs_file_handle *h;
+      h = kzmalloc(sizeof(devfs_file_handle));
+
+      if (!h)
+         return -ENOMEM;
+
+      h->fs = fs;
+      h->fops = (file_ops) {
+         .read = devfs_dir_read,
+         .write = devfs_dir_write,
+         .seek = devfs_dir_seek,
+         .ioctl =  devfs_dir_ioctl,
+         .stat = devfs_dir_stat,
+         .exlock = NULL,
+         .exunlock = NULL,
+         .shlock = NULL,
+         .shunlock = NULL
+      };
+
+      *out = h;
+      return 0;
+   }
+
    devfs_data *d = fs->device_data;
    devfs_file *pos;
 
-   /* Trivial implementation for the moment: linearly iterate the linked list */
+   /*
+    * Linearly iterate the linked list: we do not expect any time soon devfs
+    * to contain more than a few files.
+    */
 
-   list_for_each(pos, &d->files_list, list) {
+   list_for_each(pos, &d->root_dir.files_list, list) {
       if (!strcmp(pos->name, path)) {
 
          devfs_file_handle *h;
@@ -164,9 +254,11 @@ filesystem *create_devfs(void)
       return NULL;
    }
 
-   list_node_init(&d->files_list);
+   list_node_init(&d->root_dir.files_list);
    kmutex_init(&d->ex_mutex, KMUTEX_FL_RECURSIVE);
 
+   read_system_clock_datetime(&d->wrt_time);
+   fs->fs_type_name = "devfs";
    fs->flags = EXVFS_FS_RW;
    fs->device_id = exvfs_get_new_device_id();
    fs->device_data = d;

@@ -125,5 +125,8 @@ void init_tty(void)
    di->name = "tty";
    di->create_dev_file = tty_create_device_file;
    int major = register_driver(di);
-   create_dev_file("tty", major, 0);
+   int rc = create_dev_file("tty", major, 0);
+
+   if (rc != 0)
+      panic("Unable to create /dev/tty (error: %d)", rc);
 }

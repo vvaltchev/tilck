@@ -505,6 +505,7 @@ filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
       return NULL;
    }
 
+   fs->fs_type_name = "fat";
    fs->flags = flags;
    fs->device_id = exvfs_get_new_device_id();
    fs->device_data = d;
