@@ -15,8 +15,13 @@ typedef struct {
    filesystem *fs;
    file_ops fops;
 
-   /* devfs-specific attrs */
+   /* devfs-specific fields */
+
    devfs_entry_type type;
+   void *devfs_file_ptr;
+
+   /* Use only when type == DEVFS_DIRECTORY */
+   u32 curr_file_index;
 
 } devfs_file_handle;
 

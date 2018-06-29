@@ -91,8 +91,8 @@ sptr sys_open(const char *user_path, int flags, int mode)
    ret = free_fd;
 
 end:
-   printk("[TID: %i] sys_open('%s' => '%s', %x, %x) => %d\n",
-          curr->tid, orig_path, path, flags, mode, ret);
+   // printk("[TID: %i] sys_open('%s' => '%s', %x, %x) => %d\n",
+   //        curr->tid, orig_path, path, flags, mode, ret);
 
    enable_preemption();
    return ret;
@@ -108,7 +108,7 @@ sptr sys_close(int fd)
    fs_handle handle;
    sptr ret = 0;
 
-   printk("[TID: %i] sys_close(fd = %d)\n", curr->tid, fd);
+   //printk("[TID: %i] sys_close(fd = %d)\n", curr->tid, fd);
 
    disable_preemption();
 
@@ -381,8 +381,8 @@ sptr sys_getdents64(int fd, struct linux_dirent64 *user_dirp, u32 buf_size)
    fs_handle handle;
    int rc;
 
-   printk("[TID: %d] getdents64(fd: %d, dirp: %p, buf_size: %u)\n",
-          get_curr_task()->tid, fd, user_dirp, buf_size);
+   //printk("[TID: %d] getdents64(fd: %d, dirp: %p, buf_size: %u)\n",
+   //       get_curr_task()->tid, fd, user_dirp, buf_size);
 
    handle = get_fs_handle(fd);
 

@@ -408,7 +408,7 @@ no_mem_exit:
 sptr sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5)
 {
    if (option == PR_SET_NAME) {
-      printk("[TID: %d] PR_SET_NAME '%s'\n", get_curr_task()->tid, a2);
+      // printk("[TID: %d] PR_SET_NAME '%s'\n", get_curr_task()->tid, a2);
       // TODO: save the task name in task_info.
       return 0;
    }

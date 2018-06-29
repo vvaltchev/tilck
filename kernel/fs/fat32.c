@@ -217,7 +217,7 @@ STATIC int fat_stat(fs_handle h, struct stat *statbuf)
    bzero(statbuf, sizeof(struct stat));
 
    statbuf->st_dev = fh->fs->device_id;
-   statbuf->st_ino = (ino_t)(uptr)&fh->e; /* use fat's entry as inode number */
+   statbuf->st_ino = 0;
    statbuf->st_mode = 0555;
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
@@ -315,14 +315,14 @@ fat_getdents64_cb(fat_header *hdr,
    rc = copy_to_user(user_ent, &ent, sizeof(ent));
 
    if (rc < 0) {
-      ctx->rc = -EBADF;
+      ctx->rc = -EFAULT;
       return -1; /* stop the walk */
    }
 
    rc = copy_to_user(user_ent->d_name, file_name, fl + 1);
 
    if (rc < 0) {
-      ctx->rc = -EBADF;
+      ctx->rc = -EFAULT;
       return -1; /* stop the walk */
    }
 

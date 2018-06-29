@@ -114,7 +114,6 @@ static int tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
    ops->write = tty_write;
    ops->ioctl = tty_ioctl;
    ops->seek = NULL; /* seek() support is NOT mandatory, of course */
-   ops->stat = NULL; /* TODO: implement this */
    return 0;
 }
 
@@ -124,7 +123,7 @@ void init_tty(void)
    di->name = "tty";
    di->create_dev_file = tty_create_device_file;
    int major = register_driver(di);
-   int rc = create_dev_file("tty", major, 0);
+   int rc = create_dev_file("tty", major, 0 /* minor */);
 
    if (rc != 0)
       panic("Unable to create /dev/tty (error: %d)", rc);

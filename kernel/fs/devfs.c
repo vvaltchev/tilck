@@ -8,6 +8,9 @@
 #include <exos/errno.h>
 #include <exos/list.h>
 #include <exos/datetime.h>
+#include <exos/user.h>
+
+#include <dirent.h> // system header
 
 filesystem *devfs;
 
@@ -33,6 +36,9 @@ int register_driver(driver_info *info)
 typedef struct {
 
    list_node list;
+
+   u32 dev_major;
+   u32 dev_minor;
    const char *name;
    file_ops fops;
    devfs_entry_type type;
@@ -62,7 +68,7 @@ int create_dev_file(const char *filename, int major, int minor)
    ASSERT(devfs != NULL);
 
    if (major < 0 || major >= (int)drivers_count)
-      return -1;
+      return -EINVAL;
 
    filesystem *fs = devfs;
    driver_info *dinfo = drivers[major];
@@ -75,6 +81,8 @@ int create_dev_file(const char *filename, int major, int minor)
 
    list_node_init(&f->list);
    f->name = filename;
+   f->dev_major = major;
+   f->dev_minor = minor;
 
    int res = dinfo->create_dev_file(minor, &f->fops, &f->type);
 
@@ -117,15 +125,44 @@ int devfs_dir_stat(fs_handle h, struct stat *statbuf)
 
    bzero(statbuf, sizeof(struct stat));
    statbuf->st_dev = dh->fs->device_id;
-   statbuf->st_ino = 1;
+   statbuf->st_ino = 0;
    statbuf->st_mode = 0555 | S_IFDIR;
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
    statbuf->st_gid = 0; /* root */
-   statbuf->st_rdev = 0; /* device ID, if a special file */
+   statbuf->st_rdev = 0; /* device ID if a special file: in this case, NO. */
    statbuf->st_size = 0;
    statbuf->st_blksize = 4096;
    statbuf->st_blocks = statbuf->st_size / 512;
+
+   statbuf->st_ctim.tv_sec = datetime_to_timestamp(devfs_data->wrt_time);
+   statbuf->st_mtim.tv_sec = datetime_to_timestamp(devfs_data->wrt_time);
+   statbuf->st_atim = statbuf->st_mtim;
+
+   return 0;
+}
+
+int devfs_char_dev_stat(fs_handle h, struct stat *statbuf)
+{
+   devfs_file_handle *dh = h;
+   devfs_file *df = dh->devfs_file_ptr;
+   devfs_data *devfs_data = dh->fs->device_data;
+
+   bzero(statbuf, sizeof(struct stat));
+
+   statbuf->st_dev = dh->fs->device_id;
+   statbuf->st_ino = 0;
+   statbuf->st_mode = 0666;
+   statbuf->st_nlink = 1;
+   statbuf->st_uid = 0; /* root */
+   statbuf->st_gid = 0; /* root */
+   statbuf->st_rdev = df->dev_major << 8 | df->dev_minor;
+   statbuf->st_size = 0;
+   statbuf->st_blksize = 4096;
+   statbuf->st_blocks = 0;
+
+   if (dh->type == DEVFS_CHAR_DEVICE)
+      statbuf->st_mode |= S_IFCHR;
 
    statbuf->st_ctim.tv_sec = datetime_to_timestamp(devfs_data->wrt_time);
    statbuf->st_mtim.tv_sec = datetime_to_timestamp(devfs_data->wrt_time);
@@ -175,7 +212,7 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
    devfs_file *pos;
 
    /*
-    * Linearly iterate the linked list: we do not expect any time soon devfs
+    * Linearly iterate our linked list: we do not expect any time soon devfs
     * to contain more than a few files.
     */
 
@@ -189,8 +226,13 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
             return -ENOMEM;
 
          h->type = pos->type;
+         h->devfs_file_ptr = pos;
          h->fs = fs;
          h->fops = pos->fops;
+
+         if (!h->fops.stat)
+            h->fops.stat = devfs_char_dev_stat;
+
          *out = h;
          return 0;
       }
@@ -243,14 +285,64 @@ static void devfs_shared_unlock(filesystem *fs)
 static int
 devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
 {
-   devfs_file *dh = h;
+   devfs_file_handle *dh = h;
+   devfs_data *d = dh->fs->device_data;
+   u32 offset = 0, curr_index = 0;
+   struct linux_dirent64 ent;
+   devfs_file *pos;
 
    if (dh->type != DEVFS_DIRECTORY)
       return -ENOTDIR;
 
-   // TODO: implement devfs_getdents64
+   list_for_each(pos, &d->root_dir.files_list, list) {
 
-   return 0;
+      if (curr_index < dh->curr_file_index) {
+         curr_index++;
+         continue;
+      }
+
+      const char *const file_name = pos->name;
+      const u32 fl = strlen(file_name);
+      const u32 entry_size = fl + 1 + sizeof(struct linux_dirent64);
+
+      if (offset + entry_size > buf_size) {
+
+         if (!offset) {
+
+            /*
+            * We haven't "returned" any entries yet and the buffer is too small
+            * for our first entry.
+            */
+
+            return -EINVAL;
+         }
+
+         /* We "returned" at least one entry */
+         return offset;
+      }
+
+      ent.d_ino = 0;
+      ent.d_off = offset + entry_size;
+      ent.d_reclen = entry_size;
+      ent.d_type = DT_UNKNOWN;
+
+      if (dh->type == DEVFS_CHAR_DEVICE)
+         ent.d_type = DT_CHR;
+
+      struct linux_dirent64 *user_ent = (void *)((char *)dirp + offset);
+
+      if (copy_to_user(user_ent, &ent, sizeof(ent)) < 0)
+         return -EFAULT;
+
+      if (copy_to_user(user_ent->d_name, file_name, fl + 1) < 0)
+         return -EFAULT;
+
+      offset = ent.d_off;
+      curr_index++;
+      dh->curr_file_index++;
+   }
+
+   return offset;
 }
 
 filesystem *create_devfs(void)
