@@ -64,20 +64,10 @@ bool is_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 
 bool is_mode_known(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
-   if (mi->HorizontalResolution == 640 && mi->VerticalResolution == 480)
+   if (is_exos_known_resolution(mi->HorizontalResolution,
+                                mi->VerticalResolution)) {
       return is_supported(mi);
-
-   if (mi->HorizontalResolution == 800 && mi->VerticalResolution == 600)
-      return is_supported(mi);
-
-   if (mi->HorizontalResolution == 1024 && mi->VerticalResolution == 768)
-      return is_supported(mi);
-
-   if (mi->HorizontalResolution == 1280 && mi->VerticalResolution == 1024)
-      return is_supported(mi);
-
-   if (mi->HorizontalResolution == 1920 && mi->VerticalResolution == 1080)
-      return is_supported(mi);
+   }
 
    return false;
 }

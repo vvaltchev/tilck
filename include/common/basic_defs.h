@@ -181,4 +181,5 @@ typedef int (*cmpfun_ptr)(const void *a, const void *b);
 
 #endif
 
+bool is_exos_known_resolution(u32 w, u32 h);
 #include <common/panic.h>

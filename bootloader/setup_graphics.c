@@ -14,27 +14,6 @@ extern u32 fb_bpp;
 extern bool graphics_mode;
 extern u32 selected_mode;
 
-
-bool is_resolution_known(u16 xres, u16 yres)
-{
-   if (xres == 640 && yres == 480)
-      return true;
-
-   if (xres == 800 && yres == 600)
-      return true;
-
-   if (xres == 1024 && yres == 768)
-      return true;
-
-   if (xres == 1280 && yres == 1024)
-      return true;
-
-   if (xres == 1920 && yres == 1080)
-      return true;
-
-   return false;
-}
-
 void debug_show_detailed_mode_info(ModeInfoBlock *mi)
 {
    printk("Detailed mode info:\n");
@@ -91,7 +70,7 @@ static void show_modes_aux(u16 *modes,
       if (mi->BitsPerPixel < min_bpp)
          continue;
 
-      if (!is_resolution_known(mi->XResolution, mi->YResolution)) {
+      if (!is_exos_known_resolution(mi->XResolution, mi->YResolution)) {
 
          if (mi->XResolution > max_width) {
             max_width = mi->XResolution;
