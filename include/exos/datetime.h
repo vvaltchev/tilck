@@ -23,6 +23,7 @@ typedef struct {
 } datetime_t;
 
 extern const char *weekdays[7];
+extern const char *months3[12];
 
 static inline bool is_leap_year(u32 year)
 {

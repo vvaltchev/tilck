@@ -327,11 +327,10 @@ static void fb_draw_banner(void)
                    "exOS [%s build] framebuffer console", BUILDTYPE_STR);
 
    rlen = snprintk(rbuf, sizeof(rbuf) - 1 - llen - 1,
-                   "%s%i/%s%i/%i %s%i:%s%i",
+                   "%s%i %s %i %s%i:%s%i",
                    d.day < 10 ? "0" : "",
                    d.day,
-                   d.month < 10 ? "0" : "",
-                   d.month,
+                   months3[d.month - 1],
                    d.year,
                    d.hour < 10 ? "0" : "",
                    d.hour,

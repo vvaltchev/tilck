@@ -20,6 +20,22 @@ const char *weekdays[7] =
    "Saturday",
 };
 
+const char *months3[12] =
+{
+   "Jan",
+   "Feb",
+   "Mar",
+   "Apr",
+   "May",
+   "Jun",
+   "Jul",
+   "Aug",
+   "Sep",
+   "Oct",
+   "Nov",
+   "Dec"
+};
+
 u32 days_per_month[12] =
 {
    31, // jan
