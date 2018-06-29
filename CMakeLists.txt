@@ -189,10 +189,11 @@ set(BL_ST2_DATA_SEG 0x2000)
 set(EARLY_BOOT_SZ 4096)
 set(STAGE3_ENTRY_OFF 4096)
 
-set(QEMU_RAM_OPT "")      # use qemu's default: 128 MB
+set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
+set(QEMU_COMMON_OPTS      "-rtc base=localtime")
+
 set(CMAKE_KERNEL_BASE_VA  0xC0000000)
 set(CMAKE_KERNEL_PADDR    0x00100000)
-
 
 include(${CMAKE_SOURCE_DIR}/other/gen_config.cmake)
 

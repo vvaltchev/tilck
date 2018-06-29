@@ -17,6 +17,6 @@ if ! [ -f $f ]; then
    exit 1
 fi
 
-qemu-system-x86_64 -s @QEMU_RAM_OPT@ \
+qemu-system-x86_64 @QEMU_COMMON_OPTS@ -s @QEMU_RAM_OPT@ \
 -bios $tc/ovmf/ovmf-x64/OVMF-pure-efi.fd -drive \
 "file=$f,index=0,media=disk,format=raw,cyls=74,heads=16,secs=63" "$@"
