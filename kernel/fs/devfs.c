@@ -35,6 +35,7 @@ typedef struct {
    list_node list;
    const char *name;
    file_ops fops;
+   devfs_entry_type type;
 
 } devfs_file;
 
@@ -75,7 +76,7 @@ int create_dev_file(const char *filename, int major, int minor)
    list_node_init(&f->list);
    f->name = filename;
 
-   int res = dinfo->create_dev_file(minor, &f->fops);
+   int res = dinfo->create_dev_file(minor, &f->fops, &f->type);
 
    if (res < 0) {
       kfree2(f, sizeof(devfs_file));
@@ -152,6 +153,7 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
       if (!h)
          return -ENOMEM;
 
+      h->type = DEVFS_DIRECTORY;
       h->fs = fs;
       h->fops = (file_ops) {
          .read = devfs_dir_read,
@@ -186,6 +188,7 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
          if (!h)
             return -ENOMEM;
 
+         h->type = pos->type;
          h->fs = fs;
          h->fops = pos->fops;
          *out = h;
@@ -237,6 +240,19 @@ static void devfs_shared_unlock(filesystem *fs)
    devfs_exclusive_unlock(fs);
 }
 
+static int
+devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
+{
+   devfs_file *dh = h;
+
+   if (dh->type != DEVFS_DIRECTORY)
+      return -ENOTDIR;
+
+   // TODO: implement devfs_getdents64
+
+   return 0;
+}
+
 filesystem *create_devfs(void)
 {
    /* Disallow multiple instances of devfs */
@@ -265,6 +281,7 @@ filesystem *create_devfs(void)
    fs->open = devfs_open;
    fs->close = devfs_close;
    fs->dup = devfs_dup;
+   fs->getdents64 = devfs_getdents64;
 
    fs->fs_exlock = devfs_exclusive_lock;
    fs->fs_exunlock = devfs_exclusive_unlock;

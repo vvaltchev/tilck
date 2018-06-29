@@ -2,16 +2,26 @@
 #pragma once
 #include <exos/fs/exvfs.h>
 
+typedef enum {
+
+   DEVFS_DIRECTORY,
+   DEVFS_CHAR_DEVICE
+
+} devfs_entry_type;
+
 typedef struct {
 
    /* fs_handle_base */
    filesystem *fs;
    file_ops fops;
 
+   /* devfs-specific attrs */
+   devfs_entry_type type;
+
 } devfs_file_handle;
 
 
-typedef int (*func_create_device_file)(int minor, file_ops *ops);
+typedef int (*func_create_device_file)(int, file_ops *, devfs_entry_type *);
 
 typedef struct {
 

@@ -104,9 +104,9 @@ static int tty_ioctl(fs_handle h, uptr request, void *argp)
 
 /* ----------------- Driver interface ---------------- */
 
-static int tty_create_device_file(int minor, file_ops *ops)
+static int tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
 {
-   (void)minor; /* ignored */
+   *t = DEVFS_CHAR_DEVICE;
 
    bzero(ops, sizeof(file_ops));
 
@@ -115,7 +115,6 @@ static int tty_create_device_file(int minor, file_ops *ops)
    ops->ioctl = tty_ioctl;
    ops->seek = NULL; /* seek() support is NOT mandatory, of course */
    ops->stat = NULL; /* TODO: implement this */
-
    return 0;
 }
 
