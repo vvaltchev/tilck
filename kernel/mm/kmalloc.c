@@ -192,20 +192,6 @@ static void *actual_allocate_node(kmalloc_heap *h, size_t node_size, int node)
    return (void *)vaddr;
 }
 
-
-#define STACK_VAR alloc_stack
-#include <common/norec.h>
-
-/*
- * Explicit stack used by internal_kmalloc().
- * Keeping it as a global variable helps keeping the amount of stack used by
- * the kernel to be very small. Also, it does not create any problems since:
- *    - the kernel does not support SMP
- *    - the allocator is not reentrant, therefore kmalloc() can be called only
- *      in contexts where the kernel preemption is disabled.
- */
-static struct explicit_stack_elem2 alloc_stack[32];
-
 void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 {
    ASSERT(desired_size != 0);
@@ -267,7 +253,7 @@ void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 
          for (int ss = stack_size - 2; ss >= 0; ss--) {
 
-            const int n = (uptr) alloc_stack[ss].arg2; /* arg2: node */
+            const int n = (uptr) STACK_VAR[ss].arg2; /* arg2: node */
 
             if (nodes[NODE_LEFT(n)].full && nodes[NODE_RIGHT(n)].full) {
                ASSERT(!nodes[n].full);

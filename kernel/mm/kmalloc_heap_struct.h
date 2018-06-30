@@ -1,4 +1,9 @@
 
+#define STACK_VAR (h->alloc_stack)
+#include <common/norec.h>
+
+#define KMALLOC_ALLOC_STACK_SIZE 32
+
 struct kmalloc_heap {
 
    uptr vaddr;
@@ -20,5 +25,8 @@ struct kmalloc_heap {
    /* -- */
 
    bool linear_mapping;
+
+   // Explicit stack used by internal_kmalloc()
+   struct explicit_stack_elem2 alloc_stack[KMALLOC_ALLOC_STACK_SIZE];
 };
 
