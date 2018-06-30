@@ -7,8 +7,10 @@
 /*
  * Insertion sort for pointer-size "objects".
  */
-void insertion_sort_ptr(uptr *arr, int elem_count, cmpfun_ptr cmp)
+void insertion_sort_ptr(void *a, int elem_count, cmpfun_ptr cmp)
 {
+   uptr *arr = a;
+
    for (int i = 1; i < elem_count; i++) {
 
       uptr elem = arr[i]; // save the element that has to be placed

@@ -23,7 +23,7 @@ extern "C" {
 
    extern bool mock_kmalloc;
    extern bool suppress_printk;
-   extern kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
+   extern kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
    void selftest_kmalloc_perf_per_size(int size);
    void kmalloc_dump_heap_stats(void);
    void *node_to_ptr(kmalloc_heap *h, int node, size_t size);
@@ -56,30 +56,31 @@ u32 calculate_node_size(kmalloc_heap *h, int node)
 
 void save_heaps_metadata(unique_ptr<u8[]> *meta_before)
 {
-   for (int h = 0; h < KMALLOC_HEAPS_COUNT; h++) {
-      memmove(meta_before[h].get(),
-              heaps[h].metadata_nodes,
-              heaps[h].metadata_size);
+   for (int h = 0; h < KMALLOC_HEAPS_COUNT && heaps[h]; h++) {
+
+      memcpy(meta_before[h].get(),
+             heaps[h]->metadata_nodes,
+             heaps[h]->metadata_size);
    }
 }
 
 void print_node_info(int h, int node)
 {
-   const u32 node_size = calculate_node_size(&heaps[h], node);
-   u8 *after = (u8*)heaps[h].metadata_nodes;
+   const u32 node_size = calculate_node_size(heaps[h], node);
+   u8 *after = (u8*)heaps[h]->metadata_nodes;
 
    printf("[HEAP %i] Node #%i\n", h, node);
    printf("Node size: %u\n", node_size);
-   printf("Node ptr:  %p\n", node_to_ptr(&heaps[h], node, node_size));
+   printf("Node ptr:  %p\n", node_to_ptr(heaps[h], node, node_size));
    printf("Value:     %u\n", after[node]);
 }
 
 void check_heaps_metadata(unique_ptr<u8[]> *meta_before)
 {
-   for (int h = 0; h < KMALLOC_HEAPS_COUNT; h++) {
+   for (int h = 0; h < KMALLOC_HEAPS_COUNT && heaps[h]; h++) {
 
       u8 *meta_ptr = meta_before[h].get();
-      kmalloc_heap *heap = &heaps[h];
+      kmalloc_heap *heap = heaps[h];
 
       for (int i = 0; i < heap->metadata_size; i++) {
 
@@ -152,12 +153,8 @@ TEST_F(kmalloc_test, chaos_test)
 
    unique_ptr<u8[]> meta_before[KMALLOC_HEAPS_COUNT];
 
-   for (int h = 0; h < KMALLOC_HEAPS_COUNT; h++) {
-
-      if (!heaps[h].size)
-         continue;
-
-      meta_before[h].reset(new u8[heaps[h].metadata_size]);
+   for (int h = 0; h < KMALLOC_HEAPS_COUNT && heaps[h]; h++) {
+      meta_before[h].reset(new u8[heaps[h]->metadata_size]);
    }
 
    for (int i = 0; i < 150; i++) {
@@ -175,8 +172,8 @@ TEST_F(kmalloc_test, chaos_test)
 }
 
 extern "C" {
-bool pg_alloc_and_map(uptr vaddr, int page_count);
-void pg_free_and_unmap(uptr vaddr, int page_count);
+   bool pg_alloc_and_map(uptr vaddr, int page_count);
+   void pg_free_and_unmap(uptr vaddr, int page_count);
 }
 
 TEST_F(kmalloc_test, pg_alloc_and_map)

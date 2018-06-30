@@ -43,7 +43,8 @@ STATIC_ASSERT(LOW_MEM_HEAP_PA + LOW_MEM_HEAP_SIZE <= X86_LOW_MEM_UPPER_LIM);
 
 #define KMALLOC_MIN_HEAP_SIZE KMALLOC_MAX_ALIGN
 
-STATIC kmalloc_heap heaps[KMALLOC_HEAPS_COUNT];
+STATIC kmalloc_heap first_heap_struct;
+STATIC kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
 STATIC int used_heaps;
 STATIC char first_heap[256 * KB] __attribute__ ((aligned(KMALLOC_MAX_ALIGN)));
 
@@ -64,8 +65,10 @@ void *kmalloc(size_t s)
    // Iterate in reverse-order because the first heaps are the biggest ones.
    for (int i = used_heaps - 1; i >= 0; i--) {
 
-      const size_t heap_size = heaps[i].size;
-      const size_t heap_free = heap_size - heaps[i].mem_allocated;
+      ASSERT(heaps[i] != NULL);
+
+      const size_t heap_size = heaps[i]->size;
+      const size_t heap_free = heap_size - heaps[i]->mem_allocated;
 
       /*
        * The heap is too small (unlikely but possible) or the heap has not been
@@ -75,11 +78,11 @@ void *kmalloc(size_t s)
       if (heap_size < s || heap_free < s)
          continue;
 
-      void *vaddr = internal_kmalloc(&heaps[i], s);
+      void *vaddr = internal_kmalloc(heaps[i], s);
 
       if (vaddr) {
-         s = MAX(s, heaps[i].min_block_size);
-         heaps[i].mem_allocated += s;
+         s = MAX(s, heaps[i]->min_block_size);
+         heaps[i]->mem_allocated += s;
          ret = vaddr;
 
          if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
@@ -135,12 +138,12 @@ void kfree2(void *ptr, size_t user_size)
 
    for (int i = used_heaps - 1; i >= 0; i--) {
 
-      uptr hva = heaps[i].vaddr;
+      uptr hva = heaps[i]->vaddr;
 
       if (vaddr < hva)
          continue; /* not in this heap, for sure */
 
-      if (hn < 0 || hva > heaps[hn].vaddr)
+      if (hn < 0 || hva > heaps[hn]->vaddr)
          hn = i;
    }
 
@@ -149,22 +152,22 @@ void kfree2(void *ptr, size_t user_size)
 
    if (user_size) {
 
-      size = roundup_next_power_of_2(MAX(user_size, heaps[hn].min_block_size));
+      size = roundup_next_power_of_2(MAX(user_size, heaps[hn]->min_block_size));
 
 #ifdef DEBUG
-      size_t cs = calculate_block_size(&heaps[hn], vaddr);
+      size_t cs = calculate_block_size(heaps[hn], vaddr);
       if (cs != size) {
          panic("cs[%u] != size[%u] for block at: %p\n", cs, size, vaddr);
       }
 #endif
 
    } else {
-      size = calculate_block_size(&heaps[hn], vaddr);
+      size = calculate_block_size(heaps[hn], vaddr);
    }
 
-   ASSERT(vaddr >= heaps[hn].vaddr && vaddr + size <= heaps[hn].heap_over_end);
-   internal_kfree2(&heaps[hn], ptr, size);
-   heaps[hn].mem_allocated -= size;
+   ASSERT(vaddr >= heaps[hn]->vaddr && vaddr + size <= heaps[hn]->heap_over_end);
+   internal_kfree2(heaps[hn], ptr, size);
+   heaps[hn]->mem_allocated -= size;
 
    if (KMALLOC_FREE_MEM_POISONING) {
       memset32(ptr, KMALLOC_FREE_MEM_POISON_VAL, size / 4);
@@ -187,7 +190,7 @@ size_t kmalloc_get_total_heap_allocation(void)
    disable_preemption();
 
    for (int i = 0; i < used_heaps; i++) {
-      tot += heaps[i].mem_allocated;
+      tot += heaps[i]->mem_allocated;
    }
 
    enable_preemption();
@@ -224,7 +227,8 @@ bool kmalloc_create_heap(kmalloc_heap *h,
 
    if (!metadata_nodes) {
       // It is OK to pass NULL as 'metadata_nodes' if at least one heap exists.
-      ASSERT(heaps[0].vaddr != 0);
+      ASSERT(heaps[0] != NULL);
+      ASSERT(heaps[0]->vaddr != 0);
 
       metadata_nodes = kmalloc(h->metadata_size);
 
@@ -323,17 +327,17 @@ debug_dump_all_heaps_info(void)
 {
    for (u32 i = 0; i < ARRAY_SIZE(heaps); i++) {
 
-      if (!heaps[i].size) {
+      if (!heaps[i]) {
 
          for (u32 j = i; j < ARRAY_SIZE(heaps); j++)
-            ASSERT(!heaps[j].size);
+            ASSERT(!heaps[j]);
 
          break;
       }
 
-      debug_print_heap_info(heaps[i].vaddr,
-                            heaps[i].size,
-                            heaps[i].min_block_size);
+      debug_print_heap_info(heaps[i]->vaddr,
+                            heaps[i]->size,
+                            heaps[i]->min_block_size);
    }
 }
 
@@ -345,19 +349,19 @@ void debug_kmalloc_dump_mem_usage(void)
 
    for (u32 i = 0; i < ARRAY_SIZE(heaps); i++) {
 
-      if (!heaps[i].size)
+      if (!heaps[i]->size)
          break;
 
-      uptr size_kb = heaps[i].size / KB;
-      uptr allocated_kb = heaps[i].mem_allocated / KB;
+      uptr size_kb = heaps[i]->size / KB;
+      uptr allocated_kb = heaps[i]->mem_allocated / KB;
 
       printk("[heap %d] size: %u KB, allocated: %u KB [%u %%], diff: %d B\n",
              i, size_kb, allocated_kb, allocated_kb * 100 / size_kb,
-             heaps[i].mem_allocated - heaps_alloc[i]);
+             heaps[i]->mem_allocated - heaps_alloc[i]);
    }
 
    for (u32 i = 0; i < ARRAY_SIZE(heaps); i++) {
-      heaps_alloc[i] = heaps[i].mem_allocated;
+      heaps_alloc[i] = heaps[i]->mem_allocated;
    }
 }
 
@@ -371,8 +375,20 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
 
    min_block_size = calculate_heap_min_block_size(heap_size, metadata_size);
 
+   if (!used_heaps) {
+
+      heaps[used_heaps] = &first_heap_struct;
+
+   } else {
+
+      heaps[used_heaps] = kmalloc(sizeof(kmalloc_heap));
+
+      if (!heaps[used_heaps])
+         panic("Unable to alloc memory for struct kmalloc_heap");
+   }
+
    bool success =
-      kmalloc_create_heap(&heaps[used_heaps],
+      kmalloc_create_heap(heaps[used_heaps],
                           (uptr)vaddr,
                           heap_size,
                           min_block_size,
@@ -382,6 +398,7 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
                           NULL, NULL);
 
    VERIFY(success);
+   VERIFY(heaps[used_heaps] != NULL);
 
    /*
     * We passed to kmalloc_create_heap() the begining of the heap as 'metadata'
@@ -390,7 +407,7 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
     * allocation using internal_kmalloc().
     */
 
-   void *md_allocated = internal_kmalloc(&heaps[used_heaps], metadata_size);
+   void *md_allocated = internal_kmalloc(heaps[used_heaps], metadata_size);
 
    /*
     * We have to be SURE that the allocation returned the very beginning of
@@ -403,8 +420,11 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
 
 static int greater_than_heap_cmp(const void *a, const void *b)
 {
-   const kmalloc_heap *ha = a;
-   const kmalloc_heap *hb = b;
+   const kmalloc_heap *const *ha_ref = a;
+   const kmalloc_heap *const *hb_ref = b;
+
+   const kmalloc_heap *ha = *ha_ref;
+   const kmalloc_heap *hb = *hb_ref;
 
    if (ha->size < hb->size)
       return 1;
@@ -455,7 +475,7 @@ void init_kmalloc(void)
          break;
       }
 
-      vaddr = heaps[heap_index].vaddr + heaps[heap_index].size;
+      vaddr = heaps[heap_index]->vaddr + heaps[heap_index]->size;
    }
 
 #if defined(__i386__) || defined(__x86_64__)
@@ -469,10 +489,9 @@ void init_kmalloc(void)
 
 #endif
 
-   insertion_sort_generic(&heaps,
-                          sizeof(kmalloc_heap),
-                          ARRAY_SIZE(heaps),
-                          greater_than_heap_cmp);
+   insertion_sort_ptr(heaps,
+                      used_heaps,
+                      greater_than_heap_cmp);
 
    debug_dump_all_heaps_info();
 }

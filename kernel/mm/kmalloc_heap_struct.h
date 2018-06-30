@@ -26,7 +26,13 @@ struct kmalloc_heap {
 
    bool linear_mapping;
 
-   // Explicit stack used by internal_kmalloc()
+   /*
+    * Explicit stack used by internal_kmalloc()
+    *
+    * NOTE: this stack is per-heap because some kmalloc heaps might use
+    * kmalloc itself as valloc/vfree funcs [see process_mm.c]. In such cases,
+    * is unsafe to keep just one global alloc_stack.
+    */
    struct explicit_stack_elem2 alloc_stack[KMALLOC_ALLOC_STACK_SIZE];
 };
 
