@@ -133,8 +133,11 @@ void free_task(task_info *ti)
 
       ASSERT(ti->pi->ref_count > 0);
 
-      if (ti->pi->mmap_heap)
+      if (ti->pi->mmap_heap) {
          kmalloc_destroy_heap(ti->pi->mmap_heap);
+         kfree2(ti->pi->mmap_heap, kmalloc_get_heap_struct_size());
+         ti->pi->mmap_heap = NULL;
+      }
 
       if (--ti->pi->ref_count == 0)
          kfree2(ti, sizeof(task_info) + sizeof(process_info));

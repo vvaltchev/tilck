@@ -10,6 +10,8 @@ file(
 
 set(GTEST_DIR "${TCROOT}/googletest/googletest")
 
+
+include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${GTEST_DIR}/include)
 

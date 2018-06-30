@@ -19,6 +19,7 @@ extern "C" {
    #include <exos/kmalloc.h>
    #include <exos/paging.h>
    #include <exos/self_tests/self_tests.h>
+   #include <kernel/mm/kmalloc_heap_struct.h> // kmalloc private header
 
    extern bool mock_kmalloc;
    extern bool suppress_printk;

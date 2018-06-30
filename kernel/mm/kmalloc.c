@@ -11,6 +11,12 @@
 #include <exos/sort.h>
 
 #include "kmalloc_debug.h"
+#include "kmalloc_heap_struct.h"
+
+size_t kmalloc_get_heap_struct_size(void)
+{
+   return sizeof(kmalloc_heap);
+}
 
 #define FL_NODE_SPLIT      (1 << 0)
 #define FL_NODE_FULL       (1 << 1)

@@ -15,29 +15,7 @@ extern bool kmalloc_initialized;
 typedef bool (*virtual_alloc_and_map_func)(uptr vaddr, int page_count);
 typedef void (*virtual_free_and_unmap_func)(uptr vaddr, int page_count);
 
-typedef struct {
-
-   uptr vaddr;
-   size_t size;
-   size_t mem_allocated;
-   void *metadata_nodes;
-
-   size_t min_block_size;
-   size_t alloc_block_size;
-
-   virtual_alloc_and_map_func valloc_and_map;
-   virtual_free_and_unmap_func vfree_and_unmap;
-
-   /* -- pre-calculated values -- */
-   size_t heap_data_size_log2;
-   size_t alloc_block_size_log2;
-   size_t metadata_size;
-   uptr heap_over_end; /* addr + size == last_heap_byte + 1 */
-   /* -- */
-
-   bool linear_mapping;
-
-} kmalloc_heap;
+typedef struct kmalloc_heap kmalloc_heap;
 
 static inline size_t
 calculate_heap_metadata_size(size_t heap_size, size_t min_block_size)
@@ -87,6 +65,8 @@ static inline void *kzmalloc(size_t size)
    bzero(res, size);
    return res;
 }
+
+size_t kmalloc_get_heap_struct_size(void);
 
 /* kmalloc debug helpers */
 

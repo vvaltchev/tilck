@@ -162,7 +162,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
    if (!pi->mmap_heap) {
 
-      pi->mmap_heap = kzmalloc(sizeof(kmalloc_heap));
+      pi->mmap_heap = kzmalloc(kmalloc_get_heap_struct_size());
 
       if (!pi->mmap_heap)
          return -ENOMEM;
