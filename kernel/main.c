@@ -155,7 +155,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    timer_set_freq(TIMER_HZ);
    irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
-   irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
    VERIFY(enqueue_tasklet0(&init_kb));
 
    setup_syscall_interfaces();

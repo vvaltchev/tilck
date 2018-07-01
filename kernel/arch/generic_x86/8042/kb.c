@@ -254,6 +254,8 @@ void init_kb(void)
    capslock_set_led(capsLock);
    kb_set_typematic_byte(0);
 
-   printk("keyboard initialized.\n");
+   irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
    enable_preemption();
+
+   printk("keyboard initialized.\n");
 }

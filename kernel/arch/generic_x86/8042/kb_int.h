@@ -91,31 +91,6 @@ static NODISCARD bool kb_ctrl_send_cmd_and_wait_response(u8 cmd)
    return true;
 }
 
-static NODISCARD bool kb_ctrl_disable_ports(void)
-{
-   irq_set_mask(X86_PC_KEYBOARD_IRQ);
-
-   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT1_DISABLE))
-      return false;
-
-   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT2_DISABLE))
-      return false;
-
-   return true;
-}
-
-static NODISCARD bool kb_ctrl_enable_ports(void)
-{
-   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT1_ENABLE))
-      return false;
-
-   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT2_ENABLE))
-      return false;
-
-   irq_clear_mask(X86_PC_KEYBOARD_IRQ);
-   return true;
-}
-
 static NODISCARD bool kb_ctrl_full_wait(void)
 {
    u8 ctrl;
@@ -136,6 +111,43 @@ static NODISCARD bool kb_ctrl_full_wait(void)
 
    } while (ctrl & KB_CTRL_INPUT_FULL);
 
+   return true;
+}
+
+static NODISCARD bool kb_ctrl_disable_ports(void)
+{
+   irq_set_mask(X86_PC_KEYBOARD_IRQ);
+
+   if (!kb_ctrl_full_wait())
+      return false;
+
+   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT1_DISABLE))
+      return false;
+
+   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT2_DISABLE))
+      return false;
+
+   if (!kb_ctrl_full_wait())
+      return false;
+
+   return true;
+}
+
+static NODISCARD bool kb_ctrl_enable_ports(void)
+{
+   if (!kb_ctrl_full_wait())
+      return false;
+
+   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT1_ENABLE))
+      return false;
+
+   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT2_ENABLE))
+      return false;
+
+   if (!kb_ctrl_full_wait())
+      return false;
+
+   irq_clear_mask(X86_PC_KEYBOARD_IRQ);
    return true;
 }
 
