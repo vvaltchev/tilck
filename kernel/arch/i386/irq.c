@@ -7,23 +7,24 @@
 #include <exos/irq.h>
 #include <exos/term.h>
 #include <exos/process.h>
+#include <exos/tasklet.h>
 
 extern void (*irq_entry_points[16])(void);
-static interrupt_handler irq_routines[16];
+static irq_interrupt_handler irq_handlers[16];
 
 void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags);
 
 /* This installs a custom IRQ handler for the given IRQ */
-void irq_install_handler(u8 irq, interrupt_handler h)
+void irq_install_handler(u8 irq, irq_interrupt_handler h)
 {
-   irq_routines[irq] = h;
+   irq_handlers[irq] = h;
    irq_clear_mask(irq);
 }
 
 /* This clears the handler for a given IRQ */
 void irq_uninstall_handler(u8 irq)
 {
-   irq_routines[irq] = NULL;
+   irq_handlers[irq] = NULL;
 }
 
 #define PIC1                0x20     /* IO base address for master PIC */
@@ -201,8 +202,39 @@ void setup_irq_handling(void)
 
 u32 spur_irq_count = 0;
 
+static void handle_irq_set_mask(int irq)
+{
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+
+   /*
+    * We can really allow nested IRQ 0 only if we track the nested interrupts,
+    * otherwise, the timer handler won't be able to know it's running in a
+    * nested way and "bad things may happen".
+    */
+
+   if (irq != 0)
+      irq_set_mask(irq);
+
+#else
+   irq_set_mask(irq);
+#endif
+}
+
+static void handle_irq_clear_mask(int irq)
+{
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+
+   if (irq != 0)
+      irq_clear_mask(irq);
+
+#else
+   irq_clear_mask(irq);
+#endif
+}
+
 void handle_irq(regs *r)
 {
+   int handler_ret = 0;
    const int irq = r->int_num - 32;
 
    if (irq == 7 || irq == 15) {
@@ -239,21 +271,7 @@ void handle_irq(regs *r)
       }
    }
 
-#if KERNEL_TRACK_NESTED_INTERRUPTS
-
-   /*
-    * We can really allow nested IRQ 0 only if we track the nested interrupts,
-    * otherwise, the timer handler won't be able to know it's running in a
-    * nested way and "bad things may happen".
-    */
-
-   if (irq != 0)
-      irq_set_mask(irq);
-
-#else
-   irq_set_mask(irq);
-#endif
-
+   handle_irq_set_mask(irq);
    disable_preemption();
    push_nested_interrupt(r->int_num);
 
@@ -267,9 +285,9 @@ void handle_irq(regs *r)
    pic_send_eoi(irq);
    ASSERT(are_interrupts_enabled());
 
-   if (irq_routines[irq] != NULL) {
+   if (irq_handlers[irq] != NULL) {
 
-      irq_routines[irq](r);
+      handler_ret = irq_handlers[irq](r);
 
    } else {
 
@@ -278,13 +296,34 @@ void handle_irq(regs *r)
 
    pop_nested_interrupt();
    enable_preemption();
+   handle_irq_clear_mask(irq);
 
-#if KERNEL_TRACK_NESTED_INTERRUPTS
+   /////////////////////////////
 
-   if (irq != 0)
-      irq_clear_mask(irq);
+   if (disable_preemption_count > 0) {
+      /*
+       * Preemption is disabled: we cannot run the "bottom half" of this
+       * interrupt handler right now. The scheduler will run it as soon as
+       * possible.
+       */
+      return;
+   }
 
-#else
-   irq_clear_mask(irq);
-#endif
+   if (handler_ret) {
+      disable_preemption();
+      save_current_task_state(r);
+
+      /*
+       * We call here schedule with curr_irq = -1 because we are actually
+       * outside the interrupt context (see the pop_nested_interrupt() above()).
+       * At the moment, only timer_handler() calls schedule from a proper
+       * interrupt context. NOTE: this might change in the future.
+       */
+      schedule(-1);
+
+      /* In case schedule() returned, we MUST re-enable the preemption */
+      enable_preemption();
+   }
 }
+
+

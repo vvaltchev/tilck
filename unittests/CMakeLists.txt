@@ -20,19 +20,17 @@ add_executable(gtests EXCLUDE_FROM_ALL ${SOURCES})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
 
-set(CLANG_OPTS "")
-
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-   set(CLANG_OPTS "-fsanitize=address")
-   message(STATUS "Using CLANG_OPTS: ${CLANG_OPTS}")
-endif()
+# if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+#    set(CLANG_OPTS "-fsanitize=address")
+#    message(STATUS "Using CLANG_OPTS: ${CLANG_OPTS}")
+# endif()
 
 set_target_properties(
 
    gtests
 
    PROPERTIES
-      COMPILE_OPTIONS "-DTESTING ${CLANG_OPTS} ${COMMON_FLAGS} ${GCOV_COMPILE_FLAGS}"
+      COMPILE_FLAGS "-DTESTING ${CLANG_OPTS} ${COMMON_FLAGS} ${GCOV_COMPILE_FLAGS}"
       LINK_FLAGS "${GCOV_LINK_FLAGS}"
 )
 
@@ -52,9 +50,9 @@ set(
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})
 JOIN("${WRAPPED_SYMS_LIST}" ${SPACE} WRAPPINGS)
 
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-   target_link_libraries(gtests asan)
-endif()
+# if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+#    target_link_libraries(gtests asan)
+# endif()
 
 target_link_libraries(gtests ${GTEST_DIR}/libgtest.a)
 target_link_libraries(gtests ${GTEST_DIR}/libgtest_main.a)

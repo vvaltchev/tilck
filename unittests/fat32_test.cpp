@@ -40,8 +40,9 @@ const char *load_once_file(const char *filepath, size_t *fsize = nullptr)
       assert(buf != nullptr);
 
       fseek(fp, 0, SEEK_SET);
-      size_t bytes_read = fread(buf, 1, file_size, fp);
+      ssize_t bytes_read = fread(buf, 1, file_size, fp);
       assert(bytes_read == file_size);
+      (void)bytes_read;
 
       fclose(fp);
 
@@ -74,8 +75,6 @@ TEST(fat32, read_content_of_shortname_file)
    char data[128] = {0};
    fat_header *hdr;
    fat_entry *e;
-   size_t res;
-   FILE *fp;
 
    hdr = (fat_header*)buf;
    e = fat_search_entry(hdr, fat_unknown, "/testdir/dir1/f1");
@@ -92,8 +91,6 @@ TEST(fat32, read_content_of_longname_file)
    char data[128] = {0};
    fat_header *hdr;
    fat_entry *e;
-   size_t res;
-   FILE *fp;
 
    hdr = (fat_header*)buf;
    e = fat_search_entry(hdr,

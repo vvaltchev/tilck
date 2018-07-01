@@ -308,7 +308,7 @@ NORETURN sptr sys_exit(int exit_status)
 
    /* Free the heap allocations used by the task, including the kernel stack */
    free_mem_for_zombie_task(curr);
-   schedule();
+   schedule(X86_PC_TIMER_IRQ);
 
    /* Necessary to guarantee to the compiler that we won't return. */
    NOT_REACHED();

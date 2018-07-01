@@ -23,7 +23,7 @@
 .global asm_enable_sse
 .global asm_enable_osxsave
 .global asm_enable_avx
-.global kernel_yield
+.global asm_kernel_yield
 .global panic_save_current_state
 .global switch_to_initial_kernel_stack
 
@@ -169,7 +169,7 @@ END_FUNC(asm_enable_avx)
 # Saves the current (kernel) state as if an interrupt occurred while running
 # in kernel mode.
 
-FUNC(kernel_yield):
+FUNC(asm_kernel_yield):
 
    lock inc dword ptr [disable_preemption_count]
 
@@ -214,7 +214,7 @@ FUNC(kernel_yield):
    popf
    ret
 
-END_FUNC(kernel_yield)
+END_FUNC(asm_kernel_yield)
 
 FUNC(panic_save_current_state):
 

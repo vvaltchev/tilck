@@ -103,6 +103,8 @@ void idle_task_kthread(void)
 {
    while (true) {
 
+      ASSERT(is_preemption_enabled());
+
       idle_ticks++;
       halt();
 
@@ -285,36 +287,20 @@ bool need_reschedule(void)
 
 void schedule_outside_interrupt_context(void)
 {
-   // HACK: push a fake interrupt to compensate the call to
-   // pop_nested_interrupt() in switch_to_task(task_info *).
-
-   push_nested_interrupt(-1);
-
-   schedule();
-
-   /*
-    * If we're here it's because schedule() just returned: this happens
-    * when the only runnable task is the current one.
-    */
-   pop_nested_interrupt();
+   schedule(-1);
 }
 
 NORETURN void switch_to_idle_task(void)
 {
-   switch_to_task(idle_task);
+   switch_to_task(idle_task, X86_PC_TIMER_IRQ);
 }
 
 NORETURN void switch_to_idle_task_outside_interrupt_context(void)
 {
-   // HACK: push a fake interrupt to compensate the call to
-   // pop_nested_interrupt() in switch_to_task(task_info *).
-
-   push_nested_interrupt(-1);
-   switch_to_task(idle_task);
+   switch_to_task(idle_task, -1);
 }
 
-
-void schedule(void)
+void schedule(int curr_irq)
 {
    task_info *selected = NULL;
    task_info *pos;
@@ -330,7 +316,7 @@ void schedule(void)
    if (!is_tasklet(get_curr_task()) && any_tasklets_to_run()) {
       if (get_tasklet_runner()->state == TASK_STATE_RUNNABLE) {
          /* tasklets have absolute priority */
-         switch_to_task(get_tasklet_runner());
+         switch_to_task(get_tasklet_runner(), curr_irq);
       }
    }
 
@@ -357,7 +343,7 @@ void schedule(void)
       return;
    }
 
-   switch_to_task(selected);
+   switch_to_task(selected, curr_irq);
 }
 
 

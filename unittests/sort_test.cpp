@@ -11,13 +11,13 @@ extern "C" {
 
 static int less_than_cmp_int(const void *a, const void *b)
 {
-   const sptr *a_val = (const sptr *)a;
-   const sptr *b_val = (const sptr *)b;
+   const sptr a_val = *(const sptr *)a;
+   const sptr b_val = *(const sptr *)b;
 
-   if (a < b)
+   if (a_val < b_val)
       return -1;
 
-   if (a == b)
+   if (a_val == b_val)
       return 0;
 
    return 1;

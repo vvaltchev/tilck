@@ -119,8 +119,8 @@ void panic_dump_nested_interrupts(void)
    VERIFY(in_panic());
    ASSERT(!are_interrupts_enabled());
 
-   if (!nested_interrupts_count)
-      return;
+   //if (!nested_interrupts_count)
+   //   return;
 
    char buf[80];
    int written = 0;

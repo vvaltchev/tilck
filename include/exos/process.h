@@ -144,9 +144,9 @@ void save_current_task_state(regs *);
 void account_ticks(void);
 bool need_reschedule(void);
 
-NORETURN void switch_to_task(task_info *ti);
+NORETURN void switch_to_task(task_info *ti, int curr_irq);
 
-void schedule(void);
+void schedule(int curr_irq);
 void schedule_outside_interrupt_context(void);
 NORETURN void switch_to_idle_task(void);
 NORETURN void switch_to_idle_task_outside_interrupt_context(void);
@@ -187,14 +187,6 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg);
 // It is called when each kernel thread returns. May be called explicitly too.
 void kthread_exit(void);
 
-/*
- * Saves the current state and calls schedule().
- * That after, typically after some time, the scheduler will restore the thread
- * as if kernel_yield() returned and nothing else happened.
- */
-
-void kernel_yield(void);
-
 void kernel_sleep(u64 ticks);
 void join_kernel_thread(int tid);
 
@@ -226,6 +218,24 @@ static ALWAYS_INLINE bool is_preemption_enabled(void)
 }
 
 #endif
+
+/*
+ * Saves the current state and calls schedule().
+ * That after, typically after some time, the scheduler will restore the thread
+ * as if kernel_yield() returned and nothing else happened.
+ */
+
+void asm_kernel_yield(void);
+
+/*
+ * This wrapper is useful for adding ASSERTs and getting a backtrace containing
+ * the caller's EIP in case of a failure.
+ */
+static inline void kernel_yield(void)
+{
+   ASSERT(is_preemption_enabled());
+   asm_kernel_yield();
+}
 
 /* Internal stuff (used by process.c and process32.c) */
 extern char *kernel_initial_stack[KERNEL_INITIAL_STACK_SIZE];

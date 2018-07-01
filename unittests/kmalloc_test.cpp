@@ -82,7 +82,7 @@ void check_heaps_metadata(unique_ptr<u8[]> *meta_before)
       u8 *meta_ptr = meta_before[h].get();
       kmalloc_heap *heap = heaps[h];
 
-      for (int i = 0; i < heap->metadata_size; i++) {
+      for (u32 i = 0; i < heap->metadata_size; i++) {
 
          if (meta_ptr[i] == ((u8*)heap->metadata_nodes)[i])
             continue;

@@ -261,7 +261,7 @@ void set_current_task_in_user_mode(void)
 #include "gdt_int.h"
 
 
-NORETURN void switch_to_task(task_info *ti)
+NORETURN void switch_to_task(task_info *ti, int curr_irq)
 {
    ASSERT(!get_curr_task() || get_curr_task()->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
@@ -282,7 +282,9 @@ NORETURN void switch_to_task(task_info *ti)
    disable_interrupts_forced(); /* IF = 0 before the context switch */
 
 #if KERNEL_TRACK_NESTED_INTERRUPTS
-   pop_nested_interrupt();
+
+   if (curr_irq != -1)
+      pop_nested_interrupt();
 
    if (get_curr_task()) {
       if (get_curr_task()->running_in_kernel)
@@ -296,10 +298,8 @@ NORETURN void switch_to_task(task_info *ti)
 
    DEBUG_VALIDATE_STACK_PTR();
 
-#if !KERNEL_TRACK_NESTED_INTERRUPTS
-   // We have to be SURE that the timer IRQ is NOT masked!
-   irq_clear_mask(X86_PC_TIMER_IRQ);
-#endif
+   if (curr_irq != -1)
+      irq_clear_mask(curr_irq);
 
    regs *state = ti->state_regs;
    ASSERT(state->eflags & EFLAGS_IF);

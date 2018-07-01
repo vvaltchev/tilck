@@ -7,7 +7,7 @@
 
 void setup_irq_handling();
 
-void irq_install_handler(u8 irq, interrupt_handler h);
+void irq_install_handler(u8 irq, irq_interrupt_handler h);
 void irq_uninstall_handler(u8 irq);
 
 void irq_set_mask(u8 irq_line);

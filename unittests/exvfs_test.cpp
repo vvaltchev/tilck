@@ -109,12 +109,15 @@ TEST(exvfs, fseek)
    exvfs_seek(h, file_size / 2, SEEK_SET);
 
    off_t last_pos = lseek(fd, 0, SEEK_CUR);
+   (void)last_pos;
 
    const int iters = 10000;
 
    for (int i = 0; i < iters; i++) {
 
       int saved_errno = 0;
+      (void)saved_errno;
+
       off_t offset = (off_t) ( dist(engine) - dist(engine)/1.3 );
 
       off_t linux_lseek = lseek(fd, offset, SEEK_CUR);

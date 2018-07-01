@@ -136,8 +136,7 @@ void handle_key_pressed(u8 scancode)
          term_write((char *)&c, 1);
 
          if (c == '\n' || kb_cbuf_is_full()) {
-            bool success = enqueue_tasklet1(kcond_signal_one, &kb_cond);
-            VERIFY(success); // TODO: any better way to handle this?
+            kcond_signal_one(&kb_cond);
          }
       }
 
@@ -182,19 +181,12 @@ static void (*keyPressHandlers[2])(u8) = {
    handle_key_pressed, handle_E0_key_pressed
 };
 
-void keyboard_handler()
+u64 kb_press_start = 0;
+
+void kb_tasklet_handler(u8 scancode)
 {
-   u8 scancode;
-   ASSERT(are_interrupts_enabled());
-
-   if (!kb_wait_cmd_fetched())
-      panic("KB: fatal error: timeout in kb_wait_cmd_fetched");
-
-   if (!kb_ctrl_is_pending_data())
-      return;
-
-   /* Read from the keyboard's data buffer */
-   scancode = inb(KB_DATA_PORT);
+   // u64 cycles = RDTSC() - kb_press_start;
+   // printk("latency: %llu cycles\n", cycles);
 
    // Hack used to avoid handling 0xE1 two-scancode sequences
    if (next_scancodes_to_ignore) {
@@ -232,6 +224,26 @@ end:
    lastWasE0 = false;
 }
 
+static int keyboard_irq_handler(regs *context)
+{
+   u8 scancode;
+   ASSERT(are_interrupts_enabled());
+   ASSERT(!is_preemption_enabled());
+
+   if (!kb_wait_cmd_fetched())
+      panic("KB: fatal error: timeout in kb_wait_cmd_fetched");
+
+   if (!kb_ctrl_is_pending_data())
+      return 0;
+
+   /* Read from the keyboard's data buffer */
+   scancode = inb(KB_DATA_PORT);
+
+   kb_press_start = RDTSC();
+   VERIFY(enqueue_tasklet1(&kb_tasklet_handler, scancode));
+   return 1;
+}
+
 /* This will be executed in a tasklet */
 void init_kb(void)
 {
@@ -254,7 +266,7 @@ void init_kb(void)
    capslock_set_led(capsLock);
    kb_set_typematic_byte(0);
 
-   irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_handler);
+   irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_irq_handler);
    enable_preemption();
 
    printk("keyboard initialized.\n");

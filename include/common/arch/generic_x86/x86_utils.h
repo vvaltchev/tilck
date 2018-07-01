@@ -219,6 +219,8 @@ static ALWAYS_INLINE void invalidate_page(uptr vaddr)
 static ALWAYS_INLINE uptr get_stack_ptr(void)
 {
 
+#ifndef __clang__
+
 #ifdef BITS32
    register uptr res asm("esp");
 #else
@@ -226,6 +228,19 @@ static ALWAYS_INLINE uptr get_stack_ptr(void)
 #endif
 
    return res;
+
+#else
+
+   /*
+    * With clang, the avoid code results in the following Werror:
+    * error: variable 'res' is uninitialized when used here [-Werror,-Wuninitialized]
+    *
+    * TODO: fix this clang-compatibility issue.
+    */
+
+   return 0;
+
+#endif
 }
 
 static ALWAYS_INLINE void cpuid(u32 code, u32 *a, u32 *b, u32 *c, u32 *d)

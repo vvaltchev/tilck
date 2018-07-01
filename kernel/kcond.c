@@ -49,19 +49,16 @@ void kcond_signal_single(kcond *c, task_info *ti)
 {
    ASSERT(!is_preemption_enabled());
 
-   if (ti->wobj.ptr == c) {
-
-      if (ti->state != TASK_STATE_SLEEPING) {
-         /* the signal is lost, that's typical for conditions */
-         return;
-      }
-
-      if (c->timer_num >= 0)
-         cancel_timer(c->timer_num);
-
-      wait_obj_reset(&ti->wobj);
-      task_change_state(ti, TASK_STATE_RUNNABLE);
+   if (ti->state != TASK_STATE_SLEEPING) {
+      /* the signal is lost, that's typical for conditions */
+      return;
    }
+
+   if (c->timer_num >= 0)
+      cancel_timer(c->timer_num);
+
+   wait_obj_reset(&ti->wobj);
+   task_change_state(ti, TASK_STATE_RUNNABLE);
 }
 
 void kcond_signal_int(kcond *c, bool all)

@@ -31,6 +31,7 @@
 
 
 typedef void (*interrupt_handler)(regs *);
+typedef int (*irq_interrupt_handler)(regs *);
 
 
 void setup_segmentation(void);

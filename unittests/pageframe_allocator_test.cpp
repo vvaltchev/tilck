@@ -14,7 +14,7 @@ TEST(alloc_pageframe, seq_alloc)
 {
    init_pageframe_allocator();
 
-   ASSERT_EQ(get_usable_pg_count(), 128 * MB / PAGE_SIZE);
+   ASSERT_EQ((uptr)get_usable_pg_count(), 128 * MB / PAGE_SIZE);
 
    for (uptr i = 0; ; i++) {
 
@@ -29,7 +29,7 @@ TEST(alloc_pageframe, seq_alloc)
    // Now we should be out-of-memory.
    ASSERT_EQ(get_free_pg_count(), 0);
 
-   ASSERT_EQ(get_used_pg_count(),
+   ASSERT_EQ((uptr)get_used_pg_count(),
              (get_phys_mem_mb() - LINEAR_MAPPING_MB) * MB / PAGE_SIZE);
 }
 
@@ -51,7 +51,7 @@ TEST(alloc_pageframe, seq_alloc_free)
    ASSERT_EQ(get_free_pg_count(), 0);
 
    // Free everything.
-   for (uptr i = 0; i < get_usable_pg_count(); i++) {
+   for (int i = 0; i < get_usable_pg_count(); i++) {
       free_pageframe(LINEAR_MAPPING_SIZE + i * PAGE_SIZE);
    }
 
@@ -63,7 +63,7 @@ TEST(alloc_pageframe, seq_alloc_free)
     * allocate 'avail_pages' again now.
     */
 
-   uptr allocated = 0;
+   int allocated = 0;
 
    while (true) {
 

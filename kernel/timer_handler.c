@@ -87,12 +87,12 @@ void print_slow_timer_handler_counter(void)
 
 #endif
 
-void timer_handler(regs *context)
+int timer_handler(regs *context)
 {
 #if KERNEL_TRACK_NESTED_INTERRUPTS
    if (in_nested_irq0()) {
       slow_timer_handler_count++;
-      return;
+      return 0;
    }
 #endif
 
@@ -108,7 +108,7 @@ void timer_handler(regs *context)
     * if there has been another part of the code that disabled the preemption.
     */
    if (disable_preemption_count > 1) {
-      return;
+      return 0;
    }
 
    ASSERT(disable_preemption_count == 1); // again, for us disable = 1 means 0.
@@ -145,12 +145,14 @@ void timer_handler(regs *context)
       ASSERT(get_curr_task()->state == TASK_STATE_RUNNING);
       task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
       save_current_task_state(context);
-      switch_to_task(last_ready_task);
+      switch_to_task(last_ready_task, X86_PC_TIMER_IRQ);
    }
 
    if (need_reschedule()) {
       save_current_task_state(context);
-      schedule();
+      schedule(X86_PC_TIMER_IRQ);
    }
+
+   return 0;
 }
 
