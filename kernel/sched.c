@@ -325,14 +325,8 @@ void schedule(int curr_irq)
 {
    task_info *selected = NULL;
    task_info *pos;
-   u64 least_ticks_for_task = (u64)-1;
 
    ASSERT(!is_preemption_enabled());
-
-   // If we preempted the process, it is still runnable.
-   if (get_curr_task()->state == TASK_STATE_RUNNING) {
-      task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
-   }
 
    /*
     * Tasklets (used as IRQ bottom-halfs) have absolute priority.
@@ -354,13 +348,22 @@ void schedule(int curr_irq)
           * The highest-priority tasklet runner is already the current task:
           * no context switch is needed.
           */
-         selected = ti;
-         goto have_selected;
+         return;
       }
 
-      if (ti->state == TASK_STATE_RUNNABLE)
-         switch_to_task(ti, curr_irq);
+      if (ti->state == TASK_STATE_RUNNABLE) {
+         selected = ti;
+         break;
+      }
    }
+
+   // If we preempted the process, it is still runnable.
+   if (get_curr_task()->state == TASK_STATE_RUNNING) {
+      task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
+   }
+
+   if (selected)
+      switch_to_task(selected, curr_irq);
 
    list_for_each(pos, &runnable_tasks_list, runnable_list) {
 
@@ -369,17 +372,14 @@ void schedule(int curr_irq)
       if (pos == idle_task)
          continue;
 
-      if (pos->total_ticks < least_ticks_for_task) {
+      if (!selected || pos->total_ticks < selected->total_ticks) {
          selected = pos;
-         least_ticks_for_task = pos->total_ticks;
       }
    }
 
    if (!selected) {
       selected = idle_task;
    }
-
-have_selected:
 
    if (selected == get_curr_task()) {
       task_change_state(selected, TASK_STATE_RUNNING);
