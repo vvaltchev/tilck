@@ -298,8 +298,28 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
 
    DEBUG_VALIDATE_STACK_PTR();
 
-   if (curr_irq != -1)
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+
+   /*
+    * When nested interrupts are tracked, nested IRQ #0 are allowed and in no
+    * case the IRQ #0 is masked. Therefore there is no point in clearing the
+    * IRQ mask if irq == 0, wasting a lot of cycles. On QEMU + KVM, the clear
+    * mask function costs ~30K cycles, while on bare-metal costs 5-10 K cycles.
+    */
+
+   if (curr_irq > 0)
       irq_clear_mask(curr_irq);
+
+#else
+
+   /*
+    * When nested interrupts are not tracked, nested IRQ #0 is not allowed.
+    * Therefore here, as for any other IRQ, its mask has to be cleared.
+    */
+   if (curr_irq >= 0)
+      irq_clear_mask(curr_irq);
+
+#endif
 
    regs *state = ti->state_regs;
    ASSERT(state->eflags & EFLAGS_IF);
