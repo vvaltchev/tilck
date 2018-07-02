@@ -266,7 +266,8 @@ void init_kb(void)
    capslock_set_led(capsLock);
    kb_set_typematic_byte(0);
 
-   create_tasklet_thread(1, 128);
+   if (create_tasklet_thread(1, 128) < 0)
+      panic("Unable to create tasklet thread 1");
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_irq_handler);
    enable_preemption();
 
