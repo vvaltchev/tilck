@@ -56,14 +56,14 @@ static void capslock_set_led(bool val)
  */
 kcond kb_cond;
 
-void print_slow_timer_handler_counter(void);
+void print_slow_timer_irq_handler_counter(void);
 void debug_term_print_scroll_cycles(void);
 extern u32 spur_irq_count;
 
 void debug_show_spurious_irq_count(void)
 {
 #if KERNEL_TRACK_NESTED_INTERRUPTS
-      print_slow_timer_handler_counter();
+      print_slow_timer_irq_handler_counter();
 #endif
 
    if (get_ticks() > TIMER_HZ)

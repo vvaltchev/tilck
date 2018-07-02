@@ -125,6 +125,13 @@ void init_console(void)
       init_textmode_console(in_hypervisor());
 }
 
+
+void init_drivers(void)
+{
+   init_kb();
+   init_tty();
+}
+
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    init_serial_port();
@@ -149,21 +156,24 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    setup_irq_handling();
    init_sched();
-   init_tasklets();
+   setup_syscall_interfaces();
 
    show_system_info();
 
-   timer_set_freq(TIMER_HZ);
-   irq_install_handler(X86_PC_TIMER_IRQ, timer_handler);
-   VERIFY(enqueue_tasklet0(&init_kb));
+   init_tasklets();
+   init_timer();
 
-   setup_syscall_interfaces();
    mount_ramdisk();
    create_and_register_devfs();
-   init_tty();
+
+   if (!enqueue_tasklet0(&init_drivers))
+      panic("Unable to enqueue a tasklet for init_drivers()");
 
    if (self_test_to_run) {
-      VERIFY(kthread_create(selftest_runner_thread, NULL) != NULL);
+
+      if (!kthread_create(selftest_runner_thread, NULL))
+         panic("Unable to create the selftest_runner_thread");
+
       switch_to_idle_task_outside_interrupt_context();
    }
 

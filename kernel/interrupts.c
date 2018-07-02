@@ -86,7 +86,7 @@ bool in_syscall(void)
    return res;
 }
 
-extern u32 slow_timer_handler_count;
+extern u32 slow_timer_irq_handler_count;
 
 static void DEBUG_check_not_same_interrupt_nested(int int_num)
 {

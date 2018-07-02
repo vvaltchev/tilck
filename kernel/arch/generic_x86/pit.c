@@ -16,4 +16,3 @@ void timer_set_freq(int hz)
    outb(0x40, divisor & 0xFF);   /* Set low byte of divisor */
    outb(0x40, divisor >> 8);     /* Set high byte of divisor */
 }
-

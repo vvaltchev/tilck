@@ -316,7 +316,7 @@ void handle_irq(regs *r)
       /*
        * We call here schedule with curr_irq = -1 because we are actually
        * outside the interrupt context (see the pop_nested_interrupt() above()).
-       * At the moment, only timer_handler() calls schedule from a proper
+       * At the moment, only timer_irq_handler() calls schedule from a proper
        * interrupt context. NOTE: this might change in the future.
        */
       schedule(-1);

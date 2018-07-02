@@ -78,20 +78,20 @@ void cmos_read_datetime(void);
 
 #if KERNEL_TRACK_NESTED_INTERRUPTS
 
-u32 slow_timer_handler_count = 0;
+u32 slow_timer_irq_handler_count = 0;
 
-void print_slow_timer_handler_counter(void)
+void print_slow_timer_irq_handler_counter(void)
 {
-   printk("slow_timer_handler_counter: %u\n", slow_timer_handler_count);
+   printk("slow_timer_irq_handler_counter: %u\n", slow_timer_irq_handler_count);
 }
 
 #endif
 
-int timer_handler(regs *context)
+int timer_irq_handler(regs *context)
 {
 #if KERNEL_TRACK_NESTED_INTERRUPTS
    if (in_nested_irq0()) {
-      slow_timer_handler_count++;
+      slow_timer_irq_handler_count++;
       return 0;
    }
 #endif
@@ -156,3 +156,8 @@ int timer_handler(regs *context)
    return 0;
 }
 
+void init_timer(void)
+{
+   timer_set_freq(TIMER_HZ);
+   irq_install_handler(X86_PC_TIMER_IRQ, timer_irq_handler);
+}

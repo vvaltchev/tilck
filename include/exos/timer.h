@@ -21,5 +21,6 @@ static ALWAYS_INLINE u64 get_ticks(void)
    return jiffies;
 }
 
-int timer_handler(regs *r);
+int timer_irq_handler(regs *r);
 void timer_set_freq(int hz);
+void init_timer(void);
