@@ -3,19 +3,9 @@
 #include <common/basic_defs.h>
 #include <exos/process.h>
 
-#define MAX_TASKLETS 1000
+#define MAX_TASKLET_THREADS 16
 
-extern task_info *__tasklet_runner_task;
-
-static inline task_info *get_tasklet_runner(void)
-{
-   return __tasklet_runner_task;
-}
-
-static inline bool is_tasklet(task_info *ti)
-{
-   return ti == __tasklet_runner_task;
-}
+#define MAX_TASKLETS 128
 
 typedef struct {
 
@@ -24,20 +14,21 @@ typedef struct {
 
 } tasklet_context;
 
-
 void init_tasklets();
 
-NODISCARD bool enqueue_tasklet_int(void *func, uptr arg1, uptr arg2);
-bool run_one_tasklet(void);
-void tasklet_runner_kthread(void);
-bool any_tasklets_to_run(void);
+task_info *get_tasklet_runner(int tn);
+int create_tasklet_thread(int tn, int limit);
+void destroy_tasklet_thread(int tn);
+bool any_tasklets_to_run(int tn);
 
-#define enqueue_tasklet2(f, a1, a2) \
-   enqueue_tasklet_int((void *)(f), (uptr)(a1), (uptr)(a2))
+NODISCARD bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2);
 
-#define enqueue_tasklet1(f, a1) \
-   enqueue_tasklet_int((void *)(f), (uptr)(a1), 0)
+#define enqueue_tasklet2(tn, f, a1, a2) \
+   enqueue_tasklet_int(tn, (void *)(f), (uptr)(a1), (uptr)(a2))
 
-#define enqueue_tasklet0(f) \
-   enqueue_tasklet_int((void *)(f), 0, 0)
+#define enqueue_tasklet1(tn, f, a1) \
+   enqueue_tasklet_int(tn, (void *)(f), (uptr)(a1), 0)
+
+#define enqueue_tasklet0(tn, f) \
+   enqueue_tasklet_int(tn, (void *)(f), 0, 0)
 

@@ -181,12 +181,12 @@ static void (*keyPressHandlers[2])(u8) = {
    handle_key_pressed, handle_E0_key_pressed
 };
 
-u64 kb_press_start = 0;
+//u64 kb_press_start = 0;
 
 void kb_tasklet_handler(u8 scancode)
 {
-   // u64 cycles = RDTSC() - kb_press_start;
-   // printk("latency: %llu cycles\n", cycles);
+   //u64 cycles = RDTSC() - kb_press_start;
+   //printk("latency: %llu cycles\n", cycles);
 
    // Hack used to avoid handling 0xE1 two-scancode sequences
    if (next_scancodes_to_ignore) {
@@ -239,8 +239,8 @@ static int keyboard_irq_handler(regs *context)
    /* Read from the keyboard's data buffer */
    scancode = inb(KB_DATA_PORT);
 
-   kb_press_start = RDTSC();
-   VERIFY(enqueue_tasklet1(&kb_tasklet_handler, scancode));
+   //kb_press_start = RDTSC();
+   VERIFY(enqueue_tasklet1(1, &kb_tasklet_handler, scancode));
    return 1;
 }
 
@@ -266,6 +266,7 @@ void init_kb(void)
    capslock_set_led(capsLock);
    kb_set_typematic_byte(0);
 
+   create_tasklet_thread(1, 128);
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_irq_handler);
    enable_preemption();
 

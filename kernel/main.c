@@ -166,7 +166,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    mount_ramdisk();
    create_and_register_devfs();
 
-   if (!enqueue_tasklet0(&init_drivers))
+   if (!enqueue_tasklet0(0, &init_drivers))
       panic("Unable to enqueue a tasklet for init_drivers()");
 
    if (self_test_to_run) {

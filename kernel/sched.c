@@ -274,8 +274,29 @@ bool need_reschedule(void)
    task_info *curr = get_curr_task();
    ASSERT(curr != NULL);
 
-   if (!is_tasklet(curr) && any_tasklets_to_run())
+   for (u32 tn = 0; tn < MAX_TASKLET_THREADS; tn++) {
+
+      if (!any_tasklets_to_run(tn))
+         continue;
+
+      if (get_tasklet_runner(tn) == curr) {
+
+         /*
+          * The highest-priority tasklet runner we've found with tasklets to
+          * run is the currently running task. No need to reschedule.
+          * NOTE: no need to check the time_slot_ticks: a tasklet thread
+          * can be preempted only by a higher priority tasklet thread and that
+          * will happen anyway if such a thread exists.
+          */
+         return false;
+      }
+
+      /*
+       * The highest-priority tasklet runner we've found with tasklets to run
+       * is NOT the currently running task: we need to re-schedule.
+       */
       return true;
+   }
 
    if (curr->time_slot_ticks < TIME_SLOT_JIFFIES &&
        curr->state == TASK_STATE_RUNNING) {
@@ -313,11 +334,32 @@ void schedule(int curr_irq)
       task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
    }
 
-   if (!is_tasklet(get_curr_task()) && any_tasklets_to_run()) {
-      if (get_tasklet_runner()->state == TASK_STATE_RUNNABLE) {
-         /* tasklets have absolute priority */
-         switch_to_task(get_tasklet_runner(), curr_irq);
+   /*
+    * Tasklets (used as IRQ bottom-halfs) have absolute priority.
+    * NOTE: with the current algorithm, the tasklet thread 0 has the maximum
+    * priority, while the tasklet thread MAX_TASKLET_THREADS - 1 has the
+    * lowest priority.
+    */
+
+   for (u32 tn = 0; tn < MAX_TASKLET_THREADS; tn++) {
+
+      if (!any_tasklets_to_run(tn))
+         continue;
+
+      task_info *ti = get_tasklet_runner(tn);
+
+      if (ti == get_curr_task()) {
+
+         /*
+          * The highest-priority tasklet runner is already the current task:
+          * no context switch is needed.
+          */
+         selected = ti;
+         goto have_selected;
       }
+
+      if (ti->state == TASK_STATE_RUNNABLE)
+         switch_to_task(ti, curr_irq);
    }
 
    list_for_each(pos, &runnable_tasks_list, runnable_list) {
@@ -336,6 +378,8 @@ void schedule(int curr_irq)
    if (!selected) {
       selected = idle_task;
    }
+
+have_selected:
 
    if (selected == get_curr_task()) {
       task_change_state(selected, TASK_STATE_RUNNING);

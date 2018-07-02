@@ -16,6 +16,7 @@
 
 extern "C" {
    #include <exos/tasklet.h>
+   #include "kernel/tasklet_int.h" // private header
 }
 
 using namespace std;
@@ -24,6 +25,10 @@ using namespace testing;
 class tasklet_test : public Test {
 
    void SetUp() override {
+
+      if (tasklet_threads[0] != NULL)
+         destroy_tasklet_thread(0);
+
       init_kmalloc_for_tests();
       init_tasklets();
    }
@@ -48,12 +53,12 @@ TEST_F(tasklet_test, essential)
 {
    bool res = false;
 
-   ASSERT_TRUE(enqueue_tasklet2(&simple_func2, 1, 2));
-   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+   ASSERT_TRUE(enqueue_tasklet2(0, &simple_func2, 1, 2));
+   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
    ASSERT_TRUE(res);
 
-   ASSERT_TRUE(enqueue_tasklet1(&simple_func1, 1));
-   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+   ASSERT_TRUE(enqueue_tasklet1(0, &simple_func1, 1));
+   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
    ASSERT_TRUE(res);
 }
 
@@ -63,21 +68,21 @@ TEST_F(tasklet_test, base)
    bool res;
 
    for (int i = 0; i < MAX_TASKLETS; i++) {
-      res = enqueue_tasklet2(&simple_func2, 1, 2);
+      res = enqueue_tasklet2(0, &simple_func2, 1, 2);
       ASSERT_TRUE(res);
    }
 
-   res = enqueue_tasklet2(&simple_func2, 1, 2);
+   res = enqueue_tasklet2(0, &simple_func2, 1, 2);
 
    // There is no more space left, expecting the ADD failed.
    ASSERT_FALSE(res);
 
    for (int i = 0; i < MAX_TASKLETS; i++) {
-      ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+      ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
       ASSERT_TRUE(res);
    }
 
-   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
 
    // There are no more tasklets, expecting the RUN failed.
    ASSERT_FALSE(res);
@@ -90,31 +95,31 @@ TEST_F(tasklet_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < MAX_TASKLETS/2; i++) {
-      res = enqueue_tasklet2(&simple_func2, 1, 2);
+      res = enqueue_tasklet2(0, &simple_func2, 1, 2);
       ASSERT_TRUE(res);
    }
 
    // Consume 1/4.
    for (int i = 0; i < MAX_TASKLETS/4; i++) {
-      ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+      ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
       ASSERT_TRUE(res);
    }
 
    // Fill half of the buffer.
    for (int i = 0; i < MAX_TASKLETS/2; i++) {
-      res = enqueue_tasklet2(&simple_func2, 1, 2);
+      res = enqueue_tasklet2(0, &simple_func2, 1, 2);
       ASSERT_TRUE(res);
    }
 
    // Consume 2/4
    for (int i = 0; i < MAX_TASKLETS/2; i++) {
-      ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+      ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
       ASSERT_TRUE(res);
    }
 
    // Fill half of the buffer.
    for (int i = 0; i < MAX_TASKLETS/2; i++) {
-      res = enqueue_tasklet2(&simple_func2, 1, 2);
+      res = enqueue_tasklet2(0, &simple_func2, 1, 2);
       ASSERT_TRUE(res);
    }
 
@@ -122,11 +127,11 @@ TEST_F(tasklet_test, advanced)
 
    // Consume 3/4
    for (int i = 0; i < 3*MAX_TASKLETS/4; i++) {
-      ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+      ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
       ASSERT_TRUE(res);
    }
 
-   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
 
    // There are no more tasklets, expecting the RUN failed.
    ASSERT_FALSE(res);
@@ -150,11 +155,11 @@ TEST_F(tasklet_test, chaos)
       for (int i = 0; i < c; i++) {
 
          if (slots_used == MAX_TASKLETS) {
-            ASSERT_FALSE(enqueue_tasklet2(&simple_func2, NULL, NULL));
+            ASSERT_FALSE(enqueue_tasklet2(0, &simple_func2, NULL, NULL));
             break;
          }
 
-         res = enqueue_tasklet2(&simple_func2, 1, 2);
+         res = enqueue_tasklet2(0, &simple_func2, 1, 2);
          ASSERT_TRUE(res);
          slots_used++;
       }
@@ -164,12 +169,12 @@ TEST_F(tasklet_test, chaos)
       for (int i = 0; i < c; i++) {
 
          if (slots_used == 0) {
-            ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+            ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
             ASSERT_FALSE(res);
             break;
          }
 
-         ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(); });
+         ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
          ASSERT_TRUE(res);
          slots_used--;
       }

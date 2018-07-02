@@ -39,13 +39,13 @@ void selftest_tasklet(void)
    for (int i = 0; i < tot_iters; i++) {
 
       do {
-         added = enqueue_tasklet0(&test_tasklet_func);
+         added = enqueue_tasklet0(0, &test_tasklet_func);
       } while (!added);
 
    }
 
    do {
-      added = enqueue_tasklet0(&end_test);
+      added = enqueue_tasklet0(0, &end_test);
    } while (!added);
 }
 
@@ -60,7 +60,7 @@ void selftest_tasklet_perf(void)
 
    while (true) {
 
-      added = enqueue_tasklet0(&test_tasklet_func);
+      added = enqueue_tasklet0(0, &test_tasklet_func);
 
       if (!added)
          break;
