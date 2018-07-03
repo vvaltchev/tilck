@@ -40,7 +40,7 @@ bool any_tasklets_to_run(int tn)
    if (!t)
       return false;
 
-   return !ringbuf_is_empty(&t->tasklet_ringbuf);
+   return !ringbuf_is_empty(&t->ringbuf);
 }
 
 bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
@@ -60,7 +60,7 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 
    disable_preemption();
 
-   success = ringbuf_write_elem(&t->tasklet_ringbuf, &new_tasklet);
+   success = ringbuf_write_elem(&t->ringbuf, &new_tasklet);
 
 
 #ifndef UNIT_TEST_ENVIRONMENT
@@ -73,7 +73,7 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
     * here) but that's OK since the tasklet runner thread calls run_one_tasklet
     * in a while(true) loop and it uses a timeout.
     */
-   kcond_signal_single(&t->tasklet_cond, t->task);
+   kcond_signal_single(&t->cond, t->task);
 
 #endif
 
@@ -92,7 +92,7 @@ bool run_one_tasklet(int tn)
 
    disable_preemption();
    {
-      success = ringbuf_read_elem(&t->tasklet_ringbuf, &tasklet_to_run);
+      success = ringbuf_read_elem(&t->ringbuf, &tasklet_to_run);
    }
    enable_preemption();
 
@@ -154,7 +154,7 @@ static void tasklet_runner_kthread(void *arg)
 
       } while (tasklet_run);
 
-      kcond_wait(&t->tasklet_cond, NULL, TIMER_HZ / 10);
+      kcond_wait(&t->cond, NULL, TIMER_HZ / 10);
    }
 }
 
@@ -198,22 +198,22 @@ int create_tasklet_thread(int priority, int limit)
    int tn = tasklet_threads_count;
    t->priority = priority;
    t->limit = limit;
-   t->all_tasklets = kzmalloc(sizeof(tasklet) * limit);
+   t->tasklets = kzmalloc(sizeof(tasklet) * limit);
 
-   if (!t->all_tasklets) {
+   if (!t->tasklets) {
       kfree2(t, sizeof(tasklet_thread_info));
       return -ENOMEM;
    }
 
-   kcond_init(&t->tasklet_cond);
-   ringbuf_init(&t->tasklet_ringbuf, limit, sizeof(tasklet), t->all_tasklets);
+   kcond_init(&t->cond);
+   ringbuf_init(&t->ringbuf, limit, sizeof(tasklet), t->tasklets);
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
    t->task = kthread_create(tasklet_runner_kthread, (void *)(uptr)tn);
 
    if (!t->task) {
-      kfree2(t->all_tasklets, sizeof(tasklet) * limit);
+      kfree2(t->tasklets, sizeof(tasklet) * limit);
       kfree2(t, sizeof(tasklet_thread_info));
       return -ENOMEM;
    }
@@ -239,11 +239,11 @@ void destroy_last_tasklet_thread(void)
    tasklet_thread_info *t = tasklet_threads[tn];
    ASSERT(t != NULL);
 
-   ASSERT(ringbuf_is_empty(&t->tasklet_ringbuf));
+   ASSERT(ringbuf_is_empty(&t->ringbuf));
 
-   kcond_destory(&t->tasklet_cond);
-   ringbuf_destory(&t->tasklet_ringbuf);
-   kfree2(t->all_tasklets, sizeof(tasklet) * t->limit);
+   kcond_destory(&t->cond);
+   ringbuf_destory(&t->ringbuf);
+   kfree2(t->tasklets, sizeof(tasklet) * t->limit);
    kfree2(t, sizeof(tasklet_thread_info));
    tasklet_threads[tn] = NULL;
 }
