@@ -46,3 +46,5 @@ void term_scroll_up(u32 lines);
 void term_scroll_down(u32 lines);
 void term_set_color(u8 color);
 void term_set_col_offset(u32 off);
+
+void debug_term_print_scroll_cycles(void);

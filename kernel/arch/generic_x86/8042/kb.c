@@ -33,6 +33,18 @@
 
 #define KB_TASKLETS_QUEUE_SIZE 128
 
+
+typedef enum {
+
+   KB_DEFAULT_STATE,
+   KB_READ_E0_SCANCODE_STATE,
+   KB_READ_E1_SCANCODE_STATE,
+   KB_READ_FIRST_SCANCODE_AFTER_E1_STATE
+
+} kb_state_t;
+
+static kb_state_t kb_curr_state = KB_DEFAULT_STATE;
+
 static int kb_tasklet_runner = -1;
 
 static bool pkeys[128];
@@ -41,9 +53,6 @@ static bool *pkeysArrays[2] = { pkeys, e0pkeys };
 
 static bool numLock = false;
 static bool capsLock = false;
-static bool lastWasE0 = false;
-
-static u8 next_scancodes_to_ignore = 0; // HACK to skip 0xE1 sequences
 
 static void numlock_set_led(bool val)
 {
@@ -59,25 +68,6 @@ static void capslock_set_led(bool val)
  * Condition variable on which tasks interested in keyboard input, wait.
  */
 kcond kb_cond;
-
-void print_slow_timer_irq_handler_counter(void);
-void debug_term_print_scroll_cycles(void);
-extern u32 spur_irq_count;
-
-void debug_show_spurious_irq_count(void)
-{
-#if KERNEL_TRACK_NESTED_INTERRUPTS
-      print_slow_timer_irq_handler_counter();
-#endif
-
-   if (get_ticks() > TIMER_HZ)
-      printk("Spur IRQ count: %u (%u/sec)\n",
-               spur_irq_count,
-               spur_irq_count / (get_ticks() / TIMER_HZ));
-   else
-      printk("Spurious IRQ count: %u (< 1 sec)\n",
-               spur_irq_count, spur_irq_count);
-}
 
 void handle_key_pressed(u8 scancode)
 {
@@ -185,42 +175,69 @@ static void (*keyPressHandlers[2])(u8) = {
    handle_key_pressed, handle_E0_key_pressed
 };
 
-void kb_tasklet_handler(u8 scancode)
+static void kb_handle_default_state(u8 scancode)
 {
-   // Hack used to avoid handling 0xE1 two-scancode sequences
-   if (next_scancodes_to_ignore) {
-      next_scancodes_to_ignore--;
-      return;
-   }
+   bool is_pressed;
 
-   // Hack used to avoid handling 0xE1 two-scancode sequences
-   if (scancode == 0xE1) {
-      next_scancodes_to_ignore = 2;
-      return;
-   }
+   switch (scancode) {
 
-   if (scancode == 0xE0) {
-      lastWasE0 = true;
-      return;
-   }
+      case 0xE0:
+         kb_curr_state = KB_READ_E0_SCANCODE_STATE;
+         break;
 
-   if (lastWasE0) {
-      // Fake lshift pressed (2A) or released (AA)
-      if (scancode == 0x2A || scancode == 0xAA) {
-         goto end;
-      }
-   }
+      case 0xE1:
+         kb_curr_state = KB_READ_E1_SCANCODE_STATE;
+         break;
 
-   int is_pressed = !(scancode & 0x80);
-   scancode &= ~0x80;
+      default:
+         is_pressed = !(scancode & 0x80);
+         scancode &= ~0x80;
 
-   pkeysArrays[lastWasE0][scancode] = is_pressed;
+         pkeysArrays[0][scancode] = is_pressed;
 
-   if (is_pressed)
-      keyPressHandlers[lastWasE0](scancode);
+         if (is_pressed)
+            keyPressHandlers[0](scancode);
+   };
+}
 
-end:
-   lastWasE0 = false;
+static void kb_tasklet_handler(u8 scancode)
+{
+   bool is_pressed;
+
+   switch (kb_curr_state) {
+
+      case KB_READ_FIRST_SCANCODE_AFTER_E1_STATE:
+         /* We ignore 0xE1 sequences at the moment (scancode 2/2) */
+         kb_curr_state = KB_DEFAULT_STATE;
+         break;
+
+      case KB_READ_E1_SCANCODE_STATE:
+         /* We ignore 0xE1 sequences at the moment (scancode 1/2) */
+         kb_curr_state = KB_READ_FIRST_SCANCODE_AFTER_E1_STATE;
+         break;
+
+      case KB_READ_E0_SCANCODE_STATE:
+
+         kb_curr_state = KB_DEFAULT_STATE;
+
+         // Fake lshift pressed (2A) or released (AA)
+         if (scancode == 0x2A || scancode == 0xAA)
+            break;
+
+         is_pressed = !(scancode & 0x80);
+         scancode &= ~0x80;
+
+         pkeysArrays[1][scancode] = is_pressed;
+
+         if (is_pressed)
+            keyPressHandlers[1](scancode);
+
+         break;
+
+      case KB_DEFAULT_STATE:
+         kb_handle_default_state(scancode);
+         break;
+   };
 }
 
 static int keyboard_irq_handler(regs *context)

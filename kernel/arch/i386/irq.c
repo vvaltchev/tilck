@@ -8,6 +8,7 @@
 #include <exos/term.h>
 #include <exos/process.h>
 #include <exos/tasklet.h>
+#include <exos/timer.h>
 
 extern void (*irq_entry_points[16])(void);
 static irq_interrupt_handler irq_handlers[16];
@@ -200,7 +201,23 @@ void setup_irq_handling(void)
    }
 }
 
-u32 spur_irq_count = 0;
+static u32 spur_irq_count = 0;
+void print_slow_timer_irq_handler_counter(void);
+
+void debug_show_spurious_irq_count(void)
+{
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+      print_slow_timer_irq_handler_counter();
+#endif
+
+   if (get_ticks() > TIMER_HZ)
+      printk("Spur IRQ count: %u (%u/sec)\n",
+               spur_irq_count,
+               spur_irq_count / (get_ticks() / TIMER_HZ));
+   else
+      printk("Spurious IRQ count: %u (< 1 sec)\n",
+               spur_irq_count, spur_irq_count);
+}
 
 static void handle_irq_set_mask(int irq)
 {
