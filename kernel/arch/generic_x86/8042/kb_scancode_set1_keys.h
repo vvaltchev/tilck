@@ -1,16 +1,16 @@
 
 /* Key definitions (partial) for PS/2 scancode set 1 */
 
-#define KEY_L_SHIFT     42
-#define KEY_R_SHIFT     54
-#define NUM_LOCK        69
-#define CAPS_LOCK       58
-#define KEY_LEFT      0x4b
-#define KEY_RIGHT     0x4d
-#define KEY_UP        0x48
-#define KEY_DOWN      0x50
-#define KEY_CTRL      0x1d
-#define KEY_ALT       0x38
+#define KEY_L_SHIFT        42
+#define KEY_R_SHIFT        54
+#define KEY_NUM_LOCK       69
+#define KEY_CAPS_LOCK      58
+#define KEY_LEFT         0x4b
+#define KEY_RIGHT        0x4d
+#define KEY_UP           0x48
+#define KEY_DOWN         0x50
+#define KEY_CTRL         0x1d
+#define KEY_ALT          0x38
 
 #define KEY_F1  (0x3b)
 #define KEY_F2  (KEY_F1 + 1)

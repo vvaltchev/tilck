@@ -1,21 +1,4 @@
 
-
-/*
- * This is a DEMO/DEBUG version of the KB driver good enough ONLY for basic
- * experiments.
- *
- * TODO: reimplement this driver in a proper way. As per today, this is the
- * oldest (and NOT-refactored) code in exOS, by far worse than anything else in
- * the project.
- *
- *
- * Useful info:
- * http://wiki.osdev.org/PS/2_Keyboard
- * http://www.brokenthorn.com/Resources/OSDev19.html
- *
- */
-
-
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
@@ -26,13 +9,14 @@
 #include <exos/sync.h>
 #include <exos/ringbuf.h>
 #include <exos/timer.h>
+#include <exos/list.h>
+#include <exos/kb.h>
+#include <exos/errno.h>
 
-#include "kb_int_cbuf.h"
 #include "kb_int.h"
 #include "kb_layouts.h"
 
 #define KB_TASKLETS_QUEUE_SIZE 128
-
 
 typedef enum {
 
@@ -43,14 +27,19 @@ typedef enum {
 
 } kb_state_t;
 
+typedef struct {
+
+   list_node list;
+   keypress_func handler;
+
+} keypress_handler_elem;
+
 static kb_state_t kb_curr_state = KB_DEFAULT_STATE;
-
 static int kb_tasklet_runner = -1;
-
 static bool key_pressed_state[2][128];
-
-static bool numLock = false;
-static bool capsLock = false;
+static bool numLock;
+static bool capsLock;
+static list_node keypress_handlers;
 
 static inline bool is_pressed(u32 key)
 {
@@ -70,6 +59,9 @@ static void capslock_set_led(bool val)
 
 static u8 translate_printable_key(u32 key)
 {
+   if (key >= 256)
+      return 0;
+
    u8 *layout =
       us_kb_layouts[is_pressed(KEY_L_SHIFT) || is_pressed(KEY_R_SHIFT)];
 
@@ -84,10 +76,48 @@ static u8 translate_printable_key(u32 key)
    return c;
 }
 
-/*
- * Condition variable on which tasks interested in keyboard input, wait.
- */
-kcond kb_cond;
+int kb_register_keypress_handler(keypress_func f)
+{
+   keypress_handler_elem *e = kmalloc(sizeof(keypress_handler_elem));
+
+   if (!e)
+      return -ENOMEM;
+
+   list_node_init(&e->list);
+   e->handler = f;
+
+   list_add_tail(&keypress_handlers, &e->list);
+   return 0;
+}
+
+static int kb_call_keypress_handlers(u32 raw_key, u8 printable_char)
+{
+   int count = 0;
+   keypress_handler_elem *pos;
+
+   list_for_each(pos, &keypress_handlers, list) {
+
+      int rc = pos->handler(raw_key, printable_char);
+
+      switch (rc) {
+         case KB_HANDLER_OK_AND_STOP:
+            count++;
+            return count;
+
+         case KB_HANDLER_OK_AND_CONTINUE:
+            count++;
+            break;
+
+         case KB_HANDLER_NAK:
+            break;
+
+         default:
+            NOT_REACHED();
+      }
+   }
+
+   return count;
+}
 
 void handle_key_pressed(u32 key)
 {
@@ -110,13 +140,13 @@ void handle_key_pressed(u32 key)
 
       return;
 
-   case NUM_LOCK:
+   case KEY_NUM_LOCK:
       numLock = !numLock;
       numlock_set_led(numLock);
       printk("\nNUM LOCK is %s\n", numLock ? "ON" : "OFF");
       return;
 
-   case CAPS_LOCK:
+   case KEY_CAPS_LOCK:
       capsLock = !capsLock;
       capslock_set_led(capsLock);
       printk("\nCAPS LOCK is %s\n", capsLock ? "ON" : "OFF");
@@ -142,35 +172,12 @@ void handle_key_pressed(u32 key)
       break;
    }
 
-   if ((key >> 8) == 0xE0) {
-      printk("PRESSED key: 0x%x\n", key);
-      return;
-   }
-
    u8 c = translate_printable_key(key);
+   int handlers_count = kb_call_keypress_handlers(key, c);
 
-   if (!c) {
-      printk("PRESSED key: 0x%x\n", key);
+   if (!handlers_count) {
+      printk("KB: PRESSED key 0x%x\n", key);
       return;
-   }
-
-   if (c == '\b') {
-
-      if (kb_cbuf_drop_last_written_elem(NULL))
-         term_write((char *)&c, 1);
-
-      return;
-   }
-
-   /* Default case: a regular (printable) character */
-
-   if (kb_cbuf_write_elem(c)) {
-
-      term_write((char *)&c, 1);
-
-      if (c == '\n' || kb_cbuf_is_full()) {
-         kcond_signal_one(&kb_cond);
-      }
    }
 }
 
@@ -263,8 +270,7 @@ void init_kb(void)
 {
    disable_preemption();
 
-   ringbuf_init(&kb_cooked_ringbuf, KB_CBUF_SIZE, 1, kb_cooked_buf);
-   kcond_init(&kb_cond);
+   list_node_init(&keypress_handlers);
 
    if (!kb_ctrl_self_test()) {
 

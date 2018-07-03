@@ -3,10 +3,12 @@
 #include <exos/hal.h>
 #include <exos/sync.h>
 
-extern kcond kb_cond;
-
 void init_kb();
 
-bool kb_cbuf_is_empty(void);
-bool kb_cbuf_is_full(void);
-char kb_cbuf_read_elem(void);
+#define KB_HANDLER_OK_AND_STOP       1
+#define KB_HANDLER_OK_AND_CONTINUE   0
+#define KB_HANDLER_NAK              -1
+
+typedef int (*keypress_func)(u32, u8);
+
+int kb_register_keypress_handler(keypress_func f);

@@ -11,6 +11,71 @@
 #include <exos/process.h>
 #include <exos/term.h>
 #include <exos/user.h>
+#include <exos/ringbuf.h>
+
+#define KB_CBUF_SIZE 256
+
+static char kb_cooked_buf[256];
+static ringbuf kb_cooked_ringbuf;
+static kcond kb_cond;
+
+bool kb_cbuf_is_empty(void)
+{
+   return ringbuf_is_empty(&kb_cooked_ringbuf);
+}
+
+bool kb_cbuf_is_full(void)
+{
+   return ringbuf_is_full(&kb_cooked_ringbuf);
+}
+
+char kb_cbuf_read_elem(void)
+{
+   u8 ret;
+   ASSERT(!kb_cbuf_is_empty());
+   DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&kb_cooked_ringbuf, &ret));
+   return (char)ret;
+}
+
+static ALWAYS_INLINE bool kb_cbuf_drop_last_written_elem(char *c)
+{
+   char unused;
+
+   if (!c)
+      c = &unused;
+
+   return ringbuf_unwrite_elem(&kb_cooked_ringbuf, c);
+}
+
+static ALWAYS_INLINE bool kb_cbuf_write_elem(char c)
+{
+   return ringbuf_write_elem1(&kb_cooked_ringbuf, c);
+}
+
+static int tty_keypress_handler(u32 key, u8 c)
+{
+   if (!c)
+      return KB_HANDLER_NAK;
+
+   if (c == '\b') {
+
+      if (kb_cbuf_drop_last_written_elem(NULL))
+         term_write((char *)&c, 1);
+
+      return KB_HANDLER_OK_AND_CONTINUE;
+   }
+
+   if (kb_cbuf_write_elem(c)) {
+
+      term_write((char *)&c, 1);
+
+      if (c == '\n' || kb_cbuf_is_full()) {
+         kcond_signal_one(&kb_cond);
+      }
+   }
+
+   return KB_HANDLER_OK_AND_CONTINUE;
+}
 
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
@@ -126,5 +191,11 @@ void init_tty(void)
    int rc = create_dev_file("tty", major, 0 /* minor */);
 
    if (rc != 0)
-      panic("Unable to create /dev/tty (error: %d)", rc);
+      panic("TTY: unable to create /dev/tty (error: %d)", rc);
+
+   kcond_init(&kb_cond);
+   ringbuf_init(&kb_cooked_ringbuf, KB_CBUF_SIZE, 1, kb_cooked_buf);
+
+   if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
+      panic("TTY: unable to register keypress handler");
 }
