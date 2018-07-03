@@ -12,6 +12,7 @@
 #include <exos/term.h>
 #include <exos/user.h>
 #include <exos/ringbuf.h>
+#include <exos/kb_scancode_set1_keys.h>
 
 #define KB_CBUF_SIZE 256
 
@@ -54,6 +55,16 @@ static ALWAYS_INLINE bool kb_cbuf_write_elem(char c)
 
 static int tty_keypress_handler(u32 key, u8 c)
 {
+   if (key == KEY_E0_PAGE_UP) {
+      term_scroll_up(5);
+      return KB_HANDLER_OK_AND_STOP;
+   }
+
+   if (key == KEY_E0_PAGE_DOWN) {
+      term_scroll_down(5);
+      return KB_HANDLER_OK_AND_STOP;
+   }
+
    if (!c)
       return KB_HANDLER_NAK;
 

@@ -2,16 +2,12 @@
 #include <common/basic_defs.h>
 #include <common/string_util.h>
 
-#include <exos/term.h>
 #include <exos/tasklet.h>
-#include <exos/hal.h>
 #include <exos/process.h>
-#include <exos/sync.h>
-#include <exos/ringbuf.h>
-#include <exos/timer.h>
 #include <exos/list.h>
 #include <exos/kb.h>
 #include <exos/errno.h>
+#include <exos/kb_scancode_set1_keys.h>
 
 #include "kb_int.h"
 #include "kb_layouts.h"
@@ -41,7 +37,7 @@ static bool numLock;
 static bool capsLock;
 static list_node keypress_handlers;
 
-static inline bool is_pressed(u32 key)
+bool kb_is_pressed(u32 key)
 {
    bool e0 = (key >> 8) == 0xE0;
    return key_pressed_state[e0][key & 0xFF];
@@ -63,7 +59,7 @@ static u8 translate_printable_key(u32 key)
       return 0;
 
    u8 *layout =
-      us_kb_layouts[is_pressed(KEY_L_SHIFT) || is_pressed(KEY_R_SHIFT)];
+      us_kb_layouts[kb_is_pressed(KEY_L_SHIFT) || kb_is_pressed(KEY_R_SHIFT)];
 
    u8 c = layout[key];
 
@@ -123,70 +119,41 @@ void handle_key_pressed(u32 key)
 {
    switch(key) {
 
-   case KEY_E0_PAGE_UP:
-      term_scroll_up(5);
-      return;
-
-   case KEY_E0_PAGE_DOWN:
-      term_scroll_down(5);
-      return;
-
    case KEY_E0_DEL:
 
-      if (is_pressed(KEY_CTRL) && is_pressed(KEY_ALT)) {
+      if (kb_is_pressed(KEY_CTRL) && kb_is_pressed(KEY_ALT)) {
          printk("Ctrl + Alt + Del: Reboot!\n");
          reboot();
       }
 
-      return;
+      break;
 
    case KEY_NUM_LOCK:
       numLock = !numLock;
       numlock_set_led(numLock);
-      printk("\nNUM LOCK is %s\n", numLock ? "ON" : "OFF");
+      //printk("\nNUM LOCK is %s\n", numLock ? "ON" : "OFF");
       return;
 
    case KEY_CAPS_LOCK:
       capsLock = !capsLock;
       capslock_set_led(capsLock);
-      printk("\nCAPS LOCK is %s\n", capsLock ? "ON" : "OFF");
+      //printk("\nCAPS LOCK is %s\n", capsLock ? "ON" : "OFF");
       return;
-
-   case KEY_L_SHIFT:
-   case KEY_R_SHIFT:
-      return;
-
-   case KEY_F1:
-      debug_show_spurious_irq_count();
-      return;
-
-   case KEY_F2:
-      debug_kmalloc_dump_mem_usage();
-      return;
-
-   case KEY_F3:
-      debug_term_print_scroll_cycles();
-      return;
-
-   default:
-      break;
    }
 
-   u8 c = translate_printable_key(key);
-   int handlers_count = kb_call_keypress_handlers(key, c);
+   int hc = kb_call_keypress_handlers(key, translate_printable_key(key));
 
-   if (!handlers_count) {
+   if (!hc && key != KEY_L_SHIFT && key != KEY_R_SHIFT) {
       printk("KB: PRESSED key 0x%x\n", key);
-      return;
    }
 }
 
-static void key_int_handler(u32 key, bool is_pressed)
+static void key_int_handler(u32 key, bool kb_is_pressed)
 {
    bool e0 = (key >> 8) == 0xE0;
-   key_pressed_state[e0][key & 0xFF] = is_pressed;
+   key_pressed_state[e0][key & 0xFF] = kb_is_pressed;
 
-   if (is_pressed) {
+   if (kb_is_pressed) {
       handle_key_pressed(key);
    }
 }
@@ -205,12 +172,12 @@ static void kb_handle_default_state(u8 scancode)
 
       default:
          key_int_handler(scancode & ~0x80, !(scancode & 0x80));
-   };
+   }
 }
 
 static void kb_tasklet_handler(u8 scancode)
 {
-   bool is_pressed;
+   bool kb_is_pressed;
 
    switch (kb_curr_state) {
 
@@ -232,16 +199,16 @@ static void kb_tasklet_handler(u8 scancode)
          if (scancode == 0x2A || scancode == 0xAA)
             break;
 
-         is_pressed = !(scancode & 0x80);
+         kb_is_pressed = !(scancode & 0x80);
          scancode &= ~0x80;
 
-         key_int_handler(scancode | (0xE0 << 8), is_pressed);
+         key_int_handler(scancode | (0xE0 << 8), kb_is_pressed);
          break;
 
       case KB_DEFAULT_STATE:
          kb_handle_default_state(scancode);
          break;
-   };
+   }
 }
 
 static int keyboard_irq_handler(regs *context)

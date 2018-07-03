@@ -26,6 +26,7 @@
 #include <exos/syscalls.h>
 #include <exos/fb_console.h>
 #include <exos/serial.h>
+#include <exos/kb_scancode_set1_keys.h>
 #include <exos/arch/generic_x86/textmode_video.h>
 #include <exos/arch/generic_x86/fpu_memcpy.h>
 
@@ -125,11 +126,34 @@ void init_console(void)
       init_textmode_console(in_hypervisor());
 }
 
+int debug_f_key_press_handler(u32 key, u8 c)
+{
+   switch (key) {
+
+      case KEY_F1:
+         debug_show_spurious_irq_count();
+         return KB_HANDLER_OK_AND_STOP;
+
+      case KEY_F2:
+         debug_kmalloc_dump_mem_usage();
+         return KB_HANDLER_OK_AND_STOP;
+
+      case KEY_F3:
+         debug_term_print_scroll_cycles();
+         return KB_HANDLER_OK_AND_STOP;
+
+      default:
+         return KB_HANDLER_NAK;
+   }
+}
 
 void init_drivers(void)
 {
    init_kb();
    init_tty();
+
+   if (kb_register_keypress_handler(&debug_f_key_press_handler) < 0)
+      panic("Unable to register debug Fn keypress handler");
 }
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)

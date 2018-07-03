@@ -1,7 +1,4 @@
 
-/* KB layouts for PS/2 scancode set 1 */
-#include "kb_scancode_set1_keys.h"
-
 static u8 numkey[128] = {
    [71] = '7', '8', '9',
    [75] = '4', '5', '6',
@@ -93,7 +90,7 @@ static u8 kbd_us_up[128] =
    0, /* All other keys are undefined */
 };
 
-static unsigned char *us_kb_layouts[2] = {
+static u8 *us_kb_layouts[2] = {
    kbd_us, kbd_us_up
 };
 
