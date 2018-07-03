@@ -17,6 +17,7 @@ typedef struct {
    ringbuf tasklet_ringbuf;
    kcond tasklet_cond;
    task_info *task;
+   int priority; /* 0 => max priority */
    u32 limit;
 
 } tasklet_thread_info;

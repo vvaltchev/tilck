@@ -3,7 +3,7 @@
 #include <common/basic_defs.h>
 #include <exos/process.h>
 
-#define MAX_TASKLET_THREADS 16
+#define MAX_TASKLET_THREADS 64
 
 #define MAX_TASKLETS 128
 
@@ -20,6 +20,7 @@ task_info *get_tasklet_runner(int tn);
 int create_tasklet_thread(int tn, int limit);
 void destroy_tasklet_thread(int tn);
 bool any_tasklets_to_run(int tn);
+task_info *get_highest_runnable_priority_tasklet_runner(void);
 
 NODISCARD bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2);
 

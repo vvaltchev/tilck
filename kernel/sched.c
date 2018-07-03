@@ -274,27 +274,13 @@ bool need_reschedule(void)
    task_info *curr = get_curr_task();
    ASSERT(curr != NULL);
 
-   for (u32 tn = 0; tn < MAX_TASKLET_THREADS; tn++) {
+   task_info *tasklet_runner = get_highest_runnable_priority_tasklet_runner();
 
-      if (!any_tasklets_to_run(tn))
-         continue;
+   if (tasklet_runner) {
 
-      if (get_tasklet_runner(tn) == curr) {
-
-         /*
-          * The highest-priority tasklet runner we've found with tasklets to
-          * run is the currently running task. No need to reschedule.
-          * NOTE: no need to check the time_slot_ticks: a tasklet thread
-          * can be preempted only by a higher priority tasklet thread and that
-          * will happen anyway if such a thread exists.
-          */
+      if (tasklet_runner == curr)
          return false;
-      }
 
-      /*
-       * The highest-priority tasklet runner we've found with tasklets to run
-       * is NOT the currently running task: we need to re-schedule.
-       */
       return true;
    }
 
@@ -328,34 +314,10 @@ void schedule(int curr_irq)
 
    ASSERT(!is_preemption_enabled());
 
-   /*
-    * Tasklets (used as IRQ bottom-halfs) have absolute priority.
-    * NOTE: with the current algorithm, the tasklet thread 0 has the maximum
-    * priority, while the tasklet thread MAX_TASKLET_THREADS - 1 has the
-    * lowest priority.
-    */
+   selected = get_highest_runnable_priority_tasklet_runner();
 
-   for (u32 tn = 0; tn < MAX_TASKLET_THREADS; tn++) {
-
-      if (!any_tasklets_to_run(tn))
-         continue;
-
-      task_info *ti = get_tasklet_runner(tn);
-
-      if (ti == get_curr_task()) {
-
-         /*
-          * The highest-priority tasklet runner is already the current task:
-          * no context switch is needed.
-          */
-         return;
-      }
-
-      if (ti->state == TASK_STATE_RUNNABLE) {
-         selected = ti;
-         break;
-      }
-   }
+   if (selected == get_curr_task())
+      return;
 
    // If we preempted the process, it is still runnable.
    if (get_curr_task()->state == TASK_STATE_RUNNING) {

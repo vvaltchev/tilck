@@ -8,10 +8,11 @@
 #include <exos/sync.h>
 #include <exos/process.h>
 #include <exos/timer.h>
+#include <exos/errno.h>
 
 #include "tasklet_int.h"
 
-static void tasklet_runner_kthread(void *arg);
+u32 tasklet_threads_count;
 tasklet_thread_info *tasklet_threads[MAX_TASKLET_THREADS];
 
 task_info *get_tasklet_runner(int tn)
@@ -33,78 +34,6 @@ bool any_tasklets_to_run(int tn)
       return false;
 
    return !ringbuf_is_empty(&t->tasklet_ringbuf);
-}
-
-int create_tasklet_thread(int tn, int limit)
-{
-   tasklet_thread_info *t;
-
-   /* CONTRACT: the tasklet thread must not aleady exist */
-   ASSERT(tasklet_threads[tn] == NULL);
-
-   t = kzmalloc(sizeof(tasklet_thread_info));
-
-   if (!t)
-      return -1;
-
-   t->limit = limit;
-   t->all_tasklets = kzmalloc(sizeof(tasklet) * limit);
-
-   if (!t->all_tasklets) {
-      kfree2(t, sizeof(tasklet_thread_info));
-      return -1;
-   }
-
-   kcond_init(&t->tasklet_cond);
-   ringbuf_init(&t->tasklet_ringbuf, limit, sizeof(tasklet), t->all_tasklets);
-
-#ifndef UNIT_TEST_ENVIRONMENT
-
-   t->task = kthread_create(tasklet_runner_kthread, (void *)(uptr)tn);
-
-   if (!t->task) {
-      kfree2(t->all_tasklets, sizeof(tasklet) * limit);
-      kfree2(t, sizeof(tasklet_thread_info));
-      return -1;
-   }
-
-#endif
-
-   tasklet_threads[tn] = t;
-   return 0;
-}
-
-/*
- * WARNING: this function is completely UNSAFE. The caller has to completely
- * take care of ensuring that:
- *
- *    - preemption is disabled
- *    - the tasklet thread 'tn' has no tasklets to run
- *    - no interrupt handler will try to enqueue a task on the thread 'tn'
- *      while destroy_tasklet_thread() is running and after it.
- *
- * NOTE: currently, this function is used only by unit-tests.
- */
-void destroy_tasklet_thread(int tn)
-{
-   ASSERT(!is_preemption_enabled());
-
-   tasklet_thread_info *t = tasklet_threads[tn];
-   ASSERT(t != NULL);
-
-   ASSERT(ringbuf_is_empty(&t->tasklet_ringbuf));
-
-   kcond_destory(&t->tasklet_cond);
-   ringbuf_destory(&t->tasklet_ringbuf);
-   kfree2(t->all_tasklets, sizeof(tasklet) * t->limit);
-   kfree2(t, sizeof(tasklet_thread_info));
-   tasklet_threads[tn] = NULL;
-}
-
-void init_tasklets(void)
-{
-   if (create_tasklet_thread(0, 128))
-      panic("init_tasklet_thread() failed");
 }
 
 bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
@@ -220,4 +149,109 @@ static void tasklet_runner_kthread(void *arg)
 
       kcond_wait(&t->tasklet_cond, NULL, TIMER_HZ / 10);
    }
+}
+
+task_info *get_highest_runnable_priority_tasklet_runner(void)
+{
+   ASSERT(!is_preemption_enabled());
+
+   tasklet_thread_info *selected = NULL;
+
+   for (u32 i = 0; i < tasklet_threads_count; i++) {
+
+      tasklet_thread_info *t = tasklet_threads[i];
+
+      if (!any_tasklets_to_run(i))
+         continue;
+
+      if (!selected || t->priority < selected->priority)
+         if (t->task->state == TASK_STATE_RUNNABLE)
+            selected = t;
+   }
+
+   return selected ? selected->task : NULL;
+}
+
+int create_tasklet_thread(int priority, int limit)
+{
+   ASSERT(!is_preemption_enabled());
+
+   tasklet_thread_info *t;
+
+   if (tasklet_threads_count >= ARRAY_SIZE(tasklet_threads))
+      return -ENFILE; /* too many tasklet runner threads */
+
+   t = kzmalloc(sizeof(tasklet_thread_info));
+
+   if (!t)
+      return -ENOMEM;
+
+   int tn = tasklet_threads_count;
+   t->priority = priority;
+   t->limit = limit;
+   t->all_tasklets = kzmalloc(sizeof(tasklet) * limit);
+
+   if (!t->all_tasklets) {
+      kfree2(t, sizeof(tasklet_thread_info));
+      return -ENOMEM;
+   }
+
+   kcond_init(&t->tasklet_cond);
+   ringbuf_init(&t->tasklet_ringbuf, limit, sizeof(tasklet), t->all_tasklets);
+
+#ifndef UNIT_TEST_ENVIRONMENT
+
+   t->task = kthread_create(tasklet_runner_kthread, (void *)(uptr)tn);
+
+   if (!t->task) {
+      kfree2(t->all_tasklets, sizeof(tasklet) * limit);
+      kfree2(t, sizeof(tasklet_thread_info));
+      return -ENOMEM;
+   }
+
+#endif
+
+   tasklet_threads[tn] = t;
+   tasklet_threads_count++;
+   return tn;
+}
+
+/*
+ * WARNING: this function is completely UNSAFE. The caller has to completely
+ * take care of ensuring that:
+ *
+ *    - preemption is disabled
+ *    - the tasklet thread 'tn' has no tasklets to run
+ *    - no interrupt handler will try to enqueue a task on the thread 'tn'
+ *      while destroy_tasklet_thread() is running and after it.
+ *
+ * NOTE: currently, this function is used only by unit-tests.
+ */
+void destroy_tasklet_thread(int tn)
+{
+   ASSERT(!is_preemption_enabled());
+
+   tasklet_thread_info *t = tasklet_threads[tn];
+   ASSERT(t != NULL);
+
+   ASSERT(ringbuf_is_empty(&t->tasklet_ringbuf));
+
+   kcond_destory(&t->tasklet_cond);
+   ringbuf_destory(&t->tasklet_ringbuf);
+   kfree2(t->all_tasklets, sizeof(tasklet) * t->limit);
+   kfree2(t, sizeof(tasklet_thread_info));
+   tasklet_threads[tn] = NULL;
+}
+
+void init_tasklets(void)
+{
+   int tn;
+
+   tasklet_threads_count = 0;
+   tn = create_tasklet_thread(0, 128);
+
+   if (tn < 0)
+      panic("init_tasklet_thread() failed");
+
+   ASSERT(tn == 0);
 }

@@ -31,6 +31,8 @@
 #include "kb_int.h"
 #include "kb_layouts.h"
 
+static int kb_tasklet_runner = -1;
+
 static bool pkeys[128];
 static bool e0pkeys[128];
 static bool *pkeysArrays[2] = { pkeys, e0pkeys };
@@ -240,7 +242,7 @@ static int keyboard_irq_handler(regs *context)
    scancode = inb(KB_DATA_PORT);
 
    //kb_press_start = RDTSC();
-   VERIFY(enqueue_tasklet1(1, &kb_tasklet_handler, scancode));
+   VERIFY(enqueue_tasklet1(kb_tasklet_runner, &kb_tasklet_handler, scancode));
    return 1;
 }
 
@@ -266,8 +268,14 @@ void init_kb(void)
    capslock_set_led(capsLock);
    kb_set_typematic_byte(0);
 
-   if (create_tasklet_thread(1, 128) < 0)
-      panic("Unable to create tasklet thread 1");
+   kb_tasklet_runner =
+      create_tasklet_thread(1 /* priority */, 128 /* max tasks */);
+
+   if (kb_tasklet_runner < 0)
+      panic("KB: Unable to tasklet runner thread for IRQs");
+
+   printk("KB: tasklet runner: %d\n", kb_tasklet_runner);
+
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_irq_handler);
    enable_preemption();
 
