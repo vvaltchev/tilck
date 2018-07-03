@@ -47,12 +47,16 @@ static kb_state_t kb_curr_state = KB_DEFAULT_STATE;
 
 static int kb_tasklet_runner = -1;
 
-static bool pkeys[128];
-static bool e0pkeys[128];
-static bool *pkeysArrays[2] = { pkeys, e0pkeys };
+static bool key_pressed_state[2][128];
 
 static bool numLock = false;
 static bool capsLock = false;
+
+static inline bool is_pressed(u32 key)
+{
+   bool e0 = (key >> 8) == 0xE0;
+   return key_pressed_state[e0][key & 0xFF];
+}
 
 static void numlock_set_led(bool val)
 {
@@ -108,7 +112,9 @@ void handle_key_pressed(u8 scancode)
       break;
    }
 
-   u8 *layout = us_kb_layouts[pkeys[KEY_L_SHIFT] || pkeys[KEY_R_SHIFT]];
+   u8 *layout =
+      us_kb_layouts[is_pressed(KEY_L_SHIFT) || is_pressed(KEY_R_SHIFT)];
+
    u8 c = layout[scancode];
 
    if (numLock) {
@@ -147,17 +153,17 @@ void handle_E0_key_pressed(u8 scancode)
 {
    switch (scancode) {
 
-   case KEY_PAGE_UP:
+   case KEY_E0_PAGE_UP:
       term_scroll_up(5);
       break;
 
-   case KEY_PAGE_DOWN:
+   case KEY_E0_PAGE_DOWN:
       term_scroll_down(5);
       break;
 
    case KEY_E0_DEL:
 
-      if (pkeysArrays[0][KEY_CTRL] && pkeysArrays[0][KEY_ALT]) {
+      if (is_pressed(KEY_CTRL) && is_pressed(KEY_ALT)) {
          printk("Ctrl + Alt + Del: Reboot!\n");
          reboot();
          break;
@@ -171,14 +177,25 @@ void handle_E0_key_pressed(u8 scancode)
    }
 }
 
-static void (*keyPressHandlers[2])(u8) = {
-   handle_key_pressed, handle_E0_key_pressed
-};
+static void key_int_handler(u32 key, bool is_pressed)
+{
+   bool e0 = (key >> 8) == 0xE0;
+   u8 scancode = key & 0xFF;
+
+   key_pressed_state[e0][scancode] = is_pressed;
+
+   if (is_pressed) {
+
+      if (!e0)
+         handle_key_pressed(scancode);
+      else
+         handle_E0_key_pressed(scancode);
+
+   }
+}
 
 static void kb_handle_default_state(u8 scancode)
 {
-   bool is_pressed;
-
    switch (scancode) {
 
       case 0xE0:
@@ -190,13 +207,7 @@ static void kb_handle_default_state(u8 scancode)
          break;
 
       default:
-         is_pressed = !(scancode & 0x80);
-         scancode &= ~0x80;
-
-         pkeysArrays[0][scancode] = is_pressed;
-
-         if (is_pressed)
-            keyPressHandlers[0](scancode);
+         key_int_handler(scancode & ~0x80, !(scancode & 0x80));
    };
 }
 
@@ -227,11 +238,7 @@ static void kb_tasklet_handler(u8 scancode)
          is_pressed = !(scancode & 0x80);
          scancode &= ~0x80;
 
-         pkeysArrays[1][scancode] = is_pressed;
-
-         if (is_pressed)
-            keyPressHandlers[1](scancode);
-
+         key_int_handler(scancode | (0xE0 << 8), is_pressed);
          break;
 
       case KB_DEFAULT_STATE:
