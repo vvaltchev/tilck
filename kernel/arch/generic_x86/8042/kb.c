@@ -68,14 +68,47 @@ static void capslock_set_led(bool val)
    kb_led_set(numLock << 1 | val << 2);
 }
 
+static u8 translate_printable_key(u32 key)
+{
+   u8 *layout =
+      us_kb_layouts[is_pressed(KEY_L_SHIFT) || is_pressed(KEY_R_SHIFT)];
+
+   u8 c = layout[key];
+
+   if (numLock)
+      c |= numkey[key];
+
+   if (capsLock)
+      c = toupper(c);
+
+   return c;
+}
+
 /*
  * Condition variable on which tasks interested in keyboard input, wait.
  */
 kcond kb_cond;
 
-void handle_key_pressed(u8 scancode)
+void handle_key_pressed(u32 key)
 {
-   switch(scancode) {
+   switch(key) {
+
+   case KEY_E0_PAGE_UP:
+      term_scroll_up(5);
+      return;
+
+   case KEY_E0_PAGE_DOWN:
+      term_scroll_down(5);
+      return;
+
+   case KEY_E0_DEL:
+
+      if (is_pressed(KEY_CTRL) && is_pressed(KEY_ALT)) {
+         printk("Ctrl + Alt + Del: Reboot!\n");
+         reboot();
+      }
+
+      return;
 
    case NUM_LOCK:
       numLock = !numLock;
@@ -105,92 +138,49 @@ void handle_key_pressed(u8 scancode)
       debug_term_print_scroll_cycles();
       return;
 
-   case KEY_F4:
-      return;
-
    default:
       break;
    }
 
-   u8 *layout =
-      us_kb_layouts[is_pressed(KEY_L_SHIFT) || is_pressed(KEY_R_SHIFT)];
-
-   u8 c = layout[scancode];
-
-   if (numLock) {
-      c |= numkey[scancode];
-   }
-
-   if (capsLock) {
-      c = toupper(c);
-   }
-
-   if (!c) {
-      printk("PRESSED scancode: 0x%x (%i)\n", scancode, scancode);
+   if ((key >> 8) == 0xE0) {
+      printk("PRESSED key: 0x%x\n", key);
       return;
    }
 
-   if (c != '\b') {
+   u8 c = translate_printable_key(key);
 
-      if (kb_cbuf_write_elem(c)) {
-         term_write((char *)&c, 1);
+   if (!c) {
+      printk("PRESSED key: 0x%x\n", key);
+      return;
+   }
 
-         if (c == '\n' || kb_cbuf_is_full()) {
-            kcond_signal_one(&kb_cond);
-         }
-      }
-
-   } else {
-
-      // c == '\b'
+   if (c == '\b') {
 
       if (kb_cbuf_drop_last_written_elem(NULL))
          term_write((char *)&c, 1);
+
+      return;
    }
-}
 
-void handle_E0_key_pressed(u8 scancode)
-{
-   switch (scancode) {
+   /* Default case: a regular (printable) character */
 
-   case KEY_E0_PAGE_UP:
-      term_scroll_up(5);
-      break;
+   if (kb_cbuf_write_elem(c)) {
 
-   case KEY_E0_PAGE_DOWN:
-      term_scroll_down(5);
-      break;
+      term_write((char *)&c, 1);
 
-   case KEY_E0_DEL:
-
-      if (is_pressed(KEY_CTRL) && is_pressed(KEY_ALT)) {
-         printk("Ctrl + Alt + Del: Reboot!\n");
-         reboot();
-         break;
+      if (c == '\n' || kb_cbuf_is_full()) {
+         kcond_signal_one(&kb_cond);
       }
-
-   // fall-through
-
-   default:
-      printk("PRESSED E0 scancode: 0x%x (%i)\n", scancode, scancode);
-      break;
    }
 }
 
 static void key_int_handler(u32 key, bool is_pressed)
 {
    bool e0 = (key >> 8) == 0xE0;
-   u8 scancode = key & 0xFF;
-
-   key_pressed_state[e0][scancode] = is_pressed;
+   key_pressed_state[e0][key & 0xFF] = is_pressed;
 
    if (is_pressed) {
-
-      if (!e0)
-         handle_key_pressed(scancode);
-      else
-         handle_E0_key_pressed(scancode);
-
+      handle_key_pressed(key);
    }
 }
 
