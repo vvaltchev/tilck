@@ -20,17 +20,17 @@ static char kb_cooked_buf[256];
 static ringbuf kb_cooked_ringbuf;
 static kcond kb_cond;
 
-bool kb_cbuf_is_empty(void)
+static inline bool kb_cbuf_is_empty(void)
 {
    return ringbuf_is_empty(&kb_cooked_ringbuf);
 }
 
-bool kb_cbuf_is_full(void)
+static inline bool kb_cbuf_is_full(void)
 {
    return ringbuf_is_full(&kb_cooked_ringbuf);
 }
 
-char kb_cbuf_read_elem(void)
+static inline char kb_cbuf_read_elem(void)
 {
    u8 ret;
    ASSERT(!kb_cbuf_is_empty());
@@ -38,17 +38,13 @@ char kb_cbuf_read_elem(void)
    return (char)ret;
 }
 
-static ALWAYS_INLINE bool kb_cbuf_drop_last_written_elem(char *c)
+static inline bool kb_cbuf_drop_last_written_elem(void)
 {
    char unused;
-
-   if (!c)
-      c = &unused;
-
-   return ringbuf_unwrite_elem(&kb_cooked_ringbuf, c);
+   return ringbuf_unwrite_elem(&kb_cooked_ringbuf, &unused);
 }
 
-static ALWAYS_INLINE bool kb_cbuf_write_elem(char c)
+static inline bool kb_cbuf_write_elem(char c)
 {
    return ringbuf_write_elem1(&kb_cooked_ringbuf, c);
 }
@@ -70,7 +66,7 @@ static int tty_keypress_handler(u32 key, u8 c)
 
    if (c == '\b') {
 
-      if (kb_cbuf_drop_last_written_elem(NULL))
+      if (kb_cbuf_drop_last_written_elem())
          term_write((char *)&c, 1);
 
       return KB_HANDLER_OK_AND_CONTINUE;
