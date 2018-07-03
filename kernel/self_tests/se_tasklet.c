@@ -8,7 +8,6 @@
 #include <exos/debug_utils.h>
 
 static volatile int counter = 0;
-static const int tot_iters = MAX_TASKLETS * 10;
 static u32 cycles_begin;
 
 static void test_tasklet_func()
@@ -18,6 +17,9 @@ static void test_tasklet_func()
 
 static void end_test()
 {
+   const int max_tasklets = get_tasklet_runner_limit(0);
+   const int tot_iters = max_tasklets * 10;
+
    u64 elapsed = RDTSC() - cycles_begin;
    VERIFY(counter == tot_iters);
    printk("[selftest_tasklet] END\n");
@@ -28,6 +30,9 @@ static void end_test()
 
 void selftest_tasklet(void)
 {
+   const int max_tasklets = get_tasklet_runner_limit(0);
+   const int tot_iters = max_tasklets * 10;
+
    bool added;
    counter = 0;
 

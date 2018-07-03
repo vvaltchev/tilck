@@ -31,6 +31,8 @@
 #include "kb_int.h"
 #include "kb_layouts.h"
 
+#define KB_TASKLETS_QUEUE_SIZE 128
+
 static int kb_tasklet_runner = -1;
 
 static bool pkeys[128];
@@ -183,13 +185,8 @@ static void (*keyPressHandlers[2])(u8) = {
    handle_key_pressed, handle_E0_key_pressed
 };
 
-//u64 kb_press_start = 0;
-
 void kb_tasklet_handler(u8 scancode)
 {
-   //u64 cycles = RDTSC() - kb_press_start;
-   //printk("latency: %llu cycles\n", cycles);
-
    // Hack used to avoid handling 0xE1 two-scancode sequences
    if (next_scancodes_to_ignore) {
       next_scancodes_to_ignore--;
@@ -241,8 +238,9 @@ static int keyboard_irq_handler(regs *context)
    /* Read from the keyboard's data buffer */
    scancode = inb(KB_DATA_PORT);
 
-   //kb_press_start = RDTSC();
-   VERIFY(enqueue_tasklet1(kb_tasklet_runner, &kb_tasklet_handler, scancode));
+   if (!enqueue_tasklet1(kb_tasklet_runner, &kb_tasklet_handler, scancode))
+      panic("KB: hit tasklet queue limit");
+
    return 1;
 }
 
@@ -269,12 +267,10 @@ void init_kb(void)
    kb_set_typematic_byte(0);
 
    kb_tasklet_runner =
-      create_tasklet_thread(1 /* priority */, 128 /* max tasks */);
+      create_tasklet_thread(1 /* priority */, KB_TASKLETS_QUEUE_SIZE);
 
    if (kb_tasklet_runner < 0)
       panic("KB: Unable to tasklet runner thread for IRQs");
-
-   printk("KB: tasklet runner: %d\n", kb_tasklet_runner);
 
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_irq_handler);
    enable_preemption();

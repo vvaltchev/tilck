@@ -15,6 +15,13 @@
 u32 tasklet_threads_count;
 tasklet_thread_info *tasklet_threads[MAX_TASKLET_THREADS];
 
+int get_tasklet_runner_limit(int tn)
+{
+   ASSERT(tn >= 0 && tn < MAX_TASKLET_THREADS);
+   tasklet_thread_info *t = tasklet_threads[tn];
+   return t ? t->limit : 0;
+}
+
 task_info *get_tasklet_runner(int tn)
 {
    tasklet_thread_info *t = tasklet_threads[tn];
@@ -172,9 +179,11 @@ task_info *get_highest_runnable_priority_tasklet_runner(void)
    return selected ? selected->task : NULL;
 }
 
+
 int create_tasklet_thread(int priority, int limit)
 {
    ASSERT(!is_preemption_enabled());
+   DEBUG_ONLY(check_not_in_irq_handler());
 
    tasklet_thread_info *t;
 
@@ -212,25 +221,21 @@ int create_tasklet_thread(int priority, int limit)
 #endif
 
    tasklet_threads[tn] = t;
+
+   /* Double-check that tasklet_threads_count did not change */
+   ASSERT(tn == (int)tasklet_threads_count);
+
    tasklet_threads_count++;
    return tn;
 }
 
-/*
- * WARNING: this function is completely UNSAFE. The caller has to completely
- * take care of ensuring that:
- *
- *    - preemption is disabled
- *    - the tasklet thread 'tn' has no tasklets to run
- *    - no interrupt handler will try to enqueue a task on the thread 'tn'
- *      while destroy_tasklet_thread() is running and after it.
- *
- * NOTE: currently, this function is used only by unit-tests.
- */
-void destroy_tasklet_thread(int tn)
+void destroy_last_tasklet_thread(void)
 {
    ASSERT(!is_preemption_enabled());
+   ASSERT(tasklet_threads_count > 0);
+   DEBUG_ONLY(check_not_in_irq_handler());
 
+   int tn = --tasklet_threads_count;
    tasklet_thread_info *t = tasklet_threads[tn];
    ASSERT(t != NULL);
 
@@ -248,7 +253,7 @@ void init_tasklets(void)
    int tn;
 
    tasklet_threads_count = 0;
-   tn = create_tasklet_thread(0, 128);
+   tn = create_tasklet_thread(0 /* priority */, 32 /* max tasklets */);
 
    if (tn < 0)
       panic("init_tasklet_thread() failed");
