@@ -14,6 +14,11 @@
 #include <exos/ringbuf.h>
 #include <exos/kb_scancode_set1_keys.h>
 
+#include <termios.h>      // system header
+#include <sys/ioctl.h>    // system header
+
+extern struct termios curr_termios;
+
 #define KB_CBUF_SIZE 256
 
 static char kb_cooked_buf[256];
@@ -118,63 +123,9 @@ static ssize_t tty_write(fs_handle h, char *buf, size_t size)
    return size;
 }
 
-/* -------------- TTY ioctl ------------- */
-
-#include <termios.h>      // system header
-#include <sys/ioctl.h>    // system header
-
-static const struct termios hard_coded_termios =
-{
-   0x4500,
-   0x05,
-   0xbf,
-   0x8a3b,
-   0,
-   {
-      0x3, 0x1c, 0x7f, 0x15, 0x4, 0x0, 0x1, 0x0,
-      0x11, 0x13, 0x1a, 0x0, 0x12, 0xf, 0x17, 0x16,
-      0x0, 0x0, 0x0
-   },
-   0, // ispeed
-   0  // ospeed
-};
-
-static int tty_ioctl(fs_handle h, uptr request, void *argp)
-{
-   //printk("tty_ioctl(request: %p)\n", request);
-
-   if (request == TCGETS) {
-
-      int rc = copy_to_user(argp, &hard_coded_termios, sizeof(struct termios));
-
-      if (rc < 0)
-         return -EFAULT;
-
-      return 0;
-   }
-
-   if (request == TIOCGWINSZ) {
-
-      struct winsize sz = {
-         .ws_row = term_get_rows(),
-         .ws_col = term_get_cols(),
-         .ws_xpixel = 0,
-         .ws_ypixel = 0
-      };
-
-      int rc = copy_to_user(argp, &sz, sizeof(struct winsize));
-
-      if (rc < 0)
-         return -EFAULT;
-
-      return 0;
-   }
-
-   printk("WARNING: unknown tty_ioctl() request: %p\n", request);
-   return -EINVAL;
-}
-
 /* ----------------- Driver interface ---------------- */
+
+int tty_ioctl(fs_handle h, uptr request, void *argp);
 
 static int tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
 {

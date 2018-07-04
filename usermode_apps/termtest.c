@@ -14,7 +14,6 @@ void term_set_raw_mode(void)
    tcsetattr(0, TCSAFLUSH, &t);
 }
 
-
 void save_termios(void)
 {
    tcgetattr(0, &orig_termios);
