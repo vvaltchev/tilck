@@ -149,9 +149,9 @@ static void dump_c_cc(struct termios *t)
       const char *name = get_cc_name(i);
 
       if (name)
-         TERMIOS_DEBUG_PRINT("%s: 0x%x\n", name, t->c_cc[i]);
+         TERMIOS_DEBUG_PRINT("[%-12s]: 0x%x\n", name, t->c_cc[i]);
       else
-         TERMIOS_DEBUG_PRINT("[%d]: 0x%x\n", i, t->c_cc[i]);
+         TERMIOS_DEBUG_PRINT("[%-12d]: 0x%x\n", i, t->c_cc[i]);
    }
 
    TERMIOS_DEBUG_PRINT("\n");
