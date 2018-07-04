@@ -71,22 +71,34 @@ static int tty_keypress_handler(u32 key, u8 c)
 
    if (c == '\b') {
 
-      if (kb_cbuf_drop_last_written_elem())
+      if (curr_termios.c_lflag & ICANON) {
+
+         if (kb_cbuf_drop_last_written_elem())
+            if (curr_termios.c_lflag & ECHO)
+               term_write((char *)&c, 1);
+
+      } else {
+
+         if (!kb_cbuf_is_full())
+            kb_cbuf_write_elem(c);
+
          if (curr_termios.c_lflag & ECHO)
             term_write((char *)&c, 1);
+
+         kcond_signal_one(&kb_cond);
+      }
 
       return KB_HANDLER_OK_AND_CONTINUE;
    }
 
-   if (kb_cbuf_write_elem(c)) {
+   if (curr_termios.c_lflag & ECHO)
+      term_write((char *)&c, 1);
 
-      if (curr_termios.c_lflag & ECHO)
-         term_write((char *)&c, 1);
+   if (!kb_cbuf_is_full())
+      kb_cbuf_write_elem(c);
 
-      if (c == '\n' || kb_cbuf_is_full()) {
-         kcond_signal_one(&kb_cond);
-      }
-   }
+   if (c == '\n' || !(curr_termios.c_lflag & ICANON))
+      kcond_signal_one(&kb_cond);
 
    return KB_HANDLER_OK_AND_CONTINUE;
 }
@@ -99,7 +111,8 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
    if (!size)
       return read_count;
 
-   term_set_col_offset(term_get_curr_col());
+   if (curr_termios.c_lflag & ICANON)
+      term_set_col_offset(term_get_curr_col());
 
    do {
 
@@ -111,7 +124,10 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
          buf[read_count++] = kb_cbuf_read_elem();
       }
 
-   } while (buf[read_count - 1] != '\n' || kb_cbuf_is_full());
+      if (read_count > 0 && !(curr_termios.c_lflag & ICANON))
+         break;
+
+   } while (buf[read_count - 1] != '\n' || read_count == KB_CBUF_SIZE);
 
    return read_count;
 }
