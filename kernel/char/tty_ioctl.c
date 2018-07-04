@@ -11,15 +11,6 @@
 #include <termios.h>      // system header
 #include <sys/ioctl.h>    // system header
 
-static void debug_dump_termios(struct termios *t)
-{
-   dump_c_iflag(t);
-   dump_c_oflag(t);
-   dump_c_cflag(t);
-   dump_c_lflag(t);
-   dump_c_cc(t);
-}
-
 struct termios curr_termios =
 {
    .c_iflag = ICRNL | IXON,
@@ -30,9 +21,23 @@ struct termios curr_termios =
 
    .c_cc =
    {
-      0x3, 0x1c, 0x7f, 0x15, 0x4, 0x0, 0x1, 0x0,
-      0x11, 0x13, 0x1a, 0x0, 0x12, 0xf, 0x17, 0x16,
-      0x0, 0x0, 0x0
+      [VINTR]     = 0x03,
+      [VQUIT]     = 0x1c,
+      [VERASE]    = 0x7f,
+      [VKILL]     = 0x15,
+      [VEOF]      = 0x04,
+      [VTIME]     = 0,
+      [VMIN]      = 0x01,
+      [VSWTC]     = 0,
+      [VSTART]    = 0x11,
+      [VSTOP]     = 0x13,
+      [VSUSP]     = 0x1a,
+      [VEOL]      = 0,
+      [VREPRINT]  = 0x12,
+      [VDISCARD]  = 0x0f,
+      [VWERASE]   = 0x17,
+      [VLNEXT]    = 0x16,
+      [VEOL2]     = 0
    }
 };
 

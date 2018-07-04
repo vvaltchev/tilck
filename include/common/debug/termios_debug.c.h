@@ -1,4 +1,6 @@
 
+#include <common/basic_defs.h>
+
 /*
  * DEBUG utils used to dump into a human-readable form a termios struct.
  * NOTE: This is intentionally a "header" and not a C file, in order to avoid
@@ -25,7 +27,6 @@
 #define PRINT_FLAG(val, flag) \
    if ((val) & flag) TERMIOS_DEBUG_PRINT(#flag " ")
 
-#define CC_ENTRY(e) { (e), #e }
 
 static void dump_c_iflag(struct termios *t)
 {
@@ -107,55 +108,60 @@ static void dump_c_lflag(struct termios *t)
    TERMIOS_DEBUG_PRINT("\n");
 }
 
+
 static const char *get_cc_name(cc_t cc)
 {
-   static const struct {
+#define CC_ENTRY(e) [e] = #e
 
-      cc_t cc;
-      const char *name;
+   static const char *cc_names[NCCS] = {
 
-   } cc_names[] = {
-
-      CC_ENTRY(VDISCARD),
-      CC_ENTRY(VEOF),
-      CC_ENTRY(VEOL),
-      CC_ENTRY(VEOL2),
-      CC_ENTRY(VERASE),
       CC_ENTRY(VINTR),
-      CC_ENTRY(VKILL),
-      CC_ENTRY(VLNEXT),
-      CC_ENTRY(VMIN),
       CC_ENTRY(VQUIT),
-      CC_ENTRY(VREPRINT),
+      CC_ENTRY(VERASE),
+      CC_ENTRY(VKILL),
+      CC_ENTRY(VEOF),
+      CC_ENTRY(VTIME),
+      CC_ENTRY(VMIN),
+      CC_ENTRY(VSWTC),
       CC_ENTRY(VSTART),
       CC_ENTRY(VSTOP),
       CC_ENTRY(VSUSP),
-      CC_ENTRY(VTIME),
-      CC_ENTRY(VWERASE)
+      CC_ENTRY(VEOL),
+      CC_ENTRY(VREPRINT),
+      CC_ENTRY(VDISCARD),
+      CC_ENTRY(VWERASE),
+      CC_ENTRY(VLNEXT),
+      CC_ENTRY(VEOL2)
 
    };
 
-   for (u32 i = 0; i < ARRAY_SIZE(cc_names); i++)
-      if (cc_names[i].cc == cc)
-         return cc_names[i].name;
+#undef CC_ENTRY
 
-   return NULL;
+   return cc_names[cc];
 }
 
 static void dump_c_cc(struct termios *t)
 {
-   TERMIOS_DEBUG_PRINT("c_cc: ");
+   TERMIOS_DEBUG_PRINT("c_cc: \n");
 
    for (u32 i = 0; i < NCCS; i++) {
 
-      const char *name = get_cc_name(t->c_cc[i]);
+      const char *name = get_cc_name(i);
 
       if (name)
-         printk(NO_PREFIX "%s ", name);
+         TERMIOS_DEBUG_PRINT("%s: 0x%x\n", name, t->c_cc[i]);
       else
-         printk(NO_PREFIX "[0x%x] ", t->c_cc[i]);
+         TERMIOS_DEBUG_PRINT("[%d]: 0x%x\n", i, t->c_cc[i]);
    }
 
    TERMIOS_DEBUG_PRINT("\n");
 }
 
+static void debug_dump_termios(struct termios *t)
+{
+   dump_c_iflag(t);
+   dump_c_oflag(t);
+   dump_c_cflag(t);
+   dump_c_lflag(t);
+   dump_c_cc(t);
+}

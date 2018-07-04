@@ -6,8 +6,6 @@ if (${ARCH} STREQUAL "i386")
 
 endif()
 
-include_directories(SYSTEM ${DIET_LIBC_PATH}/include)
-
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS) # Remove -rdynamic
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 
@@ -22,3 +20,18 @@ add_executable(shell ${SHELL_SOURCES})
 file(GLOB TERMTEST_SOURCES "termtest*.c")
 add_executable(termtest ${TERMTEST_SOURCES})
 
+target_include_directories(
+
+   termtest
+
+   PUBLIC
+   ${CMAKE_SOURCE_DIR}/include
+)
+
+target_compile_definitions(
+
+   termtest
+
+   PUBLIC
+   USERMODE_APP
+)
