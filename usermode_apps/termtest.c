@@ -8,8 +8,7 @@ struct termios orig_termios;
 
 void term_set_raw_mode(void)
 {
-   struct termios t;
-   tcgetattr(0, &t);
+   struct termios t = orig_termios;
    t.c_lflag &= ~(ECHO | ICANON);
    tcsetattr(0, TCSAFLUSH, &t);
 }

@@ -15,7 +15,6 @@
 #include <exos/kb_scancode_set1_keys.h>
 
 #include <termios.h>      // system header
-#include <sys/ioctl.h>    // system header
 
 extern struct termios curr_termios;
 

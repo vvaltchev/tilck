@@ -10,32 +10,26 @@
 #include <termios.h>      // system header
 #include <sys/ioctl.h>    // system header
 
+#include "tty_termios_debug.h"
+
 struct termios curr_termios =
 {
-   0x4500,
-   0x05,
-   0xbf,
-   0x8a3b,
-   0,
+   .c_iflag = ICRNL | IXON,
+   .c_oflag = OPOST | ONLCR,
+   .c_cflag = CREAD,
+   .c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE | IEXTEN,
+   .c_line = 0,
+
+   .c_cc =
    {
       0x3, 0x1c, 0x7f, 0x15, 0x4, 0x0, 0x1, 0x0,
       0x11, 0x13, 0x1a, 0x0, 0x12, 0xf, 0x17, 0x16,
       0x0, 0x0, 0x0
-   },
-   0, // ispeed
-   0  // ospeed
+   }
 };
-
-static void debug_dump_termios(struct termios *t)
-{
-   printk(NO_PREFIX "a, ");
-   printk(NO_PREFIX "b, ");
-   printk(NO_PREFIX "c\n");
-}
 
 static int tty_ioctl_tcgets(fs_handle h, void *argp)
 {
-   printk("*********** tty_ioctl_tcgets ***********\n");
    debug_dump_termios(&curr_termios);
 
    int rc = copy_to_user(argp, &curr_termios, sizeof(struct termios));
