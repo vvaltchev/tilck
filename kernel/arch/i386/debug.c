@@ -1,12 +1,12 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/debug_utils.h>
-#include <exos/hal.h>
-#include <exos/irq.h>
-#include <exos/process.h>
-#include <exos/elf_utils.h>
+#include <exos/kernel/debug_utils.h>
+#include <exos/kernel/hal.h>
+#include <exos/kernel/irq.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/elf_utils.h>
 
 #include <elf.h>
 #include <multiboot.h>

@@ -1,6 +1,6 @@
 
-#include <common/string_util.h>
-#include <exos/fs/exvfs.h>
+#include <exos/common/string_util.h>
+#include <exos/kernel/fs/exvfs.h>
 
 static void drop_last_component(char **d_ref, char *const dest)
 {

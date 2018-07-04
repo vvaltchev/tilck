@@ -1,14 +1,14 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/fs/devfs.h>
-#include <exos/process.h> // for enable/disable preemption
-#include <exos/kmalloc.h>
-#include <exos/errno.h>
-#include <exos/list.h>
-#include <exos/datetime.h>
-#include <exos/user.h>
+#include <exos/kernel/fs/devfs.h>
+#include <exos/kernel/process.h> // for enable/disable preemption
+#include <exos/kernel/kmalloc.h>
+#include <exos/kernel/errno.h>
+#include <exos/kernel/list.h>
+#include <exos/kernel/datetime.h>
+#include <exos/kernel/user.h>
 
 #include <dirent.h> // system header
 

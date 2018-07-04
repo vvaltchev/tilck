@@ -1,11 +1,11 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
-#include <common/utils.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
+#include <exos/common/utils.h>
 
-#include <exos/tasklet.h>
-#include <exos/process.h>
-#include <exos/debug_utils.h>
+#include <exos/kernel/tasklet.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/debug_utils.h>
 
 static volatile int counter = 0;
 static u32 cycles_begin;

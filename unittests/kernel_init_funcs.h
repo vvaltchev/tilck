@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <common/basic_defs.h>
+#include <exos/common/basic_defs.h>
 
 extern "C" {
    void init_pageframe_allocator();

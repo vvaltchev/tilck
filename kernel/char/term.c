@@ -1,14 +1,14 @@
 
-#include <common/vga_textmode_defs.h>
-#include <common/string_util.h>
-#include <common/utils.h>
+#include <exos/common/vga_textmode_defs.h>
+#include <exos/common/string_util.h>
+#include <exos/common/utils.h>
 
-#include <exos/hal.h>
-#include <exos/term.h>
-#include <exos/serial.h>
-#include <exos/ringbuf.h>
-#include <exos/kmalloc.h>
-#include <exos/interrupts.h>
+#include <exos/kernel/hal.h>
+#include <exos/kernel/term.h>
+#include <exos/kernel/serial.h>
+#include <exos/kernel/ringbuf.h>
+#include <exos/kernel/kmalloc.h>
+#include <exos/kernel/interrupts.h>
 
 static bool term_initialized;
 static bool term_use_serial;

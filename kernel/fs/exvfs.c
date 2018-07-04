@@ -1,10 +1,10 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/fs/exvfs.h>
-#include <exos/kmalloc.h>
-#include <exos/errno.h>
+#include <exos/kernel/fs/exvfs.h>
+#include <exos/kernel/kmalloc.h>
+#include <exos/kernel/errno.h>
 
 #include "fs_int.h"
 

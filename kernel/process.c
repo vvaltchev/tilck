@@ -1,14 +1,14 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/list.h>
-#include <exos/kmalloc.h>
-#include <exos/process.h>
-#include <exos/hal.h>
-#include <exos/errno.h>
-#include <exos/user.h>
-#include <exos/debug_utils.h>
+#include <exos/kernel/list.h>
+#include <exos/kernel/kmalloc.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/hal.h>
+#include <exos/kernel/errno.h>
+#include <exos/kernel/user.h>
+#include <exos/kernel/debug_utils.h>
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)

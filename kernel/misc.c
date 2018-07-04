@@ -1,9 +1,9 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/process.h>
-#include <exos/hal.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/hal.h>
 
 uptr ramdisk_paddr;
 size_t ramdisk_size;

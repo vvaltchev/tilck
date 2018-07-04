@@ -1,11 +1,11 @@
 
-#include <common/string_util.h>
-#include <common/vga_textmode_defs.h>
+#include <exos/common/string_util.h>
+#include <exos/common/vga_textmode_defs.h>
 
-#include <exos/arch/generic_x86/textmode_video.h>
-#include <exos/paging.h>
-#include <exos/hal.h>
-#include <exos/term.h>
+#include <exos/kernel/arch/generic_x86/textmode_video.h>
+#include <exos/kernel/paging.h>
+#include <exos/kernel/hal.h>
+#include <exos/kernel/term.h>
 
 #define VIDEO_ADDR ((u16 *) KERNEL_PA_TO_VA(0xB8000))
 #define VIDEO_COLS 80

@@ -1,8 +1,8 @@
 
-#include <common/string_util.h>
+#include <exos/common/string_util.h>
 
-#include <exos/hal.h>
-#include <exos/datetime.h>
+#include <exos/kernel/hal.h>
+#include <exos/kernel/datetime.h>
 
 #define CMOS_CONTROL_PORT 0x70
 #define CMOS_DATA_PORT 0x71

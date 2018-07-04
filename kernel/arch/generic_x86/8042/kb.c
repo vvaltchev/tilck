@@ -1,13 +1,13 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/tasklet.h>
-#include <exos/process.h>
-#include <exos/list.h>
-#include <exos/kb.h>
-#include <exos/errno.h>
-#include <exos/kb_scancode_set1_keys.h>
+#include <exos/kernel/tasklet.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/list.h>
+#include <exos/kernel/kb.h>
+#include <exos/kernel/errno.h>
+#include <exos/kernel/kb_scancode_set1_keys.h>
 
 #include "kb_int.c.h"
 #include "kb_layouts.c.h"

@@ -17,8 +17,8 @@ using namespace std;
 #include "kernel_init_funcs.h"
 
 extern "C" {
-   #include <exos/fs/fat32.h>
-   #include <exos/fs/exvfs.h>
+   #include <exos/kernel/fs/fat32.h>
+   #include <exos/kernel/fs/exvfs.h>
    int check_mountpoint_match(const char *mp, u32 lm, const char *path, u32 lp);
 }
 

@@ -13,11 +13,11 @@ using namespace std;
 
 extern "C" {
 
-#include <common/utils.h>
+#include <exos/common/utils.h>
 
-#include <exos/kmalloc.h>
-#include <exos/paging.h>
-#include <exos/pageframe_allocator.h>
+#include <exos/kernel/kmalloc.h>
+#include <exos/kernel/paging.h>
+#include <exos/kernel/pageframe_allocator.h>
 
 extern bool kmalloc_initialized;
 extern u32 memsize_in_mb;

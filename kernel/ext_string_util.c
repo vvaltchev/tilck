@@ -1,5 +1,5 @@
 
-#include <exos/kmalloc.h>
+#include <exos/kernel/kmalloc.h>
 
 char *strdup(const char *s)
 {

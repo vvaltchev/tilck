@@ -1,7 +1,7 @@
 
 .intel_syntax noprefix
 
-#include <common/config.h>
+#include <exos/common/config.h>
 
 #define BASE_LOAD_SEG          0x07C0
 

@@ -12,9 +12,9 @@ using namespace std;
 
 
 extern "C" {
-   #include <exos/fs/fat32.h>
-   #include <exos/fs/exvfs.h>
-   #include <common/utils.h>
+   #include <exos/kernel/fs/fat32.h>
+   #include <exos/kernel/fs/exvfs.h>
+   #include <exos/common/utils.h>
 }
 
 const char *load_once_file(const char *filepath, size_t *fsize = nullptr)

@@ -1,11 +1,11 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/process.h>
-#include <exos/sync.h>
-#include <exos/timer.h>
-#include <exos/debug_utils.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/sync.h>
+#include <exos/kernel/timer.h>
+#include <exos/kernel/debug_utils.h>
 
 static kcond cond = { 0 };
 static kmutex cond_mutex = { 0 };

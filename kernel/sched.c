@@ -1,13 +1,13 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/list.h>
-#include <exos/kmalloc.h>
-#include <exos/process.h>
-#include <exos/hal.h>
-#include <exos/tasklet.h>
-#include <exos/timer.h>
+#include <exos/kernel/list.h>
+#include <exos/kernel/kmalloc.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/hal.h>
+#include <exos/kernel/tasklet.h>
+#include <exos/kernel/timer.h>
 
 task_info *__current;
 task_info *kernel_process;

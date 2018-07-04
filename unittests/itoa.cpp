@@ -9,7 +9,7 @@
 using namespace std;
 
 extern "C" {
-   #include <common/string_util.h>
+   #include <exos/common/string_util.h>
 }
 
 

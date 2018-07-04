@@ -1,10 +1,10 @@
 
-#include <common/basic_defs.h>
-#include <common/failsafe_assert.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/failsafe_assert.h>
 
-#include <common/string_util.h>
-#include <common/arch/generic_x86/x86_utils.h>
-#include <common/arch/generic_x86/cpu_features.h>
+#include <exos/common/string_util.h>
+#include <exos/common/arch/generic_x86/x86_utils.h>
+#include <exos/common/arch/generic_x86/cpu_features.h>
 
 volatile x86_cpu_features_t x86_cpu_features;
 

@@ -14,11 +14,11 @@
 #pragma GCC optimize "-O3"
 #pragma GCC optimize "-fomit-frame-pointer"
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/elf_utils.h>
-#include <exos/arch/generic_x86/fpu_memcpy.h>
+#include <exos/kernel/elf_utils.h>
+#include <exos/kernel/arch/generic_x86/fpu_memcpy.h>
 
 
 void

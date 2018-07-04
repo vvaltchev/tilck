@@ -5,16 +5,16 @@
  */
 #pragma GCC optimize "-O3"
 
-#include <common/basic_defs.h>
-#include <common/utils.h>
-#include <common/string_util.h>
-#include <common/vga_textmode_defs.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/utils.h>
+#include <exos/common/string_util.h>
+#include <exos/common/vga_textmode_defs.h>
 
-#include <exos/fb_console.h>
-#include <exos/paging.h>
-#include <exos/kmalloc.h>
-#include <exos/hal.h>
-#include <exos/pageframe_allocator.h>
+#include <exos/kernel/fb_console.h>
+#include <exos/kernel/paging.h>
+#include <exos/kernel/kmalloc.h>
+#include <exos/kernel/hal.h>
+#include <exos/kernel/pageframe_allocator.h>
 
 #include "fb_int.h"
 

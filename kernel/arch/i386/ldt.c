@@ -1,8 +1,8 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
-#include <exos/errno.h>
-#include <exos/process.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
+#include <exos/kernel/errno.h>
+#include <exos/kernel/process.h>
 
 #include "gdt_int.h"
 

@@ -1,6 +1,6 @@
 
 #pragma once
-#include <common/basic_defs.h>
+#include <exos/common/basic_defs.h>
 
 void
 realmode_call(void *func,

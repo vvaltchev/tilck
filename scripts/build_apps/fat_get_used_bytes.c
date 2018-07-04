@@ -1,6 +1,6 @@
 
-#include <common/basic_defs.h>
-#include <common/fat32_base.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/fat32_base.h>
 
 #include <stdio.h>
 #include <stdlib.h>

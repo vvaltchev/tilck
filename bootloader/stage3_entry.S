@@ -1,7 +1,7 @@
 
 .intel_syntax noprefix
 
-#include <common/config.h>
+#include <exos/common/config.h>
 
 .section .text
 .global _start

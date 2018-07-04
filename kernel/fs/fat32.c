@@ -1,13 +1,13 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/fs/fat32.h>
-#include <exos/fs/exvfs.h>
-#include <exos/kmalloc.h>
-#include <exos/errno.h>
-#include <exos/datetime.h>
-#include <exos/user.h>
+#include <exos/kernel/fs/fat32.h>
+#include <exos/kernel/fs/exvfs.h>
+#include <exos/kernel/kmalloc.h>
+#include <exos/kernel/errno.h>
+#include <exos/kernel/datetime.h>
+#include <exos/kernel/user.h>
 
 #include <dirent.h> // system header
 

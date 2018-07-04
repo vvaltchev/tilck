@@ -5,7 +5,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include <common/debug/termios_debug.c.h>
+#include <exos/common/debug/termios_debug.c.h>
 
 struct termios orig_termios;
 

@@ -1,6 +1,6 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 #include "basic_term.h"
 
 static void print_string(const char *s)

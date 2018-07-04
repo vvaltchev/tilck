@@ -1,5 +1,5 @@
 
-#include <exos/bintree.h>
+#include <exos/kernel/bintree.h>
 
 #define MAX_TREE_HEIGHT 32
 #define ALLOWED_IMBALANCE 1
@@ -297,7 +297,7 @@ bintree_remove_internal(void **root_obj_ref,
    return deleted_obj;
 }
 
-#include <common/norec.h>
+#include <exos/common/norec.h>
 
 int
 bintree_in_order_visit_internal(void *obj,

@@ -3,10 +3,10 @@
 #include "kernel_init_funcs.h"
 
 extern "C" {
-   #include <common/basic_defs.h>
-   #include <exos/paging.h>
-   #include <exos/pageframe_allocator.h>
-   #include <exos/self_tests/self_tests.h>
+   #include <exos/common/basic_defs.h>
+   #include <exos/kernel/paging.h>
+   #include <exos/kernel/pageframe_allocator.h>
+   #include <exos/kernel/self_tests/self_tests.h>
    extern u32 memsize_in_mb;
 }
 

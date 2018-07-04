@@ -1,6 +1,6 @@
 
 #pragma once
-#include <exos/fs/exvfs.h>
+#include <exos/kernel/fs/exvfs.h>
 
 #define MP_CURSOR_SIZE_PTRS 1
 

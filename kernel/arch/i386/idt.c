@@ -1,9 +1,9 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
-#include <exos/hal.h>
-#include <exos/interrupts.h>
-#include <exos/fault_resumable.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
+#include <exos/kernel/hal.h>
+#include <exos/kernel/interrupts.h>
+#include <exos/kernel/fault_resumable.h>
 
 #include "idt_int.h"
 

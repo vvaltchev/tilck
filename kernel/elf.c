@@ -1,11 +1,11 @@
 
-#include <common/string_util.h>
+#include <exos/common/string_util.h>
 
-#include <exos/paging.h>
-#include <exos/process.h>
-#include <exos/kmalloc.h>
-#include <exos/fs/exvfs.h>
-#include <exos/errno.h>
+#include <exos/kernel/paging.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/kmalloc.h>
+#include <exos/kernel/fs/exvfs.h>
+#include <exos/kernel/errno.h>
 
 #include <elf.h>
 

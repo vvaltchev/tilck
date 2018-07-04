@@ -1,20 +1,20 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
-#include <common/arch/generic_x86/cpu_features.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
+#include <exos/common/arch/generic_x86/cpu_features.h>
 
 volatile bool __in_panic;
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
-#include <exos/debug_utils.h>
-#include <exos/hal.h>
-#include <exos/irq.h>
-#include <exos/process.h>
-#include <exos/term.h>
-#include <exos/fb_console.h>
-#include <exos/elf_utils.h>
-#include <exos/arch/generic_x86/textmode_video.h>
+#include <exos/kernel/debug_utils.h>
+#include <exos/kernel/hal.h>
+#include <exos/kernel/irq.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/term.h>
+#include <exos/kernel/fb_console.h>
+#include <exos/kernel/elf_utils.h>
+#include <exos/kernel/arch/generic_x86/textmode_video.h>
 
 #include <elf.h>
 #include <multiboot.h>

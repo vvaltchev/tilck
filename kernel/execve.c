@@ -1,8 +1,8 @@
 
-#include <exos/process.h>
-#include <exos/errno.h>
-#include <exos/user.h>
-#include <exos/elf_loader.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/errno.h>
+#include <exos/kernel/user.h>
+#include <exos/kernel/elf_loader.h>
 
 static char *const default_env[] =
 {

@@ -1,8 +1,8 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/sort.h>
+#include <exos/kernel/sort.h>
 
 /*
  * Insertion sort for pointer-size "objects".

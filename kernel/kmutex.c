@@ -1,7 +1,7 @@
 
-#include <exos/sync.h>
-#include <exos/hal.h>
-#include <exos/process.h>
+#include <exos/kernel/sync.h>
+#include <exos/kernel/hal.h>
+#include <exos/kernel/process.h>
 
 static uptr new_mutex_id = 1;
 

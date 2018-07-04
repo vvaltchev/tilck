@@ -1,11 +1,11 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
-#include <common/utils.h>
-#include <common/arch/generic_x86/cpu_features.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
+#include <exos/common/utils.h>
+#include <exos/common/arch/generic_x86/cpu_features.h>
 
-#include <exos/process.h>
-#include <exos/fault_resumable.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/fault_resumable.h>
 
 extern const char *x86_exception_names[32];
 

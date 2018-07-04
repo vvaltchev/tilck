@@ -1,9 +1,9 @@
 
-#include <common/basic_defs.h>
+#include <exos/common/basic_defs.h>
 
-#include <exos/process.h>
-#include <exos/kmalloc.h>
-#include <exos/errno.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/kmalloc.h>
+#include <exos/kernel/errno.h>
 
 void user_vfree_and_unmap(uptr user_vaddr, int page_count)
 {

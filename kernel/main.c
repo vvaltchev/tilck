@@ -1,34 +1,34 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
-#include <common/utils.h>
-#include <common/arch/generic_x86/cpu_features.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
+#include <exos/common/utils.h>
+#include <exos/common/arch/generic_x86/cpu_features.h>
 
 #include <multiboot.h>
 
-#include <exos/hal.h>
-#include <exos/irq.h>
-#include <exos/kmalloc.h>
-#include <exos/paging.h>
-#include <exos/debug_utils.h>
-#include <exos/process.h>
-#include <exos/elf_loader.h>
-#include <exos/tasklet.h>
-#include <exos/sync.h>
-#include <exos/fs/fat32.h>
-#include <exos/fs/exvfs.h>
-#include <exos/fs/devfs.h>
-#include <exos/kb.h>
-#include <exos/timer.h>
-#include <exos/term.h>
-#include <exos/pageframe_allocator.h>
-#include <exos/datetime.h>
-#include <exos/syscalls.h>
-#include <exos/fb_console.h>
-#include <exos/serial.h>
-#include <exos/kb_scancode_set1_keys.h>
-#include <exos/arch/generic_x86/textmode_video.h>
-#include <exos/arch/generic_x86/fpu_memcpy.h>
+#include <exos/kernel/hal.h>
+#include <exos/kernel/irq.h>
+#include <exos/kernel/kmalloc.h>
+#include <exos/kernel/paging.h>
+#include <exos/kernel/debug_utils.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/elf_loader.h>
+#include <exos/kernel/tasklet.h>
+#include <exos/kernel/sync.h>
+#include <exos/kernel/fs/fat32.h>
+#include <exos/kernel/fs/exvfs.h>
+#include <exos/kernel/fs/devfs.h>
+#include <exos/kernel/kb.h>
+#include <exos/kernel/timer.h>
+#include <exos/kernel/term.h>
+#include <exos/kernel/pageframe_allocator.h>
+#include <exos/kernel/datetime.h>
+#include <exos/kernel/syscalls.h>
+#include <exos/kernel/fb_console.h>
+#include <exos/kernel/serial.h>
+#include <exos/kernel/kb_scancode_set1_keys.h>
+#include <exos/kernel/arch/generic_x86/textmode_video.h>
+#include <exos/kernel/arch/generic_x86/fpu_memcpy.h>
 
 extern u32 memsize_in_mb;
 extern uptr ramdisk_paddr;

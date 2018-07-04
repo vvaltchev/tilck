@@ -1,10 +1,10 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/debug_utils.h>
-#include <exos/process.h>
-#include <exos/hal.h>
+#include <exos/kernel/debug_utils.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/hal.h>
 
 void handle_syscall(regs *);
 void handle_fault(regs *);

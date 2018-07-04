@@ -1,5 +1,5 @@
 
-#include <common/basic_defs.h>
+#include <exos/common/basic_defs.h>
 
 #include <cstdio>
 #include <cstdint>
@@ -15,7 +15,7 @@
 #include "kernel_init_funcs.h"
 
 extern "C" {
-   #include <exos/tasklet.h>
+   #include <exos/kernel/tasklet.h>
    #include "kernel/tasklet_int.h" // private header
 }
 

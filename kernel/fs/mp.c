@@ -1,9 +1,9 @@
 
 #define _EXOS_MP_C_
 
-#include <exos/fs/exvfs.h>
-#include <exos/process.h>
-#include <exos/errno.h>
+#include <exos/kernel/fs/exvfs.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/errno.h>
 
 #include "fs_int.h"
 

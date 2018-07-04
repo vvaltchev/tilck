@@ -1,7 +1,7 @@
 
 .intel_syntax noprefix
 
-#include <common/config.h>
+#include <exos/common/config.h>
 #define MULTIBOOT_BOOTLOADER_MAGIC 0x2BADB002
 
 .global switch_to_pm32_and_jump_to_kernel

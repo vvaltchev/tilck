@@ -1,10 +1,10 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
-#include <common/utils.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
+#include <exos/common/utils.h>
 
-#include <exos/paging.h>
-#include <exos/pageframe_allocator.h>
+#include <exos/kernel/paging.h>
+#include <exos/kernel/pageframe_allocator.h>
 
 /*
  * By mapping 4096 KB (one page) in 1 bit, a single 32-bit integer maps 128 KB.

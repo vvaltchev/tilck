@@ -1,10 +1,10 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
-#include <common/fat32_base.h>
-#include <common/utils.h>
-#include <common/arch/generic_x86/x86_utils.h>
-#include <common/arch/generic_x86/cpu_features.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
+#include <exos/common/fat32_base.h>
+#include <exos/common/utils.h>
+#include <exos/common/arch/generic_x86/x86_utils.h>
+#include <exos/common/arch/generic_x86/cpu_features.h>
 
 #include <elf.h>
 #include <multiboot.h>

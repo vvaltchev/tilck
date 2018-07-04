@@ -1,8 +1,8 @@
 
-#include <common/basic_defs.h>
-#include <common/string_util.h>
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
 
-#include <exos/fs/fat32.h>
+#include <exos/kernel/fs/fat32.h>
 
 /*
  * *********************************************
