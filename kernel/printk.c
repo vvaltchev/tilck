@@ -80,19 +80,10 @@ switch_case:
       switch (*fmt) {
 
       case '-':
-         fmt++;
-         char pad_str_buf[16];
-         char *p = pad_str_buf;
-
-         while (*fmt && isdigit(*fmt)) {
-            *p++ = *fmt++;
-         }
+         right_padding = exos_strtol(fmt + 1, &fmt, NULL);
 
          if (!*fmt)
             goto out; /* nothing after the %-<number> sequence */
-
-         *p = 0;
-         right_padding = exos_atoi(pad_str_buf);
 
          /* parse now the command letter by re-entering in the switch case */
          goto switch_case;

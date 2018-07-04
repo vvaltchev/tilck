@@ -66,7 +66,7 @@ void uitoa64_hex(u64 value, char *buf);
 void uitoa32_hex_fixed(u32 value, char *buf);
 void uitoa64_hex_fixed(u64 value, char *buf);
 
-int exos_atoi(const char *str);
+int exos_strtol(const char *str, const char **endptr, int *error);
 
 void vprintk(const char *fmt, va_list args);
 void printk(const char *fmt, ...);

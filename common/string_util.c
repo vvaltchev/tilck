@@ -4,6 +4,7 @@
 #include <exos/common/basic_defs.h>
 #include <exos/common/failsafe_assert.h>
 #include <exos/common/string_util.h>
+#include <exos/kernel/errno.h>
 
 #define DIGITS "0123456789abcdef"
 
@@ -128,7 +129,7 @@ inline void str_reverse(char *str, size_t len)
    }
 }
 
-int exos_atoi(const char *str)
+int exos_strtol(const char *str, const char **endptr, int *error)
 {
    int res = 0;
    int sign = 1;
@@ -142,13 +143,28 @@ int exos_atoi(const char *str)
    for (p = str; *p; p++) {
 
       if (!isdigit(*p))
-         return 0; // invalid number
+         break;
 
       res = res * 10 + sign * (*p - '0');
 
-      if ((sign > 0) != (res > 0))
+      if ((sign > 0) != (res > 0)) {
+
+         if (error)
+            *error = -ERANGE;
+
+         if (endptr)
+            *endptr = str;
+
          return 0; // signed int overflow
+      }
    }
+
+
+   if (p == str && error)
+      *error = -EINVAL;
+
+   if (endptr)
+      *endptr = p;
 
    return res;
 }
