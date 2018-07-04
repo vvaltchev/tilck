@@ -1,11 +1,4 @@
 
-/*
- * This is a DEMO/DEBUG version of the tty device.
- *
- * Useful info:
- * http://www.linusakesson.net/programming/tty/index.php
- */
-
 #include <common/vga_textmode_defs.h>
 #include <common/string_util.h>
 #include <common/utils.h>

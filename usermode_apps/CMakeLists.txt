@@ -18,3 +18,7 @@ add_executable(init ${INIT_SOURCES})
 
 file(GLOB SHELL_SOURCES "shell*.c")
 add_executable(shell ${SHELL_SOURCES})
+
+file(GLOB TERMTEST_SOURCES "termtest*.c")
+add_executable(termtest ${TERMTEST_SOURCES})
+

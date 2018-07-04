@@ -33,12 +33,14 @@ cp -r $maindir/sysroot $bdir/
 rm $bdir/sysroot/README
 
 cd $bdir/sysroot
-
-# hard-link init to sysroot/sbin
 ln $bdir/usermode_apps/init sbin/
 
-# hard-link shell to sysroot/bin
-ln $bdir/usermode_apps/shell bin/
+for x in $bdir/usermode_apps/*; do
+   if [ -x "$x" ] && [ ! -d "$x" ] && [ "`basename $x`" != "init" ]; then
+      ln $x bin/
+   fi
+done
+
 
 # hard-link EFI files
 ln @EFI_x86_64_FILE@ EFI/BOOT/
