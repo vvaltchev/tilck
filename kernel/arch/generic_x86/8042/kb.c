@@ -9,8 +9,8 @@
 #include <exos/errno.h>
 #include <exos/kb_scancode_set1_keys.h>
 
-#include "kb_int.h"
-#include "kb_layouts.h"
+#include "kb_int.c.h"
+#include "kb_layouts.c.h"
 
 #define KB_TASKLETS_QUEUE_SIZE 128
 
