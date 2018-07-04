@@ -92,7 +92,7 @@ switch_case:
             goto out; /* nothing after the %-<number> sequence */
 
          *p = 0;
-         right_padding = atoi(pad_str_buf);
+         right_padding = exos_atoi(pad_str_buf);
 
          /* parse now the command letter by re-entering in the switch case */
          goto switch_case;

@@ -128,7 +128,7 @@ inline void str_reverse(char *str, size_t len)
    }
 }
 
-int atoi(const char *str)
+int exos_atoi(const char *str)
 {
    int res = 0;
    int sign = 1;

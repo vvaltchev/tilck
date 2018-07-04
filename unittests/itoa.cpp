@@ -192,14 +192,14 @@ TEST(itoa, u64_hex_fixed)
 
 TEST(atoi, basic_tests)
 {
-   EXPECT_EQ(atoi("0"), 0);
-   EXPECT_EQ(atoi("1"), 1);
-   EXPECT_EQ(atoi("12"), 12);
-   EXPECT_EQ(atoi("123"), 123);
-   EXPECT_EQ(atoi("-1"), -1);
-   EXPECT_EQ(atoi("-123"), -123);
-   EXPECT_EQ(atoi("2147483647"), 2147483647); // INT_MAX
-   EXPECT_EQ(atoi("2147483648"), 0); // INT_MAX + 1
-   EXPECT_EQ(atoi("-2147483648"), -2147483648); // INT_MIN
-   EXPECT_EQ(atoi("-2147483649"), 0); // INT_MIN - 1
+   EXPECT_EQ(exos_atoi("0"), 0);
+   EXPECT_EQ(exos_atoi("1"), 1);
+   EXPECT_EQ(exos_atoi("12"), 12);
+   EXPECT_EQ(exos_atoi("123"), 123);
+   EXPECT_EQ(exos_atoi("-1"), -1);
+   EXPECT_EQ(exos_atoi("-123"), -123);
+   EXPECT_EQ(exos_atoi("2147483647"), 2147483647); // INT_MAX
+   EXPECT_EQ(exos_atoi("2147483648"), 0); // INT_MAX + 1
+   EXPECT_EQ(exos_atoi("-2147483648"), -2147483648); // INT_MIN
+   EXPECT_EQ(exos_atoi("-2147483649"), 0); // INT_MIN - 1
 }
