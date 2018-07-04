@@ -70,7 +70,12 @@ void vprintk(const char *fmt, va_list args);
 void printk(const char *fmt, ...);
 
 #ifdef __EXOS_KERNEL__
-int vsnprintk(char *buf, size_t size, const char *fmt, va_list args);
-int snprintk(char *buf, size_t size, const char *fmt, ...);
-void printk_flush_ringbuf(void);
+
+   #define PRINTK_CTRL_CHAR   '\001'
+   #define NO_PREFIX          "\001\001\000\000"
+
+   int vsnprintk(char *buf, size_t size, const char *fmt, va_list args);
+   int snprintk(char *buf, size_t size, const char *fmt, ...);
+   void printk_flush_ringbuf(void);
+
 #endif

@@ -26,8 +26,18 @@ struct termios curr_termios =
    0  // ospeed
 };
 
+static void debug_dump_termios(struct termios *t)
+{
+   printk(NO_PREFIX "a, ");
+   printk(NO_PREFIX "b, ");
+   printk(NO_PREFIX "c\n");
+}
+
 static int tty_ioctl_tcgets(fs_handle h, void *argp)
 {
+   printk("*********** tty_ioctl_tcgets ***********\n");
+   debug_dump_termios(&curr_termios);
+
    int rc = copy_to_user(argp, &curr_termios, sizeof(struct termios));
 
    if (rc < 0)

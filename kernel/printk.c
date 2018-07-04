@@ -256,8 +256,17 @@ void vprintk(const char *fmt, va_list args)
 {
    char buf[256];
    int written = 0;
+   bool prefix = in_panic() ? false : true;
 
-   if (!in_panic())
+   if (*fmt == PRINTK_CTRL_CHAR) {
+      u32 cmd = *(u32 *)fmt;
+      fmt += 4;
+
+      if (cmd == *(u32 *)NO_PREFIX)
+         prefix = false;
+   }
+
+   if (prefix)
       written = snprintk(buf, sizeof(buf), "[kernel] ");
 
    written += vsnprintk(buf + written, sizeof(buf) - written, fmt, args);
