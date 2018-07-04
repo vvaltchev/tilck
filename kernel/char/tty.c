@@ -17,6 +17,7 @@
 #include <termios.h>      // system header
 
 extern struct termios curr_termios;
+extern const struct termios default_termios;
 
 #define KB_CBUF_SIZE 256
 
@@ -71,14 +72,16 @@ static int tty_keypress_handler(u32 key, u8 c)
    if (c == '\b') {
 
       if (kb_cbuf_drop_last_written_elem())
-         term_write((char *)&c, 1);
+         if (curr_termios.c_lflag & ECHO)
+            term_write((char *)&c, 1);
 
       return KB_HANDLER_OK_AND_CONTINUE;
    }
 
    if (kb_cbuf_write_elem(c)) {
 
-      term_write((char *)&c, 1);
+      if (curr_termios.c_lflag & ECHO)
+         term_write((char *)&c, 1);
 
       if (c == '\n' || kb_cbuf_is_full()) {
          kcond_signal_one(&kb_cond);
@@ -141,6 +144,7 @@ static int tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
 
 void init_tty(void)
 {
+   curr_termios = default_termios;
    driver_info *di = kmalloc(sizeof(driver_info));
    di->name = "tty";
    di->create_dev_file = tty_create_device_file;

@@ -11,7 +11,9 @@
 #include <termios.h>      // system header
 #include <sys/ioctl.h>    // system header
 
-struct termios curr_termios =
+struct termios curr_termios;
+
+const struct termios default_termios =
 {
    .c_iflag = ICRNL | IXON,
    .c_oflag = OPOST | ONLCR,
@@ -43,12 +45,25 @@ struct termios curr_termios =
 
 static int tty_ioctl_tcgets(fs_handle h, void *argp)
 {
-   debug_dump_termios(&curr_termios);
+   //debug_dump_termios(&curr_termios);
 
    int rc = copy_to_user(argp, &curr_termios, sizeof(struct termios));
 
    if (rc < 0)
       return -EFAULT;
+
+   return 0;
+}
+
+static int tty_ioctl_tcsets(fs_handle h, void *argp)
+{
+   struct termios saved = curr_termios;
+   int rc = copy_from_user(&curr_termios, argp, sizeof(struct termios));
+
+   if (rc < 0) {
+      curr_termios = saved;
+      return -EFAULT;
+   }
 
    return 0;
 }
@@ -76,6 +91,17 @@ int tty_ioctl(fs_handle h, uptr request, void *argp)
 
       case TCGETS:
          return tty_ioctl_tcgets(h, argp);
+
+      case TCSETS:
+         return tty_ioctl_tcsets(h, argp);
+
+      case TCSETSW:
+         // TODO: implement the correct behavior for TCSETSW
+         return tty_ioctl_tcsets(h, argp);
+
+      case TCSETSF:
+         // TODO: implement the correct behavior for TCSETSF
+         return tty_ioctl_tcsets(h, argp);
 
       case TIOCGWINSZ:
          return tty_ioctl_tiocgwinsz(h, argp);
