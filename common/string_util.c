@@ -127,3 +127,28 @@ inline void str_reverse(char *str, size_t len)
       end--;
    }
 }
+
+int atoi(const char *str)
+{
+   int res = 0;
+   int sign = 1;
+   const char *p;
+
+   if (*str == '-') {
+      sign = -1;
+      str++;
+   }
+
+   for (p = str; *p; p++) {
+
+      if (!isdigit(*p))
+         return 0; // invalid number
+
+      res = res * 10 + sign * (*p - '0');
+
+      if ((sign > 0) != (res > 0))
+         return 0; // signed int overflow
+   }
+
+   return res;
+}

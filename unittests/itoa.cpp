@@ -188,3 +188,18 @@ TEST(itoa, u64_hex_fixed)
    auto test_func = generic_itoa_test_body<u64, true, true>;
    ASSERT_NO_FATAL_FAILURE({ test_func(); });
 }
+
+
+TEST(atoi, basic_tests)
+{
+   EXPECT_EQ(atoi("0"), 0);
+   EXPECT_EQ(atoi("1"), 1);
+   EXPECT_EQ(atoi("12"), 12);
+   EXPECT_EQ(atoi("123"), 123);
+   EXPECT_EQ(atoi("-1"), -1);
+   EXPECT_EQ(atoi("-123"), -123);
+   EXPECT_EQ(atoi("2147483647"), 2147483647); // INT_MAX
+   EXPECT_EQ(atoi("2147483648"), 0); // INT_MAX + 1
+   EXPECT_EQ(atoi("-2147483648"), -2147483648); // INT_MIN
+   EXPECT_EQ(atoi("-2147483649"), 0); // INT_MIN - 1
+}
