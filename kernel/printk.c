@@ -34,16 +34,24 @@ write_in_buf_char(char **buf_ref, char *buf_end, char c)
    return ptr < buf_end;
 }
 
-#define WRITE_STR(s)                                 \
-   do {                                              \
-      if (!write_in_buf_str(&buf, buf_end, (s)))     \
-         goto out;                                   \
-   } while (0)
 
 #define WRITE_CHAR(c)                                \
    do {                                              \
       if (!write_in_buf_char(&buf, buf_end, (c)))    \
          goto out;                                   \
+   } while (0)
+
+#define WRITE_STR(s)                                 \
+   do {                                              \
+      const char *__str = (s);                       \
+      int sl = strlen(__str);                        \
+      int rpad = MAX(0, right_padding - sl);         \
+                                                     \
+      if (!write_in_buf_str(&buf, buf_end, (__str))) \
+         goto out;                                   \
+                                                     \
+      for (int i = 0; i < rpad; i++)                 \
+         WRITE_CHAR(' ');                            \
    } while (0)
 
 
@@ -52,6 +60,7 @@ int vsnprintk(char *buf, size_t size, const char *fmt, va_list args)
    char *const initial_buf = buf;
    char *buf_end = buf + size;
    char intbuf[32];
+   int right_padding = 0;
 
    while (*fmt) {
 
@@ -66,7 +75,27 @@ int vsnprintk(char *buf, size_t size, const char *fmt, va_list args)
       if (*fmt == '%')
          continue;
 
+switch_case:
+
       switch (*fmt) {
+
+      case '-':
+         fmt++;
+         char pad_str_buf[16];
+         char *p = pad_str_buf;
+
+         while (*fmt && isdigit(*fmt)) {
+            *p++ = *fmt++;
+         }
+
+         if (!*fmt)
+            goto out; /* nothing after the %-<number> sequence */
+
+         *p = 0;
+         right_padding = atoi(pad_str_buf);
+
+         /* parse now the command letter by re-entering in the switch case */
+         goto switch_case;
 
       case 'l':
 
@@ -107,6 +136,12 @@ int vsnprintk(char *buf, size_t size, const char *fmt, va_list args)
 
       case 'c':
          WRITE_CHAR(va_arg(args, s32));
+
+         if (right_padding > 0) {
+            right_padding--;
+            WRITE_STR(""); // write the padding
+         }
+
          break;
 
       case 's':
@@ -124,6 +159,7 @@ int vsnprintk(char *buf, size_t size, const char *fmt, va_list args)
          WRITE_CHAR(*fmt);
       }
 
+      right_padding = 0;
       ++fmt;
    }
 
