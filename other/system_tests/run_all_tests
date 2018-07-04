@@ -20,6 +20,7 @@ error_codes_strings = {
 
 shell_cmd_tests = [
    ['invalid_read', 8],
+   ['invalid_write', 8],
    ['brk_test', 8],
    ['sysenter', 8],
    ['syscall_perf', 8],

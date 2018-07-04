@@ -116,24 +116,9 @@ void cmd_invalid_write(void)
 {
    int ret;
    void *addr = (void *) 0xB0000000;
-   int child_pid;
-
-   child_pid = fork();
-
-   if (!child_pid) {
-      printf("child: press enter\n");
-      getchar();
-      exit(0);
-   }
-
-   printf("waitpid with invalid wstatus ptr\n");
-   ret = waitpid(child_pid, addr, 0);
-   printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
-
-   printf("read from stdin into an invalid user buffer:\n");
 
    errno = 0;
-   ret = read(0, addr, 32);
+   ret = stat("/", addr);
    printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
 }
 
