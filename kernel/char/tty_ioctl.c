@@ -1,6 +1,7 @@
 
 #include <common/basic_defs.h>
 #include <common/string_util.h>
+#include <common/debug/termios_debug.c.h>
 
 #include <exos/fs/exvfs.h>
 #include <exos/errno.h>
@@ -10,7 +11,14 @@
 #include <termios.h>      // system header
 #include <sys/ioctl.h>    // system header
 
-#include "tty_termios_debug.h"
+static void debug_dump_termios(struct termios *t)
+{
+   dump_c_iflag(t);
+   dump_c_oflag(t);
+   dump_c_cflag(t);
+   dump_c_lflag(t);
+   dump_c_cc(t);
+}
 
 struct termios curr_termios =
 {

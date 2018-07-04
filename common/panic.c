@@ -11,21 +11,21 @@
 
 #ifndef USERMODE_APP
 
-/*
- * NOTE: this case exists ONLY to make the file to compile!
- * The bootloader and the kernel MUST have their custom panic() function.
- */
-#include <common/string_util.h>
-#define abort() while (1)
-#define printf printk
-#define vprintf vprintk
+   /*
+    * NOTE: this case exists ONLY to make the file to compile!
+    * The bootloader and the kernel MUST have their custom panic() function.
+    */
+   #include <common/string_util.h>
+   #define abort() while (1)
+   #define printf printk
+   #define vprintf vprintk
 
 #else
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdarg.h>
+   #include <stdio.h>
+   #include <string.h>
+   #include <stdlib.h>
+   #include <stdarg.h>
 
 #endif
 
