@@ -36,6 +36,9 @@ static bool *term_tabs;
 static ringbuf term_ringbuf;
 static term_action term_actions_buf[32];
 
+static term_filter_func filter;
+static void *filter_ctx;
+
 #if TERM_PERF_METRICS
 static u32 scroll_count;
 static u64 scroll_cycles;
@@ -307,33 +310,33 @@ static void term_internal_write_char2(char c, u8 color)
 
    switch (c) {
 
-   case '\n':
-      current_col = 0;
-      term_internal_incr_row();
-      break;
-
-   case '\r':
-      current_col = 0;
-      break;
-
-   case '\t':
-      term_internal_write_tab(color);
-      break;
-
-   case '\b':
-      term_internal_write_backspace(color);
-      break;
-
-   default:
-
-      term_internal_write_printable_char(c, color);
-
-      if (current_col == term_cols) {
+      case '\n':
          current_col = 0;
          term_internal_incr_row();
-      }
+         break;
 
-      break;
+      case '\r':
+         current_col = 0;
+         break;
+
+      case '\t':
+         term_internal_write_tab(color);
+         break;
+
+      case '\b':
+         term_internal_write_backspace(color);
+         break;
+
+      default:
+
+         term_internal_write_printable_char(c, color);
+
+         if (current_col == term_cols) {
+            current_col = 0;
+            term_internal_incr_row();
+         }
+
+         break;
    }
 }
 
@@ -356,7 +359,19 @@ static void term_action_write2(char *buf, u32 len, u8 color)
          has_new_line = true;
 #endif
 
-      term_internal_write_char2(buf[i], color);
+      if (filter) {
+
+         char c = buf[i];
+         u8 color_to_use = color;
+         int ret = filter(&c, &color_to_use, filter_ctx);
+
+         if (ret == TERM_FILTER_FUNC_RET_WRITE_C)
+            term_internal_write_char2(c, color_to_use);
+
+      } else {
+         term_internal_write_char2(buf[i], color);
+      }
+
    }
 
    vi->move_cursor(current_row, current_col);
@@ -517,6 +532,12 @@ void term_write(const char *buf, u32 len)
 }
 
 /* ---------------- term non-action interface funcs --------------------- */
+
+void term_set_filter_func(term_filter_func func, void *ctx)
+{
+   filter = func;
+   filter_ctx = ctx;
+}
 
 bool term_is_initialized(void)
 {

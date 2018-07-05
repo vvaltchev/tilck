@@ -47,4 +47,14 @@ void term_scroll_down(u32 lines);
 void term_set_color(u8 color);
 void term_set_col_offset(u32 off);
 
+#define TERM_FILTER_FUNC_RET_WRITE_C   0
+#define TERM_FILTER_FUNC_RET_BLANK     1
+
+typedef int (*term_filter_func)(char *c    /* in/out */,
+                                u8 *color  /* in/out */,
+                                void *ctx);
+
+void term_set_filter_func(term_filter_func func, void *ctx);
+
+/* --- debug funcs --- */
 void debug_term_print_scroll_cycles(void);
