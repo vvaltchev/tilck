@@ -19,39 +19,56 @@
 extern struct termios curr_termios;
 extern const struct termios default_termios;
 
-#define KB_CBUF_SIZE 256
+#define KB_INPUT_BUF_SIZE 256
 
-static char kb_cooked_buf[256];
-static ringbuf kb_cooked_ringbuf;
-static kcond kb_cond;
+static char kb_input_buf[256];   // the buffer used by kb_input_ringbuf (below)
+static ringbuf kb_input_ringbuf;
+static kcond kb_input_cond;
 
 static inline bool kb_cbuf_is_empty(void)
 {
-   return ringbuf_is_empty(&kb_cooked_ringbuf);
-}
-
-static inline bool kb_cbuf_is_full(void)
-{
-   return ringbuf_is_full(&kb_cooked_ringbuf);
+   return ringbuf_is_empty(&kb_input_ringbuf);
 }
 
 static inline char kb_cbuf_read_elem(void)
 {
    u8 ret;
    ASSERT(!kb_cbuf_is_empty());
-   DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&kb_cooked_ringbuf, &ret));
+   DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&kb_input_ringbuf, &ret));
    return (char)ret;
 }
 
 static inline bool kb_cbuf_drop_last_written_elem(void)
 {
    char unused;
-   return ringbuf_unwrite_elem(&kb_cooked_ringbuf, &unused);
+   return ringbuf_unwrite_elem(&kb_input_ringbuf, &unused);
 }
 
 static inline bool kb_cbuf_write_elem(char c)
 {
-   return ringbuf_write_elem1(&kb_cooked_ringbuf, c);
+   return ringbuf_write_elem1(&kb_input_ringbuf, c);
+}
+
+static int tty_keypress_handle_canon_mode(u32 key, u8 c)
+{
+   if (c == '\b') {
+
+      if (kb_cbuf_drop_last_written_elem())
+         if (curr_termios.c_lflag & ECHO)
+            term_write((char *)&c, 1);
+
+   } else {
+
+      if (curr_termios.c_lflag & ECHO)
+         term_write((char *)&c, 1);
+
+      kb_cbuf_write_elem(c);
+
+      if (c == '\n')
+         kcond_signal_one(&kb_input_cond);
+   }
+
+   return KB_HANDLER_OK_AND_CONTINUE;
 }
 
 static int tty_keypress_handler(u32 key, u8 c)
@@ -69,37 +86,16 @@ static int tty_keypress_handler(u32 key, u8 c)
    if (!c)
       return KB_HANDLER_NAK;
 
-   if (c == '\b') {
+   if (curr_termios.c_lflag & ICANON)
+      return tty_keypress_handle_canon_mode(key, c);
 
-      if (curr_termios.c_lflag & ICANON) {
-
-         if (kb_cbuf_drop_last_written_elem())
-            if (curr_termios.c_lflag & ECHO)
-               term_write((char *)&c, 1);
-
-      } else {
-
-         if (!kb_cbuf_is_full())
-            kb_cbuf_write_elem(c);
-
-         if (curr_termios.c_lflag & ECHO)
-            term_write((char *)&c, 1);
-
-         kcond_signal_one(&kb_cond);
-      }
-
-      return KB_HANDLER_OK_AND_CONTINUE;
-   }
+   /* raw mode input handling */
+   kb_cbuf_write_elem(c);
 
    if (curr_termios.c_lflag & ECHO)
       term_write((char *)&c, 1);
 
-   if (!kb_cbuf_is_full())
-      kb_cbuf_write_elem(c);
-
-   if (c == '\n' || !(curr_termios.c_lflag & ICANON))
-      kcond_signal_one(&kb_cond);
-
+   kcond_signal_one(&kb_input_cond);
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
@@ -117,7 +113,7 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
    do {
 
       while (kb_cbuf_is_empty()) {
-         kcond_wait(&kb_cond, NULL, KCOND_WAIT_FOREVER);
+         kcond_wait(&kb_input_cond, NULL, KCOND_WAIT_FOREVER);
       }
 
       while (read_count < size && !kb_cbuf_is_empty()) {
@@ -127,7 +123,7 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
       if (read_count > 0 && !(curr_termios.c_lflag & ICANON))
          break;
 
-   } while (buf[read_count - 1] != '\n' || read_count == KB_CBUF_SIZE);
+   } while (buf[read_count - 1] != '\n' || read_count == KB_INPUT_BUF_SIZE);
 
    return read_count;
 }
@@ -170,8 +166,8 @@ void init_tty(void)
    if (rc != 0)
       panic("TTY: unable to create /dev/tty (error: %d)", rc);
 
-   kcond_init(&kb_cond);
-   ringbuf_init(&kb_cooked_ringbuf, KB_CBUF_SIZE, 1, kb_cooked_buf);
+   kcond_init(&kb_input_cond);
+   ringbuf_init(&kb_input_ringbuf, KB_INPUT_BUF_SIZE, 1, kb_input_buf);
 
    if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
       panic("TTY: unable to register keypress handler");
