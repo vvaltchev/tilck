@@ -10,6 +10,8 @@
 #include <exos/kernel/kmalloc.h>
 #include <exos/kernel/interrupts.h>
 
+#include "term_int.h"
+
 static bool term_initialized;
 static bool term_use_serial;
 static int term_tab_size = 8;
@@ -30,6 +32,16 @@ static u32 total_buffer_rows;
 static u32 extra_buffer_rows;
 static u16 failsafe_buffer[80 * 25];
 static bool *term_tabs;
+
+static ringbuf term_ringbuf;
+static term_action term_actions_buf[32];
+
+#if TERM_PERF_METRICS
+static u32 scroll_count;
+static u64 scroll_cycles;
+static u32 sc_one_line_count;
+static u64 sc_one_line_cycles;
+#endif
 
 u32 term_get_tab_size(void)
 {
@@ -129,11 +141,6 @@ static void ts_clear_row(int row_num, u8 color)
 /* ---------------- term actions --------------------- */
 
 #if TERM_PERF_METRICS
-
-static u32 scroll_count;
-static u64 scroll_cycles;
-static u32 sc_one_line_count;
-static u64 sc_one_line_cycles;
 
 void debug_term_print_scroll_cycles(void)
 {
@@ -383,56 +390,7 @@ static void term_action_set_col_offset(u32 off)
 
 /* ---------------- term action engine --------------------- */
 
-typedef enum {
-
-   a_write2           = 0,
-   a_write_char2      = 1,
-   a_move_ch_and_cur  = 2,
-   a_scroll_up        = 3,
-   a_scroll_down      = 4,
-   a_set_color        = 5,
-   a_set_col_offset   = 6
-
-} term_action_type;
-
-typedef struct {
-
-   union {
-
-      struct {
-         u64 type3 :  4;
-         u64 len   : 20;
-         u64 col   :  8;
-         u64 ptr   : 32;
-      };
-
-      struct {
-         u64 type2 :  4;
-         u64 arg1  : 30;
-         u64 arg2  : 30;
-      };
-
-      struct {
-         u64 type1  :  4;
-         u64 arg    : 32;
-         u64 unused : 28;
-      };
-
-      u64 raw;
-   };
-
-} term_action;
-
-typedef void (*action_func)();
-
-typedef struct {
-
-   action_func func;
-   u32 args_count;
-
-} actions_table_item;
-
-static actions_table_item actions_table[] = {
+static const actions_table_item actions_table[] = {
    [a_write2] = {(action_func)term_action_write2, 3},
    [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
    [a_scroll_up] = {(action_func)term_action_scroll_up, 1},
@@ -443,7 +401,7 @@ static actions_table_item actions_table[] = {
 
 static void term_execute_action(term_action a)
 {
-   actions_table_item *it = &actions_table[a.type3];
+   const actions_table_item *it = &actions_table[a.type3];
 
    switch (it->args_count) {
       case 3:
@@ -461,8 +419,6 @@ static void term_execute_action(term_action a)
    }
 }
 
-static ringbuf term_ringbuf;
-static term_action term_actions_buf[32];
 
 void term_execute_or_enqueue_action(term_action a)
 {
