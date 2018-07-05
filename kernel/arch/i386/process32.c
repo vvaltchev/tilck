@@ -65,14 +65,25 @@ static void push_args_on_user_stack(regs *r,
    }
 
    // push the env array (in reverse order)
-   push_on_user_stack(r, 0); // mandatory final NULL pointer
+
+   push_on_user_stack(r, 0); /*
+                              * 2nd mandatory NULL pointer: after the 'env'
+                              * pointers there could additional aux information
+                              * that some libc implementations check for.
+                              * Therefore, it is essential to add another NULL
+                              * after the env pointers to inform the libc impl
+                              * that no such information exist. For more info,
+                              * check __init_libc() in libmusl.
+                              */
+
+   push_on_user_stack(r, 0); // mandatory final NULL pointer (end of 'env' ptrs)
 
    for (int i = envc - 1; i >= 0; i--) {
       push_on_user_stack(r, env_pointers[i]);
    }
 
    // push the argv array (in reverse order)
-   push_on_user_stack(r, 0); // mandatory final NULL pointer
+   push_on_user_stack(r, 0); // mandatory final NULL pointer (end of 'argv')
 
    for (int i = argc - 1; i >= 0; i--) {
       push_on_user_stack(r, pointers[i]);
