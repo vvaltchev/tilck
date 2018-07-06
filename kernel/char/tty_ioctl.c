@@ -11,13 +11,13 @@
 #include <termios.h>      // system header
 #include <sys/ioctl.h>    // system header
 
-struct termios curr_termios;
+struct termios c_term;
 
 const struct termios default_termios =
 {
    .c_iflag = ICRNL | IXON,
    .c_oflag = OPOST | ONLCR,
-   .c_cflag = CREAD,
+   .c_cflag = CREAD | B38400 | CS8,
    .c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE | IEXTEN,
    .c_line = 0,
 
@@ -47,7 +47,7 @@ static int tty_ioctl_tcgets(fs_handle h, void *argp)
 {
    //debug_dump_termios(&curr_termios);
 
-   int rc = copy_to_user(argp, &curr_termios, sizeof(struct termios));
+   int rc = copy_to_user(argp, &c_term, sizeof(struct termios));
 
    if (rc < 0)
       return -EFAULT;
@@ -57,11 +57,11 @@ static int tty_ioctl_tcgets(fs_handle h, void *argp)
 
 static int tty_ioctl_tcsets(fs_handle h, void *argp)
 {
-   struct termios saved = curr_termios;
-   int rc = copy_from_user(&curr_termios, argp, sizeof(struct termios));
+   struct termios saved = c_term;
+   int rc = copy_from_user(&c_term, argp, sizeof(struct termios));
 
    if (rc < 0) {
-      curr_termios = saved;
+      c_term = saved;
       return -EFAULT;
    }
 

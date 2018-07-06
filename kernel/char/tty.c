@@ -16,7 +16,7 @@
 
 #include <termios.h>      // system header
 
-extern struct termios curr_termios;
+extern struct termios c_term;
 extern const struct termios default_termios;
 
 #define KB_INPUT_BUF_SIZE 256
@@ -51,7 +51,7 @@ static inline bool kb_buf_write_elem(char c)
 
 static int tty_keypress_handle_canon_mode(u32 key, u8 c)
 {
-   if (c == '\b') {
+   if (c == c_term.c_cc[VERASE]) {
 
       kb_buf_drop_last_written_elem();
 
@@ -101,6 +101,69 @@ static const char *kb_scancode_to_ansi_seq(u32 key)
    return NULL;
 }
 
+static void tty_keypress_echo(char c)
+{
+   if (c == '\n' && (c_term.c_lflag & ECHONL)) {
+      /*
+       * From termios' man page:
+       *
+       *    ECHONL: If ICANON is also set, echo the NL character even if ECHO
+       *            is not set.
+       */
+      term_write(&c, 1);
+      return;
+   }
+
+   if (!(c_term.c_lflag & ECHO)) {
+      /* If ECHO is not enabled, just don't echo. */
+      return;
+   }
+
+   /* echo is enabled */
+
+   if (c == c_term.c_cc[VERASE]) {
+      /*
+       * From termios' man page:
+       *    If ICANON is also set, the ERASE character erases the preceding
+       *    input character, and WERASE erases the preceding word.
+       */
+      if ((c_term.c_lflag & ICANON) && (c_term.c_lflag & ECHOE)) {
+         term_write(&c, 1);
+         return;
+      }
+   }
+
+   /*
+    * From termios' man page:
+    *
+    * ECHOCTL
+    *          (not  in  POSIX)  If  ECHO is also set, terminal special
+    *          characters other than TAB, NL, START, and STOP are echoed as ^X,
+    *          where X is the character with ASCII code 0x40 greater than the
+    *          special character.  For  example, character 0x08 (BS) is echoed
+    *          as ^H.
+    *
+    */
+   if ((c < ' ' || c == 0x7F) && (c_term.c_lflag & ECHOCTL)) {
+      if (c != '\t' && c != '\n') {
+         if (c != c_term.c_cc[VSTART] && c != c_term.c_cc[VSTOP]) {
+            c += 0x40;
+            term_write("^", 1);
+            term_write(&c, 1);
+            return;
+         }
+      }
+   }
+
+   if (c == '\a' || c == '\f') {
+      /* ignore the bell and form feed characters */
+      return;
+   }
+
+   /* Just ECHO a regular character */
+   term_write(&c, 1);
+}
+
 static int
 tty_term_write_filter(char *c,
                       u8 *color,
@@ -109,37 +172,12 @@ tty_term_write_filter(char *c,
 {
    switch (*c) {
 
-      case '\033':
-         write_char_func('^', *color);
-         write_char_func('[', *color);
-         return TERM_FILTER_FUNC_RET_BLANK;
-
-      case '\000':
-         write_char_func('^', *color);
-         write_char_func('@', *color);
-         return TERM_FILTER_FUNC_RET_BLANK;
-
-      case '\a':
-         /* ignore the bell character */
-         return TERM_FILTER_FUNC_RET_BLANK;
-
-      case '\f':
-         /* ignore the form feed character, for the moment */
-         return TERM_FILTER_FUNC_RET_BLANK;
-
-      case '\t':
-      case '\b':
-      case '\v':
-      case '\r':
       case '\n':
-      return TERM_FILTER_FUNC_RET_WRITE_C;
-   }
 
-   if (1 <= *c && *c <= 26) {
-      char letter = *c + 'A' - 1;
-      write_char_func('^', *color);
-      write_char_func(letter, *color);
-      return TERM_FILTER_FUNC_RET_BLANK;
+         if (c_term.c_oflag & (OPOST | ONLCR))
+            write_char_func('\r', *color);
+
+         return TERM_FILTER_FUNC_RET_WRITE_C;
    }
 
    return TERM_FILTER_FUNC_RET_WRITE_C;
@@ -158,14 +196,12 @@ static int tty_handle_non_printable_key(u32 key)
    while (*p) {
 
       kb_buf_write_elem(*p);
-
-      if (curr_termios.c_lflag & ECHO)
-         term_write(p, 1);
+      tty_keypress_echo(*p);
 
       p++;
    }
 
-   if (!(curr_termios.c_lflag & ICANON))
+   if (!(c_term.c_lflag & ICANON))
       kcond_signal_one(&kb_input_cond);
 
    return KB_HANDLER_OK_AND_CONTINUE;
@@ -176,10 +212,28 @@ static void tty_handle_ctrl_plus_letter(u8 c)
    ASSERT(isalpha(c));
    char letter = toupper(c); /* ctrl ignores the case of the letter */
    char t = letter - 'A' + 1;
-   kb_buf_write_elem(t);
 
-   if (curr_termios.c_lflag & ECHO)
-      term_write(&t, 1);
+   if (t == '\r') {
+      if (c_term.c_iflag & ICRNL)
+         t = '\n';
+   } else if (t == c_term.c_cc[VSTOP]) {
+      if (c_term.c_iflag & IXON) {
+         // printk("Ctrl + S (pause transmission) not supported\n");
+         // TODO: eventually support pause transmission, one day.
+      }
+   } else if (t == c_term.c_cc[VSTART]) {
+      if (c_term.c_iflag & IXON) {
+         // printk("Ctrl + Q (resume transmission) not supported\n");
+         // TODO: eventually support resume transmission, one day.
+      }
+   } else if (t == c_term.c_cc[VINTR]) {
+      // TODO: handle Ctrl + C according to ISIG when signals are supported
+   } else if (t == c_term.c_cc[VSUSP]) {
+      // TODO: handle Ctrl + Z according to ISIG when signals are supported
+   }
+
+   kb_buf_write_elem(t);
+   tty_keypress_echo(t);
 }
 
 static int tty_handle_print_char_plus_ctrl_alt(u8 c)
@@ -191,19 +245,17 @@ static int tty_handle_print_char_plus_ctrl_alt(u8 c)
 
    if (kb_is_alt_pressed()) {
       kb_buf_write_elem('\x1b');
-      if (curr_termios.c_lflag & ECHO)
-         term_write("\x1b", 1);
+      tty_keypress_echo('\x1b');
    }
 
    if (kb_is_ctrl_pressed()) {
       tty_handle_ctrl_plus_letter(c);
    } else {
       kb_buf_write_elem(c);
-      if (curr_termios.c_lflag & ECHO)
-         term_write((char *)&c, 1);
+      tty_keypress_echo(c);
    }
 
-   if (!(curr_termios.c_lflag & ICANON))
+   if (!(c_term.c_lflag & ICANON))
       kcond_signal_one(&kb_input_cond);
 
    return KB_HANDLER_OK_AND_CONTINUE;
@@ -225,26 +277,15 @@ static int tty_keypress_handler(u32 key, u8 c)
       }
    }
 
-   if (curr_termios.c_lflag & ICANON) {
-      if (c == 0x7f) {
-         /*
-          * In canonical (cooked) mode, translate the BACKSPACE key (ASCII DEL)
-          * to \b (ASCII backspace)
-          */
-         c = '\b';
-      }
-   }
-
    if (!c)
       return tty_handle_non_printable_key(key);
 
    if (kb_is_ctrl_or_alt_pressed())
       return tty_handle_print_char_plus_ctrl_alt(c);
 
-   if (curr_termios.c_lflag & ECHO)
-      term_write((char *)&c, 1);
+   tty_keypress_echo(c);
 
-   if (curr_termios.c_lflag & ICANON)
+   if (c_term.c_lflag & ICANON)
       return tty_keypress_handle_canon_mode(key, c);
 
    /* raw mode input handling */
@@ -262,7 +303,7 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
    if (!size)
       return read_count;
 
-   if (curr_termios.c_lflag & ICANON)
+   if (c_term.c_lflag & ICANON)
       term_set_col_offset(term_get_curr_col());
 
    do {
@@ -275,7 +316,7 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
          buf[read_count++] = kb_buf_read_elem();
       }
 
-      if (read_count > 0 && !(curr_termios.c_lflag & ICANON))
+      if (read_count > 0 && !(c_term.c_lflag & ICANON))
          break;
 
    } while (buf[read_count - 1] != '\n' || read_count == KB_INPUT_BUF_SIZE);
@@ -311,7 +352,7 @@ static int tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
 
 void init_tty(void)
 {
-   curr_termios = default_termios;
+   c_term = default_termios;
    driver_info *di = kmalloc(sizeof(driver_info));
    di->name = "tty";
    di->create_dev_file = tty_create_device_file;

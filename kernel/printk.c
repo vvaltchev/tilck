@@ -201,7 +201,25 @@ STATIC_ASSERT(sizeof(printk_rbuf) <= 1024);
 
 static void printk_direct_flush(const char *buf, size_t size, u8 color)
 {
-   term_write2(buf, size, color);
+   if (LIKELY(term_get_filter_func() != NULL)) {
+      /* tty has been initialized and set a term write filter func */
+      term_write2(buf, size, color);
+      return;
+   }
+
+   /*
+    * tty has not been initialized yet, therefore we have to translate here
+    * \n to \r\n, by writing character by character to term.
+    */
+
+   for (u32 i = 0; i < size; i++) {
+
+      if (buf[i] == '\n') {
+         term_write2("\r", 1, color);
+      }
+
+      term_write2(&buf[i], 1, color);
+   }
 }
 
 void printk_flush_ringbuf(void)

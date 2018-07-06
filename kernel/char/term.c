@@ -310,8 +310,12 @@ static void term_internal_write_char2(char c, u8 color)
 
    switch (c) {
 
+      case '\a':
+      case '\v':
+         /* ignore bell and vertical tab */
+         break;
+
       case '\n':
-         current_col = 0;
          term_internal_incr_row();
          break;
 
@@ -323,6 +327,7 @@ static void term_internal_write_char2(char c, u8 color)
          term_internal_write_tab(color);
          break;
 
+      case 0x7f: /* ASCII "DEL", or termios' c_cc[VERASE] */
       case '\b':
          term_internal_write_backspace(color);
          break;
@@ -541,6 +546,11 @@ void term_set_filter_func(term_filter_func func, void *ctx)
 {
    filter = func;
    filter_ctx = ctx;
+}
+
+term_filter_func term_get_filter_func(void)
+{
+   return filter;
 }
 
 bool term_is_initialized(void)

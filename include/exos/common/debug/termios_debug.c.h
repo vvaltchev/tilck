@@ -27,6 +27,8 @@
 #define PRINT_FLAG(val, flag) \
    if ((val) & flag) TERMIOS_DEBUG_PRINT(#flag " ")
 
+#define PRINT_IFEQ(val, e) \
+   if ((val) == (e)) TERMIOS_DEBUG_PRINT(#e " ")
 
 static void dump_c_iflag(struct termios *t)
 {
@@ -72,9 +74,56 @@ static void dump_c_oflag(struct termios *t)
 static void dump_c_cflag(struct termios *t)
 {
    TERMIOS_DEBUG_PRINT("c_oflag: ");
-   PRINT_FLAG(t->c_cflag, CBAUD);    // mask
-   PRINT_FLAG(t->c_cflag, CBAUDEX);  // mask
-   PRINT_FLAG(t->c_cflag, CSIZE);    // mask
+   u32 val = (t->c_cflag & CBAUD);
+
+   if (val & CBAUDEX) {
+
+      val &= ~CBAUDEX;
+
+      PRINT_IFEQ(val, B57600);
+      PRINT_IFEQ(val, B115200);
+      PRINT_IFEQ(val, B230400);
+      PRINT_IFEQ(val, B460800);
+      PRINT_IFEQ(val, B500000);
+      PRINT_IFEQ(val, B576000);
+      PRINT_IFEQ(val, B921600);
+      PRINT_IFEQ(val, B1000000);
+      PRINT_IFEQ(val, B1152000);
+      PRINT_IFEQ(val, B1500000);
+      PRINT_IFEQ(val, B2000000);
+      PRINT_IFEQ(val, B2500000);
+      PRINT_IFEQ(val, B3000000);
+      PRINT_IFEQ(val, B3500000);
+      PRINT_IFEQ(val, B4000000);
+
+   } else {
+
+      PRINT_IFEQ(val, B0);
+      PRINT_IFEQ(val, B50);
+      PRINT_IFEQ(val, B75);
+      PRINT_IFEQ(val, B110);
+      PRINT_IFEQ(val, B134);
+      PRINT_IFEQ(val, B150);
+      PRINT_IFEQ(val, B200);
+      PRINT_IFEQ(val, B300);
+      PRINT_IFEQ(val, B600);
+      PRINT_IFEQ(val, B1200);
+      PRINT_IFEQ(val, B1800);
+      PRINT_IFEQ(val, B2400);
+      PRINT_IFEQ(val, B4800);
+      PRINT_IFEQ(val, B9600);
+      PRINT_IFEQ(val, B19200);
+      PRINT_IFEQ(val, B38400);
+   }
+
+
+   val = t->c_cflag & CSIZE;
+
+   PRINT_IFEQ(val, CS5);
+   PRINT_IFEQ(val, CS6);
+   PRINT_IFEQ(val, CS7);
+   PRINT_IFEQ(val, CS8);
+
    PRINT_FLAG(t->c_cflag, CSTOPB);
    PRINT_FLAG(t->c_cflag, CREAD);
    PRINT_FLAG(t->c_cflag, PARENB);
@@ -165,3 +214,6 @@ static void debug_dump_termios(struct termios *t)
    dump_c_lflag(t);
    dump_c_cc(t);
 }
+
+#undef PRINT_FLAG
+#undef TERMIOS_DEBUG_PRINT
