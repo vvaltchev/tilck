@@ -7,7 +7,6 @@
 #include <exos/kernel/list.h>
 #include <exos/kernel/kb.h>
 #include <exos/kernel/errno.h>
-#include <exos/kernel/kb_scancode_set1_keys.h>
 
 #include "kb_int.c.h"
 #include "kb_layouts.c.h"
@@ -121,7 +120,7 @@ void handle_key_pressed(u32 key)
 
    case KEY_DEL:
 
-      if (kb_is_pressed(KEY_CTRL) && kb_is_pressed(KEY_ALT)) {
+      if (kb_is_pressed(KEY_LEFT_CTRL) && kb_is_pressed(KEY_LEFT_ALT)) {
          printk("Ctrl + Alt + Del: Reboot!\n");
          reboot();
       }
@@ -143,9 +142,10 @@ void handle_key_pressed(u32 key)
 
    int hc = kb_call_keypress_handlers(key, translate_printable_key(key));
 
-   if (!hc && key != KEY_L_SHIFT && key != KEY_R_SHIFT) {
-      printk("KB: PRESSED key 0x%x\n", key);
-   }
+   if (!hc && key != KEY_L_SHIFT && key != KEY_R_SHIFT)
+      if (key != KEY_LEFT_CTRL && key != KEY_RIGHT_CTRL)
+         if (key != KEY_LEFT_ALT && key != KEY_RIGHT_ALT)
+            printk("KB: PRESSED key 0x%x\n", key);
 }
 
 static void key_int_handler(u32 key, bool kb_is_pressed)

@@ -53,14 +53,9 @@ static int tty_keypress_handle_canon_mode(u32 key, u8 c)
 {
    if (c == '\b') {
 
-      if (kb_buf_drop_last_written_elem())
-         if (curr_termios.c_lflag & ECHO)
-            term_write((char *)&c, 1);
+      kb_buf_drop_last_written_elem();
 
    } else {
-
-      if (curr_termios.c_lflag & ECHO)
-         term_write((char *)&c, 1);
 
       kb_buf_write_elem(c);
 
@@ -78,10 +73,23 @@ static const struct {
 
 } ansi_sequences[] = {
 
-   {KEY_UP,     "\033[A"},
-   {KEY_DOWN,   "\033[B"},
-   {KEY_RIGHT,  "\033[C"},
-   {KEY_LEFT,   "\033[D"}
+   {KEY_UP,           "\x1b[A"},
+   {KEY_DOWN,         "\x1b[B"},
+   {KEY_RIGHT,        "\x1b[C"},
+   {KEY_LEFT,         "\x1b[D"},
+
+   {KEY_NUMPAD_UP,    "\x1b[A"},
+   {KEY_NUMPAD_DOWN,  "\x1b[B"},
+   {KEY_NUMPAD_RIGHT, "\x1b[C"},
+   {KEY_NUMPAD_LEFT,  "\x1b[D"},
+
+   {KEY_PAGE_UP,      "\x01b[5~"},
+   {KEY_PAGE_DOWN,    "\x01b[6~"},
+
+   {KEY_INS,          "\x01b[2~"},
+   {KEY_DEL,          "\x01b[3~"},
+   {KEY_HOME,         "\x01b[H"},
+   {KEY_END,          "\x01b[F"},
 };
 
 static const char *kb_scancode_to_ansi_seq(u32 key)
@@ -99,13 +107,106 @@ tty_term_write_filter(char *c,
                       term_int_write_char_func write_char_func,
                       void *ctx)
 {
-   if (*c == '\033') {
+   switch (*c) {
+
+      case '\033':
+         write_char_func('^', *color);
+         write_char_func('[', *color);
+         return TERM_FILTER_FUNC_RET_BLANK;
+
+      case '\000':
+         write_char_func('^', *color);
+         write_char_func('@', *color);
+         return TERM_FILTER_FUNC_RET_BLANK;
+
+      case '\a':
+         /* ignore the bell character */
+         return TERM_FILTER_FUNC_RET_BLANK;
+
+      case '\f':
+         /* ignore the form feed character, for the moment */
+         return TERM_FILTER_FUNC_RET_BLANK;
+
+      case '\t':
+      case '\b':
+      case '\v':
+      case '\r':
+      case '\n':
+      return TERM_FILTER_FUNC_RET_WRITE_C;
+   }
+
+   if (1 <= *c && *c <= 26) {
+      char letter = *c + 'A' - 1;
       write_char_func('^', *color);
-      write_char_func('[', *color);
+      write_char_func(letter, *color);
       return TERM_FILTER_FUNC_RET_BLANK;
    }
 
    return TERM_FILTER_FUNC_RET_WRITE_C;
+}
+
+static int tty_handle_non_printable_key(u32 key)
+{
+   const char *seq = kb_scancode_to_ansi_seq(key);
+   const char *p = seq;
+
+   if (!seq) {
+      /* Unknown/unsupported sequence: just do nothing avoiding weird effects */
+      return KB_HANDLER_NAK;
+   }
+
+   while (*p) {
+
+      kb_buf_write_elem(*p);
+
+      if (curr_termios.c_lflag & ECHO)
+         term_write(p, 1);
+
+      p++;
+   }
+
+   if (!(curr_termios.c_lflag & ICANON))
+      kcond_signal_one(&kb_input_cond);
+
+   return KB_HANDLER_OK_AND_CONTINUE;
+}
+
+static void tty_handle_ctrl_plus_letter(u8 c)
+{
+   ASSERT(isalpha(c));
+   char letter = toupper(c); /* ctrl ignores the case of the letter */
+   char t = letter - 'A' + 1;
+   kb_buf_write_elem(t);
+
+   if (curr_termios.c_lflag & ECHO)
+      term_write(&t, 1);
+}
+
+static int tty_handle_print_char_plus_ctrl_alt(u8 c)
+{
+   if (!isalpha(c)) {
+       /* Ignore ctrl/alt + <non-letter> sequences for the moment. */
+      return KB_HANDLER_NAK;
+   }
+
+   if (kb_is_alt_pressed()) {
+      kb_buf_write_elem('\x1b');
+      if (curr_termios.c_lflag & ECHO)
+         term_write("\x1b", 1);
+   }
+
+   if (kb_is_ctrl_pressed()) {
+      tty_handle_ctrl_plus_letter(c);
+   } else {
+      kb_buf_write_elem(c);
+      if (curr_termios.c_lflag & ECHO)
+         term_write((char *)&c, 1);
+   }
+
+   if (!(curr_termios.c_lflag & ICANON))
+      kcond_signal_one(&kb_input_cond);
+
+   return KB_HANDLER_OK_AND_CONTINUE;
 }
 
 static int tty_keypress_handler(u32 key, u8 c)
@@ -124,37 +225,30 @@ static int tty_keypress_handler(u32 key, u8 c)
       }
    }
 
-   if (!c) {
-      const char *seq = kb_scancode_to_ansi_seq(key);
-      const char *p = seq;
-
-      if (!seq)
-         return KB_HANDLER_NAK;
-
-      while (*p) {
-
-         kb_buf_write_elem(*p);
-
-         if (curr_termios.c_lflag & ECHO)
-            term_write(p, 1);
-
-         p++;
+   if (curr_termios.c_lflag & ICANON) {
+      if (c == 0x7f) {
+         /*
+          * In canonical (cooked) mode, translate the BACKSPACE key (ASCII DEL)
+          * to \b (ASCII backspace)
+          */
+         c = '\b';
       }
-
-      if (!(curr_termios.c_lflag & ICANON))
-         kcond_signal_one(&kb_input_cond);
-
-      return KB_HANDLER_OK_AND_CONTINUE;
    }
+
+   if (!c)
+      return tty_handle_non_printable_key(key);
+
+   if (kb_is_ctrl_or_alt_pressed())
+      return tty_handle_print_char_plus_ctrl_alt(c);
+
+   if (curr_termios.c_lflag & ECHO)
+      term_write((char *)&c, 1);
 
    if (curr_termios.c_lflag & ICANON)
       return tty_keypress_handle_canon_mode(key, c);
 
    /* raw mode input handling */
    kb_buf_write_elem(c);
-
-   if (curr_termios.c_lflag & ECHO)
-      term_write((char *)&c, 1);
 
    kcond_signal_one(&kb_input_cond);
    return KB_HANDLER_OK_AND_CONTINUE;

@@ -13,7 +13,16 @@ struct termios orig_termios;
 void term_set_raw_mode(void)
 {
    struct termios t = orig_termios;
-   t.c_lflag &= ~(ECHO | ICANON);
+
+   // "Minimal" raw mode
+   //t.c_lflag &= ~(ECHO | ICANON);
+
+   // "Full" raw mode
+   t.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+   t.c_oflag &= ~(OPOST);
+   t.c_cflag |= (CS8);
+   t.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+
    tcsetattr(0, TCSAFLUSH, &t);
 }
 
@@ -55,7 +64,7 @@ void echo_read(void)
       ret = read(0, buf, sizeof(buf));
       write(1, buf, ret);
 
-      if (ret == 1 && buf[0] == '\n')
+      if (ret == 1 && (buf[0] == '\n' || buf[0] == '\r'))
          break;
    }
 }
@@ -78,7 +87,7 @@ int main(int argc, char ** argv)
       one_read();
    }
 
-   printf("Restore the original tty mode\n");
    restore_termios();
+   printf("\rOriginal tty mode restored\n");
    return 0;
 }
