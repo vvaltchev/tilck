@@ -111,13 +111,17 @@ tty_term_write_filter(char *c,
 static int tty_keypress_handler(u32 key, u8 c)
 {
    if (key == KEY_PAGE_UP) {
-      term_scroll_up(5);
-      return KB_HANDLER_OK_AND_STOP;
+      if (kb_is_pressed(KEY_L_SHIFT) || kb_is_pressed(KEY_R_SHIFT)) {
+         term_scroll_up(5);
+         return KB_HANDLER_OK_AND_STOP;
+      }
    }
 
    if (key == KEY_PAGE_DOWN) {
-      term_scroll_down(5);
-      return KB_HANDLER_OK_AND_STOP;
+      if (kb_is_pressed(KEY_L_SHIFT) || kb_is_pressed(KEY_R_SHIFT)) {
+         term_scroll_down(5);
+         return KB_HANDLER_OK_AND_STOP;
+      }
    }
 
    if (!c) {
