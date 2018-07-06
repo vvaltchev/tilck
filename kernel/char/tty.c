@@ -21,30 +21,30 @@ extern const struct termios default_termios;
 
 #define KB_INPUT_BUF_SIZE 256
 
-static char kb_input_buf[256];   // the buffer used by kb_input_ringbuf (below)
+static char kb_input_buf[KB_INPUT_BUF_SIZE];
 static ringbuf kb_input_ringbuf;
 static kcond kb_input_cond;
 
-static inline bool kb_cbuf_is_empty(void)
+static inline bool kb_buf_is_empty(void)
 {
    return ringbuf_is_empty(&kb_input_ringbuf);
 }
 
-static inline char kb_cbuf_read_elem(void)
+static inline char kb_buf_read_elem(void)
 {
    u8 ret;
-   ASSERT(!kb_cbuf_is_empty());
+   ASSERT(!kb_buf_is_empty());
    DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&kb_input_ringbuf, &ret));
    return (char)ret;
 }
 
-static inline bool kb_cbuf_drop_last_written_elem(void)
+static inline bool kb_buf_drop_last_written_elem(void)
 {
    char unused;
    return ringbuf_unwrite_elem(&kb_input_ringbuf, &unused);
 }
 
-static inline bool kb_cbuf_write_elem(char c)
+static inline bool kb_buf_write_elem(char c)
 {
    return ringbuf_write_elem1(&kb_input_ringbuf, c);
 }
@@ -53,7 +53,7 @@ static int tty_keypress_handle_canon_mode(u32 key, u8 c)
 {
    if (c == '\b') {
 
-      if (kb_cbuf_drop_last_written_elem())
+      if (kb_buf_drop_last_written_elem())
          if (curr_termios.c_lflag & ECHO)
             term_write((char *)&c, 1);
 
@@ -62,7 +62,7 @@ static int tty_keypress_handle_canon_mode(u32 key, u8 c)
       if (curr_termios.c_lflag & ECHO)
          term_write((char *)&c, 1);
 
-      kb_cbuf_write_elem(c);
+      kb_buf_write_elem(c);
 
       if (c == '\n')
          kcond_signal_one(&kb_input_cond);
@@ -71,26 +71,83 @@ static int tty_keypress_handle_canon_mode(u32 key, u8 c)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
+static const struct {
+
+   u32 key;
+   char seq[8];
+
+} ansi_sequences[] = {
+
+   {KEY_UP,     "\033[A"},
+   {KEY_DOWN,   "\033[B"},
+   {KEY_RIGHT,  "\033[C"},
+   {KEY_LEFT,   "\033[D"}
+};
+
+static const char *kb_scancode_to_ansi_seq(u32 key)
+{
+   for (u32 i = 0; i < ARRAY_SIZE(ansi_sequences); i++)
+      if (ansi_sequences[i].key == key)
+         return ansi_sequences[i].seq;
+
+   return NULL;
+}
+
+static int
+tty_term_write_filter(char *c,
+                      u8 *color,
+                      term_int_write_char_func write_char_func,
+                      void *ctx)
+{
+   if (*c == '\033') {
+      write_char_func('^', *color);
+      write_char_func('[', *color);
+      return TERM_FILTER_FUNC_RET_BLANK;
+   }
+
+   return TERM_FILTER_FUNC_RET_WRITE_C;
+}
+
 static int tty_keypress_handler(u32 key, u8 c)
 {
-   if (key == KEY_E0_PAGE_UP) {
+   if (key == KEY_PAGE_UP) {
       term_scroll_up(5);
       return KB_HANDLER_OK_AND_STOP;
    }
 
-   if (key == KEY_E0_PAGE_DOWN) {
+   if (key == KEY_PAGE_DOWN) {
       term_scroll_down(5);
       return KB_HANDLER_OK_AND_STOP;
    }
 
-   if (!c)
-      return KB_HANDLER_NAK;
+   if (!c) {
+      const char *seq = kb_scancode_to_ansi_seq(key);
+      const char *p = seq;
+
+      if (!seq)
+         return KB_HANDLER_NAK;
+
+      while (*p) {
+
+         kb_buf_write_elem(*p);
+
+         if (curr_termios.c_lflag & ECHO)
+            term_write(p, 1);
+
+         p++;
+      }
+
+      if (!(curr_termios.c_lflag & ICANON))
+         kcond_signal_one(&kb_input_cond);
+
+      return KB_HANDLER_OK_AND_CONTINUE;
+   }
 
    if (curr_termios.c_lflag & ICANON)
       return tty_keypress_handle_canon_mode(key, c);
 
    /* raw mode input handling */
-   kb_cbuf_write_elem(c);
+   kb_buf_write_elem(c);
 
    if (curr_termios.c_lflag & ECHO)
       term_write((char *)&c, 1);
@@ -112,12 +169,12 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 
    do {
 
-      while (kb_cbuf_is_empty()) {
+      while (kb_buf_is_empty()) {
          kcond_wait(&kb_input_cond, NULL, KCOND_WAIT_FOREVER);
       }
 
-      while (read_count < size && !kb_cbuf_is_empty()) {
-         buf[read_count++] = kb_cbuf_read_elem();
+      while (read_count < size && !kb_buf_is_empty()) {
+         buf[read_count++] = kb_buf_read_elem();
       }
 
       if (read_count > 0 && !(curr_termios.c_lflag & ICANON))
@@ -171,4 +228,6 @@ void init_tty(void)
 
    if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
       panic("TTY: unable to register keypress handler");
+
+   term_set_filter_func(tty_term_write_filter, NULL);
 }

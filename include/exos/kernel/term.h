@@ -50,8 +50,11 @@ void term_set_col_offset(u32 off);
 #define TERM_FILTER_FUNC_RET_WRITE_C   0
 #define TERM_FILTER_FUNC_RET_BLANK     1
 
+typedef void (*term_int_write_char_func)(char c, u8 color);
+
 typedef int (*term_filter_func)(char *c    /* in/out */,
                                 u8 *color  /* in/out */,
+                                term_int_write_char_func int_write_char,
                                 void *ctx);
 
 void term_set_filter_func(term_filter_func func, void *ctx);

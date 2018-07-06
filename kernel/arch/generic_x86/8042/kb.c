@@ -119,7 +119,7 @@ void handle_key_pressed(u32 key)
 {
    switch(key) {
 
-   case KEY_E0_DEL:
+   case KEY_DEL:
 
       if (kb_is_pressed(KEY_CTRL) && kb_is_pressed(KEY_ALT)) {
          printk("Ctrl + Alt + Del: Reboot!\n");

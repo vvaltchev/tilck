@@ -363,7 +363,11 @@ static void term_action_write2(char *buf, u32 len, u8 color)
 
          char c = buf[i];
          u8 color_to_use = color;
-         int ret = filter(&c, &color_to_use, filter_ctx);
+
+         int ret = filter(&c,
+                          &color_to_use,
+                          &term_internal_write_char2,
+                          filter_ctx);
 
          if (ret == TERM_FILTER_FUNC_RET_WRITE_C)
             term_internal_write_char2(c, color_to_use);
