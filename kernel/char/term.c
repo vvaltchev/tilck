@@ -327,7 +327,7 @@ static void term_internal_write_char2(char c, u8 color)
          term_internal_write_tab(color);
          break;
 
-      case 0x7f: /* ASCII "DEL", or termios' c_cc[VERASE] */
+      //case 0x7f: /* ASCII "DEL", or termios' c_cc[VERASE] */
       case '\b':
          term_internal_write_backspace(color);
          break;

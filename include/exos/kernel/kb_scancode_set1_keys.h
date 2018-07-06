@@ -6,16 +6,18 @@
 #define KEY_NUM_LOCK       0x45
 #define KEY_CAPS_LOCK      0x3A
 
-#define KEY_F1  (0x3b)
-#define KEY_F2  (KEY_F1 + 1)
-#define KEY_F3  (KEY_F1 + 2)
-#define KEY_F4  (KEY_F1 + 3)
-#define KEY_F5  (KEY_F1 + 4)
-#define KEY_F6  (KEY_F1 + 5)
-#define KEY_F7  (KEY_F1 + 6)
-#define KEY_F8  (KEY_F1 + 7)
-#define KEY_F9  (KEY_F1 + 8)
-#define KEY_F10 (KEY_F1 + 9)
+#define KEY_F1              0x3B
+#define KEY_F2      (KEY_F1 + 1)
+#define KEY_F3      (KEY_F1 + 2)
+#define KEY_F4      (KEY_F1 + 3)
+#define KEY_F5      (KEY_F1 + 4)
+#define KEY_F6      (KEY_F1 + 5)
+#define KEY_F7      (KEY_F1 + 6)
+#define KEY_F8      (KEY_F1 + 7)
+#define KEY_F9      (KEY_F1 + 8)
+#define KEY_F10     (KEY_F1 + 9)
+#define KEY_F11             0x57
+#define KEY_F12             0x58
 
 #define KEY_UP            0xE048
 #define KEY_DOWN          0xE050
