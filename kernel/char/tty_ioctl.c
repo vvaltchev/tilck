@@ -43,10 +43,10 @@ const struct termios default_termios =
    }
 };
 
+void tty_update_special_ctrl_handlers(void);
+
 static int tty_ioctl_tcgets(fs_handle h, void *argp)
 {
-   //debug_dump_termios(&curr_termios);
-
    int rc = copy_to_user(argp, &c_term, sizeof(struct termios));
 
    if (rc < 0)
@@ -65,6 +65,7 @@ static int tty_ioctl_tcsets(fs_handle h, void *argp)
       return -EFAULT;
    }
 
+   tty_update_special_ctrl_handlers();
    return 0;
 }
 

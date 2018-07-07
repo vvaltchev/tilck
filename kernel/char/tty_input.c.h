@@ -136,46 +136,7 @@ static int tty_handle_non_printable_key(u32 key)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
-static bool tty_handle_special_controls(u8 t)
-{
-   if (t == c_term.c_cc[VSTOP]) {
-
-      if (c_term.c_iflag & IXON) {
-         // TODO: eventually support pause transmission, one day.
-         return true;
-      }
-
-   } else if (t == c_term.c_cc[VSTART]) {
-
-      if (c_term.c_iflag & IXON) {
-         // TODO: eventually support resume transmission, one day.
-         return true;
-      }
-
-   } else if (t == c_term.c_cc[VINTR]) {
-
-      if (c_term.c_lflag & ISIG) {
-         printk("INTR not supported yet\n");
-         return true;
-      }
-
-   } else if (t == c_term.c_cc[VSUSP]) {
-
-      if (c_term.c_lflag & ISIG) {
-         printk("SUSP not supported yet\n");
-         return true;
-      }
-
-   } else if (t == c_term.c_cc[VQUIT]) {
-
-      if (c_term.c_lflag & ISIG) {
-         printk("QUIT not supported yet\n");
-         return true;
-      }
-   }
-
-   return false;
-}
+#include "tty_ctrl_handlers.c.h"
 
 static int tty_keypress_handler(u32 key, u8 c)
 {
@@ -195,9 +156,11 @@ static int tty_keypress_handler(u32 key, u8 c)
    if (kb_is_alt_pressed())
       kb_buf_write_elem('\033');
 
-   if (kb_is_ctrl_pressed() && isalpha(c)) {
-      /* ctrl ignores the case of the letter */
-      c = toupper(c) - 'A' + 1;
+   if (kb_is_ctrl_pressed()) {
+      if (isalpha(c) || c == '\\') {
+         /* ctrl ignores the case of the letter */
+         c = toupper(c) - 'A' + 1;
+      }
    }
 
    if (c == '\r') {

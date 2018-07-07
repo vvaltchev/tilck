@@ -17,6 +17,8 @@
 #include <termios.h>      // system header
 #include "tty_input.c.h"
 
+void tty_update_special_ctrl_handlers(void);
+
 static int
 tty_term_write_filter(char *c,
                       u8 *color,
@@ -76,6 +78,8 @@ void init_tty(void)
 
    kcond_init(&kb_input_cond);
    ringbuf_init(&kb_input_ringbuf, KB_INPUT_BUF_SIZE, 1, kb_input_buf);
+
+   tty_update_special_ctrl_handlers();
 
    if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
       panic("TTY: unable to register keypress handler");
