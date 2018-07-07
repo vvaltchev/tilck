@@ -136,56 +136,45 @@ static int tty_handle_non_printable_key(u32 key)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
-static void tty_handle_ctrl_plus_letter(u8 c)
+static bool tty_handle_special_controls(u8 t)
 {
-   ASSERT(isalpha(c));
-   char letter = toupper(c); /* ctrl ignores the case of the letter */
-   char t = letter - 'A' + 1;
+   if (t == c_term.c_cc[VSTOP]) {
 
-   if (t == '\r') {
-      if (c_term.c_iflag & ICRNL)
-         t = '\n';
-   } else if (t == c_term.c_cc[VSTOP]) {
       if (c_term.c_iflag & IXON) {
-         // printk("Ctrl + S (pause transmission) not supported\n");
          // TODO: eventually support pause transmission, one day.
+         return true;
       }
+
    } else if (t == c_term.c_cc[VSTART]) {
+
       if (c_term.c_iflag & IXON) {
-         // printk("Ctrl + Q (resume transmission) not supported\n");
          // TODO: eventually support resume transmission, one day.
+         return true;
       }
+
    } else if (t == c_term.c_cc[VINTR]) {
-      // TODO: handle Ctrl + C according to ISIG when signals are supported
+
+      if (c_term.c_lflag & ISIG) {
+         printk("INTR not supported yet\n");
+         return true;
+      }
+
    } else if (t == c_term.c_cc[VSUSP]) {
-      // TODO: handle Ctrl + Z according to ISIG when signals are supported
+
+      if (c_term.c_lflag & ISIG) {
+         printk("SUSP not supported yet\n");
+         return true;
+      }
+
+   } else if (t == c_term.c_cc[VQUIT]) {
+
+      if (c_term.c_lflag & ISIG) {
+         printk("QUIT not supported yet\n");
+         return true;
+      }
    }
 
-   kb_buf_write_elem(t);
-}
-
-/*
- * The user pressed a printable key, but with modifiers (shift, alt, ctrl)
- */
-static int tty_handle_pchar_with_mods(u8 c)
-{
-   if (!isalpha(c)) {
-       /* Ignore ctrl/alt + <non-letter> sequences for the moment. */
-      return KB_HANDLER_NAK;
-   }
-
-   if (kb_is_alt_pressed())
-      kb_buf_write_elem('\033');
-
-   if (kb_is_ctrl_pressed())
-      tty_handle_ctrl_plus_letter(c);
-   else
-      kb_buf_write_elem(c);
-
-   if (!(c_term.c_lflag & ICANON))
-      kcond_signal_one(&kb_input_cond);
-
-   return KB_HANDLER_OK_AND_CONTINUE;
+   return false;
 }
 
 static int tty_keypress_handler(u32 key, u8 c)
@@ -203,8 +192,30 @@ static int tty_keypress_handler(u32 key, u8 c)
    if (!c)
       return tty_handle_non_printable_key(key);
 
-   if (kb_get_current_modifiers() > 2)
-      return tty_handle_pchar_with_mods(c);
+   if (kb_is_alt_pressed())
+      kb_buf_write_elem('\033');
+
+   if (kb_is_ctrl_pressed() && isalpha(c)) {
+      /* ctrl ignores the case of the letter */
+      c = toupper(c) - 'A' + 1;
+   }
+
+   if (c == '\r') {
+
+      if (c_term.c_iflag & IGNCR)
+         return KB_HANDLER_OK_AND_CONTINUE; /* ignore the carriage return */
+
+      if (c_term.c_iflag & ICRNL)
+         c = '\n';
+
+   } else if (c == '\n') {
+
+      if (c_term.c_iflag & INLCR)
+         c = '\r';
+   }
+
+   if (tty_handle_special_controls(c))
+      return KB_HANDLER_OK_AND_CONTINUE;
 
    if (c_term.c_lflag & ICANON)
       return tty_keypress_handle_canon_mode(key, c);

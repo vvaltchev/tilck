@@ -46,10 +46,16 @@ void one_read(void)
    printf("read(%d): ", ret);
 
    for (int i = 0; i < ret; i++)
-      if (isprint(buf[i]))
-         printf("0x%x (%c), ", buf[i], buf[i]);
+      if (buf[i] == '\033')
+         printf("ESC ");
+      else if (buf[i] == '\n')
+         printf("NL ");
+      else if (buf[i] == '\r')
+         printf("CR ");
+      else if (isprint(buf[i]))
+         printf("%c ", buf[i]);
       else
-         printf("0x%x, ", buf[i]);
+         printf("[0x%x] ", buf[i]);
 
    printf("\n");
 }

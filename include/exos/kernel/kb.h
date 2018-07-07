@@ -31,3 +31,21 @@ static inline bool kb_is_shift_pressed(void)
    return kb_is_pressed(KEY_L_SHIFT) || kb_is_pressed(KEY_R_SHIFT);
 }
 
+#define KB_MOD_NONE   0
+#define KB_MOD_ALT    1
+#define KB_MOD_SHIFT  2
+#define KB_MOD_CTRL   4
+
+/*
+ * Match is made by OR-ing the four defines above.
+ */
+static inline bool kb_exact_match_modifiers(u32 match)
+{
+   return kb_get_current_modifiers() == match;
+}
+
+static inline bool kb_partial_match_modifiers(u32 match_mask)
+{
+   ASSERT(match_mask != 0);
+   return !!(kb_get_current_modifiers() & match_mask);
+}
