@@ -28,8 +28,8 @@ typedef struct {
    u32 read_buf_used;
    u32 write_buf_used;
 
-   void *read_buf;
-   void *write_buf;
+   char *read_buf;
+   char *write_buf;
 
 } devfs_file_handle;
 

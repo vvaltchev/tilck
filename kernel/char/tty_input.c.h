@@ -1,6 +1,5 @@
 
-// NOTE: on Linux this buffer is 4K, but for exOS 256 seems enough.
-#define KB_INPUT_BUF_SIZE 256
+#define KB_INPUT_BUF_SIZE 4096
 
 extern struct termios c_term;
 extern struct termios default_termios;
@@ -124,6 +123,7 @@ static int tty_handle_non_printable_key(u32 key)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
+static volatile int tty_end_line_delim_count = 0;
 #include "tty_ctrl_handlers.c.h"
 
 static inline bool tty_is_line_delim_char(char c)
@@ -133,8 +133,6 @@ static inline bool tty_is_line_delim_char(char c)
           c == c_term.c_cc[VEOL] ||
           c == c_term.c_cc[VEOL2];
 }
-
-static volatile int tty_end_line_delim_count = 0;
 
 static int tty_keypress_handle_canon_mode(u32 key, u8 c)
 {
@@ -207,9 +205,24 @@ static int tty_keypress_handler(u32 key, u8 c)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
+static u32 tty_flush_read_buf(devfs_file_handle *h, char *buf, u32 size)
+{
+   u32 to_read = h->read_buf_used - h->read_pos;
+   u32 m = MIN(to_read, size);
+   memcpy(buf, h->read_buf + h->read_pos, m);
+   h->read_pos += m;
+
+   if (h->read_pos == h->read_buf_used) {
+      h->read_buf_used = 0;
+      h->read_pos = 0;
+   }
+
+   return m;
+}
+
 static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
 {
-   //devfs_file_handle *h = fsh;
+   devfs_file_handle *h = fsh;
    size_t read_count = 0;
    bool delim_break;
    char c = 0;
@@ -218,6 +231,9 @@ static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
 
    if (!size)
       return 0;
+
+   if (h->read_buf_used)
+      return tty_flush_read_buf(h, buf, size);
 
    if (c_term.c_lflag & ICANON)
       term_set_col_offset(term_get_curr_col());
@@ -230,58 +246,49 @@ static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
 
       delim_break = false;
 
-      while (read_count < size && !kb_buf_is_empty()) {
+      ASSERT(h->read_buf_used == 0);
+      ASSERT(h->read_pos == 0);
 
+      while (h->read_buf_used < DEVFS_READ_BUF_SIZE && !kb_buf_is_empty()) {
          c = kb_buf_read_elem();
-         buf[read_count++] = c;
+         h->read_buf[h->read_buf_used++] = c;
 
-         if (tty_is_line_delim_char(c)) {
-            ASSERT(tty_end_line_delim_count > 0);
-            tty_end_line_delim_count--;
-            delim_break = true;
-            break;
+         if (c_term.c_lflag & ICANON) {
+
+            if (tty_is_line_delim_char(c)) {
+               ASSERT(tty_end_line_delim_count > 0);
+               tty_end_line_delim_count--;
+               delim_break = true;
+
+               /* All line delimiters except EOF are kept */
+               if (c == c_term.c_cc[VEOF])
+                  h->read_buf_used--;
+
+               break;
+            }
+
+         } else {
+
+            /*
+             * In raw mode it makes no sense to read until a line delim is
+             * found: we should read the minimum necessary.
+             */
+            if (h->read_buf_used >= c_term.c_cc[VMIN])
+               break;
          }
       }
 
-      /*
-       * We get here in 3 ways:
-       *    - a line delimiter has been found (delim_break)
-       *    - read_count == size
-       *    - kb_buf_is_empty() => (theoretical) spurious condition wake-up
-       */
+      read_count += tty_flush_read_buf(h, buf + read_count, size - read_count);
+      ASSERT(tty_end_line_delim_count >= 0);
 
       if (c_term.c_lflag & ICANON) {
 
-         if (!delim_break && read_count == size) {
-
-            ASSERT(tty_end_line_delim_count >= 0);
-
-            /*
-             * We got here only because read_count == size. We have no more
-             * room in user's buffer. No line delimiters hit so far, BUT why
-             * did we wake-up from kcond_wait()? Two reasons:
-             *
-             *    - The user actually entered a delimiter but we have no enough
-             *      room in the user buf to get there. In this case, we will
-             *      find tty_end_line_delim_count to be > 0.
-             *
-             *    - Condition spurious wake-up.
-             *      In this case tty_end_line_delim_count will be 0, and we
-             *      will start again the main loop.
-             */
-
-            if (tty_end_line_delim_count > 0)
-               delim_break = true;
-         }
-
-         if (delim_break) {
-
-            /* All line delimiters except EOF are kept as part of the input. */
-            if (c == c_term.c_cc[VEOF])
-               read_count--;
-
+         if (delim_break)
             break;
-         }
+
+         if (h->read_buf_used == DEVFS_READ_BUF_SIZE)
+            if (tty_end_line_delim_count > 0)
+               break;
 
       } else {
 

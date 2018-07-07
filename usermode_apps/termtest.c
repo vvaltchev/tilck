@@ -98,26 +98,14 @@ void read_1_canon_mode(void)
 {
    char buf[32] = {0};
    int r;
-   int fd = open("./testdir/BBB", O_RDONLY);
-
-   if (fd < 0) {
-      printf("Unable to open ./testdir/BBB\n");
-      return;
-   }
 
    printf("read_1_canon_mode(): read 2 chars, one-by-one\n");
 
    r = read(0, buf, 1);
    show_read_res(r, buf[0]);
 
-   // Read of other file, in order to check if the unread stuff will be kept
-   r = read(fd, buf, 32);
-   printf("other read(%d): %s\n", r, buf);
-
    r = read(0, buf, 1);
    show_read_res(r, buf[0]);
-
-   close(fd);
 }
 
 int main(int argc, char ** argv)
