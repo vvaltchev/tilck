@@ -201,7 +201,7 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
    if (c_term.c_lflag & ICANON)
       term_set_col_offset(term_get_curr_col());
 
-   do {
+   while (true) {
 
       while (kb_buf_is_empty()) {
          kcond_wait(&kb_input_cond, NULL, KCOND_WAIT_FOREVER);
@@ -211,10 +211,28 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
          buf[read_count++] = kb_buf_read_elem();
       }
 
-      if (read_count > 0 && !(c_term.c_lflag & ICANON))
-         break;
+      if (c_term.c_lflag & ICANON) {
 
-   } while (buf[read_count - 1] != '\n' || read_count == KB_INPUT_BUF_SIZE);
+         if (read_count == KB_INPUT_BUF_SIZE)
+            break;
+
+         char lc = buf[read_count - 1];
+
+         if (lc == '\n')
+            break;
+
+         if (lc == c_term.c_cc[VEOF]) {
+            read_count--;
+            break;
+         }
+
+      } else {
+
+         if (read_count > 0)
+            break;
+      }
+
+   }
 
    return read_count;
 }

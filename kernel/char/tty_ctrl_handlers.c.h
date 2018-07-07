@@ -56,7 +56,9 @@ static bool tty_ctrl_quit(void)
 static bool tty_ctrl_eof(void)
 {
    if (c_term.c_lflag & ICANON) {
-      printk("EOF not supported yet\n");
+      /* Special write to the kb buf without calling kb_buf_write_elem */
+      ringbuf_write_elem1(&kb_input_ringbuf, c_term.c_cc[VEOF]);
+      kcond_signal_one(&kb_input_cond);
       return true;
    }
 
