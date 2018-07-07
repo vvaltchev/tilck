@@ -9,47 +9,6 @@ static char kb_input_buf[KB_INPUT_BUF_SIZE];
 static ringbuf kb_input_ringbuf;
 static kcond kb_input_cond;
 
-static inline bool kb_buf_is_empty(void)
-{
-   return ringbuf_is_empty(&kb_input_ringbuf);
-}
-
-static inline char kb_buf_read_elem(void)
-{
-   u8 ret;
-   ASSERT(!kb_buf_is_empty());
-   DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&kb_input_ringbuf, &ret));
-   return (char)ret;
-}
-
-static inline bool kb_buf_drop_last_written_elem(void)
-{
-   char unused;
-   return ringbuf_unwrite_elem(&kb_input_ringbuf, &unused);
-}
-
-static inline bool kb_buf_write_elem(char c)
-{
-   return ringbuf_write_elem1(&kb_input_ringbuf, c);
-}
-
-static int tty_keypress_handle_canon_mode(u32 key, u8 c)
-{
-   if (c == c_term.c_cc[VERASE]) {
-
-      kb_buf_drop_last_written_elem();
-
-   } else {
-
-      kb_buf_write_elem(c);
-
-      if (c == '\n')
-         kcond_signal_one(&kb_input_cond);
-   }
-
-   return KB_HANDLER_OK_AND_CONTINUE;
-}
-
 static void tty_keypress_echo(char c)
 {
    if (c == '\n' && (c_term.c_lflag & ECHONL)) {
@@ -113,6 +72,49 @@ static void tty_keypress_echo(char c)
    term_write(&c, 1);
 }
 
+static inline bool kb_buf_is_empty(void)
+{
+   return ringbuf_is_empty(&kb_input_ringbuf);
+}
+
+static inline char kb_buf_read_elem(void)
+{
+   u8 ret;
+   ASSERT(!kb_buf_is_empty());
+   DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&kb_input_ringbuf, &ret));
+   return (char)ret;
+}
+
+static inline bool kb_buf_drop_last_written_elem(void)
+{
+   char unused;
+   tty_keypress_echo(c_term.c_cc[VERASE]);
+   return ringbuf_unwrite_elem(&kb_input_ringbuf, &unused);
+}
+
+static inline bool kb_buf_write_elem(char c)
+{
+   tty_keypress_echo(c);
+   return ringbuf_write_elem1(&kb_input_ringbuf, c);
+}
+
+static int tty_keypress_handle_canon_mode(u32 key, u8 c)
+{
+   if (c == c_term.c_cc[VERASE]) {
+
+      kb_buf_drop_last_written_elem();
+
+   } else {
+
+      kb_buf_write_elem(c);
+
+      if (c == '\n')
+         kcond_signal_one(&kb_input_cond);
+   }
+
+   return KB_HANDLER_OK_AND_CONTINUE;
+}
+
 static int tty_handle_non_printable_key(u32 key)
 {
    char seq[16];
@@ -125,11 +127,7 @@ static int tty_handle_non_printable_key(u32 key)
    }
 
    while (*p) {
-
-      kb_buf_write_elem(*p);
-      tty_keypress_echo(*p);
-
-      p++;
+      kb_buf_write_elem(*p++);
    }
 
    if (!(c_term.c_lflag & ICANON))
@@ -164,7 +162,6 @@ static void tty_handle_ctrl_plus_letter(u8 c)
    }
 
    kb_buf_write_elem(t);
-   tty_keypress_echo(t);
 }
 
 /*
@@ -177,17 +174,13 @@ static int tty_handle_pchar_with_mods(u8 c)
       return KB_HANDLER_NAK;
    }
 
-   if (kb_is_alt_pressed()) {
+   if (kb_is_alt_pressed())
       kb_buf_write_elem('\033');
-      tty_keypress_echo('\033');
-   }
 
-   if (kb_is_ctrl_pressed()) {
+   if (kb_is_ctrl_pressed())
       tty_handle_ctrl_plus_letter(c);
-   } else {
+   else
       kb_buf_write_elem(c);
-      tty_keypress_echo(c);
-   }
 
    if (!(c_term.c_lflag & ICANON))
       kcond_signal_one(&kb_input_cond);
@@ -197,18 +190,14 @@ static int tty_handle_pchar_with_mods(u8 c)
 
 static int tty_keypress_handler(u32 key, u8 c)
 {
-   if (key == KEY_PAGE_UP) {
-      if (kb_is_pressed(KEY_L_SHIFT) || kb_is_pressed(KEY_R_SHIFT)) {
-         term_scroll_up(5);
-         return KB_HANDLER_OK_AND_STOP;
-      }
+   if (key == KEY_PAGE_UP && kb_is_shift_pressed()) {
+      term_scroll_up(5);
+      return KB_HANDLER_OK_AND_STOP;
    }
 
-   if (key == KEY_PAGE_DOWN) {
-      if (kb_is_pressed(KEY_L_SHIFT) || kb_is_pressed(KEY_R_SHIFT)) {
-         term_scroll_down(5);
-         return KB_HANDLER_OK_AND_STOP;
-      }
+   if (key == KEY_PAGE_DOWN && kb_is_shift_pressed()) {
+      term_scroll_down(5);
+      return KB_HANDLER_OK_AND_STOP;
    }
 
    if (!c)
@@ -216,8 +205,6 @@ static int tty_keypress_handler(u32 key, u8 c)
 
    if (kb_get_current_modifiers() > 2)
       return tty_handle_pchar_with_mods(c);
-
-   tty_keypress_echo(c);
 
    if (c_term.c_lflag & ICANON)
       return tty_keypress_handle_canon_mode(key, c);
