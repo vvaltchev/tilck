@@ -225,7 +225,7 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
          if (!h)
             return -ENOMEM;
 
-         h->read_buf = kzmalloc(sizeof(DEVFS_READ_BUF_SIZE));
+         h->read_buf = kzmalloc(DEVFS_READ_BUF_SIZE);
 
          if (!h->read_buf) {
             kfree2(h, sizeof(devfs_file_handle));
@@ -260,7 +260,7 @@ static int devfs_dup(fs_handle fsh, fs_handle *dup_h)
 {
    devfs_file_handle *h = fsh;
    devfs_file_handle *h2;
-   h2 = kmalloc(sizeof(devfs_file_handle));
+   h2 = kzmalloc(sizeof(devfs_file_handle));
 
    if (!h2)
       return -ENOMEM;
