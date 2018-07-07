@@ -134,6 +134,8 @@ static inline bool tty_is_line_delim_char(char c)
           c == c_term.c_cc[VEOL2];
 }
 
+static volatile int tty_end_line_delim_count = 0;
+
 static int tty_keypress_handle_canon_mode(u32 key, u8 c)
 {
    if (c == c_term.c_cc[VERASE]) {
@@ -144,8 +146,10 @@ static int tty_keypress_handle_canon_mode(u32 key, u8 c)
 
       kb_buf_write_elem(c);
 
-      if (tty_is_line_delim_char(c))
+      if (tty_is_line_delim_char(c)) {
+         tty_end_line_delim_count++;
          kcond_signal_one(&kb_input_cond);
+      }
    }
 
    return KB_HANDLER_OK_AND_CONTINUE;
@@ -232,6 +236,8 @@ static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
          buf[read_count++] = c;
 
          if (tty_is_line_delim_char(c)) {
+            ASSERT(tty_end_line_delim_count > 0);
+            tty_end_line_delim_count--;
             delim_break = true;
             break;
          }
@@ -247,8 +253,25 @@ static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
       if (c_term.c_lflag & ICANON) {
 
          if (!delim_break && read_count == size) {
-            // XXX: temp hack! (assumes no spurious condition wake-up)
-            delim_break = true;
+
+            ASSERT(tty_end_line_delim_count >= 0);
+
+            /*
+             * We got here only because read_count == size. We have no more
+             * room in user's buffer. No line delimiters hit so far, BUT why
+             * did we wake-up from kcond_wait()? Two reasons:
+             *
+             *    - The user actually entered a delimiter but we have no enough
+             *      room in the user buf to get there. In this case, we will
+             *      find tty_end_line_delim_count to be > 0.
+             *
+             *    - Condition spurious wake-up.
+             *      In this case tty_end_line_delim_count will be 0, and we
+             *      will start again the main loop.
+             */
+
+            if (tty_end_line_delim_count > 0)
+               delim_break = true;
          }
 
          if (delim_break) {
