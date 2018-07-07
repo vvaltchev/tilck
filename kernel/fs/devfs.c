@@ -225,6 +225,13 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
          if (!h)
             return -ENOMEM;
 
+         h->read_buf = kzmalloc(sizeof(DEVFS_READ_BUF_SIZE));
+
+         if (!h->read_buf) {
+            kfree2(h, sizeof(devfs_file_handle));
+            return -ENOMEM;
+         }
+
          h->type = pos->type;
          h->devfs_file_ptr = pos;
          h->fs = fs;
@@ -244,19 +251,46 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
 static void devfs_close(fs_handle h)
 {
    devfs_file_handle *devh = h;
+   kfree2(devh->read_buf, DEVFS_READ_BUF_SIZE);
+   kfree2(devh->write_buf, DEVFS_WRITE_BUF_SIZE);
    kfree2(devh, sizeof(devfs_file_handle));
 }
 
-static int devfs_dup(fs_handle h, fs_handle *dup_h)
+static int devfs_dup(fs_handle fsh, fs_handle *dup_h)
 {
-   devfs_file_handle *new_h;
-   new_h = kmalloc(sizeof(devfs_file_handle));
+   devfs_file_handle *h = fsh;
+   devfs_file_handle *h2;
+   h2 = kmalloc(sizeof(devfs_file_handle));
 
-   if (!new_h)
+   if (!h2)
       return -ENOMEM;
 
-   memcpy(new_h, h, sizeof(devfs_file_handle));
-   *dup_h = new_h;
+   memcpy(h2, h, sizeof(devfs_file_handle));
+
+   if (h->read_buf) {
+
+      h2->read_buf = kmalloc(DEVFS_READ_BUF_SIZE);
+
+      if (!h2->read_buf) {
+         kfree2(h2, sizeof(devfs_file_handle));
+         return -ENOMEM;
+      }
+
+      memcpy(h2->read_buf, h->read_buf, DEVFS_READ_BUF_SIZE);
+   }
+
+   if (h->write_buf) {
+
+      h2->write_buf = kmalloc(DEVFS_WRITE_BUF_SIZE);
+
+      if (!h2->write_buf) {
+         kfree2(h->read_buf, DEVFS_READ_BUF_SIZE);
+         kfree2(h2, sizeof(devfs_file_handle));
+         return -ENOMEM;
+      }
+   }
+
+   *dup_h = h2;
    return 0;
 }
 
@@ -296,7 +330,7 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
 
    list_for_each(pos, &d->root_dir.files_list, list) {
 
-      if (curr_index < dh->curr_file_index) {
+      if (curr_index < dh->read_pos) {
          curr_index++;
          continue;
       }
@@ -339,7 +373,7 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
 
       offset = ent.d_off;
       curr_index++;
-      dh->curr_file_index++;
+      dh->read_pos++;
    }
 
    return offset;

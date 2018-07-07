@@ -2,6 +2,9 @@
 #pragma once
 #include <exos/kernel/fs/exvfs.h>
 
+#define DEVFS_READ_BUF_SIZE   4096
+#define DEVFS_WRITE_BUF_SIZE  4096
+
 typedef enum {
 
    DEVFS_DIRECTORY,
@@ -20,8 +23,13 @@ typedef struct {
    devfs_entry_type type;
    void *devfs_file_ptr;
 
-   /* Use only when type == DEVFS_DIRECTORY */
-   u32 curr_file_index;
+   u32 read_pos;
+   u32 write_pos;
+   u32 read_buf_used;
+   u32 write_buf_used;
+
+   void *read_buf;
+   void *write_buf;
 
 } devfs_file_handle;
 

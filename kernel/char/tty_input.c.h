@@ -203,8 +203,9 @@ static int tty_keypress_handler(u32 key, u8 c)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
-static ssize_t tty_read(fs_handle h, char *buf, size_t size)
+static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
 {
+   //devfs_file_handle *h = fsh;
    size_t read_count = 0;
    bool delim_break;
    char c = 0;
@@ -246,22 +247,7 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
       if (c_term.c_lflag & ICANON) {
 
          if (!delim_break && read_count == size) {
-
-            // u32 count = 0;
-            // char *buf = get_curr_task()->io_copybuf;
-
-            // while (!kb_buf_is_empty()) {
-
-            //    char unread_c = kb_buf_read_elem();
-            //    buf[count++] = unread_c;
-
-            //    if (tty_is_line_delim_char(unread_c)) {
-            //       delim_break = true;
-            //       break;
-            //    }
-            // }
-
-            // XXX: temp hack! (assumes no spurious condition wakep-up)
+            // XXX: temp hack! (assumes no spurious condition wake-up)
             delim_break = true;
          }
 
