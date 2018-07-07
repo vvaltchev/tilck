@@ -29,6 +29,11 @@ static void tty_keypress_echo(char c)
 
    /* echo is enabled */
 
+   if (c == c_term.c_cc[VEOF] && (c_term.c_lflag & ICANON)) {
+      /* In canonical mode, EOF is never echoed */
+      return;
+   }
+
    if (c == c_term.c_cc[VERASE]) {
       /*
        * From termios' man page:
@@ -98,23 +103,6 @@ static inline bool kb_buf_write_elem(char c)
    return ringbuf_write_elem1(&kb_input_ringbuf, c);
 }
 
-static int tty_keypress_handle_canon_mode(u32 key, u8 c)
-{
-   if (c == c_term.c_cc[VERASE]) {
-
-      kb_buf_drop_last_written_elem();
-
-   } else {
-
-      kb_buf_write_elem(c);
-
-      if (c == '\n')
-         kcond_signal_one(&kb_input_cond);
-   }
-
-   return KB_HANDLER_OK_AND_CONTINUE;
-}
-
 static int tty_handle_non_printable_key(u32 key)
 {
    char seq[16];
@@ -137,6 +125,31 @@ static int tty_handle_non_printable_key(u32 key)
 }
 
 #include "tty_ctrl_handlers.c.h"
+
+static inline bool tty_is_line_delim_char(char c)
+{
+   return c == '\n' ||
+          c == c_term.c_cc[VEOF] ||
+          c == c_term.c_cc[VEOL] ||
+          c == c_term.c_cc[VEOL2];
+}
+
+static int tty_keypress_handle_canon_mode(u32 key, u8 c)
+{
+   if (c == c_term.c_cc[VERASE]) {
+
+      kb_buf_drop_last_written_elem();
+
+   } else {
+
+      kb_buf_write_elem(c);
+
+      if (tty_is_line_delim_char(c))
+         kcond_signal_one(&kb_input_cond);
+   }
+
+   return KB_HANDLER_OK_AND_CONTINUE;
+}
 
 static int tty_keypress_handler(u32 key, u8 c)
 {
@@ -177,7 +190,7 @@ static int tty_keypress_handler(u32 key, u8 c)
          c = '\r';
    }
 
-   if (tty_handle_special_controls(c))
+   if (tty_handle_special_controls(c)) /* Ctrl+C, Ctrl+D, Ctrl+Z, etc. */
       return KB_HANDLER_OK_AND_CONTINUE;
 
    if (c_term.c_lflag & ICANON)
@@ -193,10 +206,13 @@ static int tty_keypress_handler(u32 key, u8 c)
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
    size_t read_count = 0;
+   bool delim_break;
+   char c = 0;
+
    ASSERT(is_preemption_enabled());
 
    if (!size)
-      return read_count;
+      return 0;
 
    if (c_term.c_lflag & ICANON)
       term_set_col_offset(term_get_curr_col());
@@ -207,28 +223,60 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
          kcond_wait(&kb_input_cond, NULL, KCOND_WAIT_FOREVER);
       }
 
+      delim_break = false;
+
       while (read_count < size && !kb_buf_is_empty()) {
-         buf[read_count++] = kb_buf_read_elem();
+
+         c = kb_buf_read_elem();
+         buf[read_count++] = c;
+
+         if (tty_is_line_delim_char(c)) {
+            delim_break = true;
+            break;
+         }
       }
+
+      /*
+       * We get here in 3 ways:
+       *    - a line delimiter has been found (delim_break)
+       *    - read_count == size
+       *    - kb_buf_is_empty() => (theoretical) spurious condition wake-up
+       */
 
       if (c_term.c_lflag & ICANON) {
 
-         if (read_count == KB_INPUT_BUF_SIZE)
-            break;
+         if (!delim_break && read_count == size) {
 
-         char lc = buf[read_count - 1];
+            // u32 count = 0;
+            // char *buf = get_curr_task()->io_copybuf;
 
-         if (lc == '\n')
-            break;
+            // while (!kb_buf_is_empty()) {
 
-         if (lc == c_term.c_cc[VEOF]) {
-            read_count--;
+            //    char unread_c = kb_buf_read_elem();
+            //    buf[count++] = unread_c;
+
+            //    if (tty_is_line_delim_char(unread_c)) {
+            //       delim_break = true;
+            //       break;
+            //    }
+            // }
+
+            // XXX: temp hack! (assumes no spurious condition wakep-up)
+            delim_break = true;
+         }
+
+         if (delim_break) {
+
+            /* All line delimiters except EOF are kept as part of the input. */
+            if (c == c_term.c_cc[VEOF])
+               read_count--;
+
             break;
          }
 
       } else {
 
-         if (read_count > 0)
+         if (read_count >= c_term.c_cc[VMIN])
             break;
       }
 

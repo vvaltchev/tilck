@@ -56,8 +56,7 @@ static bool tty_ctrl_quit(void)
 static bool tty_ctrl_eof(void)
 {
    if (c_term.c_lflag & ICANON) {
-      /* Special write to the kb buf without calling kb_buf_write_elem */
-      ringbuf_write_elem1(&kb_input_ringbuf, c_term.c_cc[VEOF]);
+      kb_buf_write_elem(c_term.c_cc[VEOF]);
       kcond_signal_one(&kb_input_cond);
       return true;
    }
@@ -65,15 +64,54 @@ static bool tty_ctrl_eof(void)
    return false;
 }
 
+static bool tty_ctrl_eol(void)
+{
+   if (c_term.c_lflag & ICANON) {
+      kb_buf_write_elem(c_term.c_cc[VEOL]);
+      kcond_signal_one(&kb_input_cond);
+      return true;
+   }
+   return false;
+}
+
+static bool tty_ctrl_eol2(void)
+{
+   if (c_term.c_lflag & ICANON) {
+      kb_buf_write_elem(c_term.c_cc[VEOL2]);
+      kcond_signal_one(&kb_input_cond);
+      return true;
+   }
+   return false;
+}
+
+static void tty_set_ctrl_handler(u8 ctrl_type, tty_ctrl_sig_func h)
+{
+   u8 c = c_term.c_cc[ctrl_type];
+
+   if (!c) {
+      /*
+       * The character #num associated with the control char 'ctrl_type' is 0:
+       * this means that the user doesn't what the terminal to support that
+       * specific control character at all. We cannot associate any handler with
+       * it.
+       */
+      return;
+   }
+
+   tty_special_ctrl_handlers[c] = h;
+}
+
 void tty_update_special_ctrl_handlers(void)
 {
    bzero(tty_special_ctrl_handlers, sizeof(tty_special_ctrl_handlers));
-   tty_special_ctrl_handlers[c_term.c_cc[VSTOP]] = tty_ctrl_stop;
-   tty_special_ctrl_handlers[c_term.c_cc[VSTART]] = tty_ctrl_start;
-   tty_special_ctrl_handlers[c_term.c_cc[VINTR]] = tty_ctrl_intr;
-   tty_special_ctrl_handlers[c_term.c_cc[VSUSP]] = tty_ctrl_susp;
-   tty_special_ctrl_handlers[c_term.c_cc[VQUIT]] = tty_ctrl_quit;
-   tty_special_ctrl_handlers[c_term.c_cc[VEOF]] = tty_ctrl_eof;
+   tty_set_ctrl_handler(VSTOP, tty_ctrl_stop);
+   tty_set_ctrl_handler(VSTART, tty_ctrl_start);
+   tty_set_ctrl_handler(VINTR, tty_ctrl_intr);
+   tty_set_ctrl_handler(VSUSP, tty_ctrl_susp);
+   tty_set_ctrl_handler(VQUIT, tty_ctrl_quit);
+   tty_set_ctrl_handler(VEOF, tty_ctrl_eof);
+   tty_set_ctrl_handler(VEOL, tty_ctrl_eol);
+   tty_set_ctrl_handler(VEOL2, tty_ctrl_eol2);
 }
 
 static bool tty_handle_special_controls(u8 c)
