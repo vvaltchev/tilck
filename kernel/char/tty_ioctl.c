@@ -23,23 +23,23 @@ const struct termios default_termios =
 
    .c_cc =
    {
-      [VINTR]     = 0x03,
-      [VQUIT]     = 0x1c,
-      [VERASE]    = 0x7f,
-      [VKILL]     = 0x15,
-      [VEOF]      = 0x04,
-      [VTIME]     = 0,
-      [VMIN]      = 0x01,
-      [VSWTC]     = 0,
-      [VSTART]    = 0x11,
-      [VSTOP]     = 0x13,
-      [VSUSP]     = 0x1a,
-      [VEOL]      = 0,
-      [VREPRINT]  = 0x12,
-      [VDISCARD]  = 0x0f,
-      [VWERASE]   = 0x17,
-      [VLNEXT]    = 0x16,
-      [VEOL2]     = 0
+      [VINTR]     = 0x03,        /* typical value for TERM=linux, Ctrl+C */
+      [VQUIT]     = 0x1c,        /* typical value for TERM=linux, Ctrl+\ */
+      [VERASE]    = 0x7f,        /* typical value for TERM=linux */
+      [VKILL]     = TERM_KILL_C,
+      [VEOF]      = 0x04,        /* typical value for TERM=linux, Ctrl+D */
+      [VTIME]     = 0,           /* typical value for TERM=linux (unset) */
+      [VMIN]      = 0x01,        /* typical value for TERM=linux */
+      [VSWTC]     = 0,           /* typical value for TERM=linux (unsupported)*/
+      [VSTART]    = 0x11,        /* typical value for TERM=linux, Ctrl+Q */
+      [VSTOP]     = 0x13,        /* typical value for TERM=linux, Ctrl+S */
+      [VSUSP]     = 0x1a,        /* typical value for TERM=linux, Ctrl+Z */
+      [VEOL]      = 0,           /* typical value for TERM=linux (unset) */
+      [VREPRINT]  = 0x12,        /* typical value for TERM=linux, Ctrl+R */
+      [VDISCARD]  = 0x0f,        /* typical value for TERM=linux, Ctrl+O */
+      [VWERASE]   = TERM_WERASE_C,
+      [VLNEXT]    = 0x16,        /* typical value for TERM=linux, Ctrl+V */
+      [VEOL2]     = 0            /* typical value for TERM=linux (unset) */
    }
 };
 

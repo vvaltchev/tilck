@@ -28,20 +28,41 @@ static void tty_keypress_echo(char c)
 
    /* echo is enabled */
 
-   if (c == c_term.c_cc[VEOF] && (c_term.c_lflag & ICANON)) {
-      /* In canonical mode, EOF is never echoed */
-      return;
-   }
+   if (c_term.c_lflag & ICANON) {
 
-   if (c == c_term.c_cc[VERASE]) {
-      /*
-       * From termios' man page:
-       *    If ICANON is also set, the ERASE character erases the preceding
-       *    input character, and WERASE erases the preceding word.
-       */
-      if ((c_term.c_lflag & ICANON) && (c_term.c_lflag & ECHOE)) {
-         term_write("\b", 1);
+      if (c == c_term.c_cc[VEOF]) {
+         /* In canonical mode, EOF is never echoed */
          return;
+      }
+
+      if (c_term.c_lflag & ECHOK) {
+         if (c == c_term.c_cc[VKILL]) {
+            term_write(TERM_KILL_S, 1);
+            return;
+         }
+      }
+
+      if (c_term.c_lflag & ECHOE) {
+
+        /*
+         * From termios' man page:
+         *
+         *    ECHOE
+         *        If ICANON is also set, the ERASE character erases the
+         *        preceding input character, and WERASE erases the preceding
+         *        word.
+         */
+
+
+         if (c == c_term.c_cc[VWERASE]) {
+            term_write(TERM_WERASE_S, 1);
+            return;
+         }
+
+         if (c == c_term.c_cc[VERASE]) {
+            term_write(TERM_ERASE_S, 1);
+            return;
+         }
       }
    }
 

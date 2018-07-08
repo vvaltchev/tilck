@@ -327,9 +327,16 @@ static void term_internal_write_char2(char c, u8 color)
          term_internal_write_tab(color);
          break;
 
-      //case 0x7f: /* ASCII "DEL", or termios' c_cc[VERASE] */
-      case '\b':
+      case TERM_ERASE_C:
          term_internal_write_backspace(color);
+         break;
+
+      case TERM_WERASE_C:
+         // TODO: add support for WERASE in term
+         break;
+
+      case TERM_KILL_C:
+         // TODO: add support for KILL in term
          break;
 
       default:

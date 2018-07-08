@@ -108,19 +108,34 @@ void read_1_canon_mode(void)
    show_read_res(r, buf[0]);
 }
 
+void read_canon_mode(void)
+{
+   char buf[32];
+   int r;
+
+   printf("Regular read in canonical mode\n");
+   r = read(0, buf, 32);
+   buf[r] = 0;
+
+   printf("read(%d): %s", r, buf);
+}
+
 int main(int argc, char ** argv)
 {
    save_termios();
 
-   if (argc > 1 && !strcmp(argv[1], "-s")) {
-      debug_dump_termios(&orig_termios);
-      return 0;
-   }
+   if (argc > 1) {
 
-   if (argc > 1 && !strcmp(argv[1], "-e")) {
-      echo_read();
-   } else if (argc > 1 && !strcmp(argv[1], "-1")) {
-      read_1_canon_mode();
+      if (!strcmp(argv[1], "-s")) {
+         debug_dump_termios(&orig_termios);
+      } else if (!strcmp(argv[1], "-e")) {
+         echo_read();
+      } else if (!strcmp(argv[1], "-1")) {
+         read_1_canon_mode();
+      } else if (!strcmp(argv[1], "-c")) {
+         read_canon_mode();
+      }
+
    } else {
       one_read();
    }
