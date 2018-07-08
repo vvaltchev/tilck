@@ -17,31 +17,34 @@ error_codes_strings = {
    5: 'shell_no_zero_exit'
 }
 
+SHORT_TEST_TIMEOUT = 12
+MID_TEST_TIMEOUT   = 18
+LONG_TEST_TIMEOUT  = 30
 
 shell_cmd_tests = [
-   ['invalid_read', 8],
-   ['invalid_write', 8],
-   ['brk_test', 8],
-   ['sysenter', 8],
-   ['syscall_perf', 8],
-   ['loop', 8],
-   ['fork_test', 18],
-   ['sysenter_fork_test', 18],
-   ['fork_perf', 25],
+   ['invalid_read', SHORT_TEST_TIMEOUT],
+   ['invalid_write', SHORT_TEST_TIMEOUT],
+   ['brk_test', SHORT_TEST_TIMEOUT],
+   ['sysenter', SHORT_TEST_TIMEOUT],
+   ['syscall_perf', SHORT_TEST_TIMEOUT],
+   ['loop', SHORT_TEST_TIMEOUT],
+   ['fork_test', MID_TEST_TIMEOUT],
+   ['sysenter_fork_test', MID_TEST_TIMEOUT],
+   ['fork_perf', LONG_TEST_TIMEOUT],
 ]
 
 selftests = [
-   ['fault_resumable', 8],
-   ['fault_resumable_perf', 8],
-   ['tasklet', 8],
-   ['tasklet_perf', 8],
-   ['kernel_sleep', 8],
-   ['alloc_pageframe_perf', 8],
-   ['kcond', 8],
-   ['kmalloc_perf', 14],
-   ['join', 18],
-   ['kmutex', 18],
-   ['kthread', 18],
+   ['fault_resumable', SHORT_TEST_TIMEOUT],
+   ['fault_resumable_perf', SHORT_TEST_TIMEOUT],
+   ['tasklet', SHORT_TEST_TIMEOUT],
+   ['tasklet_perf', SHORT_TEST_TIMEOUT],
+   ['kernel_sleep', SHORT_TEST_TIMEOUT],
+   ['alloc_pageframe_perf', SHORT_TEST_TIMEOUT],
+   ['kcond', SHORT_TEST_TIMEOUT],
+   ['kmalloc_perf', MID_TEST_TIMEOUT],
+   ['join', MID_TEST_TIMEOUT],
+   ['kmutex', MID_TEST_TIMEOUT],
+   ['kthread', MID_TEST_TIMEOUT],
 ]
 
 def run_test(test_type, test, timeout, show_output = False):
@@ -127,7 +130,7 @@ def show_tests_and_exit():
 
 #############################
 # options
-max_test_timeout = 18
+max_test_timeout = MID_TEST_TIMEOUT
 reg = ".*"
 show_output = False
 ##############################
