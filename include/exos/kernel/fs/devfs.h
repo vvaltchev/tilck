@@ -2,8 +2,8 @@
 #pragma once
 #include <exos/kernel/fs/exvfs.h>
 
-#define DEVFS_READ_BUF_SIZE   4096
-#define DEVFS_WRITE_BUF_SIZE  4096
+#define DEVFS_READ_BS   4096
+#define DEVFS_WRITE_BS  4096
 
 typedef enum {
 

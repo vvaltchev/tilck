@@ -1,10 +1,10 @@
 
-#define KB_INPUT_BUF_SIZE 4096
+#define KB_INPUT_BS 4096
 
 extern struct termios c_term;
 extern struct termios default_termios;
 
-static char kb_input_buf[KB_INPUT_BUF_SIZE];
+static char kb_input_buf[KB_INPUT_BS];
 static ringbuf kb_input_ringbuf;
 static kcond kb_input_cond;
 
@@ -254,28 +254,20 @@ tty_internal_read_single_char_from_kb(devfs_file_handle *h,
    return !(h->read_buf_used >= c_term.c_cc[VMIN]);
 }
 
-static bool
+static inline bool
 tty_internal_should_read_return(devfs_file_handle *h,
-                                u32 read_count,
+                                u32 read_cnt,
                                 bool delim_break)
 {
    if (c_term.c_lflag & ICANON) {
-
-      if (delim_break)
-         return true;
-
-      if (h->read_buf_used == DEVFS_READ_BUF_SIZE ||
-          read_count == KB_INPUT_BUF_SIZE)
-      {
-         if (tty_end_line_delim_count > 0)
-            return true;
-      }
-
-      return false;
+      return
+         delim_break ||
+            (tty_end_line_delim_count > 0 &&
+               (h->read_buf_used == DEVFS_READ_BS || read_cnt == KB_INPUT_BS));
    }
 
    /* Raw mode handling */
-   return read_count >= c_term.c_cc[VMIN];
+   return read_cnt >= c_term.c_cc[VMIN];
 }
 
 static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
@@ -307,7 +299,7 @@ static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
       ASSERT(h->read_pos == 0);
 
       while (!kb_buf_is_empty() &&
-             h->read_buf_used < DEVFS_READ_BUF_SIZE &&
+             h->read_buf_used < DEVFS_READ_BS &&
              tty_internal_read_single_char_from_kb(h, &delim_break)) { }
 
       read_count += tty_flush_read_buf(h, buf + read_count, size - read_count);

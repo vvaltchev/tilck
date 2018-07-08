@@ -225,7 +225,7 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
          if (!h)
             return -ENOMEM;
 
-         h->read_buf = kzmalloc(DEVFS_READ_BUF_SIZE);
+         h->read_buf = kzmalloc(DEVFS_READ_BS);
 
          if (!h->read_buf) {
             kfree2(h, sizeof(devfs_file_handle));
@@ -251,8 +251,8 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
 static void devfs_close(fs_handle h)
 {
    devfs_file_handle *devh = h;
-   kfree2(devh->read_buf, DEVFS_READ_BUF_SIZE);
-   kfree2(devh->write_buf, DEVFS_WRITE_BUF_SIZE);
+   kfree2(devh->read_buf, DEVFS_READ_BS);
+   kfree2(devh->write_buf, DEVFS_WRITE_BS);
    kfree2(devh, sizeof(devfs_file_handle));
 }
 
@@ -269,22 +269,22 @@ static int devfs_dup(fs_handle fsh, fs_handle *dup_h)
 
    if (h->read_buf) {
 
-      h2->read_buf = kmalloc(DEVFS_READ_BUF_SIZE);
+      h2->read_buf = kmalloc(DEVFS_READ_BS);
 
       if (!h2->read_buf) {
          kfree2(h2, sizeof(devfs_file_handle));
          return -ENOMEM;
       }
 
-      memcpy(h2->read_buf, h->read_buf, DEVFS_READ_BUF_SIZE);
+      memcpy(h2->read_buf, h->read_buf, DEVFS_READ_BS);
    }
 
    if (h->write_buf) {
 
-      h2->write_buf = kmalloc(DEVFS_WRITE_BUF_SIZE);
+      h2->write_buf = kmalloc(DEVFS_WRITE_BS);
 
       if (!h2->write_buf) {
-         kfree2(h->read_buf, DEVFS_READ_BUF_SIZE);
+         kfree2(h->read_buf, DEVFS_READ_BS);
          kfree2(h2, sizeof(devfs_file_handle));
          return -ENOMEM;
       }

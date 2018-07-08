@@ -77,7 +77,7 @@ void init_tty(void)
       panic("TTY: unable to create /dev/tty (error: %d)", rc);
 
    kcond_init(&kb_input_cond);
-   ringbuf_init(&kb_input_ringbuf, KB_INPUT_BUF_SIZE, 1, kb_input_buf);
+   ringbuf_init(&kb_input_ringbuf, KB_INPUT_BS, 1, kb_input_buf);
 
    tty_update_special_ctrl_handlers();
 
