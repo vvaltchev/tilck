@@ -207,8 +207,8 @@ static int tty_keypress_handler(u32 key, u8 c)
 
 static u32 tty_flush_read_buf(devfs_file_handle *h, char *buf, u32 size)
 {
-   u32 to_read = h->read_buf_used - h->read_pos;
-   u32 m = MIN(to_read, size);
+   u32 rem = h->read_buf_used - h->read_pos;
+   u32 m = MIN(rem, size);
    memcpy(buf, h->read_buf + h->read_pos, m);
    h->read_pos += m;
 
@@ -220,12 +220,69 @@ static u32 tty_flush_read_buf(devfs_file_handle *h, char *buf, u32 size)
    return m;
 }
 
+/*
+ * Returns:
+ *    - TRUE when caller's read loop should continue
+ *    - FALSE when caller's read loop should STOP
+ */
+static bool
+tty_internal_read_single_char_from_kb(devfs_file_handle *h,
+                                      bool *delim_break)
+{
+   char c = kb_buf_read_elem();
+   h->read_buf[h->read_buf_used++] = c;
+
+   if (c_term.c_lflag & ICANON) {
+
+      if (tty_is_line_delim_char(c)) {
+         ASSERT(tty_end_line_delim_count > 0);
+         tty_end_line_delim_count--;
+         *delim_break = true;
+
+         /* All line delimiters except EOF are kept */
+         if (c == c_term.c_cc[VEOF])
+            h->read_buf_used--;
+      }
+
+      return !*delim_break;
+   }
+
+   /*
+    * In raw mode it makes no sense to read until a line delim is
+    * found: we should read the minimum necessary.
+    */
+   return !(h->read_buf_used >= c_term.c_cc[VMIN]);
+}
+
+static bool
+tty_internal_should_read_return(devfs_file_handle *h,
+                                u32 read_count,
+                                bool delim_break)
+{
+   if (c_term.c_lflag & ICANON) {
+
+      if (delim_break)
+         return true;
+
+      if (h->read_buf_used == DEVFS_READ_BUF_SIZE ||
+          read_count == KB_INPUT_BUF_SIZE)
+      {
+         if (tty_end_line_delim_count > 0)
+            return true;
+      }
+
+      return false;
+   }
+
+   /* Raw mode handling */
+   return read_count >= c_term.c_cc[VMIN];
+}
+
 static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
 {
    devfs_file_handle *h = fsh;
    size_t read_count = 0;
    bool delim_break;
-   char c = 0;
 
    ASSERT(is_preemption_enabled());
 
@@ -238,7 +295,7 @@ static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
    if (c_term.c_lflag & ICANON)
       term_set_col_offset(term_get_curr_col());
 
-   while (true) {
+   do {
 
       while (kb_buf_is_empty()) {
          kcond_wait(&kb_input_cond, NULL, KCOND_WAIT_FOREVER);
@@ -249,54 +306,14 @@ static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
       ASSERT(h->read_buf_used == 0);
       ASSERT(h->read_pos == 0);
 
-      while (h->read_buf_used < DEVFS_READ_BUF_SIZE && !kb_buf_is_empty()) {
-         c = kb_buf_read_elem();
-         h->read_buf[h->read_buf_used++] = c;
-
-         if (c_term.c_lflag & ICANON) {
-
-            if (tty_is_line_delim_char(c)) {
-               ASSERT(tty_end_line_delim_count > 0);
-               tty_end_line_delim_count--;
-               delim_break = true;
-
-               /* All line delimiters except EOF are kept */
-               if (c == c_term.c_cc[VEOF])
-                  h->read_buf_used--;
-
-               break;
-            }
-
-         } else {
-
-            /*
-             * In raw mode it makes no sense to read until a line delim is
-             * found: we should read the minimum necessary.
-             */
-            if (h->read_buf_used >= c_term.c_cc[VMIN])
-               break;
-         }
-      }
+      while (!kb_buf_is_empty() &&
+             h->read_buf_used < DEVFS_READ_BUF_SIZE &&
+             tty_internal_read_single_char_from_kb(h, &delim_break)) { }
 
       read_count += tty_flush_read_buf(h, buf + read_count, size - read_count);
       ASSERT(tty_end_line_delim_count >= 0);
 
-      if (c_term.c_lflag & ICANON) {
-
-         if (delim_break)
-            break;
-
-         if (h->read_buf_used == DEVFS_READ_BUF_SIZE)
-            if (tty_end_line_delim_count > 0)
-               break;
-
-      } else {
-
-         if (read_count >= c_term.c_cc[VMIN])
-            break;
-      }
-
-   }
+   } while (!tty_internal_should_read_return(h, read_count, delim_break));
 
    return read_count;
 }

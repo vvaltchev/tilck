@@ -142,7 +142,7 @@ int main(int argc, char **argv, char **env)
       printf("root@exOS:%s# ", cwd);
       fflush(stdout);
 
-      int r = read(1, buf, sizeof(buf));
+      int r = read(0, buf, sizeof(buf));
       buf[r] = 0;
 
       process_cmd_line(buf);
