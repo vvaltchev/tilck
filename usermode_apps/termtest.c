@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <ctype.h>
 
 #include <unistd.h>
@@ -120,24 +121,57 @@ void read_canon_mode(void)
    printf("read(%d): %s", r, buf);
 }
 
+void write_to_stdin(void)
+{
+   char c = 'a';
+   int r;
+
+   printf("Write 'a' to stdin\n");
+
+   r = write(0, &c, 1);
+
+   printf("write() -> %d\n", r);
+   printf("now read 1 byte from stdin\n");
+
+   r = read(0, &c, 1);
+
+   printf("read(%d): 0x%x\n", r, c);
+}
+
+void show_help_and_exit()
+{
+   printf("Options:\n");
+   printf("    -s debug_dump_termios()\n");
+   printf("    -r one_read()\n");
+   printf("    -e echo_read()\n");
+   printf("    -1 read_1_canon_mode()\n");
+   printf("    -c read_canon_mode()\n");
+   printf("    -w write_to_stdin()\n");
+   exit(1);
+}
+
 int main(int argc, char ** argv)
 {
    save_termios();
 
-   if (argc > 1) {
+   if (argc < 2) {
+      show_help_and_exit();
+   }
 
-      if (!strcmp(argv[1], "-s")) {
-         debug_dump_termios(&orig_termios);
-      } else if (!strcmp(argv[1], "-e")) {
-         echo_read();
-      } else if (!strcmp(argv[1], "-1")) {
-         read_1_canon_mode();
-      } else if (!strcmp(argv[1], "-c")) {
-         read_canon_mode();
-      }
-
-   } else {
+   if (!strcmp(argv[1], "-s")) {
+      debug_dump_termios(&orig_termios);
+   } else if (!strcmp(argv[1], "-e")) {
+      echo_read();
+   } else if (!strcmp(argv[1], "-1")) {
+      read_1_canon_mode();
+   } else if (!strcmp(argv[1], "-c")) {
+      read_canon_mode();
+   } else if (!strcmp(argv[1], "-r")) {
       one_read();
+   } else if (!strcmp(argv[1], "-w")) {
+      write_to_stdin();
+   } else {
+      show_help_and_exit();
    }
 
    restore_termios();

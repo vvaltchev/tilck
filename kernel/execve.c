@@ -6,7 +6,11 @@
 
 static char *const default_env[] =
 {
-   "OSTYPE=linux-gnu", "EXOS=1", "TERM=linux", NULL
+   "OSTYPE=linux-gnu",
+   "TERM=linux",
+   "CONSOLE=/dev/tty",
+   "EXOS=1",
+   NULL
 };
 
 static int
