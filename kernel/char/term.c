@@ -308,12 +308,15 @@ static void term_internal_write_char2(char c, u8 color)
    if (term_use_serial)
       serial_write(c);
 
-   switch (c) {
+   /*
+    * Internal sanity-check: some control characters should never be forwarded
+    * to this layer.
+    */
+   ASSERT(c != '\033');
+   ASSERT(c != '\a');
+   ASSERT(c != '\v');
 
-      case '\a':
-      case '\v':
-         /* ignore bell and vertical tab */
-         break;
+   switch (c) {
 
       case '\n':
          term_internal_incr_row();
@@ -404,30 +407,42 @@ static void term_action_write2(char *buf, u32 len, u8 color)
 #endif
 }
 
-static void term_action_move_ch_and_cur(int row, int col)
-{
-   current_row = row;
-   current_col = col;
-   vi->move_cursor(row, col);
-
-   if (vi->flush_buffers)
-      vi->flush_buffers();
-}
-
 static void term_action_set_col_offset(u32 off)
 {
    term_col_offset = off;
 }
 
+static void term_action_move_ch_and_cur(int row, int col)
+{
+   current_row = MIN(MAX(row, 0), term_rows - 1);
+   current_col = MIN(MAX(col, 0), term_cols - 1);
+   vi->move_cursor(current_row, current_col);
+
+   if (vi->flush_buffers)
+      vi->flush_buffers();
+}
+
+static void term_action_move_ch_and_cur_rel(s8 dx, s8 dy)
+{
+   current_row = MIN(MAX((int)current_row + dx, 0), term_rows - 1);
+   current_col = MIN(MAX((int)current_col + dy, 0), term_cols - 1);
+   vi->move_cursor(current_row, current_col);
+
+   if (vi->flush_buffers)
+      vi->flush_buffers();
+}
+
+
 /* ---------------- term action engine --------------------- */
 
 static const actions_table_item actions_table[] = {
    [a_write2] = {(action_func)term_action_write2, 3},
-   [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
    [a_scroll_up] = {(action_func)term_action_scroll_up, 1},
    [a_scroll_down] = {(action_func)term_action_scroll_down, 1},
    [a_set_color] = {(action_func)term_action_set_color, 1},
-   [a_set_col_offset] = {(action_func)term_action_set_col_offset, 1}
+   [a_set_col_offset] = {(action_func)term_action_set_col_offset, 1},
+   [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
+   [a_move_ch_and_cur_rel] = {(action_func)term_action_move_ch_and_cur_rel, 2}
 };
 
 static void term_execute_action(term_action a)
@@ -535,6 +550,17 @@ void term_set_col_offset(u32 off)
    term_action a = {
       .type1 = a_set_col_offset,
       .arg = off
+   };
+
+   term_execute_or_enqueue_action(a);
+}
+
+void term_move_ch_and_cur_rel(s8 dx, s8 dy)
+{
+   term_action a = {
+      .type2 = a_move_ch_and_cur_rel,
+      .arg1 = dx,
+      .arg2 = dy
    };
 
    term_execute_or_enqueue_action(a);

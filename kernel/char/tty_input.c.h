@@ -88,8 +88,8 @@ static void tty_keypress_echo(char c)
       }
    }
 
-   if (c == '\a' || c == '\f') {
-      /* ignore the bell and form feed characters */
+   if (c == '\a' || c == '\f' || c == '\v') {
+      /* ignore some characters */
       return;
    }
 

@@ -3,13 +3,14 @@
 
 typedef enum {
 
-   a_write2           = 0,
-   a_write_char2      = 1,
-   a_move_ch_and_cur  = 2,
-   a_scroll_up        = 3,
-   a_scroll_down      = 4,
-   a_set_color        = 5,
-   a_set_col_offset   = 6
+   a_write2,
+   a_write_char2,
+   a_scroll_up,
+   a_scroll_down,
+   a_set_color,
+   a_set_col_offset,
+   a_move_ch_and_cur,
+   a_move_ch_and_cur_rel
 
 } term_action_type;
 
