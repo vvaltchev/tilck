@@ -1,4 +1,5 @@
 
+#pragma once
 #include <exos/common/basic_defs.h>
 
 typedef enum {
@@ -50,3 +51,6 @@ typedef struct {
    u32 args_count;
 
 } actions_table_item;
+
+void term_execute_action(term_action *a);
+void term_internal_write_char2(char c, u8 color);

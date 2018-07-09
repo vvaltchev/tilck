@@ -303,7 +303,7 @@ static void term_internal_write_backspace(u8 color)
    }
 }
 
-static void term_internal_write_char2(char c, u8 color)
+void term_internal_write_char2(char c, u8 color)
 {
    if (term_use_serial)
       serial_write(c);
@@ -376,16 +376,8 @@ static void term_action_write2(char *buf, u32 len, u8 color)
 
       if (filter) {
 
-         char c = buf[i];
-         u8 color_to_use = color;
-
-         int ret = filter(&c,
-                          &color_to_use,
-                          &term_internal_write_char2,
-                          filter_ctx);
-
-         if (ret == TERM_FILTER_FUNC_RET_WRITE_C)
-            term_internal_write_char2(c, color_to_use);
+         if (filter(buf[i], color, filter_ctx))
+            term_internal_write_char2(buf[i], color);
 
       } else {
          term_internal_write_char2(buf[i], color);
@@ -445,19 +437,19 @@ static const actions_table_item actions_table[] = {
    [a_move_ch_and_cur_rel] = {(action_func)term_action_move_ch_and_cur_rel, 2}
 };
 
-static void term_execute_action(term_action a)
+void term_execute_action(term_action *a)
 {
-   const actions_table_item *it = &actions_table[a.type3];
+   const actions_table_item *it = &actions_table[a->type3];
 
    switch (it->args_count) {
       case 3:
-         it->func(a.ptr, a.len, a.col);
+         it->func(a->ptr, a->len, a->col);
          break;
       case 2:
-         it->func(a.arg1, a.arg2);
+         it->func(a->arg1, a->arg2);
          break;
       case 1:
-         it->func(a.arg);
+         it->func(a->arg);
          break;
       default:
          NOT_REACHED();
@@ -483,7 +475,7 @@ void term_execute_or_enqueue_action(term_action a)
    if (was_empty) {
 
       while (ringbuf_read_elem(&term_ringbuf, &a))
-         term_execute_action(a);
+         term_execute_action(&a);
 
    }
 }

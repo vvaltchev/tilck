@@ -59,15 +59,10 @@ void term_move_ch_and_cur_rel(s8 dx, s8 dy);
 
 /* --- term write filter interface --- */
 
-#define TERM_FILTER_FUNC_RET_WRITE_C   0
-#define TERM_FILTER_FUNC_RET_BLANK     1
+#define TERM_FILTER_WRITE_BLANK     0
+#define TERM_FILTER_WRITE_C         1
 
-typedef void (*term_int_write_char_func)(char c, u8 color);
-
-typedef int (*term_filter_func)(char *c    /* in/out */,
-                                u8 *color  /* in/out */,
-                                term_int_write_char_func int_write_char,
-                                void *ctx);
+typedef int (*term_filter_func)(char c , u8 color, void *ctx);
 
 void term_set_filter_func(term_filter_func func, void *ctx);
 term_filter_func term_get_filter_func(void);
