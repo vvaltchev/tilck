@@ -38,24 +38,27 @@ static bool rows_to_flush[256];
 
 static video_interface framebuffer_vi;
 
+#define DARK_VAL    (168 /* vga */ + 0)
+#define BRIGHT_VAL  (252 /* vga */ + 0)
+
 u32 vga_rgb_colors[16] =
 {
    [COLOR_BLACK] = fb_make_color(0, 0, 0),
-   [COLOR_BLUE] = fb_make_color(0, 0, 168),
-   [COLOR_GREEN] = fb_make_color(0, 168, 0),
-   [COLOR_CYAN] = fb_make_color(0, 168, 168),
-   [COLOR_RED] = fb_make_color(168, 0, 0),
-   [COLOR_MAGENTA] = fb_make_color(168, 0, 168),
-   [COLOR_BROWN] = fb_make_color(168, 168, 0),
+   [COLOR_BLUE] = fb_make_color(0, 0, DARK_VAL + 50),
+   [COLOR_GREEN] = fb_make_color(0, DARK_VAL, 0),
+   [COLOR_CYAN] = fb_make_color(0, DARK_VAL, DARK_VAL),
+   [COLOR_RED] = fb_make_color(DARK_VAL, 0, 0),
+   [COLOR_MAGENTA] = fb_make_color(DARK_VAL, 0, DARK_VAL),
+   [COLOR_BROWN] = fb_make_color(DARK_VAL, DARK_VAL, 0),
    [COLOR_LIGHT_GREY] = fb_make_color(208, 208, 208),
-   [COLOR_DARK_GREY] = fb_make_color(168, 168, 168),
-   [COLOR_LIGHT_BLUE] = fb_make_color(0, 0, 252),
-   [COLOR_LIGHT_GREEN] = fb_make_color(0, 252, 0),
-   [COLOR_LIGHT_CYAN] = fb_make_color(0, 252, 252),
-   [COLOR_LIGHT_RED] = fb_make_color(252, 0, 0),
-   [COLOR_LIGHT_MAGENTA] = fb_make_color(252, 0, 252),
-   [COLOR_LIGHT_BROWN] = fb_make_color(252, 252, 0),
-   [COLOR_WHITE] = fb_make_color(252, 252, 252)
+   [COLOR_DARK_GREY] = fb_make_color(DARK_VAL, DARK_VAL, DARK_VAL),
+   [COLOR_LIGHT_BLUE] = fb_make_color(0, 0, BRIGHT_VAL),
+   [COLOR_LIGHT_GREEN] = fb_make_color(0, BRIGHT_VAL, 0),
+   [COLOR_LIGHT_CYAN] = fb_make_color(0, BRIGHT_VAL, BRIGHT_VAL),
+   [COLOR_LIGHT_RED] = fb_make_color(BRIGHT_VAL, 0, 0),
+   [COLOR_LIGHT_MAGENTA] = fb_make_color(BRIGHT_VAL, 0, BRIGHT_VAL),
+   [COLOR_LIGHT_BROWN] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, 0),
+   [COLOR_WHITE] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, BRIGHT_VAL)
 };
 
 void fb_save_under_cursor_buf(void)
