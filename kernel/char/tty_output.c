@@ -24,7 +24,6 @@ static const u8 fg_csi_to_vga[256] =
    [35] = COLOR_MAGENTA,
    [36] = COLOR_CYAN,
    [37] = COLOR_LIGHT_GREY,
-
    [90] = COLOR_DARK_GREY,
    [91] = COLOR_LIGHT_RED,
    [92] = COLOR_LIGHT_GREEN,
@@ -34,6 +33,135 @@ static const u8 fg_csi_to_vga[256] =
    [96] = COLOR_LIGHT_CYAN,
    [97] = COLOR_WHITE
 };
+
+static void
+tty_filter_handle_csi_ABCD(int *params,
+                           int pc,
+                           char c,
+                           term_write_filter_ctx_t *ctx)
+{
+   int d[4] = {0};
+   d[c - 'A'] = MAX(1, params[0]);
+
+   term_action a = {
+      .type2 = a_move_ch_and_cur_rel,
+      .arg1 = -d[0] + d[1],
+      .arg2 =  d[2] - d[3]
+   };
+
+   term_execute_action(&a);
+}
+
+static void
+tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
+{
+   if (p == 39) {
+      /* Reset fg color to the default value */
+      p = 97;
+   } else if (p == 49) {
+      /* Reset bg color to the default value */
+      p = 40;
+   }
+
+   if (p == 0) {
+
+      /* Reset all attributes */
+
+      *color = make_color(COLOR_WHITE, COLOR_BLACK);
+
+      term_action a = {
+         .type1 = a_set_color,
+         .arg = *color
+      };
+
+      term_execute_action(&a);
+
+   } else if ((30 <= p && p <= 37) || (90 <= p && p <= 97)) {
+
+      /* Set foreground color */
+      u8 fg = fg_csi_to_vga[p];
+
+      term_action a = {
+         .type1 = a_set_fg_color,
+         .arg = fg
+      };
+
+      term_execute_action(&a);
+      *color = make_color(fg, vgaentry_color_bg(*color));
+
+   } else if ((40 <= p && p <= 47) || (100 <= p && p <= 107)) {
+
+      /* Set background color */
+      u8 bg = fg_csi_to_vga[p - 10];
+
+      term_action a = {
+         .type1 = a_set_bg_color,
+         .arg = bg
+      };
+
+      term_execute_action(&a);
+      *color = make_color(vgaentry_color_fg(*color), bg);
+   }
+}
+
+static void
+tty_filter_handle_csi_m(int *params,
+                        int pc,
+                        u8 *color,
+                        term_write_filter_ctx_t *ctx)
+{
+   if (!pc) {
+      /*
+       * Omitting all params, for example: "ESC[m", is equivalent to
+       * having just one parameter set to 0.
+       */
+      pc = 1;
+   }
+
+   for (int i = 0; i < pc; i++) {
+      tty_filter_handle_csi_m_param(params[i], color, ctx);
+   }
+}
+
+static int
+tty_filter_end_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
+{
+   const char *endptr;
+   int params[16] = {0};
+   int pc = 0;
+
+   ctx->param_bytes[ctx->pbc] = 0;
+   ctx->interm_bytes[ctx->ibc] = 0;
+   ctx->state = TERM_WFILTER_STATE_DEFAULT;
+
+   if (ctx->pbc) {
+
+      endptr = ctx->param_bytes - 1;
+
+      do {
+         params[pc++] = exos_strtol(endptr + 1, &endptr, NULL);
+      } while (*endptr);
+
+   }
+
+   switch (c) {
+
+      case 'A': // UP    -> move_rel(-param1, 0)
+      case 'B': // DOWN  -> move_rel(+param1, 0)
+      case 'C': // RIGHT -> move_rel(0, +param1)
+      case 'D': // LEFT  -> move_rel(0, -param1)
+
+         tty_filter_handle_csi_ABCD(params, pc, c, ctx);
+         break;
+
+      case 'm':
+         tty_filter_handle_csi_m(params, pc, color, ctx);
+         break;
+   }
+
+   ctx->pbc = ctx->ibc = 0;
+   return TERM_FILTER_WRITE_BLANK;
+}
 
 static int
 tty_filter_handle_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
@@ -73,119 +201,8 @@ tty_filter_handle_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
    }
 
    if (0x40 <= c && c <= 0x7E) {
-
       /* Final CSI byte */
-
-      ctx->param_bytes[ctx->pbc] = 0;
-      ctx->interm_bytes[ctx->ibc] = 0;
-      ctx->state = TERM_WFILTER_STATE_DEFAULT;
-
-
-      const char *endptr;
-      int params[16] = {0};
-      int pc = 0;
-
-      if (ctx->pbc) {
-
-         endptr = ctx->param_bytes - 1;
-
-         do {
-            params[pc++] = exos_strtol(endptr + 1, &endptr, NULL);
-         } while (*endptr);
-
-      }
-
-      switch (c) {
-
-         case 'A': // UP    -> move_rel(-param1, 0)
-         case 'B': // DOWN  -> move_rel(+param1, 0)
-         case 'C': // RIGHT -> move_rel(0, +param1)
-         case 'D': // LEFT  -> move_rel(0, -param1)
-
-            {
-               int d[4] = {0};
-               d[c - 'A'] = MAX(1, params[0]);
-
-               term_action a = {
-                  .type2 = a_move_ch_and_cur_rel,
-                  .arg1 = -d[0] + d[1],
-                  .arg2 =  d[2] - d[3]
-               };
-
-               term_execute_action(&a);
-               break;
-            }
-
-         case 'm':
-
-            if (!pc) {
-               /*
-                * Omitting all params, for example: ESC[m, is equivalent to
-                * having just one parameter, set to 0.
-                */
-               pc = 1;
-            }
-
-            for (int i = 0; i < pc; i++) {
-
-               int p = params[i];
-
-               if (p == 39) {
-                  /* Reset fg color to the default value */
-                  p = 97;
-               } else if (p == 49) {
-                  /* Reset bg color to the default value */
-                  p = 40;
-               }
-
-
-               if (p == 0) {
-
-                  /* Reset all attributes */
-
-                  *color = make_color(COLOR_WHITE, COLOR_BLACK);
-
-                  term_action a = {
-                     .type1 = a_set_color,
-                     .arg = *color
-                  };
-
-                  term_execute_action(&a);
-
-               } else if ((30 <= p && p <= 37) || (90 <= p && p <= 97)) {
-
-                  /* Set foreground color */
-                  u8 fg = fg_csi_to_vga[p];
-
-                  term_action a = {
-                     .type1 = a_set_fg_color,
-                     .arg = fg
-                  };
-
-                  term_execute_action(&a);
-                  *color = make_color(fg, vgaentry_color_bg(*color));
-
-               } else if ((40 <= p && p <= 47) || (100 <= p && p <= 107)) {
-
-                  /* Set background color */
-                  u8 bg = fg_csi_to_vga[p - 10];
-
-                  term_action a = {
-                     .type1 = a_set_bg_color,
-                     .arg = bg
-                  };
-
-                  term_execute_action(&a);
-                  *color = make_color(vgaentry_color_fg(*color), bg);
-               }
-
-            }
-
-            break;
-      }
-
-      ctx->pbc = ctx->ibc = 0;
-      return TERM_FILTER_WRITE_BLANK;
+      return tty_filter_end_csi_seq(c, color, ctx);
    }
 
    /* We shouldn't get here. Something's gone wrong: return the default state */
