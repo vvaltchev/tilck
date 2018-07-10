@@ -6,21 +6,12 @@
 #include <exos/kernel/fs/devfs.h>
 #include <exos/kernel/errno.h>
 #include <exos/kernel/kmalloc.h>
-#include <exos/kernel/sync.h>
-#include <exos/kernel/kb.h>
-#include <exos/kernel/process.h>
 #include <exos/kernel/term.h>
-#include <exos/kernel/user.h>
-#include <exos/kernel/ringbuf.h>
-#include <exos/kernel/kb_scancode_set1_keys.h>
 
 #include <termios.h>      // system header
 
 #include "term_int.h"
-
 #include "tty_int.h"
-#include "tty_input.c.h"
-
 
 static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 {
@@ -60,13 +51,6 @@ void init_tty(void)
    if (rc != 0)
       panic("TTY: unable to create /dev/tty (error: %d)", rc);
 
-   kcond_init(&kb_input_cond);
-   ringbuf_init(&kb_input_ringbuf, KB_INPUT_BS, 1, kb_input_buf);
-
-   tty_update_special_ctrl_handlers();
-
-   if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
-      panic("TTY: unable to register keypress handler");
-
+   tty_input_init();
    term_set_filter_func(tty_term_write_filter, &term_write_filter_ctx);
 }

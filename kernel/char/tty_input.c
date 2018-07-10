@@ -1,4 +1,19 @@
 
+#include <exos/common/basic_defs.h>
+#include <exos/common/string_util.h>
+
+#include <exos/kernel/fs/exvfs.h>
+#include <exos/kernel/fs/devfs.h>
+#include <exos/kernel/process.h>
+#include <exos/kernel/ringbuf.h>
+#include <exos/kernel/term.h>
+#include <exos/kernel/kb.h>
+
+#include <termios.h>      // system header
+
+#include "term_int.h"
+#include "tty_int.h"
+
 #define KB_INPUT_BS 4096
 
 extern struct termios c_term;
@@ -291,7 +306,7 @@ tty_internal_should_read_return(devfs_file_handle *h,
    return read_cnt >= c_term.c_cc[VMIN];
 }
 
-static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
+ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
 {
    devfs_file_handle *h = fsh;
    size_t read_count = 0;
@@ -329,4 +344,14 @@ static ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
    } while (!tty_internal_should_read_return(h, read_count, delim_break));
 
    return read_count;
+}
+
+void tty_input_init(void)
+{
+   kcond_init(&kb_input_cond);
+   ringbuf_init(&kb_input_ringbuf, KB_INPUT_BS, 1, kb_input_buf);
+   tty_update_special_ctrl_handlers();
+
+   if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
+      panic("TTY: unable to register keypress handler");
 }
