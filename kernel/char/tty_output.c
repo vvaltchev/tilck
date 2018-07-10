@@ -1,6 +1,7 @@
 
 #include <exos/common/basic_defs.h>
 #include <exos/common/string_util.h>
+#include <exos/common/vga_textmode_defs.h>
 
 #include <exos/kernel/fs/exvfs.h>
 #include <exos/kernel/fs/devfs.h>
@@ -13,8 +14,29 @@
 
 term_write_filter_ctx_t term_write_filter_ctx;
 
+static const u8 fg_csi_to_vga[256] =
+{
+   [30] = COLOR_BLACK,
+   [31] = COLOR_RED,
+   [32] = COLOR_GREEN,
+   [33] = COLOR_BROWN,
+   [34] = COLOR_BLUE,
+   [35] = COLOR_MAGENTA,
+   [36] = COLOR_CYAN,
+   [37] = COLOR_LIGHT_GREY,
+
+   [90] = COLOR_DARK_GREY,
+   [91] = COLOR_LIGHT_RED,
+   [92] = COLOR_LIGHT_GREEN,
+   [93] = COLOR_LIGHT_BROWN,
+   [94] = COLOR_LIGHT_BLUE,
+   [95] = COLOR_LIGHT_MAGENTA,
+   [96] = COLOR_LIGHT_CYAN,
+   [97] = COLOR_WHITE
+};
+
 static int
-tty_filter_handle_csi_seq(char c, u8 color, term_write_filter_ctx_t *ctx)
+tty_filter_handle_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
 {
    if (0x30 <= c && c <= 0x3F) {
 
@@ -60,14 +82,17 @@ tty_filter_handle_csi_seq(char c, u8 color, term_write_filter_ctx_t *ctx)
 
 
       const char *endptr;
-      int param1 = 0;
+      int params[16] = {0};
+      int pc = 0;
 
       if (ctx->pbc) {
-         param1 = exos_strtol(ctx->param_bytes, &endptr, NULL);
 
-         // NOTE: param2 is unused at the moment
-         // if (*endptr == ';')
-         //    param2 = exos_strtol(endptr + 1, &endptr, NULL);
+         endptr = ctx->param_bytes - 1;
+
+         do {
+            params[pc++] = exos_strtol(endptr + 1, &endptr, NULL);
+         } while (*endptr);
+
       }
 
       switch (c) {
@@ -79,7 +104,7 @@ tty_filter_handle_csi_seq(char c, u8 color, term_write_filter_ctx_t *ctx)
 
             {
                int d[4] = {0};
-               d[c - 'A'] = MAX(1, param1);
+               d[c - 'A'] = MAX(1, params[0]);
 
                term_action a = {
                   .type2 = a_move_ch_and_cur_rel,
@@ -92,9 +117,70 @@ tty_filter_handle_csi_seq(char c, u8 color, term_write_filter_ctx_t *ctx)
             }
 
          case 'm':
-            //printk("M: '%s'\n", ctx->param_bytes);
 
-            // TODO: handle the 'm' command (set color)
+            if (!pc) {
+               /*
+                * Omitting all params, for example: ESC[m, is equivalent to
+                * having just one parameter, set to 0.
+                */
+               pc = 1;
+            }
+
+            for (int i = 0; i < pc; i++) {
+
+               int p = params[i];
+
+               if (p == 39) {
+                  /* Reset fg color to the default value */
+                  p = 97;
+               } else if (p == 49) {
+                  /* Reset bg color to the default value */
+                  p = 40;
+               }
+
+
+               if (p == 0) {
+
+                  /* Reset all attributes */
+
+                  *color = make_color(COLOR_WHITE, COLOR_BLACK);
+
+                  term_action a = {
+                     .type1 = a_set_color,
+                     .arg = *color
+                  };
+
+                  term_execute_action(&a);
+
+               } else if ((30 <= p && p <= 37) || (90 <= p && p <= 97)) {
+
+                  /* Set foreground color */
+                  u8 fg = fg_csi_to_vga[p];
+
+                  term_action a = {
+                     .type1 = a_set_fg_color,
+                     .arg = fg
+                  };
+
+                  term_execute_action(&a);
+                  *color = make_color(fg, vgaentry_color_bg(*color));
+
+               } else if ((40 <= p && p <= 47) || (100 <= p && p <= 107)) {
+
+                  /* Set background color */
+                  u8 bg = fg_csi_to_vga[p - 10];
+
+                  term_action a = {
+                     .type1 = a_set_bg_color,
+                     .arg = bg
+                  };
+
+                  term_execute_action(&a);
+                  *color = make_color(vgaentry_color_fg(*color), bg);
+               }
+
+            }
+
             break;
       }
 
@@ -108,7 +194,7 @@ tty_filter_handle_csi_seq(char c, u8 color, term_write_filter_ctx_t *ctx)
    return TERM_FILTER_WRITE_BLANK;
 }
 
-int tty_term_write_filter(char c, u8 color, void *ctx_arg)
+int tty_term_write_filter(char c, u8 *color, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
 
@@ -123,7 +209,7 @@ int tty_term_write_filter(char c, u8 color, void *ctx_arg)
          case '\n':
 
             if (c_term.c_oflag & (OPOST | ONLCR))
-               term_internal_write_char2('\r', color);
+               term_internal_write_char2('\r', *color);
 
             break;
 

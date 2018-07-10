@@ -9,6 +9,8 @@ typedef enum {
    a_scroll_up,
    a_scroll_down,
    a_set_color,
+   a_set_fg_color,
+   a_set_bg_color,
    a_set_col_offset,
    a_move_ch_and_cur,
    a_move_ch_and_cur_rel

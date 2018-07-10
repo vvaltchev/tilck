@@ -53,6 +53,8 @@ void term_write2(const char *buf, u32 len, u8 color);
 void term_scroll_up(u32 lines);
 void term_scroll_down(u32 lines);
 void term_set_color(u8 color);
+void term_set_fg_color(u8 color);
+void term_set_bg_color(u8 color);
 void term_set_col_offset(u32 off);
 void term_move_ch_and_cur(u32 row, u32 col);
 void term_move_ch_and_cur_rel(s8 dx, s8 dy);
@@ -62,7 +64,7 @@ void term_move_ch_and_cur_rel(s8 dx, s8 dy);
 #define TERM_FILTER_WRITE_BLANK     0
 #define TERM_FILTER_WRITE_C         1
 
-typedef int (*term_filter_func)(char c , u8 color, void *ctx);
+typedef int (*term_filter_func)(char c, u8 *color /* in/out */, void *ctx);
 
 void term_set_filter_func(term_filter_func func, void *ctx);
 term_filter_func term_get_filter_func(void);

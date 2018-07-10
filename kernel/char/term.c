@@ -176,6 +176,16 @@ static void term_action_set_color(u8 color)
    current_color = color;
 }
 
+static void term_action_set_fg_color(u8 fg)
+{
+   current_color = make_color(fg, vgaentry_color_bg(current_color));
+}
+
+static void term_action_set_bg_color(u8 bg)
+{
+   current_color = make_color(vgaentry_color_fg(current_color), bg);
+}
+
 static void term_action_scroll_up(u32 lines)
 {
 #if TERM_PERF_METRICS
@@ -376,7 +386,7 @@ static void term_action_write2(char *buf, u32 len, u8 color)
 
       if (filter) {
 
-         if (filter(buf[i], color, filter_ctx))
+         if (filter(buf[i], &color, filter_ctx))
             term_internal_write_char2(buf[i], color);
 
       } else {
@@ -424,7 +434,6 @@ static void term_action_move_ch_and_cur_rel(s8 dx, s8 dy)
       vi->flush_buffers();
 }
 
-
 /* ---------------- term action engine --------------------- */
 
 static const actions_table_item actions_table[] = {
@@ -432,6 +441,8 @@ static const actions_table_item actions_table[] = {
    [a_scroll_up] = {(action_func)term_action_scroll_up, 1},
    [a_scroll_down] = {(action_func)term_action_scroll_down, 1},
    [a_set_color] = {(action_func)term_action_set_color, 1},
+   [a_set_fg_color] = {(action_func)term_action_set_fg_color, 1},
+   [a_set_bg_color] = {(action_func)term_action_set_bg_color, 1},
    [a_set_col_offset] = {(action_func)term_action_set_col_offset, 1},
    [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
    [a_move_ch_and_cur_rel] = {(action_func)term_action_move_ch_and_cur_rel, 2}
@@ -439,6 +450,8 @@ static const actions_table_item actions_table[] = {
 
 void term_execute_action(term_action *a)
 {
+   ASSERT(a->type3 < ARRAY_SIZE(actions_table));
+
    const actions_table_item *it = &actions_table[a->type3];
 
    switch (it->args_count) {
@@ -531,6 +544,26 @@ void term_set_color(u8 color)
 {
    term_action a = {
       .type1 = a_set_color,
+      .arg = color
+   };
+
+   term_execute_or_enqueue_action(a);
+}
+
+void term_set_fg_color(u8 color)
+{
+   term_action a = {
+      .type1 = a_set_fg_color,
+      .arg = color
+   };
+
+   term_execute_or_enqueue_action(a);
+}
+
+void term_set_bg_color(u8 color)
+{
+   term_action a = {
+      .type1 = a_set_bg_color,
       .arg = color
    };
 
