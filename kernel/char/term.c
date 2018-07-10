@@ -591,13 +591,6 @@ void term_move_ch_and_cur_rel(s8 dx, s8 dy)
    term_execute_or_enqueue_action(a);
 }
 
-/* ---------- wrappers ------------ */
-
-void term_write(const char *buf, u32 len)
-{
-   term_write2(buf, len, current_color);
-}
-
 /* ---------------- term non-action interface funcs --------------------- */
 
 void term_set_filter_func(term_filter_func func, void *ctx)

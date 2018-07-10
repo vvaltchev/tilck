@@ -25,6 +25,7 @@ typedef struct {
 } term_write_filter_ctx_t;
 
 extern term_write_filter_ctx_t term_write_filter_ctx;
+extern u8 tty_curr_color;
 
 void tty_input_init(void);
 ssize_t tty_read(fs_handle fsh, char *buf, size_t size);

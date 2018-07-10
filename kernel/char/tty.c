@@ -1,6 +1,7 @@
 
 #include <exos/common/basic_defs.h>
 #include <exos/common/string_util.h>
+#include <exos/common/vga_textmode_defs.h>
 
 #include <exos/kernel/fs/exvfs.h>
 #include <exos/kernel/fs/devfs.h>
@@ -13,10 +14,12 @@
 #include "term_int.h"
 #include "tty_int.h"
 
+u8 tty_curr_color = make_color(COLOR_WHITE, COLOR_BLACK);
+
 static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 {
    size = MIN(size, MB - 1); /* term_write's size is limited to 2^20 - 1 */
-   term_write(buf, size);
+   term_write2(buf, size, tty_curr_color);
    return size;
 }
 
