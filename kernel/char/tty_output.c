@@ -90,6 +90,12 @@ tty_filter_handle_csi_seq(char c, u8 color, term_write_filter_ctx_t *ctx)
                term_execute_action(&a);
                break;
             }
+
+         case 'm':
+            //printk("M: '%s'\n", ctx->param_bytes);
+
+            // TODO: handle the 'm' command (set color)
+            break;
       }
 
       ctx->pbc = ctx->ibc = 0;
