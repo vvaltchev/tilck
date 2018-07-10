@@ -15,9 +15,7 @@
 
 static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 {
-   // NOTE: the 'size' arg passed to term_write cannot be bigger than 1 MB.
-   // TODO: call term_write() in a loop in order to handle size > 1 MB.
-
+   size = MIN(size, MB - 1); /* term_write's size is limited to 2^20 - 1 */
    term_write(buf, size);
    return size;
 }
