@@ -431,7 +431,6 @@ void init_framebuffer_console(bool use_also_serial_port)
    init_term(&framebuffer_vi,
              fb_term_rows,
              fb_term_cols,
-             make_color(COLOR_WHITE, COLOR_BLACK),
              use_also_serial_port);
 
    printk("[fb_console] screen resolution: %i x %i x %i bpp\n",

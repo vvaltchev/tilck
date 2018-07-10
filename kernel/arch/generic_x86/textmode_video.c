@@ -140,6 +140,5 @@ void init_textmode_console(bool use_also_serial_port)
    init_term(&ega_text_mode_i,
              VIDEO_ROWS,
              VIDEO_COLS,
-             make_color(COLOR_WHITE, COLOR_BLACK),
              use_also_serial_port);
 }

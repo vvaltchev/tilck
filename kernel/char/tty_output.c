@@ -66,41 +66,24 @@ tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
    if (p == 0) {
 
       /* Reset all attributes */
-
-      *color = make_color(COLOR_WHITE, COLOR_BLACK);
-
-      term_action a = {
-         .type1 = a_set_color,
-         .arg = *color
-      };
-
-      term_execute_action(&a);
+      tty_curr_color = make_color(COLOR_WHITE, COLOR_BLACK);
+      *color = tty_curr_color;
 
    } else if ((30 <= p && p <= 37) || (90 <= p && p <= 97)) {
 
       /* Set foreground color */
       u8 fg = fg_csi_to_vga[p];
 
-      term_action a = {
-         .type1 = a_set_fg_color,
-         .arg = fg
-      };
-
-      term_execute_action(&a);
-      *color = make_color(fg, vgaentry_color_bg(*color));
+      tty_curr_color = make_color(fg, vgaentry_color_bg(tty_curr_color));
+      *color = tty_curr_color;
 
    } else if ((40 <= p && p <= 47) || (100 <= p && p <= 107)) {
 
       /* Set background color */
       u8 bg = fg_csi_to_vga[p - 10];
 
-      term_action a = {
-         .type1 = a_set_bg_color,
-         .arg = bg
-      };
-
-      term_execute_action(&a);
-      *color = make_color(vgaentry_color_fg(*color), bg);
+      tty_curr_color = make_color(vgaentry_color_fg(tty_curr_color), bg);
+      *color = tty_curr_color;
    }
 }
 

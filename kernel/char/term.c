@@ -21,7 +21,6 @@ static u16 term_rows;
 static u16 current_row;
 static u16 current_col;
 static u16 term_col_offset;
-static u8 current_color;
 
 static const video_interface *vi;
 
@@ -171,21 +170,6 @@ void debug_term_print_scroll_cycles(void) { }
 
 #endif
 
-static void term_action_set_color(u8 color)
-{
-   current_color = color;
-}
-
-static void term_action_set_fg_color(u8 fg)
-{
-   current_color = make_color(fg, vgaentry_color_bg(current_color));
-}
-
-static void term_action_set_bg_color(u8 bg)
-{
-   current_color = make_color(vgaentry_color_fg(current_color), bg);
-}
-
 static void term_action_scroll_up(u32 lines)
 {
 #if TERM_PERF_METRICS
@@ -236,7 +220,7 @@ static void term_action_scroll_down(u32 lines)
 #endif
 }
 
-static void term_internal_incr_row(void)
+static void term_internal_incr_row(u8 color)
 {
    term_col_offset = 0;
 
@@ -254,7 +238,7 @@ static void term_internal_incr_row(void)
       ts_set_scroll(max_scroll);
    }
 
-   ts_clear_row(term_rows - 1, current_color);
+   ts_clear_row(term_rows - 1, color);
 }
 
 static void term_internal_write_printable_char(char c, u8 color)
@@ -329,7 +313,7 @@ void term_internal_write_char2(char c, u8 color)
    switch (c) {
 
       case '\n':
-         term_internal_incr_row();
+         term_internal_incr_row(color);
          break;
 
       case '\r':
@@ -358,7 +342,7 @@ void term_internal_write_char2(char c, u8 color)
 
          if (current_col == term_cols) {
             current_col = 0;
-            term_internal_incr_row();
+            term_internal_incr_row(color);
          }
 
          break;
@@ -440,9 +424,6 @@ static const actions_table_item actions_table[] = {
    [a_write2] = {(action_func)term_action_write2, 3},
    [a_scroll_up] = {(action_func)term_action_scroll_up, 1},
    [a_scroll_down] = {(action_func)term_action_scroll_down, 1},
-   [a_set_color] = {(action_func)term_action_set_color, 1},
-   [a_set_fg_color] = {(action_func)term_action_set_fg_color, 1},
-   [a_set_bg_color] = {(action_func)term_action_set_bg_color, 1},
    [a_set_col_offset] = {(action_func)term_action_set_col_offset, 1},
    [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
    [a_move_ch_and_cur_rel] = {(action_func)term_action_move_ch_and_cur_rel, 2}
@@ -540,36 +521,6 @@ void term_scroll_down(u32 lines)
    term_execute_or_enqueue_action(a);
 }
 
-void term_set_color(u8 color)
-{
-   term_action a = {
-      .type1 = a_set_color,
-      .arg = color
-   };
-
-   term_execute_or_enqueue_action(a);
-}
-
-void term_set_fg_color(u8 color)
-{
-   term_action a = {
-      .type1 = a_set_fg_color,
-      .arg = color
-   };
-
-   term_execute_or_enqueue_action(a);
-}
-
-void term_set_bg_color(u8 color)
-{
-   term_action a = {
-      .type1 = a_set_bg_color,
-      .arg = color
-   };
-
-   term_execute_or_enqueue_action(a);
-}
-
 void term_set_col_offset(u32 off)
 {
    term_action a = {
@@ -613,7 +564,6 @@ void
 init_term(const video_interface *intf,
           int rows,
           int cols,
-          u8 default_color,
           bool use_serial_port)
 {
    ASSERT(!are_interrupts_enabled());
@@ -660,10 +610,9 @@ init_term(const video_interface *intf,
 
    vi->enable_cursor();
    term_action_move_ch_and_cur(0, 0);
-   term_action_set_color(default_color);
 
    for (int i = 0; i < term_rows; i++)
-      ts_clear_row(i, default_color);
+      ts_clear_row(i, make_color(COLOR_WHITE, COLOR_BLACK));
 
    term_initialized = true;
    printk_flush_ringbuf();
