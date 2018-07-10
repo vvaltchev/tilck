@@ -13,52 +13,9 @@
 
 term_write_filter_ctx_t term_write_filter_ctx;
 
-int tty_term_write_filter(char c, u8 color, void *ctx_arg)
+static int
+tty_filter_handle_csi_seq(char c, u8 color, term_write_filter_ctx_t *ctx)
 {
-   term_write_filter_ctx_t *ctx = ctx_arg;
-
-   switch (ctx->state) {
-
-      case TERM_WFILTER_STATE_DEFAULT:
-         goto default_state;
-
-      case TERM_WFILTER_STATE_ESC1:
-         goto begin_esc_seq;
-
-      case TERM_WFILTER_STATE_ESC2:
-         goto csi_seq;
-
-      default:
-         NOT_REACHED();
-   }
-
-default_state:
-
-   switch (c) {
-
-      case '\033':
-         ctx->state = TERM_WFILTER_STATE_ESC1;
-         return TERM_FILTER_WRITE_BLANK;
-
-      case '\n':
-
-         if (c_term.c_oflag & (OPOST | ONLCR))
-            term_internal_write_char2('\r', color);
-
-         break;
-
-      case '\a':
-      case '\f':
-      case '\v':
-         /* Ignore some characters */
-         return TERM_FILTER_WRITE_BLANK;
-
-   }
-
-   return TERM_FILTER_WRITE_C;
-
-csi_seq:
-
    if (0x30 <= c && c <= 0x3F) {
 
       /* This is a parameter byte */
@@ -103,20 +60,15 @@ csi_seq:
 
 
       const char *endptr;
-      int param1 = 0, param2 = 0;
+      int param1 = 0;
 
       if (ctx->pbc) {
          param1 = exos_strtol(ctx->param_bytes, &endptr, NULL);
 
-         if (*endptr == ';') {
-            param2 = exos_strtol(endptr + 1, &endptr, NULL);
-            (void)param2;
-         }
+         // NOTE: param2 is unused at the moment
+         // if (*endptr == ';')
+         //    param2 = exos_strtol(endptr + 1, &endptr, NULL);
       }
-
-      // printk("term seq: '%s', '%s', %c\n",
-      //        ctx->param_bytes, ctx->interm_bytes, c);
-      // printk("param1: %d, param2: %d\n", param1, param2);
 
       switch (c) {
 
@@ -148,22 +100,61 @@ csi_seq:
    ctx->state = TERM_WFILTER_STATE_DEFAULT;
    ctx->pbc = ctx->ibc = 0;
    return TERM_FILTER_WRITE_BLANK;
+}
 
-begin_esc_seq:
+int tty_term_write_filter(char c, u8 color, void *ctx_arg)
+{
+   term_write_filter_ctx_t *ctx = ctx_arg;
 
-   switch (c) {
+   if (LIKELY(ctx->state == TERM_WFILTER_STATE_DEFAULT)) {
 
-      case '[':
-         ctx->state = TERM_WFILTER_STATE_ESC2;
-         ctx->pbc = ctx->ibc = 0;
-         break;
+      switch (c) {
 
-      case 'c':
-         // TODO: support the RIS (reset to initial state) command
+         case '\033':
+            ctx->state = TERM_WFILTER_STATE_ESC1;
+            return TERM_FILTER_WRITE_BLANK;
 
-      default:
-          ctx->state = TERM_WFILTER_STATE_DEFAULT;
+         case '\n':
+
+            if (c_term.c_oflag & (OPOST | ONLCR))
+               term_internal_write_char2('\r', color);
+
+            break;
+
+         case '\a':
+         case '\f':
+         case '\v':
+            /* Ignore some characters */
+            return TERM_FILTER_WRITE_BLANK;
+      }
+
+      return TERM_FILTER_WRITE_C;
    }
 
-   return TERM_FILTER_WRITE_BLANK;
+   switch (ctx->state) {
+
+      case TERM_WFILTER_STATE_ESC1:
+
+         switch (c) {
+
+            case '[':
+               ctx->state = TERM_WFILTER_STATE_ESC2;
+               ctx->pbc = ctx->ibc = 0;
+               break;
+
+            case 'c':
+               // TODO: support the RIS (reset to initial state) command
+
+            default:
+               ctx->state = TERM_WFILTER_STATE_DEFAULT;
+         }
+
+         return TERM_FILTER_WRITE_BLANK;
+
+      case TERM_WFILTER_STATE_ESC2:
+         return tty_filter_handle_csi_seq(c, color, ctx);
+
+      default:
+         NOT_REACHED();
+   }
 }
