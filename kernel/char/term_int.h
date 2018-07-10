@@ -4,8 +4,7 @@
 
 typedef enum {
 
-   a_write2,
-   a_write_char2,
+   a_write,
    a_scroll_up,
    a_scroll_down,
    a_set_col_offset,

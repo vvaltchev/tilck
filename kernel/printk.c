@@ -203,7 +203,7 @@ static void printk_direct_flush(const char *buf, size_t size, u8 color)
 {
    if (LIKELY(term_get_filter_func() != NULL)) {
       /* tty has been initialized and set a term write filter func */
-      term_write2(buf, size, color);
+      term_write(buf, size, color);
       return;
    }
 
@@ -215,10 +215,10 @@ static void printk_direct_flush(const char *buf, size_t size, u8 color)
    for (u32 i = 0; i < size; i++) {
 
       if (buf[i] == '\n') {
-         term_write2("\r", 1, color);
+         term_write("\r", 1, color);
       }
 
-      term_write2(&buf[i], 1, color);
+      term_write(&buf[i], 1, color);
    }
 }
 

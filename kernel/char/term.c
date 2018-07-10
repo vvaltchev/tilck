@@ -349,7 +349,7 @@ void term_internal_write_char2(char c, u8 color)
    }
 }
 
-static void term_action_write2(char *buf, u32 len, u8 color)
+static void term_action_write(char *buf, u32 len, u8 color)
 {
    ts_scroll_to_bottom();
 
@@ -421,7 +421,7 @@ static void term_action_move_ch_and_cur_rel(s8 dx, s8 dy)
 /* ---------------- term action engine --------------------- */
 
 static const actions_table_item actions_table[] = {
-   [a_write2] = {(action_func)term_action_write2, 3},
+   [a_write] = {(action_func)term_action_write, 3},
    [a_scroll_up] = {(action_func)term_action_scroll_up, 1},
    [a_scroll_down] = {(action_func)term_action_scroll_down, 1},
    [a_set_col_offset] = {(action_func)term_action_set_col_offset, 1},
@@ -476,12 +476,12 @@ void term_execute_or_enqueue_action(term_action a)
 
 /* ---------------- term interface --------------------- */
 
-void term_write2(const char *buf, u32 len, u8 color)
+void term_write(const char *buf, u32 len, u8 color)
 {
    ASSERT(len < MB);
 
    term_action a = {
-      .type3 = a_write2,
+      .type3 = a_write,
       .ptr = (uptr)buf,
       .len = MIN(len, MB - 1),
       .col = color
