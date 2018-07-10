@@ -234,9 +234,65 @@ function download_ovmf {
 # Build busybox
 ##################################
 
+function config_busybox {
+
+   if ! [ -d busybox ]; then
+      echo "ERROR: busybox not found in toolchain"
+      exit 1
+   fi
+
+   pushd busybox
+
+   make menuconfig
+
+   echo -n "Do you want to update busybox.config with the new config? [Y/n]: "
+   read answer
+
+   if [[ "$answer" == "" || "$answer" == "y" ]]; then
+      cp .config $MAIN_DIR/other/busybox.config
+      echo "Source file $MAIN_DIR/other/busybox.config UPDATED"
+   fi
+
+   popd
+}
+
+function internal_build_busybox {
+
+   echo "Building busybox... "
+   cp $MAIN_DIR/other/busybox.config .config
+   export CROSS_COMPILE="i686-linux-"
+   run_command2 "make -j" build.log
+   cp .config .last_build_config
+}
+
 function build_busybox {
 
    pushd .
+
+   if [ -d busybox ]; then
+      s1=`sha1sum ./busybox/.config | cut -d " " -f 1`
+      s2=`sha1sum ./busybox/.last_build_config | cut -d " " -f 1`
+
+      if [ "$s1" != "$s2" ]; then
+
+         echo "Busybox: .config != .last_build_config"
+         echo -n "Do you want to rebuild with the new config? [Y/n]: "
+         read answer
+
+         if [[ "$answer" == "" || "$answer" == "y" ]]; then
+
+            echo -n "Do you want an incremental build? [Y/n]: "
+            read answer
+            if [[ "$answer" == "" || "$answer" == "y" ]]; then
+               pushd busybox
+               internal_build_busybox
+               popd
+            else
+               rm -rf busybox
+            fi
+         fi
+      fi
+   fi
 
    if ! [ -d busybox ]; then
 
@@ -255,14 +311,9 @@ function build_busybox {
       tar xfj cache/$tarname
 
       mv busybox-$ver busybox
+
       pushd busybox
-
-      echo "Building busybox... "
-
-      cp $MAIN_DIR/other/busybox.config .config
-      export CROSS_COMPILE="i686-linux-"
-      run_command2 "make -j" build.log
-
+      internal_build_busybox
       popd
 
       # For busybox in particular, it is never convenient to remove the tar file
