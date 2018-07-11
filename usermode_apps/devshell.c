@@ -307,7 +307,7 @@ int main(int argc, char **argv, char **env)
 
    shell_env = env;
 
-   printf("[PID: %i] Hello from ExOS's simple devshell!\n", getpid());
+   printf("[PID: %i] Hello from ExOS's simple dev-shell!\n", getpid());
 
    if (argc > 2 && !strcmp(argv[1], "-c")) {
       printf("[shell] Executing built-in command '%s'\n", argv[2]);
