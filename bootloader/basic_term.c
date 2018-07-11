@@ -91,7 +91,7 @@ void init_bt(void)
 {
    bt_movecur(0, 0);
 
-   bt_setcolor(make_color(COLOR_WHITE, COLOR_BLACK));
+   bt_setcolor(make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
    volatile uint16_t *ptr = (volatile uint16_t *)TERMINAL_VIDEO_ADDR;
 
    for (int i = 0; i < TERM_WIDTH*TERM_HEIGHT; ++i) {

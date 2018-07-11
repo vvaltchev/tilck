@@ -612,7 +612,7 @@ init_term(const video_interface *intf,
    term_action_move_ch_and_cur(0, 0);
 
    for (int i = 0; i < term_rows; i++)
-      ts_clear_row(i, make_color(COLOR_WHITE, COLOR_BLACK));
+      ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
    term_initialized = true;
    printk_flush_ringbuf();

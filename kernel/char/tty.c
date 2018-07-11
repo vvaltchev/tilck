@@ -14,7 +14,7 @@
 #include "term_int.h"
 #include "tty_int.h"
 
-u8 tty_curr_color = make_color(COLOR_WHITE, COLOR_BLACK);
+u8 tty_curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
 
 static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 {

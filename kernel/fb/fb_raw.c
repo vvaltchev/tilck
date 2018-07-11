@@ -261,11 +261,11 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 {
    psf2_header *h = fb_font_header;
 
-   const u8 c = vgaentry_char(e);
+   const u8 c = vgaentry_get_char(e);
    ASSERT(c < h->glyphs_count);
 
-   const u32 fg = vga_rgb_colors[vgaentry_fg(e)];
-   const u32 bg = vga_rgb_colors[vgaentry_bg(e)];
+   const u32 fg = vga_rgb_colors[vgaentry_get_fg(e)];
+   const u32 bg = vga_rgb_colors[vgaentry_get_bg(e)];
 
    // ASSUMPTION: width is divisible by 8
    const u32 width_bytes = h->width >> 3;
@@ -332,7 +332,7 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 {
    psf2_header *h = fb_font_header;
 
-   const u8 c = vgaentry_char(e);
+   const u8 c = vgaentry_get_char(e);
    const u32 width_bytes = h->width >> 3;
 
    ASSUME_WITHOUT_CHECK(!(h->width % 8));
@@ -342,7 +342,7 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 
    void *vaddr = (void *)fb_vaddr + (fb_pitch * y) + (x << 2);
    u8 *d = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
-   const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
+   const u32 c_off = (vgaentry_get_fg(e) << 15) + (vgaentry_get_bg(e) << 11);
    u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
    if (width_bytes == 1)
@@ -380,9 +380,9 @@ void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count)
    for (u32 ei = 0; ei < count; ei++) {
 
       const u16 e = entries[ei];
-      const u32 c_off = (vgaentry_fg(e) << 15) + (vgaentry_bg(e) << 11);
+      const u32 c_off = (vgaentry_get_fg(e) << 15) + (vgaentry_get_bg(e) << 11);
       void *vaddr = (void *)vaddr_base + (ei << w4_shift);
-      const u8 *d = &data_base[vgaentry_char(e) << bpg_shift];
+      const u8 *d = &data_base[vgaentry_get_char(e) << bpg_shift];
       u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
       if (width_bytes == 1)

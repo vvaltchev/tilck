@@ -49,16 +49,16 @@ u32 vga_rgb_colors[16] =
    [COLOR_CYAN] = fb_make_color(0, DARK_VAL, DARK_VAL),
    [COLOR_RED] = fb_make_color(DARK_VAL, 0, 0),
    [COLOR_MAGENTA] = fb_make_color(DARK_VAL, 0, DARK_VAL),
-   [COLOR_BROWN] = fb_make_color(DARK_VAL, DARK_VAL, 0),
-   [COLOR_LIGHT_GREY] = fb_make_color(208, 208, 208),
-   [COLOR_DARK_GREY] = fb_make_color(DARK_VAL, DARK_VAL, DARK_VAL),
-   [COLOR_LIGHT_BLUE] = fb_make_color(0, 0, BRIGHT_VAL),
-   [COLOR_LIGHT_GREEN] = fb_make_color(0, BRIGHT_VAL, 0),
-   [COLOR_LIGHT_CYAN] = fb_make_color(0, BRIGHT_VAL, BRIGHT_VAL),
-   [COLOR_LIGHT_RED] = fb_make_color(BRIGHT_VAL, 0, 0),
-   [COLOR_LIGHT_MAGENTA] = fb_make_color(BRIGHT_VAL, 0, BRIGHT_VAL),
-   [COLOR_LIGHT_BROWN] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, 0),
-   [COLOR_WHITE] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, BRIGHT_VAL)
+   [COLOR_YELLOW] = fb_make_color(DARK_VAL, DARK_VAL, 0),
+   [COLOR_WHITE] = fb_make_color(208, 208, 208),
+   [COLOR_BRIGHT_BLACK] = fb_make_color(DARK_VAL, DARK_VAL, DARK_VAL),
+   [COLOR_BRIGHT_BLUE] = fb_make_color(0, 0, BRIGHT_VAL),
+   [COLOR_BRIGHT_GREEN] = fb_make_color(0, BRIGHT_VAL, 0),
+   [COLOR_BRIGHT_CYAN] = fb_make_color(0, BRIGHT_VAL, BRIGHT_VAL),
+   [COLOR_BRIGHT_RED] = fb_make_color(BRIGHT_VAL, 0, 0),
+   [COLOR_BRIGHT_MAGENTA] = fb_make_color(BRIGHT_VAL, 0, BRIGHT_VAL),
+   [COLOR_BRIGHT_YELLOW] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, 0),
+   [COLOR_BRIGHT_WHITE] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, BRIGHT_VAL)
 };
 
 void fb_save_under_cursor_buf(void)
@@ -141,7 +141,7 @@ void fb_clear_row(int row_num, u8 color)
 {
    psf2_header *h = fb_font_header;
    const u32 iy = fb_offset_y + row_num * h->height;
-   fb_raw_color_lines(iy, h->height, vga_rgb_colors[vgaentry_color_bg(color)]);
+   fb_raw_color_lines(iy, h->height, vga_rgb_colors[get_color_bg(color)]);
 
    if (cursor_row == row_num)
       fb_save_under_cursor_buf();
@@ -311,7 +311,7 @@ static void fb_setup_banner(void)
 
    fb_offset_y = (20 * h->height)/10;
    fb_raw_color_lines(0, fb_offset_y, 0 /* black */);
-   fb_raw_color_lines(fb_offset_y - 4, 1, vga_rgb_colors[COLOR_WHITE]);
+   fb_raw_color_lines(fb_offset_y - 4, 1, vga_rgb_colors[COLOR_BRIGHT_WHITE]);
 }
 
 static void fb_draw_banner(void)
@@ -348,7 +348,7 @@ static void fb_draw_banner(void)
    memcpy(lbuf + i, rbuf, rlen);
    lbuf[fb_term_cols - 1] = 0;
 
-   fb_draw_string_at_raw(h->width/2, h->height/2, lbuf, COLOR_LIGHT_BROWN);
+   fb_draw_string_at_raw(h->width/2, h->height/2, lbuf, COLOR_BRIGHT_YELLOW);
 }
 
 static void fb_update_banner_kthread()

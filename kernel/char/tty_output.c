@@ -19,19 +19,19 @@ static const u8 fg_csi_to_vga[256] =
    [30] = COLOR_BLACK,
    [31] = COLOR_RED,
    [32] = COLOR_GREEN,
-   [33] = COLOR_BROWN,
+   [33] = COLOR_YELLOW,
    [34] = COLOR_BLUE,
    [35] = COLOR_MAGENTA,
    [36] = COLOR_CYAN,
-   [37] = COLOR_LIGHT_GREY,
-   [90] = COLOR_DARK_GREY,
-   [91] = COLOR_LIGHT_RED,
-   [92] = COLOR_LIGHT_GREEN,
-   [93] = COLOR_LIGHT_BROWN,
-   [94] = COLOR_LIGHT_BLUE,
-   [95] = COLOR_LIGHT_MAGENTA,
-   [96] = COLOR_LIGHT_CYAN,
-   [97] = COLOR_WHITE
+   [37] = COLOR_WHITE,
+   [90] = COLOR_BRIGHT_BLACK,
+   [91] = COLOR_BRIGHT_RED,
+   [92] = COLOR_BRIGHT_GREEN,
+   [93] = COLOR_BRIGHT_YELLOW,
+   [94] = COLOR_BRIGHT_BLUE,
+   [95] = COLOR_BRIGHT_MAGENTA,
+   [96] = COLOR_BRIGHT_CYAN,
+   [97] = COLOR_BRIGHT_WHITE
 };
 
 static void
@@ -66,7 +66,7 @@ tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
    if (p == 0) {
 
       /* Reset all attributes */
-      tty_curr_color = make_color(COLOR_WHITE, COLOR_BLACK);
+      tty_curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
       *color = tty_curr_color;
 
    } else if ((30 <= p && p <= 37) || (90 <= p && p <= 97)) {
@@ -74,7 +74,7 @@ tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
       /* Set foreground color */
       u8 fg = fg_csi_to_vga[p];
 
-      tty_curr_color = make_color(fg, vgaentry_color_bg(tty_curr_color));
+      tty_curr_color = make_color(fg, get_color_bg(tty_curr_color));
       *color = tty_curr_color;
 
    } else if ((40 <= p && p <= 47) || (100 <= p && p <= 107)) {
@@ -82,7 +82,7 @@ tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
       /* Set background color */
       u8 bg = fg_csi_to_vga[p - 10];
 
-      tty_curr_color = make_color(vgaentry_color_fg(tty_curr_color), bg);
+      tty_curr_color = make_color(get_color_fg(tty_curr_color), bg);
       *color = tty_curr_color;
    }
 }
