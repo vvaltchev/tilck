@@ -1,5 +1,6 @@
 
 #include <exos/common/string_util.h>
+#include <exos/common/utils.h>
 
 #include <exos/kernel/paging.h>
 #include <exos/kernel/process.h>
@@ -22,14 +23,10 @@ static int load_phdr(fs_handle *elf_file,
    if (phdr->p_memsz == 0)
       return 0; /* very weird (because the phdr has type LOAD) */
 
-   int page_count = ((phdr->p_memsz + PAGE_SIZE) & PAGE_MASK) >> PAGE_SHIFT;
-
+   uptr sz = phdr->p_vaddr + phdr->p_memsz - (uptr)vaddr;
+   int page_count = (sz + PAGE_SIZE - 1) / PAGE_SIZE;
    *end_vaddr_ref = (uptr)vaddr + (page_count << PAGE_SHIFT);
 
-   if (*end_vaddr_ref < (phdr->p_vaddr + phdr->p_memsz)) {
-      page_count++;
-      *end_vaddr_ref += PAGE_SIZE;
-   }
 
    for (int j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
 
@@ -58,29 +55,20 @@ static int load_phdr(fs_handle *elf_file,
 }
 
 static void
-phdr_adjust_page_access(fs_handle *elf_file,
-                        page_directory_t *pdir,
-                        Elf32_Phdr *phdr,
-                        uptr *end_vaddr_ref)
+phdr_adjust_page_access(page_directory_t *pdir, Elf32_Phdr *phdr)
 {
    char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
 
    if (phdr->p_memsz == 0)
       return; /* very weird (because the phdr has type LOAD) */
 
-   int page_count = ((phdr->p_memsz + PAGE_SIZE) & PAGE_MASK) >> PAGE_SHIFT;
-
-   *end_vaddr_ref = (uptr)vaddr + (page_count << PAGE_SHIFT);
-
-   if (*end_vaddr_ref < (phdr->p_vaddr + phdr->p_memsz)) {
-      page_count++;
-      *end_vaddr_ref += PAGE_SIZE;
-   }
+   uptr sz = phdr->p_vaddr + phdr->p_memsz - (uptr)vaddr;
+   int page_count = (sz + PAGE_SIZE - 1) / PAGE_SIZE;
 
    /* Make the read-only pages to be read-only */
-   for (int j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
-      set_page_rw(pdir, vaddr, !!(phdr->p_flags & PF_W));
-   }
+   for (int j = 0; j < page_count; j++, vaddr += PAGE_SIZE)
+      if (!(phdr->p_flags & PF_W))
+         set_page_rw(pdir, vaddr, false);
 }
 
 int load_elf_program(const char *filepath,
@@ -181,11 +169,10 @@ int load_elf_program(const char *filepath,
 
    for (int i = 0; i < header.e_phnum; i++) {
 
-      u32 end_vaddr = 0;
       Elf32_Phdr *phdr = phdrs + i;
 
       if (phdr->p_type == PT_LOAD)
-         phdr_adjust_page_access(elf_file, *pdir_ref, phdr, &end_vaddr);
+         phdr_adjust_page_access(*pdir_ref, phdr);
    }
 
    // Allocating memory for the user stack.
