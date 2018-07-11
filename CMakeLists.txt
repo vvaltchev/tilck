@@ -124,6 +124,12 @@ else()
 endif()
 
 if (${USE_GCOV})
+
+   if (NOT EXISTS ${TCROOT}/lcov)
+      message(FATAL_ERROR "USE_GCOV is set but no lcov in toolchain. "
+                          "Run ./scripts/build_toolchain -s build_lcov first.")
+   endif()
+
    message(STATUS "USE_GCOV = ON")
    set(GCOV_COMPILE_FLAGS "-fprofile-arcs -ftest-coverage")
    set(GCOV_LINK_FLAGS "-fprofile-arcs -lgcov")
@@ -204,7 +210,6 @@ add_subdirectory(bootloader)
 add_subdirectory(bootloader/efi)
 add_subdirectory(kernel)
 add_subdirectory(usermode_apps)
-add_subdirectory(unittests)
 add_subdirectory(scripts/build_apps)
 
 ################################################################################
@@ -255,8 +260,6 @@ add_custom_target(
         ${IMG_FILE}
 )
 
-add_dependencies(gtests exos_image)
-
 add_custom_command(
 
    OUTPUT
@@ -284,3 +287,26 @@ add_custom_target(
    DEPENDS
       ${GPT_IMG_FILE}
 )
+
+if (EXISTS ${TCROOT}/googletest)
+   add_subdirectory(unittests)
+   add_dependencies(gtests exos_image)
+else()
+   add_custom_target(
+      gtests
+      COMMAND
+         echo
+      COMMAND
+         echo ==== ERROR: No googletest in toolchain =====
+      COMMAND
+         echo Instructions:
+      COMMAND
+         echo  - Run ./scripts/build_toolchain -s build_gtest
+      COMMAND
+         echo  - rm -rf YOUR_BUILD_DIRECTORY
+      COMMAND
+         echo  - Run this command again
+      COMMAND
+         echo
+   )
+endif()

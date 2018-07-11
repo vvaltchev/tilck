@@ -388,8 +388,6 @@ function build_ncurses {
 default_funcs=()
 default_funcs+=(download_x86_gcc_toolchain)
 default_funcs+=(download_cmake)
-default_funcs+=(build_lcov)
-default_funcs+=(build_gtest)
 default_funcs+=(build_gnuefi)
 default_funcs+=(build_mtools)
 

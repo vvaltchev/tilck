@@ -33,6 +33,8 @@ matrix:
 
 before_install:
   - ./scripts/build_toolchain --skip-install-pkgs
+  - ./scripts/build_toolchain -s build_lcov
+  - ./scripts/build_toolchain -s build_gtest
 
 install:
   - make -j
