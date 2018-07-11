@@ -17,7 +17,7 @@
 # $2 arch name
 # $3 tc file name
 
-function download_toolchain_internal {
+function internal_download_toolchain {
 
    dest="$1"
    arch="$2"
@@ -33,6 +33,7 @@ function download_toolchain_internal {
    cd $dest/bin
 }
 
+all_funcs_list+=(download_x86_gcc_toolchain)
 function download_x86_gcc_toolchain {
 
    pushd .
@@ -41,7 +42,7 @@ function download_x86_gcc_toolchain {
 
       show_work_on_component_msg "i686 GCC TOOLCHAIN (libmusl)"
 
-      download_toolchain_internal            \
+      internal_download_toolchain            \
          "$X86_TOOLCHAIN_DIR_NAME"           \
          "x86-i686"                          \
          "musl--stable-2018.02-2"
@@ -53,7 +54,7 @@ function download_x86_gcc_toolchain {
    popd
 }
 
-
+all_funcs_list+=(download_x86_gcc_glibc_toolchain)
 function download_x86_gcc_glibc_toolchain {
 
    pushd .
@@ -62,7 +63,7 @@ function download_x86_gcc_glibc_toolchain {
 
       show_work_on_component_msg "i686 GCC TOOLCHAIN (glibc)"
 
-      download_toolchain_internal              \
+      internal_download_toolchain              \
          "${X86_TOOLCHAIN_DIR_NAME}_glibc"     \
          "x86-i686"                            \
          "glibc--stable-2018.02-2"

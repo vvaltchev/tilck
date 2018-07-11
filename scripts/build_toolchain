@@ -8,6 +8,9 @@ MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 
 X86_TOOLCHAIN_DIR_NAME="x86_gcc_toolchain"
 
+all_funcs_list=()
+
+
 source $MAIN_DIR/scripts/script_utils
 source $MAIN_DIR/scripts/tc/install_pkgs
 source $MAIN_DIR/scripts/tc/gcc_tc
@@ -17,6 +20,7 @@ source $MAIN_DIR/scripts/tc/cmake_download
 # Mtools
 ###############################
 
+all_funcs_list+=(build_mtools)
 function build_mtools {
 
    pushd .
@@ -45,6 +49,7 @@ function build_mtools {
 # LCOV (front end for GCOV)
 ###############################
 
+all_funcs_list+=(build_lcov)
 function build_lcov {
 
    pushd .
@@ -66,6 +71,7 @@ function build_lcov {
 # Build dietlibc [unused now]
 ###############################
 
+all_funcs_list+=(build_dietlibc)
 function build_dietlibc {
 
    pushd .
@@ -102,6 +108,7 @@ function build_dietlibc {
 # Build gtest
 ##############################
 
+all_funcs_list+=(build_gtest)
 function build_gtest {
 
    pushd .
@@ -125,6 +132,7 @@ function build_gtest {
 # Build libmusl
 ##################################
 
+all_funcs_list+=(build_libmusl)
 function build_libmusl {
 
    pushd .
@@ -173,6 +181,7 @@ function build_libmusl {
 # Build GNU EFI
 ##################################
 
+all_funcs_list+=(build_gnuefi)
 function build_gnuefi {
 
    pushd .
@@ -199,6 +208,7 @@ function build_gnuefi {
 # Download OVMF
 ##################################
 
+all_funcs_list+=(download_ovmf)
 function download_ovmf {
 
    pushd .
@@ -234,6 +244,7 @@ function download_ovmf {
 # Build busybox
 ##################################
 
+all_funcs_list+=(config_busybox)
 function config_busybox {
 
    if ! [ -d busybox ]; then
@@ -265,6 +276,7 @@ function internal_build_busybox {
    cp .config .last_build_config
 }
 
+all_funcs_list+=(build_busybox)
 function build_busybox {
 
    pushd .
@@ -335,6 +347,18 @@ function build_busybox {
 #
 ##########################################################
 
+default_funcs=()
+default_funcs+=(download_x86_gcc_toolchain)
+default_funcs+=(download_cmake)
+default_funcs+=(build_lcov)
+default_funcs+=(build_gtest)
+default_funcs+=(build_gnuefi)
+default_funcs+=(build_mtools)
+
+if [ -z "$NO_BUSYBOX" ]; then
+   default_funcs+=(build_busybox)
+fi
+
 
 # Exit on the first failure
 set -e
@@ -374,6 +398,44 @@ if [ "$1" == "-s" ]; then
    fi
 
    exit 0
+
+elif [[ "$1" == "--help" || "$1" == "-h" ]]; then
+
+   echo ""
+   echo "Syntax:"
+   echo "      $0 [-n]        run default functions"
+   echo "      $0 -s <func>   run a specific function"
+   echo ""
+   echo "   -n    Do not check nor install system packages (advanced)"
+   echo "           Even if many packages are downloaded & built by this script"
+   echo "           without touching the system, some packages are required to"
+   echo "           be installed in the system. For example: wget, git, make,"
+   echo "           binutils, bzip2, rpmextract and others similar. When -n"
+   echo "           is NOT passed, the script first tries to detect the current"
+   echo "           Linux distribution and then it checks if all the required"
+   echo "           packages are already installed. In case some packages need"
+   echo "           to be installed, this script will show a list and run:"
+   echo "               sudo <package manager> <list>"
+   echo "           In case the user does not want this script to install the "
+   echo "           necessary packages he/she could just interrupt this script"
+   echo "           with Ctrl+C, without affecting the system."
+   echo ""
+   echo "Functions supported by this script (with -s):"
+   echo ""
+
+   for x in ${all_funcs_list[@]}; do
+      echo -n "   - $x"
+      for y in ${default_funcs[@]}; do
+         if [ "$x" == "$y" ]; then
+            echo -n " (*)"
+         fi
+      done
+      echo ""
+   done
+
+   echo ""
+   echo -e "(*) Default functions\n"
+   exit 0
 fi
 
 # Single-option parsing
@@ -394,13 +456,7 @@ echo
 echo "*** Building the custom toolchain ***"
 echo
 
-download_x86_gcc_toolchain
-download_cmake
-build_lcov
-build_gtest
-build_gnuefi
-build_mtools
+for x in ${default_funcs[@]}; do
+   $x
+done
 
-if [ -z "$NO_BUSYBOX" ]; then
-   build_busybox
-fi

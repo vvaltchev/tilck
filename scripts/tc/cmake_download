@@ -29,6 +29,7 @@ function download_cmake_internal {
    CMAKE=$TC/cmake/bin/cmake
 }
 
+all_funcs_list+=(download_cmake)
 function download_cmake {
 
    pushd .
