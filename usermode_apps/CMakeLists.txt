@@ -14,8 +14,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
 file(GLOB INIT_SOURCES "init*.c")
 add_executable(init ${INIT_SOURCES})
 
-file(GLOB SHELL_SOURCES "shell*.c")
-add_executable(shell ${SHELL_SOURCES})
+file(GLOB SHELL_SOURCES "devshell*.c")
+add_executable(devshell ${SHELL_SOURCES})
 
 file(GLOB TERMTEST_SOURCES "termtest*.c")
 add_executable(termtest ${TERMTEST_SOURCES})
@@ -27,7 +27,7 @@ add_custom_target(
    usermode_apps
 
    DEPENDS
-      init shell termtest
+      init devshell termtest
 )
 
 if (EXISTS "${TCROOT}/ncurses_install/lib/libncurses.a")

@@ -41,7 +41,7 @@ void open_std_handles(void)
    }
 }
 
-char *shell_args[16] = { "/bin/shell", [1 ... 15] = NULL };
+char *shell_args[16] = { "/bin/devshell", [1 ... 15] = NULL };
 
 
 int main(int argc, char **argv, char **env)
@@ -71,13 +71,13 @@ int main(int argc, char **argv, char **env)
 
    if (!shell_pid) {
       printf("[init forked child] running shell\n");
-      execve("/bin/shell", shell_args, NULL);
+      execve("/bin/devshell", shell_args, NULL);
    }
 
-   printf("[init] wait for the shell to exit\n");
+   printf("[init] wait for the devshell to exit\n");
 
    waitpid(shell_pid, &wstatus, 0);
-   printf("[init] the shell exited with status: %d\n", WEXITSTATUS(wstatus));
+   printf("[init] the devshell exited with status: %d\n", WEXITSTATUS(wstatus));
    call_exit(0);
 }
 

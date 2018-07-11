@@ -77,7 +77,7 @@ def RunTheVM():
 
       print stripped
 
-      m = re.search(r'\[init\] the shell exited with status: ([0-9]+)',
+      m = re.search(r'\[init\] the devshell exited with status: ([0-9]+)',
                     stripped)
 
       if m:

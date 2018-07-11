@@ -119,11 +119,7 @@ int main(int argc, char **argv, char **env)
 
    shell_env = env;
 
-   printf("[PID: %i] Hello from ExOS's simple shell!\n", getpid());
-
-   // printf("My input args[%i]:\n", argc);
-   // for (int i = 0; i < argc; i++)
-   //    printf("argv[%i] = '%s'\n", i, argv[i]);
+   printf("[PID: %i] Hello from ExOS's simple devshell!\n", getpid());
 
    if (argc > 2 && !strcmp(argv[1], "-c")) {
       printf("[shell] Executing built-in command '%s'\n", argv[2]);
