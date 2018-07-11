@@ -54,14 +54,33 @@ static int load_phdr(fs_handle *elf_file,
    if (ret != (ssize_t)phdr->p_filesz)
       return -ENOEXEC;
 
-   vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
+   return 0;
+}
+
+static void
+phdr_adjust_page_access(fs_handle *elf_file,
+                        page_directory_t *pdir,
+                        Elf32_Phdr *phdr,
+                        uptr *end_vaddr_ref)
+{
+   char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
+
+   if (phdr->p_memsz == 0)
+      return; /* very weird (because the phdr has type LOAD) */
+
+   int page_count = ((phdr->p_memsz + PAGE_SIZE) & PAGE_MASK) >> PAGE_SHIFT;
+
+   *end_vaddr_ref = (uptr)vaddr + (page_count << PAGE_SHIFT);
+
+   if (*end_vaddr_ref < (phdr->p_vaddr + phdr->p_memsz)) {
+      page_count++;
+      *end_vaddr_ref += PAGE_SIZE;
+   }
 
    /* Make the read-only pages to be read-only */
    for (int j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
       set_page_rw(pdir, vaddr, !!(phdr->p_flags & PF_W));
    }
-
-   return 0;
 }
 
 int load_elf_program(const char *filepath,
@@ -160,6 +179,14 @@ int load_elf_program(const char *filepath,
          brk = end_vaddr;
    }
 
+   for (int i = 0; i < header.e_phnum; i++) {
+
+      u32 end_vaddr = 0;
+      Elf32_Phdr *phdr = phdrs + i;
+
+      if (phdr->p_type == PT_LOAD)
+         phdr_adjust_page_access(elf_file, *pdir_ref, phdr, &end_vaddr);
+   }
 
    // Allocating memory for the user stack.
 
