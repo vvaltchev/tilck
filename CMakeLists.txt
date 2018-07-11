@@ -227,22 +227,25 @@ add_custom_command(
       # We MUST depend on BOTH each wrapper-target AND its OUTPUT in order to
       # our image file to be re-built when the *.bin files are re-built.
       bootloader
-      efi_bootloader
-      kernel
-      init
-      shell
-      termtest
-      fat_get_used_bytes
-      ${BUILD_SCRIPTS}/build_fatpart
       ${BOOTLOADER_BIN_FILE}
+
+      efi_bootloader
       ${EFI_x86_64_FILE}
       ${EFI_ia32_FILE}
+
+      kernel
       ${KERNEL_FILE}
+
+      usermode_apps
+      ${CMAKE_BINARY_DIR}/usermode_apps/*
+
+      fat_get_used_bytes
+      ${CMAKE_BINARY_DIR}/scripts/build_apps/fat_get_used_bytes
+      ${BUILD_SCRIPTS}/*
    COMMENT
       "Creating the bootable image file (MBR)"
    VERBATIM
 )
-
 
 add_custom_target(
 

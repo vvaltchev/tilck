@@ -19,19 +19,23 @@ add_executable(shell ${SHELL_SOURCES})
 
 file(GLOB TERMTEST_SOURCES "termtest*.c")
 add_executable(termtest ${TERMTEST_SOURCES})
+target_include_directories(termtest PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_compile_definitions(termtest PUBLIC USERMODE_APP)
 
-target_include_directories(
+add_custom_target(
 
-   termtest
+   usermode_apps
 
-   PUBLIC
-   ${CMAKE_SOURCE_DIR}/include
+   DEPENDS
+      init shell termtest
 )
 
-target_compile_definitions(
+if (EXISTS "${TCROOT}/ncurses_install/lib/libncurses.a")
+   file(GLOB NCAPP_SOURCES "ncapp*.c")
+   add_executable(ncapp ${NCAPP_SOURCES})
+   target_include_directories(ncapp PUBLIC ${TCROOT}/ncurses_install/include)
+   target_link_libraries(ncapp ${TCROOT}/ncurses_install/lib/libncurses.a)
+   add_dependencies(usermode_apps ncapp)
+endif()
 
-   termtest
 
-   PUBLIC
-   USERMODE_APP
-)
