@@ -1,7 +1,7 @@
 
 #include <exos/common/basic_defs.h>
 #include <exos/common/string_util.h>
-#include <exos/common/vga_textmode_defs.h>
+#include <exos/common/color_defs.h>
 
 #include <exos/kernel/term.h>
 #include <exos/kernel/process.h>

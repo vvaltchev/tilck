@@ -1,6 +1,6 @@
 
 #include <exos/common/string_util.h>
-#include <exos/common/vga_textmode_defs.h>
+#include <exos/common/color_defs.h>
 
 #include <exos/kernel/arch/generic_x86/textmode_video.h>
 #include <exos/kernel/paging.h>
