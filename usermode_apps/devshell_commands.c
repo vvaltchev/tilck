@@ -344,7 +344,6 @@ void cmd_help(void)
    printf("-------------------------------\n");
    printf("    help: shows this help\n");
    printf("    cd <directory>: change the current working directory\n");
-   printf("    bb [args...]: alias for /bin/busybox [args...] \n\n");
    printf("Self tests\n");
    printf("-------------------------------\n");
 

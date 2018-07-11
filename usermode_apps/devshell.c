@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <errno.h>
 
 char cmd_arg_buffers[16][256];
@@ -40,6 +41,13 @@ cd_error:
    return;
 }
 
+bool file_exists(const char *filepath)
+{
+   struct stat statbuf;
+   int rc = stat(filepath, &statbuf);
+   return !rc;
+}
+
 void process_cmd_line(const char *cmd_line)
 {
    int argc = 0;
@@ -65,9 +73,8 @@ void process_cmd_line(const char *cmd_line)
 
    cmd_argv[argc] = NULL;
 
-   if (!cmd_argv[0][0]) {
+   if (!cmd_argv[0][0])
       return;
-   }
 
    if (!strcmp(cmd_argv[0], "cd")) {
       shell_builtin_cd(argc);
@@ -77,11 +84,6 @@ void process_cmd_line(const char *cmd_line)
    if (!strcmp(cmd_argv[0], "exit")) {
       printf("[shell] regular exit\n");
       exit(0);
-   }
-
-   // busybox alias
-   if (!strcmp(cmd_argv[0], "bb")) {
-      cmd_argv[0] = "/bin/busybox";
    }
 
    // printf("[process_cmd_line] args(%i):\n", argc);
@@ -94,6 +96,15 @@ void process_cmd_line(const char *cmd_line)
    if (!child_pid) {
 
       run_if_known_command(cmd_argv[0]);
+
+      if (!file_exists(cmd_argv[0]) && argc < 16) {
+
+         for (int i = argc; i > 0; i--) {
+            cmd_argv[i] = cmd_argv[i - 1];
+         }
+
+         cmd_argv[0] = "/bin/busybox";
+      }
 
       execve(cmd_argv[0], cmd_argv, NULL);
       int saved_errno = errno;
