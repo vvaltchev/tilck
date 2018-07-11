@@ -44,7 +44,7 @@ static video_interface framebuffer_vi;
 u32 vga_rgb_colors[16] =
 {
    [COLOR_BLACK] = fb_make_color(0, 0, 0),
-   [COLOR_BLUE] = fb_make_color(0, 0, DARK_VAL + 50),
+   [COLOR_BLUE] = fb_make_color(0, 0, DARK_VAL + 70),
    [COLOR_GREEN] = fb_make_color(0, DARK_VAL, 0),
    [COLOR_CYAN] = fb_make_color(0, DARK_VAL, DARK_VAL),
    [COLOR_RED] = fb_make_color(DARK_VAL, 0, 0),
