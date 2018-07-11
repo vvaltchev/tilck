@@ -340,6 +340,44 @@ function build_busybox {
    popd
 }
 
+all_funcs_list+=(build_ncurses)
+function build_ncurses {
+
+   pushd .
+
+   if ! [ -d ncurses ]; then
+
+      ver=6.1
+      tarname=ncurses-$ver.tar.gz
+
+      if ! [ -f cache/$tarname ]; then
+         (cd cache && wget https://ftp.gnu.org/pub/gnu/ncurses/$tarname)
+      else
+         echo "NOTE: Skipping the download of $tarname"
+      fi
+
+      tar xfz cache/$tarname
+      mv ncurses-$ver ncurses
+      mkdir -p ncurses_install
+
+      cd ncurses
+
+      opts1="--host=x86-pc-linux-gnu --prefix=$TC/ncurses_install"
+      opts2="--without-cxx --without-cxx-binding"
+      opts3="--without-ada --without-manpages --without-dlsym"
+
+      export CC=$X86_TOOLCHAIN/i686-linux-gcc
+      run_command2 "./configure $opts1 $opts2 $opts3" configure.log
+      run_command2 "make -j" build.log
+      run_command2 "make install" install.log
+      export CC=""
+
+   else
+      show_skip_component_msg "NCURSES"
+   fi
+
+   popd
+}
 
 ##########################################################
 #
