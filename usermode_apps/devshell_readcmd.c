@@ -229,6 +229,9 @@ int read_command(char *buf, int buf_size)
          goto out;
       }
 
+      if (c == '\t')
+         continue; /* ignore TABs */
+
       //printf("\n[0x%x]\n", c);
 
       if (c == KEY_BACKSPACE) {
