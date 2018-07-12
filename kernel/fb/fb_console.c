@@ -168,12 +168,13 @@ void fb_move_cursor(int row, int col)
 
       fb_save_under_cursor_buf();
 
-      if (cursor_visible)
+      if (cursor_visible) {
          fb_draw_cursor_raw(cursor_col * h->width,
                             fb_offset_y + cursor_row * h->height,
                             cursor_color);
 
-      fb_reset_blink_timer();
+         fb_reset_blink_timer();
+      }
    }
 }
 
