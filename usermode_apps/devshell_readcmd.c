@@ -3,21 +3,25 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <termios.h>
 
-#define KEY_UP    "\033[A"
-#define KEY_DOWN  "\033[B"
-#define KEY_RIGHT "\033[C"
-#define KEY_LEFT  "\033[D"
-#define KEY_ERASE 0x7f
+#define HIST_SIZE 16
 
-#define HIST_SIZE 8
+#define SEQ_UP    "\033[A\0\0\0\0\0"
+#define SEQ_DOWN  "\033[B\0\0\0\0\0"
+#define SEQ_RIGHT "\033[C\0\0\0\0\0"
+#define SEQ_LEFT  "\033[D\0\0\0\0\0"
+#define SEQ_BS    "\033[D \033[D\0"
+
+#define SN(s) (*(uint64_t*)(s))
+
+#define KEY_ERASE 0x7f
 
 char cmd_history[HIST_SIZE][256];
 unsigned hist_count = 0;
-
 unsigned curr_hist_cmd_to_show;
 
 void put_in_history(const char *cmdline)
@@ -35,31 +39,94 @@ const char *get_prev_cmd(unsigned count)
 
 void raw_mode_erase_last(void)
 {
-   write(1, KEY_LEFT " " KEY_LEFT, 7);
+   write(1, SEQ_BS, 7);
 }
 
-int read_esc_seq(void)
+uint64_t read_esc_seq(void)
 {
-   int rc;
-   char seq[4];
+   char c;
+   int len;
+   uint64_t ret = 0;
 
-   rc = read(0, &seq[0], 1);
+   ret |= '\033';
 
-   if (rc <= 0)
-      return rc;
-
-   if (seq[0] != '[')
+   if (read(0, &c, 1) <= 0)
       return 0;
 
-   rc = read(0, &seq[1], 1);
+   if (c != '[')
+      return 0; /* unknown escape sequence */
 
-   if (rc <= 0)
-      return rc;
+   ret |= (c << 8);
+   len = 2;
 
-   if (seq[1] != 'A' && seq[1] != 'B' && seq[1] != 'C' && seq[1] != 'D')
-      return 0;
+   while (1) {
 
-   return seq[1];
+      if (read(0, &c, 1) <= 0)
+         return 0;
+
+      ret |= (c << (8 * len));
+
+     if (0x40 <= c && c <= 0x7E)
+        break;
+
+      if (len == 8)
+         return 0; /* no more space in our 64-bit int (seq too long) */
+   }
+
+   return ret;
+}
+
+void handle_esc_seq(char *buf,
+                    int buf_size,
+                    char *curr_cmd,
+                    int *curr_cmd_len)
+{
+
+   uint64_t seq = read_esc_seq();
+
+   if (!seq)
+      return;
+
+   if (seq == SN(SEQ_UP) || seq == SN(SEQ_DOWN)) {
+
+      const char *cmd;
+
+      if (seq == SN(SEQ_UP)) {
+
+         cmd = get_prev_cmd(curr_hist_cmd_to_show + 1);
+
+         if (!cmd)
+            return;
+
+         if (!curr_hist_cmd_to_show) {
+            buf[*curr_cmd_len] = 0;
+            strncpy(curr_cmd, buf, buf_size);
+         }
+
+         curr_hist_cmd_to_show++;
+
+      } else {
+
+         cmd = get_prev_cmd(curr_hist_cmd_to_show - 1);
+
+         if (cmd) {
+            curr_hist_cmd_to_show--;
+         } else {
+            cmd = curr_cmd;
+            if (curr_hist_cmd_to_show == 1)
+               curr_hist_cmd_to_show--;
+         }
+      }
+
+      while (*curr_cmd_len > 0) {
+         raw_mode_erase_last();
+         (*curr_cmd_len)--;
+      }
+
+      strncpy(buf, cmd, buf_size);
+      *curr_cmd_len = strlen(cmd);
+      write(1, buf, *curr_cmd_len);
+   }
 }
 
 int read_command(char *buf, int buf_size)
@@ -100,58 +167,8 @@ int read_command(char *buf, int buf_size)
       }
 
       if (c == '\033') {
-
-         rc = read_esc_seq();
-
-         if (rc < 0) {
-            ret = -1;
-            goto out;
-         }
-
-         if (!rc)
-            continue;
-
-         if (rc == 'A' || rc == 'B') {
-
-            const char *cmd;
-
-            if (rc == 'A') {
-
-               cmd = get_prev_cmd(curr_hist_cmd_to_show + 1);
-
-               if (!cmd)
-                  continue;
-
-               if (!curr_hist_cmd_to_show) {
-                  buf[ret] = 0;
-                  strncpy(curr_cmd, buf, sizeof(curr_cmd));
-               }
-
-               curr_hist_cmd_to_show++;
-
-            } else {
-
-               cmd = get_prev_cmd(curr_hist_cmd_to_show - 1);
-
-               if (cmd) {
-                  curr_hist_cmd_to_show--;
-               } else {
-                  cmd = curr_cmd;
-                  if (curr_hist_cmd_to_show == 1)
-                     curr_hist_cmd_to_show--;
-               }
-            }
-
-            while (ret > 0) {
-               raw_mode_erase_last();
-               ret--;
-            }
-
-            strncpy(buf, cmd, buf_size);
-            ret = strlen(cmd);
-            write(1, buf, ret);
-            continue;
-         }
+         handle_esc_seq(buf, buf_size, curr_cmd, &ret);
+         continue;
       }
 
       if (isprint(c) || isspace(c)) {
