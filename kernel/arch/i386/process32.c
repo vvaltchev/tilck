@@ -5,6 +5,7 @@
 #include <exos/kernel/kmalloc.h>
 #include <exos/kernel/tasklet.h>
 #include <exos/kernel/debug_utils.h>
+#include <exos/kernel/hal.h>
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
@@ -226,7 +227,6 @@ void save_current_task_state(regs *r)
    DEBUG_VALIDATE_STACK_PTR();
 }
 
-
 void panic_save_current_task_state(regs *r)
 {
    static regs panic_state_regs;
@@ -373,6 +373,7 @@ void arch_specific_new_task_setup(task_info *ti)
    ti->arch.ldt = NULL;
    ti->pi->set_child_tid = NULL;
    bzero(ti->arch.gdt_entries, sizeof(ti->arch.gdt_entries));
+   ti->arch.fpu_regs = NULL;
 }
 
 void arch_specific_free_task(task_info *ti)
@@ -383,4 +384,6 @@ void arch_specific_free_task(task_info *ti)
    for (u32 i = 0; i < ARRAY_SIZE(ti->arch.gdt_entries); i++)
       if (ti->arch.gdt_entries[i])
          gdt_clear_entry(ti->arch.gdt_entries[i]);
+
+   kfree(ti->arch.fpu_regs);
 }

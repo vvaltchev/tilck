@@ -41,3 +41,5 @@ void set_kernel_stack(uptr stack);
 void enable_cpu_features(void);
 void fpu_context_begin(void);
 void fpu_context_end(void);
+void save_current_fpu_regs(bool in_kernel);
+void restore_current_fpu_regs(bool in_kernel);

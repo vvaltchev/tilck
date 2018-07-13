@@ -6,12 +6,27 @@
 
 #include <exos/kernel/process.h>
 #include <exos/kernel/fault_resumable.h>
+#include <exos/kernel/interrupts.h>
+#include <exos/kernel/hal.h>
 
 extern const char *x86_exception_names[32];
 
 void asm_enable_osxsave(void);
 void asm_enable_sse(void);
 void asm_enable_avx(void);
+static void fpu_no_coprocessor_fault_handler(regs *r);
+
+#define CPU_FXSAVE_AREA_SIZE   512
+
+/*
+ * NOTE: calculating the exact area save area for XSAVE is tricky since it
+ * depends on the features currently supported by the CPU (it is necessary
+ * to iterate with CPUID calls to do the right calculation). For the moment,
+ * just using a large buffer is a good-enough solution.
+ *
+ * TODO (future): calculate the exact size for the XSAVE area.
+ */
+#define CPU_XSAVE_AREA_SIZE   8192
 
 static bool enable_sse(void)
 {
@@ -136,7 +151,108 @@ out:
     * instructions. The newer FXSAVE and XSAVE save everything, including the
     * "legacy FPU" state.
     */
-   write_cr0(read_cr0() | CR0_TS);
+   fpu_disable();
+   set_fault_handler(FAULT_NO_COPROC, fpu_no_coprocessor_fault_handler);
+}
+
+static char fpu_kernel_regs[CPU_XSAVE_AREA_SIZE] __attribute__((aligned(64)));
+
+void save_current_fpu_regs(bool in_kernel)
+{
+   if (UNLIKELY(!x86_cpu_features.can_use_sse))
+      return;
+
+   if (UNLIKELY(in_panic()))
+      return;
+
+   task_info *curr = get_curr_task();
+   arch_task_info_members *arch_fields = &curr->arch;
+   void *buf = in_kernel ? fpu_kernel_regs : arch_fields->fpu_regs;
+
+   if (x86_cpu_features.can_use_avx) {
+
+      /*
+       * In eax:edx we're supposed to specific which reg sets to save/restore
+       * using a bitmask. Setting all bits to 1 works well to save/restore
+       * "everything".
+       */
+
+      asmVolatile("xsave (%0)"
+                  : /* no output */
+                  : "r" (buf), "a" (-1), "d" (-1)
+                  : /* no clobber */);
+   } else {
+
+      asmVolatile("fxsave (%0)"
+                  : /* no output */
+                  : "r" (buf)
+                  : /* no clobber */);
+   }
+}
+
+void restore_current_fpu_regs(bool in_kernel)
+{
+   if (UNLIKELY(!x86_cpu_features.can_use_sse))
+      return;
+
+   if (UNLIKELY(in_panic()))
+      return;
+
+   task_info *curr = get_curr_task();
+   arch_task_info_members *arch_fields = &curr->arch;
+   void *buf = in_kernel ? fpu_kernel_regs : arch_fields->fpu_regs;
+
+   if (x86_cpu_features.can_use_avx) {
+
+      asmVolatile("xrstor (%0)"
+                  : /* no output */
+                  : "r" (buf), "a" (-1), "d" (-1)
+                  : /* no clobber */);
+
+   } else {
+
+      asmVolatile("fxrstor (%0)"
+                  : /* no output */
+                  : "r" (buf)
+                  : /* no clobber */);
+   }
+}
+
+static void
+fpu_no_coprocessor_fault_handler(regs *r)
+{
+   if (is_kernel_thread(get_curr_task())) {
+      panic("FPU instructions used in kernel outside an fpu_context!");
+   }
+
+   if (!x86_cpu_features.can_use_sse) {
+      /*
+       * TODO: send to the current process SIGFPE in this case.
+       *
+       * Probably for a long time, we won't support the use of legacy x87 FPU
+       * instructions, in case the CPU is so old that it does not have SSE.
+       * The reason is just to avoid implementing save/restore FPU registers
+       * with x87 instructions. We already need to have 2 implementations:
+       * for SSE (FXSAVE) and for AVX (XSAVE). Better avoid a 3rd one useful
+       * only for machines produced before 1998.
+       */
+
+       panic("x87 FPU instructions not supported on CPUs without SSE");
+   }
+
+   NOT_IMPLEMENTED();
+
+   task_info *curr = get_curr_task();
+   arch_task_info_members *arch_fields = &curr->arch;
+   ASSERT(arch_fields->fpu_regs == NULL);
+
+   if (x86_cpu_features.can_use_avx) {
+      arch_fields->fpu_regs = kmalloc(CPU_XSAVE_AREA_SIZE);
+   } else {
+      arch_fields->fpu_regs = kmalloc(CPU_FXSAVE_AREA_SIZE);
+   }
+
+   VERIFY(arch_fields->fpu_regs); // TODO: handle this OOM case
 }
 
 static u32 fpu_context_count;
@@ -146,21 +262,21 @@ void fpu_context_begin(void)
    disable_preemption();
 
    if (++fpu_context_count == 1)
-      write_cr0(read_cr0() & ~CR0_TS);
+      fpu_enable();
 
-   // TODO: use FXSAVE [SSE] or XSAVE [AVX] to save the FPU regs.
+   save_current_fpu_regs(true);
 }
 
 void fpu_context_end(void)
 {
-   // TODO: use FXRSTOR [SSE] or XRSTOR [AVX] to restore the FPU regs.
+   restore_current_fpu_regs(true);
 
    /* Disable the FPU: any attempt to touch FPU registers triggers a fault. */
 
    ASSERT(fpu_context_count > 0);
 
    if (--fpu_context_count == 0)
-      write_cr0(read_cr0() | CR0_TS);
+      fpu_disable();
 
    enable_preemption();
 }

@@ -270,5 +270,16 @@ static ALWAYS_INLINE void write_cr0(u32 val)
                : /* no clobber */);
 }
 
+static ALWAYS_INLINE void fpu_enable(void)
+{
+   write_cr0(read_cr0() & ~CR0_TS);
+}
+
+static ALWAYS_INLINE void fpu_disable(void)
+{
+   write_cr0(read_cr0() | CR0_TS);
+}
+
+
 // Reboot the system
 void reboot();
