@@ -30,4 +30,5 @@
    "editor.autoIndent": false,
    "editor.foldingStrategy": "indentation",
    "editor.emptySelectionClipboard": false,
+   "git.ignoreLimitWarning": true,
 }

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 
-set(GNUEFI_DIR "${CMAKE_SOURCE_DIR}/toolchain/gnu-efi")
+set(GNUEFI_DIR ${TCROOT}/gnu-efi)
 
 add_subdirectory(x86_64)
 add_subdirectory(ia32)

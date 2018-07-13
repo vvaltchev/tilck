@@ -80,6 +80,12 @@ set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_APPS ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(BUILD_SHARED_LIBRARIES off)
 set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
+set(BTC_PATH ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
+
+if (NOT EXISTS ${TCROOT})
+   message(
+      FATAL_ERROR "Toolchain not found: run ${BTC_PATH} first.")
+endif()
 
 if (${ARCH} STREQUAL "i386")
    set(ARCH_FAMILY "generic_x86")
@@ -127,7 +133,7 @@ if (${USE_GCOV})
 
    if (NOT EXISTS ${TCROOT}/lcov)
       message(FATAL_ERROR "USE_GCOV is set but no lcov in toolchain. "
-                          "Run ./scripts/build_toolchain -s build_lcov first.")
+                          "Run ${BTC_PATH} -s build_lcov first.")
    endif()
 
    message(STATUS "USE_GCOV = ON")
