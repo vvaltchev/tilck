@@ -222,8 +222,10 @@ task_info *create_usermode_task(page_directory_t *pdir,
 
 void save_current_task_state(regs *r)
 {
-   ASSERT(get_curr_task() != NULL);
-   get_curr_task()->state_regs = r;
+   task_info *curr = get_curr_task();
+
+   ASSERT(curr != NULL);
+   curr->state_regs = r;
    DEBUG_VALIDATE_STACK_PTR();
 }
 
@@ -277,6 +279,12 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
    ASSERT(!get_curr_task() || get_curr_task()->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
    ASSERT(ti != get_curr_task());
+
+   if (get_curr_task() && get_curr_task()->arch.fpu_regs) {
+      hw_fpu_enable();
+      /* Before switching to another task, the FPU regs of the current one */
+      save_current_fpu_regs(false);
+   }
 
    DEBUG_printk("[sched] Switching to tid: %i %s %s\n",
                 ti->tid,
@@ -352,6 +360,11 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
 
    if (ti->arch.ldt) {
       load_ldt(ti->arch.ldt_index_in_gdt, ti->arch.ldt_size);
+   }
+
+   if (ti->arch.fpu_regs) {
+      hw_fpu_enable();
+      restore_current_fpu_regs(false);
    }
 
    context_switch(state);

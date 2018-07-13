@@ -15,7 +15,7 @@ typedef struct regs regs;
 typedef struct {
 
    /* STUB struct */
-   uptr some_var; /* avoid error: empty struct has size 0 in C, size 1 in C++ */
+   void *fpu_regs;
 
 } arch_task_info_members;
 

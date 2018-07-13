@@ -27,7 +27,6 @@ shell_cmd_tests = [
    ['brk_test', SHORT_TEST_TIMEOUT],
    ['sysenter', SHORT_TEST_TIMEOUT],
    ['syscall_perf', SHORT_TEST_TIMEOUT],
-   ['loop', SHORT_TEST_TIMEOUT],
    ['fork_test', MID_TEST_TIMEOUT],
    ['sysenter_fork_test', MID_TEST_TIMEOUT],
    ['fork_perf', LONG_TEST_TIMEOUT],

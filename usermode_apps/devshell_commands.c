@@ -18,7 +18,7 @@
 void cmd_loop(void)
 {
    printf("[shell] do a long loop\n");
-   for (int i = 0; i < FORK_TEST_ITERS; i++) {
+   for (int i = 0; i < (2 * 1000 * 1000 * 1000); i++) {
       __asm__ volatile ("nop");
    }
 
@@ -279,6 +279,20 @@ void cmd_fpu(void)
    printf("n^2 = %lf\n", num * 2.0);
 }
 
+void cmd_fpu_loop(void)
+{
+   register double num = 0;
+
+   for (unsigned i = 0; i < 1000*1000*1000; i++) {
+
+      if (!(i % 1000000))
+         printf("%f\n", num);
+
+      num += 1e-6;
+   }
+}
+
+
 void cmd_brk_test(void)
 {
    const size_t alloc_size = 1024 * 1024;
@@ -333,6 +347,7 @@ struct {
    {"syscall_perf", cmd_syscall_perf},
    {"sysenter_fork_test", cmd_sysenter_fork_test},
    {"fpu", cmd_fpu},
+   {"fpu_loop", cmd_fpu_loop},
    {"brk_test", cmd_brk_test}
 };
 

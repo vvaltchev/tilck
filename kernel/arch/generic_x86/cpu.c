@@ -151,7 +151,7 @@ out:
     * instructions. The newer FXSAVE and XSAVE save everything, including the
     * "legacy FPU" state.
     */
-   fpu_disable();
+   hw_fpu_disable();
    set_fault_handler(FAULT_NO_COPROC, fpu_no_coprocessor_fault_handler);
 }
 
@@ -165,9 +165,10 @@ void save_current_fpu_regs(bool in_kernel)
    if (UNLIKELY(in_panic()))
       return;
 
-   task_info *curr = get_curr_task();
-   arch_task_info_members *arch_fields = &curr->arch;
+   arch_task_info_members *arch_fields = &get_curr_task()->arch;
    void *buf = in_kernel ? fpu_kernel_regs : arch_fields->fpu_regs;
+
+   ASSERT(buf != NULL);
 
    if (x86_cpu_features.can_use_avx) {
 
@@ -198,9 +199,10 @@ void restore_current_fpu_regs(bool in_kernel)
    if (UNLIKELY(in_panic()))
       return;
 
-   task_info *curr = get_curr_task();
-   arch_task_info_members *arch_fields = &curr->arch;
+   arch_task_info_members *arch_fields = &get_curr_task()->arch;
    void *buf = in_kernel ? fpu_kernel_regs : arch_fields->fpu_regs;
+
+   ASSERT(buf != NULL);
 
    if (x86_cpu_features.can_use_avx) {
 
@@ -240,43 +242,46 @@ fpu_no_coprocessor_fault_handler(regs *r)
        panic("x87 FPU instructions not supported on CPUs without SSE");
    }
 
-   NOT_IMPLEMENTED();
+   arch_task_info_members *arch_fields = &get_curr_task()->arch;
 
-   task_info *curr = get_curr_task();
-   arch_task_info_members *arch_fields = &curr->arch;
+   /*
+    * We can hit this fault at MOST once in the lifetime of a task. This sanity
+    * check ensures that, in no case, we allocated the fpu_regs and then, for
+    * any reason, we scheduled the task with FPU disabled.
+    */
    ASSERT(arch_fields->fpu_regs == NULL);
 
    if (x86_cpu_features.can_use_avx) {
-      arch_fields->fpu_regs = kmalloc(CPU_XSAVE_AREA_SIZE);
+      arch_fields->fpu_regs = kzmalloc(CPU_XSAVE_AREA_SIZE);
    } else {
-      arch_fields->fpu_regs = kmalloc(CPU_FXSAVE_AREA_SIZE);
+      arch_fields->fpu_regs = kzmalloc(CPU_FXSAVE_AREA_SIZE);
    }
 
    VERIFY(arch_fields->fpu_regs); // TODO: handle this OOM case
+   hw_fpu_enable();
 }
 
-static u32 fpu_context_count;
+static volatile bool in_fpu_context;
 
 void fpu_context_begin(void)
 {
    disable_preemption();
 
-   if (++fpu_context_count == 1)
-      fpu_enable();
+   /* NOTE: nested FPU contexts are NOT allowed! */
+   ASSERT(!in_fpu_context);
+   in_fpu_context = true;
 
+   hw_fpu_enable();
    save_current_fpu_regs(true);
 }
 
 void fpu_context_end(void)
 {
+   ASSERT(in_fpu_context);
+
    restore_current_fpu_regs(true);
+   hw_fpu_disable();
 
-   /* Disable the FPU: any attempt to touch FPU registers triggers a fault. */
-
-   ASSERT(fpu_context_count > 0);
-
-   if (--fpu_context_count == 0)
-      fpu_disable();
-
+   in_fpu_context = false;
    enable_preemption();
 }

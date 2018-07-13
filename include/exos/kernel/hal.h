@@ -33,7 +33,7 @@
 typedef void (*interrupt_handler)(regs *);
 typedef int (*irq_interrupt_handler)(regs *);
 
-
+void reboot();
 void setup_segmentation(void);
 void setup_soft_interrupt_handling(void);
 void setup_syscall_interfaces(void);
@@ -43,3 +43,4 @@ void fpu_context_begin(void);
 void fpu_context_end(void);
 void save_current_fpu_regs(bool in_kernel);
 void restore_current_fpu_regs(bool in_kernel);
+
