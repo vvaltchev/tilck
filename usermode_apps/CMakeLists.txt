@@ -30,11 +30,11 @@ add_custom_target(
       init devshell termtest
 )
 
-if (EXISTS "${TCROOT}/ncurses_install/lib/libncurses.a")
+if (EXISTS "${TCROOT}/ncurses_install/lib/libncurses_g.a")
    file(GLOB NCAPP_SOURCES "ncapp*.c")
    add_executable(ncapp ${NCAPP_SOURCES})
    target_include_directories(ncapp PUBLIC ${TCROOT}/ncurses_install/include)
-   target_link_libraries(ncapp ${TCROOT}/ncurses_install/lib/libncurses.a)
+   target_link_libraries(ncapp ${TCROOT}/ncurses_install/lib/libncurses_g.a)
    add_dependencies(usermode_apps ncapp)
 endif()
 
