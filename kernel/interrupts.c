@@ -122,7 +122,7 @@ void panic_dump_nested_interrupts(void)
    //if (!nested_interrupts_count)
    //   return;
 
-   char buf[80];
+   char buf[128];
    int written = 0;
 
    written += snprintk(buf + written, sizeof(buf) - written, "Interrupts: [ ");
