@@ -69,7 +69,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_oldfstat)
 sptr sys_pause(); // TODO: update once signals are implemented
 
 CREATE_STUB_SYSCALL_IMPL(sys_utime)
-CREATE_STUB_SYSCALL_IMPL(sys_access)
+
+sptr sys_access(const char *pathname, int mode);
+
 CREATE_STUB_SYSCALL_IMPL(sys_nice)
 CREATE_STUB_SYSCALL_IMPL(sys_sync)
 CREATE_STUB_SYSCALL_IMPL(sys_kill)

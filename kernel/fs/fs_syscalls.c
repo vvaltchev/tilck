@@ -393,6 +393,12 @@ sptr sys_getdents64(int fd, struct linux_dirent64 *user_dirp, u32 buf_size)
    return rc;
 }
 
+sptr sys_access(const char *pathname, int mode)
+{
+   // TODO: check mode and file r/w flags.
+   return 0;
+}
+
 static void debug_print_fcntl_command(int cmd)
 {
    switch (cmd) {
