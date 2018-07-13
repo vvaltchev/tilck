@@ -127,11 +127,16 @@ Step 5.
 Unit tests
 -------------
 
-You could build kernel's unit tests this way:
+In order to build kernel's unit tests, it is necessary first
+to build the googletest framework with:
+
+    ./scripts/build_toolchain -s build_gtest
+
+Then, the tests could be built this way:
 
     make -j gtests
 
-And run them with:
+And run with:
 
     ./build/gtests
 
@@ -153,29 +158,28 @@ FAQ (by vvaltchev)
 #### Why many commit messages are so short and incomplete?
 
 It is well-known that all of the popular open source projects care about having good commit messages.
-It is an investment that pays off. I even wrote a [blog post](https://blogs.vmware.com/opensource/2017/12/28/open-source-proprietary-software-engineer/) about that.
+It is an investment that ultimately pays off. I even wrote a [blog post](https://blogs.vmware.com/opensource/2017/12/28/open-source-proprietary-software-engineer/) about that.
 The problem is that such investment actually starts paying off only when multiple people contribute to the project.
-Even in the case of small teams (2 people) it not obvious that it is worth spending hours in re-ordering and editing all the commits of
-a pull request until its *story* is perfect, especially when the project is not mature enough: the commits in a pull request have to be just *good enough* in terms of commit message, scope of the change, relative order etc. The focus is on shape of the code *after* the patch series in the sense that limited hacks in the middle of a series are allowed. Clearly, that does **not** mean that commit messages like some of the current ones will be acceptable: as a second contributor comes in, the commit messages need necessarily to become more descriptive, in order to allow the collaboration to work. But, at this stage, going as fast as possible towards the first milestone makes sense. Still, I'm trying to keep the length of the commit messages proportionate to the complexity of the change. Sometimes, even in this stage, it makes sense to spend some time on describing the reasoning behind a commit. As the projects grows, I'll be spending more and more time on writing better commit messages.
+Even in the case of small teams (2 people) it not obvious that it is worth spending hours in re-ordering and editing all the commits of a pull request until its *story* is perfect, especially when the project is not mature enough: the commits in a pull request have to be just *good enough* in terms of commit message, scope of the change, relative order etc. The focus is on shape of the code *after* the patch series in the sense that limited hacks in the middle of a series are allowed. As a second contributor comes in, the commit messages will need necessarily to become more descriptive, in order to allow the collaboration to work. But, at this stage, going as fast as possible towards the first milestone makes sense. Still, I'm trying to keep the length of the commit messages proportionate to the complexity of the change. Sometimes, even in this stage, it makes sense to spend some time on describing the reasoning behind a commit. As the projects matures, I'll be spending more and more time on writing better commit messages.
 
 
-#### Why exOS does not have the abstraction XYZ like other kernels do?
+#### Why exOS does not have the feature/abstraction XYZ like other kernels do?
 
 `exOS` is **not** meant to be a full-featured production kernel. Please, refer to Linux for that.
 The idea is implementing the simplest kernel able to run a class of Linux console applications.
 After that, eventually, it can support more advanced stuff like USB mass storage devices,
 but not necessarily along with all the powerful features that Linux offers.
 The whole point of supporting something is because it is interesting for me (or other contributors)
-to learn how it works and to write a proof-of-concept implementation.
+to learn how it works and to write a minimalistic implementation to support it.
 
 
 #### Why using FAT32?
 
-Actually FAT32 is not a very good choice for any UNIX system.
-I decided to use it because it was the simplest widely-used filesystem I knew and I did not want to spend to much time implementing support for a more sophisticated filesystem like `ext2`, at least not initially. Also, I was just curious about learning it. Afterall, the whole point of `experimentOs`, is *experimenting*.
-A decision to implement something can be driven just by curiosity and desire to learn a given technology. There is no strict roadmap to follow. The only important goal after learning and having fun is to make `exOS` capable of running a given set of console applications. Ideally, most of the ones in `busybox`. Anyway, exOS just need a filesystem, any filesystem. The biggest issue with FAT32 is that it does not support symlinks. Probably I'll implement a hack like `umsdos` did to support them.
-
-
+Even if FAT32 is today the only filesystem supported by exOS, in the next months it will
+be used only as an initial read-only ramdisk. The main filesystem will be a custom ramfs, while
+the FAT32 ramdisk will remain mounted (likely) under /boot. The #1 reason for using FAT32 was that
+it is required for booting using UEFI. Therefore, it was convienent to store there also all the rest
+of the files.
 
 
 
