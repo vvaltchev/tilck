@@ -23,8 +23,6 @@
    END_FUNC(isr\number)
 .endm
 
-# Service Routines (ISRs)
-
 isr 0 # Divide By Zero Exception
 isr 1 # Debug Exception
 isr 2 # Non Maskable Interrupt Exception
