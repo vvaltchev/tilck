@@ -26,4 +26,42 @@
 #define EBP_OFFSET_ARG2 12
 #define EBP_OFFSET_ARG3 16
 
+.macro asm_disable_cr0_ts
+   mov eax, CR0
+   and eax, ~8
+   mov CR0, eax
+.endm
+
+.macro save_custom_flags additional_flags
+   mov eax, CR0
+   and eax, 8       // CR0_TS
+   xor eax, 8       // flip the bit:
+                    //     we use FPU_ENABLED while TS=1 means FPU disabled
+
+   or eax, \additional_flags
+   push eax         // custom_flags
+.endm
+
+.macro resume_cr0_ts
+   pop eax       // custom_flags
+   and eax, 8    // REGS_FL_FPU_ENABLED
+   xor eax, 8    // flip the bit
+   mov ebx, CR0
+   and ebx, ~8
+   or ebx, eax
+   mov CR0, ebx
+.endm
+
+.macro skip_cr0_ts
+   add esp, 4
+.endm
+
+.macro resume_base_regs
+   pop gs
+   pop fs
+   pop es
+   pop ds
+   popa
+.endm
+
 #endif

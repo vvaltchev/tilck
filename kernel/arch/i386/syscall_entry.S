@@ -56,15 +56,8 @@ FUNC(sysenter_entry):
    mov fs, ax
    mov gs, ax
 
-   mov eax, CR0
-   and eax, 8       # CR0_TS
-   xor eax, 8       # flip the bit (we use FPU_ENABLED while TS=1 => disabled)
-   or eax, REGS_FL_SYSENTER
-   push eax         # custom_flags
-   # Disable the FPU instructions
-   mov eax, CR0
-   and eax, ~8
-   mov CR0, eax
+   save_custom_flags (REGS_FL_SYSENTER)
+   asm_disable_cr0_ts
 
    push offset .sysenter_resume
    mov eax, esp
@@ -76,19 +69,8 @@ FUNC(sysenter_entry):
 
 .sysenter_resume:
 
-   pop eax    # custom_flags
-   and eax, 8 # REGS_FL_FPU_ENABLED
-   xor eax, 8 # flip the bit
-   mov ebx, CR0
-   and ebx, ~8
-   or ebx, eax
-   mov CR0, ebx
-
-   pop gs
-   pop fs
-   pop es
-   pop ds
-   popa
+   resume_cr0_ts
+   resume_base_regs
 
    add esp, 16   # skip err_code and int_num, eip, cs
    popf
@@ -162,14 +144,8 @@ FUNC(asm_soft_interrupt_entry):
    mov fs, ax
    mov gs, ax
 
-   mov eax, CR0
-   and eax, 8       # CR0_TS
-   xor eax, 8       # flip the bit (we use FPU_ENABLED while TS=1 => disabled)
-   push eax         # custom_flags
-   # Disable the FPU instructions
-   mov eax, CR0
-   and eax, ~8
-   mov CR0, eax
+   save_custom_flags (0)
+   asm_disable_cr0_ts
 
    push offset .soft_interrupt_resume
    mov eax, esp
@@ -181,19 +157,8 @@ FUNC(asm_soft_interrupt_entry):
 
 .soft_interrupt_resume:
 
-   pop eax    # custom_flags
-   and eax, 8 # REGS_FL_FPU_ENABLED
-   xor eax, 8 # flip the bit
-   mov ebx, CR0
-   and ebx, ~8
-   or ebx, eax
-   mov CR0, ebx
-
-   pop gs
-   pop fs
-   pop es
-   pop ds
-   popa
+   resume_cr0_ts
+   resume_base_regs
    add esp, 8     # Discards the pushed err_code and int_num
    iret
 

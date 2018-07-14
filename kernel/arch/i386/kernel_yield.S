@@ -56,13 +56,8 @@ FUNC(asm_kernel_yield):
 
 .kernel_yield_resume:
 
-   add esp, 4 # discard custom_flags
-
-   pop gs
-   pop fs
-   pop es
-   pop ds
-   popa
+   skip_cr0_ts
+   resume_base_regs
    add esp, 16     # Discard int_num, err_code, eip, cs
    popf
    ret
