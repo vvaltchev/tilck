@@ -30,12 +30,11 @@ int set_task_to_wake_after(task_info *task, u64 ticks)
    panic("Unable to find a free slot in timers_array.");
 }
 
-void cancel_timer(int timer_num)
+void cancel_timer(int timer_num, task_info *ti)
 {
-   ASSERT(timers_array[timer_num].task != NULL);
-   task_info *t = timers_array[timer_num].task;
-   timers_array[timer_num].task = NULL;
-   wait_obj_reset(&t->wobj);
+   if (BOOL_COMPARE_AND_SWAP(&timers_array[timer_num].task, ti, NULL)) {
+      wait_obj_reset(&ti->wobj);
+   }
 }
 
 static task_info *tick_all_timers(void)
@@ -58,7 +57,7 @@ static task_info *tick_all_timers(void)
          /* In no case a sleeping task could go to kernel and get here */
          ASSERT(get_curr_task() != last_ready_task);
 
-         cancel_timer(i);
+         cancel_timer(i, last_ready_task);
          task_change_state(last_ready_task, TASK_STATE_RUNNABLE);
       }
    }
@@ -72,19 +71,14 @@ void kernel_sleep(u64 ticks)
    kernel_yield();
 }
 
-
-void cmos_read_datetime(void);
-
-
 #if KERNEL_TRACK_NESTED_INTERRUPTS
+   static u32 slow_timer_irq_handler_count = 0;
 
-u32 slow_timer_irq_handler_count = 0;
-
-void print_slow_timer_irq_handler_counter(void)
-{
-   printk("slow_timer_irq_handler_counter: %u\n", slow_timer_irq_handler_count);
-}
-
+   void print_slow_timer_irq_handler_counter(void)
+   {
+      printk("slow_timer_irq_handler_counter: %u\n",
+             slow_timer_irq_handler_count);
+   }
 #endif
 
 int timer_irq_handler(regs *context)

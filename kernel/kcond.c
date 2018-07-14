@@ -55,7 +55,7 @@ void kcond_signal_single(kcond *c, task_info *ti)
    }
 
    if (c->timer_num >= 0)
-      cancel_timer(c->timer_num);
+      cancel_timer(c->timer_num, ti);
 
    wait_obj_reset(&ti->wobj);
    task_change_state(ti, TASK_STATE_RUNNABLE);

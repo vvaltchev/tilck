@@ -191,7 +191,7 @@ void kernel_sleep(u64 ticks);
 void join_kernel_thread(int tid);
 
 int set_task_to_wake_after(task_info *task, u64 ticks);
-void cancel_timer(int timer_num);
+void cancel_timer(int timer_num, task_info *ti);
 
 
 // TODO: consider moving these functions and the sched ones in sched.h
