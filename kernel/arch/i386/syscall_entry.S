@@ -57,6 +57,7 @@ FUNC(sysenter_entry):
    mov fs, ax
    mov gs, ax
 
+   push 0 # custom_flags
    push offset .sysenter_resume
    mov eax, esp
    cld            # set DF = 0, as C compilers by default assume that.
@@ -66,6 +67,9 @@ FUNC(sysenter_entry):
    add esp, 8     # skip the previousy-pushed 'eax' and kernel_resume_eip
 
 .sysenter_resume:
+
+   add esp, 4 # discard custom_flags
+
    pop gs
    pop fs
    pop es
@@ -144,6 +148,7 @@ FUNC(asm_soft_interrupt_entry):
    mov fs, ax
    mov gs, ax
 
+   push 0 # custom_flags
    push offset .soft_interrupt_resume
    mov eax, esp
    cld            # Set DF = 0, as C compilers by default assume that.
@@ -153,6 +158,9 @@ FUNC(asm_soft_interrupt_entry):
    add esp, 8     # Discard the previousy-pushed 'eax' and kernel_resume_eip
 
 .soft_interrupt_resume:
+
+   add esp, 4 # discard custom_flags
+
    pop gs
    pop fs
    pop es

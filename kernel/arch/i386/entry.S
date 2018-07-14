@@ -184,6 +184,7 @@ FUNC(asm_kernel_yield):
    push fs
    push gs
 
+   push 0 # custom_flags
    push offset .kernel_yield_resume
    mov eax, esp
 
@@ -205,6 +206,9 @@ FUNC(asm_kernel_yield):
    ret
 
 .kernel_yield_resume:
+
+   add esp, 4 # discard custom_flags
+
    pop gs
    pop fs
    pop es
@@ -235,6 +239,7 @@ FUNC(panic_save_current_state):
    push fs
    push gs
 
+   push 0 # custom_flags
    push offset .kernel_yield_resume
    mov eax, esp
 

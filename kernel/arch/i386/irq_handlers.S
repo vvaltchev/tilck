@@ -23,8 +23,8 @@ FUNC(asm_irq_entry):
    mov fs, ax
    mov gs, ax
 
+   push 0 # custom_flags
    push offset .irq_resume
-
    mov eax, esp
    cld            # Set DF = 0, as C compilers by default assume that.
    push eax
@@ -33,6 +33,9 @@ FUNC(asm_irq_entry):
    add esp, 8     # Discard the previousy-pushed 'eax' and kernel_resume_eip
 
 .irq_resume:
+
+   add esp, 4 # discard custom_flags
+
    pop gs
    pop fs
    pop es
