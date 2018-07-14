@@ -25,15 +25,9 @@ FUNC(asm_kernel_yield):
    pushf             # push EFLAGS
    sub esp, 16       # skip cs, eip, err_code, int_num
 
-   pusha             # Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
-                     # Note: the value of the pushed ESP is the one before
-                     # the pusha instruction.
-   push ds
-   push es
-   push fs
-   push gs
+   save_base_regs
+   skip_push_custom_flags
 
-   push 0 # custom_flags
    push offset .kernel_yield_resume
    mov eax, esp
 
@@ -56,7 +50,7 @@ FUNC(asm_kernel_yield):
 
 .kernel_yield_resume:
 
-   skip_cr0_ts
+   skip_pop_custom_flags
    resume_base_regs
    add esp, 16     # Discard int_num, err_code, eip, cs
    popf
@@ -75,15 +69,9 @@ FUNC(panic_save_current_state):
    push 0            # err_code
    push -1           # int_num
 
-   pusha             # Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
-                     # Note: the value of the pushed ESP is the one before
-                     # the pusha instruction.
-   push ds
-   push es
-   push fs
-   push gs
+   save_base_regs
+   skip_push_custom_flags
 
-   push 0 # custom_flags
    push offset .kernel_yield_resume
    mov eax, esp
 

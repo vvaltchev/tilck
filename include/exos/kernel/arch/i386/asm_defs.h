@@ -32,7 +32,7 @@
    mov CR0, eax
 .endm
 
-.macro save_custom_flags additional_flags
+.macro push_custom_flags additional_flags
    mov eax, CR0
    and eax, 8       // CR0_TS
    xor eax, 8       // flip the bit:
@@ -40,9 +40,11 @@
 
    or eax, \additional_flags
    push eax         // custom_flags
+
+   asm_disable_cr0_ts
 .endm
 
-.macro resume_cr0_ts
+.macro pop_custom_flags
    pop eax       // custom_flags
    and eax, 8    // REGS_FL_FPU_ENABLED
    xor eax, 8    // flip the bit
@@ -52,8 +54,22 @@
    mov CR0, ebx
 .endm
 
-.macro skip_cr0_ts
+.macro skip_push_custom_flags
+   push 0
+.endm
+
+.macro skip_pop_custom_flags
    add esp, 4
+.endm
+
+.macro save_base_regs
+   pusha             # Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
+                     # Note: the value of the pushed ESP is the one before
+                     # the pusha instruction.
+   push ds
+   push es
+   push fs
+   push gs
 .endm
 
 .macro resume_base_regs
@@ -62,6 +78,27 @@
    pop es
    pop ds
    popa
+.endm
+
+.macro kernel_entry_common
+
+   save_base_regs
+
+   mov ax, X86_KERNEL_DATA_SEL
+   mov ds, ax
+   mov es, ax
+   mov fs, ax
+   mov gs, ax
+
+.endm
+
+.macro kernel_exit_common
+
+   resume_base_regs
+
+   add esp, 8        // Discards the pushed err_code and int_num
+   iret
+
 .endm
 
 #endif

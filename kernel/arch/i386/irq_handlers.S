@@ -12,19 +12,8 @@
 # IRQs common entry point
 FUNC(asm_irq_entry):
 
-   pusha          #  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
-   push ds
-   push es
-   push fs
-   push gs
-   mov ax, X86_KERNEL_DATA_SEL
-   mov ds, ax
-   mov es, ax
-   mov fs, ax
-   mov gs, ax
-
-   save_custom_flags (0)
-   asm_disable_cr0_ts
+   kernel_entry_common
+   push_custom_flags (0)
 
    push offset .irq_resume
    mov eax, esp
@@ -35,11 +24,8 @@ FUNC(asm_irq_entry):
    add esp, 8     # Discard the previousy-pushed 'eax' and kernel_resume_eip
 
 .irq_resume:
-
-   resume_cr0_ts
-   resume_base_regs
-   add esp, 8     # Discard err_code and int_num
-   iret
+   pop_custom_flags
+   kernel_exit_common
 
 END_FUNC(asm_irq_entry)
 

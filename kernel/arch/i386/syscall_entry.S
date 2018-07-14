@@ -45,19 +45,8 @@ FUNC(sysenter_entry):
    push 0            # unused "err_code"
    push 0x80
 
-   pusha
-   push ds
-   push es
-   push fs
-   push gs
-   mov ax, X86_KERNEL_DATA_SEL
-   mov ds, ax
-   mov es, ax
-   mov fs, ax
-   mov gs, ax
-
-   save_custom_flags (REGS_FL_SYSENTER)
-   asm_disable_cr0_ts
+   kernel_entry_common
+   push_custom_flags (REGS_FL_SYSENTER)
 
    push offset .sysenter_resume
    mov eax, esp
@@ -69,7 +58,7 @@ FUNC(sysenter_entry):
 
 .sysenter_resume:
 
-   resume_cr0_ts
+   pop_custom_flags
    resume_base_regs
 
    add esp, 16   # skip err_code and int_num, eip, cs
@@ -133,19 +122,8 @@ END_FUNC(syscall_int80_entry)
 # Soft interrupts common entry point
 FUNC(asm_soft_interrupt_entry):
 
-   pusha          #  Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
-   push ds
-   push es
-   push fs
-   push gs
-   mov ax, X86_KERNEL_DATA_SEL
-   mov ds, ax
-   mov es, ax
-   mov fs, ax
-   mov gs, ax
-
-   save_custom_flags (0)
-   asm_disable_cr0_ts
+   kernel_entry_common
+   push_custom_flags (0)
 
    push offset .soft_interrupt_resume
    mov eax, esp
@@ -156,11 +134,8 @@ FUNC(asm_soft_interrupt_entry):
    add esp, 8     # Discard the previousy-pushed 'eax' and kernel_resume_eip
 
 .soft_interrupt_resume:
-
-   resume_cr0_ts
-   resume_base_regs
-   add esp, 8     # Discards the pushed err_code and int_num
-   iret
+   pop_custom_flags
+   kernel_exit_common
 
 END_FUNC(asm_soft_interrupt_entry)
 
