@@ -282,8 +282,10 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
 
    if (get_curr_task() && get_curr_task()->arch.fpu_regs) {
       hw_fpu_enable();
-      /* Before switching to another task, the FPU regs of the current one */
-      save_current_fpu_regs(false);
+      {
+         save_current_fpu_regs(false);
+      }
+      hw_fpu_disable();
    }
 
    DEBUG_printk("[sched] Switching to tid: %i %s %s\n",

@@ -245,11 +245,12 @@ fpu_no_coprocessor_fault_handler(regs *r)
    arch_task_info_members *arch_fields = &get_curr_task()->arch;
 
    /*
-    * We can hit this fault at MOST once in the lifetime of a task. This sanity
-    * check ensures that, in no case, we allocated the fpu_regs and then, for
+    * We can hit this fault at MOST once in the lifetime of a task. These sanity
+    * checks ensures that, in no case, we allocated the fpu_regs and then, for
     * any reason, we scheduled the task with FPU disabled.
     */
    ASSERT(arch_fields->fpu_regs == NULL);
+   ASSERT(!(r->custom_flags & REGS_FL_FPU_ENABLED));
 
    if (x86_cpu_features.can_use_avx) {
       arch_fields->fpu_regs = kzmalloc(CPU_XSAVE_AREA_SIZE);
@@ -258,7 +259,7 @@ fpu_no_coprocessor_fault_handler(regs *r)
    }
 
    VERIFY(arch_fields->fpu_regs); // TODO: handle this OOM case
-   hw_fpu_enable();
+   r->custom_flags |= REGS_FL_FPU_ENABLED;
 }
 
 static volatile bool in_fpu_context;

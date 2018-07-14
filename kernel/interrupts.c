@@ -204,11 +204,6 @@ void soft_interrupt_entry(regs *r)
       ASSERT(!are_interrupts_enabled());
    }
 
-   // XXX: hack
-   if (get_curr_task()->arch.fpu_regs) {
-     hw_fpu_enable();
-   }
-
    enable_preemption();
    pop_nested_interrupt();
    DEBUG_check_preemption_enabled_for_usermode();

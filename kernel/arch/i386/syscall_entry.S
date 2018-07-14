@@ -42,8 +42,7 @@ FUNC(sysenter_entry):
    push 0xcafecafe   # CS: unused for sysenter context regs
    push 0xcafecafe   # EIP: unused for sysenter context regs
 
-   push 1           # use 1 as "err_code" to distinguish a context saved
-                    # with sysenter from a context saved with int 0x80.
+   push 0            # unused "err_code"
    push 0x80
 
    pusha
@@ -57,7 +56,16 @@ FUNC(sysenter_entry):
    mov fs, ax
    mov gs, ax
 
-   push 0 # custom_flags
+   mov eax, CR0
+   and eax, 8       # CR0_TS
+   xor eax, 8       # flip the bit (we use FPU_ENABLED while TS=1 => disabled)
+   or eax, REGS_FL_SYSENTER
+   push eax         # custom_flags
+   # Disable the FPU instructions
+   mov eax, CR0
+   and eax, ~8
+   mov CR0, eax
+
    push offset .sysenter_resume
    mov eax, esp
    cld            # set DF = 0, as C compilers by default assume that.
@@ -68,7 +76,13 @@ FUNC(sysenter_entry):
 
 .sysenter_resume:
 
-   add esp, 4 # discard custom_flags
+   pop eax    # custom_flags
+   and eax, 8 # REGS_FL_FPU_ENABLED
+   xor eax, 8 # flip the bit
+   mov ebx, CR0
+   and ebx, ~8
+   or ebx, eax
+   mov CR0, ebx
 
    pop gs
    pop fs
@@ -148,7 +162,15 @@ FUNC(asm_soft_interrupt_entry):
    mov fs, ax
    mov gs, ax
 
-   push 0 # custom_flags
+   mov eax, CR0
+   and eax, 8       # CR0_TS
+   xor eax, 8       # flip the bit (we use FPU_ENABLED while TS=1 => disabled)
+   push eax         # custom_flags
+   # Disable the FPU instructions
+   mov eax, CR0
+   and eax, ~8
+   mov CR0, eax
+
    push offset .soft_interrupt_resume
    mov eax, esp
    cld            # Set DF = 0, as C compilers by default assume that.
@@ -159,7 +181,13 @@ FUNC(asm_soft_interrupt_entry):
 
 .soft_interrupt_resume:
 
-   add esp, 4 # discard custom_flags
+   pop eax    # custom_flags
+   and eax, 8 # REGS_FL_FPU_ENABLED
+   xor eax, 8 # flip the bit
+   mov ebx, CR0
+   and ebx, ~8
+   or ebx, eax
+   mov CR0, ebx
 
    pop gs
    pop fs

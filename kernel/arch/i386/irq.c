@@ -312,12 +312,6 @@ void handle_irq(regs *r)
    }
 
    pop_nested_interrupt();
-
-   // XXX: hack
-   if (get_curr_task()->arch.fpu_regs) {
-     hw_fpu_enable();
-   }
-
    enable_preemption();
    handle_irq_clear_mask(irq);
 

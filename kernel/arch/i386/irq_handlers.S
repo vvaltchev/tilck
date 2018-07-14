@@ -23,7 +23,15 @@ FUNC(asm_irq_entry):
    mov fs, ax
    mov gs, ax
 
-   push 0 # custom_flags
+   mov eax, CR0
+   and eax, 8       # CR0_TS
+   xor eax, 8       # flip the bit (we use FPU_ENABLED while TS=1 => disabled)
+   push eax         # custom_flags
+   # Disable the FPU instructions
+   mov eax, CR0
+   and eax, ~8
+   mov CR0, eax
+
    push offset .irq_resume
    mov eax, esp
    cld            # Set DF = 0, as C compilers by default assume that.
@@ -34,7 +42,13 @@ FUNC(asm_irq_entry):
 
 .irq_resume:
 
-   add esp, 4 # discard custom_flags
+   pop eax    # custom_flags
+   and eax, 8 # REGS_FL_FPU_ENABLED
+   xor eax, 8 # flip the bit
+   mov ebx, CR0
+   and ebx, ~8
+   or ebx, eax
+   mov CR0, ebx
 
    pop gs
    pop fs
