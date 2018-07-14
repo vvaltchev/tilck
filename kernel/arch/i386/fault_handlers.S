@@ -6,73 +6,71 @@
 #include <exos/kernel/arch/i386/asm_defs.h>
 
 .section .text
-.global isr_entry_points
+.global fault_entry_points
 
-.macro isr number
-   FUNC(isr\number):
+.macro fault number
+   FUNC(fault\number):
    push 0
    push \number
    jmp asm_soft_interrupt_entry
-   END_FUNC(isr\number)
+   END_FUNC(fault\number)
 .endm
 
-.macro isr_with_err_code number
-   FUNC(isr\number):
+.macro fault_with_err_code number
+   FUNC(fault\number):
    push \number
    jmp asm_soft_interrupt_entry
-   END_FUNC(isr\number)
+   END_FUNC(fault\number)
 .endm
 
-isr 0 # Divide By Zero Exception
-isr 1 # Debug Exception
-isr 2 # Non Maskable Interrupt Exception
-isr 3 # Int 3 Exception
-isr 4 # INTO Exception
-isr 5 # Out of Bounds Exception
-isr 6 # Invalid Opcode Exception
-isr 7 # Coprocessor Not Available Exception
+fault 0 # Divide By Zero Exception
+fault 1 # Debug Exception
+fault 2 # Non Maskable Interrupt Exception
+fault 3 # Int 3 Exception
+fault 4 # INTO Exception
+fault 5 # Out of Bounds Exception
+fault 6 # Invalid Opcode Exception
+fault 7 # Coprocessor Not Available Exception
 
-isr_with_err_code 8 #  8: Double Fault Exception
+fault_with_err_code 8 # Double Fault Exception
 
-isr 9 # Coprocessor Segment Overrun Exception
+fault 9 # Coprocessor Segment Overrun Exception
 
-isr_with_err_code 10 # 10: Bad TSS Exception
-isr_with_err_code 11 # Segment Not Present Exception
-isr_with_err_code 12 # Stack Fault Exception
-isr_with_err_code 13 # General Protection Fault Exception
-isr_with_err_code 14 # Page Fault Exception
+fault_with_err_code 10 # Bad TSS Exception
+fault_with_err_code 11 # Segment Not Present Exception
+fault_with_err_code 12 # Stack Fault Exception
+fault_with_err_code 13 # General Protection Fault Exception
+fault_with_err_code 14 # Page Fault Exception
 
-isr 15 # Reserved Exception
-isr 16 # Floating Point Exception
-isr 17 # Alignment Check Exception
-isr 18 # Machine Check Exception
+fault 15 # Reserved Exception
+fault 16 # Floating Point Exception
+fault 17 # Alignment Check Exception
+fault 18 # Machine Check Exception
 
-# Reserved ISRs
-
-isr 19
-isr 20
-isr 21
-isr 22
-isr 23
-isr 24
-isr 25
-isr 26
-isr 27
-isr 28
-isr 29
-isr 30
-isr 31
+fault 19
+fault 20
+fault 21
+fault 22
+fault 23
+fault 24
+fault 25
+fault 26
+fault 27
+fault 28
+fault 29
+fault 30
+fault 31
 
 
 .altmacro
 
-.macro insert_isr_addr num
-   .long isr\num
+.macro insert_fault_addr num
+   .long fault\num
 .endm
 
-isr_entry_points:
+fault_entry_points:
 .set i, 0
 .rept 32
-   insert_isr_addr %i
+   insert_fault_addr %i
    .set i, i+1
 .endr

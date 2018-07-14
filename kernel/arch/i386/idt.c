@@ -7,7 +7,7 @@
 
 #include "idt_int.h"
 
-extern void (*isr_entry_points[32])(void);
+extern void (*fault_entry_points[32])(void);
 
 static idt_entry idt[256];
 static interrupt_handler fault_handlers[32];
@@ -122,7 +122,7 @@ void setup_soft_interrupt_handling(void)
    /* Set the entries for the x86 faults (exceptions) */
    for (int i = 0; i < 32; i++) {
       idt_set_entry(i,
-                    isr_entry_points[i],
+                    fault_entry_points[i],
                     X86_KERNEL_CODE_SEL,
                     IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL0);
    }
