@@ -166,13 +166,10 @@ void irq_entry(regs *r)
 {
    ASSERT(!are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
-   DEBUG_check_preemption_enabled_for_usermode();
    ASSERT(get_curr_task() != NULL);
    DEBUG_check_not_same_interrupt_nested(regs_intnum(r));
 
    handle_irq(r);
-
-   DEBUG_check_preemption_enabled_for_usermode();
 }
 
 void soft_interrupt_entry(regs *r)
@@ -180,7 +177,9 @@ void soft_interrupt_entry(regs *r)
    const int int_num = regs_intnum(r);
    ASSERT(!are_interrupts_enabled());
 
-   DEBUG_check_preemption_enabled_for_usermode();
+   if (int_num == SYSCALL_SOFT_INTERRUPT)
+      DEBUG_check_preemption_enabled_for_usermode();
+
    push_nested_interrupt(int_num);
    disable_preemption();
 
@@ -206,6 +205,8 @@ void soft_interrupt_entry(regs *r)
 
    enable_preemption();
    pop_nested_interrupt();
-   DEBUG_check_preemption_enabled_for_usermode();
+
+   if (int_num == SYSCALL_SOFT_INTERRUPT)
+      DEBUG_check_preemption_enabled_for_usermode();
 }
 
