@@ -299,6 +299,8 @@ static void printk_append_to_ringbuf(const char *buf, size_t size)
 
 void vprintk(const char *fmt, va_list args)
 {
+   static const char truncated_str[] = "[...]";
+
    char buf[256];
    int written = 0;
    bool prefix = in_panic() ? false : true;
@@ -315,6 +317,20 @@ void vprintk(const char *fmt, va_list args)
       written = snprintk(buf, sizeof(buf), "[kernel] ");
 
    written += vsnprintk(buf + written, sizeof(buf) - written, fmt, args);
+
+   if (written == sizeof(buf)) {
+
+      /*
+       * Corner case: the buffer is completely full and the final \0 has been
+       * included in 'written'.
+       */
+
+      memcpy(buf + sizeof(buf) - sizeof(truncated_str),
+             truncated_str,
+             sizeof(truncated_str));
+
+      written--;
+   }
 
    if (!term_is_initialized()) {
       printk_append_to_ringbuf(buf, written);
