@@ -109,7 +109,7 @@ static NODISCARD bool kb_ctrl_full_wait(void)
 
       iters++;
 
-   } while (ctrl & KB_CTRL_INPUT_FULL);
+   } while (ctrl & (KB_CTRL_INPUT_FULL | KB_CTRL_OUTPUT_FULL));
 
    return true;
 }
