@@ -222,24 +222,26 @@ void setup_segmentation(void)
 
 static void DEBUG_set_thread_area(user_desc *d)
 {
-   printk("set_thread_area(e: %i,\n"
-          "                         base: %p,\n"
-          "                         lim: %p,\n"
-          "                         32-bit: %u,\n"
-          "                         contents: %u,\n"
-          "                         re_only: %u,\n"
-          "                         lim in pag: %u,\n"
-          "                         seg_not_pres: %u,\n"
-          "                         useable: %u)\n",
-          d->entry_number,
-          d->base_addr,
-          d->limit,
-          d->seg_32bit,
-          d->contents,
-          d->read_exec_only,
-          d->limit_in_pages,
-          d->seg_not_present,
-          d->useable);
+   printk(NO_PREFIX "set_thread_area(e: %i,\n"
+                    "                base: %p,\n"
+                    "                lim: %p,\n"
+                    "                32-bit: %u,\n",
+                    d->entry_number,
+                    d->base_addr,
+                    d->limit,
+                    d->seg_32bit);
+
+   printk(NO_PREFIX "                contents: %u,\n"
+                    "                re_only: %u,\n"
+                    "                lim in pag: %u,\n",
+                    d->contents,
+                    d->read_exec_only,
+                    d->limit_in_pages);
+
+   printk(NO_PREFIX "                seg_not_pres: %u,\n"
+                    "                useable: %u)\n",
+                    d->seg_not_present,
+                    d->useable);
 }
 
 static int find_available_slot_in_user_task(void)
@@ -272,6 +274,8 @@ sptr sys_set_thread_area(user_desc *ud)
 
    if (rc != 0)
       return -EFAULT;
+
+   //DEBUG_set_thread_area(&dc);
 
    disable_preemption();
 
