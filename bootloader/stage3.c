@@ -33,14 +33,22 @@ typedef struct {
 
 #define BIOS_INT15h_READ_MEMORY_MAP        0xE820
 #define BIOS_INT15h_READ_MEMORY_MAP_MAGIC  0x534D4150
+
 #define BIOS_MEM_REGION_USABLE             1
 #define BIOS_MEM_REGION_RESERVED           2
 #define BIOS_MEM_REGION_ACPI_RECLAIMABLE   3
 #define BIOS_MEM_REGION_ACPI_NVS_MEMORY    4
 #define BIOS_MEM_REGION_BAD                5
 
-mem_area_t *mem_area = (void *)(16 * KB + sizeof(mem_area_t));
-u32 mem_area_elems = 0;
+STATIC_ASSERT(BIOS_MEM_REGION_USABLE == MULTIBOOT_MEMORY_AVAILABLE);
+STATIC_ASSERT(BIOS_MEM_REGION_RESERVED == MULTIBOOT_MEMORY_RESERVED);
+STATIC_ASSERT(BIOS_MEM_REGION_ACPI_RECLAIMABLE == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE);
+STATIC_ASSERT(BIOS_MEM_REGION_ACPI_NVS_MEMORY == MULTIBOOT_MEMORY_NVS);
+STATIC_ASSERT(BIOS_MEM_REGION_BAD == MULTIBOOT_MEMORY_BADRAM);
+
+
+mem_area_t *mem_areas = (void *)(16 * KB + sizeof(mem_area_t));
+u32 mem_areas_count = 0;
 
 bool graphics_mode; // false = text mode
 u32 fb_paddr;
@@ -127,8 +135,6 @@ void load_elf_kernel(const char *filepath, void **entry)
    }
 }
 
-
-
 multiboot_info_t *setup_multiboot_info(void)
 {
    multiboot_info_t *mbi;
@@ -141,8 +147,7 @@ multiboot_info_t *setup_multiboot_info(void)
    bzero(mod, sizeof(*mod));
 
    mbi->mem_lower = 0;
-   mbi->mem_upper = (128-1)*1024; /* temp hack */
-   //mbi->mem_upper = (4-1)*1024; /* temp hack */
+   mbi->mem_upper = 0;
 
    mbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
 
@@ -173,6 +178,34 @@ multiboot_info_t *setup_multiboot_info(void)
     */
    mod->mod_end = mod->mod_start + ramdisk_used_bytes;
 
+   mbi->flags |= MULTIBOOT_INFO_MEM_MAP;
+
+   multiboot_memory_map_t *mmmap =
+      (void *)mbi->mods_addr + (mbi->mods_count * sizeof(multiboot_module_t));
+
+   mbi->mmap_addr = (u32)mmmap;
+   mbi->mmap_length = mem_areas_count * sizeof(multiboot_memory_map_t);
+
+   for (u32 i = 0; i < mem_areas_count; i++) {
+
+      mem_area_t *ma = mem_areas + i;
+
+      if (ma->type == BIOS_MEM_REGION_USABLE) {
+         if (ma->base < mbi->mem_lower * KB)
+            mbi->mem_lower = ma->base / KB;
+
+         if (ma->base + ma->len > mbi->mem_upper * KB)
+            mbi->mem_upper = (ma->base + ma->len) / KB;
+      }
+
+      mmmap[i] = (multiboot_memory_map_t) {
+         .size = sizeof(multiboot_memory_map_t),
+         .addr = ma->base,
+         .len = ma->len,
+         .type = ma->type
+      };
+   }
+
    return mbi;
 }
 
@@ -189,11 +222,11 @@ void read_memory_map(void)
 
    } bios_mem_area_t;
 
-   STATIC_ASSERT(sizeof(bios_mem_area_t) == sizeof(mem_area_t));
+   STATIC_ASSERT(sizeof(bios_mem_area_t) <= sizeof(mem_area_t));
 
    u32 eax, ebx, ecx, edx, esi, edi, flags;
 
-   bios_mem_area_t *bios_mem_area = ((void *) (mem_area - 1));
+   bios_mem_area_t *bios_mem_area = ((void *) (mem_areas - 1));
    bzero(bios_mem_area, sizeof(bios_mem_area_t));
 
    /* es = 0 */
@@ -202,7 +235,7 @@ void read_memory_map(void)
 
    while (true) {
 
-      mem_area->acpi = 1;
+      mem_areas->acpi = 1;
       eax = BIOS_INT15h_READ_MEMORY_MAP;
       edx = BIOS_INT15h_READ_MEMORY_MAP_MAGIC;
       ecx = sizeof(bios_mem_area_t);
@@ -214,10 +247,11 @@ void read_memory_map(void)
          break;
 
       if (flags & EFLAGS_CF) {
-         if (edi == (u32)mem_area)
-            panic("Error while reading memory map: CF set");
-         else
+
+         if (mem_areas_count > 0)
             break;
+
+         panic("Error while reading memory map: CF set");
       }
 
       if (eax != BIOS_INT15h_READ_MEMORY_MAP_MAGIC)
@@ -230,15 +264,15 @@ void read_memory_map(void)
          .acpi = bios_mem_area->acpi
       };
 
-      memcpy(mem_area + mem_area_elems, &m, sizeof(mem_area_t));
-      mem_area_elems++;
+      memcpy(mem_areas + mem_areas_count, &m, sizeof(mem_area_t));
+      mem_areas_count++;
    }
 }
 
 void dump_mem_map(void)
 {
-   for (u32 i = 0; i < mem_area_elems; i++) {
-      mem_area_t *m = &mem_area[i];
+   for (u32 i = 0; i < mem_areas_count; i++) {
+      mem_area_t *m = mem_areas + i;
       printk("mem area 0x%llx - 0x%llx (%u)\n", m->base, m->len, m->type);
    }
 }
