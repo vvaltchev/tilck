@@ -42,6 +42,9 @@ void vprintk(const char *fmt, va_list args)
                } else if (*ptr == 'i' || *ptr == 'd') {
                   itoa64(va_arg(args, s64), buf);
                   print_string(buf);
+               } else if (*ptr == 'x') {
+                  uitoa64_hex_fixed(va_arg(args, u64), buf);
+                  print_string(buf);
                }
             }
          }

@@ -21,6 +21,27 @@
  */
 #define IN(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
 
+
+typedef struct {
+
+   u64 base;
+   u64 len;
+   u32 type;
+   u32 acpi;
+
+} mem_area_t;
+
+#define BIOS_INT15h_READ_MEMORY_MAP        0xE820
+#define BIOS_INT15h_READ_MEMORY_MAP_MAGIC  0x534D4150
+#define BIOS_MEM_REGION_USABLE             1
+#define BIOS_MEM_REGION_RESERVED           2
+#define BIOS_MEM_REGION_ACPI_RECLAIMABLE   3
+#define BIOS_MEM_REGION_ACPI_NVS_MEMORY    4
+#define BIOS_MEM_REGION_BAD                5
+
+mem_area_t *mem_area = (void *)(16 * KB + sizeof(mem_area_t));
+u32 mem_area_elems = 0;
+
 bool graphics_mode; // false = text mode
 u32 fb_paddr;
 u32 fb_pitch;
@@ -155,8 +176,72 @@ multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
-uint32_t
-crc32(uint32_t crc, const void *buf, size_t size);
+void read_memory_map(void)
+{
+   typedef struct PACKED {
+
+      u32 base_low;
+      u32 base_hi;
+      u32 len_low;
+      u32 len_hi;
+      u32 type;
+      u32 acpi;
+
+   } bios_mem_area_t;
+
+   STATIC_ASSERT(sizeof(bios_mem_area_t) == sizeof(mem_area_t));
+
+   u32 eax, ebx, ecx, edx, esi, edi, flags;
+
+   bios_mem_area_t *bios_mem_area = ((void *) (mem_area - 1));
+   bzero(bios_mem_area, sizeof(bios_mem_area_t));
+
+   /* es = 0 */
+   edi = (u32)bios_mem_area;
+   ebx = 0;
+
+   while (true) {
+
+      mem_area->acpi = 1;
+      eax = BIOS_INT15h_READ_MEMORY_MAP;
+      edx = BIOS_INT15h_READ_MEMORY_MAP_MAGIC;
+      ecx = sizeof(bios_mem_area_t);
+
+      realmode_call(&realmode_int_15h, &eax, &ebx,
+                    &ecx, &edx, &esi, &edi, &flags);
+
+      if (!ebx)
+         break;
+
+      if (flags & EFLAGS_CF) {
+         if (edi == (u32)mem_area)
+            panic("Error while reading memory map: CF set");
+         else
+            break;
+      }
+
+      if (eax != BIOS_INT15h_READ_MEMORY_MAP_MAGIC)
+         panic("Error while reading memory map: eax != magic");
+
+      mem_area_t m = {
+         .base = bios_mem_area->base_low | ((u64)bios_mem_area->base_hi << 32),
+         .len = bios_mem_area->len_low | ((u64)bios_mem_area->len_hi << 32),
+         .type = bios_mem_area->type,
+         .acpi = bios_mem_area->acpi
+      };
+
+      memcpy(mem_area + mem_area_elems, &m, sizeof(mem_area_t));
+      mem_area_elems++;
+   }
+}
+
+void dump_mem_map(void)
+{
+   for (u32 i = 0; i < mem_area_elems; i++) {
+      mem_area_t *m = &mem_area[i];
+      printk("mem area 0x%llx - 0x%llx (%u)\n", m->base, m->len, m->type);
+   }
+}
 
 void bootloader_main(void)
 {
@@ -180,6 +265,9 @@ void bootloader_main(void)
    if (!x86_cpu_features.edx1.pse) {
       panic("Sorry, but your CPU is too old: no PSE");
    }
+
+   read_memory_map();
+   dump_mem_map();
 
    bool success =
       read_drive_params(current_device,

@@ -8,32 +8,33 @@
 .code16
 
 .global realmode_test_out
-realmode_test_out:
+.global realmode_int_10h
+.global realmode_int_13h
+.global realmode_int_15h
+.global realmode_int_16h
 
+realmode_test_out:
    mov eax, 2*1024*1024
    mov ebx, 99
    mov ecx, 100
    mov edx, 102
    mov esi, 300
    mov edi, 350
-
    ret
 
-.global realmode_int_10h
 realmode_int_10h:
-
    int 0x10
    ret
 
-.global realmode_int_13h
 realmode_int_13h:
-
    int 0x13
    ret
 
-.global realmode_int_16h
-realmode_int_16h:
+realmode_int_15h:
+   int 0x15
+   ret
 
+realmode_int_16h:
    int 0x16
    ret
 
