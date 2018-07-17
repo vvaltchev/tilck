@@ -263,6 +263,41 @@ end:
    return status;
 }
 
+EFI_MEMORY_DESCRIPTOR mmap[512];
+
+int efi_to_multiboot_mem_type(UINT32 type)
+{
+   switch (type) {
+
+      case EfiReservedMemoryType:
+      case EfiRuntimeServicesCode:
+      case EfiRuntimeServicesData:
+         return MULTIBOOT_MEMORY_RESERVED;
+
+      case EfiLoaderCode:
+      case EfiLoaderData:
+      case EfiBootServicesCode:
+      case EfiBootServicesData:
+      case EfiConventionalMemory:
+         return MULTIBOOT_MEMORY_AVAILABLE;
+
+      case EfiUnusableMemory:
+         return MULTIBOOT_MEMORY_BADRAM;
+
+      case EfiACPIReclaimMemory:
+         return MULTIBOOT_MEMORY_ACPI_RECLAIMABLE;
+
+      case EfiACPIMemoryNVS:
+         return MULTIBOOT_MEMORY_NVS;
+
+      case EfiMemoryMappedIO:
+      case EfiMemoryMappedIOPortSpace:
+      case EfiPalCode:
+         return MULTIBOOT_MEMORY_RESERVED;
+   }
+}
+
+
 /**
  * efi_main - The entry point for the EFI application
  * @image: firmware-allocated handle that identifies the image
@@ -327,7 +362,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = LoadRamdisk(image, loaded_image, &ramdisk_paddr, &ramdisk_size);
    HANDLE_EFI_ERROR("LoadRamdisk failed");
 
-   EFI_PHYSICAL_ADDRESS multiboot_buffer = 4 * MB;
+   EFI_PHYSICAL_ADDRESS multiboot_buffer = 64 * KB;
 
    status = BS->AllocatePages(AllocateMaxAddress,
                               EfiLoaderData,
@@ -343,7 +378,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    SetMbiFramebufferInfo(mbi, xres, yres);
 
    mbi->mem_lower = 0;
-   mbi->mem_upper = 127*1024; /* temp hack */
+   mbi->mem_upper = 0;
 
    mbi->flags |= MULTIBOOT_INFO_MODS;
    mbi->mods_addr = (UINTN)mod;
@@ -356,15 +391,85 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    Print(L"mbi buffer: 0x%x\n", multiboot_buffer);
    Print(L"RAMDISK paddr: 0x%x\n", ramdisk_paddr);
    Print(L"RAMDISK size: %u\n", ramdisk_size);
-   //Print(L"Press ANY key to boot the kernel...\r\n");
-   //WaitForKeyPress(ST);
 
-   EFI_MEMORY_DESCRIPTOR mmap[128];
    UINTN mmap_size, mapkey, desc_size;
    UINT32 desc_ver;
 
    mmap_size = sizeof(mmap);
+   status = BS->GetMemoryMap(&mmap_size, mmap, &mapkey, &desc_size, &desc_ver);
+   HANDLE_EFI_ERROR("BS->GetMemoryMap");
 
+   EFI_MEMORY_DESCRIPTOR *desc = (void *)mmap;
+
+   Print(L"Map size: %u bytes\r\n", mmap_size);
+   Print(L"Desc size: %u\r\n", desc_size);
+
+   UINT32 last_type = (UINT32) -1;
+   UINT64 last_start = 0;
+   UINT64 last_end = 0;
+
+   do {
+
+      UINT32 type = efi_to_multiboot_mem_type(desc->Type);
+      UINT64 start = desc->PhysicalStart;
+      UINT64 end = start + desc->NumberOfPages * 4096;
+
+      //Print(L"   0x%x - 0x%x (%d)\r\n", start, end, type);
+
+      if (last_type != type || last_end != start) {
+
+         /*
+          * The new region is not contiguous with the previous one OR it has
+          * a different type.
+          */
+
+         if (last_type != (UINT32)-1) {
+
+            Print(L"0x%x - 0x%x (%d)\r\n", last_start, last_end, last_type);
+
+            if (last_type == MULTIBOOT_MEMORY_AVAILABLE) {
+               if (last_start < mbi->mem_lower * KB)
+                  mbi->mem_lower = last_start / KB;
+
+               if (last_end > mbi->mem_upper * KB)
+                  mbi->mem_upper = last_end / KB;
+            }
+         }
+
+         last_type = type;
+         last_start = start;
+      }
+
+
+      /*
+       * last_type == type && last_end == start
+       *
+       * We're continuing a region of the same "multiboot type", just move the
+       * end forward.
+       */
+      last_end = end;
+
+      desc = (void *)desc + desc_size;
+
+
+   } while ((UINTN)desc < (UINTN)mmap + mmap_size);
+
+   Print(L"0x%x - 0x%x (%d)\r\n", last_start, last_end, last_type);
+
+   if (last_type == MULTIBOOT_MEMORY_AVAILABLE) {
+      if (last_start < mbi->mem_lower * KB)
+         mbi->mem_lower = last_start / KB;
+
+      if (last_end > mbi->mem_upper * KB)
+         mbi->mem_upper = last_end / KB;
+   }
+
+
+   Print(L"Press ANY key to boot the kernel...\r\n");
+   WaitForKeyPress(ST);
+
+
+   mmap_size = sizeof(mmap);
    status = BS->GetMemoryMap(&mmap_size, mmap, &mapkey, &desc_size, &desc_ver);
    HANDLE_EFI_ERROR("BS->GetMemoryMap");
 
