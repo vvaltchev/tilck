@@ -32,6 +32,7 @@
 
 extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
+extern u32 memsize_in_mb;
 
 void save_multiboot_memory_map(multiboot_info_t *mbi);
 void dump_system_memory_map(void);
@@ -55,6 +56,8 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
    }
 
    multiboot_info_t *mbi = (void *)(uptr)mbi_addr;
+   memsize_in_mb = mbi->mem_upper/KB + 1;
+
 
    if (mbi->flags & MULTIBOOT_INFO_MODS) {
       if (mbi->mods_count >= 1) {

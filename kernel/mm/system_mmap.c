@@ -12,7 +12,6 @@ uptr mem_areas_tot_size;
 
 void save_multiboot_memory_map(multiboot_info_t *mbi)
 {
-   memsize_in_mb = mbi->mem_upper/KB + 1;
    mem_areas_tot_size = MIN(sizeof(mem_areas_buf), mbi->mmap_length);
 
    memcpy(mem_areas,
