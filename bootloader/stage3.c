@@ -199,7 +199,7 @@ multiboot_info_t *setup_multiboot_info(void)
       }
 
       mmmap[i] = (multiboot_memory_map_t) {
-         .size = sizeof(multiboot_memory_map_t),
+         .size = sizeof(multiboot_memory_map_t) - sizeof(u32),
          .addr = ma->base,
          .len = ma->len,
          .type = ma->type
@@ -301,7 +301,7 @@ void bootloader_main(void)
    }
 
    read_memory_map();
-   dump_mem_map();
+   //dump_mem_map();
 
    bool success =
       read_drive_params(current_device,

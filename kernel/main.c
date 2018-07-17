@@ -30,9 +30,11 @@
 #include <exos/kernel/arch/generic_x86/textmode_video.h>
 #include <exos/kernel/arch/generic_x86/fpu_memcpy.h>
 
-extern u32 memsize_in_mb;
 extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
+
+void save_multiboot_memory_map(multiboot_info_t *mbi);
+void dump_system_memory_map(void);
 
 /* Variables used by the cmdline parsing code */
 
@@ -53,15 +55,12 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
    }
 
    multiboot_info_t *mbi = (void *)(uptr)mbi_addr;
-   memsize_in_mb = (mbi->mem_upper)/1024 + 1;
 
    if (mbi->flags & MULTIBOOT_INFO_MODS) {
       if (mbi->mods_count >= 1) {
-
          multiboot_module_t *mod = ((multiboot_module_t *)(uptr)mbi->mods_addr);
          ramdisk_paddr = mod->mod_start;
          ramdisk_size = mod->mod_end - mod->mod_start;
-
       }
    }
 
@@ -73,6 +72,10 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
       if (mbi->framebuffer_type != MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT) {
          set_framebuffer_info_from_mbi(mbi);
       }
+   }
+
+   if (mbi->flags & MULTIBOOT_INFO_MEM_MAP) {
+      save_multiboot_memory_map(mbi);
    }
 }
 
@@ -89,6 +92,8 @@ void show_system_info(void)
           1000 / (TIMER_HZ / TIME_SLOT_JIFFIES),
           get_phys_mem_mb(),
           in_hypervisor() ? "[IN HYPERVISOR]" : "");
+
+   dump_system_memory_map();
 }
 
 

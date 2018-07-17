@@ -59,7 +59,7 @@ int vsnprintk(char *buf, size_t size, const char *fmt, va_list args)
 {
    char *const initial_buf = buf;
    char *buf_end = buf + size;
-   char intbuf[32];
+   char intbuf[64];
    int right_padding = 0;
 
    while (*fmt) {
@@ -103,6 +103,9 @@ switch_case:
                WRITE_STR(intbuf);
             } else if (*fmt == 'i' || *fmt == 'd') {
                itoa64(va_arg(args, s64), intbuf);
+               WRITE_STR(intbuf);
+            } else if (*fmt == 'x') {
+               uitoa64_hex_fixed(va_arg(args, u64), intbuf);
                WRITE_STR(intbuf);
             }
 
