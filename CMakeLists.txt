@@ -58,6 +58,9 @@ set(KMALLOC_SUPPORT_LEAK_DETECTOR OFF CACHE BOOL
 set(KMALLOC_HEAPS_CREATION_DEBUG OFF CACHE BOOL
     "Make init_kmalloc() to list the heaps")
 
+set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
+    "Make the bootloader to poison all the available memory")
+
 list(
    APPEND kernel_opts_enabled_by_default
 
@@ -72,6 +75,7 @@ list(
    KMALLOC_SUPPORT_DEBUG_LOG
    KMALLOC_SUPPORT_LEAK_DETECTOR
    KMALLOC_HEAPS_CREATION_DEBUG
+   BOOTLOADER_POISON_MEMORY
 )
 
 ###########################################################

@@ -84,9 +84,6 @@ void load_elf_kernel(const char *filepath, void **entry)
    fat_header *hdr = (fat_header *)RAMDISK_PADDR;
    void *free_space = (void *) (RAMDISK_PADDR + ramdisk_used_bytes);
 
-   /* DEBUG: poison the free memory, up to 128 MB */
-   memset(free_space, 0xFA, (128 * MB - RAMDISK_PADDR - ramdisk_used_bytes));
-
    fat_entry *e = fat_search_entry(hdr, fat_get_type(hdr), filepath);
 
    if (!e) {
@@ -277,6 +274,23 @@ void dump_mem_map(void)
    }
 }
 
+void poison_usable_memory(void)
+{
+   for (u32 i = 0; i < mem_areas_count; i++) {
+
+      mem_area_t *ma = mem_areas + i;
+
+      if (ma->type == BIOS_MEM_REGION_USABLE && ma->base >= MB) {
+
+         /* Poison only memory regions above the first MB */
+
+         memset32((void *)(uptr)ma->base,
+                  KMALLOC_FREE_MEM_POISON_VAL,
+                  ma->len / 4);
+      }
+   }
+}
+
 void bootloader_main(void)
 {
    void *entry;
@@ -302,6 +316,10 @@ void bootloader_main(void)
 
    read_memory_map();
    //dump_mem_map();
+
+#if BOOTLOADER_POISON_MEMORY
+   poison_usable_memory();
+#endif
 
    bool success =
       read_drive_params(current_device,
