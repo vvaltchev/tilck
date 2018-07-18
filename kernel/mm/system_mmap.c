@@ -43,7 +43,7 @@ void dump_system_memory_map(void)
    while ( ((uptr)ma-(uptr)mem_areas) < mem_areas_tot_size ) {
 
       printk("0x%llx - 0x%llx (%d)\n",
-             ma->addr, ma->len, ma->type);
+             ma->addr, ma->addr + ma->len, ma->type);
       ma = (void *)ma + ma->size + 4;
    }
 }

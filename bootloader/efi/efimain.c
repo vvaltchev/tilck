@@ -32,6 +32,7 @@
 
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres);
 void SetMbiFramebufferInfo(multiboot_info_t *mbi, u32 xres, u32 yres);
+EFI_MEMORY_DESCRIPTOR mmap[512];
 
 EFI_STATUS
 LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
@@ -263,7 +264,6 @@ end:
    return status;
 }
 
-EFI_MEMORY_DESCRIPTOR mmap[512];
 
 int efi_to_multiboot_mem_type(UINT32 type)
 {
@@ -366,7 +366,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    status = BS->AllocatePages(AllocateMaxAddress,
                               EfiLoaderData,
-                              1,
+                              4,
                               &multiboot_buffer);
    HANDLE_EFI_ERROR("AllocatePages");
 
@@ -385,6 +385,12 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    mbi->mods_count = 1;
    mod->mod_start = ramdisk_paddr;
    mod->mod_end = mod->mod_start + ramdisk_size;
+
+   mbi->flags |= MULTIBOOT_INFO_MEM_MAP;
+
+   multiboot_memory_map_t *multiboot_mmap =
+      (void *)(UINTN)mbi->mods_addr +
+      (mbi->mods_count * sizeof(multiboot_module_t));
 
 
    // Prepare for the actual boot
@@ -407,6 +413,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    UINT32 last_type = (UINT32) -1;
    UINT64 last_start = 0;
    UINT64 last_end = 0;
+   UINT32 mmap_elems_count = 0;
 
    do {
 
@@ -425,7 +432,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
          if (last_type != (UINT32)-1) {
 
-            Print(L"0x%x - 0x%x (%d)\r\n", last_start, last_end, last_type);
+            Print(L"0x%x - 0x%x (%d) {len: %u KB}\r\n",
+                  last_start, last_end, last_type, (last_end - last_start) / KB);
 
             if (last_type == MULTIBOOT_MEMORY_AVAILABLE) {
                if (last_start < mbi->mem_lower * KB)
@@ -434,6 +442,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                if (last_end > mbi->mem_upper * KB)
                   mbi->mem_upper = last_end / KB;
             }
+
+            multiboot_mmap[mmap_elems_count++] = (multiboot_memory_map_t) {
+               .size = sizeof(multiboot_memory_map_t) - sizeof(u32),
+               .addr = (multiboot_uint64_t)last_start,
+               .len = (multiboot_uint64_t)(last_end - last_start),
+               .type = last_type
+            };
          }
 
          last_type = type;
@@ -464,6 +479,17 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
          mbi->mem_upper = last_end / KB;
    }
 
+   multiboot_mmap[mmap_elems_count++] = (multiboot_memory_map_t) {
+      .size = sizeof(multiboot_memory_map_t) - sizeof(u32),
+      .addr = (multiboot_uint64_t)last_start,
+      .len = (multiboot_uint64_t)(last_end - last_start),
+      .type = last_type
+   };
+
+   mbi->mmap_addr = (UINTN)multiboot_mmap;
+   mbi->mmap_length = mmap_elems_count * sizeof(multiboot_memory_map_t);
+
+   Print(L"mmap_elems_count: %d\r\n", mmap_elems_count);
 
    Print(L"Press ANY key to boot the kernel...\r\n");
    WaitForKeyPress(ST);
