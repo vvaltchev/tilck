@@ -1,5 +1,5 @@
 
-#include "multiboot_funcs.h"
+#include "defs.h"
 #include "utils.h"
 
 #define EFI_MBI_MAX_ADDR (64 * KB)

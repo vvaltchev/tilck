@@ -1,7 +1,8 @@
 
+#include "defs.h"
 #include "utils.h"
 
-#ifdef BITS32
+#if defined(BITS32)
 
 void JumpToKernel(multiboot_info_t *mbi, void *entry_point)
 {
@@ -14,7 +15,7 @@ void JumpToKernel(multiboot_info_t *mbi, void *entry_point)
                : /* no clobber */);
 }
 
-#else
+#elif defined(BITS64)
 
 /* Defined in switchmode.S */
 void switch_to_pm32_and_jump_to_kernel(multiboot_info_t *mbi, void *entry);
@@ -23,6 +24,10 @@ void JumpToKernel(multiboot_info_t *mbi, void *entry_point)
 {
    switch_to_pm32_and_jump_to_kernel(mbi, entry_point);
 }
+
+#else
+
+#error Unknown architectre
 
 #endif
 

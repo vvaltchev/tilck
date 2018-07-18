@@ -1,19 +1,9 @@
 
-#include <efi.h>
-#include <efilib.h>
+#include "defs.h"
+#include "utils.h"
 #include <multiboot.h>
 
-#include "efibind.h"
-#include "efidef.h"
-#include "efidevp.h"
-#include "eficon.h"
-#include "efiapi.h"
-#include "efierr.h"
-#include "efiprot.h"
-
-#include "utils.h"
-
-void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
+static void PrintModeInfo(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
 {
    Print(L"Framebuffer addr: 0x%x\n", mode->FrameBufferBase);
    Print(L"Framebuffer size: %u\n", mode->FrameBufferSize);
@@ -31,7 +21,7 @@ void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
    Print(L"PixelsPerScanLine: %u\n", mode->Info->PixelsPerScanLine);
 }
 
-bool is_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
+static bool IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
    if (sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) != 4)
       return false;
@@ -39,19 +29,19 @@ bool is_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
    return mi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor;
 }
 
-bool is_mode_known(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
+static bool IsKnownAndSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
    if (is_exos_known_resolution(mi->HorizontalResolution,
                                 mi->VerticalResolution)) {
-      return is_supported(mi);
+      return IsSupported(mi);
    }
 
    return false;
 }
 
-bool is_exos_default_mode(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
+static bool IsExosDefaultMode(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
-   if (is_supported(mi))
+   if (IsSupported(mi))
       if (mi->HorizontalResolution == 800 && mi->VerticalResolution == 600)
          return true;
 
@@ -60,8 +50,8 @@ bool is_exos_default_mode(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 
 EFI_STATUS
 SetupGraphicMode(EFI_BOOT_SERVICES *BS,
-                 UINTN *saved_fb_addr,
-                 EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *saved_mode_info)
+                 UINTN *fb_addr,
+                 EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
 {
    UINTN status = EFI_SUCCESS;
 
@@ -113,11 +103,12 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS,
       status = gProt->QueryMode(gProt, i, &sizeof_info, &mi);
       HANDLE_EFI_ERROR("QueryMode() failed");
 
-      if (is_exos_default_mode(mi)) {
+      if (IsExosDefaultMode(mi)) {
          default_mode = i;
       }
 
-      if (is_mode_known(mi) || (is_supported(mi) && i == mode->MaxMode - 1)) {
+      if (IsKnownAndSupported(mi) || (IsSupported(mi) && i == mode->MaxMode-1))
+      {
          Print(L"Mode [%u]: %u x %u%s\n",
                my_modes_count,
                mi->HorizontalResolution,
@@ -129,7 +120,7 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS,
 
       u32 pixels = mi->HorizontalResolution * mi->VerticalResolution;
 
-      if (is_supported(mi) && pixels > max_mode_pixels) {
+      if (IsSupported(mi) && pixels > max_mode_pixels) {
          max_mode_pixels = pixels;
          max_mode_num = i;
          max_mode_xres = mi->HorizontalResolution;
@@ -150,16 +141,15 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS,
       my_modes[my_modes_count++] = max_mode_num;
    }
 
-   int my_mode_sel;
 
    while (true) {
 
+      int my_mode_sel;
       Print(L"Select mode [0-%d] (or ENTER for default): ", my_modes_count - 1);
       k = WaitForKeyPress(ST);
 
       if (k.UnicodeChar == '\n' || k.UnicodeChar == '\r') {
           wanted_mode = default_mode;
-          //Print(L"[CURRENT]\n");
           break;
       }
 
@@ -196,17 +186,10 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS,
       }
    }
 
-   //save_mode_info(mode);
+   *fb_addr = mode->FrameBufferBase;
+   *mode_info = *mode->Info;
 
-   *saved_mode_info = *mode->Info;
-   *saved_fb_addr = mode->FrameBufferBase;
-
-
-
-   print_mode_info(mode);
-
-   //*xres = mode->Info->HorizontalResolution;
-   //*yres = mode->Info->VerticalResolution;
+   PrintModeInfo(mode);
 
 end:
    return status;

@@ -1,11 +1,9 @@
 
-#include <exos/common/basic_defs.h>
-
-#include <efi.h>
-#include <efilib.h>
-#include <multiboot.h>
+#pragma once
+#include "defs.h"
 
 #define PAGE_SIZE         4096
+
 #define _CONCAT(a, b) a##b
 #define CONCAT(a, b) _CONCAT(a, b)
 
