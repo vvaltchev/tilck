@@ -32,7 +32,13 @@
 
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres);
 void SetMbiFramebufferInfo(multiboot_info_t *mbi, u32 xres, u32 yres);
+
 EFI_MEMORY_DESCRIPTOR mmap[512];
+
+multiboot_info_t *mbi;
+multiboot_memory_map_t *multiboot_mmap;
+UINT32 mmap_elems_count = 0;
+
 
 EFI_STATUS
 LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
@@ -297,6 +303,88 @@ int efi_to_multiboot_mem_type(UINT32 type)
    }
 }
 
+void AddMemoryRegion(UINT64 start, UINT64 end, UINT32 type)
+{
+   if (type == MULTIBOOT_MEMORY_AVAILABLE) {
+      if (start < mbi->mem_lower * KB)
+         mbi->mem_lower = start / KB;
+
+      if (end > mbi->mem_upper * KB)
+         mbi->mem_upper = end / KB;
+   }
+
+   multiboot_mmap[mmap_elems_count++] = (multiboot_memory_map_t) {
+      .size = sizeof(multiboot_memory_map_t) - sizeof(u32),
+      .addr = (multiboot_uint64_t)start,
+      .len = (multiboot_uint64_t)(end - start),
+      .type = type
+   };
+}
+
+EFI_STATUS
+MultibootSaveMemoryMap(UINTN *mapkey)
+{
+   EFI_STATUS status = EFI_SUCCESS;
+   UINT32 last_type = (UINT32) -1;
+   UINT64 last_start = 0;
+   UINT64 last_end = 0;
+   UINTN mmap_size;
+   UINTN desc_size;
+   UINT32 desc_ver;
+
+   mbi->flags |= MULTIBOOT_INFO_MEM_MAP;
+
+   multiboot_mmap =
+      (void *)(UINTN)mbi->mods_addr +
+         (mbi->mods_count * sizeof(multiboot_module_t));
+
+   mmap_size = sizeof(mmap);
+   status = BS->GetMemoryMap(&mmap_size, mmap, mapkey, &desc_size, &desc_ver);
+   HANDLE_EFI_ERROR("BS->GetMemoryMap");
+
+   EFI_MEMORY_DESCRIPTOR *desc = (void *)mmap;
+
+   do {
+
+      UINT32 type = efi_to_multiboot_mem_type(desc->Type);
+      UINT64 start = desc->PhysicalStart;
+      UINT64 end = start + desc->NumberOfPages * 4096;
+
+      if (last_type != type || last_end != start) {
+
+         /*
+          * The new region is not contiguous with the previous one OR it has
+          * a different type.
+          */
+
+         if (last_type != (UINT32)-1) {
+            AddMemoryRegion(last_start, last_end, last_type);
+         }
+
+         last_type = type;
+         last_start = start;
+      }
+
+      /*
+       * last_type == type && last_end == start
+       *
+       * We're continuing a region of the same "multiboot type", just move the
+       * end forward.
+       */
+      last_end = end;
+
+      desc = (void *)desc + desc_size;
+
+   } while ((UINTN)desc < (UINTN)mmap + mmap_size);
+
+   AddMemoryRegion(last_start, last_end, last_type);
+
+   mbi->mmap_addr = (UINTN)multiboot_mmap;
+   mbi->mmap_length = mmap_elems_count * sizeof(multiboot_memory_map_t);
+
+end:
+   return status;
+}
 
 /**
  * efi_main - The entry point for the EFI application
@@ -318,7 +406,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    UINTN bufSize;
    void *kernel_entry = NULL;
-   multiboot_info_t *mbi;
    multiboot_module_t *mod;
 
    UINTN xres, yres;
@@ -386,118 +473,17 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    mod->mod_start = ramdisk_paddr;
    mod->mod_end = mod->mod_start + ramdisk_size;
 
-   mbi->flags |= MULTIBOOT_INFO_MEM_MAP;
-
-   multiboot_memory_map_t *multiboot_mmap =
-      (void *)(UINTN)mbi->mods_addr +
-      (mbi->mods_count * sizeof(multiboot_module_t));
-
-
    // Prepare for the actual boot
-   Print(L"mbi buffer: 0x%x\n", multiboot_buffer);
-   Print(L"RAMDISK paddr: 0x%x\n", ramdisk_paddr);
-   Print(L"RAMDISK size: %u\n", ramdisk_size);
+   // Print(L"mbi buffer: 0x%x\n", multiboot_buffer);
+   // Print(L"RAMDISK paddr: 0x%x\n", ramdisk_paddr);
+   // Print(L"RAMDISK size: %u\n", ramdisk_size);
 
-   UINTN mmap_size, mapkey, desc_size;
-   UINT32 desc_ver;
+   // Print(L"Press ANY key to boot the kernel...\r\n");
+   // WaitForKeyPress(ST);
 
-   mmap_size = sizeof(mmap);
-   status = BS->GetMemoryMap(&mmap_size, mmap, &mapkey, &desc_size, &desc_ver);
-   HANDLE_EFI_ERROR("BS->GetMemoryMap");
-
-   EFI_MEMORY_DESCRIPTOR *desc = (void *)mmap;
-
-   Print(L"Map size: %u bytes\r\n", mmap_size);
-   Print(L"Desc size: %u\r\n", desc_size);
-
-   UINT32 last_type = (UINT32) -1;
-   UINT64 last_start = 0;
-   UINT64 last_end = 0;
-   UINT32 mmap_elems_count = 0;
-
-   do {
-
-      UINT32 type = efi_to_multiboot_mem_type(desc->Type);
-      UINT64 start = desc->PhysicalStart;
-      UINT64 end = start + desc->NumberOfPages * 4096;
-
-      //Print(L"   0x%x - 0x%x (%d)\r\n", start, end, type);
-
-      if (last_type != type || last_end != start) {
-
-         /*
-          * The new region is not contiguous with the previous one OR it has
-          * a different type.
-          */
-
-         if (last_type != (UINT32)-1) {
-
-            Print(L"0x%x - 0x%x (%d) {len: %u KB}\r\n",
-                  last_start, last_end, last_type, (last_end - last_start) / KB);
-
-            if (last_type == MULTIBOOT_MEMORY_AVAILABLE) {
-               if (last_start < mbi->mem_lower * KB)
-                  mbi->mem_lower = last_start / KB;
-
-               if (last_end > mbi->mem_upper * KB)
-                  mbi->mem_upper = last_end / KB;
-            }
-
-            multiboot_mmap[mmap_elems_count++] = (multiboot_memory_map_t) {
-               .size = sizeof(multiboot_memory_map_t) - sizeof(u32),
-               .addr = (multiboot_uint64_t)last_start,
-               .len = (multiboot_uint64_t)(last_end - last_start),
-               .type = last_type
-            };
-         }
-
-         last_type = type;
-         last_start = start;
-      }
-
-
-      /*
-       * last_type == type && last_end == start
-       *
-       * We're continuing a region of the same "multiboot type", just move the
-       * end forward.
-       */
-      last_end = end;
-
-      desc = (void *)desc + desc_size;
-
-
-   } while ((UINTN)desc < (UINTN)mmap + mmap_size);
-
-   Print(L"0x%x - 0x%x (%d)\r\n", last_start, last_end, last_type);
-
-   if (last_type == MULTIBOOT_MEMORY_AVAILABLE) {
-      if (last_start < mbi->mem_lower * KB)
-         mbi->mem_lower = last_start / KB;
-
-      if (last_end > mbi->mem_upper * KB)
-         mbi->mem_upper = last_end / KB;
-   }
-
-   multiboot_mmap[mmap_elems_count++] = (multiboot_memory_map_t) {
-      .size = sizeof(multiboot_memory_map_t) - sizeof(u32),
-      .addr = (multiboot_uint64_t)last_start,
-      .len = (multiboot_uint64_t)(last_end - last_start),
-      .type = last_type
-   };
-
-   mbi->mmap_addr = (UINTN)multiboot_mmap;
-   mbi->mmap_length = mmap_elems_count * sizeof(multiboot_memory_map_t);
-
-   Print(L"mmap_elems_count: %d\r\n", mmap_elems_count);
-
-   Print(L"Press ANY key to boot the kernel...\r\n");
-   WaitForKeyPress(ST);
-
-
-   mmap_size = sizeof(mmap);
-   status = BS->GetMemoryMap(&mmap_size, mmap, &mapkey, &desc_size, &desc_ver);
-   HANDLE_EFI_ERROR("BS->GetMemoryMap");
+   UINTN mapkey;
+   status = MultibootSaveMemoryMap(&mapkey);
+   HANDLE_EFI_ERROR("MultibootSaveMemoryMap() failed");
 
    status = BS->ExitBootServices(image, mapkey);
    HANDLE_EFI_ERROR("BS->ExitBootServices");
