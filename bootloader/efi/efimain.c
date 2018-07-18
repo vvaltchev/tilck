@@ -1,10 +1,5 @@
 
 #include <exos/common/basic_defs.h>
-#include <exos/common/failsafe_assert.h>
-#include <exos/common/fat32_base.h>
-
-/* We HAVE to undef our ASSERT because the gnu-efi headers define it */
-#undef ASSERT
 
 #include <multiboot.h>
 #include <elf.h>
@@ -22,15 +17,16 @@
 
 #include "utils.h"
 
-#define _CONCAT(a, b) a##b
-#define CONCAT(a, b) _CONCAT(a, b)
-
-#define PAGE_SIZE         4096
 #define EFI_MBI_MAX_ADDR (64 * KB)
 #define TEMP_KERNEL_ADDR  (KERNEL_PADDR + KERNEL_MAX_SIZE)
 
 #define KERNEL_FILE CONCAT(L, KERNEL_FILE_PATH_EFI)
 
+EFI_STATUS
+LoadRamdisk(EFI_HANDLE image,
+            EFI_LOADED_IMAGE *loaded_image,
+            EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,
+            UINTN *ramdisk_size);
 
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres);
 void SetMbiFramebufferInfo(multiboot_info_t *mbi, u32 xres, u32 yres);
@@ -40,43 +36,6 @@ EFI_MEMORY_DESCRIPTOR mmap[512];
 multiboot_info_t *mbi;
 multiboot_memory_map_t *multiboot_mmap;
 UINT32 mmap_elems_count = 0;
-
-
-EFI_STATUS
-LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
-                 EFI_FILE_PROTOCOL *fileProt,
-                 INTN pagesCount,
-                 EFI_PHYSICAL_ADDRESS paddr,
-                 CHAR16 *filePath)
-{
-   EFI_STATUS status = EFI_SUCCESS;
-   EFI_FILE_PROTOCOL *fileHandle;
-   UINTN bufSize = pagesCount * PAGE_SIZE;
-   UINT32 crc32 = 0;
-
-   BS->AllocatePages(AllocateAddress, EfiLoaderData, pagesCount, &paddr);
-   HANDLE_EFI_ERROR("AllocatePages");
-
-   Print(L"File Open('%s')...\r\n", filePath);
-   status =
-      fileProt->Open(fileProt, &fileHandle, filePath, EFI_FILE_MODE_READ, 0);
-   HANDLE_EFI_ERROR("fileProt->Open");
-
-   Print(L"File Read()...\r\n");
-   status = fileProt->Read(fileHandle, &bufSize, (void *)(UINTN)paddr);
-   HANDLE_EFI_ERROR("fileProt->Read");
-
-   Print(L"Size read: %d\r\n", bufSize);
-
-   BS->CalculateCrc32((void*)(UINTN)paddr, bufSize, &crc32);
-   Print(L"Crc32: 0x%x\r\n", crc32);
-
-   status = fileHandle->Close(fileHandle);
-   HANDLE_EFI_ERROR("fileHandle->Close");
-
-end:
-   return status;
-}
 
 EFI_STATUS
 LoadElfKernel(EFI_BOOT_SERVICES *BS,
@@ -159,121 +118,8 @@ end:
    return status;
 }
 
-EFI_STATUS
-LoadRamdisk(EFI_HANDLE image,
-            EFI_LOADED_IMAGE *loaded_image,
-            EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,
-            UINTN *ramdisk_size)
-{
-   EFI_STATUS status = EFI_SUCCESS;
-   EFI_BLOCK_IO_PROTOCOL *blockio;
-   EFI_DISK_IO_PROTOCOL *ioprot;
 
-   u32 sector_size;
-   u32 sectors_per_fat;
-   u32 total_fat_size;
-   u32 total_used_bytes;
-   void *fat_hdr;
-
-   status = BS->OpenProtocol(loaded_image->DeviceHandle,
-                             &BlockIoProtocol,
-                             (void **)&blockio,
-                             image,
-                             NULL,
-                             EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-   HANDLE_EFI_ERROR("Getting a BlockIoProtocol handle");
-
-   status = BS->OpenProtocol(loaded_image->DeviceHandle,
-                             &DiskIoProtocol,
-                             (void **)&ioprot,
-                             image,
-                             NULL,
-                             EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-   HANDLE_EFI_ERROR("Getting a DiskIOProtocol handle");
-
-   Print(L"Loading ramdisk...\r\n");
-
-   status = BS->AllocatePages(AllocateAnyPages,
-                              EfiLoaderData,
-                              1, /* just 1 page */
-                              ramdisk_paddr_ref);
-   HANDLE_EFI_ERROR("AllocatePages");
-   fat_hdr = (void *)(UINTN)*ramdisk_paddr_ref;
-
-   status = ioprot->ReadDisk(ioprot,
-                             blockio->Media->MediaId,
-                             0, // offset from the beginnig of the partition!
-                             1 * KB, /* just the header */
-                             fat_hdr);
-   HANDLE_EFI_ERROR("ReadDisk");
-
-
-   sector_size = fat_get_sector_size(fat_hdr);
-   sectors_per_fat = fat_get_FATSz(fat_hdr);
-   total_fat_size = (fat_get_first_data_sector(fat_hdr) + 1) * sector_size;
-
-   status = BS->FreePages(*ramdisk_paddr_ref, 1);
-   HANDLE_EFI_ERROR("FreePages");
-
-   /* Now allocate memory for storing the whole FAT table */
-
-   status = BS->AllocatePages(AllocateAnyPages,
-                              EfiLoaderData,
-                              (total_fat_size / PAGE_SIZE) + 1,
-                              ramdisk_paddr_ref);
-   HANDLE_EFI_ERROR("AllocatePages");
-   fat_hdr = (void *)(UINTN)*ramdisk_paddr_ref;
-
-   status = ioprot->ReadDisk(ioprot,
-                             blockio->Media->MediaId,
-                             0,
-                             total_fat_size, /* only the FAT table */
-                             fat_hdr);
-   HANDLE_EFI_ERROR("ReadDisk");
-
-   total_used_bytes = fat_get_used_bytes(fat_hdr);
-   Print(L"RAMDISK used bytes: %u\n", total_used_bytes);
-
-   //*ramdisk_size = fat_get_TotSec(fat_hdr) * sector_size;
-
-   /*
-    * Pass via multiboot 'used bytes' as RAMDISK size instead of the real
-    * RAMDISK size. This is useful if the kernel uses the RAMDISK read-only.
-    */
-   *ramdisk_size = total_used_bytes;
-
-
-   /*
-    * Now we know everything. Free the memory used so far and allocate the
-    * big buffer to store all the "used" clusters of the FAT32 partition,
-    * including clearly the header and the FAT table.
-    */
-
-   status = BS->FreePages(*ramdisk_paddr_ref, (total_fat_size / PAGE_SIZE) + 1);
-   HANDLE_EFI_ERROR("FreePages");
-
-   *ramdisk_paddr_ref = KERNEL_PADDR + KERNEL_MAX_SIZE;
-
-   status = BS->AllocatePages(AllocateAddress,
-                              EfiLoaderData,
-                              (total_used_bytes / PAGE_SIZE) + 1,
-                              ramdisk_paddr_ref);
-   HANDLE_EFI_ERROR("AllocatePages");
-   fat_hdr = (void *)(UINTN)*ramdisk_paddr_ref;
-
-   status = ioprot->ReadDisk(ioprot,
-                             blockio->Media->MediaId,
-                             0,
-                             total_used_bytes,
-                             fat_hdr);
-   HANDLE_EFI_ERROR("ReadDisk");
-
-end:
-   return status;
-}
-
-
-int efi_to_multiboot_mem_type(UINT32 type)
+int EfiToMultibootMemType(UINT32 type)
 {
    switch (type) {
 
@@ -355,7 +201,7 @@ MultibootSaveMemoryMap(UINTN *mapkey)
 
    do {
 
-      UINT32 type = efi_to_multiboot_mem_type(desc->Type);
+      UINT32 type = EfiToMultibootMemType(desc->Type);
       UINT64 start = desc->PhysicalStart;
       UINT64 end = start + desc->NumberOfPages * 4096;
 
@@ -514,7 +360,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = BS->ExitBootServices(image, mapkey);
    HANDLE_EFI_ERROR("BS->ExitBootServices");
 
-   jump_to_kernel(mbi, kernel_entry);
+   JumpToKernel(mbi, kernel_entry);
 
 end:
    /* --- we should never get here in the normal case --- */

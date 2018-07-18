@@ -5,6 +5,11 @@
 #include <efilib.h>
 #include <multiboot.h>
 
+#define PAGE_SIZE         4096
+#define _CONCAT(a, b) a##b
+#define CONCAT(a, b) _CONCAT(a, b)
+
+
 /*
  * Checks if 'addr' is in the range [begin, end).
  */
@@ -29,8 +34,13 @@
 
 EFI_INPUT_KEY WaitForKeyPress(EFI_SYSTEM_TABLE *ST);
 
-void bzero(void *ptr, UINTN len);
-void DumpFirst16Bytes(char *buf);
-void *my_memcpy(void *dest, const void *src, size_t n);
-void *my_memmove(void *dest, const void *src, size_t n);
-void jump_to_kernel(multiboot_info_t *mbi, void *entry_point);
+EFI_STATUS
+LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
+                 EFI_FILE_PROTOCOL *fileProt,
+                 INTN pagesCount,
+                 EFI_PHYSICAL_ADDRESS paddr,
+                 CHAR16 *filePath);
+
+void JumpToKernel(multiboot_info_t *mbi, void *entry_point);
+
+
