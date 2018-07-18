@@ -13,29 +13,6 @@
 
 #include "utils.h"
 
-UINTN saved_fb_addr;
-UINTN saved_fb_size;
-EFI_GRAPHICS_OUTPUT_MODE_INFORMATION saved_mode_info;
-
-void SetMbiFramebufferInfo(multiboot_info_t *mbi, u32 xres, u32 yres)
-{
-   mbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
-   mbi->framebuffer_addr = saved_fb_addr;
-   mbi->framebuffer_pitch =
-      saved_mode_info.PixelsPerScanLine * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
-   mbi->framebuffer_width = xres;
-   mbi->framebuffer_height = yres;
-   mbi->framebuffer_bpp = sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) * 8;
-   mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
-}
-
-void save_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
-{
-   saved_mode_info = *mode->Info;
-   saved_fb_addr = mode->FrameBufferBase;
-   saved_fb_size = mode->FrameBufferSize;
-}
-
 void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
 {
    Print(L"Framebuffer addr: 0x%x\n", mode->FrameBufferBase);
@@ -51,7 +28,7 @@ void print_mode_info(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
    else
       Print(L"PixelFormat: other\n");
 
-   Print(L"PixelsPerScanLine: %u\n", saved_mode_info.PixelsPerScanLine);
+   Print(L"PixelsPerScanLine: %u\n", mode->Info->PixelsPerScanLine);
 }
 
 bool is_supported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
@@ -82,7 +59,9 @@ bool is_exos_default_mode(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 }
 
 EFI_STATUS
-SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres)
+SetupGraphicMode(EFI_BOOT_SERVICES *BS,
+                 UINTN *saved_fb_addr,
+                 EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *saved_mode_info)
 {
    UINTN status = EFI_SUCCESS;
 
@@ -192,7 +171,6 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres)
       }
 
       wanted_mode = my_modes[my_mode_sel];
-      //Print(L"%d\n", my_mode_sel);
       break;
    }
 
@@ -218,11 +196,17 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres)
       }
    }
 
-   save_mode_info(mode);
+   //save_mode_info(mode);
+
+   *saved_mode_info = *mode->Info;
+   *saved_fb_addr = mode->FrameBufferBase;
+
+
+
    print_mode_info(mode);
 
-   *xres = mode->Info->HorizontalResolution;
-   *yres = mode->Info->VerticalResolution;
+   //*xres = mode->Info->HorizontalResolution;
+   //*yres = mode->Info->VerticalResolution;
 
 end:
    return status;
