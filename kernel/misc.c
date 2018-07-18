@@ -5,9 +5,6 @@
 #include <exos/kernel/process.h>
 #include <exos/kernel/hal.h>
 
-uptr ramdisk_paddr;
-size_t ramdisk_size;
-
 char symtab_buf[24 * KB] __attribute__ ((section (".Symtab"))) = {0};
 char strtab_buf[24 * KB] __attribute__ ((section (".Strtab"))) = {0};
 

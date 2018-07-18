@@ -6,6 +6,9 @@
 #include <exos/kernel/paging.h>
 #include <exos/kernel/pageframe_allocator.h>
 
+extern u32 memsize_in_mb;
+
+
 /*
  * By mapping 4096 KB (one page) in 1 bit, a single 32-bit integer maps 128 KB.
  * Mapping 1 MB requires 8 integers.
@@ -22,7 +25,6 @@
 
 u32 pageframes_bitfield[8 * (MAX_MEM_SIZE_IN_MB - LINEAR_MAPPING_MB)];
 
-u32 memsize_in_mb;
 int pageframes_used;
 static u32 last_index;
 
