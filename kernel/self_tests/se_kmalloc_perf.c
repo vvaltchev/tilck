@@ -9,6 +9,8 @@
 
 #include "se_data.h"
 
+static void **allocations;
+
 static void kmalloc_perf_per_size(int size)
 {
    const int iters = size < 4096 ? 10000 : (size <= 16*KB ? 1000 : 100);
@@ -36,8 +38,12 @@ static void kmalloc_perf_per_size(int size)
 void selftest_kmalloc_perf(void)
 {
    const int iters = 1000;
-
    printk("*** kmalloc perf test ***\n", iters);
+
+   allocations = kmalloc(10000 * sizeof(void *));
+
+   if (!allocations)
+      panic("No enough memory for the 'allocations' buffer");
 
    u64 start = RDTSC();
 
