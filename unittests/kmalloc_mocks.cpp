@@ -45,9 +45,9 @@ void init_kmalloc_for_tests()
 {
    kmalloc_initialized = false;
    initialize_test_kernel_heap();
-   init_pageframe_allocator();
    suppress_printk = true;
    init_kmalloc();
+   init_pageframe_allocator();
    suppress_printk = false;
 }
 

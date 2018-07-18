@@ -178,11 +178,11 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_fpu_memcpy();
 
    setup_segmentation();
-   init_pageframe_allocator(); /* NOTE: unused at the moment */
 
    init_paging();
    init_kmalloc();
    init_paging_cow();
+   init_pageframe_allocator(); /* NOTE: unused at the moment */
 
    init_console();
 

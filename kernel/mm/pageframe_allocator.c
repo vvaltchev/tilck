@@ -3,6 +3,7 @@
 #include <exos/common/string_util.h>
 #include <exos/common/utils.h>
 
+#include <exos/kernel/kmalloc.h>
 #include <exos/kernel/paging.h>
 #include <exos/kernel/pageframe_allocator.h>
 
@@ -23,7 +24,7 @@ extern u32 memsize_in_mb;
  * bitfield's bit[0] corresponds to the pageframe at address LINEAR_MAPPING_MB.
  */
 
-u32 pageframes_bitfield[8 * (MAX_MEM_SIZE_IN_MB - LINEAR_MAPPING_MB)];
+STATIC u32 *pageframes_bitfield;
 
 int pageframes_used;
 static u32 last_index;
@@ -35,16 +36,21 @@ static u32 last_index;
 
 void init_pageframe_allocator(void)
 {
+   u32 size = 8 * (MAX_MEM_SIZE_IN_MB - LINEAR_MAPPING_MB);
+
+   if (!pageframes_bitfield) {
+
+      pageframes_bitfield = kzmalloc(size);
+
+      if (!pageframes_bitfield)
+         panic("Unable to allocate pageframes_bitfield");
+   }
+
 #ifdef KERNEL_TEST
-   bzero((void *)pageframes_bitfield, sizeof(pageframes_bitfield));
+   bzero(pageframes_bitfield, size);
    last_index = 0;
    pageframes_used = 0;
    memsize_in_mb = 256;
-#else
-   /*
-    * In the kernel, pageframes_bitfield is zeroed because it is in the BSS
-    * and this function is called only ONCE. No point in clearing the bitfield.
-    */
 #endif
 }
 
