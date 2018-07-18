@@ -40,7 +40,7 @@ void dump_system_memory_map(void)
 {
    multiboot_memory_map_t *ma = (void *)mem_areas;
 
-   while ( ((uptr)ma-(uptr)mem_areas) < mem_areas_tot_size ) {
+   while ((uptr)ma < (uptr)mem_areas + mem_areas_tot_size) {
 
       printk("0x%llx - 0x%llx (%d)\n",
              ma->addr, ma->addr + ma->len, ma->type);

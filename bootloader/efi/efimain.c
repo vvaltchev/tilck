@@ -26,9 +26,11 @@
 #define CONCAT(a, b) _CONCAT(a, b)
 
 #define PAGE_SIZE         4096
+#define EFI_MBI_MAX_ADDR (64 * KB)
 #define TEMP_KERNEL_ADDR  (KERNEL_PADDR + KERNEL_MAX_SIZE)
 
 #define KERNEL_FILE CONCAT(L, KERNEL_FILE_PATH_EFI)
+
 
 EFI_STATUS SetupGraphicMode(EFI_BOOT_SERVICES *BS, UINTN *xres, UINTN *yres);
 void SetMbiFramebufferInfo(multiboot_info_t *mbi, u32 xres, u32 yres);
@@ -324,6 +326,7 @@ void AddMemoryRegion(UINT64 start, UINT64 end, UINT32 type)
 EFI_STATUS
 MultibootSaveMemoryMap(UINTN *mapkey)
 {
+   EFI_MEMORY_DESCRIPTOR *desc = NULL;
    EFI_STATUS status = EFI_SUCCESS;
    UINT32 last_type = (UINT32) -1;
    UINT64 last_start = 0;
@@ -332,17 +335,23 @@ MultibootSaveMemoryMap(UINTN *mapkey)
    UINTN desc_size;
    UINT32 desc_ver;
 
-   mbi->flags |= MULTIBOOT_INFO_MEM_MAP;
+   EFI_PHYSICAL_ADDRESS multiboot_mmap_paddr = EFI_MBI_MAX_ADDR;
 
-   multiboot_mmap =
-      (void *)(UINTN)mbi->mods_addr +
-         (mbi->mods_count * sizeof(multiboot_module_t));
+   status = BS->AllocatePages(AllocateMaxAddress,
+                              EfiLoaderData,
+                              1,
+                              &multiboot_mmap_paddr);
+   HANDLE_EFI_ERROR("AllocatePages");
+
+   BS->SetMem((void *)(UINTN)multiboot_mmap_paddr, 1 * PAGE_SIZE, 0);
+   multiboot_mmap = (multiboot_memory_map_t *)(UINTN)multiboot_mmap_paddr;
 
    mmap_size = sizeof(mmap);
    status = BS->GetMemoryMap(&mmap_size, mmap, mapkey, &desc_size, &desc_ver);
    HANDLE_EFI_ERROR("BS->GetMemoryMap");
 
-   EFI_MEMORY_DESCRIPTOR *desc = (void *)mmap;
+   mbi->flags |= MULTIBOOT_INFO_MEM_MAP;
+   desc = (void *)mmap;
 
    do {
 
@@ -386,6 +395,33 @@ end:
    return status;
 }
 
+EFI_STATUS
+MbiSetRamdisk(EFI_PHYSICAL_ADDRESS ramdisk_paddr, UINTN ramdisk_size)
+{
+   EFI_STATUS status = EFI_SUCCESS;
+   EFI_PHYSICAL_ADDRESS multiboot_mod_addr = EFI_MBI_MAX_ADDR;
+   multiboot_module_t *mod;
+
+   status = BS->AllocatePages(AllocateMaxAddress,
+                              EfiLoaderData,
+                              1,
+                              &multiboot_mod_addr);
+   HANDLE_EFI_ERROR("AllocatePages");
+
+   BS->SetMem((void *)(UINTN)multiboot_mod_addr, 1 * PAGE_SIZE, 0);
+
+   mod = (multiboot_module_t *)(UINTN)multiboot_mod_addr;
+   mod->mod_start = ramdisk_paddr;
+   mod->mod_end = mod->mod_start + ramdisk_size;
+
+   mbi->flags |= MULTIBOOT_INFO_MODS;
+   mbi->mods_addr = (UINTN)mod;
+   mbi->mods_count = 1;
+
+end:
+   return status;
+}
+
 /**
  * efi_main - The entry point for the EFI application
  * @image: firmware-allocated handle that identifies the image
@@ -403,12 +439,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    EFI_PHYSICAL_ADDRESS ramdisk_paddr;
    UINTN ramdisk_size;
-
-   UINTN bufSize;
-   void *kernel_entry = NULL;
-   multiboot_module_t *mod;
-
    UINTN xres, yres;
+   UINTN bufSize;
+
+   void *kernel_entry = NULL;
 
    InitializeLib(image, ST);
 
@@ -449,29 +483,21 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = LoadRamdisk(image, loaded_image, &ramdisk_paddr, &ramdisk_size);
    HANDLE_EFI_ERROR("LoadRamdisk failed");
 
-   EFI_PHYSICAL_ADDRESS multiboot_buffer = 64 * KB;
+   EFI_PHYSICAL_ADDRESS multiboot_buffer = EFI_MBI_MAX_ADDR;
 
    status = BS->AllocatePages(AllocateMaxAddress,
                               EfiLoaderData,
-                              4,
+                              1,
                               &multiboot_buffer);
    HANDLE_EFI_ERROR("AllocatePages");
 
-   BS->SetMem((void *)(UINTN)multiboot_buffer, PAGE_SIZE, 0);
+   BS->SetMem((void *)(UINTN)multiboot_buffer, 1 * PAGE_SIZE, 0);
 
    mbi = (multiboot_info_t *)(UINTN)multiboot_buffer;
-   mod = (multiboot_module_t *)(UINTN)(multiboot_buffer + sizeof(*mbi));
-
    SetMbiFramebufferInfo(mbi, xres, yres);
 
-   mbi->mem_lower = 0;
-   mbi->mem_upper = 0;
-
-   mbi->flags |= MULTIBOOT_INFO_MODS;
-   mbi->mods_addr = (UINTN)mod;
-   mbi->mods_count = 1;
-   mod->mod_start = ramdisk_paddr;
-   mod->mod_end = mod->mod_start + ramdisk_size;
+   status = MbiSetRamdisk(ramdisk_paddr, ramdisk_size);
+   HANDLE_EFI_ERROR("MbiSetRamdisk");
 
    // Prepare for the actual boot
    // Print(L"mbi buffer: 0x%x\n", multiboot_buffer);
@@ -483,7 +509,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    UINTN mapkey;
    status = MultibootSaveMemoryMap(&mapkey);
-   HANDLE_EFI_ERROR("MultibootSaveMemoryMap() failed");
+   HANDLE_EFI_ERROR("MultibootSaveMemoryMap");
 
    status = BS->ExitBootServices(image, mapkey);
    HANDLE_EFI_ERROR("BS->ExitBootServices");
