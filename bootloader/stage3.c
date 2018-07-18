@@ -34,17 +34,22 @@ typedef struct {
 #define BIOS_INT15h_READ_MEMORY_MAP        0xE820
 #define BIOS_INT15h_READ_MEMORY_MAP_MAGIC  0x534D4150
 
-#define BIOS_MEM_REGION_USABLE             1
-#define BIOS_MEM_REGION_RESERVED           2
-#define BIOS_MEM_REGION_ACPI_RECLAIMABLE   3
-#define BIOS_MEM_REGION_ACPI_NVS_MEMORY    4
-#define BIOS_MEM_REGION_BAD                5
+#define MEM_USABLE             1
+#define MEM_RESERVED           2
+#define MEM_ACPI_RECLAIMABLE   3
+#define MEM_ACPI_NVS_MEMORY    4
+#define MEM_BAD                5
 
-STATIC_ASSERT(BIOS_MEM_REGION_USABLE == MULTIBOOT_MEMORY_AVAILABLE);
-STATIC_ASSERT(BIOS_MEM_REGION_RESERVED == MULTIBOOT_MEMORY_RESERVED);
-STATIC_ASSERT(BIOS_MEM_REGION_ACPI_RECLAIMABLE == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE);
-STATIC_ASSERT(BIOS_MEM_REGION_ACPI_NVS_MEMORY == MULTIBOOT_MEMORY_NVS);
-STATIC_ASSERT(BIOS_MEM_REGION_BAD == MULTIBOOT_MEMORY_BADRAM);
+inline u32 bios_to_multiboot_mem_region(u32 bios_mem_type)
+{
+   STATIC_ASSERT(MEM_USABLE == MULTIBOOT_MEMORY_AVAILABLE);
+   STATIC_ASSERT(MEM_RESERVED == MULTIBOOT_MEMORY_RESERVED);
+   STATIC_ASSERT(MEM_ACPI_RECLAIMABLE == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE);
+   STATIC_ASSERT(MEM_ACPI_NVS_MEMORY == MULTIBOOT_MEMORY_NVS);
+   STATIC_ASSERT(MEM_BAD == MULTIBOOT_MEMORY_BADRAM);
+
+   return bios_mem_type;
+}
 
 
 mem_area_t *mem_areas = (void *)(16 * KB + sizeof(mem_area_t));
@@ -187,7 +192,7 @@ multiboot_info_t *setup_multiboot_info(void)
 
       mem_area_t *ma = mem_areas + i;
 
-      if (ma->type == BIOS_MEM_REGION_USABLE) {
+      if (ma->type == MEM_USABLE) {
          if (ma->base < mbi->mem_lower * KB)
             mbi->mem_lower = ma->base / KB;
 
@@ -199,7 +204,7 @@ multiboot_info_t *setup_multiboot_info(void)
          .size = sizeof(multiboot_memory_map_t) - sizeof(u32),
          .addr = ma->base,
          .len = ma->len,
-         .type = ma->type
+         .type = bios_to_multiboot_mem_region(ma->type)
       };
    }
 
@@ -280,7 +285,7 @@ void poison_usable_memory(void)
 
       mem_area_t *ma = mem_areas + i;
 
-      if (ma->type == BIOS_MEM_REGION_USABLE && ma->base >= MB) {
+      if (ma->type == MEM_USABLE && ma->base >= MB) {
 
          /* Poison only memory regions above the first MB */
 
