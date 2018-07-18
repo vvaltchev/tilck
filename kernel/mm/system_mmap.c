@@ -7,8 +7,10 @@
 #include <exos/kernel/sort.h>
 
 #include <multiboot.h>
+#include <elf.h>
 
-#define MEM_REG_EXTRA_RAMDISK 1
+#define MEM_REG_EXTRA_RAMDISK  1
+#define MEM_REG_EXTRA_KERNEL   2
 
 typedef struct {
 
@@ -61,6 +63,55 @@ void fix_mem_areas(void)
                           sizeof(memory_region_t),
                           mem_areas_count,
                           less_than_cmp_mem_area);
+
+   /* Merge adjacent regions */
+   for (int i = 0; i < (int)mem_areas_count - 1; i++) {
+
+      memory_region_t *ma = mem_areas + i;
+      memory_region_t *ma_next = ma + 1;
+
+      if (ma_next->type != ma->type || ma_next->extra != ma->extra)
+         continue;
+
+      if (ma_next->addr != ma->addr + ma->len)
+         continue;
+
+      /* If we got here, we hit two adjacent regions having the same type */
+
+      ma->len += ma_next->len;
+      memcpy(ma_next,
+             ma_next + 1,
+             (mem_areas_count - i - 2) * sizeof(memory_region_t));
+      mem_areas_count--;
+      i--; /* compensate the i++ in the for: we have to keep the index */
+   }
+}
+
+static void add_kernel_phdrs_to_mmap(void)
+{
+#ifdef BITS32
+
+   Elf32_Ehdr *h = (Elf32_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
+   Elf32_Phdr *phdrs = (void *)h + h->e_phoff;
+
+   for (int i = 0; i < h->e_phnum; i++) {
+
+      Elf32_Phdr *phdr = phdrs + i;
+
+      if (phdr->p_type != PT_LOAD)
+         continue;
+
+      mem_areas[mem_areas_count++] = (memory_region_t) {
+         .addr = phdr->p_paddr,
+         .len = phdr->p_memsz,
+         .type = MULTIBOOT_MEMORY_RESERVED,
+         .extra = MEM_REG_EXTRA_KERNEL
+      };
+   }
+
+#else
+   NOT_IMPLEMENTED();
+#endif
 }
 
 void save_multiboot_memory_map(multiboot_info_t *mbi)
@@ -89,6 +140,7 @@ void save_multiboot_memory_map(multiboot_info_t *mbi)
       };
    }
 
+   add_kernel_phdrs_to_mmap();
    fix_mem_areas();
 }
 
@@ -97,6 +149,9 @@ static const char *mem_region_extra_to_str(u32 e)
    if (e == MEM_REG_EXTRA_RAMDISK)
       return "RDSK";
 
+   if (e == MEM_REG_EXTRA_KERNEL)
+      return "KRNL";
+
    return "    ";
 }
 
@@ -104,7 +159,7 @@ void dump_system_memory_map(void)
 {
    printk("System's memory map\n");
    printk("---------------------------------------------------------------\n");
-   printk("       START       -         END        (T, Extr)\n");
+   printk("       START                 END        (T, Extr)\n");
    for (u32 i = 0; i < mem_areas_count; i++) {
 
       memory_region_t *ma = mem_areas + i;
