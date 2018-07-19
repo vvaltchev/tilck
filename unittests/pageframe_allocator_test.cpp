@@ -12,6 +12,7 @@ extern "C" {
 
 TEST(alloc_pageframe, seq_alloc)
 {
+   init_kmalloc_for_tests();
    init_pageframe_allocator();
 
    ASSERT_EQ((uptr)get_usable_pg_count(), 128 * MB / PAGE_SIZE);
@@ -35,6 +36,7 @@ TEST(alloc_pageframe, seq_alloc)
 
 TEST(alloc_pageframe, seq_alloc_free)
 {
+   init_kmalloc_for_tests();
    init_pageframe_allocator();
 
    for (uptr i = 0; ; i++) {
@@ -84,6 +86,7 @@ TEST(alloc_pageframe, seq_alloc_free)
 
 TEST(alloc_pageframe, one_pageframe_free)
 {
+   init_kmalloc_for_tests();
    init_pageframe_allocator();
 
    for (uptr i = 0; ; i++) {
@@ -109,6 +112,7 @@ TEST(alloc_pageframe, one_pageframe_free)
 
 TEST(alloc_pageframe, hybrid)
 {
+   init_kmalloc_for_tests();
    init_pageframe_allocator();
 
    uptr paddr = alloc_32_pageframes();
