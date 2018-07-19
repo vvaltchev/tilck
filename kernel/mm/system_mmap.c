@@ -25,12 +25,12 @@ typedef struct {
 u32 memsize_in_mb;
 
 memory_region_t mem_regions[512];
-uptr mem_regions_count;
+int mem_regions_count;
 
 uptr ramdisk_paddr;
 size_t ramdisk_size;
 
-static int less_than_cmp_mem_region(const void *a, const void *b)
+STATIC int less_than_cmp_mem_region(const void *a, const void *b)
 {
    const memory_region_t *m1 = a;
    const memory_region_t *m2 = b;
@@ -44,9 +44,26 @@ static int less_than_cmp_mem_region(const void *a, const void *b)
    return 1;
 }
 
-void align_mem_regions_to_page_boundary(void)
+STATIC void append_mem_region(memory_region_t r)
 {
-   for (u32 i = 0; i < mem_regions_count; i++) {
+   if (mem_regions_count >= (int)ARRAY_SIZE(mem_regions))
+      panic("Too many memory regions (limit: %u)", ARRAY_SIZE(mem_regions));
+
+   mem_regions[mem_regions_count++] = r;
+}
+
+STATIC void remove_mem_region(int i)
+{
+   memory_region_t *ma = mem_regions + i;
+   const int rem = mem_regions_count - i - 1;
+
+   memcpy(ma, ma + 1, rem * sizeof(memory_region_t));
+   mem_regions_count--; /* decrease the number of memory regions */
+}
+
+STATIC void align_mem_regions_to_page_boundary(void)
+{
+   for (int i = 0; i < mem_regions_count; i++) {
 
       memory_region_t *ma = mem_regions + i;
 
@@ -61,9 +78,9 @@ void align_mem_regions_to_page_boundary(void)
    }
 }
 
-void merge_adj_mem_regions(void)
+STATIC void merge_adj_mem_regions(void)
 {
-   for (int i = 0; i < (int)mem_regions_count - 1; i++) {
+   for (int i = 0; i < mem_regions_count - 1; i++) {
 
       memory_region_t *ma = mem_regions + i;
       memory_region_t *ma_next = ma + 1;
@@ -76,16 +93,202 @@ void merge_adj_mem_regions(void)
 
       /* If we got here, we hit two adjacent regions having the same type */
 
-      const int rem = mem_regions_count - i - 2;
-
       ma->len += ma_next->len;
-      memcpy(ma_next, ma_next + 1, rem * sizeof(memory_region_t));
-      mem_regions_count--; /* decrease the number of memory regions */
+      remove_mem_region(i + 1);
       i--; /* compensate the i++ in the for loop: we have to keep the index */
    }
 }
 
-void fix_mem_regions(void)
+STATIC void handle_region_overlap(int r1_index, int r2_index)
+{
+   memory_region_t *r1 = mem_regions + r1_index;
+   memory_region_t *r2 = mem_regions + r2_index;
+
+   u64 s1 = r1->addr;
+   u64 s2 = r2->addr;
+
+   if (s2 < s1) {
+
+      /*
+       * Skip the following case:
+       *
+       *                +------------------------+
+       *                |        region 1        |
+       *                +------------------------+
+       *  +----------------------+
+       *  |       region 2       |
+       *  +----------------------+
+       *
+       * Reason: we'll handle the case when i and j are swapped.
+       */
+      return;
+   }
+
+   u64 e1 = r1->addr + r1->len;
+   u64 e2 = r2->addr + r2->len;
+
+   if (s2 >= s1 + e2) {
+
+      /*
+       * Skip the following case:
+       *
+       *  +----------------------+
+       *  |       region 1       |
+       *  +----------------------+
+       *                         +----------------------+
+       *                         |       region 2       |
+       *                         +----------------------+
+       *
+       * Reason: no overlap.
+       */
+      return;
+   }
+
+   if (s2 == s1 && e2 < e1) {
+
+      /*
+       * Case 1:
+       *  +---------------------------------+
+       *  |            region 1             |
+       *  +---------------------------------+
+       *  +---------------+
+       *  |   region 2    |
+       *  +---------------+
+       */
+
+      if (r1->type > r2->type) {
+
+         /*
+          * Region 1's type is stricter than region 2's. Just remove region 2.
+          */
+
+         remove_mem_region(r2_index);
+         return;
+      }
+
+      /*
+       * Region 2's type is stricter, move region 1's start:
+       *                  +-----------------+
+       *                  |    region 1     |
+       *                  +-----------------+
+       *  +---------------+
+       *  |   region 2    |
+       *  +---------------+
+       *
+       */
+      r2->addr = e2;
+      return;
+   }
+
+   if (s2 > s1 && e2 < e1) {
+
+      /*
+       * Case 2:
+       *  +---------------------------------------------------+
+       *  |                    region 1                       |
+       *  +---------------------------------------------------+
+       *                  +---------------+
+       *                  |   region 2    |
+       *                  +---------------+
+       */
+
+      if (r1->type > r2->type) {
+
+         /*
+          * Region 1's type is stricter than region 2's. Just remove region 2.
+          */
+
+         remove_mem_region(r2_index);
+         return;
+      }
+
+      /*
+       * Region 2's type is stricter, we need to split region 1 in two parts:
+       *  +---------------+               +-------------------+
+       *  | region 1 [1]  |               |   region 1 [2]    |
+       *  +---------------+               +-------------------+
+       *                  +---------------+
+       *                  |   region 2    |
+       *                  +---------------+
+       */
+
+      r1->len = (s2 - s1);
+
+      append_mem_region((memory_region_t) {
+         .addr = e2,
+         .len = (e1 - e2),
+         .type = r1->type,
+         .extra = r1->extra
+      });
+
+      return;
+   }
+
+   if (s2 > s1 && e2 == e1) {
+
+      /*
+       * Case 3:
+       *  +---------------------------------+
+       *  |            region 1             |
+       *  +---------------------------------+
+       *                    +---------------+
+       *                    |   region 2    |
+       *                    +---------------+
+       */
+
+      if (r1->type > r2->type) {
+
+         /*
+          * Region 1's type is stricter than region 2's. Just remove region 2.
+          */
+
+         remove_mem_region(r2_index);
+         return;
+      }
+
+      /*
+       * Region 2's type is stricter, move region 1's end:
+       *
+       * +-----------------+
+       * |    region 1     |
+       * +-----------------+
+       *                   +---------------+
+       *                   |   region 2    |
+       *                   +---------------+
+       */
+
+      r1->len = s2 - s1;
+      return;
+   }
+
+   if (s1 < s2 && s2 < e1 && e2 > e1) {
+
+      /*
+       * Case 4:
+       *  +---------------------------------+
+       *  |            region 1             |
+       *  +---------------------------------+
+       *                    +---------------------------+
+       *                    |          region 2         |
+       *                    +---------------------------+
+       */
+
+
+      return;
+   }
+
+   NOT_REACHED();
+}
+
+STATIC void handle_overlapping_regions(void)
+{
+   for (int i = 0; i < mem_regions_count; i++)
+      for (int j = 0; j < mem_regions_count; j++)
+         if (j != i)
+            handle_region_overlap(i, j);
+}
+
+STATIC void fix_mem_regions(void)
 {
    align_mem_regions_to_page_boundary();
 
@@ -95,9 +298,16 @@ void fix_mem_regions(void)
                           less_than_cmp_mem_region);
 
    merge_adj_mem_regions();
+
+   // handle_overlapping_regions();
+
+   // insertion_sort_generic(mem_regions,
+   //                        sizeof(memory_region_t),
+   //                        mem_regions_count,
+   //                        less_than_cmp_mem_region);
 }
 
-static void add_kernel_phdrs_to_mmap(void)
+STATIC void add_kernel_phdrs_to_mmap(void)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
    Elf_Phdr *phdrs = (void *)h + h->e_phoff;
@@ -109,39 +319,38 @@ static void add_kernel_phdrs_to_mmap(void)
       if (phdr->p_type != PT_LOAD)
          continue;
 
-      mem_regions[mem_regions_count++] = (memory_region_t) {
+      append_mem_region((memory_region_t) {
          .addr = phdr->p_paddr,
          .len = phdr->p_memsz,
          .type = MULTIBOOT_MEMORY_RESERVED,
          .extra = MEM_REG_EXTRA_KERNEL
-      };
+      });
    }
 }
 
 void save_multiboot_memory_map(multiboot_info_t *mbi)
 {
-   u32 size = MIN(sizeof(mem_regions), mbi->mmap_length);
    uptr ma_addr = mbi->mmap_addr;
 
-   while (ma_addr < mbi->mmap_addr + size) {
+   while (ma_addr < mbi->mmap_addr + mbi->mmap_length) {
 
       multiboot_memory_map_t *ma = (void *)ma_addr;
-      mem_regions[mem_regions_count++] = (memory_region_t) {
+      append_mem_region((memory_region_t) {
          .addr = ma->addr,
          .len = ma->len,
          .type = ma->type,
          .extra = 0
-      };
+      });
       ma_addr += ma->size + 4;
    }
 
    if (ramdisk_size) {
-      mem_regions[mem_regions_count++] = (memory_region_t) {
+      append_mem_region((memory_region_t) {
          .addr = ramdisk_paddr,
          .len = ramdisk_size,
          .type = MULTIBOOT_MEMORY_RESERVED,
          .extra = MEM_REG_EXTRA_RAMDISK
-      };
+      });
    }
 
    add_kernel_phdrs_to_mmap();
@@ -164,7 +373,7 @@ void dump_system_memory_map(void)
    printk("System's memory map\n");
    printk("---------------------------------------------------------------\n");
    printk("       START                 END        (T, Extr)\n");
-   for (u32 i = 0; i < mem_regions_count; i++) {
+   for (int i = 0; i < mem_regions_count; i++) {
 
       memory_region_t *ma = mem_regions + i;
 
