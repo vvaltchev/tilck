@@ -24,13 +24,13 @@ typedef struct {
 
 u32 memsize_in_mb;
 
-memory_region_t mem_areas[512];
-uptr mem_areas_count;
+memory_region_t mem_regions[512];
+uptr mem_regions_count;
 
 uptr ramdisk_paddr;
 size_t ramdisk_size;
 
-static int less_than_cmp_mem_area(const void *a, const void *b)
+static int less_than_cmp_mem_region(const void *a, const void *b)
 {
    const memory_region_t *m1 = a;
    const memory_region_t *m2 = b;
@@ -44,11 +44,11 @@ static int less_than_cmp_mem_area(const void *a, const void *b)
    return 1;
 }
 
-void align_mem_areas_to_page_boundary(void)
+void align_mem_regions_to_page_boundary(void)
 {
-   for (u32 i = 0; i < mem_areas_count; i++) {
+   for (u32 i = 0; i < mem_regions_count; i++) {
 
-      memory_region_t *ma = mem_areas + i;
+      memory_region_t *ma = mem_regions + i;
 
       /*
        * Unfortunately, in general we cannot rely on the memory regions to be
@@ -63,9 +63,9 @@ void align_mem_areas_to_page_boundary(void)
 
 void merge_adj_mem_regions(void)
 {
-   for (int i = 0; i < (int)mem_areas_count - 1; i++) {
+   for (int i = 0; i < (int)mem_regions_count - 1; i++) {
 
-      memory_region_t *ma = mem_areas + i;
+      memory_region_t *ma = mem_regions + i;
       memory_region_t *ma_next = ma + 1;
 
       if (ma_next->type != ma->type || ma_next->extra != ma->extra)
@@ -76,23 +76,23 @@ void merge_adj_mem_regions(void)
 
       /* If we got here, we hit two adjacent regions having the same type */
 
-      const int rem = mem_areas_count - i - 2;
+      const int rem = mem_regions_count - i - 2;
 
       ma->len += ma_next->len;
       memcpy(ma_next, ma_next + 1, rem * sizeof(memory_region_t));
-      mem_areas_count--; /* decrease the number of memory regions */
+      mem_regions_count--; /* decrease the number of memory regions */
       i--; /* compensate the i++ in the for loop: we have to keep the index */
    }
 }
 
-void fix_mem_areas(void)
+void fix_mem_regions(void)
 {
-   align_mem_areas_to_page_boundary();
+   align_mem_regions_to_page_boundary();
 
-   insertion_sort_generic(mem_areas,
+   insertion_sort_generic(mem_regions,
                           sizeof(memory_region_t),
-                          mem_areas_count,
-                          less_than_cmp_mem_area);
+                          mem_regions_count,
+                          less_than_cmp_mem_region);
 
    merge_adj_mem_regions();
 }
@@ -109,7 +109,7 @@ static void add_kernel_phdrs_to_mmap(void)
       if (phdr->p_type != PT_LOAD)
          continue;
 
-      mem_areas[mem_areas_count++] = (memory_region_t) {
+      mem_regions[mem_regions_count++] = (memory_region_t) {
          .addr = phdr->p_paddr,
          .len = phdr->p_memsz,
          .type = MULTIBOOT_MEMORY_RESERVED,
@@ -120,13 +120,13 @@ static void add_kernel_phdrs_to_mmap(void)
 
 void save_multiboot_memory_map(multiboot_info_t *mbi)
 {
-   u32 size = MIN(sizeof(mem_areas), mbi->mmap_length);
+   u32 size = MIN(sizeof(mem_regions), mbi->mmap_length);
    uptr ma_addr = mbi->mmap_addr;
 
    while (ma_addr < mbi->mmap_addr + size) {
 
       multiboot_memory_map_t *ma = (void *)ma_addr;
-      mem_areas[mem_areas_count++] = (memory_region_t) {
+      mem_regions[mem_regions_count++] = (memory_region_t) {
          .addr = ma->addr,
          .len = ma->len,
          .type = ma->type,
@@ -136,7 +136,7 @@ void save_multiboot_memory_map(multiboot_info_t *mbi)
    }
 
    if (ramdisk_size) {
-      mem_areas[mem_areas_count++] = (memory_region_t) {
+      mem_regions[mem_regions_count++] = (memory_region_t) {
          .addr = ramdisk_paddr,
          .len = ramdisk_size,
          .type = MULTIBOOT_MEMORY_RESERVED,
@@ -145,7 +145,7 @@ void save_multiboot_memory_map(multiboot_info_t *mbi)
    }
 
    add_kernel_phdrs_to_mmap();
-   fix_mem_areas();
+   fix_mem_regions();
 }
 
 static const char *mem_region_extra_to_str(u32 e)
@@ -164,9 +164,9 @@ void dump_system_memory_map(void)
    printk("System's memory map\n");
    printk("---------------------------------------------------------------\n");
    printk("       START                 END        (T, Extr)\n");
-   for (u32 i = 0; i < mem_areas_count; i++) {
+   for (u32 i = 0; i < mem_regions_count; i++) {
 
-      memory_region_t *ma = mem_areas + i;
+      memory_region_t *ma = mem_regions + i;
 
       printk("0x%llx - 0x%llx (%d, %s) [%u KB]\n",
              ma->addr, ma->addr + ma->len,
