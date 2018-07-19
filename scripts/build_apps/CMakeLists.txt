@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.2)
 
+include_directories(${CMAKE_SOURCE_DIR}/include)
+add_definitions(-DUSERMODE_APP)
+
 file(GLOB ELFHACK_SOURCES "elfhack.c")
 
 add_executable(elfhack ${ELFHACK_SOURCES})
@@ -11,22 +14,3 @@ file(
 )
 
 add_executable(fat_get_used_bytes ${FAT_GET_USED_BYTES_SRC})
-
-target_include_directories(
-
-   fat_get_used_bytes
-
-   PUBLIC
-
-   ${CMAKE_SOURCE_DIR}/include
-)
-
-set_target_properties(
-
-   fat_get_used_bytes
-
-   PROPERTIES
-      COMPILE_FLAGS -DUSERMODE_APP
-
-)
-

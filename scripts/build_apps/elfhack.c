@@ -12,17 +12,20 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#define USE_ELF32
+#include <exos/common/elf_types.h>
+
 #define MMAP_SIZE (1024*1024)
 
-Elf32_Shdr *get_section(void *mapped_elf_file, const char *section_name)
+Elf_Shdr *get_section(void *mapped_elf_file, const char *section_name)
 {
-   Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
-   Elf32_Shdr *sections = (Elf32_Shdr *) ((char *)h + h->e_shoff);
-   Elf32_Shdr *section_header_strtab = sections + h->e_shstrndx;
+   Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
+   Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
+   Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
 
    for (uint32_t i = 0; i < h->e_shnum; i++) {
 
-      Elf32_Shdr *s = sections + i;
+      Elf_Shdr *s = sections + i;
       char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
 
       if (!strcmp(name, section_name)) {
@@ -36,16 +39,16 @@ Elf32_Shdr *get_section(void *mapped_elf_file, const char *section_name)
 
 void section_dump(void *mapped_elf_file, const char *section_name)
 {
-   Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
-   Elf32_Shdr *s = get_section(mapped_elf_file, section_name);
+   Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
+   Elf_Shdr *s = get_section(mapped_elf_file, section_name);
    fwrite((char*)h + s->sh_offset, 1, s->sh_size, stdout);
 }
 
 void copy_section(void *mapped_elf_file, const char *src, const char *dst)
 {
-   Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
-   Elf32_Shdr *s_src = get_section(mapped_elf_file, src);
-   Elf32_Shdr *s_dst = get_section(mapped_elf_file, dst);
+   Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
+   Elf_Shdr *s_src = get_section(mapped_elf_file, src);
+   Elf_Shdr *s_dst = get_section(mapped_elf_file, dst);
 
    if (!dst) {
       fprintf(stderr, "Missing <dst section> argument\n");
@@ -85,10 +88,10 @@ void show_help(char **argv)
 void rename_section(void *mapped_elf_file,
                     const char *sec, const char *new_name)
 {
-   Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
+   Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
    char *hc = (char *)h;
-   Elf32_Shdr *sections = (Elf32_Shdr *)(hc + h->e_shoff);
-   Elf32_Shdr *shstrtab = sections + h->e_shstrndx;
+   Elf_Shdr *sections = (Elf_Shdr *)(hc + h->e_shoff);
+   Elf_Shdr *shstrtab = sections + h->e_shstrndx;
 
    if (!new_name) {
       fprintf(stderr, "Missing <new_name> argument\n");
@@ -100,25 +103,25 @@ void rename_section(void *mapped_elf_file,
       exit(1);
    }
 
-   Elf32_Shdr *s = get_section(mapped_elf_file, sec);
+   Elf_Shdr *s = get_section(mapped_elf_file, sec);
    strcpy(hc + shstrtab->sh_offset + s->sh_name, new_name);
 }
 
 void link_sections(void *mapped_elf_file,
                    const char *sec, const char *linked)
 {
-   Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
+   Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
    char *hc = (char *)h;
-   Elf32_Shdr *sections = (Elf32_Shdr *)(hc + h->e_shoff);
-   Elf32_Shdr *shstrtab = sections + h->e_shstrndx;
+   Elf_Shdr *sections = (Elf_Shdr *)(hc + h->e_shoff);
+   Elf_Shdr *shstrtab = sections + h->e_shstrndx;
 
    if (!linked) {
       fprintf(stderr, "Missing <linked section> argument\n");
       exit(1);
    }
 
-   Elf32_Shdr *a = get_section(mapped_elf_file, sec);
-   Elf32_Shdr *b = get_section(mapped_elf_file, linked);
+   Elf_Shdr *a = get_section(mapped_elf_file, sec);
+   Elf_Shdr *b = get_section(mapped_elf_file, linked);
 
    unsigned bidx = (b - sections);
    a->sh_link = bidx;
@@ -126,7 +129,7 @@ void link_sections(void *mapped_elf_file,
 
 void move_metadata(void *mapped_elf_file)
 {
-   Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
+   Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
    char *hc = (char *)h;
 
    size_t off = h->e_ehsize;
@@ -139,18 +142,18 @@ void move_metadata(void *mapped_elf_file)
    h->e_shoff = off;
    off += h->e_shentsize*h->e_shnum;
 
-   Elf32_Shdr *sections = (Elf32_Shdr *) (hc + h->e_shoff);
-   Elf32_Shdr *shstrtab = sections + h->e_shstrndx;
+   Elf_Shdr *sections = (Elf_Shdr *) (hc + h->e_shoff);
+   Elf_Shdr *shstrtab = sections + h->e_shstrndx;
 
    memcpy(hc + off, hc + shstrtab->sh_offset, shstrtab->sh_size);
    shstrtab->sh_offset = off;
 
-   Elf32_Phdr *phdrs = (Elf32_Phdr *)(hc + h->e_phoff);
+   Elf_Phdr *phdrs = (Elf_Phdr *)(hc + h->e_phoff);
    shstrtab->sh_addr = phdrs[0].p_vaddr + shstrtab->sh_offset;
    shstrtab->sh_flags |= SHF_ALLOC;
 
    for (uint32_t i = 0; i < h->e_shnum; i++) {
-      Elf32_Shdr *s = sections + i;
+      Elf_Shdr *s = sections + i;
 
       /* Make sure that all the sections with a vaddr != 0 are 'alloc' */
       if (s->sh_addr)
@@ -160,18 +163,18 @@ void move_metadata(void *mapped_elf_file)
 
 void drop_last_section(void **mapped_elf_file_ref, int fd)
 {
-   Elf32_Ehdr *h = (Elf32_Ehdr*)*mapped_elf_file_ref;
+   Elf_Ehdr *h = (Elf_Ehdr*)*mapped_elf_file_ref;
    char *hc = (char *)h;
-   Elf32_Shdr *sections = (Elf32_Shdr *)(hc + h->e_shoff);
-   Elf32_Shdr *shstrtab = sections + h->e_shstrndx;
+   Elf_Shdr *sections = (Elf_Shdr *)(hc + h->e_shoff);
+   Elf_Shdr *shstrtab = sections + h->e_shstrndx;
 
-   Elf32_Shdr *last_section = NULL;
+   Elf_Shdr *last_section = NULL;
    int last_section_index = 0;
    off_t last_offset = 0;
 
    for (uint32_t i = 0; i < h->e_shnum; i++) {
 
-      Elf32_Shdr *s = sections + i;
+      Elf_Shdr *s = sections + i;
 
       if (s->sh_offset > last_offset) {
          last_section = s;
@@ -248,7 +251,7 @@ void set_phdr_rwx_flags(void *mapped_elf_file,
                         const char *phdr_index,
                         const char *flags)
 {
-   Elf32_Ehdr *h = (Elf32_Ehdr*)mapped_elf_file;
+   Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
    errno = 0;
 
    char *endptr = NULL;
@@ -271,8 +274,8 @@ void set_phdr_rwx_flags(void *mapped_elf_file,
    }
 
    char *hc = (char *)h;
-   Elf32_Phdr *phdrs = (Elf32_Phdr *)(hc + h->e_phoff);
-   Elf32_Phdr *phdr = phdrs + phindex;
+   Elf_Phdr *phdrs = (Elf_Phdr *)(hc + h->e_phoff);
+   Elf_Phdr *phdr = phdrs + phindex;
 
    unsigned f = 0;
 

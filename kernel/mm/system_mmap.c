@@ -5,9 +5,10 @@
 
 #include <exos/kernel/paging.h>
 #include <exos/kernel/sort.h>
+#include <exos/kernel/elf_utils.h>
 
 #include <multiboot.h>
-#include <elf.h>
+
 
 #define MEM_REG_EXTRA_RAMDISK  1
 #define MEM_REG_EXTRA_KERNEL   2
@@ -98,14 +99,12 @@ void fix_mem_areas(void)
 
 static void add_kernel_phdrs_to_mmap(void)
 {
-#ifdef BITS32
-
-   Elf32_Ehdr *h = (Elf32_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
-   Elf32_Phdr *phdrs = (void *)h + h->e_phoff;
+   Elf_Ehdr *h = (Elf_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
+   Elf_Phdr *phdrs = (void *)h + h->e_phoff;
 
    for (int i = 0; i < h->e_phnum; i++) {
 
-      Elf32_Phdr *phdr = phdrs + i;
+      Elf_Phdr *phdr = phdrs + i;
 
       if (phdr->p_type != PT_LOAD)
          continue;
@@ -117,10 +116,6 @@ static void add_kernel_phdrs_to_mmap(void)
          .extra = MEM_REG_EXTRA_KERNEL
       };
    }
-
-#else
-   NOT_IMPLEMENTED();
-#endif
 }
 
 void save_multiboot_memory_map(multiboot_info_t *mbi)

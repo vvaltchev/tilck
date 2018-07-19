@@ -7,14 +7,13 @@
 #include <exos/kernel/kmalloc.h>
 #include <exos/kernel/fs/exvfs.h>
 #include <exos/kernel/errno.h>
-
-#include <elf.h>
+#include <exos/kernel/elf_utils.h>
 
 #ifdef BITS32
 
 static int load_phdr(fs_handle *elf_file,
                      page_directory_t *pdir,
-                     Elf32_Phdr *phdr,
+                     Elf_Phdr *phdr,
                      uptr *end_vaddr_ref)
 {
    ssize_t ret;
@@ -55,7 +54,7 @@ static int load_phdr(fs_handle *elf_file,
 }
 
 static void
-phdr_adjust_page_access(page_directory_t *pdir, Elf32_Phdr *phdr)
+phdr_adjust_page_access(page_directory_t *pdir, Elf_Phdr *phdr)
 {
    char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
 
@@ -78,9 +77,9 @@ int load_elf_program(const char *filepath,
                      void **brk_ref)
 {
    page_directory_t *old_pdir = get_curr_page_dir();
-   Elf32_Phdr *phdrs = NULL;
+   Elf_Phdr *phdrs = NULL;
    fs_handle elf_file = NULL;
-   Elf32_Ehdr header;
+   Elf_Ehdr header;
    ssize_t ret;
    uptr brk = 0;
    int rc = 0;
@@ -128,7 +127,7 @@ int load_elf_program(const char *filepath,
       goto out;
    }
 
-   const ssize_t total_phdrs_size = header.e_phnum * sizeof(Elf32_Phdr);
+   const ssize_t total_phdrs_size = header.e_phnum * sizeof(Elf_Phdr);
    phdrs = kmalloc(total_phdrs_size);
 
    if (!phdrs) {
@@ -153,7 +152,7 @@ int load_elf_program(const char *filepath,
    for (int i = 0; i < header.e_phnum; i++) {
 
       u32 end_vaddr = 0;
-      Elf32_Phdr *phdr = phdrs + i;
+      Elf_Phdr *phdr = phdrs + i;
 
       if (phdr->p_type != PT_LOAD)
          continue;
@@ -169,7 +168,7 @@ int load_elf_program(const char *filepath,
 
    for (int i = 0; i < header.e_phnum; i++) {
 
-      Elf32_Phdr *phdr = phdrs + i;
+      Elf_Phdr *phdr = phdrs + i;
 
       if (phdr->p_type == PT_LOAD)
          phdr_adjust_page_access(*pdir_ref, phdr);
@@ -216,18 +215,18 @@ out:
    return rc;
 }
 
-void get_symtab_and_strtab(Elf32_Shdr **symtab, Elf32_Shdr **strtab)
+void get_symtab_and_strtab(Elf_Shdr **symtab, Elf_Shdr **strtab)
 {
-   Elf32_Ehdr *h = (Elf32_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
-   VERIFY(h->e_shentsize == sizeof(Elf32_Shdr));
+   Elf_Ehdr *h = (Elf_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
+   VERIFY(h->e_shentsize == sizeof(Elf_Shdr));
 
    *symtab = NULL;
    *strtab = NULL;
 
-   Elf32_Shdr *sections = (Elf32_Shdr *) ((char *)h + h->e_shoff);
+   Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
 
    for (u32 i = 0; i < h->e_shnum; i++) {
-      Elf32_Shdr *s = sections + i;
+      Elf_Shdr *s = sections + i;
 
       if (s->sh_type == SHT_SYMTAB) {
          ASSERT(!*symtab);
@@ -244,16 +243,16 @@ void get_symtab_and_strtab(Elf32_Shdr **symtab, Elf32_Shdr **strtab)
 
 const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
 {
-   Elf32_Shdr *symtab;
-   Elf32_Shdr *strtab;
+   Elf_Shdr *symtab;
+   Elf_Shdr *strtab;
 
    get_symtab_and_strtab(&symtab, &strtab);
 
-   Elf32_Sym *syms = (Elf32_Sym *) symtab->sh_addr;
-   const int sym_count = symtab->sh_size / sizeof(Elf32_Sym);
+   Elf_Sym *syms = (Elf_Sym *) symtab->sh_addr;
+   const int sym_count = symtab->sh_size / sizeof(Elf_Sym);
 
    for (int i = 0; i < sym_count; i++) {
-      Elf32_Sym *s = syms + i;
+      Elf_Sym *s = syms + i;
 
       if (s->st_value <= vaddr && vaddr < s->st_value + s->st_size) {
 
@@ -271,13 +270,13 @@ const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
 
 uptr find_addr_of_symbol(const char *searched_sym)
 {
-   Elf32_Shdr *symtab;
-   Elf32_Shdr *strtab;
+   Elf_Shdr *symtab;
+   Elf_Shdr *strtab;
 
    get_symtab_and_strtab(&symtab, &strtab);
 
-   Elf32_Sym *syms = (Elf32_Sym *) symtab->sh_addr;
-   const int sym_count = symtab->sh_size / sizeof(Elf32_Sym);
+   Elf_Sym *syms = (Elf_Sym *) symtab->sh_addr;
+   const int sym_count = symtab->sh_size / sizeof(Elf_Sym);
 
    for (int i = 0; i < sym_count; i++) {
       if (!strcmp((char *)strtab->sh_addr + syms[i].st_name, searched_sym))
