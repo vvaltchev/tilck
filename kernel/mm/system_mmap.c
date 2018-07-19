@@ -43,7 +43,7 @@ static int less_than_cmp_mem_area(const void *a, const void *b)
    return 1;
 }
 
-void fix_mem_areas(void)
+void align_mem_areas_to_page_boundary(void)
 {
    for (u32 i = 0; i < mem_areas_count; i++) {
 
@@ -58,13 +58,10 @@ void fix_mem_areas(void)
       ma->addr &= PAGE_MASK;
       ma->len = ma_end - ma->addr;
    }
+}
 
-   insertion_sort_generic(mem_areas,
-                          sizeof(memory_region_t),
-                          mem_areas_count,
-                          less_than_cmp_mem_area);
-
-   /* Merge adjacent regions */
+void merge_adj_mem_regions(void)
+{
    for (int i = 0; i < (int)mem_areas_count - 1; i++) {
 
       memory_region_t *ma = mem_areas + i;
@@ -78,13 +75,25 @@ void fix_mem_areas(void)
 
       /* If we got here, we hit two adjacent regions having the same type */
 
+      const int rem = mem_areas_count - i - 2;
+
       ma->len += ma_next->len;
-      memcpy(ma_next,
-             ma_next + 1,
-             (mem_areas_count - i - 2) * sizeof(memory_region_t));
-      mem_areas_count--;
-      i--; /* compensate the i++ in the for: we have to keep the index */
+      memcpy(ma_next, ma_next + 1, rem * sizeof(memory_region_t));
+      mem_areas_count--; /* decrease the number of memory regions */
+      i--; /* compensate the i++ in the for loop: we have to keep the index */
    }
+}
+
+void fix_mem_areas(void)
+{
+   align_mem_areas_to_page_boundary();
+
+   insertion_sort_generic(mem_areas,
+                          sizeof(memory_region_t),
+                          mem_areas_count,
+                          less_than_cmp_mem_area);
+
+   merge_adj_mem_regions();
 }
 
 static void add_kernel_phdrs_to_mmap(void)
