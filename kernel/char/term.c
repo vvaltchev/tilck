@@ -146,7 +146,7 @@ static void ts_clear_row(int row_num, u8 color)
 
 void debug_term_print_scroll_cycles(void)
 {
-   printk("\n");
+   printk(NO_PREFIX "\n");
 
    if (sc_one_line_count) {
       printk("Avg. cycles per 1-line fast term scroll: %llu K [%u scrolls]\n",

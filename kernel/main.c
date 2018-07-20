@@ -158,10 +158,11 @@ int debug_f_key_press_handler(u32 key, u8 c)
 void init_drivers(void)
 {
    init_kb();
-   init_tty();
 
    if (kb_register_keypress_handler(&debug_f_key_press_handler) < 0)
       panic("Unable to register debug Fn keypress handler");
+
+   init_tty();
 }
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)

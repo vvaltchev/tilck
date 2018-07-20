@@ -206,6 +206,8 @@ void print_slow_timer_irq_handler_counter(void);
 
 void debug_show_spurious_irq_count(void)
 {
+   printk(NO_PREFIX "\n");
+
 #if KERNEL_TRACK_NESTED_INTERRUPTS
       print_slow_timer_irq_handler_counter();
 #endif
