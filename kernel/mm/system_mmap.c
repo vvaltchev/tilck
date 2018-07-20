@@ -102,18 +102,23 @@ STATIC void merge_adj_mem_regions(void)
 
 STATIC void handle_region_overlap(int r1_index, int r2_index)
 {
+   if (r1_index == r2_index)
+      return;
+
    memory_region_t *r1 = mem_regions + r1_index;
    memory_region_t *r2 = mem_regions + r2_index;
 
    u64 s1 = r1->addr;
    u64 s2 = r2->addr;
+   u64 e1 = r1->addr + r1->len;
+   u64 e2 = r2->addr + r2->len;
 
-   if (s2 < s1) {
+   if (s2 < s1 || s2 >= e1) {
 
       /*
        * Skip the following cases:
        *
-       * Case 0a:
+       * Case 1a:
        *                         +------------------------+
        *                         |        region 1        |
        *                         +------------------------+
@@ -123,7 +128,7 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
        *
        * Reason: the regions do not overlap.
        *
-       * Case 0b:
+       * Case 1b:
        *
        *                +------------------------+
        *                |        region 1        |
@@ -133,19 +138,8 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
        *  +----------------------+
        *
        * Reason: we'll handle the case when i and j are swapped (see case 5).
-       */
-      return;
-   }
-
-   u64 e1 = r1->addr + r1->len;
-   u64 e2 = r2->addr + r2->len;
-
-   if (s2 >= e1) {
-
-      /*
-       * Skip the following case:
        *
-       * Case 0c:
+       * Case 1c:
        *
        *  +----------------------+
        *  |       region 1       |
@@ -159,95 +153,35 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
       return;
    }
 
-   if (s2 == s1 && e2 < e1) {
+
+   if (s1 <= s2 && e2 <= e1) {
 
       /*
-       * Case 1:
+       * Case 2:
+       *  +---------------------------------+
+       *  |            region 1             |
+       *  +---------------------------------+
+       *            +---------------+
+       *            |   region 2    |
+       *            +---------------+
+       *
+       * Corner case 2a:
+       *  +---------------------------------+
+       *  |            region 1             |
+       *  +---------------------------------+
+       *  +---------------------------------+
+       *  |            region 2             |
+       *  +---------------------------------+
+       *
+       * Corner case 2b:
        *  +---------------------------------+
        *  |            region 1             |
        *  +---------------------------------+
        *  +---------------+
        *  |   region 2    |
        *  +---------------+
-       */
-
-      if (r1->type >= r2->type) {
-
-         /*
-          * Region 1's type is stricter than region 2's. Just remove region 2.
-          */
-
-         remove_mem_region(r2_index);
-
-      } else {
-
-         /*
-          * Region 2's type is stricter, move region 1's start:
-          *                  +-----------------+
-          *                  |    region 1     |
-          *                  +-----------------+
-          *  +---------------+
-          *  |   region 2    |
-          *  +---------------+
-          *
-          */
-
-         r1->addr = e2;
-         r1->len = e1 - r1->addr;
-      }
-
-      return;
-   }
-
-   if (s1 < s2 && e2 < e1) {
-
-      /*
-       * Case 2:
-       *  +---------------------------------------------------+
-       *  |                    region 1                       |
-       *  +---------------------------------------------------+
-       *                  +---------------+
-       *                  |   region 2    |
-       *                  +---------------+
-       */
-
-      if (r1->type >= r2->type) {
-
-         /*
-          * Region 1's type is stricter than region 2's. Just remove region 2.
-          */
-
-         remove_mem_region(r2_index);
-
-      } else {
-
-         /*
-          * Region 2's type is stricter, we need to split region 1 in two parts:
-          *  +---------------+               +-------------------+
-          *  | region 1 [1]  |               |   region 1 [2]    |
-          *  +---------------+               +-------------------+
-          *                  +---------------+
-          *                  |   region 2    |
-          *                  +---------------+
-          */
-
-         r1->len = (s2 - s1);
-
-         append_mem_region((memory_region_t) {
-            .addr = e2,
-            .len = (e1 - e2),
-            .type = r1->type,
-            .extra = r1->extra
-         });
-      }
-
-      return;
-   }
-
-   if (s2 > s1 && e2 == e1) {
-
-      /*
-       * Case 3:
+       *
+       * Corner case 2c:
        *  +---------------------------------+
        *  |            region 1             |
        *  +---------------------------------+
@@ -267,51 +201,51 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
       } else {
 
          /*
-          * Region 2's type is stricter, move region 1's end:
-          *
-          * +-----------------+
-          * |    region 1     |
-          * +-----------------+
-          *                   +---------------+
-          *                   |   region 2    |
-          *                   +---------------+
+          * Region 2's type is stricter, we need to split region 1 in two parts:
+          *  +---------------+               +-------------------+
+          *  |  region 1-1   |               |     region 1-2    |
+          *  +---------------+               +-------------------+
+          *                  +---------------+
+          *                  |   region 2    |
+          *                  +---------------+
           */
 
-         r1->len = s2 - s1;
-      }
+         if (s1 == s2 && e1 == e2) {
 
-      return;
-   }
+            /*
+             * Corner case 2a: regions 1-1, 1-2 are empty, but we cannot remove
+             * region 1: make region 1 = region 2 and remove region 2.
+             */
 
-   if (s2 == s1 && e2 == e1) {
+            *r1 = *r2;
+            remove_mem_region(r2_index);
 
-      /*
-       * Case 4:
-       *  +---------------------------+
-       *  |         region 1          |
-       *  +---------------------------+
-       *  +---------------------------+
-       *  |         region 2          |
-       *  +---------------------------+
-       */
+         } else if (s1 == s2) {
 
-      if (r1->type >= r2->type) {
+            /* Corner case 2b: "region 1 [1]" is empty" */
 
-         /*
-          * Region 1's type is stricter than region 2's. Just remove region 2.
-          */
+            r1->addr = e2;
+            r1->len = e1 - r1->addr;
 
-         remove_mem_region(r2_index);
+         } else if (e1 == e2) {
 
-      } else {
+            /* Corner case 2c: "region 1 [2]" is empty" */
 
-         /*
-          * Region 2's type is stricter, but we cannot remove region 1:
-          * make region 1 to be exactly like region 2 and remove region 2.
-          */
+            r1->len = s2 - s1;
 
-         *r1 = *r2;
-         remove_mem_region(r2_index);
+         } else {
+
+            /* Base case */
+
+            r1->len = s2 - s1;
+
+            append_mem_region((memory_region_t) {
+               .addr = e2,
+               .len = (e1 - e2),
+               .type = r1->type,
+               .extra = r1->extra
+            });
+         }
       }
 
       return;
@@ -320,14 +254,15 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
    if (s1 <= s2 && s2 < e1 && e2 > e1) {
 
       /*
-       * Case 5:
+       * Case 3:
        *  +---------------------------------+
        *  |            region 1             |
        *  +---------------------------------+
        *                    +---------------------------+
        *                    |          region 2         |
        *                    +---------------------------+
-       * OR
+       *
+       * Corner case 3a:
        *
        *  +----------------------------+
        *  |          region 1          |
@@ -365,13 +300,12 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
           *                    +---------------------------+
           */
 
-         r1->len = s2 - s1;
-
-         if (r1->len == 0) {
-            /* Corner case: we have to remove region 1 (by moving r2 into it) */
-
+         if (s1 == s2) {
+            /* Corner case 3a: region 1 is empty */
             *r1 = *r2;
             remove_mem_region(r2_index);
+         } else {
+            r1->len = s2 - s1;
          }
       }
 
@@ -388,8 +322,7 @@ STATIC void handle_overlapping_regions(void)
 {
    for (int i = 0; i < mem_regions_count; i++)
       for (int j = 0; j < mem_regions_count; j++)
-         if (j != i)
-            handle_region_overlap(i, j);
+         handle_region_overlap(i, j);
 }
 
 STATIC void fix_mem_regions(void)
