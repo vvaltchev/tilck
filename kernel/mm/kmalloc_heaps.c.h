@@ -318,8 +318,13 @@ void debug_kmalloc_dump_mem_usage(void)
 {
    static size_t heaps_alloc[KMALLOC_HEAPS_COUNT];
 
+   printk(NO_PREFIX "\n\nKMALLOC HEAPS: \n\n");
+
    printk(NO_PREFIX
-          "\n---------------------- kmalloc heaps ------------------------\n");
+         " # |    vaddr   | size (KB) | allocated (KB) | diff (B)\n");
+
+   printk(NO_PREFIX
+         "---+------------+-----------+----------------+---------------\n");
 
    for (u32 i = 0; i < ARRAY_SIZE(heaps) && heaps[i]; i++) {
 
@@ -327,9 +332,8 @@ void debug_kmalloc_dump_mem_usage(void)
       uptr size_kb = heaps[i]->size / KB;
       uptr allocated_kb = heaps[i]->mem_allocated / KB;
 
-      printk(NO_PREFIX "[%-2d] addr: %p size: %-5u KB "
-             "alloc: %-5u KB [%-2u%%] diff: %d B\n",
-             i, heaps[i]->vaddr, size_kb, allocated_kb,
+      printk(NO_PREFIX "%s%d | %p |  %-6u   | %-6u [%-2u %%]  | %d\n",
+             i < 10 ? " " : "", i, heaps[i]->vaddr, size_kb, allocated_kb,
              allocated_kb * 100 / size_kb,
              heaps[i]->mem_allocated - heaps_alloc[i]);
    }
