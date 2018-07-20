@@ -8,8 +8,6 @@
 #include <exos/kernel/sort.h>
 #include <exos/kernel/elf_utils.h>
 
-#include <multiboot.h>
-
 u32 memsize_in_mb;
 
 memory_region_t mem_regions[MAX_MEM_REGIONS];

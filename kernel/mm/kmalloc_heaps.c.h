@@ -12,34 +12,7 @@
 
 #endif
 
-#if defined(__i386__) || defined(__x86_64__)
-#define X86_LOW_MEM_UPPER_LIM 0xA0000 // + 640 KB [arch-limit, don't touch!]
-
-/*
- * NOTE how all of below defines depend somehow on:
- *
- *    - KMALLOC_LOW_MEM_UPPER_LIM
- *    - KMALLOC_MAX_ALIGN
- *
- * In summary:
- *
- *    - We cannot get a bigger MAX ALIGN than LOW_MEM_HEAP_PA, unless we avoid
- *      using the low mem, but that would mean wasting 512 KB.
- *      In alternative, we have to tollerate different heaps to have a different
- *      max align value. For the moment, that is not necessary.
- *
- *    - LOW_MEM_HEAP_SIZE cannot be more than 512 KB, since:
- *          - it has to be a power of 2 (limitation by design of the allocator)
- *          - it is limited by X86_LOW_MEM_UPPER_LIM (arch-specific limit)
- */
-
-#define LOW_MEM_HEAP_PA (KMALLOC_MAX_ALIGN)
-#define LOW_MEM_HEAP (KERNEL_PA_TO_VA(LOW_MEM_HEAP_PA))
-#define LOW_MEM_HEAP_SIZE (512 * KB)
-
-STATIC_ASSERT(LOW_MEM_HEAP_PA + LOW_MEM_HEAP_SIZE <= X86_LOW_MEM_UPPER_LIM);
-
-#endif
+#include <exos/kernel/system_mmap.h>
 
 #define KMALLOC_MIN_HEAP_SIZE KMALLOC_MAX_ALIGN
 
@@ -345,7 +318,8 @@ void debug_kmalloc_dump_mem_usage(void)
 {
    static size_t heaps_alloc[KMALLOC_HEAPS_COUNT];
 
-   printk(NO_PREFIX "\n----------------- kmalloc heaps ------------------\n");
+   printk(NO_PREFIX
+          "\n---------------------- kmalloc heaps ------------------------\n");
 
    for (u32 i = 0; i < ARRAY_SIZE(heaps) && heaps[i]; i++) {
 
@@ -353,9 +327,10 @@ void debug_kmalloc_dump_mem_usage(void)
       uptr size_kb = heaps[i]->size / KB;
       uptr allocated_kb = heaps[i]->mem_allocated / KB;
 
-      printk(NO_PREFIX "[heap %d] size: %u KB, "
-             "allocated: %u KB [%u %%], diff: %d B\n",
-             i, size_kb, allocated_kb, allocated_kb * 100 / size_kb,
+      printk(NO_PREFIX "[%-2d] addr: %p size: %-5u KB "
+             "alloc: %-5u KB [%-2u%%] diff: %d B\n",
+             i, heaps[i]->vaddr, size_kb, allocated_kb,
+             allocated_kb * 100 / size_kb,
              heaps[i]->mem_allocated - heaps_alloc[i]);
    }
 
@@ -434,30 +409,13 @@ static int greater_than_heap_cmp(const void *a, const void *b)
    return -1;
 }
 
-void init_kmalloc(void)
+static void init_kmalloc_fill_region(uptr vaddr, uptr limit)
 {
    int heap_index;
-   uptr vaddr;
+   vaddr = round_up_at(vaddr, MIN(KMALLOC_MIN_HEAP_SIZE, KMALLOC_MAX_ALIGN));
 
-   ASSERT(!kmalloc_initialized);
-
-   used_heaps = 0;
-   bzero(heaps, sizeof(heaps));
-
-   heap_index = kmalloc_internal_add_heap(&first_heap, sizeof(first_heap));
-   VERIFY(heap_index == 0);
-
-   kmalloc_initialized = true; /* we have at least 1 heap */
-
-   const uptr limit =
-      KERNEL_BASE_VA + MIN(get_phys_mem_mb(), LINEAR_MAPPING_MB) * MB;
-
-   const uptr base_vaddr =
-      ramdisk_size
-         ? (uptr)KERNEL_PA_TO_VA(ramdisk_paddr) + ramdisk_size
-         : (uptr)KERNEL_PA_TO_VA(KERNEL_PADDR) + KERNEL_MAX_SIZE;
-
-   vaddr = round_up_at(base_vaddr, KMALLOC_MAX_ALIGN);
+   if (vaddr >= limit)
+      return;
 
    while (true) {
 
@@ -476,17 +434,39 @@ void init_kmalloc(void)
 
       vaddr = heaps[heap_index]->vaddr + heaps[heap_index]->size;
    }
+}
 
-#if defined(__i386__) || defined(__x86_64__)
+void init_kmalloc(void)
+{
+   int heap_index;
 
-   heap_index =
-      kmalloc_internal_add_heap((void *)LOW_MEM_HEAP, LOW_MEM_HEAP_SIZE);
+   ASSERT(!kmalloc_initialized);
 
-   if (heap_index < 0) {
-      printk("kmalloc: no heap slot for the low-mem heap\n");
+   used_heaps = 0;
+   bzero(heaps, sizeof(heaps));
+
+   heap_index = kmalloc_internal_add_heap(&first_heap, sizeof(first_heap));
+   VERIFY(heap_index == 0);
+
+   kmalloc_initialized = true; /* we have at least 1 heap */
+
+   for (int i = 0; i < mem_regions_count; i++) {
+
+      memory_region_t *r = mem_regions + i;
+
+      if (r->type == MULTIBOOT_MEMORY_AVAILABLE) {
+
+         u64 begin = KERNEL_BASE_VA + r->addr;
+         u64 end = begin + r->len;
+
+         if (end <= LINEAR_MAPPING_OVER_END) {
+            init_kmalloc_fill_region(begin, end);
+         } else {
+            init_kmalloc_fill_region(begin, LINEAR_MAPPING_OVER_END);
+            break;
+         }
+      }
    }
-
-#endif
 
    insertion_sort_ptr(heaps,
                       used_heaps,

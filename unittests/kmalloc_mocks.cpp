@@ -15,6 +15,7 @@ extern "C" {
 
 #include <exos/common/utils.h>
 
+#include <exos/kernel/system_mmap.h>
 #include <exos/kernel/kmalloc.h>
 #include <exos/kernel/paging.h>
 #include <exos/kernel/pageframe_allocator.h>
@@ -39,6 +40,16 @@ void initialize_test_kernel_heap()
    }
 
    kernel_va = aligned_alloc(MB, get_phys_mem_mb() * MB);
+
+   mem_regions_count = 1;
+   mem_regions[0] = (memory_region_t) {
+      .addr = 0,
+      .len = (u64)get_phys_mem_mb() * MB,
+      .type = MULTIBOOT_MEMORY_AVAILABLE,
+      .extra = 0
+   };
+
+   printf("LINEAR_MAPPING_OVER_END: %p\n", (void*)LINEAR_MAPPING_OVER_END);
 }
 
 void init_kmalloc_for_tests()

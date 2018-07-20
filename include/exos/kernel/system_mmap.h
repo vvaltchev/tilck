@@ -1,6 +1,7 @@
 
 #pragma once
 #include <exos/common/basic_defs.h>
+#include <system_headers/multiboot.h>
 
 #define MAX_MEM_REGIONS 512
 
