@@ -3,29 +3,16 @@
 #include <exos/common/string_util.h>
 #include <exos/common/utils.h>
 
+#include <exos/kernel/system_mmap.h>
 #include <exos/kernel/paging.h>
 #include <exos/kernel/sort.h>
 #include <exos/kernel/elf_utils.h>
 
 #include <multiboot.h>
 
-
-#define MEM_REG_EXTRA_RAMDISK  1
-#define MEM_REG_EXTRA_KERNEL   2
-#define MEM_REG_EXTRA_LOWMEM   4
-
-typedef struct {
-
-   u64 addr;
-   u64 len;
-   u32 type;  /* multiboot_memory_map_t's type */
-   u32 extra; /* bit mask */
-
-} memory_region_t;
-
 u32 memsize_in_mb;
 
-memory_region_t mem_regions[512];
+memory_region_t mem_regions[MAX_MEM_REGIONS];
 int mem_regions_count;
 
 uptr ramdisk_paddr;
@@ -135,12 +122,12 @@ STATIC bool handle_region_overlap(int r1_index, int r2_index)
        * Case 0: region 2 starts before region 1.
        * All the cases below are possible (mirrored).
        *
+       *              +----------------------+
+       *              |       region 1       |
+       *              +----------------------+
        *  +----------------------+
-       *  |       region 1       |
+       *  |       region 2       |
        *  +----------------------+
-       *                         +----------------------+
-       *                         |       region 2       |
-       *                         +----------------------+
        */
 
       return handle_region_overlap(r2_index, r1_index);
@@ -357,12 +344,7 @@ STATIC void handle_overlapping_regions(void)
 STATIC void fix_mem_regions(void)
 {
    align_mem_regions_to_page_boundary();
-
-   insertion_sort_generic(mem_regions,
-                          sizeof(memory_region_t),
-                          mem_regions_count,
-                          less_than_cmp_mem_region);
-
+   sort_mem_regions();
    merge_adj_mem_regions();
    handle_overlapping_regions();
 }
@@ -427,16 +409,16 @@ void save_multiboot_memory_map(multiboot_info_t *mbi)
 
 static const char *mem_region_extra_to_str(u32 e)
 {
-   if (e == MEM_REG_EXTRA_RAMDISK)
-      return "RDSK";
-
-   if (e == MEM_REG_EXTRA_KERNEL)
-      return "KRNL";
-
-   if (e == MEM_REG_EXTRA_LOWMEM)
-      return "LMRS";
-
-   return "    ";
+   switch (e) {
+      case MEM_REG_EXTRA_RAMDISK:
+         return "RDSK";
+      case MEM_REG_EXTRA_KERNEL:
+         return "KRNL";
+      case MEM_REG_EXTRA_LOWMEM:
+         return "LMRS";
+      default:
+         return "    ";
+   }
 }
 
 void dump_system_memory_map(void)
