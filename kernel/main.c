@@ -187,6 +187,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    init_console();
 
+   //debug_kmalloc_dump_mem_usage();
+
    setup_irq_handling();
    init_sched();
    setup_syscall_interfaces();

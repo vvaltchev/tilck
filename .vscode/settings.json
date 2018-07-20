@@ -31,4 +31,5 @@
    "editor.foldingStrategy": "indentation",
    "editor.emptySelectionClipboard": false,
    "git.ignoreLimitWarning": true,
+   "cmake.configureOnOpen": false,
 }

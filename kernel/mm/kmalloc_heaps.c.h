@@ -214,6 +214,7 @@ bool kmalloc_create_heap(kmalloc_heap *h,
    h->min_block_size = min_block_size;
    h->alloc_block_size = alloc_block_size;
    h->metadata_nodes = metadata_nodes;
+   h->region = -1;
 
    h->heap_over_end = vaddr + size;
    h->heap_data_size_log2 = log2_for_power_of_2(size);
@@ -255,21 +256,21 @@ kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h)
 
 static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
 {
-   size_t curr_max = 512 * MB;
+   uptr curr_max = 512 * MB;
+   uptr curr_end;
 
    while (curr_max) {
 
-      if (vaddr + curr_max <= limit)
+      curr_end = vaddr + curr_max;
+
+      if (vaddr < curr_end && curr_end <= limit)
          break;
 
-      curr_max >>= 1; // divide by 2.
+      curr_max >>= 1;
    }
 
    return curr_max;
 }
-
-extern uptr ramdisk_paddr;
-extern size_t ramdisk_size;
 
 static void
 debug_print_heap_info(uptr vaddr, u32 heap_size, u32 min_block_size)
@@ -321,10 +322,10 @@ void debug_kmalloc_dump_mem_usage(void)
    printk(NO_PREFIX "\n\nKMALLOC HEAPS: \n\n");
 
    printk(NO_PREFIX
-         " # |    vaddr   | size (KB) | allocated (KB) | diff (B)\n");
+         " # | R  |   vaddr    | size (KB) | allocated (KB) | diff (B)\n");
 
    printk(NO_PREFIX
-         "---+------------+-----------+----------------+---------------\n");
+         "---+----+------------+-----------+----------------+---------------\n");
 
    for (u32 i = 0; i < ARRAY_SIZE(heaps) && heaps[i]; i++) {
 
@@ -332,11 +333,15 @@ void debug_kmalloc_dump_mem_usage(void)
       uptr size_kb = heaps[i]->size / KB;
       uptr allocated_kb = heaps[i]->mem_allocated / KB;
 
-      printk(NO_PREFIX "%s%d | %p |  %-6u   | %-6u [%-2u %%]  | %d\n",
-             i < 10 ? " " : "", i, heaps[i]->vaddr, size_kb, allocated_kb,
+      printk(NO_PREFIX "%s%d | %-2d | %p |  %-6u   | %-6u [%-2u %%]  | %d\n",
+             i < 10 ? " " : "", i, heaps[i]->region,
+             heaps[i]->vaddr,
+             size_kb, allocated_kb,
              allocated_kb * 100 / size_kb,
              heaps[i]->mem_allocated - heaps_alloc[i]);
    }
+
+   printk(NO_PREFIX "\n");
 
    for (u32 i = 0; i < ARRAY_SIZE(heaps) && heaps[i]; i++) {
       heaps_alloc[i] = heaps[i]->mem_allocated;
@@ -413,7 +418,7 @@ static int greater_than_heap_cmp(const void *a, const void *b)
    return -1;
 }
 
-static void init_kmalloc_fill_region(uptr vaddr, uptr limit)
+static void init_kmalloc_fill_region(int region, uptr vaddr, uptr limit)
 {
    int heap_index;
    vaddr = round_up_at(vaddr, MIN(KMALLOC_MIN_HEAP_SIZE, KMALLOC_MAX_ALIGN));
@@ -436,6 +441,7 @@ static void init_kmalloc_fill_region(uptr vaddr, uptr limit)
          break;
       }
 
+      heaps[heap_index]->region = region;
       vaddr = heaps[heap_index]->vaddr + heaps[heap_index]->size;
    }
 }
@@ -454,6 +460,22 @@ void init_kmalloc(void)
 
    kmalloc_initialized = true; /* we have at least 1 heap */
 
+   // TODO (must!!): understand why when ran with qemu's multiboot loader,
+   // pdir_clone() triggers the assert:
+   //
+   // ASSERTION 'pf_ref_count_get(orig_paddr) > 0' FAILED in
+   // /home/vlad/dev/experimentOs/kernel/arch/i386/paging.c:354
+   //
+   // At the moment it looks like getting closer to the limit it is a problem.
+   // For example, with 128 MB of RAM, region 7 ends with 0x7fe0000 and we
+   // panic. But, if we get the limit a little shorter (0x7fa0000), it works.
+   // Why?
+
+   // init_kmalloc_fill_region(-1,
+   //                          (uptr)KERNEL_PA_TO_VA(0x486000+MB),
+   //                          (uptr)KERNEL_PA_TO_VA(0x7fa0000));
+   //                          //(uptr)KERNEL_PA_TO_VA(0x7fe0000));
+
    for (int i = 0; i < mem_regions_count; i++) {
 
       memory_region_t *r = mem_regions + i;
@@ -464,9 +486,9 @@ void init_kmalloc(void)
          u64 end = begin + r->len;
 
          if (end <= LINEAR_MAPPING_OVER_END) {
-            init_kmalloc_fill_region(begin, end);
+            init_kmalloc_fill_region(i, begin, end);
          } else {
-            init_kmalloc_fill_region(begin, LINEAR_MAPPING_OVER_END);
+            init_kmalloc_fill_region(i, begin, LINEAR_MAPPING_OVER_END);
             break;
          }
       }

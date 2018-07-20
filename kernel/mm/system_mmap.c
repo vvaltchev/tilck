@@ -423,12 +423,12 @@ void dump_system_memory_map(void)
 {
    printk("System's memory map\n");
    printk("---------------------------------------------------------------\n");
-   printk("       START                 END        (T, Extr)\n");
+   printk("           START                 END        (T, Extr)\n");
    for (int i = 0; i < mem_regions_count; i++) {
 
       memory_region_t *ma = mem_regions + i;
 
-      printk("0x%llx - 0x%llx (%d, %s) [%u KB]\n",
+      printk("%-2d) 0x%llx - 0x%llx (%d, %s) [%u KB]\n", i,
              ma->addr, ma->addr + ma->len,
              ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
    }
