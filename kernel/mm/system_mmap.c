@@ -12,6 +12,7 @@
 
 #define MEM_REG_EXTRA_RAMDISK  1
 #define MEM_REG_EXTRA_KERNEL   2
+#define MEM_REG_EXTRA_LOWMEM   4
 
 typedef struct {
 
@@ -110,7 +111,19 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
    if (s2 < s1) {
 
       /*
-       * Skip the following case:
+       * Skip the following cases:
+       *
+       * Case 0a:
+       *                         +------------------------+
+       *                         |        region 1        |
+       *                         +------------------------+
+       *  +----------------------+
+       *  |       region 2       |
+       *  +----------------------+
+       *
+       * Reason: the regions do not overlap.
+       *
+       * Case 0b:
        *
        *                +------------------------+
        *                |        region 1        |
@@ -119,7 +132,7 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
        *  |       region 2       |
        *  +----------------------+
        *
-       * Reason: we'll handle the case when i and j are swapped.
+       * Reason: we'll handle the case when i and j are swapped (see case 5).
        */
       return;
    }
@@ -127,10 +140,12 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
    u64 e1 = r1->addr + r1->len;
    u64 e2 = r2->addr + r2->len;
 
-   if (s2 >= s1 + e2) {
+   if (s2 >= e1) {
 
       /*
        * Skip the following case:
+       *
+       * Case 0c:
        *
        *  +----------------------+
        *  |       region 1       |
@@ -139,7 +154,7 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
        *                         |       region 2       |
        *                         +----------------------+
        *
-       * Reason: no overlap.
+       * Reason: the regions do not overlap.
        */
       return;
    }
@@ -156,31 +171,35 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
        *  +---------------+
        */
 
-      if (r1->type > r2->type) {
+      if (r1->type >= r2->type) {
 
          /*
           * Region 1's type is stricter than region 2's. Just remove region 2.
           */
 
          remove_mem_region(r2_index);
-         return;
+
+      } else {
+
+         /*
+          * Region 2's type is stricter, move region 1's start:
+          *                  +-----------------+
+          *                  |    region 1     |
+          *                  +-----------------+
+          *  +---------------+
+          *  |   region 2    |
+          *  +---------------+
+          *
+          */
+
+         r1->addr = e2;
+         r1->len = e1 - r1->addr;
       }
 
-      /*
-       * Region 2's type is stricter, move region 1's start:
-       *                  +-----------------+
-       *                  |    region 1     |
-       *                  +-----------------+
-       *  +---------------+
-       *  |   region 2    |
-       *  +---------------+
-       *
-       */
-      r2->addr = e2;
       return;
    }
 
-   if (s2 > s1 && e2 < e1) {
+   if (s1 < s2 && e2 < e1) {
 
       /*
        * Case 2:
@@ -192,34 +211,35 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
        *                  +---------------+
        */
 
-      if (r1->type > r2->type) {
+      if (r1->type >= r2->type) {
 
          /*
           * Region 1's type is stricter than region 2's. Just remove region 2.
           */
 
          remove_mem_region(r2_index);
-         return;
+
+      } else {
+
+         /*
+          * Region 2's type is stricter, we need to split region 1 in two parts:
+          *  +---------------+               +-------------------+
+          *  | region 1 [1]  |               |   region 1 [2]    |
+          *  +---------------+               +-------------------+
+          *                  +---------------+
+          *                  |   region 2    |
+          *                  +---------------+
+          */
+
+         r1->len = (s2 - s1);
+
+         append_mem_region((memory_region_t) {
+            .addr = e2,
+            .len = (e1 - e2),
+            .type = r1->type,
+            .extra = r1->extra
+         });
       }
-
-      /*
-       * Region 2's type is stricter, we need to split region 1 in two parts:
-       *  +---------------+               +-------------------+
-       *  | region 1 [1]  |               |   region 1 [2]    |
-       *  +---------------+               +-------------------+
-       *                  +---------------+
-       *                  |   region 2    |
-       *                  +---------------+
-       */
-
-      r1->len = (s2 - s1);
-
-      append_mem_region((memory_region_t) {
-         .addr = e2,
-         .len = (e1 - e2),
-         .type = r1->type,
-         .extra = r1->extra
-      });
 
       return;
    }
@@ -236,47 +256,131 @@ STATIC void handle_region_overlap(int r1_index, int r2_index)
        *                    +---------------+
        */
 
-      if (r1->type > r2->type) {
+      if (r1->type >= r2->type) {
 
          /*
           * Region 1's type is stricter than region 2's. Just remove region 2.
           */
 
          remove_mem_region(r2_index);
-         return;
+
+      } else {
+
+         /*
+          * Region 2's type is stricter, move region 1's end:
+          *
+          * +-----------------+
+          * |    region 1     |
+          * +-----------------+
+          *                   +---------------+
+          *                   |   region 2    |
+          *                   +---------------+
+          */
+
+         r1->len = s2 - s1;
       }
 
-      /*
-       * Region 2's type is stricter, move region 1's end:
-       *
-       * +-----------------+
-       * |    region 1     |
-       * +-----------------+
-       *                   +---------------+
-       *                   |   region 2    |
-       *                   +---------------+
-       */
-
-      r1->len = s2 - s1;
       return;
    }
 
-   if (s1 < s2 && s2 < e1 && e2 > e1) {
+   if (s2 == s1 && e2 == e1) {
 
       /*
        * Case 4:
+       *  +---------------------------+
+       *  |         region 1          |
+       *  +---------------------------+
+       *  +---------------------------+
+       *  |         region 2          |
+       *  +---------------------------+
+       */
+
+      if (r1->type >= r2->type) {
+
+         /*
+          * Region 1's type is stricter than region 2's. Just remove region 2.
+          */
+
+         remove_mem_region(r2_index);
+
+      } else {
+
+         /*
+          * Region 2's type is stricter, but we cannot remove region 1:
+          * make region 1 to be exactly like region 2 and remove region 2.
+          */
+
+         *r1 = *r2;
+         remove_mem_region(r2_index);
+      }
+
+      return;
+   }
+
+   if (s1 <= s2 && s2 < e1 && e2 > e1) {
+
+      /*
+       * Case 5:
        *  +---------------------------------+
        *  |            region 1             |
        *  +---------------------------------+
        *                    +---------------------------+
        *                    |          region 2         |
        *                    +---------------------------+
+       * OR
+       *
+       *  +----------------------------+
+       *  |          region 1          |
+       *  +----------------------------+
+       *  +--------------------------------------------+
+       *  |                  region 2                  |
+       *  +--------------------------------------------+
        */
 
+      if (r1->type >= r2->type) {
+
+         /*
+          * Region 1's type is stricter than region 2's. Move region 2's start.
+          *  +---------------------------------+
+          *  |            region 1             |
+          *  +---------------------------------+
+          *                                    +-----------+
+          *                                    |  region 2 |
+          *                                    +-----------+
+          */
+
+         r2->addr = e1;
+         r2->len = e2 - r2->addr;
+
+      } else {
+
+         /*
+          * Region 2's type is stricter, move region 1's end.
+          *
+          *  +-----------------+
+          *  |    region 1     |
+          *  +-----------------+
+          *                    +---------------------------+
+          *                    |          region 2         |
+          *                    +---------------------------+
+          */
+
+         r1->len = s2 - s1;
+
+         if (r1->len == 0) {
+            /* Corner case: we have to remove region 1 (by moving r2 into it) */
+
+            *r1 = *r2;
+            remove_mem_region(r2_index);
+         }
+      }
 
       return;
    }
 
+   /*
+    * There should NOT be any unhandled cases.
+    */
    NOT_REACHED();
 }
 
@@ -298,13 +402,12 @@ STATIC void fix_mem_regions(void)
                           less_than_cmp_mem_region);
 
    merge_adj_mem_regions();
+   handle_overlapping_regions();
 
-   // handle_overlapping_regions();
-
-   // insertion_sort_generic(mem_regions,
-   //                        sizeof(memory_region_t),
-   //                        mem_regions_count,
-   //                        less_than_cmp_mem_region);
+   insertion_sort_generic(mem_regions,
+                          sizeof(memory_region_t),
+                          mem_regions_count,
+                          less_than_cmp_mem_region);
 }
 
 STATIC void add_kernel_phdrs_to_mmap(void)
@@ -331,6 +434,14 @@ STATIC void add_kernel_phdrs_to_mmap(void)
 void save_multiboot_memory_map(multiboot_info_t *mbi)
 {
    uptr ma_addr = mbi->mmap_addr;
+
+   /* We want to keep the first 64 KB as reserved */
+   append_mem_region((memory_region_t) {
+      .addr = 0,
+      .len = 64 * KB,
+      .type = MULTIBOOT_MEMORY_RESERVED,
+      .extra = MEM_REG_EXTRA_LOWMEM
+   });
 
    while (ma_addr < mbi->mmap_addr + mbi->mmap_length) {
 
@@ -364,6 +475,9 @@ static const char *mem_region_extra_to_str(u32 e)
 
    if (e == MEM_REG_EXTRA_KERNEL)
       return "KRNL";
+
+   if (e == MEM_REG_EXTRA_LOWMEM)
+      return "LMRS";
 
    return "    ";
 }
