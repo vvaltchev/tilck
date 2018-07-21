@@ -21,9 +21,6 @@ STATIC kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
 STATIC int used_heaps;
 STATIC char first_heap[256 * KB] __attribute__ ((aligned(KMALLOC_MAX_ALIGN)));
 
-bool pg_alloc_and_map(uptr vaddr, int page_count);
-void pg_free_and_unmap(uptr vaddr, int page_count);
-
 #include "kmalloc_leak_detector.c.h"
 
 void *kmalloc(size_t s)
@@ -195,8 +192,8 @@ bool kmalloc_create_heap(kmalloc_heap *h,
    bzero(h, sizeof(*h));
    h->metadata_size = calculate_heap_metadata_size(size, min_block_size);
 
-   h->valloc_and_map = valloc ? valloc : pg_alloc_and_map;
-   h->vfree_and_unmap = vfree ? vfree : pg_free_and_unmap;
+   h->valloc_and_map = valloc;
+   h->vfree_and_unmap = vfree;
 
    if (!metadata_nodes) {
       // It is OK to pass NULL as 'metadata_nodes' if at least one heap exists.

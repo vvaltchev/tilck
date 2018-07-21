@@ -18,7 +18,6 @@ extern "C" {
 #include <exos/kernel/system_mmap.h>
 #include <exos/kernel/kmalloc.h>
 #include <exos/kernel/paging.h>
-#include <exos/kernel/pageframe_allocator.h>
 
 extern bool kmalloc_initialized;
 extern u32 memsize_in_mb;
@@ -56,7 +55,6 @@ void init_kmalloc_for_tests()
    initialize_test_kernel_heap();
    suppress_printk = true;
    init_kmalloc();
-   init_pageframe_allocator();
    suppress_printk = false;
 }
 

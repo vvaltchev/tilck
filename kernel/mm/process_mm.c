@@ -5,6 +5,10 @@
 #include <exos/kernel/kmalloc.h>
 #include <exos/kernel/errno.h>
 
+page_directory_t *kernel_page_dir;
+page_directory_t *curr_page_dir;
+u8 page_size_buf[PAGE_SIZE] __attribute__ ((aligned(PAGE_SIZE)));
+
 void user_vfree_and_unmap(uptr user_vaddr, int page_count)
 {
    page_directory_t *pdir = get_curr_page_dir();

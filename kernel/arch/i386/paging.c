@@ -10,6 +10,7 @@
 #include <exos/kernel/hal.h>
 #include <exos/kernel/user.h>
 #include <exos/kernel/elf_utils.h>
+#include <exos/kernel/system_mmap.h>
 #include <exos/kernel/fault_resumable.h>
 
 #include "paging_int.h"
@@ -485,7 +486,7 @@ void init_paging()
 
 void init_paging_cow(void)
 {
-   phys_mem_lim = get_phys_mem_mb() * MB;
+   phys_mem_lim = get_phys_mem_size();
 
    /*
     * Allocate the buffer used for keeping a ref-count for each pageframe.

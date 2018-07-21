@@ -170,22 +170,3 @@ TEST_F(kmalloc_test, chaos_test)
       });
    }
 }
-
-extern "C" {
-   bool pg_alloc_and_map(uptr vaddr, int page_count);
-   void pg_free_and_unmap(uptr vaddr, int page_count);
-}
-
-TEST_F(kmalloc_test, pg_alloc_and_map)
-{
-   bool success;
-
-   uptr vaddr = KERNEL_BASE_VA + 5 * MB;
-
-   success = pg_alloc_and_map(vaddr, 1);
-   ASSERT_TRUE(success);
-
-   ASSERT_TRUE(is_mapped(get_kernel_page_dir(), (void *)vaddr));
-
-   pg_free_and_unmap(vaddr, 1);
-}

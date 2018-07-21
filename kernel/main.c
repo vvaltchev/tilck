@@ -21,7 +21,6 @@
 #include <exos/kernel/kb.h>
 #include <exos/kernel/timer.h>
 #include <exos/kernel/term.h>
-#include <exos/kernel/pageframe_allocator.h>
 #include <exos/kernel/datetime.h>
 #include <exos/kernel/syscalls.h>
 #include <exos/kernel/fb_console.h>
@@ -29,6 +28,7 @@
 #include <exos/kernel/kb_scancode_set1_keys.h>
 #include <exos/kernel/arch/generic_x86/textmode_video.h>
 #include <exos/kernel/arch/generic_x86/fpu_memcpy.h>
+#include <exos/kernel/system_mmap.h>
 
 extern uptr ramdisk_paddr;
 extern size_t ramdisk_size;
@@ -183,7 +183,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_paging();
    init_kmalloc();
    init_paging_cow();
-   init_pageframe_allocator(); /* NOTE: unused at the moment */
 
    init_console();
 

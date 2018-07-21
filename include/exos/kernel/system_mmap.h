@@ -20,3 +20,15 @@ typedef struct {
 
 extern memory_region_t mem_regions[MAX_MEM_REGIONS];
 extern int mem_regions_count;
+
+extern u32 memsize_in_mb;
+
+static ALWAYS_INLINE uptr get_phys_mem_mb(void)
+{
+   return memsize_in_mb;
+}
+
+static ALWAYS_INLINE uptr get_phys_mem_size(void)
+{
+   return memsize_in_mb << 20;
+}
