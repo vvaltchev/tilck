@@ -402,6 +402,16 @@ void save_multiboot_memory_map(multiboot_info_t *mbi)
    }
 
    add_kernel_phdrs_to_mmap();
+
+   // Mark the whole last MB as reserved.
+   // TODO (MUST!!!): fix this work-around for a nasty bug.
+   append_mem_region((memory_region_t) {
+      .addr = get_phys_mem_size() & ~(MB - 1),
+      .len = 1 * MB,
+      .type = MULTIBOOT_MEMORY_RESERVED,
+      .extra = 0
+   });
+
    fix_mem_regions();
 }
 

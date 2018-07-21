@@ -10,6 +10,7 @@
 #include <exos/kernel/hal.h>
 #include <exos/kernel/user.h>
 #include <exos/kernel/elf_utils.h>
+#include <exos/kernel/fault_resumable.h>
 
 #include "paging_int.h"
 
@@ -111,6 +112,26 @@ bool handle_potential_cow(u32 vaddr)
    return true;
 }
 
+static void
+find_sym_at_addr_no_ret(uptr vaddr,
+                        ptrdiff_t *offset,
+                        u32 *sym_size,
+                        const char **sym_name_ref)
+{
+  *sym_name_ref = find_sym_at_addr(vaddr, offset, sym_size);
+}
+
+static const char *
+find_sym_at_addr_safe(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
+{
+   const char *sym_name = NULL;
+   fault_resumable_call(~0, &find_sym_at_addr_no_ret, 4,
+                        vaddr, offset, sym_size, &sym_name);
+
+   return sym_name;
+}
+
+
 void handle_page_fault_int(regs *r)
 {
    u32 vaddr;
@@ -126,7 +147,7 @@ void handle_page_fault_int(regs *r)
 
    if (!us) {
       ptrdiff_t off = 0;
-      const char *sym_name = find_sym_at_addr(r->eip, &off, NULL);
+      const char *sym_name = find_sym_at_addr_safe(r->eip, &off, NULL);
       panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p [%s + 0x%x]\n",
             rw ? "WRITE" : "READ",
             vaddr,

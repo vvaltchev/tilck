@@ -13,7 +13,7 @@
 #include "realmode_call.h"
 #include "vbe.h"
 
-#define RAMDISK_PADDR              (KERNEL_PADDR + KERNEL_MAX_SIZE)
+#define RAMDISK_PADDR              0x1d8000 //(KERNEL_PADDR + KERNEL_MAX_SIZE)
 #define MBI_PADDR (0x10000)
 
 /*

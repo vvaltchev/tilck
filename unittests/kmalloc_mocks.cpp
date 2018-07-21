@@ -44,12 +44,10 @@ void initialize_test_kernel_heap()
    mem_regions_count = 1;
    mem_regions[0] = (memory_region_t) {
       .addr = 0,
-      .len = (u64)get_phys_mem_mb() * MB,
+      .len = get_phys_mem_size(),
       .type = MULTIBOOT_MEMORY_AVAILABLE,
       .extra = 0
    };
-
-   printf("LINEAR_MAPPING_OVER_END: %p\n", (void*)LINEAR_MAPPING_OVER_END);
 }
 
 void init_kmalloc_for_tests()

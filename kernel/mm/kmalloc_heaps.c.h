@@ -275,8 +275,6 @@ static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
 static void
 debug_print_heap_info(uptr vaddr, u32 heap_size, u32 min_block_size)
 {
-#if KMALLOC_HEAPS_CREATION_DEBUG
-
    if (!heap_size) {
       printk("empty heap\n");
       return;
@@ -292,8 +290,6 @@ debug_print_heap_info(uptr vaddr, u32 heap_size, u32 min_block_size)
       printk("[heap: %p] size: %u KB, "
              "min block: %u, metadata size: %u KB\n",
              vaddr, heap_size / KB, min_block_size, metadata_size / KB);
-
-#endif
 }
 
 static void
@@ -460,22 +456,6 @@ void init_kmalloc(void)
 
    kmalloc_initialized = true; /* we have at least 1 heap */
 
-   // TODO (must!!): understand why when ran with qemu's multiboot loader,
-   // pdir_clone() triggers the assert:
-   //
-   // ASSERTION 'pf_ref_count_get(orig_paddr) > 0' FAILED in
-   // /home/vlad/dev/experimentOs/kernel/arch/i386/paging.c:354
-   //
-   // At the moment it looks like getting closer to the limit it is a problem.
-   // For example, with 128 MB of RAM, region 7 ends with 0x7fe0000 and we
-   // panic. But, if we get the limit a little shorter (0x7fa0000), it works.
-   // Why?
-
-   // init_kmalloc_fill_region(-1,
-   //                          (uptr)KERNEL_PA_TO_VA(0x486000+MB),
-   //                          (uptr)KERNEL_PA_TO_VA(0x7fa0000));
-   //                          //(uptr)KERNEL_PA_TO_VA(0x7fe0000));
-
    for (int i = 0; i < mem_regions_count; i++) {
 
       memory_region_t *r = mem_regions + i;
@@ -483,14 +463,12 @@ void init_kmalloc(void)
       if (r->type == MULTIBOOT_MEMORY_AVAILABLE) {
 
          u64 begin = KERNEL_BASE_VA + r->addr;
-         u64 end = begin + r->len;
+         u64 end = MIN(begin + r->len, LINEAR_MAPPING_OVER_END);
 
-         if (end <= LINEAR_MAPPING_OVER_END) {
-            init_kmalloc_fill_region(i, begin, end);
-         } else {
-            init_kmalloc_fill_region(i, begin, LINEAR_MAPPING_OVER_END);
+         init_kmalloc_fill_region(i, begin, end);
+
+         if (end == LINEAR_MAPPING_OVER_END)
             break;
-         }
       }
    }
 
@@ -498,6 +476,8 @@ void init_kmalloc(void)
                       used_heaps,
                       greater_than_heap_cmp);
 
+#if KMALLOC_HEAPS_CREATION_DEBUG
    debug_dump_all_heaps_info();
+#endif
 }
 
