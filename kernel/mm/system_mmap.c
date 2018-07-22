@@ -452,6 +452,19 @@ void system_mmap_set(multiboot_info_t *mbi)
    set_lower_and_upper_kb();
 }
 
+int system_mmap_get_region_of(uptr paddr)
+{
+   for (int i = 0; i < mem_regions_count; i++) {
+
+      memory_region_t *m = mem_regions + i;
+
+      if (m->addr <= paddr && paddr < (m->addr + m->len))
+         return i;
+   }
+
+   return -1;
+}
+
 static const char *mem_region_extra_to_str(u32 e)
 {
    switch (e) {
@@ -468,16 +481,18 @@ static const char *mem_region_extra_to_str(u32 e)
 
 void dump_system_memory_map(void)
 {
-   printk("System's memory map\n");
-   printk("---------------------------------------------------------------\n");
+   printk("System's memory map:\n");
+   printk("\n");
    printk("           START                 END        (T, Extr)\n");
+
    for (int i = 0; i < mem_regions_count; i++) {
 
       memory_region_t *ma = mem_regions + i;
 
-      printk("%-2d) 0x%llx - 0x%llx (%d, %s) [%u KB]\n", i,
+      printk("%02d) 0x%llx - 0x%llx (%d, %s) [%6u KB]\n", i,
              ma->addr, ma->addr + ma->len,
              ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
    }
-   printk("---------------------------------------------------------------\n");
+
+   printk("\n");
 }

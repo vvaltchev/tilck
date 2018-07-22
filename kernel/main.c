@@ -84,15 +84,13 @@ void show_hello_message(void)
 
 void show_system_info(void)
 {
-   printk("TIMER_HZ: %i; TIME_SLOT: %i ms; MEM: %i MB %s\n",
+   printk("TIMER_HZ: %i; TIME_SLOT: %i ms %s\n",
           TIMER_HZ,
           1000 / (TIMER_HZ / TIME_SLOT_JIFFIES),
-          get_phys_mem_mb(),
           in_hypervisor() ? "[IN HYPERVISOR]" : "");
 
    dump_system_memory_map();
 }
-
 
 void mount_ramdisk(void)
 {
@@ -181,8 +179,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_paging_cow();
 
    init_console();
-
-   debug_kmalloc_dump_mem_usage();
 
    setup_irq_handling();
    init_sched();

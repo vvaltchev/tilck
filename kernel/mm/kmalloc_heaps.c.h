@@ -315,21 +315,26 @@ void debug_kmalloc_dump_mem_usage(void)
    printk(NO_PREFIX "\n\nKMALLOC HEAPS: \n\n");
 
    printk(NO_PREFIX
-         " # | R  |   vaddr    | size (KB) | allocated (KB) | diff (B)\n");
+          "| H# | R# |   vaddr    | size (KB) | used |   diff (B)    |\n");
 
    printk(NO_PREFIX
-         "---+----+------------+-----------+----------------+---------------\n");
+          "+----+----+------------+-----------+------+---------------+\n");
 
    for (u32 i = 0; i < ARRAY_SIZE(heaps) && heaps[i]; i++) {
+
+      char region_str[8] = "--";
 
       ASSERT(heaps[i]->size);
       uptr size_kb = heaps[i]->size / KB;
       uptr allocated_kb = heaps[i]->mem_allocated / KB;
 
-      printk(NO_PREFIX "%s%d | %-2d | %p |  %-6u   | %-6u [%-2u %%]  | %d\n",
-             i < 10 ? " " : "", i, heaps[i]->region,
+      if (heaps[i]->region >= 0)
+         snprintk(region_str, sizeof(region_str), "%02d", heaps[i]->region);
+
+      printk(NO_PREFIX "| %2d | %s | %p |  %6u   |  %2u%% | %9d     |\n",
+             i, region_str,
              heaps[i]->vaddr,
-             size_kb, allocated_kb,
+             size_kb,
              allocated_kb * 100 / size_kb,
              heaps[i]->mem_allocated - heaps_alloc[i]);
    }
@@ -450,6 +455,9 @@ void init_kmalloc(void)
 
    heap_index = kmalloc_internal_add_heap(&first_heap, sizeof(first_heap));
    VERIFY(heap_index == 0);
+
+   heaps[heap_index]->region =
+      system_mmap_get_region_of(KERNEL_VA_TO_PA(&first_heap));
 
    kmalloc_initialized = true; /* we have at least 1 heap */
 

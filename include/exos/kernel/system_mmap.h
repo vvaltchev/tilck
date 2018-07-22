@@ -24,6 +24,8 @@ extern int mem_regions_count;
 void system_mmap_add_ramdisk(uptr start_paddr, uptr end_paddr);
 void *system_mmap_get_ramdisk_vaddr(int ramdisk_index);
 void system_mmap_set(multiboot_info_t *mbi);
+int system_mmap_get_region_of(uptr paddr);
+
 void dump_system_memory_map(void);
 
 extern u32 __mem_upper_kb;
