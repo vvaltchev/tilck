@@ -583,7 +583,7 @@ init_term(const video_interface *intf,
       extra_buffer_rows = 9 * term_rows;
       total_buffer_rows = term_rows + extra_buffer_rows;
 
-      if (kmalloc_initialized)
+      if (is_kmalloc_initialized())
          buffer = kmalloc(2 * total_buffer_rows * term_cols);
    }
 

@@ -46,7 +46,7 @@ typedef struct {
 
 STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 
-bool kmalloc_initialized; // Zero-initialized => false.
+STATIC bool kmalloc_initialized;
 static const block_node new_node; // Just zeros.
 
 #define HALF(x) ((x) >> 1)
@@ -56,6 +56,11 @@ static const block_node new_node; // Just zeros.
 #define NODE_RIGHT(n) (TWICE(n) + 2)
 #define NODE_PARENT(n) (HALF(n-1))
 #define NODE_IS_LEFT(n) (((n) & 1) != 0)
+
+bool is_kmalloc_initialized(void)
+{
+   return kmalloc_initialized;
+}
 
 STATIC_INLINE int ptr_to_node(kmalloc_heap *h, void *ptr, size_t size)
 {

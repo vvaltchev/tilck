@@ -8,8 +8,6 @@
 #define KMALLOC_HEAPS_COUNT 32
 #define KMALLOC_MAX_ALIGN (64 * KB)
 
-extern bool kmalloc_initialized;
-
 typedef bool (*virtual_alloc_and_map_func)(uptr vaddr, int page_count);
 typedef void (*virtual_free_and_unmap_func)(uptr vaddr, int page_count);
 
@@ -27,10 +25,11 @@ calculate_heap_min_block_size(size_t heap_size, size_t metadata_size)
    return 2 * heap_size / metadata_size;
 }
 
-void init_kmalloc();
+void init_kmalloc(void);
 void *kmalloc(size_t size);
 void kfree2(void *ptr, size_t size);
 size_t kmalloc_get_total_heap_allocation(void);
+bool is_kmalloc_initialized(void);
 
 bool kmalloc_create_heap(kmalloc_heap *h,
                          uptr vaddr,
