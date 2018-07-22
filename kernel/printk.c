@@ -34,39 +34,71 @@ write_in_buf_char(char **buf_ref, char *buf_end, char c)
    return ptr < buf_end;
 }
 
+typedef struct {
 
-#define WRITE_CHAR(c)                                \
-   do {                                              \
-      if (!write_in_buf_char(&buf, buf_end, (c)))    \
-         goto out;                                   \
-   } while (0)
+   int left_padding;
+   int right_padding;
+   char *buf;
+   char *buf_end;
+   bool zero_lpad;
 
-#define WRITE_STR(s)                                 \
-   do {                                              \
-      const char *__str = (s);                       \
-      int sl = strlen(__str);                        \
-      int lpad = MAX(0, left_padding - sl);          \
-      int rpad = MAX(0, right_padding - sl);         \
-                                                     \
-      for (int i = 0; i < lpad; i++)                 \
-         WRITE_CHAR(zero_lpad ? '0' : ' ');          \
-                                                     \
-      if (!write_in_buf_str(&buf, buf_end, (__str))) \
-         goto out;                                   \
-                                                     \
-      for (int i = 0; i < rpad; i++)                 \
-         WRITE_CHAR(' ');                            \
-   } while (0)
+} snprintk_ctx;
 
-
-int vsnprintk(char *buf, size_t size, const char *fmt, va_list args)
+static void
+snprintk_ctx_reset_per_argument_state(snprintk_ctx *ctx)
 {
-   char *const initial_buf = buf;
-   char *buf_end = buf + size;
+   ctx->left_padding = 0;
+   ctx->right_padding = 0;
+   ctx->zero_lpad = false;
+}
+
+#define WRITE_CHAR(c)                                         \
+   do {                                                       \
+      if (!write_in_buf_char(&ctx->buf, ctx->buf_end, (c)))   \
+         goto out;                                            \
+   } while (0)
+
+#define WRITE_STR(s) if (!write_str(ctx, s)) goto out;
+
+static bool
+write_str(snprintk_ctx *ctx, const char *str)
+{
+   int sl = strlen(str);
+   int lpad = MAX(0, ctx->left_padding - sl);
+   int rpad = MAX(0, ctx->right_padding - sl);
+
+   ASSERT(!lpad || !rpad);
+
+   for (int i = 0; i < lpad; i++)
+      WRITE_CHAR(ctx->zero_lpad ? '0' : ' ');
+
+   if (!write_in_buf_str(&ctx->buf, ctx->buf_end, (str)))
+      goto out;
+
+   for (int i = 0; i < rpad; i++)
+      WRITE_CHAR(' ');
+
+   return true;
+
+out:
+   return false;
+}
+
+
+int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list args)
+{
    char intbuf[64];
-   int left_padding = 0;
-   int right_padding = 0;
-   bool zero_lpad = false;
+
+   snprintk_ctx __ctx = {
+      .left_padding = 0,
+      .right_padding = 0,
+      .zero_lpad = false,
+      .buf = initial_buf,
+      .buf_end = initial_buf + size
+   };
+
+   /* ctx has to be a pointer because of macros shared with WRITE_STR */
+   snprintk_ctx *ctx = &__ctx;
 
    while (*fmt) {
 
@@ -86,7 +118,7 @@ switch_case:
       switch (*fmt) {
 
       case '0':
-         zero_lpad = true;
+         ctx->zero_lpad = true;
          fmt++;
 
          if (!*fmt)
@@ -105,7 +137,7 @@ switch_case:
       case '8':
       case '9':
 
-         left_padding = exos_strtol(fmt, &fmt, NULL);
+         ctx->left_padding = exos_strtol(fmt, &fmt, NULL);
 
          if (!*fmt)
             goto out; /* nothing after the %<number> sequence */
@@ -114,7 +146,7 @@ switch_case:
          goto switch_case;
 
       case '-':
-         right_padding = exos_strtol(fmt + 1, &fmt, NULL);
+         ctx->right_padding = exos_strtol(fmt + 1, &fmt, NULL);
 
          if (!*fmt)
             goto out; /* nothing after the %-<number> sequence */
@@ -165,8 +197,8 @@ switch_case:
       case 'c':
          WRITE_CHAR(va_arg(args, s32));
 
-         if (right_padding > 0) {
-            right_padding--;
+         if (ctx->right_padding > 0) {
+            ctx->right_padding--;
             WRITE_STR(""); // write the padding
          }
 
@@ -187,15 +219,13 @@ switch_case:
          WRITE_CHAR(*fmt);
       }
 
-      zero_lpad = false;
-      left_padding = 0;
-      right_padding = 0;
+      snprintk_ctx_reset_per_argument_state(ctx);
       ++fmt;
    }
 
 out:
-   buf[ buf < buf_end ? 0 : -1 ] = 0;
-   return (buf - initial_buf);
+   ctx->buf[ ctx->buf < ctx->buf_end ? 0 : -1 ] = 0;
+   return (ctx->buf - initial_buf);
 }
 
 int snprintk(char *buf, size_t size, const char *fmt, ...)
