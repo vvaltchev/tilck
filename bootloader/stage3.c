@@ -148,6 +148,7 @@ multiboot_info_t *setup_multiboot_info(void)
    mod = (multiboot_module_t *)(MBI_PADDR + sizeof(*mbi));
    bzero(mod, sizeof(*mod));
 
+   mbi->flags |= MULTIBOOT_INFO_MEMORY;
    mbi->mem_lower = 0;
    mbi->mem_upper = 0;
 

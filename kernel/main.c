@@ -30,12 +30,6 @@
 #include <exos/kernel/arch/generic_x86/fpu_memcpy.h>
 #include <exos/kernel/system_mmap.h>
 
-extern uptr ramdisk_paddr;
-extern size_t ramdisk_size;
-extern u32 memsize_in_mb;
-
-void save_multiboot_memory_map(multiboot_info_t *mbi);
-void dump_system_memory_map(void);
 
 /* Variables used by the cmdline parsing code */
 
@@ -49,36 +43,36 @@ void init_tty(void);
 
 void read_multiboot_info(u32 magic, u32 mbi_addr)
 {
+   multiboot_info_t *mbi = (void *)(uptr)mbi_addr;
+
    if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
       init_textmode_console(true);
       panic("The exOS kernel requires a multiboot-compatible bootloader.");
-      return;
    }
 
-   multiboot_info_t *mbi = (void *)(uptr)mbi_addr;
-   memsize_in_mb = mbi->mem_upper/KB + 1;
-
+   if (!(mbi->flags & MULTIBOOT_INFO_MEM_MAP)) {
+      init_textmode_console(true);
+      panic("No memory map in the multiboot info struct");
+   }
 
    if (mbi->flags & MULTIBOOT_INFO_MODS) {
-      if (mbi->mods_count >= 1) {
-         multiboot_module_t *mod = ((multiboot_module_t *)(uptr)mbi->mods_addr);
-         ramdisk_paddr = mod->mod_start;
-         ramdisk_size = mod->mod_end - mod->mod_start;
-      }
+
+      multiboot_module_t *mods = (void *)(uptr)mbi->mods_addr;
+
+      for (u32 i = 0; i < mbi->mods_count; i++)
+         system_mmap_add_ramdisk(mods[i].mod_start, mods[i].mod_end);
    }
 
-   if (mbi->flags & MULTIBOOT_INFO_CMDLINE) {
+   ASSERT(mbi->flags & MULTIBOOT_INFO_MEM_MAP);
+   system_mmap_set(mbi);
+
+   if (mbi->flags & MULTIBOOT_INFO_CMDLINE)
       parse_kernel_cmdline((const char *)(uptr)mbi->cmdline);
-   }
 
    if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO) {
       if (mbi->framebuffer_type != MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT) {
          set_framebuffer_info_from_mbi(mbi);
       }
-   }
-
-   if (mbi->flags & MULTIBOOT_INFO_MEM_MAP) {
-      save_multiboot_memory_map(mbi);
    }
 }
 
@@ -102,13 +96,15 @@ void show_system_info(void)
 
 void mount_ramdisk(void)
 {
-   if (!ramdisk_size) {
+   void *ramdisk = system_mmap_get_ramdisk_vaddr(0);
+
+   if (!ramdisk) {
       printk("[WARNING] No RAMDISK found.\n");
       return;
    }
 
    filesystem *root_fs =
-      fat_mount_ramdisk(KERNEL_PA_TO_VA(ramdisk_paddr), EXVFS_FS_RO);
+      fat_mount_ramdisk(ramdisk, EXVFS_FS_RO);
 
    if (!root_fs)
       panic("Unable to mount the fat32 RAMDISK");
@@ -118,7 +114,7 @@ void mount_ramdisk(void)
    if (rc != 0)
       panic("mountpoint_add() failed with error: %d", rc);
 
-   printk("Mounted RAMDISK at PADDR %p.\n", ramdisk_paddr);
+   printk("Mounted RAMDISK at PADDR %p.\n", KERNEL_VA_TO_PA(ramdisk));
 }
 
 void selftest_runner_thread()
@@ -211,7 +207,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
       switch_to_idle_task_outside_interrupt_context();
    }
 
-   if (!ramdisk_size) {
+   if (!system_mmap_get_ramdisk_vaddr(0)) {
       panic("No ramdisk and no selftest requested: nothing to do.");
    }
 

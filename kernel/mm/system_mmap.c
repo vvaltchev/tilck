@@ -8,13 +8,19 @@
 #include <exos/kernel/sort.h>
 #include <exos/kernel/elf_utils.h>
 
-u32 memsize_in_mb;
+u32 __mem_lower_kb;
+u32 __mem_upper_kb;
 
 memory_region_t mem_regions[MAX_MEM_REGIONS];
 int mem_regions_count;
 
-uptr ramdisk_paddr;
-size_t ramdisk_size;
+STATIC void append_mem_region(memory_region_t r)
+{
+   if (mem_regions_count >= (int)ARRAY_SIZE(mem_regions))
+      panic("Too many memory regions (limit: %u)", ARRAY_SIZE(mem_regions));
+
+   mem_regions[mem_regions_count++] = r;
+}
 
 STATIC int less_than_cmp_mem_region(const void *a, const void *b)
 {
@@ -30,12 +36,43 @@ STATIC int less_than_cmp_mem_region(const void *a, const void *b)
    return 1;
 }
 
-STATIC void append_mem_region(memory_region_t r)
+STATIC void sort_mem_regions(void)
 {
-   if (mem_regions_count >= (int)ARRAY_SIZE(mem_regions))
-      panic("Too many memory regions (limit: %u)", ARRAY_SIZE(mem_regions));
+   insertion_sort_generic(mem_regions,
+                          sizeof(memory_region_t),
+                          mem_regions_count,
+                          less_than_cmp_mem_region);
+}
 
-   mem_regions[mem_regions_count++] = r;
+void system_mmap_add_ramdisk(uptr start_paddr, uptr end_paddr)
+{
+   append_mem_region((memory_region_t) {
+      .addr = start_paddr,
+      .len = end_paddr - start_paddr,
+      .type = MULTIBOOT_MEMORY_RESERVED,
+      .extra = MEM_REG_EXTRA_RAMDISK
+   });
+
+   sort_mem_regions();
+}
+
+void *system_mmap_get_ramdisk_vaddr(int ramdisk_index)
+{
+   int rd_count = 0;
+
+   for (int i = 0; i < mem_regions_count; i++) {
+
+      memory_region_t *m = mem_regions + i;
+
+      if (m->extra & MEM_REG_EXTRA_RAMDISK) {
+         if (rd_count == ramdisk_index)
+            return KERNEL_PA_TO_VA((uptr)m->addr);
+
+         rd_count++;
+      }
+   }
+
+   return NULL;
 }
 
 STATIC void remove_mem_region(int i)
@@ -314,14 +351,6 @@ STATIC bool handle_region_overlap(int r1_index, int r2_index)
    NOT_REACHED();
 }
 
-STATIC void sort_mem_regions(void)
-{
-   insertion_sort_generic(mem_regions,
-                          sizeof(memory_region_t),
-                          mem_regions_count,
-                          less_than_cmp_mem_region);
-}
-
 STATIC void handle_overlapping_regions(void)
 {
    bool any_overlap;
@@ -368,7 +397,33 @@ STATIC void add_kernel_phdrs_to_mmap(void)
    }
 }
 
-void save_multiboot_memory_map(multiboot_info_t *mbi)
+STATIC void set_lower_and_upper_kb(void)
+{
+   __mem_lower_kb = 0;
+   __mem_upper_kb = 0;
+
+   for (int i = 0; i < mem_regions_count; i++) {
+
+      memory_region_t *m = mem_regions + i;
+
+      if (m->type == MULTIBOOT_MEMORY_AVAILABLE) {
+         __mem_lower_kb = m->addr / KB;
+         break;
+      }
+   }
+
+   for (int i = mem_regions_count - 1; i >= 0; i--) {
+
+      memory_region_t *m = mem_regions + i;
+
+      if (m->type == MULTIBOOT_MEMORY_AVAILABLE) {
+         __mem_upper_kb = (m->addr + m->len) / KB;
+         break;
+      }
+   }
+}
+
+void system_mmap_set(multiboot_info_t *mbi)
 {
    uptr ma_addr = mbi->mmap_addr;
 
@@ -392,27 +447,9 @@ void save_multiboot_memory_map(multiboot_info_t *mbi)
       ma_addr += ma->size + 4;
    }
 
-   if (ramdisk_size) {
-      append_mem_region((memory_region_t) {
-         .addr = ramdisk_paddr,
-         .len = ramdisk_size,
-         .type = MULTIBOOT_MEMORY_RESERVED,
-         .extra = MEM_REG_EXTRA_RAMDISK
-      });
-   }
-
    add_kernel_phdrs_to_mmap();
-
-   // Mark the whole last MB as reserved.
-   // TODO (MUST!!!): fix this work-around for a nasty bug.
-   append_mem_region((memory_region_t) {
-      .addr = get_phys_mem_size() & ~(MB - 1),
-      .len = 1 * MB,
-      .type = MULTIBOOT_MEMORY_RESERVED,
-      .extra = 0
-   });
-
    fix_mem_regions();
+   set_lower_and_upper_kb();
 }
 
 static const char *mem_region_extra_to_str(u32 e)

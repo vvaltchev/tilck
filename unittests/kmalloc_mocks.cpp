@@ -20,7 +20,6 @@ extern "C" {
 #include <exos/kernel/paging.h>
 
 extern bool kmalloc_initialized;
-extern u32 memsize_in_mb;
 extern bool suppress_printk;
 
 void *kernel_va = nullptr;
@@ -30,20 +29,20 @@ static unordered_map<uptr, uptr> mappings;
 
 void initialize_test_kernel_heap()
 {
-   memsize_in_mb = 256;
+   uptr test_mem_size = 256 * MB;
 
    if (kernel_va != nullptr) {
-      bzero(kernel_va, get_phys_mem_mb() * MB);
+      bzero(kernel_va, test_mem_size);
       mappings.clear();
       return;
    }
 
-   kernel_va = aligned_alloc(MB, get_phys_mem_mb() * MB);
+   kernel_va = aligned_alloc(MB, test_mem_size);
 
    mem_regions_count = 1;
    mem_regions[0] = (memory_region_t) {
       .addr = 0,
-      .len = get_phys_mem_size(),
+      .len = test_mem_size,
       .type = MULTIBOOT_MEMORY_AVAILABLE,
       .extra = 0
    };

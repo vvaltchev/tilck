@@ -494,7 +494,7 @@ void init_paging_cow(void)
     */
 
    size_t pagesframes_refcount_bufsize =
-      sizeof(pageframes_refcount[0]) * MB / PAGE_SIZE * get_phys_mem_mb();
+      (get_phys_mem_size() >> PAGE_SHIFT) * sizeof(pageframes_refcount[0]);
 
    pageframes_refcount = kzmalloc(pagesframes_refcount_bufsize);
    VERIFY(pageframes_refcount);

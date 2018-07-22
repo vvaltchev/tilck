@@ -82,6 +82,8 @@ static UINT32 EfiToMultibootMemType(UINT32 type)
 
 static void AddMemoryRegion(UINT64 start, UINT64 end, UINT32 type)
 {
+   mbi->flags |= MULTIBOOT_INFO_MEMORY;
+
    if (type == MULTIBOOT_MEMORY_AVAILABLE) {
       if (start < mbi->mem_lower * KB)
          mbi->mem_lower = start / KB;

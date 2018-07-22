@@ -21,14 +21,19 @@ typedef struct {
 extern memory_region_t mem_regions[MAX_MEM_REGIONS];
 extern int mem_regions_count;
 
-extern u32 memsize_in_mb;
+void system_mmap_add_ramdisk(uptr start_paddr, uptr end_paddr);
+void *system_mmap_get_ramdisk_vaddr(int ramdisk_index);
+void system_mmap_set(multiboot_info_t *mbi);
+void dump_system_memory_map(void);
+
+extern u32 __mem_upper_kb;
 
 static ALWAYS_INLINE uptr get_phys_mem_mb(void)
 {
-   return memsize_in_mb;
+   return __mem_upper_kb >> 10;
 }
 
 static ALWAYS_INLINE uptr get_phys_mem_size(void)
 {
-   return memsize_in_mb << 20;
+   return __mem_upper_kb << 10;
 }
