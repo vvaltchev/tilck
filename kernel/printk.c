@@ -45,7 +45,11 @@ write_in_buf_char(char **buf_ref, char *buf_end, char c)
    do {                                              \
       const char *__str = (s);                       \
       int sl = strlen(__str);                        \
+      int lpad = MAX(0, left_padding - sl);          \
       int rpad = MAX(0, right_padding - sl);         \
+                                                     \
+      for (int i = 0; i < lpad; i++)                 \
+         WRITE_CHAR(zero_lpad ? '0' : ' ');          \
                                                      \
       if (!write_in_buf_str(&buf, buf_end, (__str))) \
          goto out;                                   \
@@ -60,7 +64,9 @@ int vsnprintk(char *buf, size_t size, const char *fmt, va_list args)
    char *const initial_buf = buf;
    char *buf_end = buf + size;
    char intbuf[64];
+   int left_padding = 0;
    int right_padding = 0;
+   bool zero_lpad = false;
 
    while (*fmt) {
 
@@ -78,6 +84,34 @@ int vsnprintk(char *buf, size_t size, const char *fmt, va_list args)
 switch_case:
 
       switch (*fmt) {
+
+      case '0':
+         zero_lpad = true;
+         fmt++;
+
+         if (!*fmt)
+            goto out; /* nothing after the %0 sequence */
+
+         /* parse now the command letter by re-entering in the switch case */
+         goto switch_case;
+
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9':
+
+         left_padding = exos_strtol(fmt, &fmt, NULL);
+
+         if (!*fmt)
+            goto out; /* nothing after the %<number> sequence */
+
+         /* parse now the command letter by re-entering in the switch case */
+         goto switch_case;
 
       case '-':
          right_padding = exos_strtol(fmt + 1, &fmt, NULL);
@@ -153,6 +187,8 @@ switch_case:
          WRITE_CHAR(*fmt);
       }
 
+      zero_lpad = false;
+      left_padding = 0;
       right_padding = 0;
       ++fmt;
    }
