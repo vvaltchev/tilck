@@ -447,6 +447,7 @@ static void init_kmalloc_fill_region(int region, uptr vaddr, uptr limit)
 void init_kmalloc(void)
 {
    int heap_index;
+   bool kpdir_set = false;
 
    ASSERT(!kmalloc_initialized);
 
@@ -465,14 +466,47 @@ void init_kmalloc(void)
 
       memory_region_t *r = mem_regions + i;
 
+      const u64 pbegin = r->addr;
+      const u64 pend = MIN(pbegin + r->len, LINEAR_MAPPING_SIZE);
+
+      if (pbegin >= LINEAR_MAPPING_SIZE)
+         break;
+
+      const uptr vbegin = (uptr)KERNEL_PA_TO_VA(pbegin);
+      const uptr vend = (uptr)KERNEL_PA_TO_VA(pend);
+
+      bool rw = false;
+
+      if (r->type == MULTIBOOT_MEMORY_AVAILABLE ||
+          (r->extra & MEM_REG_EXTRA_KERNEL))
+      {
+         rw = true;
+      }
+
+//////
+
+      // TODO: handle the case where map_page(s) fails because kmalloc()
+      // returned NULL. We have to create 1+ heaps from a partial region
+      // in order to continue.
+
+      map_pages(get_kernel_page_dir(),
+                (void *)vbegin,
+                pbegin,
+                (pend - pbegin) / PAGE_SIZE,
+                false,
+                rw);
+
+      if (!kpdir_set && pend >= 4 * MB) {
+         set_page_directory(get_kernel_page_dir());
+         kpdir_set = true;
+      }
+//////
+
       if (r->type == MULTIBOOT_MEMORY_AVAILABLE) {
 
-         u64 begin = KERNEL_BASE_VA + r->addr;
-         u64 end = MIN(begin + r->len, LINEAR_MAPPING_OVER_END);
+         init_kmalloc_fill_region(i, vbegin, vend);
 
-         init_kmalloc_fill_region(i, begin, end);
-
-         if (end == LINEAR_MAPPING_OVER_END)
+         if (vend == LINEAR_MAPPING_OVER_END)
             break;
       }
    }

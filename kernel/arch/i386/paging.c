@@ -219,8 +219,8 @@ bool is_mapped(page_directory_t *pdir, void *vaddrp)
    if (!e->present)
       return false;
 
-   if (e->psize)
-      return true; /* 4-MB page */
+   if (e->psize) /* 4-MB page */
+      return e->present;
 
    ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
    return ptable->pages[page_table_index].present;
@@ -459,29 +459,11 @@ void map_4mb_page_int(page_directory_t *pdir,
  */
 static char kpdir_buf[sizeof(page_directory_t)] PAGE_SIZE_ALIGNED;
 
-void init_paging()
+void init_paging(void)
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
    set_fault_handler(FAULT_GENERAL_PROTECTION, handle_general_protection_fault);
    kernel_page_dir = (page_directory_t *) kpdir_buf;
-
-   /*
-    * Linear mapping: map the first LINEAR_MAPPING_MB of the physical
-    * memory in the virtual memory with offset KERNEL_BASE_VA.
-    */
-
-   for (uptr paddr = 0; paddr < LINEAR_MAPPING_SIZE; paddr += 4 * MB) {
-
-      if (paddr >= get_phys_mem_size())
-         break;
-
-      map_4mb_page_int(kernel_page_dir,
-                       KERNEL_PA_TO_VA(paddr),
-                       paddr,
-                       PG_PRESENT_BIT | PG_RW_BIT | PG_4MB_BIT);
-   }
-
-   set_page_directory(kernel_page_dir);
 }
 
 void init_paging_cow(void)

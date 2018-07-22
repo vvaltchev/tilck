@@ -55,7 +55,7 @@ map_pages(page_directory_t *pdir,
 {
    for (int i = 0; i < page_count; i++) {
       map_page(pdir,
-               (u8 *)vaddr + (i << PAGE_SHIFT),
+               (char *)vaddr + (i << PAGE_SHIFT),
                paddr + (i << PAGE_SHIFT),
                us,
                rw);

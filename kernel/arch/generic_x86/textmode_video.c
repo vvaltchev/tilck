@@ -137,6 +137,16 @@ static const video_interface ega_text_mode_i =
 
 void init_textmode_console(bool use_also_serial_port)
 {
+   page_directory_t *pdir = get_curr_page_dir();
+
+   if (pdir != NULL && !is_mapped(pdir, VIDEO_ADDR)) {
+      map_page(pdir,
+               VIDEO_ADDR,
+               KERNEL_VA_TO_PA(VIDEO_ADDR),
+               false,
+               true);
+   }
+
    init_term(&ega_text_mode_i,
              VIDEO_ROWS,
              VIDEO_COLS,
