@@ -28,3 +28,11 @@
 #cmakedefine01 KMALLOC_SUPPORT_LEAK_DETECTOR
 #cmakedefine01 KMALLOC_HEAPS_CREATION_DEBUG
 #cmakedefine01 BOOTLOADER_POISON_MEMORY
+#cmakedefine01 DEBUG_CHECKS_IN_RELEASE_BUILD
+
+#if DEBUG_CHECKS_IN_RELEASE_BUILD
+   #ifdef NDEBUG
+      #undef NDEBUG
+      #define DEBUG
+   #endif
+#endif

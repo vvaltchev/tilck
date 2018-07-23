@@ -61,6 +61,9 @@ set(KMALLOC_HEAPS_CREATION_DEBUG OFF CACHE BOOL
 set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
     "Make the bootloader to poison all the available memory")
 
+set(DEBUG_CHECKS_IN_RELEASE_BUILD OFF CACHE BOOL
+    "Keep checking ASSERTs and other debug checks even in release builds")
+
 list(
    APPEND kernel_opts_enabled_by_default
 
@@ -76,6 +79,7 @@ list(
    KMALLOC_SUPPORT_LEAK_DETECTOR
    KMALLOC_HEAPS_CREATION_DEBUG
    BOOTLOADER_POISON_MEMORY
+   ASSERTS_IN_RELEASE_BUILD
 )
 
 ###########################################################

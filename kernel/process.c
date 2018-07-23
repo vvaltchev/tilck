@@ -285,6 +285,20 @@ NORETURN sptr sys_exit(int exit_status)
 
    list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
 
+      // TODO: check the following sometimes-falling ASSERT
+      // Debug stuff:
+      //
+      // Interrupts: [ 128 ]
+      // Stacktrace (8 frames):
+      // [0xc01017ce] dump_stacktrace + 0x30
+      // [0xc010bd07] panic + 0x180
+      // [0xc011e9c5] assert_failed + 0x19
+      // [0xc010fa69] sys_exit + 0xb9
+      // [0xc010fb56] sys_exit_group + 0x11
+      // [0xc0107d96] handle_syscall + 0x136
+      // [0xc010d2f2] soft_interrupt_entry + 0x7e
+      // [0xc0101672] asm_soft_interrupt_entry + 0x37
+
       ASSERT(pos->state == TASK_STATE_SLEEPING);
 
       if (pos->wobj.ptr == curr) {
