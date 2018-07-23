@@ -316,6 +316,66 @@ map_page_int(page_directory_t *pdir, void *vaddrp, uptr paddr, u32 flags)
    return 0;
 }
 
+NODISCARD int
+map_pages_int(page_directory_t *pdir,
+              void *vaddr,
+              uptr paddr,
+              int page_count,
+              bool big_pages_allowed,
+              u32 flags)
+{
+   int rc;
+   int pages = 0;
+   int big_pages = 0;
+   int rem_pages = page_count;
+   u32 big_page_flags;
+
+   ASSERT(!((uptr)vaddr & OFFSET_IN_PAGE_MASK));
+   ASSERT(!(paddr & OFFSET_IN_PAGE_MASK));
+
+   if (big_pages_allowed && rem_pages >= 1024) {
+
+      for (; pages < rem_pages; pages++) {
+
+         if (!((uptr)vaddr & (4*MB - 1)) && !(paddr & (4*MB - 1)))
+            break;
+
+         rc = map_page_int(pdir, vaddr, paddr, flags);
+
+         if (rc < 0)
+            goto out;
+
+         vaddr += PAGE_SIZE;
+         paddr += PAGE_SIZE;
+      }
+
+      rem_pages -= pages;
+      big_page_flags = flags | PG_4MB_BIT | PG_PRESENT_BIT;
+      big_page_flags &= ~PG_GLOBAL_BIT;
+
+      for (; big_pages < (rem_pages >> 10); big_pages++) {
+         map_4mb_page_int(pdir, vaddr, paddr, big_page_flags);
+         vaddr += (4 * MB);
+         paddr += (4 * MB);
+      }
+
+      rem_pages -= (big_pages << 10);
+   }
+
+   for (int i = 0; i < rem_pages; i++, pages++) {
+
+      rc = map_page_int(pdir, vaddr, paddr, flags);
+
+      if (rc < 0)
+         goto out;
+
+      vaddr += PAGE_SIZE;
+      paddr += PAGE_SIZE;
+   }
+
+out:
+   return (big_pages << 10) + pages;
+}
 
 NODISCARD int
 map_page(page_directory_t *pdir,
@@ -331,6 +391,26 @@ map_page(page_directory_t *pdir,
                    (us << PG_US_BIT_POS) |
                    (rw << PG_RW_BIT_POS) |
                    ((!us) << PG_GLOBAL_BIT_POS)); /* Kernel pages are global */
+}
+
+NODISCARD int
+map_pages(page_directory_t *pdir,
+          void *vaddr,
+          uptr paddr,
+          int page_count,
+          bool big_pages_allowed,
+          bool us,
+          bool rw)
+{
+   return
+      map_pages_int(pdir,
+                    vaddr,
+                    paddr,
+                    page_count,
+                    big_pages_allowed,
+                    (us << PG_US_BIT_POS) |
+                    (rw << PG_RW_BIT_POS) |
+                    ((!us) << PG_GLOBAL_BIT_POS));
 }
 
 page_directory_t *pdir_clone(page_directory_t *pdir)

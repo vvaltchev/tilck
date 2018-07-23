@@ -162,10 +162,11 @@ void fb_map_in_kernel_space(void)
                       (void *)fb_real_vaddr,
                       fb_paddr,
                       page_count,
-                      (1 << PG_RW_BIT_POS) |
-                      (1 << PG_WT_BIT_POS) |
-                      (1 << PG_CD_BIT_POS) |
-                      (1 << PG_GLOBAL_BIT_POS));
+                      true, /* big pages allowed */
+                      PG_RW_BIT |
+                      PG_WT_BIT |
+                      PG_CD_BIT |
+                      PG_GLOBAL_BIT);
 #else
 
    NOT_IMPLEMENTED();

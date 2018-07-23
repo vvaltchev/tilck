@@ -483,28 +483,23 @@ void init_kmalloc(void)
          rw = true;
       }
 
-//////
-
-      // TODO: handle the case where map_page(s) fails because kmalloc()
-      // returned NULL. We have to create 1+ heaps from a partial region
-      // in order to continue.
-
       int page_count = (pend - pbegin) / PAGE_SIZE;
 
       int rc = map_pages(get_kernel_page_dir(),
                          (void *)vbegin,
                          pbegin,
                          page_count,
-                         false,
+                         true, /* big pages allowed */
+                         false, /* user-accessible */
                          rw);
 
-      VERIFY(rc == page_count); // TODO: handle this OOM condition.
+      if (rc != page_count)
+         panic("kmalloc: unable to map regions in the virtual space");
 
       if (!kpdir_set && pend >= 4 * MB) {
          set_page_directory(get_kernel_page_dir());
          kpdir_set = true;
       }
-//////
 
       if (r->type == MULTIBOOT_MEMORY_AVAILABLE) {
 

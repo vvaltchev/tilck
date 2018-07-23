@@ -66,6 +66,27 @@ int map_page(page_directory_t *, void *vaddr, uptr paddr, bool us, bool rw)
    return 0;
 }
 
+int
+map_pages(page_directory_t *pdir,
+          void *vaddr,
+          uptr paddr,
+          int page_count,
+          bool big_pages_allowed,
+          bool us,
+          bool rw)
+{
+   for (int i = 0; i < page_count; i++) {
+      int rc = map_page(pdir,
+                        (char *)vaddr + (i << PAGE_SHIFT),
+                        paddr + (i << PAGE_SHIFT),
+                        us,
+                        rw);
+      VERIFY(rc == 0);
+   }
+
+   return page_count;
+}
+
 void unmap_page(page_directory_t *, void *vaddrp)
 {
    mappings[(uptr)vaddrp] = INVALID_PADDR;

@@ -489,7 +489,7 @@ void dump_system_memory_map(void)
 
       memory_region_t *ma = mem_regions + i;
 
-      printk("%02d) 0x%llx - 0x%llx (%d, %s) [%6u KB]\n", i,
+      printk("%02d) 0x%llx - 0x%llx (%d, %s) [%7u KB]\n", i,
              ma->addr, ma->addr + ma->len,
              ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
    }

@@ -30,7 +30,24 @@ NODISCARD int
 map_page(page_directory_t *pdir, void *vaddr, uptr paddr, bool us, bool rw);
 
 NODISCARD int
-map_page_int(page_directory_t *pdir, void *vaddrp, uptr paddr, u32 flags);
+map_page_int(page_directory_t *pdir, void *vaddr, uptr paddr, u32 flags);
+
+NODISCARD int
+map_pages(page_directory_t *pdir,
+          void *vaddr,
+          uptr paddr,
+          int page_count,
+          bool big_pages_allowed,
+          bool us,
+          bool rw);
+
+NODISCARD int
+map_pages_int(page_directory_t *pdir,
+              void *vaddr,
+              uptr paddr,
+              int page_count,
+              bool big_pages_allowed,
+              u32 flags);
 
 bool is_mapped(page_directory_t *pdir, void *vaddr);
 void unmap_page(page_directory_t *pdir, void *vaddr);
@@ -43,51 +60,6 @@ void pdir_destroy(page_directory_t *pdir);
 // Temporary function, until get/set page flags is made available.
 void set_page_rw(page_directory_t *pdir, void *vaddr, bool rw);
 
-NODISCARD static inline int
-map_pages(page_directory_t *pdir,
-          void *vaddr,
-          uptr paddr,
-          int page_count,
-          bool us,
-          bool rw)
-{
-   int rc;
-
-   for (int i = 0; i < page_count; i++) {
-      rc = map_page(pdir,
-                    (char *)vaddr + (i << PAGE_SHIFT),
-                    paddr + (i << PAGE_SHIFT),
-                    us,
-                    rw);
-
-      if (rc < 0)
-         return i;
-   }
-
-   return page_count;
-}
-
-NODISCARD static inline int
-map_pages_int(page_directory_t *pdir,
-              void *vaddr,
-              uptr paddr,
-              int page_count,
-              u32 flags)
-{
-   int rc;
-
-   for (int i = 0; i < page_count; i++) {
-      rc = map_page_int(pdir,
-                        (char *)vaddr + (i << PAGE_SHIFT),
-                        paddr + (i << PAGE_SHIFT),
-                        flags);
-      if (rc < 0)
-         return i;
-   }
-
-   return page_count;
-}
-
 static inline void
 unmap_pages(page_directory_t *pdir, void *vaddr, int page_count)
 {
@@ -95,7 +67,6 @@ unmap_pages(page_directory_t *pdir, void *vaddr, int page_count)
       unmap_page(pdir, (u8 *)vaddr + (i << PAGE_SHIFT));
    }
 }
-
 
 extern page_directory_t *kernel_page_dir;
 extern page_directory_t *curr_page_dir;

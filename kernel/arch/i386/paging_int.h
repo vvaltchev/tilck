@@ -98,7 +98,7 @@ struct page_directory_t {
 STATIC_ASSERT(sizeof(page_directory_t) == PAGE_DIR_SIZE);
 
 void map_4mb_page_int(page_directory_t *pdir,
-                      void *vaddrp,
+                      void *vaddr,
                       uptr paddr,
                       u32 flags);
 
