@@ -154,13 +154,23 @@ void fb_map_in_kernel_space(void)
 #endif
 
    int page_count = (fb_size / PAGE_SIZE) + 1;
+   int rc;
 
-   int rc = map_pages(get_kernel_page_dir(),
+#ifdef __i386__
+
+   rc = map_pages_int(get_kernel_page_dir(),
                       (void *)fb_real_vaddr,
                       fb_paddr,
                       page_count,
-                      false,
-                      true);
+                      (1 << PG_RW_BIT_POS) |
+                      (1 << PG_WT_BIT_POS) |
+                      (1 << PG_CD_BIT_POS) |
+                      (1 << PG_GLOBAL_BIT_POS));
+#else
+
+   NOT_IMPLEMENTED();
+
+#endif
 
    if (rc < page_count)
       panic("Unable to map the framebuffer in the virtual space");

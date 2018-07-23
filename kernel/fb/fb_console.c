@@ -408,7 +408,7 @@ void init_framebuffer_console(bool use_also_serial_port)
    //    if (framebuffer_vi.scroll_one_line_up || framebuffer_vi.flush_buffers)
    //       fb_alloc_pitch_size_buf();
 
-   if (framebuffer_vi.flush_buffers && !in_panic()) {
+   if (framebuffer_vi.flush_buffers && !in_panic() && !in_hypervisor()) {
 
       /*
        * In hypervisors, using double buffering just slows the fb_console,
