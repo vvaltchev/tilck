@@ -153,12 +153,17 @@ void fb_map_in_kernel_space(void)
    }
 #endif
 
-   map_pages(get_kernel_page_dir(),
-             (void *)fb_real_vaddr,
-             fb_paddr,
-             (fb_size / PAGE_SIZE) + 1,
-             false,
-             true);
+   int page_count = (fb_size / PAGE_SIZE) + 1;
+
+   int rc = map_pages(get_kernel_page_dir(),
+                      (void *)fb_real_vaddr,
+                      fb_paddr,
+                      page_count,
+                      false,
+                      true);
+
+   if (rc < page_count)
+      panic("Unable to map the framebuffer in the virtual space");
 }
 
 /*

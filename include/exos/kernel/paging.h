@@ -22,17 +22,15 @@
 #define KERNEL_PA_TO_VA(pa) ((void *) ((uptr)(pa) + KERNEL_BASE_VA))
 #define KERNEL_VA_TO_PA(va) ((uptr)(va) - KERNEL_BASE_VA)
 
-
-// Forward-declaring page_directory_t
 typedef struct page_directory_t page_directory_t;
 
 void init_paging();
 
-void map_page(page_directory_t *pdir,
-              void *vaddr,
-              uptr paddr,
-              bool us,
-              bool rw);
+NODISCARD int
+map_page(page_directory_t *pdir, void *vaddr, uptr paddr, bool us, bool rw);
+
+NODISCARD int
+map_page_int(page_directory_t *pdir, void *vaddrp, uptr paddr, u32 flags);
 
 bool is_mapped(page_directory_t *pdir, void *vaddr);
 void unmap_page(page_directory_t *pdir, void *vaddr);
@@ -42,10 +40,10 @@ uptr get_mapping(page_directory_t *pdir, void *vaddr);
 page_directory_t *pdir_clone(page_directory_t *pdir);
 void pdir_destroy(page_directory_t *pdir);
 
-// Temporary function, untit get/set page flags is made available.
+// Temporary function, until get/set page flags is made available.
 void set_page_rw(page_directory_t *pdir, void *vaddr, bool rw);
 
-static inline void
+NODISCARD static inline int
 map_pages(page_directory_t *pdir,
           void *vaddr,
           uptr paddr,
@@ -53,13 +51,41 @@ map_pages(page_directory_t *pdir,
           bool us,
           bool rw)
 {
+   int rc;
+
    for (int i = 0; i < page_count; i++) {
-      map_page(pdir,
-               (char *)vaddr + (i << PAGE_SHIFT),
-               paddr + (i << PAGE_SHIFT),
-               us,
-               rw);
+      rc = map_page(pdir,
+                    (char *)vaddr + (i << PAGE_SHIFT),
+                    paddr + (i << PAGE_SHIFT),
+                    us,
+                    rw);
+
+      if (rc < 0)
+         return i;
    }
+
+   return page_count;
+}
+
+NODISCARD static inline int
+map_pages_int(page_directory_t *pdir,
+              void *vaddr,
+              uptr paddr,
+              int page_count,
+              u32 flags)
+{
+   int rc;
+
+   for (int i = 0; i < page_count; i++) {
+      rc = map_page_int(pdir,
+                        (char *)vaddr + (i << PAGE_SHIFT),
+                        paddr + (i << PAGE_SHIFT),
+                        flags);
+      if (rc < 0)
+         return i;
+   }
+
+   return page_count;
 }
 
 static inline void

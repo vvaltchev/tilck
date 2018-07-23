@@ -45,7 +45,8 @@ bool user_valloc_and_map(uptr user_vaddr, int page_count)
       }
 
       uptr pa = KERNEL_VA_TO_PA(kernel_vaddr);
-      map_page(pdir, (void *)va, pa, true, true);
+      int rc = map_page(pdir, (void *)va, pa, true, true);
+      VERIFY(rc == 0); // TODO: handle this OOM
    }
 
    return true;
@@ -120,7 +121,8 @@ sptr sys_brk(void *new_brk)
          break; /* we've allocated as much as possible */
 
       const uptr paddr = KERNEL_VA_TO_PA(kernel_vaddr);
-      map_page(pi->pdir, vaddr, paddr, true, true);
+      int rc = map_page(pi->pdir, vaddr, paddr, true, true);
+      VERIFY(rc == 0); // TODO: handle this OOM
       vaddr += PAGE_SIZE;
    }
 

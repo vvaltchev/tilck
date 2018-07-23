@@ -140,11 +140,14 @@ void init_textmode_console(bool use_also_serial_port)
    page_directory_t *pdir = get_curr_page_dir();
 
    if (pdir != NULL && !is_mapped(pdir, VIDEO_ADDR)) {
-      map_page(pdir,
-               VIDEO_ADDR,
-               KERNEL_VA_TO_PA(VIDEO_ADDR),
-               false,
-               true);
+      int rc = map_page(pdir,
+                        VIDEO_ADDR,
+                        KERNEL_VA_TO_PA(VIDEO_ADDR),
+                        false,
+                        true);
+
+      if (rc < 0)
+         panic("textmode_console: unable to map VIDEO_ADDR in the virt space");
    }
 
    init_term(&ega_text_mode_i,

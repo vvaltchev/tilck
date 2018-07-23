@@ -12,6 +12,7 @@
 #include <exos/kernel/elf_utils.h>
 #include <exos/kernel/system_mmap.h>
 #include <exos/kernel/fault_resumable.h>
+#include <exos/kernel/errno.h>
 
 #include "paging_int.h"
 
@@ -87,13 +88,12 @@ bool handle_potential_cow(u32 vaddr)
    // Decrease the ref-count of the original pageframe.
    pf_ref_count_dec(orig_page_paddr);
 
-
    // Copy the whole page to our temporary buffer.
    memcpy(page_size_buf, page_vaddr, PAGE_SIZE);
 
    // Allocate and set a new page.
    void *new_page_vaddr = kmalloc(PAGE_SIZE);
-   VERIFY(new_page_vaddr != NULL); // Don't handle this out-of-mem for now.
+   VERIFY(new_page_vaddr != NULL); // TODO: handle this OOM condition.
    ASSERT(IS_PAGE_ALIGNED(new_page_vaddr));
 
    const uptr paddr = KERNEL_VA_TO_PA(new_page_vaddr);
@@ -277,10 +277,8 @@ uptr get_mapping(page_directory_t *pdir, void *vaddrp)
    return ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 }
 
-void map_page_int(page_directory_t *pdir,
-                  void *vaddrp,
-                  uptr paddr,
-                  u32 flags)
+NODISCARD int
+map_page_int(page_directory_t *pdir, void *vaddrp, uptr paddr, u32 flags)
 {
    page_table_t *ptable;
    const u32 vaddr = (u32) vaddrp;
@@ -297,7 +295,10 @@ void map_page_int(page_directory_t *pdir,
 
       // we have to create a page table for mapping 'vaddr'.
       ptable = kzmalloc(sizeof(page_table_t));
-      VERIFY(ptable != NULL); // Don't handle this out-of-memory for now.
+
+      if (!ptable)
+         return -ENOMEM;
+
       ASSERT(IS_PAGE_ALIGNED(ptable));
 
       pdir->entries[page_dir_index].raw =
@@ -312,35 +313,24 @@ void map_page_int(page_directory_t *pdir,
    ptable->pages[page_table_index].raw = PG_PRESENT_BIT | flags | paddr;
    pf_ref_count_inc(paddr);
    invalidate_page(vaddr);
+   return 0;
 }
 
-void map_page(page_directory_t *pdir,
-              void *vaddrp,
-              uptr paddr,
-              bool us,
-              bool rw)
-{
-   map_page_int(pdir,
-                vaddrp,
-                paddr,
-                (us << PG_US_BIT_POS) |
-                (rw << PG_RW_BIT_POS) |
-                ((!us) << PG_GLOBAL_BIT_POS)); /* Kernel pages are 'global' */
-}
 
-static inline void
-map_pages_int(page_directory_t *pdir,
-              void *vaddr,
-              uptr paddr,
-              int page_count,
-              u32 flags)
+NODISCARD int
+map_page(page_directory_t *pdir,
+         void *vaddrp,
+         uptr paddr,
+         bool us,
+         bool rw)
 {
-   for (int i = 0; i < page_count; i++) {
+   return
       map_page_int(pdir,
-                   (u8 *)vaddr + (i << PAGE_SHIFT),
-                   paddr + (i << PAGE_SHIFT),
-                   flags);
-   }
+                   vaddrp,
+                   paddr,
+                   (us << PG_US_BIT_POS) |
+                   (rw << PG_RW_BIT_POS) |
+                   ((!us) << PG_GLOBAL_BIT_POS)); /* Kernel pages are global */
 }
 
 page_directory_t *pdir_clone(page_directory_t *pdir)
@@ -479,15 +469,20 @@ void init_paging_cow(void)
       (get_phys_mem_size() >> PAGE_SHIFT) * sizeof(pageframes_refcount[0]);
 
    pageframes_refcount = kzmalloc(pagesframes_refcount_bufsize);
-   VERIFY(pageframes_refcount);
+
+   if (!pageframes_refcount)
+      panic("Unable to allocate pageframes_refcount");
 
    /*
     * Map a special vdso-like page used for the sysenter interface.
     * This is the only user-mapped page with a vaddr in the kernel space.
     */
-   map_page(kernel_page_dir,
-            (void *)USER_VSDO_LIKE_PAGE_VADDR,
-            KERNEL_VA_TO_PA(&vsdo_like_page),
-            true,
-            false);
+   int rc = map_page(kernel_page_dir,
+                     (void *)USER_VSDO_LIKE_PAGE_VADDR,
+                     KERNEL_VA_TO_PA(&vsdo_like_page),
+                     true,
+                     false);
+
+   if (rc < 0)
+      panic("Unable to map the vsdo-like page");
 }

@@ -37,7 +37,8 @@ static int load_phdr(fs_handle *elf_file,
       if (!p)
          return -ENOMEM;
 
-      map_page(pdir, vaddr, KERNEL_VA_TO_PA(p), true, true);
+      int rc = map_page(pdir, vaddr, KERNEL_VA_TO_PA(p), true, true);
+      VERIFY(rc == 0); // TODO: handle this OOM
    }
 
    ret = exvfs_seek(elf_file, phdr->p_offset, SEEK_SET);
@@ -189,11 +190,13 @@ int load_elf_program(const char *filepath,
          goto out;
       }
 
-      map_page(*pdir_ref,
-               stack_top + i * PAGE_SIZE,
-               KERNEL_VA_TO_PA(p),
-               true,
-               true);
+      int rc = map_page(*pdir_ref,
+                        stack_top + i * PAGE_SIZE,
+                        KERNEL_VA_TO_PA(p),
+                        true,
+                        true);
+
+      VERIFY(rc == 0); // TODO: handle this OOM
    }
 
    // Finally setting the output-params.

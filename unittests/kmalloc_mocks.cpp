@@ -57,12 +57,13 @@ void init_kmalloc_for_tests()
    suppress_printk = false;
 }
 
-void map_page(page_directory_t *, void *vaddr, uptr paddr, bool us, bool rw)
+int map_page(page_directory_t *, void *vaddr, uptr paddr, bool us, bool rw)
 {
    ASSERT(!((uptr)vaddr & OFFSET_IN_PAGE_MASK)); // check page-aligned
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // check page-aligned
 
    mappings[(uptr)vaddr] = paddr;
+   return 0;
 }
 
 void unmap_page(page_directory_t *, void *vaddrp)
