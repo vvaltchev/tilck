@@ -310,6 +310,9 @@ static void fb_draw_string_at_raw(u32 x, u32 y, const char *str, u8 color)
 
 static void fb_setup_banner(void)
 {
+   if (in_panic())
+      return;
+
    psf2_header *h = fb_font_header;
 
    fb_offset_y = (20 * h->height)/10;
@@ -333,15 +336,9 @@ static void fb_draw_banner(void)
                    "exOS [%s build] framebuffer console", BUILDTYPE_STR);
 
    rlen = snprintk(rbuf, sizeof(rbuf) - 1 - llen - 1,
-                   "%s%i %s %i %s%i:%s%i",
-                   d.day < 10 ? "0" : "",
-                   d.day,
-                   months3[d.month - 1],
-                   d.year,
-                   d.hour < 10 ? "0" : "",
-                   d.hour,
-                   d.min < 10 ? "0" : "",
-                   d.min);
+                   "%02i %s %i %02i:%02i",
+                   d.day, months3[d.month - 1],
+                   d.year, d.hour, d.min);
 
    padding = (fb_term_cols - llen - rlen - 1);
 

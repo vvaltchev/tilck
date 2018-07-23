@@ -52,22 +52,6 @@ u32 days_per_month[12] =
    31  // dec
 };
 
-void print_datetime(datetime_t d)
-{
-   printk("date & time: %s %s%i/%s%i/%i %s%i:%s%i:%s%i\n",
-          weekdays[d.weekday - 1],
-          d.day < 10 ? "0" : "",
-          d.day,
-          d.month < 10 ? "0" : "",
-          d.month,
-          d.year,
-          d.hour < 10 ? "0" : "",
-          d.hour,
-          d.min < 10 ? "0" : "",
-          d.min,
-          d.sec < 10 ? "0" : "",
-          d.sec);
-}
 
 #if defined(__i386__) || defined(__x86_64__)
 

@@ -30,6 +30,5 @@ static inline bool is_leap_year(u32 year)
    return (!(year % 4) && (year % 100)) || !(year % 400);
 }
 
-void print_datetime(datetime_t d);
 void read_system_clock_datetime(datetime_t *out);
 uptr datetime_to_timestamp(datetime_t d);
