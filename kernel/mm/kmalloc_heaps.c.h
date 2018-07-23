@@ -447,8 +447,6 @@ static void init_kmalloc_fill_region(int region, uptr vaddr, uptr limit)
 void init_kmalloc(void)
 {
    int heap_index;
-   bool kpdir_set = false;
-
    ASSERT(!kmalloc_initialized);
 
    used_heaps = 0;
@@ -465,41 +463,10 @@ void init_kmalloc(void)
    for (int i = 0; i < mem_regions_count; i++) {
 
       memory_region_t *r = mem_regions + i;
+      uptr vbegin, vend;
 
-      const u64 pbegin = r->addr;
-      const u64 pend = MIN(pbegin + r->len, LINEAR_MAPPING_SIZE);
-
-      if (pbegin >= LINEAR_MAPPING_SIZE)
+      if (!linear_map_mem_region(r, &vbegin, &vend))
          break;
-
-      const uptr vbegin = (uptr)KERNEL_PA_TO_VA(pbegin);
-      const uptr vend = (uptr)KERNEL_PA_TO_VA(pend);
-
-      bool rw = false;
-
-      if (r->type == MULTIBOOT_MEMORY_AVAILABLE ||
-          (r->extra & MEM_REG_EXTRA_KERNEL))
-      {
-         rw = true;
-      }
-
-      int page_count = (pend - pbegin) / PAGE_SIZE;
-
-      int rc = map_pages(get_kernel_page_dir(),
-                         (void *)vbegin,
-                         pbegin,
-                         page_count,
-                         true, /* big pages allowed */
-                         false, /* user-accessible */
-                         rw);
-
-      if (rc != page_count)
-         panic("kmalloc: unable to map regions in the virtual space");
-
-      if (!kpdir_set && pend >= 4 * MB) {
-         set_page_directory(get_kernel_page_dir());
-         kpdir_set = true;
-      }
 
       if (r->type == MULTIBOOT_MEMORY_AVAILABLE) {
 

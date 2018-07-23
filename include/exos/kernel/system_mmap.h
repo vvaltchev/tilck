@@ -25,7 +25,7 @@ void system_mmap_add_ramdisk(uptr start_paddr, uptr end_paddr);
 void *system_mmap_get_ramdisk_vaddr(int ramdisk_index);
 void system_mmap_set(multiboot_info_t *mbi);
 int system_mmap_get_region_of(uptr paddr);
-
+bool linear_map_mem_region(memory_region_t *r, uptr *vbegin, uptr *vend);
 void dump_system_memory_map(void);
 
 extern u32 __mem_upper_kb;

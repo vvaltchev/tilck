@@ -465,6 +465,39 @@ int system_mmap_get_region_of(uptr paddr)
    return -1;
 }
 
+bool
+linear_map_mem_region(memory_region_t *r, uptr *vbegin, uptr *vend)
+{
+   if (r->addr >= LINEAR_MAPPING_SIZE)
+      return false;
+
+   const uptr pbegin = r->addr;
+   const uptr pend = MIN(r->addr + r->len, LINEAR_MAPPING_SIZE);
+   const bool rw = (r->type == MULTIBOOT_MEMORY_AVAILABLE) ||
+                   (r->extra & MEM_REG_EXTRA_KERNEL);
+
+   const int page_count = (pend - pbegin) >> PAGE_SHIFT;
+
+   *vbegin = (uptr)KERNEL_PA_TO_VA(pbegin);
+   *vend = (uptr)KERNEL_PA_TO_VA(pend);
+
+   int rc = map_pages(get_kernel_page_dir(),
+                      (void *)*vbegin,
+                      pbegin,
+                      page_count,
+                      true, /* big pages allowed */
+                      false, /* user-accessible */
+                      rw);
+
+   if (rc != page_count)
+      panic("kmalloc: unable to map regions in the virtual space");
+
+   if (!get_curr_page_dir() && pend >= 4 * MB)
+      set_page_directory(get_kernel_page_dir());
+
+   return true;
+}
+
 static const char *mem_region_extra_to_str(u32 e)
 {
    switch (e) {
