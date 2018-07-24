@@ -8,8 +8,7 @@
 #include <exos/kernel/fs/exvfs.h>
 #include <exos/kernel/errno.h>
 #include <exos/kernel/elf_utils.h>
-
-#ifdef BITS32
+#include <exos/kernel/fault_resumable.h>
 
 static int load_phdr(fs_handle *elf_file,
                      page_directory_t *pdir,
@@ -152,7 +151,7 @@ int load_elf_program(const char *filepath,
 
    for (int i = 0; i < header.e_phnum; i++) {
 
-      u32 end_vaddr = 0;
+      uptr end_vaddr = 0;
       Elf_Phdr *phdr = phdrs + i;
 
       if (phdr->p_type != PT_LOAD)
@@ -289,4 +288,22 @@ uptr find_addr_of_symbol(const char *searched_sym)
    return 0;
 }
 
-#endif // BITS32
+static void
+find_sym_at_addr_no_ret(uptr vaddr,
+                        ptrdiff_t *offset,
+                        u32 *sym_size,
+                        const char **sym_name_ref)
+{
+  *sym_name_ref = find_sym_at_addr(vaddr, offset, sym_size);
+}
+
+const char *
+find_sym_at_addr_safe(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
+{
+   const char *sym_name = NULL;
+   fault_resumable_call(~0, &find_sym_at_addr_no_ret, 4,
+                        vaddr, offset, sym_size, &sym_name);
+
+   return sym_name;
+}
+

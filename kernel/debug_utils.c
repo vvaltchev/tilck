@@ -65,9 +65,9 @@ NORETURN void panic(const char *fmt, ...)
                 curr->tid, curr->owning_process_pid);
       } else {
          ptrdiff_t off;
-         const char *sym_name = find_sym_at_addr((uptr)curr->what, &off, NULL);
+         const char *s = find_sym_at_addr_safe((uptr)curr->what, &off, NULL);
          printk("Current task [KERNEL]: tid: %i [%s]\n",
-                curr->tid, sym_name ? sym_name : "???");
+                curr->tid, s ? s : "???");
       }
    } else {
       printk("Current task: NONE\n");

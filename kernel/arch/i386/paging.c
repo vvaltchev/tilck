@@ -11,7 +11,6 @@
 #include <exos/kernel/user.h>
 #include <exos/kernel/elf_utils.h>
 #include <exos/kernel/system_mmap.h>
-#include <exos/kernel/fault_resumable.h>
 #include <exos/kernel/errno.h>
 
 #include "paging_int.h"
@@ -112,26 +111,6 @@ bool handle_potential_cow(u32 vaddr)
    memcpy(page_vaddr, page_size_buf, PAGE_SIZE);
    return true;
 }
-
-static void
-find_sym_at_addr_no_ret(uptr vaddr,
-                        ptrdiff_t *offset,
-                        u32 *sym_size,
-                        const char **sym_name_ref)
-{
-  *sym_name_ref = find_sym_at_addr(vaddr, offset, sym_size);
-}
-
-static const char *
-find_sym_at_addr_safe(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
-{
-   const char *sym_name = NULL;
-   fault_resumable_call(~0, &find_sym_at_addr_no_ret, 4,
-                        vaddr, offset, sym_size, &sym_name);
-
-   return sym_name;
-}
-
 
 void handle_page_fault_int(regs *r)
 {
