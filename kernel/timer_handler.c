@@ -137,25 +137,10 @@ int timer_irq_handler(regs *context)
 
    if (last_ready_task) {
 
-      // TODO: check the following sometimes-falling ASSERT
-      // Debug stuff:
-      //
-      // Current task [USER]: tid: 2, pid: 2
-      // Interrupts: [ 32 128 ]
-      // Stacktrace (10 frames):
-      // [0xc01017a5] dump_stacktrace + 0x35
-      // [0xc010b0bf] panic + 0xcf
-      // [0xc011ab19] ??? + 0xcf
-      // [0xc010ff1b] timer_irq_handler + 0x16b
-      // [0xc01028a5] handle_irq + 0xb5
-      // [0xc0101247] asm_irq_entry + 0x37
-      // [0xc010e308] sys_waitpid + 0x78
-      // [0xc010e3fa] sys_wait4 + 0x4a
-      // [0xc01079ef] handle_syscall + 0x9f
-      // [0xc010c3ca] soft_interrupt_entry + 0xea
+      if (get_curr_task()->state == TASK_STATE_RUNNING) {
+         task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
+      }
 
-      ASSERT(get_curr_task()->state == TASK_STATE_RUNNING);
-      task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
       save_current_task_state(context);
       switch_to_task(last_ready_task, X86_PC_TIMER_IRQ);
    }
