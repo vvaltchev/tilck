@@ -13,7 +13,7 @@
 
 static bool mapped_in_pdir(page_directory_t *pdir, void *vaddr)
 {
-   if (!get_kernel_page_dir()) {
+   if (!get_curr_page_dir()) {
 
       // Paging has not been initialized yet.
       // Just check if vaddr is in the first 4 MB (and in BASE_VA + 4 MB).
@@ -80,7 +80,7 @@ void dump_stacktrace(void)
 
       sym_name = find_sym_at_addr(va, &off, &sym_size);
 
-      if (off == 0) {
+      if (sym_name && off == 0) {
 
          /*
           * Since we're resolving return addresses, not addresses, we have to
@@ -95,7 +95,9 @@ void dump_stacktrace(void)
 
          /*
           * Now we have to increase the offset value because in the backtrace
-          * the original vaddr will be shown.
+          * the original vaddr will be shown. [We passed "va-1" instead of "va"
+          * because we wanted the previous function, now we have to adjust the
+          * offset.]
           */
 
          off++;
