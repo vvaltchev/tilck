@@ -109,7 +109,9 @@ void dump_stacktrace(void)
 
 void debug_qemu_turn_off_machine()
 {
-   outb(0xf4, 0x00);
+   if (in_hypervisor()) {
+      outb(0xf4, 0x00);
+   }
 }
 
 void dump_eflags(u32 f)

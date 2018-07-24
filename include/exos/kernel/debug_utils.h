@@ -19,6 +19,5 @@ void validate_stack_pointer_int(const char *file, int line);
 #  define DEBUG_VALIDATE_STACK_PTR()
 #endif
 
-// Turn off the machine using a debug qemu-only mechnism
-void debug_qemu_turn_off_machine();
-
+void debug_qemu_turn_off_machine(void);
+void debug_show_build_opts(void);

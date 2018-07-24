@@ -78,7 +78,7 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
 
 void show_hello_message(void)
 {
-   printk("Hello from exOS! [%s build, GCC %i.%i.%i]\n",
+   printk("Hello from ExperimentOS! [%s build, GCC %i.%i.%i]\n",
           BUILDTYPE_STR, __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 }
 
@@ -133,7 +133,7 @@ int debug_f_key_press_handler(u32 key, u8 c)
    switch (key) {
 
       case KEY_F1:
-         debug_show_spurious_irq_count();
+         debug_show_build_opts();
          return KB_HANDLER_OK_AND_STOP;
 
       case KEY_F2:
@@ -142,6 +142,10 @@ int debug_f_key_press_handler(u32 key, u8 c)
 
       case KEY_F3:
          debug_term_print_scroll_cycles();
+         return KB_HANDLER_OK_AND_STOP;
+
+      case KEY_F4:
+         debug_show_spurious_irq_count();
          return KB_HANDLER_OK_AND_STOP;
 
       default:
