@@ -285,7 +285,7 @@ NORETURN sptr sys_exit(int exit_status)
 
    list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
 
-      // TODO: check the following sometimes-falling ASSERT
+      // TODO: check the following failing ASSERT [fail-count: 1]
       // Debug stuff:
       //
       // Interrupts: [ 128 ]
@@ -299,7 +299,13 @@ NORETURN sptr sys_exit(int exit_status)
       // [0xc010d2f2] soft_interrupt_entry + 0x7e
       // [0xc0101672] asm_soft_interrupt_entry + 0x37
 
-      ASSERT(pos->state == TASK_STATE_SLEEPING);
+      // ASSERT(pos->state == TASK_STATE_SLEEPING);
+
+      if (pos->state != TASK_STATE_SLEEPING) {
+         panic("%s task %d in the sleeping_tasks_list with state: %d",
+               is_kernel_thread(pos) ? "kernel" : "user",
+               pos->tid, pos->state);
+      }
 
       if (pos->wobj.ptr == curr) {
          ASSERT(pos->wobj.type == WOBJ_TASK);
