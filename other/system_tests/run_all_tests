@@ -38,7 +38,6 @@ selftests = [
    ['tasklet', SHORT_TEST_TIMEOUT],
    ['tasklet_perf', SHORT_TEST_TIMEOUT],
    ['kernel_sleep', SHORT_TEST_TIMEOUT],
-   ['alloc_pageframe_perf', SHORT_TEST_TIMEOUT],
    ['kcond', SHORT_TEST_TIMEOUT],
    ['kmalloc_perf', MID_TEST_TIMEOUT],
    ['join', MID_TEST_TIMEOUT],

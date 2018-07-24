@@ -66,14 +66,14 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
    ASSERT(mbi->flags & MULTIBOOT_INFO_MEM_MAP);
    system_mmap_set(mbi);
 
-   if (mbi->flags & MULTIBOOT_INFO_CMDLINE)
-      parse_kernel_cmdline((const char *)(uptr)mbi->cmdline);
-
    if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO) {
       if (mbi->framebuffer_type != MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT) {
          set_framebuffer_info_from_mbi(mbi);
       }
    }
+
+   if (mbi->flags & MULTIBOOT_INFO_CMDLINE)
+      parse_kernel_cmdline((const char *)(uptr)mbi->cmdline);
 }
 
 void show_hello_message(void)
