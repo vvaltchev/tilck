@@ -314,7 +314,7 @@ NORETURN sptr sys_exit(int exit_status)
       }
    }
 
-   set_page_directory(get_kernel_page_dir());
+   set_page_directory(get_kernel_pdir());
    pdir_destroy(curr->pi->pdir);
 
 #ifdef DEBUG_QEMU_EXIT_ON_INIT_EXIT

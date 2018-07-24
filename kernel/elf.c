@@ -76,7 +76,7 @@ int load_elf_program(const char *filepath,
                      void **stack_addr,
                      void **brk_ref)
 {
-   page_directory_t *old_pdir = get_curr_page_dir();
+   page_directory_t *old_pdir = get_curr_pdir();
    Elf_Phdr *phdrs = NULL;
    fs_handle elf_file = NULL;
    Elf_Ehdr header;
@@ -98,7 +98,7 @@ int load_elf_program(const char *filepath,
 
    if (*pdir_ref == NULL) {
 
-      *pdir_ref = pdir_clone(get_kernel_page_dir());
+      *pdir_ref = pdir_clone(get_kernel_pdir());
 
       if (!*pdir_ref) {
          exvfs_close(elf_file);

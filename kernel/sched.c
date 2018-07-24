@@ -148,7 +148,7 @@ void create_kernel_process(void)
 
 void init_sched(void)
 {
-   kernel_process->pi->pdir = get_kernel_page_dir();
+   kernel_process->pi->pdir = get_kernel_pdir();
    idle_task = kthread_create(&idle_task_kthread, NULL);
 }
 

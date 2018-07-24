@@ -481,7 +481,7 @@ linear_map_mem_region(memory_region_t *r, uptr *vbegin, uptr *vend)
    *vbegin = (uptr)KERNEL_PA_TO_VA(pbegin);
    *vend = (uptr)KERNEL_PA_TO_VA(pend);
 
-   int rc = map_pages(get_kernel_page_dir(),
+   int rc = map_pages(get_kernel_pdir(),
                       (void *)*vbegin,
                       pbegin,
                       page_count,
@@ -492,8 +492,8 @@ linear_map_mem_region(memory_region_t *r, uptr *vbegin, uptr *vend)
    if (rc != page_count)
       panic("kmalloc: unable to map regions in the virtual space");
 
-   if (!get_curr_page_dir() && pend >= 4 * MB)
-      set_page_directory(get_kernel_page_dir());
+   if (!get_curr_pdir() && pend >= 4 * MB)
+      set_page_directory(get_kernel_pdir());
 
    return true;
 }

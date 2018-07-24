@@ -296,7 +296,7 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
    task_change_state(ti, TASK_STATE_RUNNING);
    ti->time_slot_ticks = 0;
 
-   if (get_curr_page_dir() != ti->pi->pdir) {
+   if (get_curr_pdir() != ti->pi->pdir) {
       set_page_directory(ti->pi->pdir);
    }
 

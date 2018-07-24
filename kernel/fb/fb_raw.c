@@ -130,7 +130,7 @@ void fb_map_in_kernel_space(void)
    fb_vaddr = fb_real_vaddr; /* here fb_vaddr == fb_real_vaddr */
 
 #ifdef __i386__
-   if (!get_kernel_page_dir()) {
+   if (!get_kernel_pdir()) {
 
       /*
        * Paging has not been initialized yet: probably we're in panic.
@@ -158,7 +158,7 @@ void fb_map_in_kernel_space(void)
 
 #ifdef __i386__
 
-   rc = map_pages_int(get_kernel_page_dir(),
+   rc = map_pages_int(get_kernel_pdir(),
                       (void *)fb_real_vaddr,
                       fb_paddr,
                       page_count,

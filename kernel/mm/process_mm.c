@@ -11,7 +11,7 @@ u8 page_size_buf[PAGE_SIZE] __attribute__ ((aligned(PAGE_SIZE)));
 
 void user_vfree_and_unmap(uptr user_vaddr, int page_count)
 {
-   page_directory_t *pdir = get_curr_page_dir();
+   page_directory_t *pdir = get_curr_pdir();
    uptr va = user_vaddr;
 
    for (int i = 0; i < page_count; i++, va += PAGE_SIZE) {
@@ -27,7 +27,7 @@ void user_vfree_and_unmap(uptr user_vaddr, int page_count)
 
 bool user_valloc_and_map(uptr user_vaddr, int page_count)
 {
-   page_directory_t *pdir = get_curr_page_dir();
+   page_directory_t *pdir = get_curr_pdir();
    uptr va = user_vaddr;
 
    for (int i = 0; i < page_count; i++, va += PAGE_SIZE) {

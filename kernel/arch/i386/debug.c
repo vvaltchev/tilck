@@ -13,7 +13,7 @@
 
 static bool mapped_in_pdir(page_directory_t *pdir, void *vaddr)
 {
-   if (!get_curr_page_dir()) {
+   if (!get_curr_pdir()) {
 
       // Paging has not been initialized yet.
       // Just check if vaddr is in the first 4 MB (and in BASE_VA + 4 MB).
@@ -38,7 +38,7 @@ size_t stackwalk32(void **frames,
    }
 
    if (!pdir) {
-      pdir = get_kernel_page_dir();
+      pdir = get_kernel_pdir();
    }
 
    for (i = 0; i < count; i++) {
