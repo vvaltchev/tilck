@@ -164,6 +164,11 @@ void handle_esc_seq(char *buf,
 
       const char *cmd;
 
+      if (curr_line_pos != *curr_cmd_len - 1) {
+         for (; curr_line_pos < *curr_cmd_len; curr_line_pos++)
+            write(1, SEQ_RIGHT, 3);
+      }
+
       if (seq == SN(SEQ_UP)) {
 
          cmd = get_prev_cmd(curr_hist_cmd_to_show + 1);
