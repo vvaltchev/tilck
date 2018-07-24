@@ -45,7 +45,14 @@ set(KERNEL_TRACK_NESTED_INTERRUPTS ON CACHE BOOL
 set(TERM_PERF_METRICS ON CACHE BOOL
     "Compile-in code measuring the performance of the console (scrolling)")
 
+set(PANIC_SHOW_STACKTRACE ON CACHE BOOL
+    "Show the stacktrace in case of a kernel panic")
+
 # Kernel options (disabled by default)
+
+set(PANIC_SHOW_REGS ON CACHE BOOL
+    "Show the content of the main registers in case of kernel panic")
+
 set(KMALLOC_FREE_MEM_POISONING OFF CACHE BOOL
     "Make kfree() to poison the memory")
 
@@ -69,6 +76,7 @@ list(
 
    KERNEL_TRACK_NESTED_INTERRUPTS
    TERM_PERF_METRICS
+   PANIC_SHOW_STACKTRACE
 )
 
 list(

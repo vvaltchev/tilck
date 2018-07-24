@@ -21,8 +21,10 @@
 /* enabled by default */
 #cmakedefine01 KERNEL_TRACK_NESTED_INTERRUPTS
 #cmakedefine01 TERM_PERF_METRICS
+#cmakedefine01 PANIC_SHOW_STACKTRACE
 
 /* disabled by default */
+#cmakedefine01 PANIC_SHOW_REGS
 #cmakedefine01 KMALLOC_FREE_MEM_POISONING
 #cmakedefine01 KMALLOC_SUPPORT_DEBUG_LOG
 #cmakedefine01 KMALLOC_SUPPORT_LEAK_DETECTOR

@@ -74,9 +74,12 @@ NORETURN void panic(const char *fmt, ...)
    }
 
    panic_dump_nested_interrupts();
-   //dump_regs(curr->state_regs);
-   dump_stacktrace();
 
+   if (PANIC_SHOW_REGS)
+      dump_regs(curr->state_regs);
+
+   if (PANIC_SHOW_STACKTRACE)
+      dump_stacktrace();
 
 #ifdef DEBUG_QEMU_EXIT_ON_PANIC
    debug_qemu_turn_off_machine();
@@ -99,6 +102,8 @@ void debug_show_build_opts(void)
    DUMP_STR_OPT(BUILDTYPE_STR);
    DUMP_BOOL_OPT(KERNEL_TRACK_NESTED_INTERRUPTS);
    DUMP_BOOL_OPT(TERM_PERF_METRICS);
+   DUMP_BOOL_OPT(PANIC_SHOW_STACKTRACE);
+   DUMP_BOOL_OPT(PANIC_SHOW_REGS);
    DUMP_BOOL_OPT(KMALLOC_FREE_MEM_POISONING);
    DUMP_BOOL_OPT(KMALLOC_SUPPORT_DEBUG_LOG);
    DUMP_BOOL_OPT(KMALLOC_SUPPORT_LEAK_DETECTOR);
