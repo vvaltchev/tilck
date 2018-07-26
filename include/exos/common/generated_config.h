@@ -18,6 +18,8 @@
 #define KERNEL_FILE_PATH       "/@KERNEL_FATPART_PATH@"
 #define KERNEL_FILE_PATH_EFI   "\\@KERNEL_FATPART_PATH_EFI@"
 
+#define TIMER_HZ               @TIMER_HZ@
+
 /* enabled by default */
 #cmakedefine01 KERNEL_TRACK_NESTED_INTERRUPTS
 #cmakedefine01 TERM_PERF_METRICS

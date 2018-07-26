@@ -3,7 +3,6 @@
 
 #include <exos/kernel/hal.h>
 
-#define TIMER_HZ 100
 #define TIME_SLOT_TICKS (TIMER_HZ / 20)
 
 typedef struct {

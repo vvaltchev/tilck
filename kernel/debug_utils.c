@@ -93,6 +93,7 @@ end:
 }
 
 #define DUMP_STR_OPT(opt)  printk(NO_PREFIX "%-35s: %s\n", #opt, opt)
+#define DUMP_INT_OPT(opt)  printk(NO_PREFIX "%-35s: %d\n", #opt, opt)
 #define DUMP_BOOL_OPT(opt) printk(NO_PREFIX "%-35s: %u\n", #opt, opt)
 
 void debug_show_build_opts(void)
@@ -100,6 +101,7 @@ void debug_show_build_opts(void)
    printk(NO_PREFIX "\n");
    printk(NO_PREFIX "------------------- BUILD OPTIONS ------------------\n");
    DUMP_STR_OPT(BUILDTYPE_STR);
+   DUMP_INT_OPT(TIMER_HZ);
    DUMP_BOOL_OPT(KERNEL_TRACK_NESTED_INTERRUPTS);
    DUMP_BOOL_OPT(TERM_PERF_METRICS);
    DUMP_BOOL_OPT(PANIC_SHOW_STACKTRACE);

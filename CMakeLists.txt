@@ -38,7 +38,11 @@ set(ARCH "i386")
 # Compile options
 set(USE_GCOV OFF CACHE BOOL "Compile the tests for measuring coverage")
 
+# Non-boolean kernel options
+set(TIMER_HZ 100 CACHE STRING "System timer HZ")
+
 # Kernel options (enabled by default)
+
 set(KERNEL_TRACK_NESTED_INTERRUPTS ON CACHE BOOL
     "Track the nested interrupts")
 
@@ -74,6 +78,7 @@ set(DEBUG_CHECKS_IN_RELEASE_BUILD OFF CACHE BOOL
 list(
    APPEND kernel_opts_enabled_by_default
 
+   TIMER_HZ
    KERNEL_TRACK_NESTED_INTERRUPTS
    TERM_PERF_METRICS
    PANIC_SHOW_STACKTRACE
