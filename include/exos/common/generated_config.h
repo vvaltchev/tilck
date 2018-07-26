@@ -12,8 +12,8 @@
 
 #define BL_ST2_DATA_SEG        (@BL_ST2_DATA_SEG@)
 #define BL_BASE_ADDR           (@BL_BASE_ADDR@)
-#define CMAKE_KERNEL_BASE_VA   (@CMAKE_KERNEL_BASE_VA@)
-#define KERNEL_PADDR           (@CMAKE_KERNEL_PADDR@)
+#define KERNEL_BASE_VA         (@KERNEL_BASE_VA@)
+#define KERNEL_PADDR           (@KERNEL_PADDR@)
 
 #define KERNEL_FILE_PATH       "/@KERNEL_FATPART_PATH@"
 #define KERNEL_FILE_PATH_EFI   "\\@KERNEL_FATPART_PATH_EFI@"

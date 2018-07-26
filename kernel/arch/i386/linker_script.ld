@@ -6,8 +6,8 @@ ENTRY(_start)
 SEARCH_DIR("=/tmp/x86-i686--glibc--stable/usr/i686-buildroot-linux-gnu/lib32");
 SEARCH_DIR("=/tmp/x86-i686--glibc--stable/usr/i686-buildroot-linux-gnu/lib");
 
-kernel_base_va      = @CMAKE_KERNEL_BASE_VA@;
-kernel_paddr        = @CMAKE_KERNEL_PADDR@;
+kernel_base_va      = @KERNEL_BASE_VA@;
+kernel_paddr        = @KERNEL_PADDR@;
 kernel_text_paddr   = kernel_paddr + 0x1000;
 
 PHDRS
