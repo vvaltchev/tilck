@@ -23,15 +23,14 @@
 
 #define KERNEL_INITIAL_STACK_SIZE (4 * KB)
 
-#if !defined(TESTING) && !defined(KERNEL_TEST)
-
-#define LINEAR_MAPPING_MB          (512)
-
-#else
+#if defined(TESTING) || defined(KERNEL_TEST)
 
 extern void *kernel_va;
 
+/* For the unit tests, we need to override the following defines */
 #undef KERNEL_BASE_VA
+#undef LINEAR_MAPPING_MB
+
 #define KERNEL_BASE_VA             ((uptr)kernel_va)
 #define LINEAR_MAPPING_MB          (128)
 

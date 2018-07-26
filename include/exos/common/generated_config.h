@@ -14,11 +14,12 @@
 #define BL_BASE_ADDR           (@BL_BASE_ADDR@)
 #define KERNEL_BASE_VA         (@KERNEL_BASE_VA@)
 #define KERNEL_PADDR           (@KERNEL_PADDR@)
+#define LINEAR_MAPPING_MB      (@LINEAR_MAPPING_MB@)
 
 #define KERNEL_FILE_PATH       "/@KERNEL_FATPART_PATH@"
 #define KERNEL_FILE_PATH_EFI   "\\@KERNEL_FATPART_PATH_EFI@"
 
-#define TIMER_HZ               @TIMER_HZ@
+#define TIMER_HZ               (@TIMER_HZ@)
 
 /* enabled by default */
 #cmakedefine01 KERNEL_TRACK_NESTED_INTERRUPTS
