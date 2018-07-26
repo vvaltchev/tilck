@@ -241,6 +241,13 @@ add_subdirectory(scripts/build_apps)
 
 ################################################################################
 
+set(BUILD_SCRIPTS_FILES_LIST "")
+file(GLOB files "${BUILD_SCRIPTS}/*")
+foreach (f ${files})
+   list(APPEND BUILD_SCRIPTS_FILES_LIST "${file}")
+endforeach()
+unset(files)
+
 add_custom_command(
 
    OUTPUT
@@ -269,11 +276,12 @@ add_custom_command(
       ${KERNEL_FILE}
 
       usermode_apps
-      ${CMAKE_BINARY_DIR}/usermode_apps/*
+      ${USERMODE_APPS_FILES_LIST}
 
       fat_get_used_bytes
       ${CMAKE_BINARY_DIR}/scripts/build_apps/fat_get_used_bytes
-      ${BUILD_SCRIPTS}/*
+      ${BUILD_SCRIPTS_FILES_LIST}
+
    COMMENT
       "Creating the bootable image file (MBR)"
    VERBATIM
@@ -302,7 +310,7 @@ add_custom_command(
    COMMAND
       dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${GPT_IMG_FILE} seek=1024 bs=1K
    DEPENDS
-      ${IMG_FILE}
+      exos_image ${IMG_FILE}
    COMMENT
       "Creating the bootable image file (GPT)"
 )
