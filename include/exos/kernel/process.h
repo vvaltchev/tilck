@@ -11,7 +11,7 @@
 #include <exos/kernel/bintree.h>
 #include <exos/kernel/kmalloc.h>
 
-#define OFFLIMIT_USERMODE_ADDR (KERNEL_BASE_VA) /* biggest usermode vaddr + 1 */
+#define USERMODE_VADDR_END (KERNEL_BASE_VA) /* biggest usermode vaddr + 1 */
 
 #define MAX_BRK ((uptr)0x40000000)          // +1 GB
 

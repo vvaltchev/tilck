@@ -176,9 +176,8 @@ int load_elf_program(const char *filepath,
 
    // Allocating memory for the user stack.
 
-   const int pages_for_stack = 16;
-   void *stack_top =
-      (void *) (OFFLIMIT_USERMODE_ADDR - pages_for_stack * PAGE_SIZE);
+   const int pages_for_stack = USER_STACK_PAGES;
+   const uptr stack_top = (USERMODE_VADDR_END - USER_STACK_PAGES * PAGE_SIZE);
 
    for (int i = 0; i < pages_for_stack; i++) {
 
@@ -190,7 +189,7 @@ int load_elf_program(const char *filepath,
       }
 
       int rc = map_page(*pdir_ref,
-                        stack_top + i * PAGE_SIZE,
+                        (void *)stack_top + (i << PAGE_SHIFT),
                         KERNEL_VA_TO_PA(p),
                         true,
                         true);
@@ -200,7 +199,7 @@ int load_elf_program(const char *filepath,
 
    // Finally setting the output-params.
 
-   *stack_addr = (void *) ((OFFLIMIT_USERMODE_ADDR - 1) & POINTER_ALIGN_MASK);
+   *stack_addr = (void *) ((USERMODE_VADDR_END - 1) & POINTER_ALIGN_MASK);
    *entry = (void *) header.e_entry;
    *brk_ref = (void *)brk;
 

@@ -40,6 +40,7 @@ set(USE_GCOV OFF CACHE BOOL "Compile the tests for measuring coverage")
 
 # Non-boolean kernel options
 set(TIMER_HZ 100 CACHE STRING "System timer HZ")
+set(USER_STACK_PAGES 16 CACHE STRING "User apps stack size in pages")
 
 # Kernel options (enabled by default)
 
