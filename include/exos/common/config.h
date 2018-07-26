@@ -25,22 +25,22 @@
 
 #if defined(TESTING) || defined(KERNEL_TEST)
 
-extern void *kernel_va;
+   extern void *kernel_va;
 
-/* For the unit tests, we need to override the following defines */
-#undef KERNEL_BASE_VA
-#undef LINEAR_MAPPING_MB
+   /* For the unit tests, we need to override the following defines */
+   #undef KERNEL_BASE_VA
+   #undef LINEAR_MAPPING_MB
 
-#define KERNEL_BASE_VA             ((uptr)kernel_va)
-#define LINEAR_MAPPING_MB          (128)
+   #define KERNEL_BASE_VA             ((uptr)kernel_va)
+   #define LINEAR_MAPPING_MB          (128)
 
 #endif
 
 #define LINEAR_MAPPING_SIZE        (LINEAR_MAPPING_MB << 20)
-#define LINEAR_MAPPING_OVER_END    (KERNEL_BASE_VA + LINEAR_MAPPING_SIZE)
+#define LINEAR_MAPPING_END         (KERNEL_BASE_VA + LINEAR_MAPPING_SIZE)
 
 #define KERNEL_MAX_SIZE            (1024 * KB)
-#define USER_VSDO_LIKE_PAGE_VADDR  (LINEAR_MAPPING_OVER_END)
+#define USER_VSDO_LIKE_PAGE_VADDR  (LINEAR_MAPPING_END)
 
 /* Bootloader-specific config */
 

@@ -247,7 +247,7 @@ uptr get_mapping(page_directory_t *pdir, void *vaddrp)
     * This function shall be never called for the linear-mapped zone of the
     * the kernel virtual memory.
     */
-   ASSERT(vaddr < KERNEL_BASE_VA || vaddr >= LINEAR_MAPPING_OVER_END);
+   ASSERT(vaddr < KERNEL_BASE_VA || vaddr >= LINEAR_MAPPING_END);
 
    ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
    ASSERT(KERNEL_VA_TO_PA(ptable) != 0);

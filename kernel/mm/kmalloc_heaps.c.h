@@ -472,7 +472,7 @@ void init_kmalloc(void)
 
          init_kmalloc_fill_region(i, vbegin, vend);
 
-         if (vend == LINEAR_MAPPING_OVER_END)
+         if (vend == LINEAR_MAPPING_END)
             break;
       }
    }
