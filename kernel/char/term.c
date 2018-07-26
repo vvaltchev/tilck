@@ -302,15 +302,12 @@ void term_internal_write_char2(char c, u8 color)
    if (term_use_serial)
       serial_write(c);
 
-   /*
-    * Internal sanity-check: some control characters should never be forwarded
-    * to this layer.
-    */
-   ASSERT(c != '\033');
-   ASSERT(c != '\a');
-   ASSERT(c != '\v');
-
    switch (c) {
+
+      case '\033':
+      case '\a':
+      case '\v':
+         break;
 
       case '\n':
          term_internal_incr_row(color);

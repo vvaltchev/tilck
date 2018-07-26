@@ -82,6 +82,42 @@ void show_hello_message(void)
           BUILDTYPE_STR, __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 }
 
+
+void show_banner(void)
+{
+   const char *banner[] =
+   {
+      "",
+      "##########   ##   ##         #######   ##    ##",
+      "#   ##   #   ##   ##         ##        ##   ## ",
+      "    ##       ##   ##         ##        ## ##   ",
+      "    ##       ##   ##         ##        ##   ## ",
+      "    ##       ##   ########   #######   ##    ##",
+      ""
+   };
+
+   const u32 padding = term_get_cols() / 2 - strlen(banner[1]) / 2;
+
+   // for (u32 i = 0; i < ARRAY_SIZE(banner); i++) {
+   //    char *p = (char *)banner[i];
+
+   //    while (*p) {
+   //       if (*p == '#')
+   //          *p = 219;
+
+   //       p++;
+   //    }
+   // }
+
+   for (u32 i = 0; i < ARRAY_SIZE(banner); i++) {
+
+      for (u32 j = 0; j < padding; j++)
+         printk(NO_PREFIX " ");
+
+      printk(NO_PREFIX "%s\n", banner[i]);
+   }
+}
+
 void show_system_info(void)
 {
    printk("TIMER_HZ: %i; TIME_SLOT: %i ms %s\n",
@@ -89,6 +125,7 @@ void show_system_info(void)
           1000 / (TIMER_HZ / TIME_SLOT_TICKS),
           in_hypervisor() ? "[IN HYPERVISOR]" : "");
 
+   show_banner();
    dump_system_memory_map();
 }
 
@@ -111,8 +148,6 @@ void mount_ramdisk(void)
 
    if (rc != 0)
       panic("mountpoint_add() failed with error: %d", rc);
-
-   printk("Mounted RAMDISK at PADDR %p.\n", KERNEL_VA_TO_PA(ramdisk));
 }
 
 void selftest_runner_thread()
@@ -213,7 +248,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    enable_preemption();
    push_nested_interrupt(-1);
-   printk("[main] sys_execve('%s')\n", cmd_args[0]);
    sptr rc = sys_execve(cmd_args[0], cmd_args, NULL);
    panic("execve('%s') failed with %i\n", cmd_args[0], rc);
 }

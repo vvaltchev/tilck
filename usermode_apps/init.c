@@ -59,8 +59,6 @@ int main(int argc, char **argv, char **env)
       }
    }
 
-   printf("[init] Hello from init!\n");
-
    if (argc > 1 && !strcmp(argv[1], "--")) {
       for (int i = 1; i < ARRAY_SIZE(shell_args)-1 && i + 1 < argc; i++) {
          shell_args[i] = argv[i + 1];
@@ -70,11 +68,8 @@ int main(int argc, char **argv, char **env)
    shell_pid = fork();
 
    if (!shell_pid) {
-      printf("[init forked child] running shell\n");
       execve("/bin/devshell", shell_args, NULL);
    }
-
-   printf("[init] wait for the devshell to exit\n");
 
    waitpid(shell_pid, &wstatus, 0);
    printf("[init] the devshell exited with status: %d\n", WEXITSTATUS(wstatus));
