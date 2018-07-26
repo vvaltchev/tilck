@@ -312,6 +312,9 @@ void debug_kmalloc_dump_mem_usage(void)
 {
    static size_t heaps_alloc[KMALLOC_HEAPS_COUNT];
 
+   size_t tot_usable_mem_kb = 0;
+   size_t tot_used_mem_kb = 0;
+
    printk(NO_PREFIX "\n\nKMALLOC HEAPS: \n\n");
 
    printk(NO_PREFIX
@@ -337,9 +340,15 @@ void debug_kmalloc_dump_mem_usage(void)
              size_kb,
              allocated_kb * 100 / size_kb,
              heaps[i]->mem_allocated - heaps_alloc[i]);
+
+      tot_usable_mem_kb += size_kb;
+      tot_used_mem_kb += allocated_kb;
    }
 
    printk(NO_PREFIX "\n");
+   printk(NO_PREFIX "Total usable: %6u KB\n", tot_usable_mem_kb);
+   printk(NO_PREFIX "Total used:   %6u KB (%u%%)\n\n",
+          tot_used_mem_kb, (tot_used_mem_kb * 100) / tot_usable_mem_kb);
 
    for (u32 i = 0; i < ARRAY_SIZE(heaps) && heaps[i]; i++) {
       heaps_alloc[i] = heaps[i]->mem_allocated;
