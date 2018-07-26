@@ -32,13 +32,13 @@ sptr sys_chdir(const char *user_path)
       }
 
       fs_handle h = NULL;
-      rc = exvfs_open(path, &h);
+      rc = vfs_open(path, &h);
 
       if (rc < 0)
          goto out; /* keep the same rc */
 
       ASSERT(h != NULL);
-      exvfs_close(h);
+      vfs_close(h);
 
       u32 pl = strlen(path);
       memcpy(pi->cwd, path, pl + 1);

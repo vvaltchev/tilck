@@ -2,7 +2,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
-#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
 
@@ -68,7 +68,7 @@ check_mountpoint_match(const char *mp, u32 lm, const char *path, u32 lp)
    return m;
 }
 
-int exvfs_open(const char *path, fs_handle *out)
+int vfs_open(const char *path, fs_handle *out)
 {
    mountpoint *mp, *best_match = NULL;
    int pl, rc, best_match_len = 0;
@@ -78,7 +78,7 @@ int exvfs_open(const char *path, fs_handle *out)
    ASSERT(path != NULL);
 
    if (*path != '/')
-      panic("exvfs_open() works only with absolute paths");
+      panic("vfs_open() works only with absolute paths");
 
    pl = strlen(path);
 
@@ -101,29 +101,29 @@ int exvfs_open(const char *path, fs_handle *out)
 
    filesystem *fs = best_match->fs;
 
-   exvfs_fs_shlock(fs);
+   vfs_fs_shlock(fs);
    {
       fs_path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
 
-      // printk("exvfs_open('%s' as '%s' in '%s'@%u)\n",
+      // printk("vfs_open('%s' as '%s' in '%s'@%u)\n",
       //        path, fs_path, fs->fs_type_name, fs->device_id);
 
       rc = fs->open(fs, fs_path, out);
    }
-   exvfs_fs_shunlock(fs);
+   vfs_fs_shunlock(fs);
 
 out:
    mountpoint_iter_end(&cur);
    return rc;
 }
 
-void exvfs_close(fs_handle h)
+void vfs_close(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    hb->fs->close(h);
 }
 
-int exvfs_dup(fs_handle h, fs_handle *dup_h)
+int vfs_dup(fs_handle h, fs_handle *dup_h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
 
@@ -139,7 +139,7 @@ int exvfs_dup(fs_handle h, fs_handle *dup_h)
    return 0;
 }
 
-ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size)
+ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    ssize_t ret;
@@ -147,15 +147,15 @@ ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size)
    if (!hb->fops.read)
       return -EINVAL;
 
-   exvfs_shlock(h);
+   vfs_shlock(h);
    {
       ret = hb->fops.read(h, buf, buf_size);
    }
-   exvfs_shunlock(h);
+   vfs_shunlock(h);
    return ret;
 }
 
-ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size)
+ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    ssize_t ret;
@@ -163,15 +163,15 @@ ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size)
    if (!hb->fops.write)
       return -EINVAL;
 
-   exvfs_exlock(h);
+   vfs_exlock(h);
    {
       ret = hb->fops.write(h, buf, buf_size);
    }
-   exvfs_exunlock(h);
+   vfs_exunlock(h);
    return ret;
 }
 
-off_t exvfs_seek(fs_handle h, off_t off, int whence)
+off_t vfs_seek(fs_handle h, off_t off, int whence)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
 
@@ -181,7 +181,7 @@ off_t exvfs_seek(fs_handle h, off_t off, int whence)
    return hb->fops.seek(h, off, whence);
 }
 
-int exvfs_ioctl(fs_handle h, uptr request, void *argp)
+int vfs_ioctl(fs_handle h, uptr request, void *argp)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;
@@ -189,30 +189,30 @@ int exvfs_ioctl(fs_handle h, uptr request, void *argp)
    if (!hb->fops.ioctl)
       return -ENOTTY; // Yes, ENOTTY IS the right error. See the man page.
 
-   exvfs_exlock(h);
+   vfs_exlock(h);
    {
       ret = hb->fops.ioctl(h, request, argp);
    }
-   exvfs_exunlock(h);
+   vfs_exunlock(h);
    return ret;
 }
 
-int exvfs_stat(fs_handle h, struct stat *statbuf)
+int vfs_stat(fs_handle h, struct stat *statbuf)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;
 
    ASSERT(hb->fops.stat != NULL); /* stat is NOT optional */
 
-   exvfs_shlock(h);
+   vfs_shlock(h);
    {
       ret = hb->fops.stat(h, statbuf);
    }
-   exvfs_shunlock(h);
+   vfs_shunlock(h);
    return ret;
 }
 
-void exvfs_exlock(fs_handle h)
+void vfs_exlock(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
@@ -221,11 +221,11 @@ void exvfs_exlock(fs_handle h)
       hb->fops.exlock(h);
    } else {
       ASSERT(!hb->fops.exunlock);
-      exvfs_fs_exlock(get_fs(h));
+      vfs_fs_exlock(get_fs(h));
    }
 }
 
-void exvfs_exunlock(fs_handle h)
+void vfs_exunlock(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
@@ -234,11 +234,11 @@ void exvfs_exunlock(fs_handle h)
       hb->fops.exunlock(h);
    } else {
       ASSERT(!hb->fops.exlock);
-      exvfs_fs_exunlock(get_fs(h));
+      vfs_fs_exunlock(get_fs(h));
    }
 }
 
-void exvfs_shlock(fs_handle h)
+void vfs_shlock(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
@@ -247,11 +247,11 @@ void exvfs_shlock(fs_handle h)
       hb->fops.shlock(h);
    } else {
       ASSERT(!hb->fops.shunlock);
-      exvfs_fs_shlock(get_fs(h));
+      vfs_fs_shlock(get_fs(h));
    }
 }
 
-void exvfs_shunlock(fs_handle h)
+void vfs_shunlock(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    ASSERT(hb != NULL);
@@ -260,11 +260,11 @@ void exvfs_shunlock(fs_handle h)
       hb->fops.shunlock(h);
    } else {
       ASSERT(!hb->fops.shlock);
-      exvfs_fs_shunlock(get_fs(h));
+      vfs_fs_shunlock(get_fs(h));
    }
 }
 
-void exvfs_fs_exlock(filesystem *fs)
+void vfs_fs_exlock(filesystem *fs)
 {
    ASSERT(fs != NULL);
    ASSERT(fs->fs_exlock);
@@ -272,7 +272,7 @@ void exvfs_fs_exlock(filesystem *fs)
    fs->fs_exlock(fs);
 }
 
-void exvfs_fs_exunlock(filesystem *fs)
+void vfs_fs_exunlock(filesystem *fs)
 {
    ASSERT(fs != NULL);
    ASSERT(fs->fs_exunlock);
@@ -280,7 +280,7 @@ void exvfs_fs_exunlock(filesystem *fs)
    fs->fs_exunlock(fs);
 }
 
-void exvfs_fs_shlock(filesystem *fs)
+void vfs_fs_shlock(filesystem *fs)
 {
    ASSERT(fs != NULL);
    ASSERT(fs->fs_shlock);
@@ -288,7 +288,7 @@ void exvfs_fs_shlock(filesystem *fs)
    fs->fs_shlock(fs);
 }
 
-void exvfs_fs_shunlock(filesystem *fs)
+void vfs_fs_shunlock(filesystem *fs)
 {
    ASSERT(fs != NULL);
    ASSERT(fs->fs_shunlock);
@@ -296,7 +296,7 @@ void exvfs_fs_shunlock(filesystem *fs)
    fs->fs_shunlock(fs);
 }
 
-int exvfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
+int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    int rc;
@@ -304,16 +304,16 @@ int exvfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    ASSERT(hb != NULL);
    ASSERT(hb->fs->getdents64);
 
-   exvfs_fs_shlock(hb->fs);
+   vfs_fs_shlock(hb->fs);
    {
       // NOTE: the fs implementation MUST handle an invalid user 'dirp' pointer.
       rc = hb->fs->getdents64(h, dirp, buf_size);
    }
-   exvfs_fs_shunlock(hb->fs);
+   vfs_fs_shunlock(hb->fs);
    return rc;
 }
 
-u32 exvfs_get_new_device_id(void)
+u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;
 }

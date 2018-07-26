@@ -5,7 +5,7 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/kmalloc.h>
-#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/fault_resumable.h>
@@ -40,12 +40,12 @@ static int load_phdr(fs_handle *elf_file,
       VERIFY(rc == 0); // TODO: handle this OOM
    }
 
-   ret = exvfs_seek(elf_file, phdr->p_offset, SEEK_SET);
+   ret = vfs_seek(elf_file, phdr->p_offset, SEEK_SET);
 
    if (ret != (ssize_t)phdr->p_offset)
       return -ENOEXEC;
 
-   ret = exvfs_read(elf_file, (void *) phdr->p_vaddr, phdr->p_filesz);
+   ret = vfs_read(elf_file, (void *) phdr->p_vaddr, phdr->p_filesz);
 
    if (ret != (ssize_t)phdr->p_filesz)
       return -ENOEXEC;
@@ -87,7 +87,7 @@ int load_elf_program(const char *filepath,
    ASSERT(!is_preemption_enabled());
    enable_preemption();
    {
-      rc = exvfs_open(filepath, &elf_file);
+      rc = vfs_open(filepath, &elf_file);
    }
    disable_preemption();
 
@@ -101,7 +101,7 @@ int load_elf_program(const char *filepath,
       *pdir_ref = pdir_clone(get_kernel_pdir());
 
       if (!*pdir_ref) {
-         exvfs_close(elf_file);
+         vfs_close(elf_file);
          return -ENOMEM;
       }
    }
@@ -110,7 +110,7 @@ int load_elf_program(const char *filepath,
 
    set_page_directory(*pdir_ref);
 
-   ret = exvfs_read(elf_file, &header, sizeof(header));
+   ret = vfs_read(elf_file, &header, sizeof(header));
 
    if (ret < (int)sizeof(header)) {
       rc = -ENOEXEC;
@@ -135,14 +135,14 @@ int load_elf_program(const char *filepath,
       goto out;
    }
 
-   ret = exvfs_seek(elf_file, header.e_phoff, SEEK_SET);
+   ret = vfs_seek(elf_file, header.e_phoff, SEEK_SET);
 
    if (ret != (ssize_t)header.e_phoff) {
       rc = -ENOEXEC;
       goto out;
    }
 
-   ret = exvfs_read(elf_file, phdrs, total_phdrs_size);
+   ret = vfs_read(elf_file, phdrs, total_phdrs_size);
 
    if (ret != total_phdrs_size) {
       rc = -ENOEXEC;
@@ -204,7 +204,7 @@ int load_elf_program(const char *filepath,
    *brk_ref = (void *)brk;
 
 out:
-   exvfs_close(elf_file);
+   vfs_close(elf_file);
    kfree(phdrs);
 
    if (rc != 0) {

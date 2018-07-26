@@ -1,7 +1,7 @@
 
 #define _TILCK_MP_C_
 
-#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/errno.h>
 

@@ -18,7 +18,7 @@ using namespace std;
 
 extern "C" {
    #include <tilck/kernel/fs/fat32.h>
-   #include <tilck/kernel/fs/exvfs.h>
+   #include <tilck/kernel/fs/vfs.h>
    int check_mountpoint_match(const char *mp, u32 lm, const char *path, u32 lp);
 }
 
@@ -30,7 +30,7 @@ static int mountpoint_match_wrapper(const char *mp, const char *path)
 // Implemented in fat32_test.cpp
 const char *load_once_file(const char *filepath, size_t *fsize = nullptr);
 
-TEST(exvfs, check_mountpoint_match)
+TEST(vfs, check_mountpoint_match)
 {
    EXPECT_EQ(mountpoint_match_wrapper("/", "/"), 1);
    EXPECT_EQ(mountpoint_match_wrapper("/", "/file"), 1);
@@ -40,14 +40,14 @@ TEST(exvfs, check_mountpoint_match)
    EXPECT_EQ(mountpoint_match_wrapper("/dev/", "/dev"), 4);
 }
 
-TEST(exvfs, read_content_of_longname_file)
+TEST(vfs, read_content_of_longname_file)
 {
    init_kmalloc_for_tests();
 
    const char *buf = load_once_file(PROJ_BUILD_DIR "/fatpart");
    char data[128] = {0};
 
-   filesystem *fat_fs = fat_mount_ramdisk((void *) buf, EXVFS_FS_RO);
+   filesystem *fat_fs = fat_mount_ramdisk((void *) buf, VFS_FS_RO);
    ASSERT_TRUE(fat_fs != NULL);
 
    int r = mountpoint_add(fat_fs, "/");
@@ -57,11 +57,11 @@ TEST(exvfs, read_content_of_longname_file)
       "/testdir/This_is_a_file_with_a_veeeery_long_name.txt";
 
    fs_handle h = NULL;
-   r = exvfs_open(file_path, &h);
+   r = vfs_open(file_path, &h);
    ASSERT_TRUE(r == 0);
    ASSERT_TRUE(h != NULL);
-   ssize_t res = exvfs_read(h, data, sizeof(data));
-   exvfs_close(h);
+   ssize_t res = vfs_read(h, data, sizeof(data));
+   vfs_close(h);
 
    EXPECT_GT(res, 0);
    ASSERT_STREQ("Content of file with a long name\n", data);
@@ -70,7 +70,7 @@ TEST(exvfs, read_content_of_longname_file)
    fat_umount_ramdisk(fat_fs);
 }
 
-TEST(exvfs, fseek)
+TEST(vfs, fseek)
 {
    init_kmalloc_for_tests();
 
@@ -84,7 +84,7 @@ TEST(exvfs, fseek)
    size_t fatpart_size;
    const char *fatpart = load_once_file(PROJ_BUILD_DIR "/fatpart", &fatpart_size);
 
-   filesystem *fat_fs = fat_mount_ramdisk((void *) fatpart, EXVFS_FS_RO);
+   filesystem *fat_fs = fat_mount_ramdisk((void *) fatpart, VFS_FS_RO);
    ASSERT_TRUE(fat_fs != NULL);
 
    int r = mountpoint_add(fat_fs, "/");
@@ -98,7 +98,7 @@ TEST(exvfs, fseek)
    size_t file_size = lseek(fd, 0, SEEK_END);
 
    fs_handle h = NULL;
-   r = exvfs_open(fatpart_file_path, &h);
+   r = vfs_open(fatpart_file_path, &h);
    ASSERT_TRUE(r == 0);
    ASSERT_TRUE(h != NULL);
 
@@ -106,7 +106,7 @@ TEST(exvfs, fseek)
    char buf_linux[64];
 
    lseek(fd, file_size / 2, SEEK_SET);
-   exvfs_seek(h, file_size / 2, SEEK_SET);
+   vfs_seek(h, file_size / 2, SEEK_SET);
 
    off_t last_pos = lseek(fd, 0, SEEK_CUR);
    (void)last_pos;
@@ -121,13 +121,13 @@ TEST(exvfs, fseek)
       off_t offset = (off_t) ( dist(engine) - dist(engine)/1.3 );
 
       off_t linux_lseek = lseek(fd, offset, SEEK_CUR);
-      off_t tilck_fseek = exvfs_seek(h, offset, SEEK_CUR);
+      off_t tilck_fseek = vfs_seek(h, offset, SEEK_CUR);
 
       if (linux_lseek < 0)
          saved_errno = errno;
 
       off_t linux_pos = lseek(fd, 0, SEEK_CUR);
-      off_t tilck_pos = exvfs_seek(h, 0, SEEK_CUR);
+      off_t tilck_pos = vfs_seek(h, 0, SEEK_CUR);
 
       if (linux_lseek < 0) {
 
@@ -151,12 +151,12 @@ TEST(exvfs, fseek)
       memset(buf_tilck, 0, sizeof(buf_tilck));
 
       ssize_t linux_read = read(fd, buf_linux, sizeof(buf_linux));
-      ssize_t tilck_read = exvfs_read(h, buf_tilck, sizeof(buf_tilck));
+      ssize_t tilck_read = vfs_read(h, buf_tilck, sizeof(buf_tilck));
 
       ASSERT_EQ(tilck_read, linux_read);
 
       linux_pos = lseek(fd, 0, SEEK_CUR);
-      tilck_pos = exvfs_seek(h, 0, SEEK_CUR);
+      tilck_pos = vfs_seek(h, 0, SEEK_CUR);
 
       ASSERT_EQ(tilck_pos, linux_pos);
 
@@ -185,7 +185,7 @@ TEST(exvfs, fseek)
       last_pos = linux_pos;
    }
 
-   exvfs_close(h);
+   vfs_close(h);
    close(fd);
 
    mountpoint_remove(fat_fs);

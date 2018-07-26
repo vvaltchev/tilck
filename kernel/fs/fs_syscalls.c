@@ -4,7 +4,7 @@
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/hal.h>
-#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/fault_resumable.h>
@@ -78,9 +78,9 @@ sptr sys_open(const char *user_path, int flags, int mode)
    if (!is_fd_valid(free_fd))
       goto no_fds;
 
-   // TODO: make the exvfs call runnable with preemption enabled
+   // TODO: make the vfs call runnable with preemption enabled
    // In order to achieve that, we'll need a per-process "fs" lock.
-   ret = exvfs_open(path, &h);
+   ret = vfs_open(path, &h);
 
    if (ret < 0)
       goto end;
@@ -125,7 +125,7 @@ sptr sys_close(int fd)
    // process could race with the one here below. At that point, the handle
    // object would be destroyed and we'll panic.
 
-   exvfs_close(handle);
+   vfs_close(handle);
    curr->pi->handles[fd] = NULL;
 
    enable_preemption();
@@ -145,7 +145,7 @@ sptr sys_read(int fd, void *user_buf, size_t count)
       return -EBADF;
 
    count = MIN(count, IO_COPYBUF_SIZE);
-   ret = exvfs_read(curr->pi->handles[fd], curr->io_copybuf, count);
+   ret = vfs_read(curr->pi->handles[fd], curr->io_copybuf, count);
 
    if (ret > 0) {
       if (copy_to_user(user_buf, curr->io_copybuf, ret) < 0) {
@@ -176,7 +176,7 @@ sptr sys_write(int fd, const void *user_buf, size_t count)
    if (!handle)
       return -EBADF;
 
-   return exvfs_write(handle, (char *)curr->io_copybuf, count);
+   return vfs_write(handle, (char *)curr->io_copybuf, count);
 }
 
 sptr sys_ioctl(int fd, uptr request, void *argp)
@@ -186,7 +186,7 @@ sptr sys_ioctl(int fd, uptr request, void *argp)
    if (!handle)
       return -EBADF;
 
-   return exvfs_ioctl(handle, request, argp);
+   return vfs_ioctl(handle, request, argp);
 }
 
 sptr sys_writev(int fd, const struct iovec *user_iov, int iovcnt)
@@ -211,13 +211,13 @@ sptr sys_writev(int fd, const struct iovec *user_iov, int iovcnt)
    if (!handle)
       return -EBADF;
 
-   exvfs_exlock(handle);
+   vfs_exlock(handle);
 
    const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
 
    // TODO: make the rest of the syscall run with preemption enabled.
-   // In order to achieve that, it might be necessary to expose from exvfs
-   // a lock/unlock interface, or to entirely implement sys_writev in exvfs.
+   // In order to achieve that, it might be necessary to expose from vfs
+   // a lock/unlock interface, or to entirely implement sys_writev in vfs.
 
    for (int i = 0; i < iovcnt; i++) {
 
@@ -237,7 +237,7 @@ sptr sys_writev(int fd, const struct iovec *user_iov, int iovcnt)
       }
    }
 
-   exvfs_exunlock(handle);
+   vfs_exunlock(handle);
    return ret;
 }
 
@@ -263,7 +263,7 @@ sptr sys_readv(int fd, const struct iovec *user_iov, int iovcnt)
    if (!handle)
       return -EBADF;
 
-   exvfs_shlock(handle);
+   vfs_shlock(handle);
 
    const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
 
@@ -282,7 +282,7 @@ sptr sys_readv(int fd, const struct iovec *user_iov, int iovcnt)
          break; // Not enough data to fill all the user buffers.
    }
 
-   exvfs_shunlock(handle);
+   vfs_shunlock(handle);
    return ret;
 }
 
@@ -316,14 +316,14 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
    if (rc < 0)
       return -ENAMETOOLONG;
 
-   //printk("sys_stat64('%s') => exvfs_open(%s)\n", orig_path, path);
-   rc = exvfs_open(path, &h);
+   //printk("sys_stat64('%s') => vfs_open(%s)\n", orig_path, path);
+   rc = vfs_open(path, &h);
 
    if (rc < 0)
       return rc;
 
    ASSERT(h != NULL);
-   rc = exvfs_stat(h, &statbuf);
+   rc = vfs_stat(h, &statbuf);
 
    if (rc < 0)
       goto out;
@@ -334,7 +334,7 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
       return -EFAULT;
 
 out:
-   exvfs_close(h);
+   vfs_close(h);
    return rc;
 }
 
@@ -363,7 +363,7 @@ sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
       return -EBADF;
 
    // NOTE: this won't really work for big offsets in case off_t is 32-bit.
-   new_off = exvfs_seek(handle, (s64)off_hi << 32 | off_low, whence);
+   new_off = vfs_seek(handle, (s64)off_hi << 32 | off_low, whence);
 
    if (new_off < 0)
       return new_off;
@@ -389,7 +389,7 @@ sptr sys_getdents64(int fd, struct linux_dirent64 *user_dirp, u32 buf_size)
    if (!handle)
       return -EBADF;
 
-   rc = exvfs_getdents64(handle, user_dirp, buf_size);
+   rc = vfs_getdents64(handle, user_dirp, buf_size);
    return rc;
 }
 

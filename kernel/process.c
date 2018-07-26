@@ -273,7 +273,7 @@ NORETURN sptr sys_exit(int exit_status)
       fs_handle *h = curr->pi->handles[i];
 
       if (h) {
-         exvfs_close(h);
+         vfs_close(h);
          curr->pi->handles[i] = NULL;
       }
    }
@@ -390,12 +390,12 @@ sptr sys_fork(void)
          continue;
 
       fs_handle dup_h = NULL;
-      int rc = exvfs_dup(h, &dup_h);
+      int rc = vfs_dup(h, &dup_h);
 
       if (rc < 0 || !dup_h) {
 
          for (u32 j = 0; j < i; j++)
-            exvfs_close(child->pi->handles[j]);
+            vfs_close(child->pi->handles[j]);
 
          goto no_mem_exit;
       }

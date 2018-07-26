@@ -1,6 +1,6 @@
 
 #include <tilck/common/string_util.h>
-#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/vfs.h>
 
 static void drop_last_component(char **d_ref, char *const dest)
 {

@@ -401,8 +401,8 @@ filesystem *create_devfs(void)
 
    read_system_clock_datetime(&d->wrt_time);
    fs->fs_type_name = "devfs";
-   fs->flags = EXVFS_FS_RW;
-   fs->device_id = exvfs_get_new_device_id();
+   fs->flags = VFS_FS_RW;
+   fs->device_id = vfs_get_new_device_id();
    fs->device_data = d;
    fs->open = devfs_open;
    fs->close = devfs_close;

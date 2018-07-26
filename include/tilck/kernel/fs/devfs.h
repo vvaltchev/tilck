@@ -1,6 +1,6 @@
 
 #pragma once
-#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/vfs.h>
 
 #define DEVFS_READ_BS   4096
 #define DEVFS_WRITE_BS  4096

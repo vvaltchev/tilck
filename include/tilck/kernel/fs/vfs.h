@@ -59,8 +59,8 @@ typedef void (*func_sh_unlock)(fs_handle);
 
 
 
-#define EXVFS_FS_RO        (0)
-#define EXVFS_FS_RW        (1 << 0)
+#define VFS_FS_RO        (0)
+#define VFS_FS_RW        (1 << 0)
 
 struct filesystem {
 
@@ -123,18 +123,18 @@ typedef struct {
 int mountpoint_add(filesystem *fs, const char *path);
 void mountpoint_remove(filesystem *fs);
 
-int exvfs_open(const char *path, fs_handle *out);
-int exvfs_ioctl(fs_handle h, uptr request, void *argp);
-int exvfs_stat(fs_handle h, struct stat *statbuf);
-int exvfs_dup(fs_handle h, fs_handle *dup_h);
-int exvfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
-void exvfs_close(fs_handle h);
+int vfs_open(const char *path, fs_handle *out);
+int vfs_ioctl(fs_handle h, uptr request, void *argp);
+int vfs_stat(fs_handle h, struct stat *statbuf);
+int vfs_dup(fs_handle h, fs_handle *dup_h);
+int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
+void vfs_close(fs_handle h);
 
-ssize_t exvfs_read(fs_handle h, void *buf, size_t buf_size);
-ssize_t exvfs_write(fs_handle h, void *buf, size_t buf_size);
+ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size);
+ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);
 
 // TODO: consider using 's64' instead of off_t.
-off_t exvfs_seek(fs_handle h, off_t off, int whence);
+off_t vfs_seek(fs_handle h, off_t off, int whence);
 
 static ALWAYS_INLINE filesystem *get_fs(fs_handle h)
 {
@@ -143,19 +143,19 @@ static ALWAYS_INLINE filesystem *get_fs(fs_handle h)
 }
 
 /* Per-file locks */
-void exvfs_exlock(fs_handle h);
-void exvfs_exunlock(fs_handle h);
-void exvfs_shlock(fs_handle h);
-void exvfs_shunlock(fs_handle h);
+void vfs_exlock(fs_handle h);
+void vfs_exunlock(fs_handle h);
+void vfs_shlock(fs_handle h);
+void vfs_shunlock(fs_handle h);
 
 /* Whole-filesystem locks */
-void exvfs_fs_exlock(filesystem *fs);
-void exvfs_fs_exunlock(filesystem *fs);
-void exvfs_fs_shlock(filesystem *fs);
-void exvfs_fs_shunlock(filesystem *fs);
+void vfs_fs_exlock(filesystem *fs);
+void vfs_fs_exunlock(filesystem *fs);
+void vfs_fs_shlock(filesystem *fs);
+void vfs_fs_shunlock(filesystem *fs);
 /* --- */
 
 int
 compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size);
 
-u32 exvfs_get_new_device_id(void);
+u32 vfs_get_new_device_id(void);

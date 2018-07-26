@@ -2,7 +2,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
-#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/ringbuf.h>

@@ -3,7 +3,7 @@
 #include <tilck/common/string_util.h>
 
 #include <tilck/kernel/fs/fat32.h>
-#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/datetime.h>
@@ -381,7 +381,7 @@ fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
 
 STATIC void fat_exclusive_lock(filesystem *fs)
 {
-   if (!(fs->flags & EXVFS_FS_RW))
+   if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
 
    fat_fs_device_data *d = fs->device_data;
@@ -390,7 +390,7 @@ STATIC void fat_exclusive_lock(filesystem *fs)
 
 STATIC void fat_exclusive_unlock(filesystem *fs)
 {
-   if (!(fs->flags & EXVFS_FS_RW))
+   if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
 
    fat_fs_device_data *d = fs->device_data;
@@ -399,7 +399,7 @@ STATIC void fat_exclusive_unlock(filesystem *fs)
 
 STATIC void fat_shared_lock(filesystem *fs)
 {
-   if (!(fs->flags & EXVFS_FS_RW))
+   if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
 
    NOT_IMPLEMENTED();
@@ -407,7 +407,7 @@ STATIC void fat_shared_lock(filesystem *fs)
 
 STATIC void fat_shared_unlock(filesystem *fs)
 {
-   if (!(fs->flags & EXVFS_FS_RW))
+   if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
 
    NOT_IMPLEMENTED();
@@ -483,7 +483,7 @@ STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
 
 filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
 {
-   if (flags & EXVFS_FS_RW)
+   if (flags & VFS_FS_RW)
       panic("fat_mount_ramdisk: r/w mode is NOT currently supported");
 
    fat_fs_device_data *d = kmalloc(sizeof(fat_fs_device_data));
@@ -507,7 +507,7 @@ filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
 
    fs->fs_type_name = "fat";
    fs->flags = flags;
-   fs->device_id = exvfs_get_new_device_id();
+   fs->device_id = vfs_get_new_device_id();
    fs->device_data = d;
    fs->open = fat_open;
    fs->close = fat_close;

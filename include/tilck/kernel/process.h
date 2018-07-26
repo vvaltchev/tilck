@@ -7,7 +7,7 @@
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/sync.h>
-#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/kmalloc.h>
 

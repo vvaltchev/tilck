@@ -16,7 +16,7 @@
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/fs/fat32.h>
-#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/timer.h>
@@ -102,7 +102,7 @@ void mount_ramdisk(void)
    }
 
    filesystem *root_fs =
-      fat_mount_ramdisk(ramdisk, EXVFS_FS_RO);
+      fat_mount_ramdisk(ramdisk, VFS_FS_RO);
 
    if (!root_fs)
       panic("Unable to mount the fat32 RAMDISK");

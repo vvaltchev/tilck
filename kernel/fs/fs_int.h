@@ -1,6 +1,6 @@
 
 #pragma once
-#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/vfs.h>
 
 #define MP_CURSOR_SIZE_PTRS 1
 

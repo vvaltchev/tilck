@@ -13,7 +13,7 @@ using namespace std;
 
 extern "C" {
    #include <tilck/kernel/fs/fat32.h>
-   #include <tilck/kernel/fs/exvfs.h>
+   #include <tilck/kernel/fs/vfs.h>
    #include <tilck/common/utils.h>
 }
 
@@ -129,7 +129,7 @@ TEST(fat32, fread)
    filesystem *fs =
       fat_mount_ramdisk(
          (void *) load_once_file(PROJ_BUILD_DIR "/fatpart"),
-         EXVFS_FS_RO);
+         VFS_FS_RO);
 
    fs_handle h = NULL;
    int rc = fs->open(fs, "/sbin/init", &h);
