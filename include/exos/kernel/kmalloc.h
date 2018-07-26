@@ -6,7 +6,6 @@
 
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)
 #define KMALLOC_HEAPS_COUNT 32
-#define KMALLOC_MAX_ALIGN (64 * KB)
 
 typedef bool (*virtual_alloc_and_map_func)(uptr vaddr, int page_count);
 typedef void (*virtual_free_and_unmap_func)(uptr vaddr, int page_count);
