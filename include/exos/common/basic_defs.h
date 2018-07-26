@@ -75,10 +75,10 @@
    #define NORETURN
    #define WEAK
    #define NODISCARD
-   #define PAGE_SIZE_ALIGNED
    #define OFFSET_OF(st, m)
    #define FASTCALL
    #define ASSUME_WITHOUT_CHECK(x)
+   #define ALIGNED_AT(x)
 
 #else
 
@@ -99,8 +99,8 @@
    #define WEAK __attribute__((weak))
    #define PACKED __attribute__((packed))
    #define NODISCARD __attribute__((warn_unused_result))
-   #define PAGE_SIZE_ALIGNED __attribute__ ((aligned(PAGE_SIZE)))
    #define ASSUME_WITHOUT_CHECK(x) if (!(x)) __builtin_unreachable();
+   #define ALIGNED_AT(x) __attribute__ ((aligned(x)))
 
    #ifdef BITS32
       #define FASTCALL __attribute__((fastcall))

@@ -19,7 +19,7 @@
 STATIC kmalloc_heap first_heap_struct;
 STATIC kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
 STATIC int used_heaps;
-STATIC char first_heap[256 * KB] __attribute__ ((aligned(KMALLOC_MAX_ALIGN)));
+STATIC char first_heap[256 * KB] ALIGNED_AT(KMALLOC_MAX_ALIGN);
 
 #include "kmalloc_leak_detector.c.h"
 

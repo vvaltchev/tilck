@@ -27,7 +27,7 @@
 
 extern page_directory_t *kernel_page_dir;
 extern page_directory_t *curr_page_dir;
-extern u8 page_size_buf[PAGE_SIZE];
+extern char page_size_buf[PAGE_SIZE];
 extern char vsdo_like_page[PAGE_SIZE];
 
 static u16 *pageframes_refcount;
@@ -506,7 +506,7 @@ void map_4mb_page_int(page_directory_t *pdir,
 /*
  * Page directories MUST BE page-size-aligned.
  */
-static char kpdir_buf[sizeof(page_directory_t)] PAGE_SIZE_ALIGNED;
+static char kpdir_buf[sizeof(page_directory_t)] ALIGNED_AT(PAGE_SIZE);
 
 void init_paging(void)
 {
