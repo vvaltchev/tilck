@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
-project (exos C CXX ASM)
+project (tilck C CXX ASM)
 
 include(CheckCCompilerFlag)
 
@@ -210,8 +210,8 @@ set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/bootloader/bootloader.bin)
 set(EFI_x86_64_FILE ${CMAKE_BINARY_DIR}/bootloader/efi/BOOTX64.EFI)
 set(EFI_ia32_FILE ${CMAKE_BINARY_DIR}/bootloader/efi/BOOTIA32.EFI)
 set(KERNEL_FILE ${CMAKE_BINARY_DIR}/elf_kernel_stripped)
-set(IMG_FILE ${CMAKE_BINARY_DIR}/exos.img)
-set(GPT_IMG_FILE ${CMAKE_BINARY_DIR}/gpt_exos.img)
+set(IMG_FILE ${CMAKE_BINARY_DIR}/tilck.img)
+set(GPT_IMG_FILE ${CMAKE_BINARY_DIR}/gpt_tilck.img)
 
 set(KERNEL_FATPART_PATH "EFI/BOOT/elf_kernel_stripped")
 string(REPLACE "/" "\\\\" KERNEL_FATPART_PATH_EFI "${KERNEL_FATPART_PATH}")
@@ -291,7 +291,7 @@ add_custom_command(
 
 add_custom_target(
 
-    exos_image ALL
+    tilck_image ALL
 
     DEPENDS
         ${IMG_FILE}
@@ -312,7 +312,7 @@ add_custom_command(
    COMMAND
       dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${GPT_IMG_FILE} seek=1024 bs=1K
    DEPENDS
-      exos_image ${IMG_FILE}
+      tilck_image ${IMG_FILE}
    COMMENT
       "Creating the bootable image file (GPT)"
 )
@@ -327,7 +327,7 @@ add_custom_target(
 
 if (EXISTS ${TCROOT}/googletest)
    add_subdirectory(unittests)
-   add_dependencies(gtests exos_image)
+   add_dependencies(gtests tilck_image)
 else()
    add_custom_target(
       gtests

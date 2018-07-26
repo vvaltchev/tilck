@@ -55,7 +55,7 @@ file(
 set(
    FLAGS_LIST
 
-   -D__EXOS_BOOTLOADER__
+   -D__TILCK_BOOTLOADER__
 
    -g
    -mno-red-zone

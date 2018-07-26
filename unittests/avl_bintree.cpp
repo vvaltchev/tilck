@@ -8,7 +8,7 @@
 #include <gtest/gtest.h>
 
 extern "C" {
-   #include <exos/kernel/bintree.h>
+   #include <tilck/kernel/bintree.h>
 }
 
 using namespace std;

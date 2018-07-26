@@ -5,15 +5,15 @@
  */
 #pragma GCC optimize "-O3"
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/utils.h>
-#include <exos/common/string_util.h>
-#include <exos/common/color_defs.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/utils.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/color_defs.h>
 
-#include <exos/kernel/fb_console.h>
-#include <exos/kernel/paging.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/hal.h>
+#include <tilck/kernel/fb_console.h>
+#include <tilck/kernel/paging.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/hal.h>
 
 #include "fb_int.h"
 

@@ -1,7 +1,7 @@
 
 .intel_syntax noprefix
 
-#include <exos/common/config.h>
+#include <tilck/common/config.h>
 
 # Usable (un)real mode functions
 

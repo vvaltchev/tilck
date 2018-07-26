@@ -1,11 +1,11 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
-#include <exos/kernel/process.h>
-#include <exos/kernel/hal.h>
-#include <exos/kernel/irq.h>
-#include <exos/kernel/timer.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/irq.h>
+#include <tilck/kernel/timer.h>
 
 volatile u64 __ticks; /* ticks since the timer started */
 volatile u32 disable_preemption_count = 1;

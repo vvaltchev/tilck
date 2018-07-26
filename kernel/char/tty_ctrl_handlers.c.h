@@ -108,7 +108,7 @@ static bool tty_ctrl_discard(void)
        *     IEXTEN is set, and then not passed as input.
        *
        * Since it is not supported under Linux, it won't be supported under
-       * exOS either.
+       * Tilck either.
        */
       return true;
    }

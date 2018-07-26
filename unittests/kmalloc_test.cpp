@@ -14,11 +14,11 @@
 
 extern "C" {
 
-   #include <exos/common/utils.h>
+   #include <tilck/common/utils.h>
 
-   #include <exos/kernel/kmalloc.h>
-   #include <exos/kernel/paging.h>
-   #include <exos/kernel/self_tests/self_tests.h>
+   #include <tilck/kernel/kmalloc.h>
+   #include <tilck/kernel/paging.h>
+   #include <tilck/kernel/self_tests/self_tests.h>
    #include <kernel/mm/kmalloc_heap_struct.h> // kmalloc private header
 
    extern bool mock_kmalloc;

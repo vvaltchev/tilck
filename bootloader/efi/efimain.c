@@ -24,7 +24,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    InitializeLib(image, ST);
 
-   Print(L"----- Hello from exOS's UEFI bootloader! -----\r\n\r\n");
+   Print(L"----- Hello from Tilck's UEFI bootloader! -----\r\n\r\n");
 
    status = SetupGraphicMode(BS, &fb_paddr, &gfx_mode_info);
 

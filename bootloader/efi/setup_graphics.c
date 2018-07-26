@@ -31,7 +31,7 @@ static bool IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 
 static bool IsKnownAndSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
-   if (is_exos_known_resolution(mi->HorizontalResolution,
+   if (is_tilck_known_resolution(mi->HorizontalResolution,
                                 mi->VerticalResolution)) {
       return IsSupported(mi);
    }
@@ -39,7 +39,7 @@ static bool IsKnownAndSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
    return false;
 }
 
-static bool IsExosDefaultMode(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
+static bool IsTilckDefaultMode(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
    if (IsSupported(mi))
       if (mi->HorizontalResolution == 800 && mi->VerticalResolution == 600)
@@ -103,7 +103,7 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS,
       status = gProt->QueryMode(gProt, i, &sizeof_info, &mi);
       HANDLE_EFI_ERROR("QueryMode() failed");
 
-      if (IsExosDefaultMode(mi)) {
+      if (IsTilckDefaultMode(mi)) {
          default_mode = i;
       }
 

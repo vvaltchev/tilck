@@ -1,6 +1,6 @@
 
 #define STACK_VAR (h->alloc_stack)
-#include <exos/common/norec.h>
+#include <tilck/common/norec.h>
 
 #define KMALLOC_ALLOC_STACK_SIZE 32
 

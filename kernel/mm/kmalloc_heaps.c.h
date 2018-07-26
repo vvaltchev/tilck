@@ -12,7 +12,7 @@
 
 #endif
 
-#include <exos/kernel/system_mmap.h>
+#include <tilck/kernel/system_mmap.h>
 
 
 STATIC kmalloc_heap first_heap_struct;

@@ -1,7 +1,7 @@
 
-#include <exos/kernel/sync.h>
-#include <exos/kernel/hal.h>
-#include <exos/kernel/process.h>
+#include <tilck/kernel/sync.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/process.h>
 
 static uptr new_cond_id;
 

@@ -1,8 +1,8 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/failsafe_assert.h>
-#include <exos/common/string_util.h>
-#include <exos/common/fat32_base.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/failsafe_assert.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/fat32_base.h>
 
 
 /*
@@ -515,7 +515,7 @@ static int fat_search_entry_cb(fat_header *hdr,
    /*
     * NOTE: the following is NOT fully FAT32 compliant: for long names this
     * code compares file names using a CASE SENSITIVE comparison!
-    * This HACK allows a UNIX system like exOS to use FAT32 [case sensitivity
+    * This HACK allows a UNIX system like Tilck to use FAT32 [case sensitivity
     * is a MUST in UNIX] by just forcing each file to have a long name, even
     * when that is not necessary.
     */

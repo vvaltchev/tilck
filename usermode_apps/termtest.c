@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <exos/common/debug/termios_debug.c.h>
+#include <tilck/common/debug/termios_debug.c.h>
 
 struct termios orig_termios;
 

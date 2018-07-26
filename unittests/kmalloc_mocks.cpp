@@ -13,11 +13,11 @@ using namespace std;
 
 extern "C" {
 
-#include <exos/common/utils.h>
+#include <tilck/common/utils.h>
 
-#include <exos/kernel/system_mmap.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/paging.h>
+#include <tilck/kernel/system_mmap.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/paging.h>
 
 extern bool kmalloc_initialized;
 extern bool suppress_printk;

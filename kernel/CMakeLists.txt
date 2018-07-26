@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.2)
 set(
    GENERAL_KERNEL_FLAGS_LIST
 
-   -D__EXOS_KERNEL__
+   -D__TILCK_KERNEL__
 
    -mno-red-zone
    -ffreestanding

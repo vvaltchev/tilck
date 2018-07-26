@@ -1,15 +1,15 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/color_defs.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/color_defs.h>
 
-#include <exos/kernel/fb_console.h>
-#include <exos/kernel/term.h>
-#include <exos/kernel/hal.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/process.h>
-#include <exos/kernel/timer.h>
-#include <exos/kernel/datetime.h>
+#include <tilck/kernel/fb_console.h>
+#include <tilck/kernel/term.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/timer.h>
+#include <tilck/kernel/datetime.h>
 
 #include "fb_int.h"
 
@@ -333,7 +333,7 @@ static void fb_draw_banner(void)
    read_system_clock_datetime(&d);
 
    llen = snprintk(lbuf, sizeof(lbuf) - 1 - 1,
-                   "exOS [%s build] framebuffer console", BUILDTYPE_STR);
+                   "Tilck [%s build] framebuffer console", BUILDTYPE_STR);
 
    rlen = snprintk(rbuf, sizeof(rbuf) - 1 - llen - 1,
                    "%02i %s %i %02i:%02i",

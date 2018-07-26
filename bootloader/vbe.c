@@ -1,5 +1,5 @@
 
-#include <exos/common/string_util.h>
+#include <tilck/common/string_util.h>
 
 #include "realmode_call.h"
 #include "vbe.h"

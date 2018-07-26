@@ -107,7 +107,7 @@ math(EXPR BL_BASE_ADDR_DEC
 dec2hex(${BL_BASE_ADDR_DEC} BL_BASE_ADDR)
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/include/exos/common/generated_config.h
+   ${CMAKE_SOURCE_DIR}/include/tilck/common/generated_config.h
    ${CMAKE_BINARY_DIR}/generated_config.h
 )
 

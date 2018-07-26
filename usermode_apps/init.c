@@ -49,7 +49,7 @@ int main(int argc, char **argv, char **env)
    int shell_pid;
    int wstatus;
 
-   if (getenv("EXOS")) {
+   if (getenv("TILCK")) {
 
       open_std_handles();
 

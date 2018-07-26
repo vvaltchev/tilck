@@ -1,11 +1,11 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/color_defs.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/color_defs.h>
 
-#include <exos/kernel/term.h>
-#include <exos/kernel/process.h>
-#include <exos/kernel/interrupts.h>
+#include <tilck/kernel/term.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/interrupts.h>
 
 #define PRINTK_COLOR COLOR_GREEN
 #define PRINTK_RINGBUF_FLUSH_COLOR COLOR_CYAN
@@ -137,7 +137,7 @@ switch_case:
       case '8':
       case '9':
 
-         ctx->left_padding = exos_strtol(fmt, &fmt, NULL);
+         ctx->left_padding = tilck_strtol(fmt, &fmt, NULL);
 
          if (!*fmt)
             goto out; /* nothing after the %<number> sequence */
@@ -146,7 +146,7 @@ switch_case:
          goto switch_case;
 
       case '-':
-         ctx->right_padding = exos_strtol(fmt + 1, &fmt, NULL);
+         ctx->right_padding = tilck_strtol(fmt + 1, &fmt, NULL);
 
          if (!*fmt)
             goto out; /* nothing after the %-<number> sequence */

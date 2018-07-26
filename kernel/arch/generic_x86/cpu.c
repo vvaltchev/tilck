@@ -1,13 +1,13 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/utils.h>
-#include <exos/common/arch/generic_x86/cpu_features.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
+#include <tilck/common/arch/generic_x86/cpu_features.h>
 
-#include <exos/kernel/process.h>
-#include <exos/kernel/fault_resumable.h>
-#include <exos/kernel/interrupts.h>
-#include <exos/kernel/hal.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/fault_resumable.h>
+#include <tilck/kernel/interrupts.h>
+#include <tilck/kernel/hal.h>
 
 extern const char *x86_exception_names[32];
 
@@ -145,8 +145,8 @@ out:
     *
     * NOTES
     * ----------------
-    * [1] In exOS, we'll allow user space FPU only in the case at least FXSAVE
-    * is available (=> SSE is available). This makes exOS simpler allowing it to
+    * [1] In Tilck, we'll allow user space FPU only in the case at least FXSAVE
+    * is available (=> SSE is available). This makes Tilck simpler allowing it to
     * not have to save the "legacy x87 FPU" context using the "legacy FPU"
     * instructions. The newer FXSAVE and XSAVE save everything, including the
     * "legacy FPU" state.

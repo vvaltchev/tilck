@@ -1,7 +1,7 @@
 
 .intel_syntax noprefix
 
-#include <exos/common/config.h>
+#include <tilck/common/config.h>
 
 #define BASE_LOAD_SEG          0x07C0
 

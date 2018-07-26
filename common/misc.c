@@ -1,5 +1,5 @@
 
-#include <exos/common/basic_defs.h>
+#include <tilck/common/basic_defs.h>
 
 typedef struct {
 
@@ -8,7 +8,7 @@ typedef struct {
 
 } display_resolution;
 
-static const display_resolution exos_known_resolutions[] =
+static const display_resolution tilck_known_resolutions[] =
 {
    {640, 480},
    {800, 600},
@@ -18,11 +18,11 @@ static const display_resolution exos_known_resolutions[] =
    {1920, 1080}
 };
 
-bool is_exos_known_resolution(u32 w, u32 h)
+bool is_tilck_known_resolution(u32 w, u32 h)
 {
-   const display_resolution *kr = exos_known_resolutions;
+   const display_resolution *kr = tilck_known_resolutions;
 
-   for (u32 i = 0; i < ARRAY_SIZE(exos_known_resolutions); i++) {
+   for (u32 i = 0; i < ARRAY_SIZE(tilck_known_resolutions); i++) {
       if (kr[i].width == w && kr[i].height == h)
          return true;
    }

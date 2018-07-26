@@ -19,8 +19,8 @@ FAIL_SHELL_NO_ZERO_EXIT = 5
 TEST_TIMEOUT = 8
 TEST_TYPE = None
 
-VM_MEMORY_SIZE_IN_MB = int(os.environ.get('EXOS_VM_MEM', '128'))
-KERNEL_HELLO_MSG = 'Hello from exOS!'
+VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
+KERNEL_HELLO_MSG = 'Hello from Tilck!'
 KERNEL_FILE = '@KERNEL_FILE@'
 FATPART_FILE = '@CMAKE_BINARY_DIR@/fatpart'
 

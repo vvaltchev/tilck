@@ -1,11 +1,11 @@
 
-#include <exos/common/string_util.h>
+#include <tilck/common/string_util.h>
 
-#include <exos/kernel/datetime.h>
-#include <exos/kernel/user.h>
-#include <exos/kernel/errno.h>
-#include <exos/kernel/timer.h>
-#include <exos/kernel/sys_types.h>
+#include <tilck/kernel/datetime.h>
+#include <tilck/kernel/user.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/timer.h>
+#include <tilck/kernel/sys_types.h>
 
 #include <time.h> // system header
 

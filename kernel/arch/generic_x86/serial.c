@@ -1,7 +1,7 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/kernel/serial.h>
-#include <exos/kernel/hal.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/kernel/serial.h>
+#include <tilck/kernel/hal.h>
 
 #define COM1 0x3f8
 

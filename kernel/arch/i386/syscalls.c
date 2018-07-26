@@ -1,16 +1,16 @@
 
 #define __SYSCALLS_C__
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
-#include <exos/kernel/syscalls.h>
-#include <exos/kernel/irq.h>
-#include <exos/kernel/process.h>
-#include <exos/kernel/hal.h>
-#include <exos/kernel/errno.h>
-#include <exos/kernel/timer.h>
-#include <exos/kernel/debug_utils.h>
+#include <tilck/kernel/syscalls.h>
+#include <tilck/kernel/irq.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/timer.h>
+#include <tilck/kernel/debug_utils.h>
 
 typedef sptr (*syscall_type)();
 

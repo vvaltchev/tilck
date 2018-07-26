@@ -1,7 +1,7 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/failsafe_assert.h>
-#include <exos/common/fat32_base.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/failsafe_assert.h>
+#include <tilck/common/fat32_base.h>
 
 /* We HAVE to undef our ASSERT because the gnu-efi headers define it */
 #undef ASSERT

@@ -1,10 +1,10 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/failsafe_assert.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/failsafe_assert.h>
 
-#include <exos/common/string_util.h>
-#include <exos/common/arch/generic_x86/x86_utils.h>
-#include <exos/common/arch/generic_x86/cpu_features.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/arch/generic_x86/x86_utils.h>
+#include <tilck/common/arch/generic_x86/cpu_features.h>
 
 volatile x86_cpu_features_t x86_cpu_features;
 
@@ -37,7 +37,7 @@ void get_x86_cpu_features(void)
    }
 }
 
-#ifdef __EXOS_KERNEL__
+#ifdef __TILCK_KERNEL__
 
 static const char *edx1_features[] =
 {

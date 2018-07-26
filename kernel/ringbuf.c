@@ -1,8 +1,8 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/kernel/ringbuf.h>
-#include <exos/kernel/kmalloc.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/kernel/ringbuf.h>
+#include <tilck/kernel/kmalloc.h>
 
 static inline bool is_empty(generic_ringbuf_stat *s)
 {

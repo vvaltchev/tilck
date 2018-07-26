@@ -1,6 +1,6 @@
 
 #pragma once
-#include <exos/common/basic_defs.h>
+#include <tilck/common/basic_defs.h>
 
 /*
  * x86 IDT entry flags:

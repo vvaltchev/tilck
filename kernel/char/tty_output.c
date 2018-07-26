@@ -1,11 +1,11 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/color_defs.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/color_defs.h>
 
-#include <exos/kernel/fs/exvfs.h>
-#include <exos/kernel/fs/devfs.h>
-#include <exos/kernel/term.h>
+#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/devfs.h>
+#include <tilck/kernel/term.h>
 
 #include <termios.h>      // system header
 
@@ -122,7 +122,7 @@ tty_filter_end_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
       endptr = ctx->param_bytes - 1;
 
       do {
-         params[pc++] = exos_strtol(endptr + 1, &endptr, NULL);
+         params[pc++] = tilck_strtol(endptr + 1, &endptr, NULL);
       } while (*endptr);
 
    }

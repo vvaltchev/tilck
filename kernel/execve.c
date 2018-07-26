@@ -1,15 +1,15 @@
 
-#include <exos/kernel/process.h>
-#include <exos/kernel/errno.h>
-#include <exos/kernel/user.h>
-#include <exos/kernel/elf_loader.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/user.h>
+#include <tilck/kernel/elf_loader.h>
 
 static char *const default_env[] =
 {
    "OSTYPE=linux-gnu",
    "TERM=linux",
    "CONSOLE=/dev/tty",
-   "EXOS=1",
+   "TILCK=1",
    NULL
 };
 

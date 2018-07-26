@@ -1,14 +1,14 @@
 
-#include <exos/common/string_util.h>
-#include <exos/common/utils.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
 
-#include <exos/kernel/paging.h>
-#include <exos/kernel/process.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/fs/exvfs.h>
-#include <exos/kernel/errno.h>
-#include <exos/kernel/elf_utils.h>
-#include <exos/kernel/fault_resumable.h>
+#include <tilck/kernel/paging.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/elf_utils.h>
+#include <tilck/kernel/fault_resumable.h>
 
 static int load_phdr(fs_handle *elf_file,
                      page_directory_t *pdir,

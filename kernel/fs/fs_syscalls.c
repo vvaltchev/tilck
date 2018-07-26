@@ -1,13 +1,13 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
-#include <exos/kernel/process.h>
-#include <exos/kernel/hal.h>
-#include <exos/kernel/fs/exvfs.h>
-#include <exos/kernel/errno.h>
-#include <exos/kernel/user.h>
-#include <exos/kernel/fault_resumable.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/user.h>
+#include <tilck/kernel/fault_resumable.h>
 
 #include <fcntl.h>      // system header
 
@@ -341,7 +341,7 @@ out:
 sptr sys_lstat64(const char *user_path, struct stat *user_statbuf)
 {
    /*
-    * For moment, symlinks are not supported in exOS. Therefore, make lstat()
+    * For moment, symlinks are not supported in Tilck. Therefore, make lstat()
     * behave exactly as stat().
     */
 

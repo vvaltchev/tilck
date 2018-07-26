@@ -1,11 +1,11 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/hal.h>
-#include <exos/kernel/errno.h>
-#include <exos/kernel/process.h>
-#include <exos/kernel/user.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/user.h>
 
 #include "gdt_int.h"
 
@@ -15,7 +15,7 @@ static u32 gdt_size = ARRAY_SIZE(initial_gdt_in_bss);
 static gdt_entry *gdt = initial_gdt_in_bss;
 
 /*
- * ExOS does use i386's tasks because they do not exist in many architectures.
+ * Tilck does use i386's tasks because they do not exist in many architectures.
  * Therefore, we have just need a single TSS entry.
  */
 static tss_entry_t tss_entry;

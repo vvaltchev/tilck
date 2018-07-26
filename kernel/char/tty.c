@@ -1,13 +1,13 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/color_defs.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/color_defs.h>
 
-#include <exos/kernel/fs/exvfs.h>
-#include <exos/kernel/fs/devfs.h>
-#include <exos/kernel/errno.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/term.h>
+#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/devfs.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/term.h>
 
 #include <termios.h>      // system header
 

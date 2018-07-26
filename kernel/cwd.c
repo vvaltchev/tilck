@@ -1,7 +1,7 @@
 
-#include <exos/kernel/process.h>
-#include <exos/kernel/user.h>
-#include <exos/kernel/errno.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/user.h>
+#include <tilck/kernel/errno.h>
 
 sptr sys_chdir(const char *user_path)
 {

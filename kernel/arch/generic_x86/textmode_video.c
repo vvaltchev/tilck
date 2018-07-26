@@ -1,11 +1,11 @@
 
-#include <exos/common/string_util.h>
-#include <exos/common/color_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/color_defs.h>
 
-#include <exos/kernel/arch/generic_x86/textmode_video.h>
-#include <exos/kernel/paging.h>
-#include <exos/kernel/hal.h>
-#include <exos/kernel/term.h>
+#include <tilck/kernel/arch/generic_x86/textmode_video.h>
+#include <tilck/kernel/paging.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/term.h>
 
 #define VIDEO_ADDR ((u16 *) KERNEL_PA_TO_VA(0xB8000))
 #define VIDEO_COLS 80
@@ -48,7 +48,7 @@ static void textmode_set_row(int row, u16 *data, bool flush)
    * instructions work, while AVX don't. On Intel Celeron N3160 not even SSE
    * instruction can be used in this context. This is certainly an issue related
    * with this specific context, as in general both SSE+ and AVX+ instructions
-   * can be used in exOS, as fb_raw.c shows. In theory textmode_set_row() is
+   * can be used in Tilck, as fb_raw.c shows. In theory textmode_set_row() is
    * executed exactly in the same context as fb_set_row_optimized(), but in
    * practice there seems to be at least one difference.
    *

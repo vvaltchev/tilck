@@ -1,6 +1,6 @@
 
 #pragma once
-#include <exos/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/exvfs.h>
 
 #define MP_CURSOR_SIZE_PTRS 1
 
@@ -10,7 +10,7 @@ typedef struct {
 } mp_cursor;
 
 
-#ifndef _EXOS_MP_C_
+#ifndef _TILCK_MP_C_
 void mountpoint_iter_begin(mp_cursor *c);
 void mountpoint_iter_end(mp_cursor *c);
 mountpoint *mountpoint_get_next(mp_cursor *c);

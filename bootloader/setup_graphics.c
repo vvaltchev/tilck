@@ -1,6 +1,6 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
 #include "realmode_call.h"
 #include "vbe.h"
@@ -70,7 +70,7 @@ static void show_modes_aux(u16 *modes,
       if (mi->BitsPerPixel < min_bpp)
          continue;
 
-      if (!is_exos_known_resolution(mi->XResolution, mi->YResolution)) {
+      if (!is_tilck_known_resolution(mi->XResolution, mi->YResolution)) {
 
          if (mi->XResolution > max_width) {
             max_width = mi->XResolution;

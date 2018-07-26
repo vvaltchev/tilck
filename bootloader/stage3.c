@@ -1,10 +1,10 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/fat32_base.h>
-#include <exos/common/utils.h>
-#include <exos/common/arch/generic_x86/x86_utils.h>
-#include <exos/common/arch/generic_x86/cpu_features.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/fat32_base.h>
+#include <tilck/common/utils.h>
+#include <tilck/common/arch/generic_x86/x86_utils.h>
+#include <tilck/common/arch/generic_x86/cpu_features.h>
 
 #include <elf.h>
 #include <multiboot.h>
@@ -309,7 +309,7 @@ void bootloader_main(void)
    ASSERT(!graphics_mode);
    ASSERT(!fb_paddr);
 
-   printk("----- Hello from exOS's legacy bootloader! -----\n\n");
+   printk("----- Hello from Tilck's legacy bootloader! -----\n\n");
 
    /* Sanity check: realmode_call should be able to return all reg values */
    test_rm_call_working();

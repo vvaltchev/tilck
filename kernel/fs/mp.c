@@ -1,9 +1,9 @@
 
-#define _EXOS_MP_C_
+#define _TILCK_MP_C_
 
-#include <exos/kernel/fs/exvfs.h>
-#include <exos/kernel/process.h>
-#include <exos/kernel/errno.h>
+#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/errno.h>
 
 #include "fs_int.h"
 
@@ -15,7 +15,7 @@ typedef struct {
 
 STATIC_ASSERT(sizeof(_mp_cursor) <= sizeof(uptr) * MP_CURSOR_SIZE_PTRS);
 
-/* exOS is small-scale: supporting 16 mount points seems more than enough. */
+/* Tilck is small-scale: supporting 16 mount points seems more than enough. */
 static mountpoint *mps[16];
 
 int mountpoint_add(filesystem *fs, const char *path)

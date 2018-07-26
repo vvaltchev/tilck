@@ -1,11 +1,11 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/utils.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
 
-#include <exos/kernel/hal.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/debug_utils.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/debug_utils.h>
 
 #include "se_data.h"
 

@@ -1,6 +1,6 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/kernel/hal.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/kernel/hal.h>
 
 /*
  * Sets timer's frequency.

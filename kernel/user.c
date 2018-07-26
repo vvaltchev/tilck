@@ -1,8 +1,8 @@
 
-#include <exos/kernel/user.h>
-#include <exos/kernel/process.h>
-#include <exos/kernel/errno.h>
-#include <exos/kernel/fault_resumable.h>
+#include <tilck/kernel/user.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/fault_resumable.h>
 
 int copy_from_user(void *dest, const void *user_ptr, size_t n)
 {

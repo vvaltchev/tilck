@@ -1,5 +1,5 @@
-exOS
-------
+Tilck (Tiny Linux-Compatible Kernel)
+-------------------------------------
 
 [![Build Status](https://travis-ci.org/vvaltchev/experimentOs.svg?branch=master)](https://travis-ci.org/vvaltchev/experimentOs)
 [![CircleCI](https://circleci.com/gh/vvaltchev/experimentOs.svg?style=svg)](https://circleci.com/gh/vvaltchev/experimentOs)
@@ -7,7 +7,7 @@ exOS
 
 **A Linux-compatible x86 kernel written for educational purposes and fun**
 
-![Alt text](other/screenshot.png?raw=true "exOS")
+![Alt text](other/screenshot.png?raw=true "Tilck")
 
 From the technical point of view, the goal of this project is writing a kernel
 being able to run *natively* x86 Linux console applications (like shells, text
@@ -19,15 +19,6 @@ Briefly, making some typical console programs that are usually embedded in
 console editors and compilers will be a nice perk. At the moment, it is not part
 of project's goals the kernel to actually have disk drivers: everything is
 supposed to be in-memory.
-
-Once the main goal is achieved, this simple kernel could be actually used for
-any kind of kernel-development *experiments* with the advantage that changes
-will be *orders of magnitude* simpler to implement in **exOS** compared to doing
-that in a world-class production-quality kernel like Linux. Also, this project
-may allow anyone interested in kernel development to see how a minimalistic
-linux-compatible kernel can be written by just looking at its commits, from the
-first lines of its bootloader to the implementation of its most complex syscalls
-including, along the way, the story of all of its defects and fixes.
 
 Current state: the kernel
 ----------------------------------------
@@ -42,10 +33,10 @@ Building it takes less than 1 minute (~5 minutes if we consider also running
 The legacy bootloader
 ----------------------------------------
 
-`exOS` includes a 3-stage bootloader able to load in memory the contents of the
+`Tilck` includes a 3-stage bootloader able to load in memory the contents of the
 boot-drive at a pre-defined physical address. In its 3rd stage (written in C),
 the bootloader loads from an in-memory FAT32 partition the ELF kernel of
-`exOS` [it understands the ELF format] and jumps to its entry-point. Before
+`Tilck` [it understands the ELF format] and jumps to its entry-point. Before
 the final jump to the kernel, the bootloader allows the user the choose the
 a video mode among several standard resolutions (graphics mode) + the original
 VGA-compatible text mode.
@@ -53,18 +44,18 @@ VGA-compatible text mode.
 The UEFI bootloader
 ----------------------------------------
 
-`exOS` includes also a fully-working EFI bootloader which boots the kernel in
+`Tilck` includes also a fully-working EFI bootloader which boots the kernel in
 graphics mode (text mode is not available when booting using UEFI).
 
 Hardware support
 --------------------
 
-From the beginning of its development, `exOS` has been tested both on
+From the beginning of its development, `Tilck` has been tested both on
 virtualized hardware (`qemu`, `virtualbox`, `vmware workstation`) and on several
-hardware machines. Therefore, `exOS` should work on any `i686+` machine
+hardware machines. Therefore, `Tilck` should work on any `i686+` machine
 compatible with the IBM-PC architecture, supporting the PSE (page-size extension)
 feature (introduced in Pentium Pro, 1995). If you want to try it, just use `dd`
-to store `exos.img` in a flash drive and than use it for booting.
+to store `tilck.img` in a flash drive and than use it for booting.
 
 How to build & run
 ---------------------
@@ -79,8 +70,8 @@ Step 2. Compile the kernel and prepare the bootable image with just:
 
     make -j
 
-Step 3. Now you should have an image file named `exos.img` in the `build`
-directory. The easiest way for actually trying `exOS` at that point is to run:
+Step 3. Now you should have an image file named `tilck.img` in the `build`
+directory. The easiest way for actually trying `Tilck` at that point is to run:
 
     ./build/run_qemu
 
@@ -163,9 +154,9 @@ The problem is that such investment actually starts paying off only when multipl
 Even in the case of small teams (2 people) it not obvious that it is worth spending hours in re-ordering and editing all the commits of a pull request until its *story* is perfect, especially when the project is not mature enough: the commits in a pull request have to be just *good enough* in terms of commit message, scope of the change, relative order etc. The focus is on shape of the code *after* the patch series in the sense that limited hacks in the middle of a series are allowed. As a second contributor comes in, the commit messages will need necessarily to become more descriptive, in order to allow the collaboration to work. But, at this stage, going as fast as possible towards the first milestone makes sense. Still, I'm trying to keep the length of the commit messages proportionate to the complexity of the change. Sometimes, even in this stage, it makes sense to spend some time on describing the reasoning behind a commit. As the projects matures, I'll be spending more and more time on writing better commit messages.
 
 
-#### Why exOS does not have the feature/abstraction XYZ like other kernels do?
+#### Why Tilck does not have the feature/abstraction XYZ like other kernels do?
 
-`exOS` is **not** meant to be a full-featured production kernel. Please, refer to Linux for that.
+`Tilck` is **not** meant to be a full-featured production kernel. Please, refer to Linux for that.
 The idea is implementing the simplest kernel able to run a class of Linux console applications.
 After that, eventually, it can support more advanced stuff like USB mass storage devices,
 but not necessarily along with all the powerful features that Linux offers.
@@ -175,7 +166,7 @@ to learn how it works and to write a minimalistic implementation to support it.
 
 #### Why using FAT32?
 
-Even if FAT32 is today the only filesystem supported by exOS, in the next months it will
+Even if FAT32 is today the only filesystem supported by Tilck, in the next months it will
 be used only as an initial read-only ramdisk. The main filesystem will be a custom ramfs, while
 the FAT32 ramdisk will remain mounted (likely) under /boot. The #1 reason for using FAT32 was that
 it is required for booting using UEFI. Therefore, it was convienent to store there also all the rest

@@ -1,10 +1,10 @@
 
 #define __STRING_UTIL_C__
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/failsafe_assert.h>
-#include <exos/common/string_util.h>
-#include <exos/kernel/errno.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/failsafe_assert.h>
+#include <tilck/common/string_util.h>
+#include <tilck/kernel/errno.h>
 
 #define DIGITS "0123456789abcdef"
 
@@ -129,7 +129,7 @@ inline void str_reverse(char *str, size_t len)
    }
 }
 
-int exos_strtol(const char *str, const char **endptr, int *error)
+int tilck_strtol(const char *str, const char **endptr, int *error)
 {
    int res = 0;
    int sign = 1;

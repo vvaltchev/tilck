@@ -9,7 +9,7 @@
 using namespace std;
 
 extern "C" {
-   #include <exos/common/string_util.h>
+   #include <tilck/common/string_util.h>
 }
 
 
@@ -190,24 +190,24 @@ TEST(itoa, u64_hex_fixed)
 }
 
 
-TEST(exos_strtol, basic_tests)
+TEST(tilck_strtol, basic_tests)
 {
-   EXPECT_EQ(exos_strtol("0", NULL, NULL), 0);
-   EXPECT_EQ(exos_strtol("1", NULL, NULL), 1);
-   EXPECT_EQ(exos_strtol("12", NULL, NULL), 12);
-   EXPECT_EQ(exos_strtol("123", NULL, NULL), 123);
-   EXPECT_EQ(exos_strtol("-1", NULL, NULL), -1);
-   EXPECT_EQ(exos_strtol("-123", NULL, NULL), -123);
-   EXPECT_EQ(exos_strtol("2147483647", NULL, NULL), 2147483647); // INT_MAX
-   EXPECT_EQ(exos_strtol("2147483648", NULL, NULL), 0); // INT_MAX + 1
-   EXPECT_EQ(exos_strtol("-2147483648", NULL, NULL), -2147483648); // INT_MIN
-   EXPECT_EQ(exos_strtol("-2147483649", NULL, NULL), 0); // INT_MIN - 1
-   EXPECT_EQ(exos_strtol("123abc", NULL, NULL), 123);
-   EXPECT_EQ(exos_strtol("123 abc", NULL, NULL), 123);
-   EXPECT_EQ(exos_strtol("-123abc", NULL, NULL), -123);
+   EXPECT_EQ(tilck_strtol("0", NULL, NULL), 0);
+   EXPECT_EQ(tilck_strtol("1", NULL, NULL), 1);
+   EXPECT_EQ(tilck_strtol("12", NULL, NULL), 12);
+   EXPECT_EQ(tilck_strtol("123", NULL, NULL), 123);
+   EXPECT_EQ(tilck_strtol("-1", NULL, NULL), -1);
+   EXPECT_EQ(tilck_strtol("-123", NULL, NULL), -123);
+   EXPECT_EQ(tilck_strtol("2147483647", NULL, NULL), 2147483647); // INT_MAX
+   EXPECT_EQ(tilck_strtol("2147483648", NULL, NULL), 0); // INT_MAX + 1
+   EXPECT_EQ(tilck_strtol("-2147483648", NULL, NULL), -2147483648); // INT_MIN
+   EXPECT_EQ(tilck_strtol("-2147483649", NULL, NULL), 0); // INT_MIN - 1
+   EXPECT_EQ(tilck_strtol("123abc", NULL, NULL), 123);
+   EXPECT_EQ(tilck_strtol("123 abc", NULL, NULL), 123);
+   EXPECT_EQ(tilck_strtol("-123abc", NULL, NULL), -123);
 }
 
-TEST(exos_strtol, errors)
+TEST(tilck_strtol, errors)
 {
    const char *str;
    const char *endptr;
@@ -215,13 +215,13 @@ TEST(exos_strtol, errors)
    int res;
 
    str = "abc";
-   res = exos_strtol(str, &endptr, &error);
+   res = tilck_strtol(str, &endptr, &error);
    EXPECT_EQ(res, 0);
    EXPECT_EQ(endptr, str);
    EXPECT_EQ(error, -EINVAL);
 
    str = "2147483648"; // INT_MAX + 1
-   res = exos_strtol(str, &endptr, &error);
+   res = tilck_strtol(str, &endptr, &error);
    EXPECT_EQ(res, 0);
    EXPECT_EQ(endptr, str);
    EXPECT_EQ(error, -ERANGE);

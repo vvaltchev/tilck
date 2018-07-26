@@ -1,9 +1,9 @@
 
-#include <exos/common/basic_defs.h>
+#include <tilck/common/basic_defs.h>
 
-#include <exos/kernel/process.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/errno.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/errno.h>
 
 page_directory_t *kernel_page_dir;
 page_directory_t *curr_page_dir;

@@ -5,9 +5,9 @@ pushd .
 cd build
 
 sudo losetup -D
-sudo losetup /dev/loop0 ./exos.img
+sudo losetup /dev/loop0 ./tilck.img
 sudo chmod o+rw /dev/loop0
-rm -f exos.vmdk
-VBoxManage internalcommands createrawvmdk -filename exos.vmdk -rawdisk /dev/loop0
-sudo chown $USER exos.vmdk
+rm -f tilck.vmdk
+VBoxManage internalcommands createrawvmdk -filename tilck.vmdk -rawdisk /dev/loop0
+sudo chown $USER tilck.vmdk
 popd

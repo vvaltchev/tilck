@@ -136,7 +136,7 @@ int main(int argc, char **argv, char **env)
 
    shell_env = env;
 
-   printf("[PID: %i] Hello from ExOS's simple dev-shell!\n", getpid());
+   printf("[PID: %i] Hello from Tilck's simple dev-shell!\n", getpid());
 
    if (argc > 2 && !strcmp(argv[1], "-c")) {
       printf("[shell] Executing built-in command '%s'\n", argv[2]);
@@ -152,7 +152,7 @@ int main(int argc, char **argv, char **env)
          return 1;
       }
 
-      printf("root@exOS:%s# ", cwd);
+      printf("root@Tilck:%s# ", cwd);
       fflush(stdout);
 
       int rc = read_command(buf, sizeof(buf));

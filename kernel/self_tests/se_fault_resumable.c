@@ -1,10 +1,10 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/utils.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
 
-#include <exos/kernel/fault_resumable.h>
-#include <exos/kernel/debug_utils.h>
+#include <tilck/kernel/fault_resumable.h>
+#include <tilck/kernel/debug_utils.h>
 
 #ifdef __i386__
 

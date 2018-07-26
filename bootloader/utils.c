@@ -1,6 +1,6 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
 NORETURN void panic(const char *fmt, ...)
 {

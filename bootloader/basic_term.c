@@ -1,7 +1,7 @@
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/arch/generic_x86/x86_utils.h>
-#include <exos/common/color_defs.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/arch/generic_x86/x86_utils.h>
+#include <tilck/common/color_defs.h>
 
 #define TERMINAL_VIDEO_ADDR ((u16*)(0xB8000))
 

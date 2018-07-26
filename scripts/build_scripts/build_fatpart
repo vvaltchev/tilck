@@ -24,7 +24,7 @@ fi
 # -h <N> ; heads
 # -s <N> ; sectors
 $mformat -i $dest -d 1 -F -c 1 -t 70 -h 16 -s 63 ::
-$mlabel -i $dest ::EXOS
+$mlabel -i $dest ::TILCK
 
 rm -rf $bdir/sysroot
 cp -r $maindir/sysroot $bdir/

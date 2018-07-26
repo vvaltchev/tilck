@@ -1,12 +1,12 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/debug/termios_debug.c.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/debug/termios_debug.c.h>
 
-#include <exos/kernel/fs/exvfs.h>
-#include <exos/kernel/errno.h>
-#include <exos/kernel/user.h>
-#include <exos/kernel/term.h>
+#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/user.h>
+#include <tilck/kernel/term.h>
 
 #include <termios.h>      // system header
 #include <sys/ioctl.h>    // system header

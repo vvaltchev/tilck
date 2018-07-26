@@ -1,14 +1,14 @@
 
 #define _KMALLOC_C_
 
-#include <exos/common/string_util.h>
-#include <exos/common/utils.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
 
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/paging.h>
-#include <exos/kernel/sync.h>
-#include <exos/kernel/process.h>
-#include <exos/kernel/sort.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/paging.h>
+#include <tilck/kernel/sync.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/sort.h>
 
 #include "kmalloc_debug.h"
 #include "kmalloc_heap_struct.h"

@@ -13,7 +13,7 @@
 #include <fcntl.h>
 
 #define USE_ELF32
-#include <exos/common/elf_types.h>
+#include <tilck/common/elf_types.h>
 
 #define MMAP_SIZE (1024*1024)
 
@@ -226,7 +226,7 @@ void drop_last_section(void **mapped_elf_file_ref, int fd)
 
    /*
     * Unfortunately, the "bash for Windows" subsystem does not support
-    * ftruncate on memory-mapped files. Even if having the exOS to work there
+    * ftruncate on memory-mapped files. Even if having the Tilck to work there
     * is _not_ a must (users are supposed to use Linux), it is a nice-to-have
     * feature. Therefore, here we first unmap the memory-mapped ELF file and
     * then we truncate it.

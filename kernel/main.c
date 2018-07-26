@@ -1,34 +1,34 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/utils.h>
-#include <exos/common/arch/generic_x86/cpu_features.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
+#include <tilck/common/arch/generic_x86/cpu_features.h>
 
 #include <multiboot.h>
 
-#include <exos/kernel/hal.h>
-#include <exos/kernel/irq.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/paging.h>
-#include <exos/kernel/debug_utils.h>
-#include <exos/kernel/process.h>
-#include <exos/kernel/elf_loader.h>
-#include <exos/kernel/tasklet.h>
-#include <exos/kernel/sync.h>
-#include <exos/kernel/fs/fat32.h>
-#include <exos/kernel/fs/exvfs.h>
-#include <exos/kernel/fs/devfs.h>
-#include <exos/kernel/kb.h>
-#include <exos/kernel/timer.h>
-#include <exos/kernel/term.h>
-#include <exos/kernel/datetime.h>
-#include <exos/kernel/syscalls.h>
-#include <exos/kernel/fb_console.h>
-#include <exos/kernel/serial.h>
-#include <exos/kernel/kb_scancode_set1_keys.h>
-#include <exos/kernel/arch/generic_x86/textmode_video.h>
-#include <exos/kernel/arch/generic_x86/fpu_memcpy.h>
-#include <exos/kernel/system_mmap.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/irq.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/paging.h>
+#include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/elf_loader.h>
+#include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/sync.h>
+#include <tilck/kernel/fs/fat32.h>
+#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/devfs.h>
+#include <tilck/kernel/kb.h>
+#include <tilck/kernel/timer.h>
+#include <tilck/kernel/term.h>
+#include <tilck/kernel/datetime.h>
+#include <tilck/kernel/syscalls.h>
+#include <tilck/kernel/fb_console.h>
+#include <tilck/kernel/serial.h>
+#include <tilck/kernel/kb_scancode_set1_keys.h>
+#include <tilck/kernel/arch/generic_x86/textmode_video.h>
+#include <tilck/kernel/arch/generic_x86/fpu_memcpy.h>
+#include <tilck/kernel/system_mmap.h>
 
 
 /* Variables used by the cmdline parsing code */
@@ -47,7 +47,7 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
 
    if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
       init_textmode_console(true);
-      panic("The exOS kernel requires a multiboot-compatible bootloader.");
+      panic("The Tilck kernel requires a multiboot-compatible bootloader.");
    }
 
    if (!(mbi->flags & MULTIBOOT_INFO_MEM_MAP)) {
@@ -78,7 +78,7 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
 
 void show_hello_message(void)
 {
-   printk("Hello from ExperimentOS! [%s build, GCC %i.%i.%i]\n",
+   printk("Hello from Tilck! [%s build, GCC %i.%i.%i]\n",
           BUILDTYPE_STR, __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 }
 

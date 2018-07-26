@@ -2,8 +2,8 @@
 #include <iostream>
 #include <gtest/gtest.h>
 
-#include <exos/common/basic_defs.h>
-#include <exos/kernel/list.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/kernel/list.h>
 
 using namespace std;
 

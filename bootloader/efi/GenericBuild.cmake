@@ -64,10 +64,10 @@ target_compile_definitions(
 
    PRIVATE
 
-   STATIC_EXOS_ASM_STRING
+   STATIC_TILCK_ASM_STRING
    EFI_FUNCTION_WRAPPER
-   NO_EXOS_ASSERT
-   NO_EXOS_STATIC_WRAPPER
+   NO_TILCK_ASSERT
+   NO_TILCK_STATIC_WRAPPER
    GNU_EFI_USE_MS_ABI        # allows to call UEFI funcs without the wrapper
 )
 

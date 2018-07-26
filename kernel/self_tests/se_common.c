@@ -1,19 +1,19 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/utils.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
 
-#include <exos/kernel/irq.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/paging.h>
-#include <exos/kernel/debug_utils.h>
-#include <exos/kernel/process.h>
+#include <tilck/kernel/irq.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/paging.h>
+#include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/process.h>
 
-#include <exos/kernel/hal.h>
-#include <exos/kernel/tasklet.h>
-#include <exos/kernel/sync.h>
-#include <exos/kernel/fault_resumable.h>
-#include <exos/kernel/timer.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/sync.h>
+#include <tilck/kernel/fault_resumable.h>
+#include <tilck/kernel/timer.h>
 
 void simple_test_kthread(void *arg)
 {

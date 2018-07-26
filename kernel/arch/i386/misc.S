@@ -3,8 +3,8 @@
 
 #define ASM_FILE 1
 
-#include <exos/common/config.h>
-#include <exos/kernel/arch/i386/asm_defs.h>
+#include <tilck/common/config.h>
+#include <tilck/kernel/arch/i386/asm_defs.h>
 #include <multiboot.h>
 
 .code32

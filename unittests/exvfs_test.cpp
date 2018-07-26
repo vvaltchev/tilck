@@ -17,8 +17,8 @@ using namespace std;
 #include "kernel_init_funcs.h"
 
 extern "C" {
-   #include <exos/kernel/fs/fat32.h>
-   #include <exos/kernel/fs/exvfs.h>
+   #include <tilck/kernel/fs/fat32.h>
+   #include <tilck/kernel/fs/exvfs.h>
    int check_mountpoint_match(const char *mp, u32 lm, const char *path, u32 lp);
 }
 
@@ -102,7 +102,7 @@ TEST(exvfs, fseek)
    ASSERT_TRUE(r == 0);
    ASSERT_TRUE(h != NULL);
 
-   char buf_exos[64];
+   char buf_tilck[64];
    char buf_linux[64];
 
    lseek(fd, file_size / 2, SEEK_SET);
@@ -121,46 +121,46 @@ TEST(exvfs, fseek)
       off_t offset = (off_t) ( dist(engine) - dist(engine)/1.3 );
 
       off_t linux_lseek = lseek(fd, offset, SEEK_CUR);
-      off_t exos_fseek = exvfs_seek(h, offset, SEEK_CUR);
+      off_t tilck_fseek = exvfs_seek(h, offset, SEEK_CUR);
 
       if (linux_lseek < 0)
          saved_errno = errno;
 
       off_t linux_pos = lseek(fd, 0, SEEK_CUR);
-      off_t exos_pos = exvfs_seek(h, 0, SEEK_CUR);
+      off_t tilck_pos = exvfs_seek(h, 0, SEEK_CUR);
 
       if (linux_lseek < 0) {
 
          /*
           * Linux syscalls return -ERRNO_VALUE in case something goes wrong,
           * while the glibc wrappers return -1 and set errno. Since we're
-          * testing the value returned by the syscall in exOS, we need to revert
+          * testing the value returned by the syscall in Tilck, we need to revert
           * that.
           */
          linux_lseek = -errno;
       }
 
-      ASSERT_EQ(exos_fseek, linux_lseek)
+      ASSERT_EQ(tilck_fseek, linux_lseek)
          << "Offset: " << offset << endl
          << "Curr pos (glibc): " << linux_pos << endl
-         << "Curr pos (exos):  " << exos_pos << endl;
+         << "Curr pos (tilck):  " << tilck_pos << endl;
 
-      ASSERT_EQ(exos_pos, linux_pos);
+      ASSERT_EQ(tilck_pos, linux_pos);
 
       memset(buf_linux, 0, sizeof(buf_linux));
-      memset(buf_exos, 0, sizeof(buf_exos));
+      memset(buf_tilck, 0, sizeof(buf_tilck));
 
       ssize_t linux_read = read(fd, buf_linux, sizeof(buf_linux));
-      ssize_t exos_read = exvfs_read(h, buf_exos, sizeof(buf_exos));
+      ssize_t tilck_read = exvfs_read(h, buf_tilck, sizeof(buf_tilck));
 
-      ASSERT_EQ(exos_read, linux_read);
+      ASSERT_EQ(tilck_read, linux_read);
 
       linux_pos = lseek(fd, 0, SEEK_CUR);
-      exos_pos = exvfs_seek(h, 0, SEEK_CUR);
+      tilck_pos = exvfs_seek(h, 0, SEEK_CUR);
 
-      ASSERT_EQ(exos_pos, linux_pos);
+      ASSERT_EQ(tilck_pos, linux_pos);
 
-      if (memcmp(buf_exos, buf_linux, sizeof(buf_linux)) != 0) {
+      if (memcmp(buf_tilck, buf_linux, sizeof(buf_linux)) != 0) {
 
          cout << "Buffers differ. " << endl;
          cout << "Last offset: " << offset << endl;
@@ -173,10 +173,10 @@ TEST(exvfs, fseek)
             printf("%02x ", (u8)buf_linux[i]);
 
          cout << endl;
-         cout << "ExOS buf:  ";
+         cout << "Tilck buf:  ";
 
          for (size_t i = 0; i < sizeof(buf_linux); i++)
-            printf("%02x ", (u8)buf_exos[i]);
+            printf("%02x ", (u8)buf_tilck[i]);
 
          cout << endl;
          FAIL();

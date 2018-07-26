@@ -1,13 +1,13 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
-#include <exos/kernel/fs/exvfs.h>
-#include <exos/kernel/fs/devfs.h>
-#include <exos/kernel/process.h>
-#include <exos/kernel/ringbuf.h>
-#include <exos/kernel/term.h>
-#include <exos/kernel/kb.h>
+#include <tilck/kernel/fs/exvfs.h>
+#include <tilck/kernel/fs/devfs.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/ringbuf.h>
+#include <tilck/kernel/term.h>
+#include <tilck/kernel/kb.h>
 
 #include <termios.h>      // system header
 

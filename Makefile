@@ -16,14 +16,14 @@ clean: $(PREREQUISITES)
 	@$(MAKE) -C build clean
 
 rebuild_img: $(PREREQUISITES)
-	@rm -rf ./build/fatpart ./build/exos.img
+	@rm -rf ./build/fatpart ./build/tilck.img
 	@$(MAKE) -C build
 
 gpt_image: $(PREREQUISITES)
 	@$(MAKE) -C build gpt_image
 
 toolchain:
-	$(error Before building exOS, you need to build the toolchain by running ./scripts/build_toolchain)
+	$(error Before building Tilck, you need to build the toolchain by running ./scripts/build_toolchain)
 
 build/CMakeCache.txt:
 	@echo No CMakeCache.txt found: running CMake first.

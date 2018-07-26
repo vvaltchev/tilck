@@ -1,8 +1,8 @@
 
-#include <exos/common/basic_defs.h>
+#include <tilck/common/basic_defs.h>
 
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/pq.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/pq.h>
 
 #define LEFT(i) (2*(i)+1)
 #define RIGHT(i) (2*(i)+2)

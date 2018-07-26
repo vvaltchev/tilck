@@ -1,17 +1,17 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
-#include <exos/kernel/paging.h>
-#include <exos/kernel/irq.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/debug_utils.h>
-#include <exos/kernel/process.h>
-#include <exos/kernel/hal.h>
-#include <exos/kernel/user.h>
-#include <exos/kernel/elf_utils.h>
-#include <exos/kernel/system_mmap.h>
-#include <exos/kernel/errno.h>
+#include <tilck/kernel/paging.h>
+#include <tilck/kernel/irq.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/user.h>
+#include <tilck/kernel/elf_utils.h>
+#include <tilck/kernel/system_mmap.h>
+#include <tilck/kernel/errno.h>
 
 #include "paging_int.h"
 

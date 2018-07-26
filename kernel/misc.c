@@ -1,9 +1,9 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
-#include <exos/kernel/process.h>
-#include <exos/kernel/hal.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/hal.h>
 
 char symtab_buf[24 * KB] __attribute__ ((section (".Symtab"))) = {0};
 char strtab_buf[24 * KB] __attribute__ ((section (".Strtab"))) = {0};

@@ -1,5 +1,5 @@
 
-#include <exos/common/basic_defs.h>
+#include <tilck/common/basic_defs.h>
 
 // Defining some necessary symbols just to make the linker happy.
 

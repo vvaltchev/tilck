@@ -1,9 +1,9 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
-#include <exos/kernel/paging.h>
-#include <exos/kernel/elf_utils.h>
+#include <tilck/kernel/paging.h>
+#include <tilck/kernel/elf_utils.h>
 
 void (*self_test_to_run)(void);
 const char *cmd_args[16] = { "/sbin/init", [1 ... 15] = NULL };

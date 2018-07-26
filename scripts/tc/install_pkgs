@@ -241,7 +241,7 @@ function install_packages {
          echo "  * Fedora"
          echo "  * Arch"
          echo "  * Manjaro"
-         echo "In order to compile exOS on this distro, please make sure the "
+         echo "In order to compile Tilck on this distro, please make sure the "
          echo "following packages (ubuntu package names) are installed:"
 
          for x in ${pkg_list[@]}; do

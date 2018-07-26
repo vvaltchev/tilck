@@ -1,6 +1,6 @@
 
 #pragma once
-#include <exos/kernel/ringbuf.h>
+#include <tilck/kernel/ringbuf.h>
 
 typedef void (*tasklet_func)(uptr, uptr);
 

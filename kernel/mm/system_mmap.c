@@ -1,12 +1,12 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
-#include <exos/common/utils.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
 
-#include <exos/kernel/system_mmap.h>
-#include <exos/kernel/paging.h>
-#include <exos/kernel/sort.h>
-#include <exos/kernel/elf_utils.h>
+#include <tilck/kernel/system_mmap.h>
+#include <tilck/kernel/paging.h>
+#include <tilck/kernel/sort.h>
+#include <tilck/kernel/elf_utils.h>
 
 u32 __mem_lower_kb;
 u32 __mem_upper_kb;

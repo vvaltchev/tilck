@@ -1,11 +1,11 @@
 
-#include <exos/common/string_util.h>
+#include <tilck/common/string_util.h>
 
-#include <exos/kernel/process.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/tasklet.h>
-#include <exos/kernel/debug_utils.h>
-#include <exos/kernel/hal.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/hal.h>
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)

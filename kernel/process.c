@@ -1,14 +1,14 @@
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/string_util.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
-#include <exos/kernel/list.h>
-#include <exos/kernel/kmalloc.h>
-#include <exos/kernel/process.h>
-#include <exos/kernel/hal.h>
-#include <exos/kernel/errno.h>
-#include <exos/kernel/user.h>
-#include <exos/kernel/debug_utils.h>
+#include <tilck/kernel/list.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/user.h>
+#include <tilck/kernel/debug_utils.h>
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
@@ -229,7 +229,7 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
    } else {
 
       /*
-       * Since exOS does not support UIDs and GIDs != 0, the values of
+       * Since Tilck does not support UIDs and GIDs != 0, the values of
        *    pid < -1
        *    pid == -1
        *    pid == 0

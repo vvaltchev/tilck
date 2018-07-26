@@ -6,8 +6,8 @@
  * meant for traditional usermode code.
  */
 
-#include <exos/common/basic_defs.h>
-#include <exos/common/failsafe_assert.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/failsafe_assert.h>
 
 #ifndef USERMODE_APP
 
@@ -15,7 +15,7 @@
     * NOTE: this case exists ONLY to make the file to compile!
     * The bootloader and the kernel MUST have their custom panic() function.
     */
-   #include <exos/common/string_util.h>
+   #include <tilck/common/string_util.h>
    #define abort() while (1)
    #define printf printk
    #define vprintf vprintk

@@ -354,7 +354,7 @@ struct {
 void cmd_help(void)
 {
    printf("\n");
-   printf("--- exOS development shell ----\n\n");
+   printf("--- Tilck development shell ----\n\n");
    printf("NOTE: this application is a small dev-only utility written in\n");
    printf("order to allow running simple programs, while the support for a\n");
    printf("proper shell like ASH is work-in-progress.\n\n");

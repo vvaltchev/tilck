@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <exos/common/basic_defs.h>
+#include <tilck/common/basic_defs.h>
 
 bool suppress_printk;
 

@@ -3,8 +3,8 @@
 
 #define ASM_FILE 1
 
-#include <exos/common/config.h>
-#include <exos/kernel/arch/i386/asm_defs.h>
+#include <tilck/common/config.h>
+#include <tilck/kernel/arch/i386/asm_defs.h>
 
 .code32
 
@@ -32,7 +32,7 @@ FUNC(sysenter_entry):
     * 8. sysenter
     *
     * Note: in Linux sysenter is used by the libc through VDSO, when it is
-    * available. ExOS does not have a feature like VSDO therefore, applications
+    * available. Tilck does not have a feature like VSDO therefore, applications
     * have to explicitly use this convention in order to sysenter to work.
     */
 
