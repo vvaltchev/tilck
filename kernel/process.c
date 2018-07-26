@@ -302,9 +302,9 @@ NORETURN sptr sys_exit(int exit_status)
       // ASSERT(pos->state == TASK_STATE_SLEEPING);
 
       if (pos->state != TASK_STATE_SLEEPING) {
-         panic("%s task %d in the sleeping_tasks_list with state: %d",
+         panic("%s task %d [w: %p] in the sleeping_tasks_list with state: %d",
                is_kernel_thread(pos) ? "kernel" : "user",
-               pos->tid, pos->state);
+               pos->tid, pos->what, pos->state);
       }
 
       if (pos->wobj.ptr == curr) {

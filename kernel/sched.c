@@ -284,7 +284,7 @@ bool need_reschedule(void)
       return true;
    }
 
-   if (curr->time_slot_ticks < TIME_SLOT_JIFFIES &&
+   if (curr->time_slot_ticks < TIME_SLOT_TICKS &&
        curr->state == TASK_STATE_RUNNING) {
       return false;
    }

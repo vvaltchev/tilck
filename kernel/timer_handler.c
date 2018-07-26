@@ -7,7 +7,7 @@
 #include <exos/kernel/irq.h>
 #include <exos/kernel/timer.h>
 
-volatile u64 jiffies; /* ticks since the timer started */
+volatile u64 __ticks; /* ticks since the timer started */
 volatile u32 disable_preemption_count = 1;
 
 kthread_timer_sleep_obj timers_array[64];
@@ -81,6 +81,28 @@ void kernel_sleep(u64 ticks)
    }
 #endif
 
+
+static void debug_check_tasks_lists(void)
+{
+   task_info *pos;
+
+   list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
+
+      if (pos->state != TASK_STATE_SLEEPING)
+         panic("%s task %d [w: %p] in the sleeping_tasks_list with state: %d",
+               is_kernel_thread(pos) ? "kernel" : "user",
+               pos->tid, pos->what, pos->state);
+   }
+
+   list_for_each(pos, &runnable_tasks_list, runnable_list) {
+
+      if (pos->state != TASK_STATE_RUNNABLE)
+         panic("%s task %d [w: %p] in the runnable_tasks_list with state: %d",
+               is_kernel_thread(pos) ? "kernel" : "user",
+               pos->tid, pos->what, pos->state);
+   }
+}
+
 int timer_irq_handler(regs *context)
 {
 #if KERNEL_TRACK_NESTED_INTERRUPTS
@@ -90,8 +112,7 @@ int timer_irq_handler(regs *context)
    }
 #endif
 
-   jiffies++;
-
+   __ticks++;
    account_ticks();
    task_info *last_ready_task = tick_all_timers();
 
@@ -106,6 +127,8 @@ int timer_irq_handler(regs *context)
    }
 
    ASSERT(disable_preemption_count == 1); // again, for us disable = 1 means 0.
+
+   DEBUG_ONLY(debug_check_tasks_lists());
 
    /*
     * We CANNOT allow the timer to call the scheduler if it interrupted an

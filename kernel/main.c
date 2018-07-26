@@ -86,7 +86,7 @@ void show_system_info(void)
 {
    printk("TIMER_HZ: %i; TIME_SLOT: %i ms %s\n",
           TIMER_HZ,
-          1000 / (TIMER_HZ / TIME_SLOT_JIFFIES),
+          1000 / (TIMER_HZ / TIME_SLOT_TICKS),
           in_hypervisor() ? "[IN HYPERVISOR]" : "");
 
    dump_system_memory_map();

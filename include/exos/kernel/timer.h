@@ -4,7 +4,7 @@
 #include <exos/kernel/hal.h>
 
 #define TIMER_HZ 100
-#define TIME_SLOT_JIFFIES (TIMER_HZ / 20)
+#define TIME_SLOT_TICKS (TIMER_HZ / 20)
 
 typedef struct {
 
@@ -14,11 +14,11 @@ typedef struct {
 } kthread_timer_sleep_obj;
 
 
-extern volatile u64 jiffies;
+extern volatile u64 __ticks;
 
 static ALWAYS_INLINE u64 get_ticks(void)
 {
-   return jiffies;
+   return __ticks;
 }
 
 int timer_irq_handler(regs *r);
