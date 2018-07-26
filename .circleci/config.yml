@@ -2,13 +2,13 @@ version: 2
 jobs:
   debug_build:
     docker:
-      - image: vvaltchev/exos_build:ver2
+      - image: vvaltchev/tilck_build:latest
     environment:
       - RELEASE: 0
       - CMAKE_ARGS: -DUSE_GCOV=on
     steps:
       - checkout
-      - run: mv /exos_toolchain ./toolchain
+      - run: mv /tilck_toolchain ./toolchain
       - run: make -j
       - run: make -j gtests
       - run: ./build/gtests
@@ -16,13 +16,13 @@ jobs:
       - run: ./build/st/run_all_tests
   release_build:
     docker:
-      - image: vvaltchev/exos_build:ver2
+      - image: vvaltchev/tilck_build:latest
     environment:
       - RELEASE: 1
       - CMAKE_ARGS:
     steps:
       - checkout
-      - run: mv /exos_toolchain ./toolchain
+      - run: mv /tilck_toolchain ./toolchain
       - run: make -j
       - run: make -j gtests
       - run: ./build/gtests

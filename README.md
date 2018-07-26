@@ -1,8 +1,8 @@
 Tilck (Tiny Linux-Compatible Kernel)
 -------------------------------------
 
-[![Build Status](https://travis-ci.org/vvaltchev/experimentOs.svg?branch=master)](https://travis-ci.org/vvaltchev/experimentOs)
-[![CircleCI](https://circleci.com/gh/vvaltchev/experimentOs.svg?style=svg)](https://circleci.com/gh/vvaltchev/experimentOs)
+[![Build Status](https://travis-ci.org/vvaltchev/tilck.svg?branch=master)](https://travis-ci.org/vvaltchev/tilck)
+[![CircleCI](https://circleci.com/gh/vvaltchev/tilck.svg?style=svg)](https://circleci.com/gh/vvaltchev/tilck)
 
 
 **A Linux-compatible x86 kernel written for educational purposes and fun**
@@ -149,7 +149,7 @@ FAQ (by vvaltchev)
 #### Why many commit messages are so short and incomplete?
 
 It is well-known that all of the popular open source projects care about having good commit messages.
-It is an investment that ultimately pays off. I even wrote a [blog post](https://blogs.vmware.com/opensource/2017/12/28/open-source-proprietary-software-engineer/) about that.
+It is an investment that at some point pays off. I even wrote a [blog post](https://blogs.vmware.com/opensource/2017/12/28/open-source-proprietary-software-engineer/) about that.
 The problem is that such investment actually starts paying off only when multiple people contribute to the project.
 Even in the case of small teams (2 people) it not obvious that it is worth spending hours in re-ordering and editing all the commits of a pull request until its *story* is perfect, especially when the project is not mature enough: the commits in a pull request have to be just *good enough* in terms of commit message, scope of the change, relative order etc. The focus is on shape of the code *after* the patch series in the sense that limited hacks in the middle of a series are allowed. As a second contributor comes in, the commit messages will need necessarily to become more descriptive, in order to allow the collaboration to work. But, at this stage, going as fast as possible towards the first milestone makes sense. Still, I'm trying to keep the length of the commit messages proportionate to the complexity of the change. Sometimes, even in this stage, it makes sense to spend some time on describing the reasoning behind a commit. As the projects matures, I'll be spending more and more time on writing better commit messages.
 
