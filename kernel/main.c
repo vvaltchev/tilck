@@ -40,6 +40,7 @@ void parse_kernel_cmdline(const char *cmdline);
 /* -- */
 
 void init_tty(void);
+void show_banner(void);
 
 void read_multiboot_info(u32 magic, u32 mbi_addr)
 {
@@ -82,50 +83,6 @@ void show_hello_message(void)
           BUILDTYPE_STR, __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 }
 
-static const u8 console_gfx_replacements[256] =
-{
-   ['#'] = CHAR_BLOCK_MID,
-   ['-'] = CHAR_HLINE,
-   ['|'] = CHAR_VLINE,
-   ['+'] = CHAR_CROSS,
-   ['A'] = CHAR_CORNER_UL,
-   ['B'] = CHAR_CORNER_UR,
-   ['C'] = CHAR_CORNER_LR,
-   ['D'] = CHAR_CORNER_LL
-};
-
-void show_banner(void)
-{
-   char *banner[] =
-   {
-      "",
-      "########B ##B ##B       ######B ##B  ##B",
-      "D--##A--C ##| ##|      ##A----C ##| ##AC",
-      "   ##|    ##| ##|      ##|      #####AC ",
-      "   ##|    ##| ##|      ##|      ##A-##B ",
-      "   ##|    ##| #######B D######B ##|  ##B",
-      "   D-C    D-C D------C  D-----C D-C  D-C",
-      ""
-   };
-
-   const u32 padding = term_get_cols() / 2 - strlen(banner[1]) / 2;
-
-   for (u32 i = 0; i < ARRAY_SIZE(banner); i++) {
-      for (u8 *p = (u8 *)banner[i]; *p; p++) {
-         if (console_gfx_replacements[*p])
-            *p = console_gfx_replacements[*p];
-      }
-   }
-
-   for (u32 i = 0; i < ARRAY_SIZE(banner); i++) {
-
-      for (u32 j = 0; j < padding; j++)
-         printk(NO_PREFIX " ");
-
-      printk(NO_PREFIX "%s\n", banner[i]);
-   }
-}
-
 void show_system_info(void)
 {
    printk("TIMER_HZ: %i; TIME_SLOT: %i ms %s\n",
@@ -134,7 +91,6 @@ void show_system_info(void)
           in_hypervisor() ? "[IN HYPERVISOR]" : "");
 
    show_banner();
-   //dump_system_memory_map();
 }
 
 void mount_ramdisk(void)
