@@ -241,7 +241,7 @@ static void term_internal_incr_row(u8 color)
    ts_clear_row(term_rows - 1, color);
 }
 
-static void term_internal_write_printable_char(char c, u8 color)
+static void term_internal_write_printable_char(u8 c, u8 color)
 {
    u16 entry = make_vgaentry(c, color);
    buffer_set_entry(current_row, current_col, entry);
@@ -556,6 +556,56 @@ bool term_is_initialized(void)
 {
    return term_initialized;
 }
+
+#ifdef DEBUG
+
+void debug_term_dump_font_table(void)
+{
+   static const char hex_digits[] = "0123456789abcdef";
+
+   u8 color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
+
+   term_internal_incr_row(color);
+   current_col = 0;
+
+   for (u32 i = 0; i < 6; i++)
+      term_internal_write_printable_char(' ', color);
+
+   for (u32 i = 0; i < 16; i++) {
+      term_internal_write_printable_char(hex_digits[i], color);
+      term_internal_write_printable_char(' ', color);
+   }
+
+   term_internal_incr_row(color);
+   term_internal_incr_row(color);
+   current_col = 0;
+
+   for (u32 i = 0; i < 16; i++) {
+
+      term_internal_write_printable_char('0', color);
+      term_internal_write_printable_char('x', color);
+      term_internal_write_printable_char(hex_digits[i], color);
+
+      for (u32 i = 0; i < 3; i++)
+         term_internal_write_printable_char(' ', color);
+
+      for (u32 j = 0; j < 16; j++) {
+
+         u8 c = i * 16 + j;
+         term_internal_write_printable_char(c, color);
+         term_internal_write_printable_char(' ', color);
+      }
+
+      term_internal_incr_row(color);
+      current_col = 0;
+   }
+
+   term_internal_incr_row(color);
+   current_col = 0;
+}
+
+#endif
+
 
 void
 init_term(const video_interface *intf,

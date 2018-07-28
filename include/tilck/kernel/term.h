@@ -66,3 +66,4 @@ term_filter_func term_get_filter_func(void);
 
 /* --- debug funcs --- */
 void debug_term_print_scroll_cycles(void);
+void debug_term_dump_font_table(void);

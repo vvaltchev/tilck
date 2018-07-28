@@ -270,6 +270,8 @@ void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
       memcpy32((void *)vaddr, &buf[y * w], w);
 }
 
+#ifdef DEBUG
+
 void debug_dump_glyph(u32 n)
 {
    static const char fgbg[2] = {'-', '#'};
@@ -285,7 +287,7 @@ void debug_dump_glyph(u32 n)
    const u32 width_bytes = h->width >> 3;
    u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * n;
 
-   printk("\nGlyph #%u:\n\n", n);
+   printk(NO_PREFIX "\nGlyph #%u:\n\n", n);
 
    for (u32 row = 0; row < h->height; row++) {
       for (u32 b = 0; b < width_bytes; b++) {
@@ -302,6 +304,8 @@ void debug_dump_glyph(u32 n)
 
    printk(NO_PREFIX "\n");
 }
+
+#endif
 
 void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 {
