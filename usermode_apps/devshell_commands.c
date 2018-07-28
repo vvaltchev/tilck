@@ -11,6 +11,9 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 
+#define COLOR_RED     "\033[31m"
+#define COLOR_YELLOW  "\033[93m"
+#define RESET_ATTRS   "\033[0m"
 
 #define RDTSC() __builtin_ia32_rdtsc()
 #define FORK_TEST_ITERS (1 * 250 * 1024 * 1024)
@@ -354,24 +357,35 @@ struct {
 void cmd_help(void)
 {
    printf("\n");
-   printf("--- Tilck development shell ----\n\n");
-   printf("NOTE: this application is a small dev-only utility written in\n");
-   printf("order to allow running simple programs, while the support for a\n");
-   printf("proper shell like ASH is work-in-progress.\n\n");
-   printf("Regular commands\n");
-   printf("-------------------------------\n");
+   printf(COLOR_RED "Tilck development shell\n" RESET_ATTRS);
+
+   printf("This application is a small dev-only utility written in ");
+   printf("order to allow running\nsimple programs, while proper shells ");
+   printf("like ASH can't run on Tilck yet. Behavior:\nif a given coomand ");
+   printf("isn't an executable (e.g. /bin/termtest), it is forwarded ");
+   printf("to\n" COLOR_YELLOW "/bin/busybox" RESET_ATTRS);
+   printf(". That's how several programs like 'ls' work. Type --help to see\n");
+   printf("all the commands built in busybox.\n\n");
+
+   printf(COLOR_RED "Built-in commands\n" RESET_ATTRS);
    printf("    help: shows this help\n");
    printf("    cd <directory>: change the current working directory\n\n");
-   printf("Self tests\n");
-   printf("-------------------------------\n");
+   printf(COLOR_RED "Kernel tests\n" RESET_ATTRS);
 
    const int elems = sizeof(cmds_table) / sizeof(cmds_table[0]);
+   const int elems_per_row = 6;
 
    for (int i = 1 /* skip help */; i < elems; i++) {
-      printf("    %s\n", cmds_table[i].name);
+      printf("%s%s%s ",
+             (i % elems_per_row) != 1 ? "" : "    ",
+             cmds_table[i].name,
+             i != elems-1 ? "," : "");
+
+      if (!(i % elems_per_row))
+         printf("\n");
    }
 
-   printf("\n");
+   printf("\n\n");
 }
 
 void run_if_known_command(const char *cmd)
