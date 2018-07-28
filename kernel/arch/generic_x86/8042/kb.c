@@ -283,5 +283,5 @@ void init_kb(void)
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_irq_handler);
    enable_preemption();
 
-   printk("keyboard initialized.\n");
+   //printk("keyboard initialized.\n");
 }

@@ -99,13 +99,12 @@ void show_banner(void)
    char *banner[] =
    {
       "",
-      "A--------------------------------------------------B",
-      "|  ##########   ##   ##         #######   ##   ##  |",
-      "|  #   ##   #   ##   ##         ##        ##  ##   |",
-      "|      ##       ##   ##         ##        ####     |",
-      "|      ##       ##   ##         ##        ##  ##   |",
-      "|      ##       ##   ########   #######   ##   ##  |",
-      "D--------------------------------------------------C",
+      "########B ##B ##B       ######B ##B  ##B",
+      "D--##A--C ##| ##|      ##A----C ##| ##AC",
+      "   ##|    ##| ##|      ##|      #####AC ",
+      "   ##|    ##| ##|      ##|      ##A-##B ",
+      "   ##|    ##| #######B D######B ##|  ##B",
+      "   D-C    D-C D------C  D-----C D-C  D-C",
       ""
    };
 
@@ -135,7 +134,7 @@ void show_system_info(void)
           in_hypervisor() ? "[IN HYPERVISOR]" : "");
 
    show_banner();
-   dump_system_memory_map();
+   //dump_system_memory_map();
 }
 
 void mount_ramdisk(void)
@@ -185,10 +184,14 @@ int debug_f_key_press_handler(u32 key, u8 c)
          return KB_HANDLER_OK_AND_STOP;
 
       case KEY_F3:
-         debug_term_print_scroll_cycles();
+         dump_system_memory_map();
          return KB_HANDLER_OK_AND_STOP;
 
       case KEY_F4:
+         debug_term_print_scroll_cycles();
+         return KB_HANDLER_OK_AND_STOP;
+
+      case KEY_F5:
          debug_show_spurious_irq_count();
          return KB_HANDLER_OK_AND_STOP;
 
