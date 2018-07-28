@@ -67,3 +67,18 @@ term_filter_func term_get_filter_func(void);
 /* --- debug funcs --- */
 void debug_term_print_scroll_cycles(void);
 void debug_term_dump_font_table(void);
+
+#define CHAR_BLOCK_LIGHT  0xb0  //  #
+#define CHAR_BLOCK_MID    0xb1  //  #
+#define CHAR_BLOCK_HEAVY  0xdb  //  #
+#define CHAR_VLINE        0xb3  //   |
+#define CHAR_VLINE_LEFT   0xb4  //  -|
+#define CHAR_VLINE_RIGHT  0xc3  //  |-
+#define CHAR_CORNER_LL    0xc0  //  |_
+#define CHAR_CORNER_LR    0xd9  //  _|
+#define CHAR_CORNER_UL    0xda  //
+#define CHAR_CORNER_UR    0xbf  //
+#define CHAR_BOTTOM_C     0xc1  //  _|_
+#define CHAR_TOP_C        0xc2  //   T
+#define CHAR_HLINE        0xc4  //  --
+#define CHAR_CROSS        0xc5  //  +

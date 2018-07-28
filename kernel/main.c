@@ -82,32 +82,41 @@ void show_hello_message(void)
           BUILDTYPE_STR, __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 }
 
+static const u8 console_gfx_replacements[256] =
+{
+   ['#'] = CHAR_BLOCK_MID,
+   ['-'] = CHAR_HLINE,
+   ['|'] = CHAR_VLINE,
+   ['+'] = CHAR_CROSS,
+   ['A'] = CHAR_CORNER_UL,
+   ['B'] = CHAR_CORNER_UR,
+   ['C'] = CHAR_CORNER_LR,
+   ['D'] = CHAR_CORNER_LL
+};
 
 void show_banner(void)
 {
-   const char *banner[] =
+   char *banner[] =
    {
       "",
-      "##########   ##   ##         #######   ##    ##",
-      "#   ##   #   ##   ##         ##        ##   ## ",
-      "    ##       ##   ##         ##        ## ##   ",
-      "    ##       ##   ##         ##        ##   ## ",
-      "    ##       ##   ########   #######   ##    ##",
+      "A--------------------------------------------------B",
+      "|  ##########   ##   ##         #######   ##   ##  |",
+      "|  #   ##   #   ##   ##         ##        ##  ##   |",
+      "|      ##       ##   ##         ##        ####     |",
+      "|      ##       ##   ##         ##        ##  ##   |",
+      "|      ##       ##   ########   #######   ##   ##  |",
+      "D--------------------------------------------------C",
       ""
    };
 
    const u32 padding = term_get_cols() / 2 - strlen(banner[1]) / 2;
 
-   // for (u32 i = 0; i < ARRAY_SIZE(banner); i++) {
-   //    char *p = (char *)banner[i];
-
-   //    while (*p) {
-   //       if (*p == '#')
-   //          *p = 219;
-
-   //       p++;
-   //    }
-   // }
+   for (u32 i = 0; i < ARRAY_SIZE(banner); i++) {
+      for (u8 *p = (u8 *)banner[i]; *p; p++) {
+         if (console_gfx_replacements[*p])
+            *p = console_gfx_replacements[*p];
+      }
+   }
 
    for (u32 i = 0; i < ARRAY_SIZE(banner); i++) {
 
