@@ -270,6 +270,39 @@ void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
       memcpy32((void *)vaddr, &buf[y * w], w);
 }
 
+void debug_dump_glyph(u32 n)
+{
+   static const char fgbg[2] = {'-', '#'};
+
+   psf2_header *h = fb_font_header;
+
+   if (!h) {
+      printk("debug_dump_glyph: fb_font_header == 0: are we in text mode?\n");
+      return;
+   }
+
+   // ASSUMPTION: width is divisible by 8
+   const u32 width_bytes = h->width >> 3;
+   u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * n;
+
+   printk("\nGlyph #%u:\n\n", n);
+
+   for (u32 row = 0; row < h->height; row++) {
+      for (u32 b = 0; b < width_bytes; b++) {
+
+         u8 sl = data[b + width_bytes * row];
+
+         for (int bit = 7; bit >= 0; bit--) {
+            printk(NO_PREFIX "%c", fgbg[!!(sl & (1 << bit))]);
+         }
+      }
+
+      printk(NO_PREFIX "\n");
+   }
+
+   printk(NO_PREFIX "\n");
+}
+
 void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 {
    psf2_header *h = fb_font_header;
