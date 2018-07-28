@@ -12,6 +12,7 @@
 
 extern void (*irq_entry_points[16])(void);
 static irq_interrupt_handler irq_handlers[16];
+static u32 unhandled_irq_count[256];
 
 void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags);
 
@@ -214,11 +215,31 @@ void debug_show_spurious_irq_count(void)
 
    if (get_ticks() > TIMER_HZ)
       printk("Spur IRQ count: %u (%u/sec)\n",
-               spur_irq_count,
-               spur_irq_count / (get_ticks() / TIMER_HZ));
+             spur_irq_count,
+             spur_irq_count / (get_ticks() / TIMER_HZ));
    else
       printk("Spurious IRQ count: %u (< 1 sec)\n",
-               spur_irq_count, spur_irq_count);
+             spur_irq_count, spur_irq_count);
+
+   u32 tot_count = 0;
+
+   for (u32 i = 0; i < ARRAY_SIZE(unhandled_irq_count); i++)
+      tot_count += unhandled_irq_count[i];
+
+   if (tot_count) {
+
+      printk("Unhandled IRQs count table\n");
+
+      for (u32 i = 0; i < ARRAY_SIZE(unhandled_irq_count); i++) {
+
+         if (!unhandled_irq_count[i])
+            continue;
+
+         printk("IRQ #%3u: %3u unhandled\n", i, unhandled_irq_count[i]);
+      }
+
+      printk("\n");
+   }
 }
 
 static void handle_irq_set_mask(int irq)
@@ -254,7 +275,7 @@ static void handle_irq_clear_mask(int irq)
 void handle_irq(regs *r)
 {
    int handler_ret = 0;
-   const int irq = r->int_num - 32;
+   const u32 irq = r->int_num - 32;
 
    if (irq == 7 || irq == 15) {
 
@@ -304,13 +325,10 @@ void handle_irq(regs *r)
    pic_send_eoi(irq);
    ASSERT(are_interrupts_enabled());
 
-   if (irq_handlers[irq] != NULL) {
-
+   if (irq_handlers[irq]) {
       handler_ret = irq_handlers[irq](r);
-
    } else {
-
-      printk("Unhandled IRQ #%i\n", irq);
+      unhandled_irq_count[irq]++;
    }
 
    pop_nested_interrupt();
