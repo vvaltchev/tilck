@@ -335,26 +335,52 @@ void cmd_help(void);
 
 typedef void (*cmd_func_type)(void);
 
+enum timeout_type {
+   TT_SHORT = 0,
+   TT_MED   = 1,
+   TT_LONG  = 2,
+};
+
+static const char *tt_str[] =
+{
+   [TT_SHORT] = "tt_short",
+   [TT_MED] = "tt_med",
+   [TT_LONG] = "tt_long"
+};
+
 struct {
 
    const char *name;
    cmd_func_type fun;
+   enum timeout_type tt;
+   bool enabled_in_st;
 
 } cmds_table[] = {
 
-   {"help", cmd_help},
-   {"loop", cmd_loop},
-   {"fork_test", cmd_fork_test},
-   {"invalid_read", cmd_invalid_read},
-   {"invalid_write", cmd_invalid_write},
-   {"fork_perf", cmd_fork_perf},
-   {"sysenter", cmd_sysenter},
-   {"syscall_perf", cmd_syscall_perf},
-   {"sysenter_fork_test", cmd_sysenter_fork_test},
-   {"fpu", cmd_fpu},
-   {"fpu_loop", cmd_fpu_loop},
-   {"brk_test", cmd_brk_test}
+   {"help", cmd_help, TT_SHORT, false},
+   {"loop", cmd_loop, TT_MED, false},
+   {"fork_test", cmd_fork_test, TT_MED, true},
+   {"invalid_read", cmd_invalid_read, TT_SHORT, true},
+   {"invalid_write", cmd_invalid_write, TT_SHORT, true},
+   {"fork_perf", cmd_fork_perf, TT_LONG, true},
+   {"sysenter", cmd_sysenter, TT_SHORT, true},
+   {"syscall_perf", cmd_syscall_perf, TT_SHORT, true},
+   {"sysenter_fork_test", cmd_sysenter_fork_test, TT_MED, true},
+   {"fpu", cmd_fpu, TT_SHORT, true},
+   {"fpu_loop", cmd_fpu_loop, TT_LONG, false},
+   {"brk_test", cmd_brk_test, TT_SHORT, true}
 };
+
+void dump_list_of_commands(void)
+{
+   const int elems = sizeof(cmds_table) / sizeof(cmds_table[0]);
+
+   for (int i = 1; i < elems; i++) {
+      printf("%s %s\n", cmds_table[i].name, tt_str[cmds_table[i].tt]);
+   }
+
+   exit(0);
+}
 
 void cmd_help(void)
 {

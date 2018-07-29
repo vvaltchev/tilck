@@ -21,17 +21,31 @@ SHORT_TEST_TIMEOUT = 12
 MID_TEST_TIMEOUT   = 18
 LONG_TEST_TIMEOUT  = 30
 
-shell_cmd_tests = [
-   ['fpu', SHORT_TEST_TIMEOUT],
-   ['invalid_read', SHORT_TEST_TIMEOUT],
-   ['invalid_write', SHORT_TEST_TIMEOUT],
-   ['brk_test', SHORT_TEST_TIMEOUT],
-   ['sysenter', SHORT_TEST_TIMEOUT],
-   ['syscall_perf', SHORT_TEST_TIMEOUT],
-   ['fork_test', MID_TEST_TIMEOUT],
-   ['sysenter_fork_test', MID_TEST_TIMEOUT],
-   ['fork_perf', LONG_TEST_TIMEOUT],
-]
+shell_cmd_tests = [ ]
+
+def load_list_of_shell_cmd_tests():
+
+   global shell_cmd_tests
+
+   build_dir = r'@CMAKE_BINARY_DIR@'
+   devshell = os.path.join(build_dir, 'usermode_apps', 'devshell')
+   output = subprocess.check_output([devshell, '-l'])
+   arr = output.split("\n")
+
+   tt_short = SHORT_TEST_TIMEOUT
+   tt_med = MID_TEST_TIMEOUT
+   tt_long = LONG_TEST_TIMEOUT
+
+   for r in arr:
+
+      r = r.rstrip()
+
+      if not r:
+         continue
+
+      name, tt = r.split(' ')
+      tt = locals()[tt]
+      shell_cmd_tests.append([name, tt])
 
 selftests = [
    ['fault_resumable', SHORT_TEST_TIMEOUT],
@@ -139,6 +153,7 @@ selftests_passed = 0
 shell_cmd_tests_to_run = 0
 shell_cmd_tests_passed = 0
 
+load_list_of_shell_cmd_tests()
 print ""
 
 if len(sys.argv) >= 2:

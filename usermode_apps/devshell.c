@@ -17,7 +17,9 @@ char *cmd_argv[MAX_ARGS];
 char **shell_env;
 
 void run_if_known_command(const char *cmd);
+void dump_list_of_commands(void);
 int read_command(char *buf, int buf_size);
+
 
 void shell_builtin_cd(int argc)
 {
@@ -129,6 +131,19 @@ void process_cmd_line(const char *cmd_line)
       printf("[shell] command exited with status: %d\n", WEXITSTATUS(wstatus));
 }
 
+void parse_opt(int argc, char **argv)
+{
+   if (argc > 2 && !strcmp(argv[1], "-c")) {
+      printf("[shell] Executing built-in command '%s'\n", argv[2]);
+      run_if_known_command(argv[2]);
+      printf("[shell] Unknown built-in command '%s'\n", argv[2]);
+   } else if (!strcmp(argv[1], "-l")) {
+      dump_list_of_commands();
+   } else {
+      printf("[shell] Unknown option '%s'\n", argv[1]);
+   }
+}
+
 int main(int argc, char **argv, char **env)
 {
    char buf[256];
@@ -138,10 +153,8 @@ int main(int argc, char **argv, char **env)
 
    //printf("[PID: %i] Hello from Tilck's simple dev-shell!\n", getpid());
 
-   if (argc > 2 && !strcmp(argv[1], "-c")) {
-      printf("[shell] Executing built-in command '%s'\n", argv[2]);
-      run_if_known_command(argv[2]);
-      printf("[shell] Unknown built-in command '%s'\n", argv[2]);
+   if (argc > 1) {
+      parse_opt(argc, argv);
       exit(1);
    }
 
@@ -162,10 +175,8 @@ int main(int argc, char **argv, char **env)
          break;
       }
 
-      if (!rc)
-         continue;
-
-      process_cmd_line(buf);
+      if (rc)
+         process_cmd_line(buf);
    }
 
    return 0;
