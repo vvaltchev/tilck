@@ -52,3 +52,4 @@ typedef struct {
 
 void term_execute_action(term_action *a);
 void term_internal_write_char2(char c, u8 color);
+

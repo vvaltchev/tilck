@@ -125,12 +125,24 @@ tty_filter_handle_csi_m(int *params,
    }
 }
 
+static void tty_move_cursor_begin_nth_row(int row)
+{
+   term_action a = {
+      .type2 = a_move_ch_and_cur,
+      .arg1 = MIN(term_get_curr_row() + row, term_get_rows() - 1),
+      .arg2 = 0
+   };
+
+   term_execute_action(&a);
+}
+
 static int
 tty_filter_end_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
 {
    const char *endptr;
    int params[16] = {0};
    int pc = 0;
+   term_action a;
 
    ctx->param_bytes[ctx->pbc] = 0;
    ctx->interm_bytes[ctx->ibc] = 0;
@@ -156,8 +168,46 @@ tty_filter_end_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
          tty_filter_handle_csi_ABCD(params, pc, c, ctx);
          break;
 
-      case 'm':
+      case 'm': /* SGR (Select Graphic Rendition) parameters */
          tty_filter_handle_csi_m(params, pc, color, ctx);
+         break;
+
+      case 'E':
+         /* Move the cursor 'n' lines down and set col = 0 */
+        tty_move_cursor_begin_nth_row(MAX(1, params[0]));
+        break;
+
+      case 'F':
+         /* Move the cursor 'n' lines up and set col = 0 */
+         tty_move_cursor_begin_nth_row(-MAX(1, params[0]));
+         break;
+
+      case 'G':
+         /* Move the cursor to the column 'n' (absolute, 1-based) */
+         params[0] = MAX(1, params[0]) - 1;
+
+         a = (term_action) {
+            .type2 = a_move_ch_and_cur,
+            .arg1 = term_get_curr_row(),
+            .arg2 = MIN((u32)params[0], term_get_cols() - 1)
+         };
+
+         term_execute_action(&a);
+         break;
+
+      case 'f':
+      case 'H':
+         /* Move the cursor to (n, m) (absolute, 1-based) */
+         params[0] = MAX(1, params[0]) - 1;
+         params[1] = MAX(1, params[1]) - 1;
+
+         a = (term_action) {
+            .type2 = a_move_ch_and_cur,
+            .arg1 = MIN((u32)params[0], term_get_rows() - 1),
+            .arg2 = MIN((u32)params[1], term_get_cols() - 1)
+         };
+
+         term_execute_action(&a);
          break;
    }
 
