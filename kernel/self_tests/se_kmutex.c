@@ -44,7 +44,7 @@ static void test_kmutex_thread_trylock()
    }
 }
 
-void selftest_kmutex()
+void selftest_kmutex_med()
 {
    int tid1, tid2, tid3, tid4;
 

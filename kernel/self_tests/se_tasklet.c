@@ -28,7 +28,7 @@ static void end_test()
    debug_qemu_turn_off_machine();
 }
 
-void selftest_tasklet(void)
+void selftest_tasklet_short(void)
 {
    const int max_tasklets = get_tasklet_runner_limit(0);
    const int tot_iters = max_tasklets * 10;
@@ -54,7 +54,7 @@ void selftest_tasklet(void)
    } while (!added);
 }
 
-void selftest_tasklet_perf(void)
+void selftest_tasklet_perf_short(void)
 {
    bool added;
    int n = 0;

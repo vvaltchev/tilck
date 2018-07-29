@@ -8,6 +8,9 @@ import signal
 import subprocess
 import threading
 
+build_dir = r'@CMAKE_BINARY_DIR@'
+kernel = r'@KERNEL_FILE@'
+
 error_codes_strings = {
    0: 'success',
    1: 'invalid_arguments',
@@ -27,14 +30,13 @@ def load_list_of_shell_cmd_tests():
 
    global shell_cmd_tests
 
-   build_dir = r'@CMAKE_BINARY_DIR@'
-   devshell = os.path.join(build_dir, 'usermode_apps', 'devshell')
-   output = subprocess.check_output([devshell, '-l'])
-   arr = output.split("\n")
-
    tt_short = SHORT_TEST_TIMEOUT
    tt_med = MID_TEST_TIMEOUT
    tt_long = LONG_TEST_TIMEOUT
+
+   devshell = os.path.join(build_dir, 'usermode_apps', 'devshell')
+   output = subprocess.check_output([devshell, '-l'])
+   arr = output.split("\n")
 
    for r in arr:
 
@@ -47,18 +49,39 @@ def load_list_of_shell_cmd_tests():
       tt = locals()[tt]
       shell_cmd_tests.append([name, tt])
 
-selftests = [
-   ['fault_resumable', SHORT_TEST_TIMEOUT],
-   ['fault_resumable_perf', SHORT_TEST_TIMEOUT],
-   ['tasklet', SHORT_TEST_TIMEOUT],
-   ['tasklet_perf', SHORT_TEST_TIMEOUT],
-   ['kernel_sleep', SHORT_TEST_TIMEOUT],
-   ['kcond', SHORT_TEST_TIMEOUT],
-   ['kmalloc_perf', MID_TEST_TIMEOUT],
-   ['join', MID_TEST_TIMEOUT],
-   ['kmutex', MID_TEST_TIMEOUT],
-   ['kthread', MID_TEST_TIMEOUT],
-]
+selftests = [ ]
+
+def load_list_of_kernel_self_tests():
+
+   global selftests
+
+   rows = subprocess.check_output(['nm', kernel]).split("\n")
+
+   short = SHORT_TEST_TIMEOUT
+   med = MID_TEST_TIMEOUT
+   long = LONG_TEST_TIMEOUT
+
+   for row in rows:
+
+      row = row.rstrip()
+
+      if not row:
+         continue
+
+      vaddr, t, name = row.split(' ')
+
+      if not name.startswith('selftest_'):
+         continue
+
+      comps = name.split('_')
+      tt = comps[-1]
+
+      if tt not in ['short', 'med', 'long']:
+         continue
+
+      name = '_'.join(comps[1:])
+      tt = locals()[tt]
+      selftests.append([name, tt])
 
 def run_test(test_type, test, timeout, show_output = False):
 
@@ -154,6 +177,7 @@ shell_cmd_tests_to_run = 0
 shell_cmd_tests_passed = 0
 
 load_list_of_shell_cmd_tests()
+load_list_of_kernel_self_tests()
 print ""
 
 if len(sys.argv) >= 2:

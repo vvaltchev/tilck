@@ -70,7 +70,7 @@ static void nested_faulting_code(int level)
    printk("[level %i]: we reached the end\n", level);
 }
 
-void selftest_fault_resumable(void)
+void selftest_fault_resumable_short(void)
 {
    int r;
 
@@ -110,7 +110,7 @@ static NO_INLINE void do_nothing(uptr a1, uptr a2, uptr a3,
    DO_NOT_OPTIMIZE_AWAY(a6);
 }
 
-void selftest_fault_resumable_perf(void)
+void selftest_fault_resumable_perf_short(void)
 {
    const int iters = 100000;
    u64 start, duration;

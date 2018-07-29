@@ -66,7 +66,7 @@ static void kcond_thread_signal_generator()
    enable_preemption();
 }
 
-void selftest_kcond()
+void selftest_kcond_short()
 {
    kmutex_init(&cond_mutex, 0);
    kcond_init(&cond);

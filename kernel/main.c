@@ -114,7 +114,7 @@ void mount_ramdisk(void)
       panic("mountpoint_add() failed with error: %d", rc);
 }
 
-void selftest_runner_thread()
+void se_runner_thread()
 {
    self_test_to_run();
 }
@@ -204,8 +204,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    if (self_test_to_run) {
 
-      if (!kthread_create(selftest_runner_thread, NULL))
-         panic("Unable to create the selftest_runner_thread");
+      if (!kthread_create(se_runner_thread, NULL))
+         panic("Unable to create the se_runner_thread");
 
       switch_to_idle_task_outside_interrupt_context();
    }

@@ -376,7 +376,8 @@ void dump_list_of_commands(void)
    const int elems = sizeof(cmds_table) / sizeof(cmds_table[0]);
 
    for (int i = 1; i < elems; i++) {
-      printf("%s %s\n", cmds_table[i].name, tt_str[cmds_table[i].tt]);
+      if (cmds_table[i].enabled_in_st)
+         printf("%s %s\n", cmds_table[i].name, tt_str[cmds_table[i].tt]);
    }
 
    exit(0);
