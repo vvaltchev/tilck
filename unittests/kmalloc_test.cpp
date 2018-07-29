@@ -132,13 +132,13 @@ public:
 
 TEST_F(kmalloc_test, perf_test)
 {
-   selftest_kmalloc_perf();
+   selftest_kmalloc_perf_med();
 }
 
 TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
 {
    mock_kmalloc = true;
-   selftest_kmalloc_perf();
+   selftest_kmalloc_perf_med();
    mock_kmalloc = false;
 }
 
