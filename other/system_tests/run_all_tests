@@ -22,6 +22,7 @@ MID_TEST_TIMEOUT   = 18
 LONG_TEST_TIMEOUT  = 30
 
 shell_cmd_tests = [
+   ['fpu', SHORT_TEST_TIMEOUT],
    ['invalid_read', SHORT_TEST_TIMEOUT],
    ['invalid_write', SHORT_TEST_TIMEOUT],
    ['brk_test', SHORT_TEST_TIMEOUT],

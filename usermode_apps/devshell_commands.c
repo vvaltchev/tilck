@@ -273,13 +273,15 @@ void cmd_syscall_perf(void)
 
 void cmd_fpu(void)
 {
-   double num;
+   long double e = 1.0;
+   long double f = 1.0;
 
-   printf("Enter real number: ");
-   fflush(stdout);
+   for (unsigned i = 1; i < 40; i++) {
+      f *= i;
+      e += (1.0 / f);
+   }
 
-   fscanf(stdin, "%lf", &num);
-   printf("n^2 = %lf\n", num * 2.0);
+   printf("e(1): %.10Lf\n", e);
 }
 
 void cmd_fpu_loop(void)
