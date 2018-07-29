@@ -55,36 +55,55 @@ tty_filter_handle_csi_ABCD(int *params,
 static void
 tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
 {
-   if (p == 39) {
-      /* Reset fg color to the default value */
-      p = 97;
-   } else if (p == 49) {
-      /* Reset bg color to the default value */
-      p = 40;
+   u8 tmp;
+   u8 fg = get_color_fg(tty_curr_color);
+   u8 bg = get_color_bg(tty_curr_color);
+
+   switch(p) {
+
+      case 0:
+         /* Reset all attributes */
+         fg = DEFAULT_FG_COLOR;
+         bg = DEFAULT_BG_COLOR;
+         goto set_color;
+
+      case 39:
+         /* Reset fg color to the default value */
+         fg = DEFAULT_FG_COLOR;
+         goto set_color;
+
+      case 49:
+         /* Reset bg color to the default value */
+         bg = DEFAULT_BG_COLOR;
+         goto set_color;
+
+
+      case 7:
+         /* Reverse video */
+         tmp = fg;
+         fg = bg;
+         bg = tmp;
+         goto set_color;
    }
 
-   if (p == 0) {
-
-      /* Reset all attributes */
-      tty_curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
-      *color = tty_curr_color;
-
-   } else if ((30 <= p && p <= 37) || (90 <= p && p <= 97)) {
+   if ((30 <= p && p <= 37) || (90 <= p && p <= 97)) {
 
       /* Set foreground color */
-      u8 fg = fg_csi_to_vga[p];
-
-      tty_curr_color = make_color(fg, get_color_bg(tty_curr_color));
-      *color = tty_curr_color;
+      fg = fg_csi_to_vga[p];
+      goto set_color;
 
    } else if ((40 <= p && p <= 47) || (100 <= p && p <= 107)) {
 
       /* Set background color */
-      u8 bg = fg_csi_to_vga[p - 10];
-
-      tty_curr_color = make_color(get_color_fg(tty_curr_color), bg);
-      *color = tty_curr_color;
+      bg = fg_csi_to_vga[p - 10];
+      goto set_color;
    }
+
+   return;
+
+set_color:
+   tty_curr_color = make_color(fg, bg);
+   *color = tty_curr_color;
 }
 
 static void
