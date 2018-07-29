@@ -75,6 +75,11 @@ static ALWAYS_INLINE void buffer_set_entry(int row, int col, u16 e)
    buffer[(row + scroll) % total_buffer_rows * term_cols + col] = e;
 }
 
+static ALWAYS_INLINE u16 buffer_get_entry(int row, int col)
+{
+   return buffer[(row + scroll) % total_buffer_rows * term_cols + col];
+}
+
 static ALWAYS_INLINE bool ts_is_at_bottom(void)
 {
    return scroll == max_scroll;
@@ -183,7 +188,10 @@ static void term_action_scroll_up(u32 lines)
       vi->disable_cursor();
    } else {
       vi->enable_cursor();
-      vi->move_cursor(current_row, current_col);
+      vi->move_cursor(current_row,
+                      current_col,
+                      vgaentry_get_color(buffer_get_entry(current_row,
+                                                          current_col)));
    }
 
    if (vi->flush_buffers)
@@ -207,7 +215,10 @@ static void term_action_scroll_down(u32 lines)
 
    if (ts_is_at_bottom()) {
       vi->enable_cursor();
-      vi->move_cursor(current_row, current_col);
+      vi->move_cursor(current_row,
+                      current_col,
+                      vgaentry_get_color(buffer_get_entry(current_row,
+                                                          current_col)));
    }
 
    if (vi->flush_buffers)
@@ -376,7 +387,10 @@ static void term_action_write(char *buf, u32 len, u8 color)
 
    }
 
-   vi->move_cursor(current_row, current_col);
+   vi->move_cursor(current_row,
+                   current_col,
+                   vgaentry_get_color(buffer_get_entry(current_row,
+                                                       current_col)));
 
    if (vi->flush_buffers)
       vi->flush_buffers();
@@ -399,7 +413,12 @@ static void term_action_move_ch_and_cur(int row, int col)
 {
    current_row = MIN(MAX(row, 0), term_rows - 1);
    current_col = MIN(MAX(col, 0), term_cols - 1);
-   vi->move_cursor(current_row, current_col);
+
+   vi->move_cursor(current_row,
+                   current_col,
+                   vgaentry_get_color(buffer_get_entry(current_row,
+                                                       current_col)));
+
 
    if (vi->flush_buffers)
       vi->flush_buffers();
@@ -409,7 +428,12 @@ static void term_action_move_ch_and_cur_rel(s8 dx, s8 dy)
 {
    current_row = MIN(MAX((int)current_row + dx, 0), term_rows - 1);
    current_col = MIN(MAX((int)current_col + dy, 0), term_cols - 1);
-   vi->move_cursor(current_row, current_col);
+
+   vi->move_cursor(current_row,
+                   current_col,
+                   vgaentry_get_color(buffer_get_entry(current_row,
+                                                       current_col)));
+
 
    if (vi->flush_buffers)
       vi->flush_buffers();

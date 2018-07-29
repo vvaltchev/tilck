@@ -78,7 +78,7 @@ static void textmode_scroll_one_line_up(void)
  * There is a lot of precious information about how to work with the cursor.
  */
 
-static void textmode_move_cursor(int row, int col)
+static void textmode_move_cursor(int row, int col, int color /* ignored */)
 {
    u16 position = (row * VIDEO_COLS) + col;
 
@@ -117,7 +117,7 @@ static void textmode_disable_cursor(void)
     * effects: the cursor is offset-ed 3 chars at the right of the position
     * it should be.
     */
-   textmode_move_cursor(VIDEO_ROWS, VIDEO_COLS);
+   textmode_move_cursor(VIDEO_ROWS, VIDEO_COLS, 0);
 
    // outb(0x3D4, 0x0A);
    // outb(0x3D5, inb(0x3D5) | 0x20);

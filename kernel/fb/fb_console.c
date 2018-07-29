@@ -30,7 +30,7 @@ static int cursor_col;
 static u32 *under_cursor_buf;
 static volatile bool cursor_visible = true;
 static task_info *blink_thread_ti;
-static const u32 blink_half_period = (TIMER_HZ * 60)/100;
+static const u32 blink_half_period = (TIMER_HZ * 45)/100;
 static u32 cursor_color = fb_make_color(255, 255, 255);
 
 /* Could we really need more than 256 rows? Probably we won't. */
@@ -149,7 +149,7 @@ void fb_clear_row(int row_num, u8 color)
    rows_to_flush[row_num] = true;
 }
 
-void fb_move_cursor(int row, int col)
+void fb_move_cursor(int row, int col, int cursor_vga_color)
 {
    if (!under_cursor_buf)
       return;
@@ -163,6 +163,9 @@ void fb_move_cursor(int row, int col)
 
    cursor_row = row;
    cursor_col = col;
+
+   if (cursor_vga_color >= 0)
+      cursor_color = vga_rgb_colors[cursor_vga_color];
 
    if (cursor_enabled) {
 
@@ -192,7 +195,7 @@ void fb_enable_cursor(void)
 
    fb_save_under_cursor_buf();
    cursor_enabled = true;
-   fb_move_cursor(cursor_row, cursor_col);
+   fb_move_cursor(cursor_row, cursor_col, -1);
 }
 
 void fb_disable_cursor(void)
@@ -201,7 +204,7 @@ void fb_disable_cursor(void)
       return;
 
    cursor_enabled = false;
-   fb_move_cursor(cursor_row, cursor_col);
+   fb_move_cursor(cursor_row, cursor_col, -1);
 }
 
 static void fb_set_row_failsafe(int row, u16 *data, bool flush)
@@ -288,7 +291,7 @@ static void fb_blink_thread()
 {
    while (true) {
       cursor_visible = !cursor_visible;
-      fb_move_cursor(cursor_row, cursor_col);
+      fb_move_cursor(cursor_row, cursor_col, -1);
       fb_flush();
       kernel_sleep(blink_half_period);
    }
