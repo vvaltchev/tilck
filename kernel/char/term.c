@@ -461,9 +461,8 @@ static void term_action_reset()
 
 static void term_action_erase_in_display(int mode)
 {
-   u16 entry = make_vgaentry(' ',
-                             make_color(DEFAULT_FG_COLOR,
-                                        DEFAULT_BG_COLOR));
+   static const u16 entry =
+      make_vgaentry(' ', make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
    switch (mode) {
 
@@ -523,6 +522,39 @@ static void term_action_erase_in_display(int mode)
       vi->flush_buffers();
 }
 
+static void term_action_erase_in_line(int mode)
+{
+   static const u16 entry =
+      make_vgaentry(' ', make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+
+   switch (mode) {
+
+      case 0:
+         for (u32 col = current_col; col < term_cols; col++) {
+            buffer_set_entry(current_row, col, entry);
+            vi->set_char_at(current_row, col, entry);
+         }
+         break;
+
+      case 1:
+         for (u32 col = 0; col < current_col; col++) {
+            buffer_set_entry(current_row, col, entry);
+            vi->set_char_at(current_row, col, entry);
+         }
+         break;
+
+      case 2:
+         ts_clear_row(current_row, vgaentry_get_color(entry));
+         break;
+
+      default:
+         return;
+   }
+
+   if (vi->flush_buffers)
+      vi->flush_buffers();
+}
+
 /* ---------------- term action engine --------------------- */
 
 static const actions_table_item actions_table[] = {
@@ -533,7 +565,8 @@ static const actions_table_item actions_table[] = {
    [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
    [a_move_ch_and_cur_rel] = {(action_func)term_action_move_ch_and_cur_rel, 2},
    [a_reset] = {(action_func)term_action_reset, 1},
-   [a_erase_in_display] = {(action_func)term_action_erase_in_display, 1}
+   [a_erase_in_display] = {(action_func)term_action_erase_in_display, 1},
+   [a_erase_in_line] = {(action_func)term_action_erase_in_line, 1}
 };
 
 static void term_execute_action(term_action *a)

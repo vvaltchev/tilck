@@ -12,7 +12,8 @@ typedef enum {
    a_move_ch_and_cur,
    a_move_ch_and_cur_rel,
    a_reset,
-   a_erase_in_display
+   a_erase_in_display,
+   a_erase_in_line
 
 } term_action_type;
 

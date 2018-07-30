@@ -207,12 +207,11 @@ tty_filter_end_csi_seq(char c,
          break;
 
       case 'J':
+         *a = (term_action) { .type1 = a_erase_in_display, .arg = params[0] };
+         break;
 
-         *a = (term_action) {
-            .type1 = a_erase_in_display,
-            .arg = params[0]
-         };
-
+      case 'K':
+         *a = (term_action) { .type1 = a_erase_in_line, .arg = params[0] };
          break;
    }
 
