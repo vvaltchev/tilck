@@ -9,7 +9,9 @@ typedef enum {
    a_scroll_down,
    a_set_col_offset,
    a_move_ch_and_cur,
-   a_move_ch_and_cur_rel
+   a_move_ch_and_cur_rel,
+   a_reset,
+   a_erase_in_display
 
 } term_action_type;
 

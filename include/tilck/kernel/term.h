@@ -39,7 +39,6 @@ void init_term(const video_interface *vi,
                bool use_serial_port);
 
 bool term_is_initialized(void);
-void term_reset(void);
 
 u32 term_get_tab_size(void);
 u32 term_get_rows(void);

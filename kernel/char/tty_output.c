@@ -208,6 +208,16 @@ tty_filter_end_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
 
          term_execute_action(&a);
          break;
+
+      case 'J':
+
+         a = (term_action) {
+            .type1 = a_erase_in_display,
+            .arg = params[0]
+         };
+
+         term_execute_action(&a);
+         break;
    }
 
    ctx->pbc = ctx->ibc = 0;
@@ -303,8 +313,11 @@ int tty_term_write_filter(char c, u8 *color, void *ctx_arg)
                break;
 
             case 'c':
-               term_reset();
-               ctx->state = TERM_WFILTER_STATE_DEFAULT;
+               {
+                  term_action a = { .type1 = a_reset };
+                  term_execute_action(&a);
+                  ctx->state = TERM_WFILTER_STATE_DEFAULT;
+               }
                break;
 
             default:

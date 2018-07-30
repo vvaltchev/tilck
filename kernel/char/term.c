@@ -439,6 +439,83 @@ static void term_action_move_ch_and_cur_rel(s8 dx, s8 dy)
       vi->flush_buffers();
 }
 
+static void term_action_reset()
+{
+   vi->enable_cursor();
+   term_action_move_ch_and_cur(0, 0);
+   scroll = max_scroll = 0;
+
+   for (int i = 0; i < term_rows; i++)
+      ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+
+   if (term_tabs)
+      memset(term_tabs, 0, term_cols * term_rows);
+}
+
+static void term_action_erase_in_display(int mode)
+{
+   u16 entry = make_vgaentry(' ',
+                             make_color(DEFAULT_FG_COLOR,
+                                        DEFAULT_BG_COLOR));
+
+   switch (mode) {
+
+      case 0:
+
+         /* Clear the screen from the cursor position up to the end */
+
+         for (u32 col = current_col; col < term_cols; col++) {
+            buffer_set_entry(current_row, col, entry);
+            vi->set_char_at(current_row, col, entry);
+         }
+
+         for (u32 i = current_row + 1; i < term_rows; i++)
+            ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+
+         break;
+
+      case 1:
+
+         /* Clear the screen from the beginning up to cursor's position */
+
+         for (u32 i = 0; i < current_row; i++)
+            ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+
+         for (u32 col = 0; col < current_col; col++) {
+            buffer_set_entry(current_row, col, entry);
+            vi->set_char_at(current_row, col, entry);
+         }
+
+         break;
+
+      case 2:
+
+         /* Clear the whole screen */
+
+         for (u32 i = 0; i < term_rows; i++)
+            ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+
+         break;
+
+      case 3:
+         /* Clear the whole screen and erase the scroll buffer */
+         {
+            u32 row = current_row;
+            u32 col = current_col;
+            term_action_reset();
+            vi->move_cursor(row, col, make_color(DEFAULT_FG_COLOR,
+                                                 DEFAULT_BG_COLOR));
+         }
+         break;
+
+      default:
+         return;
+   }
+
+   if (vi->flush_buffers)
+      vi->flush_buffers();
+}
+
 /* ---------------- term action engine --------------------- */
 
 static const actions_table_item actions_table[] = {
@@ -447,7 +524,9 @@ static const actions_table_item actions_table[] = {
    [a_scroll_down] = {(action_func)term_action_scroll_down, 1},
    [a_set_col_offset] = {(action_func)term_action_set_col_offset, 1},
    [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
-   [a_move_ch_and_cur_rel] = {(action_func)term_action_move_ch_and_cur_rel, 2}
+   [a_move_ch_and_cur_rel] = {(action_func)term_action_move_ch_and_cur_rel, 2},
+   [a_reset] = {(action_func)term_action_reset, 1},
+   [a_erase_in_display] = {(action_func)term_action_erase_in_display, 1}
 };
 
 void term_execute_action(term_action *a)
@@ -630,18 +709,6 @@ void debug_term_dump_font_table(void)
 
 #endif
 
-void term_reset(void)
-{
-   vi->enable_cursor();
-   term_action_move_ch_and_cur(0, 0);
-   scroll = max_scroll = 0;
-
-   for (int i = 0; i < term_rows; i++)
-      ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
-
-   if (term_tabs)
-      memset(term_tabs, 0, term_cols * term_rows);
-}
 
 void
 init_term(const video_interface *intf,
