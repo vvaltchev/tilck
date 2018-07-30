@@ -77,7 +77,6 @@ tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
          bg = DEFAULT_BG_COLOR;
          goto set_color;
 
-
       case 7:
          /* Reverse video */
          tmp = fg;
@@ -299,21 +298,43 @@ int tty_term_write_filter(char c, u8 *color, void *ctx_arg)
          switch (c) {
 
             case '[':
-               ctx->state = TERM_WFILTER_STATE_ESC2;
+               ctx->state = TERM_WFILTER_STATE_ESC2_CSI;
                ctx->pbc = ctx->ibc = 0;
                break;
 
             case 'c':
-               // TODO: support the RIS (reset to initial state) command
+               term_reset();
+               ctx->state = TERM_WFILTER_STATE_DEFAULT;
+               break;
 
             default:
-               ctx->state = TERM_WFILTER_STATE_DEFAULT;
+               ctx->state = TERM_WFILTER_STATE_ESC2_UNKNOWN;
+               /*
+                * We need to handle now this case because the sequence might
+                * 1-char long, like "^[_". Therefore, if the current character
+                * is in the [0x40, 0x5f] range, we have to go back to the
+                * default state. Otherwise, this is the identifier of a more
+                * complex sequence (e.g. ^[(B), which will end with the first
+                * character in the range [0x40, 0x5f].
+                */
+               goto handle_esc2_unknown;
          }
 
          return TERM_FILTER_WRITE_BLANK;
 
-      case TERM_WFILTER_STATE_ESC2:
+      case TERM_WFILTER_STATE_ESC2_CSI:
          return tty_filter_handle_csi_seq(c, color, ctx);
+
+      case TERM_WFILTER_STATE_ESC2_UNKNOWN:
+
+handle_esc2_unknown:
+
+         if (0x40 <= c && c <= 0x5f) {
+            /* End of any possible (unknown) escape sequence */
+            ctx->state = TERM_WFILTER_STATE_DEFAULT;
+         }
+
+         return TERM_FILTER_WRITE_BLANK;
 
       default:
          NOT_REACHED();

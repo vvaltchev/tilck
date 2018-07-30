@@ -630,6 +630,18 @@ void debug_term_dump_font_table(void)
 
 #endif
 
+void term_reset(void)
+{
+   vi->enable_cursor();
+   term_action_move_ch_and_cur(0, 0);
+   scroll = max_scroll = 0;
+
+   for (int i = 0; i < term_rows; i++)
+      ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+
+   if (term_tabs)
+      memset(term_tabs, 0, term_cols * term_rows);
+}
 
 void
 init_term(const video_interface *intf,
