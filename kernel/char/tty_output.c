@@ -12,6 +12,9 @@
 #include "term_int.h"
 #include "tty_int.h"
 
+static u16 tty_saved_cursor_row;
+static u16 tty_saved_cursor_col;
+
 term_write_filter_ctx_t term_write_filter_ctx;
 
 static const u8 fg_csi_to_vga[256] =
@@ -242,6 +245,21 @@ tty_filter_end_csi_seq(char c,
                tty_keypress_handler_int(*p, *p, false);
          }
 
+         break;
+
+      case 's':
+         /* SCP (Save Cursor Position) */
+         tty_saved_cursor_row = term_get_curr_row();
+         tty_saved_cursor_col = term_get_curr_col();
+         break;
+
+      case 'u':
+         /* RCP (Restore Cursor Position) */
+         *a = (term_action) {
+            .type2 = a_move_ch_and_cur,
+            .arg1 = tty_saved_cursor_row,
+            .arg2 = tty_saved_cursor_col
+         };
          break;
    }
 
