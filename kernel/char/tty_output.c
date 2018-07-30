@@ -213,6 +213,20 @@ tty_filter_end_csi_seq(char c,
       case 'K':
          *a = (term_action) { .type1 = a_erase_in_line, .arg = params[0] };
          break;
+
+      case 'S':
+         *a = (term_action) {
+            .type1 = a_non_buf_scroll_up,
+            .arg = MAX(1, params[0])
+         };
+         break;
+
+      case 'T':
+         *a = (term_action) {
+            .type1 = a_non_buf_scroll_down,
+            .arg = MAX(1, params[0])
+         };
+         break;
    }
 
    ctx->pbc = ctx->ibc = 0;

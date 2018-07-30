@@ -85,6 +85,18 @@ static ALWAYS_INLINE bool ts_is_at_bottom(void)
    return scroll == max_scroll;
 }
 
+static void term_internal_full_video_redraw(void)
+{
+   fpu_context_begin();
+
+   for (u32 row = 0; row < term_rows; row++) {
+      u32 buffer_row = (scroll + row) % total_buffer_rows;
+      vi->set_row(row, &buffer[term_cols * buffer_row], true);
+   }
+
+   fpu_context_end();
+}
+
 static void ts_set_scroll(u32 requested_scroll)
 {
    /*
@@ -107,15 +119,7 @@ static void ts_set_scroll(u32 requested_scroll)
       return; /* nothing to do */
 
    scroll = requested_scroll;
-
-   fpu_context_begin();
-
-   for (u32 row = 0; row < term_rows; row++) {
-      u32 buffer_row = (scroll + row) % total_buffer_rows;
-      vi->set_row(row, &buffer[term_cols * buffer_row], true);
-   }
-
-   fpu_context_end();
+   term_internal_full_video_redraw();
 }
 
 static ALWAYS_INLINE void ts_scroll_up(u32 lines)
@@ -138,11 +142,16 @@ static ALWAYS_INLINE void ts_scroll_to_bottom(void)
    }
 }
 
-static void ts_clear_row(int row_num, u8 color)
+static void ts_buf_clear_row(int row, u8 color)
 {
-   u16 *rowb = buffer + term_cols * ((row_num + scroll) % total_buffer_rows);
+   u16 *rowb = buffer + term_cols * ((row + scroll) % total_buffer_rows);
    memset16(rowb, make_vgaentry(' ', color), term_cols);
-   vi->clear_row(row_num, color);
+}
+
+static void ts_clear_row(int row, u8 color)
+{
+   ts_buf_clear_row(row, color);
+   vi->clear_row(row, color);
 }
 
 /* ---------------- term actions --------------------- */
@@ -555,6 +564,41 @@ static void term_action_erase_in_line(int mode)
       vi->flush_buffers();
 }
 
+static void term_action_non_buf_scroll_up(u32 n)
+{
+   ASSERT(n >= 1);
+   n = MIN(n, term_rows);
+
+   for (u32 row = 0; row < term_rows - n; row++) {
+      u32 s = (scroll + row + n) % total_buffer_rows;
+      u32 d = (scroll + row) % total_buffer_rows;
+      memcpy(&buffer[term_cols * d], &buffer[term_cols * s], term_cols * 2);
+   }
+
+   for (u32 row = term_rows - n; row < term_rows; row++)
+      ts_buf_clear_row(row, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+
+   term_internal_full_video_redraw();
+}
+
+static void term_action_non_buf_scroll_down(u32 n)
+{
+   ASSERT(n >= 1);
+   n = MIN(n, term_rows);
+
+   for (int row = term_rows - n - 1; row >= 0; row--) {
+      u32 s = (scroll + row) % total_buffer_rows;
+      u32 d = (scroll + row + n) % total_buffer_rows;
+      memcpy(&buffer[term_cols * d], &buffer[term_cols * s], term_cols * 2);
+   }
+
+   for (u32 row = 0; row < n; row++)
+      ts_buf_clear_row(row, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+
+   term_internal_full_video_redraw();
+}
+
+
 /* ---------------- term action engine --------------------- */
 
 static const actions_table_item actions_table[] = {
@@ -566,7 +610,9 @@ static const actions_table_item actions_table[] = {
    [a_move_ch_and_cur_rel] = {(action_func)term_action_move_ch_and_cur_rel, 2},
    [a_reset] = {(action_func)term_action_reset, 1},
    [a_erase_in_display] = {(action_func)term_action_erase_in_display, 1},
-   [a_erase_in_line] = {(action_func)term_action_erase_in_line, 1}
+   [a_erase_in_line] = {(action_func)term_action_erase_in_line, 1},
+   [a_non_buf_scroll_up] = {(action_func)term_action_non_buf_scroll_up, 1},
+   [a_non_buf_scroll_down] = {(action_func)term_action_non_buf_scroll_down, 1}
 };
 
 static void term_execute_action(term_action *a)

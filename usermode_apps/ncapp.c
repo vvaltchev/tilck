@@ -4,7 +4,6 @@
 
 int main()
 {
-   filter();
    initscr();
 
    cbreak();
