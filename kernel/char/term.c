@@ -147,6 +147,8 @@ static void ts_clear_row(int row_num, u8 color)
 
 /* ---------------- term actions --------------------- */
 
+static void term_execute_action(term_action *a);
+
 #if TERM_PERF_METRICS
 
 void debug_term_print_scroll_cycles(void)
@@ -378,8 +380,13 @@ static void term_action_write(char *buf, u32 len, u8 color)
 
       if (filter) {
 
-         if (filter(buf[i], &color, filter_ctx))
+         term_action a = { .type1 = a_none };
+
+         if (filter(buf[i], &color, &a, filter_ctx))
             term_internal_write_char2(buf[i], color);
+
+         if (a.type1 != a_none)
+            term_execute_action(&a);
 
       } else {
          term_internal_write_char2(buf[i], color);
@@ -529,7 +536,7 @@ static const actions_table_item actions_table[] = {
    [a_erase_in_display] = {(action_func)term_action_erase_in_display, 1}
 };
 
-void term_execute_action(term_action *a)
+static void term_execute_action(term_action *a)
 {
    ASSERT(a->type3 < ARRAY_SIZE(actions_table));
 
@@ -552,7 +559,7 @@ void term_execute_action(term_action *a)
 }
 
 
-void term_execute_or_enqueue_action(term_action a)
+static void term_execute_or_enqueue_action(term_action a)
 {
    bool written;
    bool was_empty;

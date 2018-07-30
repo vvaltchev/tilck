@@ -59,7 +59,38 @@ void term_move_ch_and_cur_rel(s8 dx, s8 dy);
 #define TERM_FILTER_WRITE_BLANK     0
 #define TERM_FILTER_WRITE_C         1
 
-typedef int (*term_filter_func)(char c, u8 *color /* in/out */, void *ctx);
+typedef struct {
+
+   union {
+
+      struct {
+         u64 type3 :  4;
+         u64 len   : 20;
+         u64 col   :  8;
+         u64 ptr   : 32;
+      };
+
+      struct {
+         u64 type2 :  4;
+         u64 arg1  : 30;
+         u64 arg2  : 30;
+      };
+
+      struct {
+         u64 type1  :  4;
+         u64 arg    : 32;
+         u64 unused : 28;
+      };
+
+      u64 raw;
+   };
+
+} term_action;
+
+typedef int (*term_filter_func)(char c,
+                                u8 *color /* in/out */,
+                                term_action *a /* out */,
+                                void *ctx);
 
 void term_set_filter_func(term_filter_func func, void *ctx);
 term_filter_func term_get_filter_func(void);

@@ -38,18 +38,17 @@ static void
 tty_filter_handle_csi_ABCD(int *params,
                            int pc,
                            char c,
+                           term_action *a,
                            term_write_filter_ctx_t *ctx)
 {
    int d[4] = {0};
    d[c - 'A'] = MAX(1, params[0]);
 
-   term_action a = {
+   *a = (term_action) {
       .type2 = a_move_ch_and_cur_rel,
       .arg1 = -d[0] + d[1],
       .arg2 =  d[2] - d[3]
    };
-
-   term_execute_action(&a);
 }
 
 static void
@@ -124,24 +123,24 @@ tty_filter_handle_csi_m(int *params,
    }
 }
 
-static void tty_move_cursor_begin_nth_row(int row)
+static inline void tty_move_cursor_begin_nth_row(term_action *a, int row)
 {
-   term_action a = {
+   *a = (term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = MIN(term_get_curr_row() + row, term_get_rows() - 1),
       .arg2 = 0
    };
-
-   term_execute_action(&a);
 }
 
 static int
-tty_filter_end_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
+tty_filter_end_csi_seq(char c,
+                       u8 *color,
+                       term_action *a,
+                       term_write_filter_ctx_t *ctx)
 {
    const char *endptr;
    int params[16] = {0};
    int pc = 0;
-   term_action a;
 
    ctx->param_bytes[ctx->pbc] = 0;
    ctx->interm_bytes[ctx->ibc] = 0;
@@ -164,7 +163,7 @@ tty_filter_end_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
       case 'C': // RIGHT -> move_rel(0, +param1)
       case 'D': // LEFT  -> move_rel(0, -param1)
 
-         tty_filter_handle_csi_ABCD(params, pc, c, ctx);
+         tty_filter_handle_csi_ABCD(params, pc, c, a, ctx);
          break;
 
       case 'm': /* SGR (Select Graphic Rendition) parameters */
@@ -173,25 +172,24 @@ tty_filter_end_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
 
       case 'E':
          /* Move the cursor 'n' lines down and set col = 0 */
-        tty_move_cursor_begin_nth_row(MAX(1, params[0]));
+        tty_move_cursor_begin_nth_row(a, MAX(1, params[0]));
         break;
 
       case 'F':
          /* Move the cursor 'n' lines up and set col = 0 */
-         tty_move_cursor_begin_nth_row(-MAX(1, params[0]));
+         tty_move_cursor_begin_nth_row(a, -MAX(1, params[0]));
          break;
 
       case 'G':
          /* Move the cursor to the column 'n' (absolute, 1-based) */
          params[0] = MAX(1, params[0]) - 1;
 
-         a = (term_action) {
+         *a = (term_action) {
             .type2 = a_move_ch_and_cur,
             .arg1 = term_get_curr_row(),
             .arg2 = MIN((u32)params[0], term_get_cols() - 1)
          };
 
-         term_execute_action(&a);
          break;
 
       case 'f':
@@ -200,23 +198,21 @@ tty_filter_end_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
          params[0] = MAX(1, params[0]) - 1;
          params[1] = MAX(1, params[1]) - 1;
 
-         a = (term_action) {
+         *a = (term_action) {
             .type2 = a_move_ch_and_cur,
             .arg1 = MIN((u32)params[0], term_get_rows() - 1),
             .arg2 = MIN((u32)params[1], term_get_cols() - 1)
          };
 
-         term_execute_action(&a);
          break;
 
       case 'J':
 
-         a = (term_action) {
+         *a = (term_action) {
             .type1 = a_erase_in_display,
             .arg = params[0]
          };
 
-         term_execute_action(&a);
          break;
    }
 
@@ -225,7 +221,10 @@ tty_filter_end_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
 }
 
 static int
-tty_filter_handle_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
+tty_filter_handle_csi_seq(char c,
+                          u8 *color,
+                          term_action *a,
+                          term_write_filter_ctx_t *ctx)
 {
    if (0x30 <= c && c <= 0x3F) {
 
@@ -263,7 +262,7 @@ tty_filter_handle_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
 
    if (0x40 <= c && c <= 0x7E) {
       /* Final CSI byte */
-      return tty_filter_end_csi_seq(c, color, ctx);
+      return tty_filter_end_csi_seq(c, color, a, ctx);
    }
 
    /* We shouldn't get here. Something's gone wrong: return the default state */
@@ -272,7 +271,7 @@ tty_filter_handle_csi_seq(char c, u8 *color, term_write_filter_ctx_t *ctx)
    return TERM_FILTER_WRITE_BLANK;
 }
 
-int tty_term_write_filter(char c, u8 *color, void *ctx_arg)
+int tty_term_write_filter(char c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
 
@@ -314,8 +313,7 @@ int tty_term_write_filter(char c, u8 *color, void *ctx_arg)
 
             case 'c':
                {
-                  term_action a = { .type1 = a_reset };
-                  term_execute_action(&a);
+                  *a = (term_action) { .type1 = a_reset };
                   ctx->state = TERM_WFILTER_STATE_DEFAULT;
                }
                break;
@@ -336,7 +334,7 @@ int tty_term_write_filter(char c, u8 *color, void *ctx_arg)
          return TERM_FILTER_WRITE_BLANK;
 
       case TERM_WFILTER_STATE_ESC2_CSI:
-         return tty_filter_handle_csi_seq(c, color, ctx);
+         return tty_filter_handle_csi_seq(c, color, a, ctx);
 
       case TERM_WFILTER_STATE_ESC2_UNKNOWN:
 
