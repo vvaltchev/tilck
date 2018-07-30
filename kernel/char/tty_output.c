@@ -227,6 +227,22 @@ tty_filter_end_csi_seq(char c,
             .arg = MAX(1, params[0])
          };
          break;
+
+      case 'n':
+
+         if (params[0] == 6) {
+
+            /* DSR (Device Status Report) */
+
+            char dsr[16];
+            snprintk(dsr, sizeof(dsr), "\033[%u;%uR",
+                     term_get_curr_row() + 1, term_get_curr_col() + 1);
+
+            for (char *p = dsr; *p; p++)
+               tty_keypress_handler_int(*p, *p, false);
+         }
+
+         break;
    }
 
    ctx->pbc = ctx->ibc = 0;

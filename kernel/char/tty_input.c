@@ -189,25 +189,15 @@ static int tty_keypress_handle_canon_mode(u32 key, u8 c)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
-static int tty_keypress_handler(u32 key, u8 c)
+int tty_keypress_handler_int(u32 key, u8 c, bool check_mods)
 {
-   if (key == KEY_PAGE_UP && kb_is_shift_pressed()) {
-      term_scroll_up(5);
-      return KB_HANDLER_OK_AND_STOP;
-   }
-
-   if (key == KEY_PAGE_DOWN && kb_is_shift_pressed()) {
-      term_scroll_down(5);
-      return KB_HANDLER_OK_AND_STOP;
-   }
-
    if (!c)
       return tty_handle_non_printable_key(key);
 
-   if (kb_is_alt_pressed())
+   if (check_mods && kb_is_alt_pressed())
       kb_buf_write_elem('\033');
 
-   if (kb_is_ctrl_pressed()) {
+   if (check_mods && kb_is_ctrl_pressed()) {
       if (isalpha(c) || c == '\\') {
          /* ctrl ignores the case of the letter */
          c = toupper(c) - 'A' + 1;
@@ -228,7 +218,7 @@ static int tty_keypress_handler(u32 key, u8 c)
          c = '\r';
    }
 
-   if (tty_handle_special_controls(c)) /* Ctrl+C, Ctrl+D, Ctrl+Z, etc. */
+   if (check_mods && tty_handle_special_controls(c)) /* Ctrl+C, Ctrl+D etc. */
       return KB_HANDLER_OK_AND_CONTINUE;
 
    if (c_term.c_lflag & ICANON)
@@ -239,6 +229,21 @@ static int tty_keypress_handler(u32 key, u8 c)
 
    kcond_signal_one(&kb_input_cond);
    return KB_HANDLER_OK_AND_CONTINUE;
+}
+
+int tty_keypress_handler(u32 key, u8 c)
+{
+   if (key == KEY_PAGE_UP && kb_is_shift_pressed()) {
+      term_scroll_up(5);
+      return KB_HANDLER_OK_AND_STOP;
+   }
+
+   if (key == KEY_PAGE_DOWN && kb_is_shift_pressed()) {
+      term_scroll_down(5);
+      return KB_HANDLER_OK_AND_STOP;
+   }
+
+   return tty_keypress_handler_int(key, c, true);
 }
 
 static u32 tty_flush_read_buf(devfs_file_handle *h, char *buf, u32 size)
