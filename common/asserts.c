@@ -10,3 +10,8 @@ NORETURN void not_reached(const char *file, int line)
 {
    panic("NOT_REACHED in %s:%i\n", file, line);
 }
+
+NORETURN void not_implemented(const char *file, int line)
+{
+   panic("NOT_IMPLEMENTED in %s:%i\n", file, line);
+}
