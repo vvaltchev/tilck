@@ -60,6 +60,20 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 
    disable_preemption();
 
+
+#ifndef UNIT_TEST_ENVIRONMENT
+
+   /*
+    * Trying to enqueue a tasklet from the same tasklet thread can cause
+    * a deadlock when the ringbuf is full if the caller waits in a loop for
+    * the enqueue to succeed: the runner function won't get the control back
+    * until it gets the control to execute a tasklet and, clearly, this is a
+    * contraddition, leading to an endless loop.
+    */
+   ASSERT(get_curr_task() != t->task);
+
+#endif
+
    success = ringbuf_write_elem(&t->ringbuf, &new_tasklet);
 
 
