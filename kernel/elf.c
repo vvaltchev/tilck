@@ -15,6 +15,7 @@ static int load_phdr(fs_handle *elf_file,
                      Elf_Phdr *phdr,
                      uptr *end_vaddr_ref)
 {
+   int rc;
    ssize_t ret;
    char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
 
@@ -36,8 +37,10 @@ static int load_phdr(fs_handle *elf_file,
       if (!p)
          return -ENOMEM;
 
-      int rc = map_page(pdir, vaddr, KERNEL_VA_TO_PA(p), true, true);
-      VERIFY(rc == 0); // TODO: handle this OOM
+      rc = map_page(pdir, vaddr, KERNEL_VA_TO_PA(p), true, true);
+
+      if (rc != 0)
+         return rc;
    }
 
    ret = vfs_seek(elf_file, phdr->p_offset, SEEK_SET);
@@ -194,7 +197,8 @@ int load_elf_program(const char *filepath,
                         true,
                         true);
 
-      VERIFY(rc == 0); // TODO: handle this OOM
+      if (rc != 0)
+         goto out;
    }
 
    // Finally setting the output-params.
