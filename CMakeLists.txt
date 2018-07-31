@@ -230,18 +230,27 @@ set(KERNEL_BASE_VA     0xC0000000)
 set(KERNEL_PADDR       0x00100000)
 set(LINEAR_MAPPING_MB         768)
 
+# Generate config files & build scripts
 include(${CMAKE_SOURCE_DIR}/other/gen_config.cmake)
 
 ################################################################################
 # Include sub-directories
 
+add_subdirectory(usermode_apps)
 add_subdirectory(bootloader)
 add_subdirectory(bootloader/efi)
 add_subdirectory(kernel)
-add_subdirectory(usermode_apps)
 add_subdirectory(scripts/build_apps)
 
 ################################################################################
+
+set(BUILD_FATPART ${CMAKE_BINARY_DIR}/scripts/build_fatpart)
+
+configure_file(
+   ${CMAKE_SOURCE_DIR}/scripts/build_scripts/build_fatpart
+   ${BUILD_FATPART}
+   @ONLY
+)
 
 set(BUILD_SCRIPTS_FILES_LIST "")
 file(GLOB files "${BUILD_SCRIPTS}/*")

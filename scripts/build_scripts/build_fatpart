@@ -35,12 +35,13 @@ rm $bdir/sysroot/README
 cd $bdir/sysroot
 ln $bdir/usermode_apps/init sbin/
 
-for x in $bdir/usermode_apps/*; do
-   if [ -x "$x" ] && [ ! -d "$x" ] && [ "`basename $x`" != "init" ]; then
-      ln $x bin/
-   fi
-done
+apps="@USERMODE_APPS_FILES_LIST@"
 
+IFS=";"
+for x in ${apps[@]}; do
+   ln "$x" bin/
+done
+unset IFS
 
 # hard-link EFI files
 ln @EFI_x86_64_FILE@ EFI/BOOT/

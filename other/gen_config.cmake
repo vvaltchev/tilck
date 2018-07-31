@@ -96,7 +96,6 @@ endfunction()
 set(EARLY_BOOT_SCRIPT ${CMAKE_BINARY_DIR}/bootloader/early_boot_script.ld)
 set(STAGE3_SCRIPT ${CMAKE_BINARY_DIR}/bootloader/elf_stage3_script.ld)
 set(KERNEL_SCRIPT ${CMAKE_BINARY_DIR}/kernel/arch/${ARCH}/linker_script.ld)
-set(BUILD_FATPART ${CMAKE_BINARY_DIR}/scripts/build_fatpart)
 set(MUSL_GCC ${CMAKE_BINARY_DIR}/scripts/musl-gcc)
 
 hex2dec(${BL_ST2_DATA_SEG} BL_ST2_DATA_SEG_DEC)
@@ -126,12 +125,6 @@ configure_file(
 configure_file(
    ${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH}/linker_script.ld
    ${KERNEL_SCRIPT}
-   @ONLY
-)
-
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/build_scripts/build_fatpart
-   ${BUILD_FATPART}
    @ONLY
 )
 
