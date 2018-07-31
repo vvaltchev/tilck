@@ -53,9 +53,12 @@ set(TERM_PERF_METRICS ON CACHE BOOL
 set(PANIC_SHOW_STACKTRACE ON CACHE BOOL
     "Show the stacktrace in case of a kernel panic")
 
+set(DEBUG_CHECKS_IN_RELEASE_BUILD ON CACHE BOOL
+    "Keep checking ASSERTs and other debug checks even in release builds")
+
 # Kernel options (disabled by default)
 
-set(PANIC_SHOW_REGS ON CACHE BOOL
+set(PANIC_SHOW_REGS OFF CACHE BOOL
     "Show the content of the main registers in case of kernel panic")
 
 set(KMALLOC_FREE_MEM_POISONING OFF CACHE BOOL
@@ -73,27 +76,22 @@ set(KMALLOC_HEAPS_CREATION_DEBUG OFF CACHE BOOL
 set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
     "Make the bootloader to poison all the available memory")
 
-set(DEBUG_CHECKS_IN_RELEASE_BUILD OFF CACHE BOOL
-    "Keep checking ASSERTs and other debug checks even in release builds")
 
 list(
-   APPEND kernel_opts_enabled_by_default
+   APPEND kernel_opts_list
 
    TIMER_HZ
    KERNEL_TRACK_NESTED_INTERRUPTS
    TERM_PERF_METRICS
    PANIC_SHOW_STACKTRACE
-)
+   DEBUG_CHECKS_IN_RELEASE_BUILD
 
-list(
-   APPEND kernel_opts_disabled_by_default
-
+   PANIC_SHOW_REGS
    KMALLOC_FREE_MEM_POISONING
    KMALLOC_SUPPORT_DEBUG_LOG
    KMALLOC_SUPPORT_LEAK_DETECTOR
    KMALLOC_HEAPS_CREATION_DEBUG
    BOOTLOADER_POISON_MEMORY
-   ASSERTS_IN_RELEASE_BUILD
 )
 
 ###########################################################
@@ -163,14 +161,8 @@ if (${USE_GCOV})
    set(GCOV_LINK_FLAGS "-fprofile-arcs -lgcov")
 endif()
 
-foreach (opt ${kernel_opts_enabled_by_default})
+foreach (opt ${kernel_opts_list})
    message(STATUS "${opt} = ${${opt}}")
-endforeach()
-
-foreach (opt ${kernel_opts_disabled_by_default})
-   if (${${opt}})
-      message(STATUS "${opt} = ${${opt}}")
-   endif()
 endforeach()
 
 set(
