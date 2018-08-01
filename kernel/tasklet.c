@@ -131,7 +131,7 @@ bool run_one_tasklet(int tn)
  * stack area for the current task. This following code allows instead, any kind
  * of such problems to be caught much earlier.
  */
-#ifdef DEBUG
+#if !defined(NDEBUG) && !defined(RELEASE)
 
 #define DEBUG_SAVE_ESP()                 \
    uptr curr_esp;                        \

@@ -25,7 +25,7 @@ void simple_test_kthread(void *arg)
 
    for (i = 0; i < 256*MB; i++) {
 
-#ifdef DEBUG
+#if !defined(NDEBUG) && !defined(RELEASE)
 
       /*
        * This VERY IMPORTANT check ensures us that in NO WAY functions like
@@ -39,6 +39,10 @@ void simple_test_kthread(void *arg)
       if (esp != saved_esp)
          panic("esp: %p != saved_esp: %p [curr-saved: %d], i = %u",
                esp, saved_esp, esp - saved_esp, i);
+#else
+
+      (void)esp;
+      (void)saved_esp;
 
 #endif
 
