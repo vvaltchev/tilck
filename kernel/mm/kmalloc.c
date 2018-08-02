@@ -215,18 +215,28 @@ actual_allocate_node(kmalloc_heap *h,
    return !alloc_failed;
 }
 
+static size_t calculate_node_size(kmalloc_heap *h, int node)
+{
+   size_t size = h->size;
+
+   for (int cn = node; cn != 0; cn = NODE_PARENT(cn)) {
+      size >>= 1;
+   }
+
+   return size;
+}
+
 static void *
 internal_kmalloc_aux(kmalloc_heap *h,
                      const size_t size,    /* power of 2 */
-                     const int start_node)
+                     const int start_node,
+                     size_t start_node_size)
 {
    block_node *nodes = h->metadata_nodes;
-   size_t start_node_size = h->size;
    int stack_size = 0;
 
-   for (int cn = start_node; cn != 0; cn = NODE_PARENT(cn)) {
-      start_node_size >>= 1;
-   }
+   if (!start_node_size)
+      start_node_size = calculate_node_size(h, start_node);
 
    SIMULATE_CALL2(start_node_size, start_node);
 
@@ -357,10 +367,13 @@ internal_kmalloc(kmalloc_heap *h, size_t desired_size)
    if (UNLIKELY(desired_size > h->size))
       return NULL;
 
+   const size_t block_size = MAX(desired_size, h->min_block_size);
+
    return
-      internal_kmalloc_aux(h,
-                           MAX(desired_size, h->min_block_size), /*block size*/
-                           0 /* start node */);
+      internal_kmalloc_aux(h,          /* heap */
+                           block_size, /* block size */
+                           0           /* start node */,
+                           h->size     /* start node size */);
 }
 
 
