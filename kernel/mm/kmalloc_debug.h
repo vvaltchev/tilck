@@ -62,10 +62,13 @@ void debug_kmalloc_stop_log(void)
    DEBUG_printk("Node #%i, node_size = %u, vaddr = %p\n",                   \
                 node, node_size, node_to_ptr(h, node, node_size))           \
 
+#define DEBUG_kmalloc_bad_end                                               \
+   DEBUG_printk("kmalloc_bad_end: ptr: %p, node #%i, size: %u\n",           \
+                vaddr, node, desired_size)                                  \
+
 #define DEBUG_kmalloc_end                                                   \
    DEBUG_printk("kmalloc_end: ptr: %p, node #%i, size: %u\n",               \
                 vaddr, node, desired_size)                                  \
-
 
 #define DEBUG_already_full                                                  \
    DEBUG_printk("Already FULL, return NULL\n")
@@ -110,3 +113,6 @@ void debug_kmalloc_stop_log(void)
 
 #define DEBUG_free_freeing_block                                            \
    DEBUG_printk("---> FREEING the ALLOC BLOCK!\n")
+
+#define DEBUG_free_skip_alloc_failed_block                                  \
+   DEBUG_printk("---> SKIP alloc-failed ALLOC BLOCK!\n")

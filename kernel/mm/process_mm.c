@@ -161,10 +161,13 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
 
-   printk("mmap2(addr: %p, len: %u, prot: %u, flags: %p, fd: %d, off: %d)\n",
-         addr, len, prot, flags, fd, pgoffset);
+   //printk("mmap2(addr: %p, len: %u, prot: %u, flags: %p, fd: %d, off: %d)\n",
+   //      addr, len, prot, flags, fd, pgoffset);
 
    if (addr != NULL)
+      return -EINVAL;
+
+   if (!IS_PAGE_ALIGNED(len))
       return -EINVAL;
 
    if (flags != (MAP_ANONYMOUS | MAP_PRIVATE))
@@ -207,5 +210,13 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
 sptr sys_munmap(void *vaddr, size_t len)
 {
+   task_info *curr = get_curr_task();
+   process_info *pi = curr->pi;
+
+   if (!vaddr || !pi->mmap_heap || !IS_PAGE_ALIGNED(len))
+      return -EINVAL;
+
+
+
    return -ENOSYS;
 }

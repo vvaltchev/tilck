@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/mman.h>
 
 #define COLOR_RED     "\033[31m"
 #define COLOR_YELLOW  "\033[93m"
@@ -329,6 +330,44 @@ void cmd_brk_test(void)
    }
 }
 
+void cmd_oom_test(void)
+{
+   const size_t alloc_size = 1024 * 1024;
+   void *arr[1024];
+   int i;
+
+   for (i = 0; i < 1024; i++) {
+
+      errno = 0;
+
+      void *res = mmap(NULL,
+                       alloc_size,
+                       PROT_READ | PROT_WRITE,
+                       MAP_ANONYMOUS | MAP_PRIVATE,
+                       -1,
+                       0);
+
+      if (res == (void*) -1) {
+         //printf("mmap failed with: %s\n", strerror(errno));
+         i--;
+         break;
+      }
+
+      arr[i] = res;
+      printf("Allocated %u MB\n", i);
+   }
+
+   // for (; i >= 0; i--) {
+
+   //    int rc = munmap(arr[i], alloc_size);
+
+   //    if (rc != 0) {
+   //       printf("munmap(%p) failed with error: %s\n", strerror(errno));
+   //       exit(1);
+   //    }
+   // }
+}
+
 void cmd_help(void);
 
 /* ------------------------------------------- */
@@ -368,7 +407,8 @@ struct {
    {"sysenter_fork_test", cmd_sysenter_fork_test, TT_MED, true},
    {"fpu", cmd_fpu, TT_SHORT, true},
    {"fpu_loop", cmd_fpu_loop, TT_LONG, false},
-   {"brk_test", cmd_brk_test, TT_SHORT, true}
+   {"brk_test", cmd_brk_test, TT_SHORT, true},
+   {"oom_test", cmd_oom_test, TT_SHORT, true}
 };
 
 void dump_list_of_commands(void)

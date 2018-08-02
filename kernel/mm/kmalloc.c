@@ -34,9 +34,10 @@ typedef struct {
          // 0 means completely empty if split=0, or partially empty if split=1
          u8 full : 1;
 
-         u8 allocated : 1; // used only for nodes having size = alloc_block_size
+         u8 allocated : 1;    // only for nodes with size = alloc_block_size
+         u8 alloc_failed : 1; // only for nodes with size = alloc_block_size
 
-         u8 unused : 5; // Free unused (for now) bits.
+         u8 unused : 4; // Free unused (for now) bits.
       };
 
       u8 raw;
@@ -142,15 +143,21 @@ static size_t set_free_uplevels(kmalloc_heap *h, int *node, size_t size)
    return curr_size;
 }
 
-static void *actual_allocate_node(kmalloc_heap *h, size_t node_size, int node)
+static bool
+actual_allocate_node(kmalloc_heap *h,
+                     size_t node_size,
+                     int node,
+                     void **vaddr_ref)
 {
+   bool alloc_failed = false;
    block_node *nodes = h->metadata_nodes;
    nodes[node].full = true;
 
    const uptr vaddr = (uptr)node_to_ptr(h, node, node_size);
+   *vaddr_ref = (void *)vaddr;
 
    if (h->linear_mapping)
-      return (void *)vaddr; // nothing to do!
+      return true; // nothing to do!
 
    uptr alloc_block_vaddr = vaddr & ~(h->alloc_block_size - 1);
    const int alloc_block_count =
@@ -179,8 +186,12 @@ static void *actual_allocate_node(kmalloc_heap *h, size_t node_size, int node)
             h->valloc_and_map(alloc_block_vaddr,
                               h->alloc_block_size / PAGE_SIZE);
 
-         VERIFY(success); // TODO: handle out-of-memory
-         nodes[alloc_node].allocated = true;
+         if (success) {
+            nodes[alloc_node].allocated = true;
+         } else {
+            nodes[alloc_node].alloc_failed = true;
+            alloc_failed = true;
+         }
       }
 
       if (node_size >= h->alloc_block_size) {
@@ -194,7 +205,7 @@ static void *actual_allocate_node(kmalloc_heap *h, size_t node_size, int node)
    }
 
    DEBUG_allocate_node3;
-   return (void *)vaddr;
+   return !alloc_failed;
 }
 
 void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
@@ -252,7 +263,9 @@ void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
             SIMULATE_RETURN_NULL();
          }
 
-         void *vaddr = actual_allocate_node(h, node_size, node);
+         void *vaddr = NULL;
+         bool success = actual_allocate_node(h, node_size, node, &vaddr);
+         ASSERT(vaddr != NULL); // 'vaddr' is not NULL even when !success
 
          // Mark the parent nodes as 'full', when necessary.
 
@@ -264,6 +277,23 @@ void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
                ASSERT(!nodes[n].full);
                nodes[n].full = true;
             }
+         }
+
+         if (!success) {
+
+            /*
+             * Corner case: in case of non-linearly mapped heaps, a successfull
+             * allocation in the heap metadata does not always mean a sucessfull
+             * kmalloc(), because the underlying allocator [h->valloc_and_map]
+             * might have failed. In this case we have to call internal_kfree2
+             * and restore kmalloc's heap metadata to the previous state. Also,
+             * all the alloc nodes we be either marked as allocated or
+             * alloc_failed.
+             */
+
+            DEBUG_kmalloc_bad_end;
+            internal_kfree2(h, vaddr, size);
+            return NULL;
          }
 
          DEBUG_kmalloc_end;
@@ -364,12 +394,17 @@ void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size)
       ASSERT(size >= h->alloc_block_size ||
              is_block_node_free(nodes[alloc_node]));
 
-      ASSERT(nodes[alloc_node].allocated);
+      ASSERT(nodes[alloc_node].allocated || nodes[alloc_node].alloc_failed);
 
-      DEBUG_free_freeing_block;
-      h->vfree_and_unmap(alloc_block_vaddr, h->alloc_block_size / PAGE_SIZE);
+      if (nodes[alloc_node].allocated) {
+         DEBUG_free_freeing_block;
+         h->vfree_and_unmap(alloc_block_vaddr, h->alloc_block_size / PAGE_SIZE);
+         nodes[alloc_node] = new_node;
+      } else {
+         DEBUG_free_skip_alloc_failed_block;
+         nodes[alloc_node].alloc_failed = false;
+      }
 
-      nodes[alloc_node] = new_node;
       alloc_block_vaddr += h->alloc_block_size;
    }
 }
