@@ -178,6 +178,13 @@ actual_allocate_node(kmalloc_heap *h,
 
       DEBUG_allocate_node1;
 
+      /*
+       * The nodes with alloc_failed=1 are supposed to be processed immediately
+       * by internal_kfree() after actual_allocate_node() failed.
+       */
+
+      ASSERT(!nodes[alloc_node].alloc_failed);
+
       if (!nodes[alloc_node].allocated) {
 
          DEBUG_allocate_node2;
@@ -208,31 +215,20 @@ actual_allocate_node(kmalloc_heap *h,
    return !alloc_failed;
 }
 
-void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
+static void *
+internal_kmalloc_aux(kmalloc_heap *h,
+                     const size_t size,    /* power of 2 */
+                     const int start_node)
 {
-   ASSERT(desired_size != 0);
-
-   if (!h->linear_mapping) {
-
-      /*
-       * ASSERTs that metadata_nodes is aligned at h->alloc_block_size.
-       * Without that condition the "magic" of ptr_to_node() and node_to_ptr()
-       * does not work.
-       */
-      ASSERT(((uptr)h->metadata_nodes & (h->alloc_block_size - 1)) == 0);
-   }
-
-   DEBUG_kmalloc_begin;
-
-   if (UNLIKELY(desired_size > h->size))
-      return NULL;
-
-   const size_t size = MAX(desired_size, h->min_block_size);
    block_node *nodes = h->metadata_nodes;
-
+   size_t start_node_size = h->size;
    int stack_size = 0;
 
-   SIMULATE_CALL2(h->size /* node size */, 0 /* node number */);
+   for (int cn = start_node; cn != 0; cn = NODE_PARENT(cn)) {
+      start_node_size >>= 1;
+   }
+
+   SIMULATE_CALL2(start_node_size, start_node);
 
    while (stack_size) {
 
@@ -339,6 +335,32 @@ void *internal_kmalloc(kmalloc_heap *h, size_t desired_size)
    }
 
    return NULL;
+}
+
+void *
+internal_kmalloc(kmalloc_heap *h, size_t desired_size)
+{
+   ASSERT(desired_size != 0);
+
+   if (!h->linear_mapping) {
+
+      /*
+       * ASSERTs that metadata_nodes is aligned at h->alloc_block_size.
+       * Without that condition the "magic" of ptr_to_node() and node_to_ptr()
+       * does not work.
+       */
+      ASSERT(((uptr)h->metadata_nodes & (h->alloc_block_size - 1)) == 0);
+   }
+
+   DEBUG_kmalloc_begin;
+
+   if (UNLIKELY(desired_size > h->size))
+      return NULL;
+
+   return
+      internal_kmalloc_aux(h,
+                           MAX(desired_size, h->min_block_size), /*block size*/
+                           0 /* start node */);
 }
 
 
