@@ -68,9 +68,20 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
     * a deadlock when the ringbuf is full if the caller waits in a loop for
     * the enqueue to succeed: the runner function won't get the control back
     * until it gets the control to execute a tasklet and, clearly, this is a
-    * contraddition, leading to an endless loop.
+    * contraddition, leading to an endless loop. Exception: if we're running
+    * in IRQ that interrupted the current task, which might be the tasklet
+    * runner we'd like to enqueue in, we have to allow the enqueue to happen.
+    * Simple example: a key press generates an IRQ #1 which interrupts the
+    * tasklet runner #1 and wants to enqueue a tasklet there. We MUST allow
+    * that to happen.
     */
-   ASSERT(get_curr_task() != t->task);
+
+   #ifdef DEBUG
+
+      if (get_curr_task() == t->task)
+         check_in_irq_handler();
+
+   #endif
 
 #endif
 

@@ -71,6 +71,25 @@ void check_not_in_irq_handler(void)
    }
 }
 
+void check_in_irq_handler(void)
+{
+   uptr var;
+
+   if (!in_panic()) {
+
+      disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
+
+      if (nested_interrupts_count > 0) {
+         if (is_irq(nested_interrupts[nested_interrupts_count - 1])) {
+            enable_interrupts(&var);
+            return;
+         }
+      }
+
+      panic("Expected TO BE in an IRQ handler (but we're NOT)");
+   }
+}
+
 bool in_syscall(void)
 {
    ASSERT(!are_interrupts_enabled());
