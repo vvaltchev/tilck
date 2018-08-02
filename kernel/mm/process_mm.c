@@ -46,7 +46,12 @@ bool user_valloc_and_map(uptr user_vaddr, int page_count)
 
       uptr pa = KERNEL_VA_TO_PA(kernel_vaddr);
       int rc = map_page(pdir, (void *)va, pa, true, true);
-      VERIFY(rc == 0); // TODO: handle this OOM
+
+      if (rc != 0) {
+         kfree2(kernel_vaddr, PAGE_SIZE);
+         user_vfree_and_unmap(user_vaddr, i);
+         return false;
+      }
    }
 
    return true;
@@ -122,7 +127,12 @@ sptr sys_brk(void *new_brk)
 
       const uptr paddr = KERNEL_VA_TO_PA(kernel_vaddr);
       int rc = map_page(pi->pdir, vaddr, paddr, true, true);
-      VERIFY(rc == 0); // TODO: handle this OOM
+
+      if (rc != 0) {
+         kfree2(kernel_vaddr, PAGE_SIZE);
+         break;
+      }
+
       vaddr += PAGE_SIZE;
    }
 
