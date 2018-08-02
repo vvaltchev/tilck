@@ -348,9 +348,9 @@ internal_kmalloc_aux(kmalloc_heap *h,
 }
 
 void *
-internal_kmalloc(kmalloc_heap *h, size_t desired_size)
+internal_kmalloc(kmalloc_heap *h, size_t *size)
 {
-   ASSERT(desired_size != 0);
+   ASSERT(*size != 0);
 
    if (!h->linear_mapping) {
 
@@ -364,15 +364,15 @@ internal_kmalloc(kmalloc_heap *h, size_t desired_size)
 
    DEBUG_kmalloc_begin;
 
-   if (UNLIKELY(desired_size > h->size))
+   if (UNLIKELY(*size > h->size))
       return NULL;
 
-   const size_t block_size = MAX(desired_size, h->min_block_size);
+   *size = MAX(roundup_next_power_of_2(*size), h->min_block_size);
 
    return
       internal_kmalloc_aux(h,          /* heap */
-                           block_size, /* block size */
-                           0           /* start node */,
+                           *size,      /* block size */
+                           0,          /* start node */
                            h->size     /* start node size */);
 }
 
@@ -383,6 +383,8 @@ void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size)
 
    DEBUG_free1;
    ASSERT(node_to_ptr(h, node, size) == ptr);
+   ASSERT(roundup_next_power_of_2(size) == size);
+   ASSERT(size >= h->min_block_size);
 
    block_node *nodes = h->metadata_nodes;
 

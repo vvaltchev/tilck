@@ -200,7 +200,10 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
          return -ENOMEM;
    }
 
-   void *res = internal_kmalloc(pi->mmap_heap, len);
+   size_t actual_len = len;
+   void *res = internal_kmalloc(pi->mmap_heap, &len);
+
+   (void)actual_len;
 
    if (!res)
       return -ENOMEM;

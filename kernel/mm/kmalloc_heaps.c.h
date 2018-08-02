@@ -22,13 +22,11 @@ STATIC char first_heap[KMALLOC_FIRST_HEAP_SIZE] ALIGNED_AT(KMALLOC_MAX_ALIGN);
 
 #include "kmalloc_leak_detector.c.h"
 
-void *kmalloc(size_t s)
+void *kmalloc(size_t desired_size)
 {
-   ASSERT(kmalloc_initialized);
-
    void *ret = NULL;
-   s = roundup_next_power_of_2(s);
 
+   ASSERT(kmalloc_initialized);
    disable_preemption();
 
    // Iterate in reverse-order because the first heaps are the biggest ones.
@@ -44,18 +42,18 @@ void *kmalloc(size_t s)
        * created yet, therefore has size = 0 or just there is not enough free
        * space in it.
        */
-      if (heap_size < s || heap_free < s)
+      if (heap_size < desired_size || heap_free < desired_size)
          continue;
 
-      void *vaddr = internal_kmalloc(heaps[i], s);
+      size_t actual_size = desired_size;
+      void *vaddr = internal_kmalloc(heaps[i], &actual_size);
 
       if (vaddr) {
-         s = MAX(s, heaps[i]->min_block_size);
-         heaps[i]->mem_allocated += s;
+         heaps[i]->mem_allocated += actual_size;
          ret = vaddr;
 
          if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
-            debug_kmalloc_register_alloc(vaddr, s);
+            debug_kmalloc_register_alloc(vaddr, actual_size);
          }
 
          break;
@@ -117,7 +115,7 @@ void kfree2(void *ptr, size_t user_size)
    }
 
    if (hn < 0)
-      goto out; /* no need to release the lock, we're going to panic */
+      goto out; /* no need to re-enable the preemption, we're going to panic */
 
    if (user_size) {
 
@@ -134,7 +132,9 @@ void kfree2(void *ptr, size_t user_size)
       size = calculate_block_size(heaps[hn], vaddr);
    }
 
-   ASSERT(vaddr >= heaps[hn]->vaddr && vaddr + size <= heaps[hn]->heap_over_end);
+   ASSERT(vaddr >= heaps[hn]->vaddr);
+   ASSERT(vaddr + size <= heaps[hn]->heap_over_end);
+
    internal_kfree2(heaps[hn], ptr, size);
    heaps[hn]->mem_allocated -= size;
 
@@ -165,7 +165,6 @@ size_t kmalloc_get_total_heap_allocation(void)
    enable_preemption();
    return tot;
 }
-
 
 bool kmalloc_create_heap(kmalloc_heap *h,
                          uptr vaddr,
@@ -396,7 +395,10 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
     * allocation using internal_kmalloc().
     */
 
-   void *md_allocated = internal_kmalloc(heaps[used_heaps], metadata_size);
+   size_t actual_metadata_size = metadata_size;
+
+   void *md_allocated = internal_kmalloc(heaps[used_heaps],
+                                         &actual_metadata_size);
 
    /*
     * We have to be SURE that the allocation returned the very beginning of
