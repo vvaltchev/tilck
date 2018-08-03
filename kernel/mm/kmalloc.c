@@ -222,8 +222,12 @@ internal_kmalloc_split_block(kmalloc_heap *h,
 
    for (s = block_size; s > leaf_node_size; s >>= 1) {
 
-      for (int j = 0; j < node_count; j++)
-         nodes[n + j].raw |= (FL_NODE_SPLIT | FL_NODE_FULL);
+      if (s != h->alloc_block_size) {
+         memset(&nodes[n], FL_NODE_SPLIT | FL_NODE_FULL, node_count);
+      } else {
+         for (int j = 0; j < node_count; j++)
+            nodes[n + j].raw |= (FL_NODE_SPLIT | FL_NODE_FULL);
+      }
 
       node_count <<= 1;
       n = NODE_LEFT(n);
@@ -231,10 +235,45 @@ internal_kmalloc_split_block(kmalloc_heap *h,
 
    ASSERT(s == leaf_node_size);
 
-   for (int j = 0; j < node_count; j++) {
-      nodes[n + j].full = 1;
-      nodes[n + j].split = 0;
+   if (s != h->alloc_block_size) {
+      memset(&nodes[n], FL_NODE_FULL, node_count);
+   } else {
+      for (int j = 0; j < node_count; j++) {
+         nodes[n + j].full = 1;
+         nodes[n + j].split = 0;
+      }
    }
+}
+
+void
+internal_kmalloc_coalesce_block(kmalloc_heap *h,
+                                void *const vaddr,
+                                const size_t block_size)
+{
+   block_node *nodes = h->metadata_nodes;
+   const int block_node = ptr_to_node(h, vaddr, block_size);
+
+   size_t s;
+   int n = block_node;
+   int node_count = 1;
+
+   ASSERT(nodes[n].full || nodes[n].split);
+
+   for (s = block_size; s >= h->min_block_size; s >>= 1) {
+
+      if (s != h->alloc_block_size) {
+         bzero(&nodes[n], node_count);
+      } else {
+         for (int j = 0; j < node_count; j++)
+            nodes[n + j].raw &= ~(FL_NODE_SPLIT | FL_NODE_FULL);
+      }
+
+      node_count <<= 1;
+      n = NODE_LEFT(n);
+   }
+
+   nodes[block_node].full = 1;
+   ASSERT(s < h->min_block_size);
 }
 
 static void *
@@ -309,7 +348,7 @@ internal_kmalloc_aux(kmalloc_heap *h,
              */
 
             DEBUG_kmalloc_bad_end;
-            internal_kfree2(h, vaddr, size);
+            internal_kfree2(h, vaddr, size, false);
             return NULL;
          }
 
@@ -388,7 +427,7 @@ internal_kmalloc(kmalloc_heap *h, size_t *size)
 }
 
 
-void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size)
+void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
 {
    const int node = ptr_to_node(h, ptr, size);
 
@@ -399,7 +438,14 @@ void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size)
 
    block_node *nodes = h->metadata_nodes;
 
-   // A node returned to user cannot be split.
+   if (allow_split && nodes[node].split) {
+      internal_kmalloc_coalesce_block(h, ptr, size);
+   }
+
+   /*
+    * Regular calls to kfree2() pass to it "regular" blocks returned by
+    * kmalloc(), which are never split.
+    */
    ASSERT(!nodes[node].split);
 
    {

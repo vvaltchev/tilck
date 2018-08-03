@@ -44,13 +44,18 @@ void kmalloc_destroy_heap(kmalloc_heap *h);
 kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h);
 
 void *internal_kmalloc(kmalloc_heap *h, size_t *size /* in/out */);
-void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size);
+void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size, bool allow_split);
 
 void
 internal_kmalloc_split_block(kmalloc_heap *h,
                              void *const vaddr,
                              const size_t block_size,
                              const size_t leaf_node_size);
+
+void
+internal_kmalloc_coalesce_block(kmalloc_heap *h,
+                                void *const vaddr,
+                                const size_t block_size);
 
 static ALWAYS_INLINE void kfree(void *ptr)
 {
