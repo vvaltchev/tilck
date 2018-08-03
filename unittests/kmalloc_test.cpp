@@ -173,19 +173,29 @@ TEST_F(kmalloc_test, chaos_test)
    }
 }
 
+#define COLOR_RED           "\033[31m"
+#define COLOR_YELLOW        "\033[93m"
+#define COLOR_BRIGHT_GREEN  "\033[92m"
+#define ATTR_BOLD           "\033[1m"
+#define ATTR_FAINT          "\033[2m"
+#define RESET_ATTRS         "\033[0m"
+
 static void
 dump_heap_node_head(block_node n, int w)
 {
+   printf("%s", ATTR_FAINT);
    printf("+");
 
    for (int i = 0; i < w-1; i++)
       printf("-");
+
+   printf("%s", RESET_ATTRS);
 }
 
 static void
 dump_heap_node_head_end(void)
 {
-   printf("+\n");
+   printf(ATTR_FAINT "+\n" RESET_ATTRS);
 }
 
 static void
@@ -204,14 +214,16 @@ static void
 dump_heap_node(block_node n, int w)
 {
    int i;
-   printf("|");
+   printf(ATTR_FAINT "|" RESET_ATTRS);
 
    for (i = 0; i < (w-1)/2-1; i++)
       printf(" ");
 
+   printf("%s", COLOR_BRIGHT_GREEN);
    printf("%s", n.allocated ? "A" : "-");
    printf("%s", n.split ? "S" : "-");
    printf("%s", n.full ? "F" : "-");
+   printf("%s", RESET_ATTRS);
 
    for (i += 4; i < w; i++)
       printf(" ");
@@ -236,30 +248,150 @@ dump_heap_subtree(kmalloc_heap *h, int node, int levels)
       for (int j = 0; j < level_width; j++)
          dump_heap_node(nodes[n + j], width);
 
-      printf("|\n");
+      printf(ATTR_FAINT "|\n" RESET_ATTRS);
 
-      for (int j = 0; j < level_width; j++)
-         dump_heap_node_head(nodes[n + j], width);
+      if (i == levels - 1) {
+         for (int j = 0; j < level_width; j++)
+            dump_heap_node_head(nodes[n + j], width);
 
-      dump_heap_node_tail_end();
+         dump_heap_node_tail_end();
+      }
 
       n = NODE_LEFT(n);
       level_width <<= 1;
       width >>= 1;
    }
+
+   printf("\n");
 }
 
 TEST_F(kmalloc_test, split_block)
 {
+   void *ptr;
+   size_t s;
+
    kmalloc_heap h;
    kmalloc_create_heap(&h,
-                       0,                            /* vaddr */
+                       1000000,                      /* vaddr */
                        KMALLOC_MIN_HEAP_SIZE,        /* heap size */
                        KMALLOC_MIN_HEAP_SIZE / 16,   /* min block size */
                        0,    /* alloc block size: 0 because linear_mapping=1 */
                        true, /* linear mapping */
                        NULL, NULL, NULL);
 
-   dump_heap_subtree(&h, 0, 4);
+   block_node *nodes = (block_node *)h.metadata_nodes;
+
+   s = h.size / 2;
+   ptr = internal_kmalloc(&h, &s);
+   ASSERT_TRUE(ptr != NULL);
+
+   printf("\nAfter alloc of heap_size/2:\n");
+   dump_heap_subtree(&h, 0, 5);
+
+   /*
+    * Here we expect the metadata tree to look like this:
+      +---------------------------------------------------------------+
+      |                              -S-                              |
+      +-------------------------------+-------------------------------+
+      |              --F              |              ---              |
+      +---------------+---------------+---------------+---------------+
+      |      ---      |      ---      |      ---      |      ---      |
+      +-------+-------+-------+-------+-------+-------+-------+-------+
+      |  ---  |  ---  |  ---  |  ---  |  ---  |  ---  |  ---  |  ---  |
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+      |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    */
+
+   EXPECT_TRUE(nodes[0].raw == FL_NODE_SPLIT);
+   EXPECT_TRUE(nodes[1].raw == FL_NODE_FULL);
+
+
+   internal_kmalloc_split_block(&h, ptr, s, h.min_block_size);
+
+   printf("After split_block:\n");
+   dump_heap_subtree(&h, 0, 5);
+
+   /*
+    * Here we expect the metadata tree to look like this:
+      +---------------------------------------------------------------+
+      |                              -S-                              |
+      +-------------------------------+-------------------------------+
+      |              -SF              |              ---              |
+      +---------------+---------------+---------------+---------------+
+      |      -SF      |      -SF      |      ---      |      ---      |
+      +-------+-------+-------+-------+-------+-------+-------+-------+
+      |  -SF  |  -SF  |  -SF  |  -SF  |  ---  |  ---  |  ---  |  ---  |
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+      |--F|--F|--F|--F|--F|--F|--F|--F|---|---|---|---|---|---|---|---|
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    */
+
+
+   EXPECT_TRUE(nodes[0].raw == FL_NODE_SPLIT);
+   EXPECT_TRUE(nodes[1].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+   EXPECT_TRUE(nodes[2].raw == 0);
+   EXPECT_TRUE(nodes[3].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+   EXPECT_TRUE(nodes[4].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+   EXPECT_TRUE(nodes[5].raw == 0);
+   EXPECT_TRUE(nodes[6].raw == 0);
+
+   for (int i = 7; i <= 10; i++)
+      EXPECT_TRUE(nodes[i].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+
+   for (int i = 11; i <= 14; i++)
+      EXPECT_TRUE(nodes[i].raw == 0);
+
+   for (int i = 15; i <= 22; i++)
+      EXPECT_TRUE(nodes[i].raw == FL_NODE_FULL);
+
+   printf("After kfree leaf node 3:\n");
+
+   internal_kfree2(&h,
+                   (void *)(h.vaddr + h.min_block_size * 3),
+                   h.min_block_size);
+
+   dump_heap_subtree(&h, 0, 5);
+
+   /*
+    * Here we expect the metadata tree to look like this:
+      +---------------------------------------------------------------+
+      |                              -S-                              |
+      +-------------------------------+-------------------------------+
+      |              -S-              |              ---              |
+      +---------------+---------------+---------------+---------------+
+      |      -S-      |      -SF      |      ---      |      ---      |
+      +-------+-------+-------+-------+-------+-------+-------+-------+
+      |  -SF  |  -S-  |  -SF  |  -SF  |  ---  |  ---  |  ---  |  ---  |
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+      |--F|--F|--F|---|--F|--F|--F|--F|---|---|---|---|---|---|---|---|
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    */
+
+   EXPECT_TRUE(nodes[0].raw == FL_NODE_SPLIT);
+   EXPECT_TRUE(nodes[1].raw == FL_NODE_SPLIT);
+   EXPECT_TRUE(nodes[2].raw == 0);
+   EXPECT_TRUE(nodes[3].raw == FL_NODE_SPLIT);
+   EXPECT_TRUE(nodes[4].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+   EXPECT_TRUE(nodes[5].raw == 0);
+   EXPECT_TRUE(nodes[6].raw == 0);
+
+   for (int i = 7; i <= 10; i++) {
+      if (i != 8)
+         EXPECT_TRUE(nodes[i].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+      else
+         EXPECT_TRUE(nodes[i].raw == FL_NODE_SPLIT);
+   }
+
+   for (int i = 11; i <= 14; i++)
+      EXPECT_TRUE(nodes[i].raw == 0);
+
+   for (int i = 15; i <= 22; i++) {
+      if (i != 18)
+         EXPECT_TRUE(nodes[i].raw == FL_NODE_FULL);
+      else
+         EXPECT_TRUE(nodes[i].raw == 0);
+   }
+
    kmalloc_destroy_heap(&h);
 }

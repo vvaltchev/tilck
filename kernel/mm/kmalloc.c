@@ -237,7 +237,6 @@ internal_kmalloc_split_block(kmalloc_heap *h,
    }
 }
 
-
 static void *
 internal_kmalloc_aux(kmalloc_heap *h,
                      const size_t size,    /* power of 2 */
