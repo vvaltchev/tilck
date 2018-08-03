@@ -280,7 +280,8 @@ static void *
 internal_kmalloc_aux(kmalloc_heap *h,
                      const size_t size,    /* power of 2 */
                      const int start_node,
-                     size_t start_node_size)
+                     size_t start_node_size,
+                     bool do_actual_alloc)
 {
    block_node *nodes = h->metadata_nodes;
    int stack_size = 0;
@@ -320,8 +321,15 @@ internal_kmalloc_aux(kmalloc_heap *h,
          }
 
          void *vaddr = NULL;
-         bool success = actual_allocate_node(h, node_size, node, &vaddr);
-         ASSERT(vaddr != NULL); // 'vaddr' is not NULL even when !success
+         bool success;
+
+         if (do_actual_alloc) {
+            success = actual_allocate_node(h, node_size, node, &vaddr);
+            ASSERT(vaddr != NULL); // 'vaddr' is not NULL even when !success
+         } else {
+            success = true;
+            vaddr = node_to_ptr(h, node, node_size);
+         }
 
          // Mark the parent nodes as 'full', when necessary.
 
@@ -423,7 +431,8 @@ internal_kmalloc(kmalloc_heap *h, size_t *size)
       internal_kmalloc_aux(h,          /* heap */
                            *size,      /* block size */
                            0,          /* start node */
-                           h->size     /* start node size */);
+                           h->size,    /* start node size */
+                           true        /* do_actual_alloc */);
 }
 
 
