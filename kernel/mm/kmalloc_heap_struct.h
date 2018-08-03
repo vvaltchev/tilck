@@ -1,4 +1,6 @@
 
+#pragma once
+
 #define STACK_VAR (h->alloc_stack)
 #include <tilck/common/norec.h>
 

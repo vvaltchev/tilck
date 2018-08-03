@@ -19,7 +19,9 @@ extern "C" {
    #include <tilck/kernel/kmalloc.h>
    #include <tilck/kernel/paging.h>
    #include <tilck/kernel/self_tests/self_tests.h>
+
    #include <kernel/mm/kmalloc_heap_struct.h> // kmalloc private header
+   #include <kernel/mm/kmalloc_block_node.h>  // kmalloc private header
 
    extern bool mock_kmalloc;
    extern bool suppress_printk;
@@ -169,4 +171,95 @@ TEST_F(kmalloc_test, chaos_test)
          check_heaps_metadata(meta_before);
       });
    }
+}
+
+static void
+dump_heap_node_head(block_node n, int w)
+{
+   printf("+");
+
+   for (int i = 0; i < w-1; i++)
+      printf("-");
+}
+
+static void
+dump_heap_node_head_end(void)
+{
+   printf("+\n");
+}
+
+static void
+dump_heap_node_tail(block_node n, int w)
+{
+   dump_heap_node_head(n, w);
+}
+
+static void
+dump_heap_node_tail_end(void)
+{
+   dump_heap_node_head_end();
+}
+
+static void
+dump_heap_node(block_node n, int w)
+{
+   int i;
+   printf("|");
+
+   for (i = 0; i < (w-1)/2-1; i++)
+      printf(" ");
+
+   printf("%s", n.allocated ? "A" : "-");
+   printf("%s", n.split ? "S" : "-");
+   printf("%s", n.full ? "F" : "-");
+
+   for (i += 4; i < w; i++)
+      printf(" ");
+}
+
+static void
+dump_heap_subtree(kmalloc_heap *h, int node, int levels)
+{
+   int width = (1 << (levels - 1)) * 4;
+   int level_width = 1;
+   int n = node;
+
+   block_node *nodes = (block_node *)h->metadata_nodes;
+
+   for (int i = 0; i < levels; i++) {
+
+      for (int j = 0; j < level_width; j++)
+         dump_heap_node_head(nodes[n + j], width);
+
+      dump_heap_node_head_end();
+
+      for (int j = 0; j < level_width; j++)
+         dump_heap_node(nodes[n + j], width);
+
+      printf("|\n");
+
+      for (int j = 0; j < level_width; j++)
+         dump_heap_node_head(nodes[n + j], width);
+
+      dump_heap_node_tail_end();
+
+      n = NODE_LEFT(n);
+      level_width <<= 1;
+      width >>= 1;
+   }
+}
+
+TEST_F(kmalloc_test, split_block)
+{
+   kmalloc_heap h;
+   kmalloc_create_heap(&h,
+                       0,                            /* vaddr */
+                       KMALLOC_MIN_HEAP_SIZE,        /* heap size */
+                       KMALLOC_MIN_HEAP_SIZE / 16,   /* min block size */
+                       0,    /* alloc block size: 0 because linear_mapping=1 */
+                       true, /* linear mapping */
+                       NULL, NULL, NULL);
+
+   dump_heap_subtree(&h, 0, 4);
+   kmalloc_destroy_heap(&h);
 }

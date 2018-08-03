@@ -34,7 +34,7 @@ bool kmalloc_create_heap(kmalloc_heap *h,
                          uptr vaddr,
                          size_t size,
                          size_t min_block_size,
-                         size_t alloc_block_size,
+                         size_t alloc_block_size, /* 0 if linear_mapping=1 */
                          bool linear_mapping,
                          void *metadata_nodes,               // optional
                          virtual_alloc_and_map_func valloc,  // optional
@@ -45,6 +45,12 @@ kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h);
 
 void *internal_kmalloc(kmalloc_heap *h, size_t *size /* in/out */);
 void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size);
+
+void
+internal_kmalloc_split_block(kmalloc_heap *h,
+                             void *const vaddr,
+                             const size_t block_size,
+                             const size_t leaf_node_size);
 
 static ALWAYS_INLINE void kfree(void *ptr)
 {

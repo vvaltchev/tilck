@@ -12,38 +12,12 @@
 
 #include "kmalloc_debug.h"
 #include "kmalloc_heap_struct.h"
+#include "kmalloc_block_node.h"
 
 size_t kmalloc_get_heap_struct_size(void)
 {
    return sizeof(kmalloc_heap);
 }
-
-#define FL_NODE_SPLIT      (1 << 0)
-#define FL_NODE_FULL       (1 << 1)
-#define FL_NODE_ALLOCATED  (1 << 2)
-
-typedef struct {
-
-   union {
-
-      struct {
-         // 1 if the block has been split. Check its children.
-         u8 split : 1;
-
-         // 1 means obviously completely full
-         // 0 means completely empty if split=0, or partially empty if split=1
-         u8 full : 1;
-
-         u8 allocated : 1;    // only for nodes with size = alloc_block_size
-         u8 alloc_failed : 1; // only for nodes with size = alloc_block_size
-
-         u8 unused : 4; // Free unused (for now) bits.
-      };
-
-      u8 raw;
-   };
-
-} block_node;
 
 STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 
@@ -225,6 +199,44 @@ static size_t calculate_node_size(kmalloc_heap *h, int node)
 
    return size;
 }
+
+void
+internal_kmalloc_split_block(kmalloc_heap *h,
+                             void *const vaddr,
+                             const size_t block_size,
+                             const size_t leaf_node_size)
+{
+   ASSERT(leaf_node_size >= h->min_block_size);
+   ASSERT(block_size >= h->min_block_size);
+   ASSERT(roundup_next_power_of_2(leaf_node_size) == leaf_node_size);
+   ASSERT(roundup_next_power_of_2(block_size) == block_size);
+
+   block_node *nodes = h->metadata_nodes;
+
+   size_t s;
+   int n = ptr_to_node(h, vaddr, block_size);
+   int node_count = 1;
+
+   ASSERT(nodes[n].full);
+   ASSERT(!nodes[n].split);
+
+   for (s = block_size; s > leaf_node_size; s >>= 1) {
+
+      for (int j = 0; j < node_count; j++)
+         nodes[n + j].raw |= (FL_NODE_SPLIT | FL_NODE_FULL);
+
+      node_count <<= 1;
+      n = NODE_LEFT(n);
+   }
+
+   ASSERT(s == leaf_node_size);
+
+   for (int j = 0; j < node_count; j++) {
+      nodes[n + j].full = 1;
+      nodes[n + j].split = 0;
+   }
+}
+
 
 static void *
 internal_kmalloc_aux(kmalloc_heap *h,
