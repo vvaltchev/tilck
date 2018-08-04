@@ -282,7 +282,7 @@ TEST_F(kmalloc_test, split_block)
    block_node *nodes = (block_node *)h.metadata_nodes;
 
    s = h.size / 2;
-   ptr = internal_kmalloc(&h, &s);
+   ptr = per_heap_kmalloc(&h, &s);
    ASSERT_TRUE(ptr != NULL);
 
    printf("\nAfter alloc of heap_size/2:\n");
@@ -414,7 +414,7 @@ TEST_F(kmalloc_test, coalesce_block)
    block_node *nodes = (block_node *)h.metadata_nodes;
 
    s = h.size / 2;
-   ptr = internal_kmalloc(&h, &s);
+   ptr = per_heap_kmalloc(&h, &s);
    ASSERT_TRUE(ptr != NULL);
 
    internal_kmalloc_split_block(&h, ptr, s, h.min_block_size);

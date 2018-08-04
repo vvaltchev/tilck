@@ -30,7 +30,7 @@ struct kmalloc_heap {
    bool linear_mapping;
 
    /*
-    * Explicit stack used by internal_kmalloc()
+    * Explicit stack used by per_heap_kmalloc()
     *
     * NOTE: this stack is per-heap because some kmalloc heaps might use
     * kmalloc itself as valloc/vfree funcs [see process_mm.c]. In such cases,

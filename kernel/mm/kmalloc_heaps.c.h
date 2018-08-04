@@ -46,7 +46,7 @@ void *kmalloc(size_t desired_size)
          continue;
 
       size_t actual_size = desired_size;
-      void *vaddr = internal_kmalloc(heaps[i], &actual_size);
+      void *vaddr = per_heap_kmalloc(heaps[i], &actual_size);
 
       if (vaddr) {
          heaps[i]->mem_allocated += actual_size;
@@ -392,12 +392,12 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
     * We passed to kmalloc_create_heap() the begining of the heap as 'metadata'
     * in order to avoid using another heap (that might not be large enough) for
     * that. Now we MUST register that area in the metadata itself, by doing an
-    * allocation using internal_kmalloc().
+    * allocation using per_heap_kmalloc().
     */
 
    size_t actual_metadata_size = metadata_size;
 
-   void *md_allocated = internal_kmalloc(heaps[used_heaps],
+   void *md_allocated = per_heap_kmalloc(heaps[used_heaps],
                                          &actual_metadata_size);
 
    /*

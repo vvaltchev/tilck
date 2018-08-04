@@ -43,7 +43,7 @@ bool kmalloc_create_heap(kmalloc_heap *h,
 void kmalloc_destroy_heap(kmalloc_heap *h);
 kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h);
 
-void *internal_kmalloc(kmalloc_heap *h, size_t *size /* in/out */);
+void *per_heap_kmalloc(kmalloc_heap *h, size_t *size /* in/out */);
 void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size, bool allow_split);
 
 void

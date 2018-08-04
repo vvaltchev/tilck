@@ -406,7 +406,7 @@ internal_kmalloc_aux(kmalloc_heap *h,
 }
 
 void *
-internal_kmalloc(kmalloc_heap *h, size_t *size)
+per_heap_kmalloc(kmalloc_heap *h, size_t *size)
 {
    ASSERT(*size != 0);
 
