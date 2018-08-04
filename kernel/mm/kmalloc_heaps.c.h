@@ -135,7 +135,7 @@ void kfree2(void *ptr, size_t user_size)
    ASSERT(vaddr >= heaps[hn]->vaddr);
    ASSERT(vaddr + size <= heaps[hn]->heap_over_end);
 
-   internal_kfree2(heaps[hn], ptr, size, false);
+   per_heap_kfree(heaps[hn], ptr, size, false);
    heaps[hn]->mem_allocated -= size;
 
    if (KMALLOC_FREE_MEM_POISONING) {

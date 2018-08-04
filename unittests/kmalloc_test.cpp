@@ -347,7 +347,7 @@ TEST_F(kmalloc_test, split_block)
 
    printf("After kfree leaf node #3:\n");
 
-   internal_kfree2(&h,
+   per_heap_kfree(&h,
                    (void *)(h.vaddr + h.min_block_size * 3),
                    h.min_block_size,
                    false);

@@ -349,14 +349,14 @@ internal_kmalloc_aux(kmalloc_heap *h,
              * Corner case: in case of non-linearly mapped heaps, a successfull
              * allocation in the heap metadata does not always mean a sucessfull
              * kmalloc(), because the underlying allocator [h->valloc_and_map]
-             * might have failed. In this case we have to call internal_kfree2
+             * might have failed. In this case we have to call per_heap_kfree
              * and restore kmalloc's heap metadata to the previous state. Also,
              * all the alloc nodes we be either marked as allocated or
              * alloc_failed.
              */
 
             DEBUG_kmalloc_bad_end;
-            internal_kfree2(h, vaddr, size, false);
+            per_heap_kfree(h, vaddr, size, false);
             return NULL;
          }
 
@@ -436,7 +436,7 @@ per_heap_kmalloc(kmalloc_heap *h, size_t *size)
 }
 
 
-void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
+void per_heap_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
 {
    const int node = ptr_to_node(h, ptr, size);
 

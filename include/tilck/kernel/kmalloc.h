@@ -44,7 +44,7 @@ void kmalloc_destroy_heap(kmalloc_heap *h);
 kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h);
 
 void *per_heap_kmalloc(kmalloc_heap *h, size_t *size /* in/out */);
-void internal_kfree2(kmalloc_heap *h, void *ptr, size_t size, bool allow_split);
+void per_heap_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split);
 
 void
 internal_kmalloc_split_block(kmalloc_heap *h,
