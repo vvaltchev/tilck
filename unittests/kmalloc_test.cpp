@@ -272,7 +272,7 @@ TEST_F(kmalloc_test, split_block)
 
    kmalloc_heap h;
    kmalloc_create_heap(&h,
-                       1000000,                      /* vaddr */
+                       MB,                           /* vaddr */
                        KMALLOC_MIN_HEAP_SIZE,        /* heap size */
                        KMALLOC_MIN_HEAP_SIZE / 16,   /* min block size */
                        0,    /* alloc block size: 0 because linear_mapping=1 */
@@ -282,7 +282,7 @@ TEST_F(kmalloc_test, split_block)
    block_node *nodes = (block_node *)h.metadata_nodes;
 
    s = h.size / 2;
-   ptr = per_heap_kmalloc(&h, &s);
+   ptr = per_heap_kmalloc(&h, &s, false);
    ASSERT_TRUE(ptr != NULL);
 
    printf("\nAfter alloc of heap_size/2:\n");
@@ -404,7 +404,7 @@ TEST_F(kmalloc_test, coalesce_block)
 
    kmalloc_heap h;
    kmalloc_create_heap(&h,
-                       1000000,                      /* vaddr */
+                       MB,                           /* vaddr */
                        KMALLOC_MIN_HEAP_SIZE,        /* heap size */
                        KMALLOC_MIN_HEAP_SIZE / 16,   /* min block size */
                        0,    /* alloc block size: 0 because linear_mapping=1 */
@@ -414,7 +414,7 @@ TEST_F(kmalloc_test, coalesce_block)
    block_node *nodes = (block_node *)h.metadata_nodes;
 
    s = h.size / 2;
-   ptr = per_heap_kmalloc(&h, &s);
+   ptr = per_heap_kmalloc(&h, &s, false);
    ASSERT_TRUE(ptr != NULL);
 
    internal_kmalloc_split_block(&h, ptr, s, h.min_block_size);
@@ -476,6 +476,80 @@ TEST_F(kmalloc_test, coalesce_block)
       |--F|--F|--F|--F|---|---|---|---|---|---|---|---|---|---|---|---|
       +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
     */
+
+   kmalloc_destroy_heap(&h);
+}
+
+static bool fake_alloc_and_map_func(uptr vaddr, int page_count)
+{
+   return true;
+}
+
+static void fake_free_and_map_func(uptr vaddr, int page_count)
+{
+
+}
+
+TEST_F(kmalloc_test, multi_step_alloc)
+{
+   void *ptr;
+   size_t s;
+
+   kmalloc_heap h;
+   kmalloc_create_heap(&h,
+                       MB,                           /* vaddr */
+                       KMALLOC_MIN_HEAP_SIZE,        /* heap size */
+                       KMALLOC_MIN_HEAP_SIZE / 16,   /* min block size */
+                       KMALLOC_MIN_HEAP_SIZE / 8,    /* alloc block size */
+                       false,                        /* linear mapping */
+                       NULL,                         /* metadata_nodes */
+                       fake_alloc_and_map_func,
+                       fake_free_and_map_func);
+
+   block_node *nodes = (block_node *)h.metadata_nodes;
+
+   s = 15 * h.min_block_size;
+   ptr = per_heap_kmalloc(&h, &s, true);
+
+   EXPECT_EQ(s, 15 * h.min_block_size);
+   EXPECT_EQ(ptr, (void *)h.vaddr);
+
+   dump_heap_subtree(&h, 0, 5);
+
+   /*
+    * Here we expect the metadata tree to look like this:
+      +---------------------------------------------------------------+
+      |                              -S-                              |
+      +-------------------------------+-------------------------------+
+      |              --F              |              -S-              |
+      +---------------+---------------+---------------+---------------+
+      |      ---      |      ---      |      --F      |      -S-      |
+      +-------+-------+-------+-------+-------+-------+-------+-------+
+      |  A-F  |  A-F  |  A-F  |  A-F  |  A-F  |  A-F  |  A-F  |  AS-  |
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+      |---|---|---|---|---|---|---|---|---|---|---|---|---|---|--F|---|
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    */
+
+   EXPECT_TRUE(nodes[0].raw == FL_NODE_SPLIT);
+   EXPECT_TRUE(nodes[1].raw == FL_NODE_FULL);
+   EXPECT_TRUE(nodes[2].raw == FL_NODE_SPLIT);
+   EXPECT_TRUE(nodes[3].raw == 0);
+   EXPECT_TRUE(nodes[4].raw == 0);
+   EXPECT_TRUE(nodes[5].raw == FL_NODE_FULL);
+   EXPECT_TRUE(nodes[6].raw == FL_NODE_SPLIT);
+
+   for (int i = 7; i <= 13; i++)
+      EXPECT_TRUE(nodes[i].raw == (FL_NODE_ALLOCATED | FL_NODE_FULL));
+
+   EXPECT_TRUE(nodes[14].raw == (FL_NODE_ALLOCATED | FL_NODE_SPLIT));
+
+   for (int i = 15; i <= 31; i++) {
+      if (i != 29)
+         EXPECT_TRUE(nodes[i].raw == 0) << "i = " << i;
+      else
+         EXPECT_TRUE(nodes[i].raw == FL_NODE_FULL) << "i = " << i;
+   }
 
    kmalloc_destroy_heap(&h);
 }

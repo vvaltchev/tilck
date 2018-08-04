@@ -201,7 +201,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    }
 
    size_t actual_len = len;
-   void *res = per_heap_kmalloc(pi->mmap_heap, &len);
+   void *res = per_heap_kmalloc(pi->mmap_heap, &len, false);
 
    (void)actual_len;
 

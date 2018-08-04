@@ -277,11 +277,11 @@ internal_kmalloc_coalesce_block(kmalloc_heap *h,
 }
 
 static void *
-internal_kmalloc_aux(kmalloc_heap *h,
-                     const size_t size,    /* power of 2 */
-                     const int start_node,
-                     size_t start_node_size,
-                     bool do_actual_alloc)
+internal_kmalloc(kmalloc_heap *h,
+                 const size_t size,       /* power of 2 */
+                 const int start_node,
+                 size_t start_node_size,
+                 bool do_actual_alloc)
 {
    block_node *nodes = h->metadata_nodes;
    int stack_size = 0;
@@ -406,37 +406,67 @@ internal_kmalloc_aux(kmalloc_heap *h,
 }
 
 void *
-per_heap_kmalloc(kmalloc_heap *h, size_t *size)
+per_heap_kmalloc(kmalloc_heap *h,
+                 size_t *size,
+                 bool multi_step_alloc)
 {
    ASSERT(*size != 0);
-
-   if (!h->linear_mapping) {
-
-      /*
-       * ASSERTs that metadata_nodes is aligned at h->alloc_block_size.
-       * Without that condition the "magic" of ptr_to_node() and node_to_ptr()
-       * does not work.
-       */
-      ASSERT(((uptr)h->metadata_nodes & (h->alloc_block_size - 1)) == 0);
-   }
 
    DEBUG_kmalloc_begin;
 
    if (UNLIKELY(*size > h->size))
       return NULL;
 
-   *size = MAX(roundup_next_power_of_2(*size), h->min_block_size);
+   const size_t rounded_up_size =
+      MAX(roundup_next_power_of_2(*size), h->min_block_size);
 
-   return
-      internal_kmalloc_aux(h,          /* heap */
-                           *size,      /* block size */
-                           0,          /* start node */
-                           h->size,    /* start node size */
-                           true        /* do_actual_alloc */);
+   if (!multi_step_alloc || ((rounded_up_size - *size) < h->min_block_size)) {
+
+      *size = rounded_up_size;
+
+      return internal_kmalloc(h,          /* heap */
+                              *size,      /* block size */
+                              0,          /* start node */
+                              h->size,    /* start node size */
+                              true        /* do_actual_alloc */);
+   }
+
+   /*
+    * multi_step_alloc is true, therefore we can do multiple allocations in
+    * order to allocate almost exactly (round-up at min_block_size) bytes.
+    */
+
+   const size_t desired_size = *size;
+   void *big_block = internal_kmalloc(h, rounded_up_size, 0, h->size, false);
+
+   if (!big_block)
+      return NULL;
+
+   const int big_block_node = ptr_to_node(h, big_block, rounded_up_size);
+   size_t tot = 0;
+
+   for (int i = h->heap_data_size_log2 - 1; i >= 0 && tot < desired_size; i--) {
+
+      const size_t s = (1 << i);
+
+      if (!(desired_size & s))
+         continue;
+
+      DEBUG_ONLY(void *r =)
+         internal_kmalloc(h, s, big_block_node, rounded_up_size, true);
+
+      ASSERT(r == big_block + tot);
+
+      tot += s;
+   }
+
+   *size = tot;
+   return big_block;
 }
 
 
-void per_heap_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
+void
+internal_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
 {
    const int node = ptr_to_node(h, ptr, size);
 
@@ -510,6 +540,12 @@ void per_heap_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
 
       alloc_block_vaddr += h->alloc_block_size;
    }
+}
+
+void
+per_heap_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
+{
+   internal_kfree(h, ptr, size, allow_split);
 }
 
 /* Natural continuation of this source file. Purpose: make this file shorter. */

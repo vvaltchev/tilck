@@ -46,7 +46,7 @@ void *kmalloc(size_t desired_size)
          continue;
 
       size_t actual_size = desired_size;
-      void *vaddr = per_heap_kmalloc(heaps[i], &actual_size);
+      void *vaddr = per_heap_kmalloc(heaps[i], &actual_size, false);
 
       if (vaddr) {
          heaps[i]->mem_allocated += actual_size;
@@ -178,6 +178,9 @@ bool kmalloc_create_heap(kmalloc_heap *h,
 {
    // heap size has to be a multiple of KMALLOC_MIN_HEAP_SIZE
    ASSERT((size & (KMALLOC_MIN_HEAP_SIZE - 1)) == 0);
+
+   // vaddr must be aligned at least at KMALLOC_MAX_ALIGN
+   ASSERT((vaddr & (KMALLOC_MAX_ALIGN - 1)) == 0);
 
    if (!linear_mapping) {
       // alloc block size has to be a multiple of PAGE_SIZE
@@ -398,7 +401,8 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
    size_t actual_metadata_size = metadata_size;
 
    void *md_allocated = per_heap_kmalloc(heaps[used_heaps],
-                                         &actual_metadata_size);
+                                         &actual_metadata_size,
+                                         false);
 
    /*
     * We have to be SURE that the allocation returned the very beginning of
@@ -456,19 +460,24 @@ static void init_kmalloc_fill_region(int region, uptr vaddr, uptr limit)
 
 void init_kmalloc(void)
 {
-   int heap_index;
+
    ASSERT(!kmalloc_initialized);
 
    used_heaps = 0;
    bzero(heaps, sizeof(heaps));
+
+#ifndef UNIT_TEST_ENVIRONMENT
+   int heap_index;
 
    heap_index = kmalloc_internal_add_heap(&first_heap, sizeof(first_heap));
    VERIFY(heap_index == 0);
 
    heaps[heap_index]->region =
       system_mmap_get_region_of(KERNEL_VA_TO_PA(&first_heap));
+#endif
 
    kmalloc_initialized = true; /* we have at least 1 heap */
+
 
    for (int i = 0; i < mem_regions_count; i++) {
 
