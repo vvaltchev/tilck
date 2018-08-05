@@ -6,6 +6,10 @@
 #define FL_NODE_FULL       (1 << 1)
 #define FL_NODE_ALLOCATED  (1 << 2)
 
+#define FL_NODE_SPLIT_AND_FULL      (FL_NODE_SPLIT | FL_NODE_FULL)
+#define FL_NODE_ALLOCATED_AND_FULL  (FL_NODE_ALLOCATED | FL_NODE_FULL)
+#define FL_NODE_ALLOCATED_AND_SPLIT (FL_NODE_ALLOCATED | FL_NODE_SPLIT)
+
 typedef struct {
 
    union {

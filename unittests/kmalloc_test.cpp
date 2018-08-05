@@ -329,21 +329,21 @@ TEST_F(kmalloc_test, split_block)
 
 
    EXPECT_TRUE(nodes[0].raw == FL_NODE_SPLIT);
-   EXPECT_TRUE(nodes[1].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+   EXPECT_TRUE(nodes[1].raw == FL_NODE_SPLIT_AND_FULL);
    EXPECT_TRUE(nodes[2].raw == 0);
-   EXPECT_TRUE(nodes[3].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
-   EXPECT_TRUE(nodes[4].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+   EXPECT_TRUE(nodes[3].raw == FL_NODE_SPLIT_AND_FULL);
+   EXPECT_TRUE(nodes[4].raw == FL_NODE_SPLIT_AND_FULL);
    EXPECT_TRUE(nodes[5].raw == 0);
    EXPECT_TRUE(nodes[6].raw == 0);
 
    for (int i = 7; i <= 10; i++)
-      EXPECT_TRUE(nodes[i].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+      EXPECT_TRUE(nodes[i].raw == FL_NODE_SPLIT_AND_FULL) << "node #" << i;
 
    for (int i = 11; i <= 14; i++)
-      EXPECT_TRUE(nodes[i].raw == 0);
+      EXPECT_TRUE(nodes[i].raw == 0) << "node #" << i;
 
    for (int i = 15; i <= 22; i++)
-      EXPECT_TRUE(nodes[i].raw == FL_NODE_FULL);
+      EXPECT_TRUE(nodes[i].raw == FL_NODE_FULL) << "node #" << i;
 
    printf("After kfree leaf node #3:\n");
 
@@ -373,25 +373,25 @@ TEST_F(kmalloc_test, split_block)
    EXPECT_TRUE(nodes[1].raw == FL_NODE_SPLIT);
    EXPECT_TRUE(nodes[2].raw == 0);
    EXPECT_TRUE(nodes[3].raw == FL_NODE_SPLIT);
-   EXPECT_TRUE(nodes[4].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+   EXPECT_TRUE(nodes[4].raw == FL_NODE_SPLIT_AND_FULL);
    EXPECT_TRUE(nodes[5].raw == 0);
    EXPECT_TRUE(nodes[6].raw == 0);
 
    for (int i = 7; i <= 10; i++) {
       if (i != 8)
-         EXPECT_TRUE(nodes[i].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+         EXPECT_TRUE(nodes[i].raw == FL_NODE_SPLIT_AND_FULL) << "node #" << i;
       else
-         EXPECT_TRUE(nodes[i].raw == FL_NODE_SPLIT);
+         EXPECT_TRUE(nodes[i].raw == FL_NODE_SPLIT) << "node #" << i;
    }
 
    for (int i = 11; i <= 14; i++)
-      EXPECT_TRUE(nodes[i].raw == 0);
+      EXPECT_TRUE(nodes[i].raw == 0) << "node #" << i;
 
    for (int i = 15; i <= 22; i++) {
       if (i != 18)
-         EXPECT_TRUE(nodes[i].raw == FL_NODE_FULL);
+         EXPECT_TRUE(nodes[i].raw == FL_NODE_FULL) << "node #" << i;
       else
-         EXPECT_TRUE(nodes[i].raw == 0);
+         EXPECT_TRUE(nodes[i].raw == 0) << "node #" << i;
    }
 
    kmalloc_destroy_heap(&h);
@@ -439,21 +439,21 @@ TEST_F(kmalloc_test, coalesce_block)
 
 
    EXPECT_TRUE(nodes[0].raw == FL_NODE_SPLIT);
-   EXPECT_TRUE(nodes[1].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+   EXPECT_TRUE(nodes[1].raw == FL_NODE_SPLIT_AND_FULL);
    EXPECT_TRUE(nodes[2].raw == 0);
-   EXPECT_TRUE(nodes[3].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
-   EXPECT_TRUE(nodes[4].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+   EXPECT_TRUE(nodes[3].raw == FL_NODE_SPLIT_AND_FULL);
+   EXPECT_TRUE(nodes[4].raw == FL_NODE_SPLIT_AND_FULL);
    EXPECT_TRUE(nodes[5].raw == 0);
    EXPECT_TRUE(nodes[6].raw == 0);
 
    for (int i = 7; i <= 10; i++)
-      EXPECT_TRUE(nodes[i].raw == (FL_NODE_SPLIT | FL_NODE_FULL));
+      EXPECT_TRUE(nodes[i].raw == FL_NODE_SPLIT_AND_FULL) << "node #" << i;
 
    for (int i = 11; i <= 14; i++)
-      EXPECT_TRUE(nodes[i].raw == 0);
+      EXPECT_TRUE(nodes[i].raw == 0) << "node #" << i;
 
    for (int i = 15; i <= 22; i++)
-      EXPECT_TRUE(nodes[i].raw == FL_NODE_FULL);
+      EXPECT_TRUE(nodes[i].raw == FL_NODE_FULL) << "node #" << i;
 
    internal_kmalloc_coalesce_block(&h,
                                    (void *)(h.vaddr + h.size / 4),
@@ -477,18 +477,32 @@ TEST_F(kmalloc_test, coalesce_block)
       +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
     */
 
+   EXPECT_TRUE(nodes[0].raw == FL_NODE_SPLIT);
+   EXPECT_TRUE(nodes[1].raw == FL_NODE_SPLIT_AND_FULL);
+   EXPECT_TRUE(nodes[2].raw == 0);
+   EXPECT_TRUE(nodes[3].raw == FL_NODE_SPLIT_AND_FULL);
+   EXPECT_TRUE(nodes[4].raw == FL_NODE_FULL);
+
+   for (int i = 5; i <= 6; i++)
+      EXPECT_TRUE(nodes[i].raw == 0) << "node #" << i;
+
+   for (int i = 7; i <= 8; i++)
+      EXPECT_TRUE(nodes[i].raw == FL_NODE_SPLIT_AND_FULL) << "node #" << i;
+
+   for (int i = 9; i <= 14; i++)
+      EXPECT_TRUE(nodes[i].raw == 0) << "node #" << i;
+
+   for (int i = 15; i <= 18; i++)
+      EXPECT_TRUE(nodes[i].raw == FL_NODE_FULL) << "node #" << i;
+
+   for (int i = 19; i <= 31; i++)
+      EXPECT_TRUE(nodes[i].raw == 0);
+
    kmalloc_destroy_heap(&h);
 }
 
-static bool fake_alloc_and_map_func(uptr vaddr, int page_count)
-{
-   return true;
-}
-
-static void fake_free_and_map_func(uptr vaddr, int page_count)
-{
-
-}
+static bool fake_alloc_and_map_func(uptr vaddr, int page_count) { return true; }
+static void fake_free_and_map_func(uptr vaddr, int page_count) { }
 
 TEST_F(kmalloc_test, multi_step_alloc)
 {
@@ -540,15 +554,15 @@ TEST_F(kmalloc_test, multi_step_alloc)
    EXPECT_TRUE(nodes[6].raw == FL_NODE_SPLIT);
 
    for (int i = 7; i <= 13; i++)
-      EXPECT_TRUE(nodes[i].raw == (FL_NODE_ALLOCATED | FL_NODE_FULL));
+      EXPECT_TRUE(nodes[i].raw == FL_NODE_ALLOCATED_AND_FULL) << "node #" << i;
 
-   EXPECT_TRUE(nodes[14].raw == (FL_NODE_ALLOCATED | FL_NODE_SPLIT));
+   EXPECT_TRUE(nodes[14].raw == FL_NODE_ALLOCATED_AND_SPLIT);
 
    for (int i = 15; i <= 31; i++) {
       if (i != 29)
-         EXPECT_TRUE(nodes[i].raw == 0) << "i = " << i;
+         EXPECT_TRUE(nodes[i].raw == 0) << "node #" << i;
       else
-         EXPECT_TRUE(nodes[i].raw == FL_NODE_FULL) << "i = " << i;
+         EXPECT_TRUE(nodes[i].raw == FL_NODE_FULL) << "node #" << i;
    }
 
    kmalloc_destroy_heap(&h);
