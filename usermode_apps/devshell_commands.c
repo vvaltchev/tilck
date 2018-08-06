@@ -336,36 +336,38 @@ void cmd_oom_test(void)
    void *arr[1024];
    int i;
 
-   for (i = 0; i < 1024; i++) {
+   for (int iter = 0; iter < 10; iter++) {
+      for (i = 0; i < 1024; i++) {
 
-      errno = 0;
+         errno = 0;
 
-      void *res = mmap(NULL,
-                       alloc_size,
-                       PROT_READ | PROT_WRITE,
-                       MAP_ANONYMOUS | MAP_PRIVATE,
-                       -1,
-                       0);
+         void *res = mmap(NULL,
+                          alloc_size,
+                          PROT_READ | PROT_WRITE,
+                          MAP_ANONYMOUS | MAP_PRIVATE,
+                          -1,
+                          0);
 
-      if (res == (void*) -1) {
-         //printf("mmap failed with: %s\n", strerror(errno));
-         i--;
-         break;
+         if (res == (void*) -1) {
+            i--;
+            break;
+         }
+
+         arr[i] = res;
       }
 
-      arr[i] = res;
-      printf("Allocated %u MB\n", i);
+      printf("[iter: %u][oom_test] Allocated %u MB\n", iter, i);
+
+      for (; i >= 0; i--) {
+
+         int rc = munmap(arr[i], alloc_size);
+
+         if (rc != 0) {
+            printf("munmap(%p) failed with error: %s\n", strerror(errno));
+            exit(1);
+         }
+      }
    }
-
-   // for (; i >= 0; i--) {
-
-   //    int rc = munmap(arr[i], alloc_size);
-
-   //    if (rc != 0) {
-   //       printf("munmap(%p) failed with error: %s\n", strerror(errno));
-   //       exit(1);
-   //    }
-   // }
 }
 
 void cmd_help(void);
