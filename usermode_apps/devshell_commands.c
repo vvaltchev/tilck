@@ -444,7 +444,7 @@ struct {
    {"fpu", cmd_fpu, TT_SHORT, true},
    {"fpu_loop", cmd_fpu_loop, TT_LONG, false},
    {"brk_test", cmd_brk_test, TT_SHORT, true},
-   {"oom_test", cmd_oom_test, TT_SHORT, true}
+   {"oom_test", cmd_oom_test, TT_MED, true}
 };
 
 void dump_list_of_commands(void)

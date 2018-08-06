@@ -21,8 +21,8 @@ error_codes_strings = {
 }
 
 SHORT_TEST_TIMEOUT = 12
-MID_TEST_TIMEOUT   = 18
-LONG_TEST_TIMEOUT  = 30
+MID_TEST_TIMEOUT   = 24
+LONG_TEST_TIMEOUT  = 36
 
 shell_cmd_tests = [ ]
 
