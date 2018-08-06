@@ -523,6 +523,50 @@ TEST_F(kmalloc_test, multi_step_alloc)
    kmalloc_destroy_heap(&h);
 }
 
+
+TEST_F(kmalloc_test, multi_step_alloc2)
+{
+   void *ptr;
+   size_t s;
+
+   kmalloc_heap h;
+   kmalloc_create_heap(&h,
+                       MB,                           /* vaddr */
+                       KMALLOC_MIN_HEAP_SIZE,        /* heap size */
+                       KMALLOC_MIN_HEAP_SIZE / 16,   /* min block size */
+                       KMALLOC_MIN_HEAP_SIZE / 8,    /* alloc block size */
+                       false,                        /* linear mapping */
+                       NULL,                         /* metadata_nodes */
+                       fake_alloc_and_map_func,
+                       fake_free_and_map_func);
+
+   block_node *nodes = (block_node *)h.metadata_nodes;
+
+   s = 11 * h.min_block_size;
+   ptr = per_heap_kmalloc(&h, &s, true, 0);
+
+   EXPECT_EQ(s, 11 * h.min_block_size);
+   EXPECT_EQ(ptr, (void *)h.vaddr);
+
+   dump_heap_subtree(&h, 0, 5);
+
+   check_metadata(nodes, {
+      "+---------------------------------------------------------------+",
+      "|                              -S-                              |",
+      "+-------------------------------+-------------------------------+",
+      "|              --F              |              -S-              |",
+      "+---------------+---------------+---------------+---------------+",
+      "|      ---      |      ---      |      -S-      |      ---      |",
+      "+-------+-------+-------+-------+-------+-------+-------+-------+",
+      "|  A-F  |  A-F  |  A-F  |  A-F  |  A-F  |  AS-  |  ---  |  ---  |",
+      "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+",
+      "|---|---|---|---|---|---|---|---|---|---|--F|---|---|---|---|---|",
+      "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+"
+   });
+
+   kmalloc_destroy_heap(&h);
+}
+
 TEST_F(kmalloc_test, multi_step_and_split)
 {
    void *ptr;

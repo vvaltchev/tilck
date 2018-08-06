@@ -415,6 +415,7 @@ per_heap_kmalloc(kmalloc_heap *h,
 
    ASSERT(*size != 0);
    ASSERT(!sub_blocks_min_size || sub_blocks_min_size >= h->min_block_size);
+   ASSERT(!is_preemption_enabled());
 
    DEBUG_kmalloc_begin;
 
@@ -561,6 +562,8 @@ per_heap_kfree(kmalloc_heap *h,
                bool allow_split,
                bool multi_step_free)
 {
+   ASSERT(!is_preemption_enabled());
+
    if (!multi_step_free)
       return internal_kfree(h, ptr, size, allow_split);
 

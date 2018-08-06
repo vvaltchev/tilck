@@ -202,10 +202,13 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    }
 
    size_t actual_len = len;
-   void *res = per_heap_kmalloc(pi->mmap_heap,
-                                &actual_len,
-                                true,
-                                PAGE_SIZE);
+   void *res;
+
+   disable_preemption();
+   {
+      res = per_heap_kmalloc(pi->mmap_heap, &actual_len, true, PAGE_SIZE);
+   }
+   enable_preemption();
 
    ASSERT(actual_len == round_up_at(len, PAGE_SIZE));
 
@@ -223,6 +226,10 @@ sptr sys_munmap(void *vaddr, size_t len)
    if (!vaddr || !len || !pi->mmap_heap || !IS_PAGE_ALIGNED(len))
       return -EINVAL;
 
-   per_heap_kfree(pi->mmap_heap, vaddr, len, true, true);
+   disable_preemption();
+   {
+      per_heap_kfree(pi->mmap_heap, vaddr, len, true, true);
+   }
+   enable_preemption();
    return 0;
 }

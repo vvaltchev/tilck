@@ -54,18 +54,7 @@ void per_heap_kfree(kmalloc_heap *h,
                     bool allow_split,
                     bool multi_step_free);
 
-void
-internal_kmalloc_split_block(kmalloc_heap *h,
-                             void *const vaddr,
-                             const size_t block_size,
-                             const size_t leaf_node_size);
-
-void
-internal_kmalloc_coalesce_block(kmalloc_heap *h,
-                                void *const vaddr,
-                                const size_t block_size);
-
-static ALWAYS_INLINE void kfree(void *ptr)
+static inline void kfree(void *ptr)
 {
    kfree2(ptr, 0);
 }
@@ -91,3 +80,18 @@ void debug_kmalloc_stop_leak_detector(bool show_leaks);
 
 void debug_kmalloc_start_log(void);
 void debug_kmalloc_stop_log(void);
+
+#ifdef UNIT_TEST_ENVIRONMENT
+
+void
+internal_kmalloc_split_block(kmalloc_heap *h,
+                             void *const vaddr,
+                             const size_t block_size,
+                             const size_t leaf_node_size);
+
+void
+internal_kmalloc_coalesce_block(kmalloc_heap *h,
+                                void *const vaddr,
+                                const size_t block_size);
+
+#endif
