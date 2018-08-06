@@ -107,23 +107,20 @@ uptr get_mapping(page_directory_t *, void *vaddrp)
    return mappings[(uptr)vaddrp];
 }
 
-void *__real_kmalloc(size_t size);
-void __real_kfree2(void *ptr, size_t size);
-
-void *__wrap_kmalloc(size_t size)
+void *kmalloc(const size_t size)
 {
    if (mock_kmalloc)
       return malloc(size);
 
-   return __real_kmalloc(size);
+   return general_kmalloc(size, false, 0);
 }
 
-void __wrap_kfree2(void *ptr, size_t size)
+void kfree2(void *ptr, const size_t user_size)
 {
    if (mock_kmalloc)
       return free(ptr);
 
-   __real_kfree2(ptr, size);
+   return general_kfree(ptr, user_size, false, false);
 }
 
-}
+} // extern "C"

@@ -40,8 +40,6 @@ set(
    assert_failed
    not_reached
    printk
-   kmalloc
-   kfree2
    kmutex_lock
    kmutex_unlock
 )

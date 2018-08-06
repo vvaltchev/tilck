@@ -647,3 +647,4 @@ per_heap_kfree(kmalloc_heap *h,
 
 /* Natural continuation of this source file. Purpose: make this file shorter. */
 #include "kmalloc_heaps.c.h"
+#include "general_kmalloc.c.h"

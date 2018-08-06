@@ -25,8 +25,18 @@ calculate_heap_min_block_size(size_t heap_size, size_t metadata_size)
 }
 
 void init_kmalloc(void);
-void *kmalloc(const size_t size);
-void kfree2(void *ptr, const size_t user_size);
+
+void *
+general_kmalloc(const size_t desired_size,
+                bool multi_step_alloc,
+                size_t sub_blocks_min_size);
+
+void
+general_kfree(void *ptr,
+              const size_t user_size,
+              bool allow_split,
+              bool multi_step_free);
+
 size_t kmalloc_get_total_heap_allocation(void);
 bool is_kmalloc_initialized(void);
 
@@ -54,9 +64,28 @@ void per_heap_kfree(kmalloc_heap *h,
                     bool allow_split,
                     bool multi_step_free);
 
+#ifndef UNIT_TEST_ENVIRONMENT
+
+static inline void *kmalloc(const size_t size)
+{
+   return general_kmalloc(size, false, 0);
+}
+
+static inline void kfree2(void *ptr, const size_t user_size)
+{
+   general_kfree(ptr, user_size, false, false);
+}
+
+#else
+
+void *kmalloc(const size_t size);
+void kfree2(void *ptr, const size_t user_size);
+
+#endif
+
 static inline void kfree(void *ptr)
 {
-   kfree2(ptr, 0);
+   general_kfree(ptr, 0, false, false);
 }
 
 static inline void *kzmalloc(size_t size)
@@ -80,18 +109,3 @@ void debug_kmalloc_stop_leak_detector(bool show_leaks);
 
 void debug_kmalloc_start_log(void);
 void debug_kmalloc_stop_log(void);
-
-#ifdef UNIT_TEST_ENVIRONMENT
-
-void
-internal_kmalloc_split_block(kmalloc_heap *h,
-                             void *const vaddr,
-                             const size_t block_size,
-                             const size_t leaf_node_size);
-
-void
-internal_kmalloc_coalesce_block(kmalloc_heap *h,
-                                void *const vaddr,
-                                const size_t block_size);
-
-#endif
