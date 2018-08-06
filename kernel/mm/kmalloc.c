@@ -408,9 +408,13 @@ internal_kmalloc(kmalloc_heap *h,
 void *
 per_heap_kmalloc(kmalloc_heap *h,
                  size_t *size,
-                 bool multi_step_alloc)
+                 bool multi_step_alloc,
+                 size_t sub_blocks_min_size)
 {
+   void *addr;
+
    ASSERT(*size != 0);
+   ASSERT(!sub_blocks_min_size || sub_blocks_min_size >= h->min_block_size);
 
    DEBUG_kmalloc_begin;
 
@@ -424,11 +428,17 @@ per_heap_kmalloc(kmalloc_heap *h,
 
       *size = rounded_up_size;
 
-      return internal_kmalloc(h,          /* heap */
+      addr = internal_kmalloc(h,          /* heap */
                               *size,      /* block size */
                               0,          /* start node */
                               h->size,    /* start node size */
                               true        /* do_actual_alloc */);
+
+      if (sub_blocks_min_size && addr) {
+         internal_kmalloc_split_block(h, addr, *size, sub_blocks_min_size);
+      }
+
+      return addr;
    }
 
    /*
@@ -452,10 +462,12 @@ per_heap_kmalloc(kmalloc_heap *h,
       if (!(desired_size & s))
          continue;
 
-      DEBUG_ONLY(void *r =)
-         internal_kmalloc(h, s, big_block_node, rounded_up_size, true);
+      addr = internal_kmalloc(h, s, big_block_node, rounded_up_size, true);
+      ASSERT(addr == big_block + tot);
 
-      ASSERT(r == big_block + tot);
+      if (sub_blocks_min_size) {
+         internal_kmalloc_split_block(h, addr, s, sub_blocks_min_size);
+      }
 
       tot += s;
    }

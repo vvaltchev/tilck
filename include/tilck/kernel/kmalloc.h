@@ -45,7 +45,8 @@ kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h);
 
 void *per_heap_kmalloc(kmalloc_heap *h,
                        size_t *size /* in/out */,
-                       bool multi_step_alloc);
+                       bool multi_step_alloc,
+                       size_t sub_blocks_min_size);
 
 void per_heap_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split);
 

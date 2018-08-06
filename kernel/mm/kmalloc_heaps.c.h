@@ -46,7 +46,7 @@ void *kmalloc(size_t desired_size)
          continue;
 
       size_t actual_size = desired_size;
-      void *vaddr = per_heap_kmalloc(heaps[i], &actual_size, false);
+      void *vaddr = per_heap_kmalloc(heaps[i], &actual_size, false, 0);
 
       if (vaddr) {
          heaps[i]->mem_allocated += actual_size;
@@ -402,7 +402,8 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
 
    void *md_allocated = per_heap_kmalloc(heaps[used_heaps],
                                          &actual_metadata_size,
-                                         false);
+                                         false,
+                                         0);
 
    /*
     * We have to be SURE that the allocation returned the very beginning of
