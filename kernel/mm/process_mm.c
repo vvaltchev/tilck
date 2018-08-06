@@ -1,5 +1,6 @@
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/utils.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/kmalloc.h>
@@ -201,9 +202,9 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    }
 
    size_t actual_len = len;
-   void *res = per_heap_kmalloc(pi->mmap_heap, &len, false, 0);
+   void *res = per_heap_kmalloc(pi->mmap_heap, &actual_len, false, 0);
 
-   (void)actual_len;
+   ASSERT(actual_len == round_up_at(len, PAGE_SIZE));
 
    if (!res)
       return -ENOMEM;

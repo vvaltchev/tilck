@@ -391,6 +391,7 @@ TEST_F(kmalloc_test, split_block)
    per_heap_kfree(&h,
                    (void *)(h.vaddr + h.min_block_size * 3),
                    h.min_block_size,
+                   false,
                    false);
 
    dump_heap_subtree(&h, 0, 5);
@@ -559,6 +560,72 @@ TEST_F(kmalloc_test, multi_step_and_split)
       "|  ASF  |  ASF  |  ASF  |  ASF  |  ASF  |  ASF  |  ASF  |  AS-  |",
       "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+",
       "|--F|--F|--F|--F|--F|--F|--F|--F|--F|--F|--F|--F|--F|--F|--F|---|",
+      "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+"
+   });
+
+   kmalloc_destroy_heap(&h);
+}
+
+TEST_F(kmalloc_test, multi_step_free)
+{
+   void *ptr;
+   size_t s;
+
+   kmalloc_heap h;
+   kmalloc_create_heap(&h,
+                       MB,                           /* vaddr */
+                       KMALLOC_MIN_HEAP_SIZE,        /* heap size */
+                       KMALLOC_MIN_HEAP_SIZE / 16,   /* min block size */
+                       KMALLOC_MIN_HEAP_SIZE / 8,    /* alloc block size */
+                       false,                        /* linear mapping */
+                       NULL,                         /* metadata_nodes */
+                       fake_alloc_and_map_func,
+                       fake_free_and_map_func);
+
+   block_node *nodes = (block_node *)h.metadata_nodes;
+
+   s = 15 * h.min_block_size;
+   ptr = per_heap_kmalloc(&h, &s, true, h.min_block_size);
+
+   EXPECT_EQ(s, 15 * h.min_block_size);
+   EXPECT_EQ(ptr, (void *)h.vaddr);
+
+   dump_heap_subtree(&h, 0, 5);
+
+   check_metadata(nodes, {
+      "+---------------------------------------------------------------+",
+      "|                              -S-                              |",
+      "+-------------------------------+-------------------------------+",
+      "|              -SF              |              -S-              |",
+      "+---------------+---------------+---------------+---------------+",
+      "|      -SF      |      -SF      |      -SF      |      -S-      |",
+      "+-------+-------+-------+-------+-------+-------+-------+-------+",
+      "|  ASF  |  ASF  |  ASF  |  ASF  |  ASF  |  ASF  |  ASF  |  AS-  |",
+      "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+",
+      "|--F|--F|--F|--F|--F|--F|--F|--F|--F|--F|--F|--F|--F|--F|--F|---|",
+      "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+"
+   });
+
+   per_heap_kfree(&h,
+                  (void *)((uptr)ptr + h.min_block_size * 4),
+                  h.min_block_size * 7,
+                  true,
+                  true);
+
+   printf("After multi-step free:\n");
+   dump_heap_subtree(&h, 0, 5);
+
+   check_metadata(nodes, {
+      "+---------------------------------------------------------------+",
+      "|                              -S-                              |",
+      "+-------------------------------+-------------------------------+",
+      "|              -S-              |              -S-              |",
+      "+---------------+---------------+---------------+---------------+",
+      "|      -SF      |      ---      |      -S-      |      -S-      |",
+      "+-------+-------+-------+-------+-------+-------+-------+-------+",
+      "|  ASF  |  ASF  |  ---  |  ---  |  ---  |  AS-  |  ASF  |  AS-  |",
+      "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+",
+      "|--F|--F|--F|--F|---|---|---|---|---|---|---|--F|--F|--F|--F|---|",
       "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+"
    });
 

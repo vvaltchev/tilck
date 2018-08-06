@@ -48,7 +48,11 @@ void *per_heap_kmalloc(kmalloc_heap *h,
                        bool multi_step_alloc,
                        size_t sub_blocks_min_size);
 
-void per_heap_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split);
+void per_heap_kfree(kmalloc_heap *h,
+                    void *ptr,
+                    size_t size,
+                    bool allow_split,
+                    bool multi_step_free);
 
 void
 internal_kmalloc_split_block(kmalloc_heap *h,

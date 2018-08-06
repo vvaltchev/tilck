@@ -356,7 +356,7 @@ internal_kmalloc(kmalloc_heap *h,
              */
 
             DEBUG_kmalloc_bad_end;
-            per_heap_kfree(h, vaddr, size, false);
+            per_heap_kfree(h, vaddr, size, false, false);
             return NULL;
          }
 
@@ -555,9 +555,31 @@ internal_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
 }
 
 void
-per_heap_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
+per_heap_kfree(kmalloc_heap *h,
+               void *ptr,
+               size_t size,
+               bool allow_split,
+               bool multi_step_free)
 {
-   internal_kfree(h, ptr, size, allow_split);
+   if (!multi_step_free)
+      return internal_kfree(h, ptr, size, allow_split);
+
+   ASSERT(round_up_at(size, h->min_block_size) == size);
+
+   size_t tot = 0;
+
+   for (int i = h->heap_data_size_log2 - 1; i >= 0 && tot < size; i--) {
+
+      const size_t sub_block_size = (1 << i);
+
+      if (!(size & sub_block_size))
+         continue;
+
+      internal_kfree(h, ptr + tot, sub_block_size, allow_split);
+      tot += sub_block_size;
+   }
+
+   ASSERT(tot == size);
 }
 
 /* Natural continuation of this source file. Purpose: make this file shorter. */
