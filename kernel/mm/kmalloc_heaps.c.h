@@ -22,7 +22,7 @@ STATIC char first_heap[KMALLOC_FIRST_HEAP_SIZE] ALIGNED_AT(KMALLOC_MAX_ALIGN);
 
 #include "kmalloc_leak_detector.c.h"
 
-void *kmalloc(size_t desired_size)
+void *kmalloc(const size_t desired_size)
 {
    void *ret = NULL;
 
@@ -64,43 +64,7 @@ void *kmalloc(size_t desired_size)
    return ret;
 }
 
-static size_t calculate_block_size(kmalloc_heap *h, uptr vaddr)
-{
-   block_node *nodes = h->metadata_nodes;
-   int n = 0; /* root's node index */
-   uptr va = h->vaddr; /* root's node data address == heap's address */
-   size_t size = h->size; /* root's node size == heap's size */
-
-   while (size > h->min_block_size) {
-
-      if (!nodes[n].split)
-         break;
-
-      size >>= 1;
-
-      if (vaddr >= (va + size)) {
-         va += size;
-         n = NODE_RIGHT(n);
-      } else {
-         n = NODE_LEFT(n);
-      }
-   }
-
-   return size;
-}
-
-static void
-debug_check_block_size(kmalloc_heap *h, uptr vaddr, size_t size)
-{
-   size_t cs = calculate_block_size(h, vaddr);
-
-   if (cs != size) {
-      panic("calculated_size[%u] != user_size[%u] for block at: %p\n",
-            cs, size, vaddr);
-   }
-}
-
-void kfree2(void *ptr, size_t user_size)
+void kfree2(void *ptr, const size_t user_size)
 {
    const uptr vaddr = (uptr) ptr;
    size_t size;
@@ -112,7 +76,7 @@ void kfree2(void *ptr, size_t user_size)
 
    disable_preemption();
 
-   int hn = -1; /* the heap with the highest vaddr >= our block vaddr */
+   int hn = -1; /* the heap with the highest vaddr <= our block vaddr */
 
    for (int i = used_heaps - 1; i >= 0; i--) {
 
@@ -128,19 +92,8 @@ void kfree2(void *ptr, size_t user_size)
    if (hn < 0)
       goto out; /* no need to re-enable the preemption, we're going to panic */
 
-   if (user_size) {
-
-      size = roundup_next_power_of_2(MAX(user_size, heaps[hn]->min_block_size));
-      DEBUG_ONLY(debug_check_block_size(heaps[hn], vaddr, size));
-
-   } else {
-      size = calculate_block_size(heaps[hn], vaddr);
-   }
-
-   ASSERT(vaddr >= heaps[hn]->vaddr);
-   ASSERT(vaddr + size <= heaps[hn]->heap_over_end);
-
-   per_heap_kfree(heaps[hn], ptr, size, false, false);
+   size = user_size;
+   per_heap_kfree(heaps[hn], ptr, &size, false, false);
    heaps[hn]->mem_allocated -= size;
 
    if (KMALLOC_FREE_MEM_POISONING) {

@@ -228,7 +228,9 @@ sptr sys_munmap(void *vaddr, size_t len)
 
    disable_preemption();
    {
-      per_heap_kfree(pi->mmap_heap, vaddr, len, true, true);
+      size_t actual_len = len;
+      per_heap_kfree(pi->mmap_heap, vaddr, &actual_len, true, true);
+      ASSERT(actual_len == round_up_at(len, PAGE_SIZE));
    }
    enable_preemption();
    return 0;

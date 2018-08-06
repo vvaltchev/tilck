@@ -25,8 +25,8 @@ calculate_heap_min_block_size(size_t heap_size, size_t metadata_size)
 }
 
 void init_kmalloc(void);
-void *kmalloc(size_t size);
-void kfree2(void *ptr, size_t size);
+void *kmalloc(const size_t size);
+void kfree2(void *ptr, const size_t user_size);
 size_t kmalloc_get_total_heap_allocation(void);
 bool is_kmalloc_initialized(void);
 
@@ -50,7 +50,7 @@ void *per_heap_kmalloc(kmalloc_heap *h,
 
 void per_heap_kfree(kmalloc_heap *h,
                     void *ptr,
-                    size_t size,
+                    size_t *size,
                     bool allow_split,
                     bool multi_step_free);
 

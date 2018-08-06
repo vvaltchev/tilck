@@ -388,11 +388,15 @@ TEST_F(kmalloc_test, split_block)
 
    printf("After kfree leaf node #3:\n");
 
+   size_t actual_size = h.min_block_size;
+
    per_heap_kfree(&h,
                    (void *)(h.vaddr + h.min_block_size * 3),
-                   h.min_block_size,
+                   &actual_size,
                    false,
                    false);
+
+   ASSERT_EQ(actual_size, h.min_block_size);
 
    dump_heap_subtree(&h, 0, 5);
 
@@ -650,11 +654,14 @@ TEST_F(kmalloc_test, multi_step_free)
       "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+"
    });
 
+   size_t actual_size = h.min_block_size * 7;
    per_heap_kfree(&h,
                   (void *)((uptr)ptr + h.min_block_size * 4),
-                  h.min_block_size * 7,
+                  &actual_size,
                   true,
                   true);
+
+   ASSERT_EQ(actual_size, h.min_block_size * 7);
 
    printf("After multi-step free:\n");
    dump_heap_subtree(&h, 0, 5);

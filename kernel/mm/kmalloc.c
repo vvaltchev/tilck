@@ -356,7 +356,8 @@ internal_kmalloc(kmalloc_heap *h,
              */
 
             DEBUG_kmalloc_bad_end;
-            per_heap_kfree(h, vaddr, size, false, false);
+            size_t actual_size = size;
+            per_heap_kfree(h, vaddr, &actual_size, false, false);
             return NULL;
          }
 
@@ -555,18 +556,77 @@ internal_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
    }
 }
 
+static size_t calculate_block_size(kmalloc_heap *h, uptr vaddr)
+{
+   block_node *nodes = h->metadata_nodes;
+   int n = 0; /* root's node index */
+   uptr va = h->vaddr; /* root's node data address == heap's address */
+   size_t size = h->size; /* root's node size == heap's size */
+
+   while (size > h->min_block_size) {
+
+      if (!nodes[n].split)
+         break;
+
+      size >>= 1;
+
+      if (vaddr >= (va + size)) {
+         va += size;
+         n = NODE_RIGHT(n);
+      } else {
+         n = NODE_LEFT(n);
+      }
+   }
+
+   return size;
+}
+
+static void
+debug_check_block_size(kmalloc_heap *h, uptr vaddr, size_t size)
+{
+   size_t cs = calculate_block_size(h, vaddr);
+
+   if (cs != size) {
+      panic("calculated_size[%u] != user_size[%u] for block at: %p\n",
+            cs, size, vaddr);
+   }
+}
+
 void
 per_heap_kfree(kmalloc_heap *h,
                void *ptr,
-               size_t size,
+               size_t *user_size,
                bool allow_split,
                bool multi_step_free)
 {
+   size_t size;
+   uptr vaddr = (uptr)ptr;
    ASSERT(!is_preemption_enabled());
 
-   if (!multi_step_free)
-      return internal_kfree(h, ptr, size, allow_split);
+   ASSERT(vaddr >= h->vaddr);
 
+   if (!multi_step_free) {
+
+      if (*user_size) {
+         size = roundup_next_power_of_2(MAX(*user_size, h->min_block_size));
+         DEBUG_ONLY(debug_check_block_size(h, vaddr, size));
+      } else {
+         size = calculate_block_size(h, vaddr);
+      }
+
+      *user_size = size;
+      ASSERT(vaddr + size <= h->heap_over_end);
+      return internal_kfree(h, ptr, size, allow_split);
+   }
+
+   size = *user_size; /*
+                       * No round-up: when multi_step_free=1 we assume that the
+                       * size is the one returned as an out-param by
+                       * per_heap_kmalloc(). Also, we don't have to alter
+                       * *user_size too.
+                       */
+
+   ASSERT(vaddr + size <= h->heap_over_end);
    ASSERT(round_up_at(size, h->min_block_size) == size);
 
    size_t tot = 0;
