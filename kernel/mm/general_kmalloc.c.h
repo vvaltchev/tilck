@@ -39,7 +39,10 @@ general_kmalloc(size_t *size,
       if (heap_size < *size || heap_free < *size)
          continue;
 
-      void *vaddr = per_heap_kmalloc(heaps[i], size, false, 0);
+      void *vaddr = per_heap_kmalloc(heaps[i],
+                                     size,
+                                     multi_step_alloc,
+                                     sub_blocks_min_size);
 
       if (vaddr) {
          heaps[i]->mem_allocated += *size;
@@ -88,7 +91,7 @@ general_kfree(void *ptr,
    if (hn < 0)
       goto out; /* no need to re-enable the preemption, we're going to panic */
 
-   per_heap_kfree(heaps[hn], ptr, size, false, false);
+   per_heap_kfree(heaps[hn], ptr, size, allow_split, multi_step_free);
    heaps[hn]->mem_allocated -= *size;
 
    if (KMALLOC_FREE_MEM_POISONING) {
