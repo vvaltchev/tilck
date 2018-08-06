@@ -38,7 +38,7 @@ bool user_valloc_and_map(uptr user_vaddr, int page_count)
          return false;
       }
 
-      void *kernel_vaddr = kzmalloc(PAGE_SIZE);
+      void *kernel_vaddr = kmalloc(PAGE_SIZE);
 
       if (!kernel_vaddr) {
          user_vfree_and_unmap(user_vaddr, i);
@@ -215,6 +215,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    if (!res)
       return -ENOMEM;
 
+   bzero(res, actual_len);
    return (sptr)res;
 }
 
