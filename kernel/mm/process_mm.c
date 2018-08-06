@@ -56,41 +56,35 @@ bool user_valloc_and_map_slow(uptr user_vaddr, int page_count)
    }
 
    return true;
-
 }
 
 bool user_valloc_and_map(uptr user_vaddr, int page_count)
 {
    page_directory_t *pdir = get_curr_pdir();
    size_t size = page_count * PAGE_SIZE;
-   uptr va = user_vaddr;
-   uptr kva;
-   int i;
+   int count;
 
    void *kernel_vaddr = general_kmalloc(&size, true, PAGE_SIZE);
-   kva = (uptr) kernel_vaddr;
 
    if (!kernel_vaddr)
       return user_valloc_and_map_slow(user_vaddr, page_count);
 
-   for (i = 0; i < page_count; i++, va += PAGE_SIZE, kva += PAGE_SIZE) {
+   ASSERT(size == (size_t)page_count << PAGE_SHIFT);
 
-      if (is_mapped(pdir, (void *)va))
-         goto map_fail;
+   count = map_pages(pdir,
+                     (void *)user_vaddr,
+                     KERNEL_VA_TO_PA(kernel_vaddr),
+                     page_count,
+                     false,
+                     true, true);
 
-      if (map_page(pdir, (void *)va, KERNEL_VA_TO_PA(kva), true, true) != 0)
-         goto map_fail;
+   if (count != page_count) {
+      unmap_pages(pdir, (void *)user_vaddr, count);
+      general_kfree(kernel_vaddr, &size, true, true);
+      return false;
    }
 
    return true;
-
-map_fail:
-
-   for (va -= PAGE_SIZE; va >= user_vaddr; va -= PAGE_SIZE) {
-      unmap_page(pdir, (void *)va);
-   }
-
-   return false;
 }
 
 

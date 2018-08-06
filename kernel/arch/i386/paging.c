@@ -287,7 +287,8 @@ map_page_int(page_directory_t *pdir, void *vaddrp, uptr paddr, u32 flags)
          KERNEL_VA_TO_PA(ptable);
    }
 
-   ASSERT(ptable->pages[page_table_index].present == 0);
+   if (ptable->pages[page_table_index].present)
+      return -EADDRINUSE;
 
    ptable->pages[page_table_index].raw = PG_PRESENT_BIT | flags | paddr;
    pf_ref_count_inc(paddr);
