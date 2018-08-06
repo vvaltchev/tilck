@@ -14,7 +14,7 @@
 
 
 void *
-general_kmalloc(const size_t desired_size,
+general_kmalloc(size_t *size,
                 bool multi_step_alloc,
                 size_t sub_blocks_min_size)
 {
@@ -36,18 +36,17 @@ general_kmalloc(const size_t desired_size,
        * created yet, therefore has size = 0 or just there is not enough free
        * space in it.
        */
-      if (heap_size < desired_size || heap_free < desired_size)
+      if (heap_size < *size || heap_free < *size)
          continue;
 
-      size_t actual_size = desired_size;
-      void *vaddr = per_heap_kmalloc(heaps[i], &actual_size, false, 0);
+      void *vaddr = per_heap_kmalloc(heaps[i], size, false, 0);
 
       if (vaddr) {
-         heaps[i]->mem_allocated += actual_size;
+         heaps[i]->mem_allocated += *size;
          ret = vaddr;
 
          if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
-            debug_kmalloc_register_alloc(vaddr, actual_size);
+            debug_kmalloc_register_alloc(vaddr, *size);
          }
 
          break;
@@ -60,12 +59,11 @@ general_kmalloc(const size_t desired_size,
 
 void
 general_kfree(void *ptr,
-              const size_t user_size,
+              size_t *size,
               bool allow_split,
               bool multi_step_free)
 {
    const uptr vaddr = (uptr) ptr;
-   size_t size;
 
    ASSERT(kmalloc_initialized);
 
@@ -90,16 +88,15 @@ general_kfree(void *ptr,
    if (hn < 0)
       goto out; /* no need to re-enable the preemption, we're going to panic */
 
-   size = user_size;
-   per_heap_kfree(heaps[hn], ptr, &size, false, false);
-   heaps[hn]->mem_allocated -= size;
+   per_heap_kfree(heaps[hn], ptr, size, false, false);
+   heaps[hn]->mem_allocated -= *size;
 
    if (KMALLOC_FREE_MEM_POISONING) {
-      memset32(ptr, KMALLOC_FREE_MEM_POISON_VAL, size / 4);
+      memset32(ptr, KMALLOC_FREE_MEM_POISON_VAL, *size / 4);
    }
 
    if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
-      debug_kmalloc_register_free((void *)vaddr, size);
+      debug_kmalloc_register_free((void *)vaddr, *size);
    }
 
    enable_preemption();

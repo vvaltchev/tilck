@@ -27,13 +27,13 @@ calculate_heap_min_block_size(size_t heap_size, size_t metadata_size)
 void init_kmalloc(void);
 
 void *
-general_kmalloc(const size_t desired_size,
+general_kmalloc(size_t *size,
                 bool multi_step_alloc,
                 size_t sub_blocks_min_size);
 
 void
 general_kfree(void *ptr,
-              const size_t user_size,
+              size_t *size,
               bool allow_split,
               bool multi_step_free);
 
@@ -66,26 +66,26 @@ void per_heap_kfree(kmalloc_heap *h,
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
-static inline void *kmalloc(const size_t size)
+static inline void *kmalloc(size_t size)
 {
-   return general_kmalloc(size, false, 0);
+   return general_kmalloc(&size, false, 0);
 }
 
-static inline void kfree2(void *ptr, const size_t user_size)
+static inline void kfree2(void *ptr, size_t size)
 {
-   general_kfree(ptr, user_size, false, false);
+   general_kfree(ptr, &size, false, false);
 }
 
 #else
 
-void *kmalloc(const size_t size);
-void kfree2(void *ptr, const size_t user_size);
+void *kmalloc(size_t size);
+void kfree2(void *ptr, size_t user_size);
 
 #endif
 
 static inline void kfree(void *ptr)
 {
-   general_kfree(ptr, 0, false, false);
+   kfree2(ptr, 0);
 }
 
 static inline void *kzmalloc(size_t size)
