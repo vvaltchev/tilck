@@ -89,6 +89,17 @@ static size_t calculate_block_size(kmalloc_heap *h, uptr vaddr)
    return size;
 }
 
+static void
+debug_check_block_size(kmalloc_heap *h, uptr vaddr, size_t size)
+{
+   size_t cs = calculate_block_size(h, vaddr);
+
+   if (cs != size) {
+      panic("calculated_size[%u] != user_size[%u] for block at: %p\n",
+            cs, size, vaddr);
+   }
+}
+
 void kfree2(void *ptr, size_t user_size)
 {
    const uptr vaddr = (uptr) ptr;
@@ -120,13 +131,7 @@ void kfree2(void *ptr, size_t user_size)
    if (user_size) {
 
       size = roundup_next_power_of_2(MAX(user_size, heaps[hn]->min_block_size));
-
-#ifdef DEBUG
-      size_t cs = calculate_block_size(heaps[hn], vaddr);
-      if (cs != size) {
-         panic("cs[%u] != size[%u] for block at: %p\n", cs, size, vaddr);
-      }
-#endif
+      DEBUG_ONLY(debug_check_block_size(heaps[hn], vaddr, size));
 
    } else {
       size = calculate_block_size(heaps[hn], vaddr);
