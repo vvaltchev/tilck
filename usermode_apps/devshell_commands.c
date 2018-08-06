@@ -12,6 +12,9 @@
 #include <sys/syscall.h>
 #include <sys/mman.h>
 
+#define KB (1024)
+#define MB (1024 * 1024)
+
 #define COLOR_RED     "\033[31m"
 #define COLOR_YELLOW  "\033[93m"
 #define RESET_ATTRS   "\033[0m"
@@ -332,11 +335,18 @@ void cmd_brk_test(void)
 
 void cmd_oom_test(void)
 {
-   const size_t alloc_size = 1024 * 1024;
+   const int iters_count = 10;
+   const size_t alloc_size = 1 * MB;
    void *arr[1024];
-   int i;
+   int max_mb = -1;
 
-   for (int iter = 0; iter < 10; iter++) {
+   unsigned long long tot_duration = 0;
+
+   for (int iter = 0; iter < iters_count; iter++) {
+
+      int i;
+      unsigned long long start = RDTSC();
+
       for (i = 0; i < 1024; i++) {
 
          errno = 0;
@@ -356,7 +366,26 @@ void cmd_oom_test(void)
          arr[i] = res;
       }
 
+      tot_duration += (RDTSC() - start);
+
+      if (max_mb < 0) {
+
+         max_mb = i;
+
+      } else {
+
+         if (i != max_mb) {
+            printf("[iter: %u] Unable to alloc max_mb (%u) as previous iters\n",
+                   iter, max_mb);
+
+            exit(1);
+         }
+
+      }
+
       printf("[iter: %u][oom_test] Allocated %u MB\n", iter, i);
+
+      start = RDTSC();
 
       for (; i >= 0; i--) {
 
@@ -367,7 +396,12 @@ void cmd_oom_test(void)
             exit(1);
          }
       }
+
+      tot_duration += (RDTSC() - start);
    }
+
+   printf("\nAvg. cycles for mmap + munmap %u MB: %llu million\n",
+          max_mb, (tot_duration / iters_count) / 1000000);
 }
 
 void cmd_help(void);
