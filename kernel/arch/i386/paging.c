@@ -393,15 +393,21 @@ map_pages(page_directory_t *pdir,
                     ((!us) << PG_GLOBAL_BIT_POS));
 }
 
+static ALWAYS_INLINE page_table_t *
+pdir_get_page_table(page_directory_t *pdir, int i)
+{
+   return KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
+}
+
 page_directory_t *pdir_clone(page_directory_t *pdir)
 {
    page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
-   ASSERT(IS_PAGE_ALIGNED(new_pdir));
 
    if (!new_pdir)
       return NULL;
 
-   memcpy(new_pdir, pdir, sizeof(page_directory_t));
+   ASSERT(IS_PAGE_ALIGNED(new_pdir));
+   memcpy32(new_pdir, pdir, sizeof(page_directory_t) / 4);
 
    for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
 
@@ -411,8 +417,30 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *orig_pt =
-         KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
+      page_table_t *pt = kmalloc(sizeof(page_table_t));
+
+      if (!pt) {
+
+         for (; i > 0; i--) {
+            if (pdir->entries[i - 1].present)
+               kfree2(pdir_get_page_table(pdir, i - 1), sizeof(page_table_t));
+         }
+
+         kfree2(new_pdir, sizeof(page_directory_t));
+         return NULL;
+      }
+
+      ASSERT(IS_PAGE_ALIGNED(pt));
+      new_pdir->entries[i].ptaddr = KERNEL_VA_TO_PA(pt) >> PAGE_SHIFT;
+   }
+
+   for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
+
+      if (!pdir->entries[i].present)
+         continue;
+
+      page_table_t *orig_pt = pdir_get_page_table(pdir, i);
+      page_table_t *new_pt = pdir_get_page_table(new_pdir, i);
 
       /* Mark all the pages in that page-table as COW. */
       for (u32 j = 0; j < 1024; j++) {
@@ -430,22 +458,11 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
          }
 
          orig_pt->pages[j].rw = false;
-
-         // We're making for the first time this page to be COW.
          pf_ref_count_inc(orig_paddr);
       }
 
-      // alloc memory for the page table
-
-      page_table_t *pt = kmalloc(sizeof(*pt));
-      VERIFY(pt != NULL); // TODO: handle this OOM condition!
-      ASSERT(IS_PAGE_ALIGNED(pt));
-
       // copy the page table
-      memcpy(pt, orig_pt, sizeof(*pt));
-
-      /* We've already copied the other members of new_pdir->entries[i] */
-      new_pdir->entries[i].ptaddr = KERNEL_VA_TO_PA(pt) >> PAGE_SHIFT;
+      memcpy(new_pt, orig_pt, sizeof(page_table_t));
    }
 
    return new_pdir;
@@ -462,7 +479,7 @@ void pdir_destroy(page_directory_t *pdir)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *pt = KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
+      page_table_t *pt = pdir_get_page_table(pdir, i);
 
       for (u32 j = 0; j < 1024; j++) {
 
