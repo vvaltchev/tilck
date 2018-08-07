@@ -46,7 +46,7 @@ internal_kmalloc_split_block(kmalloc_heap *h,
                              const size_t block_size,
                              const size_t leaf_node_size);
 
-void
+size_t
 internal_kmalloc_coalesce_block(kmalloc_heap *h,
                                 void *const vaddr,
                                 const size_t block_size);

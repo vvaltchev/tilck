@@ -203,7 +203,7 @@ void debug_kmalloc_dump_mem_usage(void)
       if (heaps[i]->region >= 0)
          snprintk(region_str, sizeof(region_str), "%02d", heaps[i]->region);
 
-      printk(NO_PREFIX "| %2d | %s | %p |  %6u   |  %2u%% | %9d     |\n",
+      printk(NO_PREFIX "| %2d | %s | %p |  %6u   | %3u%% | %9d     |\n",
              i, region_str,
              heaps[i]->vaddr,
              size_kb,

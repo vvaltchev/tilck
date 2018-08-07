@@ -45,7 +45,6 @@ general_kmalloc(size_t *size,
                                      sub_blocks_min_size);
 
       if (vaddr) {
-         heaps[i]->mem_allocated += *size;
          ret = vaddr;
 
          if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
@@ -92,7 +91,6 @@ general_kfree(void *ptr,
       goto out; /* no need to re-enable the preemption, we're going to panic */
 
    per_heap_kfree(heaps[hn], ptr, size, allow_split, multi_step_free);
-   heaps[hn]->mem_allocated -= *size;
 
    if (KMALLOC_FREE_MEM_POISONING) {
       memset32(ptr, KMALLOC_FREE_MEM_POISON_VAL, *size / 4);

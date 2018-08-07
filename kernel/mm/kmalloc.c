@@ -245,7 +245,7 @@ internal_kmalloc_split_block(kmalloc_heap *h,
    }
 }
 
-void
+size_t
 internal_kmalloc_coalesce_block(kmalloc_heap *h,
                                 void *const vaddr,
                                 const size_t block_size)
@@ -256,16 +256,30 @@ internal_kmalloc_coalesce_block(kmalloc_heap *h,
    size_t s;
    int n = block_node;
    int node_count = 1;
+   size_t already_free_size = 0;
 
    ASSERT(nodes[n].full || nodes[n].split);
 
    for (s = block_size; s >= h->min_block_size; s >>= 1) {
 
-      if (s != h->alloc_block_size) {
-         bzero(&nodes[n], node_count);
+      if (s > h->min_block_size) {
+
+         if (s != h->alloc_block_size) {
+            bzero(&nodes[n], node_count);
+         } else {
+            for (int j = n; j < n + node_count; j++)
+               nodes[j].raw &= ~(FL_NODE_SPLIT | FL_NODE_FULL);
+         }
+
       } else {
-         for (int j = 0; j < node_count; j++)
-            nodes[n + j].raw &= ~(FL_NODE_SPLIT | FL_NODE_FULL);
+
+         for (int j = n; j < n + node_count; j++) {
+
+            if (!(nodes[j].raw & (FL_NODE_SPLIT | FL_NODE_FULL)))
+               already_free_size += s;
+
+            nodes[j].raw &= ~(FL_NODE_SPLIT | FL_NODE_FULL);
+         }
       }
 
       node_count <<= 1;
@@ -274,6 +288,7 @@ internal_kmalloc_coalesce_block(kmalloc_heap *h,
 
    nodes[block_node].full = 1;
    ASSERT(s < h->min_block_size);
+   return already_free_size;
 }
 
 static void *
@@ -356,12 +371,16 @@ internal_kmalloc(kmalloc_heap *h,
              */
 
             DEBUG_kmalloc_bad_end;
-            size_t actual_size = size;
+            size_t actual_size = node_size;
             per_heap_kfree(h, vaddr, &actual_size, false, false);
             return NULL;
          }
 
          DEBUG_kmalloc_end;
+
+         if (do_actual_alloc)
+            h->mem_allocated += node_size;
+
          return vaddr;
       }
 
@@ -483,6 +502,7 @@ void
 internal_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
 {
    const int node = ptr_to_node(h, ptr, size);
+   size_t free_size_correction = 0;
 
    DEBUG_free1;
    ASSERT(node_to_ptr(h, node, size) == ptr);
@@ -492,8 +512,10 @@ internal_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
    block_node *nodes = h->metadata_nodes;
 
    if (allow_split && nodes[node].split) {
-      internal_kmalloc_coalesce_block(h, ptr, size);
+      free_size_correction = internal_kmalloc_coalesce_block(h, ptr, size);
    }
+
+   h->mem_allocated -= (size - free_size_correction);
 
    /*
     * Regular calls to kfree2() pass to it "regular" blocks returned by
@@ -541,13 +563,15 @@ internal_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
       ASSERT(size >= h->alloc_block_size ||
              is_block_node_free(nodes[alloc_node]));
 
-      ASSERT(nodes[alloc_node].allocated || nodes[alloc_node].alloc_failed);
+      if (!allow_split) {
+         ASSERT(nodes[alloc_node].allocated || nodes[alloc_node].alloc_failed);
+      }
 
       if (nodes[alloc_node].allocated) {
          DEBUG_free_freeing_block;
          h->vfree_and_unmap(alloc_block_vaddr, h->alloc_block_size / PAGE_SIZE);
          nodes[alloc_node] = new_node;
-      } else {
+      } else if (nodes[alloc_node].alloc_failed) {
          DEBUG_free_skip_alloc_failed_block;
          nodes[alloc_node].alloc_failed = false;
       }
@@ -608,9 +632,15 @@ per_heap_kfree(kmalloc_heap *h,
    if (!multi_step_free) {
 
       if (*user_size) {
+
          size = roundup_next_power_of_2(MAX(*user_size, h->min_block_size));
-         DEBUG_ONLY(debug_check_block_size(h, vaddr, size));
+
+         if (!allow_split) {
+            DEBUG_ONLY(debug_check_block_size(h, vaddr, size));
+         }
+
       } else {
+         ASSERT(!allow_split);
          size = calculate_block_size(h, vaddr);
       }
 
