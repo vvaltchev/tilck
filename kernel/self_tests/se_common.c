@@ -61,7 +61,8 @@ void simple_test_kthread(void *arg)
 
 void selftest_kthread_med(void)
 {
-   kthread_create(simple_test_kthread, (void *)1);
+   if (!kthread_create(simple_test_kthread, (void *)1))
+      panic("Unable to create the simple test kthread");
 }
 
 void selftest_kernel_sleep_short()

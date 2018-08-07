@@ -94,7 +94,8 @@ static void push_args_on_user_stack(regs *r,
    push_on_user_stack(r, argc);
 }
 
-task_info *kthread_create(kthread_func_ptr fun, void *arg)
+NODISCARD task_info *
+kthread_create(kthread_func_ptr fun, void *arg)
 {
    regs r = {0};
    r.gs = r.fs = r.es = r.ds = r.ss = X86_KERNEL_DATA_SEL;
@@ -104,7 +105,9 @@ task_info *kthread_create(kthread_func_ptr fun, void *arg)
    r.eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF;
 
    task_info *ti = allocate_new_thread(kernel_process->pi);
-   VERIFY(ti != NULL); // TODO: handle this
+
+   if (!ti)
+      return NULL;
 
    ti->what = fun;
    ti->state = TASK_STATE_RUNNABLE;

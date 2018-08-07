@@ -61,7 +61,8 @@ static void kcond_thread_signal_generator()
 
    disable_preemption();
    {
-      kthread_create(&kcond_thread_wait_ticks, NULL);
+      if (!kthread_create(&kcond_thread_wait_ticks, NULL))
+         panic("Unable to create a thread for kcond_thread_wait_ticks()");
    }
    enable_preemption();
 }

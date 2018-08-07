@@ -182,7 +182,7 @@ void arch_specific_free_task(task_info *ti);
 
 typedef void (*kthread_func_ptr)();
 
-task_info *kthread_create(kthread_func_ptr fun, void *arg);
+NODISCARD task_info *kthread_create(kthread_func_ptr fun, void *arg);
 
 // It is called when each kernel thread returns. May be called explicitly too.
 void kthread_exit(void);

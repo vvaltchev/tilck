@@ -456,6 +456,7 @@ void init_framebuffer_console(bool use_also_serial_port)
    }
 
    if (fb_offset_y) {
-      kthread_create(fb_update_banner_kthread, NULL);
+      if (!kthread_create(fb_update_banner_kthread, NULL))
+         printk("WARNING: unable to create the fb_update_banner_kthread\n");
    }
 }
