@@ -54,7 +54,7 @@ void unmap_page(page_directory_t *pdir, void *vaddr);
 
 uptr get_mapping(page_directory_t *pdir, void *vaddr);
 
-page_directory_t *pdir_clone(page_directory_t *pdir);
+page_directory_t *pdir_clone(page_directory_t *pdir, int *user_pages_count);
 void pdir_destroy(page_directory_t *pdir);
 
 // Temporary function, until get/set page flags is made available.

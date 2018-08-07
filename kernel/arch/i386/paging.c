@@ -399,8 +399,9 @@ pdir_get_page_table(page_directory_t *pdir, int i)
    return KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 }
 
-page_directory_t *pdir_clone(page_directory_t *pdir)
+page_directory_t *pdir_clone(page_directory_t *pdir, int *user_pages_count)
 {
+   int up_count = 0;
    page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
 
    if (!new_pdir)
@@ -459,11 +460,15 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
 
          orig_pt->pages[j].rw = false;
          pf_ref_count_inc(orig_paddr);
+         up_count++;
       }
 
       // copy the page table
       memcpy(new_pt, orig_pt, sizeof(page_table_t));
    }
+
+   if (user_pages_count)
+      *user_pages_count = up_count;
 
    return new_pdir;
 }

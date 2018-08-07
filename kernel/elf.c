@@ -101,7 +101,7 @@ int load_elf_program(const char *filepath,
 
    if (*pdir_ref == NULL) {
 
-      *pdir_ref = pdir_clone(get_kernel_pdir());
+      *pdir_ref = pdir_clone(get_kernel_pdir(), NULL);
 
       if (!*pdir_ref) {
          vfs_close(elf_file);
