@@ -199,13 +199,21 @@ task_info *create_usermode_task(page_directory_t *pdir,
    r.eflags = 0x2 /* reserved, always set */ | EFLAGS_IF;
 
    if (!task_to_use) {
+
       int pid = create_new_pid();
-      VERIFY(pid != -1); // We CANNOT handle this.
+
+      if (pid < 0)
+         return NULL;
+
       ti = allocate_new_process(NULL, pid);
-      VERIFY(ti != NULL); // TODO: handle this
+
+      if (!ti)
+         return NULL;
+
       ti->state = TASK_STATE_RUNNABLE;
       add_task(ti);
       memcpy(ti->pi->cwd, "/", 2);
+
    } else {
       ti = task_to_use;
       ASSERT(ti->state == TASK_STATE_RUNNABLE);
