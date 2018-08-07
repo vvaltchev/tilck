@@ -58,6 +58,11 @@ static ALWAYS_INLINE u32 pf_ref_count_get(u32 paddr)
    return pageframes_refcount[paddr >> PAGE_SHIFT];
 }
 
+static ALWAYS_INLINE page_table_t *
+pdir_get_page_table(page_directory_t *pdir, int i)
+{
+   return KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
+}
 
 bool handle_potential_cow(u32 vaddr)
 {
@@ -66,8 +71,7 @@ bool handle_potential_cow(u32 vaddr)
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
    void *const page_vaddr = (void *)(vaddr & PAGE_MASK);
 
-   ptable =
-   KERNEL_PA_TO_VA(curr_page_dir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+   ptable = pdir_get_page_table(curr_page_dir, page_dir_index);
 
    if (!(ptable->pages[page_table_index].avail & PAGE_COW_ORIG_RW))
       return false; /* Not a COW page */
@@ -391,12 +395,6 @@ map_pages(page_directory_t *pdir,
                     (us << PG_US_BIT_POS) |
                     (rw << PG_RW_BIT_POS) |
                     ((!us) << PG_GLOBAL_BIT_POS));
-}
-
-static ALWAYS_INLINE page_table_t *
-pdir_get_page_table(page_directory_t *pdir, int i)
-{
-   return KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 }
 
 page_directory_t *pdir_clone(page_directory_t *pdir, int *user_pages_count)

@@ -44,6 +44,10 @@ void init_tty(void)
 {
    c_term = default_termios;
    driver_info *di = kmalloc(sizeof(driver_info));
+
+   if (!di)
+      panic("TTY: no enough memory for init_tty()");
+
    di->name = "tty";
    di->create_dev_file = tty_create_device_file;
    int major = register_driver(di);
