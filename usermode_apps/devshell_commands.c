@@ -277,7 +277,7 @@ void cmd_brk_test(void)
    }
 }
 
-void cmd_oom_test(void)
+void cmd_mmap_test(void)
 {
    const int iters_count = 10;
    const size_t alloc_size = 1 * MB;
@@ -291,7 +291,7 @@ void cmd_oom_test(void)
       int i;
       unsigned long long start = RDTSC();
 
-      for (i = 0; i < 1024; i++) {
+      for (i = 0; i < 64; i++) {
 
          errno = 0;
 
@@ -310,6 +310,7 @@ void cmd_oom_test(void)
          arr[i] = res;
       }
 
+      i--;
       tot_duration += (RDTSC() - start);
 
       if (max_mb < 0) {
@@ -327,7 +328,7 @@ void cmd_oom_test(void)
 
       }
 
-      printf("[iter: %u][oom_test] Allocated %u MB\n", iter, i);
+      printf("[iter: %u][mmap_test] Mapped %u MB\n", iter, i + 1);
 
       start = RDTSC();
 
@@ -336,7 +337,8 @@ void cmd_oom_test(void)
          int rc = munmap(arr[i], alloc_size);
 
          if (rc != 0) {
-            printf("munmap(%p) failed with error: %s\n", strerror(errno));
+            printf("munmap(%p) failed with error: %s\n",
+                   arr[i], strerror(errno));
             exit(1);
          }
       }
@@ -345,7 +347,7 @@ void cmd_oom_test(void)
    }
 
    printf("\nAvg. cycles for mmap + munmap %u MB: %llu million\n",
-          max_mb, (tot_duration / iters_count) / 1000000);
+          max_mb + 1, (tot_duration / iters_count) / 1000000);
 }
 
 void cmd_kernel_cow(void)
@@ -409,7 +411,7 @@ struct {
    {"fpu", cmd_fpu, TT_SHORT, true},
    {"fpu_loop", cmd_fpu_loop, TT_LONG, false},
    {"brk_test", cmd_brk_test, TT_SHORT, true},
-   {"oom_test", cmd_oom_test, TT_MED, true},
+   {"mmap_test", cmd_mmap_test, TT_MED, true},
    {"kernel_cow", cmd_kernel_cow, TT_SHORT, true}
 };
 

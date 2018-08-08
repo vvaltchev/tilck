@@ -104,7 +104,10 @@ bool handle_potential_cow(void *context)
 
    // Allocate and set a new page.
    void *new_page_vaddr = kmalloc(PAGE_SIZE);
-   VERIFY(new_page_vaddr != NULL); // TODO: handle this OOM condition.
+
+   if (!new_page_vaddr)
+      panic("No memory left for the COW page");
+
    ASSERT(IS_PAGE_ALIGNED(new_page_vaddr));
 
    const uptr paddr = KERNEL_VA_TO_PA(new_page_vaddr);
@@ -242,8 +245,10 @@ void unmap_page(page_directory_t *pdir, void *vaddrp, bool free_pageframe)
 
    invalidate_page(vaddr);
 
-   if (!pf_ref_count_dec(paddr) && free_pageframe)
+   if (!pf_ref_count_dec(paddr) && free_pageframe) {
+      ASSERT(paddr != KERNEL_VA_TO_PA(zero_page));
       kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
+   }
 }
 
 uptr get_mapping(page_directory_t *pdir, void *vaddrp)
@@ -389,12 +394,17 @@ map_zero_page(page_directory_t *pdir,
               bool us,
               bool rw)
 {
+   u32 avail_flags = 0;
+
+   if (rw)
+      avail_flags = PAGE_COW_ORIG_RW;
+
    return
       map_page_int(pdir,
                    vaddrp,
                    KERNEL_VA_TO_PA(&zero_page),
                    (us << PG_US_BIT_POS) |
-                   (rw << PG_RW_BIT_POS) |
+                   (avail_flags << PG_CUSTOM_B0_POS) |
                    ((!us) << PG_GLOBAL_BIT_POS)); /* Kernel pages are global */
 }
 

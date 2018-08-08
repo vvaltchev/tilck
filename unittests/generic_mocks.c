@@ -78,3 +78,4 @@ void arch_specific_free_task() { NOT_REACHED(); }
 void fpu_context_begin() { }
 void fpu_context_end() { }
 void cmos_read_datetime() { NOT_REACHED(); }
+void map_zero_pages() { NOT_REACHED(); }

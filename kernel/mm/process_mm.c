@@ -85,6 +85,24 @@ bool user_valloc_and_map(uptr user_vaddr, int page_count)
    return true;
 }
 
+void user_unmap_zero_page(uptr user_vaddr, int page_count)
+{
+   page_directory_t *pdir = get_curr_pdir();
+   unmap_pages(pdir, (void *)user_vaddr, page_count, true);
+}
+
+bool user_map_zero_page(uptr user_vaddr, int page_count)
+{
+   page_directory_t *pdir = get_curr_pdir();
+   int count = map_zero_pages(pdir, (void *)user_vaddr, page_count, true, true);
+
+   if (count != page_count) {
+      user_unmap_zero_page(user_vaddr, count);
+   }
+
+   return true;
+}
+
 sptr sys_brk(void *new_brk)
 {
    task_info *ti = get_curr_task();
@@ -216,8 +234,14 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
                              KMALLOC_MAX_ALIGN,    /* alloc block size */
                              false,                /* linear mapping */
                              NULL,                 /* metadata_nodes */
+#if MMAP_NO_COW
                              user_valloc_and_map,
                              user_vfree_and_unmap);
+#else
+                             user_map_zero_page,
+                             user_unmap_zero_page);
+#endif
+
       if (!success)
          return -ENOMEM;
    }
@@ -236,7 +260,10 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    if (!res)
       return -ENOMEM;
 
+#if MMAP_NO_COW
    bzero(res, actual_len);
+#endif
+
    return (sptr)res;
 }
 
@@ -245,7 +272,10 @@ sptr sys_munmap(void *vaddr, size_t len)
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
 
-   if (!vaddr || !len || !pi->mmap_heap || !IS_PAGE_ALIGNED(len))
+   if (!len || !pi->mmap_heap || !IS_PAGE_ALIGNED(len))
+      return -EINVAL;
+
+   if ((uptr)vaddr < USER_MMAP_BEGIN || (uptr)vaddr >= USER_MMAP_END)
       return -EINVAL;
 
    disable_preemption();

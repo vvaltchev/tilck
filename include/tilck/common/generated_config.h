@@ -30,6 +30,7 @@
 
 /* disabled by default */
 #cmakedefine01 FORK_NO_COW
+#cmakedefine01 MMAP_NO_COW
 #cmakedefine01 PANIC_SHOW_REGS
 #cmakedefine01 KMALLOC_FREE_MEM_POISONING
 #cmakedefine01 KMALLOC_SUPPORT_DEBUG_LOG
