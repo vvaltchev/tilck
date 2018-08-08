@@ -61,7 +61,7 @@ map_zero_pages(page_directory_t *pdir,
                bool rw);
 
 bool is_mapped(page_directory_t *pdir, void *vaddr);
-void unmap_page(page_directory_t *pdir, void *vaddr);
+void unmap_page(page_directory_t *pdir, void *vaddr, bool free_pageframe);
 uptr get_mapping(page_directory_t *pdir, void *vaddr);
 page_directory_t *pdir_clone(page_directory_t *pdir);
 page_directory_t *pdir_deep_clone(page_directory_t *pdir);
@@ -71,10 +71,13 @@ void pdir_destroy(page_directory_t *pdir);
 void set_page_rw(page_directory_t *pdir, void *vaddr, bool rw);
 
 static inline void
-unmap_pages(page_directory_t *pdir, void *vaddr, int page_count)
+unmap_pages(page_directory_t *pdir,
+            void *vaddr,
+            int page_count,
+            bool free_pageframes)
 {
    for (int i = 0; i < page_count; i++) {
-      unmap_page(pdir, (u8 *)vaddr + (i << PAGE_SHIFT));
+      unmap_page(pdir, (char *)vaddr + (i << PAGE_SHIFT), free_pageframes);
    }
 }
 

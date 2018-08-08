@@ -226,7 +226,7 @@ void set_page_rw(page_directory_t *pdir, void *vaddrp, bool rw)
    invalidate_page(vaddr);
 }
 
-void unmap_page(page_directory_t *pdir, void *vaddrp)
+void unmap_page(page_directory_t *pdir, void *vaddrp, bool free_pageframe)
 {
    page_table_t *ptable;
    const uptr vaddr = (uptr) vaddrp;
@@ -240,8 +240,10 @@ void unmap_page(page_directory_t *pdir, void *vaddrp)
    const uptr paddr = ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
    ptable->pages[page_table_index].raw = 0;
 
-   pf_ref_count_dec(paddr);
    invalidate_page(vaddr);
+
+   if (!pf_ref_count_dec(paddr) && free_pageframe)
+      kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
 }
 
 uptr get_mapping(page_directory_t *pdir, void *vaddrp)

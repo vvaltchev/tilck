@@ -20,9 +20,7 @@ void user_vfree_and_unmap(uptr user_vaddr, int page_count)
       if (!is_mapped(pdir, (void *)va))
          continue;
 
-      uptr pa = get_mapping(pdir, (void *)va);
-      kfree2(KERNEL_PA_TO_VA(pa), PAGE_SIZE);
-      unmap_page(pdir, (void *)va);
+      unmap_page(pdir, (void *)va, true);
    }
 }
 
@@ -79,14 +77,13 @@ bool user_valloc_and_map(uptr user_vaddr, int page_count)
                      true, true);
 
    if (count != page_count) {
-      unmap_pages(pdir, (void *)user_vaddr, count);
+      unmap_pages(pdir, (void *)user_vaddr, count, false);
       general_kfree(kernel_vaddr, &size, true, true);
       return false;
    }
 
    return true;
 }
-
 
 sptr sys_brk(void *new_brk)
 {
@@ -121,13 +118,8 @@ sptr sys_brk(void *new_brk)
 
       /* we have to free pages */
 
-      void *vaddr = new_brk;
-
-      while (vaddr < pi->brk) {
-         const uptr paddr = get_mapping(pi->pdir, vaddr);
-         kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
-         unmap_page(pi->pdir, vaddr);
-         vaddr += PAGE_SIZE;
+      for (void *vaddr = new_brk; vaddr < pi->brk; vaddr += PAGE_SIZE) {
+         unmap_page(pi->pdir, vaddr, true);
       }
 
       pi->brk = new_brk;

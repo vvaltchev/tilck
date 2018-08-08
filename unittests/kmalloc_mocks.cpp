@@ -87,7 +87,7 @@ map_pages(page_directory_t *pdir,
    return page_count;
 }
 
-void unmap_page(page_directory_t *, void *vaddrp)
+void unmap_page(page_directory_t *, void *vaddrp, bool free_pageframe)
 {
    mappings[(uptr)vaddrp] = INVALID_PADDR;
 }
