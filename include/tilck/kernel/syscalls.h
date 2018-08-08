@@ -84,11 +84,14 @@ CREATE_STUB_SYSCALL_IMPL(sys_times)
 
 sptr sys_brk(void *vaddr);
 
-CREATE_STUB_SYSCALL_IMPL(sys_setgid16)
-CREATE_STUB_SYSCALL_IMPL(sys_getgid16)
+sptr sys_setgid16(uptr gid);
+sptr sys_getgid16();
+
 CREATE_STUB_SYSCALL_IMPL(sys_signal)
-CREATE_STUB_SYSCALL_IMPL(sys_geteuid16)
-CREATE_STUB_SYSCALL_IMPL(sys_getegid16)
+
+sptr sys_geteuid16();
+sptr sys_getegid16();
+
 CREATE_STUB_SYSCALL_IMPL(sys_acct)
 CREATE_STUB_SYSCALL_IMPL(sys_umount)
 
@@ -251,10 +254,12 @@ sptr sys_lstat64(const char *user_path, struct stat *user_statbuf);
 
 CREATE_STUB_SYSCALL_IMPL(sys_fstat64)
 CREATE_STUB_SYSCALL_IMPL(sys_lchown)
-CREATE_STUB_SYSCALL_IMPL(sys_getuid)
-CREATE_STUB_SYSCALL_IMPL(sys_getgid)
-CREATE_STUB_SYSCALL_IMPL(sys_geteuid)
-CREATE_STUB_SYSCALL_IMPL(sys_getegid)
+
+sptr sys_getuid();
+sptr sys_getgid();
+sptr sys_geteuid();
+sptr sys_getegid();
+
 CREATE_STUB_SYSCALL_IMPL(sys_setreuid)
 CREATE_STUB_SYSCALL_IMPL(sys_setregid)
 CREATE_STUB_SYSCALL_IMPL(sys_getgroups)
@@ -265,8 +270,10 @@ CREATE_STUB_SYSCALL_IMPL(sys_getresuid)
 CREATE_STUB_SYSCALL_IMPL(sys_setresgid)
 CREATE_STUB_SYSCALL_IMPL(sys_getresgid)
 CREATE_STUB_SYSCALL_IMPL(sys_chown)
-CREATE_STUB_SYSCALL_IMPL(sys_setuid)
-CREATE_STUB_SYSCALL_IMPL(sys_setgid)
+
+sptr sys_setuid(uptr uid);
+sptr sys_setgid(uptr gid);
+
 CREATE_STUB_SYSCALL_IMPL(sys_setfsuid)
 CREATE_STUB_SYSCALL_IMPL(sys_setfsgid)
 CREATE_STUB_SYSCALL_IMPL(sys_pivot_root)

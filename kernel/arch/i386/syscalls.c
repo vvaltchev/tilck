@@ -21,21 +21,6 @@ sptr sys_rt_sigprocmask(/* args ignored at the moment */)
    return 0;
 }
 
-/* Actual implementation: accept only 0 as UID. */
-sptr sys_setuid16(uptr uid)
-{
-   if (uid == 0)
-      return 0;
-
-   return -EINVAL;
-}
-
-/* Actual implementation, not a stub: only the root user exists. */
-sptr sys_getuid16()
-{
-   return 0;
-}
-
 sptr sys_nanosleep(/* ignored arguments for the moment */)
 {
    // This is a stub implementation. TODO: actually implement nanosleep().
