@@ -25,6 +25,7 @@
 typedef struct page_directory_t page_directory_t;
 
 void init_paging();
+bool handle_potential_cow(void *r);
 
 NODISCARD int
 map_page(page_directory_t *pdir, void *vaddr, uptr paddr, bool us, bool rw);

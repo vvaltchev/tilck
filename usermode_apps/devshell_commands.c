@@ -347,7 +347,21 @@ void cmd_cow_in_kernel(void)
 {
    static char cow_buf[4096];
 
+   int wstatus;
+   int child_pid = fork();
 
+   if (child_pid < 0) {
+      printf("fork() failed\n");
+      exit(1);
+   }
+
+   if (!child_pid) {
+      int rc = stat("/", (void *)cow_buf);
+      printf("stat() returned: %d (errno: %s)\n", rc, strerror(errno));
+      exit(0);
+   }
+
+   waitpid(child_pid, &wstatus, 0);
 }
 
 void cmd_help(void);
@@ -390,7 +404,8 @@ struct {
    {"fpu", cmd_fpu, TT_SHORT, true},
    {"fpu_loop", cmd_fpu_loop, TT_LONG, false},
    {"brk_test", cmd_brk_test, TT_SHORT, true},
-   {"oom_test", cmd_oom_test, TT_MED, true}
+   {"oom_test", cmd_oom_test, TT_MED, true},
+   {"cow_in_kernel", cmd_cow_in_kernel, TT_SHORT, false}
 };
 
 void dump_list_of_commands(void)

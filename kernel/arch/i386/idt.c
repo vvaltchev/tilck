@@ -94,6 +94,20 @@ void handle_fault(regs *r)
 {
    VERIFY(is_fault(r->int_num));
 
+   if (LIKELY(r->int_num == FAULT_PAGE_FAULT)) {
+
+      bool was_cow;
+
+      enable_interrupts_forced();
+      {
+         was_cow = handle_potential_cow(r);
+      }
+      disable_interrupts_forced();
+
+      if (was_cow)
+         return;
+   }
+
    if (is_fault_resumable(r->int_num)) {
       handle_resumable_fault(r);
       return;

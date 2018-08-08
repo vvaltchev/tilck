@@ -32,6 +32,12 @@
 #define PG_CUSTOM_B2   (1 << PG_CUSTOM_B2_POS)
 #define PG_CUSTOM_BITS (PG_CUSTOM_B0 | PG_CUSTOM_B1 | PG_CUSTOM_B2)
 
+#define PAGE_FAULT_FL_PRESENT (1 << 0)
+#define PAGE_FAULT_FL_RW      (1 << 1)
+#define PAGE_FAULT_FL_US      (1 << 2)
+
+#define PAGE_FAULT_FL_COW (PAGE_FAULT_FL_PRESENT | PAGE_FAULT_FL_RW)
+
 // A page table entry
 typedef struct {
 

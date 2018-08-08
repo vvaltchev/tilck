@@ -64,14 +64,20 @@ pdir_get_page_table(page_directory_t *pdir, int i)
    return KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 }
 
-bool handle_potential_cow(u32 vaddr)
+bool handle_potential_cow(void *context)
 {
-   page_table_t *ptable;
+   regs *r = context;
+
+   if ((r->err_code & PAGE_FAULT_FL_COW) != PAGE_FAULT_FL_COW)
+      return false;
+
+   u32 vaddr;
+   asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
+
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
    void *const page_vaddr = (void *)(vaddr & PAGE_MASK);
-
-   ptable = pdir_get_page_table(curr_page_dir, page_dir_index);
+   page_table_t *ptable = pdir_get_page_table(curr_page_dir, page_dir_index);
 
    if (!(ptable->pages[page_table_index].avail & PAGE_COW_ORIG_RW))
       return false; /* Not a COW page */
@@ -121,13 +127,9 @@ void handle_page_fault_int(regs *r)
    u32 vaddr;
    asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
 
-   bool us = (r->err_code & (1 << 2)) != 0;
-   bool rw = (r->err_code & (1 << 1)) != 0;
-   bool p = (r->err_code & (1 << 0)) != 0;
-
-   if (us && rw && p && handle_potential_cow(vaddr)) {
-      return;
-   }
+   bool p  = !!(r->err_code & PAGE_FAULT_FL_PRESENT);
+   bool rw = !!(r->err_code & PAGE_FAULT_FL_RW);
+   bool us = !!(r->err_code & PAGE_FAULT_FL_US);
 
    if (!us) {
       ptrdiff_t off = 0;
