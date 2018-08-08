@@ -12,6 +12,8 @@
 #include <sys/syscall.h>
 #include <sys/mman.h>
 
+#include "sysenter.h"
+
 #define KB (1024)
 #define MB (1024 * 1024)
 
@@ -152,69 +154,6 @@ void cmd_fork_perf(void)
    duration = RDTSC() - start;
    printf("duration: %llu\n", duration/iters);
 }
-
-int do_sysenter_call0(int syscall)
-{
-   int ret;
-
-   __asm__ volatile ("pushl $1f\n\t"
-                     "pushl %%ecx\n\t"
-                     "pushl %%edx\n\t"
-                     "pushl %%ebp\n\t"
-                     "movl %%esp, %%ebp\n\t"
-                     "sysenter\n\t"
-                     "1:\n\t"
-                     : "=a" (ret)
-                     : "a" (syscall)
-                     : "memory", "cc");
-
-   return ret;
-}
-
-int do_sysenter_call1(int syscall, void *arg1)
-{
-   int ret;
-
-   __asm__ volatile ("pushl $1f\n\t"
-                     "pushl %%ecx\n\t"
-                     "pushl %%edx\n\t"
-                     "pushl %%ebp\n\t"
-                     "movl %%esp, %%ebp\n\t"
-                     "sysenter\n\t"
-                     "1:\n\t"
-                     : "=a" (ret)
-                     : "a" (syscall), "b" (arg1)
-                     : "memory", "cc");
-
-   return ret;
-}
-
-int do_sysenter_call3(int syscall, void *arg1, void *arg2, void *arg3)
-{
-   int ret;
-
-   __asm__ volatile ("pushl $1f\n\t"
-                     "pushl %%ecx\n\t"
-                     "pushl %%edx\n\t"
-                     "pushl %%ebp\n\t"
-                     "movl %%esp, %%ebp\n\t"
-                     "sysenter\n\t"
-                     "1:\n\t"
-                     : "=a" (ret)
-                     : "a" (syscall), "b" (arg1), "c" (arg2), "d" (arg3)
-                     : "memory", "cc");
-
-   return ret;
-}
-
-#define sysenter_call0(n) \
-   do_sysenter_call0((n))
-
-#define sysenter_call1(n, a1) \
-   do_sysenter_call1((n), (void*)(a1))
-
-#define sysenter_call3(n, a1, a2, a3) \
-   do_sysenter_call3((n), (void*)(a1), (void*)(a2), (void*)(a3))
 
 int sysenter_fork(void)
 {
@@ -402,6 +341,13 @@ void cmd_oom_test(void)
 
    printf("\nAvg. cycles for mmap + munmap %u MB: %llu million\n",
           max_mb, (tot_duration / iters_count) / 1000000);
+}
+
+void cmd_cow_in_kernel(void)
+{
+   static char cow_buf[4096];
+
+
 }
 
 void cmd_help(void);
