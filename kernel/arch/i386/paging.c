@@ -30,6 +30,8 @@ extern page_directory_t *curr_page_dir;
 extern char page_size_buf[PAGE_SIZE];
 extern char vsdo_like_page[PAGE_SIZE];
 
+static char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
+
 static u16 *pageframes_refcount;
 static uptr phys_mem_lim;
 
@@ -380,6 +382,42 @@ map_page(page_directory_t *pdir,
 }
 
 NODISCARD int
+map_zero_page(page_directory_t *pdir,
+              void *vaddrp,
+              bool us,
+              bool rw)
+{
+   return
+      map_page_int(pdir,
+                   vaddrp,
+                   KERNEL_VA_TO_PA(&zero_page),
+                   (us << PG_US_BIT_POS) |
+                   (rw << PG_RW_BIT_POS) |
+                   ((!us) << PG_GLOBAL_BIT_POS)); /* Kernel pages are global */
+}
+
+NODISCARD int
+map_zero_pages(page_directory_t *pdir,
+               void *vaddrp,
+               int page_count,
+               bool us,
+               bool rw)
+{
+   int n, rc;
+   uptr vaddr = (uptr) vaddrp;
+
+   for (n = 0; n < page_count; n++, vaddr += PAGE_SIZE) {
+
+      rc = map_zero_page(pdir, (void *)vaddr, us, rw);
+
+      if (rc != 0)
+         break;
+   }
+
+   return n;
+}
+
+NODISCARD int
 map_pages(page_directory_t *pdir,
           void *vaddr,
           uptr paddr,
@@ -627,6 +665,8 @@ void init_paging_cow(void)
 
    if (!pageframes_refcount)
       panic("Unable to allocate pageframes_refcount");
+
+   pf_ref_count_inc(KERNEL_VA_TO_PA(zero_page));
 
    /*
     * Map a special vdso-like page used for the sysenter interface.
