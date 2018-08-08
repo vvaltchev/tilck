@@ -64,6 +64,19 @@ void per_heap_kfree(kmalloc_heap *h,
                     bool allow_split,
                     bool multi_step_free);
 
+typedef struct {
+
+   u32 elem_size;
+   u32 elem_count;
+   u32 curr_elem;
+   char *buf;
+
+} kmalloc_accelerator;
+
+void kmalloc_create_accelerator(kmalloc_accelerator *a, u32 elem_s, u32 elem_c);
+void *kmalloc_accelerator_get_elem(kmalloc_accelerator *a);
+void kmalloc_destroy_accelerator(kmalloc_accelerator *a);
+
 #ifndef UNIT_TEST_ENVIRONMENT
 
 static inline void *kmalloc(size_t size)

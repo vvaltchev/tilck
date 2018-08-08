@@ -471,16 +471,18 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
 page_directory_t *
 pdir_deep_clone(page_directory_t *pdir)
 {
-   page_directory_t *new_pdir = kzmalloc(sizeof(page_directory_t));
+   STATIC_ASSERT(sizeof(page_directory_t) == PAGE_SIZE);
+   STATIC_ASSERT(sizeof(page_table_t) == PAGE_SIZE);
+
+   kmalloc_accelerator acc;
+   kmalloc_create_accelerator(&acc, PAGE_SIZE, 4);
+
+   page_directory_t *new_pdir = kmalloc_accelerator_get_elem(&acc);
 
    if (!new_pdir)
-      return NULL;
+      goto oom_exit;
 
    ASSERT(IS_PAGE_ALIGNED(new_pdir));
-
-   const int pages_buf_count = 4;
-   int curr_page_in_buf = pages_buf_count;
-   void *pages_buf = NULL;
 
    for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
 
@@ -493,7 +495,7 @@ pdir_deep_clone(page_directory_t *pdir)
          continue;
 
       page_table_t *orig_pt = pdir_get_page_table(pdir, i);
-      page_table_t *new_pt = kzmalloc(sizeof(page_table_t));
+      page_table_t *new_pt = kmalloc_accelerator_get_elem(&acc);
 
       if (!new_pt)
          goto oom_exit;
@@ -507,19 +509,7 @@ pdir_deep_clone(page_directory_t *pdir)
          if (!orig_pt->pages[j].present)
             continue;
 
-         if (curr_page_in_buf == pages_buf_count) {
-
-            size_t actual_size = PAGE_SIZE * pages_buf_count;
-            pages_buf = general_kmalloc(&actual_size, false, PAGE_SIZE);
-            VERIFY(actual_size == PAGE_SIZE * pages_buf_count);
-
-            if (!pages_buf)
-               goto oom_exit;
-
-            curr_page_in_buf = 0;
-         }
-
-         void *new_page = pages_buf + (curr_page_in_buf++ << PAGE_SHIFT);
+         void *new_page = kmalloc_accelerator_get_elem(&acc);
 
          if (!new_page)
             goto oom_exit;
@@ -544,23 +534,16 @@ pdir_deep_clone(page_directory_t *pdir)
       new_pdir->entries[i].raw = pdir->entries[i].raw;
    }
 
-   for (; curr_page_in_buf < pages_buf_count; curr_page_in_buf++) {
-      size_t actual_size = PAGE_SIZE;
-      general_kfree(pages_buf + (curr_page_in_buf << PAGE_SHIFT),
-                    &actual_size, true, false);
-   }
-
+   kmalloc_destroy_accelerator(&acc);
    return new_pdir;
 
 oom_exit:
 
-   for (; curr_page_in_buf < pages_buf_count; curr_page_in_buf++) {
-      size_t actual_size = PAGE_SIZE;
-      general_kfree(pages_buf + (curr_page_in_buf << PAGE_SHIFT),
-                    &actual_size, true, false);
-   }
+   kmalloc_destroy_accelerator(&acc);
 
-   pdir_destroy(new_pdir);
+   if (new_pdir)
+      pdir_destroy(new_pdir);
+
    return NULL;
 }
 

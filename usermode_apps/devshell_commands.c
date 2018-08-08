@@ -410,7 +410,7 @@ struct {
    {"fpu_loop", cmd_fpu_loop, TT_LONG, false},
    {"brk_test", cmd_brk_test, TT_SHORT, true},
    {"oom_test", cmd_oom_test, TT_MED, true},
-   {"kernel_cow", cmd_kernel_cow, TT_SHORT, false}
+   {"kernel_cow", cmd_kernel_cow, TT_SHORT, true}
 };
 
 void dump_list_of_commands(void)
