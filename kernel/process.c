@@ -366,8 +366,12 @@ sptr sys_fork(void)
       child->state = TASK_STATE_RUNNABLE;
    }
 
-   //child->pi->pdir = pdir_clone(curr->pi->pdir);
+
+#if FORK_NO_COW
    child->pi->pdir = pdir_deep_clone(curr->pi->pdir);
+#else
+   child->pi->pdir = pdir_clone(curr->pi->pdir);
+#endif
 
    if (!child->pi->pdir)
       goto no_mem_exit;

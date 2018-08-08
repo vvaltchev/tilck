@@ -58,6 +58,9 @@ set(DEBUG_CHECKS_IN_RELEASE_BUILD ON CACHE BOOL
 
 # Kernel options (disabled by default)
 
+set(FORK_NO_COW OFF CACHE BOOL
+    "Make fork() to perform a full-copy instead of using copy-on-write")
+
 set(PANIC_SHOW_REGS OFF CACHE BOOL
     "Show the content of the main registers in case of kernel panic")
 

@@ -143,6 +143,11 @@ void cmd_fork_perf(void)
 
       child_pid = fork();
 
+      if (child_pid < 0) {
+         printf("fork() failed: %s\n", strerror(errno));
+         exit(1);
+      }
+
       if (!child_pid) {
          exit(0);
       }

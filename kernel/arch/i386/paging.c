@@ -478,6 +478,10 @@ pdir_deep_clone(page_directory_t *pdir)
 
    ASSERT(IS_PAGE_ALIGNED(new_pdir));
 
+   const int pages_buf_count = 4;
+   int curr_page_in_buf = pages_buf_count;
+   void *pages_buf = NULL;
+
    for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
 
       new_pdir->entries[i].raw = pdir->entries[i].raw;
@@ -503,7 +507,19 @@ pdir_deep_clone(page_directory_t *pdir)
          if (!orig_pt->pages[j].present)
             continue;
 
-         void *new_page = kmalloc(PAGE_SIZE);
+         if (curr_page_in_buf == pages_buf_count) {
+
+            size_t actual_size = PAGE_SIZE * pages_buf_count;
+            pages_buf = general_kmalloc(&actual_size, false, PAGE_SIZE);
+            VERIFY(actual_size == PAGE_SIZE * pages_buf_count);
+
+            if (!pages_buf)
+               goto oom_exit;
+
+            curr_page_in_buf = 0;
+         }
+
+         void *new_page = pages_buf + (curr_page_in_buf++ << PAGE_SHIFT);
 
          if (!new_page)
             goto oom_exit;
@@ -528,9 +544,22 @@ pdir_deep_clone(page_directory_t *pdir)
       new_pdir->entries[i].raw = pdir->entries[i].raw;
    }
 
+   for (; curr_page_in_buf < pages_buf_count; curr_page_in_buf++) {
+      size_t actual_size = PAGE_SIZE;
+      general_kfree(pages_buf + (curr_page_in_buf << PAGE_SHIFT),
+                    &actual_size, true, false);
+   }
+
    return new_pdir;
 
 oom_exit:
+
+   for (; curr_page_in_buf < pages_buf_count; curr_page_in_buf++) {
+      size_t actual_size = PAGE_SIZE;
+      general_kfree(pages_buf + (curr_page_in_buf << PAGE_SHIFT),
+                    &actual_size, true, false);
+   }
+
    pdir_destroy(new_pdir);
    return NULL;
 }
