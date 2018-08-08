@@ -133,7 +133,7 @@ void cmd_bad_write(void)
 
 void cmd_fork_perf(void)
 {
-   const int iters = 200000;
+   const int iters = 150000;
    int wstatus, child_pid;
    unsigned long long start, duration;
 

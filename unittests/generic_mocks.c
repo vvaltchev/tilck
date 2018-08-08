@@ -69,6 +69,7 @@ void setup_sysenter_interface() { }
 void save_current_task_state() { }
 void switch_to_task() { }
 void pdir_clone() { }
+void pdir_deep_clone() { }
 void pdir_destroy() { }
 void set_page_directory() { }
 void set_current_task_in_user_mode() { }

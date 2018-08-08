@@ -399,9 +399,8 @@ map_pages(page_directory_t *pdir,
                     ((!us) << PG_GLOBAL_BIT_POS));
 }
 
-page_directory_t *pdir_clone(page_directory_t *pdir, int *user_pages_count)
+page_directory_t *pdir_clone(page_directory_t *pdir)
 {
-   int up_count = 0;
    page_directory_t *new_pdir = kmalloc(sizeof(page_directory_t));
 
    if (!new_pdir)
@@ -460,19 +459,81 @@ page_directory_t *pdir_clone(page_directory_t *pdir, int *user_pages_count)
 
          orig_pt->pages[j].rw = false;
          pf_ref_count_inc(orig_paddr);
-         up_count++;
       }
 
       // copy the page table
       memcpy(new_pt, orig_pt, sizeof(page_table_t));
    }
 
-   if (user_pages_count)
-      *user_pages_count = up_count;
-
    return new_pdir;
 }
 
+page_directory_t *
+pdir_deep_clone(page_directory_t *pdir)
+{
+   page_directory_t *new_pdir = kzmalloc(sizeof(page_directory_t));
+
+   if (!new_pdir)
+      return NULL;
+
+   ASSERT(IS_PAGE_ALIGNED(new_pdir));
+
+   for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
+
+      new_pdir->entries[i].raw = pdir->entries[i].raw;
+
+      /* User-space cannot use 4-MB pages */
+      ASSERT(!pdir->entries[i].psize);
+
+      if (!pdir->entries[i].present)
+         continue;
+
+      page_table_t *orig_pt = pdir_get_page_table(pdir, i);
+      page_table_t *new_pt = kzmalloc(sizeof(page_table_t));
+
+      if (!new_pt)
+         goto oom_exit;
+
+      ASSERT(IS_PAGE_ALIGNED(new_pt));
+
+      for (u32 j = 0; j < 1024; j++) {
+
+         new_pt->pages[j].raw = orig_pt->pages[j].raw;
+
+         if (!orig_pt->pages[j].present)
+            continue;
+
+         void *new_page = kmalloc(PAGE_SIZE);
+
+         if (!new_page)
+            goto oom_exit;
+
+         ASSERT(IS_PAGE_ALIGNED(new_page));
+
+         uptr orig_page_paddr = orig_pt->pages[j].pageAddr << PAGE_SHIFT;
+         void *orig_page = KERNEL_PA_TO_VA(orig_page_paddr);
+
+         u32 new_page_paddr = KERNEL_VA_TO_PA(new_page);
+         ASSERT(pf_ref_count_get(new_page_paddr) == 0);
+         pf_ref_count_inc(new_page_paddr);
+
+         memcpy32(new_page, orig_page, PAGE_SIZE / 4);
+         new_pt->pages[j].pageAddr = new_page_paddr >> PAGE_SHIFT;
+      }
+
+      new_pdir->entries[i].ptaddr = KERNEL_VA_TO_PA(new_pt) >> PAGE_SHIFT;
+   }
+
+   for (u32 i = (KERNEL_BASE_VA >> 22); i < 1024; i++) {
+      new_pdir->entries[i].raw = pdir->entries[i].raw;
+   }
+
+   return new_pdir;
+
+oom_exit:
+   pdir_destroy(new_pdir);
+   return NULL;
+}
 
 void pdir_destroy(page_directory_t *pdir)
 {
