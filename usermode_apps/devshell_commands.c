@@ -95,7 +95,7 @@ void cmd_fork_test(void)
    fork_test(&fork);
 }
 
-void cmd_invalid_read(void)
+void cmd_bad_read(void)
 {
    int ret;
    void *addr = (void *) 0xB0000000;
@@ -121,7 +121,7 @@ void cmd_invalid_read(void)
    exit(0);
 }
 
-void cmd_invalid_write(void)
+void cmd_bad_write(void)
 {
    int ret;
    void *addr = (void *) 0xB0000000;
@@ -160,7 +160,7 @@ int sysenter_fork(void)
    return sysenter_call0(2 /* fork */);
 }
 
-void cmd_sysenter_fork_test(void)
+void cmd_se_fork_test(void)
 {
    fork_test(&sysenter_fork);
 }
@@ -343,7 +343,7 @@ void cmd_oom_test(void)
           max_mb, (tot_duration / iters_count) / 1000000);
 }
 
-void cmd_cow_in_kernel(void)
+void cmd_kernel_cow(void)
 {
    static char cow_buf[4096];
 
@@ -395,17 +395,17 @@ struct {
    {"help", cmd_help, TT_SHORT, false},
    {"loop", cmd_loop, TT_MED, false},
    {"fork_test", cmd_fork_test, TT_MED, true},
-   {"invalid_read", cmd_invalid_read, TT_SHORT, true},
-   {"invalid_write", cmd_invalid_write, TT_SHORT, true},
+   {"bad_read", cmd_bad_read, TT_SHORT, true},
+   {"bad_write", cmd_bad_write, TT_SHORT, true},
    {"fork_perf", cmd_fork_perf, TT_LONG, true},
    {"sysenter", cmd_sysenter, TT_SHORT, true},
    {"syscall_perf", cmd_syscall_perf, TT_SHORT, true},
-   {"sysenter_fork_test", cmd_sysenter_fork_test, TT_MED, true},
+   {"se_fork_test", cmd_se_fork_test, TT_MED, true},
    {"fpu", cmd_fpu, TT_SHORT, true},
    {"fpu_loop", cmd_fpu_loop, TT_LONG, false},
    {"brk_test", cmd_brk_test, TT_SHORT, true},
    {"oom_test", cmd_oom_test, TT_MED, true},
-   {"cow_in_kernel", cmd_cow_in_kernel, TT_SHORT, false}
+   {"kernel_cow", cmd_kernel_cow, TT_SHORT, false}
 };
 
 void dump_list_of_commands(void)
@@ -439,7 +439,7 @@ void cmd_help(void)
    printf(COLOR_RED "Kernel tests\n" RESET_ATTRS);
 
    const int elems = sizeof(cmds_table) / sizeof(cmds_table[0]);
-   const int elems_per_row = 6;
+   const int elems_per_row = 7;
 
    for (int i = 1 /* skip help */; i < elems; i++) {
       printf("%s%s%s ",
