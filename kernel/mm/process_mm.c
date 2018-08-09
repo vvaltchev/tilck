@@ -79,7 +79,9 @@ bool user_valloc_and_map(uptr user_vaddr, int page_count)
 
    if (count != page_count) {
       unmap_pages(pdir, (void *)user_vaddr, count, false);
-      general_kfree(kernel_vaddr, &size, true, true);
+      general_kfree(kernel_vaddr,
+                    &size,
+                    KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP);
       return false;
    }
 
@@ -284,7 +286,10 @@ sptr sys_munmap(void *vaddr, size_t len)
    disable_preemption();
    {
       size_t actual_len = len;
-      per_heap_kfree(pi->mmap_heap, vaddr, &actual_len, true, true);
+      per_heap_kfree(pi->mmap_heap,
+                     vaddr,
+                     &actual_len,
+                     KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP);
       ASSERT(actual_len == round_up_at(len, PAGE_SIZE));
    }
    enable_preemption();

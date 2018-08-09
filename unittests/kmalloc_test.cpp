@@ -391,10 +391,9 @@ TEST_F(kmalloc_test, split_block)
    size_t actual_size = h.min_block_size;
 
    per_heap_kfree(&h,
-                   (void *)(h.vaddr + h.min_block_size * 3),
-                   &actual_size,
-                   false,
-                   false);
+                  (void *)(h.vaddr + h.min_block_size * 3),
+                  &actual_size,
+                  0);
 
    ASSERT_EQ(actual_size, h.min_block_size);
 
@@ -658,8 +657,7 @@ TEST_F(kmalloc_test, multi_step_free)
    per_heap_kfree(&h,
                   (void *)((uptr)ptr + h.min_block_size * 4),
                   &actual_size,
-                  true,
-                  true);
+                  KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP);
 
    ASSERT_EQ(actual_size, h.min_block_size * 7);
 
@@ -728,7 +726,7 @@ TEST_F(kmalloc_test, partial_free)
 
    s = h.min_block_size;
    ptr = (void *)(h.vaddr + 2 * h.min_block_size);
-   per_heap_kfree(&h, ptr, &s, false, false);
+   per_heap_kfree(&h, ptr, &s, 0);
 
    dump_heap_subtree(&h, 0, 5);
 
@@ -750,7 +748,7 @@ TEST_F(kmalloc_test, partial_free)
 
    s = h.min_block_size * 2;
    ptr = (void *)(h.vaddr + 2 * h.min_block_size);
-   per_heap_kfree(&h, ptr, &s, true, false);
+   per_heap_kfree(&h, ptr, &s, KFREE_FL_ALLOW_SPLIT);
 
    dump_heap_subtree(&h, 0, 5);
 
@@ -772,7 +770,7 @@ TEST_F(kmalloc_test, partial_free)
 
    s = h.min_block_size * 8;
    ptr = (void *)(h.vaddr);
-   per_heap_kfree(&h, ptr, &s, true, false);
+   per_heap_kfree(&h, ptr, &s, KFREE_FL_ALLOW_SPLIT);
 
    dump_heap_subtree(&h, 0, 5);
 

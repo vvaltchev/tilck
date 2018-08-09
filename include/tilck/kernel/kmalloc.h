@@ -11,6 +11,8 @@
 #define KMALLOC_FL_RES1                     ((u32)1 << 30)
 #define KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK  (((u32)1 << 30) - 1)
 
+#define KFREE_FL_MULTI_STEP                 ((u32)1 << 31)
+#define KFREE_FL_ALLOW_SPLIT                ((u32)1 << 30)
 
 typedef bool (*virtual_alloc_and_map_func)(uptr vaddr, int page_count);
 typedef void (*virtual_free_and_unmap_func)(uptr vaddr, int page_count);
@@ -32,12 +34,7 @@ calculate_heap_min_block_size(size_t heap_size, size_t metadata_size)
 void init_kmalloc(void);
 
 void *general_kmalloc(size_t *size, u32 flags);
-
-void
-general_kfree(void *ptr,
-              size_t *size,
-              bool allow_split,
-              bool multi_step_free);
+void general_kfree(void *ptr, size_t *size, u32 flags);
 
 size_t kmalloc_get_total_heap_allocation(void);
 bool is_kmalloc_initialized(void);
@@ -55,15 +52,8 @@ bool kmalloc_create_heap(kmalloc_heap *h,
 void kmalloc_destroy_heap(kmalloc_heap *h);
 kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h);
 
-void *per_heap_kmalloc(kmalloc_heap *h,
-                       size_t *size /* in/out */,
-                       u32 flags);
-
-void per_heap_kfree(kmalloc_heap *h,
-                    void *ptr,
-                    size_t *size,
-                    bool allow_split,
-                    bool multi_step_free);
+void *per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags);
+void per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *size, u32 flags);
 
 typedef struct {
 
@@ -87,7 +77,7 @@ static inline void *kmalloc(size_t size)
 
 static inline void kfree2(void *ptr, size_t size)
 {
-   general_kfree(ptr, &size, false, false);
+   general_kfree(ptr, &size, 0);
 }
 
 #else

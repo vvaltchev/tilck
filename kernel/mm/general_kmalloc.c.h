@@ -55,10 +55,7 @@ out:
 }
 
 void
-general_kfree(void *ptr,
-              size_t *size,
-              bool allow_split,
-              bool multi_step_free)
+general_kfree(void *ptr, size_t *size, u32 flags)
 {
    const uptr vaddr = (uptr) ptr;
 
@@ -85,7 +82,7 @@ general_kfree(void *ptr,
    if (hn < 0)
       panic("[kfree] Heap not found for block: %p\n", ptr);
 
-   per_heap_kfree(heaps[hn], ptr, size, allow_split, multi_step_free);
+   per_heap_kfree(heaps[hn], ptr, size, flags);
 
    if (KMALLOC_FREE_MEM_POISONING) {
       memset32(ptr, KMALLOC_FREE_MEM_POISON_VAL, *size / 4);
@@ -152,8 +149,7 @@ kmalloc_destroy_accelerator(kmalloc_accelerator *a)
 
       general_kfree(a->buf + (a->curr_elem * a->elem_size), /* ptr           */
                     &actual_size,                           /* size (in/out) */
-                    true,                                   /* allow_split   */
-                    false);                                 /* multi_step    */
+                    KFREE_FL_ALLOW_SPLIT);
 
       ASSERT(actual_size == a->elem_size);
    }

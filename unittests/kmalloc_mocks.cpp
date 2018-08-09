@@ -120,7 +120,7 @@ void kfree2(void *ptr, size_t size)
    if (mock_kmalloc)
       return free(ptr);
 
-   return general_kfree(ptr, &size, false, false);
+   return general_kfree(ptr, &size, 0);
 }
 
 void *kmalloc_get_first_heap(size_t *size)
