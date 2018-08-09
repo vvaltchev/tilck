@@ -11,6 +11,17 @@
 
 static void **allocations;
 
+static void kmalloc_perf_print_iters(int iters)
+{
+   printk("[%2d%s iters] ",
+          iters < 1000
+            ? iters
+            : (iters < 1000000 ? iters / 1000 : iters / 1000000),
+          iters < 1000
+            ? ""
+            : (iters < 1000000 ? "K" : "M"));
+}
+
 static void kmalloc_perf_per_size(int size)
 {
    const int iters = size < 4096 ? 10000 : (size <= 16*KB ? 1000 : 100);
@@ -31,8 +42,9 @@ static void kmalloc_perf_per_size(int size)
    }
 
    duration = RDTSC() - start;
-   printk("[%i iters] Cycles per kmalloc(%i) + kfree: %llu\n",
-          iters, size, duration  / iters);
+   kmalloc_perf_print_iters(iters);
+   printk(NO_PREFIX "Cycles per kmalloc(%6i) + kfree: %llu\n",
+          size, duration  / iters);
 }
 
 void selftest_kmalloc_perf_med(void)
@@ -63,8 +75,8 @@ void selftest_kmalloc_perf_med(void)
 
    u64 duration = (RDTSC() - start) / (iters * RANDOM_VALUES_COUNT);
 
-   printk("[%i iters] Cycles per kmalloc(RANDOM) + kfree: %llu\n",
-          iters * RANDOM_VALUES_COUNT, duration);
+   kmalloc_perf_print_iters(iters * RANDOM_VALUES_COUNT);
+   printk(NO_PREFIX "Cycles per kmalloc(RANDOM) + kfree: %llu\n", duration);
 
    for (int s = 32; s <= 256*KB; s *= 2) {
       kmalloc_perf_per_size(s);

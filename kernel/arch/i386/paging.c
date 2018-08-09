@@ -106,7 +106,7 @@ bool handle_potential_cow(void *context)
    void *new_page_vaddr = kmalloc(PAGE_SIZE);
 
    if (!new_page_vaddr)
-      panic("No memory left for the COW page");
+      panic("Out-of-memory: unable to copy a CoW page. No OOM killer.");
 
    ASSERT(IS_PAGE_ALIGNED(new_page_vaddr));
 
