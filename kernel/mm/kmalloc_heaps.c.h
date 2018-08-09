@@ -17,7 +17,20 @@
 STATIC kmalloc_heap first_heap_struct;
 STATIC kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
 STATIC int used_heaps;
-STATIC char first_heap[KMALLOC_FIRST_HEAP_SIZE] ALIGNED_AT(KMALLOC_MAX_ALIGN);
+
+#ifndef UNIT_TEST_ENVIRONMENT
+
+void *kmalloc_get_first_heap(size_t *size)
+{
+   static char buf[KMALLOC_FIRST_HEAP_SIZE] ALIGNED_AT(KMALLOC_MAX_ALIGN);
+
+   if (size)
+      *size = KMALLOC_FIRST_HEAP_SIZE;
+
+   return buf;
+}
+
+#endif
 
 #include "kmalloc_leak_detector.c.h"
 
@@ -243,24 +256,26 @@ static void init_kmalloc_fill_region(int region, uptr vaddr, uptr limit)
 
 void init_kmalloc(void)
 {
-
    ASSERT(!kmalloc_initialized);
+
+   int heap_index;
 
    used_heaps = 0;
    bzero(heaps, sizeof(heaps));
 
-#ifndef UNIT_TEST_ENVIRONMENT
-   int heap_index;
+   {
+      size_t first_heap_size;
+      void *first_heap_ptr;
+      first_heap_ptr = kmalloc_get_first_heap(&first_heap_size);
+      heap_index = kmalloc_internal_add_heap(first_heap_ptr, first_heap_size);
+   }
 
-   heap_index = kmalloc_internal_add_heap(&first_heap, sizeof(first_heap));
    VERIFY(heap_index == 0);
 
    heaps[heap_index]->region =
-      system_mmap_get_region_of(KERNEL_VA_TO_PA(&first_heap));
-#endif
+      system_mmap_get_region_of(KERNEL_VA_TO_PA(kmalloc_get_first_heap(NULL)));
 
    kmalloc_initialized = true; /* we have at least 1 heap */
-
 
    for (int i = 0; i < mem_regions_count; i++) {
 

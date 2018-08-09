@@ -39,6 +39,7 @@ struct kmalloc_heap {
    struct explicit_stack_elem2 alloc_stack[KMALLOC_ALLOC_STACK_SIZE];
 };
 
+void *kmalloc_get_first_heap(size_t *size);
 
 void
 internal_kmalloc_split_block(kmalloc_heap *h,

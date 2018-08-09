@@ -123,4 +123,20 @@ void kfree2(void *ptr, size_t size)
    return general_kfree(ptr, &size, false, false);
 }
 
+void *kmalloc_get_first_heap(size_t *size)
+{
+   static void *buf;
+
+   if (!buf) {
+      buf = aligned_alloc(KMALLOC_MAX_ALIGN, KMALLOC_FIRST_HEAP_SIZE);
+      VERIFY(buf);
+      VERIFY( ((uptr)buf & (KMALLOC_MAX_ALIGN - 1)) == 0 );
+   }
+
+   if (size)
+      *size = KMALLOC_FIRST_HEAP_SIZE;
+
+   return buf;
+}
+
 } // extern "C"
