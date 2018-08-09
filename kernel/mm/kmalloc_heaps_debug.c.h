@@ -50,10 +50,10 @@ void debug_kmalloc_dump_mem_usage(void)
    printk(NO_PREFIX "\n\nKMALLOC HEAPS: \n\n");
 
    printk(NO_PREFIX
-          "| H# | R# |   vaddr    | size (KB) | used |   diff (B)    |\n");
+          "| H# | R# |   vaddr    | size (KB) | used |  MBS  |   diff (B)    |\n");
 
    printk(NO_PREFIX
-          "+----+----+------------+-----------+------+---------------+\n");
+          "+----+----+------------+-----------+------+-------+---------------+\n");
 
    for (u32 i = 0; i < ARRAY_SIZE(heaps) && heaps[i]; i++) {
 
@@ -66,11 +66,12 @@ void debug_kmalloc_dump_mem_usage(void)
       if (heaps[i]->region >= 0)
          snprintk(region_str, sizeof(region_str), "%02d", heaps[i]->region);
 
-      printk(NO_PREFIX "| %2d | %s | %p |  %6u   | %3u%% | %9d     |\n",
+      printk(NO_PREFIX "| %2d | %s | %p |  %6u   | %3u%% | %4d  | %9d     |\n",
              i, region_str,
              heaps[i]->vaddr,
              size_kb,
              allocated_kb * 100 / size_kb,
+             heaps[i]->min_block_size,
              heaps[i]->mem_allocated - heaps_alloc[i]);
 
       tot_usable_mem_kb += size_kb;

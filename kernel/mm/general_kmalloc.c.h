@@ -12,7 +12,6 @@
 
 #endif
 
-
 void *
 general_kmalloc(size_t *size,
                 bool multi_step_alloc,
@@ -55,6 +54,7 @@ general_kmalloc(size_t *size,
       }
    }
 
+out:
    enable_preemption();
    return ret;
 }
@@ -88,7 +88,7 @@ general_kfree(void *ptr,
    }
 
    if (hn < 0)
-      goto out; /* no need to re-enable the preemption, we're going to panic */
+      panic("[kfree] Heap not found for block: %p\n", ptr);
 
    per_heap_kfree(heaps[hn], ptr, size, allow_split, multi_step_free);
 
@@ -100,11 +100,9 @@ general_kfree(void *ptr,
       debug_kmalloc_register_free((void *)vaddr, *size);
    }
 
+out:
    enable_preemption();
    return;
-
-out:
-   panic("[kfree] Heap not found for block: %p\n", ptr);
 }
 
 void
