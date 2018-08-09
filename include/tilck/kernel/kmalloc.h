@@ -7,6 +7,11 @@
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)
 #define KMALLOC_HEAPS_COUNT 32
 
+#define KMALLOC_FL_MULTI_STEP               ((u32)1 << 31)
+#define KMALLOC_FL_RES1                     ((u32)1 << 30)
+#define KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK  (((u32)1 << 30) - 1)
+
+
 typedef bool (*virtual_alloc_and_map_func)(uptr vaddr, int page_count);
 typedef void (*virtual_free_and_unmap_func)(uptr vaddr, int page_count);
 
@@ -26,10 +31,7 @@ calculate_heap_min_block_size(size_t heap_size, size_t metadata_size)
 
 void init_kmalloc(void);
 
-void *
-general_kmalloc(size_t *size,
-                bool multi_step_alloc,
-                size_t sub_blocks_min_size);
+void *general_kmalloc(size_t *size, u32 flags);
 
 void
 general_kfree(void *ptr,
@@ -55,8 +57,7 @@ kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h);
 
 void *per_heap_kmalloc(kmalloc_heap *h,
                        size_t *size /* in/out */,
-                       bool multi_step_alloc,
-                       size_t sub_blocks_min_size);
+                       u32 flags);
 
 void per_heap_kfree(kmalloc_heap *h,
                     void *ptr,
@@ -81,7 +82,7 @@ void kmalloc_destroy_accelerator(kmalloc_accelerator *a);
 
 static inline void *kmalloc(size_t size)
 {
-   return general_kmalloc(&size, false, 0);
+   return general_kmalloc(&size, 0);
 }
 
 static inline void kfree2(void *ptr, size_t size)

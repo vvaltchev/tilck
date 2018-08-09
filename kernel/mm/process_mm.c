@@ -62,7 +62,8 @@ bool user_valloc_and_map(uptr user_vaddr, int page_count)
    size_t size = page_count * PAGE_SIZE;
    int count;
 
-   void *kernel_vaddr = general_kmalloc(&size, true, PAGE_SIZE);
+   void *kernel_vaddr =
+      general_kmalloc(&size, KMALLOC_FL_MULTI_STEP | PAGE_SIZE);
 
    if (!kernel_vaddr)
       return user_valloc_and_map_slow(user_vaddr, page_count);
@@ -251,7 +252,9 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
    disable_preemption();
    {
-      res = per_heap_kmalloc(pi->mmap_heap, &actual_len, true, PAGE_SIZE);
+      res = per_heap_kmalloc(pi->mmap_heap,
+                             &actual_len,
+                             KMALLOC_FL_MULTI_STEP | PAGE_SIZE);
    }
    enable_preemption();
 

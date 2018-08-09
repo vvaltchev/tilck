@@ -426,12 +426,11 @@ internal_kmalloc(kmalloc_heap *h,
 }
 
 void *
-per_heap_kmalloc(kmalloc_heap *h,
-                 size_t *size,
-                 bool multi_step_alloc,
-                 size_t sub_blocks_min_size)
+per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags)
 {
    void *addr;
+   const bool multi_step_alloc = !!(flags & KMALLOC_FL_MULTI_STEP);
+   const u32 sub_blocks_min_size = flags & KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK;
 
    ASSERT(*size != 0);
    ASSERT(!sub_blocks_min_size || sub_blocks_min_size >= h->min_block_size);

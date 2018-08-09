@@ -195,10 +195,8 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
 
    size_t actual_metadata_size = metadata_size;
 
-   void *md_allocated = per_heap_kmalloc(heaps[used_heaps],
-                                         &actual_metadata_size,
-                                         false,
-                                         0);
+   void *md_allocated =
+      per_heap_kmalloc(heaps[used_heaps], &actual_metadata_size, 0);
 
    /*
     * We have to be SURE that the allocation returned the very beginning of

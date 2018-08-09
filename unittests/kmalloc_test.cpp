@@ -342,7 +342,7 @@ TEST_F(kmalloc_test, split_block)
    block_node *nodes = (block_node *)h.metadata_nodes;
 
    s = h.size / 2;
-   ptr = per_heap_kmalloc(&h, &s, false, 0);
+   ptr = per_heap_kmalloc(&h, &s, 0);
    ASSERT_TRUE(ptr != NULL);
 
    printf("\nAfter alloc of heap_size/2:\n");
@@ -435,7 +435,7 @@ TEST_F(kmalloc_test, coalesce_block)
    block_node *nodes = (block_node *)h.metadata_nodes;
 
    s = h.size / 2;
-   ptr = per_heap_kmalloc(&h, &s, false, 0);
+   ptr = per_heap_kmalloc(&h, &s, 0);
    ASSERT_TRUE(ptr != NULL);
 
    internal_kmalloc_split_block(&h, ptr, s, h.min_block_size);
@@ -503,7 +503,7 @@ TEST_F(kmalloc_test, multi_step_alloc)
    block_node *nodes = (block_node *)h.metadata_nodes;
 
    s = 15 * h.min_block_size;
-   ptr = per_heap_kmalloc(&h, &s, true, 0);
+   ptr = per_heap_kmalloc(&h, &s, KMALLOC_FL_MULTI_STEP);
 
    EXPECT_EQ(s, 15 * h.min_block_size);
    EXPECT_EQ(ptr, (void *)h.vaddr);
@@ -547,7 +547,7 @@ TEST_F(kmalloc_test, multi_step_alloc2)
    block_node *nodes = (block_node *)h.metadata_nodes;
 
    s = 11 * h.min_block_size;
-   ptr = per_heap_kmalloc(&h, &s, true, 0);
+   ptr = per_heap_kmalloc(&h, &s, KMALLOC_FL_MULTI_STEP);
 
    EXPECT_EQ(s, 11 * h.min_block_size);
    EXPECT_EQ(ptr, (void *)h.vaddr);
@@ -590,7 +590,7 @@ TEST_F(kmalloc_test, multi_step_and_split)
    block_node *nodes = (block_node *)h.metadata_nodes;
 
    s = 15 * h.min_block_size;
-   ptr = per_heap_kmalloc(&h, &s, true, h.min_block_size);
+   ptr = per_heap_kmalloc(&h, &s, KMALLOC_FL_MULTI_STEP | h.min_block_size);
 
    EXPECT_EQ(s, 15 * h.min_block_size);
    EXPECT_EQ(ptr, (void *)h.vaddr);
@@ -633,7 +633,7 @@ TEST_F(kmalloc_test, multi_step_free)
    block_node *nodes = (block_node *)h.metadata_nodes;
 
    s = 15 * h.min_block_size;
-   ptr = per_heap_kmalloc(&h, &s, true, h.min_block_size);
+   ptr = per_heap_kmalloc(&h, &s, KMALLOC_FL_MULTI_STEP | h.min_block_size);
 
    EXPECT_EQ(s, 15 * h.min_block_size);
    EXPECT_EQ(ptr, (void *)h.vaddr);
@@ -703,7 +703,7 @@ TEST_F(kmalloc_test, partial_free)
    block_node *nodes = (block_node *)h.metadata_nodes;
 
    s = h.size;
-   ptr = per_heap_kmalloc(&h, &s, false, h.min_block_size);
+   ptr = per_heap_kmalloc(&h, &s, h.min_block_size);
 
    EXPECT_EQ(s, 16 * h.min_block_size);
    EXPECT_EQ(ptr, (void *)h.vaddr);

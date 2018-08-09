@@ -112,7 +112,7 @@ void *kmalloc(size_t size)
    if (mock_kmalloc)
       return malloc(size);
 
-   return general_kmalloc(&size, false, 0);
+   return general_kmalloc(&size, 0);
 }
 
 void kfree2(void *ptr, size_t size)

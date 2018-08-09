@@ -13,9 +13,7 @@
 #endif
 
 void *
-general_kmalloc(size_t *size,
-                bool multi_step_alloc,
-                size_t sub_blocks_min_size)
+general_kmalloc(size_t *size, u32 flags)
 {
    void *ret = NULL;
 
@@ -38,10 +36,7 @@ general_kmalloc(size_t *size,
       if (heap_size < *size || heap_free < *size)
          continue;
 
-      void *vaddr = per_heap_kmalloc(heaps[i],
-                                     size,
-                                     multi_step_alloc,
-                                     sub_blocks_min_size);
+      void *vaddr = per_heap_kmalloc(heaps[i], size, flags);
 
       if (vaddr) {
          ret = vaddr;
@@ -112,6 +107,9 @@ kmalloc_create_accelerator(kmalloc_accelerator *a, u32 elem_size, u32 elem_c)
    ASSERT(roundup_next_power_of_2(elem_size) == elem_size);
    ASSERT(roundup_next_power_of_2(elem_c) == elem_c);
 
+   /* Max elem_size: 512 MB */
+   ASSERT(elem_size <= (1 << 29));
+
    *a = (kmalloc_accelerator) {
       .elem_size = elem_size,
       .elem_count = elem_c,
@@ -130,7 +128,6 @@ kmalloc_accelerator_get_elem(kmalloc_accelerator *a)
       actual_size = a->elem_size * a->elem_count;
 
       a->buf = general_kmalloc(&actual_size,   /* size (in/out)       */
-                               false,          /* multi-step alloc    */
                                a->elem_size);  /* sub_blocks_min_size */
 
       ASSERT(actual_size == a->elem_size * a->elem_count);
