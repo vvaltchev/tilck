@@ -312,10 +312,6 @@ internal_kmalloc(kmalloc_heap *h,
       const size_t node_size = LOAD_ARG_FROM_STACK(1, size_t);
       const int node = LOAD_ARG_FROM_STACK(2, int);
 
-      const size_t half_node_size = HALF(node_size);
-      const int left_node = NODE_LEFT(node);
-      const int right_node = NODE_RIGHT(node);
-
       HANDLE_SIMULATED_RETURN();
 
       // Handle a SIMULATED "call"
@@ -328,7 +324,7 @@ internal_kmalloc(kmalloc_heap *h,
          SIMULATE_RETURN_NULL();
       }
 
-      if (half_node_size < size) {
+      if (HALF(node_size) < size) {
 
          if (n.split) {
             DEBUG_already_split;
@@ -358,7 +354,7 @@ internal_kmalloc(kmalloc_heap *h,
             }
          }
 
-         if (!success) {
+         if (UNLIKELY(!success)) {
 
             /*
              * Corner case: in case of non-linearly mapped heaps, a successfull
@@ -388,14 +384,14 @@ internal_kmalloc(kmalloc_heap *h,
          DEBUG_kmalloc_split;
 
          nodes[node].split = true;
-         nodes[left_node].raw &= ~(FL_NODE_SPLIT & FL_NODE_FULL);
-         nodes[right_node].raw &= ~(FL_NODE_SPLIT & FL_NODE_FULL);
+         nodes[NODE_LEFT(node)].raw &= ~(FL_NODE_SPLIT & FL_NODE_FULL);
+         nodes[NODE_RIGHT(node)].raw &= ~(FL_NODE_SPLIT & FL_NODE_FULL);
       }
 
-      if (!nodes[left_node].full) {
+      if (!nodes[NODE_LEFT(node)].full) {
 
          DEBUG_going_left;
-         SIMULATE_CALL2(half_node_size, left_node);
+         SIMULATE_CALL2(HALF(node_size), NODE_LEFT(node));
 
          /*
           * If we got here, the "call" on the left node "returned" NULL so,
@@ -406,9 +402,9 @@ internal_kmalloc(kmalloc_heap *h,
          DEBUG_left_failed;
       }
 
-      if (!nodes[right_node].full) {
+      if (!nodes[NODE_RIGHT(node)].full) {
          DEBUG_going_right;
-         SIMULATE_CALL2(half_node_size, right_node);
+         SIMULATE_CALL2(HALF(node_size), NODE_RIGHT(node));
 
          /*
           * When the above "call" succeeds, we don't get here. When it fails,
