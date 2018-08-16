@@ -7,7 +7,7 @@ char *strdup(const char *s)
       return NULL;
 
    size_t len = strlen(s) + 1;
-   char *copy = kmalloc(len);
+   char *copy = mdalloc(len);
 
    if (!copy)
       return NULL;
@@ -27,7 +27,7 @@ char *const *dup_strarray(const char *const *argv)
    while (argv[argc])
       argc++;
 
-   res = kmalloc(sizeof(uptr) * (argc + 1));
+   res = mdalloc(sizeof(uptr) * (argc + 1));
 
    if (!res)
       return NULL;
@@ -37,8 +37,11 @@ char *const *dup_strarray(const char *const *argv)
       res[i] = strdup(argv[i]);
 
       if (!res[i]) {
+
          for (i--; i >= 0; i--)
-            kfree(res[i]);
+            mdfree(res[i]);
+
+         mdfree(res);
          return NULL;
       }
    }
@@ -55,7 +58,7 @@ void free_strarray(char *const *argv)
       return;
 
    while (*p)
-      kfree(*p++);
+      mdfree(*p++);
 
-   kfree((void *) argv);
+   mdfree((void *)argv);
 }
