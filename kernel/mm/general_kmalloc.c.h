@@ -12,6 +12,22 @@
 
 #endif
 
+#define MDALLOC_MAGIC (0x28D119D8D488EFB5ull)
+
+/*
+ * Metadata block prepending the actual data used by mdalloc() and mdfree().
+ */
+typedef struct {
+
+#ifdef DEBUG
+   u64 magic;
+#endif
+
+   uptr size;
+
+} mdalloc_metadata;
+
+
 void *
 general_kmalloc(size_t *size, u32 flags)
 {
@@ -58,7 +74,6 @@ void
 general_kfree(void *ptr, size_t *size, u32 flags)
 {
    const uptr vaddr = (uptr) ptr;
-
    ASSERT(kmalloc_initialized);
 
    if (!ptr)
@@ -81,6 +96,12 @@ general_kfree(void *ptr, size_t *size, u32 flags)
 
    if (hn < 0)
       panic("[kfree] Heap not found for block: %p\n", ptr);
+
+   /*
+    * Vaddr must be aligned at least at min_block_size otherwise, something is
+    * wrong with it, maybe it has been allocated with mdalloc()?
+    */
+   ASSERT((vaddr & (heaps[hn]->min_block_size - 1)) == 0);
 
    per_heap_kfree(heaps[hn], ptr, size, flags);
 
@@ -156,18 +177,16 @@ kmalloc_destroy_accelerator(kmalloc_accelerator *a)
 }
 
 
-typedef struct {
-
-   uptr size;
-
-} md_alloc_metadata;
-
 void *mdalloc(size_t size)
 {
-   md_alloc_metadata *b = kmalloc(size + sizeof(md_alloc_metadata));
+   mdalloc_metadata *b = kmalloc(size + sizeof(mdalloc_metadata));
 
    if (!b)
       return NULL;
+
+#ifdef DEBUG
+   b->magic = MDALLOC_MAGIC;
+#endif
 
    b->size = size;
    return b + 1;
@@ -178,6 +197,8 @@ void mdfree(void *ptr)
    if (!ptr)
       return;
 
-   md_alloc_metadata *b = ptr - sizeof(md_alloc_metadata);
-   kfree2(b, b->size + sizeof(md_alloc_metadata));
+   mdalloc_metadata *b = ptr - sizeof(mdalloc_metadata);
+   ASSERT(b->magic == MDALLOC_MAGIC);
+
+   kfree2(b, b->size + sizeof(mdalloc_metadata));
 }
