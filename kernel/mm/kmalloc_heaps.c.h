@@ -13,10 +13,23 @@
 #endif
 
 #include <tilck/kernel/system_mmap.h>
+#include <tilck/kernel/list.h>
 
 STATIC kmalloc_heap first_heap_struct;
 STATIC kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
 STATIC int used_heaps;
+
+STATIC list_node small_heaps_list;
+STATIC list_node small_not_full_heaps_list;
+
+#define SMALL_HEAP_SIZE (4 * PAGE_SIZE)
+
+/*
+ * NOTE: the trick to make the small heap to work well without the number of
+ * small heaps to explode is to allow it to allocate just a small fraction of
+ * its actual size, like 1/16th.
+ */
+#define SMALL_HEAP_MAX_ALLOC (SMALL_HEAP_SIZE / 16 - 1)
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
@@ -57,11 +70,13 @@ bool kmalloc_create_heap(kmalloc_heap *h,
                          virtual_alloc_and_map_func valloc,
                          virtual_free_and_unmap_func vfree)
 {
-   // heap size has to be a multiple of KMALLOC_MIN_HEAP_SIZE
-   ASSERT((size & (KMALLOC_MIN_HEAP_SIZE - 1)) == 0);
+   if (size != SMALL_HEAP_SIZE) {
+      // heap size has to be a multiple of KMALLOC_MIN_HEAP_SIZE
+      ASSERT((size & (KMALLOC_MIN_HEAP_SIZE - 1)) == 0);
 
-   // vaddr must be aligned at least at KMALLOC_MAX_ALIGN
-   ASSERT((vaddr & (KMALLOC_MAX_ALIGN - 1)) == 0);
+      // vaddr must be aligned at least at KMALLOC_MAX_ALIGN
+      ASSERT((vaddr & (KMALLOC_MAX_ALIGN - 1)) == 0);
+   }
 
    if (!linear_mapping) {
       // alloc block size has to be a multiple of PAGE_SIZE
@@ -153,13 +168,15 @@ static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
 
 static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
 {
-   const size_t metadata_size = heap_size / 32;
-   size_t min_block_size;
+   //const size_t metadata_size = heap_size / 32;
+   const size_t min_block_size = SMALL_HEAP_MAX_ALLOC + 1;
+   const size_t metadata_size =
+      calculate_heap_metadata_size(heap_size, min_block_size);
 
    if (used_heaps >= (int)ARRAY_SIZE(heaps))
       return -1;
 
-   min_block_size = calculate_heap_min_block_size(heap_size, metadata_size);
+   //min_block_size = calculate_heap_min_block_size(heap_size, metadata_size);
 
    if (!used_heaps) {
 
@@ -167,7 +184,11 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
 
    } else {
 
-      heaps[used_heaps] = kmalloc(sizeof(kmalloc_heap));
+      //heaps[used_heaps] = kmalloc(sizeof(kmalloc_heap));
+      //STATIC_ASSERT(sizeof(kmalloc_heap) > SMALL_HEAP_MAX_ALLOC);
+
+      heaps[used_heaps] = kmalloc(SMALL_HEAP_MAX_ALLOC + 1);
+      //STATIC_ASSERT(SMALL_HEAP_MAX_ALLOC + 1 >= sizeof(kmalloc_heap));
 
       if (!heaps[used_heaps])
          panic("Unable to alloc memory for struct kmalloc_heap");
@@ -255,6 +276,8 @@ static void init_kmalloc_fill_region(int region, uptr vaddr, uptr limit)
 void init_kmalloc(void)
 {
    ASSERT(!kmalloc_initialized);
+   list_node_init(&small_heaps_list);
+   list_node_init(&small_not_full_heaps_list);
 
    int heap_index;
 

@@ -19,17 +19,12 @@ typedef void (*virtual_free_and_unmap_func)(uptr vaddr, int page_count);
 
 typedef struct kmalloc_heap kmalloc_heap;
 
-static inline size_t
-calculate_heap_metadata_size(size_t heap_size, size_t min_block_size)
-{
-   return 2 * heap_size / min_block_size;
-}
+#define calculate_heap_metadata_size(heap_size, min_block_size) \
+   (2 * (heap_size) / (min_block_size))
 
-static inline size_t
-calculate_heap_min_block_size(size_t heap_size, size_t metadata_size)
-{
-   return 2 * heap_size / metadata_size;
-}
+#define calculate_heap_min_block_size(heap_size, metadata_size) \
+   (2 * (heap_size) / (metadata_size))
+
 
 void init_kmalloc(void);
 

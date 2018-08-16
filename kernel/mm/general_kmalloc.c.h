@@ -27,6 +27,142 @@ typedef struct {
 
 } mdalloc_metadata;
 
+typedef struct {
+
+   list_node not_full_heaps_list;
+   list_node list;
+
+   kmalloc_heap heap;
+   size_t base_mem_alloc;
+
+} small_heap_node;
+
+typedef struct {
+
+   small_heap_node *node;
+   uptr size;
+
+} small_heap_block_metadata;
+
+#define SMALL_HEAP_MBS 32
+
+#define SMALL_HEAP_MD_SIZE \
+   (calculate_heap_metadata_size(SMALL_HEAP_SIZE, SMALL_HEAP_MBS))
+
+void *small_heap_kmalloc(size_t *size, u32 flags)
+{
+   small_heap_node *pos;
+   ASSERT(!is_preemption_enabled());
+
+   *size += sizeof(small_heap_block_metadata);
+
+   list_for_each(pos, &small_not_full_heaps_list, not_full_heaps_list) {
+
+      const size_t heap_free_mem = pos->heap.size - pos->heap.mem_allocated;
+
+      if (heap_free_mem >= *size) {
+
+         void *ret = per_heap_kmalloc(&pos->heap, size, flags);
+
+         if (ret) {
+
+            if (pos->heap.mem_allocated == pos->heap.size)
+               list_remove(&pos->not_full_heaps_list);
+
+            small_heap_block_metadata *md = ret;
+            md->node = pos;
+            md->size = *size;
+
+            return md + 1;
+         }
+      }
+   }
+
+   void *heap_data = kmalloc(SMALL_HEAP_SIZE);
+
+   if (!heap_data)
+      return NULL;
+
+   small_heap_node *new_node = kmalloc(SMALL_HEAP_MAX_ALLOC + 1);
+   STATIC_ASSERT(SMALL_HEAP_MAX_ALLOC + 1 >= sizeof(small_heap_node));
+
+   //small_heap_node *new_node = kmalloc(sizeof(small_heap_node));
+   //STATIC_ASSERT(sizeof(small_heap_node) > SMALL_HEAP_MAX_ALLOC);
+
+   if (!new_node) {
+      kfree2(heap_data, SMALL_HEAP_SIZE);
+      return NULL;
+   }
+
+   void *md_alloc = heap_data;
+
+   bool success =
+      kmalloc_create_heap(&new_node->heap,
+                          (uptr)heap_data,
+                          SMALL_HEAP_SIZE,
+                          SMALL_HEAP_MBS,
+                          0,
+                          true,
+                          md_alloc,
+                          NULL,
+                          NULL);
+
+   if (!success) {
+      kfree2(new_node, SMALL_HEAP_MAX_ALLOC + 1);
+      kfree2(heap_data, SMALL_HEAP_SIZE);
+      return NULL;
+   }
+
+   size_t actual_size;
+
+   // Allocate heap's metadata inside the heap itself
+   actual_size = new_node->heap.metadata_size;
+
+   DEBUG_ONLY(void *actual_md_alloc = )
+      per_heap_kmalloc(&new_node->heap, &actual_size, 0);
+   ASSERT(actual_md_alloc == md_alloc);
+
+   new_node->base_mem_alloc = new_node->heap.mem_allocated;
+
+   // Now finally do the user allocation in the new heap
+   void *ret = per_heap_kmalloc(&new_node->heap, size, flags);
+   ASSERT(ret != NULL);
+
+   list_add_tail(&small_heaps_list, &new_node->list);
+
+   if (new_node->heap.mem_allocated < new_node->heap.size)
+      list_add_tail(&small_not_full_heaps_list, &new_node->not_full_heaps_list);
+
+   small_heap_block_metadata *md = ret;
+   md->node = new_node;
+   md->size = *size;
+   return md + 1;
+}
+
+void
+small_heap_kfree(void *ptr, size_t *size, u32 flags)
+{
+   ASSERT(!is_preemption_enabled());
+
+   small_heap_block_metadata *md = (small_heap_block_metadata *)ptr - 1;
+
+   bool was_full = md->node->heap.mem_allocated == md->node->heap.size;
+
+   *size += sizeof(small_heap_block_metadata);
+   per_heap_kfree(&md->node->heap, md, size, flags);
+
+   if (was_full) {
+      list_add_tail(&small_not_full_heaps_list,
+                    &md->node->not_full_heaps_list);
+   }
+
+   if (md->node->heap.mem_allocated == md->node->base_mem_alloc) {
+      list_remove(&md->node->not_full_heaps_list);
+      list_remove(&md->node->list);
+      kfree2((void *)md->node->heap.vaddr, SMALL_HEAP_SIZE);
+      kfree2(md->node, SMALL_HEAP_MAX_ALLOC + 1);
+   }
+}
 
 void *
 general_kmalloc(size_t *size, u32 flags)
@@ -34,7 +170,15 @@ general_kmalloc(size_t *size, u32 flags)
    void *ret = NULL;
 
    ASSERT(kmalloc_initialized);
+   ASSERT(size);
+   ASSERT(*size);
+
    disable_preemption();
+
+   if (*size <= SMALL_HEAP_MAX_ALLOC) {
+      ret = small_heap_kmalloc(size, flags);
+      goto out;
+   }
 
    // Iterate in reverse-order because the first heaps are the biggest ones.
    for (int i = used_heaps - 1; i >= 0; i--) {
@@ -81,6 +225,11 @@ general_kfree(void *ptr, size_t *size, u32 flags)
 
    ASSERT(*size);
    disable_preemption();
+
+   if (*size <= SMALL_HEAP_MAX_ALLOC) {
+      small_heap_kfree(ptr, size, flags);
+      goto out;
+   }
 
    kmalloc_heap *h = NULL;
 
