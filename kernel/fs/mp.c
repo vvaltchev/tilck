@@ -53,7 +53,7 @@ int mountpoint_add(filesystem *fs, const char *path)
     */
    ASSERT(path[path_len-1] == '/');
 
-   mountpoint *mp = kmalloc(sizeof(mountpoint) + path_len + 1);
+   mountpoint *mp = mdalloc(sizeof(mountpoint) + path_len + 1);
 
    if (!mp) {
       rc = -ENOMEM;
@@ -76,7 +76,7 @@ void mountpoint_remove(filesystem *fs)
 
    for (u32 i = 0; i < ARRAY_SIZE(mps); i++) {
       if (mps[i] && mps[i]->fs == fs) {
-         kfree(mps[i]);
+         mdfree(mps[i]);
          mps[i] = NULL;
          goto out;
       }
