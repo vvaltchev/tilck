@@ -618,10 +618,10 @@ per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
       return;
 
    size_t size;
-   uptr vaddr = (uptr)ptr;
    const bool allow_split = !!(flags & KFREE_FL_ALLOW_SPLIT);
    const bool multi_step_free = !!(flags & KFREE_FL_MULTI_STEP);
 
+   DEBUG_ONLY(uptr vaddr = (uptr)ptr);
    ASSERT(!is_preemption_enabled());
 
    ASSERT(vaddr >= h->vaddr);

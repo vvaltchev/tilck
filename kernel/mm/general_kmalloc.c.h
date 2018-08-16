@@ -79,31 +79,31 @@ general_kfree(void *ptr, size_t *size, u32 flags)
    if (!ptr)
       return;
 
+   ASSERT(*size);
    disable_preemption();
 
-   int hn = -1; /* the heap with the highest vaddr <= our block vaddr */
+   kmalloc_heap *h = NULL;
 
    for (int i = used_heaps - 1; i >= 0; i--) {
 
       uptr hva = heaps[i]->vaddr;
 
-      if (vaddr < hva)
-         continue; /* not in this heap, for sure */
-
-      if (hn < 0 || hva > heaps[hn]->vaddr)
-         hn = i;
+      if (hva <= vaddr && vaddr + *size <= heaps[i]->heap_over_end) {
+         h = heaps[i];
+         break;
+      }
    }
 
-   if (hn < 0)
+   if (!h)
       panic("[kfree] Heap not found for block: %p\n", ptr);
 
    /*
     * Vaddr must be aligned at least at min_block_size otherwise, something is
     * wrong with it, maybe it has been allocated with mdalloc()?
     */
-   ASSERT((vaddr & (heaps[hn]->min_block_size - 1)) == 0);
+   ASSERT((vaddr & (h->min_block_size - 1)) == 0);
 
-   per_heap_kfree(heaps[hn], ptr, size, flags);
+   per_heap_kfree(h, ptr, size, flags);
 
    if (KMALLOC_FREE_MEM_POISONING) {
       memset32(ptr, KMALLOC_FREE_MEM_POISON_VAL, *size / 4);
