@@ -62,6 +62,7 @@ int gdt_expand(void)
 {
    uptr var;
    void *old_gdt_ptr;
+   const u32 old_gdt_size = gdt_size;
    const u32 new_size = gdt_size * 2;
    void *new_gdt = kzmalloc(sizeof(gdt_entry) * new_size);
 
@@ -79,7 +80,7 @@ int gdt_expand(void)
    enable_interrupts(&var);
 
    if (old_gdt_ptr != initial_gdt_in_bss)
-      kfree(old_gdt_ptr);
+      kfree2(old_gdt_ptr, old_gdt_size);
 
    return 0;
 }
