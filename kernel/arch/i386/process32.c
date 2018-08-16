@@ -411,5 +411,5 @@ void arch_specific_free_task(task_info *ti)
       if (ti->arch.gdt_entries[i])
          gdt_clear_entry(ti->arch.gdt_entries[i]);
 
-   kfree(ti->arch.fpu_regs);
+   kfree2(ti->arch.fpu_regs, ti->arch.fpu_regs_size);
 }

@@ -254,8 +254,10 @@ fpu_no_coprocessor_fault_handler(regs *r)
 
    if (x86_cpu_features.can_use_avx) {
       arch_fields->fpu_regs = kzmalloc(CPU_XSAVE_AREA_SIZE);
+      arch_fields->fpu_regs_size = CPU_XSAVE_AREA_SIZE;
    } else {
       arch_fields->fpu_regs = kzmalloc(CPU_FXSAVE_AREA_SIZE);
+      arch_fields->fpu_regs_size = CPU_FXSAVE_AREA_SIZE;
    }
 
    VERIFY(arch_fields->fpu_regs); // TODO: handle this OOM case
