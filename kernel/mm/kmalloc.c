@@ -622,20 +622,14 @@ per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
    ASSERT(!is_preemption_enabled());
 
    ASSERT(vaddr >= h->vaddr);
+   ASSERT(*user_size);
 
    if (!multi_step_free) {
 
-      if (*user_size) {
+      size = roundup_next_power_of_2(MAX(*user_size, h->min_block_size));
 
-         size = roundup_next_power_of_2(MAX(*user_size, h->min_block_size));
-
-         if (!allow_split) {
-            DEBUG_ONLY(debug_check_block_size(h, vaddr, size));
-         }
-
-      } else {
-         ASSERT(!allow_split);
-         size = calculate_block_size(h, vaddr);
+      if (!allow_split) {
+         DEBUG_ONLY(debug_check_block_size(h, vaddr, size));
       }
 
       *user_size = size;

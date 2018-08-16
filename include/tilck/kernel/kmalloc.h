@@ -87,11 +87,6 @@ void kfree2(void *ptr, size_t user_size);
 
 #endif
 
-static inline void kfree(void *ptr)
-{
-   kfree2(ptr, 0);
-}
-
 static inline void *kzmalloc(size_t size)
 {
    void *res = kmalloc(size);
