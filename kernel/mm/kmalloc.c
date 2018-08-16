@@ -614,6 +614,9 @@ debug_check_block_size(kmalloc_heap *h, uptr vaddr, size_t size)
 void
 per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
 {
+   if (!ptr)
+      return;
+
    size_t size;
    uptr vaddr = (uptr)ptr;
    const bool allow_split = !!(flags & KFREE_FL_ALLOW_SPLIT);
