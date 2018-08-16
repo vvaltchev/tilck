@@ -105,6 +105,10 @@ static inline void *kzmalloc(size_t size)
 
 size_t kmalloc_get_heap_struct_size(void);
 
+void *mdalloc(size_t size);
+void mdfree(void *b);
+
+
 /* kmalloc debug helpers */
 
 void debug_kmalloc_dump_mem_usage(void);

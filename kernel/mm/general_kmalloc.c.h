@@ -154,3 +154,30 @@ kmalloc_destroy_accelerator(kmalloc_accelerator *a)
       ASSERT(actual_size == a->elem_size);
    }
 }
+
+
+typedef struct {
+
+   uptr size;
+
+} md_alloc_metadata;
+
+void *mdalloc(size_t size)
+{
+   md_alloc_metadata *b = kmalloc(size + sizeof(md_alloc_metadata));
+
+   if (!b)
+      return NULL;
+
+   b->size = size;
+   return b + 1;
+}
+
+void mdfree(void *ptr)
+{
+   if (!ptr)
+      return;
+
+   md_alloc_metadata *b = ptr - sizeof(md_alloc_metadata);
+   kfree2(b, b->size + sizeof(md_alloc_metadata));
+}
