@@ -81,6 +81,7 @@ int load_elf_program(const char *filepath,
 {
    page_directory_t *old_pdir = get_curr_pdir();
    Elf_Phdr *phdrs = NULL;
+   ssize_t total_phdrs_size = 0;
    fs_handle elf_file = NULL;
    Elf_Ehdr header;
    ssize_t ret;
@@ -130,7 +131,7 @@ int load_elf_program(const char *filepath,
       goto out;
    }
 
-   const ssize_t total_phdrs_size = header.e_phnum * sizeof(Elf_Phdr);
+   total_phdrs_size = header.e_phnum * sizeof(Elf_Phdr);
    phdrs = kmalloc(total_phdrs_size);
 
    if (!phdrs) {
@@ -209,7 +210,7 @@ int load_elf_program(const char *filepath,
 
 out:
    vfs_close(elf_file);
-   kfree(phdrs);
+   kfree2(phdrs, total_phdrs_size);
 
    if (rc != 0) {
       set_page_directory(old_pdir);
