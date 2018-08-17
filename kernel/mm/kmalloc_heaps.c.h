@@ -184,11 +184,8 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
 
    } else {
 
-      //heaps[used_heaps] = kmalloc(sizeof(kmalloc_heap));
-      //STATIC_ASSERT(sizeof(kmalloc_heap) > SMALL_HEAP_MAX_ALLOC);
-
-      heaps[used_heaps] = kmalloc(SMALL_HEAP_MAX_ALLOC + 1);
-      //STATIC_ASSERT(SMALL_HEAP_MAX_ALLOC + 1 >= sizeof(kmalloc_heap));
+      heaps[used_heaps] =
+         kmalloc(MAX(sizeof(kmalloc_heap), SMALL_HEAP_MAX_ALLOC + 1));
 
       if (!heaps[used_heaps])
          panic("Unable to alloc memory for struct kmalloc_heap");

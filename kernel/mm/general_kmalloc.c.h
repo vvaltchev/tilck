@@ -41,6 +41,7 @@ typedef struct {
 
    small_heap_node *node;
    uptr size;
+   uptr padding[2]; // TODO: could we avoid having permanently this padding?
 
 } small_heap_block_metadata;
 
@@ -83,11 +84,8 @@ void *small_heap_kmalloc(size_t *size, u32 flags)
    if (!heap_data)
       return NULL;
 
-   small_heap_node *new_node = kmalloc(SMALL_HEAP_MAX_ALLOC + 1);
-   STATIC_ASSERT(SMALL_HEAP_MAX_ALLOC + 1 >= sizeof(small_heap_node));
-
-   //small_heap_node *new_node = kmalloc(sizeof(small_heap_node));
-   //STATIC_ASSERT(sizeof(small_heap_node) > SMALL_HEAP_MAX_ALLOC);
+   small_heap_node *new_node =
+      kmalloc(MAX(sizeof(small_heap_node), SMALL_HEAP_MAX_ALLOC + 1));
 
    if (!new_node) {
       kfree2(heap_data, SMALL_HEAP_SIZE);

@@ -155,7 +155,7 @@ out:
    set_fault_handler(FAULT_NO_COPROC, fpu_no_coprocessor_fault_handler);
 }
 
-static char fpu_kernel_regs[CPU_XSAVE_AREA_SIZE] __attribute__((aligned(64)));
+static char fpu_kernel_regs[CPU_XSAVE_AREA_SIZE] ALIGNED_AT(64);
 
 void save_current_fpu_regs(bool in_kernel)
 {
