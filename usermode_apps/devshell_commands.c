@@ -434,7 +434,7 @@ void cmd_help(void)
 
    printf("This application is a small dev-only utility written in ");
    printf("order to allow running\nsimple programs, while proper shells ");
-   printf("like ASH can't run on Tilck yet. Behavior:\nif a given coomand ");
+   printf("like ASH can't run on Tilck yet. Behavior:\nif a given command ");
    printf("isn't an executable (e.g. /bin/termtest), it is forwarded ");
    printf("to\n" COLOR_YELLOW "/bin/busybox" RESET_ATTRS);
    printf(". That's how several programs like 'ls' work. Type --help to see\n");
