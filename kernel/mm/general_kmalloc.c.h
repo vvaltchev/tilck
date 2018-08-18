@@ -42,12 +42,24 @@ typedef struct {
    u16 size;
    u16 align_offset;
 
+#ifdef BITS64
+   u32 padding;
+#endif
+
 } small_heap_block_metadata;
 
 #define SMALL_HEAP_MBS 32
 
 #define SMALL_HEAP_MD_SIZE \
    (calculate_heap_metadata_size(SMALL_HEAP_SIZE, SMALL_HEAP_MBS))
+
+static const u32 align_type_table[4] =
+{
+    2 * sizeof(uptr),
+    4 * sizeof(uptr),
+    8 * sizeof(uptr),
+   16 * sizeof(uptr)
+};
 
 static small_heap_node *alloc_new_small_heap(void)
 {
@@ -142,15 +154,14 @@ small_heap_kmalloc_internal(size_t *size,
    return ret;
 }
 
-static void *small_heap_kmalloc(size_t size, u32 flags, u32 align)
+static void *small_heap_kmalloc(size_t size, u32 flags)
 {
    void *buf;
    small_heap_node *node;
    u32 align_offset = 0;
+   u32 align = align_type_table[(flags & KMALLOC_FL_ALIGN_TYPE_MASK) >> 28];
 
    ASSERT(size <= SMALL_HEAP_MAX_ALLOC);
-   ASSERT(roundup_next_power_of_2(align) == align);
-   ASSERT(align > 0);
 
    if (align > sizeof(small_heap_block_metadata)) {
       align_offset = align - sizeof(small_heap_block_metadata);
@@ -207,7 +218,7 @@ general_kmalloc(size_t *size, u32 flags)
    disable_preemption();
 
    if (*size <= SMALL_HEAP_MAX_ALLOC) {
-      ret = small_heap_kmalloc(*size, flags, 1);
+      ret = small_heap_kmalloc(*size, flags);
       goto out;
    }
 

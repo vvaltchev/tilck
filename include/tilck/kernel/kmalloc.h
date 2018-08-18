@@ -7,9 +7,14 @@
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)
 #define KMALLOC_HEAPS_COUNT 32
 
-#define KMALLOC_FL_MULTI_STEP               ((u32)1 << 31)
-#define KMALLOC_FL_RES1                     ((u32)1 << 30)
-#define KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK  (((u32)1 << 30) - 1)
+#define KMALLOC_FL_MULTI_STEP               (0b10000000000000000000000000000000)
+#define KMALLOC_FL_RES1                     (0b01000000000000000000000000000000)
+#define KMALLOC_FL_ALIGN_TYPE_MASK          (0b00110000000000000000000000000000)
+#define KMALLOC_FL_ALIGN_2PTR_SIZE          (0b00000000000000000000000000000000)
+#define KMALLOC_FL_ALIGN_4PTR_SIZE          (0b00010000000000000000000000000000)
+#define KMALLOC_FL_ALIGN_8PTR_SIZE          (0b00100000000000000000000000000000)
+#define KMALLOC_FL_ALIGN_16PTR_SIZE         (0b00110000000000000000000000000000)
+#define KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK  (0b00001111111111111111111111111111)
 
 #define KFREE_FL_MULTI_STEP                 ((u32)1 << 31)
 #define KFREE_FL_ALLOW_SPLIT                ((u32)1 << 30)
@@ -73,6 +78,11 @@ static inline void *kmalloc(size_t size)
 static inline void kfree2(void *ptr, size_t size)
 {
    general_kfree(ptr, &size, 0);
+}
+
+static inline void *aligned_kmalloc(size_t size, u32 align_flags)
+{
+   return general_kmalloc(&size, align_flags & KMALLOC_FL_ALIGN_TYPE_MASK);
 }
 
 #else
