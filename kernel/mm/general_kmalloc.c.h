@@ -39,8 +39,8 @@ typedef struct {
 typedef struct {
 
    small_heap_node *node;
-   uptr size;
-   uptr padding[2]; // TODO: could we avoid having permanently this padding?
+   u16 size;
+   u16 align_offset;
 
 } small_heap_block_metadata;
 
@@ -142,34 +142,45 @@ small_heap_kmalloc_internal(size_t *size,
    return ret;
 }
 
-static void *small_heap_kmalloc(size_t *size, u32 flags)
+static void *small_heap_kmalloc(size_t size, u32 flags, u32 align)
 {
    void *buf;
    small_heap_node *node;
+   u32 align_offset = 0;
 
-   *size += sizeof(small_heap_block_metadata);
-   buf = small_heap_kmalloc_internal(size, flags, &node);
+   ASSERT(size <= SMALL_HEAP_MAX_ALLOC);
+   ASSERT(roundup_next_power_of_2(align) == align);
+   ASSERT(align > 0);
+
+   if (align > sizeof(small_heap_block_metadata)) {
+      align_offset = align - sizeof(small_heap_block_metadata);
+   }
+
+   size += sizeof(small_heap_block_metadata) + align_offset;
+   buf = small_heap_kmalloc_internal(&size, flags, &node);
 
    if (!buf)
       return NULL;
 
-   small_heap_block_metadata *md = buf;
+   small_heap_block_metadata *md = buf + align_offset;
    md->node = node;
-   md->size = *size;
+   md->size = size;
+   md->align_offset = align_offset;
    return md + 1;
 }
 
 static void
-small_heap_kfree(void *ptr, size_t *size, u32 flags)
+small_heap_kfree(void *ptr, u32 flags)
 {
    ASSERT(!is_preemption_enabled());
 
    small_heap_block_metadata *md = (small_heap_block_metadata *)ptr - 1;
-
    bool was_full = md->node->heap.mem_allocated == md->node->heap.size;
+   size_t actual_size = md->size;
+   void *block_ptr = (char *)md - md->align_offset;
 
-   *size += sizeof(small_heap_block_metadata);
-   per_heap_kfree(&md->node->heap, md, size, flags);
+   per_heap_kfree(&md->node->heap, block_ptr, &actual_size, flags);
+   ASSERT(actual_size == md->size);
 
    if (was_full) {
       list_add_tail(&small_not_full_heaps_list,
@@ -196,7 +207,7 @@ general_kmalloc(size_t *size, u32 flags)
    disable_preemption();
 
    if (*size <= SMALL_HEAP_MAX_ALLOC) {
-      ret = small_heap_kmalloc(size, flags);
+      ret = small_heap_kmalloc(*size, flags, 1);
       goto out;
    }
 
@@ -247,7 +258,7 @@ general_kfree(void *ptr, size_t *size, u32 flags)
    disable_preemption();
 
    if (*size <= SMALL_HEAP_MAX_ALLOC) {
-      small_heap_kfree(ptr, size, flags);
+      small_heap_kfree(ptr, flags);
       goto out;
    }
 
