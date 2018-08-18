@@ -83,6 +83,13 @@ void debug_kmalloc_dump_mem_usage(void)
    printk(NO_PREFIX "Total used:   %6u KB (%u%%)\n\n",
           tot_used_mem_kb, (tot_used_mem_kb * 100) / tot_usable_mem_kb);
 
+   printk(NO_PREFIX
+          "Small heaps: count: %d [peak: %d], non-full: %d [peak: %d]\n\n",
+          total_small_heaps_count,
+          peak_small_heaps_count,
+          not_full_small_heaps_count,
+          peak_non_full_small_heaps_count);
+
    for (u32 i = 0; i < ARRAY_SIZE(heaps) && heaps[i]; i++) {
       heaps_alloc[i] = heaps[i]->mem_allocated;
    }

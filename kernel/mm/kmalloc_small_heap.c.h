@@ -22,8 +22,6 @@
 typedef struct {
 
    list_node not_full_heaps_list;
-   list_node list;
-
    kmalloc_heap heap;
 
 } small_heap_node;
@@ -42,8 +40,53 @@ typedef struct {
 
 STATIC_ASSERT(sizeof(small_heap_block_metadata) == 2 * sizeof(uptr));
 
-STATIC list_node small_heaps_list;
+STATIC int total_small_heaps_count;
+STATIC int peak_small_heaps_count;
+STATIC int not_full_small_heaps_count;
+STATIC int peak_non_full_small_heaps_count;
+
 STATIC list_node small_not_full_heaps_list;
+
+static inline void
+record_small_heap_as_not_full(small_heap_node *node)
+{
+   list_add_before(&small_not_full_heaps_list, &node->not_full_heaps_list);
+   not_full_small_heaps_count++;
+
+   if (not_full_small_heaps_count > peak_non_full_small_heaps_count)
+      peak_non_full_small_heaps_count = not_full_small_heaps_count;
+}
+
+static inline void
+record_small_heap_as_full(small_heap_node *node)
+{
+   ASSERT(not_full_small_heaps_count > 0);
+   not_full_small_heaps_count--;
+   list_remove(&node->not_full_heaps_list);
+}
+
+static inline void
+register_small_heap_node(small_heap_node *new_node)
+{
+   total_small_heaps_count++;
+
+   if (new_node->heap.mem_allocated < new_node->heap.size)
+      record_small_heap_as_not_full(new_node);
+
+   if (total_small_heaps_count > peak_small_heaps_count)
+      peak_small_heaps_count = total_small_heaps_count;
+}
+
+static inline void
+unregister_small_heap_node(small_heap_node *node)
+{
+   ASSERT(total_small_heaps_count > 0);
+   total_small_heaps_count--;
+
+   ASSERT(not_full_small_heaps_count > 0);
+   not_full_small_heaps_count--;
+   list_remove(&node->not_full_heaps_list);
+}
 
 static const u32 align_type_table[4] =
 {
@@ -69,7 +112,6 @@ static small_heap_node *alloc_new_small_heap(void)
    }
 
    list_node_init(&new_node->not_full_heaps_list);
-   list_node_init(&new_node->list);
    void *md_alloc = heap_data;
 
    bool success =
@@ -107,25 +149,27 @@ small_heap_kmalloc_internal(size_t *size,
                             small_heap_node **chosen_node)
 {
    small_heap_node *pos;
+   void *ret;
+
    ASSERT(!is_preemption_enabled());
 
    list_for_each(pos, &small_not_full_heaps_list, not_full_heaps_list) {
 
-      const size_t heap_free_mem = pos->heap.size - pos->heap.mem_allocated;
+      if (pos->heap.size - pos->heap.mem_allocated < *size)
+         continue;
 
-      if (heap_free_mem >= *size) {
+      ret = per_heap_kmalloc(&pos->heap, size, flags);
 
-         void *ret = per_heap_kmalloc(&pos->heap, size, flags);
+      if (!ret)
+         continue;
 
-         if (ret) {
+      /* We've found a heap with enough space and the alloc succeeded */
 
-            if (pos->heap.mem_allocated == pos->heap.size)
-               list_remove(&pos->not_full_heaps_list);
+      if (pos->heap.mem_allocated == pos->heap.size)
+         record_small_heap_as_full(pos);
 
-            *chosen_node = pos;
-            return ret;
-         }
-      }
+      *chosen_node = pos;
+      return ret;
    }
 
    small_heap_node *new_node = alloc_new_small_heap();
@@ -134,16 +178,21 @@ small_heap_kmalloc_internal(size_t *size,
       return NULL;
 
    // Now finally do the user allocation in the new heap
-   void *ret = per_heap_kmalloc(&new_node->heap, size, flags);
-   ASSERT(ret != NULL);
+   ret = per_heap_kmalloc(&new_node->heap, size, flags);
 
-   list_add_before(&small_heaps_list, &new_node->list);
+   ASSERT(ret != NULL); // We've just created the node, if should be almost
+                        // empty (expect for the metadata). There is no reason
+                        // the allocation to fail.
 
-   if (new_node->heap.mem_allocated < new_node->heap.size)
-      list_add_before(&small_not_full_heaps_list, &new_node->not_full_heaps_list);
-
+   register_small_heap_node(new_node);
    *chosen_node = new_node;
    return ret;
+}
+
+static void destroy_small_heap(small_heap_node *node)
+{
+   kfree2((void *)node->heap.vaddr, SMALL_HEAP_SIZE);
+   kfree2(node, MAX(sizeof(small_heap_node), SMALL_HEAP_MAX_ALLOC + 1));
 }
 
 static void *small_heap_kmalloc(size_t size, u32 flags)
@@ -186,14 +235,11 @@ small_heap_kfree(void *ptr, u32 flags)
    ASSERT(actual_size == md->size);
 
    if (was_full) {
-      list_add_tail(&small_not_full_heaps_list,
-                    &md->node->not_full_heaps_list);
+      record_small_heap_as_not_full(md->node);
    }
 
    if (md->node->heap.mem_allocated == SMALL_HEAP_MD_SIZE) {
-      list_remove(&md->node->not_full_heaps_list);
-      list_remove(&md->node->list);
-      kfree2((void *)md->node->heap.vaddr, SMALL_HEAP_SIZE);
-      kfree2(md->node, MAX(sizeof(small_heap_node), SMALL_HEAP_MAX_ALLOC + 1));
+      unregister_small_heap_node(md->node);
+      destroy_small_heap(md->node);
    }
 }

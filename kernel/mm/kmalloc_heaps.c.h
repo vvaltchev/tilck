@@ -19,18 +19,6 @@ STATIC kmalloc_heap first_heap_struct;
 STATIC kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
 STATIC int used_heaps;
 
-STATIC list_node small_heaps_list;
-STATIC list_node small_not_full_heaps_list;
-
-#define SMALL_HEAP_SIZE (8 * PAGE_SIZE)
-
-/*
- * NOTE: the trick to make the small heap to work well without the number of
- * small heaps to explode is to allow it to allocate just a small fraction of
- * its actual size, like 1/16th.
- */
-#define SMALL_HEAP_MAX_ALLOC (SMALL_HEAP_SIZE / 16 - 1)
-
 #ifndef UNIT_TEST_ENVIRONMENT
 
 void *kmalloc_get_first_heap(size_t *size)
@@ -273,7 +261,6 @@ static void init_kmalloc_fill_region(int region, uptr vaddr, uptr limit)
 void init_kmalloc(void)
 {
    ASSERT(!kmalloc_initialized);
-   list_node_init(&small_heaps_list);
    list_node_init(&small_not_full_heaps_list);
 
    int heap_index;
