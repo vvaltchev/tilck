@@ -22,7 +22,7 @@ STATIC int used_heaps;
 STATIC list_node small_heaps_list;
 STATIC list_node small_not_full_heaps_list;
 
-#define SMALL_HEAP_SIZE (4 * PAGE_SIZE)
+#define SMALL_HEAP_SIZE (8 * PAGE_SIZE)
 
 /*
  * NOTE: the trick to make the small heap to work well without the number of
