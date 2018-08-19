@@ -48,7 +48,7 @@ static int create_new_pid_visit_cb(void *obj, void *arg)
    task_info *ti = obj;
    create_pid_visit_ctx *ctx = arg;
 
-   if (ti->tid != ti->owning_process_pid)
+   if (ti->tid != ti->pid)
       return 0; /* skip threads */
 
    /*
@@ -126,7 +126,7 @@ void create_kernel_process(void)
 
    s_kernel_pi.ref_count = 1;
    s_kernel_ti.tid = kernel_pid;
-   s_kernel_ti.owning_process_pid = kernel_pid;
+   s_kernel_ti.pid = kernel_pid;
 
    s_kernel_ti.pi = &s_kernel_pi;
    bintree_node_init(&s_kernel_ti.tree_by_tid);

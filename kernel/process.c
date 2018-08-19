@@ -91,7 +91,7 @@ task_info *allocate_new_process(task_info *parent, int pid)
 
    pi->ref_count = 1;
    ti->tid = pid; /* here tid is a PID */
-   ti->owning_process_pid = pid;
+   ti->pid = pid;
 
    ti->pi = pi;
    bintree_node_init(&ti->tree_by_tid);
@@ -114,7 +114,7 @@ task_info *allocate_new_thread(process_info *pi)
 
    ti->pi = pi;
    ti->tid = MAX_PID + (sptr)ti - KERNEL_BASE_VA;
-   ti->owning_process_pid = proc->tid;
+   ti->pid = proc->tid;
 
    arch_specific_new_task_setup(ti);
    return ti;
@@ -129,7 +129,7 @@ void free_task(task_info *ti)
    ASSERT(!ti->io_copybuf);
    ASSERT(!ti->args_copybuf);
 
-   if (ti->tid == ti->owning_process_pid) {
+   if (ti->tid == ti->pid) {
 
       ASSERT(ti->pi->ref_count > 0);
 
@@ -166,7 +166,7 @@ sptr sys_pause()
 
 sptr sys_getpid()
 {
-   return get_curr_task()->owning_process_pid;
+   return get_curr_task()->pid;
 }
 
 sptr sys_gettid()

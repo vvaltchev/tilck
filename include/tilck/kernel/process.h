@@ -62,8 +62,11 @@ struct task_info {
    list_node runnable_list;
    list_node sleeping_list;
 
-   int tid;                 /* User/kernel task ID (pid in the Linux kernel) */
-   int owning_process_pid;  /* ID of the owner process (tgid in Linux)       */
+   int tid;   /* User/kernel task ID (pid in the Linux kernel) */
+   int pid;   /*
+               * ID of the owner process (tgid in Linux).
+               * The main thread of each process has tid == pid
+               */
 
    task_state_enum state;
    u8 exit_status;
@@ -137,7 +140,7 @@ static ALWAYS_INLINE task_info *get_curr_task(void)
 
 static ALWAYS_INLINE bool is_kernel_thread(task_info *ti)
 {
-   return ti->owning_process_pid == 0;
+   return ti->pid == 0;
 }
 
 void save_current_task_state(regs *);
