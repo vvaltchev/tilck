@@ -14,6 +14,8 @@ task_info *kernel_process;
 
 list_node runnable_tasks_list;
 list_node sleeping_tasks_list;
+list_node zombie_tasks_list;
+
 static task_info *tree_by_tid_root;
 
 static u64 idle_ticks;
@@ -120,6 +122,7 @@ void create_kernel_process(void)
 
    list_node_init(&runnable_tasks_list);
    list_node_init(&sleeping_tasks_list);
+   list_node_init(&zombie_tasks_list);
 
    int kernel_pid = create_new_pid();
    ASSERT(kernel_pid == 0);
@@ -132,6 +135,7 @@ void create_kernel_process(void)
    bintree_node_init(&s_kernel_ti.tree_by_tid);
    list_node_init(&s_kernel_ti.runnable_list);
    list_node_init(&s_kernel_ti.sleeping_list);
+   list_node_init(&s_kernel_ti.zombie_list);
 
    arch_specific_new_task_setup(&s_kernel_ti);
    ASSERT(s_kernel_pi.parent_pid == 0);
@@ -162,25 +166,25 @@ void task_add_to_state_list(task_info *ti)
 {
    switch (ti->state) {
 
-   case TASK_STATE_RUNNABLE:
-      list_add_tail(&runnable_tasks_list, &ti->runnable_list);
-      runnable_tasks_count++;
-      break;
+      case TASK_STATE_RUNNABLE:
+         list_add_tail(&runnable_tasks_list, &ti->runnable_list);
+         runnable_tasks_count++;
+         break;
 
-   case TASK_STATE_SLEEPING:
-      list_add_tail(&sleeping_tasks_list, &ti->sleeping_list);
-      break;
+      case TASK_STATE_SLEEPING:
+         list_add_tail(&sleeping_tasks_list, &ti->sleeping_list);
+         break;
 
-   case TASK_STATE_RUNNING:
-      /* no dedicated list: without SMP there's only one 'running' task */
-      break;
+      case TASK_STATE_RUNNING:
+         /* no dedicated list: without SMP there's only one 'running' task */
+         break;
 
-   case TASK_STATE_ZOMBIE:
-      /* no dedicated list for 'zombie' tasks at the moment */
-      break;
+      case TASK_STATE_ZOMBIE:
+         list_add_tail(&zombie_tasks_list, &ti->zombie_list);
+         break;
 
-   default:
-      NOT_REACHED();
+      default:
+         NOT_REACHED();
    }
 }
 
@@ -188,22 +192,25 @@ void task_remove_from_state_list(task_info *ti)
 {
    switch (ti->state) {
 
-   case TASK_STATE_RUNNABLE:
-      list_remove(&ti->runnable_list);
-      runnable_tasks_count--;
-      ASSERT(runnable_tasks_count >= 0);
-      break;
+      case TASK_STATE_RUNNABLE:
+         list_remove(&ti->runnable_list);
+         runnable_tasks_count--;
+         ASSERT(runnable_tasks_count >= 0);
+         break;
 
-   case TASK_STATE_SLEEPING:
-      list_remove(&ti->sleeping_list);
-      break;
+      case TASK_STATE_SLEEPING:
+         list_remove(&ti->sleeping_list);
+         break;
 
-   case TASK_STATE_RUNNING:
-   case TASK_STATE_ZOMBIE:
-      break;
+      case TASK_STATE_RUNNING:
+         break;
 
-   default:
-      NOT_REACHED();
+      case TASK_STATE_ZOMBIE:
+         list_remove(&ti->zombie_list);
+         break;
+
+      default:
+         NOT_REACHED();
    }
 }
 
@@ -351,7 +358,6 @@ void schedule(int curr_irq)
 
    switch_to_task(selected, curr_irq);
 }
-
 
 task_info *get_task(int tid)
 {

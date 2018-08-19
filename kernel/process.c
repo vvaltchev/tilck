@@ -97,6 +97,7 @@ task_info *allocate_new_process(task_info *parent, int pid)
    bintree_node_init(&ti->tree_by_tid);
    list_node_init(&ti->runnable_list);
    list_node_init(&ti->sleeping_list);
+   list_node_init(&ti->zombie_list);
 
    arch_specific_new_task_setup(ti);
    return ti;
@@ -195,6 +196,8 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
    ASSERT(are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
 
+   task_info *curr = get_curr_task();
+
    if (pid > 0) {
 
       /* Wait for a specific PID */
@@ -236,24 +239,43 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
        * are treated in the same way.
        */
 
-      //int zombie_child_pid = -1;
+      task_info *zombie_child = NULL;
+      task_info *pos;
 
-      disable_preemption();
-      {
-         // Visit all tasks.
-         //
-         //    for each task:
-         //       if parentof(task) == curr_task:
-         //          if task is zombie:
-         //             zombie_child_pid = task->owning_process_pid
-         //             break
+      while (true) {
+
+         disable_preemption();
+
+         list_for_each(pos, &zombie_tasks_list, zombie_list) {
+            if (pos->pi->parent_pid == curr->pid) {
+               zombie_child = pos;
+               break;
+            }
+         }
+
+         enable_preemption();
+
+         if (zombie_child)
+            break;
+
+         wait_obj_set(&curr->wobj, WOBJ_TASK, (task_info *)-1);
+         task_change_state(curr, TASK_STATE_SLEEPING);
+         kernel_yield();
       }
-      enable_preemption();
 
-      // if zombie_child_pid >= 0, as above, set user_wstatus and remove task.
-      // otherwise: goto to sleep with waited_task == -1.
+      if (user_wstatus) {
 
-      NOT_IMPLEMENTED();
+         int value = EXITCODE(zombie_child->exit_status, 0);
+
+         if (copy_to_user(user_wstatus, &value, sizeof(int)) < 0) {
+            remove_task(zombie_child);
+            return -EFAULT;
+         }
+      }
+
+      int zombie_child_pid = zombie_child->tid;
+      remove_task(zombie_child);
+      return zombie_child_pid;
    }
 }
 
@@ -275,10 +297,7 @@ NORETURN sptr sys_exit(int exit_status)
 {
    disable_preemption();
    task_info *curr = get_curr_task();
-
-   // printk("Exit process %i with code = %i\n",
-   //        current->pid,
-   //        exit_status);
+   int cppid = curr->pi->parent_pid;
 
    task_change_state(curr, TASK_STATE_ZOMBIE);
    curr->exit_status = exit_status;
@@ -324,7 +343,9 @@ NORETURN sptr sys_exit(int exit_status)
                pos->tid, pos->what, pos->state);
       }
 
-      if (pos->wobj.ptr == curr) {
+      void *woptr = pos->wobj.ptr;
+
+      if (woptr == curr || (pos->pid == cppid && woptr == (void *)-1)) {
          ASSERT(pos->wobj.type == WOBJ_TASK);
          wait_obj_reset(&pos->wobj);
          task_change_state(pos, TASK_STATE_RUNNABLE);

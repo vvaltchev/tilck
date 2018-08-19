@@ -61,6 +61,7 @@ struct task_info {
    bintree_node tree_by_tid;
    list_node runnable_list;
    list_node sleeping_list;
+   list_node zombie_list;
 
    int tid;   /* User/kernel task ID (pid in the Linux kernel) */
    int pid;   /*
@@ -118,6 +119,7 @@ extern task_info *kernel_process;
 
 extern list_node runnable_tasks_list;
 extern list_node sleeping_tasks_list;
+extern list_node zombie_tasks_list;
 
 static ALWAYS_INLINE task_info *get_process_task(process_info *pi)
 {
