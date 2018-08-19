@@ -218,7 +218,7 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
       }
 
       if (user_wstatus) {
-         int value = EXITCODE(waited_task->exit_status, 0);
+         int value = EXITCODE(waited_task->pi->exit_status, 0);
 
          if (copy_to_user(user_wstatus, &value, sizeof(int)) < 0) {
             remove_task((task_info *)waited_task);
@@ -265,7 +265,7 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
       if (user_wstatus) {
 
-         int value = EXITCODE(zombie_child->exit_status, 0);
+         int value = EXITCODE(zombie_child->pi->exit_status, 0);
 
          if (copy_to_user(user_wstatus, &value, sizeof(int)) < 0) {
             remove_task(zombie_child);
@@ -280,7 +280,6 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 }
 
 sptr sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
-
 {
    char zero_buf[136] = {0};
 
@@ -300,7 +299,7 @@ NORETURN sptr sys_exit(int exit_status)
    int cppid = curr->pi->parent_pid;
 
    task_change_state(curr, TASK_STATE_ZOMBIE);
-   curr->exit_status = exit_status;
+   curr->pi->exit_status = exit_status;
 
    // Close all of its opened handles
 

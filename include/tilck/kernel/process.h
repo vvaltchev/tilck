@@ -36,6 +36,8 @@ struct process_info {
    int ref_count;
 
    int parent_pid;
+   u32 exit_status;
+
    page_directory_t *pdir;
    void *brk;
    void *initial_brk;
@@ -64,14 +66,13 @@ struct task_info {
    list_node zombie_list;
 
    int tid;   /* User/kernel task ID (pid in the Linux kernel) */
-   int pid;   /*
-               * ID of the owner process (tgid in Linux).
+   u16 pid;   /*
+               * ID of the owner process (tgid in the Linux kernel).
                * The main thread of each process has tid == pid
                */
 
-   task_state_enum state;
-   u8 exit_status;
    bool running_in_kernel;
+   task_state_enum state;
 
    process_info *pi;
 
@@ -102,6 +103,18 @@ struct task_info {
    void *what;
 
    arch_task_info_members arch; /* arch-specific fields */
+
+   /*
+    * TODO (must): investigate why by adding two pointer-size (or more) members
+    * to this struct we get weird ASSERT failures in release builds.
+    *
+    * Example:
+    *
+    *    ASSERTION
+    *       'c == 1 || (c == 2 && in_syscall())' FAILED in timer_handler.c:159
+    */
+
+   // uptr padding[2]; // Uncomment to reproduce the issue.
 };
 
 typedef struct task_info task_info;
