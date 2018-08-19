@@ -430,11 +430,18 @@ no_mem_exit:
    return -ENOMEM;
 }
 
+sptr sys_getppid()
+{
+   return get_curr_task()->pi->parent_pid;
+}
 
-#include <sys/prctl.h>
+
+#include <sys/prctl.h> // system header
 
 sptr sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5)
 {
+   // TODO: actually implement sys_prctl()
+
    if (option == PR_SET_NAME) {
       // printk("[TID: %d] PR_SET_NAME '%s'\n", get_curr_task()->tid, a2);
       // TODO: save the task name in task_info.
