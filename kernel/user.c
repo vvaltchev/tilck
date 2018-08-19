@@ -9,7 +9,7 @@ int copy_from_user(void *dest, const void *user_ptr, size_t n)
    if (user_out_of_range(user_ptr, n))
       return -1;
 
-   int r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, dest, user_ptr, n);
+   u32 r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, dest, user_ptr, n);
    return !r ? 0 : -1;
 }
 
@@ -18,7 +18,7 @@ int copy_to_user(void *user_ptr, const void *src, size_t n)
    if (user_out_of_range(user_ptr, n))
       return -1;
 
-   int r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, user_ptr, src, n);
+   u32 r = fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, user_ptr, src, n);
    return !r ? 0 : -1;
 }
 

@@ -8,6 +8,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/sys_types.h>
 
+#include <sys/utsname.h> // system header
 
 #ifdef __SYSCALLS_C__
 
@@ -166,7 +167,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_fsync)
 CREATE_STUB_SYSCALL_IMPL(sys_sigreturn)
 CREATE_STUB_SYSCALL_IMPL(sys_clone)
 CREATE_STUB_SYSCALL_IMPL(sys_setsetdomainname)
-CREATE_STUB_SYSCALL_IMPL(sys_setnewuname)
+
+sptr sys_newuname(struct utsname *buf);
+
 CREATE_STUB_SYSCALL_IMPL(sys_modify_ldt)
 CREATE_STUB_SYSCALL_IMPL(sys_adjtimex)
 CREATE_STUB_SYSCALL_IMPL(sys_mprotect)

@@ -11,6 +11,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/fault_resumable.h>
 
 typedef sptr (*syscall_type)();
 
@@ -25,6 +26,30 @@ sptr sys_nanosleep(/* ignored arguments for the moment */)
 {
    // This is a stub implementation. TODO: actually implement nanosleep().
    kernel_sleep(TIMER_HZ/10);
+   return 0;
+}
+
+static const char uname_name[] = "Tilck";
+static const char uname_nodename[] = "tilck";
+static const char uname_release[] = "0.01";
+
+sptr sys_newuname(struct utsname *buf)
+{
+   if (!safe_memcpy(buf->sysname, uname_name, ARRAY_SIZE(uname_name)))
+      return -EFAULT;
+
+   if (!safe_memcpy(buf->nodename, uname_nodename, ARRAY_SIZE(uname_nodename)))
+      return -EFAULT;
+
+   if (!safe_memcpy(buf->release, uname_release, ARRAY_SIZE(uname_release)))
+      return -EFAULT;
+
+   if (!safe_memcpy(buf->version, "", 1))
+      return -EFAULT;
+
+   if (!safe_memcpy(buf->machine, "i686", 5))
+      return -EFAULT;
+
    return 0;
 }
 
@@ -153,7 +178,7 @@ syscall_type syscalls[] =
    [119] = sys_sigreturn,
    [120] = sys_clone,
    [121] = sys_setsetdomainname,
-   [122] = sys_setnewuname,
+   [122] = sys_newuname,
    [123] = sys_modify_ldt,
    [124] = sys_adjtimex,
    [125] = sys_mprotect,
