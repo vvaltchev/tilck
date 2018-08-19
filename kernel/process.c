@@ -190,7 +190,7 @@ void join_kernel_thread(int tid)
    }
 }
 
-sptr sys_waitpid(int pid, int *wstatus, int options)
+sptr sys_waitpid(int pid, int *user_wstatus, int options)
 {
    ASSERT(are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
@@ -214,10 +214,10 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
          kernel_yield();
       }
 
-      if (wstatus) {
+      if (user_wstatus) {
          int value = EXITCODE(waited_task->exit_status, 0);
 
-         if (copy_to_user(wstatus, &value, sizeof(int)) < 0) {
+         if (copy_to_user(user_wstatus, &value, sizeof(int)) < 0) {
             remove_task((task_info *)waited_task);
             return -EFAULT;
          }
@@ -236,11 +236,28 @@ sptr sys_waitpid(int pid, int *wstatus, int options)
        * are treated in the same way.
        */
 
+      //int zombie_child_pid = -1;
+
+      disable_preemption();
+      {
+         // Visit all tasks.
+         //
+         //    for each task:
+         //       if parentof(task) == curr_task:
+         //          if task is zombie:
+         //             zombie_child_pid = task->owning_process_pid
+         //             break
+      }
+      enable_preemption();
+
+      // if zombie_child_pid >= 0, as above, set user_wstatus and remove task.
+      // otherwise: goto to sleep with waited_task == -1.
+
       NOT_IMPLEMENTED();
    }
 }
 
-sptr sys_wait4(int pid, int *wstatus, int options, void *user_rusage)
+sptr sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
 
 {
    char zero_buf[136] = {0};
@@ -251,7 +268,7 @@ sptr sys_wait4(int pid, int *wstatus, int options, void *user_rusage)
          return -EFAULT;
    }
 
-   return sys_waitpid(pid, wstatus, options);
+   return sys_waitpid(pid, user_wstatus, options);
 }
 
 NORETURN sptr sys_exit(int exit_status)

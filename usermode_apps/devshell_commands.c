@@ -403,7 +403,40 @@ void cmd_waitpid1(void)
    pid = waitpid(child_pid, &wstatus, 0);
 
    int exit_code = WEXITSTATUS(wstatus);
+   printf("waitpid() returned %d, exit code: %d\n", pid, exit_code);
 
+   if (pid != child_pid) {
+      printf("Expected waitpid() to return child's pid (got: %d)\n", pid);
+      exit(1);
+   }
+
+   if (exit_code != 23) {
+      printf("Expected the exit code to be 23 (got: %d)\n", exit_code);
+      exit(1);
+   }
+}
+
+/* Wait any child */
+void cmd_waitpid2(void)
+{
+   int wstatus;
+   pid_t pid;
+
+   int child_pid = fork();
+
+   if (child_pid < 0) {
+      printf("fork() failed\n");
+      exit(1);
+   }
+
+   if (!child_pid) {
+      // This is the child, just exit
+      exit(23);
+   }
+
+   pid = waitpid(-1, &wstatus, 0);
+
+   int exit_code = WEXITSTATUS(wstatus);
    printf("waitpid() returned %d, exit code: %d\n", pid, exit_code);
 
    if (pid != child_pid) {
@@ -459,7 +492,8 @@ struct {
    {"brk_test", cmd_brk_test, TT_SHORT, true},
    {"mmap_test", cmd_mmap_test, TT_MED, true},
    {"kernel_cow", cmd_kernel_cow, TT_SHORT, true},
-   {"waitpid1", cmd_waitpid1, TT_SHORT, true}
+   {"waitpid1", cmd_waitpid1, TT_SHORT, true},
+   {"waitpid2", cmd_waitpid2, TT_SHORT, false}
 };
 
 void dump_list_of_commands(void)
