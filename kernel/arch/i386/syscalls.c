@@ -12,6 +12,7 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/fault_resumable.h>
+#include <tilck/kernel/user.h>
 
 typedef sptr (*syscall_type)();
 
@@ -22,12 +23,16 @@ sptr sys_rt_sigprocmask(/* args ignored at the moment */)
    return 0;
 }
 
-sptr sys_nanosleep(const struct timespec *req, struct timespec *rem)
+sptr sys_nanosleep(const struct timespec *user_req, struct timespec *rem)
 {
    u64 ticks_to_sleep = 0;
+   struct timespec req;
 
-   ticks_to_sleep += TIMER_HZ * req->tv_sec;
-   ticks_to_sleep += req->tv_nsec / (1000000000 / TIMER_HZ);
+   if (copy_from_user(&req, user_req, sizeof(req)) < 0)
+      return -EFAULT;
+
+   ticks_to_sleep += TIMER_HZ * req.tv_sec;
+   ticks_to_sleep += req.tv_nsec / (1000000000 / TIMER_HZ);
    kernel_sleep(ticks_to_sleep);
 
    // TODO (future): use HPET in order to improve the sleep precision
@@ -39,21 +44,17 @@ static const char uname_name[] = "Tilck";
 static const char uname_nodename[] = "tilck";
 static const char uname_release[] = "0.01";
 
-sptr sys_newuname(struct utsname *buf)
+sptr sys_newuname(struct utsname *user_buf)
 {
-   if (!safe_memcpy(buf->sysname, uname_name, ARRAY_SIZE(uname_name)))
-      return -EFAULT;
+   struct utsname buf;
 
-   if (!safe_memcpy(buf->nodename, uname_nodename, ARRAY_SIZE(uname_nodename)))
-      return -EFAULT;
+   memcpy(buf.sysname, uname_name, ARRAY_SIZE(uname_name));
+   memcpy(buf.nodename, uname_nodename, ARRAY_SIZE(uname_nodename));
+   memcpy(buf.release, uname_release, ARRAY_SIZE(uname_release));
+   memcpy(buf.version, "", 1);
+   memcpy(buf.machine, "i686", 5);
 
-   if (!safe_memcpy(buf->release, uname_release, ARRAY_SIZE(uname_release)))
-      return -EFAULT;
-
-   if (!safe_memcpy(buf->version, "", 1))
-      return -EFAULT;
-
-   if (!safe_memcpy(buf->machine, "i686", 5))
+   if (copy_to_user(user_buf, &buf, sizeof(struct utsname)) < 0)
       return -EFAULT;
 
    return 0;

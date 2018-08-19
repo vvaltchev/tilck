@@ -185,7 +185,9 @@ void cmd_sysenter(void)
    usleep(100*1000);
    printf("after sleep, everything is fine.\n");
    printf("same sleep, but with sysenter:\n");
-   sysenter_call3(162 /* nanosleep */, NULL, NULL, NULL);
+
+   struct timespec req = { .tv_sec = 0, .tv_nsec = 100*1000*1000 };
+   sysenter_call3(162 /* nanosleep */, &req, NULL, NULL);
    printf("after sleep, everything is fine. Prev ret: %i\n", ret);
 }
 

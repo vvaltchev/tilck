@@ -18,9 +18,3 @@ static inline bool is_fault_resumable(u32 fault_num)
 
 void handle_resumable_fault(regs *r);
 u32 fault_resumable_call(u32 faults_mask, void *func, u32 nargs, ...);
-
-
-static inline bool safe_memcpy(void *dest, const void *src, size_t n)
-{
-   return !fault_resumable_call(PAGE_FAULT_MASK, memcpy, 3, dest, src, n);
-}
