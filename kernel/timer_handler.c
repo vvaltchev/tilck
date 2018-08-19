@@ -15,6 +15,7 @@ kthread_timer_sleep_obj timers_array[64];
 int set_task_to_wake_after(task_info *task, u64 ticks)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
+   ASSERT(ticks > 0);
 
    for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
       if (BOOL_COMPARE_AND_SWAP(&timers_array[i].task, NULL, 1)) {
@@ -67,7 +68,9 @@ static task_info *tick_all_timers(void)
 
 void kernel_sleep(u64 ticks)
 {
-   set_task_to_wake_after(get_curr_task(), ticks);
+   if (ticks)
+      set_task_to_wake_after(get_curr_task(), ticks);
+
    kernel_yield();
 }
 

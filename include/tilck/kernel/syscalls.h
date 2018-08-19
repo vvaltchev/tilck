@@ -213,7 +213,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_sched_get_priority_max)
 CREATE_STUB_SYSCALL_IMPL(sys_sched_set_priority_min)
 CREATE_STUB_SYSCALL_IMPL(sys_sched_rr_get_interval)
 
-sptr sys_nanosleep();   // not fully implemented
+sptr sys_nanosleep(const struct timespec *req, struct timespec *rem);
 
 CREATE_STUB_SYSCALL_IMPL(sys_mremap)
 CREATE_STUB_SYSCALL_IMPL(sys_setresuid16)

@@ -22,10 +22,16 @@ sptr sys_rt_sigprocmask(/* args ignored at the moment */)
    return 0;
 }
 
-sptr sys_nanosleep(/* ignored arguments for the moment */)
+sptr sys_nanosleep(const struct timespec *req, struct timespec *rem)
 {
-   // This is a stub implementation. TODO: actually implement nanosleep().
-   kernel_sleep(TIMER_HZ/10);
+   u64 ticks_to_sleep = 0;
+
+   ticks_to_sleep += TIMER_HZ * req->tv_sec;
+   ticks_to_sleep += req->tv_nsec / (1000000000 / TIMER_HZ);
+   kernel_sleep(ticks_to_sleep);
+
+   // TODO (future): use HPET in order to improve the sleep precision
+   // TODO (nanosleep): set rem if the call has been interrupted by a signal
    return 0;
 }
 
