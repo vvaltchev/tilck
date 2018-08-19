@@ -33,8 +33,8 @@ Building it takes less than 1 minute (~5 minutes if we consider also running
 The legacy bootloader
 ----------------------------------------
 
-`Tilck` includes a 3-stage bootloader able to load in memory the contents of the
-boot-drive at a pre-defined physical address. In its 3rd stage (written in C),
+`Tilck` includes a 3-stage multiboot bootloader able to load in memory the contents
+of the boot-drive at a pre-defined physical address. In its 3rd stage (written in C),
 the bootloader loads from an in-memory FAT32 partition the ELF kernel of
 `Tilck` [it understands the ELF format] and jumps to its entry-point. Before
 the final jump to the kernel, the bootloader allows the user the choose the
@@ -44,8 +44,22 @@ VGA-compatible text mode.
 The UEFI bootloader
 ----------------------------------------
 
-`Tilck` includes also a fully-working EFI bootloader which boots the kernel in
-graphics mode (text mode is not available when booting using UEFI).
+`Tilck` includes also a fully-working multiboot EFI bootloader which boots the kernel
+in graphics mode (text mode is not available when booting using UEFI). From kernel's
+point-of-view, the two bootloaders are equivalent.
+
+Other bootloaders
+----------------------------------------
+
+`Tilck` can be booted by any bootloader supporting multiboot 1.0. For example, qemu's
+simple bootloader designed as a shortcut for loading directly the Linux kernel, without
+any on-disk bootloaders can perfectly work with `Tilck`:
+
+    qemu-system-i386 -kernel ./build/elf_kernel_stripped -initrd ./build/fatpart
+    
+Actually that way of booting the kernel is used in the system tests. A shortcut for it is:
+
+    ./build/run_multiboot_qemu -initrd ./build/fatpart
 
 Hardware support
 --------------------
@@ -151,7 +165,7 @@ FAQ (by vvaltchev)
 It is well-known that all of the popular open source projects care about having good commit messages.
 It is an investment that at some point pays off. I even wrote a [blog post](https://blogs.vmware.com/opensource/2017/12/28/open-source-proprietary-software-engineer/) about that.
 The problem is that such investment actually starts paying off only when multiple people contribute to the project.
-Even in the case of small teams (2 people) it not obvious that it is worth spending hours in re-ordering and editing all the commits of a pull request until its *story* is perfect, especially when the project is not mature enough: the commits in a pull request have to be just *good enough* in terms of commit message, scope of the change, relative order etc. The focus is on shape of the code *after* the patch series in the sense that limited hacks in the middle of a series are allowed. As a second contributor comes in, the commit messages will need necessarily to become more descriptive, in order to allow the collaboration to work. But, at this stage, going as fast as possible towards the first milestone makes sense. Still, I'm trying to keep the length of the commit messages proportionate to the complexity of the change. Sometimes, even in this stage, it makes sense to spend some time on describing the reasoning behind a commit. As the projects matures, I'll be spending more and more time on writing better commit messages.
+Even in the case of small teams (2 people) it not obvious that it is worth spending hours in re-ordering and editing all the commits of a pull request until its *story* is perfect, especially when the project is not mature enough: the commits in a pull request have to be just *good enough* in terms of commit message, scope of the change, relative order etc. The focus is on shape of the code *after* the patch series in the sense that limited hacks in the middle of a series are allowed. As a second contributor comes in, the commit messages will need necessarily to become more descriptive, in order to allow the collaboration to work. But, at this stage, going as fast as possible towards the first milestone makes sense. As the projects matures, I'll be spending more and more time on writing better commit messages.
 
 
 #### Why Tilck does not have the feature/abstraction XYZ like other kernels do?
@@ -166,7 +180,7 @@ to learn how it works and to write a minimalistic implementation to support it.
 
 #### Why using FAT32?
 
-Even if FAT32 is today the only filesystem supported by Tilck, in the next months it will
+Even if FAT32 is today the only filesystem supported by `Tilck`, in the next months it will
 be used only as an initial read-only ramdisk. The main filesystem will be a custom ramfs, while
 the FAT32 ramdisk will remain mounted (likely) under /boot. The #1 reason for using FAT32 was that
 it is required for booting using UEFI. Therefore, it was convienent to store there also all the rest
