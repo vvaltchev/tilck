@@ -177,14 +177,10 @@ sptr sys_gettid()
 
 void join_kernel_thread(int tid)
 {
+   task_info *ti;
    ASSERT(is_preemption_enabled());
 
-   task_info *ti = get_task(tid);
-
-   if (!ti)
-      return; /* the thread already exited */
-
-   while (get_task(tid) != NULL) {
+   while ((ti = get_task(tid))) {
       wait_obj_set(&get_curr_task()->wobj, WOBJ_TASK, ti);
       task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
       kernel_yield();
