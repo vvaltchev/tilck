@@ -242,6 +242,18 @@ static inline void kernel_yield(void)
    asm_kernel_yield();
 }
 
+static ALWAYS_INLINE int thread_ti_to_tid(task_info *ti)
+{
+   ASSERT(ti->tid != ti->pid);
+   return MAX_PID + (sptr) ((uptr)ti - KERNEL_BASE_VA);
+}
+
+static ALWAYS_INLINE task_info *thread_tid_to_ti(int tid)
+{
+   ASSERT(tid > MAX_PID);
+   return (task_info *)((uptr)tid - MAX_PID + KERNEL_BASE_VA);
+}
+
 /* Internal stuff (used by process.c and process32.c) */
 extern char *kernel_initial_stack[KERNEL_INITIAL_STACK_SIZE];
 void switch_to_initial_kernel_stack(void);

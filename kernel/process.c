@@ -114,8 +114,10 @@ task_info *allocate_new_thread(process_info *pi)
    }
 
    ti->pi = pi;
-   ti->tid = MAX_PID + (sptr)ti - KERNEL_BASE_VA;
+   ti->tid = -1;
+   ti->tid = thread_ti_to_tid(ti);
    ti->pid = proc->tid;
+   ASSERT(thread_tid_to_ti(ti->tid) == ti);
 
    arch_specific_new_task_setup(ti);
    return ti;
