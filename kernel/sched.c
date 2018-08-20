@@ -346,7 +346,7 @@ void schedule(int curr_irq)
 
       ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
-      if (pos == idle_task)
+      if (pos == idle_task || pos == get_curr_task())
          continue;
 
       if (!selected || pos->total_ticks < selected->total_ticks) {
@@ -355,13 +355,15 @@ void schedule(int curr_irq)
    }
 
    if (!selected) {
-      selected = idle_task;
-   }
 
-   if (selected == get_curr_task()) {
-      task_change_state(selected, TASK_STATE_RUNNING);
-      selected->time_slot_ticks = 0;
-      return;
+      if (get_curr_task()->state == TASK_STATE_RUNNABLE) {
+         selected = get_curr_task();
+         task_change_state(selected, TASK_STATE_RUNNING);
+         selected->time_slot_ticks = 0;
+         return;
+      }
+
+      selected = idle_task;
    }
 
    switch_to_task(selected, curr_irq);
