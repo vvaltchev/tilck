@@ -3,22 +3,29 @@
 
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/pq.h>
+#include <tilck/kernel/errno.h>
 
-#define LEFT(i) (2*(i)+1)
-#define RIGHT(i) (2*(i)+2)
-#define PARENT(i) ((i - 1)/2)
+#define HALF(x) ((x) >> 1)
+#define TWICE(x) ((x) << 1)
+#define LEFT(n) (TWICE(n) + 1)
+#define RIGHT(n) (TWICE(n) + 2)
+#define PARENT(n) (HALF(n-1))
 
 struct pqueue_elem {
-
    void *data;
    int priority;
 };
 
-void pqueue_init(pqueue *pq, size_t capacity)
+int pqueue_init(pqueue *pq, size_t capacity)
 {
    pq->size = 0;
    pq->capacity = capacity;
    pq->elems = kmalloc(capacity * sizeof(pqueue_elem));
+
+   if (!pq->elems)
+      return -ENOMEM;
+
+   return 0;
 }
 
 void pqueue_destroy(pqueue *pq)
@@ -40,7 +47,6 @@ void pqueue_push(pqueue *pq, void *data, int p)
 
    pq->elems[pq->size].data = data;
    pq->elems[pq->size].priority = p;
-
    pq->size++;
 
    if (pq->size <= 1)
@@ -48,7 +54,8 @@ void pqueue_push(pqueue *pq, void *data, int p)
 
    // heap-up operation
    for (int i = pq->size - 1;
-        pq->elems[i].priority < pq->elems[PARENT(i)].priority; i = PARENT(i)) {
+        pq->elems[i].priority < pq->elems[PARENT(i)].priority; i = PARENT(i))
+   {
       pq_swap(pq, i, PARENT(i));
    }
 }
@@ -56,12 +63,12 @@ void pqueue_push(pqueue *pq, void *data, int p)
 
 static void heap_down(pqueue *pq)
 {
-   pqueue_elem *heap = pq->elems;
-   int len = pq->size;
-
-   if (len <= 1) return;
-
    int i = 0;
+   int len = pq->size;
+   pqueue_elem *heap = pq->elems;
+
+   if (len <= 1)
+      return;
 
    while (LEFT(i) < len) {
 

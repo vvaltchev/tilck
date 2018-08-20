@@ -11,7 +11,7 @@ struct pqueue {
    pqueue_elem *elems;
 };
 
-void pqueue_init(pqueue *pq, size_t capacity);
+int pqueue_init(pqueue *pq, size_t capacity);
 void pqueue_destroy(pqueue *pq);
 
 void pqueue_push(pqueue *pq, void *data, int priority);
