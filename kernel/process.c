@@ -10,6 +10,9 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/debug_utils.h>
 
+#include <sys/prctl.h> // system header
+#include <sys/wait.h>  // system header
+
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
 
@@ -196,15 +199,19 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
    task_info *curr = get_curr_task();
 
+   /*
+    * TODO: make waitpid() able to wait on other child state changes, in
+    * particular in case a children received a SIGSTOP or a SIGCONT.
+    */
+
    if (pid > 0) {
 
       /* Wait for a specific PID */
 
       volatile task_info *waited_task = (volatile task_info *)get_task(pid);
 
-      if (!waited_task) {
+      if (!waited_task || waited_task->pi->parent_pid != curr->pid)
          return -ECHILD;
-      }
 
       while (waited_task->state != TASK_STATE_ZOMBIE) {
 
@@ -226,55 +233,61 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
       remove_task((task_info *)waited_task);
       return pid;
-
-   } else {
-
-      /*
-       * Since Tilck does not support UIDs and GIDs != 0, the values of
-       *    pid < -1
-       *    pid == -1
-       *    pid == 0
-       * are treated in the same way.
-       */
-
-      task_info *zombie_child = NULL;
-      task_info *pos;
-
-      while (true) {
-
-         disable_preemption();
-
-         list_for_each(pos, &zombie_tasks_list, zombie_list) {
-            if (pos->pi->parent_pid == curr->pid) {
-               zombie_child = pos;
-               break;
-            }
-         }
-
-         enable_preemption();
-
-         if (zombie_child)
-            break;
-
-         wait_obj_set(&curr->wobj, WOBJ_TASK, (task_info *)-1);
-         task_change_state(curr, TASK_STATE_SLEEPING);
-         kernel_yield();
-      }
-
-      if (user_wstatus) {
-
-         int value = EXITCODE(zombie_child->exit_status, 0);
-
-         if (copy_to_user(user_wstatus, &value, sizeof(int)) < 0) {
-            remove_task(zombie_child);
-            return -EFAULT;
-         }
-      }
-
-      int zombie_child_pid = zombie_child->tid;
-      remove_task(zombie_child);
-      return zombie_child_pid;
    }
+
+   /*
+    * Since Tilck does not support UIDs and GIDs != 0, the values of
+    *    pid < -1
+    *    pid == -1
+    *    pid == 0
+    * are treated in the same way.
+    */
+
+   task_info *zombie_child = NULL;
+   task_info *pos;
+
+   while (true) {
+
+      disable_preemption();
+
+      list_for_each(pos, &zombie_tasks_list, zombie_list) {
+         if (pos->pi->parent_pid == curr->pid) {
+            zombie_child = pos;
+            break;
+         }
+      }
+
+      enable_preemption();
+
+      if (zombie_child)
+         break;
+
+      /* No zombie child has been found */
+
+      if (options & WNOHANG) {
+         /* With WNOHANG we must not hang until a child dies */
+         return 0;
+      }
+
+      /* Hang until a child dies */
+      wait_obj_set(&curr->wobj, WOBJ_TASK, (task_info *)-1);
+      task_change_state(curr, TASK_STATE_SLEEPING);
+      kernel_yield();
+   }
+
+   if (user_wstatus) {
+
+      int value = EXITCODE(zombie_child->exit_status, 0);
+
+      if (copy_to_user(user_wstatus, &value, sizeof(int)) < 0) {
+         remove_task(zombie_child);
+         return -EFAULT;
+      }
+   }
+
+   int zombie_child_pid = zombie_child->tid;
+   remove_task(zombie_child);
+   return zombie_child_pid;
 }
 
 sptr sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
@@ -469,9 +482,6 @@ sptr sys_getppid()
 {
    return get_curr_task()->pi->parent_pid;
 }
-
-
-#include <sys/prctl.h> // system header
 
 sptr sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5)
 {
