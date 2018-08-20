@@ -103,18 +103,6 @@ struct task_info {
    void *what;
 
    arch_task_info_members arch; /* arch-specific fields */
-
-   /*
-    * TODO (must): investigate why by adding two pointer-size (or more) members
-    * to this struct we get weird ASSERT failures in release builds.
-    *
-    * Example:
-    *
-    *    ASSERTION
-    *       'c == 1 || (c == 2 && in_syscall())' FAILED in timer_handler.c:159
-    */
-
-   // uptr padding[2]; // Uncomment to reproduce the issue.
 };
 
 typedef struct task_info task_info;

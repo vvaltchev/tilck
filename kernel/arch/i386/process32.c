@@ -109,6 +109,8 @@ kthread_create(kthread_func_ptr fun, void *arg)
    if (!ti)
       return NULL;
 
+   ASSERT(ti->pid == 0);
+
    ti->what = fun;
    ti->state = TASK_STATE_RUNNABLE;
    ti->running_in_kernel = 1;

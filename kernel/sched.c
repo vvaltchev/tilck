@@ -117,8 +117,10 @@ void idle_task_kthread(void)
 
 void create_kernel_process(void)
 {
-   static task_info s_kernel_ti;
-   static process_info s_kernel_pi;
+   static char kernel_proc_buf[sizeof(process_info) + sizeof(task_info)];
+
+   process_info *s_kernel_pi = (process_info *)kernel_proc_buf;
+   task_info *s_kernel_ti = (task_info *)(s_kernel_pi + 1);
 
    list_node_init(&runnable_tasks_list);
    list_node_init(&sleeping_tasks_list);
@@ -127,25 +129,25 @@ void create_kernel_process(void)
    int kernel_pid = create_new_pid();
    ASSERT(kernel_pid == 0);
 
-   s_kernel_pi.ref_count = 1;
-   s_kernel_ti.tid = kernel_pid;
-   s_kernel_ti.pid = kernel_pid;
+   s_kernel_pi->ref_count = 1;
+   s_kernel_ti->tid = kernel_pid;
+   s_kernel_ti->pid = kernel_pid;
 
-   s_kernel_ti.pi = &s_kernel_pi;
-   bintree_node_init(&s_kernel_ti.tree_by_tid);
-   list_node_init(&s_kernel_ti.runnable_list);
-   list_node_init(&s_kernel_ti.sleeping_list);
-   list_node_init(&s_kernel_ti.zombie_list);
+   s_kernel_ti->pi = s_kernel_pi;
+   bintree_node_init(&s_kernel_ti->tree_by_tid);
+   list_node_init(&s_kernel_ti->runnable_list);
+   list_node_init(&s_kernel_ti->sleeping_list);
+   list_node_init(&s_kernel_ti->zombie_list);
 
-   arch_specific_new_task_setup(&s_kernel_ti);
-   ASSERT(s_kernel_pi.parent_pid == 0);
+   arch_specific_new_task_setup(s_kernel_ti);
+   ASSERT(s_kernel_pi->parent_pid == 0);
 
-   s_kernel_ti.running_in_kernel = true;
-   memcpy(s_kernel_pi.cwd, "/", 2);
+   s_kernel_ti->running_in_kernel = true;
+   memcpy(s_kernel_pi->cwd, "/", 2);
 
-   s_kernel_ti.state = TASK_STATE_SLEEPING;
+   s_kernel_ti->state = TASK_STATE_SLEEPING;
 
-   kernel_process = &s_kernel_ti;
+   kernel_process = s_kernel_ti;
    add_task(kernel_process);
    set_current_task(kernel_process);
 }
