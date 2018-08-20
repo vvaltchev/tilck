@@ -156,6 +156,9 @@ void init_sched(void)
 {
    kernel_process->pi->pdir = get_kernel_pdir();
    idle_task = kthread_create(&idle_task_kthread, NULL);
+
+   if (!idle_task)
+      panic("Unable to create the idle_task!");
 }
 
 void set_current_task_in_kernel(void)

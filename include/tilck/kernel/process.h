@@ -36,8 +36,6 @@ struct process_info {
    int ref_count;
 
    int parent_pid;
-   u32 exit_status;
-
    page_directory_t *pdir;
    void *brk;
    void *initial_brk;
@@ -73,6 +71,7 @@ struct task_info {
 
    bool running_in_kernel;
    task_state_enum state;
+   u32 exit_status;
 
    process_info *pi;
 

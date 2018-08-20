@@ -1,8 +1,8 @@
 
 #pragma once
 
-#define TI_F_RESUME_RS_OFF  96 /* offset of: fault_resume_regs */
-#define TI_FAULTS_MASK_OFF 100 /* offset of: faults_resume_mask */
+#define TI_F_RESUME_RS_OFF 100 /* offset of: fault_resume_regs */
+#define TI_FAULTS_MASK_OFF 104 /* offset of: faults_resume_mask */
 
 #define SIZEOF_REGS 84
 #define REGS_EIP_OFF 64
