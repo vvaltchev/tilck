@@ -74,18 +74,13 @@ task_info *allocate_new_process(task_info *parent, int pid)
 
    pi = (process_info *)(ti + 1);
 
-   if (parent) {
+   /* The first process (init) is has as parent 'kernel_process' */
+   ASSERT(parent != NULL);
 
-      memcpy(ti, parent, sizeof(task_info));
-      memcpy(pi, parent->pi, sizeof(process_info));
-      pi->parent_pid = parent->tid;
-      pi->mmap_heap = kmalloc_heap_dup(parent->pi->mmap_heap);
-
-   } else {
-
-      bzero(ti, sizeof(task_info) + sizeof(process_info));
-      /* NOTE: parent_pid in this case is 0 as kernel_process->pi->tid */
-   }
+   memcpy(ti, parent, sizeof(task_info));
+   memcpy(pi, parent->pi, sizeof(process_info));
+   pi->parent_pid = parent->tid;
+   pi->mmap_heap = kmalloc_heap_dup(parent->pi->mmap_heap);
 
    if (!do_common_task_allocations(ti)) {
       kfree2(ti, sizeof(task_info) + sizeof(process_info));
@@ -101,6 +96,10 @@ task_info *allocate_new_process(task_info *parent, int pid)
    list_node_init(&ti->runnable_list);
    list_node_init(&ti->sleeping_list);
    list_node_init(&ti->zombie_list);
+   list_node_init(&ti->siblings_list);
+
+   list_node_init(&pi->children_list);
+   list_add_tail(&parent->pi->children_list, &ti->siblings_list);
 
    arch_specific_new_task_setup(ti);
    return ti;
@@ -121,6 +120,9 @@ task_info *allocate_new_thread(process_info *pi)
    ti->tid = thread_ti_to_tid(ti);
    ti->pid = proc->tid;
    ASSERT(thread_tid_to_ti(ti->tid) == ti);
+
+   /* NOTE: siblings_list is used ONLY for the main task (tid == pid) */
+   list_node_init(&ti->siblings_list);
 
    arch_specific_new_task_setup(ti);
    return ti;
@@ -145,11 +147,12 @@ void free_task(task_info *ti)
          ti->pi->mmap_heap = NULL;
       }
 
-      if (--ti->pi->ref_count == 0)
+      if (--ti->pi->ref_count == 0) {
+         list_remove(&ti->siblings_list);
          kfree2(ti, sizeof(task_info) + sizeof(process_info));
+      }
 
    } else {
-
       kfree2(ti, sizeof(task_info));
    }
 }
@@ -250,8 +253,8 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
       disable_preemption();
 
-      list_for_each(pos, &zombie_tasks_list, zombie_list) {
-         if (pos->pi->parent_pid == curr->pid) {
+      list_for_each(pos, &curr->pi->children_list, siblings_list) {
+         if (pos->state == TASK_STATE_ZOMBIE) {
             zombie_child = pos;
             break;
          }
@@ -324,6 +327,10 @@ NORETURN sptr sys_exit(int exit_status)
       }
    }
 
+   /*
+    * TODO: iterate over all the children of this process and make their
+    * parent to be the parent of this process.
+    */
 
    // Wake-up all the tasks waiting on this task to exit
 

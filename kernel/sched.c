@@ -119,8 +119,8 @@ void create_kernel_process(void)
 {
    static char kernel_proc_buf[sizeof(process_info) + sizeof(task_info)];
 
-   process_info *s_kernel_pi = (process_info *)kernel_proc_buf;
-   task_info *s_kernel_ti = (task_info *)(s_kernel_pi + 1);
+   task_info *s_kernel_ti = (task_info *)kernel_proc_buf;
+   process_info *s_kernel_pi = (process_info *)(s_kernel_ti + 1);
 
    list_node_init(&runnable_tasks_list);
    list_node_init(&sleeping_tasks_list);
@@ -138,6 +138,9 @@ void create_kernel_process(void)
    list_node_init(&s_kernel_ti->runnable_list);
    list_node_init(&s_kernel_ti->sleeping_list);
    list_node_init(&s_kernel_ti->zombie_list);
+   list_node_init(&s_kernel_ti->siblings_list);
+
+   list_node_init(&s_kernel_pi->children_list);
 
    arch_specific_new_task_setup(s_kernel_ti);
    ASSERT(s_kernel_pi->parent_pid == 0);

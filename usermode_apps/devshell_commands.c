@@ -402,6 +402,14 @@ void cmd_waitpid1(void)
    /* Now, let's see call waitpid() after the child exited */
    pid = waitpid(child_pid, &wstatus, 0);
 
+   if (!WIFEXITED(wstatus)) {
+
+      printf("[pid: %d] PARENT: the child %d did NOT exited normally\n",
+             getpid(), pid);
+
+      exit(1);
+   }
+
    int exit_code = WEXITSTATUS(wstatus);
    printf("waitpid() returned %d, exit code: %d\n", pid, exit_code);
 
@@ -419,35 +427,59 @@ void cmd_waitpid1(void)
 /* waitpid(-1): wait any child to exit */
 void cmd_waitpid2(void)
 {
+   const int child_count = 3;
+
+   int pids[child_count];
    int wstatus;
    pid_t pid;
 
-   int child_pid = fork();
+   for (int i = 0; i < child_count; i++) {
 
-   if (child_pid < 0) {
-      printf("fork() failed\n");
-      exit(1);
+      int child_pid = fork();
+
+      if (child_pid < 0) {
+         printf("fork() failed\n");
+         exit(1);
+      }
+
+      if (!child_pid) {
+         printf("[pid: %d] child: exit (%d)\n", getpid(), 10 + i);
+         usleep((child_count - i) * 100*1000);
+         exit(10 + i);
+      }
+
+      pids[i] = child_pid;
    }
 
-   if (!child_pid) {
-      printf("[pid: %d] child: exit\n", getpid());
-      exit(23);
-   }
+   usleep(120 * 1000);
 
-   printf("[pid: %d] parent: waitpid(-1)\n", getpid());
-   pid = waitpid(-1, &wstatus, 0);
+   for (int i = child_count-1; i >= 0; i--) {
 
-   int exit_code = WEXITSTATUS(wstatus);
-   printf("waitpid() returned %d, exit code: %d\n", pid, exit_code);
+      printf("[pid: %d] PARENT: waitpid(-1)\n", getpid());
+      pid = waitpid(-1, &wstatus, 0);
 
-   if (pid != child_pid) {
-      printf("Expected waitpid() to return child's pid (got: %d)\n", pid);
-      exit(1);
-   }
+      if (!WIFEXITED(wstatus)) {
 
-   if (exit_code != 23) {
-      printf("Expected the exit code to be 23 (got: %d)\n", exit_code);
-      exit(1);
+         printf("[pid: %d] PARENT: the child %d did NOT exited normally\n",
+                 getpid(), pid);
+
+         exit(1);
+      }
+
+      int exit_code = WEXITSTATUS(wstatus);
+
+      printf("[pid: %d] PARENT: waitpid() returned %d, exit code: %d\n",
+             getpid(), pid, exit_code);
+
+      if (pid != pids[i]) {
+         printf("Expected waitpid() to return %d (got: %d)\n", pids[i], pid);
+         exit(1);
+      }
+
+      if (exit_code != 10+i) {
+         printf("Expected the exit code to be %d (got: %d)\n", 10+i, exit_code);
+         exit(1);
+      }
    }
 }
 
@@ -477,6 +509,14 @@ void cmd_waitpid3(void)
 
    /* Now, let's see call waitpid() after the child exited */
    pid = waitpid(-1, &wstatus, 0);
+
+   if (!WIFEXITED(wstatus)) {
+
+      printf("[pid: %d] PARENT: the child %d did NOT exited normally\n",
+             getpid(), pid);
+
+      exit(1);
+   }
 
    int exit_code = WEXITSTATUS(wstatus);
    printf("waitpid() returned %d, exit code: %d\n", pid, exit_code);

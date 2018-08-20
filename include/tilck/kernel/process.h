@@ -41,8 +41,9 @@ struct process_info {
    void *initial_brk;
    kmalloc_heap *mmap_heap;
 
-   char cwd[MAX_PATH]; /* current working directory */
+   list_node children_list;
 
+   char cwd[MAX_PATH]; /* current working directory */
    fs_handle handles[16]; /* for the moment, just a fixed-size small array */
 
 
@@ -62,6 +63,13 @@ struct task_info {
    list_node runnable_list;
    list_node sleeping_list;
    list_node zombie_list;
+
+   /*
+    * NOTE: siblings_list is used ONLY for the main task in each process,
+    * when tid == pid. For the other tasks (thread), this list is simply
+    * ignored.
+    */
+   list_node siblings_list;
 
    int tid;   /* User/kernel task ID (pid in the Linux kernel) */
    u16 pid;   /*

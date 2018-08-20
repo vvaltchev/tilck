@@ -127,6 +127,11 @@ void process_cmd_line(const char *cmd_line)
 
    waitpid(child_pid, &wstatus, 0);
 
+   if (!WIFEXITED(wstatus)) {
+      printf("[shell] the command did NOT exited normally\n");
+      return;
+   }
+
    if (WEXITSTATUS(wstatus))
       printf("[shell] command exited with status: %d\n", WEXITSTATUS(wstatus));
 }
