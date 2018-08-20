@@ -103,8 +103,8 @@ def RunTheVM():
 
 def show_help_and_exit():
    print "Syntax: "
-   print "  run_system_test selftest <name> <timeout>"
-   print "  run_system_test shellcmd <name> <timeout>"
+   print "  single_test_run selftest <name> <timeout>"
+   print "  single_test_run shellcmd <name> <timeout>"
    sys.exit(1)
 
 if len(sys.argv) < 4:

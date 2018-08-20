@@ -135,8 +135,8 @@ configure_file(
 )
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/other/system_tests/runtest
-   ${CMAKE_BINARY_DIR}/st/runtest
+   ${CMAKE_SOURCE_DIR}/other/system_tests/single_test_run
+   ${CMAKE_BINARY_DIR}/st/single_test_run
    @ONLY
 )
 

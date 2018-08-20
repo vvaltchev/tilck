@@ -89,7 +89,7 @@ def run_test(test_type, test, timeout, show_output = False):
    start_time = time.time()
 
    try:
-      output = subprocess.check_output(['@CMAKE_BINARY_DIR@/st/runtest',
+      output = subprocess.check_output(['@CMAKE_BINARY_DIR@/st/single_test_run',
                                         test_type,
                                         test,
                                         str(timeout)],
