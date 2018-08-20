@@ -72,9 +72,9 @@ def RunTheVM():
    process = subprocess.Popen(args, stdout=subprocess.PIPE)
 
    for line in iter(process.stdout.readline,''):
+
       output += line
       stripped = line.rstrip()
-
       print stripped
 
       m = re.search(r'\[init\] the devshell exited with status: ([0-9]+)',

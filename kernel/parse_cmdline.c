@@ -43,16 +43,18 @@ void use_kernel_arg(int arg_num, const char *arg)
          const char *a2 = arg + 3;
          char buf[256] = "selftest_";
 
-         printk("*** Run selftest: '%s' ***\n", a2);
-
-         memcpy(buf+strlen(buf), a2, strlen(a2) + 1);
+         memcpy(buf + strlen(buf), a2, strlen(a2) + 1);
          uptr addr = find_addr_of_symbol(buf);
 
          if (!addr) {
-            panic("Self test function '%s' not found.\n", buf);
+            printk("*******************************************************\n");
+            printk("ERROR: self test function '%s' not found.\n", buf);
+            printk("*******************************************************\n");
+            return;
          }
 
-         self_test_to_run = (void (*)(void)) addr;
+         printk("*** Run selftest: '%s' ***\n", a2);
+         self_test_to_run = (void *) addr;
          return;
       }
    }
