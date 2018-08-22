@@ -61,6 +61,27 @@
 #define MSR_IA32_SYSENTER_ESP           0x175
 #define MSR_IA32_SYSENTER_EIP           0x176
 
+#define MSR_IA32_MTRRCAP                0x0fe
+#define MSR_IA32_MTRR_DEF_TYPE          0x2ff
+
+#define MSR_MTRRphysBase0               0x200
+#define MSR_MTRRphysMask0               0x201
+#define MSR_MTRRphysBase1               0x202
+#define MSR_MTRRphysMask1               0x203
+#define MSR_MTRRphysBase2               0x204
+#define MSR_MTRRphysMask2               0x205
+#define MSR_MTRRphysBase3               0x206
+#define MSR_MTRRphysMask3               0x207
+#define MSR_MTRRphysBase4               0x208
+#define MSR_MTRRphysMask4               0x209
+#define MSR_MTRRphysBase5               0x20a
+#define MSR_MTRRphysMask5               0x20b
+#define MSR_MTRRphysBase6               0x20c
+#define MSR_MTRRphysMask6               0x20d
+#define MSR_MTRRphysBase7               0x20e
+#define MSR_MTRRphysMask7               0x20f
+
+
 #define CR0_PE              (1 << 0)
 #define CR0_MP              (1 << 1)
 #define CR0_EM              (1 << 2)
