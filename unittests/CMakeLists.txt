@@ -8,11 +8,12 @@ file(
    "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
 )
 
-set(GTEST_DIR "${TCROOT}/googletest/googletest")
+set(GTEST_SOURCE_DIR "${TCROOT}/googletest/googletest")
+set(GTEST_BUILD_DIR "${TCROOT}/gtest")
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${GTEST_DIR}/include)
+include_directories(${GTEST_SOURCE_DIR}/include)
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 add_executable(gtests EXCLUDE_FROM_ALL ${SOURCES})
@@ -51,8 +52,8 @@ JOIN("${WRAPPED_SYMS_LIST}" ${SPACE} WRAPPINGS)
 #    target_link_libraries(gtests asan)
 # endif()
 
-target_link_libraries(gtests ${GTEST_DIR}/libgtest.a)
-target_link_libraries(gtests ${GTEST_DIR}/libgtest_main.a)
+target_link_libraries(gtests ${GTEST_BUILD_DIR}/libgtest.a)
+target_link_libraries(gtests ${GTEST_BUILD_DIR}/libgtest_main.a)
 target_link_libraries(gtests pthread)
 target_link_libraries(gtests kernel_noarch_static_for_test "${WRAPPINGS}")
 

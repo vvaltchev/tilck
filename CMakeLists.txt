@@ -332,7 +332,7 @@ add_custom_target(
       ${GPT_IMG_FILE}
 )
 
-if (EXISTS ${TCROOT}/googletest)
+if (EXISTS ${TCROOT}/gtest)
    add_subdirectory(unittests)
    add_dependencies(gtests tilck_image)
 else()

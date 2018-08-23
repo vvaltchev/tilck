@@ -112,14 +112,19 @@ all_funcs_list+=(build_gtest)
 function build_gtest {
 
    pushd .
+
    if ! [ -d googletest ]; then
-
-      show_work_on_component_msg "GOOGLE TEST"
-
       url="https://github.com/google/googletest.git"
       git clone --branch release-1.8.0 --depth 1 "$url"
-      cd googletest/googletest
-      $CMAKE -DCMAKE_BUILD_TYPE=Debug .
+   fi
+
+   if ! [ -d gtest ]; then
+
+      show_work_on_component_msg "GOOGLE TEST"
+      mkdir gtest
+      cd gtest
+
+      $CMAKE -DCMAKE_BUILD_TYPE=Debug ../googletest/googletest
       run_command2 "make -j" build.log
    else
       show_skip_component_msg "GOOGLE TEST"
