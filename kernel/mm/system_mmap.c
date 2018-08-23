@@ -113,7 +113,8 @@ STATIC void align_mem_regions_to_page_boundary(void)
        * we have to forcibly approximate the regions at page-boundaries.
        */
       const u64 ma_end = round_up_at64(ma->addr + ma->len, PAGE_SIZE);
-      ma->addr &= PAGE_MASK;
+      ma->addr &= ~((u64)PAGE_SIZE - 1); /* Don't use PAGE_MASK here: it causes
+                                            truncation on 32-bit systems */
       ma->len = ma_end - ma->addr;
    }
 }
