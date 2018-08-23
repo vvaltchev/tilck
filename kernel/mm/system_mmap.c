@@ -512,20 +512,24 @@ static const char *mem_region_extra_to_str(u32 e)
    }
 }
 
-void dump_system_memory_map(void)
+void dump_memory_map(const char *msg, memory_region_t *regions, int count)
 {
-   printk("System's memory map:\n");
-   printk("\n");
+   printk("%s\n\n", msg);
    printk("           START                 END        (T, Extr)\n");
 
-   for (int i = 0; i < mem_regions_count; i++) {
+   for (int i = 0; i < count; i++) {
 
-      memory_region_t *ma = mem_regions + i;
+      memory_region_t *ma = regions + i;
 
-      printk("%02d) 0x%llx - 0x%llx (%d, %s) [%7u KB]\n", i,
+      printk("%02d) 0x%016llx - 0x%016llx (%d, %s) [%7u KB]\n", i,
              ma->addr, ma->addr + ma->len,
              ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
    }
 
    printk("\n");
+}
+
+void dump_system_memory_map(void)
+{
+   dump_memory_map("System's memory map:", mem_regions, mem_regions_count);
 }

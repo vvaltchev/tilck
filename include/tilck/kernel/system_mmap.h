@@ -27,6 +27,7 @@ void system_mmap_set(multiboot_info_t *mbi);
 int system_mmap_get_region_of(uptr paddr);
 bool linear_map_mem_region(memory_region_t *r, uptr *vbegin, uptr *vend);
 void dump_system_memory_map(void);
+void dump_memory_map(const char *msg, memory_region_t *regions, int count);
 
 extern u32 __mem_upper_kb;
 
