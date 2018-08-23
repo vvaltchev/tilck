@@ -6,6 +6,7 @@ jobs:
     environment:
       - RELEASE: 0
       - CMAKE_ARGS: -DUSE_GCOV=on
+      - GTEST_SHUFFLE: 0
     steps:
       - checkout
       - run: mv /tilck_toolchain ./toolchain
@@ -20,6 +21,7 @@ jobs:
     environment:
       - RELEASE: 1
       - CMAKE_ARGS:
+      - GTEST_SHUFFLE: 0
     steps:
       - checkout
       - run: mv /tilck_toolchain ./toolchain

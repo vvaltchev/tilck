@@ -156,15 +156,12 @@ static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
 
 static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
 {
-   //const size_t metadata_size = heap_size / 32;
    const size_t min_block_size = SMALL_HEAP_MAX_ALLOC + 1;
    const size_t metadata_size =
       calculate_heap_metadata_size(heap_size, min_block_size);
 
    if (used_heaps >= (int)ARRAY_SIZE(heaps))
       return -1;
-
-   //min_block_size = calculate_heap_min_block_size(heap_size, metadata_size);
 
    if (!used_heaps) {
 
