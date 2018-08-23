@@ -120,17 +120,48 @@ function build_gtest {
 
    if ! [ -d gtest ]; then
 
-      show_work_on_component_msg "GOOGLE TEST"
+      show_work_on_component_msg "GOOGLE TEST (host arch)"
       mkdir gtest
       cd gtest
 
       $CMAKE -DCMAKE_BUILD_TYPE=Debug ../googletest/googletest
       run_command2 "make -j" build.log
    else
-      show_skip_component_msg "GOOGLE TEST"
+      show_skip_component_msg "GOOGLE TEST (host arch)"
    fi
-   popd
 
+   popd
+}
+
+all_funcs_list+=(build_gtest_arch)
+function build_gtest_arch {
+
+   pushd .
+
+   if ! [ -d googletest ]; then
+      url="https://github.com/google/googletest.git"
+      git clone --branch release-1.8.0 --depth 1 "$url"
+   fi
+
+   if ! [ -d gtest_arch ]; then
+
+      show_work_on_component_msg "GOOGLE TEST (target arch)"
+      download_x86_gcc_glibc_toolchain
+
+      mkdir gtest_arch
+      cd gtest_arch
+
+      tc="$TC/${X86_TOOLCHAIN_DIR_NAME}_glibc/bin"
+      cc="$tc/i686-linux-gcc"
+      cxx="$tc/i686-linux-g++"
+
+      CC=$cc CXX=$cxx $CMAKE -DCMAKE_BUILD_TYPE=Debug ../googletest/googletest
+      run_command2 "make -j" build.log
+   else
+      show_skip_component_msg "GOOGLE TEST (target arch)"
+   fi
+
+   popd
 }
 
 ##################################
