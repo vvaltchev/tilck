@@ -521,7 +521,7 @@ void dump_memory_map(const char *msg, memory_region_t *regions, int count)
 
       memory_region_t *ma = regions + i;
 
-      printk("%02d) 0x%016llx - 0x%016llx (%d, %s) [%7u KB]\n", i,
+      printk("%02d) 0x%016llx - 0x%016llx (%d, %s) [%8u KB]\n", i,
              ma->addr, ma->addr + ma->len,
              ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
    }
