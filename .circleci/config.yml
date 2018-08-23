@@ -12,8 +12,6 @@ jobs:
       - run: mv /tilck_toolchain ./toolchain
       - run: make -j
       - run: make -j gtests
-      - run: ./build/gtests
-      - run: ./scripts/generate_coverage_report
       - run: ./build/st/run_all_tests
   release_build:
     docker:
@@ -27,7 +25,6 @@ jobs:
       - run: mv /tilck_toolchain ./toolchain
       - run: make -j
       - run: make -j gtests
-      - run: ./build/gtests
       - run: ./build/st/run_all_tests
 workflows:
   version: 2
