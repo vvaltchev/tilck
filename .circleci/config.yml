@@ -31,9 +31,11 @@ jobs:
       - run: ./build/st/run_all_tests
 workflows:
   version: 2
-  debug_and_release:
+  debug:
     jobs:
       - debug_build
+  release:
+    jobs:
       - release_build
 
 
