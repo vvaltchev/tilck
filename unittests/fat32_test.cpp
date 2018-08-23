@@ -158,7 +158,7 @@ TEST(fat32, fread)
       for (int j = 0; j < bytes_read; j++) {
          if (buf2[read_offset+j] != tmpbuf[j]) {
 
-            printf("Byte #%li differs:\n", read_offset+j);
+            printf("Byte #%li differs:\n", (long)read_offset+j);
 
             printf("buf2: ");
             for (int k = 0; k < 16; k++)

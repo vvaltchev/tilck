@@ -1,5 +1,20 @@
 cmake_minimum_required(VERSION 3.2)
 
+if (${ARCH_GTESTS})
+   if (${ARCH} STREQUAL "i386")
+
+      set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN_GLIBC}/i686-linux-gcc)
+      set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN_GLIBC}/i686-linux-g++)
+      set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN_GLIBC}/i686-linux-gcc)
+
+   else()
+
+      message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
+
+   endif()
+endif()
+
+
 file(
    GLOB SOURCES
 
@@ -9,7 +24,12 @@ file(
 )
 
 set(GTEST_SOURCE_DIR "${TCROOT}/googletest/googletest")
-set(GTEST_BUILD_DIR "${TCROOT}/gtest")
+
+if (${ARCH_GTESTS})
+   set(GTEST_BUILD_DIR "${TCROOT}/gtest_arch")
+else()
+   set(GTEST_BUILD_DIR "${TCROOT}/gtest")
+endif()
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)

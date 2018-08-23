@@ -12,6 +12,11 @@ extern "C" {
    #include <tilck/common/string_util.h>
 }
 
+#ifdef BITS32
+   #define FMT64 "ll"
+#else
+   #define FMT64 "l"
+#endif
 
 // Wrapper defined only for s32, s64, u32, u64.
 template <typename T>
@@ -69,9 +74,9 @@ template <>
 inline void sprintf_hex_wrapper<u64>(u64 val, char *buf, bool fixed)
 {
    if (fixed)
-      sprintf(buf, "%016lx", val);
+      sprintf(buf, "%016" FMT64 "x", val);
    else
-      sprintf(buf, "%lx", val);
+      sprintf(buf, "%" FMT64 "x", val);
 }
 
 

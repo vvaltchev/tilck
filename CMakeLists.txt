@@ -41,6 +41,7 @@ set(USE_GCOV OFF CACHE BOOL "Compile the tests for measuring coverage")
 # Non-boolean kernel options
 set(TIMER_HZ 100 CACHE STRING "System timer HZ")
 set(USER_STACK_PAGES 16 CACHE STRING "User apps stack size in pages")
+set(ARCH_GTESTS OFF CACHE BOOL "Build unit tests for target architecture")
 
 # Kernel options (enabled by default)
 
@@ -92,6 +93,8 @@ list(
    PANIC_SHOW_STACKTRACE
    DEBUG_CHECKS_IN_RELEASE_BUILD
 
+   FORK_NO_COW
+   MMAP_NO_COW
    PANIC_SHOW_REGS
    KMALLOC_FREE_MEM_POISONING
    KMALLOC_SUPPORT_DEBUG_LOG
@@ -116,6 +119,7 @@ endif()
 if (${ARCH} STREQUAL "i386")
    set(ARCH_FAMILY "generic_x86")
    set(GCC_TOOLCHAIN ${TCROOT}/x86_gcc_toolchain/bin)
+   set(GCC_TOOLCHAIN_GLIBC ${TCROOT}/x86_gcc_toolchain_glibc/bin)
 else()
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
 endif()
@@ -332,25 +336,53 @@ add_custom_target(
       ${GPT_IMG_FILE}
 )
 
-if (EXISTS ${TCROOT}/gtest)
-   add_subdirectory(unittests)
-   add_dependencies(gtests tilck_image)
+if (${ARCH_GTESTS})
+
+   if (EXISTS ${TCROOT}/gtest_arch)
+      add_subdirectory(unittests)
+      add_dependencies(gtests tilck_image)
+   else()
+      add_custom_target(
+         gtests
+         COMMAND
+            echo
+         COMMAND
+            echo ==== ERROR: No googletest in toolchain =====
+         COMMAND
+            echo Instructions:
+         COMMAND
+            echo  - Run ./scripts/build_toolchain -s build_gtest_arch
+         COMMAND
+            echo  - rm -rf YOUR_BUILD_DIRECTORY
+         COMMAND
+            echo  - Run this command again
+         COMMAND
+            echo
+      )
+   endif()
+
 else()
-   add_custom_target(
-      gtests
-      COMMAND
-         echo
-      COMMAND
-         echo ==== ERROR: No googletest in toolchain =====
-      COMMAND
-         echo Instructions:
-      COMMAND
-         echo  - Run ./scripts/build_toolchain -s build_gtest
-      COMMAND
-         echo  - rm -rf YOUR_BUILD_DIRECTORY
-      COMMAND
-         echo  - Run this command again
-      COMMAND
-         echo
-   )
+
+   if (EXISTS ${TCROOT}/gtest)
+      add_subdirectory(unittests)
+      add_dependencies(gtests tilck_image)
+   else()
+      add_custom_target(
+         gtests
+         COMMAND
+            echo
+         COMMAND
+            echo ==== ERROR: No googletest in toolchain =====
+         COMMAND
+            echo Instructions:
+         COMMAND
+            echo  - Run ./scripts/build_toolchain -s build_gtest
+         COMMAND
+            echo  - rm -rf YOUR_BUILD_DIRECTORY
+         COMMAND
+            echo  - Run this command again
+         COMMAND
+            echo
+      )
+   endif()
 endif()
