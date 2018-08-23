@@ -362,7 +362,6 @@ sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
    if (!handle)
       return -EBADF;
 
-   // NOTE: this won't really work for big offsets in case off_t is 32-bit.
    new_off = vfs_seek(handle, (s64)off_hi << 32 | off_low, whence);
 
    if (new_off < 0)

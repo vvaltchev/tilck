@@ -171,13 +171,14 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
    return ret;
 }
 
-off_t vfs_seek(fs_handle h, off_t off, int whence)
+off_t vfs_seek(fs_handle h, s64 off, int whence)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
 
    if (!hb->fops.seek)
       return -ESPIPE;
 
+   // NOTE: this won't really work for big offsets in case off_t is 32-bit.
    return hb->fops.seek(h, off, whence);
 }
 

@@ -132,9 +132,7 @@ void vfs_close(fs_handle h);
 
 ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);
-
-// TODO: consider using 's64' instead of off_t.
-off_t vfs_seek(fs_handle h, off_t off, int whence);
+off_t vfs_seek(fs_handle h, s64 off, int whence);
 
 static ALWAYS_INLINE filesystem *get_fs(fs_handle h)
 {

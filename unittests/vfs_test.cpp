@@ -78,11 +78,16 @@ TEST(vfs, fseek)
    const auto seed = rdev();
    default_random_engine engine(seed);
    lognormal_distribution<> dist(4.0, 3);
+   off_t linux_lseek;
+   off_t tilck_fseek;
+   off_t linux_pos;
+   off_t tilck_pos;
 
    cout << "[ INFO     ] random seed: " << seed << endl;
 
    size_t fatpart_size;
-   const char *fatpart = load_once_file(PROJ_BUILD_DIR "/fatpart", &fatpart_size);
+   const char *fatpart =
+      load_once_file(PROJ_BUILD_DIR "/fatpart", &fatpart_size);
 
    filesystem *fat_fs = fat_mount_ramdisk((void *) fatpart, VFS_FS_RO);
    ASSERT_TRUE(fat_fs != NULL);
@@ -91,7 +96,8 @@ TEST(vfs, fseek)
    ASSERT_EQ(r, 0);
 
    const char *fatpart_file_path = "/EFI/BOOT/elf_kernel_stripped";
-   const char *real_file_path = PROJ_BUILD_DIR "/sysroot/EFI/BOOT/elf_kernel_stripped";
+   const char *real_file_path =
+      PROJ_BUILD_DIR "/sysroot/EFI/BOOT/elf_kernel_stripped";
 
    int fd = open(real_file_path, O_RDONLY);
 
@@ -105,10 +111,16 @@ TEST(vfs, fseek)
    char buf_tilck[64];
    char buf_linux[64];
 
-   lseek(fd, file_size / 2, SEEK_SET);
-   vfs_seek(h, file_size / 2, SEEK_SET);
+   linux_lseek = lseek(fd, file_size / 2, SEEK_SET);
+   tilck_fseek = vfs_seek(h, file_size / 2, SEEK_SET);
+   ASSERT_EQ(linux_lseek, tilck_fseek);
 
    off_t last_pos = lseek(fd, 0, SEEK_CUR);
+
+   linux_pos = last_pos;
+   tilck_pos = vfs_seek(h, 0, SEEK_CUR);
+   ASSERT_EQ(linux_pos, tilck_pos);
+
    (void)last_pos;
 
    const int iters = 10000;
@@ -120,8 +132,8 @@ TEST(vfs, fseek)
 
       off_t offset = (off_t) ( dist(engine) - dist(engine)/1.3 );
 
-      off_t linux_lseek = lseek(fd, offset, SEEK_CUR);
-      off_t tilck_fseek = vfs_seek(h, offset, SEEK_CUR);
+      linux_lseek = lseek(fd, offset, SEEK_CUR);
+      tilck_fseek = vfs_seek(h, offset, SEEK_CUR);
 
       if (linux_lseek < 0)
          saved_errno = errno;
