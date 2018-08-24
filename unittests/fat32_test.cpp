@@ -59,7 +59,7 @@ const char *load_once_file(const char *filepath, size_t *fsize = nullptr)
    return e.first.get();
 }
 
-TEST(fat32, dumpinfo)
+TEST(fat32, DISABLED_dumpinfo)
 {
    const char *buf = load_once_file(PROJ_BUILD_DIR "/fatpart");
    fat_dump_info((void *) buf);
