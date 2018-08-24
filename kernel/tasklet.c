@@ -264,12 +264,15 @@ void destroy_last_tasklet_thread(void)
    tasklet_thread_info *t = tasklet_threads[tn];
    ASSERT(t != NULL);
 
+#ifndef UNIT_TEST_ENVIRONMENT
    ASSERT(ringbuf_is_empty(&t->ringbuf));
+#endif
 
    kcond_destory(&t->cond);
    ringbuf_destory(&t->ringbuf);
    kfree2(t->tasklets, sizeof(tasklet) * t->limit);
    kfree2(t, sizeof(tasklet_thread_info));
+   bzero(t, sizeof(*t));
    tasklet_threads[tn] = NULL;
 }
 

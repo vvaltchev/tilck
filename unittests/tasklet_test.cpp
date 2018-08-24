@@ -25,16 +25,12 @@ using namespace testing;
 class tasklet_test : public Test {
 
    void SetUp() override {
-
-      if (tasklet_threads[0] != NULL)
-         destroy_last_tasklet_thread();
-
       init_kmalloc_for_tests();
       init_tasklets();
    }
 
    void TearDown() override {
-      /* do nothing, for the moment */
+      destroy_last_tasklet_thread();
    }
 };
 
