@@ -35,6 +35,15 @@ void get_x86_cpu_features(void)
          f->avx2 = !!(b & (1 << 5)) && !!(b & (1 << 3)) && !!(b & (1 << 8));
       }
    }
+
+   cpuid(0x80000000, &a, &b, &c, &d);
+   f->max_ext_cpuid_cmd = a;
+
+   if (f->max_ext_cpuid_cmd >= 0x80000008) {
+      cpuid(0x80000008, &a, &b, &c, &d);
+      f->phys_addr_bits = a & 0xff;
+      f->virt_addr_bits = (a >> 8) & 0xff;
+   }
 }
 
 #ifdef __TILCK_KERNEL__

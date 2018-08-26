@@ -6,6 +6,7 @@ typedef struct {
 
    char vendor_id[16];
    u32 max_basic_cpuid_cmd;
+   u32 max_ext_cpuid_cmd;
 
    struct {
 
@@ -88,6 +89,8 @@ typedef struct {
    } ecx1;
 
    bool avx2;
+   u8 phys_addr_bits;
+   u8 virt_addr_bits;
 
    // Features allowed:
 

@@ -153,6 +153,9 @@ out:
     */
    hw_fpu_disable();
    set_fault_handler(FAULT_NO_COPROC, fpu_no_coprocessor_fault_handler);
+
+   printk("[CPU features] Physical addr bits: %u\n",
+          x86_cpu_features.phys_addr_bits);
 }
 
 static char fpu_kernel_regs[CPU_XSAVE_AREA_SIZE] ALIGNED_AT(64);
