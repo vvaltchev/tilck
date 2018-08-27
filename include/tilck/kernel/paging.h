@@ -96,3 +96,5 @@ static ALWAYS_INLINE page_directory_t *get_kernel_pdir()
 {
    return kernel_page_dir;
 }
+
+void map_framebuffer(uptr paddr, uptr vaddr, uptr size);

@@ -120,105 +120,12 @@ u32 fb_get_bpp(void)
    return fb_bpp;
 }
 
-#ifdef __i386__
-#include "../arch/i386/paging_int.h"
-#endif
-
 void fb_map_in_kernel_space(void)
 {
    fb_real_vaddr = KERNEL_BASE_VA + (1024 - 64) * MB;
    fb_vaddr = fb_real_vaddr; /* here fb_vaddr == fb_real_vaddr */
 
-#ifdef __i386__
-   if (!get_kernel_pdir()) {
-
-      /*
-       * Paging has not been initialized yet: probably we're in panic.
-       * At this point, the kernel still uses page_size_buf as pdir, with only
-       * the first 4 MB of the physical mapped at KERNEL_BASE_VA.
-       */
-
-      kernel_page_dir = (page_directory_t *)page_size_buf;
-
-      u32 big_pages_to_use = fb_size / (4 * MB) + 1;
-
-      for (u32 i = 0; i < big_pages_to_use; i++) {
-         map_4mb_page_int(kernel_page_dir,
-                          (void *)fb_real_vaddr + i * 4 * MB,
-                          fb_paddr + i * 4 * MB,
-                          PG_PRESENT_BIT | PG_RW_BIT | PG_4MB_BIT);
-      }
-
-      return;
-   }
-
-   int page_count = round_up_at(fb_size, PAGE_SIZE) / PAGE_SIZE;
-   int rc;
-
-   rc = map_pages_int(get_kernel_pdir(),
-                      (void *)fb_real_vaddr,
-                      fb_paddr,
-                      page_count,
-                      true, /* big pages allowed */
-                      PG_RW_BIT |
-                      PG_CD_BIT |
-                      PG_GLOBAL_BIT);
-
-   if (rc < page_count)
-      panic("Unable to map the framebuffer in the virtual space");
-
-   u64 mtrr_dt = rdmsr(MSR_IA32_MTRR_DEF_TYPE);
-
-   if (!(mtrr_dt & (1 << 11))) {
-      mtrr_dt |= (1 << 11);
-      wrmsr(MSR_IA32_MTRR_DEF_TYPE, mtrr_dt);
-   }
-
-   u64 mtrrcap = rdmsr(MSR_IA32_MTRRCAP);
-   u32 var_mtrr_count = mtrrcap & 255;
-   u32 selected_mtrr = 0;
-
-   for (u32 i = 0; i < var_mtrr_count; i++, selected_mtrr++) {
-      u64 mask_reg = rdmsr(MSR_MTRRphysBase0 + 2 * i + 1);
-      bool used = !!(mask_reg & (1 << 11));
-
-      if (!used)
-         break;
-   }
-
-   if (selected_mtrr == var_mtrr_count) {
-      printk("ERROR: No MTRR available for framebuffer");
-      return;
-   }
-
-   printk("selected mtrr: %u [total: %u]\n", selected_mtrr, var_mtrr_count);
-
-   u32 pow2size = roundup_next_power_of_2(fb_size);
-   u64 mask64 = ~((u64)pow2size - 1);
-   u64 physBaseVal = ((u64)fb_paddr & PAGE_MASK) | 0x1;
-   u64 physMaskVal;
-
-   physMaskVal = mask64 & ((1ull << x86_cpu_features.phys_addr_bits) - 1);
-   physMaskVal |= (1 << 11); // valid = 1
-
-   printk("round up size: %u\n", pow2size);
-   printk("physBaseVal: %llx\n", physBaseVal);
-   //printk("mask64:      %llx\n", mask64);
-   printk("physMaskVal: %llx\n", physMaskVal);
-
-   if (round_up_at(fb_paddr, pow2size) != fb_paddr) {
-      printk("fb_paddr (%p) not aligned at power-of-two address", fb_paddr);
-      return;
-   }
-
-   wrmsr(MSR_MTRRphysBase0 + 2 * selected_mtrr, physBaseVal);
-   wrmsr(MSR_MTRRphysBase0 + 2 * selected_mtrr + 1, physMaskVal);
-
-#else
-
-   NOT_IMPLEMENTED();
-
-#endif
+   map_framebuffer(fb_paddr, fb_vaddr, fb_size);
 }
 
 /*
