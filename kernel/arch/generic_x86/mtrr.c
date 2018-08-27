@@ -6,11 +6,8 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/paging.h>
 
-bool enable_mttr(void)
+void enable_mtrr(void)
 {
-   if (!x86_cpu_features.edx1.mtrr)
-      return false;
-
    u64 mtrr_dt = rdmsr(MSR_IA32_MTRR_DEF_TYPE);
 
    if (!(mtrr_dt & (1 << 11))) {
@@ -18,7 +15,7 @@ bool enable_mttr(void)
       wrmsr(MSR_IA32_MTRR_DEF_TYPE, mtrr_dt);
    }
 
-   return true;
+   printk("[CPU features] MTRR enabled\n");
 }
 
 int get_var_mttrs_count(void)

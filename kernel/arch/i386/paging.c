@@ -650,6 +650,71 @@ void map_4mb_page_int(page_directory_t *pdir,
    pdir->entries[page_dir_index].raw = flags | paddr;
 }
 
+static inline bool in_big_4mb_page(page_directory_t *pdir, void *vaddrp)
+{
+   const u32 vaddr = (u32) vaddrp;
+   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+
+   page_dir_entry_t *e = &pdir->entries[page_dir_index];
+   return e->present && e->psize;
+}
+
+static void set_big_4mb_page_pat_wc(page_directory_t *pdir, void *vaddrp)
+{
+   const u32 vaddr = (u32) vaddrp;
+   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+   page_dir_entry_t *e = &pdir->entries[page_dir_index];
+
+   // 111 => entry[7] in the PAT MSR. See init_pat()
+   e->big_4mb_page.pat = 1;
+   e->big_4mb_page.cd = 1;
+   e->big_4mb_page.wt = 1;
+
+   invalidate_page(vaddr);
+}
+
+static void set_4kb_page_pat_wc(page_directory_t *pdir, void *vaddrp)
+{
+   page_table_t *ptable;
+   const u32 vaddr = (u32) vaddrp;
+   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+
+   ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
+
+   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+   ASSERT(IS_PAGE_ALIGNED(ptable));
+   ASSERT(ptable != NULL);
+
+   // 111 => entry[7] in the PAT MSR. See init_pat()
+   ptable->pages[page_table_index].pat = 1;
+   ptable->pages[page_table_index].cd = 1;
+   ptable->pages[page_table_index].wt = 1;
+
+   invalidate_page(vaddr);
+}
+
+void set_pages_pat_wc(page_directory_t *pdir, void *vaddr, size_t size)
+{
+   ASSERT(!((uptr)vaddr & OFFSET_IN_PAGE_MASK));
+   ASSERT(IS_PAGE_ALIGNED(size));
+
+   const void *end = vaddr + size;
+
+   while (vaddr < end) {
+
+      if (in_big_4mb_page(pdir, vaddr)) {
+         set_big_4mb_page_pat_wc(pdir, vaddr);
+         vaddr += 4 * MB;
+         continue;
+      }
+
+      set_4kb_page_pat_wc(pdir, vaddr);
+      vaddr += PAGE_SIZE;
+   }
+}
+
+
 /*
  * Page directories MUST BE page-size-aligned.
  */
@@ -728,16 +793,13 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size)
                       page_count,
                       true, /* big pages allowed */
                       PG_RW_BIT |
-                      PG_CD_BIT |
                       PG_GLOBAL_BIT);
 
    if (rc < page_count)
       panic("Unable to map the framebuffer in the virtual space");
 
-   if (!enable_mttr()) {
-      printk("MTRR not available\n");
+   if (!x86_cpu_features.edx1.mtrr)
       return;
-   }
 
    int selected_mtrr = get_free_mtrr();
 
@@ -754,5 +816,4 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size)
    }
 
    set_mtrr(selected_mtrr, paddr, pow2size, MEM_TYPE_WC);
-   dump_var_mtrrs();
 }

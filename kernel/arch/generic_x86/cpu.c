@@ -111,6 +111,17 @@ static bool enable_avx(void)
    return true;
 }
 
+void init_pat(void)
+{
+   u64 pat = rdmsr(MSR_IA32_PAT);
+   u8 *entries = (u8 *)&pat;
+
+   entries[7] = MEM_TYPE_WC;
+
+   wrmsr(MSR_IA32_PAT, pat);
+   printk("[CPU features] PAT initialized\n");
+}
+
 void enable_cpu_features(void)
 {
    if (x86_cpu_features.edx1.sse && x86_cpu_features.edx1.fxsr) {
@@ -153,6 +164,12 @@ out:
     */
    hw_fpu_disable();
    set_fault_handler(FAULT_NO_COPROC, fpu_no_coprocessor_fault_handler);
+
+   if (x86_cpu_features.edx1.mtrr)
+      enable_mtrr();
+
+   if (x86_cpu_features.edx1.pat)
+      init_pat();
 
    printk("[CPU features] Physical addr bits: %u\n",
           x86_cpu_features.phys_addr_bits);

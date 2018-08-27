@@ -45,11 +45,14 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
 
 bool fb_alloc_shadow_buffer(void)
 {
-   void *shadow_buf = kzmalloc(fb_size);
+   size_t size = round_up_at(fb_size, PAGE_SIZE);
+   void *shadow_buf = kzmalloc(size);
 
    if (!shadow_buf)
       return false;
 
+   // NOTE: making the shadow buffer WC makes the performance worse
+   // set_pages_pat_wc(get_kernel_pdir(), shadow_buf, size);
    fb_vaddr = (uptr) shadow_buf;
    return true;
 }
