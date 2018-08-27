@@ -746,8 +746,6 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size)
       return;
    }
 
-   printk("selected mtrr: %d\n", selected_mtrr);
-
    u32 pow2size = roundup_next_power_of_2(size);
 
    if (round_up_at(paddr, pow2size) != paddr) {
@@ -755,5 +753,6 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size)
       return;
    }
 
-   set_mtrr(selected_mtrr, paddr, pow2size, 0x1);
+   set_mtrr(selected_mtrr, paddr, pow2size, MEM_TYPE_WC);
+   dump_var_mtrrs();
 }

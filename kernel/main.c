@@ -173,8 +173,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    setup_soft_interrupt_handling();
    read_multiboot_info(multiboot_magic, mbi_addr);
 
-   show_hello_message();
-
    get_x86_cpu_features();
    enable_cpu_features();
    init_fpu_memcpy();
@@ -186,6 +184,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_paging_cow();
 
    init_console();
+   show_hello_message();
 
    setup_irq_handling();
    init_sched();

@@ -76,6 +76,32 @@ CONSTEXPR static inline u32 get_first_set_bit_index(u32 num)
    return i;
 }
 
+
+CONSTEXPR static inline u32 get_first_zero_bit_index64(u64 num)
+{
+   u32 i;
+
+   ASSERT(num != ~0U);
+
+   for (i = 0; i < 64; i++) {
+      if ((num & (1ull << i)) == 0) break;
+   }
+
+   return i;
+}
+
+CONSTEXPR static inline u32 get_first_set_bit_index64(u64 num)
+{
+   u32 i;
+   ASSERT(num != 0);
+
+   for (i = 0; i < 64; i++)
+      if (num & (1ull << i))
+         break;
+
+   return i;
+}
+
 CONSTEXPR static ALWAYS_INLINE uptr round_up_at(uptr n, uptr unit)
 {
    return (n + unit - 1) & -unit;

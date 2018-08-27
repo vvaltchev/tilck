@@ -95,6 +95,14 @@
 #define CR0_CD              (1 << 30)
 #define CR0_PG              (1 << 31)
 
+#define MEM_TYPE_UC         0x00
+#define MEM_TYPE_WC         0x01
+#define MEM_TYPE_WT         0x04
+#define MEM_TYPE_WP         0x05
+#define MEM_TYPE_WB         0x06
+
+
+
 
 /*
  * x86 selectors are 16 bit integers:
