@@ -81,6 +81,7 @@
 #define MSR_MTRRphysBase7               0x20e
 #define MSR_MTRRphysMask7               0x20f
 
+#define MSR_IA32_PAT                    0x277
 
 #define CR0_PE              (1 << 0)
 #define CR0_MP              (1 << 1)
@@ -95,13 +96,12 @@
 #define CR0_CD              (1 << 30)
 #define CR0_PG              (1 << 31)
 
-#define MEM_TYPE_UC         0x00
-#define MEM_TYPE_WC         0x01
-#define MEM_TYPE_WT         0x04
-#define MEM_TYPE_WP         0x05
-#define MEM_TYPE_WB         0x06
-
-
+#define MEM_TYPE_UC         0x00 // Uncacheable
+#define MEM_TYPE_WC         0x01 // Write Combining
+#define MEM_TYPE_WT         0x04 // Write Through
+#define MEM_TYPE_WP         0x05 // Write Protected
+#define MEM_TYPE_WB         0x06 // Write Back
+#define MEM_TYPE_UC_        0x07 // Uncached (PAT only)
 
 
 /*
