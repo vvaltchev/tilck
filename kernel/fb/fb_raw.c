@@ -29,7 +29,6 @@ static uptr fb_vaddr; /* != fb_real_vaddr when a shadow buffer is used */
 static uptr fb_real_vaddr;
 
 static u32 *fb_w8_char_scanlines;
-static void *fb_pitch_size_buf;
 
 void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
 {
@@ -42,12 +41,6 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
    fb_bpp = mbi->framebuffer_bpp;
    fb_bytes_per_pixel = fb_bpp / 8;
    fb_size = fb_pitch * fb_height;
-}
-
-bool fb_alloc_pitch_size_buf(void)
-{
-   fb_pitch_size_buf = kmalloc(fb_pitch);
-   return fb_pitch_size_buf != NULL;
 }
 
 bool fb_alloc_shadow_buffer(void)
@@ -80,28 +73,10 @@ void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 lines_count)
 
    fpu_context_begin();
 
-   if (!fb_pitch_size_buf) {
-      fpu_memcpy256_nt((void *)(fb_vaddr + fb_pitch * dst_y),
-                       (void *)(fb_vaddr + fb_pitch * src_y),
-                       (fb_pitch * lines_count) >> 5);
-      goto out;
-   }
+   fpu_memcpy256_nt((void *)(fb_vaddr + fb_pitch * dst_y),
+                    (void *)(fb_vaddr + fb_pitch * src_y),
+                    (fb_pitch * lines_count) >> 5);
 
-   for (u32 i = 0; i < lines_count; i++) {
-
-      fpu_memcpy256_nt_read(fb_pitch_size_buf,
-                            (void *)(fb_vaddr + fb_pitch * (src_y + i)),
-                            fb_pitch >> 5);
-
-      if (x86_cpu_features.can_use_sse2)
-         asmVolatile("mfence");
-
-      fpu_memcpy256_nt((void *)(fb_vaddr + fb_pitch * (dst_y + i)),
-                       fb_pitch_size_buf,
-                       fb_pitch >> 5);
-   }
-
-out:
    fpu_context_end();
 }
 
