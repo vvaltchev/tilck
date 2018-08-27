@@ -734,49 +734,26 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size)
    if (rc < page_count)
       panic("Unable to map the framebuffer in the virtual space");
 
-   u64 mtrr_dt = rdmsr(MSR_IA32_MTRR_DEF_TYPE);
-
-   if (!(mtrr_dt & (1 << 11))) {
-      mtrr_dt |= (1 << 11);
-      wrmsr(MSR_IA32_MTRR_DEF_TYPE, mtrr_dt);
+   if (!enable_mttr()) {
+      printk("MTRR not available\n");
+      return;
    }
 
-   u64 mtrrcap = rdmsr(MSR_IA32_MTRRCAP);
-   u32 var_mtrr_count = mtrrcap & 255;
-   u32 selected_mtrr = 0;
+   int selected_mtrr = get_free_mtrr();
 
-   for (u32 i = 0; i < var_mtrr_count; i++, selected_mtrr++) {
-      u64 mask_reg = rdmsr(MSR_MTRRphysBase0 + 2 * i + 1);
-      bool used = !!(mask_reg & (1 << 11));
-
-      if (!used)
-         break;
-   }
-
-   if (selected_mtrr == var_mtrr_count) {
+   if (selected_mtrr < 0) {
       printk("ERROR: No MTRR available for framebuffer");
       return;
    }
 
-   printk("selected mtrr: %u [total: %u]\n", selected_mtrr, var_mtrr_count);
+   printk("selected mtrr: %d\n", selected_mtrr);
 
    u32 pow2size = roundup_next_power_of_2(size);
-   u64 mask64 = ~((u64)pow2size - 1);
-   u64 physBaseVal = ((u64)paddr & PAGE_MASK) | 0x1;
-   u64 physMaskVal;
-
-   physMaskVal = mask64 & ((1ull << x86_cpu_features.phys_addr_bits) - 1);
-   physMaskVal |= (1 << 11); // valid = 1
-
-   printk("round up size: %u\n", pow2size);
-   printk("physBaseVal: %llx\n", physBaseVal);
-   printk("physMaskVal: %llx\n", physMaskVal);
 
    if (round_up_at(paddr, pow2size) != paddr) {
       printk("ERROR: fb_paddr (%p) not aligned at power-of-two address", paddr);
       return;
    }
 
-   wrmsr(MSR_MTRRphysBase0 + 2 * selected_mtrr, physBaseVal);
-   wrmsr(MSR_MTRRphysBase0 + 2 * selected_mtrr + 1, physMaskVal);
+   set_mtrr(selected_mtrr, paddr, pow2size, 0x1);
 }
