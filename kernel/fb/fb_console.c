@@ -455,3 +455,24 @@ void init_framebuffer_console(bool use_also_serial_port)
          printk("WARNING: unable to create the fb_update_banner_kthread\n");
    }
 }
+
+void selftest_fb_perf_manual()
+{
+   const int iters = 10;
+   u64 start, duration, cycles;
+
+   start = RDTSC();
+
+   for (int i = 0; i < iters; i++) {
+      fb_raw_color_lines(0, fb_get_height(), vga_rgb_colors[COLOR_WHITE]);
+      fb_raw_color_lines(0, fb_get_height(), vga_rgb_colors[COLOR_BLACK]);
+   }
+
+   duration = RDTSC() - start;
+   cycles = duration / (2 * iters);
+
+   u64 pixels = fb_get_width() * fb_get_height();
+   printk("fb size (pixels): %u\n", pixels);
+   printk("cycles per redraw: %llu\n", cycles);
+   printk("cycles per 32 pixels: %llu\n", 32 * cycles / pixels);
+}

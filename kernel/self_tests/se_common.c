@@ -105,4 +105,3 @@ void selftest_join_med()
    printk("[selftest join] kernel thread exited\n");
    debug_qemu_turn_off_machine();
 }
-

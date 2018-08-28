@@ -380,4 +380,3 @@ void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count)
 
    }
 }
-
