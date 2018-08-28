@@ -254,8 +254,12 @@ static void fb_scroll_one_line_up(void)
       rows_to_flush[r] = true;
 }
 
+
 static void fb_flush(void)
 {
+   if (!framebuffer_vi.flush_buffers)
+      return;
+
    fpu_context_begin();
 
    for (u32 r = 0; r < fb_term_rows; r++) {
@@ -458,18 +462,27 @@ void init_framebuffer_console(bool use_also_serial_port)
 
 void selftest_fb_perf_manual()
 {
-   const int iters = 10;
+   const int iters = 20;
    u64 start, duration, cycles;
 
    start = RDTSC();
 
    for (int i = 0; i < iters; i++) {
-      fb_raw_color_lines(0, fb_get_height(), vga_rgb_colors[COLOR_WHITE]);
-      fb_raw_color_lines(0, fb_get_height(), vga_rgb_colors[COLOR_BLACK]);
+
+      fb_raw_color_lines(0, fb_get_height(),
+                         vga_rgb_colors[i % 2 ? COLOR_WHITE : COLOR_BLACK]);
+
+      if (framebuffer_vi.flush_buffers) {
+
+         for (u32 r = 0; r < fb_term_rows; r++)
+            rows_to_flush[r] = true;
+
+         fb_flush();
+      }
    }
 
    duration = RDTSC() - start;
-   cycles = duration / (2 * iters);
+   cycles = duration / (iters);
 
    u64 pixels = fb_get_width() * fb_get_height();
    printk("fb size (pixels): %u\n", pixels);
