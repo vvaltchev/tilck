@@ -531,6 +531,23 @@ void cmd_waitpid3(int argc, char **argv)
    }
 }
 
+void cmd_selftest(int argc, char **argv)
+{
+   if (argc < 1) {
+      printf("Expected selftest name argument.\n");
+      exit(1);
+   }
+
+   int rc = sysenter_call3(499      /* sys_tilck_cmd */,
+                           0        /* TILCK_CMD_RUN_SELFTEST */,
+                           argv[0]  /* self test name */,
+                           NULL);
+
+   if (rc != 0) {
+      printf("Invalid selftest '%s'\n", argv[0]);
+      exit(1);
+   }
+}
 
 void cmd_help(int argc, char **argv);
 
@@ -576,7 +593,8 @@ struct {
    {"kernel_cow", cmd_kernel_cow, TT_SHORT, true},
    {"waitpid1", cmd_waitpid1, TT_SHORT, true},
    {"waitpid2", cmd_waitpid2, TT_SHORT, true},
-   {"waitpid3", cmd_waitpid3, TT_SHORT, true}
+   {"waitpid3", cmd_waitpid3, TT_SHORT, true},
+   {"selftest", cmd_selftest, TT_LONG, false}
 };
 
 void dump_list_of_commands(void)

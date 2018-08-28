@@ -410,7 +410,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_perf_event_open)
 CREATE_STUB_SYSCALL_IMPL(sys_recvmmsg)
 
 enum tilck_cmd_type {
-   TILCK_CMD_RUN_SELFTEST
+   TILCK_CMD_RUN_SELFTEST = 0
 };
 
 sptr sys_tilck_cmd(enum tilck_cmd_type cmd, uptr arg1, uptr arg2);
