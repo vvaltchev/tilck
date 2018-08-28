@@ -41,7 +41,7 @@ void use_kernel_arg(int arg_num, const char *arg)
    if (arg_len >= 3) {
       if (arg[0] == '-' && arg[1] == 's' && arg[2] == '=') {
          const char *a2 = arg + 3;
-         char buf[256] = "selftest_";
+         char buf[256] = SELFTEST_PREFIX;
 
          memcpy(buf + strlen(buf), a2, strlen(a2) + 1);
          uptr addr = find_addr_of_symbol(buf);

@@ -13,6 +13,7 @@
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/user.h>
+#include <tilck/kernel/elf_utils.h>
 
 typedef sptr (*syscall_type)();
 
@@ -58,6 +59,45 @@ sptr sys_newuname(struct utsname *user_buf)
       return -EFAULT;
 
    return 0;
+}
+
+sptr sys_tilck_run_selftest(const char *user_selftest)
+{
+   int rc;
+   char buf[256] = SELFTEST_PREFIX;
+
+   rc = copy_str_from_user(buf + strlen(buf),
+                           user_selftest,
+                           sizeof(buf) - strlen(buf) - 1,
+                           NULL);
+
+   if (rc != 0)
+      return -EFAULT;
+
+   uptr addr = find_addr_of_symbol(buf);
+
+   if (!addr)
+      return -EINVAL;
+
+   task_info *ti = kthread_create((void *)addr, NULL);
+
+   if (!ti)
+      return -ENOMEM;
+
+   return 0;
+}
+
+sptr sys_tilck_cmd(enum tilck_cmd_type cmd, uptr arg1, uptr arg2)
+{
+   switch (cmd) {
+
+      case TILCK_CMD_RUN_SELFTEST:
+         return sys_tilck_run_selftest((const char *)arg1);
+
+      default:
+         break;
+   }
+   return -EINVAL;
 }
 
 // The syscall numbers are ARCH-dependent
@@ -400,7 +440,9 @@ syscall_type syscalls[] =
    [334] = sys_pwritev,
    [335] = sys_rt_tgsigqueueinfo,
    [336] = sys_perf_event_open,
-   [337] = sys_recvmmsg
+   [337] = sys_recvmmsg,
+
+   [499] = sys_tilck_cmd
 };
 
 void handle_syscall(regs *r)
