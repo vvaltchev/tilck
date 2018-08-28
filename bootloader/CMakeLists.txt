@@ -26,7 +26,7 @@ link_directories(
    ${CMAKE_SOURCE_DIR}/bootloader
 )
 
-file(GLOB EARLY_STAGES_SOURCES "boot*.S")
+file(GLOB EARLY_STAGES_SOURCES "boot.S" "boot_enable_a20.S")
 
 add_executable(early_boot ${EARLY_STAGES_SOURCES})
 
@@ -44,7 +44,8 @@ set_target_properties(
 file(
    GLOB STAGE3_SOURCES
 
-   "stage3_*.S"
+   "stage3_entry.S"
+   "stage3_rm_calls.S"
    "*.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
    "${CMAKE_SOURCE_DIR}/common/arch/generic_x86/*.c"
