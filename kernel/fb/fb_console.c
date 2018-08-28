@@ -257,23 +257,43 @@ static void fb_scroll_one_line_up(void)
 
 static void fb_flush(void)
 {
+   bool any_update = false;
+
+   if (!framebuffer_vi.flush_buffers)
+      return;
+
+   for (u32 r = 0; r < fb_term_rows; r++) {
+
+      if (rows_to_flush[r]) {
+
+         if (!any_update) {
+            fpu_context_begin();
+            any_update = true;
+         }
+
+         fb_flush_lines(fb_offset_y + fb_font_header->height * r,
+                        fb_font_header->height);
+
+         rows_to_flush[r] = false;
+      }
+   }
+
+   if (any_update)
+      fpu_context_end();
+}
+
+static void fb_full_flush(void)
+{
    if (!framebuffer_vi.flush_buffers)
       return;
 
    fpu_context_begin();
-
-   for (u32 r = 0; r < fb_term_rows; r++) {
-
-      if (!rows_to_flush[r])
-         continue;
-
-      fb_flush_lines(fb_offset_y + fb_font_header->height * r,
-                     fb_font_header->height);
-
-      rows_to_flush[r] = false;
+   {
+      fb_flush_lines(0, fb_get_height());
    }
-
    fpu_context_end();
+
+   bzero(rows_to_flush, sizeof(rows_to_flush));
 }
 
 // ---------------------------------------------
@@ -321,10 +341,7 @@ static void fb_setup_banner(void)
       return;
 
    psf2_header *h = fb_font_header;
-
    fb_offset_y = (20 * h->height)/10;
-   fb_raw_color_lines(0, fb_offset_y, 0 /* black */);
-   fb_raw_color_lines(fb_offset_y - 4, 1, vga_rgb_colors[COLOR_BRIGHT_WHITE]);
 }
 
 static void fb_draw_banner(void)
@@ -355,18 +372,25 @@ static void fb_draw_banner(void)
    memcpy(lbuf + i, rbuf, rlen);
    lbuf[fb_term_cols - 1] = 0;
 
+   fb_raw_color_lines(0, fb_offset_y, 0 /* black */);
+   fb_raw_color_lines(fb_offset_y - 4, 1, vga_rgb_colors[COLOR_BRIGHT_WHITE]);
    fb_draw_string_at_raw(h->width/2, h->height/2, lbuf, COLOR_BRIGHT_YELLOW);
+}
+
+static void fb_flush_banner(void)
+{
+   fpu_context_begin();
+   {
+      fb_flush_lines(0, fb_offset_y);
+   }
+   fpu_context_end();
 }
 
 static void fb_update_banner_kthread()
 {
    while (true) {
       fb_draw_banner();
-      fpu_context_begin();
-      {
-         fb_flush_lines(0, fb_offset_y);
-      }
-      fpu_context_end();
+      fb_flush_banner();
       kernel_sleep(60 * TIMER_HZ);
    }
 }
@@ -408,7 +432,6 @@ void init_framebuffer_console(bool use_also_serial_port)
    fb_map_in_kernel_space();
 
    if (framebuffer_vi.flush_buffers && !in_panic() && !in_hypervisor()) {
-
       /*
        * In hypervisors, using double buffering just slows the fb_console,
        * therefore, we enable it only when running on bare-metal.
@@ -472,13 +495,8 @@ void selftest_fb_perf_manual()
       fb_raw_color_lines(0, fb_get_height(),
                          vga_rgb_colors[i % 2 ? COLOR_WHITE : COLOR_BLACK]);
 
-      if (framebuffer_vi.flush_buffers) {
-
-         for (u32 r = 0; r < fb_term_rows; r++)
-            rows_to_flush[r] = true;
-
-         fb_flush();
-      }
+      if (framebuffer_vi.flush_buffers)
+         fb_full_flush();
    }
 
    duration = RDTSC() - start;
@@ -488,4 +506,7 @@ void selftest_fb_perf_manual()
    printk("fb size (pixels): %u\n", pixels);
    printk("cycles per redraw: %llu\n", cycles);
    printk("cycles per 32 pixels: %llu\n", 32 * cycles / pixels);
+
+   fb_draw_banner();
+   fb_flush_banner();
 }
