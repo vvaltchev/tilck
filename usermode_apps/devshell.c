@@ -16,7 +16,7 @@ char cmd_arg_buffers[MAX_ARGS][256];
 char *cmd_argv[MAX_ARGS];
 char **shell_env;
 
-void run_if_known_command(const char *cmd);
+void run_if_known_command(const char *cmd, int argc, char **argv);
 void dump_list_of_commands(void);
 int read_command(char *buf, int buf_size);
 
@@ -101,7 +101,7 @@ void process_cmd_line(const char *cmd_line)
 
    if (!child_pid) {
 
-      run_if_known_command(cmd_argv[0]);
+      run_if_known_command(cmd_argv[0], argc - 1, cmd_argv + 1);
 
       if (!file_exists(cmd_argv[0]) && argc < MAX_ARGS) {
          if (file_exists("/bin/busybox")) {
@@ -140,7 +140,7 @@ void parse_opt(int argc, char **argv)
 {
    if (argc > 2 && !strcmp(argv[1], "-c")) {
       printf("[shell] Executing built-in command '%s'\n", argv[2]);
-      run_if_known_command(argv[2]);
+      run_if_known_command(argv[2], argc - 3, argv + 3);
       printf("[shell] Unknown built-in command '%s'\n", argv[2]);
    } else if (!strcmp(argv[1], "-l")) {
       dump_list_of_commands();

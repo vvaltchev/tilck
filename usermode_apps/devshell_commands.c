@@ -24,7 +24,7 @@
 #define RDTSC() __builtin_ia32_rdtsc()
 #define FORK_TEST_ITERS (1 * 250 * 1024 * 1024)
 
-void cmd_loop(void)
+void cmd_loop(int argc, char **argv)
 {
    printf("[shell] do a long loop\n");
    for (int i = 0; i < (2 * 1000 * 1000 * 1000); i++) {
@@ -90,12 +90,12 @@ void fork_test(int (*fork_func)(void))
    exit(0);
 }
 
-void cmd_fork_test(void)
+void cmd_fork_test(int argc, char **argv)
 {
    fork_test(&fork);
 }
 
-void cmd_bad_read(void)
+void cmd_bad_read(int argc, char **argv)
 {
    int ret;
    void *addr = (void *) 0xB0000000;
@@ -121,7 +121,7 @@ void cmd_bad_read(void)
    exit(0);
 }
 
-void cmd_bad_write(void)
+void cmd_bad_write(int argc, char **argv)
 {
    int ret;
    void *addr = (void *) 0xB0000000;
@@ -131,7 +131,7 @@ void cmd_bad_write(void)
    printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
 }
 
-void cmd_fork_perf(void)
+void cmd_fork_perf(int argc, char **argv)
 {
    const int iters = 150000;
    int wstatus, child_pid;
@@ -165,12 +165,12 @@ int sysenter_fork(void)
    return sysenter_call0(2 /* fork */);
 }
 
-void cmd_se_fork_test(void)
+void cmd_se_fork_test(int argc, char **argv)
 {
    fork_test(&sysenter_fork);
 }
 
-void cmd_sysenter(void)
+void cmd_sysenter(int argc, char **argv)
 {
    const char *str = "hello from a sysenter call!\n";
    size_t len = strlen(str);
@@ -191,7 +191,7 @@ void cmd_sysenter(void)
    printf("after sleep, everything is fine. Prev ret: %i\n", ret);
 }
 
-void cmd_syscall_perf(void)
+void cmd_syscall_perf(int argc, char **argv)
 {
    const int iters = 1000;
    unsigned long long start, duration;
@@ -221,7 +221,7 @@ void cmd_syscall_perf(void)
    printf("sysenter setuid(): %llu cycles\n", duration/iters);
 }
 
-void cmd_fpu(void)
+void cmd_fpu(int argc, char **argv)
 {
    long double e = 1.0;
    long double f = 1.0;
@@ -234,7 +234,7 @@ void cmd_fpu(void)
    printf("e(1): %.10Lf\n", e);
 }
 
-void cmd_fpu_loop(void)
+void cmd_fpu_loop(int argc, char **argv)
 {
    register double num = 0;
 
@@ -247,8 +247,7 @@ void cmd_fpu_loop(void)
    }
 }
 
-
-void cmd_brk_test(void)
+void cmd_brk_test(int argc, char **argv)
 {
    const size_t alloc_size = 1024 * 1024;
 
@@ -279,7 +278,7 @@ void cmd_brk_test(void)
    }
 }
 
-void cmd_mmap_test(void)
+void cmd_mmap_test(int argc, char **argv)
 {
    const int iters_count = 10;
    const size_t alloc_size = 1 * MB;
@@ -352,7 +351,7 @@ void cmd_mmap_test(void)
           max_mb + 1, (tot_duration / iters_count) / 1000000);
 }
 
-void cmd_kernel_cow(void)
+void cmd_kernel_cow(int argc, char **argv)
 {
    static char cow_buf[4096];
 
@@ -376,7 +375,7 @@ void cmd_kernel_cow(void)
 /*
  * Call waitpid() after the child exited.
  */
-void cmd_waitpid1(void)
+void cmd_waitpid1(int argc, char **argv)
 {
    int wstatus;
    pid_t pid;
@@ -425,7 +424,7 @@ void cmd_waitpid1(void)
 }
 
 /* waitpid(-1): wait any child to exit */
-void cmd_waitpid2(void)
+void cmd_waitpid2(int argc, char **argv)
 {
    const int child_count = 3;
 
@@ -484,7 +483,7 @@ void cmd_waitpid2(void)
 }
 
 /* wait on any child after they exit */
-void cmd_waitpid3(void)
+void cmd_waitpid3(int argc, char **argv)
 {
    int wstatus;
    pid_t pid;
@@ -533,11 +532,11 @@ void cmd_waitpid3(void)
 }
 
 
-void cmd_help(void);
+void cmd_help(int argc, char **argv);
 
 /* ------------------------------------------- */
 
-typedef void (*cmd_func_type)(void);
+typedef void (*cmd_func_type)(int argc, char **argv);
 
 enum timeout_type {
    TT_SHORT = 0,
@@ -592,7 +591,7 @@ void dump_list_of_commands(void)
    exit(0);
 }
 
-void cmd_help(void)
+void cmd_help(int argc, char **argv)
 {
    printf("\n");
    printf(COLOR_RED "Tilck development shell\n" RESET_ATTRS);
@@ -626,13 +625,13 @@ void cmd_help(void)
    printf("\n\n");
 }
 
-void run_if_known_command(const char *cmd)
+void run_if_known_command(const char *cmd, int argc, char **argv)
 {
    const int elems = sizeof(cmds_table) / sizeof(cmds_table[0]);
 
    for (int i = 0; i < elems; i++) {
       if (!strcmp(cmds_table[i].name, cmd)) {
-         cmds_table[i].fun();
+         cmds_table[i].fun(argc, argv);
          exit(0);
       }
    }
