@@ -14,6 +14,7 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/hal.h>
+#include <tilck/kernel/system_mmap.h>
 
 #include "fb_int.h"
 
@@ -30,6 +31,8 @@ static uptr fb_real_vaddr;
 
 static u32 *fb_w8_char_scanlines;
 
+void append_mem_region(memory_region_t r);
+
 void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
 {
    __use_framebuffer = true;
@@ -41,6 +44,13 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
    fb_bpp = mbi->framebuffer_bpp;
    fb_bytes_per_pixel = fb_bpp / 8;
    fb_size = fb_pitch * fb_height;
+
+   append_mem_region((memory_region_t) {
+      .addr = fb_paddr,
+      .len = fb_size,
+      .type = MULTIBOOT_MEMORY_RESERVED,
+      .extra = MEM_REG_EXTRA_FRAMEBUFFER
+   });
 }
 
 bool fb_alloc_shadow_buffer(void)

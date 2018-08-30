@@ -79,3 +79,4 @@ void fpu_context_begin() { }
 void fpu_context_end() { }
 void cmos_read_datetime() { NOT_REACHED(); }
 void map_zero_pages() { NOT_REACHED(); }
+void dump_var_mtrrs() { }

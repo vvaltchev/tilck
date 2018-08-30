@@ -98,6 +98,8 @@
 
 #define MEM_TYPE_UC         0x00 // Uncacheable
 #define MEM_TYPE_WC         0x01 // Write Combining
+#define MEM_TYPE_R1         0x02 // Reserved 1
+#define MEM_TYPE_R2         0x03 // Reserved 2
 #define MEM_TYPE_WT         0x04 // Write Through
 #define MEM_TYPE_WP         0x05 // Write Protected
 #define MEM_TYPE_WB         0x06 // Write Back

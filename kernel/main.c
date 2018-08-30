@@ -46,15 +46,11 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
 {
    multiboot_info_t *mbi = (void *)(uptr)mbi_addr;
 
-   if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
-      init_textmode_console(true);
-      panic("The Tilck kernel requires a multiboot-compatible bootloader.");
-   }
+   if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
+      panic("The Tilck kernel requires a multiboot-compatible bootloader");
 
-   if (!(mbi->flags & MULTIBOOT_INFO_MEM_MAP)) {
-      init_textmode_console(true);
+   if (!(mbi->flags & MULTIBOOT_INFO_MEM_MAP))
       panic("No memory map in the multiboot info struct");
-   }
 
    if (mbi->flags & MULTIBOOT_INFO_MODS) {
 
@@ -64,14 +60,16 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
          system_mmap_add_ramdisk(mods[i].mod_start, mods[i].mod_end);
    }
 
-   ASSERT(mbi->flags & MULTIBOOT_INFO_MEM_MAP);
-   system_mmap_set(mbi);
-
    if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO) {
       if (mbi->framebuffer_type != MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT) {
          set_framebuffer_info_from_mbi(mbi);
       }
    }
+
+   if (!(mbi->flags & MULTIBOOT_INFO_MEM_MAP))
+      panic("Tilck requires the bootloader to provide a full memory map");
+
+   system_mmap_set(mbi);
 
    if (mbi->flags & MULTIBOOT_INFO_CMDLINE)
       parse_kernel_cmdline((const char *)(uptr)mbi->cmdline);

@@ -115,8 +115,8 @@ static ALWAYS_INLINE bool in_hypervisor(void)
 
 void enable_mtrr(void);
 void reset_mtrr(int num);
-void dump_var_mtrrs(void);
 void set_mtrr(int num, u64 paddr, u32 pow2size, u8 mem_type);
-
 int get_var_mttrs_count(void);
 int get_free_mtrr(void);
+
+void dump_var_mtrrs(void);

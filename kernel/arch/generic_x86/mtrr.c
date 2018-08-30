@@ -75,12 +75,27 @@ void reset_mtrr(int num)
    wrmsr(MSR_MTRRphysBase0 + 2 * num, 0);
 }
 
+static const char *mtrr_mem_type_str[8] =
+{
+   [MEM_TYPE_UC] = "UC",
+   [MEM_TYPE_WC] = "WC",
+   [MEM_TYPE_R1] = "??",
+   [MEM_TYPE_R2] = "??",
+   [MEM_TYPE_WT] = "WT",
+   [MEM_TYPE_WP] = "WP",
+   [MEM_TYPE_WB] = "WB",
+   [MEM_TYPE_UC_] = "UC-"
+};
+
 void dump_var_mtrrs(void)
 {
+   printk(NO_PREFIX "MTRRs: \n");
+
    for (int i = 0; i < get_var_mttrs_count(); i++) {
 
       u64 physBaseVal = rdmsr(MSR_MTRRphysBase0 + 2 * i);
       u64 physMaskVal = rdmsr(MSR_MTRRphysBase0 + 2 * i + 1);
+      u8 mem_type = physBaseVal & 0xff;
 
       if (!(physMaskVal & (1 << 11)))
          continue;
@@ -100,9 +115,11 @@ void dump_var_mtrrs(void)
       }
 
       if (one_block) {
-         printk("[mtrr %d] 0x%llx [size: %llu KB]\n", i, physBaseVal, sz);
+         printk(NO_PREFIX "%02d) 0x%llx %s [%8llu KB]\n",
+                i, physBaseVal, mtrr_mem_type_str[mem_type], sz);
       } else {
-         printk("[mtrr %d] 0x%llx [size: ???]\n", i, physBaseVal);
+         printk(NO_PREFIX "%02d) 0x%llx %s [%8s]\n",
+                i, physBaseVal, mtrr_mem_type_str[mem_type], "???");
       }
    }
 }

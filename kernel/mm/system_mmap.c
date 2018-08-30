@@ -7,6 +7,7 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/sort.h>
 #include <tilck/kernel/elf_utils.h>
+#include <tilck/kernel/hal.h>
 
 u32 __mem_lower_kb;
 u32 __mem_upper_kb;
@@ -14,7 +15,7 @@ u32 __mem_upper_kb;
 memory_region_t mem_regions[MAX_MEM_REGIONS];
 int mem_regions_count;
 
-STATIC void append_mem_region(memory_region_t r)
+void append_mem_region(memory_region_t r)
 {
    if (mem_regions_count >= (int)ARRAY_SIZE(mem_regions))
       panic("Too many memory regions (limit: %u)", ARRAY_SIZE(mem_regions));
@@ -508,6 +509,8 @@ static const char *mem_region_extra_to_str(u32 e)
          return "KRNL";
       case MEM_REG_EXTRA_LOWMEM:
          return "LMRS";
+      case MEM_REG_EXTRA_FRAMEBUFFER:
+         return "FBUF";
       default:
          return "    ";
    }
@@ -515,22 +518,27 @@ static const char *mem_region_extra_to_str(u32 e)
 
 void dump_memory_map(const char *msg, memory_region_t *regions, int count)
 {
-   printk("%s\n\n", msg);
-   printk("           START                 END        (T, Extr)\n");
+   printk(NO_PREFIX "\n");
+   printk(NO_PREFIX "%s\n\n", msg);
+   printk(NO_PREFIX "           START                 END        (T, Extr)\n");
 
    for (int i = 0; i < count; i++) {
 
       memory_region_t *ma = regions + i;
 
-      printk("%02d) 0x%016llx - 0x%016llx (%d, %s) [%8u KB]\n", i,
+      printk(NO_PREFIX "%02d) 0x%016llx - 0x%016llx (%d, %s) [%8u KB]\n", i,
              ma->addr, ma->addr + ma->len,
              ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
    }
 
-   printk("\n");
+   printk(NO_PREFIX "\n");
 }
 
 void dump_system_memory_map(void)
 {
    dump_memory_map("System's memory map:", mem_regions, mem_regions_count);
+
+#ifdef __arch__x86__
+   dump_var_mtrrs();
+#endif
 }
