@@ -3,10 +3,30 @@
 BUILD_DIR="@CMAKE_BINARY_DIR@"
 
 if uname -a | grep Microsoft &> /dev/null; then
-   echo -n "It looks like you're using WSL (a.k.a. \"Bash for Windows\"): "
-   echo "therefore, KVM is not available. Just run the *nokvm* version of this script."
+   echo "It looks like you're using WSL (a.k.a. \"Bash for Windows\"): "
+   echo "therefore, KVM is not available."
+   echo "Just run the *nokvm* version of this script."
    exit 1
 fi
 
+if ! which kvm &> /dev/null; then
+
+   echo "WARNING: it looks like KVM is not installed on this machine."
+   echo "Please install qemu-kvm and add the current user to the kvm group "
+   echo "OR just run the *nokvm* version of this script."
+   echo "The launch of QEMU with the -enable-kvm option will likely fail."
+   echo
+
+else
+
+   if [[ $EUID -ne 0 ]]; then
+      if ! getent group kvm | grep &>/dev/null "\b${USER}\b"; then
+         echo "WARNING: it looks like the current user is not in the 'kvm'"
+         echo "group. Likely the launch of QEMU with the -enable-kvm option "
+         echo "will fail."
+         echo
+      fi
+   fi
+fi
 
 $BUILD_DIR/run_efi_nokvm_qemu64 -enable-kvm -cpu host "$@"
