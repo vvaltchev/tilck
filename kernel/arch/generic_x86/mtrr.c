@@ -69,7 +69,7 @@ void set_mtrr(int num, u64 paddr, u32 pow2size, u8 mem_type)
 
 void reset_mtrr(int num)
 {
-   ASSERT(num > 0);
+   ASSERT(num >= 0);
    ASSERT(num < get_var_mttrs_count());
    wrmsr(MSR_MTRRphysBase0 + 2 * num + 1, 0);
    wrmsr(MSR_MTRRphysBase0 + 2 * num, 0);
@@ -89,6 +89,11 @@ static const char *mtrr_mem_type_str[8] =
 
 void dump_var_mtrrs(void)
 {
+   if (!get_var_mttrs_count()) {
+      printk("MTRRs: not supported on this CPU\n");
+      return;
+   }
+
    printk(NO_PREFIX "MTRRs: \n");
 
    for (int i = 0; i < get_var_mttrs_count(); i++) {
