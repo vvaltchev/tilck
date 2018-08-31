@@ -211,6 +211,10 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
       panic("No ramdisk and no selftest requested: nothing to do.");
    }
 
+   // dump_var_mtrrs();
+   // reset_mtrr(0);
+   // dump_var_mtrrs();
+
    enable_preemption();
    push_nested_interrupt(-1);
    sptr rc = sys_execve(cmd_args[0], cmd_args, NULL);

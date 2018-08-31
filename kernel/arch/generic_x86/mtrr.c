@@ -6,13 +6,28 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/paging.h>
 
+#define MTRR_DEF_TYPE_MTRR_ENABLED (1 << 11)
+
+static void enable_mtrr_int(void)
+{
+   u64 mtrr_dt = rdmsr(MSR_IA32_MTRR_DEF_TYPE);
+   mtrr_dt |= MTRR_DEF_TYPE_MTRR_ENABLED;
+   wrmsr(MSR_IA32_MTRR_DEF_TYPE, mtrr_dt);
+}
+
+static void disable_mtrr_int(void)
+{
+   u64 mtrr_dt = rdmsr(MSR_IA32_MTRR_DEF_TYPE);
+   mtrr_dt &= ~MTRR_DEF_TYPE_MTRR_ENABLED;
+   wrmsr(MSR_IA32_MTRR_DEF_TYPE, mtrr_dt);
+}
+
 void enable_mtrr(void)
 {
    u64 mtrr_dt = rdmsr(MSR_IA32_MTRR_DEF_TYPE);
 
-   if (!(mtrr_dt & (1 << 11))) {
-      mtrr_dt |= (1 << 11);
-      wrmsr(MSR_IA32_MTRR_DEF_TYPE, mtrr_dt);
+   if (!(mtrr_dt & MTRR_DEF_TYPE_MTRR_ENABLED)) {
+      enable_mtrr_int();
    }
 
    printk("[CPU features] MTRR enabled\n");
@@ -43,6 +58,76 @@ int get_free_mtrr(void)
    return -1;
 }
 
+static void cache_disable(uptr *saved_cr0)
+{
+   uptr cr0 = read_cr0();
+
+   *saved_cr0 = cr0;
+
+   cr0 |= CR0_CD;
+
+   /*
+    * Clear the NW (not write-through) bit in order to set caching
+    * in "No-fill Cache Mode", where the memory coherency is maintained.
+    */
+   cr0 &= ~CR0_NW;
+
+   write_cr0(cr0);
+}
+
+static void cache_enable(uptr *saved_cr0)
+{
+   write_cr0(*saved_cr0);
+}
+
+typedef struct {
+
+   uptr eflags;
+   uptr cr4;
+   uptr cr0;
+
+} mtrr_change_ctx;
+
+/*
+ * As described by Intel's System Programming Guide (Vol. 3A), Section 11.11.7.2
+ */
+void pre_mtrr_change(mtrr_change_ctx *ctx)
+{
+   disable_interrupts(&ctx->eflags);
+
+   /* Save CR4 */
+   ctx->cr4 = read_cr4();
+
+   cache_disable(&ctx->cr0);
+
+   /* Flush all the WB entries in the cache and invalidate the rest */
+   write_back_and_invl_cache();
+
+   /* Flush all TLB entries by re-loading CR3 */
+   write_cr3(read_cr3());
+
+   disable_mtrr_int();
+}
+
+void post_mtrr_change(mtrr_change_ctx *ctx)
+{
+   /* Flush all the WB entries in the cache and invalidate the rest */
+   write_back_and_invl_cache();
+
+   /* Flush all TLB entries by re-loading CR3 */
+   write_cr3(read_cr3());
+
+   /* XXX: HERE we fail when we try to reset the MTRR entry 0 */
+   enable_mtrr_int();
+
+   cache_enable(&ctx->cr0);
+
+   /* Restore CR4 */
+   write_cr4(ctx->cr4);
+
+   enable_interrupts(&ctx->eflags);
+}
+
 void set_mtrr(int num, u64 paddr, u32 pow2size, u8 mem_type)
 {
    ASSERT(num > 0);
@@ -69,10 +154,17 @@ void set_mtrr(int num, u64 paddr, u32 pow2size, u8 mem_type)
 
 void reset_mtrr(int num)
 {
+   mtrr_change_ctx ctx;
+
    ASSERT(num >= 0);
    ASSERT(num < get_var_mttrs_count());
-   wrmsr(MSR_MTRRphysBase0 + 2 * num + 1, 0);
-   wrmsr(MSR_MTRRphysBase0 + 2 * num, 0);
+
+   pre_mtrr_change(&ctx);
+   {
+      wrmsr(MSR_MTRRphysBase0 + 2 * num + 1, 0);
+      wrmsr(MSR_MTRRphysBase0 + 2 * num, 0);
+   }
+   post_mtrr_change(&ctx);
 }
 
 static const char *mtrr_mem_type_str[8] =

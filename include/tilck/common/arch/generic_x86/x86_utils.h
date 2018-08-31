@@ -247,6 +247,11 @@ static ALWAYS_INLINE void invalidate_page(uptr vaddr)
                : "memory");
 }
 
+static ALWAYS_INLINE void write_back_and_invl_cache(void)
+{
+   asmVolatile("wbinvd");
+}
+
 static ALWAYS_INLINE uptr get_stack_ptr(void)
 {
 
@@ -282,9 +287,9 @@ static ALWAYS_INLINE void cpuid(u32 code, u32 *a, u32 *b, u32 *c, u32 *d)
                 : "memory");
 }
 
-static ALWAYS_INLINE u32 read_cr0(void)
+static ALWAYS_INLINE uptr read_cr0(void)
 {
-   u32 res;
+   uptr res;
    asmVolatile("mov %%cr0, %0"
                : "=r" (res)
                : /* no input */
@@ -293,9 +298,47 @@ static ALWAYS_INLINE u32 read_cr0(void)
    return res;
 }
 
-static ALWAYS_INLINE void write_cr0(u32 val)
+static ALWAYS_INLINE void write_cr0(uptr val)
 {
    asmVolatile("mov %0, %%cr0"
+               : /* no output */
+               : "r" (val)
+               : /* no clobber */);
+}
+
+static ALWAYS_INLINE uptr read_cr3(void)
+{
+   uptr res;
+   asmVolatile("mov %%cr3, %0"
+               : "=r" (res)
+               : /* no input */
+               : /* no clobber */);
+
+   return res;
+}
+
+static ALWAYS_INLINE void write_cr3(uptr val)
+{
+   asmVolatile("mov %0, %%cr3"
+               : /* no output */
+               : "r" (val)
+               : /* no clobber */);
+}
+
+static ALWAYS_INLINE uptr read_cr4(void)
+{
+   uptr res;
+   asmVolatile("mov %%cr4, %0"
+               : "=r" (res)
+               : /* no input */
+               : /* no clobber */);
+
+   return res;
+}
+
+static ALWAYS_INLINE void write_cr4(uptr val)
+{
+   asmVolatile("mov %0, %%cr4"
                : /* no output */
                : "r" (val)
                : /* no clobber */);

@@ -195,7 +195,7 @@ void handle_general_protection_fault(regs *r)
 void set_page_directory(page_directory_t *pdir)
 {
    curr_page_dir = pdir;
-   asmVolatile("mov %0, %%cr3" :: "r"(KERNEL_VA_TO_PA(pdir)));
+   write_cr3(KERNEL_VA_TO_PA(pdir));
 }
 
 bool is_mapped(page_directory_t *pdir, void *vaddrp)
