@@ -147,10 +147,10 @@ kthread_create(kthread_func_ptr fun, void *arg)
 
 void kthread_exit(void)
 {
-   task_info *pos;
+   task_info *pos, *temp;
    disable_preemption();
 
-   list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
+   list_for_each(pos, temp, &sleeping_tasks_list, sleeping_list) {
       if (pos->wobj.ptr == get_curr_task()) {
          ASSERT(pos->wobj.type == WOBJ_TASK);
          wait_obj_reset(&pos->wobj);

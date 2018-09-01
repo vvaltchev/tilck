@@ -247,13 +247,13 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
     */
 
    task_info *zombie_child = NULL;
-   task_info *pos;
+   task_info *pos, *temp;
 
    while (true) {
 
       disable_preemption();
 
-      list_for_each(pos, &curr->pi->children_list, siblings_list) {
+      list_for_each(pos, temp, &curr->pi->children_list, siblings_list) {
          if (pos->state == TASK_STATE_ZOMBIE) {
             zombie_child = pos;
             break;
@@ -336,9 +336,9 @@ NORETURN sptr sys_exit(int exit_status)
 
    DEBUG_ONLY(debug_check_tasks_lists());
 
-   task_info *pos;
+   task_info *pos, *temp;
 
-   list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
+   list_for_each(pos, temp, &sleeping_tasks_list, sleeping_list) {
 
       ASSERT(pos->state == TASK_STATE_SLEEPING);
 

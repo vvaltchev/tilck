@@ -148,12 +148,12 @@ small_heap_kmalloc_internal(size_t *size,
                             u32 flags,
                             small_heap_node **chosen_node)
 {
-   small_heap_node *pos;
+   small_heap_node *pos, *temp;
    void *ret;
 
    ASSERT(!is_preemption_enabled());
 
-   list_for_each(pos, &small_not_full_heaps_list, not_full_heaps_list) {
+   list_for_each(pos, temp, &small_not_full_heaps_list, not_full_heaps_list) {
 
       if (pos->heap.size - pos->heap.mem_allocated < *size)
          continue;

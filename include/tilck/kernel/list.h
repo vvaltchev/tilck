@@ -64,14 +64,18 @@ static inline void list_remove(list_node *elem)
 #define list_prev_obj(pos, list_mem_name) \
    list_to_obj((pos)->list_mem_name.prev, typeof(*(pos)), list_mem_name)
 
-#define list_for_each(pos, node, member)                     \
-   for (pos = list_first_obj(node, typeof(*pos), member);    \
-        &pos->member != (node);                              \
-        pos = list_next_obj(pos, member))
+// Here 'tp' is a temporary variable having the same type of 'pos'.
 
-#define list_for_each_reverse(pos, node, member)             \
-   for (pos = list_last_obj(node, typeof(*pos), member);     \
-        &pos->member != (node);                              \
-        pos = list_prev_obj(pos, member))
+#define list_for_each(pos, tp, node, member)                     \
+   for (pos = list_first_obj(node, typeof(*pos), member),        \
+        tp = list_next_obj(pos, member);                         \
+        &pos->member != (node);                                  \
+        pos = tp, tp = list_next_obj(tp, member))
+
+#define list_for_each_reverse(pos, tp, node, member)             \
+   for (pos = list_last_obj(node, typeof(*pos), member),         \
+        tp = list_prev_obj(pos, member);                         \
+        &pos->member != (node);                                  \
+        pos = tp, tp = list_prev_obj(tp, member))
 
 

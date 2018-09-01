@@ -63,10 +63,10 @@ void kcond_signal_single(kcond *c, task_info *ti)
 
 void kcond_signal_int(kcond *c, bool all)
 {
-   task_info *pos;
+   task_info *pos, *temp;
    disable_preemption();
 
-   list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
+   list_for_each(pos, temp, &sleeping_tasks_list, sleeping_list) {
 
       if (pos->wobj.ptr == c) {
 

@@ -333,7 +333,7 @@ NORETURN void switch_to_idle_task_outside_interrupt_context(void)
 void schedule(int curr_irq)
 {
    task_info *selected = NULL;
-   task_info *pos;
+   task_info *pos, *temp;
 
    ASSERT(!is_preemption_enabled());
 
@@ -350,7 +350,7 @@ void schedule(int curr_irq)
    if (selected)
       switch_to_task(selected, curr_irq);
 
-   list_for_each(pos, &runnable_tasks_list, runnable_list) {
+   list_for_each(pos, temp, &runnable_tasks_list, runnable_list) {
 
       ASSERT(pos->state == TASK_STATE_RUNNABLE);
 

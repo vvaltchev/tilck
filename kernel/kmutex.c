@@ -100,7 +100,7 @@ bool kmutex_trylock(kmutex *m)
 
 void kmutex_unlock(kmutex *m)
 {
-   task_info *pos;
+   task_info *pos, *temp;
 
    DEBUG_ONLY(check_not_in_irq_handler());
    disable_preemption();
@@ -123,7 +123,7 @@ void kmutex_unlock(kmutex *m)
 
       /* Unlock one task waiting to acquire the mutex 'm' */
 
-      list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
+      list_for_each(pos, temp, &sleeping_tasks_list, sleeping_list) {
 
          ASSERT(pos->state == TASK_STATE_SLEEPING);
 
