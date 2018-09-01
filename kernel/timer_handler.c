@@ -85,14 +85,14 @@ void kernel_sleep(u64 ticks)
 #endif
 
 
-static void debug_check_tasks_lists(void)
+void debug_check_tasks_lists(void)
 {
    task_info *pos;
 
    list_for_each(pos, &sleeping_tasks_list, sleeping_list) {
 
       if (pos->state != TASK_STATE_SLEEPING)
-         panic("%s task %d [w: %p] in the sleeping_tasks_list with state: %d",
+         panic("%s task %d [w: %s] in the sleeping_tasks_list with state: %d",
                is_kernel_thread(pos) ? "kernel" : "user",
                pos->tid, pos->what, pos->state);
    }
@@ -100,7 +100,7 @@ static void debug_check_tasks_lists(void)
    list_for_each(pos, &runnable_tasks_list, runnable_list) {
 
       if (pos->state != TASK_STATE_RUNNABLE)
-         panic("%s task %d [w: %p] in the runnable_tasks_list with state: %d",
+         panic("%s task %d [w: %s] in the runnable_tasks_list with state: %d",
                is_kernel_thread(pos) ? "kernel" : "user",
                pos->tid, pos->what, pos->state);
    }
