@@ -7,6 +7,7 @@
 #include <tilck/kernel/paging.h>
 
 #define MTRR_DEF_TYPE_MTRR_ENABLED (1 << 11)
+#define MTRR_PHYS_MASK_VALID       (1 << 11)
 
 static void enable_mtrr_int(void)
 {
@@ -91,7 +92,7 @@ typedef struct {
 /*
  * As described by Intel's System Programming Guide (Vol. 3A), Section 11.11.7.2
  */
-void pre_mtrr_change(mtrr_change_ctx *ctx)
+static void pre_mtrr_change(mtrr_change_ctx *ctx)
 {
    disable_interrupts(&ctx->eflags);
 
@@ -109,7 +110,7 @@ void pre_mtrr_change(mtrr_change_ctx *ctx)
    disable_mtrr_int();
 }
 
-void post_mtrr_change(mtrr_change_ctx *ctx)
+static void post_mtrr_change(mtrr_change_ctx *ctx)
 {
    /* Flush all the WB entries in the cache and invalidate the rest */
    write_back_and_invl_cache();
@@ -137,19 +138,21 @@ void set_mtrr(int num, u64 paddr, u32 pow2size, u8 mem_type)
    ASSERT(round_up_at64(paddr, pow2size) == paddr);
    ASSERT(x86_cpu_features.edx1.mtrr);
 
-   u64 mask64 = ~((u64)pow2size - 1);
-   u64 physBaseVal = ((u64)paddr & PAGE_MASK) | mem_type;
-   u64 physMaskVal;
+   mtrr_change_ctx ctx;
 
-   physMaskVal = mask64 & ((1ull << x86_cpu_features.phys_addr_bits) - 1);
-   physMaskVal |= (1 << 11); // valid = 1
+   pre_mtrr_change(&ctx);
+   {
+      u64 mask64 = ~((u64)pow2size - 1);
+      u64 physBaseVal = ((u64)paddr & PAGE_MASK) | mem_type;
+      u64 physMaskVal;
 
-   // printk("round up size: %u\n", pow2size);
-   // printk("physBaseVal: %llx\n", physBaseVal);
-   // printk("physMaskVal: %llx\n", physMaskVal);
+      physMaskVal = mask64 & ((1ull << x86_cpu_features.phys_addr_bits) - 1);
+      physMaskVal |= MTRR_PHYS_MASK_VALID;
 
-   wrmsr(MSR_MTRRphysBase0 + 2 * num, physBaseVal);
-   wrmsr(MSR_MTRRphysBase0 + 2 * num + 1, physMaskVal);
+      wrmsr(MSR_MTRRphysBase0 + 2 * num, physBaseVal);
+      wrmsr(MSR_MTRRphysBase0 + 2 * num + 1, physMaskVal);
+   }
+   post_mtrr_change(&ctx);
 }
 
 void reset_mtrr(int num)
