@@ -26,6 +26,8 @@ static u8 fb_bpp; /* bits per pixel */
 static u32 fb_size;
 
 static u32 fb_bytes_per_pixel;
+static u32 fb_line_length;
+
 static uptr fb_vaddr; /* != fb_real_vaddr when a shadow buffer is used */
 static uptr fb_real_vaddr;
 
@@ -42,7 +44,9 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
    fb_width = mbi->framebuffer_width;
    fb_height = mbi->framebuffer_height;
    fb_bpp = mbi->framebuffer_bpp;
+
    fb_bytes_per_pixel = fb_bpp / 8;
+   fb_line_length = fb_width * fb_bytes_per_pixel;
    fb_size = fb_pitch * fb_height;
 
    append_mem_region((memory_region_t) {
@@ -137,14 +141,37 @@ static inline void fb_draw_pixel(u32 x, u32 y, u32 color)
    }
 }
 
+void fb_raw_color_lines_opt_case(u32 iy, u32 h, u32 color)
+{
+   ASSERT(fb_bpp == 32);
+   ASSERT(fb_pitch == fb_line_length);
+
+   memset32((void *)(fb_vaddr + (fb_pitch * iy)), color, (fb_pitch * h) >> 2);
+}
+
 void fb_raw_color_lines(u32 iy, u32 h, u32 color)
 {
-   if (fb_bpp == 32) {
-      memset32((void *)(fb_vaddr + (fb_pitch * iy)),
-               color, (fb_pitch * h) >> 2);
+   if (LIKELY(fb_bpp == 32)) {
+
+      if (LIKELY(fb_pitch == fb_line_length)) {
+
+         fb_raw_color_lines_opt_case(iy, h, color);
+
+      } else {
+
+         uptr v = fb_vaddr + (fb_pitch * iy);
+
+         for (u32 i = 0; i < h; i++, v += fb_pitch)
+            memset((void *)v, color, fb_line_length);
+      }
+
    } else {
 
-      // Generic (but slower version)
+      /*
+       * Generic (but slower version)
+       * NOTE: Optimizing for bbp != 32 is completely out of Tilck's goals.
+       */
+
       for (u32 y = iy; y < (iy + h); y++)
          for (u32 x = 0; x < fb_width; x++)
             fb_draw_pixel(x, y, color);
@@ -155,7 +182,7 @@ void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
 {
    psf2_header *h = fb_font_header;
 
-   if (fb_bpp == 32) {
+   if (LIKELY(fb_bpp == 32)) {
 
       ix <<= 2;
 
@@ -168,7 +195,11 @@ void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
 
    } else {
 
-      // Generic (but slower version)
+      /*
+       * Generic (but slower version)
+       * NOTE: Optimizing for bbp != 32 is completely out of Tilck's goals.
+       */
+
       for (u32 y = iy; y < (iy + h->height); y++)
          for (u32 x = ix; x < (ix + h->width); x++)
             fb_draw_pixel(x, y, color);
@@ -179,34 +210,46 @@ void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 {
    uptr vaddr = fb_vaddr + (fb_pitch * iy) + (ix * fb_bytes_per_pixel);
 
-   if (fb_bpp != 32) {
-      // Generic (but slower version)
+   if (LIKELY(fb_bpp == 32)) {
+
+      for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
+         memcpy32(&buf[y * w], (void *)vaddr, w);
+
+   } else {
+
+      /*
+       * Generic (but slower version)
+       * NOTE: Optimizing for bbp != 32 is completely out of Tilck's goals.
+       */
+
       for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
          memcpy((u8 *)buf + y * w * fb_bytes_per_pixel,
                 (void *)vaddr,
                 w * fb_bytes_per_pixel);
-      return;
    }
-
-   for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
-      memcpy32(&buf[y * w], (void *)vaddr, w);
 }
 
 void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 {
    uptr vaddr = fb_vaddr + (fb_pitch * iy) + (ix * fb_bytes_per_pixel);
 
-   if (fb_bpp != 32) {
-      // Generic (but slower version)
+   if (LIKELY(fb_bpp == 32)) {
+
+      for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
+         memcpy32((void *)vaddr, &buf[y * w], w);
+
+   } else {
+
+      /*
+       * Generic (but slower version)
+       * NOTE: Optimizing for bbp != 32 is completely out of Tilck's goals.
+       */
+
       for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
          memcpy((void *)vaddr,
                 (u8 *)buf + y * w * fb_bytes_per_pixel,
                 w * fb_bytes_per_pixel);
-      return;
    }
-
-   for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
-      memcpy32((void *)vaddr, &buf[y * w], w);
 }
 
 #ifdef DEBUG

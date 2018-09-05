@@ -492,8 +492,8 @@ void selftest_fb_perf_manual()
 
    for (int i = 0; i < iters; i++) {
 
-      fb_raw_color_lines(0, fb_get_height(),
-                         vga_rgb_colors[i % 2 ? COLOR_WHITE : COLOR_BLACK]);
+      u32 color = vga_rgb_colors[i % 2 ? COLOR_WHITE : COLOR_BLACK];
+      fb_raw_color_lines_opt_case(0, fb_get_height(), color);
 
       if (framebuffer_vi.flush_buffers)
          fb_full_flush();
