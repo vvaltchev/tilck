@@ -118,6 +118,23 @@ void fpu_memcpy256_nt_read_sse4_1(void *dest, const void *src, u32 n)
       fpu_cpy_single_256_nt_read_sse4_1(dest, src);
 }
 
+void fpu_memset256_sse2(void *dest, u32 val32, u32 n)
+{
+   char val256[32] ALIGNED_AT(32);
+   memset32((void *)val256, val32, 8);
+
+   for (register u32 i = 0; i < n; i++, dest += 32)
+      fpu_cpy_single_256_nt_sse2(dest, val256);
+}
+
+void fpu_memset256_avx2(void *dest, u32 val32, u32 n)
+{
+   char val256[32] ALIGNED_AT(32);
+   memset32((void *)val256, val32, 8);
+
+   for (register u32 i = 0; i < n; i++, dest += 32)
+      fpu_cpy_single_256_nt_avx2(dest, val256);
+}
 
 static void
 init_fpu_memcpy_internal_check(void *func, const char *fname, u32 size)

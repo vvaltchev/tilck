@@ -31,6 +31,10 @@ void fpu_memcpy256_nt_sse(void *dest, const void *src, u32 n);
 void fpu_memcpy256_nt_read_avx2(void *dest, const void *src, u32 n);
 void fpu_memcpy256_nt_read_sse4_1(void *dest, const void *src, u32 n);
 
+/* Memset */
+void fpu_memset256_sse2(void *dest, u32 val32, u32 n);
+void fpu_memset256_avx2(void *dest, u32 val32, u32 n);
+
 EXTERN ALWAYS_INLINE FASTCALL void
 fpu_cpy_single_512_nt_avx2(void *dest, const void *src)
 {
@@ -305,6 +309,16 @@ EXTERN inline void fpu_memcpy256_nt_read(void *dest, const void *src, u32 n)
       fpu_memcpy256_sse(dest, src, n);
    else
       memcpy256_failsafe(dest, src, n);
+}
+
+EXTERN inline void fpu_memset256(void *dest, u32 val32, u32 n)
+{
+   if (x86_cpu_features.can_use_avx2)
+      fpu_memset256_avx2(dest, val32, n);
+   else if (x86_cpu_features.can_use_sse2)
+      fpu_memset256_sse2(dest, val32, n);
+   else
+      memset(dest, val32, n << 5);
 }
 
 void FASTCALL __asm_fpu_cpy_single_256_nt(void *dest, const void *src);
