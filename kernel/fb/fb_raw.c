@@ -170,12 +170,21 @@ void fb_raw_color_lines(u32 iy, u32 h, u32 color)
    }
 }
 
-void fb_raw_perf_screen_redraw(u32 color)
+void fb_raw_perf_screen_redraw(u32 color, bool use_fpu)
 {
    VERIFY(fb_bpp == 32);
    VERIFY(fb_pitch == fb_line_length);
 
-   memset32((void *)fb_real_vaddr, color, (fb_pitch * fb_height) >> 2);
+   if (!use_fpu) {
+      memset32((void *)fb_real_vaddr, color, (fb_pitch * fb_height) >> 2);
+      return;
+   }
+
+   fpu_context_begin();
+   {
+      fpu_memset256((void *)fb_real_vaddr, color, (fb_pitch * fb_height) >> 5);
+   }
+   fpu_context_end();
 }
 
 void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)

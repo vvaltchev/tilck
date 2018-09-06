@@ -483,7 +483,7 @@ void init_framebuffer_console(bool use_also_serial_port)
    }
 }
 
-void selftest_fb_perf(void)
+void internal_selftest_fb_perf(bool use_fpu)
 {
    if (!__use_framebuffer)
       panic("Unable to test framebuffer's performance: we're in text-mode");
@@ -495,7 +495,7 @@ void selftest_fb_perf(void)
 
    for (int i = 0; i < iters; i++) {
       u32 color = vga_rgb_colors[i % 2 ? COLOR_WHITE : COLOR_BLACK];
-      fb_raw_perf_screen_redraw(color);
+      fb_raw_perf_screen_redraw(color, use_fpu);
    }
 
    duration = RDTSC() - start;
@@ -508,7 +508,18 @@ void selftest_fb_perf(void)
    printk("fb size (pixels): %u\n", pixels);
    printk("cycles per redraw: %llu\n", cycles);
    printk("cycles per 32 pixels: %llu\n", 32 * cycles / pixels);
+   printk("use_fpu: %d\n", use_fpu);
 
    fb_draw_banner();
    fb_flush_banner();
+}
+
+void selftest_fb_perf(void)
+{
+   internal_selftest_fb_perf(false);
+}
+
+void selftest_fb_perf_fpu(void)
+{
+   internal_selftest_fb_perf(true);
 }
