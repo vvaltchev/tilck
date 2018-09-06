@@ -141,25 +141,17 @@ static inline void fb_draw_pixel(u32 x, u32 y, u32 color)
    }
 }
 
-void fb_raw_color_lines_opt_case(u32 iy, u32 h, u32 color)
-{
-   ASSERT(fb_bpp == 32);
-   ASSERT(fb_pitch == fb_line_length);
-
-   memset32((void *)(fb_vaddr + (fb_pitch * iy)), color, (fb_pitch * h) >> 2);
-}
-
 void fb_raw_color_lines(u32 iy, u32 h, u32 color)
 {
    if (LIKELY(fb_bpp == 32)) {
 
+      uptr v = fb_vaddr + (fb_pitch * iy);
+
       if (LIKELY(fb_pitch == fb_line_length)) {
 
-         fb_raw_color_lines_opt_case(iy, h, color);
+         memset32((void *)v, color, (fb_pitch * h) >> 2);
 
       } else {
-
-         uptr v = fb_vaddr + (fb_pitch * iy);
 
          for (u32 i = 0; i < h; i++, v += fb_pitch)
             memset((void *)v, color, fb_line_length);
@@ -176,6 +168,14 @@ void fb_raw_color_lines(u32 iy, u32 h, u32 color)
          for (u32 x = 0; x < fb_width; x++)
             fb_draw_pixel(x, y, color);
    }
+}
+
+void fb_raw_perf_screen_redraw(u32 color)
+{
+   VERIFY(fb_bpp == 32);
+   VERIFY(fb_pitch == fb_line_length);
+
+   memset32((void *)fb_real_vaddr, color, (fb_pitch * fb_height) >> 2);
 }
 
 void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)

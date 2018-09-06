@@ -22,7 +22,6 @@ u32 fb_get_bpp(void);
 
 void fb_map_in_kernel_space(void);
 void fb_raw_color_lines(u32 iy, u32 h, u32 color);
-void fb_raw_color_lines_opt_case(u32 iy, u32 h, u32 color);
 void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color);
 void fb_draw_char_failsafe(u32 x, u32 y, u16 entry);
 void fb_draw_char_optimized(u32 x, u32 y, u16 e);
@@ -33,3 +32,4 @@ void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 count);
 bool fb_pre_render_char_scanlines(void);
 bool fb_alloc_shadow_buffer(void);
 void fb_flush_lines(u32 y, u32 lines_count);
+void fb_raw_perf_screen_redraw(u32 color);

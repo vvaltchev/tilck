@@ -483,24 +483,26 @@ void init_framebuffer_console(bool use_also_serial_port)
    }
 }
 
-void selftest_fb_perf_manual()
+void selftest_fb_perf(void)
 {
+   if (!__use_framebuffer)
+      panic("Unable to test framebuffer's performance: we're in text-mode");
+
    const int iters = 20;
    u64 start, duration, cycles;
 
    start = RDTSC();
 
    for (int i = 0; i < iters; i++) {
-
       u32 color = vga_rgb_colors[i % 2 ? COLOR_WHITE : COLOR_BLACK];
-      fb_raw_color_lines_opt_case(0, fb_get_height(), color);
-
-      if (framebuffer_vi.flush_buffers)
-         fb_full_flush();
+      fb_raw_perf_screen_redraw(color);
    }
 
    duration = RDTSC() - start;
-   cycles = duration / (iters);
+   cycles = duration / iters;
+
+   if (framebuffer_vi.flush_buffers)
+      fb_full_flush();
 
    u64 pixels = fb_get_width() * fb_get_height();
    printk("fb size (pixels): %u\n", pixels);

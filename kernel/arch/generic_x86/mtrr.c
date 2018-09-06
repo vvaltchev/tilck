@@ -189,7 +189,9 @@ void dump_var_mtrrs(void)
       return;
    }
 
-   printk(NO_PREFIX "MTRRs: \n");
+   u64 mtrr_dt = rdmsr(MSR_IA32_MTRR_DEF_TYPE);
+   printk(NO_PREFIX "MTRRs (default type: %s): \n",
+          mtrr_mem_type_str[mtrr_dt & 0xff]);
 
    for (int i = 0; i < get_var_mttrs_count(); i++) {
 
