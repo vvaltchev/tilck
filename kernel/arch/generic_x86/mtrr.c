@@ -90,7 +90,8 @@ typedef struct {
 } mtrr_change_ctx;
 
 /*
- * As described by Intel's System Programming Guide (Vol. 3A), Section 11.11.7.2
+ * As described in:
+ * Intel's System Programming Guide (Vol. 3A), Section 11.11.7.2
  */
 static void pre_mtrr_change(mtrr_change_ctx *ctx)
 {
@@ -110,6 +111,10 @@ static void pre_mtrr_change(mtrr_change_ctx *ctx)
    disable_mtrr_int();
 }
 
+/*
+ * As described in:
+ * Intel's System Programming Guide (Vol. 3A), Section 11.11.7.2
+ */
 static void post_mtrr_change(mtrr_change_ctx *ctx)
 {
    /* Flush all the WB entries in the cache and invalidate the rest */
@@ -118,7 +123,6 @@ static void post_mtrr_change(mtrr_change_ctx *ctx)
    /* Flush all TLB entries by re-loading CR3 */
    write_cr3(read_cr3());
 
-   /* XXX: HERE we fail when we try to reset the MTRR entry 0 */
    enable_mtrr_int();
 
    cache_enable(&ctx->cr0);
