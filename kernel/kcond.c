@@ -16,15 +16,21 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
    DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
 
+   uptr var;
    task_info *curr = get_curr_task();
-   wait_obj_set(&curr->wobj, WOBJ_KCOND, c);
 
-   if (timeout_ticks != KCOND_WAIT_FOREVER) {
-      c->timer_num = set_task_to_wake_after(curr, timeout_ticks);
-   } else {
-      c->timer_num = -1;
-      task_change_state(curr, TASK_STATE_SLEEPING);
+   disable_interrupts(&var);
+   {
+      wait_obj_set(&curr->wobj, WOBJ_KCOND, c);
+
+      if (timeout_ticks != KCOND_WAIT_FOREVER) {
+         c->timer_num = set_task_to_wake_after(curr, timeout_ticks);
+      } else {
+         c->timer_num = -1;
+         task_change_state(curr, TASK_STATE_SLEEPING);
+      }
    }
+   enable_interrupts(&var);
 
    if (m) {
       kmutex_unlock(m);
@@ -54,11 +60,16 @@ void kcond_signal_single(kcond *c, task_info *ti)
       return;
    }
 
-   if (c->timer_num >= 0)
-      cancel_timer(c->timer_num, ti);
+   uptr var;
+   disable_interrupts(&var);
+   {
+      if (c->timer_num >= 0)
+         cancel_timer(c->timer_num, ti);
 
-   wait_obj_reset(&ti->wobj);
-   task_change_state(ti, TASK_STATE_RUNNABLE);
+      wait_obj_reset(&ti->wobj);
+      task_change_state(ti, TASK_STATE_RUNNABLE);
+   }
+   enable_interrupts(&var);
 }
 
 void kcond_signal_int(kcond *c, bool all)
