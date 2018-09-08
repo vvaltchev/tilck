@@ -798,6 +798,12 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size)
    if (rc < page_count)
       panic("Unable to map the framebuffer in the virtual space");
 
+   if (x86_cpu_features.edx1.pat) {
+      size = round_up_at(size, PAGE_SIZE);
+      set_pages_pat_wc(get_kernel_pdir(), (void *) vaddr, size);
+      return;
+   }
+
    if (!x86_cpu_features.edx1.mtrr)
       return;
 
