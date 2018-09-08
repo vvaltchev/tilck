@@ -28,9 +28,7 @@ static u32 fb_size;
 static u32 fb_bytes_per_pixel;
 static u32 fb_line_length;
 
-static uptr fb_vaddr; /* != fb_real_vaddr when a shadow buffer is used */
-static uptr fb_real_vaddr;
-
+static uptr fb_vaddr;
 static u32 *fb_w8_char_scanlines;
 
 void append_mem_region(memory_region_t r);
@@ -57,44 +55,11 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
    });
 }
 
-bool fb_alloc_shadow_buffer(void)
-{
-   size_t size = round_up_at(fb_size, PAGE_SIZE);
-   void *shadow_buf = kzmalloc(size);
-
-   if (!shadow_buf)
-      return false;
-
-   // NOTE: making the shadow buffer WC makes the performance worse
-   // set_pages_pat_wc(get_kernel_pdir(), shadow_buf, size);
-   fb_vaddr = (uptr) shadow_buf;
-   return true;
-}
-
-void fb_flush_lines(u32 y, u32 lines_count)
-{
-   if (fb_vaddr == fb_real_vaddr)
-      return;
-
-   // ASSUMPTION fb_pitch is ALWAYS divisible by 32
-
-   fpu_memcpy256_nt((void *)(fb_real_vaddr + y * fb_pitch),
-                    (void *)(fb_vaddr + y * fb_pitch),
-                    (lines_count * fb_pitch) >> 5);
-}
-
-/* NOTE: it is required that: dst_y < src_y */
 void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 lines_count)
 {
-   // ASSUMPTION fb_pitch is ALWAYS divisible by 32
-
-   fpu_context_begin();
-
-   fpu_memcpy256_nt((void *)(fb_vaddr + fb_pitch * dst_y),
-                    (void *)(fb_vaddr + fb_pitch * src_y),
-                    (fb_pitch * lines_count) >> 5);
-
-   fpu_context_end();
+   memcpy32((void *)(fb_vaddr + fb_pitch * dst_y),
+            (void *)(fb_vaddr + fb_pitch * src_y),
+            (fb_pitch * lines_count) >> 2);
 }
 
 u32 fb_get_width(void)
@@ -114,9 +79,7 @@ u32 fb_get_bpp(void)
 
 void fb_map_in_kernel_space(void)
 {
-   fb_real_vaddr = KERNEL_BASE_VA + (1024 - 64) * MB;
-   fb_vaddr = fb_real_vaddr; /* here fb_vaddr == fb_real_vaddr */
-
+   fb_vaddr = KERNEL_BASE_VA + (1024 - 64) * MB;
    map_framebuffer(fb_paddr, fb_vaddr, fb_size);
 }
 
@@ -176,13 +139,13 @@ void fb_raw_perf_screen_redraw(u32 color, bool use_fpu)
    VERIFY(fb_pitch == fb_line_length);
 
    if (!use_fpu) {
-      memset32((void *)fb_real_vaddr, color, (fb_pitch * fb_height) >> 2);
+      memset32((void *)fb_vaddr, color, (fb_pitch * fb_height) >> 2);
       return;
    }
 
    fpu_context_begin();
    {
-      fpu_memset256((void *)fb_real_vaddr, color, (fb_pitch * fb_height) >> 5);
+      fpu_memset256((void *)fb_vaddr, color, (fb_pitch * fb_height) >> 5);
    }
    fpu_context_end();
 }

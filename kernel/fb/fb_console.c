@@ -33,9 +33,6 @@ static task_info *blink_thread_ti;
 static const u32 blink_half_period = (TIMER_HZ * 45)/100;
 static u32 cursor_color = fb_make_color(255, 255, 255);
 
-/* Could we really need more than 256 rows? Probably we won't. */
-static bool rows_to_flush[256];
-
 static video_interface framebuffer_vi;
 
 #define DARK_VAL    (168 /* vga */ + 0)
@@ -85,8 +82,6 @@ void fb_restore_under_cursor_buf(void)
    const u32 ix = cursor_col * h->width;
    const u32 iy = fb_offset_y + cursor_row * h->height;
    fb_copy_to_screen(ix, iy, h->width, h->height, under_cursor_buf);
-
-   rows_to_flush[cursor_row] = true;
 }
 
 static void fb_reset_blink_timer(void)
@@ -117,7 +112,6 @@ void fb_set_char_at_failsafe(int row, int col, u16 entry)
       fb_save_under_cursor_buf();
 
    fb_reset_blink_timer();
-   rows_to_flush[row] = true;
 }
 
 void fb_set_char_at_optimized(int row, int col, u16 entry)
@@ -132,10 +126,7 @@ void fb_set_char_at_optimized(int row, int col, u16 entry)
       fb_save_under_cursor_buf();
 
    fb_reset_blink_timer();
-   rows_to_flush[row] = true;
 }
-
-
 
 void fb_clear_row(int row_num, u8 color)
 {
@@ -145,8 +136,6 @@ void fb_clear_row(int row_num, u8 color)
 
    if (cursor_row == row_num)
       fb_save_under_cursor_buf();
-
-   rows_to_flush[row_num] = true;
 }
 
 void fb_move_cursor(int row, int col, int cursor_vga_color)
@@ -157,9 +146,6 @@ void fb_move_cursor(int row, int col, int cursor_vga_color)
    psf2_header *h = fb_font_header;
 
    fb_restore_under_cursor_buf();
-
-   rows_to_flush[row] = true;
-   rows_to_flush[cursor_row] = true;
 
    cursor_row = row;
    cursor_col = col;
@@ -213,7 +199,6 @@ static void fb_set_row_failsafe(int row, u16 *data, bool flush)
       fb_set_char_at_failsafe(row, i, data[i]);
 
    fb_reset_blink_timer();
-   rows_to_flush[row] = true;
 }
 
 static void fb_set_row_optimized(int row, u16 *data, bool flush)
@@ -224,76 +209,7 @@ static void fb_set_row_optimized(int row, u16 *data, bool flush)
                               data,
                               fb_term_cols);
 
-   if (flush) {
-      fb_flush_lines(fb_offset_y + fb_font_header->height * row,
-                     fb_font_header->height);
-   } else {
-      rows_to_flush[row] = true;
-   }
-
    fb_reset_blink_timer();
-}
-
-static void fb_scroll_one_line_up(void)
-{
-   psf2_header *h = fb_font_header;
-
-   bool enabled = cursor_enabled;
-
-   if (enabled)
-     fb_disable_cursor();
-
-   fb_lines_shift_up(fb_offset_y + h->height, /* source: row 1 (+ following) */
-                     fb_offset_y,             /* destination: row 0 */
-                     fb_get_height() - fb_offset_y - h->height);
-
-   if (enabled)
-      fb_enable_cursor();
-
-   for (u32 r = 0; r < fb_term_rows; r++)
-      rows_to_flush[r] = true;
-}
-
-
-static void fb_flush(void)
-{
-   bool any_update = false;
-
-   if (!framebuffer_vi.flush_buffers)
-      return;
-
-   for (u32 r = 0; r < fb_term_rows; r++) {
-
-      if (rows_to_flush[r]) {
-
-         if (!any_update) {
-            fpu_context_begin();
-            any_update = true;
-         }
-
-         fb_flush_lines(fb_offset_y + fb_font_header->height * r,
-                        fb_font_header->height);
-
-         rows_to_flush[r] = false;
-      }
-   }
-
-   if (any_update)
-      fpu_context_end();
-}
-
-static void fb_full_flush(void)
-{
-   if (!framebuffer_vi.flush_buffers)
-      return;
-
-   fpu_context_begin();
-   {
-      fb_flush_lines(0, fb_get_height());
-   }
-   fpu_context_end();
-
-   bzero(rows_to_flush, sizeof(rows_to_flush));
 }
 
 // ---------------------------------------------
@@ -306,8 +222,8 @@ static video_interface framebuffer_vi =
    fb_move_cursor,
    fb_enable_cursor,
    fb_disable_cursor,
-   fb_scroll_one_line_up,
-   fb_flush
+   NULL, /* scroll_one_line_up: used only when running in a VM */
+   NULL  /* flush_buffers: never used by fb_console */
 };
 
 
@@ -316,7 +232,6 @@ static void fb_blink_thread()
    while (true) {
       cursor_visible = !cursor_visible;
       fb_move_cursor(cursor_row, cursor_col, -1);
-      fb_flush();
       kernel_sleep(blink_half_period);
    }
 }
@@ -377,26 +292,36 @@ static void fb_draw_banner(void)
    fb_draw_string_at_raw(h->width/2, h->height/2, lbuf, COLOR_BRIGHT_YELLOW);
 }
 
-static void fb_flush_banner(void)
-{
-   fpu_context_begin();
-   {
-      fb_flush_lines(0, fb_offset_y);
-   }
-   fpu_context_end();
-}
-
 static void fb_update_banner_kthread()
 {
    while (true) {
       fb_draw_banner();
-      fb_flush_banner();
       kernel_sleep(60 * TIMER_HZ);
    }
 }
 
+static void fb_scroll_one_line_up(void)
+{
+   psf2_header *h = fb_font_header;
+
+   bool enabled = cursor_enabled;
+
+   if (enabled)
+     fb_disable_cursor();
+
+   fb_lines_shift_up(fb_offset_y + h->height, /* source: row 1 (+ following) */
+                     fb_offset_y,             /* destination: row 0 */
+                     fb_get_height() - fb_offset_y - h->height);
+
+   if (enabled)
+      fb_enable_cursor();
+}
+
 static void fb_use_optimized_funcs_if_possible(void)
 {
+   if (in_hypervisor())
+      framebuffer_vi.scroll_one_line_up = fb_scroll_one_line_up;
+
    if (in_panic())
       return;
 
@@ -413,6 +338,7 @@ static void fb_use_optimized_funcs_if_possible(void)
    }
 
    use_optimized = true;
+
    framebuffer_vi.set_char_at = fb_set_char_at_optimized;
    framebuffer_vi.set_row = fb_set_row_optimized;
    printk("[fb_console] Use optimized functions\n");
@@ -430,20 +356,6 @@ void init_framebuffer_console(bool use_also_serial_port)
    ASSERT(!(h->width % 8)); // Support only fonts with width = 8, 16, 24, 32, ..
 
    fb_map_in_kernel_space();
-
-   if (framebuffer_vi.flush_buffers && !in_panic() && !in_hypervisor()) {
-      /*
-       * In hypervisors, using double buffering just slows the fb_console,
-       * therefore, we enable it only when running on bare-metal.
-       */
-
-      if (fb_alloc_shadow_buffer()) {
-         printk("[fb_console] Using double buffering\n");
-      } else {
-         printk("WARNING: unable to use double buffering for the framebuffer\n");
-      }
-   }
-
    fb_setup_banner();
 
    fb_term_rows = (fb_get_height() - fb_offset_y) / h->height;
@@ -501,9 +413,6 @@ void internal_selftest_fb_perf(bool use_fpu)
    duration = RDTSC() - start;
    cycles = duration / iters;
 
-   if (framebuffer_vi.flush_buffers)
-      fb_full_flush();
-
    u64 pixels = fb_get_width() * fb_get_height();
    printk("fb size (pixels): %u\n", pixels);
    printk("cycles per redraw: %llu\n", cycles);
@@ -511,7 +420,6 @@ void internal_selftest_fb_perf(bool use_fpu)
    printk("use_fpu: %d\n", use_fpu);
 
    fb_draw_banner();
-   fb_flush_banner();
 }
 
 void selftest_fb_perf(void)
