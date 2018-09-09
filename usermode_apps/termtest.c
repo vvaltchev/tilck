@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <ctype.h>
 
 #include <unistd.h>
@@ -9,7 +10,15 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <tilck/common/debug/termios_debug.c.h>
+#ifdef USERMODE_APP
+   /* It means that the application is compiled with Tilck's build system */
+   #include <tilck/common/debug/termios_debug.c.h>
+#endif
+
+#define RDTSC() __builtin_ia32_rdtsc()
+
+#define CSI_ERASE_DISPLAY          "\033[2J"
+#define CSI_MOVE_CURSOR_TOP_LEFT   "\033[1;1H"
 
 struct termios orig_termios;
 
@@ -137,15 +146,59 @@ void write_to_stdin(void)
    printf("read(%d): 0x%x\n", r, c);
 }
 
-void show_help_and_exit()
+void console_perf_test(void)
+{
+   static const char letters[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+   const int iters = 10;
+   struct winsize w;
+   char *buf;
+
+   ioctl(1, TIOCGWINSZ, &w);
+
+   buf = malloc(w.ws_row * w.ws_col);
+
+   if (!buf) {
+      printf("Out of memory\n");
+      return;
+   }
+
+   for (int i = 0; i < w.ws_row * w.ws_col; i++) {
+      buf[i] = letters[i % (sizeof(letters) - 1)];
+   }
+
+   printf("%s", CSI_ERASE_DISPLAY CSI_MOVE_CURSOR_TOP_LEFT);
+
+   uint64_t start = RDTSC();
+
+   for (int i = 0; i < iters; i++) {
+      write(1, buf, w.ws_row * w.ws_col);
+   }
+
+   uint64_t end = RDTSC();
+   unsigned long long c = (end - start) / iters;
+
+   printf("Term size: %d rows x %d cols\n", w.ws_row, w.ws_col);
+   printf("Screen redraw:       %10llu cycles\n", c);
+   printf("Avg. character cost: %10llu cycles\n", c / (w.ws_row * w.ws_col));
+   free(buf);
+}
+
+void show_help_and_exit(void)
 {
    printf("Options:\n");
-   printf("    -s debug_dump_termios()\n");
    printf("    -r one_read()\n");
    printf("    -e echo_read()\n");
    printf("    -1 read_1_canon_mode()\n");
    printf("    -c read_canon_mode()\n");
    printf("    -w write_to_stdin()\n");
+
+#ifdef USERMODE_APP
+   printf("    -s debug_dump_termios()\n");
+#endif
+
+   printf("    -p console_perf_test()\n");
    exit(1);
 }
 
@@ -157,8 +210,8 @@ int main(int argc, char ** argv)
       show_help_and_exit();
    }
 
-   if (!strcmp(argv[1], "-s")) {
-      debug_dump_termios(&orig_termios);
+   if (0) {
+      /* Dummy, used just to allow all the below to be like "} else if (" */
    } else if (!strcmp(argv[1], "-e")) {
       echo_read();
    } else if (!strcmp(argv[1], "-1")) {
@@ -169,6 +222,14 @@ int main(int argc, char ** argv)
       one_read();
    } else if (!strcmp(argv[1], "-w")) {
       write_to_stdin();
+
+#ifdef USERMODE_APP
+   } else if (!strcmp(argv[1], "-s")) {
+      debug_dump_termios(&orig_termios);
+#endif
+
+   } else if (!strcmp(argv[1], "-p")) {
+      console_perf_test();
    } else {
       show_help_and_exit();
    }

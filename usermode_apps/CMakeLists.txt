@@ -6,6 +6,8 @@ if (${ARCH} STREQUAL "i386")
 
 endif()
 
+add_definitions(-DUSERMODE_APP)
+
 set(APPS_BIN_FILES "")
 
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS) # Remove -rdynamic
