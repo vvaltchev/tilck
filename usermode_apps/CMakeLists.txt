@@ -29,12 +29,18 @@ list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/termtest")
 target_include_directories(termtest PUBLIC ${CMAKE_SOURCE_DIR}/include)
 target_compile_definitions(termtest PUBLIC USERMODE_APP)
 
+file(GLOB TERMTEST_SOURCES "fbtest*.c")
+add_executable(fbtest ${TERMTEST_SOURCES})
+list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/fbtest")
+target_include_directories(fbtest PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_compile_definitions(fbtest PUBLIC USERMODE_APP)
+
 add_custom_target(
 
    usermode_apps
 
    DEPENDS
-      init devshell termtest
+      init devshell termtest fbtest
 )
 
 if (EXISTS "${TCROOT}/ncurses_install/lib/libncurses_g.a")
