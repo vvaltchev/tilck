@@ -11,6 +11,13 @@ extern u32 fb_width;
 extern u32 fb_height;
 extern u32 fb_bpp;
 
+extern u8 fb_red_pos;
+extern u8 fb_red_mask_size;
+extern u8 fb_green_pos;
+extern u8 fb_green_mask_size;
+extern u8 fb_blue_pos;
+extern u8 fb_blue_mask_size;
+
 extern bool graphics_mode;
 extern u32 selected_mode;
 
@@ -173,6 +180,13 @@ void ask_user_video_mode(void)
    fb_height = mi->YResolution;
    fb_pitch = mi->BytesPerScanLine;
    fb_bpp = mi->BitsPerPixel;
+
+   fb_red_pos = mi->RedFieldPosition;
+   fb_red_mask_size = mi->RedMaskSize;
+   fb_green_pos = mi->GreenFieldPosition;
+   fb_green_mask_size = mi->GreenMaskSize;
+   fb_blue_pos = mi->BlueFieldPosition;
+   fb_blue_mask_size = mi->BlueMaskSize;
 
    if (vb->VbeVersion >= 0x300)
       fb_pitch = mi->LinBytesPerScanLine;

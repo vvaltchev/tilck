@@ -23,8 +23,15 @@ static u32 fb_pitch;
 static u32 fb_width;
 static u32 fb_height;
 static u8 fb_bpp; /* bits per pixel */
-static u32 fb_size;
 
+static u8 fb_red_pos;
+static u8 fb_red_mask_size;
+static u8 fb_green_pos;
+static u8 fb_green_mask_size;
+static u8 fb_blue_pos;
+static u8 fb_blue_mask_size;
+
+static u32 fb_size;
 static u32 fb_bytes_per_pixel;
 static u32 fb_line_length;
 
@@ -42,6 +49,17 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
    fb_width = mbi->framebuffer_width;
    fb_height = mbi->framebuffer_height;
    fb_bpp = mbi->framebuffer_bpp;
+
+   fb_red_pos = mbi->framebuffer_red_field_position;
+   fb_red_mask_size = mbi->framebuffer_red_mask_size;
+   fb_green_pos = mbi->framebuffer_green_field_position;
+   fb_green_mask_size = mbi->framebuffer_green_mask_size;
+   fb_blue_pos = mbi->framebuffer_blue_field_position;
+   fb_blue_mask_size = mbi->framebuffer_blue_mask_size;
+
+   printk("red   [pos: %u, ms: %u]\n", fb_red_pos, fb_red_mask_size);
+   printk("green [pos: %u, ms: %u]\n", fb_green_pos, fb_green_mask_size);
+   printk("blue  [pos: %u, ms: %u]\n", fb_blue_pos, fb_blue_mask_size);
 
    fb_bytes_per_pixel = fb_bpp / 8;
    fb_line_length = fb_width * fb_bytes_per_pixel;

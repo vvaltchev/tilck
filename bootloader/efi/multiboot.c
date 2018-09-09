@@ -44,6 +44,20 @@ MbiSetFramebufferInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info,
    mbi->framebuffer_bpp = sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) * 8;
    mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
 
+   if (mode_info->PixelFormat == PixelBlueGreenRedReserved8BitPerColor) {
+      mbi->framebuffer_red_field_position = 16;
+      mbi->framebuffer_green_field_position = 8;
+      mbi->framebuffer_blue_field_position = 0;
+   } else if (mode_info->PixelFormat == PixelRedGreenBlueReserved8BitPerColor) {
+      mbi->framebuffer_red_field_position = 0;
+      mbi->framebuffer_green_field_position = 8;
+      mbi->framebuffer_blue_field_position = 16;
+   }
+
+   mbi->framebuffer_red_mask_size = 8;
+   mbi->framebuffer_green_mask_size = 8;
+   mbi->framebuffer_blue_mask_size = 8;
+
 end:
    return status;
 }

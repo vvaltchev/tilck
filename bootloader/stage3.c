@@ -56,11 +56,19 @@ mem_area_t *mem_areas = (void *)(16 * KB + sizeof(mem_area_t));
 u32 mem_areas_count = 0;
 
 bool graphics_mode; // false = text mode
+
 u32 fb_paddr;
 u32 fb_pitch;
 u32 fb_width;
 u32 fb_height;
 u32 fb_bpp;
+
+u8 fb_red_pos;
+u8 fb_red_mask_size;
+u8 fb_green_pos;
+u8 fb_green_mask_size;
+u8 fb_blue_pos;
+u8 fb_blue_mask_size;
 
 u32 selected_mode = VGA_COLOR_TEXT_MODE_80x25; /* default */
 
@@ -168,6 +176,12 @@ multiboot_info_t *setup_multiboot_info(void)
       mbi->framebuffer_height = fb_height;
       mbi->framebuffer_bpp = fb_bpp;
       mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
+      mbi->framebuffer_red_field_position = fb_red_pos;
+      mbi->framebuffer_red_mask_size = fb_red_mask_size;
+      mbi->framebuffer_green_field_position = fb_green_pos;
+      mbi->framebuffer_green_mask_size = fb_green_mask_size;
+      mbi->framebuffer_blue_field_position = fb_blue_pos;
+      mbi->framebuffer_blue_mask_size = fb_blue_mask_size;
    }
 
    mbi->flags |= MULTIBOOT_INFO_MODS;
