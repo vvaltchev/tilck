@@ -26,7 +26,8 @@ static bool IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
    if (sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) != 4)
       return false;
 
-   return mi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor;
+   return mi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor ||
+          mi->PixelFormat == PixelRedGreenBlueReserved8BitPerColor;
 }
 
 static bool IsKnownAndSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)

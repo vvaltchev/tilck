@@ -31,41 +31,16 @@ static u32 *under_cursor_buf;
 static volatile bool cursor_visible = true;
 static task_info *blink_thread_ti;
 static const u32 blink_half_period = (TIMER_HZ * 45)/100;
-static u32 cursor_color = fb_make_color(255, 255, 255);
+static u32 cursor_color;
 
 static video_interface framebuffer_vi;
-
-#define DARK_VAL    (168 /* vga */ + 0)
-#define BRIGHT_VAL  (252 /* vga */ + 0)
-
-u32 vga_rgb_colors[16] =
-{
-   [COLOR_BLACK] = fb_make_color(0, 0, 0),
-   [COLOR_BLUE] = fb_make_color(0, 0, DARK_VAL + 70),
-   [COLOR_GREEN] = fb_make_color(0, DARK_VAL, 0),
-   [COLOR_CYAN] = fb_make_color(0, DARK_VAL, DARK_VAL),
-   [COLOR_RED] = fb_make_color(DARK_VAL, 0, 0),
-   [COLOR_MAGENTA] = fb_make_color(DARK_VAL, 0, DARK_VAL),
-   [COLOR_YELLOW] = fb_make_color(DARK_VAL, DARK_VAL, 0),
-   [COLOR_WHITE] = fb_make_color(208, 208, 208),
-   [COLOR_BRIGHT_BLACK] = fb_make_color(DARK_VAL, DARK_VAL, DARK_VAL),
-   [COLOR_BRIGHT_BLUE] = fb_make_color(0, 0, BRIGHT_VAL),
-   [COLOR_BRIGHT_GREEN] = fb_make_color(0, BRIGHT_VAL, 0),
-   [COLOR_BRIGHT_CYAN] = fb_make_color(0, BRIGHT_VAL, BRIGHT_VAL),
-   [COLOR_BRIGHT_RED] = fb_make_color(BRIGHT_VAL, 0, 0),
-   [COLOR_BRIGHT_MAGENTA] = fb_make_color(BRIGHT_VAL, 0, BRIGHT_VAL),
-   [COLOR_BRIGHT_YELLOW] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, 0),
-   [COLOR_BRIGHT_WHITE] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, BRIGHT_VAL)
-};
 
 void fb_save_under_cursor_buf(void)
 {
    if (!under_cursor_buf)
       return;
 
-   // Assumption: bbp is 32
    psf2_header *h = fb_font_header;
-
    const u32 ix = cursor_col * h->width;
    const u32 iy = fb_offset_y + cursor_row * h->height;
    fb_copy_from_screen(ix, iy, h->width, h->height, under_cursor_buf);
@@ -76,9 +51,7 @@ void fb_restore_under_cursor_buf(void)
    if (!under_cursor_buf)
       return;
 
-   // Assumption: bbp is 32
    psf2_header *h = fb_font_header;
-
    const u32 ix = cursor_col * h->width;
    const u32 iy = fb_offset_y + cursor_row * h->height;
    fb_copy_to_screen(ix, iy, h->width, h->height, under_cursor_buf);
@@ -346,6 +319,11 @@ static void fb_use_optimized_funcs_if_possible(void)
 
 void init_framebuffer_console(bool use_also_serial_port)
 {
+   ASSERT(use_framebuffer());
+   ASSERT(fb_get_width() > 0);
+
+   cursor_color = vga_rgb_colors[COLOR_BRIGHT_WHITE];
+
    fb_font_header = fb_get_width() / 8 < 160
                         ? (void *)&_binary_font8x16_psf_start
                         : (void *)&_binary_font16x32_psf_start;

@@ -18,18 +18,20 @@
 
 #include "fb_int.h"
 
+void append_mem_region(memory_region_t r);
+
 static uptr fb_paddr;
 static u32 fb_pitch;
 static u32 fb_width;
 static u32 fb_height;
 static u8 fb_bpp; /* bits per pixel */
 
-static u8 fb_red_pos;
-static u8 fb_red_mask_size;
-static u8 fb_green_pos;
-static u8 fb_green_mask_size;
-static u8 fb_blue_pos;
-static u8 fb_blue_mask_size;
+u8 fb_red_pos;
+u8 fb_green_pos;
+u8 fb_blue_pos;
+u32 fb_red_mask;
+u32 fb_green_mask;
+u32 fb_blue_mask;
 
 static u32 fb_size;
 static u32 fb_bytes_per_pixel;
@@ -38,7 +40,35 @@ static u32 fb_line_length;
 static uptr fb_vaddr;
 static u32 *fb_w8_char_scanlines;
 
-void append_mem_region(memory_region_t r);
+
+#define DARK_VAL    (168 /* vga */ + 0)
+#define BRIGHT_VAL  (252 /* vga */ + 0)
+
+u32 vga_rgb_colors[16];
+extern inline u32 fb_make_color(u32 r, u32 g, u32 b);
+
+
+static void fb_init_colors(void)
+{
+   u32 *c = vga_rgb_colors;
+
+   c[COLOR_BLACK] = fb_make_color(0, 0, 0);
+   c[COLOR_BLUE] = fb_make_color(0, 0, DARK_VAL + 70);
+   c[COLOR_GREEN] = fb_make_color(0, DARK_VAL, 0);
+   c[COLOR_CYAN] = fb_make_color(0, DARK_VAL, DARK_VAL);
+   c[COLOR_RED] = fb_make_color(DARK_VAL, 0, 0);
+   c[COLOR_MAGENTA] = fb_make_color(DARK_VAL, 0, DARK_VAL);
+   c[COLOR_YELLOW] = fb_make_color(DARK_VAL, DARK_VAL, 0);
+   c[COLOR_WHITE] = fb_make_color(208, 208, 208);
+   c[COLOR_BRIGHT_BLACK] = fb_make_color(DARK_VAL, DARK_VAL, DARK_VAL);
+   c[COLOR_BRIGHT_BLUE] = fb_make_color(0, 0, BRIGHT_VAL);
+   c[COLOR_BRIGHT_GREEN] = fb_make_color(0, BRIGHT_VAL, 0);
+   c[COLOR_BRIGHT_CYAN] = fb_make_color(0, BRIGHT_VAL, BRIGHT_VAL);
+   c[COLOR_BRIGHT_RED] = fb_make_color(BRIGHT_VAL, 0, 0);
+   c[COLOR_BRIGHT_MAGENTA] = fb_make_color(BRIGHT_VAL, 0, BRIGHT_VAL);
+   c[COLOR_BRIGHT_YELLOW] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, 0);
+   c[COLOR_BRIGHT_WHITE] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, BRIGHT_VAL);
+}
 
 void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
 {
@@ -51,19 +81,21 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
    fb_bpp = mbi->framebuffer_bpp;
 
    fb_red_pos = mbi->framebuffer_red_field_position;
-   fb_red_mask_size = mbi->framebuffer_red_mask_size;
+   fb_red_mask = ((1 << mbi->framebuffer_red_mask_size)-1) << fb_red_pos;
    fb_green_pos = mbi->framebuffer_green_field_position;
-   fb_green_mask_size = mbi->framebuffer_green_mask_size;
+   fb_green_mask = ((1 << mbi->framebuffer_green_mask_size)-1) << fb_green_pos;
    fb_blue_pos = mbi->framebuffer_blue_field_position;
-   fb_blue_mask_size = mbi->framebuffer_blue_mask_size;
+   fb_blue_mask = ((1 << mbi->framebuffer_blue_mask_size)-1) << fb_blue_pos;
 
-   printk("red   [pos: %u, ms: %u]\n", fb_red_pos, fb_red_mask_size);
-   printk("green [pos: %u, ms: %u]\n", fb_green_pos, fb_green_mask_size);
-   printk("blue  [pos: %u, ms: %u]\n", fb_blue_pos, fb_blue_mask_size);
+   //printk("red   [pos: %2u, mask: %p]\n", fb_red_pos, fb_red_mask);
+   //printk("green [pos: %2u, mask: %p]\n", fb_green_pos, fb_green_mask);
+   //printk("blue  [pos: %2u, mask: %p]\n", fb_blue_pos, fb_blue_mask);
 
    fb_bytes_per_pixel = fb_bpp / 8;
    fb_line_length = fb_width * fb_bytes_per_pixel;
    fb_size = fb_pitch * fb_height;
+
+   fb_init_colors();
 
    append_mem_region((memory_region_t) {
       .addr = fb_paddr,
