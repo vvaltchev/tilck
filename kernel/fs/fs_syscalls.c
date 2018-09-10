@@ -128,8 +128,8 @@ sptr sys_close(int fd)
    vfs_close(handle);
    curr->pi->handles[fd] = NULL;
 
-   enable_preemption();
 end:
+   enable_preemption();
    return ret;
 }
 
