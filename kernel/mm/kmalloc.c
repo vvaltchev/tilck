@@ -426,6 +426,7 @@ per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags)
 {
    void *addr;
    const bool multi_step_alloc = !!(flags & KMALLOC_FL_MULTI_STEP);
+   const bool do_actual_alloc = !(flags & KMALLOC_FL_NO_ACTUAL_ALLOC);
    const u32 sub_blocks_min_size = flags & KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK;
 
    ASSERT(*size != 0);
@@ -448,7 +449,7 @@ per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags)
                               *size,      /* block size */
                               0,          /* start node */
                               h->size,    /* start node size */
-                              true        /* do_actual_alloc */);
+                              do_actual_alloc);
 
       if (sub_blocks_min_size && addr) {
          internal_kmalloc_split_block(h, addr, *size, sub_blocks_min_size);
@@ -460,6 +461,9 @@ per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags)
    /*
     * multi_step_alloc is true, therefore we can do multiple allocations in
     * order to allocate almost exactly (round-up at min_block_size) bytes.
+    *
+    * TODO: should we mark as free the remaining of big_block after the "for"
+    * loop below?
     */
 
    const size_t desired_size = *size;
@@ -478,7 +482,12 @@ per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags)
       if (!(desired_size & s))
          continue;
 
-      addr = internal_kmalloc(h, s, big_block_node, rounded_up_size, true);
+      addr = internal_kmalloc(h,
+                              s,
+                              big_block_node,
+                              rounded_up_size,
+                              do_actual_alloc);
+
       ASSERT(addr == big_block + tot);
 
       if (sub_blocks_min_size) {
@@ -493,8 +502,12 @@ per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags)
 }
 
 
-void
-internal_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
+static void
+internal_kfree(kmalloc_heap *h,
+               void *ptr,
+               size_t size,
+               bool allow_split,
+               bool do_actual_free)
 {
    const int node = ptr_to_node(h, ptr, size);
    size_t free_size_correction = 0;
@@ -531,7 +544,7 @@ internal_kfree(kmalloc_heap *h, void *ptr, size_t size, bool allow_split)
          return;
    }
 
-   if (h->linear_mapping)
+   if (h->linear_mapping || !do_actual_free)
       return; // nothing to do!
 
    uptr alloc_block_vaddr = (uptr)ptr & ~(h->alloc_block_size - 1);
@@ -620,6 +633,7 @@ per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
    size_t size;
    const bool allow_split = !!(flags & KFREE_FL_ALLOW_SPLIT);
    const bool multi_step_free = !!(flags & KFREE_FL_MULTI_STEP);
+   const bool do_actual_free = !(flags & KFREE_FL_NO_ACTUAL_FREE);
 
    DEBUG_ONLY(uptr vaddr = (uptr)ptr);
    ASSERT(!is_preemption_enabled());
@@ -637,7 +651,7 @@ per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
 
       *user_size = size;
       ASSERT(vaddr + size <= h->heap_over_end);
-      return internal_kfree(h, ptr, size, allow_split);
+      return internal_kfree(h, ptr, size, allow_split, do_actual_free);
    }
 
    size = *user_size; /*
@@ -659,7 +673,7 @@ per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
       if (!(size & sub_block_size))
          continue;
 
-      internal_kfree(h, ptr + tot, sub_block_size, allow_split);
+      internal_kfree(h, ptr + tot, sub_block_size, allow_split, do_actual_free);
       tot += sub_block_size;
    }
 
