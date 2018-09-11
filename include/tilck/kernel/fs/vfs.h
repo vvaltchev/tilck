@@ -49,7 +49,7 @@ typedef ssize_t (*func_write) (fs_handle, char *, size_t);
 typedef off_t (*func_seek) (fs_handle, off_t, int);
 typedef int (*func_ioctl) (fs_handle, uptr, void *);
 typedef int (*func_stat) (fs_handle, struct stat *);
-typedef int (*func_mmap) (fs_handle, void *vaddr);
+typedef int (*func_mmap) (fs_handle, void *vaddr, size_t);
 
 typedef void (*func_ex_lock)(fs_handle);
 typedef void (*func_ex_unlock)(fs_handle);

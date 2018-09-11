@@ -235,6 +235,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    process_info *pi = curr->pi;
    fs_handle_base *handle = NULL;
    devfs_file_handle *devfs_handle = NULL;
+   u32 per_heap_kmalloc_flags = KMALLOC_FL_MULTI_STEP | PAGE_SIZE;
    size_t actual_len;
    void *res;
    int rc;
@@ -292,7 +293,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       if (!devfs_handle->fops.mmap)
          return -ENODEV; /* this device file does not support memory mapping */
 
-      NOT_IMPLEMENTED();
+      per_heap_kmalloc_flags |= KMALLOC_FL_NO_ACTUAL_ALLOC;
    }
 
    if (!pi->mmap_heap)
@@ -303,7 +304,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    {
       res = per_heap_kmalloc(pi->mmap_heap,
                              &actual_len,
-                             KMALLOC_FL_MULTI_STEP | PAGE_SIZE);
+                             per_heap_kmalloc_flags);
    }
    enable_preemption();
 
@@ -316,6 +317,28 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    if (!handle)
       bzero(res, actual_len);
 #endif
+
+   if (devfs_handle) {
+      if ((rc = devfs_handle->fops.mmap(handle, res, actual_len))) {
+
+         /*
+         * Everything was apparently OK and the allocation in the user virtual
+         * address space succeeded, but for some reason the actual mapping of the
+         * device to the user vaddr failed.
+         */
+
+         per_heap_kfree(pi->mmap_heap,
+                        res,
+                        &actual_len,
+                        KFREE_FL_ALLOW_SPLIT |
+                        KFREE_FL_MULTI_STEP  |
+                        KFREE_FL_NO_ACTUAL_FREE);
+
+         return rc;
+      }
+   }
+
+   // TODO: add the device-mapping to a per-process list (array).
 
    return (sptr)res;
 }
@@ -331,6 +354,9 @@ sptr sys_munmap(void *vaddr, size_t len)
 
    if ((uptr)vaddr < USER_MMAP_BEGIN || (uptr)vaddr >= USER_MMAP_END)
       return -EINVAL;
+
+   // TODO: check if vaddr is a device-mapping. In case it is, pass also the
+   // KFREE_FL_NO_ACTUAL_FREE flag to per_heap_kfree().
 
    disable_preemption();
    {
