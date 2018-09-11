@@ -33,7 +33,7 @@ int get_free_handle_num(task_info *task)
  * TODO: introduce a ref-count in the fs_base_handle struct and function like
  * put_fs_handle() or rename both to something like acquire/release_fs_handle.
  */
-static fs_handle get_fs_handle(int fd)
+fs_handle get_fs_handle(int fd)
 {
    task_info *curr = get_curr_task();
    fs_handle handle = NULL;

@@ -49,13 +49,12 @@ typedef ssize_t (*func_write) (fs_handle, char *, size_t);
 typedef off_t (*func_seek) (fs_handle, off_t, int);
 typedef int (*func_ioctl) (fs_handle, uptr, void *);
 typedef int (*func_stat) (fs_handle, struct stat *);
+typedef int (*func_mmap) (fs_handle, void *vaddr);
 
 typedef void (*func_ex_lock)(fs_handle);
 typedef void (*func_ex_unlock)(fs_handle);
 typedef void (*func_sh_lock)(fs_handle);
 typedef void (*func_sh_unlock)(fs_handle);
-
-
 
 
 #define VFS_FS_RO        (0)
@@ -88,6 +87,7 @@ typedef struct {
    func_seek seek;
    func_ioctl ioctl;
    func_stat stat;
+   func_mmap mmap;
 
    /* optional, per-file locks */
    func_ex_lock exlock;
@@ -156,3 +156,4 @@ int
 compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size);
 
 u32 vfs_get_new_device_id(void);
+fs_handle get_fs_handle(int fd);

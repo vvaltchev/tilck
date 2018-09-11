@@ -49,3 +49,4 @@ void create_and_register_devfs(void);
 int register_driver(driver_info *info);
 
 int create_dev_file(const char *filename, int major, int minor);
+filesystem *get_devfs(void);

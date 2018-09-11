@@ -12,13 +12,18 @@
 
 #include <dirent.h> // system header
 
-filesystem *devfs;
+static filesystem *devfs;
 
 /*
  * Registered drivers. The major number is just an index in this array.
  */
 static driver_info *drivers[16];
 static u32 drivers_count;
+
+filesystem *get_devfs(void)
+{
+   return devfs;
+}
 
 /*
  * Registers the driver described by 'info'.

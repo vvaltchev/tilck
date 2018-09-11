@@ -4,8 +4,8 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
-#define KMALLOC_METADATA_BLOCK_NODE_SIZE (1)
-#define KMALLOC_HEAPS_COUNT 32
+#define KMALLOC_METADATA_BLOCK_NODE_SIZE  (1)
+#define KMALLOC_HEAPS_COUNT              (32)
 
 #define KMALLOC_FL_MULTI_STEP               (0b10000000000000000000000000000000)
 #define KMALLOC_FL_RES1                     (0b01000000000000000000000000000000)
@@ -16,8 +16,8 @@
 #define KMALLOC_FL_ALIGN_16PTR_SIZE         (0b00110000000000000000000000000000)
 #define KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK  (0b00001111111111111111111111111111)
 
-#define KFREE_FL_MULTI_STEP                 ((u32)1 << 31)
-#define KFREE_FL_ALLOW_SPLIT                ((u32)1 << 30)
+#define KFREE_FL_MULTI_STEP                 (0b10000000000000000000000000000000)
+#define KFREE_FL_ALLOW_SPLIT                (0b01000000000000000000000000000000)
 
 typedef bool (*virtual_alloc_and_map_func)(uptr vaddr, int page_count);
 typedef void (*virtual_free_and_unmap_func)(uptr vaddr, int page_count);

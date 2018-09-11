@@ -5,6 +5,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/fs/devfs.h>
 
 page_directory_t *kernel_page_dir;
 page_directory_t *curr_page_dir;
@@ -197,60 +198,106 @@ ret:
 #define MAP_PRIVATE     0x02
 #define MAP_ANONYMOUS   0x20
 
+static int create_process_mmap_heap(process_info *pi)
+{
+   pi->mmap_heap = kzmalloc(kmalloc_get_heap_struct_size());
+
+   if (!pi->mmap_heap)
+      return -ENOMEM;
+
+   bool success =
+      kmalloc_create_heap(pi->mmap_heap,
+                          USER_MMAP_BEGIN,
+                          USER_MMAP_END - USER_MMAP_BEGIN,
+                          PAGE_SIZE,
+                          KMALLOC_MAX_ALIGN,    /* alloc block size */
+                          false,                /* linear mapping */
+                          NULL,                 /* metadata_nodes */
+#if MMAP_NO_COW
+                          user_valloc_and_map,
+                          user_vfree_and_unmap);
+#else
+                          user_map_zero_page,
+                          user_unmap_zero_page);
+#endif
+
+   if (!success)
+      return -ENOMEM;
+
+   return 0;
+}
+
 sptr
 sys_mmap_pgoff(void *addr, size_t len, int prot,
                int flags, int fd, size_t pgoffset)
 {
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
+   fs_handle_base *handle = NULL;
+   devfs_file_handle *devfs_handle = NULL;
+   size_t actual_len;
+   void *res;
+   int rc;
 
    //printk("mmap2(addr: %p, len: %u, prot: %u, flags: %p, fd: %d, off: %d)\n",
    //      addr, len, prot, flags, fd, pgoffset);
 
-   if (addr != NULL)
+   if ((flags & MAP_PRIVATE) && (flags & MAP_SHARED))
+      return -EINVAL; /* non-sense parameters */
+
+   if (!len)
       return -EINVAL;
 
-   if (!IS_PAGE_ALIGNED(len))
-      return -EINVAL;
+   if (addr)
+      return -EINVAL; /* addr != NULL not supported */
 
-   if (flags != (MAP_ANONYMOUS | MAP_PRIVATE))
-      return -EINVAL; /* support only anon + private mappings */
-
-   if (fd != -1 || pgoffset != 0)
-      return -EINVAL;
+   if (pgoffset != 0)
+      return -EINVAL; /* pgoffset != 0 not supported at the moment */
 
    if (prot != (PROT_READ | PROT_WRITE))
-      return -EINVAL; /* support only read/write allocs */
+      return -EINVAL; /* support only read/write mapping, for the moment */
 
-   if (!pi->mmap_heap) {
+   actual_len = round_up_at(len, PAGE_SIZE);
 
-      pi->mmap_heap = kzmalloc(kmalloc_get_heap_struct_size());
+   if (fd == -1) {
 
-      if (!pi->mmap_heap)
-         return -ENOMEM;
+      if (!(flags & MAP_ANONYMOUS))
+         return -EINVAL;
 
-      bool success =
-         kmalloc_create_heap(pi->mmap_heap,
-                             USER_MMAP_BEGIN,
-                             USER_MMAP_END - USER_MMAP_BEGIN,
-                             PAGE_SIZE,
-                             KMALLOC_MAX_ALIGN,    /* alloc block size */
-                             false,                /* linear mapping */
-                             NULL,                 /* metadata_nodes */
-#if MMAP_NO_COW
-                             user_valloc_and_map,
-                             user_vfree_and_unmap);
-#else
-                             user_map_zero_page,
-                             user_unmap_zero_page);
-#endif
+      if (flags & MAP_SHARED)
+         return -EINVAL; /* MAP_SHARED not supported for anonymous mappings */
 
-      if (!success)
-         return -ENOMEM;
+      if (!(flags & MAP_PRIVATE))
+         return -EINVAL;
+
+   } else {
+
+      if (!(flags & MAP_SHARED))
+         return -EINVAL;
+
+      disable_preemption();
+      {
+         handle = get_fs_handle(fd);
+      }
+      enable_preemption();
+
+      if (!handle)
+         return -EBADF;
+
+      if (handle->fs != get_devfs())
+         return -ENODEV; /* only special dev files can be memory-mapped */
+
+      devfs_handle = (devfs_file_handle *) handle;
+
+      if (!devfs_handle->fops.mmap)
+         return -ENODEV; /* this device file does not support memory mapping */
+
+      NOT_IMPLEMENTED();
    }
 
-   size_t actual_len = len;
-   void *res;
+   if (!pi->mmap_heap)
+      if ((rc = create_process_mmap_heap(pi)))
+         return rc;
 
    disable_preemption();
    {
@@ -266,7 +313,8 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       return -ENOMEM;
 
 #if MMAP_NO_COW
-   bzero(res, actual_len);
+   if (!handle)
+      bzero(res, actual_len);
 #endif
 
    return (sptr)res;
@@ -276,8 +324,9 @@ sptr sys_munmap(void *vaddr, size_t len)
 {
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
+   size_t actual_len;
 
-   if (!len || !pi->mmap_heap || !IS_PAGE_ALIGNED(len))
+   if (!len || !pi->mmap_heap)
       return -EINVAL;
 
    if ((uptr)vaddr < USER_MMAP_BEGIN || (uptr)vaddr >= USER_MMAP_END)
@@ -285,7 +334,7 @@ sptr sys_munmap(void *vaddr, size_t len)
 
    disable_preemption();
    {
-      size_t actual_len = len;
+      actual_len = round_up_at(len, PAGE_SIZE);
       per_heap_kfree(pi->mmap_heap,
                      vaddr,
                      &actual_len,
