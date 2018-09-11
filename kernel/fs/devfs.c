@@ -171,6 +171,59 @@ int devfs_char_dev_stat(fs_handle h, struct stat *statbuf)
    return 0;
 }
 
+static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
+{
+   devfs_file_handle *h;
+   h = kzmalloc(sizeof(devfs_file_handle));
+
+   if (!h)
+      return -ENOMEM;
+
+   h->type = DEVFS_DIRECTORY;
+   h->fs = fs;
+   h->fops = (file_ops) {
+      .read = devfs_dir_read,
+      .write = devfs_dir_write,
+      .seek = devfs_dir_seek,
+      .ioctl =  devfs_dir_ioctl,
+      .stat = devfs_dir_stat,
+      .exlock = NULL,
+      .exunlock = NULL,
+      .shlock = NULL,
+      .shunlock = NULL
+   };
+
+   *out = h;
+   return 0;
+}
+
+static int devfs_open_file(filesystem *fs, devfs_file *pos, fs_handle *out)
+{
+   devfs_file_handle *h;
+   h = kzmalloc(sizeof(devfs_file_handle));
+
+   if (!h)
+      return -ENOMEM;
+
+   h->read_buf = kzmalloc(DEVFS_READ_BS);
+
+   if (!h->read_buf) {
+      kfree2(h, sizeof(devfs_file_handle));
+      return -ENOMEM;
+   }
+
+   h->type = pos->type;
+   h->devfs_file_ptr = pos;
+   h->fs = fs;
+   h->fops = pos->fops;
+
+   if (!h->fops.stat)
+      h->fops.stat = devfs_char_dev_stat;
+
+   *out = h;
+   return 0;
+}
+
 static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
 {
    /*
@@ -182,30 +235,8 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
    path++;
 
    if (!*path) {
-
       /* path was "/" */
-      devfs_file_handle *h;
-      h = kzmalloc(sizeof(devfs_file_handle));
-
-      if (!h)
-         return -ENOMEM;
-
-      h->type = DEVFS_DIRECTORY;
-      h->fs = fs;
-      h->fops = (file_ops) {
-         .read = devfs_dir_read,
-         .write = devfs_dir_write,
-         .seek = devfs_dir_seek,
-         .ioctl =  devfs_dir_ioctl,
-         .stat = devfs_dir_stat,
-         .exlock = NULL,
-         .exunlock = NULL,
-         .shlock = NULL,
-         .shunlock = NULL
-      };
-
-      *out = h;
-      return 0;
+      return devfs_open_root_dir(fs, out);
    }
 
    devfs_data *d = fs->device_data;
@@ -218,30 +249,7 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
 
    list_for_each(pos, temp, &d->root_dir.files_list, list) {
       if (!strcmp(pos->name, path)) {
-
-         devfs_file_handle *h;
-         h = kzmalloc(sizeof(devfs_file_handle));
-
-         if (!h)
-            return -ENOMEM;
-
-         h->read_buf = kzmalloc(DEVFS_READ_BS);
-
-         if (!h->read_buf) {
-            kfree2(h, sizeof(devfs_file_handle));
-            return -ENOMEM;
-         }
-
-         h->type = pos->type;
-         h->devfs_file_ptr = pos;
-         h->fs = fs;
-         h->fops = pos->fops;
-
-         if (!h->fops.stat)
-            h->fops.stat = devfs_char_dev_stat;
-
-         *out = h;
-         return 0;
+         return devfs_open_file(fs, pos, out);
       }
    }
 

@@ -162,6 +162,9 @@ void init_drivers(void)
       panic("Unable to register debug Fn keypress handler");
 
    init_tty();
+
+   if (use_framebuffer())
+      init_fbdev();
 }
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)
