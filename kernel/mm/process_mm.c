@@ -323,8 +323,8 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
          /*
          * Everything was apparently OK and the allocation in the user virtual
-         * address space succeeded, but for some reason the actual mapping of the
-         * device to the user vaddr failed.
+         * address space succeeded, but for some reason the actual mapping of
+         * the device to the user vaddr failed.
          */
 
          per_heap_kfree(pi->mmap_heap,

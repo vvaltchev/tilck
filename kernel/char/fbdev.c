@@ -2,6 +2,10 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/user.h>
+#include <tilck/kernel/fb_console.h>
+
+#include <linux/fb.h> // system header
 
 static ssize_t fb_read(fs_handle fsh, char *buf, size_t size)
 {
@@ -15,6 +19,34 @@ static ssize_t fb_write(fs_handle h, char *buf, size_t size)
 
 static int fb_ioctl(fs_handle h, uptr request, void *argp)
 {
+   if (request == FBIOGET_FSCREENINFO) {
+
+      struct fb_fix_screeninfo fix_info;
+      int rc;
+
+      fb_fill_fix_info(&fix_info);
+      rc = copy_to_user(argp, &fix_info, sizeof(fix_info));
+
+      if (rc != 0)
+         return -EFAULT;
+
+      return 0;
+   }
+
+   if (request == FBIOGET_VSCREENINFO) {
+
+      struct fb_var_screeninfo var_info;
+      int rc;
+
+      fb_fill_var_info(&var_info);
+      rc = copy_to_user(argp, &var_info, sizeof(var_info));
+
+      if (rc != 0)
+         return -EFAULT;
+
+      return 0;
+   }
+
    return -EINVAL;
 }
 

@@ -29,6 +29,11 @@ static u8 fb_bpp; /* bits per pixel */
 u8 fb_red_pos;
 u8 fb_green_pos;
 u8 fb_blue_pos;
+
+u8 fb_red_mask_size;
+u8 fb_green_mask_size;
+u8 fb_blue_mask_size;
+
 u32 fb_red_mask;
 u32 fb_green_mask;
 u32 fb_blue_mask;
@@ -81,11 +86,16 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
    fb_bpp = mbi->framebuffer_bpp;
 
    fb_red_pos = mbi->framebuffer_red_field_position;
-   fb_red_mask = ((1 << mbi->framebuffer_red_mask_size)-1) << fb_red_pos;
+   fb_red_mask_size = mbi->framebuffer_red_mask_size;
+   fb_red_mask = ((1 << fb_red_mask_size) - 1) << fb_red_pos;
+
    fb_green_pos = mbi->framebuffer_green_field_position;
-   fb_green_mask = ((1 << mbi->framebuffer_green_mask_size)-1) << fb_green_pos;
+   fb_green_mask_size = mbi->framebuffer_green_mask_size;
+   fb_green_mask = ((1 << fb_green_mask_size) - 1) << fb_green_pos;
+
    fb_blue_pos = mbi->framebuffer_blue_field_position;
-   fb_blue_mask = ((1 << mbi->framebuffer_blue_mask_size)-1) << fb_blue_pos;
+   fb_blue_mask_size = mbi->framebuffer_blue_mask_size;
+   fb_blue_mask = ((1 << fb_blue_mask_size) - 1) << fb_blue_pos;
 
    //printk("red   [pos: %2u, mask: %p]\n", fb_red_pos, fb_red_mask);
    //printk("green [pos: %2u, mask: %p]\n", fb_green_pos, fb_green_mask);
@@ -454,4 +464,39 @@ void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count)
          }
 
    }
+}
+
+
+#include <linux/fb.h>
+
+void fb_fill_fix_info(void *fix_info)
+{
+   struct fb_fix_screeninfo *fi = fix_info;
+   bzero(fi, sizeof(*fi));
+
+   memcpy(fi->id, "fbdev", 5);
+   fi->smem_start = fb_paddr;
+   fi->smem_len = fb_size;
+   fi->line_length = fb_pitch;
+}
+
+void fb_fill_var_info(void *var_info)
+{
+   struct fb_var_screeninfo *vi = var_info;
+   bzero(vi, sizeof(*vi));
+
+   vi->xres = fb_width;
+   vi->yres = fb_height;
+   vi->xres_virtual = fb_width;
+   vi->yres_virtual = fb_height;
+   vi->bits_per_pixel = fb_bpp;
+
+   vi->red.offset = fb_red_pos;
+   vi->red.length = fb_red_mask_size;
+   vi->green.offset = fb_green_pos;
+   vi->green.length = fb_green_mask_size;
+   vi->blue.offset = fb_blue_pos;
+   vi->blue.length = fb_blue_mask_size;
+
+   // NOTE: vi->{red, green, blue}.msb_right = 0
 }

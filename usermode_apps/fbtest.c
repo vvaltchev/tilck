@@ -208,6 +208,21 @@ void dump_fb_var_info(void)
    printf("height (mm):    %u\n", fbi.height);
    printf("width (mm):     %u\n", fbi.width);
    printf("pixclock (ps):  %u\n", fbi.pixclock);
+
+   printf("red:\n");
+   printf("    offset:     %u\n", fbi.red.offset);
+   printf("    length:     %u\n", fbi.red.length);
+   printf("    msb_right:  %u\n", fbi.red.msb_right);
+
+   printf("green:\n");
+   printf("    offset:     %u\n", fbi.green.offset);
+   printf("    length:     %u\n", fbi.green.length);
+   printf("    msb_right:  %u\n", fbi.green.msb_right);
+
+   printf("blue:\n");
+   printf("    offset:     %u\n", fbi.blue.offset);
+   printf("    length:     %u\n", fbi.blue.length);
+   printf("    msb_right:  %u\n", fbi.blue.msb_right);
 }
 
 int main(int argc, char **argv)
