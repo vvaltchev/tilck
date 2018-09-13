@@ -31,6 +31,16 @@ typedef enum {
    TASK_STATE_ZOMBIE = 3
 } task_state_enum;
 
+typedef struct {
+
+   list_node mappings_list;
+
+   int fd;
+   void *vaddr;
+   size_t page_count;
+
+} user_mapping;
+
 struct process_info {
 
    int ref_count;
@@ -53,6 +63,8 @@ struct process_info {
     */
 
    int *set_child_tid; /* NOTE: this is an user pointer */
+
+   list_node mappings;
 };
 
 typedef struct process_info process_info;
@@ -152,6 +164,10 @@ static ALWAYS_INLINE bool is_kernel_thread(task_info *ti)
 {
    return ti->pid == 0;
 }
+
+void process_add_user_mapping(int fd, void *vaddr, size_t page_count);
+void process_remove_user_mapping(user_mapping *um);
+user_mapping *process_get_user_mapping(void *vaddr);
 
 void save_current_task_state(regs *);
 void account_ticks(void);

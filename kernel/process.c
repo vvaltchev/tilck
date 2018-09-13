@@ -157,6 +157,22 @@ void free_task(task_info *ti)
    }
 }
 
+void process_add_user_mapping(int fd, void *vaddr, size_t page_count)
+{
+   // TODO: implement process_add_user_mapping
+}
+
+void process_remove_user_mapping(user_mapping *um)
+{
+   // TODO: implement process_remove_user_mapping
+}
+
+user_mapping *process_get_user_mapping(void *vaddr)
+{
+   // TODO: implement process_get_user_mapping
+   return NULL;
+}
+
 
 /*
  * ***************************************************************

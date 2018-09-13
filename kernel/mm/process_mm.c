@@ -334,13 +334,13 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
          return rc;
       }
 
+      process_add_user_mapping(fd, res, actual_len);
+
    } else {
 
       if (MMAP_NO_COW)
          bzero(res, actual_len);
    }
-
-   // TODO: add the device-mapping to a per-process list (array).
 
    return (sptr)res;
 }
@@ -350,6 +350,7 @@ sptr sys_munmap(void *vaddr, size_t len)
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
    size_t actual_len;
+   u32 kfree_flags = KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP;
 
    if (!len || !pi->mmap_heap)
       return -EINVAL;
@@ -363,10 +364,19 @@ sptr sys_munmap(void *vaddr, size_t len)
    disable_preemption();
    {
       actual_len = round_up_at(len, PAGE_SIZE);
+
+      user_mapping *um = process_get_user_mapping(vaddr);
+
+      if (um) {
+         kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
+         process_remove_user_mapping(um);
+      }
+
       per_heap_kfree(pi->mmap_heap,
                      vaddr,
                      &actual_len,
-                     KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP);
+                     kfree_flags);
+
       ASSERT(actual_len == round_up_at(len, PAGE_SIZE));
    }
    enable_preemption();
