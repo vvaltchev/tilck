@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
@@ -11,16 +12,16 @@
 #include <unistd.h>
 #include <time.h>
 
-#define fbdev "/dev/fb0"
-#define ttydev "/dev/tty"
+#define FB_DEVICE "/dev/fb0"
+#define TTY_DEVICE "/dev/tty"
 
-#define fb_mode_assumption(x)                                   \
+#define FB_ASSUMPTION(x)                                        \
    if (!(x)) {                                                  \
       fprintf(stderr, "fb mode assumption '%s' failed\n", #x);  \
       return false;                                             \
    }
 
-struct fb_var_screeninfo fbinfo;
+struct fb_var_screeninfo fbi;
 struct fb_fix_screeninfo fb_fixinfo;
 
 char *buffer;
@@ -46,9 +47,9 @@ static inline void *memset32(void *s, uint32_t val, size_t n)
 
 static inline uint32_t make_color(uint8_t red, uint8_t green, uint8_t blue)
 {
-   return red << fbinfo.red.offset |
-          green << fbinfo.green.offset |
-          blue << fbinfo.blue.offset;
+   return red << fbi.red.offset |
+          green << fbi.green.offset |
+          blue << fbi.blue.offset;
 }
 
 static inline void set_pixel(uint32_t x, uint32_t y, uint32_t color)
@@ -69,34 +70,34 @@ void draw_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color)
 
 static bool check_fb_assumptions(void)
 {
-   fb_mode_assumption(fbinfo.bits_per_pixel == 32);
+   FB_ASSUMPTION(fbi.bits_per_pixel == 32);
 
-   fb_mode_assumption((fbinfo.red.offset % 8) == 0);
-   fb_mode_assumption((fbinfo.green.offset % 8) == 0);
-   fb_mode_assumption((fbinfo.blue.offset % 8) == 0);
-   fb_mode_assumption((fbinfo.transp.offset % 8) == 0);
+   FB_ASSUMPTION((fbi.red.offset % 8) == 0);
+   FB_ASSUMPTION((fbi.green.offset % 8) == 0);
+   FB_ASSUMPTION((fbi.blue.offset % 8) == 0);
+   FB_ASSUMPTION((fbi.transp.offset % 8) == 0);
 
-   fb_mode_assumption(fbinfo.red.length == 8);
-   fb_mode_assumption(fbinfo.green.length == 8);
-   fb_mode_assumption(fbinfo.blue.length == 8);
-   fb_mode_assumption(fbinfo.transp.length == 0);
+   FB_ASSUMPTION(fbi.red.length == 8);
+   FB_ASSUMPTION(fbi.green.length == 8);
+   FB_ASSUMPTION(fbi.blue.length == 8);
+   FB_ASSUMPTION(fbi.transp.length == 0);
 
-   fb_mode_assumption(fbinfo.xoffset == 0);
-   fb_mode_assumption(fbinfo.yoffset == 0);
+   FB_ASSUMPTION(fbi.xoffset == 0);
+   FB_ASSUMPTION(fbi.yoffset == 0);
 
-   fb_mode_assumption(fbinfo.red.msb_right == 0);
-   fb_mode_assumption(fbinfo.green.msb_right == 0);
-   fb_mode_assumption(fbinfo.blue.msb_right == 0);
+   FB_ASSUMPTION(fbi.red.msb_right == 0);
+   FB_ASSUMPTION(fbi.green.msb_right == 0);
+   FB_ASSUMPTION(fbi.blue.msb_right == 0);
 
    return true;
 }
 
 bool fb_acquire(void)
 {
-   fbfd = open(fbdev, O_RDWR);
+   fbfd = open(FB_DEVICE, O_RDWR);
 
    if (fbfd < 0) {
-      fprintf(stderr, "unable to open '%s'\n", fbdev);
+      fprintf(stderr, "unable to open '%s'\n", FB_DEVICE);
       return false;
    }
 
@@ -105,34 +106,34 @@ bool fb_acquire(void)
       return false;
    }
 
-   if (ioctl (fbfd, FBIOGET_VSCREENINFO, &fbinfo) != 0) {
+   if (ioctl (fbfd, FBIOGET_VSCREENINFO, &fbi) != 0) {
       fprintf(stderr, "ioctl(FBIOGET_VSCREENINFO) failed\n");
       return false;
    }
 
    fb_pitch = fb_fixinfo.line_length;
-   fb_size = fb_pitch * fbinfo.yres;
+   fb_size = fb_pitch * fbi.yres;
    fb_pitch_div4 = fb_pitch >> 2;
 
    if (!check_fb_assumptions())
       return false;
 
-   ttyfd = open(ttydev, O_RDWR);
+   ttyfd = open(TTY_DEVICE, O_RDWR);
 
    if (ttyfd < 0) {
-      fprintf(stderr, "Unable to open '%s'\n", ttydev);
+      fprintf(stderr, "Unable to open '%s'\n", TTY_DEVICE);
       return false;
    }
 
    if (ioctl(ttyfd, KDSETMODE, KD_GRAPHICS) != 0) {
-      fprintf(stderr, "Unable set tty into graphics mode on '%s'\n", ttydev);
-      return false;
+      fprintf(stderr,
+              "WARNING: unable set tty into graphics mode on '%s'\n", TTY_DEVICE);
    }
 
    buffer = mmap(0, fb_size, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0);
 
    if (buffer == MAP_FAILED) {
-      fprintf(stderr, "Unable to mmap framebuffer '%s'\n", fbdev);
+      fprintf(stderr, "Unable to mmap framebuffer '%s'\n", FB_DEVICE);
       return false;
    }
 
@@ -159,8 +160,70 @@ void draw_something(void)
    draw_rect(100, 100, 300, 200, make_color(255, 0, 0));
 }
 
+void dump_fb_fix_info(void)
+{
+   fbfd = open(FB_DEVICE, O_RDWR);
+
+   if (fbfd < 0) {
+      fprintf(stderr, "unable to open '%s'\n", FB_DEVICE);
+      return;
+   }
+
+   if (ioctl(fbfd, FBIOGET_FSCREENINFO, &fb_fixinfo) != 0) {
+      fprintf(stderr, "ioctl(FBIOGET_FSCREENINFO) failed\n");
+      return;
+   }
+
+   printf("id:          %s\n", fb_fixinfo.id);
+   printf("smem_start:  %p\n", fb_fixinfo.smem_start);
+   printf("smem_len:    %u\n", fb_fixinfo.smem_len);
+   printf("type:        %u\n", fb_fixinfo.type);
+   printf("visual:      %u\n", fb_fixinfo.visual);
+   printf("xpanstep:    %u\n", fb_fixinfo.xpanstep);
+   printf("ypanstep:    %u\n", fb_fixinfo.ypanstep);
+   printf("ywrapstep:   %u\n", fb_fixinfo.ywrapstep);
+   printf("line_length: %u\n", fb_fixinfo.line_length);
+   printf("mmio_start:  %p\n", fb_fixinfo.mmio_start);
+   printf("mmio_len:    %p\n", fb_fixinfo.mmio_len);
+}
+
+void dump_fb_var_info(void)
+{
+   fbfd = open(FB_DEVICE, O_RDWR);
+
+   if (fbfd < 0) {
+      fprintf(stderr, "unable to open '%s'\n", FB_DEVICE);
+      return;
+   }
+
+   if (ioctl (fbfd, FBIOGET_VSCREENINFO, &fbi) != 0) {
+      fprintf(stderr, "ioctl(FBIOGET_VSCREENINFO) failed\n");
+      return;
+   }
+
+   printf("xres:           %u\n", fbi.xres);
+   printf("yres:           %u\n", fbi.yres);
+   printf("xres_virtual:   %u\n", fbi.xres_virtual);
+   printf("yres_virtual:   %u\n", fbi.yres_virtual);
+   printf("height (mm):    %u\n", fbi.height);
+   printf("width (mm):     %u\n", fbi.width);
+   printf("pixclock (ps):  %u\n", fbi.pixclock);
+}
+
 int main(int argc, char **argv)
 {
+   if (argc > 1) {
+
+      if (!strcmp(argv[1], "-fi"))
+         dump_fb_fix_info();
+      else if (!strcmp(argv[1], "-vi"))
+         dump_fb_var_info();
+      else
+         printf("Unknown option '%s'\n", argv[1]);
+
+      return 0;
+   }
+
    if (!fb_acquire()) {
       fb_release();
       return 1;
