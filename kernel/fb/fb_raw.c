@@ -137,10 +137,15 @@ u32 fb_get_bpp(void)
    return fb_bpp;
 }
 
+void fb_user_mmap(void *vaddr, size_t mmap_len)
+{
+   map_framebuffer(fb_paddr, (uptr)vaddr, mmap_len, true);
+}
+
 void fb_map_in_kernel_space(void)
 {
    fb_vaddr = KERNEL_BASE_VA + (1024 - 64) * MB;
-   map_framebuffer(fb_paddr, fb_vaddr, fb_size);
+   map_framebuffer(fb_paddr, fb_vaddr, fb_size, false);
 }
 
 /*

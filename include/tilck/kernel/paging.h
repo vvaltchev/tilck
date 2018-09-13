@@ -97,5 +97,5 @@ static ALWAYS_INLINE page_directory_t *get_kernel_pdir()
    return kernel_page_dir;
 }
 
-void map_framebuffer(uptr paddr, uptr vaddr, uptr size);
+void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap);
 void set_pages_pat_wc(page_directory_t *pdir, void *vaddr, size_t size);

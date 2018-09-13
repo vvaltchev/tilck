@@ -760,7 +760,7 @@ void init_paging_cow(void)
       panic("Unable to map the vsdo-like page");
 }
 
-void map_framebuffer(uptr paddr, uptr vaddr, uptr size)
+void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
 {
    if (!get_kernel_pdir()) {
 
@@ -784,27 +784,35 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size)
       return;
    }
 
+   page_directory_t *pdir = !user_mmap ? get_kernel_pdir() : get_curr_pdir();
+
    int page_count = round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
    int rc;
+   u32 mmap_flags = PG_RW_BIT;
 
-   rc = map_pages_int(get_kernel_pdir(),
+   if (user_mmap) {
+      mmap_flags |= PG_US_BIT;
+   } else {
+      mmap_flags |= PG_GLOBAL_BIT;
+   }
+
+   rc = map_pages_int(pdir,
                       (void *)vaddr,
                       paddr,
                       page_count,
-                      true, /* big pages allowed */
-                      PG_RW_BIT |
-                      PG_GLOBAL_BIT);
+                      !user_mmap, /* big pages allowed when !user_mmap */
+                      mmap_flags);
 
    if (rc < page_count)
       panic("Unable to map the framebuffer in the virtual space");
 
    if (x86_cpu_features.edx1.pat) {
       size = round_up_at(size, PAGE_SIZE);
-      set_pages_pat_wc(get_kernel_pdir(), (void *) vaddr, size);
+      set_pages_pat_wc(pdir, (void *) vaddr, size);
       return;
    }
 
-   if (!x86_cpu_features.edx1.mtrr)
+   if (!x86_cpu_features.edx1.mtrr || user_mmap)
       return;
 
    int selected_mtrr = get_free_mtrr();

@@ -35,3 +35,4 @@ void debug_dump_glyph(u32 n);
 void init_fbdev(void);
 void fb_fill_fix_info(void *fix_info);
 void fb_fill_var_info(void *var_info);
+void fb_user_mmap(void *vaddr, size_t mmap_len);

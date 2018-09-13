@@ -313,12 +313,9 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    if (!res)
       return -ENOMEM;
 
-#if MMAP_NO_COW
-   if (!handle)
-      bzero(res, actual_len);
-#endif
 
    if (devfs_handle) {
+
       if ((rc = devfs_handle->fops.mmap(handle, res, actual_len))) {
 
          /*
@@ -336,6 +333,11 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
          return rc;
       }
+
+   } else {
+
+      if (MMAP_NO_COW)
+         bzero(res, actual_len);
    }
 
    // TODO: add the device-mapping to a per-process list (array).

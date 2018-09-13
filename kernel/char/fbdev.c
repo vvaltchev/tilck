@@ -50,6 +50,12 @@ static int fb_ioctl(fs_handle h, uptr request, void *argp)
    return -EINVAL;
 }
 
+static int fbdev_mmap(fs_handle h /* ignored */, void *vaddr, size_t mmap_len)
+{
+   fb_user_mmap(vaddr, mmap_len);
+   return 0;
+}
+
 static int create_fb_device(int minor, file_ops *ops, devfs_entry_type *t)
 {
    *t = DEVFS_CHAR_DEVICE;
@@ -58,7 +64,7 @@ static int create_fb_device(int minor, file_ops *ops, devfs_entry_type *t)
    ops->read = fb_read;
    ops->write = fb_write;
    ops->ioctl = fb_ioctl;
-   ops->seek = NULL;
+   ops->mmap = fbdev_mmap;
 
    return 0;
 }
