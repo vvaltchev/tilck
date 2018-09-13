@@ -121,7 +121,8 @@ static bool
 actual_allocate_node(kmalloc_heap *h,
                      size_t node_size,
                      int node,
-                     void **vaddr_ref)
+                     void **vaddr_ref,
+                     bool do_actual_alloc)
 {
    bool alloc_failed = false;
    block_node *nodes = h->metadata_nodes;
@@ -130,7 +131,7 @@ actual_allocate_node(kmalloc_heap *h,
    const uptr vaddr = (uptr)node_to_ptr(h, node, node_size);
    *vaddr_ref = (void *)vaddr;
 
-   if (h->linear_mapping)
+   if (h->linear_mapping || !do_actual_alloc)
       return true; // nothing to do!
 
    uptr alloc_block_vaddr = vaddr & ~(h->alloc_block_size - 1);
@@ -296,8 +297,14 @@ internal_kmalloc(kmalloc_heap *h,
                  const size_t size,       /* power of 2 */
                  const int start_node,
                  size_t start_node_size,
-                 bool do_actual_alloc)
+                 bool mark_node_as_allocated,
+                 bool do_actual_alloc)   /* ignored if linear_mapping = 1 */
 {
+   /*
+    * do_actual_alloc -> mark_node_as_allocated (logical implication).
+    */
+   ASSERT(!do_actual_alloc || mark_node_as_allocated);
+
    block_node *nodes = h->metadata_nodes;
    int stack_size = 0;
 
@@ -334,8 +341,9 @@ internal_kmalloc(kmalloc_heap *h,
          void *vaddr = NULL;
          bool success;
 
-         if (do_actual_alloc) {
-            success = actual_allocate_node(h, node_size, node, &vaddr);
+         if (mark_node_as_allocated) {
+            success = actual_allocate_node(h, node_size,
+                                           node, &vaddr, do_actual_alloc);
             ASSERT(vaddr != NULL); // 'vaddr' is not NULL even when !success
          } else {
             success = true;
@@ -449,6 +457,7 @@ per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags)
                               *size,      /* block size */
                               0,          /* start node */
                               h->size,    /* start node size */
+                              true,       /* mark node as allocated */
                               do_actual_alloc);
 
       if (sub_blocks_min_size && addr) {
@@ -462,12 +471,14 @@ per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags)
     * multi_step_alloc is true, therefore we can do multiple allocations in
     * order to allocate almost exactly (round-up at min_block_size) bytes.
     *
-    * TODO: should we mark as free the remaining of big_block after the "for"
-    * loop below?
+    * NOTE: we don't have to mark as free the remaining of big_block after the
+    * "for" loop below, because we called internal_kmalloc() with
+    * do_actual_alloc = false.
     */
 
    const size_t desired_size = *size;
-   void *big_block = internal_kmalloc(h, rounded_up_size, 0, h->size, false);
+   void *big_block =
+      internal_kmalloc(h, rounded_up_size, 0, h->size, false, false);
 
    if (!big_block)
       return NULL;
@@ -486,6 +497,7 @@ per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags)
                               s,
                               big_block_node,
                               rounded_up_size,
+                              true,              /* mark node as allocated */
                               do_actual_alloc);
 
       ASSERT(addr == big_block + tot);
