@@ -14,44 +14,27 @@ set(APPS_BIN_FILES "")
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS) # Remove -rdynamic
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g -DUSERMODE_APP")
 
-file(GLOB INIT_SOURCES "init*.c")
-add_executable(init ${INIT_SOURCES})
-list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/init")
+add_custom_target(usermode_apps)
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
-file(GLOB SHELL_SOURCES "devshell*.c")
-add_executable(devshell ${SHELL_SOURCES})
-list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/devshell")
+macro(add_usermode_app)
+   file(GLOB SOURCES "${ARGV0}*.c")
+   add_executable(${ARGV0} ${SOURCES})
+   list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/${ARGV0}")
+   add_dependencies(usermode_apps ${ARGV0})
+endmacro()
 
-file(GLOB TERMTEST_SOURCES "termtest*.c")
-add_executable(termtest ${TERMTEST_SOURCES})
-list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/termtest")
-target_include_directories(termtest PUBLIC ${CMAKE_SOURCE_DIR}/include)
-target_compile_definitions(termtest PUBLIC USERMODE_APP)
-
-file(GLOB TERMTEST_SOURCES "fbtest*.c")
-add_executable(fbtest ${TERMTEST_SOURCES})
-list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/fbtest")
-target_include_directories(fbtest PUBLIC ${CMAKE_SOURCE_DIR}/include)
-target_compile_definitions(fbtest PUBLIC USERMODE_APP)
-
-add_custom_target(
-
-   usermode_apps
-
-   DEPENDS
-      init devshell termtest fbtest
-)
+add_usermode_app(init)
+add_usermode_app(devshell)
+add_usermode_app(termtest)
+add_usermode_app(fbtest)
 
 if (EXISTS "${TCROOT}/ncurses_install/lib/libncurses_g.a")
-   file(GLOB NCAPP_SOURCES "ncapp*.c")
-   add_executable(ncapp ${NCAPP_SOURCES})
-   list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/ncapp")
+   add_usermode_app(ncapp)
    target_include_directories(ncapp PUBLIC ${TCROOT}/ncurses_install/include)
    target_link_libraries(ncapp ${TCROOT}/ncurses_install/lib/libncurses_g.a)
-   add_dependencies(usermode_apps ncapp)
 endif()
-
 
 set(USERMODE_APPS_FILES_LIST ${APPS_BIN_FILES} PARENT_SCOPE)
