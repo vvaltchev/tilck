@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
 
