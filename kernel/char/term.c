@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/color_defs.h>
 #include <tilck/common/string_util.h>

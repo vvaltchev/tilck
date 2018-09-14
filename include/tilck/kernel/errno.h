@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 /*
  * This file contains the list of all error codes used currently by the Linux

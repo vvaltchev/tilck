@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/fs/devfs.h>

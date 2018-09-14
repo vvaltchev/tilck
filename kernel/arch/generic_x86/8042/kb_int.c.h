@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 #define KB_ITERS_TIMEOUT (100*1000)
 

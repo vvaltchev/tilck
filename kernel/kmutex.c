@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/hal.h>

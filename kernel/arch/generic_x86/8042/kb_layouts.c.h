@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 static u8 numkey[128] = {
    [71] = '7', '8', '9',

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/user.h>

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 int random_values[] = {
    1177, 1474, 2, 415, 24066, 774631, 31, 199, 148, 1, 7159,

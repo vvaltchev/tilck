@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
 #define _TILCK_BASIC_DEFS_H

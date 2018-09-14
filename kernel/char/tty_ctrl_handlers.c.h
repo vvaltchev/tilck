@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 
 typedef bool (*tty_ctrl_sig_func)(void);

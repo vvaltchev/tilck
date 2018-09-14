@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 /* Key definitions (partial) for PS/2 scancode set 1 */
 

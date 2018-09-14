@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 /*
  * Following the same philosophy described in fpu_memcpy.c, we want this code
