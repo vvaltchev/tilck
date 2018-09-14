@@ -101,6 +101,8 @@ task_info *allocate_new_process(task_info *parent, int pid)
    list_node_init(&pi->children_list);
    list_add_tail(&parent->pi->children_list, &ti->siblings_list);
 
+   list_node_init(&pi->mappings);
+
    arch_specific_new_task_setup(ti);
    return ti;
 }
@@ -157,19 +159,48 @@ void free_task(task_info *ti)
    }
 }
 
-void process_add_user_mapping(int fd, void *vaddr, size_t page_count)
+user_mapping *
+process_add_user_mapping(fs_handle h, void *vaddr, size_t page_count)
 {
-   // TODO: implement process_add_user_mapping
+   ASSERT(!is_preemption_enabled());
+   ASSERT(!process_get_user_mapping(vaddr));
+
+   process_info *pi = get_curr_task()->pi;
+   user_mapping *um = kzmalloc(sizeof(user_mapping));
+
+   if (!um)
+      return NULL;
+
+   list_node_init(&um->list);
+
+   um->h = h;
+   um->vaddr = vaddr;
+   um->page_count = page_count;
+
+   list_add_tail(&pi->mappings, &um->list);
+   return um;
 }
 
 void process_remove_user_mapping(user_mapping *um)
 {
-   // TODO: implement process_remove_user_mapping
+   ASSERT(!is_preemption_enabled());
+
+   list_remove(&um->list);
+   kfree2(um, sizeof(user_mapping));
 }
 
 user_mapping *process_get_user_mapping(void *vaddr)
 {
-   // TODO: implement process_get_user_mapping
+   ASSERT(!is_preemption_enabled());
+
+   process_info *pi = get_curr_task()->pi;
+   user_mapping *pos, *temp;
+
+   list_for_each(pos, temp, &pi->mappings, list) {
+      if (pos->vaddr == vaddr)
+         return pos;
+   }
+
    return NULL;
 }
 
@@ -341,6 +372,28 @@ NORETURN sptr sys_exit(int exit_status)
          vfs_close(h);
          curr->pi->handles[i] = NULL;
       }
+   }
+
+   // Remove all the user mappings
+
+   while (!list_is_empty(&curr->pi->mappings)) {
+
+      user_mapping *um =
+         list_first_obj(&curr->pi->mappings, user_mapping, list);
+
+      size_t actual_len = um->page_count << PAGE_SHIFT;
+
+      fs_handle_base *hb = um->h;
+      hb->fops.munmap(hb, um->vaddr, actual_len);
+
+      per_heap_kfree(curr->pi->mmap_heap,
+                     um->vaddr,
+                     &actual_len,
+                     KFREE_FL_ALLOW_SPLIT |
+                     KFREE_FL_MULTI_STEP  |
+                     KFREE_FL_NO_ACTUAL_FREE);
+
+      process_remove_user_mapping(um);
    }
 
    /*

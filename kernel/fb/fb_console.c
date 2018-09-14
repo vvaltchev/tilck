@@ -185,6 +185,8 @@ static void fb_set_row_optimized(int row, u16 *data, bool flush)
    fb_reset_blink_timer();
 }
 
+static void fb_draw_banner(void);
+
 // ---------------------------------------------
 
 static video_interface framebuffer_vi =
@@ -196,7 +198,8 @@ static video_interface framebuffer_vi =
    fb_enable_cursor,
    fb_disable_cursor,
    NULL, /* scroll_one_line_up: used only when running in a VM */
-   NULL  /* flush_buffers: never used by fb_console */
+   NULL,  /* flush_buffers: never used by fb_console */
+   fb_draw_banner
 };
 
 

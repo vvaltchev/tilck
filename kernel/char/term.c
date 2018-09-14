@@ -85,7 +85,7 @@ static ALWAYS_INLINE bool ts_is_at_bottom(void)
    return scroll == max_scroll;
 }
 
-static void term_internal_full_video_redraw(void)
+static void term_redraw(void)
 {
    fpu_context_begin();
 
@@ -97,14 +97,22 @@ static void term_internal_full_video_redraw(void)
    fpu_context_end();
 }
 
+void term_full_video_redraw(void)
+{
+   term_redraw();
+
+   if (vi->redraw_static_elements)
+      vi->redraw_static_elements();
+}
+
 static void ts_set_scroll(u32 requested_scroll)
 {
    /*
     * 1. scroll cannot be > max_scroll
     * 2. scroll cannot be < max_scroll - extra_buffer_rows, where
     *    extra_buffer_rows = total_buffer_rows - VIDEO_ROWS.
-    *    In other words, if for example total_buffer_rows is 26, and max_scroll is
-    *    1000, scroll cannot be less than 1000 + 25 - 26 = 999, which means
+    *    In other words, if for example total_buffer_rows is 26, and max_scroll
+    *    is 1000, scroll cannot be less than 1000 + 25 - 26 = 999, which means
     *    exactly 1 scroll row (extra_buffer_rows == 1).
     */
 
@@ -119,7 +127,7 @@ static void ts_set_scroll(u32 requested_scroll)
       return; /* nothing to do */
 
    scroll = requested_scroll;
-   term_internal_full_video_redraw();
+   term_redraw();
 }
 
 static ALWAYS_INLINE void ts_scroll_up(u32 lines)
@@ -578,7 +586,7 @@ static void term_action_non_buf_scroll_up(u32 n)
    for (u32 row = term_rows - n; row < term_rows; row++)
       ts_buf_clear_row(row, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
-   term_internal_full_video_redraw();
+   term_redraw();
 }
 
 static void term_action_non_buf_scroll_down(u32 n)
@@ -595,7 +603,7 @@ static void term_action_non_buf_scroll_down(u32 n)
    for (u32 row = 0; row < n; row++)
       ts_buf_clear_row(row, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
-   term_internal_full_video_redraw();
+   term_redraw();
 }
 
 

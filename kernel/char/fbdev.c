@@ -4,6 +4,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/fb_console.h>
+#include <tilck/kernel/paging.h>
 
 #include <linux/fb.h> // system header
 
@@ -50,9 +51,17 @@ static int fb_ioctl(fs_handle h, uptr request, void *argp)
    return -EINVAL;
 }
 
-static int fbdev_mmap(fs_handle h /* ignored */, void *vaddr, size_t mmap_len)
+static int fbdev_mmap(fs_handle h /* ignored */, void *vaddr, size_t len)
 {
-   fb_user_mmap(vaddr, mmap_len);
+   ASSERT(IS_PAGE_ALIGNED(len));
+   fb_user_mmap(vaddr, len);
+   return 0;
+}
+
+static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
+{
+   ASSERT(IS_PAGE_ALIGNED(len));
+   unmap_pages(get_curr_pdir(), vaddr, len >> PAGE_SHIFT, false);
    return 0;
 }
 
@@ -65,6 +74,7 @@ static int create_fb_device(int minor, file_ops *ops, devfs_entry_type *t)
    ops->write = fb_write;
    ops->ioctl = fb_ioctl;
    ops->mmap = fbdev_mmap;
+   ops->munmap = fbdev_munmap;
 
    return 0;
 }

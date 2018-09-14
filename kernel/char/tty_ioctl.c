@@ -10,6 +10,7 @@
 
 #include <termios.h>      // system header
 #include <sys/ioctl.h>    // system header
+#include <linux/kd.h>     // system header
 
 struct termios c_term;
 
@@ -86,6 +87,18 @@ static int tty_ioctl_tiocgwinsz(fs_handle h, void *argp)
    return 0;
 }
 
+int tty_ioctl_kdsetmode(fs_handle h, void *argp)
+{
+   uptr opt = (uptr) argp;
+
+   if (opt == KD_TEXT) {
+      term_full_video_redraw();
+      return 0;
+   }
+
+   return -EINVAL;
+}
+
 int tty_ioctl(fs_handle h, uptr request, void *argp)
 {
    switch (request) {
@@ -106,6 +119,9 @@ int tty_ioctl(fs_handle h, uptr request, void *argp)
 
       case TIOCGWINSZ:
          return tty_ioctl_tiocgwinsz(h, argp);
+
+      case KDSETMODE:
+         return tty_ioctl_kdsetmode(h, argp);
 
       default:
          printk("WARNING: unknown tty_ioctl() request: %p\n", request);

@@ -29,6 +29,7 @@ typedef struct {
    /* Other (optional) */
    void (*scroll_one_line_up)(void);
    void (*flush_buffers)(void);
+   void (*redraw_static_elements)(void);
 
 } video_interface;
 
@@ -94,6 +95,7 @@ typedef int (*term_filter_func)(char c,
 
 void term_set_filter_func(term_filter_func func, void *ctx);
 term_filter_func term_get_filter_func(void);
+void term_full_video_redraw(void);
 
 /* --- debug funcs --- */
 void debug_term_print_scroll_cycles(void);

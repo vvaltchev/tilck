@@ -50,6 +50,7 @@ typedef off_t (*func_seek) (fs_handle, off_t, int);
 typedef int (*func_ioctl) (fs_handle, uptr, void *);
 typedef int (*func_stat) (fs_handle, struct stat *);
 typedef int (*func_mmap) (fs_handle, void *vaddr, size_t);
+typedef int (*func_munmap) (fs_handle, void *vaddr, size_t);
 
 typedef void (*func_ex_lock)(fs_handle);
 typedef void (*func_ex_unlock)(fs_handle);
@@ -88,6 +89,7 @@ typedef struct {
    func_ioctl ioctl;
    func_stat stat;
    func_mmap mmap;
+   func_munmap munmap;
 
    /* optional, per-file locks */
    func_ex_lock exlock;

@@ -236,6 +236,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    fs_handle_base *handle = NULL;
    devfs_file_handle *devfs_handle = NULL;
    u32 per_heap_kmalloc_flags = KMALLOC_FL_MULTI_STEP | PAGE_SIZE;
+   user_mapping *um = NULL;
    size_t actual_len;
    void *res;
    int rc;
@@ -293,6 +294,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       if (!devfs_handle->fops.mmap)
          return -ENODEV; /* this device file does not support memory mapping */
 
+      ASSERT(devfs_handle->fops.munmap);
       per_heap_kmalloc_flags |= KMALLOC_FL_NO_ACTUAL_ALLOC;
    }
 
@@ -305,6 +307,21 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       res = per_heap_kmalloc(pi->mmap_heap,
                              &actual_len,
                              per_heap_kmalloc_flags);
+
+      if (devfs_handle) {
+
+         um = process_add_user_mapping(devfs_handle, res, actual_len);
+
+         if (!um) {
+            per_heap_kfree(pi->mmap_heap,
+                           res,
+                           &actual_len,
+                           KFREE_FL_ALLOW_SPLIT |
+                           KFREE_FL_MULTI_STEP  |
+                           KFREE_FL_NO_ACTUAL_FREE);
+            return -ENOMEM;
+         }
+      }
    }
    enable_preemption();
 
@@ -315,6 +332,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
 
    if (devfs_handle) {
+
 
       if ((rc = devfs_handle->fops.mmap(handle, res, actual_len))) {
 
@@ -331,10 +349,10 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
                         KFREE_FL_MULTI_STEP  |
                         KFREE_FL_NO_ACTUAL_FREE);
 
+         process_remove_user_mapping(um);
          return rc;
       }
 
-      process_add_user_mapping(fd, res, actual_len);
 
    } else {
 
@@ -369,6 +387,8 @@ sptr sys_munmap(void *vaddr, size_t len)
 
       if (um) {
          kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
+         fs_handle_base *hb = um->h;
+         hb->fops.munmap(hb, um->vaddr, actual_len);
          process_remove_user_mapping(um);
       }
 

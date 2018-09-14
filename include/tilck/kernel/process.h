@@ -33,9 +33,9 @@ typedef enum {
 
 typedef struct {
 
-   list_node mappings_list;
+   list_node list;
 
-   int fd;
+   fs_handle h;
    void *vaddr;
    size_t page_count;
 
@@ -165,7 +165,8 @@ static ALWAYS_INLINE bool is_kernel_thread(task_info *ti)
    return ti->pid == 0;
 }
 
-void process_add_user_mapping(int fd, void *vaddr, size_t page_count);
+user_mapping *
+process_add_user_mapping(fs_handle h, void *vaddr, size_t page_count);
 void process_remove_user_mapping(user_mapping *um);
 user_mapping *process_get_user_mapping(void *vaddr);
 
