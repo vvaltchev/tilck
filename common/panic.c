@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 /*
  * This whole file exists in order to allow non-bootloader/kernel code to use

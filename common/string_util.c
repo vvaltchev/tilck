@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 #define __STRING_UTIL_C__
 
