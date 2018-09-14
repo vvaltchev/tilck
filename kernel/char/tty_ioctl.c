@@ -87,12 +87,18 @@ static int tty_ioctl_tiocgwinsz(fs_handle h, void *argp)
    return 0;
 }
 
-int tty_ioctl_kdsetmode(fs_handle h, void *argp)
+static int tty_ioctl_kdsetmode(fs_handle h, void *argp)
 {
    uptr opt = (uptr) argp;
 
    if (opt == KD_TEXT) {
+      term_restart_video_output();
       term_full_video_redraw();
+      return 0;
+   }
+
+   if (opt == KD_GRAPHICS) {
+      term_pause_video_output();
       return 0;
    }
 

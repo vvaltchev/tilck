@@ -15,7 +15,9 @@ typedef enum {
    a_erase_in_display,
    a_erase_in_line,
    a_non_buf_scroll_up,   /* text moves up => new blank lines at the bottom  */
-   a_non_buf_scroll_down  /* text moves down => new blank lines at the top   */
+   a_non_buf_scroll_down, /* text moves down => new blank lines at the top   */
+   a_pause_video_output,
+   a_restart_video_output
 
 } term_action_type;
 

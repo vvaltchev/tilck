@@ -23,6 +23,7 @@ static u16 current_col;
 static u16 term_col_offset;
 
 static const video_interface *vi;
+static const video_interface *saved_vi;
 
 static u16 *buffer;
 static u32 scroll;
@@ -44,6 +45,33 @@ static u64 scroll_cycles;
 static u32 sc_one_line_count;
 static u64 sc_one_line_cycles;
 #endif
+
+/* ------------ No-output video-interface ------------------ */
+
+void no_vi_set_char_at(int row, int col, u16 entry) { }
+void no_vi_set_row(int row, u16 *data, bool flush) { }
+void no_vi_clear_row(int row_num, u8 color) { }
+void no_vi_move_cursor(int row, int col, int color) { }
+void no_vi_enable_cursor(void) { }
+void no_vi_disable_cursor(void) { }
+void no_vi_scroll_one_line_up(void) { }
+void no_vi_flush_buffers(void) { }
+void no_vi_redraw_static_elements(void) { }
+
+static const video_interface no_output_vi =
+{
+   no_vi_set_char_at,
+   no_vi_set_row,
+   no_vi_clear_row,
+   no_vi_move_cursor,
+   no_vi_enable_cursor,
+   no_vi_disable_cursor,
+   no_vi_scroll_one_line_up,
+   no_vi_flush_buffers,
+   no_vi_redraw_static_elements
+};
+
+/* --------------------------------------------------------- */
 
 u32 term_get_tab_size(void)
 {
@@ -606,6 +634,18 @@ static void term_action_non_buf_scroll_down(u32 n)
    term_redraw();
 }
 
+static void term_action_pause_video_output(void)
+{
+   vi->disable_cursor();
+   saved_vi = vi;
+   vi = &no_output_vi;
+}
+
+static void term_action_restart_video_output(void)
+{
+   vi = saved_vi;
+   vi->enable_cursor();
+}
 
 /* ---------------- term action engine --------------------- */
 
@@ -620,7 +660,9 @@ static const actions_table_item actions_table[] = {
    [a_erase_in_display] = {(action_func)term_action_erase_in_display, 1},
    [a_erase_in_line] = {(action_func)term_action_erase_in_line, 1},
    [a_non_buf_scroll_up] = {(action_func)term_action_non_buf_scroll_up, 1},
-   [a_non_buf_scroll_down] = {(action_func)term_action_non_buf_scroll_down, 1}
+   [a_non_buf_scroll_down] = {(action_func)term_action_non_buf_scroll_down, 1},
+   [a_pause_video_output] = {(action_func)term_action_pause_video_output, 1},
+   [a_restart_video_output] = {(action_func)term_action_restart_video_output, 1}
 };
 
 static void term_execute_action(term_action *a)
@@ -731,6 +773,26 @@ void term_move_ch_and_cur_rel(s8 dx, s8 dy)
       .type2 = a_move_ch_and_cur_rel,
       .arg1 = dx,
       .arg2 = dy
+   };
+
+   term_execute_or_enqueue_action(a);
+}
+
+void term_pause_video_output(void)
+{
+   term_action a = {
+      .type1 = a_pause_video_output,
+      .arg = 0
+   };
+
+   term_execute_or_enqueue_action(a);
+}
+
+void term_restart_video_output(void)
+{
+   term_action a = {
+      .type1 = a_restart_video_output,
+      .arg = 0
    };
 
    term_execute_or_enqueue_action(a);

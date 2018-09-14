@@ -54,6 +54,8 @@ void term_scroll_down(u32 lines);
 void term_set_col_offset(u32 off);
 void term_move_ch_and_cur(u32 row, u32 col);
 void term_move_ch_and_cur_rel(s8 dx, s8 dy);
+void term_pause_video_output(void);
+void term_restart_video_output(void);
 
 /* --- term write filter interface --- */
 
