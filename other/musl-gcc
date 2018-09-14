@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: BSD-2-Clause
 
 PROJ_DIR="@CMAKE_SOURCE_DIR@"
 TCROOT="@TCROOT@"

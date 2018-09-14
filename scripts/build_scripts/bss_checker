@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: BSD-2-Clause
 
 have_bss=`readelf -S $1 | grep bss`
 

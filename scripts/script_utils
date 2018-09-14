@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-2-Clause
 
 VERSION_REGEX='[0-9]+[.][0-9]+[.][0-9]+'
 
