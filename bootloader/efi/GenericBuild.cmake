@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: BSD-2-Clause
 
 # Remove -rdynamic
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
