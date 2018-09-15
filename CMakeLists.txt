@@ -111,11 +111,11 @@ set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_APPS ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(BUILD_SHARED_LIBRARIES off)
 set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
-set(BTC_PATH ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
+set(BTC_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 
 if (NOT EXISTS ${TCROOT})
    message(
-      FATAL_ERROR "Toolchain not found: run ${BTC_PATH} first.")
+      FATAL_ERROR "Toolchain not found: run ${BTC_SCRIPT} first.")
 endif()
 
 if (${ARCH} STREQUAL "i386")
@@ -165,7 +165,7 @@ if (${USE_GCOV})
 
    if (NOT EXISTS ${TCROOT}/lcov)
       message(FATAL_ERROR "USE_GCOV is set but no lcov in toolchain. "
-                          "Run ${BTC_PATH} -s build_lcov first.")
+                          "Run ${BTC_SCRIPT} -s build_lcov first.")
    endif()
 
    message(STATUS "USE_GCOV = ON")
@@ -339,52 +339,32 @@ add_custom_target(
 )
 
 if (${ARCH_GTESTS})
-
-   if (EXISTS ${TCROOT}/gtest_arch)
-      add_subdirectory(unittests)
-      add_dependencies(gtests tilck_image)
-   else()
-      add_custom_target(
-         gtests
-         COMMAND
-            echo
-         COMMAND
-            echo ==== ERROR: No googletest in toolchain =====
-         COMMAND
-            echo Instructions:
-         COMMAND
-            echo  - Run ./scripts/build_toolchain -s build_gtest_arch
-         COMMAND
-            echo  - rm -rf YOUR_BUILD_DIRECTORY
-         COMMAND
-            echo  - Run this command again
-         COMMAND
-            echo
-      )
-   endif()
-
+   set(GTEST_TC_BUILD_DIR ${TCROOT}/gtest_arch)
+   set(GTEST_BTC_COMMAND build_gtest_arch)
 else()
+   set(GTEST_TC_BUILD_DIR ${TCROOT}/gtest)
+   set(GTEST_BTC_COMMAND build_gtest)
+endif()
 
-   if (EXISTS ${TCROOT}/gtest)
-      add_subdirectory(unittests)
-      add_dependencies(gtests tilck_image)
-   else()
-      add_custom_target(
-         gtests
-         COMMAND
-            echo
-         COMMAND
-            echo ==== ERROR: No googletest in toolchain =====
-         COMMAND
-            echo Instructions:
-         COMMAND
-            echo  - Run ./scripts/build_toolchain -s build_gtest
-         COMMAND
-            echo  - rm -rf YOUR_BUILD_DIRECTORY
-         COMMAND
-            echo  - Run this command again
-         COMMAND
-            echo
-      )
-   endif()
+if (EXISTS ${GTEST_TC_BUILD_DIR})
+   add_subdirectory(unittests)
+   add_dependencies(gtests tilck_image)
+else()
+   add_custom_target(
+      gtests
+      COMMAND
+         echo
+      COMMAND
+         echo ==== ERROR: No googletest in toolchain =====
+      COMMAND
+         echo Instructions:
+      COMMAND
+         echo  - Run ${BTC_SCRIPT} -s ${GTEST_BTC_COMMAND}
+      COMMAND
+         echo  - rm -rf ${CMAKE_BINARY_DIR}
+      COMMAND
+         echo  - Run this command again
+      COMMAND
+         echo
+   )
 endif()
