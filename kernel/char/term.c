@@ -58,6 +58,8 @@ void no_vi_disable_cursor(void) { }
 void no_vi_scroll_one_line_up(void) { }
 void no_vi_flush_buffers(void) { }
 void no_vi_redraw_static_elements(void) { }
+void no_vi_disable_static_elems_refresh(void) { }
+void no_vi_enable_static_elems_refresh(void) { }
 
 static const video_interface no_output_vi =
 {
@@ -69,7 +71,9 @@ static const video_interface no_output_vi =
    no_vi_disable_cursor,
    no_vi_scroll_one_line_up,
    no_vi_flush_buffers,
-   no_vi_redraw_static_elements
+   no_vi_redraw_static_elements,
+   no_vi_disable_static_elems_refresh,
+   no_vi_enable_static_elems_refresh
 };
 
 /* --------------------------------------------------------- */
@@ -637,6 +641,9 @@ static void term_action_non_buf_scroll_down(u32 n)
 
 static void term_action_pause_video_output(void)
 {
+   if (vi->disable_static_elems_refresh)
+      vi->disable_static_elems_refresh();
+
    vi->disable_cursor();
    saved_vi = vi;
    vi = &no_output_vi;
@@ -646,6 +653,9 @@ static void term_action_restart_video_output(void)
 {
    vi = saved_vi;
    vi->enable_cursor();
+
+   if (vi->enable_static_elems_refresh)
+      vi->enable_static_elems_refresh();
 }
 
 /* ---------------- term action engine --------------------- */

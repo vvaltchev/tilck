@@ -31,6 +31,8 @@ typedef struct {
    void (*scroll_one_line_up)(void);
    void (*flush_buffers)(void);
    void (*redraw_static_elements)(void);
+   void (*disable_static_elems_refresh)(void);
+   void (*enable_static_elems_refresh)(void);
 
 } video_interface;
 

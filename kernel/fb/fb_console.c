@@ -26,6 +26,7 @@ static u32 fb_term_cols;
 static u32 fb_offset_y;
 
 static bool cursor_enabled;
+static bool banner_refresh_disabled;
 static int cursor_row;
 static int cursor_col;
 static u32 *under_cursor_buf;
@@ -188,6 +189,17 @@ static void fb_set_row_optimized(int row, u16 *data, bool flush)
 
 static void fb_draw_banner(void);
 
+static void fb_disable_banner_refresh(void)
+{
+   banner_refresh_disabled = true;
+}
+
+static void fb_enable_banner_refresh(void)
+{
+   banner_refresh_disabled = false;
+   fb_draw_banner();
+}
+
 // ---------------------------------------------
 
 static video_interface framebuffer_vi =
@@ -198,17 +210,23 @@ static video_interface framebuffer_vi =
    fb_move_cursor,
    fb_enable_cursor,
    fb_disable_cursor,
-   NULL, /* scroll_one_line_up: used only when running in a VM */
+   NULL,  /* scroll_one_line_up: used only when running in a VM */
    NULL,  /* flush_buffers: never used by fb_console */
-   fb_draw_banner
+   fb_draw_banner,
+   fb_disable_banner_refresh,
+   fb_enable_banner_refresh
 };
 
 
 static void fb_blink_thread()
 {
    while (true) {
-      cursor_visible = !cursor_visible;
-      fb_move_cursor(cursor_row, cursor_col, -1);
+
+      if (cursor_enabled) {
+         cursor_visible = !cursor_visible;
+         fb_move_cursor(cursor_row, cursor_col, -1);
+      }
+
       kernel_sleep(blink_half_period);
    }
 }
@@ -267,12 +285,21 @@ static void fb_draw_banner(void)
    fb_raw_color_lines(0, fb_offset_y, 0 /* black */);
    fb_raw_color_lines(fb_offset_y - 4, 1, vga_rgb_colors[COLOR_BRIGHT_WHITE]);
    fb_draw_string_at_raw(h->width/2, h->height/2, lbuf, COLOR_BRIGHT_YELLOW);
+
+   u32 top_lines_used = fb_offset_y + h->height * fb_term_rows;
+
+   fb_raw_color_lines(top_lines_used,
+                      fb_get_height() - top_lines_used,
+                      vga_rgb_colors[COLOR_BLACK]);
 }
 
 static void fb_update_banner_kthread()
 {
    while (true) {
-      fb_draw_banner();
+
+      if (!banner_refresh_disabled)
+         fb_draw_banner();
+
       kernel_sleep(60 * TIMER_HZ);
    }
 }
