@@ -13,5 +13,4 @@ foreach(child ${children})
    endif()
 endforeach()
 
-message(STATUS "extra apps: ${EXTRA_APPS_LIST}")
 set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST} PARENT_SCOPE)

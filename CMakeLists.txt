@@ -292,6 +292,7 @@ add_custom_command(
 
       usermode_apps
       ${USERMODE_APPS_FILES_LIST}
+      ${EXTRA_APPS_LIST}
 
       fat_get_used_bytes
       ${CMAKE_BINARY_DIR}/scripts/build_apps/fat_get_used_bytes

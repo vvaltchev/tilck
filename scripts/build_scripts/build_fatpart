@@ -46,7 +46,7 @@ for x in ${apps[@]}; do
 done
 
 for x in ${extra_apps[@]}; do
-   ln "$x" usr/local/bin/
+   ln "$x" usr/bin/
 done
 
 unset IFS
