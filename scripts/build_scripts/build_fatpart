@@ -36,12 +36,19 @@ rm $bdir/sysroot/README
 cd $bdir/sysroot
 ln $bdir/usermode_apps/init sbin/
 
-apps="@USERMODE_APPS_FILES_LIST@"
-
 IFS=";"
+
+apps="@USERMODE_APPS_FILES_LIST@"
+extra_apps="@EXTRA_APPS_LIST@"
+
 for x in ${apps[@]}; do
    ln "$x" bin/
 done
+
+for x in ${extra_apps[@]}; do
+   ln "$x" usr/local/bin/
+done
+
 unset IFS
 
 # hard-link EFI files

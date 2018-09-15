@@ -37,4 +37,7 @@ if (EXISTS "${TCROOT}/ncurses_install/lib/libncurses_g.a")
    target_link_libraries(ncapp ${TCROOT}/ncurses_install/lib/libncurses_g.a)
 endif()
 
+add_subdirectory(extra)
+
 set(USERMODE_APPS_FILES_LIST ${APPS_BIN_FILES} PARENT_SCOPE)
+set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST} PARENT_SCOPE)
