@@ -19,6 +19,11 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g -DUSERMODE_APP")
 add_custom_target(usermode_apps)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
+# add_usermode_app() has to be a macro and not a function because add_executable
+# does not accept variables. An unescaped literal is required. Therefore, we
+# can work-around this limitation only by going one level "up" and use a macro.
+# CMake's macros are very much like C's macros.
+
 macro(add_usermode_app)
    file(GLOB SOURCES "${ARGV0}*.c")
    add_executable(${ARGV0} ${SOURCES})
@@ -48,7 +53,7 @@ macro(tilck_add_extra_app)
    set(EXTRA_APPS_LIST_copy ${EXTRA_APPS_LIST})
    list(APPEND EXTRA_APPS_LIST_copy ${ARGV0})
    set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST_copy} PARENT_SCOPE)
-   message(STATUS "Adding EXTRA APP: ${ARGV0} ***")
+   message(STATUS "Adding EXTRA APP: ${ARGV0}")
 endmacro()
 
 add_subdirectory(extra)
