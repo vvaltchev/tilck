@@ -94,7 +94,6 @@ static int tty_ioctl_kdsetmode(fs_handle h, void *argp)
 
    if (opt == KD_TEXT) {
       term_restart_video_output();
-      term_full_video_redraw();
       return 0;
    }
 

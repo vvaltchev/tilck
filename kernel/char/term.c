@@ -130,14 +130,6 @@ static void term_redraw(void)
    fpu_context_end();
 }
 
-void term_full_video_redraw(void)
-{
-   term_redraw();
-
-   if (vi->redraw_static_elements)
-      vi->redraw_static_elements();
-}
-
 static void ts_set_scroll(u32 requested_scroll)
 {
    /*
@@ -652,7 +644,12 @@ static void term_action_pause_video_output(void)
 static void term_action_restart_video_output(void)
 {
    vi = saved_vi;
+
+   term_redraw();
    vi->enable_cursor();
+
+   if (vi->redraw_static_elements)
+      vi->redraw_static_elements();
 
    if (vi->enable_static_elems_refresh)
       vi->enable_static_elems_refresh();

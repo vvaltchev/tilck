@@ -256,9 +256,34 @@ static void fb_setup_banner(void)
 
 static void fb_draw_banner(void)
 {
+   static bool oom;
+   static char *lbuf;
+   static char *rbuf;
+
+   if (oom)
+      return;
+
+   if (!lbuf) {
+
+      lbuf = kmalloc(fb_term_cols + 1);
+
+      if (!lbuf) {
+         oom = true;
+         return;
+      }
+   }
+
+   if (!rbuf) {
+
+      rbuf = kmalloc(fb_term_cols + 1);
+
+      if (!rbuf) {
+         oom = true;
+         return;
+      }
+   }
+
    psf2_header *h = fb_font_header;
-   char lbuf[fb_term_cols + 1];
-   char rbuf[fb_term_cols + 1];
    int llen, rlen, padding, i;
    datetime_t d;
 
@@ -266,10 +291,10 @@ static void fb_draw_banner(void)
 
    read_system_clock_datetime(&d);
 
-   llen = snprintk(lbuf, sizeof(lbuf) - 1 - 1,
+   llen = snprintk(lbuf, fb_term_cols - 1,
                    "Tilck [%s build] framebuffer console", BUILDTYPE_STR);
 
-   rlen = snprintk(rbuf, sizeof(rbuf) - 1 - llen - 1,
+   rlen = snprintk(rbuf, fb_term_cols - llen - 1,
                    "%02i %s %i %02i:%02i",
                    d.day, months3[d.month - 1],
                    d.year, d.hour, d.min);
