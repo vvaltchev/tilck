@@ -37,6 +37,20 @@ if (EXISTS "${TCROOT}/ncurses_install/lib/libncurses_g.a")
    target_link_libraries(ncapp ${TCROOT}/ncurses_install/lib/libncurses_g.a)
 endif()
 
+# This macro makes the integration with extra apps much easier.
+# It's enough for the external app to just add a call to tilck_add_extra_app()
+# with the full-path of a binary in order to that deliverable to become a file
+# dependency of Tilck's main target (the image) and get that deliverable copied
+# in /usr/bin (in Tilck's fatpart).
+# Example: https://github.com/vvaltchev/tfblib
+
+macro(tilck_add_extra_app)
+   set(EXTRA_APPS_LIST_copy ${EXTRA_APPS_LIST})
+   list(APPEND EXTRA_APPS_LIST_copy ${ARGV0})
+   set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST_copy} PARENT_SCOPE)
+   message(STATUS "Adding EXTRA APP: ${ARGV0} ***")
+endmacro()
+
 add_subdirectory(extra)
 
 set(USERMODE_APPS_FILES_LIST ${APPS_BIN_FILES} PARENT_SCOPE)
