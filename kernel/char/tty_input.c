@@ -11,14 +11,12 @@
 #include <tilck/kernel/kb.h>
 
 #include <termios.h>      // system header
+#include <linux/kd.h>     // system header
 
 #include "term_int.h"
 #include "tty_int.h"
 
 #define KB_INPUT_BS 4096
-
-extern struct termios c_term;
-extern struct termios default_termios;
 
 static char kb_input_buf[KB_INPUT_BS];
 static ringbuf kb_input_ringbuf;
@@ -26,6 +24,9 @@ static kcond kb_input_cond;
 
 static void tty_keypress_echo(char c)
 {
+   if (tty_kd_mode == KD_GRAPHICS)
+      return;
+
    if (c == '\n' && (c_term.c_lflag & ECHONL)) {
       /*
        * From termios' man page:

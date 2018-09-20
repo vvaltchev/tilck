@@ -14,6 +14,7 @@
 #include <linux/kd.h>     // system header
 
 struct termios c_term;
+u32 tty_kd_mode = KD_TEXT;
 
 const struct termios default_termios =
 {
@@ -94,11 +95,13 @@ static int tty_ioctl_kdsetmode(fs_handle h, void *argp)
 
    if (opt == KD_TEXT) {
       term_restart_video_output();
+      tty_kd_mode = KD_TEXT;
       return 0;
    }
 
    if (opt == KD_GRAPHICS) {
       term_pause_video_output();
+      tty_kd_mode = KD_GRAPHICS;
       return 0;
    }
 

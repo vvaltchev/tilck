@@ -5,6 +5,7 @@
 
 extern struct termios c_term;
 extern struct termios default_termios;
+extern u32 tty_kd_mode;
 
 typedef enum {
 
