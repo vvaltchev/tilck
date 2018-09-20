@@ -46,6 +46,8 @@ static u32 fb_line_length;
 static uptr fb_vaddr;
 static u32 *fb_w8_char_scanlines;
 
+static u8 *font_glyph_data;
+static u32 font_width_bytes;
 
 #define DARK_VAL    (168 /* vga */ + 0)
 #define BRIGHT_VAL  (252 /* vga */ + 0)
@@ -74,6 +76,13 @@ static void fb_init_colors(void)
    c[COLOR_BRIGHT_MAGENTA] = fb_make_color(BRIGHT_VAL, 0, BRIGHT_VAL);
    c[COLOR_BRIGHT_YELLOW] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, 0);
    c[COLOR_BRIGHT_WHITE] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, BRIGHT_VAL);
+}
+
+void fb_set_font(psf2_header *h)
+{
+   fb_font_header = h;
+   font_glyph_data = (u8 *)h + h->header_size;
+   font_width_bytes = h->bytes_per_glyph / h->height;
 }
 
 void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
@@ -337,20 +346,14 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
    const u32 fg = vga_rgb_colors[vgaentry_get_fg(e)];
    const u32 bg = vga_rgb_colors[vgaentry_get_bg(e)];
 
-   // ASSUMPTION: width is divisible by 8
-   const u32 width_bytes = h->width >> 3;
+   u8 *data = font_glyph_data + h->bytes_per_glyph * c;
 
-   u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
-
-   for (u32 row = 0; row < h->height; row++) {
-      for (u32 b = 0; b < width_bytes; b++) {
-
-         u8 sl = data[b + width_bytes * row];
-
+   for (u32 row = 0; row < h->height; row++, data += font_width_bytes) {
+      for (u32 b = 0; b < font_width_bytes; b++) {
          for (u32 bit = 0; bit < 8; bit++)
             fb_draw_pixel(x + (b << 3) + 8 - bit - 1,
                           y + row,
-                          (sl & (1 << bit)) ? fg : bg);
+                          (data[b] & (1 << bit)) ? fg : bg);
       }
    }
 }

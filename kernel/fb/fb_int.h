@@ -33,3 +33,4 @@ void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 lines_count);
 bool fb_pre_render_char_scanlines(void);
 bool fb_alloc_shadow_buffer(void);
 void fb_raw_perf_screen_redraw(u32 color, bool use_fpu);
+void fb_set_font(psf2_header *h);

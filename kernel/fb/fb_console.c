@@ -380,11 +380,11 @@ void init_framebuffer_console(bool use_also_serial_port)
 
    cursor_color = vga_rgb_colors[COLOR_BRIGHT_WHITE];
 
-   fb_font_header = fb_get_width() / 8 < 160
+   psf2_header *h = fb_get_width() / 8 < 160
                         ? (void *)&_binary_font8x16_psf_start
                         : (void *)&_binary_font16x32_psf_start;
 
-   psf2_header *h = fb_font_header;
+   fb_set_font(h);
 
    ASSERT(h->magic == PSF2_FONT_MAGIC); // Support only PSF2
    ASSERT(!(h->width % 8)); // Support only fonts with width = 8, 16, 24, 32, ..
