@@ -128,6 +128,9 @@ void init_console(void)
 
 int debug_f_key_press_handler(u32 key, u8 c)
 {
+   if (!kb_is_ctrl_pressed())
+      return KB_HANDLER_NAK;
+
    switch (key) {
 
       case KEY_F1:
