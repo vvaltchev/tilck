@@ -58,10 +58,10 @@ void erase_line_on_screen(int curr_cmd_len)
 uint64_t read_esc_seq(void)
 {
    char c;
-   int len;
-   uint64_t ret = 0;
+   int len = 0;
+   char buf[8] = { 0 };
 
-   ret |= '\033';
+   buf[len++] = '\033';
 
    if (read(0, &c, 1) <= 0)
       return 0;
@@ -69,25 +69,23 @@ uint64_t read_esc_seq(void)
    if (c != '[')
       return 0; /* unknown escape sequence */
 
-   ret |= (c << 8);
-   len = 2;
+   buf[len++] = c;
 
    while (1) {
 
       if (read(0, &c, 1) <= 0)
          return 0;
 
-      ret |= (c << (8 * len));
+      buf[len++] = c;
 
-     if (0x40 <= c && c <= 0x7E)
-        break;
+      if (0x40 <= c && c <= 0x7E && c != '[')
+         break;
 
       if (len == 8)
          return 0; /* no more space in our 64-bit int (seq too long) */
    }
 
-   //printf("\n[0x%x]\n", ret);
-   return ret;
+   return *(uint64_t *)buf;
 }
 
 void handle_esc_seq(char *buf,
