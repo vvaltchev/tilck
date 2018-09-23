@@ -42,6 +42,7 @@ void cancel_timer(int timer_num, task_info *ti)
 static task_info *tick_all_timers(void)
 {
    task_info *last_ready_task = NULL;
+   uptr var;
 
    for (u32 i = 0; i < ARRAY_SIZE(timers_array); i++) {
 
@@ -53,6 +54,8 @@ static task_info *tick_all_timers(void)
       if ((uptr)timers_array[i].task <= 1)
          continue;
 
+      disable_interrupts(&var);
+
       if (--timers_array[i].ticks_to_sleep == 0) {
          last_ready_task = timers_array[i].task;
 
@@ -62,6 +65,8 @@ static task_info *tick_all_timers(void)
          cancel_timer(i, last_ready_task);
          task_change_state(last_ready_task, TASK_STATE_RUNNABLE);
       }
+
+      enable_interrupts(&var);
    }
 
    return last_ready_task;
