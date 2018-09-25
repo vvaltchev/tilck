@@ -33,6 +33,8 @@ typedef struct {
    char *read_buf;
    char *write_buf;
 
+   bool read_allowed_to_return;
+
 } devfs_file_handle;
 
 

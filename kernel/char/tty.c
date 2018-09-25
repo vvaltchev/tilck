@@ -27,6 +27,7 @@ static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 /* ----------------- Driver interface ---------------- */
 
 int tty_ioctl(fs_handle h, uptr request, void *argp);
+int tty_fcntl(fs_handle h, int cmd, uptr arg);
 
 static int tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
 {
@@ -37,7 +38,7 @@ static int tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
    ops->read = tty_read;
    ops->write = tty_write;
    ops->ioctl = tty_ioctl;
-   ops->seek = NULL; /* seek() support is NOT mandatory, of course */
+   ops->fcntl = tty_fcntl;
    return 0;
 }
 

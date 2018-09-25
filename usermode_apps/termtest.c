@@ -191,11 +191,10 @@ void console_perf_test(void)
 void read_nonblock(void)
 {
    int rc;
-   char buf[256];
+   char buf[32];
    int saved_flags = fcntl(0, F_GETFL, 0);
 
    printf("Setting non-block mode for fd 0\n");
-
    rc = fcntl(0, F_SETFL, saved_flags | O_NONBLOCK);
 
    if (rc != 0) {
@@ -204,7 +203,7 @@ void read_nonblock(void)
    }
 
    for (int i = 0; ; i++) {
-      rc = read(0, buf, sizeof(buf));
+      rc = read(0, buf, 1);
 
       if (rc >= 0) {
          buf[rc] = 0;
@@ -214,7 +213,7 @@ void read_nonblock(void)
                  i, rc, errno, strerror(errno));
       }
 
-      usleep(500*1000);
+      usleep(1000*1000);
    }
 
    // Restore the orignal flags

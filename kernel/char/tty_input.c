@@ -9,8 +9,10 @@
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/kb.h>
+#include <tilck/kernel/errno.h>
 
 #include <termios.h>      // system header
+#include <fcntl.h>        // system header
 #include <linux/kd.h>     // system header
 
 #include "term_int.h"
@@ -324,13 +326,32 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
    if (!size)
       return 0;
 
-   if (h->read_buf_used)
-      return tty_flush_read_buf(h, buf, size);
+   if (h->read_buf_used) {
+
+      if (!(h->flags & O_NONBLOCK))
+         return tty_flush_read_buf(h, buf, size);
+
+      // This is a NON-BLOCKING read
+      if (h->read_allowed_to_return) {
+
+         ssize_t ret = tty_flush_read_buf(h, buf, size);
+
+         if (!h->read_buf_used)
+            h->read_allowed_to_return = false;
+
+         return ret;
+      }
+   }
 
    if (c_term.c_lflag & ICANON)
       term_set_col_offset(term_get_curr_col());
 
+   h->read_allowed_to_return = false;
+
    do {
+
+      if ((h->flags & O_NONBLOCK) && kb_buf_is_empty())
+         return -EAGAIN;
 
       while (kb_buf_is_empty()) {
          kcond_wait(&kb_input_cond, NULL, KCOND_WAIT_FOREVER);
@@ -338,17 +359,35 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
 
       delim_break = false;
 
-      ASSERT(h->read_buf_used == 0);
-      ASSERT(h->read_pos == 0);
+      if (!(h->flags & O_NONBLOCK)) {
+         ASSERT(h->read_buf_used == 0);
+         ASSERT(h->read_pos == 0);
+      }
 
       while (!kb_buf_is_empty() &&
              h->read_buf_used < DEVFS_READ_BS &&
              tty_internal_read_single_char_from_kb(h, &delim_break)) { }
 
-      read_count += tty_flush_read_buf(h, buf + read_count, size - read_count);
+      if (!(h->flags & O_NONBLOCK))
+         read_count += tty_flush_read_buf(h, buf+read_count, size-read_count);
+
       ASSERT(tty_end_line_delim_count >= 0);
 
    } while (!tty_internal_should_read_return(h, read_count, delim_break));
+
+   if (h->flags & O_NONBLOCK) {
+
+      /*
+       * If we got here in NONBLOCK mode, that means we exited the loop properly
+       * with tty_internal_should_read_return() returning true. Now we have to
+       * flush the read buffer.
+       */
+
+      read_count += tty_flush_read_buf(h, buf+read_count, size-read_count);
+
+      if (h->read_buf_used)
+         h->read_allowed_to_return = true;
+   }
 
    return read_count;
 }

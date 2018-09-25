@@ -10,6 +10,7 @@
 #include <tilck/kernel/term.h>
 
 #include <termios.h>      // system header
+#include <fcntl.h>        // system header
 #include <sys/ioctl.h>    // system header
 #include <linux/kd.h>     // system header
 
@@ -136,4 +137,19 @@ int tty_ioctl(fs_handle h, uptr request, void *argp)
          printk("WARNING: unknown tty_ioctl() request: %p\n", request);
          return -EINVAL;
    }
+}
+
+int tty_fcntl(fs_handle h, int cmd, uptr arg)
+{
+   fs_handle_base *hb = h;
+
+   if (cmd == F_GETFL)
+      return hb->flags;
+
+   if (cmd == F_SETFL) {
+      hb->flags = arg;
+      return 0;
+   }
+
+   return -EINVAL;
 }
