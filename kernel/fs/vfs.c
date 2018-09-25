@@ -189,7 +189,7 @@ int vfs_ioctl(fs_handle h, uptr request, void *argp)
    int ret;
 
    if (!hb->fops.ioctl)
-      return -ENOTTY; // Yes, ENOTTY IS the right error. See the man page.
+      return -ENOTTY; // Yes, ENOTTY *IS* the right error. See the man page.
 
    vfs_exlock(h);
    {
@@ -313,6 +313,22 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    }
    vfs_fs_shunlock(hb->fs);
    return rc;
+}
+
+int vfs_fcntl(fs_handle h, int cmd, uptr arg)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+   int ret;
+
+   if (!hb->fops.fcntl)
+      return -EINVAL;
+
+   vfs_exlock(h);
+   {
+      ret = hb->fops.fcntl(h, cmd, arg);
+   }
+   vfs_exunlock(h);
+   return ret;
 }
 
 u32 vfs_get_new_device_id(void)

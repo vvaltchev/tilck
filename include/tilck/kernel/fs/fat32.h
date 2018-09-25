@@ -28,6 +28,7 @@ typedef struct {
    /* fs_handle_base */
    filesystem *fs;
    file_ops fops;
+   u32 flags;
 
    /* fs-specific members */
    fat_entry *e;

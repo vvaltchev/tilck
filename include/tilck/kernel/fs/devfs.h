@@ -18,6 +18,7 @@ typedef struct {
    /* fs_handle_base */
    filesystem *fs;
    file_ops fops;
+   u32 flags;
 
    /* devfs-specific fields */
 

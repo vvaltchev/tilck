@@ -52,7 +52,7 @@ typedef int (*func_ioctl) (fs_handle, uptr, void *);
 typedef int (*func_stat) (fs_handle, struct stat *);
 typedef int (*func_mmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_munmap) (fs_handle, void *vaddr, size_t);
-
+typedef int (*func_fcntl) (fs_handle, int, uptr);
 typedef void (*func_ex_lock)(fs_handle);
 typedef void (*func_ex_unlock)(fs_handle);
 typedef void (*func_sh_lock)(fs_handle);
@@ -91,6 +91,7 @@ typedef struct {
    func_stat stat;
    func_mmap mmap;
    func_munmap munmap;
+   func_fcntl fcntl;
 
    /* optional, per-file locks */
    func_ex_lock exlock;
@@ -119,6 +120,7 @@ typedef struct {
 
    filesystem *fs;
    file_ops fops;
+   u32 flags;
 
 } fs_handle_base;
 
@@ -131,6 +133,7 @@ int vfs_stat(fs_handle h, struct stat *statbuf);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
 void vfs_close(fs_handle h);
+int vfs_fcntl(fs_handle h, int cmd, uptr arg);
 
 ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);

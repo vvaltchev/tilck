@@ -440,15 +440,19 @@ static void debug_print_fcntl_command(int cmd)
 
 sptr sys_fcntl64(int fd, int cmd, uptr arg)
 {
-   // TODO: add support for FD_CLOEXEC
+   fs_handle handle;
 
-   //printk("fcntl(fd = %d, cmd = %d, arg: %p)\n", fd, cmd, arg);
-   //debug_print_fcntl_command(cmd);
+   handle = get_fs_handle(fd);
 
-   // if (cmd == F_SETFD) {
-   //    if (arg & FD_CLOEXEC)
-   //       printk("fcntl: set FD_CLOEXEC flag\n");
-   // }
+   if (!handle)
+      return -EBADF;
 
-   return -EINVAL; // we don't support any commands, for now.
+   if (cmd == F_SETFD) {
+      if (arg & FD_CLOEXEC) {
+         // FD_CLOEXEC is handled at this layer, the rest by the VFS layer.
+         // TODO: add support for FD_CLOEXEC
+      }
+   }
+
+   return vfs_fcntl(handle, cmd, arg);
 }
