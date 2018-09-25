@@ -17,7 +17,7 @@
 #define CHECK(cond)                                  \
    do {                                              \
       if (!(cond)) {                                 \
-         Print(L"CHECK '%a' FAILED\n", #cond);       \
+         Print(L"CHECK '%a' FAILED\r\n", #cond);     \
          status = EFI_LOAD_ERROR;                    \
          goto end;                                   \
       }                                              \
@@ -26,7 +26,7 @@
 #define HANDLE_EFI_ERROR(op)                                 \
     do {                                                     \
        if (EFI_ERROR(status)) {                              \
-          Print(L"[%a] Error: %r ", op, status);             \
+          Print(L"[%a] Error: %r\r\n", op, status);          \
           goto end;                                          \
        }                                                     \
     } while (0)
