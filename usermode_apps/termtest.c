@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #ifdef USERMODE_APP
    /* It means that the application is compiled with Tilck's build system */
@@ -187,6 +188,42 @@ void console_perf_test(void)
    free(buf);
 }
 
+void read_nonblock(void)
+{
+   int rc;
+   char buf[256];
+   int saved_flags = fcntl(0, F_GETFL, 0);
+
+   printf("Setting non-block mode for fd 0\n");
+
+   rc = fcntl(0, F_SETFL, saved_flags | O_NONBLOCK);
+
+   if (rc != 0) {
+      fprintf(stderr, "fcntl() failed: %s\n", strerror(errno));
+      return;
+   }
+
+   for (int i = 0; ; i++) {
+      rc = read(0, buf, sizeof(buf));
+
+      if (rc >= 0) {
+         buf[rc] = 0;
+         printf("[iter %d] read() = %d [buf: '%s']\n", i, rc, buf);
+      } else {
+         printf("[iter %d] read() = %d (errno: %d => %s)\n",
+                 i, rc, errno, strerror(errno));
+      }
+
+      usleep(500*1000);
+   }
+
+   // Restore the orignal flags
+   rc = fcntl(0, F_SETFL, saved_flags);
+
+   if (rc != 0)
+      fprintf(stderr, "fcntl() failed: %s\n", strerror(errno));
+}
+
 void show_help_and_exit(void)
 {
    printf("Options:\n");
@@ -201,6 +238,7 @@ void show_help_and_exit(void)
 #endif
 
    printf("    -p console_perf_test()\n");
+   printf("    -n read_nonblock()\n");
    exit(1);
 }
 
@@ -232,6 +270,8 @@ int main(int argc, char ** argv)
 
    } else if (!strcmp(argv[1], "-p")) {
       console_perf_test();
+   } else if (!strcmp(argv[1], "-n")) {
+      read_nonblock();
    } else {
       show_help_and_exit();
    }
