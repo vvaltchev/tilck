@@ -331,7 +331,18 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
       if (!(h->flags & O_NONBLOCK))
          return tty_flush_read_buf(h, buf, size);
 
-      // This is a NON-BLOCKING read
+      /*
+       * The file description is in NON-BLOCKING mode: this means we cannot
+       * just return the buffer to the user even if there is something left in
+       * it because the tty might be in canonical mode (and we're not sure the
+       * user pressed ENTER). Therefore, we have to check an additional flag
+       * called read_allowed_to_return that is set if the user actually pressed
+       * ENTER (precisely: a line delimiter has been written to the tty). In
+       * the BLOCKING mode case (default), we can, instead, actually flush the
+       * buffer and return because read_buf_used > 0 means just that user's
+       * buffer was just not big enough.
+       */
+
       if (h->read_allowed_to_return) {
 
          ssize_t ret = tty_flush_read_buf(h, buf, size);
@@ -368,7 +379,7 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
              h->read_buf_used < DEVFS_READ_BS &&
              tty_internal_read_single_char_from_kb(h, &delim_break)) { }
 
-      if (!(h->flags & O_NONBLOCK))
+      if (!(h->flags & O_NONBLOCK) || !(c_term.c_lflag & ICANON))
          read_count += tty_flush_read_buf(h, buf+read_count, size-read_count);
 
       ASSERT(tty_end_line_delim_count >= 0);

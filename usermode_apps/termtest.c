@@ -188,56 +188,69 @@ void console_perf_test(void)
    free(buf);
 }
 
-void read_nonblock(void)
+void read_nonblock()
 {
    int rc;
    char buf[32];
    int saved_flags = fcntl(0, F_GETFL, 0);
 
-   printf("Setting non-block mode for fd 0\n");
+   printf("Setting non-block mode for fd 0\r\n");
    rc = fcntl(0, F_SETFL, saved_flags | O_NONBLOCK);
 
    if (rc != 0) {
-      fprintf(stderr, "fcntl() failed: %s\n", strerror(errno));
+      fprintf(stderr, "fcntl() failed: %s\r\n", strerror(errno));
       return;
    }
 
    for (int i = 0; ; i++) {
+
       rc = read(0, buf, 1);
 
       if (rc >= 0) {
+
          buf[rc] = 0;
-         printf("[iter %d] read() = %d [buf: '%s']\n", i, rc, buf);
+         printf("[iter %d] read() = %d [buf: '%s']\r\n", i, rc, buf);
+
+         if (buf[0] == 'q')
+            break;
+
       } else {
-         printf("[iter %d] read() = %d (errno: %d => %s)\n",
+         printf("[iter %d] read() = %d (errno: %d => %s)\r\n",
                  i, rc, errno, strerror(errno));
+         usleep(500*1000);
       }
 
-      usleep(1000*1000);
    }
 
    // Restore the orignal flags
    rc = fcntl(0, F_SETFL, saved_flags);
 
    if (rc != 0)
-      fprintf(stderr, "fcntl() failed: %s\n", strerror(errno));
+      fprintf(stderr, "fcntl() failed: %s\r\n", strerror(errno));
+}
+
+void read_nonblock_rawmode(void)
+{
+   term_set_raw_mode();
+   read_nonblock();
 }
 
 void show_help_and_exit(void)
 {
    printf("Options:\n");
-   printf("    -r one_read()\n");
-   printf("    -e echo_read()\n");
-   printf("    -1 read_1_canon_mode()\n");
-   printf("    -c read_canon_mode()\n");
-   printf("    -w write_to_stdin()\n");
+   printf("    -r  one_read()\n");
+   printf("    -e  echo_read()\n");
+   printf("    -1  read_1_canon_mode()\n");
+   printf("    -c  read_canon_mode()\n");
+   printf("    -w  write_to_stdin()\n");
 
 #ifdef USERMODE_APP
-   printf("    -s debug_dump_termios()\n");
+   printf("    -s  debug_dump_termios()\n");
 #endif
 
-   printf("    -p console_perf_test()\n");
-   printf("    -n read_nonblock()\n");
+   printf("    -p  console_perf_test()\n");
+   printf("    -n  read_nonblock()\n");
+   printf("    -nr read_nonblock_rawmode()\n");
    exit(1);
 }
 
@@ -271,6 +284,8 @@ int main(int argc, char ** argv)
       console_perf_test();
    } else if (!strcmp(argv[1], "-n")) {
       read_nonblock();
+   } else if (!strcmp(argv[1], "-nr")) {
+      read_nonblock_rawmode();
    } else {
       show_help_and_exit();
    }
