@@ -109,6 +109,26 @@ static int tty_ioctl_kdsetmode(fs_handle h, void *argp)
    return -EINVAL;
 }
 
+static int tty_ioctl_KDGKBMODE(fs_handle h, void *argp)
+{
+   int mode = K_XLATE; /* The only supported mode, at the moment */
+
+   if (!copy_to_user(argp, &mode, sizeof(int)))
+      return 0;
+
+   return -EFAULT;
+}
+
+static int tty_ioctl_KDSKBMODE(fs_handle h, void *argp)
+{
+   uptr mode = (uptr) argp;
+
+   if (mode == K_XLATE)
+      return 0;  /* K_XLATE is the only supported mode, at the moment */
+
+   return -EINVAL;
+}
+
 int tty_ioctl(fs_handle h, uptr request, void *argp)
 {
    switch (request) {
@@ -132,6 +152,12 @@ int tty_ioctl(fs_handle h, uptr request, void *argp)
 
       case KDSETMODE:
          return tty_ioctl_kdsetmode(h, argp);
+
+      case KDGKBMODE:
+         return tty_ioctl_KDGKBMODE(h, argp);
+
+      case KDSKBMODE:
+         return tty_ioctl_KDSKBMODE(h, argp);
 
       default:
          printk("WARNING: unknown tty_ioctl() request: %p\n", request);
