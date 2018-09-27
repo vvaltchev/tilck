@@ -21,6 +21,7 @@ volatile bool __in_panic;
 #include <multiboot.h>
 
 void panic_save_current_state();
+void tty_setup_for_panic(void);
 
 NORETURN void panic(const char *fmt, ...)
 {
@@ -39,7 +40,13 @@ NORETURN void panic(const char *fmt, ...)
 
    panic_save_current_state();
 
-   if (!term_is_initialized()) {
+   if (term_is_initialized()) {
+
+      if (term_get_filter_func() != NULL)
+         tty_setup_for_panic();
+
+   } else {
+
       if (use_framebuffer())
          init_framebuffer_console(in_hypervisor());
       else

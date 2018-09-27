@@ -35,4 +35,4 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size);
 int tty_keypress_handler(u32 key, u8 c);
 int tty_keypress_handler_int(u32 key, u8, bool check_mods);
 int tty_term_write_filter(char c, u8 *color, term_action *a, void *ctx_arg);
-
+void tty_setup_for_panic(void);

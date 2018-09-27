@@ -90,6 +90,12 @@ static int tty_ioctl_tiocgwinsz(fs_handle h, void *argp)
    return 0;
 }
 
+void tty_setup_for_panic(void)
+{
+   term_restart_video_output();
+   tty_kd_mode = KD_TEXT;
+}
+
 static int tty_ioctl_kdsetmode(fs_handle h, void *argp)
 {
    uptr opt = (uptr) argp;
@@ -173,6 +179,12 @@ int tty_fcntl(fs_handle h, int cmd, uptr arg)
       return hb->flags;
 
    if (cmd == F_SETFL) {
+      /*
+       * TODO: check the flags in arg and fail with EINVAL in case of unknown
+       * or unsupported flags. Just setting hb->flags to 'arg' will silently
+       * ignore such unknown/unsupported flags and that will make hard to guess
+       * why programs behave in Tilck differently than on Linux.
+       */
       hb->flags = arg;
       return 0;
    }
