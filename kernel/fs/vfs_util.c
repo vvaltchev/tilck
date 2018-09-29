@@ -64,6 +64,11 @@ compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size)
       if (*p != '.')
          goto copy_char;
 
+      /* the current character, *p, is '.' */
+
+      if (d > dest && d[-1] != '/')
+         goto copy_char;
+
       if (p[1] == '/' || !p[1]) {
 
          p++; // skip '.'

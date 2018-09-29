@@ -262,4 +262,6 @@ TEST(compute_abs_path, tests)
    /* other */
    EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", ".a"), "/a/b/c/.a");
    EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "..a"), "/a/b/c/..a");
+   EXPECT_EQ(compute_abs_path_wrapper("/", "something.."), "/something..");
+   EXPECT_EQ(compute_abs_path_wrapper("/", "something."), "/something.");
 }
