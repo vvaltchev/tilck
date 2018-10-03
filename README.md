@@ -1,8 +1,8 @@
 Tilck (Tiny Linux-Compatible Kernel)
 -------------------------------------
 
-[![Build Status](https://travis-ci.org/vvaltchev/tilck.svg?branch=master)](https://travis-ci.org/vvaltchev/tilck)
-[![CircleCI](https://circleci.com/gh/vvaltchev/tilck.svg?style=svg)](https://circleci.com/gh/vvaltchev/tilck)
+![TravisCI](https://travis-ci.org/vvaltchev/tilck.svg?branch=master)
+![CircleCI](https://circleci.com/gh/vvaltchev/tilck.svg?style=svg)
 
 
 **A Linux-compatible x86 kernel written for educational purposes and fun**
