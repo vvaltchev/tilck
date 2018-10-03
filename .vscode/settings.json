@@ -1,10 +1,9 @@
 // Place your settings in this file to overwrite default and user settings.
 {
    "editor.tabSize": 3,
-   "editor.rulers": [80],
    "editor.renderWhitespace":"boundary",
    "editor.detectIndentation": false,
-   "editor.autoClosingBrackets": false,
+   "editor.autoClosingBrackets":"never",
    "files.exclude": {
       "**/.git": true,
       "**/.svn": true,
