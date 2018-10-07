@@ -57,7 +57,12 @@ issue describing your problem.
 
 ![Tetris running on Tilck](other/tetris.png?raw=true)
 
+The image here above shows a Tetris implementation based on the [Tiny Framebuffer
+Library] running on `Tilck` in a `QEMU` virtual machine. The game's executable,
+runs smoothly both on Linux and on Tilck without any noticeable difference.
+
 [supported Linux syscalls]: https://github.com/vvaltchev/tilck/wiki/Linux-syscalls-support-status
+[Tiny Framebuffer Library]: https://github.com/vvaltchev/tfblib
 
 The legacy bootloader
 ----------------------------------------
@@ -181,6 +186,7 @@ FAQ (by vvaltchev)
 ---------------------
 
 #### Why many commit messages are so short and incomplete?
+
 It is well-known that all of the popular open source projects care about having good
 commit messages. It is an investment that at some point pays off. I even wrote a
 [blog post] about that. The problem is that such investment actually starts paying
@@ -199,6 +205,7 @@ more and more time on writing better commit messages.
 [blog post]: https://blogs.vmware.com/opensource/2017/12/28/open-source-proprietary-software-engineer
 
 #### How usermode applications are built?
+
 Tilck's build system uses a x86 GCC toolchain based on `libmusl` instead of `glibc`
 and static linking in order to compile the user applications running on it. Such
 setup is extremely convenient since it allows the same binary to be run directly on
@@ -210,6 +217,7 @@ statically.
 
 
 #### Why Tilck does not have the feature/abstraction XYZ like other kernels do?
+
 `Tilck` is **not** meant to be a full-featured production kernel. Please, refer to
 Linux for that. The idea at the moment to implement a kernel as simple as possible
 able to run a class of Linux console applications. At some point in the future
@@ -231,39 +239,40 @@ full-blown desktop/server systems.
 
 #### Why Tilck runs only on i686?
 
-Actually Tilcks runs only on i686 *for the moment*. `Tilck` was born as a purely
+Actually Tilck runs only on i686 *for the moment*. The kernel was born as a purely
 educational project and the x86 architecture was already very friendly to me at
 the time. Moving from x86 usermode assembly to "kernel" mode (real-mode and the
-transitions back and forth to proctected mode for the bootloader) required quite
-an effort, but it was still, in my opinion, easier than jumping into a completely
-unknown architecture for me, like `ARM`. I've also considered writing directly a
-`x86_64` kernel running completely in `long mode` but I decided to stick
-initially with the `i686` architecture for the following reasons:
+transitions back and forth to protected mode for the bootloader) required quite an
+effort, but it still was, in my opinion, easier than "jumping" directly into a
+completely unknown (for me) architecture, like `ARM`. I've also considered writing
+from the beginning a `x86_64` kernel running completely in `long mode` but I
+decided to stick initially with the `i686` architecture for the following reasons:
 
 * The `long mode` is, roughly, another "layer" added on the top of 32-bit
   protected mode: it order to have a full understanding of its complexity, I
-  thought it was better to start first with its ancestor.
+  thought it was better to start first with its legacy.
 
-* `Long mode` does not have a full support for the segmentation. I wanted to get
-  confident with this technology.
+* The `long mode` does not have a full support for the segmentation. I wanted to
+  get confident with this technology.
 
-* `Long mode` has a 4-level paging system, which is more complex to use that the
-  classic 2-level paging supported by `ia32`.
+* The `long mode` has a 4-level paging system, which is more complex to use that
+  the classic 2-level paging supported by `ia32` (it was better to start with
+  something simpler).
 
 * I never considered the idea of writing a kernel for desktop or server-class
-  machines, which will need to support a huge amount of memory. We already have
-  Linux of that.
+  machines where supporting a huge amount of memory is a must. We already have
+  Linux for that.
 
-* It seemed to me at the time, that there was more online documentation for
-  people just starting to write a kernel (like the articles on
-  https://wiki.osdev.org/) with examples working on `i686` compared to any other
+* It seemed to me at the time, that there was more online "starters" documentation
+  (like the articles on https://wiki.osdev.org/) for `i686` compared to any other
   architecture.
 
-Said that, likely I'll make `Tilck` to run completely run in `long mode` on
-`x86_64` systems at some point and, certainly making it run on `ARM` machines is
-a must for the project, since in the long term I'd like it to be usable in
-production embedded systems. Just, supporting another architecture cannot be a
-priority at this stage.
+Said that, likely I'll make `Tilck` to support also `x86_64` and being able to run
+in `long mode` at some point but, given the long-term plans for it as a tiny kernel
+for embedded systems, making it to run on `ARM` machines it certainly important.
+Unfortunately, the project at the moment is still not developed enough to be
+actually useful on its first architecture, therefore spending a lot of effort to
+make it run on a second architecture does not make much sense (at this stage).
 
 #### Why using FAT32?
 
