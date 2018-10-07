@@ -415,9 +415,17 @@ NORETURN sptr sys_exit(int exit_status)
       void *woptr = pos->wobj.ptr;
 
       if (woptr == curr || (pos->pid == cppid && woptr == (void *)-1)) {
-         ASSERT(pos->wobj.type == WOBJ_TASK);
-         wait_obj_reset(&pos->wobj);
-         task_change_state(pos, TASK_STATE_RUNNABLE);
+
+         uptr var;
+         disable_interrupts(&var);
+         {
+            if (pos->wobj.ptr == woptr) {
+               ASSERT(pos->wobj.type == WOBJ_TASK);
+               wait_obj_reset(&pos->wobj);
+               task_change_state(pos, TASK_STATE_RUNNABLE);
+            }
+         }
+         enable_interrupts(&var);
       }
    }
 

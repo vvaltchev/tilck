@@ -26,10 +26,11 @@
 #define MAX_PATH 256
 
 typedef enum {
-   TASK_STATE_RUNNABLE = 0,
-   TASK_STATE_RUNNING = 1,
-   TASK_STATE_SLEEPING = 2,
-   TASK_STATE_ZOMBIE = 3
+   TASK_STATE_INVALID = 0,
+   TASK_STATE_RUNNABLE = 1,
+   TASK_STATE_RUNNING = 2,
+   TASK_STATE_SLEEPING = 3,
+   TASK_STATE_ZOMBIE = 4
 } task_state_enum;
 
 typedef struct {
