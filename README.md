@@ -9,38 +9,37 @@ Tilck (Tiny Linux-Compatible Kernel)
 What is Tilck?
 ----------------------------------------
 
-Born as a purely educational project called *ExperimentOS*, `Tilck` is evolving as
-a tiny *monolithic* x86 Linux compatible kernel targeting (in the very long term)
-production embedded systems, while still remaining attached to the educational
-world: project's small-scale makes it suitable for operating system research
-projects. While it is just one of the many "small kernels" existing today, it is
-probably the only one (?) *designed* to support natively x86 Linux binaries. This
-**key-feature** allows it to rapidly been able to support a considerable amount of
-real-world programs compiled for Linux. The project however, does **not** (and
-never will) target to replace Linux: its goal is to offer anyone the possibility to
-build an extremely *customizable* and *deterministic* embedded system, while using
-a friendly and well-known (kernel - userspace) interface, the Linux one. Also, it
-is not part of project's goals to re-implement completely the Linux interface (all
-the syscalls, everything in /proc etc.) but to support just the minimum necessary
-in order to run a class of Linux console applications. The whole point is having a
-system as simple to build and test as an *unikernel*, while preserving many of the
-features offered by traditional operating systems. Another **key-feature** of
-`Tilck` is its permissive license: when at some point in the future the kernel will
-be ready for production systems, its license will allow companies to use and modify
-it free-of-charge, without having to release the source code of their changes.
+`Tilck` is an experimental *monolithic* x86 kernel designed to be Linux-compatible
+at binary level. Project's small-scale and intentional simplification makes it
+suitable for particular operating system research projects where a huge code base
+is an obstacle for implementing, in a reasonable amount of time, a new idea as a
+proof-of-concept or at prototype level. In addition to that, in the long term,
+`Tilck` aims to get suitable for production embedded systems where a kernel as thin
+as possible is required or, at least, it is considered the optimal solution. One can
+think about `Tilck` as a kernel as simple to build and customize as a *unikernel*,
+but which offers many of the features offered by traditional operating systems. As
+a consequence of that, the development of `Tilck` will answer the question:
+
+> How simple could possibly be a kernel able to run simple Linux console programs?
+
+As long with that, in many cases the development of the project will also answer
+questions like:
+
+> How fast a given kernel syscall / kernel subsystem can get if we get rid of most
+> of its complex features?
 
 
 Current state of the kernel
 ----------------------------------------
 
-Today that project is still to some extent educational and **far** from being ready
-for any kind of production use, but it is growing very fast with major patch series
-being merged once or twice at week. It has a read-only support to `FAT32` ramdisk,
-and it can run a discrete amount of `busybox` applications compiled for embedded
-Linux. Also, it has a console (supporting both text-mode and framebuffer) which
-understands all the essential escape sequences supported by the Linux console: that
-allows line-editing and simple `ncurses` applications to work. Finally, the kernel
-supports Linux applications using the framebuffer.
+Today that project is **far** from being ready for any kind of production use, but
+it is growing very fast with major patch series being merged once or twice at week.
+It has a read-only support to `FAT32` ramdisk, and it can run a discrete amount of
+`busybox` applications compiled for embedded Linux. Also, it has a console
+(supporting both text-mode and framebuffer) which understands all the essential
+escape sequences supported by the Linux console: that allows line-editing and
+simple `ncurses` applications to work. Finally, the kernel supports Linux
+applications using the framebuffer.
 
 For a slightly more accurate idea of kernel's features, please check the list of
 [supported Linux syscalls] or see what `Tilck` can do at any time by building it.

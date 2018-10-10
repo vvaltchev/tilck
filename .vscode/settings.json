@@ -31,4 +31,23 @@
    "editor.emptySelectionClipboard": false,
    "git.ignoreLimitWarning": true,
    "cmake.configureOnOpen": false,
+   "cSpell.words": [
+      "bintools",
+      "bootloader",
+      "busybox",
+      "framebuffer",
+      "multiboot",
+      "ncurses",
+      "qemu",
+      "ramdisk",
+      "syscall",
+      "syscalls",
+      "tilck",
+      "toolchain",
+      "uefi",
+      "unikernel",
+      "userspace",
+      "virtualbox",
+      "vmware"
+   ],
 }
