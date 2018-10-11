@@ -14,19 +14,20 @@ at binary level. Project's small-scale and intentional simplification makes it
 suitable for particular operating system research projects where a huge code base
 is an obstacle for implementing, in a reasonable amount of time, a new idea as a
 proof-of-concept or at prototype level. In addition to that, in the long term,
-`Tilck` aims to get suitable for production embedded systems where a kernel as thin
-as possible is required or, at least, it is considered the optimal solution. One can
-think about `Tilck` as a kernel as simple to build and customize as a *unikernel*,
-but which offers many of the features offered by traditional operating systems. As
-a consequence of that, the development of `Tilck` will answer the question:
+`Tilck` aims to get suitable for production **embedded systems** where a kernel as
+thin as possible is required or, at least, it is considered the optimal solution.
+One can think about `Tilck` as a kernel as simple to build and customize as a
+*unikernel*, but which offers many of the features offered by traditional operating
+systems. As a consequence of that, the development of `Tilck` will answer questions
+like:
 
-> How simple could possibly be a kernel able to run simple Linux console programs?
+> How simple could possibly be a kernel able to run a fair-amount of useful Linux
+> console programs?
 
-As long with that, in many cases the development of the project will also answer
-questions like:
+and
 
-> How fast a given kernel syscall / kernel subsystem can get if we get rid of most
-> of its complex features?
+> How fast a given syscall / kernel subsystem can get if we get rid of its most complex
+> features?
 
 
 Current state of the kernel
