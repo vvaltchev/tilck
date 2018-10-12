@@ -18,16 +18,14 @@ proof-of-concept or at prototype level. In addition to that, in the long term,
 thin as possible is required or, at least, it is considered the optimal solution.
 One can think about `Tilck` as a kernel as simple to build and customize as a
 *unikernel*, but which offers many of the features offered by traditional operating
-systems. As a consequence of that, the development of `Tilck` will answer questions
-like:
+systems. As a consequence of that, the development of `Tilck` will answer the
+following two questions:
 
-> How simple could possibly be a kernel able to run a fair-amount of useful Linux
+> 1) How simple could possibly be a kernel able to run a fair-amount of useful Linux
 > console programs?
 
-and
-
-> How fast a given syscall / kernel subsystem can get if we get rid of its most complex
-> features?
+> 2) How fast a given syscall / kernel subsystem can get if we get rid of its most
+> complex features?
 
 While as per today `Tilck` is still far from being able to provide some answers to the
 first question, some progress has been made with the second one: as shown in this
