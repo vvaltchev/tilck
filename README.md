@@ -28,10 +28,10 @@ following two questions:
 > complex features?
 
 While as per today `Tilck` is still far from being able to provide some answers to the
-first question, some progress has been made with the second one: as shown in this
-[wiki page], thanks to several semplications, Tilck's console is faster than the Linux one.
+first question, some progress has been made with the second one: as shown in this [article],
+thanks to several simplifications, `Tilck`'s console is much faster than the Linux one.
 
-[wiki page]: https://github.com/vvaltchev/tilck/wiki/Getting-performance-through-simplification:-Tilck's-console
+[article]: https://github.com/vvaltchev/tilck/wiki/Getting-performance-through-simplification:-Tilck's-console
 
 Current state of the kernel
 ----------------------------------------
