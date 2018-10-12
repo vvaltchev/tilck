@@ -38,11 +38,11 @@ set(ARCH "i386")
 
 # Compile options
 set(USE_GCOV OFF CACHE BOOL "Compile the tests for measuring coverage")
+set(ARCH_GTESTS OFF CACHE BOOL "Build unit tests for target architecture")
 
 # Non-boolean kernel options
 set(TIMER_HZ 100 CACHE STRING "System timer HZ")
 set(USER_STACK_PAGES 16 CACHE STRING "User apps stack size in pages")
-set(ARCH_GTESTS OFF CACHE BOOL "Build unit tests for target architecture")
 
 # Kernel options (enabled by default)
 
@@ -59,6 +59,9 @@ set(DEBUG_CHECKS_IN_RELEASE_BUILD ON CACHE BOOL
     "Keep checking ASSERTs and other debug checks even in release builds")
 
 # Kernel options (disabled by default)
+
+set(KERNEL_USE_SYSTEM_COMPILER OFF CACHE BOOL
+    "Use system's compiler for the kernel instead of toolchain's one")
 
 set(FORK_NO_COW OFF CACHE BOOL
     "Make fork() to perform a full-copy instead of using copy-on-write")
@@ -88,13 +91,22 @@ set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
 list(
    APPEND kernel_opts_list
 
+   # Various options
+   USE_GCOV
    ARCH_GTESTS
+
+   # Non-boolean kernel options
    TIMER_HZ
+   USER_STACK_PAGES
+
+   # Boolean options ENABLED by default
    KERNEL_TRACK_NESTED_INTERRUPTS
    TERM_PERF_METRICS
    PANIC_SHOW_STACKTRACE
    DEBUG_CHECKS_IN_RELEASE_BUILD
 
+   # Boolean options DISABLED by default
+   KERNEL_USE_SYSTEM_COMPILER
    FORK_NO_COW
    MMAP_NO_COW
    PANIC_SHOW_REGS
@@ -132,17 +144,18 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-message(STATUS "C compiler: ${CMAKE_C_COMPILER_ID}")
-message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER_ID}")
+message(STATUS "System C compiler: ${CMAKE_C_COMPILER_ID}")
+message(STATUS "System C++ compiler: ${CMAKE_CXX_COMPILER_ID}")
 
 
 CHECK_C_COMPILER_FLAG(-fno-tree-loop-vectorize FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
 CHECK_C_COMPILER_FLAG(-fno-tree-vectorize FLAG_NO_TREE_VEC_SUPPORTED)
 CHECK_C_COMPILER_FLAG(-fno-tree-slp-vectorize FLAG_NO_TREE_SLP_VEC_SUPPORTED)
 
-#message("CMAKE_ASM-ATT_COMPILE_OBJECT: ${CMAKE_ASM-ATT_COMPILE_OBJECT}")
+#message("CMAKE_ASM_COMPILE_OBJECT: ${CMAKE_ASM_COMPILE_OBJECT}")
 #message("CMAKE_C_LINK_EXECUTABLE: ${CMAKE_C_LINK_EXECUTABLE}")
 #message("CMAKE_C_COMPILE_OBJECT: ${CMAKE_C_COMPILE_OBJECT}")
+#message("CMAKE_C_LINK_FLAGS: ${CMAKE_C_LINK_FLAGS}")
 #message("CMAKE_CXX_COMPILE_OBJECT: ${CMAKE_CXX_COMPILE_OBJECT}")
 
 set(GENERAL_DEFS_LIST "")
@@ -168,9 +181,9 @@ if (${USE_GCOV})
                           "Run ${BTC_SCRIPT} -s build_lcov first.")
    endif()
 
-   message(STATUS "USE_GCOV = ON")
    set(GCOV_COMPILE_FLAGS "-fprofile-arcs -ftest-coverage")
    set(GCOV_LINK_FLAGS "-fprofile-arcs -lgcov")
+
 endif()
 
 foreach (opt ${kernel_opts_list})
@@ -200,6 +213,11 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
       list(APPEND WARN_FLAGS_LIST "-Wno-missing-field-initializers")
    endif()
 endif()
+
+if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+   list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
+endif()
+
 
 JOIN("${GENERAL_DEFS_LIST}" ${SPACE} GENERAL_DEFS)
 JOIN("${OTHER_CFLAGS_LIST}" ${SPACE} OTHER_CFLAGS)

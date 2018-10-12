@@ -71,12 +71,16 @@ file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})
 
 add_library(kernel_noarch_static_for_test STATIC EXCLUDE_FROM_ALL ${SOURCES})
 
+string(CONCAT no_arch_flags
+         "-DKERNEL_TEST -fPIC "
+         "${KERNEL_FLAGS} ${GCOV_COMPILE_FLAGS}")
+
 set_target_properties(
 
    kernel_noarch_static_for_test
 
    PROPERTIES
-      COMPILE_FLAGS "-DKERNEL_TEST ${KERNEL_FLAGS} ${GCOV_COMPILE_FLAGS}"
+      COMPILE_FLAGS "${no_arch_flags}"
 )
 
 add_subdirectory(arch)

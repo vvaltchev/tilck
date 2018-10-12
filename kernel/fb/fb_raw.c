@@ -4,7 +4,10 @@
  * Following the same philosophy described in fpu_memcpy.c, we want this code
  * to be optimized even in debug builds.
  */
-#pragma GCC optimize "-O3"
+
+#if defined(__GNUC__) && !defined(__clang__)
+   #pragma GCC optimize "-O3"
+#endif
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/utils.h>

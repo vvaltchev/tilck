@@ -19,7 +19,7 @@ int set_task_to_wake_after(task_info *task, u64 ticks)
    ASSERT(ticks > 0);
 
    for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
-      if (BOOL_COMPARE_AND_SWAP(&timers_array[i].task, NULL, 1)) {
+      if (BOOL_COMPARE_AND_SWAP(&timers_array[i].task, NULL, (void *)1)) {
          timers_array[i].task = task;
          timers_array[i].ticks_to_sleep = ticks;
          wait_obj_set(&get_curr_task()->wobj, WOBJ_TIMER, &timers_array[i]);

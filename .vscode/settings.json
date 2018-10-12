@@ -32,4 +32,18 @@
    "editor.emptySelectionClipboard": false,
    "git.ignoreLimitWarning": true,
    "cmake.configureOnOpen": false,
+   "cSpell.words": [
+      "binary",
+      "cmake",
+      "cmakedefine",
+      "dir",
+      "free",
+      "kmalloc",
+      "mem",
+      "no",
+      "poisoning",
+      "static",
+      "tilck",
+      "wrapper"
+   ],
 }

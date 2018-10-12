@@ -4,7 +4,7 @@
 
 #include <tilck/common/basic_defs.h>
 
-typedef struct task_info task_info;
+struct task_info;
 
 typedef enum {
    WOBJ_NONE    = 0,
@@ -45,7 +45,7 @@ static inline void wait_obj_reset(wait_obj *obj)
 typedef struct {
 
    uptr id;
-   task_info *owner_task;
+   struct task_info *owner_task;
    u32 flags;
    u32 lock_count; // Valid when the mutex is recursive
 
@@ -77,7 +77,7 @@ typedef struct {
 #define KCOND_WAIT_FOREVER 0
 
 void kcond_signal_int(kcond *c, bool all);
-void kcond_signal_single(kcond *c, task_info *ti);
+void kcond_signal_single(kcond *c, struct task_info *ti);
 
 void kcond_init(kcond *c);
 bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks);

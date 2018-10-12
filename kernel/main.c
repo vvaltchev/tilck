@@ -78,8 +78,13 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
 
 void show_hello_message(void)
 {
-   printk("Hello from Tilck! [%s build, GCC %i.%i.%i]\n",
-          BUILDTYPE_STR, __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+#ifndef __clang__
+   printk("Hello from Tilck! [%s build, GCC %i.%i.%i]\n", BUILDTYPE_STR,
+          __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+#else
+   printk("Hello from Tilck! [%s build, Clang %i.%i.%i]\n", BUILDTYPE_STR,
+          __clang_major__, __clang_minor__, __clang_patchlevel__);
+#endif
 }
 
 void show_system_info(void)

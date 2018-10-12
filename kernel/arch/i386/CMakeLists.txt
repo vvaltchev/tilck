@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.2)
 
 # Remove -rdynamic
-SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
 
 # Options that will be used only when building the actual kernel, not when
@@ -17,9 +17,11 @@ set(
    -fno-stack-protector
 
    # Allow easier disassembly debugging
-   -mpush-args
-   -mno-accumulate-outgoing-args
-   -mno-stack-arg-probe
+
+   # TODO: restore these if compiler == GCC
+   # -mpush-args
+   # -mno-accumulate-outgoing-args
+   # -mno-stack-arg-probe
 )
 JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
 
@@ -51,7 +53,7 @@ set_target_properties(
 
    PROPERTIES
       COMPILE_FLAGS "${KERNEL_FLAGS} ${ACTUAL_KERNEL_ONLY_FLAGS}"
-      LINK_FLAGS "-nostdlib -Wl,--script=${KERNEL_SCRIPT}"
+      LINK_FLAGS "-nostdlib -Wl,--build-id=none -Wl,--script=${KERNEL_SCRIPT}"
       LINK_DEPENDS ${KERNEL_SCRIPT}
 )
 

@@ -12,8 +12,11 @@
  * below. Just, we want it to be fast in debug builds to improve the user
  * experience there.
  */
-#pragma GCC optimize "-O3"
-#pragma GCC optimize "-fomit-frame-pointer"
+
+#if defined(__GNUC__) && !defined(__clang__)
+   #pragma GCC optimize "-O3"
+   #pragma GCC optimize "-fomit-frame-pointer"
+#endif
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>

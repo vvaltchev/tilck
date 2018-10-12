@@ -67,6 +67,10 @@ SECTIONS
 
    /DISCARD/ : { *(.eh_frame*) }
    /DISCARD/ : { *(.comment) }
+   /DISCARD/ : { *(.interp) }
+   /DISCARD/ : { *(.dyn*) }
+   /DISCARD/ : { *(.rel*) }
+   /DISCARD/ : { *(.*gnu*) }
 }
 
 

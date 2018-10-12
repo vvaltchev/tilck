@@ -143,9 +143,23 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 #define UNLIKELY(x) __builtin_expect((x), false)
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
-#define DO_NOT_OPTIMIZE_AWAY(x) asmVolatile("" : "+r" ( (void *)(x) ))
 #define CONTAINER_OF(elem_ptr, struct_type, mem_name) \
    ((struct_type *)(((char *)elem_ptr) - OFFSET_OF(struct_type, mem_name)))
+
+#ifndef __clang__
+
+   #define DO_NOT_OPTIMIZE_AWAY(x) asmVolatile("" : "+r" ( (void *)(x) ))
+
+#else
+
+   static ALWAYS_INLINE void __do_not_opt_away(void *x)
+   {
+      asmVolatile("" ::: "memory");
+   }
+
+   #define DO_NOT_OPTIMIZE_AWAY(x) (__do_not_opt_away((void *)(x)))
+
+#endif
 
 #define POINTER_ALIGN_MASK (~(sizeof(void *) - 1))
 

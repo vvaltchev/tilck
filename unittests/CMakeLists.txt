@@ -46,12 +46,16 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
 #    message(STATUS "Using CLANG_OPTS: ${CLANG_OPTS}")
 # endif()
 
+string(CONCAT gtests_flags
+         "-DTESTING -fPIC "
+         " ${CLANG_OPTS} ${COMMON_FLAGS} ${GCOV_COMPILE_FLAGS}")
+
 set_target_properties(
 
    gtests
 
    PROPERTIES
-      COMPILE_FLAGS "-DTESTING ${CLANG_OPTS} ${COMMON_FLAGS} ${GCOV_COMPILE_FLAGS}"
+      COMPILE_FLAGS "${gtests_flags}"
       LINK_FLAGS "${GCOV_LINK_FLAGS}"
 )
 
