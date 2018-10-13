@@ -25,27 +25,18 @@ set(
    # SURE that the given feature is supported, not in case it MIGHT BE.
 )
 
-if (${KERNEL_USE_SYSTEM_COMPILER})
-
-   if (FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
-      list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-loop-vectorize)
-   endif()
-
-   if (FLAG_NO_TREE_VEC_SUPPORTED)
-      list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-vectorize)
-   endif()
-
-   if (FLAG_NO_TREE_SLP_VEC_SUPPORTED)
-      list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-slp-vectorize)
-   endif()
-
-else()
-
+if (FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
    list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-loop-vectorize)
-   list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-vectorize)
-   list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-slp-vectorize)
-
 endif()
+
+if (FLAG_NO_TREE_VEC_SUPPORTED)
+   list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-vectorize)
+endif()
+
+if (FLAG_NO_TREE_SLP_VEC_SUPPORTED)
+   list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-slp-vectorize)
+endif()
+
 
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
 
