@@ -6,6 +6,7 @@ include(CheckCCompilerFlag)
 include(${CMAKE_SOURCE_DIR}/other/utils.cmake)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
+set(BUILD_SHARED_LIBRARIES off)
 
 # Reset the default flags
 set(CMAKE_C_FLAGS_DEBUG "")
@@ -13,11 +14,8 @@ set(CMAKE_C_FLAGS_MINSIZEREL "")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "")
 set(CMAKE_C_FLAGS_RELEASE "")
 
-# Architecture setting. Only i386 is accepted by now.
-
-set(ARCH "i386")
-
 # Compile options
+set(ARCH "i386" CACHE STRING "Target architecture. Only i386 is supported now")
 set(USE_GCOV OFF CACHE BOOL "Compile the tests for measuring coverage")
 set(ARCH_GTESTS OFF CACHE BOOL "Build unit tests for target architecture")
 
@@ -102,7 +100,6 @@ list(
 
 set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_APPS ${CMAKE_BINARY_DIR}/scripts/build_apps)
-set(BUILD_SHARED_LIBRARIES off)
 set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
 set(BTC_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 
@@ -112,11 +109,16 @@ if (NOT EXISTS ${TCROOT})
 endif()
 
 if (${ARCH} STREQUAL "i386")
+
    set(ARCH_FAMILY "generic_x86")
+   set(ARCH_ELF_NAME "elf32-i386")
    set(GCC_TOOLCHAIN ${TCROOT}/x86_gcc_toolchain/bin)
    set(GCC_TOOLCHAIN_GLIBC ${TCROOT}/x86_gcc_toolchain_glibc/bin)
+
 else()
+
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
+
 endif()
 
 set(CMAKE_C_STANDARD 99)
@@ -132,12 +134,6 @@ message(STATUS "System C++ compiler: ${CMAKE_CXX_COMPILER_ID}")
 CHECK_C_COMPILER_FLAG(-fno-tree-loop-vectorize FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
 CHECK_C_COMPILER_FLAG(-fno-tree-vectorize FLAG_NO_TREE_VEC_SUPPORTED)
 CHECK_C_COMPILER_FLAG(-fno-tree-slp-vectorize FLAG_NO_TREE_SLP_VEC_SUPPORTED)
-
-#message("CMAKE_ASM_COMPILE_OBJECT: ${CMAKE_ASM_COMPILE_OBJECT}")
-#message("CMAKE_C_LINK_EXECUTABLE: ${CMAKE_C_LINK_EXECUTABLE}")
-#message("CMAKE_C_COMPILE_OBJECT: ${CMAKE_C_COMPILE_OBJECT}")
-#message("CMAKE_C_LINK_FLAGS: ${CMAKE_C_LINK_FLAGS}")
-#message("CMAKE_CXX_COMPILE_OBJECT: ${CMAKE_CXX_COMPILE_OBJECT}")
 
 set(GENERAL_DEFS_LIST "")
 

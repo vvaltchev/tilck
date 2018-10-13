@@ -1,11 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
-if (${ARCH} STREQUAL "i386")
-
-   set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/i686-linux-gcc)
-
-endif()
+set_cross_compiler()
 
 add_definitions(-DUSERMODE_APP)
 

@@ -4,18 +4,7 @@ cmake_minimum_required(VERSION 3.2)
 # Remove -rdynamic
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
-if (${ARCH} STREQUAL "i386")
-
-   set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/i686-linux-gcc)
-   set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/i686-linux-gcc)
-   set(OBJCOPY ${GCC_TOOLCHAIN}/i686-linux-objcopy)
-   set(STRIP ${GCC_TOOLCHAIN}/i686-linux-strip)
-
-else()
-
-   message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
-
-endif()
+set_cross_compiler()
 
 # Common directories, both for early_boot and for elf_stage3
 include_directories(

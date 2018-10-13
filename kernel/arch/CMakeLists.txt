@@ -13,8 +13,6 @@ if (${ARCH} STREQUAL "i386")
       set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/i686-linux-gcc)
    endif()
 
-   set(ARCH_ELF_NAME "elf32-i386")
-
 else()
 
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")

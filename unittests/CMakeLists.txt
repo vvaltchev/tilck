@@ -2,17 +2,7 @@
 cmake_minimum_required(VERSION 3.2)
 
 if (${ARCH_GTESTS})
-   if (${ARCH} STREQUAL "i386")
-
-      set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN_GLIBC}/i686-linux-gcc)
-      set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN_GLIBC}/i686-linux-g++)
-      set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN_GLIBC}/i686-linux-gcc)
-
-   else()
-
-      message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
-
-   endif()
+   set_cross_compiler_glibc()
 endif()
 
 

@@ -2,20 +2,7 @@
 cmake_minimum_required(VERSION 3.2)
 
 if (${ARCH_GTESTS})
-   if (${ARCH} STREQUAL "i386")
-
-      set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/i686-linux-gcc)
-      set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/i686-linux-gcc)
-      set(OBJCOPY ${GCC_TOOLCHAIN}/i686-linux-objcopy)
-      set(STRIP ${GCC_TOOLCHAIN}/i686-linux-strip)
-
-      set(ARCH_ELF_NAME "elf32-i386")
-
-   else()
-
-      message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
-
-   endif()
+   set_cross_compiler()
 endif()
 
 set(
@@ -38,16 +25,26 @@ set(
    # SURE that the given feature is supported, not in case it MIGHT BE.
 )
 
-if (FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
-   LIST(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-loop-vectorize)
-endif()
+if (${KERNEL_USE_SYSTEM_COMPILER})
 
-if (FLAG_NO_TREE_VEC_SUPPORTED)
-   LIST(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-vectorize)
-endif()
+   if (FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
+      list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-loop-vectorize)
+   endif()
 
-if (FLAG_NO_TREE_SLP_VEC_SUPPORTED)
-   LIST(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-slp-vectorize)
+   if (FLAG_NO_TREE_VEC_SUPPORTED)
+      list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-vectorize)
+   endif()
+
+   if (FLAG_NO_TREE_SLP_VEC_SUPPORTED)
+      list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-slp-vectorize)
+   endif()
+
+else()
+
+   list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-loop-vectorize)
+   list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-vectorize)
+   list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-slp-vectorize)
+
 endif()
 
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
