@@ -3,35 +3,16 @@ cmake_minimum_required(VERSION 3.2)
 project (tilck C CXX ASM)
 
 include(CheckCCompilerFlag)
+include(${CMAKE_SOURCE_DIR}/other/utils.cmake)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
 
 # Reset the default flags
-
 set(CMAKE_C_FLAGS_DEBUG "")
 set(CMAKE_C_FLAGS_MINSIZEREL "")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "")
 set(CMAKE_C_FLAGS_RELEASE "")
 
-###########################################################
-# Generic CMake Utilities
-
-set(SPACE " ")
-
-function(JOIN VALUES GLUE OUTPUT)
-  string (REPLACE ";" "${GLUE}" _TMP_STR "${VALUES}")
-  set (${OUTPUT} "${_TMP_STR}" PARENT_SCOPE)
-endfunction()
-
-function(PREPEND var prefix)
-   set(listVar "")
-   foreach(f ${ARGN})
-      list(APPEND listVar "${prefix}${f}")
-   endforeach(f)
-   set(${var} "${listVar}" PARENT_SCOPE)
-endfunction(PREPEND)
-
-###########################################################
 # Architecture setting. Only i386 is accepted by now.
 
 set(ARCH "i386")
