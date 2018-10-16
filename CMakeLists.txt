@@ -8,6 +8,17 @@ include(${CMAKE_SOURCE_DIR}/other/utils.cmake)
 set(CMAKE_VERBOSE_MAKEFILE off)
 set(BUILD_SHARED_LIBRARIES off)
 
+if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+
+   string(CONCAT msg "Currently, Tilck can be built ONLY on x86_64 host "
+                     "machines no matter which target architecture has been "
+                     "chosen. Reason: the build system uses a toolchain "
+                     "pre-compiled for x86_64 hosts.")
+
+   message(FATAL_ERROR "${msg}")
+
+endif()
+
 # Reset the default flags
 set(CMAKE_C_FLAGS_DEBUG "")
 set(CMAKE_C_FLAGS_MINSIZEREL "")
@@ -39,7 +50,7 @@ set(DEBUG_CHECKS_IN_RELEASE_BUILD ON CACHE BOOL
 
 # Kernel options (disabled by default)
 
-set(KERNEL_USE_SYSTEM_COMPILER OFF CACHE BOOL
+set(KERNEL_USE_SYSTEM_CC OFF CACHE BOOL
     "Use system's compiler for the kernel instead of toolchain's one")
 
 set(FORK_NO_COW OFF CACHE BOOL
@@ -85,7 +96,7 @@ list(
    DEBUG_CHECKS_IN_RELEASE_BUILD
 
    # Boolean options DISABLED by default
-   KERNEL_USE_SYSTEM_COMPILER
+   KERNEL_USE_SYSTEM_CC
    FORK_NO_COW
    MMAP_NO_COW
    PANIC_SHOW_REGS
