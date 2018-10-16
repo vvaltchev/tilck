@@ -1,25 +1,18 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
-if (${ARCH} STREQUAL "i386")
+set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
 
-   set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/i686-linux-gcc)
-
-   if(${KERNEL_USE_SYSTEM_CC})
+if (${KERNEL_USE_SYSTEM_CC})
+   if (${ARCH} STREQUAL "i386")
       set(CMAKE_C_FLAGS "-m32 -march=i686")
       set(OBJCOPY "${SYS_OBJCOPY}")
       set(STRIP "${SYS_STRIP}")
    else()
-      set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/i686-linux-gcc)
-      set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/i686-linux-g++)
-      set(OBJCOPY ${GCC_TOOLCHAIN}/i686-linux-objcopy)
-      set(STRIP ${GCC_TOOLCHAIN}/i686-linux-strip)
+      message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
    endif()
-
 else()
-
-   message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
-
+   set_cross_compiler()
 endif()
 
 # B2O = Binary to Object file [options]

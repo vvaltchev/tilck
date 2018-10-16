@@ -136,6 +136,7 @@ if (${ARCH} STREQUAL "i386")
 
    set(ARCH_FAMILY "generic_x86")
    set(ARCH_ELF_NAME "elf32-i386")
+   set(ARCH_GCC_TC "i686")
    set(GCC_TOOLCHAIN ${TCROOT}/x86_gcc_toolchain/bin)
    set(GCC_TOOLCHAIN_GLIBC ${TCROOT}/x86_gcc_toolchain_glibc/bin)
 
