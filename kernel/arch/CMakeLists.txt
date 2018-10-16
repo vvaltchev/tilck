@@ -4,13 +4,16 @@ cmake_minimum_required(VERSION 3.2)
 if (${ARCH} STREQUAL "i386")
 
    set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/i686-linux-gcc)
-   set(OBJCOPY ${GCC_TOOLCHAIN}/i686-linux-objcopy)
-   set(STRIP ${GCC_TOOLCHAIN}/i686-linux-strip)
 
    if(${KERNEL_USE_SYSTEM_CC})
       set(CMAKE_C_FLAGS "-m32 -march=i686")
+      set(OBJCOPY "${SYS_OBJCOPY}")
+      set(STRIP "${SYS_STRIP}")
    else()
       set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/i686-linux-gcc)
+      set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/i686-linux-g++)
+      set(OBJCOPY ${GCC_TOOLCHAIN}/i686-linux-objcopy)
+      set(STRIP ${GCC_TOOLCHAIN}/i686-linux-strip)
    endif()
 
 else()

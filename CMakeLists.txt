@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
-project (tilck C CXX ASM)
+project(tilck C CXX ASM)
 
 include(CheckCCompilerFlag)
 include(${CMAKE_SOURCE_DIR}/other/utils.cmake)
@@ -18,6 +18,19 @@ if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
    message(FATAL_ERROR "${msg}")
 
 endif()
+
+if (NOT "$ENV{OBJCOPY}" STREQUAL "")
+   set(SYS_OBJCOPY "$ENV{OBJCOPY}" CACHE INTERNAL "")
+else()
+   set(SYS_OBJCOPY "objcopy" CACHE INTERNAL "")
+endif()
+
+if (NOT "$ENV{STRIP}" STREQUAL "")
+   set(SYS_STRIP "$ENV{STRIP}" CACHE INTERNAL "")
+else()
+   set(SYS_STRIP "strip" CACHE INTERNAL "")
+endif()
+
 
 # Reset the default flags
 set(CMAKE_C_FLAGS_DEBUG "")
