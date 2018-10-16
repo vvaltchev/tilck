@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.2)
 
 if (${ARCH_GTESTS})
-   set_cross_compiler_glibc()
+   set_cross_compiler_gtests()
 endif()
 
 

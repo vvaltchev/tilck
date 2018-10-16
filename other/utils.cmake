@@ -26,7 +26,20 @@ macro(set_cross_compiler)
 
 endmacro()
 
-macro(set_cross_compiler_glibc)
+# For the moment this macro is the same as set_cross_compiler()
+macro(set_cross_compiler_userapps)
+
+   set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
+   set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-g++)
+   set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
+   set(OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
+   set(STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
+
+endmacro()
+
+# In case ARCH_GTESTS is ON, we want to use a cross-compiler BUT it has to use
+# glibc instead of musl by default.
+macro(set_cross_compiler_gtests)
 
    set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcc)
    set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-g++)

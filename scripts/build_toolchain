@@ -432,6 +432,14 @@ if [ -z "$NO_BUSYBOX" ]; then
    default_funcs+=(build_busybox)
 fi
 
+if [ "`uname -p`" != "x86_64" ]; then
+
+   echo "ERROR: Tilck can be built ONLY on x86_64 host machines no matter"
+   echo "which target architecture has been chosen. Reason: the build "
+   echo "system uses a toolchain pre-compiled for x86_64 hosts."
+
+   exit 1
+fi
 
 # Exit on the first failure
 set -e
