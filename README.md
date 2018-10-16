@@ -29,7 +29,7 @@ following two questions:
 
 While as per today `Tilck` is still far from being able to provide some answers to the
 first question, some progress has been made with the second one: as shown in this [article],
-thanks to several simplifications, `Tilck`'s console is much faster than the Linux one.
+thanks to several simplifications, `Tilck`'s console is faster than the Linux one.
 
 [article]: https://github.com/vvaltchev/tilck/wiki/Getting-performance-through-simplification:-Tilck's-console
 
@@ -252,11 +252,11 @@ from the beginning a `x86_64` kernel running completely in `long mode` but I
 decided to stick initially with the `i686` architecture for the following reasons:
 
 * The `long mode` is, roughly, another "layer" added on the top of 32-bit
-  protected mode: it order to have a full understanding of its complexity, I
+  protected mode: in order to have a full understanding of its complexity, I
   thought it was better to start first with its legacy.
 
-* The `long mode` does not have a full support for the segmentation. I wanted to
-  get confident with this technology.
+* The `long mode` does not have a full support for segmentation, while I wanted
+  to get confident with this technology as well.
 
 * The `long mode` has a 4-level paging system, which is more complex to use that
   the classic 2-level paging supported by `ia32` (it was better to start with
