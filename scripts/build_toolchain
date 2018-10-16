@@ -204,6 +204,10 @@ function build_libmusl {
       run_command2 "make -j" build.log
       run_command2 "make install" make_install.log
 
+      cd $TC/musl-install/bin
+      cp musl-gcc musl-g++
+      sed -i 's/-i386-gcc/-i386-g++/' musl-g++
+
       export PATH="$saved_path"
 
    else

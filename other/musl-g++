@@ -1,0 +1,8 @@
+#!/bin/sh
+# SPDX-License-Identifier: BSD-2-Clause
+
+PROJ_DIR="@CMAKE_SOURCE_DIR@"
+TCROOT="@TCROOT@"
+
+TC="$TCROOT/x86_gcc_toolchain_glibc/bin"
+PATH="$TC:$PATH" "$TCROOT/musl-install/bin/musl-g++" "$@"
