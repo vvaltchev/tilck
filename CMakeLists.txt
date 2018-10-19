@@ -8,6 +8,8 @@ include(${CMAKE_SOURCE_DIR}/other/utils.cmake)
 set(CMAKE_VERBOSE_MAKEFILE off)
 set(BUILD_SHARED_LIBRARIES off)
 
+set(DEFAULT_TARGET_ARCH "i386")
+
 if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
    string(CONCAT msg "Currently, Tilck can be built ONLY on x86_64 host "
@@ -52,7 +54,17 @@ else()
    set(USE_SYSCC 0)
 endif()
 
-message(STATUS "USE_SYSCC: ${USE_SYSCC}")
+message(STATUS "USE_SYSCC = ${USE_SYSCC}")
+
+if (NOT DEFINED ARCH)
+   if (NOT "$ENV{TARGET_ARCH}" STREQUAL "")
+      set(ARCH "$ENV{TARGET_ARCH}" CACHE INTERNAL "")
+   else()
+      set(ARCH "${DEFAULT_TARGET_ARCH}" CACHE INTERNAL "")
+   endif()
+endif()
+
+message(STATUS "ARCH = ${ARCH}")
 
 # Reset the default flags
 set(CMAKE_C_FLAGS_DEBUG "")
@@ -61,7 +73,6 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "")
 set(CMAKE_C_FLAGS_RELEASE "")
 
 # Compile options
-set(ARCH "i386" CACHE STRING "Target architecture. Only i386 is supported now")
 set(USE_GCOV OFF CACHE BOOL "Compile the tests for measuring coverage")
 set(ARCH_GTESTS OFF CACHE BOOL "Build unit tests for target architecture")
 
@@ -174,9 +185,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-message(STATUS "System C compiler: ${CMAKE_C_COMPILER_ID}")
-message(STATUS "System C++ compiler: ${CMAKE_CXX_COMPILER_ID}")
-
+message(STATUS "SYS CC compiler name: ${CMAKE_C_COMPILER_ID}")
+message(STATUS "SYS CXX compiler name: ${CMAKE_CXX_COMPILER_ID}")
 
 CHECK_C_COMPILER_FLAG(-fno-tree-loop-vectorize FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
 CHECK_C_COMPILER_FLAG(-fno-tree-vectorize FLAG_NO_TREE_VEC_SUPPORTED)
