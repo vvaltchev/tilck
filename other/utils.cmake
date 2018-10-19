@@ -4,16 +4,20 @@ cmake_minimum_required(VERSION 3.2)
 set(SPACE " ")
 
 function(JOIN VALUES GLUE OUTPUT)
-  string (REPLACE ";" "${GLUE}" _TMP_STR "${VALUES}")
-  set (${OUTPUT} "${_TMP_STR}" PARENT_SCOPE)
+  string(REPLACE ";" "${GLUE}" _TMP_STR "${VALUES}")
+  set(${OUTPUT} "${_TMP_STR}" PARENT_SCOPE)
 endfunction()
 
 function(PREPEND var prefix)
+
    set(listVar "")
+
    foreach(f ${ARGN})
       list(APPEND listVar "${prefix}${f}")
    endforeach(f)
+
    set(${var} "${listVar}" PARENT_SCOPE)
+
 endfunction(PREPEND)
 
 macro(set_cross_compiler)
@@ -29,11 +33,19 @@ endmacro()
 # For the moment this macro is the same as set_cross_compiler()
 macro(set_cross_compiler_userapps)
 
-   set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-   set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-g++)
    set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-   set(OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
-   set(STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
+
+   if (NOT ${USE_SYSCC})
+      set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
+      set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-g++)
+      set(OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
+      set(STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
+   else()
+      set(CMAKE_C_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-gcc")
+      set(CMAKE_CXX_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-g++")
+      set(OBJCOPY "${SYS_OBJCOPY}")
+      set(STRIP "${SYS_STRIP}")
+   endif()
 
 endmacro()
 

@@ -176,20 +176,31 @@ function build_libmusl {
 
    if ! [ -d musl ]; then
 
-      # The glibc gcc toolchain is necessary in order to build libmusl and make
-      # its build system generate the musl-gcc script. Attempting to build
-      # libmusl with the musl gcc toolchain succeeds BUT the bin/musl-gcc script
-      # and the lib/musl-gcc.specs file ARE NOT generated, because the build
-      # system detected that the toolchain is already using libmusl. In our case
-      # building libmusl and compiling programs with musl-gcc is essential since
-      # it allows debugging libmusl itself (the pre-compiled toolchain uses an
-      # optimized non-debug version of libmusl).
+      if [[ "$USE_SYSCC" == "" || "$USE_SYSCC" == 0 ]]; then
 
-      download_x86_gcc_glibc_toolchain
+         # The glibc gcc toolchain is necessary in order to build libmusl and
+         # make its build system generate the musl-gcc script. Attempting to
+         # build libmusl with the musl gcc toolchain succeeds BUT the musl-gcc
+         # script and the lib/musl-gcc.specs file ARE NOT generated, because the
+         # build system detected that the toolchain is already using libmusl. In
+         # our case having the ability to build libmusl and compile programs
+         # with musl-gcc is essential since it allows debugging libmusl itself
+         # (the pre-compiled toolchain uses an optimized non-debug version of
+         # libmusl).
 
-      tc="$TC/${X86_TOOLCHAIN_DIR_NAME}_glibc/bin"
-      saved_path="$PATH"
-      export PATH="$tc:$PATH"
+         download_x86_gcc_glibc_toolchain
+         tc="$TC/${X86_TOOLCHAIN_DIR_NAME}_glibc/bin"
+         saved_path="$PATH"
+         export PATH="$tc:$PATH"
+
+      else
+
+         export SYS_CC="$CC"
+         export SYS_CXX="$CXX"
+         export CC="$MAIN_DIR/scripts/build_scripts/i386-gcc"
+         export CXX="$MAIN_DIR/scripts/build_scripts/i386-g++"
+
+      fi
 
       show_work_on_component_msg "LIBMUSL"
 

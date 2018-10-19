@@ -19,18 +19,40 @@ if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
 endif()
 
-if (NOT "$ENV{OBJCOPY}" STREQUAL "")
-   set(SYS_OBJCOPY "$ENV{OBJCOPY}" CACHE INTERNAL "")
-else()
-   set(SYS_OBJCOPY "objcopy" CACHE INTERNAL "")
+if (NOT DEFINED SYS_OBJCOPY)
+   if (NOT "$ENV{OBJCOPY}" STREQUAL "")
+      set(SYS_OBJCOPY "$ENV{OBJCOPY}" CACHE INTERNAL "")
+   else()
+      set(SYS_OBJCOPY "objcopy" CACHE INTERNAL "")
+   endif()
 endif()
 
-if (NOT "$ENV{STRIP}" STREQUAL "")
-   set(SYS_STRIP "$ENV{STRIP}" CACHE INTERNAL "")
-else()
-   set(SYS_STRIP "strip" CACHE INTERNAL "")
+
+if (NOT DEFINED SYS_STRIP)
+   if (NOT "$ENV{STRIP}" STREQUAL "")
+      set(SYS_STRIP "$ENV{STRIP}" CACHE INTERNAL "")
+   else()
+      set(SYS_STRIP "strip" CACHE INTERNAL "")
+   endif()
 endif()
 
+if (NOT DEFINED _CACHE_USE_SYSCC)
+   if (NOT "$ENV{USE_SYSCC}" STREQUAL "")
+      set(_CACHE_USE_SYSCC "$ENV{USE_SYSCC}" CACHE INTERNAL "")
+   else()
+      set(_CACHE_USE_SYSCC 0 CACHE INTERNAL "")
+   endif()
+endif()
+
+if (${_CACHE_USE_SYSCC})
+   set(USE_SYSCC 1)
+   set(SYS_CC "${CMAKE_C_COMPILER}")
+   set(SYS_CXX "${CMAKE_CXX_COMPILER}")
+else()
+   set(USE_SYSCC 0)
+endif()
+
+message(STATUS "USE_SYSCC: ${USE_SYSCC}")
 
 # Reset the default flags
 set(CMAKE_C_FLAGS_DEBUG "")
