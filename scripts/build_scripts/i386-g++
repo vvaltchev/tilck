@@ -1,0 +1,2 @@
+#!/bin/sh
+exec $SYS_CXX -m32 -march=i686 "$@" 
