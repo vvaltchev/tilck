@@ -12,4 +12,4 @@ else
    export PATH="$PROJ_DIR/scripts/build_scripts:$PATH"
 fi
 
-"$TCROOT/musl-install/bin/musl-gcc" "$@"
+"$TCROOT/musl-install/bin/musl-gcc" "$@" -Wl,-m -Wl,@ARCH_LD_OUTPUT@

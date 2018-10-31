@@ -176,7 +176,7 @@ void dump_fb_fix_info(void)
    }
 
    printf("id:          %s\n", fb_fixinfo.id);
-   printf("smem_start:  %p\n", fb_fixinfo.smem_start);
+   printf("smem_start:  %p\n", (void *)fb_fixinfo.smem_start);
    printf("smem_len:    %u\n", fb_fixinfo.smem_len);
    printf("type:        %u\n", fb_fixinfo.type);
    printf("visual:      %u\n", fb_fixinfo.visual);
@@ -184,8 +184,8 @@ void dump_fb_fix_info(void)
    printf("ypanstep:    %u\n", fb_fixinfo.ypanstep);
    printf("ywrapstep:   %u\n", fb_fixinfo.ywrapstep);
    printf("line_length: %u\n", fb_fixinfo.line_length);
-   printf("mmio_start:  %p\n", fb_fixinfo.mmio_start);
-   printf("mmio_len:    %p\n", fb_fixinfo.mmio_len);
+   printf("mmio_start:  %p\n", (void *)fb_fixinfo.mmio_start);
+   printf("mmio_len:    %u\n", fb_fixinfo.mmio_len);
 }
 
 void dump_fb_var_info(void)

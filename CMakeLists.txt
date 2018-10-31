@@ -169,7 +169,9 @@ if (${ARCH} STREQUAL "i386")
 
    set(ARCH_FAMILY "generic_x86")
    set(ARCH_ELF_NAME "elf32-i386")
+   set(ARCH_LD_OUTPUT "elf_i386")
    set(ARCH_GCC_TC "i686")
+   set(ARCH_GCC_FLAGS "-m32 -march=i686")
    set(GCC_TOOLCHAIN ${TCROOT}/x86_gcc_toolchain/bin)
    set(GCC_TOOLCHAIN_GLIBC ${TCROOT}/x86_gcc_toolchain_glibc/bin)
 
@@ -240,8 +242,8 @@ set(
    -Wno-unused-parameter
 )
 
-if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "5.0.0")
+if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+   if (CMAKE_C_COMPILER_VERSION VERSION_LESS "5.0.0")
       # See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53119
       list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
       list(APPEND WARN_FLAGS_LIST "-Wno-missing-field-initializers")
@@ -250,6 +252,21 @@ endif()
 
 if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
    list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
+
+   if (USE_SYSCC)
+      string(APPEND msg "USE_SYSCC=1 is not supported with Clang. "
+                        "Please use GCC. Note[1]: it is possible to build just "
+                        "the kernel with Clang by setting CC=clang the CMake "
+                        "variable KERNEL_USE_SYSTEM_CC=1. However, the i686 "
+                        "gcc toolchain will still be used for assembly files "
+                        "and other targets. Note[2]: if your using "
+                        "./scripts/cmake_run, you can set CMake variables by "
+                        "setting the CMAKE_ARGS environment variable this way: "
+                        "\nCMAKE_ARGS='-DCMAKE_VAR1=0 -DVAR2=blabla' "
+                        "./scripts/cmake_run")
+
+      message(FATAL_ERROR "${msg}")
+   endif()
 endif()
 
 

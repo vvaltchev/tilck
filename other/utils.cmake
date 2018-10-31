@@ -22,42 +22,84 @@ endfunction(PREPEND)
 
 macro(set_cross_compiler)
 
-   set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-   set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-g++)
-   set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-   set(OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
-   set(STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
+   if (${USE_SYSCC})
 
-endmacro()
+      if (${ARCH} STREQUAL "i386")
+         set(CMAKE_C_FLAGS "${ARCH_GCC_FLAGS}")
+         set(CMAKE_CXX_FLAGS "${ARCH_GCC_FLAGS}")
+         set(CMAKE_ASM_FLAGS "${ARCH_GCC_FLAGS}")
+      else()
+         # Assume that the system's compiler is already able to build for
+         # the given target architecture without additional flags.
+      endif()
 
-# For the moment this macro is the same as set_cross_compiler()
-macro(set_cross_compiler_userapps)
-
-   set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-
-   if (NOT ${USE_SYSCC})
-      set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-      set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-g++)
-      set(OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
-      set(STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
-   else()
-      set(CMAKE_C_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-gcc")
-      set(CMAKE_CXX_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-g++")
       set(OBJCOPY "${SYS_OBJCOPY}")
       set(STRIP "${SYS_STRIP}")
+
+   else()
+
+      # DEFAULT CASE: use our pre-built toolchain
+
+      set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
+      set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-g++)
+      set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
+      set(OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
+      set(STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
+
    endif()
 
 endmacro()
 
-# In case ARCH_GTESTS is ON, we want to use a cross-compiler BUT it has to use
-# glibc instead of musl by default.
+macro(set_cross_compiler_userapps)
+
+   if (${USE_SYSCC})
+
+      set(CMAKE_C_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-gcc")
+      set(CMAKE_CXX_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-g++")
+      set(CMAKE_ASM_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-gcc")
+      set(OBJCOPY "${SYS_OBJCOPY}")
+      set(STRIP "${SYS_STRIP}")
+
+   else()
+
+      # DEFAULT CASE: use our pre-built toolchain
+
+      set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
+      set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-g++)
+      set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
+      set(OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
+      set(STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
+
+   endif()
+
+endmacro()
+
 macro(set_cross_compiler_gtests)
 
-   set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcc)
-   set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-g++)
-   set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcc)
-   set(OBJCOPY ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-objcopy)
-   set(STRIP ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-strip)
+   # This macro is used in case ARCH_GTESTS is ON.
+
+   if (${USE_SYSCC})
+
+      # Special case: the user wants to use system's compiler to compile code
+      # for the target architecture. Just use our basic set_cross_compiler()
+      # macro.
+
+      set_cross_compiler()
+
+   else()
+
+      # DEFAULT CASE: use our pre-built toolchain
+
+      # We want to use a cross-compiler BUT it has to use glibc instead of
+      # libmusl as libc.
+
+      set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcc)
+      set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-g++)
+      set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcc)
+      set(OBJCOPY ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-objcopy)
+      set(STRIP ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-strip)
+
+   endif()
 
 endmacro()
 

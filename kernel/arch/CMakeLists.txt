@@ -1,16 +1,27 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
-set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-
 if (${KERNEL_USE_SYSTEM_CC})
+
    if (${ARCH} STREQUAL "i386")
-      set(CMAKE_C_FLAGS "-m32 -march=i686")
-      set(OBJCOPY "${SYS_OBJCOPY}")
-      set(STRIP "${SYS_STRIP}")
-   else()
-      message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
+
+      set(CMAKE_C_FLAGS "${ARCH_GCC_FLAGS}")
+      set(CMAKE_CXX_FLAGS "${ARCH_GCC_FLAGS}")
+
+      if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+         set(CMAKE_ASM_FLAGS "${ARCH_GCC_FLAGS}")
+      else()
+         # If system's compiler (CC) is Clang, we cannot use it for compiling
+         # our assembly code, because LLVM's assembler (llvm-as) is not 100%
+         # compatible with GAS's intel-syntax dialect.
+         set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
+      endif()
+
    endif()
+
+   set(OBJCOPY "${SYS_OBJCOPY}")
+   set(STRIP "${SYS_STRIP}")
+
 else()
    set_cross_compiler()
 endif()

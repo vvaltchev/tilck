@@ -219,6 +219,11 @@ function build_libmusl {
       cp musl-gcc musl-g++
       sed -i 's/-i386-gcc/-i386-g++/' musl-g++
 
+      cd $TC/musl-install/include
+      ln -s /usr/include/linux .
+      ln -s /usr/include/asm .
+      ln -s /usr/include/asm-generic .
+
       export PATH="$saved_path"
 
    else
@@ -436,6 +441,22 @@ function build_ncurses {
 # MAIN
 #
 ##########################################################
+
+if [[ "$USE_SYSCC" != "" && "$USE_SYSCC" != 0 ]]; then
+
+   if [[ "$CC" == "" || "$CXX" == "" ]]; then
+      echo "ERROR: setting CC and CXX is mandatory when USE_SYSCC=1."
+      exit 1
+   fi
+
+   compiler="`$CC --version | cut -d ' ' -f 1 | head -1`"
+
+   if [ "$compiler" != "gcc" ]; then
+      echo "ERROR: USE_SYSCC=1 is NOT supported with compilers other than GCC."
+      exit 1
+   fi
+
+fi
 
 default_funcs=()
 default_funcs+=(download_x86_gcc_toolchain)
