@@ -207,7 +207,7 @@ fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
    return d;
 }
 
-STATIC int fat_stat(fs_handle h, struct stat *statbuf)
+STATIC int fat_stat64(fs_handle h, struct stat64 *statbuf)
 {
    fat_file_handle *fh = h;
    datetime_t crt_time, wrt_time;
@@ -215,7 +215,7 @@ STATIC int fat_stat(fs_handle h, struct stat *statbuf)
    if (!h)
       return -ENOENT;
 
-   bzero(statbuf, sizeof(struct stat));
+   bzero(statbuf, sizeof(struct stat64));
 
    statbuf->st_dev = fh->fs->device_id;
    statbuf->st_ino = 0;
@@ -454,7 +454,7 @@ STATIC int fat_open(filesystem *fs, const char *path, fs_handle *out)
    h->fs = fs;
    h->fops.read = fat_read;
    h->fops.seek = fat_seek;
-   h->fops.stat = fat_stat;
+   h->fops.stat = fat_stat64;
    h->fops.write = NULL;
 
    h->fops.exlock = fat_file_exlock;

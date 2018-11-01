@@ -49,7 +49,7 @@ typedef ssize_t (*func_read) (fs_handle, char *, size_t);
 typedef ssize_t (*func_write) (fs_handle, char *, size_t);
 typedef off_t (*func_seek) (fs_handle, off_t, int);
 typedef int (*func_ioctl) (fs_handle, uptr, void *);
-typedef int (*func_stat) (fs_handle, struct stat *);
+typedef int (*func_stat) (fs_handle, struct stat64 *);
 typedef int (*func_mmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_munmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_fcntl) (fs_handle, int, uptr);
@@ -129,7 +129,7 @@ void mountpoint_remove(filesystem *fs);
 
 int vfs_open(const char *path, fs_handle *out);
 int vfs_ioctl(fs_handle h, uptr request, void *argp);
-int vfs_stat(fs_handle h, struct stat *statbuf);
+int vfs_stat64(fs_handle h, struct stat64 *statbuf);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
 void vfs_close(fs_handle h);

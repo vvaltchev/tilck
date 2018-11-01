@@ -199,7 +199,7 @@ int vfs_ioctl(fs_handle h, uptr request, void *argp)
    return ret;
 }
 
-int vfs_stat(fs_handle h, struct stat *statbuf)
+int vfs_stat64(fs_handle h, struct stat64 *statbuf)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;

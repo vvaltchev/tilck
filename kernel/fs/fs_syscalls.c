@@ -287,12 +287,12 @@ sptr sys_readv(int fd, const struct iovec *user_iov, int iovcnt)
    return ret;
 }
 
-sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
+sptr sys_stat64(const char *user_path, struct stat64 *user_statbuf)
 {
    task_info *curr = get_curr_task();
    char *orig_path = curr->args_copybuf;
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
-   struct stat statbuf;
+   struct stat64 statbuf;
    int rc = 0;
    fs_handle h = NULL;
 
@@ -324,12 +324,12 @@ sptr sys_stat64(const char *user_path, struct stat *user_statbuf)
       return rc;
 
    ASSERT(h != NULL);
-   rc = vfs_stat(h, &statbuf);
+   rc = vfs_stat64(h, &statbuf);
 
    if (rc < 0)
       goto out;
 
-   rc = copy_to_user(user_statbuf, &statbuf, sizeof(struct stat));
+   rc = copy_to_user(user_statbuf, &statbuf, sizeof(struct stat64));
 
    if (rc < 0)
       return -EFAULT;
@@ -339,7 +339,7 @@ out:
    return rc;
 }
 
-sptr sys_lstat64(const char *user_path, struct stat *user_statbuf)
+sptr sys_lstat64(const char *user_path, struct stat64 *user_statbuf)
 {
    /*
     * For moment, symlinks are not supported in Tilck. Therefore, make lstat()

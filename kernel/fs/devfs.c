@@ -121,7 +121,7 @@ int devfs_dir_ioctl(fs_handle h, uptr request, void *arg)
    return -EINVAL;
 }
 
-int devfs_dir_stat(fs_handle h, struct stat *statbuf)
+int devfs_dir_stat64(fs_handle h, struct stat64 *statbuf)
 {
    devfs_file_handle *dh = h;
    devfs_data *devfs_data = dh->fs->device_data;
@@ -129,7 +129,7 @@ int devfs_dir_stat(fs_handle h, struct stat *statbuf)
    if (!h)
       return -ENOENT;
 
-   bzero(statbuf, sizeof(struct stat));
+   bzero(statbuf, sizeof(struct stat64));
    statbuf->st_dev = dh->fs->device_id;
    statbuf->st_ino = 0;
    statbuf->st_mode = 0555 | S_IFDIR;
@@ -148,13 +148,13 @@ int devfs_dir_stat(fs_handle h, struct stat *statbuf)
    return 0;
 }
 
-int devfs_char_dev_stat(fs_handle h, struct stat *statbuf)
+int devfs_char_dev_stat64(fs_handle h, struct stat64 *statbuf)
 {
    devfs_file_handle *dh = h;
    devfs_file *df = dh->devfs_file_ptr;
    devfs_data *devfs_data = dh->fs->device_data;
 
-   bzero(statbuf, sizeof(struct stat));
+   bzero(statbuf, sizeof(struct stat64));
 
    statbuf->st_dev = dh->fs->device_id;
    statbuf->st_ino = 0;
@@ -192,7 +192,7 @@ static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
       .write = devfs_dir_write,
       .seek = devfs_dir_seek,
       .ioctl =  devfs_dir_ioctl,
-      .stat = devfs_dir_stat,
+      .stat = devfs_dir_stat64,
       .exlock = NULL,
       .exunlock = NULL,
       .shlock = NULL,
@@ -224,7 +224,7 @@ static int devfs_open_file(filesystem *fs, devfs_file *pos, fs_handle *out)
    h->fops = pos->fops;
 
    if (!h->fops.stat)
-      h->fops.stat = devfs_char_dev_stat;
+      h->fops.stat = devfs_char_dev_stat64;
 
    *out = h;
    return 0;
