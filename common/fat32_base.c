@@ -255,6 +255,8 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
          entry = fat_get_pointer_to_cluster_data(hdr, cluster);
       }
 
+      ASSERT(entry != NULL);
+
       for (u32 i = 0; i < entries_per_cluster; i++) {
 
          if (is_long_name_entry(&entry[i])) {
@@ -533,7 +535,7 @@ static int fat_search_entry_cb(fat_header *hdr,
    } else {
 
       /*
-       * no long name: for short names, we do a compliant case INSENSITVE
+       * no long name: for short names, we do a compliant case INSENSITIVE
        * string comparison.
        */
 
@@ -604,6 +606,11 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
    fat_search_ctx ctx;
    bzero(&ctx, sizeof(ctx));
 
+#ifdef __clang_analyzer__
+   ctx.pcl = 0; /* SA: make it sure ctx.pcl is zeroed */
+   ctx.result = NULL; /* SA: make it sure ctx.result is zeroed */
+#endif
+
    ctx.path = abspath;
 
    fat_walk_directory(&ctx.walk_ctx, hdr, ft, root, root_dir_cluster,
@@ -642,7 +649,7 @@ fat_read_whole_file(fat_header *hdr,
       if (rem <= cs) {
          // read what is needed
          memmove(dest_buf + written, data, rem);
-         written += rem;
+         /* written += rem; */ // Avoid SA warning "dead increment"
          break;
       }
 

@@ -79,6 +79,9 @@ void debug_kmalloc_dump_mem_usage(void)
       tot_used_mem_kb += allocated_kb;
    }
 
+   // SA: avoid division by zero warning
+   ASSERT(tot_usable_mem_kb > 0);
+
    printk(NO_PREFIX "\n");
    printk(NO_PREFIX "Total usable: %6u KB\n", tot_usable_mem_kb);
    printk(NO_PREFIX "Total used:   %6u KB (%u%%)\n\n",

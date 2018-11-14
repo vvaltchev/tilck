@@ -37,8 +37,17 @@ static void faulting_code(void)
 
 static void faulting_code2(void)
 {
+#ifndef __clang_analyzer__
+
+   /*
+    * The static analyzer cannot possible imagine that we want intentionally
+    * to trigger a PAGE FAULT and check that it has been handeled correctly.
+    */
+
    void **null_ptr = NULL;
    *null_ptr = NULL;
+
+#endif
 }
 
 #define NESTED_FAULTING_CODE_MAX_LEVELS 4

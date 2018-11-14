@@ -152,7 +152,7 @@ void panic_dump_nested_interrupts(void)
                           "%i ", nested_interrupts[i]);
    }
 
-   written += snprintk(buf + written, sizeof(buf) - written, "]\n");
+   /* written += */ snprintk(buf + written, sizeof(buf) - written, "]\n");
    printk("%s", buf);
 }
 

@@ -114,7 +114,6 @@ void link_sections(void *mapped_elf_file,
    Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
    char *hc = (char *)h;
    Elf_Shdr *sections = (Elf_Shdr *)(hc + h->e_shoff);
-   Elf_Shdr *shstrtab = sections + h->e_shstrndx;
 
    if (!linked) {
       fprintf(stderr, "Missing <linked section> argument\n");
@@ -169,9 +168,14 @@ void drop_last_section(void **mapped_elf_file_ref, int fd)
    Elf_Shdr *sections = (Elf_Shdr *)(hc + h->e_shoff);
    Elf_Shdr *shstrtab = sections + h->e_shstrndx;
 
-   Elf_Shdr *last_section = NULL;
+   Elf_Shdr *last_section = sections;
    int last_section_index = 0;
    off_t last_offset = 0;
+
+   if (!h->e_shnum) {
+      fprintf(stderr, "ERROR: the ELF file has no sections!\n");
+      exit(1);
+   }
 
    for (uint32_t i = 0; i < h->e_shnum; i++) {
 

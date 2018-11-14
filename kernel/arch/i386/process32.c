@@ -51,8 +51,8 @@ static void push_args_on_user_stack(regs *r,
                                     char *const *env,
                                     int envc)
 {
-   uptr pointers[argc]; // VLA
-   uptr env_pointers[envc]; // VLA
+   uptr pointers[argc + 1]; // VLA: +1 to avoid SA warning for zero-size VLA
+   uptr env_pointers[envc + 1]; // VLA: +1 to avoid SA warning for zero-size VLA
 
    // push argv data on stack (it could be anywhere else, as well)
    for (int i = 0; i < argc; i++) {

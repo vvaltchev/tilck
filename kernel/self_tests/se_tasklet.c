@@ -75,6 +75,8 @@ void selftest_tasklet_perf_short(void)
    }
 
    elapsed = RDTSC() - start;
+
+   ASSERT(n > 0); // SA: avoid division by zero warning
    printk("Avg. tasklet enqueue cycles: %llu [%i tasklets]\n", elapsed/n, n);
    debug_qemu_turn_off_machine();
 }
