@@ -99,6 +99,9 @@ set(DEBUG_CHECKS_IN_RELEASE_BUILD ON CACHE BOOL
 set(KERNEL_USE_SYSTEM_CC OFF CACHE BOOL
     "Use system's compiler for the kernel instead of toolchain's one")
 
+set(KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC OFF CACHE BOOL
+    "Use TC's sysroot for system headers even when a system compiler is used")
+
 set(FORK_NO_COW OFF CACHE BOOL
     "Make fork() to perform a full-copy instead of using copy-on-write")
 
@@ -143,6 +146,7 @@ list(
 
    # Boolean options DISABLED by default
    KERNEL_USE_SYSTEM_CC
+   KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC
    FORK_NO_COW
    MMAP_NO_COW
    PANIC_SHOW_REGS
@@ -172,8 +176,14 @@ if (${ARCH} STREQUAL "i386")
    set(ARCH_LD_OUTPUT "elf_i386")
    set(ARCH_GCC_TC "i686")
    set(ARCH_GCC_FLAGS "-m32 -march=i686")
-   set(GCC_TOOLCHAIN ${TCROOT}/x86_gcc_toolchain/bin)
-   set(GCC_TOOLCHAIN_GLIBC ${TCROOT}/x86_gcc_toolchain_glibc/bin)
+
+   set(GCC_TOOLCHAIN_ROOT ${TCROOT}/x86_gcc_toolchain)
+   set(GCC_TOOLCHAIN ${GCC_TOOLCHAIN_ROOT}/bin)
+   set(GCC_TC_SYSROOT ${GCC_TOOLCHAIN_ROOT}/i686-buildroot-linux-musl/sysroot)
+   set(GCC_TC_ISYSTEM ${GCC_TC_SYSROOT}/usr/include)
+
+   set(GCC_TOOLCHAIN_GLIBC_ROOT ${TCROOT}/x86_gcc_toolchain_glibc)
+   set(GCC_TOOLCHAIN_GLIBC ${GCC_TOOLCHAIN_GLIBC_ROOT}/bin)
 
 else()
 

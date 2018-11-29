@@ -22,6 +22,10 @@ if (${KERNEL_USE_SYSTEM_CC} OR ${USE_SYSCC})
    set(OBJCOPY "${SYS_OBJCOPY}")
    set(STRIP "${SYS_STRIP}")
 
+   if (KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC)
+      include_directories(SYSTEM ${GCC_TC_ISYSTEM})
+   endif()
+
 else()
    set_cross_compiler()
 endif()
