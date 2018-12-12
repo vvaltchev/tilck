@@ -13,7 +13,7 @@ include_directories(
 )
 
 link_directories(
-   ${CMAKE_SOURCE_DIR}/bootloader
+   ${CMAKE_SOURCE_DIR}/boot/legacy
 )
 
 file(GLOB EARLY_STAGES_SOURCES "boot.S" "boot_enable_a20.S")
@@ -51,7 +51,7 @@ set(STAGE3_ASM_SOURCES "stage3_entry.S" "stage3_rm_calls.S")
 
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/bootloader/elf_stage3_script.ld
+   ${CMAKE_SOURCE_DIR}/boot/legacy/elf_stage3_script.ld
    ${STAGE3_SCRIPT}
    @ONLY
 )

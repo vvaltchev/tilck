@@ -289,9 +289,9 @@ set(COMMON_FLAGS "${GENERAL_DEFS} ${OTHER_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 
 ################################################################################
 
-set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/bootloader/bootloader.bin)
-set(EFI_x86_64_FILE ${CMAKE_BINARY_DIR}/bootloader/efi/BOOTX64.EFI)
-set(EFI_ia32_FILE ${CMAKE_BINARY_DIR}/bootloader/efi/BOOTIA32.EFI)
+set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/boot/legacy/bootloader.bin)
+set(EFI_x86_64_FILE ${CMAKE_BINARY_DIR}/boot/efi/BOOTX64.EFI)
+set(EFI_ia32_FILE ${CMAKE_BINARY_DIR}/boot/efi/BOOTIA32.EFI)
 set(KERNEL_FILE ${CMAKE_BINARY_DIR}/elf_kernel_stripped)
 set(IMG_FILE ${CMAKE_BINARY_DIR}/tilck.img)
 set(GPT_IMG_FILE ${CMAKE_BINARY_DIR}/gpt_tilck.img)
@@ -320,8 +320,8 @@ include(${CMAKE_SOURCE_DIR}/other/gen_config.cmake)
 # Include sub-directories
 
 add_subdirectory(usermode_apps)
-add_subdirectory(bootloader)
-add_subdirectory(bootloader/efi)
+add_subdirectory(boot/legacy)
+add_subdirectory(boot/efi)
 add_subdirectory(kernel)
 add_subdirectory(scripts/build_apps)
 

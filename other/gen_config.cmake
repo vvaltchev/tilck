@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
-set(EARLY_BOOT_SCRIPT ${CMAKE_BINARY_DIR}/bootloader/early_boot_script.ld)
-set(STAGE3_SCRIPT ${CMAKE_BINARY_DIR}/bootloader/elf_stage3_script.ld)
+set(EARLY_BOOT_SCRIPT ${CMAKE_BINARY_DIR}/boot/legacy/early_boot_script.ld)
+set(STAGE3_SCRIPT ${CMAKE_BINARY_DIR}/boot/legacy/elf_stage3_script.ld)
 set(KERNEL_SCRIPT ${CMAKE_BINARY_DIR}/kernel/arch/${ARCH}/linker_script.ld)
 set(MUSL_GCC ${CMAKE_BINARY_DIR}/scripts/musl-gcc)
 set(MUSL_GXX ${CMAKE_BINARY_DIR}/scripts/musl-g++)
@@ -19,7 +19,7 @@ configure_file(
 )
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/bootloader/early_boot_script.ld
+   ${CMAKE_SOURCE_DIR}/boot/legacy/early_boot_script.ld
    ${EARLY_BOOT_SCRIPT}
    @ONLY
 )
