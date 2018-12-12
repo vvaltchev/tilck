@@ -25,6 +25,8 @@ set(
 )
 JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
 
+set(ARCH_START_FILE "start.S")
+
 file(GLOB ARCH_SOURCES "*.S" "*.c")
 
 file(
@@ -44,7 +46,7 @@ add_executable(
 
    elf_kernel
 
-   ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES}
+   ${ARCH_START_FILE} ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES}
 )
 
 set_target_properties(
