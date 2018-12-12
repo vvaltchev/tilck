@@ -333,15 +333,13 @@ void set_phdr_rwx_flags(void *mapped_elf_file,
    phdr->p_flags |= f;
 }
 
-
-
 void verify_flat_elf_file(const char *file, void *mapped_elf_file)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
    Elf_Shdr *sections = (Elf_Shdr *)((char*)h + h->e_shoff);
    Elf_Shdr *shstrtab = sections + h->e_shstrndx;
-   Elf_Addr base_addr, lowest_progbits_addr = 0;
-   bool base_addr_set = false;
+   Elf_Addr lowest_addr = (Elf_Addr) -1;
+   Elf_Addr base_addr = lowest_addr;
    bool failed = false;
 
    if (!h->e_shnum) {
@@ -351,25 +349,26 @@ void verify_flat_elf_file(const char *file, void *mapped_elf_file)
 
    for (uint32_t i = 0; i < h->e_shnum; i++) {
 
-      Elf_Phdr *phdr;
       Elf_Shdr *s = sections + i;
-      char *name = (char *)h + shstrtab->sh_offset + s->sh_name;
-
-      if (s->sh_type != SHT_PROGBITS && s->sh_type != SHT_NOBITS)
-         continue;
-
-      phdr = get_phdr_for_section(h, s);
+      Elf_Phdr *phdr = get_phdr_for_section(h, s);
 
       if (!phdr || phdr->p_type != PT_LOAD)
          continue;
 
-      if (!base_addr_set) {
+      if (s->sh_addr < lowest_addr) {
          base_addr = s->sh_addr - s->sh_offset;
-         base_addr_set = true;
+         lowest_addr = s->sh_addr;
       }
+   }
 
-      if (s->sh_addr < lowest_progbits_addr)
-         lowest_progbits_addr = s->sh_addr;
+   for (uint32_t i = 0; i < h->e_shnum; i++) {
+
+      Elf_Shdr *s = sections + i;
+      Elf_Phdr *phdr = get_phdr_for_section(h, s);
+      char *name = (char *)h + shstrtab->sh_offset + s->sh_name;
+
+      if (!phdr || phdr->p_type != PT_LOAD)
+         continue;
 
       Elf_Addr mem_offset = s->sh_addr - base_addr;
 
@@ -382,6 +381,12 @@ void verify_flat_elf_file(const char *file, void *mapped_elf_file)
 
          failed = true;
       }
+   }
+
+   if (h->e_entry != lowest_addr) {
+      fprintf(stderr, "ERROR: entry point (%p) != lowest load addr (%p)\n",
+              (void *)(size_t)h->e_entry, (void *)(size_t)lowest_addr);
+      failed = true;
    }
 
    if (failed) {
