@@ -106,6 +106,7 @@ void show_help(char **argv)
    fprintf(stderr, "    elfhack <file> [--drop-last-section]\n");
    fprintf(stderr, "    elfhack <file> [--set-phdr-rwx-flags <phdr index> <rwx flags>]\n");
    fprintf(stderr, "    elfhack <file> [--verify-flat-elf]\n");
+   fprintf(stderr, "    elfhack <file> [--check-entry-point [<expected>]]\n");
    exit(1);
 }
 
@@ -395,6 +396,30 @@ void verify_flat_elf_file(const char *file, void *mapped_elf_file)
    }
 }
 
+void check_entry_point(const char *file,
+                       void *mapped_elf_file,
+                       const char *expected)
+{
+   char buf[64];
+   Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
+
+   if (!expected) {
+      printf("%p\n", (void *)(size_t)h->e_entry);
+      return;
+   }
+
+   sprintf(buf, "%p", (void *)(size_t)h->e_entry);
+
+   if (strcmp(buf, expected)) {
+
+      fprintf(stderr,
+              "ERROR: entry point (%s) != expected (%s) for file %s\n",
+              buf, expected, file);
+
+      exit(1);
+   }
+}
+
 int main(int argc, char **argv)
 {
    void *vaddr;
@@ -407,11 +432,15 @@ int main(int argc, char **argv)
 
    const char *file = argv[1];
    const char *opt = argv[2];
-   const char *opt_arg = argv[3];
-   const char *opt_arg2 = argv[4];
+   const char *opt_arg = NULL;
+   const char *opt_arg2 = NULL;
 
-   if (argc == 3)
-      opt_arg2 = NULL;
+   if (argc > 3) {
+      opt_arg = argv[3];
+
+      if (argc > 4)
+         opt_arg2 = argv[4];
+   }
 
    fd = open(file, O_RDWR);
 
@@ -450,6 +479,8 @@ int main(int argc, char **argv)
       set_phdr_rwx_flags(vaddr, opt_arg, opt_arg2);
    } else if (!strcmp(opt, "--verify-flat-elf")) {
       verify_flat_elf_file(file, vaddr);
+   } else if (!strcmp(opt, "--check-entry-point")) {
+      check_entry_point(file, vaddr, opt_arg);
    } else {
       show_help(argv);
    }

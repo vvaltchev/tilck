@@ -120,6 +120,8 @@ add_custom_command(
       ${STRIP} --strip-debug elf_stage3 -o elf_stage3_stripped
    COMMAND
       elfhack elf_stage3_stripped --verify-flat-elf
+   COMMAND
+      elfhack elf_stage3_stripped --check-entry-point ${BL_BASE_ADDR}
    DEPENDS
       elf_stage3
 )
