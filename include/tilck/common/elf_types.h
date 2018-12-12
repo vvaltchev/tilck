@@ -10,6 +10,7 @@
 
 #if defined(__i386__) || defined(USE_ELF32)
 
+   typedef Elf32_Addr Elf_Addr;
    typedef Elf32_Ehdr Elf_Ehdr;
    typedef Elf32_Phdr Elf_Phdr;
    typedef Elf32_Shdr Elf_Shdr;
@@ -17,6 +18,7 @@
 
 #elif defined(__x86_64__) || defined(USE_ELF64)
 
+   typedef Elf64_Addr Elf_Addr;
    typedef Elf64_Ehdr Elf_Ehdr;
    typedef Elf64_Phdr Elf_Phdr;
    typedef Elf64_Shdr Elf_Shdr;

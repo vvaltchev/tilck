@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdbool.h>
 #include <errno.h>
 
 #include <elf.h>
@@ -16,7 +17,7 @@
 #define USE_ELF32
 #include <tilck/common/elf_types.h>
 
-#define MMAP_SIZE (1024*1024)
+#define MMAP_SIZE (1024 * 1024)
 
 Elf_Shdr *get_section(void *mapped_elf_file, const char *section_name)
 {
@@ -36,6 +37,26 @@ Elf_Shdr *get_section(void *mapped_elf_file, const char *section_name)
 
    fprintf(stderr, "No section '%s'\n", section_name);
    exit(1);
+}
+
+Elf_Phdr *get_phdr_for_section(void *mapped_elf_file, Elf_Shdr *section)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
+   Elf_Phdr *phdrs = (Elf_Phdr *)((char*)h + h->e_phoff);
+
+   Elf_Addr sh_begin = section->sh_addr;
+   Elf_Addr sh_end = section->sh_addr + section->sh_size;
+
+   for (uint32_t i = 0; i < h->e_phnum; i++) {
+
+      Elf_Phdr *p = phdrs + i;
+      Elf_Addr pend = p->p_vaddr + p->p_memsz;
+
+      if (p->p_vaddr <= sh_begin && sh_end <= pend)
+         return p;
+   }
+
+   return NULL;
 }
 
 void section_dump(void *mapped_elf_file, const char *section_name)
@@ -77,13 +98,14 @@ void copy_section(void *mapped_elf_file, const char *src, const char *dst)
 void show_help(char **argv)
 {
    fprintf(stderr, "Usage: \n");
-   fprintf(stderr, "    elfhack <elf_file> [--dump <section name>]\n");
-   fprintf(stderr, "    elfhack <elf_file> [--move-metadata]\n");
-   fprintf(stderr, "    elfhack <elf_file> [--copy <src section> <dest section>]\n");
-   fprintf(stderr, "    elfhack <elf_file> [--rename <section> <new_name>]\n");
-   fprintf(stderr, "    elfhack <elf_file> [--link <section> <linked_section>]\n");
-   fprintf(stderr, "    elfhack <elf_file> [--drop-last-section]\n");
-   fprintf(stderr, "    elfhack <elf_file> [--set-phdr-rwx-flags <phdr index> <rwx flags>]\n");
+   fprintf(stderr, "    elfhack <file> [--dump <section name>]\n");
+   fprintf(stderr, "    elfhack <file> [--move-metadata]\n");
+   fprintf(stderr, "    elfhack <file> [--copy <src section> <dest section>]\n");
+   fprintf(stderr, "    elfhack <file> [--rename <section> <new_name>]\n");
+   fprintf(stderr, "    elfhack <file> [--link <section> <linked_section>]\n");
+   fprintf(stderr, "    elfhack <file> [--drop-last-section]\n");
+   fprintf(stderr, "    elfhack <file> [--set-phdr-rwx-flags <phdr index> <rwx flags>]\n");
+   fprintf(stderr, "    elfhack <file> [--verify-flat-elf]\n");
    exit(1);
 }
 
@@ -311,6 +333,63 @@ void set_phdr_rwx_flags(void *mapped_elf_file,
    phdr->p_flags |= f;
 }
 
+
+
+void verify_flat_elf_file(const char *file, void *mapped_elf_file)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
+   Elf_Shdr *sections = (Elf_Shdr *)((char*)h + h->e_shoff);
+   Elf_Shdr *shstrtab = sections + h->e_shstrndx;
+   Elf_Addr base_addr, lowest_progbits_addr = 0;
+   bool base_addr_set = false;
+   bool failed = false;
+
+   if (!h->e_shnum) {
+      fprintf(stderr, "ERROR: the ELF file has no sections!\n");
+      exit(1);
+   }
+
+   for (uint32_t i = 0; i < h->e_shnum; i++) {
+
+      Elf_Phdr *phdr;
+      Elf_Shdr *s = sections + i;
+      char *name = (char *)h + shstrtab->sh_offset + s->sh_name;
+
+      if (s->sh_type != SHT_PROGBITS && s->sh_type != SHT_NOBITS)
+         continue;
+
+      phdr = get_phdr_for_section(h, s);
+
+      if (!phdr || phdr->p_type != PT_LOAD)
+         continue;
+
+      if (!base_addr_set) {
+         base_addr = s->sh_addr - s->sh_offset;
+         base_addr_set = true;
+      }
+
+      if (s->sh_addr < lowest_progbits_addr)
+         lowest_progbits_addr = s->sh_addr;
+
+      Elf_Addr mem_offset = s->sh_addr - base_addr;
+
+      if (mem_offset != s->sh_offset) {
+
+         fprintf(stderr, "ERROR: section[%d] '%s' has "
+                 "memory_offset (%p) != file_offset (%p)\n", i,
+                 name, (void *)(size_t)mem_offset,
+                 (void *)(size_t)s->sh_offset);
+
+         failed = true;
+      }
+   }
+
+   if (failed) {
+      fprintf(stderr, "ERROR: flat ELF check FAILED for file: %s\n", file);
+      exit(1);
+   }
+}
+
 int main(int argc, char **argv)
 {
    void *vaddr;
@@ -364,6 +443,8 @@ int main(int argc, char **argv)
       drop_last_section(&vaddr, fd);
    } else if (!strcmp(opt, "--set-phdr-rwx-flags")) {
       set_phdr_rwx_flags(vaddr, opt_arg, opt_arg2);
+   } else if (!strcmp(opt, "--verify-flat-elf")) {
+      verify_flat_elf_file(file, vaddr);
    } else {
       show_help(argv);
    }
