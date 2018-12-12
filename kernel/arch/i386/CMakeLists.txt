@@ -87,7 +87,7 @@ add_custom_command(
    COMMAND
       elfhack ${KERNEL_FILE} --rename .Strtab .strtab
    COMMAND
-      elfhack ${KERNEL_FILE} --move_metadata
+      elfhack ${KERNEL_FILE} --move-metadata
    COMMAND
       elfhack ${KERNEL_FILE} --drop-last-section
    COMMAND

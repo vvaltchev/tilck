@@ -76,13 +76,14 @@ void copy_section(void *mapped_elf_file, const char *src, const char *dst)
 
 void show_help(char **argv)
 {
-   fprintf(stderr, "Usage: %s <elf_file> [--dump <section name>]\n", argv[0]);
-   fprintf(stderr, "       %s <elf_file> [--move_metadata]\n", argv[0]);
-   fprintf(stderr, "       %s <elf_file> [--copy <src section> <dest section>]\n", argv[0]);
-   fprintf(stderr, "       %s <elf_file> [--rename <section> <new_name>]\n", argv[0]);
-   fprintf(stderr, "       %s <elf_file> [--link <section> <linked_section>]\n", argv[0]);
-   fprintf(stderr, "       %s <elf_file> [--drop-last-section]\n", argv[0]);
-   fprintf(stderr, "       %s <elf_file> [--set-phdr-rwx-flags <phdr index> <rwx flags>]\n", argv[0]);
+   fprintf(stderr, "Usage: \n");
+   fprintf(stderr, "    elfhack <elf_file> [--dump <section name>]\n");
+   fprintf(stderr, "    elfhack <elf_file> [--move-metadata]\n");
+   fprintf(stderr, "    elfhack <elf_file> [--copy <src section> <dest section>]\n");
+   fprintf(stderr, "    elfhack <elf_file> [--rename <section> <new_name>]\n");
+   fprintf(stderr, "    elfhack <elf_file> [--link <section> <linked_section>]\n");
+   fprintf(stderr, "    elfhack <elf_file> [--drop-last-section]\n");
+   fprintf(stderr, "    elfhack <elf_file> [--set-phdr-rwx-flags <phdr index> <rwx flags>]\n");
    exit(1);
 }
 
@@ -189,7 +190,8 @@ void drop_last_section(void **mapped_elf_file_ref, int fd)
    }
 
    if (last_section == shstrtab) {
-      fprintf(stderr, "The last section is .shstrtab and it cannot be removed!\n");
+      fprintf(stderr,
+              "The last section is .shstrtab and it cannot be removed!\n");
       exit(1);
    }
 
@@ -350,7 +352,7 @@ int main(int argc, char **argv)
 
    if (!strcmp(opt, "--dump")) {
       section_dump(vaddr, opt_arg);
-   } else if (!strcmp(opt, "--move_metadata")) {
+   } else if (!strcmp(opt, "--move-metadata")) {
       move_metadata(vaddr);
    } else if (!strcmp(opt, "--copy")) {
       copy_section(vaddr, opt_arg, opt_arg2);
