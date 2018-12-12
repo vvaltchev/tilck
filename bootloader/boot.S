@@ -8,7 +8,7 @@
 
 
 /*
- * We're OK with just 40 KB, a little more than the size of the 3rd stage of
+ * We're OK with just 48 KB, a little more than the size of the 3rd stage of
  * the bootloader + 4 KB for this code. All the rest (the whole ramdisk
  * and the ELF kernel) is loaded by the 3rd stage.
  */
@@ -87,8 +87,6 @@ after_reloc:
    mov si, offset str_loading
    call print_string
 
-   .reset_ok:
-
    xor ax, ax
    mov es, ax
    mov di, ax
@@ -96,10 +94,9 @@ after_reloc:
    mov dl, [current_device]
    mov ah, 0x8 # read drive parameters
    int 0x13
-
    jc end
 
-   .after_read_params_ok:
+   # read drive params: OK
 
    xor ax, ax
    mov al, dh
@@ -118,9 +115,7 @@ after_reloc:
    inc ax      # the 10 bits in CX are the MAX cyl number, so we have to add +1.
    mov [cylinders_count], ax
 
-
-   .load_loop:
-
+.load_loop:
 
    mov eax, [curr_sec]
    call lba_to_chs
@@ -135,7 +130,6 @@ after_reloc:
    mov ah, 0x02      # Params for int 13h: read sectors
    mov al, 1         # Read just 1 sector at time
 
-
    int 0x13
    jc end
 
@@ -147,6 +141,7 @@ after_reloc:
 
    inc ax                    # we read just 1 sector at time
    mov [curr_sec], ax
+
 
    # If the current sector num have the bits 0-7 unset,
    # we loaded 128 sectors * 512 bytes = 64K.
@@ -160,8 +155,8 @@ after_reloc:
    test ax, ax
    jne .load_loop # JMP if ax != 0
 
-   mov ax, [curr_data_seg]
 
+   mov ax, [curr_data_seg]
 
    # Increment the segment by 4K => 64K in plain address space
    add ax, 0x1000
@@ -444,4 +439,5 @@ idtr:
 
 str_hello:
    .asciz "Hello, I am the 2nd stage-bootloader!\r\n"
+
 

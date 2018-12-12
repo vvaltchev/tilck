@@ -32,16 +32,29 @@ set_target_properties(
 
 
 file(
-   GLOB STAGE3_SOURCES
+   GLOB STAGE3_C_SOURCES
 
-   "stage3_entry.S"
-   "stage3_rm_calls.S"
    "*.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
    "${CMAKE_SOURCE_DIR}/common/arch/generic_x86/*.c"
 )
 
+set(STAGE3_ASM_FILES "stage3_entry.S" "stage3_rm_calls.S")
 
+#### COMMENTED BLOCK: See the comments in elf_stage3_script.ld.
+
+#set(tmp "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}")
+#set(STAGE3_STARTUP_OBJ_FILE "${tmp}/elf_stage3.dir/stage3_entry.S.o")
+#unset(tmp)
+
+#### END COMMENTED BLOCK
+
+
+configure_file(
+   ${CMAKE_SOURCE_DIR}/bootloader/elf_stage3_script.ld
+   ${STAGE3_SCRIPT}
+   @ONLY
+)
 
 set(
    FLAGS_LIST
@@ -78,7 +91,13 @@ set(
 )
 JOIN("${FLAGS_LIST}" ${SPACE} FLAGS)
 
-add_executable(elf_stage3 ${STAGE3_SOURCES})
+add_executable(
+
+   elf_stage3
+
+   ${STAGE3_ASM_FILES}
+   ${STAGE3_C_SOURCES}
+)
 
 set_target_properties(
 

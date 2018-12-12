@@ -25,12 +25,6 @@ configure_file(
 )
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/bootloader/elf_stage3_script.ld
-   ${STAGE3_SCRIPT}
-   @ONLY
-)
-
-configure_file(
    ${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH}/linker_script.ld
    ${KERNEL_SCRIPT}
    @ONLY
