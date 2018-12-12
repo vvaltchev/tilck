@@ -11,12 +11,12 @@
 .code32
 
 .section bss
+
 .global kernel_initial_stack
 .global vsdo_like_page
 
-.align 4096
-.lcomm kernel_initial_stack, KERNEL_INITIAL_STACK_SIZE
-.lcomm vsdo_like_page, 4096
+.comm kernel_initial_stack, KERNEL_INITIAL_STACK_SIZE, 4096
+.comm vsdo_like_page, 4096, 4096
 
 .section .text
 
