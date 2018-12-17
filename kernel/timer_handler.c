@@ -97,6 +97,9 @@ void debug_check_tasks_lists(void)
    task_info *pos, *temp;
    ptrdiff_t off;
    const char *what_str = "?";
+   uptr var;
+
+   disable_interrupts(&var);
 
    list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
 
@@ -111,18 +114,7 @@ void debug_check_tasks_lists(void)
       }
    }
 
-   list_for_each(pos, temp, &runnable_tasks_list, runnable_node) {
-
-      if (pos->state != TASK_STATE_RUNNABLE) {
-
-         if (is_kernel_thread(pos))
-            what_str = find_sym_at_addr_safe((uptr)pos->what, &off, NULL);
-
-         panic("%s task %d [w: %s] in the runnable_tasks_list with state: %d",
-               is_kernel_thread(pos) ? "kernel" : "user",
-               pos->tid, what_str, pos->state);
-      }
-   }
+   enable_interrupts(&var);
 }
 
 int timer_irq_handler(regs *context)
