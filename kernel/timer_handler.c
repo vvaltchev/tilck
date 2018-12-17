@@ -7,6 +7,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/timer.h>
+#include <tilck/kernel/elf_utils.h>
 
 volatile u64 __ticks; /* ticks since the timer started */
 volatile u32 disable_preemption_count = 1;
@@ -94,21 +95,33 @@ void kernel_sleep(u64 ticks)
 void debug_check_tasks_lists(void)
 {
    task_info *pos, *temp;
+   ptrdiff_t off;
+   const char *what_str = "?";
 
    list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
 
-      if (pos->state != TASK_STATE_SLEEPING)
+      if (pos->state != TASK_STATE_SLEEPING) {
+
+         if (is_kernel_thread(pos))
+            what_str = find_sym_at_addr_safe((uptr)pos->what, &off, NULL);
+
          panic("%s task %d [w: %s] in the sleeping_tasks_list with state: %d",
                is_kernel_thread(pos) ? "kernel" : "user",
-               pos->tid, pos->what, pos->state);
+               pos->tid, what_str, pos->state);
+      }
    }
 
    list_for_each(pos, temp, &runnable_tasks_list, runnable_node) {
 
-      if (pos->state != TASK_STATE_RUNNABLE)
+      if (pos->state != TASK_STATE_RUNNABLE) {
+
+         if (is_kernel_thread(pos))
+            what_str = find_sym_at_addr_safe((uptr)pos->what, &off, NULL);
+
          panic("%s task %d [w: %s] in the runnable_tasks_list with state: %d",
                is_kernel_thread(pos) ? "kernel" : "user",
-               pos->tid, pos->what, pos->state);
+               pos->tid, what_str, pos->state);
+      }
    }
 }
 

@@ -59,7 +59,6 @@ void set_kernel_stack() { }
 void irq_clear_mask() { }
 void kthread_create() { }
 void debug_qemu_turn_off_machine() { }
-void load_elf_program() { }
 void create_usermode_task() { }
 void gdt_install() { }
 void idt_install() { }
@@ -81,3 +80,4 @@ void fpu_context_end() { }
 void cmos_read_datetime() { NOT_REACHED(); }
 void map_zero_pages() { NOT_REACHED(); }
 void dump_var_mtrrs() { }
+void set_page_rw() { }
