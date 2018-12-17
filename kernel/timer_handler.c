@@ -24,7 +24,6 @@ int set_task_to_wake_after(task_info *task, u64 ticks)
          timers_array[i].task = task;
          timers_array[i].ticks_to_sleep = ticks;
          wait_obj_set(&task->wobj, WOBJ_TIMER, &timers_array[i]);
-         task_change_state(task, TASK_STATE_SLEEPING);
          return i;
       }
    }
@@ -75,8 +74,14 @@ static task_info *tick_all_timers(void)
 
 void kernel_sleep(u64 ticks)
 {
-   if (ticks)
+   uptr var;
+
+   if (ticks) {
+      disable_interrupts(&var);
       set_task_to_wake_after(get_curr_task(), ticks);
+      task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+      enable_interrupts(&var);
+   }
 
    kernel_yield();
 }

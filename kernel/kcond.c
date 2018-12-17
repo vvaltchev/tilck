@@ -28,8 +28,8 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
          c->timer_num = set_task_to_wake_after(curr, timeout_ticks);
       } else {
          c->timer_num = -1;
-         task_change_state(curr, TASK_STATE_SLEEPING);
       }
+      task_change_state(curr, TASK_STATE_SLEEPING);
    }
    enable_interrupts(&var);
 
