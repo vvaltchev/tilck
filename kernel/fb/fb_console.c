@@ -65,12 +65,7 @@ static void fb_reset_blink_timer(void)
       return;
 
    cursor_visible = true;
-   wait_obj *w = &blink_thread_ti->wobj;
-   kthread_timer_sleep_obj *timer = w->ptr;
-
-   if (timer) {
-      timer->ticks_to_sleep = blink_half_period;
-   }
+   task_set_wakeup_timer(blink_thread_ti, blink_half_period);
 }
 
 /* video_interface */

@@ -24,11 +24,9 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
    {
       wait_obj_set(&curr->wobj, WOBJ_KCOND, c);
 
-      if (timeout_ticks != KCOND_WAIT_FOREVER) {
-         c->timer_num = set_task_to_wake_after(curr, timeout_ticks);
-      } else {
-         c->timer_num = -1;
-      }
+      if (timeout_ticks != KCOND_WAIT_FOREVER)
+         task_set_wakeup_timer(curr, timeout_ticks);
+
       task_change_state(curr, TASK_STATE_SLEEPING);
    }
    enable_interrupts(&var);
@@ -64,9 +62,7 @@ void kcond_signal_single(kcond *c, task_info *ti)
    uptr var;
    disable_interrupts(&var);
    {
-      if (c->timer_num >= 0)
-         cancel_timer(c->timer_num, ti);
-
+      task_cancel_wakeup_timer(ti);
       wait_obj_reset(&ti->wobj);
       task_change_state(ti, TASK_STATE_RUNNABLE);
    }

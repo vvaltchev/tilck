@@ -115,6 +115,8 @@ struct task_info {
    regs *fault_resume_regs;
    u32 faults_resume_mask;
 
+   u64 ticks_before_wake_up;
+
    /*
     * For kernel threads, this is a function pointer of the thread's entry
     * point. For user processes/threads, it is unused for the moment. In the
@@ -223,8 +225,8 @@ void kthread_exit(void);
 void kernel_sleep(u64 ticks);
 void join_kernel_thread(int tid);
 
-int set_task_to_wake_after(task_info *task, u64 ticks);
-void cancel_timer(int timer_num, task_info *ti);
+void task_set_wakeup_timer(task_info *task, u64 ticks);
+void task_cancel_wakeup_timer(task_info *ti);
 
 
 // TODO: consider moving these functions and the sched ones in sched.h

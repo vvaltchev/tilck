@@ -12,62 +12,44 @@
 volatile u64 __ticks; /* ticks since the timer started */
 volatile u32 disable_preemption_count = 1;
 
-kthread_timer_sleep_obj timers_array[64];
-
-int set_task_to_wake_after(task_info *task, u64 ticks)
+void task_set_wakeup_timer(task_info *task, u64 ticks)
 {
-   DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(ticks > 0);
 
-   for (uptr i = 0; i < ARRAY_SIZE(timers_array); i++) {
-      if (BOOL_COMPARE_AND_SWAP(&timers_array[i].task, NULL, (void *)1)) {
-         timers_array[i].task = task;
-         timers_array[i].ticks_to_sleep = ticks;
-         wait_obj_set(&task->wobj, WOBJ_TIMER, &timers_array[i]);
-         return i;
-      }
-   }
-
-   // TODO: consider implementing a fallback here. For example use a linkedlist.
-   panic("Unable to find a free slot in timers_array.");
+   task->ticks_before_wake_up = ticks;
 }
 
-void cancel_timer(int timer_num, task_info *ti)
+void task_cancel_wakeup_timer(task_info *ti)
 {
-   if (BOOL_COMPARE_AND_SWAP(&timers_array[timer_num].task, ti, NULL)) {
-      wait_obj_reset(&ti->wobj);
-   }
+   ti->ticks_before_wake_up = 0;
 }
 
 static task_info *tick_all_timers(void)
 {
+   task_info *pos, *temp;
    task_info *last_ready_task = NULL;
    uptr var;
 
-   for (u32 i = 0; i < ARRAY_SIZE(timers_array); i++) {
+   disable_interrupts(&var);
 
-      /*
-       * Ignore 0 (NULL) and 1 as values of task.
-       * We need such a check because in set_task_to_wake_after() we temporarely
-       * set task to 1, in order to reserve the slot.
-       */
-      if ((uptr)timers_array[i].task <= 1)
+   // TODO [now]: walking the whole sleeping task list is INEFFICIENT
+   // create a dedicated list only for tasks with a wake-up timer.
+
+   list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
+
+      ASSERT(pos->state == TASK_STATE_SLEEPING);
+
+      if (!pos->ticks_before_wake_up)
          continue;
 
-      disable_interrupts(&var);
+      if (--pos->ticks_before_wake_up == 0) {
 
-      if (--timers_array[i].ticks_to_sleep == 0) {
-         last_ready_task = timers_array[i].task;
-
-         /* In no case a sleeping task could go to kernel and get here */
-         ASSERT(get_curr_task() != last_ready_task);
-
-         cancel_timer(i, last_ready_task);
+         last_ready_task = pos;
          task_change_state(last_ready_task, TASK_STATE_RUNNABLE);
       }
-
-      enable_interrupts(&var);
    }
+
+   enable_interrupts(&var);
 
    return last_ready_task;
 }
@@ -75,10 +57,11 @@ static task_info *tick_all_timers(void)
 void kernel_sleep(u64 ticks)
 {
    uptr var;
+   DEBUG_ONLY(check_not_in_irq_handler());
 
    if (ticks) {
       disable_interrupts(&var);
-      set_task_to_wake_after(get_curr_task(), ticks);
+      task_set_wakeup_timer(get_curr_task(), ticks);
       task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
       enable_interrupts(&var);
    }
