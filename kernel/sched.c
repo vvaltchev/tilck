@@ -89,7 +89,7 @@ int create_new_pid(void)
                           create_new_pid_visit_cb,
                           &ctx,
                           task_info,
-                          tree_by_tid);
+                          tree_by_tid_node);
 
    r = ctx.lowest_after_current_max <= MAX_PID
          ? ctx.lowest_after_current_max
@@ -135,12 +135,7 @@ void create_kernel_process(void)
    s_kernel_ti->pid = kernel_pid;
 
    s_kernel_ti->pi = s_kernel_pi;
-   bintree_node_init(&s_kernel_ti->tree_by_tid);
-   list_node_init(&s_kernel_ti->runnable_list);
-   list_node_init(&s_kernel_ti->sleeping_list);
-   list_node_init(&s_kernel_ti->zombie_list);
-   list_node_init(&s_kernel_ti->siblings_list);
-
+   init_task_lists(s_kernel_ti);
    list_node_init(&s_kernel_pi->children_list);
 
    arch_specific_new_task_setup(s_kernel_ti);
@@ -176,12 +171,12 @@ void task_add_to_state_list(task_info *ti)
    switch (ti->state) {
 
       case TASK_STATE_RUNNABLE:
-         list_add_tail(&runnable_tasks_list, &ti->runnable_list);
+         list_add_tail(&runnable_tasks_list, &ti->runnable_node);
          runnable_tasks_count++;
          break;
 
       case TASK_STATE_SLEEPING:
-         list_add_tail(&sleeping_tasks_list, &ti->sleeping_list);
+         list_add_tail(&sleeping_tasks_list, &ti->sleeping_node);
          break;
 
       case TASK_STATE_RUNNING:
@@ -189,7 +184,7 @@ void task_add_to_state_list(task_info *ti)
          break;
 
       case TASK_STATE_ZOMBIE:
-         list_add_tail(&zombie_tasks_list, &ti->zombie_list);
+         list_add_tail(&zombie_tasks_list, &ti->zombie_node);
          break;
 
       default:
@@ -202,20 +197,20 @@ void task_remove_from_state_list(task_info *ti)
    switch (ti->state) {
 
       case TASK_STATE_RUNNABLE:
-         list_remove(&ti->runnable_list);
+         list_remove(&ti->runnable_node);
          runnable_tasks_count--;
          ASSERT(runnable_tasks_count >= 0);
          break;
 
       case TASK_STATE_SLEEPING:
-         list_remove(&ti->sleeping_list);
+         list_remove(&ti->sleeping_node);
          break;
 
       case TASK_STATE_RUNNING:
          break;
 
       case TASK_STATE_ZOMBIE:
-         list_remove(&ti->zombie_list);
+         list_remove(&ti->zombie_node);
          break;
 
       default:
@@ -257,7 +252,7 @@ void add_task(task_info *ti)
                      ti,
                      ti_insert_remove_cmp,
                      task_info,
-                     tree_by_tid);
+                     tree_by_tid_node);
    }
    enable_preemption();
 }
@@ -274,7 +269,7 @@ void remove_task(task_info *ti)
                      ti,
                      ti_insert_remove_cmp,
                      task_info,
-                     tree_by_tid);
+                     tree_by_tid_node);
 
       free_task(ti);
    }
@@ -351,7 +346,7 @@ void schedule(int curr_irq)
    if (selected)
       switch_to_task(selected, curr_irq);
 
-   list_for_each(pos, temp, &runnable_tasks_list, runnable_list) {
+   list_for_each(pos, temp, &runnable_tasks_list, runnable_node) {
 
       ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
@@ -388,7 +383,7 @@ task_info *get_task(int tid)
                          &tid,
                          ti_find_cmp,
                          task_info,
-                         tree_by_tid);
+                         tree_by_tid_node);
    }
 
    enable_preemption();

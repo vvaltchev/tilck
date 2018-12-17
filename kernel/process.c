@@ -65,6 +65,15 @@ void free_mem_for_zombie_task(task_info *ti)
    internal_free_mem_for_zombie_task(ti);
 }
 
+void init_task_lists(task_info *ti)
+{
+   bintree_node_init(&ti->tree_by_tid_node);
+   list_node_init(&ti->runnable_node);
+   list_node_init(&ti->sleeping_node);
+   list_node_init(&ti->zombie_node);
+   list_node_init(&ti->siblings_node); /* ONLY for the main task (tid == pid) */
+}
+
 task_info *allocate_new_process(task_info *parent, int pid)
 {
    process_info *pi;
@@ -93,14 +102,9 @@ task_info *allocate_new_process(task_info *parent, int pid)
    ti->pid = pid;
 
    ti->pi = pi;
-   bintree_node_init(&ti->tree_by_tid);
-   list_node_init(&ti->runnable_list);
-   list_node_init(&ti->sleeping_list);
-   list_node_init(&ti->zombie_list);
-   list_node_init(&ti->siblings_list);
-
+   init_task_lists(ti);
    list_node_init(&pi->children_list);
-   list_add_tail(&parent->pi->children_list, &ti->siblings_list);
+   list_add_tail(&parent->pi->children_list, &ti->siblings_node);
 
    list_node_init(&pi->mappings);
 
@@ -124,9 +128,7 @@ task_info *allocate_new_thread(process_info *pi)
    ti->pid = proc->tid;
    ASSERT(thread_tid_to_ti(ti->tid) == ti);
 
-   /* NOTE: siblings_list is used ONLY for the main task (tid == pid) */
-   list_node_init(&ti->siblings_list);
-
+   init_task_lists(ti);
    arch_specific_new_task_setup(ti);
    return ti;
 }
@@ -151,7 +153,7 @@ void free_task(task_info *ti)
       }
 
       if (--ti->pi->ref_count == 0) {
-         list_remove(&ti->siblings_list);
+         list_remove(&ti->siblings_node);
          kfree2(ti, sizeof(task_info) + sizeof(process_info));
       }
 
@@ -301,7 +303,7 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
       disable_preemption();
 
-      list_for_each(pos, temp, &curr->pi->children_list, siblings_list) {
+      list_for_each(pos, temp, &curr->pi->children_list, siblings_node) {
          if (pos->state == TASK_STATE_ZOMBIE) {
             zombie_child = pos;
             break;
@@ -408,7 +410,7 @@ NORETURN sptr sys_exit(int exit_status)
 
    task_info *pos, *temp;
 
-   list_for_each(pos, temp, &sleeping_tasks_list, sleeping_list) {
+   list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
 
       ASSERT(pos->state == TASK_STATE_SLEEPING);
 

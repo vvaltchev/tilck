@@ -73,17 +73,17 @@ typedef struct process_info process_info;
 
 struct task_info {
 
-   bintree_node tree_by_tid;
-   list_node runnable_list;
-   list_node sleeping_list;
-   list_node zombie_list;
+   bintree_node tree_by_tid_node;
+   list_node runnable_node;
+   list_node sleeping_node;
+   list_node zombie_node;
 
    /*
-    * NOTE: siblings_list is used ONLY for the main task in each process,
+    * NOTE: siblings_node is used ONLY for the main task in each process,
     * when tid == pid. For the other tasks (thread), this list is simply
     * ignored.
     */
-   list_node siblings_list;
+   list_node siblings_node;
 
    int tid;   /* User/kernel task ID (pid in the Linux kernel) */
    u16 pid;   /*
@@ -205,6 +205,7 @@ void task_change_state(task_info *ti, task_state_enum new_state);
 
 void init_sched(void);
 void create_kernel_process(void);
+void init_task_lists(task_info *ti);
 task_info *allocate_new_process(task_info *parent, int pid);
 task_info *allocate_new_thread(process_info *pi);
 void free_task(task_info *ti);
