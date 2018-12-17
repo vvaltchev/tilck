@@ -279,7 +279,7 @@ void init_kb(void)
       create_tasklet_thread(1 /* priority */, KB_TASKLETS_QUEUE_SIZE);
 
    if (kb_tasklet_runner < 0)
-      panic("KB: Unable to tasklet runner thread for IRQs");
+      panic("KB: Unable to create a tasklet runner thread for IRQs");
 
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_irq_handler);
    enable_preemption();

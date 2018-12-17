@@ -358,11 +358,11 @@ void handle_irq(regs *r)
 
    /*
     * We call here schedule with curr_irq = -1 because we are actually
-    * outside the interrupt context (see the pop_nested_interrupt() above()).
-    * At the moment, only timer_irq_handler() calls schedule from a proper
+    * OUTSIDE the interrupt context (see the pop_nested_interrupt() above()).
+    * At the moment, only timer_irq_handler() calls schedule() from a proper
     * interrupt context. NOTE: this might change in the future.
     */
-   schedule(-1);
+   schedule_outside_interrupt_context();
 
    /* In case schedule() returned, we MUST re-enable the preemption */
    enable_preemption();
