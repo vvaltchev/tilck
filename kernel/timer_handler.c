@@ -12,15 +12,24 @@
 volatile u64 __ticks; /* ticks since the timer started */
 volatile u32 disable_preemption_count = 1;
 
-void task_set_wakeup_timer(task_info *task, u64 ticks)
+static list_node timer_wakeup_list = make_list_node(timer_wakeup_list);
+
+void task_set_wakeup_timer(task_info *ti, u64 ticks)
 {
    ASSERT(ticks > 0);
+   ASSERT(!are_interrupts_enabled());
 
-   task->ticks_before_wake_up = ticks;
+   if (BOOL_COMPARE_AND_SWAP(&ti->ticks_before_wake_up, 0, ticks)) {
+      list_add_tail(&timer_wakeup_list, &ti->wakeup_timer_node);
+   } else {
+      ti->ticks_before_wake_up = ticks;
+   }
 }
 
 void task_cancel_wakeup_timer(task_info *ti)
 {
+   ASSERT(!are_interrupts_enabled());
+   list_remove(&ti->wakeup_timer_node);
    ti->ticks_before_wake_up = 0;
 }
 
@@ -32,20 +41,16 @@ static task_info *tick_all_timers(void)
 
    disable_interrupts(&var);
 
-   // TODO [now]: walking the whole sleeping task list is INEFFICIENT
-   // create a dedicated list only for tasks with a wake-up timer.
+   list_for_each(pos, temp, &timer_wakeup_list, wakeup_timer_node) {
 
-   list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
-
-      ASSERT(pos->state == TASK_STATE_SLEEPING);
-
-      if (!pos->ticks_before_wake_up)
-         continue;
+      ASSERT(pos->ticks_before_wake_up > 0);
 
       if (--pos->ticks_before_wake_up == 0) {
-
-         last_ready_task = pos;
-         task_change_state(last_ready_task, TASK_STATE_RUNNABLE);
+         if (pos->state == TASK_STATE_SLEEPING) {
+            list_remove(&pos->wakeup_timer_node);
+            task_change_state(pos, TASK_STATE_RUNNABLE);
+            last_ready_task = pos;
+         }
       }
    }
 

@@ -72,6 +72,7 @@ void init_task_lists(task_info *ti)
    list_node_init(&ti->sleeping_node);
    list_node_init(&ti->zombie_node);
    list_node_init(&ti->siblings_node); /* ONLY for the main task (tid == pid) */
+   list_node_init(&ti->wakeup_timer_node);
 }
 
 task_info *allocate_new_process(task_info *parent, int pid)

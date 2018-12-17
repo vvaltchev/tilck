@@ -116,6 +116,7 @@ struct task_info {
    u32 faults_resume_mask;
 
    u64 ticks_before_wake_up;
+   list_node wakeup_timer_node;
 
    /*
     * For kernel threads, this is a function pointer of the thread's entry
