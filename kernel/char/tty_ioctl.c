@@ -92,8 +92,19 @@ static int tty_ioctl_tiocgwinsz(fs_handle h, void *argp)
 
 void tty_setup_for_panic(void)
 {
-   term_restart_video_output();
-   tty_kd_mode = KD_TEXT;
+   if (tty_kd_mode != KD_TEXT) {
+
+      /*
+       * NOTE: don't try to always fully restart the video output
+       * because it might trigger a nested panic. When tty_kd_mode != KD_TEXT,
+       * we have no other choice, if we wanna see something on the screen.
+       *
+       * TODO: investigate whether it is possible to make
+       * term_restart_video_output() safer in panic scenarios.
+       */
+      term_restart_video_output();
+      tty_kd_mode = KD_TEXT;
+   }
 }
 
 static int tty_ioctl_kdsetmode(fs_handle h, void *argp)
