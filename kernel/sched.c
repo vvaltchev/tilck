@@ -166,7 +166,7 @@ void set_current_task_in_kernel(void)
    get_curr_task()->running_in_kernel = true;
 }
 
-void task_add_to_state_list(task_info *ti)
+static void task_add_to_state_list(task_info *ti)
 {
    switch (ti->state) {
 
@@ -192,7 +192,7 @@ void task_add_to_state_list(task_info *ti)
    }
 }
 
-void task_remove_from_state_list(task_info *ti)
+static void task_remove_from_state_list(task_info *ti)
 {
    switch (ti->state) {
 

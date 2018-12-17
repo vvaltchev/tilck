@@ -338,30 +338,34 @@ void handle_irq(regs *r)
 
    /////////////////////////////
 
-   if (disable_preemption_count > 0) {
+   if (!handler_ret)
+      return;
+
+   disable_preemption();
+
+   if (disable_preemption_count > 1) {
       /*
-       * Preemption is disabled: we cannot run the "bottom half" of this
-       * interrupt handler right now. The scheduler will run it as soon as
+       * Preemption was already disabled: we cannot run the "bottom half" of
+       * this interrupt handler right now. The scheduler will run it as soon as
        * possible.
        */
+
+      enable_preemption(); // restore the counter
       return;
    }
 
-   if (handler_ret) {
-      disable_preemption();
-      save_current_task_state(r);
+   save_current_task_state(r);
 
-      /*
-       * We call here schedule with curr_irq = -1 because we are actually
-       * outside the interrupt context (see the pop_nested_interrupt() above()).
-       * At the moment, only timer_irq_handler() calls schedule from a proper
-       * interrupt context. NOTE: this might change in the future.
-       */
-      schedule(-1);
+   /*
+    * We call here schedule with curr_irq = -1 because we are actually
+    * outside the interrupt context (see the pop_nested_interrupt() above()).
+    * At the moment, only timer_irq_handler() calls schedule from a proper
+    * interrupt context. NOTE: this might change in the future.
+    */
+   schedule(-1);
 
-      /* In case schedule() returned, we MUST re-enable the preemption */
-      enable_preemption();
-   }
+   /* In case schedule() returned, we MUST re-enable the preemption */
+   enable_preemption();
 }
 
 
