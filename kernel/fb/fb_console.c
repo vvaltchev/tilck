@@ -65,13 +65,7 @@ static void fb_reset_blink_timer(void)
       return;
 
    cursor_visible = true;
-
-   {
-      uptr var;
-      disable_interrupts(&var);
-      task_set_wakeup_timer(blink_thread_ti, blink_half_period);
-      enable_interrupts(&var);
-   }
+   task_update_wakeup_timer_if_any(blink_thread_ti, blink_half_period);
 }
 
 /* video_interface */

@@ -228,6 +228,7 @@ void join_kernel_thread(int tid);
 
 void task_set_wakeup_timer(task_info *task, u64 ticks);
 void task_cancel_wakeup_timer(task_info *ti);
+void task_update_wakeup_timer_if_any(task_info *ti, u64 new_ticks);
 
 
 // TODO: consider moving these functions and the sched ones in sched.h

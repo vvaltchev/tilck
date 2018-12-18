@@ -2,6 +2,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/atomics.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/hal.h>
@@ -16,21 +17,43 @@ static list_node timer_wakeup_list = make_list_node(timer_wakeup_list);
 
 void task_set_wakeup_timer(task_info *ti, u64 ticks)
 {
+   uptr var;
    ASSERT(ticks > 0);
-   ASSERT(!are_interrupts_enabled());
 
-   if (BOOL_COMPARE_AND_SWAP(&ti->ticks_before_wake_up, 0, ticks)) {
-      list_add_tail(&timer_wakeup_list, &ti->wakeup_timer_node);
-   } else {
-      ti->ticks_before_wake_up = ticks;
+   if (atomic_exchange_explicit(&ti->ticks_before_wake_up,
+                                ticks, memory_order_relaxed) == 0)
+   {
+      disable_interrupts(&var);
+
+      if (!list_is_node_in_list(&ti->wakeup_timer_node))
+         list_add_tail(&timer_wakeup_list, &ti->wakeup_timer_node);
+
+      enable_interrupts(&var);
    }
+}
+
+void task_update_wakeup_timer_if_any(task_info *ti, u64 new_ticks)
+{
+   u64 curr;
+   ASSERT(new_ticks > 0);
+
+   do {
+
+      curr = ti->ticks_before_wake_up;
+
+      if (curr == 0)
+         break; // we do NOTHING if there is NO current wake-up timer.
+
+   } while (!atomic_compare_exchange_weak_explicit(&ti->ticks_before_wake_up,
+                                                   &curr,
+                                                   new_ticks,
+                                                   memory_order_relaxed,
+                                                   memory_order_relaxed));
 }
 
 void task_cancel_wakeup_timer(task_info *ti)
 {
-   ASSERT(!are_interrupts_enabled());
-   list_remove(&ti->wakeup_timer_node);
-   ti->ticks_before_wake_up = 0;
+   atomic_store_explicit(&ti->ticks_before_wake_up, 0, memory_order_relaxed);
 }
 
 static task_info *tick_all_timers(void)
@@ -39,36 +62,38 @@ static task_info *tick_all_timers(void)
    task_info *last_ready_task = NULL;
    uptr var;
 
-   disable_interrupts(&var);
 
    list_for_each(pos, temp, &timer_wakeup_list, wakeup_timer_node) {
 
-      ASSERT(pos->ticks_before_wake_up > 0);
+      disable_interrupts(&var);
 
-      if (--pos->ticks_before_wake_up == 0) {
+      if (pos->ticks_before_wake_up == 0) {
+
+         list_remove(&pos->wakeup_timer_node);
+
+      } else if (--pos->ticks_before_wake_up == 0) {
+
+         list_remove(&pos->wakeup_timer_node);
+
          if (pos->state == TASK_STATE_SLEEPING) {
-            list_remove(&pos->wakeup_timer_node);
             task_change_state(pos, TASK_STATE_RUNNABLE);
             last_ready_task = pos;
          }
       }
-   }
 
-   enable_interrupts(&var);
+      enable_interrupts(&var);
+   }
 
    return last_ready_task;
 }
 
 void kernel_sleep(u64 ticks)
 {
-   uptr var;
    DEBUG_ONLY(check_not_in_irq_handler());
 
    if (ticks) {
-      disable_interrupts(&var);
       task_set_wakeup_timer(get_curr_task(), ticks);
       task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
-      enable_interrupts(&var);
    }
 
    kernel_yield();
