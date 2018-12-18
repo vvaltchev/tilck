@@ -283,6 +283,8 @@ void handle_irq(regs *r)
       /*
        * Check for a spurious wake-up.
        *
+       * Source: https://wiki.osdev.org/8259_PIC, with some editing.
+       *
        * When an IRQ occurs, the PIC chip tells the CPU (via. the PIC's INTR
        * line) that there's an interrupt, and the CPU acknowledges this and
        * waits for the PIC to send the interrupt vector. This creates a race
@@ -303,10 +305,16 @@ void handle_irq(regs *r)
        * For a spurious IRQ, there is no real IRQ and the PIC chip's ISR
        * (In Service Register) flag for the corresponding IRQ will NOT be set.
        * This means that the interrupt handler must not send an EOI back to the
-       * PIC to reset the ISR flag.
+       * PIC to reset the ISR flag, EXCEPT when the spurious IRQ comes from the
+       * 2nd PIC: in that case an EOI must be sent to the master PIC, but NOT
+       * to the slave PIC.
        */
 
       if (!(pic_get_isr() & (1 << irq))) {
+
+         if (irq == 15)
+             pic_send_eoi(7);
+
          spur_irq_count++;
          return;
       }
@@ -344,6 +352,7 @@ void handle_irq(regs *r)
    disable_preemption();
 
    if (disable_preemption_count > 1) {
+
       /*
        * Preemption was already disabled: we cannot run the "bottom half" of
        * this interrupt handler right now. The scheduler will run it as soon as
