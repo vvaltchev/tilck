@@ -147,8 +147,6 @@ void irq_clear_mask(u8 irq_line)
    outb(port, value);
 }
 
-
-/* Helper func */
 static u16 __pic_get_irq_reg(int ocw3)
 {
     /* OCW3 to PIC CMD to get the register values.  PIC2 is chained, and
@@ -163,7 +161,7 @@ static u16 __pic_get_irq_reg(int ocw3)
  * The Interrupt Request Register (IRR) tells us which interrupts have been
  * raised.
  */
-u16 pic_get_irr(void)
+static inline u16 pic_get_irr(void)
 {
     return __pic_get_irq_reg(PIC_READ_IRR);
 }
@@ -173,19 +171,17 @@ u16 pic_get_irr(void)
  * The In-Service Register (ISR) tells us which interrupts are being serviced,
  * meaning IRQs sent to the CPU.
  */
-u16 pic_get_isr(void)
+static inline u16 pic_get_isr(void)
 {
     return __pic_get_irq_reg(PIC_READ_ISR);
 }
 
 
 /* IMR = Interrupt Mask Register */
-u32 pic_get_imr(void)
+static inline u32 pic_get_imr(void)
 {
    return inb(PIC1_DATA) | inb(PIC2_DATA) << 8;
 }
-
-
 
 /*
  * We first remap the interrupt controllers, and then we install
