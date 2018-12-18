@@ -25,14 +25,24 @@
 
 
 #ifdef __cplusplus
-   #include <cstdint>
+   #include <cstdint>     // system header
    #define STATIC_ASSERT(s) static_assert(s, "Static assertion failed")
 #else
-   #include <stdint.h>
-   #include <stddef.h>
-   #include <stdbool.h>
+   #include <stdint.h>    // system header
+   #include <stddef.h>    // system header
+   #include <stdbool.h>   // system header
+   #include <stdatomic.h> // system header
    #define STATIC_ASSERT(s) _Static_assert(s, "Static assertion failed")
+
+   STATIC_ASSERT(ATOMIC_BOOL_LOCK_FREE == 2);
+   STATIC_ASSERT(ATOMIC_CHAR_LOCK_FREE == 2);
+   STATIC_ASSERT(ATOMIC_SHORT_LOCK_FREE == 2);
+   STATIC_ASSERT(ATOMIC_INT_LOCK_FREE == 2);
+   STATIC_ASSERT(ATOMIC_LONG_LOCK_FREE == 2);
+   STATIC_ASSERT(ATOMIC_LLONG_LOCK_FREE == 2);
+   STATIC_ASSERT(ATOMIC_POINTER_LOCK_FREE == 2);
 #endif
+
 
 
 #ifdef __i386__
