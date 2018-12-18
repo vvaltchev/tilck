@@ -323,16 +323,16 @@ void handle_irq(regs *r)
    handle_irq_set_mask(irq);
    disable_preemption();
    push_nested_interrupt(r->int_num);
-
    ASSERT(!are_interrupts_enabled());
-   enable_interrupts_forced();
 
    /*
     * We MUST send EOI to the PIC here, before starting the interrupt handler
     * otherwise, the PIC will just not allow nested interrupts to happen.
+    * NOTE: we MUST send the EOI **before** re-enabling the interrupts,
+    * otherwise we'll start getting a lot of spurious interrupts!
     */
    pic_send_eoi(irq);
-   ASSERT(are_interrupts_enabled());
+   enable_interrupts_forced();
 
    if (irq_handlers[irq]) {
       handler_ret = irq_handlers[irq](r);
