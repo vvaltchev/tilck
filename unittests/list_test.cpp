@@ -150,4 +150,8 @@ TEST(list_adt, remove_elem)
    list_remove(&e2.node);
    check_list_elems(list, tvec{"e1", "e3"});
    ASSERT_FALSE(list_is_node_in_list(&e2.node));
+
+   list_node a_node;
+   list_node_init(&a_node);
+   ASSERT_FALSE(list_is_node_in_list(&a_node));
 }

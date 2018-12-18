@@ -23,7 +23,9 @@ static inline bool list_is_empty(list_node *list) {
 }
 
 static inline bool list_is_node_in_list(list_node *node) {
-   return node->prev->next == node && node->next->prev == node;
+   return !list_is_empty(node) &&
+          node->prev->next == node &&
+          node->next->prev == node;
 }
 
 static inline void list_add_after(list_node *curr, list_node *elem)
