@@ -3,6 +3,8 @@
 #pragma once
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/atomics.h>
+
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/irq.h>
@@ -237,12 +239,14 @@ extern volatile u32 disable_preemption_count;
 
 static ALWAYS_INLINE void disable_preemption(void)
 {
-   ATOMIC_ADD_AND_FETCH(&disable_preemption_count, 1);
+   atomic_fetch_add_explicit(&disable_preemption_count, 1, mo_relaxed);
 }
 
 static ALWAYS_INLINE void enable_preemption(void)
 {
-   u32 oldval = ATOMIC_FETCH_AND_SUB(&disable_preemption_count, 1);
+   u32 oldval = atomic_fetch_sub_explicit(&disable_preemption_count,
+                                          1, mo_relaxed);
+
    ASSERT(oldval > 0);
    (void)oldval;
 }

@@ -2,11 +2,11 @@
 
 #include <tilck/common/basic_defs.h>
 
-#if defined(UNIT_TEST_ENVIRONMENT) && \
-    !defined(__clang__)  &&           \
-    defined(__GNUC__) &&              \
-    __GNUC__ <= 4 &&                  \
-    __GNUC_MINOR__ <= 8
+#if defined(UNIT_TEST_ENVIRONMENT) &&   \
+    ((!defined(__clang__)  &&           \
+      defined(__GNUC__) &&              \
+      __GNUC__ <= 4 &&                  \
+      __GNUC_MINOR__ <= 8) || defined(__cplusplus))
 
 /*
  * Because of Travis' old compiler (GCC 4.8), that we use to build the
@@ -41,6 +41,12 @@
 #define atomic_load_explicit(ptr, mo) \
    __sync_fetch_and_add(ptr, 0)
 
+#define atomic_fetch_add_explicit(ptr, val, mo) \
+   __sync_fetch_and_add(ptr, val)
+
+#define atomic_fetch_sub_explicit(ptr, val, mo) \
+   __sync_fetch_and_sub(ptr, val)
+
 #else
 
 #include <stdatomic.h> // system header
@@ -55,3 +61,9 @@ STATIC_ASSERT(ATOMIC_POINTER_LOCK_FREE == 2);
 
 #endif // #if defined(UNIT_TEST_ENVIRONMENT) && ...
 
+#define mo_relaxed memory_order_relaxed
+#define mo_consume memory_order_consume
+#define mo_acquire memory_order_acquire
+#define mo_release memory_order_release
+#define mo_acq_rel memory_order_acq_rel
+#define mo_seq_cst memory_order_seq_cst
