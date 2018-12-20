@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/kernel/user.h>
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/fault_resumable.h>
 

@@ -8,7 +8,7 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/sync.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 #include <tilck/kernel/sort.h>
 
 #include "kmalloc_debug.h"

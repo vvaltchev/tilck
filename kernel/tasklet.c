@@ -10,6 +10,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/interrupts.h>
 
 #include "tasklet_int.h"
 

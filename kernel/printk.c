@@ -6,7 +6,7 @@
 #include <tilck/common/atomics.h>
 
 #include <tilck/kernel/term.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 #include <tilck/kernel/interrupts.h>
 
 #define PRINTK_COLOR COLOR_GREEN
