@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/kernel/ringbuf.h>
+#include <tilck/kernel/sync.h>
 
 typedef void (*tasklet_func)(uptr, uptr);
 

@@ -7,7 +7,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/term.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/timer.h>
 

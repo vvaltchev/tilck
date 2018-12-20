@@ -24,6 +24,10 @@ static int runnable_tasks_count;
 static int current_max_pid = -1;
 static task_info *idle_task;
 
+int get_curr_task_tid(void)
+{
+   return __current ? __current->tid : 0;
+}
 
 static int ti_insert_remove_cmp(const void *a, const void *b)
 {

@@ -7,7 +7,6 @@
 
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/irq.h>
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/timer.h>

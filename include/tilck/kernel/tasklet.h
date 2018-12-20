@@ -2,7 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 
 #define MAX_TASKLET_THREADS 64
 

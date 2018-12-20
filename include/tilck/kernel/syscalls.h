@@ -6,7 +6,7 @@
 
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/datetime.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 #include <tilck/kernel/sys_types.h>
 
 #include <sys/utsname.h> // system header
@@ -17,7 +17,7 @@
       sptr name()                                          \
       {                                                    \
          printk("[TID: %d] NOT IMPLEMENTED: %s()\n",       \
-                get_curr_task()->tid, #name);              \
+                get_curr_task_tid(), #name);               \
          return -ENOSYS;                                   \
       }
 

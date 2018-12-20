@@ -5,7 +5,7 @@
 
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/fs/devfs.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/kb.h>

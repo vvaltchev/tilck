@@ -4,7 +4,6 @@
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/paging.h>
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/errno.h>

@@ -6,6 +6,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/interrupts.h>
 
 static ATOMIC(uptr) new_mutex_id = 1;
 

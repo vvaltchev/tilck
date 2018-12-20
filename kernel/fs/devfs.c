@@ -4,12 +4,13 @@
 #include <tilck/common/string_util.h>
 
 #include <tilck/kernel/fs/devfs.h>
-#include <tilck/kernel/process.h> // for enable/disable preemption
+#include <tilck/kernel/sched.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/user.h>
+#include <tilck/kernel/sync.h>
 
 #include <dirent.h> // system header
 

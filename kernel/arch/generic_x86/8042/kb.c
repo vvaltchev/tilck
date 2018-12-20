@@ -4,10 +4,11 @@
 #include <tilck/common/string_util.h>
 
 #include <tilck/kernel/tasklet.h>
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/irq.h>
 
 #include "kb_int.c.h"
 #include "kb_layouts.c.h"

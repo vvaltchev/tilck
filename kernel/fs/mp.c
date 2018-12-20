@@ -2,9 +2,12 @@
 
 #define _TILCK_MP_C_
 
+#include <tilck/common/string_util.h>
+
 #include <tilck/kernel/fs/vfs.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/kmalloc.h>
 
 #include "fs_int.h"
 

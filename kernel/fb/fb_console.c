@@ -8,7 +8,7 @@
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/kmalloc.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/datetime.h>
 
