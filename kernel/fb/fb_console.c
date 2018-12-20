@@ -117,6 +117,9 @@ void fb_move_cursor(int row, int col, int cursor_vga_color)
 
    fb_restore_under_cursor_buf();
 
+   if (row != cursor_row || col != cursor_col)
+      cursor_visible = true;
+
    cursor_row = row;
    cursor_col = col;
 
