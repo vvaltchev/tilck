@@ -2,8 +2,9 @@
 
 #include <tilck/common/string_util.h>
 
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/process_int.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/debug_utils.h>

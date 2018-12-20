@@ -4,6 +4,7 @@
 #include <tilck/common/string_util.h>
 
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/process_int.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/term.h>
 

@@ -187,11 +187,3 @@ void free_task(task_info *ti);
 void free_mem_for_zombie_task(task_info *ti);
 void arch_specific_new_task_setup(task_info *ti);
 void arch_specific_free_task(task_info *ti);
-
-/* Internal stuff (used by process.c and process32.c) */
-extern char *kernel_initial_stack[KERNEL_INITIAL_STACK_SIZE];
-void switch_to_initial_kernel_stack(void);
-static ALWAYS_INLINE void set_current_task(task_info *ti)
-{
-   __current = ti;
-}

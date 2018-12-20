@@ -3,9 +3,10 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
+#include <tilck/kernel/process.h>
+#include <tilck/kernel/process_int.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/kmalloc.h>
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/timer.h>
