@@ -11,7 +11,7 @@
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/timer.h>
 
-task_info *__current;
+ATOMIC(task_info *) __current;
 task_info *kernel_process;
 
 list_node runnable_tasks_list;

@@ -10,7 +10,7 @@
 typedef struct regs regs;
 typedef struct task_info task_info;
 
-extern task_info *__current;
+extern ATOMIC(task_info *) __current;
 extern task_info *kernel_process;
 
 extern list_node runnable_tasks_list;
@@ -74,7 +74,7 @@ static inline void kernel_yield(void)
 
 static ALWAYS_INLINE task_info *get_curr_task(void)
 {
-   return __current;
+   return atomic_load_explicit(&__current, mo_relaxed);
 }
 
 int get_curr_task_tid(void);
