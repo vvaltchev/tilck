@@ -6,7 +6,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/process.h>
 
-static uptr new_mutex_id = 1;
+static ATOMIC(uptr) new_mutex_id = 1;
 
 bool kmutex_is_curr_task_holding_lock(kmutex *m)
 {
@@ -16,7 +16,7 @@ bool kmutex_is_curr_task_holding_lock(kmutex *m)
 void kmutex_init(kmutex *m, u32 flags)
 {
    bzero(m, sizeof(kmutex));
-   m->id = atomic_fetch_add_explicit(&new_mutex_id, 1, mo_relaxed);
+   m->id = atomic_fetch_add_explicit(&new_mutex_id, 1U, mo_relaxed);
    m->flags = flags;
 }
 

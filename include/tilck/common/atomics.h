@@ -2,11 +2,13 @@
 
 #include <tilck/common/basic_defs.h>
 
+#ifndef __cplusplus
+
 #if defined(UNIT_TEST_ENVIRONMENT) &&   \
-    ((!defined(__clang__)  &&           \
-      defined(__GNUC__) &&              \
-      __GNUC__ <= 4 &&                  \
-      __GNUC_MINOR__ <= 8) || defined(__cplusplus))
+    !defined(__clang__)  &&             \
+    defined(__GNUC__) &&                \
+    __GNUC__ <= 4 &&                    \
+    __GNUC_MINOR__ <= 8
 
 /*
  * Because of Travis' old compiler (GCC 4.8), that we use to build the
@@ -47,7 +49,22 @@
 #define atomic_fetch_sub_explicit(ptr, val, mo) \
    __sync_fetch_and_sub(ptr, val)
 
+
+/*
+ * HACK: completely unsafe, but OK for the build and run of the 64-bit gtests
+ * on Travis to pass. Hopefully, Travis at some point will migrate to a newer
+ * compiler (toolchain) and all the code in this case will be just dropped.
+ *
+ * All the other builds will use either C11 atomics or the C++11 ones, which
+ * are, 100% compatible by design.
+ */
+#define ATOMIC(x) x
+
 #else
+
+/*
+ * DEFAULT case: the Tilck kernel, compiled with a modern C compiler.
+ */
 
 #include <stdatomic.h> // system header
 
@@ -59,6 +76,8 @@ STATIC_ASSERT(ATOMIC_LONG_LOCK_FREE == 2);
 STATIC_ASSERT(ATOMIC_LLONG_LOCK_FREE == 2);
 STATIC_ASSERT(ATOMIC_POINTER_LOCK_FREE == 2);
 
+#define ATOMIC(x) _Atomic(x)
+
 #endif // #if defined(UNIT_TEST_ENVIRONMENT) && ...
 
 #define mo_relaxed memory_order_relaxed
@@ -67,3 +86,28 @@ STATIC_ASSERT(ATOMIC_POINTER_LOCK_FREE == 2);
 #define mo_release memory_order_release
 #define mo_acq_rel memory_order_acq_rel
 #define mo_seq_cst memory_order_seq_cst
+
+#else
+
+/*
+ * If __cplusplus is defined, we must be in a extern "C" { } context here.
+ * This is the case of C++ unit tests which include kernel C headers.
+ * In order to include C++11's atomic header, we have to put it in an extern
+ * "C++" { } block, because templates cannot have C-linkage.
+ */
+
+extern "C++" {
+   #include <atomic>
+}
+
+#define ATOMIC(x) std::atomic<x>
+
+#define mo_relaxed std::memory_order_relaxed
+#define mo_consume std::memory_order_consume
+#define mo_acquire std::memory_order_acquire
+#define mo_release std::memory_order_release
+#define mo_acq_rel std::memory_order_acq_rel
+#define mo_seq_cst std::memory_order_seq_cst
+
+#endif // #ifndef __cplusplus
+

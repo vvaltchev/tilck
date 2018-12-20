@@ -11,7 +11,7 @@
 #include <tilck/kernel/elf_utils.h>
 
 volatile u64 __ticks; /* ticks since the timer started */
-volatile u32 disable_preemption_count = 1;
+ATOMIC(u32) disable_preemption_count = 1;
 
 static list_node timer_wakeup_list = make_list_node(timer_wakeup_list);
 

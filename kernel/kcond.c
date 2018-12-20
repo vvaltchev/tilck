@@ -6,11 +6,11 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/process.h>
 
-static uptr new_cond_id = 1;
+static ATOMIC(uptr) new_cond_id = 1;
 
 void kcond_init(kcond *c)
 {
-   c->id = atomic_fetch_add_explicit(&new_cond_id, 1, mo_relaxed);
+   c->id = atomic_fetch_add_explicit(&new_cond_id, 1U, mo_relaxed);
 }
 
 bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)

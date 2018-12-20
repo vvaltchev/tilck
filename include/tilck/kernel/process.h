@@ -117,7 +117,7 @@ struct task_info {
    regs *fault_resume_regs;
    u32 faults_resume_mask;
 
-   u64 ticks_before_wake_up;
+   ATOMIC(u64) ticks_before_wake_up;
    list_node wakeup_timer_node;
 
    /*
@@ -235,17 +235,17 @@ void task_update_wakeup_timer_if_any(task_info *ti, u64 new_ticks);
 
 // TODO: consider moving these functions and the sched ones in sched.h
 
-extern volatile u32 disable_preemption_count;
+extern ATOMIC(u32) disable_preemption_count;
 
 static ALWAYS_INLINE void disable_preemption(void)
 {
-   atomic_fetch_add_explicit(&disable_preemption_count, 1, mo_relaxed);
+   atomic_fetch_add_explicit(&disable_preemption_count, 1U, mo_relaxed);
 }
 
 static ALWAYS_INLINE void enable_preemption(void)
 {
    u32 oldval = atomic_fetch_sub_explicit(&disable_preemption_count,
-                                          1, mo_relaxed);
+                                          1U, mo_relaxed);
 
    ASSERT(oldval > 0);
    (void)oldval;
