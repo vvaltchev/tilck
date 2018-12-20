@@ -3,14 +3,15 @@
 #pragma once
 
 #include <tilck/kernel/hal.h>
+#include <tilck/common/atomics.h>
 
 #define TIME_SLOT_TICKS (TIMER_HZ / 20)
 
-extern volatile u64 __ticks;
+extern ATOMIC(u64) __ticks;
 
 static ALWAYS_INLINE u64 get_ticks(void)
 {
-   return __ticks;
+   return atomic_load_explicit(&__ticks, mo_relaxed);
 }
 
 int timer_irq_handler(regs *r);

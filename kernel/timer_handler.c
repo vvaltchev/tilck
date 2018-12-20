@@ -11,7 +11,7 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/elf_utils.h>
 
-volatile u64 __ticks; /* ticks since the timer started */
+ATOMIC(u64) __ticks; /* ticks since the timer started */
 ATOMIC(u32) disable_preemption_count = 1;
 
 static list_node timer_wakeup_list = make_list_node(timer_wakeup_list);
@@ -145,7 +145,7 @@ int timer_irq_handler(regs *context)
    }
 #endif
 
-   __ticks++;
+   atomic_fetch_add_explicit(&__ticks, 1ULL, mo_relaxed);
    account_ticks();
    task_info *last_ready_task = tick_all_timers();
 
