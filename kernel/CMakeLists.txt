@@ -14,15 +14,8 @@ set(
    -ffreestanding
    -fno-builtin
    -fno-omit-frame-pointer
+   -fwrapv
    -Wno-unused-label
-
-   # NOTE: DO NOT USE gcc's options like -mavx and related (-msse etc.):
-   # That will allow gcc even in __asm__ volatile statements to transform
-   # instructions like 'movdqa' in the newer version (AVX) 'vmovdqa'. Clearly
-   # is a problem since we check at runtime if AVX is available. In order to be
-   # sure that gcc does NOT mess-up with us, we have to always use inline
-   # assembly and none of the -mXXX gcc options. They're good in case one is
-   # SURE that the given feature is supported, not in case it MIGHT BE.
 )
 
 if (FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
