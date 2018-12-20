@@ -6,6 +6,7 @@
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>

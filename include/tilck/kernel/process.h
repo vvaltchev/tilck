@@ -200,15 +200,13 @@ void set_current_task_in_user_mode(void);
 
 int create_new_pid(void);
 
-task_info *get_task(int tid);
 
 void task_info_reset_kernel_stack(task_info *ti);
 
 void add_task(task_info *ti);
 void remove_task(task_info *ti);
-void task_change_state(task_info *ti, enum task_state new_state);
 
-void init_sched(void);
+
 void create_kernel_process(void);
 void init_task_lists(task_info *ti);
 task_info *allocate_new_process(task_info *parent, int pid);
@@ -234,6 +232,8 @@ void task_update_wakeup_timer_if_any(task_info *ti, u64 new_ticks);
 
 
 // TODO: consider moving these functions and the sched ones in sched.h
+
+
 
 extern ATOMIC(u32) disable_preemption_count;
 

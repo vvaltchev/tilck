@@ -13,6 +13,7 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 #include <tilck/kernel/elf_loader.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/sync.h>

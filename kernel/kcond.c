@@ -5,6 +5,7 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 
 static ATOMIC(uptr) new_cond_id = 1;
 
