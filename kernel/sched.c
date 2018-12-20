@@ -218,7 +218,7 @@ static void task_remove_from_state_list(task_info *ti)
    }
 }
 
-void task_change_state(task_info *ti, task_state_enum new_state)
+void task_change_state(task_info *ti, enum task_state new_state)
 {
    uptr var;
 

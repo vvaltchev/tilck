@@ -27,13 +27,13 @@
 #define MAX_PID 32768
 #define MAX_PATH 256
 
-typedef enum {
+enum task_state {
    TASK_STATE_INVALID = 0,
    TASK_STATE_RUNNABLE = 1,
    TASK_STATE_RUNNING = 2,
    TASK_STATE_SLEEPING = 3,
    TASK_STATE_ZOMBIE = 4
-} task_state_enum;
+};
 
 typedef struct {
 
@@ -94,7 +94,7 @@ struct task_info {
                */
 
    bool running_in_kernel;
-   task_state_enum state;
+   enum task_state state;
    u32 exit_status;
 
    process_info *pi;
@@ -206,7 +206,7 @@ void task_info_reset_kernel_stack(task_info *ti);
 
 void add_task(task_info *ti);
 void remove_task(task_info *ti);
-void task_change_state(task_info *ti, task_state_enum new_state);
+void task_change_state(task_info *ti, enum task_state new_state);
 
 void init_sched(void);
 void create_kernel_process(void);
