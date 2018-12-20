@@ -21,7 +21,7 @@ void task_set_wakeup_timer(task_info *ti, u64 ticks)
    ASSERT(ticks > 0);
 
    if (atomic_exchange_explicit(&ti->ticks_before_wake_up,
-                                ticks, memory_order_relaxed) == 0)
+                                ticks, mo_relaxed) == 0)
    {
       disable_interrupts(&var);
 
@@ -47,13 +47,13 @@ void task_update_wakeup_timer_if_any(task_info *ti, u64 new_ticks)
    } while (!atomic_compare_exchange_weak_explicit(&ti->ticks_before_wake_up,
                                                    &curr,
                                                    new_ticks,
-                                                   memory_order_relaxed,
-                                                   memory_order_relaxed));
+                                                   mo_relaxed,
+                                                   mo_relaxed));
 }
 
 void task_cancel_wakeup_timer(task_info *ti)
 {
-   atomic_store_explicit(&ti->ticks_before_wake_up, 0, memory_order_relaxed);
+   atomic_store_explicit(&ti->ticks_before_wake_up, 0, mo_relaxed);
 }
 
 static task_info *tick_all_timers(void)
