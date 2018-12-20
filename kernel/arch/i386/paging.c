@@ -27,8 +27,6 @@
 
 /* ---------------------------------------------- */
 
-extern page_directory_t *kernel_page_dir;
-extern page_directory_t *__curr_pdir;
 extern char page_size_buf[PAGE_SIZE];
 extern char vsdo_like_page[PAGE_SIZE];
 
@@ -81,7 +79,7 @@ bool handle_potential_cow(void *context)
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
    void *const page_vaddr = (void *)(vaddr & PAGE_MASK);
-   page_table_t *ptable = pdir_get_page_table(__curr_pdir, page_dir_index);
+   page_table_t *ptable = pdir_get_page_table(get_curr_pdir(), page_dir_index);
 
    if (!(ptable->pages[page_table_index].avail & PAGE_COW_ORIG_RW))
       return false; /* Not a COW page */
@@ -195,7 +193,7 @@ void handle_general_protection_fault(regs *r)
 
 void set_page_directory(page_directory_t *pdir)
 {
-   __curr_pdir = pdir;
+   atomic_store_explicit(&__curr_pdir, pdir, mo_relaxed);
    write_cr3(KERNEL_VA_TO_PA(pdir));
 }
 

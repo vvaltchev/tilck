@@ -3,6 +3,7 @@
 #pragma once
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/atomics.h>
 
 #ifdef __i386__
 #define PAGE_DIR_SIZE (PAGE_SIZE)
@@ -83,14 +84,14 @@ unmap_pages(page_directory_t *pdir,
 }
 
 extern page_directory_t *kernel_page_dir;
-extern page_directory_t *__curr_pdir;
+extern ATOMIC(page_directory_t *) __curr_pdir;
 
 void set_page_directory(page_directory_t *dir);
 void init_paging_cow(void);
 
 static ALWAYS_INLINE page_directory_t *get_curr_pdir()
 {
-   return __curr_pdir;
+   return atomic_load_explicit(&__curr_pdir, mo_relaxed);
 }
 
 static ALWAYS_INLINE page_directory_t *get_kernel_pdir()
