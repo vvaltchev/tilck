@@ -83,14 +83,14 @@ unmap_pages(page_directory_t *pdir,
 }
 
 extern page_directory_t *kernel_page_dir;
-extern page_directory_t *curr_page_dir;
+extern page_directory_t *__curr_pdir;
 
 void set_page_directory(page_directory_t *dir);
 void init_paging_cow(void);
 
 static ALWAYS_INLINE page_directory_t *get_curr_pdir()
 {
-   return curr_page_dir;
+   return __curr_pdir;
 }
 
 static ALWAYS_INLINE page_directory_t *get_kernel_pdir()

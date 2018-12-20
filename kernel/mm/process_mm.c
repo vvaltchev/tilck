@@ -9,7 +9,7 @@
 #include <tilck/kernel/fs/devfs.h>
 
 page_directory_t *kernel_page_dir;
-page_directory_t *curr_page_dir;
+page_directory_t *__curr_pdir;
 char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
 void user_vfree_and_unmap(uptr user_vaddr, int page_count)
