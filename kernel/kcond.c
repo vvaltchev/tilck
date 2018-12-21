@@ -46,19 +46,12 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
       kmutex_lock(m); // Re-acquire the lock back
    }
 
-   if (curr->wobj.ptr) {
-
-      /*
-       * The task has been weaken up because the timeout expired. Clearly,
-       * the 'wobj' has not been reset.
-       */
-
-      wait_obj_reset(&curr->wobj);
-      return false;
-   }
-
-   /* Default case: the condition has been signalled */
-   return true;
+   /*
+    * wait_obj_reset() returns the older value of wobj.ptr: in case it was
+    * NULL, we'll return true (no timeout). In case it was != NULL, we woke up
+    * because of the timeout -> return false.
+    */
+   return !wait_obj_reset(&curr->wobj);
 }
 
 void kcond_signal_single(kcond *c, task_info *ti)
@@ -87,7 +80,7 @@ void kcond_signal_int(kcond *c, bool all)
 
    list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
 
-      if (pos->wobj.ptr == c) {
+      if (wait_obj_get_ptr(&pos->wobj) == c) {
 
          kcond_signal_single(c, pos);
 

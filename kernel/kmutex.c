@@ -140,13 +140,13 @@ void kmutex_unlock(kmutex *m)
 
          ASSERT(pos->state == TASK_STATE_SLEEPING);
 
-         if (pos->wobj.ptr != m)
+         if (wait_obj_get_ptr(&pos->wobj) != m)
             continue;
 
          disable_interrupts(&var);
 
          // 2nd check for pos->wobj.ptr == m, but with interrupts disabled
-         if (pos->wobj.ptr == m) {
+         if (wait_obj_get_ptr(&pos->wobj) == m) {
 
             m->owner_task = pos;
 

@@ -417,14 +417,14 @@ NORETURN sptr sys_exit(int exit_status)
 
       ASSERT(pos->state == TASK_STATE_SLEEPING);
 
-      void *woptr = pos->wobj.ptr;
+      void *woptr = wait_obj_get_ptr(&pos->wobj);
 
       if (woptr == curr || (pos->pid == cppid && woptr == (void *)-1)) {
 
          uptr var;
          disable_interrupts(&var);
          {
-            if (pos->wobj.ptr == woptr) {
+            if (wait_obj_get_ptr(&pos->wobj) == woptr) {
                ASSERT(pos->wobj.type == WOBJ_TASK);
                wait_obj_reset(&pos->wobj);
                task_change_state(pos, TASK_STATE_RUNNABLE);

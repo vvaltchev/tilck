@@ -3,16 +3,17 @@
 #pragma once
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/atomics.h>
 
 struct task_info;
 
-typedef enum {
+enum wo_type {
    WOBJ_NONE    = 0,
    WOBJ_KMUTEX  = 1,
    WOBJ_KCOND   = 2,
    WOBJ_TASK    = 3,
    WOBJ_TIMER   = 4
-} wo_type;
+};
 
 /*
  * wait_obj is used internally in task_info for referring to an object that
@@ -21,21 +22,27 @@ typedef enum {
 
 typedef struct {
 
-   wo_type type;
-   void *ptr;
+   ATOMIC(void *) __ptr;
+   enum wo_type type;
 
 } wait_obj;
 
-static inline void wait_obj_set(wait_obj *obj, wo_type type, void *ptr)
+static inline void wait_obj_set(wait_obj *wo, enum wo_type type, void *ptr)
 {
-   obj->type = type;
-   obj->ptr = ptr;
+   atomic_store_explicit(&wo->__ptr, ptr, mo_relaxed);
+   wo->type = type;
 }
 
-static inline void wait_obj_reset(wait_obj *obj)
+static inline void *wait_obj_reset(wait_obj *wo)
 {
-   obj->type = WOBJ_NONE;
-   obj->ptr = NULL;
+   void *oldptr = atomic_exchange_explicit(&wo->__ptr, (void*)NULL, mo_relaxed);
+   wo->type = WOBJ_NONE;
+   return oldptr;
+}
+
+static inline void *wait_obj_get_ptr(wait_obj *wo)
+{
+   return atomic_load_explicit(&wo->__ptr, mo_relaxed);
 }
 
 /*

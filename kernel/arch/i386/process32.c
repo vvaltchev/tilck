@@ -156,11 +156,11 @@ void kthread_exit(void)
 
    list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
 
-      if (pos->wobj.ptr == get_curr_task()) {
+      if (wait_obj_get_ptr(&pos->wobj) == get_curr_task()) {
 
          disable_interrupts(&var);
          {
-            if (pos->wobj.ptr == get_curr_task()) {
+            if (wait_obj_get_ptr(&pos->wobj) == get_curr_task()) {
                ASSERT(pos->wobj.type == WOBJ_TASK);
                wait_obj_reset(&pos->wobj);
                task_change_state(pos, TASK_STATE_RUNNABLE);
