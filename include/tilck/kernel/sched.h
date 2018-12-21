@@ -101,9 +101,9 @@ void kthread_exit(void);
 void kernel_sleep(u64 ticks);
 void join_kernel_thread(int tid);
 
-void task_set_wakeup_timer(task_info *task, u64 ticks);
+void task_set_wakeup_timer(task_info *task, u32 ticks);
+void task_update_wakeup_timer_if_any(task_info *ti, u32 new_ticks);
 void task_cancel_wakeup_timer(task_info *ti);
-void task_update_wakeup_timer_if_any(task_info *ti, u64 new_ticks);
 
 typedef void (*kthread_func_ptr)();
 NODISCARD task_info *kthread_create(kthread_func_ptr fun, void *arg);

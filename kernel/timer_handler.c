@@ -16,7 +16,7 @@ ATOMIC(u32) disable_preemption_count = 1;
 
 static list_node timer_wakeup_list = make_list_node(timer_wakeup_list);
 
-void task_set_wakeup_timer(task_info *ti, u64 ticks)
+void task_set_wakeup_timer(task_info *ti, u32 ticks)
 {
    uptr var;
    ASSERT(ticks > 0);
@@ -33,9 +33,9 @@ void task_set_wakeup_timer(task_info *ti, u64 ticks)
    }
 }
 
-void task_update_wakeup_timer_if_any(task_info *ti, u64 new_ticks)
+void task_update_wakeup_timer_if_any(task_info *ti, u32 new_ticks)
 {
-   u64 curr;
+   u32 curr;
    ASSERT(new_ticks > 0);
 
    do {
@@ -92,11 +92,69 @@ void kernel_sleep(u64 ticks)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
 
-   if (ticks) {
-      task_set_wakeup_timer(get_curr_task(), ticks);
+   /*
+    * Implementation: why
+    * ---------------------
+    *
+    * This function was previously implemented as just:
+    *
+    *    if (ticks) {
+    *       task_set_wakeup_timer(get_curr_task(), ticks);
+    *       task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+    *    }
+    *    kernel_yield();
+    *
+    * And it worked, but it required task_info->ticks_before_wake_up to be
+    * actually 64-bit wide, which that lead to inefficiency of 32-bit systems,
+    * in particular because 'ticks_before_wake_up' is now atomic and it's used
+    * atomically even when we don't want to (see tick_all_timers()). Pointer
+    * size relaxed atomics are pretty cheap, but double-pointer size are not.
+    * In order to use a 32-bit value for 'ticks_before_wake_up' and, at the same
+    * time being able to sleep for more than 2^32-1 ticks, we needed a more
+    * tricky implementation (below).
+    *
+    * Implementation: how
+    * ----------------------
+    *
+    * The simpler way to explain the algorithm is to just assume everything
+    * is in base 10 and that ticks_before_wake_up has 2 digits, while we want
+    * to support 4 digits sleep time. For example, we want to sleep for 234
+    * ticks. The algorithm first computes 534 % 100 = 34 and then 534 / 100 = 5.
+    * After that, it sleeps q (= 5) times for 99 ticks (max allowed). Clearly,
+    * we missed 5 ticks (5 * 99 < 500) this way, but we'll going to fix that
+    * buy just sleeping 'q' ticks. Thus, by now, we've slept for 500 ticks.
+    * Now we have to sleep for 34 ticks more are we're done.
+    *
+    * The same logic applies to base-2 case with 32-bit and 64-bit integers,
+    * just the numbers are much bigger. The remainder can be computed using
+    * a bitmask, while the division by using just a right shift.
+    */
+
+   const u32 rem = ticks & 0xffffffff;
+   const u32 q = ticks >> 32;
+
+   for (u32 i = 0; i < q; i++) {
+      task_set_wakeup_timer(get_curr_task(), 0xffffffff);
+      task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+      kernel_yield();
+   }
+
+   if (q) {
+      task_set_wakeup_timer(get_curr_task(), q);
+      task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+
+      if (rem) {
+         /* Yield only if we're going to sleep again because rem > 0 */
+         kernel_yield();
+      }
+   }
+
+   if (rem) {
+      task_set_wakeup_timer(get_curr_task(), rem);
       task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
    }
 
+   /* We must yield at least once, even if ticks == 0 */
    kernel_yield();
 }
 

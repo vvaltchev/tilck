@@ -110,7 +110,7 @@ struct task_info {
    regs *fault_resume_regs;
    u32 faults_resume_mask;
 
-   ATOMIC(u64) ticks_before_wake_up;
+   ATOMIC(u32) ticks_before_wake_up;
    list_node wakeup_timer_node;
 
    /*
