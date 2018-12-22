@@ -1,0 +1,5 @@
+
+coverage:
+  range: 0..1 # Make the badge always green
+  round: nearest
+  precision: 1 # decimal points
