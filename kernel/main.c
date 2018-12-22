@@ -180,6 +180,8 @@ void init_drivers(void)
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
+   call_kernel_global_ctors();
+
    init_serial_port();
    create_kernel_process();
    setup_soft_interrupt_handling();
@@ -194,8 +196,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_paging();
    init_kmalloc();
    init_paging_cow();
-
-   call_kernel_global_ctors();
 
    init_console();
    show_hello_message();
