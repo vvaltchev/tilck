@@ -1,0 +1,5 @@
+
+coverage:
+  range: 30..70
+  round: nearest
+  precision: 1

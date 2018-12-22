@@ -21,6 +21,8 @@ if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
 endif()
 
+######### Env-controlled (internal) cache variables ###############
+
 if (NOT DEFINED SYS_OBJCOPY)
    if (NOT "$ENV{OBJCOPY}" STREQUAL "")
       set(SYS_OBJCOPY "$ENV{OBJCOPY}" CACHE INTERNAL "")
@@ -28,7 +30,6 @@ if (NOT DEFINED SYS_OBJCOPY)
       set(SYS_OBJCOPY "objcopy" CACHE INTERNAL "")
    endif()
 endif()
-
 
 if (NOT DEFINED SYS_STRIP)
    if (NOT "$ENV{STRIP}" STREQUAL "")
@@ -46,12 +47,28 @@ if (NOT DEFINED _CACHE_USE_SYSCC)
    endif()
 endif()
 
+if (NOT DEFINED _CACHE_USE_GCOV)
+   if (NOT "$ENV{USE_GCOV}" STREQUAL "")
+      set(_CACHE_USE_GCOV "$ENV{USE_GCOV}" CACHE INTERNAL "")
+   else()
+      set(_CACHE_USE_GCOV 0 CACHE INTERNAL "")
+   endif()
+endif()
+
+######################################################################
+
 if (${_CACHE_USE_SYSCC})
    set(USE_SYSCC 1)
    set(SYS_CC "${CMAKE_C_COMPILER}")
    set(SYS_CXX "${CMAKE_CXX_COMPILER}")
 else()
    set(USE_SYSCC 0)
+endif()
+
+if (${_CACHE_USE_GCOV})
+   set(USE_GCOV 1)
+else()
+   set(USE_GCOV 0)
 endif()
 
 message(STATUS "USE_SYSCC = ${USE_SYSCC}")
@@ -73,7 +90,6 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "")
 set(CMAKE_C_FLAGS_RELEASE "")
 
 # Compile options
-set(USE_GCOV OFF CACHE BOOL "Compile the tests for measuring coverage")
 set(ARCH_GTESTS OFF CACHE BOOL "Build unit tests for target architecture")
 
 # Non-boolean kernel options
