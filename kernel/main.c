@@ -31,6 +31,7 @@
 #include <tilck/kernel/arch/generic_x86/textmode_video.h>
 #include <tilck/kernel/arch/generic_x86/fpu_memcpy.h>
 #include <tilck/kernel/system_mmap.h>
+#include <tilck/kernel/elf_utils.h>
 
 
 /* Variables used by the cmdline parsing code */
@@ -193,6 +194,8 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_paging();
    init_kmalloc();
    init_paging_cow();
+
+   call_kernel_global_ctors();
 
    init_console();
    show_hello_message();

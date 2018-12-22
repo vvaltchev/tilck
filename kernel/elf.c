@@ -311,3 +311,44 @@ find_sym_at_addr_safe(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
    return sym_name;
 }
 
+static Elf_Shdr *kernel_elf_get_section(const char *section_name)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
+   Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
+   Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
+
+   for (uint32_t i = 0; i < h->e_shnum; i++) {
+
+      Elf_Shdr *s = sections + i;
+      char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
+
+      if (!strcmp(name, section_name)) {
+         return s;
+      }
+   }
+
+   return NULL;
+}
+
+void call_kernel_global_ctors(void)
+{
+   void (*ctor)(void);
+   Elf_Shdr *ctors = kernel_elf_get_section(".ctors");
+
+   if (!ctors)
+      return;
+
+   void **ctors_begin = (void **)ctors->sh_addr;
+   void **ctors_end = (void **)(ctors->sh_addr + ctors->sh_size);
+
+   for (void **p = ctors_begin; p < ctors_end; p++) {
+
+      /*
+       * The C99 standard leaves casting from "void *" to a function pointer
+       * undefined, that's why we assign write a value at &ctor instead of
+       * just casing *p to void (*)(void).
+       */
+      *(void **)(&ctor) = *p;
+      ctor();
+   }
+}
