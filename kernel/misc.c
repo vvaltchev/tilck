@@ -8,8 +8,8 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/term.h>
 
-char symtab_buf[24 * KB] __attribute__ ((section (".Symtab"))) = {0};
-char strtab_buf[24 * KB] __attribute__ ((section (".Strtab"))) = {0};
+char symtab_buf[SYMTAB_MAX_SIZE] __attribute__ ((section (".Symtab"))) = {0};
+char strtab_buf[STRTAB_MAX_SIZE] __attribute__ ((section (".Strtab"))) = {0};
 
 #ifdef DEBUG
 

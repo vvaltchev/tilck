@@ -18,6 +18,10 @@ set(
    -Wno-unused-label
 )
 
+if (KERNEL_GCOV)
+   list(APPEND GENERAL_KERNEL_FLAGS_LIST -fprofile-arcs -ftest-coverage)
+endif()
+
 if (FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
    list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-loop-vectorize)
 endif()

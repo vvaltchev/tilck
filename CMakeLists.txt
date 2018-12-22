@@ -90,6 +90,7 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "")
 set(CMAKE_C_FLAGS_RELEASE "")
 
 # Compile options
+set(KERNEL_GCOV OFF CACHE BOOL "Instrument the kernel for code coverage")
 set(ARCH_GTESTS OFF CACHE BOOL "Build unit tests for target architecture")
 
 # Non-boolean kernel options
@@ -161,6 +162,7 @@ list(
    DEBUG_CHECKS_IN_RELEASE_BUILD
 
    # Boolean options DISABLED by default
+   KERNEL_GCOV
    KERNEL_USE_SYSTEM_CC
    KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC
    FORK_NO_COW
