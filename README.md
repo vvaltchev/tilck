@@ -3,6 +3,8 @@ Tilck (Tiny Linux-Compatible Kernel)
 
 ![TravisCI](https://travis-ci.org/vvaltchev/tilck.svg?branch=master)
 ![CircleCI](https://circleci.com/gh/vvaltchev/tilck.svg?style=svg)
+[![codecov](https://codecov.io/gh/vvaltchev/tilck/branch/master/graph/badge.svg)](https://codecov.io/gh/vvaltchev/tilck)
+
 
 ![Tilck screenshot](other/screenshot.png?raw=true "Tilck")
 
