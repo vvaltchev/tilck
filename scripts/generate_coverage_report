@@ -30,6 +30,14 @@ GENHTML=$PWD/toolchain/lcov/bin/genhtml
 cd build
 $LCOV -d . --capture --gcov-tool $GCOV_ABS_PATH -o lcov.info
 $LCOV --remove lcov.info '*toolchain*' '/usr/include/*' -o lcov2.info
+
+if [ "$1" == "--codecov" ]; then
+   $LCOV --list lcov2.info
+
+   # Upload report to CodeCov
+   bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"
+fi
+
 rm -rf coverage
 mkdir coverage
 $GENHTML --output-directory coverage lcov2.info
