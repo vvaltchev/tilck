@@ -6,6 +6,7 @@
 
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/self_tests/self_tests.h>
 
 #ifdef __i386__
 
@@ -106,7 +107,7 @@ void selftest_fault_resumable_short(void)
                             1,  // nargs
                             1); // arg1: level
    printk("[level 0]: call returned %i\n", r);
-   debug_qemu_turn_off_machine();
+   regular_self_test_end();
 }
 
 static NO_INLINE void do_nothing(uptr a1, uptr a2, uptr a3,
@@ -142,7 +143,7 @@ void selftest_fault_resumable_perf_short(void)
    duration = RDTSC() - start;
 
    printk("fault resumable call: %llu cycles\n", duration/iters);
-   debug_qemu_turn_off_machine();
+   regular_self_test_end();
 }
 
 #endif

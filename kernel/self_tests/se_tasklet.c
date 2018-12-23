@@ -7,6 +7,7 @@
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/self_tests/self_tests.h>
 
 static volatile int counter = 0;
 static u32 cycles_begin;
@@ -78,5 +79,5 @@ void selftest_tasklet_perf_short(void)
 
    ASSERT(n > 0); // SA: avoid division by zero warning
    printk("Avg. tasklet enqueue cycles: %llu [%i tasklets]\n", elapsed/n, n);
-   debug_qemu_turn_off_machine();
+   regular_self_test_end();
 }

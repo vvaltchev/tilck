@@ -7,6 +7,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/self_tests/self_tests.h>
 
 void simple_test_kthread(void *arg);
 
@@ -96,5 +97,5 @@ void selftest_kmutex_med()
    join_kernel_thread(tid4);
 
    kmutex_destroy(&test_mutex);
-   debug_qemu_turn_off_machine();
+   regular_self_test_end();
 }

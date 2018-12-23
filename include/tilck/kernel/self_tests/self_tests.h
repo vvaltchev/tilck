@@ -2,6 +2,8 @@
 
 #pragma once
 
+void regular_self_test_end(void);
+
 void sleeping_kthread(void *);
 void simple_test_kthread(void *);
 

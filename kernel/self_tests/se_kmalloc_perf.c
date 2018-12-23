@@ -7,6 +7,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/self_tests/self_tests.h>
 
 #include "se_data.h"
 
@@ -84,5 +85,5 @@ void selftest_kmalloc_perf_med(void)
    }
 
    kfree2(allocations, 10000 * sizeof(void *));
-   debug_qemu_turn_off_machine();
+   regular_self_test_end();
 }

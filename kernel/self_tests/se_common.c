@@ -14,6 +14,13 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/timer.h>
+#include <tilck/kernel/self_tests/self_tests.h>
+
+void regular_self_test_end(void)
+{
+   printk("DEBUG QEMU turn off machine\n");
+   debug_qemu_turn_off_machine();
+}
 
 void simple_test_kthread(void *arg)
 {
@@ -52,8 +59,7 @@ void simple_test_kthread(void *arg)
    printk("[kthread] completed\n");
 
    if ((uptr)arg == 1) {
-      printk("[kthread] DEBUG QEMU turn off machine\n");
-      debug_qemu_turn_off_machine();
+      regular_self_test_end();
    }
 }
 
@@ -78,18 +84,7 @@ void selftest_kernel_sleep_short()
 
    VERIFY((elapsed - wait_ticks) <= 2);
 
-   debug_qemu_turn_off_machine();
-}
-
-void selftest_panic_manual(void)
-{
-   printk("[panic selftest] In a while, I'll panic\n");
-
-   for (int i = 0; i < 500*1000*1000; i++) {
-      asmVolatile("nop");
-   }
-
-   panic("test panic");
+   regular_self_test_end();
 }
 
 void selftest_join_med()
@@ -103,5 +98,20 @@ void selftest_join_med()
    join_kernel_thread(ti->tid);
 
    printk("[selftest join] kernel thread exited\n");
-   debug_qemu_turn_off_machine();
+   regular_self_test_end();
+}
+
+/*
+ * Special selftest that cannot be run by the system test runner.
+ * It has to be run manually by passing to the kernel -s panic_manual.
+ */
+void selftest_panic_manual(void)
+{
+   printk("[panic selftest] In a while, I'll panic\n");
+
+   for (int i = 0; i < 500*1000*1000; i++) {
+      asmVolatile("nop");
+   }
+
+   panic("test panic");
 }
