@@ -6,59 +6,76 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/elf_utils.h>
 
-void (*self_test_to_run)(void);
 const char *cmd_args[16] = { "/sbin/init", [1 ... 15] = NULL };
+void (*self_test_to_run)(void);
 
-void use_kernel_arg(int arg_num, const char *arg)
+static enum {
+
+   INITIAL_STATE = 0,
+   CUSTOM_START_CMDLINE = 1,
+
+   LAST_STATE
+
+} kernel_arg_parser_state;
+
+static char args_buffer[PAGE_SIZE];
+static int last_custom_cmd_n;
+static int args_buffer_used;
+
+static void
+parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
 {
-   static char args_buffer[PAGE_SIZE];
-   static bool in_custom_cmd;
-   static int custom_cmd_arg;
-   static int args_buffer_used;
-
-   //printk("Kernel arg[%i]: '%s'\n", arg_num, arg);
-
-   const size_t arg_len = strlen(arg);
-
-   if (in_custom_cmd) {
-
-      if (custom_cmd_arg == ARRAY_SIZE(cmd_args) - 1)
-         panic("Too many arguments");
-
-      if (args_buffer_used + arg_len + 1 >= sizeof(args_buffer))
-         panic("Args too long");
-
-      memcpy(args_buffer + args_buffer_used, arg, arg_len + 1);
-      cmd_args[custom_cmd_arg++] = args_buffer + args_buffer_used;
-      args_buffer_used += arg_len + 1;
-      return;
-   }
-
    if (!strcmp(arg, "-cmd")) {
-      in_custom_cmd = true;
+      kernel_arg_parser_state = CUSTOM_START_CMDLINE;
       return;
    }
 
-   if (arg_len >= 3) {
-      if (arg[0] == '-' && arg[1] == 's' && arg[2] == '=') {
-         const char *a2 = arg + 3;
-         char buf[256] = SELFTEST_PREFIX;
+   if (arg_len >= 3 && arg[0] == '-' && arg[1] == 's' && arg[2] == '=') {
+      const char *a2 = arg + 3;
+      char buf[256] = SELFTEST_PREFIX;
 
-         memcpy(buf + strlen(buf), a2, strlen(a2) + 1);
-         uptr addr = find_addr_of_symbol(buf);
+      memcpy(buf + strlen(buf), a2, strlen(a2) + 1);
+      uptr addr = find_addr_of_symbol(buf);
 
-         if (!addr) {
-            printk("*******************************************************\n");
-            printk("ERROR: self test function '%s' not found.\n", buf);
-            printk("*******************************************************\n");
-            return;
-         }
-
-         printk("*** Run selftest: '%s' ***\n", a2);
-         self_test_to_run = (void *) addr;
+      if (!addr) {
+         printk("*******************************************************\n");
+         printk("ERROR: self test function '%s' not found.\n", buf);
+         printk("*******************************************************\n");
          return;
       }
+
+      printk("*** Run selftest: '%s' ***\n", a2);
+      self_test_to_run = (void *) addr;
+      return;
    }
+}
+
+static void
+parse_arg_state_custom_cmdline(int arg_num, const char *arg, size_t arg_len)
+{
+   if (last_custom_cmd_n == ARRAY_SIZE(cmd_args) - 1)
+      panic("Too many arguments");
+
+   if (args_buffer_used + arg_len + 1 >= sizeof(args_buffer))
+      panic("Args too long");
+
+   memcpy(args_buffer + args_buffer_used, arg, arg_len + 1);
+   cmd_args[last_custom_cmd_n++] = args_buffer + args_buffer_used;
+   args_buffer_used += arg_len + 1;
+}
+
+
+static void use_kernel_arg(int arg_num, const char *arg)
+{
+   typedef void (*parse_arg_func)(int, const char *, size_t);
+
+   static parse_arg_func table[LAST_STATE] = {
+      parse_arg_state_initial,
+      parse_arg_state_custom_cmdline
+   };
+
+   //printk("Kernel arg[%i]: '%s'\n", arg_num, arg);
+   table[kernel_arg_parser_state](arg_num, arg, strlen(arg));
 }
 
 void parse_kernel_cmdline(const char *cmdline)
