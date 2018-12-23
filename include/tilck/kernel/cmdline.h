@@ -7,5 +7,6 @@
 
 extern const char *cmd_args[MAX_CMD_ARGS];
 extern void (*self_test_to_run)(void);
+extern bool dump_coverage;
 
 void parse_kernel_cmdline(const char *cmdline);

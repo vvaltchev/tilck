@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
 typedef u64 gcov_type;
 typedef u32 gcov_unsigned_t;
@@ -84,5 +85,18 @@ void __gcov_init(struct gcov_info *info)
    } else {
       info->next = gi_list;
       gi_list = info;
+   }
+}
+
+
+void gcov_dump_coverage(void)
+{
+   struct gcov_info *ptr = gi_list;
+
+   printk("** GCOV gcda files **\n\n");
+
+   while (ptr) {
+      printk("file: %s\n", ptr->filename);
+      ptr = ptr->next;
    }
 }

@@ -34,6 +34,7 @@ shell_exit_code = -1
 
 in_travis = os.environ.get('TRAVIS', False)
 in_circleci = os.environ.get('CIRCLECI', False)
+dump_coverage = os.environ.get('DUMP_COV', False)
 
 def RunTheVM():
 
@@ -42,8 +43,6 @@ def RunTheVM():
    global failed
    global hello_msg_found
    global shell_exit_code
-
-
 
    args = ['qemu-system-i386',
            '-m', str(VM_MEMORY_SIZE_IN_MB),
@@ -54,17 +53,22 @@ def RunTheVM():
    if not in_travis and not in_circleci:
       args.append('-enable-kvm')
 
+   opts = ''
+
+   if dump_coverage:
+      opts += '-dcov '
+
    if TEST_TYPE == 'shellcmd':
 
       print "Running the VM with shell command '{0}'...".format(TEST_NAME)
 
       args += ['-initrd', FATPART_FILE,
-               '-append', '-cmd /sbin/init -- -c {0}'.format(TEST_NAME)]
+               '-append', opts + '-cmd /sbin/init -- -c {0}'.format(TEST_NAME)]
 
    elif TEST_TYPE == 'selftest':
 
       print "Running the VM with selftest '{0}'...".format(TEST_NAME)
-      args += ['-append', '-s {0}'.format(TEST_NAME)]
+      args += ['-append', opts + '-s {0}'.format(TEST_NAME)]
 
    else:
       sys.exit(1)
