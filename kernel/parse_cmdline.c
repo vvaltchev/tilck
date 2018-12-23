@@ -12,9 +12,10 @@ void (*self_test_to_run)(void);
 static enum {
 
    INITIAL_STATE = 0,
-   CUSTOM_START_CMDLINE = 1,
+   CUSTOM_START_CMDLINE,
+   SET_SELFTEST,
 
-   LAST_STATE
+   NUM_ARG_PARSER_STATES
 
 } kernel_arg_parser_state;
 
@@ -30,22 +31,8 @@ parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
       return;
    }
 
-   if (arg_len >= 3 && arg[0] == '-' && arg[1] == 's' && arg[2] == '=') {
-      const char *a2 = arg + 3;
-      char buf[256] = SELFTEST_PREFIX;
-
-      memcpy(buf + strlen(buf), a2, strlen(a2) + 1);
-      uptr addr = find_addr_of_symbol(buf);
-
-      if (!addr) {
-         printk("*******************************************************\n");
-         printk("ERROR: self test function '%s' not found.\n", buf);
-         printk("*******************************************************\n");
-         return;
-      }
-
-      printk("*** Run selftest: '%s' ***\n", a2);
-      self_test_to_run = (void *) addr;
+   if (!strcmp(arg, "-s")) {
+      kernel_arg_parser_state = SET_SELFTEST;
       return;
    }
 }
@@ -64,14 +51,33 @@ parse_arg_state_custom_cmdline(int arg_num, const char *arg, size_t arg_len)
    args_buffer_used += arg_len + 1;
 }
 
+static void
+parse_arg_state_set_selftest(int arg_num, const char *arg, size_t arg_len)
+{
+   char buf[256] = SELFTEST_PREFIX;
+
+   memcpy(buf + strlen(buf), arg, arg_len + 1);
+   uptr addr = find_addr_of_symbol(buf);
+
+   if (!addr) {
+      printk("*******************************************************\n");
+      printk("ERROR: self test function '%s' not found.\n", buf);
+      printk("*******************************************************\n");
+      return;
+   }
+
+   printk("*** Run selftest: '%s' ***\n", arg);
+   self_test_to_run = (void *) addr;
+}
 
 static void use_kernel_arg(int arg_num, const char *arg)
 {
    typedef void (*parse_arg_func)(int, const char *, size_t);
 
-   static parse_arg_func table[LAST_STATE] = {
+   static parse_arg_func table[NUM_ARG_PARSER_STATES] = {
       parse_arg_state_initial,
-      parse_arg_state_custom_cmdline
+      parse_arg_state_custom_cmdline,
+      parse_arg_state_set_selftest
    };
 
    //printk("Kernel arg[%i]: '%s'\n", arg_num, arg);

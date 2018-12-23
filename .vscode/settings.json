@@ -31,6 +31,8 @@
    "editor.emptySelectionClipboard": false,
    "git.ignoreLimitWarning": true,
    "cmake.configureOnOpen": false,
+   "python.linting.pylintEnabled": true,
+   "python.linting.enabled": true,
    "cSpell.words": [
       "binary",
       "cmake",
@@ -43,7 +45,7 @@
       "poisoning",
       "static",
       "tilck",
-      "wrapper"
+      "wrapper",
       "bintools",
       "bootloader",
       "busybox",

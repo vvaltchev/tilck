@@ -64,7 +64,7 @@ def RunTheVM():
    elif TEST_TYPE == 'selftest':
 
       print "Running the VM with selftest '{0}'...".format(TEST_NAME)
-      args += ['-append', '-s={0}'.format(TEST_NAME)]
+      args += ['-append', '-s {0}'.format(TEST_NAME)]
 
    else:
       sys.exit(1)
