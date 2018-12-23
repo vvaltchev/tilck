@@ -26,25 +26,6 @@ static int last_custom_cmd_n;
 static int args_buffer_used;
 
 static void
-parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
-{
-   if (!strcmp(arg, "-cmd")) {
-      kernel_arg_parser_state = CUSTOM_START_CMDLINE;
-      return;
-   }
-
-   if (!strcmp(arg, "-s")) {
-      kernel_arg_parser_state = SET_SELFTEST;
-      return;
-   }
-
-   if (!strcmp(arg, "-dcov")) {
-      dump_coverage = true;
-      return;
-   }
-}
-
-static void
 parse_arg_state_custom_cmdline(int arg_num, const char *arg, size_t arg_len)
 {
    if (last_custom_cmd_n == ARRAY_SIZE(cmd_args) - 1)
@@ -62,8 +43,8 @@ static void
 parse_arg_state_set_selftest(int arg_num, const char *arg, size_t arg_len)
 {
    char buf[256] = SELFTEST_PREFIX;
+   memcpy(buf + strlen(SELFTEST_PREFIX), arg, arg_len + 1);
 
-   memcpy(buf + strlen(buf), arg, arg_len + 1);
    uptr addr = find_addr_of_symbol(buf);
 
    if (!addr) {
@@ -75,6 +56,30 @@ parse_arg_state_set_selftest(int arg_num, const char *arg, size_t arg_len)
 
    printk("*** Run selftest: '%s' ***\n", arg);
    self_test_to_run = (void *) addr;
+}
+
+static void
+parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
+{
+   if (arg_num == 0)
+      return;
+
+   if (!strcmp(arg, "-cmd")) {
+      kernel_arg_parser_state = CUSTOM_START_CMDLINE;
+      return;
+   }
+
+   if (!strcmp(arg, "-s")) {
+      kernel_arg_parser_state = SET_SELFTEST;
+      return;
+   }
+
+   if (!strcmp(arg, "-dcov")) {
+      dump_coverage = true;
+      return;
+   }
+
+   panic("Unrecognized option '%s'", arg);
 }
 
 static void use_kernel_arg(int arg_num, const char *arg)
