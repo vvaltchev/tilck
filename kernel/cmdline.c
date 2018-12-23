@@ -5,8 +5,9 @@
 
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/elf_utils.h>
+#include <tilck/kernel/cmdline.h>
 
-const char *cmd_args[16] = { "/sbin/init", [1 ... 15] = NULL };
+const char *cmd_args[MAX_CMD_ARGS] = { "/sbin/init", [1 ... 15] = NULL };
 void (*self_test_to_run)(void);
 
 static enum {

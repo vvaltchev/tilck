@@ -32,15 +32,8 @@
 #include <tilck/kernel/arch/generic_x86/fpu_memcpy.h>
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/elf_utils.h>
+#include <tilck/kernel/cmdline.h>
 
-
-/* Variables used by the cmdline parsing code */
-
-extern void (*self_test_to_run)(void);
-extern const char *const cmd_args[16];
-void parse_kernel_cmdline(const char *cmdline);
-
-/* -- */
 
 void init_tty(void);
 void show_banner(void);
