@@ -47,11 +47,11 @@ if (NOT DEFINED _CACHE_USE_SYSCC)
    endif()
 endif()
 
-if (NOT DEFINED _CACHE_USE_GCOV)
-   if (NOT "$ENV{USE_GCOV}" STREQUAL "")
-      set(_CACHE_USE_GCOV "$ENV{USE_GCOV}" CACHE INTERNAL "")
+if (NOT DEFINED _CACHE_TEST_GCOV)
+   if (NOT "$ENV{TEST_GCOV}" STREQUAL "")
+      set(_CACHE_TEST_GCOV "$ENV{TEST_GCOV}" CACHE INTERNAL "")
    else()
-      set(_CACHE_USE_GCOV 0 CACHE INTERNAL "")
+      set(_CACHE_TEST_GCOV 0 CACHE INTERNAL "")
    endif()
 endif()
 
@@ -65,10 +65,10 @@ else()
    set(USE_SYSCC 0)
 endif()
 
-if (${_CACHE_USE_GCOV})
-   set(USE_GCOV 1)
+if (${_CACHE_TEST_GCOV})
+   set(TEST_GCOV 1)
 else()
-   set(USE_GCOV 0)
+   set(TEST_GCOV 0)
 endif()
 
 message(STATUS "USE_SYSCC = ${USE_SYSCC}")
@@ -147,7 +147,7 @@ list(
    APPEND kernel_opts_list
 
    # Various options
-   USE_GCOV
+   TEST_GCOV
    ARCH_GTESTS
 
    # Non-boolean kernel options
@@ -176,8 +176,8 @@ list(
 
 ###########################################################
 
-if (KERNEL_GCOV AND USE_GCOV AND (NOT ARCH_GTESTS))
-   message(FATAL_ERROR "KERNEL_GCOV + USE_GCOV require ARCH_GTESTS")
+if (KERNEL_GCOV AND TEST_GCOV AND (NOT ARCH_GTESTS))
+   message(FATAL_ERROR "KERNEL_GCOV + TEST_GCOV require ARCH_GTESTS")
 endif()
 
 set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
@@ -246,16 +246,16 @@ else()
 
 endif()
 
-if (${USE_GCOV})
-
+if (TEST_GCOV OR KERNEL_GCOV)
    if (NOT EXISTS ${TCROOT}/lcov)
-      message(FATAL_ERROR "USE_GCOV is set but no lcov in toolchain. "
+      message(FATAL_ERROR "TEST_GCOV/KERNEL_GCOV set but no lcov in toolchain. "
                           "Run ${BTC_SCRIPT} -s build_lcov first.")
    endif()
+endif()
 
+if (TEST_GCOV)
    set(GCOV_COMPILE_FLAGS "-fprofile-arcs -ftest-coverage")
    set(GCOV_LINK_FLAGS "-fprofile-arcs -lgcov")
-
 endif()
 
 foreach (opt ${kernel_opts_list})

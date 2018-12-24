@@ -1,12 +1,12 @@
 #!/bin/bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-# If USE_GCOV is empty/unset but TRAVIS/CIRCLECI is set, exit
-# In other words, the USE_GCOV controls this script only if it is running
+# If TEST_GCOV is empty/unset but TRAVIS/CIRCLECI is set, exit
+# In other words, the TEST_GCOV controls this script only if it is running
 # under TRAVIS or CIRCLECI, which makes sense.
 
 if [[ "$TRAVIS" != "" || "$CIRCLECI" != "" ]]; then
-   if [[ "$USE_GCOV" == "" ]]; then
+   if [[ "$TEST_GCOV" == "" ]]; then
       echo "Exit 0 without doing anything"
       exit 0
    fi
