@@ -39,9 +39,9 @@ if (NOT DEFINED SYS_STRIP)
    endif()
 endif()
 
-define_env_cache_var(USE_SYSCC)
-define_env_cache_var(TEST_GCOV)
-define_env_cache_var(KERNEL_GCOV)
+define_env_cache_bool_var(USE_SYSCC)
+define_env_cache_bool_var(TEST_GCOV)
+define_env_cache_bool_var(KERNEL_GCOV)
 
 ######################################################################
 

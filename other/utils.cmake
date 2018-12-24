@@ -21,7 +21,7 @@ function(PREPEND var prefix)
 endfunction(PREPEND)
 
 
-macro(define_env_cache_var)
+macro(define_env_cache_bool_var)
 
    if (NOT DEFINED _CACHE_${ARGV0})
 
