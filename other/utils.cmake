@@ -20,6 +20,40 @@ function(PREPEND var prefix)
 
 endfunction(PREPEND)
 
+
+macro(define_env_cache_var)
+
+   if (NOT DEFINED _CACHE_${ARGV0})
+
+      if (NOT "$ENV{${ARGV0}}" STREQUAL "")
+         set(_CACHE_${ARGV0} "$ENV{${ARGV0}}" CACHE INTERNAL "")
+      else()
+         set(_CACHE_${ARGV0} 0 CACHE INTERNAL "")
+      endif()
+
+   else()
+
+      if (NOT "$ENV{${ARGV0}}" STREQUAL "")
+         if (NOT "$ENV{${ARGV0}}" STREQUAL "${_CACHE_${ARGV0}}")
+
+            string(CONCAT msg "Environment var ($ENV{${ARGV0}}) != cached "
+                              "(${_CACHE_${ARGV0}}) for ${ARGV0}: "
+                              "you have to erase the build directory in order "
+                              "to change that")
+
+            message(FATAL_ERROR "${msg}")
+         endif()
+      endif()
+   endif()
+
+   if (_CACHE_${ARGV0})
+      set(${ARGV0} 1)
+   else()
+      set(${ARGV0} 0)
+   endif()
+
+endmacro()
+
 macro(set_cross_compiler)
 
    if (${USE_SYSCC})

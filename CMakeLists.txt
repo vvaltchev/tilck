@@ -39,36 +39,15 @@ if (NOT DEFINED SYS_STRIP)
    endif()
 endif()
 
-if (NOT DEFINED _CACHE_USE_SYSCC)
-   if (NOT "$ENV{USE_SYSCC}" STREQUAL "")
-      set(_CACHE_USE_SYSCC "$ENV{USE_SYSCC}" CACHE INTERNAL "")
-   else()
-      set(_CACHE_USE_SYSCC 0 CACHE INTERNAL "")
-   endif()
-endif()
-
-if (NOT DEFINED _CACHE_TEST_GCOV)
-   if (NOT "$ENV{TEST_GCOV}" STREQUAL "")
-      set(_CACHE_TEST_GCOV "$ENV{TEST_GCOV}" CACHE INTERNAL "")
-   else()
-      set(_CACHE_TEST_GCOV 0 CACHE INTERNAL "")
-   endif()
-endif()
+define_env_cache_var(USE_SYSCC)
+define_env_cache_var(TEST_GCOV)
+define_env_cache_var(KERNEL_GCOV)
 
 ######################################################################
 
-if (${_CACHE_USE_SYSCC})
-   set(USE_SYSCC 1)
+if (USE_SYSCC)
    set(SYS_CC "${CMAKE_C_COMPILER}")
    set(SYS_CXX "${CMAKE_CXX_COMPILER}")
-else()
-   set(USE_SYSCC 0)
-endif()
-
-if (${_CACHE_TEST_GCOV})
-   set(TEST_GCOV 1)
-else()
-   set(TEST_GCOV 0)
 endif()
 
 message(STATUS "USE_SYSCC = ${USE_SYSCC}")
@@ -90,7 +69,6 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "")
 set(CMAKE_C_FLAGS_RELEASE "")
 
 # Compile options
-set(KERNEL_GCOV OFF CACHE BOOL "Instrument the kernel for code coverage")
 set(ARCH_GTESTS OFF CACHE BOOL "Build unit tests for target architecture")
 
 # Non-boolean kernel options
