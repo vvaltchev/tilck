@@ -72,11 +72,12 @@ struct gcov_info
  * --------------------------------------------------------------------------
  */
 
+static struct gcov_info *gi_list;
+
+#ifndef KERNEL_TEST
 
 void __gcov_merge_add(gcov_type *counters, u32 n) { }
 void __gcov_exit(void) { }
-
-static struct gcov_info *gi_list;
 
 void __gcov_init(struct gcov_info *info)
 {
@@ -88,6 +89,7 @@ void __gcov_init(struct gcov_info *info)
    }
 }
 
+#endif
 
 void gcov_dump_coverage(void)
 {

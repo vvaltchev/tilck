@@ -21,6 +21,13 @@ LCOV="$TC/lcov/bin/lcov"
 GENHTML="$TC/lcov/bin/genhtml"
 
 cd "$BUILD"
+
+gcda_count=$(find . -name '*.gcda' | wc -l)
+if [[ $gcda_count == 0 ]]; then
+   echo "ERROR: no gcda files found in $BUILD"
+   exit 1
+fi
+
 $LCOV -d . --capture --gcov-tool "$GCOV" -o lcov.info
 $LCOV --remove lcov.info '@TCROOT@/*' '/usr/include/*' -o lcov2.info
 
