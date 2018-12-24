@@ -21,29 +21,12 @@ if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
 endif()
 
-######### Env-controlled (internal) cache variables ###############
-
-if (NOT DEFINED OBJCOPY)
-   if (NOT "$ENV{OBJCOPY}" STREQUAL "")
-      set(OBJCOPY "$ENV{OBJCOPY}" CACHE INTERNAL "")
-   else()
-      set(OBJCOPY "objcopy" CACHE INTERNAL "")
-   endif()
-endif()
-
-if (NOT DEFINED STRIP)
-   if (NOT "$ENV{STRIP}" STREQUAL "")
-      set(STRIP "$ENV{STRIP}" CACHE INTERNAL "")
-   else()
-      set(STRIP "strip" CACHE INTERNAL "")
-   endif()
-endif()
-
+# Environment-controlled "sticky" cache variables
+define_env_cache_str_var(OBJCOPY "objcopy")
+define_env_cache_str_var(STRIP "strip")
 define_env_cache_bool_var(USE_SYSCC)
 define_env_cache_bool_var(TEST_GCOV)
 define_env_cache_bool_var(KERNEL_GCOV)
-
-######################################################################
 
 if (USE_SYSCC)
    set(SYS_CC "${CMAKE_C_COMPILER}")
