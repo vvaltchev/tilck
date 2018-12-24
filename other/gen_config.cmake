@@ -73,7 +73,7 @@ list(
 
 foreach(script_file ${run_qemu_files})
    configure_file(
-      ${CMAKE_SOURCE_DIR}/scripts/qemu/${script_file}
+      ${CMAKE_SOURCE_DIR}/scripts/templates/qemu/${script_file}
       ${CMAKE_BINARY_DIR}/${script_file}
       @ONLY
    )

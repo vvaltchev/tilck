@@ -1,0 +1,5 @@
+This directory (and all of its subdirectories) does NOT contain directly
+runnable scripts. Instead, it contains template scripts which are "patched"
+by CMake with the right paths, config values etc. Their correspondent
+runnable scripts are emitted in project's build directory after running
+CMake (or our 'cmake_run' wrapper).

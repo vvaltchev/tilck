@@ -348,7 +348,7 @@ add_subdirectory(scripts/build_apps)
 set(BUILD_FATPART ${CMAKE_BINARY_DIR}/scripts/build_fatpart)
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/build_scripts/build_fatpart
+   ${CMAKE_SOURCE_DIR}/scripts/templates/build_fatpart
    ${BUILD_FATPART}
    @ONLY
 )

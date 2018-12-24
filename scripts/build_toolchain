@@ -12,10 +12,10 @@ X86_TOOLCHAIN_DIR_NAME="x86_gcc_toolchain"
 all_funcs_list=()
 
 
-source $MAIN_DIR/scripts/script_utils
-source $MAIN_DIR/scripts/tc/install_pkgs
-source $MAIN_DIR/scripts/tc/gcc_tc
-source $MAIN_DIR/scripts/tc/cmake_download
+source $MAIN_DIR/scripts/bash_includes/script_utils
+source $MAIN_DIR/scripts/bash_includes/tc/install_pkgs
+source $MAIN_DIR/scripts/bash_includes/tc/gcc_tc
+source $MAIN_DIR/scripts/bash_includes/tc/cmake_download
 
 ###############################
 # Mtools

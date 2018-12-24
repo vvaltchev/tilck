@@ -5,7 +5,7 @@
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 
-source $MAIN_DIR/scripts/script_utils
+source $MAIN_DIR/scripts/bash_includes/script_utils
 
 GCC_MIN_VERSION="4.8.0"
 GXX_MIN_VERSION="4.8.0"
