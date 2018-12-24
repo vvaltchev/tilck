@@ -12,10 +12,21 @@ if [[ "$TRAVIS" != "" || "$CIRCLECI" != "" ]]; then
    fi
 fi
 
+set -e # exit if any command fails
+
+source @CMAKE_SOURCE_DIR@/scripts/bash_includes/script_utils
+
 TC="@TCROOT@"
-GCOV="@GCOV_TOOL@"
 BUILD="@CMAKE_BINARY_DIR@"
+
 HTML_DIR="@COVERAGE_HTML_DIR@"
+ARCH_GTESTS="@ARCH_GTESTS@"
+ARCH_GCOV="@ARCH_GCOV@"
+CC="@CMAKE_C_COMPILER@"
+
+# Sets $GCOV
+determine_gcov_tool
+echo "NOTE: Use $GCOV as gcov tool"
 
 LCOV="$TC/lcov/bin/lcov"
 GENHTML="$TC/lcov/bin/genhtml"

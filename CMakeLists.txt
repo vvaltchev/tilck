@@ -143,7 +143,6 @@ set(KMALLOC_HEAPS_CREATION_DEBUG OFF CACHE BOOL
 set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
     "Make the bootloader to poison all the available memory")
 
-
 list(
    APPEND kernel_opts_list
 
@@ -177,6 +176,10 @@ list(
 
 ###########################################################
 
+if (KERNEL_GCOV AND USE_GCOV AND (NOT ARCH_GTESTS))
+   message(FATAL_ERROR "KERNEL_GCOV + USE_GCOV require ARCH_GTESTS")
+endif()
+
 set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_APPS ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
@@ -206,7 +209,7 @@ if (${ARCH} STREQUAL "i386")
    set(GCC_TOOLCHAIN_GLIBC ${GCC_TC_GLIBC_ROOT}/bin)
 
    # Single tools
-   set(GCOV_TOOL ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcov)
+   set(ARCH_GCOV ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcov)
 
 else()
 
