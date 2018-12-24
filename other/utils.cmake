@@ -67,8 +67,8 @@ macro(set_cross_compiler)
          # the given target architecture without additional flags.
       endif()
 
-      set(OBJCOPY "${SYS_OBJCOPY}")
-      set(STRIP "${SYS_STRIP}")
+      set(TOOL_OBJCOPY "${SYS_OBJCOPY}")
+      set(TOOL_STRIP "${SYS_STRIP}")
 
    else()
 
@@ -77,8 +77,8 @@ macro(set_cross_compiler)
       set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
       set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-g++)
       set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-      set(OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
-      set(STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
+      set(TOOL_OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
+      set(TOOL_STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
 
    endif()
 
@@ -91,8 +91,8 @@ macro(set_cross_compiler_userapps)
       set(CMAKE_C_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-gcc")
       set(CMAKE_CXX_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-g++")
       set(CMAKE_ASM_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-gcc")
-      set(OBJCOPY "${SYS_OBJCOPY}")
-      set(STRIP "${SYS_STRIP}")
+      set(TOOL_OBJCOPY "${SYS_OBJCOPY}")
+      set(TOOL_STRIP "${SYS_STRIP}")
 
    else()
 
@@ -101,8 +101,8 @@ macro(set_cross_compiler_userapps)
       set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
       set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-g++)
       set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-      set(OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
-      set(STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
+      set(TOOL_OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
+      set(TOOL_STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
 
    endif()
 
@@ -130,8 +130,8 @@ macro(set_cross_compiler_gtests)
       set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcc)
       set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-g++)
       set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcc)
-      set(OBJCOPY ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-objcopy)
-      set(STRIP ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-strip)
+      set(TOOL_OBJCOPY ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-objcopy)
+      set(TOOL_STRIP ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-strip)
 
    endif()
 

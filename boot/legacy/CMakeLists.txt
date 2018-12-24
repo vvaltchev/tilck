@@ -117,7 +117,7 @@ add_custom_command(
    OUTPUT
       elf_stage3_stripped
    COMMAND
-      ${STRIP} --strip-debug elf_stage3 -o elf_stage3_stripped
+      ${TOOL_STRIP} --strip-debug elf_stage3 -o elf_stage3_stripped
    COMMAND
       elfhack elf_stage3_stripped --verify-flat-elf
    COMMAND

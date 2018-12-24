@@ -78,7 +78,7 @@ add_custom_command(
    OUTPUT
       ${KERNEL_FILE}
    COMMAND
-      ${STRIP} --strip-debug ${EXECUTABLE_OUTPUT_PATH}/elf_kernel -o ${KERNEL_FILE}
+      ${TOOL_STRIP} --strip-debug ${EXECUTABLE_OUTPUT_PATH}/elf_kernel -o ${KERNEL_FILE}
    COMMAND
       elfhack ${KERNEL_FILE} --copy .symtab .Symtab
    COMMAND

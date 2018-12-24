@@ -19,8 +19,8 @@ if (${KERNEL_USE_SYSTEM_CC} OR ${USE_SYSCC})
 
    endif()
 
-   set(OBJCOPY "${SYS_OBJCOPY}")
-   set(STRIP "${SYS_STRIP}")
+   set(TOOL_OBJCOPY "${SYS_OBJCOPY}")
+   set(TOOL_STRIP "${SYS_STRIP}")
 
    if (KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC)
       include_directories(SYSTEM ${GCC_TC_ISYSTEM})
@@ -41,7 +41,7 @@ add_custom_command(
    OUTPUT
       ${FONT8x16}
    COMMAND
-      ${OBJCOPY} ${B2O} font8x16.psf ${FONT8x16}
+      ${TOOL_OBJCOPY} ${B2O} font8x16.psf ${FONT8x16}
    WORKING_DIRECTORY
       ${CMAKE_SOURCE_DIR}/kernel/fb
    DEPENDS
@@ -55,7 +55,7 @@ add_custom_command(
    OUTPUT
       ${FONT16x32}
    COMMAND
-      ${OBJCOPY} ${B2O} font16x32.psf ${FONT16x32}
+      ${TOOL_OBJCOPY} ${B2O} font16x32.psf ${FONT16x32}
    WORKING_DIRECTORY
       ${CMAKE_SOURCE_DIR}/kernel/fb
    DEPENDS
