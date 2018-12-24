@@ -181,6 +181,7 @@ set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_APPS ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
 set(BTC_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
+set(COVERAGE_HTML_DIR ${CMAKE_BINARY_DIR}/coverage_html)
 
 if (NOT EXISTS ${TCROOT})
    message(
@@ -193,15 +194,19 @@ if (${ARCH} STREQUAL "i386")
    set(ARCH_ELF_NAME "elf32-i386")
    set(ARCH_LD_OUTPUT "elf_i386")
    set(ARCH_GCC_TC "i686")
-   set(ARCH_GCC_FLAGS "-m32 -march=i686")
+   set(ARCH_GCC_FLAGS "-m32 -march=${ARCH_GCC_TC}")
 
-   set(GCC_TOOLCHAIN_ROOT ${TCROOT}/x86_gcc_toolchain)
-   set(GCC_TOOLCHAIN ${GCC_TOOLCHAIN_ROOT}/bin)
-   set(GCC_TC_SYSROOT ${GCC_TOOLCHAIN_ROOT}/i686-buildroot-linux-musl/sysroot)
+   set(GCC_TC_ROOT ${TCROOT}/x86_gcc_toolchain)
+   set(GCC_TC_LIBC_DIRNAME ${ARCH_GCC_TC}-buildroot-linux-musl)
+   set(GCC_TC_SYSROOT ${GCC_TC_ROOT}/${GCC_TC_LIBC_DIRNAME}/sysroot)
    set(GCC_TC_ISYSTEM ${GCC_TC_SYSROOT}/usr/include)
+   set(GCC_TOOLCHAIN ${GCC_TC_ROOT}/bin)
 
-   set(GCC_TOOLCHAIN_GLIBC_ROOT ${TCROOT}/x86_gcc_toolchain_glibc)
-   set(GCC_TOOLCHAIN_GLIBC ${GCC_TOOLCHAIN_GLIBC_ROOT}/bin)
+   set(GCC_TC_GLIBC_ROOT ${TCROOT}/x86_gcc_toolchain_glibc)
+   set(GCC_TOOLCHAIN_GLIBC ${GCC_TC_GLIBC_ROOT}/bin)
+
+   # Single tools
+   set(GCOV_TOOL ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcov)
 
 else()
 

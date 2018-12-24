@@ -42,4 +42,4 @@ install:
 
 script:
   - MALLOC_CHECK_=2 ./build/gtests
-  - ./scripts/generate_coverage_report --codecov # Does nothing if not USE_GCOV.
+  - ./build/scripts/generate_coverage_report --codecov # No-op if !$USE_GCOV
