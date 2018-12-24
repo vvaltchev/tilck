@@ -67,8 +67,8 @@ macro(set_cross_compiler)
          # the given target architecture without additional flags.
       endif()
 
-      set(TOOL_OBJCOPY "${SYS_OBJCOPY}")
-      set(TOOL_STRIP "${SYS_STRIP}")
+      set(TOOL_OBJCOPY "${OBJCOPY}")
+      set(TOOL_STRIP "${STRIP}")
 
    else()
 
@@ -91,8 +91,8 @@ macro(set_cross_compiler_userapps)
       set(CMAKE_C_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-gcc")
       set(CMAKE_CXX_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-g++")
       set(CMAKE_ASM_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-gcc")
-      set(TOOL_OBJCOPY "${SYS_OBJCOPY}")
-      set(TOOL_STRIP "${SYS_STRIP}")
+      set(TOOL_OBJCOPY "${OBJCOPY}")
+      set(TOOL_STRIP "${STRIP}")
 
    else()
 

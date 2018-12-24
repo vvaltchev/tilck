@@ -19,8 +19,8 @@ if (${KERNEL_USE_SYSTEM_CC} OR ${USE_SYSCC})
 
    endif()
 
-   set(TOOL_OBJCOPY "${SYS_OBJCOPY}")
-   set(TOOL_STRIP "${SYS_STRIP}")
+   set(TOOL_OBJCOPY "${OBJCOPY}")
+   set(TOOL_STRIP "${STRIP}")
 
    if (KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC)
       include_directories(SYSTEM ${GCC_TC_ISYSTEM})

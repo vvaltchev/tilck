@@ -23,19 +23,19 @@ endif()
 
 ######### Env-controlled (internal) cache variables ###############
 
-if (NOT DEFINED SYS_OBJCOPY)
+if (NOT DEFINED OBJCOPY)
    if (NOT "$ENV{OBJCOPY}" STREQUAL "")
-      set(SYS_OBJCOPY "$ENV{OBJCOPY}" CACHE INTERNAL "")
+      set(OBJCOPY "$ENV{OBJCOPY}" CACHE INTERNAL "")
    else()
-      set(SYS_OBJCOPY "objcopy" CACHE INTERNAL "")
+      set(OBJCOPY "objcopy" CACHE INTERNAL "")
    endif()
 endif()
 
-if (NOT DEFINED SYS_STRIP)
+if (NOT DEFINED STRIP)
    if (NOT "$ENV{STRIP}" STREQUAL "")
-      set(SYS_STRIP "$ENV{STRIP}" CACHE INTERNAL "")
+      set(STRIP "$ENV{STRIP}" CACHE INTERNAL "")
    else()
-      set(SYS_STRIP "strip" CACHE INTERNAL "")
+      set(STRIP "strip" CACHE INTERNAL "")
    endif()
 endif()
 
