@@ -62,15 +62,10 @@ SECTIONS
       *(.Strtab)
    } : special_ro
 
-
    _end = .;
 
+   /* Completely drop out from the file the following sections */
    /DISCARD/ : { *(.eh_frame*) }
-   /DISCARD/ : { *(.comment) }
-   /DISCARD/ : { *(.interp) }
-   /DISCARD/ : { *(.dyn*) }
-   /DISCARD/ : { *(.rel*) }
-   /DISCARD/ : { *(.*gnu*) }
 }
 
 

@@ -25,36 +25,41 @@ SEARCH_DIR("=/tmp/x86-i686--glibc--stable/usr/i686-buildroot-linux-gnu/lib");
 
 SECTIONS
 {
-  . = SEGMENT_START("text-segment", @BL_BASE_ADDR@);
+   . = SEGMENT_START("text-segment", @BL_BASE_ADDR@);
 
-  .text :
-  {
-    *(.text)
-    . = ALIGN(4);
-  }
+   .text : AT(text)
+   {
+      text = .;
+      *(.text)
+      . = ALIGN(4);
+   }
 
-  .rodata :
-  {
-    *(.rodata*)
-    . = ALIGN(4096);
-  }
+   .rodata : AT(rodata)
+   {
+      rodata = .;
+      *(.rodata*)
+      . = ALIGN(4096);
+   }
 
-  .data :
-  {
-    *(.data)
-    . = ALIGN(32);
-  }
+   .data : AT(data)
+   {
+      data = .;
+      *(.data)
+      . = ALIGN(32);
+   }
 
-  __bss_start = .;
-  .bss :
-  {
-   *(.bss)
-   . = ALIGN(4);
-  }
+   __bss_start = .;
+   .bss : AT(__bss_start)
+   {
+      *(.bss)
+      . = ALIGN(4);
+   }
    __bss_end = .;
-  _end = .;
 
-  /DISCARD/ : { *(.eh_frame*) }
+   _end = .;
+
+   /* Completely drop out from the file the following sections */
+   /DISCARD/ : { *(.eh_frame*) }
 }
 
 

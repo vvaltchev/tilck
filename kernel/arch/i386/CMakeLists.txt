@@ -24,8 +24,6 @@ set(
    -mno-avx
 
    # Allow easier disassembly debugging
-
-   # TODO: restore these if compiler == GCC
    # -mpush-args
    # -mno-accumulate-outgoing-args
    # -mno-stack-arg-probe
@@ -56,20 +54,31 @@ add_executable(
    ${ARCH_START_FILE} ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES}
 )
 
+set(
+   KERNEL_LINK_FLAGS_LIST
+
+   -nostdlib
+   -static
+
+   -Wl,--build-id=none
+   -Wl,--script=${KERNEL_SCRIPT}
+)
+
+JOIN("${KERNEL_LINK_FLAGS_LIST}" ${SPACE} KERNEL_LINK_FLAGS)
+
 set_target_properties(
 
    elf_kernel
 
    PROPERTIES
       COMPILE_FLAGS "${KERNEL_FLAGS} ${ACTUAL_KERNEL_ONLY_FLAGS}"
-      LINK_FLAGS "-nostdlib -Wl,--build-id=none -Wl,--script=${KERNEL_SCRIPT}"
+      LINK_FLAGS "${KERNEL_LINK_FLAGS}"
       LINK_DEPENDS ${KERNEL_SCRIPT}
 )
 
 add_dependencies(elf_kernel fonts)
 target_link_libraries(elf_kernel ${CMAKE_CURRENT_BINARY_DIR}/font8x16.o)
 target_link_libraries(elf_kernel ${CMAKE_CURRENT_BINARY_DIR}/font16x32.o)
-
 
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(elf_kernel gcc)

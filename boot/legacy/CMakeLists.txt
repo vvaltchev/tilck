@@ -57,20 +57,29 @@ configure_file(
 )
 
 set(
-   FLAGS_LIST
+   STAGE3_BUILD_FLAGS_LIST
 
    -D__TILCK_BOOTLOADER__
 
-   -g
-   -mno-red-zone
    -ffreestanding
    -fno-builtin
    -fno-omit-frame-pointer
+   -fno-pic
+   -fno-asynchronous-unwind-tables
+   -fno-zero-initialized-in-bss
+   -fno-exceptions
+   -fno-stack-protector
+   -static
 
-   #-O0
-   #-fno-inline-functions
+   # Disable the generation of any kind of FPU instructions
+   -mno-80387
+   -mno-fp-ret-in-387
+   -mno-mmx
+   -mno-sse
+   -mno-avx
 
    -O2
+   -g
 
    -Wall
    -Wextra
@@ -78,18 +87,22 @@ set(
    -Wno-unused-parameter
    -Werror
 
-   -fno-pic
-   -fno-asynchronous-unwind-tables
-   -fno-zero-initialized-in-bss
-   -fno-exceptions
-   -fno-stack-protector
-
    # Allow easier disassembly debugging
-   -mpush-args
-   -mno-accumulate-outgoing-args
-   -mno-stack-arg-probe
+   # -mpush-args
+   # -mno-accumulate-outgoing-args
+   # -mno-stack-arg-probe
 )
-JOIN("${FLAGS_LIST}" ${SPACE} FLAGS)
+JOIN("${STAGE3_BUILD_FLAGS_LIST}" ${SPACE} STAGE3_BUILD_FLAGS)
+
+set(
+   STAGE3_LINK_FLAGS_LIST
+
+   -nostdlib
+   -static
+   -Wl,--build-id=none
+   -Wl,--script=${STAGE3_SCRIPT}
+)
+JOIN("${STAGE3_LINK_FLAGS_LIST}" ${SPACE} STAGE3_LINK_FLAGS)
 
 add_executable(
 
@@ -104,8 +117,8 @@ set_target_properties(
    elf_stage3
 
    PROPERTIES
-      COMPILE_FLAGS ${FLAGS}
-      LINK_FLAGS "-nostdlib -Wl,--script=${STAGE3_SCRIPT}"
+      COMPILE_FLAGS ${STAGE3_BUILD_FLAGS}
+      LINK_FLAGS ${STAGE3_LINK_FLAGS}
       LINK_DEPENDS ${STAGE3_SCRIPT}
 )
 
