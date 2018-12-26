@@ -44,11 +44,11 @@ bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr)
       if (ns.write_pos == ns.read_pos)
          ns.full = true;
 
-   } while (!atomic_compare_exchange_weak_explicit(&rb->s.raw,
-                                                   &cs.raw,
-                                                   ns.raw,
-                                                   mo_relaxed,
-                                                   mo_relaxed));
+   } while (!atomic_cas_weak(&rb->s.raw,
+                             (u32 *)&cs.raw,
+                             ns.raw,
+                             mo_relaxed,
+                             mo_relaxed));
 
    memcpy(rb->buf + cs.write_pos * rb->elem_size, elem_ptr, rb->elem_size);
    return true;
@@ -73,11 +73,11 @@ bool ringbuf_write_elem_ex(ringbuf *rb, void *elem_ptr, bool *was_empty)
       if (ns.write_pos == ns.read_pos)
          ns.full = true;
 
-   } while (!atomic_compare_exchange_weak_explicit(&rb->s.raw,
-                                                   &cs.raw,
-                                                   ns.raw,
-                                                   mo_relaxed,
-                                                   mo_relaxed));
+   } while (!atomic_cas_weak(&rb->s.raw,
+                             (u32 *)&cs.raw,
+                             ns.raw,
+                             mo_relaxed,
+                             mo_relaxed));
 
    memcpy(rb->buf + cs.write_pos * rb->elem_size, elem_ptr, rb->elem_size);
    return true;
@@ -101,11 +101,11 @@ bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */)
       ns.read_pos = (ns.read_pos + 1) % rb->max_elems;
       ns.full = false;
 
-   } while (!atomic_compare_exchange_weak_explicit(&rb->s.raw,
-                                                   &cs.raw,
-                                                   ns.raw,
-                                                   mo_relaxed,
-                                                   mo_relaxed));
+   } while (!atomic_cas_weak(&rb->s.raw,
+                             (u32 *)&cs.raw,
+                             ns.raw,
+                             mo_relaxed,
+                             mo_relaxed));
 
    return true;
 }
@@ -128,11 +128,11 @@ bool ringbuf_write_elem1(ringbuf *rb, u8 val)
       if (ns.write_pos == ns.read_pos)
          ns.full = true;
 
-   } while (!atomic_compare_exchange_weak_explicit(&rb->s.raw,
-                                                   &cs.raw,
-                                                   ns.raw,
-                                                   mo_relaxed,
-                                                   mo_relaxed));
+   } while (!atomic_cas_weak(&rb->s.raw,
+                             (u32 *)&cs.raw,
+                             ns.raw,
+                             mo_relaxed,
+                             mo_relaxed));
 
    rb->buf[cs.write_pos] = val;
    return true;
@@ -155,11 +155,11 @@ bool ringbuf_read_elem1(ringbuf *rb, u8 *elem_ptr)
       ns.read_pos = (ns.read_pos + 1) % rb->max_elems;
       ns.full = false;
 
-   } while (!atomic_compare_exchange_weak_explicit(&rb->s.raw,
-                                                   &cs.raw,
-                                                   ns.raw,
-                                                   mo_relaxed,
-                                                   mo_relaxed));
+   } while (!atomic_cas_weak(&rb->s.raw,
+                             (u32 *)&cs.raw,
+                             ns.raw,
+                             mo_relaxed,
+                             mo_relaxed));
 
    return true;
 }
@@ -180,11 +180,11 @@ bool ringbuf_unwrite_elem(ringbuf *rb, void *elem_ptr /* out */)
       ns.write_pos = (ns.write_pos - 1) % rb->max_elems;
       ns.full = false;
 
-   } while (!atomic_compare_exchange_weak_explicit(&rb->s.raw,
-                                                   &cs.raw,
-                                                   ns.raw,
-                                                   mo_relaxed,
-                                                   mo_relaxed));
+   } while (!atomic_cas_weak(&rb->s.raw,
+                             (u32 *)&cs.raw,
+                             ns.raw,
+                             mo_relaxed,
+                             mo_relaxed));
 
    return true;
 }

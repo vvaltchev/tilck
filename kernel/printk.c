@@ -254,7 +254,7 @@ typedef struct {
          u32 unused : 1;
       };
 
-      u32 raw;
+      ATOMIC(u32) raw;
    };
 
 } ringbuf_stat;
@@ -322,11 +322,11 @@ void printk_flush_ringbuf(void)
 
          /* Repeat that until we were able to do that atomically */
 
-      } while (!atomic_compare_exchange_weak_explicit(&printk_rbuf_stat.raw,
-                                                      &cs.raw,
-                                                      ns.raw,
-                                                      mo_relaxed,
-                                                      mo_relaxed));
+      } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
+                                (u32 *)&cs.raw,
+                                ns.raw,
+                                mo_relaxed,
+                                mo_relaxed));
 
       /* Note: we check that in_printk in cs (current state) is unset! */
       if (!to_read)
@@ -364,11 +364,11 @@ static void printk_append_to_ringbuf(const char *buf, size_t size)
       ns.used += size;
       ns.write_pos = (ns.write_pos + size) % sizeof(printk_rbuf);
 
-   } while (!atomic_compare_exchange_weak_explicit(&printk_rbuf_stat.raw,
-                                                   &cs.raw,
-                                                   ns.raw,
-                                                   mo_relaxed,
-                                                   mo_relaxed));
+   } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
+                             (u32 *)&cs.raw,
+                             ns.raw,
+                             mo_relaxed,
+                             mo_relaxed));
 
    // Now we have some allocated space in the ringbuf
 
@@ -429,11 +429,11 @@ void vprintk(const char *fmt, va_list args)
          cs = printk_rbuf_stat;
          ns = printk_rbuf_stat;
          ns.in_printk = 1;
-      } while (!atomic_compare_exchange_weak_explicit(&printk_rbuf_stat.raw,
-                                                      &cs.raw,
-                                                      ns.raw,
-                                                      mo_relaxed,
-                                                      mo_relaxed));
+      } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
+                                (u32 *)&cs.raw,
+                                ns.raw,
+                                mo_relaxed,
+                                mo_relaxed));
 
       if (!cs.in_printk) {
 

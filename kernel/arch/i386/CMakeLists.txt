@@ -18,7 +18,6 @@ set(
 
    # Disable the generation of any kind of FPU instructions
    -mno-80387
-   -mno-fp-ret-in-387
    -mno-mmx
    -mno-sse
    -mno-avx

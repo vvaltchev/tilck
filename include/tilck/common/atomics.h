@@ -110,3 +110,9 @@ extern "C++" {
 
 #endif // #ifndef __cplusplus
 
+
+#define atomic_cas_weak(p, ep, nv, m1, m2) \
+   atomic_compare_exchange_weak_explicit((p), (ep), (nv), (m1), (m2))
+
+#define atomic_cas_strong(p, ep, nv, m1, m2) \
+   atomic_compare_exchange_strong_explicit((p), (ep), (nv), (m1), (m2))

@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/atomics.h>
 
 typedef struct {
 
@@ -14,7 +15,7 @@ typedef struct {
          u32 avail_bit : 1;
       };
 
-      u32 raw;
+      ATOMIC(u32) raw;
    };
 
 } generic_ringbuf_stat;
