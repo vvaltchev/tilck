@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
-if (${ARCH_GTESTS})
+if (ARCH_GTESTS)
    set_cross_compiler_gtests()
+else()
+   set(TOOL_GCOV "${GCOV}")
 endif()
 
 configure_file(

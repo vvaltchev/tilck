@@ -36,7 +36,7 @@ if [[ $gcda_count == 0 ]]; then
    exit 1
 fi
 
-if [[ "$1" != "--accumulate" ]]; then
+if [[ "$1" != "--acc" ]]; then
    rm -f lcov*.info
 fi
 

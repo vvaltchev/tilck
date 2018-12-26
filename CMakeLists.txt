@@ -148,10 +148,6 @@ list(
 
 ###########################################################
 
-if (KERNEL_GCOV AND TEST_GCOV AND (NOT ARCH_GTESTS))
-   message(FATAL_ERROR "KERNEL_GCOV + TEST_GCOV require ARCH_GTESTS")
-endif()
-
 set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_APPS ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)

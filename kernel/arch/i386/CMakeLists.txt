@@ -27,6 +27,11 @@ set(
    # -mno-accumulate-outgoing-args
    # -mno-stack-arg-probe
 )
+
+if (KERNEL_GCOV)
+   list(APPEND ACTUAL_KERNEL_ONLY_FLAGS_LIST -fprofile-arcs -ftest-coverage)
+endif()
+
 JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
 
 set(ARCH_START_FILE "start.S")

@@ -25,6 +25,7 @@ KERNEL_HELLO_MSG = 'Hello from Tilck!'
 KERNEL_DUMP_GCDA_STR = '** GCOV gcda files **'
 KERNEL_FILE = '@KERNEL_FILE@'
 FATPART_FILE = '@CMAKE_BINARY_DIR@/fatpart'
+GEN_KCOV_REPORT = '@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report'
 
 # Environment config variables
 VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
@@ -33,7 +34,8 @@ VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
 in_travis = os.environ.get('TRAVIS', False)
 in_circleci = os.environ.get('CIRCLECI', False)
 dump_coverage = os.environ.get('DUMP_COV', False)
-
+report_coverage = os.environ.get('REPORT_COV', False)
+code_cov = os.environ.get('CODE_COV', False)
 
 # Global variables
 
@@ -208,6 +210,12 @@ if sys.argv[1] == 'shellcmd' and failed == 0 and shell_exit_code != 0:
    print "Shell exited with code {0}.".format(shell_exit_code)
    failed = FAIL_SHELL_NO_ZERO_EXIT
 
+
+if dump_coverage and report_coverage:
+   if not code_cov:
+      subprocess.call([GEN_KCOV_REPORT, '--acc'])
+   else:
+      subprocess.call([GEN_KCOV_REPORT, '--codecov'])
 
 sys.exit(failed)
 

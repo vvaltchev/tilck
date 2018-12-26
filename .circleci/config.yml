@@ -8,11 +8,18 @@ jobs:
       - RELEASE: 0
       - CMAKE_ARGS:
       - GTEST_SHUFFLE: 0
+      - KERNEL_GCOV: 1
+      - TEST_GCOV: 1
+      - DUMP_COV: 1
+      - REPORT_COV: 1
+      - CODE_COV: 1
     steps:
       - checkout
       - run: mv /tilck_toolchain ./toolchain
       - run: make -j
       - run: make -j gtests
+      - run: ./build/gtests
+      - run: ./build/scripts/generate_test_coverage_report --codecov
       - run: ./build/st/run_all_tests
 
   release_build:
