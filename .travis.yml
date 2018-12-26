@@ -24,12 +24,6 @@ matrix:
       sudo: false
       language: generic
       env: NO_BUSYBOX=1 RELEASE=0 TEST_GCOV=1
-    - os: linux
-      dist: trusty
-      sudo: false
-      language: generic
-      env: NO_BUSYBOX=1 RELEASE=0 CXX=clang++
-
 
 before_install:
   - ./scripts/build_toolchain --skip-install-pkgs
