@@ -13,7 +13,9 @@
 #include <sys/syscall.h>
 #include <sys/mman.h>
 
+#include <tilck/common/syscalls.h>
 #include "sysenter.h"
+
 
 #define KB (1024)
 #define MB (1024 * 1024)
@@ -539,10 +541,11 @@ void cmd_selftest(int argc, char **argv)
       exit(1);
    }
 
-   int rc = sysenter_call3(499      /* sys_tilck_cmd */,
-                           0        /* TILCK_CMD_RUN_SELFTEST */,
-                           argv[0]  /* self test name */,
-                           NULL);
+   int rc =
+      sysenter_call3(TILCK_TESTCMD_SYSCALL,
+                     TILCK_TESTCMD_RUN_SELFTEST,
+                     argv[0]  /* self test name */,
+                     NULL);
 
    if (rc != 0) {
       printf("Invalid selftest '%s'\n", argv[0]);

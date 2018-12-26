@@ -87,11 +87,11 @@ sptr sys_tilck_run_selftest(const char *user_selftest)
    return 0;
 }
 
-sptr sys_tilck_cmd(enum tilck_cmd_type cmd, uptr arg1, uptr arg2)
+sptr sys_tilck_cmd(enum tilck_testcmd_type cmd, uptr arg1, uptr arg2)
 {
    switch (cmd) {
 
-      case TILCK_CMD_RUN_SELFTEST:
+      case TILCK_TESTCMD_RUN_SELFTEST:
          return sys_tilck_run_selftest((const char *)arg1);
 
       default:
@@ -442,7 +442,7 @@ syscall_type syscalls[] =
    [336] = sys_perf_event_open,
    [337] = sys_recvmmsg,
 
-   [499] = sys_tilck_cmd
+   [TILCK_TESTCMD_SYSCALL] = sys_tilck_cmd
 };
 
 void handle_syscall(regs *r)
