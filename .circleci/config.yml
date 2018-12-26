@@ -6,7 +6,21 @@ jobs:
       - image: vvaltchev/tilck_build:latest
     environment:
       - RELEASE: 0
-      - CMAKE_ARGS: -DTEST_GCOV=on
+      - CMAKE_ARGS:
+      - GTEST_SHUFFLE: 0
+    steps:
+      - checkout
+      - run: mv /tilck_toolchain ./toolchain
+      - run: make -j
+      - run: make -j gtests
+      - run: ./build/st/run_all_tests
+
+  release_build:
+    docker:
+      - image: vvaltchev/tilck_build:latest
+    environment:
+      - RELEASE: 1
+      - CMAKE_ARGS:
       - GTEST_SHUFFLE: 0
     steps:
       - checkout
@@ -28,19 +42,24 @@ jobs:
       - run: make -j gtests
       - run: ./build/gtests
 
-  release_build:
+  debug_syscc_build:
     docker:
       - image: vvaltchev/tilck_build:latest
     environment:
-      - RELEASE: 1
+      - RELEASE: 0
       - CMAKE_ARGS:
+      - USE_SYSCC: 1
+      - CC: gcc
+      - CXX: g++
       - GTEST_SHUFFLE: 0
     steps:
       - checkout
       - run: mv /tilck_toolchain ./toolchain
+      - run: ./scripts/build_toolchain -s build_libmusl
       - run: make -j
       - run: make -j gtests
       - run: ./build/st/run_all_tests
+
 
 workflows:
   version: 2
@@ -53,4 +72,6 @@ workflows:
   arch_gtests:
     jobs:
       - debug_arch_gtests_build
-
+  syscc:
+    jobs:
+      - debug_syscc_build
