@@ -1,57 +1,75 @@
 #!/bin/bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+# Constants
+GCC_MIN_VERSION="4.8.0"
+GXX_MIN_VERSION="4.8.0"
+
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 
 source $MAIN_DIR/scripts/bash_includes/script_utils
 
-GCC_MIN_VERSION="4.8.0"
-GXX_MIN_VERSION="4.8.0"
+curr_dir="`pwd`"
 
-if [ -z "$CC" ]; then
-   if which gcc-7 &> /dev/null; then
-      CC=gcc-7
-   elif which gcc-6 &> /dev/null; then
-      CC=gcc-6
-   else
-      CC=gcc
+if [[ "$curr_dir" == "$MAIN_DIR" ]]; then
+   build_dir="$MAIN_DIR/build"
+   mkdir -p $MAIN_DIR/build
+else
+   build_dir="$curr_dir"
+fi
+
+# If CC is set but the file $CC does not exist
+# replace CC with `which $CC` (its absolute path)
+if [ -n "$CC" ] && [ ! -f "$CC" ]; then
+   CC="`which $CC`"
+fi
+
+# If CXX is set but the file $CXX does not exist
+# replace CXX with `which $CXX` (its absolute path)
+if [ -n "$CXX" ] && [ ! -f "$CXX" ]; then
+   CXX="`which $CXX`"
+fi
+
+# Check compiler's version only if this is the first time we ran CMake:
+# after that, CMake will cache compiler's information and changing CC/CXX
+# won't affect the build at all.
+
+if ! [ -f "$build_dir/CMakeCache.txt" ]; then
+
+   if [ -z "$CC" ]; then
+      CC="gcc"
    fi
-fi
 
-if [ -z "$CXX" ]; then
-   if which g++-7 &> /dev/null; then
-      CXX=g++-7
-   elif which g++-6 &> /dev/null; then
-      CXX=g++-6
-   else
-      CXX=g++
+   if [ -z "$CXX" ]; then
+      CXX="g++"
    fi
-fi
 
-if ! which $CC &> /dev/null; then
-   echo "CC compiler '$CC' not found."
-   exit 1
-fi
+   if ! which $CC &> /dev/null; then
+      echo "CC compiler '$CC' not found."
+      exit 1
+   fi
 
-if ! which $CXX &> /dev/null; then
-   echo "CXX compiler '$CXX' not found."
-   exit 1
-fi
+   if ! which $CXX &> /dev/null; then
+      echo "CXX compiler '$CXX' not found."
+      exit 1
+   fi
 
-if $CC --version | grep gcc &> /dev/null; then
-   ver=$(generic_get_version_str $CC)
-   fail_if_too_old $CC $ver $GCC_MIN_VERSION
-fi
+   if $CC --version | grep gcc &> /dev/null; then
+      ver=$(generic_get_version_str $CC)
+      fail_if_too_old $CC $ver $GCC_MIN_VERSION
+   fi
 
-if $CXX --version | grep g++ &> /dev/null; then
-   ver=$(generic_get_version_str $CXX)
-   fail_if_too_old $CXX $ver $GXX_MIN_VERSION
+   if $CXX --version | grep g++ &> /dev/null; then
+      ver=$(generic_get_version_str $CXX)
+      fail_if_too_old $CXX $ver $GXX_MIN_VERSION
+   fi
 fi
 
 export CC
 export CXX
+
 
 if [ -f $MAIN_DIR/toolchain/cmake/bin/cmake ]; then
    export CMAKE=$MAIN_DIR/toolchain/cmake/bin/cmake
@@ -65,14 +83,6 @@ else
    BUILD_TYPE=Debug
 fi
 
-curr_dir="`pwd`"
-
-if [ "$curr_dir" = "$MAIN_DIR" ]; then
-   build_dir="$MAIN_DIR/build"
-   mkdir -p $MAIN_DIR/build
-else
-   build_dir="$curr_dir"
-fi
 
 echo "[cmake_run] Using '$CMAKE' as CMake executable"
 

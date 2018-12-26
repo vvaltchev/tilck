@@ -21,29 +21,37 @@ if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
 endif()
 
-# Environment-controlled "sticky" cache variables
-define_env_cache_str_var(OBJCOPY "objcopy")
-define_env_cache_str_var(STRIP "strip")
-define_env_cache_bool_var(USE_SYSCC)
+# BEGIN [Environment-controlled "sticky" cache variables]
+
+# Main variables
+define_env_cache_str_var(ARCH ${DEFAULT_TARGET_ARCH})
 define_env_cache_bool_var(TEST_GCOV)
 define_env_cache_bool_var(KERNEL_GCOV)
+
+# USE_SYSCC-related variables
+define_env_cache_bool_var(USE_SYSCC)
+define_env_cache_str_var(OBJCOPY "objcopy")
+define_env_cache_str_var(STRIP "strip")
+
+# Debug cache variables
+
+# We don't really need to cache the values of CC/CXX, but is useful to that
+# in order to prevent user errors. Since CC/CXX affect the build only the first
+# time CMake is run, it makes sense to check for the next runs whether the env
+# vars CC/CXX changed (if set) by the user or an incorrect script. In case
+# they are, we have to stop the build because their new value will be otherwise
+# completely ignored. In order words, "fail early".
+
+define_env_cache_str_var(CC "<unset>")
+define_env_cache_str_var(CXX "<unset>")
+
+# END [Environment-controlled "sticky" cache variables]
 
 if (USE_SYSCC)
    set(SYS_CC "${CMAKE_C_COMPILER}")
    set(SYS_CXX "${CMAKE_CXX_COMPILER}")
 endif()
 
-message(STATUS "USE_SYSCC = ${USE_SYSCC}")
-
-if (NOT DEFINED ARCH)
-   if (NOT "$ENV{TARGET_ARCH}" STREQUAL "")
-      set(ARCH "$ENV{TARGET_ARCH}" CACHE INTERNAL "")
-   else()
-      set(ARCH "${DEFAULT_TARGET_ARCH}" CACHE INTERNAL "")
-   endif()
-endif()
-
-message(STATUS "ARCH = ${ARCH}")
 
 # Reset the default flags
 set(CMAKE_C_FLAGS_DEBUG "")
@@ -108,7 +116,8 @@ list(
    APPEND kernel_opts_list
 
    # Various options
-   TEST_GCOV
+   ARCH
+   USE_SYSCC
    ARCH_GTESTS
 
    # Non-boolean kernel options
@@ -122,6 +131,7 @@ list(
    DEBUG_CHECKS_IN_RELEASE_BUILD
 
    # Boolean options DISABLED by default
+   TEST_GCOV
    KERNEL_GCOV
    KERNEL_USE_SYSTEM_CC
    KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC
@@ -159,24 +169,29 @@ if (${ARCH} STREQUAL "i386")
    set(ARCH_LD_OUTPUT "elf_i386")
    set(ARCH_GCC_TC "i686")
    set(ARCH_GCC_FLAGS "-m32 -march=${ARCH_GCC_TC}")
-
-   set(GCC_TC_ROOT ${TCROOT}/x86_gcc_toolchain)
-   set(GCC_TC_LIBC_DIRNAME ${ARCH_GCC_TC}-buildroot-linux-musl)
-   set(GCC_TC_SYSROOT ${GCC_TC_ROOT}/${GCC_TC_LIBC_DIRNAME}/sysroot)
-   set(GCC_TC_ISYSTEM ${GCC_TC_SYSROOT}/usr/include)
-   set(GCC_TOOLCHAIN ${GCC_TC_ROOT}/bin)
-
-   set(GCC_TC_GLIBC_ROOT ${TCROOT}/x86_gcc_toolchain_glibc)
-   set(GCC_TOOLCHAIN_GLIBC ${GCC_TC_GLIBC_ROOT}/bin)
-
-   # Single tools
-   set(ARCH_GCOV ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcov)
+   set(ARCH_TC_DIR "x86_gcc_toolchain")
 
 else()
-
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
-
 endif()
+
+# BEGIN [ARCH-dependent paths]
+
+# Main toolchain (musl)
+set(GCC_TC_ROOT ${TCROOT}/${ARCH_TC_DIR})
+set(GCC_TC_LIBC_DIRNAME ${ARCH_GCC_TC}-buildroot-linux-musl)
+set(GCC_TC_SYSROOT ${GCC_TC_ROOT}/${GCC_TC_LIBC_DIRNAME}/sysroot)
+set(GCC_TC_ISYSTEM ${GCC_TC_SYSROOT}/usr/include)
+set(GCC_TOOLCHAIN ${GCC_TC_ROOT}/bin)
+
+# Glibc toolchain
+set(GCC_TC_GLIBC_ROOT ${TCROOT}/${ARCH_TC_DIR}_glibc)
+set(GCC_TOOLCHAIN_GLIBC ${GCC_TC_GLIBC_ROOT}/bin)
+
+# Specific tools
+set(ARCH_GCOV ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcov)
+
+# END [ARCH-dependent paths]
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -226,7 +241,7 @@ endforeach()
 set(
    OTHER_CFLAGS_LIST
 
-   -g
+   -ggdb
 )
 
 set(
