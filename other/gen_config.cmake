@@ -54,12 +54,6 @@ configure_file(
    @ONLY
 )
 
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/templates/generate_coverage_report
-   ${CMAKE_BINARY_DIR}/scripts/generate_coverage_report
-   @ONLY
-)
-
 # Run qemu scripts
 
 list(

@@ -18,7 +18,8 @@ error_codes_strings = {
    2: 'reboot',
    3: 'timeout',
    4: 'panic',
-   5: 'shell_no_zero_exit'
+   5: 'shell_no_zero_exit',
+   6: 'gcov_issue'
 }
 
 SHORT_TEST_TIMEOUT = 12
@@ -112,7 +113,7 @@ def run_test(test_type, test, timeout, show_output = False):
 
 def show_help_and_exit():
    print "Syntax:"
-   print "     ./system_tests/run_all_tests --show-all"
+   print "     ./system_tests/run_all_tests -l"
    print "     ./system_tests/run_all_tests [-o] [<max_timeout>]"
    print "     ./system_tests/run_all_tests [-o] <regex> [<max_timeout>]"
    sys.exit(1)
@@ -183,7 +184,7 @@ print ""
 
 if len(sys.argv) >= 2:
 
-   if sys.argv[1] == '--show-all':
+   if sys.argv[1] == '-l':
       show_tests_and_exit()
 
    if sys.argv[1] == '-o':

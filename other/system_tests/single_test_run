@@ -8,6 +8,9 @@ import time
 import signal
 import subprocess
 import threading
+import struct
+
+# Constants
 
 # Fail codes:
 FAIL_SUCCESS = 0
@@ -15,26 +18,37 @@ FAIL_REBOOT = 2
 FAIL_TIMEOUT = 3
 FAIL_PANIC = 4
 FAIL_SHELL_NO_ZERO_EXIT = 5
-##################################
+FAIL_GCOV_ERROR = 6
 
-TEST_TIMEOUT = 8
-TEST_TYPE = None
-
-VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
+# Other constants
 KERNEL_HELLO_MSG = 'Hello from Tilck!'
+KERNEL_DUMP_GCDA_STR = '** GCOV gcda files **'
 KERNEL_FILE = '@KERNEL_FILE@'
 FATPART_FILE = '@CMAKE_BINARY_DIR@/fatpart'
 
+# Environment config variables
+VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
 
+# Environment flags
+in_travis = os.environ.get('TRAVIS', False)
+in_circleci = os.environ.get('CIRCLECI', False)
+dump_coverage = os.environ.get('DUMP_COV', False)
+
+
+# Global variables
+
+# Controlled by command line
+TEST_TYPE = None
+TEST_TIMEOUT = 8
+
+# Internal
 output = ""
 process = None
 failed = FAIL_SUCCESS
 hello_msg_found = False
 shell_exit_code = -1
-
-in_travis = os.environ.get('TRAVIS', False)
-in_circleci = os.environ.get('CIRCLECI', False)
-dump_coverage = os.environ.get('DUMP_COV', False)
+dumping_gcda_files = False
+gcda_fh = None
 
 def RunTheVM():
 
@@ -43,6 +57,8 @@ def RunTheVM():
    global failed
    global hello_msg_found
    global shell_exit_code
+   global dumping_gcda_files
+   global gcda_fh
 
    args = ['qemu-system-i386',
            '-m', str(VM_MEMORY_SIZE_IN_MB),
@@ -78,16 +94,53 @@ def RunTheVM():
 
    for line in iter(process.stdout.readline,''):
 
-      output += line
       stripped = line.rstrip()
-      print stripped
 
-      m = re.search(r'\[init\] the devshell exited with status: ([0-9]+)',
-                    stripped)
+      if not dumping_gcda_files:
 
-      if m:
-         shell_exit_code = int(m.group(1))
-         continue
+         output += line
+         print(stripped)
+
+         m = re.search(r'\[init\] the devshell exited with status: ([0-9]+)',
+                       stripped)
+
+         if m:
+            shell_exit_code = int(m.group(1))
+            continue
+      else:
+
+         if not stripped:
+            continue # empty line
+
+         m = re.search(r'file: (.+)', stripped)
+
+         if m:
+            if gcda_fh:
+               gcda_fh.close()
+
+            try:
+               gcda_fh = open(m.group(1), 'wb')
+            except:
+               failed = FAIL_GCOV_ERROR
+               print("\n[system test runner] Failed to open gcda "
+                     "file '{0}' for writing".format(m.group(1)))
+               process.send_signal(signal.SIGINT)
+         else:
+
+            if not stripped.startswith('0x'):
+               output += line
+               print(stripped)
+               continue
+
+            # regular line like '0x1234aabb 0x1234aabb ...'
+            arr = stripped.split(' ')
+            ints = []
+
+            for w in arr:
+               if w.startswith('0x'):
+                  ints.append(int(w, 16))
+
+            gcda_fh.write(struct.pack(str(len(ints)) + 'I', *ints))
 
       if stripped.find(KERNEL_HELLO_MSG) != -1:
          if not hello_msg_found:
@@ -100,6 +153,11 @@ def RunTheVM():
             failed = FAIL_REBOOT
             process.send_signal(signal.SIGINT)
          continue
+
+      if stripped.find(KERNEL_DUMP_GCDA_STR) != -1:
+         dumping_gcda_files = True
+
+
 
    print "-"*80
 
@@ -127,13 +185,21 @@ thread.start()
 thread.join(TEST_TIMEOUT)
 
 if thread.is_alive():
-   failed = FAIL_TIMEOUT
 
-   print "[system test runner] The VM is alive after the timeout " + \
-         "of {0} seconds. KILLING IT.".format(TEST_TIMEOUT)
+   if dumping_gcda_files:
+      thread.join(30)
 
-   process.send_signal(signal.SIGINT)
-   thread.join()
+   if thread.is_alive():
+      failed = FAIL_TIMEOUT
+
+      print "[system test runner] The VM is alive after the timeout " + \
+            "of {0} seconds. KILLING IT.".format(TEST_TIMEOUT)
+
+      process.send_signal(signal.SIGINT)
+      thread.join()
+
+if gcda_fh:
+   gcda_fh.close()
 
 if output.find("KERNEL PANIC") != -1:
    failed = FAIL_PANIC

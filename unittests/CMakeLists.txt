@@ -5,6 +5,11 @@ if (${ARCH_GTESTS})
    set_cross_compiler_gtests()
 endif()
 
+configure_file(
+   ${CMAKE_SOURCE_DIR}/scripts/templates/generate_coverage_report
+   ${CMAKE_BINARY_DIR}/scripts/generate_test_coverage_report
+   @ONLY
+)
 
 file(
    GLOB SOURCES

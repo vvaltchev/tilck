@@ -32,6 +32,7 @@ define_env_cache_bool_var(KERNEL_GCOV)
 define_env_cache_bool_var(USE_SYSCC)
 define_env_cache_str_var(OBJCOPY "objcopy")
 define_env_cache_str_var(STRIP "strip")
+define_env_cache_str_var(GCOV "gcov")
 
 # Debug cache variables
 
@@ -177,19 +178,16 @@ endif()
 
 # BEGIN [ARCH-dependent paths]
 
-# Main toolchain (musl)
-set(GCC_TC_ROOT ${TCROOT}/${ARCH_TC_DIR})
-set(GCC_TC_LIBC_DIRNAME ${ARCH_GCC_TC}-buildroot-linux-musl)
-set(GCC_TC_SYSROOT ${GCC_TC_ROOT}/${GCC_TC_LIBC_DIRNAME}/sysroot)
-set(GCC_TC_ISYSTEM ${GCC_TC_SYSROOT}/usr/include)
-set(GCC_TOOLCHAIN ${GCC_TC_ROOT}/bin)
+   # Main toolchain (musl)
+   set(GCC_TC_ROOT ${TCROOT}/${ARCH_TC_DIR})
+   set(GCC_TC_LIBC_DIRNAME ${ARCH_GCC_TC}-buildroot-linux-musl)
+   set(GCC_TC_SYSROOT ${GCC_TC_ROOT}/${GCC_TC_LIBC_DIRNAME}/sysroot)
+   set(GCC_TC_ISYSTEM ${GCC_TC_SYSROOT}/usr/include)
+   set(GCC_TOOLCHAIN ${GCC_TC_ROOT}/bin)
 
-# Glibc toolchain
-set(GCC_TC_GLIBC_ROOT ${TCROOT}/${ARCH_TC_DIR}_glibc)
-set(GCC_TOOLCHAIN_GLIBC ${GCC_TC_GLIBC_ROOT}/bin)
-
-# Specific tools
-set(ARCH_GCOV ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcov)
+   # Glibc toolchain
+   set(GCC_TC_GLIBC_ROOT ${TCROOT}/${ARCH_TC_DIR}_glibc)
+   set(GCC_TOOLCHAIN_GLIBC ${GCC_TC_GLIBC_ROOT}/bin)
 
 # END [ARCH-dependent paths]
 

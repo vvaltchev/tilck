@@ -96,6 +96,7 @@ macro(set_cross_compiler)
 
       set(TOOL_OBJCOPY "${OBJCOPY}")
       set(TOOL_STRIP "${STRIP}")
+      set(TOOL_GCOV "${GCOV}")
 
    else()
 
@@ -106,6 +107,7 @@ macro(set_cross_compiler)
       set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
       set(TOOL_OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
       set(TOOL_STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
+      set(TOOL_GCOV ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcov)
 
    endif()
 
@@ -120,6 +122,7 @@ macro(set_cross_compiler_userapps)
       set(CMAKE_ASM_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-gcc")
       set(TOOL_OBJCOPY "${OBJCOPY}")
       set(TOOL_STRIP "${STRIP}")
+      set(TOOL_GCOV "${GCOV}")
 
    else()
 
@@ -130,6 +133,7 @@ macro(set_cross_compiler_userapps)
       set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
       set(TOOL_OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
       set(TOOL_STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
+      set(TOOL_GCOV ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcov)
 
    endif()
 
@@ -139,7 +143,7 @@ macro(set_cross_compiler_gtests)
 
    # This macro is used in case ARCH_GTESTS is ON.
 
-   if (${USE_SYSCC})
+   if (USE_SYSCC)
 
       # Special case: the user wants to use system's compiler to compile code
       # for the target architecture. Just use our basic set_cross_compiler()
@@ -159,6 +163,7 @@ macro(set_cross_compiler_gtests)
       set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcc)
       set(TOOL_OBJCOPY ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-objcopy)
       set(TOOL_STRIP ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-strip)
+      set(TOOL_GCOV ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcov)
 
    endif()
 
