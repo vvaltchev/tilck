@@ -18,17 +18,17 @@
 #include "devshell.h"
 #include "sysenter.h"
 
-void cmd_loop(int argc, char **argv)
+int cmd_loop(int argc, char **argv)
 {
    printf("[shell] do a long loop\n");
    for (int i = 0; i < (2 * 1000 * 1000 * 1000); i++) {
       __asm__ volatile ("nop");
    }
 
-   exit(0);
+   return 0;
 }
 
-void fork_test(int (*fork_func)(void))
+int fork_test(int (*fork_func)(void))
 {
    printf("Running infinite loop..\n");
 
@@ -74,22 +74,22 @@ void fork_test(int (*fork_func)(void))
 
          if (FORK_TEST_ITERS_hits_count == 2 && inchild) {
             printf("child: 2 iter hits, exit!\n");
-            exit(123);
+            return 123;
          }
       }
 
       n++;
    }
 
-   exit(0);
+   return 0;
 }
 
-void cmd_fork_test(int argc, char **argv)
+int cmd_fork_test(int argc, char **argv)
 {
-   fork_test(&fork);
+   return fork_test(&fork);
 }
 
-void cmd_bad_read(int argc, char **argv)
+int cmd_bad_read(int argc, char **argv)
 {
    int ret;
    void *addr = (void *) 0xB0000000;
@@ -112,10 +112,10 @@ void cmd_bad_read(int argc, char **argv)
    ret = open((char*)0xB0000000, 0);
 
    printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
-   exit(0);
+   return 0;
 }
 
-void cmd_bad_write(int argc, char **argv)
+int cmd_bad_write(int argc, char **argv)
 {
    int ret;
    void *addr = (void *) 0xB0000000;
@@ -123,9 +123,10 @@ void cmd_bad_write(int argc, char **argv)
    errno = 0;
    ret = stat("/", addr);
    printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
+   return 0;
 }
 
-void cmd_fork_perf(int argc, char **argv)
+int cmd_fork_perf(int argc, char **argv)
 {
    const int iters = 150000;
    int wstatus, child_pid;
@@ -139,12 +140,11 @@ void cmd_fork_perf(int argc, char **argv)
 
       if (child_pid < 0) {
          printf("fork() failed: %s\n", strerror(errno));
-         exit(1);
+         return 1;
       }
 
-      if (!child_pid) {
-         exit(0);
-      }
+      if (!child_pid)
+         return 0;
 
       waitpid(child_pid, &wstatus, 0);
    }
@@ -152,6 +152,7 @@ void cmd_fork_perf(int argc, char **argv)
 
    duration = RDTSC() - start;
    printf("duration: %llu\n", duration/iters);
+   return 0;
 }
 
 int sysenter_fork(void)
@@ -159,12 +160,12 @@ int sysenter_fork(void)
    return sysenter_call0(2 /* fork */);
 }
 
-void cmd_se_fork_test(int argc, char **argv)
+int cmd_se_fork_test(int argc, char **argv)
 {
-   fork_test(&sysenter_fork);
+   return fork_test(&sysenter_fork);
 }
 
-void cmd_sysenter(int argc, char **argv)
+int cmd_sysenter(int argc, char **argv)
 {
    const char *str = "hello from a sysenter call!\n";
    size_t len = strlen(str);
@@ -183,9 +184,10 @@ void cmd_sysenter(int argc, char **argv)
    struct timespec req = { .tv_sec = 0, .tv_nsec = 100*1000*1000 };
    sysenter_call3(162 /* nanosleep */, &req, NULL, NULL);
    printf("after sleep, everything is fine. Prev ret: %i\n", ret);
+   return 0;
 }
 
-void cmd_syscall_perf(int argc, char **argv)
+int cmd_syscall_perf(int argc, char **argv)
 {
    const int iters = 1000;
    unsigned long long start, duration;
@@ -213,9 +215,10 @@ void cmd_syscall_perf(int argc, char **argv)
    duration = RDTSC() - start;
 
    printf("sysenter setuid(): %llu cycles\n", duration/iters);
+   return 0;
 }
 
-void cmd_fpu(int argc, char **argv)
+int cmd_fpu(int argc, char **argv)
 {
    long double e = 1.0;
    long double f = 1.0;
@@ -226,9 +229,10 @@ void cmd_fpu(int argc, char **argv)
    }
 
    printf("e(1): %.10Lf\n", e);
+   return 0;
 }
 
-void cmd_fpu_loop(int argc, char **argv)
+int cmd_fpu_loop(int argc, char **argv)
 {
    register double num = 0;
 
@@ -239,9 +243,11 @@ void cmd_fpu_loop(int argc, char **argv)
 
       num += 1e-6;
    }
+
+   return 0;
 }
 
-void cmd_brk_test(int argc, char **argv)
+int cmd_brk_test(int argc, char **argv)
 {
    const size_t alloc_size = 1024 * 1024;
 
@@ -268,11 +274,13 @@ void cmd_brk_test(int argc, char **argv)
 
    if (b != orig_brk) {
       printf("Unable to free mem with brk()\n");
-      exit(1);
+      return 1;
    }
+
+   return 0;
 }
 
-void cmd_mmap_test(int argc, char **argv)
+int cmd_mmap_test(int argc, char **argv)
 {
    const int iters_count = 10;
    const size_t alloc_size = 1 * MB;
@@ -317,10 +325,8 @@ void cmd_mmap_test(int argc, char **argv)
          if (i != max_mb) {
             printf("[iter: %u] Unable to alloc max_mb (%u) as previous iters\n",
                    iter, max_mb);
-
-            exit(1);
+            return 1;
          }
-
       }
 
       printf("[iter: %u][mmap_test] Mapped %u MB\n", iter, i + 1);
@@ -334,7 +340,7 @@ void cmd_mmap_test(int argc, char **argv)
          if (rc != 0) {
             printf("munmap(%p) failed with error: %s\n",
                    arr[i], strerror(errno));
-            exit(1);
+            return 1;
          }
       }
 
@@ -343,9 +349,11 @@ void cmd_mmap_test(int argc, char **argv)
 
    printf("\nAvg. cycles for mmap + munmap %u MB: %llu million\n",
           max_mb + 1, (tot_duration / iters_count) / 1000000);
+
+   return 0;
 }
 
-void cmd_kernel_cow(int argc, char **argv)
+int cmd_kernel_cow(int argc, char **argv)
 {
    static char cow_buf[4096];
 
@@ -354,22 +362,23 @@ void cmd_kernel_cow(int argc, char **argv)
 
    if (child_pid < 0) {
       printf("fork() failed\n");
-      exit(1);
+      return 1;
    }
 
    if (!child_pid) {
       int rc = stat("/", (void *)cow_buf);
       printf("stat() returned: %d (errno: %s)\n", rc, strerror(errno));
-      exit(0);
+      return 0;
    }
 
    waitpid(child_pid, &wstatus, 0);
+   return 0;
 }
 
 /*
  * Call waitpid() after the child exited.
  */
-void cmd_waitpid1(int argc, char **argv)
+int cmd_waitpid1(int argc, char **argv)
 {
    int wstatus;
    pid_t pid;
@@ -378,13 +387,13 @@ void cmd_waitpid1(int argc, char **argv)
 
    if (child_pid < 0) {
       printf("fork() failed\n");
-      exit(1);
+      return 1;
    }
 
    if (!child_pid) {
       // This is the child, just exit
       printf("child: exit\n");
-      exit(23);
+      return 23;
    }
 
    printf("Created child with pid: %d\n", child_pid);
@@ -400,7 +409,7 @@ void cmd_waitpid1(int argc, char **argv)
       printf("[pid: %d] PARENT: the child %d did NOT exited normally\n",
              getpid(), pid);
 
-      exit(1);
+      return 1;
    }
 
    int exit_code = WEXITSTATUS(wstatus);
@@ -408,17 +417,19 @@ void cmd_waitpid1(int argc, char **argv)
 
    if (pid != child_pid) {
       printf("Expected waitpid() to return child's pid (got: %d)\n", pid);
-      exit(1);
+      return 1;
    }
 
    if (exit_code != 23) {
       printf("Expected the exit code to be 23 (got: %d)\n", exit_code);
-      exit(1);
+      return 1;
    }
+
+   return 0;
 }
 
 /* waitpid(-1): wait any child to exit */
-void cmd_waitpid2(int argc, char **argv)
+int cmd_waitpid2(int argc, char **argv)
 {
    const int child_count = 3;
 
@@ -432,13 +443,13 @@ void cmd_waitpid2(int argc, char **argv)
 
       if (child_pid < 0) {
          printf("fork() failed\n");
-         exit(1);
+         return 1;
       }
 
       if (!child_pid) {
          printf("[pid: %d] child: exit (%d)\n", getpid(), 10 + i);
          usleep((child_count - i) * 100*1000);
-         exit(10 + i);
+         return 10 + i;
       }
 
       pids[i] = child_pid;
@@ -456,7 +467,7 @@ void cmd_waitpid2(int argc, char **argv)
          printf("[pid: %d] PARENT: the child %d did NOT exited normally\n",
                  getpid(), pid);
 
-         exit(1);
+         return 1;
       }
 
       int exit_code = WEXITSTATUS(wstatus);
@@ -466,18 +477,20 @@ void cmd_waitpid2(int argc, char **argv)
 
       if (pid != pids[i]) {
          printf("Expected waitpid() to return %d (got: %d)\n", pids[i], pid);
-         exit(1);
+         return 1;
       }
 
       if (exit_code != 10+i) {
          printf("Expected the exit code to be %d (got: %d)\n", 10+i, exit_code);
-         exit(1);
+         return 1;
       }
    }
+
+   return 0;
 }
 
 /* wait on any child after they exit */
-void cmd_waitpid3(int argc, char **argv)
+int cmd_waitpid3(int argc, char **argv)
 {
    int wstatus;
    pid_t pid;
@@ -486,13 +499,13 @@ void cmd_waitpid3(int argc, char **argv)
 
    if (child_pid < 0) {
       printf("fork() failed\n");
-      exit(1);
+      return 1;
    }
 
    if (!child_pid) {
       // This is the child, just exit
       printf("child: exit\n");
-      exit(23);
+      return 23;
    }
 
    printf("Created child with pid: %d\n", child_pid);
@@ -508,7 +521,7 @@ void cmd_waitpid3(int argc, char **argv)
       printf("[pid: %d] PARENT: the child %d did NOT exited normally\n",
              getpid(), pid);
 
-      exit(1);
+      return 1;
    }
 
    int exit_code = WEXITSTATUS(wstatus);
@@ -516,20 +529,22 @@ void cmd_waitpid3(int argc, char **argv)
 
    if (pid != child_pid) {
       printf("Expected waitpid() to return child's pid (got: %d)\n", pid);
-      exit(1);
+      return 1;
    }
 
    if (exit_code != 23) {
       printf("Expected the exit code to be 23 (got: %d)\n", exit_code);
-      exit(1);
+      return 1;
    }
+
+   return 0;
 }
 
-void cmd_selftest(int argc, char **argv)
+int cmd_selftest(int argc, char **argv)
 {
    if (argc < 1) {
       printf("Expected selftest name argument.\n");
-      exit(1);
+      return 1;
    }
 
    int rc =
@@ -540,15 +555,15 @@ void cmd_selftest(int argc, char **argv)
 
    if (rc != 0) {
       printf("Invalid selftest '%s'\n", argv[0]);
-      exit(1);
+      return 1;
    }
+
+   return 0;
 }
 
-void cmd_help(int argc, char **argv);
+int cmd_help(int argc, char **argv);
 
 /* ------------------------------------------- */
-
-typedef void (*cmd_func_type)(int argc, char **argv);
 
 enum timeout_type {
    TT_SHORT = 0,
@@ -594,9 +609,7 @@ struct {
 
 void dump_list_of_commands(void)
 {
-   const int elems = sizeof(cmds_table) / sizeof(cmds_table[0]);
-
-   for (int i = 1; i < elems; i++) {
+   for (int i = 1; i < ARRAY_SIZE(cmds_table); i++) {
       if (cmds_table[i].enabled_in_st)
          printf("%s %s\n", cmds_table[i].name, tt_str[cmds_table[i].tt]);
    }
@@ -604,7 +617,7 @@ void dump_list_of_commands(void)
    exit(0);
 }
 
-void cmd_help(int argc, char **argv)
+int cmd_help(int argc, char **argv)
 {
    printf("\n");
    printf(COLOR_RED "Tilck development shell\n" RESET_ATTRS);
@@ -622,30 +635,28 @@ void cmd_help(int argc, char **argv)
    printf("    cd <directory>: change the current working directory\n\n");
    printf(COLOR_RED "Kernel tests\n" RESET_ATTRS);
 
-   const int elems = sizeof(cmds_table) / sizeof(cmds_table[0]);
    const int elems_per_row = 7;
 
-   for (int i = 1 /* skip help */; i < elems; i++) {
+   for (int i = 1 /* skip help */; i < ARRAY_SIZE(cmds_table); i++) {
       printf("%s%s%s ",
              (i % elems_per_row) != 1 ? "" : "    ",
              cmds_table[i].name,
-             i != elems-1 ? "," : "");
+             i != ARRAY_SIZE(cmds_table)-1 ? "," : "");
 
       if (!(i % elems_per_row))
          printf("\n");
    }
 
    printf("\n\n");
+   return 0;
 }
 
 void run_if_known_command(const char *cmd, int argc, char **argv)
 {
-   const int elems = sizeof(cmds_table) / sizeof(cmds_table[0]);
-
-   for (int i = 0; i < elems; i++) {
+   for (int i = 0; i < ARRAY_SIZE(cmds_table); i++) {
       if (!strcmp(cmds_table[i].name, cmd)) {
-         cmds_table[i].fun(argc, argv);
-         exit(0);
+         int exit_code = cmds_table[i].fun(argc, argv);
+         exit(exit_code);
       }
    }
 }

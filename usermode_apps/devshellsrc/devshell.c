@@ -99,6 +99,8 @@ void process_cmd_line(const char *cmd_line)
 
       run_if_known_command(cmd_argv[0], argc - 1, cmd_argv + 1);
 
+      /* since we got here, cmd_argv[0] was NOT a known command */
+
       if (!file_exists(cmd_argv[0]) && argc < MAX_ARGS) {
          if (file_exists("/bin/busybox")) {
 
