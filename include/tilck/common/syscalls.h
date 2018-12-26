@@ -1,4 +1,4 @@
-
+/* SPDX-License-Identifier: BSD-2-Clause */
 #pragma once
 
 #define TILCK_TESTCMD_SYSCALL    499

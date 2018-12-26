@@ -14,18 +14,9 @@
 #include <sys/mman.h>
 
 #include <tilck/common/syscalls.h>
+
+#include "devshell.h"
 #include "sysenter.h"
-
-
-#define KB (1024)
-#define MB (1024 * 1024)
-
-#define COLOR_RED     "\033[31m"
-#define COLOR_YELLOW  "\033[93m"
-#define RESET_ATTRS   "\033[0m"
-
-#define RDTSC() __builtin_ia32_rdtsc()
-#define FORK_TEST_ITERS (1 * 250 * 1024 * 1024)
 
 void cmd_loop(int argc, char **argv)
 {

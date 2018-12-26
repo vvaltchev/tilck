@@ -25,10 +25,10 @@
 #define WRITE_BS      "\033[D \033[D\0"
 #define KEY_BACKSPACE 0x7f
 
-char cmd_history[HIST_SIZE][256];
-unsigned hist_count;
-unsigned curr_hist_cmd_to_show;
-int curr_line_pos;
+static char cmd_history[HIST_SIZE][256];
+static unsigned hist_count;
+static unsigned curr_hist_cmd_to_show;
+static int curr_line_pos;
 
 void put_in_history(const char *cmdline)
 {

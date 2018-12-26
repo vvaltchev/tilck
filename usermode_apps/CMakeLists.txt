@@ -21,16 +21,16 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 # CMake's macros are very much like C's macros.
 
 macro(add_usermode_app)
-   file(GLOB SOURCES "${ARGV0}*.c")
+   file(GLOB SOURCES "${ARGV1}${ARGV0}*.c")
    add_executable(${ARGV0} ${SOURCES})
    list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/${ARGV0}")
    add_dependencies(usermode_apps ${ARGV0})
 endmacro()
 
 add_usermode_app(init)
-add_usermode_app(devshell)
 add_usermode_app(termtest)
 add_usermode_app(fbtest)
+add_usermode_app(devshell "devshellsrc/")
 
 if (EXISTS "${TCROOT}/ncurses_install/lib/libncurses_g.a")
    add_usermode_app(ncapp)

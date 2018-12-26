@@ -11,16 +11,11 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#define MAX_ARGS 16
+#include "devshell.h"
 
-char cmd_arg_buffers[MAX_ARGS][256];
-char *cmd_argv[MAX_ARGS];
-char **shell_env;
-
-void run_if_known_command(const char *cmd, int argc, char **argv);
-void dump_list_of_commands(void);
-int read_command(char *buf, int buf_size);
-
+static char cmd_arg_buffers[MAX_ARGS][256];
+static char *cmd_argv[MAX_ARGS];
+static char **shell_env;
 
 void shell_builtin_cd(int argc)
 {
