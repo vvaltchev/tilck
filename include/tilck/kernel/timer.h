@@ -5,13 +5,19 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/common/atomics.h>
 
-#define TIME_SLOT_TICKS (TIMER_HZ / 20)
-
-extern ATOMIC(u64) __ticks;
+extern u64 __ticks;
 
 static ALWAYS_INLINE u64 get_ticks(void)
 {
-   return atomic_load_explicit(&__ticks, mo_relaxed);
+   u64 curr_ticks;
+   uptr var;
+
+   disable_interrupts(&var);
+   {
+      curr_ticks = __ticks;
+   }
+   enable_interrupts(&var);
+   return curr_ticks;
 }
 
 int timer_irq_handler(regs *r);

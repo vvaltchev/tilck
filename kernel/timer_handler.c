@@ -11,7 +11,7 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/elf_utils.h>
 
-ATOMIC(u64) __ticks; /* ticks since the timer started */
+u64 __ticks; /* ticks since the timer started */
 ATOMIC(u32) disable_preemption_count = 1;
 
 static list_node timer_wakeup_list = make_list_node(timer_wakeup_list);
@@ -203,7 +203,15 @@ int timer_irq_handler(regs *context)
    }
 #endif
 
-   atomic_fetch_add_explicit(&__ticks, 1ULL, mo_relaxed);
+   /*
+    * It is SAFE to directly increase the 64-bit integer __ticks here, without
+    * disabling the interrupts and without trying to use any kind of atomic
+    * operation because this is the ONLY place where __ticks is modified. Even
+    * when nested IRQ0 is allowed, __ticks won't be touched by the nested
+    * handler as you can see above.
+    */
+   __ticks++;
+
    account_ticks();
    task_info *last_ready_task = tick_all_timers();
 

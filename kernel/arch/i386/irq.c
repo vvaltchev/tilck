@@ -210,10 +210,12 @@ void debug_show_spurious_irq_count(void)
       print_slow_timer_irq_handler_counter();
 #endif
 
-   if (get_ticks() > TIMER_HZ)
+   const u64 ticks = get_ticks();
+
+   if (ticks > TIMER_HZ)
       printk("Spur IRQ count: %u (%u/sec)\n",
              spur_irq_count,
-             spur_irq_count / (get_ticks() / TIMER_HZ));
+             spur_irq_count / (ticks / TIMER_HZ));
    else
       printk("Spurious IRQ count: %u (< 1 sec)\n",
              spur_irq_count, spur_irq_count);

@@ -4,8 +4,9 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
-
 #include <tilck/kernel/list.h>
+
+#define TIME_SLOT_TICKS (TIMER_HZ / 20)
 
 typedef struct regs regs;
 typedef struct task_info task_info;
@@ -16,6 +17,8 @@ extern task_info *kernel_process;
 extern list_node runnable_tasks_list;
 extern list_node sleeping_tasks_list;
 extern list_node zombie_tasks_list;
+
+extern ATOMIC(u32) disable_preemption_count;
 
 enum task_state {
    TASK_STATE_INVALID = 0,
@@ -28,8 +31,6 @@ enum task_state {
 void init_sched(void);
 task_info *get_task(int tid);
 void task_change_state(task_info *ti, enum task_state new_state);
-
-extern ATOMIC(u32) disable_preemption_count;
 
 static ALWAYS_INLINE void disable_preemption(void)
 {
