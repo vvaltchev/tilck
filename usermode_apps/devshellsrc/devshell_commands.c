@@ -74,7 +74,7 @@ int fork_test(int (*fork_func)(void))
 
          if (FORK_TEST_ITERS_hits_count == 2 && inchild) {
             printf("child: 2 iter hits, exit!\n");
-            return 123;
+            exit(123); // exit from the child
          }
       }
 
@@ -144,7 +144,7 @@ int cmd_fork_perf(int argc, char **argv)
       }
 
       if (!child_pid)
-         return 0;
+         exit(0); // exit from the child
 
       waitpid(child_pid, &wstatus, 0);
    }
@@ -368,7 +368,7 @@ int cmd_kernel_cow(int argc, char **argv)
    if (!child_pid) {
       int rc = stat("/", (void *)cow_buf);
       printf("stat() returned: %d (errno: %s)\n", rc, strerror(errno));
-      return 0;
+      exit(0); // exit from the child
    }
 
    waitpid(child_pid, &wstatus, 0);
@@ -393,7 +393,7 @@ int cmd_waitpid1(int argc, char **argv)
    if (!child_pid) {
       // This is the child, just exit
       printf("child: exit\n");
-      return 23;
+      exit(23);
    }
 
    printf("Created child with pid: %d\n", child_pid);
@@ -449,7 +449,7 @@ int cmd_waitpid2(int argc, char **argv)
       if (!child_pid) {
          printf("[pid: %d] child: exit (%d)\n", getpid(), 10 + i);
          usleep((child_count - i) * 100*1000);
-         return 10 + i;
+         exit(10 + i); // exit from the child
       }
 
       pids[i] = child_pid;
@@ -505,7 +505,7 @@ int cmd_waitpid3(int argc, char **argv)
    if (!child_pid) {
       // This is the child, just exit
       printf("child: exit\n");
-      return 23;
+      exit(23); // exit from the child
    }
 
    printf("Created child with pid: %d\n", child_pid);
@@ -655,7 +655,12 @@ void run_if_known_command(const char *cmd, int argc, char **argv)
 {
    for (int i = 0; i < ARRAY_SIZE(cmds_table); i++) {
       if (!strcmp(cmds_table[i].name, cmd)) {
+
          int exit_code = cmds_table[i].fun(argc, argv);
+
+         if (dump_coverage)
+            printf("[debug] --- DUMP COVERAGE ---\n");
+
          exit(exit_code);
       }
    }

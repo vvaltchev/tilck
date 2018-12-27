@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
+#include <stdbool.h>
 
 #define KB (1024)
 #define MB (1024 * 1024)
@@ -14,6 +15,8 @@
 #define RESET_ATTRS   "\033[0m"
 
 #define FORK_TEST_ITERS (250 * MB)
+
+extern bool dump_coverage;
 
 typedef int (*cmd_func_type)(int argc, char **argv);
 

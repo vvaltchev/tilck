@@ -74,19 +74,20 @@ def RunTheVM():
    opts = ''
 
    if dump_coverage:
-      opts += '-dcov '
+      opts += '-dcov'
 
    if TEST_TYPE == 'shellcmd':
 
       print "Running the VM with shell command '{0}'...".format(TEST_NAME)
 
       args += ['-initrd', FATPART_FILE,
-               '-append', opts + '-cmd /sbin/init -- -c {0}'.format(TEST_NAME)]
+               '-append',
+               '-cmd /sbin/init -- {0} -c {1}'.format(opts, TEST_NAME)]
 
    elif TEST_TYPE == 'selftest':
 
       print "Running the VM with selftest '{0}'...".format(TEST_NAME)
-      args += ['-append', opts + '-s {0}'.format(TEST_NAME)]
+      args += ['-append', opts + ' -s {0}'.format(TEST_NAME)]
 
    else:
       sys.exit(1)

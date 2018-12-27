@@ -13,6 +13,8 @@
 
 #include "devshell.h"
 
+bool dump_coverage;
+
 static char cmd_arg_buffers[MAX_ARGS][256];
 static char *cmd_argv[MAX_ARGS];
 static char **shell_env;
@@ -136,15 +138,42 @@ void process_cmd_line(const char *cmd_line)
 
 void parse_opt(int argc, char **argv)
 {
-   if (argc > 2 && !strcmp(argv[1], "-c")) {
-      printf("[shell] Executing built-in command '%s'\n", argv[2]);
-      run_if_known_command(argv[2], argc - 3, argv + 3);
-      printf("[shell] Unknown built-in command '%s'\n", argv[2]);
-   } else if (!strcmp(argv[1], "-l")) {
-      dump_list_of_commands();
-   } else {
-      printf("[shell] Unknown option '%s'\n", argv[1]);
+
+begin:
+
+   if (!argc)
+      return;
+
+   if (!strlen(argv[0])) {
+      argc--; argv++;
+      goto begin;
    }
+
+   if (!strcmp(argv[0], "-l")) {
+      dump_list_of_commands();
+      /* not reached */
+   }
+
+   if (argc == 1)
+      goto unknown_opt;
+
+   /* argc > 1 */
+
+   if (!strcmp(argv[0], "-dcov")) {
+      dump_coverage = true;
+      argc--; argv++;
+      goto begin;
+   }
+
+   if (!strcmp(argv[0], "-c")) {
+      printf("[shell] Executing built-in command '%s'\n", argv[1]);
+      run_if_known_command(argv[1], argc - 2, argv + 2);
+      printf("[shell] Unknown built-in command '%s'\n", argv[1]);
+      return;
+   }
+
+unknown_opt:
+   printf("[shell] Unknown option '%s'\n", argv[0]);
 }
 
 int main(int argc, char **argv, char **env)
@@ -157,7 +186,7 @@ int main(int argc, char **argv, char **env)
    //printf("[PID: %i] Hello from Tilck's simple dev-shell!\n", getpid());
 
    if (argc > 1) {
-      parse_opt(argc, argv);
+      parse_opt(argc - 1, argv + 1);
       exit(1);
    }
 
