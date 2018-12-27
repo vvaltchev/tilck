@@ -411,4 +411,5 @@ CREATE_STUB_SYSCALL_IMPL(sys_rt_tgsigqueueinfo)
 CREATE_STUB_SYSCALL_IMPL(sys_perf_event_open)
 CREATE_STUB_SYSCALL_IMPL(sys_recvmmsg)
 
-sptr sys_tilck_cmd(enum tilck_testcmd_type cmd, uptr a, uptr a2, uptr a3);
+sptr sys_tilck_cmd(enum tilck_testcmd_type cmd,
+                   uptr a1, uptr a2, uptr a3, uptr a4);

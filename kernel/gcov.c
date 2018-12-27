@@ -208,10 +208,33 @@ void gcov_dump_coverage(void)
 
 // ----------------------------------------------------------------
 
-static u32 compute_gcda_file_size(struct gcov_info *gi)
+static u32 compute_gcda_file_size(const struct gcov_info *info)
 {
-   // TODO: complete the impl
-   return 0;
+   const struct gcov_ctr_info *counters;
+
+   u32 size = 0;
+
+   // header
+   size += 3 * sizeof(u32);
+
+   for (u32 i = 0; i < info->n_functions; i++) {
+
+      // function tag & checksums
+      size += 5 * sizeof(u32);
+      counters = info->functions[i]->ctrs;
+
+      for (u32 j = 0; j < GCOV_COUNTERS; j++) {
+
+         if (!info->merge[j])
+            continue; /* no merge func -> the counter is NOT used */
+
+         size += 2 * sizeof(u32);
+         size += counters->num * sizeof(u64);
+         counters++;
+      }
+   }
+
+   return size;
 }
 
 // ----------------------------------------------------------------
@@ -222,15 +245,23 @@ int sys_gcov_dump_coverage(void)
    return files_count;
 }
 
-int sys_gcov_get_file_info(int fn, char *user_fname_buf, u32 *user_fsize)
+int sys_gcov_get_file_info(int fn,
+                           char *user_fname_buf,
+                           u32 fname_buf_size,
+                           u32 *user_fsize)
 {
    if (fn < 0 || fn >= files_count)
       return -EINVAL;
 
    int rc;
-   struct gcov_info *gi = files_array[fn];
+   const struct gcov_info *gi = files_array[fn];
+   const u32 fname_len = strlen(gi->filename);
 
-   rc = copy_to_user(user_fname_buf, gi->filename, strlen(gi->filename) + 1);
+   if (fname_buf_size < fname_len + 1) {
+      return -ENOBUFS;
+   }
+
+   rc = copy_to_user(user_fname_buf, gi->filename, fname_len + 1);
 
    if (rc != 0)
       return -EFAULT;

@@ -81,7 +81,8 @@ sptr sys_tilck_run_selftest(const char *user_selftest)
    return 0;
 }
 
-sptr sys_tilck_cmd(enum tilck_testcmd_type cmd, uptr a1, uptr a2, uptr a3)
+sptr sys_tilck_cmd(enum tilck_testcmd_type cmd,
+                   uptr a1, uptr a2, uptr a3, uptr a4)
 {
    switch (cmd) {
 
@@ -96,8 +97,10 @@ sptr sys_tilck_cmd(enum tilck_testcmd_type cmd, uptr a1, uptr a2, uptr a3)
          return sys_gcov_dump_coverage();
 
       case TILCK_TESTCMD_GCOV_FILE_INFO:
-         return sys_gcov_get_file_info((int)a1, (char *)a2, (u32 *)a3);
-
+         return sys_gcov_get_file_info((int)a1,
+                                       (char *)a2,
+                                       (u32) a3,
+                                       (u32 *)a4);
       default:
          break;
    }
