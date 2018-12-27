@@ -48,6 +48,8 @@ static void kcond_thread_wait_ticks()
 
 static void kcond_thread_signal_generator()
 {
+   task_info *ti;
+
    kmutex_lock(&cond_mutex);
 
    printk("[thread signal]: under lock, waiting some time..\n");
@@ -64,10 +66,13 @@ static void kcond_thread_signal_generator()
 
    disable_preemption();
    {
-      if (!kthread_create(&kcond_thread_wait_ticks, NULL))
+      ti = kthread_create(&kcond_thread_wait_ticks, NULL);
+
+      if (!ti)
          panic("Unable to create a thread for kcond_thread_wait_ticks()");
    }
    enable_preemption();
+   join_kernel_thread(ti->tid);
 }
 
 void selftest_kcond_short()

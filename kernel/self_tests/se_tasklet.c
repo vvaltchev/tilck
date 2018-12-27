@@ -17,17 +17,19 @@ static void test_tasklet_func()
    counter++;
 }
 
-static void end_test()
+static void end_test(void *arg)
 {
+   kcond *c = arg;
+
    const int max_tasklets = get_tasklet_runner_limit(0);
    const int tot_iters = max_tasklets * 10;
 
    u64 elapsed = RDTSC() - cycles_begin;
    VERIFY(counter == tot_iters);
-   printk("[selftest_tasklet] END\n");
    printk("[selftest_tasklet] Avg cycles per tasklet "
           "(enqueue + execute): %llu\n", elapsed/counter);
-   debug_qemu_turn_off_machine();
+
+   kcond_signal_one(c);
 }
 
 void selftest_tasklet_short(void)
@@ -51,10 +53,16 @@ void selftest_tasklet_short(void)
 
    }
 
+   kcond c;
+   kcond_init(&c);
+
    do {
-      added = enqueue_tasklet0(0, &end_test);
+      added = enqueue_tasklet1(0, &end_test, &c);
    } while (!added);
 
+   kcond_wait(&c, NULL, KCOND_WAIT_FOREVER);
+   kcond_destory(&c);
+   printk("[selftest_tasklet] END\n");
    regular_self_test_end();
 }
 

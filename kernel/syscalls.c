@@ -9,6 +9,7 @@
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/gcov.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/process.h>
 
 sptr sys_rt_sigprocmask(/* args ignored at the moment */)
 {
@@ -79,6 +80,7 @@ sptr sys_tilck_run_selftest(const char *user_selftest)
    if (!ti)
       return -ENOMEM;
 
+   join_kernel_thread(ti->tid);
    return 0;
 }
 
@@ -95,7 +97,7 @@ sptr sys_tilck_cmd(enum tilck_testcmd_type cmd,
          return 0;
 
       case TILCK_TESTCMD_GCOV_GET_NUM_FILES:
-         return sys_gcov_dump_coverage();
+         return sys_gcov_get_file_count();
 
       case TILCK_TESTCMD_GCOV_FILE_INFO:
          return sys_gcov_get_file_info((int)a1,

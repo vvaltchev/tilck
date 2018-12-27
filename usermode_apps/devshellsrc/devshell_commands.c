@@ -657,13 +657,6 @@ static void dump_coverage_files(void)
    unsigned fsize;
    const int fn = tilck_get_num_gcov_files(); // this syscall cannot fail
 
-   buf = malloc(64 * KB);
-
-   if (!buf) {
-      printf("[ERROR] Out-of-memory\n");
-      exit(1);
-   }
-
    printf("** GCOV gcda files **\n");
 
    for (int i = 0; i < fn; i++) {
@@ -672,6 +665,13 @@ static void dump_coverage_files(void)
 
       if (rc != 0) {
          printf("[ERROR] tilck_get_gcov_file_info() failed with %d\n", rc);
+         exit(1);
+      }
+
+      buf = malloc(fsize);
+
+      if (!buf) {
+         printf("[ERROR] Out-of-memory\n");
          exit(1);
       }
 
@@ -694,9 +694,8 @@ static void dump_coverage_files(void)
       }
 
       printf("\n");
+      free(buf);
    }
-
-   free(buf);
 }
 
 void run_cmd(cmd_func_type func, int argc, char **argv)
@@ -704,8 +703,6 @@ void run_cmd(cmd_func_type func, int argc, char **argv)
    int exit_code = func(argc, argv);
 
    if (dump_coverage) {
-
-      sleep(2);
       dump_coverage_files();
       tilck_debug_qemu_poweroff();
    }

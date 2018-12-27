@@ -242,7 +242,7 @@ static u32 compute_gcda_file_size(const struct gcov_info *info)
 // ----------------------------------------------------------------
 
 
-int sys_gcov_dump_coverage(void)
+int sys_gcov_get_file_count(void)
 {
    return files_count;
 }
