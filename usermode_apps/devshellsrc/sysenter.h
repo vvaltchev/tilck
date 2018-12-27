@@ -78,6 +78,47 @@ do_sysenter_call3(int syscall, void *arg1, void *arg2, void *arg3)
    return ret;
 }
 
+static inline int
+do_sysenter_call4(int syscall, void *a1, void *a2, void *a3, void *a4)
+{
+   int ret;
+
+   __asm__ volatile ("pushl $1f\n\t"
+                     "pushl %%ecx\n\t"
+                     "pushl %%edx\n\t"
+                     "pushl %%ebp\n\t"
+                     "movl %%esp, %%ebp\n\t"
+                     "sysenter\n\t"
+                     "1:\n\t"
+                     : "=a" (ret)
+                     : "a" (syscall), "b" (a1), "c" (a2), "d" (a3), "S" (a4)
+                     : "memory", "cc");
+
+   return ret;
+}
+
+static inline int
+do_sysenter_call5(int syscall,
+                  void *a1, void *a2, void *a3, void *a4, void *a5)
+{
+   int ret;
+
+   __asm__ volatile ("pushl $1f\n\t"
+                     "pushl %%ecx\n\t"
+                     "pushl %%edx\n\t"
+                     "pushl %%ebp\n\t"
+                     "movl %%esp, %%ebp\n\t"
+                     "sysenter\n\t"
+                     "1:\n\t"
+                     : "=a" (ret)
+                     : "a" (syscall),
+                       "b" (a1), "c" (a2), "d" (a3), "S" (a4), "D" (a5)
+                     : "memory", "cc");
+
+   return ret;
+}
+
+
 #define sysenter_call0(n) \
    do_sysenter_call0((n))
 
@@ -89,3 +130,14 @@ do_sysenter_call3(int syscall, void *arg1, void *arg2, void *arg3)
 
 #define sysenter_call3(n, a1, a2, a3) \
    do_sysenter_call3((n), (void*)(a1), (void*)(a2), (void*)(a3))
+
+#define sysenter_call4(n, a1, a2, a3, a4) \
+   do_sysenter_call4((n), (void*)(a1), (void*)(a2), (void*)(a3), (void*)(a4))
+
+#define sysenter_call5(n, a1, a2, a3, a4, a5) \
+   do_sysenter_call5((n),                     \
+                     (void*)(a1),             \
+                     (void*)(a2),             \
+                     (void*)(a3),             \
+                     (void*)(a4),             \
+                     (void*)(a5))
