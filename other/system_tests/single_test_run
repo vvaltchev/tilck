@@ -80,14 +80,21 @@ def RunTheVM():
 
       print "Running the VM with shell command '{0}'...".format(TEST_NAME)
 
-      args += ['-initrd', FATPART_FILE,
-               '-append',
+      args += ['-initrd', FATPART_FILE, '-append',
                '-cmd /sbin/init -- {0} -c {1}'.format(opts, TEST_NAME)]
 
    elif TEST_TYPE == 'selftest':
 
       print "Running the VM with selftest '{0}'...".format(TEST_NAME)
-      args += ['-append', opts + '-s {0}'.format(TEST_NAME)]
+
+      # New way of running self tests: asking the devshell to perform a
+      # a tilck_testcmd() syscall for running any given self-test.
+
+      args += ['-initrd', FATPART_FILE, '-append',
+               '-cmd /sbin/init -- {0} -c selftest {1}'.format(opts, TEST_NAME)]
+
+      # Old way of running self tests: direct option on kernel's cmdline.
+      # args += ['-append', opts + '-s {0}'.format(TEST_NAME)]
 
    else:
       sys.exit(1)
