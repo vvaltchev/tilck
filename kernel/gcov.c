@@ -2,7 +2,9 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/user.h>
 
 typedef u64 gcov_type;
 typedef u32 gcov_unsigned_t;
@@ -76,7 +78,15 @@ struct gcov_info
 static struct gcov_info *gi_list;
 static int files_count;
 
-#ifndef KERNEL_TEST
+#if KERNEL_GCOV || defined(KERNEL_TEST)
+   #define FILE_ARRAY_SIZE 1024
+#else
+   #define FILE_ARRAY_SIZE 1
+#endif
+
+static struct gcov_info *files_array[FILE_ARRAY_SIZE];
+
+#if !defined(KERNEL_TEST)
 
 void __gcov_merge_add(gcov_type *counters, u32 n) { }
 void __gcov_exit(void) { }
@@ -90,7 +100,7 @@ void __gcov_init(struct gcov_info *info)
       gi_list = info;
    }
 
-   files_count++;
+   files_array[files_count++] = info;
 }
 
 #endif
@@ -196,12 +206,40 @@ void gcov_dump_coverage(void)
    }
 }
 
+// ----------------------------------------------------------------
+
+static u32 compute_gcda_file_size(struct gcov_info *gi)
+{
+   // TODO: complete the impl
+   return 0;
+}
+
+// ----------------------------------------------------------------
+
+
 int sys_gcov_dump_coverage(void)
 {
    return files_count;
 }
 
-int sys_gcov_get_file_info(int fn, char *user_name_buf, u32 *user_size)
+int sys_gcov_get_file_info(int fn, char *user_fname_buf, u32 *user_fsize)
 {
-   return -EINVAL;
+   if (fn < 0 || fn >= files_count)
+      return -EINVAL;
+
+   int rc;
+   struct gcov_info *gi = files_array[fn];
+
+   rc = copy_to_user(user_fname_buf, gi->filename, strlen(gi->filename) + 1);
+
+   if (rc != 0)
+      return -EFAULT;
+
+   u32 s = compute_gcda_file_size(gi);
+   rc = copy_to_user(user_fsize, &s, sizeof(s));
+
+   if (rc != 0)
+      return -EFAULT;
+
+   return 0;
 }

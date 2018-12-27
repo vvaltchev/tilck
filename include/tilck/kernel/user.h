@@ -10,7 +10,6 @@ static inline bool user_out_of_range(const void *user_ptr, size_t n)
 
 int copy_from_user(void *dest, const void *user_ptr, size_t n);
 int copy_to_user(void *user_ptr, const void *src, size_t n);
-int check_user_ptr_size_writable(void *user_ptr);
 
 int copy_str_from_user(void *dest,
                        const void *user_ptr,
