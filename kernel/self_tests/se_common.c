@@ -16,8 +16,8 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/self_tests/self_tests.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/gcov.h>
 
-void gcov_dump_coverage(void);
 
 void regular_self_test_end(void)
 {
