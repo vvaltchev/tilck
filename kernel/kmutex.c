@@ -138,8 +138,6 @@ void kmutex_unlock(kmutex *m)
 
       list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
 
-         ASSERT(pos->state == TASK_STATE_SLEEPING);
-
          if (wait_obj_get_ptr(&pos->wobj) != m)
             continue;
 
@@ -154,7 +152,10 @@ void kmutex_unlock(kmutex *m)
                m->lock_count++;
 
             wait_obj_reset(&pos->wobj);
-            task_change_state(pos, TASK_STATE_RUNNABLE);
+
+            if (pos->state == TASK_STATE_SLEEPING)
+               task_change_state(pos, TASK_STATE_RUNNABLE);
+
             enable_interrupts(&var);
             break;
          }
