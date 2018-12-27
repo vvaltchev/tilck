@@ -415,8 +415,6 @@ NORETURN sptr sys_exit(int exit_status)
 
    list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
 
-      ASSERT(pos->state == TASK_STATE_SLEEPING);
-
       void *woptr = wait_obj_get_ptr(&pos->wobj);
 
       if (woptr == curr || (pos->pid == cppid && woptr == (void *)-1)) {
@@ -425,9 +423,12 @@ NORETURN sptr sys_exit(int exit_status)
          disable_interrupts(&var);
          {
             if (wait_obj_get_ptr(&pos->wobj) == woptr) {
+
                ASSERT(pos->wobj.type == WOBJ_TASK);
                wait_obj_reset(&pos->wobj);
-               task_change_state(pos, TASK_STATE_RUNNABLE);
+
+               if (pos->state == TASK_STATE_SLEEPING)
+                  task_change_state(pos, TASK_STATE_RUNNABLE);
             }
          }
          enable_interrupts(&var);

@@ -353,7 +353,7 @@ void schedule(int curr_irq)
 
    list_for_each(pos, temp, &runnable_tasks_list, runnable_node) {
 
-      ASSERT(pos->state == TASK_STATE_RUNNABLE);
+      ASSERT(pos->state == TASK_STATE_RUNNABLE); // TODO: is this really safe?
 
       if (pos == idle_task || pos == get_curr_task())
          continue;
