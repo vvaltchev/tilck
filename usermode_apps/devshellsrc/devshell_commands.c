@@ -649,25 +649,54 @@ int cmd_help(int argc, char **argv)
    return 0;
 }
 
-void debug_dump_coverage_files(void)
+static void dump_coverage_files(void)
 {
-   const int fn = tilck_get_num_gcov_files();
-
    int rc;
+   void *buf;
+   char fname[256];
    unsigned fsize;
-   char buf[256];
+   const int fn = tilck_get_num_gcov_files(); // this syscall cannot fail
+
+   buf = malloc(64 * KB);
+
+   if (!buf) {
+      printf("[ERROR] Out-of-memory\n");
+      exit(1);
+   }
+
+   printf("** GCOV gcda files **\n");
 
    for (int i = 0; i < fn; i++) {
 
-      rc = tilck_get_gcov_file_info(i, buf, sizeof(buf), &fsize);
+      rc = tilck_get_gcov_file_info(i, fname, sizeof(fname), &fsize);
 
       if (rc != 0) {
-         printf("[ERROR] tilck_get_gcov_file_info failed with %d\n", rc);
+         printf("[ERROR] tilck_get_gcov_file_info() failed with %d\n", rc);
          exit(1);
       }
 
-      printf("file[%d]: size: %u, path: %s\n", i, fsize, buf);
+      printf("\nfile: %s\n", fname);
+
+      rc = tilck_get_gcov_file(i, buf);
+
+      if (rc != 0) {
+         printf("[ERROR] tilck_get_gcov_file() failed with %d\n", rc);
+         exit(1);
+      }
+
+      unsigned *ptr = buf;
+      for (unsigned w = 0; w < fsize / 4; w++) {
+
+         if (w && !(w % 6))
+            printf("\n");
+
+         printf("0x%08x ", ptr[w]);
+      }
+
+      printf("\n");
    }
+
+   free(buf);
 }
 
 void run_cmd(cmd_func_type func, int argc, char **argv)
@@ -676,14 +705,9 @@ void run_cmd(cmd_func_type func, int argc, char **argv)
 
    if (dump_coverage) {
 
-      int rc = tilck_dump_coverage();
-
-      if (rc != 0) {
-         printf("[ERROR] Tilck cmd dump coverage failed with: %d\n", rc);
-         exit(1);
-      }
-
-      //debug_dump_coverage_files();
+      sleep(2);
+      dump_coverage_files();
+      tilck_debug_qemu_poweroff();
    }
 
    exit(exit_code);

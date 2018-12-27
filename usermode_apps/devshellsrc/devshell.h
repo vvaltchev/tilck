@@ -59,3 +59,9 @@ tilck_get_gcov_file(int fn, char *buf)
                          TILCK_TESTCMD_GCOV_GET_FILE,
                          fn, buf);
 }
+
+static inline int
+tilck_debug_qemu_poweroff(void)
+{
+   return sysenter_call1(TILCK_TESTCMD_SYSCALL, TILCK_TESTCMD_QEMU_POWEROFF);
+}

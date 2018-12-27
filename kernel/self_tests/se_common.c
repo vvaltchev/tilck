@@ -19,8 +19,9 @@
 
 void regular_self_test_end(void)
 {
-   printk("DEBUG QEMU turn off machine\n");
-   debug_qemu_turn_off_machine();
+   printk("Self-test completed.\n");
+   //printk("DEBUG QEMU turn off machine\n");
+   //debug_qemu_turn_off_machine();
 }
 
 void simple_test_kthread(void *arg)

@@ -8,6 +8,7 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/gcov.h>
+#include <tilck/kernel/debug_utils.h>
 
 sptr sys_rt_sigprocmask(/* args ignored at the moment */)
 {
@@ -104,6 +105,10 @@ sptr sys_tilck_cmd(enum tilck_testcmd_type cmd,
 
       case TILCK_TESTCMD_GCOV_GET_FILE:
          return sys_gcov_get_file((int)a1, (char *)a2);
+
+      case TILCK_TESTCMD_QEMU_POWEROFF:
+         debug_qemu_turn_off_machine();
+         return 0;
 
       default:
          break;

@@ -268,11 +268,13 @@ int sys_gcov_get_file_info(int fn,
    if (rc != 0)
       return -EFAULT;
 
-   u32 s = compute_gcda_file_size(gi);
-   rc = copy_to_user(user_fsize, &s, sizeof(s));
+   if (user_fsize != NULL) {
+      u32 s = compute_gcda_file_size(gi);
+      rc = copy_to_user(user_fsize, &s, sizeof(s));
 
-   if (rc != 0)
-      return -EFAULT;
+      if (rc != 0)
+         return -EFAULT;
+   }
 
    return 0;
 }
