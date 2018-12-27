@@ -101,6 +101,10 @@ sptr sys_tilck_cmd(enum tilck_testcmd_type cmd,
                                        (char *)a2,
                                        (u32) a3,
                                        (u32 *)a4);
+
+      case TILCK_TESTCMD_GCOV_GET_FILE:
+         return sys_gcov_get_file((int)a1, (char *)a2);
+
       default:
          break;
    }

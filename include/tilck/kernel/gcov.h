@@ -9,3 +9,4 @@ int sys_gcov_get_file_info(int fn,
                            char *user_fname_buf,
                            u32 fname_buf_size,
                            u32 *user_fsize);
+int sys_gcov_get_file(int fn, char *user_buf);

@@ -3,8 +3,10 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
+#include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
+#include <tilck/kernel/fault_resumable.h>
 
 typedef u64 gcov_type;
 typedef u32 gcov_unsigned_t;
@@ -268,6 +270,66 @@ int sys_gcov_get_file_info(int fn,
 
    u32 s = compute_gcda_file_size(gi);
    rc = copy_to_user(user_fsize, &s, sizeof(s));
+
+   if (rc != 0)
+      return -EFAULT;
+
+   return 0;
+}
+
+
+static void gcov_dump_file_to_buf(const struct gcov_info *gi, void *buf)
+{
+   const struct gcov_fn_info *func;
+   const struct gcov_ctr_info *counters;
+   u32 *ptr = buf;
+
+   // Header
+   *ptr++ = GCOV_DATA_MAGIC;
+   *ptr++ = gi->version;
+   *ptr++ = gi->stamp;
+
+   for (u32 i = 0; i < gi->n_functions; i++) {
+
+      func = gi->functions[i];
+
+      *ptr++ = GCOV_TAG_FUNCTION;
+      *ptr++ = GCOV_TAG_FUNCTION_LENGTH;
+      *ptr++ = func->ident;
+      *ptr++ = func->lineno_checksum;
+      *ptr++ = func->cfg_checksum;
+
+      counters = func->ctrs;
+
+      for (u32 j = 0; j < GCOV_COUNTERS; j++) {
+
+         if (!gi->merge[j])
+            continue; /* no merge func -> the counter is NOT used */
+
+         *ptr++ = GCOV_TAG_FOR_COUNTER(j);
+         *ptr++ = GCOV_TAG_COUNTER_LENGTH(counters->num);
+
+         for (u32 k = 0; k < counters->num; k++) {
+            u64 val = counters->values[j];
+            *ptr++ = val & 0xffffffffull;
+            *ptr++ = val >> 32;
+         }
+
+         counters++;
+
+      } // for (u32 j = 0; j < GCOV_COUNTERS; j++)
+   } // for (u32 i = 0; i < info->n_functions; i++)
+}
+
+int sys_gcov_get_file(int fn, char *user_buf)
+{
+   if (fn < 0 || fn >= files_count)
+      return -EINVAL;
+
+   int rc;
+   const struct gcov_info *gi = files_array[fn];
+
+   rc = fault_resumable_call(~0, &gcov_dump_file_to_buf, 2, gi, user_buf);
 
    if (rc != 0)
       return -EFAULT;

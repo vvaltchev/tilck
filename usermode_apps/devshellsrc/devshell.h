@@ -51,3 +51,11 @@ tilck_get_gcov_file_info(int fn,
                          TILCK_TESTCMD_GCOV_FILE_INFO,
                          fn, fname, fname_size, fsize);
 }
+
+static inline int
+tilck_get_gcov_file(int fn, char *buf)
+{
+   return sysenter_call3(TILCK_TESTCMD_SYSCALL,
+                         TILCK_TESTCMD_GCOV_GET_FILE,
+                         fn, buf);
+}
