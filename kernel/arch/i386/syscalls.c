@@ -74,6 +74,8 @@ sptr sys_tilck_run_selftest(const char *user_selftest)
    if (rc != 0)
       return -EFAULT;
 
+   printk("Running function: %s()\n", buf);
+
    uptr addr = find_addr_of_symbol(buf);
 
    if (!addr)
