@@ -74,7 +74,7 @@ def RunTheVM():
    opts = ''
 
    if dump_coverage:
-      opts += '-dcov'
+      opts += '-dcov '
 
    if TEST_TYPE == 'shellcmd':
 
@@ -87,7 +87,7 @@ def RunTheVM():
    elif TEST_TYPE == 'selftest':
 
       print "Running the VM with selftest '{0}'...".format(TEST_NAME)
-      args += ['-append', opts + ' -s {0}'.format(TEST_NAME)]
+      args += ['-append', opts + '-s {0}'.format(TEST_NAME)]
 
    else:
       sys.exit(1)
@@ -99,17 +99,19 @@ def RunTheVM():
 
       stripped = line.rstrip()
 
+      if stripped and stripped[0] == '[':
+         m = re.search(r'\[init\] the devshell exited with status: ([0-9]+)',
+                     stripped)
+
+         if m:
+            shell_exit_code = int(m.group(1))
+            continue
+
       if not dumping_gcda_files:
 
          output += line
          print(stripped)
 
-         m = re.search(r'\[init\] the devshell exited with status: ([0-9]+)',
-                       stripped)
-
-         if m:
-            shell_exit_code = int(m.group(1))
-            continue
       else:
 
          if not stripped:
@@ -162,7 +164,7 @@ def RunTheVM():
 
 
 
-   print "-"*80
+   print("-" * 80)
 
 ###############################################################################
 # MAIN

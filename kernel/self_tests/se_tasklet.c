@@ -54,6 +54,8 @@ void selftest_tasklet_short(void)
    do {
       added = enqueue_tasklet0(0, &end_test);
    } while (!added);
+
+   regular_self_test_end();
 }
 
 void selftest_tasklet_perf_short(void)

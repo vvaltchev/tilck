@@ -87,12 +87,18 @@ sptr sys_tilck_run_selftest(const char *user_selftest)
    return 0;
 }
 
+void gcov_dump_coverage(void);
+
 sptr sys_tilck_cmd(enum tilck_testcmd_type cmd, uptr arg1, uptr arg2)
 {
    switch (cmd) {
 
       case TILCK_TESTCMD_RUN_SELFTEST:
          return sys_tilck_run_selftest((const char *)arg1);
+
+      case TILCK_TESTCMD_DUMP_COVERAGE:
+         gcov_dump_coverage();
+         return 0;
 
       default:
          break;

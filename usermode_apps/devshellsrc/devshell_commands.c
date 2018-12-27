@@ -651,17 +651,28 @@ int cmd_help(int argc, char **argv)
    return 0;
 }
 
-void run_if_known_command(const char *cmd, int argc, char **argv)
+void run_cmd(cmd_func_type func, int argc, char **argv)
 {
-   for (int i = 0; i < ARRAY_SIZE(cmds_table); i++) {
-      if (!strcmp(cmds_table[i].name, cmd)) {
+   int exit_code = func(argc, argv);
 
-         int exit_code = cmds_table[i].fun(argc, argv);
+   if (dump_coverage) {
 
-         if (dump_coverage)
-            printf("[debug] --- DUMP COVERAGE ---\n");
+      int rc =
+         sysenter_call1(TILCK_TESTCMD_SYSCALL,
+                        TILCK_TESTCMD_DUMP_COVERAGE);
 
-         exit(exit_code);
+      if (rc != 0) {
+         printf("[ERROR] Tilck cmd dump coverage failed with: %d\n", rc);
+         exit(1);
       }
    }
+
+   exit(exit_code);
+}
+
+void run_if_known_command(const char *cmd, int argc, char **argv)
+{
+   for (int i = 0; i < ARRAY_SIZE(cmds_table); i++)
+      if (!strcmp(cmds_table[i].name, cmd))
+         run_cmd(cmds_table[i].fun, argc, argv);
 }
