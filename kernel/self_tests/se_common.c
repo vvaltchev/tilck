@@ -59,10 +59,6 @@ void simple_test_kthread(void *arg)
    }
 
    printk("[kthread] completed\n");
-
-   if ((uptr)arg == 1) {
-      regular_self_test_end();
-   }
 }
 
 void selftest_kthread_med(void)
@@ -73,6 +69,7 @@ void selftest_kthread_med(void)
       panic("Unable to create the simple test kthread");
 
    join_kernel_thread(ti->tid);
+   regular_self_test_end();
 }
 
 void selftest_kernel_sleep_short()
