@@ -73,6 +73,7 @@ struct gcov_info
  */
 
 static struct gcov_info *gi_list;
+static int files_count;
 
 #ifndef KERNEL_TEST
 
@@ -87,6 +88,8 @@ void __gcov_init(struct gcov_info *info)
       info->next = gi_list;
       gi_list = info;
    }
+
+   files_count++;
 }
 
 #endif
@@ -190,4 +193,9 @@ void gcov_dump_coverage(void)
       dump_gcda(ptr);
       ptr = ptr->next;
    }
+}
+
+int gcov_get_num_files(void)
+{
+   return files_count;
 }

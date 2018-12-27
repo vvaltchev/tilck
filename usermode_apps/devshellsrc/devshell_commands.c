@@ -13,8 +13,6 @@
 #include <sys/syscall.h>
 #include <sys/mman.h>
 
-#include <tilck/common/syscalls.h>
-
 #include "devshell.h"
 #include "sysenter.h"
 
@@ -657,9 +655,7 @@ void run_cmd(cmd_func_type func, int argc, char **argv)
 
    if (dump_coverage) {
 
-      int rc =
-         sysenter_call1(TILCK_TESTCMD_SYSCALL,
-                        TILCK_TESTCMD_DUMP_COVERAGE);
+      int rc = tilck_dump_coverage();
 
       if (rc != 0) {
          printf("[ERROR] Tilck cmd dump coverage failed with: %d\n", rc);

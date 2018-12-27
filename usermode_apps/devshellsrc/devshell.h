@@ -3,6 +3,9 @@
 #pragma once
 #include <stdbool.h>
 
+#include <tilck/common/syscalls.h>
+#include "sysenter.h"
+
 #define KB (1024)
 #define MB (1024 * 1024)
 #define RDTSC() __builtin_ia32_rdtsc()
@@ -23,3 +26,15 @@ typedef int (*cmd_func_type)(int argc, char **argv);
 void run_if_known_command(const char *cmd, int argc, char **argv);
 void dump_list_of_commands(void);
 int read_command(char *buf, int buf_size);
+
+static inline int tilck_dump_coverage(void)
+{
+   return sysenter_call1(TILCK_TESTCMD_SYSCALL,
+                         TILCK_TESTCMD_DUMP_COVERAGE);
+}
+
+static inline int tilck_get_num_gcov_files(void)
+{
+   return sysenter_call1(TILCK_TESTCMD_SYSCALL,
+                         TILCK_TESTCMD_GET_NUM_GCOV_FILES);
+}
