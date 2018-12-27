@@ -649,6 +649,27 @@ int cmd_help(int argc, char **argv)
    return 0;
 }
 
+void debug_dump_coverage_files(void)
+{
+   const int fn = tilck_get_num_gcov_files();
+
+   int rc;
+   unsigned fsize;
+   char buf[256];
+
+   for (int i = 0; i < fn; i++) {
+
+      rc = tilck_get_gcov_file_info(i, buf, sizeof(buf), &fsize);
+
+      if (rc != 0) {
+         printf("[ERROR] tilck_get_gcov_file_info failed with %d\n", rc);
+         exit(1);
+      }
+
+      printf("file[%d]: size: %u, path: %s\n", i, fsize, buf);
+   }
+}
+
 void run_cmd(cmd_func_type func, int argc, char **argv)
 {
    int exit_code = func(argc, argv);
@@ -661,6 +682,8 @@ void run_cmd(cmd_func_type func, int argc, char **argv)
          printf("[ERROR] Tilck cmd dump coverage failed with: %d\n", rc);
          exit(1);
       }
+
+      //debug_dump_coverage_files();
    }
 
    exit(exit_code);

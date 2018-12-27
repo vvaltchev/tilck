@@ -2,6 +2,8 @@
 
 #pragma once
 #include <stdbool.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
 #include <tilck/common/syscalls.h>
 #include "sysenter.h"
@@ -37,4 +39,15 @@ static inline int tilck_get_num_gcov_files(void)
 {
    return sysenter_call1(TILCK_TESTCMD_SYSCALL,
                          TILCK_TESTCMD_GCOV_GET_NUM_FILES);
+}
+
+static inline int
+tilck_get_gcov_file_info(int fn,
+                         char *fname,
+                         unsigned fname_size,
+                         unsigned *fsize)
+{
+   return sysenter_call5(TILCK_TESTCMD_SYSCALL,
+                         TILCK_TESTCMD_GCOV_FILE_INFO,
+                         fn, fname, fname_size, fsize);
 }
