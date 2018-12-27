@@ -36,5 +36,5 @@ static inline int tilck_dump_coverage(void)
 static inline int tilck_get_num_gcov_files(void)
 {
    return sysenter_call1(TILCK_TESTCMD_SYSCALL,
-                         TILCK_TESTCMD_GET_NUM_GCOV_FILES);
+                         TILCK_TESTCMD_GCOV_GET_NUM_FILES);
 }

@@ -16,14 +16,9 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/self_tests/self_tests.h>
 #include <tilck/kernel/cmdline.h>
-#include <tilck/kernel/gcov.h>
-
 
 void regular_self_test_end(void)
 {
-   if (dump_coverage)
-      gcov_dump_coverage();
-
    printk("DEBUG QEMU turn off machine\n");
    debug_qemu_turn_off_machine();
 }

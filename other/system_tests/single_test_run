@@ -94,7 +94,7 @@ def RunTheVM():
                '-cmd /sbin/init -- {0} -c selftest {1}'.format(opts, TEST_NAME)]
 
       # Old way of running self tests: direct option on kernel's cmdline.
-      # args += ['-append', opts + '-s {0}'.format(TEST_NAME)]
+      # args += ['-append', '-s {0}'.format(TEST_NAME)]
 
    else:
       sys.exit(1)

@@ -3,4 +3,6 @@
 #pragma once
 
 void gcov_dump_coverage(void);
-int gcov_get_num_files(void);
+
+int sys_gcov_dump_coverage(void);
+int sys_gcov_get_file_info(int fn, char *user_name_buf, u32 *user_size);

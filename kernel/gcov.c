@@ -2,6 +2,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/kernel/errno.h>
 
 typedef u64 gcov_type;
 typedef u32 gcov_unsigned_t;
@@ -195,7 +196,12 @@ void gcov_dump_coverage(void)
    }
 }
 
-int gcov_get_num_files(void)
+int sys_gcov_dump_coverage(void)
 {
    return files_count;
+}
+
+int sys_gcov_get_file_info(int fn, char *user_name_buf, u32 *user_size)
+{
+   return -EINVAL;
 }

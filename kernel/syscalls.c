@@ -81,20 +81,22 @@ sptr sys_tilck_run_selftest(const char *user_selftest)
    return 0;
 }
 
-
-sptr sys_tilck_cmd(enum tilck_testcmd_type cmd, uptr arg1, uptr arg2)
+sptr sys_tilck_cmd(enum tilck_testcmd_type cmd, uptr a1, uptr a2, uptr a3)
 {
    switch (cmd) {
 
       case TILCK_TESTCMD_RUN_SELFTEST:
-         return sys_tilck_run_selftest((const char *)arg1);
+         return sys_tilck_run_selftest((const char *)a1);
 
       case TILCK_TESTCMD_DUMP_COVERAGE: // TODO: drop this!
          gcov_dump_coverage();
          return 0;
 
-      case TILCK_TESTCMD_GET_NUM_GCOV_FILES:
-         return gcov_get_num_files();
+      case TILCK_TESTCMD_GCOV_GET_NUM_FILES:
+         return sys_gcov_dump_coverage();
+
+      case TILCK_TESTCMD_GCOV_FILE_INFO:
+         return sys_gcov_get_file_info((int)a1, (char *)a2, (u32 *)a3);
 
       default:
          break;

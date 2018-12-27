@@ -9,7 +9,6 @@
 
 const char *cmd_args[MAX_CMD_ARGS] = { "/sbin/init", [1 ... 15] = NULL };
 void (*self_test_to_run)(void);
-bool dump_coverage;
 
 static enum {
 
@@ -71,11 +70,6 @@ parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
 
    if (!strcmp(arg, "-s")) {
       kernel_arg_parser_state = SET_SELFTEST;
-      return;
-   }
-
-   if (!strcmp(arg, "-dcov")) {
-      dump_coverage = true;
       return;
    }
 
