@@ -32,10 +32,10 @@ add_usermode_app(termtest)
 add_usermode_app(fbtest)
 add_usermode_app(devshell "devshellsrc/")
 
-if (EXISTS "${TCROOT}/ncurses_install/lib/libncurses_g.a")
+if (EXISTS "${TCROOT}/ncurses/install/lib/libncurses_g.a")
    add_usermode_app(ncapp)
-   target_include_directories(ncapp PUBLIC ${TCROOT}/ncurses_install/include)
-   target_link_libraries(ncapp ${TCROOT}/ncurses_install/lib/libncurses_g.a)
+   target_include_directories(ncapp PUBLIC ${TCROOT}/ncurses/install/include)
+   target_link_libraries(ncapp ${TCROOT}/ncurses/install/lib/libncurses_g.a)
 endif()
 
 # This macro makes the integration with extra apps much easier.

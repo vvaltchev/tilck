@@ -406,11 +406,11 @@ function build_ncurses {
 
       tar xfz cache/$tarname
       mv ncurses-$ver ncurses
-      mkdir -p ncurses_install
+      mkdir -p ncurses/install
 
       cd ncurses
 
-      opts1="--host=${ARCH_SHORT}-pc-linux-gnu --prefix=$TC/ncurses_install"
+      opts1="--host=${ARCH_SHORT}-pc-linux-gnu --prefix=$TC/ncurses/install"
       opts2="--datarootdir=/usr/share --without-cxx --without-cxx-binding"
       opts3="--without-ada --without-manpages --without-dlsym"
 
