@@ -83,7 +83,7 @@ endmacro()
 
 macro(set_cross_compiler)
 
-   if (${USE_SYSCC})
+   if (USE_SYSCC)
 
       if (${ARCH} STREQUAL "i386")
          set(CMAKE_C_FLAGS "${ARCH_GCC_FLAGS}")
@@ -115,7 +115,7 @@ endmacro()
 
 macro(set_cross_compiler_userapps)
 
-   if (${USE_SYSCC})
+   if (USE_SYSCC)
 
       set(CMAKE_C_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-gcc")
       set(CMAKE_CXX_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-g++")

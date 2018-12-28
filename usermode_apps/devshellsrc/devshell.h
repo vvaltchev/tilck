@@ -28,6 +28,7 @@ typedef int (*cmd_func_type)(int argc, char **argv);
 void run_if_known_command(const char *cmd, int argc, char **argv);
 void dump_list_of_commands(void);
 int read_command(char *buf, int buf_size);
+void dump_coverage_files(void);
 
 static inline int tilck_dump_coverage(void)
 {

@@ -14,6 +14,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g -DUSERMODE_APP")
 
 add_custom_target(usermode_apps)
 include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${TCROOT}/zlib/install/include)
+
 
 # add_usermode_app() has to be a macro and not a function because add_executable
 # does not accept variables. An unescaped literal is required. Therefore, we
@@ -31,6 +33,7 @@ add_usermode_app(init)
 add_usermode_app(termtest)
 add_usermode_app(fbtest)
 add_usermode_app(devshell "devshellsrc/")
+target_link_libraries(devshell ${TCROOT}/zlib/install/lib/libz.a)
 
 if (EXISTS "${TCROOT}/ncurses/install/lib/libncurses_g.a")
    add_usermode_app(ncapp)
