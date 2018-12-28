@@ -87,7 +87,7 @@ function build_lcov {
 
       show_work_on_component_msg "LCOV"
 
-      url="https://github.com/linux-test-project/lcov.git"
+      local url="https://github.com/linux-test-project/lcov.git"
       git clone --branch v1.13 --depth 1 "$url"
       cd lcov
    else
@@ -235,11 +235,13 @@ function build_gnuefi {
 
       show_work_on_component_msg "GNU-EFI"
 
-      url="https://github.com/vvaltchev/gnu-efi-fork.git"
+      local url="https://github.com/vvaltchev/gnu-efi-fork.git"
       git clone --branch 3.0.8 --depth 1 "$url" gnu-efi
       cd gnu-efi
       run_command2 "make ARCH=${BUILD_ARCH} -j" build_${BUILD_ARCH}.log
-      run_command2 "make ARCH=${ARCH_EFI} prefix=${ARCH_GCC_TC}-linux- -j" build_${ARCH_EFI}.log
+
+      local arch_flags="ARCH=${ARCH_EFI} prefix=${ARCH_GCC_TC}-linux-"
+      run_command2 "make $arch_flags -j" build_${ARCH_EFI}.log
 
    else
       show_skip_component_msg "GNU-EFI"
