@@ -136,6 +136,7 @@ all_funcs_list+=(build_libmusl)
 function build_libmusl {
 
    pushd .
+   local saved_path="$PATH"
 
    if ! [ -d musl ]; then
 
@@ -153,7 +154,6 @@ function build_libmusl {
 
          download_x86_gcc_glibc_toolchain
          tc="$TC/${X86_TOOLCHAIN_DIR_NAME}_glibc/bin"
-         saved_path="$PATH"
          export PATH="$tc:$PATH"
 
       else
@@ -187,14 +187,12 @@ function build_libmusl {
       ln -s /usr/include/asm .
       ln -s /usr/include/asm-generic .
 
-      export PATH="$saved_path"
-
    else
       show_skip_component_msg "LIBMUSL"
    fi
 
+   export PATH="$saved_path"
    popd
-
 }
 
 ##################################
