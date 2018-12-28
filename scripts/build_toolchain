@@ -437,7 +437,7 @@ function build_zlib {
       git clone --branch v1.2.11 --depth 1 https://github.com/madler/zlib
       cd zlib
 
-      local p="$TC/zlib-install"
+      local p="$TC/zlib/install"
       CROSS_PREFIX="${ARCH_GCC_TC}-linux-" ./configure --prefix="$p" --static
       run_command2 "make -j" build.log
       run_command2 "make install" install.log
