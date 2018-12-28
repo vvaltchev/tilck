@@ -427,6 +427,28 @@ function build_ncurses {
    popd
 }
 
+all_funcs_list+=(build_zlib)
+function build_zlib {
+
+   pushd .
+
+   if ! [ -d zlib ]; then
+
+      git clone --branch v1.2.11 --depth 1 https://github.com/madler/zlib
+      cd zlib
+
+      local p="$TC/zlib-install"
+      CROSS_PREFIX="${ARCH_GCC_TC}-linux-" ./configure --prefix="$p" --static
+      run_command2 "make -j" build.log
+      run_command2 "make install" install.log
+
+   else
+      show_skip_component_msg "ZLIB"
+   fi
+
+   popd
+}
+
 ##########################################################
 #
 # MAIN
@@ -454,6 +476,7 @@ default_funcs+=(download_gcc_toolchain)
 default_funcs+=(download_cmake)
 default_funcs+=(build_gnuefi)
 default_funcs+=(build_mtools)
+default_funcs+=(build_zlib)
 
 if [ -z "$NO_BUSYBOX" ]; then
    default_funcs+=(build_busybox)
