@@ -7,10 +7,39 @@
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 
+# Constants
+BUILD_ARCH="x86_64" # the only arch accepted for the build machine
 X86_TOOLCHAIN_DIR_NAME="x86_gcc_toolchain"
+
+# Arch-variables
+
+if [[ "$ARCH" == "" ]]; then
+   export ARCH="i386" # default target arch
+fi
+
+if [[ "$ARCH" == "i386" ]]; then
+
+   ARCH_SHORT="x86"
+   ARCH_FAMILY="generic_x86"
+   ARCH_ELF_NAME="elf32-i386"
+   ARCH_LD_OUTPUT="elf_i386"
+   ARCH_EFI="ia32"
+   ARCH_GCC_TC="i686"
+   ARCH_GCC_FLAGS="-m32 -march=$ARCH_GCC_TC"
+   ARCH_TC_DIR="$X86_TOOLCHAIN_DIR_NAME"
+
+else
+   echo "Architecture '$ARCH' not supported."
+   exit 1
+fi
+
+echo
+echo "ARCH=$ARCH"
+echo
 
 all_funcs_list=()
 
+# Source files to include
 
 source $MAIN_DIR/scripts/bash_includes/script_utils
 source $MAIN_DIR/scripts/bash_includes/tc/install_pkgs
@@ -103,22 +132,20 @@ function build_gtest_arch {
    pushd .
 
    if ! [ -d googletest ]; then
-      url="https://github.com/google/googletest.git"
+      local url="https://github.com/google/googletest.git"
       git clone --branch release-1.8.0 --depth 1 "$url"
    fi
 
    if ! [ -d gtest_arch ]; then
 
       show_work_on_component_msg "GOOGLE TEST (target arch)"
-      download_x86_gcc_glibc_toolchain
+      download_gcc_glibc_toolchain
 
       mkdir gtest_arch
       cd gtest_arch
 
-      tc="$TC/${X86_TOOLCHAIN_DIR_NAME}_glibc/bin"
-      cc="$tc/i686-linux-gcc"
-      cxx="$tc/i686-linux-g++"
-
+      local cc="${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcc"
+      local cxx="${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-g++"
       CC=$cc CXX=$cxx $CMAKE -DCMAKE_BUILD_TYPE=Debug ../googletest/googletest
       run_command2 "make -j" build.log
    else
@@ -152,16 +179,15 @@ function build_libmusl {
          # (the pre-compiled toolchain uses an optimized non-debug version of
          # libmusl).
 
-         download_x86_gcc_glibc_toolchain
-         tc="$TC/${X86_TOOLCHAIN_DIR_NAME}_glibc/bin"
-         export PATH="$tc:$PATH"
+         download_gcc_glibc_toolchain
+         export PATH="$GCC_TOOLCHAIN_GLIBC:$PATH"
 
       else
 
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
-         export CC="$MAIN_DIR/scripts/build_scripts/i386-gcc"
-         export CXX="$MAIN_DIR/scripts/build_scripts/i386-g++"
+         export CC="$MAIN_DIR/scripts/build_scripts/${ARCH}-gcc"
+         export CXX="$MAIN_DIR/scripts/build_scripts/${ARCH}-g++"
 
       fi
 
@@ -170,17 +196,18 @@ function build_libmusl {
       git clone --branch v1.1.19 --depth 1 git://git.musl-libc.org/musl
       cd musl
 
-      opts1="--target=i386 --host=i386 --build=x86_64 --disable-shared"
-      opts2="--prefix=$TC/musl-install --exec-prefix=$TC/musl-install"
-      opts3="--enable-debug --syslibdir=$TC/musl-install/lib"
+      opts1="--target=${ARCH} --host=${ARCH} --build=${BUILD_ARCH}"
+      opts2="--disable-shared --prefix=$TC/musl-install"
+      opts3="--exec-prefix=$TC/musl-install --enable-debug"
+      opts4="--syslibdir=$TC/musl-install/lib"
 
-      run_command2 "./configure $opts1 $opts2 $opts3" configure.log
+      run_command2 "./configure $opts1 $opts2 $opts3 $opts4" configure.log
       run_command2 "make -j" build.log
       run_command2 "make install" make_install.log
 
       cd $TC/musl-install/bin
       cp musl-gcc musl-g++
-      sed -i 's/-i386-gcc/-i386-g++/' musl-g++
+      sed -i 's/-${ARCH}-gcc/-${ARCH}-g++/' musl-g++
 
       cd $TC/musl-install/include
       ln -s /usr/include/linux .
@@ -211,8 +238,8 @@ function build_gnuefi {
       url="https://github.com/vvaltchev/gnu-efi-fork.git"
       git clone --branch 3.0.8 --depth 1 "$url" gnu-efi
       cd gnu-efi
-      run_command2 "make ARCH=x86_64 -j" build_x86_64.log
-      run_command2 "make ARCH=ia32 prefix=i686-linux- -j" build_ia32.log
+      run_command2 "make ARCH=${BUILD_ARCH} -j" build_${BUILD_ARCH}.log
+      run_command2 "make ARCH=${ARCH_EFI} prefix=${ARCH_GCC_TC}-linux- -j" build_${ARCH_EFI}.log
 
    else
       show_skip_component_msg "GNU-EFI"
@@ -289,9 +316,10 @@ function internal_build_busybox {
 
    echo "Building busybox... "
    cp $MAIN_DIR/other/busybox.config .config
-   export CROSS_COMPILE="i686-linux-"
+   export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
    run_command2 "make -j" build.log
    cp .config .last_build_config
+   export CROSS_COMPILE=""
 }
 
 all_funcs_list+=(build_busybox)
@@ -380,11 +408,11 @@ function build_ncurses {
 
       cd ncurses
 
-      opts1="--host=x86-pc-linux-gnu --prefix=$TC/ncurses_install"
+      opts1="--host=${ARCH_SHORT}-pc-linux-gnu --prefix=$TC/ncurses_install"
       opts2="--datarootdir=/usr/share --without-cxx --without-cxx-binding"
       opts3="--without-ada --without-manpages --without-dlsym"
 
-      export CC=$X86_TOOLCHAIN/i686-linux-gcc
+      export CC="$GCC_TOOLCHAIN/${ARCH_GCC_TC}-linux-gcc"
       run_command2 "./configure $opts1 $opts2 $opts3" configure.log
       run_command2 "make -j" build.log
       run_command2 "make install" install.log
@@ -420,7 +448,7 @@ if [[ "$USE_SYSCC" != "" && "$USE_SYSCC" != 0 ]]; then
 fi
 
 default_funcs=()
-default_funcs+=(download_x86_gcc_toolchain)
+default_funcs+=(download_gcc_toolchain)
 default_funcs+=(download_cmake)
 default_funcs+=(build_gnuefi)
 default_funcs+=(build_mtools)
@@ -429,11 +457,11 @@ if [ -z "$NO_BUSYBOX" ]; then
    default_funcs+=(build_busybox)
 fi
 
-if [ "`uname -p`" != "x86_64" ]; then
+if [ "`uname -p`" != "$BUILD_ARCH" ]; then
 
-   echo "ERROR: Tilck can be built ONLY on x86_64 host machines no matter"
+   echo "ERROR: Tilck can be built ONLY on $BUILD_ARCH host machines no matter"
    echo "which target architecture has been chosen. Reason: the build "
-   echo "system uses a toolchain pre-compiled for x86_64 hosts."
+   echo "system uses a toolchain pre-compiled for $BUILD_ARCH hosts."
 
    exit 1
 fi
@@ -441,11 +469,12 @@ fi
 # Exit on the first failure
 set -e
 
-# Toolchain dir
+# Global toolchain directory
 TC=$MAIN_DIR/toolchain
 
-X86_TOOLCHAIN=$TC/$X86_TOOLCHAIN_DIR_NAME/bin
-export PATH="$MAIN_DIR/scripts/build_scripts:$X86_TOOLCHAIN:$PATH"
+GCC_TOOLCHAIN=$TC/$ARCH_TC_DIR/bin # Default cross-compiler, in $PATH.
+GCC_TOOLCHAIN_GLIBC=$TC/${ARCH_TC_DIR}_glibc/bin # NOTE: not in $PATH!
+export PATH="$MAIN_DIR/scripts/build_scripts:$GCC_TOOLCHAIN:$PATH"
 
 mkdir -p $TC
 mkdir -p $TC/cache

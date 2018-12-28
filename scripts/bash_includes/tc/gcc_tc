@@ -34,7 +34,6 @@ function internal_download_toolchain {
    cd $dest/bin
 }
 
-all_funcs_list+=(download_x86_gcc_toolchain)
 function download_x86_gcc_toolchain {
 
    if [[ "$USE_SYSCC" != "" && "$USE_SYSCC" != 0 ]]; then
@@ -60,7 +59,6 @@ function download_x86_gcc_toolchain {
    popd
 }
 
-all_funcs_list+=(download_x86_gcc_glibc_toolchain)
 function download_x86_gcc_glibc_toolchain {
 
    pushd .
@@ -95,4 +93,29 @@ function download_x86_gcc_glibc_toolchain {
    fi
 
    popd
+}
+
+
+############################################################
+
+all_funcs_list+=(download_gcc_toolchain)
+function download_gcc_toolchain {
+
+   if [[ "$ARCH" == "i386" ]]; then
+      download_x86_gcc_toolchain
+   else
+      echo "Architecture '$ARCH' not supported."
+      exit 1
+   fi
+}
+
+all_funcs_list+=(download_gcc_glibc_toolchain)
+function download_gcc_glibc_toolchain {
+
+   if [[ "$ARCH" == "i386" ]]; then
+      download_x86_gcc_glibc_toolchain
+   else
+      echo "Architecture '$ARCH' not supported."
+      exit 1
+   fi
 }

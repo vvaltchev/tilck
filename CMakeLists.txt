@@ -161,6 +161,7 @@ endif()
 
 if (${ARCH} STREQUAL "i386")
 
+   set(ARCH_SHORT "x86")
    set(ARCH_FAMILY "generic_x86")
    set(ARCH_ELF_NAME "elf32-i386")
    set(ARCH_LD_OUTPUT "elf_i386")
