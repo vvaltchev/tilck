@@ -68,43 +68,6 @@ function build_lcov {
 
 }
 
-###############################
-# Build dietlibc [unused now]
-###############################
-
-all_funcs_list+=(build_dietlibc)
-function build_dietlibc {
-
-   pushd .
-
-   if ! [ -d dietlibc-0.33 ]; then
-
-      show_work_on_component_msg "DIETLIBC"
-
-      git clone --branch v0.33 --depth 1 https://github.com/vvaltchev/dietlibc-fork.git
-      mv dietlibc-fork dietlibc-0.33
-
-      pushd dietlibc-0.33
-
-      sed -i 's/#define WANT_LINKER_WARNINGS/\/\/#define WANT_LINKER_WARNINGS/g' dietfeatures.h
-      sed -i 's/-Wno-unused -Wredundant-decls/-Wno-unused -Wredundant-decls -fno-stack-protector/g' Makefile
-
-      set +e
-      PATH=$X86_TOOLCHAIN:$PATH make MYARCH=i386 -j i386 DEBUG=1 &> build.log
-      set -e
-
-      popd
-
-   else
-
-      show_skip_component_msg "DIETLIBC"
-
-   fi
-
-   popd
-
-}
-
 ##############################
 # Build gtest
 ##############################
