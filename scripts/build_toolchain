@@ -197,19 +197,19 @@ function build_libmusl {
       cd musl
 
       opts1="--target=${ARCH} --host=${ARCH} --build=${BUILD_ARCH}"
-      opts2="--disable-shared --prefix=$TC/musl-install"
-      opts3="--exec-prefix=$TC/musl-install --enable-debug"
-      opts4="--syslibdir=$TC/musl-install/lib"
+      opts2="--disable-shared --prefix=$TC/musl/install"
+      opts3="--exec-prefix=$TC/musl/install --enable-debug"
+      opts4="--syslibdir=$TC/musl/install/lib"
 
       run_command2 "./configure $opts1 $opts2 $opts3 $opts4" configure.log
       run_command2 "make -j" build.log
       run_command2 "make install" make_install.log
 
-      cd $TC/musl-install/bin
+      cd $TC/musl/install/bin
       cp musl-gcc musl-g++
       sed -i 's/-${ARCH}-gcc/-${ARCH}-g++/' musl-g++
 
-      cd $TC/musl-install/include
+      cd $TC/musl/install/include
       ln -s /usr/include/linux .
       ln -s /usr/include/asm .
       ln -s /usr/include/asm-generic .

@@ -12,5 +12,5 @@ else
    export PATH="$PROJ_DIR/scripts/build_scripts:$PATH"
 fi
 
-"$TCROOT/musl-install/bin/musl-g++" "$@" -Wl,-m -Wl,@ARCH_LD_OUTPUT@
+"$TCROOT/musl/install/bin/musl-g++" "$@" -Wl,-m -Wl,@ARCH_LD_OUTPUT@
 
