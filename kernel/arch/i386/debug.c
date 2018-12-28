@@ -110,9 +110,19 @@ void dump_stacktrace(void)
    printk("\n");
 }
 
-void debug_qemu_turn_off_machine()
+void debug_qemu_turn_off_machine(void)
 {
-   if (in_hypervisor()) {
+   if (!in_hypervisor())
+      return;
+
+   while (true) {
+      /*
+       * Apparently, there are cases when QEMU may miss the command below so the
+       * VM will just continue to run. Such issue has been observed with the
+       * system tests running on QEMU (with pure software virtualization)
+       * on CircleCI. See: https://circleci.com/gh/vvaltchev/tilck/993.
+       * Hopefully, this is the right fix.
+       */
       outb(0xf4, 0x00);
    }
 }
