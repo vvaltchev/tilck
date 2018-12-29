@@ -86,6 +86,7 @@ static int files_count;
 #endif
 
 static struct gcov_info *files_array[FILE_ARRAY_SIZE];
+static void gcov_reset_counters(struct gcov_info *gi);
 
 #if !defined(KERNEL_TEST)
 
@@ -104,6 +105,7 @@ void __gcov_init(struct gcov_info *info)
    }
 
    files_array[files_count++] = info;
+   gcov_reset_counters(info);
 }
 
 #endif
@@ -195,6 +197,25 @@ int sys_gcov_get_file_info(int fn,
    }
 
    return 0;
+}
+
+static void gcov_reset_counters(struct gcov_info *gi)
+{
+   const struct gcov_ctr_info *counters;
+
+   for (u32 i = 0; i < gi->n_functions; i++) {
+
+      counters = gi->functions[i]->ctrs;
+
+      for (u32 j = 0; j < GCOV_COUNTERS; j++) {
+
+         if (!gi->merge[j])
+            continue; /* no merge func -> the counter is NOT used */
+
+         bzero(&counters->values[0], counters->num * sizeof(gcov_type));
+         counters++;
+      }
+   }
 }
 
 static void gcov_dump_file_to_buf(const struct gcov_info *gi, void *buf)
