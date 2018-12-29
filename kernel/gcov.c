@@ -250,7 +250,7 @@ static void gcov_dump_file_to_buf(const struct gcov_info *gi, void *buf)
          *ptr++ = GCOV_TAG_COUNTER_LENGTH(counters->num);
 
          for (u32 k = 0; k < counters->num; k++) {
-            u64 val = counters->values[j];
+            u64 val = counters->values[k];
             *ptr++ = val & 0xffffffffull;
             *ptr++ = val >> 32;
          }
