@@ -253,7 +253,10 @@ if sys.argv[1] == 'shellcmd' and failed == 0 and shell_exit_code != 0:
 
 
 if dump_coverage and report_coverage:
-   subprocess.call([GEN_KCOV_REPORT, '--acc'])
+   output = subprocess.check_output([GEN_KCOV_REPORT, '--acc'])
+   print("[system test runner] Output of {0} --acc:".format(GEN_KCOV_REPORT))
+   print(output)
+   print("[system test runner] --- end output ---")
 
 sys.exit(failed)
 
