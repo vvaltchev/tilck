@@ -98,10 +98,6 @@ sptr sys_tilck_cmd(enum tilck_testcmd_type cmd,
       case TILCK_TESTCMD_RUN_SELFTEST:
          return sys_tilck_run_selftest((const char *)a1);
 
-      case TILCK_TESTCMD_DUMP_COVERAGE: // TODO: drop this!
-         gcov_dump_coverage();
-         return 0;
-
       case TILCK_TESTCMD_GCOV_GET_NUM_FILES:
          return sys_gcov_get_file_count();
 

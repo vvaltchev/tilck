@@ -30,12 +30,6 @@ void dump_list_of_commands(void);
 int read_command(char *buf, int buf_size);
 void dump_coverage_files(void);
 
-static inline int tilck_dump_coverage(void)
-{
-   return sysenter_call1(TILCK_TESTCMD_SYSCALL,
-                         TILCK_TESTCMD_DUMP_COVERAGE);
-}
-
 static inline int tilck_get_num_gcov_files(void)
 {
    return sysenter_call1(TILCK_TESTCMD_SYSCALL,

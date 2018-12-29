@@ -77,7 +77,6 @@ struct gcov_info
  * --------------------------------------------------------------------------
  */
 
-static struct gcov_info *gi_list;
 static int files_count;
 
 #if KERNEL_GCOV || defined(KERNEL_TEST)
@@ -89,6 +88,8 @@ static int files_count;
 static struct gcov_info *files_array[FILE_ARRAY_SIZE];
 
 #if !defined(KERNEL_TEST)
+
+static struct gcov_info *gi_list;
 
 void __gcov_merge_add(gcov_type *counters, u32 n) { }
 void __gcov_exit(void) { }
@@ -124,89 +125,6 @@ void __gcov_init(struct gcov_info *info)
 /* Convert a counter index to a tag.  */
 #define GCOV_TAG_FOR_COUNTER(COUNT)                             \
         (GCOV_TAG_COUNTER_BASE + ((gcov_unsigned_t)(COUNT) << 17))
-
-static u32 words_dumped;
-
-static void dump_begin(void)
-{
-   words_dumped = 0;
-}
-
-static void dump_u32(u32 val)
-{
-   if (words_dumped && !(words_dumped % 6))
-      printk(NO_PREFIX "\n");
-
-   printk(NO_PREFIX "%p ", val);
-   words_dumped++;
-}
-
-static void dump_u64(u64 val)
-{
-   dump_u32(val & 0xffffffffull);
-   dump_u32(val >> 32);
-}
-
-static void dump_end(void)
-{
-   printk(NO_PREFIX "\n");
-}
-
-static void dump_gcda(struct gcov_info *info)
-{
-   const struct gcov_fn_info *func;
-   const struct gcov_ctr_info *counters;
-
-   dump_begin();
-
-   // Header
-   dump_u32(GCOV_DATA_MAGIC);
-   dump_u32(info->version);
-   dump_u32(info->stamp);
-
-   for (u32 i = 0; i < info->n_functions; i++) {
-
-      func = info->functions[i];
-
-      dump_u32(GCOV_TAG_FUNCTION);
-      dump_u32(GCOV_TAG_FUNCTION_LENGTH);
-      dump_u32(func->ident);
-      dump_u32(func->lineno_checksum);
-      dump_u32(func->cfg_checksum);
-
-      counters = func->ctrs;
-
-      for (u32 j = 0; j < GCOV_COUNTERS; j++) {
-
-         if (!info->merge[j])
-            continue; /* no merge func -> the counter is NOT used */
-
-         dump_u32(GCOV_TAG_FOR_COUNTER(j));
-         dump_u32(GCOV_TAG_COUNTER_LENGTH(counters->num));
-
-         for (u32 k = 0; k < counters->num; k++)
-            dump_u64(counters->values[j]);
-
-         counters++;
-
-      } // for (u32 j = 0; j < GCOV_COUNTERS; j++)
-   } // for (u32 i = 0; i < info->n_functions; i++)
-
-   dump_end();
-}
-
-void gcov_dump_coverage(void)
-{
-   struct gcov_info *ptr = gi_list;
-
-   printk("** GCOV gcda files **\n");
-
-   while (ptr) {
-      printk(NO_PREFIX "\nfile: %s\n", ptr->filename);
-      dump_gcda(ptr);
-      ptr = ptr->next;
-   }
-}
 
 // ----------------------------------------------------------------
 
@@ -278,7 +196,6 @@ int sys_gcov_get_file_info(int fn,
 
    return 0;
 }
-
 
 static void gcov_dump_file_to_buf(const struct gcov_info *gi, void *buf)
 {
