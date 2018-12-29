@@ -12,15 +12,15 @@ jobs:
       - TEST_GCOV: 1
       - DUMP_COV: 1
       - REPORT_COV: 1
-      - CODE_COV: 1
     steps:
       - checkout
       - run: mv /tilck_toolchain ./toolchain
       - run: make -j
       - run: make -j gtests
       - run: ./build/gtests
-      - run: ./build/scripts/generate_test_coverage_report --codecov
+      - run: ./build/scripts/generate_test_coverage_report
       - run: ./build/st/run_all_tests
+      - run: ./build/scripts/generate_test_coverage_report --codecov
 
   release_build:
     docker:

@@ -37,7 +37,6 @@ in_travis = os.environ.get('TRAVIS', False)
 in_circleci = os.environ.get('CIRCLECI', False)
 dump_coverage = os.environ.get('DUMP_COV', False)
 report_coverage = os.environ.get('REPORT_COV', False)
-code_cov = os.environ.get('CODE_COV', False)
 
 # Global variables
 
@@ -254,10 +253,7 @@ if sys.argv[1] == 'shellcmd' and failed == 0 and shell_exit_code != 0:
 
 
 if dump_coverage and report_coverage:
-   if not code_cov:
-      subprocess.call([GEN_KCOV_REPORT, '--acc'])
-   else:
-      subprocess.call([GEN_KCOV_REPORT, '--codecov'])
+   subprocess.call([GEN_KCOV_REPORT, '--acc'])
 
 sys.exit(failed)
 
