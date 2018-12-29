@@ -70,6 +70,7 @@ def write_gcda_file():
       failed = FAIL_GCOV_ERROR
       print("\n[system test runner] While working on gcda file '{0}', "
             "got exception: {1}".format(gcda_file, str(e)))
+      print("gcda_buf:\n<<{0}>>\n".format(gcda_buf))
       process.send_signal(signal.SIGINT)
 
    finally:
@@ -106,13 +107,15 @@ def ProcessLine(line):
    global gcda_file
 
    stripped = line.rstrip()
+   #print(stripped)
 
    if stripped and stripped[0] == '[' and stripped.startswith('[init]'):
       m = re.search(r'\[init\] the devshell exited with status: ([0-9]+)',
-                  stripped)
+                    stripped)
 
       if m:
          shell_exit_code = int(m.group(1))
+         dumping_gcda_files = False
          return
 
    if not dumping_gcda_files:
@@ -121,8 +124,6 @@ def ProcessLine(line):
       print(stripped)
 
    else:
-
-      # print stripped
 
       if not stripped:
          return # empty line
@@ -253,10 +254,19 @@ if sys.argv[1] == 'shellcmd' and failed == 0 and shell_exit_code != 0:
 
 
 if dump_coverage and report_coverage:
-   output = subprocess.check_output([GEN_KCOV_REPORT, '--acc'])
-   print("[system test runner] Output of {0} --acc:".format(GEN_KCOV_REPORT))
-   print(output)
-   print("[system test runner] --- end output ---")
+
+   try:
+
+      output = subprocess.check_output([GEN_KCOV_REPORT, '--acc'])
+
+   except Exception as e:
+
+      print("[system test runner] {0} generated "
+            "the exception: {1}".format(GEN_KCOV_REPORT, str(e)))
+      print("[system test runner] Output of {0} --acc:".format(GEN_KCOV_REPORT))
+      print(output)
+      print("[system test runner] --- end output ---")
+      sys.exit(FAIL_GCOV_ERROR)
 
 sys.exit(failed)
 
