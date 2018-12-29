@@ -5,22 +5,22 @@
 #include <assert.h>
 
 #include <zlib.h>
+#include <3rd_party/base64.h>
 
 #include "devshell.h"
 
 static void write_buf_on_screen(void *buf, unsigned size)
 {
-   unsigned char *ptr = buf;
+   size_t b64_size;
+   unsigned char *b64 = base64_encode(buf, size, &b64_size);
 
-   for (unsigned w = 0; w < size; w++) {
-
-      if (w && !(w % 16))
-         printf("\n");
-
-      printf("%02x ", ptr[w]);
+   if (!b64) {
+      printf("[ERROR] base64_encode() failed\n");
+      exit(1);
    }
 
-   printf("\n");
+   fwrite(b64, 1, b64_size, stdout);
+   free(b64);
 }
 
 static void compress_buf(void *buf, unsigned buf_size,

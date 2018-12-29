@@ -16,24 +16,31 @@ add_custom_target(usermode_apps)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${TCROOT}/zlib/install/include)
 
-
-# add_usermode_app() has to be a macro and not a function because add_executable
-# does not accept variables. An unescaped literal is required. Therefore, we
-# can work-around this limitation only by going one level "up" and use a macro.
-# CMake's macros are very much like C's macros.
+macro(register_usermode_app)
+   list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/${ARGV0}")
+   add_dependencies(usermode_apps ${ARGV0})
+endmacro()
 
 macro(add_usermode_app)
    file(GLOB SOURCES "${ARGV1}${ARGV0}*.c")
    add_executable(${ARGV0} ${SOURCES})
-   list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/${ARGV0}")
-   add_dependencies(usermode_apps ${ARGV0})
+   register_usermode_app(${ARGV0})
 endmacro()
 
 add_usermode_app(init)
 add_usermode_app(termtest)
 add_usermode_app(fbtest)
-add_usermode_app(devshell "devshellsrc/")
+
+file(
+   GLOB SOURCES
+
+   "devshellsrc/*.c"
+   "${CMAKE_SOURCE_DIR}/common/3rd_party/base64.c"
+)
+
+add_executable(devshell ${SOURCES})
 target_link_libraries(devshell ${TCROOT}/zlib/install/lib/libz.a)
+register_usermode_app(devshell)
 
 if (EXISTS "${TCROOT}/ncurses/install/lib/libncurses_g.a")
    add_usermode_app(ncapp)

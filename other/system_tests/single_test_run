@@ -10,6 +10,7 @@ import subprocess
 import threading
 import struct
 import zlib
+import base64
 
 # Constants
 
@@ -60,6 +61,7 @@ def write_gcda_file():
 
    try:
 
+      gcda_buf = base64.b64decode(gcda_buf)
       gcda_buf = zlib.decompress(gcda_buf)
 
       with open(gcda_file, 'wb') as fh:
@@ -121,7 +123,7 @@ def ProcessLine(line):
 
    else:
 
-      #print stripped
+      # print stripped
 
       if not stripped:
          return # empty line
@@ -137,9 +139,8 @@ def ProcessLine(line):
          gcda_buf = ''
 
       else:
+         gcda_buf += stripped
 
-         for w in stripped.split(' '):
-            gcda_buf += struct.pack('B', int(w, 16))
 
    if stripped.find(KERNEL_HELLO_MSG) != -1:
       HandleHelloMsg()
