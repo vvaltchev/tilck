@@ -285,7 +285,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_setfsuid)
 CREATE_STUB_SYSCALL_IMPL(sys_setfsgid)
 CREATE_STUB_SYSCALL_IMPL(sys_pivot_root)
 CREATE_STUB_SYSCALL_IMPL(sys_mincore)
-CREATE_STUB_SYSCALL_IMPL(sys_madvise)
+
+sptr sys_madvise(void *addr, size_t len, int advice);
 
 sptr sys_getdents64(int fd, struct linux_dirent64 *dirp, u32 buf_size);
 sptr sys_fcntl64(int fd, int cmd, uptr arg);

@@ -18,6 +18,12 @@ sptr sys_rt_sigprocmask(/* args ignored at the moment */)
    return 0;
 }
 
+sptr sys_madvise(void *addr, size_t len, int advice)
+{
+   // TODO (future): consider implementing at least part of sys_madvice().
+   return 0;
+}
+
 sptr sys_nanosleep(const struct timespec *user_req, struct timespec *rem)
 {
    u64 ticks_to_sleep = 0;
