@@ -236,7 +236,7 @@ sptr sys_gettid()
    return get_curr_task()->tid;
 }
 
-void join_kernel_thread(int tid)
+void kthread_join(int tid)
 {
    task_info *ti;
    ASSERT(is_preemption_enabled());

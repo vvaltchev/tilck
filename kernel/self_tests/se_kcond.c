@@ -72,7 +72,7 @@ static void kcond_thread_signal_generator()
          panic("Unable to create a thread for kcond_thread_wait_ticks()");
    }
    enable_preemption();
-   join_kernel_thread(ti->tid);
+   kthread_join(ti->tid);
 }
 
 void selftest_kcond_short()
@@ -84,9 +84,9 @@ void selftest_kcond_short()
    int tid2 = kthread_create(&kcond_thread_test, (void*) 2)->tid;
    int tid3 = kthread_create(&kcond_thread_signal_generator, NULL)->tid;
 
-   join_kernel_thread(tid1);
-   join_kernel_thread(tid2);
-   join_kernel_thread(tid3);
+   kthread_join(tid1);
+   kthread_join(tid2);
+   kthread_join(tid3);
 
    regular_self_test_end();
 }

@@ -86,7 +86,7 @@ sptr sys_tilck_run_selftest(const char *user_selftest)
    if (!ti)
       return -ENOMEM;
 
-   join_kernel_thread(ti->tid);
+   kthread_join(ti->tid);
    return 0;
 }
 

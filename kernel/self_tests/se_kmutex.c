@@ -57,10 +57,10 @@ void selftest_kmutex_med()
    tid3 = kthread_create(test_kmutex_thread, (void *)2)->tid;
    tid4 = kthread_create(test_kmutex_thread_trylock, NULL)->tid;
 
-   join_kernel_thread(tid1);
-   join_kernel_thread(tid2);
-   join_kernel_thread(tid3);
-   join_kernel_thread(tid4);
+   kthread_join(tid1);
+   kthread_join(tid2);
+   kthread_join(tid3);
+   kthread_join(tid4);
 
    printk("Recursive mutex (basic) test\n");
    kmutex_destroy(&test_mutex);
@@ -77,7 +77,7 @@ void selftest_kmutex_med()
    printk("Locked 3 times (last with trylock)\n");
 
    tid4 = kthread_create(test_kmutex_thread_trylock, NULL)->tid;
-   join_kernel_thread(tid4);
+   kthread_join(tid4);
 
    kmutex_unlock(&test_mutex);
    printk("Unlocked once\n");
@@ -92,9 +92,9 @@ void selftest_kmutex_med()
    tid3 = kthread_create(test_kmutex_thread, (void *)2)->tid;
    tid4 = kthread_create(test_kmutex_thread_trylock, NULL)->tid;
 
-   join_kernel_thread(tid2);
-   join_kernel_thread(tid3);
-   join_kernel_thread(tid4);
+   kthread_join(tid2);
+   kthread_join(tid3);
+   kthread_join(tid4);
 
    kmutex_destroy(&test_mutex);
    regular_self_test_end();
