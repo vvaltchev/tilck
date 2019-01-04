@@ -20,6 +20,7 @@ void kmutex_init(kmutex *m, u32 flags)
    bzero(m, sizeof(kmutex));
    m->id = atomic_fetch_add_explicit(&new_mutex_id, 1U, mo_relaxed);
    m->flags = flags;
+   list_node_init(&m->wait_list);
 }
 
 void kmutex_destroy(kmutex *m)
@@ -57,7 +58,7 @@ void kmutex_lock(kmutex *m)
       ASSERT(!kmutex_is_curr_task_holding_lock(m));
    }
 
-   wait_obj_set(&get_curr_task()->wobj, WOBJ_KMUTEX, m, NULL);
+   wait_obj_set(&get_curr_task()->wobj, WOBJ_KMUTEX, m, &m->wait_list);
    task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
    enable_preemption();
    kernel_yield(); // Go to sleep until someone else is holding the lock.
@@ -104,46 +105,44 @@ bool kmutex_trylock(kmutex *m)
 
 void kmutex_unlock(kmutex *m)
 {
-   task_info *pos, *temp;
-
    DEBUG_ONLY(check_not_in_irq_handler());
    disable_preemption();
-   {
-      ASSERT(kmutex_is_curr_task_holding_lock(m));
 
-      if (m->flags & KMUTEX_FL_RECURSIVE) {
+   ASSERT(kmutex_is_curr_task_holding_lock(m));
 
-         ASSERT(m->lock_count > 0);
+   if (m->flags & KMUTEX_FL_RECURSIVE) {
 
-         if (--m->lock_count > 0) {
-            enable_preemption();
-            return;
-         }
+      ASSERT(m->lock_count > 0);
 
-         // m->lock_count == 0, we have to really unlock the mutex
+      if (--m->lock_count > 0) {
+         enable_preemption();
+         return;
       }
 
-      m->owner_task = NULL;
-
-      /* Unlock one task waiting to acquire the mutex 'm' */
-
-      list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
-
-         if (wait_obj_get_ptr(&pos->wobj) == m) {
-
-            m->owner_task = pos;
-
-            if (m->flags & KMUTEX_FL_RECURSIVE)
-               m->lock_count++;
-
-            wait_obj_reset(&pos->wobj);
-
-            if (pos->state == TASK_STATE_SLEEPING)
-               task_change_state(pos, TASK_STATE_RUNNABLE);
-
-            break;
-         }
-      }
+      // m->lock_count == 0, we have to really unlock the mutex
    }
+
+   m->owner_task = NULL;
+
+   /* Unlock one task waiting to acquire the mutex 'm' (if any) */
+   if (!list_is_empty(&m->wait_list)) {
+
+      wait_obj *task_wo =
+         list_first_obj(&m->wait_list, wait_obj, wait_list_node);
+
+      task_info *ti = CONTAINER_OF(task_wo, task_info, wobj);
+
+      m->owner_task = ti;
+
+      if (m->flags & KMUTEX_FL_RECURSIVE)
+         m->lock_count++;
+
+      wait_obj_reset(task_wo);
+
+      ASSERT(ti->state == TASK_STATE_SLEEPING);
+      task_change_state(ti, TASK_STATE_RUNNABLE);
+
+   } // if (!list_is_empty(&m->wait_list))
+
    enable_preemption();
 }

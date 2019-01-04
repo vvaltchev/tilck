@@ -74,6 +74,7 @@ typedef struct {
    struct task_info *owner_task;
    u32 flags;
    u32 lock_count; // Valid when the mutex is recursive
+   list_node wait_list;
 
 } kmutex;
 
