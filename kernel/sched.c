@@ -176,7 +176,7 @@ static void task_add_to_state_list(task_info *ti)
    if (ti->what == &tasklet_runner_kthread)
       return;
 
-   switch (ti->state) {
+   switch (atomic_load_explicit(&ti->state, mo_relaxed)) {
 
       case TASK_STATE_RUNNABLE:
          list_add_tail(&runnable_tasks_list, &ti->runnable_node);
@@ -205,7 +205,7 @@ static void task_remove_from_state_list(task_info *ti)
    if (ti->what == &tasklet_runner_kthread)
       return;
 
-   switch (ti->state) {
+   switch (atomic_load_explicit(&ti->state, mo_relaxed)) {
 
       case TASK_STATE_RUNNABLE:
          list_remove(&ti->runnable_node);
