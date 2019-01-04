@@ -58,8 +58,7 @@ void kcond_signal_single(kcond *c, task_info *ti)
    }
 
    task_cancel_wakeup_timer(ti);
-   wait_obj_reset(&ti->wobj);
-   task_change_state(ti, TASK_STATE_RUNNABLE);
+   task_reset_wait_obj(ti);
 }
 
 void kcond_signal_int(kcond *c, bool all)

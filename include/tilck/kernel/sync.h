@@ -46,6 +46,8 @@ void task_set_wait_obj(struct task_info *ti,
                        void *ptr,
                        list_node *wait_list);
 
+void *task_reset_wait_obj(struct task_info *ti);
+
 /*
  * The mutex implementation used for locking in kernel mode.
  */

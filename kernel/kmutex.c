@@ -10,6 +10,12 @@
 
 static ATOMIC(uptr) new_mutex_id = 1;
 
+/*
+ * -----------------------------------------------------------------
+ * wait_obj functions
+ * -----------------------------------------------------------------
+ */
+
 void wait_obj_set(wait_obj *wo,
                   enum wo_type type,
                   void *ptr,
@@ -55,8 +61,25 @@ void task_set_wait_obj(task_info *ti,
                        list_node *wait_list)
 {
    wait_obj_set(&ti->wobj, type, ptr, wait_list);
+   ASSERT(ti->state != TASK_STATE_SLEEPING);
    task_change_state(ti, TASK_STATE_SLEEPING);
 }
+
+void *task_reset_wait_obj(struct task_info *ti)
+{
+   void *oldp = wait_obj_reset(&ti->wobj);
+   ASSERT(ti->state == TASK_STATE_SLEEPING);
+   task_change_state(ti, TASK_STATE_RUNNABLE);
+   return oldp;
+}
+
+
+/*
+ * -----------------------------------------------------------------
+ * kmutex functions
+ * -----------------------------------------------------------------
+ */
+
 
 bool kmutex_is_curr_task_holding_lock(kmutex *m)
 {
@@ -185,8 +208,7 @@ void kmutex_unlock(kmutex *m)
          m->lock_count++;
 
       ASSERT(ti->state == TASK_STATE_SLEEPING);
-      wait_obj_reset(task_wo);
-      task_change_state(ti, TASK_STATE_RUNNABLE);
+      task_reset_wait_obj(ti);
 
    } // if (!list_is_empty(&m->wait_list))
 
