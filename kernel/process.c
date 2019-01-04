@@ -264,7 +264,7 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
       /* Wait for a specific PID */
 
-      volatile task_info *waited_task = (volatile task_info *)get_task(pid);
+      task_info *waited_task = get_task(pid);
 
       if (!waited_task || waited_task->pi->parent_pid != curr->pid)
          return -ECHILD;
@@ -273,7 +273,7 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
          wait_obj_set(&get_curr_task()->wobj,
                       WOBJ_TASK,
-                      (task_info *)waited_task,
+                      waited_task,
                       NULL);
 
          task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
