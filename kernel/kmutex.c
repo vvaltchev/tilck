@@ -16,28 +16,37 @@ void wait_obj_set(wait_obj *wo,
                   list_node *wait_list)
 {
    atomic_store_explicit(&wo->__ptr, ptr, mo_relaxed);
-   wo->type = type;
 
-   ASSERT(list_is_null(&wo->wait_list_node) ||
-          list_is_empty(&wo->wait_list_node));
+   disable_preemption();
+   {
+      wo->type = type;
 
-   list_node_init(&wo->wait_list_node);
+      ASSERT(list_is_null(&wo->wait_list_node) ||
+            list_is_empty(&wo->wait_list_node));
 
-   if (wait_list)
-      list_add_tail(wait_list, &wo->wait_list_node);
+      list_node_init(&wo->wait_list_node);
+
+      if (wait_list)
+         list_add_tail(wait_list, &wo->wait_list_node);
+   }
+   enable_preemption();
 }
 
 void *wait_obj_reset(wait_obj *wo)
 {
-   void *oldptr = atomic_exchange_explicit(&wo->__ptr, (void*)NULL, mo_relaxed);
-   wo->type = WOBJ_NONE;
+   void *oldp = atomic_exchange_explicit(&wo->__ptr, (void*)NULL, mo_relaxed);
+   disable_preemption();
+   {
+      wo->type = WOBJ_NONE;
 
-   if (list_is_node_in_list(&wo->wait_list_node)) {
-      list_remove(&wo->wait_list_node);
+      if (list_is_node_in_list(&wo->wait_list_node)) {
+         list_remove(&wo->wait_list_node);
+      }
+
+      list_node_init(&wo->wait_list_node);
    }
-
-   list_node_init(&wo->wait_list_node);
-   return oldptr;
+   enable_preemption();
+   return oldp;
 }
 
 bool kmutex_is_curr_task_holding_lock(kmutex *m)
