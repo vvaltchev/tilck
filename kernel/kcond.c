@@ -23,7 +23,7 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
 
    task_info *curr = get_curr_task();
-   wait_obj_set(&curr->wobj, WOBJ_KCOND, c);
+   wait_obj_set(&curr->wobj, WOBJ_KCOND, c, NULL);
 
    if (timeout_ticks != KCOND_WAIT_FOREVER)
       task_set_wakeup_timer(curr, timeout_ticks);

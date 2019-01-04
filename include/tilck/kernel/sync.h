@@ -4,6 +4,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
+#include <tilck/kernel/list.h>
 
 struct task_info;
 
@@ -24,19 +25,37 @@ typedef struct {
 
    ATOMIC(void *) __ptr;
    enum wo_type type;
+   list_node wait_list_node;
 
 } wait_obj;
 
-static inline void wait_obj_set(wait_obj *wo, enum wo_type type, void *ptr)
+static inline void wait_obj_set(wait_obj *wo,
+                                enum wo_type type,
+                                void *ptr,
+                                list_node *wait_list)
 {
    atomic_store_explicit(&wo->__ptr, ptr, mo_relaxed);
    wo->type = type;
+
+   ASSERT(list_is_null(&wo->wait_list_node) ||
+          list_is_empty(&wo->wait_list_node));
+
+   list_node_init(&wo->wait_list_node);
+
+   if (wait_list)
+      list_add_tail(wait_list, &wo->wait_list_node);
 }
 
 static inline void *wait_obj_reset(wait_obj *wo)
 {
    void *oldptr = atomic_exchange_explicit(&wo->__ptr, (void*)NULL, mo_relaxed);
    wo->type = WOBJ_NONE;
+
+   if (list_is_node_in_list(&wo->wait_list_node)) {
+      list_remove(&wo->wait_list_node);
+   }
+
+   list_node_init(&wo->wait_list_node);
    return oldptr;
 }
 

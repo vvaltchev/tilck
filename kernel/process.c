@@ -242,7 +242,7 @@ void kthread_join(int tid)
    ASSERT(is_preemption_enabled());
 
    while ((ti = get_task(tid))) {
-      wait_obj_set(&get_curr_task()->wobj, WOBJ_TASK, ti);
+      wait_obj_set(&get_curr_task()->wobj, WOBJ_TASK, ti, NULL);
       task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
       kernel_yield();
    }
@@ -273,7 +273,9 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
          wait_obj_set(&get_curr_task()->wobj,
                       WOBJ_TASK,
-                      (task_info *)waited_task);
+                      (task_info *)waited_task,
+                      NULL);
+
          task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
          kernel_yield();
       }
@@ -326,7 +328,7 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
       }
 
       /* Hang until a child dies */
-      wait_obj_set(&curr->wobj, WOBJ_TASK, (task_info *)-1);
+      wait_obj_set(&curr->wobj, WOBJ_TASK, (task_info *)-1, NULL);
       task_change_state(curr, TASK_STATE_SLEEPING);
       kernel_yield();
    }

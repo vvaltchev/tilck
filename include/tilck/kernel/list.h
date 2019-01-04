@@ -18,6 +18,10 @@ static inline void list_node_init(list_node *list)
    list->prev = list;
 }
 
+static inline bool list_is_null(list_node *n) {
+   return !n->next && !n->prev;
+}
+
 static inline bool list_is_empty(list_node *list) {
    return list->next == list && list->prev == list;
 }
