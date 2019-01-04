@@ -409,8 +409,6 @@ NORETURN sptr sys_exit(int exit_status)
 
    // Wake-up all the tasks waiting on this task to exit
 
-   DEBUG_ONLY(debug_check_tasks_lists());
-
    task_info *pos, *temp;
 
    list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {

@@ -168,30 +168,6 @@ void kernel_sleep(u64 ticks)
    }
 #endif
 
-
-void debug_check_tasks_lists(void)
-{
-   task_info *pos, *temp;
-   ptrdiff_t off;
-   const char *what_str = "?";
-
-   list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
-
-      if (pos->what == &tasklet_runner_kthread)
-         continue;
-
-      if (pos->state != TASK_STATE_SLEEPING) {
-
-         if (is_kernel_thread(pos))
-            what_str = find_sym_at_addr_safe((uptr)pos->what, &off, NULL);
-
-         panic("%s task %d [w: %s] in the sleeping_tasks_list with state: %d",
-               is_kernel_thread(pos) ? "kernel" : "user",
-               pos->tid, what_str, pos->state);
-      }
-   }
-}
-
 int timer_irq_handler(regs *context)
 {
 #if KERNEL_TRACK_NESTED_INTERRUPTS
@@ -224,8 +200,6 @@ int timer_irq_handler(regs *context)
    }
 
    ASSERT(disable_preemption_count == 1); // again, for us disable = 1 means 0.
-
-   DEBUG_ONLY(debug_check_tasks_lists());
 
    /*
     * We CANNOT allow the timer to call the scheduler if it interrupted an

@@ -22,4 +22,3 @@ void validate_stack_pointer_int(const char *file, int line);
 
 void debug_qemu_turn_off_machine(void);
 void debug_show_build_opts(void);
-void debug_check_tasks_lists(void);
