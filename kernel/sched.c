@@ -298,7 +298,7 @@ bool need_reschedule(void)
    task_info *curr = get_curr_task();
    ASSERT(curr != NULL);
 
-   task_info *tasklet_runner = get_highest_runnable_priority_tasklet_runner();
+   task_info *tasklet_runner = get_hi_prio_ready_tasklet_runner();
 
    if (tasklet_runner) {
 
@@ -338,7 +338,7 @@ void schedule(int curr_irq)
 
    ASSERT(!is_preemption_enabled());
 
-   selected = get_highest_runnable_priority_tasklet_runner();
+   selected = get_hi_prio_ready_tasklet_runner();
 
    if (selected == get_curr_task())
       return;

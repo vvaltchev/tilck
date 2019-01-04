@@ -21,7 +21,7 @@ bool any_tasklets_to_run(int tn);
 int get_tasklet_runner_limit(int tn);
 void destroy_last_tasklet_thread(void);
 
-task_info *get_highest_runnable_priority_tasklet_runner(void);
+task_info *get_hi_prio_ready_tasklet_runner(void);
 
 NODISCARD bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2);
 

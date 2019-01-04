@@ -185,7 +185,7 @@ static void tasklet_runner_kthread(void *arg)
    }
 }
 
-task_info *get_highest_runnable_priority_tasklet_runner(void)
+task_info *get_hi_prio_ready_tasklet_runner(void)
 {
    ASSERT(!is_preemption_enabled());
 
