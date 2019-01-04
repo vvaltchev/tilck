@@ -49,6 +49,15 @@ void *wait_obj_reset(wait_obj *wo)
    return oldp;
 }
 
+void task_set_wait_obj(task_info *ti,
+                       enum wo_type type,
+                       void *ptr,
+                       list_node *wait_list)
+{
+   wait_obj_set(&ti->wobj, type, ptr, wait_list);
+   task_change_state(ti, TASK_STATE_SLEEPING);
+}
+
 bool kmutex_is_curr_task_holding_lock(kmutex *m)
 {
    return m->owner_task == get_curr_task();
@@ -97,8 +106,7 @@ void kmutex_lock(kmutex *m)
       ASSERT(!kmutex_is_curr_task_holding_lock(m));
    }
 
-   wait_obj_set(&get_curr_task()->wobj, WOBJ_KMUTEX, m, &m->wait_list);
-   task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+   task_set_wait_obj(get_curr_task(), WOBJ_KMUTEX, m, &m->wait_list);
    enable_preemption();
    kernel_yield(); // Go to sleep until someone else is holding the lock.
 
@@ -176,9 +184,8 @@ void kmutex_unlock(kmutex *m)
       if (m->flags & KMUTEX_FL_RECURSIVE)
          m->lock_count++;
 
-      wait_obj_reset(task_wo);
-
       ASSERT(ti->state == TASK_STATE_SLEEPING);
+      wait_obj_reset(task_wo);
       task_change_state(ti, TASK_STATE_RUNNABLE);
 
    } // if (!list_is_empty(&m->wait_list))

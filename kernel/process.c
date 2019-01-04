@@ -242,8 +242,7 @@ void kthread_join(int tid)
    ASSERT(is_preemption_enabled());
 
    while ((ti = get_task(tid))) {
-      wait_obj_set(&get_curr_task()->wobj, WOBJ_TASK, ti, NULL);
-      task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+      task_set_wait_obj(get_curr_task(), WOBJ_TASK, ti, NULL);
       kernel_yield();
    }
 }
@@ -271,12 +270,11 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
       while (waited_task->state != TASK_STATE_ZOMBIE) {
 
-         wait_obj_set(&get_curr_task()->wobj,
-                      WOBJ_TASK,
-                      waited_task,
-                      NULL);
+         task_set_wait_obj(get_curr_task(),
+                           WOBJ_TASK,
+                           waited_task,
+                           NULL);
 
-         task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
          kernel_yield();
       }
 
@@ -328,8 +326,7 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
       }
 
       /* Hang until a child dies */
-      wait_obj_set(&curr->wobj, WOBJ_TASK, (task_info *)-1, NULL);
-      task_change_state(curr, TASK_STATE_SLEEPING);
+      task_set_wait_obj(curr, WOBJ_TASK, (task_info *)-1, NULL);
       kernel_yield();
    }
 
@@ -423,9 +420,7 @@ NORETURN sptr sys_exit(int exit_status)
          ASSERT(wait_obj_get_ptr(&pos->wobj) == woptr);
 
          wait_obj_reset(&pos->wobj);
-
-         if (pos->state == TASK_STATE_SLEEPING)
-            task_change_state(pos, TASK_STATE_RUNNABLE);
+         task_change_state(pos, TASK_STATE_RUNNABLE);
       }
    }
 

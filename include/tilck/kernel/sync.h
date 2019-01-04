@@ -41,6 +41,11 @@ static inline void *wait_obj_get_ptr(wait_obj *wo)
    return atomic_load_explicit(&wo->__ptr, mo_relaxed);
 }
 
+void task_set_wait_obj(struct task_info *ti,
+                       enum wo_type type,
+                       void *ptr,
+                       list_node *wait_list);
+
 /*
  * The mutex implementation used for locking in kernel mode.
  */
