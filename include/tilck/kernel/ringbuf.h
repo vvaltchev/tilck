@@ -24,7 +24,7 @@ typedef struct {
 
    u16 max_elems;
    u16 elem_size;
-   volatile generic_ringbuf_stat s;
+   generic_ringbuf_stat s;
    char *buf;
 
 } ringbuf;
