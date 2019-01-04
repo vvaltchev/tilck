@@ -14,6 +14,7 @@
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/tasklet.h>
 
 #define USERMODE_VADDR_END (KERNEL_BASE_VA) /* biggest usermode vaddr + 1 */
 
@@ -165,6 +166,10 @@ static ALWAYS_INLINE task_info *thread_tid_to_ti(int tid)
    return (task_info *)((uptr)tid - MAX_PID + KERNEL_BASE_VA);
 }
 
+static ALWAYS_INLINE bool is_tasklet_runner(task_info *ti)
+{
+   return ti->what == &tasklet_runner_kthread;
+}
 
 user_mapping *
 process_add_user_mapping(fs_handle h, void *vaddr, size_t page_count);

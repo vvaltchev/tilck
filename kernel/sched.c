@@ -173,7 +173,7 @@ void set_current_task_in_kernel(void)
 
 static void task_add_to_state_list(task_info *ti)
 {
-   if (ti->what == &tasklet_runner_kthread)
+   if (is_tasklet_runner(ti))
       return;
 
    switch (atomic_load_explicit(&ti->state, mo_relaxed)) {
@@ -202,7 +202,7 @@ static void task_add_to_state_list(task_info *ti)
 
 static void task_remove_from_state_list(task_info *ti)
 {
-   if (ti->what == &tasklet_runner_kthread)
+   if (is_tasklet_runner(ti))
       return;
 
    switch (atomic_load_explicit(&ti->state, mo_relaxed)) {
