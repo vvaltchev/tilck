@@ -97,6 +97,7 @@ bool kmutex_is_curr_task_holding_lock(kmutex *m);
 typedef struct {
 
    uptr id;
+   list_node wait_list;
 
 } kcond;
 
