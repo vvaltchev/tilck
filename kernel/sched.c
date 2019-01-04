@@ -231,26 +231,17 @@ static void task_remove_from_state_list(task_info *ti)
 
 void task_change_state(task_info *ti, enum task_state new_state)
 {
-   uptr var;
+   ASSERT(ti->state != new_state);
+   ASSERT(ti->state != TASK_STATE_ZOMBIE);
+   DEBUG_ONLY(check_in_no_other_irq_than_timer());
 
-   /*
-    * We MUST disable the interrupts here because we want from IRQ handlers
-    * to be able to signal conditions, which indirectly need to change the
-    * state of a given task.
-    */
-
-   disable_interrupts(&var);
+   disable_preemption();
    {
-      ASSERT(ti->state != new_state);
-      ASSERT(ti->state != TASK_STATE_ZOMBIE);
-
       task_remove_from_state_list(ti);
-
       ti->state = new_state;
-
       task_add_to_state_list(ti);
    }
-   enable_interrupts(&var);
+   enable_preemption();
 }
 
 void add_task(task_info *ti)

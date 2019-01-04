@@ -17,23 +17,18 @@ void kcond_init(kcond *c)
 
 bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
 {
-   disable_preemption();
    DEBUG_ONLY(check_not_in_irq_handler());
+
+   disable_preemption();
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
 
-   uptr var;
    task_info *curr = get_curr_task();
+   wait_obj_set(&curr->wobj, WOBJ_KCOND, c);
 
-   disable_interrupts(&var);
-   {
-      wait_obj_set(&curr->wobj, WOBJ_KCOND, c);
+   if (timeout_ticks != KCOND_WAIT_FOREVER)
+      task_set_wakeup_timer(curr, timeout_ticks);
 
-      if (timeout_ticks != KCOND_WAIT_FOREVER)
-         task_set_wakeup_timer(curr, timeout_ticks);
-
-      task_change_state(curr, TASK_STATE_SLEEPING);
-   }
-   enable_interrupts(&var);
+   task_change_state(curr, TASK_STATE_SLEEPING);
 
    if (m) {
       kmutex_unlock(m);
@@ -56,26 +51,23 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
 
 void kcond_signal_single(kcond *c, task_info *ti)
 {
-   ASSERT(!is_preemption_enabled());
+   DEBUG_ONLY(check_not_in_irq_handler());
 
    if (ti->state != TASK_STATE_SLEEPING) {
       /* the signal is lost, that's typical for conditions */
       return;
    }
 
-   uptr var;
-   disable_interrupts(&var);
-   {
-      task_cancel_wakeup_timer(ti);
-      wait_obj_reset(&ti->wobj);
-      task_change_state(ti, TASK_STATE_RUNNABLE);
-   }
-   enable_interrupts(&var);
+   task_cancel_wakeup_timer(ti);
+   wait_obj_reset(&ti->wobj);
+   task_change_state(ti, TASK_STATE_RUNNABLE);
 }
 
 void kcond_signal_int(kcond *c, bool all)
 {
    task_info *pos, *temp;
+   DEBUG_ONLY(check_not_in_irq_handler());
+
    disable_preemption();
 
    list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {

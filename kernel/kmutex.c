@@ -29,8 +29,6 @@ void kmutex_destroy(kmutex *m)
 
 void kmutex_lock(kmutex *m)
 {
-   uptr var;
-
    DEBUG_ONLY(check_not_in_irq_handler());
    disable_preemption();
 
@@ -59,13 +57,8 @@ void kmutex_lock(kmutex *m)
       ASSERT(!kmutex_is_curr_task_holding_lock(m));
    }
 
-   disable_interrupts(&var);
-   {
-      wait_obj_set(&get_curr_task()->wobj, WOBJ_KMUTEX, m);
-      task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
-   }
-   enable_interrupts(&var);
-
+   wait_obj_set(&get_curr_task()->wobj, WOBJ_KMUTEX, m);
+   task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
    enable_preemption();
    kernel_yield(); // Go to sleep until someone else is holding the lock.
 
@@ -79,11 +72,10 @@ void kmutex_lock(kmutex *m)
 
 bool kmutex_trylock(kmutex *m)
 {
-   uptr var;
    bool success = false;
 
    DEBUG_ONLY(check_not_in_irq_handler());
-   disable_interrupts(&var);
+   disable_preemption();
 
    if (!m->owner_task) {
 
@@ -106,13 +98,12 @@ bool kmutex_trylock(kmutex *m)
       }
    }
 
-   enable_interrupts(&var);
+   enable_preemption();
    return success;
 }
 
 void kmutex_unlock(kmutex *m)
 {
-   uptr var;
    task_info *pos, *temp;
 
    DEBUG_ONLY(check_not_in_irq_handler());
@@ -138,12 +129,6 @@ void kmutex_unlock(kmutex *m)
 
       list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
 
-         if (wait_obj_get_ptr(&pos->wobj) != m)
-            continue;
-
-         disable_interrupts(&var);
-
-         // 2nd check for pos->wobj.ptr == m, but with interrupts disabled
          if (wait_obj_get_ptr(&pos->wobj) == m) {
 
             m->owner_task = pos;
@@ -156,11 +141,8 @@ void kmutex_unlock(kmutex *m)
             if (pos->state == TASK_STATE_SLEEPING)
                task_change_state(pos, TASK_STATE_RUNNABLE);
 
-            enable_interrupts(&var);
             break;
          }
-
-         enable_interrupts(&var);
       }
    }
    enable_preemption();

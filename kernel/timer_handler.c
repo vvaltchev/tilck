@@ -64,7 +64,6 @@ static task_info *tick_all_timers(void)
    task_info *last_ready_task = NULL;
    uptr var;
 
-
    list_for_each(pos, temp, &timer_wakeup_list, wakeup_timer_node) {
 
       disable_interrupts(&var);
@@ -175,9 +174,6 @@ void debug_check_tasks_lists(void)
    task_info *pos, *temp;
    ptrdiff_t off;
    const char *what_str = "?";
-   uptr var;
-
-   disable_interrupts(&var);
 
    list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
 
@@ -194,8 +190,6 @@ void debug_check_tasks_lists(void)
                pos->tid, what_str, pos->state);
       }
    }
-
-   enable_interrupts(&var);
 }
 
 int timer_irq_handler(regs *context)

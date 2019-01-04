@@ -76,6 +76,26 @@ void check_not_in_irq_handler(void)
    }
 }
 
+void check_in_no_other_irq_than_timer(void)
+{
+   uptr var;
+
+   if (in_panic())
+      return;
+
+   disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
+   {
+      if (nested_interrupts_count > 0) {
+
+         int n = nested_interrupts[nested_interrupts_count - 1];
+
+         if (is_irq(n) && !is_timer_irq(n))
+            panic("NOT expected to be in an IRQ handler != IRQ0 [timer]");
+      }
+   }
+   enable_interrupts(&var);
+}
+
 void check_in_irq_handler(void)
 {
    uptr var;

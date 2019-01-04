@@ -14,6 +14,7 @@ void push_nested_interrupt(int int_num);
 void pop_nested_interrupt(void);
 void nested_interrupts_drop_top_syscall(void);
 void panic_dump_nested_interrupts(void);
+void check_in_no_other_irq_than_timer(void);
 
 /* the following funcs are not defined when !KERNEL_TRACK_NESTED_INTERRUPTS */
 bool in_syscall(void);
@@ -27,6 +28,7 @@ static inline void push_nested_interrupt(int int_num) { }
 static inline void pop_nested_interrupt(void) { }
 static inline void nested_interrupts_drop_top_syscall(void) { }
 static inline void panic_dump_nested_interrupts(void) { }
+static inline void check_in_no_other_irq_than_timer(void) { }
 #endif
 
 
@@ -34,6 +36,12 @@ static inline void panic_dump_nested_interrupts(void) { }
 static ALWAYS_INLINE bool is_irq(int int_num)
 {
    return int_num >= 32 && int_num != SYSCALL_SOFT_INTERRUPT;
+}
+
+// NOTE: this function is x86-dependent
+static ALWAYS_INLINE bool is_timer_irq(int int_num)
+{
+   return int_num == 32;
 }
 
 // NOTE: this function is x86-dependent
