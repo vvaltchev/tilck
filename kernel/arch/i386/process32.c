@@ -153,6 +153,7 @@ void kthread_exit(void)
    task_info *pos, *temp;
    disable_preemption();
 
+   // MARKER: list_for_each sleeping_tasks_list
    list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
       if (wait_obj_get_ptr(&pos->wobj) == get_curr_task()) {
          ASSERT(pos->wobj.type == WOBJ_TASK);

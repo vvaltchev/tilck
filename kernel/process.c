@@ -410,6 +410,7 @@ NORETURN sptr sys_exit(int exit_status)
 
    task_info *pos, *temp;
 
+   // MARKER: list_for_each sleeping_tasks_list
    list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
 
       void *woptr = wait_obj_get_ptr(&pos->wobj);
