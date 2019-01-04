@@ -2,6 +2,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/atomics.h>
 
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/kmalloc.h>
@@ -48,9 +49,9 @@ bool any_tasklets_to_run(int tn)
 bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 {
    tasklet_thread_info *t = tasklet_threads[tn];
-   ASSERT(t != NULL);
+   bool success, was_empty;
 
-   bool success;
+   ASSERT(t != NULL);
 
    tasklet new_tasklet = {
       .fptr = func,
@@ -70,7 +71,7 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
     * a deadlock when the ringbuf is full if the caller waits in a loop for
     * the enqueue to succeed: the runner function won't get the control back
     * until it gets the control to execute a tasklet and, clearly, this is a
-    * contraddition, leading to an endless loop. Exception: if we're running
+    * contradiction, leading to an endless loop. Exception: if we're running
     * in IRQ that interrupted the current task, which might be the tasklet
     * runner we'd like to enqueue in, we have to allow the enqueue to happen.
     * Simple example: a key press generates an IRQ #1 which interrupts the
@@ -87,20 +88,19 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 
 #endif
 
-   success = ringbuf_write_elem(&t->ringbuf, &new_tasklet);
-
+   success = ringbuf_write_elem_ex(&t->ringbuf, &new_tasklet, &was_empty);
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
-   /*
-    * Special way of signalling a condition variable, without holding its lock:
-    * this code will be often often called by higher-halfs of interrupt handlers
-    * so it won't be possible to acquire a lock there. This means that the wait
-    * on the other side may miss a signal (not waiting while we fire the signal
-    * here) but that's OK since the tasklet runner thread calls run_one_tasklet
-    * in a while(true) loop and it uses a timeout.
-    */
-   kcond_signal_single(&t->cond, t->task);
+   if (success && was_empty) {
+
+      enum task_state exp_state = TASK_STATE_SLEEPING;
+
+      atomic_cas_strong(&t->task->state,
+                        &exp_state,
+                        TASK_STATE_RUNNABLE,
+                        mo_relaxed, mo_relaxed);
+   }
 
 #endif
 
@@ -111,17 +111,12 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 
 bool run_one_tasklet(int tn)
 {
-   tasklet_thread_info *t = tasklet_threads[tn];
-   ASSERT(t != NULL);
-
    bool success;
    tasklet tasklet_to_run;
+   tasklet_thread_info *t = tasklet_threads[tn];
 
-   disable_preemption();
-   {
-      success = ringbuf_read_elem(&t->ringbuf, &tasklet_to_run);
-   }
-   enable_preemption();
+   ASSERT(t != NULL);
+   success = ringbuf_read_elem(&t->ringbuf, &tasklet_to_run);
 
    if (success) {
       /* Run the tasklet with preemption enabled */
@@ -162,18 +157,20 @@ bool run_one_tasklet(int tn)
 
 #endif
 
-static void tasklet_runner_kthread(void *arg)
+void tasklet_runner_kthread(void *arg)
 {
-   bool tasklet_run;
    int tn = (int)(uptr)arg;
    tasklet_thread_info *t = tasklet_threads[tn];
-   ASSERT(t != NULL);
+   bool tasklet_run, yield;
+   uptr var;
 
+   ASSERT(t != NULL);
    DEBUG_SAVE_ESP()
 
    while (true) {
 
       DEBUG_CHECK_ESP()
+      yield = false;
 
       do {
 
@@ -181,14 +178,23 @@ static void tasklet_runner_kthread(void *arg)
 
       } while (tasklet_run);
 
-      kcond_wait(&t->cond, NULL, TIMER_HZ / 10);
+      disable_interrupts(&var);
+      {
+         if (ringbuf_is_empty(&t->ringbuf)) {
+            t->task->state = TASK_STATE_SLEEPING;
+            yield = true;
+         }
+      }
+      enable_interrupts(&var);
+
+      if (yield)
+         kernel_yield();
    }
 }
 
 task_info *get_hi_prio_ready_tasklet_runner(void)
 {
    ASSERT(!is_preemption_enabled());
-
    tasklet_thread_info *selected = NULL;
 
    for (u32 i = 0; i < tasklet_threads_count; i++) {
@@ -206,7 +212,6 @@ task_info *get_hi_prio_ready_tasklet_runner(void)
    return selected ? selected->task : NULL;
 }
 
-
 int create_tasklet_thread(int priority, int limit)
 {
    ASSERT(!is_preemption_enabled());
@@ -215,7 +220,7 @@ int create_tasklet_thread(int priority, int limit)
    tasklet_thread_info *t;
 
    if (tasklet_threads_count >= ARRAY_SIZE(tasklet_threads))
-      return -ENFILE; /* too many tasklet runner threads */
+      return -ENFILE; /* too many tasklet runners */
 
    t = kzmalloc(sizeof(tasklet_thread_info));
 
@@ -232,7 +237,6 @@ int create_tasklet_thread(int priority, int limit)
       return -ENOMEM;
    }
 
-   kcond_init(&t->cond);
    ringbuf_init(&t->ringbuf, limit, sizeof(tasklet), t->tasklets);
 
 #ifndef UNIT_TEST_ENVIRONMENT
@@ -251,7 +255,6 @@ int create_tasklet_thread(int priority, int limit)
 
    /* Double-check that tasklet_threads_count did not change */
    ASSERT(tn == (int)tasklet_threads_count);
-
    tasklet_threads_count++;
    return tn;
 }
@@ -270,7 +273,6 @@ void destroy_last_tasklet_thread(void)
    ASSERT(ringbuf_is_empty(&t->ringbuf));
 #endif
 
-   kcond_destory(&t->cond);
    ringbuf_destory(&t->ringbuf);
    kfree2(t->tasklets, sizeof(tasklet) * t->limit);
    kfree2(t, sizeof(tasklet_thread_info));

@@ -10,6 +10,7 @@
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/elf_utils.h>
+#include <tilck/kernel/tasklet.h>
 
 u64 __ticks; /* ticks since the timer started */
 ATOMIC(u32) disable_preemption_count = 1;
@@ -179,6 +180,9 @@ void debug_check_tasks_lists(void)
    disable_interrupts(&var);
 
    list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
+
+      if (pos->what == &tasklet_runner_kthread)
+         continue;
 
       if (pos->state != TASK_STATE_SLEEPING) {
 

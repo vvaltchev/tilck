@@ -2,7 +2,6 @@
 
 #pragma once
 #include <tilck/kernel/ringbuf.h>
-#include <tilck/kernel/sync.h>
 
 typedef void (*tasklet_func)(uptr, uptr);
 
@@ -17,7 +16,6 @@ typedef struct {
 
    tasklet *tasklets;
    ringbuf ringbuf;
-   kcond cond;
    task_info *task;
    int priority; /* 0 => max priority */
    u32 limit;

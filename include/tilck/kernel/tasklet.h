@@ -34,3 +34,5 @@ NODISCARD bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2);
 #define enqueue_tasklet0(tn, f) \
    enqueue_tasklet_int(tn, (void *)(f), 0, 0)
 
+void tasklet_runner_kthread(void *arg);
+

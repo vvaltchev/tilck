@@ -87,7 +87,7 @@ struct task_info {
                */
 
    bool running_in_kernel;
-   enum task_state state;
+   ATOMIC(enum task_state) state;
    u32 exit_status;
 
    process_info *pi;

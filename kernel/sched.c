@@ -173,6 +173,9 @@ void set_current_task_in_kernel(void)
 
 static void task_add_to_state_list(task_info *ti)
 {
+   if (ti->what == &tasklet_runner_kthread)
+      return;
+
    switch (ti->state) {
 
       case TASK_STATE_RUNNABLE:
@@ -199,6 +202,9 @@ static void task_add_to_state_list(task_info *ti)
 
 static void task_remove_from_state_list(task_info *ti)
 {
+   if (ti->what == &tasklet_runner_kthread)
+      return;
+
    switch (ti->state) {
 
       case TASK_STATE_RUNNABLE:
@@ -353,7 +359,7 @@ void schedule(int curr_irq)
 
    list_for_each(pos, temp, &runnable_tasks_list, runnable_node) {
 
-      ASSERT(pos->state == TASK_STATE_RUNNABLE); // TODO: is this really safe?
+      ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
       if (pos == idle_task || pos == get_curr_task())
          continue;
