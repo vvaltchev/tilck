@@ -326,7 +326,7 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
       }
 
       /* Hang until a child dies */
-      task_set_wait_obj(curr, WOBJ_TASK, (task_info *)-1, NULL);
+      task_set_wait_obj(curr, WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD, NULL);
       kernel_yield();
    }
 
@@ -415,8 +415,9 @@ NORETURN sptr sys_exit(int exit_status)
 
       void *woptr = wait_obj_get_ptr(&pos->wobj);
 
-      if (woptr == curr || (pos->pid == cppid && woptr == (void *)-1)) {
-
+      if (woptr == curr ||
+          (pos->pid == cppid && woptr == WOBJ_TASK_PTR_ANY_CHILD))
+      {
          ASSERT(pos->wobj.type == WOBJ_TASK);
          ASSERT(wait_obj_get_ptr(&pos->wobj) == woptr);
 
