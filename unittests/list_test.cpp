@@ -13,8 +13,31 @@ struct my_struct {
    const char *data;
    list_node node;
 
-   my_struct(const char *data) : data(data) { }
+   my_struct(const char *data) : data(data) {
+      list_node_init(&node);
+   }
 };
+
+extern "C" {
+
+   my_struct *debug_list_test_get_struct(list_node *n) {
+      my_struct *s = list_to_obj(n, my_struct, node);
+      return s;
+   }
+
+   const char *debug_list_test_dump_data(list_node *n) {
+      return debug_list_test_get_struct(n)->data;
+   }
+
+   void debug_list_test_dump(list *l) {
+
+      my_struct *pos, *temp;
+
+      list_for_each(pos, temp, l, node) {
+         printf("%s\n", pos->data);
+      }
+   }
+}
 
 using tvec = vector<const char *>;
 
@@ -111,19 +134,18 @@ TEST(list_adt, add_tail)
    list_init(&list);
 
    ASSERT_TRUE(list_is_empty(&list));
-
-   list_add_after((list_node *)&list, &e1.node);
-   list_add_after(&e1.node, &e2.node);
+   list_add_tail(&list, &e1.node);
+   list_add_tail(&list, &e2.node);
 
    check_list_elems(list, tvec{"head", "tail"});
 
    my_struct ne("new tail");
    list_add_tail(&list, &ne.node);
 
-   ASSERT_TRUE(list.last == &ne.node);
-   ASSERT_TRUE(ne.node.next == (list_node *)&list);
-   ASSERT_TRUE(e2.node.next == &ne.node);
-   ASSERT_TRUE(ne.node.prev == &e2.node);
+   EXPECT_TRUE(list.last == &ne.node);
+   EXPECT_TRUE(ne.node.next == (list_node *)&list);
+   EXPECT_TRUE(e2.node.next == &ne.node);
+   EXPECT_TRUE(ne.node.prev == &e2.node);
 
    check_list_elems(list, tvec{"head", "tail", "new tail"});
 }
