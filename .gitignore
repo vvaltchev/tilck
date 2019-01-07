@@ -3,7 +3,6 @@ bochsrc-disk.bxrc
 bochsrc.bxrc
 toolchain/
 .gdb_history
-.vscode/*
 GPATH
 GRTAGS
 GTAGS

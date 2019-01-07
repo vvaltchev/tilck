@@ -3,11 +3,7 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceRoot}/kernel/include",
-                "${workspaceRoot}/kernel/include/i386/include",
-                "${workspaceRoot}/kernel/include/generic_x86/include",
-                "${workspaceRoot}/common/include",
-                "${workspaceRoot}/common/system_headers"
+                "${workspaceRoot}/include"
             ],
             "defines": [
                 "__i386__"
