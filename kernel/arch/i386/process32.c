@@ -150,27 +150,26 @@ kthread_create(kthread_func_ptr fun, void *arg)
 
 void kthread_exit(void)
 {
-   task_info *pos, *temp;
+   wait_obj *wo_pos, *wo_temp;
+   task_info *curr = get_curr_task();
+
    disable_preemption();
 
-   // MARKER: list_for_each sleeping_tasks_list
-   list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
-      if (wait_obj_get_ptr(&pos->wobj) == get_curr_task()) {
-         ASSERT(pos->wobj.type == WOBJ_TASK);
-         task_reset_wait_obj(pos);
-      }
+   list_for_each(wo_pos, wo_temp, &curr->tasks_waiting_list, wait_list_node) {
+      task_info *ti = CONTAINER_OF(wo_pos, task_info, wobj);
+      task_reset_wait_obj(ti);
    }
 
-   task_change_state(get_curr_task(), TASK_STATE_ZOMBIE);
+   task_change_state(curr, TASK_STATE_ZOMBIE);
 
    /* WARNING: the following call discards the whole stack! */
    switch_to_initial_kernel_stack();
 
    /* Free the heap allocations used by the task, including the kernel stack */
-   free_mem_for_zombie_task(get_curr_task());
+   free_mem_for_zombie_task(curr);
 
    /* Remove the from the scheduler and free its struct */
-   remove_task(get_curr_task());
+   remove_task(curr);
 
    set_current_task(NULL);
    switch_to_idle_task_outside_interrupt_context();

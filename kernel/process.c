@@ -75,6 +75,8 @@ void init_task_lists(task_info *ti)
    list_node_init(&ti->zombie_node);
    list_node_init(&ti->siblings_node); /* ONLY for the main task (tid == pid) */
    list_node_init(&ti->wakeup_timer_node);
+
+   list_init(&ti->tasks_waiting_list);
 }
 
 task_info *allocate_new_process(task_info *parent, int pid)
@@ -242,7 +244,11 @@ void kthread_join(int tid)
    ASSERT(is_preemption_enabled());
 
    while ((ti = get_task(tid))) {
-      task_set_wait_obj(get_curr_task(), WOBJ_TASK, ti, NULL);
+
+      task_set_wait_obj(get_curr_task(),
+                        WOBJ_TASK,
+                        ti,
+                        &ti->tasks_waiting_list);
       kernel_yield();
    }
 }

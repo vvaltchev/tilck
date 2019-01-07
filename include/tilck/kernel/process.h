@@ -114,6 +114,9 @@ struct task_info {
    ATOMIC(u32) ticks_before_wake_up;
    list_node wakeup_timer_node;
 
+   /* A dedicated list for all the tasks waiting this task to end */
+   list tasks_waiting_list;
+
    /*
     * For kernel threads, this is a function pointer of the thread's entry
     * point. For user processes/threads, it is unused for the moment. In the
