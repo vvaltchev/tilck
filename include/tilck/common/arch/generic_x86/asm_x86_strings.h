@@ -55,12 +55,12 @@ EXTERN inline size_t strlen(const char *str)
     * is to store the modified input register into an (unused) output variable.
     */
 
-   asm("repne scasb\n\t"
-       "notl %%ecx\n\t"
-       "decl %%ecx\n\t"
-      : "=c" (count), "=D" (unused)
-      : "a" (0), "c" (-1), "D" (str)
-      : "cc");
+   asmVolatile("repne scasb\n\t"
+               "notl %%ecx\n\t"
+               "decl %%ecx\n\t"
+               : "=c" (count), "=D" (unused)
+               : "a" (0), "c" (-1), "D" (str)
+               : "cc");
 
    return count;
 }
