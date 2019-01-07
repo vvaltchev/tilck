@@ -52,6 +52,20 @@ bool file_exists(const char *filepath)
    return !rc;
 }
 
+void wait_child_cmd(int child_pid)
+{
+   int wstatus;
+   waitpid(child_pid, &wstatus, 0);
+
+   if (!WIFEXITED(wstatus)) {
+      printf("[shell] the command did NOT exited normally\n");
+      return;
+   }
+
+   if (WEXITSTATUS(wstatus))
+      printf("[shell] command exited with status: %d\n", WEXITSTATUS(wstatus));
+}
+
 void process_cmd_line(const char *cmd_line)
 {
    int argc = 0;
@@ -94,7 +108,6 @@ void process_cmd_line(const char *cmd_line)
    // for (int i = 0; cmd_argv[i] != NULL; i++)
    //    printf("[process_cmd_line] argv[%i] = '%s'\n", i, cmd_argv[i]);
 
-   int wstatus;
    int child_pid = fork();
 
    if (!child_pid) {
@@ -125,15 +138,7 @@ void process_cmd_line(const char *cmd_line)
       return;
    }
 
-   waitpid(child_pid, &wstatus, 0);
-
-   if (!WIFEXITED(wstatus)) {
-      printf("[shell] the command did NOT exited normally\n");
-      return;
-   }
-
-   if (WEXITSTATUS(wstatus))
-      printf("[shell] command exited with status: %d\n", WEXITSTATUS(wstatus));
+   wait_child_cmd(child_pid);
 }
 
 void parse_opt(int argc, char **argv)

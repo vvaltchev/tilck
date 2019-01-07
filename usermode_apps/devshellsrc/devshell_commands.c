@@ -541,7 +541,7 @@ int cmd_waitpid3(int argc, char **argv)
 int cmd_selftest(int argc, char **argv)
 {
    if (argc < 1) {
-      printf("Expected selftest name argument.\n");
+      printf("[shell] Expected selftest name argument.\n");
       return 1;
    }
 
@@ -552,7 +552,7 @@ int cmd_selftest(int argc, char **argv)
                      NULL);
 
    if (rc != 0) {
-      printf("Invalid selftest '%s'\n", argv[0]);
+      printf("[shell] Invalid selftest '%s'\n", argv[0]);
       return 1;
    }
 

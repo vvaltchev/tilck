@@ -116,6 +116,7 @@ def ProcessLine(line):
       if m:
          shell_exit_code = int(m.group(1))
          dumping_gcda_files = False
+         print(stripped)
          return
 
    if not dumping_gcda_files:
@@ -248,10 +249,9 @@ if gcda_file:
 if output.find("KERNEL PANIC") != -1:
    failed = FAIL_PANIC
 
-if sys.argv[1] == 'shellcmd' and failed == 0 and shell_exit_code != 0:
+if failed == FAIL_SUCCESS and shell_exit_code != 0:
    print "Shell exited with code {0}.".format(shell_exit_code)
    failed = FAIL_SHELL_NO_ZERO_EXIT
-
 
 if dump_coverage and report_coverage:
 
