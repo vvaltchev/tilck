@@ -17,6 +17,7 @@ typedef struct list list;
 typedef struct list_node list_node;
 
 STATIC_ASSERT(sizeof(list) == sizeof(list_node));
+STATIC_ASSERT(alignof(list) == alignof(list_node));
 
 #define make_list(name) { (list_node *)&(name), (list_node *)&(name) }
 #define make_list_node(name) { &(name), &(name) }

@@ -31,6 +31,7 @@
    #include <stdint.h>    // system header
    #include <stddef.h>    // system header
    #include <stdbool.h>   // system header
+   #include <stdalign.h>  // system header
    #define STATIC_ASSERT(s) _Static_assert(s, "Static assertion failed")
 #endif
 
