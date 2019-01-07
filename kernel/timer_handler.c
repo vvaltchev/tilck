@@ -15,7 +15,7 @@
 u64 __ticks; /* ticks since the timer started */
 ATOMIC(u32) disable_preemption_count = 1;
 
-static list_node timer_wakeup_list = make_list_node(timer_wakeup_list);
+static list timer_wakeup_list = make_list(timer_wakeup_list);
 
 void task_set_wakeup_timer(task_info *ti, u32 ticks)
 {

@@ -14,9 +14,9 @@
 ATOMIC(task_info *) __current;
 task_info *kernel_process;
 
-list_node runnable_tasks_list;
-list_node sleeping_tasks_list;
-list_node zombie_tasks_list;
+list runnable_tasks_list;
+list sleeping_tasks_list;
+list zombie_tasks_list;
 
 static task_info *tree_by_tid_root;
 
@@ -128,9 +128,9 @@ void create_kernel_process(void)
    task_info *s_kernel_ti = (task_info *)kernel_proc_buf;
    process_info *s_kernel_pi = (process_info *)(s_kernel_ti + 1);
 
-   list_node_init(&runnable_tasks_list);
-   list_node_init(&sleeping_tasks_list);
-   list_node_init(&zombie_tasks_list);
+   list_init(&runnable_tasks_list);
+   list_init(&sleeping_tasks_list);
+   list_init(&zombie_tasks_list);
 
    int kernel_pid = create_new_pid();
    ASSERT(kernel_pid == 0);
@@ -141,7 +141,7 @@ void create_kernel_process(void)
 
    s_kernel_ti->pi = s_kernel_pi;
    init_task_lists(s_kernel_ti);
-   list_node_init(&s_kernel_pi->children_list);
+   list_init(&s_kernel_pi->children_list);
 
    arch_specific_new_task_setup(s_kernel_ti);
    ASSERT(s_kernel_pi->parent_pid == 0);

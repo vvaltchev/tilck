@@ -27,7 +27,7 @@ typedef enum {
 
 typedef struct {
 
-   list_node list;
+   list_node node;
    keypress_func handler;
 
 } keypress_handler_elem;
@@ -37,7 +37,7 @@ static int kb_tasklet_runner = -1;
 static bool key_pressed_state[2][128];
 static bool numLock;
 static bool capsLock;
-static list_node keypress_handlers;
+static list keypress_handlers;
 
 bool kb_is_pressed(u32 key)
 {
@@ -81,10 +81,10 @@ int kb_register_keypress_handler(keypress_func f)
    if (!e)
       return -ENOMEM;
 
-   list_node_init(&e->list);
+   list_node_init(&e->node);
    e->handler = f;
 
-   list_add_tail(&keypress_handlers, &e->list);
+   list_add_tail(&keypress_handlers, &e->node);
    return 0;
 }
 
@@ -93,7 +93,7 @@ static int kb_call_keypress_handlers(u32 raw_key, u8 printable_char)
    int count = 0;
    keypress_handler_elem *pos, *temp;
 
-   list_for_each(pos, temp, &keypress_handlers, list) {
+   list_for_each(pos, temp, &keypress_handlers, node) {
 
       int rc = pos->handler(raw_key, printable_char);
 
@@ -260,7 +260,7 @@ void init_kb(void)
 {
    disable_preemption();
 
-   list_node_init(&keypress_handlers);
+   list_init(&keypress_handlers);
 
    if (!kb_ctrl_self_test()) {
 

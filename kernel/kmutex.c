@@ -19,7 +19,7 @@ static ATOMIC(uptr) new_mutex_id = 1;
 void wait_obj_set(wait_obj *wo,
                   enum wo_type type,
                   void *ptr,
-                  list_node *wait_list)
+                  list *wait_list)
 {
    atomic_store_explicit(&wo->__ptr, ptr, mo_relaxed);
 
@@ -27,8 +27,8 @@ void wait_obj_set(wait_obj *wo,
    {
       wo->type = type;
 
-      ASSERT(list_is_null(&wo->wait_list_node) ||
-            list_is_empty(&wo->wait_list_node));
+      ASSERT(list_node_is_null(&wo->wait_list_node) ||
+             list_node_is_empty(&wo->wait_list_node));
 
       list_node_init(&wo->wait_list_node);
 
@@ -58,7 +58,7 @@ void *wait_obj_reset(wait_obj *wo)
 void task_set_wait_obj(task_info *ti,
                        enum wo_type type,
                        void *ptr,
-                       list_node *wait_list)
+                       list *wait_list)
 {
    wait_obj_set(&ti->wobj, type, ptr, wait_list);
    ASSERT(ti->state != TASK_STATE_SLEEPING);
@@ -91,7 +91,7 @@ void kmutex_init(kmutex *m, u32 flags)
    bzero(m, sizeof(kmutex));
    m->id = atomic_fetch_add_explicit(&new_mutex_id, 1U, mo_relaxed);
    m->flags = flags;
-   list_node_init(&m->wait_list);
+   list_init(&m->wait_list);
 }
 
 void kmutex_destroy(kmutex *m)

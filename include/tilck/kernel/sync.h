@@ -38,7 +38,7 @@ typedef struct {
 void wait_obj_set(wait_obj *wo,
                   enum wo_type type,
                   void *ptr,
-                  list_node *wait_list);
+                  list *wait_list);
 
 void *wait_obj_reset(wait_obj *wo);
 
@@ -50,7 +50,7 @@ static inline void *wait_obj_get_ptr(wait_obj *wo)
 void task_set_wait_obj(struct task_info *ti,
                        enum wo_type type,
                        void *ptr,
-                       list_node *wait_list);
+                       list *wait_list);
 
 void *task_reset_wait_obj(struct task_info *ti);
 
@@ -64,7 +64,7 @@ typedef struct {
    struct task_info *owner_task;
    u32 flags;
    u32 lock_count; // Valid when the mutex is recursive
-   list_node wait_list;
+   list wait_list;
 
 } kmutex;
 
@@ -87,7 +87,7 @@ bool kmutex_is_curr_task_holding_lock(kmutex *m);
 typedef struct {
 
    uptr id;
-   list_node wait_list;
+   list wait_list;
 
 } kcond;
 

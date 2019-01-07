@@ -31,7 +31,7 @@
 
 typedef struct {
 
-   list_node list;
+   list_node node;
 
    fs_handle h;
    void *vaddr;
@@ -49,7 +49,7 @@ struct process_info {
    void *initial_brk;
    kmalloc_heap *mmap_heap;
 
-   list_node children_list;
+   list children_list;
 
    char cwd[MAX_PATH]; /* current working directory */
    fs_handle handles[16]; /* for the moment, just a fixed-size small array */
@@ -62,7 +62,7 @@ struct process_info {
 
    int *set_child_tid; /* NOTE: this is an user pointer */
 
-   list_node mappings;
+   list mappings;
 };
 
 typedef struct process_info process_info;

@@ -42,7 +42,7 @@ int register_driver(driver_info *info)
 
 typedef struct {
 
-   list_node list;
+   list_node dir_node;
 
    u32 dev_major;
    u32 dev_minor;
@@ -55,7 +55,7 @@ typedef struct {
 typedef struct {
 
    /* Yes, sub-directories are NOT supported at the moment */
-   list_node files_list;
+   list files_list;
 
 } devfs_directory;
 
@@ -86,7 +86,7 @@ int create_dev_file(const char *filename, int major, int minor)
    if (!f)
       return -ENOMEM;
 
-   list_node_init(&f->list);
+   list_node_init(&f->dir_node);
    f->name = filename;
    f->dev_major = major;
    f->dev_minor = minor;
@@ -98,7 +98,7 @@ int create_dev_file(const char *filename, int major, int minor)
       return res;
    }
 
-   list_add_tail(&d->root_dir.files_list, &f->list);
+   list_add_tail(&d->root_dir.files_list, &f->dir_node);
    return 0;
 }
 
@@ -254,7 +254,7 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
     * to contain more than a few files.
     */
 
-   list_for_each(pos, temp, &d->root_dir.files_list, list) {
+   list_for_each(pos, temp, &d->root_dir.files_list, dir_node) {
       if (!strcmp(pos->name, path)) {
          return devfs_open_file(fs, pos, out);
       }
@@ -343,7 +343,7 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    if (dh->type != DEVFS_DIRECTORY)
       return -ENOTDIR;
 
-   list_for_each(pos, temp, &d->root_dir.files_list, list) {
+   list_for_each(pos, temp, &d->root_dir.files_list, dir_node) {
 
       if (curr_index < dh->read_pos) {
          curr_index++;
@@ -411,7 +411,7 @@ filesystem *create_devfs(void)
       return NULL;
    }
 
-   list_node_init(&d->root_dir.files_list);
+   list_init(&d->root_dir.files_list);
    kmutex_init(&d->ex_mutex, KMUTEX_FL_RECURSIVE);
 
    read_system_clock_datetime(&d->wrt_time);

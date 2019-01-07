@@ -106,10 +106,10 @@ task_info *allocate_new_process(task_info *parent, int pid)
 
    ti->pi = pi;
    init_task_lists(ti);
-   list_node_init(&pi->children_list);
+   list_init(&pi->children_list);
    list_add_tail(&parent->pi->children_list, &ti->siblings_node);
 
-   list_node_init(&pi->mappings);
+   list_init(&pi->mappings);
 
    arch_specific_new_task_setup(ti);
    return ti;
@@ -177,13 +177,13 @@ process_add_user_mapping(fs_handle h, void *vaddr, size_t page_count)
    if (!um)
       return NULL;
 
-   list_node_init(&um->list);
+   list_node_init(&um->node);
 
    um->h = h;
    um->vaddr = vaddr;
    um->page_count = page_count;
 
-   list_add_tail(&pi->mappings, &um->list);
+   list_add_tail(&pi->mappings, &um->node);
    return um;
 }
 
@@ -191,7 +191,7 @@ void process_remove_user_mapping(user_mapping *um)
 {
    ASSERT(!is_preemption_enabled());
 
-   list_remove(&um->list);
+   list_remove(&um->node);
    kfree2(um, sizeof(user_mapping));
 }
 
@@ -202,7 +202,7 @@ user_mapping *process_get_user_mapping(void *vaddr)
    process_info *pi = get_curr_task()->pi;
    user_mapping *pos, *temp;
 
-   list_for_each(pos, temp, &pi->mappings, list) {
+   list_for_each(pos, temp, &pi->mappings, node) {
       if (pos->vaddr == vaddr)
          return pos;
    }
@@ -384,7 +384,7 @@ NORETURN sptr sys_exit(int exit_status)
    while (!list_is_empty(&curr->pi->mappings)) {
 
       user_mapping *um =
-         list_first_obj(&curr->pi->mappings, user_mapping, list);
+         list_first_obj(&curr->pi->mappings, user_mapping, node);
 
       size_t actual_len = um->page_count << PAGE_SHIFT;
 

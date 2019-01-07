@@ -13,7 +13,7 @@ static ATOMIC(uptr) new_cond_id = 1;
 void kcond_init(kcond *c)
 {
    c->id = atomic_fetch_add_explicit(&new_cond_id, 1U, mo_relaxed);
-   list_node_init(&c->wait_list);
+   list_init(&c->wait_list);
 }
 
 bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)

@@ -22,7 +22,7 @@
 
 typedef struct {
 
-   list_node not_full_heaps_list;
+   list_node not_full_heaps_node;
    kmalloc_heap heap;
 
 } small_heap_node;
@@ -46,12 +46,12 @@ STATIC int peak_small_heaps_count;
 STATIC int not_full_small_heaps_count;
 STATIC int peak_non_full_small_heaps_count;
 
-STATIC list_node small_not_full_heaps_list;
+STATIC list small_not_full_heaps_list;
 
 static inline void
 record_small_heap_as_not_full(small_heap_node *node)
 {
-   list_add_before(&small_not_full_heaps_list, &node->not_full_heaps_list);
+   list_add_head(&small_not_full_heaps_list, &node->not_full_heaps_node);
    not_full_small_heaps_count++;
 
    if (not_full_small_heaps_count > peak_non_full_small_heaps_count)
@@ -63,7 +63,7 @@ record_small_heap_as_full(small_heap_node *node)
 {
    ASSERT(not_full_small_heaps_count > 0);
    not_full_small_heaps_count--;
-   list_remove(&node->not_full_heaps_list);
+   list_remove(&node->not_full_heaps_node);
 }
 
 static inline void
@@ -86,7 +86,7 @@ unregister_small_heap_node(small_heap_node *node)
 
    ASSERT(not_full_small_heaps_count > 0);
    not_full_small_heaps_count--;
-   list_remove(&node->not_full_heaps_list);
+   list_remove(&node->not_full_heaps_node);
 }
 
 static const u32 align_type_table[4] =
@@ -112,7 +112,7 @@ static small_heap_node *alloc_new_small_heap(void)
       return NULL;
    }
 
-   list_node_init(&new_node->not_full_heaps_list);
+   list_node_init(&new_node->not_full_heaps_node);
    void *md_alloc = heap_data;
 
    bool success =
@@ -154,7 +154,7 @@ small_heap_kmalloc_internal(size_t *size,
 
    ASSERT(!is_preemption_enabled());
 
-   list_for_each(pos, temp, &small_not_full_heaps_list, not_full_heaps_list) {
+   list_for_each(pos, temp, &small_not_full_heaps_list, not_full_heaps_node) {
 
       if (pos->heap.size - pos->heap.mem_allocated < *size)
          continue;

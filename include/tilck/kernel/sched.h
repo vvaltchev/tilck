@@ -14,9 +14,9 @@ typedef struct task_info task_info;
 extern ATOMIC(task_info *) __current;
 extern task_info *kernel_process;
 
-extern list_node runnable_tasks_list;
-extern list_node sleeping_tasks_list;
-extern list_node zombie_tasks_list;
+extern list runnable_tasks_list;
+extern list sleeping_tasks_list;
+extern list zombie_tasks_list;
 
 extern ATOMIC(u32) disable_preemption_count;
 
