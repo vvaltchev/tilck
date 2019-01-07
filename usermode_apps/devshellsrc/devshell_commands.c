@@ -655,9 +655,6 @@ static void run_cmd(cmd_func_type func, int argc, char **argv)
 
    if (dump_coverage) {
       dump_coverage_files();
-
-      if (func == cmd_selftest)
-         tilck_debug_qemu_poweroff();
    }
 
    exit(exit_code);

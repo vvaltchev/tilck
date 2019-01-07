@@ -53,6 +53,7 @@ shell_exit_code = -1
 dumping_gcda_files = False
 gcda_buf = None
 gcda_file = None
+notBase64Char = re.compile(r'[^A-Za-z0-9+/=]')
 
 def write_gcda_file():
 
@@ -119,36 +120,47 @@ def ProcessLine(line):
          print(stripped)
          return
 
+   if stripped.find(KERNEL_HELLO_MSG) != -1:
+      HandleHelloMsg()
+      return
+
    if not dumping_gcda_files:
 
       output += line
       print(stripped)
 
-   else:
+      if stripped.find(KERNEL_DUMP_GCDA_STR) != -1:
+         dumping_gcda_files = True
+         return
 
-      if not stripped:
-         return # empty line
-
-      m = re.search(r'file: (.+)', stripped)
-
-      if m:
-
-         if gcda_file:
-            write_gcda_file()
-
-         gcda_file = m.group(1)
-         gcda_buf = ''
-
-      else:
-         gcda_buf += stripped
-
-
-   if stripped.find(KERNEL_HELLO_MSG) != -1:
-      HandleHelloMsg()
       return
 
-   if stripped.find(KERNEL_DUMP_GCDA_STR) != -1:
-      dumping_gcda_files = True
+   # Dumping gcda file
+
+   if not stripped:
+      return
+
+   if notBase64Char.search(stripped[0]):
+
+      if gcda_file:
+         write_gcda_file()
+
+      dumping_gcda_files = False
+      print(stripped)
+      return
+
+   m = re.search(r'file: (.+)', stripped)
+
+   if m:
+
+      if gcda_file:
+         write_gcda_file()
+
+      gcda_file = m.group(1)
+      gcda_buf = ''
+
+   else:
+      gcda_buf += stripped
 
 def RunTheVM():
 
