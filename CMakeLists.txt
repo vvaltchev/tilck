@@ -237,6 +237,7 @@ set(
    OTHER_CFLAGS_LIST
 
    -ggdb
+   -fno-strict-aliasing
 )
 
 set(
