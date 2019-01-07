@@ -66,9 +66,9 @@ sptr sys_tilck_run_selftest(const char *user_selftest)
    int rc;
    char buf[256] = SELFTEST_PREFIX;
 
-   rc = copy_str_from_user(buf + strlen(buf),
+   rc = copy_str_from_user(buf + sizeof(SELFTEST_PREFIX) - 1,
                            user_selftest,
-                           sizeof(buf) - strlen(buf) - 1,
+                           sizeof(buf) - sizeof(SELFTEST_PREFIX) - 2,
                            NULL);
 
    if (rc != 0)

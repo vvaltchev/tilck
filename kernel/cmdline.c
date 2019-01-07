@@ -42,7 +42,7 @@ static void
 parse_arg_state_set_selftest(int arg_num, const char *arg, size_t arg_len)
 {
    char buf[256] = SELFTEST_PREFIX;
-   memcpy(buf + strlen(SELFTEST_PREFIX), arg, arg_len + 1);
+   memcpy(buf + sizeof(SELFTEST_PREFIX) - 1, arg, arg_len + 1);
 
    uptr addr = find_addr_of_symbol(buf);
 
