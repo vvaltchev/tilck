@@ -279,7 +279,7 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
          task_set_wait_obj(get_curr_task(),
                            WOBJ_TASK,
                            waited_task,
-                           NULL);
+                           &waited_task->tasks_waiting_list);
 
          kernel_yield();
       }
@@ -364,6 +364,32 @@ sptr sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
    return sys_waitpid(pid, user_wstatus, options);
 }
 
+void wake_up_tasks_waiting_on(task_info *ti)
+{
+   wait_obj *wo_pos, *wo_temp;
+
+   list_for_each(wo_pos, wo_temp, &ti->tasks_waiting_list, wait_list_node) {
+
+      ASSERT(wo_pos->type == WOBJ_TASK);
+
+      task_info *ti = CONTAINER_OF(wo_pos, task_info, wobj);
+      task_reset_wait_obj(ti);
+   }
+}
+
+static bool task_is_waiting_on_any_child(task_info *ti)
+{
+   wait_obj *wobj = &ti->wobj;
+
+   if (ti->state != TASK_STATE_SLEEPING)
+      return false;
+
+   if (wobj->type != WOBJ_TASK)
+      return false;
+
+   return wait_obj_get_ptr(wobj) == WOBJ_TASK_PTR_ANY_CHILD;
+}
+
 NORETURN sptr sys_exit(int exit_status)
 {
    disable_preemption();
@@ -414,22 +440,16 @@ NORETURN sptr sys_exit(int exit_status)
 
    // Wake-up all the tasks waiting on this task to exit
 
-   task_info *pos, *temp;
+   wake_up_tasks_waiting_on(curr);
 
-   // MARKER: list_for_each sleeping_tasks_list
-   list_for_each(pos, temp, &sleeping_tasks_list, sleeping_node) {
+   if (cppid > 0) {
 
-      void *woptr = wait_obj_get_ptr(&pos->wobj);
+      task_info *parent_task = get_task(cppid);
 
-      if (woptr == curr ||
-          (pos->pid == cppid && woptr == WOBJ_TASK_PTR_ANY_CHILD))
-      {
-         ASSERT(pos->wobj.type == WOBJ_TASK);
-         ASSERT(wait_obj_get_ptr(&pos->wobj) == woptr);
-
-         task_reset_wait_obj(pos);
-      }
+      if (task_is_waiting_on_any_child(parent_task))
+         task_reset_wait_obj(parent_task);
    }
+
 
    set_page_directory(get_kernel_pdir());
    pdir_destroy(curr->pi->pdir);

@@ -150,16 +150,10 @@ kthread_create(kthread_func_ptr fun, void *arg)
 
 void kthread_exit(void)
 {
-   wait_obj *wo_pos, *wo_temp;
    task_info *curr = get_curr_task();
-
    disable_preemption();
 
-   list_for_each(wo_pos, wo_temp, &curr->tasks_waiting_list, wait_list_node) {
-      task_info *ti = CONTAINER_OF(wo_pos, task_info, wobj);
-      task_reset_wait_obj(ti);
-   }
-
+   wake_up_tasks_waiting_on(curr);
    task_change_state(curr, TASK_STATE_ZOMBIE);
 
    /* WARNING: the following call discards the whole stack! */
