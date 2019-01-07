@@ -9,12 +9,14 @@ struct list_node {
 };
 
 struct list {
-   struct list_node *next;
-   struct list_node *prev;
+   struct list_node *first;
+   struct list_node *last;
 };
 
 typedef struct list list;
 typedef struct list_node list_node;
+
+STATIC_ASSERT(sizeof(list) == sizeof(list_node));
 
 #define make_list(name) { (list_node *)&(name), (list_node *)&(name) }
 #define make_list_node(name) { &(name), &(name) }
@@ -25,24 +27,24 @@ static inline void list_node_init(list_node *n)
    n->prev = n;
 }
 
+static inline bool list_node_is_null(list_node *n) {
+   return !n->next && !n->prev;
+}
+
+static inline bool list_node_is_empty(list_node *n) {
+   return n->next == n && n->prev == n;
+}
+
 static inline void list_init(list *n) {
    list_node_init((list_node *)n);
 }
 
 static inline bool list_is_null(list *n) {
-   return !n->next && !n->prev;
+   return list_node_is_null((list_node *) n);
 }
 
 static inline bool list_is_empty(list *n) {
-   return n->next == (list_node *)n && n->prev == (list_node *)n;
-}
-
-static inline bool list_node_is_null(list_node *n) {
-   return list_is_null((list *) n);
-}
-
-static inline bool list_node_is_empty(list_node *n) {
-   return list_is_empty((list *) n);
+   return list_node_is_empty((list_node *) n);
 }
 
 static inline bool list_is_node_in_list(list_node *node) {
@@ -85,10 +87,10 @@ static inline void list_remove(list_node *elem)
    CONTAINER_OF(list_ptr, struct_type, list_member_name)
 
 #define list_first_obj(list_root_ptr, type, member) \
-   list_to_obj((list_root_ptr)->next, type, member)
+   list_to_obj((list_root_ptr)->first, type, member)
 
 #define list_last_obj(list_root_ptr, type, member) \
-   list_to_obj((list_root_ptr)->prev, type, member)
+   list_to_obj((list_root_ptr)->last, type, member)
 
 // Here 'pos' is an object (struct *), containing a list_node 'member'
 

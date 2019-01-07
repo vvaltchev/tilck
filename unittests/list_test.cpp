@@ -44,14 +44,14 @@ TEST(list_adt, initialization)
 
    ASSERT_TRUE(list_is_empty(&list));
 
-   ASSERT_TRUE(list.next == (list_node*)&list);
-   ASSERT_TRUE(list.prev == (list_node*)&list);
+   ASSERT_TRUE(list.first == (list_node*)&list);
+   ASSERT_TRUE(list.last == (list_node*)&list);
 
    bzero(&list, sizeof(list));
 
    list_init(&list);
-   ASSERT_TRUE(list.next == (list_node*)&list);
-   ASSERT_TRUE(list.prev == (list_node*)&list);
+   ASSERT_TRUE(list.first == (list_node*)&list);
+   ASSERT_TRUE(list.last == (list_node*)&list);
 
    check_list_elems(list, tvec{});
 }
@@ -90,7 +90,7 @@ TEST(list_adt, add)
    ASSERT_TRUE(e2.node.prev == &e12.node);
 
    ASSERT_TRUE(e2.node.next == (list_node *)&list);
-   ASSERT_TRUE(list.prev == &e2.node);
+   ASSERT_TRUE(list.last == &e2.node);
 
    ASSERT_TRUE(list_to_obj(&e1.node, my_struct, node) == &e1);
    ASSERT_TRUE(list_to_obj(&e2.node, my_struct, node) == &e2);
@@ -120,7 +120,7 @@ TEST(list_adt, add_tail)
    my_struct ne("new tail");
    list_add_tail(&list, &ne.node);
 
-   ASSERT_TRUE(list.prev == &ne.node);
+   ASSERT_TRUE(list.last == &ne.node);
    ASSERT_TRUE(ne.node.next == (list_node *)&list);
    ASSERT_TRUE(e2.node.next == &ne.node);
    ASSERT_TRUE(ne.node.prev == &e2.node);
