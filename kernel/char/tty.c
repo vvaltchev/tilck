@@ -39,6 +39,12 @@ static int tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
    ops->write = tty_write;
    ops->ioctl = tty_ioctl;
    ops->fcntl = tty_fcntl;
+
+   /* the tty device-file requires NO locking */
+   ops->exlock = &vfs_file_nolock;
+   ops->exunlock = &vfs_file_nolock;
+   ops->shlock = &vfs_file_nolock;
+   ops->shunlock = &vfs_file_nolock;
    return 0;
 }
 

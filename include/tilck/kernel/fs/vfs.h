@@ -58,6 +58,8 @@ typedef void (*func_ex_unlock)(fs_handle);
 typedef void (*func_sh_lock)(fs_handle);
 typedef void (*func_sh_unlock)(fs_handle);
 
+/* Used by the devices when want to remove any locking from a file */
+void vfs_file_nolock(fs_handle h);
 
 #define VFS_FS_RO        (0)
 #define VFS_FS_RW        (1 << 0)

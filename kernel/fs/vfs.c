@@ -69,6 +69,11 @@ check_mountpoint_match(const char *mp, u32 lm, const char *path, u32 lp)
    return m;
 }
 
+void vfs_file_nolock(fs_handle h)
+{
+   /* do nothing */
+}
+
 int vfs_open(const char *path, fs_handle *out)
 {
    mountpoint *mp, *best_match = NULL;
