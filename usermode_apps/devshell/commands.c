@@ -16,6 +16,15 @@
 #include "devshell.h"
 #include "sysenter.h"
 
+int cmd_brk_test(int argc, char **argv);
+int cmd_mmap_test(int argc, char **argv);
+int cmd_waitpid1(int argc, char **argv);
+int cmd_waitpid2(int argc, char **argv);
+int cmd_waitpid3(int argc, char **argv);
+int cmd_fork_test(int argc, char **argv);
+int cmd_fork_perf(int argc, char **argv);
+int cmd_se_fork_test(int argc, char **argv);
+
 int cmd_loop(int argc, char **argv)
 {
    printf("[shell] do a long loop\n");
@@ -24,67 +33,6 @@ int cmd_loop(int argc, char **argv)
    }
 
    return 0;
-}
-
-int fork_test(int (*fork_func)(void))
-{
-   printf("Running infinite loop..\n");
-
-   unsigned n = 1;
-   int FORK_TEST_ITERS_hits_count = 0;
-   bool inchild = false;
-   bool exit_on_next_FORK_TEST_ITERS_hit = false;
-
-   while (true) {
-
-      if (!(n % FORK_TEST_ITERS)) {
-
-         printf("[PID: %i] FORK_TEST_ITERS hit!\n", getpid());
-
-         if (exit_on_next_FORK_TEST_ITERS_hit) {
-            break;
-         }
-
-         FORK_TEST_ITERS_hits_count++;
-
-         if (FORK_TEST_ITERS_hits_count == 1) {
-
-            printf("forking..\n");
-
-            int pid = fork_func();
-
-            printf("Fork returned %i\n", pid);
-
-            if (pid == 0) {
-               printf("############## I'm the child!\n");
-               inchild = true;
-            } else {
-               printf("############## I'm the parent, child's pid = %i\n", pid);
-               printf("[parent] waiting the child to exit...\n");
-               int wstatus=0;
-               int p = waitpid(pid, &wstatus, 0);
-               printf("[parent] child (pid: %i) exited with status: %i!\n",
-                      p, WEXITSTATUS(wstatus));
-               exit_on_next_FORK_TEST_ITERS_hit = true;
-            }
-
-         }
-
-         if (FORK_TEST_ITERS_hits_count == 2 && inchild) {
-            printf("child: 2 iter hits, exit!\n");
-            exit(123); // exit from the child
-         }
-      }
-
-      n++;
-   }
-
-   return 0;
-}
-
-int cmd_fork_test(int argc, char **argv)
-{
-   return fork_test(&fork);
 }
 
 int cmd_bad_read(int argc, char **argv)
@@ -122,45 +70,6 @@ int cmd_bad_write(int argc, char **argv)
    ret = stat("/", addr);
    printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
    return 0;
-}
-
-int cmd_fork_perf(int argc, char **argv)
-{
-   const int iters = 150000;
-   int wstatus, child_pid;
-   unsigned long long start, duration;
-
-   start = RDTSC();
-
-   for (int i = 0; i < iters; i++) {
-
-      child_pid = fork();
-
-      if (child_pid < 0) {
-         printf("fork() failed: %s\n", strerror(errno));
-         return 1;
-      }
-
-      if (!child_pid)
-         exit(0); // exit from the child
-
-      waitpid(child_pid, &wstatus, 0);
-   }
-
-
-   duration = RDTSC() - start;
-   printf("duration: %llu\n", duration/iters);
-   return 0;
-}
-
-int sysenter_fork(void)
-{
-   return sysenter_call0(2 /* fork */);
-}
-
-int cmd_se_fork_test(int argc, char **argv)
-{
-   return fork_test(&sysenter_fork);
 }
 
 int cmd_sysenter(int argc, char **argv)
@@ -245,112 +154,6 @@ int cmd_fpu_loop(int argc, char **argv)
    return 0;
 }
 
-int cmd_brk_test(int argc, char **argv)
-{
-   const size_t alloc_size = 1024 * 1024;
-
-   void *orig_brk = (void *)syscall(SYS_brk, 0);
-   void *b = orig_brk;
-
-   size_t tot_allocated = 0;
-
-   for (int i = 0; i < 128; i++) {
-
-      void *new_brk = b + alloc_size;
-
-      b = (void *)syscall(SYS_brk, b + alloc_size);
-
-      if (b != new_brk)
-         break;
-
-      tot_allocated += alloc_size;
-   }
-
-   //printf("tot allocated: %u KB\n", tot_allocated / 1024);
-
-   b = (void *)syscall(SYS_brk, orig_brk);
-
-   if (b != orig_brk) {
-      printf("Unable to free mem with brk()\n");
-      return 1;
-   }
-
-   return 0;
-}
-
-int cmd_mmap_test(int argc, char **argv)
-{
-   const int iters_count = 10;
-   const size_t alloc_size = 1 * MB;
-   void *arr[1024];
-   int max_mb = -1;
-
-   unsigned long long tot_duration = 0;
-
-   for (int iter = 0; iter < iters_count; iter++) {
-
-      int i;
-      unsigned long long start = RDTSC();
-
-      for (i = 0; i < 64; i++) {
-
-         errno = 0;
-
-         void *res = mmap(NULL,
-                          alloc_size,
-                          PROT_READ | PROT_WRITE,
-                          MAP_ANONYMOUS | MAP_PRIVATE,
-                          -1,
-                          0);
-
-         if (res == (void*) -1) {
-            i--;
-            break;
-         }
-
-         arr[i] = res;
-      }
-
-      i--;
-      tot_duration += (RDTSC() - start);
-
-      if (max_mb < 0) {
-
-         max_mb = i;
-
-      } else {
-
-         if (i != max_mb) {
-            printf("[iter: %u] Unable to alloc max_mb (%u) as previous iters\n",
-                   iter, max_mb);
-            return 1;
-         }
-      }
-
-      printf("[iter: %u][mmap_test] Mapped %u MB\n", iter, i + 1);
-
-      start = RDTSC();
-
-      for (; i >= 0; i--) {
-
-         int rc = munmap(arr[i], alloc_size);
-
-         if (rc != 0) {
-            printf("munmap(%p) failed with error: %s\n",
-                   arr[i], strerror(errno));
-            return 1;
-         }
-      }
-
-      tot_duration += (RDTSC() - start);
-   }
-
-   printf("\nAvg. cycles for mmap + munmap %u MB: %llu million\n",
-          max_mb + 1, (tot_duration / iters_count) / 1000000);
-
-   return 0;
-}
-
 int cmd_kernel_cow(int argc, char **argv)
 {
    static char cow_buf[4096];
@@ -370,171 +173,6 @@ int cmd_kernel_cow(int argc, char **argv)
    }
 
    waitpid(child_pid, &wstatus, 0);
-   return 0;
-}
-
-/*
- * Call waitpid() after the child exited.
- */
-int cmd_waitpid1(int argc, char **argv)
-{
-   int wstatus;
-   pid_t pid;
-
-   int child_pid = fork();
-
-   if (child_pid < 0) {
-      printf("fork() failed\n");
-      return 1;
-   }
-
-   if (!child_pid) {
-      // This is the child, just exit
-      printf("child: exit\n");
-      exit(23);
-   }
-
-   printf("Created child with pid: %d\n", child_pid);
-
-   /* Wait for the child to exit */
-   usleep(100*1000);
-
-   /* Now, let's see call waitpid() after the child exited */
-   pid = waitpid(child_pid, &wstatus, 0);
-
-   if (!WIFEXITED(wstatus)) {
-
-      printf("[pid: %d] PARENT: the child %d did NOT exited normally\n",
-             getpid(), pid);
-
-      return 1;
-   }
-
-   int exit_code = WEXITSTATUS(wstatus);
-   printf("waitpid() returned %d, exit code: %d\n", pid, exit_code);
-
-   if (pid != child_pid) {
-      printf("Expected waitpid() to return child's pid (got: %d)\n", pid);
-      return 1;
-   }
-
-   if (exit_code != 23) {
-      printf("Expected the exit code to be 23 (got: %d)\n", exit_code);
-      return 1;
-   }
-
-   return 0;
-}
-
-/* waitpid(-1): wait any child to exit */
-int cmd_waitpid2(int argc, char **argv)
-{
-   const int child_count = 3;
-
-   int pids[child_count];
-   int wstatus;
-   pid_t pid;
-
-   for (int i = 0; i < child_count; i++) {
-
-      int child_pid = fork();
-
-      if (child_pid < 0) {
-         printf("fork() failed\n");
-         return 1;
-      }
-
-      if (!child_pid) {
-         printf("[pid: %d] child: exit (%d)\n", getpid(), 10 + i);
-         usleep((child_count - i) * 100*1000);
-         exit(10 + i); // exit from the child
-      }
-
-      pids[i] = child_pid;
-   }
-
-   usleep(120 * 1000);
-
-   for (int i = child_count-1; i >= 0; i--) {
-
-      printf("[pid: %d] PARENT: waitpid(-1)\n", getpid());
-      pid = waitpid(-1, &wstatus, 0);
-
-      if (!WIFEXITED(wstatus)) {
-
-         printf("[pid: %d] PARENT: the child %d did NOT exited normally\n",
-                 getpid(), pid);
-
-         return 1;
-      }
-
-      int exit_code = WEXITSTATUS(wstatus);
-
-      printf("[pid: %d] PARENT: waitpid() returned %d, exit code: %d\n",
-             getpid(), pid, exit_code);
-
-      if (pid != pids[i]) {
-         printf("Expected waitpid() to return %d (got: %d)\n", pids[i], pid);
-         return 1;
-      }
-
-      if (exit_code != 10+i) {
-         printf("Expected the exit code to be %d (got: %d)\n", 10+i, exit_code);
-         return 1;
-      }
-   }
-
-   return 0;
-}
-
-/* wait on any child after they exit */
-int cmd_waitpid3(int argc, char **argv)
-{
-   int wstatus;
-   pid_t pid;
-
-   int child_pid = fork();
-
-   if (child_pid < 0) {
-      printf("fork() failed\n");
-      return 1;
-   }
-
-   if (!child_pid) {
-      // This is the child, just exit
-      printf("child: exit\n");
-      exit(23); // exit from the child
-   }
-
-   printf("Created child with pid: %d\n", child_pid);
-
-   /* Wait for the child to exit */
-   usleep(100*1000);
-
-   /* Now, let's see call waitpid() after the child exited */
-   pid = waitpid(-1, &wstatus, 0);
-
-   if (!WIFEXITED(wstatus)) {
-
-      printf("[pid: %d] PARENT: the child %d did NOT exited normally\n",
-             getpid(), pid);
-
-      return 1;
-   }
-
-   int exit_code = WEXITSTATUS(wstatus);
-   printf("waitpid() returned %d, exit code: %d\n", pid, exit_code);
-
-   if (pid != child_pid) {
-      printf("Expected waitpid() to return child's pid (got: %d)\n", pid);
-      return 1;
-   }
-
-   if (exit_code != 23) {
-      printf("Expected the exit code to be 23 (got: %d)\n", exit_code);
-      return 1;
-   }
-
    return 0;
 }
 
