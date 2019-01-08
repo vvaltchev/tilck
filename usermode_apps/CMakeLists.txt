@@ -5,8 +5,6 @@ set_cross_compiler_userapps()
 
 add_definitions(-DUSERMODE_APP)
 
-set(APPS_BIN_FILES "")
-
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS) # Remove -rdynamic
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 
@@ -15,6 +13,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g -DUSERMODE_APP")
 add_custom_target(usermode_apps)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${TCROOT}/zlib/install/include)
+
+# [build utils]
 
 macro(register_usermode_app)
    list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/${ARGV0}")
@@ -27,26 +27,40 @@ macro(add_usermode_app)
    register_usermode_app(${ARGV0})
 endmacro()
 
+# [/build utils]
+
+
+# [simple apps]
 add_usermode_app(init)
 add_usermode_app(termtest)
 add_usermode_app(fbtest)
+# [/simple apps]
+
+
+# [devshell]
 
 file(
-   GLOB SOURCES
+   GLOB DEVSHELL_SOURCES
 
-   "devshellsrc/*.c"
+   "devshell/*.c"
    "${CMAKE_SOURCE_DIR}/common/3rd_party/base64.c"
 )
 
-add_executable(devshell ${SOURCES})
+add_executable(devshell ${DEVSHELL_SOURCES})
 target_link_libraries(devshell ${TCROOT}/zlib/install/lib/libz.a)
 register_usermode_app(devshell)
 
+# [/devshell]
+
+# [ncurses test app]
 if (EXISTS "${TCROOT}/ncurses/install/lib/libncurses_g.a")
    add_usermode_app(ncapp)
    target_include_directories(ncapp PUBLIC ${TCROOT}/ncurses/install/include)
    target_link_libraries(ncapp ${TCROOT}/ncurses/install/lib/libncurses_g.a)
 endif()
+# [/ncurses test app]
+
+# [extra]
 
 # This macro makes the integration with extra apps much easier.
 # It's enough for the external app to just add a call to tilck_add_extra_app()
@@ -67,3 +81,5 @@ add_subdirectory(extra)
 
 set(USERMODE_APPS_FILES_LIST ${APPS_BIN_FILES} PARENT_SCOPE)
 set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST} PARENT_SCOPE)
+
+# [/extra]
