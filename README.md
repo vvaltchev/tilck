@@ -64,7 +64,7 @@ issue describing your problem.
 
 The image here above shows a Tetris implementation based on the [Tiny Framebuffer
 Library] running on `Tilck` in a `QEMU` virtual machine. The game's executable,
-runs smoothly both on Linux and on Tilck without any noticeable difference.
+runs smoothly both on `Linux` and on `Tilck`.
 
 [supported Linux syscalls]: https://github.com/vvaltchev/tilck/wiki/Linux-syscalls-support-status
 [Tiny Framebuffer Library]: https://github.com/vvaltchev/tfblib
@@ -164,7 +164,7 @@ Unit tests
 -------------
 
 In order to build kernel's unit tests, it is necessary first
-to build the googletest framework with:
+to build the `googletest` framework with:
 
     ./scripts/build_toolchain -s build_gtest
 
