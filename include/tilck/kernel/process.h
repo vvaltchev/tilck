@@ -51,6 +51,7 @@ struct process_info {
 
    list children_list;
 
+   char filepath[MAX_PATH]; /* executable's path */
    char cwd[MAX_PATH]; /* current working directory */
    fs_handle handles[16]; /* for the moment, just a fixed-size small array */
 
@@ -196,3 +197,4 @@ void free_mem_for_zombie_task(task_info *ti);
 void arch_specific_new_task_setup(task_info *ti);
 void arch_specific_free_task(task_info *ti);
 void wake_up_tasks_waiting_on(task_info *ti);
+void debug_show_task_list(void);

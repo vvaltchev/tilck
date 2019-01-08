@@ -262,7 +262,8 @@ const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
 
       if (s->st_value <= vaddr && vaddr < s->st_value + s->st_size) {
 
-         *offset = vaddr - s->st_value;
+         if (offset)
+            *offset = vaddr - s->st_value;
 
          if (sym_size)
             *sym_size = s->st_size;

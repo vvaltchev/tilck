@@ -144,6 +144,7 @@ sptr sys_execve(const char *user_filename,
 
    ti->pi->brk = brk;
    ti->pi->initial_brk = brk;
+   memcpy(ti->pi->filepath, abs_path, strlen(abs_path) + 1);
 
    switch_to_idle_task();
    NOT_REACHED();

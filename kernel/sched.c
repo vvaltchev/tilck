@@ -107,6 +107,17 @@ int create_new_pid(void)
    return r;
 }
 
+void iterate_over_tasks(bintree_visit_cb func, void *arg)
+{
+   ASSERT(!is_preemption_enabled());
+
+   bintree_in_order_visit(tree_by_tid_root,
+                          func,
+                          arg,
+                          task_info,
+                          tree_by_tid_node);
+}
+
 void idle_task_kthread(void)
 {
    while (true) {
@@ -127,6 +138,7 @@ void create_kernel_process(void)
 
    task_info *s_kernel_ti = (task_info *)kernel_proc_buf;
    process_info *s_kernel_pi = (process_info *)(s_kernel_ti + 1);
+   memcpy(s_kernel_pi->filepath, "<kernel>", sizeof("<kernel>"));
 
    list_init(&runnable_tasks_list);
    list_init(&sleeping_tasks_list);

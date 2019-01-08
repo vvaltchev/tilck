@@ -153,6 +153,10 @@ int debug_f_key_press_handler(u32 key, u8 c)
          debug_show_spurious_irq_count();
          return KB_HANDLER_OK_AND_STOP;
 
+      case KEY_F6:
+         debug_show_task_list();
+         return KB_HANDLER_OK_AND_STOP;
+
       default:
          return KB_HANDLER_NAK;
    }

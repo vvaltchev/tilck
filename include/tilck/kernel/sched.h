@@ -5,6 +5,8 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
 #include <tilck/kernel/list.h>
+#include <tilck/kernel/bintree.h>
+
 
 #define TIME_SLOT_TICKS (TIMER_HZ / 20)
 
@@ -108,3 +110,4 @@ void task_cancel_wakeup_timer(task_info *ti);
 
 typedef void (*kthread_func_ptr)();
 NODISCARD task_info *kthread_create(kthread_func_ptr fun, void *arg);
+void iterate_over_tasks(bintree_visit_cb func, void *arg);

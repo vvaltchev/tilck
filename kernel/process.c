@@ -12,6 +12,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/elf_utils.h>
 
 #include <sys/prctl.h> // system header
 #include <sys/wait.h>  // system header
@@ -442,11 +443,6 @@ NORETURN sptr sys_exit(int exit_status)
       process_remove_user_mapping(um);
    }
 
-   /*
-    * TODO: iterate over all the children of this process and make their
-    * parent to be the parent of this process.
-    */
-
    // Wake-up all the tasks waiting on this task to exit
 
    wake_up_tasks_waiting_on(curr);
@@ -593,4 +589,94 @@ sptr sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5)
 
    printk("[TID: %d] Unknown option: %d\n", option);
    return -EINVAL;
+}
+
+static int debug_get_tn_for_tasklet_runner(task_info *ti)
+{
+   for (int i = 0; i < MAX_TASKLET_THREADS; i++)
+      if (get_tasklet_runner(i) == ti)
+         return i;
+
+   return -1;
+}
+
+static int debug_per_task_cb(void *obj, void *arg)
+{
+   static const char *fmt = NO_PREFIX "| %-8d | %-3d | %-8s | %-40s |\n";
+   task_info *ti = obj;
+
+   if (!ti->tid)
+      return 0; /* skip the main kernel task */
+
+   const char *state;
+
+   switch (ti->state) {
+
+      case TASK_STATE_RUNNABLE:
+         state = "runnable";
+         break;
+
+      case TASK_STATE_RUNNING:
+         state = "running";
+         break;
+
+      case TASK_STATE_SLEEPING:
+         state = "sleeping";
+         break;
+
+      case TASK_STATE_ZOMBIE:
+         state = "zombie";
+         break;
+
+      default:
+         NOT_REACHED();
+   }
+
+   if (!is_kernel_thread(ti)) {
+
+      printk(fmt, ti->tid, ti->pid, state, ti->pi->filepath);
+
+   } else {
+
+      char buf[128];
+      const char *kfunc = find_sym_at_addr((uptr)ti->what, NULL, NULL);
+
+      if (!is_tasklet_runner(ti)) {
+         snprintk(buf, sizeof(buf), "<kernel: %s>", kfunc);
+      } else {
+         snprintk(buf, sizeof(buf), "<kernel: %s[%d]>",
+                  kfunc, debug_get_tn_for_tasklet_runner(ti));
+      }
+
+      printk(fmt, ti->tid, ti->pid, state, buf);
+   }
+
+   return 0;
+}
+
+static void debug_dump_task_table_hr(void)
+{
+   printk(NO_PREFIX "+----------+-----+----------+");
+   printk(NO_PREFIX "------------------------------------------+\n");
+}
+
+void debug_show_task_list(void)
+{
+   printk(NO_PREFIX "\n\n");
+
+   debug_dump_task_table_hr();
+
+   printk(NO_PREFIX "| %-8s | %-3s | %-8s | %-40s |\n",
+          "tid", "pid", "state", "path or kernel function");
+
+   debug_dump_task_table_hr();
+
+   disable_preemption();
+   {
+      iterate_over_tasks(debug_per_task_cb, NULL);
+   }
+   enable_preemption();
+
+   debug_dump_task_table_hr();
+   printk(NO_PREFIX "\n");
 }
