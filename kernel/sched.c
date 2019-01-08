@@ -90,11 +90,7 @@ int create_new_pid(void)
    create_pid_visit_ctx ctx = { 0, current_max_pid + 1 };
    int r;
 
-   bintree_in_order_visit(tree_by_tid_root,
-                          create_new_pid_visit_cb,
-                          &ctx,
-                          task_info,
-                          tree_by_tid_node);
+   iterate_over_tasks(&create_new_pid_visit_cb, &ctx);
 
    r = ctx.lowest_after_current_max <= MAX_PID
          ? ctx.lowest_after_current_max
@@ -103,19 +99,18 @@ int create_new_pid(void)
    if (r >= 0)
       current_max_pid = r;
 
-   //printk("create_new_pid: %i\n", r);
    return r;
 }
 
-void iterate_over_tasks(bintree_visit_cb func, void *arg)
+int iterate_over_tasks(bintree_visit_cb func, void *arg)
 {
    ASSERT(!is_preemption_enabled());
 
-   bintree_in_order_visit(tree_by_tid_root,
-                          func,
-                          arg,
-                          task_info,
-                          tree_by_tid_node);
+   return bintree_in_order_visit(tree_by_tid_root,
+                                 func,
+                                 arg,
+                                 task_info,
+                                 tree_by_tid_node);
 }
 
 const char *debug_get_state_name(enum task_state state)
