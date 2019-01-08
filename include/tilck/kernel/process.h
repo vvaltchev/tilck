@@ -172,7 +172,7 @@ static ALWAYS_INLINE task_info *thread_tid_to_ti(int tid)
 
 static ALWAYS_INLINE bool is_tasklet_runner(task_info *ti)
 {
-   return ti->what == &tasklet_runner_kthread;
+   return ti->what == &tasklet_runner;
 }
 
 user_mapping *

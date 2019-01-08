@@ -157,7 +157,7 @@ bool run_one_tasklet(int tn)
 
 #endif
 
-void tasklet_runner_kthread(void *arg)
+void tasklet_runner(void *arg)
 {
    int tn = (int)(uptr)arg;
    tasklet_thread_info *t = tasklet_threads[tn];
@@ -241,7 +241,7 @@ int create_tasklet_thread(int priority, int limit)
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
-   t->task = kthread_create(tasklet_runner_kthread, (void *)(uptr)tn);
+   t->task = kthread_create(tasklet_runner, (void *)(uptr)tn);
 
    if (!t->task) {
       kfree2(t->tasklets, sizeof(tasklet) * limit);
