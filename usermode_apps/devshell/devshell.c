@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -9,7 +10,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <errno.h>
+#include <sys/utsname.h>
+#include <pwd.h>
 
 #include "devshell.h"
 
@@ -183,29 +185,46 @@ unknown_opt:
 
 int main(int argc, char **argv, char **env)
 {
-   char buf[256];
-   char cwd[256];
+   static char cmdline_buf[256];
+   static char cwd_buf[256];
+   static struct utsname utsname_buf;
+
+   int uid = geteuid();
+   struct passwd *pwd = getpwuid(uid);
 
    shell_env = env;
-
-   //printf("[PID: %i] Hello from Tilck's simple dev-shell!\n", getpid());
 
    if (argc > 1) {
       parse_opt(argc - 1, argv + 1);
       exit(1);
    }
 
+   if (!pwd) {
+      printf("ERROR: getpwuid() returned NULL\n");
+      return 1;
+   }
+
+   if (uname(&utsname_buf) < 0) {
+      perror("uname() failed");
+      return 1;
+   }
+
    while (true) {
 
-      if (getcwd(cwd, sizeof(cwd)) != cwd) {
-         perror("Shell: getcwd failed");
+      if (getcwd(cwd_buf, sizeof(cwd_buf)) != cwd_buf) {
+         perror("Shell: getcwd() failed");
          return 1;
       }
 
-      printf("root@tilck:%s# ", cwd);
+      printf("%s@%s:%s%c ",
+             pwd->pw_name,
+             utsname_buf.nodename,
+             cwd_buf,
+             !uid ? '#' : '$');
+
       fflush(stdout);
 
-      int rc = read_command(buf, sizeof(buf));
+      int rc = read_command(cmdline_buf, sizeof(cmdline_buf));
 
       if (rc < 0) {
          printf("I/O error\n");
@@ -213,7 +232,7 @@ int main(int argc, char **argv, char **env)
       }
 
       if (rc)
-         process_cmd_line(buf);
+         process_cmd_line(cmdline_buf);
    }
 
    return 0;
