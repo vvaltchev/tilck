@@ -144,9 +144,9 @@ int cmd_waitpid3(int argc, char **argv)
    }
 
    if (!child_pid) {
-      // This is the child, just exit
+      /* This is the child, just exit with a special code */
       printf("child: exit\n");
-      exit(23); // exit from the child
+      exit(23);
    }
 
    printf("Created child with pid: %d\n", child_pid);
@@ -179,4 +179,79 @@ int cmd_waitpid3(int argc, char **argv)
    }
 
    return 0;
+}
+
+
+/*
+ * Test the case of a parent dying before its children.
+ */
+int cmd_waitpid4(int argc, char **argv)
+{
+   pid_t pid;
+   int wstatus;
+   int child_pid;
+   bool failed = false;
+
+   printf("[grandparent] my pid: %d\n", getpid());
+
+   child_pid = fork();
+
+   if (child_pid < 0) {
+      printf("fork() failed\n");
+      return 1;
+   }
+
+   if (!child_pid) {
+
+      /* in the child: now create other children and die before them */
+
+      int grand_child1, grand_child2;
+
+      grand_child1 = fork();
+
+      if (grand_child1 < 0) {
+         printf("fork() failed\n");
+         exit(1);
+      }
+
+      if (!grand_child1) {
+         usleep(100*1000);
+         printf("[grandchild 1] exit\n");
+         exit(0);
+      }
+
+      printf("[parent] child 1: %d\n", grand_child1);
+
+      grand_child2 = fork();
+
+      if (grand_child2 < 0) {
+         printf("fork() failed\n");
+         exit(1);
+      }
+
+      if (!grand_child2) {
+         usleep(150*1000);
+         printf("[grandchild 2] exit\n");
+         exit(0);
+      }
+
+      printf("[parent] child 2: %d\n", grand_child2);
+      printf("[parent] exit\n");
+      exit(0);
+   }
+
+   /* in the grandparent: wait for any child */
+   printf("[grandparent] child pid: %d\n", child_pid);
+
+   while ((pid = waitpid(-1, &wstatus, 0)) > 0) {
+
+      int code = WEXITSTATUS(wstatus);
+      printf("[grandparent] waitpid(): child %d exited with %d\n", pid, code);
+
+      if (code != 0)
+         failed = true;
+   }
+
+   printf("[grandparent] exit (failed: %d)\n", failed);
+   return failed ? 1 : 0;
 }

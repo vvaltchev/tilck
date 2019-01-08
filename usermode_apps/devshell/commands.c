@@ -21,6 +21,7 @@ int cmd_mmap_test(int argc, char **argv);
 int cmd_waitpid1(int argc, char **argv);
 int cmd_waitpid2(int argc, char **argv);
 int cmd_waitpid3(int argc, char **argv);
+int cmd_waitpid4(int argc, char **argv);
 int cmd_fork_test(int argc, char **argv);
 int cmd_fork_perf(int argc, char **argv);
 int cmd_se_fork_test(int argc, char **argv);
@@ -224,6 +225,7 @@ struct {
 } cmds_table[] = {
 
    {"help", cmd_help, TT_SHORT, false},
+   {"selftest", cmd_selftest, TT_LONG, false},
    {"loop", cmd_loop, TT_MED, false},
    {"fork_test", cmd_fork_test, TT_MED, true},
    {"bad_read", cmd_bad_read, TT_SHORT, true},
@@ -240,7 +242,7 @@ struct {
    {"waitpid1", cmd_waitpid1, TT_SHORT, true},
    {"waitpid2", cmd_waitpid2, TT_SHORT, true},
    {"waitpid3", cmd_waitpid3, TT_SHORT, true},
-   {"selftest", cmd_selftest, TT_LONG, false}
+   {"waitpid4", cmd_waitpid4, TT_SHORT, true}
 };
 
 void dump_list_of_commands(void)
