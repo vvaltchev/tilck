@@ -118,6 +118,30 @@ void iterate_over_tasks(bintree_visit_cb func, void *arg)
                           tree_by_tid_node);
 }
 
+const char *debug_get_state_name(enum task_state state)
+{
+   switch (state) {
+
+      case TASK_STATE_INVALID:
+         return "invalid";
+
+      case TASK_STATE_RUNNABLE:
+         return "runnable";
+
+      case TASK_STATE_RUNNING:
+         return "running";
+
+      case TASK_STATE_SLEEPING:
+         return "sleeping";
+
+      case TASK_STATE_ZOMBIE:
+         return "zombie";
+
+      default:
+         NOT_REACHED();
+   }
+}
+
 void idle_task_kthread(void)
 {
    while (true) {

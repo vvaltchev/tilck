@@ -608,49 +608,24 @@ static int debug_per_task_cb(void *obj, void *arg)
    if (!ti->tid)
       return 0; /* skip the main kernel task */
 
-   const char *state;
-
-   switch (ti->state) {
-
-      case TASK_STATE_RUNNABLE:
-         state = "runnable";
-         break;
-
-      case TASK_STATE_RUNNING:
-         state = "running";
-         break;
-
-      case TASK_STATE_SLEEPING:
-         state = "sleeping";
-         break;
-
-      case TASK_STATE_ZOMBIE:
-         state = "zombie";
-         break;
-
-      default:
-         NOT_REACHED();
-   }
+   const char *state = debug_get_state_name(ti->state);
 
    if (!is_kernel_thread(ti)) {
-
       printk(fmt, ti->tid, ti->pid, state, ti->pi->filepath);
-
-   } else {
-
-      char buf[128];
-      const char *kfunc = find_sym_at_addr((uptr)ti->what, NULL, NULL);
-
-      if (!is_tasklet_runner(ti)) {
-         snprintk(buf, sizeof(buf), "<kernel: %s>", kfunc);
-      } else {
-         snprintk(buf, sizeof(buf), "<kernel: %s[%d]>",
-                  kfunc, debug_get_tn_for_tasklet_runner(ti));
-      }
-
-      printk(fmt, ti->tid, ti->pid, state, buf);
+      return 0;
    }
 
+   char buf[128];
+   const char *kfunc = find_sym_at_addr((uptr)ti->what, NULL, NULL);
+
+   if (!is_tasklet_runner(ti)) {
+      snprintk(buf, sizeof(buf), "<kernel: %s>", kfunc);
+   } else {
+      snprintk(buf, sizeof(buf), "<kernel: %s[%d]>",
+               kfunc, debug_get_tn_for_tasklet_runner(ti));
+   }
+
+   printk(fmt, ti->tid, ti->pid, state, buf);
    return 0;
 }
 
