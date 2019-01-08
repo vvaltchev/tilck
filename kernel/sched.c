@@ -142,7 +142,7 @@ const char *debug_get_state_name(enum task_state state)
    }
 }
 
-void idle_task_kthread(void)
+static void idle(void)
 {
    while (true) {
 
@@ -195,7 +195,7 @@ void create_kernel_process(void)
 void init_sched(void)
 {
    kernel_process->pi->pdir = get_kernel_pdir();
-   idle_task = kthread_create(&idle_task_kthread, NULL);
+   idle_task = kthread_create(&idle, NULL);
 
    if (!idle_task)
       panic("Unable to create the idle_task!");
