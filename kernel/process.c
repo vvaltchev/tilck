@@ -450,17 +450,18 @@ NORETURN sptr sys_exit(int exit_status)
     * TODO: revisit this code once threads are supported
     */
 
-   task_info *pos, *temp;
-   task_info *child_reaper = get_task(1); /* init */
-   ASSERT(child_reaper != NULL);
+   if (curr->tid != 1) {
+      task_info *pos, *temp;
+      task_info *child_reaper = get_task(1); /* init */
+      ASSERT(child_reaper != NULL);
 
-   list_for_each(pos, temp, &curr->pi->children_list, siblings_node) {
+      list_for_each(pos, temp, &curr->pi->children_list, siblings_node) {
 
-      list_remove(&pos->siblings_node);
-      list_add_tail(&child_reaper->pi->children_list, &pos->siblings_node);
-      pos->pi->parent_pid = child_reaper->pid;
+         list_remove(&pos->siblings_node);
+         list_add_tail(&child_reaper->pi->children_list, &pos->siblings_node);
+         pos->pi->parent_pid = child_reaper->pid;
+      }
    }
-
    // Wake-up all the tasks waiting on this task to exit
 
    wake_up_tasks_waiting_on(curr);
