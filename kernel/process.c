@@ -404,7 +404,6 @@ NORETURN sptr sys_exit(int exit_status)
 {
    disable_preemption();
    task_info *curr = get_curr_task();
-   int cppid = curr->pi->parent_pid;
 
    task_change_state(curr, TASK_STATE_ZOMBIE);
    curr->exit_status = exit_status;
@@ -443,18 +442,36 @@ NORETURN sptr sys_exit(int exit_status)
       process_remove_user_mapping(um);
    }
 
+   /*
+    * What if the current task has any children? We have to set their parent
+    * to init (pid 1) or to the nearest child subreaper, once it is supported.
+    *
+    * TODO: support prctl(PR_SET_CHILD_SUBREAPER)
+    * TODO: revisit this code once threads are supported
+    */
+
+   task_info *pos, *temp;
+   task_info *child_reaper = get_task(1); /* init */
+   ASSERT(child_reaper != NULL);
+
+   list_for_each(pos, temp, &curr->pi->children_list, siblings_node) {
+
+      list_remove(&pos->siblings_node);
+      list_add_tail(&child_reaper->pi->children_list, &pos->siblings_node);
+      pos->pi->parent_pid = child_reaper->pid;
+   }
+
    // Wake-up all the tasks waiting on this task to exit
 
    wake_up_tasks_waiting_on(curr);
 
-   if (cppid > 0) {
+   if (curr->pi->parent_pid > 0) {
 
-      task_info *parent_task = get_task(cppid);
+      task_info *parent_task = get_task(curr->pi->parent_pid);
 
       if (task_is_waiting_on_any_child(parent_task))
          task_reset_wait_obj(parent_task);
    }
-
 
    set_page_directory(get_kernel_pdir());
    pdir_destroy(curr->pi->pdir);
@@ -469,8 +486,10 @@ NORETURN sptr sys_exit(int exit_status)
    switch_to_initial_kernel_stack();
 
    /* Free the heap allocations used by the task, including the kernel stack */
-   free_mem_for_zombie_task(curr);
-   schedule(X86_PC_TIMER_IRQ);
+   free_mem_for_zombie_task(get_curr_task());
+
+   /* Run the scheduler */
+   schedule_outside_interrupt_context();
 
    /* Necessary to guarantee to the compiler that we won't return. */
    NOT_REACHED();
@@ -602,7 +621,7 @@ static int debug_get_tn_for_tasklet_runner(task_info *ti)
 
 static int debug_per_task_cb(void *obj, void *arg)
 {
-   static const char *fmt = NO_PREFIX "| %-8d | %-3d | %-8s | %-40s |\n";
+   static const char *fmt = NO_PREFIX "| %-8d | %-3d | %-4d | %-8s | %-40s |\n";
    task_info *ti = obj;
 
    if (!ti->tid)
@@ -611,7 +630,8 @@ static int debug_per_task_cb(void *obj, void *arg)
    const char *state = debug_get_state_name(ti->state);
 
    if (!is_kernel_thread(ti)) {
-      printk(fmt, ti->tid, ti->pid, state, ti->pi->filepath);
+      printk(fmt, ti->tid, ti->pid,
+             ti->pi->parent_pid, state, ti->pi->filepath);
       return 0;
    }
 
@@ -625,13 +645,13 @@ static int debug_per_task_cb(void *obj, void *arg)
                kfunc, debug_get_tn_for_tasklet_runner(ti));
    }
 
-   printk(fmt, ti->tid, ti->pid, state, buf);
+   printk(fmt, ti->tid, ti->pid, ti->pi->parent_pid, state, buf);
    return 0;
 }
 
 static void debug_dump_task_table_hr(void)
 {
-   printk(NO_PREFIX "+----------+-----+----------+");
+   printk(NO_PREFIX "+----------+-----+------+----------+");
    printk(NO_PREFIX "------------------------------------------+\n");
 }
 
@@ -641,8 +661,8 @@ void debug_show_task_list(void)
 
    debug_dump_task_table_hr();
 
-   printk(NO_PREFIX "| %-8s | %-3s | %-8s | %-40s |\n",
-          "tid", "pid", "state", "path or kernel function");
+   printk(NO_PREFIX "| %-8s | %-3s | %-4s | %-8s | %-40s |\n",
+          "tid", "pid", "ppid", "state", "path or kernel thread");
 
    debug_dump_task_table_hr();
 
