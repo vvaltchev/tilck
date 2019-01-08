@@ -25,11 +25,10 @@ void wait_obj_set(wait_obj *wo,
 
    disable_preemption();
    {
-      wo->type = type;
-
       ASSERT(list_node_is_null(&wo->wait_list_node) ||
              list_node_is_empty(&wo->wait_list_node));
 
+      wo->type = type;
       list_node_init(&wo->wait_list_node);
 
       if (wait_list)

@@ -77,6 +77,7 @@ void init_task_lists(task_info *ti)
    list_node_init(&ti->wakeup_timer_node);
 
    list_init(&ti->tasks_waiting_list);
+   bzero(&ti->wobj, sizeof(wait_obj));
 }
 
 task_info *allocate_new_process(task_info *parent, int pid)
@@ -112,7 +113,6 @@ task_info *allocate_new_process(task_info *parent, int pid)
    list_add_tail(&parent->pi->children_list, &ti->siblings_node);
 
    list_init(&pi->mappings);
-
    arch_specific_new_task_setup(ti);
    return ti;
 }
@@ -310,9 +310,13 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
    while (true) {
 
+      u32 child_count = 0;
       disable_preemption();
 
       list_for_each(pos, temp, &curr->pi->children_list, siblings_node) {
+
+         child_count++;
+
          if (pos->state == TASK_STATE_ZOMBIE) {
             zombie_child = pos;
             break;
@@ -329,6 +333,11 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
       if (options & WNOHANG) {
          /* With WNOHANG we must not hang until a child dies */
          return 0;
+      }
+
+      if (!child_count) {
+         /* No children to wait for */
+         return -ECHILD;
       }
 
       /* Hang until a child dies */
