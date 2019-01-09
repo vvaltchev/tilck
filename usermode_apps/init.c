@@ -49,14 +49,6 @@ static void report_shell_exit(int wstatus)
 {
    const int status = WEXITSTATUS(wstatus);
    printf("[init] the devshell exited with status: %d\n", status);
-
-   /*
-    * HACK: exit as soon as the shell exits, instead of waiting all the
-    * eventual other processes to exit as well.
-    *
-    * TODO: remove this.
-    */
-   call_exit(0);
 }
 
 static void report_process_exit(pid_t pid, int wstatus)
