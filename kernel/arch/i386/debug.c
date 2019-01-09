@@ -115,7 +115,7 @@ void debug_qemu_turn_off_machine(void)
    if (!in_hypervisor())
       return;
 
-   while (true) {
+   for (int i = 0; i < 8; i++) {
       /*
        * Apparently, there are cases when QEMU may miss the command below so the
        * VM will just continue to run. Such issue has been observed with the
