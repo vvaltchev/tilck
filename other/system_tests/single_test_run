@@ -61,6 +61,7 @@ def write_gcda_file():
 
    try:
 
+      orig_gcda_buf = gcda_buf
       gcda_buf = base64.b64decode(gcda_buf)
       gcda_buf = zlib.decompress(gcda_buf)
 
@@ -71,7 +72,7 @@ def write_gcda_file():
       failed = FAIL_GCOV_ERROR
       print("\n[system test runner] While working on gcda file '{0}', "
             "got exception: {1}".format(gcda_file, str(e)))
-      print("gcda_buf:\n<<{0}>>\n".format(gcda_buf))
+      print("gcda_buf:\n<<{0}>>\n".format(orig_gcda_buf))
       process.send_signal(signal.SIGINT)
 
    finally:
