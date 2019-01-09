@@ -216,8 +216,7 @@ int cmd_waitpid4(int argc, char **argv)
 
       if (!grand_child1) {
          usleep(100*1000);
-         printf("[grandchild 1] exit\n");
-         exit(0);
+         exit(10);
       }
 
       printf("[parent] child 1: %d\n", grand_child1);
@@ -231,8 +230,7 @@ int cmd_waitpid4(int argc, char **argv)
 
       if (!grand_child2) {
          usleep(150*1000);
-         printf("[grandchild 2] exit\n");
-         exit(0);
+         exit(11);
       }
 
       printf("[parent] child 2: %d\n", grand_child2);

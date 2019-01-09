@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/prctl.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <errno.h>
@@ -44,11 +45,31 @@ void open_std_handles(void)
 
 char *shell_args[16] = { "/bin/devshell", [1 ... 15] = NULL };
 
+static void report_shell_exit(int wstatus)
+{
+   const int status = WEXITSTATUS(wstatus);
+   printf("[init] the devshell exited with status: %d\n", status);
+
+   /*
+    * HACK: exit as soon as the shell exits, instead of waiting all the
+    * eventual other processes to exit as well.
+    *
+    * TODO: remove this.
+    */
+   call_exit(0);
+}
+
+static void report_process_exit(pid_t pid, int wstatus)
+{
+   const int status = WEXITSTATUS(wstatus);
+   printf("[init] process %d exited with status: %d\n", pid, status);
+}
 
 int main(int argc, char **argv, char **env)
 {
    int shell_pid;
    int wstatus;
+   pid_t pid;
 
    if (getenv("TILCK")) {
 
@@ -58,22 +79,39 @@ int main(int argc, char **argv, char **env)
          printf("[init] ERROR: my pid is %i instead of 1\n", getpid());
          call_exit(1);
       }
+
+   } else {
+
+      if (prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) < 0)
+         perror("prctl(PR_SET_CHILD_SUBREAPER) failed");
    }
 
    if (argc > 1 && !strcmp(argv[1], "--")) {
-      for (int i = 1; i < ARRAY_SIZE(shell_args)-1 && i + 1 < argc; i++) {
-         shell_args[i] = argv[i + 1];
+      for (int i = 0; i < ARRAY_SIZE(shell_args) && i + 2 < argc; i++) {
+         shell_args[i] = argv[i + 2];
       }
    }
 
    shell_pid = fork();
 
    if (!shell_pid) {
-      execve("/bin/devshell", shell_args, NULL);
+      if (execve(shell_args[0], shell_args, NULL) < 0) {
+         perror("execve failed");
+         call_exit(1);
+      }
    }
 
-   waitpid(shell_pid, &wstatus, 0);
-   printf("[init] the devshell exited with status: %d\n", WEXITSTATUS(wstatus));
+   do {
+
+      pid = waitpid(-1, &wstatus, 0);
+
+      if (pid == shell_pid)
+         report_shell_exit(wstatus);
+      else if (pid > 0)
+         report_process_exit(pid, wstatus);
+
+   } while (pid > 0);
+
    call_exit(0);
 }
 

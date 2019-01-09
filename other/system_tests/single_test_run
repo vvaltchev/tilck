@@ -182,10 +182,10 @@ def RunTheVM():
    if not in_travis and not in_circleci:
       args.append('-enable-kvm')
 
-   opts = ''
+   opts = '/bin/devshell'
 
    if dump_coverage:
-      opts += '-dcov '
+      opts += ' -dcov'
 
    if TEST_TYPE == 'shellcmd':
 
