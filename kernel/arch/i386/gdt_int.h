@@ -169,4 +169,4 @@ typedef struct {
 } user_desc;
 
 void load_ldt(u32 entry_index_in_gdt, u32 dpl);
-void gdt_clear_entry(int index);
+void gdt_clear_entry(u32 index);

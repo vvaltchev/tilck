@@ -12,8 +12,11 @@
 #include "gdt_int.h"
 
 static gdt_entry initial_gdt_in_bss[8];
+static s32 initial_gdt_refcount_in_bss[ARRAY_SIZE(initial_gdt_in_bss)];
+
 static u32 gdt_size = ARRAY_SIZE(initial_gdt_in_bss);
 static gdt_entry *gdt = initial_gdt_in_bss;
+static s32 *gdt_refcount = initial_gdt_refcount_in_bss;
 
 /*
  * Tilck does use i386's tasks because they do not exist in many architectures.
@@ -53,28 +56,37 @@ gdt_set_entry(gdt_entry *e,
    e->flags = flags;
 }
 
-static int
+static void
 set_entry_num(u32 n, gdt_entry *e)
 {
    uptr var;
-   disable_preemption();
+   disable_interrupts(&var);
    {
-      if (n >= gdt_size) {
-         enable_preemption();
-         return -1;
-      }
+      ASSERT(n < gdt_size);
+      ASSERT(gdt_refcount[n] >= 0);
 
-      disable_interrupts(&var);
-      {
-         gdt[n] = *e;
-      }
-      enable_interrupts(&var);
+      gdt[n] = *e;
+      gdt_refcount[n]++;
    }
-   enable_preemption();
-   return 0;
+   enable_interrupts(&var);
 }
 
-static int
+void gdt_clear_entry(u32 n)
+{
+   uptr var;
+   disable_interrupts(&var);
+   {
+      ASSERT(n < gdt_size);
+      ASSERT(gdt_refcount[n] > 0);
+
+      if (--gdt_refcount[n] == 0) {
+         bzero(&gdt[n], sizeof(gdt_entry));
+      }
+   }
+   enable_interrupts(&var);
+}
+
+static void
 set_entry_num2(u32 n,
                uptr base,
                uptr limit,
@@ -83,37 +95,60 @@ set_entry_num2(u32 n,
 {
    gdt_entry e;
    gdt_set_entry(&e, base, limit, access, flags);
-   return set_entry_num(n, &e);
+   set_entry_num(n, &e);
 }
 
 static NODISCARD int gdt_expand(void)
 {
    uptr var;
    void *old_gdt_ptr;
-   const u32 old_gdt_size = gdt_size;
-   const u32 new_size = gdt_size * 2;
-   void *new_gdt = kzmalloc(sizeof(gdt_entry) * new_size);
-
-   if (!new_gdt)
-      return -1;
+   void *old_gdt_refcount_ptr;
+   u32 old_gdt_size;
+   u32 new_size;
 
    disable_preemption();
    {
       old_gdt_ptr = gdt;
+      old_gdt_refcount_ptr = gdt_refcount;
+      old_gdt_size = gdt_size;
+      new_size = gdt_size * 2;
+      void *new_gdt = kzmalloc(sizeof(gdt_entry) * new_size);
+      void *new_gdt_refcount;
+
+      if (!new_gdt) {
+         enable_preemption();
+         return -1;
+      }
+
+      new_gdt_refcount = kzmalloc(sizeof(s32) * new_size);
+
+      if (!new_gdt_refcount) {
+         kfree2(new_gdt, new_size);
+         enable_preemption();
+         return -1;
+      }
+
       memcpy(new_gdt, gdt, sizeof(gdt_entry) * gdt_size);
+      memcpy(new_gdt_refcount, gdt_refcount, sizeof(s32) * gdt_size);
 
       disable_interrupts(&var);
       {
          gdt = new_gdt;
          gdt_size = new_size;
+         gdt_refcount = new_gdt_refcount;
          load_gdt(new_gdt, new_size);
       }
       enable_interrupts(&var);
    }
    enable_preemption();
 
-   if (old_gdt_ptr != initial_gdt_in_bss)
-      kfree2(old_gdt_ptr, old_gdt_size);
+   if (old_gdt_ptr != initial_gdt_in_bss) {
+
+      ASSERT(old_gdt_refcount_ptr != initial_gdt_refcount_in_bss);
+
+      kfree2(old_gdt_ptr, sizeof(gdt_entry) * old_gdt_size);
+      kfree2(old_gdt_refcount_ptr, sizeof(s32) * old_gdt_size);
+   }
 
    return 0;
 }
@@ -147,16 +182,6 @@ static int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
                  GDT_GRAN_BYTE | GDT_32BIT);
 
    return gdt_add_entry(&e);
-}
-
-static void gdt_real_clear_entry(u32 n)
-{
-   uptr var;
-   disable_interrupts(&var);
-   {
-      bzero(&gdt[n], sizeof(gdt_entry));
-   }
-   enable_interrupts(&var);
 }
 
 void set_kernel_stack(u32 stack)
@@ -300,11 +325,6 @@ static void gdt_set_slot_in_task(task_info *ti, int slot, int gdt_index)
    ti->arch.gdt_entries[slot] = gdt_index;
 }
 
-void gdt_clear_entry(int index)
-{
-   gdt_real_clear_entry(index);
-}
-
 sptr sys_set_thread_area(user_desc *ud)
 {
    int rc = 0;
@@ -392,14 +412,12 @@ sptr sys_set_thread_area(user_desc *ud)
 
    ASSERT(dc.entry_number < gdt_size);
 
-   rc = set_entry_num(dc.entry_number, &e);
+   set_entry_num(dc.entry_number, &e);
 
    /*
     * We're here because either we found a slot already containing this index
     * (therefore it must be valid) or the index is in-bounds and it is free.
     */
-
-   ASSERT(rc == 0);
 
 out:
    enable_preemption();
