@@ -22,11 +22,15 @@ static gdt_entry *gdt = initial_gdt_in_bss;
  */
 static tss_entry_t tss_entry;
 
-void gdt_set_entry(gdt_entry *e,
-                   uptr base,
-                   uptr limit,
-                   u8 access,
-                   u8 flags)
+static void load_gdt(gdt_entry *gdt, u32 entries_count);
+
+
+static void
+gdt_set_entry(gdt_entry *e,
+              uptr base,
+              uptr limit,
+              u8 access,
+              u8 flags)
 {
    ASSERT(limit <= GDT_LIMIT_MAX); /* limit is only 20 bits */
    ASSERT(flags <= 0xF); /* flags is 4 bits */
@@ -42,7 +46,7 @@ void gdt_set_entry(gdt_entry *e,
    e->flags = flags;
 }
 
-int gdt_set_entry_num(u32 n, gdt_entry *e)
+static int gdt_set_entry_num(u32 n, gdt_entry *e)
 {
    uptr var;
    int rc = 0;
@@ -60,7 +64,7 @@ out:
    return rc;
 }
 
-int gdt_expand(void)
+static NODISCARD int gdt_expand(void)
 {
    uptr var;
    void *old_gdt_ptr;
@@ -87,7 +91,7 @@ int gdt_expand(void)
    return 0;
 }
 
-int gdt_add_entry(gdt_entry *e)
+static int gdt_add_entry(gdt_entry *e)
 {
    int rc = -1;
    uptr var;
@@ -108,7 +112,7 @@ int gdt_add_entry(gdt_entry *e)
    return rc;
 }
 
-int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
+static int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
 {
    gdt_entry e;
 
@@ -121,7 +125,7 @@ int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
    return gdt_add_entry(&e);
 }
 
-void gdt_clear_entry(u32 n)
+static void gdt_real_clear_entry(u32 n)
 {
    uptr var;
    disable_interrupts(&var);
@@ -143,7 +147,7 @@ void set_kernel_stack(u32 stack)
    enable_interrupts(&var);
 }
 
-void load_gdt(gdt_entry *gdt, u32 entries_count)
+static void load_gdt(gdt_entry *gdt, u32 entries_count)
 {
    ASSERT(!are_interrupts_enabled());
 
@@ -267,6 +271,16 @@ static int get_user_task_slot_for_gdt_entry(int gdt_entry_num)
    return -1;
 }
 
+static void gdt_set_slot_in_task(task_info *ti, int slot, int gdt_index)
+{
+   ti->arch.gdt_entries[slot] = gdt_index;
+}
+
+void gdt_clear_entry(int index)
+{
+   gdt_real_clear_entry(index);
+}
+
 sptr sys_set_thread_area(user_desc *ud)
 {
    int rc = 0;
@@ -323,7 +337,7 @@ sptr sys_set_thread_area(user_desc *ud)
          dc.entry_number = gdt_add_entry(&e);
       }
 
-      get_curr_task()->arch.gdt_entries[slot] = dc.entry_number;
+      gdt_set_slot_in_task(get_curr_task(), slot, dc.entry_number);
       goto out;
    }
 
@@ -349,7 +363,7 @@ sptr sys_set_thread_area(user_desc *ud)
          goto out;
       }
 
-      get_curr_task()->arch.gdt_entries[slot] = dc.entry_number;
+      gdt_set_slot_in_task(get_curr_task(), slot, dc.entry_number);
    }
 
    ASSERT(dc.entry_number < gdt_size);

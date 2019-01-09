@@ -10,6 +10,8 @@
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/hal.h>
 
+#include "gdt_int.h"
+
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
 
@@ -280,9 +282,6 @@ void set_current_task_in_user_mode(void)
    set_kernel_stack((u32)curr->state_regs);
 }
 
-#include "gdt_int.h"
-
-
 NORETURN void switch_to_task(task_info *ti, int curr_irq)
 {
    ASSERT(!get_curr_task() || get_curr_task()->state != TASK_STATE_RUNNING);
@@ -395,9 +394,11 @@ sptr sys_set_tid_address(int *tidptr)
 void arch_specific_new_task_setup(task_info *ti)
 {
    ti->arch.ldt = NULL;
-   ti->pi->set_child_tid = NULL;
    bzero(ti->arch.gdt_entries, sizeof(ti->arch.gdt_entries));
+
    ti->arch.fpu_regs = NULL;
+   ti->arch.fpu_regs_size = 0;
+   ti->pi->set_child_tid = NULL;
 }
 
 void arch_specific_free_task(task_info *ti)

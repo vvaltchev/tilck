@@ -168,13 +168,5 @@ typedef struct {
 
 } user_desc;
 
-
-void gdt_set_entry(gdt_entry *e, uptr base, uptr limit, u8 access, u8 flags);
-int gdt_add_entry(gdt_entry *e);
-NODISCARD int gdt_set_entry_num(u32 n, gdt_entry *e);
-NODISCARD int gdt_expand(void);
-void gdt_clear_entry(u32 n);
-void load_gdt(gdt_entry *gdt, u32 entries_count);
-
-int gdt_add_ldt_entry(void *ldt_ptr, u32 size);
 void load_ldt(u32 entry_index_in_gdt, u32 dpl);
+void gdt_clear_entry(int index);

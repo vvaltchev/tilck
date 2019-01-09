@@ -444,7 +444,7 @@ NORETURN sptr sys_exit(int exit_status)
 
    /*
     * What if the current task has any children? We have to set their parent
-    * to init (pid 1) or to the nearest child subreaper, once it is supported.
+    * to init (pid 1) or to the nearest child subreaper, once that is supported.
     *
     * TODO: support prctl(PR_SET_CHILD_SUBREAPER)
     * TODO: revisit this code once threads are supported
@@ -462,8 +462,8 @@ NORETURN sptr sys_exit(int exit_status)
          pos->pi->parent_pid = child_reaper->pid;
       }
    }
-   // Wake-up all the tasks waiting on this task to exit
 
+   // Wake-up all the tasks waiting on this task to exit
    wake_up_tasks_waiting_on(curr);
 
    if (curr->pi->parent_pid > 0) {
