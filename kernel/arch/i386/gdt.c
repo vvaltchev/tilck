@@ -12,7 +12,6 @@
 #include "gdt_int.h"
 
 static gdt_entry initial_gdt_in_bss[8];
-
 static u32 gdt_size = ARRAY_SIZE(initial_gdt_in_bss);
 static gdt_entry *gdt = initial_gdt_in_bss;
 
@@ -32,6 +31,14 @@ gdt_set_entry(gdt_entry *e,
               u8 access,
               u8 flags)
 {
+   /*
+    * This function is supposed to be used only for gdt_entry elements NOT in
+    * gdt (like &gdt[3]). Usually, gdt_entry is pointer to variable on the stack
+    * later passed as argument to set_entry_num().
+    */
+
+   ASSERT(!((uptr)gdt <= (uptr)e && (uptr)e < ((uptr)gdt + gdt_size)));
+
    ASSERT(limit <= GDT_LIMIT_MAX); /* limit is only 20 bits */
    ASSERT(flags <= 0xF); /* flags is 4 bits */
 
@@ -46,22 +53,37 @@ gdt_set_entry(gdt_entry *e,
    e->flags = flags;
 }
 
-static int gdt_set_entry_num(u32 n, gdt_entry *e)
+static int
+set_entry_num(u32 n, gdt_entry *e)
 {
    uptr var;
-   int rc = 0;
-   disable_interrupts(&var);
+   disable_preemption();
+   {
+      if (n >= gdt_size) {
+         enable_preemption();
+         return -1;
+      }
 
-   if (n >= gdt_size) {
-      rc = -1;
-      goto out;
+      disable_interrupts(&var);
+      {
+         gdt[n] = *e;
+      }
+      enable_interrupts(&var);
    }
+   enable_preemption();
+   return 0;
+}
 
-   gdt[n] = *e;
-
-out:
-   enable_interrupts(&var);
-   return rc;
+static int
+set_entry_num2(u32 n,
+               uptr base,
+               uptr limit,
+               u8 access,
+               u8 flags)
+{
+   gdt_entry e;
+   gdt_set_entry(&e, base, limit, access, flags);
+   return set_entry_num(n, &e);
 }
 
 static NODISCARD int gdt_expand(void)
@@ -75,15 +97,20 @@ static NODISCARD int gdt_expand(void)
    if (!new_gdt)
       return -1;
 
-   disable_interrupts(&var);
+   disable_preemption();
    {
       old_gdt_ptr = gdt;
       memcpy(new_gdt, gdt, sizeof(gdt_entry) * gdt_size);
-      gdt = new_gdt;
-      gdt_size = new_size;
-      load_gdt(new_gdt, new_size);
+
+      disable_interrupts(&var);
+      {
+         gdt = new_gdt;
+         gdt_size = new_size;
+         load_gdt(new_gdt, new_size);
+      }
+      enable_interrupts(&var);
    }
-   enable_interrupts(&var);
+   enable_preemption();
 
    if (old_gdt_ptr != initial_gdt_in_bss)
       kfree2(old_gdt_ptr, old_gdt_size);
@@ -94,21 +121,18 @@ static NODISCARD int gdt_expand(void)
 static int gdt_add_entry(gdt_entry *e)
 {
    int rc = -1;
-   uptr var;
 
-   disable_interrupts(&var);
+   disable_preemption();
    {
-
       for (u32 n = 1; n < gdt_size; n++) {
          if (!gdt[n].access) {
-            gdt[n] = *e;
+            set_entry_num(n, e);
             rc = n;
             break;
          }
       }
-
    }
-   enable_interrupts(&var);
+   enable_preemption();
    return rc;
 }
 
@@ -117,10 +141,10 @@ static int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
    gdt_entry e;
 
    gdt_set_entry(&e,
-                (uptr) ldt_ptr,
-                size,
-                GDT_DESC_TYPE_LDT,
-                GDT_GRAN_BYTE | GDT_32BIT);
+                 (uptr) ldt_ptr,
+                 size,
+                 GDT_DESC_TYPE_LDT,
+                 GDT_GRAN_BYTE | GDT_32BIT);
 
    return gdt_add_entry(&e);
 }
@@ -186,42 +210,42 @@ void setup_segmentation(void)
    ASSERT(!are_interrupts_enabled());
 
    /* Our NULL descriptor */
-   gdt_set_entry(&gdt[0], 0, 0, 0, 0);
+   set_entry_num2(0, 0, 0, 0, 0);
 
    /* Kernel code segment */
-   gdt_set_entry(&gdt[1],
-                 0,              /* base addr */
-                 GDT_LIMIT_MAX,  /* full 4-GB segment */
-                 GDT_ACC_REG | GDT_ACCESS_PL0 | GDT_ACCESS_RW | GDT_ACCESS_EX,
-                 GDT_GRAN_4KB | GDT_32BIT);
+   set_entry_num2(1,
+                  0,              /* base addr */
+                  GDT_LIMIT_MAX,  /* full 4-GB segment */
+                  GDT_ACC_REG | GDT_ACCESS_PL0 | GDT_ACCESS_RW | GDT_ACCESS_EX,
+                  GDT_GRAN_4KB | GDT_32BIT);
 
    /* Kernel data segment */
-   gdt_set_entry(&gdt[2],
-                 0,
-                 GDT_LIMIT_MAX,
-                 GDT_ACC_REG | GDT_ACCESS_PL0 | GDT_ACCESS_RW,
-                 GDT_GRAN_4KB | GDT_32BIT);
+   set_entry_num2(2,
+                  0,
+                  GDT_LIMIT_MAX,
+                  GDT_ACC_REG | GDT_ACCESS_PL0 | GDT_ACCESS_RW,
+                  GDT_GRAN_4KB | GDT_32BIT);
 
    /* Usermode code segment */
-   gdt_set_entry(&gdt[3],
-                 0,
-                 GDT_LIMIT_MAX,
-                 GDT_ACC_REG | GDT_ACCESS_PL3 | GDT_ACCESS_RW | GDT_ACCESS_EX,
-                 GDT_GRAN_4KB | GDT_32BIT);
+   set_entry_num2(3,
+                  0,
+                  GDT_LIMIT_MAX,
+                  GDT_ACC_REG | GDT_ACCESS_PL3 | GDT_ACCESS_RW | GDT_ACCESS_EX,
+                  GDT_GRAN_4KB | GDT_32BIT);
 
    /* Usermode data segment */
-   gdt_set_entry(&gdt[4],
-                 0,
-                 GDT_LIMIT_MAX,
-                 GDT_ACC_REG | GDT_ACCESS_PL3 | GDT_ACCESS_RW,
-                 GDT_GRAN_4KB | GDT_32BIT);
+   set_entry_num2(4,
+                  0,
+                  GDT_LIMIT_MAX,
+                  GDT_ACC_REG | GDT_ACCESS_PL3 | GDT_ACCESS_RW,
+                  GDT_GRAN_4KB | GDT_32BIT);
 
    /* GDT entry for our TSS */
-   gdt_set_entry(&gdt[5],
-                 (uptr) &tss_entry,   /* TSS addr */
-                 sizeof(tss_entry),   /* limit: struct TSS size */
-                 GDT_DESC_TYPE_TSS,
-                 GDT_GRAN_BYTE | GDT_32BIT);
+   set_entry_num2(5,
+                  (uptr) &tss_entry,   /* TSS addr */
+                  sizeof(tss_entry),   /* limit: struct TSS size */
+                  GDT_DESC_TYPE_TSS,
+                  GDT_GRAN_BYTE | GDT_32BIT);
 
    load_gdt(gdt, gdt_size);
    load_tss(5 /* TSS index in GDT */, 3 /* priv. level */);
@@ -368,7 +392,7 @@ sptr sys_set_thread_area(user_desc *ud)
 
    ASSERT(dc.entry_number < gdt_size);
 
-   rc = gdt_set_entry_num(dc.entry_number, &e);
+   rc = set_entry_num(dc.entry_number, &e);
 
    /*
     * We're here because either we found a slot already containing this index
