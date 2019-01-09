@@ -391,10 +391,19 @@ sptr sys_set_tid_address(int *tidptr)
    return get_curr_task()->tid;
 }
 
-void arch_specific_new_task_setup(task_info *ti)
+void arch_specific_new_task_setup(task_info *ti, task_info *parent)
 {
-   ti->arch.ldt = NULL;
-   bzero(ti->arch.gdt_entries, sizeof(ti->arch.gdt_entries));
+   if (LIKELY(parent != NULL)) {
+
+      memcpy(&ti->arch, &parent->arch, sizeof(ti->arch));
+
+      if (ti->arch.ldt)
+         gdt_entry_inc_ref_count(ti->arch.ldt_index_in_gdt);
+
+      for (u32 i = 0; i < ARRAY_SIZE(ti->arch.gdt_entries); i++)
+         if (ti->arch.gdt_entries[i])
+            gdt_entry_inc_ref_count(ti->arch.gdt_entries[i]);
+   }
 
    ti->arch.fpu_regs = NULL;
    ti->arch.fpu_regs_size = 0;

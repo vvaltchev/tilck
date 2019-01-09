@@ -170,3 +170,4 @@ typedef struct {
 
 void load_ldt(u32 entry_index_in_gdt, u32 dpl);
 void gdt_clear_entry(u32 index);
+void gdt_entry_inc_ref_count(u32 n);

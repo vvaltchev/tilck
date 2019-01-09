@@ -91,7 +91,7 @@ task_info *allocate_new_process(task_info *parent, int pid)
 
    pi = (process_info *)(ti + 1);
 
-   /* The first process (init) is has as parent 'kernel_process' */
+   /* The first process (init) has as parent 'kernel_process' */
    ASSERT(parent != NULL);
 
    memcpy(ti, parent, sizeof(task_info));
@@ -114,7 +114,7 @@ task_info *allocate_new_process(task_info *parent, int pid)
    list_add_tail(&parent->pi->children_list, &ti->siblings_node);
 
    list_init(&pi->mappings);
-   arch_specific_new_task_setup(ti);
+   arch_specific_new_task_setup(ti, parent);
    return ti;
 }
 
@@ -135,7 +135,7 @@ task_info *allocate_new_thread(process_info *pi)
    ASSERT(thread_tid_to_ti(ti->tid) == ti);
 
    init_task_lists(ti);
-   arch_specific_new_task_setup(ti);
+   arch_specific_new_task_setup(ti, proc);
    return ti;
 }
 

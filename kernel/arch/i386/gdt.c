@@ -86,6 +86,20 @@ void gdt_clear_entry(u32 n)
    enable_interrupts(&var);
 }
 
+void gdt_entry_inc_ref_count(u32 n)
+{
+   uptr var;
+   disable_interrupts(&var);
+   {
+      ASSERT(n < gdt_size);
+      ASSERT(gdt_refcount[n] > 0);
+      ASSERT(gdt[n].access);
+
+      gdt_refcount[n]++;
+   }
+   enable_interrupts(&var);
+}
+
 static void
 set_entry_num2(u32 n,
                uptr base,
