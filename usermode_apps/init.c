@@ -13,7 +13,8 @@
 #include <stdbool.h>
 #include <errno.h>
 
-#define ARRAY_SIZE(x) ((int)sizeof(x)/(int)sizeof(x[0]))
+#include <tilck/common/basic_defs.h> /* for MIN() and ARRAY_SIZE() */
+
 #define DEFAULT_SHELL "/bin/devshell"
 
 static char *shell_args[16] = { DEFAULT_SHELL, [1 ... 15] = NULL };
@@ -102,26 +103,26 @@ static void parse_opts(int argc, char **argv)
 {
 begin:
 
-   if (argc <= 1)
+   if (!argc)
       return;
 
-   if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
+   if (!strcmp(*argv, "-h") || !strcmp(*argv, "--help"))
       show_help_and_exit();
 
-   if (!strcmp(argv[1], "-q")) {
+   if (!strcmp(*argv, "-q")) {
       opt_quiet = true;
       argc--; argv++;
       goto begin;
    }
 
-   if (!strcmp(argv[1], "--")) {
-
-      for (int i = 0; i < ARRAY_SIZE(shell_args) && i + 2 < argc; i++) {
-         shell_args[i] = argv[i + 2];
-      }
-
+   if (!strcmp(*argv, "--")) {
+      const int elems = MIN(ARRAY_SIZE(shell_args), argc - 1);
+      memcpy(shell_args, argv + 1, elems * sizeof(char *));
       return;
    }
+
+unknown_opt:
+   printf("[init] Unknown option '%s'\n", *argv);
 }
 
 static void wait_for_children(pid_t shell_pid)
@@ -143,7 +144,7 @@ int main(int argc, char **argv, char **env)
    int shell_pid;
 
    do_initial_setup();
-   parse_opts(argc, argv);
+   parse_opts(argc - 1, argv + 1);
 
    shell_pid = fork();
 

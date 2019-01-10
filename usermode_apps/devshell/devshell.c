@@ -21,7 +21,7 @@ static char cmd_arg_buffers[MAX_ARGS][256];
 static char *cmd_argv[MAX_ARGS];
 static char **shell_env;
 
-void shell_builtin_cd(int argc)
+static void shell_builtin_cd(int argc)
 {
    int rc = 0;
    const char *dest_dir = "/";
@@ -47,14 +47,14 @@ cd_error:
    return;
 }
 
-bool file_exists(const char *filepath)
+static bool file_exists(const char *filepath)
 {
    struct stat statbuf;
    int rc = stat(filepath, &statbuf);
    return !rc;
 }
 
-void wait_child_cmd(int child_pid)
+static void wait_child_cmd(int child_pid)
 {
    int wstatus;
    waitpid(child_pid, &wstatus, 0);
@@ -68,7 +68,7 @@ void wait_child_cmd(int child_pid)
       printf("[shell] command exited with status: %d\n", WEXITSTATUS(wstatus));
 }
 
-void process_cmd_line(const char *cmd_line)
+static void process_cmd_line(const char *cmd_line)
 {
    int argc = 0;
    const char *p = cmd_line;
@@ -143,20 +143,40 @@ void process_cmd_line(const char *cmd_line)
    wait_child_cmd(child_pid);
 }
 
-void parse_opt(int argc, char **argv)
+static void show_help_and_exit(void)
 {
+   printf("\nUsage:\n\n");
+   printf("    devshell %-15s Just run the interactive shell\n", " ");
+   printf("    devshell %-15s Show this help and exit\n\n", "-h/--help");
 
+   printf("    Internal test-infrastructure options\n");
+   printf("    ------------------------------------\n\n");
+   printf("    devshell %-15s List the built-in (test) commands\n\n", "-l");
+
+   printf("    devshell [-dcov] -c <cmd> [arg1 [arg2 [arg3...]]]\n");
+   printf("%-28s Run the <cmd> built-in command and exit.\n", " ");
+   printf("%-28s In case -c is preceded by -dcov, the devshell\n", " ");
+   printf("%-28s also dumps the kernel coverage data on-screen.\n", " ");
+   exit(0);
+}
+
+static void parse_opt(int argc, char **argv)
+{
 begin:
 
    if (!argc)
       return;
 
-   if (!strlen(argv[0])) {
+   if (!strlen(*argv)) {
       argc--; argv++;
       goto begin;
    }
 
-   if (!strcmp(argv[0], "-l")) {
+   if (!strcmp(*argv, "-h") || !strcmp(*argv, "--help")) {
+      show_help_and_exit();
+   }
+
+   if (!strcmp(*argv, "-l")) {
       dump_list_of_commands();
       /* not reached */
    }
@@ -166,13 +186,13 @@ begin:
 
    /* argc > 1 */
 
-   if (!strcmp(argv[0], "-dcov")) {
+   if (!strcmp(*argv, "-dcov")) {
       dump_coverage = true;
       argc--; argv++;
       goto begin;
    }
 
-   if (!strcmp(argv[0], "-c")) {
+   if (!strcmp(*argv, "-c")) {
       printf("[shell] Executing built-in command '%s'\n", argv[1]);
       run_if_known_command(argv[1], argc - 2, argv + 2);
       printf("[shell] Unknown built-in command '%s'\n", argv[1]);
@@ -180,7 +200,7 @@ begin:
    }
 
 unknown_opt:
-   printf("[shell] Unknown option '%s'\n", argv[0]);
+   printf("[shell] Unknown option '%s'\n", *argv);
 }
 
 int main(int argc, char **argv, char **env)
