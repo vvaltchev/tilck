@@ -169,12 +169,23 @@ typedef int (*cmpfun_ptr)(const void *a, const void *b);
 
 #ifndef NO_TILCK_STATIC_WRAPPER
 
+   /*
+    * The whole point of having the following STATIC* macros is to allow unit
+    * tests to wrap the functions using them, while keeping the symbols really
+    * static when the actual kernel is built (preventing other translation units
+    * to use them). In particular, it is important to mark those symbols as
+    * WEAK as well because the linker-level --wrap does not work when both the
+    * caller and the callee are in the same translation unit. With weak symbols
+    * instead, unit tests can just re-define those symbols without using any
+    * kind of additional linker tricks.
+    */
+
    #ifdef KERNEL_TEST
-      #define STATIC
-      #define STATIC_INLINE
+      #define STATIC           WEAK
+      #define STATIC_INLINE    WEAK
    #else
-      #define STATIC static
-      #define STATIC_INLINE static inline
+      #define STATIC           static
+      #define STATIC_INLINE    static inline
    #endif
 
 #endif
