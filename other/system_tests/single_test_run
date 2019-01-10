@@ -127,7 +127,7 @@ def ProcessLine(line):
 
    if not dumping_gcda_files:
 
-      output += line
+      output += stripped + "\n"
       print(stripped)
 
       if stripped.find(KERNEL_DUMP_GCDA_STR) != -1:
@@ -275,14 +275,14 @@ if dump_coverage and report_coverage:
 
    try:
 
-      output = subprocess.check_output([GEN_KCOV_REPORT, '--acc'])
+      subprocess.check_output([GEN_KCOV_REPORT, '--acc'])
 
    except Exception as e:
 
       print("[system test runner] {0} generated "
             "the exception: {1}".format(GEN_KCOV_REPORT, str(e)))
       print("[system test runner] Output of {0} --acc:".format(GEN_KCOV_REPORT))
-      print(output)
+      print(e.output) # pylint: disable=E1101
       print("[system test runner] --- end output ---")
       sys.exit(FAIL_GCOV_ERROR)
 
