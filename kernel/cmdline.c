@@ -76,7 +76,7 @@ parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
    panic("Unrecognized option '%s'", arg);
 }
 
-static void use_kernel_arg(int arg_num, const char *arg)
+STATIC void use_kernel_arg(int arg_num, const char *arg)
 {
    typedef void (*parse_arg_func)(int, const char *, size_t);
 
