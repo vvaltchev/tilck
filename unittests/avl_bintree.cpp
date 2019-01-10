@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-
 #include <iostream>
 #include <random>
 #include <unordered_set>

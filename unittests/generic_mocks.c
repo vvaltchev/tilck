@@ -22,14 +22,14 @@ void __wrap_printk(const char *fmt, ...)
 
 void __wrap_panic(const char *fmt, ...)
 {
-	printf("--- KERNEL_PANIC ---\n");
+   printf("\n--- KERNEL PANIC ---\n");
 
-	va_list args;
-	va_start(args, fmt);
-	vprintf(fmt, args);
-	va_end(args);
+   va_list args;
+   va_start(args, fmt);
+   vprintf(fmt, args);
+   va_end(args);
 
-	printf("--- END PANIC MESSAGE ---\n");
+   printf("\n--- END PANIC MESSAGE ---\n");
    abort();
 }
 
