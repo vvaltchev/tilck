@@ -15,10 +15,12 @@ curr_dir="`pwd`"
 
 if [[ "$curr_dir" == "$MAIN_DIR" ]]; then
    build_dir="$MAIN_DIR/build"
-   mkdir -p $MAIN_DIR/build
+   mkdir -p "$build_dir"
 else
    build_dir="$curr_dir"
 fi
+
+echo "[cmake_run] Using '$build_dir' as build directory"
 
 # If CC is set but the file $CC does not exist
 # replace CC with `which $CC` (its absolute path)
@@ -72,19 +74,19 @@ export CXX
 
 
 if [ -f $MAIN_DIR/toolchain/cmake/bin/cmake ]; then
-   export CMAKE=$MAIN_DIR/toolchain/cmake/bin/cmake
+   export CMAKE="$MAIN_DIR/toolchain/cmake/bin/cmake"
 else
-   export CMAKE=cmake
+   export CMAKE="cmake"
 fi
 
-if [[ "$RELEASE" -eq 1 || "$REL" -eq 1 ]]; then
-   BUILD_TYPE=Release
+if [[ "$RELEASE" == "1" || "$REL" == "1" ]]; then
+   BUILD_TYPE="Release"
 else
-   BUILD_TYPE=Debug
+   BUILD_TYPE="Debug"
 fi
 
 
 echo "[cmake_run] Using '$CMAKE' as CMake executable"
 
 cd $build_dir
-$CMAKE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_ARGS "$@" $MAIN_DIR
+$CMAKE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_ARGS "$@" "$MAIN_DIR"
