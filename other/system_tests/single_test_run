@@ -183,17 +183,20 @@ def RunTheVM():
    if not in_travis and not in_circleci:
       args.append('-enable-kvm')
 
-   opts = '/bin/devshell'
+   cmdline = '/bin/devshell'
+   init_opts = ''
 
    if dump_coverage:
-      opts += ' -dcov'
+      cmdline += ' -dcov'
+      init_opts = '-q '
 
    if TEST_TYPE == 'shellcmd':
 
       print "Running the VM with shell command '{0}'...".format(TEST_NAME)
 
+      cmdline += ' -c ' + TEST_NAME
       args += ['-initrd', FATPART_FILE, '-append',
-               '-cmd /sbin/init -- {0} -c {1}'.format(opts, TEST_NAME)]
+               '-cmd /sbin/init {0}-- {1}'.format(init_opts, cmdline)]
 
    elif TEST_TYPE == 'selftest':
 
@@ -202,8 +205,9 @@ def RunTheVM():
       # New way of running self tests: asking the devshell to perform a
       # a tilck_testcmd() syscall for running any given self-test.
 
+      cmdline += ' -c selftest ' + TEST_NAME
       args += ['-initrd', FATPART_FILE, '-append',
-               '-cmd /sbin/init -- {0} -c selftest {1}'.format(opts, TEST_NAME)]
+               '-cmd /sbin/init {0}-- {1}'.format(init_opts, cmdline)]
 
       # Old way of running self tests: direct option on kernel's cmdline.
       # args += ['-append', '-s {0}'.format(TEST_NAME)]
@@ -211,13 +215,14 @@ def RunTheVM():
    else:
       sys.exit(1)
 
-   print "-"*80, "\n"
+   print('-' * 80)
+   print('\n')
    process = subprocess.Popen(args, stdout=subprocess.PIPE)
 
    for line in iter(process.stdout.readline,''):
       ProcessLine(line)
 
-   print("-" * 80)
+   print('-' * 80)
 
 ###############################################################################
 # MAIN

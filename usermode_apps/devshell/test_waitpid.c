@@ -250,11 +250,6 @@ int cmd_waitpid4(int argc, char **argv)
          failed = true;
    }
 
-   if (dump_coverage) {
-      printf("[gradparent] Because of 'dump_coverage', wait 300 ms\n");
-      usleep(300 * 1000);
-   }
-
    printf("[grandparent] exit (failed: %d)\n", failed);
    return failed ? 1 : 0;
 }
