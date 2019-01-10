@@ -90,29 +90,42 @@ STATIC void use_kernel_arg(int arg_num, const char *arg)
    table[kernel_arg_parser_state](arg_num, arg, strlen(arg));
 }
 
+static inline void end_arg(char *buf, char **argbuf_ref, int *arg_count_ref)
+{
+   **argbuf_ref = 0;
+   *argbuf_ref = buf;
+   use_kernel_arg((*arg_count_ref)++, buf);
+}
+
 void parse_kernel_cmdline(const char *cmdline)
 {
-   char buf[256];
-   char *dptr = buf;
-   const char *ptr = cmdline;
-   int args_count = 0;
+   char buf[MAX_CMD_ARG_LEN + 1];
+   char *argbuf = buf;
+   int arg_count = 0;
 
-   while (*ptr) {
+   for (const char *p = cmdline; *p; p++) {
 
-      if (*ptr == ' ' || (dptr-buf >= (sptr)sizeof(buf)-1)) {
-         *dptr = 0;
-         dptr = buf;
-         ptr++;
-         use_kernel_arg(args_count++, buf);
+      if (*p == ' ') {
+
+         if (argbuf != buf)
+            end_arg(buf, &argbuf, &arg_count);
+
          continue;
       }
 
-      *dptr++ = *ptr++;
+      if ((argbuf - buf) >= MAX_CMD_ARG_LEN) {
+
+         /* argument truncation: we have no more buffer for that argument */
+
+         end_arg(buf, &argbuf, &arg_count); /* handle the truncated argument */
+         while (*p && *p != ' ') p++;       /* skip until the next arg */
+         continue;                          /* continue the parsing */
+      }
+
+      *argbuf++ = *p;
    }
 
-   if (dptr != buf) {
-      *dptr = 0;
-      use_kernel_arg(args_count++, buf);
-   }
+   if (argbuf != buf)
+      end_arg(buf, &argbuf, &arg_count);
 }
 
