@@ -34,7 +34,7 @@ void simple_test_kthread(void *arg)
 
    printk("[kthread] This is a kernel thread, arg = %p\n", arg);
 
-   for (i = 0; i < 256*MB; i++) {
+   for (i = 0; i < 128*MB; i++) {
 
 #if !defined(NDEBUG) && !defined(RELEASE)
 

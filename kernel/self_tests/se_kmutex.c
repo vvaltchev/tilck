@@ -20,7 +20,10 @@ static void test_kmutex_thread(void *arg)
    kmutex_lock(&test_mutex);
 
    printk("%i) under lock..\n", arg);
-   for (int i=0; i < 256*MB; i++) { }
+
+   for (int i = 0; i < 128*MB; i++) {
+      asmVolatile("nop");
+   }
 
    kmutex_unlock(&test_mutex);
 
@@ -50,6 +53,7 @@ void selftest_kmutex_med()
 {
    int tid1, tid2, tid3, tid4;
 
+   printk("kmutex basic test\n");
    kmutex_init(&test_mutex, 0);
 
    tid1 = kthread_create(&simple_test_kthread, NULL)->tid;
@@ -62,8 +66,16 @@ void selftest_kmutex_med()
    kthread_join(tid3);
    kthread_join(tid4);
 
-   printk("Recursive mutex (basic) test\n");
    kmutex_destroy(&test_mutex);
+   regular_self_test_end();
+}
+
+void selftest_kmutex2_med()
+{
+   bool success;
+   int tid1, tid2, tid3;
+
+   printk("kmutex recursive test\n");
    kmutex_init(&test_mutex, KMUTEX_FL_RECURSIVE);
 
    kmutex_lock(&test_mutex);
@@ -72,12 +84,16 @@ void selftest_kmutex_med()
    kmutex_lock(&test_mutex);
    printk("Locked twice\n");
 
-   bool success = kmutex_trylock(&test_mutex);
-   VERIFY(success);
+   success = kmutex_trylock(&test_mutex);
+
+   if (!success) {
+      panic("kmutex_trylock() failed on the same thread");
+   }
+
    printk("Locked 3 times (last with trylock)\n");
 
-   tid4 = kthread_create(test_kmutex_thread_trylock, NULL)->tid;
-   kthread_join(tid4);
+   tid3 = kthread_create(test_kmutex_thread_trylock, NULL)->tid;
+   kthread_join(tid3);
 
    kmutex_unlock(&test_mutex);
    printk("Unlocked once\n");
@@ -88,13 +104,13 @@ void selftest_kmutex_med()
    kmutex_unlock(&test_mutex);
    printk("Unlocked 3 times\n");
 
-   tid2 = kthread_create(test_kmutex_thread, (void *)1)->tid;
-   tid3 = kthread_create(test_kmutex_thread, (void *)2)->tid;
-   tid4 = kthread_create(test_kmutex_thread_trylock, NULL)->tid;
+   tid1 = kthread_create(test_kmutex_thread, (void *)1)->tid;
+   tid2 = kthread_create(test_kmutex_thread, (void *)2)->tid;
+   tid3 = kthread_create(test_kmutex_thread_trylock, NULL)->tid;
 
+   kthread_join(tid1);
    kthread_join(tid2);
    kthread_join(tid3);
-   kthread_join(tid4);
 
    kmutex_destroy(&test_mutex);
    regular_self_test_end();
