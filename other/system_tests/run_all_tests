@@ -29,21 +29,35 @@ LONG_TEST_TIMEOUT  = 36
 
 test_types = ['selftest', 'shellcmd']
 pretty_names_list = ['Self tests', 'Shell cmd tests']
+load_tests_func_by_type_list = [
+   'load_list_of_kernel_self_tests',
+   'load_list_of_shell_cmd_tests'
+]
 
 tt_pretty_names = {
-   test_types[i]: pretty_names_list[i] for i in range(len(test_types))
+   val: pretty_names_list[i] for i, val in enumerate(test_types)
+}
+
+load_tests_func_by_type = {
+   val: load_tests_func_by_type_list[i] for i, val in enumerate(test_types)
 }
 
 # Global variables
-shell_cmd_tests = [ ]
-selftests = [ ]
 
+tests_by_type = { k: [] for k in test_types }
 tests_to_run = { k: 0 for k in test_types }
 tests_passed = { k: 0 for k in test_types }
 
+def load_all_tests():
+
+   global tests_by_type
+
+   for tt in test_types:
+      tests_by_type[tt] = globals()[load_tests_func_by_type[tt]]()
+
 def load_list_of_shell_cmd_tests():
 
-   global shell_cmd_tests
+   result = []
 
    tt_short = SHORT_TEST_TIMEOUT
    tt_med = MED_TEST_TIMEOUT
@@ -62,12 +76,13 @@ def load_list_of_shell_cmd_tests():
 
       name, tt = r.split(' ')
       tt = locals()[tt]
-      shell_cmd_tests.append([name, tt])
+      result.append([name, tt])
+
+   return result
 
 def load_list_of_kernel_self_tests():
 
-   global selftests
-
+   result = []
    rows = subprocess.check_output(['nm', KERNEL_ELF]).split("\n")
 
    short = SHORT_TEST_TIMEOUT
@@ -94,7 +109,9 @@ def load_list_of_kernel_self_tests():
 
       name = '_'.join(comps[1:])
       tt = locals()[tt]
-      selftests.append([name, tt])
+      result.append([name, tt])
+
+   return result
 
 def internal_run_test(test_type, test, timeout, show_output = False):
 
@@ -150,23 +167,15 @@ def show_tests_and_exit():
       sys.stdout.write(''.center(x[1], '-'))
    sys.stdout.write('+\n')
 
-   for x in selftests:
-      sys.stdout.write('| ')
-      sys.stdout.write(x[0].ljust(col_names[0][1]))
-      sys.stdout.write('| ')
-      sys.stdout.write('self test'.ljust(col_names[1][1]))
-      sys.stdout.write('| ')
-      sys.stdout.write(str(x[1]).ljust(col_names[2][1]))
-      sys.stdout.write('|\n')
-
-   for x in shell_cmd_tests:
-      sys.stdout.write('| ')
-      sys.stdout.write(x[0].ljust(col_names[0][1]))
-      sys.stdout.write('| ')
-      sys.stdout.write('shell cmd'.ljust(col_names[1][1]))
-      sys.stdout.write('| ')
-      sys.stdout.write(str(x[1]).ljust(col_names[2][1]))
-      sys.stdout.write('|\n')
+   for tt in test_types:
+      for x in tests_by_type[tt]:
+         sys.stdout.write('| ')
+         sys.stdout.write(x[0].ljust(col_names[0][1]))
+         sys.stdout.write('| ')
+         sys.stdout.write(tt.ljust(col_names[1][1]))
+         sys.stdout.write('| ')
+         sys.stdout.write(str(x[1]).ljust(col_names[2][1]))
+         sys.stdout.write('|\n')
 
    for x in col_names:
       sys.stdout.write('+-')
@@ -190,6 +199,27 @@ def run_test(test_type, x, show_output):
    if internal_run_test(test_type, x[0], x[1], show_output):
       tests_passed[test_type] += 1
 
+def run_all_tests(max_test_timeout, show_output, reg):
+
+   for tt in test_types:
+      for x in tests_by_type[tt]:
+         if re.match(reg, x[0]) and x[1] <= max_test_timeout:
+            run_test(tt, x, show_output)
+
+   if tests_to_run['selftest'] + tests_to_run['shellcmd'] == 0:
+      print("ERROR: No tests matching the '{0}' regex".format(reg))
+      sys.exit(1)
+
+def dump_test_stats():
+
+   print('-' * 80)
+
+   for tt in test_types:
+      if tests_to_run[tt]:
+         print "{0} passed: {1}/{2}".format(tt_pretty_names[tt],
+                                            tests_passed[tt],
+                                            tests_to_run[tt])
+
 def main():
 
    # Options
@@ -198,8 +228,7 @@ def main():
    reg = ".*"
    # ------------
 
-   load_list_of_shell_cmd_tests()
-   load_list_of_kernel_self_tests()
+   load_all_tests()
 
    if len(sys.argv) >= 2:
 
@@ -224,27 +253,8 @@ def main():
          except:
             show_help_and_exit()
 
-   for x in selftests:
-      if re.match(reg, x[0]):
-         if x[1] <= max_test_timeout:
-            run_test('selftest', x, show_output)
-
-   for x in shell_cmd_tests:
-      if re.match(reg, x[0]):
-         if x[1] <= max_test_timeout:
-            run_test('shellcmd', x, show_output)
-
-   if tests_to_run['selftest'] + tests_to_run['shellcmd'] == 0:
-      print("ERROR: No tests matching the '{0}' regex".format(reg))
-      sys.exit(1)
-
-   print "-" * 80
-
-   for tt in test_types:
-      if tests_to_run[tt]:
-         print "{0} passed: {1}/{2}".format(tt_pretty_names[tt],
-                                            tests_passed[tt],
-                                            tests_to_run[tt])
+   run_all_tests(max_test_timeout, show_output, reg)
+   dump_test_stats()
 
    if get_sum(tests_passed) != get_sum(tests_to_run):
       sys.exit(1)
