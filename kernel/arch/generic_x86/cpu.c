@@ -241,7 +241,7 @@ void restore_current_fpu_regs(bool in_kernel)
    }
 }
 
-static void allocate_fpu_regs(arch_task_info_members *arch_fields)
+bool allocate_fpu_regs(arch_task_info_members *arch_fields)
 {
    ASSERT(arch_fields->fpu_regs == NULL);
 
@@ -260,7 +260,11 @@ static void allocate_fpu_regs(arch_task_info_members *arch_fields)
       arch_fields->fpu_regs_size = CPU_FXSAVE_AREA_SIZE;
    }
 
-   VERIFY(arch_fields->fpu_regs); // TODO: handle this OOM case
+   if (!arch_fields->fpu_regs)
+      return false;
+
+   bzero(arch_fields->fpu_regs, arch_fields->fpu_regs_size);
+   return true;
 }
 
 static void
@@ -288,20 +292,42 @@ handle_no_coproc_fault(regs *r)
    }
 
    arch_task_info_members *arch_fields = &get_curr_task()->arch;
-
-   /*
-    * We can hit this fault at MOST once in the lifetime of a task. These sanity
-    * checks ensures that, in no case, we allocated the fpu_regs and then, for
-    * any reason, we scheduled the task with FPU disabled.
-    */
-   ASSERT(arch_fields->fpu_regs == NULL);
    ASSERT(!(r->custom_flags & REGS_FL_FPU_ENABLED));
 
-   allocate_fpu_regs(arch_fields);
+#if FORK_NO_COW
 
-   bzero(arch_fields->fpu_regs, arch_fields->fpu_regs_size);
+   ASSERT(arch_fields->fpu_regs != NULL);
+
+   /*
+    * With the current implementation, even when the fpu_regs are pre-allocated
+    * tasks cannot by default use the FPU. This approach has PROs and CONs.
+    *
+    *    PROs:
+    *       - the kernel doesn't have to save/restore unnecessarily the FPU ctx
+    *       - tasks using the FPU can be distinguished from the others
+    *       - it is simpler to make fpu_regs pre-allocated work this way
+    *
+    *    CONs:
+    *       - paying the overhead of a not-strictly necessary fault, once.
+    */
+
+#else
+
+    /*
+     * We can hit this fault at MOST once in the lifetime of a task. These
+     * sanity checks ensures that, in no case, we allocated the fpu_regs and
+     * then, for any reason, we scheduled the task with FPU disabled.
+     */
+
+   ASSERT(arch_fields->fpu_regs == NULL);
+
+   if (!allocate_fpu_regs(arch_fields)) {
+      panic("Cannot allocate memory for the FPU context");
+   }
+
+#endif
+
    r->custom_flags |= REGS_FL_FPU_ENABLED;
-
    disable_interrupts_forced(); /* restore the IF value we got (= 0) */
 }
 

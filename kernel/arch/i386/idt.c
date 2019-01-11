@@ -123,10 +123,11 @@ void handle_fault(regs *r)
 
    } else {
 
-      panic("Fault #%i: %s [errCode: %p]",
+      panic("Unhandled fault #%i: %s [err: %p] EIP: %p",
             int_num,
             x86_exception_names[int_num],
-            r->err_code);
+            r->err_code,
+            r->eip);
    }
 }
 

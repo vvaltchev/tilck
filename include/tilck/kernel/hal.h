@@ -45,3 +45,4 @@ void fpu_context_end(void);
 void save_current_fpu_regs(bool in_kernel);
 void restore_current_fpu_regs(bool in_kernel);
 
+bool allocate_fpu_regs(arch_task_info_members *arch_fields);

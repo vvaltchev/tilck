@@ -284,13 +284,19 @@ void set_current_task_in_user_mode(void)
    set_kernel_stack((u32)curr->state_regs);
 }
 
+static inline bool is_fpu_enabled_for_task(task_info *ti)
+{
+   return ti && ti->arch.fpu_regs &&
+          (ti->state_regs->custom_flags & REGS_FL_FPU_ENABLED);
+}
+
 NORETURN void switch_to_task(task_info *ti, int curr_irq)
 {
    ASSERT(!get_curr_task() || get_curr_task()->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
    ASSERT(ti != get_curr_task());
 
-   if (get_curr_task() && get_curr_task()->arch.fpu_regs) {
+   if (is_fpu_enabled_for_task(get_curr_task())) {
       hw_fpu_enable();
       {
          save_current_fpu_regs(false);
@@ -352,6 +358,12 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
 
 #endif
 
+   /*
+    * NOTE: is_fpu_enabled_for_task() CANNOT be moved below because
+    * ti->state_regs gets reset by task_info_reset_kernel_stack()
+    */
+   const bool task_use_fpu = is_fpu_enabled_for_task(ti);
+
    regs *state = ti->state_regs;
    ASSERT(state->eflags & EFLAGS_IF);
 
@@ -374,7 +386,7 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
       load_ldt(ti->arch.ldt_index_in_gdt, ti->arch.ldt_size);
    }
 
-   if (ti->arch.fpu_regs) {
+   if (task_use_fpu) {
       hw_fpu_enable();
       restore_current_fpu_regs(false);
    }
@@ -393,11 +405,25 @@ sptr sys_set_tid_address(int *tidptr)
    return get_curr_task()->tid;
 }
 
-void arch_specific_new_task_setup(task_info *ti, task_info *parent)
+bool arch_specific_new_task_setup(task_info *ti, task_info *parent)
 {
    if (LIKELY(parent != NULL)) {
-
       memcpy(&ti->arch, &parent->arch, sizeof(ti->arch));
+   }
+
+   ti->arch.fpu_regs = NULL;
+   ti->arch.fpu_regs_size = 0;
+
+#if FORK_NO_COW
+
+   if (LIKELY(ti->pid)) {
+      if (!allocate_fpu_regs(&ti->arch))
+         return false; // out-of-memory
+   }
+
+#endif
+
+   if (LIKELY(parent != NULL)) {
 
       if (ti->arch.ldt)
          gdt_entry_inc_ref_count(ti->arch.ldt_index_in_gdt);
@@ -407,9 +433,8 @@ void arch_specific_new_task_setup(task_info *ti, task_info *parent)
             gdt_entry_inc_ref_count(ti->arch.gdt_entries[i]);
    }
 
-   ti->arch.fpu_regs = NULL;
-   ti->arch.fpu_regs_size = 0;
    ti->pi->set_child_tid = NULL;
+   return true;
 }
 
 void arch_specific_free_task(task_info *ti)

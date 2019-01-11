@@ -174,7 +174,7 @@ void create_kernel_process(void)
    init_task_lists(s_kernel_ti);
    list_init(&s_kernel_pi->children_list);
 
-   arch_specific_new_task_setup(s_kernel_ti, NULL);
+   VERIFY(arch_specific_new_task_setup(s_kernel_ti, NULL));
    ASSERT(s_kernel_pi->parent_pid == 0);
 
    s_kernel_ti->running_in_kernel = true;

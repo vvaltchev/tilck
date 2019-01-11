@@ -91,7 +91,7 @@ task_info *allocate_new_process(task_info *parent, int pid)
 
    pi = (process_info *)(ti + 1);
 
-   /* The first process (init) has as parent 'kernel_process' */
+   /* The first process (init) has as parent == kernel_process */
    ASSERT(parent != NULL);
 
    memcpy(ti, parent, sizeof(task_info));
@@ -99,14 +99,21 @@ task_info *allocate_new_process(task_info *parent, int pid)
    pi->parent_pid = parent->tid;
    pi->mmap_heap = kmalloc_heap_dup(parent->pi->mmap_heap);
 
-   if (!do_common_task_allocations(ti)) {
-      kfree2(ti, sizeof(task_info) + sizeof(process_info));
-      return NULL;
-   }
-
    pi->ref_count = 1;
    ti->tid = pid; /* here tid is a PID */
    ti->pid = pid;
+
+   if (!do_common_task_allocations(ti) ||
+       !arch_specific_new_task_setup(ti, parent))
+   {
+      if (pi->mmap_heap) {
+         kmalloc_destroy_heap(pi->mmap_heap);
+         kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
+      }
+
+      kfree2(ti, sizeof(task_info) + sizeof(process_info));
+      return NULL;
+   }
 
    ti->pi = pi;
    init_task_lists(ti);
@@ -114,7 +121,6 @@ task_info *allocate_new_process(task_info *parent, int pid)
    list_add_tail(&parent->pi->children_list, &ti->siblings_node);
 
    list_init(&pi->mappings);
-   arch_specific_new_task_setup(ti, parent);
    return ti;
 }
 
