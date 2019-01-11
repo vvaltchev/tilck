@@ -61,6 +61,25 @@ sptr sys_newuname(struct utsname *user_buf)
    return 0;
 }
 
+NORETURN sptr sys_exit(int exit_status)
+{
+   terminate_process(get_curr_task(), exit_status);
+
+   /* Necessary to guarantee to the compiler that we won't return. */
+   NOT_REACHED();
+}
+
+NORETURN sptr sys_exit_group(int status)
+{
+   // TODO: update when user threads are supported
+   sys_exit(status);
+}
+
+
+/* *************************************************************** */
+/*          Tilck-specific syscalls & helper functions             */
+/* *************************************************************** */
+
 sptr sys_tilck_run_selftest(const char *user_selftest)
 {
    int rc;

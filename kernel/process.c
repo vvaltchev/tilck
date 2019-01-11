@@ -400,39 +400,45 @@ static bool task_is_waiting_on_any_child(task_info *ti)
    return wait_obj_get_ptr(wobj) == WOBJ_TASK_PTR_ANY_CHILD;
 }
 
-NORETURN sptr sys_exit(int exit_status)
+/*
+ * NOTE: this code ASSUMES that threads does NOT exist:
+ *    process = task = thread
+ *
+ * TODO: re-design/adapt this function when thread support is introduced
+ */
+void terminate_process(task_info *ti, int exit_status)
 {
+   ASSERT(!is_kernel_thread(ti));
    disable_preemption();
-   task_info *curr = get_curr_task();
 
-   task_change_state(curr, TASK_STATE_ZOMBIE);
-   curr->exit_status = exit_status;
+   task_change_state(ti, TASK_STATE_ZOMBIE);
+   ti->exit_status = exit_status;
 
    // Close all of its opened handles
 
-   for (size_t i = 0; i < ARRAY_SIZE(curr->pi->handles); i++) {
+   for (size_t i = 0; i < ARRAY_SIZE(ti->pi->handles); i++) {
 
-      fs_handle *h = curr->pi->handles[i];
+      fs_handle *h = ti->pi->handles[i];
 
       if (h) {
          vfs_close(h);
-         curr->pi->handles[i] = NULL;
+         ti->pi->handles[i] = NULL;
       }
    }
 
    // Remove all the user mappings
 
-   while (!list_is_empty(&curr->pi->mappings)) {
+   while (!list_is_empty(&ti->pi->mappings)) {
 
       user_mapping *um =
-         list_first_obj(&curr->pi->mappings, user_mapping, node);
+         list_first_obj(&ti->pi->mappings, user_mapping, node);
 
       size_t actual_len = um->page_count << PAGE_SHIFT;
 
       fs_handle_base *hb = um->h;
       hb->fops.munmap(hb, um->vaddr, actual_len);
 
-      per_heap_kfree(curr->pi->mmap_heap,
+      per_heap_kfree(ti->pi->mmap_heap,
                      um->vaddr,
                      &actual_len,
                      KFREE_FL_ALLOW_SPLIT |
@@ -450,12 +456,12 @@ NORETURN sptr sys_exit(int exit_status)
     * TODO: revisit this code once threads are supported
     */
 
-   if (curr->tid != 1) {
+   if (ti->tid != 1) {
       task_info *pos, *temp;
       task_info *child_reaper = get_task(1); /* init */
       ASSERT(child_reaper != NULL);
 
-      list_for_each(pos, temp, &curr->pi->children_list, siblings_node) {
+      list_for_each(pos, temp, &ti->pi->children_list, siblings_node) {
 
          list_remove(&pos->siblings_node);
          list_add_tail(&child_reaper->pi->children_list, &pos->siblings_node);
@@ -464,42 +470,39 @@ NORETURN sptr sys_exit(int exit_status)
    }
 
    // Wake-up all the tasks waiting on this task to exit
-   wake_up_tasks_waiting_on(curr);
+   wake_up_tasks_waiting_on(ti);
 
-   if (curr->pi->parent_pid > 0) {
+   if (ti->pi->parent_pid > 0) {
 
-      task_info *parent_task = get_task(curr->pi->parent_pid);
+      task_info *parent_task = get_task(ti->pi->parent_pid);
 
       if (task_is_waiting_on_any_child(parent_task))
          task_reset_wait_obj(parent_task);
    }
 
    set_page_directory(get_kernel_pdir());
-   pdir_destroy(curr->pi->pdir);
+   pdir_destroy(ti->pi->pdir);
 
 #ifdef DEBUG_QEMU_EXIT_ON_INIT_EXIT
-   if (curr->tid == 1) {
+   if (ti->tid == 1) {
       debug_qemu_turn_off_machine();
    }
 #endif
 
-   /* WARNING: the following call discards the whole stack! */
-   switch_to_initial_kernel_stack();
+   if (ti == get_curr_task()) {
 
-   /* Free the heap allocations used by the task, including the kernel stack */
-   free_mem_for_zombie_task(get_curr_task());
+      /* WARNING: the following call discards the whole stack! */
+      switch_to_initial_kernel_stack();
 
-   /* Run the scheduler */
-   schedule_outside_interrupt_context();
+      /* Free the heap allocations used by the task, including the kernel stack */
+      free_mem_for_zombie_task(get_curr_task());
 
-   /* Necessary to guarantee to the compiler that we won't return. */
-   NOT_REACHED();
-}
+      /* Run the scheduler */
+      schedule_outside_interrupt_context();
 
-NORETURN sptr sys_exit_group(int status)
-{
-   // TODO: update when user threads are supported
-   sys_exit(status);
+   } else {
+      free_mem_for_zombie_task(ti);
+   }
 }
 
 // Returns child's pid
