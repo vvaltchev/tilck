@@ -27,15 +27,19 @@ SHORT_TEST_TIMEOUT = 12
 MED_TEST_TIMEOUT   = 24
 LONG_TEST_TIMEOUT  = 36
 
+test_types = ['selftest', 'shellcmd']
+pretty_names_list = ['Self tests', 'Shell cmd tests']
+
+tt_pretty_names = {
+   test_types[i]: pretty_names_list[i] for i in range(len(test_types))
+}
+
 # Global variables
 shell_cmd_tests = [ ]
 selftests = [ ]
 
-selftests_to_run = 0
-selftests_passed = 0
-shell_cmd_tests_to_run = 0
-shell_cmd_tests_passed = 0
-
+tests_to_run = { k: 0 for k in test_types }
+tests_passed = { k: 0 for k in test_types }
 
 def load_list_of_shell_cmd_tests():
 
@@ -172,29 +176,19 @@ def show_tests_and_exit():
    sys.stdout.write('\n')
    sys.exit(0)
 
+def get_sum(per_test_counter):
+   return sum(per_test_counter[k] for k in per_test_counter)
 
-def run_selftest(x, show_output):
+def run_test(test_type, x, show_output):
 
-   global selftests_to_run, selftests_passed
+   global tests_to_run, tests_passed
 
-   if not selftests_to_run:
+   if get_sum(tests_to_run) == 0:
       print("")
 
-   selftests_to_run += 1
-   if internal_run_test('selftest', x[0], x[1], show_output):
-      selftests_passed += 1
-
-def run_shellcmd_test(x, show_output):
-
-   global selftests_to_run, shell_cmd_tests_to_run
-   global shell_cmd_tests_passed
-
-   if not selftests_to_run and not shell_cmd_tests_to_run:
-      print("")
-
-   shell_cmd_tests_to_run += 1
-   if internal_run_test('shellcmd', x[0], x[1], show_output):
-      shell_cmd_tests_passed += 1
+   tests_to_run[test_type] += 1
+   if internal_run_test(test_type, x[0], x[1], show_output):
+      tests_passed[test_type] += 1
 
 def main():
 
@@ -233,32 +227,26 @@ def main():
    for x in selftests:
       if re.match(reg, x[0]):
          if x[1] <= max_test_timeout:
-            run_selftest(x, show_output)
-
+            run_test('selftest', x, show_output)
 
    for x in shell_cmd_tests:
       if re.match(reg, x[0]):
          if x[1] <= max_test_timeout:
-            run_shellcmd_test(x, show_output)
+            run_test('shellcmd', x, show_output)
 
-   if selftests_to_run + shell_cmd_tests_to_run == 0:
+   if tests_to_run['selftest'] + tests_to_run['shellcmd'] == 0:
       print("ERROR: No tests matching the '{0}' regex".format(reg))
       sys.exit(1)
 
    print "-" * 80
 
-   if shell_cmd_tests_to_run:
-      print "Shell cmd tests passed: {0}/{1}".format(shell_cmd_tests_passed,
-                                                     shell_cmd_tests_to_run)
+   for tt in test_types:
+      if tests_to_run[tt]:
+         print "{0} passed: {1}/{2}".format(tt_pretty_names[tt],
+                                            tests_passed[tt],
+                                            tests_to_run[tt])
 
-   if selftests_to_run:
-      print "Self tests passed: {0}/{1}".format(selftests_passed,
-                                                selftests_to_run)
-
-   total_to_run = shell_cmd_tests_to_run + selftests_to_run
-   total_passed = shell_cmd_tests_passed + selftests_passed
-
-   if total_passed != total_to_run:
+   if get_sum(tests_passed) != get_sum(tests_to_run):
       sys.exit(1)
 
 ###############################
