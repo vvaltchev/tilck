@@ -34,6 +34,7 @@ jobs:
       - run: mv /tilck_toolchain ./toolchain
       - run: make -j
       - run: make -j gtests
+      - run: ./build/gtests
       - run: ./build/st/run_all_tests
 
   debug_arch_gtests_build:
