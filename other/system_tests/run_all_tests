@@ -9,8 +9,9 @@ import signal
 import subprocess
 import threading
 
-build_dir = r'@CMAKE_BINARY_DIR@'
-kernel = r'@KERNEL_FILE@'
+# Constants
+BUILD_DIR = r'@CMAKE_BINARY_DIR@'
+KERNEL_ELF = r'@KERNEL_FILE@'
 
 error_codes_strings = {
    0: 'success',
@@ -23,20 +24,28 @@ error_codes_strings = {
 }
 
 SHORT_TEST_TIMEOUT = 12
-MID_TEST_TIMEOUT   = 24
+MED_TEST_TIMEOUT   = 24
 LONG_TEST_TIMEOUT  = 36
 
+# Global variables
 shell_cmd_tests = [ ]
+selftests = [ ]
+
+selftests_to_run = 0
+selftests_passed = 0
+shell_cmd_tests_to_run = 0
+shell_cmd_tests_passed = 0
+
 
 def load_list_of_shell_cmd_tests():
 
    global shell_cmd_tests
 
    tt_short = SHORT_TEST_TIMEOUT
-   tt_med = MID_TEST_TIMEOUT
+   tt_med = MED_TEST_TIMEOUT
    tt_long = LONG_TEST_TIMEOUT
 
-   devshell = os.path.join(build_dir, 'usermode_apps', 'devshell')
+   devshell = os.path.join(BUILD_DIR, 'usermode_apps', 'devshell')
    output = subprocess.check_output([devshell, '-l'])
    arr = output.split("\n")
 
@@ -51,16 +60,14 @@ def load_list_of_shell_cmd_tests():
       tt = locals()[tt]
       shell_cmd_tests.append([name, tt])
 
-selftests = [ ]
-
 def load_list_of_kernel_self_tests():
 
    global selftests
 
-   rows = subprocess.check_output(['nm', kernel]).split("\n")
+   rows = subprocess.check_output(['nm', KERNEL_ELF]).split("\n")
 
    short = SHORT_TEST_TIMEOUT
-   med = MID_TEST_TIMEOUT
+   med = MED_TEST_TIMEOUT
    long = LONG_TEST_TIMEOUT
 
    for row in rows:
@@ -85,9 +92,9 @@ def load_list_of_kernel_self_tests():
       tt = locals()[tt]
       selftests.append([name, tt])
 
-def run_test(test_type, test, timeout, show_output = False):
+def internal_run_test(test_type, test, timeout, show_output = False):
 
-   print "[ RUNNING ] {0}: '{1}' [timeout: {2}]".format(test_type, x[0], x[1])
+   print "[ RUNNING ] {0}: '{1}' [timeout: {2}]".format(test_type,test,timeout)
    start_time = time.time()
 
    try:
@@ -106,7 +113,8 @@ def run_test(test_type, test, timeout, show_output = False):
    elapsed = time.time() - start_time
 
    if show_output:
-      print output
+      print("")
+      print(output)
 
    print "[ PASSED  ] after %.2f seconds\n" % elapsed
    return True
@@ -121,6 +129,7 @@ def show_help_and_exit():
 def show_tests_and_exit():
 
    col_names = [['test name', 30], ['test type', 12],  ['timeout', 10]]
+   print("")
 
    for x in col_names:
       sys.stdout.write('+-')
@@ -163,74 +172,95 @@ def show_tests_and_exit():
    sys.stdout.write('\n')
    sys.exit(0)
 
-################################################################################
-# MAIN
 
-#############################
-# options
-max_test_timeout = MID_TEST_TIMEOUT
-reg = ".*"
-show_output = False
-##############################
+def run_selftest(x, show_output):
 
-selftests_to_run = 0
-selftests_passed = 0
-shell_cmd_tests_to_run = 0
-shell_cmd_tests_passed = 0
+   global selftests_to_run, selftests_passed
 
-load_list_of_shell_cmd_tests()
-load_list_of_kernel_self_tests()
-print ""
+   if not selftests_to_run:
+      print("")
 
-if len(sys.argv) >= 2:
+   selftests_to_run += 1
+   if internal_run_test('selftest', x[0], x[1], show_output):
+      selftests_passed += 1
 
-   if sys.argv[1] == '-l':
-      show_tests_and_exit()
+def run_shellcmd_test(x, show_output):
 
-   if sys.argv[1] == '-o':
-      show_output = True
-      del sys.argv[1]
+   global selftests_to_run, shell_cmd_tests_to_run
+   global shell_cmd_tests_passed
 
-   if sys.argv[1].startswith('-'):
-      show_help_and_exit()
+   if not selftests_to_run and not shell_cmd_tests_to_run:
+      print("")
 
-   try:
-      max_test_timeout = int(sys.argv[1])
-   except:
-      reg = sys.argv[1]
+   shell_cmd_tests_to_run += 1
+   if internal_run_test('shellcmd', x[0], x[1], show_output):
+      shell_cmd_tests_passed += 1
 
-   if len(sys.argv) >= 3:
-      try:
-         max_test_timeout = int(sys.argv[2])
-      except:
+def main():
+
+   # Options
+   max_test_timeout = MED_TEST_TIMEOUT
+   show_output = False
+   reg = ".*"
+   # ------------
+
+   load_list_of_shell_cmd_tests()
+   load_list_of_kernel_self_tests()
+
+   if len(sys.argv) >= 2:
+
+      if sys.argv[1] == '-l':
+         show_tests_and_exit()
+
+      if sys.argv[1] == '-o':
+         show_output = True
+         del sys.argv[1]
+
+      if sys.argv[1].startswith('-'):
          show_help_and_exit()
 
-for x in selftests:
-   if re.match(reg, x[0]):
-      if x[1] <= max_test_timeout:
-         selftests_to_run += 1
-         if run_test('selftest', x[0], x[1], show_output):
-            selftests_passed += 1
+      try:
+         max_test_timeout = int(sys.argv[1])
+      except:
+         reg = sys.argv[1]
 
-for x in shell_cmd_tests:
-   if re.match(reg, x[0]):
-      if x[1] <= max_test_timeout:
-         shell_cmd_tests_to_run += 1
-         if run_test('shellcmd', x[0], x[1], show_output):
-            shell_cmd_tests_passed += 1
+      if len(sys.argv) >= 3:
+         try:
+            max_test_timeout = int(sys.argv[2])
+         except:
+            show_help_and_exit()
 
-print "-" * 80, "\n"
+   for x in selftests:
+      if re.match(reg, x[0]):
+         if x[1] <= max_test_timeout:
+            run_selftest(x, show_output)
 
-if shell_cmd_tests_to_run:
-   print "Shell cmd tests passed: {0}/{1}".format(shell_cmd_tests_passed,
-                                                  shell_cmd_tests_to_run)
 
-if selftests_to_run:
-   print "Selftests passed: {0}/{1}".format(selftests_passed,
-                                            selftests_to_run)
+   for x in shell_cmd_tests:
+      if re.match(reg, x[0]):
+         if x[1] <= max_test_timeout:
+            run_shellcmd_test(x, show_output)
 
-total_to_run = shell_cmd_tests_to_run + selftests_to_run
-total_passed = shell_cmd_tests_passed + selftests_passed
+   if selftests_to_run + shell_cmd_tests_to_run == 0:
+      print("ERROR: No tests matching the '{0}' regex".format(reg))
+      sys.exit(1)
 
-if total_passed != total_to_run:
-   sys.exit(1)
+   print "-" * 80
+
+   if shell_cmd_tests_to_run:
+      print "Shell cmd tests passed: {0}/{1}".format(shell_cmd_tests_passed,
+                                                     shell_cmd_tests_to_run)
+
+   if selftests_to_run:
+      print "Self tests passed: {0}/{1}".format(selftests_passed,
+                                                selftests_to_run)
+
+   total_to_run = shell_cmd_tests_to_run + selftests_to_run
+   total_passed = shell_cmd_tests_passed + selftests_passed
+
+   if total_passed != total_to_run:
+      sys.exit(1)
+
+###############################
+if __name__ == '__main__':
+   main()
