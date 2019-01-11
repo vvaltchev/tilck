@@ -196,7 +196,7 @@ def RunTheVM():
 
       cmdline += ' -c ' + TEST_NAME
       args += ['-initrd', FATPART_FILE, '-append',
-               '-cmd /sbin/init {0}-- {1}'.format(init_opts, cmdline)]
+               '-cmd /sbin/init {0} -- {1}'.format(init_opts, cmdline)]
 
    elif TEST_TYPE == 'selftest':
 
@@ -207,7 +207,7 @@ def RunTheVM():
 
       cmdline += ' -c selftest ' + TEST_NAME
       args += ['-initrd', FATPART_FILE, '-append',
-               '-cmd /sbin/init {0}-- {1}'.format(init_opts, cmdline)]
+               '-cmd /sbin/init {0} -- {1}'.format(init_opts, cmdline)]
 
       # Old way of running self tests: direct option on kernel's cmdline.
       # args += ['-append', '-s {0}'.format(TEST_NAME)]
