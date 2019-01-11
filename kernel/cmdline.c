@@ -103,26 +103,27 @@ void parse_kernel_cmdline(const char *cmdline)
    char *argbuf = buf;
    int arg_count = 0;
 
-   for (const char *p = cmdline; *p; p++) {
+   for (const char *p = cmdline; *p;) {
 
       if (*p == ' ') {
 
          if (argbuf != buf)
             end_arg(buf, &argbuf, &arg_count);
 
+         p++;
          continue;
       }
 
       if ((argbuf - buf) >= MAX_CMD_ARG_LEN) {
 
-         /* argument truncation: we have no more buffer for that argument */
+         /* argument truncation: we have no more buffer for this argument */
 
          end_arg(buf, &argbuf, &arg_count); /* handle the truncated argument */
          while (*p && *p != ' ') p++;       /* skip until the next arg */
          continue;                          /* continue the parsing */
       }
 
-      *argbuf++ = *p;
+      *argbuf++ = *p++;
    }
 
    if (argbuf != buf)
