@@ -15,7 +15,7 @@ extern const char *x86_exception_names[32];
 void asm_enable_osxsave(void);
 void asm_enable_sse(void);
 void asm_enable_avx(void);
-static void fpu_no_coprocessor_fault_handler(regs *r);
+static void handle_no_coproc_fault(regs *r);
 
 #define CPU_FXSAVE_AREA_SIZE   512
 
@@ -158,13 +158,13 @@ out:
     * NOTES
     * ----------------
     * [1] In Tilck, we'll allow user space FPU only in the case at least FXSAVE
-    * is available (=> SSE is available). This makes Tilck simpler allowing it to
-    * not have to save the "legacy x87 FPU" context using the "legacy FPU"
+    * is available (=> SSE is available). This makes Tilck simpler allowing us
+    * to not having to save the "legacy x87 FPU" context using the "legacy FPU"
     * instructions. The newer FXSAVE and XSAVE save everything, including the
-    * "legacy FPU" state.
+    * "legacy x87 FPU" state.
     */
    hw_fpu_disable();
-   set_fault_handler(FAULT_NO_COPROC, fpu_no_coprocessor_fault_handler);
+   set_fault_handler(FAULT_NO_COPROC, handle_no_coproc_fault);
 
    if (x86_cpu_features.edx1.mtrr)
       enable_mtrr();
@@ -241,9 +241,33 @@ void restore_current_fpu_regs(bool in_kernel)
    }
 }
 
-static void
-fpu_no_coprocessor_fault_handler(regs *r)
+static void allocate_fpu_regs(arch_task_info_members *arch_fields)
 {
+   ASSERT(arch_fields->fpu_regs == NULL);
+
+   if (x86_cpu_features.can_use_avx) {
+
+      arch_fields->fpu_regs =
+         aligned_kmalloc(CPU_XSAVE_AREA_SIZE, KMALLOC_FL_ALIGN_8PTR_SIZE);
+
+      arch_fields->fpu_regs_size = CPU_XSAVE_AREA_SIZE;
+
+   } else {
+
+      arch_fields->fpu_regs =
+         aligned_kmalloc(CPU_FXSAVE_AREA_SIZE, KMALLOC_FL_ALIGN_4PTR_SIZE);
+
+      arch_fields->fpu_regs_size = CPU_FXSAVE_AREA_SIZE;
+   }
+
+   VERIFY(arch_fields->fpu_regs); // TODO: handle this OOM case
+}
+
+static void
+handle_no_coproc_fault(regs *r)
+{
+   enable_interrupts_forced();
+
    if (is_kernel_thread(get_curr_task())) {
       panic("FPU instructions used in kernel outside an fpu_context!");
    }
@@ -273,25 +297,12 @@ fpu_no_coprocessor_fault_handler(regs *r)
    ASSERT(arch_fields->fpu_regs == NULL);
    ASSERT(!(r->custom_flags & REGS_FL_FPU_ENABLED));
 
-   if (x86_cpu_features.can_use_avx) {
-
-      arch_fields->fpu_regs =
-         aligned_kmalloc(CPU_XSAVE_AREA_SIZE, KMALLOC_FL_ALIGN_8PTR_SIZE);
-
-      arch_fields->fpu_regs_size = CPU_XSAVE_AREA_SIZE;
-
-   } else {
-
-      arch_fields->fpu_regs =
-         aligned_kmalloc(CPU_FXSAVE_AREA_SIZE, KMALLOC_FL_ALIGN_4PTR_SIZE);
-
-      arch_fields->fpu_regs_size = CPU_FXSAVE_AREA_SIZE;
-   }
-
-   VERIFY(arch_fields->fpu_regs); // TODO: handle this OOM case
+   allocate_fpu_regs(arch_fields);
 
    bzero(arch_fields->fpu_regs, arch_fields->fpu_regs_size);
    r->custom_flags |= REGS_FL_FPU_ENABLED;
+
+   disable_interrupts_forced(); /* restore the IF value we got (= 0) */
 }
 
 static volatile bool in_fpu_context;
