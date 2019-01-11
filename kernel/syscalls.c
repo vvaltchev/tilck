@@ -63,7 +63,7 @@ sptr sys_newuname(struct utsname *user_buf)
 
 NORETURN sptr sys_exit(int exit_status)
 {
-   terminate_process(get_curr_task(), exit_status);
+   terminate_process(get_curr_task(), exit_status, 0 /* term_sig */);
 
    /* Necessary to guarantee to the compiler that we won't return. */
    NOT_REACHED();

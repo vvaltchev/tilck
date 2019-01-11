@@ -253,3 +253,49 @@ int cmd_waitpid4(int argc, char **argv)
    printf("[grandparent] exit (failed: %d)\n", failed);
    return failed ? 1 : 0;
 }
+
+
+/* Test child exit with SIGSEGV */
+int cmd_waitpid5(int argc, char **argv)
+{
+   int child_pid;
+   int wstatus;
+   int rc;
+
+   child_pid = fork();
+
+   if (child_pid < 0) {
+      printf("fork() failed\n");
+      return 1;
+   }
+
+   if (!child_pid) {
+
+      /* cause a general fault protection */
+      __asm__ volatile("hlt");
+      exit(0);
+   }
+
+   rc = waitpid(-1, &wstatus, 0);
+
+   if (rc != child_pid) {
+      printf("waitpid returned %d instead of child's pid: %d\n", rc);
+      return 1;
+   }
+
+   int code = WEXITSTATUS(wstatus);
+   int term_sig = WTERMSIG(wstatus);
+
+   if (code != 0) {
+      printf("ERROR: expected child to exit with 0, got: %d\n", code);
+      return 1;
+   }
+
+   if (term_sig != SIGSEGV) {
+      printf("ERROR: expected child exit due to signal "
+             "SIGSEGV (%d), got: %d\n", SIGSEGV, term_sig);
+      return 1;
+   }
+
+   return 0;
+}

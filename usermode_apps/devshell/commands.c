@@ -22,6 +22,7 @@ int cmd_waitpid1(int argc, char **argv);
 int cmd_waitpid2(int argc, char **argv);
 int cmd_waitpid3(int argc, char **argv);
 int cmd_waitpid4(int argc, char **argv);
+int cmd_waitpid5(int argc, char **argv);
 int cmd_fork_test(int argc, char **argv);
 int cmd_fork_perf(int argc, char **argv);
 int cmd_se_fork_test(int argc, char **argv);
@@ -242,7 +243,8 @@ struct {
    {"waitpid1", cmd_waitpid1, TT_SHORT, true},
    {"waitpid2", cmd_waitpid2, TT_SHORT, true},
    {"waitpid3", cmd_waitpid3, TT_SHORT, true},
-   {"waitpid4", cmd_waitpid4, TT_SHORT, true}
+   {"waitpid4", cmd_waitpid4, TT_SHORT, true},
+   {"waitpid5", cmd_waitpid5, TT_SHORT, true}
 };
 
 void dump_list_of_commands(void)

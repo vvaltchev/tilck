@@ -230,7 +230,9 @@ void soft_interrupt_entry(regs *r)
    if (int_num == SYSCALL_SOFT_INTERRUPT) {
 
       enable_interrupts_forced();
-      handle_syscall(r);
+      {
+         handle_syscall(r);
+      }
       disable_interrupts_forced(); /* restore IF = 0 */
 
    } else {

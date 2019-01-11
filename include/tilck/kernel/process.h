@@ -90,7 +90,7 @@ struct task_info {
 
    bool running_in_kernel;
    volatile ATOMIC(enum task_state) state;
-   u32 exit_status;
+   s32 exit_wstatus;
 
    process_info *pi;
 
@@ -199,4 +199,4 @@ void arch_specific_free_task(task_info *ti);
 void wake_up_tasks_waiting_on(task_info *ti);
 void debug_show_task_list(void);
 
-void terminate_process(task_info *ti, int exit_status);
+void terminate_process(task_info *ti, int exit_code, int term_sig);

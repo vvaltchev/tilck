@@ -286,9 +286,10 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
       }
 
       if (user_wstatus) {
-         int value = EXITCODE(waited_task->exit_status, 0);
-
-         if (copy_to_user(user_wstatus, &value, sizeof(int)) < 0) {
+         if (copy_to_user(user_wstatus,
+                          &waited_task->exit_wstatus,
+                          sizeof(s32)) < 0)
+         {
             remove_task((task_info *)waited_task);
             return -EFAULT;
          }
@@ -347,10 +348,10 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
    }
 
    if (user_wstatus) {
-
-      int value = EXITCODE(zombie_child->exit_status, 0);
-
-      if (copy_to_user(user_wstatus, &value, sizeof(int)) < 0) {
+      if (copy_to_user(user_wstatus,
+                       &zombie_child->exit_wstatus,
+                       sizeof(s32)) < 0)
+      {
          remove_task(zombie_child);
          return -EFAULT;
       }
@@ -406,13 +407,13 @@ static bool task_is_waiting_on_any_child(task_info *ti)
  *
  * TODO: re-design/adapt this function when thread support is introduced
  */
-void terminate_process(task_info *ti, int exit_status)
+void terminate_process(task_info *ti, int exit_code, int term_sig)
 {
    ASSERT(!is_kernel_thread(ti));
    disable_preemption();
 
    task_change_state(ti, TASK_STATE_ZOMBIE);
-   ti->exit_status = exit_status;
+   ti->exit_wstatus = EXITCODE(exit_code, term_sig);
 
    // Close all of its opened handles
 

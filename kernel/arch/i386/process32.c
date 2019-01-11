@@ -10,6 +10,8 @@
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/hal.h>
 
+#include <signal.h> // system header
+
 #include "gdt_int.h"
 
 //#define DEBUG_printk printk
@@ -420,4 +422,28 @@ void arch_specific_free_task(task_info *ti)
          gdt_clear_entry(ti->arch.gdt_entries[i]);
 
    kfree2(ti->arch.fpu_regs, ti->arch.fpu_regs_size);
+}
+
+/* General protection fault handler */
+void handle_gpf(regs *r)
+{
+   if (!get_curr_task() || is_kernel_thread(get_curr_task())) {
+      panic("General protection fault. Error: %p\n", r->err_code);
+   }
+
+   /*
+    * Exit from the fault handler with the correct sequence:
+    *
+    *    - re-enable the preemption (the last thing disabled)
+    *    - pop the nested interrupt
+    *    - re-enable the interrupts (disabled by the CPU)
+    *
+    * See soft_interrupt_entry() for more.
+    */
+   enable_preemption();
+   pop_nested_interrupt();
+   enable_interrupts_forced();
+
+   terminate_process(get_curr_task(), 0, SIGSEGV); /* calls the scheduler */
+   NOT_REACHED();
 }

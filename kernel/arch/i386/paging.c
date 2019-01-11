@@ -179,18 +179,6 @@ void handle_page_fault(regs *r)
    disable_interrupts_forced(); /* restore IF = 0 */
 }
 
-
-void handle_general_protection_fault(regs *r)
-{
-   /*
-    * For the moment, we don't properly handle GPF yet.
-    *
-    * TODO: handle GPF caused by user applications with by sending SIGSEGV.
-    * Example: user code attempts to execute privileged instructions.
-    */
-   panic("General protection fault. Error: %p\n", r->err_code);
-}
-
 void set_page_directory(page_directory_t *pdir)
 {
    atomic_store_explicit(&__curr_pdir, pdir, mo_relaxed);
@@ -722,7 +710,6 @@ static char kpdir_buf[sizeof(page_directory_t)] ALIGNED_AT(PAGE_SIZE);
 void init_paging(void)
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
-   set_fault_handler(FAULT_GENERAL_PROTECTION, handle_general_protection_fault);
    kernel_page_dir = (page_directory_t *) kpdir_buf;
 }
 
