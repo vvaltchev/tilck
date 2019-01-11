@@ -431,19 +431,6 @@ void handle_gpf(regs *r)
       panic("General protection fault. Error: %p\n", r->err_code);
    }
 
-   /*
-    * Exit from the fault handler with the correct sequence:
-    *
-    *    - re-enable the preemption (the last thing disabled)
-    *    - pop the nested interrupt
-    *    - re-enable the interrupts (disabled by the CPU)
-    *
-    * See soft_interrupt_entry() for more.
-    */
-   enable_preemption();
-   pop_nested_interrupt();
-   enable_interrupts_forced();
-
+   end_fault_handler_state();
    terminate_process(get_curr_task(), 0, SIGSEGV); /* calls the scheduler */
-   NOT_REACHED();
 }

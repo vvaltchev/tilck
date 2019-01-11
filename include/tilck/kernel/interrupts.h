@@ -6,6 +6,7 @@
 #define MAX_NESTED_INTERRUPTS 32
 
 void set_fault_handler(int fault, void *ptr);
+void end_fault_handler_state(void);
 
 #if KERNEL_TRACK_NESTED_INTERRUPTS
 void check_not_in_irq_handler(void);

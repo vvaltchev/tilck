@@ -95,9 +95,10 @@ void handle_resumable_fault(regs *r)
 
 void handle_fault(regs *r)
 {
-   VERIFY(is_fault(r->int_num));
+   const int int_num = r->int_num;
+   VERIFY(is_fault(int_num));
 
-   if (LIKELY(r->int_num == FAULT_PAGE_FAULT)) {
+   if (LIKELY(int_num == FAULT_PAGE_FAULT)) {
 
       bool was_cow;
 
@@ -111,20 +112,20 @@ void handle_fault(regs *r)
          return;
    }
 
-   if (is_fault_resumable(r->int_num)) {
+   if (UNLIKELY(is_fault_resumable(int_num))) {
       handle_resumable_fault(r);
       return;
    }
 
-   if (fault_handlers[r->int_num] != NULL) {
+   if (LIKELY(fault_handlers[int_num] != NULL)) {
 
-      fault_handlers[r->int_num](r);
+      fault_handlers[int_num](r);
 
    } else {
 
       panic("Fault #%i: %s [errCode: %p]",
-            r->int_num,
-            x86_exception_names[r->int_num],
+            int_num,
+            x86_exception_names[int_num],
             r->err_code);
    }
 }

@@ -216,6 +216,22 @@ void irq_entry(regs *r)
    handle_irq(r);
 }
 
+void end_fault_handler_state(void)
+{
+   /*
+    * Exit from the fault handler with the correct sequence:
+    *
+    *    - re-enable the preemption (the last thing disabled)
+    *    - pop the last "nested interrupt" caused by the fault
+    *    - re-enable the interrupts (disabled by the CPU as first thing)
+    *
+    * See soft_interrupt_entry() for more.
+    */
+   enable_preemption();
+   pop_nested_interrupt();
+   enable_interrupts_forced();
+}
+
 void soft_interrupt_entry(regs *r)
 {
    const int int_num = regs_intnum(r);
@@ -243,9 +259,7 @@ void soft_interrupt_entry(regs *r)
        */
       handle_fault(r);
 
-      /*
-       * Faults are expected to return with interrupts disabled.
-       */
+      /* Faults are expected to return with interrupts disabled. */
       ASSERT(!are_interrupts_enabled());
    }
 
