@@ -7,8 +7,8 @@ void regular_self_test_end(void);
 void sleeping_kthread(void *);
 void simple_test_kthread(void *);
 
-void selftest_fault_resumable_short();
-void selftest_fault_resumable_perf_short();
+void selftest_fault_res_short();
+void selftest_fault_res_perf_short();
 void selftest_join_med();
 void selftest_kmutex_med();
 void selftest_kcond_med();

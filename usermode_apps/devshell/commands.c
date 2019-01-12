@@ -156,6 +156,10 @@ int cmd_fpu_loop(int argc, char **argv)
    return 0;
 }
 
+/*
+ * Test the scenario where a user copy-on-write happens in the kernel because
+ * of a syscall.
+ */
 int cmd_kernel_cow(int argc, char **argv)
 {
    static char cow_buf[4096];
@@ -169,8 +173,14 @@ int cmd_kernel_cow(int argc, char **argv)
    }
 
    if (!child_pid) {
+
       int rc = stat("/", (void *)cow_buf);
-      printf("stat() returned: %d (errno: %s)\n", rc, strerror(errno));
+
+      if (rc != 0) {
+         printf("stat() failed with %d: %s [%d]\n", strerror(errno), errno);
+         exit(1);
+      }
+
       exit(0); // exit from the child
    }
 
@@ -228,23 +238,23 @@ struct {
    {"help", cmd_help, TT_SHORT, false},
    {"selftest", cmd_selftest, TT_LONG, false},
    {"loop", cmd_loop, TT_MED, false},
-   {"fork_test", cmd_fork_test, TT_MED, true},
+   {"fork", cmd_fork_test, TT_MED, true},
+   {"sysenter", cmd_sysenter, TT_SHORT, true},
+   {"fork_se", cmd_se_fork_test, TT_MED, true},
    {"bad_read", cmd_bad_read, TT_SHORT, true},
    {"bad_write", cmd_bad_write, TT_SHORT, true},
    {"fork_perf", cmd_fork_perf, TT_LONG, true},
-   {"sysenter", cmd_sysenter, TT_SHORT, true},
    {"syscall_perf", cmd_syscall_perf, TT_SHORT, true},
-   {"se_fork_test", cmd_se_fork_test, TT_MED, true},
    {"fpu", cmd_fpu, TT_SHORT, true},
    {"fpu_loop", cmd_fpu_loop, TT_LONG, false},
-   {"brk_test", cmd_brk_test, TT_SHORT, true},
-   {"mmap_test", cmd_mmap_test, TT_MED, true},
-   {"kernel_cow", cmd_kernel_cow, TT_SHORT, true},
-   {"waitpid1", cmd_waitpid1, TT_SHORT, true},
-   {"waitpid2", cmd_waitpid2, TT_SHORT, true},
-   {"waitpid3", cmd_waitpid3, TT_SHORT, true},
-   {"waitpid4", cmd_waitpid4, TT_SHORT, true},
-   {"waitpid5", cmd_waitpid5, TT_SHORT, true}
+   {"brk", cmd_brk_test, TT_SHORT, true},
+   {"mmap", cmd_mmap_test, TT_MED, true},
+   {"kcow", cmd_kernel_cow, TT_SHORT, true},
+   {"wpid1", cmd_waitpid1, TT_SHORT, true},
+   {"wpid2", cmd_waitpid2, TT_SHORT, true},
+   {"wpid3", cmd_waitpid3, TT_SHORT, true},
+   {"wpid4", cmd_waitpid4, TT_SHORT, true},
+   {"wpid5", cmd_waitpid5, TT_SHORT, true}
 };
 
 void dump_list_of_commands(void)
@@ -276,7 +286,7 @@ int cmd_help(int argc, char **argv)
    printf(COLOR_RED "Built-in commands\n" RESET_ATTRS);
    printf("    help: shows this help\n");
    printf("    cd <directory>: change the current working directory\n\n");
-   printf(COLOR_RED "Kernel tests\n" RESET_ATTRS);
+   printf(COLOR_RED "Kernel test commands\n" RESET_ATTRS);
 
    row_len = printf("    ");
 

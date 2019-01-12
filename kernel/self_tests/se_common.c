@@ -72,7 +72,7 @@ void selftest_kthread_med(void)
    regular_self_test_end();
 }
 
-void selftest_kernel_sleep_short()
+void selftest_sleep_short()
 {
    const u64 wait_ticks = TIMER_HZ;
    u64 before = get_ticks();

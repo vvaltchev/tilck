@@ -297,5 +297,6 @@ int cmd_waitpid5(int argc, char **argv)
       return 1;
    }
 
+   printf("The child exited with SIGSEGV, as expected.\n");
    return 0;
 }
