@@ -259,6 +259,9 @@ void dump_list_of_commands(void)
 
 int cmd_help(int argc, char **argv)
 {
+   size_t n, row_len;
+   char buf[64];
+
    printf("\n");
    printf(COLOR_RED "Tilck development shell\n" RESET_ATTRS);
 
@@ -275,16 +278,21 @@ int cmd_help(int argc, char **argv)
    printf("    cd <directory>: change the current working directory\n\n");
    printf(COLOR_RED "Kernel tests\n" RESET_ATTRS);
 
-   const int elems_per_row = 7;
+   row_len = printf("    ");
 
    for (int i = 1 /* skip help */; i < ARRAY_SIZE(cmds_table); i++) {
-      printf("%s%s%s ",
-             (i % elems_per_row) != 1 ? "" : "    ",
-             cmds_table[i].name,
-             i != ARRAY_SIZE(cmds_table)-1 ? "," : "");
 
-      if (!(i % elems_per_row))
+      n = sprintf(buf, "%s%s", cmds_table[i].name,
+                  i != ARRAY_SIZE(cmds_table)-1 ? "," : "");
+
+      if (row_len + n >= 80) {
          printf("\n");
+         row_len = printf("    ");
+      } else if (i > 1) {
+         row_len += printf(" ");
+      }
+
+      row_len += printf("%s", buf);
    }
 
    printf("\n\n");
