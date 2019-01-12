@@ -168,6 +168,7 @@ def show_tests_and_exit():
    sys.stdout.write('+\n')
 
    for tt in test_types:
+
       for x in tests_by_type[tt]:
          sys.stdout.write('| ')
          sys.stdout.write(x[0].ljust(col_names[0][1]))
@@ -177,10 +178,10 @@ def show_tests_and_exit():
          sys.stdout.write(str(x[1]).ljust(col_names[2][1]))
          sys.stdout.write('|\n')
 
-   for x in col_names:
-      sys.stdout.write('+-')
-      sys.stdout.write(''.center(x[1], '-'))
-   sys.stdout.write('+\n')
+      for x in col_names:
+         sys.stdout.write('+-')
+         sys.stdout.write(''.center(x[1], '-'))
+      sys.stdout.write('+\n')
 
    sys.stdout.write('\n')
    sys.exit(0)
