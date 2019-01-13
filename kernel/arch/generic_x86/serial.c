@@ -10,7 +10,7 @@ void init_serial_port(void)
 {
    outb(COM1 + 1, 0x00);    // Disable all interrupts
    outb(COM1 + 3, 0x80);    // Enable DLAB (set baud rate divisor)
-   outb(COM1 + 0, 0x03);    // Set divisor to 3 (lo byte) 38400 baud
+   outb(COM1 + 0, 0x01);    // Set divisor to 1 (lo byte): 115200 baud
    outb(COM1 + 1, 0x00);    //                  (hi byte)
    outb(COM1 + 3, 0x03);    // 8 bits, no parity, one stop bit
    outb(COM1 + 2, 0xC7);    // Enable FIFO, clear them, with 14-byte threshold
