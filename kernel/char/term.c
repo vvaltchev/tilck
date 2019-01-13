@@ -355,7 +355,7 @@ static void term_internal_write_backspace(u8 color)
 void term_internal_write_char2(char c, u8 color)
 {
    if (term_use_serial)
-      serial_write(c);
+      serial_write(COM1, c);
 
    switch (c) {
 

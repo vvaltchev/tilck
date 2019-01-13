@@ -7,11 +7,20 @@
 #error This header can be used only for x86 and x86-64 architectures.
 #endif
 
-#define X86_PC_TIMER_IRQ       0
-#define X86_PC_KEYBOARD_IRQ    1
-#define X86_PC_RTC_IRQ         8
-#define X86_PC_ACPI_IRQ        9
-#define X86_PC_PS2_MOUSE_IRQ  12
+#define X86_PC_TIMER_IRQ           0
+#define X86_PC_KEYBOARD_IRQ        1
+#define X86_PC_COM2_IRQ            3
+#define X86_PC_COM1_IRQ            4
+#define X86_PC_SOUND_IRQ           5
+#define X86_PC_FLOPPY_IRQ          6
+#define X86_PC_LPT1_IRQ            7 /* or SLAVE PIC */
+#define X86_PC_RTC_IRQ             8
+#define X86_PC_ACPI_IRQ            9
+#define X86_PC_PCI1_IRQ           10
+#define X86_PC_PCI2_IRQ           11
+#define X86_PC_PS2_MOUSE_IRQ      12
+#define X86_PC_MATH_COPROC_IRQ    13
+#define X86_PC_HD_IRQ             14
 
 #define EFLAGS_CF    0x0001
 #define EFLAGS_PF    0x0004
@@ -106,6 +115,10 @@
 #define MEM_TYPE_WB         0x06 // Write Back
 #define MEM_TYPE_UC_        0x07 // Uncached (PAT only)
 
+#define COM1 0x3f8
+#define COM2 0x2f8
+#define COM3 0x3e8
+#define COM4 0x2e8
 
 /*
  * x86 selectors are 16 bit integers:
