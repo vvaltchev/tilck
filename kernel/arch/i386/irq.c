@@ -13,8 +13,9 @@
 
 extern void (*irq_entry_points[16])(void);
 static irq_interrupt_handler irq_handlers[16];
-static u32 unhandled_irq_count[256];
-static u32 spur_irq_count;
+
+u32 unhandled_irq_count[256];
+u32 spur_irq_count;
 
 void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags);
 
@@ -199,62 +200,6 @@ void setup_irq_handling(void)
       idt_set_entry(32 + i, irq_entry_points[i], 0x08, 0x8E);
       irq_set_mask(i);
    }
-}
-
-static void debug_dump_slow_irq_handler_count(void)
-{
-   extern u32 slow_timer_irq_handler_count;
-
-   if (KERNEL_TRACK_NESTED_INTERRUPTS) {
-      printk(NO_PREFIX "   Slow timer irq handler counter: %u\n",
-             slow_timer_irq_handler_count);
-   }
-}
-
-static void debug_dump_spur_irq_count(void)
-{
-   const u64 ticks = get_ticks();
-
-   if (ticks > TIMER_HZ)
-      printk(NO_PREFIX "   Spurious IRQ count: %u (%u/sec)\n",
-             spur_irq_count,
-             spur_irq_count / (ticks / TIMER_HZ));
-   else
-      printk(NO_PREFIX "   Spurious IRQ count: %u (< 1 sec)\n",
-             spur_irq_count, spur_irq_count);
-}
-
-static void debug_dump_unhandled_irq_count(void)
-{
-   u32 tot_count = 0;
-
-   for (u32 i = 0; i < ARRAY_SIZE(unhandled_irq_count); i++)
-      tot_count += unhandled_irq_count[i];
-
-   if (!tot_count)
-      return;
-
-   printk(NO_PREFIX "\n");
-   printk(NO_PREFIX "Unhandled IRQs count table\n\n");
-
-   for (u32 i = 0; i < ARRAY_SIZE(unhandled_irq_count); i++) {
-
-      if (unhandled_irq_count[i])
-         printk(NO_PREFIX "   IRQ #%3u: %3u unhandled\n", i,
-                unhandled_irq_count[i]);
-   }
-
-   printk(NO_PREFIX "\n");
-}
-
-void debug_show_spurious_irq_count(void)
-{
-   printk(NO_PREFIX "\n");
-   printk(NO_PREFIX "Kernel IRQ-related counters\n\n");
-
-   debug_dump_slow_irq_handler_count();
-   debug_dump_spur_irq_count();
-   debug_dump_unhandled_irq_count();
 }
 
 static inline void handle_irq_set_mask(int irq)
