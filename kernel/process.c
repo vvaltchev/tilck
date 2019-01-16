@@ -632,7 +632,7 @@ static int debug_get_tn_for_tasklet_runner(task_info *ti)
 
 static int debug_per_task_cb(void *obj, void *arg)
 {
-   static const char *fmt = NO_PREFIX "| %-8d | %-3d | %-4d | %-8s | %-40s |\n";
+   static const char *fmt = NO_PREFIX "| %-9d | %-3d | %-4d | %-8s | %-39s |\n";
    task_info *ti = obj;
 
    if (!ti->tid)
@@ -662,8 +662,8 @@ static int debug_per_task_cb(void *obj, void *arg)
 
 static void debug_dump_task_table_hr(void)
 {
-   printk(NO_PREFIX "+----------+-----+------+----------+");
-   printk(NO_PREFIX "------------------------------------------+\n");
+   printk(NO_PREFIX "+-----------+-----+------+----------+");
+   printk(NO_PREFIX "-----------------------------------------+\n");
 }
 
 void debug_show_task_list(void)
@@ -672,7 +672,7 @@ void debug_show_task_list(void)
 
    debug_dump_task_table_hr();
 
-   printk(NO_PREFIX "| %-8s | %-3s | %-4s | %-8s | %-40s |\n",
+   printk(NO_PREFIX "| %-9s | %-3s | %-4s | %-8s | %-39s |\n",
           "tid", "pid", "ppid", "state", "path or kernel thread");
 
    debug_dump_task_table_hr();
