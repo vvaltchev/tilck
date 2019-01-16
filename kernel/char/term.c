@@ -40,13 +40,6 @@ static term_action term_actions_buf[32];
 static term_filter_func filter;
 static void *filter_ctx;
 
-#if TERM_PERF_METRICS
-static u32 scroll_count;
-static u64 scroll_cycles;
-static u32 sc_one_line_count;
-static u64 sc_one_line_cycles;
-#endif
-
 /* ------------ No-output video-interface ------------------ */
 
 void no_vi_set_char_at(int row, int col, u16 entry) { }
@@ -191,41 +184,8 @@ static void ts_clear_row(int row, u8 color)
 
 static void term_execute_action(term_action *a);
 
-#if TERM_PERF_METRICS
-
-void debug_term_print_scroll_cycles(void)
-{
-   printk(NO_PREFIX "\n");
-
-   if (sc_one_line_count) {
-      printk("Avg. cycles per 1-line fast term scroll: %llu K [%u scrolls]\n",
-             (sc_one_line_cycles / sc_one_line_count) / 1000,
-             sc_one_line_count);
-   } else {
-      printk("No 1-line fast term scrolls yet.\n");
-   }
-
-   if (scroll_count) {
-      printk("Avg. cycles per term scroll: %llu K [%u scrolls]\n",
-             (scroll_cycles / scroll_count) / 1000, scroll_count);
-   } else {
-      printk("No term scrolls yet.\n");
-   }
-}
-
-#else
-
-void debug_term_print_scroll_cycles(void) { }
-
-#endif
-
 static void term_action_scroll_up(u32 lines)
 {
-#if TERM_PERF_METRICS
-   u64 start, end;
-   start = RDTSC();
-#endif
-
    ts_scroll_up(lines);
 
    if (!ts_is_at_bottom()) {
@@ -240,21 +200,10 @@ static void term_action_scroll_up(u32 lines)
 
    if (vi->flush_buffers)
       vi->flush_buffers();
-
-#if TERM_PERF_METRICS
-   end = RDTSC();
-   scroll_cycles += (end - start);
-   scroll_count++;
-#endif
 }
 
 static void term_action_scroll_down(u32 lines)
 {
-#if TERM_PERF_METRICS
-   u64 start, end;
-   start = RDTSC();
-#endif
-
    ts_scroll_down(lines);
 
    if (ts_is_at_bottom()) {
@@ -267,12 +216,6 @@ static void term_action_scroll_down(u32 lines)
 
    if (vi->flush_buffers)
       vi->flush_buffers();
-
-#if TERM_PERF_METRICS
-   end = RDTSC();
-   scroll_cycles += (end - start);
-   scroll_count++;
-#endif
 }
 
 static void term_internal_incr_row(u8 color)
@@ -404,21 +347,9 @@ void term_internal_write_char2(char c, u8 color)
 static void term_action_write(char *buf, u32 len, u8 color)
 {
    ts_scroll_to_bottom();
-
-#if TERM_PERF_METRICS
-   bool has_new_line = false;
-   u64 start, end;
-   start = RDTSC();
-#endif
-
    vi->enable_cursor();
 
    for (u32 i = 0; i < len; i++) {
-
-#if TERM_PERF_METRICS
-      if (buf[i] == '\n')
-         has_new_line = true;
-#endif
 
       if (filter) {
 
@@ -443,14 +374,6 @@ static void term_action_write(char *buf, u32 len, u8 color)
 
    if (vi->flush_buffers)
       vi->flush_buffers();
-
-#if TERM_PERF_METRICS
-   end = RDTSC();
-   if (has_new_line && current_row == term_rows - 1) {
-      sc_one_line_cycles += (end - start);
-      sc_one_line_count++;
-   }
-#endif
 }
 
 static void term_action_set_col_offset(u32 off)

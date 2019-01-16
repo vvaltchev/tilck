@@ -72,9 +72,6 @@ set(USER_STACK_PAGES 16 CACHE STRING "User apps stack size in pages")
 set(KERNEL_TRACK_NESTED_INTERRUPTS ON CACHE BOOL
     "Track the nested interrupts")
 
-set(TERM_PERF_METRICS ON CACHE BOOL
-    "Compile-in code measuring the performance of the console (scrolling)")
-
 set(PANIC_SHOW_STACKTRACE ON CACHE BOOL
     "Show the stacktrace in case of a kernel panic")
 
@@ -127,7 +124,6 @@ list(
 
    # Boolean options ENABLED by default
    KERNEL_TRACK_NESTED_INTERRUPTS
-   TERM_PERF_METRICS
    PANIC_SHOW_STACKTRACE
    DEBUG_CHECKS_IN_RELEASE_BUILD
 
