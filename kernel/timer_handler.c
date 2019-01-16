@@ -159,13 +159,7 @@ void kernel_sleep(u64 ticks)
 }
 
 #if KERNEL_TRACK_NESTED_INTERRUPTS
-   static u32 slow_timer_irq_handler_count = 0;
-
-   void print_slow_timer_irq_handler_counter(void)
-   {
-      printk(NO_PREFIX "   Slow timer irq handler counter: %u\n",
-             slow_timer_irq_handler_count);
-   }
+   u32 slow_timer_irq_handler_count;
 #endif
 
 int timer_irq_handler(regs *context)

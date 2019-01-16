@@ -199,8 +199,8 @@ void setup_irq_handling(void)
    }
 }
 
-static u32 spur_irq_count = 0;
-void print_slow_timer_irq_handler_counter(void);
+static u32 spur_irq_count;
+extern u32 slow_timer_irq_handler_count;
 
 void debug_show_spurious_irq_count(void)
 {
@@ -208,7 +208,10 @@ void debug_show_spurious_irq_count(void)
    printk(NO_PREFIX "Kernel IRQ-related counters\n\n");
 
 #if KERNEL_TRACK_NESTED_INTERRUPTS
-      print_slow_timer_irq_handler_counter();
+
+   printk(NO_PREFIX "   Slow timer irq handler counter: %u\n",
+          slow_timer_irq_handler_count);
+
 #endif
 
    const u64 ticks = get_ticks();
@@ -228,17 +231,18 @@ void debug_show_spurious_irq_count(void)
 
    if (tot_count) {
 
-      printk("Unhandled IRQs count table\n");
+      printk(NO_PREFIX "\nUnhandled IRQs count table\n\n");
 
       for (u32 i = 0; i < ARRAY_SIZE(unhandled_irq_count); i++) {
 
          if (!unhandled_irq_count[i])
             continue;
 
-         printk("IRQ #%3u: %3u unhandled\n", i, unhandled_irq_count[i]);
+         printk(NO_PREFIX "   IRQ #%3u: %3u unhandled\n", i,
+                unhandled_irq_count[i]);
       }
 
-      printk("\n");
+      printk(NO_PREFIX "\n");
    }
 }
 
