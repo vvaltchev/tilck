@@ -13,7 +13,7 @@
 #define X86_PC_COM1_IRQ            4
 #define X86_PC_SOUND_IRQ           5
 #define X86_PC_FLOPPY_IRQ          6
-#define X86_PC_LPT1_IRQ            7 /* or SLAVE PIC */
+#define X86_PC_LPT1_OR_SLAVE_IRQ   7
 #define X86_PC_RTC_IRQ             8
 #define X86_PC_ACPI_IRQ            9
 #define X86_PC_PCI1_IRQ           10
