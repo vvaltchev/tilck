@@ -270,7 +270,7 @@ void panic_save_current_task_state(regs *r)
 }
 
 /*
- * Sched functions that are here beacuse of arch-specific statements.
+ * Sched functions that are here because of arch-specific statements.
  */
 
 void set_current_task_in_user_mode(void)
@@ -290,25 +290,63 @@ static inline bool is_fpu_enabled_for_task(task_info *ti)
           (ti->state_regs->custom_flags & REGS_FL_FPU_ENABLED);
 }
 
+static inline void save_curr_fpu_ctx_if_enabled(void)
+{
+   if (is_fpu_enabled_for_task(get_curr_task())) {
+      hw_fpu_enable();
+      save_current_fpu_regs(false);
+      hw_fpu_disable();
+   }
+}
+
+static inline void
+switch_to_task_pop_nested_interrupts(int curr_irq)
+{
+   if (KERNEL_TRACK_NESTED_INTERRUPTS) {
+
+      if (curr_irq != -1)
+         pop_nested_interrupt();
+
+      if (get_curr_task() && get_curr_task()->running_in_kernel)
+         if (!is_kernel_thread(get_curr_task()))
+            nested_interrupts_drop_top_syscall();
+   }
+}
+
+static inline void
+switch_to_task_clear_irq_mask(int curr_irq)
+{
+   if (KERNEL_TRACK_NESTED_INTERRUPTS) {
+
+      /*
+       * When nested interrupts are tracked, nested IRQ #0 are allowed and in no
+       * case the IRQ #0 is masked. Therefore there is no point in clearing the
+       * IRQ mask if irq == 0, wasting a lot of cycles. On QEMU + KVM, the clear
+       * mask function costs ~30K cycles, while on bare-metal costs 5-10 K
+       * cycles.
+       */
+
+      if (curr_irq > 0)
+         irq_clear_mask(curr_irq);
+
+   } else {
+
+      /*
+       * When nested interrupts are not tracked, nested IRQ #0 is not allowed.
+       * Therefore here, as for any other IRQ, its mask has to be cleared.
+       */
+      if (curr_irq >= 0)
+         irq_clear_mask(curr_irq);
+   }
+}
+
 NORETURN void switch_to_task(task_info *ti, int curr_irq)
 {
    ASSERT(!get_curr_task() || get_curr_task()->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
    ASSERT(ti != get_curr_task());
 
-   if (is_fpu_enabled_for_task(get_curr_task())) {
-      hw_fpu_enable();
-      {
-         save_current_fpu_regs(false);
-      }
-      hw_fpu_disable();
-   }
-
-   DEBUG_printk("[sched] Switching to tid: %i %s %s\n",
-                ti->tid,
-                is_kernel_thread(ti) ? "[KTHREAD]" : "[USER]",
-                ti->running_in_kernel ? "(kernel mode)" : "(usermode)");
-
+   save_curr_fpu_ctx_if_enabled();
    task_change_state(ti, TASK_STATE_RUNNING);
    ti->time_slot_ticks = 0;
 
@@ -317,46 +355,12 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
    }
 
    disable_interrupts_forced(); /* IF = 0 before the context switch */
-
-#if KERNEL_TRACK_NESTED_INTERRUPTS
-
-   if (curr_irq != -1)
-      pop_nested_interrupt();
-
-   if (get_curr_task()) {
-      if (get_curr_task()->running_in_kernel)
-         if (!is_kernel_thread(get_curr_task()))
-            nested_interrupts_drop_top_syscall();
-   }
-#endif
-
+   switch_to_task_pop_nested_interrupts(curr_irq);
    enable_preemption();
    ASSERT(is_preemption_enabled());
 
    DEBUG_VALIDATE_STACK_PTR();
-
-#if KERNEL_TRACK_NESTED_INTERRUPTS
-
-   /*
-    * When nested interrupts are tracked, nested IRQ #0 are allowed and in no
-    * case the IRQ #0 is masked. Therefore there is no point in clearing the
-    * IRQ mask if irq == 0, wasting a lot of cycles. On QEMU + KVM, the clear
-    * mask function costs ~30K cycles, while on bare-metal costs 5-10 K cycles.
-    */
-
-   if (curr_irq > 0)
-      irq_clear_mask(curr_irq);
-
-#else
-
-   /*
-    * When nested interrupts are not tracked, nested IRQ #0 is not allowed.
-    * Therefore here, as for any other IRQ, its mask has to be cleared.
-    */
-   if (curr_irq >= 0)
-      irq_clear_mask(curr_irq);
-
-#endif
+   switch_to_task_clear_irq_mask(curr_irq);
 
    /*
     * NOTE: is_fpu_enabled_for_task() CANNOT be moved below because
