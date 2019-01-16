@@ -30,7 +30,7 @@ inline u32 fb_make_color(u32 r, u32 g, u32 b)
 }
 
 void set_framebuffer_info_from_mbi(multiboot_info_t *mbi);
-void init_framebuffer_console(bool use_also_serial_port);
+void init_framebuffer_console(void);
 void debug_dump_glyph(u32 n);
 
 void init_fbdev(void);

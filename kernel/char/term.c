@@ -10,11 +10,11 @@
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/interrupts.h>
+#include <tilck/kernel/cmdline.h>
 
 #include "term_int.h"
 
 static bool term_initialized;
-static bool term_use_serial;
 static int term_tab_size = 8;
 
 static u16 term_cols;
@@ -354,7 +354,7 @@ static void term_internal_write_backspace(u8 color)
 
 void term_internal_write_char2(char c, u8 color)
 {
-   if (term_use_serial)
+   if (kopt_serial_mode)
       serial_write(COM1, c);
 
    switch (c) {
@@ -875,14 +875,9 @@ void debug_term_dump_font_table(void)
 
 
 void
-init_term(const video_interface *intf,
-          int rows,
-          int cols,
-          bool use_serial_port)
+init_term(const video_interface *intf, int rows, int cols)
 {
    ASSERT(!are_interrupts_enabled());
-
-   term_use_serial = use_serial_port;
 
    vi = intf;
    term_cols = cols;

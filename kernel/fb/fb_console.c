@@ -371,7 +371,7 @@ static void fb_use_optimized_funcs_if_possible(void)
    printk("[fb_console] Use optimized functions\n");
 }
 
-void init_framebuffer_console(bool use_also_serial_port)
+void init_framebuffer_console(void)
 {
    ASSERT(use_framebuffer());
    ASSERT(fb_get_width() > 0);
@@ -400,10 +400,7 @@ void init_framebuffer_console(bool use_also_serial_port)
          printk("WARNING: fb_console: unable to allocate under_cursor_buf!\n");
    }
 
-   init_term(&framebuffer_vi,
-             fb_term_rows,
-             fb_term_cols,
-             use_also_serial_port);
+   init_term(&framebuffer_vi, fb_term_rows, fb_term_cols);
 
    printk("[fb_console] screen resolution: %i x %i x %i bpp\n",
           fb_get_width(), fb_get_height(), fb_get_bpp());

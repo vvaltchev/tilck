@@ -7,15 +7,21 @@
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/cmdline.h>
 
+/* shared global variables */
 const char *cmd_args[MAX_CMD_ARGS] = { "/sbin/init", [1 ... 15] = NULL };
 void (*self_test_to_run)(void);
+enum term_serial_mode kopt_serial_mode = TERM_SERIAL_NONE;
+
+/* static variables */
 
 static enum {
 
    INITIAL_STATE = 0,
    CUSTOM_START_CMDLINE,
    SET_SELFTEST,
+   SET_SERIAL_MODE,
 
+   /* --- */
    NUM_ARG_PARSER_STATES
 
 } kernel_arg_parser_state;
@@ -23,6 +29,8 @@ static enum {
 static char args_buffer[PAGE_SIZE];
 static int last_custom_cmd_n;
 static int args_buffer_used;
+
+/* code */
 
 static void
 parse_arg_state_custom_cmdline(int arg_num, const char *arg, size_t arg_len)
@@ -58,10 +66,31 @@ parse_arg_state_set_selftest(int arg_num, const char *arg, size_t arg_len)
 }
 
 static void
+parse_arg_set_serial_mode(int arg_num, const char *arg, size_t arg_len)
+{
+   if (arg[0] < '0' || arg[0] > '9')
+      panic("Unknown serial mode '%s'. Expected a single digit.", arg);
+
+   int mode = arg[0] - '0';
+
+   if (mode >= TERM_SERIAL_MODES_COUNT)
+      panic("Out-of-range serial mode %d. Valid range: 0 - %d",
+            mode, TERM_SERIAL_MODES_COUNT-1);
+
+   kopt_serial_mode = mode;
+   kernel_arg_parser_state = INITIAL_STATE;
+}
+
+static void
 parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
 {
    if (arg_num == 0)
       return;
+
+   if (!strcmp(arg, "-serial_mode")) {
+      kernel_arg_parser_state = SET_SERIAL_MODE;
+      return;
+   }
 
    if (!strcmp(arg, "-cmd")) {
       kernel_arg_parser_state = CUSTOM_START_CMDLINE;
@@ -83,7 +112,8 @@ STATIC void use_kernel_arg(int arg_num, const char *arg)
    static parse_arg_func table[NUM_ARG_PARSER_STATES] = {
       parse_arg_state_initial,
       parse_arg_state_custom_cmdline,
-      parse_arg_state_set_selftest
+      parse_arg_state_set_selftest,
+      parse_arg_set_serial_mode
    };
 
    //printk("Kernel arg[%i]: '%s'\n", arg_num, arg);

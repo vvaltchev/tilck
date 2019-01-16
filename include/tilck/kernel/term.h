@@ -37,11 +37,7 @@ typedef struct {
 } video_interface;
 
 
-void init_term(const video_interface *vi,
-               int rows,
-               int cols,
-               bool use_serial_port);
-
+void init_term(const video_interface *vi, int rows, int cols);
 bool term_is_initialized(void);
 
 u32 term_get_tab_size(void);

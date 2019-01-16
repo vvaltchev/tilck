@@ -139,7 +139,7 @@ static const video_interface ega_text_mode_i =
    NULL  /* enable_static_elems_refresh */
 };
 
-void init_textmode_console(bool use_also_serial_port)
+void init_textmode_console(void)
 {
    page_directory_t *pdir = get_curr_pdir();
 
@@ -154,8 +154,5 @@ void init_textmode_console(bool use_also_serial_port)
          panic("textmode_console: unable to map VIDEO_ADDR in the virt space");
    }
 
-   init_term(&ega_text_mode_i,
-             VIDEO_ROWS,
-             VIDEO_COLS,
-             use_also_serial_port);
+   init_term(&ega_text_mode_i, VIDEO_ROWS, VIDEO_COLS);
 }

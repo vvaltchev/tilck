@@ -121,9 +121,9 @@ void se_runner_thread()
 void init_console(void)
 {
    if (use_framebuffer())
-      init_framebuffer_console(in_hypervisor());
+      init_framebuffer_console();
    else
-      init_textmode_console(in_hypervisor());
+      init_textmode_console();
 }
 
 int debug_f_key_press_handler(u32 key, u8 c)

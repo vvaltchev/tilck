@@ -48,9 +48,9 @@ NORETURN void panic(const char *fmt, ...)
    } else {
 
       if (use_framebuffer())
-         init_framebuffer_console(in_hypervisor());
+         init_framebuffer_console();
       else
-         init_textmode_console(in_hypervisor());
+         init_textmode_console();
    }
 
 
