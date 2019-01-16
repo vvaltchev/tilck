@@ -146,15 +146,11 @@ int debug_f_key_press_handler(u32 key, u8 c)
          return KB_HANDLER_OK_AND_STOP;
 
       case KEY_F4:
-         debug_term_print_scroll_cycles();
+         debug_show_task_list();
          return KB_HANDLER_OK_AND_STOP;
 
       case KEY_F5:
          debug_show_spurious_irq_count();
-         return KB_HANDLER_OK_AND_STOP;
-
-      case KEY_F6:
-         debug_show_task_list();
          return KB_HANDLER_OK_AND_STOP;
 
       default:

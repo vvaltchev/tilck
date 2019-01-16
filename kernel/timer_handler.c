@@ -163,7 +163,7 @@ void kernel_sleep(u64 ticks)
 
    void print_slow_timer_irq_handler_counter(void)
    {
-      printk("slow_timer_irq_handler_counter: %u\n",
+      printk(NO_PREFIX "   Slow timer irq handler counter: %u\n",
              slow_timer_irq_handler_count);
    }
 #endif

@@ -205,6 +205,7 @@ void print_slow_timer_irq_handler_counter(void);
 void debug_show_spurious_irq_count(void)
 {
    printk(NO_PREFIX "\n");
+   printk(NO_PREFIX "Kernel IRQ-related counters\n\n");
 
 #if KERNEL_TRACK_NESTED_INTERRUPTS
       print_slow_timer_irq_handler_counter();
@@ -213,11 +214,11 @@ void debug_show_spurious_irq_count(void)
    const u64 ticks = get_ticks();
 
    if (ticks > TIMER_HZ)
-      printk("Spur IRQ count: %u (%u/sec)\n",
+      printk(NO_PREFIX "   Spurious IRQ count: %u (%u/sec)\n",
              spur_irq_count,
              spur_irq_count / (ticks / TIMER_HZ));
    else
-      printk("Spurious IRQ count: %u (< 1 sec)\n",
+      printk(NO_PREFIX "   Spurious IRQ count: %u (< 1 sec)\n",
              spur_irq_count, spur_irq_count);
 
    u32 tot_count = 0;
