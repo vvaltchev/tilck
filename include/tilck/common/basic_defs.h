@@ -170,11 +170,19 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
  * SAFE against double-evaluation MIN and MAX macros.
  * Use these when possible. In all the other cases, use their UNSAFE version.
  */
-#define MIN(a, b) \
-   ({ typeof(a) _a = (a); typeof(b) _b = (b); UNSAFE_MIN(_a, _b); })
+#define MIN(a, b)                                                     \
+   ({                                                                 \
+      const typeof(a) CONCAT(_a, __LINE__) = (a);                     \
+      const typeof(b) CONCAT(_b, __LINE__) = (b);                     \
+      UNSAFE_MIN(CONCAT(_a, __LINE__), CONCAT(_b, __LINE__));         \
+   })
 
 #define MAX(a, b) \
-   ({ typeof(a) _a = (a); typeof(b) _b = (b); UNSAFE_MAX(_a, _b); })
+   ({                                                                 \
+      const typeof(a) CONCAT(_a, __LINE__) = (a);                     \
+      const typeof(b) CONCAT(_b, __LINE__) = (b);                     \
+      UNSAFE_MAX(CONCAT(_a, __LINE__), CONCAT(_b, __LINE__));         \
+   })
 
 #define LIKELY(x) __builtin_expect((x), true)
 #define UNLIKELY(x) __builtin_expect((x), false)
