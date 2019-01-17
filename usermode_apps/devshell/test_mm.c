@@ -16,7 +16,7 @@
 #include "devshell.h"
 #include "sysenter.h"
 
-int cmd_brk_test(int argc, char **argv)
+int cmd_brk(int argc, char **argv)
 {
    const size_t alloc_size = 1024 * 1024;
 
@@ -49,7 +49,7 @@ int cmd_brk_test(int argc, char **argv)
    return 0;
 }
 
-int cmd_mmap_test(int argc, char **argv)
+int cmd_mmap(int argc, char **argv)
 {
    const int iters_count = 10;
    const size_t alloc_size = 1 * MB;

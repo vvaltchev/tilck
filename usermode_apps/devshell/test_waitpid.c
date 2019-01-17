@@ -19,7 +19,7 @@
 /*
  * Call waitpid() after the child exited.
  */
-int cmd_waitpid1(int argc, char **argv)
+int cmd_wpid1(int argc, char **argv)
 {
    int wstatus;
    pid_t pid;
@@ -70,7 +70,7 @@ int cmd_waitpid1(int argc, char **argv)
 }
 
 /* waitpid(-1): wait any child to exit */
-int cmd_waitpid2(int argc, char **argv)
+int cmd_wpid2(int argc, char **argv)
 {
    const int child_count = 3;
 
@@ -131,7 +131,7 @@ int cmd_waitpid2(int argc, char **argv)
 }
 
 /* wait on any child after they exit */
-int cmd_waitpid3(int argc, char **argv)
+int cmd_wpid3(int argc, char **argv)
 {
    int wstatus;
    pid_t pid;
@@ -185,7 +185,7 @@ int cmd_waitpid3(int argc, char **argv)
 /*
  * Test the case of a parent dying before its children.
  */
-int cmd_waitpid4(int argc, char **argv)
+int cmd_wpid4(int argc, char **argv)
 {
    pid_t pid;
    int wstatus;
@@ -256,7 +256,7 @@ int cmd_waitpid4(int argc, char **argv)
 
 
 /* Test child exit with SIGSEGV */
-int cmd_waitpid5(int argc, char **argv)
+int cmd_wpid5(int argc, char **argv)
 {
    int child_pid;
    int wstatus;

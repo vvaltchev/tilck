@@ -16,16 +16,16 @@
 #include "devshell.h"
 #include "sysenter.h"
 
-int cmd_brk_test(int argc, char **argv);
-int cmd_mmap_test(int argc, char **argv);
-int cmd_waitpid1(int argc, char **argv);
-int cmd_waitpid2(int argc, char **argv);
-int cmd_waitpid3(int argc, char **argv);
-int cmd_waitpid4(int argc, char **argv);
-int cmd_waitpid5(int argc, char **argv);
-int cmd_fork_test(int argc, char **argv);
+int cmd_brk(int argc, char **argv);
+int cmd_mmap(int argc, char **argv);
+int cmd_wpid1(int argc, char **argv);
+int cmd_wpid2(int argc, char **argv);
+int cmd_wpid3(int argc, char **argv);
+int cmd_wpid4(int argc, char **argv);
+int cmd_wpid5(int argc, char **argv);
+int cmd_fork(int argc, char **argv);
 int cmd_fork_perf(int argc, char **argv);
-int cmd_se_fork_test(int argc, char **argv);
+int cmd_fork_se(int argc, char **argv);
 
 int cmd_loop(int argc, char **argv)
 {
@@ -160,7 +160,7 @@ int cmd_fpu_loop(int argc, char **argv)
  * Test the scenario where a user copy-on-write happens in the kernel because
  * of a syscall.
  */
-int cmd_kernel_cow(int argc, char **argv)
+int cmd_kcow(int argc, char **argv)
 {
    static char cow_buf[4096];
 
@@ -226,6 +226,8 @@ static const char *tt_str[] =
    [TT_LONG] = "tt_long"
 };
 
+#define CMD_ENTRY(name, len, enabled) {#name, cmd_ ## name, len, enabled}
+
 struct {
 
    const char *name;
@@ -235,27 +237,29 @@ struct {
 
 } cmds_table[] = {
 
-   {"help", cmd_help, TT_SHORT, false},
-   {"selftest", cmd_selftest, TT_LONG, false},
-   {"loop", cmd_loop, TT_MED, false},
-   {"fork", cmd_fork_test, TT_MED, true},
-   {"sysenter", cmd_sysenter, TT_SHORT, true},
-   {"fork_se", cmd_se_fork_test, TT_MED, true},
-   {"bad_read", cmd_bad_read, TT_SHORT, true},
-   {"bad_write", cmd_bad_write, TT_SHORT, true},
-   {"fork_perf", cmd_fork_perf, TT_LONG, true},
-   {"syscall_perf", cmd_syscall_perf, TT_SHORT, true},
-   {"fpu", cmd_fpu, TT_SHORT, true},
-   {"fpu_loop", cmd_fpu_loop, TT_LONG, false},
-   {"brk", cmd_brk_test, TT_SHORT, true},
-   {"mmap", cmd_mmap_test, TT_MED, true},
-   {"kcow", cmd_kernel_cow, TT_SHORT, true},
-   {"wpid1", cmd_waitpid1, TT_SHORT, true},
-   {"wpid2", cmd_waitpid2, TT_SHORT, true},
-   {"wpid3", cmd_waitpid3, TT_SHORT, true},
-   {"wpid4", cmd_waitpid4, TT_SHORT, true},
-   {"wpid5", cmd_waitpid5, TT_SHORT, true}
+   CMD_ENTRY(help, TT_SHORT, false),
+   CMD_ENTRY(selftest, TT_LONG, false),
+   CMD_ENTRY(loop, TT_MED, false),
+   CMD_ENTRY(fork, TT_MED, true),
+   CMD_ENTRY(sysenter, TT_SHORT, true),
+   CMD_ENTRY(fork_se, TT_MED, true),
+   CMD_ENTRY(bad_read, TT_SHORT, true),
+   CMD_ENTRY(bad_write, TT_SHORT, true),
+   CMD_ENTRY(fork_perf, TT_LONG, true),
+   CMD_ENTRY(syscall_perf, TT_SHORT, true),
+   CMD_ENTRY(fpu, TT_SHORT, true),
+   CMD_ENTRY(fpu_loop, TT_LONG, false),
+   CMD_ENTRY(brk, TT_SHORT, true),
+   CMD_ENTRY(mmap, TT_MED, true),
+   CMD_ENTRY(kcow, TT_SHORT, true),
+   CMD_ENTRY(wpid1, TT_SHORT, true),
+   CMD_ENTRY(wpid2, TT_SHORT, true),
+   CMD_ENTRY(wpid3, TT_SHORT, true),
+   CMD_ENTRY(wpid4, TT_SHORT, true),
+   CMD_ENTRY(wpid5, TT_SHORT, true)
 };
+
+#undef CMD_ENTRY
 
 void dump_list_of_commands(void)
 {

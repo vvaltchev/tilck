@@ -77,7 +77,7 @@ static int fork_test(int (*fork_func)(void))
    return 0;
 }
 
-int cmd_fork_test(int argc, char **argv)
+int cmd_fork(int argc, char **argv)
 {
    return fork_test(&fork);
 }
@@ -111,7 +111,7 @@ int cmd_fork_perf(int argc, char **argv)
    return 0;
 }
 
-int cmd_se_fork_test(int argc, char **argv)
+int cmd_fork_se(int argc, char **argv)
 {
    return fork_test(&sysenter_fork);
 }
