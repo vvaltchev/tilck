@@ -16,7 +16,7 @@ typedef enum {
 typedef struct PACKED {
 
    u8 BS_jmpBoot[3];
-   s8 BS_OEMName[8];
+   char BS_OEMName[8];
    u16 BPB_BytsPerSec;
    u8 BPB_SecPerClus;
    u16 BPB_RsvdSecCnt;
@@ -31,7 +31,6 @@ typedef struct PACKED {
    u32 BPB_TotSec32;
 
 } fat_header;
-
 
 typedef struct PACKED {
 

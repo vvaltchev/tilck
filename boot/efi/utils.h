@@ -5,10 +5,6 @@
 
 #define PAGE_SIZE         4096
 
-#define _CONCAT(a, b) a##b
-#define CONCAT(a, b) _CONCAT(a, b)
-
-
 /*
  * Checks if 'addr' is in the range [begin, end).
  */

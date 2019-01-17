@@ -112,23 +112,21 @@
 
 #endif
 
-typedef char s8;
-typedef short s16;
-typedef int s32;
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+typedef int8_t s8;
+typedef int16_t s16;
+typedef int32_t s32;
+typedef int64_t s64;
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
 
 #ifdef BITS32
-   typedef unsigned long long u64;
-   typedef long long s64;
-   typedef u32 uptr;
    typedef s32 sptr;
+   typedef u32 uptr;
 #else
-   typedef unsigned long u64;
-   typedef long s64;
-   typedef u64 uptr;
    typedef s64 sptr;
+   typedef u64 uptr;
 #endif
 
 typedef unsigned long long ull_t;
@@ -136,6 +134,22 @@ typedef unsigned long long ull_t;
 
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
+
+/*
+ * An useful two-pass concatenation macro.
+ *
+ * The reason for using a two-pass macro is to allow the arguments to expand
+ * in case they are using macros themselfs. Consider the following example:
+ *
+ *    #define SOME_STRING_LITERAL "hello world"
+ *    #define WIDE_STR_LITERAL _CONCAT(L, SOME_STRING_LITERAL)
+ *
+ * The macro `WIDE_STR_LITERAL` will expand to: LSOME_STRING_LITERAL. That
+ * clearly is NOT what we wanted. While, by using the two-pass expansion we
+ * get `WIDE_STR_LITERAL` expanded to: L"hello world".
+ */
+#define _CONCAT(a, b) a##b
+#define CONCAT(a, b) _CONCAT(a, b)
 
 /*
  * UNSAFE against double-evaluation MIN and MAX macros.

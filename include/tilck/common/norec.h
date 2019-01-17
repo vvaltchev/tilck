@@ -14,9 +14,6 @@
 struct explicit_stack_elem1 { void *ret_addr, *arg1; };
 struct explicit_stack_elem2 { void *ret_addr, *arg1, *arg2; };
 
-#define CONCAT_(x,y) x##y
-#define CONCAT(x,y) CONCAT_(x,y)
-
 #define NOREC_LOOP_END() loop_end:
 #define LOAD_ARG_FROM_STACK(n, t)                                      \
    ((t)(uptr)STACK_VAR[STACK_SIZE_VAR-1].arg##n)
