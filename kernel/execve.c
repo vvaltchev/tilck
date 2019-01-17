@@ -45,7 +45,7 @@ execve_get_path_and_args(const char *user_filename,
    orig_file_path = dest;
    rc = duplicate_user_path(dest,
                             user_filename,
-                            MIN(MAX_PATH, ARGS_COPYBUF_SIZE),
+                            MIN((uptr)MAX_PATH, ARGS_COPYBUF_SIZE),
                             &written);
 
    if (rc != 0)

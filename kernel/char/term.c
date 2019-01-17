@@ -650,7 +650,7 @@ void term_write(const char *buf, u32 len, u8 color)
    term_action a = {
       .type3 = a_write,
       .ptr = (uptr)buf,
-      .len = MIN(len, MB - 1),
+      .len = MIN(len, (uptr)MB - 1),
       .col = color
    };
 

@@ -19,7 +19,7 @@ u8 tty_curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
 
 static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 {
-   size = MIN(size, MB - 1); /* term_write's size is limited to 2^20 - 1 */
+   size = MIN(size, (size_t)MB - 1); /* term_write's size is limited to 2^20 - 1 */
    term_write(buf, size, tty_curr_color);
    return size;
 }

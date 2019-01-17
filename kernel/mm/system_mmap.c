@@ -475,7 +475,7 @@ linear_map_mem_region(memory_region_t *r, uptr *vbegin, uptr *vend)
       return false;
 
    const uptr pbegin = r->addr;
-   const uptr pend = MIN(r->addr + r->len, LINEAR_MAPPING_SIZE);
+   const uptr pend = MIN(r->addr + r->len, (uptr)LINEAR_MAPPING_SIZE);
    const bool rw = (r->type == MULTIBOOT_MEMORY_AVAILABLE) ||
                    (r->extra & MEM_REG_EXTRA_KERNEL);
 

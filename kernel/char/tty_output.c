@@ -129,9 +129,11 @@ tty_filter_handle_csi_m(int *params,
 
 static inline void tty_move_cursor_begin_nth_row(term_action *a, int row)
 {
+   int new_row = MIN(term_get_curr_row() + row, term_get_rows() - 1);
+
    *a = (term_action) {
       .type2 = a_move_ch_and_cur,
-      .arg1 = MIN(term_get_curr_row() + row, term_get_rows() - 1),
+      .arg1 = new_row,
       .arg2 = 0
    };
 }
@@ -204,8 +206,8 @@ tty_filter_end_csi_seq(char c,
 
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
-            .arg1 = MIN((u32)params[0], term_get_rows() - 1),
-            .arg2 = MIN((u32)params[1], term_get_cols() - 1)
+            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows() - 1),
+            .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols() - 1)
          };
 
          break;
@@ -221,14 +223,14 @@ tty_filter_end_csi_seq(char c,
       case 'S':
          *a = (term_action) {
             .type1 = a_non_buf_scroll_up,
-            .arg = MAX(1, params[0])
+            .arg = UNSAFE_MAX(1, params[0])
          };
          break;
 
       case 'T':
          *a = (term_action) {
             .type1 = a_non_buf_scroll_down,
-            .arg = MAX(1, params[0])
+            .arg = UNSAFE_MAX(1, params[0])
          };
          break;
 

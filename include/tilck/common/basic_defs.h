@@ -137,8 +137,30 @@ typedef unsigned long long ull_t;
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 
-#define MIN(x, y) (((x) <= (y)) ? (x) : (y))
-#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+/*
+ * UNSAFE against double-evaluation MIN and MAX macros.
+ * They are necessary for all the cases when the compiler (GCC and Clang)
+ * fails to compile with the other ones. The known cases are:
+ *
+ *    - Initialization of struct fields like:
+ *          struct x var = (x) { .field1 = MIN(a, b), .field2 = 0 };
+ *
+ *    - Use bit-field variable as argument of MIN() or MAX()
+ *
+ * There might be other cases as well.
+ */
+#define UNSAFE_MIN(x, y) (((x) <= (y)) ? (x) : (y))
+#define UNSAFE_MAX(x, y) (((x) > (y)) ? (x) : (y))
+
+/*
+ * SAFE against double-evaluation MIN and MAX macros.
+ * Use these when possible. In all the other cases, use their UNSAFE version.
+ */
+#define MIN(a, b) \
+   ({ typeof(a) _a = (a); typeof(b) _b = (b); UNSAFE_MIN(_a, _b); })
+
+#define MAX(a, b) \
+   ({ typeof(a) _a = (a); typeof(b) _b = (b); UNSAFE_MAX(_a, _b); })
 
 #define LIKELY(x) __builtin_expect((x), true)
 #define UNLIKELY(x) __builtin_expect((x), false)

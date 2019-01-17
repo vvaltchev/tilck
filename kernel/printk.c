@@ -307,7 +307,7 @@ void printk_flush_ringbuf(void)
          ns = printk_rbuf_stat;
 
          /* We at most 'sizeof(minibuf)' bytes at a time */
-         to_read = MIN(sizeof(minibuf), ns.used);
+         to_read = UNSAFE_MIN(sizeof(minibuf), ns.used);
 
          /* And copy them to our minibuf */
          for (u32 i = 0; i < to_read; i++)
