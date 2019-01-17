@@ -2,27 +2,18 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
-#include <tilck/common/atomics.h>
-#include <tilck/common/arch/generic_x86/cpu_features.h>
 
 #include <tilck/kernel/debug_utils.h>
-#include <tilck/kernel/hal.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/process.h>
-#include <tilck/kernel/term.h>
-#include <tilck/kernel/fb_console.h>
-#include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/system_mmap.h>
-#include <tilck/kernel/tty.h>
 
 #include <elf.h>         // system header
 #include <multiboot.h>   // system header in include/system_headers
 
 volatile bool __in_panic;
-
-#ifndef UNIT_TEST_ENVIRONMENT
 
 #define DUMP_STR_OPT(opt)  printk(NO_PREFIX "%-35s: %s\n", #opt, opt)
 #define DUMP_INT_OPT(opt)  printk(NO_PREFIX "%-35s: %d\n", #opt, opt)
@@ -52,7 +43,6 @@ void debug_show_build_opts(void)
    DUMP_BOOL_OPT(DEBUG_CHECKS_IN_RELEASE_BUILD);
    printk(NO_PREFIX "\n");
 }
-
 
 static void debug_dump_slow_irq_handler_count(void)
 {
@@ -111,6 +101,8 @@ void debug_show_spurious_irq_count(void)
    debug_dump_spur_irq_count();
    debug_dump_unhandled_irq_count();
 }
+
+#ifndef UNIT_TEST_ENVIRONMENT
 
 int debug_f_key_press_handler(u32 key, u8 c)
 {

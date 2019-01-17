@@ -7,6 +7,9 @@
 
 #include <tilck/common/basic_defs.h>
 
+u32 spur_irq_count;
+u32 unhandled_irq_count[256];
+
 bool suppress_printk;
 
 void panic(const char *fmt, ...)
