@@ -19,7 +19,7 @@ extern "C" {
 
    #include <tilck/kernel/kmalloc.h>
    #include <tilck/kernel/paging.h>
-   #include <tilck/kernel/self_tests/self_tests.h>
+   #include <tilck/kernel/self_tests.h>
 
    #include <kernel/mm/kmalloc_heap_struct.h> // kmalloc private header
    #include <kernel/mm/kmalloc_block_node.h>  // kmalloc private header

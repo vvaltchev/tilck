@@ -14,14 +14,25 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/timer.h>
-#include <tilck/kernel/self_tests/self_tests.h>
+#include <tilck/kernel/self_tests.h>
 #include <tilck/kernel/cmdline.h>
+
+static void se_runner_thread(void *unused)
+{
+   self_test_to_run();
+}
+
+void kernel_run_selected_selftest(void)
+{
+   if (!kthread_create(se_runner_thread, NULL))
+      panic("Unable to create the se_runner_thread");
+
+   switch_to_idle_task_outside_interrupt_context();
+}
 
 void regular_self_test_end(void)
 {
    printk("Self-test completed.\n");
-   //printk("DEBUG QEMU turn off machine\n");
-   //debug_qemu_turn_off_machine();
 }
 
 void simple_test_kthread(void *arg)

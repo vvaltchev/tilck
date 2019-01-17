@@ -7,7 +7,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/debug_utils.h>
-#include <tilck/kernel/self_tests/self_tests.h>
+#include <tilck/kernel/self_tests.h>
 
 void simple_test_kthread(void *arg);
 

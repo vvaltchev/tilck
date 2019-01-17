@@ -8,7 +8,7 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/debug_utils.h>
-#include <tilck/kernel/self_tests/self_tests.h>
+#include <tilck/kernel/self_tests.h>
 
 static kcond cond = { 0 };
 static kmutex cond_mutex = { 0 };

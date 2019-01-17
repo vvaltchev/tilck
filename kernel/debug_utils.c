@@ -104,7 +104,7 @@ void debug_show_spurious_irq_count(void)
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
-int debug_f_key_press_handler(u32 key, u8 c)
+static int debug_f_key_press_handler(u32 key, u8 c)
 {
    if (!kb_is_ctrl_pressed())
       return KB_HANDLER_NAK;
@@ -134,6 +134,12 @@ int debug_f_key_press_handler(u32 key, u8 c)
       default:
          return KB_HANDLER_NAK;
    }
+}
+
+void register_debug_kernel_keypress_handler(void)
+{
+   if (kb_register_keypress_handler(&debug_f_key_press_handler) < 0)
+      panic("Unable to register debug Fn keypress handler");
 }
 
 #endif // UNIT_TEST_ENVIRONMENT

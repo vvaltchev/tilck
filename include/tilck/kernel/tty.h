@@ -3,4 +3,5 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
+void init_tty(void);
 void tty_setup_for_panic(void);

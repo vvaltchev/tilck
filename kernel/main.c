@@ -10,35 +10,33 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/kmalloc.h>
-#include <tilck/kernel/paging.h>
 #include <tilck/kernel/debug_utils.h>
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/elf_loader.h>
 #include <tilck/kernel/tasklet.h>
-#include <tilck/kernel/sync.h>
 #include <tilck/kernel/fs/fat32.h>
-#include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/timer.h>
-#include <tilck/kernel/term.h>
-#include <tilck/kernel/datetime.h>
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/fb_console.h>
 #include <tilck/kernel/serial.h>
-#include <tilck/kernel/kb_scancode_set1_keys.h>
 #include <tilck/kernel/arch/generic_x86/textmode_video.h>
-#include <tilck/kernel/arch/generic_x86/fpu_memcpy.h>
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/self_tests.h>
+#include <tilck/kernel/tty.h>
 
+void init_console(void)
+{
+   if (use_framebuffer())
+      init_framebuffer_console();
+   else
+      init_textmode_console();
+}
 
-void init_tty(void);
-void show_banner(void);
-
-void read_multiboot_info(u32 magic, u32 mbi_addr)
+static void read_multiboot_info(u32 magic, u32 mbi_addr)
 {
    multiboot_info_t *mbi = (void *)(uptr)mbi_addr;
 
@@ -71,7 +69,7 @@ void read_multiboot_info(u32 magic, u32 mbi_addr)
       parse_kernel_cmdline((const char *)(uptr)mbi->cmdline);
 }
 
-void show_hello_message(void)
+static void show_hello_message(void)
 {
 #ifndef __clang__
    printk("Hello from Tilck! [%s build, GCC %i.%i.%i]\n", BUILDTYPE_STR,
@@ -82,8 +80,10 @@ void show_hello_message(void)
 #endif
 }
 
-void show_system_info(void)
+static void show_system_info(void)
 {
+   void show_banner(void);
+
    printk("TIMER_HZ: %i; TIME_SLOT: %i ms %s\n",
           TIMER_HZ,
           1000 / (TIMER_HZ / TIME_SLOT_TICKS),
@@ -92,7 +92,7 @@ void show_system_info(void)
    show_banner();
 }
 
-void mount_ramdisk(void)
+static void mount_first_ramdisk(void)
 {
    void *ramdisk = system_mmap_get_ramdisk_vaddr(0);
 
@@ -113,26 +113,10 @@ void mount_ramdisk(void)
       panic("mountpoint_add() failed with error: %d", rc);
 }
 
-void se_runner_thread()
-{
-   self_test_to_run();
-}
-
-void init_console(void)
-{
-   if (use_framebuffer())
-      init_framebuffer_console();
-   else
-      init_textmode_console();
-}
-
 static void init_drivers(void)
 {
    init_kb();
-
-   if (kb_register_keypress_handler(&debug_f_key_press_handler) < 0)
-      panic("Unable to register debug Fn keypress handler");
-
+   register_debug_kernel_keypress_handler();
    init_tty();
 
    if (use_framebuffer())
@@ -176,17 +160,14 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_tasklets();
    init_timer();
 
-   mount_ramdisk();
+   mount_first_ramdisk();
    create_and_register_devfs();
 
    async_init_drivers();
 
    if (self_test_to_run) {
-
-      if (!kthread_create(se_runner_thread, NULL))
-         panic("Unable to create the se_runner_thread");
-
-      switch_to_idle_task_outside_interrupt_context();
+      kernel_run_selected_selftest();
+      NOT_REACHED();
    }
 
    if (!system_mmap_get_ramdisk_vaddr(0)) {

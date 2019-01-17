@@ -21,5 +21,5 @@ void validate_stack_pointer_int(const char *file, int line);
 #endif
 
 void debug_qemu_turn_off_machine(void);
-void debug_show_build_opts(void);
-int debug_f_key_press_handler(u32 key, u8 c);
+void register_debug_kernel_keypress_handler(void);
+

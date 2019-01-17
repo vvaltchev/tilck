@@ -7,7 +7,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/debug_utils.h>
-#include <tilck/kernel/self_tests/self_tests.h>
+#include <tilck/kernel/self_tests.h>
 
 #include "se_data.h"
 

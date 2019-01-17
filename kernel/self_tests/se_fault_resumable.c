@@ -6,7 +6,7 @@
 
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/debug_utils.h>
-#include <tilck/kernel/self_tests/self_tests.h>
+#include <tilck/kernel/self_tests.h>
 
 #ifdef __i386__
 
