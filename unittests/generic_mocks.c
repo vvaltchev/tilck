@@ -9,18 +9,7 @@
 
 bool suppress_printk;
 
-void __wrap_printk(const char *fmt, ...)
-{
-   if (suppress_printk)
-      return;
-
-	va_list args;
-	va_start(args, fmt);
-	vprintf(fmt, args);
-	va_end(args);
-}
-
-void __wrap_panic(const char *fmt, ...)
+void panic(const char *fmt, ...)
 {
    printf("\n--- KERNEL PANIC ---\n");
 
@@ -33,15 +22,32 @@ void __wrap_panic(const char *fmt, ...)
    abort();
 }
 
+void __wrap_printk(const char *fmt, ...)
+{
+   if (suppress_printk)
+      return;
+
+	va_list args;
+	va_start(args, fmt);
+	vprintf(fmt, args);
+	va_end(args);
+}
+
 void __wrap_assert_failed(const char *expr, const char *file, int line)
 {
-	printf("Kernel assertion '%s' FAILED in %s at line %d\n", expr, file, line);
+	printf("Kernel assertion '%s' FAILED in %s:%d\n", expr, file, line);
    abort();
 }
 
 void __wrap_not_reached(const char *file, int line)
 {
-   printf("Kernel NOT_REACHED statement in %s at line %d\n", file, line);
+   printf("Kernel NOT_REACHED statement in %s:%d\n", file, line);
+   abort();
+}
+
+void __wrap_not_implemented(const char *file, int line)
+{
+   printf("Kernel NOT_IMPLEMENTED at %s:%d\n", file, line);
    abort();
 }
 

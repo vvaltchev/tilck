@@ -59,9 +59,9 @@ set_target_properties(
 set(
    WRAPPED_SYMS
 
-   panic
    assert_failed
    not_reached
+   not_implemented
    printk
    kmutex_lock
    kmutex_unlock
