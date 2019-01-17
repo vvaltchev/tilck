@@ -329,10 +329,10 @@ void bootloader_main(void)
    /* Sanity check: realmode_call should be able to return all reg values */
    test_rm_call_working();
 
-   get_x86_cpu_features();
+   get_cpu_features();
 
    if (!x86_cpu_features.edx1.pse) {
-      panic("Sorry, but your CPU is too old: no PSE");
+      panic("Sorry, but your CPU is too old: no PSE (page size extension)");
    }
 
    read_memory_map();

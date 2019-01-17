@@ -19,8 +19,8 @@
  * debug_qemu_turn_off_machine() won't turn off the VM.
  */
 
-#define DEBUG_QEMU_EXIT_ON_INIT_EXIT
-#define DEBUG_QEMU_EXIT_ON_PANIC
+#define DEBUG_QEMU_EXIT_ON_INIT_EXIT   1
+#define DEBUG_QEMU_EXIT_ON_PANIC       1
 
 #define KERNEL_INITIAL_STACK_SIZE (4 * KB)
 

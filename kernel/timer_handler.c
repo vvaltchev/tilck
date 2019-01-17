@@ -213,8 +213,9 @@ static ALWAYS_INLINE bool timer_nested_irq(void)
 
 int timer_irq_handler(regs *context)
 {
-   if (KERNEL_TRACK_NESTED_INTERRUPTS && timer_nested_irq())
-      return 0;
+   if (KERNEL_TRACK_NESTED_INTERRUPTS)
+      if (timer_nested_irq())
+         return 0;
 
    /*
     * It is SAFE to directly increase the 64-bit integer __ticks here, without

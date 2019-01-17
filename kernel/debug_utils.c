@@ -2,6 +2,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/atomics.h>
 #include <tilck/common/arch/generic_x86/cpu_features.h>
 
 volatile bool __in_panic;
@@ -16,21 +17,21 @@ volatile bool __in_panic;
 #include <tilck/kernel/fb_console.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/timer.h>
-#include <tilck/kernel/arch/generic_x86/textmode_video.h>
+#include <tilck/kernel/kb.h>
+#include <tilck/kernel/system_mmap.h>
+#include <tilck/kernel/tty.h>
 
 #include <elf.h>
 #include <multiboot.h>
 
-void panic_save_current_state();
-void tty_setup_for_panic(void);
+void panic_save_current_state(); /* defined in kernel_yield.S */
 
 NORETURN void panic(const char *fmt, ...)
 {
    disable_interrupts_forced(); /* No interrupts: we're in a panic state */
 
-   if (__in_panic) {
+   if (__in_panic)
       goto end;
-   }
 
    __in_panic = true;
 
@@ -48,10 +49,7 @@ NORETURN void panic(const char *fmt, ...)
 
    } else {
 
-      if (use_framebuffer())
-         init_framebuffer_console();
-      else
-         init_textmode_console();
+      init_console();
    }
 
 
@@ -90,9 +88,8 @@ NORETURN void panic(const char *fmt, ...)
    if (PANIC_SHOW_STACKTRACE)
       dump_stacktrace();
 
-#ifdef DEBUG_QEMU_EXIT_ON_PANIC
-   debug_qemu_turn_off_machine();
-#endif
+   if (DEBUG_QEMU_EXIT_ON_PANIC)
+      debug_qemu_turn_off_machine();
 
 end:
 
@@ -187,6 +184,38 @@ void debug_show_spurious_irq_count(void)
    debug_dump_slow_irq_handler_count();
    debug_dump_spur_irq_count();
    debug_dump_unhandled_irq_count();
+}
+
+int debug_f_key_press_handler(u32 key, u8 c)
+{
+   if (!kb_is_ctrl_pressed())
+      return KB_HANDLER_NAK;
+
+   switch (key) {
+
+      case KEY_F1:
+         debug_show_build_opts();
+         return KB_HANDLER_OK_AND_STOP;
+
+      case KEY_F2:
+         debug_kmalloc_dump_mem_usage();
+         return KB_HANDLER_OK_AND_STOP;
+
+      case KEY_F3:
+         dump_system_memory_map();
+         return KB_HANDLER_OK_AND_STOP;
+
+      case KEY_F4:
+         debug_show_task_list();
+         return KB_HANDLER_OK_AND_STOP;
+
+      case KEY_F5:
+         debug_show_spurious_irq_count();
+         return KB_HANDLER_OK_AND_STOP;
+
+      default:
+         return KB_HANDLER_NAK;
+   }
 }
 
 #endif // UNIT_TEST_ENVIRONMENT

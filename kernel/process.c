@@ -490,11 +490,11 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
    set_page_directory(get_kernel_pdir());
    pdir_destroy(ti->pi->pdir);
 
-#ifdef DEBUG_QEMU_EXIT_ON_INIT_EXIT
-   if (ti->tid == 1) {
-      debug_qemu_turn_off_machine();
+   if (DEBUG_QEMU_EXIT_ON_INIT_EXIT) {
+      if (ti->tid == 1)
+         debug_qemu_turn_off_machine();
    }
-#endif
+
 
    if (ti == get_curr_task()) {
 

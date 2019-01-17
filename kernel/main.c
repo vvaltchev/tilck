@@ -126,39 +126,7 @@ void init_console(void)
       init_textmode_console();
 }
 
-int debug_f_key_press_handler(u32 key, u8 c)
-{
-   if (!kb_is_ctrl_pressed())
-      return KB_HANDLER_NAK;
-
-   switch (key) {
-
-      case KEY_F1:
-         debug_show_build_opts();
-         return KB_HANDLER_OK_AND_STOP;
-
-      case KEY_F2:
-         debug_kmalloc_dump_mem_usage();
-         return KB_HANDLER_OK_AND_STOP;
-
-      case KEY_F3:
-         dump_system_memory_map();
-         return KB_HANDLER_OK_AND_STOP;
-
-      case KEY_F4:
-         debug_show_task_list();
-         return KB_HANDLER_OK_AND_STOP;
-
-      case KEY_F5:
-         debug_show_spurious_irq_count();
-         return KB_HANDLER_OK_AND_STOP;
-
-      default:
-         return KB_HANDLER_NAK;
-   }
-}
-
-void init_drivers(void)
+static void init_drivers(void)
 {
    init_kb();
 
@@ -171,6 +139,12 @@ void init_drivers(void)
       init_fbdev();
 }
 
+static void async_init_drivers(void)
+{
+   if (!enqueue_tasklet0(0, &init_drivers))
+      panic("Unable to enqueue a tasklet for init_drivers()");
+}
+
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    call_kernel_global_ctors();
@@ -180,7 +154,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    setup_soft_interrupt_handling();
    read_multiboot_info(multiboot_magic, mbi_addr);
 
-   get_x86_cpu_features();
+   get_cpu_features();
    enable_cpu_features();
    init_fpu_memcpy();
 
@@ -205,8 +179,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    mount_ramdisk();
    create_and_register_devfs();
 
-   if (!enqueue_tasklet0(0, &init_drivers))
-      panic("Unable to enqueue a tasklet for init_drivers()");
+   async_init_drivers();
 
    if (self_test_to_run) {
 

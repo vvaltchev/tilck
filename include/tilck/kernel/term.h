@@ -114,3 +114,7 @@ void debug_term_dump_font_table(void);
 #define CHAR_TOP_C        0xc2  //   T
 #define CHAR_HLINE        0xc4  //  --
 #define CHAR_CROSS        0xc5  //  +
+
+/* Other functions */
+
+void init_console(void); /* generic console init: fb or text mode */
