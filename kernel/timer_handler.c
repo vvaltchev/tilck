@@ -15,6 +15,10 @@
 u64 __ticks; /* ticks since the timer started */
 ATOMIC(u32) disable_preemption_count = 1;
 
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+u32 slow_timer_irq_handler_count;
+#endif
+
 static list timer_wakeup_list = make_list(timer_wakeup_list);
 
 void task_set_wakeup_timer(task_info *ti, u32 ticks)
@@ -46,11 +50,8 @@ void task_update_wakeup_timer_if_any(task_info *ti, u32 new_ticks)
       if (curr == 0)
          break; // we do NOTHING if there is NO current wake-up timer.
 
-   } while (!atomic_compare_exchange_weak_explicit(&ti->ticks_before_wake_up,
-                                                   &curr,
-                                                   new_ticks,
-                                                   mo_relaxed,
-                                                   mo_relaxed));
+   } while (!atomic_cas_weak(&ti->ticks_before_wake_up,
+                             &curr, new_ticks, mo_relaxed, mo_relaxed));
 }
 
 void task_cancel_wakeup_timer(task_info *ti)
@@ -158,18 +159,62 @@ void kernel_sleep(u64 ticks)
    kernel_yield();
 }
 
-#if KERNEL_TRACK_NESTED_INTERRUPTS
-   u32 slow_timer_irq_handler_count;
+static ALWAYS_INLINE void debug_timer_irq_sanity_checks(void)
+{
+   /*
+    * We CANNOT allow the timer to call the scheduler if it interrupted an
+    * interrupt handler. Interrupt handlers MUST always to run with preemption
+    * disabled.
+    *
+    * Therefore, the ASSERT below checks that:
+    *
+    * nested_interrupts_count == 1
+    *     meaning the timer is the only current interrupt: a kernel or an user
+    *     task was running regularly.
+    *
+    * OR
+    *
+    * nested_interrupts_count == 2
+    *     meaning that the timer interrupted a syscall working with preemption
+    *     enabled.
+    */
+
+#if defined(DEBUG) && KERNEL_TRACK_NESTED_INTERRUPTS
+   {
+      uptr var;
+      disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
+      int c = get_nested_interrupts_count();
+      ASSERT(c == 1 || (c == 2 && in_syscall()));
+      enable_interrupts(&var);
+   }
 #endif
+}
+
+static ALWAYS_INLINE bool timer_nested_irq(void)
+{
+
+#if KERNEL_TRACK_NESTED_INTERRUPTS
+
+   uptr var;
+   disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
+
+   if (in_nested_irq_num(X86_PC_TIMER_IRQ)) {
+      slow_timer_irq_handler_count++;
+      enable_interrupts(&var);
+      return true;
+   }
+
+   enable_interrupts(&var);
+
+#endif
+
+   return false;
+}
 
 int timer_irq_handler(regs *context)
 {
-#if KERNEL_TRACK_NESTED_INTERRUPTS
-   if (in_nested_irq0()) {
-      slow_timer_irq_handler_count++;
+   if (KERNEL_TRACK_NESTED_INTERRUPTS && timer_nested_irq())
       return 0;
-   }
-#endif
 
    /*
     * It is SAFE to directly increase the 64-bit integer __ticks here, without
@@ -194,34 +239,7 @@ int timer_irq_handler(regs *context)
    }
 
    ASSERT(disable_preemption_count == 1); // again, for us disable = 1 means 0.
-
-   /*
-    * We CANNOT allow the timer to call the scheduler if it interrupted an
-    * interrupt handler. Interrupt handlers MUST always to run with preemption
-    * disabled.
-    *
-    * Therefore, the ASSERT checks that:
-    *
-    * nested_interrupts_count == 1
-    *     meaning the timer is the only current interrupt: a kernel or an user
-    *     task was running regularly.
-    *
-    * OR
-    *
-    * nested_interrupts_count == 2
-    *     meaning that the timer interrupted a syscall working with preemption
-    *     enabled.
-    */
-
-#if defined(DEBUG) && KERNEL_TRACK_NESTED_INTERRUPTS
-   {
-      uptr var;
-      disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
-      int c = get_nested_interrupts_count();
-      ASSERT(c == 1 || (c == 2 && in_syscall()));
-      enable_interrupts(&var);
-   }
-#endif
+   debug_timer_irq_sanity_checks();
 
    if (last_ready_task) {
 

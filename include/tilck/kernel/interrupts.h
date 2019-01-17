@@ -17,9 +17,9 @@ void nested_interrupts_drop_top_syscall(void);
 void panic_dump_nested_interrupts(void);
 void check_in_no_other_irq_than_timer(void);
 
-/* the following funcs are not defined when !KERNEL_TRACK_NESTED_INTERRUPTS */
+/* The following value-returning funcs are NOT defined in the #else case: */
 bool in_syscall(void);
-bool in_nested_irq0(void);
+bool in_nested_irq_num(int irq_num);
 int get_nested_interrupts_count(void);
 
 #else

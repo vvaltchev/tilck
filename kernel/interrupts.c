@@ -46,19 +46,15 @@ inline void pop_nested_interrupt(void)
    enable_interrupts(&var);
 }
 
-bool in_nested_irq0(void)
+bool in_nested_irq_num(int irq_num)
 {
-   uptr var;
-   bool r = false;
-   disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
-   {
-      for (int i = nested_interrupts_count - 2; i >= 0; i--) {
-         if (nested_interrupts[i] == 32)
-            r = true;
-      }
-   }
-   enable_interrupts(&var);
-   return r;
+   ASSERT(!are_interrupts_enabled());
+
+   for (int i = nested_interrupts_count - 2; i >= 0; i--)
+      if (nested_interrupts[i] == irq_num)
+         return true;
+
+   return false;
 }
 
 void check_not_in_irq_handler(void)
