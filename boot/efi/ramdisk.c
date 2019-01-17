@@ -26,7 +26,6 @@ LoadRamdisk(EFI_HANDLE image,
    EFI_DISK_IO_PROTOCOL *ioprot;
 
    u32 sector_size;
-   u32 sectors_per_fat;
    u32 total_fat_size;
    u32 total_used_bytes;
    void *fat_hdr;
@@ -65,7 +64,6 @@ LoadRamdisk(EFI_HANDLE image,
 
 
    sector_size = fat_get_sector_size(fat_hdr);
-   sectors_per_fat = fat_get_FATSz(fat_hdr);
    total_fat_size = (fat_get_first_data_sector(fat_hdr) + 1) * sector_size;
 
    status = BS->FreePages(*ramdisk_paddr_ref, 1);

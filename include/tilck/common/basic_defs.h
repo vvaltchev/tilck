@@ -190,5 +190,4 @@ typedef int (*cmpfun_ptr)(const void *a, const void *b);
 
 #endif
 
-bool is_tilck_known_resolution(u32 w, u32 h);
 #include <tilck/common/panic.h>

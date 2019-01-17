@@ -59,7 +59,6 @@ MbiSetFramebufferInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info,
    mbi->framebuffer_green_mask_size = 8;
    mbi->framebuffer_blue_mask_size = 8;
 
-end:
    return status;
 }
 
@@ -92,6 +91,10 @@ static UINT32 EfiToMultibootMemType(UINT32 type)
       case EfiMemoryMappedIOPortSpace:
       case EfiPalCode:
          return MULTIBOOT_MEMORY_RESERVED;
+
+      default:
+         /* Let's just be conservative */
+         return MULTIBOOT_MEMORY_BADRAM;
    }
 }
 

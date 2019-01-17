@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/gfx.h>
 
 #include <efi.h>
 #include <efilib.h>

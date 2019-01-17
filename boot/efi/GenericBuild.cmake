@@ -23,7 +23,11 @@ set(
    -fpic
    -fshort-wchar
    -mno-red-zone
-   -g
+   -ggdb
+   -Wall
+   -Wextra
+   -Werror
+   -Wno-unused-parameter
 )
 
 set(

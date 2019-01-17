@@ -16,7 +16,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    EFI_LOADED_IMAGE *loaded_image;
    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fileFsProt;
    EFI_FILE_PROTOCOL *fileProt;
-   EFI_FILE_PROTOCOL *fileHandle;
    EFI_PHYSICAL_ADDRESS ramdisk_paddr;
    UINTN ramdisk_size, mapkey, fb_paddr;
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION gfx_mode_info;

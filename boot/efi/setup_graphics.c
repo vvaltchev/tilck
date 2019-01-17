@@ -34,7 +34,8 @@ static bool IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 static bool IsKnownAndSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
    if (is_tilck_known_resolution(mi->HorizontalResolution,
-                                mi->VerticalResolution)) {
+                                 mi->VerticalResolution))
+   {
       return IsSupported(mi);
    }
 
@@ -157,7 +158,7 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS,
 
       my_mode_sel = k.UnicodeChar - '0';
 
-      if (my_mode_sel < 0 || my_mode_sel >= my_modes_count) {
+      if (my_mode_sel < 0 || my_mode_sel >= (int)my_modes_count) {
          Print(L"Invalid selection\n");
          continue;
       }
