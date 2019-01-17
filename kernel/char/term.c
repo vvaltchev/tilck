@@ -295,10 +295,31 @@ static void term_internal_write_backspace(u8 color)
    }
 }
 
+static void term_serial_con_write(char c)
+{
+   serial_write(COM1, c);
+}
+
 void term_internal_write_char2(char c, u8 color)
 {
-   if (kopt_serial_mode)
-      serial_write(COM1, c);
+   switch (kopt_serial_mode) {
+
+      case TERM_SERIAL_NONE:
+         /* do nothing */
+         break;
+
+      case TERM_SERIAL_ECHO:
+         serial_write(COM1, c);
+         break;
+
+      case TERM_SERIAL_CONSOLE:
+         term_serial_con_write(c);
+         return;
+
+      default:
+         NOT_REACHED();
+         break;
+   }
 
    switch (c) {
 

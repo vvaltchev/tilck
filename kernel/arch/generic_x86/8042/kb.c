@@ -32,8 +32,8 @@ typedef struct {
 
 } keypress_handler_elem;
 
+int kb_tasklet_runner = -1;
 static kb_state_t kb_curr_state = KB_DEFAULT_STATE;
-static int kb_tasklet_runner = -1;
 static bool key_pressed_state[2][128];
 static bool numLock;
 static bool capsLock;
@@ -133,13 +133,11 @@ void handle_key_pressed(u32 key)
    case KEY_NUM_LOCK:
       numLock = !numLock;
       numlock_set_led(numLock);
-      //printk("\nNUM LOCK is %s\n", numLock ? "ON" : "OFF");
       return;
 
    case KEY_CAPS_LOCK:
       capsLock = !capsLock;
       capslock_set_led(capsLock);
-      //printk("\nCAPS LOCK is %s\n", capsLock ? "ON" : "OFF");
       return;
    }
 
@@ -255,6 +253,15 @@ u32 kb_get_current_modifiers(void)
    return (shift + alt + ctrl);
 }
 
+static void create_kb_tasklet_runner(void)
+{
+   kb_tasklet_runner =
+      create_tasklet_thread(1 /* priority */, KB_TASKLETS_QUEUE_SIZE);
+
+   if (kb_tasklet_runner < 0)
+      panic("KB: Unable to create a tasklet runner thread for IRQs");
+}
+
 /* This will be executed in a tasklet */
 void init_kb(void)
 {
@@ -266,8 +273,11 @@ void init_kb(void)
 
       printk("Warning: PS/2 controller self-test failed, trying a reset\n");
 
-      if (!kb_ctrl_reset())
-         panic("Unable to initialize the PS/2 controller");
+      if (!kb_ctrl_reset()) {
+         printk("Unable to initialize the PS/2 controller");
+         create_kb_tasklet_runner();
+         return;
+      }
 
       printk("PS/2 controller: reset successful\n");
    }
@@ -276,14 +286,8 @@ void init_kb(void)
    capslock_set_led(capsLock);
    kb_set_typematic_byte(0);
 
-   kb_tasklet_runner =
-      create_tasklet_thread(1 /* priority */, KB_TASKLETS_QUEUE_SIZE);
-
-   if (kb_tasklet_runner < 0)
-      panic("KB: Unable to create a tasklet runner thread for IRQs");
+   create_kb_tasklet_runner();
 
    irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_irq_handler);
    enable_preemption();
-
-   //printk("keyboard initialized.\n");
 }

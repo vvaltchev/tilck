@@ -86,6 +86,16 @@
 #define MCR_RESERVED_1             0b01000000
 #define MCR_RESERVED_2             0b10000000
 
+/* Modem Status Register (MSR) */
+#define MSR_DELTA_CTS              0b00000001 /* Delta Clear To Send */
+#define MSR_DELTA_DSR              0b00000010 /* Delta Data Set Ready */
+#define MSR_TERI                   0b00000100 /* Trailing Edge Ring Indicator */
+#define MSR_DELTA_DCD              0b00001000 /* Delta Data Carrier Detect */
+#define MSR_CTS                    0b00010000 /* Clear To Send */
+#define MSR_DSR                    0b00100000 /* Data Set Ready */
+#define MSR_RI                     0b01000000 /* Ring Indicator */
+#define MSR_CD                     0b10000000 /* Carrier Detect */
+
 /* Set DLAB [Divisor Latch Access Bit] to `value` */
 static void uart_set_dlab(u16 port, bool value)
 {
@@ -118,34 +128,34 @@ void init_serial_port(u16 port)
    outb(port + UART_IER, IER_RCV_AVAIL_INTR);
 }
 
-bool serial_received(u16 port)
+bool serial_read_ready(u16 port)
 {
    return !!(inb(port + UART_LSR) & LSR_DATA_READY);
 }
 
-void serial_wait_for_input_buf(u16 port)
+void serial_wait_for_read(u16 port)
 {
-   while (!serial_received(port)) { }
+   while (!serial_read_ready(port)) { }
 }
 
 char serial_read(u16 port)
 {
-   serial_wait_for_input_buf(port);
+   serial_wait_for_read(port);
    return inb(port);
 }
 
-bool serial_transmitted(u16 port)
+bool serial_write_ready(u16 port)
 {
    return !!(inb(port + UART_LSR) & LSR_EMPTY_TR_REG);
 }
 
-void serial_wait_for_output_buf(u16 port)
+void serial_wait_for_write(u16 port)
 {
-   while (!serial_transmitted(port)) { }
+   while (!serial_write_ready(port)) { }
 }
 
 void serial_write(u16 port, char c)
 {
-   serial_wait_for_output_buf(port);
+   serial_wait_for_write(port);
    outb(port, c);
 }

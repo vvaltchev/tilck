@@ -10,6 +10,7 @@ enum term_serial_mode
 {
    TERM_SERIAL_NONE = 0,
    TERM_SERIAL_ECHO = 1,
+   TERM_SERIAL_CONSOLE = 2,
 
    /* --- */
    TERM_SERIAL_MODES_COUNT

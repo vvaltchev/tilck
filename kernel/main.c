@@ -113,6 +113,7 @@ static void mount_first_ramdisk(void)
       panic("mountpoint_add() failed with error: %d", rc);
 }
 
+
 static void init_drivers(void)
 {
    init_kb();
@@ -121,6 +122,8 @@ static void init_drivers(void)
 
    if (use_framebuffer())
       init_fbdev();
+
+   init_serial_comm();
 }
 
 static void async_init_drivers(void)
@@ -133,7 +136,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    call_kernel_global_ctors();
 
-   init_serial_port(COM1);
+   early_init_serial_ports();
    create_kernel_process();
    setup_soft_interrupt_handling();
    read_multiboot_info(multiboot_magic, mbi_addr);
