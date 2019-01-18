@@ -177,7 +177,7 @@ int cmd_kcow(int argc, char **argv)
       int rc = stat("/", (void *)cow_buf);
 
       if (rc != 0) {
-         printf("stat() failed with %d: %s [%d]\n", strerror(errno), errno);
+         printf("stat() failed with %d: %s [%d]\n", rc, strerror(errno), errno);
          exit(1);
       }
 

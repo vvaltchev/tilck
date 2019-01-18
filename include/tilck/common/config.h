@@ -46,8 +46,8 @@
 #if !KERNEL_GCOV
    #define KMALLOC_FIRST_HEAP_SIZE    (256 * KB)
    #define KERNEL_MAX_SIZE            (1024 * KB)
-   #define SYMTAB_MAX_SIZE            (24 * KB)
-   #define STRTAB_MAX_SIZE            (24 * KB)
+   #define SYMTAB_MAX_SIZE            (32 * KB)
+   #define STRTAB_MAX_SIZE            (32 * KB)
 #else
    #define KMALLOC_FIRST_HEAP_SIZE    (512 * KB)
    #define KERNEL_MAX_SIZE            (2048 * KB)
