@@ -322,21 +322,33 @@ tty_handle_csi_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
    return TERM_FILTER_WRITE_BLANK;
 }
 
+#pragma GCC diagnostic push
+
+#ifdef __clang__
+   #pragma GCC diagnostic ignored "-Winitializer-overrides"
+#else
+   #pragma GCC diagnostic ignored "-Woverride-init"
+#endif
+
 static const s16 alt_charset[256] =
 {
-   [0 ... 0x69] = -1,
+   [0 ... 255] = -1,
 
-   /* offset 0x6A */
-   CHAR_CORNER_LR, CHAR_CORNER_UR, CHAR_CORNER_UL, CHAR_CORNER_LL,
-   CHAR_CROSS, -1,
+   ['l'] = CHAR_CORNER_UL,
+   ['m'] = CHAR_CORNER_LL,
+   ['k'] = CHAR_CORNER_UR,
+   ['j'] = CHAR_CORNER_LR,
+   ['t'] = CHAR_VLINE_RIGHT,
+   ['u'] = CHAR_VLINE_LEFT,
+   ['v'] = CHAR_BOTTOM_C,
+   ['w'] = CHAR_TOP_C,
+   ['q'] = CHAR_HLINE,
+   ['x'] = CHAR_VLINE,
+   ['n'] = CHAR_CROSS
 
-   /* offset 0x70 */
-   -1, CHAR_HLINE, -1, -1, CHAR_VLINE_RIGHT, CHAR_VLINE_LEFT, CHAR_BOTTOM_C,
-   CHAR_TOP_C, CHAR_VLINE, -1, -1, -1, -1, -1, -1, -1,
-
-   /* offset 0x80 */
-   [0x80 ... 0xff] = -1
 };
+
+#pragma GCC diagnostic pop
 
 static enum term_fret
 tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)

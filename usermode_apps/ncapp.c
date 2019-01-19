@@ -4,27 +4,28 @@
 #include <locale.h>
 #include <ncurses/ncurses.h>
 
-static void draw_rect(int y1, int x1, int y2, int x2)
-{
-   mvhline(y1, x1, 0, x2-x1);
-   mvhline(y2, x1, 0, x2-x1);
-   mvvline(y1, x1, 0, y2-y1);
-   mvvline(y1, x2, 0, y2-y1);
-
-   mvaddch(y1, x1, ACS_ULCORNER);
-   mvaddch(y2, x1, ACS_LLCORNER);
-   mvaddch(y1, x2, ACS_URCORNER);
-   mvaddch(y2, x2, ACS_LRCORNER);
-}
+#define printc(name) printw(#name ": "); addch(name); printw("\n");
 
 int main()
 {
    initscr();
    cbreak();
 
-   printw("Hello World !!!");
+   printw("Special characters:\n");
 
-   draw_rect(3, 3, 10, 30);
+   printc(ACS_HLINE);
+   printc(ACS_LLCORNER);
+   printc(ACS_ULCORNER);
+   printc(ACS_VLINE);
+   printc(ACS_LRCORNER);
+   printc(ACS_URCORNER);
+   printc(ACS_LTEE);
+   printc(ACS_RTEE);
+   printc(ACS_BTEE);
+   printc(ACS_TTEE);
+   printc(ACS_PLUS);
+
+   printc(ACS_DIAMOND);
 
    refresh();
    getch();
