@@ -58,8 +58,10 @@ void term_restart_video_output(void);
 
 /* --- term write filter interface --- */
 
-#define TERM_FILTER_WRITE_BLANK     0
-#define TERM_FILTER_WRITE_C         1
+enum term_fret {
+   TERM_FILTER_WRITE_BLANK,
+   TERM_FILTER_WRITE_C
+};
 
 typedef struct {
 
@@ -89,10 +91,10 @@ typedef struct {
 
 } term_action;
 
-typedef int (*term_filter_func)(char c,
-                                u8 *color /* in/out */,
-                                term_action *a /* out */,
-                                void *ctx);
+typedef enum term_fret (*term_filter_func)(char c,
+                                           u8 *color /* in/out */,
+                                           term_action *a /* out */,
+                                           void *ctx);
 
 void term_set_filter_func(term_filter_func func, void *ctx);
 term_filter_func term_get_filter_func(void);

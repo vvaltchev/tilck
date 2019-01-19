@@ -13,13 +13,7 @@ extern int kb_tasklet_runner;
 
 static void com1_handler_func(char c)
 {
-   u32 key = c;
-
-   if (c == 0x7f) {
-      c = 'X'; /* TODO: make backspace to work */
-   }
-
-   tty_keypress_handler_int(key, c, false);
+   tty_keypress_handler_int((u32)c, c, false);
 }
 
 int serial_com1_irq_handler(regs *r)

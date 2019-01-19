@@ -7,6 +7,7 @@
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/term.h>
+#include <tilck/kernel/cmdline.h>
 
 #include <termios.h>      // system header
 
@@ -321,8 +322,12 @@ tty_filter_handle_csi_seq(char c,
    return TERM_FILTER_WRITE_BLANK;
 }
 
-int tty_term_write_filter(char c, u8 *color, term_action *a, void *ctx_arg)
+enum term_fret
+tty_term_write_filter(char c, u8 *color, term_action *a, void *ctx_arg)
 {
+   if (kopt_serial_mode == TERM_SERIAL_CONSOLE)
+      return TERM_FILTER_WRITE_C;
+
    term_write_filter_ctx_t *ctx = ctx_arg;
 
    if (LIKELY(ctx->state == TERM_WFILTER_STATE_DEFAULT)) {
