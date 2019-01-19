@@ -42,7 +42,7 @@ static const u8 fg_csi_to_vga[256] =
 static void
 tty_filter_handle_csi_ABCD(int *params,
                            int pc,
-                           char c,
+                           u8 c,
                            term_action *a,
                            term_write_filter_ctx_t *ctx)
 {
@@ -128,7 +128,8 @@ tty_filter_handle_csi_m(int *params,
    }
 }
 
-static inline void tty_move_cursor_begin_nth_row(term_action *a, int row)
+static inline void
+tty_move_cursor_begin_nth_row(term_action *a, int row)
 {
    int new_row = MIN(term_get_curr_row() + row, term_get_rows() - 1);
 
@@ -139,8 +140,8 @@ static inline void tty_move_cursor_begin_nth_row(term_action *a, int row)
    };
 }
 
-static int
-tty_filter_end_csi_seq(char c,
+static enum term_fret
+tty_filter_end_csi_seq(u8 c,
                        u8 *color,
                        term_action *a,
                        term_write_filter_ctx_t *ctx)
@@ -271,12 +272,11 @@ tty_filter_end_csi_seq(char c,
    return TERM_FILTER_WRITE_BLANK;
 }
 
-static int
-tty_filter_handle_csi_seq(u8 c,
-                          u8 *color,
-                          term_action *a,
-                          term_write_filter_ctx_t *ctx)
+static enum term_fret
+tty_handle_csi_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
 {
+   term_write_filter_ctx_t *ctx = ctx_arg;
+
    if (0x30 <= c && c <= 0x3F) {
 
       /* This is a parameter byte */
@@ -338,8 +338,8 @@ static const s16 alt_charset[256] =
    [0x80 ... 0xff] = -1
 };
 
-static int
-tty_filter_handle_default(u8 c, u8 *color, term_action *a, void *ctx_arg)
+static enum term_fret
+tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
 
@@ -379,7 +379,7 @@ tty_filter_handle_default(u8 c, u8 *color, term_action *a, void *ctx_arg)
    return TERM_FILTER_WRITE_C;
 }
 
-static int
+static enum term_fret
 tty_handle_unknown_esc_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
@@ -392,7 +392,7 @@ tty_handle_unknown_esc_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
    return TERM_FILTER_WRITE_BLANK;
 }
 
-static int
+static enum term_fret
 tty_handle_state_esc1(u8 c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
@@ -431,7 +431,7 @@ tty_handle_state_esc1(u8 c, u8 *color, term_action *a, void *ctx_arg)
    return TERM_FILTER_WRITE_BLANK;
 }
 
-static int
+static enum term_fret
 tty_handle_state_esc2_par(u8 c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
@@ -458,29 +458,20 @@ tty_handle_state_esc2_par(u8 c, u8 *color, term_action *a, void *ctx_arg)
 enum term_fret
 tty_term_write_filter(u8 c, u8 *color, term_action *a, void *ctx_arg)
 {
+   static const term_filter_func table[] =
+   {
+      [TERM_WFILTER_STATE_DEFAULT] = &tty_handle_default_state,
+      [TERM_WFILTER_STATE_ESC1] = &tty_handle_state_esc1,
+      [TERM_WFILTER_STATE_ESC2_PAR] = &tty_handle_state_esc2_par,
+      [TERM_WFILTER_STATE_ESC2_CSI] = &tty_handle_csi_seq,
+      [TERM_WFILTER_STATE_ESC2_UNKNOWN] = &tty_handle_unknown_esc_seq
+   };
+
    term_write_filter_ctx_t *ctx = ctx_arg;
 
    if (kopt_serial_mode == TERM_SERIAL_CONSOLE)
       return TERM_FILTER_WRITE_C;
 
-   if (LIKELY(ctx->state == TERM_WFILTER_STATE_DEFAULT))
-      return tty_filter_handle_default(c, color, a, ctx);
-
-   switch (ctx->state) {
-
-      case TERM_WFILTER_STATE_ESC1:
-         return tty_handle_state_esc1(c, color, a, ctx);
-
-      case TERM_WFILTER_STATE_ESC2_PAR:
-         return tty_handle_state_esc2_par(c, color, a, ctx);
-
-      case TERM_WFILTER_STATE_ESC2_CSI:
-         return tty_filter_handle_csi_seq(c, color, a, ctx);
-
-      case TERM_WFILTER_STATE_ESC2_UNKNOWN:
-         return tty_handle_unknown_esc_seq(c, color, a, ctx);
-
-      default:
-         NOT_REACHED();
-   }
+   ASSERT(ctx->state < ARRAY_SIZE(table));
+   return table[ctx->state](c, color, a, ctx);
 }
