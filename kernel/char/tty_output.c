@@ -368,15 +368,15 @@ tty_term_write_filter(char c, u8 *color, term_action *a, void *ctx_arg)
             return TERM_FILTER_WRITE_BLANK;
 
          case '\016': /* shift out: use alternate charset */
-            ctx->shift_out = true;
+            ctx->use_alt_charset = true;
             return TERM_FILTER_WRITE_BLANK;
 
          case '\017': /* shift in: return to the regular charset */
-            ctx->shift_out = false;
+            ctx->use_alt_charset = false;
             return TERM_FILTER_WRITE_BLANK;
       }
 
-      if (ctx->shift_out) {
+      if (ctx->use_alt_charset) {
          if (alt_charset[(u8) c] != -1) {
             term_internal_write_char2(alt_charset[(u8) c], *color);
             return TERM_FILTER_WRITE_BLANK;
@@ -404,6 +404,10 @@ tty_term_write_filter(char c, u8 *color, term_action *a, void *ctx_arg)
                }
                break;
 
+            case '(':
+               ctx->state = TERM_WFILTER_STATE_ESC2_PAR;
+               break;
+
             default:
                ctx->state = TERM_WFILTER_STATE_ESC2_UNKNOWN;
                /*
@@ -417,6 +421,27 @@ tty_term_write_filter(char c, u8 *color, term_action *a, void *ctx_arg)
                goto handle_esc2_unknown;
          }
 
+         return TERM_FILTER_WRITE_BLANK;
+         /* end case TERM_WFILTER_STATE_ESC1 */
+
+      case TERM_WFILTER_STATE_ESC2_PAR:
+
+         switch (c) {
+
+            case '0':
+               ctx->use_alt_charset = true;
+               break;
+
+            case 'B':
+               ctx->use_alt_charset = false;
+               break;
+
+            default:
+               /* do nothing */
+               break;
+         }
+
+         ctx->state = TERM_WFILTER_STATE_DEFAULT;
          return TERM_FILTER_WRITE_BLANK;
 
       case TERM_WFILTER_STATE_ESC2_CSI:

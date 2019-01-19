@@ -13,6 +13,7 @@ enum term_write_filter_state {
    TERM_WFILTER_STATE_DEFAULT,
    TERM_WFILTER_STATE_ESC1,
    TERM_WFILTER_STATE_ESC2_CSI,
+   TERM_WFILTER_STATE_ESC2_PAR,
    TERM_WFILTER_STATE_ESC2_UNKNOWN
 
 };
@@ -23,7 +24,7 @@ typedef struct {
    char param_bytes[64];
    char interm_bytes[64];
 
-   bool shift_out;
+   bool use_alt_charset;
 
    u8 pbc; /* param bytes count */
    u8 ibc; /* intermediate bytes count */
