@@ -362,7 +362,7 @@ static void term_action_write(char *buf, u32 len, u8 color)
 
          term_action a = { .type1 = a_none };
 
-         if (filter(buf[i], &color, &a, filter_ctx))
+         if (filter((u8) buf[i], &color, &a, filter_ctx))
             term_internal_write_char2(buf[i], color);
 
          if (a.type1 != a_none)

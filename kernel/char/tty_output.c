@@ -272,7 +272,7 @@ tty_filter_end_csi_seq(char c,
 }
 
 static int
-tty_filter_handle_csi_seq(char c,
+tty_filter_handle_csi_seq(u8 c,
                           u8 *color,
                           term_action *a,
                           term_write_filter_ctx_t *ctx)
@@ -338,125 +338,147 @@ static const s16 alt_charset[256] =
    [0x80 ... 0xff] = -1
 };
 
-enum term_fret
-tty_term_write_filter(char c, u8 *color, term_action *a, void *ctx_arg)
+static int
+tty_filter_handle_default(u8 c, u8 *color, term_action *a, void *ctx_arg)
 {
+   term_write_filter_ctx_t *ctx = ctx_arg;
+
+   switch (c) {
+
+      case '\033':
+         ctx->state = TERM_WFILTER_STATE_ESC1;
+         return TERM_FILTER_WRITE_BLANK;
+
+      case '\n':
+
+         if (c_term.c_oflag & (OPOST | ONLCR))
+            term_internal_write_char2('\r', *color);
+
+         break;
+
+      case '\a':
+      case '\f':
+      case '\v':
+         /* Ignore some characters */
+         return TERM_FILTER_WRITE_BLANK;
+
+      case '\016': /* shift out: use alternate charset */
+         ctx->use_alt_charset = true;
+         return TERM_FILTER_WRITE_BLANK;
+
+      case '\017': /* shift in: return to the regular charset */
+         ctx->use_alt_charset = false;
+         return TERM_FILTER_WRITE_BLANK;
+   }
+
+   if (ctx->use_alt_charset && alt_charset[c] != -1) {
+      term_internal_write_char2(alt_charset[c], *color);
+      return TERM_FILTER_WRITE_BLANK;
+   }
+
+   return TERM_FILTER_WRITE_C;
+}
+
+static int
+tty_handle_unknown_esc_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
+{
+   term_write_filter_ctx_t *ctx = ctx_arg;
+
+   if (0x40 <= c && c <= 0x5f) {
+      /* End of any possible (unknown) escape sequence */
+      ctx->state = TERM_WFILTER_STATE_DEFAULT;
+   }
+
+   return TERM_FILTER_WRITE_BLANK;
+}
+
+static int
+tty_handle_state_esc1(u8 c, u8 *color, term_action *a, void *ctx_arg)
+{
+   term_write_filter_ctx_t *ctx = ctx_arg;
+
+   switch (c) {
+
+      case '[':
+         ctx->state = TERM_WFILTER_STATE_ESC2_CSI;
+         ctx->pbc = ctx->ibc = 0;
+         break;
+
+      case 'c':
+         {
+            *a = (term_action) { .type1 = a_reset };
+            ctx->state = TERM_WFILTER_STATE_DEFAULT;
+         }
+         break;
+
+      case '(':
+         ctx->state = TERM_WFILTER_STATE_ESC2_PAR;
+         break;
+
+      default:
+         ctx->state = TERM_WFILTER_STATE_ESC2_UNKNOWN;
+         /*
+          * We need to handle now this case because the sequence might be 1-char
+          * long, like "^[_". Therefore, if the current character is in the
+          * [0x40, 0x5f] range, we have to go back to the default state.
+          * Otherwise, this is the identifier of a more complex sequence which
+          * will end with the first character in the range [0x40, 0x5f].
+          */
+
+         return tty_handle_unknown_esc_seq(c, color, a, ctx);
+   }
+
+   return TERM_FILTER_WRITE_BLANK;
+}
+
+static int
+tty_handle_state_esc2_par(u8 c, u8 *color, term_action *a, void *ctx_arg)
+{
+   term_write_filter_ctx_t *ctx = ctx_arg;
+
+   switch (c) {
+
+      case '0':
+         ctx->use_alt_charset = true;
+         break;
+
+      case 'B':
+         ctx->use_alt_charset = false;
+         break;
+
+      default:
+         /* do nothing */
+         break;
+   }
+
+   ctx->state = TERM_WFILTER_STATE_DEFAULT;
+   return TERM_FILTER_WRITE_BLANK;
+}
+
+enum term_fret
+tty_term_write_filter(u8 c, u8 *color, term_action *a, void *ctx_arg)
+{
+   term_write_filter_ctx_t *ctx = ctx_arg;
+
    if (kopt_serial_mode == TERM_SERIAL_CONSOLE)
       return TERM_FILTER_WRITE_C;
 
-   term_write_filter_ctx_t *ctx = ctx_arg;
-
-   if (LIKELY(ctx->state == TERM_WFILTER_STATE_DEFAULT)) {
-
-      switch (c) {
-
-         case '\033':
-            ctx->state = TERM_WFILTER_STATE_ESC1;
-            return TERM_FILTER_WRITE_BLANK;
-
-         case '\n':
-
-            if (c_term.c_oflag & (OPOST | ONLCR))
-               term_internal_write_char2('\r', *color);
-
-            break;
-
-         case '\a':
-         case '\f':
-         case '\v':
-            /* Ignore some characters */
-            return TERM_FILTER_WRITE_BLANK;
-
-         case '\016': /* shift out: use alternate charset */
-            ctx->use_alt_charset = true;
-            return TERM_FILTER_WRITE_BLANK;
-
-         case '\017': /* shift in: return to the regular charset */
-            ctx->use_alt_charset = false;
-            return TERM_FILTER_WRITE_BLANK;
-      }
-
-      if (ctx->use_alt_charset) {
-         if (alt_charset[(u8) c] != -1) {
-            term_internal_write_char2(alt_charset[(u8) c], *color);
-            return TERM_FILTER_WRITE_BLANK;
-         }
-      }
-
-      return TERM_FILTER_WRITE_C;
-   }
+   if (LIKELY(ctx->state == TERM_WFILTER_STATE_DEFAULT))
+      return tty_filter_handle_default(c, color, a, ctx);
 
    switch (ctx->state) {
 
       case TERM_WFILTER_STATE_ESC1:
-
-         switch (c) {
-
-            case '[':
-               ctx->state = TERM_WFILTER_STATE_ESC2_CSI;
-               ctx->pbc = ctx->ibc = 0;
-               break;
-
-            case 'c':
-               {
-                  *a = (term_action) { .type1 = a_reset };
-                  ctx->state = TERM_WFILTER_STATE_DEFAULT;
-               }
-               break;
-
-            case '(':
-               ctx->state = TERM_WFILTER_STATE_ESC2_PAR;
-               break;
-
-            default:
-               ctx->state = TERM_WFILTER_STATE_ESC2_UNKNOWN;
-               /*
-                * We need to handle now this case because the sequence might
-                * 1-char long, like "^[_". Therefore, if the current character
-                * is in the [0x40, 0x5f] range, we have to go back to the
-                * default state. Otherwise, this is the identifier of a more
-                * complex sequence (e.g. ^[(B), which will end with the first
-                * character in the range [0x40, 0x5f].
-                */
-               goto handle_esc2_unknown;
-         }
-
-         return TERM_FILTER_WRITE_BLANK;
-         /* end case TERM_WFILTER_STATE_ESC1 */
+         return tty_handle_state_esc1(c, color, a, ctx);
 
       case TERM_WFILTER_STATE_ESC2_PAR:
-
-         switch (c) {
-
-            case '0':
-               ctx->use_alt_charset = true;
-               break;
-
-            case 'B':
-               ctx->use_alt_charset = false;
-               break;
-
-            default:
-               /* do nothing */
-               break;
-         }
-
-         ctx->state = TERM_WFILTER_STATE_DEFAULT;
-         return TERM_FILTER_WRITE_BLANK;
+         return tty_handle_state_esc2_par(c, color, a, ctx);
 
       case TERM_WFILTER_STATE_ESC2_CSI:
          return tty_filter_handle_csi_seq(c, color, a, ctx);
 
       case TERM_WFILTER_STATE_ESC2_UNKNOWN:
-
-handle_esc2_unknown:
-
-         if (0x40 <= c && c <= 0x5f) {
-            /* End of any possible (unknown) escape sequence */
-            ctx->state = TERM_WFILTER_STATE_DEFAULT;
-         }
-
-         return TERM_FILTER_WRITE_BLANK;
+         return tty_handle_unknown_esc_seq(c, color, a, ctx);
 
       default:
          NOT_REACHED();
