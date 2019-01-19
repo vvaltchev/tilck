@@ -48,10 +48,10 @@ static const u8 console_gfx_replacements[256] =
    ['-'] = CHAR_HLINE,
    ['|'] = CHAR_VLINE,
    ['+'] = CHAR_CROSS,
-   ['A'] = CHAR_CORNER_UL,
-   ['B'] = CHAR_CORNER_UR,
-   ['C'] = CHAR_CORNER_LR,
-   ['D'] = CHAR_CORNER_LL
+   ['A'] = CHAR_LLCORNER,
+   ['B'] = CHAR_URCORNER,
+   ['C'] = CHAR_LRCORNER,
+   ['D'] = CHAR_LLCORNER
 };
 
 void console_gfx_replace_chars(char *str)

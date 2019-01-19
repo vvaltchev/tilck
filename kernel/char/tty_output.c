@@ -334,14 +334,14 @@ static const s16 alt_charset[256] =
 {
    [0 ... 255] = -1,
 
-   ['l'] = CHAR_CORNER_UL,
-   ['m'] = CHAR_CORNER_LL,
-   ['k'] = CHAR_CORNER_UR,
-   ['j'] = CHAR_CORNER_LR,
-   ['t'] = CHAR_VLINE_RIGHT,
-   ['u'] = CHAR_VLINE_LEFT,
-   ['v'] = CHAR_BOTTOM_C,
-   ['w'] = CHAR_TOP_C,
+   ['l'] = CHAR_ULCORNER,
+   ['m'] = CHAR_LLCORNER,
+   ['k'] = CHAR_URCORNER,
+   ['j'] = CHAR_LRCORNER,
+   ['t'] = CHAR_LTEE,
+   ['u'] = CHAR_RTEE,
+   ['v'] = CHAR_BTEE,
+   ['w'] = CHAR_TTEE,
    ['q'] = CHAR_HLINE,
    ['x'] = CHAR_VLINE,
    ['n'] = CHAR_CROSS
