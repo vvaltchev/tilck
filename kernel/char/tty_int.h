@@ -8,20 +8,22 @@ extern struct termios c_term;
 extern struct termios default_termios;
 extern u32 tty_kd_mode;
 
-typedef enum {
+enum term_write_filter_state {
 
    TERM_WFILTER_STATE_DEFAULT,
    TERM_WFILTER_STATE_ESC1,
    TERM_WFILTER_STATE_ESC2_CSI,
    TERM_WFILTER_STATE_ESC2_UNKNOWN
 
-} term_write_filter_state_t;
+};
 
 typedef struct {
 
-   term_write_filter_state_t state;
+   enum term_write_filter_state state;
    char param_bytes[64];
    char interm_bytes[64];
+
+   bool shift_out;
 
    u8 pbc; /* param bytes count */
    u8 ibc; /* intermediate bytes count */

@@ -322,6 +322,22 @@ tty_filter_handle_csi_seq(char c,
    return TERM_FILTER_WRITE_BLANK;
 }
 
+static const s16 alt_charset[256] =
+{
+   [0 ... 0x69] = -1,
+
+   /* offset 0x6A */
+   CHAR_CORNER_LR, CHAR_CORNER_UR, CHAR_CORNER_UL, CHAR_CORNER_LL,
+   CHAR_CROSS, -1,
+
+   /* offset 0x70 */
+   -1, CHAR_HLINE, -1, -1, CHAR_VLINE_RIGHT, CHAR_VLINE_LEFT, CHAR_BOTTOM_C,
+   CHAR_TOP_C, CHAR_VLINE, -1, -1, -1, -1, -1, -1, -1,
+
+   /* offset 0x80 */
+   [0x80 ... 0xff] = -1
+};
+
 enum term_fret
 tty_term_write_filter(char c, u8 *color, term_action *a, void *ctx_arg)
 {
@@ -350,6 +366,21 @@ tty_term_write_filter(char c, u8 *color, term_action *a, void *ctx_arg)
          case '\v':
             /* Ignore some characters */
             return TERM_FILTER_WRITE_BLANK;
+
+         case '\016': /* shift out: use alternate charset */
+            ctx->shift_out = true;
+            return TERM_FILTER_WRITE_BLANK;
+
+         case '\017': /* shift in: return to the regular charset */
+            ctx->shift_out = false;
+            return TERM_FILTER_WRITE_BLANK;
+      }
+
+      if (ctx->shift_out) {
+         if (alt_charset[(u8) c] != -1) {
+            term_internal_write_char2(alt_charset[(u8) c], *color);
+            return TERM_FILTER_WRITE_BLANK;
+         }
       }
 
       return TERM_FILTER_WRITE_C;
