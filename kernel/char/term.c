@@ -302,23 +302,9 @@ static void term_serial_con_write(char c)
 
 void term_internal_write_char2(char c, u8 color)
 {
-   switch (kopt_serial_mode) {
-
-      case TERM_SERIAL_NONE:
-         /* do nothing */
-         break;
-
-      case TERM_SERIAL_ECHO:
-         serial_write(COM1, c);
-         break;
-
-      case TERM_SERIAL_CONSOLE:
-         term_serial_con_write(c);
-         return;
-
-      default:
-         NOT_REACHED();
-         break;
+   if (kopt_serial_mode == TERM_SERIAL_CONSOLE) {
+      serial_write(COM1, c);
+      return;
    }
 
    switch (c) {
