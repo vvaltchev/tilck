@@ -19,7 +19,7 @@
 
 void task_info_reset_kernel_stack(task_info *ti)
 {
-   uptr bottom = (uptr) ti->kernel_stack + KTHREAD_STACK_SIZE - 1;
+   uptr bottom = (uptr) ti->kernel_stack + KERNEL_STACK_SIZE - 1;
    ti->state_regs = (regs *) (bottom & POINTER_ALIGN_MASK);
 }
 

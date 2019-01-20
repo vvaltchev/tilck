@@ -17,17 +17,16 @@
 #include <tilck/kernel/tasklet.h>
 
 #define USERMODE_VADDR_END (KERNEL_BASE_VA) /* biggest usermode vaddr + 1 */
+#define MAX_BRK         (0x40000000)        /* +1 GB (virtual memory) */
+#define USER_MMAP_BEGIN MAX_BRK             /* +1 GB (virtual memory) */
+#define USER_MMAP_END   (0x80000000)        /* +2 GB (virtual memory) */
 
-#define MAX_BRK ((uptr)0x40000000)          // +1 GB
-
-#define USER_MMAP_BEGIN MAX_BRK
-#define USER_MMAP_END   ((uptr)0x80000000)  // +2 GB
-
-#define KTHREAD_STACK_SIZE (PAGE_SIZE)
 #define IO_COPYBUF_SIZE (PAGE_SIZE)
 #define ARGS_COPYBUF_SIZE (PAGE_SIZE)
 #define MAX_PID 32768
 #define MAX_PATH 256
+
+STATIC_ASSERT((KERNEL_STACK_SIZE % PAGE_SIZE) == 0);
 
 typedef struct {
 

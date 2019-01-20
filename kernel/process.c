@@ -27,7 +27,7 @@
 
 static bool do_common_task_allocations(task_info *ti)
 {
-   ti->kernel_stack = kzmalloc(KTHREAD_STACK_SIZE);
+   ti->kernel_stack = kzmalloc(KERNEL_STACK_SIZE);
 
    if (!ti->kernel_stack)
       return false;
@@ -35,7 +35,7 @@ static bool do_common_task_allocations(task_info *ti)
    ti->io_copybuf = kmalloc(IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE);
 
    if (!ti->io_copybuf) {
-      kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
+      kfree2(ti->kernel_stack, KERNEL_STACK_SIZE);
       return false;
    }
 
@@ -46,7 +46,7 @@ static bool do_common_task_allocations(task_info *ti)
 static void internal_free_mem_for_zombie_task(task_info *ti)
 {
    kfree2(ti->io_copybuf, IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE);
-   kfree2(ti->kernel_stack, KTHREAD_STACK_SIZE);
+   kfree2(ti->kernel_stack, KERNEL_STACK_SIZE);
 
    ti->io_copybuf = NULL;
    ti->args_copybuf = NULL;
