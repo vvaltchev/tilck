@@ -344,8 +344,18 @@ static const s16 alt_charset[256] =
    ['w'] = CHAR_TTEE,
    ['q'] = CHAR_HLINE,
    ['x'] = CHAR_VLINE,
-   ['n'] = CHAR_CROSS
-
+   ['n'] = CHAR_CROSS,
+   ['`'] = CHAR_DIAMOND,
+   ['a'] = CHAR_BLOCK_MID,
+   ['f'] = CHAR_DEGREE,
+   ['g'] = CHAR_PLMINUS,
+   ['~'] = CHAR_BULLET,
+   [','] = CHAR_LARROW,
+   ['+'] = CHAR_RARROW,
+   ['.'] = CHAR_DARROW,
+   ['-'] = CHAR_UARROW,
+   ['h'] = CHAR_BLOCK_LIGHT,
+   ['0'] = CHAR_BLOCK_HEAVY
 };
 
 #pragma GCC diagnostic pop
@@ -354,6 +364,11 @@ static enum term_fret
 tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
+
+   if (ctx->use_alt_charset && alt_charset[c] != -1) {
+      term_internal_write_char2(alt_charset[c], *color);
+      return TERM_FILTER_WRITE_BLANK;
+   }
 
    switch (c) {
 
@@ -381,11 +396,6 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
       case '\017': /* shift in: return to the regular charset */
          ctx->use_alt_charset = false;
          return TERM_FILTER_WRITE_BLANK;
-   }
-
-   if (ctx->use_alt_charset && alt_charset[c] != -1) {
-      term_internal_write_char2(alt_charset[c], *color);
-      return TERM_FILTER_WRITE_BLANK;
    }
 
    return TERM_FILTER_WRITE_C;

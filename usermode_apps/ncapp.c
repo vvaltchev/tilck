@@ -13,6 +13,7 @@ int main()
 
    printw("Special characters:\n");
 
+   /* Expected to work on all linux terminals */
    printc(ACS_HLINE);
    printc(ACS_LLCORNER);
    printc(ACS_ULCORNER);
@@ -25,7 +26,20 @@ int main()
    printc(ACS_TTEE);
    printc(ACS_PLUS);
 
+   /* Mostly work on all linux terminals. Work on Tilck. */
    printc(ACS_DIAMOND);
+   printc(ACS_CKBOARD);
+   printc(ACS_DEGREE);
+   printc(ACS_PLMINUS);
+   printc(ACS_BULLET);
+
+   /* Not expected to work on all linux terminals. Work on Tilck. */
+   printc(ACS_LARROW);
+   printc(ACS_RARROW);
+   printc(ACS_DARROW);
+   printc(ACS_UARROW);
+   printc(ACS_BOARD);
+   printc(ACS_BLOCK);
 
    refresh();
    getch();

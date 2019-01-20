@@ -309,11 +309,6 @@ void term_internal_write_char2(char c, u8 color)
 
    switch (c) {
 
-      case '\033':
-      case '\a':
-      case '\v':
-         break;
-
       case '\n':
          term_internal_incr_row(color);
          break;

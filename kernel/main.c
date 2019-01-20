@@ -27,6 +27,7 @@
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/self_tests.h>
 #include <tilck/kernel/tty.h>
+#include <tilck/kernel/term.h>
 
 void init_console(void)
 {

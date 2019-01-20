@@ -116,6 +116,14 @@ void debug_term_dump_font_table(void);
 #define CHAR_TTEE         0xc2  //   T
 #define CHAR_HLINE        0xc4  //  --
 #define CHAR_CROSS        0xc5  //  +
+#define CHAR_DIAMOND      0x04
+#define CHAR_DEGREE       0xf8
+#define CHAR_PLMINUS      0xf1
+#define CHAR_BULLET       0x07
+#define CHAR_LARROW       0x1b
+#define CHAR_RARROW       0x1a
+#define CHAR_DARROW       0x19
+#define CHAR_UARROW       0x18
 
 /* Other functions */
 
