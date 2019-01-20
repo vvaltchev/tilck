@@ -154,20 +154,29 @@ kthread_create(kthread_func_ptr fun, void *arg)
 
 void kthread_exit(void)
 {
-   task_info *curr = get_curr_task();
+   /*
+    * WARNING: DO NOT USE ANY STACK VARIABLES HERE.
+    *
+    * The call to switch_to_initial_kernel_stack() will mess-up your whole stack
+    * (but that's what it is supposed to do). In this function, only global
+    * variables can be accessed.
+    *
+    * This function gets called automatically when a kernel thread function
+    * returns, but it can be called manually as well at any point.
+    */
    disable_preemption();
 
-   wake_up_tasks_waiting_on(curr);
-   task_change_state(curr, TASK_STATE_ZOMBIE);
+   wake_up_tasks_waiting_on(get_curr_task());
+   task_change_state(get_curr_task(), TASK_STATE_ZOMBIE);
 
    /* WARNING: the following call discards the whole stack! */
    switch_to_initial_kernel_stack();
 
    /* Free the heap allocations used by the task, including the kernel stack */
-   free_mem_for_zombie_task(curr);
+   free_mem_for_zombie_task(get_curr_task());
 
    /* Remove the from the scheduler and free its struct */
-   remove_task(curr);
+   remove_task(get_curr_task());
 
    set_current_task(NULL);
    switch_to_idle_task_outside_interrupt_context();
