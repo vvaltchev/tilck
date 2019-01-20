@@ -8,6 +8,8 @@
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/self_tests.h>
 
+#define NESTED_FAULTING_CODE_MAX_LEVELS 4
+
 #ifdef __i386__
 
 static void faulting_code_div0(void)
@@ -45,13 +47,11 @@ static void faulting_code2(void)
     * to trigger a PAGE FAULT and check that it has been handeled correctly.
     */
 
-   void **null_ptr = NULL;
-   *null_ptr = NULL;
+   uptr *ptr = NULL;
+   bzero(ptr, sizeof(uptr));
 
 #endif
 }
-
-#define NESTED_FAULTING_CODE_MAX_LEVELS 4
 
 static void nested_faulting_code(int level)
 {
