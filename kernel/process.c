@@ -408,6 +408,32 @@ static bool task_is_waiting_on_any_child(task_info *ti)
 }
 
 /*
+ * Note: we HAVE TO make this function NO_INLINE otherwise clang in release
+ * builds generates code that is incompatible with asm hacks chaining both
+ * the stack pointer and the frame pointer. It is worth mentioning that even
+ * copying the whole stack to a new place is still not enough for clang.
+ * Therefore, the simplest and reliable thing we can do is just to make the
+ * following function be non-inlineable and take no arguments.
+ */
+static NORETURN NO_INLINE void
+switch_stack_free_mem_and_schedule(void)
+{
+   ASSERT(get_curr_task()->state == TASK_STATE_ZOMBIE);
+
+   /* WARNING: the following call discards the whole stack! */
+   switch_to_initial_kernel_stack();
+
+   /* Free the heap allocations used, including the kernel stack */
+   free_mem_for_zombie_task(get_curr_task());
+
+   /* Run the scheduler */
+   schedule_outside_interrupt_context();
+
+   /* Reassure the compiler that we won't return (schedule() is not NORETURN) */
+   NOT_REACHED();
+}
+
+/*
  * NOTE: this code ASSUMES that threads does NOT exist:
  *    process = task = thread
  *
@@ -495,21 +521,10 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
          debug_qemu_turn_off_machine();
    }
 
-
-   if (ti == get_curr_task()) {
-
-      /* WARNING: the following call discards the whole stack! */
-      switch_to_initial_kernel_stack();
-
-      /* Free the heap allocations used by the task, including the kernel stack */
-      free_mem_for_zombie_task(get_curr_task());
-
-      /* Run the scheduler */
-      schedule_outside_interrupt_context();
-
-   } else {
+   if (ti == get_curr_task())
+      switch_stack_free_mem_and_schedule();
+   else
       free_mem_for_zombie_task(ti);
-   }
 }
 
 // Returns child's pid

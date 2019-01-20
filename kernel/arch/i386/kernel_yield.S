@@ -91,10 +91,22 @@ END_FUNC(panic_save_current_state)
 
 FUNC(switch_to_initial_kernel_stack):
 
-   pop eax # save the return-addr in eax
-   mov esp, offset kernel_initial_stack + KERNEL_INITIAL_STACK_SIZE - 4
-   push eax
-   ret
+   # save the return addr in eax
+   pop eax
+
+   # save in ecx the ebp-esp offset
+   mov ecx, ebp
+   sub ecx, esp
+
+   # change the stack pointer and the frame pointer
+   mov ebp, offset kernel_initial_stack + KERNEL_INITIAL_STACK_SIZE - 4
+   mov esp, ebp
+
+   # restore the ebp-esp difference
+   sub esp, ecx
+
+   # jump back to the return addr. Faster than: push eax + ret.
+   jmp eax
 
 END_FUNC(switch_to_initial_kernel_stack)
 
