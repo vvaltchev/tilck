@@ -51,8 +51,8 @@
 #else
    #define KMALLOC_FIRST_HEAP_SIZE    (512 * KB)
    #define KERNEL_MAX_SIZE            (2048 * KB)
-   #define SYMTAB_MAX_SIZE            (64 * KB)
-   #define STRTAB_MAX_SIZE            (64 * KB)
+   #define SYMTAB_MAX_SIZE            (128 * KB)
+   #define STRTAB_MAX_SIZE            (128 * KB)
 #endif
 
 #define USER_VSDO_LIKE_PAGE_VADDR  (LINEAR_MAPPING_END)
