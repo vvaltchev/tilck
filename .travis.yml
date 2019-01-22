@@ -18,11 +18,6 @@ matrix:
       dist: trusty
       sudo: false
       language: generic
-      env: NO_BUSYBOX=1 RELEASE=1
-    - os: linux
-      dist: trusty
-      sudo: false
-      language: generic
       env: NO_BUSYBOX=1 RELEASE=0
 
 before_install:
