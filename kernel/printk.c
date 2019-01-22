@@ -112,8 +112,10 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list args)
       // *fmt is '%'
       ++fmt;
 
-      if (*fmt == '%')
+      if (*fmt == '%') {
+         WRITE_CHAR(*fmt++);
          continue;
+      }
 
 switch_case:
 
