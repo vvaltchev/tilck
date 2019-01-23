@@ -30,14 +30,15 @@ struct term {
    const video_interface *vi;
    const video_interface *saved_vi;
 
+   u16 *buffer;
+   u32 scroll;
+   u32 max_scroll;
+
    /* TODO: move term's state here */
 };
 
 static term first_instance;
 
-static u16 *buffer;
-static u32 scroll;
-static u32 max_scroll;
 static u32 total_buffer_rows;
 static u32 extra_buffer_rows;
 static u16 failsafe_buffer[80 * 25];
@@ -84,17 +85,17 @@ static const video_interface no_output_vi =
 
 static ALWAYS_INLINE void buffer_set_entry(term *t, int row, int col, u16 e)
 {
-   buffer[(row + scroll) % total_buffer_rows * t->cols + col] = e;
+   t->buffer[(row + t->scroll) % total_buffer_rows * t->cols + col] = e;
 }
 
 static ALWAYS_INLINE u16 buffer_get_entry(term *t, int row, int col)
 {
-   return buffer[(row + scroll) % total_buffer_rows * t->cols + col];
+   return t->buffer[(row + t->scroll) % total_buffer_rows * t->cols + col];
 }
 
-static ALWAYS_INLINE bool ts_is_at_bottom(void)
+static ALWAYS_INLINE bool ts_is_at_bottom(term *t)
 {
-   return scroll == max_scroll;
+   return t->scroll == t->max_scroll;
 }
 
 static ALWAYS_INLINE u8 get_curr_cell_color(term *t)
@@ -107,8 +108,8 @@ static void term_redraw(term *t)
    fpu_context_begin();
 
    for (u32 row = 0; row < t->rows; row++) {
-      u32 buffer_row = (scroll + row) % total_buffer_rows;
-      t->vi->set_row(row, &buffer[t->cols * buffer_row], true);
+      u32 buffer_row = (t->scroll + row) % total_buffer_rows;
+      t->vi->set_row(row, &t->buffer[t->cols * buffer_row], true);
    }
 
    fpu_context_end();
@@ -117,51 +118,51 @@ static void term_redraw(term *t)
 static void ts_set_scroll(term *t, u32 requested_scroll)
 {
    /*
-    * 1. scroll cannot be > max_scroll
-    * 2. scroll cannot be < max_scroll - extra_buffer_rows, where
+    * 1. t->scroll cannot be > t->max_scroll
+    * 2. t->scroll cannot be < t->max_scroll - extra_buffer_rows, where
     *    extra_buffer_rows = total_buffer_rows - VIDEO_ROWS.
-    *    In other words, if for example total_buffer_rows is 26, and max_scroll
-    *    is 1000, scroll cannot be less than 1000 + 25 - 26 = 999, which means
-    *    exactly 1 scroll row (extra_buffer_rows == 1).
+    *    In other words, if for example total_buffer_rows is 26, and t->max_scroll
+    *    is 1000, t->scroll cannot be less than 1000 + 25 - 26 = 999, which means
+    *    exactly 1 t->scroll row (extra_buffer_rows == 1).
     */
 
    const u32 min_scroll =
-      max_scroll > extra_buffer_rows
-         ? max_scroll - extra_buffer_rows
+      t->max_scroll > extra_buffer_rows
+         ? t->max_scroll - extra_buffer_rows
          : 0;
 
-   requested_scroll = MIN(MAX(requested_scroll, min_scroll), max_scroll);
+   requested_scroll = MIN(MAX(requested_scroll, min_scroll), t->max_scroll);
 
-   if (requested_scroll == scroll)
+   if (requested_scroll == t->scroll)
       return; /* nothing to do */
 
-   scroll = requested_scroll;
+   t->scroll = requested_scroll;
    term_redraw(t);
 }
 
 static ALWAYS_INLINE void ts_scroll_up(term *t, u32 lines)
 {
-   if (lines > scroll)
+   if (lines > t->scroll)
       ts_set_scroll(t, 0);
    else
-      ts_set_scroll(t, scroll - lines);
+      ts_set_scroll(t, t->scroll - lines);
 }
 
 static ALWAYS_INLINE void ts_scroll_down(term *t, u32 lines)
 {
-   ts_set_scroll(t, scroll + lines);
+   ts_set_scroll(t, t->scroll + lines);
 }
 
 static ALWAYS_INLINE void ts_scroll_to_bottom(term *t)
 {
-   if (scroll != max_scroll) {
-      ts_set_scroll(t, max_scroll);
+   if (t->scroll != t->max_scroll) {
+      ts_set_scroll(t, t->max_scroll);
    }
 }
 
 static void ts_buf_clear_row(term *t, int row, u8 color)
 {
-   u16 *rowb = buffer + t->cols * ((row + scroll) % total_buffer_rows);
+   u16 *rowb = t->buffer + t->cols * ((row + t->scroll) % total_buffer_rows);
    memset16(rowb, make_vgaentry(' ', color), t->cols);
 }
 
@@ -179,7 +180,7 @@ static void term_int_scroll_up(term *t, u32 lines)
 {
    ts_scroll_up(t, lines);
 
-   if (!ts_is_at_bottom()) {
+   if (!ts_is_at_bottom(t)) {
       t->vi->disable_cursor();
    } else {
       t->vi->enable_cursor();
@@ -194,7 +195,7 @@ static void term_int_scroll_down(term *t, u32 lines)
 {
    ts_scroll_down(t, lines);
 
-   if (ts_is_at_bottom()) {
+   if (ts_is_at_bottom(t)) {
       t->vi->enable_cursor();
       t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
    }
@@ -220,13 +221,13 @@ static void term_internal_incr_row(term *t, u8 color)
       return;
    }
 
-   max_scroll++;
+   t->max_scroll++;
 
    if (t->vi->scroll_one_line_up) {
-      scroll++;
+      t->scroll++;
       t->vi->scroll_one_line_up();
    } else {
-      ts_set_scroll(t, max_scroll);
+      ts_set_scroll(t, t->max_scroll);
    }
 
    ts_clear_row(t, t->rows - 1, color);
@@ -383,7 +384,7 @@ static void term_action_reset(term *t)
 {
    t->vi->enable_cursor();
    term_action_move_ch_and_cur(t, 0, 0);
-   scroll = max_scroll = 0;
+   t->scroll = t->max_scroll = 0;
 
    for (int i = 0; i < t->rows; i++)
       ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
@@ -437,7 +438,7 @@ static void term_action_erase_in_display(term *t, int mode)
          break;
 
       case 3:
-         /* Clear the whole screen and erase the scroll buffer */
+         /* Clear the whole screen and erase the t->scroll t->buffer */
          {
             u32 row = t->r;
             u32 col = t->c;
@@ -494,9 +495,9 @@ static void term_action_non_buf_scroll_up(term *t, u32 n)
    n = MIN(n, t->rows);
 
    for (u32 row = 0; row < t->rows - n; row++) {
-      u32 s = (scroll + row + n) % total_buffer_rows;
-      u32 d = (scroll + row) % total_buffer_rows;
-      memcpy(&buffer[t->cols * d], &buffer[t->cols * s], t->cols * 2);
+      u32 s = (t->scroll + row + n) % total_buffer_rows;
+      u32 d = (t->scroll + row) % total_buffer_rows;
+      memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
    }
 
    for (u32 row = t->rows - n; row < t->rows; row++)
@@ -511,9 +512,9 @@ static void term_action_non_buf_scroll_down(term *t, u32 n)
    n = MIN(n, t->rows);
 
    for (int row = t->rows - n - 1; row >= 0; row--) {
-      u32 s = (scroll + row) % total_buffer_rows;
-      u32 d = (scroll + row + n) % total_buffer_rows;
-      memcpy(&buffer[t->cols * d], &buffer[t->cols * s], t->cols * 2);
+      u32 s = (t->scroll + row) % total_buffer_rows;
+      u32 d = (t->scroll + row + n) % total_buffer_rows;
+      memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
    }
 
    for (u32 row = 0; row < n; row++)
@@ -619,10 +620,10 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
       total_buffer_rows = t->rows + extra_buffer_rows;
 
       if (is_kmalloc_initialized())
-         buffer = kmalloc(2 * total_buffer_rows * t->cols);
+         t->buffer = kmalloc(2 * total_buffer_rows * t->cols);
    }
 
-   if (buffer) {
+   if (t->buffer) {
 
       term_tabs = kzmalloc(t->cols * t->rows);
 
@@ -637,7 +638,7 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
 
       extra_buffer_rows = 0;
       total_buffer_rows = t->rows;
-      buffer = failsafe_buffer;
+      t->buffer = failsafe_buffer;
 
       if (!in_panic())
          printk("ERROR: unable to allocate the term buffer.\n");
