@@ -335,13 +335,12 @@ void term_internal_write_char2(char c, u8 color)
 
       default:
 
-         term_internal_write_printable_char(c, color);
-
          if (current_col == term_cols) {
             current_col = 0;
             term_internal_incr_row(color);
          }
 
+         term_internal_write_printable_char(c, color);
          break;
    }
 }

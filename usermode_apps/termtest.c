@@ -235,6 +235,28 @@ void read_nonblock_rawmode(void)
    read_nonblock();
 }
 
+static void write_full_row(void)
+{
+   struct winsize w;
+   ioctl(1, TIOCGWINSZ, &w);
+
+   printf("Term size: %d rows x %d cols\n\n", w.ws_row, w.ws_col);
+
+   printf("TEST 1) Full row with '-':\n");
+
+   for (int i = 0; i < w.ws_col; i++)
+      putchar('-');
+
+   printf("[text after full row]\n\n\n");
+   printf("TEST 2) Now full row with '-' + \\n\n");
+
+   for (int i = 0; i < w.ws_col; i++)
+      putchar('-');
+
+   putchar('\n');
+   printf("[text after full row]\n\n");
+}
+
 #ifdef USERMODE_APP
 static void dump_termios(void)
 {
@@ -265,6 +287,7 @@ static struct {
    CMD_ENTRY("-p", write_to_stdin),
    CMD_ENTRY("-n", write_to_stdin),
    CMD_ENTRY("-nr", write_to_stdin),
+   CMD_ENTRY("-fr", write_full_row),
 };
 
 static void show_help(void)

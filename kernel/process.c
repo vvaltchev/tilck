@@ -665,7 +665,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
 
    if (!initialized) {
 
-      int path_field_len = (term_get_cols() - 80) + 35;
+      int path_field_len = (term_get_cols() - 80) + 37;
 
       snprintk(fmt + 4, sizeof(fmt) - 4,
                "| %%-9d | %%-5d | %%-5d | %%-8s | %%-%ds |\n",
@@ -675,7 +675,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
                "| %%-9s | %%-5s | %%-5s | %%-8s | %%-%ds |\n",
                path_field_len);
 
-      snprintk(header, MIN(sizeof(header), term_get_cols()), hfmt,
+      snprintk(header, sizeof(header), hfmt,
                "tid", "pid", "ppid", "state", "path or kernel thread");
 
       char *p = hline_sep + strlen(hline_sep);
