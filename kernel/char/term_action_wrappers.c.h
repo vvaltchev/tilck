@@ -153,17 +153,17 @@ void term_restart_video_output(term *t)
 
 u32 term_get_tab_size(term *t)
 {
-   return t->term_tab_size;
+   return t->tabsize;
 }
 
 u32 term_get_rows(term *t)
 {
-   return t->term_rows;
+   return t->rows;
 }
 
 u32 term_get_cols(term *t)
 {
-   return t->term_cols;
+   return t->cols;
 }
 
 u32 term_get_curr_row(term *t)
@@ -189,5 +189,5 @@ term_filter_func term_get_filter_func(term *t)
 
 bool term_is_initialized(term *t)
 {
-   return t->term_initialized;
+   return t->initialized;
 }
