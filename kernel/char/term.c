@@ -19,12 +19,12 @@
 struct term {
 
    /* TODO: move term's state here */
+   bool term_initialized;
 
 };
 
 static term term_instances[1];
 
-static bool term_initialized;
 static int term_tab_size;
 
 static u16 term_cols;
@@ -260,7 +260,7 @@ static void term_internal_write_tab(u8 color)
    current_col = tab_col + 1;
 }
 
-void term_internal_write_backspace(u8 color)
+void term_internal_write_backspace(term *t, u8 color)
 {
    if (!current_col || current_col <= term_col_offset)
       return;
@@ -665,6 +665,6 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
    for (int i = 0; i < term_rows; i++)
       ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
-   term_initialized = true;
+   t->term_initialized = true;
    printk_flush_ringbuf();
 }

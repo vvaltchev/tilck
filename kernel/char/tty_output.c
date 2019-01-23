@@ -402,7 +402,7 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
 
    if (c == c_term.c_cc[VERASE]) {
 
-      term_internal_write_backspace(*color);
+      term_internal_write_backspace(get_curr_term(), *color);
       return TERM_FILTER_WRITE_BLANK;
 
    } else if (c == c_term.c_cc[VWERASE]) {

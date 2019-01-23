@@ -189,5 +189,5 @@ term_filter_func term_get_filter_func(term *t)
 
 bool term_is_initialized(term *t)
 {
-   return term_initialized;
+   return t->term_initialized;
 }

@@ -31,4 +31,4 @@ typedef struct {
 } actions_table_item;
 
 void term_internal_write_char2(term *t, char c, u8 color);
-void term_internal_write_backspace(u8 color);
+void term_internal_write_backspace(term *t, u8 color);
