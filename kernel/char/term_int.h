@@ -3,7 +3,7 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
-typedef enum {
+enum term_action {
 
    a_none,
    a_write,
@@ -19,7 +19,7 @@ typedef enum {
    a_pause_video_output,
    a_restart_video_output
 
-} term_action_type;
+};
 
 typedef void (*action_func)(/* unspecified number of arguments */);
 
