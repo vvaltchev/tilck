@@ -46,7 +46,7 @@ static void term_execute_or_enqueue_action(term *t, term_action a)
    bool written;
    bool was_empty;
 
-   written = ringbuf_write_elem_ex(&term_ringbuf, &a, &was_empty);
+   written = ringbuf_write_elem_ex(&t->term_ringbuf, &a, &was_empty);
 
    /*
     * written would be false only if the ringbuf was full. In order that to
@@ -57,7 +57,7 @@ static void term_execute_or_enqueue_action(term *t, term_action a)
 
    if (was_empty) {
 
-      while (ringbuf_read_elem(&term_ringbuf, &a))
+      while (ringbuf_read_elem(&t->term_ringbuf, &a))
          term_execute_action(t, &a);
 
    }
@@ -178,13 +178,13 @@ u32 term_get_curr_col(term *t)
 
 void term_set_filter_func(term *t, term_filter_func func, void *ctx)
 {
-   filter = func;
-   filter_ctx = ctx;
+   t->filter = func;
+   t->filter_ctx = ctx;
 }
 
 term_filter_func term_get_filter_func(term *t)
 {
-   return filter;
+   return t->filter;
 }
 
 bool term_is_initialized(term *t)

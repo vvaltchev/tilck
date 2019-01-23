@@ -39,17 +39,16 @@ struct term {
    u16 failsafe_buffer[80 * 25];
    bool *term_tabs;
 
-   /* TODO: move term's state here */
+   ringbuf term_ringbuf;
+   term_action term_actions_buf[32];
+
+   term_filter_func filter;
+   void *filter_ctx;
 };
 
 static term first_instance;
 
 
-static ringbuf term_ringbuf;
-static term_action term_actions_buf[32];
-
-static term_filter_func filter;
-static void *filter_ctx;
 
 term *__curr_term = &first_instance;
 
@@ -119,12 +118,12 @@ static void term_redraw(term *t)
 static void ts_set_scroll(term *t, u32 requested_scroll)
 {
    /*
-    * 1. t->scroll cannot be > t->max_scroll
-    * 2. t->scroll cannot be < t->max_scroll - t->extra_buffer_rows, where
-    *    t->extra_buffer_rows = t->total_buffer_rows - VIDEO_ROWS.
-    *    In other words, if for example t->total_buffer_rows is 26, and t->max_scroll
-    *    is 1000, t->scroll cannot be less than 1000 + 25 - 26 = 999, which means
-    *    exactly 1 t->scroll row (t->extra_buffer_rows == 1).
+    * 1. scroll cannot be > max_scroll
+    * 2. scroll cannot be < max_scroll - extra_buffer_rows, where
+    *    extra_buffer_rows = total_buffer_rows - VIDEO_ROWS.
+    *    In other words, if for example total_buffer_rows is 26, and max_scroll
+    *    is 1000, scroll cannot be less than 1000 + 25 - 26 = 999, which means
+    *    exactly 1 scroll row (extra_buffer_rows == 1).
     */
 
    const u32 min_scroll =
@@ -334,11 +333,11 @@ static void term_action_write(term *t, char *buf, u32 len, u8 color)
 
    for (u32 i = 0; i < len; i++) {
 
-      if (filter) {
+      if (t->filter) {
 
          term_action a = { .type1 = a_none };
 
-         if (filter((u8) buf[i], &color, &a, filter_ctx))
+         if (t->filter((u8) buf[i], &color, &a, t->filter_ctx))
             term_internal_write_char2(t, buf[i], color);
 
          if (a.type1 != a_none)
@@ -611,10 +610,10 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
    t->cols = cols;
    t->rows = rows;
 
-   ringbuf_init(&term_ringbuf,
-                ARRAY_SIZE(term_actions_buf),
+   ringbuf_init(&t->term_ringbuf,
+                ARRAY_SIZE(t->term_actions_buf),
                 sizeof(term_action),
-                term_actions_buf);
+                t->term_actions_buf);
 
    if (!in_panic()) {
       t->extra_buffer_rows = 9 * t->rows;
