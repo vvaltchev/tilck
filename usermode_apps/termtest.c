@@ -14,8 +14,10 @@
 #include <errno.h>
 
 #ifdef USERMODE_APP
-   /* It means that the application is compiled with Tilck's build system */
+   /* The application is compiled with Tilck's build system */
    #include <tilck/common/debug/termios_debug.c.h>
+#else
+   #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
 #endif
 
 #define RDTSC() __builtin_ia32_rdtsc()
@@ -30,9 +32,6 @@ void term_set_raw_mode(void)
    struct termios t = orig_termios;
 
    printf("Setting tty to 'raw' mode\n");
-
-   // "Minimal" raw mode
-   // t.c_lflag &= ~(ECHO | ICANON);
 
    // "Full" raw mode
    t.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
@@ -65,7 +64,7 @@ void one_read(void)
 
    printf("read(%d): ", ret);
 
-   for (int i = 0; i < ret; i++)
+   for (int i = 0; i < ret; i++) {
       if (buf[i] == '\033')
          printf("ESC ");
       else if (buf[i] == '\n')
@@ -76,6 +75,7 @@ void one_read(void)
          printf("%c ", buf[i]);
       else
          printf("[0x%x] ", buf[i]);
+   }
 
    printf("\n");
 }
@@ -188,7 +188,7 @@ void console_perf_test(void)
    free(buf);
 }
 
-void read_nonblock()
+void read_nonblock(void)
 {
    int rc;
    char buf[32];
@@ -222,7 +222,7 @@ void read_nonblock()
 
    }
 
-   // Restore the orignal flags
+   // Restore the original flags
    rc = fcntl(0, F_SETFL, saved_flags);
 
    if (rc != 0)
@@ -235,62 +235,69 @@ void read_nonblock_rawmode(void)
    read_nonblock();
 }
 
-void show_help_and_exit(void)
-{
-   printf("Options:\n");
-   printf("    -r  one_read()\n");
-   printf("    -e  echo_read()\n");
-   printf("    -1  read_1_canon_mode()\n");
-   printf("    -c  read_canon_mode()\n");
-   printf("    -w  write_to_stdin()\n");
-
 #ifdef USERMODE_APP
-   printf("    -s  debug_dump_termios()\n");
+static void dump_termios(void)
+{
+   debug_dump_termios(&orig_termios);
+}
 #endif
 
-   printf("    -p  console_perf_test()\n");
-   printf("    -n  read_nonblock()\n");
-   printf("    -nr read_nonblock_rawmode()\n");
-   exit(1);
+#define CMD_ENTRY(opt, func) { (opt), #func, &func }
+
+static struct {
+
+   const char *opt;
+   const char *func_name;
+   void (*func)(void);
+
+} commands[] = {
+
+   CMD_ENTRY("-r", one_read),
+   CMD_ENTRY("-e", echo_read),
+   CMD_ENTRY("-1", read_1_canon_mode),
+   CMD_ENTRY("-c", read_canon_mode),
+   CMD_ENTRY("-w", write_to_stdin),
+
+#ifdef USERMODE_APP
+   CMD_ENTRY("-s", dump_termios),
+#endif
+
+   CMD_ENTRY("-p", write_to_stdin),
+   CMD_ENTRY("-n", write_to_stdin),
+   CMD_ENTRY("-nr", write_to_stdin),
+};
+
+static void show_help(void)
+{
+   printf("Options:\n");
+
+   for (size_t i = 0; i < ARRAY_SIZE(commands); i++) {
+      printf("    %-3s  %s()\n", commands[i].opt, commands[i].func_name);
+   }
 }
 
 int main(int argc, char ** argv)
 {
-   save_termios();
+   void (*cmdfunc)(void) = show_help;
 
    if (argc < 2) {
-      show_help_and_exit();
+      show_help();
+      return 1;
    }
 
-   if (0) {
-      /* Dummy, used just to allow all the below to be like "} else if (" */
-   } else if (!strcmp(argv[1], "-e")) {
-      echo_read();
-   } else if (!strcmp(argv[1], "-1")) {
-      read_1_canon_mode();
-   } else if (!strcmp(argv[1], "-c")) {
-      read_canon_mode();
-   } else if (!strcmp(argv[1], "-r")) {
-      one_read();
-   } else if (!strcmp(argv[1], "-w")) {
-      write_to_stdin();
-
-#ifdef USERMODE_APP
-   } else if (!strcmp(argv[1], "-s")) {
-      debug_dump_termios(&orig_termios);
-#endif
-
-   } else if (!strcmp(argv[1], "-p")) {
-      console_perf_test();
-   } else if (!strcmp(argv[1], "-n")) {
-      read_nonblock();
-   } else if (!strcmp(argv[1], "-nr")) {
-      read_nonblock_rawmode();
-   } else {
-      show_help_and_exit();
+   for (size_t i = 0; i < ARRAY_SIZE(commands); i++) {
+      if (!strcmp(argv[1], commands[i].opt)) {
+         cmdfunc = commands[i].func;
+         break;
+      }
    }
 
+   save_termios();
+   cmdfunc();
    restore_termios();
-   printf("\rOriginal tty mode restored\n");
+
+   if (cmdfunc != &show_help)
+      printf("\rOriginal tty mode restored\n");
+
    return 0;
 }
