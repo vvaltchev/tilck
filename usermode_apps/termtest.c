@@ -284,9 +284,9 @@ static struct {
    CMD_ENTRY("-s", dump_termios),
 #endif
 
-   CMD_ENTRY("-p", write_to_stdin),
-   CMD_ENTRY("-n", write_to_stdin),
-   CMD_ENTRY("-nr", write_to_stdin),
+   CMD_ENTRY("-p", console_perf_test),
+   CMD_ENTRY("-n", read_nonblock),
+   CMD_ENTRY("-nr", read_nonblock_rawmode),
    CMD_ENTRY("-fr", write_full_row),
 };
 
