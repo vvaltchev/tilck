@@ -18,17 +18,17 @@
 
 struct term {
 
-   /* TODO: move term's state here */
    bool term_initialized;
+   int term_tab_size;
+   u16 term_cols;
+   u16 term_rows;
 
+   /* TODO: move term's state here */
 };
 
 static term term_instances[1];
 
-static int term_tab_size;
 
-static u16 term_cols;
-static u16 term_rows;
 static u16 current_row;
 static u16 current_col;
 static u16 term_col_offset;
@@ -83,14 +83,14 @@ static const video_interface no_output_vi =
 
 /* --------------------------------------------------------- */
 
-static ALWAYS_INLINE void buffer_set_entry(int row, int col, u16 e)
+static ALWAYS_INLINE void buffer_set_entry(term *t, int row, int col, u16 e)
 {
-   buffer[(row + scroll) % total_buffer_rows * term_cols + col] = e;
+   buffer[(row + scroll) % total_buffer_rows * t->term_cols + col] = e;
 }
 
-static ALWAYS_INLINE u16 buffer_get_entry(int row, int col)
+static ALWAYS_INLINE u16 buffer_get_entry(term *t, int row, int col)
 {
-   return buffer[(row + scroll) % total_buffer_rows * term_cols + col];
+   return buffer[(row + scroll) % total_buffer_rows * t->term_cols + col];
 }
 
 static ALWAYS_INLINE bool ts_is_at_bottom(void)
@@ -98,19 +98,19 @@ static ALWAYS_INLINE bool ts_is_at_bottom(void)
    return scroll == max_scroll;
 }
 
-static void term_redraw(void)
+static void term_redraw(term *t)
 {
    fpu_context_begin();
 
-   for (u32 row = 0; row < term_rows; row++) {
+   for (u32 row = 0; row < t->term_rows; row++) {
       u32 buffer_row = (scroll + row) % total_buffer_rows;
-      vi->set_row(row, &buffer[term_cols * buffer_row], true);
+      vi->set_row(row, &buffer[t->term_cols * buffer_row], true);
    }
 
    fpu_context_end();
 }
 
-static void ts_set_scroll(u32 requested_scroll)
+static void ts_set_scroll(term *t, u32 requested_scroll)
 {
    /*
     * 1. scroll cannot be > max_scroll
@@ -132,38 +132,38 @@ static void ts_set_scroll(u32 requested_scroll)
       return; /* nothing to do */
 
    scroll = requested_scroll;
-   term_redraw();
+   term_redraw(t);
 }
 
-static ALWAYS_INLINE void ts_scroll_up(u32 lines)
+static ALWAYS_INLINE void ts_scroll_up(term *t, u32 lines)
 {
    if (lines > scroll)
-      ts_set_scroll(0);
+      ts_set_scroll(t, 0);
    else
-      ts_set_scroll(scroll - lines);
+      ts_set_scroll(t, scroll - lines);
 }
 
-static ALWAYS_INLINE void ts_scroll_down(u32 lines)
+static ALWAYS_INLINE void ts_scroll_down(term *t, u32 lines)
 {
-   ts_set_scroll(scroll + lines);
+   ts_set_scroll(t, scroll + lines);
 }
 
-static ALWAYS_INLINE void ts_scroll_to_bottom(void)
+static ALWAYS_INLINE void ts_scroll_to_bottom(term *t)
 {
    if (scroll != max_scroll) {
-      ts_set_scroll(max_scroll);
+      ts_set_scroll(t, max_scroll);
    }
 }
 
-static void ts_buf_clear_row(int row, u8 color)
+static void ts_buf_clear_row(term *t, int row, u8 color)
 {
-   u16 *rowb = buffer + term_cols * ((row + scroll) % total_buffer_rows);
-   memset16(rowb, make_vgaentry(' ', color), term_cols);
+   u16 *rowb = buffer + t->term_cols * ((row + scroll) % total_buffer_rows);
+   memset16(rowb, make_vgaentry(' ', color), t->term_cols);
 }
 
-static void ts_clear_row(int row, u8 color)
+static void ts_clear_row(term *t, int row, u8 color)
 {
-   ts_buf_clear_row(row, color);
+   ts_buf_clear_row(t, row, color);
    vi->clear_row(row, color);
 }
 
@@ -171,9 +171,9 @@ static void ts_clear_row(int row, u8 color)
 
 static void term_execute_action(term *t, term_action *a);
 
-static void term_int_scroll_up(u32 lines)
+static void term_int_scroll_up(term *t, u32 lines)
 {
-   ts_scroll_up(lines);
+   ts_scroll_up(t, lines);
 
    if (!ts_is_at_bottom()) {
       vi->disable_cursor();
@@ -181,7 +181,7 @@ static void term_int_scroll_up(u32 lines)
       vi->enable_cursor();
       vi->move_cursor(current_row,
                       current_col,
-                      vgaentry_get_color(buffer_get_entry(current_row,
+                      vgaentry_get_color(buffer_get_entry(t, current_row,
                                                           current_col)));
    }
 
@@ -189,15 +189,15 @@ static void term_int_scroll_up(u32 lines)
       vi->flush_buffers();
 }
 
-static void term_int_scroll_down(u32 lines)
+static void term_int_scroll_down(term *t, u32 lines)
 {
-   ts_scroll_down(lines);
+   ts_scroll_down(t, lines);
 
    if (ts_is_at_bottom()) {
       vi->enable_cursor();
       vi->move_cursor(current_row,
                       current_col,
-                      vgaentry_get_color(buffer_get_entry(current_row,
+                      vgaentry_get_color(buffer_get_entry(t, current_row,
                                                           current_col)));
    }
 
@@ -208,16 +208,16 @@ static void term_int_scroll_down(u32 lines)
 static void term_action_scroll(term *t, int lines)
 {
    if (lines > 0)
-      term_int_scroll_up(lines);
+      term_int_scroll_up(t, lines);
    else
-      term_int_scroll_down(-lines);
+      term_int_scroll_down(t, -lines);
 }
 
-static void term_internal_incr_row(u8 color)
+static void term_internal_incr_row(term *t, u8 color)
 {
    term_col_offset = 0;
 
-   if (current_row < term_rows - 1) {
+   if (current_row < t->term_rows - 1) {
       ++current_row;
       return;
    }
@@ -228,35 +228,35 @@ static void term_internal_incr_row(u8 color)
       scroll++;
       vi->scroll_one_line_up();
    } else {
-      ts_set_scroll(max_scroll);
+      ts_set_scroll(t, max_scroll);
    }
 
-   ts_clear_row(term_rows - 1, color);
+   ts_clear_row(t, t->term_rows - 1, color);
 }
 
-static void term_internal_write_printable_char(u8 c, u8 color)
+static void term_internal_write_printable_char(term *t, u8 c, u8 color)
 {
    u16 entry = make_vgaentry(c, color);
-   buffer_set_entry(current_row, current_col, entry);
+   buffer_set_entry(t, current_row, current_col, entry);
    vi->set_char_at(current_row, current_col, entry);
    current_col++;
 }
 
-static void term_internal_write_tab(u8 color)
+static void term_internal_write_tab(term *t, u8 color)
 {
-   int rem = term_cols - current_col - 1;
+   int rem = t->term_cols - current_col - 1;
 
    if (!term_tabs) {
 
       if (rem)
-         term_internal_write_printable_char(' ', color);
+         term_internal_write_printable_char(t, ' ', color);
 
       return;
    }
 
    int tab_col =
-      MIN(round_up_at(current_col+1, term_tab_size), (u32)term_cols - 2);
-   term_tabs[current_row * term_cols + tab_col] = 1;
+      MIN(round_up_at(current_col+1, t->term_tab_size), (u32)t->term_cols - 2);
+   term_tabs[current_row * t->term_cols + tab_col] = 1;
    current_col = tab_col + 1;
 }
 
@@ -268,21 +268,21 @@ void term_internal_write_backspace(term *t, u8 color)
    const u16 space_entry = make_vgaentry(' ', color);
    current_col--;
 
-   if (!term_tabs || !term_tabs[current_row * term_cols + current_col]) {
-      buffer_set_entry(current_row, current_col, space_entry);
+   if (!term_tabs || !term_tabs[current_row * t->term_cols + current_col]) {
+      buffer_set_entry(t, current_row, current_col, space_entry);
       vi->set_char_at(current_row, current_col, space_entry);
       return;
    }
 
    /* we hit the end of a tab */
-   term_tabs[current_row * term_cols + current_col] = 0;
+   term_tabs[current_row * t->term_cols + current_col] = 0;
 
-   for (int i = term_tab_size - 1; i >= 0; i--) {
+   for (int i = t->term_tab_size - 1; i >= 0; i--) {
 
       if (!current_col || current_col == term_col_offset)
          break;
 
-      if (term_tabs[current_row * term_cols + current_col - 1])
+      if (term_tabs[current_row * t->term_cols + current_col - 1])
          break; /* we hit the previous tab */
 
       if (i)
@@ -305,7 +305,7 @@ void term_internal_write_char2(term *t, char c, u8 color)
    switch (c) {
 
       case '\n':
-         term_internal_incr_row(color);
+         term_internal_incr_row(t, color);
          break;
 
       case '\r':
@@ -313,24 +313,24 @@ void term_internal_write_char2(term *t, char c, u8 color)
          break;
 
       case '\t':
-         term_internal_write_tab(color);
+         term_internal_write_tab(t, color);
          break;
 
       default:
 
-         if (current_col == term_cols) {
+         if (current_col == t->term_cols) {
             current_col = 0;
-            term_internal_incr_row(color);
+            term_internal_incr_row(t, color);
          }
 
-         term_internal_write_printable_char(c, color);
+         term_internal_write_printable_char(t, c, color);
          break;
    }
 }
 
 static void term_action_write(term *t, char *buf, u32 len, u8 color)
 {
-   ts_scroll_to_bottom();
+   ts_scroll_to_bottom(t);
    vi->enable_cursor();
 
    for (u32 i = 0; i < len; i++) {
@@ -353,7 +353,7 @@ static void term_action_write(term *t, char *buf, u32 len, u8 color)
 
    vi->move_cursor(current_row,
                    current_col,
-                   vgaentry_get_color(buffer_get_entry(current_row,
+                   vgaentry_get_color(buffer_get_entry(t, current_row,
                                                        current_col)));
 
    if (vi->flush_buffers)
@@ -367,12 +367,12 @@ static void term_action_set_col_offset(term *t, u32 off)
 
 static void term_action_move_ch_and_cur(term *t, int row, int col)
 {
-   current_row = MIN(MAX(row, 0), term_rows - 1);
-   current_col = MIN(MAX(col, 0), term_cols - 1);
+   current_row = MIN(MAX(row, 0), t->term_rows - 1);
+   current_col = MIN(MAX(col, 0), t->term_cols - 1);
 
    vi->move_cursor(current_row,
                    current_col,
-                   vgaentry_get_color(buffer_get_entry(current_row,
+                   vgaentry_get_color(buffer_get_entry(t, current_row,
                                                        current_col)));
 
 
@@ -382,12 +382,12 @@ static void term_action_move_ch_and_cur(term *t, int row, int col)
 
 static void term_action_move_ch_and_cur_rel(term *t, s8 dx, s8 dy)
 {
-   current_row = MIN(MAX((int)current_row + dx, 0), term_rows - 1);
-   current_col = MIN(MAX((int)current_col + dy, 0), term_cols - 1);
+   current_row = MIN(MAX((int)current_row + dx, 0), t->term_rows - 1);
+   current_col = MIN(MAX((int)current_col + dy, 0), t->term_cols - 1);
 
    vi->move_cursor(current_row,
                    current_col,
-                   vgaentry_get_color(buffer_get_entry(current_row,
+                   vgaentry_get_color(buffer_get_entry(t, current_row,
                                                        current_col)));
 
 
@@ -401,11 +401,11 @@ static void term_action_reset(term *t)
    term_action_move_ch_and_cur(t, 0, 0);
    scroll = max_scroll = 0;
 
-   for (int i = 0; i < term_rows; i++)
-      ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+   for (int i = 0; i < t->term_rows; i++)
+      ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
    if (term_tabs)
-      memset(term_tabs, 0, term_cols * term_rows);
+      memset(term_tabs, 0, t->term_cols * t->term_rows);
 }
 
 static void term_action_erase_in_display(term *t, int mode)
@@ -419,13 +419,13 @@ static void term_action_erase_in_display(term *t, int mode)
 
          /* Clear the screen from the cursor position up to the end */
 
-         for (u32 col = current_col; col < term_cols; col++) {
-            buffer_set_entry(current_row, col, entry);
+         for (u32 col = current_col; col < t->term_cols; col++) {
+            buffer_set_entry(t, current_row, col, entry);
             vi->set_char_at(current_row, col, entry);
          }
 
-         for (u32 i = current_row + 1; i < term_rows; i++)
-            ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+         for (u32 i = current_row + 1; i < t->term_rows; i++)
+            ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
          break;
 
@@ -434,10 +434,10 @@ static void term_action_erase_in_display(term *t, int mode)
          /* Clear the screen from the beginning up to cursor's position */
 
          for (u32 i = 0; i < current_row; i++)
-            ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+            ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
          for (u32 col = 0; col < current_col; col++) {
-            buffer_set_entry(current_row, col, entry);
+            buffer_set_entry(t, current_row, col, entry);
             vi->set_char_at(current_row, col, entry);
          }
 
@@ -447,8 +447,8 @@ static void term_action_erase_in_display(term *t, int mode)
 
          /* Clear the whole screen */
 
-         for (u32 i = 0; i < term_rows; i++)
-            ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+         for (u32 i = 0; i < t->term_rows; i++)
+            ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
          break;
 
@@ -479,21 +479,21 @@ static void term_action_erase_in_line(term *t, int mode)
    switch (mode) {
 
       case 0:
-         for (u32 col = current_col; col < term_cols; col++) {
-            buffer_set_entry(current_row, col, entry);
+         for (u32 col = current_col; col < t->term_cols; col++) {
+            buffer_set_entry(t, current_row, col, entry);
             vi->set_char_at(current_row, col, entry);
          }
          break;
 
       case 1:
          for (u32 col = 0; col < current_col; col++) {
-            buffer_set_entry(current_row, col, entry);
+            buffer_set_entry(t, current_row, col, entry);
             vi->set_char_at(current_row, col, entry);
          }
          break;
 
       case 2:
-         ts_clear_row(current_row, vgaentry_get_color(entry));
+         ts_clear_row(t, current_row, vgaentry_get_color(entry));
          break;
 
       default:
@@ -507,35 +507,35 @@ static void term_action_erase_in_line(term *t, int mode)
 static void term_action_non_buf_scroll_up(term *t, u32 n)
 {
    ASSERT(n >= 1);
-   n = MIN(n, term_rows);
+   n = MIN(n, t->term_rows);
 
-   for (u32 row = 0; row < term_rows - n; row++) {
+   for (u32 row = 0; row < t->term_rows - n; row++) {
       u32 s = (scroll + row + n) % total_buffer_rows;
       u32 d = (scroll + row) % total_buffer_rows;
-      memcpy(&buffer[term_cols * d], &buffer[term_cols * s], term_cols * 2);
+      memcpy(&buffer[t->term_cols * d], &buffer[t->term_cols * s], t->term_cols * 2);
    }
 
-   for (u32 row = term_rows - n; row < term_rows; row++)
-      ts_buf_clear_row(row, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+   for (u32 row = t->term_rows - n; row < t->term_rows; row++)
+      ts_buf_clear_row(t, row, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
-   term_redraw();
+   term_redraw(t);
 }
 
 static void term_action_non_buf_scroll_down(term *t, u32 n)
 {
    ASSERT(n >= 1);
-   n = MIN(n, term_rows);
+   n = MIN(n, t->term_rows);
 
-   for (int row = term_rows - n - 1; row >= 0; row--) {
+   for (int row = t->term_rows - n - 1; row >= 0; row--) {
       u32 s = (scroll + row) % total_buffer_rows;
       u32 d = (scroll + row + n) % total_buffer_rows;
-      memcpy(&buffer[term_cols * d], &buffer[term_cols * s], term_cols * 2);
+      memcpy(&buffer[t->term_cols * d], &buffer[t->term_cols * s], t->term_cols * 2);
    }
 
    for (u32 row = 0; row < n; row++)
-      ts_buf_clear_row(row, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+      ts_buf_clear_row(t, row, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
-   term_redraw();
+   term_redraw(t);
 }
 
 static void term_action_pause_video_output(term *t)
@@ -552,7 +552,7 @@ static void term_action_restart_video_output(term *t)
 {
    vi = saved_vi;
 
-   term_redraw();
+   term_redraw(t);
    vi->enable_cursor();
 
    if (vi->redraw_static_elements)
@@ -572,42 +572,42 @@ void debug_term_dump_font_table(term *t)
 
    u8 color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
 
-   term_internal_incr_row(color);
+   term_internal_incr_row(t, color);
    current_col = 0;
 
    for (u32 i = 0; i < 6; i++)
-      term_internal_write_printable_char(' ', color);
+      term_internal_write_printable_char(t, ' ', color);
 
    for (u32 i = 0; i < 16; i++) {
-      term_internal_write_printable_char(hex_digits[i], color);
-      term_internal_write_printable_char(' ', color);
+      term_internal_write_printable_char(t, hex_digits[i], color);
+      term_internal_write_printable_char(t, ' ', color);
    }
 
-   term_internal_incr_row(color);
-   term_internal_incr_row(color);
+   term_internal_incr_row(t, color);
+   term_internal_incr_row(t, color);
    current_col = 0;
 
    for (u32 i = 0; i < 16; i++) {
 
-      term_internal_write_printable_char('0', color);
-      term_internal_write_printable_char('x', color);
-      term_internal_write_printable_char(hex_digits[i], color);
+      term_internal_write_printable_char(t, '0', color);
+      term_internal_write_printable_char(t, 'x', color);
+      term_internal_write_printable_char(t, hex_digits[i], color);
 
       for (u32 i = 0; i < 3; i++)
-         term_internal_write_printable_char(' ', color);
+         term_internal_write_printable_char(t, ' ', color);
 
       for (u32 j = 0; j < 16; j++) {
 
          u8 c = i * 16 + j;
-         term_internal_write_printable_char(c, color);
-         term_internal_write_printable_char(' ', color);
+         term_internal_write_printable_char(t, c, color);
+         term_internal_write_printable_char(t, ' ', color);
       }
 
-      term_internal_incr_row(color);
+      term_internal_incr_row(t, color);
       current_col = 0;
    }
 
-   term_internal_incr_row(color);
+   term_internal_incr_row(t, color);
    current_col = 0;
 }
 
@@ -619,11 +619,11 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
 {
    ASSERT(!are_interrupts_enabled());
 
-   term_tab_size = 8;
+   t->term_tab_size = 8;
 
    vi = intf;
-   term_cols = cols;
-   term_rows = rows;
+   t->term_cols = cols;
+   t->term_rows = rows;
 
    ringbuf_init(&term_ringbuf,
                 ARRAY_SIZE(term_actions_buf),
@@ -631,16 +631,16 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
                 term_actions_buf);
 
    if (!in_panic()) {
-      extra_buffer_rows = 9 * term_rows;
-      total_buffer_rows = term_rows + extra_buffer_rows;
+      extra_buffer_rows = 9 * t->term_rows;
+      total_buffer_rows = t->term_rows + extra_buffer_rows;
 
       if (is_kmalloc_initialized())
-         buffer = kmalloc(2 * total_buffer_rows * term_cols);
+         buffer = kmalloc(2 * total_buffer_rows * t->term_cols);
    }
 
    if (buffer) {
 
-      term_tabs = kzmalloc(term_cols * term_rows);
+      term_tabs = kzmalloc(t->term_cols * t->term_rows);
 
       if (!term_tabs)
          printk("WARNING: unable to allocate the term_tabs buffer\n");
@@ -648,11 +648,11 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
    } else {
 
       /* We're in panic or we were unable to allocate the buffer */
-      term_cols = MIN(80, term_cols);
-      term_rows = MIN(25, term_rows);
+      t->term_cols = MIN(80, t->term_cols);
+      t->term_rows = MIN(25, t->term_rows);
 
       extra_buffer_rows = 0;
-      total_buffer_rows = term_rows;
+      total_buffer_rows = t->term_rows;
       buffer = failsafe_buffer;
 
       if (!in_panic())
@@ -662,8 +662,8 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
    vi->enable_cursor();
    term_action_move_ch_and_cur(t, 0, 0);
 
-   for (int i = 0; i < term_rows; i++)
-      ts_clear_row(i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+   for (int i = 0; i < t->term_rows; i++)
+      ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
    t->term_initialized = true;
    printk_flush_ringbuf();

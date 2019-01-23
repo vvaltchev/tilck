@@ -153,17 +153,17 @@ void term_restart_video_output(term *t)
 
 u32 term_get_tab_size(term *t)
 {
-   return term_tab_size;
+   return t->term_tab_size;
 }
 
 u32 term_get_rows(term *t)
 {
-   return term_rows;
+   return t->term_rows;
 }
 
 u32 term_get_cols(term *t)
 {
-   return term_cols;
+   return t->term_cols;
 }
 
 u32 term_get_curr_row(term *t)
