@@ -76,8 +76,8 @@ static int tty_ioctl_tcsets(fs_handle h, void *argp)
 static int tty_ioctl_tiocgwinsz(fs_handle h, void *argp)
 {
    struct winsize sz = {
-      .ws_row = term_get_rows(),
-      .ws_col = term_get_cols(),
+      .ws_row = term_get_rows(get_curr_term()),
+      .ws_col = term_get_cols(get_curr_term()),
       .ws_xpixel = 0,
       .ws_ypixel = 0
    };
@@ -102,7 +102,7 @@ void tty_setup_for_panic(void)
        * TODO: investigate whether it is possible to make
        * term_restart_video_output() safer in panic scenarios.
        */
-      term_restart_video_output();
+      term_restart_video_output(get_curr_term());
       tty_kd_mode = KD_TEXT;
    }
 }
@@ -112,13 +112,13 @@ static int tty_ioctl_kdsetmode(fs_handle h, void *argp)
    uptr opt = (uptr) argp;
 
    if (opt == KD_TEXT) {
-      term_restart_video_output();
+      term_restart_video_output(get_curr_term());
       tty_kd_mode = KD_TEXT;
       return 0;
    }
 
    if (opt == KD_GRAPHICS) {
-      term_pause_video_output();
+      term_pause_video_output(get_curr_term());
       tty_kd_mode = KD_GRAPHICS;
       return 0;
    }

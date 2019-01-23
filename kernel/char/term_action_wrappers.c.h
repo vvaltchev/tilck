@@ -63,7 +63,7 @@ static void term_execute_or_enqueue_action(term_action a)
    }
 }
 
-void term_write(const char *buf, u32 len, u8 color)
+void term_write(term *t, const char *buf, u32 len, u8 color)
 {
    ASSERT(len < MB);
 
@@ -77,7 +77,7 @@ void term_write(const char *buf, u32 len, u8 color)
    term_execute_or_enqueue_action(a);
 }
 
-void term_move_ch_and_cur(u32 row, u32 col)
+void term_move_ch_and_cur(term *t, u32 row, u32 col)
 {
    term_action a = {
       .type2 = a_move_ch_and_cur,
@@ -88,7 +88,7 @@ void term_move_ch_and_cur(u32 row, u32 col)
    term_execute_or_enqueue_action(a);
 }
 
-void term_scroll_up(u32 lines)
+void term_scroll_up(term *t, u32 lines)
 {
    term_action a = {
       .type1 = a_scroll,
@@ -98,7 +98,7 @@ void term_scroll_up(u32 lines)
    term_execute_or_enqueue_action(a);
 }
 
-void term_scroll_down(u32 lines)
+void term_scroll_down(term *t, u32 lines)
 {
    term_action a = {
       .type1 = a_scroll,
@@ -108,7 +108,7 @@ void term_scroll_down(u32 lines)
    term_execute_or_enqueue_action(a);
 }
 
-void term_set_col_offset(u32 off)
+void term_set_col_offset(term *t, u32 off)
 {
    term_action a = {
       .type1 = a_set_col_offset,
@@ -118,7 +118,7 @@ void term_set_col_offset(u32 off)
    term_execute_or_enqueue_action(a);
 }
 
-void term_move_ch_and_cur_rel(s8 dx, s8 dy)
+void term_move_ch_and_cur_rel(term *t, s8 dx, s8 dy)
 {
    term_action a = {
       .type2 = a_move_ch_and_cur_rel,
@@ -129,7 +129,7 @@ void term_move_ch_and_cur_rel(s8 dx, s8 dy)
    term_execute_or_enqueue_action(a);
 }
 
-void term_pause_video_output(void)
+void term_pause_video_output(term *t)
 {
    term_action a = {
       .type1 = a_pause_video_output,
@@ -139,7 +139,7 @@ void term_pause_video_output(void)
    term_execute_or_enqueue_action(a);
 }
 
-void term_restart_video_output(void)
+void term_restart_video_output(term *t)
 {
    term_action a = {
       .type1 = a_restart_video_output,
@@ -151,18 +151,43 @@ void term_restart_video_output(void)
 
 /* ---------------- term non-action interface funcs --------------------- */
 
-void term_set_filter_func(term_filter_func func, void *ctx)
+u32 term_get_tab_size(term *t)
+{
+   return term_tab_size;
+}
+
+u32 term_get_rows(term *t)
+{
+   return term_rows;
+}
+
+u32 term_get_cols(term *t)
+{
+   return term_cols;
+}
+
+u32 term_get_curr_row(term *t)
+{
+   return current_row;
+}
+
+u32 term_get_curr_col(term *t)
+{
+   return current_col;
+}
+
+void term_set_filter_func(term *t, term_filter_func func, void *ctx)
 {
    filter = func;
    filter_ctx = ctx;
 }
 
-term_filter_func term_get_filter_func(void)
+term_filter_func term_get_filter_func(term *t)
 {
    return filter;
 }
 
-bool term_is_initialized(void)
+bool term_is_initialized(term *t)
 {
    return term_initialized;
 }

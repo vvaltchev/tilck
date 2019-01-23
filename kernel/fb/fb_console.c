@@ -400,7 +400,7 @@ void init_framebuffer_console(void)
          printk("WARNING: fb_console: unable to allocate under_cursor_buf!\n");
    }
 
-   init_term(&framebuffer_vi, fb_term_rows, fb_term_cols);
+   init_term(get_curr_term(), &framebuffer_vi, fb_term_rows, fb_term_cols);
 
    printk("[fb_console] screen resolution: %i x %i x %i bpp\n",
           fb_get_width(), fb_get_height(), fb_get_bpp());

@@ -665,7 +665,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
 
    if (!initialized) {
 
-      int path_field_len = (term_get_cols() - 80) + 37;
+      int path_field_len = (term_get_cols(get_curr_term()) - 80) + 37;
 
       snprintk(fmt + 4, sizeof(fmt) - 4,
                "| %%-9d | %%-5d | %%-5d | %%-8s | %%-%ds |\n",

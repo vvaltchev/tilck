@@ -21,7 +21,7 @@ static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 {
    /* term_write's size is limited to 2^20 - 1 */
    size = MIN(size, (size_t)MB - 1);
-   term_write(buf, size, tty_curr_color);
+   term_write(get_curr_term(), buf, size, tty_curr_color);
    return size;
 }
 
@@ -67,5 +67,8 @@ void init_tty(void)
       panic("TTY: unable to create /dev/tty (error: %d)", rc);
 
    tty_input_init();
-   term_set_filter_func(tty_term_write_filter, &term_write_filter_ctx);
+
+   term_set_filter_func(get_curr_term(),
+                        tty_term_write_filter,
+                        &term_write_filter_ctx);
 }

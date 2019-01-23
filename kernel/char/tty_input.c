@@ -36,7 +36,7 @@ static void tty_keypress_echo(char c)
        *    ECHONL: If ICANON is also set, echo the NL character even if ECHO
        *            is not set.
        */
-      term_write(&c, 1, tty_curr_color);
+      term_write(get_curr_term(), &c, 1, tty_curr_color);
       return;
    }
 
@@ -56,7 +56,7 @@ static void tty_keypress_echo(char c)
 
       if (c_term.c_lflag & ECHOK) {
          if (c == c_term.c_cc[VKILL]) {
-            term_write(&c, 1, tty_curr_color);
+            term_write(get_curr_term(), &c, 1, tty_curr_color);
             return;
          }
       }
@@ -74,7 +74,7 @@ static void tty_keypress_echo(char c)
 
 
          if (c == c_term.c_cc[VWERASE] || c == c_term.c_cc[VERASE]) {
-            term_write(&c, 1, tty_curr_color);
+            term_write(get_curr_term(), &c, 1, tty_curr_color);
             return;
          }
       }
@@ -95,8 +95,8 @@ static void tty_keypress_echo(char c)
       if (c != '\t' && c != '\n') {
          if (c != c_term.c_cc[VSTART] && c != c_term.c_cc[VSTOP]) {
             c += 0x40;
-            term_write("^", 1, tty_curr_color);
-            term_write(&c, 1, tty_curr_color);
+            term_write(get_curr_term(), "^", 1, tty_curr_color);
+            term_write(get_curr_term(), &c, 1, tty_curr_color);
             return;
          }
       }
@@ -108,7 +108,7 @@ static void tty_keypress_echo(char c)
    }
 
    /* Just ECHO a regular character */
-   term_write(&c, 1, tty_curr_color);
+   term_write(get_curr_term(), &c, 1, tty_curr_color);
 }
 
 static inline bool kb_buf_is_empty(void)
@@ -233,12 +233,12 @@ int tty_keypress_handler_int(u32 key, u8 c, bool check_mods)
 int tty_keypress_handler(u32 key, u8 c)
 {
    if (key == KEY_PAGE_UP && kb_is_shift_pressed()) {
-      term_scroll_up(5);
+      term_scroll_up(get_curr_term(), 5);
       return KB_HANDLER_OK_AND_STOP;
    }
 
    if (key == KEY_PAGE_DOWN && kb_is_shift_pressed()) {
-      term_scroll_down(5);
+      term_scroll_down(get_curr_term(), 5);
       return KB_HANDLER_OK_AND_STOP;
    }
 
@@ -350,7 +350,7 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
    }
 
    if (c_term.c_lflag & ICANON)
-      term_set_col_offset(term_get_curr_col());
+      term_set_col_offset(get_curr_term(), term_get_curr_col(get_curr_term()));
 
    h->read_allowed_to_return = false;
 

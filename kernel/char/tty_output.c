@@ -131,7 +131,9 @@ tty_filter_handle_csi_m(int *params,
 static inline void
 tty_move_cursor_begin_nth_row(term_action *a, int row)
 {
-   int new_row = MIN(term_get_curr_row() + row, term_get_rows() - 1);
+   int new_row =
+      MIN(term_get_curr_row(get_curr_term()) + row,
+          term_get_rows(get_curr_term()) - 1);
 
    *a = (term_action) {
       .type2 = a_move_ch_and_cur,
@@ -194,8 +196,8 @@ tty_filter_end_csi_seq(u8 c,
 
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
-            .arg1 = term_get_curr_row(),
-            .arg2 = MIN((u32)params[0], term_get_cols() - 1)
+            .arg1 = term_get_curr_row(get_curr_term()),
+            .arg2 = MIN((u32)params[0], term_get_cols(get_curr_term()) - 1)
          };
 
          break;
@@ -208,8 +210,8 @@ tty_filter_end_csi_seq(u8 c,
 
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
-            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows() - 1),
-            .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols() - 1)
+            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(get_curr_term()) - 1),
+            .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(get_curr_term()) - 1)
          };
 
          break;
@@ -244,7 +246,7 @@ tty_filter_end_csi_seq(u8 c,
 
             char dsr[16];
             snprintk(dsr, sizeof(dsr), "\033[%u;%uR",
-                     term_get_curr_row() + 1, term_get_curr_col() + 1);
+                     term_get_curr_row(get_curr_term()) + 1, term_get_curr_col(get_curr_term()) + 1);
 
             for (char *p = dsr; *p; p++)
                tty_keypress_handler_int(*p, *p, false);
@@ -254,8 +256,8 @@ tty_filter_end_csi_seq(u8 c,
 
       case 's':
          /* SCP (Save Cursor Position) */
-         tty_saved_cursor_row = term_get_curr_row();
-         tty_saved_cursor_col = term_get_curr_col();
+         tty_saved_cursor_row = term_get_curr_row(get_curr_term());
+         tty_saved_cursor_col = term_get_curr_col(get_curr_term());
          break;
 
       case 'u':

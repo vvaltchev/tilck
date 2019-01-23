@@ -16,8 +16,16 @@
 
 #include "term_int.h"
 
+struct term {
+
+   /* TODO: move term's state here */
+
+};
+
+static term term_instances[1];
+
 static bool term_initialized;
-static int term_tab_size = 8;
+static int term_tab_size;
 
 static u16 term_cols;
 static u16 term_rows;
@@ -41,6 +49,8 @@ static term_action term_actions_buf[32];
 
 static term_filter_func filter;
 static void *filter_ctx;
+
+term *__curr_term = &term_instances[0];
 
 /* ------------ No-output video-interface ------------------ */
 
@@ -72,31 +82,6 @@ static const video_interface no_output_vi =
 };
 
 /* --------------------------------------------------------- */
-
-u32 term_get_tab_size(void)
-{
-   return term_tab_size;
-}
-
-u32 term_get_rows(void)
-{
-   return term_rows;
-}
-
-u32 term_get_cols(void)
-{
-   return term_cols;
-}
-
-u32 term_get_curr_row(void)
-{
-   return current_row;
-}
-
-u32 term_get_curr_col(void)
-{
-   return current_col;
-}
 
 static ALWAYS_INLINE void buffer_set_entry(int row, int col, u16 e)
 {
@@ -581,7 +566,7 @@ static void term_action_restart_video_output(void)
 
 #ifdef DEBUG
 
-void debug_term_dump_font_table(void)
+void debug_term_dump_font_table(term *t)
 {
    static const char hex_digits[] = "0123456789abcdef";
 
@@ -630,9 +615,11 @@ void debug_term_dump_font_table(void)
 
 
 void
-init_term(const video_interface *intf, int rows, int cols)
+init_term(term *t, const video_interface *intf, int rows, int cols)
 {
    ASSERT(!are_interrupts_enabled());
+
+   term_tab_size = 8;
 
    vi = intf;
    term_cols = cols;
