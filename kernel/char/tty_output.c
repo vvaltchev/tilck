@@ -368,7 +368,7 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
    term_write_filter_ctx_t *ctx = ctx_arg;
 
    if (ctx->use_alt_charset && alt_charset[c] != -1) {
-      term_internal_write_char2(alt_charset[c], *color);
+      term_internal_write_char2(get_curr_term(), alt_charset[c], *color);
       return TERM_FILTER_WRITE_BLANK;
    }
 
@@ -381,7 +381,7 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
       case '\n':
 
          if (c_term.c_oflag & (OPOST | ONLCR))
-            term_internal_write_char2('\r', *color);
+            term_internal_write_char2(get_curr_term(), '\r', *color);
 
          break;
 

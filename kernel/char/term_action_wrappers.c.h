@@ -19,7 +19,7 @@ static const actions_table_item actions_table[] = {
    [a_restart_video_output] = {(action_func)term_action_restart_video_output, 1}
 };
 
-static void term_execute_action(term_action *a)
+static void term_execute_action(term *t, term_action *a)
 {
    ASSERT(a->type3 < ARRAY_SIZE(actions_table));
 
@@ -27,13 +27,13 @@ static void term_execute_action(term_action *a)
 
    switch (it->args_count) {
       case 3:
-         it->func(a->ptr, a->len, a->col);
+         it->func(t, a->ptr, a->len, a->col);
          break;
       case 2:
-         it->func(a->arg1, a->arg2);
+         it->func(t, a->arg1, a->arg2);
          break;
       case 1:
-         it->func(a->arg);
+         it->func(t, a->arg);
          break;
       default:
          NOT_REACHED();
@@ -41,7 +41,7 @@ static void term_execute_action(term_action *a)
 }
 
 
-static void term_execute_or_enqueue_action(term_action a)
+static void term_execute_or_enqueue_action(term *t, term_action a)
 {
    bool written;
    bool was_empty;
@@ -58,7 +58,7 @@ static void term_execute_or_enqueue_action(term_action a)
    if (was_empty) {
 
       while (ringbuf_read_elem(&term_ringbuf, &a))
-         term_execute_action(&a);
+         term_execute_action(t, &a);
 
    }
 }
@@ -74,7 +74,7 @@ void term_write(term *t, const char *buf, u32 len, u8 color)
       .col = color
    };
 
-   term_execute_or_enqueue_action(a);
+   term_execute_or_enqueue_action(t, a);
 }
 
 void term_move_ch_and_cur(term *t, u32 row, u32 col)
@@ -85,7 +85,7 @@ void term_move_ch_and_cur(term *t, u32 row, u32 col)
       .arg2 = col
    };
 
-   term_execute_or_enqueue_action(a);
+   term_execute_or_enqueue_action(t, a);
 }
 
 void term_scroll_up(term *t, u32 lines)
@@ -95,7 +95,7 @@ void term_scroll_up(term *t, u32 lines)
       .arg = (int)lines
    };
 
-   term_execute_or_enqueue_action(a);
+   term_execute_or_enqueue_action(t, a);
 }
 
 void term_scroll_down(term *t, u32 lines)
@@ -105,7 +105,7 @@ void term_scroll_down(term *t, u32 lines)
       .arg = -((int)lines)
    };
 
-   term_execute_or_enqueue_action(a);
+   term_execute_or_enqueue_action(t, a);
 }
 
 void term_set_col_offset(term *t, u32 off)
@@ -115,7 +115,7 @@ void term_set_col_offset(term *t, u32 off)
       .arg = off
    };
 
-   term_execute_or_enqueue_action(a);
+   term_execute_or_enqueue_action(t, a);
 }
 
 void term_move_ch_and_cur_rel(term *t, s8 dx, s8 dy)
@@ -126,7 +126,7 @@ void term_move_ch_and_cur_rel(term *t, s8 dx, s8 dy)
       .arg2 = dy
    };
 
-   term_execute_or_enqueue_action(a);
+   term_execute_or_enqueue_action(t, a);
 }
 
 void term_pause_video_output(term *t)
@@ -136,7 +136,7 @@ void term_pause_video_output(term *t)
       .arg = 0
    };
 
-   term_execute_or_enqueue_action(a);
+   term_execute_or_enqueue_action(t, a);
 }
 
 void term_restart_video_output(term *t)
@@ -146,7 +146,7 @@ void term_restart_video_output(term *t)
       .arg = 0
    };
 
-   term_execute_or_enqueue_action(a);
+   term_execute_or_enqueue_action(t, a);
 }
 
 /* ---------------- term non-action interface funcs --------------------- */
