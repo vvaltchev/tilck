@@ -14,11 +14,6 @@
 #include "term_int.h"
 #include "tty_int.h"
 
-static u16 tty_saved_cursor_row;
-static u16 tty_saved_cursor_col;
-
-term_write_filter_ctx_t term_write_filter_ctx;
-
 static const u8 fg_csi_to_vga[256] =
 {
    [30] = COLOR_BLACK,

@@ -14,8 +14,7 @@
 #include <sys/ioctl.h>    // system header
 #include <linux/kd.h>     // system header
 
-struct termios c_term;
-u32 tty_kd_mode = KD_TEXT;
+#include "tty_int.h"
 
 const struct termios default_termios =
 {

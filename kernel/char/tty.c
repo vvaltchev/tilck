@@ -11,10 +11,28 @@
 #include <tilck/kernel/term.h>
 
 #include <termios.h>      // system header
+#include <linux/kd.h>     // system header
 
 #include "term_int.h"
 #include "tty_int.h"
 
+/* tty input */
+char kb_input_buf[KB_INPUT_BS];
+ringbuf kb_input_ringbuf;
+kcond kb_input_cond;
+volatile int tty_end_line_delim_count = 0;
+tty_ctrl_sig_func tty_special_ctrl_handlers[256];
+
+/* tty ioctl */
+struct termios c_term;
+u32 tty_kd_mode = KD_TEXT;
+
+/* tty output */
+u16 tty_saved_cursor_row;
+u16 tty_saved_cursor_col;
+term_write_filter_ctx_t term_write_filter_ctx;
+
+/* other (misc) */
 u8 tty_curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
 
 static ssize_t tty_write(fs_handle h, char *buf, size_t size)

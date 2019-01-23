@@ -1,9 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-
-typedef bool (*tty_ctrl_sig_func)(void);
-static tty_ctrl_sig_func tty_special_ctrl_handlers[256];
-
 static bool tty_ctrl_stop(void)
 {
    if (c_term.c_iflag & IXON) {

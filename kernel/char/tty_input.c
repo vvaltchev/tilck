@@ -6,7 +6,6 @@
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/sched.h>
-#include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/errno.h>
@@ -18,11 +17,8 @@
 #include "term_int.h"
 #include "tty_int.h"
 
-#define KB_INPUT_BS 4096
-
-static char kb_input_buf[KB_INPUT_BS];
-static ringbuf kb_input_ringbuf;
-static kcond kb_input_cond;
+static inline bool kb_buf_write_elem(char c);
+#include "tty_ctrl_handlers.c.h"
 
 static void tty_keypress_echo(char c)
 {
@@ -157,9 +153,6 @@ static int tty_handle_non_printable_key(u32 key)
 
    return KB_HANDLER_OK_AND_CONTINUE;
 }
-
-static volatile int tty_end_line_delim_count = 0;
-#include "tty_ctrl_handlers.c.h"
 
 static inline bool tty_is_line_delim_char(char c)
 {
