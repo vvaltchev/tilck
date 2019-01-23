@@ -97,6 +97,11 @@ static ALWAYS_INLINE bool ts_is_at_bottom(void)
    return scroll == max_scroll;
 }
 
+static ALWAYS_INLINE u8 get_curr_cell_color(term *t)
+{
+   return vgaentry_get_color(buffer_get_entry(t, t->r, t->c));
+}
+
 static void term_redraw(term *t)
 {
    fpu_context_begin();
@@ -178,8 +183,7 @@ static void term_int_scroll_up(term *t, u32 lines)
       t->vi->disable_cursor();
    } else {
       t->vi->enable_cursor();
-      t->vi->move_cursor(t->r, t->c,
-                      vgaentry_get_color(buffer_get_entry(t, t->r, t->c)));
+      t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
    }
 
    if (t->vi->flush_buffers)
@@ -192,8 +196,7 @@ static void term_int_scroll_down(term *t, u32 lines)
 
    if (ts_is_at_bottom()) {
       t->vi->enable_cursor();
-      t->vi->move_cursor(t->r, t->c,
-                      vgaentry_get_color(buffer_get_entry(t, t->r, t->c)));
+      t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
    }
 
    if (t->vi->flush_buffers)
@@ -345,8 +348,7 @@ static void term_action_write(term *t, char *buf, u32 len, u8 color)
 
    }
 
-   t->vi->move_cursor(t->r, t->c,
-                   vgaentry_get_color(buffer_get_entry(t, t->r, t->c)));
+   t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (t->vi->flush_buffers)
       t->vi->flush_buffers();
@@ -361,9 +363,7 @@ static void term_action_move_ch_and_cur(term *t, int row, int col)
 {
    t->r = MIN(MAX(row, 0), t->rows - 1);
    t->c = MIN(MAX(col, 0), t->cols - 1);
-
-   t->vi->move_cursor(t->r, t->c,
-                   vgaentry_get_color(buffer_get_entry(t, t->r, t->c)));
+   t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (t->vi->flush_buffers)
       t->vi->flush_buffers();
@@ -373,9 +373,7 @@ static void term_action_move_ch_and_cur_rel(term *t, s8 dx, s8 dy)
 {
    t->r = MIN(MAX((int)t->r + dx, 0), t->rows - 1);
    t->c = MIN(MAX((int)t->c + dy, 0), t->cols - 1);
-
-   t->vi->move_cursor(t->r, t->c,
-                   vgaentry_get_color(buffer_get_entry(t, t->r, t->c)));
+   t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (t->vi->flush_buffers)
       t->vi->flush_buffers();
