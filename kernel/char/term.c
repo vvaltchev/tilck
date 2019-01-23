@@ -39,17 +39,14 @@ struct term {
    u16 failsafe_buffer[80 * 25];
    bool *term_tabs;
 
-   ringbuf term_ringbuf;
-   term_action term_actions_buf[32];
+   ringbuf ringbuf;
+   term_action actions_buf[32];
 
    term_filter_func filter;
    void *filter_ctx;
 };
 
 static term first_instance;
-
-
-
 term *__curr_term = &first_instance;
 
 /* ------------ No-output video-interface ------------------ */
@@ -610,10 +607,10 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
    t->cols = cols;
    t->rows = rows;
 
-   ringbuf_init(&t->term_ringbuf,
-                ARRAY_SIZE(t->term_actions_buf),
+   ringbuf_init(&t->ringbuf,
+                ARRAY_SIZE(t->actions_buf),
                 sizeof(term_action),
-                t->term_actions_buf);
+                t->actions_buf);
 
    if (!in_panic()) {
       t->extra_buffer_rows = 9 * t->rows;
