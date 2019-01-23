@@ -184,7 +184,7 @@ static void ts_clear_row(int row, u8 color)
 
 static void term_execute_action(term_action *a);
 
-static void term_action_scroll_up(u32 lines)
+static void term_int_scroll_up(u32 lines)
 {
    ts_scroll_up(lines);
 
@@ -202,7 +202,7 @@ static void term_action_scroll_up(u32 lines)
       vi->flush_buffers();
 }
 
-static void term_action_scroll_down(u32 lines)
+static void term_int_scroll_down(u32 lines)
 {
    ts_scroll_down(lines);
 
@@ -216,6 +216,14 @@ static void term_action_scroll_down(u32 lines)
 
    if (vi->flush_buffers)
       vi->flush_buffers();
+}
+
+static void term_action_scroll(int lines)
+{
+   if (lines > 0)
+      term_int_scroll_up(lines);
+   else
+      term_int_scroll_down(-lines);
 }
 
 static void term_internal_incr_row(u8 color)
@@ -571,8 +579,7 @@ static void term_action_restart_video_output(void)
 
 static const actions_table_item actions_table[] = {
    [a_write] = {(action_func)term_action_write, 3},
-   [a_scroll_up] = {(action_func)term_action_scroll_up, 1},
-   [a_scroll_down] = {(action_func)term_action_scroll_down, 1},
+   [a_scroll] = {(action_func)term_action_scroll, 1},
    [a_set_col_offset] = {(action_func)term_action_set_col_offset, 1},
    [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
    [a_move_ch_and_cur_rel] = {(action_func)term_action_move_ch_and_cur_rel, 2},
@@ -603,7 +610,6 @@ static void term_execute_action(term_action *a)
          break;
       default:
          NOT_REACHED();
-      break;
    }
 }
 
@@ -660,8 +666,8 @@ void term_move_ch_and_cur(u32 row, u32 col)
 void term_scroll_up(u32 lines)
 {
    term_action a = {
-      .type1 = a_scroll_up,
-      .arg = lines
+      .type1 = a_scroll,
+      .arg = (int)lines
    };
 
    term_execute_or_enqueue_action(a);
@@ -670,8 +676,8 @@ void term_scroll_up(u32 lines)
 void term_scroll_down(u32 lines)
 {
    term_action a = {
-      .type1 = a_scroll_down,
-      .arg = lines
+      .type1 = a_scroll,
+      .arg = -((int)lines)
    };
 
    term_execute_or_enqueue_action(a);

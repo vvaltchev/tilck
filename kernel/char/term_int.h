@@ -7,8 +7,7 @@ typedef enum {
 
    a_none,
    a_write,
-   a_scroll_up,          /* text moves DOWN => old text from buf at the top  */
-   a_scroll_down,        /* text moves UP => old text from buf at the bottom */
+   a_scroll,               /* > 0 scrollup: text moves DOWN; < 0 the opposite */
    a_set_col_offset,
    a_move_ch_and_cur,
    a_move_ch_and_cur_rel,
