@@ -22,7 +22,7 @@ typedef enum {
 
 } term_action_type;
 
-typedef void (*action_func)();
+typedef void (*action_func)(/* unspecified number of arguments */);
 
 typedef struct {
 
@@ -32,4 +32,4 @@ typedef struct {
 } actions_table_item;
 
 void term_internal_write_char2(char c, u8 color);
-
+void term_internal_write_backspace(u8 color);

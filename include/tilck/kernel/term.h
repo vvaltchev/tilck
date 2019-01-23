@@ -3,15 +3,6 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
-#define TERM_ERASE_C   '\b'
-#define TERM_ERASE_S   "\b"
-
-#define TERM_WERASE_C  0x17    /* typical value for TERM=linux, Ctrl + W */
-#define TERM_WERASE_S  "\x17"
-
-#define TERM_KILL_C    0x15    /* typical value for TERM=linux, Ctrl + 7 */
-#define TERM_KILL_S    "\x15"
-
 typedef struct {
 
    /* Main functions */

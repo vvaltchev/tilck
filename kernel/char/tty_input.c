@@ -56,7 +56,7 @@ static void tty_keypress_echo(char c)
 
       if (c_term.c_lflag & ECHOK) {
          if (c == c_term.c_cc[VKILL]) {
-            term_write(TERM_KILL_S, 1, tty_curr_color);
+            term_write(&c, 1, tty_curr_color);
             return;
          }
       }
@@ -73,13 +73,8 @@ static void tty_keypress_echo(char c)
          */
 
 
-         if (c == c_term.c_cc[VWERASE]) {
-            term_write(TERM_WERASE_S, 1, tty_curr_color);
-            return;
-         }
-
-         if (c == c_term.c_cc[VERASE]) {
-            term_write(TERM_ERASE_S, 1, tty_curr_color);
+         if (c == c_term.c_cc[VWERASE] || c == c_term.c_cc[VERASE]) {
+            term_write(&c, 1, tty_curr_color);
             return;
          }
       }
@@ -92,7 +87,7 @@ static void tty_keypress_echo(char c)
     *          (not  in  POSIX)  If  ECHO is also set, terminal special
     *          characters other than TAB, NL, START, and STOP are echoed as ^X,
     *          where X is the character with ASCII code 0x40 greater than the
-    *          special character.  For  example, character 0x08 (BS) is echoed
+    *          special character. For example, character 0x08 (BS) is echoed
     *          as ^H.
     *
     */

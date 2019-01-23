@@ -30,7 +30,7 @@ const struct termios default_termios =
       [VINTR]     = 0x03,        /* typical value for TERM=linux, Ctrl+C */
       [VQUIT]     = 0x1c,        /* typical value for TERM=linux, Ctrl+\ */
       [VERASE]    = 0x7f,        /* typical value for TERM=linux */
-      [VKILL]     = TERM_KILL_C,
+      [VKILL]     = 0x15,        /* typical value for TERM=linux, Ctrl+7 */
       [VEOF]      = 0x04,        /* typical value for TERM=linux, Ctrl+D */
       [VTIME]     = 0,           /* typical value for TERM=linux (unset) */
       [VMIN]      = 0x01,        /* typical value for TERM=linux */
@@ -41,7 +41,7 @@ const struct termios default_termios =
       [VEOL]      = 0,           /* typical value for TERM=linux (unset) */
       [VREPRINT]  = 0x12,        /* typical value for TERM=linux, Ctrl+R */
       [VDISCARD]  = 0x0f,        /* typical value for TERM=linux, Ctrl+O */
-      [VWERASE]   = TERM_WERASE_C,
+      [VWERASE]   = 0x17,        /* typical value for TERM=linux, Ctrl+W */
       [VLNEXT]    = 0x16,        /* typical value for TERM=linux, Ctrl+V */
       [VEOL2]     = 0            /* typical value for TERM=linux (unset) */
    }

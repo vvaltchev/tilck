@@ -265,7 +265,7 @@ static void term_internal_write_tab(u8 color)
    current_col = tab_col + 1;
 }
 
-static void term_internal_write_backspace(u8 color)
+void term_internal_write_backspace(u8 color)
 {
    if (!current_col || current_col <= term_col_offset)
       return;
@@ -319,18 +319,6 @@ void term_internal_write_char2(char c, u8 color)
 
       case '\t':
          term_internal_write_tab(color);
-         break;
-
-      case TERM_ERASE_C:
-         term_internal_write_backspace(color);
-         break;
-
-      case TERM_WERASE_C:
-         // TODO: add support for WERASE in term
-         break;
-
-      case TERM_KILL_C:
-         // TODO: add support for KILL in term
          break;
 
       default:

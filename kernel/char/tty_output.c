@@ -398,6 +398,22 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
          return TERM_FILTER_WRITE_BLANK;
    }
 
+   if (c == c_term.c_cc[VERASE]) {
+
+      term_internal_write_backspace(*color);
+      return TERM_FILTER_WRITE_BLANK;
+
+   } else if (c == c_term.c_cc[VWERASE]) {
+
+      /* TODO: add support for WERASE in tty */
+      return TERM_FILTER_WRITE_BLANK;
+
+   } else if (c == c_term.c_cc[VKILL]) {
+
+      /* TODO: add support for KILL in tty */
+      return TERM_FILTER_WRITE_BLANK;
+   }
+
    return TERM_FILTER_WRITE_C;
 }
 
