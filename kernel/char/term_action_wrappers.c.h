@@ -168,12 +168,12 @@ u32 term_get_cols(term *t)
 
 u32 term_get_curr_row(term *t)
 {
-   return current_row;
+   return t->current_row;
 }
 
 u32 term_get_curr_col(term *t)
 {
-   return current_col;
+   return t->current_col;
 }
 
 void term_set_filter_func(term *t, term_filter_func func, void *ctx)
