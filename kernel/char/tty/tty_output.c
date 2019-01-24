@@ -365,6 +365,7 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *const ctx = ctx_arg;
    tty *const t = ctx->t;
+   struct termios *const c_term = &t->c_term;
 
    if (ctx->use_alt_charset && alt_charset[c] != -1) {
       term_internal_write_char2(get_curr_term(), alt_charset[c], *color);
@@ -379,7 +380,7 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
 
       case '\n':
 
-         if (t->c_term.c_oflag & (OPOST | ONLCR))
+         if (c_term->c_oflag & (OPOST | ONLCR))
             term_internal_write_char2(get_curr_term(), '\r', *color);
 
          break;
@@ -399,17 +400,17 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
          return TERM_FILTER_WRITE_BLANK;
    }
 
-   if (c == t->c_term.c_cc[VERASE]) {
+   if (c == c_term->c_cc[VERASE]) {
 
       term_internal_write_backspace(get_curr_term(), *color);
       return TERM_FILTER_WRITE_BLANK;
 
-   } else if (c == t->c_term.c_cc[VWERASE]) {
+   } else if (c == c_term->c_cc[VWERASE]) {
 
       /* TODO: add support for WERASE in tty */
       return TERM_FILTER_WRITE_BLANK;
 
-   } else if (c == t->c_term.c_cc[VKILL]) {
+   } else if (c == c_term->c_cc[VKILL]) {
 
       /* TODO: add support for KILL in tty */
       return TERM_FILTER_WRITE_BLANK;

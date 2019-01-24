@@ -22,10 +22,12 @@ static inline bool kb_buf_write_elem(tty *t, char c);
 
 static void tty_keypress_echo(tty *t, char c)
 {
+   struct termios *const c_term = &t->c_term;
+
    if (t->kd_mode == KD_GRAPHICS)
       return;
 
-   if (c == '\n' && (t->c_term.c_lflag & ECHONL)) {
+   if (c == '\n' && (c_term->c_lflag & ECHONL)) {
       /*
        * From termios' man page:
        *
@@ -36,28 +38,28 @@ static void tty_keypress_echo(tty *t, char c)
       return;
    }
 
-   if (!(t->c_term.c_lflag & ECHO)) {
+   if (!(c_term->c_lflag & ECHO)) {
       /* If ECHO is not enabled, just don't echo. */
       return;
    }
 
    /* echo is enabled */
 
-   if (t->c_term.c_lflag & ICANON) {
+   if (c_term->c_lflag & ICANON) {
 
-      if (c == t->c_term.c_cc[VEOF]) {
+      if (c == c_term->c_cc[VEOF]) {
          /* In canonical mode, EOF is never echoed */
          return;
       }
 
-      if (t->c_term.c_lflag & ECHOK) {
-         if (c == t->c_term.c_cc[VKILL]) {
+      if (c_term->c_lflag & ECHOK) {
+         if (c == c_term->c_cc[VKILL]) {
             term_write(get_curr_term(), &c, 1, t->curr_color);
             return;
          }
       }
 
-      if (t->c_term.c_lflag & ECHOE) {
+      if (c_term->c_lflag & ECHOE) {
 
         /*
          * From termios' man page:
@@ -69,7 +71,7 @@ static void tty_keypress_echo(tty *t, char c)
          */
 
 
-         if (c == t->c_term.c_cc[VWERASE] || c == t->c_term.c_cc[VERASE]) {
+         if (c == c_term->c_cc[VWERASE] || c == c_term->c_cc[VERASE]) {
             term_write(get_curr_term(), &c, 1, t->curr_color);
             return;
          }
@@ -87,9 +89,9 @@ static void tty_keypress_echo(tty *t, char c)
     *          as ^H.
     *
     */
-   if ((c < ' ' || c == 0x7F) && (t->c_term.c_lflag & ECHOCTL)) {
+   if ((c < ' ' || c == 0x7F) && (c_term->c_lflag & ECHOCTL)) {
       if (c != '\t' && c != '\n') {
-         if (c != t->c_term.c_cc[VSTART] && c != t->c_term.c_cc[VSTOP]) {
+         if (c != c_term->c_cc[VSTART] && c != c_term->c_cc[VSTOP]) {
             c += 0x40;
             term_write(get_curr_term(), "^", 1, t->curr_color);
             term_write(get_curr_term(), &c, 1, t->curr_color);
