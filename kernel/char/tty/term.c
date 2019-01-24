@@ -595,6 +595,11 @@ void debug_term_dump_font_table(term *t)
 
 #endif
 
+term *allocate_new_term(void)
+{
+   term *t = kzmalloc(sizeof(term));
+   return t;
+}
 
 void
 init_term(term *t, const video_interface *intf, int rows, int cols)
@@ -602,7 +607,6 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
    ASSERT(!are_interrupts_enabled());
 
    t->tabsize = 8;
-
    t->vi = intf;
    t->cols = cols;
    t->rows = rows;
@@ -648,5 +652,4 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
       ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
    t->initialized = true;
-   printk_flush_ringbuf();
 }

@@ -3,6 +3,8 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
+term *allocate_new_term(void);
+
 enum term_action {
 
    a_none,

@@ -35,6 +35,8 @@ void init_console(void)
       init_framebuffer_console();
    else
       init_textmode_console();
+
+   printk_flush_ringbuf();
 }
 
 static void read_multiboot_info(u32 magic, u32 mbi_addr)
