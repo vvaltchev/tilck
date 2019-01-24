@@ -12,7 +12,7 @@ static char *const default_env[] =
 {
    "OSTYPE=linux-gnu",
    "TERM=linux",
-   "CONSOLE=/dev/tty",
+   "CONSOLE=/dev/tty0",
    "TILCK=1",
    NULL
 };

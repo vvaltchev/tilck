@@ -293,13 +293,11 @@ tty_internal_read_single_char_from_kb(tty *t,
 }
 
 static inline bool
-tty_internal_should_read_return(devfs_file_handle *h,
+tty_internal_should_read_return(tty *t,
+                                devfs_file_handle *h,
                                 u32 read_cnt,
                                 bool delim_break)
 {
-   devfs_file *df = h->devfs_file_ptr;
-   tty *t = ttys[df->dev_minor];
-
    if (t->c_term.c_lflag & ICANON) {
       return
          delim_break ||
@@ -311,12 +309,8 @@ tty_internal_should_read_return(devfs_file_handle *h,
    return read_cnt >= t->c_term.c_cc[VMIN];
 }
 
-ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
+ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
 {
-   devfs_file_handle *h = fsh;
-   devfs_file *df = h->devfs_file_ptr;
-   tty *t = ttys[df->dev_minor];
-
    size_t read_count = 0;
    bool delim_break;
 
@@ -383,7 +377,7 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
 
       ASSERT(t->end_line_delim_count >= 0);
 
-   } while (!tty_internal_should_read_return(h, read_count, delim_break));
+   } while (!tty_internal_should_read_return(t, h, read_count, delim_break));
 
    if (h->flags & O_NONBLOCK) {
 

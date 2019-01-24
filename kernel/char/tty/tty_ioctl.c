@@ -144,12 +144,8 @@ static int tty_ioctl_KDSKBMODE(tty *t, void *argp)
    return -EINVAL;
 }
 
-int tty_ioctl(fs_handle h, uptr request, void *argp)
+int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp)
 {
-   devfs_file_handle *dh = h;
-   devfs_file *df = dh->devfs_file_ptr;
-   tty *t = ttys[df->dev_minor];
-
    switch (request) {
 
       case TCGETS:
@@ -184,15 +180,10 @@ int tty_ioctl(fs_handle h, uptr request, void *argp)
    }
 }
 
-int tty_fcntl(fs_handle h, int cmd, uptr arg)
+int tty_fcntl_int(tty *t, devfs_file_handle *h, int cmd, uptr arg)
 {
-   devfs_file_handle *dh = h;
-   devfs_file *df = dh->devfs_file_ptr;
-   tty *t = ttys[df->dev_minor];
-   (void)t;
-
    if (cmd == F_GETFL)
-      return dh->flags;
+      return h->flags;
 
    if (cmd == F_SETFL) {
       /*
@@ -201,7 +192,7 @@ int tty_fcntl(fs_handle h, int cmd, uptr arg)
        * ignore such unknown/unsupported flags and that will make hard to guess
        * why programs behave in Tilck differently than on Linux.
        */
-      dh->flags = arg;
+      h->flags = arg;
       return 0;
    }
 

@@ -8,37 +8,47 @@
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/kmalloc.h>
-#include <tilck/kernel/term.h>
 
-#include <termios.h>      // system header
-#include <linux/kd.h>     // system header
-
-#include "term_int.h"
 #include "tty_int.h"
 
-tty *ttys[MAX_TTYS];
+tty *ttys[MAX_TTYS + 1];
 tty *__curr_tty;
 
-ssize_t tty_write(fs_handle h, char *buf, size_t size)
+static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
    devfs_file_handle *dh = h;
    devfs_file *df = dh->devfs_file_ptr;
    tty *t = ttys[df->dev_minor];
 
-   /* term_write's size is limited to 2^20 - 1 */
-   size = MIN(size, (size_t)MB - 1);
-   term_write(t->term_inst, buf, size, t->curr_color);
-   return size;
+   return tty_read_int(t, dh, buf, size);
 }
 
-/* ----------------- Driver interface ---------------- */
+static ssize_t tty_write(fs_handle h, char *buf, size_t size)
+{
+   devfs_file_handle *dh = h;
+   devfs_file *df = dh->devfs_file_ptr;
+   tty *t = ttys[df->dev_minor];
 
-int tty_ioctl(fs_handle h, uptr request, void *argp);
-int tty_fcntl(fs_handle h, int cmd, uptr arg);
-ssize_t tty_read(fs_handle h, char *buf, size_t size);
-ssize_t tty_write(fs_handle h, char *buf, size_t size);
+   return tty_write_int(t, dh, buf, size);
+}
 
-/* ---- */
+static int tty_ioctl(fs_handle h, uptr request, void *argp)
+{
+   devfs_file_handle *dh = h;
+   devfs_file *df = dh->devfs_file_ptr;
+   tty *t = ttys[df->dev_minor];
+
+   return tty_ioctl_int(t, dh, request, argp);
+}
+
+static int tty_fcntl(fs_handle h, int cmd, uptr arg)
+{
+   devfs_file_handle *dh = h;
+   devfs_file *df = dh->devfs_file_ptr;
+   tty *t = ttys[df->dev_minor];
+
+   return tty_fcntl_int(t, dh, cmd, arg);
+}
 
 static int
 tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
@@ -87,24 +97,36 @@ static void internal_init_tty(int minor)
 
    tty *const t = allocate_and_init_tty(minor);
 
-   if (minor == 0) {
+   if (minor == 1) {
+
       t->term_inst = get_curr_term();
+
    } else {
-      NOT_IMPLEMENTED();
+
+      t->term_inst = allocate_new_term();
+
+      if (!t->term_inst)
+         panic("TTY: no enough memory a new term instance");
    }
 
-   driver_info *di = kmalloc(sizeof(driver_info));
+   driver_info *di = kzmalloc(sizeof(driver_info));
 
    if (!di)
-      panic("TTY: no enough memory for init_tty()");
+      panic("TTY: no enough memory for driver_info");
 
    di->name = "tty";
    di->create_dev_file = tty_create_device_file;
    int major = register_driver(di);
-   int rc = create_dev_file("tty", major, minor);
+
+   snprintk(t->dev_filename, sizeof(t->dev_filename), "tty%d", minor);
+
+   //snprintk(t->dev_filename, sizeof(t->dev_filename), "tty");  // temp hack
+   //ASSERT(minor == 1);                 // temp hack
+
+   int rc = create_dev_file(t->dev_filename, major, minor);
 
    if (rc != 0)
-      panic("TTY: unable to create /dev/tty (error: %d)", rc);
+      panic("TTY: unable to create /dev/%s (error: %d)", t->dev_filename, rc);
 
    tty_input_init(t);
    term_set_filter_func(t->term_inst,
@@ -114,9 +136,11 @@ static void internal_init_tty(int minor)
 
 void init_tty(void)
 {
-   for (int i = 0; i < 1; i++) {
+   internal_init_tty0();
+
+   for (int i = 1; i <= 1; i++) {
       internal_init_tty(i);
    }
 
-   __curr_tty = ttys[0];
+   __curr_tty = ttys[1];
 }

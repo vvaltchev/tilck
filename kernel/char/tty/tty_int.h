@@ -5,6 +5,12 @@
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/sync.h>
+#include <tilck/kernel/term.h>
+
+#include <termios.h>      // system header
+#include <linux/kd.h>     // system header
+
+#include "term_int.h"
 
 enum term_write_filter_state {
 
@@ -37,6 +43,12 @@ int tty_keypress_handler(u32 key, u8 c);
 enum term_fret
 tty_term_write_filter(u8 c, u8 *color, term_action *a, void *ctx_arg);
 void tty_update_special_ctrl_handlers(tty *t);
+void internal_init_tty0(void);
+
+ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size);
+ssize_t tty_write_int(tty *t, devfs_file_handle *h, char *buf, size_t size);
+int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp);
+int tty_fcntl_int(tty *t, devfs_file_handle *h, int cmd, uptr arg);
 
 typedef bool (*tty_ctrl_sig_func)(tty *);
 
@@ -46,6 +58,7 @@ typedef bool (*tty_ctrl_sig_func)(tty *);
 struct tty {
 
    term *term_inst;
+   char dev_filename[16];
 
    /* tty input */
    char kb_input_buf[KB_INPUT_BS];
@@ -68,4 +81,4 @@ struct tty {
 };
 
 extern const struct termios default_termios;
-extern tty *ttys[MAX_TTYS];
+extern tty *ttys[MAX_TTYS + 1]; /* tty0 is not a real tty */

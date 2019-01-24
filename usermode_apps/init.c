@@ -33,9 +33,9 @@ static void call_exit(int code)
 
 static void open_std_handles(void)
 {
-   int in = open("/dev/tty", O_RDONLY);
-   int out = open("/dev/tty", O_WRONLY);
-   int err = open("/dev/tty", O_WRONLY);
+   int in = open("/dev/tty0", O_RDONLY);
+   int out = open("/dev/tty0", O_WRONLY);
+   int err = open("/dev/tty0", O_WRONLY);
 
    if (in != 0) {
       printf("[init] in: %i, expected: 0\n", in);
