@@ -61,9 +61,9 @@ struct tty {
    struct termios c_term;
    u32 tty_kd_mode;
 
+   /* tty input & output */
+   u8 tty_curr_color;
 };
-
-extern u8 tty_curr_color;
 
 //------
 extern const struct termios default_termios;

@@ -32,7 +32,7 @@ static void tty_keypress_echo(tty *t, char c)
        *    ECHONL: If ICANON is also set, echo the NL character even if ECHO
        *            is not set.
        */
-      term_write(get_curr_term(), &c, 1, tty_curr_color);
+      term_write(get_curr_term(), &c, 1, t->tty_curr_color);
       return;
    }
 
@@ -52,7 +52,7 @@ static void tty_keypress_echo(tty *t, char c)
 
       if (t->c_term.c_lflag & ECHOK) {
          if (c == t->c_term.c_cc[VKILL]) {
-            term_write(get_curr_term(), &c, 1, tty_curr_color);
+            term_write(get_curr_term(), &c, 1, t->tty_curr_color);
             return;
          }
       }
@@ -70,7 +70,7 @@ static void tty_keypress_echo(tty *t, char c)
 
 
          if (c == t->c_term.c_cc[VWERASE] || c == t->c_term.c_cc[VERASE]) {
-            term_write(get_curr_term(), &c, 1, tty_curr_color);
+            term_write(get_curr_term(), &c, 1, t->tty_curr_color);
             return;
          }
       }
@@ -91,8 +91,8 @@ static void tty_keypress_echo(tty *t, char c)
       if (c != '\t' && c != '\n') {
          if (c != t->c_term.c_cc[VSTART] && c != t->c_term.c_cc[VSTOP]) {
             c += 0x40;
-            term_write(get_curr_term(), "^", 1, tty_curr_color);
-            term_write(get_curr_term(), &c, 1, tty_curr_color);
+            term_write(get_curr_term(), "^", 1, t->tty_curr_color);
+            term_write(get_curr_term(), &c, 1, t->tty_curr_color);
             return;
          }
       }
@@ -104,7 +104,7 @@ static void tty_keypress_echo(tty *t, char c)
    }
 
    /* Just ECHO a regular character */
-   term_write(get_curr_term(), &c, 1, tty_curr_color);
+   term_write(get_curr_term(), &c, 1, t->tty_curr_color);
 }
 
 static inline bool kb_buf_is_empty(tty *t)

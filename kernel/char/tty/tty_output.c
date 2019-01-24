@@ -54,9 +54,11 @@ tty_filter_handle_csi_ABCD(int *params,
 static void
 tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
 {
+   tty *const t = ctx->t;
+
    u8 tmp;
-   u8 fg = get_color_fg(tty_curr_color);
-   u8 bg = get_color_bg(tty_curr_color);
+   u8 fg = get_color_fg(t->tty_curr_color);
+   u8 bg = get_color_bg(t->tty_curr_color);
 
    switch(p) {
 
@@ -100,8 +102,8 @@ tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
    return;
 
 set_color:
-   tty_curr_color = make_color(fg, bg);
-   *color = tty_curr_color;
+   t->tty_curr_color = make_color(fg, bg);
+   *color = t->tty_curr_color;
 }
 
 static void
@@ -361,8 +363,8 @@ static const s16 alt_charset[256] =
 static enum term_fret
 tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
 {
-   term_write_filter_ctx_t *ctx = ctx_arg;
-   tty *t = ctx->t;
+   term_write_filter_ctx_t *const ctx = ctx_arg;
+   tty *const t = ctx->t;
 
    if (ctx->use_alt_charset && alt_charset[c] != -1) {
       term_internal_write_char2(get_curr_term(), alt_charset[c], *color);

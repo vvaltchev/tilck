@@ -19,9 +19,6 @@
 tty *ttys[MAX_TTYS];
 tty *__curr_tty;
 
-/* other (misc) */
-u8 tty_curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
-
 ssize_t tty_write(fs_handle h, char *buf, size_t size)
 {
    devfs_file_handle *dh = h;
@@ -31,7 +28,7 @@ ssize_t tty_write(fs_handle h, char *buf, size_t size)
 
    /* term_write's size is limited to 2^20 - 1 */
    size = MIN(size, (size_t)MB - 1);
-   term_write(get_curr_term(), buf, size, tty_curr_color);
+   term_write(get_curr_term(), buf, size, t->tty_curr_color);
    return size;
 }
 
@@ -69,6 +66,7 @@ static void init_tty_struct(tty *t)
    t->filter_ctx.t = t;
    t->c_term = default_termios;
    t->tty_kd_mode = KD_TEXT;
+   t->tty_curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
 }
 
 static void internal_init_tty(int minor)
@@ -82,7 +80,7 @@ static void internal_init_tty(int minor)
       panic("TTY: no enough memory for TTY %d", minor);
    }
 
-   tty *t = ttys[minor];
+   tty *const t = ttys[minor];
    init_tty_struct(t);
 
    driver_info *di = kmalloc(sizeof(driver_info));
