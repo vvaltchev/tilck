@@ -31,11 +31,25 @@ static void call_exit(int code)
    exit(code);
 }
 
-static void open_std_handles(void)
+static int get_tty_count(void)
 {
-   int in = open("/dev/tty0", O_RDONLY);
-   int out = open("/dev/tty0", O_WRONLY);
-   int err = open("/dev/tty0", O_WRONLY);
+   if (getenv("TILCK"))
+      return MAX_TTYS;
+
+   /* On Linux we're not going to use multiple TTYs for testing. */
+   return 1;
+}
+
+static void open_std_handles(int tty)
+{
+   char ttyfile[32] = "/dev/tty";
+
+   if (tty >= 0)
+      sprintf(ttyfile, "/dev/tty%d", tty);
+
+   int in = open(ttyfile, O_RDONLY);
+   int out = open(ttyfile, O_WRONLY);
+   int err = open(ttyfile, O_WRONLY);
 
    if (in != 0) {
       printf("[init] in: %i, expected: 0\n", in);
@@ -57,7 +71,7 @@ static void do_initial_setup(void)
 {
    if (getenv("TILCK")) {
 
-      open_std_handles();
+      open_std_handles(1);
 
       if (getpid() != 1) {
          printf("[init] ERROR: my pid is %i instead of 1\n", getpid());
@@ -139,28 +153,55 @@ static void wait_for_children(pid_t shell_pid)
    }
 }
 
+static void setup_console_for_shell(int tty)
+{
+   if (tty == 1)
+      return;
+
+   close(2);
+   close(1);
+   close(0);
+
+   open_std_handles(tty);
+}
+
 int main(int argc, char **argv, char **env)
 {
-   int shell_pid;
+   int shell_pids[get_tty_count()]; // VLA
+   int pid;
 
    do_initial_setup();
    parse_opts(argc - 1, argv + 1);
 
-   shell_pid = fork();
+   for (int tty = 1; tty <= get_tty_count(); tty++) {
 
-   if (shell_pid < 0) {
-      perror("fork() failed");
-      call_exit(1);
-   }
+      pid = fork();
 
-   if (!shell_pid) {
-      if (execve(shell_args[0], shell_args, NULL) < 0) {
-         perror("execve failed");
+      if (pid < 0) {
+         perror("fork() failed");
          call_exit(1);
       }
+
+      if (!pid) {
+
+         setup_console_for_shell(tty);
+
+         if (execve(shell_args[0], shell_args, NULL) < 0) {
+            perror("execve failed");
+            call_exit(1);
+         }
+      }
+
+      shell_pids[tty - 1] = pid;
+
+      /* only the 1st shell gets executed with the specified arguments */
+      for (int i = 1; i < ARRAY_SIZE(shell_args); i++)
+         shell_args[i] = NULL;
    }
 
-   wait_for_children(shell_pid);
+   for (int tty = 1; tty <= get_tty_count(); tty++)
+      wait_for_children(shell_pids[tty - 1]);
+
    call_exit(0);
 }
 

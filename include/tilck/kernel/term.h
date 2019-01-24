@@ -31,6 +31,7 @@ typedef struct term term;
 
 void init_term(term *t, const video_interface *vi, int rows, int cols);
 bool term_is_initialized(term *t);
+const video_interface *term_get_vi(term *t);
 
 u32 term_get_tab_size(term *t);
 u32 term_get_rows(term *t);

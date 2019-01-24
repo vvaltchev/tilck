@@ -601,15 +601,21 @@ term *allocate_new_term(void)
    return t;
 }
 
+const video_interface *term_get_vi(term *t)
+{
+   return t->vi;
+}
+
 void
 init_term(term *t, const video_interface *intf, int rows, int cols)
 {
-   ASSERT(!are_interrupts_enabled());
+   ASSERT(t != &first_instance || !are_interrupts_enabled());
 
    t->tabsize = 8;
-   t->vi = intf;
    t->cols = cols;
    t->rows = rows;
+   t->vi = (t == &first_instance) ? intf : &no_output_vi;
+   t->saved_vi = intf;
 
    ringbuf_init(&t->ringbuf,
                 ARRAY_SIZE(t->actions_buf),

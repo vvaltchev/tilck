@@ -8,6 +8,7 @@
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/kb.h>
 
 #include "tty_int.h"
 
@@ -107,6 +108,11 @@ static void internal_init_tty(int minor)
 
       if (!t->term_inst)
          panic("TTY: no enough memory a new term instance");
+
+      init_term(t->term_inst,
+                term_get_vi(ttys[1]->term_inst),
+                term_get_rows(ttys[1]->term_inst),
+                term_get_cols(ttys[1]->term_inst));
    }
 
    driver_info *di = kzmalloc(sizeof(driver_info));
@@ -117,11 +123,7 @@ static void internal_init_tty(int minor)
    di->name = "tty";
    di->create_dev_file = tty_create_device_file;
    int major = register_driver(di);
-
    snprintk(t->dev_filename, sizeof(t->dev_filename), "tty%d", minor);
-
-   //snprintk(t->dev_filename, sizeof(t->dev_filename), "tty");  // temp hack
-   //ASSERT(minor == 1);                 // temp hack
 
    int rc = create_dev_file(t->dev_filename, major, minor);
 
@@ -138,9 +140,12 @@ void init_tty(void)
 {
    internal_init_tty0();
 
-   for (int i = 1; i <= 1; i++) {
+   for (int i = 1; i <= MAX_TTYS; i++) {
       internal_init_tty(i);
    }
 
    __curr_tty = ttys[1];
+
+   if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
+      panic("TTY: unable to register keypress handler");
 }

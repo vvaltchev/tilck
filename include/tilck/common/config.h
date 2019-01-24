@@ -56,6 +56,7 @@
 #endif
 
 #define USER_VSDO_LIKE_PAGE_VADDR  (LINEAR_MAPPING_END)
+#define MAX_TTYS 2
 
 /* Bootloader-specific config */
 

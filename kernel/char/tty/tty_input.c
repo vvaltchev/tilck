@@ -417,7 +417,4 @@ void tty_input_init(tty *t)
    kcond_init(&t->kb_input_cond);
    ringbuf_init(&t->kb_input_ringbuf, KB_INPUT_BS, 1, t->kb_input_buf);
    tty_update_special_ctrl_handlers(t);
-
-   if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
-      panic("TTY: unable to register keypress handler");
 }

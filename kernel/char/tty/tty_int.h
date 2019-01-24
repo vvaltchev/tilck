@@ -53,7 +53,6 @@ int tty_fcntl_int(tty *t, devfs_file_handle *h, int cmd, uptr arg);
 typedef bool (*tty_ctrl_sig_func)(tty *);
 
 #define KB_INPUT_BS 4096
-#define MAX_TTYS 3
 
 struct tty {
 
