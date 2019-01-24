@@ -2,7 +2,7 @@
 
 static bool tty_ctrl_stop(tty *t)
 {
-   if (c_term.c_iflag & IXON) {
+   if (t->c_term.c_iflag & IXON) {
       // TODO: eventually support pause transmission, one day.
       return true;
    }
@@ -12,7 +12,7 @@ static bool tty_ctrl_stop(tty *t)
 
 static bool tty_ctrl_start(tty *t)
 {
-   if (c_term.c_iflag & IXON) {
+   if (t->c_term.c_iflag & IXON) {
       // TODO: eventually support pause transmission, one day.
       return true;
    }
@@ -22,7 +22,7 @@ static bool tty_ctrl_start(tty *t)
 
 static bool tty_ctrl_intr(tty *t)
 {
-   if (c_term.c_lflag & ISIG) {
+   if (t->c_term.c_lflag & ISIG) {
       printk("INTR not supported yet\n");
       return true;
    }
@@ -32,7 +32,7 @@ static bool tty_ctrl_intr(tty *t)
 
 static bool tty_ctrl_susp(tty *t)
 {
-   if (c_term.c_lflag & ISIG) {
+   if (t->c_term.c_lflag & ISIG) {
       printk("SUSP not supported yet\n");
       return true;
    }
@@ -42,7 +42,7 @@ static bool tty_ctrl_susp(tty *t)
 
 static bool tty_ctrl_quit(tty *t)
 {
-   if (c_term.c_lflag & ISIG) {
+   if (t->c_term.c_lflag & ISIG) {
       printk("QUIT not supported yet\n");
       return true;
    }
@@ -52,9 +52,9 @@ static bool tty_ctrl_quit(tty *t)
 
 static bool tty_ctrl_eof(tty *t)
 {
-   if (c_term.c_lflag & ICANON) {
+   if (t->c_term.c_lflag & ICANON) {
       t->tty_end_line_delim_count++;
-      kb_buf_write_elem(t, c_term.c_cc[VEOF]);
+      kb_buf_write_elem(t, t->c_term.c_cc[VEOF]);
       kcond_signal_one(&t->kb_input_cond);
       return true;
    }
@@ -64,9 +64,9 @@ static bool tty_ctrl_eof(tty *t)
 
 static bool tty_ctrl_eol(tty *t)
 {
-   if (c_term.c_lflag & ICANON) {
+   if (t->c_term.c_lflag & ICANON) {
       t->tty_end_line_delim_count++;
-      kb_buf_write_elem(t, c_term.c_cc[VEOL]);
+      kb_buf_write_elem(t, t->c_term.c_cc[VEOL]);
       kcond_signal_one(&t->kb_input_cond);
       return true;
    }
@@ -75,9 +75,9 @@ static bool tty_ctrl_eol(tty *t)
 
 static bool tty_ctrl_eol2(tty *t)
 {
-   if (c_term.c_lflag & ICANON) {
+   if (t->c_term.c_lflag & ICANON) {
       t->tty_end_line_delim_count++;
-      kb_buf_write_elem(t, c_term.c_cc[VEOL2]);
+      kb_buf_write_elem(t, t->c_term.c_cc[VEOL2]);
       kcond_signal_one(&t->kb_input_cond);
       return true;
    }
@@ -86,7 +86,7 @@ static bool tty_ctrl_eol2(tty *t)
 
 static bool tty_ctrl_reprint(tty *t)
 {
-   if (c_term.c_lflag & (ICANON | IEXTEN)) {
+   if (t->c_term.c_lflag & (ICANON | IEXTEN)) {
       printk("REPRINT not supported yet\n");
       return true;
    }
@@ -96,7 +96,7 @@ static bool tty_ctrl_reprint(tty *t)
 
 static bool tty_ctrl_discard(tty *t)
 {
-   if (c_term.c_lflag & IEXTEN) {
+   if (t->c_term.c_lflag & IEXTEN) {
       /*
        * From termios' man page:
        * VDISCARD
@@ -115,7 +115,7 @@ static bool tty_ctrl_discard(tty *t)
 
 static bool tty_ctrl_lnext(tty *t)
 {
-   if (c_term.c_lflag & IEXTEN) {
+   if (t->c_term.c_lflag & IEXTEN) {
       printk("LNEXT not supported yet\n");
       return true;
    }
@@ -125,7 +125,7 @@ static bool tty_ctrl_lnext(tty *t)
 
 static void tty_set_ctrl_handler(tty *t, u8 ctrl_type, tty_ctrl_sig_func h)
 {
-   u8 c = c_term.c_cc[ctrl_type];
+   u8 c = t->c_term.c_cc[ctrl_type];
 
    if (!c) {
       /*

@@ -20,7 +20,6 @@ tty *ttys[MAX_TTYS];
 tty *__curr_tty;
 
 /* tty ioctl */
-struct termios c_term;
 u32 tty_kd_mode = KD_TEXT;
 
 /* other (misc) */
@@ -81,7 +80,7 @@ static void internal_init_tty(int minor)
 
    tty *t = ttys[minor];
 
-   c_term = default_termios;
+   t->c_term = default_termios;
    driver_info *di = kmalloc(sizeof(driver_info));
 
    if (!di)

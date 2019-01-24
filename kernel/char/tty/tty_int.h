@@ -57,13 +57,13 @@ struct tty {
    u16 saved_cur_col;
    term_write_filter_ctx_t filter_ctx;
 
+   /* tty ioctl */
+   struct termios c_term;
 };
 
-extern struct termios c_term;
-extern const struct termios default_termios;
 extern u32 tty_kd_mode;
-
 extern u8 tty_curr_color;
 
 //------
+extern const struct termios default_termios;
 extern tty *ttys[MAX_TTYS];

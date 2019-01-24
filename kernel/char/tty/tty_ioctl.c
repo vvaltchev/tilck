@@ -49,7 +49,7 @@ const struct termios default_termios =
 
 static int tty_ioctl_tcgets(tty *t, void *argp)
 {
-   int rc = copy_to_user(argp, &c_term, sizeof(struct termios));
+   int rc = copy_to_user(argp, &t->c_term, sizeof(struct termios));
 
    if (rc < 0)
       return -EFAULT;
@@ -59,11 +59,11 @@ static int tty_ioctl_tcgets(tty *t, void *argp)
 
 static int tty_ioctl_tcsets(tty *t, void *argp)
 {
-   struct termios saved = c_term;
-   int rc = copy_from_user(&c_term, argp, sizeof(struct termios));
+   struct termios saved = t->c_term;
+   int rc = copy_from_user(&t->c_term, argp, sizeof(struct termios));
 
    if (rc < 0) {
-      c_term = saved;
+      t->c_term = saved;
       return -EFAULT;
    }
 

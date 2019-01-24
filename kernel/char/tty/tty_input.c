@@ -20,12 +20,12 @@
 static inline bool kb_buf_write_elem(tty *t, char c);
 #include "tty_ctrl_handlers.c.h"
 
-static void tty_keypress_echo(char c)
+static void tty_keypress_echo(tty *t, char c)
 {
    if (tty_kd_mode == KD_GRAPHICS)
       return;
 
-   if (c == '\n' && (c_term.c_lflag & ECHONL)) {
+   if (c == '\n' && (t->c_term.c_lflag & ECHONL)) {
       /*
        * From termios' man page:
        *
@@ -36,28 +36,28 @@ static void tty_keypress_echo(char c)
       return;
    }
 
-   if (!(c_term.c_lflag & ECHO)) {
+   if (!(t->c_term.c_lflag & ECHO)) {
       /* If ECHO is not enabled, just don't echo. */
       return;
    }
 
    /* echo is enabled */
 
-   if (c_term.c_lflag & ICANON) {
+   if (t->c_term.c_lflag & ICANON) {
 
-      if (c == c_term.c_cc[VEOF]) {
+      if (c == t->c_term.c_cc[VEOF]) {
          /* In canonical mode, EOF is never echoed */
          return;
       }
 
-      if (c_term.c_lflag & ECHOK) {
-         if (c == c_term.c_cc[VKILL]) {
+      if (t->c_term.c_lflag & ECHOK) {
+         if (c == t->c_term.c_cc[VKILL]) {
             term_write(get_curr_term(), &c, 1, tty_curr_color);
             return;
          }
       }
 
-      if (c_term.c_lflag & ECHOE) {
+      if (t->c_term.c_lflag & ECHOE) {
 
         /*
          * From termios' man page:
@@ -69,7 +69,7 @@ static void tty_keypress_echo(char c)
          */
 
 
-         if (c == c_term.c_cc[VWERASE] || c == c_term.c_cc[VERASE]) {
+         if (c == t->c_term.c_cc[VWERASE] || c == t->c_term.c_cc[VERASE]) {
             term_write(get_curr_term(), &c, 1, tty_curr_color);
             return;
          }
@@ -87,9 +87,9 @@ static void tty_keypress_echo(char c)
     *          as ^H.
     *
     */
-   if ((c < ' ' || c == 0x7F) && (c_term.c_lflag & ECHOCTL)) {
+   if ((c < ' ' || c == 0x7F) && (t->c_term.c_lflag & ECHOCTL)) {
       if (c != '\t' && c != '\n') {
-         if (c != c_term.c_cc[VSTART] && c != c_term.c_cc[VSTOP]) {
+         if (c != t->c_term.c_cc[VSTART] && c != t->c_term.c_cc[VSTOP]) {
             c += 0x40;
             term_write(get_curr_term(), "^", 1, tty_curr_color);
             term_write(get_curr_term(), &c, 1, tty_curr_color);
@@ -123,13 +123,13 @@ static inline char kb_buf_read_elem(tty *t)
 static inline bool kb_buf_drop_last_written_elem(tty *t)
 {
    char unused;
-   tty_keypress_echo(c_term.c_cc[VERASE]);
+   tty_keypress_echo(t, t->c_term.c_cc[VERASE]);
    return ringbuf_unwrite_elem(&t->kb_input_ringbuf, &unused);
 }
 
 static inline bool kb_buf_write_elem(tty *t, char c)
 {
-   tty_keypress_echo(c);
+   tty_keypress_echo(t, c);
    return ringbuf_write_elem1(&t->kb_input_ringbuf, c);
 }
 
@@ -148,23 +148,23 @@ static int tty_handle_non_printable_key(tty *t, u32 key)
       kb_buf_write_elem(t, *p++);
    }
 
-   if (!(c_term.c_lflag & ICANON))
+   if (!(t->c_term.c_lflag & ICANON))
       kcond_signal_one(&t->kb_input_cond);
 
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
-static inline bool tty_is_line_delim_char(char c)
+static inline bool tty_is_line_delim_char(tty *t, char c)
 {
    return c == '\n' ||
-          c == c_term.c_cc[VEOF] ||
-          c == c_term.c_cc[VEOL] ||
-          c == c_term.c_cc[VEOL2];
+          c == t->c_term.c_cc[VEOF] ||
+          c == t->c_term.c_cc[VEOL] ||
+          c == t->c_term.c_cc[VEOL2];
 }
 
 static int tty_keypress_handle_canon_mode(tty *t, u32 key, u8 c)
 {
-   if (c == c_term.c_cc[VERASE]) {
+   if (c == t->c_term.c_cc[VERASE]) {
 
       kb_buf_drop_last_written_elem(t);
 
@@ -172,7 +172,7 @@ static int tty_keypress_handle_canon_mode(tty *t, u32 key, u8 c)
 
       kb_buf_write_elem(t, c);
 
-      if (tty_is_line_delim_char(c)) {
+      if (tty_is_line_delim_char(t, c)) {
          t->tty_end_line_delim_count++;
          kcond_signal_one(&t->kb_input_cond);
       }
@@ -198,22 +198,22 @@ int tty_keypress_handler_int(tty *t, u32 key, u8 c, bool check_mods)
 
    if (c == '\r') {
 
-      if (c_term.c_iflag & IGNCR)
+      if (t->c_term.c_iflag & IGNCR)
          return KB_HANDLER_OK_AND_CONTINUE; /* ignore the carriage return */
 
-      if (c_term.c_iflag & ICRNL)
+      if (t->c_term.c_iflag & ICRNL)
          c = '\n';
 
    } else if (c == '\n') {
 
-      if (c_term.c_iflag & INLCR)
+      if (t->c_term.c_iflag & INLCR)
          c = '\r';
    }
 
    if (check_mods && tty_handle_special_controls(t, c)) /* Ctrl+C, Ctrl+D etc.*/
       return KB_HANDLER_OK_AND_CONTINUE;
 
-   if (c_term.c_lflag & ICANON)
+   if (t->c_term.c_lflag & ICANON)
       return tty_keypress_handle_canon_mode(t, key, c);
 
    /* raw mode input handling */
@@ -266,15 +266,15 @@ tty_internal_read_single_char_from_kb(tty *t,
    char c = kb_buf_read_elem(t);
    h->read_buf[h->read_buf_used++] = c;
 
-   if (c_term.c_lflag & ICANON) {
+   if (t->c_term.c_lflag & ICANON) {
 
-      if (tty_is_line_delim_char(c)) {
+      if (tty_is_line_delim_char(t, c)) {
          ASSERT(t->tty_end_line_delim_count > 0);
          t->tty_end_line_delim_count--;
          *delim_break = true;
 
          /* All line delimiters except EOF are kept */
-         if (c == c_term.c_cc[VEOF])
+         if (c == t->c_term.c_cc[VEOF])
             h->read_buf_used--;
       }
 
@@ -285,7 +285,7 @@ tty_internal_read_single_char_from_kb(tty *t,
     * In raw mode it makes no sense to read until a line delim is
     * found: we should read the minimum necessary.
     */
-   return !(h->read_buf_used >= c_term.c_cc[VMIN]);
+   return !(h->read_buf_used >= t->c_term.c_cc[VMIN]);
 }
 
 static inline bool
@@ -296,7 +296,7 @@ tty_internal_should_read_return(devfs_file_handle *h,
    devfs_file *df = h->devfs_file_ptr;
    tty *t = ttys[df->dev_minor];
 
-   if (c_term.c_lflag & ICANON) {
+   if (t->c_term.c_lflag & ICANON) {
       return
          delim_break ||
             (t->tty_end_line_delim_count > 0 &&
@@ -304,7 +304,7 @@ tty_internal_should_read_return(devfs_file_handle *h,
    }
 
    /* Raw mode handling */
-   return read_cnt >= c_term.c_cc[VMIN];
+   return read_cnt >= t->c_term.c_cc[VMIN];
 }
 
 ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
@@ -349,7 +349,7 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
       }
    }
 
-   if (c_term.c_lflag & ICANON)
+   if (t->c_term.c_lflag & ICANON)
       term_set_col_offset(get_curr_term(), term_get_curr_col(get_curr_term()));
 
    h->read_allowed_to_return = false;
@@ -374,7 +374,7 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
              h->read_buf_used < DEVFS_READ_BS &&
              tty_internal_read_single_char_from_kb(t, h, &delim_break)) { }
 
-      if (!(h->flags & O_NONBLOCK) || !(c_term.c_lflag & ICANON))
+      if (!(h->flags & O_NONBLOCK) || !(t->c_term.c_lflag & ICANON))
          read_count += tty_flush_read_buf(h, buf+read_count, size-read_count);
 
       ASSERT(t->tty_end_line_delim_count >= 0);
