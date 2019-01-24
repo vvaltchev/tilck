@@ -24,11 +24,10 @@ ssize_t tty_write(fs_handle h, char *buf, size_t size)
    devfs_file_handle *dh = h;
    devfs_file *df = dh->devfs_file_ptr;
    tty *t = ttys[df->dev_minor];
-   (void)t;
 
    /* term_write's size is limited to 2^20 - 1 */
    size = MIN(size, (size_t)MB - 1);
-   term_write(get_curr_term(), buf, size, t->curr_color);
+   term_write(t->term_inst, buf, size, t->curr_color);
    return size;
 }
 
@@ -69,19 +68,30 @@ static void init_tty_struct(tty *t)
    t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
 }
 
-static void internal_init_tty(int minor)
+static tty *allocate_and_init_tty(int minor)
 {
-   ASSERT(minor < (int)ARRAY_SIZE(ttys));
-   ASSERT(!ttys[minor]);
-
    ttys[minor] = kzmalloc(sizeof(tty));
 
    if (!ttys[minor]) {
       panic("TTY: no enough memory for TTY %d", minor);
    }
 
-   tty *const t = ttys[minor];
-   init_tty_struct(t);
+   init_tty_struct(ttys[minor]);
+   return ttys[minor];
+}
+
+static void internal_init_tty(int minor)
+{
+   ASSERT(minor < (int)ARRAY_SIZE(ttys));
+   ASSERT(!ttys[minor]);
+
+   tty *const t = allocate_and_init_tty(minor);
+
+   if (minor == 0) {
+      t->term_inst = get_curr_term();
+   } else {
+      NOT_IMPLEMENTED();
+   }
 
    driver_info *di = kmalloc(sizeof(driver_info));
 
@@ -97,7 +107,7 @@ static void internal_init_tty(int minor)
       panic("TTY: unable to create /dev/tty (error: %d)", rc);
 
    tty_input_init(t);
-   term_set_filter_func(get_curr_term(),
+   term_set_filter_func(t->term_inst,
                         tty_term_write_filter,
                         &t->filter_ctx);
 }

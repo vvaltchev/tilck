@@ -126,11 +126,11 @@ tty_filter_handle_csi_m(int *params,
 }
 
 static inline void
-tty_move_cursor_begin_nth_row(term_action *a, int row)
+tty_move_cursor_begin_nth_row(tty *t, term_action *a, int row)
 {
    int new_row =
-      MIN(term_get_curr_row(get_curr_term()) + row,
-          term_get_rows(get_curr_term()) - 1);
+      MIN(term_get_curr_row(t->term_inst) + row,
+          term_get_rows(t->term_inst) - 1);
 
    *a = (term_action) {
       .type2 = a_move_ch_and_cur,
@@ -148,6 +148,7 @@ tty_filter_end_csi_seq(u8 c,
    const char *endptr;
    int params[16] = {0};
    int pc = 0;
+   tty *const t = ctx->t;
 
    ctx->param_bytes[ctx->pbc] = 0;
    ctx->interm_bytes[ctx->ibc] = 0;
@@ -179,12 +180,12 @@ tty_filter_end_csi_seq(u8 c,
 
       case 'E':
          /* Move the cursor 'n' lines down and set col = 0 */
-        tty_move_cursor_begin_nth_row(a, MAX(1, params[0]));
+        tty_move_cursor_begin_nth_row(t, a, MAX(1, params[0]));
         break;
 
       case 'F':
          /* Move the cursor 'n' lines up and set col = 0 */
-         tty_move_cursor_begin_nth_row(a, -MAX(1, params[0]));
+         tty_move_cursor_begin_nth_row(t, a, -MAX(1, params[0]));
          break;
 
       case 'G':
@@ -193,8 +194,8 @@ tty_filter_end_csi_seq(u8 c,
 
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
-            .arg1 = term_get_curr_row(get_curr_term()),
-            .arg2 = MIN((u32)params[0], term_get_cols(get_curr_term()) - 1)
+            .arg1 = term_get_curr_row(t->term_inst),
+            .arg2 = MIN((u32)params[0], term_get_cols(t->term_inst) - 1)
          };
 
          break;
@@ -207,8 +208,8 @@ tty_filter_end_csi_seq(u8 c,
 
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
-            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(get_curr_term()) - 1),
-            .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(get_curr_term()) - 1)
+            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst) - 1),
+            .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(t->term_inst) - 1)
          };
 
          break;
@@ -243,8 +244,8 @@ tty_filter_end_csi_seq(u8 c,
 
             char dsr[16];
             snprintk(dsr, sizeof(dsr), "\033[%u;%uR",
-                     term_get_curr_row(get_curr_term()) + 1,
-                     term_get_curr_col(get_curr_term()) + 1);
+                     term_get_curr_row(t->term_inst) + 1,
+                     term_get_curr_col(t->term_inst) + 1);
 
             for (char *p = dsr; *p; p++)
                tty_keypress_handler_int(ctx->t, *p, *p, false);
@@ -254,8 +255,8 @@ tty_filter_end_csi_seq(u8 c,
 
       case 's':
          /* SCP (Save Cursor Position) */
-         ctx->t->saved_cur_row = term_get_curr_row(get_curr_term());
-         ctx->t->saved_cur_col = term_get_curr_col(get_curr_term());
+         ctx->t->saved_cur_row = term_get_curr_row(t->term_inst);
+         ctx->t->saved_cur_col = term_get_curr_col(t->term_inst);
          break;
 
       case 'u':
@@ -368,7 +369,7 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
    struct termios *const c_term = &t->c_term;
 
    if (ctx->use_alt_charset && alt_charset[c] != -1) {
-      term_internal_write_char2(get_curr_term(), alt_charset[c], *color);
+      term_internal_write_char2(t->term_inst, alt_charset[c], *color);
       return TERM_FILTER_WRITE_BLANK;
    }
 
@@ -381,7 +382,7 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
       case '\n':
 
          if (c_term->c_oflag & (OPOST | ONLCR))
-            term_internal_write_char2(get_curr_term(), '\r', *color);
+            term_internal_write_char2(t->term_inst, '\r', *color);
 
          break;
 
@@ -402,7 +403,7 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
 
    if (c == c_term->c_cc[VERASE]) {
 
-      term_internal_write_backspace(get_curr_term(), *color);
+      term_internal_write_backspace(t->term_inst, *color);
       return TERM_FILTER_WRITE_BLANK;
 
    } else if (c == c_term->c_cc[VWERASE]) {

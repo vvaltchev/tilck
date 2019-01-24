@@ -45,6 +45,8 @@ typedef bool (*tty_ctrl_sig_func)(tty *);
 
 struct tty {
 
+   term *term_inst;
+
    /* tty input */
    char kb_input_buf[KB_INPUT_BS];
    ringbuf kb_input_ringbuf;
@@ -65,6 +67,5 @@ struct tty {
    u8 curr_color;
 };
 
-//------
 extern const struct termios default_termios;
 extern tty *ttys[MAX_TTYS];
