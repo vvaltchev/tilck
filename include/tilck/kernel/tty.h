@@ -16,4 +16,4 @@ static ALWAYS_INLINE tty *get_curr_tty(void)
 
 void init_tty(void);
 void tty_setup_for_panic(void);
-int tty_keypress_handler_int(u32 key, u8, bool check_mods);
+int tty_keypress_handler_int(tty *t, u32 key, u8, bool check_mods);

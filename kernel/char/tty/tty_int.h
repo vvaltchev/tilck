@@ -18,6 +18,8 @@ enum term_write_filter_state {
 
 typedef struct {
 
+   tty *t;
+
    enum term_write_filter_state state;
    char param_bytes[64];
    char interm_bytes[64];
@@ -29,21 +31,22 @@ typedef struct {
 
 } term_write_filter_ctx_t;
 
-void tty_input_init(void);
-ssize_t tty_read(fs_handle fsh, char *buf, size_t size);
+void tty_input_init(tty *t);
 int tty_keypress_handler(u32 key, u8 c);
 
 enum term_fret
 tty_term_write_filter(u8 c, u8 *color, term_action *a, void *ctx_arg);
 
-typedef bool (*tty_ctrl_sig_func)(void);
+typedef bool (*tty_ctrl_sig_func)(tty *);
 
 #define KB_INPUT_BS 4096
 #define MAX_TTYS 3
 
 struct tty {
 
-   int dummy_variable; /* temp */
+   char kb_input_buf[KB_INPUT_BS];
+   ringbuf kb_input_ringbuf;
+
 };
 
 extern struct termios c_term;
@@ -53,8 +56,6 @@ extern u32 tty_kd_mode;
 extern term_write_filter_ctx_t term_write_filter_ctx;
 extern u8 tty_curr_color;
 
-extern char kb_input_buf[KB_INPUT_BS];
-extern ringbuf kb_input_ringbuf;
 extern kcond kb_input_cond;
 extern volatile int tty_end_line_delim_count;
 extern tty_ctrl_sig_func tty_special_ctrl_handlers[256];

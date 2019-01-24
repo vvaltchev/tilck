@@ -17,7 +17,7 @@
 #include "term_int.h"
 #include "tty_int.h"
 
-static inline bool kb_buf_write_elem(char c);
+static inline bool kb_buf_write_elem(tty *t, char c);
 #include "tty_ctrl_handlers.c.h"
 
 static void tty_keypress_echo(char c)
@@ -107,33 +107,33 @@ static void tty_keypress_echo(char c)
    term_write(get_curr_term(), &c, 1, tty_curr_color);
 }
 
-static inline bool kb_buf_is_empty(void)
+static inline bool kb_buf_is_empty(tty *t)
 {
-   return ringbuf_is_empty(&kb_input_ringbuf);
+   return ringbuf_is_empty(&t->kb_input_ringbuf);
 }
 
-static inline char kb_buf_read_elem(void)
+static inline char kb_buf_read_elem(tty *t)
 {
    u8 ret;
-   ASSERT(!kb_buf_is_empty());
-   DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&kb_input_ringbuf, &ret));
+   ASSERT(!kb_buf_is_empty(t));
+   DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&t->kb_input_ringbuf, &ret));
    return (char)ret;
 }
 
-static inline bool kb_buf_drop_last_written_elem(void)
+static inline bool kb_buf_drop_last_written_elem(tty *t)
 {
    char unused;
    tty_keypress_echo(c_term.c_cc[VERASE]);
-   return ringbuf_unwrite_elem(&kb_input_ringbuf, &unused);
+   return ringbuf_unwrite_elem(&t->kb_input_ringbuf, &unused);
 }
 
-static inline bool kb_buf_write_elem(char c)
+static inline bool kb_buf_write_elem(tty *t, char c)
 {
    tty_keypress_echo(c);
-   return ringbuf_write_elem1(&kb_input_ringbuf, c);
+   return ringbuf_write_elem1(&t->kb_input_ringbuf, c);
 }
 
-static int tty_handle_non_printable_key(u32 key)
+static int tty_handle_non_printable_key(tty *t, u32 key)
 {
    char seq[16];
    bool found = kb_scancode_to_ansi_seq(key, kb_get_current_modifiers(), seq);
@@ -145,7 +145,7 @@ static int tty_handle_non_printable_key(u32 key)
    }
 
    while (*p) {
-      kb_buf_write_elem(*p++);
+      kb_buf_write_elem(t, *p++);
    }
 
    if (!(c_term.c_lflag & ICANON))
@@ -162,15 +162,15 @@ static inline bool tty_is_line_delim_char(char c)
           c == c_term.c_cc[VEOL2];
 }
 
-static int tty_keypress_handle_canon_mode(u32 key, u8 c)
+static int tty_keypress_handle_canon_mode(tty *t, u32 key, u8 c)
 {
    if (c == c_term.c_cc[VERASE]) {
 
-      kb_buf_drop_last_written_elem();
+      kb_buf_drop_last_written_elem(t);
 
    } else {
 
-      kb_buf_write_elem(c);
+      kb_buf_write_elem(t, c);
 
       if (tty_is_line_delim_char(c)) {
          tty_end_line_delim_count++;
@@ -181,13 +181,13 @@ static int tty_keypress_handle_canon_mode(u32 key, u8 c)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
-int tty_keypress_handler_int(u32 key, u8 c, bool check_mods)
+int tty_keypress_handler_int(tty *t, u32 key, u8 c, bool check_mods)
 {
    if (!c)
-      return tty_handle_non_printable_key(key);
+      return tty_handle_non_printable_key(t, key);
 
    if (check_mods && kb_is_alt_pressed())
-      kb_buf_write_elem('\033');
+      kb_buf_write_elem(t, '\033');
 
    if (check_mods && kb_is_ctrl_pressed()) {
       if (isalpha(c) || c == '\\') {
@@ -210,14 +210,14 @@ int tty_keypress_handler_int(u32 key, u8 c, bool check_mods)
          c = '\r';
    }
 
-   if (check_mods && tty_handle_special_controls(c)) /* Ctrl+C, Ctrl+D etc. */
+   if (check_mods && tty_handle_special_controls(t, c)) /* Ctrl+C, Ctrl+D etc.*/
       return KB_HANDLER_OK_AND_CONTINUE;
 
    if (c_term.c_lflag & ICANON)
-      return tty_keypress_handle_canon_mode(key, c);
+      return tty_keypress_handle_canon_mode(t, key, c);
 
    /* raw mode input handling */
-   kb_buf_write_elem(c);
+   kb_buf_write_elem(t, c);
 
    kcond_signal_one(&kb_input_cond);
    return KB_HANDLER_OK_AND_CONTINUE;
@@ -235,7 +235,7 @@ int tty_keypress_handler(u32 key, u8 c)
       return KB_HANDLER_OK_AND_STOP;
    }
 
-   return tty_keypress_handler_int(key, c, true);
+   return tty_keypress_handler_int(get_curr_tty(), key, c, true);
 }
 
 static u32 tty_flush_read_buf(devfs_file_handle *h, char *buf, u32 size)
@@ -259,10 +259,11 @@ static u32 tty_flush_read_buf(devfs_file_handle *h, char *buf, u32 size)
  *    - FALSE when caller's read loop should STOP
  */
 static bool
-tty_internal_read_single_char_from_kb(devfs_file_handle *h,
+tty_internal_read_single_char_from_kb(tty *t,
+                                      devfs_file_handle *h,
                                       bool *delim_break)
 {
-   char c = kb_buf_read_elem();
+   char c = kb_buf_read_elem(t);
    h->read_buf[h->read_buf_used++] = c;
 
    if (c_term.c_lflag & ICANON) {
@@ -308,7 +309,6 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
    devfs_file_handle *h = fsh;
    devfs_file *df = h->devfs_file_ptr;
    tty *t = ttys[df->dev_minor];
-   (void)t;
 
    size_t read_count = 0;
    bool delim_break;
@@ -353,10 +353,10 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
 
    do {
 
-      if ((h->flags & O_NONBLOCK) && kb_buf_is_empty())
+      if ((h->flags & O_NONBLOCK) && kb_buf_is_empty(t))
          return -EAGAIN;
 
-      while (kb_buf_is_empty()) {
+      while (kb_buf_is_empty(t)) {
          kcond_wait(&kb_input_cond, NULL, KCOND_WAIT_FOREVER);
       }
 
@@ -367,9 +367,9 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
          ASSERT(h->read_pos == 0);
       }
 
-      while (!kb_buf_is_empty() &&
+      while (!kb_buf_is_empty(t) &&
              h->read_buf_used < DEVFS_READ_BS &&
-             tty_internal_read_single_char_from_kb(h, &delim_break)) { }
+             tty_internal_read_single_char_from_kb(t, h, &delim_break)) { }
 
       if (!(h->flags & O_NONBLOCK) || !(c_term.c_lflag & ICANON))
          read_count += tty_flush_read_buf(h, buf+read_count, size-read_count);
@@ -395,10 +395,10 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
    return read_count;
 }
 
-void tty_input_init(void)
+void tty_input_init(tty *t)
 {
    kcond_init(&kb_input_cond);
-   ringbuf_init(&kb_input_ringbuf, KB_INPUT_BS, 1, kb_input_buf);
+   ringbuf_init(&t->kb_input_ringbuf, KB_INPUT_BS, 1, t->kb_input_buf);
    tty_update_special_ctrl_handlers();
 
    if (kb_register_keypress_handler(&tty_keypress_handler) < 0)

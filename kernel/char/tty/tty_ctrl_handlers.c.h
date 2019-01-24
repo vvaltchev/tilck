@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static bool tty_ctrl_stop(void)
+static bool tty_ctrl_stop(tty *t)
 {
    if (c_term.c_iflag & IXON) {
       // TODO: eventually support pause transmission, one day.
@@ -10,7 +10,7 @@ static bool tty_ctrl_stop(void)
    return false;
 }
 
-static bool tty_ctrl_start(void)
+static bool tty_ctrl_start(tty *t)
 {
    if (c_term.c_iflag & IXON) {
       // TODO: eventually support pause transmission, one day.
@@ -20,7 +20,7 @@ static bool tty_ctrl_start(void)
    return false;
 }
 
-static bool tty_ctrl_intr(void)
+static bool tty_ctrl_intr(tty *t)
 {
    if (c_term.c_lflag & ISIG) {
       printk("INTR not supported yet\n");
@@ -30,7 +30,7 @@ static bool tty_ctrl_intr(void)
    return false;
 }
 
-static bool tty_ctrl_susp(void)
+static bool tty_ctrl_susp(tty *t)
 {
    if (c_term.c_lflag & ISIG) {
       printk("SUSP not supported yet\n");
@@ -40,7 +40,7 @@ static bool tty_ctrl_susp(void)
    return false;
 }
 
-static bool tty_ctrl_quit(void)
+static bool tty_ctrl_quit(tty *t)
 {
    if (c_term.c_lflag & ISIG) {
       printk("QUIT not supported yet\n");
@@ -50,11 +50,11 @@ static bool tty_ctrl_quit(void)
    return false;
 }
 
-static bool tty_ctrl_eof(void)
+static bool tty_ctrl_eof(tty *t)
 {
    if (c_term.c_lflag & ICANON) {
       tty_end_line_delim_count++;
-      kb_buf_write_elem(c_term.c_cc[VEOF]);
+      kb_buf_write_elem(t, c_term.c_cc[VEOF]);
       kcond_signal_one(&kb_input_cond);
       return true;
    }
@@ -62,29 +62,29 @@ static bool tty_ctrl_eof(void)
    return false;
 }
 
-static bool tty_ctrl_eol(void)
+static bool tty_ctrl_eol(tty *t)
 {
    if (c_term.c_lflag & ICANON) {
       tty_end_line_delim_count++;
-      kb_buf_write_elem(c_term.c_cc[VEOL]);
+      kb_buf_write_elem(t, c_term.c_cc[VEOL]);
       kcond_signal_one(&kb_input_cond);
       return true;
    }
    return false;
 }
 
-static bool tty_ctrl_eol2(void)
+static bool tty_ctrl_eol2(tty *t)
 {
    if (c_term.c_lflag & ICANON) {
       tty_end_line_delim_count++;
-      kb_buf_write_elem(c_term.c_cc[VEOL2]);
+      kb_buf_write_elem(t, c_term.c_cc[VEOL2]);
       kcond_signal_one(&kb_input_cond);
       return true;
    }
    return false;
 }
 
-static bool tty_ctrl_reprint(void)
+static bool tty_ctrl_reprint(tty *t)
 {
    if (c_term.c_lflag & (ICANON | IEXTEN)) {
       printk("REPRINT not supported yet\n");
@@ -94,7 +94,7 @@ static bool tty_ctrl_reprint(void)
    return false;
 }
 
-static bool tty_ctrl_discard(void)
+static bool tty_ctrl_discard(tty *t)
 {
    if (c_term.c_lflag & IEXTEN) {
       /*
@@ -113,7 +113,7 @@ static bool tty_ctrl_discard(void)
    return false;
 }
 
-static bool tty_ctrl_lnext(void)
+static bool tty_ctrl_lnext(tty *t)
 {
    if (c_term.c_lflag & IEXTEN) {
       printk("LNEXT not supported yet\n");
@@ -156,12 +156,12 @@ void tty_update_special_ctrl_handlers(void)
    tty_set_ctrl_handler(VLNEXT, tty_ctrl_lnext);
 }
 
-static bool tty_handle_special_controls(u8 c)
+static bool tty_handle_special_controls(tty *t, u8 c)
 {
    tty_ctrl_sig_func handler = tty_special_ctrl_handlers[c];
 
    if (handler)
-      return handler();
+      return handler(t);
 
    return false;
 }

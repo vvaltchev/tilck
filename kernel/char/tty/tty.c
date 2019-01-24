@@ -20,8 +20,6 @@ tty *ttys[MAX_TTYS];
 tty *__curr_tty;
 
 /* tty input */
-char kb_input_buf[KB_INPUT_BS];
-ringbuf kb_input_ringbuf;
 kcond kb_input_cond;
 volatile int tty_end_line_delim_count = 0;
 tty_ctrl_sig_func tty_special_ctrl_handlers[256];
@@ -38,7 +36,7 @@ term_write_filter_ctx_t term_write_filter_ctx;
 /* other (misc) */
 u8 tty_curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
 
-static ssize_t tty_write(fs_handle h, char *buf, size_t size)
+ssize_t tty_write(fs_handle h, char *buf, size_t size)
 {
    devfs_file_handle *dh = h;
    devfs_file *df = dh->devfs_file_ptr;
@@ -55,6 +53,10 @@ static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 
 int tty_ioctl(fs_handle h, uptr request, void *argp);
 int tty_fcntl(fs_handle h, int cmd, uptr arg);
+ssize_t tty_read(fs_handle h, char *buf, size_t size);
+ssize_t tty_write(fs_handle h, char *buf, size_t size);
+
+/* ---- */
 
 static int
 tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
@@ -88,7 +90,6 @@ static void internal_init_tty(int minor)
    }
 
    tty *t = ttys[minor];
-   (void)t;
 
    c_term = default_termios;
    driver_info *di = kmalloc(sizeof(driver_info));
@@ -104,8 +105,8 @@ static void internal_init_tty(int minor)
    if (rc != 0)
       panic("TTY: unable to create /dev/tty (error: %d)", rc);
 
-   tty_input_init();
-
+   tty_input_init(t);
+   term_write_filter_ctx.t = t;
    term_set_filter_func(get_curr_term(),
                         tty_term_write_filter,
                         &term_write_filter_ctx);

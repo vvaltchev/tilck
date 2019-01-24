@@ -241,10 +241,11 @@ tty_filter_end_csi_seq(u8 c,
 
             char dsr[16];
             snprintk(dsr, sizeof(dsr), "\033[%u;%uR",
-                     term_get_curr_row(get_curr_term()) + 1, term_get_curr_col(get_curr_term()) + 1);
+                     term_get_curr_row(get_curr_term()) + 1,
+                     term_get_curr_col(get_curr_term()) + 1);
 
             for (char *p = dsr; *p; p++)
-               tty_keypress_handler_int(*p, *p, false);
+               tty_keypress_handler_int(ctx->t, *p, *p, false);
          }
 
          break;
