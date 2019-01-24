@@ -52,18 +52,18 @@ struct tty {
    int tty_end_line_delim_count;
    tty_ctrl_sig_func tty_special_ctrl_handlers[256];
 
+   /* tty output */
+   u16 tty_saved_cursor_row;
+   u16 tty_saved_cursor_col;
+   term_write_filter_ctx_t term_write_filter_ctx;
+
 };
 
 extern struct termios c_term;
 extern const struct termios default_termios;
 extern u32 tty_kd_mode;
 
-extern term_write_filter_ctx_t term_write_filter_ctx;
 extern u8 tty_curr_color;
-
-extern u16 tty_saved_cursor_row;
-extern u16 tty_saved_cursor_col;
-extern term_write_filter_ctx_t term_write_filter_ctx;
 
 //------
 extern tty *ttys[MAX_TTYS];

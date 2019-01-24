@@ -23,11 +23,6 @@ tty *__curr_tty;
 struct termios c_term;
 u32 tty_kd_mode = KD_TEXT;
 
-/* tty output */
-u16 tty_saved_cursor_row;
-u16 tty_saved_cursor_col;
-term_write_filter_ctx_t term_write_filter_ctx;
-
 /* other (misc) */
 u8 tty_curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
 
@@ -101,10 +96,10 @@ static void internal_init_tty(int minor)
       panic("TTY: unable to create /dev/tty (error: %d)", rc);
 
    tty_input_init(t);
-   term_write_filter_ctx.t = t;
+   t->term_write_filter_ctx.t = t;
    term_set_filter_func(get_curr_term(),
                         tty_term_write_filter,
-                        &term_write_filter_ctx);
+                        &t->term_write_filter_ctx);
 }
 
 void init_tty(void)
