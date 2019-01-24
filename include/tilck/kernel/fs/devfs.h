@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/list.h>
 
 #define DEVFS_READ_BS   4096
 #define DEVFS_WRITE_BS  4096
@@ -37,6 +38,17 @@ typedef struct {
 
 } devfs_file_handle;
 
+typedef struct {
+
+   list_node dir_node;
+
+   u32 dev_major;
+   u32 dev_minor;
+   const char *name;
+   file_ops fops;
+   devfs_entry_type type;
+
+} devfs_file;
 
 typedef int (*func_create_device_file)(int, file_ops *, devfs_entry_type *);
 

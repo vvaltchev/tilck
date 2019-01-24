@@ -123,6 +123,6 @@ void init_console(void); /* generic console init: fb or text mode */
 
 extern term *__curr_term;
 
-static inline term *get_curr_term(void) {
+static ALWAYS_INLINE term *get_curr_term(void) {
    return __curr_term;
 }

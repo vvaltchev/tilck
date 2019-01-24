@@ -306,6 +306,10 @@ tty_internal_should_read_return(devfs_file_handle *h,
 ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
 {
    devfs_file_handle *h = fsh;
+   devfs_file *df = h->devfs_file_ptr;
+   tty *t = ttys[df->dev_minor];
+   (void)t;
+
    size_t read_count = 0;
    bool delim_break;
 

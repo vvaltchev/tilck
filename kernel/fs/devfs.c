@@ -42,18 +42,6 @@ int register_driver(driver_info *info)
 
 typedef struct {
 
-   list_node dir_node;
-
-   u32 dev_major;
-   u32 dev_minor;
-   const char *name;
-   file_ops fops;
-   devfs_entry_type type;
-
-} devfs_file;
-
-typedef struct {
-
    /* Yes, sub-directories are NOT supported at the moment */
    list files_list;
 

@@ -5,6 +5,7 @@
 #include <tilck/common/debug/termios_debug.c.h>
 
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/term.h>
@@ -147,6 +148,11 @@ static int tty_ioctl_KDSKBMODE(fs_handle h, void *argp)
 
 int tty_ioctl(fs_handle h, uptr request, void *argp)
 {
+   devfs_file_handle *dh = h;
+   devfs_file *df = dh->devfs_file_ptr;
+   tty *t = ttys[df->dev_minor];
+   (void)t;
+
    switch (request) {
 
       case TCGETS:
@@ -183,10 +189,13 @@ int tty_ioctl(fs_handle h, uptr request, void *argp)
 
 int tty_fcntl(fs_handle h, int cmd, uptr arg)
 {
-   fs_handle_base *hb = h;
+   devfs_file_handle *dh = h;
+   devfs_file *df = dh->devfs_file_ptr;
+   tty *t = ttys[df->dev_minor];
+   (void)t;
 
    if (cmd == F_GETFL)
-      return hb->flags;
+      return dh->flags;
 
    if (cmd == F_SETFL) {
       /*
@@ -195,7 +204,7 @@ int tty_fcntl(fs_handle h, int cmd, uptr arg)
        * ignore such unknown/unsupported flags and that will make hard to guess
        * why programs behave in Tilck differently than on Linux.
        */
-      hb->flags = arg;
+      dh->flags = arg;
       return 0;
    }
 
