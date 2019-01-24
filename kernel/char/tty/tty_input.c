@@ -149,7 +149,7 @@ static int tty_handle_non_printable_key(tty *t, u32 key)
    }
 
    if (!(c_term.c_lflag & ICANON))
-      kcond_signal_one(&kb_input_cond);
+      kcond_signal_one(&t->kb_input_cond);
 
    return KB_HANDLER_OK_AND_CONTINUE;
 }
@@ -173,8 +173,8 @@ static int tty_keypress_handle_canon_mode(tty *t, u32 key, u8 c)
       kb_buf_write_elem(t, c);
 
       if (tty_is_line_delim_char(c)) {
-         tty_end_line_delim_count++;
-         kcond_signal_one(&kb_input_cond);
+         t->tty_end_line_delim_count++;
+         kcond_signal_one(&t->kb_input_cond);
       }
    }
 
@@ -219,7 +219,7 @@ int tty_keypress_handler_int(tty *t, u32 key, u8 c, bool check_mods)
    /* raw mode input handling */
    kb_buf_write_elem(t, c);
 
-   kcond_signal_one(&kb_input_cond);
+   kcond_signal_one(&t->kb_input_cond);
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
@@ -269,8 +269,8 @@ tty_internal_read_single_char_from_kb(tty *t,
    if (c_term.c_lflag & ICANON) {
 
       if (tty_is_line_delim_char(c)) {
-         ASSERT(tty_end_line_delim_count > 0);
-         tty_end_line_delim_count--;
+         ASSERT(t->tty_end_line_delim_count > 0);
+         t->tty_end_line_delim_count--;
          *delim_break = true;
 
          /* All line delimiters except EOF are kept */
@@ -293,10 +293,13 @@ tty_internal_should_read_return(devfs_file_handle *h,
                                 u32 read_cnt,
                                 bool delim_break)
 {
+   devfs_file *df = h->devfs_file_ptr;
+   tty *t = ttys[df->dev_minor];
+
    if (c_term.c_lflag & ICANON) {
       return
          delim_break ||
-            (tty_end_line_delim_count > 0 &&
+            (t->tty_end_line_delim_count > 0 &&
                (h->read_buf_used == DEVFS_READ_BS || read_cnt == KB_INPUT_BS));
    }
 
@@ -357,7 +360,7 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
          return -EAGAIN;
 
       while (kb_buf_is_empty(t)) {
-         kcond_wait(&kb_input_cond, NULL, KCOND_WAIT_FOREVER);
+         kcond_wait(&t->kb_input_cond, NULL, KCOND_WAIT_FOREVER);
       }
 
       delim_break = false;
@@ -374,7 +377,7 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
       if (!(h->flags & O_NONBLOCK) || !(c_term.c_lflag & ICANON))
          read_count += tty_flush_read_buf(h, buf+read_count, size-read_count);
 
-      ASSERT(tty_end_line_delim_count >= 0);
+      ASSERT(t->tty_end_line_delim_count >= 0);
 
    } while (!tty_internal_should_read_return(h, read_count, delim_break));
 
@@ -397,7 +400,7 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
 
 void tty_input_init(tty *t)
 {
-   kcond_init(&kb_input_cond);
+   kcond_init(&t->kb_input_cond);
    ringbuf_init(&t->kb_input_ringbuf, KB_INPUT_BS, 1, t->kb_input_buf);
    tty_update_special_ctrl_handlers();
 

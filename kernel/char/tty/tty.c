@@ -20,8 +20,6 @@ tty *ttys[MAX_TTYS];
 tty *__curr_tty;
 
 /* tty input */
-kcond kb_input_cond;
-volatile int tty_end_line_delim_count = 0;
 tty_ctrl_sig_func tty_special_ctrl_handlers[256];
 
 /* tty ioctl */

@@ -46,6 +46,8 @@ struct tty {
 
    char kb_input_buf[KB_INPUT_BS];
    ringbuf kb_input_ringbuf;
+   kcond kb_input_cond;
+   int tty_end_line_delim_count;
 
 };
 
@@ -56,8 +58,6 @@ extern u32 tty_kd_mode;
 extern term_write_filter_ctx_t term_write_filter_ctx;
 extern u8 tty_curr_color;
 
-extern kcond kb_input_cond;
-extern volatile int tty_end_line_delim_count;
 extern tty_ctrl_sig_func tty_special_ctrl_handlers[256];
 
 extern u16 tty_saved_cursor_row;
