@@ -49,7 +49,7 @@ struct tty {
    char kb_input_buf[KB_INPUT_BS];
    ringbuf kb_input_ringbuf;
    kcond kb_input_cond;
-   int tty_end_line_delim_count;
+   int end_line_delim_count;
    tty_ctrl_sig_func special_ctrl_handlers[256];
 
    /* tty output */
@@ -59,10 +59,10 @@ struct tty {
 
    /* tty ioctl */
    struct termios c_term;
-   u32 tty_kd_mode;
+   u32 kd_mode;
 
    /* tty input & output */
-   u8 tty_curr_color;
+   u8 curr_color;
 };
 
 //------

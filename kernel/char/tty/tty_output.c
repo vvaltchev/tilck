@@ -57,8 +57,8 @@ tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
    tty *const t = ctx->t;
 
    u8 tmp;
-   u8 fg = get_color_fg(t->tty_curr_color);
-   u8 bg = get_color_bg(t->tty_curr_color);
+   u8 fg = get_color_fg(t->curr_color);
+   u8 bg = get_color_bg(t->curr_color);
 
    switch(p) {
 
@@ -102,8 +102,8 @@ tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
    return;
 
 set_color:
-   t->tty_curr_color = make_color(fg, bg);
-   *color = t->tty_curr_color;
+   t->curr_color = make_color(fg, bg);
+   *color = t->curr_color;
 }
 
 static void

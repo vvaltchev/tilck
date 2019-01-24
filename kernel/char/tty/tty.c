@@ -28,7 +28,7 @@ ssize_t tty_write(fs_handle h, char *buf, size_t size)
 
    /* term_write's size is limited to 2^20 - 1 */
    size = MIN(size, (size_t)MB - 1);
-   term_write(get_curr_term(), buf, size, t->tty_curr_color);
+   term_write(get_curr_term(), buf, size, t->curr_color);
    return size;
 }
 
@@ -65,8 +65,8 @@ static void init_tty_struct(tty *t)
 {
    t->filter_ctx.t = t;
    t->c_term = default_termios;
-   t->tty_kd_mode = KD_TEXT;
-   t->tty_curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
+   t->kd_mode = KD_TEXT;
+   t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
 }
 
 static void internal_init_tty(int minor)

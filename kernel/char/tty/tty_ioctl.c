@@ -90,18 +90,18 @@ static int tty_ioctl_tiocgwinsz(tty *t, void *argp)
 
 void tty_setup_for_panic(tty *t)
 {
-   if (t->tty_kd_mode != KD_TEXT) {
+   if (t->kd_mode != KD_TEXT) {
 
       /*
        * NOTE: don't try to always fully restart the video output
-       * because it might trigger a nested panic. When tty_kd_mode != KD_TEXT,
+       * because it might trigger a nested panic. When kd_mode != KD_TEXT,
        * we have no other choice, if we wanna see something on the screen.
        *
        * TODO: investigate whether it is possible to make
        * term_restart_video_output() safer in panic scenarios.
        */
       term_restart_video_output(get_curr_term());
-      t->tty_kd_mode = KD_TEXT;
+      t->kd_mode = KD_TEXT;
    }
 }
 
@@ -111,13 +111,13 @@ static int tty_ioctl_kdsetmode(tty *t, void *argp)
 
    if (opt == KD_TEXT) {
       term_restart_video_output(get_curr_term());
-      t->tty_kd_mode = KD_TEXT;
+      t->kd_mode = KD_TEXT;
       return 0;
    }
 
    if (opt == KD_GRAPHICS) {
       term_pause_video_output(get_curr_term());
-      t->tty_kd_mode = KD_GRAPHICS;
+      t->kd_mode = KD_GRAPHICS;
       return 0;
    }
 

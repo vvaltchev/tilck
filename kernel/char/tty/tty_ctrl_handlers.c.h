@@ -53,7 +53,7 @@ static bool tty_ctrl_quit(tty *t)
 static bool tty_ctrl_eof(tty *t)
 {
    if (t->c_term.c_lflag & ICANON) {
-      t->tty_end_line_delim_count++;
+      t->end_line_delim_count++;
       kb_buf_write_elem(t, t->c_term.c_cc[VEOF]);
       kcond_signal_one(&t->kb_input_cond);
       return true;
@@ -65,7 +65,7 @@ static bool tty_ctrl_eof(tty *t)
 static bool tty_ctrl_eol(tty *t)
 {
    if (t->c_term.c_lflag & ICANON) {
-      t->tty_end_line_delim_count++;
+      t->end_line_delim_count++;
       kb_buf_write_elem(t, t->c_term.c_cc[VEOL]);
       kcond_signal_one(&t->kb_input_cond);
       return true;
@@ -76,7 +76,7 @@ static bool tty_ctrl_eol(tty *t)
 static bool tty_ctrl_eol2(tty *t)
 {
    if (t->c_term.c_lflag & ICANON) {
-      t->tty_end_line_delim_count++;
+      t->end_line_delim_count++;
       kb_buf_write_elem(t, t->c_term.c_cc[VEOL2]);
       kcond_signal_one(&t->kb_input_cond);
       return true;
