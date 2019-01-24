@@ -96,10 +96,10 @@ static void internal_init_tty(int minor)
       panic("TTY: unable to create /dev/tty (error: %d)", rc);
 
    tty_input_init(t);
-   t->term_write_filter_ctx.t = t;
+   t->filter_ctx.t = t;
    term_set_filter_func(get_curr_term(),
                         tty_term_write_filter,
-                        &t->term_write_filter_ctx);
+                        &t->filter_ctx);
 }
 
 void init_tty(void)

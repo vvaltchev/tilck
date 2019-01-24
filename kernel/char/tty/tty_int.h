@@ -50,12 +50,12 @@ struct tty {
    ringbuf kb_input_ringbuf;
    kcond kb_input_cond;
    int tty_end_line_delim_count;
-   tty_ctrl_sig_func tty_special_ctrl_handlers[256];
+   tty_ctrl_sig_func special_ctrl_handlers[256];
 
    /* tty output */
-   u16 tty_saved_cursor_row;
-   u16 tty_saved_cursor_col;
-   term_write_filter_ctx_t term_write_filter_ctx;
+   u16 saved_cur_row;
+   u16 saved_cur_col;
+   term_write_filter_ctx_t filter_ctx;
 
 };
 

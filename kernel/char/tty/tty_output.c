@@ -252,16 +252,16 @@ tty_filter_end_csi_seq(u8 c,
 
       case 's':
          /* SCP (Save Cursor Position) */
-         ctx->t->tty_saved_cursor_row = term_get_curr_row(get_curr_term());
-         ctx->t->tty_saved_cursor_col = term_get_curr_col(get_curr_term());
+         ctx->t->saved_cur_row = term_get_curr_row(get_curr_term());
+         ctx->t->saved_cur_col = term_get_curr_col(get_curr_term());
          break;
 
       case 'u':
          /* RCP (Restore Cursor Position) */
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
-            .arg1 = ctx->t->tty_saved_cursor_row,
-            .arg2 = ctx->t->tty_saved_cursor_col
+            .arg1 = ctx->t->saved_cur_row,
+            .arg2 = ctx->t->saved_cur_col
          };
          break;
    }

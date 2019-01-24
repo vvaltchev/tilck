@@ -400,7 +400,7 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
 
 void tty_update_special_ctrl_handlers(tty *t)
 {
-   bzero(t->tty_special_ctrl_handlers, sizeof(t->tty_special_ctrl_handlers));
+   bzero(t->special_ctrl_handlers, sizeof(t->special_ctrl_handlers));
    tty_set_ctrl_handler(t, VSTOP, tty_ctrl_stop);
    tty_set_ctrl_handler(t, VSTART, tty_ctrl_start);
    tty_set_ctrl_handler(t, VINTR, tty_ctrl_intr);
