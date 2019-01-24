@@ -262,6 +262,34 @@ static void create_kb_tasklet_runner(void)
       panic("KB: Unable to create a tasklet runner thread for IRQs");
 }
 
+/* NOTE: returns 0 if `key` not in [F1 ... F12] */
+int kb_get_fn_key_pressed(u32 key)
+{
+   /*
+    * We know that on the PC architecture, in the PS/2 set 1, keys F1-F12 have
+    * all a scancode long 1 byte.
+    */
+
+   static const u8 fn_table[256] = {
+
+      [KEY_F1] = 1,
+      [KEY_F2] = 2,
+      [KEY_F3] = 3,
+      [KEY_F4] = 4,
+      [KEY_F5] = 5,
+      [KEY_F6] = 6,
+      [KEY_F7] = 7,
+      [KEY_F8] = 8,
+      [KEY_F9] = 9,
+      [KEY_F10] = 10,
+      [KEY_F11] = 11,
+      [KEY_F12] = 12
+
+   };
+
+   return (int)fn_table[(u8) key];
+}
+
 /* This will be executed in a tasklet */
 void init_kb(void)
 {

@@ -11,6 +11,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/datetime.h>
+#include <tilck/kernel/tty.h>
 
 #include "fb_int.h"
 
@@ -290,7 +291,8 @@ static void fb_draw_banner(void)
    read_system_clock_datetime(&d);
 
    llen = snprintk(lbuf, fb_term_cols - 1,
-                   "Tilck [%s build] framebuffer console", BUILDTYPE_STR);
+                   "Tilck [%s] framebuffer console [tty %d]",
+                   BUILDTYPE_STR, tty_get_curr_tty_num());
 
    rlen = snprintk(rbuf, fb_term_cols - llen - 1,
                    "%02i %s %i %02i:%02i",

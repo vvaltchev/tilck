@@ -34,3 +34,4 @@ typedef struct {
 
 void term_internal_write_char2(term *t, char c, u8 color);
 void term_internal_write_backspace(term *t, u8 color);
+void set_curr_term(term *t);

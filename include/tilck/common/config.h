@@ -56,7 +56,9 @@
 #endif
 
 #define USER_VSDO_LIKE_PAGE_VADDR  (LINEAR_MAPPING_END)
-#define MAX_TTYS 2
+
+#define MAX_TTYS            2
+#define TERM_SCROLL_LINES   5
 
 /* Bootloader-specific config */
 

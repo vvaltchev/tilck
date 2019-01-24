@@ -11,6 +11,7 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/sched.h>
 
 #define _TERM_C_
 
@@ -441,7 +442,7 @@ static void term_action_erase_in_display(term *t, int mode)
             u32 col = t->c;
             term_action_reset(t);
             t->vi->move_cursor(row, col, make_color(DEFAULT_FG_COLOR,
-                                                 DEFAULT_BG_COLOR));
+                                                    DEFAULT_BG_COLOR));
          }
          break;
 
@@ -536,6 +537,7 @@ static void term_action_restart_video_output(term *t)
 
    term_redraw(t);
    t->vi->enable_cursor();
+   t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (t->vi->redraw_static_elements)
       t->vi->redraw_static_elements();
@@ -606,6 +608,15 @@ const video_interface *term_get_vi(term *t)
    return t->vi;
 }
 
+void set_curr_term(term *t)
+{
+   ASSERT(!is_preemption_enabled());
+
+   term_pause_video_output(get_curr_term());
+   __curr_term = t;
+   term_restart_video_output(get_curr_term());
+}
+
 void
 init_term(term *t, const video_interface *intf, int rows, int cols)
 {
@@ -614,8 +625,8 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
    t->tabsize = 8;
    t->cols = cols;
    t->rows = rows;
-   t->vi = (t == &first_instance) ? intf : &no_output_vi;
    t->saved_vi = intf;
+   t->vi = (t == &first_instance) ? intf : &no_output_vi;
 
    ringbuf_init(&t->ringbuf,
                 ARRAY_SIZE(t->actions_buf),
@@ -635,7 +646,7 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
       t->term_tabs = kzmalloc(t->cols * t->rows);
 
       if (!t->term_tabs)
-         printk("WARNING: unable to allocate the t->term_tabs buffer\n");
+         printk("WARNING: unable to allocate the term_tabs buffer\n");
 
    } else {
 

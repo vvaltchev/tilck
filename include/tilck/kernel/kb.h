@@ -16,6 +16,7 @@ bool kb_is_pressed(u32 key);
 int kb_register_keypress_handler(keypress_func f);
 bool kb_scancode_to_ansi_seq(u32 key, u32 modifiers, char *seq);
 u32 kb_get_current_modifiers(void);
+int kb_get_fn_key_pressed(u32 key);
 
 static inline bool kb_is_ctrl_pressed(void)
 {

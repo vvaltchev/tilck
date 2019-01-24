@@ -57,6 +57,7 @@ typedef bool (*tty_ctrl_sig_func)(tty *);
 struct tty {
 
    term *term_inst;
+   int minor;
    char dev_filename[16];
 
    /* tty input */

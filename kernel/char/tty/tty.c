@@ -88,7 +88,13 @@ static tty *allocate_and_init_tty(int minor)
    }
 
    init_tty_struct(ttys[minor]);
+   ttys[minor]->minor = minor;
    return ttys[minor];
+}
+
+int tty_get_curr_tty_num(void)
+{
+   return get_curr_tty()->minor;
 }
 
 static void internal_init_tty(int minor)

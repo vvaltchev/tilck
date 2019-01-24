@@ -225,18 +225,50 @@ int tty_keypress_handler_int(tty *t, u32 key, u8 c, bool check_mods)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
+static void set_curr_tty(tty *t)
+{
+   disable_preemption();
+   {
+      __curr_tty = t;
+      set_curr_term(t->term_inst);
+   }
+   enable_preemption();
+}
+
 int tty_keypress_handler(u32 key, u8 c)
 {
    tty *const t = get_curr_tty();
 
    if (key == KEY_PAGE_UP && kb_is_shift_pressed()) {
-      term_scroll_up(t->term_inst, 5);
+      term_scroll_up(t->term_inst, TERM_SCROLL_LINES);
       return KB_HANDLER_OK_AND_STOP;
    }
 
    if (key == KEY_PAGE_DOWN && kb_is_shift_pressed()) {
-      term_scroll_down(t->term_inst, 5);
+      term_scroll_down(t->term_inst, TERM_SCROLL_LINES);
       return KB_HANDLER_OK_AND_STOP;
+   }
+
+   if (kb_is_alt_pressed()) {
+
+      tty *other_tty;
+      int fn = kb_get_fn_key_pressed(key);
+
+      if (fn > 0 && get_curr_tty()->kd_mode == KD_TEXT) {
+
+         if (fn > MAX_TTYS)
+            return KB_HANDLER_OK_AND_STOP; /* just ignore the key stroke */
+
+         other_tty = ttys[fn];
+
+         if (other_tty == get_curr_tty())
+            return KB_HANDLER_OK_AND_STOP; /* just ignore the key stroke */
+
+         ASSERT(other_tty != NULL);
+
+         set_curr_tty(other_tty);
+         return KB_HANDLER_OK_AND_STOP;
+      }
    }
 
    return tty_keypress_handler_int(t, key, c, true);
