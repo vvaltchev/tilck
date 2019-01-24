@@ -19,9 +19,6 @@
 tty *ttys[MAX_TTYS];
 tty *__curr_tty;
 
-/* tty input */
-tty_ctrl_sig_func tty_special_ctrl_handlers[256];
-
 /* tty ioctl */
 struct termios c_term;
 u32 tty_kd_mode = KD_TEXT;

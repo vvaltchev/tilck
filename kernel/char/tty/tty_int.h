@@ -36,6 +36,7 @@ int tty_keypress_handler(u32 key, u8 c);
 
 enum term_fret
 tty_term_write_filter(u8 c, u8 *color, term_action *a, void *ctx_arg);
+void tty_update_special_ctrl_handlers(tty *t);
 
 typedef bool (*tty_ctrl_sig_func)(tty *);
 
@@ -44,10 +45,12 @@ typedef bool (*tty_ctrl_sig_func)(tty *);
 
 struct tty {
 
+   /* tty input */
    char kb_input_buf[KB_INPUT_BS];
    ringbuf kb_input_ringbuf;
    kcond kb_input_cond;
    int tty_end_line_delim_count;
+   tty_ctrl_sig_func tty_special_ctrl_handlers[256];
 
 };
 
@@ -57,8 +60,6 @@ extern u32 tty_kd_mode;
 
 extern term_write_filter_ctx_t term_write_filter_ctx;
 extern u8 tty_curr_color;
-
-extern tty_ctrl_sig_func tty_special_ctrl_handlers[256];
 
 extern u16 tty_saved_cursor_row;
 extern u16 tty_saved_cursor_col;

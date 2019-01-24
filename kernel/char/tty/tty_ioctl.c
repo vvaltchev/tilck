@@ -47,9 +47,7 @@ const struct termios default_termios =
    }
 };
 
-void tty_update_special_ctrl_handlers(void);
-
-static int tty_ioctl_tcgets(fs_handle h, void *argp)
+static int tty_ioctl_tcgets(tty *t, void *argp)
 {
    int rc = copy_to_user(argp, &c_term, sizeof(struct termios));
 
@@ -59,7 +57,7 @@ static int tty_ioctl_tcgets(fs_handle h, void *argp)
    return 0;
 }
 
-static int tty_ioctl_tcsets(fs_handle h, void *argp)
+static int tty_ioctl_tcsets(tty *t, void *argp)
 {
    struct termios saved = c_term;
    int rc = copy_from_user(&c_term, argp, sizeof(struct termios));
@@ -69,11 +67,11 @@ static int tty_ioctl_tcsets(fs_handle h, void *argp)
       return -EFAULT;
    }
 
-   tty_update_special_ctrl_handlers();
+   tty_update_special_ctrl_handlers(t);
    return 0;
 }
 
-static int tty_ioctl_tiocgwinsz(fs_handle h, void *argp)
+static int tty_ioctl_tiocgwinsz(tty *t, void *argp)
 {
    struct winsize sz = {
       .ws_row = term_get_rows(get_curr_term()),
@@ -107,7 +105,7 @@ void tty_setup_for_panic(void)
    }
 }
 
-static int tty_ioctl_kdsetmode(fs_handle h, void *argp)
+static int tty_ioctl_kdsetmode(tty *t, void *argp)
 {
    uptr opt = (uptr) argp;
 
@@ -126,7 +124,7 @@ static int tty_ioctl_kdsetmode(fs_handle h, void *argp)
    return -EINVAL;
 }
 
-static int tty_ioctl_KDGKBMODE(fs_handle h, void *argp)
+static int tty_ioctl_KDGKBMODE(tty *t, void *argp)
 {
    int mode = K_XLATE; /* The only supported mode, at the moment */
 
@@ -136,7 +134,7 @@ static int tty_ioctl_KDGKBMODE(fs_handle h, void *argp)
    return -EFAULT;
 }
 
-static int tty_ioctl_KDSKBMODE(fs_handle h, void *argp)
+static int tty_ioctl_KDSKBMODE(tty *t, void *argp)
 {
    uptr mode = (uptr) argp;
 
@@ -151,35 +149,34 @@ int tty_ioctl(fs_handle h, uptr request, void *argp)
    devfs_file_handle *dh = h;
    devfs_file *df = dh->devfs_file_ptr;
    tty *t = ttys[df->dev_minor];
-   (void)t;
 
    switch (request) {
 
       case TCGETS:
-         return tty_ioctl_tcgets(h, argp);
+         return tty_ioctl_tcgets(t, argp);
 
       case TCSETS:
-         return tty_ioctl_tcsets(h, argp);
+         return tty_ioctl_tcsets(t, argp);
 
       case TCSETSW:
          // TODO: implement the correct behavior for TCSETSW
-         return tty_ioctl_tcsets(h, argp);
+         return tty_ioctl_tcsets(t, argp);
 
       case TCSETSF:
          // TODO: implement the correct behavior for TCSETSF
-         return tty_ioctl_tcsets(h, argp);
+         return tty_ioctl_tcsets(t, argp);
 
       case TIOCGWINSZ:
-         return tty_ioctl_tiocgwinsz(h, argp);
+         return tty_ioctl_tiocgwinsz(t, argp);
 
       case KDSETMODE:
-         return tty_ioctl_kdsetmode(h, argp);
+         return tty_ioctl_kdsetmode(t, argp);
 
       case KDGKBMODE:
-         return tty_ioctl_KDGKBMODE(h, argp);
+         return tty_ioctl_KDGKBMODE(t, argp);
 
       case KDSKBMODE:
-         return tty_ioctl_KDSKBMODE(h, argp);
+         return tty_ioctl_KDSKBMODE(t, argp);
 
       default:
          printk("WARNING: unknown tty_ioctl() request: %p\n", request);

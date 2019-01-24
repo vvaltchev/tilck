@@ -398,11 +398,27 @@ ssize_t tty_read(fs_handle fsh, char *buf, size_t size)
    return read_count;
 }
 
+void tty_update_special_ctrl_handlers(tty *t)
+{
+   bzero(t->tty_special_ctrl_handlers, sizeof(t->tty_special_ctrl_handlers));
+   tty_set_ctrl_handler(t, VSTOP, tty_ctrl_stop);
+   tty_set_ctrl_handler(t, VSTART, tty_ctrl_start);
+   tty_set_ctrl_handler(t, VINTR, tty_ctrl_intr);
+   tty_set_ctrl_handler(t, VSUSP, tty_ctrl_susp);
+   tty_set_ctrl_handler(t, VQUIT, tty_ctrl_quit);
+   tty_set_ctrl_handler(t, VEOF, tty_ctrl_eof);
+   tty_set_ctrl_handler(t, VEOL, tty_ctrl_eol);
+   tty_set_ctrl_handler(t, VEOL2, tty_ctrl_eol2);
+   tty_set_ctrl_handler(t, VREPRINT, tty_ctrl_reprint);
+   tty_set_ctrl_handler(t, VDISCARD, tty_ctrl_discard);
+   tty_set_ctrl_handler(t, VLNEXT, tty_ctrl_lnext);
+}
+
 void tty_input_init(tty *t)
 {
    kcond_init(&t->kb_input_cond);
    ringbuf_init(&t->kb_input_ringbuf, KB_INPUT_BS, 1, t->kb_input_buf);
-   tty_update_special_ctrl_handlers();
+   tty_update_special_ctrl_handlers(t);
 
    if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
       panic("TTY: unable to register keypress handler");
