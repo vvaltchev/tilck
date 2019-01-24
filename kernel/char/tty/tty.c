@@ -19,7 +19,7 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
    devfs_file_handle *dh = h;
    devfs_file *df = dh->devfs_file_ptr;
-   tty *t = ttys[df->dev_minor];
+   tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_read_int(t, dh, buf, size);
 }
@@ -28,7 +28,7 @@ static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 {
    devfs_file_handle *dh = h;
    devfs_file *df = dh->devfs_file_ptr;
-   tty *t = ttys[df->dev_minor];
+   tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_write_int(t, dh, buf, size);
 }
@@ -37,7 +37,7 @@ static int tty_ioctl(fs_handle h, uptr request, void *argp)
 {
    devfs_file_handle *dh = h;
    devfs_file *df = dh->devfs_file_ptr;
-   tty *t = ttys[df->dev_minor];
+   tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_ioctl_int(t, dh, request, argp);
 }
@@ -46,7 +46,7 @@ static int tty_fcntl(fs_handle h, int cmd, uptr arg)
 {
    devfs_file_handle *dh = h;
    devfs_file *df = dh->devfs_file_ptr;
-   tty *t = ttys[df->dev_minor];
+   tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_fcntl_int(t, dh, cmd, arg);
 }
@@ -97,44 +97,55 @@ int tty_get_curr_tty_num(void)
    return get_curr_tty()->minor;
 }
 
-static void internal_init_tty(int minor)
+static void
+internal_tty_create_devfile(const char *filename, int major, int minor)
+{
+   int rc = create_dev_file(filename, major, minor);
+
+   if (rc != 0)
+      panic("TTY: unable to create /dev/%s (error: %d)", filename, rc);
+}
+
+static term *
+tty_allocate_and_init_new_term(void)
+{
+   term *new_term = allocate_new_term();
+
+   if (!new_term)
+      panic("TTY: no enough memory a new term instance");
+
+   init_term(new_term,
+             term_get_vi(ttys[1]->term_inst),
+             term_get_rows(ttys[1]->term_inst),
+             term_get_cols(ttys[1]->term_inst));
+
+   return new_term;
+}
+
+static void internal_init_tty(int major, int minor)
 {
    ASSERT(minor < (int)ARRAY_SIZE(ttys));
    ASSERT(!ttys[minor]);
 
-   tty *const t = allocate_and_init_tty(minor);
+   if (minor == 0) {
 
-   if (minor == 1) {
+      /*
+       * tty0 is special: not a real tty but a special file always pointing
+       * to the current tty. Therefore, just create the dev file.
+       */
 
-      t->term_inst = get_curr_term();
-
-   } else {
-
-      t->term_inst = allocate_new_term();
-
-      if (!t->term_inst)
-         panic("TTY: no enough memory a new term instance");
-
-      init_term(t->term_inst,
-                term_get_vi(ttys[1]->term_inst),
-                term_get_rows(ttys[1]->term_inst),
-                term_get_cols(ttys[1]->term_inst));
+      internal_tty_create_devfile("tty0", major, minor);
+      return;
    }
 
-   driver_info *di = kzmalloc(sizeof(driver_info));
+   tty *const t = allocate_and_init_tty(minor);
 
-   if (!di)
-      panic("TTY: no enough memory for driver_info");
+   t->term_inst = (minor == 1)
+                     ? get_curr_term()
+                     : tty_allocate_and_init_new_term();
 
-   di->name = "tty";
-   di->create_dev_file = tty_create_device_file;
-   int major = register_driver(di);
    snprintk(t->dev_filename, sizeof(t->dev_filename), "tty%d", minor);
-
-   int rc = create_dev_file(t->dev_filename, major, minor);
-
-   if (rc != 0)
-      panic("TTY: unable to create /dev/%s (error: %d)", t->dev_filename, rc);
+   internal_tty_create_devfile(t->dev_filename, major, minor);
 
    tty_input_init(t);
    term_set_filter_func(t->term_inst,
@@ -144,10 +155,17 @@ static void internal_init_tty(int minor)
 
 void init_tty(void)
 {
-   internal_init_tty0();
+   driver_info *di = kzmalloc(sizeof(driver_info));
 
-   for (int i = 1; i <= MAX_TTYS; i++) {
-      internal_init_tty(i);
+   if (!di)
+      panic("TTY: no enough memory for driver_info");
+
+   di->name = "tty";
+   di->create_dev_file = tty_create_device_file;
+   int major = register_driver(di);
+
+   for (int i = 0; i <= MAX_TTYS; i++) {
+      internal_init_tty(major, i);
    }
 
    __curr_tty = ttys[1];
