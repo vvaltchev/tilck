@@ -88,9 +88,9 @@ static int tty_ioctl_tiocgwinsz(tty *t, void *argp)
    return 0;
 }
 
-void tty_setup_for_panic(void)
+void tty_setup_for_panic(tty *t)
 {
-   if (tty_kd_mode != KD_TEXT) {
+   if (t->tty_kd_mode != KD_TEXT) {
 
       /*
        * NOTE: don't try to always fully restart the video output
@@ -101,7 +101,7 @@ void tty_setup_for_panic(void)
        * term_restart_video_output() safer in panic scenarios.
        */
       term_restart_video_output(get_curr_term());
-      tty_kd_mode = KD_TEXT;
+      t->tty_kd_mode = KD_TEXT;
    }
 }
 
@@ -111,13 +111,13 @@ static int tty_ioctl_kdsetmode(tty *t, void *argp)
 
    if (opt == KD_TEXT) {
       term_restart_video_output(get_curr_term());
-      tty_kd_mode = KD_TEXT;
+      t->tty_kd_mode = KD_TEXT;
       return 0;
    }
 
    if (opt == KD_GRAPHICS) {
       term_pause_video_output(get_curr_term());
-      tty_kd_mode = KD_GRAPHICS;
+      t->tty_kd_mode = KD_GRAPHICS;
       return 0;
    }
 

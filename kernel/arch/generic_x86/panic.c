@@ -32,8 +32,8 @@ NORETURN void panic(const char *fmt, ...)
 
    if (term_is_initialized(get_curr_term())) {
 
-      if (term_get_filter_func(get_curr_term()) != NULL)
-         tty_setup_for_panic();
+      if (get_curr_tty() != NULL)
+         tty_setup_for_panic(get_curr_tty());
 
    } else {
 

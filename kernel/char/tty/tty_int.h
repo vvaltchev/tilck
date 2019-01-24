@@ -59,9 +59,10 @@ struct tty {
 
    /* tty ioctl */
    struct termios c_term;
+   u32 tty_kd_mode;
+
 };
 
-extern u32 tty_kd_mode;
 extern u8 tty_curr_color;
 
 //------

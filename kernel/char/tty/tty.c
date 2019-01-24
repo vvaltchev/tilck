@@ -19,9 +19,6 @@
 tty *ttys[MAX_TTYS];
 tty *__curr_tty;
 
-/* tty ioctl */
-u32 tty_kd_mode = KD_TEXT;
-
 /* other (misc) */
 u8 tty_curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
 
@@ -67,6 +64,13 @@ tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
    return 0;
 }
 
+static void init_tty_struct(tty *t)
+{
+   t->filter_ctx.t = t;
+   t->c_term = default_termios;
+   t->tty_kd_mode = KD_TEXT;
+}
+
 static void internal_init_tty(int minor)
 {
    ASSERT(minor < (int)ARRAY_SIZE(ttys));
@@ -79,8 +83,8 @@ static void internal_init_tty(int minor)
    }
 
    tty *t = ttys[minor];
+   init_tty_struct(t);
 
-   t->c_term = default_termios;
    driver_info *di = kmalloc(sizeof(driver_info));
 
    if (!di)
@@ -95,7 +99,6 @@ static void internal_init_tty(int minor)
       panic("TTY: unable to create /dev/tty (error: %d)", rc);
 
    tty_input_init(t);
-   t->filter_ctx.t = t;
    term_set_filter_func(get_curr_term(),
                         tty_term_write_filter,
                         &t->filter_ctx);

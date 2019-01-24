@@ -22,7 +22,7 @@ static inline bool kb_buf_write_elem(tty *t, char c);
 
 static void tty_keypress_echo(tty *t, char c)
 {
-   if (tty_kd_mode == KD_GRAPHICS)
+   if (t->tty_kd_mode == KD_GRAPHICS)
       return;
 
    if (c == '\n' && (t->c_term.c_lflag & ECHONL)) {
