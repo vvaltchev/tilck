@@ -7,6 +7,7 @@ enum term_action {
 
    a_none,
    a_write,
+   a_dwrite_no_filter,   /* direct write w/o filters/scroll/move_cursor/flush */
    a_del,
    a_scroll,               /* > 0 scrollup: text moves DOWN; < 0 the opposite */
    a_set_col_offset,
@@ -83,5 +84,3 @@ term_filter term_get_filter(term *t);
 
 term *allocate_new_term(void);
 void set_curr_term(term *t);
-
-void term_internal_write_char2(term *t, char c, u8 color);

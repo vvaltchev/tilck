@@ -381,10 +381,19 @@ tty_handle_default_state(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 
       case '\n':
 
-         if (c_term->c_oflag & (OPOST | ONLCR))
-            term_internal_write_char2(t->term_inst, '\r', *color);
+         if (c_term->c_oflag & (OPOST | ONLCR)) {
 
-         break;
+            *a = (term_action) {
+               .type3 = a_dwrite_no_filter,
+               .len = 2,
+               .col = *color,
+               .ptr = (uptr)"\n\r"
+            };
+
+            return TERM_FILTER_WRITE_BLANK;
+         }
+
+         return TERM_FILTER_WRITE_C;
 
       case '\a':
       case '\f':

@@ -304,7 +304,7 @@ static void term_serial_con_write(char c)
    serial_write(COM1, c);
 }
 
-void term_internal_write_char2(term *t, char c, u8 color)
+static void term_internal_write_char2(term *t, char c, u8 color)
 {
    if (kopt_serial_mode == TERM_SERIAL_CONSOLE) {
       serial_write(COM1, c);
@@ -366,6 +366,17 @@ static void term_action_write(term *t, char *buf, u32 len, u8 color)
 
    if (vi->flush_buffers)
       vi->flush_buffers();
+}
+
+/*
+ * Direct write w/o any filter nor scroll/move_cursor/flush.
+ */
+static void
+term_action_dwrite_no_filter(term *t, char *buf, u32 len, u8 color)
+{
+   for (u32 i = 0; i < len; i++) {
+      term_internal_write_char2(t, buf[i], color);
+   }
 }
 
 static void term_action_set_col_offset(term *t, u32 off)
