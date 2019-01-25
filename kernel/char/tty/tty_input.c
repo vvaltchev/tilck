@@ -9,6 +9,7 @@
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/cmdline.h>
 
 #include <termios.h>      // system header
 #include <fcntl.h>        // system header
@@ -256,7 +257,7 @@ int tty_keypress_handler(u32 key, u8 c)
 
       if (fn > 0 && get_curr_tty()->kd_mode == KD_TEXT) {
 
-         if (fn > MAX_TTYS)
+         if (fn > kopt_tty_count)
             return KB_HANDLER_OK_AND_STOP; /* just ignore the key stroke */
 
          other_tty = ttys[fn];

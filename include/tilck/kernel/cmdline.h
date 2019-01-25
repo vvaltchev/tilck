@@ -17,6 +17,7 @@ enum term_serial_mode
 
 extern const char *cmd_args[MAX_CMD_ARGS];
 extern void (*self_test_to_run)(void);
+extern int kopt_tty_count;
 extern enum term_serial_mode kopt_serial_mode;
 
 void parse_kernel_cmdline(const char *cmdline);

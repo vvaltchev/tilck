@@ -9,6 +9,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/kb.h>
+#include <tilck/kernel/cmdline.h>
 
 #include "tty_int.h"
 
@@ -164,7 +165,7 @@ void init_tty(void)
    di->create_dev_file = tty_create_device_file;
    int major = register_driver(di, 4);
 
-   for (int i = 0; i <= MAX_TTYS; i++) {
+   for (int i = 0; i <= kopt_tty_count; i++) {
       internal_init_tty(major, i);
    }
 

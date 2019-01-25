@@ -33,11 +33,30 @@ static void call_exit(int code)
 
 static int get_tty_count(void)
 {
-   if (getenv("TILCK"))
-      return MAX_TTYS;
+   static int count = 0;
+   struct stat statbuf;
+   char buf[32];
 
-   /* On Linux we're not going to use multiple TTYs for testing. */
-   return 1;
+   if (!getenv("TILCK")) {
+      /* On Linux we're not going to use multiple TTYs for testing. */
+      return 1;
+   }
+
+   if (count)
+      return count;
+
+   for (int i = 0; i < MAX_TTYS; i++) {
+
+      sprintf(buf, "/dev/tty%d", i);
+
+      if (stat(buf, &statbuf) != 0)
+         break;
+
+      if (i > 0)
+         count++;
+   }
+
+   return count;
 }
 
 static void open_std_handles(int tty)
@@ -167,7 +186,7 @@ static void setup_console_for_shell(int tty)
 
 int main(int argc, char **argv, char **env)
 {
-   int shell_pids[get_tty_count()]; // VLA
+   int shell_pids[MAX_TTYS];
    int pid;
 
    do_initial_setup();
