@@ -3,8 +3,6 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
-term *allocate_new_term(void);
-
 enum term_action {
 
    a_none,
@@ -31,6 +29,53 @@ typedef struct {
    u32 args_count;
 
 } actions_table_item;
+
+/* --- term write filter interface --- */
+
+enum term_fret {
+   TERM_FILTER_WRITE_BLANK,
+   TERM_FILTER_WRITE_C
+};
+
+typedef struct {
+
+   union {
+
+      struct {
+         u64 type3 :  4;
+         u64 len   : 20;
+         u64 col   :  8;
+         u64 ptr   : 32;
+      };
+
+      struct {
+         u64 type2 :  4;
+         u64 arg1  : 30;
+         u64 arg2  : 30;
+      };
+
+      struct {
+         u64 type1  :  4;
+         u64 arg    : 32;
+         u64 unused : 28;
+      };
+
+      u64 raw;
+   };
+
+} term_action;
+
+typedef enum term_fret (*term_filter_func)(u8 c,
+                                           u8 *color /* in/out */,
+                                           term_action *a /* out */,
+                                           void *ctx);
+
+void term_set_filter_func(term *t, term_filter_func func, void *ctx);
+term_filter_func term_get_filter_func(term *t);
+
+/* --- */
+
+term *allocate_new_term(void);
 
 void term_internal_write_char2(term *t, char c, u8 color);
 void term_internal_write_backspace(term *t, u8 color);

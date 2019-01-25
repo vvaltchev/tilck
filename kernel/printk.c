@@ -5,14 +5,15 @@
 #include <tilck/common/color_defs.h>
 #include <tilck/common/atomics.h>
 
-#include <tilck/kernel/term.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/interrupts.h>
+#include <tilck/kernel/term.h>
+#include <tilck/kernel/tty.h>
 
-#define PRINTK_COLOR COLOR_GREEN
-#define PRINTK_RINGBUF_FLUSH_COLOR COLOR_CYAN
-#define PRINTK_NOSPACE_IN_RBUF_FLUSH_COLOR COLOR_MAGENTA
-#define PRINTK_PANIC_COLOR COLOR_GREEN
+#define PRINTK_COLOR                          COLOR_GREEN
+#define PRINTK_RINGBUF_FLUSH_COLOR            COLOR_CYAN
+#define PRINTK_NOSPACE_IN_RBUF_FLUSH_COLOR    COLOR_MAGENTA
+#define PRINTK_PANIC_COLOR                    COLOR_GREEN
 
 static bool
 write_in_buf_str(char **buf_ref, char *buf_end, const char *s)
@@ -274,7 +275,7 @@ STATIC_ASSERT(sizeof(printk_rbuf) <= 1024);
 
 static void printk_direct_flush(const char *buf, size_t size, u8 color)
 {
-   if (LIKELY(term_get_filter_func(get_curr_term()) != NULL)) {
+   if (LIKELY(get_curr_tty() != NULL)) {
       /* tty has been initialized and set a term write filter func */
       term_write(get_curr_term(), buf, size, color);
       return;

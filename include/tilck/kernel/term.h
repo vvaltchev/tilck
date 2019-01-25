@@ -49,49 +49,6 @@ void term_move_ch_and_cur_rel(term *t, s8 dx, s8 dy);
 void term_pause_video_output(term *t);
 void term_restart_video_output(term *t);
 
-/* --- term write filter interface --- */
-
-enum term_fret {
-   TERM_FILTER_WRITE_BLANK,
-   TERM_FILTER_WRITE_C
-};
-
-typedef struct {
-
-   union {
-
-      struct {
-         u64 type3 :  4;
-         u64 len   : 20;
-         u64 col   :  8;
-         u64 ptr   : 32;
-      };
-
-      struct {
-         u64 type2 :  4;
-         u64 arg1  : 30;
-         u64 arg2  : 30;
-      };
-
-      struct {
-         u64 type1  :  4;
-         u64 arg    : 32;
-         u64 unused : 28;
-      };
-
-      u64 raw;
-   };
-
-} term_action;
-
-typedef enum term_fret (*term_filter_func)(u8 c,
-                                           u8 *color /* in/out */,
-                                           term_action *a /* out */,
-                                           void *ctx);
-
-void term_set_filter_func(term *t, term_filter_func func, void *ctx);
-term_filter_func term_get_filter_func(term *t);
-
 /* --- debug funcs --- */
 void debug_term_dump_font_table(term *t);
 

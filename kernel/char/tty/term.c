@@ -326,8 +326,10 @@ void term_internal_write_char2(term *t, char c, u8 color)
 
 static void term_action_write(term *t, char *buf, u32 len, u8 color)
 {
+   const video_interface *const vi = t->vi;
+
    ts_scroll_to_bottom(t);
-   t->vi->enable_cursor();
+   vi->enable_cursor();
 
    for (u32 i = 0; i < len; i++) {
 
@@ -347,10 +349,10 @@ static void term_action_write(term *t, char *buf, u32 len, u8 color)
 
    }
 
-   t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+   vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
+   if (vi->flush_buffers)
+      vi->flush_buffers();
 }
 
 static void term_action_set_col_offset(term *t, u32 off)
