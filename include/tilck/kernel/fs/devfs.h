@@ -54,6 +54,7 @@ typedef int (*func_create_device_file)(int, file_ops *, devfs_entry_type *);
 
 typedef struct {
 
+   int major;
    const char *name;
    func_create_device_file create_dev_file;
 
@@ -62,7 +63,8 @@ typedef struct {
 
 filesystem *create_devfs(void);
 void create_and_register_devfs(void);
-int register_driver(driver_info *info);
+int register_driver(driver_info *info, int major);
 
 int create_dev_file(const char *filename, int major, int minor);
 filesystem *get_devfs(void);
+driver_info *get_driver_info(int major);

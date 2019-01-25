@@ -42,7 +42,7 @@ static int get_tty_count(void)
 
 static void open_std_handles(int tty)
 {
-   char ttyfile[32] = "/dev/tty";
+   char ttyfile[32] = "/dev/console";
 
    if (tty >= 0)
       sprintf(ttyfile, "/dev/tty%d", tty);

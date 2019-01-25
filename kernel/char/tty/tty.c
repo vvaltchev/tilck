@@ -162,7 +162,7 @@ void init_tty(void)
 
    di->name = "tty";
    di->create_dev_file = tty_create_device_file;
-   int major = register_driver(di);
+   int major = register_driver(di, 4);
 
    for (int i = 0; i <= MAX_TTYS; i++) {
       internal_init_tty(major, i);

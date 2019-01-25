@@ -89,7 +89,7 @@ void init_fbdev(void)
 
    di->name = "fb";
    di->create_dev_file = create_fb_device;
-   int major = register_driver(di);
+   int major = register_driver(di, 29);
    int rc = create_dev_file("fb0", major, 0 /* minor */);
 
    if (rc != 0)

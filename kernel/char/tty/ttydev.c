@@ -70,7 +70,7 @@ void init_tty_dev(void)
 
    di->name = "ttydev";
    di->create_dev_file = ttydev_create_device_file;
-   major = register_driver(di);
+   major = register_driver(di, 5);
 
    internal_tty_create_devfile("tty", major, 0);
    internal_tty_create_devfile("console", major, 1);

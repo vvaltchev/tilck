@@ -17,9 +17,9 @@
 static filesystem *devfs;
 
 /*
- * Registered drivers. The major number is just an index in this array.
+ * Registered drivers.
  */
-static driver_info *drivers[16];
+static driver_info *drivers[32];
 static u32 drivers_count;
 
 filesystem *get_devfs(void)
@@ -27,17 +27,43 @@ filesystem *get_devfs(void)
    return devfs;
 }
 
+driver_info *get_driver_info(int major)
+{
+   for (u32 i = 0; i < ARRAY_SIZE(drivers) && drivers[i]; i++) {
+      if (drivers[i]->major == major)
+         return drivers[i];
+   }
+
+   return NULL;
+}
+
 /*
  * Registers the driver described by 'info'.
  * Returns driver's major number.
  */
-int register_driver(driver_info *info)
+int register_driver(driver_info *info, int major)
 {
    /* Be sure there's always enough space. */
    VERIFY(drivers_count < ARRAY_SIZE(drivers) - 1);
 
-   drivers[drivers_count] = info;
-   return drivers_count++;
+   if (major < 0) {
+
+      major = 0;
+
+      for (u32 i = 0; i < ARRAY_SIZE(drivers) && drivers[i]; i++) {
+         if (drivers[i]->major == major)
+            major++;
+      }
+
+   } else {
+
+      if (get_driver_info(major))
+         panic("Duplicate major number: %d", major);
+   }
+
+   info->major = major;
+   drivers[drivers_count++] = info;
+   return major;
 }
 
 typedef struct {
@@ -62,11 +88,11 @@ int create_dev_file(const char *filename, int major, int minor)
 {
    ASSERT(devfs != NULL);
 
-   if (major < 0 || major >= (int)drivers_count)
-      return -EINVAL;
-
    filesystem *fs = devfs;
-   driver_info *dinfo = drivers[major];
+   driver_info *dinfo = get_driver_info(major);
+
+   if (!dinfo)
+      return -EINVAL;
 
    devfs_data *d = fs->device_data;
    devfs_file *f = kmalloc(sizeof(devfs_file));
