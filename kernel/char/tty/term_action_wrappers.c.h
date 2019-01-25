@@ -176,13 +176,13 @@ u32 term_get_curr_col(term *t)
    return t->c;
 }
 
-void term_set_filter_func(term *t, term_filter_func func, void *ctx)
+void term_set_filter_func(term *t, term_filter func, void *ctx)
 {
    t->filter = func;
    t->filter_ctx = ctx;
 }
 
-term_filter_func term_get_filter_func(term *t)
+term_filter term_get_filter_func(term *t)
 {
    return t->filter;
 }

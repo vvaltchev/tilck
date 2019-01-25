@@ -499,7 +499,7 @@ tty_handle_state_esc2_par(u8 c, u8 *color, term_action *a, void *ctx_arg)
 enum term_fret
 tty_term_write_filter(u8 c, u8 *color, term_action *a, void *ctx_arg)
 {
-   static const term_filter_func table[] =
+   static const term_filter table[] =
    {
       [TERM_WFILTER_STATE_DEFAULT] = &tty_handle_default_state,
       [TERM_WFILTER_STATE_ESC1] = &tty_handle_state_esc1,

@@ -65,13 +65,13 @@ typedef struct {
 
 } term_action;
 
-typedef enum term_fret (*term_filter_func)(u8 c,
-                                           u8 *color /* in/out */,
-                                           term_action *a /* out */,
-                                           void *ctx);
+typedef enum term_fret (*term_filter)(u8 c,
+                                      u8 *color /* in/out */,
+                                      term_action *a /* out */,
+                                      void *ctx);
 
-void term_set_filter_func(term *t, term_filter_func func, void *ctx);
-term_filter_func term_get_filter_func(term *t);
+void term_set_filter_func(term *t, term_filter func, void *ctx);
+term_filter term_get_filter_func(term *t);
 
 /* --- */
 

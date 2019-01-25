@@ -43,7 +43,7 @@ struct term {
    ringbuf ringbuf;
    term_action actions_buf[32];
 
-   term_filter_func filter;
+   term_filter filter;
    void *filter_ctx;
 };
 
