@@ -70,10 +70,11 @@ void term_write(term *t, const char *buf, u32 len, u8 color)
    ASSERT(len < MB);
 
    term_action a = {
+
       .type3 = a_write,
-      .ptr = (uptr)buf,
-      .len = MIN(len, (uptr)MB - 1),
-      .col = color
+      .len = UNSAFE_MIN(len, (uptr)MB - 1),
+      .col = color,
+      .ptr = (uptr)buf
    };
 
    term_execute_or_enqueue_action(t, a);

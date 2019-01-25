@@ -49,28 +49,29 @@ typedef struct {
    union {
 
       struct {
-         u64 type3 :  4;
-         u64 len   : 20;
-         u64 col   :  8;
-         u64 ptr   : 32;
+         u32 type3 :  4;
+         u32 len   : 20;
+         u32 col   :  8;
       };
 
       struct {
-         u64 type2 :  4;
-         u64 arg1  : 30;
-         u64 arg2  : 30;
+         u32 type2 :  4;
+         u32 arg1  : 14;
+         u32 arg2  : 14;
       };
 
       struct {
-         u64 type1  :  4;
-         u64 arg    : 32;
-         u64 unused : 28;
+         u32 type1  :  4;
+         u32 arg    : 28;
       };
 
-      u64 raw;
    };
 
+   uptr ptr;
+
 } term_action;
+
+STATIC_ASSERT(sizeof(term_action) == (2 * sizeof(uptr)));
 
 typedef enum term_fret (*term_filter)(u8 *c,          /* in/out */
                                       u8 *color       /* in/out */,
