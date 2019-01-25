@@ -256,7 +256,7 @@ static void term_internal_write_tab(term *t, u8 color)
    t->c = tab_col + 1;
 }
 
-void term_internal_write_backspace(term *t, u8 color)
+static void term_internal_write_backspace(term *t, u8 color)
 {
    if (!t->c || t->c <= t->term_col_offset)
       return;
@@ -283,6 +283,19 @@ void term_internal_write_backspace(term *t, u8 color)
 
       if (i)
          t->c--;
+   }
+}
+
+static void term_action_del(term *t, enum term_del_type del_type)
+{
+   switch (del_type) {
+
+      case TERM_DEL_PREV_CHAR:
+         term_internal_write_backspace(t, get_curr_cell_color(t));
+         break;
+
+      default:
+         NOT_REACHED();
    }
 }
 

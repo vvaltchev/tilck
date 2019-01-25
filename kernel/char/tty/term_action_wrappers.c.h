@@ -6,6 +6,7 @@
 
 static const actions_table_item actions_table[] = {
    [a_write] = {(action_func)term_action_write, 3},
+   [a_del] = {(action_func)term_action_del, 1},
    [a_scroll] = {(action_func)term_action_scroll, 1},
    [a_set_col_offset] = {(action_func)term_action_set_col_offset, 1},
    [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},

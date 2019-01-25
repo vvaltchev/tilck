@@ -7,6 +7,7 @@ enum term_action {
 
    a_none,
    a_write,
+   a_del,
    a_scroll,               /* > 0 scrollup: text moves DOWN; < 0 the opposite */
    a_set_col_offset,
    a_move_ch_and_cur,
@@ -29,6 +30,11 @@ typedef struct {
    u32 args_count;
 
 } actions_table_item;
+
+enum term_del_type {
+
+   TERM_DEL_PREV_CHAR
+};
 
 /* --- term write filter interface --- */
 
@@ -79,4 +85,3 @@ term *allocate_new_term(void);
 void set_curr_term(term *t);
 
 void term_internal_write_char2(term *t, char c, u8 color);
-void term_internal_write_backspace(term *t, u8 color);
