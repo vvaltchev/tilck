@@ -34,7 +34,8 @@ typedef struct {
 
 enum term_del_type {
 
-   TERM_DEL_PREV_CHAR
+   TERM_DEL_PREV_CHAR,
+   TERM_DEL_PREV_WORD
 };
 
 /* --- term write filter interface --- */
@@ -74,9 +75,9 @@ typedef struct {
 STATIC_ASSERT(sizeof(term_action) == (2 * sizeof(uptr)));
 
 typedef enum term_fret (*term_filter)(u8 *c,          /* in/out */
-                                      u8 *color       /* in/out */,
-                                      term_action *a  /*  out   */,
-                                      void *ctx);
+                                      u8 *color,      /* in/out */
+                                      term_action *a, /*  out   */
+                                      void *ctx);     /*   in   */
 
 void term_set_filter(term *t, term_filter func, void *ctx);
 term_filter term_get_filter(term *t);

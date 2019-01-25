@@ -421,7 +421,11 @@ tty_handle_default_state(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 
    } else if (*c == c_term->c_cc[VWERASE]) {
 
-      /* TODO: add support for WERASE in tty */
+      *a = (term_action) {
+         .type1 = a_del,
+         .arg = TERM_DEL_PREV_WORD
+      };
+
       return TERM_FILTER_WRITE_BLANK;
 
    } else if (*c == c_term->c_cc[VKILL]) {

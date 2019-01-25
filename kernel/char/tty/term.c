@@ -251,7 +251,7 @@ static void term_internal_write_tab(term *t, u8 color)
       return;
    }
 
-   int tab_col = MIN(round_up_at(t->c+1, t->tabsize), (u32)t->cols - 2);
+   int tab_col = MIN(round_up_at(t->c + 1, t->tabsize), (u32)t->cols - 1) - 1;
    t->term_tabs[t->r * t->cols + tab_col] = 1;
    t->c = tab_col + 1;
 }
@@ -281,8 +281,35 @@ static void term_internal_write_backspace(term *t, u8 color)
       if (t->term_tabs[t->r * t->cols + t->c - 1])
          break; /* we hit the previous tab */
 
-      if (i)
-         t->c--;
+      if (vgaentry_get_char(buffer_get_entry(t, t->r, t->c - 1)) != ' ')
+         break;
+
+      t->c--;
+   }
+}
+
+static void term_internal_delete_last_word(term *t, u8 color)
+{
+   u8 c;
+
+   while (t->c > 0) {
+
+      c = vgaentry_get_char(buffer_get_entry(t, t->r, t->c - 1));
+
+      if (c != ' ')
+         break;
+
+      term_internal_write_backspace(t, color);
+   }
+
+   while (t->c > 0) {
+
+      c = vgaentry_get_char(buffer_get_entry(t, t->r, t->c - 1));
+
+      if (c == ' ')
+         break;
+
+      term_internal_write_backspace(t, color);
    }
 }
 
@@ -292,6 +319,10 @@ static void term_action_del(term *t, enum term_del_type del_type, ...)
 
       case TERM_DEL_PREV_CHAR:
          term_internal_write_backspace(t, get_curr_cell_color(t));
+         break;
+
+      case TERM_DEL_PREV_WORD:
+         term_internal_delete_last_word(t, get_curr_cell_color(t));
          break;
 
       default:
