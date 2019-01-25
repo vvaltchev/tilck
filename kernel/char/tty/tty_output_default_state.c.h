@@ -39,77 +39,119 @@ static const s16 alt_charset[256] =
 #pragma GCC diagnostic pop
 
 static enum term_fret
+tty_def_state_esc(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   term_write_filter_ctx_t *const ctx = ctx_arg;
+
+   ctx->state = TERM_WFILTER_STATE_ESC1;
+   return TERM_FILTER_WRITE_BLANK;
+}
+
+static enum term_fret
+tty_def_state_nl(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   term_write_filter_ctx_t *const ctx = ctx_arg;
+
+   if (ctx->t->c_term.c_oflag & (OPOST | ONLCR)) {
+
+      *a = (term_action) {
+         .type3 = a_dwrite_no_filter,
+         .len = 2,
+         .col = *color,
+         .ptr = (uptr)"\n\r"
+      };
+
+      return TERM_FILTER_WRITE_BLANK;
+   }
+
+   return TERM_FILTER_WRITE_C;
+}
+
+static enum term_fret
+tty_def_state_ignore(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   return TERM_FILTER_WRITE_BLANK;
+}
+
+static enum term_fret
+tty_def_state_shift_out(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   term_write_filter_ctx_t *const ctx = ctx_arg;
+
+   /* shift out: use alternate charset */
+   ctx->use_alt_charset = true;
+   return TERM_FILTER_WRITE_BLANK;
+}
+
+static enum term_fret
+tty_def_state_shift_in(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   term_write_filter_ctx_t *const ctx = ctx_arg;
+
+   /* shift in: return to the regular charset */
+   ctx->use_alt_charset = false;
+   return TERM_FILTER_WRITE_BLANK;
+}
+
+static enum term_fret
+tty_def_state_verase(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   *a = (term_action) {
+      .type1 = a_del,
+      .arg = TERM_DEL_PREV_CHAR
+   };
+
+   return TERM_FILTER_WRITE_BLANK;
+}
+
+static enum term_fret
+tty_def_state_vwerase(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   *a = (term_action) {
+      .type1 = a_del,
+      .arg = TERM_DEL_PREV_WORD
+   };
+
+   return TERM_FILTER_WRITE_BLANK;
+}
+
+static enum term_fret
+tty_def_state_vkill(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   /* TODO: add support for VKILL */
+   return TERM_FILTER_WRITE_BLANK;
+}
+
+void tty_update_default_state_tables(tty *t)
+{
+   const struct termios *const c_term = &t->c_term;
+
+   t->default_state_funcs['\033'] = tty_def_state_esc;
+   t->default_state_funcs['\n'] = tty_def_state_nl;
+   t->default_state_funcs['\a'] = tty_def_state_ignore;
+   t->default_state_funcs['\f'] = tty_def_state_ignore;
+   t->default_state_funcs['\v'] = tty_def_state_ignore;
+   t->default_state_funcs['\016'] = tty_def_state_shift_out;
+   t->default_state_funcs['\017'] = tty_def_state_shift_in;
+
+   t->default_state_funcs[c_term->c_cc[VERASE]] = tty_def_state_verase;
+   t->default_state_funcs[c_term->c_cc[VWERASE]] = tty_def_state_vwerase;
+   t->default_state_funcs[c_term->c_cc[VKILL]] = tty_def_state_vkill;
+}
+
+static enum term_fret
 tty_handle_default_state(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *const ctx = ctx_arg;
    tty *const t = ctx->t;
-   struct termios *const c_term = &t->c_term;
 
    if (ctx->use_alt_charset && alt_charset[*c] != -1) {
       *c = (u8) alt_charset[*c];
       return TERM_FILTER_WRITE_C;
    }
 
-   switch (*c) {
-
-      case '\033':
-         ctx->state = TERM_WFILTER_STATE_ESC1;
-         return TERM_FILTER_WRITE_BLANK;
-
-      case '\n':
-
-         if (c_term->c_oflag & (OPOST | ONLCR)) {
-
-            *a = (term_action) {
-               .type3 = a_dwrite_no_filter,
-               .len = 2,
-               .col = *color,
-               .ptr = (uptr)"\n\r"
-            };
-
-            return TERM_FILTER_WRITE_BLANK;
-         }
-
-         return TERM_FILTER_WRITE_C;
-
-      case '\a':
-      case '\f':
-      case '\v':
-         /* Ignore some characters */
-         return TERM_FILTER_WRITE_BLANK;
-
-      case '\016': /* shift out: use alternate charset */
-         ctx->use_alt_charset = true;
-         return TERM_FILTER_WRITE_BLANK;
-
-      case '\017': /* shift in: return to the regular charset */
-         ctx->use_alt_charset = false;
-         return TERM_FILTER_WRITE_BLANK;
-   }
-
-   if (*c == c_term->c_cc[VERASE]) {
-
-      *a = (term_action) {
-         .type1 = a_del,
-         .arg = TERM_DEL_PREV_CHAR
-      };
-
-      return TERM_FILTER_WRITE_BLANK;
-
-   } else if (*c == c_term->c_cc[VWERASE]) {
-
-      *a = (term_action) {
-         .type1 = a_del,
-         .arg = TERM_DEL_PREV_WORD
-      };
-
-      return TERM_FILTER_WRITE_BLANK;
-
-   } else if (*c == c_term->c_cc[VKILL]) {
-
-      /* TODO: add support for KILL in tty */
-      return TERM_FILTER_WRITE_BLANK;
-   }
+   if (t->default_state_funcs[*c])
+      return t->default_state_funcs[*c](c, color, a, ctx_arg);
 
    return TERM_FILTER_WRITE_C;
 }

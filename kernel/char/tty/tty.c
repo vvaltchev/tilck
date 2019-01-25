@@ -150,6 +150,7 @@ static void internal_init_tty(int major, int minor)
 
    tty_input_init(t);
    term_set_filter(t->term_inst, tty_term_write_filter, &t->filter_ctx);
+   tty_update_default_state_tables(t);
 }
 
 void init_tty(void)

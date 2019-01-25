@@ -43,6 +43,7 @@ int tty_keypress_handler(u32 key, u8 c);
 enum term_fret
 tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);
 void tty_update_special_ctrl_handlers(tty *t);
+void tty_update_default_state_tables(tty *t);
 
 ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size);
 ssize_t tty_write_int(tty *t, devfs_file_handle *h, char *buf, size_t size);
@@ -73,6 +74,7 @@ struct tty {
    u16 saved_cur_row;
    u16 saved_cur_col;
    term_write_filter_ctx_t filter_ctx;
+   term_filter default_state_funcs[256];
 
    /* tty ioctl */
    struct termios c_term;

@@ -68,6 +68,7 @@ static int tty_ioctl_tcsets(tty *t, void *argp)
    }
 
    tty_update_special_ctrl_handlers(t);
+   tty_update_default_state_tables(t);
    return 0;
 }
 
