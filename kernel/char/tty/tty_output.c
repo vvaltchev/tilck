@@ -274,11 +274,11 @@ tty_filter_end_csi_seq(u8 c,
 }
 
 static enum term_fret
-tty_handle_csi_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
+tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
 
-   if (0x30 <= c && c <= 0x3F) {
+   if (0x30 <= *c && *c <= 0x3F) {
 
       /* This is a parameter byte */
 
@@ -294,11 +294,11 @@ tty_handle_csi_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
          return TERM_FILTER_WRITE_BLANK;
       }
 
-      ctx->param_bytes[ctx->pbc++] = c;
+      ctx->param_bytes[ctx->pbc++] = *c;
       return TERM_FILTER_WRITE_BLANK;
    }
 
-   if (0x20 <= c && c <= 0x2F) {
+   if (0x20 <= *c && *c <= 0x2F) {
 
       /* This is an "intermediate" byte */
 
@@ -308,13 +308,13 @@ tty_handle_csi_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
          return TERM_FILTER_WRITE_BLANK;
       }
 
-      ctx->interm_bytes[ctx->ibc++] = c;
+      ctx->interm_bytes[ctx->ibc++] = *c;
       return TERM_FILTER_WRITE_BLANK;
    }
 
-   if (0x40 <= c && c <= 0x7E) {
+   if (0x40 <= *c && *c <= 0x7E) {
       /* Final CSI byte */
-      return tty_filter_end_csi_seq(c, color, a, ctx);
+      return tty_filter_end_csi_seq(*c, color, a, ctx);
    }
 
    /* We shouldn't get here. Something's gone wrong: return the default state */
@@ -362,18 +362,18 @@ static const s16 alt_charset[256] =
 #pragma GCC diagnostic pop
 
 static enum term_fret
-tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
+tty_handle_default_state(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *const ctx = ctx_arg;
    tty *const t = ctx->t;
    struct termios *const c_term = &t->c_term;
 
-   if (ctx->use_alt_charset && alt_charset[c] != -1) {
-      term_internal_write_char2(t->term_inst, alt_charset[c], *color);
-      return TERM_FILTER_WRITE_BLANK;
+   if (ctx->use_alt_charset && alt_charset[*c] != -1) {
+      *c = (u8) alt_charset[*c];
+      return TERM_FILTER_WRITE_C;
    }
 
-   switch (c) {
+   switch (*c) {
 
       case '\033':
          ctx->state = TERM_WFILTER_STATE_ESC1;
@@ -401,7 +401,7 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
          return TERM_FILTER_WRITE_BLANK;
    }
 
-   if (c == c_term->c_cc[VERASE]) {
+   if (*c == c_term->c_cc[VERASE]) {
 
       *a = (term_action) {
          .type1 = a_del,
@@ -410,12 +410,12 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
 
       return TERM_FILTER_WRITE_BLANK;
 
-   } else if (c == c_term->c_cc[VWERASE]) {
+   } else if (*c == c_term->c_cc[VWERASE]) {
 
       /* TODO: add support for WERASE in tty */
       return TERM_FILTER_WRITE_BLANK;
 
-   } else if (c == c_term->c_cc[VKILL]) {
+   } else if (*c == c_term->c_cc[VKILL]) {
 
       /* TODO: add support for KILL in tty */
       return TERM_FILTER_WRITE_BLANK;
@@ -425,11 +425,11 @@ tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_handle_unknown_esc_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
+tty_handle_unknown_esc_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
 
-   if (0x40 <= c && c <= 0x5f) {
+   if (0x40 <= *c && *c <= 0x5f) {
       /* End of any possible (unknown) escape sequence */
       ctx->state = TERM_WFILTER_STATE_DEFAULT;
    }
@@ -438,11 +438,11 @@ tty_handle_unknown_esc_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_handle_state_esc1(u8 c, u8 *color, term_action *a, void *ctx_arg)
+tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
 
-   switch (c) {
+   switch (*c) {
 
       case '[':
          ctx->state = TERM_WFILTER_STATE_ESC2_CSI;
@@ -477,11 +477,11 @@ tty_handle_state_esc1(u8 c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_handle_state_esc2_par(u8 c, u8 *color, term_action *a, void *ctx_arg)
+tty_handle_state_esc2_par(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
 
-   switch (c) {
+   switch (*c) {
 
       case '0':
          ctx->use_alt_charset = true;
@@ -501,7 +501,7 @@ tty_handle_state_esc2_par(u8 c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 enum term_fret
-tty_term_write_filter(u8 c, u8 *color, term_action *a, void *ctx_arg)
+tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    static const term_filter table[] =
    {

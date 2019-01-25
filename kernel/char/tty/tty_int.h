@@ -41,7 +41,7 @@ void tty_input_init(tty *t);
 int tty_keypress_handler(u32 key, u8 c);
 
 enum term_fret
-tty_term_write_filter(u8 c, u8 *color, term_action *a, void *ctx_arg);
+tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);
 void tty_update_special_ctrl_handlers(tty *t);
 
 ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size);

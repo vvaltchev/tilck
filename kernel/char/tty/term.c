@@ -346,20 +346,20 @@ static void term_action_write(term *t, char *buf, u32 len, u8 color)
 
    for (u32 i = 0; i < len; i++) {
 
-      if (t->filter) {
-
-         term_action a = { .type1 = a_none };
-
-         if (t->filter((u8) buf[i], &color, &a, t->filter_ctx))
-            term_internal_write_char2(t, buf[i], color);
-
-         if (a.type1 != a_none)
-            term_execute_action(t, &a);
-
-      } else {
+      if (UNLIKELY(t->filter == NULL)) {
+         /* Early term use by printk(), before tty has been initialized */
          term_internal_write_char2(t, buf[i], color);
+         continue;
       }
 
+      term_action a = { .type1 = a_none };
+      enum term_fret r = t->filter((u8 *)&buf[i], &color, &a, t->filter_ctx);
+
+      if (LIKELY(r == TERM_FILTER_WRITE_C))
+         term_internal_write_char2(t, buf[i], color);
+
+      if (UNLIKELY(a.type1 != a_none))
+         term_execute_action(t, &a);
    }
 
    vi->move_cursor(t->r, t->c, get_curr_cell_color(t));

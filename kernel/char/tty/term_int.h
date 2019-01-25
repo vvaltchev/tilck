@@ -71,9 +71,9 @@ typedef struct {
 
 } term_action;
 
-typedef enum term_fret (*term_filter)(u8 c,
-                                      u8 *color /* in/out */,
-                                      term_action *a /* out */,
+typedef enum term_fret (*term_filter)(u8 *c,          /* in/out */
+                                      u8 *color       /* in/out */,
+                                      term_action *a  /*  out   */,
                                       void *ctx);
 
 void term_set_filter(term *t, term_filter func, void *ctx);
