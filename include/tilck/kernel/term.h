@@ -44,8 +44,6 @@ void term_write(term *t, const char *buf, u32 len, u8 color);
 void term_scroll_up(term *t, u32 lines);
 void term_scroll_down(term *t, u32 lines);
 void term_set_col_offset(term *t, u32 off);
-void term_move_ch_and_cur(term *t, u32 row, u32 col);
-void term_move_ch_and_cur_rel(term *t, s8 dx, s8 dy);
 void term_pause_video_output(term *t);
 void term_restart_video_output(term *t);
 

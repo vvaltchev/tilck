@@ -78,17 +78,6 @@ void term_write(term *t, const char *buf, u32 len, u8 color)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_move_ch_and_cur(term *t, u32 row, u32 col)
-{
-   term_action a = {
-      .type2 = a_move_ch_and_cur,
-      .arg1 = row,
-      .arg2 = col
-   };
-
-   term_execute_or_enqueue_action(t, a);
-}
-
 void term_scroll_up(term *t, u32 lines)
 {
    term_action a = {
@@ -114,17 +103,6 @@ void term_set_col_offset(term *t, u32 off)
    term_action a = {
       .type1 = a_set_col_offset,
       .arg = off
-   };
-
-   term_execute_or_enqueue_action(t, a);
-}
-
-void term_move_ch_and_cur_rel(term *t, s8 dx, s8 dy)
-{
-   term_action a = {
-      .type2 = a_move_ch_and_cur_rel,
-      .arg1 = dx,
-      .arg2 = dy
    };
 
    term_execute_or_enqueue_action(t, a);
