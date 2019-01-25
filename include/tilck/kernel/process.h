@@ -53,7 +53,7 @@ struct process_info {
    char filepath[MAX_PATH]; /* executable's path */
    char cwd[MAX_PATH]; /* current working directory */
    fs_handle handles[16]; /* for the moment, just a fixed-size small array */
-
+   void *proc_tty;
 
    /*
     * TODO: when thread creation is implemented, use

@@ -97,7 +97,7 @@ int tty_get_curr_tty_num(void)
    return get_curr_tty()->minor;
 }
 
-static void
+void
 internal_tty_create_devfile(const char *filename, int major, int minor)
 {
    int rc = create_dev_file(filename, major, minor);
@@ -169,6 +169,7 @@ void init_tty(void)
    }
 
    __curr_tty = ttys[1];
+   init_tty_dev();
 
    if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
       panic("TTY: unable to register keypress handler");

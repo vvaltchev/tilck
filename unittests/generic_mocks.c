@@ -90,3 +90,9 @@ void cmos_read_datetime() { NOT_REACHED(); }
 void map_zero_pages() { NOT_REACHED(); }
 void dump_var_mtrrs() { }
 void set_page_rw() { }
+void kb_register_keypress_handler() { }
+
+bool kb_is_pressed() { return false; }
+u32 kb_get_current_modifiers(void) { return 0; }
+bool kb_scancode_to_ansi_seq() { return false; }
+int kb_get_fn_key_pressed() { return 0; }

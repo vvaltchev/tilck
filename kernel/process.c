@@ -11,6 +11,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/tty.h>
 
 #include <sys/prctl.h> // system header
 #include <sys/wait.h>  // system header
@@ -119,6 +120,7 @@ task_info *allocate_new_process(task_info *parent, int pid)
    list_add_tail(&parent->pi->children_list, &ti->siblings_node);
 
    list_init(&pi->mappings);
+   pi->proc_tty = get_curr_tty();
    return ti;
 }
 
