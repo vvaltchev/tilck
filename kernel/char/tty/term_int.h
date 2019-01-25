@@ -70,13 +70,13 @@ typedef enum term_fret (*term_filter)(u8 c,
                                       term_action *a /* out */,
                                       void *ctx);
 
-void term_set_filter_func(term *t, term_filter func, void *ctx);
-term_filter term_get_filter_func(term *t);
+void term_set_filter(term *t, term_filter func, void *ctx);
+term_filter term_get_filter(term *t);
 
 /* --- */
 
 term *allocate_new_term(void);
+void set_curr_term(term *t);
 
 void term_internal_write_char2(term *t, char c, u8 color);
 void term_internal_write_backspace(term *t, u8 color);
-void set_curr_term(term *t);

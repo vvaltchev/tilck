@@ -149,9 +149,7 @@ static void internal_init_tty(int major, int minor)
    internal_tty_create_devfile(t->dev_filename, major, minor);
 
    tty_input_init(t);
-   term_set_filter_func(t->term_inst,
-                        tty_term_write_filter,
-                        &t->filter_ctx);
+   term_set_filter(t->term_inst, tty_term_write_filter, &t->filter_ctx);
 }
 
 void init_tty(void)
