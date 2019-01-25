@@ -55,7 +55,7 @@ void internal_tty_create_devfile(const char *filename, int major, int minor);
 
 typedef bool (*tty_ctrl_sig_func)(tty *);
 
-#define KB_INPUT_BS 4096
+#define KB_INPUT_BS 1024
 
 struct tty {
 
@@ -64,17 +64,14 @@ struct tty {
    char dev_filename[16];
 
    /* tty input */
-   char kb_input_buf[KB_INPUT_BS];
    ringbuf kb_input_ringbuf;
    kcond kb_input_cond;
    int end_line_delim_count;
-   tty_ctrl_sig_func special_ctrl_handlers[256];
 
    /* tty output */
    u16 saved_cur_row;
    u16 saved_cur_col;
    term_write_filter_ctx_t filter_ctx;
-   term_filter default_state_funcs[256];
 
    /* tty ioctl */
    struct termios c_term;
@@ -82,6 +79,11 @@ struct tty {
 
    /* tty input & output */
    u8 curr_color;
+
+   /* large fields */
+   char kb_input_buf[KB_INPUT_BS];               /* tty input */
+   tty_ctrl_sig_func special_ctrl_handlers[256]; /* tty input */
+   term_filter default_state_funcs[256];         /* tty output */
 };
 
 extern const struct termios default_termios;

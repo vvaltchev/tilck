@@ -125,6 +125,7 @@ tty_def_state_vkill(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 void tty_update_default_state_tables(tty *t)
 {
    const struct termios *const c_term = &t->c_term;
+   bzero(t->default_state_funcs, sizeof(t->default_state_funcs));
 
    t->default_state_funcs['\033'] = tty_def_state_esc;
    t->default_state_funcs['\n'] = tty_def_state_nl;
