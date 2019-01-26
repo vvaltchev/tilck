@@ -97,14 +97,14 @@ void check_heaps_metadata(unique_ptr<u8[]> *meta_before)
    }
 }
 
-void kmalloc_chaos_test_sub(default_random_engine &e,
+void kmalloc_chaos_test_sub(default_random_engine &eng,
                             lognormal_distribution<> &dist)
 {
    vector<pair<void *, size_t>> allocations;
 
    for (int i = 0; i < 1000; i++) {
 
-      size_t s = round(dist(e));
+      size_t s = round(dist(eng));
 
       if (s == 0)
          continue;

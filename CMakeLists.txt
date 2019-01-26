@@ -243,6 +243,7 @@ set(
    -Wall
    -Wextra
    -Werror
+   -Wshadow
    -Wno-unused-function
    -Wno-unused-parameter
 )

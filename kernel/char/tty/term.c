@@ -131,7 +131,8 @@ static void ts_set_scroll(term *t, u32 requested_scroll)
          ? t->max_scroll - t->extra_buffer_rows
          : 0;
 
-   requested_scroll = MIN(MAX(requested_scroll, min_scroll), t->max_scroll);
+   requested_scroll =
+      UNSAFE_MIN(MAX(requested_scroll, min_scroll), t->max_scroll);
 
    if (requested_scroll == t->scroll)
       return; /* nothing to do */
@@ -419,8 +420,8 @@ static void term_action_set_col_offset(term *t, u32 off, ...)
 
 static void term_action_move_ch_and_cur(term *t, int row, int col, ...)
 {
-   t->r = MIN(MAX(row, 0), t->rows - 1);
-   t->c = MIN(MAX(col, 0), t->cols - 1);
+   t->r = UNSAFE_MIN(MAX(row, 0), t->rows - 1);
+   t->c = UNSAFE_MIN(MAX(col, 0), t->cols - 1);
    t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (t->vi->flush_buffers)
@@ -429,8 +430,8 @@ static void term_action_move_ch_and_cur(term *t, int row, int col, ...)
 
 static void term_action_move_ch_and_cur_rel(term *t, s8 dx, s8 dy, ...)
 {
-   t->r = MIN(MAX((int)t->r + dx, 0), t->rows - 1);
-   t->c = MIN(MAX((int)t->c + dy, 0), t->cols - 1);
+   t->r = UNSAFE_MIN(MAX((int)t->r + dx, 0), t->rows - 1);
+   t->c = UNSAFE_MIN(MAX((int)t->c + dy, 0), t->cols - 1);
    t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (t->vi->flush_buffers)
@@ -636,7 +637,7 @@ void debug_term_dump_font_table(term *t)
       term_internal_write_printable_char(t, 'x', color);
       term_internal_write_printable_char(t, hex_digits[i], color);
 
-      for (u32 i = 0; i < 3; i++)
+      for (u32 j = 0; j < 3; j++)
          term_internal_write_printable_char(t, ' ', color);
 
       for (u32 j = 0; j < 16; j++) {

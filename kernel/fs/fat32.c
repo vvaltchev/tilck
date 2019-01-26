@@ -44,7 +44,7 @@ STATIC ssize_t fat_read(fs_handle handle,
       const ssize_t buf_rem = bufsize - written_to_buf;
       const ssize_t cluster_offset = h->pos % d->cluster_size;
       const ssize_t cluster_rem = d->cluster_size - cluster_offset;
-      const ssize_t to_read = MIN(cluster_rem, MIN(buf_rem, file_rem));
+      const ssize_t to_read = UNSAFE_MIN(cluster_rem, MIN(buf_rem, file_rem));
 
       memcpy(buf + written_to_buf, data + cluster_offset, to_read);
       written_to_buf += to_read;
@@ -111,7 +111,7 @@ STATIC off_t fat_seek_forward(fs_handle handle,
       const ssize_t dist_rem = dist - moved_distance;
       const ssize_t cluster_offset = h->pos % d->cluster_size;
       const ssize_t cluster_rem = d->cluster_size - cluster_offset;
-      const ssize_t to_move = MIN(cluster_rem, MIN(dist_rem, file_rem));
+      const ssize_t to_move = UNSAFE_MIN(cluster_rem, MIN(dist_rem, file_rem));
 
       moved_distance += to_move;
       h->pos += to_move;

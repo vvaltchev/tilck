@@ -23,7 +23,7 @@ size_t kmalloc_get_heap_struct_size(void)
 STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 
 STATIC bool kmalloc_initialized;
-static const block_node new_node; // Just zeros.
+static const block_node s_new_node; // Just zeros.
 
 #define HALF(x) ((x) >> 1)
 #define TWICE(x) ((x) << 1)
@@ -253,10 +253,10 @@ internal_kmalloc_coalesce_block(kmalloc_heap *h,
                                 const size_t block_size)
 {
    block_node *nodes = h->metadata_nodes;
-   const int block_node = ptr_to_node(h, vaddr, block_size);
+   const int block_node_num = ptr_to_node(h, vaddr, block_size);
 
    size_t s;
-   int n = block_node;
+   int n = block_node_num;
    int node_count = 1;
    size_t already_free_size = 0;
 
@@ -288,7 +288,7 @@ internal_kmalloc_coalesce_block(kmalloc_heap *h,
       n = NODE_LEFT(n);
    }
 
-   nodes[block_node].full = 1;
+   nodes[block_node_num].full = 1;
    ASSERT(s < h->min_block_size);
    return already_free_size;
 }
@@ -355,11 +355,11 @@ internal_kmalloc(kmalloc_heap *h,
 
          for (int ss = stack_size - 2; ss >= 0; ss--) {
 
-            const int n = (uptr) STACK_VAR[ss].arg2; /* arg2: node */
+            const int nn = (uptr) STACK_VAR[ss].arg2; /* arg2: node */
 
-            if (nodes[NODE_LEFT(n)].full && nodes[NODE_RIGHT(n)].full) {
-               ASSERT(!nodes[n].full);
-               nodes[n].full = true;
+            if (nodes[NODE_LEFT(nn)].full && nodes[NODE_RIGHT(nn)].full) {
+               ASSERT(!nodes[nn].full);
+               nodes[nn].full = true;
             }
          }
 
@@ -591,7 +591,7 @@ internal_kfree(kmalloc_heap *h,
       if (nodes[alloc_node].allocated) {
          DEBUG_free_freeing_block;
          h->vfree_and_unmap(alloc_block_vaddr, h->alloc_block_size / PAGE_SIZE);
-         nodes[alloc_node] = new_node;
+         nodes[alloc_node] = s_new_node;
       } else if (nodes[alloc_node].alloc_failed) {
          DEBUG_free_skip_alloc_failed_block;
          nodes[alloc_node].alloc_failed = false;

@@ -210,7 +210,7 @@ void set_kernel_stack(u32 stack)
    enable_interrupts(&var);
 }
 
-static void load_gdt(gdt_entry *gdt, u32 entries_count)
+static void load_gdt(gdt_entry *g, u32 entries_count)
 {
    ASSERT(!are_interrupts_enabled());
 
@@ -219,7 +219,7 @@ static void load_gdt(gdt_entry *gdt, u32 entries_count)
       u16 size_minus_one;
       gdt_entry *gdt_vaddr;
 
-   } PACKED gdt_ptr = { sizeof(gdt_entry) * entries_count - 1, gdt };
+   } PACKED gdt_ptr = { sizeof(gdt_entry) * entries_count - 1, g };
 
    asmVolatile("lgdt (%0)"
                : /* no output */

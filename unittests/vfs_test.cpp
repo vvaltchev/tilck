@@ -139,8 +139,8 @@ TEST(vfs, fseek)
       if (linux_lseek < 0)
          saved_errno = errno;
 
-      off_t linux_pos = lseek(fd, 0, SEEK_CUR);
-      off_t tilck_pos = vfs_seek(h, 0, SEEK_CUR);
+      linux_pos = lseek(fd, 0, SEEK_CUR);
+      tilck_pos = vfs_seek(h, 0, SEEK_CUR);
 
       if (linux_lseek < 0) {
 
@@ -182,14 +182,14 @@ TEST(vfs, fseek)
 
          cout << "Linux buf: ";
 
-         for (size_t i = 0; i < sizeof(buf_linux); i++)
-            printf("%02x ", (u8)buf_linux[i]);
+         for (size_t j = 0; j < sizeof(buf_linux); j++)
+            printf("%02x ", (u8)buf_linux[j]);
 
          cout << endl;
          cout << "Tilck buf:  ";
 
-         for (size_t i = 0; i < sizeof(buf_linux); i++)
-            printf("%02x ", (u8)buf_tilck[i]);
+         for (size_t j = 0; j < sizeof(buf_linux); j++)
+            printf("%02x ", (u8)buf_tilck[j]);
 
          cout << endl;
          FAIL();

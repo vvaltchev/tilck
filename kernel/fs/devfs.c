@@ -139,7 +139,7 @@ int devfs_dir_ioctl(fs_handle h, uptr request, void *arg)
 int devfs_dir_stat64(fs_handle h, struct stat64 *statbuf)
 {
    devfs_file_handle *dh = h;
-   devfs_data *devfs_data = dh->fs->device_data;
+   devfs_data *ddata = dh->fs->device_data;
 
    if (!h)
       return -ENOENT;
@@ -156,8 +156,8 @@ int devfs_dir_stat64(fs_handle h, struct stat64 *statbuf)
    statbuf->st_blksize = 4096;
    statbuf->st_blocks = statbuf->st_size / 512;
 
-   statbuf->st_ctim.tv_sec = datetime_to_timestamp(devfs_data->wrt_time);
-   statbuf->st_mtim.tv_sec = datetime_to_timestamp(devfs_data->wrt_time);
+   statbuf->st_ctim.tv_sec = datetime_to_timestamp(ddata->wrt_time);
+   statbuf->st_mtim.tv_sec = datetime_to_timestamp(ddata->wrt_time);
    statbuf->st_atim = statbuf->st_mtim;
 
    return 0;
@@ -167,7 +167,7 @@ int devfs_char_dev_stat64(fs_handle h, struct stat64 *statbuf)
 {
    devfs_file_handle *dh = h;
    devfs_file *df = dh->devfs_file_ptr;
-   devfs_data *devfs_data = dh->fs->device_data;
+   devfs_data *ddata = dh->fs->device_data;
 
    bzero(statbuf, sizeof(struct stat64));
 
@@ -185,8 +185,8 @@ int devfs_char_dev_stat64(fs_handle h, struct stat64 *statbuf)
    if (dh->type == DEVFS_CHAR_DEVICE)
       statbuf->st_mode |= S_IFCHR;
 
-   statbuf->st_ctim.tv_sec = datetime_to_timestamp(devfs_data->wrt_time);
-   statbuf->st_mtim.tv_sec = datetime_to_timestamp(devfs_data->wrt_time);
+   statbuf->st_ctim.tv_sec = datetime_to_timestamp(ddata->wrt_time);
+   statbuf->st_mtim.tv_sec = datetime_to_timestamp(ddata->wrt_time);
    statbuf->st_atim = statbuf->st_mtim;
 
    return 0;

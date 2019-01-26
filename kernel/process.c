@@ -389,8 +389,8 @@ void wake_up_tasks_waiting_on(task_info *ti)
 
       ASSERT(wo_pos->type == WOBJ_TASK);
 
-      task_info *ti = CONTAINER_OF(wo_pos, task_info, wobj);
-      task_reset_wait_obj(ti);
+      task_info *task_to_wake_up = CONTAINER_OF(wo_pos, task_info, wobj);
+      task_reset_wait_obj(task_to_wake_up);
    }
 }
 
