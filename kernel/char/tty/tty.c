@@ -15,6 +15,8 @@
 
 #include "tty_int.h"
 
+STATIC_ASSERT(TTY_COUNT <= MAX_TTYS);
+
 tty *ttys[MAX_TTYS + 1];
 tty *__curr_tty;
 
@@ -74,25 +76,13 @@ tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
    return 0;
 }
 
-static void init_tty_struct(tty *t)
+static void init_tty_struct(tty *t, int minor)
 {
+   t->minor = minor;
    t->filter_ctx.t = t;
    t->c_term = default_termios;
    t->kd_mode = KD_TEXT;
    t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
-}
-
-static tty *allocate_and_init_tty(int minor)
-{
-   ttys[minor] = kzmalloc(sizeof(tty));
-
-   if (!ttys[minor]) {
-      panic("TTY: no enough memory for TTY %d", minor);
-   }
-
-   init_tty_struct(ttys[minor]);
-   ttys[minor]->minor = minor;
-   return ttys[minor];
 }
 
 int tty_get_curr_tty_num(void)
@@ -101,31 +91,68 @@ int tty_get_curr_tty_num(void)
 }
 
 void
-internal_tty_create_devfile(const char *filename, int major, int minor)
+tty_create_devfile_or_panic(const char *filename, int major, int minor)
 {
-   int rc = create_dev_file(filename, major, minor);
+   int rc;
 
-   if (rc != 0)
-      panic("TTY: unable to create /dev/%s (error: %d)", filename, rc);
+   if ((rc = create_dev_file(filename, major, minor)) < 0)
+      panic("TTY: unable to create devfile /dev/%s (error: %d)", filename, rc);
 }
 
 static term *
 tty_allocate_and_init_new_term(void)
 {
-   term *new_term = allocate_new_term();
+   term *new_term = alloc_term_struct();
 
    if (!new_term)
       panic("TTY: no enough memory a new term instance");
 
-   init_term(new_term,
-             term_get_vi(ttys[1]->term_inst),
-             term_get_rows(ttys[1]->term_inst),
-             term_get_cols(ttys[1]->term_inst));
+   if (init_term(new_term,
+                 term_get_vi(ttys[1]->term_inst),
+                 term_get_rows(ttys[1]->term_inst),
+                 term_get_cols(ttys[1]->term_inst)) < 0)
+   {
+      free_term_struct(new_term);
+      return NULL;
+   }
 
    return new_term;
 }
 
-static void internal_init_tty(int major, int minor)
+static tty *allocate_and_init_tty(int minor)
+{
+   tty *t = kzmalloc(sizeof(tty));
+
+   if (!t)
+      return NULL;
+
+   init_tty_struct(t, minor);
+
+   term *new_term = (minor == 1)
+                        ? get_curr_term()
+                        : tty_allocate_and_init_new_term();
+
+   if (!new_term) {
+      kfree2(t, sizeof(tty));
+      return NULL;
+   }
+
+   t->term_inst = new_term;
+   return t;
+}
+
+static void
+tty_full_destroy(tty *t)
+{
+   if (t->term_inst) {
+      dispose_term(t->term_inst);
+      free_term_struct(t->term_inst);
+   }
+
+   kfree2(t, sizeof(tty));
+}
+
+static int internal_init_tty(int major, int minor)
 {
    ASSERT(minor < (int)ARRAY_SIZE(ttys));
    ASSERT(!ttys[minor]);
@@ -137,22 +164,27 @@ static void internal_init_tty(int major, int minor)
        * to the current tty. Therefore, just create the dev file.
        */
 
-      internal_tty_create_devfile("tty0", major, minor);
-      return;
+      tty_create_devfile_or_panic("tty0", major, minor);
+      return 0;
    }
 
    tty *const t = allocate_and_init_tty(minor);
 
-   t->term_inst = (minor == 1)
-                     ? get_curr_term()
-                     : tty_allocate_and_init_new_term();
+   if (!t)
+      return -ENOMEM;
 
    snprintk(t->dev_filename, sizeof(t->dev_filename), "tty%d", minor);
-   internal_tty_create_devfile(t->dev_filename, major, minor);
+
+   if (create_dev_file(t->dev_filename, major, minor) < 0) {
+      tty_full_destroy(t);
+      return -ENOMEM;
+   }
 
    tty_input_init(t);
    term_set_filter(t->term_inst, tty_term_write_filter, &t->filter_ctx);
    tty_update_default_state_tables(t);
+   ttys[minor] = t;
+   return 0;
 }
 
 void init_tty(void)
@@ -167,7 +199,15 @@ void init_tty(void)
    register_driver(di, TTY_MAJOR);
 
    for (int i = 0; i <= kopt_tty_count; i++) {
-      internal_init_tty(TTY_MAJOR, i);
+      if (internal_init_tty(TTY_MAJOR, i) < 0) {
+
+         if (i <= 1)
+            panic("No enough memory for any TTY device");
+
+         printk("WARNING: no enough memory for creating /dev/tty%d\n", i);
+         kopt_tty_count = i - 1;
+         break;
+      }
    }
 
    __curr_tty = ttys[1];

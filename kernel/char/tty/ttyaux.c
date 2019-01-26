@@ -73,6 +73,6 @@ void init_ttyaux(void)
    di->create_dev_file = ttyaux_create_device_file;
    register_driver(di, TTYAUX_MAJOR);
 
-   internal_tty_create_devfile("tty", TTYAUX_MAJOR, 0);
-   internal_tty_create_devfile("console", TTYAUX_MAJOR, 1);
+   tty_create_devfile_or_panic("tty", TTYAUX_MAJOR, 0);
+   tty_create_devfile_or_panic("console", TTYAUX_MAJOR, 1);
 }

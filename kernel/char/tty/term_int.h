@@ -84,5 +84,8 @@ term_filter term_get_filter(term *t);
 
 /* --- */
 
-term *allocate_new_term(void);
+term *alloc_term_struct(void);
+void free_term_struct(term *t);
+void dispose_term(term *t);
+
 void set_curr_term(term *t);

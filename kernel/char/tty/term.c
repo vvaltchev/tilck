@@ -12,6 +12,7 @@
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/errno.h>
 
 #define _TERM_C_
 
@@ -37,8 +38,7 @@ struct term {
 
    u32 total_buffer_rows;
    u32 extra_buffer_rows;
-   u16 failsafe_buffer[80 * 25];
-   bool *term_tabs;
+   bool *term_tabs_buf;
 
    ringbuf ringbuf;
    term_action actions_buf[32];
@@ -48,6 +48,8 @@ struct term {
 };
 
 static term first_instance;
+static u16 failsafe_buffer[80 * 25];
+
 term *__curr_term = &first_instance;
 
 /* ------------ No-output video-interface ------------------ */
@@ -243,7 +245,7 @@ static void term_internal_write_tab(term *t, u8 color)
 {
    int rem = t->cols - t->c - 1;
 
-   if (!t->term_tabs) {
+   if (!t->term_tabs_buf) {
 
       if (rem)
          term_internal_write_printable_char(t, ' ', color);
@@ -252,7 +254,7 @@ static void term_internal_write_tab(term *t, u8 color)
    }
 
    int tab_col = MIN(round_up_at(t->c + 1, t->tabsize), (u32)t->cols - 1) - 1;
-   t->term_tabs[t->r * t->cols + tab_col] = 1;
+   t->term_tabs_buf[t->r * t->cols + tab_col] = 1;
    t->c = tab_col + 1;
 }
 
@@ -264,21 +266,21 @@ static void term_internal_write_backspace(term *t, u8 color)
    const u16 space_entry = make_vgaentry(' ', color);
    t->c--;
 
-   if (!t->term_tabs || !t->term_tabs[t->r * t->cols + t->c]) {
+   if (!t->term_tabs_buf || !t->term_tabs_buf[t->r * t->cols + t->c]) {
       buffer_set_entry(t, t->r, t->c, space_entry);
       t->vi->set_char_at(t->r, t->c, space_entry);
       return;
    }
 
    /* we hit the end of a tab */
-   t->term_tabs[t->r * t->cols + t->c] = 0;
+   t->term_tabs_buf[t->r * t->cols + t->c] = 0;
 
    for (int i = t->tabsize - 1; i >= 0; i--) {
 
       if (!t->c || t->c == t->term_col_offset)
          break;
 
-      if (t->term_tabs[t->r * t->cols + t->c - 1])
+      if (t->term_tabs_buf[t->r * t->cols + t->c - 1])
          break; /* we hit the previous tab */
 
       if (vgaentry_get_char(buffer_get_entry(t, t->r, t->c - 1)) != ' ')
@@ -444,8 +446,8 @@ static void term_action_reset(term *t, ...)
    for (int i = 0; i < t->rows; i++)
       ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
-   if (t->term_tabs)
-      memset(t->term_tabs, 0, t->cols * t->rows);
+   if (t->term_tabs_buf)
+      memset(t->term_tabs_buf, 0, t->cols * t->rows);
 }
 
 static void term_action_erase_in_display(term *t, int mode, ...)
@@ -654,10 +656,30 @@ void debug_term_dump_font_table(term *t)
 
 #endif
 
-term *allocate_new_term(void)
+term *alloc_term_struct(void)
 {
-   term *t = kzmalloc(sizeof(term));
-   return t;
+   return kzmalloc(sizeof(term));
+}
+
+void free_term_struct(term *t)
+{
+   ASSERT(t != &first_instance);
+   kfree2(t, sizeof(term));
+}
+
+void dispose_term(term *t)
+{
+   ASSERT(t != &first_instance);
+
+   if (t->buffer) {
+      kfree2(t->buffer, 2 * t->total_buffer_rows * t->cols);
+      t->buffer = NULL;
+   }
+
+   if (t->term_tabs_buf) {
+      kfree2(t->term_tabs_buf, t->cols * t->rows);
+      t->term_tabs_buf = NULL;
+   }
 }
 
 const video_interface *term_get_vi(term *t)
@@ -674,7 +696,7 @@ void set_curr_term(term *t)
    term_restart_video_output(get_curr_term());
 }
 
-void
+int
 init_term(term *t, const video_interface *intf, int rows, int cols)
 {
    ASSERT(t != &first_instance || !are_interrupts_enabled());
@@ -700,20 +722,31 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
 
    if (t->buffer) {
 
-      t->term_tabs = kzmalloc(t->cols * t->rows);
+      t->term_tabs_buf = kzmalloc(t->cols * t->rows);
 
-      if (!t->term_tabs)
-         printk("WARNING: unable to allocate the term_tabs buffer\n");
+      if (!t->term_tabs_buf) {
+
+         if (t != &first_instance) {
+            kfree2(t->buffer, 2 * t->total_buffer_rows * t->cols);
+            return -ENOMEM;
+         }
+
+         printk("WARNING: unable to allocate term_tabs_buf\n");
+      }
 
    } else {
 
       /* We're in panic or we were unable to allocate the buffer */
+
+      if (t != &first_instance)
+         return -ENOMEM;
+
       t->cols = MIN(80, t->cols);
       t->rows = MIN(25, t->rows);
 
       t->extra_buffer_rows = 0;
       t->total_buffer_rows = t->rows;
-      t->buffer = t->failsafe_buffer;
+      t->buffer = failsafe_buffer;
 
       if (!in_panic())
          printk("ERROR: unable to allocate the term buffer.\n");
@@ -726,4 +759,5 @@ init_term(term *t, const video_interface *intf, int rows, int cols)
       ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
    t->initialized = true;
+   return 0;
 }

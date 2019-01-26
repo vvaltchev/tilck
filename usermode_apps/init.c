@@ -45,7 +45,7 @@ static int get_tty_count(void)
    if (count)
       return count;
 
-   for (int i = 0; i < MAX_TTYS; i++) {
+   for (int i = 0; i <= MAX_TTYS; i++) {
 
       sprintf(buf, "/dev/tty%d", i);
 

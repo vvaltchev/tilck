@@ -50,7 +50,7 @@ ssize_t tty_write_int(tty *t, devfs_file_handle *h, char *buf, size_t size);
 int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp);
 int tty_fcntl_int(tty *t, devfs_file_handle *h, int cmd, uptr arg);
 void init_ttyaux(void);
-void internal_tty_create_devfile(const char *filename, int major, int minor);
+void tty_create_devfile_or_panic(const char *filename, int major, int minor);
 
 
 typedef bool (*tty_ctrl_sig_func)(tty *);
