@@ -8,7 +8,7 @@ static const actions_table_item actions_table[] = {
    [a_write] = {(action_func)term_action_write, 3},
    [a_dwrite_no_filter] = {(action_func)term_action_dwrite_no_filter, 3},
    [a_del] = {(action_func)term_action_del, 1},
-   [a_scroll] = {(action_func)term_action_scroll, 1},
+   [a_scroll] = {(action_func)term_action_scroll, 2},
    [a_set_col_offset] = {(action_func)term_action_set_col_offset, 1},
    [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
    [a_move_ch_and_cur_rel] = {(action_func)term_action_move_ch_and_cur_rel, 2},
@@ -83,8 +83,9 @@ void term_write(term *t, const char *buf, u32 len, u8 color)
 void term_scroll_up(term *t, u32 lines)
 {
    term_action a = {
-      .type1 = a_scroll,
-      .arg = (int)lines
+      .type2 = a_scroll,
+      .arg1 = lines,
+      .arg2 = 0
    };
 
    term_execute_or_enqueue_action(t, a);
@@ -93,8 +94,9 @@ void term_scroll_up(term *t, u32 lines)
 void term_scroll_down(term *t, u32 lines)
 {
    term_action a = {
-      .type1 = a_scroll,
-      .arg = -((int)lines)
+      .type2 = a_scroll,
+      .arg1 = lines,
+      .arg2 = 1
    };
 
    term_execute_or_enqueue_action(t, a);

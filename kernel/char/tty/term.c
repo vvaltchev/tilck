@@ -204,12 +204,12 @@ static void term_int_scroll_down(term *t, u32 lines)
       t->vi->flush_buffers();
 }
 
-static void term_action_scroll(term *t, int lines, ...)
+static void term_action_scroll(term *t, u32 lines, bool down, ...)
 {
-   if (lines > 0)
+   if (!down)
       term_int_scroll_up(t, lines);
    else
-      term_int_scroll_down(t, -lines);
+      term_int_scroll_down(t, lines);
 }
 
 static void term_internal_incr_row(term *t, u8 color)
