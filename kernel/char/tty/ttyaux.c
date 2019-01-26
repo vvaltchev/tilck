@@ -18,37 +18,37 @@ static inline tty *get_curr_process_tty(void)
    return get_curr_task()->pi->proc_tty;
 }
 
-static ssize_t ttydev_read(fs_handle h, char *buf, size_t size)
+static ssize_t ttyaux_read(fs_handle h, char *buf, size_t size)
 {
    return tty_read_int(get_curr_process_tty(), h, buf, size);
 }
 
-static ssize_t ttydev_write(fs_handle h, char *buf, size_t size)
+static ssize_t ttyaux_write(fs_handle h, char *buf, size_t size)
 {
    return tty_write_int(get_curr_process_tty(), h, buf, size);
 }
 
-static int ttydev_ioctl(fs_handle h, uptr request, void *argp)
+static int ttyaux_ioctl(fs_handle h, uptr request, void *argp)
 {
    return tty_ioctl_int(get_curr_process_tty(), h, request, argp);
 }
 
-static int ttydev_fcntl(fs_handle h, int cmd, uptr arg)
+static int ttyaux_fcntl(fs_handle h, int cmd, uptr arg)
 {
    return tty_fcntl_int(get_curr_process_tty(), h, cmd, arg);
 }
 
 static int
-ttydev_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
+ttyaux_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
 {
    *t = DEVFS_CHAR_DEVICE;
 
    bzero(ops, sizeof(file_ops));
 
-   ops->read = ttydev_read;
-   ops->write = ttydev_write;
-   ops->ioctl = ttydev_ioctl;
-   ops->fcntl = ttydev_fcntl;
+   ops->read = ttyaux_read;
+   ops->write = ttyaux_write;
+   ops->ioctl = ttyaux_ioctl;
+   ops->fcntl = ttyaux_fcntl;
 
    /* the tty device-file requires NO locking */
    ops->exlock = &vfs_file_nolock;
@@ -62,7 +62,7 @@ ttydev_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
  * Creates the special /dev/tty file which redirects the tty_* funcs to the
  * tty that was current when the process was created.
  */
-void init_tty_dev(void)
+void init_ttyaux(void)
 {
    driver_info *di = kzmalloc(sizeof(driver_info));
 
@@ -70,7 +70,7 @@ void init_tty_dev(void)
       panic("TTY: no enough memory for driver_info");
 
    di->name = "ttyaux";
-   di->create_dev_file = ttydev_create_device_file;
+   di->create_dev_file = ttyaux_create_device_file;
    register_driver(di, TTYAUX_MAJOR);
 
    internal_tty_create_devfile("tty", TTYAUX_MAJOR, 0);

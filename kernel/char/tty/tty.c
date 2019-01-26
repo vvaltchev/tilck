@@ -171,7 +171,7 @@ void init_tty(void)
    }
 
    __curr_tty = ttys[1];
-   init_tty_dev();
+   init_ttyaux();
 
    if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
       panic("TTY: unable to register keypress handler");
