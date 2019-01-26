@@ -166,6 +166,10 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 #define UNSAFE_MIN(x, y) (((x) <= (y)) ? (x) : (y))
 #define UNSAFE_MAX(x, y) (((x) > (y)) ? (x) : (y))
 
+#define UNSAFE_MIN3(x, y, z) UNSAFE_MIN(UNSAFE_MIN((x), (y)), (z))
+#define UNSAFE_MAX3(x, y, z) UNSAFE_MAX(UNSAFE_MAX((x), (y)), (z))
+
+
 /*
  * SAFE against double-evaluation MIN and MAX macros.
  * Use these when possible. In all the other cases, use their UNSAFE version.
@@ -182,6 +186,26 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
       const typeof(a) CONCAT(_a, __LINE__) = (a);                     \
       const typeof(b) CONCAT(_b, __LINE__) = (b);                     \
       UNSAFE_MAX(CONCAT(_a, __LINE__), CONCAT(_b, __LINE__));         \
+   })
+
+#define MIN3(a, b, c)                                                 \
+   ({                                                                 \
+      const typeof(a) CONCAT(_a, __LINE__) = (a);                     \
+      const typeof(b) CONCAT(_b, __LINE__) = (b);                     \
+      const typeof(c) CONCAT(_c, __LINE__) = (c);                     \
+      UNSAFE_MIN3(CONCAT(_a, __LINE__),                               \
+                  CONCAT(_b, __LINE__),                               \
+                  CONCAT(_c, __LINE__));                              \
+   })
+
+#define MAX3(a, b, c)                                                 \
+   ({                                                                 \
+      const typeof(a) CONCAT(_a, __LINE__) = (a);                     \
+      const typeof(b) CONCAT(_b, __LINE__) = (b);                     \
+      const typeof(c) CONCAT(_c, __LINE__) = (c);                     \
+      UNSAFE_MAX3(CONCAT(_a, __LINE__),                               \
+                  CONCAT(_b, __LINE__),                               \
+                  CONCAT(_c, __LINE__));                              \
    })
 
 #define LIKELY(x) __builtin_expect((x), true)
