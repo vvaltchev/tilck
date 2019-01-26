@@ -9,6 +9,8 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/process.h>
 
+#include <linux/major.h> // system header
+
 #include "tty_int.h"
 
 static inline tty *get_curr_process_tty(void)
@@ -62,16 +64,15 @@ ttydev_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
  */
 void init_tty_dev(void)
 {
-   int major;
    driver_info *di = kzmalloc(sizeof(driver_info));
 
    if (!di)
       panic("TTY: no enough memory for driver_info");
 
-   di->name = "ttydev";
+   di->name = "ttyaux";
    di->create_dev_file = ttydev_create_device_file;
-   major = register_driver(di, 5);
+   register_driver(di, TTYAUX_MAJOR);
 
-   internal_tty_create_devfile("tty", major, 0);
-   internal_tty_create_devfile("console", major, 1);
+   internal_tty_create_devfile("tty", TTYAUX_MAJOR, 0);
+   internal_tty_create_devfile("console", TTYAUX_MAJOR, 1);
 }

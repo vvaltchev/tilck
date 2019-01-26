@@ -11,6 +11,8 @@
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/cmdline.h>
 
+#include <linux/major.h> // system header
+
 #include "tty_int.h"
 
 tty *ttys[MAX_TTYS + 1];
@@ -162,10 +164,10 @@ void init_tty(void)
 
    di->name = "tty";
    di->create_dev_file = tty_create_device_file;
-   int major = register_driver(di, 4);
+   register_driver(di, TTY_MAJOR);
 
    for (int i = 0; i <= kopt_tty_count; i++) {
-      internal_init_tty(major, i);
+      internal_init_tty(TTY_MAJOR, i);
    }
 
    __curr_tty = ttys[1];
