@@ -131,8 +131,7 @@ static void ts_set_scroll(term *t, u32 requested_scroll)
          ? t->max_scroll - t->extra_buffer_rows
          : 0;
 
-   requested_scroll =
-      UNSAFE_MIN(MAX(requested_scroll, min_scroll), t->max_scroll);
+   requested_scroll = BOUND(requested_scroll, min_scroll, t->max_scroll);
 
    if (requested_scroll == t->scroll)
       return; /* nothing to do */
@@ -420,18 +419,18 @@ static void term_action_set_col_offset(term *t, u32 off, ...)
 
 static void term_action_move_ch_and_cur(term *t, int row, int col, ...)
 {
-   t->r = UNSAFE_MIN(MAX(row, 0), t->rows - 1);
-   t->c = UNSAFE_MIN(MAX(col, 0), t->cols - 1);
+   t->r = BOUND(row, 0, t->rows - 1);
+   t->c = BOUND(col, 0, t->cols - 1);
    t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (t->vi->flush_buffers)
       t->vi->flush_buffers();
 }
 
-static void term_action_move_ch_and_cur_rel(term *t, s8 dx, s8 dy, ...)
+static void term_action_move_ch_and_cur_rel(term *t, s8 dr, s8 dc, ...)
 {
-   t->r = UNSAFE_MIN(MAX((int)t->r + dx, 0), t->rows - 1);
-   t->c = UNSAFE_MIN(MAX((int)t->c + dy, 0), t->cols - 1);
+   t->r = BOUND((int)t->r + dr, 0, t->rows - 1);
+   t->c = BOUND((int)t->c + dc, 0, t->cols - 1);
    t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (t->vi->flush_buffers)

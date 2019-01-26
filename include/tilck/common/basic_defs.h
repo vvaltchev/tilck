@@ -169,7 +169,6 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 #define UNSAFE_MIN3(x, y, z) UNSAFE_MIN(UNSAFE_MIN((x), (y)), (z))
 #define UNSAFE_MAX3(x, y, z) UNSAFE_MAX(UNSAFE_MAX((x), (y)), (z))
 
-
 /*
  * SAFE against double-evaluation MIN and MAX macros.
  * Use these when possible. In all the other cases, use their UNSAFE version.
@@ -206,6 +205,19 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
       UNSAFE_MAX3(CONCAT(_a, __LINE__),                               \
                   CONCAT(_b, __LINE__),                               \
                   CONCAT(_c, __LINE__));                              \
+   })
+
+#define UNSAFE_BOUND(val, minval, maxval)                             \
+   UNSAFE_MIN(UNSAFE_MAX((val), (minval)), (maxval))
+
+#define BOUND(val, minval, maxval)                                    \
+   ({                                                                 \
+      const typeof(val) CONCAT(_v, __LINE__) = (val);                 \
+      const typeof(minval) CONCAT(_mv, __LINE__) = (minval);          \
+      const typeof(maxval) CONCAT(_Mv, __LINE__) = (maxval);          \
+      UNSAFE_BOUND(CONCAT(_v, __LINE__),                              \
+                   CONCAT(_mv, __LINE__),                             \
+                   CONCAT(_Mv, __LINE__));                            \
    })
 
 #define LIKELY(x) __builtin_expect((x), true)
