@@ -5,12 +5,13 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <termios.h>
 #include <assert.h>
 
-#include <tilck/common/basic_defs.h> /* for STATIC_ASSERT */
+#include <tilck/common/basic_defs.h> /* for STATIC_ASSERT and ARRAY_SIZE */
 
 #define HIST_SIZE 16
 
@@ -81,7 +82,7 @@ static uint64_t read_esc_seq(void)
 
    buf[len++] = c;
 
-   while (1) {
+   while (true) {
 
       if (read(0, &c, 1) <= 0)
          return 0;
@@ -248,9 +249,72 @@ handle_esc_seq(char *buf, int buf_size, char *c_cmd, int *c_cmd_len)
          handle_esc_seq_table[i].fptr(seq, buf, buf_size, c_cmd, c_cmd_len);
 }
 
+static void
+handle_backspace(char *buf, int buf_size, char *c_cmd, int *c_cmd_len)
+{
+   if (!(*c_cmd_len) || !curr_line_pos)
+      return;
+
+   (*c_cmd_len)--;
+   curr_line_pos--;
+   raw_mode_erase_last();
+
+   if (curr_line_pos == (*c_cmd_len))
+      return;
+
+   /* We have to shift left all the chars after curr_line_pos */
+   for (int i = curr_line_pos; i < (*c_cmd_len) + 1; i++) {
+      buf[i] = buf[i+1];
+   }
+
+   buf[(*c_cmd_len)] = ' ';
+   write(1, buf + curr_line_pos, (*c_cmd_len) - curr_line_pos + 1);
+
+   for (int i = (*c_cmd_len); i >= curr_line_pos; i--)
+      write(1, SEQ_LEFT, 3);
+}
+
+static bool
+handle_regular_char(char c, char *buf, int bs, char *c_cmd, int *c_cmd_len)
+{
+   int rc = write(1, &c, 1);
+
+   if (rc < 0) {
+      perror("write error");
+      *c_cmd_len = rc;
+      return false;
+   }
+
+   if (c == '\n')
+      return false;
+
+   if (curr_line_pos == (*c_cmd_len)) {
+
+      buf[curr_line_pos++] = c;
+
+   } else {
+
+      /* We have to shift right all the chars after curr_line_pos */
+      for (int i = (*c_cmd_len); i >= curr_line_pos; i--) {
+         buf[i + 1] = buf[i];
+      }
+
+      buf[curr_line_pos] = c;
+
+      write(1, buf + curr_line_pos + 1, (*c_cmd_len) - curr_line_pos);
+      curr_line_pos++;
+
+      for (int i = (*c_cmd_len); i >= curr_line_pos; i--)
+         write(1, SEQ_LEFT, 3);
+   }
+
+   (*c_cmd_len)++;
+   return true;
+}
+
 int read_command(char *buf, int buf_size)
 {
-   int ret = 0;
+   int c_cmd_len = 0;
    int rc;
    char c;
    struct termios orig_termios, t;
@@ -266,98 +330,43 @@ int read_command(char *buf, int buf_size)
    curr_hist_cmd_to_show = 0;
    curr_line_pos = 0;
 
-   while (ret < buf_size - 1) {
+   while (c_cmd_len < buf_size - 1) {
 
       rc = read(0, &c, 1);
 
-      if (rc <= 0) {
-         if (rc < 0) {
-            perror("read error");
-            ret = rc;
-         }
-         goto out;
-      }
+      if (rc == 0)
+         break;
 
-      if (c == '\t')
-         continue; /* ignore TABs */
+      if (rc < 0) {
+         perror("read error");
+         c_cmd_len = rc;
+         break;
+      }
 
       if (c == KEY_BACKSPACE) {
 
-         if (!ret || !curr_line_pos)
-            continue;
+         handle_backspace(buf, buf_size, curr_cmd, &c_cmd_len);
 
-         ret--;
-         curr_line_pos--;
-         raw_mode_erase_last();
+      } else if (c == '\033') {
 
-         if (curr_line_pos == ret)
-            continue;
+         handle_esc_seq(buf, buf_size, curr_cmd, &c_cmd_len);
 
-         /* We have to shift left all the chars after curr_line_pos */
-         for (int i = curr_line_pos; i < ret + 1; i++) {
-            buf[i] = buf[i+1];
-         }
+      } else if (isprint(c) || isspace(c)) {
 
-         buf[ret] = ' ';
-         write(1, buf + curr_line_pos, ret - curr_line_pos + 1);
-
-         for (int i = ret; i >= curr_line_pos; i--)
-            write(1, SEQ_LEFT, 3);
-
-         continue;
-      }
-
-      if (c == '\033') {
-         handle_esc_seq(buf, buf_size, curr_cmd, &ret);
-         continue;
-      }
-
-      if (isprint(c) || isspace(c)) {
-
-         rc = write(1, &c, 1);
-
-         if (rc < 0) {
-            perror("write error");
-            ret = rc;
-            goto out;
-         }
-
-         if (c == '\n')
+         if (!handle_regular_char(c, buf, buf_size, curr_cmd, &c_cmd_len))
             break;
 
-         if (curr_line_pos == ret) {
+      } else {
 
-            buf[curr_line_pos++] = c;
-
-         } else {
-
-            /* We have to shift right all the chars after curr_line_pos */
-            for (int i = ret; i >= curr_line_pos; i--) {
-               buf[i + 1] = buf[i];
-            }
-
-            buf[curr_line_pos] = c;
-
-            write(1, buf + curr_line_pos + 1, ret - curr_line_pos);
-            curr_line_pos++;
-
-            for (int i = ret; i >= curr_line_pos; i--)
-               write(1, SEQ_LEFT, 3);
-         }
-
-         ret++;
-         continue;
+         /* just ignore everything else */
       }
-
    }
 
-out:
+   buf[c_cmd_len >= 0 ? c_cmd_len : 0] = 0;
 
-   buf[ret >= 0 ? ret : 0] = 0;
-
-   if (ret > 0)
+   if (c_cmd_len > 0)
       put_in_history(buf);
 
    tcsetattr(0, TCSAFLUSH, &orig_termios);
-   return ret;
+   return c_cmd_len;
 }
