@@ -3,15 +3,6 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
-#define TERM_ERASE_C   '\b'
-#define TERM_ERASE_S   "\b"
-
-#define TERM_WERASE_C  0x17    /* typical value for TERM=linux, Ctrl + W */
-#define TERM_WERASE_S  "\x17"
-
-#define TERM_KILL_C    0x15    /* typical value for TERM=linux, Ctrl + 7 */
-#define TERM_KILL_S    "\x15"
-
 typedef struct {
 
    /* Main functions */
@@ -36,71 +27,28 @@ typedef struct {
 
 } video_interface;
 
+typedef struct term term;
 
-void init_term(const video_interface *vi, int rows, int cols);
-bool term_is_initialized(void);
+int init_term(term *t, const video_interface *vi, int rows, int cols);
+bool term_is_initialized(term *t);
+const video_interface *term_get_vi(term *t);
 
-u32 term_get_tab_size(void);
-u32 term_get_rows(void);
-u32 term_get_cols(void);
+u32 term_get_tab_size(term *t);
+u32 term_get_rows(term *t);
+u32 term_get_cols(term *t);
 
-u32 term_get_curr_row(void);
-u32 term_get_curr_col(void);
+u32 term_get_curr_row(term *t);
+u32 term_get_curr_col(term *t);
 
-void term_write(const char *buf, u32 len, u8 color);
-void term_scroll_up(u32 lines);
-void term_scroll_down(u32 lines);
-void term_set_col_offset(u32 off);
-void term_move_ch_and_cur(u32 row, u32 col);
-void term_move_ch_and_cur_rel(s8 dx, s8 dy);
-void term_pause_video_output(void);
-void term_restart_video_output(void);
-
-/* --- term write filter interface --- */
-
-enum term_fret {
-   TERM_FILTER_WRITE_BLANK,
-   TERM_FILTER_WRITE_C
-};
-
-typedef struct {
-
-   union {
-
-      struct {
-         u64 type3 :  4;
-         u64 len   : 20;
-         u64 col   :  8;
-         u64 ptr   : 32;
-      };
-
-      struct {
-         u64 type2 :  4;
-         u64 arg1  : 30;
-         u64 arg2  : 30;
-      };
-
-      struct {
-         u64 type1  :  4;
-         u64 arg    : 32;
-         u64 unused : 28;
-      };
-
-      u64 raw;
-   };
-
-} term_action;
-
-typedef enum term_fret (*term_filter_func)(u8 c,
-                                           u8 *color /* in/out */,
-                                           term_action *a /* out */,
-                                           void *ctx);
-
-void term_set_filter_func(term_filter_func func, void *ctx);
-term_filter_func term_get_filter_func(void);
+void term_write(term *t, const char *buf, u32 len, u8 color);
+void term_scroll_up(term *t, u32 lines);
+void term_scroll_down(term *t, u32 lines);
+void term_set_col_offset(term *t, u32 off);
+void term_pause_video_output(term *t);
+void term_restart_video_output(term *t);
 
 /* --- debug funcs --- */
-void debug_term_dump_font_table(void);
+void debug_term_dump_font_table(term *t);
 
 #define CHAR_BLOCK_LIGHT  0xb0  //  #
 #define CHAR_BLOCK_MID    0xb1  //  #
@@ -128,3 +76,9 @@ void debug_term_dump_font_table(void);
 /* Other functions */
 
 void init_console(void); /* generic console init: fb or text mode */
+
+extern term *__curr_term;
+
+static ALWAYS_INLINE term *get_curr_term(void) {
+   return __curr_term;
+}

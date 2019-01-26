@@ -203,7 +203,7 @@ def RunTheVM():
    else:
       sys.exit(1)
 
-   kernel_cmdline = '-serial_mode 1 '
+   kernel_cmdline = '-serial_mode 1 -tty_count 1 '
    kernel_cmdline += '-cmd /sbin/init {0} -- {1}'.format(init_opts, cmdline)
 
    args += ['-initrd', FATPART_FILE, '-append', kernel_cmdline]

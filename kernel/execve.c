@@ -12,7 +12,7 @@ static char *const default_env[] =
 {
    "OSTYPE=linux-gnu",
    "TERM=linux",
-   "CONSOLE=/dev/tty",
+   "CONSOLE=/dev/console",
    "TILCK=1",
    NULL
 };
@@ -119,7 +119,7 @@ sptr sys_execve(const char *user_filename,
 
    rc = load_elf_program(abs_path, &pdir, &entry_point, &stack_addr, &brk);
 
-   if (rc < 0)
+   if (rc != 0)
       goto errend;
 
    char *const default_argv[] = { abs_path, NULL };

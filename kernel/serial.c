@@ -13,7 +13,7 @@ extern int kb_tasklet_runner;
 
 static void com1_handler_func(char c)
 {
-   tty_keypress_handler_int((u32)c, c, false);
+   tty_keypress_handler_int(get_curr_tty(), (u32)c, c, false);
 }
 
 int serial_com1_irq_handler(regs *r)

@@ -7,7 +7,8 @@
 #include <tilck/kernel/fb_console.h>
 #include <tilck/kernel/paging.h>
 
-#include <linux/fb.h> // system header
+#include <linux/fb.h>     // system header
+#include <linux/major.h>  // system header
 
 static ssize_t fb_read(fs_handle fsh, char *buf, size_t size)
 {
@@ -89,8 +90,8 @@ void init_fbdev(void)
 
    di->name = "fb";
    di->create_dev_file = create_fb_device;
-   int major = register_driver(di);
-   int rc = create_dev_file("fb0", major, 0 /* minor */);
+   register_driver(di, FB_MAJOR);
+   int rc = create_dev_file("fb0", FB_MAJOR, 0 /* minor */);
 
    if (rc != 0)
       panic("TTY: unable to create /dev/fb0 (error: %d)", rc);

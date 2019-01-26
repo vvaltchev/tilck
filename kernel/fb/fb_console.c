@@ -11,6 +11,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/datetime.h>
+#include <tilck/kernel/tty.h>
 
 #include "fb_int.h"
 
@@ -290,7 +291,8 @@ static void fb_draw_banner(void)
    read_system_clock_datetime(&d);
 
    llen = snprintk(lbuf, fb_term_cols - 1,
-                   "Tilck [%s build] framebuffer console", BUILDTYPE_STR);
+                   "Tilck [%s] framebuffer console [tty %d]",
+                   BUILDTYPE_STR, tty_get_curr_tty_num());
 
    rlen = snprintk(rbuf, fb_term_cols - llen - 1,
                    "%02i %s %i %02i:%02i",
@@ -400,7 +402,9 @@ void init_framebuffer_console(void)
          printk("WARNING: fb_console: unable to allocate under_cursor_buf!\n");
    }
 
-   init_term(&framebuffer_vi, fb_term_rows, fb_term_cols);
+   init_term(get_curr_term(), &framebuffer_vi, fb_term_rows, fb_term_cols);
+
+   printk_flush_ringbuf();
 
    printk("[fb_console] screen resolution: %i x %i x %i bpp\n",
           fb_get_width(), fb_get_height(), fb_get_bpp());

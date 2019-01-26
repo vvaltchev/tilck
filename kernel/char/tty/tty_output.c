@@ -13,11 +13,7 @@
 
 #include "term_int.h"
 #include "tty_int.h"
-
-static u16 tty_saved_cursor_row;
-static u16 tty_saved_cursor_col;
-
-term_write_filter_ctx_t term_write_filter_ctx;
+#include "tty_output_default_state.c.h"
 
 static const u8 fg_csi_to_vga[256] =
 {
@@ -59,9 +55,11 @@ tty_filter_handle_csi_ABCD(int *params,
 static void
 tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
 {
+   tty *const t = ctx->t;
+
    u8 tmp;
-   u8 fg = get_color_fg(tty_curr_color);
-   u8 bg = get_color_bg(tty_curr_color);
+   u8 fg = get_color_fg(t->curr_color);
+   u8 bg = get_color_bg(t->curr_color);
 
    switch(p) {
 
@@ -105,8 +103,8 @@ tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
    return;
 
 set_color:
-   tty_curr_color = make_color(fg, bg);
-   *color = tty_curr_color;
+   t->curr_color = make_color(fg, bg);
+   *color = t->curr_color;
 }
 
 static void
@@ -129,9 +127,11 @@ tty_filter_handle_csi_m(int *params,
 }
 
 static inline void
-tty_move_cursor_begin_nth_row(term_action *a, int row)
+tty_move_cursor_begin_nth_row(tty *t, term_action *a, int row)
 {
-   int new_row = MIN(term_get_curr_row() + row, term_get_rows() - 1);
+   int new_row =
+      MIN(term_get_curr_row(t->term_inst) + row,
+          term_get_rows(t->term_inst) - 1);
 
    *a = (term_action) {
       .type2 = a_move_ch_and_cur,
@@ -149,6 +149,7 @@ tty_filter_end_csi_seq(u8 c,
    const char *endptr;
    int params[16] = {0};
    int pc = 0;
+   tty *const t = ctx->t;
 
    ctx->param_bytes[ctx->pbc] = 0;
    ctx->interm_bytes[ctx->ibc] = 0;
@@ -180,12 +181,12 @@ tty_filter_end_csi_seq(u8 c,
 
       case 'E':
          /* Move the cursor 'n' lines down and set col = 0 */
-        tty_move_cursor_begin_nth_row(a, MAX(1, params[0]));
+        tty_move_cursor_begin_nth_row(t, a, MAX(1, params[0]));
         break;
 
       case 'F':
          /* Move the cursor 'n' lines up and set col = 0 */
-         tty_move_cursor_begin_nth_row(a, -MAX(1, params[0]));
+         tty_move_cursor_begin_nth_row(t, a, -MAX(1, params[0]));
          break;
 
       case 'G':
@@ -194,8 +195,8 @@ tty_filter_end_csi_seq(u8 c,
 
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
-            .arg1 = term_get_curr_row(),
-            .arg2 = MIN((u32)params[0], term_get_cols() - 1)
+            .arg1 = term_get_curr_row(t->term_inst),
+            .arg2 = MIN((u32)params[0], term_get_cols(t->term_inst) - 1)
          };
 
          break;
@@ -208,8 +209,8 @@ tty_filter_end_csi_seq(u8 c,
 
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
-            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows() - 1),
-            .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols() - 1)
+            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst) - 1),
+            .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(t->term_inst) - 1)
          };
 
          break;
@@ -244,26 +245,27 @@ tty_filter_end_csi_seq(u8 c,
 
             char dsr[16];
             snprintk(dsr, sizeof(dsr), "\033[%u;%uR",
-                     term_get_curr_row() + 1, term_get_curr_col() + 1);
+                     term_get_curr_row(t->term_inst) + 1,
+                     term_get_curr_col(t->term_inst) + 1);
 
             for (char *p = dsr; *p; p++)
-               tty_keypress_handler_int(*p, *p, false);
+               tty_keypress_handler_int(ctx->t, *p, *p, false);
          }
 
          break;
 
       case 's':
          /* SCP (Save Cursor Position) */
-         tty_saved_cursor_row = term_get_curr_row();
-         tty_saved_cursor_col = term_get_curr_col();
+         ctx->t->saved_cur_row = term_get_curr_row(t->term_inst);
+         ctx->t->saved_cur_col = term_get_curr_col(t->term_inst);
          break;
 
       case 'u':
          /* RCP (Restore Cursor Position) */
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
-            .arg1 = tty_saved_cursor_row,
-            .arg2 = tty_saved_cursor_col
+            .arg1 = ctx->t->saved_cur_row,
+            .arg2 = ctx->t->saved_cur_col
          };
          break;
    }
@@ -273,11 +275,11 @@ tty_filter_end_csi_seq(u8 c,
 }
 
 static enum term_fret
-tty_handle_csi_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
+tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
 
-   if (0x30 <= c && c <= 0x3F) {
+   if (0x30 <= *c && *c <= 0x3F) {
 
       /* This is a parameter byte */
 
@@ -293,11 +295,11 @@ tty_handle_csi_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
          return TERM_FILTER_WRITE_BLANK;
       }
 
-      ctx->param_bytes[ctx->pbc++] = c;
+      ctx->param_bytes[ctx->pbc++] = *c;
       return TERM_FILTER_WRITE_BLANK;
    }
 
-   if (0x20 <= c && c <= 0x2F) {
+   if (0x20 <= *c && *c <= 0x2F) {
 
       /* This is an "intermediate" byte */
 
@@ -307,13 +309,13 @@ tty_handle_csi_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
          return TERM_FILTER_WRITE_BLANK;
       }
 
-      ctx->interm_bytes[ctx->ibc++] = c;
+      ctx->interm_bytes[ctx->ibc++] = *c;
       return TERM_FILTER_WRITE_BLANK;
    }
 
-   if (0x40 <= c && c <= 0x7E) {
+   if (0x40 <= *c && *c <= 0x7E) {
       /* Final CSI byte */
-      return tty_filter_end_csi_seq(c, color, a, ctx);
+      return tty_filter_end_csi_seq(*c, color, a, ctx);
    }
 
    /* We shouldn't get here. Something's gone wrong: return the default state */
@@ -322,91 +324,12 @@ tty_handle_csi_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
    return TERM_FILTER_WRITE_BLANK;
 }
 
-#pragma GCC diagnostic push
-
-#ifdef __clang__
-   #pragma GCC diagnostic ignored "-Winitializer-overrides"
-#else
-   #pragma GCC diagnostic ignored "-Woverride-init"
-#endif
-
-static const s16 alt_charset[256] =
-{
-   [0 ... 255] = -1,
-
-   ['l'] = CHAR_ULCORNER,
-   ['m'] = CHAR_LLCORNER,
-   ['k'] = CHAR_URCORNER,
-   ['j'] = CHAR_LRCORNER,
-   ['t'] = CHAR_LTEE,
-   ['u'] = CHAR_RTEE,
-   ['v'] = CHAR_BTEE,
-   ['w'] = CHAR_TTEE,
-   ['q'] = CHAR_HLINE,
-   ['x'] = CHAR_VLINE,
-   ['n'] = CHAR_CROSS,
-   ['`'] = CHAR_DIAMOND,
-   ['a'] = CHAR_BLOCK_MID,
-   ['f'] = CHAR_DEGREE,
-   ['g'] = CHAR_PLMINUS,
-   ['~'] = CHAR_BULLET,
-   [','] = CHAR_LARROW,
-   ['+'] = CHAR_RARROW,
-   ['.'] = CHAR_DARROW,
-   ['-'] = CHAR_UARROW,
-   ['h'] = CHAR_BLOCK_LIGHT,
-   ['0'] = CHAR_BLOCK_HEAVY
-};
-
-#pragma GCC diagnostic pop
-
 static enum term_fret
-tty_handle_default_state(u8 c, u8 *color, term_action *a, void *ctx_arg)
+tty_handle_unknown_esc_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
 
-   if (ctx->use_alt_charset && alt_charset[c] != -1) {
-      term_internal_write_char2(alt_charset[c], *color);
-      return TERM_FILTER_WRITE_BLANK;
-   }
-
-   switch (c) {
-
-      case '\033':
-         ctx->state = TERM_WFILTER_STATE_ESC1;
-         return TERM_FILTER_WRITE_BLANK;
-
-      case '\n':
-
-         if (c_term.c_oflag & (OPOST | ONLCR))
-            term_internal_write_char2('\r', *color);
-
-         break;
-
-      case '\a':
-      case '\f':
-      case '\v':
-         /* Ignore some characters */
-         return TERM_FILTER_WRITE_BLANK;
-
-      case '\016': /* shift out: use alternate charset */
-         ctx->use_alt_charset = true;
-         return TERM_FILTER_WRITE_BLANK;
-
-      case '\017': /* shift in: return to the regular charset */
-         ctx->use_alt_charset = false;
-         return TERM_FILTER_WRITE_BLANK;
-   }
-
-   return TERM_FILTER_WRITE_C;
-}
-
-static enum term_fret
-tty_handle_unknown_esc_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
-{
-   term_write_filter_ctx_t *ctx = ctx_arg;
-
-   if (0x40 <= c && c <= 0x5f) {
+   if (0x40 <= *c && *c <= 0x5f) {
       /* End of any possible (unknown) escape sequence */
       ctx->state = TERM_WFILTER_STATE_DEFAULT;
    }
@@ -415,11 +338,11 @@ tty_handle_unknown_esc_seq(u8 c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_handle_state_esc1(u8 c, u8 *color, term_action *a, void *ctx_arg)
+tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
 
-   switch (c) {
+   switch (*c) {
 
       case '[':
          ctx->state = TERM_WFILTER_STATE_ESC2_CSI;
@@ -454,11 +377,11 @@ tty_handle_state_esc1(u8 c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_handle_state_esc2_par(u8 c, u8 *color, term_action *a, void *ctx_arg)
+tty_handle_state_esc2_par(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *ctx = ctx_arg;
 
-   switch (c) {
+   switch (*c) {
 
       case '0':
          ctx->use_alt_charset = true;
@@ -478,9 +401,9 @@ tty_handle_state_esc2_par(u8 c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 enum term_fret
-tty_term_write_filter(u8 c, u8 *color, term_action *a, void *ctx_arg)
+tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
-   static const term_filter_func table[] =
+   static const term_filter table[] =
    {
       [TERM_WFILTER_STATE_DEFAULT] = &tty_handle_default_state,
       [TERM_WFILTER_STATE_ESC1] = &tty_handle_state_esc1,
@@ -496,4 +419,12 @@ tty_term_write_filter(u8 c, u8 *color, term_action *a, void *ctx_arg)
 
    ASSERT(ctx->state < ARRAY_SIZE(table));
    return table[ctx->state](c, color, a, ctx);
+}
+
+ssize_t tty_write_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
+{
+   /* term_write's size is limited to 2^20 - 1 */
+   size = MIN(size, (size_t)MB - 1);
+   term_write(t->term_inst, buf, size, t->curr_color);
+   return size;
 }

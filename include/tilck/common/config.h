@@ -57,6 +57,9 @@
 
 #define USER_VSDO_LIKE_PAGE_VADDR  (LINEAR_MAPPING_END)
 
+#define MAX_TTYS            9
+#define TERM_SCROLL_LINES   5
+
 /* Bootloader-specific config */
 
 #define SECTOR_SIZE          512

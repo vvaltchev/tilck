@@ -192,11 +192,11 @@ int load_elf_program(const char *filepath,
          goto out;
       }
 
-      int rc = map_page(*pdir_ref,
-                        (void *)stack_top + (i << PAGE_SHIFT),
-                        KERNEL_VA_TO_PA(p),
-                        true,
-                        true);
+      rc = map_page(*pdir_ref,
+                    (void *)stack_top + (i << PAGE_SHIFT),
+                    KERNEL_VA_TO_PA(p),
+                    true,
+                    true);
 
       if (rc != 0)
          goto out;

@@ -5,6 +5,7 @@
 #include <tilck/common/debug/termios_debug.c.h>
 
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/term.h>
@@ -14,8 +15,7 @@
 #include <sys/ioctl.h>    // system header
 #include <linux/kd.h>     // system header
 
-struct termios c_term;
-u32 tty_kd_mode = KD_TEXT;
+#include "tty_int.h"
 
 const struct termios default_termios =
 {
@@ -30,7 +30,7 @@ const struct termios default_termios =
       [VINTR]     = 0x03,        /* typical value for TERM=linux, Ctrl+C */
       [VQUIT]     = 0x1c,        /* typical value for TERM=linux, Ctrl+\ */
       [VERASE]    = 0x7f,        /* typical value for TERM=linux */
-      [VKILL]     = TERM_KILL_C,
+      [VKILL]     = 0x15,        /* typical value for TERM=linux, Ctrl+7 */
       [VEOF]      = 0x04,        /* typical value for TERM=linux, Ctrl+D */
       [VTIME]     = 0,           /* typical value for TERM=linux (unset) */
       [VMIN]      = 0x01,        /* typical value for TERM=linux */
@@ -41,17 +41,15 @@ const struct termios default_termios =
       [VEOL]      = 0,           /* typical value for TERM=linux (unset) */
       [VREPRINT]  = 0x12,        /* typical value for TERM=linux, Ctrl+R */
       [VDISCARD]  = 0x0f,        /* typical value for TERM=linux, Ctrl+O */
-      [VWERASE]   = TERM_WERASE_C,
+      [VWERASE]   = 0x17,        /* typical value for TERM=linux, Ctrl+W */
       [VLNEXT]    = 0x16,        /* typical value for TERM=linux, Ctrl+V */
       [VEOL2]     = 0            /* typical value for TERM=linux (unset) */
    }
 };
 
-void tty_update_special_ctrl_handlers(void);
-
-static int tty_ioctl_tcgets(fs_handle h, void *argp)
+static int tty_ioctl_tcgets(tty *t, void *argp)
 {
-   int rc = copy_to_user(argp, &c_term, sizeof(struct termios));
+   int rc = copy_to_user(argp, &t->c_term, sizeof(struct termios));
 
    if (rc < 0)
       return -EFAULT;
@@ -59,25 +57,26 @@ static int tty_ioctl_tcgets(fs_handle h, void *argp)
    return 0;
 }
 
-static int tty_ioctl_tcsets(fs_handle h, void *argp)
+static int tty_ioctl_tcsets(tty *t, void *argp)
 {
-   struct termios saved = c_term;
-   int rc = copy_from_user(&c_term, argp, sizeof(struct termios));
+   struct termios saved = t->c_term;
+   int rc = copy_from_user(&t->c_term, argp, sizeof(struct termios));
 
    if (rc < 0) {
-      c_term = saved;
+      t->c_term = saved;
       return -EFAULT;
    }
 
-   tty_update_special_ctrl_handlers();
+   tty_update_special_ctrl_handlers(t);
+   tty_update_default_state_tables(t);
    return 0;
 }
 
-static int tty_ioctl_tiocgwinsz(fs_handle h, void *argp)
+static int tty_ioctl_tiocgwinsz(tty *t, void *argp)
 {
    struct winsize sz = {
-      .ws_row = term_get_rows(),
-      .ws_col = term_get_cols(),
+      .ws_row = term_get_rows(t->term_inst),
+      .ws_col = term_get_cols(t->term_inst),
       .ws_xpixel = 0,
       .ws_ypixel = 0
    };
@@ -90,43 +89,43 @@ static int tty_ioctl_tiocgwinsz(fs_handle h, void *argp)
    return 0;
 }
 
-void tty_setup_for_panic(void)
+void tty_setup_for_panic(tty *t)
 {
-   if (tty_kd_mode != KD_TEXT) {
+   if (t->kd_mode != KD_TEXT) {
 
       /*
        * NOTE: don't try to always fully restart the video output
-       * because it might trigger a nested panic. When tty_kd_mode != KD_TEXT,
+       * because it might trigger a nested panic. When kd_mode != KD_TEXT,
        * we have no other choice, if we wanna see something on the screen.
        *
        * TODO: investigate whether it is possible to make
        * term_restart_video_output() safer in panic scenarios.
        */
-      term_restart_video_output();
-      tty_kd_mode = KD_TEXT;
+      term_restart_video_output(t->term_inst);
+      t->kd_mode = KD_TEXT;
    }
 }
 
-static int tty_ioctl_kdsetmode(fs_handle h, void *argp)
+static int tty_ioctl_kdsetmode(tty *t, void *argp)
 {
    uptr opt = (uptr) argp;
 
    if (opt == KD_TEXT) {
-      term_restart_video_output();
-      tty_kd_mode = KD_TEXT;
+      term_restart_video_output(t->term_inst);
+      t->kd_mode = KD_TEXT;
       return 0;
    }
 
    if (opt == KD_GRAPHICS) {
-      term_pause_video_output();
-      tty_kd_mode = KD_GRAPHICS;
+      term_pause_video_output(t->term_inst);
+      t->kd_mode = KD_GRAPHICS;
       return 0;
    }
 
    return -EINVAL;
 }
 
-static int tty_ioctl_KDGKBMODE(fs_handle h, void *argp)
+static int tty_ioctl_KDGKBMODE(tty *t, void *argp)
 {
    int mode = K_XLATE; /* The only supported mode, at the moment */
 
@@ -136,7 +135,7 @@ static int tty_ioctl_KDGKBMODE(fs_handle h, void *argp)
    return -EFAULT;
 }
 
-static int tty_ioctl_KDSKBMODE(fs_handle h, void *argp)
+static int tty_ioctl_KDSKBMODE(tty *t, void *argp)
 {
    uptr mode = (uptr) argp;
 
@@ -146,35 +145,35 @@ static int tty_ioctl_KDSKBMODE(fs_handle h, void *argp)
    return -EINVAL;
 }
 
-int tty_ioctl(fs_handle h, uptr request, void *argp)
+int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp)
 {
    switch (request) {
 
       case TCGETS:
-         return tty_ioctl_tcgets(h, argp);
+         return tty_ioctl_tcgets(t, argp);
 
       case TCSETS:
-         return tty_ioctl_tcsets(h, argp);
+         return tty_ioctl_tcsets(t, argp);
 
       case TCSETSW:
          // TODO: implement the correct behavior for TCSETSW
-         return tty_ioctl_tcsets(h, argp);
+         return tty_ioctl_tcsets(t, argp);
 
       case TCSETSF:
          // TODO: implement the correct behavior for TCSETSF
-         return tty_ioctl_tcsets(h, argp);
+         return tty_ioctl_tcsets(t, argp);
 
       case TIOCGWINSZ:
-         return tty_ioctl_tiocgwinsz(h, argp);
+         return tty_ioctl_tiocgwinsz(t, argp);
 
       case KDSETMODE:
-         return tty_ioctl_kdsetmode(h, argp);
+         return tty_ioctl_kdsetmode(t, argp);
 
       case KDGKBMODE:
-         return tty_ioctl_KDGKBMODE(h, argp);
+         return tty_ioctl_KDGKBMODE(t, argp);
 
       case KDSKBMODE:
-         return tty_ioctl_KDSKBMODE(h, argp);
+         return tty_ioctl_KDSKBMODE(t, argp);
 
       default:
          printk("WARNING: unknown tty_ioctl() request: %p\n", request);
@@ -182,12 +181,10 @@ int tty_ioctl(fs_handle h, uptr request, void *argp)
    }
 }
 
-int tty_fcntl(fs_handle h, int cmd, uptr arg)
+int tty_fcntl_int(tty *t, devfs_file_handle *h, int cmd, uptr arg)
 {
-   fs_handle_base *hb = h;
-
    if (cmd == F_GETFL)
-      return hb->flags;
+      return h->flags;
 
    if (cmd == F_SETFL) {
       /*
@@ -196,7 +193,7 @@ int tty_fcntl(fs_handle h, int cmd, uptr arg)
        * ignore such unknown/unsupported flags and that will make hard to guess
        * why programs behave in Tilck differently than on Linux.
        */
-      hb->flags = arg;
+      h->flags = arg;
       return 0;
    }
 
