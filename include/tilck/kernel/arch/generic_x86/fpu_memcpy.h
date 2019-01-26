@@ -319,7 +319,7 @@ EXTERN inline void fpu_memset256(void *dest, u32 val32, u32 n)
    else if (x86_cpu_features.can_use_sse2)
       fpu_memset256_sse2(dest, val32, n);
    else
-      memset(dest, val32, n << 5);
+      memset(dest, (int)val32, n << 5);
 }
 
 void FASTCALL __asm_fpu_cpy_single_256_nt(void *dest, const void *src);

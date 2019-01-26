@@ -244,6 +244,7 @@ set(
    -Wextra
    -Werror
    -Wshadow
+   #-Wconversion
    -Wno-unused-function
    -Wno-unused-parameter
 )

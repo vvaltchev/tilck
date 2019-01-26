@@ -386,7 +386,7 @@ void handle_syscall(regs *r)
    DEBUG_VALIDATE_STACK_PTR();
    enable_preemption();
    {
-      r->eax = syscalls[sn](r->ebx, r->ecx, r->edx, r->esi, r->edi, r->ebp);
+      r->eax = (u32) syscalls[sn](r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
    }
    disable_preemption();
    DEBUG_VALIDATE_STACK_PTR();
