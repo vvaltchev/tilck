@@ -16,13 +16,13 @@ static ALWAYS_INLINE int CONSTEXPR log2_for_power_of_2(uptr v)
    r = (v & 0xAAAAAAAA) != 0;
 
 #ifdef BITS64
-   r |= ((v & 0xFFFFFFFF00000000ULL) != 0) << 5;
+   r |= (uptr)((v & 0xFFFFFFFF00000000ULL) != 0) << 5;
 #endif
 
-   r |= ((v & 0xFFFF0000) != 0) << 4;
-   r |= ((v & 0xFF00FF00) != 0) << 3;
-   r |= ((v & 0xF0F0F0F0) != 0) << 2;
-   r |= ((v & 0xCCCCCCCC) != 0) << 1;
+   r |= (uptr)((v & 0xFFFF0000) != 0) << 4;
+   r |= (uptr)((v & 0xFF00FF00) != 0) << 3;
+   r |= (uptr)((v & 0xF0F0F0F0) != 0) << 2;
+   r |= (uptr)((v & 0xCCCCCCCC) != 0) << 1;
 
    return r;
 }

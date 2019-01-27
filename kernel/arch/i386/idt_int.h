@@ -39,5 +39,5 @@ typedef struct
 
 } PACKED idt_entry;
 
-void load_idt(idt_entry *entries, u32 entries_count);
+void load_idt(idt_entry *entries, u16 entries_count);
 void idt_set_entry(u8 num, void *handler, u16 selector, u8 flags);

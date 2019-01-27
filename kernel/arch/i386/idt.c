@@ -15,7 +15,7 @@ extern void (*fault_entry_points[32])(void);
 static idt_entry idt[256];
 static interrupt_handler fault_handlers[32];
 
-void load_idt(idt_entry *entries, u32 entries_count)
+void load_idt(idt_entry *entries, u16 entries_count)
 {
    struct {
       u16 size_minus_one;
@@ -95,7 +95,7 @@ void handle_resumable_fault(regs *r)
 
 void handle_fault(regs *r)
 {
-   const int int_num = r->int_num;
+   const int int_num = (int)r->int_num;
    VERIFY(is_fault(int_num));
 
    if (LIKELY(int_num == FAULT_PAGE_FAULT)) {
@@ -112,7 +112,7 @@ void handle_fault(regs *r)
          return;
    }
 
-   if (UNLIKELY(is_fault_resumable(int_num))) {
+   if (UNLIKELY(is_fault_resumable((u32)int_num))) {
       handle_resumable_fault(r);
       return;
    }
@@ -139,7 +139,7 @@ void set_fault_handler(int ex_num, void *ptr)
 void setup_soft_interrupt_handling(void)
 {
    /* Set the entries for the x86 faults (exceptions) */
-   for (int i = 0; i < 32; i++) {
+   for (u8 i = 0; i < 32; i++) {
       idt_set_entry(i,
                     fault_entry_points[i],
                     X86_KERNEL_CODE_SEL,
