@@ -30,7 +30,7 @@ typedef struct {
    int ldt_size; /* Number of entries. Valid only if ldt != NULL. */
    int ldt_index_in_gdt; /* Index in gdt, valid only if ldt != NULL. */
 
-   int gdt_entries[3];
+   u16 gdt_entries[3]; /* Array of indexes in gdt, valid if > 0 */
 
    void *fpu_regs;
    size_t fpu_regs_size;
