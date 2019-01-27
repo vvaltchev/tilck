@@ -61,7 +61,7 @@ static ALWAYS_INLINE u32 pf_ref_count_get(u32 paddr)
 }
 
 static ALWAYS_INLINE page_table_t *
-pdir_get_page_table(page_directory_t *pdir, int i)
+pdir_get_page_table(page_directory_t *pdir, u32 i)
 {
    return KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 }
@@ -84,7 +84,7 @@ bool handle_potential_cow(void *context)
    if (!(ptable->pages[page_table_index].avail & PAGE_COW_ORIG_RW))
       return false; /* Not a COW page */
 
-   const u32 orig_page_paddr =
+   const u32 orig_page_paddr = (u32)
       ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 
    if (pf_ref_count_get(orig_page_paddr) == 1) {
@@ -228,9 +228,10 @@ void unmap_page(page_directory_t *pdir, void *vaddrp, bool free_pageframe)
    ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
    ASSERT(ptable->pages[page_table_index].present);
 
-   const uptr paddr = ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
-   ptable->pages[page_table_index].raw = 0;
+   const uptr paddr = (uptr)
+      ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 
+   ptable->pages[page_table_index].raw = 0;
    invalidate_page(vaddr);
 
    if (!pf_ref_count_dec(paddr) && free_pageframe) {
@@ -256,7 +257,7 @@ uptr get_mapping(page_directory_t *pdir, void *vaddrp)
    ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
 
    ASSERT(ptable->pages[page_table_index].present);
-   return ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
+   return (uptr) ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 }
 
 NODISCARD int
@@ -371,9 +372,10 @@ map_page(page_directory_t *pdir,
       map_page_int(pdir,
                    vaddrp,
                    paddr,
-                   (us << PG_US_BIT_POS) |
-                   (rw << PG_RW_BIT_POS) |
-                   ((!us) << PG_GLOBAL_BIT_POS)); /* Kernel pages are global */
+                   (u32)(us << PG_US_BIT_POS) |
+                   (u32)(rw << PG_RW_BIT_POS) |
+                   (u32)((!us) << PG_GLOBAL_BIT_POS));
+                   /* Kernel pages are global */
 }
 
 NODISCARD int
@@ -391,9 +393,10 @@ map_zero_page(page_directory_t *pdir,
       map_page_int(pdir,
                    vaddrp,
                    KERNEL_VA_TO_PA(&zero_page),
-                   (us << PG_US_BIT_POS) |
-                   (avail_flags << PG_CUSTOM_B0_POS) |
-                   ((!us) << PG_GLOBAL_BIT_POS)); /* Kernel pages are global */
+                   (u32)(us << PG_US_BIT_POS) |
+                   (u32)(avail_flags << PG_CUSTOM_B0_POS) |
+                   (u32)((!us) << PG_GLOBAL_BIT_POS));
+                   /* Kernel pages are global */
 }
 
 NODISCARD int
@@ -432,9 +435,9 @@ map_pages(page_directory_t *pdir,
                     paddr,
                     page_count,
                     big_pages_allowed,
-                    (us << PG_US_BIT_POS) |
-                    (rw << PG_RW_BIT_POS) |
-                    ((!us) << PG_GLOBAL_BIT_POS));
+                    (u32)(us << PG_US_BIT_POS) |
+                    (u32)(rw << PG_RW_BIT_POS) |
+                    (u32)((!us) << PG_GLOBAL_BIT_POS));
 }
 
 page_directory_t *pdir_clone(page_directory_t *pdir)
@@ -486,7 +489,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
          if (!orig_pt->pages[j].present)
             continue;
 
-         const uptr orig_paddr = orig_pt->pages[j].pageAddr << PAGE_SHIFT;
+         const uptr orig_paddr = (uptr)orig_pt->pages[j].pageAddr << PAGE_SHIFT;
 
          /* Sanity-check: a mapped page MUST have ref-count > 0 */
          ASSERT(pf_ref_count_get(orig_paddr) > 0);
@@ -554,7 +557,7 @@ pdir_deep_clone(page_directory_t *pdir)
 
          ASSERT(IS_PAGE_ALIGNED(new_page));
 
-         uptr orig_page_paddr = orig_pt->pages[j].pageAddr << PAGE_SHIFT;
+         uptr orig_page_paddr = (uptr)orig_pt->pages[j].pageAddr << PAGE_SHIFT;
          void *orig_page = KERNEL_PA_TO_VA(orig_page_paddr);
 
          u32 new_page_paddr = KERNEL_VA_TO_PA(new_page);
@@ -602,7 +605,7 @@ void pdir_destroy(page_directory_t *pdir)
          if (!pt->pages[j].present)
             continue;
 
-         const u32 paddr = pt->pages[j].pageAddr << PAGE_SHIFT;
+         const uptr paddr = (uptr)pt->pages[j].pageAddr << PAGE_SHIFT;
 
          if (pf_ref_count_dec(paddr) == 0)
             kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
