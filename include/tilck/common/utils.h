@@ -9,7 +9,7 @@
 * with custom adaptions.
 */
 
-static ALWAYS_INLINE int CONSTEXPR log2_for_power_of_2(uptr v)
+static ALWAYS_INLINE uptr CONSTEXPR log2_for_power_of_2(uptr v)
 {
    uptr r;
 
