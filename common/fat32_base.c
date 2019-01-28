@@ -30,7 +30,7 @@ static u8 shortname_checksum(u8 *shortname)
 
    for (int i = 0; i < 11; i++) {
       // NOTE: The operation is an unsigned char rotate right
-      sum = ((sum & 1) ? 0x80 : 0) + (sum >> 1) + *shortname++;
+      sum = (u8)( ((sum & 1u) ? 0x80u : 0u) + (sum >> 1u) + *shortname++ );
    }
 
    return sum;
@@ -235,7 +235,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
                        int level)
 {
    const u32 entries_per_cluster =
-      (hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus) / sizeof(fat_entry);
+      ((u32)hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus) / sizeof(fat_entry);
 
    ASSERT(ft == fat16_type || ft == fat32_type);
 
@@ -433,7 +433,7 @@ fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft, u32 *cluster /* out */)
    if (ft == fat16_type) {
 
       u32 FirstDataSector =
-         hdr->BPB_RsvdSecCnt + (hdr->BPB_NumFATs * hdr->BPB_FATSz16);
+         (u32)hdr->BPB_RsvdSecCnt + (u32)(hdr->BPB_NumFATs * hdr->BPB_FATSz16);
 
       sector = FirstDataSector;
       *cluster = 0;
@@ -644,7 +644,7 @@ fat_read_whole_file(fat_header *hdr,
    ASSERT(entry->DIR_FileSize <= dest_buf_size);
 
    // cluster size in bytes
-   const u32 cs = hdr->BPB_SecPerClus * hdr->BPB_BytsPerSec;
+   const u32 cs = (u32)hdr->BPB_SecPerClus * (u32)hdr->BPB_BytsPerSec;
 
    u32 cluster;
    size_t written = 0;

@@ -83,7 +83,7 @@ char bios_read_char(void)
     *    al => ASCII char
     */
 
-   return eax & 0xFF; /* return just the ASCII char */
+   return (char)(eax & 0xff); /* return just the ASCII char */
 }
 
 
@@ -127,7 +127,7 @@ void dump_chs(void)
     * the higher 8 bits of CX are the lower 8 bits of cyl
     * the bits 6, 7 of CX are the higher (8, 9) bits of cyl
     */
-   u32 cyl = saved_cx >> 8 | ((saved_cx & 192) << 2);
+   u32 cyl = saved_cx >> 8u | ((saved_cx & 192u) << 2u);
    u32 head = saved_dx >> 8;
    u32 sec = saved_cx & 63; /* the lower 6 bits of CX */
 

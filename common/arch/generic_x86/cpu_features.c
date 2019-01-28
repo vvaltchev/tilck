@@ -25,10 +25,10 @@ void get_cpu_features(void)
    cpuid(1, &a, &b, &c, &d);
 
    for (u32 bit = 0; bit < 32; bit++)
-      ((bool *)&f->edx1)[bit] = !!(d & (1 << bit));
+      ((bool *)&f->edx1)[bit] = !!(d & (1u << bit));
 
    for (u32 bit = 0; bit < 32; bit++)
-      ((bool *)&f->ecx1)[bit] = !!(c & (1 << bit));
+      ((bool *)&f->ecx1)[bit] = !!(c & (1u << bit));
 
    if (f->max_basic_cpuid_cmd >= 7) {
       if (f->ecx1.avx) {

@@ -203,13 +203,13 @@ set(GENERAL_DEFS_LIST "")
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
 
    message(STATUS "Preparing a RELEASE build...")
-   LIST(APPEND GENERAL_DEFS_LIST "-DNDEBUG -DRELEASE")
+   list(APPEND GENERAL_DEFS_LIST "-DNDEBUG -DRELEASE")
    set(OPT_FLAGS_LIST -O2)
 
 else()
 
    message(STATUS "Preparing a DEBUG build...")
-   LIST(APPEND GENERAL_DEFS_LIST "-DDEBUG")
+   list(APPEND GENERAL_DEFS_LIST "-DDEBUG")
    set(OPT_FLAGS_LIST -O0 -fno-inline-functions)
 
 endif()

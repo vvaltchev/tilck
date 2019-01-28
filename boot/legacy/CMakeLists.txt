@@ -78,20 +78,17 @@ set(
    -mno-sse
    -mno-avx
 
-   -O2
-   -g
-
-   -Wall
-   -Wextra
-   -Wno-unused-function
-   -Wno-unused-parameter
-   -Werror
-
    # Allow easier disassembly debugging
    # -mpush-args
    # -mno-accumulate-outgoing-args
    # -mno-stack-arg-probe
 )
+
+list(APPEND STAGE3_BUILD_FLAGS_LIST ${GENERAL_DEFS_LIST})
+list(APPEND STAGE3_BUILD_FLAGS_LIST ${OTHER_CFLAGS_LIST})
+list(APPEND STAGE3_BUILD_FLAGS_LIST ${OPT_FLAGS_LIST})
+list(APPEND STAGE3_BUILD_FLAGS_LIST ${WARN_FLAGS_LIST})
+
 JOIN("${STAGE3_BUILD_FLAGS_LIST}" ${SPACE} STAGE3_BUILD_FLAGS)
 
 set(

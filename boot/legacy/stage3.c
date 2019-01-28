@@ -41,7 +41,7 @@ typedef struct {
 #define MEM_ACPI_NVS_MEMORY    4
 #define MEM_BAD                5
 
-inline u32 bios_to_multiboot_mem_region(u32 bios_mem_type)
+static inline u32 bios_to_multiboot_mem_region(u32 bios_mem_type)
 {
    STATIC_ASSERT(MEM_USABLE == MULTIBOOT_MEMORY_AVAILABLE);
    STATIC_ASSERT(MEM_RESERVED == MULTIBOOT_MEMORY_RESERVED);
@@ -71,9 +71,9 @@ u8 fb_green_mask_size;
 u8 fb_blue_pos;
 u8 fb_blue_mask_size;
 
-u32 selected_mode = VGA_COLOR_TEXT_MODE_80x25; /* default */
+u16 selected_mode = VGA_COLOR_TEXT_MODE_80x25; /* default */
 
-u16 current_device;
+u8 current_device;
 u32 sectors_per_track;
 u32 heads_per_cylinder;
 u32 cylinders_count;
@@ -175,7 +175,7 @@ multiboot_info_t *setup_multiboot_info(void)
       mbi->framebuffer_pitch = fb_pitch;
       mbi->framebuffer_width = fb_width;
       mbi->framebuffer_height = fb_height;
-      mbi->framebuffer_bpp = fb_bpp;
+      mbi->framebuffer_bpp = (u8)fb_bpp;
       mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
       mbi->framebuffer_red_field_position = fb_red_pos;
       mbi->framebuffer_red_mask_size = fb_red_mask_size;
@@ -210,10 +210,10 @@ multiboot_info_t *setup_multiboot_info(void)
 
       if (ma->type == MEM_USABLE) {
          if (ma->base < mbi->mem_lower * KB)
-            mbi->mem_lower = ma->base / KB;
+            mbi->mem_lower = (u32)(ma->base / KB);
 
          if (ma->base + ma->len > mbi->mem_upper * KB)
-            mbi->mem_upper = (ma->base + ma->len) / KB;
+            mbi->mem_upper = (u32)((ma->base + ma->len) / KB);
       }
 
       mmmap[i] = (multiboot_memory_map_t) {
@@ -307,7 +307,7 @@ void poison_usable_memory(void)
 
          memset32((void *)(uptr)ma->base,
                   KMALLOC_FREE_MEM_POISON_VAL,
-                  ma->len / 4);
+                  (u32)ma->len / 4);
       }
    }
 }

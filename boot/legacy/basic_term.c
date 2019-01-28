@@ -6,8 +6,8 @@
 
 #define TERMINAL_VIDEO_ADDR ((u16*)(0xB8000))
 
-#define TERM_WIDTH  80
-#define TERM_HEIGHT 25
+#define TERM_WIDTH  80u
+#define TERM_HEIGHT 25u
 
 u16 terminal_row = 0;
 u16 terminal_column = 0;
@@ -20,17 +20,19 @@ void bt_setcolor(uint8_t color)
 
 void bt_movecur(int row, int col)
 {
-   uint16_t position = (row * TERM_WIDTH) + col;
+   u16 position = (uint16_t)(
+      ((uint16_t)row * TERM_WIDTH) + (uint16_t)col
+   );
 
    // cursor LOW port to vga INDEX register
    outb(0x3D4, 0x0F);
-   outb(0x3D5, (unsigned char)(position & 0xFF));
+   outb(0x3D5, (uint8_t)(position & 0xFF));
    // cursor HIGH port to vga INDEX register
    outb(0x3D4, 0x0E);
-   outb(0x3D5, (unsigned char)((position >> 8) & 0xFF));
+   outb(0x3D5, (uint8_t)((position >> 8) & 0xFF));
 
-   terminal_row = row;
-   terminal_column = col;
+   terminal_row = (u16)row;
+   terminal_column = (u16)col;
 }
 
 
@@ -50,7 +52,7 @@ static void bt_incr_row()
    volatile uint16_t *lastRow =
       (volatile uint16_t *)TERMINAL_VIDEO_ADDR + TERM_WIDTH * (TERM_HEIGHT - 1);
 
-   for (int i = 0; i < TERM_WIDTH; i++) {
+   for (u32 i = 0; i < TERM_WIDTH; i++) {
       lastRow[i] = make_vgaentry(' ', terminal_color);
    }
 }
@@ -95,7 +97,7 @@ void init_bt(void)
    bt_setcolor(make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
    volatile uint16_t *ptr = (volatile uint16_t *)TERMINAL_VIDEO_ADDR;
 
-   for (int i = 0; i < TERM_WIDTH*TERM_HEIGHT; ++i) {
+   for (u32 i = 0; i < TERM_WIDTH*TERM_HEIGHT; ++i) {
       *ptr++ = make_vgaentry(' ', terminal_color);
    }
 }

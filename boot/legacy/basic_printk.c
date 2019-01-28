@@ -68,7 +68,7 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 'c':
-         bt_write_char(va_arg(args, s32));
+         bt_write_char((char)va_arg(args, int));
          break;
 
       case 's':

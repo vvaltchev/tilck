@@ -163,12 +163,12 @@ static inline u32 fat_get_TotSec(fat_header *hdr)
 static inline u32 fat_get_RootDirSectors(fat_header *hdr)
 {
    u32 bps = hdr->BPB_BytsPerSec;
-   return ((hdr->BPB_RootEntCnt * 32) + (bps - 1)) / bps;
+   return ((hdr->BPB_RootEntCnt * 32u) + (bps - 1u)) / bps;
 }
 
 static inline u32 fat_get_first_cluster(fat_entry *entry)
 {
-   return (u32)entry->DIR_FstClusHI << 16 | entry->DIR_FstClusLO;
+   return (u32)entry->DIR_FstClusHI << 16u | entry->DIR_FstClusLO;
 }
 
 static inline bool fat_is_end_of_clusterchain(fat_type ft, u32 val)
