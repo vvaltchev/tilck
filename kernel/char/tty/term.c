@@ -54,7 +54,7 @@ term *__curr_term = &first_instance;
 
 /* ------------ No-output video-interface ------------------ */
 
-void no_vi_set_char_at(int row, int col, u16 entry) { }
+void no_vi_set_char_at(u16 row, u16 col, u16 entry) { }
 void no_vi_set_row(int row, u16 *data, bool flush) { }
 void no_vi_clear_row(u16 row_num, u8 color) { }
 void no_vi_move_cursor(u16 row, u16 col, int color) { }

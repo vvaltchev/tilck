@@ -71,7 +71,7 @@ static void fb_reset_blink_timer(void)
 
 /* video_interface */
 
-void fb_set_char_at_failsafe(int row, int col, u16 entry)
+void fb_set_char_at_failsafe(u16 row, u16 col, u16 entry)
 {
    psf2_header *h = fb_font_header;
 
@@ -85,7 +85,7 @@ void fb_set_char_at_failsafe(int row, int col, u16 entry)
    fb_reset_blink_timer();
 }
 
-void fb_set_char_at_optimized(int row, int col, u16 entry)
+void fb_set_char_at_optimized(u16 row, u16 col, u16 entry)
 {
    psf2_header *h = fb_font_header;
 
