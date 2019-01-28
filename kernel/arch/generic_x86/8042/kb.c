@@ -47,12 +47,12 @@ bool kb_is_pressed(u32 key)
 
 static void numlock_set_led(bool val)
 {
-   kb_led_set(capsLock << 2 | val << 1);
+   kb_led_set((u8)(capsLock << 2 | val << 1));
 }
 
 static void capslock_set_led(bool val)
 {
-   kb_led_set(numLock << 1 | val << 2);
+   kb_led_set((u8)(numLock << 1 | val << 2));
 }
 
 static u8 translate_printable_key(u32 key)
@@ -69,7 +69,7 @@ static u8 translate_printable_key(u32 key)
       c |= numkey[key];
 
    if (capsLock)
-      c = toupper(c);
+      c = (u8) toupper(c);
 
    return c;
 }

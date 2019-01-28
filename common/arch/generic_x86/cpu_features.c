@@ -148,7 +148,7 @@ void dump_x86_features(void)
             continue;
 
          if (flags[j][i])
-            w += snprintk(buf + w, sizeof(buf) - w, "%s ", strings[j][i]);
+            w += (u32)snprintk(buf + w, sizeof(buf) - w, "%s ", strings[j][i]);
 
          if (w >= 60) {
             printk("%s\n", buf);
@@ -159,7 +159,7 @@ void dump_x86_features(void)
    }
 
    if (x86_cpu_features.avx2)
-      w += snprintk(buf + w, sizeof(buf) - w, "avx2 ");
+      w += (u32)snprintk(buf + w, sizeof(buf) - w, "avx2 ");
 
    if (w)
       printk("%s\n", buf);

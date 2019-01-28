@@ -98,7 +98,7 @@ static void push_args_on_user_stack(regs *r,
    }
 
    // push argc as last (since it will be the first to be pop-ed)
-   push_on_user_stack(r, argc);
+   push_on_user_stack(r, (uptr)argc);
 }
 
 NODISCARD task_info *
@@ -189,8 +189,8 @@ task_info *create_usermode_task(page_directory_t *pdir,
                                 char *const *argv,
                                 char *const *env)
 {
-   size_t argv_elems = 0;
-   size_t env_elems = 0;
+   int argv_elems = 0;
+   int env_elems = 0;
    task_info *ti;
    regs r = {0};
 
