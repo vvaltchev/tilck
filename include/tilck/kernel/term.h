@@ -11,7 +11,7 @@ typedef struct {
                                                     // safely assume that it has
                                                     // been called in a FPU
                                                     // context.
-   void (*clear_row)(int row_num, u8 color);
+   void (*clear_row)(u16 row_num, u8 color);
 
    /* Cursor management */
    void (*move_cursor)(u16 row, u16 col, int color);

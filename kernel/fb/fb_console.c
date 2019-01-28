@@ -99,7 +99,7 @@ void fb_set_char_at_optimized(int row, int col, u16 entry)
    fb_reset_blink_timer();
 }
 
-void fb_clear_row(int row_num, u8 color)
+void fb_clear_row(u16 row_num, u8 color)
 {
    psf2_header *h = fb_font_header;
    const u32 iy = fb_offset_y + row_num * h->height;

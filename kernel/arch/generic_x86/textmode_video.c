@@ -12,9 +12,9 @@
 #define VIDEO_COLS 80
 #define VIDEO_ROWS 25
 
-static void textmode_clear_row(int row_num, u8 color)
+static void textmode_clear_row(u16 row_num, u8 color)
 {
-   ASSERT(0 <= row_num && row_num < VIDEO_ROWS);
+   ASSERT(row_num < VIDEO_ROWS);
 
    memset16(VIDEO_ADDR + VIDEO_COLS * row_num,
             make_vgaentry(' ', color),
