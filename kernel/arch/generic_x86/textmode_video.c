@@ -81,7 +81,7 @@ static void textmode_scroll_one_line_up(void)
 
 static void textmode_move_cursor(int row, int col, int color /* ignored */)
 {
-   u16 position = (row * VIDEO_COLS) + col;
+   u16 position = (u16)((row * VIDEO_COLS) + col);
 
    // cursor LOW port to vga INDEX register
    outb(0x3D4, 0x0F);

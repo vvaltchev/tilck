@@ -100,7 +100,8 @@
 static void uart_set_dlab(u16 port, bool value)
 {
    u8 lcr = inb(port + UART_LCR);
-   outb(port + UART_LCR, (lcr & 0b01111111) | (value << 7));
+   lcr = (u8)((lcr & 0b01111111) | (value << 7));
+   outb(port + UART_LCR, lcr);
 }
 
 static void uart_set_divisor_latch(u16 port, u16 value)
@@ -141,7 +142,7 @@ void serial_wait_for_read(u16 port)
 char serial_read(u16 port)
 {
    serial_wait_for_read(port);
-   return inb(port);
+   return (char) inb(port);
 }
 
 bool serial_write_ready(u16 port)
@@ -157,5 +158,5 @@ void serial_wait_for_write(u16 port)
 void serial_write(u16 port, char c)
 {
    serial_wait_for_write(port);
-   outb(port, c);
+   outb(port, (u8)c);
 }
