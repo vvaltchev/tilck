@@ -14,7 +14,7 @@ typedef struct {
    void (*clear_row)(int row_num, u8 color);
 
    /* Cursor management */
-   void (*move_cursor)(int row, int col, int color);
+   void (*move_cursor)(u16 row, u16 col, int color);
    void (*enable_cursor)(void);
    void (*disable_cursor)(void);
 

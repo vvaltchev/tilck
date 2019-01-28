@@ -109,7 +109,7 @@ void fb_clear_row(int row_num, u8 color)
       fb_save_under_cursor_buf();
 }
 
-void fb_move_cursor(int row, int col, int cursor_vga_color)
+void fb_move_cursor(u16 row, u16 col, int cursor_vga_color)
 {
    if (!under_cursor_buf)
       return;

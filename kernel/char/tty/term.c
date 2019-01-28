@@ -57,7 +57,7 @@ term *__curr_term = &first_instance;
 void no_vi_set_char_at(int row, int col, u16 entry) { }
 void no_vi_set_row(int row, u16 *data, bool flush) { }
 void no_vi_clear_row(int row_num, u8 color) { }
-void no_vi_move_cursor(int row, int col, int color) { }
+void no_vi_move_cursor(u16 row, u16 col, int color) { }
 void no_vi_enable_cursor(void) { }
 void no_vi_disable_cursor(void) { }
 void no_vi_scroll_one_line_up(void) { }
