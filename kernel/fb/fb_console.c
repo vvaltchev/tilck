@@ -167,7 +167,7 @@ void fb_disable_cursor(void)
    fb_move_cursor(cursor_row, cursor_col, -1);
 }
 
-static void fb_set_row_failsafe(int row, u16 *data, bool flush)
+static void fb_set_row_failsafe(u16 row, u16 *data, bool flush)
 {
    for (u32 i = 0; i < fb_term_cols; i++)
       fb_set_char_at_failsafe(row, i, data[i]);
@@ -175,7 +175,7 @@ static void fb_set_row_failsafe(int row, u16 *data, bool flush)
    fb_reset_blink_timer();
 }
 
-static void fb_set_row_optimized(int row, u16 *data, bool flush)
+static void fb_set_row_optimized(u16 row, u16 *data, bool flush)
 {
    psf2_header *h = fb_font_header;
 

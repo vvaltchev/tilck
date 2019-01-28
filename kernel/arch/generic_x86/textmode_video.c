@@ -30,9 +30,9 @@ static void textmode_set_char_at(u16 row, u16 col, u16 entry)
    video[row * VIDEO_COLS + col] = entry;
 }
 
-static void textmode_set_row(int row, u16 *data, bool flush)
+static void textmode_set_row(u16 row, u16 *data, bool flush)
 {
-   ASSERT(0 <= row && row < VIDEO_ROWS);
+   ASSERT(row < VIDEO_ROWS);
 
    void *dest_addr = VIDEO_ADDR + row * VIDEO_COLS;
    void *src_addr = data;

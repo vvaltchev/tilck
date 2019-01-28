@@ -7,7 +7,7 @@ typedef struct {
 
    /* Main functions */
    void (*set_char_at)(u16 row, u16 col, u16 entry);
-   void (*set_row)(int row, u16 *data, bool flush); // NOTE: set_row() can
+   void (*set_row)(u16 row, u16 *data, bool flush); // NOTE: set_row() can
                                                     // safely assume that it has
                                                     // been called in a FPU
                                                     // context.
