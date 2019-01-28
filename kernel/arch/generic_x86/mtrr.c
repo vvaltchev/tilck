@@ -7,8 +7,8 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/paging.h>
 
-#define MTRR_DEF_TYPE_MTRR_ENABLED (1 << 11)
-#define MTRR_PHYS_MASK_VALID       (1 << 11)
+#define MTRR_DEF_TYPE_MTRR_ENABLED (1u << 11)
+#define MTRR_PHYS_MASK_VALID       (1u << 11)
 
 static void enable_mtrr_int(void)
 {
@@ -35,7 +35,7 @@ void enable_mtrr(void)
    printk("[CPU features] MTRR enabled\n");
 }
 
-int get_var_mttrs_count(void)
+u32 get_var_mttrs_count(void)
 {
    if (!x86_cpu_features.edx1.mtrr)
       return 0;
@@ -51,10 +51,10 @@ int get_free_mtrr(void)
    for (u32 i = 0; i < var_mtrr_count; i++, selected++) {
 
       u64 mask_reg = rdmsr(MSR_MTRRphysBase0 + 2 * i + 1);
-      bool used = !!(mask_reg & (1 << 11));
+      bool used = !!(mask_reg & MTRR_DEF_TYPE_MTRR_ENABLED);
 
       if (!used)
-         return selected;
+         return (int)selected;
    }
 
    return -1;
@@ -134,9 +134,8 @@ static void post_mtrr_change(mtrr_change_ctx *ctx)
    enable_interrupts(&ctx->eflags);
 }
 
-void set_mtrr(int num, u64 paddr, u32 pow2size, u8 mem_type)
+void set_mtrr(u32 num, u64 paddr, u32 pow2size, u8 mem_type)
 {
-   ASSERT(num > 0);
    ASSERT(num < get_var_mttrs_count());
    ASSERT(pow2size > 0);
    ASSERT(roundup_next_power_of_2(pow2size) == pow2size);
@@ -160,11 +159,9 @@ void set_mtrr(int num, u64 paddr, u32 pow2size, u8 mem_type)
    post_mtrr_change(&ctx);
 }
 
-void reset_mtrr(int num)
+void reset_mtrr(u32 num)
 {
    mtrr_change_ctx ctx;
-
-   ASSERT(num >= 0);
    ASSERT(num < get_var_mttrs_count());
 
    pre_mtrr_change(&ctx);
@@ -198,7 +195,7 @@ void dump_var_mtrrs(void)
    printk(NO_PREFIX "MTRRs (default type: %s): \n",
           mtrr_mem_type_str[mtrr_dt & 0xff]);
 
-   for (int i = 0; i < get_var_mttrs_count(); i++) {
+   for (u32 i = 0; i < get_var_mttrs_count(); i++) {
 
       u64 physBaseVal = rdmsr(MSR_MTRRphysBase0 + 2 * i);
       u64 physMaskVal = rdmsr(MSR_MTRRphysBase0 + 2 * i + 1);
@@ -207,7 +204,7 @@ void dump_var_mtrrs(void)
       if (!(physMaskVal & (1 << 11)))
          continue;
 
-      physBaseVal &= ~0xff;
+      physBaseVal &= ~0xffu;
       physMaskVal &= ~((u64)PAGE_SIZE - 1);
 
       u32 first_set_bit = get_first_set_bit_index64(physMaskVal);

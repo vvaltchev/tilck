@@ -818,5 +818,5 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
       return;
    }
 
-   set_mtrr(selected_mtrr, paddr, pow2size, MEM_TYPE_WC);
+   set_mtrr((u32)selected_mtrr, paddr, pow2size, MEM_TYPE_WC);
 }
