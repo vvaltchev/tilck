@@ -21,8 +21,8 @@
  */
 
 
-#define FAT_ENTRY_DIRNAME_NO_MORE_ENTRIES ((u8)0)
-#define FAT_ENTRY_DIRNAME_EMPTY_DIR ((u8)0xE5)
+#define FAT_ENTRY_DIRNAME_NO_MORE_ENTRIES ((char)0)
+#define FAT_ENTRY_DIRNAME_EMPTY_DIR ((char)0xE5)
 
 static u8 shortname_checksum(u8 *shortname)
 {
@@ -149,20 +149,21 @@ bool fat32_is_valid_filename_character(char c)
 static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
                                       fat_long_entry *le)
 {
-   char entrybuf[13]={0};
+   char entrybuf[13] = {0};
    int ebuf_size=0;
 
-   if (ctx->long_name_chksum != le->LDIR_Chksum) {
-      bzero(ctx->long_name_buf, sizeof(ctx->long_name_chksum));
-      ctx->long_name_size = 0;
-      ctx->long_name_chksum = le->LDIR_Chksum;
+   if (ctx->lname_chksum != le->LDIR_Chksum) {
+      bzero(ctx->lname_buf, sizeof(ctx->lname_chksum));
+      ctx->lname_sz = 0;
+      ctx->lname_chksum = le->LDIR_Chksum;
       ctx->is_valid = true;
    }
 
    if (!ctx->is_valid)
       return;
 
-   for (int i = 0; i < 10; i+=2) {
+   for (int i = 0; i < 10; i += 2) {
+
       u8 c = le->LDIR_Name1[i];
 
       /* NON-ASCII characters are NOT supported */
@@ -173,10 +174,12 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 
       if (c == 0 || c == 0xFF)
          goto end;
-      entrybuf[ebuf_size++] = c;
+
+      entrybuf[ebuf_size++] = (char)c;
    }
 
-   for (int i = 0; i < 12; i+=2) {
+   for (int i = 0; i < 12; i += 2) {
+
       u8 c = le->LDIR_Name2[i];
 
       /* NON-ASCII characters are NOT supported */
@@ -187,10 +190,12 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 
       if (c == 0 || c == 0xFF)
          goto end;
-      entrybuf[ebuf_size++] = c;
+
+      entrybuf[ebuf_size++] = (char)c;
    }
 
-   for (int i = 0; i < 4; i+=2) {
+   for (int i = 0; i < 4; i += 2) {
+
       u8 c = le->LDIR_Name3[i];
 
       /* NON-ASCII characters are NOT supported */
@@ -201,7 +206,8 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 
       if (c == 0 || c == 0xFF)
          goto end;
-      entrybuf[ebuf_size++] = c;
+
+      entrybuf[ebuf_size++] = (char)c;
    }
 
    end:
@@ -215,7 +221,7 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
          break;
       }
 
-      ctx->long_name_buf[ctx->long_name_size++] = c;
+      ctx->lname_buf[ctx->lname_sz++] = (u8) c;
    }
 }
 
@@ -238,9 +244,9 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
       ASSERT(entry == NULL || cluster == 0); // entry != NULL => cluster == 0
    }
 
-   bzero(ctx->long_name_buf, sizeof(ctx->long_name_buf));
-   ctx->long_name_size = 0;
-   ctx->long_name_chksum = -1;
+   bzero(ctx->lname_buf, sizeof(ctx->lname_buf));
+   ctx->lname_sz = 0;
+   ctx->lname_chksum = -1;
 
    while (true) {
 
@@ -280,20 +286,21 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
 
          const char *long_name_ptr = NULL;
 
-         if (ctx->long_name_size > 0 && ctx->is_valid) {
+         if (ctx->lname_sz > 0 && ctx->is_valid) {
 
-            s16 entry_checksum = shortname_checksum(entry[i].DIR_Name);
-            if (ctx->long_name_chksum == entry_checksum) {
-               ctx->long_name_buf[ctx->long_name_size] = 0;
-               str_reverse((char *)ctx->long_name_buf, ctx->long_name_size);
-               long_name_ptr = (const char *) ctx->long_name_buf;
+            s16 entry_checksum = shortname_checksum((u8 *)entry[i].DIR_Name);
+
+            if (ctx->lname_chksum == entry_checksum) {
+               ctx->lname_buf[ctx->lname_sz] = 0;
+               str_reverse((char *)ctx->lname_buf, (size_t)ctx->lname_sz);
+               long_name_ptr = (const char *) ctx->lname_buf;
             }
          }
 
          int ret = cb(hdr, ft, entry + i, long_name_ptr, arg, level);
 
-         ctx->long_name_size = 0;
-         ctx->long_name_chksum = -1;
+         ctx->lname_sz = 0;
+         ctx->lname_chksum = -1;
 
          if (ret < 0) {
             /* the callback returns a value < 0 to request a walk STOP. */
@@ -358,7 +365,7 @@ fat_type fat_get_type(fat_header *hdr)
  * Reads the entry in the FAT 'fatNum' for cluster 'clusterN'.
  * The entry may be 16 or 32 bit. It returns 32-bit integer for convenience.
  */
-u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, int clusterN, int fatNum)
+u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, u32 clusterN, u32 fatNum)
 {
    if (ft == fat_unknown) {
       ft = fat_get_type(hdr);
@@ -452,18 +459,25 @@ void fat_get_short_name(fat_entry *entry, char *destbuf)
       char c = entry->DIR_Name[i];
 
       destbuf[d++] =
-         entry->DIR_NTRes & FAT_ENTRY_NTRES_BASE_LOW_CASE ? tolower(c) : c;
+         (entry->DIR_NTRes & FAT_ENTRY_NTRES_BASE_LOW_CASE)
+            ? (char)tolower(c)
+            : c;
    }
 
    i = 8; // beginning of the extension part.
 
    if (entry->DIR_Name[i] != ' ') {
+
       destbuf[d++] = '.';
+
       for (; i < 11 && entry->DIR_Name[i] != ' '; i++) {
 
          char c = entry->DIR_Name[i];
+
          destbuf[d++] =
-            entry->DIR_NTRes & FAT_ENTRY_NTRES_EXT_LOW_CASE ? tolower(c) : c;
+            (entry->DIR_NTRes & FAT_ENTRY_NTRES_EXT_LOW_CASE)
+               ? (char)tolower(c)
+               : c;
       }
    }
 
