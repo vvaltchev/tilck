@@ -134,27 +134,27 @@ void term_restart_video_output(term *t)
 
 /* ---------------- term non-action interface funcs --------------------- */
 
-u32 term_get_tab_size(term *t)
+u16 term_get_tab_size(term *t)
 {
    return t->tabsize;
 }
 
-u32 term_get_rows(term *t)
+u16 term_get_rows(term *t)
 {
    return t->rows;
 }
 
-u32 term_get_cols(term *t)
+u16 term_get_cols(term *t)
 {
    return t->cols;
 }
 
-u32 term_get_curr_row(term *t)
+u16 term_get_curr_row(term *t)
 {
    return t->r;
 }
 
-u32 term_get_curr_col(term *t)
+u16 term_get_curr_col(term *t)
 {
    return t->c;
 }

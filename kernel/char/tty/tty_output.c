@@ -196,7 +196,7 @@ tty_filter_end_csi_seq(u8 c,
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
             .arg1 = term_get_curr_row(t->term_inst),
-            .arg2 = MIN((u32)params[0], term_get_cols(t->term_inst) - 1)
+            .arg2 = MIN((u32)params[0], term_get_cols(t->term_inst) - 1u)
          };
 
          break;
@@ -209,8 +209,8 @@ tty_filter_end_csi_seq(u8 c,
 
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
-            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst) - 1),
-            .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(t->term_inst) - 1)
+            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst)-1u),
+            .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(t->term_inst)-1u)
          };
 
          break;

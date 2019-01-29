@@ -29,16 +29,16 @@ typedef struct {
 
 typedef struct term term;
 
-int init_term(term *t, const video_interface *vi, int rows, int cols);
+int init_term(term *t, const video_interface *vi, u16 rows, u16 cols);
 bool term_is_initialized(term *t);
 const video_interface *term_get_vi(term *t);
 
-u32 term_get_tab_size(term *t);
-u32 term_get_rows(term *t);
-u32 term_get_cols(term *t);
+u16 term_get_tab_size(term *t);
+u16 term_get_rows(term *t);
+u16 term_get_cols(term *t);
 
-u32 term_get_curr_row(term *t);
-u32 term_get_curr_col(term *t);
+u16 term_get_curr_row(term *t);
+u16 term_get_curr_col(term *t);
 
 void term_write(term *t, const char *buf, u32 len, u8 color);
 void term_scroll_up(term *t, u32 lines);
