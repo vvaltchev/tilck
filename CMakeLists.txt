@@ -111,6 +111,9 @@ set(KMALLOC_HEAPS_CREATION_DEBUG OFF CACHE BOOL
 set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
     "Make the bootloader to poison all the available memory")
 
+set(WCONV_CLANG OFF CACHE BOOL
+    "Compile with -Wconversion when clang is used")
+
 list(
    APPEND kernel_opts_list
 
@@ -141,6 +144,7 @@ list(
    KMALLOC_SUPPORT_LEAK_DETECTOR
    KMALLOC_HEAPS_CREATION_DEBUG
    BOOTLOADER_POISON_MEMORY
+   WCONV_CLANG
 )
 
 ###########################################################
@@ -244,7 +248,6 @@ set(
    -Wextra
    -Werror
    -Wshadow
-   #-Wconversion
    -Wno-unused-function
    -Wno-unused-parameter
 )
@@ -258,7 +261,12 @@ if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
 endif()
 
 if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+
    list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
+
+   if (WCONV_CLANG)
+      list(APPEND WARN_FLAGS_LIST "-Wconversion")
+   endif()
 
    if (USE_SYSCC)
       string(APPEND msg "USE_SYSCC=1 is not supported with Clang. "
@@ -266,7 +274,7 @@ if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
                         "the kernel with Clang by setting CC=clang the CMake "
                         "variable KERNEL_USE_SYSTEM_CC=1. However, the i686 "
                         "gcc toolchain will still be used for assembly files "
-                        "and other targets. Note[2]: if your using "
+                        "and other targets. Note[2]: if you're using "
                         "./scripts/cmake_run, you can set CMake variables by "
                         "setting the CMAKE_ARGS environment variable this way: "
                         "\nCMAKE_ARGS='-DCMAKE_VAR1=0 -DVAR2=blabla' "
