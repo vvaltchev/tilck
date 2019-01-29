@@ -172,7 +172,7 @@ static void kb_handle_default_state(u8 scancode)
          break;
 
       default:
-         key_int_handler(scancode & ~0x80, !(scancode & 0x80));
+         key_int_handler(scancode & ~0x80u, !(scancode & 0x80));
    }
 }
 
@@ -201,9 +201,9 @@ static void kb_tasklet_handler(u8 scancode)
             break;
 
          kb_is_pressed = !(scancode & 0x80);
-         scancode &= ~0x80;
+         scancode &= (u8) ~0x80;
 
-         key_int_handler(scancode | (0xE0 << 8), kb_is_pressed);
+         key_int_handler(scancode | (0xE0u << 8u), kb_is_pressed);
          break;
 
       case KB_DEFAULT_STATE:
@@ -235,9 +235,9 @@ static int keyboard_irq_handler(regs *context)
 
 u32 kb_get_current_modifiers(void)
 {
-   u32 shift = 1 * kb_is_shift_pressed();
-   u32 alt   = 2 * kb_is_alt_pressed();
-   u32 ctrl  = 4 * kb_is_ctrl_pressed();
+   u32 shift = 1u * kb_is_shift_pressed();
+   u32 alt   = 2u * kb_is_alt_pressed();
+   u32 ctrl  = 4u * kb_is_ctrl_pressed();
 
    /*
     * 0 nothing
