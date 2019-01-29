@@ -116,7 +116,7 @@ bool handle_potential_cow(void *context)
    ASSERT(pf_ref_count_get(paddr) == 0);
    pf_ref_count_inc(paddr);
 
-   ptable->pages[page_table_index].pageAddr = paddr >> PAGE_SHIFT;
+   ptable->pages[page_table_index].pageAddr = U32_HI_BITS(paddr, 20);
    ptable->pages[page_table_index].rw = true;
    ptable->pages[page_table_index].avail = 0;
 

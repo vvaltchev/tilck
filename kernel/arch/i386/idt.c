@@ -34,8 +34,8 @@ void idt_set_entry(u8 num, void *handler, u16 selector, u8 flags)
    const u32 base = (u32) handler;
 
    /* The interrupt routine address (offset in the code segment) */
-   idt[num].offset_low = (base & 0xFFFF);
-   idt[num].offset_high = (base >> 16) & 0xFFFF;
+   idt[num].offset_low = U16_BITS(base, 16);
+   idt[num].offset_high = HI_BITS(base, 16, u16);
 
    /* Selector of the code segment to use for the 'offset' address */
    idt[num].selector = selector;
@@ -89,7 +89,7 @@ void handle_resumable_fault(regs *r)
 
    ASSERT(!are_interrupts_enabled());
    pop_nested_interrupt(); // the fault
-   set_return_register(curr->fault_resume_regs, 1 << regs_intnum(r));
+   set_return_register(curr->fault_resume_regs, 1u << regs_intnum(r));
    context_switch(curr->fault_resume_regs);
 }
 

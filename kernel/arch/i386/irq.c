@@ -124,45 +124,49 @@ void PIC_remap(u8 offset1, u8 offset2)
 void irq_set_mask(int irq)
 {
    u16 port;
-   u8 value;
-   u8 irq_line = (u8) irq;
+   u8 irq_mask;
    ASSERT(0 <= irq && irq <= 32);
 
-   if (irq_line < 8) {
+   if (irq < 8) {
       port = PIC1_DATA;
    } else {
       port = PIC2_DATA;
-      irq_line -= 8;
+      irq -= 8;
    }
-   value = inb(port) | (u8)(1u << irq_line);
-   outb(port, value);
+
+   irq_mask = inb(port);
+   irq_mask |= (1 << irq);
+   outb(port, irq_mask);
 }
 
 void irq_clear_mask(int irq)
 {
    u16 port;
-   u8 value;
-   u8 irq_line = (u8)irq;
    ASSERT(0 <= irq && irq <= 32);
 
-   if (irq_line < 8) {
+   if (irq < 8) {
       port = PIC1_DATA;
    } else {
       port = PIC2_DATA;
-      irq_line -= 8;
+      irq -= 8;
    }
 
-   value = inb(port) & ~(1 << irq_line);
-   outb(port, value);
+   outb(port, inb(port) & ~(1 << irq));
 }
 
 static u16 __pic_get_irq_reg(u8 ocw3)
 {
-    /* OCW3 to PIC CMD to get the register values.  PIC2 is chained, and
-     * represents IRQs 8-15.  PIC1 is IRQs 0-7, with 2 being the chain */
-    outb(PIC1_COMMAND, ocw3);
-    outb(PIC2_COMMAND, ocw3);
-    return (u16)(inb(PIC2_COMMAND) << 8) | inb(PIC1_COMMAND);
+   u16 result;
+
+   /* OCW3 to PIC CMD to get the register values.  PIC2 is chained, and
+   * represents IRQs 8-15.  PIC1 is IRQs 0-7, with 2 being the chain */
+   outb(PIC1_COMMAND, ocw3);
+   outb(PIC2_COMMAND, ocw3);
+
+   result = inb(PIC1_COMMAND);
+   result |= (u16)(inb(PIC2_COMMAND) << 8);
+
+   return result;
 }
 
 /*

@@ -270,4 +270,56 @@ typedef int (*cmpfun_ptr)(const void *a, const void *b);
 
 #endif
 
+/*
+ * Macros and inline functions designed to minimize the ugly code necessary
+ * if we want to compile with -Wconversion.
+ */
+
+#define  U8_BITMASK(n) (( u8)((1u << (n)) - 1u))
+#define U16_BITMASK(n) ((u16)((1u << (n)) - 1u))
+#define U32_BITMASK(n) ((u32)((1u << (n)) - 1u))
+
+/*
+ * Get the lower `n` bits from val.
+ *
+ * Use case:
+ *
+ *    union { u32 a: 20; b: 12 } u;
+ *    u32 var = 123;
+ *    u.a = var; // does NOT compile with -Wconversion
+ *    u.a = U32_BITS(var, 20); // always compiles
+ */
+#define  U8_BITS(val, n) ( u8)((val) &  U8_BITMASK(n))
+#define U16_BITS(val, n) (u16)((val) & U16_BITMASK(n))
+#define U32_BITS(val, n) (u32)((val) & U32_BITMASK(n))
+
+#define LO_BITS(val, n, t) ((t)((val) & U32_BITMASK(n)))
+
+
+/*
+ * We NEED a rshift() non-macro function because with gcc and -Wconversion
+ * statements like (see the union above):
+ *
+ *    u.a = (var >> bits) & MASK;
+ *
+ * Do not compile. See: https://stackoverflow.com/questions/54421737
+ */
+static ALWAYS_INLINE uptr rshift(uptr val, uptr bits)
+{
+   return val >> bits;
+}
+
+/*
+ * U*_HI_BITS(val, n) is like U*_BITS() but it does a RIGHT SHIFT (>>) to
+ * `val` before applying the bitmask. In order words, it is a -Wconversion-safe
+ * to do a right shift and store the value in a bitfield.
+ */
+#define  U8_HI_BITS(val, n)  U8_BITS(rshift((val),  8-(n)), (n))
+#define U16_HI_BITS(val, n) U16_BITS(rshift((val), 16-(n)), (n))
+#define U32_HI_BITS(val, n) U32_BITS(rshift((val), 32-(n)), (n))
+
+#define HI_BITS(val, n, t) (LO_BITS(rshift((val), 32-(n)), (n), t))
+
+
+/* Includes */
 #include <tilck/common/panic.h>

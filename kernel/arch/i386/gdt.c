@@ -43,17 +43,17 @@ gdt_set_entry(gdt_entry *e,
    ASSERT(!((uptr)gdt <= (uptr)e && (uptr)e < ((uptr)gdt + gdt_size)));
 
    ASSERT(limit <= GDT_LIMIT_MAX); /* limit is only 20 bits */
-   ASSERT(flags <= 0xF); /* flags is 4 bits */
+   ASSERT(flags <= 0xf); /* flags is 4 bits */
 
-   e->base_low = (base & 0xFFFF);
-   e->base_middle = (base >> 16) & 0xFF;
-   e->base_high = (base >> 24) & 0xFF;
+   e->base_low = (base & 0xffff);
+   e->base_middle = (base >> 16) & 0xff;
+   e->base_high = (base >> 24) & 0xff;
 
-   e->limit_low = (limit & 0xFFFF);
-   e->limit_high = ((limit >> 16) & 0x0F);
+   e->limit_low = (limit & 0xffff);
+   e->limit_high = (limit >> 16) & 0x0f;
 
    e->access = access;
-   e->flags = flags;
+   e->flags = flags & 0xf;
 }
 
 static void
