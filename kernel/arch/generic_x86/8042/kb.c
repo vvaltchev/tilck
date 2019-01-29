@@ -233,7 +233,7 @@ static int keyboard_irq_handler(regs *context)
    return 1;
 }
 
-u32 kb_get_current_modifiers(void)
+u8 kb_get_current_modifiers(void)
 {
    u32 shift = 1u * kb_is_shift_pressed();
    u32 alt   = 2u * kb_is_alt_pressed();
@@ -250,7 +250,7 @@ u32 kb_get_current_modifiers(void)
     * 7 shift + alt + ctrl
     */
 
-   return (shift + alt + ctrl);
+   return (u8)(shift + alt + ctrl);
 }
 
 static void create_kb_tasklet_runner(void)

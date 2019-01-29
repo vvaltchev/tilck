@@ -15,7 +15,7 @@ void init_kb(void);
 bool kb_is_pressed(u32 key);
 int kb_register_keypress_handler(keypress_func f);
 bool kb_scancode_to_ansi_seq(u32 key, u8 modifiers, char *seq);
-u32 kb_get_current_modifiers(void);
+u8 kb_get_current_modifiers(void);
 int kb_get_fn_key_pressed(u32 key);
 
 static inline bool kb_is_ctrl_pressed(void)
@@ -41,12 +41,12 @@ static inline bool kb_is_shift_pressed(void)
 /*
  * Match is made by OR-ing the four defines above.
  */
-static inline bool kb_exact_match_modifiers(u32 match)
+static inline bool kb_exact_match_modifiers(u8 match)
 {
    return kb_get_current_modifiers() == match;
 }
 
-static inline bool kb_partial_match_modifiers(u32 match_mask)
+static inline bool kb_partial_match_modifiers(u8 match_mask)
 {
    ASSERT(match_mask != 0);
    return !!(kb_get_current_modifiers() & match_mask);
