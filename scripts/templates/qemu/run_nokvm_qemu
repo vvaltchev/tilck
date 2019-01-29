@@ -1,5 +1,6 @@
 #!/bin/bash
 
 BUILD_DIR=@CMAKE_BINARY_DIR@
-qemu-system-i386 @QEMU_COMMON_OPTS@ -s @QEMU_RAM_OPT@ -drive \
-   "file=@IMG_FILE@,index=0,media=disk,format=raw,cyls=74,heads=16,secs=63" "$@"
+qemu-system-i386 @QEMU_COMMON_OPTS@ -s @QEMU_RAM_OPT@            \
+   -drive id=img1,format=raw,if=none,file=@IMG_FILE@             \
+   -device ide-hd,drive=img1,cyls=74,heads=16,secs=63 "$@"
