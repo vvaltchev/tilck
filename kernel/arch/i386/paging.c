@@ -472,7 +472,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
       }
 
       ASSERT(IS_PAGE_ALIGNED(pt));
-      new_pdir->entries[i].ptaddr = KERNEL_VA_TO_PA(pt) >> PAGE_SHIFT;
+      new_pdir->entries[i].ptaddr = U32_HI_BITS(KERNEL_VA_TO_PA(pt), 20);
    }
 
    for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
@@ -565,10 +565,10 @@ pdir_deep_clone(page_directory_t *pdir)
          pf_ref_count_inc(new_page_paddr);
 
          memcpy32(new_page, orig_page, PAGE_SIZE / 4);
-         new_pt->pages[j].pageAddr = new_page_paddr >> PAGE_SHIFT;
+         new_pt->pages[j].pageAddr = U32_HI_BITS(new_page_paddr, 20);
       }
 
-      new_pdir->entries[i].ptaddr = KERNEL_VA_TO_PA(new_pt) >> PAGE_SHIFT;
+      new_pdir->entries[i].ptaddr = U32_HI_BITS(KERNEL_VA_TO_PA(new_pt), 20);
    }
 
    for (u32 i = (KERNEL_BASE_VA >> 22); i < 1024; i++) {
