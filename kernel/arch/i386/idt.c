@@ -34,7 +34,7 @@ void idt_set_entry(u8 num, void *handler, u16 selector, u8 flags)
    const u32 base = (u32) handler;
 
    /* The interrupt routine address (offset in the code segment) */
-   idt[num].offset_low = U16_BITS(base, 16);
+   idt[num].offset_low = U16_LO_BITS(base, 16);
    idt[num].offset_high = HI_BITS(base, 16, u16);
 
    /* Selector of the code segment to use for the 'offset' address */

@@ -40,13 +40,17 @@
 
    STATIC_ASSERT(sizeof(void *) == 4);
    STATIC_ASSERT(sizeof(long) == sizeof(void *));
+
    #define BITS32
+   #define NBITS 32
 
 #elif defined(__x86_64__)
 
    STATIC_ASSERT(sizeof(void *) == 8);
    STATIC_ASSERT(sizeof(long) == sizeof(void *));
+
    #define BITS64
+   #define NBITS 64
 
 #else
 
@@ -278,6 +282,7 @@ typedef int (*cmpfun_ptr)(const void *a, const void *b);
 #define  U8_BITMASK(n) (( u8)((1u << (n)) - 1u))
 #define U16_BITMASK(n) ((u16)((1u << (n)) - 1u))
 #define U32_BITMASK(n) ((u32)((1u << (n)) - 1u))
+#define U64_BITMASK(n) ((u64)((1u << (n)) - 1u))
 
 /*
  * Get the lower `n` bits from val.
@@ -287,14 +292,18 @@ typedef int (*cmpfun_ptr)(const void *a, const void *b);
  *    union { u32 a: 20; b: 12 } u;
  *    u32 var = 123;
  *    u.a = var; // does NOT compile with -Wconversion
- *    u.a = U32_BITS(var, 20); // always compiles
+ *    u.a = U32_LO_BITS(var, 20); // always compiles
  */
-#define  U8_BITS(val, n) ( u8)((val) &  U8_BITMASK(n))
-#define U16_BITS(val, n) (u16)((val) & U16_BITMASK(n))
-#define U32_BITS(val, n) (u32)((val) & U32_BITMASK(n))
+#define  U8_LO_BITS(val, n) ( u8)((val) &  U8_BITMASK(n))
+#define U16_LO_BITS(val, n) (u16)((val) & U16_BITMASK(n))
+#define U32_LO_BITS(val, n) (u32)((val) & U32_BITMASK(n))
+#define U64_LO_BITS(val, n) (u32)((val) & U64_BITMASK(n))
 
-#define LO_BITS(val, n, t) ((t)((val) & U32_BITMASK(n)))
-
+#if defined(BITS64)
+   #define LO_BITS(val, n, t) ((t)((val) & U64_BITMASK(n)))
+#elif defined(BITS32)
+   #define LO_BITS(val, n, t) ((t)((val) & U32_BITMASK(n)))
+#endif
 
 /*
  * We NEED a rshift() non-macro function because with gcc and -Wconversion
@@ -310,15 +319,16 @@ static ALWAYS_INLINE uptr rshift(uptr val, uptr bits)
 }
 
 /*
- * U*_HI_BITS(val, n) is like U*_BITS() but it does a RIGHT SHIFT (>>) to
+ * U*_HI_BITS(val, n) is like U*_LO_BITS() but it does a RIGHT SHIFT (>>) to
  * `val` before applying the bitmask. In order words, it is a -Wconversion-safe
  * to do a right shift and store the value in a bitfield.
  */
-#define  U8_HI_BITS(val, n)  U8_BITS(rshift((val),  8-(n)), (n))
-#define U16_HI_BITS(val, n) U16_BITS(rshift((val), 16-(n)), (n))
-#define U32_HI_BITS(val, n) U32_BITS(rshift((val), 32-(n)), (n))
+#define  U8_HI_BITS(val, n)  U8_LO_BITS(rshift((val),  8-(n)), (n))
+#define U16_HI_BITS(val, n) U16_LO_BITS(rshift((val), 16-(n)), (n))
+#define U32_HI_BITS(val, n) U32_LO_BITS(rshift((val), 32-(n)), (n))
+#define U64_HI_BITS(val, n) U64_LO_BITS(rshift((val), 64-(n)), (n))
 
-#define HI_BITS(val, n, t) (LO_BITS(rshift((val), 32-(n)), (n), t))
+#define HI_BITS(val, n, t) (LO_BITS(rshift((val), NBITS-(n)), (n), t))
 
 
 /* Includes */
