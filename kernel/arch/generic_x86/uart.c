@@ -107,8 +107,8 @@ static void uart_set_dlab(u16 port, bool value)
 static void uart_set_divisor_latch(u16 port, u16 value)
 {
    uart_set_dlab(port, 1);
-   outb(port + UART_DLL, value & 0xff);
-   outb(port + UART_DLH, value >> 8);
+   outb(port + UART_DLL, LO_BITS(value, 8, u8));
+   outb(port + UART_DLH, HI_BITS(value, 8, u8));
    uart_set_dlab(port, 0);
 }
 

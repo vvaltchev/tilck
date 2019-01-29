@@ -23,13 +23,13 @@
 
 static inline u8 bcd_to_dec(u8 bcd)
 {
-   return ((bcd & 0xF0) >> 1) + ((bcd & 0xF0) >> 3) + (bcd & 0xf);
+   return ((bcd & 0xf0) >> 1) + ((bcd & 0xf0) >> 3) + (bcd & 0xf);
 }
 
-static inline u32 cmos_read_reg(u32 reg)
+static inline u32 cmos_read_reg(u8 reg)
 {
-   u32 NMI_disable_bit = 0; // temporary
-   outb(CMOS_CONTROL_PORT, (u8)((NMI_disable_bit << 7) | reg));
+   u8 NMI_disable_bit = 0; // temporary
+   outb(CMOS_CONTROL_PORT, (u8)(NMI_disable_bit << 7) | reg);
    return inb(CMOS_DATA_PORT);
 }
 
@@ -106,10 +106,6 @@ void cmos_read_datetime(datetime_t *out)
     * See: https://wiki.osdev.org/CMOS.
     */
 
-   if (d.year < 70)
-      d.year += 2000;
-   else
-      d.year += 1900;
-
+   d.year = (u16)(d.year + (d.year < 70 ? 2000 : 1900));
    *out = d;
 }

@@ -85,26 +85,26 @@ static void textmode_move_cursor(u16 row, u16 col, int color /* ignored */)
 
    // cursor LOW port to vga INDEX register
    outb(0x3D4, 0x0F);
-   outb(0x3D5, (u8)(position & 0xFF));
+   outb(0x3D5, LO_BITS(position, 8, u8));
    // cursor HIGH port to vga INDEX register
    outb(0x3D4, 0x0E);
-   outb(0x3D5, (u8)((position >> 8) & 0xFF));
+   outb(0x3D5, HI_BITS(position, 8, u8));
 }
 
 static void textmode_enable_cursor(void)
 {
-   const u8 scanline_start = 0;
-   const u8 scanline_end = 15;
+   const u8 s_start = 0; /* scanline start */
+   const u8 s_end = 15;  /* scanline end */
 
    outb(0x3D4, 0x0A);
-   outb(0x3D5, (inb(0x3D5) & 0xC0) | scanline_start); // Note: mask with 0xC0
-                                                      // which keeps only the
-                                                      // higher 2 bits in order
-                                                      // to set bit 5 to 0.
+   outb(0x3D5, (inb(0x3D5) & 0xC0) | s_start);  // Note: mask with 0xC0
+                                                // which keeps only the
+                                                // higher 2 bits in order
+                                                // to set bit 5 to 0.
 
    outb(0x3D4, 0x0B);
-   outb(0x3D5, (inb(0x3D5) & 0xE0) | scanline_end);   // Mask with 0xE0 keeps
-                                                      // the higher 3 bits.
+   outb(0x3D5, (inb(0x3D5) & 0xE0) | s_end);    // Mask with 0xE0 keeps
+                                                // the higher 3 bits.
 }
 
 static void textmode_disable_cursor(void)
