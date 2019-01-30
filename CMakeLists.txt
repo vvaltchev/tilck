@@ -81,7 +81,7 @@ set(DEBUG_CHECKS_IN_RELEASE_BUILD ON CACHE BOOL
 
 # Kernel options (disabled by default)
 
-set(KERNEL_USE_SYSTEM_CC OFF CACHE BOOL
+set(KERNEL_SYSCC OFF CACHE BOOL
     "Use system's compiler for the kernel instead of toolchain's one")
 
 set(KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC OFF CACHE BOOL
@@ -134,7 +134,7 @@ list(
    # Boolean options DISABLED by default
    TEST_GCOV
    KERNEL_GCOV
-   KERNEL_USE_SYSTEM_CC
+   KERNEL_SYSCC
    KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC
    FORK_NO_COW
    MMAP_NO_COW
@@ -272,9 +272,9 @@ if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
       string(APPEND msg "USE_SYSCC=1 is not supported with Clang. "
                         "Please use GCC. Note[1]: it is possible to build just "
                         "the kernel with Clang by setting CC=clang the CMake "
-                        "variable KERNEL_USE_SYSTEM_CC=1. However, the i686 "
-                        "gcc toolchain will still be used for assembly files "
-                        "and other targets. Note[2]: if you're using "
+                        "variable KERNEL_SYSCC=1. However, the i686 gcc "
+                        "toolchain will still be used for assembly files and "
+                        "other targets. Note[2]: if you're using "
                         "./scripts/cmake_run, you can set CMake variables by "
                         "setting the CMAKE_ARGS environment variable this way: "
                         "\nCMAKE_ARGS='-DCMAKE_VAR1=0 -DVAR2=blabla' "
