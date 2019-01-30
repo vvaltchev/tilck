@@ -23,11 +23,11 @@ static int load_phdr(fs_handle *elf_file,
       return 0; /* very weird (because the phdr has type LOAD) */
 
    uptr sz = phdr->p_vaddr + phdr->p_memsz - (uptr)vaddr;
-   int page_count = (sz + PAGE_SIZE - 1) / PAGE_SIZE;
+   u32 page_count = (sz + PAGE_SIZE - 1) / PAGE_SIZE;
    *end_vaddr_ref = (uptr)vaddr + (page_count << PAGE_SHIFT);
 
 
-   for (int j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
+   for (u32 j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
 
       if (is_mapped(pdir, vaddr))
          continue;
@@ -81,7 +81,7 @@ int load_elf_program(const char *filepath,
 {
    page_directory_t *old_pdir = get_curr_pdir();
    Elf_Phdr *phdrs = NULL;
-   ssize_t total_phdrs_size = 0;
+   size_t total_phdrs_size = 0;
    fs_handle elf_file = NULL;
    Elf_Ehdr header;
    ssize_t ret;
@@ -148,7 +148,7 @@ int load_elf_program(const char *filepath,
 
    ret = vfs_read(elf_file, phdrs, total_phdrs_size);
 
-   if (ret != total_phdrs_size) {
+   if (ret != (ssize_t)total_phdrs_size) {
       rc = -ENOEXEC;
       goto out;
    }
@@ -263,7 +263,7 @@ const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
       if (s->st_value <= vaddr && vaddr < s->st_value + s->st_size) {
 
          if (offset)
-            *offset = vaddr - s->st_value;
+            *offset = (ptrdiff_t)(vaddr - s->st_value);
 
          if (sym_size)
             *sym_size = s->st_size;
@@ -306,7 +306,7 @@ const char *
 find_sym_at_addr_safe(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
 {
    const char *sym_name = NULL;
-   fault_resumable_call(~0, &find_sym_at_addr_no_ret, 4,
+   fault_resumable_call(~0u, &find_sym_at_addr_no_ret, 4,
                         vaddr, offset, sym_size, &sym_name);
 
    return sym_name;
