@@ -12,20 +12,20 @@
 
 #include <dirent.h> // system header
 
-STATIC void fat_close(fs_handle handle)
+STATIC void
+fat_close(fs_handle handle)
 {
    fat_file_handle *h = (fat_file_handle *)handle;
    kfree2(h, sizeof(fat_file_handle));
 }
 
-STATIC ssize_t fat_read(fs_handle handle,
-                        char *buf,
-                        size_t bufsize)
+STATIC ssize_t
+fat_read(fs_handle handle, char *buf, size_t bufsize)
 {
    fat_file_handle *h = (fat_file_handle *) handle;
    fat_fs_device_data *d = h->fs->device_data;
    u32 fsize = h->e->DIR_FileSize;
-   u32 written_to_buf = 0;
+   size_t written_to_buf = 0;
 
    if (h->pos >= fsize) {
 
@@ -40,15 +40,17 @@ STATIC ssize_t fat_read(fs_handle handle,
 
       char *data = fat_get_pointer_to_cluster_data(d->hdr, h->curr_cluster);
 
-      const ssize_t file_rem = fsize - h->pos;
-      const ssize_t buf_rem = bufsize - written_to_buf;
-      const ssize_t cluster_offset = h->pos % d->cluster_size;
-      const ssize_t cluster_rem = d->cluster_size - cluster_offset;
+      const ssize_t file_rem = (ssize_t)(fsize - h->pos);
+      const ssize_t buf_rem = (ssize_t)(bufsize - written_to_buf);
+      const size_t cluster_offset = h->pos % d->cluster_size;
+      const ssize_t cluster_rem = (ssize_t)(d->cluster_size - cluster_offset);
       const ssize_t to_read = MIN3(cluster_rem, buf_rem, file_rem);
 
-      memcpy(buf + written_to_buf, data + cluster_offset, to_read);
-      written_to_buf += to_read;
-      h->pos += to_read;
+      ASSERT(to_read >= 0);
+
+      memcpy(buf + written_to_buf, data + cluster_offset, (size_t)to_read);
+      written_to_buf += (size_t)to_read;
+      h->pos += (size_t)to_read;
 
       if (to_read < cluster_rem) {
 
@@ -75,11 +77,12 @@ STATIC ssize_t fat_read(fs_handle handle,
 
    } while (true);
 
-   return written_to_buf;
+   return (ssize_t)written_to_buf;
 }
 
 
-STATIC int fat_rewind(fs_handle handle)
+STATIC int
+fat_rewind(fs_handle handle)
 {
    fat_file_handle *h = (fat_file_handle *) handle;
    h->pos = 0;
@@ -87,8 +90,8 @@ STATIC int fat_rewind(fs_handle handle)
    return 0;
 }
 
-STATIC off_t fat_seek_forward(fs_handle handle,
-                              off_t dist)
+STATIC off_t
+fat_seek_forward(fs_handle handle, off_t dist)
 {
    fat_file_handle *h = (fat_file_handle *) handle;
    fat_fs_device_data *d = h->fs->device_data;
@@ -96,25 +99,27 @@ STATIC off_t fat_seek_forward(fs_handle handle,
    ssize_t moved_distance = 0;
 
    if (dist == 0)
-      return h->pos;
+      return (off_t)h->pos;
 
-   if (h->pos + dist > fsize) {
+   if ((off_t)h->pos + dist > (off_t)fsize) {
       /* Allow, like Linux does, to seek past the end of a file. */
-      h->pos += dist;
+      h->pos += (u32) dist;
       h->curr_cluster = (u32) -1; /* invalid cluster */
-      return h->pos;
+      return (off_t) h->pos;
    }
 
    do {
 
-      const ssize_t file_rem = fsize - h->pos;
-      const ssize_t dist_rem = dist - moved_distance;
-      const ssize_t cluster_offset = h->pos % d->cluster_size;
-      const ssize_t cluster_rem = d->cluster_size - cluster_offset;
+      const ssize_t file_rem = (ssize_t)(fsize - h->pos);
+      const ssize_t dist_rem = (ssize_t)(dist - moved_distance);
+      const size_t cluster_offset = h->pos % d->cluster_size;
+      const ssize_t cluster_rem = (ssize_t)(d->cluster_size - cluster_offset);
       const ssize_t to_move = MIN3(cluster_rem, dist_rem, file_rem);
 
-      moved_distance += to_move;
-      h->pos += to_move;
+      ASSERT(to_move >= 0);
+
+      moved_distance += (size_t)to_move;
+      h->pos += (size_t)to_move;
 
       if (to_move < cluster_rem) {
          break;
@@ -135,12 +140,11 @@ STATIC off_t fat_seek_forward(fs_handle handle,
 
    } while (true);
 
-   return h->pos;
+   return (off_t)h->pos;
 }
 
-STATIC off_t fat_seek(fs_handle handle,
-                      off_t off,
-                      int whence)
+STATIC off_t
+fat_seek(fs_handle handle, off_t off, int whence)
 {
    off_t curr_pos = (off_t) ((fat_file_handle *)handle)->pos;
 
@@ -261,7 +265,7 @@ typedef struct {
    u32 curr_file_index;
 
    /* output variables */
-   u32 rc;
+   ssize_t rc;
 
 } getdents64_walk_ctx;
 
@@ -309,7 +313,7 @@ fat_getdents64_cb(fat_header *hdr,
 
    ent.d_ino = 0;
    ent.d_off = ctx->offset + entry_size;
-   ent.d_reclen = entry_size;
+   ent.d_reclen = (u16) entry_size;
    ent.d_type = entry->directory ? DT_DIR : DT_REG;
 
    struct linux_dirent64 *user_ent = (void *)((char *)ctx->dirp + ctx->offset);
@@ -327,7 +331,7 @@ fat_getdents64_cb(fat_header *hdr,
       return -1; /* stop the walk */
    }
 
-   ctx->offset = ent.d_off;
+   ctx->offset = (u32) ent.d_off; /* s64 to u32 precision drop */
    ctx->curr_file_index++;
    ctx->fh->curr_file_index++;
    return 0;
@@ -377,7 +381,7 @@ fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    if (ctx.rc != 0)
       return ctx.rc;
 
-   return ctx.offset;
+   return (int) ctx.offset;
 }
 
 STATIC void fat_exclusive_lock(filesystem *fs)

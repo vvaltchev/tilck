@@ -13,7 +13,7 @@ typedef struct {
 
    fat_header *hdr; /* vaddr of the beginning of the FAT partition */
    fat_type type;
-   ssize_t cluster_size;
+   size_t cluster_size;
 
    fat_entry *root_entry;
    u32 root_cluster;

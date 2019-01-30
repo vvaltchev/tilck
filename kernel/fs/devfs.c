@@ -27,7 +27,7 @@ filesystem *get_devfs(void)
    return devfs;
 }
 
-driver_info *get_driver_info(int major)
+driver_info *get_driver_info(u16 major)
 {
    for (u32 i = 0; i < ARRAY_SIZE(drivers) && drivers[i]; i++) {
       if (drivers[i]->major == major)
@@ -41,12 +41,14 @@ driver_info *get_driver_info(int major)
  * Registers the driver described by 'info'.
  * Returns driver's major number.
  */
-int register_driver(driver_info *info, int major)
+int register_driver(driver_info *info, int arg_major)
 {
+   u16 major;
+
    /* Be sure there's always enough space. */
    VERIFY(drivers_count < ARRAY_SIZE(drivers) - 1);
 
-   if (major < 0) {
+   if (arg_major < 0) {
 
       major = 0;
 
@@ -56,6 +58,8 @@ int register_driver(driver_info *info, int major)
       }
 
    } else {
+
+      major = (u16) arg_major;
 
       if (get_driver_info(major))
          panic("Duplicate major number: %d", major);
@@ -84,7 +88,7 @@ typedef struct {
 
 } devfs_data;
 
-int create_dev_file(const char *filename, int major, int minor)
+int create_dev_file(const char *filename, u16 major, u16 minor)
 {
    ASSERT(devfs != NULL);
 
@@ -177,7 +181,7 @@ int devfs_char_dev_stat64(fs_handle h, struct stat64 *statbuf)
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
    statbuf->st_gid = 0; /* root */
-   statbuf->st_rdev = df->dev_major << 8 | df->dev_minor;
+   statbuf->st_rdev = (dev_t)(df->dev_major << 8 | df->dev_minor);
    statbuf->st_size = 0;
    statbuf->st_blksize = 4096;
    statbuf->st_blocks = 0;
@@ -381,12 +385,12 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
          }
 
          /* We "returned" at least one entry */
-         return offset;
+         return (int)offset;
       }
 
       ent.d_ino = 0;
       ent.d_off = offset + entry_size;
-      ent.d_reclen = entry_size;
+      ent.d_reclen = (u16)entry_size;
       ent.d_type = DT_UNKNOWN;
 
       if (dh->type == DEVFS_CHAR_DEVICE)
@@ -400,12 +404,12 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
       if (copy_to_user(user_ent->d_name, file_name, fl + 1) < 0)
          return -EFAULT;
 
-      offset = ent.d_off;
+      offset = (u32) ent.d_off; /* s64 to u32 precision drop */
       curr_index++;
       dh->read_pos++;
    }
 
-   return offset;
+   return (int)offset;
 }
 
 filesystem *create_devfs(void)
