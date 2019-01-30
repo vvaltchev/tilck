@@ -347,20 +347,22 @@ foreach (f ${files})
 endforeach()
 unset(files)
 
+set(dd_opts "status=none" "conv=notrunc")
+
 add_custom_command(
 
    OUTPUT
       ${IMG_FILE}
    COMMAND
-      ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${IMG_FILE} 4096 #37296 # ~36 MB
+      ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${IMG_FILE} 37296 # ~36 MB
    COMMAND
-      dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
+      dd ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
    COMMAND
       ${BUILD_FATPART}
    COMMAND
       ${BUILD_APPS}/fat_get_used_bytes --truncate fatpart
    COMMAND
-      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K
+      dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=1024 bs=1K
    DEPENDS
       # We MUST depend on BOTH each wrapper-target AND its OUTPUT in order to
       # our image file to be re-built when the *.bin files are re-built.
@@ -408,7 +410,7 @@ add_custom_command(
    COMMAND
       parted ${GPT_IMG_FILE} -s -a minimal toggle 1 boot
    COMMAND
-      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${GPT_IMG_FILE} seek=1024 bs=1K
+      dd ${dd_opts} if=fatpart of=${GPT_IMG_FILE} seek=1024 bs=1K
    DEPENDS
       tilck_image ${IMG_FILE}
    COMMENT
