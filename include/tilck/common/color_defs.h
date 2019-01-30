@@ -28,7 +28,7 @@ enum vga_color {
    COLOR_BRIGHT_WHITE = 15,
 };
 
-#define make_color(fg, bg) ((fg) | (bg) << 4)
+#define make_color(fg, bg) ((u8)(((fg) | (bg) << 4)))
 #define get_color_fg(color) ((color) & 0xF)
 #define get_color_bg(color) (((color) >> 4) & 0xF)
 
