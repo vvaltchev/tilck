@@ -111,7 +111,7 @@ set(KMALLOC_HEAPS_CREATION_DEBUG OFF CACHE BOOL
 set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
     "Make the bootloader to poison all the available memory")
 
-set(WCONV_CLANG OFF CACHE BOOL
+set(WCONV OFF CACHE BOOL
     "Compile with -Wconversion when clang is used")
 
 list(
@@ -144,7 +144,7 @@ list(
    KMALLOC_SUPPORT_LEAK_DETECTOR
    KMALLOC_HEAPS_CREATION_DEBUG
    BOOTLOADER_POISON_MEMORY
-   WCONV_CLANG
+   WCONV
 )
 
 ###########################################################
@@ -252,7 +252,20 @@ set(
    -Wno-unused-parameter
 )
 
+if (WCONV)
+   list(APPEND WARN_FLAGS_LIST "-Wconversion")
+endif()
+
 if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+
+   if (WCONV)
+      set(msg "")
+      string(APPEND msg "WCONV (-Wconversion) is supported ONLY when the "
+                        "kernel is built with Clang: "
+                        "(CC=clang and CMAKE_ARGS='-DKERNEL_SYSCC=1')")
+      message(WARNING "${msg}")
+   endif()
+
    if (CMAKE_C_COMPILER_VERSION VERSION_LESS "5.0.0")
       # See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53119
       list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
@@ -264,11 +277,8 @@ if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
    list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
 
-   if (WCONV_CLANG)
-      list(APPEND WARN_FLAGS_LIST "-Wconversion")
-   endif()
-
    if (USE_SYSCC)
+      set(msg "")
       string(APPEND msg "USE_SYSCC=1 is not supported with Clang. "
                         "Please use GCC. Note[1]: it is possible to build just "
                         "the kernel with Clang by setting CC=clang the CMake "
