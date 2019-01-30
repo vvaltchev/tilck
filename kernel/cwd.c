@@ -90,7 +90,7 @@ sptr sys_getcwd(char *user_buf, size_t buf_size)
          user_buf[cwd_len - 2] = 0; /* drop the trailing '/' */
       }
 
-      ret = cwd_len;
+      ret = (sptr) cwd_len;
    }
 
 out:
