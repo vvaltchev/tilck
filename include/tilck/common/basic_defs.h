@@ -280,7 +280,7 @@ typedef int (*cmpfun_ptr)(const void *a, const void *b);
  */
 
 #define U32_BITMASK(n) ((u32)((1u << (n)) - 1u))
-#define U64_BITMASK(n) ((u64)((1u << (n)) - 1u))
+#define U64_BITMASK(n) ((u64)((1ull << (n)) - 1u))
 
 /*
  * Get the lower `n` bits from val.

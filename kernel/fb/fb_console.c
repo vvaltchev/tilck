@@ -28,8 +28,8 @@ static u32 fb_offset_y;
 
 static bool cursor_enabled;
 static bool banner_refresh_disabled;
-static int cursor_row;
-static int cursor_col;
+static u16 cursor_row;
+static u16 cursor_col;
 static u32 *under_cursor_buf;
 static volatile bool cursor_visible = true;
 static task_info *blink_thread_ti;
@@ -169,7 +169,7 @@ void fb_disable_cursor(void)
 
 static void fb_set_row_failsafe(u16 row, u16 *data, bool flush)
 {
-   for (u32 i = 0; i < fb_term_cols; i++)
+   for (u16 i = 0; i < fb_term_cols; i++)
       fb_set_char_at_failsafe(row, i, data[i]);
 
    fb_reset_blink_timer();
@@ -283,23 +283,30 @@ static void fb_draw_banner(void)
    }
 
    psf2_header *h = fb_font_header;
-   int llen, rlen, padding, i;
+   u32 llen, rlen, padding, i;
    datetime_t d;
+   int rc;
 
    ASSERT(fb_offset_y >= h->height);
 
    read_system_clock_datetime(&d);
 
-   llen = snprintk(lbuf, fb_term_cols - 1,
-                   "Tilck [%s] framebuffer console [tty %d]",
-                   BUILDTYPE_STR, tty_get_curr_tty_num());
+   rc = snprintk(lbuf, fb_term_cols - 1,
+                 "Tilck [%s] framebuffer console [tty %d]",
+                 BUILDTYPE_STR, tty_get_curr_tty_num());
 
-   rlen = snprintk(rbuf, fb_term_cols - llen - 1,
-                   "%02i %s %i %02i:%02i",
-                   d.day, months3[d.month - 1],
-                   d.year, d.hour, d.min);
+   ASSERT(rc > 0);
+   llen = MIN((u16)rc, fb_term_cols - 1);
 
-   padding = (fb_term_cols - llen - rlen - 1);
+   rc = snprintk(rbuf, fb_term_cols - 1 - llen,
+                 "%02i %s %i %02i:%02i",
+                 d.day, months3[d.month - 1],
+                 d.year, d.hour, d.min);
+
+   ASSERT(rc > 0);
+   rlen = MIN((u32)rc, fb_term_cols - 1 - llen);
+
+   padding = fb_term_cols - 1 - llen - rlen;
 
    for (i = llen; i < llen + padding; i++)
       lbuf[i] = ' ';
@@ -402,7 +409,10 @@ void init_framebuffer_console(void)
          printk("WARNING: fb_console: unable to allocate under_cursor_buf!\n");
    }
 
-   init_term(get_curr_term(), &framebuffer_vi, fb_term_rows, fb_term_cols);
+   init_term(get_curr_term(),
+             &framebuffer_vi,
+             (u16) fb_term_rows,
+             (u16) fb_term_cols);
 
    printk_flush_ringbuf();
 
