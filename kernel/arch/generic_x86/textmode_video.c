@@ -88,7 +88,7 @@ static void textmode_move_cursor(u16 row, u16 col, int color /* ignored */)
    outb(0x3D5, LO_BITS(position, 8, u8));
    // cursor HIGH port to vga INDEX register
    outb(0x3D4, 0x0E);
-   outb(0x3D5, HI_BITS(position, 8, u8));
+   outb(0x3D5, LO_BITS(position >> 8, 8, u8));
 }
 
 static void textmode_enable_cursor(void)
