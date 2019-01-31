@@ -244,10 +244,6 @@ set(
    -Wno-unused-parameter
 )
 
-if (WCONV)
-   list(APPEND WARN_FLAGS_LIST "-Wconversion")
-endif()
-
 if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
 
    if (WCONV)
