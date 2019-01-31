@@ -4,6 +4,7 @@ project(tilck C CXX ASM)
 
 include(CheckCCompilerFlag)
 include(${CMAKE_SOURCE_DIR}/other/utils.cmake)
+include(${CMAKE_SOURCE_DIR}/other/errors.cmake)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
 set(BUILD_SHARED_LIBRARIES off)
@@ -11,14 +12,7 @@ set(BUILD_SHARED_LIBRARIES off)
 set(DEFAULT_TARGET_ARCH "i386")
 
 if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-
-   string(CONCAT msg "Currently, Tilck can be built ONLY on x86_64 host "
-                     "machines no matter which target architecture has been "
-                     "chosen. Reason: the build system uses a toolchain "
-                     "pre-compiled for x86_64 hosts.")
-
-   message(FATAL_ERROR "${msg}")
-
+   show_wrong_arch_error()
 endif()
 
 # BEGIN [Environment-controlled "sticky" cache variables]
@@ -156,8 +150,7 @@ set(BTC_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 set(COVERAGE_HTML_DIR ${CMAKE_BINARY_DIR}/coverage_html)
 
 if (NOT EXISTS ${TCROOT})
-   message(
-      FATAL_ERROR "Toolchain not found: run ${BTC_SCRIPT} first.")
+   message(FATAL_ERROR "Toolchain not found: run ${BTC_SCRIPT} first.")
 endif()
 
 if (${ARCH} STREQUAL "i386")
@@ -220,8 +213,7 @@ endif()
 
 if (TEST_GCOV OR KERNEL_GCOV)
    if (NOT EXISTS ${TCROOT}/lcov)
-      message(FATAL_ERROR "TEST_GCOV/KERNEL_GCOV set but no lcov in toolchain. "
-                          "Run ${BTC_SCRIPT} -s build_lcov first.")
+      show_missing_lcov_error()
    endif()
 endif()
 
@@ -259,11 +251,7 @@ endif()
 if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
 
    if (WCONV)
-      set(msg "")
-      string(APPEND msg "WCONV (-Wconversion) is supported ONLY when the "
-                        "kernel is built with Clang: "
-                        "(CC=clang and CMAKE_ARGS='-DKERNEL_SYSCC=1')")
-      message(WARNING "${msg}")
+      show_wconv_warning()
    endif()
 
    if (CMAKE_C_COMPILER_VERSION VERSION_LESS "5.0.0")
@@ -278,20 +266,15 @@ if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
    list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
 
    if (USE_SYSCC)
-      set(msg "")
-      string(APPEND msg "USE_SYSCC=1 is not supported with Clang. "
-                        "Please use GCC. Note[1]: it is possible to build just "
-                        "the kernel with Clang by setting CC=clang the CMake "
-                        "variable KERNEL_SYSCC=1. However, the i686 gcc "
-                        "toolchain will still be used for assembly files and "
-                        "other targets. Note[2]: if you're using "
-                        "./scripts/cmake_run, you can set CMake variables by "
-                        "setting the CMAKE_ARGS environment variable this way: "
-                        "\nCMAKE_ARGS='-DCMAKE_VAR1=0 -DVAR2=blabla' "
-                        "./scripts/cmake_run")
-
-      message(FATAL_ERROR "${msg}")
+      show_clang_and_syscc_error()
    endif()
+
+   if (NOT KERNEL_SYSCC)
+      if (WCONV)
+         show_wconv_warning()
+      endif()
+   endif()
+
 endif()
 
 
