@@ -168,7 +168,7 @@ void create_kernel_process(void)
 
    s_kernel_pi->ref_count = 1;
    s_kernel_ti->tid = kernel_pid;
-   s_kernel_ti->pid = kernel_pid;
+   s_kernel_ti->pid = (u16) kernel_pid;
 
    s_kernel_ti->pi = s_kernel_pi;
    init_task_lists(s_kernel_ti);

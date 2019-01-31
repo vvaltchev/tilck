@@ -18,7 +18,7 @@
 u32 tasklet_threads_count;
 tasklet_thread_info *tasklet_threads[MAX_TASKLET_THREADS];
 
-int get_tasklet_runner_limit(int tn)
+u32 get_tasklet_runner_limit(int tn)
 {
    ASSERT(tn >= 0 && tn < MAX_TASKLET_THREADS);
    tasklet_thread_info *t = tasklet_threads[tn];

@@ -9,8 +9,8 @@
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/self_tests.h>
 
-static volatile int counter = 0;
-static u32 cycles_begin;
+static u32 counter;
+static u64 cycles_begin;
 
 static void test_tasklet_func()
 {
@@ -21,8 +21,8 @@ static void end_test(void *arg)
 {
    kcond *c = arg;
 
-   const int max_tasklets = get_tasklet_runner_limit(0);
-   const int tot_iters = max_tasklets * 10;
+   const u32 max_tasklets = get_tasklet_runner_limit(0);
+   const u32 tot_iters = max_tasklets * 10;
 
    u64 elapsed = RDTSC() - cycles_begin;
    VERIFY(counter == tot_iters);
@@ -34,8 +34,8 @@ static void end_test(void *arg)
 
 void selftest_tasklet_short(void)
 {
-   const int max_tasklets = get_tasklet_runner_limit(0);
-   const int tot_iters = max_tasklets * 10;
+   const u32 max_tasklets = get_tasklet_runner_limit(0);
+   const u32 tot_iters = max_tasklets * 10;
 
    bool added;
    counter = 0;
@@ -45,7 +45,7 @@ void selftest_tasklet_short(void)
 
    cycles_begin = RDTSC();
 
-   for (int i = 0; i < tot_iters; i++) {
+   for (u32 i = 0; i < tot_iters; i++) {
 
       do {
          added = enqueue_tasklet0(0, &test_tasklet_func);
@@ -69,8 +69,7 @@ void selftest_tasklet_short(void)
 void selftest_tasklet_perf_short(void)
 {
    bool added;
-   int n = 0;
-
+   u32 n = 0;
    u64 start, elapsed;
 
    start = RDTSC();

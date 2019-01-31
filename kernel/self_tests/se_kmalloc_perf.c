@@ -46,7 +46,7 @@ static void kmalloc_perf_per_size(u32 size)
    duration = RDTSC() - start;
    kmalloc_perf_print_iters(iters);
    printk(NO_PREFIX "Cycles per kmalloc(%6i) + kfree: %llu\n",
-          size, duration  / iters);
+          size, duration / (u64) iters);
 }
 
 void selftest_kmalloc_perf_med(void)
