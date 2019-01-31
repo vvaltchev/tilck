@@ -160,7 +160,7 @@ static ALWAYS_INLINE bool is_kernel_thread(task_info *ti)
 static ALWAYS_INLINE int thread_ti_to_tid(task_info *ti)
 {
    ASSERT(ti->tid != ti->pid);
-   return MAX_PID + (sptr) ((uptr)ti - KERNEL_BASE_VA);
+   return (int)(MAX_PID + (sptr) ((uptr)ti - KERNEL_BASE_VA));
 }
 
 static ALWAYS_INLINE task_info *thread_tid_to_ti(int tid)
@@ -189,7 +189,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
 void set_current_task_in_kernel(void);
 void set_current_task_in_user_mode(void);
 
-task_info *allocate_new_process(task_info *parent, int pid);
+task_info *allocate_new_process(task_info *parent, u16 pid);
 task_info *allocate_new_thread(process_info *pi);
 void free_task(task_info *ti);
 void free_mem_for_zombie_task(task_info *ti);

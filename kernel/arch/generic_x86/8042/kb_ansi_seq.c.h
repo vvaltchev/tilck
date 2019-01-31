@@ -40,7 +40,7 @@ static const struct {
    {KEY_F12,          "\033[24~"}
 };
 
-bool kb_scancode_to_ansi_seq(u32 key, u32 modifiers, char *seq)
+bool kb_scancode_to_ansi_seq(u32 key, u8 modifiers, char *seq)
 {
    const char *base_seq = NULL;
    char *p;
@@ -118,7 +118,7 @@ bool kb_scancode_to_ansi_seq(u32 key, u32 modifiers, char *seq)
 
    p = &seq[sl - 1];
    *p++ = ';';
-   *p++ = '1' + modifiers;
+   *p++ = '1' + (char)modifiers;
    *p++ = end_char;
    *p = 0;
 

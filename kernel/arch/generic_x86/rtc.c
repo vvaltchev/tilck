@@ -21,15 +21,15 @@
 
 #define STATUS_REG_A_UPDATE_IN_PROGRESS 0x80
 
-static inline u32 bcd_to_dec(u32 bcd)
+static inline u8 bcd_to_dec(u8 bcd)
 {
-   return ((bcd & 0xF0) >> 1) + ((bcd & 0xF0) >> 3) + (bcd & 0xf);
+   return ((bcd & 0xf0) >> 1) + ((bcd & 0xf0) >> 3) + (bcd & 0xf);
 }
 
-static inline u32 cmos_read_reg(u32 reg)
+static inline u32 cmos_read_reg(u8 reg)
 {
-   int NMI_disable_bit = 0; // temporary
-   outb(CMOS_CONTROL_PORT, (NMI_disable_bit << 7) | reg);
+   u8 NMI_disable_bit = 0; // temporary
+   outb(CMOS_CONTROL_PORT, (u8)(NMI_disable_bit << 7) | reg);
    return inb(CMOS_DATA_PORT);
 }
 
@@ -40,13 +40,13 @@ static inline bool cmos_is_update_in_progress(void)
 
 static void cmod_read_datetime_raw(datetime_t *d)
 {
-   d->sec = cmos_read_reg(REG_SECONDS);
-   d->min = cmos_read_reg(REG_MINUTES);
-   d->hour = cmos_read_reg(REG_HOURS);
-   d->weekday = cmos_read_reg(REG_WEEKDAY);
-   d->day = cmos_read_reg(REG_DAY);
-   d->month = cmos_read_reg(REG_MONTH);
-   d->year = cmos_read_reg(REG_YEAR);
+   d->sec = (u8) cmos_read_reg(REG_SECONDS);
+   d->min = (u8) cmos_read_reg(REG_MINUTES);
+   d->hour = (u8) cmos_read_reg(REG_HOURS);
+   d->weekday = (u8) cmos_read_reg(REG_WEEKDAY);
+   d->day = (u8) cmos_read_reg(REG_DAY);
+   d->month = (u8) cmos_read_reg(REG_MONTH);
+   d->year = (u16) cmos_read_reg(REG_YEAR);
 }
 
 void cmos_read_datetime(datetime_t *out)
@@ -86,7 +86,7 @@ void cmos_read_datetime(datetime_t *out)
       d.hour = bcd_to_dec(d.hour);
       d.day = bcd_to_dec(d.day);
       d.month = bcd_to_dec(d.month);
-      d.year = bcd_to_dec(d.year);
+      d.year = bcd_to_dec((u8) d.year);
    }
 
    if (!use_24h) {
@@ -106,10 +106,6 @@ void cmos_read_datetime(datetime_t *out)
     * See: https://wiki.osdev.org/CMOS.
     */
 
-   if (d.year < 70)
-      d.year += 2000;
-   else
-      d.year += 1900;
-
+   d.year = (u16)(d.year + (d.year < 70 ? 2000 : 1900));
    *out = d;
 }

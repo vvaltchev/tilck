@@ -65,14 +65,14 @@ static void term_execute_or_enqueue_action(term *t, term_action a)
    }
 }
 
-void term_write(term *t, const char *buf, u32 len, u8 color)
+void term_write(term *t, const char *buf, size_t len, u8 color)
 {
    ASSERT(len < MB);
 
    term_action a = {
 
       .type3 = a_write,
-      .len = UNSAFE_MIN(len, (uptr)MB - 1),
+      .len = UNSAFE_MIN((u32)len, (u32)MB - 1),
       .col = color,
       .ptr = (uptr)buf
    };
@@ -134,27 +134,27 @@ void term_restart_video_output(term *t)
 
 /* ---------------- term non-action interface funcs --------------------- */
 
-u32 term_get_tab_size(term *t)
+u16 term_get_tab_size(term *t)
 {
    return t->tabsize;
 }
 
-u32 term_get_rows(term *t)
+u16 term_get_rows(term *t)
 {
    return t->rows;
 }
 
-u32 term_get_cols(term *t)
+u16 term_get_cols(term *t)
 {
    return t->cols;
 }
 
-u32 term_get_curr_row(term *t)
+u16 term_get_curr_row(term *t)
 {
    return t->r;
 }
 
-u32 term_get_curr_col(term *t)
+u16 term_get_curr_col(term *t)
 {
    return t->c;
 }

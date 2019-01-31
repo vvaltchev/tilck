@@ -16,10 +16,10 @@ static u32 next_device_id;
  *  - 0 in case of non match.
  *  - strlen(mp) in case of a match
  */
-STATIC int
+STATIC u32
 check_mountpoint_match(const char *mp, u32 lm, const char *path, u32 lp)
 {
-   int m = 0;
+   u32 m = 0;
    const u32 min_len = MIN(lm, lp);
 
    /*
@@ -77,22 +77,22 @@ void vfs_file_nolock(fs_handle h)
 int vfs_open(const char *path, fs_handle *out)
 {
    mountpoint *mp, *best_match = NULL;
-   int pl, rc, best_match_len = 0;
+   u32 pl, best_match_len = 0;
    const char *fs_path;
    mp_cursor cur;
+   int rc;
 
    ASSERT(path != NULL);
 
    if (*path != '/')
       panic("vfs_open() works only with absolute paths");
 
-   pl = strlen(path);
-
+   pl = (u32)strlen(path);
    mountpoint_iter_begin(&cur);
 
    while ((mp = mountpoint_get_next(&cur))) {
 
-      int len = check_mountpoint_match(mp->path, mp->path_len, path, pl);
+      u32 len = check_mountpoint_match(mp->path, mp->path_len, path, pl);
 
       if (len > best_match_len) {
          best_match = mp;
@@ -185,7 +185,7 @@ off_t vfs_seek(fs_handle h, s64 off, int whence)
       return -ESPIPE;
 
    // NOTE: this won't really work for big offsets in case off_t is 32-bit.
-   return hb->fops.seek(h, off, whence);
+   return hb->fops.seek(h, (off_t) off, whence);
 }
 
 int vfs_ioctl(fs_handle h, uptr request, void *argp)

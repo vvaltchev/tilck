@@ -30,7 +30,7 @@ static enum {
 
 static char args_buffer[PAGE_SIZE];
 static int last_custom_cmd_n;
-static int args_buffer_used;
+static size_t args_buffer_used;
 
 /* code */
 
@@ -79,7 +79,7 @@ parse_arg_set_serial_mode(int arg_num, const char *arg, size_t arg_len)
       panic("Out-of-range serial mode %d. Valid range: 0 - %d",
             mode, TERM_SERIAL_MODES_COUNT-1);
 
-   kopt_serial_mode = mode;
+   kopt_serial_mode = (enum term_serial_mode) mode;
    kernel_arg_parser_state = INITIAL_STATE;
 }
 

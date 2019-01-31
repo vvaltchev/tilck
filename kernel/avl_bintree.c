@@ -32,7 +32,7 @@ bintree_node_to_obj(bintree_node *node, ptrdiff_t offset)
 static inline void
 update_height(bintree_node *node, ptrdiff_t bintree_offset)
 {
-   node->height = MAX(HEIGHT(node->left_obj), HEIGHT(node->right_obj)) + 1;
+   node->height = (u16)MAX(HEIGHT(node->left_obj), HEIGHT(node->right_obj)) + 1;
 }
 
 #define UPDATE_HEIGHT(n) update_height((n), bintree_offset)

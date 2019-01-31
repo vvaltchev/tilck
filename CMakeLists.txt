@@ -4,6 +4,7 @@ project(tilck C CXX ASM)
 
 include(CheckCCompilerFlag)
 include(${CMAKE_SOURCE_DIR}/other/utils.cmake)
+include(${CMAKE_SOURCE_DIR}/other/errors.cmake)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
 set(BUILD_SHARED_LIBRARIES off)
@@ -11,14 +12,7 @@ set(BUILD_SHARED_LIBRARIES off)
 set(DEFAULT_TARGET_ARCH "i386")
 
 if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-
-   string(CONCAT msg "Currently, Tilck can be built ONLY on x86_64 host "
-                     "machines no matter which target architecture has been "
-                     "chosen. Reason: the build system uses a toolchain "
-                     "pre-compiled for x86_64 hosts.")
-
-   message(FATAL_ERROR "${msg}")
-
+   show_wrong_arch_error()
 endif()
 
 # BEGIN [Environment-controlled "sticky" cache variables]
@@ -81,7 +75,7 @@ set(DEBUG_CHECKS_IN_RELEASE_BUILD ON CACHE BOOL
 
 # Kernel options (disabled by default)
 
-set(KERNEL_USE_SYSTEM_CC OFF CACHE BOOL
+set(KERNEL_SYSCC OFF CACHE BOOL
     "Use system's compiler for the kernel instead of toolchain's one")
 
 set(KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC OFF CACHE BOOL
@@ -111,6 +105,9 @@ set(KMALLOC_HEAPS_CREATION_DEBUG OFF CACHE BOOL
 set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
     "Make the bootloader to poison all the available memory")
 
+set(WCONV OFF CACHE BOOL
+    "Compile with -Wconversion when clang is used")
+
 list(
    APPEND kernel_opts_list
 
@@ -131,7 +128,7 @@ list(
    # Boolean options DISABLED by default
    TEST_GCOV
    KERNEL_GCOV
-   KERNEL_USE_SYSTEM_CC
+   KERNEL_SYSCC
    KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC
    FORK_NO_COW
    MMAP_NO_COW
@@ -141,6 +138,7 @@ list(
    KMALLOC_SUPPORT_LEAK_DETECTOR
    KMALLOC_HEAPS_CREATION_DEBUG
    BOOTLOADER_POISON_MEMORY
+   WCONV
 )
 
 ###########################################################
@@ -152,8 +150,7 @@ set(BTC_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 set(COVERAGE_HTML_DIR ${CMAKE_BINARY_DIR}/coverage_html)
 
 if (NOT EXISTS ${TCROOT})
-   message(
-      FATAL_ERROR "Toolchain not found: run ${BTC_SCRIPT} first.")
+   message(FATAL_ERROR "Toolchain not found: run ${BTC_SCRIPT} first.")
 endif()
 
 if (${ARCH} STREQUAL "i386")
@@ -203,21 +200,20 @@ set(GENERAL_DEFS_LIST "")
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
 
    message(STATUS "Preparing a RELEASE build...")
-   LIST(APPEND GENERAL_DEFS_LIST "-DNDEBUG -DRELEASE")
+   list(APPEND GENERAL_DEFS_LIST "-DNDEBUG -DRELEASE")
    set(OPT_FLAGS_LIST -O2)
 
 else()
 
    message(STATUS "Preparing a DEBUG build...")
-   LIST(APPEND GENERAL_DEFS_LIST "-DDEBUG")
+   list(APPEND GENERAL_DEFS_LIST "-DDEBUG")
    set(OPT_FLAGS_LIST -O0 -fno-inline-functions)
 
 endif()
 
 if (TEST_GCOV OR KERNEL_GCOV)
    if (NOT EXISTS ${TCROOT}/lcov)
-      message(FATAL_ERROR "TEST_GCOV/KERNEL_GCOV set but no lcov in toolchain. "
-                          "Run ${BTC_SCRIPT} -s build_lcov first.")
+      show_missing_lcov_error()
    endif()
 endif()
 
@@ -243,11 +239,17 @@ set(
    -Wall
    -Wextra
    -Werror
+   -Wshadow
    -Wno-unused-function
    -Wno-unused-parameter
 )
 
 if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+
+   if (WCONV)
+      show_wconv_warning()
+   endif()
+
    if (CMAKE_C_COMPILER_VERSION VERSION_LESS "5.0.0")
       # See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53119
       list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
@@ -256,22 +258,19 @@ if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
 endif()
 
 if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+
    list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
 
    if (USE_SYSCC)
-      string(APPEND msg "USE_SYSCC=1 is not supported with Clang. "
-                        "Please use GCC. Note[1]: it is possible to build just "
-                        "the kernel with Clang by setting CC=clang the CMake "
-                        "variable KERNEL_USE_SYSTEM_CC=1. However, the i686 "
-                        "gcc toolchain will still be used for assembly files "
-                        "and other targets. Note[2]: if your using "
-                        "./scripts/cmake_run, you can set CMake variables by "
-                        "setting the CMAKE_ARGS environment variable this way: "
-                        "\nCMAKE_ARGS='-DCMAKE_VAR1=0 -DVAR2=blabla' "
-                        "./scripts/cmake_run")
-
-      message(FATAL_ERROR "${msg}")
+      show_clang_and_syscc_error()
    endif()
+
+   if (NOT KERNEL_SYSCC)
+      if (WCONV)
+         show_wconv_warning()
+      endif()
+   endif()
+
 endif()
 
 
@@ -337,20 +336,22 @@ foreach (f ${files})
 endforeach()
 unset(files)
 
+set(dd_opts "status=none" "conv=notrunc")
+
 add_custom_command(
 
    OUTPUT
       ${IMG_FILE}
    COMMAND
-      ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${IMG_FILE} 4096 #37296 # ~36 MB
+      ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${IMG_FILE} 37296 # ~36 MB
    COMMAND
-      dd status=none conv=notrunc if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
+      dd ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
    COMMAND
       ${BUILD_FATPART}
    COMMAND
       ${BUILD_APPS}/fat_get_used_bytes --truncate fatpart
    COMMAND
-      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${IMG_FILE} seek=1024 bs=1K
+      dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=1024 bs=1K
    DEPENDS
       # We MUST depend on BOTH each wrapper-target AND its OUTPUT in order to
       # our image file to be re-built when the *.bin files are re-built.
@@ -398,7 +399,7 @@ add_custom_command(
    COMMAND
       parted ${GPT_IMG_FILE} -s -a minimal toggle 1 boot
    COMMAND
-      dd status=none conv=notrunc if=${CMAKE_BINARY_DIR}/fatpart of=${GPT_IMG_FILE} seek=1024 bs=1K
+      dd ${dd_opts} if=fatpart of=${GPT_IMG_FILE} seek=1024 bs=1K
    DEPENDS
       tilck_image ${IMG_FILE}
    COMMENT

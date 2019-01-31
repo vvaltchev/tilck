@@ -36,7 +36,7 @@
          *ptr++ = DIGITS[0];                               \
                                                            \
       *ptr = 0;                                            \
-      str_reverse(buf, ptr - buf);                         \
+      str_reverse(buf, (size_t)ptr - (size_t)buf);         \
    }
 
 #define instantiate_itoa(func_name, bits)                  \
@@ -50,7 +50,10 @@
          return;                                           \
       }                                                    \
                                                            \
-      u##bits value = svalue > 0 ? svalue : -svalue;       \
+      u##bits value =                                      \
+         svalue > 0                                        \
+            ? (u##bits) svalue                             \
+            : (u##bits) -svalue;                           \
                                                            \
       while (value) {                                      \
          *ptr++ = DIGITS[value % 10];                      \
@@ -61,7 +64,7 @@
          *ptr++ = '-';                                     \
                                                            \
       *ptr = 0;                                            \
-      str_reverse(buf, ptr - buf);                         \
+      str_reverse(buf, (size_t)ptr - (size_t)buf);         \
    }
 
 

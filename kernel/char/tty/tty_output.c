@@ -36,14 +36,14 @@ static const u8 fg_csi_to_vga[256] =
 };
 
 static void
-tty_filter_handle_csi_ABCD(int *params,
+tty_filter_handle_csi_ABCD(u32 *params,
                            int pc,
                            u8 c,
                            term_action *a,
                            term_write_filter_ctx_t *ctx)
 {
-   int d[4] = {0};
-   d[c - 'A'] = MAX(1, params[0]);
+   u32 d[4] = {0};
+   d[c - 'A'] = MAX(1u, params[0]);
 
    *a = (term_action) {
       .type2 = a_move_ch_and_cur_rel,
@@ -53,7 +53,7 @@ tty_filter_handle_csi_ABCD(int *params,
 }
 
 static void
-tty_filter_handle_csi_m_param(int p, u8 *color, term_write_filter_ctx_t *ctx)
+tty_filter_handle_csi_m_param(u32 p, u8 *color, term_write_filter_ctx_t *ctx)
 {
    tty *const t = ctx->t;
 
@@ -108,7 +108,7 @@ set_color:
 }
 
 static void
-tty_filter_handle_csi_m(int *params,
+tty_filter_handle_csi_m(u32 *params,
                         int pc,
                         u8 *color,
                         term_write_filter_ctx_t *ctx)
@@ -127,11 +127,11 @@ tty_filter_handle_csi_m(int *params,
 }
 
 static inline void
-tty_move_cursor_begin_nth_row(tty *t, term_action *a, int row)
+tty_move_cursor_begin_nth_row(tty *t, term_action *a, u32 row)
 {
-   int new_row =
+   u32 new_row =
       MIN(term_get_curr_row(t->term_inst) + row,
-          term_get_rows(t->term_inst) - 1);
+          term_get_rows(t->term_inst) - 1u);
 
    *a = (term_action) {
       .type2 = a_move_ch_and_cur,
@@ -147,7 +147,7 @@ tty_filter_end_csi_seq(u8 c,
                        term_write_filter_ctx_t *ctx)
 {
    const char *endptr;
-   int params[16] = {0};
+   u32 params[16] = {0};
    int pc = 0;
    tty *const t = ctx->t;
 
@@ -160,7 +160,7 @@ tty_filter_end_csi_seq(u8 c,
       endptr = ctx->param_bytes - 1;
 
       do {
-         params[pc++] = tilck_strtol(endptr + 1, &endptr, NULL);
+         params[pc++] = (u32) tilck_strtol(endptr + 1, &endptr, NULL);
       } while (*endptr);
 
    }
@@ -181,22 +181,22 @@ tty_filter_end_csi_seq(u8 c,
 
       case 'E':
          /* Move the cursor 'n' lines down and set col = 0 */
-        tty_move_cursor_begin_nth_row(t, a, MAX(1, params[0]));
+        tty_move_cursor_begin_nth_row(t, a, MAX(1u, params[0]));
         break;
 
       case 'F':
          /* Move the cursor 'n' lines up and set col = 0 */
-         tty_move_cursor_begin_nth_row(t, a, -MAX(1, params[0]));
+         tty_move_cursor_begin_nth_row(t, a, -MAX(1u, params[0]));
          break;
 
       case 'G':
          /* Move the cursor to the column 'n' (absolute, 1-based) */
-         params[0] = MAX(1, params[0]) - 1;
+         params[0] = MAX(1u, params[0]) - 1;
 
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
             .arg1 = term_get_curr_row(t->term_inst),
-            .arg2 = MIN((u32)params[0], term_get_cols(t->term_inst) - 1)
+            .arg2 = MIN((u32)params[0], term_get_cols(t->term_inst) - 1u)
          };
 
          break;
@@ -204,13 +204,13 @@ tty_filter_end_csi_seq(u8 c,
       case 'f':
       case 'H':
          /* Move the cursor to (n, m) (absolute, 1-based) */
-         params[0] = MAX(1, params[0]) - 1;
-         params[1] = MAX(1, params[1]) - 1;
+         params[0] = MAX(1u, params[0]) - 1;
+         params[1] = MAX(1u, params[1]) - 1;
 
          *a = (term_action) {
             .type2 = a_move_ch_and_cur,
-            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst) - 1),
-            .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(t->term_inst) - 1)
+            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst)-1u),
+            .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(t->term_inst)-1u)
          };
 
          break;
@@ -248,7 +248,7 @@ tty_filter_end_csi_seq(u8 c,
                      term_get_curr_row(t->term_inst) + 1,
                      term_get_curr_col(t->term_inst) + 1);
 
-            for (char *p = dsr; *p; p++)
+            for (u8 *p = (u8 *)dsr; *p; p++)
                tty_keypress_handler_int(ctx->t, *p, *p, false);
          }
 
@@ -295,7 +295,7 @@ tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
          return TERM_FILTER_WRITE_BLANK;
       }
 
-      ctx->param_bytes[ctx->pbc++] = *c;
+      ctx->param_bytes[ctx->pbc++] = (char) *c;
       return TERM_FILTER_WRITE_BLANK;
    }
 
@@ -309,7 +309,7 @@ tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
          return TERM_FILTER_WRITE_BLANK;
       }
 
-      ctx->interm_bytes[ctx->ibc++] = *c;
+      ctx->interm_bytes[ctx->ibc++] = (char) *c;
       return TERM_FILTER_WRITE_BLANK;
    }
 
@@ -426,5 +426,5 @@ ssize_t tty_write_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
    /* term_write's size is limited to 2^20 - 1 */
    size = MIN(size, (size_t)MB - 1);
    term_write(t->term_inst, buf, size, t->curr_color);
-   return size;
+   return (ssize_t) size;
 }

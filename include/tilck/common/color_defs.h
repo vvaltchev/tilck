@@ -28,7 +28,7 @@ enum vga_color {
    COLOR_BRIGHT_WHITE = 15,
 };
 
-#define make_color(fg, bg) ((fg) | (bg) << 4)
+#define make_color(fg, bg) ((u8)(((fg) | (bg) << 4)))
 #define get_color_fg(color) ((color) & 0xF)
 #define get_color_bg(color) (((color) >> 4) & 0xF)
 
@@ -39,8 +39,8 @@ enum vga_color {
  * Entry defs (color + char): the hardware format (VGA textmode) is used also
  * by the hw-independents "term" and "fb_console" for convenience.
  */
-#define make_vgaentry(c, color) (((u16)c) | ((u16)color << 8))
-#define vgaentry_get_fg(e) (((e) >> 8) & 0xF)
-#define vgaentry_get_bg(e) (((e) >> 12) & 0xF)
-#define vgaentry_get_char(e) ((e) & 0xFF)
-#define vgaentry_get_color(e) ((e) >> 8)
+#define make_vgaentry(c, color) ((u16)(((u16)c) | ((u16)color << 8)))
+#define vgaentry_get_fg(e)      LO_BITS((e) >> 8, 4, u8)
+#define vgaentry_get_bg(e)      LO_BITS((e) >> 12, 4, u8)
+#define vgaentry_get_char(e)    LO_BITS((e), 8, u8)
+#define vgaentry_get_color(e)   SHR_BITS((e), 8, u8)

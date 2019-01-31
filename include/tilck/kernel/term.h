@@ -6,15 +6,15 @@
 typedef struct {
 
    /* Main functions */
-   void (*set_char_at)(int row, int col, u16 entry);
-   void (*set_row)(int row, u16 *data, bool flush); // NOTE: set_row() can
+   void (*set_char_at)(u16 row, u16 col, u16 entry);
+   void (*set_row)(u16 row, u16 *data, bool flush); // NOTE: set_row() can
                                                     // safely assume that it has
                                                     // been called in a FPU
                                                     // context.
-   void (*clear_row)(int row_num, u8 color);
+   void (*clear_row)(u16 row_num, u8 color);
 
    /* Cursor management */
-   void (*move_cursor)(int row, int col, int color);
+   void (*move_cursor)(u16 row, u16 col, int color);
    void (*enable_cursor)(void);
    void (*disable_cursor)(void);
 
@@ -29,18 +29,18 @@ typedef struct {
 
 typedef struct term term;
 
-int init_term(term *t, const video_interface *vi, int rows, int cols);
+int init_term(term *t, const video_interface *vi, u16 rows, u16 cols);
 bool term_is_initialized(term *t);
 const video_interface *term_get_vi(term *t);
 
-u32 term_get_tab_size(term *t);
-u32 term_get_rows(term *t);
-u32 term_get_cols(term *t);
+u16 term_get_tab_size(term *t);
+u16 term_get_rows(term *t);
+u16 term_get_cols(term *t);
 
-u32 term_get_curr_row(term *t);
-u32 term_get_curr_col(term *t);
+u16 term_get_curr_row(term *t);
+u16 term_get_curr_col(term *t);
 
-void term_write(term *t, const char *buf, u32 len, u8 color);
+void term_write(term *t, const char *buf, size_t len, u8 color);
 void term_scroll_up(term *t, u32 lines);
 void term_scroll_down(term *t, u32 lines);
 void term_set_col_offset(term *t, u32 off);

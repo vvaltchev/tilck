@@ -3,14 +3,14 @@
 #pragma once
 
 static void
-debug_print_heap_info(uptr vaddr, u32 heap_size, u32 min_block_size)
+debug_print_heap_info(uptr vaddr, size_t heap_size, size_t min_block_size)
 {
    if (!heap_size) {
       printk("empty heap\n");
       return;
    }
 
-   u32 metadata_size = calculate_heap_metadata_size(heap_size, min_block_size);
+   uptr metadata_size = calculate_heap_metadata_size(heap_size, min_block_size);
 
    if (heap_size >= 4 * MB)
       printk("[heap: %p] size: %u MB, "

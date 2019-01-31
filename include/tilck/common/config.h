@@ -4,8 +4,8 @@
 
 /* Utils */
 
-#define KB (1024)
-#define MB (1024*1024)
+#define KB (1024u)
+#define MB (1024u * 1024u)
 
 #include <generated_config.h>
 
@@ -33,7 +33,7 @@
    #undef LINEAR_MAPPING_MB
 
    #define KERNEL_BASE_VA             ((uptr)kernel_va)
-   #define LINEAR_MAPPING_MB          (128)
+   #define LINEAR_MAPPING_MB          (128u)
 
 #endif
 

@@ -43,17 +43,17 @@ gdt_set_entry(gdt_entry *e,
    ASSERT(!((uptr)gdt <= (uptr)e && (uptr)e < ((uptr)gdt + gdt_size)));
 
    ASSERT(limit <= GDT_LIMIT_MAX); /* limit is only 20 bits */
-   ASSERT(flags <= 0xF); /* flags is 4 bits */
+   ASSERT(flags <= 0xf); /* flags is 4 bits */
 
-   e->base_low = (base & 0xFFFF);
-   e->base_middle = (base >> 16) & 0xFF;
-   e->base_high = (base >> 24) & 0xFF;
+   e->base_low = (base & 0xffff);
+   e->base_middle = (base >> 16) & 0xff;
+   e->base_high = (base >> 24) & 0xff;
 
-   e->limit_low = (limit & 0xFFFF);
-   e->limit_high = ((limit >> 16) & 0x0F);
+   e->limit_low = (limit & 0xffff);
+   e->limit_high = (limit >> 16) & 0x0f;
 
    e->access = access;
-   e->flags = flags;
+   e->flags = flags & 0xf;
 }
 
 static void
@@ -126,12 +126,18 @@ static NODISCARD int gdt_expand(void)
       old_gdt_refcount_ptr = gdt_refcount;
       old_gdt_size = gdt_size;
       new_size = gdt_size * 2;
+
+      if (new_size > 64 * KB) {
+         enable_preemption();
+         return -ENOMEM;
+      }
+
       void *new_gdt = kzmalloc(sizeof(gdt_entry) * new_size);
       void *new_gdt_refcount;
 
       if (!new_gdt) {
          enable_preemption();
-         return -1;
+         return -ENOMEM;
       }
 
       new_gdt_refcount = kzmalloc(sizeof(s32) * new_size);
@@ -176,7 +182,7 @@ static int gdt_add_entry(gdt_entry *e)
       for (u32 n = 1; n < gdt_size; n++) {
          if (!gdt[n].access) {
             set_entry_num(n, e);
-            rc = n;
+            rc = (int)n;
             break;
          }
       }
@@ -210,16 +216,21 @@ void set_kernel_stack(u32 stack)
    enable_interrupts(&var);
 }
 
-static void load_gdt(gdt_entry *gdt, u32 entries_count)
+static void load_gdt(gdt_entry *g, u32 entries_count)
 {
    ASSERT(!are_interrupts_enabled());
+   ASSERT(entries_count <= 64 * KB);
 
    struct {
 
       u16 size_minus_one;
       gdt_entry *gdt_vaddr;
 
-   } PACKED gdt_ptr = { sizeof(gdt_entry) * entries_count - 1, gdt };
+   } PACKED gdt_ptr = {
+
+      (u16)(sizeof(gdt_entry) * entries_count - 1),
+      g
+   };
 
    asmVolatile("lgdt (%0)"
                : /* no output */
@@ -319,22 +330,22 @@ static int find_available_slot_in_user_task(void)
    task_info *curr = get_curr_task();
    for (u32 i = 0; i < ARRAY_SIZE(curr->arch.gdt_entries); i++)
       if (!curr->arch.gdt_entries[i])
-         return i;
+         return (int)i;
 
    return -1;
 }
 
-static int get_user_task_slot_for_gdt_entry(int gdt_entry_num)
+static int get_user_task_slot_for_gdt_entry(u32 gdt_entry_num)
 {
    task_info *curr = get_curr_task();
    for (u32 i = 0; i < ARRAY_SIZE(curr->arch.gdt_entries); i++)
       if (curr->arch.gdt_entries[i] == gdt_entry_num)
-         return i;
+         return (int)i;
 
    return -1;
 }
 
-static void gdt_set_slot_in_task(task_info *ti, int slot, int gdt_index)
+static void gdt_set_slot_in_task(task_info *ti, u16 slot, u16 gdt_index)
 {
    ti->arch.gdt_entries[slot] = gdt_index;
 }
@@ -381,7 +392,7 @@ sptr sys_set_thread_area(user_desc *ud)
          goto out;
       }
 
-      dc.entry_number = gdt_add_entry(&e);
+      dc.entry_number = (u32)gdt_add_entry(&e);
 
       if (dc.entry_number == INVALID_ENTRY_NUM) {
 
@@ -392,10 +403,11 @@ sptr sys_set_thread_area(user_desc *ud)
             goto out;
          }
 
-         dc.entry_number = gdt_add_entry(&e);
+         dc.entry_number = (u32)gdt_add_entry(&e);
+         ASSERT(dc.entry_number != INVALID_ENTRY_NUM);
       }
 
-      gdt_set_slot_in_task(get_curr_task(), slot, dc.entry_number);
+      gdt_set_slot_in_task(get_curr_task(), (u16)slot, (u16)dc.entry_number);
       goto out;
    }
 
@@ -421,7 +433,7 @@ sptr sys_set_thread_area(user_desc *ud)
          goto out;
       }
 
-      gdt_set_slot_in_task(get_curr_task(), slot, dc.entry_number);
+      gdt_set_slot_in_task(get_curr_task(), (u16)slot, (u16)dc.entry_number);
    }
 
    ASSERT(dc.entry_number < gdt_size);

@@ -93,18 +93,18 @@
 
 #define MSR_IA32_PAT                    0x277
 
-#define CR0_PE              (1 << 0)
-#define CR0_MP              (1 << 1)
-#define CR0_EM              (1 << 2)
-#define CR0_TS              (1 << 3)
-#define CR0_ET              (1 << 4)
-#define CR0_NE              (1 << 5)
+#define CR0_PE              (1u << 0)
+#define CR0_MP              (1u << 1)
+#define CR0_EM              (1u << 2)
+#define CR0_TS              (1u << 3)
+#define CR0_ET              (1u << 4)
+#define CR0_NE              (1u << 5)
 
-#define CR0_WP              (1 << 16)
-#define CR0_AM              (1 << 18)
-#define CR0_NW              (1 << 29)
-#define CR0_CD              (1 << 30)
-#define CR0_PG              (1 << 31)
+#define CR0_WP              (1u << 16)
+#define CR0_AM              (1u << 18)
+#define CR0_NW              (1u << 29)
+#define CR0_CD              (1u << 30)
+#define CR0_PG              (1u << 31)
 
 #define MEM_TYPE_UC         0x00 // Uncacheable
 #define MEM_TYPE_WC         0x01 // Write Combining

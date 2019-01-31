@@ -8,8 +8,6 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/sys_types.h>
 
-#include <time.h> // system header
-
 const char *weekdays[7] =
 {
    "Sunday",
@@ -65,9 +63,9 @@ void read_system_clock_datetime(datetime_t *out)
    cmos_read_datetime(out);
 }
 
-uptr datetime_to_timestamp(datetime_t d)
+time_t datetime_to_timestamp(datetime_t d)
 {
-   uptr result = 0;
+   time_t result = 0;
    u32 year_day = 0;
    u32 year = d.year - 1900;
 

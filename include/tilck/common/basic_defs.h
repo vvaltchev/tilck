@@ -40,13 +40,17 @@
 
    STATIC_ASSERT(sizeof(void *) == 4);
    STATIC_ASSERT(sizeof(long) == sizeof(void *));
+
    #define BITS32
+   #define NBITS 32
 
 #elif defined(__x86_64__)
 
    STATIC_ASSERT(sizeof(void *) == 8);
    STATIC_ASSERT(sizeof(long) == sizeof(void *));
+
    #define BITS64
+   #define NBITS 64
 
 #else
 
@@ -166,6 +170,9 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 #define UNSAFE_MIN(x, y) (((x) <= (y)) ? (x) : (y))
 #define UNSAFE_MAX(x, y) (((x) > (y)) ? (x) : (y))
 
+#define UNSAFE_MIN3(x, y, z) UNSAFE_MIN(UNSAFE_MIN((x), (y)), (z))
+#define UNSAFE_MAX3(x, y, z) UNSAFE_MAX(UNSAFE_MAX((x), (y)), (z))
+
 /*
  * SAFE against double-evaluation MIN and MAX macros.
  * Use these when possible. In all the other cases, use their UNSAFE version.
@@ -182,6 +189,39 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
       const typeof(a) CONCAT(_a, __LINE__) = (a);                     \
       const typeof(b) CONCAT(_b, __LINE__) = (b);                     \
       UNSAFE_MAX(CONCAT(_a, __LINE__), CONCAT(_b, __LINE__));         \
+   })
+
+#define MIN3(a, b, c)                                                 \
+   ({                                                                 \
+      const typeof(a) CONCAT(_a, __LINE__) = (a);                     \
+      const typeof(b) CONCAT(_b, __LINE__) = (b);                     \
+      const typeof(c) CONCAT(_c, __LINE__) = (c);                     \
+      UNSAFE_MIN3(CONCAT(_a, __LINE__),                               \
+                  CONCAT(_b, __LINE__),                               \
+                  CONCAT(_c, __LINE__));                              \
+   })
+
+#define MAX3(a, b, c)                                                 \
+   ({                                                                 \
+      const typeof(a) CONCAT(_a, __LINE__) = (a);                     \
+      const typeof(b) CONCAT(_b, __LINE__) = (b);                     \
+      const typeof(c) CONCAT(_c, __LINE__) = (c);                     \
+      UNSAFE_MAX3(CONCAT(_a, __LINE__),                               \
+                  CONCAT(_b, __LINE__),                               \
+                  CONCAT(_c, __LINE__));                              \
+   })
+
+#define UNSAFE_BOUND(val, minval, maxval)                             \
+   UNSAFE_MIN(UNSAFE_MAX((val), (minval)), (maxval))
+
+#define BOUND(val, minval, maxval)                                    \
+   ({                                                                 \
+      const typeof(val) CONCAT(_v, __LINE__) = (val);                 \
+      const typeof(minval) CONCAT(_mv, __LINE__) = (minval);          \
+      const typeof(maxval) CONCAT(_Mv, __LINE__) = (maxval);          \
+      UNSAFE_BOUND(CONCAT(_v, __LINE__),                              \
+                   CONCAT(_mv, __LINE__),                             \
+                   CONCAT(_Mv, __LINE__));                            \
    })
 
 #define LIKELY(x) __builtin_expect((x), true)
@@ -234,4 +274,50 @@ typedef int (*cmpfun_ptr)(const void *a, const void *b);
 
 #endif
 
+/*
+ * Macros and inline functions designed to minimize the ugly code necessary
+ * if we want to compile with -Wconversion.
+ */
+
+#define U32_BITMASK(n) ((u32)((1u << (n)) - 1u))
+#define U64_BITMASK(n) ((u64)((1ull << (n)) - 1u))
+
+/*
+ * Get the lower `n` bits from val.
+ *
+ * Use case:
+ *
+ *    union { u32 a: 20; b: 12 } u;
+ *    u32 var = 123;
+ *    u.a = var; // does NOT compile with -Wconversion
+ *    u.a = LO_BITS(var, 20, u32); // always compiles
+ */
+
+#if defined(BITS64)
+   #define LO_BITS(val, n, t) ((t)((val) & U64_BITMASK(n)))
+#elif defined(BITS32)
+   #define LO_BITS(val, n, t) ((t)((val) & U32_BITMASK(n)))
+#endif
+
+/*
+ * We NEED a rshift() non-macro function because with gcc and -Wconversion
+ * statements like (see the union above):
+ *
+ *    u.a = (var >> bits) & MASK;
+ *
+ * Do not compile. See: https://stackoverflow.com/questions/54421737
+ */
+static ALWAYS_INLINE uptr rshift(uptr val, uptr bits)
+{
+   return val >> bits;
+}
+
+
+/*
+ * Like LO_BITS() but first right-shift `val` by `rs` bits and than get its
+ * lower N-rs bits in a -Wconversion-safe way.
+ */
+#define SHR_BITS(val, rs, t) LO_BITS( rshift((val), (rs)), NBITS-(rs), t )
+
+/* Includes */
 #include <tilck/common/panic.h>

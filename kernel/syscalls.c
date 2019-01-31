@@ -32,8 +32,8 @@ sptr sys_nanosleep(const struct timespec *user_req, struct timespec *rem)
    if (copy_from_user(&req, user_req, sizeof(req)) < 0)
       return -EFAULT;
 
-   ticks_to_sleep += TIMER_HZ * req.tv_sec;
-   ticks_to_sleep += req.tv_nsec / (1000000000 / TIMER_HZ);
+   ticks_to_sleep += (uptr) TIMER_HZ * (uptr) req.tv_sec;
+   ticks_to_sleep += (uptr) req.tv_nsec / (1000000000 / TIMER_HZ);
    kernel_sleep(ticks_to_sleep);
 
    // TODO (future): use HPET in order to improve the sleep precision

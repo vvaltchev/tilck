@@ -42,8 +42,8 @@ typedef struct {
 
    list_node dir_node;
 
-   u32 dev_major;
-   u32 dev_minor;
+   u16 dev_major;
+   u16 dev_minor;
    const char *name;
    file_ops fops;
    devfs_entry_type type;
@@ -65,6 +65,6 @@ filesystem *create_devfs(void);
 void create_and_register_devfs(void);
 int register_driver(driver_info *info, int major);
 
-int create_dev_file(const char *filename, int major, int minor);
+int create_dev_file(const char *filename, u16 major, u16 minor);
 filesystem *get_devfs(void);
-driver_info *get_driver_info(int major);
+driver_info *get_driver_info(u16 major);

@@ -177,7 +177,7 @@ int sys_gcov_get_file_info(int fn,
 
    int rc;
    const struct gcov_info *gi = files_array[fn];
-   const u32 fname_len = strlen(gi->filename);
+   const u32 fname_len = (u32)strlen(gi->filename);
 
    if (fname_buf_size < fname_len + 1) {
       return -ENOBUFS;
@@ -266,10 +266,10 @@ int sys_gcov_get_file(int fn, char *user_buf)
    if (fn < 0 || fn >= files_count)
       return -EINVAL;
 
-   int rc;
+   u32 rc;
    const struct gcov_info *gi = files_array[fn];
 
-   rc = fault_resumable_call(~0, &gcov_dump_file_to_buf, 2, gi, user_buf);
+   rc = fault_resumable_call(~0u, &gcov_dump_file_to_buf, 2, gi, user_buf);
 
    if (rc != 0)
       return -EFAULT;

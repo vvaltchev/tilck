@@ -4,6 +4,8 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/sys_types.h>
 
+#include <time.h> // system header
+
 typedef struct {
 
    union {
@@ -32,4 +34,4 @@ static inline bool is_leap_year(u32 year)
 }
 
 void read_system_clock_datetime(datetime_t *out);
-uptr datetime_to_timestamp(datetime_t d);
+time_t datetime_to_timestamp(datetime_t d);

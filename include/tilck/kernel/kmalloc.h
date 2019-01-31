@@ -21,8 +21,8 @@
 #define KFREE_FL_NO_ACTUAL_FREE             (0b01000000000000000000000000000000)
 #define KFREE_FL_ALLOW_SPLIT                (0b00100000000000000000000000000000)
 
-typedef bool (*virtual_alloc_and_map_func)(uptr vaddr, int page_count);
-typedef void (*virtual_free_and_unmap_func)(uptr vaddr, int page_count);
+typedef bool (*virtual_alloc_and_map_func)(uptr vaddr, size_t page_count);
+typedef void (*virtual_free_and_unmap_func)(uptr vaddr, size_t page_count);
 
 typedef struct kmalloc_heap kmalloc_heap;
 

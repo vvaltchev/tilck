@@ -75,7 +75,7 @@ typedef struct PACKED {
 
 typedef struct PACKED {
 
-   u8 DIR_Name[11];
+   char DIR_Name[11];
 
    u8 readonly : 1; // lower-bit
    u8 hidden : 1;
@@ -131,7 +131,7 @@ fat_type fat_get_type(fat_header *hdr);
 fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft, u32 *cluster /*out*/);
 void fat_get_short_name(fat_entry *entry, char *destbuf);
 u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N);
-u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, int clusterN, int fatNum);
+u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, u32 clusterN, u32 fatNum);
 u32 fat_get_first_data_sector(fat_header *hdr);
 
 
@@ -163,12 +163,12 @@ static inline u32 fat_get_TotSec(fat_header *hdr)
 static inline u32 fat_get_RootDirSectors(fat_header *hdr)
 {
    u32 bps = hdr->BPB_BytsPerSec;
-   return ((hdr->BPB_RootEntCnt * 32) + (bps - 1)) / bps;
+   return ((hdr->BPB_RootEntCnt * 32u) + (bps - 1u)) / bps;
 }
 
 static inline u32 fat_get_first_cluster(fat_entry *entry)
 {
-   return entry->DIR_FstClusHI << 16 | entry->DIR_FstClusLO;
+   return (u32)entry->DIR_FstClusHI << 16u | entry->DIR_FstClusLO;
 }
 
 static inline bool fat_is_end_of_clusterchain(fat_type ft, u32 val)
@@ -196,10 +196,10 @@ bool fat32_is_valid_filename_character(char c);
 
 typedef struct {
 
-   u8 long_name_buf[256];
-   s16 long_name_size;
-   s16 long_name_chksum;
-   bool is_valid;
+   bool is_valid;       /* long name valid ? */
+   u8 lname_buf[256];   /* long name buffer */
+   s16 lname_sz;        /* long name size */
+   s16 lname_chksum;    /* long name checksum */
 
 } fat_walk_dir_ctx;
 

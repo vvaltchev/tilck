@@ -19,7 +19,7 @@ char *strdup(const char *s)
 
 char *const *dup_strarray(const char *const *argv)
 {
-   int argc = 0;
+   u32 argc = 0;
    char **res;
 
    if (!argv)
@@ -33,7 +33,7 @@ char *const *dup_strarray(const char *const *argv)
    if (!res)
       return NULL;
 
-   for (int i = 0; i < argc; i++) {
+   for (int i = 0; i < (int)argc; i++) {
 
       res[i] = strdup(argv[i]);
 

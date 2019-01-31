@@ -92,7 +92,7 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
 {
    __use_framebuffer = true;
 
-   fb_paddr = mbi->framebuffer_addr;
+   fb_paddr = (uptr) mbi->framebuffer_addr;
    fb_pitch = mbi->framebuffer_pitch;
    fb_width = mbi->framebuffer_width;
    fb_height = mbi->framebuffer_height;
@@ -100,15 +100,15 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
 
    fb_red_pos = mbi->framebuffer_red_field_position;
    fb_red_mask_size = mbi->framebuffer_red_mask_size;
-   fb_red_mask = ((1 << fb_red_mask_size) - 1) << fb_red_pos;
+   fb_red_mask = ((1u << fb_red_mask_size) - 1) << fb_red_pos;
 
    fb_green_pos = mbi->framebuffer_green_field_position;
    fb_green_mask_size = mbi->framebuffer_green_mask_size;
-   fb_green_mask = ((1 << fb_green_mask_size) - 1) << fb_green_pos;
+   fb_green_mask = ((1u << fb_green_mask_size) - 1) << fb_green_pos;
 
    fb_blue_pos = mbi->framebuffer_blue_field_position;
    fb_blue_mask_size = mbi->framebuffer_blue_mask_size;
-   fb_blue_mask = ((1 << fb_blue_mask_size) - 1) << fb_blue_pos;
+   fb_blue_mask = ((1u << fb_blue_mask_size) - 1) << fb_blue_pos;
 
    //printk("red   [pos: %2u, mask: %p]\n", fb_red_pos, fb_red_mask);
    //printk("green [pos: %2u, mask: %p]\n", fb_green_pos, fb_green_mask);
@@ -195,7 +195,7 @@ void fb_raw_color_lines(u32 iy, u32 h, u32 color)
       } else {
 
          for (u32 i = 0; i < h; i++, v += fb_pitch)
-            memset((void *)v, color, fb_line_length);
+            memset((void *)v, (int)color, fb_line_length);
       }
 
    } else {
@@ -418,7 +418,9 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 
    void *vaddr = (void *)fb_vaddr + (fb_pitch * y) + (x << 2);
    u8 *d = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
-   const u32 c_off = (vgaentry_get_fg(e) << 15) + (vgaentry_get_bg(e) << 11);
+   const u32 c_off = (u32)(
+      (vgaentry_get_fg(e) << 15) + (vgaentry_get_bg(e) << 11)
+   );
    u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
    if (width_bytes == 1)
@@ -456,7 +458,9 @@ void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count)
    for (u32 ei = 0; ei < count; ei++) {
 
       const u16 e = entries[ei];
-      const u32 c_off = (vgaentry_get_fg(e) << 15) + (vgaentry_get_bg(e) << 11);
+      const u32 c_off = (u32) (
+         (vgaentry_get_fg(e) << 15) + (vgaentry_get_bg(e) << 11)
+      );
       void *vaddr = (void *)vaddr_base + (ei << w4_shift);
       const u8 *d = &data_base[vgaentry_get_char(e) << bpg_shift];
       u32 *scanlines = &fb_w8_char_scanlines[c_off];

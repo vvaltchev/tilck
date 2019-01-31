@@ -42,8 +42,10 @@ void irq_uninstall_handler(u8 irq)
 #define PIC_READ_IRR        0x0a    /* OCW3 irq ready next CMD read */
 #define PIC_READ_ISR        0x0b    /* OCW3 irq service next CMD read */
 
-void pic_send_eoi(u8 irq)
+void pic_send_eoi(int irq)
 {
+   ASSERT(0 <= irq && irq <= 256);
+
    if (irq >= 8) {
       outb(PIC2_COMMAND, PIC_EOI);
    }
@@ -119,44 +121,52 @@ void PIC_remap(u8 offset1, u8 offset2)
    outb(PIC2_DATA, a2);
 }
 
-void irq_set_mask(u8 irq_line)
+void irq_set_mask(int irq)
 {
    u16 port;
-   u8 value;
+   u8 irq_mask;
+   ASSERT(0 <= irq && irq <= 32);
 
-   if (irq_line < 8) {
+   if (irq < 8) {
       port = PIC1_DATA;
    } else {
       port = PIC2_DATA;
-      irq_line -= 8;
+      irq -= 8;
    }
-   value = inb(port) | (1 << irq_line);
-   outb(port, value);
+
+   irq_mask = inb(port);
+   irq_mask |= (1 << irq);
+   outb(port, irq_mask);
 }
 
-void irq_clear_mask(u8 irq_line)
+void irq_clear_mask(int irq)
 {
    u16 port;
-   u8 value;
+   ASSERT(0 <= irq && irq <= 32);
 
-   if (irq_line < 8) {
+   if (irq < 8) {
       port = PIC1_DATA;
    } else {
       port = PIC2_DATA;
-      irq_line -= 8;
+      irq -= 8;
    }
 
-   value = inb(port) & ~(1 << irq_line);
-   outb(port, value);
+   outb(port, inb(port) & ~(1 << irq));
 }
 
-static u16 __pic_get_irq_reg(int ocw3)
+static u16 __pic_get_irq_reg(u8 ocw3)
 {
-    /* OCW3 to PIC CMD to get the register values.  PIC2 is chained, and
-     * represents IRQs 8-15.  PIC1 is IRQs 0-7, with 2 being the chain */
-    outb(PIC1_COMMAND, ocw3);
-    outb(PIC2_COMMAND, ocw3);
-    return (inb(PIC2_COMMAND) << 8) | inb(PIC1_COMMAND);
+   u16 result;
+
+   /* OCW3 to PIC CMD to get the register values.  PIC2 is chained, and
+   * represents IRQs 8-15.  PIC1 is IRQs 0-7, with 2 being the chain */
+   outb(PIC1_COMMAND, ocw3);
+   outb(PIC2_COMMAND, ocw3);
+
+   result = inb(PIC1_COMMAND);
+   result |= (u16)(inb(PIC2_COMMAND) << 8);
+
+   return result;
 }
 
 /*
@@ -183,7 +193,7 @@ static inline u16 pic_get_isr(void)
 /* IMR = Interrupt Mask Register */
 static inline u32 pic_get_imr(void)
 {
-   return inb(PIC1_DATA) | inb(PIC2_DATA) << 8;
+   return inb(PIC1_DATA) | (u32)(inb(PIC2_DATA) << 8);
 }
 
 /*
@@ -196,7 +206,7 @@ void setup_irq_handling(void)
 {
    PIC_remap(32, 40);
 
-   for (int i = 0; i < 16; i++) {
+   for (u8 i = 0; i < 16; i++) {
       idt_set_entry(32 + i, irq_entry_points[i], 0x08, 0x8E);
       irq_set_mask(i);
    }
@@ -235,7 +245,7 @@ static inline void handle_irq_clear_mask(int irq)
 void handle_irq(regs *r)
 {
    int handler_ret = 0;
-   const u32 irq = r->int_num - 32;
+   const int irq = r->int_num - 32;
 
    if (irq == 7 || irq == 15) {
 

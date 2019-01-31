@@ -50,7 +50,7 @@ int mountpoint_add(filesystem *fs, const char *path)
       goto out;
    }
 
-   const u32 path_len = strlen(path);
+   const u32 path_len = (u32)strlen(path);
 
    /*
     * Mount points MUST end with '/'.
@@ -65,7 +65,7 @@ int mountpoint_add(filesystem *fs, const char *path)
    }
 
    mp->fs = fs;
-   mp->path_len = path_len;
+   mp->path_len = (u32)path_len;
    memcpy(mp->path, path, path_len + 1);
    mps[i] = mp;
 
@@ -109,7 +109,7 @@ mountpoint *mountpoint_get_next(_mp_cursor *c)
    ASSERT(c->curr_mp >= 0);
    ASSERT(!is_preemption_enabled());
 
-   for (u32 i = c->curr_mp++; i < ARRAY_SIZE(mps); i++) {
+   for (int i = c->curr_mp++; i < (int)ARRAY_SIZE(mps); i++) {
       if (mps[i] != NULL)
          return mps[i];
    }

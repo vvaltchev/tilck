@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
-if (${KERNEL_USE_SYSTEM_CC} OR ${USE_SYSCC})
+if (${KERNEL_SYSCC} OR ${USE_SYSCC})
 
    if (${ARCH} STREQUAL "i386")
 

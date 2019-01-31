@@ -217,8 +217,8 @@ static void *small_heap_kmalloc(size_t size, u32 flags)
 
    small_heap_block_metadata *md = buf + align_offset;
    md->node = node;
-   md->size = size;
-   md->align_offset = align_offset;
+   md->size = (u16)size;
+   md->align_offset = (u16)align_offset;
    return md + 1;
 }
 

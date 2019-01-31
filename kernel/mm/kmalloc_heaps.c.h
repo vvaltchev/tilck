@@ -18,7 +18,7 @@
 
 STATIC kmalloc_heap first_heap_struct;
 STATIC kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
-STATIC int used_heaps;
+STATIC u32 used_heaps;
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
@@ -41,7 +41,7 @@ size_t kmalloc_get_total_heap_allocation(void)
    size_t tot = 0;
    disable_preemption();
 
-   for (int i = 0; i < used_heaps; i++) {
+   for (u32 i = 0; i < used_heaps; i++) {
       tot += heaps[i]->mem_allocated;
    }
 
@@ -161,7 +161,7 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
    const size_t metadata_size =
       calculate_heap_metadata_size(heap_size, min_block_size);
 
-   if (used_heaps >= (int)ARRAY_SIZE(heaps))
+   if (used_heaps >= ARRAY_SIZE(heaps))
       return -1;
 
    if (!used_heaps) {
@@ -208,7 +208,7 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
     */
 
    VERIFY(md_allocated == vaddr);
-   return used_heaps++;
+   return (int)used_heaps++;
 }
 
 static int greater_than_heap_cmp(const void *a, const void *b)

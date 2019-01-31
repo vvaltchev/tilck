@@ -75,7 +75,7 @@ static void dump_c_oflag(struct termios *t)
 static void dump_c_cflag(struct termios *t)
 {
    TERMIOS_DEBUG_PRINT("c_oflag: ");
-   u32 val = (t->c_cflag & CBAUD);
+   int val = (t->c_cflag & CBAUD);
 
    if (val & CBAUDEX) {
 
@@ -194,7 +194,7 @@ static void dump_c_cc(struct termios *t)
 {
    TERMIOS_DEBUG_PRINT("c_cc: \n");
 
-   for (u32 i = 0; i < NCCS; i++) {
+   for (u8 i = 0; i < NCCS; i++) {
 
       const char *name = get_cc_name(i);
 

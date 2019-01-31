@@ -35,7 +35,7 @@ compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size)
 
    if (*path != '/') {
 
-      u32 cl = strlen(cwd);
+      u32 cl = (u32)strlen(cwd);
       ASSERT(cl > 0);
 
       /* The current working directory is ALWAYS supposed to be ending in '/' */

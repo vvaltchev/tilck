@@ -41,7 +41,7 @@ sptr sys_chdir(const char *user_path)
       ASSERT(h != NULL);
       vfs_close(h);
 
-      u32 pl = strlen(path);
+      u32 pl = (u32)strlen(path);
       memcpy(pi->cwd, path, pl + 1);
 
       if (pl > 1) {
@@ -90,7 +90,7 @@ sptr sys_getcwd(char *user_buf, size_t buf_size)
          user_buf[cwd_len - 2] = 0; /* drop the trailing '/' */
       }
 
-      ret = cwd_len;
+      ret = (sptr) cwd_len;
    }
 
 out:

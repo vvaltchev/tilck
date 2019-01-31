@@ -27,7 +27,7 @@ main:
    rep stosb
 
    # Save current device's number
-   mov [current_device], dx
+   mov [current_device], dl
 
    call setup_realmode_ivt
 

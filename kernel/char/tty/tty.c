@@ -91,7 +91,7 @@ int tty_get_curr_tty_num(void)
 }
 
 void
-tty_create_devfile_or_panic(const char *filename, int major, int minor)
+tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor)
 {
    int rc;
 
@@ -119,7 +119,7 @@ tty_allocate_and_init_new_term(void)
    return new_term;
 }
 
-static tty *allocate_and_init_tty(int minor)
+static tty *allocate_and_init_tty(u16 minor)
 {
    tty *t = kzmalloc(sizeof(tty));
 
@@ -152,9 +152,9 @@ tty_full_destroy(tty *t)
    kfree2(t, sizeof(tty));
 }
 
-static int internal_init_tty(int major, int minor)
+static int internal_init_tty(u16 major, u16 minor)
 {
-   ASSERT(minor < (int)ARRAY_SIZE(ttys));
+   ASSERT(minor < ARRAY_SIZE(ttys));
    ASSERT(!ttys[minor]);
 
    if (minor == 0) {
@@ -198,7 +198,7 @@ void init_tty(void)
    di->create_dev_file = tty_create_device_file;
    register_driver(di, TTY_MAJOR);
 
-   for (int i = 0; i <= kopt_tty_count; i++) {
+   for (u16 i = 0; i <= kopt_tty_count; i++) {
       if (internal_init_tty(TTY_MAJOR, i) < 0) {
 
          if (i <= 1)

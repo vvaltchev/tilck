@@ -16,7 +16,8 @@ struct regs {
    u32 custom_flags;        /* custom Tilck flags */
    u32 gs, fs, es, ds;
    u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;  /* pushed by 'pusha' */
-   u32 int_num, err_code;    /* our 'push byte #' and error codes do this */
+   s32 int_num;      /* our 'push byte #' do this */
+   u32 err_code;     /* pushed by CPU in some cases, by us in others */
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
 
@@ -27,19 +28,17 @@ STATIC_ASSERT(REGS_USERESP_OFF == OFFSET_OF(regs, useresp));
 typedef struct {
 
    void *ldt;
-   int ldt_size; /* Number of entries. Valid only if ldt != NULL. */
-   int ldt_index_in_gdt; /* Index in gdt, valid only if ldt != NULL. */
-
-   int gdt_entries[3];
-
+   u16 ldt_size; /* Number of entries. Valid only if ldt != NULL. */
+   u16 ldt_index_in_gdt; /* Index in gdt, valid only if ldt != NULL. */
+   u16 gdt_entries[3]; /* Array of indexes in gdt, valid if > 0 */
+   u16 fpu_regs_size;
    void *fpu_regs;
-   size_t fpu_regs_size;
 
 } arch_task_info_members;
 
 static ALWAYS_INLINE int regs_intnum(regs *r)
 {
-   return r->int_num;
+   return (int)r->int_num;
 }
 
 static ALWAYS_INLINE void set_return_register(regs *r, u32 value)

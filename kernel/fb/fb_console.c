@@ -28,8 +28,8 @@ static u32 fb_offset_y;
 
 static bool cursor_enabled;
 static bool banner_refresh_disabled;
-static int cursor_row;
-static int cursor_col;
+static u16 cursor_row;
+static u16 cursor_col;
 static u32 *under_cursor_buf;
 static volatile bool cursor_visible = true;
 static task_info *blink_thread_ti;
@@ -71,7 +71,7 @@ static void fb_reset_blink_timer(void)
 
 /* video_interface */
 
-void fb_set_char_at_failsafe(int row, int col, u16 entry)
+void fb_set_char_at_failsafe(u16 row, u16 col, u16 entry)
 {
    psf2_header *h = fb_font_header;
 
@@ -85,7 +85,7 @@ void fb_set_char_at_failsafe(int row, int col, u16 entry)
    fb_reset_blink_timer();
 }
 
-void fb_set_char_at_optimized(int row, int col, u16 entry)
+void fb_set_char_at_optimized(u16 row, u16 col, u16 entry)
 {
    psf2_header *h = fb_font_header;
 
@@ -99,7 +99,7 @@ void fb_set_char_at_optimized(int row, int col, u16 entry)
    fb_reset_blink_timer();
 }
 
-void fb_clear_row(int row_num, u8 color)
+void fb_clear_row(u16 row_num, u8 color)
 {
    psf2_header *h = fb_font_header;
    const u32 iy = fb_offset_y + row_num * h->height;
@@ -109,7 +109,7 @@ void fb_clear_row(int row_num, u8 color)
       fb_save_under_cursor_buf();
 }
 
-void fb_move_cursor(int row, int col, int cursor_vga_color)
+void fb_move_cursor(u16 row, u16 col, int cursor_vga_color)
 {
    if (!under_cursor_buf)
       return;
@@ -167,15 +167,15 @@ void fb_disable_cursor(void)
    fb_move_cursor(cursor_row, cursor_col, -1);
 }
 
-static void fb_set_row_failsafe(int row, u16 *data, bool flush)
+static void fb_set_row_failsafe(u16 row, u16 *data, bool flush)
 {
-   for (u32 i = 0; i < fb_term_cols; i++)
+   for (u16 i = 0; i < fb_term_cols; i++)
       fb_set_char_at_failsafe(row, i, data[i]);
 
    fb_reset_blink_timer();
 }
 
-static void fb_set_row_optimized(int row, u16 *data, bool flush)
+static void fb_set_row_optimized(u16 row, u16 *data, bool flush)
 {
    psf2_header *h = fb_font_header;
 
@@ -283,23 +283,30 @@ static void fb_draw_banner(void)
    }
 
    psf2_header *h = fb_font_header;
-   int llen, rlen, padding, i;
+   u32 llen, rlen, padding, i;
    datetime_t d;
+   int rc;
 
    ASSERT(fb_offset_y >= h->height);
 
    read_system_clock_datetime(&d);
 
-   llen = snprintk(lbuf, fb_term_cols - 1,
-                   "Tilck [%s] framebuffer console [tty %d]",
-                   BUILDTYPE_STR, tty_get_curr_tty_num());
+   rc = snprintk(lbuf, fb_term_cols - 1,
+                 "Tilck [%s] framebuffer console [tty %d]",
+                 BUILDTYPE_STR, tty_get_curr_tty_num());
 
-   rlen = snprintk(rbuf, fb_term_cols - llen - 1,
-                   "%02i %s %i %02i:%02i",
-                   d.day, months3[d.month - 1],
-                   d.year, d.hour, d.min);
+   ASSERT(rc > 0);
+   llen = MIN((u16)rc, fb_term_cols - 1);
 
-   padding = (fb_term_cols - llen - rlen - 1);
+   rc = snprintk(rbuf, fb_term_cols - 1 - llen,
+                 "%02i %s %i %02i:%02i",
+                 d.day, months3[d.month - 1],
+                 d.year, d.hour, d.min);
+
+   ASSERT(rc > 0);
+   rlen = MIN((u32)rc, fb_term_cols - 1 - llen);
+
+   padding = fb_term_cols - 1 - llen - rlen;
 
    for (i = llen; i < llen + padding; i++)
       lbuf[i] = ' ';
@@ -402,7 +409,10 @@ void init_framebuffer_console(void)
          printk("WARNING: fb_console: unable to allocate under_cursor_buf!\n");
    }
 
-   init_term(get_curr_term(), &framebuffer_vi, fb_term_rows, fb_term_cols);
+   init_term(get_curr_term(),
+             &framebuffer_vi,
+             (u16) fb_term_rows,
+             (u16) fb_term_cols);
 
    printk_flush_ringbuf();
 

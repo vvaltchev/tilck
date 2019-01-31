@@ -25,10 +25,10 @@ void get_cpu_features(void)
    cpuid(1, &a, &b, &c, &d);
 
    for (u32 bit = 0; bit < 32; bit++)
-      ((bool *)&f->edx1)[bit] = !!(d & (1 << bit));
+      ((bool *)&f->edx1)[bit] = !!(d & (1u << bit));
 
    for (u32 bit = 0; bit < 32; bit++)
-      ((bool *)&f->ecx1)[bit] = !!(c & (1 << bit));
+      ((bool *)&f->ecx1)[bit] = !!(c & (1u << bit));
 
    if (f->max_basic_cpuid_cmd >= 7) {
       if (f->ecx1.avx) {
@@ -148,7 +148,7 @@ void dump_x86_features(void)
             continue;
 
          if (flags[j][i])
-            w += snprintk(buf + w, sizeof(buf) - w, "%s ", strings[j][i]);
+            w += (u32)snprintk(buf + w, sizeof(buf) - w, "%s ", strings[j][i]);
 
          if (w >= 60) {
             printk("%s\n", buf);
@@ -159,7 +159,7 @@ void dump_x86_features(void)
    }
 
    if (x86_cpu_features.avx2)
-      w += snprintk(buf + w, sizeof(buf) - w, "avx2 ");
+      w += (u32)snprintk(buf + w, sizeof(buf) - w, "avx2 ");
 
    if (w)
       printk("%s\n", buf);

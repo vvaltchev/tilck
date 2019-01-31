@@ -21,7 +21,7 @@ extern u8 fb_blue_pos;
 extern u8 fb_blue_mask_size;
 
 extern bool graphics_mode;
-extern u32 selected_mode;
+extern u16 selected_mode;
 
 void debug_show_detailed_mode_info(ModeInfoBlock *mi)
 {

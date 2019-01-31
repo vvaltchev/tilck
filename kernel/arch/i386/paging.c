@@ -61,7 +61,7 @@ static ALWAYS_INLINE u32 pf_ref_count_get(u32 paddr)
 }
 
 static ALWAYS_INLINE page_table_t *
-pdir_get_page_table(page_directory_t *pdir, int i)
+pdir_get_page_table(page_directory_t *pdir, u32 i)
 {
    return KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 }
@@ -84,7 +84,7 @@ bool handle_potential_cow(void *context)
    if (!(ptable->pages[page_table_index].avail & PAGE_COW_ORIG_RW))
       return false; /* Not a COW page */
 
-   const u32 orig_page_paddr =
+   const u32 orig_page_paddr = (u32)
       ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 
    if (pf_ref_count_get(orig_page_paddr) == 1) {
@@ -116,7 +116,7 @@ bool handle_potential_cow(void *context)
    ASSERT(pf_ref_count_get(paddr) == 0);
    pf_ref_count_inc(paddr);
 
-   ptable->pages[page_table_index].pageAddr = paddr >> PAGE_SHIFT;
+   ptable->pages[page_table_index].pageAddr = SHR_BITS(paddr, PAGE_SHIFT, u32);
    ptable->pages[page_table_index].rw = true;
    ptable->pages[page_table_index].avail = 0;
 
@@ -228,9 +228,10 @@ void unmap_page(page_directory_t *pdir, void *vaddrp, bool free_pageframe)
    ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
    ASSERT(ptable->pages[page_table_index].present);
 
-   const uptr paddr = ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
-   ptable->pages[page_table_index].raw = 0;
+   const uptr paddr = (uptr)
+      ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 
+   ptable->pages[page_table_index].raw = 0;
    invalidate_page(vaddr);
 
    if (!pf_ref_count_dec(paddr) && free_pageframe) {
@@ -256,7 +257,7 @@ uptr get_mapping(page_directory_t *pdir, void *vaddrp)
    ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
 
    ASSERT(ptable->pages[page_table_index].present);
-   return ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
+   return (uptr) ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
 }
 
 NODISCARD int
@@ -299,18 +300,18 @@ map_page_int(page_directory_t *pdir, void *vaddrp, uptr paddr, u32 flags)
    return 0;
 }
 
-NODISCARD int
+NODISCARD size_t
 map_pages_int(page_directory_t *pdir,
               void *vaddr,
               uptr paddr,
-              int page_count,
+              size_t page_count,
               bool big_pages_allowed,
               u32 flags)
 {
    int rc;
-   int pages = 0;
-   int big_pages = 0;
-   int rem_pages = page_count;
+   size_t pages = 0;
+   size_t big_pages = 0;
+   size_t rem_pages = page_count;
    u32 big_page_flags;
 
    ASSERT(!((uptr)vaddr & OFFSET_IN_PAGE_MASK));
@@ -345,7 +346,7 @@ map_pages_int(page_directory_t *pdir,
       rem_pages -= (big_pages << 10);
    }
 
-   for (int i = 0; i < rem_pages; i++, pages++) {
+   for (size_t i = 0; i < rem_pages; i++, pages++) {
 
       rc = map_page_int(pdir, vaddr, paddr, flags);
 
@@ -371,9 +372,10 @@ map_page(page_directory_t *pdir,
       map_page_int(pdir,
                    vaddrp,
                    paddr,
-                   (us << PG_US_BIT_POS) |
-                   (rw << PG_RW_BIT_POS) |
-                   ((!us) << PG_GLOBAL_BIT_POS)); /* Kernel pages are global */
+                   (u32)(us << PG_US_BIT_POS) |
+                   (u32)(rw << PG_RW_BIT_POS) |
+                   (u32)((!us) << PG_GLOBAL_BIT_POS));
+                   /* Kernel pages are global */
 }
 
 NODISCARD int
@@ -391,19 +393,21 @@ map_zero_page(page_directory_t *pdir,
       map_page_int(pdir,
                    vaddrp,
                    KERNEL_VA_TO_PA(&zero_page),
-                   (us << PG_US_BIT_POS) |
-                   (avail_flags << PG_CUSTOM_B0_POS) |
-                   ((!us) << PG_GLOBAL_BIT_POS)); /* Kernel pages are global */
+                   (u32)(us << PG_US_BIT_POS) |
+                   (u32)(avail_flags << PG_CUSTOM_B0_POS) |
+                   (u32)((!us) << PG_GLOBAL_BIT_POS));
+                   /* Kernel pages are global */
 }
 
-NODISCARD int
+NODISCARD size_t
 map_zero_pages(page_directory_t *pdir,
                void *vaddrp,
-               int page_count,
+               size_t page_count,
                bool us,
                bool rw)
 {
-   int n, rc;
+   int rc;
+   size_t n;
    uptr vaddr = (uptr) vaddrp;
 
    for (n = 0; n < page_count; n++, vaddr += PAGE_SIZE) {
@@ -417,11 +421,11 @@ map_zero_pages(page_directory_t *pdir,
    return n;
 }
 
-NODISCARD int
+NODISCARD size_t
 map_pages(page_directory_t *pdir,
           void *vaddr,
           uptr paddr,
-          int page_count,
+          size_t page_count,
           bool big_pages_allowed,
           bool us,
           bool rw)
@@ -432,9 +436,9 @@ map_pages(page_directory_t *pdir,
                     paddr,
                     page_count,
                     big_pages_allowed,
-                    (us << PG_US_BIT_POS) |
-                    (rw << PG_RW_BIT_POS) |
-                    ((!us) << PG_GLOBAL_BIT_POS));
+                    (u32)(us << PG_US_BIT_POS) |
+                    (u32)(rw << PG_RW_BIT_POS) |
+                    (u32)((!us) << PG_GLOBAL_BIT_POS));
 }
 
 page_directory_t *pdir_clone(page_directory_t *pdir)
@@ -469,7 +473,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
       }
 
       ASSERT(IS_PAGE_ALIGNED(pt));
-      new_pdir->entries[i].ptaddr = KERNEL_VA_TO_PA(pt) >> PAGE_SHIFT;
+      new_pdir->entries[i].ptaddr=SHR_BITS(KERNEL_VA_TO_PA(pt),PAGE_SHIFT,u32);
    }
 
    for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
@@ -486,7 +490,7 @@ page_directory_t *pdir_clone(page_directory_t *pdir)
          if (!orig_pt->pages[j].present)
             continue;
 
-         const uptr orig_paddr = orig_pt->pages[j].pageAddr << PAGE_SHIFT;
+         const uptr orig_paddr = (uptr)orig_pt->pages[j].pageAddr << PAGE_SHIFT;
 
          /* Sanity-check: a mapped page MUST have ref-count > 0 */
          ASSERT(pf_ref_count_get(orig_paddr) > 0);
@@ -554,7 +558,7 @@ pdir_deep_clone(page_directory_t *pdir)
 
          ASSERT(IS_PAGE_ALIGNED(new_page));
 
-         uptr orig_page_paddr = orig_pt->pages[j].pageAddr << PAGE_SHIFT;
+         uptr orig_page_paddr = (uptr)orig_pt->pages[j].pageAddr << PAGE_SHIFT;
          void *orig_page = KERNEL_PA_TO_VA(orig_page_paddr);
 
          u32 new_page_paddr = KERNEL_VA_TO_PA(new_page);
@@ -562,10 +566,11 @@ pdir_deep_clone(page_directory_t *pdir)
          pf_ref_count_inc(new_page_paddr);
 
          memcpy32(new_page, orig_page, PAGE_SIZE / 4);
-         new_pt->pages[j].pageAddr = new_page_paddr >> PAGE_SHIFT;
+         new_pt->pages[j].pageAddr = SHR_BITS(new_page_paddr, PAGE_SHIFT, u32);
       }
 
-      new_pdir->entries[i].ptaddr = KERNEL_VA_TO_PA(new_pt) >> PAGE_SHIFT;
+      new_pdir->entries[i].ptaddr =
+         SHR_BITS(KERNEL_VA_TO_PA(new_pt), PAGE_SHIFT, u32);
    }
 
    for (u32 i = (KERNEL_BASE_VA >> 22); i < 1024; i++) {
@@ -602,7 +607,7 @@ void pdir_destroy(page_directory_t *pdir)
          if (!pt->pages[j].present)
             continue;
 
-         const u32 paddr = pt->pages[j].pageAddr << PAGE_SHIFT;
+         const uptr paddr = (uptr)pt->pages[j].pageAddr << PAGE_SHIFT;
 
          if (pf_ref_count_dec(paddr) == 0)
             kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
@@ -772,8 +777,8 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
 
    page_directory_t *pdir = !user_mmap ? get_kernel_pdir() : get_curr_pdir();
 
-   int page_count = round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
-   int rc;
+   size_t page_count = round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
+   size_t count;
    u32 mmap_flags = PG_RW_BIT;
 
    if (user_mmap) {
@@ -782,14 +787,14 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
       mmap_flags |= PG_GLOBAL_BIT;
    }
 
-   rc = map_pages_int(pdir,
-                      (void *)vaddr,
-                      paddr,
-                      page_count,
-                      !user_mmap, /* big pages allowed when !user_mmap */
-                      mmap_flags);
+   count = map_pages_int(pdir,
+                         (void *)vaddr,
+                         paddr,
+                         page_count,
+                         !user_mmap, /* big pages allowed when !user_mmap */
+                         mmap_flags);
 
-   if (rc < page_count)
+   if (count < page_count)
       panic("Unable to map the framebuffer in the virtual space");
 
    if (x86_cpu_features.edx1.pat) {
@@ -815,5 +820,5 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
       return;
    }
 
-   set_mtrr(selected_mtrr, paddr, pow2size, MEM_TYPE_WC);
+   set_mtrr((u32)selected_mtrr, paddr, pow2size, MEM_TYPE_WC);
 }

@@ -18,6 +18,10 @@ set(
    -Wno-unused-label
 )
 
+if (WCONV)
+   list(APPEND GENERAL_KERNEL_FLAGS_LIST "-Wconversion")
+endif()
+
 if (FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
    list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-loop-vectorize)
 endif()

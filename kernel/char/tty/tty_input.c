@@ -18,7 +18,7 @@
 #include "term_int.h"
 #include "tty_int.h"
 
-static inline bool kb_buf_write_elem(tty *t, char c);
+static inline bool kb_buf_write_elem(tty *t, u8 c);
 #include "tty_ctrl_handlers.c.h"
 
 static void tty_keypress_echo(tty *t, char c)
@@ -115,24 +115,24 @@ static inline bool kb_buf_is_empty(tty *t)
    return ringbuf_is_empty(&t->kb_input_ringbuf);
 }
 
-static inline char kb_buf_read_elem(tty *t)
+static inline u8 kb_buf_read_elem(tty *t)
 {
    u8 ret;
    ASSERT(!kb_buf_is_empty(t));
    DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&t->kb_input_ringbuf, &ret));
-   return (char)ret;
+   return ret;
 }
 
 static inline bool kb_buf_drop_last_written_elem(tty *t)
 {
    char unused;
-   tty_keypress_echo(t, t->c_term.c_cc[VERASE]);
+   tty_keypress_echo(t, (char)t->c_term.c_cc[VERASE]);
    return ringbuf_unwrite_elem(&t->kb_input_ringbuf, &unused);
 }
 
-static inline bool kb_buf_write_elem(tty *t, char c)
+static inline bool kb_buf_write_elem(tty *t, u8 c)
 {
-   tty_keypress_echo(t, c);
+   tty_keypress_echo(t, (char)c);
    return ringbuf_write_elem1(&t->kb_input_ringbuf, c);
 }
 
@@ -148,7 +148,7 @@ static int tty_handle_non_printable_key(tty *t, u32 key)
    }
 
    while (*p) {
-      kb_buf_write_elem(t, *p++);
+      kb_buf_write_elem(t, (u8) *p++);
    }
 
    if (!(t->c_term.c_lflag & ICANON))
@@ -157,7 +157,7 @@ static int tty_handle_non_printable_key(tty *t, u32 key)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
-static inline bool tty_is_line_delim_char(tty *t, char c)
+static inline bool tty_is_line_delim_char(tty *t, u8 c)
 {
    return c == '\n' ||
           c == t->c_term.c_cc[VEOF] ||
@@ -195,7 +195,7 @@ int tty_keypress_handler_int(tty *t, u32 key, u8 c, bool check_mods)
    if (check_mods && kb_is_ctrl_pressed()) {
       if (isalpha(c) || c == '\\') {
          /* ctrl ignores the case of the letter */
-         c = toupper(c) - 'A' + 1;
+         c = (u8)(toupper(c) - 'A' + 1);
       }
    }
 
@@ -275,10 +275,10 @@ int tty_keypress_handler(u32 key, u8 c)
    return tty_keypress_handler_int(t, key, c, true);
 }
 
-static u32 tty_flush_read_buf(devfs_file_handle *h, char *buf, u32 size)
+static size_t tty_flush_read_buf(devfs_file_handle *h, char *buf, size_t size)
 {
-   u32 rem = h->read_buf_used - h->read_pos;
-   u32 m = MIN(rem, size);
+   size_t rem = h->read_buf_used - h->read_pos;
+   size_t m = MIN(rem, size);
    memcpy(buf, h->read_buf + h->read_pos, m);
    h->read_pos += m;
 
@@ -300,8 +300,8 @@ tty_internal_read_single_char_from_kb(tty *t,
                                       devfs_file_handle *h,
                                       bool *delim_break)
 {
-   char c = kb_buf_read_elem(t);
-   h->read_buf[h->read_buf_used++] = c;
+   u8 c = kb_buf_read_elem(t);
+   h->read_buf[h->read_buf_used++] = (char)c;
 
    if (t->c_term.c_lflag & ICANON) {
 
@@ -328,7 +328,7 @@ tty_internal_read_single_char_from_kb(tty *t,
 static inline bool
 tty_internal_should_read_return(tty *t,
                                 devfs_file_handle *h,
-                                u32 read_cnt,
+                                size_t read_cnt,
                                 bool delim_break)
 {
    if (t->c_term.c_lflag & ICANON) {
@@ -355,7 +355,7 @@ ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
    if (h->read_buf_used) {
 
       if (!(h->flags & O_NONBLOCK))
-         return tty_flush_read_buf(h, buf, size);
+         return (ssize_t) tty_flush_read_buf(h, buf, size);
 
       /*
        * The file description is in NON-BLOCKING mode: this means we cannot
@@ -371,7 +371,7 @@ ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
 
       if (h->read_allowed_to_return) {
 
-         ssize_t ret = tty_flush_read_buf(h, buf, size);
+         ssize_t ret = (ssize_t) tty_flush_read_buf(h, buf, size);
 
          if (!h->read_buf_used)
             h->read_allowed_to_return = false;
@@ -426,7 +426,7 @@ ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
          h->read_allowed_to_return = true;
    }
 
-   return read_count;
+   return (ssize_t) read_count;
 }
 
 void tty_update_special_ctrl_handlers(tty *t)

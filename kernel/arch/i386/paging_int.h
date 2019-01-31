@@ -5,41 +5,41 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/paging.h>
 
-#define PG_PRESENT_BIT_POS      0
-#define PG_RW_BIT_POS           1
-#define PG_US_BIT_POS           2
-#define PG_WT_BIT_POS           3
-#define PG_CD_BIT_POS           4
-#define PG_ACC_BIT_POS          5
-#define PG_DIRTY_BIT_POS        6 // page_t only
-#define PG_PAGE_PAT_BIT_POS     7 // page_t only
-#define PG_4MB_BIT_POS          7 // page_dir_entry_t only
-#define PG_GLOBAL_BIT_POS       8 // page_t only
-#define PG_CUSTOM_B0_POS        9
-#define PG_CUSTOM_B1_POS       10
-#define PG_CUSTOM_B2_POS       11
-#define PG_4MB_PAT_BIT_POS     12 // page_dir_entry_t only with psize = 1
+#define PG_PRESENT_BIT_POS      0u
+#define PG_RW_BIT_POS           1u
+#define PG_US_BIT_POS           2u
+#define PG_WT_BIT_POS           3u
+#define PG_CD_BIT_POS           4u
+#define PG_ACC_BIT_POS          5u
+#define PG_DIRTY_BIT_POS        6u // page_t only
+#define PG_PAGE_PAT_BIT_POS     7u // page_t only
+#define PG_4MB_BIT_POS          7u // page_dir_entry_t only
+#define PG_GLOBAL_BIT_POS       8u // page_t only
+#define PG_CUSTOM_B0_POS        9u
+#define PG_CUSTOM_B1_POS       10u
+#define PG_CUSTOM_B2_POS       11u
+#define PG_4MB_PAT_BIT_POS     12u // page_dir_entry_t only with psize = 1
 
 
-#define PG_PRESENT_BIT  (1 << PG_PRESENT_BIT_POS)
-#define PG_RW_BIT       (1 << PG_RW_BIT_POS)
-#define PG_US_BIT       (1 << PG_US_BIT_POS)
-#define PG_WT_BIT       (1 << PG_WT_BIT_POS)
-#define PG_CD_BIT       (1 << PG_CD_BIT_POS)
-#define PG_ACC_BIT      (1 << PG_ACC_BIT_POS)
-#define PG_DIRTY_BIT    (1 << PG_DIRTY_BIT_POS)    // page_t only
-#define PG_PAGE_PAT_BIT (1 << PG_PAGE_PAT_BIT_POS) // page_t only
-#define PG_4MB_BIT      (1 << PG_4MB_BIT_POS)      // page_dir_entry_t only
-#define PG_GLOBAL_BIT   (1 << PG_GLOBAL_BIT_POS)   // page_t only
-#define PG_CUSTOM_B0    (1 << PG_CUSTOM_B0_POS)
-#define PG_CUSTOM_B1    (1 << PG_CUSTOM_B1_POS)
-#define PG_CUSTOM_B2    (1 << PG_CUSTOM_B2_POS)
+#define PG_PRESENT_BIT  (1u << PG_PRESENT_BIT_POS)
+#define PG_RW_BIT       (1u << PG_RW_BIT_POS)
+#define PG_US_BIT       (1u << PG_US_BIT_POS)
+#define PG_WT_BIT       (1u << PG_WT_BIT_POS)
+#define PG_CD_BIT       (1u << PG_CD_BIT_POS)
+#define PG_ACC_BIT      (1u << PG_ACC_BIT_POS)
+#define PG_DIRTY_BIT    (1u << PG_DIRTY_BIT_POS)    // page_t only
+#define PG_PAGE_PAT_BIT (1u << PG_PAGE_PAT_BIT_POS) // page_t only
+#define PG_4MB_BIT      (1u << PG_4MB_BIT_POS)      // page_dir_entry_t only
+#define PG_GLOBAL_BIT   (1u << PG_GLOBAL_BIT_POS)   // page_t only
+#define PG_CUSTOM_B0    (1u << PG_CUSTOM_B0_POS)
+#define PG_CUSTOM_B1    (1u << PG_CUSTOM_B1_POS)
+#define PG_CUSTOM_B2    (1u << PG_CUSTOM_B2_POS)
 #define PG_CUSTOM_BITS  (PG_CUSTOM_B0 | PG_CUSTOM_B1 | PG_CUSTOM_B2)
-#define PG_4MB_PAT_BIT  (1 << PG_4MB_PAT_BIT_POS)
+#define PG_4MB_PAT_BIT  (1u << PG_4MB_PAT_BIT_POS)
 
-#define PAGE_FAULT_FL_PRESENT (1 << 0)
-#define PAGE_FAULT_FL_RW      (1 << 1)
-#define PAGE_FAULT_FL_US      (1 << 2)
+#define PAGE_FAULT_FL_PRESENT (1u << 0)
+#define PAGE_FAULT_FL_RW      (1u << 1)
+#define PAGE_FAULT_FL_US      (1u << 2)
 
 #define PAGE_FAULT_FL_COW (PAGE_FAULT_FL_PRESENT | PAGE_FAULT_FL_RW)
 

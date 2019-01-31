@@ -97,14 +97,14 @@ void check_heaps_metadata(unique_ptr<u8[]> *meta_before)
    }
 }
 
-void kmalloc_chaos_test_sub(default_random_engine &e,
+void kmalloc_chaos_test_sub(default_random_engine &eng,
                             lognormal_distribution<> &dist)
 {
    vector<pair<void *, size_t>> allocations;
 
    for (int i = 0; i < 1000; i++) {
 
-      size_t s = round(dist(e));
+      size_t s = round(dist(eng));
 
       if (s == 0)
          continue;
@@ -481,8 +481,15 @@ TEST_F(kmalloc_test, coalesce_block)
    kmalloc_destroy_heap(&h);
 }
 
-static bool fake_alloc_and_map_func(uptr vaddr, int page_count) { return true; }
-static void fake_free_and_map_func(uptr vaddr, int page_count) { }
+static bool fake_alloc_and_map_func(uptr vaddr, size_t page_count)
+{
+   return true;
+}
+
+static void fake_free_and_map_func(uptr vaddr, size_t page_count)
+{
+   /* do nothing */
+}
 
 TEST_F(kmalloc_test, multi_step_alloc)
 {

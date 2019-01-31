@@ -18,14 +18,14 @@
 u32 tasklet_threads_count;
 tasklet_thread_info *tasklet_threads[MAX_TASKLET_THREADS];
 
-int get_tasklet_runner_limit(int tn)
+u32 get_tasklet_runner_limit(u32 tn)
 {
-   ASSERT(tn >= 0 && tn < MAX_TASKLET_THREADS);
+   ASSERT(tn < MAX_TASKLET_THREADS);
    tasklet_thread_info *t = tasklet_threads[tn];
    return t ? t->limit : 0;
 }
 
-task_info *get_tasklet_runner(int tn)
+task_info *get_tasklet_runner(u32 tn)
 {
    tasklet_thread_info *t = tasklet_threads[tn];
 
@@ -36,7 +36,7 @@ task_info *get_tasklet_runner(int tn)
    return t->task;
 }
 
-bool any_tasklets_to_run(int tn)
+bool any_tasklets_to_run(u32 tn)
 {
    tasklet_thread_info *t = tasklet_threads[tn];
 
@@ -212,7 +212,7 @@ task_info *get_hi_prio_ready_tasklet_runner(void)
    return selected ? selected->task : NULL;
 }
 
-int create_tasklet_thread(int priority, int limit)
+int create_tasklet_thread(int priority, u16 limit)
 {
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
@@ -227,7 +227,7 @@ int create_tasklet_thread(int priority, int limit)
    if (!t)
       return -ENOMEM;
 
-   int tn = tasklet_threads_count;
+   u32 tn = tasklet_threads_count;
    t->priority = priority;
    t->limit = limit;
    t->tasklets = kzmalloc(sizeof(tasklet) * limit);
@@ -254,9 +254,9 @@ int create_tasklet_thread(int priority, int limit)
    tasklet_threads[tn] = t;
 
    /* Double-check that tasklet_threads_count did not change */
-   ASSERT(tn == (int)tasklet_threads_count);
+   ASSERT(tn == tasklet_threads_count);
    tasklet_threads_count++;
-   return tn;
+   return (int)tn;
 }
 
 void destroy_last_tasklet_thread(void)
@@ -265,7 +265,7 @@ void destroy_last_tasklet_thread(void)
    ASSERT(tasklet_threads_count > 0);
    DEBUG_ONLY(check_not_in_irq_handler());
 
-   int tn = --tasklet_threads_count;
+   u32 tn = --tasklet_threads_count;
    tasklet_thread_info *t = tasklet_threads[tn];
    ASSERT(t != NULL);
 
