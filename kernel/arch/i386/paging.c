@@ -300,18 +300,18 @@ map_page_int(page_directory_t *pdir, void *vaddrp, uptr paddr, u32 flags)
    return 0;
 }
 
-NODISCARD int
+NODISCARD size_t
 map_pages_int(page_directory_t *pdir,
               void *vaddr,
               uptr paddr,
-              int page_count,
+              size_t page_count,
               bool big_pages_allowed,
               u32 flags)
 {
    int rc;
-   int pages = 0;
-   int big_pages = 0;
-   int rem_pages = page_count;
+   size_t pages = 0;
+   size_t big_pages = 0;
+   size_t rem_pages = page_count;
    u32 big_page_flags;
 
    ASSERT(!((uptr)vaddr & OFFSET_IN_PAGE_MASK));
@@ -346,7 +346,7 @@ map_pages_int(page_directory_t *pdir,
       rem_pages -= (big_pages << 10);
    }
 
-   for (int i = 0; i < rem_pages; i++, pages++) {
+   for (size_t i = 0; i < rem_pages; i++, pages++) {
 
       rc = map_page_int(pdir, vaddr, paddr, flags);
 
@@ -399,14 +399,15 @@ map_zero_page(page_directory_t *pdir,
                    /* Kernel pages are global */
 }
 
-NODISCARD int
+NODISCARD size_t
 map_zero_pages(page_directory_t *pdir,
                void *vaddrp,
-               int page_count,
+               size_t page_count,
                bool us,
                bool rw)
 {
-   int n, rc;
+   int rc;
+   size_t n;
    uptr vaddr = (uptr) vaddrp;
 
    for (n = 0; n < page_count; n++, vaddr += PAGE_SIZE) {
@@ -420,11 +421,11 @@ map_zero_pages(page_directory_t *pdir,
    return n;
 }
 
-NODISCARD int
+NODISCARD size_t
 map_pages(page_directory_t *pdir,
           void *vaddr,
           uptr paddr,
-          int page_count,
+          size_t page_count,
           bool big_pages_allowed,
           bool us,
           bool rw)
@@ -776,8 +777,8 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
 
    page_directory_t *pdir = !user_mmap ? get_kernel_pdir() : get_curr_pdir();
 
-   int page_count = round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
-   int rc;
+   size_t page_count = round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
+   size_t count;
    u32 mmap_flags = PG_RW_BIT;
 
    if (user_mmap) {
@@ -786,14 +787,14 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
       mmap_flags |= PG_GLOBAL_BIT;
    }
 
-   rc = map_pages_int(pdir,
-                      (void *)vaddr,
-                      paddr,
-                      page_count,
-                      !user_mmap, /* big pages allowed when !user_mmap */
-                      mmap_flags);
+   count = map_pages_int(pdir,
+                         (void *)vaddr,
+                         paddr,
+                         page_count,
+                         !user_mmap, /* big pages allowed when !user_mmap */
+                         mmap_flags);
 
-   if (rc < page_count)
+   if (count < page_count)
       panic("Unable to map the framebuffer in the virtual space");
 
    if (x86_cpu_features.edx1.pat) {

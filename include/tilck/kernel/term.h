@@ -40,7 +40,7 @@ u16 term_get_cols(term *t);
 u16 term_get_curr_row(term *t);
 u16 term_get_curr_col(term *t);
 
-void term_write(term *t, const char *buf, u32 len, u8 color);
+void term_write(term *t, const char *buf, size_t len, u8 color);
 void term_scroll_up(term *t, u32 lines);
 void term_scroll_down(term *t, u32 lines);
 void term_set_col_offset(term *t, u32 off);

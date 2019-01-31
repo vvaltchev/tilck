@@ -275,10 +275,10 @@ int tty_keypress_handler(u32 key, u8 c)
    return tty_keypress_handler_int(t, key, c, true);
 }
 
-static u32 tty_flush_read_buf(devfs_file_handle *h, char *buf, u32 size)
+static size_t tty_flush_read_buf(devfs_file_handle *h, char *buf, size_t size)
 {
-   u32 rem = h->read_buf_used - h->read_pos;
-   u32 m = MIN(rem, size);
+   size_t rem = h->read_buf_used - h->read_pos;
+   size_t m = MIN(rem, size);
    memcpy(buf, h->read_buf + h->read_pos, m);
    h->read_pos += m;
 
@@ -328,7 +328,7 @@ tty_internal_read_single_char_from_kb(tty *t,
 static inline bool
 tty_internal_should_read_return(tty *t,
                                 devfs_file_handle *h,
-                                u32 read_cnt,
+                                size_t read_cnt,
                                 bool delim_break)
 {
    if (t->c_term.c_lflag & ICANON) {

@@ -67,16 +67,16 @@ int map_page(page_directory_t *, void *vaddr, uptr paddr, bool us, bool rw)
    return 0;
 }
 
-int
+size_t
 map_pages(page_directory_t *pdir,
           void *vaddr,
           uptr paddr,
-          int page_count,
+          size_t page_count,
           bool big_pages_allowed,
           bool us,
           bool rw)
 {
-   for (int i = 0; i < page_count; i++) {
+   for (size_t i = 0; i < page_count; i++) {
       int rc = map_page(pdir,
                         (char *)vaddr + (i << PAGE_SHIFT),
                         paddr + (i << PAGE_SHIFT),
@@ -85,7 +85,7 @@ map_pages(page_directory_t *pdir,
       VERIFY(rc == 0);
    }
 
-   return page_count;
+   return (int)page_count;
 }
 
 void unmap_page(page_directory_t *, void *vaddrp, bool free_pageframe)

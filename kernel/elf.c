@@ -23,9 +23,8 @@ static int load_phdr(fs_handle *elf_file,
       return 0; /* very weird (because the phdr has type LOAD) */
 
    uptr sz = phdr->p_vaddr + phdr->p_memsz - (uptr)vaddr;
-   u32 page_count = (sz + PAGE_SIZE - 1) / PAGE_SIZE;
+   size_t page_count = (sz + PAGE_SIZE - 1) / PAGE_SIZE;
    *end_vaddr_ref = (uptr)vaddr + (page_count << PAGE_SHIFT);
-
 
    for (u32 j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
 
@@ -43,7 +42,7 @@ static int load_phdr(fs_handle *elf_file,
          return rc;
    }
 
-   ret = vfs_seek(elf_file, phdr->p_offset, SEEK_SET);
+   ret = vfs_seek(elf_file, (s64)phdr->p_offset, SEEK_SET);
 
    if (ret != (ssize_t)phdr->p_offset)
       return -ENOEXEC;
@@ -65,10 +64,10 @@ phdr_adjust_page_access(page_directory_t *pdir, Elf_Phdr *phdr)
       return; /* very weird (because the phdr has type LOAD) */
 
    uptr sz = phdr->p_vaddr + phdr->p_memsz - (uptr)vaddr;
-   int page_count = (sz + PAGE_SIZE - 1) / PAGE_SIZE;
+   size_t page_count = (sz + PAGE_SIZE - 1) / PAGE_SIZE;
 
    /* Make the read-only pages to be read-only */
-   for (int j = 0; j < page_count; j++, vaddr += PAGE_SIZE)
+   for (size_t j = 0; j < page_count; j++, vaddr += PAGE_SIZE)
       if (!(phdr->p_flags & PF_W))
          set_page_rw(pdir, vaddr, false);
 }
@@ -139,7 +138,7 @@ int load_elf_program(const char *filepath,
       goto out;
    }
 
-   ret = vfs_seek(elf_file, header.e_phoff, SEEK_SET);
+   ret = vfs_seek(elf_file, (s64)header.e_phoff, SEEK_SET);
 
    if (ret != (ssize_t)header.e_phoff) {
       rc = -ENOEXEC;
@@ -255,9 +254,9 @@ const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
    get_symtab_and_strtab(&symtab, &strtab);
 
    Elf_Sym *syms = (Elf_Sym *) symtab->sh_addr;
-   const int sym_count = symtab->sh_size / sizeof(Elf_Sym);
+   const uptr sym_count = symtab->sh_size / sizeof(Elf_Sym);
 
-   for (int i = 0; i < sym_count; i++) {
+   for (uptr i = 0; i < sym_count; i++) {
       Elf_Sym *s = syms + i;
 
       if (s->st_value <= vaddr && vaddr < s->st_value + s->st_size) {
@@ -266,7 +265,7 @@ const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
             *offset = (ptrdiff_t)(vaddr - s->st_value);
 
          if (sym_size)
-            *sym_size = s->st_size;
+            *sym_size = (u32) s->st_size;
 
          return (char *)strtab->sh_addr + s->st_name;
       }
@@ -283,9 +282,9 @@ uptr find_addr_of_symbol(const char *searched_sym)
    get_symtab_and_strtab(&symtab, &strtab);
 
    Elf_Sym *syms = (Elf_Sym *) symtab->sh_addr;
-   const int sym_count = symtab->sh_size / sizeof(Elf_Sym);
+   const uptr sym_count = symtab->sh_size / sizeof(Elf_Sym);
 
-   for (int i = 0; i < sym_count; i++) {
+   for (uptr i = 0; i < sym_count; i++) {
       if (!strcmp((char *)strtab->sh_addr + syms[i].st_name, searched_sym))
          return syms[i].st_value;
    }

@@ -87,7 +87,7 @@ int vfs_open(const char *path, fs_handle *out)
    if (*path != '/')
       panic("vfs_open() works only with absolute paths");
 
-   pl = strlen(path);
+   pl = (u32)strlen(path);
    mountpoint_iter_begin(&cur);
 
    while ((mp = mountpoint_get_next(&cur))) {

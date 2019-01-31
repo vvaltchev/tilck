@@ -65,14 +65,14 @@ static void term_execute_or_enqueue_action(term *t, term_action a)
    }
 }
 
-void term_write(term *t, const char *buf, u32 len, u8 color)
+void term_write(term *t, const char *buf, size_t len, u8 color)
 {
    ASSERT(len < MB);
 
    term_action a = {
 
       .type3 = a_write,
-      .len = UNSAFE_MIN(len, (uptr)MB - 1),
+      .len = UNSAFE_MIN((u32)len, (u32)MB - 1),
       .col = color,
       .ptr = (uptr)buf
    };

@@ -369,7 +369,7 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
       }
 
       const char *const file_name = pos->name;
-      const u32 fl = strlen(file_name);
+      const u32 fl = (u32)strlen(file_name);
       const u32 entry_size = fl + 1 + sizeof(struct linux_dirent64);
 
       if (offset + entry_size > buf_size) {
@@ -389,7 +389,7 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
       }
 
       ent.d_ino = 0;
-      ent.d_off = offset + entry_size;
+      ent.d_off = (s64)(offset + entry_size);
       ent.d_reclen = (u16)entry_size;
       ent.d_type = DT_UNKNOWN;
 

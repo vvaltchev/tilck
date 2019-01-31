@@ -12,12 +12,12 @@ page_directory_t *kernel_page_dir;
 ATOMIC(page_directory_t *) __curr_pdir;
 char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
-void user_vfree_and_unmap(uptr user_vaddr, int page_count)
+void user_vfree_and_unmap(uptr user_vaddr, size_t page_count)
 {
    page_directory_t *pdir = get_curr_pdir();
    uptr va = user_vaddr;
 
-   for (int i = 0; i < page_count; i++, va += PAGE_SIZE) {
+   for (size_t i = 0; i < page_count; i++, va += PAGE_SIZE) {
 
       if (!is_mapped(pdir, (void *)va))
          continue;
@@ -26,12 +26,12 @@ void user_vfree_and_unmap(uptr user_vaddr, int page_count)
    }
 }
 
-bool user_valloc_and_map_slow(uptr user_vaddr, int page_count)
+bool user_valloc_and_map_slow(uptr user_vaddr, size_t page_count)
 {
    page_directory_t *pdir = get_curr_pdir();
    uptr va = user_vaddr;
 
-   for (int i = 0; i < page_count; i++, va += PAGE_SIZE) {
+   for (size_t i = 0; i < page_count; i++, va += PAGE_SIZE) {
 
       if (is_mapped(pdir, (void *)va)) {
          user_vfree_and_unmap(user_vaddr, i);
@@ -58,11 +58,11 @@ bool user_valloc_and_map_slow(uptr user_vaddr, int page_count)
    return true;
 }
 
-bool user_valloc_and_map(uptr user_vaddr, int page_count)
+bool user_valloc_and_map(uptr user_vaddr, size_t page_count)
 {
    page_directory_t *pdir = get_curr_pdir();
    size_t size = (size_t)page_count << PAGE_SHIFT;
-   int count;
+   size_t count;
 
    void *kernel_vaddr =
       general_kmalloc(&size, KMALLOC_FL_MULTI_STEP | PAGE_SIZE);
@@ -90,16 +90,17 @@ bool user_valloc_and_map(uptr user_vaddr, int page_count)
    return true;
 }
 
-void user_unmap_zero_page(uptr user_vaddr, int page_count)
+void user_unmap_zero_page(uptr user_vaddr, size_t page_count)
 {
    page_directory_t *pdir = get_curr_pdir();
    unmap_pages(pdir, (void *)user_vaddr, page_count, true);
 }
 
-bool user_map_zero_page(uptr user_vaddr, int page_count)
+bool user_map_zero_page(uptr user_vaddr, size_t page_count)
 {
    page_directory_t *pdir = get_curr_pdir();
-   int count = map_zero_pages(pdir, (void *)user_vaddr, page_count, true, true);
+   size_t count =
+      map_zero_pages(pdir, (void *)user_vaddr, page_count, true, true);
 
    if (count != page_count) {
       user_unmap_zero_page(user_vaddr, count);

@@ -481,8 +481,15 @@ TEST_F(kmalloc_test, coalesce_block)
    kmalloc_destroy_heap(&h);
 }
 
-static bool fake_alloc_and_map_func(uptr vaddr, int page_count) { return true; }
-static void fake_free_and_map_func(uptr vaddr, int page_count) { }
+static bool fake_alloc_and_map_func(uptr vaddr, size_t page_count)
+{
+   return true;
+}
+
+static void fake_free_and_map_func(uptr vaddr, size_t page_count)
+{
+   /* do nothing */
+}
 
 TEST_F(kmalloc_test, multi_step_alloc)
 {

@@ -38,27 +38,27 @@ map_page_int(page_directory_t *pdir, void *vaddr, uptr paddr, u32 flags);
 NODISCARD int
 map_zero_page(page_directory_t *pdir, void *vaddrp, bool us, bool rw);
 
-NODISCARD int
+NODISCARD size_t
 map_pages(page_directory_t *pdir,
           void *vaddr,
           uptr paddr,
-          int page_count,
+          size_t page_count,
           bool big_pages_allowed,
           bool us,
           bool rw);
 
-NODISCARD int
+NODISCARD size_t
 map_pages_int(page_directory_t *pdir,
               void *vaddr,
               uptr paddr,
-              int page_count,
+              size_t page_count,
               bool big_pages_allowed,
               u32 flags);
 
-NODISCARD int
+NODISCARD size_t
 map_zero_pages(page_directory_t *pdir,
                void *vaddrp,
-               int page_count,
+               size_t page_count,
                bool us,
                bool rw);
 
@@ -75,10 +75,10 @@ void set_page_rw(page_directory_t *pdir, void *vaddr, bool rw);
 static inline void
 unmap_pages(page_directory_t *pdir,
             void *vaddr,
-            int page_count,
+            size_t page_count,
             bool free_pageframes)
 {
-   for (int i = 0; i < page_count; i++) {
+   for (size_t i = 0; i < page_count; i++) {
       unmap_page(pdir, (char *)vaddr + (i << PAGE_SHIFT), free_pageframes);
    }
 }

@@ -177,7 +177,7 @@ int sys_gcov_get_file_info(int fn,
 
    int rc;
    const struct gcov_info *gi = files_array[fn];
-   const u32 fname_len = strlen(gi->filename);
+   const u32 fname_len = (u32)strlen(gi->filename);
 
    if (fname_buf_size < fname_len + 1) {
       return -ENOBUFS;

@@ -214,7 +214,12 @@ switch_case:
          break;
 
       case 'p':
-         uitoa32_hex_fixed(va_arg(args, uptr), intbuf);
+
+#if NBITS == 32
+            uitoa32_hex_fixed(va_arg(args, uptr), intbuf);
+#elif NBITS == 64
+            uitoa64_hex_fixed(va_arg(args, uptr), intbuf);
+#endif
          WRITE_STR("0x");
          WRITE_STR(intbuf);
          break;
@@ -230,7 +235,7 @@ switch_case:
 
 out:
    ctx->buf[ ctx->buf < ctx->buf_end ? 0 : -1 ] = 0;
-   return (ctx->buf - initial_buf);
+   return (int)(ctx->buf - initial_buf);
 }
 
 int snprintk(char *buf, size_t size, const char *fmt, ...)

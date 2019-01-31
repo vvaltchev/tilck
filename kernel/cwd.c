@@ -41,7 +41,7 @@ sptr sys_chdir(const char *user_path)
       ASSERT(h != NULL);
       vfs_close(h);
 
-      u32 pl = strlen(path);
+      u32 pl = (u32)strlen(path);
       memcpy(pi->cwd, path, pl + 1);
 
       if (pl > 1) {

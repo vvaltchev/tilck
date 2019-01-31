@@ -364,6 +364,7 @@ sptr sys_lstat64(const char *user_path, struct stat64 *user_statbuf)
 
 sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
 {
+   const s64 off64 = (s64)(((u64)off_hi << 32) | off_low);
    fs_handle handle;
    s64 new_off;
    int rc;
@@ -375,7 +376,7 @@ sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
    if (!handle)
       return -EBADF;
 
-   new_off = vfs_seek(handle, (s64)off_hi << 32 | off_low, (int)whence);
+   new_off = vfs_seek(handle, off64, (int)whence);
 
    if (new_off < 0)
       return (sptr) new_off; /* return back vfs_seek's error */

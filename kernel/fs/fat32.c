@@ -291,7 +291,7 @@ fat_getdents64_cb(fat_header *hdr,
    if (file_name == short_name)
       fat_get_short_name(entry, short_name);
 
-   const u32 fl = strlen(file_name);
+   const u32 fl = (u32)strlen(file_name);
    const u32 entry_size = fl + 1 + sizeof(struct linux_dirent64);
 
    if (ctx->offset + entry_size > ctx->buf_size) {
@@ -312,7 +312,7 @@ fat_getdents64_cb(fat_header *hdr,
    }
 
    ent.d_ino = 0;
-   ent.d_off = ctx->offset + entry_size;
+   ent.d_off = (s64)(ctx->offset + entry_size);
    ent.d_reclen = (u16) entry_size;
    ent.d_type = entry->directory ? DT_DIR : DT_REG;
 
@@ -379,7 +379,7 @@ fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
       return rc;
 
    if (ctx.rc != 0)
-      return ctx.rc;
+      return (int)ctx.rc;
 
    return (int) ctx.offset;
 }
