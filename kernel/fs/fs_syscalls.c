@@ -12,18 +12,18 @@
 
 #include <fcntl.h>      // system header
 
-static inline bool is_fd_valid(int fd)
+static inline bool is_fd_valid(u32 fd)
 {
-   return fd >= 0 && fd < (int)ARRAY_SIZE(get_curr_task()->pi->handles);
+   return fd < ARRAY_SIZE(get_curr_task()->pi->handles);
 }
 
-int get_free_handle_num(task_info *task)
+u32 get_free_handle_num(task_info *task)
 {
    for (u32 free_fd = 0; free_fd < ARRAY_SIZE(task->pi->handles); free_fd++)
       if (!task->pi->handles[free_fd])
          return free_fd;
 
-   return -1;
+   return (u32) -1;
 }
 
 /*
@@ -34,7 +34,7 @@ int get_free_handle_num(task_info *task)
  * TODO: introduce a ref-count in the fs_base_handle struct and function like
  * put_fs_handle() or rename both to something like acquire/release_fs_handle.
  */
-fs_handle get_fs_handle(int fd)
+fs_handle get_fs_handle(u32 fd)
 {
    task_info *curr = get_curr_task();
    fs_handle handle = NULL;
@@ -74,7 +74,7 @@ sptr sys_open(const char *user_path, int flags, int mode)
       goto end;
    }
 
-   int free_fd = get_free_handle_num(curr);
+   u32 free_fd = get_free_handle_num(curr);
 
    if (!is_fd_valid(free_fd))
       goto no_fds;
@@ -89,7 +89,7 @@ sptr sys_open(const char *user_path, int flags, int mode)
    ASSERT(h != NULL);
 
    curr->pi->handles[free_fd] = h;
-   ret = free_fd;
+   ret = (sptr) free_fd;
 
 end:
    // printk("[TID: %i] sys_open('%s' => '%s', %x, %x) => %d\n",
@@ -103,13 +103,12 @@ no_fds:
    goto end;
 }
 
-sptr sys_close(int fd)
+sptr sys_close(int user_fd)
 {
    task_info *curr = get_curr_task();
    fs_handle handle;
    sptr ret = 0;
-
-   //printk("[TID: %i] sys_close(fd = %d)\n", curr->tid, fd);
+   u32 fd = (u32) user_fd;
 
    disable_preemption();
 
@@ -134,11 +133,12 @@ end:
    return ret;
 }
 
-sptr sys_read(int fd, void *user_buf, size_t count)
+sptr sys_read(int user_fd, void *user_buf, size_t count)
 {
    sptr ret;
    task_info *curr = get_curr_task();
    fs_handle handle;
+   const u32 fd = (u32) user_fd;
 
    handle = get_fs_handle(fd);
 
@@ -149,7 +149,7 @@ sptr sys_read(int fd, void *user_buf, size_t count)
    ret = vfs_read(curr->pi->handles[fd], curr->io_copybuf, count);
 
    if (ret > 0) {
-      if (copy_to_user(user_buf, curr->io_copybuf, ret) < 0) {
+      if (copy_to_user(user_buf, curr->io_copybuf, (size_t)ret) < 0) {
          // TODO: do we have to rewind the stream in this case?
          ret = -EFAULT;
          goto end;
@@ -160,11 +160,17 @@ end:
    return ret;
 }
 
-sptr sys_write(int fd, const void *user_buf, size_t count)
+sptr sys_write(int user_fd, const void *user_buf, size_t count)
 {
    task_info *curr = get_curr_task();
    fs_handle handle;
    sptr ret;
+   const u32 fd = (u32) user_fd;
+
+   handle = get_fs_handle(fd);
+
+   if (!handle)
+      return -EBADF;
 
    count = MIN(count, IO_COPYBUF_SIZE);
    ret = copy_from_user(curr->io_copybuf, user_buf, count);
@@ -172,16 +178,12 @@ sptr sys_write(int fd, const void *user_buf, size_t count)
    if (ret < 0)
       return -EFAULT;
 
-   handle = get_fs_handle(fd);
-
-   if (!handle)
-      return -EBADF;
-
    return vfs_write(handle, (char *)curr->io_copybuf, count);
 }
 
-sptr sys_ioctl(int fd, uptr request, void *argp)
+sptr sys_ioctl(int user_fd, uptr request, void *argp)
 {
+   const u32 fd = (u32) user_fd;
    fs_handle handle = get_fs_handle(fd);
 
    if (!handle)
@@ -190,12 +192,17 @@ sptr sys_ioctl(int fd, uptr request, void *argp)
    return vfs_ioctl(handle, request, argp);
 }
 
-sptr sys_writev(int fd, const struct iovec *user_iov, int iovcnt)
+sptr sys_writev(int user_fd, const struct iovec *user_iov, int user_iovcnt)
 {
    task_info *curr = get_curr_task();
+   const u32 fd = (u32) user_fd;
+   const u32 iovcnt = (u32) user_iovcnt;
    fs_handle handle;
    sptr ret = 0;
    sptr rc;
+
+   if (user_iovcnt <= 0)
+      return -EINVAL;
 
    if (sizeof(struct iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
@@ -220,9 +227,9 @@ sptr sys_writev(int fd, const struct iovec *user_iov, int iovcnt)
    // In order to achieve that, it might be necessary to expose from vfs
    // a lock/unlock interface, or to entirely implement sys_writev in vfs.
 
-   for (int i = 0; i < iovcnt; i++) {
+   for (u32 i = 0; i < iovcnt; i++) {
 
-      rc = sys_write(fd, iov[i].iov_base, iov[i].iov_len);
+      rc = sys_write(user_fd, iov[i].iov_base, iov[i].iov_len);
 
       if (rc < 0) {
          ret = rc;
@@ -242,12 +249,17 @@ sptr sys_writev(int fd, const struct iovec *user_iov, int iovcnt)
    return ret;
 }
 
-sptr sys_readv(int fd, const struct iovec *user_iov, int iovcnt)
+sptr sys_readv(int user_fd, const struct iovec *user_iov, int user_iovcnt)
 {
    task_info *curr = get_curr_task();
+   const u32 fd = (u32) user_fd;
+   const u32 iovcnt = (u32) user_iovcnt;
    fs_handle handle;
    sptr ret = 0;
    sptr rc;
+
+   if (user_iovcnt <= 0)
+      return -EINVAL;
 
    if (sizeof(struct iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
@@ -268,9 +280,9 @@ sptr sys_readv(int fd, const struct iovec *user_iov, int iovcnt)
 
    const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
 
-   for (int i = 0; i < iovcnt; i++) {
+   for (u32 i = 0; i < iovcnt; i++) {
 
-      rc = sys_read(fd, iov[i].iov_base, iov[i].iov_len);
+      rc = sys_read(user_fd, iov[i].iov_base, iov[i].iov_len);
 
       if (rc < 0) {
          ret = rc;
@@ -363,10 +375,10 @@ sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
    if (!handle)
       return -EBADF;
 
-   new_off = vfs_seek(handle, (s64)off_hi << 32 | off_low, whence);
+   new_off = vfs_seek(handle, (s64)off_hi << 32 | off_low, (int)whence);
 
    if (new_off < 0)
-      return new_off;
+      return (sptr) new_off; /* return back vfs_seek's error */
 
    rc = copy_to_user(result, &new_off, sizeof(*result));
 
@@ -376,8 +388,9 @@ sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
    return 0;
 }
 
-sptr sys_getdents64(int fd, struct linux_dirent64 *user_dirp, u32 buf_size)
+sptr sys_getdents64(int user_fd, struct linux_dirent64 *user_dirp, u32 buf_size)
 {
+   const u32 fd = (u32) user_fd;
    fs_handle handle;
    int rc;
 
@@ -438,8 +451,9 @@ static void debug_print_fcntl_command(int cmd)
    }
 }
 
-sptr sys_fcntl64(int fd, int cmd, uptr arg)
+sptr sys_fcntl64(int user_fd, int cmd, uptr arg)
 {
+   const u32 fd = (u32) user_fd;
    fs_handle handle;
 
    handle = get_fs_handle(fd);

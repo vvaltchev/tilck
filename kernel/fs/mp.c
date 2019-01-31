@@ -109,7 +109,7 @@ mountpoint *mountpoint_get_next(_mp_cursor *c)
    ASSERT(c->curr_mp >= 0);
    ASSERT(!is_preemption_enabled());
 
-   for (u32 i = c->curr_mp++; i < ARRAY_SIZE(mps); i++) {
+   for (int i = c->curr_mp++; i < (int)ARRAY_SIZE(mps); i++) {
       if (mps[i] != NULL)
          return mps[i];
    }
