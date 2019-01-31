@@ -66,7 +66,7 @@ snprintk_ctx_reset_per_argument_state(snprintk_ctx *ctx)
 static bool
 write_str(snprintk_ctx *ctx, const char *str)
 {
-   int sl = strlen(str);
+   int sl = (int) strlen(str);
    int lpad = MAX(0, ctx->left_padding - sl);
    int rpad = MAX(0, ctx->right_padding - sl);
 
@@ -200,7 +200,7 @@ switch_case:
          break;
 
       case 'c':
-         WRITE_CHAR(va_arg(args, s32));
+         WRITE_CHAR((char) va_arg(args, s32));
 
          if (ctx->right_padding > 0) {
             ctx->right_padding--;
@@ -398,7 +398,7 @@ void vprintk(const char *fmt, va_list args)
    if (prefix)
       written = snprintk(buf, sizeof(buf), "[kernel] ");
 
-   written += vsnprintk(buf + written, sizeof(buf) - written, fmt, args);
+   written += vsnprintk(buf + written, sizeof(buf) - (u32)written, fmt, args);
 
    if (written == sizeof(buf)) {
 
@@ -415,12 +415,12 @@ void vprintk(const char *fmt, va_list args)
    }
 
    if (!term_is_initialized(get_curr_term())) {
-      printk_append_to_ringbuf(buf, written);
+      printk_append_to_ringbuf(buf, (size_t) written);
       return;
    }
 
    if (in_panic()) {
-      printk_direct_flush(buf, written, PRINTK_PANIC_COLOR);
+      printk_direct_flush(buf, (size_t) written, PRINTK_PANIC_COLOR);
       return;
    }
 
@@ -440,13 +440,13 @@ void vprintk(const char *fmt, va_list args)
 
       if (!cs.in_printk) {
 
-         printk_direct_flush(buf, written, PRINTK_COLOR);
+         printk_direct_flush(buf, (size_t) written, PRINTK_COLOR);
          printk_flush_ringbuf();
 
       } else {
 
          /* in_printk was already 1 */
-         printk_append_to_ringbuf(buf, written);
+         printk_append_to_ringbuf(buf, (size_t) written);
       }
 
    }
