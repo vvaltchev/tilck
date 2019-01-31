@@ -15,10 +15,10 @@ typedef struct {
 
 void init_tasklets();
 
-task_info *get_tasklet_runner(int tn);
-int create_tasklet_thread(int tn, int limit);
-bool any_tasklets_to_run(int tn);
-u32 get_tasklet_runner_limit(int tn);
+task_info *get_tasklet_runner(u32 tn);
+int create_tasklet_thread(int priority, u16 limit);
+bool any_tasklets_to_run(u32 tn);
+u32 get_tasklet_runner_limit(u32 tn);
 void destroy_last_tasklet_thread(void);
 
 task_info *get_hi_prio_ready_tasklet_runner(void);

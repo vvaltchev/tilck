@@ -107,9 +107,9 @@ void debug_show_spurious_irq_count(void)
 
 static int debug_get_tn_for_tasklet_runner(task_info *ti)
 {
-   for (int i = 0; i < MAX_TASKLET_THREADS; i++)
+   for (u32 i = 0; i < MAX_TASKLET_THREADS; i++)
       if (get_tasklet_runner(i) == ti)
-         return i;
+         return (int)i;
 
    return -1;
 }
