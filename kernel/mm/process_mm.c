@@ -61,7 +61,7 @@ bool user_valloc_and_map_slow(uptr user_vaddr, int page_count)
 bool user_valloc_and_map(uptr user_vaddr, int page_count)
 {
    page_directory_t *pdir = get_curr_pdir();
-   size_t size = page_count * PAGE_SIZE;
+   size_t size = (size_t)page_count << PAGE_SHIFT;
    int count;
 
    void *kernel_vaddr =
@@ -280,7 +280,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
       disable_preemption();
       {
-         handle = get_fs_handle(fd);
+         handle = get_fs_handle((u32) fd);
       }
       enable_preemption();
 

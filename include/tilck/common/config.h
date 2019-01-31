@@ -33,7 +33,7 @@
    #undef LINEAR_MAPPING_MB
 
    #define KERNEL_BASE_VA             ((uptr)kernel_va)
-   #define LINEAR_MAPPING_MB          (128)
+   #define LINEAR_MAPPING_MB          (128u)
 
 #endif
 

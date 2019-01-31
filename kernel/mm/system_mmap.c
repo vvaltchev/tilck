@@ -82,7 +82,7 @@ STATIC void remove_mem_region(int i)
    memory_region_t *ma = mem_regions + i;
    const int rem = mem_regions_count - i - 1;
 
-   memcpy(ma, ma + 1, rem * sizeof(memory_region_t));
+   memcpy(ma, ma + 1, (size_t) rem * sizeof(memory_region_t));
    mem_regions_count--; /* decrease the number of memory regions */
 }
 
@@ -410,7 +410,7 @@ STATIC void set_lower_and_upper_kb(void)
       memory_region_t *m = mem_regions + i;
 
       if (m->type == MULTIBOOT_MEMORY_AVAILABLE) {
-         __mem_lower_kb = m->addr / KB;
+         __mem_lower_kb = (uptr) (m->addr / KB);
          break;
       }
    }
@@ -420,7 +420,7 @@ STATIC void set_lower_and_upper_kb(void)
       memory_region_t *m = mem_regions + i;
 
       if (m->type == MULTIBOOT_MEMORY_AVAILABLE) {
-         __mem_upper_kb = (m->addr + m->len) / KB;
+         __mem_upper_kb = (uptr) ((m->addr + m->len) / KB);
          break;
       }
    }
@@ -474,8 +474,8 @@ linear_map_mem_region(memory_region_t *r, uptr *vbegin, uptr *vend)
    if (r->addr >= LINEAR_MAPPING_SIZE)
       return false;
 
-   const uptr pbegin = r->addr;
-   const uptr pend = MIN(r->addr + r->len, (uptr)LINEAR_MAPPING_SIZE);
+   const uptr pbegin = (uptr) r->addr;
+   const uptr pend = MIN((uptr)(r->addr + r->len), (uptr)LINEAR_MAPPING_SIZE);
    const bool rw = (r->type == MULTIBOOT_MEMORY_AVAILABLE) ||
                    (r->extra & MEM_REG_EXTRA_KERNEL);
 
