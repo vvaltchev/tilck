@@ -189,7 +189,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
 void set_current_task_in_kernel(void);
 void set_current_task_in_user_mode(void);
 
-task_info *allocate_new_process(task_info *parent, int pid);
+task_info *allocate_new_process(task_info *parent, u16 pid);
 task_info *allocate_new_thread(process_info *pi);
 void free_task(task_info *ti);
 void free_mem_for_zombie_task(task_info *ti);

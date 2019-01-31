@@ -216,7 +216,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
       if (pid < 0)
          return NULL;
 
-      ti = allocate_new_process(kernel_process, pid);
+      ti = allocate_new_process(kernel_process, (u16) pid);
 
       if (!ti)
          return NULL;

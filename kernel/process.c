@@ -80,7 +80,7 @@ void init_task_lists(task_info *ti)
    bzero(&ti->wobj, sizeof(wait_obj));
 }
 
-task_info *allocate_new_process(task_info *parent, int pid)
+task_info *allocate_new_process(task_info *parent, u16 pid)
 {
    process_info *pi;
    task_info *ti = kmalloc(sizeof(task_info) + sizeof(process_info));
@@ -137,7 +137,7 @@ task_info *allocate_new_thread(process_info *pi)
    ti->pi = pi;
    ti->tid = -1;
    ti->tid = thread_ti_to_tid(ti);
-   ti->pid = proc->tid;
+   ti->pid = (u16) proc->tid;
    ASSERT(thread_tid_to_ti(ti->tid) == ti);
 
    init_task_lists(ti);
@@ -535,12 +535,12 @@ sptr sys_fork(void)
 
    int pid = create_new_pid();
 
-   if (pid == -1) {
+   if (pid < 0) {
       enable_preemption();
       return -EAGAIN;
    }
 
-   task_info *child = allocate_new_process(curr, pid);
+   task_info *child = allocate_new_process(curr, (u16) pid);
 
    if (!child) {
       enable_preemption();
@@ -571,7 +571,7 @@ sptr sys_fork(void)
    set_return_register(child->state_regs, 0);
 
    // Make the parent to get child's pid as return value.
-   set_return_register(curr->state_regs, child->tid);
+   set_return_register(curr->state_regs, (u32) child->tid);
 
    /* Duplicate all the handles */
    for (u32 i = 0; i < ARRAY_SIZE(child->pi->handles); i++) {
