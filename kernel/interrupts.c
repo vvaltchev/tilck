@@ -159,20 +159,17 @@ void panic_dump_nested_interrupts(void)
    VERIFY(in_panic());
    ASSERT(!are_interrupts_enabled());
 
-   //if (!nested_interrupts_count)
-   //   return;
-
    char buf[128];
    int written = 0;
 
-   written += snprintk(buf + written, sizeof(buf) - written, "Interrupts: [ ");
+   written += snprintk(buf + written, sizeof(buf), "Interrupts: [ ");
 
    for (int i = nested_interrupts_count - 1; i >= 0; i--) {
-      written += snprintk(buf  + written, sizeof(buf) - written,
+      written += snprintk(buf + written, sizeof(buf) - (u32)written,
                           "%i ", nested_interrupts[i]);
    }
 
-   /* written += */ snprintk(buf + written, sizeof(buf) - written, "]\n");
+   /* written += */ snprintk(buf + written, sizeof(buf) - (u32) written, "]\n");
    printk("%s", buf);
 }
 

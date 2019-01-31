@@ -40,21 +40,21 @@ bool is_kmalloc_initialized(void)
 
 STATIC_INLINE int ptr_to_node(kmalloc_heap *h, void *ptr, size_t size)
 {
-   const int size_log = log2_for_power_of_2(size);
+   const uptr size_log = log2_for_power_of_2(size);
 
    const uptr offset = (uptr)ptr - h->vaddr;
-   const int nodes_before_our = (1 << (h->heap_data_size_log2 - size_log)) - 1;
-   const int position_in_row = offset >> size_log;
+   const uptr nodes_before_our = (1 << (h->heap_data_size_log2 - size_log)) - 1;
+   const uptr position_in_row = offset >> size_log;
 
-   return nodes_before_our + position_in_row;
+   return (int)(nodes_before_our + position_in_row);
 }
 
 STATIC_INLINE void *node_to_ptr(kmalloc_heap *h, int node, size_t size)
 {
-   const int size_log = log2_for_power_of_2(size);
+   const uptr size_log = log2_for_power_of_2(size);
 
-   const int nodes_before_our = (1 << (h->heap_data_size_log2 - size_log)) - 1;
-   const int position_in_row = node - nodes_before_our;
+   const uptr nodes_before_our = (1 << (h->heap_data_size_log2 - size_log)) - 1;
+   const uptr position_in_row = (u32)node - nodes_before_our;
    const uptr offset = position_in_row << size_log;
 
    return (void *)(offset + h->vaddr);
@@ -114,7 +114,6 @@ static size_t set_free_uplevels(kmalloc_heap *h, int *node, size_t size)
       n = NODE_PARENT(n);
    }
 
-
    return curr_size;
 }
 
@@ -136,14 +135,14 @@ actual_allocate_node(kmalloc_heap *h,
       return true; // nothing to do!
 
    uptr alloc_block_vaddr = vaddr & ~(h->alloc_block_size - 1);
-   const int alloc_block_count =
+   const u32 alloc_block_count =
       1 + ((node_size - 1) >> h->alloc_block_size_log2);
 
    /*
     * Code dealing with the tricky allocation logic.
     */
 
-   for (int i = 0; i < alloc_block_count; i++) {
+   for (u32 i = 0; i < alloc_block_count; i++) {
 
       int alloc_node = ptr_to_node(h,
                                    (void *)alloc_block_vaddr,
@@ -225,7 +224,7 @@ internal_kmalloc_split_block(kmalloc_heap *h,
    for (s = block_size; s > leaf_node_size; s >>= 1) {
 
       if (s != h->alloc_block_size) {
-         memset(&nodes[n], FL_NODE_SPLIT | FL_NODE_FULL, node_count);
+         memset(&nodes[n], FL_NODE_SPLIT | FL_NODE_FULL, (size_t)node_count);
       } else {
          for (int j = 0; j < node_count; j++)
             nodes[n + j].raw |= (FL_NODE_SPLIT | FL_NODE_FULL);
@@ -238,7 +237,7 @@ internal_kmalloc_split_block(kmalloc_heap *h,
    ASSERT(s == leaf_node_size);
 
    if (s != h->alloc_block_size) {
-      memset(&nodes[n], FL_NODE_FULL, node_count);
+      memset(&nodes[n], FL_NODE_FULL, (size_t)node_count);
    } else {
       for (int j = 0; j < node_count; j++) {
          nodes[n + j].full = 1;
@@ -267,7 +266,7 @@ internal_kmalloc_coalesce_block(kmalloc_heap *h,
       if (s > h->min_block_size) {
 
          if (s != h->alloc_block_size) {
-            bzero(&nodes[n], node_count);
+            bzero(&nodes[n], (size_t)node_count);
          } else {
             for (int j = n; j < n + node_count; j++)
                nodes[j].raw &= ~(FL_NODE_SPLIT | FL_NODE_FULL);
@@ -355,7 +354,7 @@ internal_kmalloc(kmalloc_heap *h,
 
          for (int ss = stack_size - 2; ss >= 0; ss--) {
 
-            const int nn = (uptr) STACK_VAR[ss].arg2; /* arg2: node */
+            const int nn = (int)(sptr) STACK_VAR[ss].arg2; /* arg2: node */
 
             if (nodes[NODE_LEFT(nn)].full && nodes[NODE_RIGHT(nn)].full) {
                ASSERT(!nodes[nn].full);
@@ -487,9 +486,9 @@ per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags)
    const int big_block_node = ptr_to_node(h, big_block, rounded_up_size);
    size_t tot = 0;
 
-   for (int i = h->heap_data_size_log2 - 1; i >= 0 && tot < desired_size; i--) {
-
-      const size_t s = (1 << i);
+   for (int i=(int)h->heap_data_size_log2-1; i >= 0 && tot < desired_size; i--)
+   {
+      const size_t s = (1u << i);
 
       if (!(desired_size & s))
          continue;
@@ -561,7 +560,7 @@ internal_kfree(kmalloc_heap *h,
       return; // nothing to do!
 
    uptr alloc_block_vaddr = (uptr)ptr & ~(h->alloc_block_size - 1);
-   const int alloc_block_count = 1 + ((size - 1) >> h->alloc_block_size_log2);
+   const u32 alloc_block_count = 1 + ((size - 1) >> h->alloc_block_size_log2);
 
    /*
     * Code dealing with the tricky allocation logic.
@@ -569,7 +568,7 @@ internal_kfree(kmalloc_heap *h,
 
    DEBUG_free_alloc_block_count;
 
-   for (int i = 0; i < alloc_block_count; i++) {
+   for (u32 i = 0; i < alloc_block_count; i++) {
 
       const int alloc_node =
          ptr_to_node(h, (void *)alloc_block_vaddr, h->alloc_block_size);
@@ -679,7 +678,7 @@ per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
 
    size_t tot = 0;
 
-   for (int i = h->heap_data_size_log2 - 1; i >= 0 && tot < size; i--) {
+   for (int i = (int)h->heap_data_size_log2 - 1; i >= 0 && tot < size; i--) {
 
       const size_t sub_block_size = (1 << i);
 
