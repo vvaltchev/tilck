@@ -24,7 +24,7 @@ static void kmalloc_perf_print_iters(int iters)
             : (iters < 1000000 ? "K" : "M"));
 }
 
-static void kmalloc_perf_per_size(int size)
+static void kmalloc_perf_per_size(u32 size)
 {
    const int iters = size < 4096 ? 10000 : (size <= 16*KB ? 1000 : 100);
    u64 start, duration;
@@ -80,7 +80,7 @@ void selftest_kmalloc_perf_med(void)
    kmalloc_perf_print_iters(iters * RANDOM_VALUES_COUNT);
    printk(NO_PREFIX "Cycles per kmalloc(RANDOM) + kfree: %llu\n", duration);
 
-   for (int s = 32; s <= 256*KB; s *= 2) {
+   for (u32 s = 32; s <= 256*KB; s *= 2) {
       kmalloc_perf_per_size(s);
    }
 

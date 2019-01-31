@@ -21,7 +21,7 @@ static void test_kmutex_thread(void *arg)
 
    printk("%i) under lock..\n", arg);
 
-   for (int i = 0; i < 128*MB; i++) {
+   for (u32 i = 0; i < 128*MB; i++) {
       asmVolatile("nop");
    }
 

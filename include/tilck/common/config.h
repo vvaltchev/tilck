@@ -4,8 +4,8 @@
 
 /* Utils */
 
-#define KB (1024)
-#define MB (1024*1024)
+#define KB (1024u)
+#define MB (1024u * 1024u)
 
 #include <generated_config.h>
 
