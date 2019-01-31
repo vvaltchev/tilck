@@ -51,7 +51,7 @@ static void internal_copy_user_str(void *dest,
 
    } while (*ptr++);
 
-   *written_ptr = (d - (char *)dest); /* written includes the final \0 */
+   *written_ptr = (size_t)(d - (char *)dest); /* written includes the final 0 */
 }
 
 /*
@@ -132,7 +132,7 @@ internal_copy_str_array_from_user(void *dest,
 
    dest_arr[argc] = NULL;
    after_ptrs_arr = (char *) &dest_arr[argc + 1];
-   written += (after_ptrs_arr - (char *)dest_arr);
+   written += (u32)(after_ptrs_arr - (char *)dest_arr);
 
    for (int i = 0; i < argc; i++) {
 
