@@ -45,7 +45,7 @@ general_kmalloc(size_t *size, u32 flags)
    }
 
    // Iterate in reverse-order because the first heaps are the biggest ones.
-   for (int i = used_heaps - 1; i >= 0; i--) {
+   for (int i = (int)used_heaps - 1; i >= 0; i--) {
 
       ASSERT(heaps[i] != NULL);
 
@@ -97,7 +97,7 @@ general_kfree(void *ptr, size_t *size, u32 flags)
 
    kmalloc_heap *h = NULL;
 
-   for (int i = used_heaps - 1; i >= 0; i--) {
+   for (int i = (int)used_heaps - 1; i >= 0; i--) {
 
       uptr hva = heaps[i]->vaddr;
 

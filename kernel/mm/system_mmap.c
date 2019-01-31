@@ -42,7 +42,7 @@ STATIC void sort_mem_regions(void)
 {
    insertion_sort_generic(mem_regions,
                           sizeof(memory_region_t),
-                          mem_regions_count,
+                          (size_t)mem_regions_count,
                           less_than_cmp_mem_region);
 }
 
