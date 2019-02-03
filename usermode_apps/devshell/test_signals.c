@@ -86,6 +86,11 @@ static void child_generate_sigfpe(void)
       val = 35 / zero_val;
 }
 
+static void child_generate_sigabrt(void)
+{
+   abort();
+}
+
 int cmd_sigsegv1(int argc, char **argv)
 {
    return test_sig(child_generate_gpf, SIGSEGV);
@@ -104,4 +109,9 @@ int cmd_sigill(int argc, char **argv)
 int cmd_sigfpe(int argc, char **argv)
 {
    return test_sig(child_generate_sigfpe, SIGFPE);
+}
+
+int cmd_sigabrt(int argc, char **argv)
+{
+   return test_sig(child_generate_sigabrt, SIGABRT);
 }

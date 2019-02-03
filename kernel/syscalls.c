@@ -10,6 +10,7 @@
 #include <tilck/kernel/gcov.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/signal.h>
 
 sptr sys_rt_sigprocmask(/* args ignored at the moment */)
 {
@@ -137,4 +138,65 @@ sptr sys_tilck_cmd(enum tilck_testcmd_type cmd,
          break;
    }
    return -EINVAL;
+}
+
+/* NOTE: deprecated syscall */
+sptr sys_tkill(int tid, int sig)
+{
+   task_info *ti;
+
+   if (sig > 32 || sig < 0 || tid <= 0)
+      return -EINVAL;
+
+   ti = get_task(tid);
+
+   if (!ti)
+      return -ESRCH;
+
+   if (sig == 0) {
+      /* sig == 0 means just that the user app is checking permissions */
+      return 0;
+   }
+
+   send_signal(ti, sig);
+   return 0;
+}
+
+sptr sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
+{
+   task_info *ti;
+
+   if (pid != tid) {
+      printk("sys_tgkill: pid != tid NOT SUPPORTED yet.\n");
+      return -EINVAL;
+   }
+
+   if (sig > 32 || sig < 0 || pid <= 0 || tid <= 0)
+      return -EINVAL;
+
+   ti = get_task(tid);
+
+   if (!ti)
+      return -ESRCH;
+
+   if (ti->pid != pid)
+      return -ESRCH;
+
+   if (sig == 0) {
+      /* sig == 0 means just that the user app is checking permissions */
+      return 0;
+   }
+
+   send_signal(ti, sig);
+   return 0;
+}
+
+sptr sys_kill(pid_t pid, int sig)
+{
+   if (pid <= 0) {
+      printk("sys_kill: pid <= 0 NOT SUPPORTED yet.\n");
+      return -EINVAL;
+   }
+
+   return sys_tgkill(pid, pid, sig);
 }

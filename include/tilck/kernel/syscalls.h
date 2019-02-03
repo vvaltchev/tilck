@@ -77,7 +77,9 @@ sptr sys_access(const char *pathname, int mode);
 
 CREATE_STUB_SYSCALL_IMPL(sys_nice)
 CREATE_STUB_SYSCALL_IMPL(sys_sync)
-CREATE_STUB_SYSCALL_IMPL(sys_kill)
+
+sptr sys_kill(pid_t pid, int sig);
+
 CREATE_STUB_SYSCALL_IMPL(sys_rename)
 CREATE_STUB_SYSCALL_IMPL(sys_mkdir)
 CREATE_STUB_SYSCALL_IMPL(sys_rmdir)
@@ -305,7 +307,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_flistxattr)
 CREATE_STUB_SYSCALL_IMPL(sys_removexattr)
 CREATE_STUB_SYSCALL_IMPL(sys_lremovexattr)
 CREATE_STUB_SYSCALL_IMPL(sys_fremovexattr)
-CREATE_STUB_SYSCALL_IMPL(sys_tkill)
+
+sptr sys_tkill(int tid, int sig);
+
 CREATE_STUB_SYSCALL_IMPL(sys_sendfile64)
 CREATE_STUB_SYSCALL_IMPL(sys_futex)
 CREATE_STUB_SYSCALL_IMPL(sys_sched_setaffinity)
@@ -345,7 +349,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_clock_getres)
 CREATE_STUB_SYSCALL_IMPL(sys_clock_nanosleep)
 CREATE_STUB_SYSCALL_IMPL(sys_statfs64)
 CREATE_STUB_SYSCALL_IMPL(sys_fstatfs64)
-CREATE_STUB_SYSCALL_IMPL(sys_tgkill)
+
+sptr sys_tgkill(int pid /* linux: tgid */, int tid, int sig);
+
 CREATE_STUB_SYSCALL_IMPL(sys_utimes)
 CREATE_STUB_SYSCALL_IMPL(sys_fadvise64_64)
 CREATE_STUB_SYSCALL_IMPL(sys_mbind)

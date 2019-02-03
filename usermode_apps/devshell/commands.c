@@ -29,6 +29,7 @@ int cmd_sigsegv1(int argc, char **argv);
 int cmd_sigsegv2(int argc, char **argv);
 int cmd_sigill(int argc, char **argv);
 int cmd_sigfpe(int argc, char **argv);
+int cmd_sigabrt(int argc, char **argv);
 
 int cmd_loop(int argc, char **argv)
 {
@@ -262,7 +263,8 @@ struct {
    CMD_ENTRY(sigsegv1, TT_SHORT, true),
    CMD_ENTRY(sigsegv2, TT_SHORT, true),
    CMD_ENTRY(sigill, TT_SHORT, true),
-   CMD_ENTRY(sigfpe, TT_SHORT, true)
+   CMD_ENTRY(sigfpe, TT_SHORT, true),
+   CMD_ENTRY(sigabrt, TT_SHORT, true)
 };
 
 #undef CMD_ENTRY
