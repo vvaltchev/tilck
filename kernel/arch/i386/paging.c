@@ -14,6 +14,7 @@
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/signal.h>
 
 #include "paging_int.h"
 
@@ -147,13 +148,13 @@ void handle_page_fault_int(regs *r)
             r->eip, sym_name ? sym_name : "???", off);
    }
 
-   panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p\n",
-         rw ? "WRITE" : "READ",
-         vaddr,
-         "userland",
-         !p ? " (NON present)." : ".", r->eip);
+   printk("USER PAGE FAULT in attempt to %s %p%s\nEIP: %p\n",
+          rw ? "WRITE" : "READ",
+          vaddr,
+          !p ? " (NON present)." : ".", r->eip);
 
-   // We are not really handling yet user page-faults.
+   end_fault_handler_state();
+   send_signal(get_curr_task(), SIGSEGV);
 }
 
 

@@ -9,8 +9,7 @@
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/hal.h>
-
-#include <signal.h> // system header
+#include <tilck/kernel/signal.h>
 
 #include "gdt_int.h"
 
@@ -470,5 +469,5 @@ void handle_gpf(regs *r)
    }
 
    end_fault_handler_state();
-   terminate_process(get_curr_task(), 0, SIGSEGV); /* calls the scheduler */
+   send_signal(get_curr_task(), SIGSEGV);
 }
