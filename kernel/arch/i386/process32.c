@@ -471,3 +471,14 @@ void handle_gpf(regs *r)
    end_fault_handler_state();
    send_signal(get_curr_task(), SIGSEGV);
 }
+
+/* Illegal instruction fault handler */
+void handle_ill(regs *r)
+{
+   if (!get_curr_task() || is_kernel_thread(get_curr_task())) {
+      panic("Illegal instruction fault. Error: %p\n", r->err_code);
+   }
+
+   end_fault_handler_state();
+   send_signal(get_curr_task(), SIGILL);
+}

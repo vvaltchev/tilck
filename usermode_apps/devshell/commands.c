@@ -22,10 +22,12 @@ int cmd_wpid1(int argc, char **argv);
 int cmd_wpid2(int argc, char **argv);
 int cmd_wpid3(int argc, char **argv);
 int cmd_wpid4(int argc, char **argv);
-int cmd_wpid5(int argc, char **argv);
 int cmd_fork(int argc, char **argv);
 int cmd_fork_perf(int argc, char **argv);
 int cmd_fork_se(int argc, char **argv);
+int cmd_sigsegv1(int argc, char **argv);
+int cmd_sigsegv2(int argc, char **argv);
+int cmd_sigill(int argc, char **argv);
 
 int cmd_loop(int argc, char **argv)
 {
@@ -256,7 +258,9 @@ struct {
    CMD_ENTRY(wpid2, TT_SHORT, true),
    CMD_ENTRY(wpid3, TT_SHORT, true),
    CMD_ENTRY(wpid4, TT_SHORT, true),
-   CMD_ENTRY(wpid5, TT_SHORT, true)
+   CMD_ENTRY(sigsegv1, TT_SHORT, true),
+   CMD_ENTRY(sigsegv2, TT_SHORT, true),
+   CMD_ENTRY(sigill, TT_SHORT, true),
 };
 
 #undef CMD_ENTRY

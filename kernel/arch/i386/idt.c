@@ -9,6 +9,7 @@
 #include "idt_int.h"
 
 void handle_gpf(regs *r);
+void handle_ill(regs *r);
 
 extern void (*fault_entry_points[32])(void);
 
@@ -148,5 +149,6 @@ void setup_soft_interrupt_handling(void)
 
    load_idt(idt, ARRAY_SIZE(idt));
    set_fault_handler(FAULT_GENERAL_PROTECTION, handle_gpf);
+   set_fault_handler(FAULT_INVALID_OPCODE, handle_ill);
 }
 
