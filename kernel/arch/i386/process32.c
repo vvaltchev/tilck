@@ -482,3 +482,25 @@ void handle_ill(regs *r)
    end_fault_handler_state();
    send_signal(get_curr_task(), SIGILL);
 }
+
+/* Division by zero fault handler */
+void handle_div0(regs *r)
+{
+   if (!get_curr_task() || is_kernel_thread(get_curr_task())) {
+      panic("Division by zero fault. Error: %p\n", r->err_code);
+   }
+
+   end_fault_handler_state();
+   send_signal(get_curr_task(), SIGFPE);
+}
+
+/* Coproc fault handler */
+void handle_cpf(regs *r)
+{
+   if (!get_curr_task() || is_kernel_thread(get_curr_task())) {
+      panic("Co-processor (fpu) fault. Error: %p\n", r->err_code);
+   }
+
+   end_fault_handler_state();
+   send_signal(get_curr_task(), SIGFPE);
+}
