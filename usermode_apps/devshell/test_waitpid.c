@@ -272,7 +272,7 @@ int cmd_wpid5(int argc, char **argv)
    if (!child_pid) {
 
       /* cause a general fault protection */
-      __asm__ volatile("hlt");
+      asmVolatile("hlt");
       exit(0);
    }
 

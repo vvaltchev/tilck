@@ -7,16 +7,16 @@ do_sysenter_call0(int syscall)
 {
    int ret;
 
-   __asm__ volatile ("pushl $1f\n\t"
-                     "pushl %%ecx\n\t"
-                     "pushl %%edx\n\t"
-                     "pushl %%ebp\n\t"
-                     "movl %%esp, %%ebp\n\t"
-                     "sysenter\n\t"
-                     "1:\n\t"
-                     : "=a" (ret)
-                     : "a" (syscall)
-                     : "memory", "cc");
+   asmVolatile ("pushl $1f\n\t"
+                "pushl %%ecx\n\t"
+                "pushl %%edx\n\t"
+                "pushl %%ebp\n\t"
+                "movl %%esp, %%ebp\n\t"
+                "sysenter\n\t"
+                "1:\n\t"
+                : "=a" (ret)
+                : "a" (syscall)
+                : "memory", "cc");
 
    return ret;
 }
@@ -26,16 +26,16 @@ do_sysenter_call1(int syscall, void *arg1)
 {
    int ret;
 
-   __asm__ volatile ("pushl $1f\n\t"
-                     "pushl %%ecx\n\t"
-                     "pushl %%edx\n\t"
-                     "pushl %%ebp\n\t"
-                     "movl %%esp, %%ebp\n\t"
-                     "sysenter\n\t"
-                     "1:\n\t"
-                     : "=a" (ret)
-                     : "a" (syscall), "b" (arg1)
-                     : "memory", "cc");
+   asmVolatile ("pushl $1f\n\t"
+                "pushl %%ecx\n\t"
+                "pushl %%edx\n\t"
+                "pushl %%ebp\n\t"
+                "movl %%esp, %%ebp\n\t"
+                "sysenter\n\t"
+                "1:\n\t"
+                : "=a" (ret)
+                : "a" (syscall), "b" (arg1)
+                : "memory", "cc");
 
    return ret;
 }
@@ -45,16 +45,16 @@ do_sysenter_call2(int syscall, void *arg1, void *arg2)
 {
    int ret;
 
-   __asm__ volatile ("pushl $1f\n\t"
-                     "pushl %%ecx\n\t"
-                     "pushl %%edx\n\t"
-                     "pushl %%ebp\n\t"
-                     "movl %%esp, %%ebp\n\t"
-                     "sysenter\n\t"
-                     "1:\n\t"
-                     : "=a" (ret)
-                     : "a" (syscall), "b" (arg1), "c" (arg2)
-                     : "memory", "cc");
+   asmVolatile ("pushl $1f\n\t"
+                "pushl %%ecx\n\t"
+                "pushl %%edx\n\t"
+                "pushl %%ebp\n\t"
+                "movl %%esp, %%ebp\n\t"
+                "sysenter\n\t"
+                "1:\n\t"
+                : "=a" (ret)
+                : "a" (syscall), "b" (arg1), "c" (arg2)
+                : "memory", "cc");
 
    return ret;
 }
@@ -64,16 +64,16 @@ do_sysenter_call3(int syscall, void *arg1, void *arg2, void *arg3)
 {
    int ret;
 
-   __asm__ volatile ("pushl $1f\n\t"
-                     "pushl %%ecx\n\t"
-                     "pushl %%edx\n\t"
-                     "pushl %%ebp\n\t"
-                     "movl %%esp, %%ebp\n\t"
-                     "sysenter\n\t"
-                     "1:\n\t"
-                     : "=a" (ret)
-                     : "a" (syscall), "b" (arg1), "c" (arg2), "d" (arg3)
-                     : "memory", "cc");
+   asmVolatile ("pushl $1f\n\t"
+                "pushl %%ecx\n\t"
+                "pushl %%edx\n\t"
+                "pushl %%ebp\n\t"
+                "movl %%esp, %%ebp\n\t"
+                "sysenter\n\t"
+                "1:\n\t"
+                : "=a" (ret)
+                : "a" (syscall), "b" (arg1), "c" (arg2), "d" (arg3)
+                : "memory", "cc");
 
    return ret;
 }
@@ -83,16 +83,16 @@ do_sysenter_call4(int syscall, void *a1, void *a2, void *a3, void *a4)
 {
    int ret;
 
-   __asm__ volatile ("pushl $1f\n\t"
-                     "pushl %%ecx\n\t"
-                     "pushl %%edx\n\t"
-                     "pushl %%ebp\n\t"
-                     "movl %%esp, %%ebp\n\t"
-                     "sysenter\n\t"
-                     "1:\n\t"
-                     : "=a" (ret)
-                     : "a" (syscall), "b" (a1), "c" (a2), "d" (a3), "S" (a4)
-                     : "memory", "cc");
+   asmVolatile ("pushl $1f\n\t"
+                "pushl %%ecx\n\t"
+                "pushl %%edx\n\t"
+                "pushl %%ebp\n\t"
+                "movl %%esp, %%ebp\n\t"
+                "sysenter\n\t"
+                "1:\n\t"
+                : "=a" (ret)
+                : "a" (syscall), "b" (a1), "c" (a2), "d" (a3), "S" (a4)
+                : "memory", "cc");
 
    return ret;
 }
@@ -103,17 +103,16 @@ do_sysenter_call5(int syscall,
 {
    int ret;
 
-   __asm__ volatile ("pushl $1f\n\t"
-                     "pushl %%ecx\n\t"
-                     "pushl %%edx\n\t"
-                     "pushl %%ebp\n\t"
-                     "movl %%esp, %%ebp\n\t"
-                     "sysenter\n\t"
-                     "1:\n\t"
-                     : "=a" (ret)
-                     : "a" (syscall),
-                       "b" (a1), "c" (a2), "d" (a3), "S" (a4), "D" (a5)
-                     : "memory", "cc");
+   asmVolatile ("pushl $1f\n\t"
+                "pushl %%ecx\n\t"
+                "pushl %%edx\n\t"
+                "pushl %%ebp\n\t"
+                "movl %%esp, %%ebp\n\t"
+                "sysenter\n\t"
+                "1:\n\t"
+                : "=a" (ret)
+                : "a" (syscall),"b" (a1), "c" (a2), "d" (a3), "S" (a4), "D" (a5)
+                : "memory", "cc");
 
    return ret;
 }

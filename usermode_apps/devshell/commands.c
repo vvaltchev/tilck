@@ -31,7 +31,7 @@ int cmd_loop(int argc, char **argv)
 {
    printf("[shell] do a long loop\n");
    for (int i = 0; i < (2 * 1000 * 1000 * 1000); i++) {
-      __asm__ volatile ("nop");
+      asmVolatile ("nop");
    }
 
    return 0;
