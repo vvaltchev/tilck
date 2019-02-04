@@ -20,13 +20,13 @@
 
 function internal_download_toolchain {
 
-   dest="$1"
-   arch="$2"
-   tcname_suffix="$3"
+   local dest="$1"
+   local arch="$2"
+   local tcname_suffix="$3"
 
-   tcname="${arch}--${tcname_suffix}"
-   tarname=$tcname.tar.bz2
-   url=http://toolchains.bootlin.com/downloads/releases/toolchains
+   local tcname="${arch}--${tcname_suffix}"
+   local tarname=$tcname.tar.bz2
+   local url=http://toolchains.bootlin.com/downloads/releases/toolchains
 
    download_file_in_cache "$url/$arch/tarballs" "$tarname"
    extract_cachefile_tar_bz "$tarname" $tcname $dest

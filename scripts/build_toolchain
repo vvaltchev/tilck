@@ -107,7 +107,7 @@ function build_gtest {
    pushd .
 
    if ! [ -d googletest ]; then
-      url="https://github.com/google/googletest.git"
+      local url="https://github.com/google/googletest.git"
       git clone --branch release-1.8.0 --depth 1 "$url"
    fi
 
@@ -196,10 +196,10 @@ function build_libmusl {
       git clone --branch v1.1.19 --depth 1 git://git.musl-libc.org/musl
       cd musl
 
-      opts1="--target=${ARCH} --host=${ARCH} --build=${BUILD_ARCH}"
-      opts2="--disable-shared --prefix=$TC/musl/install"
-      opts3="--exec-prefix=$TC/musl/install --enable-debug"
-      opts4="--syslibdir=$TC/musl/install/lib"
+      local opts1="--target=${ARCH} --host=${ARCH} --build=${BUILD_ARCH}"
+      local opts2="--disable-shared --prefix=$TC/musl/install"
+      local opts3="--exec-prefix=$TC/musl/install --enable-debug"
+      local opts4="--syslibdir=$TC/musl/install/lib"
 
       run_command2 "./configure $opts1 $opts2 $opts3 $opts4" configure.log
       run_command2 "make -j" build.log
@@ -267,7 +267,7 @@ function download_ovmf {
       mkdir ovmf
       cd ovmf
 
-      url="https://www.kraxel.org/repos/jenkins/edk2/"
+      local url="https://www.kraxel.org/repos/jenkins/edk2/"
       wget -nd -r --no-parent -A 'edk2.git-ovmf-ia32*' "$url"
       wget -nd -r --no-parent -A 'edk2.git-ovmf-x64*' "$url"
 
@@ -358,8 +358,8 @@ function build_busybox {
 
       show_work_on_component_msg "BUSYBOX"
 
-      ver=1.28.4
-      tarname=busybox-$ver.tar.bz2
+      local ver=1.28.4
+      local tarname=busybox-$ver.tar.bz2
 
       download_file_in_cache "https://busybox.net/downloads" "$tarname"
       extract_cachefile_tar_bz $tarname busybox-$ver busybox
@@ -382,8 +382,8 @@ function build_ncurses {
 
    if ! [ -d ncurses ]; then
 
-      ver=6.1
-      tarname=ncurses-$ver.tar.gz
+      local ver=6.1
+      local tarname=ncurses-$ver.tar.gz
 
       download_file_in_cache "https://ftp.gnu.org/pub/gnu/ncurses" "$tarname"
       extract_cachefile_tar_gz $tarname ncurses-$ver ncurses

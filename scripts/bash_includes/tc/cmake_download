@@ -16,12 +16,12 @@ function download_cmake_internal {
 
    show_work_on_component_msg "CMAKE"
 
-   ver1=$(get_version_comp $CMAKE_VERSION_TO_DOWNLOAD 1)
-   ver2=$(get_version_comp $CMAKE_VERSION_TO_DOWNLOAD 2)
-   ver3=$(get_version_comp $CMAKE_VERSION_TO_DOWNLOAD 3)
+   local ver1=$(get_version_comp $CMAKE_VERSION_TO_DOWNLOAD 1)
+   local ver2=$(get_version_comp $CMAKE_VERSION_TO_DOWNLOAD 2)
+   local ver3=$(get_version_comp $CMAKE_VERSION_TO_DOWNLOAD 3)
 
-   filename=cmake-${ver1}.${ver2}.${ver3}-Linux-x86_64
-   tarname=$filename.tar.gz
+   local filename=cmake-${ver1}.${ver2}.${ver3}-Linux-x86_64
+   local tarname=$filename.tar.gz
 
    download_file_in_cache "https://cmake.org/files/v${ver1}.${ver2}" "$tarname"
    extract_cachefile_tar_gz $tarname $filename cmake
@@ -48,12 +48,12 @@ function download_cmake {
       else
 
          # CMake is installed: let's check its version
-         ver=$(generic_get_version_str cmake)
-         major=$(get_version_comp $ver 1)
-         minor=$(get_version_comp $ver 2)
+         local ver=$(generic_get_version_str cmake)
+         local major=$(get_version_comp $ver 1)
+         local minor=$(get_version_comp $ver 2)
 
-         min_major=$(get_version_comp $CMAKE_MIN_VERSION 1)
-         min_minor=$(get_version_comp $CMAKE_MIN_VERSION 2)
+         local min_major=$(get_version_comp $CMAKE_MIN_VERSION 1)
+         local min_minor=$(get_version_comp $CMAKE_MIN_VERSION 2)
 
          if [ $major -lt $min_major ]; then
 
