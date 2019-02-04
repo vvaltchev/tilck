@@ -21,6 +21,8 @@ matrix:
       env: NO_BUSYBOX=1 RELEASE=0
 
 before_install:
+  - mkdir -p toolchain/cache
+  - (cd toolchain/cache && wget http://vvaltchev.github.io/cache/mtools-4.0.23.tar.gz)
   - ./scripts/build_toolchain --skip-install-pkgs
   - ./scripts/build_toolchain -s build_gtest
 
