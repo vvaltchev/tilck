@@ -58,12 +58,12 @@ function build_mtools {
    if ! [ -d mtools ]; then
 
       show_work_on_component_msg "MTOOLS"
+      local pkgname=mtools-4.0.23
+      local tarname=$pkgname.tar.gz
 
-      tarname=mtools-4.0.18.tar.gz
-      wget ftp://ftp.gnu.org/gnu/mtools/$tarname
-      tar xfz $tarname
-      rm $tarname
-      mv mtools-4.0.18 mtools
+      download_file_in_cache "ftp://ftp.gnu.org/gnu/mtools" "$tarname"
+      extract_cachefile_tar_gz $tarname $pkgname mtools
+
       cd mtools
       run_command2 ./configure configure.log
       run_command2 "make -j" build.log
@@ -361,25 +361,12 @@ function build_busybox {
       ver=1.28.4
       tarname=busybox-$ver.tar.bz2
 
-      if ! [ -f cache/$tarname ]; then
-         (cd cache && wget https://busybox.net/downloads/$tarname)
-      else
-         echo "NOTE: Skipping the download of $tarname"
-      fi
-
-      echo "Extracting the package... "
-      tar xfj cache/$tarname
-
-      mv busybox-$ver busybox
+      download_file_in_cache "https://busybox.net/downloads" "$tarname"
+      extract_cachefile_tar_bz $tarname busybox-$ver busybox
 
       pushd busybox
       internal_build_busybox
       popd
-
-      # For busybox in particular, it is never convenient to remove the tar file
-      # from the cache.
-
-      # rm $tarname
 
    else
       show_skip_component_msg "BUSYBOX"
@@ -398,16 +385,10 @@ function build_ncurses {
       ver=6.1
       tarname=ncurses-$ver.tar.gz
 
-      if ! [ -f cache/$tarname ]; then
-         (cd cache && wget https://ftp.gnu.org/pub/gnu/ncurses/$tarname)
-      else
-         echo "NOTE: Skipping the download of $tarname"
-      fi
+      download_file_in_cache "https://ftp.gnu.org/pub/gnu/ncurses" "$tarname"
+      extract_cachefile_tar_gz $tarname ncurses-$ver ncurses
 
-      tar xfz cache/$tarname
-      mv ncurses-$ver ncurses
       mkdir -p ncurses/install
-
       cd ncurses
 
       opts1="--host=${ARCH_SHORT}-pc-linux-gnu --prefix=$TC/ncurses/install"

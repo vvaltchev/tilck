@@ -70,3 +70,37 @@ function fail_if_too_old {
       show_too_old_and_exit $1 $3
    fi
 }
+
+function download_file_in_cache {
+
+   local url="$1"
+   local filename="$2"
+
+   if ! [ -f cache/$filename ]; then
+      (cd cache && wget $url/$filename)
+   else
+      echo "NOTE: Skipping the download of $filename"
+   fi
+}
+
+function extract_cachefile_tar_gz {
+
+   local tarfile="$1"
+   local internalDirName="$2"
+   local newDirName="$3"
+
+   echo "Extracting $tarname..."
+   tar xfz cache/$tarname
+   mv "$internalDirName" "$newDirName"
+}
+
+function extract_cachefile_tar_bz {
+
+   local tarfile="$1"
+   local internalDirName="$2"
+   local newDirName="$3"
+
+   echo "Extracting $tarname..."
+   tar xfj cache/$tarname
+   mv "$internalDirName" "$newDirName"
+}
