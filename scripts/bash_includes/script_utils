@@ -103,4 +103,5 @@ function extract_cachefile_tar_bz {
    echo "Extracting $tarname..."
    tar xfj cache/$tarname
    mv "$internalDirName" "$newDirName"
+   echo "Extracting completed."
 }

@@ -22,10 +22,9 @@ function download_cmake_internal {
 
    filename=cmake-${ver1}.${ver2}.${ver3}-Linux-x86_64
    tarname=$filename.tar.gz
-   wget https://cmake.org/files/v${ver1}.${ver2}/$tarname
-   tar xf $filename.tar.gz
-   mv $filename cmake
-   rm $tarname
+
+   download_file_in_cache "https://cmake.org/files/v${ver1}.${ver2}" "$tarname"
+   extract_cachefile_tar_gz $tarname $filename cmake
 
    CMAKE=$TC/cmake/bin/cmake
 }
@@ -37,9 +36,13 @@ function download_cmake {
 
    if ! [ -d cmake ]; then
 
-      if ! which cmake &> /dev/null; then
+      if ! which cmake &> /dev/null || [[ "$NO_SYS_CMAKE" == 1 ]]; then
 
-         # CMake is not installed on the machine, download it.
+         if [[ "$NO_SYS_CMAKE" == 1 ]] && which cmake &> /dev/null; then
+            echo "Note: NO_SYS_CMAKE=1"
+         fi
+
+         # We have to download CMake.
          download_cmake_internal
 
       else

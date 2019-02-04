@@ -27,16 +27,15 @@ function internal_download_toolchain {
    tcname="${arch}--${tcname_suffix}"
    tarname=$tcname.tar.bz2
    url=http://toolchains.bootlin.com/downloads/releases/toolchains
-   wget $url/$arch/tarballs/$tarname
-   tar xfj $tarname
-   rm $tarname
-   mv $tcname $dest
+
+   download_file_in_cache "$url/$arch/tarballs" "$tarname"
+   extract_cachefile_tar_bz "$tarname" $tcname $dest
    cd $dest/bin
 }
 
 function download_x86_gcc_toolchain {
 
-   if [[ "$USE_SYSCC" != "" && "$USE_SYSCC" != 0 ]]; then
+   if [[ "$USE_SYSCC" == "1" ]]; then
       echo "NOTE: Skipping download_x86_gcc_toolchain because USE_SYSCC=1"
       return 0
    fi
