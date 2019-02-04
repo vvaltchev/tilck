@@ -66,7 +66,7 @@ The image here above shows a Tetris implementation based on the [Tiny Framebuffe
 Library] running on `Tilck` in a `QEMU` virtual machine. The game's executable,
 runs smoothly both on `Linux` and on `Tilck`.
 
-[supported Linux syscalls]: https://github.com/vvaltchev/tilck/wiki/Linux-syscalls-support-status
+[supported Linux syscalls]: doc/syscalls.md
 [Tiny Framebuffer Library]: https://github.com/vvaltchev/tfblib
 
 The legacy bootloader
