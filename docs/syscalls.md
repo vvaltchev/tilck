@@ -1,3 +1,6 @@
+List of supported Linux syscalls
+---------------------------------
+
 `Tilck` supports both the `int 0x80` syscall interface and the `sysenter` one.
 Here below there is an up-to-date table containing the status of each supported
 syscall at the moment. Because the list of the not-yet-supported syscalls is
@@ -66,12 +69,12 @@ Definitions:
 ---------------|---------------------------
  full          | Syscall fully supported
  stub          | The syscall does not return -ENOSYS, but it has actually a stub
-               | implementation, at the moment.
+ ...           | implementation, at the moment.
  partial       | Syscall partially supported, work-in-progress
  minimal       | Like partial, just even less features are supported
  compliant     | Syscall supported in a way compliant with a full 
-               | implementation, but actually it has several limitations due to 
-               | the different design of Tilck. Example: see the note [3].
+ ...           | implementation, but actually it has several limitations due to 
+ ...           | the different design of Tilck. Example: see the note [3].
 
 Notes:
 
