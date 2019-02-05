@@ -7,4 +7,7 @@
 
 #include <signal.h> // system header
 
-int send_signal(task_info *ti, int signum);
+#define TILCK_SIG_DEFAULT  ((uptr)0u)
+#define TILCK_SIG_IGNORE   ((uptr)-1)
+
+void send_signal(task_info *ti, int signum);

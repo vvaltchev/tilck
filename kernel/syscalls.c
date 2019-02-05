@@ -145,7 +145,7 @@ sptr sys_tkill(int tid, int sig)
 {
    task_info *ti;
 
-   if (sig > 32 || sig < 0 || tid <= 0)
+   if (sig < 0 || sig >= 32 || tid <= 0)
       return -EINVAL;
 
    ti = get_task(tid);
@@ -171,7 +171,7 @@ sptr sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
       return -EINVAL;
    }
 
-   if (sig > 32 || sig < 0 || pid <= 0 || tid <= 0)
+   if (sig < 0 || sig >= 32 || pid <= 0 || tid <= 0)
       return -EINVAL;
 
    ti = get_task(tid);
