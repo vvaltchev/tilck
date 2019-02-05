@@ -9,6 +9,7 @@
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/sys_types.h>
+#include <tilck/kernel/signal.h>
 
 #include <sys/utsname.h> // system header
 
@@ -114,7 +115,9 @@ sptr sys_getppid();
 
 CREATE_STUB_SYSCALL_IMPL(sys_getpgrp)
 CREATE_STUB_SYSCALL_IMPL(sys_setsid)
-CREATE_STUB_SYSCALL_IMPL(sys_sigaction)
+
+sptr sys_sigaction(uptr a1, uptr a2, uptr a3); // deprecated interface
+
 CREATE_STUB_SYSCALL_IMPL(sys_sgetmask)
 CREATE_STUB_SYSCALL_IMPL(sys_ssetmask)
 CREATE_STUB_SYSCALL_IMPL(sys_setreuid16)
@@ -179,7 +182,9 @@ sptr sys_newuname(struct utsname *buf);
 CREATE_STUB_SYSCALL_IMPL(sys_modify_ldt)
 CREATE_STUB_SYSCALL_IMPL(sys_adjtimex)
 CREATE_STUB_SYSCALL_IMPL(sys_mprotect)
-CREATE_STUB_SYSCALL_IMPL(sys_sigprocmask)
+
+sptr sys_sigprocmask(uptr a1, uptr a2, uptr a3); // deprecated interface
+
 CREATE_STUB_SYSCALL_IMPL(sys_init_module)
 CREATE_STUB_SYSCALL_IMPL(sys_delete_module)
 CREATE_STUB_SYSCALL_IMPL(sys_quotactl)
@@ -231,9 +236,16 @@ CREATE_STUB_SYSCALL_IMPL(sys_getresgid16)
 sptr sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5);
 
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigreturn)
-CREATE_STUB_SYSCALL_IMPL(sys_rt_sigaction)
 
-sptr sys_rt_sigprocmask();
+sptr
+sys_rt_sigaction(int signum,
+                 const struct sigaction *act,
+                 struct sigaction *oldact,
+                 size_t);
+
+sptr
+sys_rt_sigprocmask(int how, sigset_t *set,
+                   sigset_t *oset, size_t sigsetsize);
 
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigpending)
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigtimedwait)

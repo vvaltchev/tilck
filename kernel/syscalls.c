@@ -12,13 +12,6 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/signal.h>
 
-sptr sys_rt_sigprocmask(/* args ignored at the moment */)
-{
-   // TODO: implement sys_rt_sigprocmask
-   // printk("rt_sigprocmask\n");
-   return 0;
-}
-
 sptr sys_madvise(void *addr, size_t len, int advice)
 {
    // TODO (future): consider implementing at least part of sys_madvice().
@@ -145,7 +138,7 @@ sptr sys_tkill(int tid, int sig)
 {
    task_info *ti;
 
-   if (sig < 0 || sig >= 32 || tid <= 0)
+   if (sig < 0 || sig >= _NSIG || tid <= 0)
       return -EINVAL;
 
    ti = get_task(tid);
@@ -171,7 +164,7 @@ sptr sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
       return -EINVAL;
    }
 
-   if (sig < 0 || sig >= 32 || pid <= 0 || tid <= 0)
+   if (sig < 0 || sig >= _NSIG || pid <= 0 || tid <= 0)
       return -EINVAL;
 
    ti = get_task(tid);

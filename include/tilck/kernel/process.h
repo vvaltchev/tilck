@@ -15,6 +15,7 @@
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/signal.h>
 
 #define USERMODE_VADDR_END (KERNEL_BASE_VA) /* biggest usermode vaddr + 1 */
 #define MAX_BRK         (0x40000000)        /* +1 GB (virtual memory) */
@@ -53,7 +54,11 @@ struct process_info {
    char filepath[MAX_PATH]; /* executable's path */
    char cwd[MAX_PATH]; /* current working directory */
    fs_handle handles[16]; /* for the moment, just a fixed-size small array */
-   uptr signal_actions[32];
+
+   __sighandler_t sa_handlers[_NSIG];
+   sigset_t sa_mask;
+   int sa_flags;
+
    void *proc_tty;
 
    /*
