@@ -84,6 +84,7 @@ int load_elf_program(const char *filepath,
    fs_handle elf_file = NULL;
    Elf_Ehdr header;
    ssize_t ret;
+   size_t count;
    uptr brk = 0;
    int rc = 0;
 
@@ -108,8 +109,6 @@ int load_elf_program(const char *filepath,
          return -ENOMEM;
       }
    }
-
-   //printk("elf loader: '%s'\n", filepath);
 
    set_page_directory(*pdir_ref);
 
@@ -179,8 +178,10 @@ int load_elf_program(const char *filepath,
 
    // Allocating memory for the user stack.
 
-   const int pages_for_stack = USER_STACK_PAGES;
+   const size_t pages_for_stack = USER_STACK_PAGES;
    const uptr stack_top = (USERMODE_VADDR_END - USER_STACK_PAGES * PAGE_SIZE);
+
+#if MMAP_NO_COW
 
    for (int i = 0; i < pages_for_stack; i++) {
 
@@ -200,6 +201,21 @@ int load_elf_program(const char *filepath,
       if (rc != 0)
          goto out;
    }
+
+#else
+
+   count = map_zero_pages(*pdir_ref,
+                          (void *)stack_top,
+                          pages_for_stack,
+                          true, true);
+
+   if (count != pages_for_stack) {
+      unmap_pages(*pdir_ref, (void *)stack_top, count, true);
+      rc = -ENOMEM;
+      goto out;
+   }
+
+#endif
 
    // Finally setting the output-params.
 
