@@ -9,6 +9,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/term.h>
+#include <tilck/kernel/sched.h>
 
 #include <termios.h>      // system header
 #include <fcntl.h>        // system header
@@ -145,6 +146,14 @@ static int tty_ioctl_KDSKBMODE(tty *t, void *argp)
    return -EINVAL;
 }
 
+static int tty_ioctl_TIOCSCTTY(tty *t, void *argp)
+{
+   task_info *curr = get_curr_task();
+   process_info *pi = task_get_pi_opaque(curr);
+   process_set_tty(pi, t);
+   return 0;
+}
+
 int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp)
 {
    switch (request) {
@@ -174,6 +183,9 @@ int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp)
 
       case KDSKBMODE:
          return tty_ioctl_KDSKBMODE(t, argp);
+
+      case TIOCSCTTY:
+         return tty_ioctl_TIOCSCTTY(t, argp);
 
       default:
          printk("WARNING: unknown tty_ioctl() request: %p\n", request);

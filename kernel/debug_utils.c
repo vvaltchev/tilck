@@ -11,6 +11,7 @@
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/elf_utils.h>
+#include <tilck/kernel/tty.h>
 
 #include <elf.h>         // system header
 #include <multiboot.h>   // system header in include/system_headers
@@ -128,23 +129,25 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
    static char fmt[80] = NO_PREFIX;
    static char hfmt[80];
    static char header[256];
-   static char hline_sep[256] = "+-----------+-------+-------+----------+";
+   static char hline_sep[256] =
+      "+-----------+-------+-------+----------+-----+";
+
    static char *hline_sep_end = &hline_sep[sizeof(hline_sep)];
 
    if (!initialized) {
 
-      int path_field_len = (term_get_cols(get_curr_term()) - 80) + 37;
+      int path_field_len = (term_get_cols(get_curr_term()) - 80) + 31;
 
       snprintk(fmt + 4, sizeof(fmt) - 4,
-               "| %%-9d | %%-5d | %%-5d | %%-8s | %%-%ds |\n",
+               "| %%-9d | %%-5d | %%-5d | %%-8s | %%-3d | %%-%ds |\n",
                path_field_len);
 
       snprintk(hfmt, sizeof(hfmt),
-               "| %%-9s | %%-5s | %%-5s | %%-8s | %%-%ds |\n",
+               "| %%-9s | %%-5s | %%-5s | %%-8s | %%-3s | %%-%ds |\n",
                path_field_len);
 
       snprintk(header, sizeof(header), hfmt,
-               "tid", "pid", "ppid", "state", "path or kernel thread");
+               "tid", "pid", "ppid", "state", "tty", "path or kernel thread");
 
       char *p = hline_sep + strlen(hline_sep);
 
@@ -185,10 +188,11 @@ static int debug_per_task_cb(void *obj, void *arg)
       return 0; /* skip the main kernel task */
 
    const char *state = debug_get_state_name(ti->state);
+   int ttynum = tty_get_num(ti->pi->proc_tty);
 
    if (!is_kernel_thread(ti)) {
       printk(fmt, ti->tid, ti->pid,
-             ti->pi->parent_pid, state, ti->pi->filepath);
+             ti->pi->parent_pid, state, ttynum, ti->pi->filepath);
       return 0;
    }
 
@@ -196,13 +200,13 @@ static int debug_per_task_cb(void *obj, void *arg)
    const char *kfunc = find_sym_at_addr((uptr)ti->what, NULL, NULL);
 
    if (!is_tasklet_runner(ti)) {
-      snprintk(buf, sizeof(buf), "<kernel: %s>", kfunc);
+      snprintk(buf, sizeof(buf), "<ker: %s>", kfunc);
    } else {
-      snprintk(buf, sizeof(buf), "<kernel: %s[%d]>",
+      snprintk(buf, sizeof(buf), "<ker: %s[%d]>",
                kfunc, debug_get_tn_for_tasklet_runner(ti));
    }
 
-   printk(fmt, ti->tid, ti->pid, ti->pi->parent_pid, state, buf);
+   printk(fmt, ti->tid, ti->pid, ti->pi->parent_pid, state, 0, buf);
    return 0;
 }
 

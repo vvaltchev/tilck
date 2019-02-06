@@ -114,8 +114,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_dup2)
 sptr sys_getppid();
 
 CREATE_STUB_SYSCALL_IMPL(sys_getpgrp)
-CREATE_STUB_SYSCALL_IMPL(sys_setsid)
 
+sptr sys_setsid(void);
 sptr sys_sigaction(uptr a1, uptr a2, uptr a3); // deprecated interface
 
 CREATE_STUB_SYSCALL_IMPL(sys_sgetmask)

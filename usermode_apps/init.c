@@ -4,15 +4,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <unistd.h>
 #include <signal.h>
+#include <stdbool.h>
+#include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <termios.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/prctl.h>
-#include <fcntl.h>
-#include <stdbool.h>
-#include <errno.h>
+#include <sys/ioctl.h>
 
 #include <tilck/common/basic_defs.h> /* for MIN() and ARRAY_SIZE() */
 
@@ -175,14 +177,24 @@ static void wait_for_children(pid_t shell_pid)
 
 static void setup_console_for_shell(int tty)
 {
-   if (tty == 1)
+   if (tty == 1) {
+
+      /*
+       * For /dev/tty1 we're already fine. The current process already has tty1
+       * as controlling terminal (set by the kernel) and do_initial_setup()
+       * called open_std_handles(1). For the other shell instances instead, we
+       * have to correctly setup the tty.
+       */
       return;
+   }
 
    close(2);
    close(1);
    close(0);
 
-   open_std_handles(tty);
+   setsid();                /* Reset the controlling terminal */
+   open_std_handles(tty);   /* Open /dev/ttyN as stdin, stdout and stderr */
+   ioctl(0, TIOCSCTTY, 0);  /* Make ttyN to be the controlling terminal */
 }
 
 int main(int argc, char **argv, char **env)
@@ -190,6 +202,7 @@ int main(int argc, char **argv, char **env)
    int shell_pids[MAX_TTYS];
    int pid;
 
+   /* Ignore SIGINT */
    signal(SIGINT, SIG_IGN);
 
    do_initial_setup();

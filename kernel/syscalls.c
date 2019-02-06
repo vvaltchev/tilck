@@ -193,3 +193,18 @@ sptr sys_kill(pid_t pid, int sig)
 
    return sys_tgkill(pid, pid, sig);
 }
+
+sptr sys_setsid(void)
+{
+   /*
+    * This is a stub implementation of setsid(): the controlling terminal
+    * of the current process is reset and the current pid is returned AS IF
+    * it became the session leader process.
+    *
+    * TODO (future): consider actually implementing setsid()
+    */
+
+   task_info *ti = get_curr_task();
+   process_set_tty(ti->pi, NULL);
+   return ti->pid;
+}

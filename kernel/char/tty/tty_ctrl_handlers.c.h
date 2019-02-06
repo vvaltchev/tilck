@@ -3,19 +3,12 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/process.h>
 
-struct tty_and_signum {
+typedef struct {
 
-   union {
-      struct {
-         u16 tty_num;
-         u16 signum;
-      };
+   int tty_num;
+   int sig_num;
 
-      uptr raw;
-   };
-};
-
-STATIC_ASSERT(sizeof(struct tty_and_signum) <= sizeof(uptr));
+} tty_and_sig_num;
 
 static void tty_async_send_signal(int tid, int signum)
 {
@@ -30,21 +23,16 @@ static void tty_async_send_signal(int tid, int signum)
 
 static int per_task_cb(void *obj, void *arg)
 {
+   tty_and_sig_num *ctx = arg;
+   tty *t = ttys[ctx->tty_num];
    task_info *ti = obj;
-
-   struct tty_and_signum ctx = (struct tty_and_signum) {
-      .raw = (uptr) arg
-   };
-
-   tty *t = ttys[ctx.tty_num];
-   int signum = (int)ctx.signum;
 
    if (!is_kernel_thread(ti) && ti->pi->proc_tty == t) {
 
       bool ok = enqueue_tasklet2(tty_tasklet_runner,
                                  tty_async_send_signal,
                                  ti->tid,
-                                 signum);
+                                 ctx->sig_num);
 
       if (!ok)
          panic("Unable to enqueue tasklet for sending signal");
@@ -55,14 +43,14 @@ static int per_task_cb(void *obj, void *arg)
 
 static void tty_send_signal_to_processes(tty *t, int signum)
 {
-   struct tty_and_signum ctx = (struct tty_and_signum) {
-      .tty_num = (u16)t->minor,
-      .signum = (u16)signum
+   tty_and_sig_num ctx = (tty_and_sig_num) {
+      .tty_num = t->minor,
+      .sig_num = signum
    };
 
    disable_preemption();
    {
-      iterate_over_tasks(per_task_cb, (void *)ctx.raw);
+      iterate_over_tasks(per_task_cb, &ctx);
    }
    enable_preemption();
 }
