@@ -95,7 +95,7 @@ static void shell_run_child(int argc)
       }
    }
 
-   execve(cmd_argv[0], cmd_argv, NULL);
+   execve(cmd_argv[0], cmd_argv, shell_env);
    int saved_errno = errno;
    perror(cmd_argv[0]);
    exit(saved_errno);
