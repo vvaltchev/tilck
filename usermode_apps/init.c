@@ -5,6 +5,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -188,6 +189,8 @@ int main(int argc, char **argv, char **env)
 {
    int shell_pids[MAX_TTYS];
    int pid;
+
+   signal(SIGINT, SIG_IGN);
 
    do_initial_setup();
    parse_opts(argc - 1, argv + 1);

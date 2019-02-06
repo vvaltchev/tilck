@@ -85,37 +85,6 @@ void send_signal(task_info *ti, int signum)
    action_func(ti, signum);
 }
 
-struct send_signal_per_task_cb {
-
-   void *tty;
-   int signum;
-
-};
-
-static int per_task_cb(void *obj, void *arg)
-{
-   task_info *ti = obj;
-   struct send_signal_per_task_cb *ctx = arg;
-
-   if (!is_kernel_thread(ti) && ti->pi->proc_tty == ctx->tty) {
-      printk("send signal to %d [%s]\n", ti->tid, ti->pi->filepath);
-      send_signal(ti, ctx->signum);
-   }
-
-   return 0;
-}
-
-void send_signal_to_tty_processes(void *tty, int signum)
-{
-   struct send_signal_per_task_cb ctx = { tty, signum };
-
-   disable_preemption();
-   {
-      iterate_over_tasks(per_task_cb, &ctx);
-   }
-   enable_preemption();
-}
-
 /*
  * -------------------------------------
  * SYSCALLS

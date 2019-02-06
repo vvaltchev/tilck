@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -60,12 +61,44 @@ static void wait_child_cmd(int child_pid)
    waitpid(child_pid, &wstatus, 0);
 
    if (!WIFEXITED(wstatus)) {
-      printf("[shell] the command did NOT exited normally\n");
+
+      int term_sig = WTERMSIG(wstatus);
+
+      if (term_sig != SIGINT)
+         printf("[shell] command terminated by signal: %d\n", term_sig);
+
       return;
    }
 
    if (WEXITSTATUS(wstatus))
       printf("[shell] command exited with status: %d\n", WEXITSTATUS(wstatus));
+}
+
+static void shell_run_child(int argc)
+{
+   /* Reset all the signal handlers to their default behavior */
+   for (int i = 1; i <= SIGRTMAX; i++)
+      signal(i, SIG_DFL);
+
+   run_if_known_command(cmd_argv[0], argc - 1, cmd_argv + 1);
+
+   /* Since we got here, cmd_argv[0] was NOT a known built-in command */
+
+   if (!file_exists(cmd_argv[0]) && argc < MAX_ARGS) {
+      if (file_exists("/bin/busybox")) {
+
+         for (int i = argc; i > 0; i--)
+            cmd_argv[i] = cmd_argv[i - 1];
+
+         cmd_argv[++argc] = NULL;
+         cmd_argv[0] = "/bin/busybox";
+      }
+   }
+
+   execve(cmd_argv[0], cmd_argv, NULL);
+   int saved_errno = errno;
+   perror(cmd_argv[0]);
+   exit(saved_errno);
 }
 
 static void process_cmd_line(const char *cmd_line)
@@ -112,35 +145,16 @@ static void process_cmd_line(const char *cmd_line)
 
    int child_pid = fork();
 
-   if (!child_pid) {
-
-      run_if_known_command(cmd_argv[0], argc - 1, cmd_argv + 1);
-
-      /* since we got here, cmd_argv[0] was NOT a known command */
-
-      if (!file_exists(cmd_argv[0]) && argc < MAX_ARGS) {
-         if (file_exists("/bin/busybox")) {
-
-            for (int i = argc; i > 0; i--)
-               cmd_argv[i] = cmd_argv[i - 1];
-
-            cmd_argv[++argc] = NULL;
-            cmd_argv[0] = "/bin/busybox";
-         }
-      }
-
-      execve(cmd_argv[0], cmd_argv, NULL);
-      int saved_errno = errno;
-      perror(cmd_argv[0]);
-      exit(saved_errno);
-   }
-
-   if (child_pid == -1) {
+   if (child_pid < -1) {
       perror("fork failed");
       return;
    }
 
-   wait_child_cmd(child_pid);
+   if (!child_pid) {
+      shell_run_child(argc);
+   } else {
+      wait_child_cmd(child_pid);
+   }
 }
 
 static void show_help_and_exit(void)

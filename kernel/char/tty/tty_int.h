@@ -88,3 +88,4 @@ struct tty {
 
 extern const struct termios default_termios;
 extern tty *ttys[MAX_TTYS + 1]; /* tty0 is not a real tty */
+extern int tty_tasklet_runner;

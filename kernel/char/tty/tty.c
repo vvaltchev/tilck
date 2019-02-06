@@ -10,6 +10,7 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/tasklet.h>
 
 #include <linux/major.h> // system header
 
@@ -19,6 +20,7 @@ STATIC_ASSERT(TTY_COUNT <= MAX_TTYS);
 
 tty *ttys[MAX_TTYS + 1];
 tty *__curr_tty;
+int tty_tasklet_runner;
 
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
@@ -213,6 +215,17 @@ void init_tty(void)
    __curr_tty = ttys[1];
    init_ttyaux();
 
-   if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
-      panic("TTY: unable to register keypress handler");
+   disable_preemption();
+   {
+
+      if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
+         panic("TTY: unable to register keypress handler");
+
+      tty_tasklet_runner = create_tasklet_thread(100, 1024);
+
+      if (tty_tasklet_runner < 0)
+         panic("TTY: unable to create tasklet runner");
+
+   }
+   enable_preemption();
 }

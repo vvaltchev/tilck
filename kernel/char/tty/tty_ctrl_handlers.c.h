@@ -1,6 +1,71 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/kernel/signal.h>
+#include <tilck/kernel/process.h>
+
+struct tty_and_signum {
+
+   union {
+      struct {
+         u16 tty_num;
+         u16 signum;
+      };
+
+      uptr raw;
+   };
+};
+
+STATIC_ASSERT(sizeof(struct tty_and_signum) <= sizeof(uptr));
+
+static void tty_async_send_signal(int tid, int signum)
+{
+   task_info *ti = get_task(tid);
+
+   if (!ti)
+      return;
+
+   send_signal(ti, signum);
+   ASSERT(is_preemption_enabled());
+}
+
+static int per_task_cb(void *obj, void *arg)
+{
+   task_info *ti = obj;
+
+   struct tty_and_signum ctx = (struct tty_and_signum) {
+      .raw = (uptr) arg
+   };
+
+   tty *t = ttys[ctx.tty_num];
+   int signum = (int)ctx.signum;
+
+   if (!is_kernel_thread(ti) && ti->pi->proc_tty == t) {
+
+      bool ok = enqueue_tasklet2(tty_tasklet_runner,
+                                 tty_async_send_signal,
+                                 ti->tid,
+                                 signum);
+
+      if (!ok)
+         panic("Unable to enqueue tasklet for sending signal");
+   }
+
+   return 0;
+}
+
+static void tty_send_signal_to_processes(tty *t, int signum)
+{
+   struct tty_and_signum ctx = (struct tty_and_signum) {
+      .tty_num = (u16)t->minor,
+      .signum = (u16)signum
+   };
+
+   disable_preemption();
+   {
+      iterate_over_tasks(per_task_cb, (void *)ctx.raw);
+   }
+   enable_preemption();
+}
 
 static bool tty_ctrl_stop(tty *t)
 {
@@ -26,7 +91,7 @@ static bool tty_ctrl_intr(tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VINTR]);
-      send_signal_to_tty_processes(t, SIGINT);
+      tty_send_signal_to_processes(t, SIGINT);
       return true;
    }
 

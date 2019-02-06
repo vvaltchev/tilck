@@ -482,6 +482,9 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
    ASSERT(!is_kernel_thread(ti));
    disable_preemption();
 
+   if (ti->wobj.type != WOBJ_NONE)
+      task_reset_wait_obj(ti);
+
    task_change_state(ti, TASK_STATE_ZOMBIE);
    ti->exit_wstatus = EXITCODE(exit_code, term_sig);
 
@@ -532,6 +535,8 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
       switch_stack_free_mem_and_schedule();
    else
       free_mem_for_zombie_task(ti);
+
+   enable_preemption();
 }
 
 // Returns child's pid
