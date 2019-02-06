@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck/kernel/signal.h>
+
 static bool tty_ctrl_stop(tty *t)
 {
    if (t->c_term.c_iflag & IXON) {
@@ -24,7 +26,7 @@ static bool tty_ctrl_intr(tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VINTR]);
-      printk("INTR not supported yet\n");
+      send_signal_to_tty_processes(t, SIGINT);
       return true;
    }
 

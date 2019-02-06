@@ -9,3 +9,4 @@
 #include <asm-generic/signal-defs.h>  // system header
 
 void send_signal(task_info *ti, int signum);
+void send_signal_to_tty_processes(void *tty, int signum);
