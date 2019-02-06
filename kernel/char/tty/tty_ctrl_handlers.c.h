@@ -79,6 +79,7 @@ static bool tty_ctrl_intr(tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VINTR]);
+      tty_keypress_echo(t, '\n');
       tty_send_signal_to_processes(t, SIGINT);
       return true;
    }
