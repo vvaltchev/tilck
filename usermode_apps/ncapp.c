@@ -13,7 +13,7 @@ int main()
 
    printw("Special characters:\n");
 
-   /* Expected to work on all linux terminals */
+   /* Expected to work on all linux terminals. Work on Tilck. */
    printc(ACS_HLINE);
    printc(ACS_LLCORNER);
    printc(ACS_ULCORNER);
@@ -42,7 +42,9 @@ int main()
    printc(ACS_BLOCK);
 
    refresh();
-   getch();
+   while (getch() != 'q') { }
+
    endwin();
+   printf("the application exited gracefully\n");
    return 0;
 }
