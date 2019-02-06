@@ -153,7 +153,7 @@ internal_copy_str_array_from_user(void *dest,
    }
 
 out:
-   *written_ptr = written;
+   *written_ptr += written;
 }
 
 

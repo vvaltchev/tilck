@@ -59,8 +59,6 @@ execve_get_path_and_args(const char *user_filename,
    if (rc != 0)
       goto out;
 
-   written += strlen(orig_file_path) + 1;
-
    if (user_argv) {
       argv = (char *const *) (dest + written);
       rc = duplicate_user_argv(dest,
