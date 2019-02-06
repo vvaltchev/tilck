@@ -87,9 +87,9 @@ static void init_tty_struct(tty *t, int minor)
    t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
 }
 
-int tty_get_curr_tty_num(void)
+int tty_get_num(tty *t)
 {
-   return get_curr_tty()->minor;
+   return t->minor;
 }
 
 void
@@ -212,12 +212,8 @@ void init_tty(void)
       }
    }
 
-   __curr_tty = ttys[1];
-   init_ttyaux();
-
    disable_preemption();
    {
-
       if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
          panic("TTY: unable to register keypress handler");
 
@@ -225,7 +221,15 @@ void init_tty(void)
 
       if (tty_tasklet_runner < 0)
          panic("TTY: unable to create tasklet runner");
-
    }
    enable_preemption();
+
+   init_ttyaux();
+   __curr_tty = ttys[1];
+
+   process_set_tty(kernel_process_pi, get_curr_tty());
+   void *init_pi = task_get_pi_opaque(get_task(1));
+
+   if (init_pi != NULL)
+      process_set_tty(init_pi, get_curr_tty());
 }

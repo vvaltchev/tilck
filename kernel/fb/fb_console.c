@@ -293,7 +293,7 @@ static void fb_draw_banner(void)
 
    rc = snprintk(lbuf, fb_term_cols - 1,
                  "Tilck [%s] framebuffer console [tty %d]",
-                 BUILDTYPE_STR, tty_get_curr_tty_num());
+                 BUILDTYPE_STR, get_curr_tty_num());
 
    ASSERT(rc > 0);
    llen = MIN((u16)rc, fb_term_cols - 1);

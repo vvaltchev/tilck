@@ -13,6 +13,7 @@
 
 ATOMIC(task_info *) __current;
 task_info *kernel_process;
+process_info *kernel_process_pi;
 
 list runnable_tasks_list;
 list sleeping_tasks_list;
@@ -183,8 +184,23 @@ void create_kernel_process(void)
    s_kernel_ti->state = TASK_STATE_SLEEPING;
 
    kernel_process = s_kernel_ti;
+   kernel_process_pi = s_kernel_ti->pi;
+
    add_task(kernel_process);
    set_current_task(kernel_process);
+}
+
+process_info *task_get_pi_opaque(task_info *ti)
+{
+   if (ti != NULL)
+      return ti->pi;
+
+   return NULL;
+}
+
+void process_set_tty(process_info *pi, void *t)
+{
+   pi->proc_tty = t;
 }
 
 void init_sched(void)

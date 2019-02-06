@@ -12,9 +12,11 @@
 
 typedef struct regs regs;
 typedef struct task_info task_info;
+typedef struct process_info process_info;
 
 extern ATOMIC(task_info *) __current;
 extern task_info *kernel_process;
+extern process_info *kernel_process_pi;
 
 extern list runnable_tasks_list;
 extern list sleeping_tasks_list;
@@ -112,3 +114,6 @@ typedef void (*kthread_func_ptr)();
 NODISCARD task_info *kthread_create(kthread_func_ptr fun, void *arg);
 int iterate_over_tasks(bintree_visit_cb func, void *arg);
 const char *debug_get_state_name(enum task_state state);
+
+process_info *task_get_pi_opaque(task_info *ti);
+void process_set_tty(process_info *pi, void *t);

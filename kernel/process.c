@@ -122,7 +122,7 @@ task_info *allocate_new_process(task_info *parent, u16 pid)
    list_add_tail(&parent->pi->children_list, &ti->siblings_node);
 
    list_init(&pi->mappings);
-   pi->proc_tty = get_curr_tty();
+   pi->proc_tty = parent->pi->proc_tty;
    return ti;
 }
 
