@@ -19,6 +19,8 @@
 #include "tty_int.h"
 
 static inline bool kb_buf_write_elem(tty *t, u8 c);
+static void tty_keypress_echo(tty *t, char c);
+
 #include "tty_ctrl_handlers.c.h"
 
 static void tty_keypress_echo(tty *t, char c)
@@ -213,7 +215,8 @@ int tty_keypress_handler_int(tty *t, u32 key, u8 c, bool check_mods)
          c = '\r';
    }
 
-   if (check_mods && tty_handle_special_controls(t, c)) /* Ctrl+C, Ctrl+D etc.*/
+   /* Ctrl+C, Ctrl+D, Ctrl+Z etc.*/
+   if (check_mods && tty_handle_special_controls(t, c))
       return KB_HANDLER_OK_AND_CONTINUE;
 
    if (t->c_term.c_lflag & ICANON)

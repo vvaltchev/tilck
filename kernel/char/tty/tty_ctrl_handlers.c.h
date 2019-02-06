@@ -23,6 +23,7 @@ static bool tty_ctrl_start(tty *t)
 static bool tty_ctrl_intr(tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
+      tty_keypress_echo(t, (char)t->c_term.c_cc[VINTR]);
       printk("INTR not supported yet\n");
       return true;
    }
@@ -33,6 +34,7 @@ static bool tty_ctrl_intr(tty *t)
 static bool tty_ctrl_susp(tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
+      tty_keypress_echo(t, (char)t->c_term.c_cc[VSUSP]);
       printk("SUSP not supported yet\n");
       return true;
    }
@@ -43,6 +45,7 @@ static bool tty_ctrl_susp(tty *t)
 static bool tty_ctrl_quit(tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
+      tty_keypress_echo(t, (char)t->c_term.c_cc[VQUIT]);
       printk("QUIT not supported yet\n");
       return true;
    }
@@ -87,6 +90,7 @@ static bool tty_ctrl_eol2(tty *t)
 static bool tty_ctrl_reprint(tty *t)
 {
    if (t->c_term.c_lflag & (ICANON | IEXTEN)) {
+      tty_keypress_echo(t, (char)t->c_term.c_cc[VREPRINT]);
       printk("REPRINT not supported yet\n");
       return true;
    }
@@ -140,7 +144,7 @@ static void tty_set_ctrl_handler(tty *t, u8 ctrl_type, tty_ctrl_sig_func h)
    t->special_ctrl_handlers[c] = h;
 }
 
-static bool tty_handle_special_controls(tty *t, u8 c)
+static inline bool tty_handle_special_controls(tty *t, u8 c)
 {
    tty_ctrl_sig_func handler = t->special_ctrl_handlers[c];
 
