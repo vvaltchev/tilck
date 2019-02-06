@@ -91,13 +91,44 @@ void send_signal(task_info *ti, int signum)
  * -------------------------------------
  */
 
+static int
+sigaction_int(int signum, const struct k_sigaction *user_act)
+{
+   task_info *curr = get_curr_task();
+   struct k_sigaction act;
+
+   if (copy_from_user(&act, user_act, sizeof(act)) != 0)
+      return -EFAULT;
+
+   if (act.sa_flags & SA_SIGINFO) {
+      printk("rt_sigaction: SA_SIGINFO not supported");
+      return -EINVAL;
+   }
+
+   if (act.handler == SIG_DFL || act.handler == SIG_IGN) {
+
+      curr->pi->sa_handlers[signum] = act.handler;
+      curr->pi->sa_flags = act.sa_flags;
+      memcpy(curr->pi->sa_mask, act.sa_mask, sizeof(act.sa_mask));
+
+   } else {
+
+      printk("rt_sigaction: sa_handler [%p] not supported\n", act.handler);
+      return -EINVAL;
+   }
+
+   return 0;
+}
+
 sptr
 sys_rt_sigaction(int signum,
-                 const struct sigaction *user_act,
-                 struct sigaction *user_oldact,
+                 const struct k_sigaction *user_act,
+                 struct k_sigaction *user_oldact,
                  size_t sigsetsize)
 {
-   printk("sigaction sig: %d\n", signum);
+   task_info *curr = get_curr_task();
+   struct k_sigaction oldact;
+   int rc = 0;
 
    if (signum <= 0 || signum >= _NSIG)
       return -EINVAL;
@@ -105,91 +136,33 @@ sys_rt_sigaction(int signum,
    if (signum == SIGKILL || signum == SIGSTOP)
       return -EINVAL;
 
-   // Why this if fails??
-   // if (sigsetsize != sizeof(sigset_t)) {
-   //    printk("%u vs %u\n", sigsetsize, sizeof(sigset_t));
-   //    printk("NSIG: %u\n", _NSIG);
-   //    return -EINVAL;
-   // }
-
-   task_info *curr = get_curr_task();
-   int rc;
+   if (sigsetsize != sizeof(user_act->sa_mask))
+      return -EINVAL;
 
    disable_preemption();
+   {
+      if (user_oldact != NULL) {
 
-   struct sigaction oldact = (struct sigaction) {
-      .sa_handler = curr->pi->sa_handlers[signum],
-      .sa_mask = curr->pi->sa_mask,
-      .sa_flags = curr->pi->sa_flags
-   };
+         oldact = (struct k_sigaction) {
+            .handler = curr->pi->sa_handlers[signum],
+            .sa_flags = curr->pi->sa_flags,
+         };
 
-
-   if (user_act != NULL) {
-
-      struct sigaction act;
-
-      rc = copy_from_user(&act, user_act, sizeof(sigaction));
-
-      if (rc != 0) {
-         rc = -EFAULT;
-         goto out;
+         memcpy(oldact.sa_mask, curr->pi->sa_mask, sizeof(oldact.sa_mask));
       }
 
-      if (act.sa_flags & SA_SIGINFO) {
-
-         printk("sa_sigaction: %p\n", act.sa_sigaction);
-
-         if (act.sa_sigaction == (void*)0xffffff00) {
-
-            printk("   sa_sigaction: DFL\n");
-            curr->pi->sa_handlers[signum] = SIG_DFL;
-
-         } else if (act.sa_sigaction == (void*)0xffffff01) {
-
-            printk("   sa_sigaction: IGN\n");
-            curr->pi->sa_handlers[signum] = SIG_IGN;
-
-         } else {
-            printk("   sa_sigaction: OTHER\n");
-            NOT_IMPLEMENTED();
-         }
-
-
-         curr->pi->sa_mask = act.sa_mask;
-         curr->pi->sa_flags = act.sa_flags;
-
-      } else {
-
-         if (act.sa_handler == SIG_DFL || act.sa_handler == SIG_IGN) {
-
-            if (act.sa_handler == SIG_DFL)
-               printk("   handler: DFL\n");
-            else
-               printk("   handler: IGN\n");
-
-            curr->pi->sa_handlers[signum] = act.sa_handler;
-            curr->pi->sa_mask = act.sa_mask;
-            curr->pi->sa_flags = act.sa_flags;
-
-         } else {
-            printk("   handler: OTHER\n");
-            NOT_IMPLEMENTED();
-         }
+      if (user_act != NULL) {
+         rc = sigaction_int(signum, user_act);
       }
    }
-
-   if (user_oldact != NULL) {
-
-      rc = copy_to_user(user_oldact, &oldact, sizeof(sigaction));
-
-      if (rc != 0) {
-         rc = -EFAULT;
-         goto out;
-      }
-   }
-
-out:
    enable_preemption();
+
+   if (!rc && user_oldact != NULL) {
+
+      if (copy_to_user(user_oldact, &oldact, sizeof(oldact)) != 0)
+         rc = -EFAULT;
+   }
+
    return (sptr)rc;
 }
 

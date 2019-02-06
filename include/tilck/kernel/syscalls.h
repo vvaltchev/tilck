@@ -239,8 +239,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_rt_sigreturn)
 
 sptr
 sys_rt_sigaction(int signum,
-                 const struct sigaction *act,
-                 struct sigaction *oldact,
+                 const struct k_sigaction *act,
+                 struct k_sigaction *oldact,
                  size_t);
 
 sptr

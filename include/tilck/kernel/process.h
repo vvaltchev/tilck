@@ -56,8 +56,8 @@ struct process_info {
    fs_handle handles[16]; /* for the moment, just a fixed-size small array */
 
    __sighandler_t sa_handlers[_NSIG];
-   sigset_t sa_mask;
-   int sa_flags;
+   uptr sa_mask[K_SIGACTION_MASK_WORDS];
+   uptr sa_flags;
 
    void *proc_tty;
 

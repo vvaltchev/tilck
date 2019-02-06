@@ -39,7 +39,7 @@ test_sig(void (*child_func)(void), int expected_sig, int expected_code)
    rc = waitpid(-1, &wstatus, 0);
 
    if (rc != child_pid) {
-      printf("waitpid returned %d instead of child's pid: %d\n", rc);
+      printf("waitpid returned %d instead of child's pid: %d\n", rc, child_pid);
       return 1;
    }
 

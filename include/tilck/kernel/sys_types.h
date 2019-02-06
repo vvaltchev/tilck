@@ -33,3 +33,17 @@ struct linux_dirent64 {
    unsigned char  d_type;   /* File type */
    char           d_name[]; /* Filename (null-terminated) */
 };
+
+#define K_SIGACTION_MASK_WORDS 2
+
+struct k_sigaction {
+
+   union {
+      void (*handler)(int);
+      void (*sigact_handler)(int, void * /* siginfo */, void *);
+   };
+
+   uptr sa_flags;
+   void (*restorer)(void);
+   uptr sa_mask[K_SIGACTION_MASK_WORDS];
+};
