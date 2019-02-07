@@ -42,6 +42,10 @@ load_tests_func_by_type = {
    val: load_tests_func_by_type_list[i] for i, val in enumerate(test_types)
 }
 
+tt_indexes = {
+   val : i for i, val in enumerate(test_types)
+}
+
 # Global variables
 
 tests_by_type = { k: [] for k in test_types }
@@ -115,7 +119,7 @@ def load_list_of_kernel_self_tests():
 
 def internal_run_test(test_type, test, timeout, show_output = False):
 
-   print "[ RUNNING ] {0}: '{1}' [timeout: {2}]".format(test_type,test,timeout)
+   print("[ RUNNING ] {0}: '{1}' [timeout: {2}]".format(test_type,test,timeout))
    start_time = time.time()
 
    try:
@@ -126,9 +130,9 @@ def internal_run_test(test_type, test, timeout, show_output = False):
                                         stderr=subprocess.STDOUT)
    except subprocess.CalledProcessError as e:
       elapsed = time.time() - start_time
-      print e.output
-      print "[ FAILED  ] after %.2f seconds with: %s\n" % \
-            (elapsed, error_codes_strings[e.returncode])
+      print(e.output)
+      print("[ FAILED  ] after %.2f seconds with: %s\n" % \
+            (elapsed, error_codes_strings[e.returncode]))
       return False
 
    elapsed = time.time() - start_time
@@ -137,14 +141,13 @@ def internal_run_test(test_type, test, timeout, show_output = False):
       print("")
       print(output)
 
-   print "[ PASSED  ] after %.2f seconds\n" % elapsed
+   print("[ PASSED  ] after %.2f seconds\n" % elapsed)
    return True
 
 def show_help_and_exit():
-   print "Syntax:"
-   print "     ./system_tests/run_all_tests -l"
-   print "     ./system_tests/run_all_tests [-o] [<max_timeout>]"
-   print "     ./system_tests/run_all_tests [-o] <regex> [<max_timeout>]"
+   print("Syntax:")
+   print("     run_all_tests -l")
+   print("     run_all_tests [-c] [-o] [<regex>] [<max_timeout>]")
    sys.exit(1)
 
 def show_tests_and_exit():
@@ -200,16 +203,17 @@ def run_test(test_type, x, show_output):
    if internal_run_test(test_type, x[0], x[1], show_output):
       tests_passed[test_type] += 1
 
-def run_all_tests(max_test_timeout, show_output, reg):
+def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero):
 
    for tt in test_types:
       for x in tests_by_type[tt]:
          if re.match(reg, x[0]) and x[1] <= max_test_timeout:
             run_test(tt, x, show_output)
 
-   if tests_to_run['selftest'] + tests_to_run['shellcmd'] == 0:
-      print("ERROR: No tests matching the '{0}' regex".format(reg))
-      sys.exit(1)
+   if fail_on_zero:
+      if tests_to_run['selftest'] + tests_to_run['shellcmd'] == 0:
+         print("ERROR: No tests matching the '{0}' regex".format(reg))
+         sys.exit(1)
 
 def dump_test_stats():
 
@@ -217,19 +221,28 @@ def dump_test_stats():
 
    for tt in test_types:
       if tests_to_run[tt]:
-         print "{0} passed: {1}/{2}".format(tt_pretty_names[tt],
+         print("{0} passed: {1}/{2}".format(tt_pretty_names[tt],
                                             tests_passed[tt],
-                                            tests_to_run[tt])
+                                            tests_to_run[tt]))
 
 def main():
+
+   global tests_by_type
+   global tests_to_run
 
    # Options
    max_test_timeout = MED_TEST_TIMEOUT
    show_output = False
-   reg = ".*"
+   compact_shellcmds = False
+   reg_filter = ".*"
    # ------------
 
    load_all_tests()
+
+   if len(sys.argv) >= 2 and sys.argv[1] == '-c':
+      compact_shellcmds = True
+      tests_by_type['shellcmd'] = []
+      del sys.argv[1]
 
    if len(sys.argv) >= 2:
 
@@ -246,7 +259,7 @@ def main():
       try:
          max_test_timeout = int(sys.argv[1])
       except:
-         reg = sys.argv[1]
+         reg_filter = sys.argv[1]
 
       if len(sys.argv) >= 3:
          try:
@@ -254,7 +267,14 @@ def main():
          except:
             show_help_and_exit()
 
-   run_all_tests(max_test_timeout, show_output, reg)
+   run_all_tests(max_test_timeout,
+                 show_output,
+                 reg_filter,
+                 not compact_shellcmds)
+
+   if compact_shellcmds:
+      run_test('shellcmd', ['runall', MED_TEST_TIMEOUT * 2], show_output)
+
    dump_test_stats()
 
    if get_sum(tests_passed) != get_sum(tests_to_run):
