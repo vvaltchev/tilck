@@ -153,7 +153,7 @@ internal_copy_str_array_from_user(void *dest,
    }
 
 out:
-   *written_ptr += written;
+   *written_ptr = written;
 }
 
 
@@ -186,6 +186,7 @@ int duplicate_user_path(char *dest,
                         size_t *written_ptr /* IN/OUT */)
 {
    int rc;
+   size_t curr_written;
 
    if (!user_path)
       return -EINVAL;
@@ -193,7 +194,7 @@ int duplicate_user_path(char *dest,
    rc = copy_str_from_user(dest + *written_ptr,
                            user_path,
                            dest_size - *written_ptr,
-                           written_ptr);
+                           &curr_written);
 
    if (rc < 0)
       return -EFAULT;
@@ -201,6 +202,7 @@ int duplicate_user_path(char *dest,
    if (rc > 0)
       return -ENAMETOOLONG;
 
+   *written_ptr += curr_written;
    return 0;
 }
 
@@ -210,11 +212,12 @@ int duplicate_user_argv(char *dest,
                         size_t *written_ptr /* IN/OUT */)
 {
    int rc;
+   size_t curr_written;
 
    rc = copy_str_array_from_user(dest + *written_ptr,
                                  user_argv,
                                  dest_size - *written_ptr,
-                                 written_ptr);
+                                 &curr_written);
 
    if (rc < 0)
       return -EFAULT;
@@ -222,5 +225,6 @@ int duplicate_user_argv(char *dest,
    if (rc > 0)
       return -E2BIG;
 
+   *written_ptr += curr_written;
    return 0;
 }
