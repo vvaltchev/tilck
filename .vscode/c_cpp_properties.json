@@ -6,15 +6,12 @@
             "cStandard": "c11",
             "cppStandard": "c++11",
             "compileCommands": "${workspaceRoot}/build/compile_commands.json",
-
             "defines": [
                 "__i386__"
             ],
-
             "includePath": [
                 "${workspaceRoot}/include"
             ],
-
             "browse": {
                 "path": [
                     "${workspaceRoot}/boot",
@@ -22,9 +19,10 @@
                     "${workspaceRoot}/kernel",
                     "${workspaceRoot}/unittests"
                 ],
-                "limitSymbolsToIncludedHeaders": true,
+                "limitSymbolsToIncludedHeaders": false,
                 "databaseFilename": ""
-            }
+            },
+            "configurationProvider": "vector-of-bool.cmake-tools"
         }
     ],
     "version": 4

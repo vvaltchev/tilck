@@ -1,0 +1,25 @@
+[
+   {
+      "name": "Tilck Clang",
+      "compilers": {
+         "C": "clang",
+         "CXX": "clang++"
+      },
+      "cmakeSettings": {
+         "WCONV": 1,
+         "KERNEL_SYSCC": 1,
+         "CMAKE_EXPORT_COMPILE_COMMANDS": 1
+      }
+   },
+
+   {
+      "name": "Tilck GCC",
+      "compilers": {
+         "CC": "gcc",
+         "CXX": "g++"
+      },
+      "cmakeSettings": {
+         "CMAKE_EXPORT_COMPILE_COMMANDS": 1
+      }
+   }
+]

@@ -7,7 +7,8 @@ function (show_wrong_arch_error)
    string(CONCAT msg "Currently, Tilck can be built ONLY on x86_64 host "
                      "machines no matter which target architecture has been "
                      "chosen. Reason: the build system uses a toolchain "
-                     "pre-compiled for x86_64 hosts.")
+                     "pre-compiled for x86_64 hosts. Current system CPU: "
+                     "'${CMAKE_SYSTEM_PROCESSOR}'")
 
    message(FATAL_ERROR "${msg}")
 
