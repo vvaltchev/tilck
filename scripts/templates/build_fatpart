@@ -34,11 +34,11 @@ cp -r $maindir/sysroot $bdir/
 rm $bdir/sysroot/README
 
 cd $bdir/sysroot
-ln $bdir/usermode_apps/init sbin/
+ln $bdir/userapps/init sbin/
 
 IFS=";"
 
-apps="@USERMODE_APPS_FILES_LIST@"
+apps="@USERAPPS_FILES_LIST@"
 extra_apps="@EXTRA_APPS_LIST@"
 
 for x in ${apps[@]}; do

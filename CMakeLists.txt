@@ -313,7 +313,7 @@ include(${CMAKE_SOURCE_DIR}/other/gen_config.cmake)
 ################################################################################
 # Include sub-directories
 
-add_subdirectory(usermode_apps)
+add_subdirectory(userapps)
 add_subdirectory(boot/legacy)
 add_subdirectory(boot/efi)
 add_subdirectory(kernel)
@@ -365,8 +365,8 @@ add_custom_command(
       kernel
       ${KERNEL_FILE}
 
-      usermode_apps
-      ${USERMODE_APPS_FILES_LIST}
+      userapps
+      ${USERAPPS_FILES_LIST}
       ${EXTRA_APPS_LIST}
 
       fat_get_used_bytes

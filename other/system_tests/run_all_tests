@@ -63,7 +63,7 @@ def load_list_of_shell_cmd_tests():
    tt_med = MED_TEST_TIMEOUT
    tt_long = LONG_TEST_TIMEOUT
 
-   devshell = os.path.join(BUILD_DIR, 'usermode_apps', 'devshell')
+   devshell = os.path.join(BUILD_DIR, 'userapps', 'devshell')
    output = subprocess.check_output([devshell, '-l'])
    arr = output.split("\n")
 

@@ -10,15 +10,15 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g -DUSERMODE_APP")
 
-add_custom_target(usermode_apps)
+add_custom_target(userapps)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${TCROOT}/zlib/install/include)
 
 # [build utils]
 
 macro(register_usermode_app)
-   list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/usermode_apps/${ARGV0}")
-   add_dependencies(usermode_apps ${ARGV0})
+   list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/userapps/${ARGV0}")
+   add_dependencies(userapps ${ARGV0})
 endmacro()
 
 macro(add_usermode_app)
@@ -79,7 +79,7 @@ endmacro()
 
 add_subdirectory(extra)
 
-set(USERMODE_APPS_FILES_LIST ${APPS_BIN_FILES} PARENT_SCOPE)
+set(USERAPPS_FILES_LIST ${APPS_BIN_FILES} PARENT_SCOPE)
 set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST} PARENT_SCOPE)
 
 # [/extra]
