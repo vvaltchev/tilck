@@ -9,6 +9,18 @@ knownExtensions = [
    ".c", ".cpp", ".cc", ".cxx", ".h", ".py", ".asm", ".txt", ".S"
 ]
 
+excluded_dirs = [
+   'toolchain',
+   'build',
+   'sysroot',
+   'system_headers',
+   'gcc_build',
+   'gcc_rel_build',
+   'clang_build',
+   'clang_rel_build',
+   'syscc_build'
+]
+
 destDirs = sys.argv[1:]
 globalLinesCount = {ext: 0 for ext in knownExtensions}
 globalTotal = 0
@@ -19,20 +31,21 @@ prefix = " "*3
 
 def count_lines_in_file(f):
    res = 0
-   print 'file:', f
+   print("file: {0}".format(f))
    with open(f, 'r') as fd:
       for line in fd:
          res += 1
    return res
 
 def should_exclude(f):
-   ex = ['toolchain', 'build', 'sysroot', 'system_headers']
-   for e in ex:
+
+   for e in excluded_dirs:
       if f.find(e) != -1:
          return True
+
    return False
 
-print # print an empty line
+print("") # print an empty line
 
 for destDir in destDirs:
 
@@ -60,7 +73,7 @@ for destDir in destDirs:
          globalTotal += c
 
 
-   print "\nNumber of lines in '"+destDir+"':"
+   print ("\nNumber of lines in '{0}':".format(destDir))
 
    for ext in linesByExtention:
       val = linesByExtention[ext]
@@ -72,17 +85,17 @@ for destDir in destDirs:
       strVal = str(val)
       ep = extFieldLen-len(ext)
       np = numFieldLen-len(strVal)
-      print prefix+ext+" "*ep+" "+" "*np+strVal
+      print(prefix+ext+" "*ep+" "+" "*np+strVal)
 
-   print "-"*35
+   print("-"*35)
    totExt = "Total: "
    ep = extFieldLen-len(totExt)
    np = numFieldLen-len(str(total))
-   print prefix+"Total: "+" "*ep+" "+" "*np+str(total)+"\n"
+   print(prefix+"Total: "+" "*ep+" "+" "*np+str(total)+"\n")
 
 
 if len(destDirs) > 1:
-   print "\nCumulative number of lines:"
+   print("\nCumulative number of lines:")
 
    for ext in globalLinesCount:
       val = globalLinesCount[ext]
@@ -93,10 +106,10 @@ if len(destDirs) > 1:
       strVal = str(val)
       ep = extFieldLen-len(ext)
       np = numFieldLen-len(strVal)
-      print prefix+ext+" "*ep+" "+" "*np+strVal
+      print(prefix+ext+" "*ep+" "+" "*np+strVal)
 
-   print "-"*35
+   print("-"*35)
    totExt = "Total: "
    ep = extFieldLen-len(totExt)
    np = numFieldLen-len(str(globalTotal))
-   print prefix+"Total: "+" "*ep+" "+" "*np+str(globalTotal)+"\n"
+   print(prefix+"Total: "+" "*ep+" "+" "*np+str(globalTotal)+"\n")
