@@ -2,20 +2,28 @@
     "configurations": [
         {
             "name": "Linux",
-            "includePath": [
-                "${workspaceRoot}/include"
-            ],
+            "intelliSenseMode": "clang-x64",
+            "cStandard": "c11",
+            "cppStandard": "c++11",
+
             "defines": [
                 "__i386__"
             ],
+
+            "includePath": [
+                "${workspaceRoot}/include"
+            ],
+
             "browse": {
                 "path": [
-                    "${workspaceRoot}"
+                    "${workspaceRoot}/boot",
+                    "${workspaceRoot}/include",
+                    "${workspaceRoot}/kernel",
+                    "${workspaceRoot}/unittests"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
-            },
-            "intelliSenseMode": "clang-x64"
+            }
         }
     ],
     "version": 4
