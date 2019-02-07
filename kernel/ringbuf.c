@@ -27,6 +27,11 @@ void ringbuf_destory(ringbuf *rb)
    bzero(rb, sizeof(ringbuf));
 }
 
+void ringbuf_reset(ringbuf *rb)
+{
+   atomic_store_explicit(&rb->s.raw, 0, mo_relaxed);
+}
+
 bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr)
 {
    generic_ringbuf_stat cs, ns;

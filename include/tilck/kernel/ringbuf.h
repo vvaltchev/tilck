@@ -41,6 +41,7 @@ static inline bool ringbuf_is_full(ringbuf *rb)
 
 void ringbuf_init(ringbuf *rb, u16 max_elems, u16 elem_size, void *buf);
 void ringbuf_destory(ringbuf *rb);
+void ringbuf_reset(ringbuf *rb);
 bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr);
 bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */);
 bool ringbuf_unwrite_elem(ringbuf *rb, void *elem_ptr /* out */);
