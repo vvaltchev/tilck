@@ -19,7 +19,7 @@ jobs:
       - run: make -j gtests
       - run: ./build/gtests
       - run: ./build/scripts/generate_test_coverage_report
-      - run: ./build/st/run_all_tests
+      - run: ./build/st/run_all_tests -c
       - run: ./build/scripts/generate_kernel_coverage_report --codecov
 
   release_build:
@@ -35,7 +35,7 @@ jobs:
       - run: make -j
       - run: make -j gtests
       - run: ./build/gtests
-      - run: ./build/st/run_all_tests
+      - run: ./build/st/run_all_tests -c
 
   debug_arch_gtests_build:
     docker:
@@ -66,7 +66,7 @@ jobs:
       - run: ./scripts/build_toolchain -s build_libmusl
       - run: make -j
       - run: make -j gtests
-      - run: ./build/st/run_all_tests
+      - run: ./build/st/run_all_tests -c
 
   debug_clang_build:
     docker:
@@ -83,7 +83,7 @@ jobs:
       - run: make -j
       - run: make -j gtests
       - run: ./build/gtests
-      - run: ./build/st/run_all_tests
+      - run: ./build/st/run_all_tests -c
 
 workflows:
   version: 2
