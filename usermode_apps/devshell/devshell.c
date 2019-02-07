@@ -63,6 +63,7 @@ static void wait_child_cmd(int child_pid)
    if (!WIFEXITED(wstatus)) {
 
       int term_sig = WTERMSIG(wstatus);
+      printf("\n");
 
       if (term_sig != SIGINT)
          printf("[shell] command terminated by signal: %d\n", term_sig);
@@ -78,7 +79,7 @@ static void shell_run_child(int argc)
 {
    /* Reset all the signal handlers to their default behavior */
    for (int i = 1; i <= SIGRTMAX; i++)
-      signal(i, SIG_DFL);
+     signal(i, SIG_DFL);
 
    run_if_known_command(cmd_argv[0], argc - 1, cmd_argv + 1);
 
@@ -222,6 +223,9 @@ int main(int argc, char **argv, char **env)
    static char cmdline_buf[256];
    static char cwd_buf[256];
    static struct utsname utsname_buf;
+
+   signal(SIGINT, SIG_IGN);
+   signal(SIGQUIT, SIG_IGN);
 
    int uid = geteuid();
    struct passwd *pwd = getpwuid(uid);

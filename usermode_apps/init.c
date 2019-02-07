@@ -202,8 +202,10 @@ int main(int argc, char **argv, char **env)
    int shell_pids[MAX_TTYS];
    int pid;
 
-   /* Ignore SIGINT */
+   /* Ignore SIGINT and SIGQUIT */
    signal(SIGINT, SIG_IGN);
+   signal(SIGQUIT, SIG_IGN);
+
 
    do_initial_setup();
    parse_opts(argc - 1, argv + 1);
