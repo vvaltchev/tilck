@@ -89,4 +89,8 @@ fi
 echo "[cmake_run] Using '$CMAKE' as CMake executable"
 
 cd $build_dir
-$CMAKE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_ARGS "$@" "$MAIN_DIR"
+
+$CMAKE                                 \
+   -DCMAKE_BUILD_TYPE=$BUILD_TYPE      \
+   -DCMAKE_EXPORT_COMPILE_COMMANDS=1   \
+   $CMAKE_ARGS "$@" "$MAIN_DIR"
