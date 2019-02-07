@@ -17,6 +17,7 @@
 #define RDTSC() __builtin_ia32_rdtsc()
 
 #define COLOR_RED     "\033[31m"
+#define COLOR_GREEN   "\033[32m"
 #define COLOR_YELLOW  "\033[93m"
 #define RESET_ATTRS   "\033[0m"
 /* --- */

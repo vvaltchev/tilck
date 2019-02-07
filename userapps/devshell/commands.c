@@ -215,6 +215,7 @@ int cmd_selftest(int argc, char **argv)
 }
 
 int cmd_help(int argc, char **argv);
+int cmd_runall(int argc, char **argv);
 
 /* ------------------------------------------- */
 
@@ -244,6 +245,7 @@ struct {
 
    CMD_ENTRY(help, TT_SHORT, false),
    CMD_ENTRY(selftest, TT_LONG, false),
+   CMD_ENTRY(runall, TT_LONG, false),
    CMD_ENTRY(loop, TT_MED, false),
    CMD_ENTRY(fork, TT_MED, true),
    CMD_ENTRY(sysenter, TT_SHORT, true),
@@ -270,6 +272,52 @@ struct {
 };
 
 #undef CMD_ENTRY
+
+int cmd_runall(int argc, char **argv)
+{
+   bool any_failure = false;
+   int wstatus;
+   int child_pid;
+
+   for (int i = 1; i < ARRAY_SIZE(cmds_table); i++) {
+
+      if (!cmds_table[i].enabled_in_st || cmds_table[i].tt == TT_LONG)
+         continue;
+
+      child_pid = fork();
+
+      if (child_pid < -1) {
+         perror("fork failed");
+         exit(1);
+      }
+
+      if (!child_pid) {
+
+         int exit_code;
+
+         printf(COLOR_YELLOW "[devshell] " COLOR_GREEN
+                "RUN %s" RESET_ATTRS "\n", cmds_table[i].name);
+
+         exit_code = cmds_table[i].fun(argc, argv);
+
+         printf(COLOR_YELLOW "[devshell] %s" RESET_ATTRS "\n\n",
+                exit_code ? COLOR_RED "FAILED" : COLOR_GREEN "PASSED");
+
+         exit(exit_code);
+      }
+
+      waitpid(child_pid, &wstatus, 0);
+
+      if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus))
+         any_failure = true;
+   }
+
+   if (dump_coverage) {
+      dump_coverage_files();
+   }
+
+   exit(any_failure);
+}
 
 void dump_list_of_commands(void)
 {
@@ -298,8 +346,9 @@ int cmd_help(int argc, char **argv)
    printf("all the commands built in busybox.\n\n");
 
    printf(COLOR_RED "Built-in commands\n" RESET_ATTRS);
-   printf("    help: shows this help\n");
-   printf("    cd <directory>: change the current working directory\n\n");
+   printf("    help         shows this help\n");
+   printf("    cd <DIR>     change the current working directory\n");
+   printf("    runall       run all the shellcmd tests\n\n");
    printf(COLOR_RED "Kernel test commands\n" RESET_ATTRS);
 
    row_len = printf("    ");
