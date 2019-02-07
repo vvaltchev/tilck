@@ -61,6 +61,7 @@ set(ARCH_GTESTS OFF CACHE BOOL "Build unit tests for target architecture")
 set(TIMER_HZ 100 CACHE STRING "System timer HZ")
 set(USER_STACK_PAGES 16 CACHE STRING "User apps stack size in pages")
 set(TTY_COUNT 2 CACHE STRING "Number of TTYs")
+set(USERAPPS_CFLAGS "-ggdb" CACHE STRING "Build flags for C/C++ user programs")
 
 # Kernel options (enabled by default)
 
