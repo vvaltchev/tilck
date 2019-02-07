@@ -5,7 +5,8 @@ What is the purpose of this directory
 This directory has been created in order to facilitate the integration of
 3rd-party projects with Tilck's build system. If a 3rd-party project follows the rules below, Tilck's build system will automatically compile and copy project's binaries in Tilck's image. An excellent example project is the `tfblib` project: https://github.com/vvaltchev/tfblib. It can be built independently as any CMake project for Linux on any architecture but, when a symlink (or a copy) of its
 root directory is put here in `extra`, it integrates *smoothly* with Tilck's
-build system and the binaries it produces become visible from `Tilck` in the `/usr/bin` directory.
+build system and the binaries it produces become visible from `Tilck` in the
+`/usr/bin` directory.
 
 Integration rules
 -------------------
