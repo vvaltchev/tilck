@@ -66,7 +66,8 @@ static void wait_child_cmd(int child_pid)
       printf("\n");
 
       if (term_sig != SIGINT)
-         printf("[shell] command terminated by signal: %d\n", term_sig);
+         printf("[shell] command terminated by signal: %d (%s)\n",
+                term_sig, strsignal(term_sig));
 
       return;
    }
