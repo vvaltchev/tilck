@@ -96,7 +96,7 @@ static void read_timeval(struct timeval *tv)
 
    read_system_clock_datetime(&d);
    tv->tv_sec = datetime_to_timestamp(d);
-   tv->tv_usec = (get_ticks() % TIMER_HZ) * 1000 / TIMER_HZ;
+   tv->tv_usec = (get_ticks() % TIMER_HZ) * 1000000 / TIMER_HZ;
 }
 
 sptr sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
