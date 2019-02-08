@@ -35,6 +35,11 @@
    "C_Cpp.configurationWarnings": "Disabled",
    "cmake.generator": "Unix Makefiles",
    "files.associations": {
-      "x86_utils.h": "c"
+      "x86_utils.h": "c",
+      "time.h": "c",
+      "types.h": "c",
+      "time_t.h": "c",
+      "struct_timeval.h": "c",
+      "features.h": "c"
    }
 }
