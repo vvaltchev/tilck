@@ -30,11 +30,11 @@ considered as *not implemented yet*.
  sys_getgid16        | compliant [3]
  sys_seteuid16       | compliant [3]
  sys_setegid16       | compliant [3]
- sys_ioctl           | minimal
+ sys_ioctl           | partial
  sys_getppid         | full
  sys_gettimeofday    | full
  sys_munmap          | full
- sys_wait4           | partial
+ sys_wait4           | partial [7]
  sys_newuname        | full
  sys_llseek          | full
  sys_readv           | full
@@ -53,16 +53,16 @@ considered as *not implemented yet*.
  sys_setgid          | compliant [3]
  sys_getdents64      | full
  sys_fcntl64         | stub
- sys_gettid          | minimal
+ sys_gettid          | minimal [4]
  sys_set_thread_area | full
- sys_exit_group      | stub
+ sys_exit_group      | minimal [5]
  sys_set_tid_address | stub
  sys_clock_gettime   | partial
- sys_tkill           | partial
- sys_tgkill          | partial
- sys_kill            | partial
- sys_setsid          | minimal
- sys_times           | minimal
+ sys_tkill           | partial [6]
+ sys_tgkill          | partial [6]
+ sys_kill            | partial [6]
+ sys_setsid          | minimal [8]
+ sys_times           | minimal [9]
 
 Definitions:
 
@@ -91,4 +91,17 @@ Notes:
    UID == GID == EUID == EGID == 0.
    The syscall setuid() is compliant because it succeeds when uid is 0.
 
+4. Because the lack of thread support, `gettid()` is the same as `getpid()`
 
+5. Because the lack of thread support, exit_group() behaves as exit()
+
+6. Because the lack of thread support and process groups, all of those *kill*
+   syscalls behave substantially in the same way. In the case of `tgkill()` the
+   the condition pid == tid is checked.
+
+7. Currently `wait4()` behaves like `waitpid()` and the `rusage` buffer is just
+   zero-ed.
+
+8. The only thing that `setsid()` does now is resetting the controlling tty.
+
+9. At the moment `times()` just updates `tms_utime` and `tms_stime`.
