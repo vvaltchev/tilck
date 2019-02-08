@@ -6,6 +6,9 @@
             "cStandard": "c11",
             "cppStandard": "c++11",
             "compileCommands": "${workspaceRoot}/build/compile_commands.json",
+            "defines": [
+
+            ],
             "includePath": [
                 "${workspaceRoot}/include"
             ],

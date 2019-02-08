@@ -33,6 +33,7 @@
    "python.linting.pylintEnabled": true,
    "python.linting.enabled": true,
    "C_Cpp.configurationWarnings": "Disabled",
+   "C_Cpp.errorSquiggles": "Disabled",
    "cmake.generator": "Unix Makefiles",
    "files.associations": {
       "x86_utils.h": "c",
@@ -45,6 +46,15 @@
       "list.h": "c",
       "sched.h": "c",
       "syscalls.h": "c",
-      "sys_types.h": "c"
+      "sys_types.h": "c",
+      "devfs.h": "c",
+      "term.h": "c",
+      "kb.h": "c",
+      "cmdline.h": "c",
+      "termios.h": "c",
+      "termbits.h": "c",
+      "basic_defs.h": "c",
+      "uio.h": "c",
+      "times.h": "c"
    }
 }

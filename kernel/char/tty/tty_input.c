@@ -95,9 +95,8 @@ static void tty_keypress_echo(tty *t, char c)
    if ((c < ' ' || c == 0x7F) && (c_term->c_lflag & ECHOCTL)) {
       if (c != '\t' && c != '\n') {
          if (c != c_term->c_cc[VSTART] && c != c_term->c_cc[VSTOP]) {
-            c += 0x40;
-            term_write(t->term_inst, "^", 1, t->curr_color);
-            term_write(t->term_inst, &c, 1, t->curr_color);
+            char mini_buf[2] = { '^', c + 0x40 };
+            term_write(t->term_inst, mini_buf, 2, t->curr_color);
             return;
          }
       }
