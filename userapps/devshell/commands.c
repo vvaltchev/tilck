@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 
 #include "devshell.h"
 #include "sysenter.h"
@@ -273,25 +274,45 @@ struct {
 
 #undef CMD_ENTRY
 
-static void
-runall_run_child(int argc, char **argv, cmd_func_type func, const char *name)
+static bool
+run_child(int argc, char **argv, cmd_func_type func, const char *name)
 {
    static const char *pass_fail_strings[2] = {
       COLOR_RED "[FAILED] " RESET_ATTRS,
       COLOR_GREEN "[PASSED] " RESET_ATTRS,
    };
 
-   int exit_code;
+   int child_pid, wstatus;
+   u64 start_ms, end_ms;
+   struct timeval tv;
+   bool pass;
+
+   gettimeofday(&tv, NULL);
+   start_ms = (u64)tv.tv_sec * 1000ull + (u64)tv.tv_usec / 1000ull;
 
    printf(COLOR_YELLOW "[devshell] ");
    printf(COLOR_GREEN "[RUN   ] " RESET_ATTRS "%s"  "\n", name);
 
-   exit_code = func(argc, argv);
+   child_pid = fork();
 
-   printf(COLOR_YELLOW "[devshell] %s", pass_fail_strings[!exit_code]);
-   printf("%s\n\n", name);
+   if (child_pid < -1) {
+      perror("fork failed");
+      exit(1);
+   }
 
-   exit(exit_code);
+   if (!child_pid) {
+      exit(func(argc, argv));
+   }
+
+   waitpid(child_pid, &wstatus, 0);
+
+   gettimeofday(&tv, NULL);
+   end_ms = (u64)tv.tv_sec * 1000ull + (u64)tv.tv_usec / 1000ull;
+
+   pass = WIFEXITED(wstatus) && (WEXITSTATUS(wstatus) == 0);
+   printf(COLOR_YELLOW "[devshell] %s", pass_fail_strings[pass]);
+   printf("%s (%lu ms)\n\n", name, end_ms - start_ms);
+   return pass;
 }
 
 int cmd_runall(int argc, char **argv)
@@ -300,6 +321,11 @@ int cmd_runall(int argc, char **argv)
    int wstatus;
    int child_pid;
    int to_run = 0, passed = 0;
+   u64 start_ms, end_ms;
+   struct timeval tv;
+
+   gettimeofday(&tv, NULL);
+   start_ms = (u64)tv.tv_sec * 1000ull + (u64)tv.tv_usec / 1000ull;
 
    for (int i = 1; i < ARRAY_SIZE(cmds_table); i++) {
 
@@ -307,32 +333,25 @@ int cmd_runall(int argc, char **argv)
          continue;
 
       to_run++;
-      child_pid = fork();
 
-      if (child_pid < -1) {
-         perror("fork failed");
-         exit(1);
-      }
-
-      if (!child_pid) {
-         runall_run_child(argc, argv, cmds_table[i].func, cmds_table[i].name);
-      }
-
-      waitpid(child_pid, &wstatus, 0);
-
-      if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus)) {
+      if (!run_child(argc, argv, cmds_table[i].func, cmds_table[i].name)) {
          any_failure = true;
-      } else {
-         passed++;
+         continue;
       }
+
+      passed++;
    }
+
+   gettimeofday(&tv, NULL);
+   end_ms = (u64)tv.tv_sec * 1000ull + (u64)tv.tv_usec / 1000ull;
 
    printf(COLOR_YELLOW "[devshell] ");
    printf("------------------------------------------------------------\n");
    printf(COLOR_YELLOW "[devshell] ");
 
    printf(passed == to_run ? COLOR_GREEN : COLOR_RED);
-   printf("Tests passed %d/%d" RESET_ATTRS "\n\n", to_run, passed);
+   printf("Tests passed %d/%d" RESET_ATTRS " ", to_run, passed);
+   printf("(%lu ms)\n\n", end_ms - start_ms);
 
    if (dump_coverage) {
       dump_coverage_files();
