@@ -40,6 +40,7 @@
       "types.h": "c",
       "time_t.h": "c",
       "struct_timeval.h": "c",
-      "features.h": "c"
+      "features.h": "c",
+      "elf_loader.h": "c"
    }
 }
