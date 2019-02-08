@@ -237,7 +237,7 @@ static const char *tt_str[] =
 struct {
 
    const char *name;
-   cmd_func_type fun;
+   cmd_func_type func;
    enum timeout_type tt;
    bool enabled_in_st;
 
@@ -273,17 +273,40 @@ struct {
 
 #undef CMD_ENTRY
 
+static void
+runall_run_child(int argc, char **argv, cmd_func_type func, const char *name)
+{
+   static const char *pass_fail_strings[2] = {
+      COLOR_RED "[FAILED] " RESET_ATTRS,
+      COLOR_GREEN "[PASSED] " RESET_ATTRS,
+   };
+
+   int exit_code;
+
+   printf(COLOR_YELLOW "[devshell] ");
+   printf(COLOR_GREEN "[RUN   ] " RESET_ATTRS "%s"  "\n", name);
+
+   exit_code = func(argc, argv);
+
+   printf(COLOR_YELLOW "[devshell] %s", pass_fail_strings[!exit_code]);
+   printf("%s\n\n", name);
+
+   exit(exit_code);
+}
+
 int cmd_runall(int argc, char **argv)
 {
    bool any_failure = false;
    int wstatus;
    int child_pid;
+   int to_run = 0, passed = 0;
 
    for (int i = 1; i < ARRAY_SIZE(cmds_table); i++) {
 
       if (!cmds_table[i].enabled_in_st || cmds_table[i].tt == TT_LONG)
          continue;
 
+      to_run++;
       child_pid = fork();
 
       if (child_pid < -1) {
@@ -292,25 +315,24 @@ int cmd_runall(int argc, char **argv)
       }
 
       if (!child_pid) {
-
-         int exit_code;
-
-         printf(COLOR_YELLOW "[devshell] " COLOR_GREEN
-                "RUN %s" RESET_ATTRS "\n", cmds_table[i].name);
-
-         exit_code = cmds_table[i].fun(argc, argv);
-
-         printf(COLOR_YELLOW "[devshell] %s" RESET_ATTRS "\n\n",
-                exit_code ? COLOR_RED "FAILED" : COLOR_GREEN "PASSED");
-
-         exit(exit_code);
+         runall_run_child(argc, argv, cmds_table[i].func, cmds_table[i].name);
       }
 
       waitpid(child_pid, &wstatus, 0);
 
-      if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus))
+      if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus)) {
          any_failure = true;
+      } else {
+         passed++;
+      }
    }
+
+   printf(COLOR_YELLOW "[devshell] ");
+   printf("------------------------------------------------------------\n");
+   printf(COLOR_YELLOW "[devshell] ");
+
+   printf(passed == to_run ? COLOR_GREEN : COLOR_RED);
+   printf("Tests passed %d/%d" RESET_ATTRS "\n\n", to_run, passed);
 
    if (dump_coverage) {
       dump_coverage_files();
@@ -387,5 +409,5 @@ void run_if_known_command(const char *cmd, int argc, char **argv)
 {
    for (int i = 0; i < ARRAY_SIZE(cmds_table); i++)
       if (!strcmp(cmds_table[i].name, cmd))
-         run_cmd(cmds_table[i].fun, argc, argv);
+         run_cmd(cmds_table[i].func, argc, argv);
 }
