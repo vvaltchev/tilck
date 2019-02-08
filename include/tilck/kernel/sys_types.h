@@ -11,6 +11,7 @@
 
 #include <sys/types.h>  // system header
 #include <sys/time.h>   // system header
+#include <sys/times.h>  // system header
 #include <sys/uio.h>    // system header
 
 #ifndef __GLIBC__
@@ -23,7 +24,8 @@
    #undef stat
 #endif
 
-#include <unistd.h>     // system header
+#include <unistd.h>       // system header
+#include <sys/utsname.h>  // system header
 
 /* From the man page of getdents64() */
 struct linux_dirent64 {

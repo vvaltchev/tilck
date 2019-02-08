@@ -8,10 +8,8 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/sched.h>
-#include <tilck/kernel/sys_types.h>
 #include <tilck/kernel/signal.h>
-
-#include <sys/utsname.h> // system header
+#include <tilck/kernel/sys_types.h>
 
 #ifdef __SYSCALLS_C__
 
@@ -86,10 +84,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_mkdir)
 CREATE_STUB_SYSCALL_IMPL(sys_rmdir)
 CREATE_STUB_SYSCALL_IMPL(sys_dup)
 CREATE_STUB_SYSCALL_IMPL(sys_pipe)
-CREATE_STUB_SYSCALL_IMPL(sys_times)
 
+sptr sys_times(struct tms *user_buf);
 sptr sys_brk(void *vaddr);
-
 sptr sys_setgid16(uptr gid);
 sptr sys_getgid16();
 

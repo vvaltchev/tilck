@@ -11,6 +11,7 @@
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/signal.h>
+#include <tilck/kernel/timer.h>
 
 sptr sys_madvise(void *addr, size_t len, int advice)
 {
@@ -144,6 +145,33 @@ sptr sys_setsid(void)
    task_info *ti = get_curr_task();
    process_set_tty(ti->pi, NULL);
    return ti->pid;
+}
+
+sptr sys_times(struct tms *user_buf)
+{
+   task_info *curr = get_curr_task();
+   struct tms buf;
+
+   // TODO (threads): when threads are supported, update sys_times()
+   // TODO: consider supporting tms_cutime and tms_cstime in sys_times()
+
+   disable_preemption();
+   {
+
+      buf = (struct tms) {
+         .tms_utime = (clock_t) curr->total_ticks,
+         .tms_stime = (clock_t) curr->total_kernel_ticks,
+         .tms_cutime = 0,
+         .tms_cstime = 0
+      };
+
+   }
+   enable_preemption();
+
+   if (copy_to_user(user_buf, &buf, sizeof(buf)) != 0)
+      return -EBADF;
+
+   return (sptr) get_ticks();
 }
 
 /* *************************************************************** */

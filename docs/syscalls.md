@@ -62,6 +62,7 @@ considered as *not implemented yet*.
  sys_tgkill          | partial
  sys_kill            | partial
  sys_setsid          | minimal
+ sys_times           | minimal
 
 Definitions:
 

@@ -43,6 +43,8 @@
       "features.h": "c",
       "elf_loader.h": "c",
       "list.h": "c",
-      "sched.h": "c"
+      "sched.h": "c",
+      "syscalls.h": "c",
+      "sys_types.h": "c"
    }
 }
