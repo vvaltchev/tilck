@@ -41,6 +41,8 @@
       "time_t.h": "c",
       "struct_timeval.h": "c",
       "features.h": "c",
-      "elf_loader.h": "c"
+      "elf_loader.h": "c",
+      "list.h": "c",
+      "sched.h": "c"
    }
 }

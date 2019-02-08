@@ -70,69 +70,6 @@ NORETURN sptr sys_exit_group(int status)
 }
 
 
-/* *************************************************************** */
-/*          Tilck-specific syscalls & helper functions             */
-/* *************************************************************** */
-
-sptr sys_tilck_run_selftest(const char *user_selftest)
-{
-   int rc;
-   char buf[256] = SELFTEST_PREFIX;
-
-   rc = copy_str_from_user(buf + sizeof(SELFTEST_PREFIX) - 1,
-                           user_selftest,
-                           sizeof(buf) - sizeof(SELFTEST_PREFIX) - 2,
-                           NULL);
-
-   if (rc != 0)
-      return -EFAULT;
-
-   printk("Running function: %s()\n", buf);
-
-   uptr addr = find_addr_of_symbol(buf);
-
-   if (!addr)
-      return -EINVAL;
-
-   task_info *ti = kthread_create((void *)addr, NULL);
-
-   if (!ti)
-      return -ENOMEM;
-
-   kthread_join(ti->tid);
-   return 0;
-}
-
-sptr sys_tilck_cmd(enum tilck_testcmd_type cmd,
-                   uptr a1, uptr a2, uptr a3, uptr a4)
-{
-   switch (cmd) {
-
-      case TILCK_TESTCMD_RUN_SELFTEST:
-         return sys_tilck_run_selftest((const char *)a1);
-
-      case TILCK_TESTCMD_GCOV_GET_NUM_FILES:
-         return sys_gcov_get_file_count();
-
-      case TILCK_TESTCMD_GCOV_FILE_INFO:
-         return sys_gcov_get_file_info((int)a1,
-                                       (char *)a2,
-                                       (u32) a3,
-                                       (u32 *)a4);
-
-      case TILCK_TESTCMD_GCOV_GET_FILE:
-         return sys_gcov_get_file((int)a1, (char *)a2);
-
-      case TILCK_TESTCMD_QEMU_POWEROFF:
-         debug_qemu_turn_off_machine();
-         return 0;
-
-      default:
-         break;
-   }
-   return -EINVAL;
-}
-
 /* NOTE: deprecated syscall */
 sptr sys_tkill(int tid, int sig)
 {
@@ -207,4 +144,67 @@ sptr sys_setsid(void)
    task_info *ti = get_curr_task();
    process_set_tty(ti->pi, NULL);
    return ti->pid;
+}
+
+/* *************************************************************** */
+/*          Tilck-specific syscalls & helper functions             */
+/* *************************************************************** */
+
+sptr sys_tilck_run_selftest(const char *user_selftest)
+{
+   int rc;
+   char buf[256] = SELFTEST_PREFIX;
+
+   rc = copy_str_from_user(buf + sizeof(SELFTEST_PREFIX) - 1,
+                           user_selftest,
+                           sizeof(buf) - sizeof(SELFTEST_PREFIX) - 2,
+                           NULL);
+
+   if (rc != 0)
+      return -EFAULT;
+
+   printk("Running function: %s()\n", buf);
+
+   uptr addr = find_addr_of_symbol(buf);
+
+   if (!addr)
+      return -EINVAL;
+
+   task_info *ti = kthread_create((void *)addr, NULL);
+
+   if (!ti)
+      return -ENOMEM;
+
+   kthread_join(ti->tid);
+   return 0;
+}
+
+sptr sys_tilck_cmd(enum tilck_testcmd_type cmd,
+                   uptr a1, uptr a2, uptr a3, uptr a4)
+{
+   switch (cmd) {
+
+      case TILCK_TESTCMD_RUN_SELFTEST:
+         return sys_tilck_run_selftest((const char *)a1);
+
+      case TILCK_TESTCMD_GCOV_GET_NUM_FILES:
+         return sys_gcov_get_file_count();
+
+      case TILCK_TESTCMD_GCOV_FILE_INFO:
+         return sys_gcov_get_file_info((int)a1,
+                                       (char *)a2,
+                                       (u32) a3,
+                                       (u32 *)a4);
+
+      case TILCK_TESTCMD_GCOV_GET_FILE:
+         return sys_gcov_get_file((int)a1, (char *)a2);
+
+      case TILCK_TESTCMD_QEMU_POWEROFF:
+         debug_qemu_turn_off_machine();
+         return 0;
+
+      default:
+         break;
+   }
+   return -EINVAL;
 }
