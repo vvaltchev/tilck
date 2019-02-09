@@ -55,6 +55,7 @@
       "termbits.h": "c",
       "basic_defs.h": "c",
       "uio.h": "c",
-      "times.h": "c"
+      "times.h": "c",
+      "type_traits": "c"
    }
 }

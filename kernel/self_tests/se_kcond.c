@@ -88,5 +88,6 @@ void selftest_kcond_short()
    kthread_join(tid2);
    kthread_join(tid3);
 
+   kcond_destory(&cond);
    regular_self_test_end();
 }

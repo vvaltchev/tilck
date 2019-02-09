@@ -59,27 +59,25 @@ kcond_signal_single(kcond *c, wait_obj *wo)
          ? CONTAINER_OF(wo, task_info, wobj)
          : CONTAINER_OF(wo, mwobj_elem, wobj)->ti;
 
-   if (wo->type != WOBJ_MWO_ELEM) {
+   if (ti->state != TASK_STATE_SLEEPING) {
 
-      if (ti->state != TASK_STATE_SLEEPING) {
-         /* the signal is lost, that's typical for conditions */
-         return;
-      }
+      /* the signal is lost, that's typical for conditions */
 
+      if (wo->type == WOBJ_MWO_ELEM)
+         wait_obj_reset(wo);
+
+      return;
+   }
+
+   task_cancel_wakeup_timer(ti);
+
+   if (wo->type != WOBJ_MWO_ELEM)
       ASSERT(wo->type == WOBJ_KCOND);
-      task_cancel_wakeup_timer(ti);
-      task_reset_wait_obj(ti);
-
-   } else {
-
+   else
       ASSERT(CONTAINER_OF(wo, mwobj_elem, wobj)->type == WOBJ_KCOND);
 
-      task_cancel_wakeup_timer(ti);
-      wait_obj_reset(wo);
-
-      if (ti->state == TASK_STATE_SLEEPING)
-         task_change_state(ti, TASK_STATE_RUNNABLE);
-   }
+   wait_obj_reset(wo);
+   task_change_state(ti, TASK_STATE_RUNNABLE);
 }
 
 void kcond_signal_int(kcond *c, bool all)

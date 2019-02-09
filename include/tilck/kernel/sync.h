@@ -58,8 +58,8 @@ typedef struct {
  */
 typedef struct {
 
-   u32 count;
-   mwobj_elem elems[];
+   u32 count;             /* number of `mwobj_elem` elements */
+   mwobj_elem elems[];    /* variable-size array */
 
 } multi_obj_waiter;
 
@@ -91,12 +91,15 @@ void *task_reset_wait_obj(struct task_info *ti);
 
 multi_obj_waiter *allocate_mobj_waiter(u32 elems);
 void free_mobj_waiter(multi_obj_waiter *w);
-void mobj_waiter_reset(multi_obj_waiter *w, u32 index);
+void mobj_waiter_reset(mwobj_elem *e);
+void mobj_waiter_reset2(multi_obj_waiter *w, u32 index);
 void mobj_waiter_set(multi_obj_waiter *w,
                      u32 index,
                      enum wo_type type,
                      void *ptr,
                      list *wait_list);
+
+void kernel_sleep_on_waiter(multi_obj_waiter *w);
 
 /*
  * The mutex implementation used for locking in kernel mode.
