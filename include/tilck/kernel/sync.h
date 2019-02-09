@@ -9,16 +9,16 @@
 struct task_info;
 
 enum wo_type {
+
    WOBJ_NONE = 0,
    WOBJ_KMUTEX,
    WOBJ_KCOND,
    WOBJ_TASK,
-   WOBJ_MULTI_ELEM  /*
-                     * wobj part of a set containing multiple wait objects
-                     * on which a given task is waiting. The wobj elem
-                     * can NEVER be task_info->wobj. Instead, it is a member
-                     * of a multi_wait_obj.
-                     */
+
+   /* Special "meta-object" types */
+
+   WOBJ_MWO_WAITER, /* multi_obj_waiter */
+   WOBJ_MWO_ELEM    /* a pointer to this wobj is castable to mwobj_elem */
 };
 
 /*
@@ -28,19 +28,40 @@ enum wo_type {
 
 typedef struct {
 
-   ATOMIC(void *) __ptr;
-   enum wo_type type;
-   list_node wait_list_node;
+   ATOMIC(void *) __ptr;      /* pointer to the object we're waiting for */
+   enum wo_type type;         /* type of the object we're waiting for */
+   list_node wait_list_node;  /* node in waited object's waiting list */
 
 } wait_obj;
 
+/*
+ * Struct used as element in `multi_obj_waiter` inheriting `wait_obj` through
+ * composition.
+ */
 typedef struct {
 
    wait_obj wobj;
-   struct task_info *ti;
+   struct task_info *ti;    /* Task owning this wait obj */
+   enum wo_type type;       /* Actual object type. NOTE: wobj.type cannot be
+                             * used because it have to be equal to
+                             * WOBJ_MULTI_ELEM. */
 
-} multi_wait_obj;
+} mwobj_elem;
 
+/*
+ * Heap-allocated object on which task_info->wobj "waits" when the task is
+ * waiting on multiple objects.
+ *
+ * How it works
+ * ---------------
+ *
+ */
+typedef struct {
+
+   u32 count;
+   mwobj_elem elems[];
+
+} multi_obj_waiter;
 
 /*
  * For a wait_obj with type == WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD is a special
@@ -67,6 +88,15 @@ void task_set_wait_obj(struct task_info *ti,
                        list *wait_list);
 
 void *task_reset_wait_obj(struct task_info *ti);
+
+multi_obj_waiter *allocate_mobj_waiter(u32 elems);
+void free_mobj_waiter(multi_obj_waiter *w);
+void mobj_waiter_reset(multi_obj_waiter *w, u32 index);
+void mobj_waiter_set(multi_obj_waiter *w,
+                     u32 index,
+                     enum wo_type type,
+                     void *ptr,
+                     list *wait_list);
 
 /*
  * The mutex implementation used for locking in kernel mode.

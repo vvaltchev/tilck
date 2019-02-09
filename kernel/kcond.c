@@ -51,24 +51,28 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
 static void
 kcond_signal_single(kcond *c, wait_obj *wo)
 {
-   task_info *ti =
-      wo->type != WOBJ_MULTI_ELEM
-         ? CONTAINER_OF(wo, task_info, wobj)
-         : CONTAINER_OF(wo, multi_wait_obj, wobj)->ti;
-
+   ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
 
-   if (wo->type != WOBJ_MULTI_ELEM) {
+   task_info *ti =
+      wo->type != WOBJ_MWO_ELEM
+         ? CONTAINER_OF(wo, task_info, wobj)
+         : CONTAINER_OF(wo, mwobj_elem, wobj)->ti;
+
+   if (wo->type != WOBJ_MWO_ELEM) {
 
       if (ti->state != TASK_STATE_SLEEPING) {
          /* the signal is lost, that's typical for conditions */
          return;
       }
 
+      ASSERT(wo->type == WOBJ_KCOND);
       task_cancel_wakeup_timer(ti);
       task_reset_wait_obj(ti);
 
    } else {
+
+      ASSERT(CONTAINER_OF(wo, mwobj_elem, wobj)->type == WOBJ_KCOND);
 
       task_cancel_wakeup_timer(ti);
       wait_obj_reset(wo);
