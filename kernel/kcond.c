@@ -48,17 +48,34 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
    return !wait_obj_reset(&curr->wobj);
 }
 
-void kcond_signal_single(kcond *c, task_info *ti)
+static void
+kcond_signal_single(kcond *c, wait_obj *wo)
 {
+   task_info *ti =
+      wo->type != WOBJ_MULTI_ELEM
+         ? CONTAINER_OF(wo, task_info, wobj)
+         : CONTAINER_OF(wo, multi_wait_obj, wobj)->ti;
+
    DEBUG_ONLY(check_not_in_irq_handler());
 
-   if (ti->state != TASK_STATE_SLEEPING) {
-      /* the signal is lost, that's typical for conditions */
-      return;
-   }
+   if (wo->type != WOBJ_MULTI_ELEM) {
 
-   task_cancel_wakeup_timer(ti);
-   task_reset_wait_obj(ti);
+      if (ti->state != TASK_STATE_SLEEPING) {
+         /* the signal is lost, that's typical for conditions */
+         return;
+      }
+
+      task_cancel_wakeup_timer(ti);
+      task_reset_wait_obj(ti);
+
+   } else {
+
+      task_cancel_wakeup_timer(ti);
+      wait_obj_reset(wo);
+
+      if (ti->state == TASK_STATE_SLEEPING)
+         task_change_state(ti, TASK_STATE_RUNNABLE);
+   }
 }
 
 void kcond_signal_int(kcond *c, bool all)
@@ -70,8 +87,7 @@ void kcond_signal_int(kcond *c, bool all)
 
    list_for_each(wo_pos, temp, &c->wait_list, wait_list_node) {
 
-      task_info *ti = CONTAINER_OF(wo_pos, task_info, wobj);
-      kcond_signal_single(c, ti);
+      kcond_signal_single(c, wo_pos);
 
       if (!all)
          break;

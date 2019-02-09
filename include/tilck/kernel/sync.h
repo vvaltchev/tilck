@@ -9,10 +9,16 @@
 struct task_info;
 
 enum wo_type {
-   WOBJ_NONE    = 0,
-   WOBJ_KMUTEX  = 1,
-   WOBJ_KCOND   = 2,
-   WOBJ_TASK    = 3
+   WOBJ_NONE = 0,
+   WOBJ_KMUTEX,
+   WOBJ_KCOND,
+   WOBJ_TASK,
+   WOBJ_MULTI_ELEM  /*
+                     * wobj part of a set containing multiple wait objects
+                     * on which a given task is waiting. The wobj elem
+                     * can NEVER be task_info->wobj. Instead, it is a member
+                     * of a multi_wait_obj.
+                     */
 };
 
 /*
@@ -27,6 +33,14 @@ typedef struct {
    list_node wait_list_node;
 
 } wait_obj;
+
+typedef struct {
+
+   wait_obj wobj;
+   struct task_info *ti;
+
+} multi_wait_obj;
+
 
 /*
  * For a wait_obj with type == WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD is a special
@@ -93,12 +107,10 @@ typedef struct {
 
 #define KCOND_WAIT_FOREVER 0
 
-void kcond_signal_int(kcond *c, bool all);
-void kcond_signal_single(kcond *c, struct task_info *ti);
-
 void kcond_init(kcond *c);
-bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks);
 void kcond_destory(kcond *c);
+void kcond_signal_int(kcond *c, bool all);
+bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks);
 
 static inline void kcond_signal_one(kcond *c)
 {
