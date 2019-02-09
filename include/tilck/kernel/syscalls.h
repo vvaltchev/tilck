@@ -196,7 +196,10 @@ CREATE_STUB_SYSCALL_IMPL(sys_setfsgid16)
 sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence);
 
 CREATE_STUB_SYSCALL_IMPL(sys_getdents)
-CREATE_STUB_SYSCALL_IMPL(sys_select)
+
+sptr sys_select(int nfds, fd_set *readfds, fd_set *writefds,
+                fd_set *exceptfds, struct timeval *timeout);
+
 CREATE_STUB_SYSCALL_IMPL(sys_flock)
 CREATE_STUB_SYSCALL_IMPL(sys_msync)
 

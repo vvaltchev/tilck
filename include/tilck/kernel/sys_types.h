@@ -13,6 +13,7 @@
 #include <sys/time.h>   // system header
 #include <sys/times.h>  // system header
 #include <sys/uio.h>    // system header
+#include <sys/select.h> // system header
 
 #ifndef __GLIBC__
    #define stat stat64
