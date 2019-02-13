@@ -176,7 +176,7 @@ sptr sys_select(int nfds, fd_set *user_rfds, fd_set *user_wfds,
       timeout_ticks = MIN(timeout_ticks, UINT32_MAX);
    }
 
-   debug_dump_select_args(nfds, sets[0], sets[1], sets[2], tv);
+   //debug_dump_select_args(nfds, sets[0], sets[1], sets[2], tv);
 
    if (!tv || timeout_ticks > 0) {
       for (int i = 0; i < 3; i++) {
@@ -209,7 +209,6 @@ sptr sys_select(int nfds, fd_set *user_rfds, fd_set *user_wfds,
          task_set_wakeup_timer(get_curr_task(), (u32)timeout_ticks);
       }
 
-      printk("[select (tid: %d)]: going to sleep on waiter obj\n", curr->tid);
       kernel_sleep_on_waiter(waiter);
 
       if (tv) {
