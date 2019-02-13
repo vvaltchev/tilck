@@ -18,6 +18,7 @@
 #include "term_int.h"
 #include "tty_int.h"
 
+static inline void kb_buf_reset(tty *t);
 static inline bool kb_buf_write_elem(tty *t, u8 c);
 static void tty_keypress_echo(tty *t, char c);
 
@@ -113,7 +114,15 @@ static void tty_keypress_echo(tty *t, char c)
 
 static inline bool kb_buf_is_empty(tty *t)
 {
-   return ringbuf_is_empty(&t->kb_input_ringbuf);
+   bool ret = ringbuf_is_empty(&t->kb_input_ringbuf);
+   ASSERT(ret == (t->kb_input_unread_cnt == 0));
+   return ret;
+}
+
+static inline void kb_buf_reset(tty *t)
+{
+   ringbuf_reset(&t->kb_input_ringbuf);
+   t->kb_input_unread_cnt = 0;
 }
 
 static inline u8 kb_buf_read_elem(tty *t)
@@ -121,6 +130,8 @@ static inline u8 kb_buf_read_elem(tty *t)
    u8 ret;
    ASSERT(!kb_buf_is_empty(t));
    DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&t->kb_input_ringbuf, &ret));
+   ASSERT(t->kb_input_unread_cnt > 0);
+   t->kb_input_unread_cnt--;
    return ret;
 }
 
@@ -128,13 +139,26 @@ static inline bool kb_buf_drop_last_written_elem(tty *t)
 {
    char unused;
    tty_keypress_echo(t, (char)t->c_term.c_cc[VERASE]);
-   return ringbuf_unwrite_elem(&t->kb_input_ringbuf, &unused);
+
+   if (ringbuf_unwrite_elem(&t->kb_input_ringbuf, &unused)) {
+      ASSERT(t->kb_input_unread_cnt > 0);
+      t->kb_input_unread_cnt--;
+      return true;
+   }
+
+   return false;
 }
 
 static inline bool kb_buf_write_elem(tty *t, u8 c)
 {
    tty_keypress_echo(t, (char)c);
-   return ringbuf_write_elem1(&t->kb_input_ringbuf, c);
+
+   if (ringbuf_write_elem1(&t->kb_input_ringbuf, c)) {
+      t->kb_input_unread_cnt++;
+      return true;
+   }
+
+   return false;
 }
 
 static int tty_handle_non_printable_key(tty *t, u32 key)
@@ -342,6 +366,16 @@ tty_internal_should_read_return(tty *t,
 
    /* Raw mode handling */
    return read_cnt >= t->c_term.c_cc[VMIN];
+}
+
+bool tty_read_ready_int(tty *t, devfs_file_handle *h)
+{
+   if (t->c_term.c_lflag & ICANON) {
+      return h->read_allowed_to_return || t->end_line_delim_count > 0;
+   }
+
+   /* Raw mode handling */
+   return t->kb_input_unread_cnt > t->c_term.c_cc[VMIN];
 }
 
 ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)

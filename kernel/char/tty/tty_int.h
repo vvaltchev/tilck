@@ -49,6 +49,8 @@ ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size);
 ssize_t tty_write_int(tty *t, devfs_file_handle *h, char *buf, size_t size);
 int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp);
 int tty_fcntl_int(tty *t, devfs_file_handle *h, int cmd, uptr arg);
+bool tty_read_ready_int(tty *t, devfs_file_handle *h);
+
 void init_ttyaux(void);
 void tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor);
 
@@ -66,6 +68,7 @@ struct tty {
    /* tty input */
    ringbuf kb_input_ringbuf;
    kcond kb_input_cond;
+   int kb_input_unread_cnt;
    int end_line_delim_count;
 
    /* tty output */
