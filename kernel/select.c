@@ -27,7 +27,7 @@ debug_dump_fds(const char *name, int nfds, fd_set *s)
 
 static void
 debug_dump_select_args(int nfds, fd_set *rfds, fd_set *wfds,
-                       fd_set *efds, struct timeval *tout)
+                       fd_set *efds, struct timeval *tv)
 {
    printk("sys_select(\n");
    printk("    nfds: %d,\n", nfds);
@@ -36,10 +36,10 @@ debug_dump_select_args(int nfds, fd_set *rfds, fd_set *wfds,
    debug_dump_fds("wfds", nfds, wfds);
    debug_dump_fds("efds", nfds, efds);
 
-   if (tout)
-      printk("    tout: %u secs, %u usecs\n", tout->tv_sec, tout->tv_usec);
+   if (tv)
+      printk("    tv: %u secs, %u usecs\n", tv->tv_sec, tv->tv_usec);
    else
-      printk("    tout: NULL\n");
+      printk("    tv: NULL\n");
 
    printk(")\n");
 }
@@ -97,22 +97,55 @@ select_set_kcond(u32 nfds,
    }
 }
 
-sptr sys_select(int nfds, fd_set *user_rfds, fd_set *user_wfds,
-                fd_set *user_efds, struct timeval *user_tout)
+static int
+select_set_ready(u32 nfds, fd_set *set, func_rwe_ready is_ready)
 {
-   static func_get_rwe_cond gcf[3] = {
+   int tot = 0;
+
+   if (!set)
+      return tot;
+
+   for (u32 i = 0; i < nfds; i++) {
+
+      if (!FD_ISSET(i, set))
+         continue;
+
+      fs_handle h = get_fs_handle(i);
+
+      if (!h || !is_ready(h)) {
+         FD_CLR(i, set);
+      } else {
+         tot++;
+      }
+   }
+
+   return tot;
+}
+
+sptr sys_select(int nfds, fd_set *user_rfds, fd_set *user_wfds,
+                fd_set *user_efds, struct timeval *user_tv)
+{
+   static const func_get_rwe_cond gcf[3] = {
       &vfs_get_rready_cond,
       &vfs_get_wready_cond,
       &vfs_get_except_cond
+   };
+
+   static const func_rwe_ready grf[3] = {
+      &vfs_read_ready,
+      &vfs_write_ready,
+      &vfs_except_ready
    };
 
    fd_set *u_sets[3] = { user_rfds, user_wfds, user_efds };
 
    task_info *curr = get_curr_task();
    multi_obj_waiter *waiter = NULL;
-   struct timeval *tout = NULL;
+   int total_ready_count = 0;
+   struct timeval *tv = NULL;
    fd_set *sets[3] = {0};
    u32 kcond_count = 0;
+   u64 timeout_ticks = 0;
    int rc;
 
    if (nfds < 0 || nfds > MAX_HANDLES)
@@ -126,25 +159,34 @@ sptr sys_select(int nfds, fd_set *user_rfds, fd_set *user_wfds,
       sets[i] = ((fd_set*) curr->args_copybuf) + i;
 
       if (copy_from_user(sets[i], u_sets[i], sizeof(fd_set)))
-         return -EBADF;
+         return -EFAULT;
    }
 
-   if (user_tout) {
+   if (user_tv) {
 
-      tout = (void *) ((fd_set *) curr->args_copybuf) + 3;
+      tv = (void *) ((fd_set *) curr->args_copybuf) + 3;
 
-      if (copy_from_user(tout, user_tout, sizeof(struct timeval)))
-         return -EBADF;
+      if (copy_from_user(tv, user_tv, sizeof(struct timeval)))
+         return -EFAULT;
+
+      timeout_ticks += (u64)tv->tv_sec * TIMER_HZ;
+      timeout_ticks += (u64)tv->tv_usec / (1000000ull / TIMER_HZ);
+
+      /* NOTE: select() can't sleep for more than UINT32_MAX ticks */
+      timeout_ticks = MIN(timeout_ticks, UINT32_MAX);
    }
 
-   debug_dump_select_args(nfds, sets[0], sets[1], sets[2], tout);
+   debug_dump_select_args(nfds, sets[0], sets[1], sets[2], tv);
 
-   for (int i = 0; i < 3; i++) {
-      if ((rc = select_count_kcond((u32)nfds, sets[i], &kcond_count, gcf[i])))
-         return rc;
+   if (!tv || timeout_ticks > 0) {
+      for (int i = 0; i < 3; i++) {
+         if ((rc = select_count_kcond((u32)nfds, sets[i],
+                                      &kcond_count, gcf[i])))
+         {
+            return rc;
+         }
+      }
    }
-
-   printk("kcond count: %u\n", kcond_count);
 
    if (kcond_count > 0) {
 
@@ -162,20 +204,60 @@ sptr sys_select(int nfds, fd_set *user_rfds, fd_set *user_wfds,
          select_set_kcond((u32)nfds, waiter, &curr_i, sets[i], gcf[i]);
       }
 
+      if (tv) {
+         ASSERT(timeout_ticks > 0);
+         task_set_wakeup_timer(get_curr_task(), (u32)timeout_ticks);
+      }
+
       printk("[select (tid: %d)]: going to sleep on waiter obj\n", curr->tid);
       kernel_sleep_on_waiter(waiter);
 
-      for (u32 j = 0; j < waiter->count; j++) {
+      if (tv) {
 
-         mwobj_elem *me = &waiter->elems[j];
+         if (curr->wobj.type) {
 
-         if (me->type && !me->wobj.type) {
-            printk("[select]    -> condition #%u was signaled\n", j);
-            mobj_waiter_reset(me);
+            /* we woke-up because of the timeout */
+            wait_obj_reset(&curr->wobj);
+            tv->tv_sec = 0;
+            tv->tv_usec = 0;
+
+         } else {
+
+            /* we woke-up because of a kcond was signaled */
+            u32 rem = task_cancel_wakeup_timer(curr);
+            tv->tv_sec = rem / TIMER_HZ;
+            tv->tv_usec = (rem % TIMER_HZ) * (1000000 / TIMER_HZ);
          }
+      }
+
+      /* OK, we woke-up: it does not matter which kcond was signaled */
+      free_mobj_waiter(waiter);
+
+   } else {
+
+      if (timeout_ticks > 0) {
+
+         /*
+          * Corner case: no conditions on which to wait, but timeout is > 0:
+          * this is still a valid case. Many years ago the following call:
+          *    select(0, NULL, NULL, NULL, &tv)
+          * was even used as a portable implementation of nanosleep().
+          */
+
+         kernel_sleep(timeout_ticks);
       }
    }
 
-   free_mobj_waiter(waiter);
-   return 0;
+   for (int i = 0; i < 3; i++) {
+
+      total_ready_count += select_set_ready((u32)nfds, sets[i], grf[i]);
+
+      if (u_sets[i] && copy_to_user(u_sets[i], sets[i], sizeof(fd_set)))
+         return -EFAULT;
+   }
+
+   if (tv && copy_to_user(user_tv, tv, sizeof(struct timeval)))
+      return -EFAULT;
+
+   return total_ready_count;
 }

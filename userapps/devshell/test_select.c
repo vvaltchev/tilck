@@ -28,7 +28,10 @@ int cmd_select1(int argc, char **argv)
    FD_ZERO(&readfds);
    FD_SET(0, &readfds);
 
-   ret = select(nfds, &readfds, NULL, NULL, NULL);
+   tv.tv_sec = 10;
+   tv.tv_usec = 0;
+
+   ret = select(nfds, &readfds, NULL, NULL, &tv);
 
    if (ret < 0) {
       perror("select");
@@ -39,8 +42,9 @@ int cmd_select1(int argc, char **argv)
 
    for (int i = 0; i < nfds; i++) {
       if (FD_ISSET(i, &readfds))
-         printf("fd %d is read-ready\n");
+         printf("fd %d is read-ready\n", i);
    }
 
+   printf("tv: %u.%u sec\n", tv.tv_sec, tv.tv_usec / 1000);
    return 0;
 }

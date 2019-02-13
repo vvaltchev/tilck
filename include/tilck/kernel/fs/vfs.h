@@ -50,7 +50,7 @@ typedef void (*func_ex_unlock)(fs_handle);
 typedef void (*func_sh_lock)(fs_handle);
 typedef void (*func_sh_unlock)(fs_handle);
 
-typedef bool (*func_rw_ready)(fs_handle);
+typedef bool (*func_rwe_ready)(fs_handle);
 typedef kcond *(*func_get_rwe_cond)(fs_handle);
 
 /* Used by the devices when want to remove any locking from a file */
@@ -91,9 +91,10 @@ typedef struct {
    func_munmap munmap;
    func_fcntl fcntl;
 
-   /* optional, r/w ready funcs */
-   func_rw_ready read_ready;
-   func_rw_ready write_ready;
+   /* optional, r/w/e ready funcs */
+   func_rwe_ready read_ready;
+   func_rwe_ready write_ready;
+   func_rwe_ready except_ready;       /* unfetched exceptional condition */
    func_get_rwe_cond get_rready_cond;
    func_get_rwe_cond get_wready_cond;
    func_get_rwe_cond get_except_cond;
@@ -142,6 +143,7 @@ int vfs_fcntl(fs_handle h, int cmd, uptr arg);
 
 bool vfs_read_ready(fs_handle h);
 bool vfs_write_ready(fs_handle h);
+bool vfs_except_ready(fs_handle h);
 kcond *vfs_get_rready_cond(fs_handle h);
 kcond *vfs_get_wready_cond(fs_handle h);
 kcond *vfs_get_except_cond(fs_handle h);
