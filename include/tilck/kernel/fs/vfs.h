@@ -58,6 +58,9 @@ typedef void (*func_ex_unlock)(fs_handle);
 typedef void (*func_sh_lock)(fs_handle);
 typedef void (*func_sh_unlock)(fs_handle);
 
+typedef bool (*func_read_ready)(fs_handle);
+typedef bool (*func_write_ready)(fs_handle);
+
 /* Used by the devices when want to remove any locking from a file */
 void vfs_file_nolock(fs_handle h);
 
@@ -86,6 +89,7 @@ struct filesystem {
 
 typedef struct {
 
+   /* mandatory */
    func_read read;
    func_write write;
    func_seek seek;
@@ -94,6 +98,10 @@ typedef struct {
    func_mmap mmap;
    func_munmap munmap;
    func_fcntl fcntl;
+
+   /* optional, r/w ready funcs */
+   func_read_ready read_ready;
+   func_write_ready write_ready;
 
    /* optional, per-file locks */
    func_ex_lock exlock;
@@ -136,6 +144,8 @@ int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
 void vfs_close(fs_handle h);
 int vfs_fcntl(fs_handle h, int cmd, uptr arg);
+bool vfs_read_ready(fs_handle h);
+bool vfs_write_ready(fs_handle h);
 
 ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);

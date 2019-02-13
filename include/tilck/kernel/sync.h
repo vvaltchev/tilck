@@ -35,7 +35,7 @@ typedef struct {
 } wait_obj;
 
 /*
- * Struct used as element in `multi_obj_waiter` inheriting `wait_obj` through
+ * Struct used as element in `multi_obj_waiter` using `wait_obj` through
  * composition.
  */
 typedef struct {
