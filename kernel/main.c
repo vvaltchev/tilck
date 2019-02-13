@@ -127,6 +127,9 @@ static void init_drivers(void)
       init_fbdev();
 
    init_serial_comm();
+
+   /* end of initialization: show so info and Tilck's banner */
+   show_system_info();
 }
 
 static void async_init_drivers(void)
@@ -161,7 +164,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_sched();
    setup_syscall_interfaces();
 
-   show_system_info();
+   //show_system_info();
 
    init_tasklets();
    init_timer();

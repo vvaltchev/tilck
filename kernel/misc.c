@@ -41,24 +41,16 @@ void validate_stack_pointer_int(const char *file, int line)
 
 #endif
 
-
-static const u8 console_gfx_replacements[256] =
+static void print_banner_line(const u8 *s)
 {
-   ['#'] = CHAR_BLOCK_MID,
-   ['-'] = CHAR_HLINE,
-   ['|'] = CHAR_VLINE,
-   ['+'] = CHAR_CROSS,
-   ['A'] = CHAR_ULCORNER,
-   ['B'] = CHAR_URCORNER,
-   ['C'] = CHAR_LRCORNER,
-   ['D'] = CHAR_LLCORNER
-};
+   printk(NO_PREFIX "\033)0");
 
-void console_gfx_replace_chars(char *str)
-{
-   for (u8 *p = (u8 *)str; *p; p++)
-      if (console_gfx_replacements[*p])
-         *p = console_gfx_replacements[*p];
+   for (const u8 *p = s; *p; p++) {
+      printk(NO_PREFIX "%c", *p);
+   }
+
+   printk(NO_PREFIX "\033)B");
+   printk(NO_PREFIX "\n");
 }
 
 void show_banner(void)
@@ -66,26 +58,23 @@ void show_banner(void)
    char *banner[] =
    {
       "",
-      "########B ##B ##B       ######B ##B  ##B",
-      "D--##A--C ##| ##|      ##A----C ##| ##AC",
-      "   ##|    ##| ##|      ##|      #####AC ",
-      "   ##|    ##| ##|      ##|      ##A-##B ",
-      "   ##|    ##| #######B D######B ##|  ##B",
-      "   D-C    D-C D------C  D-----C D-C  D-C",
+      "aaaaaaaak aak aak       aaaaaak aak  aak",
+      "mqqaalqqj aax aax      aalqqqqj aax aalj",
+      "   aax    aax aax      aax      aaaaalj ",
+      "   aax    aax aax      aax      aalqaak ",
+      "   aax    aax aaaaaaak maaaaaak aax  aak",
+      "   mqj    mqj mqqqqqqj  mqqqqqj mqj  mqj",
       ""
    };
 
    const u32 padding = (u32)
       (term_get_cols(get_curr_term()) / 2 - strlen(banner[1]) / 2);
 
-   for (u32 i = 0; i < ARRAY_SIZE(banner); i++)
-      console_gfx_replace_chars(banner[i]);
-
    for (u32 i = 0; i < ARRAY_SIZE(banner); i++) {
 
       for (u32 j = 0; j < padding; j++)
          printk(NO_PREFIX " ");
 
-      printk(NO_PREFIX "%s\n", banner[i]);
+      print_banner_line((u8 *)banner[i]);
    }
 }

@@ -356,7 +356,7 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
          }
          break;
 
-      case '(':
+      case ')':
          ctx->state = TERM_WFILTER_STATE_ESC2_PAR;
          break;
 
