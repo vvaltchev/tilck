@@ -12,7 +12,7 @@ debug_dump_fds(const char *name, int nfds, fd_set *s)
 {
    if (s) {
 
-      printk("    %s = [ ", name);
+      printk("    %s: [ ", name);
 
       for (int i = 0; i < nfds; i++)
          if (FD_ISSET(i, s))
@@ -21,7 +21,7 @@ debug_dump_fds(const char *name, int nfds, fd_set *s)
       printk(NO_PREFIX "]\n");
 
    } else {
-      printk("    %s = NULL,\n", name);
+      printk("    %s: NULL,\n", name);
    }
 }
 
@@ -30,13 +30,16 @@ debug_dump_select_args(int nfds, fd_set *rfds, fd_set *wfds,
                        fd_set *efds, struct timeval *tout)
 {
    printk("sys_select(\n");
-   printk("    nfds = %d,\n", nfds);
+   printk("    nfds: %d,\n", nfds);
 
    debug_dump_fds("rfds", nfds, rfds);
    debug_dump_fds("wfds", nfds, wfds);
    debug_dump_fds("efds", nfds, efds);
 
-   printk("    tout: %u secs, %u usecs\n", tout->tv_sec,tout->tv_usec);
+   if (tout)
+      printk("    tout: %u secs, %u usecs\n", tout->tv_sec, tout->tv_usec);
+   else
+      printk("    tout: NULL\n");
 
    printk(")\n");
 }
