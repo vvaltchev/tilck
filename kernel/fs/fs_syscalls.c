@@ -28,7 +28,7 @@ u32 get_free_handle_num(task_info *task)
 
 /*
  * Even if getting the fs_handle this way is safe, using it won't be anymore
- * after thread supported is added to the kernel. For example, a thread might
+ * after thread-support is added to the kernel. For example, a thread might
  * work with given handle while another might destroy it.
  *
  * TODO: introduce a ref-count in the fs_base_handle struct and function like

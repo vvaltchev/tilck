@@ -368,3 +368,33 @@ bool vfs_write_ready(fs_handle h)
    }
    vfs_shunlock(h);
 }
+
+kcond *vfs_get_rready_cond(fs_handle h)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (!hb->fops.get_rready_cond)
+      return NULL;
+
+   return hb->fops.get_rready_cond(h);
+}
+
+kcond *vfs_get_wready_cond(fs_handle h)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (!hb->fops.get_wready_cond)
+      return NULL;
+
+   return hb->fops.get_wready_cond(h);
+}
+
+kcond *vfs_get_except_cond(fs_handle h)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (!hb->fops.get_except_cond)
+      return NULL;
+
+   return hb->fops.get_except_cond(h);
+}

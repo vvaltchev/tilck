@@ -44,28 +44,138 @@ debug_dump_select_args(int nfds, fd_set *rfds, fd_set *wfds,
    printk(")\n");
 }
 
+static int
+select_count_kcond(u32 nfds,
+                   fd_set *set,
+                   u32 *kcond_count_ref,
+                   func_get_rwe_cond get_cond)
+{
+   if (!set)
+      return 0;
+
+   for (u32 i = 0; i < nfds; i++) {
+
+      if (!FD_ISSET(i, set))
+         continue;
+
+      fs_handle h = get_fs_handle(i);
+
+      if (!h)
+         return -EBADF;
+
+      if (get_cond(h))
+         (*kcond_count_ref)++;
+   }
+
+   return 0;
+}
+
+static void
+select_set_kcond(u32 nfds,
+                 multi_obj_waiter *w,
+                 u32 *curr_i,
+                 fd_set *set,
+                 func_get_rwe_cond get_cond)
+{
+   if (!set)
+      return;
+
+   for (u32 i = 0; i < nfds; i++) {
+
+      if (!FD_ISSET(i, set))
+         continue;
+
+      kcond *c;
+      fs_handle h = get_fs_handle(i);
+      ASSERT(h != NULL);
+
+      c = get_cond(h);
+      ASSERT((*curr_i) < w->count);
+
+      if (c)
+         mobj_waiter_set(w, (*curr_i)++, WOBJ_KCOND, c, &c->wait_list);
+   }
+}
+
 sptr sys_select(int nfds, fd_set *user_rfds, fd_set *user_wfds,
                 fd_set *user_efds, struct timeval *user_tout)
 {
+   static func_get_rwe_cond gcf[3] = {
+      &vfs_get_rready_cond,
+      &vfs_get_wready_cond,
+      &vfs_get_except_cond
+   };
+
+   fd_set *u_sets[3] = { user_rfds, user_wfds, user_efds };
+
    task_info *curr = get_curr_task();
-   fd_set *rfds, *wfds, *efds;
-   struct timeval *tout;
+   multi_obj_waiter *waiter = NULL;
+   struct timeval *tout = NULL;
+   fd_set *sets[3] = {0};
+   u32 kcond_count = 0;
+   int rc;
 
-   rfds = user_rfds ? ((fd_set*) curr->args_copybuf) + 0 : NULL;
-   wfds = user_wfds ? ((fd_set*) curr->args_copybuf) + 1 : NULL;
-   efds = user_efds ? ((fd_set*) curr->args_copybuf) + 2 : NULL;
-   tout = user_tout ? (void *) ((fd_set *) curr->args_copybuf) + 3 : NULL;
+   if (nfds < 0 || nfds > MAX_HANDLES)
+      return -EINVAL;
 
-   if (rfds && copy_from_user(rfds, user_rfds, sizeof(fd_set)))
-      return -EBADF;
-   if (wfds && copy_from_user(wfds, user_wfds, sizeof(fd_set)))
-      return -EBADF;
-   if (efds && copy_from_user(efds, user_efds, sizeof(fd_set)))
-      return -EBADF;
-   if (tout && copy_from_user(tout, user_tout, sizeof(struct timeval)))
-      return -EBADF;
+   for (int i = 0; i < 3; i++) {
 
-   debug_dump_select_args(nfds, rfds, wfds, efds, tout);
+      if (!u_sets[i])
+         continue;
 
-   return -ENOSYS;
+      sets[i] = ((fd_set*) curr->args_copybuf) + i;
+
+      if (copy_from_user(sets[i], u_sets[i], sizeof(fd_set)))
+         return -EBADF;
+   }
+
+   if (user_tout) {
+
+      tout = (void *) ((fd_set *) curr->args_copybuf) + 3;
+
+      if (copy_from_user(tout, user_tout, sizeof(struct timeval)))
+         return -EBADF;
+   }
+
+   debug_dump_select_args(nfds, sets[0], sets[1], sets[2], tout);
+
+   for (int i = 0; i < 3; i++) {
+      if ((rc = select_count_kcond((u32)nfds, sets[i], &kcond_count, gcf[i])))
+         return rc;
+   }
+
+   printk("kcond count: %u\n", kcond_count);
+
+   if (kcond_count > 0) {
+
+      u32 curr_i = 0;
+
+      /*
+       * NOTE: it is not that difficult kcond_count to be 0: it's enough the
+       * specified files to NOT have r/w/e get kcond functions.
+       */
+
+      if (!(waiter = allocate_mobj_waiter(kcond_count)))
+         return -ENOMEM;
+
+      for (int i = 0; i < 3; i++) {
+         select_set_kcond((u32)nfds, waiter, &curr_i, sets[i], gcf[i]);
+      }
+
+      printk("[select (tid: %d)]: going to sleep on waiter obj\n", curr->tid);
+      kernel_sleep_on_waiter(waiter);
+
+      for (u32 j = 0; j < waiter->count; j++) {
+
+         mwobj_elem *me = &waiter->elems[j];
+
+         if (me->type && !me->wobj.type) {
+            printk("[select]    -> condition #%u was signaled\n", j);
+            mobj_waiter_reset(me);
+         }
+      }
+   }
+
+   free_mobj_waiter(waiter);
+   return 0;
 }

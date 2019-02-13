@@ -26,6 +26,7 @@
 #define ARGS_COPYBUF_SIZE (PAGE_SIZE)
 #define MAX_PID 32768
 #define MAX_PATH 256
+#define MAX_HANDLES 16
 
 STATIC_ASSERT((KERNEL_STACK_SIZE % PAGE_SIZE) == 0);
 
@@ -53,7 +54,7 @@ struct process_info {
 
    char filepath[MAX_PATH]; /* executable's path */
    char cwd[MAX_PATH]; /* current working directory */
-   fs_handle handles[16]; /* for the moment, just a fixed-size small array */
+   fs_handle handles[MAX_HANDLES]; /* for now, just a small fixed-size array */
 
    __sighandler_t sa_handlers[_NSIG];
    uptr sa_mask[K_SIGACTION_MASK_WORDS];

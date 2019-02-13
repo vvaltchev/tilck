@@ -77,7 +77,7 @@ kcond_signal_single(kcond *c, wait_obj *wo)
       ASSERT(CONTAINER_OF(wo, mwobj_elem, wobj)->type == WOBJ_KCOND);
 
    wait_obj_reset(wo);
-   task_change_state(ti, TASK_STATE_RUNNABLE);
+   task_reset_wait_obj(ti);
 }
 
 void kcond_signal_int(kcond *c, bool all)

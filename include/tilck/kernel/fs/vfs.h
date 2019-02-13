@@ -6,21 +6,13 @@
  * Tilck's virtual file system
  *
  * As this project's goals are by far different from the Linux ones, this
- * layer won't provide anything close to the Linux's VFS. Its purpose is to
- * provide the MINIMUM NECESSARY to allow basic operations like open, read,
- * write, close to work both on FAT32 and on character devices like /dev/tty.
- * In particular:
- *
- *    - No real disk I/O will be supported
- *    - No disk cache
- *    - No access control: single user (root) system
- *    - No SMP
- *    - Only the simplest Linux syscalls will be supported
- *
+ * layer won't provide anything close to the Linux's VFS.
  */
 
 #include <tilck/common/basic_defs.h>
+
 #include <tilck/kernel/sys_types.h>
+#include <tilck/kernel/sync.h>
 
 /*
  * Opaque type for file handles.
@@ -58,8 +50,8 @@ typedef void (*func_ex_unlock)(fs_handle);
 typedef void (*func_sh_lock)(fs_handle);
 typedef void (*func_sh_unlock)(fs_handle);
 
-typedef bool (*func_read_ready)(fs_handle);
-typedef bool (*func_write_ready)(fs_handle);
+typedef bool (*func_rw_ready)(fs_handle);
+typedef kcond *(*func_get_rwe_cond)(fs_handle);
 
 /* Used by the devices when want to remove any locking from a file */
 void vfs_file_nolock(fs_handle h);
@@ -100,8 +92,11 @@ typedef struct {
    func_fcntl fcntl;
 
    /* optional, r/w ready funcs */
-   func_read_ready read_ready;
-   func_write_ready write_ready;
+   func_rw_ready read_ready;
+   func_rw_ready write_ready;
+   func_get_rwe_cond get_rready_cond;
+   func_get_rwe_cond get_wready_cond;
+   func_get_rwe_cond get_except_cond;
 
    /* optional, per-file locks */
    func_ex_lock exlock;
@@ -144,8 +139,12 @@ int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
 void vfs_close(fs_handle h);
 int vfs_fcntl(fs_handle h, int cmd, uptr arg);
+
 bool vfs_read_ready(fs_handle h);
 bool vfs_write_ready(fs_handle h);
+kcond *vfs_get_rready_cond(fs_handle h);
+kcond *vfs_get_wready_cond(fs_handle h);
+kcond *vfs_get_except_cond(fs_handle h);
 
 ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);

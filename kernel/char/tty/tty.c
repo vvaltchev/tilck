@@ -58,6 +58,15 @@ static int tty_fcntl(fs_handle h, int cmd, uptr arg)
    return tty_fcntl_int(t, dh, cmd, arg);
 }
 
+static kcond *tty_get_rready_cond(fs_handle h)
+{
+   devfs_file_handle *dh = h;
+   devfs_file *df = dh->devfs_file_ptr;
+   tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
+
+   return &t->kb_input_cond;
+}
+
 static int
 tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
 {
@@ -69,6 +78,7 @@ tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
    ops->write = tty_write;
    ops->ioctl = tty_ioctl;
    ops->fcntl = tty_fcntl;
+   ops->get_rready_cond = tty_get_rready_cond;
 
    /* the tty device-file requires NO locking */
    ops->exlock = &vfs_file_nolock;
