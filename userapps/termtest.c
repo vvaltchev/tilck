@@ -257,6 +257,19 @@ static void write_full_row(void)
    printf("[text after full row]\n\n");
 }
 
+static void sleep_then_read(void)
+{
+   char buf[32] = {0};
+   int rc;
+
+   printf("sleep\n");
+   sleep(2);
+   printf("sleep done, reading\n");
+
+   rc = read(0, buf, sizeof(buf));
+   printf("read(): %d -> '%s'\n", rc, buf);
+}
+
 #ifdef USERMODE_APP
 static void dump_termios(void)
 {
@@ -287,7 +300,8 @@ static struct {
    CMD_ENTRY("-p", console_perf_test),
    CMD_ENTRY("-n", read_nonblock),
    CMD_ENTRY("-nr", read_nonblock_rawmode),
-   CMD_ENTRY("-fr", write_full_row)
+   CMD_ENTRY("-fr", write_full_row),
+   CMD_ENTRY("-sr", sleep_then_read)
 };
 
 static void show_help(void)
