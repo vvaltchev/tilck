@@ -24,7 +24,7 @@ void append_mem_region(memory_region_t r)
    mem_regions[mem_regions_count++] = r;
 }
 
-STATIC int less_than_cmp_mem_region(const void *a, const void *b)
+STATIC sptr less_than_cmp_mem_region(const void *a, const void *b)
 {
    const memory_region_t *m1 = a;
    const memory_region_t *m2 = b;

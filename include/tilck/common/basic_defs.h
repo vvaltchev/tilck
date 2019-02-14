@@ -217,7 +217,7 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 #define POINTER_ALIGN_MASK (~(sizeof(void *) - 1))
 
 // Standard compare function signature among generic objects.
-typedef int (*cmpfun_ptr)(const void *a, const void *b);
+typedef sptr (*cmpfun_ptr)(const void *a, const void *b);
 
 #ifndef NO_TILCK_STATIC_WRAPPER
 

@@ -157,7 +157,7 @@ bintree_insert_internal(void **root_obj_ref,
 
       bintree_node *root = OBJTN(*root_obj_ref);
 
-      int c = cmp(obj, *root_obj_ref);
+      sptr c = cmp(obj, *root_obj_ref);
 
       if (!c)
          return false; // such elem already exists.
@@ -202,7 +202,7 @@ bintree_find_internal(void *root_obj,
 {
    while (root_obj) {
 
-      int c = objval_cmpfun(root_obj, value_ptr);
+      sptr c = objval_cmpfun(root_obj, value_ptr);
 
       if (c == 0)
          return root_obj;
@@ -233,7 +233,7 @@ bintree_remove_internal(void **root_obj_ref,
       if (!*root_obj_ref)
          return NULL; // we did not find the object.
 
-      int c = objval_cmpfun(*root_obj_ref, value_ptr);
+      sptr c = objval_cmpfun(*root_obj_ref, value_ptr);
 
       if (!c)
          break;

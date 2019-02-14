@@ -211,7 +211,7 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
    return (int)used_heaps++;
 }
 
-static int greater_than_heap_cmp(const void *a, const void *b)
+static sptr greater_than_heap_cmp(const void *a, const void *b)
 {
    const kmalloc_heap *const *ha_ref = a;
    const kmalloc_heap *const *hb_ref = b;

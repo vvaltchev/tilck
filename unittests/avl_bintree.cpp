@@ -27,7 +27,7 @@ struct int_struct {
 };
 
 
-static int my_cmpfun(const void *a, const void *b)
+static sptr my_cmpfun(const void *a, const void *b)
 {
    int_struct *v1 = (int_struct*)a;
    int_struct *v2 = (int_struct*)b;
@@ -257,7 +257,7 @@ int check_height(int_struct *obj, bool *failed)
    return max(lh, rh) + 1;
 }
 
-static int cmpfun_objval(const void *obj, const void *valptr)
+static sptr cmpfun_objval(const void *obj, const void *valptr)
 {
    int_struct *s = (int_struct*)obj;
    int ival = *(int*)valptr;

@@ -31,14 +31,14 @@ int get_curr_task_tid(void)
    return __current ? __current->tid : 0;
 }
 
-static int ti_insert_remove_cmp(const void *a, const void *b)
+static sptr ti_insert_remove_cmp(const void *a, const void *b)
 {
    const task_info *t1 = a;
    const task_info *t2 = b;
    return t1->tid - t2->tid;
 }
 
-static int ti_find_cmp(const void *obj, const void *valptr)
+static sptr ti_find_cmp(const void *obj, const void *valptr)
 {
    const task_info *task = obj;
    int searched_tid = *(const int *)valptr;

@@ -12,7 +12,7 @@ extern "C" {
    #include <tilck/kernel/sort.h>
 }
 
-static int less_than_cmp_int(const void *a, const void *b)
+static sptr less_than_cmp_int(const void *a, const void *b)
 {
    const sptr a_val = *(const sptr *)a;
    const sptr b_val = *(const sptr *)b;
