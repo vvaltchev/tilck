@@ -30,6 +30,15 @@ typedef struct {
 
 } user_mapping;
 
+typedef struct {
+
+   bintree_node node;
+
+   void *vaddr;
+   size_t size;
+
+} kernel_alloc;
+
 struct process_info {
 
    int ref_count;
@@ -114,6 +123,9 @@ struct task_info {
    /* A dedicated list for all the tasks waiting this task to end */
    list tasks_waiting_list;
 
+   /* Temp kernel allocations for user requests */
+   kernel_alloc *kallocs_tree_root;
+
    /*
     * For kernel threads, this is a function pointer of the thread's entry
     * point. For user processes/threads, it is unused for the moment. In the
@@ -193,6 +205,9 @@ void free_mem_for_zombie_task(task_info *ti);
 bool arch_specific_new_task_setup(task_info *ti, task_info *parent);
 void arch_specific_free_task(task_info *ti);
 void wake_up_tasks_waiting_on(task_info *ti);
-void debug_show_task_list(void);
+
+void *task_temp_kernel_alloc(size_t size);
+void task_temp_kernel_free(void *ptr);
 
 void terminate_process(task_info *ti, int exit_code, int term_sig);
+void debug_show_task_list(void);

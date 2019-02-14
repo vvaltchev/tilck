@@ -221,6 +221,85 @@ user_mapping *process_get_user_mapping(void *vaddr)
    return NULL;
 }
 
+static sptr kernel_alloc_cmp(const void *a, const void *b)
+{
+   const kernel_alloc *ka = a;
+   const kernel_alloc *kb = b;
+
+   return ka->vaddr - kb->vaddr;
+}
+
+static sptr kernel_alloc_find_cmp(const void *obj, const void *valptr)
+{
+   const kernel_alloc *ka = obj;
+   return ka->vaddr - valptr;
+}
+
+void *task_temp_kernel_alloc(size_t size)
+{
+   task_info *curr = get_curr_task();
+   void *ptr = NULL;
+
+   disable_preemption();
+   {
+      ptr = kmalloc(size);
+
+      if (ptr) {
+
+         kernel_alloc *alloc = kmalloc(sizeof(kernel_alloc));
+
+         if (alloc) {
+
+            alloc->vaddr = ptr;
+            alloc->size = size;
+
+            bintree_insert(&curr->kallocs_tree_root,
+                           alloc,
+                           &kernel_alloc_cmp,
+                           kernel_alloc,
+                           node);
+
+         } else {
+
+            kfree2(ptr, size);
+            ptr = NULL;
+         }
+      }
+   }
+   enable_preemption();
+   return ptr;
+}
+
+void task_temp_kernel_free(void *ptr)
+{
+   task_info *curr = get_curr_task();
+   kernel_alloc *alloc;
+
+   if (!ptr)
+      return;
+
+   disable_preemption();
+   {
+      alloc = bintree_find(&curr->kallocs_tree_root,
+                           ptr,
+                           &kernel_alloc_find_cmp,
+                           kernel_alloc,
+                           node);
+
+      ASSERT(alloc != NULL);
+
+      kfree2(alloc->vaddr, alloc->size);
+
+      bintree_remove(&curr->kallocs_tree_root,
+                     alloc,
+                     &kernel_alloc_cmp,
+                     kernel_alloc,
+                     node);
+
+      kfree2(alloc, sizeof(kernel_alloc));
+   }
+   enable_preemption();
+}
 
 /*
  * ***************************************************************
