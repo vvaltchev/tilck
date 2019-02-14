@@ -28,7 +28,7 @@ int cmd_select1(int argc, char **argv)
    FD_ZERO(&readfds);
    FD_SET(0, &readfds);
 
-   tv.tv_sec = 10;
+   tv.tv_sec = 5;
    tv.tv_usec = 0;
 
    ret = select(nfds, &readfds, NULL, NULL, &tv);

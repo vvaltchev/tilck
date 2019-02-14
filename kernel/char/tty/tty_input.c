@@ -122,6 +122,7 @@ void tty_kb_buf_reset(tty *t)
 {
    ringbuf_reset(&t->kb_input_ringbuf);
    t->kb_input_unread_cnt = 0;
+   t->end_line_delim_count = 0;
 }
 
 static inline u8 kb_buf_read_elem(tty *t)
