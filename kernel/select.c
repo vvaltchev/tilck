@@ -47,7 +47,7 @@ debug_dump_select_args(int nfds, fd_set *rfds, fd_set *wfds,
 static int
 select_count_kcond(u32 nfds,
                    fd_set *set,
-                   u32 *kcond_count_ref,
+                   u32 *cond_cnt_ref,
                    func_get_rwe_cond get_cond)
 {
    if (!set)
@@ -64,37 +64,41 @@ select_count_kcond(u32 nfds,
          return -EBADF;
 
       if (get_cond(h))
-         (*kcond_count_ref)++;
+         (*cond_cnt_ref)++;
    }
 
    return 0;
 }
 
-static void
+static int
 select_set_kcond(u32 nfds,
                  multi_obj_waiter *w,
-                 u32 *curr_i,
+                 u32 *idx,
                  fd_set *set,
                  func_get_rwe_cond get_cond)
 {
+   fs_handle h;
+   kcond *c;
+
    if (!set)
-      return;
+      return 0;
 
    for (u32 i = 0; i < nfds; i++) {
 
       if (!FD_ISSET(i, set))
          continue;
 
-      kcond *c;
-      fs_handle h = get_fs_handle(i);
-      ASSERT(h != NULL);
+      if (!(h = get_fs_handle(i)))
+         return -EBADF;
 
       c = get_cond(h);
-      ASSERT((*curr_i) < w->count);
+      ASSERT((*idx) < w->count);
 
       if (c)
-         mobj_waiter_set(w, (*curr_i)++, WOBJ_KCOND, c, &c->wait_list);
+         mobj_waiter_set(w, (*idx)++, WOBJ_KCOND, c, &c->wait_list);
    }
+
+   return 0;
 }
 
 static int
@@ -144,7 +148,7 @@ sptr sys_select(int nfds, fd_set *user_rfds, fd_set *user_wfds,
    int total_ready_count = 0;
    struct timeval *tv = NULL;
    fd_set *sets[3] = {0};
-   u32 kcond_count = 0;
+   u32 cond_cnt = 0;
    u64 timeout_ticks = 0;
    int rc;
 
@@ -180,28 +184,29 @@ sptr sys_select(int nfds, fd_set *user_rfds, fd_set *user_wfds,
 
    if (!tv || timeout_ticks > 0) {
       for (int i = 0; i < 3; i++) {
-         if ((rc = select_count_kcond((u32)nfds, sets[i],
-                                      &kcond_count, gcf[i])))
-         {
+         if ((rc = select_count_kcond((u32)nfds, sets[i], &cond_cnt, gcf[i])))
             return rc;
-         }
       }
    }
 
-   if (kcond_count > 0) {
+   if (cond_cnt > 0) {
 
-      u32 curr_i = 0;
+      u32 idx = 0;
 
       /*
-       * NOTE: it is not that difficult kcond_count to be 0: it's enough the
+       * NOTE: it is not that difficult cond_cnt to be 0: it's enough the
        * specified files to NOT have r/w/e get kcond functions.
        */
 
-      if (!(waiter = allocate_mobj_waiter(kcond_count)))
+      if (!(waiter = allocate_mobj_waiter(cond_cnt)))
          return -ENOMEM;
 
       for (int i = 0; i < 3; i++) {
-         select_set_kcond((u32)nfds, waiter, &curr_i, sets[i], gcf[i]);
+         if ((rc = select_set_kcond((u32)nfds, waiter, &idx, sets[i], gcf[i])))
+         {
+            free_mobj_waiter(waiter);
+            return rc;
+         }
       }
 
       if (tv) {
