@@ -38,6 +38,7 @@ typedef struct {
 } term_write_filter_ctx_t;
 
 void tty_input_init(tty *t);
+void tty_kb_buf_reset(tty *t);
 int tty_keypress_handler(u32 key, u8 c);
 
 enum term_fret

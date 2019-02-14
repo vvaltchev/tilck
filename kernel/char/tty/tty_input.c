@@ -18,7 +18,6 @@
 #include "term_int.h"
 #include "tty_int.h"
 
-static inline void kb_buf_reset(tty *t);
 static inline bool kb_buf_write_elem(tty *t, u8 c);
 static void tty_keypress_echo(tty *t, char c);
 
@@ -119,7 +118,7 @@ static inline bool kb_buf_is_empty(tty *t)
    return ret;
 }
 
-static inline void kb_buf_reset(tty *t)
+void tty_kb_buf_reset(tty *t)
 {
    ringbuf_reset(&t->kb_input_ringbuf);
    t->kb_input_unread_cnt = 0;

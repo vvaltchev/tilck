@@ -161,15 +161,14 @@ int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp)
       case TCGETS:
          return tty_ioctl_tcgets(t, argp);
 
-      case TCSETS:
+      case TCSETS: // equivalent to: tcsetattr(fd, TCSANOW, argp)
          return tty_ioctl_tcsets(t, argp);
 
-      case TCSETSW:
-         // TODO: implement the correct behavior for TCSETSW
+      case TCSETSW: // equivalent to: tcsetattr(fd, TCSADRAIN, argp)
          return tty_ioctl_tcsets(t, argp);
 
-      case TCSETSF:
-         // TODO: implement the correct behavior for TCSETSF
+      case TCSETSF: // equivalent to: tcsetattr(fd, TCSAFLUSH, argp)
+         tty_kb_buf_reset(t);
          return tty_ioctl_tcsets(t, argp);
 
       case TIOCGWINSZ:

@@ -79,7 +79,7 @@ static bool tty_ctrl_intr(tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VINTR]);
-      kb_buf_reset(t);
+      tty_kb_buf_reset(t);
       tty_send_signal_to_processes(t, SIGINT);
       return true;
    }
@@ -102,7 +102,7 @@ static bool tty_ctrl_quit(tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VQUIT]);
-      kb_buf_reset(t);
+      tty_kb_buf_reset(t);
       tty_send_signal_to_processes(t, SIGQUIT);
       return true;
    }
