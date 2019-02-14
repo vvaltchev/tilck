@@ -66,11 +66,12 @@ void *task_reset_wait_obj(task_info *ti)
 multi_obj_waiter *allocate_mobj_waiter(u32 elems)
 {
    size_t s = sizeof(multi_obj_waiter) + sizeof(mwobj_elem) * elems;
-   multi_obj_waiter *w = kzmalloc(s);
+   multi_obj_waiter *w = task_temp_kernel_alloc(s);
 
    if (!w)
       return NULL;
 
+   bzero(w, sizeof(*w));
    w->count = elems;
    return w;
 }
@@ -84,8 +85,7 @@ void free_mobj_waiter(multi_obj_waiter *w)
       mobj_waiter_reset2(w, i);
    }
 
-   size_t s = sizeof(multi_obj_waiter) + sizeof(mwobj_elem) * w->count;
-   kfree2(w, s);
+   task_temp_kernel_free(w);
 }
 
 void
