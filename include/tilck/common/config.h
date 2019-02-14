@@ -60,7 +60,29 @@
 #define MAX_TTYS            9
 #define TERM_SCROLL_LINES   5
 
-/* Bootloader-specific config */
+/*
+ * User tasks constants
+ *
+ * WARNING: some of them are NOT really "configurable" without having to modify
+ * a lot of code. For example, USERMODE_VADDR_END cannot be > KERNEL_BASE_VA.
+ * Also, making *_COPYBUF_SIZE != 2^PAGE_SIZE will cause a waste of memory.
+ * MAX_PID can be set to be less than 32K, but not bigger than 65535 because
+ * it has to fit in a 16-bit integer.
+ */
+
+#define USERMODE_VADDR_END   (KERNEL_BASE_VA) /* biggest user vaddr + 1 */
+#define MAX_BRK                  (0x40000000) /* +1 GB (virtual memory) */
+#define USER_MMAP_BEGIN               MAX_BRK /* +1 GB (virtual memory) */
+#define USER_MMAP_END            (0x80000000) /* +2 GB (virtual memory) */
+
+#define IO_COPYBUF_SIZE (PAGE_SIZE)
+#define ARGS_COPYBUF_SIZE (PAGE_SIZE)
+#define MAX_PID 32768
+#define MAX_PATH 256
+#define MAX_HANDLES 16
+
+
+/* Bootloader-specific constants */
 
 #define SECTOR_SIZE          512
 #define BL_BASE_SEG          (BL_BASE_ADDR / 16)
