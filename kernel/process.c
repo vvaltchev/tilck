@@ -246,10 +246,11 @@ void *task_temp_kernel_alloc(size_t size)
 
       if (ptr) {
 
-         kernel_alloc *alloc = kmalloc(sizeof(kernel_alloc));
+         kernel_alloc *alloc = kzmalloc(sizeof(kernel_alloc));
 
          if (alloc) {
 
+            bintree_node_init(&alloc->node);
             alloc->vaddr = ptr;
             alloc->size = size;
 
@@ -569,6 +570,8 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
 
    close_all_handles(ti->pi);
    remove_user_mappings(ti->pi);
+
+   // TODO (must): free all temp kernel allocs (kallocs_tree_root)
 
    /*
     * What if the current task has any children? We have to set their parent
