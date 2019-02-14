@@ -9,6 +9,7 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -270,6 +271,24 @@ static void sleep_then_read(void)
    printf("read(): %d -> '%s'\n", rc, buf);
 }
 
+static void sym_read(void)
+{
+   char buf[32] = {0};
+   int rc;
+
+   if (!fork()) {
+      printf("[child]\n");
+      rc = read(0, buf, sizeof(buf));
+      printf("[child] read(): %d -> '%s'\n", rc, buf);
+      exit(0);
+   }
+
+   printf("[parent] reading...\n");
+   rc = read(0, buf, sizeof(buf));
+   printf("[parent] read(): %d -> '%s'\n", rc, buf);
+   waitpid(-1, NULL, 0);
+}
+
 #ifdef USERMODE_APP
 static void dump_termios(void)
 {
@@ -301,7 +320,8 @@ static struct {
    CMD_ENTRY("-n", read_nonblock),
    CMD_ENTRY("-nr", read_nonblock_rawmode),
    CMD_ENTRY("-fr", write_full_row),
-   CMD_ENTRY("-sr", sleep_then_read)
+   CMD_ENTRY("-sr", sleep_then_read),
+   CMD_ENTRY("-mr", sym_read)
 };
 
 static void show_help(void)
