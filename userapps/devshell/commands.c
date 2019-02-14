@@ -314,7 +314,7 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
 
    pass = WIFEXITED(wstatus) && (WEXITSTATUS(wstatus) == 0);
    printf(COLOR_YELLOW "[devshell] %s", pass_fail_strings[pass]);
-   printf("%s (%lu ms)\n\n", name, end_ms - start_ms);
+   printf("%s (%llu ms)\n\n", name, end_ms - start_ms);
    return pass;
 }
 
@@ -354,7 +354,7 @@ int cmd_runall(int argc, char **argv)
 
    printf(passed == to_run ? COLOR_GREEN : COLOR_RED);
    printf("Tests passed %d/%d" RESET_ATTRS " ", to_run, passed);
-   printf("(%lu ms)\n\n", end_ms - start_ms);
+   printf("(%llu ms)\n\n", end_ms - start_ms);
 
    if (dump_coverage) {
       dump_coverage_files();

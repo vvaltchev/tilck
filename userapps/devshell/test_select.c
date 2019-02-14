@@ -45,6 +45,6 @@ int cmd_select1(int argc, char **argv)
          printf("fd %d is read-ready\n", i);
    }
 
-   printf("tv: %u.%u sec\n", tv.tv_sec, tv.tv_usec / 1000);
+   printf("tv: %lu.%lu sec\n", tv.tv_sec, tv.tv_usec / 1000);
    return 0;
 }
