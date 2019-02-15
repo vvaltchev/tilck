@@ -6,8 +6,26 @@ import sys
 from os.path import *
 
 fileTypes = [
-   ".c", ".cpp", ".cc", ".cxx", ".h", ".py", ".asm", ".txt", ".S"
+   "C (source)",
+   "C/C++ (header)",
+   "C++ (source)",
+   "Python",
+   "Assembly",
+   "CMake"
 ]
+
+extToType = {
+   ".c": "C (source)",
+   ".h": "C/C++ (header)",
+   ".cpp": "C++ (source)",
+   ".cc": "C++ (source)",
+   ".cxx": "C++ (source)",
+   ".py": "Python",
+   ".asm": "Assembly",
+   ".S": "Assembly",
+   ".txt": "CMake"
+}
+
 
 excluded_dirs = [
    'docs',
@@ -21,7 +39,7 @@ destDirs = sys.argv[1:]
 globalLinesCount = {ft: 0 for ft in fileTypes}
 globalTotal = 0
 
-ftFieldLen = 10
+ftFieldLen = 15
 numFieldLen = 10
 prefix = " " * 3
 
@@ -29,10 +47,10 @@ def GetFileType(f):
 
    fname, fext = splitext(f)
 
-   if not fext in fileTypes:
+   if not fext in extToType:
       return None
 
-   return fext
+   return extToType[fext]
 
 
 def count_lines_in_file(f):
@@ -84,7 +102,7 @@ for destDir in destDirs:
 
    print ("\nNumber of lines in '{0}':".format(destDir))
 
-   for ft in linesByType:
+   for ft in fileTypes:
 
       val = linesByType[ft]
 
@@ -95,7 +113,7 @@ for destDir in destDirs:
       strVal = str(val)
       ep = ftFieldLen - len(ft)
       np = numFieldLen - len(strVal)
-      print(prefix + ft +" "*ep + " " + " "*np + strVal)
+      print(prefix + ft +" " * ep + " " + " " * np + strVal)
 
    print("-" * 35)
    totExt = "Total: "
@@ -107,16 +125,17 @@ for destDir in destDirs:
 if len(destDirs) > 1:
    print("\nCumulative number of lines:")
 
-   for ft in globalLinesCount:
+   for ft in fileTypes:
+
       val = globalLinesCount[ft]
 
       if val == 0:
          continue
 
       strVal = str(val)
-      ep = ftFieldLen-len(ft)
-      np = numFieldLen-len(strVal)
-      print(prefix+ft+" "*ep+" "+" "*np+strVal)
+      ep = ftFieldLen - len(ft)
+      np = numFieldLen - len(strVal)
+      print(prefix + ft + " " * ep + " " + " " * np + strVal)
 
    print("-" * 35)
    totExt = "Total: "
