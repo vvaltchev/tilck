@@ -44,16 +44,37 @@ debug_dump_select_args(int nfds, fd_set *rfds, fd_set *wfds,
    printk(")\n");
 }
 
+struct select_ctx {
+   u32 nfds;
+   fd_set *sets[3];
+   fd_set *u_sets[3];
+   struct timeval *tv;
+   struct timeval *user_tv;
+   u32 cond_cnt;
+   u32 timeout_ticks;
+};
+
+static const func_get_rwe_cond gcf[3] = {
+   &vfs_get_rready_cond,
+   &vfs_get_wready_cond,
+   &vfs_get_except_cond
+};
+
+static const func_rwe_ready grf[3] = {
+   &vfs_read_ready,
+   &vfs_write_ready,
+   &vfs_except_ready
+};
+
 static int
-select_count_kcond(u32 nfds,
-                   fd_set *set,
-                   u32 *cond_cnt_ref,
-                   func_get_rwe_cond get_cond)
+select_count_cond_per_set(struct select_ctx *c,
+                          fd_set *set,
+                          func_get_rwe_cond gcfunc)
 {
    if (!set)
       return 0;
 
-   for (u32 i = 0; i < nfds; i++) {
+   for (u32 i = 0; i < c->nfds; i++) {
 
       if (!FD_ISSET(i, set))
          continue;
@@ -63,8 +84,8 @@ select_count_kcond(u32 nfds,
       if (!h)
          return -EBADF;
 
-      if (get_cond(h))
-         (*cond_cnt_ref)++;
+      if (gcfunc(h))
+         c->cond_cnt++;
    }
 
    return 0;
@@ -126,18 +147,6 @@ select_set_ready(u32 nfds, fd_set *set, func_rwe_ready is_ready)
    return tot;
 }
 
-static const func_get_rwe_cond gcf[3] = {
-   &vfs_get_rready_cond,
-   &vfs_get_wready_cond,
-   &vfs_get_except_cond
-};
-
-static const func_rwe_ready grf[3] = {
-   &vfs_read_ready,
-   &vfs_write_ready,
-   &vfs_except_ready
-};
-
 static u32
 count_signaled_conds(multi_obj_waiter *w)
 {
@@ -191,48 +200,38 @@ count_ready_streams(u32 nfds, fd_set *sets[3])
 }
 
 static int
-select_wait_on_cond(u32 nfds,
-                    fd_set *sets[3],
-                    struct timeval *tv,
-                    u32 cond_cnt,
-                    u32 timeout_ticks)
+select_wait_on_cond(struct select_ctx *c)
 {
    task_info *curr = get_curr_task();
    multi_obj_waiter *waiter = NULL;
    u32 idx = 0;
    int rc = 0;
 
-   /*
-    * NOTE: it is not that difficult cond_cnt to be 0: it's enough the
-    * specified files to NOT have r/w/e get kcond functions. Also, all the
-    * sets might be NULL (see the comment below).
-    */
-
-   if (!(waiter = allocate_mobj_waiter(cond_cnt)))
+   if (!(waiter = allocate_mobj_waiter(c->cond_cnt)))
       return -ENOMEM;
 
    for (int i = 0; i < 3; i++) {
-      if ((rc = select_set_kcond((u32)nfds, waiter, &idx, sets[i], gcf[i])))
+      if ((rc = select_set_kcond(c->nfds, waiter, &idx, c->sets[i], gcf[i])))
          goto out;
    }
 
-   if (tv) {
-      ASSERT(timeout_ticks > 0);
-      task_set_wakeup_timer(get_curr_task(), timeout_ticks);
+   if (c->tv) {
+      ASSERT(c->timeout_ticks > 0);
+      task_set_wakeup_timer(get_curr_task(), c->timeout_ticks);
    }
 
    while (true) {
 
       kernel_sleep_on_waiter(waiter);
 
-      if (tv) {
+      if (c->tv) {
 
          if (curr->wobj.type) {
 
             /* we woke-up because of the timeout */
             wait_obj_reset(&curr->wobj);
-            tv->tv_sec = 0;
-            tv->tv_usec = 0;
+            c->tv->tv_sec = 0;
+            c->tv->tv_usec = 0;
 
          } else {
 
@@ -242,19 +241,19 @@ select_wait_on_cond(u32 nfds,
              * streams. We have to check that.
              */
 
-            if (!count_ready_streams(nfds, sets))
+            if (!count_ready_streams(c->nfds, c->sets))
                continue; /* No ready streams, we have to wait again. */
 
             u32 rem = task_cancel_wakeup_timer(curr);
-            tv->tv_sec = rem / TIMER_HZ;
-            tv->tv_usec = (rem % TIMER_HZ) * (1000000 / TIMER_HZ);
+            c->tv->tv_sec = rem / TIMER_HZ;
+            c->tv->tv_usec = (rem % TIMER_HZ) * (1000000 / TIMER_HZ);
          }
 
       } else {
 
          /* No timeout: we woke-up because of a kcond was signaled */
 
-         if (!count_ready_streams(nfds, sets))
+         if (!count_ready_streams(c->nfds, c->sets))
             continue; /* No ready streams, we have to wait again. */
       }
 
@@ -314,14 +313,13 @@ select_read_user_tv(struct timeval *user_tv,
 }
 
 static int
-select_get_cond_cnt(struct timeval *tv, u32 timeout_ticks,
-                    u32 nfds, fd_set *sets[3], u32 *cnt)
+select_compute_cond_cnt(struct select_ctx *c)
 {
    int rc;
 
-   if (!tv || timeout_ticks > 0) {
+   if (!c->tv || c->timeout_ticks > 0) {
       for (int i = 0; i < 3; i++) {
-         if ((rc = select_count_kcond(nfds, sets[i], cnt, gcf[i])))
+         if ((rc = select_count_cond_per_set(c, c->sets[i], gcf[i])))
             return rc;
       }
    }
@@ -330,40 +328,31 @@ select_get_cond_cnt(struct timeval *tv, u32 timeout_ticks,
 }
 
 static sptr
-select_write_user_sets(u32 nfds,
-                       fd_set *sets[3],
-                       fd_set *u_sets[3],
-                       struct timeval *tv,
-                       struct timeval *user_tv)
+select_write_user_sets(struct select_ctx *c)
 {
+   fd_set **sets = c->sets;
+   fd_set **u_sets = c->u_sets;
    int total_ready_count = 0;
 
    for (int i = 0; i < 3; i++) {
 
-      total_ready_count += select_set_ready(nfds, sets[i], grf[i]);
+      total_ready_count += select_set_ready(c->nfds, sets[i], grf[i]);
 
       if (u_sets[i] && copy_to_user(u_sets[i], sets[i], sizeof(fd_set)))
          return -EFAULT;
    }
 
-   if (tv && copy_to_user(user_tv, tv, sizeof(struct timeval)))
+   if (c->tv && copy_to_user(c->user_tv, c->tv, sizeof(struct timeval)))
       return -EFAULT;
 
    return total_ready_count;
 }
 
-struct select_ctx {
-   u32 nfds;
-   fd_set *sets[3];
-   fd_set *u_sets[3];
-   struct timeval *tv;
-   struct timeval *user_tv;
-   u32 cond_cnt;
-   u32 timeout_ticks;
-};
-
-sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
-                fd_set *user_efds, struct timeval *user_tv)
+sptr sys_select(int user_nfds,
+                fd_set *user_rfds,
+                fd_set *user_wfds,
+                fd_set *user_efds,
+                struct timeval *user_tv)
 {
    struct select_ctx ctx = (struct select_ctx) {
 
@@ -389,15 +378,26 @@ sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
 
    //debug_dump_select_args(nfds, sets[0], sets[1], sets[2], tv);
 
-   if ((rc = select_get_cond_cnt(ctx.tv, ctx.timeout_ticks, ctx.nfds, ctx.sets, &ctx.cond_cnt)))
+   if ((rc = select_compute_cond_cnt(&ctx)))
       return rc;
 
    if (ctx.cond_cnt > 0) {
 
-      if ((rc = select_wait_on_cond(ctx.nfds, ctx.sets, ctx.tv, ctx.cond_cnt, ctx.timeout_ticks)))
+      /*
+       * The count of condition variables for all the file descriptors is
+       * greater than 0. That's typical.
+       */
+
+      if ((rc = select_wait_on_cond(&ctx)))
          return rc;
 
    } else {
+
+      /*
+       * It is not that difficult cond_cnt to be 0: it's enough the specified
+       * files to NOT have r/w/e get kcond functions. Also, all the sets might
+       * be NULL (see the comment below).
+       */
 
       if (ctx.timeout_ticks > 0) {
 
@@ -412,5 +412,5 @@ sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
       }
    }
 
-   return select_write_user_sets(ctx.nfds, ctx.sets, ctx.u_sets, ctx.tv, ctx.user_tv);
+   return select_write_user_sets(&ctx);
 }
