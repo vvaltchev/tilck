@@ -41,10 +41,13 @@ excludedDirs = [
 ]
 
 PREFIX = " " * 3
-FLEN = [ 15, 10 ] # fields length
+FLEN = [ 15, 8, 8, 8 ] # fields length
 
 #########################################
+# Global variables
 
+optPrintFileNames = False
+#########################################
 
 def GetNoExtFileType(fpath):
 
@@ -76,12 +79,19 @@ def GetFileType(f, folder):
 
 def CountLinesInFile(f, ft):
 
-   res = 0
-   print("file: {0}   -> {1}".format(f, ft))
+   res = [0, 0]  # tot lines, empty lines
+
+   if optPrintFileNames:
+      print("file: {0}   -> {1}".format(f, ft))
 
    with open(f, 'r') as fd:
+
       for line in fd:
-         res += 1
+
+         res[0] += 1
+
+         if not line.strip():
+            res[1] += 1
 
    return res
 
@@ -98,30 +108,54 @@ def AccumulateCounters(destArr, arr):
    for ft in fileTypes:
       destArr[ft] += arr[ft]
 
-def PrintCounters(arr, total):
+def PrintRow(cols):
+
+   s = PREFIX
+
+   for i, val in enumerate(cols):
+
+      if i == 0:
+         s += str(val).ljust(FLEN[i]) + " "
+      else:
+         s += str(val).rjust(FLEN[i]) + " "
+
+   print(s)
+
+def GetEmptyPercStr(t, e):
+   return str(round(100.0 * e/t, 1)) + "%"
+
+def PrintCounters(arr, eArr, total, eTot):
+
+   PrintRow(["File type", "Tot", "Empty", "Empty%"])
 
    for ft in fileTypes:
 
-      val = arr[ft]
+      vals = [ arr[ft], eArr[ft] ]
 
-      if val > 0:
-         strVal = str(val)
-         ep = FLEN[0] - len(ft)
-         np = FLEN[1] - len(strVal)
-         print(PREFIX + ft +" " * ep + " " + " " * np + strVal)
+      if vals[0] > 0:
+         PrintRow([ft] + vals + [GetEmptyPercStr(vals[0], vals[1])])
 
-   print("-" * 35)
-   totExt = "Total: "
-   ep = FLEN[0] - len(totExt)
-   np = FLEN[1] - len(str(total))
-   print(PREFIX + "Total: " + " " * ep + " " + " " * np + str(total) + "\n")
+   print("-" * 50)
+   PrintRow(["Total:", total, eTot, GetEmptyPercStr(total, eTot)])
 
 def main():
 
-   destDirs = sys.argv[1:]
+   global optPrintFileNames
 
-   globalLinesCount = {ft: 0 for ft in fileTypes}
-   globalTotal = 0
+   if len(sys.argv) > 1 and sys.argv[1] == '-v':
+      optPrintFileNames = True
+      del sys.argv[1]
+
+   if len(sys.argv) > 1:
+      destDirs = sys.argv[1:]
+   else:
+      destDirs = ["."]
+
+   gLinesCount = {ft: 0 for ft in fileTypes}
+   gEmptyLinesCount = {ft: 0 for ft in fileTypes}
+
+   gTotal = 0
+   gEmptyTotal = 0
 
    print("") # print an empty line
 
@@ -131,7 +165,9 @@ def main():
          continue
 
       linesByType = {t: 0 for t in fileTypes}
+      emptyLinesByType = {t: 0 for t in fileTypes}
       total = 0
+      emptyTotal = 0
 
       for folder, subfolders, files in os.walk(destDir):
 
@@ -142,19 +178,25 @@ def main():
                ft = GetFileType(f, folder)
 
                if ft is not None:
+
                   c = CountLinesInFile(os.path.join(folder, f), ft)
-                  linesByType[ft] += c
-                  total += c
-                  globalTotal += c
+
+                  linesByType[ft] += c[0]
+                  emptyLinesByType[ft] += c[1]
+                  total += c[0]
+                  emptyTotal += c[1]
+                  gTotal += c[0]
+                  gEmptyTotal += c[1]
 
 
-      print ("\nNumber of lines in '{0}':".format(destDir))
-      AccumulateCounters(globalLinesCount, linesByType)
-      PrintCounters(linesByType, total)
+      print ("Number of lines in '{0}':".format(destDir))
+      AccumulateCounters(gLinesCount, linesByType)
+      AccumulateCounters(gEmptyLinesCount, emptyLinesByType)
+      PrintCounters(linesByType, emptyLinesByType, total, emptyTotal)
 
    if len(destDirs) > 1:
       print("\nCumulative number of lines:")
-      PrintCounters(globalLinesCount, globalTotal)
+      PrintCounters(gLinesCount, gEmptyLinesCount, gTotal, gEmptyTotal)
 
 #########################################################
 if __name__ == "__main__":
