@@ -258,6 +258,7 @@ select_wait_on_cond(u32 nfds,
             continue; /* No ready streams, we have to wait again. */
       }
 
+      /* count_ready_streams() returned > 0 */
       break;
    }
 
@@ -266,22 +267,10 @@ out:
    return rc;
 }
 
-sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
-                fd_set *user_efds, struct timeval *user_tv)
+static int
+select_read_user_sets(fd_set *sets[3], fd_set *u_sets[3])
 {
-   fd_set *u_sets[3] = { user_rfds, user_wfds, user_efds };
-
    task_info *curr = get_curr_task();
-   int total_ready_count = 0;
-   struct timeval *tv = NULL;
-   u32 nfds = (u32)user_nfds;
-   fd_set *sets[3] = {0};
-   u32 cond_cnt = 0;
-   u32 timeout_ticks = 0;
-   int rc;
-
-   if (user_nfds < 0 || user_nfds > MAX_HANDLES)
-      return -EINVAL;
 
    for (int i = 0; i < 3; i++) {
 
@@ -293,6 +282,17 @@ sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
       if (copy_from_user(sets[i], u_sets[i], sizeof(fd_set)))
          return -EFAULT;
    }
+
+   return 0;
+}
+
+static int
+select_read_user_tv(struct timeval *user_tv,
+                    struct timeval **tv_ref,
+                    u32 *timeout)
+{
+   task_info *curr = get_curr_task();
+   struct timeval *tv = NULL;
 
    if (user_tv) {
 
@@ -306,8 +306,34 @@ sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
       tmp += (u64)tv->tv_usec / (1000000ull / TIMER_HZ);
 
       /* NOTE: select() can't sleep for more than UINT32_MAX ticks */
-      timeout_ticks = (u32) MIN(tmp, UINT32_MAX);
+      *timeout = (u32) MIN(tmp, UINT32_MAX);
    }
+
+   *tv_ref = tv;
+   return 0;
+}
+
+sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
+                fd_set *user_efds, struct timeval *user_tv)
+{
+   fd_set *u_sets[3] = { user_rfds, user_wfds, user_efds };
+
+   int total_ready_count = 0;
+   struct timeval *tv = NULL;
+   u32 nfds = (u32)user_nfds;
+   fd_set *sets[3] = {0};
+   u32 cond_cnt = 0;
+   u32 timeout_ticks = 0;
+   int rc;
+
+   if (user_nfds < 0 || user_nfds > MAX_HANDLES)
+      return -EINVAL;
+
+   if ((rc = select_read_user_sets(sets, u_sets)))
+      return rc;
+
+   if ((rc = select_read_user_tv(user_tv, &tv, &timeout_ticks)))
+      return rc;
 
    //debug_dump_select_args(nfds, sets[0], sets[1], sets[2], tv);
 
