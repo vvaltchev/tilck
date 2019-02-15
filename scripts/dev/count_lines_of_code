@@ -10,15 +10,11 @@ knownExtensions = [
 ]
 
 excluded_dirs = [
-   'toolchain',
+   'docs',
    'build',
    'sysroot',
+   'toolchain',
    'system_headers',
-   'gcc_build',
-   'gcc_rel_build',
-   'clang_build',
-   'clang_rel_build',
-   'syscc_build'
 ]
 
 destDirs = sys.argv[1:]
@@ -27,7 +23,7 @@ globalTotal = 0
 
 extFieldLen = 10
 numFieldLen = 10
-prefix = " "*3
+prefix = " " * 3
 
 def count_lines_in_file(f):
    res = 0
@@ -76,6 +72,7 @@ for destDir in destDirs:
    print ("\nNumber of lines in '{0}':".format(destDir))
 
    for ext in linesByExtention:
+
       val = linesByExtention[ext]
 
       if val == 0:
@@ -83,15 +80,15 @@ for destDir in destDirs:
 
       globalLinesCount[ext] += val
       strVal = str(val)
-      ep = extFieldLen-len(ext)
-      np = numFieldLen-len(strVal)
-      print(prefix+ext+" "*ep+" "+" "*np+strVal)
+      ep = extFieldLen - len(ext)
+      np = numFieldLen - len(strVal)
+      print(prefix + ext +" "*ep + " " + " "*np + strVal)
 
-   print("-"*35)
+   print("-" * 35)
    totExt = "Total: "
-   ep = extFieldLen-len(totExt)
-   np = numFieldLen-len(str(total))
-   print(prefix+"Total: "+" "*ep+" "+" "*np+str(total)+"\n")
+   ep = extFieldLen - len(totExt)
+   np = numFieldLen - len(str(total))
+   print(prefix + "Total: " + " " * ep + " " + " " * np + str(total) + "\n")
 
 
 if len(destDirs) > 1:
@@ -108,8 +105,8 @@ if len(destDirs) > 1:
       np = numFieldLen-len(strVal)
       print(prefix+ext+" "*ep+" "+" "*np+strVal)
 
-   print("-"*35)
+   print("-" * 35)
    totExt = "Total: "
    ep = extFieldLen-len(totExt)
    np = numFieldLen-len(str(globalTotal))
-   print(prefix+"Total: "+" "*ep+" "+" "*np+str(globalTotal)+"\n")
+   print(prefix + "Total: " + " "*ep + " " + " "*np + str(globalTotal) + "\n")
