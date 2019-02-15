@@ -3,15 +3,16 @@
 
 import os
 import sys
-from os.path import *
+import subprocess
 
 fileTypes = [
    "C (source)",
    "C/C++ (header)",
    "C++ (source)",
-   "Python",
    "Assembly",
-   "CMake"
+   "Python",
+   "CMake",
+   "Shell script"
 ]
 
 extToType = {
@@ -23,7 +24,8 @@ extToType = {
    ".py": "Python",
    ".asm": "Assembly",
    ".S": "Assembly",
-   ".txt": "CMake"
+   ".cmake": "CMake",
+   ".sh": "Shell script"
 }
 
 
@@ -33,6 +35,8 @@ excluded_dirs = [
    'sysroot',
    'toolchain',
    'system_headers',
+   ".git",
+   ".vscode"
 ]
 
 destDirs = sys.argv[1:]
@@ -43,9 +47,27 @@ ftFieldLen = 15
 numFieldLen = 10
 prefix = " " * 3
 
-def GetFileType(f):
+def GetNoExtFileType(fpath):
 
-   fname, fext = splitext(f)
+   out = subprocess.check_output(['file', fpath])
+
+   if out.find("shell script") != -1:
+      return "Shell script"
+
+   if out.find("Python script") != -1:
+      return "Python"
+
+   return None
+
+def GetFileType(f, folder):
+
+   if f == "CMakeLists.txt":
+      return "CMake"
+
+   fname, fext = os.path.splitext(f)
+
+   if fext == "":
+      return GetNoExtFileType(os.path.join(folder, f))
 
    if not fext in extToType:
       return None
@@ -53,12 +75,15 @@ def GetFileType(f):
    return extToType[fext]
 
 
-def count_lines_in_file(f):
+def count_lines_in_file(f, ft):
+
    res = 0
-   print("file: {0}".format(f))
+   print("file: {0}   -> {1}".format(f, ft))
+
    with open(f, 'r') as fd:
       for line in fd:
          res += 1
+
    return res
 
 def should_exclude(f):
@@ -89,12 +114,12 @@ for destDir in destDirs:
 
       for f in files:
 
-         ft = GetFileType(f)
+         ft = GetFileType(f, folder)
 
          if not ft:
             continue
 
-         c = count_lines_in_file(join(folder,f))
+         c = count_lines_in_file(os.path.join(folder, f), ft)
          linesByType[ft] += c
          total += c
          globalTotal += c
