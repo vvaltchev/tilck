@@ -105,18 +105,20 @@ sigaction_int(int signum, const struct k_sigaction *user_act)
       return -EINVAL;
    }
 
-   if (act.handler == SIG_DFL || act.handler == SIG_IGN) {
+   // TODO: actually support custom signal handlers
 
-      curr->pi->sa_handlers[signum] = act.handler;
-      curr->pi->sa_flags = act.sa_flags;
-      memcpy(curr->pi->sa_mask, act.sa_mask, sizeof(act.sa_mask));
+   if (act.handler != SIG_DFL && act.handler != SIG_IGN) {
 
-   } else {
+      // printk("rt_sigaction: sa_handler [%p] not supported\n", act.handler);
+      // return -EINVAL;
 
-      printk("rt_sigaction: sa_handler [%p] not supported\n", act.handler);
-      return -EINVAL;
+      // TEMP HACK: silently replace custom signal handlers with SIG_IGN
+      act.handler = SIG_IGN;
    }
 
+   curr->pi->sa_handlers[signum] = act.handler;
+   curr->pi->sa_flags = act.sa_flags;
+   memcpy(curr->pi->sa_mask, act.sa_mask, sizeof(act.sa_mask));
    return 0;
 }
 
