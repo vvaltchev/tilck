@@ -551,6 +551,31 @@ static void remove_user_mappings(process_info *pi)
    }
 }
 
+static void
+task_free_all_kernel_allocs(task_info *ti)
+{
+   ASSERT(!is_preemption_enabled());
+
+   while (ti->kallocs_tree_root != NULL) {
+
+      /* Save a pointer to the alloc object on the stack */
+      kernel_alloc *alloc = ti->kallocs_tree_root;
+
+      /* Free the allocated chunk */
+      kfree2(alloc->vaddr, alloc->size);
+
+      /* Remove the kernel_alloc elem from the tree */
+      bintree_remove(&ti->kallocs_tree_root,
+                     alloc,
+                     &kernel_alloc_cmp,
+                     kernel_alloc,
+                     node);
+
+      /* Free the kernel_alloc object itself */
+      kfree2(alloc, sizeof(kernel_alloc));
+   }
+}
+
 /*
  * NOTE: this code ASSUMES that threads does NOT exist:
  *    process = task = thread
@@ -570,8 +595,7 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
 
    close_all_handles(ti->pi);
    remove_user_mappings(ti->pi);
-
-   // TODO (must): free all temp kernel allocs (kallocs_tree_root)
+   task_free_all_kernel_allocs(ti);
 
    /*
     * What if the current task has any children? We have to set their parent
