@@ -63,6 +63,7 @@ considered as *not implemented yet*.
  sys_kill            | partial [6]
  sys_setsid          | minimal [8]
  sys_times           | minimal [9]
+ sys_select          | full
 
 Definitions:
 
