@@ -313,12 +313,50 @@ select_read_user_tv(struct timeval *user_tv,
    return 0;
 }
 
+static int
+select_get_cond_cnt(struct timeval *tv, u32 timeout_ticks,
+                    u32 nfds, fd_set *sets[3], u32 *cnt)
+{
+   int rc;
+
+   if (!tv || timeout_ticks > 0) {
+      for (int i = 0; i < 3; i++) {
+         if ((rc = select_count_kcond(nfds, sets[i], cnt, gcf[i])))
+            return rc;
+      }
+   }
+
+   return 0;
+}
+
+static sptr
+select_write_user_sets(u32 nfds,
+                       fd_set *sets[3],
+                       fd_set *u_sets[3],
+                       struct timeval *tv,
+                       struct timeval *user_tv)
+{
+   int total_ready_count = 0;
+
+   for (int i = 0; i < 3; i++) {
+
+      total_ready_count += select_set_ready(nfds, sets[i], grf[i]);
+
+      if (u_sets[i] && copy_to_user(u_sets[i], sets[i], sizeof(fd_set)))
+         return -EFAULT;
+   }
+
+   if (tv && copy_to_user(user_tv, tv, sizeof(struct timeval)))
+      return -EFAULT;
+
+   return total_ready_count;
+}
+
 sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
                 fd_set *user_efds, struct timeval *user_tv)
 {
    fd_set *u_sets[3] = { user_rfds, user_wfds, user_efds };
 
-   int total_ready_count = 0;
    struct timeval *tv = NULL;
    u32 nfds = (u32)user_nfds;
    fd_set *sets[3] = {0};
@@ -337,12 +375,8 @@ sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
 
    //debug_dump_select_args(nfds, sets[0], sets[1], sets[2], tv);
 
-   if (!tv || timeout_ticks > 0) {
-      for (int i = 0; i < 3; i++) {
-         if ((rc = select_count_kcond(nfds, sets[i], &cond_cnt, gcf[i])))
-            return rc;
-      }
-   }
+   if ((rc = select_get_cond_cnt(tv, timeout_ticks, nfds, sets, &cond_cnt)))
+      return rc;
 
    if (cond_cnt > 0) {
 
@@ -364,16 +398,5 @@ sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
       }
    }
 
-   for (int i = 0; i < 3; i++) {
-
-      total_ready_count += select_set_ready(nfds, sets[i], grf[i]);
-
-      if (u_sets[i] && copy_to_user(u_sets[i], sets[i], sizeof(fd_set)))
-         return -EFAULT;
-   }
-
-   if (tv && copy_to_user(user_tv, tv, sizeof(struct timeval)))
-      return -EFAULT;
-
-   return total_ready_count;
+   return select_write_user_sets(nfds, sets, u_sets, tv, user_tv);
 }
