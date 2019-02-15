@@ -352,40 +352,54 @@ select_write_user_sets(u32 nfds,
    return total_ready_count;
 }
 
+struct select_ctx {
+   u32 nfds;
+   fd_set *sets[3];
+   fd_set *u_sets[3];
+   struct timeval *tv;
+   struct timeval *user_tv;
+   u32 cond_cnt;
+   u32 timeout_ticks;
+};
+
 sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
                 fd_set *user_efds, struct timeval *user_tv)
 {
-   fd_set *u_sets[3] = { user_rfds, user_wfds, user_efds };
+   struct select_ctx ctx = (struct select_ctx) {
 
-   struct timeval *tv = NULL;
-   u32 nfds = (u32)user_nfds;
-   fd_set *sets[3] = {0};
-   u32 cond_cnt = 0;
-   u32 timeout_ticks = 0;
+      .nfds = (u32)user_nfds,
+      .sets = { 0 },
+      .u_sets = { user_rfds, user_wfds, user_efds },
+      .tv = NULL,
+      .user_tv = user_tv,
+      .cond_cnt = 0,
+      .timeout_ticks = 0
+   };
+
    int rc;
 
    if (user_nfds < 0 || user_nfds > MAX_HANDLES)
       return -EINVAL;
 
-   if ((rc = select_read_user_sets(sets, u_sets)))
+   if ((rc = select_read_user_sets(ctx.sets, ctx.u_sets)))
       return rc;
 
-   if ((rc = select_read_user_tv(user_tv, &tv, &timeout_ticks)))
+   if ((rc = select_read_user_tv(user_tv, &ctx.tv, &ctx.timeout_ticks)))
       return rc;
 
    //debug_dump_select_args(nfds, sets[0], sets[1], sets[2], tv);
 
-   if ((rc = select_get_cond_cnt(tv, timeout_ticks, nfds, sets, &cond_cnt)))
+   if ((rc = select_get_cond_cnt(ctx.tv, ctx.timeout_ticks, ctx.nfds, ctx.sets, &ctx.cond_cnt)))
       return rc;
 
-   if (cond_cnt > 0) {
+   if (ctx.cond_cnt > 0) {
 
-      if ((rc = select_wait_on_cond(nfds, sets, tv, cond_cnt, timeout_ticks)))
+      if ((rc = select_wait_on_cond(ctx.nfds, ctx.sets, ctx.tv, ctx.cond_cnt, ctx.timeout_ticks)))
          return rc;
 
    } else {
 
-      if (timeout_ticks > 0) {
+      if (ctx.timeout_ticks > 0) {
 
          /*
           * Corner case: no conditions on which to wait, but timeout is > 0:
@@ -394,9 +408,9 @@ sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
           * was even used as a portable implementation of nanosleep().
           */
 
-         kernel_sleep(timeout_ticks);
+         kernel_sleep(ctx.timeout_ticks);
       }
    }
 
-   return select_write_user_sets(nfds, sets, u_sets, tv, user_tv);
+   return select_write_user_sets(ctx.nfds, ctx.sets, ctx.u_sets, ctx.tv, ctx.user_tv);
 }
