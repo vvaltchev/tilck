@@ -5,6 +5,8 @@ import os
 import sys
 import subprocess
 
+# Constants
+
 fileTypes = [
    "C (source)",
    "C/C++ (header)",
@@ -28,24 +30,21 @@ extToType = {
    ".sh": "Shell script"
 }
 
-
-excluded_dirs = [
-   'docs',
-   'build',
-   'sysroot',
-   'toolchain',
-   'system_headers',
+excludedDirs = [
+   "docs",
+   "build",
+   "sysroot",
+   "toolchain",
+   "system_headers",
    ".git",
    ".vscode"
 ]
 
-destDirs = sys.argv[1:]
-globalLinesCount = {ft: 0 for ft in fileTypes}
-globalTotal = 0
+PREFIX = " " * 3
+FLEN = [ 15, 10 ] # fields length
 
-ftFieldLen = 15
-numFieldLen = 10
-prefix = " " * 3
+#########################################
+
 
 def GetNoExtFileType(fpath):
 
@@ -75,7 +74,7 @@ def GetFileType(f, folder):
    return extToType[fext]
 
 
-def count_lines_in_file(f, ft):
+def CountLinesInFile(f, ft):
 
    res = 0
    print("file: {0}   -> {1}".format(f, ft))
@@ -86,84 +85,86 @@ def count_lines_in_file(f, ft):
 
    return res
 
-def should_exclude(f):
+def IsExcluded(path):
 
-   for e in excluded_dirs:
-      if f.find(e) != -1:
+   for e in excludedDirs:
+      if path.find(e) != -1:
          return True
 
    return False
 
-print("") # print an empty line
+def AccumulateCounters(destArr, arr):
 
-for destDir in destDirs:
+   for ft in fileTypes:
+      destArr[ft] += arr[ft]
 
-   if not os.path.isdir(destDir):
-      continue
+def PrintCounters(arr, total):
 
-   if should_exclude(destDir):
-      continue
+   for ft in fileTypes:
 
-   linesByType = {t: 0 for t in fileTypes}
-   total = 0
+      val = arr[ft]
 
-   for folder, subfolders, files in os.walk(destDir):
-
-      if should_exclude(folder):
+      if val == 0:
          continue
 
-      for f in files:
+      strVal = str(val)
+      ep = FLEN[0] - len(ft)
+      np = FLEN[1] - len(strVal)
+      print(PREFIX + ft +" " * ep + " " + " " * np + strVal)
 
-         ft = GetFileType(f, folder)
+   print("-" * 35)
+   totExt = "Total: "
+   ep = FLEN[0] - len(totExt)
+   np = FLEN[1] - len(str(total))
+   print(PREFIX + "Total: " + " " * ep + " " + " " * np + str(total) + "\n")
 
-         if not ft:
+def main():
+
+   destDirs = sys.argv[1:]
+
+   globalLinesCount = {ft: 0 for ft in fileTypes}
+   globalTotal = 0
+
+   print("") # print an empty line
+
+   for destDir in destDirs:
+
+      if not os.path.isdir(destDir):
+         continue
+
+      if IsExcluded(destDir):
+         continue
+
+      linesByType = {t: 0 for t in fileTypes}
+      total = 0
+
+      for folder, subfolders, files in os.walk(destDir):
+
+         if IsExcluded(folder):
             continue
 
-         c = count_lines_in_file(os.path.join(folder, f), ft)
-         linesByType[ft] += c
-         total += c
-         globalTotal += c
+         for f in files:
+
+            ft = GetFileType(f, folder)
+
+            if not ft:
+               continue
+
+            c = CountLinesInFile(os.path.join(folder, f), ft)
+            linesByType[ft] += c
+            total += c
+            globalTotal += c
 
 
-   print ("\nNumber of lines in '{0}':".format(destDir))
+      print ("\nNumber of lines in '{0}':".format(destDir))
 
-   for ft in fileTypes:
+      AccumulateCounters(globalLinesCount, linesByType)
+      PrintCounters(linesByType, total)
 
-      val = linesByType[ft]
+   if len(destDirs) > 1:
+      print("\nCumulative number of lines:")
+      PrintCounters(globalLinesCount, globalTotal)
 
-      if val == 0:
-         continue
-
-      globalLinesCount[ft] += val
-      strVal = str(val)
-      ep = ftFieldLen - len(ft)
-      np = numFieldLen - len(strVal)
-      print(prefix + ft +" " * ep + " " + " " * np + strVal)
-
-   print("-" * 35)
-   totExt = "Total: "
-   ep = ftFieldLen - len(totExt)
-   np = numFieldLen - len(str(total))
-   print(prefix + "Total: " + " " * ep + " " + " " * np + str(total) + "\n")
-
-
-if len(destDirs) > 1:
-   print("\nCumulative number of lines:")
-
-   for ft in fileTypes:
-
-      val = globalLinesCount[ft]
-
-      if val == 0:
-         continue
-
-      strVal = str(val)
-      ep = ftFieldLen - len(ft)
-      np = numFieldLen - len(strVal)
-      print(prefix + ft + " " * ep + " " + " " * np + strVal)
-
-   print("-" * 35)
-   totExt = "Total: "
-   ep = ftFieldLen-len(totExt)
-   np = numFieldLen-len(str(globalTotal))
-   print(prefix + "Total: " + " "*ep + " " + " "*np + str(globalTotal) + "\n")
+#########################################################
+if __name__ == "__main__":
+   main()
