@@ -606,6 +606,7 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
     */
 
    if (ti->tid != 1) {
+
       task_info *pos, *temp;
       task_info *child_reaper = get_task(1); /* init */
       ASSERT(child_reaper != NULL);
@@ -616,6 +617,13 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
          list_add_tail(&child_reaper->pi->children_list, &pos->siblings_node);
          pos->pi->parent_pid = child_reaper->pid;
       }
+
+   } else {
+
+      /* tid == pid == 1 */
+
+      if (DEBUG_QEMU_EXIT_ON_INIT_EXIT)
+         debug_qemu_turn_off_machine();
    }
 
    // Wake-up all the tasks waiting on this task to exit
@@ -629,19 +637,15 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
          task_reset_wait_obj(parent_task);
    }
 
-   set_page_directory(get_kernel_pdir());
-   pdir_destroy(ti->pi->pdir);
-
-   if (DEBUG_QEMU_EXIT_ON_INIT_EXIT) {
-      if (ti->tid == 1)
-         debug_qemu_turn_off_machine();
+   if (ti == get_curr_task()) {
+      set_page_directory(get_kernel_pdir());
+      pdir_destroy(ti->pi->pdir);
+      switch_stack_free_mem_and_schedule();
+      NOT_REACHED();
    }
 
-   if (ti == get_curr_task())
-      switch_stack_free_mem_and_schedule();
-   else
-      free_mem_for_zombie_task(ti);
-
+   pdir_destroy(ti->pi->pdir);
+   free_mem_for_zombie_task(ti);
    enable_preemption();
 }
 
