@@ -5,7 +5,7 @@ import os
 import sys
 from os.path import *
 
-knownExtensions = [
+fileTypes = [
    ".c", ".cpp", ".cc", ".cxx", ".h", ".py", ".asm", ".txt", ".S"
 ]
 
@@ -18,12 +18,22 @@ excluded_dirs = [
 ]
 
 destDirs = sys.argv[1:]
-globalLinesCount = {ext: 0 for ext in knownExtensions}
+globalLinesCount = {ft: 0 for ft in fileTypes}
 globalTotal = 0
 
-extFieldLen = 10
+ftFieldLen = 10
 numFieldLen = 10
 prefix = " " * 3
+
+def GetFileType(f):
+
+   fname, fext = splitext(f)
+
+   if not fext in fileTypes:
+      return None
+
+   return fext
+
 
 def count_lines_in_file(f):
    res = 0
@@ -48,45 +58,48 @@ for destDir in destDirs:
    if not os.path.isdir(destDir):
       continue
 
-   if should_exclude(destDir): continue
+   if should_exclude(destDir):
+      continue
 
-   linesByExtention = {ext: 0 for ext in knownExtensions}
+   linesByType = {t: 0 for t in fileTypes}
    total = 0
 
    for folder, subfolders, files in os.walk(destDir):
 
-      if should_exclude(folder): continue
+      if should_exclude(folder):
+         continue
 
       for f in files:
-         fname, fext = splitext(f)
 
-         if not fext in knownExtensions:
+         ft = GetFileType(f)
+
+         if not ft:
             continue
 
          c = count_lines_in_file(join(folder,f))
-         linesByExtention[fext] += c
+         linesByType[ft] += c
          total += c
          globalTotal += c
 
 
    print ("\nNumber of lines in '{0}':".format(destDir))
 
-   for ext in linesByExtention:
+   for ft in linesByType:
 
-      val = linesByExtention[ext]
+      val = linesByType[ft]
 
       if val == 0:
          continue
 
-      globalLinesCount[ext] += val
+      globalLinesCount[ft] += val
       strVal = str(val)
-      ep = extFieldLen - len(ext)
+      ep = ftFieldLen - len(ft)
       np = numFieldLen - len(strVal)
-      print(prefix + ext +" "*ep + " " + " "*np + strVal)
+      print(prefix + ft +" "*ep + " " + " "*np + strVal)
 
    print("-" * 35)
    totExt = "Total: "
-   ep = extFieldLen - len(totExt)
+   ep = ftFieldLen - len(totExt)
    np = numFieldLen - len(str(total))
    print(prefix + "Total: " + " " * ep + " " + " " * np + str(total) + "\n")
 
@@ -94,19 +107,19 @@ for destDir in destDirs:
 if len(destDirs) > 1:
    print("\nCumulative number of lines:")
 
-   for ext in globalLinesCount:
-      val = globalLinesCount[ext]
+   for ft in globalLinesCount:
+      val = globalLinesCount[ft]
 
       if val == 0:
          continue
 
       strVal = str(val)
-      ep = extFieldLen-len(ext)
+      ep = ftFieldLen-len(ft)
       np = numFieldLen-len(strVal)
-      print(prefix+ext+" "*ep+" "+" "*np+strVal)
+      print(prefix+ft+" "*ep+" "+" "*np+strVal)
 
    print("-" * 35)
    totExt = "Total: "
-   ep = extFieldLen-len(totExt)
+   ep = ftFieldLen-len(totExt)
    np = numFieldLen-len(str(globalTotal))
    print(prefix + "Total: " + " "*ep + " " + " "*np + str(globalTotal) + "\n")
