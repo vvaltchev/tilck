@@ -37,7 +37,7 @@ static void mobj_waiter_wait_thread(void *arg)
 
       printk("[wait th ] wake up #%u\n", i);
 
-      for (size_t j = 0; j < ARRAY_SIZE(conds); j++) {
+      for (size_t j = 0; j < w->count; j++) {
 
          mwobj_elem *me = &w->elems[j];
 

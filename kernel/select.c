@@ -138,6 +138,58 @@ static const func_rwe_ready grf[3] = {
    &vfs_except_ready
 };
 
+static u32
+count_signaled_conds(multi_obj_waiter *w)
+{
+   u32 count = 0;
+
+   for (u32 j = 0; j < w->count; j++) {
+
+      mwobj_elem *me = &w->elems[j];
+
+      if (me->type && !me->wobj.type) {
+         count++;
+         mobj_waiter_reset(me);
+      }
+   }
+
+   return count;
+}
+
+static u32
+count_ready_streams_per_set(u32 nfds, fd_set *set, func_rwe_ready is_ready)
+{
+   u32 count = 0;
+
+   if (!set)
+      return count;
+
+   for (u32 j = 0; j < nfds; j++) {
+
+      if (!FD_ISSET(j, set))
+         continue;
+
+      fs_handle h = get_fs_handle(j);
+
+      if (h && is_ready(h))
+         count++;
+   }
+
+   return count;
+}
+
+static u32
+count_ready_streams(u32 nfds, fd_set *sets[3])
+{
+   u32 count = 0;
+
+   for (int i = 0; i < 3; i++) {
+      count += count_ready_streams_per_set(nfds, sets[i], grf[i]);
+   }
+
+   return count;
+}
+
 static int
 select_wait_on_cond(u32 nfds,
                     fd_set *sets[3],
@@ -166,27 +218,47 @@ select_wait_on_cond(u32 nfds,
 
    if (tv) {
       ASSERT(timeout_ticks > 0);
-      task_set_wakeup_timer(get_curr_task(), (u32)timeout_ticks);
+      task_set_wakeup_timer(get_curr_task(), timeout_ticks);
    }
 
-   kernel_sleep_on_waiter(waiter);
+   while (true) {
 
-   if (tv) {
+      kernel_sleep_on_waiter(waiter);
 
-      if (curr->wobj.type) {
+      if (tv) {
 
-         /* we woke-up because of the timeout */
-         wait_obj_reset(&curr->wobj);
-         tv->tv_sec = 0;
-         tv->tv_usec = 0;
+         if (curr->wobj.type) {
+
+            /* we woke-up because of the timeout */
+            wait_obj_reset(&curr->wobj);
+            tv->tv_sec = 0;
+            tv->tv_usec = 0;
+
+         } else {
+
+            /*
+             * We woke-up because of a kcond was signaled, but that does NOT
+             * mean that even the signaled conditions correspond to ready
+             * streams. We have to check that.
+             */
+
+            if (!count_ready_streams(nfds, sets))
+               continue; /* No ready streams, we have to wait again. */
+
+            u32 rem = task_cancel_wakeup_timer(curr);
+            tv->tv_sec = rem / TIMER_HZ;
+            tv->tv_usec = (rem % TIMER_HZ) * (1000000 / TIMER_HZ);
+         }
 
       } else {
 
-         /* we woke-up because of a kcond was signaled */
-         u32 rem = task_cancel_wakeup_timer(curr);
-         tv->tv_sec = rem / TIMER_HZ;
-         tv->tv_usec = (rem % TIMER_HZ) * (1000000 / TIMER_HZ);
+         /* No timeout: we woke-up because of a kcond was signaled */
+
+         if (!count_ready_streams(nfds, sets))
+            continue; /* No ready streams, we have to wait again. */
       }
+
+      break;
    }
 
 out:
@@ -268,7 +340,7 @@ sptr sys_select(int user_nfds, fd_set *user_rfds, fd_set *user_wfds,
 
    for (int i = 0; i < 3; i++) {
 
-      total_ready_count += select_set_ready((u32)nfds, sets[i], grf[i]);
+      total_ready_count += select_set_ready(nfds, sets[i], grf[i]);
 
       if (u_sets[i] && copy_to_user(u_sets[i], sets[i], sizeof(fd_set)))
          return -EFAULT;
