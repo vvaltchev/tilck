@@ -104,13 +104,11 @@ def PrintCounters(arr, total):
 
       val = arr[ft]
 
-      if val == 0:
-         continue
-
-      strVal = str(val)
-      ep = FLEN[0] - len(ft)
-      np = FLEN[1] - len(strVal)
-      print(PREFIX + ft +" " * ep + " " + " " * np + strVal)
+      if val > 0:
+         strVal = str(val)
+         ep = FLEN[0] - len(ft)
+         np = FLEN[1] - len(strVal)
+         print(PREFIX + ft +" " * ep + " " + " " * np + strVal)
 
    print("-" * 35)
    totExt = "Total: "
@@ -129,10 +127,7 @@ def main():
 
    for destDir in destDirs:
 
-      if not os.path.isdir(destDir):
-         continue
-
-      if IsExcluded(destDir):
+      if not os.path.isdir(destDir) or IsExcluded(destDir):
          continue
 
       linesByType = {t: 0 for t in fileTypes}
@@ -140,24 +135,20 @@ def main():
 
       for folder, subfolders, files in os.walk(destDir):
 
-         if IsExcluded(folder):
-            continue
+         if not IsExcluded(folder):
 
-         for f in files:
+            for f in files:
 
-            ft = GetFileType(f, folder)
+               ft = GetFileType(f, folder)
 
-            if not ft:
-               continue
-
-            c = CountLinesInFile(os.path.join(folder, f), ft)
-            linesByType[ft] += c
-            total += c
-            globalTotal += c
+               if ft is not None:
+                  c = CountLinesInFile(os.path.join(folder, f), ft)
+                  linesByType[ft] += c
+                  total += c
+                  globalTotal += c
 
 
       print ("\nNumber of lines in '{0}':".format(destDir))
-
       AccumulateCounters(globalLinesCount, linesByType)
       PrintCounters(linesByType, total)
 
