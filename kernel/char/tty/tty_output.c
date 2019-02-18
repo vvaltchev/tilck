@@ -268,6 +268,17 @@ tty_filter_end_csi_seq(u8 c,
             .arg2 = ctx->t->saved_cur_col
          };
          break;
+
+      case 'd':
+         /* VPA: Move cursor to the indicated row, current column */
+         params[0] = MAX(1u, params[0]) - 1;
+
+         *a = (term_action) {
+            .type2 = a_move_ch_and_cur,
+            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst)-1u),
+            .arg2 = term_get_curr_col(t->term_inst)
+         };
+         break;
    }
 
    ctx->pbc = ctx->ibc = 0;
@@ -356,7 +367,23 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
          }
          break;
 
+      case '(':
       case ')':
+         /*
+          * HACK: In theory, a console should have two character sets, G0 and
+          * and G1 which can be switched with shift-in/shift-out. Both those
+          * character sets have (at most) 4 translation tables.
+          * In other to make G0 use the translation table 0, 1, 2, 3:
+          *    "ESC ( B", "ESC ( 0", "ESC ( U", "ESC ( K"
+          * In order to make the same change for G1:
+          *    "ESC ) B", "ESC ) 0", "ESC ) U", "ESC ) K"
+          *
+          * Since currently Tilck has just a single character set, shift in
+          * and shift out just change its translation table. That's why here
+          * we have to deal with '(' and ')' in the same way.
+          *
+          * TODO: make Tilck's console to support 2 character sets.
+          */
          ctx->state = TERM_WFILTER_STATE_ESC2_PAR;
          break;
 
