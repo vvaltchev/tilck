@@ -70,12 +70,19 @@ static const action_type signal_default_actions[32] =
 void send_signal(task_info *ti, int signum)
 {
    ASSERT(0 <= signum && signum < _NSIG);
+   __sighandler_t h = ti->pi->sa_handlers[signum];
 
-   if (ti->pi->sa_handlers[signum] == SIG_IGN)
-      return;
+   if (h == SIG_IGN)
+      return; /* the signal must just ignored */
 
-   /* For the moment, we don't support anything else than SIG_DFL and SIG_IGN */
-   ASSERT(ti->pi->sa_handlers[signum] == SIG_DFL);
+   if (h != SIG_DFL)
+      return; /* HACK: treat custom signal handlers as SIG_IGN */
+
+   /*
+    * For the moment, we don't support anything else than SIG_DFL and SIG_IGN.
+    * TODO: actually support custom signal handlers.
+    */
+   ASSERT(h == SIG_DFL);
 
    action_type action_func =
       signal_default_actions[signum] != NULL
@@ -111,9 +118,6 @@ sigaction_int(int signum, const struct k_sigaction *user_act)
 
       // printk("rt_sigaction: sa_handler [%p] not supported\n", act.handler);
       // return -EINVAL;
-
-      // TEMP HACK: silently replace custom signal handlers with SIG_IGN
-      act.handler = SIG_IGN;
    }
 
    curr->pi->sa_handlers[signum] = act.handler;
