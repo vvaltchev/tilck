@@ -630,6 +630,11 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
       case 'c':
          {
             *a = (term_action) { .type1 = a_reset };
+            tty_kb_buf_reset(ctx->t);
+            ctx->t->c_set = 0;
+            ctx->t->c_sets_tables[0] = tty_default_trans_table;
+            ctx->t->c_sets_tables[1] = tty_gfx_trans_table;
+            tty_update_default_state_tables(ctx->t);
             ctx->state = TERM_WFILTER_STATE_DEFAULT;
          }
          break;
