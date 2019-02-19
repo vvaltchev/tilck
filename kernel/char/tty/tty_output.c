@@ -35,6 +35,273 @@ static const u8 fg_csi_to_vga[256] =
    [97] = COLOR_BRIGHT_WHITE
 };
 
+
+#ifdef __clang__
+   #pragma GCC diagnostic ignored "-Winitializer-overrides"
+#else
+   #pragma GCC diagnostic ignored "-Woverride-init"
+#endif
+
+const s16 tty_default_trans_table[256] =
+{
+   [0 ... 31] = -1,   /* not translated */
+
+   [32] = 32,
+   [33] = 33,
+   [34] = 34,
+   [35] = 35,
+   [36] = 36,
+   [37] = 37,
+   [38] = 38,
+   [39] = 39,
+   [40] = 40,
+   [41] = 41,
+   [42] = 42,
+   [43] = 43,
+   [44] = 44,
+   [45] = 45,
+   [46] = 46,
+   [47] = 47,
+   [48] = 48,
+   [49] = 49,
+   [50] = 50,
+   [51] = 51,
+   [52] = 52,
+   [53] = 53,
+   [54] = 54,
+   [55] = 55,
+   [56] = 56,
+   [57] = 57,
+   [58] = 58,
+   [59] = 59,
+   [60] = 60,
+   [61] = 61,
+   [62] = 62,
+   [63] = 63,
+   [64] = 64,
+   [65] = 65,
+   [66] = 66,
+   [67] = 67,
+   [68] = 68,
+   [69] = 69,
+   [70] = 70,
+   [71] = 71,
+   [72] = 72,
+   [73] = 73,
+   [74] = 74,
+   [75] = 75,
+   [76] = 76,
+   [77] = 77,
+   [78] = 78,
+   [79] = 79,
+   [80] = 80,
+   [81] = 81,
+   [82] = 82,
+   [83] = 83,
+   [84] = 84,
+   [85] = 85,
+   [86] = 86,
+   [87] = 87,
+   [88] = 88,
+   [89] = 89,
+   [90] = 90,
+   [91] = 91,
+   [92] = 92,
+   [93] = 93,
+   [94] = 94,
+   [95] = 95,
+   [96] = 96,
+   [97] = 97,
+   [98] = 98,
+   [99] = 99,
+   [100] = 100,
+   [101] = 101,
+   [102] = 102,
+   [103] = 103,
+   [104] = 104,
+   [105] = 105,
+   [106] = 106,
+   [107] = 107,
+   [108] = 108,
+   [109] = 109,
+   [110] = 110,
+   [111] = 111,
+   [112] = 112,
+   [113] = 113,
+   [114] = 114,
+   [115] = 115,
+   [116] = 116,
+   [117] = 117,
+   [118] = 118,
+   [119] = 119,
+   [120] = 120,
+   [121] = 121,
+   [122] = 122,
+   [123] = 123,
+   [124] = 124,
+   [125] = 125,
+   [126] = 126,
+   [127] = 127,
+   [128] = 128,
+   [129] = 129,
+   [130] = 130,
+   [131] = 131,
+   [132] = 132,
+   [133] = 133,
+   [134] = 134,
+   [135] = 135,
+   [136] = 136,
+   [137] = 137,
+   [138] = 138,
+   [139] = 139,
+   [140] = 140,
+   [141] = 141,
+   [142] = 142,
+   [143] = 143,
+   [144] = 144,
+   [145] = 145,
+   [146] = 146,
+   [147] = 147,
+   [148] = 148,
+   [149] = 149,
+   [150] = 150,
+   [151] = 151,
+   [152] = 152,
+   [153] = 153,
+   [154] = 154,
+   [155] = 155,
+   [156] = 156,
+   [157] = 157,
+   [158] = 158,
+   [159] = 159,
+   [160] = 160,
+   [161] = 161,
+   [162] = 162,
+   [163] = 163,
+   [164] = 164,
+   [165] = 165,
+   [166] = 166,
+   [167] = 167,
+   [168] = 168,
+   [169] = 169,
+   [170] = 170,
+   [171] = 171,
+   [172] = 172,
+   [173] = 173,
+   [174] = 174,
+   [175] = 175,
+   [176] = 176,
+   [177] = 177,
+   [178] = 178,
+   [179] = 179,
+   [180] = 180,
+   [181] = 181,
+   [182] = 182,
+   [183] = 183,
+   [184] = 184,
+   [185] = 185,
+   [186] = 186,
+   [187] = 187,
+   [188] = 188,
+   [189] = 189,
+   [190] = 190,
+   [191] = 191,
+   [192] = 192,
+   [193] = 193,
+   [194] = 194,
+   [195] = 195,
+   [196] = 196,
+   [197] = 197,
+   [198] = 198,
+   [199] = 199,
+   [200] = 200,
+   [201] = 201,
+   [202] = 202,
+   [203] = 203,
+   [204] = 204,
+   [205] = 205,
+   [206] = 206,
+   [207] = 207,
+   [208] = 208,
+   [209] = 209,
+   [210] = 210,
+   [211] = 211,
+   [212] = 212,
+   [213] = 213,
+   [214] = 214,
+   [215] = 215,
+   [216] = 216,
+   [217] = 217,
+   [218] = 218,
+   [219] = 219,
+   [220] = 220,
+   [221] = 221,
+   [222] = 222,
+   [223] = 223,
+   [224] = 224,
+   [225] = 225,
+   [226] = 226,
+   [227] = 227,
+   [228] = 228,
+   [229] = 229,
+   [230] = 230,
+   [231] = 231,
+   [232] = 232,
+   [233] = 233,
+   [234] = 234,
+   [235] = 235,
+   [236] = 236,
+   [237] = 237,
+   [238] = 238,
+   [239] = 239,
+   [240] = 240,
+   [241] = 241,
+   [242] = 242,
+   [243] = 243,
+   [244] = 244,
+   [245] = 245,
+   [246] = 246,
+   [247] = 247,
+   [248] = 248,
+   [249] = 249,
+   [250] = 250,
+   [251] = 251,
+   [252] = 252,
+   [253] = 253,
+   [254] = 254,
+   [255] = 255
+};
+
+const s16 tty_gfx_trans_table[256] =
+{
+   [0 ... 255] = -1,
+
+   ['l'] = CHAR_ULCORNER,
+   ['m'] = CHAR_LLCORNER,
+   ['k'] = CHAR_URCORNER,
+   ['j'] = CHAR_LRCORNER,
+   ['t'] = CHAR_LTEE,
+   ['u'] = CHAR_RTEE,
+   ['v'] = CHAR_BTEE,
+   ['w'] = CHAR_TTEE,
+   ['q'] = CHAR_HLINE,
+   ['x'] = CHAR_VLINE,
+   ['n'] = CHAR_CROSS,
+   ['`'] = CHAR_DIAMOND,
+   ['a'] = CHAR_BLOCK_MID,
+   ['f'] = CHAR_DEGREE,
+   ['g'] = CHAR_PLMINUS,
+   ['~'] = CHAR_BULLET,
+   [','] = CHAR_LARROW,
+   ['+'] = CHAR_RARROW,
+   ['.'] = CHAR_DARROW,
+   ['-'] = CHAR_UARROW,
+   ['h'] = CHAR_BLOCK_LIGHT,
+   ['0'] = CHAR_BLOCK_HEAVY
+};
+
+#pragma GCC diagnostic pop
+
 static void
 tty_filter_handle_csi_ABCD(u32 *params,
                            int pc,
@@ -368,23 +635,11 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
          break;
 
       case '(':
+         ctx->state = TERM_WFILTER_STATE_ESC2_PAR0;
+         break;
+
       case ')':
-         /*
-          * HACK: In theory, a console should have two character sets, G0 and
-          * and G1 which can be switched with shift-in/shift-out. Both those
-          * character sets have (at most) 4 translation tables.
-          * In other to make G0 use the translation table 0, 1, 2, 3:
-          *    "ESC ( B", "ESC ( 0", "ESC ( U", "ESC ( K"
-          * In order to make the same change for G1:
-          *    "ESC ) B", "ESC ) 0", "ESC ) U", "ESC ) K"
-          *
-          * Since currently Tilck has just a single character set, shift in
-          * and shift out just change its translation table. That's why here
-          * we have to deal with '(' and ')' in the same way.
-          *
-          * TODO: make Tilck's console to support 2 character sets.
-          */
-         ctx->state = TERM_WFILTER_STATE_ESC2_PAR;
+         ctx->state = TERM_WFILTER_STATE_ESC2_PAR1;
          break;
 
       default:
@@ -404,20 +659,20 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_handle_state_esc2_par(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_change_translation_table(term_write_filter_ctx_t *ctx, u8 *c, int c_set)
 {
-   term_write_filter_ctx_t *ctx = ctx_arg;
-
    switch (*c) {
 
-      case '0':
-         ctx->use_alt_charset = true;
-         break;
-
       case 'B':
-         ctx->use_alt_charset = false;
+         ctx->t->c_sets_tables[c_set] = tty_default_trans_table;
          break;
 
+      case '0':
+         ctx->t->c_sets_tables[c_set] = tty_gfx_trans_table;
+         break;
+
+      case 'U':
+      case 'K':
       default:
          /* do nothing */
          break;
@@ -427,6 +682,18 @@ tty_handle_state_esc2_par(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    return TERM_FILTER_WRITE_BLANK;
 }
 
+static enum term_fret
+tty_handle_state_esc2_par0(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   return tty_change_translation_table(ctx_arg, c, 0);
+}
+
+static enum term_fret
+tty_handle_state_esc2_par1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   return tty_change_translation_table(ctx_arg, c, 1);
+}
+
 enum term_fret
 tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
@@ -434,7 +701,8 @@ tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    {
       [TERM_WFILTER_STATE_DEFAULT] = &tty_handle_default_state,
       [TERM_WFILTER_STATE_ESC1] = &tty_handle_state_esc1,
-      [TERM_WFILTER_STATE_ESC2_PAR] = &tty_handle_state_esc2_par,
+      [TERM_WFILTER_STATE_ESC2_PAR0] = &tty_handle_state_esc2_par0,
+      [TERM_WFILTER_STATE_ESC2_PAR1] = &tty_handle_state_esc2_par1,
       [TERM_WFILTER_STATE_ESC2_CSI] = &tty_handle_csi_seq,
       [TERM_WFILTER_STATE_ESC2_UNKNOWN] = &tty_handle_unknown_esc_seq
    };

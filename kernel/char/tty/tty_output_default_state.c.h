@@ -2,42 +2,6 @@
 
 #pragma GCC diagnostic push
 
-#ifdef __clang__
-   #pragma GCC diagnostic ignored "-Winitializer-overrides"
-#else
-   #pragma GCC diagnostic ignored "-Woverride-init"
-#endif
-
-static const s16 alt_charset[256] =
-{
-   [0 ... 255] = -1,
-
-   ['l'] = CHAR_ULCORNER,
-   ['m'] = CHAR_LLCORNER,
-   ['k'] = CHAR_URCORNER,
-   ['j'] = CHAR_LRCORNER,
-   ['t'] = CHAR_LTEE,
-   ['u'] = CHAR_RTEE,
-   ['v'] = CHAR_BTEE,
-   ['w'] = CHAR_TTEE,
-   ['q'] = CHAR_HLINE,
-   ['x'] = CHAR_VLINE,
-   ['n'] = CHAR_CROSS,
-   ['`'] = CHAR_DIAMOND,
-   ['a'] = CHAR_BLOCK_MID,
-   ['f'] = CHAR_DEGREE,
-   ['g'] = CHAR_PLMINUS,
-   ['~'] = CHAR_BULLET,
-   [','] = CHAR_LARROW,
-   ['+'] = CHAR_RARROW,
-   ['.'] = CHAR_DARROW,
-   ['-'] = CHAR_UARROW,
-   ['h'] = CHAR_BLOCK_LIGHT,
-   ['0'] = CHAR_BLOCK_HEAVY
-};
-
-#pragma GCC diagnostic pop
-
 static enum term_fret
 tty_def_state_esc(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
@@ -78,8 +42,9 @@ tty_def_state_shift_out(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *const ctx = ctx_arg;
 
-   /* shift out: use alternate charset */
-   ctx->use_alt_charset = true;
+   /* shift out: use alternate charset G1 */
+   ctx->t->c_set = 1;
+
    return TERM_FILTER_WRITE_BLANK;
 }
 
@@ -88,8 +53,9 @@ tty_def_state_shift_in(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *const ctx = ctx_arg;
 
-   /* shift in: return to the regular charset */
-   ctx->use_alt_charset = false;
+   /* shift in: return to the default charset G0 */
+   ctx->t->c_set = 0;
+
    return TERM_FILTER_WRITE_BLANK;
 }
 
@@ -146,8 +112,8 @@ tty_handle_default_state(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    term_write_filter_ctx_t *const ctx = ctx_arg;
    tty *const t = ctx->t;
 
-   if (ctx->use_alt_charset && alt_charset[*c] != -1) {
-      *c = (u8) alt_charset[*c];
+   if (t->c_sets_tables[t->c_set][*c] != -1) {
+      *c = (u8) t->c_sets_tables[t->c_set][*c];
       return TERM_FILTER_WRITE_C;
    }
 

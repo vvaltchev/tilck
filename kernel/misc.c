@@ -43,13 +43,13 @@ void validate_stack_pointer_int(const char *file, int line)
 
 static void print_banner_line(const u8 *s)
 {
-   printk(NO_PREFIX "\033)0");
+   printk(NO_PREFIX "\033(0");
 
    for (const u8 *p = s; *p; p++) {
       printk(NO_PREFIX "%c", *p);
    }
 
-   printk(NO_PREFIX "\033)B");
+   printk(NO_PREFIX "\033(B");
    printk(NO_PREFIX "\n");
 }
 

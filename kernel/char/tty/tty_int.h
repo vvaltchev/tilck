@@ -15,10 +15,11 @@
 enum term_write_filter_state {
 
    TERM_WFILTER_STATE_DEFAULT,
-   TERM_WFILTER_STATE_ESC1,
-   TERM_WFILTER_STATE_ESC2_CSI,
-   TERM_WFILTER_STATE_ESC2_PAR,
-   TERM_WFILTER_STATE_ESC2_UNKNOWN
+   TERM_WFILTER_STATE_ESC1,         // ESC
+   TERM_WFILTER_STATE_ESC2_CSI,     // ESC [
+   TERM_WFILTER_STATE_ESC2_PAR0,    // ESC (
+   TERM_WFILTER_STATE_ESC2_PAR1,    // ESC )
+   TERM_WFILTER_STATE_ESC2_UNKNOWN  // ESC ??
 
 };
 
@@ -29,8 +30,6 @@ typedef struct {
    enum term_write_filter_state state;
    char param_bytes[64];
    char interm_bytes[64];
-
-   bool use_alt_charset;
 
    u8 pbc; /* param bytes count */
    u8 ibc; /* intermediate bytes count */
@@ -75,6 +74,9 @@ struct tty {
    /* tty output */
    u16 saved_cur_row;
    u16 saved_cur_col;
+
+   u8 c_set; // 0 = G0, 1 = G1.
+   const s16 *c_sets_tables[2];
    term_write_filter_ctx_t filter_ctx;
 
    /* tty ioctl */
@@ -93,3 +95,5 @@ struct tty {
 extern const struct termios default_termios;
 extern tty *ttys[MAX_TTYS + 1]; /* tty0 is not a real tty */
 extern int tty_tasklet_runner;
+extern const s16 tty_default_trans_table[256];
+extern const s16 tty_gfx_trans_table[256];

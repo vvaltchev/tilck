@@ -202,6 +202,9 @@ static int internal_init_tty(u16 major, u16 minor)
       return -ENOMEM;
    }
 
+   t->c_sets_tables[0] = tty_default_trans_table;
+   t->c_sets_tables[1] = tty_gfx_trans_table;
+
    tty_input_init(t);
    term_set_filter(t->term_inst, tty_term_write_filter, &t->filter_ctx);
    tty_update_default_state_tables(t);
