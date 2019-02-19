@@ -73,7 +73,7 @@ static void scr_colors(void)
       printw("Normal ");
       attroff(COLOR_PAIR(i+1));
       attron(COLOR_PAIR(i+1) | A_BOLD);
-      printw("Bold ");
+      printw("Bright ");
       attroff(COLOR_PAIR(i+1) | A_BOLD);
       attron(COLOR_PAIR(i+1) | A_REVERSE);
       printw("Reverse\n");

@@ -324,7 +324,6 @@ tty_filter_handle_csi_m_param(u32 p, u8 *color, term_write_filter_ctx_t *ctx)
 {
    tty *const t = ctx->t;
 
-   u8 tmp;
    u8 fg = get_color_fg(t->curr_color);
    u8 bg = get_color_bg(t->curr_color);
 
@@ -334,6 +333,7 @@ tty_filter_handle_csi_m_param(u32 p, u8 *color, term_write_filter_ctx_t *ctx)
          /* Reset all attributes */
          fg = DEFAULT_FG_COLOR;
          bg = DEFAULT_BG_COLOR;
+         ctx->attrs = 0;
          goto set_color;
 
       case 39:
@@ -346,12 +346,17 @@ tty_filter_handle_csi_m_param(u32 p, u8 *color, term_write_filter_ctx_t *ctx)
          bg = DEFAULT_BG_COLOR;
          goto set_color;
 
-      case 7:
-         /* Reverse video */
-         tmp = fg;
-         fg = bg;
-         bg = tmp;
+      case 1:
+         ctx->attrs |= TTY_ATTR_BOLD;
          goto set_color;
+
+      case 7:
+         ctx->attrs |= TTY_ATTR_REVERSE;
+         goto set_color;
+
+      default:
+         /* fall-through */
+         break;
    }
 
    if ((30 <= p && p <= 37) || (90 <= p && p <= 97)) {
@@ -370,6 +375,9 @@ tty_filter_handle_csi_m_param(u32 p, u8 *color, term_write_filter_ctx_t *ctx)
    return;
 
 set_color:
+   if ((ctx->attrs & TTY_ATTR_BOLD) && fg <= 7)
+      fg += 8;
+
    t->curr_color = make_color(fg, bg);
    *color = t->curr_color;
 }
@@ -386,6 +394,7 @@ tty_filter_handle_csi_m(u32 *params,
        * having just one parameter set to 0.
        */
       pc = 1;
+      params[0] = 0;
    }
 
    for (int i = 0; i < pc; i++) {
@@ -635,7 +644,7 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
             ctx->t->c_sets_tables[0] = tty_default_trans_table;
             ctx->t->c_sets_tables[1] = tty_gfx_trans_table;
             tty_update_default_state_tables(ctx->t);
-            ctx->state = TERM_WFILTER_STATE_DEFAULT;
+            bzero(ctx, sizeof(*ctx));
          }
          break;
 

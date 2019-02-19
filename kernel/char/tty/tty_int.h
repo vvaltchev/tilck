@@ -23,6 +23,9 @@ enum term_write_filter_state {
 
 };
 
+#define TTY_ATTR_BOLD             (1 << 0)
+#define TTY_ATTR_REVERSE          (1 << 1)
+
 typedef struct {
 
    tty *t;
@@ -33,6 +36,8 @@ typedef struct {
 
    u8 pbc; /* param bytes count */
    u8 ibc; /* intermediate bytes count */
+
+   u32 attrs;
 
 } term_write_filter_ctx_t;
 
