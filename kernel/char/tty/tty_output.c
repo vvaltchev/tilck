@@ -488,6 +488,56 @@ tty_csi_fH_handler(u32 *params,
    };
 }
 
+static void
+tty_csi_J_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  term_action *a,
+                  term_write_filter_ctx_t *ctx)
+{
+   *a = (term_action) { .type1 = a_erase_in_display, .arg = params[0] };
+}
+
+static void
+tty_csi_K_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  term_action *a,
+                  term_write_filter_ctx_t *ctx)
+{
+   *a = (term_action) { .type1 = a_erase_in_line, .arg = params[0] };
+}
+
+static void
+tty_csi_S_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  term_action *a,
+                  term_write_filter_ctx_t *ctx)
+{
+   *a = (term_action) {
+      .type1 = a_non_buf_scroll_up,
+      .arg = UNSAFE_MAX(1, params[0])
+   };
+}
+
+static void
+tty_csi_T_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  term_action *a,
+                  term_write_filter_ctx_t *ctx)
+{
+   *a = (term_action) {
+      .type1 = a_non_buf_scroll_down,
+      .arg = UNSAFE_MAX(1, params[0])
+   };
+}
+
 typedef void (*csi_seq_handler)(u32 *params,
                                 int pc,
                                 u8 c,
@@ -506,7 +556,11 @@ static csi_seq_handler csi_handlers[256] =
    ['F'] = tty_csi_EF_handler,         /* Move N lines up; set col = 0 */
    ['G'] = tty_csi_G_handler,          /* Move to col N (abs, 1-based) */
    ['f'] = tty_csi_fH_handler,         /* Move to (N, M) [abs, 1-based] */
-   ['H'] = tty_csi_fH_handler          /* Move to (N, M) [abs, 1-based] */
+   ['H'] = tty_csi_fH_handler,         /* Move to (N, M) [abs, 1-based] */
+   ['J'] = tty_csi_J_handler,          /* Erase in display */
+   ['K'] = tty_csi_K_handler,          /* Erase in line */
+   ['S'] = tty_csi_S_handler,          /* Non-buf scroll-up */
+   ['T'] = tty_csi_T_handler           /* Non-buf scroll-down */
 };
 
 static enum term_fret
@@ -538,28 +592,6 @@ tty_filter_end_csi_seq(u8 c,
       csi_handlers[c](params, pc, c, color, a, ctx);
 
    switch (c) {
-
-      case 'J':
-         *a = (term_action) { .type1 = a_erase_in_display, .arg = params[0] };
-         break;
-
-      case 'K':
-         *a = (term_action) { .type1 = a_erase_in_line, .arg = params[0] };
-         break;
-
-      case 'S':
-         *a = (term_action) {
-            .type1 = a_non_buf_scroll_up,
-            .arg = UNSAFE_MAX(1, params[0])
-         };
-         break;
-
-      case 'T':
-         *a = (term_action) {
-            .type1 = a_non_buf_scroll_down,
-            .arg = UNSAFE_MAX(1, params[0])
-         };
-         break;
 
       case 'n':
 
