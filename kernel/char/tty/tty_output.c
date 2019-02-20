@@ -324,8 +324,8 @@ tty_filter_handle_csi_m_param(u32 p, u8 *color, term_write_filter_ctx_t *ctx)
 {
    tty *const t = ctx->t;
 
-   u8 fg = get_color_fg(t->curr_color);
-   u8 bg = get_color_bg(t->curr_color);
+   u8 fg = get_color_fg(t->user_color);
+   u8 bg = get_color_bg(t->user_color);
 
    switch(p) {
 
@@ -375,10 +375,16 @@ tty_filter_handle_csi_m_param(u32 p, u8 *color, term_write_filter_ctx_t *ctx)
    return;
 
 set_color:
+   t->user_color = make_color(fg, bg);
+
    if ((ctx->attrs & TTY_ATTR_BOLD) && fg <= 7)
       fg += 8;
 
-   t->curr_color = make_color(fg, bg);
+   if (ctx->attrs & TTY_ATTR_REVERSE)
+      t->curr_color = make_color(bg, fg);
+   else
+      t->curr_color = make_color(fg, bg);
+
    *color = t->curr_color;
 }
 
@@ -393,8 +399,7 @@ tty_filter_handle_csi_m(u32 *params,
        * Omitting all params, for example: "ESC[m", is equivalent to
        * having just one parameter set to 0.
        */
-      pc = 1;
-      params[0] = 0;
+      params[pc++] = 0;
    }
 
    for (int i = 0; i < pc; i++) {
@@ -638,13 +643,20 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 
       case 'c':
          {
+            tty *t = ctx->t;
             *a = (term_action) { .type1 = a_reset };
-            tty_kb_buf_reset(ctx->t);
-            ctx->t->c_set = 0;
-            ctx->t->c_sets_tables[0] = tty_default_trans_table;
-            ctx->t->c_sets_tables[1] = tty_gfx_trans_table;
-            tty_update_default_state_tables(ctx->t);
+
+            tty_kb_buf_reset(t);
+            t->c_set = 0;
+            t->c_sets_tables[0] = tty_default_trans_table;
+            t->c_sets_tables[1] = tty_gfx_trans_table;
+            t->c_term = default_termios;
+            t->kd_mode = KD_TEXT;
+            t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
+            t->user_color = t->curr_color;
+            tty_update_default_state_tables(t);
             bzero(ctx, sizeof(*ctx));
+            ctx->t = t;
          }
          break;
 

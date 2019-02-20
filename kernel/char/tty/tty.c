@@ -105,6 +105,10 @@ static void init_tty_struct(tty *t, int minor)
    t->c_term = default_termios;
    t->kd_mode = KD_TEXT;
    t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
+   t->user_color = t->curr_color;
+   t->c_set = 0;
+   t->c_sets_tables[0] = tty_default_trans_table;
+   t->c_sets_tables[1] = tty_gfx_trans_table;
 }
 
 int tty_get_num(tty *t)
@@ -201,9 +205,6 @@ static int internal_init_tty(u16 major, u16 minor)
       tty_full_destroy(t);
       return -ENOMEM;
    }
-
-   t->c_sets_tables[0] = tty_default_trans_table;
-   t->c_sets_tables[1] = tty_gfx_trans_table;
 
    tty_input_init(t);
    term_set_filter(t->term_inst, tty_term_write_filter, &t->filter_ctx);

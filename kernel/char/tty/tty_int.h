@@ -89,7 +89,8 @@ struct tty {
    u32 kd_mode;
 
    /* tty input & output */
-   u8 curr_color;
+   u8 curr_color; /* actual color after applying attrs */
+   u8 user_color; /* color before attrs */
 
    /* large fields */
    char kb_input_buf[KB_INPUT_BS];               /* tty input */
