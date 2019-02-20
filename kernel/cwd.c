@@ -7,6 +7,7 @@
 sptr sys_chdir(const char *user_path)
 {
    sptr rc = 0;
+   struct stat64 statbuf;
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
    char *orig_path = curr->args_copybuf;
@@ -39,7 +40,20 @@ sptr sys_chdir(const char *user_path)
          goto out; /* keep the same rc */
 
       ASSERT(h != NULL);
+
+      rc = vfs_stat64(h, &statbuf);
+
+      if (rc < 0) {
+         vfs_close(h);
+         goto out;
+      }
+
       vfs_close(h);
+
+      if (!S_ISDIR(statbuf.st_mode)) {
+         rc = -ENOTDIR;
+         goto out;
+      }
 
       u32 pl = (u32)strlen(path);
       memcpy(pi->cwd, path, pl + 1);
