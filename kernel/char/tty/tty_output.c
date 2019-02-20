@@ -306,6 +306,7 @@ static void
 tty_filter_handle_csi_ABCD(u32 *params,
                            int pc,
                            u8 c,
+                           u8 *color,
                            term_action *a,
                            term_write_filter_ctx_t *ctx)
 {
@@ -391,7 +392,9 @@ set_color:
 static void
 tty_filter_handle_csi_m(u32 *params,
                         int pc,
+                        u8 c,
                         u8 *color,
+                        term_action *a,
                         term_write_filter_ctx_t *ctx)
 {
    if (!pc) {
@@ -421,6 +424,91 @@ tty_move_cursor_begin_nth_row(tty *t, term_action *a, u32 row)
    };
 }
 
+static void
+tty_csi_EF_handler(u32 *params,
+                   int pc,
+                   u8 c,
+                   u8 *color,
+                   term_action *a,
+                   term_write_filter_ctx_t *ctx)
+{
+   tty *const t = ctx->t;
+   ASSERT(c == 'E' || c == 'F');
+
+   if (c == 'E') {
+
+      /* Move the cursor 'n' lines down and set col = 0 */
+      tty_move_cursor_begin_nth_row(t, a, MAX(1u, params[0]));
+
+   } else {
+
+      /* Move the cursor 'n' lines up and set col = 0 */
+      tty_move_cursor_begin_nth_row(t, a, -MAX(1u, params[0]));
+   }
+}
+
+static void
+tty_csi_G_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  term_action *a,
+                  term_write_filter_ctx_t *ctx)
+{
+   tty *const t = ctx->t;
+
+   /* Move the cursor to the column 'n' (absolute, 1-based) */
+   params[0] = MAX(1u, params[0]) - 1;
+
+   *a = (term_action) {
+      .type2 = a_move_ch_and_cur,
+      .arg1 = term_get_curr_row(t->term_inst),
+      .arg2 = MIN((u32)params[0], term_get_cols(t->term_inst) - 1u)
+   };
+}
+
+static void
+tty_csi_fH_handler(u32 *params,
+                   int pc,
+                   u8 c,
+                   u8 *color,
+                   term_action *a,
+                   term_write_filter_ctx_t *ctx)
+{
+   tty *const t = ctx->t;
+
+   /* Move the cursor to (n, m) (absolute, 1-based) */
+   params[0] = MAX(1u, params[0]) - 1;
+   params[1] = MAX(1u, params[1]) - 1;
+
+   *a = (term_action) {
+      .type2 = a_move_ch_and_cur,
+      .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst)-1u),
+      .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(t->term_inst)-1u)
+   };
+}
+
+typedef void (*csi_seq_handler)(u32 *params,
+                                int pc,
+                                u8 c,
+                                u8 *color,
+                                term_action *a,
+                                term_write_filter_ctx_t *ctx);
+
+static csi_seq_handler csi_handlers[256] =
+{
+   ['A'] = tty_filter_handle_csi_ABCD, /* UP */
+   ['B'] = tty_filter_handle_csi_ABCD, /* DOWN */
+   ['C'] = tty_filter_handle_csi_ABCD, /* RIGHT */
+   ['D'] = tty_filter_handle_csi_ABCD, /* LEFT */
+   ['m'] = tty_filter_handle_csi_m,    /* SGR (Select Graphic Rendition) */
+   ['E'] = tty_csi_EF_handler,         /* Move N lines down; set col = 0 */
+   ['F'] = tty_csi_EF_handler,         /* Move N lines up; set col = 0 */
+   ['G'] = tty_csi_G_handler,          /* Move to col N (abs, 1-based) */
+   ['f'] = tty_csi_fH_handler,         /* Move to (N, M) [abs, 1-based] */
+   ['H'] = tty_csi_fH_handler          /* Move to (N, M) [abs, 1-based] */
+};
+
 static enum term_fret
 tty_filter_end_csi_seq(u8 c,
                        u8 *color,
@@ -446,55 +534,10 @@ tty_filter_end_csi_seq(u8 c,
 
    }
 
+   if (csi_handlers[c])
+      csi_handlers[c](params, pc, c, color, a, ctx);
+
    switch (c) {
-
-      case 'A': // UP    -> move_rel(-param1, 0)
-      case 'B': // DOWN  -> move_rel(+param1, 0)
-      case 'C': // RIGHT -> move_rel(0, +param1)
-      case 'D': // LEFT  -> move_rel(0, -param1)
-
-         tty_filter_handle_csi_ABCD(params, pc, c, a, ctx);
-         break;
-
-      case 'm': /* SGR (Select Graphic Rendition) parameters */
-         tty_filter_handle_csi_m(params, pc, color, ctx);
-         break;
-
-      case 'E':
-         /* Move the cursor 'n' lines down and set col = 0 */
-        tty_move_cursor_begin_nth_row(t, a, MAX(1u, params[0]));
-        break;
-
-      case 'F':
-         /* Move the cursor 'n' lines up and set col = 0 */
-         tty_move_cursor_begin_nth_row(t, a, -MAX(1u, params[0]));
-         break;
-
-      case 'G':
-         /* Move the cursor to the column 'n' (absolute, 1-based) */
-         params[0] = MAX(1u, params[0]) - 1;
-
-         *a = (term_action) {
-            .type2 = a_move_ch_and_cur,
-            .arg1 = term_get_curr_row(t->term_inst),
-            .arg2 = MIN((u32)params[0], term_get_cols(t->term_inst) - 1u)
-         };
-
-         break;
-
-      case 'f':
-      case 'H':
-         /* Move the cursor to (n, m) (absolute, 1-based) */
-         params[0] = MAX(1u, params[0]) - 1;
-         params[1] = MAX(1u, params[1]) - 1;
-
-         *a = (term_action) {
-            .type2 = a_move_ch_and_cur,
-            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst)-1u),
-            .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(t->term_inst)-1u)
-         };
-
-         break;
 
       case 'J':
          *a = (term_action) { .type1 = a_erase_in_display, .arg = params[0] };
