@@ -538,6 +538,83 @@ tty_csi_T_handler(u32 *params,
    };
 }
 
+static void
+tty_csi_n_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  term_action *a,
+                  term_write_filter_ctx_t *ctx)
+{
+   tty *const t = ctx->t;
+
+   if (params[0] == 6) {
+
+      /* DSR (Device Status Report) */
+
+      char dsr[16];
+      snprintk(dsr, sizeof(dsr), "\033[%u;%uR",
+               term_get_curr_row(t->term_inst) + 1,
+               term_get_curr_col(t->term_inst) + 1);
+
+      for (u8 *p = (u8 *)dsr; *p; p++)
+         tty_keypress_handler_int(t, *p, *p, false);
+   }
+}
+
+static void
+tty_csi_s_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  term_action *a,
+                  term_write_filter_ctx_t *ctx)
+{
+   tty *const t = ctx->t;
+
+   /* SCP (Save Cursor Position) */
+   ctx->t->saved_cur_row = term_get_curr_row(t->term_inst);
+   ctx->t->saved_cur_col = term_get_curr_col(t->term_inst);
+}
+
+static void
+tty_csi_u_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  term_action *a,
+                  term_write_filter_ctx_t *ctx)
+{
+   tty *const t = ctx->t;
+
+   /* RCP (Restore Cursor Position) */
+   *a = (term_action) {
+      .type2 = a_move_ch_and_cur,
+      .arg1 = t->saved_cur_row,
+      .arg2 = t->saved_cur_col
+   };
+}
+
+static void
+tty_csi_d_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  term_action *a,
+                  term_write_filter_ctx_t *ctx)
+{
+   tty *const t = ctx->t;
+
+   /* VPA: Move cursor to the indicated row, current column */
+   params[0] = MAX(1u, params[0]) - 1;
+
+   *a = (term_action) {
+      .type2 = a_move_ch_and_cur,
+      .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst)-1u),
+      .arg2 = term_get_curr_col(t->term_inst)
+   };
+}
+
 typedef void (*csi_seq_handler)(u32 *params,
                                 int pc,
                                 u8 c,
@@ -560,7 +637,11 @@ static csi_seq_handler csi_handlers[256] =
    ['J'] = tty_csi_J_handler,          /* Erase in display */
    ['K'] = tty_csi_K_handler,          /* Erase in line */
    ['S'] = tty_csi_S_handler,          /* Non-buf scroll-up */
-   ['T'] = tty_csi_T_handler           /* Non-buf scroll-down */
+   ['T'] = tty_csi_T_handler,          /* Non-buf scroll-down */
+   ['n'] = tty_csi_n_handler,          /* DSR (Device Status Report) */
+   ['s'] = tty_csi_s_handler,          /* SCP (Save Cursor Position) */
+   ['u'] = tty_csi_u_handler,          /* RCP (Restore Cursor Position) */
+   ['d'] = tty_csi_d_handler           /* VPA: Move row N (abs), same col */
 };
 
 static enum term_fret
@@ -572,7 +653,6 @@ tty_filter_end_csi_seq(u8 c,
    const char *endptr;
    u32 params[16] = {0};
    int pc = 0;
-   tty *const t = ctx->t;
 
    ctx->param_bytes[ctx->pbc] = 0;
    ctx->interm_bytes[ctx->ibc] = 0;
@@ -585,57 +665,10 @@ tty_filter_end_csi_seq(u8 c,
       do {
          params[pc++] = (u32) tilck_strtol(endptr + 1, &endptr, NULL);
       } while (*endptr);
-
    }
 
    if (csi_handlers[c])
       csi_handlers[c](params, pc, c, color, a, ctx);
-
-   switch (c) {
-
-      case 'n':
-
-         if (params[0] == 6) {
-
-            /* DSR (Device Status Report) */
-
-            char dsr[16];
-            snprintk(dsr, sizeof(dsr), "\033[%u;%uR",
-                     term_get_curr_row(t->term_inst) + 1,
-                     term_get_curr_col(t->term_inst) + 1);
-
-            for (u8 *p = (u8 *)dsr; *p; p++)
-               tty_keypress_handler_int(ctx->t, *p, *p, false);
-         }
-
-         break;
-
-      case 's':
-         /* SCP (Save Cursor Position) */
-         ctx->t->saved_cur_row = term_get_curr_row(t->term_inst);
-         ctx->t->saved_cur_col = term_get_curr_col(t->term_inst);
-         break;
-
-      case 'u':
-         /* RCP (Restore Cursor Position) */
-         *a = (term_action) {
-            .type2 = a_move_ch_and_cur,
-            .arg1 = ctx->t->saved_cur_row,
-            .arg2 = ctx->t->saved_cur_col
-         };
-         break;
-
-      case 'd':
-         /* VPA: Move cursor to the indicated row, current column */
-         params[0] = MAX(1u, params[0]) - 1;
-
-         *a = (term_action) {
-            .type2 = a_move_ch_and_cur,
-            .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst)-1u),
-            .arg2 = term_get_curr_col(t->term_inst)
-         };
-         break;
-   }
 
    ctx->pbc = ctx->ibc = 0;
    return TERM_FILTER_WRITE_BLANK;
