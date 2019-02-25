@@ -418,6 +418,26 @@ tty_csi_d_handler(u32 *params,
    };
 }
 
+static void
+tty_csi_hpa_handler(u32 *params,
+                    int pc,
+                    u8 c,
+                    u8 *color,
+                    term_action *a,
+                    term_write_filter_ctx_t *ctx)
+{
+   tty *const t = ctx->t;
+
+   /* HPA: Move cursor to the indicated column, current row */
+   params[0] = MAX(1u, params[0]) - 1;
+
+   *a = (term_action) {
+      .type2 = a_move_ch_and_cur,
+      .arg1 = term_get_curr_row(t->term_inst),
+      .arg2 = UNSAFE_MIN((u32)params[0], term_get_cols(t->term_inst)-1u),
+   };
+}
+
 typedef void (*csi_seq_handler)(u32 *params,
                                 int pc,
                                 u8 c,
@@ -444,7 +464,8 @@ static csi_seq_handler csi_handlers[256] =
    ['n'] = tty_csi_n_handler,          /* DSR (Device Status Report) */
    ['s'] = tty_csi_s_handler,          /* SCP (Save Cursor Position) */
    ['u'] = tty_csi_u_handler,          /* RCP (Restore Cursor Position) */
-   ['d'] = tty_csi_d_handler           /* VPA: Move row N (abs), same col */
+   ['d'] = tty_csi_d_handler,          /* VPA: Move to row N (abs), same col */
+   ['`'] = tty_csi_hpa_handler         /* HPA: Move to col N (abs), same row */
 };
 
 static enum term_fret
