@@ -33,6 +33,7 @@ typedef struct {
    enum term_write_filter_state state;
    char param_bytes[64];
    char interm_bytes[64];
+   char tmpbuf[16];
 
    u8 pbc; /* param bytes count */
    u8 ibc; /* intermediate bytes count */
