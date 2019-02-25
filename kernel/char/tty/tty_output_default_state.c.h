@@ -12,7 +12,7 @@ tty_def_state_esc(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_def_state_nl(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_lf(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
 
@@ -117,17 +117,30 @@ tty_def_state_backspace(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    return TERM_FILTER_WRITE_BLANK;
 }
 
+static enum term_fret
+tty_def_state_raw_lf(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   /*
+    * Typically, terminal emulators just treat \f and \v like a raw linefeed.
+    * Raw linefeed means that the behavior is always just move the cursor to the
+    * next line, without any carriage return.
+    */
+
+   *c = '\n';
+   return TERM_FILTER_WRITE_C;
+}
+
 void tty_update_default_state_tables(tty *t)
 {
    const struct termios *const c_term = &t->c_term;
    bzero(t->default_state_funcs, sizeof(t->default_state_funcs));
 
-   t->default_state_funcs['\n'] = tty_def_state_nl;
+   t->default_state_funcs['\n'] = tty_def_state_lf;
    t->default_state_funcs['\r'] = tty_def_state_keep;
    t->default_state_funcs['\t'] = tty_def_state_keep;
-   t->default_state_funcs['\a'] = tty_def_state_ignore;    /* bell */
-   t->default_state_funcs['\f'] = tty_def_state_ignore;    /* form-feed */
-   t->default_state_funcs['\v'] = tty_def_state_ignore;    /* vertical tab */
+   t->default_state_funcs['\a'] = tty_def_state_ignore;   /* bell */
+   t->default_state_funcs['\f'] = tty_def_state_raw_lf;   /* form-feed */
+   t->default_state_funcs['\v'] = tty_def_state_raw_lf;   /* vertical tab */
    t->default_state_funcs['\b'] = tty_def_state_backspace;
    t->default_state_funcs['\033'] = tty_def_state_esc;
    t->default_state_funcs['\016'] = tty_def_state_shift_out;
