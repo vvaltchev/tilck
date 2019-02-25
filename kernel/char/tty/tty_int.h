@@ -58,10 +58,7 @@ bool tty_read_ready_int(tty *t, devfs_file_handle *h);
 void init_ttyaux(void);
 void tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor);
 
-
 typedef bool (*tty_ctrl_sig_func)(tty *);
-
-#define KB_INPUT_BS 1024
 
 struct tty {
 
