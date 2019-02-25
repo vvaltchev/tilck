@@ -105,6 +105,18 @@ tty_def_state_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    return TERM_FILTER_WRITE_BLANK;
 }
 
+static enum term_fret
+tty_def_state_backspace(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   *a = (term_action) {
+      .type2 = a_move_ch_and_cur_rel,
+      .arg1 = LO_BITS((u32) 0, 8, u32),
+      .arg2 = LO_BITS((u32) -1, 8, u32)
+   };
+
+   return TERM_FILTER_WRITE_BLANK;
+}
+
 void tty_update_default_state_tables(tty *t)
 {
    const struct termios *const c_term = &t->c_term;
@@ -115,6 +127,7 @@ void tty_update_default_state_tables(tty *t)
    t->default_state_funcs['\a'] = tty_def_state_ignore;
    t->default_state_funcs['\f'] = tty_def_state_ignore;
    t->default_state_funcs['\v'] = tty_def_state_ignore;
+   t->default_state_funcs['\b'] = tty_def_state_backspace;
    t->default_state_funcs['\033'] = tty_def_state_esc;
    t->default_state_funcs['\016'] = tty_def_state_shift_out;
    t->default_state_funcs['\017'] = tty_def_state_shift_in;
