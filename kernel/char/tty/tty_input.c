@@ -102,11 +102,6 @@ static void tty_keypress_echo(tty *t, char c)
       }
    }
 
-   if (c == '\a' || c == '\f' || c == '\v') {
-      /* ignore some characters */
-      return;
-   }
-
    /* Just ECHO a regular character */
    term_write(t->term_inst, &c, 1, t->curr_color);
 }
