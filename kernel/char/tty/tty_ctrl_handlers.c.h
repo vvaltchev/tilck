@@ -157,19 +157,16 @@ static bool tty_ctrl_reprint(tty *t)
 
 static bool tty_ctrl_discard(tty *t)
 {
-   if (t->c_term.c_lflag & IEXTEN) {
-      /*
-       * From termios' man page:
-       * VDISCARD
-       *     (not  in  POSIX;  not supported under Linux; 017, SI, Ctrl-O)
-       *     Toggle: start/stop discarding pending output.  Recognized when
-       *     IEXTEN is set, and then not passed as input.
-       *
-       * Since it is not supported under Linux, it won't be supported under
-       * Tilck either.
-       */
-      return true;
-   }
+   /*
+    * From termios' man page:
+    * VDISCARD
+    *     (not  in  POSIX;  not supported under Linux; 017, SI, Ctrl-O)
+    *     Toggle: start/stop discarding pending output.  Recognized when
+    *     IEXTEN is set, and then not passed as input.
+    *
+    * Since it is not supported under Linux, it won't be supported under
+    * Tilck either.
+    */
 
    return false;
 }

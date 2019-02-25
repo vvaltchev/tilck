@@ -99,12 +99,12 @@ void tty_update_default_state_tables(tty *t)
    const struct termios *const c_term = &t->c_term;
    bzero(t->default_state_funcs, sizeof(t->default_state_funcs));
 
-   t->default_state_funcs['\033'] = tty_def_state_esc;
    t->default_state_funcs['\n'] = tty_def_state_nl;
    t->default_state_funcs['\r'] = tty_def_state_keep;
    t->default_state_funcs['\a'] = tty_def_state_ignore;
    t->default_state_funcs['\f'] = tty_def_state_ignore;
    t->default_state_funcs['\v'] = tty_def_state_ignore;
+   t->default_state_funcs['\033'] = tty_def_state_esc;
    t->default_state_funcs['\016'] = tty_def_state_shift_out;
    t->default_state_funcs['\017'] = tty_def_state_shift_in;
 
