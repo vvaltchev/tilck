@@ -110,7 +110,7 @@ tty_def_state_backspace(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    *a = (term_action) {
       .type2 = a_move_ch_and_cur_rel,
-      .arg1 = LO_BITS((u32) 0, 8, u32),
+      .arg1 = LO_BITS((u32)  0, 8, u32),
       .arg2 = LO_BITS((u32) -1, 8, u32)
    };
 

@@ -119,13 +119,13 @@ tty_filter_handle_csi_ABCD(u32 *params,
                            term_action *a,
                            twfilter_ctx_t *ctx)
 {
-   u32 d[4] = {0};
-   d[c - 'A'] = MAX(1u, params[0]);
+   int d[4] = {0};
+   d[c - 'A'] = (int) MAX(1u, params[0]);
 
    *a = (term_action) {
       .type2 = a_move_ch_and_cur_rel,
-      .arg1 = -d[0] + d[1],
-      .arg2 =  d[2] - d[3]
+      .arg1 = LO_BITS((u32)(-d[0] + d[1]), 8, u32),
+      .arg2 = LO_BITS((u32)( d[2] - d[3]), 8, u32)
    };
 }
 
