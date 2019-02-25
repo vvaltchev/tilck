@@ -649,6 +649,22 @@ tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    if (kopt_serial_mode == TERM_SERIAL_CONSOLE)
       return TERM_FILTER_WRITE_C;
 
+   if (ctx->state != TERM_WFILTER_STATE_DEFAULT) {
+
+      switch (*c) {
+
+         case '\033':
+            /* ESC in the middle of any sequence, just starts a new one */
+            ctx->pbc = ctx->ibc = 0;
+            ctx->state = TERM_WFILTER_STATE_ESC1;
+            return TERM_FILTER_WRITE_BLANK;
+
+         default:
+            /* fall-through */
+            break;
+      }
+   }
+
    ASSERT(ctx->state < ARRAY_SIZE(table));
    return table[ctx->state](c, color, a, ctx);
 }

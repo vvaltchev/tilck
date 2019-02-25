@@ -94,6 +94,15 @@ tty_def_state_vkill(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    return TERM_FILTER_WRITE_BLANK;
 }
 
+static enum term_fret
+tty_def_state_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   term_write_filter_ctx_t *const ctx = ctx_arg;
+   ctx->state = TERM_WFILTER_STATE_ESC2_CSI;
+   ctx->pbc = ctx->ibc = 0;
+   return TERM_FILTER_WRITE_BLANK;
+}
+
 void tty_update_default_state_tables(tty *t)
 {
    const struct termios *const c_term = &t->c_term;
@@ -107,6 +116,8 @@ void tty_update_default_state_tables(tty *t)
    t->default_state_funcs['\033'] = tty_def_state_esc;
    t->default_state_funcs['\016'] = tty_def_state_shift_out;
    t->default_state_funcs['\017'] = tty_def_state_shift_in;
+   t->default_state_funcs[0x7f] = tty_def_state_ignore;
+   t->default_state_funcs[0x9b] = tty_def_state_csi;
 
    t->default_state_funcs[c_term->c_cc[VERASE]] = tty_def_state_verase;
    t->default_state_funcs[c_term->c_cc[VWERASE]] = tty_def_state_vwerase;
