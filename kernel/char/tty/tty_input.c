@@ -218,7 +218,7 @@ int tty_keypress_handler_int(tty *t, u32 key, u8 c, bool check_mods)
       kb_buf_write_elem(t, '\033');
 
    if (check_mods && kb_is_ctrl_pressed()) {
-      if (isalpha(c) || c == '\\') {
+      if (isalpha(c) || c == '\\' || c == '[') {
          /* ctrl ignores the case of the letter */
          c = (u8)(toupper(c) - 'A' + 1);
       }
