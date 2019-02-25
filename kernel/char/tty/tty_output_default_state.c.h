@@ -5,7 +5,7 @@
 static enum term_fret
 tty_def_state_esc(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
-   term_write_filter_ctx_t *const ctx = ctx_arg;
+   twfilter_ctx_t *const ctx = ctx_arg;
 
    ctx->state = TERM_WFILTER_STATE_ESC1;
    return TERM_FILTER_WRITE_BLANK;
@@ -14,7 +14,7 @@ tty_def_state_esc(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 static enum term_fret
 tty_def_state_nl(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
-   term_write_filter_ctx_t *const ctx = ctx_arg;
+   twfilter_ctx_t *const ctx = ctx_arg;
 
    if (ctx->t->c_term.c_oflag & (OPOST | ONLCR)) {
 
@@ -46,7 +46,7 @@ tty_def_state_ignore(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 static enum term_fret
 tty_def_state_shift_out(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
-   term_write_filter_ctx_t *const ctx = ctx_arg;
+   twfilter_ctx_t *const ctx = ctx_arg;
 
    /* shift out: use alternate charset G1 */
    ctx->t->c_set = 1;
@@ -57,7 +57,7 @@ tty_def_state_shift_out(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 static enum term_fret
 tty_def_state_shift_in(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
-   term_write_filter_ctx_t *const ctx = ctx_arg;
+   twfilter_ctx_t *const ctx = ctx_arg;
 
    /* shift in: return to the default charset G0 */
    ctx->t->c_set = 0;
@@ -97,7 +97,7 @@ tty_def_state_vkill(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 static enum term_fret
 tty_def_state_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
-   term_write_filter_ctx_t *const ctx = ctx_arg;
+   twfilter_ctx_t *const ctx = ctx_arg;
 
    tty_reset_filter_ctx(ctx);
    ctx->state = TERM_WFILTER_STATE_ESC2_CSI;
@@ -129,7 +129,7 @@ void tty_update_default_state_tables(tty *t)
 static enum term_fret
 tty_def_print_untrasl_char(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
-   term_write_filter_ctx_t *const ctx = ctx_arg;
+   twfilter_ctx_t *const ctx = ctx_arg;
    int len = snprintk(ctx->tmpbuf, sizeof(ctx->tmpbuf), "{0x%x}", *c);
 
    *a = (term_action) {
@@ -145,7 +145,7 @@ tty_def_print_untrasl_char(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 static enum term_fret
 tty_handle_default_state(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
-   term_write_filter_ctx_t *const ctx = ctx_arg;
+   twfilter_ctx_t *const ctx = ctx_arg;
    tty *const t = ctx->t;
    s16 tv = t->c_sets_tables[t->c_set][*c];
 

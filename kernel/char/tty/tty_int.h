@@ -14,7 +14,7 @@
 
 #define NPAR 16 /* maximum number of CSI parameters */
 
-enum term_write_filter_state {
+enum twfilter_state {
 
    TERM_WFILTER_STATE_DEFAULT = 0,
    TERM_WFILTER_STATE_ESC1,         // ESC
@@ -32,7 +32,7 @@ typedef struct {
 
    tty *t;
 
-   enum term_write_filter_state state;
+   enum twfilter_state state;
    char param_bytes[64];
    char interm_bytes[64];
    char tmpbuf[16];
@@ -40,12 +40,12 @@ typedef struct {
    u8 pbc; /* param bytes count */
    u8 ibc; /* intermediate bytes count */
 
-} term_write_filter_ctx_t;
+} twfilter_ctx_t;
 
 void tty_input_init(tty *t);
 void tty_kb_buf_reset(tty *t);
 int tty_keypress_handler(u32 key, u8 c);
-void tty_reset_filter_ctx(term_write_filter_ctx_t *ctx);
+void tty_reset_filter_ctx(twfilter_ctx_t *ctx);
 
 enum term_fret
 tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);
@@ -82,7 +82,7 @@ struct tty {
 
    u8 c_set; // 0 = G0, 1 = G1.
    const s16 *c_sets_tables[2];
-   term_write_filter_ctx_t filter_ctx;
+   twfilter_ctx_t filter_ctx;
 
    /* tty ioctl */
    struct termios c_term;

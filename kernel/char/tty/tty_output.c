@@ -105,7 +105,7 @@ const s16 tty_gfx_trans_table[256] =
 
 #pragma GCC diagnostic pop
 
-void tty_reset_filter_ctx(term_write_filter_ctx_t *ctx)
+void tty_reset_filter_ctx(twfilter_ctx_t *ctx)
 {
    ctx->pbc = ctx->ibc = 0;
    ctx->state = TERM_WFILTER_STATE_DEFAULT;
@@ -117,7 +117,7 @@ tty_filter_handle_csi_ABCD(u32 *params,
                            u8 c,
                            u8 *color,
                            term_action *a,
-                           term_write_filter_ctx_t *ctx)
+                           twfilter_ctx_t *ctx)
 {
    u32 d[4] = {0};
    d[c - 'A'] = MAX(1u, params[0]);
@@ -130,7 +130,7 @@ tty_filter_handle_csi_ABCD(u32 *params,
 }
 
 static void
-tty_filter_handle_csi_m_param(u32 p, u8 *color, term_write_filter_ctx_t *ctx)
+tty_filter_handle_csi_m_param(u32 p, u8 *color, twfilter_ctx_t *ctx)
 {
    tty *const t = ctx->t;
 
@@ -204,7 +204,7 @@ tty_filter_handle_csi_m(u32 *params,
                         u8 c,
                         u8 *color,
                         term_action *a,
-                        term_write_filter_ctx_t *ctx)
+                        twfilter_ctx_t *ctx)
 {
    if (!pc) {
       /*
@@ -239,7 +239,7 @@ tty_csi_EF_handler(u32 *params,
                    u8 c,
                    u8 *color,
                    term_action *a,
-                   term_write_filter_ctx_t *ctx)
+                   twfilter_ctx_t *ctx)
 {
    tty *const t = ctx->t;
    ASSERT(c == 'E' || c == 'F');
@@ -262,7 +262,7 @@ tty_csi_G_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   term_action *a,
-                  term_write_filter_ctx_t *ctx)
+                  twfilter_ctx_t *ctx)
 {
    tty *const t = ctx->t;
 
@@ -282,7 +282,7 @@ tty_csi_fH_handler(u32 *params,
                    u8 c,
                    u8 *color,
                    term_action *a,
-                   term_write_filter_ctx_t *ctx)
+                   twfilter_ctx_t *ctx)
 {
    tty *const t = ctx->t;
 
@@ -303,7 +303,7 @@ tty_csi_J_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   term_action *a,
-                  term_write_filter_ctx_t *ctx)
+                  twfilter_ctx_t *ctx)
 {
    *a = (term_action) { .type1 = a_erase_in_display, .arg = params[0] };
 }
@@ -314,7 +314,7 @@ tty_csi_K_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   term_action *a,
-                  term_write_filter_ctx_t *ctx)
+                  twfilter_ctx_t *ctx)
 {
    *a = (term_action) { .type1 = a_erase_in_line, .arg = params[0] };
 }
@@ -325,7 +325,7 @@ tty_csi_S_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   term_action *a,
-                  term_write_filter_ctx_t *ctx)
+                  twfilter_ctx_t *ctx)
 {
    *a = (term_action) {
       .type1 = a_non_buf_scroll_up,
@@ -339,7 +339,7 @@ tty_csi_T_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   term_action *a,
-                  term_write_filter_ctx_t *ctx)
+                  twfilter_ctx_t *ctx)
 {
    *a = (term_action) {
       .type1 = a_non_buf_scroll_down,
@@ -353,7 +353,7 @@ tty_csi_n_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   term_action *a,
-                  term_write_filter_ctx_t *ctx)
+                  twfilter_ctx_t *ctx)
 {
    tty *const t = ctx->t;
 
@@ -377,7 +377,7 @@ tty_csi_s_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   term_action *a,
-                  term_write_filter_ctx_t *ctx)
+                  twfilter_ctx_t *ctx)
 {
    tty *const t = ctx->t;
 
@@ -392,7 +392,7 @@ tty_csi_u_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   term_action *a,
-                  term_write_filter_ctx_t *ctx)
+                  twfilter_ctx_t *ctx)
 {
    tty *const t = ctx->t;
 
@@ -410,7 +410,7 @@ tty_csi_d_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   term_action *a,
-                  term_write_filter_ctx_t *ctx)
+                  twfilter_ctx_t *ctx)
 {
    tty *const t = ctx->t;
 
@@ -430,7 +430,7 @@ tty_csi_hpa_handler(u32 *params,
                     u8 c,
                     u8 *color,
                     term_action *a,
-                    term_write_filter_ctx_t *ctx)
+                    twfilter_ctx_t *ctx)
 {
    tty *const t = ctx->t;
 
@@ -449,7 +449,7 @@ typedef void (*csi_seq_handler)(u32 *params,
                                 u8 c,
                                 u8 *color,
                                 term_action *a,
-                                term_write_filter_ctx_t *ctx);
+                                twfilter_ctx_t *ctx);
 
 static csi_seq_handler csi_handlers[256] =
 {
@@ -478,7 +478,7 @@ static enum term_fret
 tty_filter_end_csi_seq(u8 c,
                        u8 *color,
                        term_action *a,
-                       term_write_filter_ctx_t *ctx)
+                       twfilter_ctx_t *ctx)
 {
    const char *endptr;
    u32 params[NPAR] = {0};
@@ -506,7 +506,7 @@ tty_filter_end_csi_seq(u8 c,
 static enum term_fret
 tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
-   term_write_filter_ctx_t *ctx = ctx_arg;
+   twfilter_ctx_t *ctx = ctx_arg;
 
    if (0x30 <= *c && *c <= 0x3F) {
 
@@ -555,7 +555,7 @@ tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 static enum term_fret
 tty_handle_unknown_esc_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
-   term_write_filter_ctx_t *ctx = ctx_arg;
+   twfilter_ctx_t *ctx = ctx_arg;
 
    if (0x40 <= *c && *c <= 0x5f) {
       /* End of any possible (unknown) escape sequence */
@@ -568,7 +568,7 @@ tty_handle_unknown_esc_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 static enum term_fret
 tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
-   term_write_filter_ctx_t *ctx = ctx_arg;
+   twfilter_ctx_t *ctx = ctx_arg;
 
    switch (*c) {
 
@@ -621,7 +621,7 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_change_translation_table(term_write_filter_ctx_t *ctx, u8 *c, int c_set)
+tty_change_translation_table(twfilter_ctx_t *ctx, u8 *c, int c_set)
 {
    switch (*c) {
 
@@ -669,7 +669,7 @@ tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
       [TERM_WFILTER_STATE_ESC2_UNKNOWN] = &tty_handle_unknown_esc_seq
    };
 
-   term_write_filter_ctx_t *ctx = ctx_arg;
+   twfilter_ctx_t *ctx = ctx_arg;
 
    if (kopt_serial_mode == TERM_SERIAL_CONSOLE)
       return TERM_FILTER_WRITE_C;
