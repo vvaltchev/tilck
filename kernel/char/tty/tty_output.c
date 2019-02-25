@@ -105,6 +105,12 @@ const s16 tty_gfx_trans_table[256] =
 
 #pragma GCC diagnostic pop
 
+void tty_reset_filter_ctx(term_write_filter_ctx_t *ctx)
+{
+   ctx->pbc = ctx->ibc = 0;
+   ctx->state = TERM_WFILTER_STATE_DEFAULT;
+}
+
 static void
 tty_filter_handle_csi_ABCD(u32 *params,
                            int pc,
@@ -447,23 +453,23 @@ typedef void (*csi_seq_handler)(u32 *params,
 
 static csi_seq_handler csi_handlers[256] =
 {
-   ['A'] = tty_filter_handle_csi_ABCD, /* UP */
-   ['B'] = tty_filter_handle_csi_ABCD, /* DOWN */
-   ['C'] = tty_filter_handle_csi_ABCD, /* RIGHT */
-   ['D'] = tty_filter_handle_csi_ABCD, /* LEFT */
-   ['m'] = tty_filter_handle_csi_m,    /* SGR (Select Graphic Rendition) */
-   ['E'] = tty_csi_EF_handler,         /* Move N lines down; set col = 0 */
-   ['F'] = tty_csi_EF_handler,         /* Move N lines up; set col = 0 */
-   ['G'] = tty_csi_G_handler,          /* Move to col N (abs, 1-based) */
-   ['f'] = tty_csi_fH_handler,         /* Move to (N, M) [abs, 1-based] */
-   ['H'] = tty_csi_fH_handler,         /* Move to (N, M) [abs, 1-based] */
-   ['J'] = tty_csi_J_handler,          /* Erase in display */
-   ['K'] = tty_csi_K_handler,          /* Erase in line */
+   ['A'] = tty_filter_handle_csi_ABCD, /* CUU: Move the cursor up */
+   ['B'] = tty_filter_handle_csi_ABCD, /* CUD: Move the cursor down */
+   ['C'] = tty_filter_handle_csi_ABCD, /* CUF: Move the cursor right */
+   ['D'] = tty_filter_handle_csi_ABCD, /* CUB: Move the cursor left */
+   ['m'] = tty_filter_handle_csi_m,    /* SGR: Select Graphic Rendition */
+   ['E'] = tty_csi_EF_handler,         /* CNL: Move N lines down; set col=0 */
+   ['F'] = tty_csi_EF_handler,         /* CPL: Move N lines up; set col = 0 */
+   ['G'] = tty_csi_G_handler,          /* CHA: Move to col N [abs, 1-based] */
+   ['H'] = tty_csi_fH_handler,         /* CUP: Move to (N, M) [abs, 1-based] */
+   ['f'] = tty_csi_fH_handler,         /* HVP: Move to (N, M) [abs, 1-based] */
+   ['J'] = tty_csi_J_handler,          /* ED: Erase in display */
+   ['K'] = tty_csi_K_handler,          /* EL: Erase in line */
    ['S'] = tty_csi_S_handler,          /* Non-buf scroll-up */
    ['T'] = tty_csi_T_handler,          /* Non-buf scroll-down */
-   ['n'] = tty_csi_n_handler,          /* DSR (Device Status Report) */
-   ['s'] = tty_csi_s_handler,          /* SCP (Save Cursor Position) */
-   ['u'] = tty_csi_u_handler,          /* RCP (Restore Cursor Position) */
+   ['n'] = tty_csi_n_handler,          /* DSR: Device Status Report */
+   ['s'] = tty_csi_s_handler,          /* SCP: Save Cursor Position */
+   ['u'] = tty_csi_u_handler,          /* RCP: Restore Cursor Position */
    ['d'] = tty_csi_d_handler,          /* VPA: Move to row N (abs), same col */
    ['`'] = tty_csi_hpa_handler         /* HPA: Move to col N (abs), same row */
 };
@@ -475,12 +481,11 @@ tty_filter_end_csi_seq(u8 c,
                        term_write_filter_ctx_t *ctx)
 {
    const char *endptr;
-   u32 params[16] = {0};
+   u32 params[NPAR] = {0};
    int pc = 0;
 
    ctx->param_bytes[ctx->pbc] = 0;
    ctx->interm_bytes[ctx->ibc] = 0;
-   ctx->state = TERM_WFILTER_STATE_DEFAULT;
 
    if (ctx->pbc) {
 
@@ -494,7 +499,7 @@ tty_filter_end_csi_seq(u8 c,
    if (csi_handlers[c])
       csi_handlers[c](params, pc, c, color, a, ctx);
 
-   ctx->pbc = ctx->ibc = 0;
+   tty_reset_filter_ctx(ctx);
    return TERM_FILTER_WRITE_BLANK;
 }
 
@@ -514,8 +519,7 @@ tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
           * back to the default state ignoring this escape sequence.
           */
 
-         ctx->pbc = 0;
-         ctx->state = TERM_WFILTER_STATE_DEFAULT;
+         tty_reset_filter_ctx(ctx);
          return TERM_FILTER_WRITE_BLANK;
       }
 
@@ -528,8 +532,9 @@ tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
       /* This is an "intermediate" byte */
 
       if (ctx->ibc >= ARRAY_SIZE(ctx->interm_bytes)) {
-         ctx->ibc = 0;
-         ctx->state = TERM_WFILTER_STATE_DEFAULT;
+
+         /* As above, the param bytes exceed our limits */
+         tty_reset_filter_ctx(ctx);
          return TERM_FILTER_WRITE_BLANK;
       }
 
@@ -543,8 +548,7 @@ tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    }
 
    /* We shouldn't get here. Something's gone wrong: return the default state */
-   ctx->state = TERM_WFILTER_STATE_DEFAULT;
-   ctx->pbc = ctx->ibc = 0;
+   tty_reset_filter_ctx(ctx);
    return TERM_FILTER_WRITE_BLANK;
 }
 
@@ -569,8 +573,8 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    switch (*c) {
 
       case '[':
+         tty_reset_filter_ctx(ctx);
          ctx->state = TERM_WFILTER_STATE_ESC2_CSI;
-         ctx->pbc = ctx->ibc = 0;
          break;
 
       case 'c':
@@ -676,7 +680,7 @@ tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 
          case '\033':
             /* ESC in the middle of any sequence, just starts a new one */
-            ctx->pbc = ctx->ibc = 0;
+            tty_reset_filter_ctx(ctx);
             ctx->state = TERM_WFILTER_STATE_ESC1;
             return TERM_FILTER_WRITE_BLANK;
 

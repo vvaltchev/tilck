@@ -12,9 +12,11 @@
 
 #include "term_int.h"
 
+#define NPAR 16 /* maximum number of CSI parameters */
+
 enum term_write_filter_state {
 
-   TERM_WFILTER_STATE_DEFAULT,
+   TERM_WFILTER_STATE_DEFAULT = 0,
    TERM_WFILTER_STATE_ESC1,         // ESC
    TERM_WFILTER_STATE_ESC2_CSI,     // ESC [
    TERM_WFILTER_STATE_ESC2_PAR0,    // ESC (
@@ -43,6 +45,7 @@ typedef struct {
 void tty_input_init(tty *t);
 void tty_kb_buf_reset(tty *t);
 int tty_keypress_handler(u32 key, u8 c);
+void tty_reset_filter_ctx(term_write_filter_ctx_t *ctx);
 
 enum term_fret
 tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);

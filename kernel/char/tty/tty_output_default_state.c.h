@@ -98,8 +98,10 @@ static enum term_fret
 tty_def_state_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    term_write_filter_ctx_t *const ctx = ctx_arg;
+
+   tty_reset_filter_ctx(ctx);
    ctx->state = TERM_WFILTER_STATE_ESC2_CSI;
-   ctx->pbc = ctx->ibc = 0;
+
    return TERM_FILTER_WRITE_BLANK;
 }
 
