@@ -137,7 +137,7 @@ tty_filter_handle_csi_m_param(u32 p, u8 *color, term_write_filter_ctx_t *ctx)
          /* Reset all attributes */
          fg = DEFAULT_FG_COLOR;
          bg = DEFAULT_BG_COLOR;
-         ctx->attrs = 0;
+         t->attrs = 0;
          goto set_color;
 
       case 39:
@@ -151,11 +151,11 @@ tty_filter_handle_csi_m_param(u32 p, u8 *color, term_write_filter_ctx_t *ctx)
          goto set_color;
 
       case 1:
-         ctx->attrs |= TTY_ATTR_BOLD;
+         t->attrs |= TTY_ATTR_BOLD;
          goto set_color;
 
       case 7:
-         ctx->attrs |= TTY_ATTR_REVERSE;
+         t->attrs |= TTY_ATTR_REVERSE;
          goto set_color;
 
       default:
@@ -181,10 +181,10 @@ tty_filter_handle_csi_m_param(u32 p, u8 *color, term_write_filter_ctx_t *ctx)
 set_color:
    t->user_color = make_color(fg, bg);
 
-   if ((ctx->attrs & TTY_ATTR_BOLD) && fg <= 7)
+   if ((t->attrs & TTY_ATTR_BOLD) && fg <= 7)
       fg += 8;
 
-   if (ctx->attrs & TTY_ATTR_REVERSE)
+   if (t->attrs & TTY_ATTR_REVERSE)
       t->curr_color = make_color(bg, fg);
    else
       t->curr_color = make_color(fg, bg);

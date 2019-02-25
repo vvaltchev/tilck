@@ -38,8 +38,6 @@ typedef struct {
    u8 pbc; /* param bytes count */
    u8 ibc; /* intermediate bytes count */
 
-   u32 attrs;
-
 } term_write_filter_ctx_t;
 
 void tty_input_init(tty *t);
@@ -80,6 +78,7 @@ struct tty {
    /* tty output */
    u16 saved_cur_row;
    u16 saved_cur_col;
+   u32 attrs;
 
    u8 c_set; // 0 = G0, 1 = G1.
    const s16 *c_sets_tables[2];
