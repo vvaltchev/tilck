@@ -40,6 +40,9 @@ DECL_CMD(sigabrt);
 DECL_CMD(sig1);
 DECL_CMD(select1);
 DECL_CMD(select2);
+DECL_CMD(poll1);
+DECL_CMD(poll2);
+DECL_CMD(poll3);
 
 int cmd_selftest(int argc, char **argv)
 {
@@ -114,8 +117,12 @@ struct {
    CMD_ENTRY(sigfpe, TT_SHORT, true),
    CMD_ENTRY(sigabrt, TT_SHORT, true),
    CMD_ENTRY(sig1, TT_SHORT, true),
+
    CMD_ENTRY(select1, TT_SHORT, false),
-   CMD_ENTRY(select2, TT_SHORT, false)
+   CMD_ENTRY(select2, TT_SHORT, false),
+   CMD_ENTRY(poll1, TT_SHORT, false),
+   CMD_ENTRY(poll2, TT_SHORT, false),
+   CMD_ENTRY(poll3, TT_SHORT, false)
 };
 
 #undef CMD_ENTRY
@@ -134,7 +141,7 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
    bool pass;
 
    gettimeofday(&tv, NULL);
-   start_ms = (u64)tv.tv_sec * 1000ull + (u64)tv.tv_usec / 1000ull;
+   start_ms = (u64)tv.tv_sec * 1000 + (u64)tv.tv_usec / 1000;
 
    printf(COLOR_YELLOW "[devshell] ");
    printf(COLOR_GREEN "[RUN   ] " RESET_ATTRS "%s"  "\n", name);
@@ -153,7 +160,7 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
    waitpid(child_pid, &wstatus, 0);
 
    gettimeofday(&tv, NULL);
-   end_ms = (u64)tv.tv_sec * 1000ull + (u64)tv.tv_usec / 1000ull;
+   end_ms = (u64)tv.tv_sec * 1000 + (u64)tv.tv_usec / 1000;
 
    pass = WIFEXITED(wstatus) && (WEXITSTATUS(wstatus) == 0);
    printf(COLOR_YELLOW "[devshell] %s", pass_fail_strings[pass]);
@@ -171,7 +178,7 @@ int cmd_runall(int argc, char **argv)
    struct timeval tv;
 
    gettimeofday(&tv, NULL);
-   start_ms = (u64)tv.tv_sec * 1000ull + (u64)tv.tv_usec / 1000ull;
+   start_ms = (u64)tv.tv_sec * 1000 + (u64)tv.tv_usec / 1000;
 
    for (int i = 1; i < ARRAY_SIZE(cmds_table); i++) {
 
@@ -189,7 +196,7 @@ int cmd_runall(int argc, char **argv)
    }
 
    gettimeofday(&tv, NULL);
-   end_ms = (u64)tv.tv_sec * 1000ull + (u64)tv.tv_usec / 1000ull;
+   end_ms = (u64)tv.tv_sec * 1000 + (u64)tv.tv_usec / 1000;
 
    printf(COLOR_YELLOW "[devshell] ");
    printf("------------------------------------------------------------\n");

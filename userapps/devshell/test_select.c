@@ -3,17 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <fcntl.h>
 #include <signal.h>
 #include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
 #include <sys/select.h>
-#include <sys/syscall.h>
-#include <sys/mman.h>
 
 #include "devshell.h"
 
@@ -38,7 +32,7 @@ int cmd_select1(int argc, char **argv)
       return 1;
    }
 
-   printf("select returned %d\n", ret);
+   printf("select() returned %d\n", ret);
 
    for (int i = 0; i < nfds; i++) {
       if (FD_ISSET(i, &readfds))
