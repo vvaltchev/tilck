@@ -27,15 +27,15 @@ int cmd_poll1(int argc, char **argv)
 
    printf("poll() returned: %d\n", rc);
 
+   if (!rc)
+      printf("poll() timed out\n");
+
    for (u32 i = 0; i < ARRAY_SIZE(fds); i++) {
       if (fds[i].revents & POLLIN) {
          printf("fd %d -> POLLIN\n", fds[i]);
          cnt++;
       }
    }
-
-   if (!cnt)
-      printf("poll() timed out\n");
 
    return 0;
 }
@@ -57,15 +57,15 @@ int cmd_poll2(int argc, char **argv)
 
    printf("poll() returned: %d\n", rc);
 
+   if (!rc)
+      printf("poll() timed out\n");
+
    for (u32 i = 0; i < ARRAY_SIZE(fds); i++) {
       if (fds[i].revents & POLLIN) {
          printf("fd %d -> POLLIN\n", fds[i]);
          cnt++;
       }
    }
-
-   if (!cnt)
-      printf("poll() timed out\n");
 
    return 0;
 }

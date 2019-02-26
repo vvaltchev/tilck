@@ -149,10 +149,10 @@ poll_set_conds(multi_obj_waiter *w, struct pollfd *fds, u32 nfds, u32 cond_cnt)
    }
 }
 
-static u32
-poll_count_ready_conds(struct pollfd *fds, u32 nfds)
+static int
+poll_count_ready_fds(struct pollfd *fds, u32 nfds)
 {
-   u32 cnt = 0;
+   int cnt = 0;
 
    for (u32 i = 0; i < nfds; i++) {
 
@@ -168,6 +168,7 @@ poll_count_ready_conds(struct pollfd *fds, u32 nfds)
 
             fds[i].revents |= POLLIN;
             cnt++;
+            continue;
          }
       }
 
@@ -176,6 +177,7 @@ poll_count_ready_conds(struct pollfd *fds, u32 nfds)
 
             fds[i].revents |= POLLOUT;
             cnt++;
+            continue;
          }
       }
 
@@ -184,6 +186,7 @@ poll_count_ready_conds(struct pollfd *fds, u32 nfds)
 
             fds[i].revents |= POLL_ERR;
             cnt++;
+            continue;
          }
       }
    }
@@ -196,7 +199,7 @@ poll_wait_on_cond(struct pollfd *fds, u32 nfds, int timeout, u32 cond_cnt)
 {
    task_info *curr = get_curr_task();
    multi_obj_waiter *waiter = NULL;
-   int rc = 0;
+   int ready_fds_cnt = 0;
 
    if (!(waiter = allocate_mobj_waiter(cond_cnt)))
       return -ENOMEM;
@@ -214,9 +217,9 @@ poll_wait_on_cond(struct pollfd *fds, u32 nfds, int timeout, u32 cond_cnt)
           * the timeout was 0.
           */
 
-         poll_count_ready_conds(fds, nfds);
+         ready_fds_cnt = poll_count_ready_fds(fds, nfds);
          free_mobj_waiter(waiter);
-         return 0;
+         return ready_fds_cnt;
       }
 
       task_set_wakeup_timer(curr, ticks);
@@ -241,15 +244,21 @@ poll_wait_on_cond(struct pollfd *fds, u32 nfds, int timeout, u32 cond_cnt)
              * streams. We have to check that.
              */
 
-            if (!poll_count_ready_conds(fds, nfds))
+            ready_fds_cnt = poll_count_ready_fds(fds, nfds);
+
+            if (!ready_fds_cnt)
                continue; /* No ready streams, we have to wait again. */
+
+            task_cancel_wakeup_timer(curr);
          }
 
       } else {
 
          /* No timeout: we woke-up because of a kcond was signaled */
 
-         if (!poll_count_ready_conds(fds, nfds))
+         ready_fds_cnt = poll_count_ready_fds(fds, nfds);
+
+         if (!ready_fds_cnt)
             continue; /* No ready streams, we have to wait again. */
       }
 
@@ -257,7 +266,7 @@ poll_wait_on_cond(struct pollfd *fds, u32 nfds, int timeout, u32 cond_cnt)
    }
 
    free_mobj_waiter(waiter);
-   return rc;
+   return ready_fds_cnt;
 }
 
 sptr sys_poll(struct pollfd *user_fds, nfds_t user_nfds, int timeout)
@@ -265,6 +274,7 @@ sptr sys_poll(struct pollfd *user_fds, nfds_t user_nfds, int timeout)
    const u32 nfds = (u32) user_nfds;
    task_info *curr = get_curr_task();
    struct pollfd *fds = curr->args_copybuf;
+   sptr ready_fds_cnt;
    u32 cond_cnt = 0;
    int rc;
 
@@ -274,25 +284,29 @@ sptr sys_poll(struct pollfd *user_fds, nfds_t user_nfds, int timeout)
    if (copy_from_user(fds, user_fds, sizeof(struct pollfd) * nfds))
       return -EFAULT;
 
-   debug_poll_args_dump(fds, nfds, timeout);
+   //debug_poll_args_dump(fds, nfds, timeout);
 
    if (timeout != 0)
       cond_cnt = poll_count_conds(fds, nfds);
 
    if (cond_cnt > 0) {
 
-      if ((rc = poll_wait_on_cond(fds, nfds, timeout, cond_cnt)))
+      if ((rc = poll_wait_on_cond(fds, nfds, timeout, cond_cnt)) < 0)
          return rc;
+
+      ready_fds_cnt = rc;
 
    } else {
 
       if (timeout > 0) {
          kernel_sleep((u64)timeout / (1000 / TIMER_HZ));
       }
+
+      ready_fds_cnt = poll_count_ready_fds(fds, nfds);
    }
 
    if (copy_to_user(user_fds, fds, sizeof(struct pollfd) * nfds))
       return -EFAULT;
 
-   return 0;
+   return ready_fds_cnt;
 }
