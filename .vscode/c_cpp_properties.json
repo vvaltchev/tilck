@@ -17,7 +17,8 @@
                     "${workspaceRoot}/boot",
                     "${workspaceRoot}/include",
                     "${workspaceRoot}/kernel",
-                    "${workspaceRoot}/unittests"
+                    "${workspaceRoot}/unittests",
+                    "${workspaceRoot}/build"
                 ],
                 "limitSymbolsToIncludedHeaders": false
             },

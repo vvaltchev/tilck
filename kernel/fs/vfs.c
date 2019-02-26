@@ -344,43 +344,49 @@ u32 vfs_get_new_device_id(void)
 bool vfs_read_ready(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+   bool r;
 
    if (!hb->fops.read_ready)
       return true;
 
    vfs_shlock(h);
    {
-      return hb->fops.read_ready(h);
+      r = hb->fops.read_ready(h);
    }
    vfs_shunlock(h);
+   return r;
 }
 
 bool vfs_write_ready(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+   bool r;
 
    if (!hb->fops.write_ready)
       return true;
 
    vfs_shlock(h);
    {
-      return hb->fops.write_ready(h);
+      r = hb->fops.write_ready(h);
    }
    vfs_shunlock(h);
+   return r;
 }
 
 bool vfs_except_ready(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+   bool r;
 
    if (!hb->fops.except_ready)
       return false;
 
    vfs_shlock(h);
    {
-      return hb->fops.except_ready(h);
+      r = hb->fops.except_ready(h);
    }
    vfs_shunlock(h);
+   return r;
 }
 
 kcond *vfs_get_rready_cond(fs_handle h)

@@ -217,7 +217,7 @@ select_wait_on_cond(struct select_ctx *c)
 
    if (c->tv) {
       ASSERT(c->timeout_ticks > 0);
-      task_set_wakeup_timer(get_curr_task(), c->timeout_ticks);
+      task_set_wakeup_timer(curr, c->timeout_ticks);
    }
 
    while (true) {

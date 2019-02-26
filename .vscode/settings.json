@@ -57,6 +57,8 @@
       "uio.h": "c",
       "times.h": "c",
       "type_traits": "c",
-      "tty_ctrl_handlers.c.h": "c"
+      "tty_ctrl_handlers.c.h": "c",
+      "config.h": "c",
+      "generated_config.h": "c"
    }
 }

@@ -228,7 +228,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_mremap)
 CREATE_STUB_SYSCALL_IMPL(sys_setresuid16)
 CREATE_STUB_SYSCALL_IMPL(sys_getresuid16)
 CREATE_STUB_SYSCALL_IMPL(sys_vm86)
-CREATE_STUB_SYSCALL_IMPL(sys_poll)
+
+sptr sys_poll(struct pollfd *fds, nfds_t nfds, int timeout);
+
 CREATE_STUB_SYSCALL_IMPL(sys_nfsservctl)
 CREATE_STUB_SYSCALL_IMPL(sys_setresgid16)
 CREATE_STUB_SYSCALL_IMPL(sys_getresgid16)

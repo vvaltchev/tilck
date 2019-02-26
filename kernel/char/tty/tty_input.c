@@ -370,7 +370,7 @@ bool tty_read_ready_int(tty *t, devfs_file_handle *h)
    }
 
    /* Raw mode handling */
-   return t->kb_input_unread_cnt > t->c_term.c_cc[VMIN];
+   return t->kb_input_unread_cnt >= t->c_term.c_cc[VMIN];
 }
 
 ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
