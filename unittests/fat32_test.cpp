@@ -16,6 +16,29 @@ extern "C" {
 
 using namespace std;
 
+void test_dump_buf(char *buf, const char *buf_name, int off, int count)
+{
+   printf("%s", buf_name);
+
+   for (int k = 0; k < count; k++)
+      printf("%02x ", (unsigned char) buf[off + k]);
+
+   printf("\n");
+}
+
+static void
+fat32_read_compare_bufs(ssize_t bytes_read, ssize_t roff, char *b1, char *b2)
+{
+   for (int j = 0; j < bytes_read; j++) {
+      if (b1[j] != b2[j]) {
+         printf("Byte #%li differs:\n", (long)roff+j);
+         test_dump_buf(b1, "buf1: ", j, 16);
+         test_dump_buf(b2, "buf2: ", j, 16);
+         FAIL();
+      }
+   }
+}
+
 const char *load_once_file(const char *filepath, size_t *fsize = nullptr)
 {
    static map<const char *,
@@ -101,7 +124,6 @@ TEST(fat32, read_content_of_longname_file)
    ASSERT_STREQ("Content of file with a long name\n", data);
 }
 
-
 TEST(fat32, read_whole_file)
 {
    fat_header *hdr = (fat_header *)
@@ -123,6 +145,13 @@ TEST(fat32, read_whole_file)
 
 TEST(fat32, fread)
 {
+   char buf1[1024];
+   char buf2[1024];
+   fs_handle h = NULL;
+   const ssize_t block_size = 1023; /* prime number */
+   ssize_t bytes_read, bytes_read_real_file, read_offset = 0;
+   int rc;
+
    init_kmalloc_for_tests();
 
    filesystem *fs =
@@ -130,57 +159,32 @@ TEST(fat32, fread)
          (void *) load_once_file(PROJ_BUILD_DIR "/test_fatpart"),
          VFS_FS_RO);
 
-   fs_handle h = NULL;
-   int rc = fs->open(fs, "/medfile", &h);
+   ASSERT_TRUE(fs != NULL);
+
+   rc = fs->open(fs, "/bigfile", &h);
+
    ASSERT_TRUE(rc == 0);
    ASSERT_TRUE(h != NULL);
 
    fat_file_handle *fat_handle = (fat_file_handle *)h;
+   FILE *fp = fopen(PROJ_BUILD_DIR "/test_sysroot/bigfile", "rb");
 
-   ssize_t buf2_size = 100*1000;
-   char *buf2 = (char *) calloc(1, buf2_size);
-   ssize_t read_offset = 0;
+   do {
 
-   FILE *fp = fopen(PROJ_BUILD_DIR "/test_sysroot/medfile", "rb");
-   char tmpbuf[1024];
-
-   while (true) {
-
-      ssize_t read_block_size = 1023; /* 1023 is a prime number */
-      ssize_t bytes_read = fat_handle->fops.read(h,
-                                                 buf2+read_offset,
-                                                 read_block_size);
-      ssize_t bytes_read_real_file = fread(tmpbuf, 1, read_block_size, fp);
+      bytes_read = fat_handle->fops.read(h, buf1, block_size);
+      bytes_read_real_file = fread(buf2, 1, block_size, fp);
 
       ASSERT_EQ(bytes_read_real_file, bytes_read);
 
-      for (int j = 0; j < bytes_read; j++) {
-         if (buf2[read_offset+j] != tmpbuf[j]) {
-
-            printf("Byte #%li differs:\n", (long)read_offset+j);
-
-            printf("buf2:   ");
-            for (int k = 0; k < 16; k++)
-               printf("%02x ", (unsigned char) buf2[read_offset+j+k]);
-            printf("\n");
-            printf("tmpbuf: ");
-            for (int k = 0; k < 16; k++)
-               printf("%02x ", (unsigned char) tmpbuf[j+k]);
-            printf("\n");
-
-            FAIL();
-         }
-      }
+      ASSERT_NO_FATAL_FAILURE({
+         fat32_read_compare_bufs(bytes_read, read_offset, buf1, buf2);
+      });
 
       read_offset += bytes_read;
 
-      if (bytes_read < read_block_size)
-         break;
-   }
+   } while (bytes_read == block_size);
 
    fclose(fp);
    fs->close(h);
-
    fat_umount_ramdisk(fs);
-   free(buf2);
 }

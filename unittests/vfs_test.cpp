@@ -30,6 +30,7 @@ static int mountpoint_match_wrapper(const char *mp, const char *path)
 
 // Implemented in fat32_test.cpp
 const char *load_once_file(const char *filepath, size_t *fsize = nullptr);
+void test_dump_buf(char *buf, const char *buf_name, int off, int count);
 
 TEST(vfs, check_mountpoint_match)
 {
@@ -179,18 +180,8 @@ TEST(vfs, fseek)
          cout << "Curr pos: " << linux_pos << endl;
          cout << "read ret: " << linux_read << endl;
 
-         cout << "Linux buf: ";
-
-         for (size_t j = 0; j < sizeof(buf_linux); j++)
-            printf("%02x ", (u8)buf_linux[j]);
-
-         cout << endl;
-         cout << "Tilck buf:  ";
-
-         for (size_t j = 0; j < sizeof(buf_linux); j++)
-            printf("%02x ", (u8)buf_tilck[j]);
-
-         cout << endl;
+         test_dump_buf(buf_linux, "Linux buf:  ", 0, sizeof(buf_linux));
+         test_dump_buf(buf_linux, "Tilck buf:  ", 0, sizeof(buf_linux));
          FAIL();
       }
 
