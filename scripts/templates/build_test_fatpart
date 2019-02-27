@@ -37,7 +37,8 @@ cp -r $maindir/unittests/test_sysroot $bdir/
 cd $bdir/test_sysroot
 
 # Create file with random data
-dd if=/dev/urandom of=./bigfile bs=1M count=1
+dd if=/dev/urandom of=./bigfile bs=1K count=1024
+dd if=/dev/urandom of=./medfile bs=1K count=44
 
 # first, create the directories
 for f in $(find * -type d); do

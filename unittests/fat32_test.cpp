@@ -60,7 +60,7 @@ const char *load_once_file(const char *filepath, size_t *fsize = nullptr)
 
 TEST(fat32, DISABLED_dumpinfo)
 {
-   const char *buf = load_once_file(PROJ_BUILD_DIR "/fatpart");
+   const char *buf = load_once_file(PROJ_BUILD_DIR "/test_fatpart");
    fat_dump_info((void *) buf);
 
    fat_header *hdr = (fat_header*)buf;
@@ -70,12 +70,12 @@ TEST(fat32, DISABLED_dumpinfo)
 
 TEST(fat32, read_content_of_shortname_file)
 {
-   const char *buf = load_once_file(PROJ_BUILD_DIR "/fatpart");
+   const char *buf = load_once_file(PROJ_BUILD_DIR "/test_fatpart");
    char data[128] = {0};
    fat_header *hdr;
    fat_entry *e;
 
-   hdr = (fat_header*)buf;
+   hdr = (fat_header *)buf;
    e = fat_search_entry(hdr, fat_unknown, "/testdir/dir1/f1");
    ASSERT_TRUE(e != NULL);
 
@@ -86,12 +86,12 @@ TEST(fat32, read_content_of_shortname_file)
 
 TEST(fat32, read_content_of_longname_file)
 {
-   const char *buf = load_once_file(PROJ_BUILD_DIR "/fatpart");
+   const char *buf = load_once_file(PROJ_BUILD_DIR "/test_fatpart");
    char data[128] = {0};
    fat_header *hdr;
    fat_entry *e;
 
-   hdr = (fat_header*)buf;
+   hdr = (fat_header *)buf;
    e = fat_search_entry(hdr,
                         fat_unknown,
                         "/testdir/This_is_a_file_with_a_veeeery_long_name.txt");
@@ -104,19 +104,19 @@ TEST(fat32, read_content_of_longname_file)
 
 TEST(fat32, read_whole_file)
 {
-   fat_header *hdr = (fat_header*)
-      load_once_file(PROJ_BUILD_DIR "/fatpart");
+   fat_header *hdr = (fat_header *)
+      load_once_file(PROJ_BUILD_DIR "/test_fatpart");
 
-   fat_entry *e = fat_search_entry(hdr, fat_unknown, "/sbin/init");
+   fat_entry *e = fat_search_entry(hdr, fat_unknown, "/bigfile");
 
-   char *content = (char*)calloc(1, e->DIR_FileSize);
+   char *content = (char *)calloc(1, e->DIR_FileSize);
    fat_read_whole_file(hdr, e, content, e->DIR_FileSize);
    uint32_t fat_crc = crc32(0, content, e->DIR_FileSize);
    free(content);
 
    size_t fsize;
    const char *buf =
-      load_once_file(PROJ_BUILD_DIR "/sysroot/sbin/init", &fsize);
+      load_once_file(PROJ_BUILD_DIR "/test_sysroot/bigfile", &fsize);
    uint32_t actual_file_crc = crc32(0, buf, fsize);
    ASSERT_EQ(fat_crc, actual_file_crc);
 }
@@ -127,11 +127,11 @@ TEST(fat32, fread)
 
    filesystem *fs =
       fat_mount_ramdisk(
-         (void *) load_once_file(PROJ_BUILD_DIR "/fatpart"),
+         (void *) load_once_file(PROJ_BUILD_DIR "/test_fatpart"),
          VFS_FS_RO);
 
    fs_handle h = NULL;
-   int rc = fs->open(fs, "/sbin/init", &h);
+   int rc = fs->open(fs, "/medfile", &h);
    ASSERT_TRUE(rc == 0);
    ASSERT_TRUE(h != NULL);
 
@@ -141,7 +141,7 @@ TEST(fat32, fread)
    char *buf2 = (char *) calloc(1, buf2_size);
    ssize_t read_offset = 0;
 
-   FILE *fp = fopen(PROJ_BUILD_DIR "/sysroot/sbin/init", "rb");
+   FILE *fp = fopen(PROJ_BUILD_DIR "/test_sysroot/medfile", "rb");
    char tmpbuf[1024];
 
    while (true) {
@@ -159,13 +159,13 @@ TEST(fat32, fread)
 
             printf("Byte #%li differs:\n", (long)read_offset+j);
 
-            printf("buf2: ");
+            printf("buf2:   ");
             for (int k = 0; k < 16; k++)
-               printf("%x ", buf2[read_offset+j+k]);
+               printf("%02x ", (unsigned char) buf2[read_offset+j+k]);
             printf("\n");
             printf("tmpbuf: ");
             for (int k = 0; k < 16; k++)
-               printf("%x ", tmpbuf[j+k]);
+               printf("%02x ", (unsigned char) tmpbuf[j+k]);
             printf("\n");
 
             FAIL();

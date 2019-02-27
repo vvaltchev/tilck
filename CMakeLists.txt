@@ -441,6 +441,10 @@ add_custom_command(
 
    COMMAND
       ${BUILD_APPS}/fat_get_used_bytes --truncate test_fatpart
+
+   DEPENDS
+      fat_get_used_bytes
+      ${CMAKE_BINARY_DIR}/scripts/build_apps/fat_get_used_bytes
 )
 
 add_custom_target(
