@@ -47,3 +47,21 @@ macro (show_missing_lcov_error)
    message(FATAL_ERROR "TEST_GCOV/KERNEL_GCOV set but no lcov in toolchain. "
                        "Run ${BTC_SCRIPT} -s build_lcov first.")
 endmacro()
+
+macro (no_googletest_lib_fake_error_target)
+
+   add_custom_target(
+
+      gtests
+
+      COMMAND echo
+      COMMAND echo "==== ERROR: No googletest in toolchain ===="
+      COMMAND echo
+      COMMAND echo "Instructions:"
+      COMMAND echo "  - Run ${BTC_SCRIPT} -s ${GTEST_BTC_COMMAND}"
+      COMMAND echo "  - rm -rf ${CMAKE_BINARY_DIR}"
+      COMMAND echo "  - Run this command again"
+      COMMAND echo
+   )
+
+endmacro()

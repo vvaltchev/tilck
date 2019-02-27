@@ -415,7 +415,7 @@ add_custom_target(
       ${GPT_IMG_FILE}
 )
 
-if (${ARCH_GTESTS})
+if (ARCH_GTESTS)
    set(GTEST_TC_BUILD_DIR ${TCROOT}/gtest_arch)
    set(GTEST_BTC_COMMAND build_gtest_arch)
 else()
@@ -427,21 +427,5 @@ if (EXISTS ${GTEST_TC_BUILD_DIR})
    add_subdirectory(unittests)
    add_dependencies(gtests tilck_image)
 else()
-   add_custom_target(
-      gtests
-      COMMAND
-         echo
-      COMMAND
-         echo ==== ERROR: No googletest in toolchain =====
-      COMMAND
-         echo Instructions:
-      COMMAND
-         echo  - Run ${BTC_SCRIPT} -s ${GTEST_BTC_COMMAND}
-      COMMAND
-         echo  - rm -rf ${CMAKE_BINARY_DIR}
-      COMMAND
-         echo  - Run this command again
-      COMMAND
-         echo
-   )
+   no_googletest_lib_fake_error_target()
 endif()
