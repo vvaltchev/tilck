@@ -6,7 +6,7 @@ set -e
 
 maindir="@CMAKE_SOURCE_DIR@"
 bdir="@CMAKE_BINARY_DIR@"
-dest="@CMAKE_BINARY_DIR@/fatpart"
+dest="@CMAKE_BINARY_DIR@/test_fatpart"
 tc="@TCROOT@"
 
 mtoolsdir=$tc/mtools
@@ -14,6 +14,7 @@ mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd
 mcopy=$mtoolsdir/mcopy
+
 
 if [ ! -f $dest ]; then
    # If the 'fatpart' file does not already exist
@@ -30,46 +31,13 @@ fi
 $mformat -i $dest -d 1 -F -c 1 -t 70 -h 16 -s 63 ::
 $mlabel -i $dest ::TILCK
 
-rm -rf $bdir/sysroot
-cp -r $maindir/sysroot $bdir/
+rm -rf $bdir/test_sysroot
+mkdir $bdir/test_sysroot
+cp -r $maindir/unittests/test_sysroot $bdir/
+cd $bdir/test_sysroot
 
-# Remove the README file that is not supposed to be in the actual sysroot
-rm $bdir/sysroot/README
-
-cd $bdir/sysroot
-ln $bdir/userapps/init sbin/
-
-IFS=";"
-
-apps="@USERAPPS_FILES_LIST@"
-extra_apps="@EXTRA_APPS_LIST@"
-
-for x in ${apps[@]}; do
-   ln "$x" bin/
-done
-
-for x in ${extra_apps[@]}; do
-   ln "$x" usr/bin/
-done
-
-unset IFS
-
-# hard-link EFI files
-
-if [ -s @EFI_x86_64_FILE@ ]; then
-   ln @EFI_x86_64_FILE@ EFI/BOOT/
-fi
-
-if [ -s @EFI_ia32_FILE@ ]; then
-   ln @EFI_ia32_FILE@ EFI/BOOT/
-fi
-
-# hard-link the kernel file (used also by the legacy bootloader)
-ln @KERNEL_FILE@ @KERNEL_FATPART_PATH@
-
-if [ -d $tc/busybox ]; then
-   ln $tc/busybox/busybox bin/
-fi
+# Create file with random data
+dd if=/dev/urandom of=./bigfile bs=1M count=1
 
 # first, create the directories
 for f in $(find * -type d); do
@@ -80,4 +48,3 @@ done
 for f in $(find * -type f); do
    $mcopy -i $dest $f ::/$f
 done
-

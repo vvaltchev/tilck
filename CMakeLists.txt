@@ -323,10 +323,17 @@ add_subdirectory(scripts/build_apps)
 ################################################################################
 
 set(BUILD_FATPART ${CMAKE_BINARY_DIR}/scripts/build_fatpart)
+set(BUILD_TEST_FATPART ${CMAKE_BINARY_DIR}/scripts/build_test_fatpart)
 
 configure_file(
    ${CMAKE_SOURCE_DIR}/scripts/templates/build_fatpart
    ${BUILD_FATPART}
+   @ONLY
+)
+
+configure_file(
+   ${CMAKE_SOURCE_DIR}/scripts/templates/build_test_fatpart
+   ${BUILD_TEST_FATPART}
    @ONLY
 )
 
@@ -423,8 +430,32 @@ else()
    set(GTEST_BTC_COMMAND build_gtest)
 endif()
 
+
+add_custom_command(
+
+   OUTPUT
+      test_fatpart
+
+   COMMAND
+      ${BUILD_TEST_FATPART}
+
+   COMMAND
+      ${BUILD_APPS}/fat_get_used_bytes --truncate test_fatpart
+)
+
+add_custom_target(
+
+   test_fatpart_target
+
+   DEPENDS
+      test_fatpart
+)
+
+
 if (EXISTS ${GTEST_TC_BUILD_DIR})
+
    add_subdirectory(unittests)
+   add_dependencies(gtests test_fatpart_target)
    add_dependencies(gtests tilck_image)
 else()
    no_googletest_lib_fake_error_target()
