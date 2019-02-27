@@ -147,8 +147,8 @@ TEST(vfs, fseek)
          /*
           * Linux syscalls return -ERRNO_VALUE in case something goes wrong,
           * while the glibc wrappers return -1 and set errno. Since we're
-          * testing the value returned by the syscall in Tilck, we need to revert
-          * that.
+          * testing the value returned by the syscall in Tilck, we need to
+          * revert that.
           */
          linux_lseek = -errno;
       }

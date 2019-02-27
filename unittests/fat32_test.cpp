@@ -4,19 +4,17 @@
 #include <iostream>
 #include <memory>
 #include <map>
-
-using namespace std;
-
 #include <gtest/gtest.h>
 
 #include "kernel_init_funcs.h"
-
 
 extern "C" {
    #include <tilck/kernel/fs/fat32.h>
    #include <tilck/kernel/fs/vfs.h>
    #include <tilck/common/utils.h>
 }
+
+using namespace std;
 
 const char *load_once_file(const char *filepath, size_t *fsize = nullptr)
 {
