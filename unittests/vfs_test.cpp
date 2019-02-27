@@ -129,15 +129,16 @@ TEST(vfs, fseek)
    for (int i = 0; i < iters; i++) {
 
       int saved_errno = 0;
-      (void)saved_errno;
 
+      /* random file offset where to seek */
       off_t offset = (off_t) ( dist(engine) - dist(engine)/1.3 );
 
       linux_lseek = lseek(fd, offset, SEEK_CUR);
-      tilck_fseek = vfs_seek(h, offset, SEEK_CUR);
 
       if (linux_lseek < 0)
          saved_errno = errno;
+
+      tilck_fseek = vfs_seek(h, offset, SEEK_CUR);
 
       linux_pos = lseek(fd, 0, SEEK_CUR);
       tilck_pos = vfs_seek(h, 0, SEEK_CUR);
@@ -150,7 +151,7 @@ TEST(vfs, fseek)
           * testing the value returned by the syscall in Tilck, we need to
           * revert that.
           */
-         linux_lseek = -errno;
+         linux_lseek = -saved_errno;
       }
 
       ASSERT_EQ(tilck_fseek, linux_lseek)
