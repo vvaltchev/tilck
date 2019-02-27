@@ -455,12 +455,9 @@ add_custom_target(
       test_fatpart
 )
 
-
 if (EXISTS ${GTEST_TC_BUILD_DIR})
-
    add_subdirectory(unittests)
    add_dependencies(gtests test_fatpart_target)
-   add_dependencies(gtests tilck_image)
 else()
    no_googletest_lib_fake_error_target()
 endif()

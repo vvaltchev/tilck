@@ -45,7 +45,7 @@ TEST(vfs, read_content_of_longname_file)
 {
    init_kmalloc_for_tests();
 
-   const char *buf = load_once_file(PROJ_BUILD_DIR "/fatpart");
+   const char *buf = load_once_file(PROJ_BUILD_DIR "/test_fatpart");
    char data[128] = {0};
 
    filesystem *fat_fs = fat_mount_ramdisk((void *) buf, VFS_FS_RO);
@@ -88,7 +88,7 @@ TEST(vfs, fseek)
 
    size_t fatpart_size;
    const char *fatpart =
-      load_once_file(PROJ_BUILD_DIR "/fatpart", &fatpart_size);
+      load_once_file(PROJ_BUILD_DIR "/test_fatpart", &fatpart_size);
 
    filesystem *fat_fs = fat_mount_ramdisk((void *) fatpart, VFS_FS_RO);
    ASSERT_TRUE(fat_fs != NULL);
@@ -96,9 +96,8 @@ TEST(vfs, fseek)
    int r = mountpoint_add(fat_fs, "/");
    ASSERT_EQ(r, 0);
 
-   const char *fatpart_file_path = "/EFI/BOOT/elf_kernel_stripped";
-   const char *real_file_path =
-      PROJ_BUILD_DIR "/sysroot/EFI/BOOT/elf_kernel_stripped";
+   const char *fatpart_file_path = "/bigfile";
+   const char *real_file_path = PROJ_BUILD_DIR "/test_sysroot/bigfile";
 
    int fd = open(real_file_path, O_RDONLY);
 
