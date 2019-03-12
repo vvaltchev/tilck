@@ -234,7 +234,7 @@ int tty_keypress_handler_int(tty *t, u32 key, u8 c, bool check_mods)
    }
 
    /* Ctrl+C, Ctrl+D, Ctrl+Z etc.*/
-   if (check_mods && tty_handle_special_controls(t, c))
+   if (tty_handle_special_controls(t, c))
       return KB_HANDLER_OK_AND_CONTINUE;
 
    if (t->c_term.c_lflag & ICANON)

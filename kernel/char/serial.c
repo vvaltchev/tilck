@@ -32,15 +32,12 @@ static int serial_con_irq_handler(regs *r, u16 port)
          panic("KB: hit tasklet queue limit");
    }
 
-   return 0;
+   return 1;
 }
 
 static int generic_serial_irq_handler(regs *r, u16 port)
 {
    int c = 0;
-
-   if (!serial_read_ready(port))
-      return 0;
 
    while (serial_read_ready(port)) {
       serial_read(port);
