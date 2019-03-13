@@ -29,7 +29,12 @@ typedef struct {
 
 typedef struct term term;
 
-int init_term(term *t, const video_interface *vi, u16 rows, u16 cols);
+int init_term(term *t,
+              const video_interface *vi,
+              u16 rows,
+              u16 cols,
+              u16 serial_port_fwd);
+
 bool term_is_initialized(term *t);
 const video_interface *term_get_vi(term *t);
 

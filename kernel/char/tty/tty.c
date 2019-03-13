@@ -136,7 +136,8 @@ tty_allocate_and_init_new_term(void)
    if (init_term(new_term,
                  term_get_vi(ttys[1]->term_inst),
                  term_get_rows(ttys[1]->term_inst),
-                 term_get_cols(ttys[1]->term_inst)) < 0)
+                 term_get_cols(ttys[1]->term_inst),
+                 0) < 0)
    {
       free_term_struct(new_term);
       return NULL;
@@ -207,7 +208,11 @@ static int internal_init_tty(u16 major, u16 minor)
    }
 
    tty_input_init(t);
-   term_set_filter(t->term_inst, tty_term_write_filter, &t->filter_ctx);
+
+   if (!kopt_serial_console) {
+      term_set_filter(t->term_inst, tty_term_write_filter, &t->filter_ctx);
+   }
+
    tty_update_default_state_tables(t);
    ttys[minor] = t;
    return 0;

@@ -31,10 +31,17 @@
 
 void init_console(void)
 {
-   if (use_framebuffer())
-      init_framebuffer_console();
-   else
-      init_textmode_console();
+   if (!kopt_serial_console) {
+
+      if (use_framebuffer())
+         init_framebuffer_console();
+      else
+         init_textmode_console();
+
+   } else {
+
+      init_term(get_curr_term(), NULL, 25, 80, COM1);
+   }
 
    printk_flush_ringbuf();
 }
@@ -57,11 +64,9 @@ static void read_multiboot_info(u32 magic, u32 mbi_addr)
          system_mmap_add_ramdisk(mods[i].mod_start, mods[i].mod_end);
    }
 
-   if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO) {
-      if (mbi->framebuffer_type != MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT) {
+   if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO)
+      if (mbi->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
          set_framebuffer_info_from_mbi(mbi);
-      }
-   }
 
    if (!(mbi->flags & MULTIBOOT_INFO_MEM_MAP))
       panic("Tilck requires the bootloader to provide a full memory map");

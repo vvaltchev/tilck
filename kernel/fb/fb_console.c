@@ -412,7 +412,8 @@ void init_framebuffer_console(void)
    init_term(get_curr_term(),
              &framebuffer_vi,
              (u16) fb_term_rows,
-             (u16) fb_term_cols);
+             (u16) fb_term_cols,
+             0);
 
    printk_flush_ringbuf();
 

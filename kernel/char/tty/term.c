@@ -10,7 +10,6 @@
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/interrupts.h>
-#include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/errno.h>
 
@@ -45,6 +44,8 @@ struct term {
 
    term_filter filter;
    void *filter_ctx;
+
+   u16 serial_port_fwd;
 };
 
 static term first_instance;
@@ -332,15 +333,10 @@ static void term_action_del(term *t, enum term_del_type del_type, ...)
    }
 }
 
-static void term_serial_con_write(char c)
-{
-   serial_write(COM1, c);
-}
-
 static void term_internal_write_char2(term *t, char c, u8 color)
 {
-   if (kopt_serial_console) {
-      serial_write(COM1, c);
+   if (t->serial_port_fwd) {
+      serial_write(t->serial_port_fwd, c);
       return;
    }
 
@@ -697,12 +693,17 @@ void set_curr_term(term *t)
 }
 
 int
-init_term(term *t, const video_interface *intf, u16 rows, u16 cols)
+init_term(term *t,
+          const video_interface *intf,
+          u16 rows,
+          u16 cols,
+          u16 serial_port_fwd)
 {
    ASSERT(t != &first_instance || !are_interrupts_enabled());
 
-   if (kopt_serial_console) {
+   if (serial_port_fwd) {
       intf = &no_output_vi;
+      t->serial_port_fwd = serial_port_fwd;
    }
 
    t->tabsize = 8;
@@ -716,7 +717,7 @@ init_term(term *t, const video_interface *intf, u16 rows, u16 cols)
                 sizeof(term_action),
                 t->actions_buf);
 
-   if (!in_panic() && !kopt_serial_console) {
+   if (!in_panic() && !serial_port_fwd) {
       t->extra_buffer_rows = 9 * t->rows;
       t->total_buffer_rows = t->rows + t->extra_buffer_rows;
 
@@ -752,7 +753,7 @@ init_term(term *t, const video_interface *intf, u16 rows, u16 cols)
       t->total_buffer_rows = t->rows;
       t->buffer = failsafe_buffer;
 
-      if (!in_panic() && !kopt_serial_console)
+      if (!in_panic() && !serial_port_fwd)
          printk("ERROR: unable to allocate the term buffer.\n");
    }
 
