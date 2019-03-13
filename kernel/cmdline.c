@@ -81,6 +81,9 @@ parse_arg_set_serial_mode(int arg_num, const char *arg, size_t arg_len)
 
    kopt_serial_mode = (enum term_serial_mode) mode;
    kernel_arg_parser_state = INITIAL_STATE;
+
+   if (kopt_serial_mode == TERM_SERIAL_CONSOLE)
+      kopt_tty_count = 1;
 }
 
 static void

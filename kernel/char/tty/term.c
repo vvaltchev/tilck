@@ -701,6 +701,10 @@ init_term(term *t, const video_interface *intf, u16 rows, u16 cols)
 {
    ASSERT(t != &first_instance || !are_interrupts_enabled());
 
+   if (kopt_serial_mode == TERM_SERIAL_CONSOLE) {
+      intf = &no_output_vi;
+   }
+
    t->tabsize = 8;
    t->cols = cols;
    t->rows = rows;
@@ -712,7 +716,7 @@ init_term(term *t, const video_interface *intf, u16 rows, u16 cols)
                 sizeof(term_action),
                 t->actions_buf);
 
-   if (!in_panic()) {
+   if (!in_panic() && (kopt_serial_mode != TERM_SERIAL_CONSOLE)) {
       t->extra_buffer_rows = 9 * t->rows;
       t->total_buffer_rows = t->rows + t->extra_buffer_rows;
 
@@ -748,8 +752,10 @@ init_term(term *t, const video_interface *intf, u16 rows, u16 cols)
       t->total_buffer_rows = t->rows;
       t->buffer = failsafe_buffer;
 
-      if (!in_panic())
-         printk("ERROR: unable to allocate the term buffer.\n");
+      if (kopt_serial_mode != TERM_SERIAL_CONSOLE) {
+         if (!in_panic())
+            printk("ERROR: unable to allocate the term buffer.\n");
+      }
    }
 
    t->vi->enable_cursor();
