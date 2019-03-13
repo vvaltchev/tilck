@@ -85,7 +85,7 @@ void early_init_serial_ports(void)
 
 void init_serial_comm(void)
 {
-   if (kopt_serial_mode == TERM_SERIAL_CONSOLE)
+   if (kopt_serial_console)
       ser_handlers[0] = serial_con_irq_handler;
 
    irq_install_handler(X86_PC_COM1_IRQ, &serial_com1_irq_handler);

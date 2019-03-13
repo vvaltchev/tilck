@@ -671,7 +671,7 @@ tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 
    twfilter_ctx_t *ctx = ctx_arg;
 
-   if (kopt_serial_mode == TERM_SERIAL_CONSOLE)
+   if (kopt_serial_console)
       return TERM_FILTER_WRITE_C;
 
    if (ctx->state != TERM_WFILTER_STATE_DEFAULT) {

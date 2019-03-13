@@ -11,7 +11,7 @@
 const char *cmd_args[MAX_CMD_ARGS] = { "/sbin/init", [1 ... 15] = NULL };
 void (*self_test_to_run)(void);
 int kopt_tty_count = TTY_COUNT;
-enum term_serial_mode kopt_serial_mode = TERM_SERIAL_NONE;
+bool kopt_serial_console;
 
 /* static variables */
 
@@ -20,7 +20,6 @@ static enum {
    INITIAL_STATE = 0,
    CUSTOM_START_CMDLINE,
    SET_SELFTEST,
-   SET_SERIAL_MODE,
    SET_TTY_COUNT,
 
    /* --- */
@@ -68,27 +67,13 @@ parse_arg_state_set_selftest(int arg_num, const char *arg, size_t arg_len)
 }
 
 static void
-parse_arg_set_serial_mode(int arg_num, const char *arg, size_t arg_len)
-{
-   if (arg[0] < '0' || arg[0] > '9')
-      panic("Unknown serial mode '%s'. Expected a single digit.", arg);
-
-   int mode = arg[0] - '0';
-
-   if (mode >= TERM_SERIAL_MODES_COUNT)
-      panic("Out-of-range serial mode %d. Valid range: 0 - %d",
-            mode, TERM_SERIAL_MODES_COUNT-1);
-
-   kopt_serial_mode = (enum term_serial_mode) mode;
-   kernel_arg_parser_state = INITIAL_STATE;
-
-   if (kopt_serial_mode == TERM_SERIAL_CONSOLE)
-      kopt_tty_count = 1;
-}
-
-static void
 parse_arg_set_tty_count(int arg_num, const char *arg, size_t arg_len)
 {
+   if (kopt_serial_console) {
+      printk("Ignored -tty_count because of -sercon\n");
+      return;
+   }
+
    if (arg[0] < '1' || arg[0] > (MAX_TTYS + '0'))
       panic("Invalid tty_count value '%s'. Expected range: [1, %d].",
             arg, MAX_TTYS);
@@ -103,8 +88,9 @@ parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
    if (arg_num == 0)
       return;
 
-   if (!strcmp(arg, "-serial_mode")) {
-      kernel_arg_parser_state = SET_SERIAL_MODE;
+   if (!strcmp(arg, "-sercon")) {
+      kopt_serial_console = true;
+      kopt_tty_count = 1;
       return;
    }
 
@@ -134,7 +120,6 @@ STATIC void use_kernel_arg(int arg_num, const char *arg)
       parse_arg_state_initial,
       parse_arg_state_custom_cmdline,
       parse_arg_state_set_selftest,
-      parse_arg_set_serial_mode,
       parse_arg_set_tty_count
    };
 

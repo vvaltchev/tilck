@@ -339,7 +339,7 @@ static void term_serial_con_write(char c)
 
 static void term_internal_write_char2(term *t, char c, u8 color)
 {
-   if (kopt_serial_mode == TERM_SERIAL_CONSOLE) {
+   if (kopt_serial_console) {
       serial_write(COM1, c);
       return;
    }
@@ -701,7 +701,7 @@ init_term(term *t, const video_interface *intf, u16 rows, u16 cols)
 {
    ASSERT(t != &first_instance || !are_interrupts_enabled());
 
-   if (kopt_serial_mode == TERM_SERIAL_CONSOLE) {
+   if (kopt_serial_console) {
       intf = &no_output_vi;
    }
 
@@ -716,7 +716,7 @@ init_term(term *t, const video_interface *intf, u16 rows, u16 cols)
                 sizeof(term_action),
                 t->actions_buf);
 
-   if (!in_panic() && (kopt_serial_mode != TERM_SERIAL_CONSOLE)) {
+   if (!in_panic() && !kopt_serial_console) {
       t->extra_buffer_rows = 9 * t->rows;
       t->total_buffer_rows = t->rows + t->extra_buffer_rows;
 
@@ -752,10 +752,8 @@ init_term(term *t, const video_interface *intf, u16 rows, u16 cols)
       t->total_buffer_rows = t->rows;
       t->buffer = failsafe_buffer;
 
-      if (kopt_serial_mode != TERM_SERIAL_CONSOLE) {
-         if (!in_panic())
-            printk("ERROR: unable to allocate the term buffer.\n");
-      }
+      if (!in_panic() && !kopt_serial_console)
+         printk("ERROR: unable to allocate the term buffer.\n");
    }
 
    t->vi->enable_cursor();
