@@ -18,6 +18,7 @@ int cmd_poll1(int argc, char **argv)
       { .fd = 0, .events = POLLIN }
    };
 
+   printf("Running poll(fd, ..., 3000 ms)\n");
    rc = poll(fds, ARRAY_SIZE(fds), 3000);
 
    if (rc < 0) {
@@ -32,7 +33,7 @@ int cmd_poll1(int argc, char **argv)
 
    for (u32 i = 0; i < ARRAY_SIZE(fds); i++) {
       if (fds[i].revents & POLLIN) {
-         printf("fd %d -> POLLIN\n", fds[i]);
+         printf("fd %d -> POLLIN\n", fds[i].fd);
          cnt++;
       }
    }
@@ -48,6 +49,7 @@ int cmd_poll2(int argc, char **argv)
    };
 
    /* NOTE: using timeout of 1 ms which is < 1 tick */
+   printf("Running poll(fd, ..., 1 ms)\n");
    rc = poll(fds, ARRAY_SIZE(fds), 1);
 
    if (rc < 0) {
@@ -62,7 +64,7 @@ int cmd_poll2(int argc, char **argv)
 
    for (u32 i = 0; i < ARRAY_SIZE(fds); i++) {
       if (fds[i].revents & POLLIN) {
-         printf("fd %d -> POLLIN\n", fds[i]);
+         printf("fd %d -> POLLIN\n", fds[i].fd);
          cnt++;
       }
    }
@@ -77,6 +79,7 @@ int cmd_poll3(int argc, char **argv)
       { .fd = 0, .events = POLLIN }
    };
 
+   printf("Running poll(fd, ..., 0 ms)\n");
    rc = poll(fds, ARRAY_SIZE(fds), 0);
 
    if (rc < 0) {
@@ -88,7 +91,7 @@ int cmd_poll3(int argc, char **argv)
 
    for (u32 i = 0; i < ARRAY_SIZE(fds); i++) {
       if (fds[i].revents & POLLIN) {
-         printf("fd %d -> POLLIN\n", fds[i]);
+         printf("fd %d -> POLLIN\n", fds[i].fd);
          cnt++;
       }
    }
