@@ -59,6 +59,7 @@ static ser_irq_handler ser_handlers[4] = {
 
 static int serial_irq_dispatcher(regs *r, u32 com_n1)
 {
+   /* NOTE: hw-specific stuff in generic code. TODO: fix that. */
    static const u16 pc_com_ports[4] = {COM1, COM2, COM3, COM4};
 
    if (!ser_handlers[com_n1])

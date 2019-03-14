@@ -18,9 +18,11 @@
 
 STATIC_ASSERT(TTY_COUNT <= MAX_TTYS);
 
-tty *ttys[MAX_TTYS + 1];
+tty *ttys[128];
 tty *__curr_tty;
 int tty_tasklet_runner;
+
+STATIC_ASSERT(ARRAY_SIZE(ttys) > MAX_TTYS);
 
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
@@ -126,7 +128,7 @@ tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor)
 }
 
 static term *
-tty_allocate_and_init_new_term(void)
+tty_allocate_and_init_new_term(u16 serial_port_fwd)
 {
    term *new_term = alloc_term_struct();
 
@@ -137,7 +139,7 @@ tty_allocate_and_init_new_term(void)
                  term_get_vi(ttys[1]->term_inst),
                  term_get_rows(ttys[1]->term_inst),
                  term_get_cols(ttys[1]->term_inst),
-                 0) < 0)
+                 serial_port_fwd) < 0)
    {
       free_term_struct(new_term);
       return NULL;
@@ -146,7 +148,7 @@ tty_allocate_and_init_new_term(void)
    return new_term;
 }
 
-static tty *allocate_and_init_tty(u16 minor)
+static tty *allocate_and_init_tty(u16 minor, u16 serial_port_fwd)
 {
    tty *t = kzmalloc(sizeof(tty));
 
@@ -155,9 +157,9 @@ static tty *allocate_and_init_tty(u16 minor)
 
    init_tty_struct(t, minor);
 
-   term *new_term = (minor == 1)
+   term *new_term = (minor == 1 || kopt_serial_console)
                         ? get_curr_term()
-                        : tty_allocate_and_init_new_term();
+                        : tty_allocate_and_init_new_term(serial_port_fwd);
 
    if (!new_term) {
       kfree2(t, sizeof(tty));
@@ -179,12 +181,14 @@ tty_full_destroy(tty *t)
    kfree2(t, sizeof(tty));
 }
 
-static int internal_init_tty(u16 major, u16 minor)
+static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
 {
    ASSERT(minor < ARRAY_SIZE(ttys));
    ASSERT(!ttys[minor]);
 
    if (minor == 0) {
+
+      ASSERT(serial_port_fwd == 0);
 
       /*
        * tty0 is special: not a real tty but a special file always pointing
@@ -195,12 +199,15 @@ static int internal_init_tty(u16 major, u16 minor)
       return 0;
    }
 
-   tty *const t = allocate_and_init_tty(minor);
+   tty *const t = allocate_and_init_tty(minor, serial_port_fwd);
 
    if (!t)
       return -ENOMEM;
 
-   snprintk(t->dev_filename, sizeof(t->dev_filename), "tty%d", minor);
+   snprintk(t->dev_filename,
+            sizeof(t->dev_filename),
+            serial_port_fwd ? "ttyS%d" : "tty%d",
+            serial_port_fwd ? minor - 64 : minor);
 
    if (create_dev_file(t->dev_filename, major, minor) < 0) {
       tty_full_destroy(t);
@@ -209,13 +216,45 @@ static int internal_init_tty(u16 major, u16 minor)
 
    tty_input_init(t);
 
-   if (!kopt_serial_console) {
+   if (!serial_port_fwd) {
       term_set_filter(t->term_inst, tty_term_write_filter, &t->filter_ctx);
    }
 
    tty_update_default_state_tables(t);
    ttys[minor] = t;
    return 0;
+}
+
+static void init_video_ttys(void)
+{
+   for (u16 i = 0; i <= kopt_tty_count; i++) {
+
+      if (internal_init_tty(TTY_MAJOR, i, 0) < 0) {
+
+         if (i <= 1)
+            panic("No enough memory for any TTY device");
+
+         printk("WARNING: no enough memory for creating /dev/tty%d\n", i);
+         kopt_tty_count = i - 1;
+         break;
+      }
+
+      if (kopt_serial_console)
+         break; /* stop avoid creating the special tty0 */
+   }
+}
+
+static void init_serial_ttys(void)
+{
+   /* NOTE: hw-specific stuff in generic code. TODO: fix that. */
+   static const u16 com_ports[4] = {COM1, COM2, COM3, COM4};
+
+   for (u16 i = 0; i < 4; i++) {
+      if (internal_init_tty(TTY_MAJOR, i + 64, com_ports[i]) < 0) {
+         printk("WARNING: no enough memory for creating /dev/ttyS%d\n", i);
+         break;
+      }
+   }
 }
 
 void init_tty(void)
@@ -229,22 +268,18 @@ void init_tty(void)
    di->create_dev_file = tty_create_device_file;
    register_driver(di, TTY_MAJOR);
 
-   for (u16 i = 0; i <= kopt_tty_count; i++) {
-      if (internal_init_tty(TTY_MAJOR, i) < 0) {
+   init_video_ttys();
+   init_serial_ttys();
 
-         if (i <= 1)
-            panic("No enough memory for any TTY device");
-
-         printk("WARNING: no enough memory for creating /dev/tty%d\n", i);
-         kopt_tty_count = i - 1;
-         break;
-      }
-   }
+   if (kopt_serial_console)
+      ttys[1] = ttys[64]; /* ttyS0 */
 
    disable_preemption();
    {
-      if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
-         panic("TTY: unable to register keypress handler");
+      if (!kopt_serial_console) {
+         if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
+            panic("TTY: unable to register keypress handler");
+      }
 
       tty_tasklet_runner = create_tasklet_thread(100, 1024);
 

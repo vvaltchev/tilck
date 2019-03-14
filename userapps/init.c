@@ -56,6 +56,13 @@ static int get_tty_count(void)
          break;
 
       if (i > 0)
+         count++; /* don't count /dev/tty0 */
+   }
+
+   if (count == 0) {
+
+      /* Assume that the kernel has been booted with -sercon */
+      if (!stat("/dev/ttyS0", &statbuf))
          count++;
    }
 
@@ -93,7 +100,7 @@ static void do_initial_setup(void)
 {
    if (getenv("TILCK")) {
 
-      open_std_handles(1);
+      open_std_handles(-1);
 
       if (getpid() != 1) {
          printf("[init] ERROR: my pid is %i instead of 1\n", getpid());

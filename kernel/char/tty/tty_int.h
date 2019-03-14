@@ -99,7 +99,7 @@ struct tty {
 };
 
 extern const struct termios default_termios;
-extern tty *ttys[MAX_TTYS + 1]; /* tty0 is not a real tty */
+extern tty *ttys[128]; /* tty0 is not a real tty */
 extern int tty_tasklet_runner;
 extern const s16 tty_default_trans_table[256];
 extern const s16 tty_gfx_trans_table[256];

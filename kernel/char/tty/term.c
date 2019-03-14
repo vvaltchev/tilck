@@ -717,8 +717,9 @@ init_term(term *t,
                 sizeof(term_action),
                 t->actions_buf);
 
-   if (!in_panic() && !serial_port_fwd) {
-      t->extra_buffer_rows = 9 * t->rows;
+   if (!in_panic()) {
+
+      t->extra_buffer_rows = serial_port_fwd ? 0 : 9 * t->rows;
       t->total_buffer_rows = t->rows + t->extra_buffer_rows;
 
       if (is_kmalloc_initialized())
@@ -753,7 +754,7 @@ init_term(term *t,
       t->total_buffer_rows = t->rows;
       t->buffer = failsafe_buffer;
 
-      if (!in_panic() && !serial_port_fwd)
+      if (!in_panic())
          printk("ERROR: unable to allocate the term buffer.\n");
    }
 
