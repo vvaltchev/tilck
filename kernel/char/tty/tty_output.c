@@ -701,3 +701,25 @@ ssize_t tty_write_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
    term_write(t->term_inst, buf, size, t->curr_color);
    return (ssize_t) size;
 }
+
+
+enum term_fret
+serial_tty_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   twfilter_ctx_t *ctx = ctx_arg;
+   tty *t = ctx->t;
+
+   if (*c == t->c_term.c_cc[VERASE]) {
+
+      *a = (term_action) {
+         .type3 = a_dwrite_no_filter,
+         .len = 3,
+         .col = *color,
+         .ptr = (uptr)"\b \b"
+      };
+
+      return TERM_FILTER_WRITE_BLANK;
+   }
+
+   return TERM_FILTER_WRITE_C;
+}

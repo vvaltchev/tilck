@@ -218,6 +218,8 @@ static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
 
    if (!serial_port_fwd) {
       term_set_filter(t->term_inst, tty_term_write_filter, &t->filter_ctx);
+   } else {
+      term_set_filter(t->term_inst, serial_tty_write_filter, &t->filter_ctx);
    }
 
    tty_update_default_state_tables(t);

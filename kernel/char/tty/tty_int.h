@@ -49,6 +49,9 @@ void tty_reset_filter_ctx(twfilter_ctx_t *ctx);
 
 enum term_fret
 tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);
+enum term_fret
+serial_tty_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);
+
 void tty_update_special_ctrl_handlers(tty *t);
 void tty_update_default_state_tables(tty *t);
 
