@@ -54,7 +54,7 @@ typedef int (*func_create_device_file)(int, file_ops *, devfs_entry_type *);
 
 typedef struct {
 
-   int major;
+   u16 major;
    const char *name;
    func_create_device_file create_dev_file;
 

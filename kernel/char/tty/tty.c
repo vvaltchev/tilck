@@ -191,19 +191,6 @@ static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
    ASSERT(minor < ARRAY_SIZE(ttys));
    ASSERT(!ttys[minor]);
 
-   if (minor == 0) {
-
-      ASSERT(serial_port_fwd == 0);
-
-      /*
-       * tty0 is special: not a real tty but a special file always pointing
-       * to the current tty. Therefore, just create the dev file.
-       */
-
-      tty_create_devfile_or_panic("tty0", major, minor);
-      return 0;
-   }
-
    tty *const t = allocate_and_init_tty(minor, serial_port_fwd);
 
    if (!t)
@@ -234,7 +221,7 @@ static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
 
 static void init_video_ttys(void)
 {
-   for (u16 i = 0; i <= kopt_tty_count; i++) {
+   for (u16 i = 1; i <= kopt_tty_count; i++) {
 
       if (internal_init_tty(TTY_MAJOR, i, 0) < 0) {
 
@@ -275,11 +262,17 @@ void init_tty(void)
    di->create_dev_file = tty_create_device_file;
    register_driver(di, TTY_MAJOR);
 
-   init_video_ttys();
-   init_serial_ttys();
+   /*
+    * tty0 is special: not a real tty but a special file always pointing
+    * to the current tty. Therefore, just create the dev file.
+    */
 
-   if (kopt_serial_console)
-      ttys[1] = ttys[64]; /* ttyS0 */
+   tty_create_devfile_or_panic("tty0", di->major, 0);
+
+   if (!kopt_serial_console)
+      init_video_ttys();
+
+   init_serial_ttys();
 
    disable_preemption();
    {
@@ -296,7 +289,7 @@ void init_tty(void)
    enable_preemption();
 
    init_ttyaux();
-   __curr_tty = ttys[1];
+   __curr_tty = ttys[kopt_serial_console ? 64 : 1];
 
    process_set_tty(kernel_process_pi, get_curr_tty());
    void *init_pi = task_get_pi_opaque(get_task(1));
