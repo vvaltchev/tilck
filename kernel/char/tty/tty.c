@@ -91,6 +91,11 @@ tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
    ops->fcntl = tty_fcntl;
    ops->get_rready_cond = tty_get_rready_cond;
    ops->read_ready = tty_read_ready;
+   /*
+    * IMPORTANT: remember to add any NEW ops func also to ttyaux's
+    * ttyaux_create_device_file() function, in ttyaux.c.
+    */
+
 
    /* the tty device-file requires NO locking */
    ops->exlock = &vfs_file_nolock;

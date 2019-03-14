@@ -38,6 +38,16 @@ static int ttyaux_fcntl(fs_handle h, int cmd, uptr arg)
    return tty_fcntl_int(get_curr_process_tty(), h, cmd, arg);
 }
 
+static kcond *ttyaux_get_rready_cond(fs_handle h)
+{
+   return &get_curr_process_tty()->kb_input_cond;
+}
+
+static bool ttyaux_read_ready(fs_handle h)
+{
+   return tty_read_ready_int(get_curr_process_tty(), h);
+}
+
 static int
 ttyaux_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
 {
@@ -49,6 +59,8 @@ ttyaux_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
    ops->write = ttyaux_write;
    ops->ioctl = ttyaux_ioctl;
    ops->fcntl = ttyaux_fcntl;
+   ops->get_rready_cond = ttyaux_get_rready_cond;
+   ops->read_ready = ttyaux_read_ready;
 
    /* the tty device-file requires NO locking */
    ops->exlock = &vfs_file_nolock;
