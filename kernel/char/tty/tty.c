@@ -210,11 +210,11 @@ static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
 
    tty_input_init(t);
 
-   if (!serial_port_fwd) {
-      term_set_filter(t->term_inst, tty_term_write_filter, &t->filter_ctx);
-   } else {
-      term_set_filter(t->term_inst, serial_tty_write_filter, &t->filter_ctx);
-   }
+   term_set_filter(t->term_inst,
+                   serial_port_fwd
+                     ? serial_tty_write_filter
+                     : tty_term_write_filter,
+                   &t->filter_ctx);
 
    tty_update_default_state_tables(t);
    ttys[minor] = t;
@@ -224,7 +224,6 @@ static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
 static void init_video_ttys(void)
 {
    for (u16 i = 1; i <= kopt_tty_count; i++) {
-
       if (internal_init_tty(TTY_MAJOR, i, 0) < 0) {
 
          if (i <= 1)
@@ -234,9 +233,6 @@ static void init_video_ttys(void)
          kopt_tty_count = i - 1;
          break;
       }
-
-      if (kopt_serial_console)
-         break; /* stop avoid creating the special tty0 */
    }
 }
 
