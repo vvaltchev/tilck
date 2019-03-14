@@ -174,8 +174,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_sched();
    setup_syscall_interfaces();
 
-   //show_system_info();
-
    init_tasklets();
    init_timer();
 

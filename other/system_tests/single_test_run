@@ -37,6 +37,7 @@ in_travis = os.environ.get('TRAVIS', False)
 in_circleci = os.environ.get('CIRCLECI', False)
 dump_coverage = os.environ.get('DUMP_COV', False)
 report_coverage = os.environ.get('REPORT_COV', False)
+verbose = os.environ.get('VERBOSE', False)
 
 # Global variables
 
@@ -79,7 +80,7 @@ def write_gcda_file():
       gcda_file = None
       gcda_buf = None
 
-def HandleHelloMsg():
+def HandleHelloMsg(line):
 
    global process
    global failed
@@ -87,6 +88,7 @@ def HandleHelloMsg():
 
    if not hello_msg_found:
       hello_msg_found = True
+      print(line)
       return
 
    # Bad case
@@ -122,7 +124,7 @@ def ProcessLine(line):
          return
 
    if stripped.find(KERNEL_HELLO_MSG) != -1:
-      HandleHelloMsg()
+      HandleHelloMsg(stripped)
       return
 
    if not dumping_gcda_files:
@@ -207,6 +209,10 @@ def RunTheVM():
    kernel_cmdline += '-cmd /sbin/init {0} -- {1}'.format(init_opts, cmdline)
 
    args += ['-initrd', FATPART_FILE, '-append', kernel_cmdline]
+
+   if verbose:
+      print(" ".join(args))
+
    print('-' * 80)
    print('\n')
    process = subprocess.Popen(args, stdout=subprocess.PIPE)
