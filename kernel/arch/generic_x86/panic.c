@@ -11,6 +11,7 @@
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/tty.h>
+#include <tilck/kernel/cmdline.h>
 
 void panic_save_current_state(); /* defined in kernel_yield.S */
 
@@ -39,7 +40,6 @@ NORETURN void panic(const char *fmt, ...)
 
       init_console();
    }
-
 
    printk("*********************************"
           " KERNEL PANIC "

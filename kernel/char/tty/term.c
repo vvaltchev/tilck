@@ -101,11 +101,17 @@ static ALWAYS_INLINE bool ts_is_at_bottom(term *t)
 
 static ALWAYS_INLINE u8 get_curr_cell_color(term *t)
 {
+   if (!t->buffer)
+      return 0;
+
    return vgaentry_get_color(buffer_get_entry(t, t->r, t->c));
 }
 
 static void term_redraw(term *t)
 {
+   if (!t->buffer)
+      return;
+
    fpu_context_begin();
 
    for (u16 row = 0; row < t->rows; row++) {
@@ -163,6 +169,9 @@ static ALWAYS_INLINE void ts_scroll_to_bottom(term *t)
 
 static void ts_buf_clear_row(term *t, u16 row, u8 color)
 {
+   if (!t->buffer)
+      return;
+
    u16 *rowb = t->buffer + t->cols * ((row + t->scroll) % t->total_buffer_rows);
    memset16(rowb, make_vgaentry(' ', color), t->cols);
 }
@@ -415,6 +424,9 @@ static void term_action_set_col_offset(term *t, u16 off, ...)
 
 static void term_action_move_ch_and_cur(term *t, int row, int col, ...)
 {
+   if (!t->buffer)
+      return;
+
    t->r = (u16) BOUND(row, 0, t->rows - 1);
    t->c = (u16) BOUND(col, 0, t->cols - 1);
    t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
@@ -425,6 +437,9 @@ static void term_action_move_ch_and_cur(term *t, int row, int col, ...)
 
 static void term_action_move_ch_and_cur_rel(term *t, s8 dr, s8 dc, ...)
 {
+   if (!t->buffer)
+      return;
+
    t->r = (u16) BOUND((int)t->r + dr, 0, t->rows - 1);
    t->c = (u16) BOUND((int)t->c + dc, 0, t->cols - 1);
    t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
@@ -491,7 +506,7 @@ static void term_action_erase_in_display(term *t, int mode, ...)
          break;
 
       case 3:
-         /* Clear the whole screen and erase the t->scroll t->buffer */
+         /* Clear the whole screen and erase the scroll buffer */
          {
             u16 row = t->r;
             u16 col = t->c;
@@ -544,6 +559,9 @@ static void term_action_erase_in_line(term *t, int mode, ...)
 
 static void term_action_non_buf_scroll_up(term *t, u16 n, ...)
 {
+   if (!t->buffer)
+      return;
+
    ASSERT(n >= 1);
    n = (u16)MIN(n, t->rows);
 
@@ -561,6 +579,9 @@ static void term_action_non_buf_scroll_up(term *t, u16 n, ...)
 
 static void term_action_non_buf_scroll_down(term *t, u16 n, ...)
 {
+   if (!t->buffer)
+      return;
+
    ASSERT(n >= 1);
    n = (u16)MIN(n, t->rows);
 
@@ -717,9 +738,9 @@ init_term(term *t,
                 sizeof(term_action),
                 t->actions_buf);
 
-   if (!in_panic()) {
+   if (!in_panic() && !serial_port_fwd) {
 
-      t->extra_buffer_rows = serial_port_fwd ? 0 : 9 * t->rows;
+      t->extra_buffer_rows = 9 * t->rows;
       t->total_buffer_rows = t->rows + t->extra_buffer_rows;
 
       if (is_kmalloc_initialized())
@@ -740,7 +761,7 @@ init_term(term *t,
          printk("WARNING: unable to allocate term_tabs_buf\n");
       }
 
-   } else {
+   } else if (!serial_port_fwd) {
 
       /* We're in panic or we were unable to allocate the buffer */
 
