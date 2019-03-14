@@ -71,7 +71,7 @@ multi_obj_waiter *allocate_mobj_waiter(u32 elems)
    if (!w)
       return NULL;
 
-   bzero(w, sizeof(*w));
+   bzero(w, s);
    w->count = elems;
    return w;
 }
