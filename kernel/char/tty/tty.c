@@ -16,6 +16,8 @@
 
 #include "tty_int.h"
 
+#define TTYS0_MINOR 64
+
 STATIC_ASSERT(TTY_COUNT <= MAX_TTYS);
 
 tty *ttys[128];
@@ -199,7 +201,7 @@ static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
    snprintk(t->dev_filename,
             sizeof(t->dev_filename),
             serial_port_fwd ? "ttyS%d" : "tty%d",
-            serial_port_fwd ? minor - 64 : minor);
+            serial_port_fwd ? minor - TTYS0_MINOR : minor);
 
    if (create_dev_file(t->dev_filename, major, minor) < 0) {
       tty_full_destroy(t);
@@ -244,7 +246,7 @@ static void init_serial_ttys(void)
    static const u16 com_ports[4] = {COM1, COM2, COM3, COM4};
 
    for (u16 i = 0; i < 4; i++) {
-      if (internal_init_tty(TTY_MAJOR, i + 64, com_ports[i]) < 0) {
+      if (internal_init_tty(TTY_MAJOR, i + TTYS0_MINOR, com_ports[i]) < 0) {
          printk("WARNING: no enough memory for creating /dev/ttyS%d\n", i);
          break;
       }
@@ -276,10 +278,9 @@ void init_tty(void)
 
    disable_preemption();
    {
-      if (!kopt_serial_console) {
+      if (!kopt_serial_console)
          if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
             panic("TTY: unable to register keypress handler");
-      }
 
       tty_tasklet_runner = create_tasklet_thread(100, 1024);
 
@@ -289,7 +290,7 @@ void init_tty(void)
    enable_preemption();
 
    init_ttyaux();
-   __curr_tty = ttys[kopt_serial_console ? 64 : 1];
+   __curr_tty = ttys[kopt_serial_console ? TTYS0_MINOR : 1];
 
    process_set_tty(kernel_process_pi, get_curr_tty());
    void *init_pi = task_get_pi_opaque(get_task(1));
