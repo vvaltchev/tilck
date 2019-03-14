@@ -9,27 +9,26 @@
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/cmdline.h>
 
-extern int kb_tasklet_runner;
+int serial_port_tasklet_runner;
 
-
-static void serial_con_bh_handler(char c)
+static void serial_con_bh_handler(u16 port)
 {
-   tty_keypress_handler_int(get_curr_tty(), (u32)c, (u8)c, false);
+   while (serial_read_ready(port)) {
+
+      u8 c = (u8)serial_read(port);
+      tty_keypress_handler_int(get_curr_tty(), c, c, false);
+   }
 }
 
 static int serial_con_irq_handler(regs *r, u16 port)
 {
-   char c;
-
    if (!serial_read_ready(port))
       return 0;
 
-   while (serial_read_ready(port)) {
-
-      c = serial_read(port);
-
-      if (!enqueue_tasklet1(kb_tasklet_runner, &serial_con_bh_handler, c))
-         panic("KB: hit tasklet queue limit");
+   if (!enqueue_tasklet1(serial_port_tasklet_runner,
+                         &serial_con_bh_handler, port))
+   {
+      panic("KB: hit tasklet queue limit");
    }
 
    return 1;
@@ -86,8 +85,15 @@ void early_init_serial_ports(void)
 
 void init_serial_comm(void)
 {
-   if (kopt_serial_console)
+   serial_port_tasklet_runner =
+      create_tasklet_thread(1 /* priority */, 128);
+
+   if (serial_port_tasklet_runner < 0)
+      panic("Serial: Unable to create a tasklet runner thread for IRQs");
+
+   if (kopt_serial_console) {
       ser_handlers[0] = serial_con_irq_handler;
+   }
 
    irq_install_handler(X86_PC_COM1_IRQ, &serial_com1_irq_handler);
    irq_install_handler(X86_PC_COM2_IRQ, &serial_com2_irq_handler);

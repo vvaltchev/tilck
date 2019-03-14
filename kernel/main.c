@@ -126,8 +126,11 @@ static void init_drivers(void)
 {
    disable_preemption();
    {
-      init_kb();
-      register_debug_kernel_keypress_handler();
+      if (!kopt_serial_console) {
+         init_kb();
+         register_debug_kernel_keypress_handler();
+      }
+
       init_tty();
       show_system_info();
 
