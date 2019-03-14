@@ -27,6 +27,9 @@ static void tty_keypress_echo(tty *t, char c)
 {
    struct termios *const c_term = &t->c_term;
 
+   if (t->serial_port_fwd)
+      return;
+
    if (t->kd_mode == KD_GRAPHICS)
       return;
 

@@ -59,6 +59,7 @@
       "type_traits": "c",
       "tty_ctrl_handlers.c.h": "c",
       "config.h": "c",
-      "generated_config.h": "c"
+      "generated_config.h": "c",
+      "tty_int.h": "c"
    }
 }

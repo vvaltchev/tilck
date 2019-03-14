@@ -6,6 +6,8 @@
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/term.h>
+#include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/devfs.h>
 
 #include <termios.h>      // system header
 #include <linux/kd.h>     // system header
@@ -94,6 +96,7 @@ struct tty {
    /* tty input & output */
    u8 curr_color; /* actual color after applying attrs */
    u8 user_color; /* color before attrs */
+   u16 serial_port_fwd;
 
    /* large fields */
    char kb_input_buf[KB_INPUT_BS];               /* tty input */

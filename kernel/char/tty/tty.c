@@ -107,7 +107,7 @@ tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
    return 0;
 }
 
-static void init_tty_struct(tty *t, int minor)
+static void init_tty_struct(tty *t, u16 minor, u16 serial_port_fwd)
 {
    t->minor = minor;
    t->filter_ctx.t = t;
@@ -115,6 +115,7 @@ static void init_tty_struct(tty *t, int minor)
    t->kd_mode = KD_TEXT;
    t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
    t->user_color = t->curr_color;
+   t->serial_port_fwd = serial_port_fwd;
    t->c_set = 0;
    t->c_sets_tables[0] = tty_default_trans_table;
    t->c_sets_tables[1] = tty_gfx_trans_table;
@@ -162,7 +163,7 @@ static tty *allocate_and_init_tty(u16 minor, u16 serial_port_fwd)
    if (!t)
       return NULL;
 
-   init_tty_struct(t, minor);
+   init_tty_struct(t, minor, serial_port_fwd);
 
    term *new_term = (minor == 1 || kopt_serial_console)
                         ? get_curr_term()

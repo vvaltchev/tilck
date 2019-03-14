@@ -123,14 +123,32 @@ void read_1_canon_mode(void)
 
 void read_canon_mode(void)
 {
-   char buf[32];
+   char buf[32] = {0};
    int r;
 
    printf("Regular read in canonical mode\n");
    r = read(0, buf, 32);
-   buf[r] = 0;
+   printf("read(%d): %s", r, buf);
+}
+
+void read_ttys0_canon_mode(void)
+{
+   char buf[32] = {0};
+   int r, fd;
+
+   fd = open("/dev/ttyS0", O_RDONLY);
+
+   if (fd < 0) {
+      perror("Open /dev/ttyS0 failed");
+      return;
+   }
+
+   printf("Regular read from /dev/ttyS0 in canonical mode\n");
+
+   r = read(fd, buf, 32);
 
    printf("read(%d): %s", r, buf);
+   close(fd);
 }
 
 void write_to_stdin(void)
@@ -321,7 +339,8 @@ static struct {
    CMD_ENTRY("-nr", read_nonblock_rawmode),
    CMD_ENTRY("-fr", write_full_row),
    CMD_ENTRY("-sr", sleep_then_read),
-   CMD_ENTRY("-mr", sym_read)
+   CMD_ENTRY("-mr", sym_read),
+   CMD_ENTRY("-cs", read_ttys0_canon_mode)
 };
 
 static void show_help(void)
