@@ -9,6 +9,8 @@
 #include <tilck/kernel/sync.h>
 
 static kcond conds[2];
+static ATOMIC(int) mobj_se_test_signal_counter;
+static bool mobj_se_test_assumption_failed;
 
 static void mobj_waiter_sig_thread(void *arg)
 {
@@ -20,10 +22,19 @@ static void mobj_waiter_sig_thread(void *arg)
 
    printk("[thread %u] signal cond %d\n", n, n);
    kcond_signal_one(&conds[n]);
+   mobj_se_test_signal_counter++;
 }
 
 static void mobj_waiter_wait_thread(void *arg)
 {
+   printk("[wait th] Start\n");
+
+   if (mobj_se_test_signal_counter > 0) {
+      printk("[wait th] Test timing assumption failed, re-try\n");
+      mobj_se_test_assumption_failed = true;
+      return;
+   }
+
    multi_obj_waiter *w = allocate_mobj_waiter(ARRAY_SIZE(conds));
    VERIFY(w != NULL);
 
@@ -32,7 +43,7 @@ static void mobj_waiter_wait_thread(void *arg)
 
    for (u32 i = 0; i < ARRAY_SIZE(conds); i++) {
 
-      printk("[wait thread]: going to sleep on waiter obj\n");
+      printk("[wait th]: going to sleep on waiter obj\n");
       kernel_sleep_on_waiter(w);
 
       printk("[wait th ] wake up #%u\n", i);
@@ -56,6 +67,11 @@ void selftest_mobj_waiter_short()
    int tids[ARRAY_SIZE(conds)];
    int w_tid;
 
+retry:
+
+   mobj_se_test_signal_counter = 0;
+   mobj_se_test_assumption_failed = false;
+
    for (size_t i = 0; i < ARRAY_SIZE(conds); i++) {
       kcond_init(&conds[i]);
       tids[i] = kthread_create(&mobj_waiter_sig_thread, (void*) i)->tid;
@@ -70,6 +86,9 @@ void selftest_mobj_waiter_short()
 
    for (size_t i = 0; i < ARRAY_SIZE(conds); i++)
       kcond_destory(&conds[i]);
+
+   if (mobj_se_test_assumption_failed)
+      goto retry;
 
    regular_self_test_end();
 }
