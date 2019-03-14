@@ -264,7 +264,6 @@ void init_tty(void)
     * tty0 is special: not a real tty but a special file always pointing
     * to the current tty. Therefore, just create the dev file.
     */
-
    tty_create_devfile_or_panic("tty0", di->major, 0);
 
    if (!kopt_serial_console)

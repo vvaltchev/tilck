@@ -124,15 +124,19 @@ static void mount_first_ramdisk(void)
 
 static void init_drivers(void)
 {
-   init_kb();
-   register_debug_kernel_keypress_handler();
-   init_tty();
-   show_system_info();
+   disable_preemption();
+   {
+      init_kb();
+      register_debug_kernel_keypress_handler();
+      init_tty();
+      show_system_info();
 
-   if (use_framebuffer())
-      init_fbdev();
+      if (use_framebuffer())
+         init_fbdev();
 
-   init_serial_comm();
+      init_serial_comm();
+   }
+   enable_preemption();
 }
 
 static void async_init_drivers(void)
