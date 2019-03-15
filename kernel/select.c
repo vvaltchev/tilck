@@ -375,7 +375,7 @@ sptr sys_select(int user_nfds,
       .timeout_ticks = 0
    };
 
-   int rc;
+   sptr rc;
 
    if (user_nfds < 0 || user_nfds > MAX_HANDLES)
       return -EINVAL;
@@ -386,12 +386,16 @@ sptr sys_select(int user_nfds,
    if ((rc = select_read_user_tv(user_tv, &ctx.tv, &ctx.timeout_ticks)))
       return rc;
 
+   if ((rc = (sptr)count_ready_streams(ctx.nfds, ctx.sets)) > 0) {
+      return select_write_user_sets(&ctx);
+   }
+
    //debug_dump_select_args(nfds, sets[0], sets[1], sets[2], tv);
 
    if ((rc = select_compute_cond_cnt(&ctx)))
       return rc;
 
-   if (ctx.cond_cnt > 0) {
+   if (ctx.cond_cnt > 0 && (!user_tv || ctx.timeout_ticks > 0)) {
 
       /*
        * The count of condition variables for all the file descriptors is

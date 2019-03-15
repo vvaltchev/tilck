@@ -60,6 +60,7 @@ int cmd_select2(int argc, char **argv)
       tv.tv_sec = 0;
       tv.tv_usec = 0;
 
+      printf("call select(..., tv = {0, 0})\n");
       ret = select(nfds, &readfds, NULL, NULL, &tv);
 
       if (ret < 0) {
