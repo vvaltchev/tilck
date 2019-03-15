@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <poll.h>
 
 #ifdef USERMODE_APP
    /* The application is compiled with Tilck's build system */
@@ -307,6 +308,70 @@ static void sym_read(void)
    waitpid(-1, NULL, 0);
 }
 
+static void poll_and_read(void)
+{
+   char buf[32] = {0};
+   int rc, pos = 0;
+   struct pollfd fds[] = {
+      { .fd = 0, .events = POLLIN, .revents = 0 }
+   };
+
+   printf("Setting TTY in raw mode\n");
+   term_set_raw_mode();
+
+   while (1) {
+
+      rc = poll(fds, 1 /* nfds */, 1000 /* ms */);
+      printf("poll() -> %d\r\n", rc);
+
+      if (rc > 0) {
+
+         if (fds[0].revents & POLLIN) {
+            printf("fd %d -> POLLIN\r\n", fds[0].fd);
+            break;
+         }
+
+         if (fds[0].revents & POLLPRI)
+            printf("fd %d -> POLLPRI\r\n", fds[0].fd);
+
+         if (fds[0].revents & POLLRDHUP)
+            printf("fd %d -> POLLRDHUP\r\n", fds[0].fd);
+
+         if (fds[0].revents & POLLERR)
+            printf("fd %d -> POLLERR\r\n", fds[0].fd);
+
+         if (fds[0].revents & POLLHUP)
+            printf("fd %d -> POLLHUP\r\n", fds[0].fd);
+
+         if (fds[0].revents & POLLNVAL)
+            printf("fd %d -> POLLNVAL\r\n", fds[0].fd);
+      }
+   }
+
+   printf("poll() said there's something to read. read():\r\n");
+
+   for (pos = 0; pos < 32; pos++) {
+
+      rc = read(0, buf + pos, 1);
+
+      printf("read() -> %d\r\n", rc);
+      printf("buf[%d]: 0x%x\r\n", pos, (unsigned)buf[pos]);
+
+      rc = poll(fds, 1 /* nfds */, 50 /* ms */);
+      printf("poll() -> %d\r\n");
+
+      if (rc > 0) {
+         if (fds[0].revents & POLLIN) {
+            printf("fd %d -> POLLIN\r\n", fds[0].fd);
+            continue;
+         }
+      }
+
+      printf("Nothing more to read, break\r\n");
+      break;
+   }
+}
+
 #ifdef USERMODE_APP
 static void dump_termios(void)
 {
@@ -340,7 +405,8 @@ static struct {
    CMD_ENTRY("-fr", write_full_row),
    CMD_ENTRY("-sr", sleep_then_read),
    CMD_ENTRY("-mr", sym_read),
-   CMD_ENTRY("-cs", read_ttys0_canon_mode)
+   CMD_ENTRY("-cs", read_ttys0_canon_mode),
+   CMD_ENTRY("-pr", poll_and_read)
 };
 
 static void show_help(void)
