@@ -284,6 +284,14 @@ sptr sys_poll(struct pollfd *user_fds, nfds_t user_nfds, int timeout)
    if (copy_from_user(fds, user_fds, sizeof(struct pollfd) * nfds))
       return -EFAULT;
 
+   for (u32 i = 0; i < nfds; i++)
+      fds[i].revents = 0;
+
+   ready_fds_cnt = poll_count_ready_fds(fds, nfds);
+
+   if (ready_fds_cnt > 0)
+      return ready_fds_cnt;
+
    //debug_poll_args_dump(fds, nfds, timeout);
 
    if (timeout != 0)

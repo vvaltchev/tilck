@@ -358,7 +358,7 @@ static void poll_and_read(void)
       printf("buf[%d]: 0x%x\r\n", pos, (unsigned)buf[pos]);
 
       rc = poll(fds, 1 /* nfds */, 50 /* ms */);
-      printf("poll() -> %d\r\n");
+      printf("poll() -> %d\r\n", rc);
 
       if (rc > 0) {
          if (fds[0].revents & POLLIN) {
