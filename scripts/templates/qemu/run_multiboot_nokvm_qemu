@@ -1,5 +1,7 @@
 #!/bin/sh
 
 BUILD_DIR="@CMAKE_BINARY_DIR@"
+FATPART="$BUILD_DIR/fatpart"
+
 qemu-system-i386 @QEMU_COMMON_OPTS@ \
-   -s @QEMU_RAM_OPT@ -kernel "@KERNEL_FILE@" "$@"
+   -s @QEMU_RAM_OPT@ -kernel "@KERNEL_FILE@" -initrd "$FATPART" "$@"
