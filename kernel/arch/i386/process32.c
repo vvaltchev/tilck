@@ -208,7 +208,14 @@ task_info *create_usermode_task(page_directory_t *pdir,
 
    r.eflags = 0x2 /* reserved, always set */ | EFLAGS_IF;
 
-   if (!task_to_use) {
+   if (UNLIKELY(!task_to_use)) {
+
+      /*
+       * Special case: applies only for `init`, the first process.
+       * In all the other cases, a process has first to fork() and then to
+       * call execve() from the child. In that case, we already have a PID
+       * to use.
+       */
 
       int pid = create_new_pid();
 
@@ -225,7 +232,19 @@ task_info *create_usermode_task(page_directory_t *pdir,
       memcpy(ti->pi->cwd, "/", 2);
 
    } else {
+
+      /*
+       * Common case: we're creating a new process using the data structures
+       * and the PID from a forked child (task_to_use).
+       */
+
       ti = task_to_use;
+
+      /*
+       * We HAVE TO free all GDT and LDT entries by the current (forked)
+       * child since we're creating a totally new process.
+       */
+      arch_specific_free_task(ti);
       ASSERT(ti->state == TASK_STATE_RUNNABLE);
    }
 
@@ -451,14 +470,21 @@ bool arch_specific_new_task_setup(task_info *ti, task_info *parent)
 
 void arch_specific_free_task(task_info *ti)
 {
-   if (ti->arch.ldt)
+   if (ti->arch.ldt) {
       gdt_clear_entry(ti->arch.ldt_index_in_gdt);
+      ti->arch.ldt = NULL;
+   }
 
-   for (u32 i = 0; i < ARRAY_SIZE(ti->arch.gdt_entries); i++)
-      if (ti->arch.gdt_entries[i])
+   for (u32 i = 0; i < ARRAY_SIZE(ti->arch.gdt_entries); i++) {
+      if (ti->arch.gdt_entries[i]) {
          gdt_clear_entry(ti->arch.gdt_entries[i]);
+         ti->arch.gdt_entries[i] = 0;
+      }
+   }
 
    kfree2(ti->arch.fpu_regs, ti->arch.fpu_regs_size);
+   ti->arch.fpu_regs = NULL;
+   ti->arch.fpu_regs_size = 0;
 }
 
 /* General protection fault handler */
