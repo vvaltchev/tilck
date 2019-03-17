@@ -111,14 +111,14 @@ static void tty_keypress_echo(tty *t, char c)
 
 static inline bool kb_buf_is_empty(tty *t)
 {
-   bool ret = ringbuf_is_empty(&t->kb_input_ringbuf);
+   bool ret = safe_ringbuf_is_empty(&t->kb_input_safe_ringbuf);
    ASSERT(ret == (t->kb_input_unread_cnt == 0));
    return ret;
 }
 
 void tty_kb_buf_reset(tty *t)
 {
-   ringbuf_reset(&t->kb_input_ringbuf);
+   safe_ringbuf_reset(&t->kb_input_safe_ringbuf);
    t->kb_input_unread_cnt = 0;
    t->end_line_delim_count = 0;
 }
@@ -127,7 +127,9 @@ static inline u8 kb_buf_read_elem(tty *t)
 {
    u8 ret;
    ASSERT(!kb_buf_is_empty(t));
-   DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&t->kb_input_ringbuf, &ret));
+   DEBUG_CHECKED_SUCCESS(
+      safe_ringbuf_read_elem1(&t->kb_input_safe_ringbuf, &ret)
+   );
    ASSERT(t->kb_input_unread_cnt > 0);
    t->kb_input_unread_cnt--;
    return ret;
@@ -138,7 +140,7 @@ static inline bool kb_buf_drop_last_written_elem(tty *t)
    char unused;
    tty_keypress_echo(t, (char)t->c_term.c_cc[VERASE]);
 
-   if (ringbuf_unwrite_elem(&t->kb_input_ringbuf, &unused)) {
+   if (safe_ringbuf_unwrite_elem(&t->kb_input_safe_ringbuf, &unused)) {
       ASSERT(t->kb_input_unread_cnt > 0);
       t->kb_input_unread_cnt--;
       return true;
@@ -151,7 +153,7 @@ static inline bool kb_buf_write_elem(tty *t, u8 c)
 {
    tty_keypress_echo(t, (char)c);
 
-   if (ringbuf_write_elem1(&t->kb_input_ringbuf, c)) {
+   if (safe_ringbuf_write_elem1(&t->kb_input_safe_ringbuf, c)) {
       t->kb_input_unread_cnt++;
       return true;
    }
@@ -482,6 +484,6 @@ void tty_update_special_ctrl_handlers(tty *t)
 void tty_input_init(tty *t)
 {
    kcond_init(&t->kb_input_cond);
-   ringbuf_init(&t->kb_input_ringbuf, KB_INPUT_BS, 1, t->kb_input_buf);
+   safe_ringbuf_init(&t->kb_input_safe_ringbuf,KB_INPUT_BS,1,t->kb_input_buf);
    tty_update_special_ctrl_handlers(t);
 }

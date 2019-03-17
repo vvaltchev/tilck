@@ -39,7 +39,7 @@ struct term {
    u32 extra_buffer_rows;
    bool *term_tabs_buf;
 
-   ringbuf ringbuf;
+   safe_ringbuf safe_ringbuf;
    term_action actions_buf[32];
 
    term_filter filter;
@@ -733,10 +733,10 @@ init_term(term *t,
    t->saved_vi = intf;
    t->vi = (t == &first_instance) ? intf : &no_output_vi;
 
-   ringbuf_init(&t->ringbuf,
-                ARRAY_SIZE(t->actions_buf),
-                sizeof(term_action),
-                t->actions_buf);
+   safe_ringbuf_init(&t->safe_ringbuf,
+                     ARRAY_SIZE(t->actions_buf),
+                     sizeof(term_action),
+                     t->actions_buf);
 
    if (!in_panic() && !serial_port_fwd) {
 

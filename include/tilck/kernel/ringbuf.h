@@ -18,34 +18,34 @@ typedef struct {
       ATOMIC(u32) raw;
    };
 
-} generic_ringbuf_stat;
+} generic_safe_ringbuf_stat;
 
 typedef struct {
 
    u16 max_elems;
    u16 elem_size;
-   generic_ringbuf_stat s;
+   generic_safe_ringbuf_stat s;
    u8 *buf;
 
-} ringbuf;
+} safe_ringbuf;
 
-static inline bool ringbuf_is_empty(ringbuf *rb)
+static inline bool safe_ringbuf_is_empty(safe_ringbuf *rb)
 {
    return rb->s.read_pos == rb->s.write_pos && !rb->s.full;
 }
 
-static inline bool ringbuf_is_full(ringbuf *rb)
+static inline bool safe_ringbuf_is_full(safe_ringbuf *rb)
 {
    return rb->s.full;
 }
 
-void ringbuf_init(ringbuf *rb, u16 max_elems, u16 elem_size, void *buf);
-void ringbuf_destory(ringbuf *rb);
-void ringbuf_reset(ringbuf *rb);
-bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr);
-bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */);
-bool ringbuf_unwrite_elem(ringbuf *rb, void *elem_ptr /* out */);
+void safe_ringbuf_init(safe_ringbuf *rb, u16 max_elems, u16 elem_size, void *b);
+void safe_ringbuf_destory(safe_ringbuf *rb);
+void safe_ringbuf_reset(safe_ringbuf *rb);
+bool safe_ringbuf_write_elem(safe_ringbuf *rb, void *elem_ptr);
+bool safe_ringbuf_read_elem(safe_ringbuf *rb, void *elem_ptr /* out */);
+bool safe_ringbuf_unwrite_elem(safe_ringbuf *rb, void *elem_ptr /* out */);
 
-bool ringbuf_write_elem1(ringbuf *rb, u8 val);
-bool ringbuf_read_elem1(ringbuf *rb, u8 *elem_ptr);
-bool ringbuf_write_elem_ex(ringbuf *rb, void *elem_ptr, bool *was_empty);
+bool safe_ringbuf_write_elem1(safe_ringbuf *rb, u8 val);
+bool safe_ringbuf_read_elem1(safe_ringbuf *rb, u8 *elem_ptr);
+bool safe_ringbuf_write_elem_ex(safe_ringbuf *rb, void *elem, bool *was_empty);
