@@ -215,12 +215,15 @@ def main():
       PrintCounters(gLinesCount, gEmptyLinesCount, gTotal, gEmptyTotal)
 
    if optShowLongLines:
-      print("\nLong lines")
-      print("-" * 80)
-      for f in longLines:
-         for lines in longLines[f]:
-            print("{0: <69} [{1: >3} cols]".\
-                  format(f + ":" + str(lines[0]), lines[1]))
+      if longLines:
+         print("\nLong lines")
+         print("-" * 80)
+         for f in longLines:
+            for lines in longLines[f]:
+               print("{0: <69} [{1: >3} cols]".\
+                     format(f + ":" + str(lines[0]), lines[1]))
+      else:
+         print("\nLong lines: NONE")
 
 #########################################################
 if __name__ == "__main__":

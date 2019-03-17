@@ -33,7 +33,9 @@ include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${GTEST_SOURCE_DIR}/include)
 
+# Override CMake's default executable output directory
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+
 add_executable(gtests EXCLUDE_FROM_ALL ${SOURCES})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")

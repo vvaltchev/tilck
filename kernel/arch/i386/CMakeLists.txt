@@ -49,6 +49,7 @@ file(
 
 file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})
 
+# Override CMake's default executable output directory
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 add_executable(
@@ -91,7 +92,7 @@ add_custom_command(
    OUTPUT
       ${KERNEL_FILE}
    COMMAND
-      ${TOOL_STRIP} --strip-debug ${EXECUTABLE_OUTPUT_PATH}/elf_kernel -o ${KERNEL_FILE}
+      ${TOOL_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
    COMMAND
       elfhack ${KERNEL_FILE} --copy .symtab .Symtab
    COMMAND

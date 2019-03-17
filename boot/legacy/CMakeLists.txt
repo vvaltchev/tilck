@@ -136,6 +136,7 @@ add_custom_command(
       elf_stage3
 )
 
+set(dd_opts1 "status=none" "conv=notrunc" "oflag=append")
 
 add_custom_command(
    OUTPUT
@@ -143,7 +144,7 @@ add_custom_command(
    COMMAND
       cp early_boot ${BOOTLOADER_BIN_FILE}
    COMMAND
-      dd status=none conv=notrunc oflag=append if=elf_stage3_stripped of=${BOOTLOADER_BIN_FILE}
+      dd ${dd_opts1} if=elf_stage3_stripped of=${BOOTLOADER_BIN_FILE}
    DEPENDS
       early_boot elf_stage3_stripped
    COMMENT
