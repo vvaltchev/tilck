@@ -97,7 +97,7 @@ def CountLinesInFile(f, ft):
             if not f in longLines:
                longLines[f] = []
 
-            longLines[f].append( (i, len(rsline)) )
+            longLines[f].append( (i+1, len(rsline)) )
 
          res[0] += 1
 

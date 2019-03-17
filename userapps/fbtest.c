@@ -127,8 +127,8 @@ bool fb_acquire(void)
    }
 
    if (ioctl(ttyfd, KDSETMODE, KD_GRAPHICS) != 0) {
-      fprintf(stderr,
-              "WARNING: unable set tty into graphics mode on '%s'\n", TTY_DEVICE);
+      fprintf(stderr, "WARNING: unable set tty into "
+              "graphics mode on '%s'\n", TTY_DEVICE);
    }
 
    buffer = mmap(0, fb_size, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0);

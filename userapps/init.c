@@ -137,7 +137,8 @@ static void show_help_and_exit(void)
    printf("    init -q             Quiet: don't report exit of orphan tasks\n");
    printf("    init -- <cmdline>   "
           "Run the specified cmdline instead of the default one.\n");
-   printf("                        Example: init -- /bin/devshell -c waitpid2\n");
+   printf("                        "
+          "Example: init -- /bin/devshell -c waitpid2\n");
 
    exit(0);
 }

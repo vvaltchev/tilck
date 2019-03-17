@@ -283,7 +283,8 @@ static ALWAYS_INLINE uptr get_stack_ptr(void)
 
    /*
     * With clang, the avoid code results in the following Werror:
-    * error: variable 'res' is uninitialized when used here [-Werror,-Wuninitialized]
+    * error: variable 'res' is uninitialized when used here [-Werror,
+    * -Wuninitialized]
     *
     * TODO: fix this clang-compatibility issue.
     */
