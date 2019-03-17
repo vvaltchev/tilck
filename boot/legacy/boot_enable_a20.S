@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: CC0-1.0
 
 .intel_syntax noprefix
 

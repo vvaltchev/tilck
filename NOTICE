@@ -4,16 +4,16 @@
 ** Item 1 **
 
 File[1]:
-	common/3rd_party/base64.c
+   common/3rd_party/base64.c
 
 Original source[1]:
-	http://web.mit.edu/freebsd/head/contrib/wpa/src/utils/base64.c
+   http://web.mit.edu/freebsd/head/contrib/wpa/src/utils/base64.c
 
 File[2]:
-	include/3rd_party/base64.h
+   include/3rd_party/base64.h
 
 Original source[2]:
-	http://web.mit.edu/freebsd/head/contrib/wpa/src/utils/base64.h
+   http://web.mit.edu/freebsd/head/contrib/wpa/src/utils/base64.h
 
 Comments: base64.c has minor changes to make it buildable in this project.
 
@@ -51,4 +51,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ------------------------
 
+** Item 2 **
+
+File[1]:
+   boot/legacy/boot_enable_a20.S
+
+Original source[1]:
+   https://wiki.osdev.org/A20_Line
+
+Original license:
+   As stated here: https://forum.osdev.org/viewtopic.php?f=2&t=23838, for all
+   the osdev.org wiki pages, the CC0-1.0 license applies.
+
+   https://creativecommons.org/publicdomain/zero/1.0/
+   https://creativecommons.org/publicdomain/zero/1.0/legalcode
 
