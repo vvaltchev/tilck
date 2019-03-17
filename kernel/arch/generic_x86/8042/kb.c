@@ -176,7 +176,7 @@ static void kb_handle_default_state(u8 scancode)
    }
 }
 
-static void kb_tasklet_handler(u8 scancode)
+static void kb_process_scancode(u8 scancode)
 {
    bool kb_is_pressed;
 
@@ -212,9 +212,14 @@ static void kb_tasklet_handler(u8 scancode)
    }
 }
 
+static void kb_tasklet_handler()
+{
+   while (kb_ctrl_is_pending_data())
+      kb_process_scancode(inb(KB_DATA_PORT));
+}
+
 static int keyboard_irq_handler(regs *context)
 {
-   u8 scancode;
    ASSERT(are_interrupts_enabled());
    ASSERT(!is_preemption_enabled());
 
@@ -224,10 +229,7 @@ static int keyboard_irq_handler(regs *context)
    if (!kb_ctrl_is_pending_data())
       return 0;
 
-   /* Read from the keyboard's data buffer */
-   scancode = inb(KB_DATA_PORT);
-
-   if (!enqueue_tasklet1(kb_tasklet_runner, &kb_tasklet_handler, scancode))
+   if (!enqueue_tasklet0(kb_tasklet_runner, &kb_tasklet_handler))
       panic("KB: hit tasklet queue limit");
 
    return 1;
