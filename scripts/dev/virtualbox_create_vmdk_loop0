@@ -1,13 +1,15 @@
 #!/bin/bash
 
-pushd .
+rawImg="tilck.img"
+vmdk="tilck.vmdk"
 
-cd build
+pushd ./build
 
 sudo losetup -D
-sudo losetup /dev/loop0 ./tilck.img
+sudo losetup /dev/loop0 $rawImg
 sudo chmod o+rw /dev/loop0
-rm -f tilck.vmdk
-VBoxManage internalcommands createrawvmdk -filename tilck.vmdk -rawdisk /dev/loop0
-sudo chown $USER tilck.vmdk
+rm -f $vmdk
+VBoxManage internalcommands createrawvmdk -filename $vmdk -rawdisk /dev/loop0
+sudo chown $USER $vmdk
+
 popd

@@ -94,9 +94,14 @@ static int dump_dir_entry(fat_header *hdr,
       indentbuf[i] = ' ';
 
    if (!entry->directory) {
-      printk("%s%s: %u bytes\n", indentbuf, long_name ? long_name : shortname, entry->DIR_FileSize);
+      printk("%s%s: %u bytes\n",
+             indentbuf,
+             long_name ? long_name : shortname,
+             entry->DIR_FileSize);
    } else {
-      printk("%s%s\n", indentbuf, long_name ? long_name : shortname);
+      printk("%s%s\n",
+             indentbuf,
+             long_name ? long_name : shortname);
    }
 
    if (entry->directory) {

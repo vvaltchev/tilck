@@ -51,10 +51,10 @@ void debug_kmalloc_dump_mem_usage(void)
    printk(NO_PREFIX "\n\nKMALLOC HEAPS: \n\n");
 
    printk(NO_PREFIX
-          "| H# | R# |   vaddr    | size (KB) | used |  MBS  |   diff (B)    |\n");
+      "| H# | R# |   vaddr    | size (KB) | used |  MBS  |   diff (B)    |\n");
 
    printk(NO_PREFIX
-          "+----+----+------------+-----------+------+-------+---------------+\n");
+      "+----+----+------------+-----------+------+-------+---------------+\n");
 
    for (u32 i = 0; i < ARRAY_SIZE(heaps) && heaps[i]; i++) {
 

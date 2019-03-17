@@ -100,7 +100,8 @@ if [[ "$1" == "--codecov" ]]; then
    remove_gcda_files
 
    # Upload report to CodeCov
-   bash <(curl -s https://codecov.io/bash) -X gcov || echo "Codecov did not collect coverage reports"
+   err="Codecov did not collect coverage reports"
+   bash <(curl -s https://codecov.io/bash) -X gcov || echo "$err"
    exit 0
 fi
 

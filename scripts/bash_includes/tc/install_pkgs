@@ -249,7 +249,7 @@ function install_packages {
             echo "  * $x"
          done
 
-         echo "After that, re-run this script with the option --skip-install-pkgs"
+         echo "After that, re-run this script with --skip-install-pkgs"
          exit 1
 
       fi
