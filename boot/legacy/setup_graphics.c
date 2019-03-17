@@ -34,9 +34,12 @@ void debug_show_detailed_mode_info(ModeInfoBlock *mi)
    printk("LinBytesPerScanLine: %u\n", mi->LinBytesPerScanLine);
    printk("MemoryModel: 0x%x\n", mi->MemoryModel);
 
-   printk("[ red ] mask size: %u, pos: %u\n", mi->RedMaskSize, mi->RedFieldPosition);
-   printk("[green] mask size: %u, pos: %u\n", mi->GreenMaskSize, mi->GreenFieldPosition);
-   printk("[blue ] mask size: %u, pos: %u\n", mi->BlueMaskSize, mi->BlueFieldPosition);
+   printk("[ red ] mask size: %u, pos: %u\n",
+          mi->RedMaskSize, mi->RedFieldPosition);
+   printk("[green] mask size: %u, pos: %u\n",
+          mi->GreenMaskSize, mi->GreenFieldPosition);
+   printk("[blue ] mask size: %u, pos: %u\n",
+          mi->BlueMaskSize, mi->BlueFieldPosition);
 
    printk("Press ANY key to boot\n");
    bios_read_char();

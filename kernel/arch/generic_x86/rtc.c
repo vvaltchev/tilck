@@ -67,7 +67,7 @@ void cmos_read_datetime(datetime_t *out)
    do {
 
       dlast = d;
-      while (cmos_is_update_in_progress()); // wait an eventual update to complete
+      while (cmos_is_update_in_progress());//wait an eventual update to complete
       cmod_read_datetime_raw(&d);
 
       /*

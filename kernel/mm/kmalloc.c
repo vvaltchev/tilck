@@ -560,7 +560,7 @@ internal_kfree(kmalloc_heap *h,
       return; // nothing to do!
 
    uptr alloc_block_vaddr = (uptr)ptr & ~(h->alloc_block_size - 1);
-   const size_t alloc_block_count = 1 + ((size - 1) >> h->alloc_block_size_log2);
+   const size_t alloc_block_count = 1 + ((size-1) >> h->alloc_block_size_log2);
 
    /*
     * Code dealing with the tricky allocation logic.
