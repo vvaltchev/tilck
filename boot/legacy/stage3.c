@@ -316,6 +316,7 @@ void bootloader_main(void)
 {
    void *entry;
    multiboot_info_t *mbi;
+   u32 ramdisk_used_sectors;
 
    vga_set_video_mode(VGA_COLOR_TEXT_MODE_80x25);
    init_bt();
@@ -363,14 +364,9 @@ void bootloader_main(void)
 
    // Finally we're able to determine how big is the fatpart (pure data)
    ramdisk_used_bytes = fat_get_used_bytes((void *)RAMDISK_PADDR);
-   //printk("[debug] Ramdisk used bytes: %u\n", ramdisk_used_bytes);
 
-   u32 ramdisk_used_sectors = (ramdisk_used_bytes + (SECTOR_SIZE - 1)) / SECTOR_SIZE;
+   ramdisk_used_sectors = (ramdisk_used_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
    read_sectors(RAMDISK_PADDR, 2048, ramdisk_used_sectors);
-
-   // printk("[debug] Ramdisk CRC32: %p\n",
-   //        crc32(0, (const void *)RAMDISK_PADDR,
-   //              ramdisk_used_sectors * SECTOR_SIZE));
 
    printk("[ OK ]\n");
    printk("Loading the ELF kernel... ");

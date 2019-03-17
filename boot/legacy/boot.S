@@ -37,7 +37,7 @@ sectors_per_cluster:     .byte 1
 reserved_sectors:        .word 2048
 number_of_FATs:          .byte 1
 root_entries:            .word 240
-small_sector_count:      .word 0    # the other value large_total_sectors is used.
+small_sector_count:      .word 0    # the value large_total_sectors is used.
 media_descriptor:        .byte 0xF0 # floppy (even if that's not a real floppy)
 
 sectors_per_FAT:         .word 9

@@ -376,7 +376,7 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 #define FG_COLORS  16     /* #fg colors */
 #define BG_COLORS  16     /* #bg colors */
 
-#define TOT_CHAR_SCANLINES_SIZE (PSZ * SL_COUNT * FG_COLORS * BG_COLORS * SL_SIZE)
+#define TOT_CHAR_SCANLINES_SIZE (PSZ*SL_COUNT*FG_COLORS*BG_COLORS*SL_SIZE)
 
 bool fb_pre_render_char_scanlines(void)
 {
