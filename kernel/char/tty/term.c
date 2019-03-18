@@ -7,7 +7,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/serial.h>
-#include <tilck/kernel/ringbuf.h>
+#include <tilck/kernel/safe_ringbuf.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/sched.h>

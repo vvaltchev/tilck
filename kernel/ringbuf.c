@@ -4,7 +4,7 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/atomics.h>
 
-#include <tilck/kernel/ringbuf.h>
+#include <tilck/kernel/safe_ringbuf.h>
 #include <tilck/kernel/kmalloc.h>
 
 static inline bool rb_stat_is_empty(generic_safe_ringbuf_stat *s)

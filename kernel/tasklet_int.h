@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-#include <tilck/kernel/ringbuf.h>
+#include <tilck/kernel/safe_ringbuf.h>
 
 typedef void (*tasklet_func)(uptr, uptr);
 
