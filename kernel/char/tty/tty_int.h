@@ -3,7 +3,7 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/tty.h>
-#include <tilck/kernel/safe_ringbuf.h>
+#include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/fs/vfs.h>
@@ -75,7 +75,7 @@ struct tty {
    char dev_filename[16];
 
    /* tty input */
-   safe_ringbuf kb_input_safe_ringbuf;
+   ringbuf kb_input_ringbuf;
    kcond kb_input_cond;
    int kb_input_unread_cnt;
    int end_line_delim_count;
