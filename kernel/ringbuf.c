@@ -92,10 +92,11 @@ bool ringbuf_unwrite_elem(ringbuf *rb, void *elem_ptr /* out */)
    if (ringbuf_is_empty(rb))
       return false;
 
+   rb->write_pos = (rb->max_elems + rb->write_pos - 1) % rb->max_elems;
+   rb->elems--;
+
    if (elem_ptr)
       memcpy(elem_ptr, rb->buf + rb->write_pos * rb->elem_size, rb->elem_size);
 
-   rb->write_pos = (rb->write_pos - 1) % rb->max_elems;
-   rb->elems--;
    return true;
 }

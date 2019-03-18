@@ -24,6 +24,11 @@ static inline bool ringbuf_is_full(ringbuf *rb)
    return rb->elems == rb->max_elems;
 }
 
+static inline u32 ringbuf_get_elems(ringbuf *rb)
+{
+   return rb->elems;
+}
+
 void ringbuf_init(ringbuf *rb, u32 max_elems, u32 elem_size, void *b);
 void ringbuf_destory(ringbuf *rb);
 void ringbuf_reset(ringbuf *rb);
