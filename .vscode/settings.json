@@ -61,6 +61,7 @@
       "config.h": "c",
       "generated_config.h": "c",
       "tty_int.h": "c",
-      "safe_ringbuf.h": "c"
+      "safe_ringbuf.h": "c",
+      "kmalloc.h": "c"
    }
 }
