@@ -12,10 +12,10 @@ ringbuf_init(ringbuf *rb, u32 max_elems, u32 elem_size, void *buf)
    *rb = (ringbuf) {
       .read_pos = 0,
       .write_pos = 0,
+      .elems = 0,
       .max_elems = max_elems,
       .elem_size = elem_size,
-      .buf = buf,
-      .full = false
+      .buf = buf
    };
 }
 
@@ -26,37 +26,31 @@ void ringbuf_destory(ringbuf *rb)
 
 void ringbuf_reset(ringbuf *rb)
 {
-   rb->read_pos = rb->write_pos = 0;
-   rb->full = false;
+   rb->read_pos = rb->write_pos = rb->elems = 0;
 }
 
 bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr)
 {
-   if (rb->full)
+   if (ringbuf_is_full(rb))
       return false;
 
-   rb->write_pos = (rb->write_pos + 1) % rb->max_elems;
-
-   if (rb->write_pos == rb->read_pos)
-      rb->full = true;
-
    memcpy(rb->buf + rb->write_pos * rb->elem_size, elem_ptr, rb->elem_size);
+   rb->write_pos = (rb->write_pos + 1) % rb->max_elems;
+   rb->elems++;
    return true;
 }
 
 bool
 ringbuf_write_elem_ex(ringbuf *rb, void *elem_ptr, bool *was_empty)
 {
-   if (rb->full)
+   if (ringbuf_is_full(rb))
       return false;
 
    *was_empty = ringbuf_is_empty(rb);
-   rb->write_pos = (rb->write_pos + 1) % rb->max_elems;
-
-   if (rb->write_pos == rb->read_pos)
-      rb->full = true;
 
    memcpy(rb->buf + rb->write_pos * rb->elem_size, elem_ptr, rb->elem_size);
+   rb->write_pos = (rb->write_pos + 1) % rb->max_elems;
+   rb->elems++;
    return true;
 }
 
@@ -66,23 +60,19 @@ bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */)
       return false;
 
    memcpy(elem_ptr, rb->buf + rb->read_pos * rb->elem_size, rb->elem_size);
-
    rb->read_pos = (rb->read_pos + 1) % rb->max_elems;
-   rb->full = false;
+   rb->elems--;
    return true;
 }
 
 bool ringbuf_write_elem1(ringbuf *rb, u8 val)
 {
-   if (rb->full)
+   if (ringbuf_is_full(rb))
       return false;
 
-   rb->write_pos = (rb->write_pos + 1) % rb->max_elems;
-
-   if (rb->write_pos == rb->read_pos)
-      rb->full = true;
-
    rb->buf[rb->write_pos] = val;
+   rb->write_pos = (rb->write_pos + 1) % rb->max_elems;
+   rb->elems++;
    return true;
 }
 
@@ -93,7 +83,7 @@ bool ringbuf_read_elem1(ringbuf *rb, u8 *elem_ptr)
 
    *elem_ptr = rb->buf[rb->read_pos];
    rb->read_pos = (rb->read_pos + 1) % rb->max_elems;
-   rb->full = false;
+   rb->elems--;
    return true;
 }
 
@@ -102,8 +92,10 @@ bool ringbuf_unwrite_elem(ringbuf *rb, void *elem_ptr /* out */)
    if (ringbuf_is_empty(rb))
       return false;
 
-   memcpy(elem_ptr, rb->buf + rb->read_pos * rb->elem_size, rb->elem_size);
+   if (elem_ptr)
+      memcpy(elem_ptr, rb->buf + rb->write_pos * rb->elem_size, rb->elem_size);
+
    rb->write_pos = (rb->write_pos - 1) % rb->max_elems;
-   rb->full = false;
+   rb->elems--;
    return true;
 }

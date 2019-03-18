@@ -7,21 +7,21 @@ typedef struct {
 
    u32 read_pos;
    u32 write_pos;
+   u32 elems;
    u32 max_elems;
    u32 elem_size;
    u8 *buf;
-   bool full : 1;
 
 } ringbuf;
 
 static inline bool ringbuf_is_empty(ringbuf *rb)
 {
-   return rb->read_pos == rb->write_pos && !rb->full;
+   return rb->elems == 0;
 }
 
 static inline bool ringbuf_is_full(ringbuf *rb)
 {
-   return rb->full;
+   return rb->elems == rb->max_elems;
 }
 
 void ringbuf_init(ringbuf *rb, u32 max_elems, u32 elem_size, void *b);
