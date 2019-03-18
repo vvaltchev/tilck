@@ -41,11 +41,9 @@ static inline bool safe_ringbuf_is_full(safe_ringbuf *rb)
 
 void safe_ringbuf_init(safe_ringbuf *rb, u16 max_elems, u16 elem_size, void *b);
 void safe_ringbuf_destory(safe_ringbuf *rb);
-void safe_ringbuf_reset(safe_ringbuf *rb);
 bool safe_ringbuf_write_elem(safe_ringbuf *rb, void *elem_ptr);
+bool safe_ringbuf_write_elem_ex(safe_ringbuf *rb, void *elem, bool *was_empty);
 bool safe_ringbuf_read_elem(safe_ringbuf *rb, void *elem_ptr /* out */);
-bool safe_ringbuf_unwrite_elem(safe_ringbuf *rb, void *elem_ptr /* out */);
 
 bool safe_ringbuf_write_elem1(safe_ringbuf *rb, u8 val);
 bool safe_ringbuf_read_elem1(safe_ringbuf *rb, u8 *elem_ptr);
-bool safe_ringbuf_write_elem_ex(safe_ringbuf *rb, void *elem, bool *was_empty);

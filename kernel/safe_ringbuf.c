@@ -28,11 +28,6 @@ void safe_ringbuf_destory(safe_ringbuf *rb)
    bzero(rb, sizeof(safe_ringbuf));
 }
 
-void safe_ringbuf_reset(safe_ringbuf *rb)
-{
-   atomic_store_explicit(&rb->s.raw, 0, mo_relaxed);
-}
-
 bool safe_ringbuf_write_elem(safe_ringbuf *rb, void *elem_ptr)
 {
    generic_safe_ringbuf_stat cs, ns;
@@ -160,31 +155,6 @@ bool safe_ringbuf_read_elem1(safe_ringbuf *rb, u8 *elem_ptr)
       *elem_ptr = rb->buf[cs.read_pos];
 
       ns.read_pos = (ns.read_pos + 1) % rb->max_elems;
-      ns.full = false;
-
-   } while (!atomic_cas_weak(&rb->s.raw,
-                             (u32 *)&cs.raw,
-                             ns.raw,
-                             mo_relaxed,
-                             mo_relaxed));
-
-   return true;
-}
-
-bool safe_ringbuf_unwrite_elem(safe_ringbuf *rb, void *elem_ptr /* out */)
-{
-   generic_safe_ringbuf_stat cs, ns;
-
-   do {
-
-      cs = rb->s;
-      ns = rb->s;
-
-      if (rb_stat_is_empty(&cs))
-         return false;
-
-      memcpy(elem_ptr, rb->buf + cs.read_pos * rb->elem_size, rb->elem_size);
-      ns.write_pos = (ns.write_pos - 1) % rb->max_elems;
       ns.full = false;
 
    } while (!atomic_cas_weak(&rb->s.raw,
