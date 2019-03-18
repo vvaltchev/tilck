@@ -75,7 +75,7 @@ struct tty {
    char dev_filename[16];
 
    /* tty input */
-   ringbuf kb_input_ringbuf;
+   ringbuf input_ringbuf;
    kcond kb_input_cond;
    int end_line_delim_count;
 
