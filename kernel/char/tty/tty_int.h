@@ -98,7 +98,7 @@ struct tty {
    u16 serial_port_fwd;
 
    /* large fields */
-   char kb_input_buf[KB_INPUT_BS];               /* tty input */
+   char input_buf[KB_INPUT_BS];                  /* tty input */
    tty_ctrl_sig_func special_ctrl_handlers[256]; /* tty input */
    term_filter default_state_funcs[256];         /* tty output */
 };

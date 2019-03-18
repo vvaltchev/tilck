@@ -491,6 +491,6 @@ void tty_update_special_ctrl_handlers(tty *t)
 void tty_input_init(tty *t)
 {
    kcond_init(&t->input_cond);
-   ringbuf_init(&t->input_ringbuf, KB_INPUT_BS, 1, t->kb_input_buf);
+   ringbuf_init(&t->input_ringbuf, KB_INPUT_BS, 1, t->input_buf);
    tty_update_special_ctrl_handlers(t);
 }
