@@ -40,7 +40,7 @@ static int ttyaux_fcntl(fs_handle h, int cmd, uptr arg)
 
 static kcond *ttyaux_get_rready_cond(fs_handle h)
 {
-   return &get_curr_process_tty()->kb_input_cond;
+   return &get_curr_process_tty()->input_cond;
 }
 
 static bool ttyaux_read_ready(fs_handle h)

@@ -184,7 +184,7 @@ static int tty_handle_non_printable_key(tty *t, u32 key)
    }
 
    if (!(t->c_term.c_lflag & ICANON))
-      kcond_signal_one(&t->kb_input_cond);
+      kcond_signal_one(&t->input_cond);
 
    return KB_HANDLER_OK_AND_CONTINUE;
 }
@@ -209,7 +209,7 @@ static int tty_keypress_handle_canon_mode(tty *t, u32 key, u8 c)
 
       if (tty_is_line_delim_char(t, c)) {
          t->end_line_delim_count++;
-         kcond_signal_one(&t->kb_input_cond);
+         kcond_signal_one(&t->input_cond);
       }
    }
 
@@ -255,7 +255,7 @@ int tty_keypress_handler_int(tty *t, u32 key, u8 c, bool check_mods)
    /* raw mode input handling */
    kb_buf_write_elem(t, c);
 
-   kcond_signal_one(&t->kb_input_cond);
+   kcond_signal_one(&t->input_cond);
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
@@ -434,7 +434,7 @@ ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
          return -EAGAIN;
 
       while (kb_buf_is_empty(t)) {
-         kcond_wait(&t->kb_input_cond, NULL, KCOND_WAIT_FOREVER);
+         kcond_wait(&t->input_cond, NULL, KCOND_WAIT_FOREVER);
       }
 
       delim_break = false;
@@ -490,7 +490,7 @@ void tty_update_special_ctrl_handlers(tty *t)
 
 void tty_input_init(tty *t)
 {
-   kcond_init(&t->kb_input_cond);
+   kcond_init(&t->input_cond);
    ringbuf_init(&t->input_ringbuf, KB_INPUT_BS, 1, t->kb_input_buf);
    tty_update_special_ctrl_handlers(t);
 }

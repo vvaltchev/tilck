@@ -68,7 +68,7 @@ static kcond *tty_get_rready_cond(fs_handle h)
    devfs_file *df = dh->devfs_file_ptr;
    tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
-   return &t->kb_input_cond;
+   return &t->input_cond;
 }
 
 static bool tty_read_ready(fs_handle h)
