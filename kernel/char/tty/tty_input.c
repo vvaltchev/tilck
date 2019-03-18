@@ -368,7 +368,7 @@ tty_internal_should_read_return(tty *t,
       return
          delim_break ||
             (t->end_line_delim_count > 0 &&
-               (h->read_buf_used == DEVFS_READ_BS || read_cnt == KB_INPUT_BS));
+               (h->read_buf_used == DEVFS_READ_BS || read_cnt == TTY_INPUT_BS));
    }
 
    /* Raw mode handling */
@@ -491,6 +491,6 @@ void tty_update_special_ctrl_handlers(tty *t)
 void tty_input_init(tty *t)
 {
    kcond_init(&t->input_cond);
-   ringbuf_init(&t->input_ringbuf, KB_INPUT_BS, 1, t->input_buf);
+   ringbuf_init(&t->input_ringbuf, TTY_INPUT_BS, 1, t->input_buf);
    tty_update_special_ctrl_handlers(t);
 }
