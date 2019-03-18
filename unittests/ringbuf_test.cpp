@@ -189,6 +189,9 @@ TEST(ringbuf, unwrite)
       ASSERT_EQ(val, values[i]) << "[FAIL for i: " << i << "]";
    }
 
+   success = ringbuf_unwrite_elem(&rb, &val);
+   ASSERT_FALSE(success);
+
    ASSERT_TRUE(ringbuf_is_empty(&rb));
    ringbuf_destory(&rb);
 }

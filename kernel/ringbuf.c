@@ -6,6 +6,13 @@
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/kmalloc.h>
 
+extern inline void ringbuf_reset(ringbuf *rb);
+extern inline bool ringbuf_write_elem1(ringbuf *rb, u8 val);
+extern inline bool ringbuf_read_elem1(ringbuf *rb, u8 *elem_ptr);
+extern inline bool ringbuf_is_empty(ringbuf *rb);
+extern inline bool ringbuf_is_full(ringbuf *rb);
+extern inline u32 ringbuf_get_elems(ringbuf *rb);
+
 void
 ringbuf_init(ringbuf *rb, u32 max_elems, u32 elem_size, void *buf)
 {
@@ -24,29 +31,10 @@ void ringbuf_destory(ringbuf *rb)
    bzero(rb, sizeof(ringbuf));
 }
 
-void ringbuf_reset(ringbuf *rb)
-{
-   rb->read_pos = rb->write_pos = rb->elems = 0;
-}
-
 bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr)
 {
    if (ringbuf_is_full(rb))
       return false;
-
-   memcpy(rb->buf + rb->write_pos * rb->elem_size, elem_ptr, rb->elem_size);
-   rb->write_pos = (rb->write_pos + 1) % rb->max_elems;
-   rb->elems++;
-   return true;
-}
-
-bool
-ringbuf_write_elem_ex(ringbuf *rb, void *elem_ptr, bool *was_empty)
-{
-   if (ringbuf_is_full(rb))
-      return false;
-
-   *was_empty = ringbuf_is_empty(rb);
 
    memcpy(rb->buf + rb->write_pos * rb->elem_size, elem_ptr, rb->elem_size);
    rb->write_pos = (rb->write_pos + 1) % rb->max_elems;
@@ -60,28 +48,6 @@ bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */)
       return false;
 
    memcpy(elem_ptr, rb->buf + rb->read_pos * rb->elem_size, rb->elem_size);
-   rb->read_pos = (rb->read_pos + 1) % rb->max_elems;
-   rb->elems--;
-   return true;
-}
-
-bool ringbuf_write_elem1(ringbuf *rb, u8 val)
-{
-   if (ringbuf_is_full(rb))
-      return false;
-
-   rb->buf[rb->write_pos] = val;
-   rb->write_pos = (rb->write_pos + 1) % rb->max_elems;
-   rb->elems++;
-   return true;
-}
-
-bool ringbuf_read_elem1(ringbuf *rb, u8 *elem_ptr)
-{
-   if (ringbuf_is_empty(rb))
-      return false;
-
-   *elem_ptr = rb->buf[rb->read_pos];
    rb->read_pos = (rb->read_pos + 1) % rb->max_elems;
    rb->elems--;
    return true;
