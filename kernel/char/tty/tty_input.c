@@ -115,7 +115,6 @@ static inline bool kb_buf_is_empty(tty *t)
    disable_preemption();
    {
       ret = ringbuf_is_empty(&t->kb_input_ringbuf);
-      ASSERT(ret == (t->kb_input_unread_cnt == 0));
    }
    enable_preemption();
    return ret;
@@ -126,7 +125,6 @@ void tty_kb_buf_reset(tty *t)
    disable_preemption();
    {
       ringbuf_reset(&t->kb_input_ringbuf);
-      t->kb_input_unread_cnt = 0;
       t->end_line_delim_count = 0;
    }
    enable_preemption();
@@ -139,8 +137,6 @@ static inline u8 kb_buf_read_elem(tty *t)
    {
       ASSERT(!kb_buf_is_empty(t));
       DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&t->kb_input_ringbuf, &ret));
-      ASSERT(t->kb_input_unread_cnt > 0);
-      t->kb_input_unread_cnt--;
    }
    enable_preemption();
    return ret;
@@ -152,14 +148,9 @@ static inline bool kb_buf_drop_last_written_elem(tty *t)
    tty_keypress_echo(t, (char)t->c_term.c_cc[VERASE]);
 
    disable_preemption();
-
+   {
       ret = ringbuf_unwrite_elem(&t->kb_input_ringbuf, NULL);
-
-      if (ret) {
-         ASSERT(t->kb_input_unread_cnt > 0);
-         t->kb_input_unread_cnt--;
-      }
-
+   }
    enable_preemption();
    return ret;
 }
@@ -170,12 +161,9 @@ static inline bool kb_buf_write_elem(tty *t, u8 c)
    tty_keypress_echo(t, (char)c);
 
    disable_preemption();
-   ret = ringbuf_write_elem1(&t->kb_input_ringbuf, c);
-
-   if (ret) {
-      t->kb_input_unread_cnt++;
+   {
+      ret = ringbuf_write_elem1(&t->kb_input_ringbuf, c);
    }
-
    enable_preemption();
    return ret;
 }
@@ -394,7 +382,7 @@ bool tty_read_ready_int(tty *t, devfs_file_handle *h)
    }
 
    /* Raw mode handling */
-   return t->kb_input_unread_cnt >= t->c_term.c_cc[VMIN];
+   return ringbuf_get_elems(&t->kb_input_ringbuf) >= t->c_term.c_cc[VMIN];
 }
 
 ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)

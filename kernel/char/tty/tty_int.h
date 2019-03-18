@@ -77,7 +77,6 @@ struct tty {
    /* tty input */
    ringbuf kb_input_ringbuf;
    kcond kb_input_cond;
-   int kb_input_unread_cnt;
    int end_line_delim_count;
 
    /* tty output */
