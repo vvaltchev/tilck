@@ -36,7 +36,7 @@ static inline void push_on_user_stack(regs *r, uptr val)
 
 static void push_string_on_user_stack(regs *r, const char *str)
 {
-   size_t len = strlen(str) + 1; // count the '\0'
+   size_t len = strlen(str) + 1; // count also the '\0'
    size_t aligned_len = (len / sizeof(uptr)) * sizeof(uptr);
 
    size_t rem = len - aligned_len;
@@ -93,15 +93,15 @@ push_args_on_user_stack(regs *r,
 
    push_on_user_stack(r, 0); // mandatory final NULL pointer (end of 'env' ptrs)
 
-   for (int i = (int)envc - 1; i >= 0; i--) {
-      push_on_user_stack(r, env_pointers[i]);
+   for (u32 i = envc; i > 0; i--) {
+      push_on_user_stack(r, env_pointers[i - 1]);
    }
 
    // push the argv array (in reverse order)
    push_on_user_stack(r, 0); // mandatory final NULL pointer (end of 'argv')
 
-   for (int i = (int)argc - 1; i >= 0; i--) {
-      push_on_user_stack(r, pointers[i]);
+   for (u32 i = argc; i > 0; i--) {
+      push_on_user_stack(r, pointers[i - 1]);
    }
 
    // push argc as last (since it will be the first to be pop-ed)
