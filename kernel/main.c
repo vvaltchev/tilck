@@ -132,6 +132,7 @@ static void init_drivers()
    init_fbdev();
    init_serial_comm();
 
+   show_hello_message();
    show_system_info();
    task_change_state(get_task(1), TASK_STATE_RUNNABLE);
 }
@@ -154,24 +155,19 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    enable_cpu_features();
    init_fpu_memcpy();
 
-   setup_segmentation();
-
+   init_segmentation();
    init_paging();
    init_kmalloc();
    init_paging_cow();
-
    init_console();
-   show_hello_message();
-
-   setup_irq_handling();
+   init_irq_handling();
    init_sched();
-   setup_syscall_interfaces();
-
+   init_syscall_interfaces();
    init_tasklets();
    init_timer();
 
    mount_first_ramdisk();
-   create_and_register_devfs();
+   init_devfs();
 
    async_init_drivers();
 

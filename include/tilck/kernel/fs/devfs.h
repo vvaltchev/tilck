@@ -62,7 +62,7 @@ typedef struct {
 
 
 filesystem *create_devfs(void);
-void create_and_register_devfs(void);
+void init_devfs(void);
 int register_driver(driver_info *info, int major);
 
 int create_dev_file(const char *filename, u16 major, u16 minor);

@@ -6,7 +6,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/interrupts.h>
 
-void setup_irq_handling();
+void init_irq_handling();
 
 void irq_install_handler(u8 irq, irq_handler_node *n);
 void irq_uninstall_handler(u8 irq, irq_handler_node *n);

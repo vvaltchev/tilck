@@ -91,13 +91,13 @@ static irq_handler_node serial_irq_handler_nodes[4] =
 void init_serial_comm(void)
 {
    disable_preemption();
+   {
+      serial_port_tasklet_runner =
+         create_tasklet_thread(1 /* priority */, 128);
 
-   serial_port_tasklet_runner =
-      create_tasklet_thread(1 /* priority */, 128);
-
-   if (serial_port_tasklet_runner < 0)
-      panic("Serial: Unable to create a tasklet runner thread for IRQs");
-
+      if (serial_port_tasklet_runner < 0)
+         panic("Serial: Unable to create a tasklet runner thread for IRQs");
+   }
    enable_preemption();
 
    irq_install_handler(X86_PC_COM1_COM3_IRQ, &serial_irq_handler_nodes[0]);

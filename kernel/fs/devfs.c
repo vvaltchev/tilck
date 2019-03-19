@@ -450,7 +450,7 @@ filesystem *create_devfs(void)
    return fs;
 }
 
-void create_and_register_devfs(void)
+void init_devfs(void)
 {
    devfs = create_devfs();
 

@@ -255,7 +255,7 @@ void load_tss(u32 entry_index_in_gdt, u32 dpl)
                : "memory");
 }
 
-void setup_segmentation(void)
+void init_segmentation(void)
 {
    ASSERT(!are_interrupts_enabled());
 

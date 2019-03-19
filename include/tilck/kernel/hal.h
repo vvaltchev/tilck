@@ -35,9 +35,9 @@ typedef void (*interrupt_handler)(regs *);
 typedef int (*irq_interrupt_handler)(regs *);
 
 void reboot();
-void setup_segmentation(void);
+void init_segmentation(void);
 void init_cpu_exception_handling(void);
-void setup_syscall_interfaces(void);
+void init_syscall_interfaces(void);
 void set_kernel_stack(uptr stack);
 void enable_cpu_features(void);
 void fpu_context_begin(void);

@@ -91,7 +91,7 @@ void irq_clear_mask(int irq)
  * is just like installing the exception handlers.
  */
 
-void setup_irq_handling(void)
+void init_irq_handling(void)
 {
    pic_remap(32, 40);
 

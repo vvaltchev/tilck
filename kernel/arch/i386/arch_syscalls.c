@@ -399,7 +399,7 @@ void syscall_int80_entry(void);
 void sysenter_entry(void);
 void asm_sysenter_setup(void);
 
-void setup_syscall_interfaces(void)
+void init_syscall_interfaces(void)
 {
    /* Set the entry for the int 0x80 syscall interface */
    idt_set_entry(0x80,
