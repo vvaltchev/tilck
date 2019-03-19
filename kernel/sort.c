@@ -32,8 +32,10 @@ void insertion_sort_ptr(void *a, u32 elem_count, cmpfun_ptr cmp)
 void
 insertion_sort_generic(void *a, uptr elem_size, u32 elem_count, cmpfun_ptr cmp)
 {
-   char elem[elem_size]; // VLA
+   char elem[256];
    u32 j;
+
+   ASSERT(elem_size <= sizeof(elem));
 
    for (u32 i = 1; i < elem_count; i++) {
 

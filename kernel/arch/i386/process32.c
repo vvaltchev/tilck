@@ -10,6 +10,7 @@
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/signal.h>
+#include <tilck/kernel/errno.h>
 
 #include "gdt_int.h"
 
@@ -181,17 +182,21 @@ void kthread_exit(void)
    switch_to_idle_task_outside_interrupt_context();
 }
 
-task_info *create_usermode_task(page_directory_t *pdir,
-                                void *entry,
-                                void *stack_addr,
-                                task_info *task_to_use,
-                                char *const *argv,
-                                char *const *env)
+int
+create_usermode_task(page_directory_t *pdir,
+                     void *entry,
+                     void *stack_addr,
+                     task_info *task_to_use,
+                     char *const *argv,
+                     char *const *env,
+                     task_info **ti_ref)
 {
    int argv_elems = 0;
    int env_elems = 0;
    task_info *ti;
    regs r = {0};
+
+   *ti_ref = NULL;
 
    // User data GDT selector with bottom 2 bits set for ring 3.
    r.gs = r.fs = r.es = r.ds = r.ss = X86_USER_DATA_SEL;
@@ -220,7 +225,7 @@ task_info *create_usermode_task(page_directory_t *pdir,
       VERIFY(create_new_pid() == 1);
 
       if (!(ti = allocate_new_process(kernel_process, 1)))
-         return NULL;
+         return -ENOMEM;
 
       /*
        * The first process is created in SLEEPING state and remains in that
@@ -255,8 +260,8 @@ task_info *create_usermode_task(page_directory_t *pdir,
    task_info_reset_kernel_stack(ti);
    ti->state_regs--;    // make room for a regs struct in the stack
    *ti->state_regs = r; // copy the regs struct we just prepared
-
-   return ti;
+   *ti_ref = ti;
+   return 0;
 }
 
 void save_current_task_state(regs *r)

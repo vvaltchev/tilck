@@ -99,6 +99,7 @@ sptr sys_execve(const char *user_filename,
    char *const *argv = NULL;
    char *const *env = NULL;
    page_directory_t *pdir = NULL;
+   task_info *ti = NULL;
 
    task_info *curr = get_curr_task();
    ASSERT(curr != NULL);
@@ -127,18 +128,18 @@ sptr sys_execve(const char *user_filename,
       pdir_destroy(curr->pi->pdir);
    }
 
-   task_info *ti =
-      create_usermode_task(pdir,
-                           entry_point,
-                           stack_addr,
-                           curr != kernel_process ? curr : NULL,
-                           argv ? argv : default_argv,
-                           env ? env : default_env);
+   rc = create_usermode_task(pdir,
+                             entry_point,
+                             stack_addr,
+                             curr != kernel_process ? curr : NULL,
+                             argv ? argv : default_argv,
+                             env ? env : default_env,
+                             &ti);
 
-   if (!ti) {
-      rc = -ENOMEM;
+   if (rc)
       goto errend;
-   }
+
+   ASSERT(ti != NULL);
 
    ti->pi->brk = brk;
    ti->pi->initial_brk = brk;
@@ -149,6 +150,6 @@ sptr sys_execve(const char *user_filename,
 
 errend:
    enable_preemption();
-   VERIFY(rc != 0);
+   ASSERT(rc != 0);
    return rc;
 }
