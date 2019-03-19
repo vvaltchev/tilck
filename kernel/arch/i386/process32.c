@@ -217,17 +217,16 @@ task_info *create_usermode_task(page_directory_t *pdir,
        * to use.
        */
 
-      int pid = create_new_pid();
+      VERIFY(create_new_pid() == 1);
 
-      if (pid < 0)
+      if (!(ti = allocate_new_process(kernel_process, 1)))
          return NULL;
 
-      ti = allocate_new_process(kernel_process, (u16) pid);
-
-      if (!ti)
-         return NULL;
-
-      ti->state = TASK_STATE_RUNNABLE;
+      /*
+       * The first process is created in SLEEPING state and remains in that
+       * state until it's waken up at the end of init_drivers().
+       */
+      ti->state = TASK_STATE_SLEEPING;
       add_task(ti);
       memcpy(ti->pi->cwd, "/", 2);
 

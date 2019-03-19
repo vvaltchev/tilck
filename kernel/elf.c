@@ -338,9 +338,8 @@ static Elf_Shdr *kernel_elf_get_section(const char *section_name)
       Elf_Shdr *s = sections + i;
       char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
 
-      if (!strcmp(name, section_name)) {
+      if (!strcmp(name, section_name))
          return s;
-      }
    }
 
    return NULL;

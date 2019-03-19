@@ -121,25 +121,19 @@ static void mount_first_ramdisk(void)
       panic("mountpoint_add() failed with error: %d", rc);
 }
 
-
-static void init_drivers(void)
+static void init_drivers()
 {
-   disable_preemption();
-   {
-      if (!kopt_serial_console) {
-         init_kb();
-         register_debug_kernel_keypress_handler();
-      }
-
-      init_tty();
-      show_system_info();
-
-      if (use_framebuffer())
-         init_fbdev();
-
-      init_serial_comm();
+   if (!kopt_serial_console) {
+      init_kb();
+      register_debug_kernel_keypress_handler();
    }
-   enable_preemption();
+
+   init_tty();
+   init_fbdev();
+   init_serial_comm();
+
+   show_system_info();
+   task_change_state(get_task(1), TASK_STATE_RUNNABLE);
 }
 
 static void async_init_drivers(void)

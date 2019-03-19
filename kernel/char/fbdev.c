@@ -83,6 +83,9 @@ static int create_fb_device(int minor, file_ops *ops, devfs_entry_type *t)
 
 void init_fbdev(void)
 {
+   if (!use_framebuffer())
+      return;
+
    driver_info *di = kmalloc(sizeof(driver_info));
 
    if (!di)
