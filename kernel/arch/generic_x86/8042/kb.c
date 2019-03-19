@@ -91,9 +91,9 @@ int kb_register_keypress_handler(keypress_func f)
 static int kb_call_keypress_handlers(u32 raw_key, u8 printable_char)
 {
    int count = 0;
-   keypress_handler_elem *pos, *temp;
+   keypress_handler_elem *pos;
 
-   list_for_each(pos, temp, &keypress_handlers, node) {
+   list_for_each_ro(pos, &keypress_handlers, node) {
 
       int rc = pos->handler(raw_key, printable_char);
 

@@ -265,14 +265,14 @@ static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
    }
 
    devfs_data *d = fs->device_data;
-   devfs_file *pos, *temp;
+   devfs_file *pos;
 
    /*
     * Linearly iterate our linked list: we do not expect any time soon devfs
     * to contain more than a few files.
     */
 
-   list_for_each(pos, temp, &d->root_dir.files_list, dir_node) {
+   list_for_each_ro(pos, &d->root_dir.files_list, dir_node) {
       if (!strcmp(pos->name, path)) {
          return devfs_open_file(fs, pos, out);
       }
@@ -356,12 +356,12 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    devfs_data *d = dh->fs->device_data;
    u32 offset = 0, curr_index = 0;
    struct linux_dirent64 ent;
-   devfs_file *pos, *temp;
+   devfs_file *pos;
 
    if (dh->type != DEVFS_DIRECTORY)
       return -ENOTDIR;
 
-   list_for_each(pos, temp, &d->root_dir.files_list, dir_node) {
+   list_for_each_ro(pos, &d->root_dir.files_list, dir_node) {
 
       if (curr_index < dh->read_pos) {
          curr_index++;

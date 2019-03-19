@@ -109,6 +109,11 @@ static inline void list_remove(list_node *elem)
         &pos->member != (list_node *)(list_ptr);                     \
         pos = tp, tp = list_next_obj(tp, member))
 
+#define list_for_each_ro(pos, list_ptr, member)                      \
+   for (pos = list_first_obj(list_ptr, typeof(*pos), member);        \
+        &pos->member != (list_node *)(list_ptr);                     \
+        pos = list_next_obj(pos, member))
+
 #define list_for_each_reverse(pos, tp, list_ptr, member)             \
    for (pos = list_last_obj(list_ptr, typeof(*pos), member),         \
         tp = list_prev_obj(pos, member);                             \

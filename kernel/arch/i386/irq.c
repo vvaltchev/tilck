@@ -329,9 +329,9 @@ void handle_irq(regs *r)
    enable_interrupts_forced();
 
    {
-      irq_handler_node *pos, *temp;
+      irq_handler_node *pos;
 
-      list_for_each(pos, temp, &irq_handlers_lists[irq], node) {
+      list_for_each_ro(pos, &irq_handlers_lists[irq], node) {
          if ((handler_ret = pos->handler(r)) >= 0)
             break;
       }

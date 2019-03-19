@@ -211,9 +211,9 @@ user_mapping *process_get_user_mapping(void *vaddr)
    ASSERT(!is_preemption_enabled());
 
    process_info *pi = get_curr_task()->pi;
-   user_mapping *pos, *temp;
+   user_mapping *pos;
 
-   list_for_each(pos, temp, &pi->mappings, node) {
+   list_for_each_ro(pos, &pi->mappings, node) {
       if (pos->vaddr == vaddr)
          return pos;
    }
@@ -396,14 +396,14 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
     */
 
    task_info *zombie_child = NULL;
-   task_info *pos, *temp;
+   task_info *pos;
 
    while (true) {
 
       u32 child_count = 0;
       disable_preemption();
 
-      list_for_each(pos, temp, &curr->pi->children_list, siblings_node) {
+      list_for_each_ro(pos, &curr->pi->children_list, siblings_node) {
 
          child_count++;
 
