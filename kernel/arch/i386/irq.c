@@ -12,7 +12,25 @@
 #include <tilck/kernel/timer.h>
 
 extern void (*irq_entry_points[16])(void);
-static list irq_handlers[16];
+
+static list irq_handlers_lists[16] = {
+   make_list(irq_handlers_lists[ 0]),
+   make_list(irq_handlers_lists[ 1]),
+   make_list(irq_handlers_lists[ 2]),
+   make_list(irq_handlers_lists[ 3]),
+   make_list(irq_handlers_lists[ 4]),
+   make_list(irq_handlers_lists[ 5]),
+   make_list(irq_handlers_lists[ 6]),
+   make_list(irq_handlers_lists[ 7]),
+   make_list(irq_handlers_lists[ 8]),
+   make_list(irq_handlers_lists[ 9]),
+   make_list(irq_handlers_lists[10]),
+   make_list(irq_handlers_lists[11]),
+   make_list(irq_handlers_lists[12]),
+   make_list(irq_handlers_lists[13]),
+   make_list(irq_handlers_lists[14]),
+   make_list(irq_handlers_lists[15])
+};
 
 u32 unhandled_irq_count[256];
 u32 spur_irq_count;
@@ -22,7 +40,7 @@ void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags);
 /* This installs a custom IRQ handler for the given IRQ */
 void irq_install_handler(u8 irq, irq_handler_node *n)
 {
-   list_add_tail(&irq_handlers[irq], &n->node);
+   list_add_tail(&irq_handlers_lists[irq], &n->node);
    irq_clear_mask(irq);
 }
 
@@ -202,13 +220,9 @@ static inline u32 pic_get_imr(void)
 
 void setup_irq_handling(void)
 {
-   for (u32 i = 0; i < ARRAY_SIZE(irq_handlers); i++) {
-      list_init(&irq_handlers[i]);
-   }
-
    PIC_remap(32, 40);
 
-   for (u8 i = 0; i < ARRAY_SIZE(irq_handlers); i++) {
+   for (u8 i = 0; i < ARRAY_SIZE(irq_handlers_lists); i++) {
       idt_set_entry(32 + i, irq_entry_points[i], 0x08, 0x8E);
       irq_set_mask(i);
    }
@@ -317,7 +331,7 @@ void handle_irq(regs *r)
    {
       irq_handler_node *pos, *temp;
 
-      list_for_each(pos, temp, &irq_handlers[irq], node) {
+      list_for_each(pos, temp, &irq_handlers_lists[irq], node) {
          if ((handler_ret = pos->handler(r)) >= 0)
             break;
       }
