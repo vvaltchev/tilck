@@ -51,23 +51,30 @@ static void push_string_on_user_stack(regs *r, const char *str)
    }
 }
 
-static void push_args_on_user_stack(regs *r,
-                                    char *const *argv,
-                                    int argc,
-                                    char *const *env,
-                                    int envc)
+static int
+push_args_on_user_stack(regs *r,
+                        char *const *argv,
+                        u32 argc,
+                        char *const *env,
+                        u32 envc)
 {
-   uptr pointers[argc + 1]; // VLA: +1 to avoid SA warning for zero-size VLA
-   uptr env_pointers[envc + 1]; // VLA: +1 to avoid SA warning for zero-size VLA
+   uptr pointers[32];
+   uptr env_pointers[96];
+
+   if (argc > ARRAY_SIZE(pointers))
+      return -E2BIG;
+
+   if (envc > ARRAY_SIZE(env_pointers))
+      return -E2BIG;
 
    // push argv data on stack (it could be anywhere else, as well)
-   for (int i = 0; i < argc; i++) {
+   for (u32 i = 0; i < argc; i++) {
       push_string_on_user_stack(r, argv[i]);
       pointers[i] = r->useresp;
    }
 
    // push env data on stack (it could be anywhere else, as well)
-   for (int i = 0; i < envc; i++) {
+   for (u32 i = 0; i < envc; i++) {
       push_string_on_user_stack(r, env[i]);
       env_pointers[i] = r->useresp;
    }
@@ -86,19 +93,20 @@ static void push_args_on_user_stack(regs *r,
 
    push_on_user_stack(r, 0); // mandatory final NULL pointer (end of 'env' ptrs)
 
-   for (int i = envc - 1; i >= 0; i--) {
+   for (int i = (int)envc - 1; i >= 0; i--) {
       push_on_user_stack(r, env_pointers[i]);
    }
 
    // push the argv array (in reverse order)
    push_on_user_stack(r, 0); // mandatory final NULL pointer (end of 'argv')
 
-   for (int i = argc - 1; i >= 0; i--) {
+   for (int i = (int)argc - 1; i >= 0; i--) {
       push_on_user_stack(r, pointers[i]);
    }
 
    // push argc as last (since it will be the first to be pop-ed)
    push_on_user_stack(r, (uptr)argc);
+   return 0;
 }
 
 NODISCARD task_info *
@@ -191,10 +199,11 @@ create_usermode_task(page_directory_t *pdir,
                      char *const *env,
                      task_info **ti_ref)
 {
-   int argv_elems = 0;
-   int env_elems = 0;
+   u32 argv_elems = 0;
+   u32 env_elems = 0;
    task_info *ti;
    regs r = {0};
+   int rc;
 
    *ti_ref = NULL;
 
@@ -209,7 +218,9 @@ create_usermode_task(page_directory_t *pdir,
 
    while (argv[argv_elems]) argv_elems++;
    while (env[env_elems]) env_elems++;
-   push_args_on_user_stack(&r, argv, argv_elems, env, env_elems);
+
+   if ((rc = push_args_on_user_stack(&r, argv, argv_elems, env, env_elems)))
+      return rc;
 
    r.eflags = 0x2 /* reserved, always set */ | EFLAGS_IF;
 

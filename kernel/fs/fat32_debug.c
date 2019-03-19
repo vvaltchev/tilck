@@ -13,7 +13,9 @@
 
 static void dump_fixed_str(const char *what, char *str, u32 len)
 {
-   char buf[len+1];
+   char buf[256];
+   len = MIN((u32)ARRAY_SIZE(buf), len);
+
    buf[len]=0;
    memcpy(buf, str, len);
    printk("%s: '%s'\n", what, buf);

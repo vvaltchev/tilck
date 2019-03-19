@@ -16,6 +16,7 @@ set(
    -fno-omit-frame-pointer
    -fwrapv
    -Wno-unused-label
+   -Wvla
 )
 
 if (WCONV)
