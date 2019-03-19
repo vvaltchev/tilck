@@ -219,9 +219,9 @@ int load_elf_program(const char *filepath,
 
    // Finally setting the output-params.
 
-   *stack_addr = (void *) ((USERMODE_VADDR_END - 1) & POINTER_ALIGN_MASK);
+   *stack_addr = (void *) USERMODE_STACK_MAX;
    *entry = (void *) header.e_entry;
-   *brk_ref = (void *)brk;
+   *brk_ref = (void *) brk;
 
 out:
    vfs_close(elf_file);
