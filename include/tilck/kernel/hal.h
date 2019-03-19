@@ -36,7 +36,7 @@ typedef int (*irq_interrupt_handler)(regs *);
 
 void reboot();
 void setup_segmentation(void);
-void setup_soft_interrupt_handling(void);
+void init_cpu_exception_handling(void);
 void setup_syscall_interfaces(void);
 void set_kernel_stack(uptr stack);
 void enable_cpu_features(void);

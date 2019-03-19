@@ -125,6 +125,9 @@ void init_pat(void)
 
 void enable_cpu_features(void)
 {
+   if (!x86_cpu_features.initialized)
+      get_cpu_features();
+
    if (x86_cpu_features.edx1.sse && x86_cpu_features.edx1.fxsr) {
       if (!enable_sse())
          goto out;

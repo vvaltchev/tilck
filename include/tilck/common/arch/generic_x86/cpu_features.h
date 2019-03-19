@@ -5,6 +5,8 @@
 
 typedef struct {
 
+   bool initialized;
+
    char vendor_id[16];
    u32 max_basic_cpuid_cmd;
    u32 max_ext_cpuid_cmd;

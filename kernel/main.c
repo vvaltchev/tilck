@@ -148,10 +148,9 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    early_init_serial_ports();
    create_kernel_process();
-   setup_soft_interrupt_handling();
+   init_cpu_exception_handling();
    read_multiboot_info(multiboot_magic, mbi_addr);
 
-   get_cpu_features();
    enable_cpu_features();
    init_fpu_memcpy();
 

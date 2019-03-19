@@ -139,7 +139,7 @@ void set_fault_handler(int ex_num, void *ptr)
    fault_handlers[ex_num] = (interrupt_handler) ptr;
 }
 
-void setup_soft_interrupt_handling(void)
+void init_cpu_exception_handling(void)
 {
    /* Set the entries for the x86 faults (exceptions) */
    for (u8 i = 0; i < 32; i++) {
