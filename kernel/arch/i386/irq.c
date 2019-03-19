@@ -12,7 +12,7 @@
 #include <tilck/kernel/timer.h>
 
 extern void (*irq_entry_points[16])(void);
-static irq_interrupt_handler irq_handlers[16];
+static list irq_handlers[16];
 
 u32 unhandled_irq_count[256];
 u32 spur_irq_count;
@@ -20,16 +20,16 @@ u32 spur_irq_count;
 void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags);
 
 /* This installs a custom IRQ handler for the given IRQ */
-void irq_install_handler(u8 irq, irq_interrupt_handler h)
+void irq_install_handler(u8 irq, irq_handler_node *n)
 {
-   irq_handlers[irq] = h;
+   list_add_tail(&irq_handlers[irq], &n->node);
    irq_clear_mask(irq);
 }
 
 /* This clears the handler for a given IRQ */
-void irq_uninstall_handler(u8 irq)
+void irq_uninstall_handler(u8 irq, irq_handler_node *n)
 {
-   irq_handlers[irq] = NULL;
+   list_remove(&n->node);
 }
 
 #define PIC1                0x20     /* IO base address for master PIC */
@@ -54,21 +54,19 @@ void pic_send_eoi(int irq)
 }
 
 
-#define ICW1_ICW4 0x01     /* ICW4 (not) needed */
-#define ICW1_SINGLE  0x02     /* Single (cascade) mode */
+#define ICW1_ICW4       0x01     /* ICW4 (not) needed */
+#define ICW1_SINGLE     0x02     /* Single (cascade) mode */
 #define ICW1_INTERVAL4  0x04     /* Call address interval 4 (8) */
-#define ICW1_LEVEL   0x08     /* Level triggered (edge) mode */
-#define ICW1_INIT 0x10     /* Initialization - required! */
+#define ICW1_LEVEL      0x08     /* Level triggered (edge) mode */
+#define ICW1_INIT       0x10     /* Initialization - required! */
 
-#define ICW4_8086 0x01     /* 8086/88 (MCS-80/85) mode */
-#define ICW4_AUTO 0x02     /* Auto (normal) EOI */
+#define ICW4_8086       0x01     /* 8086/88 (MCS-80/85) mode */
+#define ICW4_AUTO       0x02     /* Auto (normal) EOI */
 #define ICW4_BUF_SLAVE  0x08     /* Buffered mode/slave */
 #define ICW4_BUF_MASTER 0x0C     /* Buffered mode/master */
-#define ICW4_SFNM 0x10     /* Special fully nested (not) */
+#define ICW4_SFNM       0x10     /* Special fully nested (not) */
 
 static inline void io_wait() {}
-
-
 
 /*
  * Normally, IRQs 0 to 7 are mapped to entries 8 to 15. This
@@ -204,9 +202,13 @@ static inline u32 pic_get_imr(void)
 
 void setup_irq_handling(void)
 {
+   for (u32 i = 0; i < ARRAY_SIZE(irq_handlers); i++) {
+      list_init(&irq_handlers[i]);
+   }
+
    PIC_remap(32, 40);
 
-   for (u8 i = 0; i < 16; i++) {
+   for (u8 i = 0; i < ARRAY_SIZE(irq_handlers); i++) {
       idt_set_entry(32 + i, irq_entry_points[i], 0x08, 0x8E);
       irq_set_mask(i);
    }
@@ -242,11 +244,8 @@ static inline void handle_irq_clear_mask(int irq)
    }
 }
 
-void handle_irq(regs *r)
+static inline bool is_spur_irq(int irq)
 {
-   int handler_ret = 0;
-   const int irq = r->int_num - 32;
-
    if (irq == 7 || irq == 15) {
 
       /*
@@ -285,9 +284,21 @@ void handle_irq(regs *r)
              pic_send_eoi(7);
 
          spur_irq_count++;
-         return;
+         return true;
       }
    }
+
+   return false;
+}
+
+void handle_irq(regs *r)
+{
+   int handler_ret = 0;
+   bool handled = false;
+   const int irq = r->int_num - 32;
+
+   if (is_spur_irq(irq))
+      return;
 
    handle_irq_set_mask(irq);
    disable_preemption();
@@ -303,11 +314,17 @@ void handle_irq(regs *r)
    pic_send_eoi(irq);
    enable_interrupts_forced();
 
-   if (LIKELY(irq_handlers[irq] != NULL)) {
-      handler_ret = irq_handlers[irq](r);
-   } else {
-      unhandled_irq_count[irq]++;
+   {
+      irq_handler_node *pos, *temp;
+
+      list_for_each(pos, temp, &irq_handlers[irq], node) {
+         if ((handler_ret = pos->handler(r)) >= 0)
+            break;
+      }
    }
+
+   if (!handled)
+      unhandled_irq_count[irq]++;
 
    pop_nested_interrupt();
    enable_preemption();

@@ -57,8 +57,10 @@
 
 #define USER_VSDO_LIKE_PAGE_VADDR  (LINEAR_MAPPING_END)
 
-#define MAX_TTYS            9
-#define TERM_SCROLL_LINES   5
+#define MAX_TTYS                  9
+#define TERM_SCROLL_LINES         5
+#define MAX_NESTED_INTERRUPTS    32
+#define TTY_INPUT_BS           1024
 
 /*
  * User tasks constants
@@ -75,12 +77,11 @@
 #define USER_MMAP_BEGIN               MAX_BRK /* +1 GB (virtual memory) */
 #define USER_MMAP_END            (0x80000000) /* +2 GB (virtual memory) */
 
-#define IO_COPYBUF_SIZE (PAGE_SIZE)
-#define ARGS_COPYBUF_SIZE (PAGE_SIZE)
-#define MAX_PID 32768
-#define MAX_PATH 256
-#define MAX_HANDLES 16
-#define TTY_INPUT_BS 1024
+#define IO_COPYBUF_SIZE        PAGE_SIZE
+#define ARGS_COPYBUF_SIZE      PAGE_SIZE
+#define MAX_PID                    32768
+#define MAX_PATH                     256
+#define MAX_HANDLES                   16
 
 /* Bootloader-specific constants */
 

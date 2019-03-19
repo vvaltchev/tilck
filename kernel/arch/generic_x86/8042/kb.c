@@ -141,12 +141,13 @@ void handle_key_pressed(u32 key)
       return;
    }
 
-   int hc = kb_call_keypress_handlers(key, translate_printable_key(key));
+   /* int hc = */
+   kb_call_keypress_handlers(key, translate_printable_key(key));
 
-   if (!hc && key != KEY_L_SHIFT && key != KEY_R_SHIFT)
-      if (key != KEY_LEFT_CTRL && key != KEY_RIGHT_CTRL)
-         if (key != KEY_LEFT_ALT && key != KEY_RIGHT_ALT)
-            printk("KB: PRESSED key 0x%x\n", key);
+   // if (!hc && key != KEY_L_SHIFT && key != KEY_R_SHIFT)
+   //    if (key != KEY_LEFT_CTRL && key != KEY_RIGHT_CTRL)
+   //       if (key != KEY_LEFT_ALT && key != KEY_RIGHT_ALT)
+   //          printk("KB: PRESSED key 0x%x\n", key);
 }
 
 static void key_int_handler(u32 key, bool kb_is_pressed)
@@ -292,6 +293,11 @@ int kb_get_fn_key_pressed(u32 key)
    return (int)fn_table[(u8) key];
 }
 
+static irq_handler_node kb_irq_handler_node = {
+   .node = make_list_node(kb_irq_handler_node.node),
+   .handler = keyboard_irq_handler
+};
+
 /* This will be executed in a tasklet */
 void init_kb(void)
 {
@@ -318,6 +324,6 @@ void init_kb(void)
 
    create_kb_tasklet_runner();
 
-   irq_install_handler(X86_PC_KEYBOARD_IRQ, keyboard_irq_handler);
+   irq_install_handler(X86_PC_KEYBOARD_IRQ, &kb_irq_handler_node);
    enable_preemption();
 }

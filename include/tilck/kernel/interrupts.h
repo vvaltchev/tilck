@@ -2,8 +2,15 @@
 
 #pragma once
 #include <tilck/kernel/hal.h>
+#include <tilck/kernel/list.h>
 
-#define MAX_NESTED_INTERRUPTS 32
+typedef struct {
+
+   list_node node;
+   irq_interrupt_handler handler;
+
+} irq_handler_node;
+
 
 void set_fault_handler(int fault, void *ptr);
 void end_fault_handler_state(void);

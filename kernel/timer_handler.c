@@ -260,8 +260,13 @@ int timer_irq_handler(regs *context)
    return 0;
 }
 
+static irq_handler_node timer_irq_handler_node = {
+   .node = make_list_node(timer_irq_handler_node.node),
+   .handler = timer_irq_handler
+};
+
 void init_timer(void)
 {
    timer_set_freq(TIMER_HZ);
-   irq_install_handler(X86_PC_TIMER_IRQ, timer_irq_handler);
+   irq_install_handler(X86_PC_TIMER_IRQ, &timer_irq_handler_node);
 }

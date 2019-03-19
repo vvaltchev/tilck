@@ -9,8 +9,8 @@
 
 #define X86_PC_TIMER_IRQ           0
 #define X86_PC_KEYBOARD_IRQ        1
-#define X86_PC_COM2_IRQ            3
-#define X86_PC_COM1_IRQ            4
+#define X86_PC_COM2_COM4_IRQ       3
+#define X86_PC_COM1_COM3_IRQ       4
 #define X86_PC_SOUND_IRQ           5
 #define X86_PC_FLOPPY_IRQ          6
 #define X86_PC_LPT1_OR_SLAVE_IRQ   7
