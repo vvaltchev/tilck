@@ -43,44 +43,7 @@ DECL_CMD(select2);
 DECL_CMD(poll1);
 DECL_CMD(poll2);
 DECL_CMD(poll3);
-
-int cmd_bigargv(int argc, char **argv)
-{
-   int rc;
-   int pid;
-   int wstatus;
-
-   pid = fork();
-
-   if (pid < 0) {
-      perror("fork() failed");
-      return 1;
-   }
-
-   if (!pid) {
-
-      size_t len = 4051; //4052;
-      printf("len: %d\n", (int)len);
-
-      char *big_arg = malloc(len + 1);
-      memset(big_arg, 'a', len);
-      big_arg[len] = 0;
-
-      char *argv[3] = { "/bin/devshell", big_arg, NULL };
-      char *env[] = { NULL };
-
-      printf("before execve()...\n");
-      rc = execve(argv[0], argv, env);
-
-      if (rc)
-         perror("execve failed");
-
-      exit(0);
-   }
-
-   waitpid(pid, &wstatus, 0);
-   return 0;
-}
+DECL_CMD(bigargv);
 
 int cmd_selftest(int argc, char **argv)
 {
@@ -155,8 +118,7 @@ struct {
    CMD_ENTRY(sigfpe, TT_SHORT, true),
    CMD_ENTRY(sigabrt, TT_SHORT, true),
    CMD_ENTRY(sig1, TT_SHORT, true),
-
-   CMD_ENTRY(bigargv, TT_SHORT, false),
+   CMD_ENTRY(bigargv, TT_SHORT, true),
 
    CMD_ENTRY(select1, TT_SHORT, false),
    CMD_ENTRY(select2, TT_SHORT, false),

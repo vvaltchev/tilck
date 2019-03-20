@@ -15,7 +15,16 @@
 
 /* utils */
 #define RDTSC() __builtin_ia32_rdtsc()
+#define DEVSHELL_CMD_ASSERT(x)                                  \
+   do {                                                         \
+      if (!(x)) {                                               \
+         fprintf(stderr, "test cmd assert '%s' failed\n", #x);  \
+         return 1;                                              \
+      }                                                         \
+   } while(0)
 
+
+/* constants */
 #define COLOR_RED     "\033[31m"
 #define COLOR_GREEN   "\033[32m"
 #define COLOR_YELLOW  "\033[93m"
@@ -23,6 +32,8 @@
 /* --- */
 
 extern bool dump_coverage;
+extern char **shell_argv;
+extern char **shell_env;
 
 typedef int (*cmd_func_type)(int argc, char **argv);
 

@@ -17,10 +17,11 @@
 #include "devshell.h"
 
 bool dump_coverage;
+char **shell_argv;
+char **shell_env;
 
 static char cmd_arg_buffers[MAX_ARGS][256];
 static char *cmd_argv[MAX_ARGS];
-static char **shell_env;
 
 static void shell_builtin_cd(int argc)
 {
@@ -231,6 +232,7 @@ int main(int argc, char **argv, char **env)
    int uid = geteuid();
    struct passwd *pwd = getpwuid(uid);
 
+   shell_argv = argv;
    shell_env = env;
 
    if (argc > 1) {
