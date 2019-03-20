@@ -134,7 +134,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_setgroups16)
 CREATE_STUB_SYSCALL_IMPL(sys_old_select)
 CREATE_STUB_SYSCALL_IMPL(sys_symlink)
 CREATE_STUB_SYSCALL_IMPL(sys_lstat)
-CREATE_STUB_SYSCALL_IMPL(sys_readlink)
+
+sptr sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize);
+
 CREATE_STUB_SYSCALL_IMPL(sys_uselib)
 CREATE_STUB_SYSCALL_IMPL(sys_swapon)
 CREATE_STUB_SYSCALL_IMPL(sys_reboot)

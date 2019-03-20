@@ -358,8 +358,18 @@ sptr sys_lstat64(const char *user_path, struct stat64 *user_statbuf)
     * behave exactly as stat().
     */
 
-   //printk("sys_lstat64('%s')\n", user_path);
    return sys_stat64(user_path, user_statbuf);
+}
+
+sptr sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
+{
+   /*
+    * For moment, symlinks are not supported in Tilck. Therefore, just always
+    * -EINVAL, the correct error for the case the named file is NOT a symbolic
+    * link.
+    */
+
+   return -EINVAL;
 }
 
 sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)

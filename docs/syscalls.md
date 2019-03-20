@@ -64,6 +64,8 @@ considered as *not implemented yet*.
  sys_setsid          | minimal [8]
  sys_times           | minimal [9]
  sys_select          | full
+ sys_poll            | full
+ sys_readlink        | compliant stub
 
 Definitions:
 
