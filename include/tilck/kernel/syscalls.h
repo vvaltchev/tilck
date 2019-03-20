@@ -82,7 +82,9 @@ sptr sys_kill(pid_t pid, int sig);
 CREATE_STUB_SYSCALL_IMPL(sys_rename)
 CREATE_STUB_SYSCALL_IMPL(sys_mkdir)
 CREATE_STUB_SYSCALL_IMPL(sys_rmdir)
-CREATE_STUB_SYSCALL_IMPL(sys_dup)
+
+sptr sys_dup(int oldfd);
+
 CREATE_STUB_SYSCALL_IMPL(sys_pipe)
 
 sptr sys_times(struct tms *user_buf);
@@ -106,8 +108,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_olduname)
 CREATE_STUB_SYSCALL_IMPL(sys_umask)
 CREATE_STUB_SYSCALL_IMPL(sys_chroot)
 CREATE_STUB_SYSCALL_IMPL(sys_ustat)
-CREATE_STUB_SYSCALL_IMPL(sys_dup2)
 
+sptr sys_dup2(int oldfd, int newfd);
 sptr sys_getppid();
 
 CREATE_STUB_SYSCALL_IMPL(sys_getpgrp)

@@ -696,7 +696,7 @@ sptr sys_fork(void)
    set_return_register(curr->state_regs, (u32) child->tid);
 
    /* Duplicate all the handles */
-   for (u32 i = 0; i < ARRAY_SIZE(child->pi->handles); i++) {
+   for (u32 i = 0; i < MAX_HANDLES; i++) {
 
       fs_handle h = child->pi->handles[i];
 

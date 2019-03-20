@@ -12,14 +12,14 @@
 
 #include <fcntl.h>      // system header
 
-static inline bool is_fd_valid(u32 fd)
+static inline bool is_fd_in_valid_range(u32 fd)
 {
-   return fd < ARRAY_SIZE(get_curr_task()->pi->handles);
+   return fd < MAX_HANDLES;
 }
 
-u32 get_free_handle_num(task_info *task)
+static u32 get_free_handle_num(task_info *task)
 {
-   for (u32 free_fd = 0; free_fd < ARRAY_SIZE(task->pi->handles); free_fd++)
+   for (u32 free_fd = 0; free_fd < MAX_HANDLES; free_fd++)
       if (!task->pi->handles[free_fd])
          return free_fd;
 
@@ -41,7 +41,7 @@ fs_handle get_fs_handle(u32 fd)
 
    disable_preemption();
    {
-      if (is_fd_valid(fd) && curr->pi->handles[fd])
+      if (is_fd_in_valid_range(fd) && curr->pi->handles[fd])
          handle = curr->pi->handles[fd];
    }
    enable_preemption();
@@ -76,7 +76,7 @@ sptr sys_open(const char *user_path, int flags, int mode)
 
    u32 free_fd = get_free_handle_num(curr);
 
-   if (!is_fd_valid(free_fd))
+   if (!is_fd_in_valid_range(free_fd))
       goto no_fds;
 
    // TODO: make the vfs call runnable with preemption enabled
@@ -421,6 +421,71 @@ sptr sys_access(const char *pathname, int mode)
 {
    // TODO: check mode and file r/w flags.
    return 0;
+}
+
+sptr sys_dup2(int oldfd, int newfd)
+{
+   sptr rc;
+   fs_handle old_h, new_h;
+   task_info *curr = get_curr_task();
+
+   if (!is_fd_in_valid_range((u32) oldfd))
+      return -EBADF;
+
+   if (!is_fd_in_valid_range((u32) newfd))
+      return -EBADF;
+
+   if (newfd == oldfd)
+      return -EINVAL;
+
+   disable_preemption();
+
+   old_h = get_fs_handle((u32) oldfd);
+
+   if (!old_h) {
+      rc = -EBADF;
+      goto out;
+   }
+
+   new_h = get_fs_handle((u32) newfd);
+
+   if (new_h) {
+      vfs_close(new_h);
+      new_h = NULL;
+   }
+
+   rc = vfs_dup(old_h, &new_h);
+
+   if (rc != 0)
+      goto out;
+
+   curr->pi->handles[newfd] = new_h;
+   rc = (sptr) newfd;
+
+out:
+   enable_preemption();
+   return rc;
+}
+
+sptr sys_dup(int oldfd)
+{
+   sptr rc;
+   u32 free_fd;
+
+   disable_preemption();
+
+   free_fd = get_free_handle_num(get_curr_task());
+
+   if (!is_fd_in_valid_range(free_fd)) {
+      rc = -EMFILE;
+      goto out;
+   }
+
+   rc = sys_dup2(oldfd, (int) free_fd);
+
+out:
+   enable_preemption();
+   return rc;
 }
 
 static void debug_print_fcntl_command(int cmd)
