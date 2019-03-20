@@ -17,18 +17,12 @@ static char *const default_env[] =
    NULL
 };
 
+
 static int
-execve_get_path_and_args(const char *user_filename,
-                         const char *const *user_argv,
-                         const char *const *user_env,
-                         char **abs_path_ref,
-                         char *const **argv_ref,
-                         char *const **env_ref)
+execve_get_path(const char *user_filename, char **abs_path_ref)
 {
    int rc = 0;
    char *abs_path = NULL;
-   char *const *argv = NULL;
-   char *const *env = NULL;
    char *orig_file_path;
    task_info *curr = get_curr_task();
 
@@ -37,8 +31,6 @@ execve_get_path_and_args(const char *user_filename,
 
    if (UNLIKELY(curr == kernel_process)) {
       *abs_path_ref = (char *)user_filename;
-      *argv_ref = (char *const *)user_argv;
-      *env_ref = (char *const *)user_env;
       goto out;
    }
 
@@ -58,6 +50,33 @@ execve_get_path_and_args(const char *user_filename,
 
    if (rc != 0)
       goto out;
+
+   *abs_path_ref = abs_path;
+
+out:
+   return rc;
+}
+
+
+static int
+execve_get_args(const char *const *user_argv,
+                const char *const *user_env,
+                char *const **argv_ref,
+                char *const **env_ref)
+{
+   int rc = 0;
+   char *const *argv = NULL;
+   char *const *env = NULL;
+   task_info *curr = get_curr_task();
+
+   char *dest = (char *)curr->args_copybuf;
+   size_t written = 0;
+
+   if (UNLIKELY(curr == kernel_process)) {
+      *argv_ref = (char *const *)user_argv;
+      *env_ref = (char *const *)user_env;
+      goto out;
+   }
 
    if (user_argv) {
       argv = (char *const *) (dest + written);
@@ -79,7 +98,6 @@ execve_get_path_and_args(const char *user_filename,
          goto out;
    }
 
-   *abs_path_ref = abs_path;
    *argv_ref = argv;
    *env_ref = env;
 
@@ -106,12 +124,12 @@ sptr sys_execve(const char *user_filename,
 
    disable_preemption();
 
-   rc = execve_get_path_and_args(user_filename,
-                                 user_argv,
-                                 user_env,
-                                 &abs_path,
-                                 &argv,
-                                 &env);
+   rc = execve_get_path(user_filename, &abs_path);
+
+   if (rc != 0)
+      goto errend;
+
+   rc = execve_get_args(user_argv, user_env, &argv, &env);
 
    if (rc != 0)
       goto errend;
