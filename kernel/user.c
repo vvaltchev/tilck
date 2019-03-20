@@ -47,11 +47,11 @@ static void internal_copy_user_str(void *dest,
          return;
       }
 
-      *d++ = *ptr; /* note: ptr is NOT increased here */
+      *d++ = *ptr; /* NOTE: `ptr` is NOT increased here */
 
    } while (*ptr++);
 
-   *written_ptr = (size_t)(d - (char *)dest); /* written includes the final 0 */
+   *written_ptr = (size_t)(d - (char *)dest); /* NOTE: counting the final \0 */
 }
 
 /*
@@ -117,20 +117,20 @@ internal_copy_str_array_from_user(void *dest,
       /*
        * OK, the double-pointer is in range, so we can de-reference it to
        * read the single (char *) pointer. We don't care at the moment if the
-       * single pointer is valid, but we can whenever it is NULL in order to
-       * calculate 'argc'.
+       * single pointer is valid, but we have to check whether it is NULL in
+       * order to calculate 'argc'.
        */
 
       if (!*ptr_ptr)
          break;
    }
 
-   if ((char *)&dest_arr[argc] > dest_end) {
+   if ((char *)&dest_arr[argc] > dest_end - sizeof(void *)) {
       *rc = 1;
       goto out;
    }
 
-   dest_arr[argc] = NULL;
+   dest_arr[argc] = NULL; /* this is safe, we've just checked that */
    after_ptrs_arr = (char *) &dest_arr[argc + 1];
    written += (u32)(after_ptrs_arr - (char *)dest_arr);
 
@@ -145,11 +145,11 @@ internal_copy_str_array_from_user(void *dest,
                              &local_written,
                              rc);
 
-      written += local_written;
-      after_ptrs_arr += local_written;
-
       if (*rc != 0)
          break;
+
+      written += local_written;
+      after_ptrs_arr += local_written;
    }
 
 out:
@@ -186,10 +186,13 @@ int duplicate_user_path(char *dest,
                         size_t *written_ptr /* IN/OUT */)
 {
    int rc;
-   size_t curr_written;
+   size_t curr_written = 0;
 
    if (!user_path)
       return -EINVAL;
+
+   if (*written_ptr >= dest_size)
+      return -ENAMETOOLONG;
 
    rc = copy_str_from_user(dest + *written_ptr,
                            user_path,
@@ -212,7 +215,10 @@ int duplicate_user_argv(char *dest,
                         size_t *written_ptr /* IN/OUT */)
 {
    int rc;
-   size_t curr_written;
+   size_t curr_written = 0;
+
+   if (*written_ptr >= dest_size)
+      return -E2BIG;
 
    rc = copy_str_array_from_user(dest + *written_ptr,
                                  user_argv,

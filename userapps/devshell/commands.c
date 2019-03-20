@@ -59,7 +59,7 @@ int cmd_bigargv(int argc, char **argv)
 
    if (!pid) {
 
-      size_t len = 4055; //4052;
+      size_t len = 4051; //4052;
       printf("len: %d\n", (int)len);
 
       char *big_arg = malloc(len + 1);
