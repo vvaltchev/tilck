@@ -194,14 +194,13 @@ int
 setup_usermode_task(page_directory_t *pdir,
                     void *entry,
                     void *stack_addr,
-                    task_info *task_to_use,
+                    task_info *ti,
                     char *const *argv,
                     char *const *env,
                     task_info **ti_ref)
 {
    u32 argv_elems = 0;
    u32 env_elems = 0;
-   task_info *ti;
    regs r = {0};
    int rc;
 
@@ -224,13 +223,10 @@ setup_usermode_task(page_directory_t *pdir,
 
    r.eflags = 0x2 /* reserved, always set */ | EFLAGS_IF;
 
-   if (UNLIKELY(!task_to_use)) {
+   if (UNLIKELY(!ti)) {
 
       /*
        * Special case: applies only for `init`, the first process.
-       * In all the other cases, a process has first to fork() and then to
-       * call execve() from the child. In that case, we already have a PID
-       * to use.
        */
 
       VERIFY(create_new_pid() == 1);
@@ -250,14 +246,11 @@ setup_usermode_task(page_directory_t *pdir,
 
       /*
        * Common case: we're creating a new process using the data structures
-       * and the PID from a forked child (task_to_use).
-       */
-
-      ti = task_to_use;
-
-      /*
-       * We HAVE TO free all GDT and LDT entries by the current (forked)
-       * child since we're creating a totally new process.
+       * and the PID from a forked child (the `ti` task).
+       *
+       * The only thing we HAVE TO do in this case is to free all GDT and LDT
+       * entries by the current (forked) child since we're creating a totally
+       * new process now.
        */
       arch_specific_free_task(ti);
       ASSERT(ti->state == TASK_STATE_RUNNABLE);
