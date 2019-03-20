@@ -68,7 +68,7 @@ void set_kernel_stack() { }
 void irq_clear_mask() { }
 void kthread_create() { }
 void debug_qemu_turn_off_machine() { }
-void create_usermode_task() { }
+void setup_usermode_task() { }
 void gdt_install() { }
 void idt_install() { }
 void irq_install() { }

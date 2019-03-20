@@ -191,13 +191,13 @@ void kthread_exit(void)
 }
 
 int
-create_usermode_task(page_directory_t *pdir,
-                     void *entry,
-                     void *stack_addr,
-                     task_info *task_to_use,
-                     char *const *argv,
-                     char *const *env,
-                     task_info **ti_ref)
+setup_usermode_task(page_directory_t *pdir,
+                    void *entry,
+                    void *stack_addr,
+                    task_info *task_to_use,
+                    char *const *argv,
+                    char *const *env,
+                    task_info **ti_ref)
 {
    u32 argv_elems = 0;
    u32 env_elems = 0;

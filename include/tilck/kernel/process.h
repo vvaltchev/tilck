@@ -188,7 +188,7 @@ process_add_user_mapping(fs_handle h, void *vaddr, size_t page_count);
 void process_remove_user_mapping(user_mapping *um);
 user_mapping *process_get_user_mapping(void *vaddr);
 
-int create_usermode_task(page_directory_t *pdir,
+int setup_usermode_task(page_directory_t *pdir,
                          void *entry,
                          void *stack_addr,
                          task_info *task_to_use,

@@ -135,7 +135,7 @@ sptr sys_execve(const char *user_filename,
       pdir_destroy(curr->pi->pdir);
    }
 
-   rc = create_usermode_task(pdir,
+   rc = setup_usermode_task(pdir,
                              entry,
                              stack_addr,
                              curr != kernel_process ? curr : NULL,
