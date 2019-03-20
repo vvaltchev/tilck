@@ -17,16 +17,13 @@ static char *const default_env[] =
    NULL
 };
 
-
 static int
 execve_get_path(const char *user_filename, char **abs_path_ref)
 {
    int rc = 0;
-   char *abs_path = NULL;
-   char *orig_file_path;
    task_info *curr = get_curr_task();
-
-   char *dest = (char *)curr->args_copybuf;
+   char *abs_path = curr->io_copybuf;
+   char *orig_file_path = curr->args_copybuf;
    size_t written = 0;
 
    if (UNLIKELY(curr == kernel_process)) {
@@ -34,8 +31,7 @@ execve_get_path(const char *user_filename, char **abs_path_ref)
       goto out;
    }
 
-   orig_file_path = dest;
-   rc = duplicate_user_path(dest,
+   rc = duplicate_user_path(orig_file_path,
                             user_filename,
                             MIN((uptr)MAX_PATH, ARGS_COPYBUF_SIZE),
                             &written);
@@ -45,7 +41,6 @@ execve_get_path(const char *user_filename, char **abs_path_ref)
 
    STATIC_ASSERT(IO_COPYBUF_SIZE >= MAX_PATH);
 
-   abs_path = curr->io_copybuf;
    rc = compute_abs_path(orig_file_path, curr->pi->cwd, abs_path, MAX_PATH);
 
    if (rc != 0)
@@ -110,7 +105,7 @@ sptr sys_execve(const char *user_filename,
                 const char *const *user_env)
 {
    int rc;
-   void *entry_point;
+   void *entry;
    void *stack_addr;
    void *brk;
    char *abs_path;
@@ -124,19 +119,13 @@ sptr sys_execve(const char *user_filename,
 
    disable_preemption();
 
-   rc = execve_get_path(user_filename, &abs_path);
-
-   if (rc != 0)
+   if ((rc = execve_get_path(user_filename, &abs_path)))
       goto errend;
 
-   rc = execve_get_args(user_argv, user_env, &argv, &env);
-
-   if (rc != 0)
+   if ((rc = execve_get_args(user_argv, user_env, &argv, &env)))
       goto errend;
 
-   rc = load_elf_program(abs_path, &pdir, &entry_point, &stack_addr, &brk);
-
-   if (rc != 0)
+   if ((rc = load_elf_program(abs_path, &pdir, &entry, &stack_addr, &brk)))
       goto errend;
 
    char *const default_argv[] = { abs_path, NULL };
@@ -147,7 +136,7 @@ sptr sys_execve(const char *user_filename,
    }
 
    rc = create_usermode_task(pdir,
-                             entry_point,
+                             entry,
                              stack_addr,
                              curr != kernel_process ? curr : NULL,
                              argv ? argv : default_argv,
