@@ -178,50 +178,8 @@ static inline bool is_spur_irq(int irq)
    return false;
 }
 
-void handle_irq(regs *r)
+static inline void run_sched_if_possible(regs *r)
 {
-   int handler_ret = 0;
-   bool handled = false;
-   const int irq = r->int_num - 32;
-
-   if (is_spur_irq(irq))
-      return;
-
-   handle_irq_set_mask(irq);
-   disable_preemption();
-   push_nested_interrupt(r->int_num);
-   ASSERT(!are_interrupts_enabled());
-
-   /*
-    * We MUST send EOI to the PIC here, before starting the interrupt handler
-    * otherwise, the PIC will just not allow nested interrupts to happen.
-    * NOTE: we MUST send the EOI **before** re-enabling the interrupts,
-    * otherwise we'll start getting a lot of spurious interrupts!
-    */
-   pic_send_eoi(irq);
-   enable_interrupts_forced();
-
-   {
-      irq_handler_node *pos;
-
-      list_for_each_ro(pos, &irq_handlers_lists[irq], node) {
-         if ((handler_ret = pos->handler(r)) >= 0)
-            break;
-      }
-   }
-
-   if (!handled)
-      unhandled_irq_count[irq]++;
-
-   pop_nested_interrupt();
-   enable_preemption();
-   handle_irq_clear_mask(irq);
-
-   /* ---------------------------------------------- */
-
-   if (!handler_ret)
-      return;
-
    disable_preemption();
 
    if (disable_preemption_count > 1) {
@@ -248,6 +206,51 @@ void handle_irq(regs *r)
 
    /* In case schedule() returned, we MUST re-enable the preemption */
    enable_preemption();
+}
+
+void handle_irq(regs *r)
+{
+   enum irq_action hret = IRQ_UNHANDLED;
+   const int irq = r->int_num - 32;
+
+   if (is_spur_irq(irq))
+      return;
+
+   handle_irq_set_mask(irq);
+   disable_preemption();
+   push_nested_interrupt(r->int_num);
+   ASSERT(!are_interrupts_enabled());
+
+   /*
+    * We MUST send EOI to the PIC here, before starting the interrupt handler
+    * otherwise, the PIC will just not allow nested interrupts to happen.
+    * NOTE: we MUST send the EOI **before** re-enabling the interrupts,
+    * otherwise we'll start getting a lot of spurious interrupts!
+    */
+   pic_send_eoi(irq);
+   enable_interrupts_forced();
+
+   {
+      irq_handler_node *pos;
+
+      list_for_each_ro(pos, &irq_handlers_lists[irq], node) {
+
+         if ((hret = pos->handler(r)) != IRQ_UNHANDLED)
+            break;
+      }
+   }
+
+   if (hret == IRQ_UNHANDLED)
+      unhandled_irq_count[irq]++;
+
+   pop_nested_interrupt();
+   enable_preemption();
+   handle_irq_clear_mask(irq);
+
+   if (hret == IRQ_REQUIRES_BH) {
+      /* NOTE: we are NOT in "interrupt context" anymore */
+      run_sched_if_possible(r);
+   }
 }
 
 

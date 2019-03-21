@@ -23,10 +23,10 @@ static void serial_con_bh_handler(u16 portn)
    }
 }
 
-static int serial_con_irq_handler(regs *r, u16 portn)
+static enum irq_action serial_con_irq_handler(regs *r, u16 portn)
 {
    if (!serial_read_ready(com_ports[portn]))
-      return -1; /* Not an IRQ from this "device" [irq sharing] */
+      return IRQ_UNHANDLED; /* Not an IRQ from this "device" [irq sharing] */
 
    if (!enqueue_tasklet1(serial_port_tasklet_runner,
                          &serial_con_bh_handler, portn))
@@ -34,25 +34,25 @@ static int serial_con_irq_handler(regs *r, u16 portn)
       panic("KB: hit tasklet queue limit");
    }
 
-   return 1;
+   return IRQ_REQUIRES_BH;
 }
 
-static int serial_com1_irq_handler(regs *r)
+static enum irq_action serial_com1_irq_handler(regs *r)
 {
    return serial_con_irq_handler(r, 0);
 }
 
-static int serial_com2_irq_handler(regs *r)
+static enum irq_action serial_com2_irq_handler(regs *r)
 {
    return serial_con_irq_handler(r, 1);
 }
 
-static int serial_com3_irq_handler(regs *r)
+static enum irq_action serial_com3_irq_handler(regs *r)
 {
    return serial_con_irq_handler(r, 2);
 }
 
-static int serial_com4_irq_handler(regs *r)
+static enum irq_action serial_com4_irq_handler(regs *r)
 {
    return serial_con_irq_handler(r, 3);
 }

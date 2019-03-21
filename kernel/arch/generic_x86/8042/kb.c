@@ -219,7 +219,7 @@ static void kb_tasklet_handler()
       kb_process_scancode(inb(KB_DATA_PORT));
 }
 
-static int keyboard_irq_handler(regs *context)
+static enum irq_action keyboard_irq_handler(regs *context)
 {
    ASSERT(are_interrupts_enabled());
    ASSERT(!is_preemption_enabled());
@@ -228,12 +228,12 @@ static int keyboard_irq_handler(regs *context)
       panic("KB: fatal error: timeout in kb_wait_cmd_fetched");
 
    if (!kb_ctrl_is_pending_data())
-      return 0;
+      return IRQ_FULLY_HANDLED;
 
    if (!enqueue_tasklet0(kb_tasklet_runner, &kb_tasklet_handler))
       panic("KB: hit tasklet queue limit");
 
-   return 1;
+   return IRQ_REQUIRES_BH;
 }
 
 u8 kb_get_current_modifiers(void)

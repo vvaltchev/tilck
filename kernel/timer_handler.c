@@ -211,11 +211,11 @@ static ALWAYS_INLINE bool timer_nested_irq(void)
    return false;
 }
 
-int timer_irq_handler(regs *context)
+enum irq_action timer_irq_handler(regs *context)
 {
    if (KERNEL_TRACK_NESTED_INTERRUPTS)
       if (timer_nested_irq())
-         return 0;
+         return IRQ_FULLY_HANDLED;
 
    /*
     * It is SAFE to directly increase the 64-bit integer __ticks here, without
@@ -236,7 +236,7 @@ int timer_irq_handler(regs *context)
     * if there has been another part of the code that disabled the preemption.
     */
    if (disable_preemption_count > 1) {
-      return 0;
+      return IRQ_FULLY_HANDLED;
    }
 
    ASSERT(disable_preemption_count == 1); // again, for us disable = 1 means 0.
@@ -257,7 +257,7 @@ int timer_irq_handler(regs *context)
       schedule(X86_PC_TIMER_IRQ);
    }
 
-   return 0;
+   return IRQ_FULLY_HANDLED;
 }
 
 static irq_handler_node timer_irq_handler_node = {
