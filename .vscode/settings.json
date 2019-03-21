@@ -25,6 +25,7 @@
    "files.trimTrailingWhitespace": true,
    "files.insertFinalNewline": true,
    "editor.formatOnPaste": false,
+   "editor.formatOnSave": false,
    "editor.autoIndent": false,
    "editor.foldingStrategy": "indentation",
    "editor.emptySelectionClipboard": false,

@@ -362,8 +362,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_timer_delete)
 CREATE_STUB_SYSCALL_IMPL(sys_clock_settime)
 
 sptr sys_clock_gettime(clockid_t clk_id, struct timespec *tp);
+sptr sys_clock_getres(clockid_t clk_id, struct timespec *res);
 
-CREATE_STUB_SYSCALL_IMPL(sys_clock_getres)
 CREATE_STUB_SYSCALL_IMPL(sys_clock_nanosleep)
 CREATE_STUB_SYSCALL_IMPL(sys_statfs64)
 CREATE_STUB_SYSCALL_IMPL(sys_fstatfs64)

@@ -57,12 +57,13 @@ considered as *not implemented yet*.
  sys_set_thread_area | full
  sys_exit_group      | minimal [5]
  sys_set_tid_address | stub
- sys_clock_gettime   | partial
  sys_tkill           | partial [6]
  sys_tgkill          | partial [6]
  sys_kill            | partial [6]
  sys_setsid          | minimal [8]
  sys_times           | minimal [9]
+ sys_clock_gettime   | compliant [10]
+ sys_clock_getres    | compliant [10]
  sys_select          | full
  sys_poll            | full
  sys_readlink        | compliant stub
@@ -108,3 +109,5 @@ Notes:
 8. The only thing that `setsid()` does now is resetting the controlling tty.
 
 9. At the moment `times()` just updates `tms_utime` and `tms_stime`.
+
+10. Only the clocks CLOCK_REALTIME and CLOCK_MONOTONIC are supported.

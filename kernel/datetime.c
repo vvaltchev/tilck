@@ -196,3 +196,33 @@ sptr sys_clock_gettime(clockid_t clk_id, struct timespec *user_tp)
 
    return 0;
 }
+
+sptr sys_clock_getres(clockid_t clk_id, struct timespec *user_res)
+{
+   struct timespec tp;
+
+   switch (clk_id) {
+      case CLOCK_REALTIME:
+         tp = (struct timespec) {
+            .tv_sec = 1,
+            .tv_nsec = 0
+         };
+         break;
+
+      case CLOCK_MONOTONIC:
+         tp = (struct timespec) {
+            .tv_sec = 0,
+            .tv_nsec = 1000000000/TIMER_HZ
+         };
+         break;
+
+      default:
+         printk("WARNING: unsupported clk_id: %d\n", clk_id);
+         return -EINVAL;
+   }
+
+   if (copy_to_user(user_res, &tp, sizeof(tp)) < 0)
+      return -EFAULT;
+
+   return 0;
+}
