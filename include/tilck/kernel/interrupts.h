@@ -7,7 +7,7 @@
 typedef struct {
 
    list_node node;
-   irq_interrupt_handler handler;
+   irq_handler_t handler;
 
 } irq_handler_node;
 

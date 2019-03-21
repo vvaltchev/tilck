@@ -16,7 +16,7 @@ void handle_cpf(regs *r);
 extern void (*fault_entry_points[32])(void);
 
 static idt_entry idt[256];
-static interrupt_handler fault_handlers[32];
+static soft_int_handler_t fault_handlers[32];
 
 void load_idt(idt_entry *entries, u16 entries_count)
 {
@@ -136,7 +136,7 @@ void handle_fault(regs *r)
 
 void set_fault_handler(int ex_num, void *ptr)
 {
-   fault_handlers[ex_num] = (interrupt_handler) ptr;
+   fault_handlers[ex_num] = (soft_int_handler_t) ptr;
 }
 
 void init_cpu_exception_handling(void)

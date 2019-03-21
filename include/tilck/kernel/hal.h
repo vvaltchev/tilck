@@ -31,8 +31,8 @@
 #endif
 
 
-typedef void (*interrupt_handler)(regs *);
-typedef int (*irq_interrupt_handler)(regs *);
+typedef void (*soft_int_handler_t)(regs *);
+typedef int (*irq_handler_t)(regs *);
 
 void reboot();
 void init_segmentation(void);
