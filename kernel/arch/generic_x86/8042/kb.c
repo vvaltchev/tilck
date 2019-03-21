@@ -238,9 +238,9 @@ static int keyboard_irq_handler(regs *context)
 
 u8 kb_get_current_modifiers(void)
 {
-   u32 shift = 1u * kb_is_shift_pressed();
-   u32 alt   = 2u * kb_is_alt_pressed();
-   u32 ctrl  = 4u * kb_is_ctrl_pressed();
+   u8 shift = 1u * kb_is_shift_pressed();
+   u8 alt   = 2u * kb_is_alt_pressed();
+   u8 ctrl  = 4u * kb_is_ctrl_pressed();
 
    /*
     * 0 nothing
@@ -253,7 +253,7 @@ u8 kb_get_current_modifiers(void)
     * 7 shift + alt + ctrl
     */
 
-   return (u8)(shift + alt + ctrl);
+   return shift + alt + ctrl;
 }
 
 static void create_kb_tasklet_runner(void)
@@ -273,24 +273,27 @@ int kb_get_fn_key_pressed(u32 key)
     * all a scancode long 1 byte.
     */
 
-   static const u8 fn_table[256] = {
+   if (key >= 256)
+      return 0;
 
-      [KEY_F1] = 1,
-      [KEY_F2] = 2,
-      [KEY_F3] = 3,
-      [KEY_F4] = 4,
-      [KEY_F5] = 5,
-      [KEY_F6] = 6,
-      [KEY_F7] = 7,
-      [KEY_F8] = 8,
-      [KEY_F9] = 9,
+   static const char fn_table[256] = {
+
+      [KEY_F1]  =  1,
+      [KEY_F2]  =  2,
+      [KEY_F3]  =  3,
+      [KEY_F4]  =  4,
+      [KEY_F5]  =  5,
+      [KEY_F6]  =  6,
+      [KEY_F7]  =  7,
+      [KEY_F8]  =  8,
+      [KEY_F9]  =  9,
       [KEY_F10] = 10,
       [KEY_F11] = 11,
       [KEY_F12] = 12
 
    };
 
-   return (int)fn_table[(u8) key];
+   return fn_table[(u8) key];
 }
 
 static irq_handler_node kb_irq_handler_node = {
