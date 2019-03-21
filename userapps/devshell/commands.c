@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
 #include <sys/wait.h>
 
 #include "devshell.h"
@@ -195,6 +196,21 @@ struct {
 
 #undef CMD_ENTRY
 
+static u64 get_monotonic_time_ms(void)
+{
+   int rc;
+   struct timespec tp;
+
+   rc = clock_gettime(CLOCK_MONOTONIC, &tp);
+
+   if (rc < 0) {
+      perror("clock_gettime(CLOCK_MONOTONIC) failed");
+      exit(1);
+   }
+
+   return (u64)tp.tv_sec * 1000 + (u64)tp.tv_nsec / 1000000;
+}
+
 static bool
 run_child(int argc, char **argv, cmd_func_type func, const char *name)
 {
@@ -205,11 +221,9 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
 
    int child_pid, wstatus, rc;
    u64 start_ms, end_ms;
-   struct timeval tv;
    bool pass;
 
-   gettimeofday(&tv, NULL);
-   start_ms = (u64)tv.tv_sec * 1000 + (u64)tv.tv_usec / 1000;
+   start_ms = get_monotonic_time_ms();
 
    printf(COLOR_YELLOW "[devshell] ");
    printf(COLOR_GREEN "[RUN   ] " RESET_ATTRS "%s"  "\n", name);
@@ -238,8 +252,7 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
       return false;
    }
 
-   gettimeofday(&tv, NULL);
-   end_ms = (u64)tv.tv_sec * 1000 + (u64)tv.tv_usec / 1000;
+   end_ms = get_monotonic_time_ms();
 
    pass = WIFEXITED(wstatus) && (WEXITSTATUS(wstatus) == 0);
    printf(COLOR_YELLOW "[devshell] %s", pass_fail_strings[pass]);
@@ -254,10 +267,8 @@ int cmd_runall(int argc, char **argv)
    int child_pid;
    int to_run = 0, passed = 0;
    u64 start_ms, end_ms;
-   struct timeval tv;
 
-   gettimeofday(&tv, NULL);
-   start_ms = (u64)tv.tv_sec * 1000 + (u64)tv.tv_usec / 1000;
+   start_ms = get_monotonic_time_ms();
 
    for (int i = 1; i < ARRAY_SIZE(cmds_table); i++) {
 
@@ -274,8 +285,7 @@ int cmd_runall(int argc, char **argv)
       passed++;
    }
 
-   gettimeofday(&tv, NULL);
-   end_ms = (u64)tv.tv_sec * 1000 + (u64)tv.tv_usec / 1000;
+   end_ms = get_monotonic_time_ms();
 
    printf(COLOR_YELLOW "[devshell] ");
    printf("------------------------------------------------------------\n");
