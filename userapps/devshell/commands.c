@@ -203,7 +203,7 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
       COLOR_GREEN "[PASSED] " RESET_ATTRS,
    };
 
-   int child_pid, wstatus;
+   int child_pid, wstatus, rc;
    u64 start_ms, end_ms;
    struct timeval tv;
    bool pass;
@@ -225,7 +225,18 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
       exit(func(argc, argv));
    }
 
-   waitpid(child_pid, &wstatus, 0);
+   rc = waitpid(child_pid, &wstatus, 0);
+
+   if (rc < 0) {
+      perror("waitpid() failed");
+      return false;
+   }
+
+   if (rc != child_pid) {
+      fprintf(stderr, "waitpid() returned value [%d] "
+                      "!= child_pid [%d]\n", rc, child_pid);
+      return false;
+   }
 
    gettimeofday(&tv, NULL);
    end_ms = (u64)tv.tv_sec * 1000 + (u64)tv.tv_usec / 1000;
