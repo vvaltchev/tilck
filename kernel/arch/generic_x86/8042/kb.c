@@ -56,10 +56,10 @@ static u8 translate_printable_key(u32 key)
 
       switch (key) {
 
-         case 0xe01c:
+         case KEY_NUMPAD_ENTER:
             return '\r';
 
-         case 0xe035:
+         case KEY_NUMPAD_SLASH:
             return '/';
 
          default:

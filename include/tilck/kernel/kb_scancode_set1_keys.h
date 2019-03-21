@@ -47,3 +47,6 @@
 #define KEY_NUMPAD_PAGE_UP       0x49
 #define KEY_PAGE_DOWN          0xE051
 #define KEY_NUMPAD_PAGE_DOWN     0x51
+
+#define KEY_NUMPAD_ENTER       0xe01c
+#define KEY_NUMPAD_SLASH       0xe035

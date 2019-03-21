@@ -54,11 +54,22 @@ bool kb_scancode_to_ansi_seq(u32 key, u8 modifiers, char *seq)
 
    ASSERT(modifiers < 8);
 
-   for (u32 i = 0; i < ARRAY_SIZE(ansi_sequences); i++)
+   /*
+    * It might not seem very efficient to linearly walk through all the
+    * sequences trying to find the one for `key`. But that's just a perception:
+    *
+    * It's about doing ~30 iterations in the WORST case. For such small values
+    * of N, it's almost always faster to use a linear algorithm than complex
+    * O(1) or O(log(N)) algorithms, because they have significant (hidden)
+    * constants multipliers in the function of N describing their *real*, not
+    * asymptotic, cost.
+    */
+   for (u32 i = 0; i < ARRAY_SIZE(ansi_sequences); i++) {
       if (ansi_sequences[i].key == key) {
          base_seq = ansi_sequences[i].seq;
          break;
       }
+   }
 
    if (!base_seq)
       return false;
@@ -69,7 +80,7 @@ bool kb_scancode_to_ansi_seq(u32 key, u8 modifiers, char *seq)
    if (!modifiers)
       return true;
 
-   if (seq[1] != '[') {
+   if (UNLIKELY(seq[1] != '[')) {
 
       if (seq[1] == 'O') {
 
@@ -97,8 +108,8 @@ bool kb_scancode_to_ansi_seq(u32 key, u8 modifiers, char *seq)
 
       /*
        * Here the seq starts with ESC [, but a non-digit follows '['.
-       * Example: the home KEY: \033[H
-       * In this case, we need to insert a "1;" between '[' and H.
+       * Example: the HOME key: \033[H
+       * In this case, we need to insert a "1;" between '[' and 'H'.
        */
 
       if (sl != 3) {
