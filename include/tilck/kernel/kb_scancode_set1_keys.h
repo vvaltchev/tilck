@@ -35,9 +35,15 @@
 #define KEY_RIGHT_ALT     0xE038
 
 #define KEY_INS           0xE052
+#define KEY_NUMPAD_INS      0x52
 #define KEY_HOME          0xE047
+#define KEY_NUMPAD_HOME     0x47
 #define KEY_DEL           0xE053
+#define KEY_NUMPAD_DEL      0x53
 #define KEY_END           0xE04f
+#define KEY_NUMPAD_END      0x4f
 
-#define KEY_PAGE_UP       0xE049
-#define KEY_PAGE_DOWN     0xE051
+#define KEY_PAGE_UP            0xE049
+#define KEY_NUMPAD_PAGE_UP       0x49
+#define KEY_PAGE_DOWN          0xE051
+#define KEY_NUMPAD_PAGE_DOWN     0x51

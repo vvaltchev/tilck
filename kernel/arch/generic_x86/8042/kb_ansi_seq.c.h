@@ -8,36 +8,42 @@ static const struct {
 
 } ansi_sequences[] = {
 
-   {KEY_UP,           "\033[A"},
-   {KEY_DOWN,         "\033[B"},
-   {KEY_RIGHT,        "\033[C"},
-   {KEY_LEFT,         "\033[D"},
+   {KEY_UP,                "\033[A"},
+   {KEY_DOWN,              "\033[B"},
+   {KEY_RIGHT,             "\033[C"},
+   {KEY_LEFT,              "\033[D"},
 
-   {KEY_NUMPAD_UP,    "\033[A"},
-   {KEY_NUMPAD_DOWN,  "\033[B"},
-   {KEY_NUMPAD_RIGHT, "\033[C"},
-   {KEY_NUMPAD_LEFT,  "\033[D"},
+   {KEY_NUMPAD_UP,         "\033[A"},
+   {KEY_NUMPAD_DOWN,       "\033[B"},
+   {KEY_NUMPAD_RIGHT,      "\033[C"},
+   {KEY_NUMPAD_LEFT,       "\033[D"},
 
-   {KEY_PAGE_UP,      "\033[5~"},
-   {KEY_PAGE_DOWN,    "\033[6~"},
+   {KEY_PAGE_UP,           "\033[5~"},
+   {KEY_NUMPAD_PAGE_UP,    "\033[5~"},
+   {KEY_PAGE_DOWN,         "\033[6~"},
+   {KEY_NUMPAD_PAGE_DOWN,  "\033[6~"},
 
-   {KEY_INS,          "\033[2~"},
-   {KEY_DEL,          "\033[3~"},
-   {KEY_HOME,         "\033[H"},
-   {KEY_END,          "\033[F"},
+   {KEY_INS,               "\033[2~"},
+   {KEY_NUMPAD_INS,        "\033[2~"},
+   {KEY_DEL,               "\033[3~"},
+   {KEY_NUMPAD_DEL,        "\033[3~"},
+   {KEY_HOME,              "\033[H"},
+   {KEY_NUMPAD_HOME,       "\033[H"},
+   {KEY_END,               "\033[F"},
+   {KEY_NUMPAD_END,        "\033[F"},
 
-   {KEY_F1,           "\033[[A"},
-   {KEY_F2,           "\033[[B"},
-   {KEY_F3,           "\033[[C"},
-   {KEY_F4,           "\033[[D"},
-   {KEY_F5,           "\033[[E"},
-   {KEY_F6,           "\033[17~"},
-   {KEY_F7,           "\033[18~"},
-   {KEY_F8,           "\033[19~"},
-   {KEY_F9,           "\033[20~"},
-   {KEY_F10,          "\033[21~"},
-   {KEY_F11,          "\033[23~"},
-   {KEY_F12,          "\033[24~"}
+   {KEY_F1,                "\033[[A"},
+   {KEY_F2,                "\033[[B"},
+   {KEY_F3,                "\033[[C"},
+   {KEY_F4,                "\033[[D"},
+   {KEY_F5,                "\033[[E"},
+   {KEY_F6,                "\033[17~"},
+   {KEY_F7,                "\033[18~"},
+   {KEY_F8,                "\033[19~"},
+   {KEY_F9,                "\033[20~"},
+   {KEY_F10,               "\033[21~"},
+   {KEY_F11,               "\033[23~"},
+   {KEY_F12,               "\033[24~"}
 };
 
 bool kb_scancode_to_ansi_seq(u32 key, u8 modifiers, char *seq)

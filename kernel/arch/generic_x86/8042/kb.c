@@ -16,14 +16,14 @@
 
 #define KB_TASKLETS_QUEUE_SIZE 128
 
-typedef enum {
+enum kb_state {
 
-   KB_DEFAULT_STATE,
+   KB_DEFAULT_STATE = 0,
    KB_READ_E0_SCANCODE_STATE,
    KB_READ_E1_SCANCODE_STATE,
    KB_READ_FIRST_SCANCODE_AFTER_E1_STATE
 
-} kb_state_t;
+};
 
 typedef struct {
 
@@ -33,10 +33,10 @@ typedef struct {
 } keypress_handler_elem;
 
 int kb_tasklet_runner = -1;
-static kb_state_t kb_curr_state = KB_DEFAULT_STATE;
+static enum kb_state kb_curr_state;
 static bool key_pressed_state[2][128];
-static bool numLock;
-static bool capsLock;
+static bool numLock = true;
+static bool capsLock = false;
 static list keypress_handlers;
 
 bool kb_is_pressed(u32 key)
@@ -45,20 +45,27 @@ bool kb_is_pressed(u32 key)
    return key_pressed_state[e0][key & 0xFF];
 }
 
-static void numlock_set_led(bool val)
+static inline void kb_led_update(void)
 {
-   kb_led_set((u8)(capsLock << 2 | val << 1));
-}
-
-static void capslock_set_led(bool val)
-{
-   kb_led_set((u8)(numLock << 1 | val << 2));
+   kb_led_set((u8)(capsLock << 2 | numLock << 1));
 }
 
 static u8 translate_printable_key(u32 key)
 {
-   if (key >= 256)
-      return 0;
+   if (key >= 256) {
+
+      switch (key) {
+
+         case 0xe01c:
+            return '\r';
+
+         case 0xe035:
+            return '/';
+
+         default:
+            return 0;
+      }
+   }
 
    u8 *layout =
       us_kb_layouts[kb_is_pressed(KEY_L_SHIFT) || kb_is_pressed(KEY_R_SHIFT)];
@@ -132,16 +139,16 @@ void handle_key_pressed(u32 key)
 
    case KEY_NUM_LOCK:
       numLock = !numLock;
-      numlock_set_led(numLock);
+      kb_led_update();
       return;
 
    case KEY_CAPS_LOCK:
       capsLock = !capsLock;
-      capslock_set_led(capsLock);
+      kb_led_update();
       return;
    }
 
-   /* int hc = */
+   //int hc =
    kb_call_keypress_handlers(key, translate_printable_key(key));
 
    // if (!hc && key != KEY_L_SHIFT && key != KEY_R_SHIFT)
@@ -321,8 +328,7 @@ void init_kb(void)
       printk("PS/2 controller: reset successful\n");
    }
 
-   numlock_set_led(numLock);
-   capslock_set_led(capsLock);
+   kb_led_update();
    kb_set_typematic_byte(0);
 
    create_kb_tasklet_runner();
