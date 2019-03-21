@@ -527,22 +527,44 @@ static void debug_print_fcntl_command(int cmd)
    }
 }
 
-sptr sys_fcntl64(int user_fd, int cmd, uptr arg)
+void close_cloexec_handles(process_info *pi)
 {
-   const u32 fd = (u32) user_fd;
-   fs_handle handle;
+   for (u32 i = 0; i < MAX_HANDLES; i++) {
 
-   handle = get_fs_handle(fd);
+      fs_handle_base *h = pi->handles[i];
 
-   if (!handle)
-      return -EBADF;
-
-   if (cmd == F_SETFD) {
-      if (arg & FD_CLOEXEC) {
-         // FD_CLOEXEC is handled at this layer, the rest by the VFS layer.
-         // TODO: add support for FD_CLOEXEC
+      if (h && (h->flags & FD_CLOEXEC)) {
+         vfs_close(h);
+         pi->handles[i] = NULL;
       }
    }
+}
 
-   return vfs_fcntl(handle, cmd, arg);
+sptr sys_fcntl64(int user_fd, int cmd, u32 arg)
+{
+   const u32 fd = (u32) user_fd;
+   fs_handle_base *hb = get_fs_handle(fd);
+   sptr rc = 0;
+
+   if (!hb)
+      return -EBADF;
+
+   switch (cmd) {
+
+      case F_SETFD:
+         hb->flags = arg;
+         break;
+
+      case F_GETFD:
+         return (sptr)hb->flags;
+
+      default:
+         rc = vfs_fcntl(hb, cmd, arg);
+   }
+
+   if (rc == -EINVAL) {
+      printk("[fcntl64] Ignored unknown cmd %d\n", cmd);
+   }
+
+   return rc;
 }

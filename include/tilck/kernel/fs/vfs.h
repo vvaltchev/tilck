@@ -14,6 +14,8 @@
 #include <tilck/kernel/sys_types.h>
 #include <tilck/kernel/sync.h>
 
+typedef struct process_info process_info;
+
 /*
  * Opaque type for file handles.
  *
@@ -176,3 +178,4 @@ compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size);
 
 u32 vfs_get_new_device_id(void);
 fs_handle get_fs_handle(u32 fd);
+void close_cloexec_handles(process_info *pi);

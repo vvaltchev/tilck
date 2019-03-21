@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 
 #include "devshell.h"
@@ -44,6 +46,69 @@ DECL_CMD(poll1);
 DECL_CMD(poll2);
 DECL_CMD(poll3);
 DECL_CMD(bigargv);
+
+static int cloexec_do_exec(int argc, char **argv)
+{
+   int rc =
+      fprintf(stderr,
+              COLOR_RED "[execve-proc] stderr works [it should NOT!]"
+              RESET_ATTRS "\n");
+
+   if (rc < 0) {
+      printf("[execve-proc] write to stderr failed, AS EXPECTED\n");
+      return 0;
+   }
+
+   return 1;
+}
+
+static int cmd_cloexec(int argc, char **argv)
+{
+   int pid;
+   int wstatus;
+
+   if (argc > 0) {
+
+      if (!strcmp(argv[0], "do_exec"))
+         return cloexec_do_exec(argc, argv);
+
+      printf("[devshell][cloexec] Invalid sub-command '%s'\n", argv[0]);
+      return 1;
+   }
+
+   pid = fork();
+
+   if (pid < 0) {
+      perror("fork() failed");
+      exit(1);
+   }
+
+   if (!pid) {
+      char *argv[] = { shell_argv[0], "-c", "cloexec", "do_exec", NULL };
+
+      int flags = fcntl(2 /* stderr */, F_GETFD);
+      int rc = fcntl(2 /* stderr */, F_SETFD, flags | FD_CLOEXEC);
+
+      if (rc < 0) {
+         perror("fcntl() failed");
+         exit(1);
+      }
+
+      fprintf(stderr, "[forked-child] Stderr works [expected to work]\n");
+      execve(shell_argv[0], argv, shell_env);
+      perror("execve() failed");
+      exit(1);
+   }
+
+   waitpid(pid, &wstatus, 0);
+
+   if (!WIFEXITED(wstatus)) {
+      printf("Test child killed by signal: %s\n", strsignal(WTERMSIG(wstatus)));
+      exit(1);
+   }
+
+   return WEXITSTATUS(wstatus);
+}
 
 int cmd_selftest(int argc, char **argv)
 {
@@ -119,6 +184,7 @@ struct {
    CMD_ENTRY(sigabrt, TT_SHORT, true),
    CMD_ENTRY(sig1, TT_SHORT, true),
    CMD_ENTRY(bigargv, TT_SHORT, true),
+   CMD_ENTRY(cloexec, TT_SHORT, true),
 
    CMD_ENTRY(select1, TT_SHORT, false),
    CMD_ENTRY(select2, TT_SHORT, false),

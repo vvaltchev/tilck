@@ -136,12 +136,12 @@ sptr sys_execve(const char *user_filename,
    }
 
    rc = setup_usermode_task(pdir,
-                             entry,
-                             stack_addr,
-                             curr != kernel_process ? curr : NULL,
-                             argv ? argv : default_argv,
-                             env ? env : default_env,
-                             &ti);
+                            entry,
+                            stack_addr,
+                            curr != kernel_process ? curr : NULL,
+                            argv ? argv : default_argv,
+                            env ? env : default_env,
+                            &ti);
 
    if (rc)
       goto errend;
@@ -151,6 +151,7 @@ sptr sys_execve(const char *user_filename,
    ti->pi->brk = brk;
    ti->pi->initial_brk = brk;
    memcpy(ti->pi->filepath, abs_path, strlen(abs_path) + 1);
+   close_cloexec_handles(ti->pi);
 
    switch_to_idle_task();
    NOT_REACHED();
