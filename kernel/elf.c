@@ -84,7 +84,6 @@ int load_elf_program(const char *filepath,
    fs_handle elf_file = NULL;
    Elf_Ehdr header;
    ssize_t ret;
-   size_t count;
    uptr brk = 0;
    int rc = 0;
 
@@ -183,7 +182,7 @@ int load_elf_program(const char *filepath,
 
 #if MMAP_NO_COW
 
-   for (int i = 0; i < pages_for_stack; i++) {
+   for (u32 i = 0; i < pages_for_stack; i++) {
 
       void *p = kzmalloc(PAGE_SIZE);
 
@@ -204,10 +203,10 @@ int load_elf_program(const char *filepath,
 
 #else
 
-   count = map_zero_pages(*pdir_ref,
-                          (void *)stack_top,
-                          pages_for_stack,
-                          true, true);
+   size_t count = map_zero_pages(*pdir_ref,
+                                 (void *)stack_top,
+                                 pages_for_stack,
+                                 true, true);
 
    if (count != pages_for_stack) {
       unmap_pages(*pdir_ref, (void *)stack_top, count, true);
