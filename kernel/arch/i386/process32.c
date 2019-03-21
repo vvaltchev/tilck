@@ -351,6 +351,9 @@ switch_to_task_pop_nested_interrupts(int curr_irq)
 static inline void
 switch_to_task_clear_irq_mask(int curr_irq)
 {
+   if (curr_irq < 0)
+      return; /* Invalid IRQ#: nothing to do. NOTE: -1 is a special value */
+
    if (KERNEL_TRACK_NESTED_INTERRUPTS) {
 
       /*
@@ -361,7 +364,7 @@ switch_to_task_clear_irq_mask(int curr_irq)
        * cycles.
        */
 
-      if (curr_irq > 0)
+      if (curr_irq != X86_PC_TIMER_IRQ)
          irq_clear_mask(curr_irq);
 
    } else {
@@ -370,8 +373,8 @@ switch_to_task_clear_irq_mask(int curr_irq)
        * When nested interrupts are not tracked, nested IRQ #0 is not allowed.
        * Therefore here, as for any other IRQ, its mask has to be cleared.
        */
-      if (curr_irq >= 0)
-         irq_clear_mask(curr_irq);
+
+      irq_clear_mask(curr_irq);
    }
 }
 

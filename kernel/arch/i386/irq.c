@@ -111,7 +111,7 @@ static inline void handle_irq_set_mask(int irq)
        * nested way and "bad things may happen".
        */
 
-      if (irq != 0)
+      if (irq != X86_PC_TIMER_IRQ)
          irq_set_mask(irq);
 
    } else {
@@ -123,7 +123,7 @@ static inline void handle_irq_clear_mask(int irq)
 {
    if (KERNEL_TRACK_NESTED_INTERRUPTS) {
 
-      if (irq != 0)
+      if (irq != X86_PC_TIMER_IRQ)
          irq_clear_mask(irq);
 
    } else {
