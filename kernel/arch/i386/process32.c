@@ -114,14 +114,23 @@ push_args_on_user_stack(regs *r,
 NODISCARD task_info *
 kthread_create(kthread_func_ptr fun, void *arg)
 {
-   regs r = {0};
-
-   r.kernel_resume_eip = (uptr)&soft_interrupt_resume;
-   r.gs = r.fs = r.es = r.ds = r.ss = X86_KERNEL_DATA_SEL;
-   r.cs = X86_KERNEL_CODE_SEL;
-
-   r.eip = (u32)fun;
-   r.eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF;
+   regs r = {
+      .kernel_resume_eip = (uptr)&soft_interrupt_resume,
+      .custom_flags = 0,
+      .gs = X86_KERNEL_DATA_SEL,
+      .fs = X86_KERNEL_DATA_SEL,
+      .es = X86_KERNEL_DATA_SEL,
+      .ds = X86_KERNEL_DATA_SEL,
+      .edi = 0, .esi = 0, .ebp = 0, .esp = 0,
+      .ebx = 0, .edx = 0, .ecx = 0, .eax = 0,
+      .int_num = 0,
+      .err_code = 0,
+      .eip = (uptr)fun,
+      .cs = X86_KERNEL_CODE_SEL,
+      .eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF,
+      .useresp = 0,
+      .ss = X86_KERNEL_DATA_SEL
+   };
 
    task_info *ti = allocate_new_thread(kernel_process->pi);
 
@@ -202,30 +211,34 @@ int setup_usermode_task(page_directory_t *pdir,
                         char *const *env,
                         task_info **ti_ref)
 {
+   regs r = {
+      .kernel_resume_eip = (uptr)&soft_interrupt_resume,
+      .custom_flags = 0,
+      .gs = X86_USER_DATA_SEL,
+      .fs = X86_USER_DATA_SEL,
+      .es = X86_USER_DATA_SEL,
+      .ds = X86_USER_DATA_SEL,
+      .edi = 0, .esi = 0, .ebp = 0, .esp = 0,
+      .ebx = 0, .edx = 0, .ecx = 0, .eax = 0,
+      .int_num = 0,
+      .err_code = 0,
+      .eip = (uptr)entry,
+      .cs = X86_USER_CODE_SEL,
+      .eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF,
+      .useresp = (uptr)stack_addr,
+      .ss = X86_USER_DATA_SEL
+   };
+
+   int rc;
    u32 argv_elems = 0;
    u32 env_elems = 0;
-   regs r = {0};
-   int rc;
-
    *ti_ref = NULL;
-   r.kernel_resume_eip = (uptr)&soft_interrupt_resume;
-
-   // User data GDT selector with bottom 2 bits set for ring 3.
-   r.gs = r.fs = r.es = r.ds = r.ss = X86_USER_DATA_SEL;
-
-   // User code GDT selector with bottom 2 bits set for ring 3.
-   r.cs = X86_USER_CODE_SEL;
-
-   r.eip = (u32)entry;
-   r.useresp = (u32)stack_addr;
 
    while (argv[argv_elems]) argv_elems++;
    while (env[env_elems]) env_elems++;
 
    if ((rc = push_args_on_user_stack(&r, argv, argv_elems, env, env_elems)))
       return rc;
-
-   r.eflags = 0x2 /* reserved, always set */ | EFLAGS_IF;
 
    if (UNLIKELY(!ti)) {
 
