@@ -558,6 +558,13 @@ sptr sys_fcntl64(int user_fd, int cmd, int arg)
       case F_GETFD:
          return hb->fd_flags;
 
+      case F_SETFL:
+         hb->fl_flags = arg;
+         break;
+
+      case F_GETFL:
+         return hb->fl_flags;
+
       default:
          rc = vfs_fcntl(hb, cmd, arg);
    }

@@ -194,19 +194,5 @@ int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp)
 
 int tty_fcntl_int(tty *t, devfs_file_handle *h, int cmd, int arg)
 {
-   if (cmd == F_GETFL)
-      return h->fl_flags;
-
-   if (cmd == F_SETFL) {
-      /*
-       * TODO: check the flags in arg and fail with EINVAL in case of unknown
-       * or unsupported flags. Just setting hb->flags to 'arg' will silently
-       * ignore such unknown/unsupported flags and that will make hard to guess
-       * why programs behave in Tilck differently than on Linux.
-       */
-      h->fl_flags = arg;
-      return 0;
-   }
-
    return -EINVAL;
 }
