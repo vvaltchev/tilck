@@ -202,7 +202,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
 
    message(STATUS "Preparing a RELEASE build...")
    list(APPEND GENERAL_DEFS_LIST "-DNDEBUG -DRELEASE")
-   set(OPT_FLAGS_LIST -O2)
+   set(OPT_FLAGS_LIST -O3)
 
 else()
 
