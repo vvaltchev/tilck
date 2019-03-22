@@ -249,7 +249,8 @@ static int devfs_open_file(filesystem *fs, devfs_file *pos, fs_handle *out)
    return 0;
 }
 
-static int devfs_open(filesystem *fs, const char *path, fs_handle *out)
+static int
+devfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 {
    /*
     * Path is expected to be striped from the mountpoint prefix, but the '/'

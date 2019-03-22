@@ -90,7 +90,7 @@ int load_elf_program(const char *filepath,
    ASSERT(!is_preemption_enabled());
    enable_preemption();
    {
-      rc = vfs_open(filepath, &elf_file);
+      rc = vfs_open(filepath, &elf_file, 0, O_RDONLY);
    }
    disable_preemption();
 

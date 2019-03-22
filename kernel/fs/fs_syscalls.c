@@ -88,7 +88,7 @@ sptr sys_open(const char *user_path, int flags, int mode)
 
    // TODO: make the vfs call runnable with preemption enabled
    // In order to achieve that, we'll need a per-process "fs" lock.
-   ret = vfs_open(path, &h);
+   ret = vfs_open(path, &h, 0, O_RDONLY);
 
    if (ret < 0)
       goto end;
@@ -337,7 +337,7 @@ sptr sys_stat64(const char *user_path, struct stat64 *user_statbuf)
       return -ENAMETOOLONG;
 
    //printk("sys_stat64('%s') => vfs_open(%s)\n", orig_path, path);
-   rc = vfs_open(path, &h);
+   rc = vfs_open(path, &h, 0, O_RDONLY);
 
    if (rc < 0)
       return rc;

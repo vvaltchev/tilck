@@ -59,7 +59,7 @@ TEST(vfs, read_content_of_longname_file)
       "/testdir/This_is_a_file_with_a_veeeery_long_name.txt";
 
    fs_handle h = NULL;
-   r = vfs_open(file_path, &h);
+   r = vfs_open(file_path, &h, 0, O_RDONLY);
    ASSERT_TRUE(r == 0);
    ASSERT_TRUE(h != NULL);
    ssize_t res = vfs_read(h, data, sizeof(data));
@@ -105,7 +105,7 @@ TEST(vfs, fseek)
    size_t file_size = lseek(fd, 0, SEEK_END);
 
    fs_handle h = NULL;
-   r = vfs_open(fatpart_file_path, &h);
+   r = vfs_open(fatpart_file_path, &h, 0, O_RDONLY);
    ASSERT_TRUE(r == 0);
    ASSERT_TRUE(h != NULL);
 

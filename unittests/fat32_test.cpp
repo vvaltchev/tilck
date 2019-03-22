@@ -161,7 +161,7 @@ TEST(fat32, fread)
 
    ASSERT_TRUE(fs != NULL);
 
-   rc = fs->open(fs, "/bigfile", &h);
+   rc = fs->open(fs, "/bigfile", &h, 0, O_RDONLY);
 
    ASSERT_TRUE(rc == 0);
    ASSERT_TRUE(h != NULL);

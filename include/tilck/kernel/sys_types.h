@@ -28,6 +28,9 @@
 
 #include <unistd.h>       // system header
 #include <sys/utsname.h>  // system header
+#include <sys/stat.h>     // system header
+#include <fcntl.h>        // system header
+
 
 /* From the man page of getdents64() */
 struct linux_dirent64 {

@@ -442,7 +442,8 @@ STATIC void fat_file_shunlock(fs_handle h)
    fat_shared_unlock(get_fs(h));
 }
 
-STATIC int fat_open(filesystem *fs, const char *path, fs_handle *out)
+STATIC int
+fat_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mode)
 {
    fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
    fat_entry *e = fat_search_entry(d->hdr, d->type, path);

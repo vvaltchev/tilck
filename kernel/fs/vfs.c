@@ -74,7 +74,7 @@ void vfs_file_nolock(fs_handle h)
    /* do nothing */
 }
 
-int vfs_open(const char *path, fs_handle *out)
+int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 {
    mountpoint *mp, *best_match = NULL;
    u32 pl, best_match_len = 0;
@@ -114,7 +114,7 @@ int vfs_open(const char *path, fs_handle *out)
       // printk("vfs_open('%s' as '%s' in '%s'@%u)\n",
       //        path, fs_path, fs->fs_type_name, fs->device_id);
 
-      rc = fs->open(fs, fs_path, out);
+      rc = fs->open(fs, fs_path, out, flags, mode);
    }
    vfs_fs_shunlock(fs);
 

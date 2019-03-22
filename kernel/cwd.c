@@ -34,7 +34,7 @@ sptr sys_chdir(const char *user_path)
       }
 
       fs_handle h = NULL;
-      rc = vfs_open(path, &h);
+      rc = vfs_open(path, &h, 0, O_RDONLY);
 
       if (rc < 0)
          goto out; /* keep the same rc */

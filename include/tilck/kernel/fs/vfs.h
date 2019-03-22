@@ -29,7 +29,7 @@ typedef struct filesystem filesystem;
 
 /* fs ops */
 typedef void (*func_close) (fs_handle);
-typedef int (*func_open) (filesystem *, const char *, fs_handle *);
+typedef int (*func_open) (filesystem *, const char *, fs_handle *, int, mode_t);
 typedef int (*func_dup) (fs_handle, fs_handle *);
 typedef int (*func_getdents64) (fs_handle, struct linux_dirent64 *, u32);
 
@@ -140,7 +140,7 @@ typedef struct {
 int mountpoint_add(filesystem *fs, const char *path);
 void mountpoint_remove(filesystem *fs);
 
-int vfs_open(const char *path, fs_handle *out);
+int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);
 int vfs_ioctl(fs_handle h, uptr request, void *argp);
 int vfs_stat64(fs_handle h, struct stat64 *statbuf);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
