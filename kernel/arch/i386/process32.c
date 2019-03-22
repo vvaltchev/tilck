@@ -19,8 +19,8 @@
 
 void task_info_reset_kernel_stack(task_info *ti)
 {
-   uptr bottom = (uptr) ti->kernel_stack + KERNEL_STACK_SIZE - 1;
-   ti->state_regs = (regs *) (bottom & POINTER_ALIGN_MASK);
+   uptr bottom = (uptr)ti->kernel_stack + KERNEL_STACK_SIZE - 1;
+   ti->state_regs = (regs *)(bottom & POINTER_ALIGN_MASK);
 }
 
 static inline void push_on_stack(uptr **stack_ptr_ref, uptr val)
@@ -116,7 +116,7 @@ kthread_create(kthread_func_ptr fun, void *arg)
    r.gs = r.fs = r.es = r.ds = r.ss = X86_KERNEL_DATA_SEL;
    r.cs = X86_KERNEL_CODE_SEL;
 
-   r.eip = (u32) fun;
+   r.eip = (u32)fun;
    r.eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF;
 
    task_info *ti = allocate_new_thread(kernel_process->pi);
@@ -131,7 +131,7 @@ kthread_create(kthread_func_ptr fun, void *arg)
    ti->running_in_kernel = 1;
    task_info_reset_kernel_stack(ti);
 
-   push_on_stack((uptr **)&ti->state_regs, (uptr) arg);
+   push_on_stack((uptr **)&ti->state_regs, (uptr)arg);
 
    /*
     * Pushes the address of kthread_exit() into thread's stack in order to
@@ -141,7 +141,7 @@ kthread_create(kthread_func_ptr fun, void *arg)
     * jump in the begging of kthread_exit().
     */
 
-   push_on_stack((uptr **)&ti->state_regs, (uptr) &kthread_exit);
+   push_on_stack((uptr **)&ti->state_regs, (uptr)&kthread_exit);
 
    /*
     * Overall, with these pushes + the iret of asm_kernel_context_switch_x86()
@@ -190,14 +190,13 @@ void kthread_exit(void)
    switch_to_idle_task_outside_interrupt_context();
 }
 
-int
-setup_usermode_task(page_directory_t *pdir,
-                    void *entry,
-                    void *stack_addr,
-                    task_info *ti,
-                    char *const *argv,
-                    char *const *env,
-                    task_info **ti_ref)
+int setup_usermode_task(page_directory_t *pdir,
+                        void *entry,
+                        void *stack_addr,
+                        task_info *ti,
+                        char *const *argv,
+                        char *const *env,
+                        task_info **ti_ref)
 {
    u32 argv_elems = 0;
    u32 env_elems = 0;
@@ -212,8 +211,8 @@ setup_usermode_task(page_directory_t *pdir,
    // User code GDT selector with bottom 2 bits set for ring 3.
    r.cs = X86_USER_CODE_SEL;
 
-   r.eip = (u32) entry;
-   r.useresp = (u32) stack_addr;
+   r.eip = (u32)entry;
+   r.useresp = (u32)stack_addr;
 
    while (argv[argv_elems]) argv_elems++;
    while (env[env_elems]) env_elems++;
@@ -380,34 +379,51 @@ switch_to_task_clear_irq_mask(int curr_irq)
 
 NORETURN void switch_to_task(task_info *ti, int curr_irq)
 {
+   /* Save the value of ti->state_regs as it will be reset below */
+   regs *state = ti->state_regs;
+
    ASSERT(!get_curr_task() || get_curr_task()->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
    ASSERT(ti != get_curr_task());
+   ASSERT(!is_preemption_enabled());
+
+   /*
+    * Make sure in NO WAY we'll switch to a user task keeping interrupts
+    * disabled. That would be a disaster.
+    */
+   ASSERT(state->eflags & EFLAGS_IF);
 
    save_curr_fpu_ctx_if_enabled();
+
+   /* Do as much as possible work before disabling the interrupts */
    task_change_state(ti, TASK_STATE_RUNNING);
    ti->time_slot_ticks = 0;
 
-   if (get_curr_pdir() != ti->pi->pdir) {
-      set_page_directory(ti->pi->pdir);
+   /* Switch the page directory only if really necessary */
+   if (!is_kernel_thread(ti))
+      if (get_curr_pdir() != ti->pi->pdir)
+         set_page_directory(ti->pi->pdir);
+
+   if (ti->arch.ldt)
+      load_ldt(ti->arch.ldt_index_in_gdt, ti->arch.ldt_size);
+
+   if (is_fpu_enabled_for_task(ti)) {
+      hw_fpu_enable();
+      restore_fpu_regs(ti, false);
    }
 
-   disable_interrupts_forced(); /* IF = 0 before the context switch */
+   /* From here until the end, we have to be as fast as possible */
+   disable_interrupts_forced();
    switch_to_task_pop_nested_interrupts(curr_irq);
    enable_preemption();
-   ASSERT(is_preemption_enabled());
-
-   DEBUG_VALIDATE_STACK_PTR();
-   switch_to_task_clear_irq_mask(curr_irq);
 
    /*
-    * NOTE: is_fpu_enabled_for_task() CANNOT be moved below because
-    * ti->state_regs gets reset by task_info_reset_kernel_stack()
+    * Make sure in NO WAY we'll switch to a user task keeping the preemption
+    * disabled. That would be pretty bad.
     */
-   const bool task_use_fpu = is_fpu_enabled_for_task(ti);
-
-   regs *state = ti->state_regs;
-   ASSERT(state->eflags & EFLAGS_IF);
+   ASSERT(is_preemption_enabled());
+   DEBUG_VALIDATE_STACK_PTR();
+   switch_to_task_clear_irq_mask(curr_irq);
 
    if (!ti->running_in_kernel) {
 
@@ -418,21 +434,10 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
       if (!is_kernel_thread(ti)) {
          push_nested_interrupt(SYSCALL_SOFT_INTERRUPT);
       }
-
    }
 
-   set_current_task(ti); /* this is safe here: the interrupts are disabled! */
-   set_kernel_stack((u32) ti->state_regs);
-
-   if (ti->arch.ldt) {
-      load_ldt(ti->arch.ldt_index_in_gdt, ti->arch.ldt_size);
-   }
-
-   if (task_use_fpu) {
-      hw_fpu_enable();
-      restore_current_fpu_regs(false);
-   }
-
+   set_current_task(ti);
+   set_kernel_stack((u32)ti->state_regs);
    context_switch(state);
 }
 
@@ -501,9 +506,8 @@ void arch_specific_free_task(task_info *ti)
 /* General protection fault handler */
 void handle_gpf(regs *r)
 {
-   if (!get_curr_task() || is_kernel_thread(get_curr_task())) {
+   if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("General protection fault. Error: %p\n", r->err_code);
-   }
 
    end_fault_handler_state();
    send_signal(get_curr_task(), SIGSEGV);
@@ -512,9 +516,8 @@ void handle_gpf(regs *r)
 /* Illegal instruction fault handler */
 void handle_ill(regs *r)
 {
-   if (!get_curr_task() || is_kernel_thread(get_curr_task())) {
+   if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("Illegal instruction fault. Error: %p\n", r->err_code);
-   }
 
    end_fault_handler_state();
    send_signal(get_curr_task(), SIGILL);
@@ -523,9 +526,8 @@ void handle_ill(regs *r)
 /* Division by zero fault handler */
 void handle_div0(regs *r)
 {
-   if (!get_curr_task() || is_kernel_thread(get_curr_task())) {
+   if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("Division by zero fault. Error: %p\n", r->err_code);
-   }
 
    end_fault_handler_state();
    send_signal(get_curr_task(), SIGFPE);
@@ -534,9 +536,8 @@ void handle_div0(regs *r)
 /* Coproc fault handler */
 void handle_cpf(regs *r)
 {
-   if (!get_curr_task() || is_kernel_thread(get_curr_task())) {
+   if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("Co-processor (fpu) fault. Error: %p\n", r->err_code);
-   }
 
    end_fault_handler_state();
    send_signal(get_curr_task(), SIGFPE);

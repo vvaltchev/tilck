@@ -26,6 +26,7 @@
    "files.insertFinalNewline": true,
    "editor.formatOnPaste": false,
    "editor.formatOnSave": false,
+   "editor.formatOnType": false,
    "editor.autoIndent": false,
    "editor.foldingStrategy": "indentation",
    "editor.emptySelectionClipboard": false,

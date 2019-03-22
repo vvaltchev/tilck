@@ -215,7 +215,7 @@ void save_current_fpu_regs(bool in_kernel)
    }
 }
 
-void restore_current_fpu_regs(bool in_kernel)
+void restore_fpu_regs(void *task, bool in_kernel)
 {
    if (UNLIKELY(!x86_cpu_features.can_use_sse))
       return;
@@ -223,7 +223,7 @@ void restore_current_fpu_regs(bool in_kernel)
    if (UNLIKELY(in_panic()))
       return;
 
-   arch_task_info_members *arch_fields = &get_curr_task()->arch;
+   arch_task_info_members *arch_fields = &((task_info *)task)->arch;
    void *buf = in_kernel ? fpu_kernel_regs : arch_fields->fpu_regs;
 
    ASSERT(buf != NULL);
@@ -242,6 +242,11 @@ void restore_current_fpu_regs(bool in_kernel)
                   : "r" (buf)
                   : /* no clobber */);
    }
+}
+
+void restore_current_fpu_regs(bool in_kernel)
+{
+   restore_fpu_regs(get_curr_task(), in_kernel);
 }
 
 bool allocate_fpu_regs(arch_task_info_members *arch_fields)
