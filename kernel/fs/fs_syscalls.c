@@ -17,14 +17,21 @@ static inline bool is_fd_in_valid_range(u32 fd)
    return fd < MAX_HANDLES;
 }
 
-static u32 get_free_handle_num(task_info *task)
+static u32 get_free_handle_num_ge(process_info *pi, u32 ge)
 {
-   for (u32 free_fd = 0; free_fd < MAX_HANDLES; free_fd++)
-      if (!task->pi->handles[free_fd])
+   for (u32 free_fd = ge; free_fd < MAX_HANDLES; free_fd++)
+      if (!pi->handles[free_fd])
          return free_fd;
 
    return (u32) -1;
 }
+
+static u32 get_free_handle_num(process_info *pi)
+{
+   return get_free_handle_num_ge(pi, 0);
+}
+
+
 
 /*
  * Even if getting the fs_handle this way is safe, using it won't be anymore
@@ -74,7 +81,7 @@ sptr sys_open(const char *user_path, int flags, int mode)
       goto end;
    }
 
-   u32 free_fd = get_free_handle_num(curr);
+   u32 free_fd = get_free_handle_num(curr->pi);
 
    if (!is_fd_in_valid_range(free_fd))
       goto no_fds;
@@ -474,7 +481,7 @@ sptr sys_dup(int oldfd)
 
    disable_preemption();
 
-   free_fd = get_free_handle_num(get_curr_task());
+   free_fd = get_free_handle_num(get_curr_task()->pi);
 
    if (!is_fd_in_valid_range(free_fd)) {
       rc = -EMFILE;
@@ -544,12 +551,36 @@ sptr sys_fcntl64(int user_fd, int cmd, int arg)
 {
    const u32 fd = (u32) user_fd;
    fs_handle_base *hb = get_fs_handle(fd);
+   task_info *curr = get_curr_task();
    sptr rc = 0;
 
    if (!hb)
       return -EBADF;
 
    switch (cmd) {
+
+      case F_DUPFD:
+         {
+            disable_preemption();
+            u32 new_fd = get_free_handle_num_ge(curr->pi, (u32)arg);
+            rc = sys_dup2(user_fd, (int)new_fd);
+            enable_preemption();
+            return rc;
+         }
+
+      case F_DUPFD_CLOEXEC:
+         {
+            disable_preemption();
+            u32 new_fd = get_free_handle_num_ge(curr->pi, (u32)arg);
+            rc = sys_dup2(user_fd, (int)new_fd);
+            if (!rc) {
+               fs_handle_base *h2 = get_fs_handle(new_fd);
+               ASSERT(h2 != NULL);
+               h2->fd_flags |= O_CLOEXEC;
+            }
+            enable_preemption();
+            return rc;
+         }
 
       case F_SETFD:
          hb->fd_flags = arg;
