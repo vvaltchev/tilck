@@ -60,7 +60,7 @@ void tty_update_default_state_tables(tty *t);
 ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size);
 ssize_t tty_write_int(tty *t, devfs_file_handle *h, char *buf, size_t size);
 int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp);
-int tty_fcntl_int(tty *t, devfs_file_handle *h, int cmd, uptr arg);
+int tty_fcntl_int(tty *t, devfs_file_handle *h, int cmd, int arg);
 bool tty_read_ready_int(tty *t, devfs_file_handle *h);
 
 void init_ttyaux(void);

@@ -320,7 +320,7 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    return rc;
 }
 
-int vfs_fcntl(fs_handle h, int cmd, uptr arg)
+int vfs_fcntl(fs_handle h, int cmd, int arg)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;

@@ -53,7 +53,7 @@ static int tty_ioctl(fs_handle h, uptr request, void *argp)
    return tty_ioctl_int(t, dh, request, argp);
 }
 
-static int tty_fcntl(fs_handle h, int cmd, uptr arg)
+static int tty_fcntl(fs_handle h, int cmd, int arg)
 {
    devfs_file_handle *dh = h;
    devfs_file *df = dh->devfs_file_ptr;

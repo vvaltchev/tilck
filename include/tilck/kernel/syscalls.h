@@ -309,7 +309,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_mincore)
 sptr sys_madvise(void *addr, size_t len, int advice);
 
 sptr sys_getdents64(int fd, struct linux_dirent64 *dirp, u32 buf_size);
-sptr sys_fcntl64(int fd, int cmd, uptr arg);
+sptr sys_fcntl64(int fd, int cmd, int arg);
 sptr sys_gettid();
 
 CREATE_STUB_SYSCALL_IMPL(sys_readahead)

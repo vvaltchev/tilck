@@ -540,7 +540,7 @@ void close_cloexec_handles(process_info *pi)
    }
 }
 
-sptr sys_fcntl64(int user_fd, int cmd, u32 arg)
+sptr sys_fcntl64(int user_fd, int cmd, int arg)
 {
    const u32 fd = (u32) user_fd;
    fs_handle_base *hb = get_fs_handle(fd);

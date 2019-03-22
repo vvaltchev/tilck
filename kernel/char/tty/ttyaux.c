@@ -33,7 +33,7 @@ static int ttyaux_ioctl(fs_handle h, uptr request, void *argp)
    return tty_ioctl_int(get_curr_process_tty(), h, request, argp);
 }
 
-static int ttyaux_fcntl(fs_handle h, int cmd, uptr arg)
+static int ttyaux_fcntl(fs_handle h, int cmd, int arg)
 {
    return tty_fcntl_int(get_curr_process_tty(), h, cmd, arg);
 }
