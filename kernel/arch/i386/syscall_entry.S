@@ -16,6 +16,7 @@
 .global asm_sysenter_setup
 .global asm_soft_interrupt_entry
 .global context_switch
+.global soft_interrupt_resume
 
 FUNC(sysenter_entry):
 
@@ -126,7 +127,7 @@ FUNC(asm_soft_interrupt_entry):
    kernel_entry_common
    push_custom_flags (0)
 
-   push offset .soft_interrupt_resume
+   push offset soft_interrupt_resume
    mov eax, esp
    cld            # Set DF = 0, as C compilers by default assume that.
    push eax
@@ -134,7 +135,7 @@ FUNC(asm_soft_interrupt_entry):
 
    add esp, 8     # Discard the previousy-pushed 'eax' and kernel_resume_eip
 
-.soft_interrupt_resume:
+soft_interrupt_resume:
    pop_custom_flags
    kernel_exit_common
 
@@ -142,12 +143,10 @@ END_FUNC(asm_soft_interrupt_entry)
 
 FUNC(context_switch):
 
-   add esp, 4 # discard the return-addr
-   pop esp
-
-   pop eax
-   test eax, eax                  # if (eax == 0) jump .soft_interrupt_resume
-   jz .soft_interrupt_resume      # else jump eax
-   jmp eax
+   add esp, 4 # Discard the return-addr.
+   pop esp    # Make ESP = function's 1st (and only) argument: regs *contex.
+   ret        # Now at [esp] now there's the value of `kernel_resume_eip`.
+              # By default, that value is `soft_interrupt_resume` but changes
+              # in special occasions (e.g. sysenter/sysexit).
 
 END_FUNC(context_switch)

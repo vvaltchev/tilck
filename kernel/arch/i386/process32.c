@@ -14,6 +14,8 @@
 
 #include "gdt_int.h"
 
+void soft_interrupt_resume(void);
+
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
 
@@ -113,6 +115,8 @@ NODISCARD task_info *
 kthread_create(kthread_func_ptr fun, void *arg)
 {
    regs r = {0};
+
+   r.kernel_resume_eip = (uptr)&soft_interrupt_resume;
    r.gs = r.fs = r.es = r.ds = r.ss = X86_KERNEL_DATA_SEL;
    r.cs = X86_KERNEL_CODE_SEL;
 
@@ -204,6 +208,7 @@ int setup_usermode_task(page_directory_t *pdir,
    int rc;
 
    *ti_ref = NULL;
+   r.kernel_resume_eip = (uptr)&soft_interrupt_resume;
 
    // User data GDT selector with bottom 2 bits set for ring 3.
    r.gs = r.fs = r.es = r.ds = r.ss = X86_USER_DATA_SEL;
