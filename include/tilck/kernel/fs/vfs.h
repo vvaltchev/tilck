@@ -128,7 +128,8 @@ typedef struct {
 
    filesystem *fs;
    file_ops fops;
-   int flags;
+   int fd_flags;
+   int fl_flags;
 
 } fs_handle_base;
 

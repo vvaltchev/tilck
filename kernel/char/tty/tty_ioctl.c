@@ -195,7 +195,7 @@ int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp)
 int tty_fcntl_int(tty *t, devfs_file_handle *h, int cmd, int arg)
 {
    if (cmd == F_GETFL)
-      return h->flags;
+      return h->fl_flags;
 
    if (cmd == F_SETFL) {
       /*
@@ -204,7 +204,7 @@ int tty_fcntl_int(tty *t, devfs_file_handle *h, int cmd, int arg)
        * ignore such unknown/unsupported flags and that will make hard to guess
        * why programs behave in Tilck differently than on Linux.
        */
-      h->flags = arg;
+      h->fl_flags = arg;
       return 0;
    }
 

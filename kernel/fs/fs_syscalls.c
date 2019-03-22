@@ -533,7 +533,7 @@ void close_cloexec_handles(process_info *pi)
 
       fs_handle_base *h = pi->handles[i];
 
-      if (h && (h->flags & FD_CLOEXEC)) {
+      if (h && (h->fd_flags & FD_CLOEXEC)) {
          vfs_close(h);
          pi->handles[i] = NULL;
       }
@@ -552,11 +552,11 @@ sptr sys_fcntl64(int user_fd, int cmd, int arg)
    switch (cmd) {
 
       case F_SETFD:
-         hb->flags = arg;
+         hb->fd_flags = arg;
          break;
 
       case F_GETFD:
-         return (sptr)hb->flags;
+         return hb->fd_flags;
 
       default:
          rc = vfs_fcntl(hb, cmd, arg);

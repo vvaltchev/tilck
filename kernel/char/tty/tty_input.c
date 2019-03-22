@@ -397,7 +397,7 @@ ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
 
    if (h->read_buf_used) {
 
-      if (!(h->flags & O_NONBLOCK))
+      if (!(h->fl_flags & O_NONBLOCK))
          return (ssize_t) tty_flush_read_buf(h, buf, size);
 
       /*
@@ -430,7 +430,7 @@ ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
 
    do {
 
-      if ((h->flags & O_NONBLOCK) && kb_buf_is_empty(t))
+      if ((h->fl_flags & O_NONBLOCK) && kb_buf_is_empty(t))
          return -EAGAIN;
 
       while (kb_buf_is_empty(t)) {
@@ -439,7 +439,7 @@ ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
 
       delim_break = false;
 
-      if (!(h->flags & O_NONBLOCK)) {
+      if (!(h->fl_flags & O_NONBLOCK)) {
          ASSERT(h->read_buf_used == 0);
          ASSERT(h->read_pos == 0);
       }
@@ -448,14 +448,14 @@ ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
              h->read_buf_used < DEVFS_READ_BS &&
              tty_internal_read_single_char_from_kb(t, h, &delim_break)) { }
 
-      if (!(h->flags & O_NONBLOCK) || !(t->c_term.c_lflag & ICANON))
+      if (!(h->fl_flags & O_NONBLOCK) || !(t->c_term.c_lflag & ICANON))
          read_count += tty_flush_read_buf(h, buf+read_count, size-read_count);
 
       ASSERT(t->end_line_delim_count >= 0);
 
    } while (!tty_internal_should_read_return(t, h, read_count, delim_break));
 
-   if (h->flags & O_NONBLOCK) {
+   if (h->fl_flags & O_NONBLOCK) {
 
       /*
        * If we got here in NONBLOCK mode, that means we exited the loop properly
