@@ -12,6 +12,8 @@
 #include <tilck/kernel/timer.h>
 
 ATOMIC(task_info *) __current;
+ATOMIC(u32) disable_preemption_count = 1;
+
 task_info *kernel_process;
 process_info *kernel_process_pi;
 

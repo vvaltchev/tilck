@@ -13,7 +13,6 @@
 #include <tilck/kernel/tasklet.h>
 
 u64 __ticks; /* ticks since the timer started */
-ATOMIC(u32) disable_preemption_count = 1;
 
 #if KERNEL_TRACK_NESTED_INTERRUPTS
 u32 slow_timer_irq_handler_count;
