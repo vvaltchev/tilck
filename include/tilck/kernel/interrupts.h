@@ -39,6 +39,11 @@ static inline void panic_dump_nested_interrupts(void) { }
 static inline void check_in_no_other_irq_than_timer(void) { }
 #endif
 
+// NOTE: this function is x86-dependent
+static ALWAYS_INLINE int int_to_irq(int int_num)
+{
+   return int_num >= 32 ? int_num - 32 : -1;
+}
 
 // NOTE: this function is x86-dependent
 static ALWAYS_INLINE bool is_irq(int int_num)
@@ -49,7 +54,7 @@ static ALWAYS_INLINE bool is_irq(int int_num)
 // NOTE: this function is x86-dependent
 static ALWAYS_INLINE bool is_timer_irq(int int_num)
 {
-   return int_num == 32;
+   return int_to_irq(int_num) == X86_PC_TIMER_IRQ;
 }
 
 // NOTE: this function is x86-dependent
