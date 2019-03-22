@@ -26,10 +26,7 @@ typedef struct {
 typedef struct {
 
    /* fs_handle_base */
-   filesystem *fs;
-   file_ops fops;
-   int fd_flags;
-   int fl_flags;
+   FS_HANDLE_BASE_FIELDS
 
    /* fs-specific members */
    fat_entry *e;

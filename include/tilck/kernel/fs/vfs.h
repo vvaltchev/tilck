@@ -124,12 +124,16 @@ typedef struct {
  * TODO: introduce a ref-count in the fs_base_handle struct when implementing
  * thread support.
  */
+
+#define FS_HANDLE_BASE_FIELDS    \
+   filesystem *fs;               \
+   file_ops fops;                \
+   int fd_flags;                 \
+   int fl_flags;                 \
+
 typedef struct {
 
-   filesystem *fs;
-   file_ops fops;
-   int fd_flags;
-   int fl_flags;
+   FS_HANDLE_BASE_FIELDS
 
 } fs_handle_base;
 
