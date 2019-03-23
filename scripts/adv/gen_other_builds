@@ -5,7 +5,7 @@
 
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
+MAIN_DIR="$(cd $SOURCE_DIR/../.. && pwd)"
 
 # Include files
 source $MAIN_DIR/scripts/bash_includes/script_utils
