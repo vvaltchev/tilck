@@ -1,0 +1,100 @@
+#!/bin/bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+# GLOBAL VARIABLES
+
+# Project's root directory
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
+
+# CONSTANTS
+
+builds=(gcc gcc_rel gcc_gcov nocow no_nested_irq_tracking syscc clang_wconv)
+builds+=(arch_gtests)
+
+#############################################
+# FUNCTIONS
+
+function do_build_gcc {
+   $MAIN_DIR/scripts/cmake_run
+}
+
+function do_build_gcc_rel {
+   RELEASE=1 $MAIN_DIR/scripts/cmake_run
+}
+
+function do_build_gcc_gcov {
+   TEST_GCOV=1 KERNEL_GCOV=1 $MAIN_DIR/scripts/cmake_run
+}
+
+function do_build_nocow {
+   $MAIN_DIR/scripts/cmake_run -DFORK_NO_COW=1 -DMMAP_NO_COW=1
+}
+
+function do_build_no_nested_irq_tracking {
+   $MAIN_DIR/scripts/cmake_run -DKERNEL_TRACK_NESTED_INTERRUPTS=0
+}
+
+function do_build_syscc {
+   SYSCC=1 $MAIN_DIR/scripts/cmake_run
+}
+
+function do_build_clang_wconv {
+   CC=clang CXX=clang++ $MAIN_DIR/scripts/cmake_run -DKERNEL_SYSCC=1 -DWCONV=1
+}
+
+function do_build_arch_gtests {
+   $MAIN_DIR/scripts/cmake_run -DARCH_GTESTS=1
+}
+
+#############################################
+# MAIN CODE
+
+# Exit on any error
+set -e
+
+echo ""
+echo "This script will create the directory other_builds and build Tilck and "
+echo "its tests in a variety of configurations, some of them not particularly"
+echo "common. In order to all the builds to succeed, additional packages are"
+echo "expected to be installed in the host system, other than the ones"
+echo "installed by 'build_toolchain'. In particular: "
+echo ""
+echo "   - gcc-multilib (debian pkg name) [gcc able to build i386 binaries]"
+echo ""
+echo "   - clang and clang++"
+echo ""
+echo "   - build_toolchain needs to be run 3 times in order to build optional "
+echo "     components:"
+echo ""
+echo "         1. without arguments to build & install the default stuff"
+echo "         2. with -s build_gtest"
+echo "         3. with -s build_gtest_arch"
+echo ""
+echo "List of the build configurations that will generated and built:"
+
+for x in ${builds[@]}; do
+   echo "   - $x"
+done
+
+echo ""
+echo -n "Proceed [y/N] ? "
+read answer
+
+if [[ "$answer" != "y" ]]; then
+   exit 0
+fi
+
+mkdir -p $MAIN_DIR/other_builds
+cd $MAIN_DIR/other_builds
+
+for x in ${builds[@]}; do
+   echo "************ Build: $x ************"
+   mkdir -p $x
+   pushd $x
+   eval do_build_$x
+   make -j
+   make -j gtests
+   popd
+done
+
