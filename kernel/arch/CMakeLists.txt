@@ -22,7 +22,7 @@ if (${KERNEL_SYSCC} OR ${USE_SYSCC})
    set(TOOL_OBJCOPY "${OBJCOPY}")
    set(TOOL_STRIP "${STRIP}")
 
-   if (KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC)
+   if (KERNEL_FORCE_TC_ISYSTEM)
       include_directories(SYSTEM ${GCC_TC_ISYSTEM})
    endif()
 

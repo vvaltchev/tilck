@@ -79,7 +79,7 @@ set(DEBUG_CHECKS_IN_RELEASE_BUILD ON CACHE BOOL
 set(KERNEL_SYSCC OFF CACHE BOOL
     "Use system's compiler for the kernel instead of toolchain's one")
 
-set(KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC OFF CACHE BOOL
+set(KERNEL_FORCE_TC_ISYSTEM OFF CACHE BOOL
     "Use TC's sysroot for system headers even when a system compiler is used")
 
 set(FORK_NO_COW OFF CACHE BOOL
@@ -130,7 +130,7 @@ list(
    TEST_GCOV
    KERNEL_GCOV
    KERNEL_SYSCC
-   KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC
+   KERNEL_FORCE_TC_ISYSTEM
    FORK_NO_COW
    MMAP_NO_COW
    PANIC_SHOW_REGS
