@@ -1,0 +1,69 @@
+#!/bin/bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+# GLOBAL VARIABLES
+
+# Project's root directory
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
+
+# Include files
+source $MAIN_DIR/scripts/bash_includes/script_utils
+
+#############################################
+# FUNCTIONS
+
+function show_help {
+   echo ""
+   echo "This script will run ALL the tests (system tests + unit tests) for ALL"
+   echo "the so-called 'other builds' in $MAIN_DIR/other_builds."
+   echo "In order to generate those non-standard builds, you'll likely need to"
+   echo "run the 'gen_other_builds' script. Note: you can also put your own"
+   echo "special builds in that directory. This script will just iterate over "
+   echo "all the subdirectories of 'other_builds' and it will treat each one "
+   echo "of them as a build of Tilck."
+   echo ""
+   echo "WARNING: if you're new to Tilck, that's probably NOT the script "
+   echo "you're looking for. You probably just want to run the system tests."
+   echo "To do that, just run ./build/run_all_tests. If you want to run the "
+   echo "unit tests, you'll need to run build_toolchain with -s build_gtest"
+   echo "then make gtests and finally ./build/gtests."
+   echo ""
+}
+
+function ask_confirm {
+
+   show_help
+   echo -n "Proceed [y/N] ? "
+   read answer
+
+   if [[ "$answer" != "y" ]]; then
+      exit 0
+   fi
+}
+
+#############################################
+# MAIN CODE
+
+# Exit on any error
+set -e
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+   show_help
+   exit 0
+fi
+
+if [[ "$1" != "-y" ]]; then
+   ask_confirm
+fi
+
+cd $MAIN_DIR/other_builds
+
+for x in `ls`; do
+   pushd $x
+   echo "********** [begin] Test directory: $x **********"
+   ./gtests
+   ./st/run_all_tests -c
+   echo "********** [end] Test directory: $x **********"
+   popd
+done
