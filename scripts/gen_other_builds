@@ -9,42 +9,48 @@ MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 
 # CONSTANTS
 
+CM=$MAIN_DIR/scripts/cmake_run
+
 builds=(gcc gcc_rel gcc_gcov nocow no_nested_irq_tracking syscc clang_wconv)
-builds+=(arch_gtests)
+builds+=(arch_gtests tc_isystem_with_syscc_clang)
 
 #############################################
 # FUNCTIONS
 
 function do_build_gcc {
-   $MAIN_DIR/scripts/cmake_run
+   $CM
 }
 
 function do_build_gcc_rel {
-   RELEASE=1 $MAIN_DIR/scripts/cmake_run
+   RELEASE=1 $CM
 }
 
 function do_build_gcc_gcov {
-   TEST_GCOV=1 KERNEL_GCOV=1 $MAIN_DIR/scripts/cmake_run
+   TEST_GCOV=1 KERNEL_GCOV=1 $CM
 }
 
 function do_build_nocow {
-   $MAIN_DIR/scripts/cmake_run -DFORK_NO_COW=1 -DMMAP_NO_COW=1
+   $CM -DFORK_NO_COW=1 -DMMAP_NO_COW=1
 }
 
 function do_build_no_nested_irq_tracking {
-   $MAIN_DIR/scripts/cmake_run -DKERNEL_TRACK_NESTED_INTERRUPTS=0
+   $CM -DKERNEL_TRACK_NESTED_INTERRUPTS=0
 }
 
 function do_build_syscc {
-   SYSCC=1 $MAIN_DIR/scripts/cmake_run
+   SYSCC=1 $CM
 }
 
 function do_build_clang_wconv {
-   CC=clang CXX=clang++ $MAIN_DIR/scripts/cmake_run -DKERNEL_SYSCC=1 -DWCONV=1
+   CC=clang CXX=clang++ $CM -DKERNEL_SYSCC=1 -DWCONV=1
 }
 
 function do_build_arch_gtests {
-   $MAIN_DIR/scripts/cmake_run -DARCH_GTESTS=1
+   $CM -DARCH_GTESTS=1
+}
+
+function do_build_tc_isystem_with_syscc_clang {
+   CC=clang $CM -DKERNEL_SYSCC=1 -DKERNEL_FORCE_TC_ISYSTEM=1
 }
 
 #############################################
