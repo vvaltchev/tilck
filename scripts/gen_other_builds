@@ -83,12 +83,10 @@ function show_help {
    done
 
    echo ""
-   echo "WARNING: if you're new to Tilck, that's probably NOT the script "
-   echo "you're looking for. You probably just want to do a debug build, run"
-   echo "the tests and Tilck itself in a VM. To do that, just go to project's"
-   echo "main directory and run './scripts/build_toolchain'. Then, you can run"
-   echo "'make' and finally './build/run_qemu' or './build/run_nokvm_qemu'."
-   echo "Check out the main README.md file for more."
+   echo -ne "${RED}WARNING${RATTRS}: if you're new to Tilck, that's probably "
+   echo -ne "${RED}not${RATTRS} the script you're looking\nfor. "
+   echo -ne "${BROWN}Check out${RATTRS} the main README.md file for info about "
+   echo -ne "how to build Tilck and\nrun its tests.\n"
    echo ""
 }
 

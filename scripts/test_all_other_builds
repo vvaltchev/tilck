@@ -23,11 +23,10 @@ function show_help {
    echo "all the subdirectories of 'other_builds' and it will treat each one "
    echo "of them as a build of Tilck."
    echo ""
-   echo "WARNING: if you're new to Tilck, that's probably NOT the script "
-   echo "you're looking for. You probably just want to run the system tests."
-   echo "To do that, just run ./build/run_all_tests. If you want to run the "
-   echo "unit tests, you'll need to run build_toolchain with -s build_gtest"
-   echo "then make gtests and finally ./build/gtests."
+   echo -ne "${RED}WARNING${RATTRS}: if you're new to Tilck, that's probably "
+   echo -ne "${RED}not${RATTRS} the script you're looking\nfor. "
+   echo -ne "${BROWN}Check out${RATTRS} the main README.md file for info about "
+   echo -ne "how to build Tilck and\nrun its tests.\n"
    echo ""
 }
 
