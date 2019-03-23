@@ -7,3 +7,5 @@ GPATH
 GRTAGS
 GTAGS
 rel_build/*
+.vscode/ipch/
+other_build*

@@ -13,6 +13,7 @@
       "toolchain/**": true,
       "build/**": true,
       "*_build/**": true,
+      "*_builds/**": true,
       "CMakeFiles/**": true,
       "sysroot/**": true,
       "GPATH": true,
