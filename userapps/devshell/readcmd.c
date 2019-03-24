@@ -314,9 +314,9 @@ handle_regular_char(char c, char *buf, int bs, char *c_cmd, int *c_cmd_len)
 
 int read_command(char *buf, int buf_size)
 {
-   int c_cmd_len = 0;
    int rc;
    char c;
+   int c_cmd_len = 0;
    struct termios orig_termios, t;
    char curr_cmd[buf_size]; // VLA
 
@@ -351,7 +351,7 @@ int read_command(char *buf, int buf_size)
 
          handle_esc_seq(buf, buf_size, curr_cmd, &c_cmd_len);
 
-      } else if (isprint(c) || isspace(c)) {
+      } else if (isprint(c) || (isspace(c) && c != '\t')) {
 
          if (!handle_regular_char(c, buf, buf_size, curr_cmd, &c_cmd_len))
             break;
