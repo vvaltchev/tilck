@@ -48,16 +48,25 @@ void task_set_wait_obj(task_info *ti,
                        void *ptr,
                        list *wait_list)
 {
-   wait_obj_set(&ti->wobj, type, ptr, wait_list);
-   ASSERT(ti->state != TASK_STATE_SLEEPING);
-   task_change_state(ti, TASK_STATE_SLEEPING);
+   disable_preemption();
+   {
+      wait_obj_set(&ti->wobj, type, ptr, wait_list);
+      ASSERT(ti->state != TASK_STATE_SLEEPING);
+      task_change_state(ti, TASK_STATE_SLEEPING);
+   }
+   enable_preemption();
 }
 
 void *task_reset_wait_obj(task_info *ti)
 {
-   void *oldp = wait_obj_reset(&ti->wobj);
-   ASSERT(ti->state == TASK_STATE_SLEEPING);
-   task_change_state(ti, TASK_STATE_RUNNABLE);
+   void *oldp;
+   disable_preemption();
+   {
+      oldp = wait_obj_reset(&ti->wobj);
+      ASSERT(ti->state == TASK_STATE_SLEEPING);
+      task_change_state(ti, TASK_STATE_RUNNABLE);
+   }
+   enable_preemption();
    return oldp;
 }
 
