@@ -33,6 +33,17 @@ While as per today `Tilck` is still far from being able to provide some answers 
 first question, some progress has been made with the second one: as shown in this [article],
 thanks to several simplifications, `Tilck`'s console is faster than the Linux one.
 
+What is Tilck is NOT ?
+----------------------------------------
+
+An attempt to re-write and/or replace the Linux kernel. Tilck is a completely different
+kernel that has a *partial* compatibility with Linux just in order to take advantage of
+the programs (and toolchains) already written for it. But, having a fair amount of Linux
+programs working on it is just a starting point. After that, Tilck will evolve in a
+different way and it will have its own unique set of features. Tilck is fundamentally
+different from Linux in its design and its trade-offs as it **does not** aim to target
+multi-user server or desktop-class machines.
+
 [article]: https://github.com/vvaltchev/tilck/wiki/Getting-performance-through-simplification:-Tilck's-console
 
 Current state of the kernel
