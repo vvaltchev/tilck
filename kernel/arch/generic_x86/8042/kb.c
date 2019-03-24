@@ -220,27 +220,27 @@ static void kb_process_scancode(u8 scancode)
    }
 }
 
-static void kb_tasklet_handler()
-{
-   while (kb_ctrl_is_pending_data())
-      kb_process_scancode(inb(KB_DATA_PORT));
-}
-
 static enum irq_action keyboard_irq_handler(regs *context)
 {
+   int count = 0;
+
    ASSERT(are_interrupts_enabled());
    ASSERT(!is_preemption_enabled());
 
    if (!kb_wait_cmd_fetched())
       panic("KB: fatal error: timeout in kb_wait_cmd_fetched");
 
-   if (!kb_ctrl_is_pending_data())
-      return IRQ_FULLY_HANDLED;
+   while (kb_ctrl_is_pending_data()) {
 
-   if (!enqueue_tasklet0(kb_tasklet_runner, &kb_tasklet_handler))
-      panic("KB: hit tasklet queue limit");
+      u8 scancode = inb(KB_DATA_PORT);
 
-   return IRQ_REQUIRES_BH;
+      if (!enqueue_tasklet1(kb_tasklet_runner, &kb_process_scancode, scancode))
+         panic("KB: hit tasklet queue limit");
+
+      count++;
+   }
+
+   return count > 0 ? IRQ_REQUIRES_BH : IRQ_FULLY_HANDLED;
 }
 
 u8 kb_get_current_modifiers(void)
