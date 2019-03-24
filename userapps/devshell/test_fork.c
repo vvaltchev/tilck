@@ -85,7 +85,7 @@ int cmd_fork(int argc, char **argv)
 int cmd_fork_perf(int argc, char **argv)
 {
    const int iters = 150000;
-   int wstatus, child_pid;
+   int rc, wstatus, child_pid;
    unsigned long long start, duration;
 
    start = RDTSC();
@@ -95,16 +95,25 @@ int cmd_fork_perf(int argc, char **argv)
       child_pid = fork();
 
       if (child_pid < 0) {
-         printf("fork() failed: %s\n", strerror(errno));
+         perror("fork() failed");
          return 1;
       }
 
       if (!child_pid)
          exit(0); // exit from the child
 
-      waitpid(child_pid, &wstatus, 0);
-   }
+      rc = waitpid(child_pid, &wstatus, 0);
 
+      if (rc < 0) {
+         perror("waitpid() failed");
+         return 1;
+      }
+
+      if (rc != child_pid) {
+         printf("waitpid() returned %d [expected: %d]\n", rc, child_pid);
+         return 1;
+      }
+   }
 
    duration = RDTSC() - start;
    printf("duration: %llu\n", duration/iters);
