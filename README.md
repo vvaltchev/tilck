@@ -33,7 +33,7 @@ While as per today `Tilck` is still far from being able to provide some answers 
 first question, some progress has been made with the second one: as shown in this [article],
 thanks to several simplifications, `Tilck`'s console is faster than the Linux one.
 
-What is Tilck is NOT ?
+What Tilck is NOT ?
 ----------------------------------------
 
 An attempt to re-write and/or replace the Linux kernel. Tilck is a completely different
