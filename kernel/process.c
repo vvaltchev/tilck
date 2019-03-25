@@ -75,7 +75,6 @@ void init_task_lists(task_info *ti)
    list_node_init(&ti->runnable_node);
    list_node_init(&ti->sleeping_node);
    list_node_init(&ti->zombie_node);
-   list_node_init(&ti->siblings_node); /* ONLY for the main task (tid == pid) */
    list_node_init(&ti->wakeup_timer_node);
 
    list_init(&ti->tasks_waiting_list);
@@ -86,6 +85,7 @@ void init_process_lists(process_info *pi)
 {
    list_init(&pi->children_list);
    list_init(&pi->mappings);
+   list_node_init(&pi->siblings_node);
 }
 
 task_info *allocate_new_process(task_info *parent, u16 pid)
@@ -125,7 +125,7 @@ task_info *allocate_new_process(task_info *parent, u16 pid)
    ti->pi = pi;
    init_task_lists(ti);
    init_process_lists(pi);
-   list_add_tail(&parent->pi->children_list, &ti->siblings_node);
+   list_add_tail(&parent->pi->children_list, &pi->siblings_node);
 
    pi->proc_tty = parent->pi->proc_tty;
    return ti;
@@ -172,7 +172,7 @@ void free_task(task_info *ti)
       }
 
       if (--ti->pi->ref_count == 0) {
-         list_remove(&ti->siblings_node);
+         list_remove(&ti->pi->siblings_node);
          kfree2(ti, sizeof(task_info) + sizeof(process_info));
       }
 
@@ -401,7 +401,7 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
     */
 
    task_info *zombie_child = NULL;
-   task_info *pos;
+   process_info *pos;
 
    while (true) {
 
@@ -410,10 +410,11 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
       list_for_each_ro(pos, &curr->pi->children_list, siblings_node) {
 
+         task_info *ti = get_process_task(pos);
          child_count++;
 
-         if (pos->state == TASK_STATE_ZOMBIE) {
-            zombie_child = pos;
+         if (ti->state == TASK_STATE_ZOMBIE) {
+            zombie_child = ti;
             break;
          }
       }
@@ -612,7 +613,7 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
 
    if (ti->tid != 1) {
 
-      task_info *pos, *temp;
+      process_info *pos, *temp;
       task_info *child_reaper = get_task(1); /* init */
       ASSERT(child_reaper != NULL);
 
@@ -620,7 +621,7 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
 
          list_remove(&pos->siblings_node);
          list_add_tail(&child_reaper->pi->children_list, &pos->siblings_node);
-         pos->pi->parent_pid = child_reaper->pid;
+         pos->parent_pid = child_reaper->pid;
       }
 
    } else {
