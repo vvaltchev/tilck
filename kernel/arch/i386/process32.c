@@ -137,7 +137,7 @@ kthread_create(kthread_func_ptr fun, void *arg)
    if (!ti)
       return NULL;
 
-   ASSERT(ti->pid == 0);
+   ASSERT(is_kernel_thread(ti));
 
    ti->what = fun;
    ti->state = TASK_STATE_RUNNABLE;
@@ -481,7 +481,7 @@ bool arch_specific_new_task_setup(task_info *ti, task_info *parent)
 
 #if FORK_NO_COW
 
-   if (LIKELY(ti->pid)) {
+   if (LIKELY(!is_kernel_thread(ti))) {
       if (!allocate_fpu_regs(&ti->arch))
          return false; // out-of-memory
    }

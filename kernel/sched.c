@@ -59,7 +59,7 @@ static int create_new_pid_visit_cb(void *obj, void *arg)
    task_info *ti = obj;
    create_pid_visit_ctx *ctx = arg;
 
-   if (ti->tid != ti->pid)
+   if (!is_main_thread(ti))
       return 0; /* skip threads */
 
    /*

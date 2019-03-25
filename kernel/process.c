@@ -142,10 +142,9 @@ task_info *allocate_new_thread(process_info *pi)
    }
 
    ti->pi = pi;
-   ti->tid = -1; /* avoid hitting an ASSERT in thread_ti_to_tid() */
-   ti->tid = thread_ti_to_tid(ti);
+   ti->tid = kthread_calc_tid(ti);
    ti->pid = (u16) proc->tid;
-   ASSERT(thread_tid_to_ti(ti->tid) == ti);
+   ASSERT(kthread_get_ptr(ti->tid) == ti);
 
    init_task_lists(ti);
    arch_specific_new_task_setup(ti, proc);
@@ -161,7 +160,7 @@ void free_task(task_info *ti)
    ASSERT(!ti->io_copybuf);
    ASSERT(!ti->args_copybuf);
 
-   if (ti->tid == ti->pid) {
+   if (is_main_thread(ti)) {
 
       ASSERT(ti->pi->ref_count > 0);
 

@@ -157,16 +157,21 @@ static ALWAYS_INLINE bool running_in_kernel(task_info *t)
 
 static ALWAYS_INLINE bool is_kernel_thread(task_info *ti)
 {
-   return ti->pid == 0;
+   return ti->pi == kernel_process_pi;
 }
 
-static ALWAYS_INLINE int thread_ti_to_tid(task_info *ti)
+static ALWAYS_INLINE bool is_main_thread(task_info *ti)
 {
-   ASSERT(ti->tid != ti->pid);
+   return ti->tid == ti->pid;
+}
+
+static ALWAYS_INLINE int kthread_calc_tid(task_info *ti)
+{
+   ASSERT(is_kernel_thread(ti));
    return (int)(MAX_PID + (sptr) ((uptr)ti - KERNEL_BASE_VA));
 }
 
-static ALWAYS_INLINE task_info *thread_tid_to_ti(int tid)
+static ALWAYS_INLINE task_info *kthread_get_ptr(int tid)
 {
    ASSERT(tid > MAX_PID);
    return (task_info *)((uptr)tid - MAX_PID + KERNEL_BASE_VA);
