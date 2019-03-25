@@ -76,12 +76,9 @@ typedef struct process_info process_info;
 
 struct task_info {
 
-   bintree_node tree_by_tid_node;
-   list_node runnable_node;
-   list_node sleeping_node;
-   list_node zombie_node;
-
-   list_node ignored_padding;
+   regs *state_regs;
+   regs *fault_resume_regs;
+   u32 faults_resume_mask;
 
    int tid;   /* User/kernel task ID (pid in the Linux kernel) */
    u16 pid;   /*
@@ -91,10 +88,17 @@ struct task_info {
 
    bool running_in_kernel;
    volatile ATOMIC(enum task_state) state;
-   s32 exit_wstatus;
-
    process_info *pi;
 
+   bintree_node tree_by_tid_node;
+   list_node runnable_node;
+   list_node sleeping_node;
+   list_node zombie_node;
+   list_node wakeup_timer_node;
+
+   list tasks_waiting_list; /* tasks waiting this task to end */
+
+   s32 exit_wstatus;
    u32 time_slot_ticks; /*
                          * ticks counter for the current time-slot: it's reset
                          * each time the task is selected by the scheduler.
@@ -109,15 +113,7 @@ struct task_info {
 
    wait_obj wobj;
 
-   regs *state_regs;
-   regs *fault_resume_regs;
-   u32 faults_resume_mask;
-
    ATOMIC(u32) ticks_before_wake_up;
-   list_node wakeup_timer_node;
-
-   /* A dedicated list for all the tasks waiting this task to end */
-   list tasks_waiting_list;
 
    /* Temp kernel allocations for user requests */
    kernel_alloc *kallocs_tree_root;
