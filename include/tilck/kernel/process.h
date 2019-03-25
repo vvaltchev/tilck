@@ -45,12 +45,25 @@ struct process_info {
 
    int parent_pid;
    page_directory_t *pdir;
+   list_node siblings_node;   /* nodes in parent's pi's children_list */
+
    void *brk;
    void *initial_brk;
    kmalloc_heap *mmap_heap;
 
    list children_list;        /* list of children processes (as task_info *) */
-   list_node siblings_node;   /* nodes in parent's pi's children_list */
+   list mappings;
+
+   void *proc_tty;
+
+   /*
+    * TODO: when thread are supported, use
+    * copy_to_user() when writing to this address.
+    */
+
+   int *set_child_tid; /* NOTE: this is an user pointer */
+
+   /* large members */
 
    char filepath[MAX_PATH]; /* executable's path */
    char cwd[MAX_PATH]; /* current working directory */
@@ -59,17 +72,6 @@ struct process_info {
    __sighandler_t sa_handlers[_NSIG];
    uptr sa_mask[K_SIGACTION_MASK_WORDS];
    uptr sa_flags;
-
-   void *proc_tty;
-
-   /*
-    * TODO: when thread creation is implemented, use
-    * copy_to_user() when writing to this address.
-    */
-
-   int *set_child_tid; /* NOTE: this is an user pointer */
-
-   list mappings;
 };
 
 typedef struct process_info process_info;

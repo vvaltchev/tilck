@@ -142,7 +142,7 @@ task_info *allocate_new_thread(process_info *pi)
    }
 
    ti->pi = pi;
-   ti->tid = -1;
+   ti->tid = -1; /* avoid hitting an ASSERT in thread_ti_to_tid() */
    ti->tid = thread_ti_to_tid(ti);
    ti->pid = (u16) proc->tid;
    ASSERT(thread_tid_to_ti(ti->tid) == ti);
