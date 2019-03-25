@@ -111,7 +111,7 @@ sptr sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
    if (!ti)
       return -ESRCH;
 
-   if (ti->pid != pid)
+   if (ti->pi->pid != pid)
       return -ESRCH;
 
    if (sig == 0) {

@@ -192,7 +192,7 @@ static int debug_per_task_cb(void *obj, void *arg)
    int ttynum = tty_get_num(ti->pi->proc_tty);
 
    if (!is_kernel_thread(ti)) {
-      printk(fmt, ti->tid, ti->pid,
+      printk(fmt, ti->tid, ti->pi->pid,
              ti->pi->parent_pid, state, ttynum, ti->pi->filepath);
       return 0;
    }
@@ -207,7 +207,7 @@ static int debug_per_task_cb(void *obj, void *arg)
                kfunc, debug_get_tn_for_tasklet_runner(ti));
    }
 
-   printk(fmt, ti->tid, ti->pid, ti->pi->parent_pid, state, 0, buf);
+   printk(fmt, ti->tid, ti->pi->pid, ti->pi->parent_pid, state, 0, buf);
    return 0;
 }
 

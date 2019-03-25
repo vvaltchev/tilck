@@ -185,7 +185,7 @@ sptr sys_setsid(void)
 
    task_info *ti = get_curr_task();
    ti->pi->proc_tty = NULL;
-   return ti->pid;
+   return ti->pi->pid;
 }
 
 /* get current session id */

@@ -43,6 +43,7 @@ struct process_info {
 
    int ref_count;
 
+   int pid;                   /* process id (tgid in the Linux kernel) */
    int parent_pid;
    page_directory_t *pdir;
    list_node siblings_node;   /* nodes in parent's pi's children_list */
@@ -78,19 +79,17 @@ typedef struct process_info process_info;
 
 struct task_info {
 
+   int tid;                 /* User/kernel task ID (pid in the Linux kernel) */
+   process_info *pi;
+
+   bool is_main_thread;     /* value of `tid == pi->pid` */
+   bool running_in_kernel;
+
+   volatile ATOMIC(enum task_state) state;
+
    regs *state_regs;
    regs *fault_resume_regs;
    u32 faults_resume_mask;
-
-   int tid;   /* User/kernel task ID (pid in the Linux kernel) */
-   u16 pid;   /*
-               * ID of the owner process (tgid in the Linux kernel).
-               * The main thread of each process has tid == pid
-               */
-
-   bool running_in_kernel;
-   volatile ATOMIC(enum task_state) state;
-   process_info *pi;
 
    bintree_node tree_by_tid_node;
    list_node runnable_node;
@@ -162,7 +161,7 @@ static ALWAYS_INLINE bool is_kernel_thread(task_info *ti)
 
 static ALWAYS_INLINE bool is_main_thread(task_info *ti)
 {
-   return ti->tid == ti->pid;
+   return ti->is_main_thread;
 }
 
 static ALWAYS_INLINE int kthread_calc_tid(task_info *ti)
@@ -198,7 +197,7 @@ int setup_usermode_task(page_directory_t *pdir,
 void set_current_task_in_kernel(void);
 void set_current_task_in_user_mode(void);
 
-task_info *allocate_new_process(task_info *parent, u16 pid);
+task_info *allocate_new_process(task_info *parent, int pid);
 task_info *allocate_new_thread(process_info *pi);
 void free_task(task_info *ti);
 void free_mem_for_zombie_task(task_info *ti);

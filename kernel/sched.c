@@ -168,7 +168,7 @@ void create_kernel_process(void)
    VERIFY(create_new_pid() == 0);
 
    ASSERT(s_kernel_ti->tid == 0);
-   ASSERT(s_kernel_ti->pid == 0);
+   ASSERT(s_kernel_pi->pid == 0);
    ASSERT(s_kernel_pi->parent_pid == 0);
 
    s_kernel_pi->ref_count = 1;
@@ -178,6 +178,7 @@ void create_kernel_process(void)
 
    VERIFY(arch_specific_new_task_setup(s_kernel_ti, NULL));
 
+   s_kernel_ti->is_main_thread = true;
    s_kernel_ti->running_in_kernel = true;
    memcpy(s_kernel_pi->cwd, "/", 2);
 

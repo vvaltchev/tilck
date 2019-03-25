@@ -57,7 +57,7 @@ NORETURN void panic(const char *fmt, ...)
    if (curr && curr != kernel_process && curr->tid != -1) {
       if (!is_kernel_thread(curr)) {
          printk("Current task [USER]: tid: %i, pid: %i\n",
-                curr->tid, curr->pid);
+                curr->tid, curr->pi->pid);
       } else {
          ptrdiff_t off;
          const char *s = find_sym_at_addr_safe((uptr)curr->what, &off, NULL);

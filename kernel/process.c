@@ -88,7 +88,7 @@ void init_process_lists(process_info *pi)
    list_node_init(&pi->siblings_node);
 }
 
-task_info *allocate_new_process(task_info *parent, u16 pid)
+task_info *allocate_new_process(task_info *parent, int pid)
 {
    process_info *pi;
    task_info *ti = kmalloc(sizeof(task_info) + sizeof(process_info));
@@ -107,8 +107,9 @@ task_info *allocate_new_process(task_info *parent, u16 pid)
    pi->mmap_heap = kmalloc_heap_dup(parent->pi->mmap_heap);
 
    pi->ref_count = 1;
-   ti->tid = pid; /* here tid is a PID */
-   ti->pid = pid;
+   pi->pid = pid;
+   ti->tid = pid;
+   ti->is_main_thread = true;
 
    if (!do_common_task_allocations(ti) ||
        !arch_specific_new_task_setup(ti, parent))
@@ -133,7 +134,7 @@ task_info *allocate_new_process(task_info *parent, u16 pid)
 
 task_info *allocate_new_thread(process_info *pi)
 {
-   task_info *proc = get_process_task(pi);
+   task_info *process_task = get_process_task(pi);
    task_info *ti = kzmalloc(sizeof(task_info));
 
    if (!ti || !do_common_task_allocations(ti)) {
@@ -143,11 +144,11 @@ task_info *allocate_new_thread(process_info *pi)
 
    ti->pi = pi;
    ti->tid = kthread_calc_tid(ti);
-   ti->pid = (u16) proc->tid;
+   ti->is_main_thread = false;
    ASSERT(kthread_get_ptr(ti->tid) == ti);
 
    init_task_lists(ti);
-   arch_specific_new_task_setup(ti, proc);
+   arch_specific_new_task_setup(ti, process_task);
    return ti;
 }
 
@@ -323,7 +324,7 @@ sptr sys_pause()
 
 sptr sys_getpid()
 {
-   return get_curr_task()->pid;
+   return get_curr_task()->pi->pid;
 }
 
 sptr sys_gettid()
@@ -364,12 +365,12 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
       task_info *waited_task = get_task(pid);
 
-      if (!waited_task || waited_task->pi->parent_pid != curr->pid)
+      if (!waited_task || waited_task->pi->parent_pid != curr->pi->pid)
          return -ECHILD;
 
       while (waited_task->state != TASK_STATE_ZOMBIE) {
 
-         task_set_wait_obj(get_curr_task(),
+         task_set_wait_obj(curr,
                            WOBJ_TASK,
                            waited_task,
                            &waited_task->tasks_waiting_list);
@@ -613,13 +614,13 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
    if (ti->tid != 1) {
 
       process_info *pos, *temp;
-      task_info *child_reaper = get_task(1); /* init */
+      process_info *child_reaper = get_task(1)->pi; /* init */
       ASSERT(child_reaper != NULL);
 
       list_for_each(pos, temp, &ti->pi->children_list, siblings_node) {
 
          list_remove(&pos->siblings_node);
-         list_add_tail(&child_reaper->pi->children_list, &pos->siblings_node);
+         list_add_tail(&child_reaper->children_list, &pos->siblings_node);
          pos->parent_pid = child_reaper->pid;
       }
 
