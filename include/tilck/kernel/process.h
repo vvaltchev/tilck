@@ -56,6 +56,7 @@ struct process_info {
    list mappings;
 
    void *proc_tty;
+   bool did_call_execve;
 
    /*
     * TODO: when thread are supported, use

@@ -103,13 +103,14 @@ task_info *allocate_new_process(task_info *parent, int pid)
 
    memcpy(ti, parent, sizeof(task_info));
    memcpy(pi, parent->pi, sizeof(process_info));
-   pi->parent_pid = parent->tid;
+   pi->parent_pid = parent->pi->pid;
    pi->mmap_heap = kmalloc_heap_dup(parent->pi->mmap_heap);
 
    pi->ref_count = 1;
    pi->pid = pid;
    ti->tid = pid;
    ti->is_main_thread = true;
+   pi->did_call_execve = false;
 
    if (!do_common_task_allocations(ti) ||
        !arch_specific_new_task_setup(ti, parent))

@@ -113,6 +113,7 @@ sptr sys_execve(const char *user_filename,
    char *const *env = NULL;
    page_directory_t *pdir = NULL;
    task_info *ti = NULL;
+   process_info *pi;
 
    task_info *curr = get_curr_task();
    ASSERT(curr != NULL);
@@ -148,10 +149,12 @@ sptr sys_execve(const char *user_filename,
 
    ASSERT(ti != NULL);
 
-   ti->pi->brk = brk;
-   ti->pi->initial_brk = brk;
-   memcpy(ti->pi->filepath, abs_path, strlen(abs_path) + 1);
-   close_cloexec_handles(ti->pi);
+   pi = ti->pi;
+   pi->brk = brk;
+   pi->initial_brk = brk;
+   pi->did_call_execve = true;
+   memcpy(pi->filepath, abs_path, strlen(abs_path) + 1);
+   close_cloexec_handles(pi);
 
    switch_to_idle_task();
    NOT_REACHED();
