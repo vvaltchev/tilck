@@ -669,7 +669,7 @@ sptr sys_fork(void)
       return -EAGAIN;
    }
 
-   task_info *child = allocate_new_process(curr, (u16) pid);
+   task_info *child = allocate_new_process(curr, pid);
 
    if (!child) {
       enable_preemption();

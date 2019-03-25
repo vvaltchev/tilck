@@ -338,7 +338,7 @@ void set_current_task_in_user_mode(void)
 
 static inline bool is_fpu_enabled_for_task(task_info *ti)
 {
-   return ti && ti->arch.fpu_regs &&
+   return ti->arch.fpu_regs &&
           (ti->state_regs->custom_flags & REGS_FL_FPU_ENABLED);
 }
 
@@ -402,10 +402,11 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
    /* Save the value of ti->state_regs as it will be reset below */
    regs *state = ti->state_regs;
 
-   ASSERT(!get_curr_task() || get_curr_task()->state != TASK_STATE_RUNNING);
-   ASSERT(ti->state == TASK_STATE_RUNNABLE);
+   ASSERT(get_curr_task() != NULL);
    ASSERT(ti != get_curr_task());
    ASSERT(!is_preemption_enabled());
+   ASSERT(get_curr_task()->state != TASK_STATE_RUNNING);
+   ASSERT(ti->state == TASK_STATE_RUNNABLE);
 
    /*
     * Make sure in NO WAY we'll switch to a user task keeping interrupts
@@ -413,23 +414,26 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
     */
    ASSERT(state->eflags & EFLAGS_IF);
 
-   save_curr_fpu_ctx_if_enabled();
-
    /* Do as much as possible work before disabling the interrupts */
    task_change_state(ti, TASK_STATE_RUNNING);
    ti->time_slot_ticks = 0;
 
-   /* Switch the page directory only if really necessary */
-   if (!is_kernel_thread(ti))
+   if (!is_kernel_thread(ti)) {
+
+      save_curr_fpu_ctx_if_enabled();
+
+      /* Switch the page directory only if really necessary */
       if (get_curr_pdir() != ti->pi->pdir)
          set_page_directory(ti->pi->pdir);
 
-   if (ti->arch.ldt)
-      load_ldt(ti->arch.ldt_index_in_gdt, ti->arch.ldt_size);
+      if (ti->arch.ldt)
+         load_ldt(ti->arch.ldt_index_in_gdt, ti->arch.ldt_size);
 
-   if (is_fpu_enabled_for_task(ti)) {
-      hw_fpu_enable();
-      restore_fpu_regs(ti, false);
+      if (is_fpu_enabled_for_task(ti)) {
+         hw_fpu_enable();
+         restore_fpu_regs(ti, false);
+         /* leave FPU enabled */
+      }
    }
 
    /* From here until the end, we have to be as fast as possible */
