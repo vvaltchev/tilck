@@ -10,7 +10,7 @@ typedef struct {
 
 } tty_and_sig_num;
 
-static void tty_async_send_signal(int tid, int signum)
+static void tty_send_signal(int tid, int signum)
 {
    task_info *ti = get_task(tid);
 
@@ -30,7 +30,7 @@ static int per_task_cb(void *obj, void *arg)
    if (!is_kernel_thread(ti) && ti->pi->proc_tty == t) {
 
       bool ok = enqueue_tasklet2(tty_tasklet_runner,
-                                 tty_async_send_signal,
+                                 tty_send_signal,
                                  ti->tid,
                                  ctx->sig_num);
 
@@ -41,7 +41,7 @@ static int per_task_cb(void *obj, void *arg)
    return 0;
 }
 
-static void tty_send_signal_to_processes(tty *t, int signum)
+static void tty_async_send_signal_to_fg_group(tty *t, int signum)
 {
    tty_and_sig_num ctx = (tty_and_sig_num) {
       .tty_num = t->minor,
@@ -80,7 +80,7 @@ static bool tty_ctrl_intr(tty *t)
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VINTR]);
       tty_kb_buf_reset(t);
-      tty_send_signal_to_processes(t, SIGINT);
+      tty_async_send_signal_to_fg_group(t, SIGINT);
       return true;
    }
 
@@ -103,7 +103,7 @@ static bool tty_ctrl_quit(tty *t)
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VQUIT]);
       tty_kb_buf_reset(t);
-      tty_send_signal_to_processes(t, SIGQUIT);
+      tty_async_send_signal_to_fg_group(t, SIGQUIT);
       return true;
    }
 

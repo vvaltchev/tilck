@@ -99,8 +99,8 @@ struct tty {
 
    /* large fields */
    char input_buf[TTY_INPUT_BS];                  /* tty input */
-   tty_ctrl_sig_func special_ctrl_handlers[256]; /* tty input */
-   term_filter default_state_funcs[256];         /* tty output */
+   tty_ctrl_sig_func special_ctrl_handlers[256];  /* tty input */
+   term_filter default_state_funcs[256];          /* tty output */
 };
 
 extern const struct termios default_termios;

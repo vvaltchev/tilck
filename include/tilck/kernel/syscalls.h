@@ -209,8 +209,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_msync)
 
 sptr sys_readv(int fd, const struct iovec *iov, int iovcnt);
 sptr sys_writev(int fd, const struct iovec *iov, int iovcnt);
+sptr sys_getsid(pid_t pid);
 
-CREATE_STUB_SYSCALL_IMPL(sys_getsid)
 CREATE_STUB_SYSCALL_IMPL(sys_fdatasync)
 CREATE_STUB_SYSCALL_IMPL(sys_sysctl)
 CREATE_STUB_SYSCALL_IMPL(sys_mlock)

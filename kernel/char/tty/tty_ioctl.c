@@ -10,6 +10,7 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/process.h>
 
 #include <termios.h>      // system header
 #include <fcntl.h>        // system header
@@ -148,10 +149,61 @@ static int tty_ioctl_KDSKBMODE(tty *t, void *argp)
 
 static int tty_ioctl_TIOCSCTTY(tty *t, void *argp)
 {
-   task_info *curr = get_curr_task();
-   process_info *pi = task_get_pi_opaque(curr);
-   process_set_tty(pi, t);
+   task_info *ti = get_curr_task();
+
+   if (!ti->pi->proc_tty) {
+
+      ti->pi->proc_tty = t;
+
+   } else {
+
+      // TODO: support this case
+
+      /*
+      If this terminal is already the controlling terminal of a different
+      session group, then the ioctl fails with EPERM, unless the caller has the
+      CAP_SYS_ADMIN capability and arg equals 1, in which case the terminal is
+      stolen, and all processes that had it as controlling terminal lose it.
+      */
+
+      return -EPERM;
+   }
+
    return 0;
+}
+
+/* create new session */
+sptr sys_setsid(void)
+{
+   /*
+    * This is a stub implementation of setsid(): the controlling terminal
+    * of the current process is reset and the current pid is returned AS IF
+    * it became the session leader process.
+    *
+    * TODO (future): consider actually implementing setsid()
+    */
+
+   task_info *ti = get_curr_task();
+   ti->pi->proc_tty = NULL;
+   return ti->pid;
+}
+
+/* get current session id */
+sptr sys_getsid(pid_t pid)
+{
+   return -ENOSYS;
+}
+
+/* get foreground process group */
+static int tty_ioctl_TIOCGPGRP(tty *t, pid_t *user_pgrp)
+{
+   return -EINVAL;
+}
+
+/* set foregroup process group */
+static int tty_ioctl_TIOCSPGRP(tty *t, const pid_t *user_pgrp)
+{
+   return -EINVAL;
 }
 
 int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp)
@@ -185,6 +237,12 @@ int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp)
 
       case TIOCSCTTY:
          return tty_ioctl_TIOCSCTTY(t, argp);
+
+      case TIOCGPGRP:
+         return tty_ioctl_TIOCGPGRP(t, argp);
+
+      case TIOCSPGRP:
+         return tty_ioctl_TIOCSPGRP(t, argp);
 
       default:
          printk("WARNING: unknown tty_ioctl() request: %p\n", request);
