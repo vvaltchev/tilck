@@ -52,24 +52,20 @@ struct process_info {
    void *initial_brk;
    kmalloc_heap *mmap_heap;
 
-   list children_list;        /* list of children processes (as task_info *) */
+   list children_list;
    list mappings;
 
    void *proc_tty;
    bool did_call_execve;
 
-   /*
-    * TODO: when thread are supported, use
-    * copy_to_user() when writing to this address.
-    */
 
-   int *set_child_tid; /* NOTE: this is an user pointer */
+   int *set_child_tid;                 /* NOTE: this is an user pointer */
 
    /* large members */
 
-   char filepath[MAX_PATH]; /* executable's path */
-   char cwd[MAX_PATH]; /* current working directory */
-   fs_handle handles[MAX_HANDLES]; /* for now, just a small fixed-size array */
+   char filepath[MAX_PATH];               /* executable's path */
+   char cwd[MAX_PATH];                    /* current working directory */
+   fs_handle handles[MAX_HANDLES];        /* just a small fixed-size array */
 
    __sighandler_t sa_handlers[_NSIG];
    uptr sa_mask[K_SIGACTION_MASK_WORDS];

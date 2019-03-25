@@ -141,7 +141,7 @@ kthread_create(kthread_func_ptr fun, void *arg)
 
    ti->what = fun;
    ti->state = TASK_STATE_RUNNABLE;
-   ti->running_in_kernel = 1;
+   ti->running_in_kernel = true;
    task_info_reset_kernel_stack(ti);
 
    push_on_stack((uptr **)&ti->state_regs, (uptr)arg);
@@ -330,7 +330,7 @@ void set_current_task_in_user_mode(void)
    ASSERT(!is_preemption_enabled());
    task_info *curr = get_curr_task();
 
-   curr->running_in_kernel = 0;
+   curr->running_in_kernel = false;
 
    task_info_reset_kernel_stack(curr);
    set_kernel_stack((u32)curr->state_regs);
@@ -356,10 +356,12 @@ switch_to_task_pop_nested_interrupts(int curr_irq)
 {
    if (KERNEL_TRACK_NESTED_INTERRUPTS) {
 
+      ASSERT(get_curr_task() != NULL);
+
       if (curr_irq != -1)
          pop_nested_interrupt();
 
-      if (get_curr_task() && get_curr_task()->running_in_kernel)
+      if (get_curr_task()->running_in_kernel)
          if (!is_kernel_thread(get_curr_task()))
             nested_interrupts_drop_top_syscall();
    }
