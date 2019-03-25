@@ -82,7 +82,7 @@ struct task_info {
 
    /*
     * NOTE: siblings_node is used ONLY for the main task in each process,
-    * when tid == pid. For the other tasks (thread), this list is simply
+    * when tid == pid. For the other tasks (threads), this list is simply
     * ignored.
     */
    list_node siblings_node;
@@ -206,6 +206,7 @@ void free_mem_for_zombie_task(task_info *ti);
 bool arch_specific_new_task_setup(task_info *ti, task_info *parent);
 void arch_specific_free_task(task_info *ti);
 void wake_up_tasks_waiting_on(task_info *ti);
+void init_process_lists(process_info *pi);
 
 void *task_temp_kernel_alloc(size_t size);
 void task_temp_kernel_free(void *ptr);

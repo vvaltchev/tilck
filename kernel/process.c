@@ -82,6 +82,12 @@ void init_task_lists(task_info *ti)
    bzero(&ti->wobj, sizeof(wait_obj));
 }
 
+void init_process_lists(process_info *pi)
+{
+   list_init(&pi->children_list);
+   list_init(&pi->mappings);
+}
+
 task_info *allocate_new_process(task_info *parent, u16 pid)
 {
    process_info *pi;
@@ -118,10 +124,9 @@ task_info *allocate_new_process(task_info *parent, u16 pid)
 
    ti->pi = pi;
    init_task_lists(ti);
-   list_init(&pi->children_list);
+   init_process_lists(pi);
    list_add_tail(&parent->pi->children_list, &ti->siblings_node);
 
-   list_init(&pi->mappings);
    pi->proc_tty = parent->pi->proc_tty;
    return ti;
 }

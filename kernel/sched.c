@@ -160,25 +160,23 @@ void create_kernel_process(void)
 
    task_info *s_kernel_ti = (task_info *)kernel_proc_buf;
    process_info *s_kernel_pi = (process_info *)(s_kernel_ti + 1);
-   memcpy(s_kernel_pi->filepath, "<kernel>", sizeof("<kernel>"));
 
    list_init(&runnable_tasks_list);
    list_init(&sleeping_tasks_list);
    list_init(&zombie_tasks_list);
 
-   int kernel_pid = create_new_pid();
-   ASSERT(kernel_pid == 0);
+   VERIFY(create_new_pid() == 0);
+
+   ASSERT(s_kernel_ti->tid == 0);
+   ASSERT(s_kernel_ti->pid == 0);
+   ASSERT(s_kernel_pi->parent_pid == 0);
 
    s_kernel_pi->ref_count = 1;
-   s_kernel_ti->tid = kernel_pid;
-   s_kernel_ti->pid = (u16) kernel_pid;
-
    s_kernel_ti->pi = s_kernel_pi;
    init_task_lists(s_kernel_ti);
-   list_init(&s_kernel_pi->children_list);
+   init_process_lists(s_kernel_pi);
 
    VERIFY(arch_specific_new_task_setup(s_kernel_ti, NULL));
-   ASSERT(s_kernel_pi->parent_pid == 0);
 
    s_kernel_ti->running_in_kernel = true;
    memcpy(s_kernel_pi->cwd, "/", 2);
