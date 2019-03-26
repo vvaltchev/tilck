@@ -47,7 +47,11 @@ LINE_MAX_COLS = 80
 # Global variables
 
 optPrintFileNames = False
+optShowLongLines = False
+optCheckLineEnding = False
+
 longLines = {} # file -> list of pairs (line#, cols)
+nonUnixLeFiles = set()
 #####################################################
 
 def GetNoExtFileType(fpath):
@@ -81,6 +85,7 @@ def GetFileType(f, folder):
 def CountLinesInFile(f, ft):
 
    global longLines
+   global nonUnixLeFiles
    res = [0, 0]  # tot lines, empty lines
 
    if optPrintFileNames:
@@ -89,6 +94,13 @@ def CountLinesInFile(f, ft):
    with open(f, 'r') as fd:
 
       for i, line in enumerate(fd):
+
+         le = line[-2:]
+
+         if len(le) == 2 and (le == '\r\n' or le == '\n\r'):
+            nonUnixLeFiles.add(f)
+         elif len(le) == 1 and le[0] != '\n':
+            nonUnixLeFiles.add(f)
 
          rsline = line.rstrip() # right strip
          sline = rsline.strip() # full strip
@@ -152,7 +164,8 @@ def PrintCounters(arr, eArr, total, eTot):
 def main():
 
    global optPrintFileNames
-   optShowLongLines = False
+   global optShowLongLines
+   global optCheckLineEnding
 
    if len(sys.argv) > 1 and sys.argv[1] == '-v':
       optPrintFileNames = True
@@ -160,6 +173,10 @@ def main():
 
    if len(sys.argv) > 1 and sys.argv[1] == '-l':
       optShowLongLines = True
+      del sys.argv[1]
+
+   if len(sys.argv) > 1 and sys.argv[1] == '-e':
+      optCheckLineEnding = True
       del sys.argv[1]
 
    if len(sys.argv) > 1:
@@ -224,6 +241,15 @@ def main():
                      format(f + ":" + str(lines[0]), lines[1]))
       else:
          print("\nLong lines: NONE")
+
+   if optCheckLineEnding:
+      if nonUnixLeFiles:
+         print("\nFiles with non-UNIX line ending:")
+         for f in nonUnixLeFiles:
+            print("  - {0}".format(f))
+         print("")
+      else:
+         print("\nFiles with non-UNIX line ending: NONE")
 
 #########################################################
 if __name__ == "__main__":
