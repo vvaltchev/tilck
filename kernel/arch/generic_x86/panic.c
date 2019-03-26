@@ -12,6 +12,7 @@
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/process_int.h>
 
 void panic_save_current_state(); /* defined in kernel_yield.S */
 
@@ -28,6 +29,18 @@ NORETURN void panic(const char *fmt, ...)
    x86_cpu_features.can_use_sse2 = false;
    x86_cpu_features.can_use_avx = false;
    x86_cpu_features.can_use_avx2 = false;
+
+   if (!get_curr_task()) {
+
+      if (!kernel_process)
+         create_kernel_process(); /* this is safe in panic */
+
+      /*
+       * We need to have __current != NULL because of functions like
+       * panic_save_current_state() which set curr->regs.
+       */
+      set_current_task(kernel_process);
+   }
 
    panic_save_current_state();
 
@@ -71,7 +84,8 @@ NORETURN void panic(const char *fmt, ...)
    panic_dump_nested_interrupts();
 
    if (PANIC_SHOW_REGS)
-      dump_regs(curr->state_regs);
+      if (curr && curr->state_regs)
+         dump_regs(curr->state_regs);
 
    if (PANIC_SHOW_STACKTRACE)
       dump_stacktrace();

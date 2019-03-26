@@ -105,6 +105,11 @@ void handle_fault(regs *r)
 
       bool was_cow;
 
+      if (in_panic()) {
+         printk("FATAL ERROR: page fault while in panic state\n");
+         while (true) { halt(); }
+      }
+
       enable_interrupts_forced();
       {
          was_cow = handle_potential_cow(r);

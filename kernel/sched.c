@@ -165,7 +165,9 @@ void create_kernel_process(void)
    list_init(&sleeping_tasks_list);
    list_init(&zombie_tasks_list);
 
-   VERIFY(create_new_pid() == 0);
+   if (!in_panic()) {
+      VERIFY(create_new_pid() == 0);
+   }
 
    ASSERT(s_kernel_ti->tid == 0);
    ASSERT(s_kernel_pi->pid == 0);
@@ -176,8 +178,6 @@ void create_kernel_process(void)
    init_task_lists(s_kernel_ti);
    init_process_lists(s_kernel_pi);
 
-   VERIFY(arch_specific_new_task_setup(s_kernel_ti, NULL));
-
    s_kernel_ti->is_main_thread = true;
    s_kernel_ti->running_in_kernel = true;
    memcpy(s_kernel_pi->cwd, "/", 2);
@@ -187,7 +187,11 @@ void create_kernel_process(void)
    kernel_process = s_kernel_ti;
    kernel_process_pi = s_kernel_ti->pi;
 
-   add_task(kernel_process);
+   if (!in_panic()) {
+      VERIFY(arch_specific_new_task_setup(s_kernel_ti, NULL));
+      add_task(kernel_process);
+   }
+
    set_current_task(kernel_process);
 }
 
