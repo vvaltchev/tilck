@@ -312,7 +312,8 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
       if (devfs_handle) {
 
-         um = process_add_user_mapping(devfs_handle, res, actual_len);
+         size_t mapping_page_count = actual_len >> PAGE_SHIFT;
+         um = process_add_user_mapping(devfs_handle, res, mapping_page_count);
 
          if (!um) {
             per_heap_kfree(pi->mmap_heap,
