@@ -374,12 +374,13 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
 {
    /* Save the value of ti->state_regs as it will be reset below */
    regs *state = ti->state_regs;
+   task_info *curr = get_curr_task();
 
-   ASSERT(get_curr_task() != NULL);
-   ASSERT(ti != get_curr_task());
-   ASSERT(!is_preemption_enabled());
-   ASSERT(get_curr_task()->state != TASK_STATE_RUNNING);
+   ASSERT(curr != NULL);
+   ASSERT(ti != curr);
+   ASSERT(curr->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
+   ASSERT(!is_preemption_enabled());
 
    /*
     * Make sure in NO WAY we'll switch to a user task keeping interrupts
@@ -391,9 +392,10 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
    task_change_state(ti, TASK_STATE_RUNNING);
    ti->time_slot_ticks = 0;
 
-   if (!is_kernel_thread(ti)) {
-
+   if (!is_kernel_thread(curr))
       save_curr_fpu_ctx_if_enabled();
+
+   if (!is_kernel_thread(ti)) {
 
       /* Switch the page directory only if really necessary */
       if (get_curr_pdir() != ti->pi->pdir)
