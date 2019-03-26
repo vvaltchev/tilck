@@ -31,7 +31,7 @@ static void handle_no_coproc_fault(regs *r);
 
 static bool enable_sse(void)
 {
-   u32 res = fault_resumable_call(~0u, &asm_enable_sse, 0);
+   u32 res = fault_resumable_call(ALL_FAULTS_MASK, &asm_enable_sse, 0);
 
    if (res) {
 
@@ -71,7 +71,7 @@ static bool enable_sse(void)
 
 static bool enable_osxsave(void)
 {
-   u32 res = fault_resumable_call(~0u, &asm_enable_osxsave, 0);
+   u32 res = fault_resumable_call(ALL_FAULTS_MASK, &asm_enable_osxsave, 0);
 
    if (res) {
 
@@ -88,7 +88,7 @@ static bool enable_osxsave(void)
 
 static bool enable_avx(void)
 {
-   u32 res = fault_resumable_call(~0u, &asm_enable_avx, 0);
+   u32 res = fault_resumable_call(ALL_FAULTS_MASK, &asm_enable_avx, 0);
 
    if (res) {
 

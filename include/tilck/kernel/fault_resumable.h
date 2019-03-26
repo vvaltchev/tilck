@@ -17,5 +17,15 @@ static inline bool is_fault_resumable(int fault_num)
    return (1u << fault_num) & get_curr_task()->faults_resume_mask;
 }
 
+static inline int get_fault_num(u32 r)
+{
+   for (int i = 0; i < 32; i++)
+      if (r & (1 << i))
+         return i;
+
+   return -1;
+}
+
 void handle_resumable_fault(regs *r);
 u32 fault_resumable_call(u32 faults_mask, void *func, u32 nargs, ...);
+

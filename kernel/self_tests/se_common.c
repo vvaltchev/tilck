@@ -121,11 +121,12 @@ void selftest_join_med()
  */
 void selftest_panic_manual(void)
 {
-   printk("[panic selftest] In a while, I'll panic\n");
+   printk("[panic selftest] I'll panic now\n");
+   panic("test panic [str: '%s'][num: %d]", "test string", -123);
+}
 
-   for (int i = 0; i < 500*1000*1000; i++) {
-      asmVolatile("nop");
-   }
-
-   panic("test panic");
+void selftest_panic2_manual(void)
+{
+   printk("[panic selftest] I'll panic with bad pointers\n");
+   panic("test panic [str: '%s'][num: %d]", (char *)1234, -123);
 }

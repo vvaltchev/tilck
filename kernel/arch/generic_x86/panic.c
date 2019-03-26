@@ -55,13 +55,35 @@ static void disable_fpu_features(void)
    x86_cpu_features.can_use_avx2 = false;
 }
 
+static void panic_print_task_info(task_info *curr)
+{
+   const char *str;
+
+   if (curr && curr != kernel_process && curr->tid != -1) {
+
+      if (!is_kernel_thread(curr)) {
+
+         printk("Current task [USER]: tid: %i, pid: %i\n",
+                curr->tid, curr->pi->pid);
+
+      } else {
+
+         str = find_sym_at_addr_safe((uptr)curr->what, NULL, NULL);
+         printk("Current task [KERNEL]: tid: %i [%s]\n",
+                curr->tid, str ? str : "???");
+      }
+
+   } else {
+      printk("Current task: NONE\n");
+   }
+}
+
 NORETURN void panic(const char *fmt, ...)
 {
    static bool first_printk_ok;
 
+   uptr rc;
    va_list args;
-   ptrdiff_t off;
-   const char *str;
    task_info *curr;
 
    disable_interrupts_forced(); /* No interrupts: we're in a panic state */
@@ -92,7 +114,7 @@ NORETURN void panic(const char *fmt, ...)
       init_console();
    }
 
-   /* Hopefully, we can print something to the screen */
+   /* Hopefully, we can print something on screen */
 
    printk("*********************************"
           " KERNEL PANIC "
@@ -106,29 +128,19 @@ NORETURN void panic(const char *fmt, ...)
    first_printk_ok = true;
 
    va_start(args, fmt);
-   vprintk(fmt, args);
-   va_end(args);
 
-   printk("\n");
+   /* print the arguments in a fault-safe way */
+   rc = fault_resumable_call(ALL_FAULTS_MASK, vprintk, 2, fmt, args);
 
-   if (curr && curr != kernel_process && curr->tid != -1) {
-
-      if (!is_kernel_thread(curr)) {
-
-         printk("Current task [USER]: tid: %i, pid: %i\n",
-                curr->tid, curr->pi->pid);
-
-      } else {
-
-         str = find_sym_at_addr_safe((uptr)curr->what, &off, NULL);
-         printk("Current task [KERNEL]: tid: %i [%s]\n",
-                curr->tid, str ? str : "???");
-      }
-
-   } else {
-      printk("Current task: NONE\n");
+   if (rc != 0) {
+      printk("[panic] Got fault %d while trying to print "
+             "the panic message.", get_fault_num(rc));
    }
 
+   va_end(args);
+   printk("\n");
+
+   panic_print_task_info(curr);
    panic_dump_nested_interrupts();
 
    if (PANIC_SHOW_REGS)

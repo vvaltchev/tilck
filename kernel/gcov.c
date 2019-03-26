@@ -269,7 +269,11 @@ int sys_gcov_get_file(int fn, char *user_buf)
    u32 rc;
    const struct gcov_info *gi = files_array[fn];
 
-   rc = fault_resumable_call(~0u, &gcov_dump_file_to_buf, 2, gi, user_buf);
+   rc = fault_resumable_call(ALL_FAULTS_MASK,         // mask
+                             &gcov_dump_file_to_buf,  // func
+                             2,                       // #args
+                             gi,                      // arg1
+                             user_buf);               // arg2
 
    if (rc != 0)
       return -EFAULT;

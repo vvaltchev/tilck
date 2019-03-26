@@ -320,7 +320,7 @@ const char *
 find_sym_at_addr_safe(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
 {
    const char *sym_name = NULL;
-   fault_resumable_call(~0u, &find_sym_at_addr_no_ret, 4,
+   fault_resumable_call(ALL_FAULTS_MASK, &find_sym_at_addr_no_ret, 4,
                         vaddr, offset, sym_size, &sym_name);
 
    return sym_name;
