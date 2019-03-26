@@ -65,6 +65,13 @@ static void nested_faulting_code(int level)
 
    u32 r = fault_resumable_call(~0u, nested_faulting_code, 1, level+1);
 
+   if (level == NESTED_FAULTING_CODE_MAX_LEVELS - 1)
+      VERIFY(r == 1 << FAULT_PAGE_FAULT);
+   else if (level == NESTED_FAULTING_CODE_MAX_LEVELS - 2)
+      VERIFY(r == 1 << FAULT_DIVISION_BY_ZERO);
+   else if (level == NESTED_FAULTING_CODE_MAX_LEVELS - 3)
+      VERIFY(r == 0);
+
    if (r) {
       if (level == NESTED_FAULTING_CODE_MAX_LEVELS - 1) {
          printk("[level %i]: the call faulted (r = %u). "
@@ -91,22 +98,26 @@ void selftest_fault_res_short(void)
                             2,
                             "hi from fault resumable: %s\n",
                             "arg1");
-   printk("returned %i\n", r);
+   printk("returned %u\n", r);
+   VERIFY(r == 0);
 
    printk("fault_resumable with code causing div by 0\n");
    r = fault_resumable_call(1 << FAULT_DIVISION_BY_ZERO, faulting_code, 0);
-   printk("returned %i\n", r);
+   printk("returned %u\n", r);
+   VERIFY(r == 1 << FAULT_DIVISION_BY_ZERO);
 
    printk("fault_resumable with code causing page fault\n");
    r = fault_resumable_call(1 << FAULT_PAGE_FAULT, faulting_code2, 0);
-   printk("returned %i\n", r);
+   printk("returned %u\n", r);
+   VERIFY(r == 1 << FAULT_PAGE_FAULT);
 
    printk("[level 0]: do recursive nested call\n");
    r = fault_resumable_call(~0u, // all faults
                             nested_faulting_code,
                             1,  // nargs
                             1); // arg1: level
-   printk("[level 0]: call returned %i\n", r);
+   printk("[level 0]: call returned %u\n", r);
+   VERIFY(r == 0);
    regular_self_test_end();
 }
 

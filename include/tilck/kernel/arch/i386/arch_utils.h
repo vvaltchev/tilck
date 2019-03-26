@@ -38,7 +38,7 @@ typedef struct {
 
 static ALWAYS_INLINE int regs_intnum(regs *r)
 {
-   return (int)r->int_num;
+   return r->int_num;
 }
 
 static ALWAYS_INLINE void set_return_register(regs *r, uptr value)

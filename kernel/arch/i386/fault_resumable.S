@@ -23,11 +23,11 @@ FUNC(fault_resumable_call):
    mov ebp, esp
 
    push [disable_preemption_count]
-   sub esp, 8        # skip 'ss', 'esp'
-   pushf
+   sub esp, 8        # skip pushing ss, esp
+   pushf             # save eflags
    sub esp, 16       # skip cs, eip, err_code and int_num
-   pusha
-   sub esp, 16       # skip pushing ds, es, fs, gs
+   pusha             # save the regular registers
+   sub esp, 20       # skip pushing custom_flags, ds, es, fs, gs
    push offset .asm_fault_resumable_call_resume
 
    mov ecx, [__current]
@@ -59,13 +59,17 @@ FUNC(fault_resumable_call):
 
 .asm_fault_resumable_call_resume:
 
-   add esp, 16
-   popa
-   add esp, 16
-   popf
-   add esp, 8
+   add esp, 20   # skip custom_flags, gs, fs, es, ds
+   popa          # restore the regular registers
+   add esp, 16   # skip int_num, err_code, eip, cs
+   popf          # restore the eflags register
+   add esp, 8    # skip useresp, ss
    pop [disable_preemption_count]
    leave
+
+   # Yes, the value of ECX won't be preserved but that's fine: it is a
+   # caller-save register. Of course EAX won't be preserved either, but its
+   # value is the return value of the `fault_resumable_call()` function.
 
    mov ecx, [__current]
    pop [ecx + TI_FAULTS_MASK_OFF]
