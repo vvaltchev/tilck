@@ -35,6 +35,7 @@
    "cmake.configureOnOpen": false,
    "python.linting.pylintEnabled": true,
    "python.linting.enabled": true,
+   "C_Cpp.dimInactiveRegions": false,
    "C_Cpp.configurationWarnings": "Disabled",
    "C_Cpp.errorSquiggles": "Disabled",
    "cmake.generator": "Unix Makefiles",
