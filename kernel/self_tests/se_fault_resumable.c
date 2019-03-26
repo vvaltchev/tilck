@@ -63,7 +63,7 @@ static void nested_faulting_code(int level)
 
    printk("[level %i]: do recursive nested call\n", level);
 
-   u32 r = fault_resumable_call((u32)-1, nested_faulting_code, 1, level+1);
+   u32 r = fault_resumable_call(~0u, nested_faulting_code, 1, level+1);
 
    if (r) {
       if (level == NESTED_FAULTING_CODE_MAX_LEVELS - 1) {
@@ -86,7 +86,7 @@ void selftest_fault_res_short(void)
    u32 r;
 
    printk("fault_resumable with just printk()\n");
-   r = fault_resumable_call((u32)-1,
+   r = fault_resumable_call(~0u,
                             printk,
                             2,
                             "hi from fault resumable: %s\n",
@@ -102,7 +102,7 @@ void selftest_fault_res_short(void)
    printk("returned %i\n", r);
 
    printk("[level 0]: do recursive nested call\n");
-   r = fault_resumable_call((u32)-1, // all faults
+   r = fault_resumable_call(~0u, // all faults
                             nested_faulting_code,
                             1,  // nargs
                             1); // arg1: level
