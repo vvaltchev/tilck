@@ -13,11 +13,52 @@
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/process_int.h>
+#include <tilck/kernel/fault_resumable.h>
 
 void panic_save_current_state(); /* defined in kernel_yield.S */
 
+static regs panic_state_regs;
+
+/* Called the assembly function panic_save_current_state() */
+void panic_save_current_task_state(regs *r)
+{
+   /*
+    * Clear the higher (unused) bits of the segment registers for a nicer
+    * panic regs dump.
+    */
+   r->ss &= 0xffff;
+   r->cs &= 0xffff;
+   r->ds &= 0xffff;
+   r->es &= 0xffff;
+   r->fs &= 0xffff;
+   r->gs &= 0xffff;
+
+   /*
+    * Since in panic we need just to save the state without doing a context
+    * switch, just saving the ESP in state_regs won't work, because
+    * we'll going to continue using the same stack. In this particular corner
+    * case, just store the regs a static regs instance.
+    */
+
+   memcpy(&panic_state_regs, r, sizeof(regs));
+   task_info *curr = get_curr_task();
+
+   if (curr)
+      curr->state_regs = &panic_state_regs;
+}
+
+static void disable_fpu_features(void)
+{
+   x86_cpu_features.can_use_sse = false;
+   x86_cpu_features.can_use_sse2 = false;
+   x86_cpu_features.can_use_avx = false;
+   x86_cpu_features.can_use_avx2 = false;
+}
+
 NORETURN void panic(const char *fmt, ...)
 {
+   static bool first_printk_ok;
+
    va_list args;
    ptrdiff_t off;
    const char *str;
@@ -25,31 +66,21 @@ NORETURN void panic(const char *fmt, ...)
 
    disable_interrupts_forced(); /* No interrupts: we're in a panic state */
 
-   if (__in_panic)
+   if (__in_panic) {
+
+      /* Ouch, nested panic! */
+
+      if (first_printk_ok)
+         printk("FATAL: got panic while in panic state. Halt.\n");
+
       goto end;
-
-   __in_panic = true;
-   curr = get_curr_task();
-
-   x86_cpu_features.can_use_sse = false;
-   x86_cpu_features.can_use_sse2 = false;
-   x86_cpu_features.can_use_avx = false;
-   x86_cpu_features.can_use_avx2 = false;
-
-   if (!curr) {
-
-      if (!kernel_process)
-         create_kernel_process(); /* this is safe in panic */
-
-      /*
-       * We need to have __current != NULL because of functions like
-       * panic_save_current_state() which set curr->regs.
-       */
-      set_curr_task(kernel_process);
-      curr = kernel_process;
    }
 
+   __in_panic = true;
+
+   disable_fpu_features();
    panic_save_current_state();
+   curr = get_curr_task();
 
    if (term_is_initialized(get_curr_term())) {
 
@@ -61,9 +92,18 @@ NORETURN void panic(const char *fmt, ...)
       init_console();
    }
 
+   /* Hopefully, we can print something to the screen */
+
    printk("*********************************"
           " KERNEL PANIC "
           "********************************\n");
+
+   /*
+    * Register the fact that the first printk() succeeded: in case of panic
+    * in panic, at least we know that we can show something on the screen.
+    */
+
+   first_printk_ok = true;
 
    va_start(args, fmt);
    vprintk(fmt, args);
@@ -71,7 +111,7 @@ NORETURN void panic(const char *fmt, ...)
 
    printk("\n");
 
-   if (curr != kernel_process && curr->tid != -1) {
+   if (curr && curr != kernel_process && curr->tid != -1) {
 
       if (!is_kernel_thread(curr)) {
 
@@ -92,8 +132,7 @@ NORETURN void panic(const char *fmt, ...)
    panic_dump_nested_interrupts();
 
    if (PANIC_SHOW_REGS)
-      if (curr->state_regs)
-         dump_regs(curr->state_regs);
+      dump_regs(&panic_state_regs);
 
    if (PANIC_SHOW_STACKTRACE)
       dump_stacktrace();
@@ -102,8 +141,6 @@ NORETURN void panic(const char *fmt, ...)
       debug_qemu_turn_off_machine();
 
 end:
-
-   while (true) {
-      halt();
-   }
+   /* Halt the CPU forever */
+   while (true) { halt(); }
 }

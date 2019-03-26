@@ -294,33 +294,6 @@ void save_current_task_state(regs *r)
    DEBUG_VALIDATE_STACK_PTR();
 }
 
-void panic_save_current_task_state(regs *r)
-{
-   static regs panic_state_regs;
-
-   /*
-    * Clear the higher (unused) bits of the segment registers for a nicer
-    * panic regs dump.
-    */
-   r->ss &= 0xffff;
-   r->cs &= 0xffff;
-   r->ds &= 0xffff;
-   r->es &= 0xffff;
-   r->fs &= 0xffff;
-   r->gs &= 0xffff;
-
-   /*
-    * Since in panic we need just to save the state without doing a context
-    * switch, just saving the ESP in state_regs won't work, because
-    * we'll going to continue using the same stack. In this particular corner
-    * case, just store the regs a static regs instance.
-    */
-
-   task_info *curr = get_curr_task();
-   memcpy(&panic_state_regs, r, sizeof(regs));
-   curr->state_regs = &panic_state_regs;
-}
-
 /*
  * Sched functions that are here because of arch-specific statements.
  */

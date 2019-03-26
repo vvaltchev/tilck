@@ -11,7 +11,7 @@ static inline bool in_fault_resumable_code(void)
    return get_curr_task()->faults_resume_mask != 0;
 }
 
-static inline bool is_fault_resumable(u32 fault_num)
+static inline bool is_fault_resumable(int fault_num)
 {
    ASSERT(fault_num <= 31);
    return (1u << fault_num) & get_curr_task()->faults_resume_mask;

@@ -57,7 +57,6 @@ const char *x86_exception_names[32] =
    "Out of Bounds",
    "Invalid Opcode",
    "No Coprocessor",
-
    "Double Fault",
    "Coprocessor Segment Overrun",
    "Bad TSS",
@@ -66,16 +65,15 @@ const char *x86_exception_names[32] =
    "General Protection Fault",
    "Page Fault",
    "Unknown Interrupt",
-
    "Coprocessor Fault",
    "Alignment Check",
    "Machine Check",
-   "Reserved",
-   "Reserved",
-   "Reserved",
-   "Reserved",
-   "Reserved",
 
+   "Reserved",
+   "Reserved",
+   "Reserved",
+   "Reserved",
+   "Reserved",
    "Reserved",
    "Reserved",
    "Reserved",
@@ -96,19 +94,31 @@ void handle_resumable_fault(regs *r)
    context_switch(curr->fault_resume_regs);
 }
 
+static void fault_in_panic(regs *r)
+{
+   const int int_num = r->int_num;
+
+   if (is_fault_resumable(int_num))
+      return handle_resumable_fault(r);
+
+   printk("FATAL: %s [%d] while in panic state [E: 0x%x, EIP: %p]\n",
+          x86_exception_names[int_num], int_num, r->err_code, r->eip);
+
+   /* Halt the CPU forever */
+   while (true) { halt(); }
+}
+
 void handle_fault(regs *r)
 {
-   const int int_num = (int)r->int_num;
+   const int int_num = r->int_num;
    VERIFY(is_fault(int_num));
+
+   if (UNLIKELY(in_panic()))
+      return fault_in_panic(r);
 
    if (LIKELY(int_num == FAULT_PAGE_FAULT)) {
 
       bool was_cow;
-
-      if (in_panic()) {
-         printk("FATAL ERROR: page fault while in panic state\n");
-         while (true) { halt(); }
-      }
 
       enable_interrupts_forced();
       {
@@ -120,10 +130,8 @@ void handle_fault(regs *r)
          return;
    }
 
-   if (UNLIKELY(is_fault_resumable((u32)int_num))) {
-      handle_resumable_fault(r);
-      return;
-   }
+   if (is_fault_resumable(int_num))
+      return handle_resumable_fault(r);
 
    if (LIKELY(fault_handlers[int_num] != NULL)) {
 
