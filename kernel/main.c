@@ -146,7 +146,6 @@ static void async_init_drivers(void)
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    call_kernel_global_ctors();
-
    early_init_serial_ports();
    create_kernel_process();
    init_cpu_exception_handling();
