@@ -656,38 +656,58 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
    enable_preemption();
 }
 
+static int fork_dup_all_handles(process_info *pi)
+{
+   for (u32 i = 0; i < MAX_HANDLES; i++) {
+
+      int rc;
+      fs_handle dup_h = NULL;
+      fs_handle h = pi->handles[i];
+
+      if (!h)
+         continue;
+
+      rc = vfs_dup(h, &dup_h);
+
+      if (rc < 0 || !dup_h) {
+
+         for (u32 j = 0; j < i; j++)
+            vfs_close(pi->handles[j]);
+
+         return -ENOMEM;
+      }
+
+      pi->handles[i] = dup_h;
+   }
+
+   return 0;
+}
+
 // Returns child's pid
 sptr sys_fork(void)
 {
-   disable_preemption();
+   int pid;
+   int rc = -EAGAIN;
+   task_info *child = NULL;
    task_info *curr = get_curr_task();
 
-   int pid = create_new_pid();
+   disable_preemption();
 
-   if (pid < 0) {
-      enable_preemption();
-      return -EAGAIN;
-   }
+   if ((pid = create_new_pid()) < 0)
+      goto out; /* NOTE: is already set to -EAGAIN */
 
-   task_info *child = allocate_new_process(curr, pid);
-
-   if (!child) {
-      enable_preemption();
-      return -ENOMEM;
-   }
+   if (!(child = allocate_new_process(curr, pid)))
+      goto no_mem_exit;
 
    ASSERT(child->kernel_stack != NULL);
 
-   if (child->state == TASK_STATE_RUNNING) {
+   if (child->state == TASK_STATE_RUNNING)
       child->state = TASK_STATE_RUNNABLE;
-   }
 
-
-#if FORK_NO_COW
-   child->pi->pdir = pdir_deep_clone(curr->pi->pdir);
-#else
-   child->pi->pdir = pdir_clone(curr->pi->pdir);
-#endif
+   if (FORK_NO_COW)
+      child->pi->pdir = pdir_deep_clone(curr->pi->pdir);
+   else
+      child->pi->pdir = pdir_clone(curr->pi->pdir);
 
    if (!child->pi->pdir)
       goto no_mem_exit;
@@ -700,50 +720,38 @@ sptr sys_fork(void)
    set_return_register(child->state_regs, 0);
 
    // Make the parent to get child's pid as return value.
-   set_return_register(curr->state_regs, (u32) child->tid);
+   set_return_register(curr->state_regs, (uptr) child->tid);
 
-   /* Duplicate all the handles */
-   for (u32 i = 0; i < MAX_HANDLES; i++) {
-
-      fs_handle h = child->pi->handles[i];
-
-      if (!h)
-         continue;
-
-      fs_handle dup_h = NULL;
-      int rc = vfs_dup(h, &dup_h);
-
-      if (rc < 0 || !dup_h) {
-
-         for (u32 j = 0; j < i; j++)
-            vfs_close(child->pi->handles[j]);
-
-         goto no_mem_exit;
-      }
-
-      child->pi->handles[i] = dup_h;
-   }
+   if (fork_dup_all_handles(child->pi) < 0)
+      goto no_mem_exit;
 
    add_task(child);
 
    /*
+    * X86-specific note:
     * Force the CR3 reflush using the current (parent's) pdir.
     * Without doing that, COW on parent's pages doesn't work immediately.
-    * That is better (in this case) than invalidating all the pages affected,
-    * one by one.
+    * That is better than invalidating all the pages affected, one by one.
     */
 
    set_page_directory(curr->pi->pdir);
-
    enable_preemption();
    return child->tid;
 
+
 no_mem_exit:
-   child->state = TASK_STATE_ZOMBIE;
-   internal_free_mem_for_zombie_task(child);
-   free_task(child);
+
+   rc = -ENOMEM;
+
+   if (child) {
+      child->state = TASK_STATE_ZOMBIE;
+      internal_free_mem_for_zombie_task(child);
+      free_task(child);
+   }
+
+out:
    enable_preemption();
-   return -ENOMEM;
+   return rc;
 }
 
 sptr sys_getppid()

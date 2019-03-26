@@ -41,7 +41,7 @@ static ALWAYS_INLINE int regs_intnum(regs *r)
    return (int)r->int_num;
 }
 
-static ALWAYS_INLINE void set_return_register(regs *r, u32 value)
+static ALWAYS_INLINE void set_return_register(regs *r, uptr value)
 {
    r->eax = value;
 }
