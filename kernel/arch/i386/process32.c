@@ -199,7 +199,7 @@ void kthread_exit(void)
    /* Remove the from the scheduler and free its struct */
    remove_task(get_curr_task());
 
-   set_current_task(kernel_process);
+   set_curr_task(kernel_process);
    switch_to_idle_task_outside_interrupt_context();
 }
 
@@ -460,7 +460,7 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
       }
    }
 
-   set_current_task(ti);
+   set_curr_task(ti);
    set_kernel_stack((u32)ti->state_regs);
    context_switch(state);
 }

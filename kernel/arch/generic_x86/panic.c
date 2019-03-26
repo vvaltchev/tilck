@@ -45,7 +45,7 @@ NORETURN void panic(const char *fmt, ...)
        * We need to have __current != NULL because of functions like
        * panic_save_current_state() which set curr->regs.
        */
-      set_current_task(kernel_process);
+      set_curr_task(kernel_process);
       curr = kernel_process;
    }
 

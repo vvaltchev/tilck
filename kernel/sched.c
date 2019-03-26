@@ -192,7 +192,7 @@ void create_kernel_process(void)
       add_task(kernel_process);
    }
 
-   set_current_task(kernel_process);
+   set_curr_task(kernel_process);
 }
 
 process_info *task_get_pi_opaque(task_info *ti)

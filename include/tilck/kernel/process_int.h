@@ -7,7 +7,7 @@
 /* Internal stuff (used by process.c, process32.c, misc.c, sched.c) */
 extern char *kernel_initial_stack[KERNEL_STACK_SIZE];
 void switch_to_initial_kernel_stack(void);
-static ALWAYS_INLINE void set_current_task(task_info *ti)
+static ALWAYS_INLINE void set_curr_task(task_info *ti)
 {
    atomic_store_explicit(&__current, ti, mo_relaxed);
 }
