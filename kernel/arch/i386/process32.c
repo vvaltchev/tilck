@@ -417,8 +417,8 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
    enable_preemption();
 
    /*
-    * Make sure in NO WAY we'll switch to a user task keeping the preemption
-    * disabled. That would be pretty bad.
+    * Make sure in NO WAY we'll switch to a user task while keeping the
+    * preemption disabled. That would be pretty bad.
     */
    ASSERT(is_preemption_enabled());
    DEBUG_VALIDATE_STACK_PTR();
