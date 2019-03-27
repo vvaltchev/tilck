@@ -634,6 +634,11 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
 
       if (DEBUG_QEMU_EXIT_ON_INIT_EXIT)
          debug_qemu_turn_off_machine();
+
+      if (!term_sig)
+         panic("Init exited with code: %d\n", exit_code);
+      else
+         panic("Init terminated by signal %d\n", term_sig);
    }
 
    // Wake-up all the tasks waiting on this task to exit
