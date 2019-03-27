@@ -366,27 +366,25 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    return (sptr)res;
 }
 
-sptr sys_munmap(void *vaddr, size_t len)
+sptr sys_munmap(void *vaddrp, size_t len)
 {
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
-   size_t actual_len;
+   uptr vaddr = (uptr) vaddrp;
    u32 kfree_flags = KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP;
+   size_t actual_len;
 
    if (!len || !pi->mmap_heap)
       return -EINVAL;
 
-   if ((uptr)vaddr < USER_MMAP_BEGIN || (uptr)vaddr >= USER_MMAP_END)
+   if (vaddr < USER_MMAP_BEGIN || vaddr >= USER_MMAP_END)
       return -EINVAL;
-
-   // TODO: check if vaddr is a device-mapping. In case it is, pass also the
-   // KFREE_FL_NO_ACTUAL_FREE flag to per_heap_kfree().
 
    disable_preemption();
    {
       actual_len = round_up_at(len, PAGE_SIZE);
 
-      user_mapping *um = process_get_user_mapping(vaddr);
+      user_mapping *um = process_get_user_mapping(vaddrp);
 
       if (um) {
          kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
@@ -396,7 +394,7 @@ sptr sys_munmap(void *vaddr, size_t len)
       }
 
       per_heap_kfree(pi->mmap_heap,
-                     vaddr,
+                     vaddrp,
                      &actual_len,
                      kfree_flags);
 
