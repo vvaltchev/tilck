@@ -473,6 +473,7 @@ sptr sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
 void wake_up_tasks_waiting_on(task_info *ti)
 {
    wait_obj *wo_pos, *wo_temp;
+   ASSERT(!is_preemption_enabled());
 
    list_for_each(wo_pos, wo_temp, &ti->tasks_waiting_list, wait_list_node) {
 
@@ -758,6 +759,28 @@ out:
 sptr sys_getppid()
 {
    return get_curr_task()->pi->parent_pid;
+}
+
+/* create new session */
+sptr sys_setsid(void)
+{
+   /*
+    * This is a stub implementation of setsid(): the controlling terminal
+    * of the current process is reset and the current pid is returned AS IF
+    * it became the session leader process.
+    *
+    * TODO (future): consider actually implementing setsid()
+    */
+
+   task_info *ti = get_curr_task();
+   ti->pi->proc_tty = NULL;
+   return ti->pi->pid;
+}
+
+/* get current session id */
+sptr sys_getsid(pid_t pid)
+{
+   return -ENOSYS;
 }
 
 sptr sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5)

@@ -172,28 +172,6 @@ static int tty_ioctl_TIOCSCTTY(tty *t, void *argp)
    return 0;
 }
 
-/* create new session */
-sptr sys_setsid(void)
-{
-   /*
-    * This is a stub implementation of setsid(): the controlling terminal
-    * of the current process is reset and the current pid is returned AS IF
-    * it became the session leader process.
-    *
-    * TODO (future): consider actually implementing setsid()
-    */
-
-   task_info *ti = get_curr_task();
-   ti->pi->proc_tty = NULL;
-   return ti->pi->pid;
-}
-
-/* get current session id */
-sptr sys_getsid(pid_t pid)
-{
-   return -ENOSYS;
-}
-
 /* get foreground process group */
 static int tty_ioctl_TIOCGPGRP(tty *t, pid_t *user_pgrp)
 {
