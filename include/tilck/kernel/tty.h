@@ -17,6 +17,7 @@ void init_tty(void);
 void tty_setup_for_panic(tty *t);
 int tty_keypress_handler_int(tty *t, u32 key, u8, bool check_mods);
 int tty_get_num(tty *t);
+void tty_restore_kd_text_mode(tty *t);
 
 static inline int get_curr_tty_num(void)
 {

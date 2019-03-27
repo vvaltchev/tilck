@@ -117,3 +117,4 @@ const char *debug_get_state_name(enum task_state state);
 
 process_info *task_get_pi_opaque(task_info *ti);
 void process_set_tty(process_info *pi, void *t);
+bool in_currently_dying_task(void);

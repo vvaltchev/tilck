@@ -108,13 +108,21 @@ void tty_setup_for_panic(tty *t)
    }
 }
 
+void tty_restore_kd_text_mode(tty *t)
+{
+   if (t->kd_mode == KD_TEXT)
+      return;
+
+   term_restart_video_output(t->term_inst);
+   t->kd_mode = KD_TEXT;
+}
+
 static int tty_ioctl_kdsetmode(tty *t, void *argp)
 {
    uptr opt = (uptr) argp;
 
    if (opt == KD_TEXT) {
-      term_restart_video_output(t->term_inst);
-      t->kd_mode = KD_TEXT;
+      tty_restore_kd_text_mode(t);
       return 0;
    }
 

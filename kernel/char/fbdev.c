@@ -6,9 +6,13 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/fb_console.h>
 #include <tilck/kernel/paging.h>
+#include <tilck/kernel/tty.h>
+#include <tilck/kernel/sched.h>
 
 #include <linux/fb.h>     // system header
 #include <linux/major.h>  // system header
+
+static ssize_t total_fb_pages_mapped;
 
 static ssize_t fb_read(fs_handle fsh, char *buf, size_t size)
 {
@@ -57,6 +61,8 @@ static int fbdev_mmap(fs_handle h /* ignored */, void *vaddr, size_t len)
 {
    ASSERT(IS_PAGE_ALIGNED(len));
    fb_user_mmap(vaddr, len);
+
+   total_fb_pages_mapped += len >> PAGE_SHIFT;
    return 0;
 }
 
@@ -64,6 +70,26 @@ static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
 {
    ASSERT(IS_PAGE_ALIGNED(len));
    unmap_pages(get_curr_pdir(), vaddr, len >> PAGE_SHIFT, false);
+
+   total_fb_pages_mapped -= len >> PAGE_SHIFT;
+   ASSERT(total_fb_pages_mapped >= 0);
+
+   /*
+    * [BE_NICE] In case we're in a dying task() [we've been called indirectly by
+    * terminate_process()] and no other process in the system has any pages of
+    * the framebuffer mapped, then make sure that the current TTY is restored
+    * back in KD_TEXT mode, in order to give back to the user the control.
+    *
+    * NOTE: that's a special Tilck-only behavior: on Linux, TTY won't be
+    * restored in KD_TEXT mode and, therefore, the system won't be usable by
+    * a user physically near the machine. Not even switching to a Xorg instance
+    * with ALT+F1, ALT+F2, etc. works. It's required to use Magic SysRq
+    * shortcuts to reboot the machine or connect to it remotely to do that.
+    */
+   if (total_fb_pages_mapped == 0 && in_currently_dying_task()) {
+      tty_restore_kd_text_mode(get_curr_tty());
+   }
+
    return 0;
 }
 

@@ -444,3 +444,8 @@ task_info *get_task(int tid)
    enable_preemption();
    return res;
 }
+
+bool in_currently_dying_task(void)
+{
+   return get_curr_task()->state == TASK_STATE_ZOMBIE;
+}
