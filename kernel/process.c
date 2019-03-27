@@ -584,6 +584,27 @@ task_free_all_kernel_allocs(task_info *ti)
    }
 }
 
+static void init_terminated(task_info *ti, int exit_code, int term_sig)
+{
+   if (DEBUG_QEMU_EXIT_ON_INIT_EXIT)
+      debug_qemu_turn_off_machine();
+
+   if (!term_sig)
+      panic("Init exited with code: %d\n", exit_code);
+   else
+      panic("Init terminated by signal %d\n", term_sig);
+}
+
+static process_info *get_child_reaper(process_info *pi)
+{
+   /* TODO: support prctl(PR_SET_CHILD_SUBREAPER) */
+
+   task_info *child_reaper = get_task(1); /* init */
+   VERIFY(child_reaper != NULL);
+
+   return child_reaper->pi;
+}
+
 /*
  * NOTE: this code ASSUMES that threads do NOT exist:
  *    process = task = thread
@@ -597,8 +618,14 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
 
    process_info *pi = ti->pi;
 
-   if (ti->wobj.type != WOBJ_NONE)
+   if (ti->wobj.type != WOBJ_NONE) {
+
+      /*
+       * If the task has been waiting on something, we have to reset its wobj
+       * and remove its pointer from the target object's wait_list.
+       */
       task_reset_wait_obj(ti);
+   }
 
    task_change_state(ti, TASK_STATE_ZOMBIE);
    ti->exit_wstatus = EXITCODE(exit_code, term_sig);
@@ -607,19 +634,17 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
    remove_user_mappings(pi);
    task_free_all_kernel_allocs(ti);
 
-   /*
-    * What if the current task has any children? We have to set their parent
-    * to init (pid 1) or to the nearest child subreaper, once that is supported.
-    *
-    * TODO: support prctl(PR_SET_CHILD_SUBREAPER)
-    * TODO: revisit this code once threads are supported
-    */
 
    if (ti->tid != 1) {
 
+      /*
+       * What if the dying task has any children? We have to set their parent
+       * to init (pid 1) or to the nearest child subreaper, once that is
+       * supported.
+       */
+
       process_info *pos, *temp;
-      process_info *child_reaper = get_task(1)->pi; /* init */
-      ASSERT(child_reaper != NULL);
+      process_info *child_reaper = get_child_reaper(pi);
 
       list_for_each(pos, temp, &pi->children_list, siblings_node) {
 
@@ -630,29 +655,25 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
 
    } else {
 
-      /* tid == pid == 1 */
-
-      if (DEBUG_QEMU_EXIT_ON_INIT_EXIT)
-         debug_qemu_turn_off_machine();
-
-      if (!term_sig)
-         panic("Init exited with code: %d\n", exit_code);
-      else
-         panic("Init terminated by signal %d\n", term_sig);
+      /* The dying task is PID 1, init */
+      init_terminated(ti, exit_code, term_sig);
    }
 
-   // Wake-up all the tasks waiting on this task to exit
+   /* Wake-up all the tasks waiting on this specific task to exit */
    wake_up_tasks_waiting_on(ti);
 
    if (pi->parent_pid > 0) {
 
       task_info *parent_task = get_task(pi->parent_pid);
 
+      /* Wake-up the parent task if it's waiting on any child to exit */
       if (task_is_waiting_on_any_child(parent_task))
          task_reset_wait_obj(parent_task);
    }
 
    if (ti == get_curr_task()) {
+
+      /* This function has been called by sys_exit(): we won't return */
       set_page_directory(get_kernel_pdir());
       pdir_destroy(pi->pdir);
       switch_stack_free_mem_and_schedule();
