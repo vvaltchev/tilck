@@ -540,12 +540,10 @@ static void remove_user_mappings(process_info *pi)
 {
    while (!list_is_empty(&pi->mappings)) {
 
-      user_mapping *um =
-         list_first_obj(&pi->mappings, user_mapping, node);
-
+      user_mapping *um = list_first_obj(&pi->mappings, user_mapping, node);
       size_t actual_len = um->page_count << PAGE_SHIFT;
-
       fs_handle_base *hb = um->h;
+
       hb->fops.munmap(hb, um->vaddr, actual_len);
 
       per_heap_kfree(pi->mmap_heap,

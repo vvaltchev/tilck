@@ -279,11 +279,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       if (!(flags & MAP_SHARED))
          return -EINVAL;
 
-      disable_preemption();
-      {
-         handle = get_fs_handle((u32) fd);
-      }
-      enable_preemption();
+      handle = get_fs_handle((u32) fd);
 
       if (!handle)
          return -EBADF;
@@ -387,10 +383,26 @@ sptr sys_munmap(void *vaddrp, size_t len)
       user_mapping *um = process_get_user_mapping(vaddrp);
 
       if (um) {
-         kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
+
          fs_handle_base *hb = um->h;
-         hb->fops.munmap(hb, um->vaddr, actual_len);
-         process_remove_user_mapping(um);
+         size_t mapping_len = um->page_count << PAGE_SHIFT;
+         ASSERT(um->vaddr == vaddrp);
+
+         actual_len = MAX(actual_len, mapping_len);
+
+         kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
+         hb->fops.munmap(hb, vaddrp, actual_len);
+
+         if (actual_len == mapping_len) {
+
+            process_remove_user_mapping(um);
+
+         } else {
+
+            /* partial un-map */
+            um->vaddr += actual_len;
+            um->page_count -= (actual_len >> PAGE_SHIFT);
+         }
       }
 
       per_heap_kfree(pi->mmap_heap,
