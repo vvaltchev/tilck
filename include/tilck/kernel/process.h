@@ -181,15 +181,17 @@ static ALWAYS_INLINE bool is_tasklet_runner(task_info *ti)
 user_mapping *
 process_add_user_mapping(fs_handle h, void *vaddr, size_t page_count);
 void process_remove_user_mapping(user_mapping *um);
+void full_remove_user_mapping(process_info *pi, user_mapping *um);
+void remove_all_mappings_of_handle(process_info *pi, fs_handle h);
 user_mapping *process_get_user_mapping(void *vaddr);
 
 int setup_usermode_task(page_directory_t *pdir,
-                         void *entry,
-                         void *stack_addr,
-                         task_info *task_to_use,
-                         char *const *argv,
-                         char *const *env,
-                         task_info **ti_ref);
+                        void *entry,
+                        void *stack_addr,
+                        task_info *task_to_use,
+                        char *const *argv,
+                        char *const *env,
+                        task_info **ti_ref);
 
 void set_current_task_in_kernel(void);
 void set_current_task_in_user_mode(void);

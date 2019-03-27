@@ -525,7 +525,7 @@ switch_stack_free_mem_and_schedule(void)
 
 static void close_all_handles(process_info *pi)
 {
-   for (size_t i = 0; i < ARRAY_SIZE(pi->handles); i++) {
+   for (u32 i = 0; i < MAX_HANDLES; i++) {
 
       fs_handle *h = pi->handles[i];
 
@@ -533,27 +533,6 @@ static void close_all_handles(process_info *pi)
          vfs_close(h);
          pi->handles[i] = NULL;
       }
-   }
-}
-
-static void remove_user_mappings(process_info *pi)
-{
-   while (!list_is_empty(&pi->mappings)) {
-
-      user_mapping *um = list_first_obj(&pi->mappings, user_mapping, node);
-      size_t actual_len = um->page_count << PAGE_SHIFT;
-      fs_handle_base *hb = um->h;
-
-      hb->fops.munmap(hb, um->vaddr, actual_len);
-
-      per_heap_kfree(pi->mmap_heap,
-                     um->vaddr,
-                     &actual_len,
-                     KFREE_FL_ALLOW_SPLIT |
-                     KFREE_FL_MULTI_STEP  |
-                     KFREE_FL_NO_ACTUAL_FREE);
-
-      process_remove_user_mapping(um);
    }
 }
 
@@ -629,8 +608,8 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
    ti->exit_wstatus = EXITCODE(exit_code, term_sig);
 
    close_all_handles(pi);
-   remove_user_mappings(pi);
    task_free_all_kernel_allocs(ti);
+   ASSERT(list_is_empty(&pi->mappings));
 
 
    if (ti->tid != 1) {

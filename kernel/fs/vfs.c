@@ -6,6 +6,7 @@
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/process.h>
 
 #include "fs_int.h"
 
@@ -126,6 +127,12 @@ out:
 void vfs_close(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+
+#ifndef UNIT_TEST_ENVIRONMENT
+   process_info *pi = get_curr_task()->pi;
+   remove_all_mappings_of_handle(pi, h);
+#endif
+
    hb->fs->close(h);
 }
 

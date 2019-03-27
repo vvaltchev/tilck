@@ -229,6 +229,37 @@ static int create_process_mmap_heap(process_info *pi)
    return 0;
 }
 
+void remove_all_mappings_of_handle(process_info *pi, fs_handle h)
+{
+   user_mapping *pos, *temp;
+
+   disable_preemption();
+   {
+      list_for_each(pos, temp, &pi->mappings, node) {
+         if (pos->h == h)
+            full_remove_user_mapping(pi, pos);
+      }
+   }
+   enable_preemption();
+}
+
+void full_remove_user_mapping(process_info *pi, user_mapping *um)
+{
+   fs_handle_base *hb = um->h;
+   size_t actual_len = um->page_count << PAGE_SHIFT;
+
+   hb->fops.munmap(hb, um->vaddr, actual_len);
+
+   per_heap_kfree(pi->mmap_heap,
+                  um->vaddr,
+                  &actual_len,
+                  KFREE_FL_ALLOW_SPLIT |
+                  KFREE_FL_MULTI_STEP  |
+                  KFREE_FL_NO_ACTUAL_FREE);
+
+   process_remove_user_mapping(um);
+}
+
 sptr
 sys_mmap_pgoff(void *addr, size_t len, int prot,
                int flags, int fd, size_t pgoffset)
