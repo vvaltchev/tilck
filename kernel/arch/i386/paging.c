@@ -154,7 +154,7 @@ void handle_page_fault_int(regs *r)
           !p ? " (NON present)." : ".", r->eip);
 
    end_fault_handler_state();
-   send_signal(get_curr_task(), SIGSEGV);
+   send_signal(get_curr_task_tid(), SIGSEGV, true);
 }
 
 

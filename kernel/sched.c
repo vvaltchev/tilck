@@ -30,7 +30,8 @@ static task_info *idle_task;
 
 int get_curr_task_tid(void)
 {
-   return __current ? __current->tid : 0;
+   task_info *c = get_curr_task();
+   return c ? c->tid : 0;
 }
 
 static sptr ti_insert_remove_cmp(const void *a, const void *b)

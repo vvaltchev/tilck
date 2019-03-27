@@ -67,7 +67,7 @@ static const action_type signal_default_actions[32] =
    [SIGXFSZ] = action_terminate
 };
 
-void send_signal(task_info *ti, int signum)
+static void do_send_signal(task_info *ti, int signum)
 {
    ASSERT(0 <= signum && signum < _NSIG);
    __sighandler_t h = ti->pi->sa_handlers[signum];
@@ -105,6 +105,38 @@ void send_signal(task_info *ti, int signum)
          : action_terminate;
 
    action_func(ti, signum);
+}
+
+int send_signal2(int pid, int tid, int signum, bool whole_process)
+{
+   int rc = -ESRCH;
+
+   disable_preemption();
+
+   task_info *ti = get_task(tid);
+
+   if (!ti)
+      goto err_end;
+
+   /* When `whole_process` is true, tid must be == pid */
+   if (whole_process && ti->pi->pid != tid)
+      goto err_end;
+
+   if (ti->pi->pid != pid)
+      goto err_end;
+
+   if (signum == 0)
+      goto end; /* the user app is just checking permissions */
+
+   /* TODO: update this code when thread support is added */
+   do_send_signal(ti, signum);
+
+end:
+   rc = 0;
+
+err_end:
+   enable_preemption();
+   return rc;
 }
 
 /*

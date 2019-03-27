@@ -59,6 +59,7 @@ sptr sys_newuname(struct utsname *user_buf)
 
 NORETURN sptr sys_exit(int exit_status)
 {
+   disable_preemption();
    terminate_process(get_curr_task(), exit_status, 0 /* term_sig */);
 
    /* Necessary to guarantee to the compiler that we won't return. */
@@ -75,29 +76,14 @@ NORETURN sptr sys_exit_group(int status)
 /* NOTE: deprecated syscall */
 sptr sys_tkill(int tid, int sig)
 {
-   task_info *ti;
-
    if (sig < 0 || sig >= _NSIG || tid <= 0)
       return -EINVAL;
 
-   ti = get_task(tid);
-
-   if (!ti)
-      return -ESRCH;
-
-   if (sig == 0) {
-      /* sig == 0 means just that the user app is checking permissions */
-      return 0;
-   }
-
-   send_signal(ti, sig);
-   return 0;
+   return send_signal(tid, sig, false);
 }
 
 sptr sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
 {
-   task_info *ti;
-
    if (pid != tid) {
       printk("sys_tgkill: pid != tid NOT SUPPORTED yet.\n");
       return -EINVAL;
@@ -106,21 +92,7 @@ sptr sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
    if (sig < 0 || sig >= _NSIG || pid <= 0 || tid <= 0)
       return -EINVAL;
 
-   ti = get_task(tid);
-
-   if (!ti)
-      return -ESRCH;
-
-   if (ti->pi->pid != pid)
-      return -ESRCH;
-
-   if (sig == 0) {
-      /* sig == 0 means just that the user app is checking permissions */
-      return 0;
-   }
-
-   send_signal(ti, sig);
-   return 0;
+   return send_signal2(pid, tid, sig, false);
 }
 
 sptr sys_kill(pid_t pid, int sig)
@@ -130,7 +102,10 @@ sptr sys_kill(pid_t pid, int sig)
       return -EINVAL;
    }
 
-   return sys_tgkill(pid, pid, sig);
+   if (sig < 0 || sig >= _NSIG || pid <= 0)
+      return -EINVAL;
+
+   return send_signal(pid, sig, true);
 }
 
 sptr sys_times(struct tms *user_buf)

@@ -12,12 +12,7 @@ typedef struct {
 
 static void tty_send_signal(int tid, int signum)
 {
-   task_info *ti = get_task(tid);
-
-   if (!ti)
-      return;
-
-   send_signal(ti, signum);
+   send_signal(tid, signum, true);
    ASSERT(is_preemption_enabled());
 }
 

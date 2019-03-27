@@ -8,4 +8,9 @@
 #include <signal.h>                   // system header
 #include <asm-generic/signal-defs.h>  // system header
 
-void send_signal(task_info *ti, int signum);
+int send_signal2(int pid, int tid, int signum, bool whole_process);
+
+static inline int send_signal(int tid, int signum, bool whole_process)
+{
+   return send_signal2(tid, tid, signum, whole_process);
+}
