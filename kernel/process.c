@@ -584,13 +584,15 @@ task_free_all_kernel_allocs(task_info *ti)
 }
 
 /*
- * NOTE: this code ASSUMES that threads does NOT exist:
+ * NOTE: this code ASSUMES that threads do NOT exist:
  *    process = task = thread
  *
  * TODO: re-design/adapt this function when thread support is introduced
  */
 void terminate_process(task_info *ti, int exit_code, int term_sig)
 {
+   process_info *pi = ti->pi;
+
    ASSERT(!is_kernel_thread(ti));
    disable_preemption();
 
@@ -600,8 +602,8 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
    task_change_state(ti, TASK_STATE_ZOMBIE);
    ti->exit_wstatus = EXITCODE(exit_code, term_sig);
 
-   close_all_handles(ti->pi);
-   remove_user_mappings(ti->pi);
+   close_all_handles(pi);
+   remove_user_mappings(pi);
    task_free_all_kernel_allocs(ti);
 
    /*
@@ -618,7 +620,7 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
       process_info *child_reaper = get_task(1)->pi; /* init */
       ASSERT(child_reaper != NULL);
 
-      list_for_each(pos, temp, &ti->pi->children_list, siblings_node) {
+      list_for_each(pos, temp, &pi->children_list, siblings_node) {
 
          list_remove(&pos->siblings_node);
          list_add_tail(&child_reaper->children_list, &pos->siblings_node);
@@ -636,9 +638,9 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
    // Wake-up all the tasks waiting on this task to exit
    wake_up_tasks_waiting_on(ti);
 
-   if (ti->pi->parent_pid > 0) {
+   if (pi->parent_pid > 0) {
 
-      task_info *parent_task = get_task(ti->pi->parent_pid);
+      task_info *parent_task = get_task(pi->parent_pid);
 
       if (task_is_waiting_on_any_child(parent_task))
          task_reset_wait_obj(parent_task);
@@ -646,12 +648,12 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
 
    if (ti == get_curr_task()) {
       set_page_directory(get_kernel_pdir());
-      pdir_destroy(ti->pi->pdir);
+      pdir_destroy(pi->pdir);
       switch_stack_free_mem_and_schedule();
       NOT_REACHED();
    }
 
-   pdir_destroy(ti->pi->pdir);
+   pdir_destroy(pi->pdir);
    free_mem_for_zombie_task(ti);
    enable_preemption();
 }
