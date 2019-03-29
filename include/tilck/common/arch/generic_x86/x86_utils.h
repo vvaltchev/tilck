@@ -373,3 +373,13 @@ static ALWAYS_INLINE bool hw_is_fpu_enabled(void)
 {
    return !(read_cr0() & CR0_TS);
 }
+
+static ALWAYS_INLINE uptr __get_curr_pdir()
+{
+   return read_cr3();
+}
+
+static ALWAYS_INLINE void __set_curr_pdir(uptr paddr)
+{
+   write_cr3(paddr);
+}

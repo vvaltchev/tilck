@@ -14,7 +14,7 @@
 
 static bool mapped_in_pdir(page_directory_t *pdir, void *vaddr)
 {
-   if (!get_curr_pdir()) {
+   if (get_curr_pdir() == (void *)page_size_buf) {
 
       // Paging has not been initialized yet.
       // Just check if vaddr is in the first 4 MB (and in BASE_VA + 4 MB).

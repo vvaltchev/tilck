@@ -130,5 +130,3 @@ void map_4mb_page_int(page_directory_t *pdir,
                       uptr paddr,
                       u32 flags);
 
-
-extern char page_size_buf[PAGE_SIZE];

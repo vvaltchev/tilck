@@ -28,7 +28,6 @@
 
 /* ---------------------------------------------- */
 
-extern char page_size_buf[PAGE_SIZE];
 extern char vsdo_like_page[PAGE_SIZE];
 
 static char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
@@ -178,12 +177,6 @@ void handle_page_fault(regs *r)
       handle_page_fault_int(r);
    }
    disable_interrupts_forced(); /* restore IF = 0 */
-}
-
-void set_page_directory(page_directory_t *pdir)
-{
-   atomic_store_explicit(&__curr_pdir, pdir, mo_relaxed);
-   write_cr3(KERNEL_VA_TO_PA(pdir));
 }
 
 bool is_mapped(page_directory_t *pdir, void *vaddrp)
