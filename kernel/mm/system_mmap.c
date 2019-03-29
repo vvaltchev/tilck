@@ -496,10 +496,8 @@ linear_map_mem_region(memory_region_t *r, uptr *vbegin, uptr *vend)
    if (count != page_count)
       panic("kmalloc: unable to map regions in the virtual space");
 
-#ifndef UNIT_TEST_ENVIRONMENT
-   if (get_curr_pdir() == (void *)page_size_buf && pend >= 4 * MB)
+   if (still_using_orig_pdir() && pend >= 4 * MB)
       set_curr_pdir(get_kernel_pdir());
-#endif
 
    return true;
 }
