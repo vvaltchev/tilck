@@ -162,10 +162,9 @@ static ALWAYS_INLINE void debug_timer_irq_sanity_checks(void)
 {
    /*
     * We CANNOT allow the timer to call the scheduler if it interrupted an
-    * interrupt handler. Interrupt handlers MUST always to run with preemption
-    * disabled.
-    *
-    * Therefore, the ASSERT below checks that:
+    * interrupt handler. That's why interrupt handlers always to run with
+    * preemption disabled. But, if we got here, preemption was NOT disabled and
+    * therefore, we're in one of following two cases:
     *
     * nested_interrupts_count == 1
     *     meaning the timer is the only current interrupt: a kernel or an user
@@ -176,6 +175,8 @@ static ALWAYS_INLINE void debug_timer_irq_sanity_checks(void)
     * nested_interrupts_count == 2
     *     meaning that the timer interrupted a syscall working with preemption
     *     enabled.
+    *
+    * The ASSERT below checks that.
     */
 
 #if defined(DEBUG) && KERNEL_TRACK_NESTED_INTERRUPTS
