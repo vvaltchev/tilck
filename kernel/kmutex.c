@@ -1,14 +1,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/common/atomics.h>
-
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/interrupts.h>
 
-static ATOMIC(uptr) new_mutex_id = 1;
+static uptr new_mutex_id = 1;
 
 bool kmutex_is_curr_task_holding_lock(kmutex *m)
 {
@@ -17,8 +15,9 @@ bool kmutex_is_curr_task_holding_lock(kmutex *m)
 
 void kmutex_init(kmutex *m, u32 flags)
 {
+   DEBUG_ONLY(check_not_in_irq_handler());
    bzero(m, sizeof(kmutex));
-   m->id = atomic_fetch_add_explicit(&new_mutex_id, 1U, mo_relaxed);
+   m->id = new_mutex_id++;
    m->flags = flags;
    list_init(&m->wait_list);
 }

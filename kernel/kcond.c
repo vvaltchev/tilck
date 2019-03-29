@@ -1,18 +1,17 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/common/atomics.h>
-
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/interrupts.h>
 
-static ATOMIC(uptr) new_cond_id = 1;
+static uptr new_cond_id = 1;
 
 void kcond_init(kcond *c)
 {
-   c->id = atomic_fetch_add_explicit(&new_cond_id, 1U, mo_relaxed);
+   DEBUG_ONLY(check_not_in_irq_handler());
+   c->id = new_cond_id++;
    list_init(&c->wait_list);
 }
 
