@@ -132,7 +132,7 @@ void tty_kb_buf_reset(tty *t)
 
 static inline u8 kb_buf_read_elem(tty *t)
 {
-   u8 ret;
+   u8 ret = 0;
    disable_preemption();
    {
       ASSERT(!kb_buf_is_empty(t));
