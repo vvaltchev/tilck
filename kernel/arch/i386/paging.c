@@ -234,6 +234,17 @@ void unmap_page(page_directory_t *pdir, void *vaddrp, bool free_pageframe)
    }
 }
 
+void
+unmap_pages(page_directory_t *pdir,
+            void *vaddr,
+            size_t page_count,
+            bool free_pageframes)
+{
+   for (size_t i = 0; i < page_count; i++) {
+      unmap_page(pdir, (char *)vaddr + (i << PAGE_SHIFT), free_pageframes);
+   }
+}
+
 uptr get_mapping(page_directory_t *pdir, void *vaddrp)
 {
    page_table_t *ptable;

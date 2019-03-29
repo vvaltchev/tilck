@@ -69,19 +69,13 @@ page_directory_t *pdir_clone(page_directory_t *pdir);
 page_directory_t *pdir_deep_clone(page_directory_t *pdir);
 void pdir_destroy(page_directory_t *pdir);
 
+void unmap_pages(page_directory_t *pdir,
+                 void *vaddr,
+                 size_t page_count,
+                 bool free_pageframes);
+
 // Temporary function, until get/set page flags is made available.
 void set_page_rw(page_directory_t *pdir, void *vaddr, bool rw);
-
-static inline void
-unmap_pages(page_directory_t *pdir,
-            void *vaddr,
-            size_t page_count,
-            bool free_pageframes)
-{
-   for (size_t i = 0; i < page_count; i++) {
-      unmap_page(pdir, (char *)vaddr + (i << PAGE_SHIFT), free_pageframes);
-   }
-}
 
 extern page_directory_t *kernel_page_dir;
 extern char page_size_buf[PAGE_SIZE];

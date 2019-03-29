@@ -85,12 +85,23 @@ map_pages(page_directory_t *pdir,
       VERIFY(rc == 0);
    }
 
-   return (int)page_count;
+   return page_count;
 }
 
 void unmap_page(page_directory_t *, void *vaddrp, bool free_pageframe)
 {
    mappings[(uptr)vaddrp] = INVALID_PADDR;
+}
+
+void
+unmap_pages(page_directory_t *pdir,
+            void *vaddr,
+            size_t page_count,
+            bool free_pageframes)
+{
+   for (size_t i = 0; i < page_count; i++) {
+      unmap_page(pdir, (char *)vaddr + (i << PAGE_SHIFT), free_pageframes);
+   }
 }
 
 bool is_mapped(page_directory_t *, void *vaddrp)
