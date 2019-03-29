@@ -199,7 +199,12 @@ void kthread_exit(void)
    /* Remove the from the scheduler and free its struct */
    remove_task(get_curr_task());
 
-   set_curr_task(kernel_process);
+   {
+      uptr var;
+      disable_interrupts(&var);
+      set_curr_task(kernel_process);
+      enable_interrupts(&var);
+   }
    switch_to_idle_task_outside_interrupt_context();
 }
 

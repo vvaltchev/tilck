@@ -14,7 +14,7 @@ typedef struct regs regs;
 typedef struct task_info task_info;
 typedef struct process_info process_info;
 
-extern ATOMIC(task_info *) __current;
+extern task_info *__current;
 extern task_info *kernel_process;
 extern process_info *kernel_process_pi;
 
@@ -79,7 +79,23 @@ static inline void kernel_yield(void)
 
 static ALWAYS_INLINE task_info *get_curr_task(void)
 {
-   return atomic_load_explicit(&__current, mo_relaxed);
+   /*
+    * Access to `__current` DOES NOT need to be atomic (not even relaxed) even
+    * on architectures (!= x86) where loading/storing a pointer-size integer
+    * requires more than one instruction, for the following reasons:
+    *
+    *    - While ANY given task is running, `__current` is always set and valid.
+    *      That is true even if the task is preempted after reading for example
+    *      only half of its value and than its execution resumed back, because
+    *      during the task switch the older value of `__current` will be
+    *      restored.
+    *
+    *    - The `__current` variable is set only in three cases:
+    *       - during initialization [create_kernel_process()]
+    *       - in switch_to_task() [with interrupts disabled]
+    *       - in kthread_exit() [with interrupts disabled]
+    */
+   return __current;
 }
 
 int get_curr_task_tid(void);
