@@ -8,12 +8,12 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/fs/devfs.h>
 
-page_directory_t *kernel_page_dir;
+pdir_t *kernel_page_dir;
 char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
 void user_vfree_and_unmap(uptr user_vaddr, size_t page_count)
 {
-   page_directory_t *pdir = get_curr_pdir();
+   pdir_t *pdir = get_curr_pdir();
    uptr va = user_vaddr;
 
    for (size_t i = 0; i < page_count; i++, va += PAGE_SIZE) {
@@ -27,7 +27,7 @@ void user_vfree_and_unmap(uptr user_vaddr, size_t page_count)
 
 bool user_valloc_and_map_slow(uptr user_vaddr, size_t page_count)
 {
-   page_directory_t *pdir = get_curr_pdir();
+   pdir_t *pdir = get_curr_pdir();
    uptr va = user_vaddr;
 
    for (size_t i = 0; i < page_count; i++, va += PAGE_SIZE) {
@@ -59,7 +59,7 @@ bool user_valloc_and_map_slow(uptr user_vaddr, size_t page_count)
 
 bool user_valloc_and_map(uptr user_vaddr, size_t page_count)
 {
-   page_directory_t *pdir = get_curr_pdir();
+   pdir_t *pdir = get_curr_pdir();
    size_t size = (size_t)page_count << PAGE_SHIFT;
    size_t count;
 
@@ -91,13 +91,13 @@ bool user_valloc_and_map(uptr user_vaddr, size_t page_count)
 
 void user_unmap_zero_page(uptr user_vaddr, size_t page_count)
 {
-   page_directory_t *pdir = get_curr_pdir();
+   pdir_t *pdir = get_curr_pdir();
    unmap_pages(pdir, (void *)user_vaddr, page_count, true);
 }
 
 bool user_map_zero_page(uptr user_vaddr, size_t page_count)
 {
-   page_directory_t *pdir = get_curr_pdir();
+   pdir_t *pdir = get_curr_pdir();
    size_t count =
       map_zero_pages(pdir, (void *)user_vaddr, page_count, true, true);
 

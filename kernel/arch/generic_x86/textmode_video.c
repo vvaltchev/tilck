@@ -141,7 +141,7 @@ static const video_interface ega_text_mode_i =
 
 void init_textmode_console(void)
 {
-   page_directory_t *pdir = get_curr_pdir();
+   pdir_t *pdir = get_curr_pdir();
 
    if (pdir != NULL && !is_mapped(pdir, VIDEO_ADDR)) {
       int rc = map_page(pdir,

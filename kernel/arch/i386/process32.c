@@ -203,7 +203,7 @@ void kthread_exit(void)
    switch_to_idle_task_outside_interrupt_context();
 }
 
-int setup_usermode_task(page_directory_t *pdir,
+int setup_usermode_task(pdir_t *pdir,
                         void *entry,
                         void *stack_addr,
                         task_info *ti,

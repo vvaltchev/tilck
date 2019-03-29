@@ -111,7 +111,7 @@ sptr sys_execve(const char *user_filename,
    char *abs_path;
    char *const *argv = NULL;
    char *const *env = NULL;
-   page_directory_t *pdir = NULL;
+   pdir_t *pdir = NULL;
    task_info *ti = NULL;
    process_info *pi;
 

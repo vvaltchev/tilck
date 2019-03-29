@@ -17,7 +17,7 @@
  * 'brk': OUT arg, the first invalid vaddr (program break).
  */
 int load_elf_program(const char *filepath,
-                     page_directory_t **pdir_ref,
+                     pdir_t **pdir_ref,
                      void **entry,
                      void **stack_addr,
                      void **brk);

@@ -11,7 +11,7 @@
 #include <tilck/kernel/fault_resumable.h>
 
 static int load_phdr(fs_handle *elf_file,
-                     page_directory_t *pdir,
+                     pdir_t *pdir,
                      Elf_Phdr *phdr,
                      uptr *end_vaddr_ref)
 {
@@ -56,7 +56,7 @@ static int load_phdr(fs_handle *elf_file,
 }
 
 static void
-phdr_adjust_page_access(page_directory_t *pdir, Elf_Phdr *phdr)
+phdr_adjust_page_access(pdir_t *pdir, Elf_Phdr *phdr)
 {
    char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
 
@@ -73,12 +73,12 @@ phdr_adjust_page_access(page_directory_t *pdir, Elf_Phdr *phdr)
 }
 
 int load_elf_program(const char *filepath,
-                     page_directory_t **pdir_ref,
+                     pdir_t **pdir_ref,
                      void **entry,
                      void **stack_addr,
                      void **brk_ref)
 {
-   page_directory_t *old_pdir = get_curr_pdir();
+   pdir_t *old_pdir = get_curr_pdir();
    Elf_Phdr *phdrs = NULL;
    size_t total_phdrs_size = 0;
    fs_handle elf_file = NULL;

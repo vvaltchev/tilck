@@ -12,7 +12,7 @@
 #include <elf.h>
 #include <multiboot.h>
 
-static bool mapped_in_pdir(page_directory_t *pdir, void *vaddr)
+static bool mapped_in_pdir(pdir_t *pdir, void *vaddr)
 {
    if (still_using_orig_pdir()) {
 
@@ -29,7 +29,7 @@ static bool mapped_in_pdir(page_directory_t *pdir, void *vaddr)
 size_t stackwalk32(void **frames,
                    size_t count,
                    void *ebp,
-                   page_directory_t *pdir)
+                   pdir_t *pdir)
 {
    void *retAddr;
    size_t i;

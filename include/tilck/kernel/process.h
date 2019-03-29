@@ -45,7 +45,7 @@ struct process_info {
 
    int pid;                   /* process id (tgid in the Linux kernel) */
    int parent_pid;
-   page_directory_t *pdir;
+   pdir_t *pdir;
    list_node siblings_node;   /* nodes in parent's pi's children_list */
 
    void *brk;
@@ -185,7 +185,7 @@ void full_remove_user_mapping(process_info *pi, user_mapping *um);
 void remove_all_mappings_of_handle(process_info *pi, fs_handle h);
 user_mapping *process_get_user_mapping(void *vaddr);
 
-int setup_usermode_task(page_directory_t *pdir,
+int setup_usermode_task(pdir_t *pdir,
                         void *entry,
                         void *stack_addr,
                         task_info *task_to_use,

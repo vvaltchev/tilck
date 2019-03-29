@@ -24,22 +24,22 @@
 #define KERNEL_PA_TO_VA(pa) ((void *) ((uptr)(pa) + KERNEL_BASE_VA))
 #define KERNEL_VA_TO_PA(va) ((uptr)(va) - KERNEL_BASE_VA)
 
-typedef struct page_directory_t page_directory_t;
+typedef struct pdir_t pdir_t;
 
 void init_paging();
 bool handle_potential_cow(void *r);
 
 NODISCARD int
-map_page(page_directory_t *pdir, void *vaddr, uptr paddr, bool us, bool rw);
+map_page(pdir_t *pdir, void *vaddr, uptr paddr, bool us, bool rw);
 
 NODISCARD int
-map_page_int(page_directory_t *pdir, void *vaddr, uptr paddr, u32 flags);
+map_page_int(pdir_t *pdir, void *vaddr, uptr paddr, u32 flags);
 
 NODISCARD int
-map_zero_page(page_directory_t *pdir, void *vaddrp, bool us, bool rw);
+map_zero_page(pdir_t *pdir, void *vaddrp, bool us, bool rw);
 
 NODISCARD size_t
-map_pages(page_directory_t *pdir,
+map_pages(pdir_t *pdir,
           void *vaddr,
           uptr paddr,
           size_t page_count,
@@ -48,7 +48,7 @@ map_pages(page_directory_t *pdir,
           bool rw);
 
 NODISCARD size_t
-map_pages_int(page_directory_t *pdir,
+map_pages_int(pdir_t *pdir,
               void *vaddr,
               uptr paddr,
               size_t page_count,
@@ -56,43 +56,39 @@ map_pages_int(page_directory_t *pdir,
               u32 flags);
 
 NODISCARD size_t
-map_zero_pages(page_directory_t *pdir,
+map_zero_pages(pdir_t *pdir,
                void *vaddrp,
                size_t page_count,
                bool us,
                bool rw);
 
-bool is_mapped(page_directory_t *pdir, void *vaddr);
-void unmap_page(page_directory_t *pdir, void *vaddr, bool free_pageframe);
-uptr get_mapping(page_directory_t *pdir, void *vaddr);
-page_directory_t *pdir_clone(page_directory_t *pdir);
-page_directory_t *pdir_deep_clone(page_directory_t *pdir);
-void pdir_destroy(page_directory_t *pdir);
-
-void unmap_pages(page_directory_t *pdir,
-                 void *vaddr,
-                 size_t page_count,
-                 bool free_pageframes);
+void init_paging_cow(void);
+bool is_mapped(pdir_t *pdir, void *vaddr);
+void unmap_page(pdir_t *pdir, void *vaddr, bool do_free);
+void unmap_pages(pdir_t *pdir, void *vaddr, size_t page_count, bool do_free);
+uptr get_mapping(pdir_t *pdir, void *vaddr);
+pdir_t *pdir_clone(pdir_t *pdir);
+pdir_t *pdir_deep_clone(pdir_t *pdir);
+void pdir_destroy(pdir_t *pdir);
 
 // Temporary function, until get/set page flags is made available.
-void set_page_rw(page_directory_t *pdir, void *vaddr, bool rw);
+void set_page_rw(pdir_t *pdir, void *vaddr, bool rw);
 
-extern page_directory_t *kernel_page_dir;
+extern pdir_t *kernel_page_dir;
 extern char page_size_buf[PAGE_SIZE];
 
-void init_paging_cow(void);
 
-static ALWAYS_INLINE void set_curr_pdir(page_directory_t *pdir)
+static ALWAYS_INLINE void set_curr_pdir(pdir_t *pdir)
 {
    __set_curr_pdir(KERNEL_VA_TO_PA(pdir));
 }
 
-static ALWAYS_INLINE page_directory_t *get_curr_pdir()
+static ALWAYS_INLINE pdir_t *get_curr_pdir()
 {
-   return (page_directory_t *)KERNEL_PA_TO_VA(__get_curr_pdir());
+   return (pdir_t *)KERNEL_PA_TO_VA(__get_curr_pdir());
 }
 
-static ALWAYS_INLINE page_directory_t *get_kernel_pdir()
+static ALWAYS_INLINE pdir_t *get_kernel_pdir()
 {
    return kernel_page_dir;
 }
@@ -114,4 +110,4 @@ static ALWAYS_INLINE bool still_using_orig_pdir(void)
 }
 
 void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap);
-void set_pages_pat_wc(page_directory_t *pdir, void *vaddr, size_t size);
+void set_pages_pat_wc(pdir_t *pdir, void *vaddr, size_t size);

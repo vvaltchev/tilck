@@ -58,7 +58,7 @@ void init_kmalloc_for_tests()
    suppress_printk = false;
 }
 
-int map_page(page_directory_t *, void *vaddr, uptr paddr, bool us, bool rw)
+int map_page(pdir_t *, void *vaddr, uptr paddr, bool us, bool rw)
 {
    ASSERT(!((uptr)vaddr & OFFSET_IN_PAGE_MASK)); // check page-aligned
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // check page-aligned
@@ -68,7 +68,7 @@ int map_page(page_directory_t *, void *vaddr, uptr paddr, bool us, bool rw)
 }
 
 size_t
-map_pages(page_directory_t *pdir,
+map_pages(pdir_t *pdir,
           void *vaddr,
           uptr paddr,
           size_t page_count,
@@ -88,13 +88,13 @@ map_pages(page_directory_t *pdir,
    return page_count;
 }
 
-void unmap_page(page_directory_t *, void *vaddrp, bool free_pageframe)
+void unmap_page(pdir_t *, void *vaddrp, bool free_pageframe)
 {
    mappings[(uptr)vaddrp] = INVALID_PADDR;
 }
 
 void
-unmap_pages(page_directory_t *pdir,
+unmap_pages(pdir_t *pdir,
             void *vaddr,
             size_t page_count,
             bool free_pageframes)
@@ -104,7 +104,7 @@ unmap_pages(page_directory_t *pdir,
    }
 }
 
-bool is_mapped(page_directory_t *, void *vaddrp)
+bool is_mapped(pdir_t *, void *vaddrp)
 {
    uptr vaddr = (uptr)vaddrp & PAGE_MASK;
 
@@ -114,7 +114,7 @@ bool is_mapped(page_directory_t *, void *vaddrp)
    return mappings.find(vaddr) != mappings.end();
 }
 
-uptr get_mapping(page_directory_t *, void *vaddrp)
+uptr get_mapping(pdir_t *, void *vaddrp)
 {
    return mappings[(uptr)vaddrp];
 }

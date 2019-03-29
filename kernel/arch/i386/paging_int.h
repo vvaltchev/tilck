@@ -119,13 +119,13 @@ typedef struct {
 
 
 // A page directory
-struct page_directory_t {
+struct pdir_t {
    page_dir_entry_t entries[1024];
 };
 
-STATIC_ASSERT(sizeof(page_directory_t) == PAGE_DIR_SIZE);
+STATIC_ASSERT(sizeof(pdir_t) == PAGE_DIR_SIZE);
 
-void map_4mb_page_int(page_directory_t *pdir,
+void map_4mb_page_int(pdir_t *pdir,
                       void *vaddr,
                       uptr paddr,
                       u32 flags);
