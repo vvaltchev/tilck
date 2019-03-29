@@ -95,7 +95,7 @@ sptr sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
    return send_signal2(pid, tid, sig, false);
 }
 
-sptr sys_kill(pid_t pid, int sig)
+sptr sys_kill(int pid, int sig)
 {
    if (pid <= 0) {
       printk("sys_kill: pid <= 0 NOT SUPPORTED yet.\n");

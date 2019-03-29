@@ -77,7 +77,7 @@ sptr sys_access(const char *pathname, int mode);
 CREATE_STUB_SYSCALL_IMPL(sys_nice)
 CREATE_STUB_SYSCALL_IMPL(sys_sync)
 
-sptr sys_kill(pid_t pid, int sig);
+sptr sys_kill(int pid, int sig);
 
 CREATE_STUB_SYSCALL_IMPL(sys_rename)
 CREATE_STUB_SYSCALL_IMPL(sys_mkdir)
@@ -209,7 +209,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_msync)
 
 sptr sys_readv(int fd, const struct iovec *iov, int iovcnt);
 sptr sys_writev(int fd, const struct iovec *iov, int iovcnt);
-sptr sys_getsid(pid_t pid);
+sptr sys_getsid(int pid);
 
 CREATE_STUB_SYSCALL_IMPL(sys_fdatasync)
 CREATE_STUB_SYSCALL_IMPL(sys_sysctl)

@@ -11,11 +11,7 @@
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/process.h>
-
-#include <termios.h>      // system header
-#include <fcntl.h>        // system header
-#include <sys/ioctl.h>    // system header
-#include <linux/kd.h>     // system header
+#include <tilck/kernel/sys_types.h>
 
 #include "tty_int.h"
 
@@ -181,13 +177,13 @@ static int tty_ioctl_TIOCSCTTY(tty *t, void *argp)
 }
 
 /* get foreground process group */
-static int tty_ioctl_TIOCGPGRP(tty *t, pid_t *user_pgrp)
+static int tty_ioctl_TIOCGPGRP(tty *t, int *user_pgrp)
 {
    return -EINVAL;
 }
 
 /* set foregroup process group */
-static int tty_ioctl_TIOCSPGRP(tty *t, const pid_t *user_pgrp)
+static int tty_ioctl_TIOCSPGRP(tty *t, const int *user_pgrp)
 {
    return -EINVAL;
 }

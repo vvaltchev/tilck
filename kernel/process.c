@@ -781,7 +781,7 @@ sptr sys_setsid(void)
 }
 
 /* get current session id */
-sptr sys_getsid(pid_t pid)
+sptr sys_getsid(int pid)
 {
    return -ENOSYS;
 }
