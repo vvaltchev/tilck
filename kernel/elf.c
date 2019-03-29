@@ -109,7 +109,7 @@ int load_elf_program(const char *filepath,
       }
    }
 
-   set_page_directory(*pdir_ref);
+   set_curr_pdir(*pdir_ref);
 
    ret = vfs_read(elf_file, &header, sizeof(header));
 
@@ -227,7 +227,7 @@ out:
    kfree2(phdrs, total_phdrs_size);
 
    if (rc != 0) {
-      set_page_directory(old_pdir);
+      set_curr_pdir(old_pdir);
       pdir_destroy(*pdir_ref);
       *pdir_ref = NULL;
    }

@@ -399,7 +399,7 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
 
       /* Switch the page directory only if really necessary */
       if (get_curr_pdir() != ti->pi->pdir)
-         set_page_directory(ti->pi->pdir);
+         set_curr_pdir(ti->pi->pdir);
 
       if (ti->arch.ldt)
          load_ldt(ti->arch.ldt_index_in_gdt, ti->arch.ldt_size);

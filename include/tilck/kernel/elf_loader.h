@@ -10,7 +10,7 @@
  *
  * pdir_ref is IN/OUT: in case *pdir_ref is NOT NULL, the supplied pdir will
  * be used. Otherwise, *pdir_ref will be a clone of kernel's pdir. Also, this
- * function will call set_page_directory(*pdir_ref).
+ * function will call set_curr_pdir(*pdir_ref).
  *
  * 'entry': OUT arg, the address of program's entry point.
  * 'stack_addr': OUT arg, the initial value of the stack pointer.

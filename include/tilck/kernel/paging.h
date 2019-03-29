@@ -88,7 +88,7 @@ extern char page_size_buf[PAGE_SIZE];
 
 void init_paging_cow(void);
 
-static ALWAYS_INLINE void set_page_directory(page_directory_t *pdir)
+static ALWAYS_INLINE void set_curr_pdir(page_directory_t *pdir)
 {
    __set_curr_pdir(KERNEL_VA_TO_PA(pdir));
 }

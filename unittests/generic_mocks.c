@@ -80,7 +80,7 @@ void switch_to_task() { }
 void pdir_clone() { }
 void pdir_deep_clone() { }
 void pdir_destroy() { }
-void set_page_directory() { }
+void set_curr_pdir() { }
 void set_current_task_in_user_mode() { }
 void arch_specific_new_task_setup() { NOT_REACHED(); }
 void arch_specific_free_task() { NOT_REACHED(); }

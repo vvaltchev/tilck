@@ -651,7 +651,7 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
    if (ti == get_curr_task()) {
 
       /* This function has been called by sys_exit(): we won't return */
-      set_page_directory(get_kernel_pdir());
+      set_curr_pdir(get_kernel_pdir());
       pdir_destroy(pi->pdir);
       switch_stack_free_mem_and_schedule();
       NOT_REACHED();
@@ -739,7 +739,7 @@ sptr sys_fork(void)
     * That is better than invalidating all the pages affected, one by one.
     */
 
-   set_page_directory(curr->pi->pdir);
+   set_curr_pdir(curr->pi->pdir);
    enable_preemption();
    return child->tid;
 

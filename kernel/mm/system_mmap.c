@@ -498,7 +498,7 @@ linear_map_mem_region(memory_region_t *r, uptr *vbegin, uptr *vend)
 
 #ifndef UNIT_TEST_ENVIRONMENT
    if (get_curr_pdir() == (void *)page_size_buf && pend >= 4 * MB)
-      set_page_directory(get_kernel_pdir());
+      set_curr_pdir(get_kernel_pdir());
 #endif
 
    return true;
