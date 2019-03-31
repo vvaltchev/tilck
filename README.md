@@ -11,17 +11,18 @@ Tilck (Tiny Linux-Compatible Kernel)
 What is Tilck?
 ----------------------------------------
 
-`Tilck` is an experimental *monolithic* x86 kernel designed to be Linux-compatible
-at binary level. Project's small-scale and intentional simplification makes it
-suitable for particular operating system research projects where a huge code base
-is an obstacle for implementing, in a reasonable amount of time, a new idea as a
+`Tilck` is an educational *monolithic* x86 kernel designed to be Linux-compatible at
+binary level. Project's small-scale and intentional simplification makes it suitable
+people who want to learn kernel development and play with a simple Linux-like system
+and, maybe, for some particular operating system research projects where a huge code
+base (like the Linux kernel) might be an obstacle for implementing a new idea as a
 proof-of-concept or at prototype level. In addition to that, in the long term,
-`Tilck` aims to get suitable for production **embedded systems** where a kernel as
-thin as possible is required or, at least, it is considered the optimal solution.
-One can think about `Tilck` as a kernel as simple to build and customize as a
-*unikernel*, but which offers many of the features offered by traditional operating
-systems. As a consequence of that, the development of `Tilck` will answer the
-following two questions:
+`Tilck` might become suitable for **embedded systems** where a kernel as simple as
+possible is required or, at least, it is considered the optimal solution. One can
+think about `Tilck` as a kernel as simple to build and customize as a *unikernel*,
+but which offers a fair amount of features typically provided by traditional
+operating systems. As a consequence of that, the development of `Tilck` will answer
+the following two questions:
 
 > 1) How simple could possibly be a kernel able to run a fair-amount of useful Linux
 > console programs?
