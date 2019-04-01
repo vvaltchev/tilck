@@ -491,6 +491,7 @@ typedef struct {
    size_t pcl;                // path component's length
    char shortname[16];        // short name of the current entry
    fat_entry *result;         // the found entry
+   u32 subdir_cluster;        // the cluster of the subdir's we have to walk to
    fat_walk_dir_ctx walk_ctx; // walk context: contains long names
 
 } fat_search_ctx;
@@ -591,17 +592,17 @@ static int fat_search_entry_cb(fat_header *hdr,
 
    // The path did not end: we have to do a walk in the sub-dir.
    ctx->pcl = 0;
-   fat_walk_directory(&ctx->walk_ctx, hdr,
-                      ft, NULL, fat_get_first_cluster(entry),
-                      &fat_search_entry_cb, ctx, level + 1);
+   ctx->subdir_cluster = fat_get_first_cluster(entry);
    return -1;
 }
 
 fat_entry *
 fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
 {
-   u32 root_dir_cluster;
+   fat_search_ctx ctx;
    fat_entry *root;
+   u32 root_dir_cluster;
+   int level;
 
    if (ft == fat_unknown) {
        ft = fat_get_type(hdr);
@@ -617,7 +618,6 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
       return root;
    }
 
-   fat_search_ctx ctx;
    bzero(&ctx, sizeof(ctx));
 
 #ifdef __clang_analyzer__
@@ -627,8 +627,19 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
 
    ctx.path = abspath;
 
+   level = 0;
    fat_walk_directory(&ctx.walk_ctx, hdr, ft, root, root_dir_cluster,
-                      &fat_search_entry_cb, &ctx, 0);
+                      &fat_search_entry_cb, &ctx, level++);
+
+   while (ctx.subdir_cluster) {
+
+      u32 cluster = ctx.subdir_cluster;
+      ctx.subdir_cluster = 0;
+
+      fat_walk_directory(&ctx.walk_ctx, hdr, ft, NULL, cluster,
+                         &fat_search_entry_cb, &ctx, level++);
+   }
+
    return ctx.result;
 }
 
