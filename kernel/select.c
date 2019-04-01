@@ -113,10 +113,11 @@ select_set_kcond(u32 nfds,
          return -EBADF;
 
       c = get_cond(h);
-      ASSERT((*idx) < w->count);
 
-      if (c)
+      if (c) {
+         ASSERT((*idx) < w->count);
          mobj_waiter_set(w, (*idx)++, WOBJ_KCOND, c, &c->wait_list);
+      }
    }
 
    return 0;
