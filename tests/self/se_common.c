@@ -24,7 +24,7 @@ static void se_runner_thread(void *unused)
 
 void kernel_run_selected_selftest(void)
 {
-   if (!kthread_create(se_runner_thread, NULL))
+   if (kthread_create(se_runner_thread, NULL) < 0)
       panic("Unable to create the se_runner_thread");
 
    switch_to_idle_task_outside_interrupt_context();
@@ -74,12 +74,12 @@ void simple_test_kthread(void *arg)
 
 void selftest_kthread_med(void)
 {
-   task_info *ti = kthread_create(simple_test_kthread, (void *)1);
+   int tid = kthread_create(simple_test_kthread, (void *)1);
 
-   if (!ti)
+   if (tid < 0)
       panic("Unable to create the simple test kthread");
 
-   kthread_join(ti->tid);
+   kthread_join(tid);
    regular_self_test_end();
 }
 
@@ -103,13 +103,15 @@ void selftest_sleep_short()
 
 void selftest_join_med()
 {
+   int tid;
+
    printk("[selftest join] create the simple thread\n");
 
-   task_info *ti = kthread_create(simple_test_kthread, (void *)0xAA0011FF);
+   if ((tid = kthread_create(simple_test_kthread, (void *)0xAA0011FF)) < 0)
+      panic("Unable to create simple_test_kthread");
 
    printk("[selftest join] join()\n");
-
-   kthread_join(ti->tid);
+   kthread_join(tid);
 
    printk("[selftest join] kernel thread exited\n");
    regular_self_test_end();

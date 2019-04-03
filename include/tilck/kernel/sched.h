@@ -127,7 +127,7 @@ void task_update_wakeup_timer_if_any(task_info *ti, u32 new_ticks);
 u32 task_cancel_wakeup_timer(task_info *ti);
 
 typedef void (*kthread_func_ptr)();
-NODISCARD task_info *kthread_create(kthread_func_ptr fun, void *arg);
+NODISCARD int kthread_create(kthread_func_ptr fun, void *arg);
 int iterate_over_tasks(bintree_visit_cb func, void *arg);
 const char *debug_get_state_name(enum task_state state);
 

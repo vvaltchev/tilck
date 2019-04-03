@@ -57,10 +57,15 @@ void selftest_kmutex_med()
    printk("kmutex basic test\n");
    kmutex_init(&test_mutex, 0);
 
-   tid1 = kthread_create(&simple_test_kthread, NULL)->tid;
-   tid2 = kthread_create(test_kmutex_thread, (void *)1)->tid;
-   tid3 = kthread_create(test_kmutex_thread, (void *)2)->tid;
-   tid4 = kthread_create(test_kmutex_thread_trylock, NULL)->tid;
+   tid1 = kthread_create(&simple_test_kthread, NULL);
+   tid2 = kthread_create(test_kmutex_thread, (void *)1);
+   tid3 = kthread_create(test_kmutex_thread, (void *)2);
+   tid4 = kthread_create(test_kmutex_thread_trylock, NULL);
+
+   VERIFY(tid1 > 0);
+   VERIFY(tid2 > 0);
+   VERIFY(tid3 > 0);
+   VERIFY(tid4 > 0);
 
    kthread_join(tid1);
    kthread_join(tid2);
@@ -93,7 +98,7 @@ void selftest_kmutex_rec_med()
 
    printk("Locked 3 times (last with trylock)\n");
 
-   tid3 = kthread_create(test_kmutex_thread_trylock, NULL)->tid;
+   tid3 = kthread_create(test_kmutex_thread_trylock, NULL);
    kthread_join(tid3);
 
    kmutex_unlock(&test_mutex);
@@ -105,9 +110,11 @@ void selftest_kmutex_rec_med()
    kmutex_unlock(&test_mutex);
    printk("Unlocked 3 times\n");
 
-   tid1 = kthread_create(test_kmutex_thread, (void *)1)->tid;
-   tid2 = kthread_create(test_kmutex_thread, (void *)2)->tid;
-   tid3 = kthread_create(test_kmutex_thread_trylock, NULL)->tid;
+   tid1 = kthread_create(test_kmutex_thread, (void *)1);
+   tid2 = kthread_create(test_kmutex_thread, (void *)2);
+   tid3 = kthread_create(test_kmutex_thread_trylock, NULL);
+
+   VERIFY(tid1 > 0); VERIFY(tid2 > 0); VERIFY(tid3 > 0);
 
    kthread_join(tid1);
    kthread_join(tid2);
@@ -218,6 +225,7 @@ static void kmutex_ord_th()
 void selftest_kmutex_ord_med()
 {
    u32 unlucky_threads = 0;
+   int tid;
 
    idx1 = idx2 = 0;
    kmutex_init(&test_mutex, 0);
@@ -225,12 +233,10 @@ void selftest_kmutex_ord_med()
 
    for (u32 i = 0; i < ARRAY_SIZE(tids); i++) {
 
-      task_info *ti = kthread_create(&kmutex_ord_th, NULL);
-
-      if (!ti)
+      if ((tid = kthread_create(&kmutex_ord_th, NULL)) < 0)
          panic("[selftest] Unable to create kthread for kmutex_ord_th()");
 
-      tids[i] = ti->tid;
+      tids[i] = tid;
    }
 
    for (u32 i = 0; i < ARRAY_SIZE(tids); i++) {

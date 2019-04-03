@@ -215,10 +215,10 @@ task_info *get_hi_prio_ready_tasklet_runner(void)
 
 int create_tasklet_thread(int priority, u16 limit)
 {
+   tasklet_thread_info *t;
+
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
-
-   tasklet_thread_info *t;
 
    if (tasklet_threads_count >= ARRAY_SIZE(tasklet_threads))
       return -ENFILE; /* too many tasklet runners */
@@ -242,13 +242,15 @@ int create_tasklet_thread(int priority, u16 limit)
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
-   t->task = kthread_create(tasklet_runner, (void *)(uptr)tn);
+   int tid = kthread_create(tasklet_runner, (void *)(uptr)tn);
 
-   if (!t->task) {
+   if (tid < 0) {
       kfree2(t->tasklets, sizeof(tasklet) * limit);
       kfree2(t, sizeof(tasklet_thread_info));
       return -ENOMEM;
    }
+
+   t->task = kthread_get_ptr(tid);
 
 #endif
 

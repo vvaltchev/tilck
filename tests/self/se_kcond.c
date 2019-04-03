@@ -48,7 +48,7 @@ static void kcond_thread_wait_ticks()
 
 static void kcond_thread_signal_generator()
 {
-   task_info *ti;
+   int tid;
 
    kmutex_lock(&cond_mutex);
 
@@ -64,15 +64,10 @@ static void kcond_thread_signal_generator()
 
    printk("Run thread kcond_thread_wait_ticks\n");
 
-   disable_preemption();
-   {
-      ti = kthread_create(&kcond_thread_wait_ticks, NULL);
+   if ((tid = kthread_create(&kcond_thread_wait_ticks, NULL)) < 0)
+      panic("Unable to create a thread for kcond_thread_wait_ticks()");
 
-      if (!ti)
-         panic("Unable to create a thread for kcond_thread_wait_ticks()");
-   }
-   enable_preemption();
-   kthread_join(ti->tid);
+   kthread_join(tid);
 }
 
 void selftest_kcond_short()
@@ -80,9 +75,13 @@ void selftest_kcond_short()
    kmutex_init(&cond_mutex, 0);
    kcond_init(&cond);
 
-   int tid1 = kthread_create(&kcond_thread_test, (void*) 1)->tid;
-   int tid2 = kthread_create(&kcond_thread_test, (void*) 2)->tid;
-   int tid3 = kthread_create(&kcond_thread_signal_generator, NULL)->tid;
+   int tid1 = kthread_create(&kcond_thread_test, (void*) 1);
+   int tid2 = kthread_create(&kcond_thread_test, (void*) 2);
+   int tid3 = kthread_create(&kcond_thread_signal_generator, NULL);
+
+   VERIFY(tid1 > 0);
+   VERIFY(tid2 > 0);
+   VERIFY(tid3 > 0);
 
    kthread_join(tid1);
    kthread_join(tid2);

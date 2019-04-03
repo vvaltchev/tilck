@@ -211,11 +211,15 @@ void process_set_tty(process_info *pi, void *t)
 
 void init_sched(void)
 {
-   kernel_process->pi->pdir = get_kernel_pdir();
-   idle_task = kthread_create(&idle, NULL);
+   int tid;
 
-   if (!idle_task)
+   kernel_process->pi->pdir = get_kernel_pdir();
+   tid = kthread_create(&idle, NULL);
+
+   if (tid < 0)
       panic("Unable to create the idle_task!");
+
+   idle_task = kthread_get_ptr(tid);
 }
 
 void set_current_task_in_kernel(void)

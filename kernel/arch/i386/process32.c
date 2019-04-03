@@ -111,7 +111,7 @@ push_args_on_user_stack(regs *r,
    return 0;
 }
 
-NODISCARD task_info *
+NODISCARD int
 kthread_create(kthread_func_ptr fun, void *arg)
 {
    regs r = {
@@ -133,9 +133,10 @@ kthread_create(kthread_func_ptr fun, void *arg)
    };
 
    task_info *ti = allocate_new_thread(kernel_process->pi);
+   int ret = -ENOMEM;
 
    if (!ti)
-      return NULL;
+      return ret;
 
    ASSERT(is_kernel_thread(ti));
 
@@ -168,9 +169,18 @@ kthread_create(kthread_func_ptr fun, void *arg)
 
    ti->state_regs = (void *)ti->state_regs - sizeof(regs) + 8;
    memcpy(ti->state_regs, &r, sizeof(r) - 8);
+   ret = ti->tid;
+
+   /*
+    * After the following call to add_task(), given that preemption is enabled,
+    * there is NO GUARANTEE that the `tid` returned by this function will still
+    * belong to a valid kernel thread. For example, the kernel thread might run
+    * and terminate before the caller has the chance to run. Therefore, it is up
+    * to the caller to be prepared for that.
+    */
 
    add_task(ti);
-   return ti;
+   return ret; /* tid */
 }
 
 void kthread_exit(void)

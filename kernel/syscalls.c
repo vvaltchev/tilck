@@ -142,6 +142,7 @@ sptr sys_times(struct tms *user_buf)
 sptr sys_tilck_run_selftest(const char *user_selftest)
 {
    int rc;
+   int tid;
    char buf[256] = SELFTEST_PREFIX;
 
    rc = copy_str_from_user(buf + sizeof(SELFTEST_PREFIX) - 1,
@@ -159,12 +160,10 @@ sptr sys_tilck_run_selftest(const char *user_selftest)
    if (!addr)
       return -EINVAL;
 
-   task_info *ti = kthread_create((void *)addr, NULL);
+   if ((tid = kthread_create((void *)addr, NULL)) < 0)
+      return tid;
 
-   if (!ti)
-      return -ENOMEM;
-
-   kthread_join(ti->tid);
+   kthread_join(tid);
    return 0;
 }
 

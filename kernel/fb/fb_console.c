@@ -427,14 +427,16 @@ void init_framebuffer_console(void)
    if (in_panic())
       return;
 
-   blink_thread_ti = kthread_create(fb_blink_thread, NULL);
+   int tid = kthread_create(fb_blink_thread, NULL);
 
-   if (!blink_thread_ti) {
+   if (tid > 0) {
+      blink_thread_ti = get_task(tid);
+   } else {
       printk("WARNING: unable to create the fb_blink_thread\n");
    }
 
    if (fb_offset_y) {
-      if (!kthread_create(fb_update_banner_kthread, NULL))
+      if (kthread_create(fb_update_banner_kthread, NULL) < 0)
          printk("WARNING: unable to create the fb_update_banner_kthread\n");
    }
 }
