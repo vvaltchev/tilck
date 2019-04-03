@@ -5,7 +5,7 @@
 
 #include <tilck/common/basic_defs.h>
 
-#if defined(__i386__)
+#if defined(__i386__) && !defined(__x86_64__)
 
    #define __arch__x86__
 

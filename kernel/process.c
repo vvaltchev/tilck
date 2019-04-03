@@ -13,8 +13,8 @@
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/tty.h>
 
-#include <sys/prctl.h> // system header
-#include <sys/wait.h>  // system header
+#include <sys/prctl.h>        // system header
+#include <sys/wait.h>         // system header
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
@@ -490,11 +490,11 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
 sptr sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
 {
-   char zero_buf[136] = {0};
+   struct k_rusage ru = {0};
 
    if (user_rusage) {
       // TODO: update when rusage is actually supported
-      if (copy_to_user(user_rusage, zero_buf, sizeof(zero_buf)) < 0)
+      if (copy_to_user(user_rusage, &ru, sizeof(ru)) < 0)
          return -EFAULT;
    }
 
