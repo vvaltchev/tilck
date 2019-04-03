@@ -37,6 +37,19 @@ extern char **shell_env;
 
 typedef int (*cmd_func_type)(int argc, char **argv);
 
+enum timeout_type {
+   TT_SHORT = 0,
+   TT_MED   = 1,
+   TT_LONG  = 2,
+};
+
+struct test_cmd_entry {
+   const char *name;
+   cmd_func_type func;
+   enum timeout_type tt;
+   bool enabled_in_st;
+};
+
 void run_if_known_command(const char *cmd, int argc, char **argv);
 void dump_list_of_commands(void);
 int read_command(char *buf, int buf_size);

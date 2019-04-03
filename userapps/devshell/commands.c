@@ -13,49 +13,7 @@
 #include "devshell.h"
 #include "sysenter.h"
 
-#define DECL_CMD(name) int cmd_##name(int argc, char **argv)
-
-DECL_CMD(help);
-DECL_CMD(selftest);
-DECL_CMD(runall);
-DECL_CMD(loop);
-DECL_CMD(fork);
-DECL_CMD(sysenter);
-DECL_CMD(fork_se);
-DECL_CMD(bad_read);
-DECL_CMD(bad_write);
-DECL_CMD(fork_perf);
-DECL_CMD(syscall_perf);
-DECL_CMD(fpu);
-DECL_CMD(fpu_loop);
-DECL_CMD(brk);
-DECL_CMD(mmap);
-DECL_CMD(kcow);
-DECL_CMD(wpid1);
-DECL_CMD(wpid2);
-DECL_CMD(wpid3);
-DECL_CMD(wpid4);
-DECL_CMD(sigsegv1);
-DECL_CMD(sigsegv2);
-DECL_CMD(sigill);
-DECL_CMD(sigfpe);
-DECL_CMD(sigabrt);
-DECL_CMD(sig1);
-DECL_CMD(select1);
-DECL_CMD(select2);
-DECL_CMD(poll1);
-DECL_CMD(poll2);
-DECL_CMD(poll3);
-DECL_CMD(bigargv);
-DECL_CMD(cloexec);
-
-/* ------------------------------------------- */
-
-enum timeout_type {
-   TT_SHORT = 0,
-   TT_MED   = 1,
-   TT_LONG  = 2,
-};
+struct test_cmd_entry *cmds_table;
 
 static const char *tt_str[] =
 {
@@ -64,55 +22,20 @@ static const char *tt_str[] =
    [TT_LONG] = "tt_long"
 };
 
-#define CMD_ENTRY(name, len, enabled) {#name, cmd_ ## name, len, enabled}
+static int get_cmds_count(void) {
 
-struct {
+   static int value;
+   struct test_cmd_entry *e;
 
-   const char *name;
-   cmd_func_type func;
-   enum timeout_type tt;
-   bool enabled_in_st;
+   if (value)
+      return value;
 
-} cmds_table[] = {
+   for (e = cmds_table; e->name != NULL; e++) {
+      value++;
+   }
 
-   CMD_ENTRY(help, TT_SHORT, false),
-   CMD_ENTRY(selftest, TT_LONG, false),
-   CMD_ENTRY(runall, TT_LONG, false),
-   CMD_ENTRY(loop, TT_MED, false),
-
-   CMD_ENTRY(fork, TT_MED, true),
-   CMD_ENTRY(sysenter, TT_SHORT, true),
-   CMD_ENTRY(fork_se, TT_MED, true),
-   CMD_ENTRY(bad_read, TT_SHORT, true),
-   CMD_ENTRY(bad_write, TT_SHORT, true),
-   CMD_ENTRY(fork_perf, TT_LONG, true),
-   CMD_ENTRY(syscall_perf, TT_SHORT, true),
-   CMD_ENTRY(fpu, TT_SHORT, true),
-   CMD_ENTRY(fpu_loop, TT_LONG, false),
-   CMD_ENTRY(brk, TT_SHORT, true),
-   CMD_ENTRY(mmap, TT_MED, true),
-   CMD_ENTRY(kcow, TT_SHORT, true),
-   CMD_ENTRY(wpid1, TT_SHORT, true),
-   CMD_ENTRY(wpid2, TT_SHORT, true),
-   CMD_ENTRY(wpid3, TT_SHORT, true),
-   CMD_ENTRY(wpid4, TT_SHORT, true),
-   CMD_ENTRY(sigsegv1, TT_SHORT, true),
-   CMD_ENTRY(sigsegv2, TT_SHORT, true),
-   CMD_ENTRY(sigill, TT_SHORT, true),
-   CMD_ENTRY(sigfpe, TT_SHORT, true),
-   CMD_ENTRY(sigabrt, TT_SHORT, true),
-   CMD_ENTRY(sig1, TT_SHORT, true),
-   CMD_ENTRY(bigargv, TT_SHORT, true),
-   CMD_ENTRY(cloexec, TT_SHORT, true),
-
-   CMD_ENTRY(select1, TT_SHORT, false),
-   CMD_ENTRY(select2, TT_SHORT, false),
-   CMD_ENTRY(poll1, TT_SHORT, false),
-   CMD_ENTRY(poll2, TT_SHORT, false),
-   CMD_ENTRY(poll3, TT_SHORT, false)
-};
-
-#undef CMD_ENTRY
+   return value;
+}
 
 int cmd_selftest(int argc, char **argv)
 {
@@ -209,7 +132,7 @@ int cmd_runall(int argc, char **argv)
 
    start_ms = get_monotonic_time_ms();
 
-   for (int i = 1; i < ARRAY_SIZE(cmds_table); i++) {
+   for (int i = 1; i < get_cmds_count(); i++) {
 
       if (!cmds_table[i].enabled_in_st || cmds_table[i].tt == TT_LONG)
          continue;
@@ -243,7 +166,7 @@ int cmd_runall(int argc, char **argv)
 
 void dump_list_of_commands(void)
 {
-   for (int i = 1; i < ARRAY_SIZE(cmds_table); i++) {
+   for (int i = 1; i < get_cmds_count(); i++) {
       if (cmds_table[i].enabled_in_st)
          printf("%s %s\n", cmds_table[i].name, tt_str[cmds_table[i].tt]);
    }
@@ -275,10 +198,10 @@ int cmd_help(int argc, char **argv)
 
    row_len = printf("    ");
 
-   for (int i = 1 /* skip help */; i < ARRAY_SIZE(cmds_table); i++) {
+   for (int i = 1 /* skip help */; i < get_cmds_count(); i++) {
 
       n = sprintf(buf, "%s%s", cmds_table[i].name,
-                  i != ARRAY_SIZE(cmds_table)-1 ? "," : "");
+                  i != get_cmds_count()-1 ? "," : "");
 
       if (row_len + n >= 80) {
          printf("\n");
@@ -307,7 +230,7 @@ static void run_cmd(cmd_func_type func, int argc, char **argv)
 
 void run_if_known_command(const char *cmd, int argc, char **argv)
 {
-   for (int i = 0; i < ARRAY_SIZE(cmds_table); i++)
+   for (int i = 0; i < get_cmds_count(); i++)
       if (!strcmp(cmds_table[i].name, cmd))
          run_cmd(cmds_table[i].func, argc, argv);
 }
