@@ -355,12 +355,51 @@ void kthread_join(int tid)
    enable_preemption();
 }
 
-sptr sys_waitpid(int pid, int *user_wstatus, int options)
+static int wait_for_single_pid(int pid, int *user_wstatus)
 {
-   ASSERT(are_interrupts_enabled());
-   DEBUG_VALIDATE_STACK_PTR();
+   ASSERT(!is_preemption_enabled());
 
    task_info *curr = get_curr_task();
+   task_info *waited_task = get_task(pid);
+
+   if (!waited_task || waited_task->pi->parent_pid != curr->pi->pid) {
+      return -ECHILD;
+   }
+
+   while (waited_task->state != TASK_STATE_ZOMBIE) {
+
+      task_set_wait_obj(curr,
+                        WOBJ_TASK,
+                        waited_task,
+                        &waited_task->tasks_waiting_list);
+
+      enable_preemption();
+      kernel_yield();
+      disable_preemption();
+   }
+
+   if (user_wstatus) {
+      if (copy_to_user(user_wstatus,
+                       &waited_task->exit_wstatus,
+                       sizeof(s32)) < 0)
+      {
+         remove_task((task_info *)waited_task);
+         return -EFAULT;
+      }
+   }
+
+   remove_task((task_info *)waited_task);
+   return pid;
+}
+
+sptr sys_waitpid(int pid, int *user_wstatus, int options)
+{
+   task_info *curr = get_curr_task();
+   task_info *zombie = NULL;
+   int zombie_tid = -1;
+
+   ASSERT(are_interrupts_enabled());
+   DEBUG_VALIDATE_STACK_PTR();
 
    /*
     * TODO: make waitpid() able to wait on other child state changes, in
@@ -372,54 +411,29 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
       /* Wait for a specific PID */
 
       disable_preemption();
-      task_info *waited_task = get_task(pid);
-
-      if (!waited_task || waited_task->pi->parent_pid != curr->pi->pid) {
-         enable_preemption();
-         return -ECHILD;
-      }
-
-      while (waited_task->state != TASK_STATE_ZOMBIE) {
-
-         task_set_wait_obj(curr,
-                           WOBJ_TASK,
-                           waited_task,
-                           &waited_task->tasks_waiting_list);
-
-         enable_preemption();
-         kernel_yield();
-         disable_preemption();
+      {
+         pid = wait_for_single_pid(pid, user_wstatus);
       }
       enable_preemption();
-
-      if (user_wstatus) {
-         if (copy_to_user(user_wstatus,
-                          &waited_task->exit_wstatus,
-                          sizeof(s32)) < 0)
-         {
-            remove_task((task_info *)waited_task);
-            return -EFAULT;
-         }
-      }
-
-      remove_task((task_info *)waited_task);
       return pid;
    }
 
    /*
-    * Since Tilck does not support UIDs and GIDs != 0, the values of
+    * Since Tilck does not support process groups yet, the following cases:
     *    pid < -1
     *    pid == -1
     *    pid == 0
-    * are treated in the same way.
+    *  are treated in the same way.
+    *
+    * TODO: update this code when process groups are supported.
     */
 
-   task_info *zombie_child = NULL;
-   process_info *pos;
 
    while (true) {
 
+      process_info *pos;
       u32 child_count = 0;
+
       disable_preemption();
 
       list_for_each_ro(pos, &curr->pi->children_list, siblings_node) {
@@ -428,15 +442,16 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
          child_count++;
 
          if (ti->state == TASK_STATE_ZOMBIE) {
-            zombie_child = ti;
+            zombie = ti;
+            zombie_tid = ti->tid;
             break;
          }
       }
 
-      enable_preemption();
-
-      if (zombie_child)
+      if (zombie)
          break;
+
+      enable_preemption();
 
       /* No zombie child has been found */
 
@@ -453,21 +468,24 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
       /* Hang until a child dies */
       task_set_wait_obj(curr, WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD, NULL);
       kernel_yield();
-   }
+
+   } // while (true)
+
+   /*
+    * The only way to get here is a positive branch in `if (zombie)`: this mean
+    * that we have a valid `zombie` and that preemption is diabled.
+    */
+   ASSERT(!is_preemption_enabled());
 
    if (user_wstatus) {
-      if (copy_to_user(user_wstatus,
-                       &zombie_child->exit_wstatus,
-                       sizeof(s32)) < 0)
-      {
-         remove_task(zombie_child);
-         return -EFAULT;
+      if (copy_to_user(user_wstatus, &zombie->exit_wstatus, sizeof(s32)) < 0) {
+         zombie_tid = -EFAULT;
       }
    }
 
-   int zombie_child_pid = zombie_child->tid;
-   remove_task(zombie_child);
-   return zombie_child_pid;
+   remove_task(zombie);
+   enable_preemption();
+   return zombie_tid;
 }
 
 sptr sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
