@@ -26,15 +26,18 @@ void kmutex_destroy(kmutex *m)
 
 void kmutex_lock(kmutex *m)
 {
-   DEBUG_ONLY(check_not_in_irq_handler());
    disable_preemption();
+   DEBUG_ONLY(check_not_in_irq_handler());
 
    if (!m->owner_task) {
-      // Nobody owns this mutex, just set the owner
+
+      /* Nobody owns this mutex, just make this task own it */
       m->owner_task = get_curr_task();
 
-      if (m->flags & KMUTEX_FL_RECURSIVE)
+      if (m->flags & KMUTEX_FL_RECURSIVE) {
+         ASSERT(m->lock_count == 0);
          m->lock_count++;
+      }
 
       enable_preemption();
       return;
@@ -58,9 +61,15 @@ void kmutex_lock(kmutex *m)
    enable_preemption();
    kernel_yield(); // Go to sleep until someone else is holding the lock.
 
-   // Now for sure this task should hold the mutex.
+   /* ------------------- We've been woken up ------------------- */
+
+   /* Now for sure this task should hold the mutex */
    ASSERT(kmutex_is_curr_task_holding_lock(m));
 
+   /*
+    * DEBUG check: in case we went to sleep with a recursive mutex, then the
+    * lock_count must be just 1 now.
+    */
    if (m->flags & KMUTEX_FL_RECURSIVE) {
       ASSERT(m->lock_count == 1);
    }
@@ -70,12 +79,12 @@ bool kmutex_trylock(kmutex *m)
 {
    bool success = false;
 
-   DEBUG_ONLY(check_not_in_irq_handler());
    disable_preemption();
+   DEBUG_ONLY(check_not_in_irq_handler());
 
    if (!m->owner_task) {
 
-      // Nobody owns this mutex, just set the owner
+      /* Nobody owns this mutex, just make this task own it */
       m->owner_task = get_curr_task();
       success = true;
 
@@ -100,9 +109,9 @@ bool kmutex_trylock(kmutex *m)
 
 void kmutex_unlock(kmutex *m)
 {
-   DEBUG_ONLY(check_not_in_irq_handler());
    disable_preemption();
 
+   DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(kmutex_is_curr_task_holding_lock(m));
 
    if (m->flags & KMUTEX_FL_RECURSIVE) {
@@ -114,7 +123,7 @@ void kmutex_unlock(kmutex *m)
          return;
       }
 
-      // m->lock_count == 0, we have to really unlock the mutex
+      // m->lock_count == 0: we have to really unlock the mutex
    }
 
    m->owner_task = NULL;
