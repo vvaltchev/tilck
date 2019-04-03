@@ -121,6 +121,20 @@ static void mount_first_ramdisk(void)
       panic("mountpoint_add() failed with error: %d", rc);
 }
 
+static void wakeup_user_pid1(void)
+{
+   disable_preemption();
+   {
+      task_info *init_task = get_task(1);
+
+      if (!init_task)
+         panic("get_task(1) FAILED");
+
+      task_change_state(init_task, TASK_STATE_RUNNABLE);
+   }
+   enable_preemption();
+}
+
 static void init_drivers()
 {
    if (!kopt_serial_console) {
@@ -134,7 +148,7 @@ static void init_drivers()
 
    show_hello_message();
    show_system_info();
-   task_change_state(get_task(1), TASK_STATE_RUNNABLE);
+   wakeup_user_pid1();
 }
 
 static void async_init_drivers(void)

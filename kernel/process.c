@@ -336,7 +336,9 @@ sptr sys_gettid()
 void kthread_join(int tid)
 {
    task_info *ti;
+
    ASSERT(is_preemption_enabled());
+   disable_preemption();
 
    while ((ti = get_task(tid))) {
 
@@ -344,8 +346,13 @@ void kthread_join(int tid)
                         WOBJ_TASK,
                         ti,
                         &ti->tasks_waiting_list);
+
+      enable_preemption();
       kernel_yield();
+      disable_preemption();
    }
+
+   enable_preemption();
 }
 
 sptr sys_waitpid(int pid, int *user_wstatus, int options)
@@ -364,10 +371,13 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
 
       /* Wait for a specific PID */
 
+      disable_preemption();
       task_info *waited_task = get_task(pid);
 
-      if (!waited_task || waited_task->pi->parent_pid != curr->pi->pid)
+      if (!waited_task || waited_task->pi->parent_pid != curr->pi->pid) {
+         enable_preemption();
          return -ECHILD;
+      }
 
       while (waited_task->state != TASK_STATE_ZOMBIE) {
 
@@ -376,8 +386,11 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
                            waited_task,
                            &waited_task->tasks_waiting_list);
 
+         enable_preemption();
          kernel_yield();
+         disable_preemption();
       }
+      enable_preemption();
 
       if (user_wstatus) {
          if (copy_to_user(user_wstatus,
@@ -575,6 +588,7 @@ static void init_terminated(task_info *ti, int exit_code, int term_sig)
 static process_info *get_child_reaper(process_info *pi)
 {
    /* TODO: support prctl(PR_SET_CHILD_SUBREAPER) */
+   ASSERT(!is_preemption_enabled());
 
    task_info *child_reaper = get_task(1); /* init */
    VERIFY(child_reaper != NULL);

@@ -109,13 +109,12 @@ static void do_send_signal(task_info *ti, int signum)
 
 int send_signal2(int pid, int tid, int signum, bool whole_process)
 {
+   task_info *ti;
    int rc = -ESRCH;
 
    disable_preemption();
 
-   task_info *ti = get_task(tid);
-
-   if (!ti)
+   if (!(ti = get_task(tid)))
       goto err_end;
 
    /* When `whole_process` is true, tid must be == pid */

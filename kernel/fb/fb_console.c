@@ -430,7 +430,12 @@ void init_framebuffer_console(void)
    int tid = kthread_create(fb_blink_thread, NULL);
 
    if (tid > 0) {
-      blink_thread_ti = get_task(tid);
+      disable_preemption();
+      {
+         blink_thread_ti = get_task(tid);
+         ASSERT(blink_thread_ti != NULL);
+      }
+      enable_preemption();
    } else {
       printk("WARNING: unable to create the fb_blink_thread\n");
    }

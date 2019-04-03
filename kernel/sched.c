@@ -435,17 +435,14 @@ void schedule(int curr_irq)
 task_info *get_task(int tid)
 {
    task_info *res = NULL;
+   ASSERT(!is_preemption_enabled());
 
-   disable_preemption();
-   {
-      res = bintree_find(tree_by_tid_root,
-                         &tid,
-                         ti_find_cmp,
-                         task_info,
-                         tree_by_tid_node);
-   }
+   res = bintree_find(tree_by_tid_root,
+                      &tid,
+                      ti_find_cmp,
+                      task_info,
+                      tree_by_tid_node);
 
-   enable_preemption();
    return res;
 }
 
