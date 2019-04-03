@@ -28,6 +28,7 @@
 #cmakedefine01 KERNEL_TRACK_NESTED_INTERRUPTS
 #cmakedefine01 PANIC_SHOW_STACKTRACE
 #cmakedefine01 DEBUG_CHECKS_IN_RELEASE_BUILD
+#cmakedefine01 KERNEL_SELFTESTS
 
 /* disabled by default */
 #cmakedefine01 KERNEL_GCOV

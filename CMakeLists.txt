@@ -74,6 +74,9 @@ set(PANIC_SHOW_STACKTRACE ON CACHE BOOL
 set(DEBUG_CHECKS_IN_RELEASE_BUILD ON CACHE BOOL
     "Keep checking ASSERTs and other debug checks even in release builds")
 
+set(KERNEL_SELFTESTS ON CACHE BOOL
+    "Compile the kernel with self tests support")
+
 # Kernel options (disabled by default)
 
 set(KERNEL_SYSCC OFF CACHE BOOL
@@ -125,6 +128,7 @@ list(
    KERNEL_TRACK_NESTED_INTERRUPTS
    PANIC_SHOW_STACKTRACE
    DEBUG_CHECKS_IN_RELEASE_BUILD
+   KERNEL_SELFTESTS
 
    # Boolean options DISABLED by default
    TEST_GCOV

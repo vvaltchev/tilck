@@ -52,6 +52,14 @@ set(
    "${CMAKE_SOURCE_DIR}/common/*.c"
 )
 
+if (KERNEL_SELFTESTS)
+   list(
+         APPEND
+         KERNEL_NOARCH_SOURCES_GLOB
+         "${CMAKE_SOURCE_DIR}/tests/self_tests/*.c"
+   )
+endif()
+
 file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})
 
 # Creating a static library target for putting kernel's arch-independent code.

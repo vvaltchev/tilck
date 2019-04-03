@@ -171,8 +171,10 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    async_init_drivers();
 
    if (self_test_to_run) {
-      kernel_run_selected_selftest();
-      NOT_REACHED();
+      if (KERNEL_SELFTESTS)
+         kernel_run_selected_selftest(); /* This does NOT return */
+      else
+         panic("The kernel was not compiled with self-tests");
    }
 
    if (!system_mmap_get_ramdisk_vaddr(0)) {
