@@ -1,0 +1,7 @@
+
+CONTENTS
+===========
+
+This directory contains code directly compiled-in the Tilck's kernel when
+the CMake option KERNEL_SELFTESTS is enabled (default).
+

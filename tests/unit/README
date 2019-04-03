@@ -1,0 +1,6 @@
+
+CONTENTS
+==========
+
+This directory contains kernel's unit tests, which can be built using the
+`gtests` target.
