@@ -47,90 +47,7 @@ DECL_CMD(poll1);
 DECL_CMD(poll2);
 DECL_CMD(poll3);
 DECL_CMD(bigargv);
-
-static int cloexec_do_exec(int argc, char **argv)
-{
-   int rc =
-      fprintf(stderr,
-              COLOR_RED "[execve-proc] stderr works [it should NOT!]"
-              RESET_ATTRS "\n");
-
-   if (rc < 0) {
-      printf("[execve-proc] write to stderr failed, AS EXPECTED\n");
-      return 0;
-   }
-
-   return 1;
-}
-
-static int cmd_cloexec(int argc, char **argv)
-{
-   int pid;
-   int wstatus;
-
-   if (argc > 0) {
-
-      if (!strcmp(argv[0], "do_exec"))
-         return cloexec_do_exec(argc, argv);
-
-      printf("[devshell][cloexec] Invalid sub-command '%s'\n", argv[0]);
-      return 1;
-   }
-
-   pid = fork();
-
-   if (pid < 0) {
-      perror("fork() failed");
-      exit(1);
-   }
-
-   if (!pid) {
-      char *argv[] = { shell_argv[0], "-c", "cloexec", "do_exec", NULL };
-
-      int flags = fcntl(2 /* stderr */, F_GETFD);
-      int rc = fcntl(2 /* stderr */, F_SETFD, flags | FD_CLOEXEC);
-
-      if (rc < 0) {
-         perror("fcntl() failed");
-         exit(1);
-      }
-
-      fprintf(stderr, "[forked-child] Stderr works [expected to work]\n");
-      execve(shell_argv[0], argv, shell_env);
-      perror("execve() failed");
-      exit(1);
-   }
-
-   waitpid(pid, &wstatus, 0);
-
-   if (!WIFEXITED(wstatus)) {
-      printf("Test child killed by signal: %s\n", strsignal(WTERMSIG(wstatus)));
-      exit(1);
-   }
-
-   return WEXITSTATUS(wstatus);
-}
-
-int cmd_selftest(int argc, char **argv)
-{
-   if (argc < 1) {
-      printf("[shell] Expected selftest name argument.\n");
-      return 1;
-   }
-
-   int rc =
-      sysenter_call3(TILCK_TESTCMD_SYSCALL,
-                     TILCK_TESTCMD_RUN_SELFTEST,
-                     argv[0]  /* self test name */,
-                     NULL);
-
-   if (rc != 0) {
-      printf("[shell] Invalid selftest '%s'\n", argv[0]);
-      return 1;
-   }
-
-   return 0;
-}
+DECL_CMD(cloexec);
 
 /* ------------------------------------------- */
 
@@ -162,6 +79,7 @@ struct {
    CMD_ENTRY(selftest, TT_LONG, false),
    CMD_ENTRY(runall, TT_LONG, false),
    CMD_ENTRY(loop, TT_MED, false),
+
    CMD_ENTRY(fork, TT_MED, true),
    CMD_ENTRY(sysenter, TT_SHORT, true),
    CMD_ENTRY(fork_se, TT_MED, true),
@@ -195,6 +113,27 @@ struct {
 };
 
 #undef CMD_ENTRY
+
+int cmd_selftest(int argc, char **argv)
+{
+   if (argc < 1) {
+      printf("[shell] Expected selftest name argument.\n");
+      return 1;
+   }
+
+   int rc =
+      sysenter_call3(TILCK_TESTCMD_SYSCALL,
+                     TILCK_TESTCMD_RUN_SELFTEST,
+                     argv[0]  /* self test name */,
+                     NULL);
+
+   if (rc != 0) {
+      printf("[shell] Invalid selftest '%s'\n", argv[0]);
+      return 1;
+   }
+
+   return 0;
+}
 
 static u64 get_monotonic_time_ms(void)
 {
