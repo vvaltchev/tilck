@@ -6,12 +6,9 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/interrupts.h>
 
-static uptr new_cond_id = 1;
-
 void kcond_init(kcond *c)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
-   c->id = new_cond_id++;
    list_init(&c->wait_list);
 }
 
@@ -35,8 +32,10 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
    enable_preemption();
    kernel_yield(); // Go to sleep until a signal is fired or timeout happens.
 
+   /* ------------------- We've been woken up ------------------- */
+
    if (m) {
-      kmutex_lock(m); // Re-acquire the lock back
+      kmutex_lock(m); // Re-acquire the lock [if any]
    }
 
    /*
@@ -83,21 +82,20 @@ kcond_signal_single(kcond *c, wait_obj *wo)
 void kcond_signal_int(kcond *c, bool all)
 {
    wait_obj *wo_pos, *temp;
-   DEBUG_ONLY(check_not_in_irq_handler());
-
    disable_preemption();
+   {
+      DEBUG_ONLY(check_not_in_irq_handler());
 
-   list_for_each(wo_pos, temp, &c->wait_list, wait_list_node) {
+      list_for_each(wo_pos, temp, &c->wait_list, wait_list_node) {
 
-      kcond_signal_single(c, wo_pos);
+         kcond_signal_single(c, wo_pos);
 
-      if (!all)
-         break;
+         if (!all) /* the non-broadcast signal() just signals the first task */
+            break;
+      }
    }
-
    enable_preemption();
 }
-
 
 void kcond_destory(kcond *c)
 {
