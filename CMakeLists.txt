@@ -457,7 +457,7 @@ add_custom_target(
 )
 
 if (EXISTS ${GTEST_TC_BUILD_DIR})
-   add_subdirectory(unittests)
+   add_subdirectory(tests/unittests)
    add_dependencies(gtests test_fatpart_target)
 else()
    no_googletest_lib_fake_error_target()
