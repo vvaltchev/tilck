@@ -56,7 +56,7 @@ if (KERNEL_SELFTESTS)
    list(
          APPEND
          KERNEL_NOARCH_SOURCES_GLOB
-         "${CMAKE_SOURCE_DIR}/tests/self_tests/*.c"
+         "${CMAKE_SOURCE_DIR}/tests/self/*.c"
    )
 endif()
 
