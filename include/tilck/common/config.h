@@ -9,7 +9,8 @@
 
 #include <generated_config.h>
 
-#define KMALLOC_FREE_MEM_POISON_VAL 0xFAABCAFE
+#define KMALLOC_FREE_MEM_POISON_VAL    0xFAABCAFE
+#define KMUTEX_STATS_ENABLED                    0
 
 /* ------------------------------- */
 

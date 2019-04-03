@@ -99,5 +99,5 @@ void kcond_signal_int(kcond *c, bool all)
 
 void kcond_destory(kcond *c)
 {
-   (void) c; // do nothing.
+   bzero(c, sizeof(kcond));
 }

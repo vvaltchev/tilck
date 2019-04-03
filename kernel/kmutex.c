@@ -21,7 +21,7 @@ void kmutex_init(kmutex *m, u32 flags)
 
 void kmutex_destroy(kmutex *m)
 {
-   bzero(m, sizeof(kmutex)); // NOTE: !id => invalid kmutex
+   bzero(m, sizeof(kmutex));
 }
 
 void kmutex_lock(kmutex *m)
@@ -57,11 +57,20 @@ void kmutex_lock(kmutex *m)
       ASSERT(!kmutex_is_curr_task_holding_lock(m));
    }
 
+#if KMUTEX_STATS_ENABLED
+   m->num_waiters++;
+   m->max_num_waiters = MAX(m->num_waiters, m->max_num_waiters);
+#endif
+
    task_set_wait_obj(get_curr_task(), WOBJ_KMUTEX, m, &m->wait_list);
    enable_preemption();
    kernel_yield(); // Go to sleep until someone else is holding the lock.
 
    /* ------------------- We've been woken up ------------------- */
+
+#if KMUTEX_STATS_ENABLED
+   m->num_waiters--;
+#endif
 
    /* Now for sure this task should hold the mutex */
    ASSERT(kmutex_is_curr_task_holding_lock(m));
@@ -93,7 +102,11 @@ bool kmutex_trylock(kmutex *m)
 
    } else {
 
-      // There is an owner task
+      /*
+       * There IS an owner task, but we can still acquire the mutex if:
+       *    - the mutex is recursive
+       *    - the task holding it is actually the current task
+       */
 
       if (m->flags & KMUTEX_FL_RECURSIVE) {
          if (kmutex_is_curr_task_holding_lock(m)) {

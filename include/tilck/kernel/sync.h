@@ -112,6 +112,11 @@ typedef struct {
    u32 lock_count; // Valid when the mutex is recursive
    list wait_list;
 
+#if KMUTEX_STATS_ENABLED
+   u32 num_waiters;
+   u32 max_num_waiters;
+#endif
+
 } kmutex;
 
 #define KMUTEX_FL_RECURSIVE (1 << 0)
