@@ -33,7 +33,7 @@ $mlabel -i $dest ::TILCK
 
 rm -rf $bdir/test_sysroot
 mkdir $bdir/test_sysroot
-cp -r $maindir/tests/unittests/test_sysroot $bdir/
+cp -r $maindir/tests/unit/test_sysroot $bdir/
 cd $bdir/test_sysroot
 
 # Create file with random data
