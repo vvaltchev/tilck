@@ -70,7 +70,7 @@ void selftest_kmutex_med()
    regular_self_test_end();
 }
 
-void selftest_kmutex2_med()
+void selftest_kmutex_rec_med()
 {
    bool success;
    int tid1, tid2, tid3;

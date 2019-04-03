@@ -6,8 +6,6 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/interrupts.h>
 
-static uptr new_mutex_id = 1;
-
 bool kmutex_is_curr_task_holding_lock(kmutex *m)
 {
    return m->owner_task == get_curr_task();
@@ -17,7 +15,6 @@ void kmutex_init(kmutex *m, u32 flags)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
    bzero(m, sizeof(kmutex));
-   m->id = new_mutex_id++;
    m->flags = flags;
    list_init(&m->wait_list);
 }

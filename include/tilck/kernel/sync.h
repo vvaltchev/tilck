@@ -107,7 +107,6 @@ void kernel_sleep_on_waiter(multi_obj_waiter *w);
 
 typedef struct {
 
-   uptr id;
    struct task_info *owner_task;
    u32 flags;
    u32 lock_count; // Valid when the mutex is recursive
