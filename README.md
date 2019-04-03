@@ -198,6 +198,35 @@ You can run kernel's system tests this way:
 **NOTE**: in order the script to work, you need to have `python` 2.7.x
 installed as `/usr/bin/python`.
 
+One cool thing about Tilck
+--------------------------------
+
+Tilck particularly distinguishes itself from many low-level open source
+projects in one way: it really cares about the "user" experience (where
+"user" means developer). It's not the typical super-cool project that's
+insanely complex to build; it's not a project requiring 200 things to be
+installed on the host machine. Building such projects often require hours
+or even days (for special configurations e.g. cross builds) of effort spent
+by experienced engineers. Tilck is supposed to be trivial to build and test
+even for first-year CS students who barely can use Linux. It has a
+sophisticated script for building its own toolchain that works for the major
+Linux distributions (and for any Linux distro with minor effort) and a
+powerful CMake-based build system. After building Tilck, a full image will
+be produced. To some degree, it's like what `buildroot` does for Linux.
+
+Also, Tilck has unit tests, system tests and self tests all in the same
+repository, completely integrated with its build system. In addition,
+Tilck has full code coverage support (user mode and kernel mode coverage),
+with useful scripts for generating HTML reports with LCOV. Finally, it is
+fully integrated with CircleCI, which validates that the project builds and
+its testing are passing in a variaty of configurations. The integration with
+CodeCov for checking online the coverage is another perk.
+
+The reason for having the above-mentioned features is to offer its users
+and potential contributors a really nice experience, avoiding any kind of
+frustration. Hopefully, even the most experienced build engineers will enjoy
+a zero-effort experience. The project's itself might be pretty complex, but
+that's not a good reason for it to be hard to build and test.
 
 FAQ (by vvaltchev)
 ---------------------
