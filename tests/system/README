@@ -1,0 +1,25 @@
+
+CONTENTS
+==========
+
+This directory contains C files directly built as part of the `devshell`
+user app, containing Tilck's system tests. In order words, these tests use
+kernel's only interface (syscalls) in order to check its correctness.
+The reason for keeping those files here instead of in userapps/devshell/ is
+purely organizational: it just makes more sense to have ALL of Tilck's test
+in a single (master) directory called `tests`. The non-test part of devshell
+clearly should remain in the userapps/ directory.
+
+NOTE: for info about to run those tests, see the main README.md file.
+
+
+DON'T FORGET:
+In order to add a new system test, don't forget to edit `cmds_table.c`, by
+adding an entry in `_cmds_table`.
+
+
+Other
+======
+
+The subdirectory `runners` contain high-level python scripts used to run
+those system tests in QEMU VMs.

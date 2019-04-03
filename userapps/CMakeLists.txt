@@ -47,10 +47,13 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
       DEVSHELL_SOURCES
 
       "devshell/*.c"
+      "${CMAKE_SOURCE_DIR}/tests/system/*.c"
       "${CMAKE_SOURCE_DIR}/common/3rd_party/base64.c"
    )
 
    add_executable(devshell ${DEVSHELL_SOURCES})
+   set(DEVSHELL_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/devshell)
+   target_include_directories(devshell PUBLIC ${DEVSHELL_SRC_DIR})
    target_link_libraries(devshell ${TCROOT}/zlib/install/lib/libz.a)
    register_usermode_app(devshell)
 # [/devshell]

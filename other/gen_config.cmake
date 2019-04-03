@@ -43,13 +43,13 @@ configure_file(
 )
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/tests/system/single_test_run
+   ${CMAKE_SOURCE_DIR}/tests/system/runners/single_test_run
    ${CMAKE_BINARY_DIR}/st/single_test_run
    @ONLY
 )
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/tests/system/run_all_tests
+   ${CMAKE_SOURCE_DIR}/tests/system/runners/run_all_tests
    ${CMAKE_BINARY_DIR}/st/run_all_tests
    @ONLY
 )
