@@ -177,17 +177,22 @@ void console_perf_test(void)
    const int iters = 10;
    struct winsize w;
    char *buf;
+   ssize_t r, tot, written;
 
-   ioctl(1, TIOCGWINSZ, &w);
-
-   buf = malloc(w.ws_row * w.ws_col);
-
-   if (!buf) {
-      printf("Out of memory\n");
+   if (ioctl(1, TIOCGWINSZ, &w) != 0) {
+      perror("ioctl() failed");
       return;
    }
 
-   for (int i = 0; i < w.ws_row * w.ws_col; i++) {
+   tot = w.ws_row * w.ws_col;
+   buf = malloc(tot);
+
+   if (!buf) {
+      fprintf(stderr, "Out of memory\n");
+      return;
+   }
+
+   for (int i = 0; i < tot; i++) {
       buf[i] = letters[i % (sizeof(letters) - 1)];
    }
 
@@ -196,11 +201,19 @@ void console_perf_test(void)
    uint64_t start = RDTSC();
 
    for (int i = 0; i < iters; i++) {
-      write(1, buf, w.ws_row * w.ws_col);
+      for (r = 0, written = 0; written < tot; written += r) {
+
+         r = write(1, buf + written, tot - written);
+
+         if (r < 0) {
+            perror("write() failed");
+            return;
+         }
+      }
    }
 
    uint64_t end = RDTSC();
-   unsigned long long c = (end - start) / iters;
+   uint64_t c = (end - start) / iters;
 
    printf("Term size: %d rows x %d cols\n", w.ws_row, w.ws_col);
    printf("Screen redraw:       %10llu cycles\n", c);
