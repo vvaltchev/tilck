@@ -101,8 +101,16 @@ static void fault_in_panic(regs *r)
    if (is_fault_resumable(int_num))
       return handle_resumable_fault(r);
 
-   printk("FATAL: %s [%d] while in panic state [E: 0x%x, EIP: %p]\n",
-          x86_exception_names[int_num], int_num, r->err_code, r->eip);
+   /*
+    * We might be so unlucky that printk() causes some fault(s) too: therefore,
+    * not even trying to print something on the screen is safe. In order to
+    * avoid generating an endless sequence of page faults in the worst case,
+    * just call printk() in SAFE way here.
+    */
+   fault_resumable_call(
+      ALL_FAULTS_MASK, printk, 5,
+      "FATAL: %s [%d] while in panic state [E: 0x%x, EIP: %p]\n",
+      x86_exception_names[int_num], int_num, r->err_code, r->eip);
 
    /* Halt the CPU forever */
    while (true) { halt(); }
