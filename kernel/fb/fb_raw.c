@@ -84,9 +84,19 @@ static void fb_init_colors(void)
    c[COLOR_BRIGHT_WHITE] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, BRIGHT_VAL);
 }
 
+/* Note: using these constants won't work on big endian machines */
+#define PSF1_FONT_MAGIC      0x0436
+#define PSF2_FONT_MAGIC  0x864ab572
+
 void fb_set_font(void *font)
 {
-   struct psf2_header {
+   struct {
+      u16 magic;
+      u8 mode;
+      u8 bytes_per_glyph;
+   } *h1 = font;
+
+   struct {
       u32 magic;
       u32 version;          /* zero */
       u32 header_size;
@@ -95,16 +105,26 @@ void fb_set_font(void *font)
       u32 bytes_per_glyph;
       u32 height;           /* height in pixels */
       u32 width;            /* width in pixels */
-   };
+   } *h2 = font;
 
-   struct psf2_header *h = font;
-   ASSERT(h->magic == PSF2_FONT_MAGIC); // Support only PSF2
+   if (h2->magic == PSF2_FONT_MAGIC) {
 
-   font_w = h->width;
-   font_h = h->height;
-   font_width_bytes = h->bytes_per_glyph / font_h;
-   font_glyph_data = (u8 *)h + h->header_size;
-   font_bytes_per_glyph = h->bytes_per_glyph;
+      font_w = h2->width;
+      font_h = h2->height;
+      font_width_bytes = h2->bytes_per_glyph / font_h;
+      font_glyph_data = (u8 *)h2 + h2->header_size;
+      font_bytes_per_glyph = h2->bytes_per_glyph;
+
+   } else {
+
+      VERIFY(h1->magic == PSF1_FONT_MAGIC);
+
+      font_w = 8;
+      font_h = h1->bytes_per_glyph;
+      font_width_bytes = 1;
+      font_glyph_data = (u8 *)h1 + sizeof(*h1);
+      font_bytes_per_glyph = h1->bytes_per_glyph;
+   }
 }
 
 void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)

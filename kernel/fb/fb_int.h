@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-#define PSF2_FONT_MAGIC 0x864ab572
 
 extern u32 font_w;
 extern u32 font_h;
