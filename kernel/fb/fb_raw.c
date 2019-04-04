@@ -374,65 +374,54 @@ void debug_dump_glyph(u32 n)
 
 #endif
 
+#define draw_char_partial(b)                                               \
+   do {                                                                    \
+      fb_draw_pixel(x + (b << 3) + 7, row, arr[!(data[b] & (1 << 0))]);    \
+      fb_draw_pixel(x + (b << 3) + 6, row, arr[!(data[b] & (1 << 1))]);    \
+      fb_draw_pixel(x + (b << 3) + 5, row, arr[!(data[b] & (1 << 2))]);    \
+      fb_draw_pixel(x + (b << 3) + 4, row, arr[!(data[b] & (1 << 3))]);    \
+      fb_draw_pixel(x + (b << 3) + 3, row, arr[!(data[b] & (1 << 4))]);    \
+      fb_draw_pixel(x + (b << 3) + 2, row, arr[!(data[b] & (1 << 5))]);    \
+      fb_draw_pixel(x + (b << 3) + 1, row, arr[!(data[b] & (1 << 6))]);    \
+      fb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]);    \
+   } while (0)
+
 void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 {
-   const u8 c = vgaentry_get_char(e);
-   const u32 fg = vga_rgb_colors[vgaentry_get_fg(e)];
-   const u32 bg = vga_rgb_colors[vgaentry_get_bg(e)];
+   u8 *data = font_glyph_data + font_bytes_per_glyph * vgaentry_get_char(e);
 
-   u8 *data = font_glyph_data + font_bytes_per_glyph * c;
-   u32 arr[] = { fg, bg };
+   u32 arr[] = {
+      vga_rgb_colors[vgaentry_get_fg(e)],
+      vga_rgb_colors[vgaentry_get_bg(e)]
+   };
+
+   /*
+    * PERFORMANCE NOTE: using the following if (...) else if (...) sequence is
+    * measurably faster on modern CPUs compared to turning the whole
+    * fb_draw_char_failsafe() into a function pointer and having a separate
+    * function per case because of the branch prediction.
+    */
 
    if (LIKELY(font_width_bytes == 1))
 
       for (u32 row = y; row < (y + font_h); row++, data += font_width_bytes) {
-         fb_draw_pixel(x + 8 - 0 - 1, row, arr[!(data[0] & (1 << 0))]);
-         fb_draw_pixel(x + 8 - 1 - 1, row, arr[!(data[0] & (1 << 1))]);
-         fb_draw_pixel(x + 8 - 2 - 1, row, arr[!(data[0] & (1 << 2))]);
-         fb_draw_pixel(x + 8 - 3 - 1, row, arr[!(data[0] & (1 << 3))]);
-         fb_draw_pixel(x + 8 - 4 - 1, row, arr[!(data[0] & (1 << 4))]);
-         fb_draw_pixel(x + 8 - 5 - 1, row, arr[!(data[0] & (1 << 5))]);
-         fb_draw_pixel(x + 8 - 6 - 1, row, arr[!(data[0] & (1 << 6))]);
-         fb_draw_pixel(x + 8 - 7 - 1, row, arr[!(data[0] & (1 << 7))]);
+         draw_char_partial(0);
       }
 
    else if (font_width_bytes == 2)
 
       for (u32 row = y; row < (y + font_h); row++, data += font_width_bytes) {
-
-         fb_draw_pixel(x + 8 - 0 - 1, row, arr[!(data[0] & (1 << 0))]);
-         fb_draw_pixel(x + 8 - 1 - 1, row, arr[!(data[0] & (1 << 1))]);
-         fb_draw_pixel(x + 8 - 2 - 1, row, arr[!(data[0] & (1 << 2))]);
-         fb_draw_pixel(x + 8 - 3 - 1, row, arr[!(data[0] & (1 << 3))]);
-         fb_draw_pixel(x + 8 - 4 - 1, row, arr[!(data[0] & (1 << 4))]);
-         fb_draw_pixel(x + 8 - 5 - 1, row, arr[!(data[0] & (1 << 5))]);
-         fb_draw_pixel(x + 8 - 6 - 1, row, arr[!(data[0] & (1 << 6))]);
-         fb_draw_pixel(x + 8 - 7 - 1, row, arr[!(data[0] & (1 << 7))]);
-
-         fb_draw_pixel(x + 8 + 8 - 0 - 1, row, arr[!(data[1] & (1 << 0))]);
-         fb_draw_pixel(x + 8 + 8 - 1 - 1, row, arr[!(data[1] & (1 << 1))]);
-         fb_draw_pixel(x + 8 + 8 - 2 - 1, row, arr[!(data[1] & (1 << 2))]);
-         fb_draw_pixel(x + 8 + 8 - 3 - 1, row, arr[!(data[1] & (1 << 3))]);
-         fb_draw_pixel(x + 8 + 8 - 4 - 1, row, arr[!(data[1] & (1 << 4))]);
-         fb_draw_pixel(x + 8 + 8 - 5 - 1, row, arr[!(data[1] & (1 << 5))]);
-         fb_draw_pixel(x + 8 + 8 - 6 - 1, row, arr[!(data[1] & (1 << 6))]);
-         fb_draw_pixel(x + 8 + 8 - 7 - 1, row, arr[!(data[1] & (1 << 7))]);
+         draw_char_partial(0);
+         draw_char_partial(1);
       }
 
    else
 
-      for (u32 row = y; row < (y + font_h); row++, data += font_width_bytes)
-
+      for (u32 row = y; row < (y + font_h); row++, data += font_width_bytes) {
          for (u32 b = 0; b < font_width_bytes; b++) {
-            fb_draw_pixel(x + (b << 3) + 7, row, arr[!(data[b] & (1 << 0))]);
-            fb_draw_pixel(x + (b << 3) + 6, row, arr[!(data[b] & (1 << 1))]);
-            fb_draw_pixel(x + (b << 3) + 5, row, arr[!(data[b] & (1 << 2))]);
-            fb_draw_pixel(x + (b << 3) + 4, row, arr[!(data[b] & (1 << 3))]);
-            fb_draw_pixel(x + (b << 3) + 3, row, arr[!(data[b] & (1 << 4))]);
-            fb_draw_pixel(x + (b << 3) + 2, row, arr[!(data[b] & (1 << 5))]);
-            fb_draw_pixel(x + (b << 3) + 1, row, arr[!(data[b] & (1 << 6))]);
-            fb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]);
+            draw_char_partial(b);
          }
+      }
 }
 
 
