@@ -3,18 +3,8 @@
 #pragma once
 #define PSF2_FONT_MAGIC 0x864ab572
 
-typedef struct {
-    u32 magic;
-    u32 version;          /* zero */
-    u32 header_size;
-    u32 flags;            /* 0 if there's no unicode table */
-    u32 glyphs_count;
-    u32 bytes_per_glyph;
-    u32 height;          /* height in pixels */
-    u32 width;           /* width in pixels */
-} psf2_header;
-
-extern psf2_header *fb_font_header;
+extern u32 font_w;
+extern u32 font_h;
 extern u32 vga_rgb_colors[16];
 
 u32 fb_get_width(void);
@@ -33,4 +23,4 @@ void fb_lines_shift_up(u32 src_y, u32 dst_y, u32 lines_count);
 bool fb_pre_render_char_scanlines(void);
 bool fb_alloc_shadow_buffer(void);
 void fb_raw_perf_screen_redraw(u32 color, bool use_fpu);
-void fb_set_font(psf2_header *h);
+void fb_set_font(void *font);

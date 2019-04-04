@@ -19,7 +19,6 @@ extern char _binary_font8x16_psf_start;
 extern char _binary_font16x32_psf_start;
 
 bool __use_framebuffer;
-psf2_header *fb_font_header;
 
 static bool use_optimized;
 static u32 fb_term_rows;
@@ -43,10 +42,9 @@ void fb_save_under_cursor_buf(void)
    if (!under_cursor_buf)
       return;
 
-   psf2_header *h = fb_font_header;
-   const u32 ix = cursor_col * h->width;
-   const u32 iy = fb_offset_y + cursor_row * h->height;
-   fb_copy_from_screen(ix, iy, h->width, h->height, under_cursor_buf);
+   const u32 ix = cursor_col * font_w;
+   const u32 iy = fb_offset_y + cursor_row * font_h;
+   fb_copy_from_screen(ix, iy, font_w, font_h, under_cursor_buf);
 }
 
 void fb_restore_under_cursor_buf(void)
@@ -54,10 +52,9 @@ void fb_restore_under_cursor_buf(void)
    if (!under_cursor_buf)
       return;
 
-   psf2_header *h = fb_font_header;
-   const u32 ix = cursor_col * h->width;
-   const u32 iy = fb_offset_y + cursor_row * h->height;
-   fb_copy_to_screen(ix, iy, h->width, h->height, under_cursor_buf);
+   const u32 ix = cursor_col * font_w;
+   const u32 iy = fb_offset_y + cursor_row * font_h;
+   fb_copy_to_screen(ix, iy, font_w, font_h, under_cursor_buf);
 }
 
 static void fb_reset_blink_timer(void)
@@ -73,10 +70,8 @@ static void fb_reset_blink_timer(void)
 
 void fb_set_char_at_failsafe(u16 row, u16 col, u16 entry)
 {
-   psf2_header *h = fb_font_header;
-
-   fb_draw_char_failsafe(col * h->width,
-                         fb_offset_y + row * h->height,
+   fb_draw_char_failsafe(col * font_w,
+                         fb_offset_y + row * font_h,
                          entry);
 
    if (row == cursor_row && col == cursor_col)
@@ -87,10 +82,8 @@ void fb_set_char_at_failsafe(u16 row, u16 col, u16 entry)
 
 void fb_set_char_at_optimized(u16 row, u16 col, u16 entry)
 {
-   psf2_header *h = fb_font_header;
-
-   fb_draw_char_optimized(col * h->width,
-                          fb_offset_y + row * h->height,
+   fb_draw_char_optimized(col * font_w,
+                          fb_offset_y + row * font_h,
                           entry);
 
    if (row == cursor_row && col == cursor_col)
@@ -101,9 +94,8 @@ void fb_set_char_at_optimized(u16 row, u16 col, u16 entry)
 
 void fb_clear_row(u16 row_num, u8 color)
 {
-   psf2_header *h = fb_font_header;
-   const u32 iy = fb_offset_y + row_num * h->height;
-   fb_raw_color_lines(iy, h->height, vga_rgb_colors[get_color_bg(color)]);
+   const u32 iy = fb_offset_y + row_num * font_h;
+   fb_raw_color_lines(iy, font_h, vga_rgb_colors[get_color_bg(color)]);
 
    if (cursor_row == row_num)
       fb_save_under_cursor_buf();
@@ -113,8 +105,6 @@ void fb_move_cursor(u16 row, u16 col, int cursor_vga_color)
 {
    if (!under_cursor_buf)
       return;
-
-   psf2_header *h = fb_font_header;
 
    fb_restore_under_cursor_buf();
 
@@ -132,8 +122,8 @@ void fb_move_cursor(u16 row, u16 col, int cursor_vga_color)
       fb_save_under_cursor_buf();
 
       if (cursor_visible) {
-         fb_draw_cursor_raw(cursor_col * h->width,
-                            fb_offset_y + cursor_row * h->height,
+         fb_draw_cursor_raw(cursor_col * font_w,
+                            fb_offset_y + cursor_row * font_h,
                             cursor_color);
 
          fb_reset_blink_timer();
@@ -177,9 +167,7 @@ static void fb_set_row_failsafe(u16 row, u16 *data, bool flush)
 
 static void fb_set_row_optimized(u16 row, u16 *data, bool flush)
 {
-   psf2_header *h = fb_font_header;
-
-   fb_draw_char_optimized_row(fb_offset_y + row * h->height,
+   fb_draw_char_optimized_row(fb_offset_y + row * font_h,
                               data,
                               fb_term_cols);
 
@@ -232,15 +220,13 @@ static void fb_blink_thread()
 
 static void fb_draw_string_at_raw(u32 x, u32 y, const char *str, u8 color)
 {
-   psf2_header *h = fb_font_header;
-
    if (use_optimized)
 
-      for (; *str; str++, x += h->width)
+      for (; *str; str++, x += font_w)
          fb_draw_char_optimized(x, y, make_vgaentry(*str, color));
    else
 
-      for (; *str; str++, x += h->width)
+      for (; *str; str++, x += font_w)
          fb_draw_char_failsafe(x, y, make_vgaentry(*str, color));
 }
 
@@ -249,8 +235,7 @@ static void fb_setup_banner(void)
    if (in_panic())
       return;
 
-   psf2_header *h = fb_font_header;
-   fb_offset_y = (20 * h->height)/10;
+   fb_offset_y = (20 * font_h) / 10;
 }
 
 static void fb_draw_banner(void)
@@ -282,12 +267,11 @@ static void fb_draw_banner(void)
       }
    }
 
-   psf2_header *h = fb_font_header;
    u32 llen, rlen, padding, i;
    datetime_t d;
    int rc;
 
-   ASSERT(fb_offset_y >= h->height);
+   ASSERT(fb_offset_y >= font_h);
 
    read_system_clock_datetime(&d);
 
@@ -316,9 +300,9 @@ static void fb_draw_banner(void)
 
    fb_raw_color_lines(0, fb_offset_y, 0 /* black */);
    fb_raw_color_lines(fb_offset_y - 4, 1, vga_rgb_colors[COLOR_BRIGHT_WHITE]);
-   fb_draw_string_at_raw(h->width/2, h->height/2, lbuf, COLOR_BRIGHT_YELLOW);
+   fb_draw_string_at_raw(font_w/2, font_h/2, lbuf, COLOR_BRIGHT_YELLOW);
 
-   u32 top_lines_used = fb_offset_y + h->height * fb_term_rows;
+   u32 top_lines_used = fb_offset_y + font_h * fb_term_rows;
 
    fb_raw_color_lines(top_lines_used,
                       fb_get_height() - top_lines_used,
@@ -338,16 +322,14 @@ static void fb_update_banner_kthread()
 
 static void fb_scroll_one_line_up(void)
 {
-   psf2_header *h = fb_font_header;
-
    bool enabled = cursor_enabled;
 
    if (enabled)
      fb_disable_cursor();
 
-   fb_lines_shift_up(fb_offset_y + h->height, /* source: row 1 (+ following) */
+   fb_lines_shift_up(fb_offset_y + font_h, /* source: row 1 (+ following) */
                      fb_offset_y,             /* destination: row 0 */
-                     fb_get_height() - fb_offset_y - h->height);
+                     fb_get_height() - fb_offset_y - font_h);
 
    if (enabled)
       fb_enable_cursor();
@@ -387,23 +369,21 @@ void init_framebuffer_console(void)
 
    cursor_color = vga_rgb_colors[COLOR_BRIGHT_WHITE];
 
-   psf2_header *h = fb_get_width() / 8 < 160
-                        ? (void *)&_binary_font8x16_psf_start
-                        : (void *)&_binary_font16x32_psf_start;
+   void *font = fb_get_width() / 8 < 160
+                  ? (void *)&_binary_font8x16_psf_start
+                  : (void *)&_binary_font16x32_psf_start;
 
-   fb_set_font(h);
-
-   ASSERT(h->magic == PSF2_FONT_MAGIC); // Support only PSF2
-   ASSERT(!(h->width % 8)); // Support only fonts with width = 8, 16, 24, 32, ..
+   fb_set_font(font);
+   ASSERT(!(font_w % 8)); // Support only fonts with width = 8, 16, 24, 32, ..
 
    fb_map_in_kernel_space();
    fb_setup_banner();
 
-   fb_term_rows = (fb_get_height() - fb_offset_y) / h->height;
-   fb_term_cols = fb_get_width() / h->width;
+   fb_term_rows = (fb_get_height() - fb_offset_y) / font_h;
+   fb_term_cols = fb_get_width() / font_w;
 
    if (!in_panic()) {
-      under_cursor_buf = kmalloc(sizeof(u32) * h->width * h->height);
+      under_cursor_buf = kmalloc(sizeof(u32) * font_w * font_h);
 
       if (!under_cursor_buf)
          printk("WARNING: fb_console: unable to allocate under_cursor_buf!\n");
@@ -420,7 +400,7 @@ void init_framebuffer_console(void)
    printk("[fb_console] screen resolution: %i x %i x %i bpp\n",
           fb_get_width(), fb_get_height(), fb_get_bpp());
    printk("[fb_console] font size: %i x %i, term size: %i x %i\n",
-          h->width, h->height, fb_term_cols, fb_term_rows);
+          font_w, font_h, fb_term_cols, fb_term_rows);
 
    fb_use_optimized_funcs_if_possible();
 

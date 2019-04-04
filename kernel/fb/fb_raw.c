@@ -49,8 +49,11 @@ static u32 fb_line_length;
 static uptr fb_vaddr;
 static u32 *fb_w8_char_scanlines;
 
-static u8 *font_glyph_data;
+u32 font_w;
+u32 font_h;
 static u32 font_width_bytes;
+static u32 font_bytes_per_glyph;
+static u8 *font_glyph_data;
 
 #define DARK_VAL    (168 /* vga */ + 0)
 #define BRIGHT_VAL  (252 /* vga */ + 0)
@@ -81,11 +84,27 @@ static void fb_init_colors(void)
    c[COLOR_BRIGHT_WHITE] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, BRIGHT_VAL);
 }
 
-void fb_set_font(psf2_header *h)
+void fb_set_font(void *font)
 {
-   fb_font_header = h;
+   struct psf2_header {
+      u32 magic;
+      u32 version;          /* zero */
+      u32 header_size;
+      u32 flags;            /* 0 if there's no unicode table */
+      u32 glyphs_count;
+      u32 bytes_per_glyph;
+      u32 height;           /* height in pixels */
+      u32 width;            /* width in pixels */
+   };
+
+   struct psf2_header *h = font;
+   ASSERT(h->magic == PSF2_FONT_MAGIC); // Support only PSF2
+
+   font_w = h->width;
+   font_h = h->height;
+   font_width_bytes = h->bytes_per_glyph / font_h;
    font_glyph_data = (u8 *)h + h->header_size;
-   font_width_bytes = h->bytes_per_glyph / h->height;
+   font_bytes_per_glyph = h->bytes_per_glyph;
 }
 
 void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
@@ -230,17 +249,15 @@ void fb_raw_perf_screen_redraw(u32 color, bool use_fpu)
 
 void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
 {
-   psf2_header *h = fb_font_header;
-
    if (LIKELY(fb_bpp == 32)) {
 
       ix <<= 2;
 
-      for (u32 y = iy; y < (iy + h->height); y++) {
+      for (u32 y = iy; y < (iy + font_h); y++) {
 
          memset32((u32 *)(fb_vaddr + (fb_pitch * y) + ix),
                   color,
-                  h->width);
+                  font_w);
       }
 
    } else {
@@ -250,8 +267,8 @@ void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
        * NOTE: Optimizing for bbp != 32 is completely out of Tilck's goals.
        */
 
-      for (u32 y = iy; y < (iy + h->height); y++)
-         for (u32 x = ix; x < (ix + h->width); x++)
+      for (u32 y = iy; y < (iy + font_h); y++)
+         for (u32 x = ix; x < (ix + font_w); x++)
             fb_draw_pixel(x, y, color);
    }
 }
@@ -308,20 +325,18 @@ void debug_dump_glyph(u32 n)
 {
    static const char fgbg[2] = {'-', '#'};
 
-   psf2_header *h = fb_font_header;
-
-   if (!h) {
-      printk("debug_dump_glyph: fb_font_header == 0: are we in text mode?\n");
+   if (!font_glyph_data) {
+      printk("debug_dump_glyph: font_glyph_data == 0: are we in text mode?\n");
       return;
    }
 
    // ASSUMPTION: width is divisible by 8
-   const u32 width_bytes = h->width >> 3;
-   u8 *data = (u8 *)h + h->header_size + h->bytes_per_glyph * n;
+   const u32 width_bytes = font_w >> 3;
+   u8 *data = font_glyph_data + font_bytes_per_glyph * n;
 
    printk(NO_PREFIX "\nGlyph #%u:\n\n", n);
 
-   for (u32 row = 0; row < h->height; row++) {
+   for (u32 row = 0; row < font_h; row++) {
       for (u32 b = 0; b < width_bytes; b++) {
 
          u8 sl = data[b + width_bytes * row];
@@ -341,17 +356,13 @@ void debug_dump_glyph(u32 n)
 
 void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 {
-   psf2_header *h = fb_font_header;
-
    const u8 c = vgaentry_get_char(e);
-   ASSERT(c < h->glyphs_count);
-
    const u32 fg = vga_rgb_colors[vgaentry_get_fg(e)];
    const u32 bg = vga_rgb_colors[vgaentry_get_bg(e)];
 
-   u8 *data = font_glyph_data + h->bytes_per_glyph * c;
+   u8 *data = font_glyph_data + font_bytes_per_glyph * c;
 
-   for (u32 row = 0; row < h->height; row++, data += font_width_bytes) {
+   for (u32 row = 0; row < font_h; row++, data += font_width_bytes) {
       for (u32 b = 0; b < font_width_bytes; b++) {
          for (u32 bit = 0; bit < 8; bit++)
             fb_draw_pixel(x + (b << 3) + 8 - bit - 1,
@@ -406,18 +417,16 @@ bool fb_pre_render_char_scanlines(void)
 
 void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 {
-   psf2_header *h = fb_font_header;
-
    const u8 c = vgaentry_get_char(e);
-   const u32 width_bytes = h->width >> 3;
+   const u32 width_bytes = font_w >> 3;
 
-   ASSUME_WITHOUT_CHECK(!(h->width % 8));
+   ASSUME_WITHOUT_CHECK(!(font_w % 8));
    ASSUME_WITHOUT_CHECK(width_bytes == 1 || width_bytes == 2);
-   ASSUME_WITHOUT_CHECK(h->height == 16 || h->height == 32);
-   ASSUME_WITHOUT_CHECK(h->bytes_per_glyph == 16 || h->bytes_per_glyph == 64);
+   ASSUME_WITHOUT_CHECK(font_h == 16 || font_h == 32);
+   ASSUME_WITHOUT_CHECK(font_bytes_per_glyph==16 || font_bytes_per_glyph==64);
 
    void *vaddr = (void *)fb_vaddr + (fb_pitch * y) + (x << 2);
-   u8 *d = (u8 *)h + h->header_size + h->bytes_per_glyph * c;
+   u8 *d = font_glyph_data + font_bytes_per_glyph * c;
    const u32 c_off = (u32)(
       (vgaentry_get_fg(e) << 15) + (vgaentry_get_bg(e) << 11)
    );
@@ -425,14 +434,14 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 
    if (width_bytes == 1)
 
-      for (u32 r = 0; r < h->height; r++, d++, vaddr += fb_pitch)
+      for (u32 r = 0; r < font_h; r++, d++, vaddr += fb_pitch)
          memcpy32(vaddr, &scanlines[*d << 3], SL_SIZE);
 
    else
 
       // width_bytes == 2
 
-      for (u32 r = 0; r < h->height; r++, d+=2, vaddr += fb_pitch) {
+      for (u32 r = 0; r < font_h; r++, d+=2, vaddr += fb_pitch) {
          memcpy32(vaddr, &scanlines[d[0] << 3], SL_SIZE);
          memcpy32(vaddr + 32, &scanlines[d[1] << 3], SL_SIZE);
       }
@@ -440,20 +449,18 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 
 void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count)
 {
-   const psf2_header *h = fb_font_header;
-   const u8 *data_base = (u8 *)h + h->header_size;
    const uptr vaddr_base = fb_vaddr + (fb_pitch * y);
 
    // ASSUMPTION: SL_SIZE is 8
-   const u32 width_bytes = h->width >> 3;
+   const u32 width_bytes = font_w >> 3;
 
-   ASSUME_WITHOUT_CHECK(!(h->width % 8));
+   ASSUME_WITHOUT_CHECK(!(font_w % 8));
    ASSUME_WITHOUT_CHECK(width_bytes == 1 || width_bytes == 2);
-   ASSUME_WITHOUT_CHECK(h->height == 16 || h->height == 32);
-   ASSUME_WITHOUT_CHECK(h->bytes_per_glyph == 16 || h->bytes_per_glyph == 64);
+   ASSUME_WITHOUT_CHECK(font_h == 16 || font_h == 32);
+   ASSUME_WITHOUT_CHECK(font_bytes_per_glyph==16 || font_bytes_per_glyph==64);
 
-   const u32 w4_shift = h->width == 8 ? 2 + 3 : 2 + 4;
-   const u32 bpg_shift = h->bytes_per_glyph == 16 ? 4 : 6;
+   const u32 w4_shift = font_w == 8 ? 2 + 3 : 2 + 4;
+   const u32 bpg_shift = font_bytes_per_glyph == 16 ? 4 : 6;
 
    for (u32 ei = 0; ei < count; ei++) {
 
@@ -462,19 +469,19 @@ void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count)
          (vgaentry_get_fg(e) << 15) + (vgaentry_get_bg(e) << 11)
       );
       void *vaddr = (void *)vaddr_base + (ei << w4_shift);
-      const u8 *d = &data_base[vgaentry_get_char(e) << bpg_shift];
+      const u8 *d = &font_glyph_data[vgaentry_get_char(e) << bpg_shift];
       u32 *scanlines = &fb_w8_char_scanlines[c_off];
 
       if (width_bytes == 1)
 
-         for (u32 r = 0; r < h->height; r++, d++, vaddr += fb_pitch)
+         for (u32 r = 0; r < font_h; r++, d++, vaddr += fb_pitch)
             fpu_cpy_single_256_nt(vaddr, &scanlines[*d << 3]);
 
       else
 
          // width_bytes == 2
 
-         for (u32 r = 0; r < h->height; r++, d+=2, vaddr += fb_pitch) {
+         for (u32 r = 0; r < font_h; r++, d+=2, vaddr += fb_pitch) {
             fpu_cpy_single_256_nt(vaddr, &scanlines[d[0] << 3]);
             fpu_cpy_single_256_nt(vaddr + 32, &scanlines[d[1] << 3]);
          }
