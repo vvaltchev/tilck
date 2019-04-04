@@ -385,18 +385,54 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 
    if (LIKELY(font_width_bytes == 1))
 
-      for (u32 row = y; row < (y+font_h); row++, data += font_width_bytes)
-         for (u32 bit = 0; bit < 8; bit++)
-            fb_draw_pixel(x + 8 - bit - 1, row, arr[!(data[0] & (1 << bit))]);
+      for (u32 row = y; row < (y + font_h); row++, data += font_width_bytes) {
+         fb_draw_pixel(x + 8 - 0 - 1, row, arr[!(data[0] & (1 << 0))]);
+         fb_draw_pixel(x + 8 - 1 - 1, row, arr[!(data[0] & (1 << 1))]);
+         fb_draw_pixel(x + 8 - 2 - 1, row, arr[!(data[0] & (1 << 2))]);
+         fb_draw_pixel(x + 8 - 3 - 1, row, arr[!(data[0] & (1 << 3))]);
+         fb_draw_pixel(x + 8 - 4 - 1, row, arr[!(data[0] & (1 << 4))]);
+         fb_draw_pixel(x + 8 - 5 - 1, row, arr[!(data[0] & (1 << 5))]);
+         fb_draw_pixel(x + 8 - 6 - 1, row, arr[!(data[0] & (1 << 6))]);
+         fb_draw_pixel(x + 8 - 7 - 1, row, arr[!(data[0] & (1 << 7))]);
+      }
+
+   else if (font_width_bytes == 2)
+
+      for (u32 row = y; row < (y + font_h); row++, data += font_width_bytes) {
+
+         fb_draw_pixel(x + 8 - 0 - 1, row, arr[!(data[0] & (1 << 0))]);
+         fb_draw_pixel(x + 8 - 1 - 1, row, arr[!(data[0] & (1 << 1))]);
+         fb_draw_pixel(x + 8 - 2 - 1, row, arr[!(data[0] & (1 << 2))]);
+         fb_draw_pixel(x + 8 - 3 - 1, row, arr[!(data[0] & (1 << 3))]);
+         fb_draw_pixel(x + 8 - 4 - 1, row, arr[!(data[0] & (1 << 4))]);
+         fb_draw_pixel(x + 8 - 5 - 1, row, arr[!(data[0] & (1 << 5))]);
+         fb_draw_pixel(x + 8 - 6 - 1, row, arr[!(data[0] & (1 << 6))]);
+         fb_draw_pixel(x + 8 - 7 - 1, row, arr[!(data[0] & (1 << 7))]);
+
+         fb_draw_pixel(x + 8 + 8 - 0 - 1, row, arr[!(data[1] & (1 << 0))]);
+         fb_draw_pixel(x + 8 + 8 - 1 - 1, row, arr[!(data[1] & (1 << 1))]);
+         fb_draw_pixel(x + 8 + 8 - 2 - 1, row, arr[!(data[1] & (1 << 2))]);
+         fb_draw_pixel(x + 8 + 8 - 3 - 1, row, arr[!(data[1] & (1 << 3))]);
+         fb_draw_pixel(x + 8 + 8 - 4 - 1, row, arr[!(data[1] & (1 << 4))]);
+         fb_draw_pixel(x + 8 + 8 - 5 - 1, row, arr[!(data[1] & (1 << 5))]);
+         fb_draw_pixel(x + 8 + 8 - 6 - 1, row, arr[!(data[1] & (1 << 6))]);
+         fb_draw_pixel(x + 8 + 8 - 7 - 1, row, arr[!(data[1] & (1 << 7))]);
+      }
 
    else
 
-      for (u32 row = y; row < (y+font_h); row++, data += font_width_bytes)
-         for (u32 b = 0; b < font_width_bytes; b++)
-            for (u32 bit = 0; bit < 8; bit++)
-               fb_draw_pixel(x + (b << 3) + 8 - bit - 1,
-                             row,
-                             arr[!(data[b] & (1 << bit))]);
+      for (u32 row = y; row < (y + font_h); row++, data += font_width_bytes)
+
+         for (u32 b = 0; b < font_width_bytes; b++) {
+            fb_draw_pixel(x + (b << 3) + 7, row, arr[!(data[b] & (1 << 0))]);
+            fb_draw_pixel(x + (b << 3) + 6, row, arr[!(data[b] & (1 << 1))]);
+            fb_draw_pixel(x + (b << 3) + 5, row, arr[!(data[b] & (1 << 2))]);
+            fb_draw_pixel(x + (b << 3) + 4, row, arr[!(data[b] & (1 << 3))]);
+            fb_draw_pixel(x + (b << 3) + 3, row, arr[!(data[b] & (1 << 4))]);
+            fb_draw_pixel(x + (b << 3) + 2, row, arr[!(data[b] & (1 << 5))]);
+            fb_draw_pixel(x + (b << 3) + 1, row, arr[!(data[b] & (1 << 6))]);
+            fb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]);
+         }
 }
 
 
