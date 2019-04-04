@@ -336,8 +336,8 @@ static void fb_scroll_one_line_up(void)
    if (enabled)
      fb_disable_cursor();
 
-   fb_lines_shift_up(fb_offset_y + font_h, /* source: row 1 (+ following) */
-                     fb_offset_y,             /* destination: row 0 */
+   fb_lines_shift_up(fb_offset_y + font_h,  /* source: row 1 (+ following) */
+                     fb_offset_y,           /* destination: row 0 */
                      fb_get_height() - fb_offset_y - font_h);
 
    if (enabled)
@@ -352,6 +352,13 @@ static void fb_use_optimized_funcs_if_possible(void)
    if (in_panic())
       return;
 
+   if (font_w % 8) {
+      printk("[fb_console] WARNING: using slower code for font %d x %d\n",
+             font_w, font_h);
+      printk("[fb_console] switch to a font having width = 8, 16, 24, ...\n");
+      return;
+   }
+
    if (fb_get_bpp() != 32) {
       printk("[fb_console] WARNING: using slower code for bpp = %d\n",
              fb_get_bpp());
@@ -360,12 +367,11 @@ static void fb_use_optimized_funcs_if_possible(void)
    }
 
    if (!fb_pre_render_char_scanlines()) {
-      printk("WARNING: fb_pre_render_char_scanlines failed.\n");
+      printk("[fb_console] WARNING: fb_pre_render_char_scanlines failed.\n");
       return;
    }
 
    use_optimized = true;
-
    framebuffer_vi.set_char_at = fb_set_char_at_optimized;
    framebuffer_vi.set_row = fb_set_row_optimized;
    printk("[fb_console] Use optimized functions\n");
@@ -383,8 +389,6 @@ void init_framebuffer_console(void)
                   : (void *)&_binary_font16x32_psf_start;
 
    fb_set_font(font);
-   ASSERT(!(font_w % 8)); // Support only fonts with width = 8, 16, 24, 32, ..
-
    fb_map_in_kernel_space();
    fb_setup_banner();
 
