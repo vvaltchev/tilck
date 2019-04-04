@@ -118,10 +118,6 @@ if [[ "$1" != "--acc" ]]; then
 fi
 
 $LCOV -d . --capture --gcov-tool "$GCOV" -o lcov.info
-
-# Hack used to identify negative counters (convert them to a magic number)
-sed -E -i 's/,-(.+)/,123456789/g' lcov.info
-
 $LCOV --remove lcov.info '@TCROOT@/*' '/usr/include/*' -o lcov.info
 
 if [[ "$1" == "--acc" && -f coverage.info ]]; then
