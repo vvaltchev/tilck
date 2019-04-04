@@ -61,6 +61,12 @@ static u8 *font_glyph_data;
 u32 vga_rgb_colors[16];
 extern inline u32 fb_make_color(u32 r, u32 g, u32 b);
 
+u32 fb_get_res_x(void) { return fb_width; }
+u32 fb_get_res_y(void) { return fb_height; }
+u32 fb_get_bbp(void) { return fb_bpp; }
+u32 fb_get_font_w(void) { return font_w; }
+u32 fb_get_font_h(void) { return font_h; }
+
 
 static void fb_init_colors(void)
 {

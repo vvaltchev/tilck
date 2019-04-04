@@ -388,6 +388,11 @@ static void fb_use_optimized_funcs_if_possible(void)
              "async_pre_render_scanlines\n");
 }
 
+bool fb_is_using_opt_funcs(void)
+{
+   return use_optimized;
+}
+
 void init_framebuffer_console(void)
 {
    ASSERT(use_framebuffer());
