@@ -381,14 +381,13 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
    const u32 bg = vga_rgb_colors[vgaentry_get_bg(e)];
 
    u8 *data = font_glyph_data + font_bytes_per_glyph * c;
+   u32 arr[] = { fg, bg };
 
    if (LIKELY(font_width_bytes == 1))
 
       for (u32 row = y; row < (y+font_h); row++, data += font_width_bytes)
          for (u32 bit = 0; bit < 8; bit++)
-            fb_draw_pixel(x + 8 - bit - 1,
-                          row,
-                          (data[0] & (1 << bit)) ? fg : bg);
+            fb_draw_pixel(x + 8 - bit - 1, row, arr[!(data[0] & (1 << bit))]);
 
    else
 
@@ -397,7 +396,7 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
             for (u32 bit = 0; bit < 8; bit++)
                fb_draw_pixel(x + (b << 3) + 8 - bit - 1,
                              row,
-                             (data[b] & (1 << bit)) ? fg : bg);
+                             arr[!(data[b] & (1 << bit))]);
 }
 
 
