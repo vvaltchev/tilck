@@ -30,20 +30,22 @@ the following two questions:
 > 2) How fast a given syscall / kernel subsystem can get if we get rid of its most
 > complex features?
 
-While as per today `Tilck` is still far from being able to provide some answers to the
-first question, some progress has been made with the second one: as shown in this [article],
-thanks to several simplifications, `Tilck`'s console is faster than the Linux one.
+While as per today `Tilck` is still far from being able to provide some answers
+to the first question, some progress has been made with the second one: as shown
+in this [article], thanks to several simplifications, `Tilck`'s console is
+faster than the Linux one.
 
 What Tilck is NOT ?
 ----------------------------------------
 
-An attempt to re-write and/or replace the Linux kernel. Tilck is a completely different
-kernel that has a *partial* compatibility with Linux just in order to take advantage of
-the programs (and toolchains) already written for it. But, having a fair amount of Linux
-programs working on it is just a starting point. After that, Tilck will evolve in a
-different way and it will have its own unique set of features. Tilck is fundamentally
-different from Linux in its design and its trade-offs as it **does not** aim to target
-multi-user server or desktop-class machines.
+An attempt to re-write and/or replace the Linux kernel. Tilck is a completely
+different kernel that has a *partial* compatibility with Linux just in order to
+take advantage of the programs (and toolchains) already written for it. But,
+having a fair amount of Linux programs working on it is just a starting point.
+After that, Tilck will evolve in a different way and it will have its own unique
+set of features. Tilck is fundamentally different from Linux in its design and
+its trade-offs as it **does not** aim to target multi-user server or
+desktop-class machines.
 
 [article]: https://github.com/vvaltchev/tilck/wiki/Getting-performance-through-simplification:-Tilck's-console
 
@@ -207,15 +209,15 @@ way: it really cares about the **user experience** (where "user" means
 complex to build and configure; it's not a project requiring 200 things to be
 installed on the host machine. Building such projects may require hours or even
 days of effort (think about special configurations e.g. cross builds). Tilck
-instead, is supposed to be trivial to build and test even for students who barely
-can use Linux (actually it can even be built and run on QEMU w/o KVM on
+instead, has been designed to be trivial to build and test even for students who
+can barely use Linux (actually it can even be built and run on QEMU w/o KVM on
 Microsoft's WSL, aka "Bash for Windows"). It has a sophisticated script for
-building its own toolchain that works for the major Linux distros and a powerful
-CMake based build system. After building Tilck, a full image will be produced,
-ready to be tested with QEMU or written on a USB stick. (To some degree, it's
-like what the `buildroot` project does for Linux.) Of course, the project
-includes also scripts for running Tilck in QEMU with various configurations (bios
-boot (default), efi, direct multiboot with QEMU, etc.).
+building its own toolchain that works for the major Linux distributions and a
+powerful CMake-based build system. The build of Tilck, produce an image ready to
+be tested with QEMU or written on a USB stick. (To some degree, it's like what
+the `buildroot` project does for Linux.) Of course, the project includes also
+scripts for running Tilck in QEMU with various configurations (bios boot, efi
+boot, direct (multi)boot with QEMU's -kernel option, etc.).
 
 #### Tests
 Tilck has **unit tests**, **system tests** and **self tests** all in the same
@@ -229,13 +231,13 @@ coverage is another nice perk.
 #### Motivation
 The reason for having the above mentioned features is to offer its users and
 potential contributors a really **nice** experience, avoiding any kind of
-frustration. Hopefully, even the most experienced build engineers will enjoy a
-zero-effort experience. But it's not all about reducing the frustration. It's
-also about not scaring students and junior developers who might be just curious
-to see what this project is all about and maybe eager to write a simple program
-for it and/or add a couple of printk()'s here and there in their fork.
-Hopefully, some of those people "just playing" with Tilck might actually want to
-contribute to its development.
+frustration. Hopefully, even the most experienced engineers will enjoy a zero
+effort experience. But it's not all about reducing the frustration. It's also
+about _not scaring_ students and junior developers who might be just curious to
+see what this project is all about and maybe eager to write a simple program for
+it and/or add a couple of printk()'s here and there in their fork. Hopefully,
+some of those people "just playing" with Tilck might actually want to contribute
+to its development.
 
 In conclusion, even if some parts of the project itself might be pretty complex,
 at least building and running its test **must be** something anyone can do.
@@ -341,3 +343,13 @@ it will be used only as an initial read-only ramdisk. The main filesystem will b
 custom ramfs, while the FAT32 ramdisk will remain mounted (likely) under /boot. The
 #1 reason for using FAT32 was that it is required for booting using UEFI. Therefore,
 it was convienent to store there also all the rest of the files.
+
+#### Why using 3 spaces as (soft) tab size?
+
+Long story. It all started after using that coding style for 5 years at VMware.
+Initially, it looked pretty weird to me, but at some point I felt in love with
+the way my code looked with soft tabs of length=3. I got convinced that 2 spaces
+are just not enough, while 4 spaces are somehow "too much". Therefore, when I
+started the project in 2016, I decided to stick with tab size I liked more, even
+if I totally agree that using 4 spaces would have been better for most of the
+people.
