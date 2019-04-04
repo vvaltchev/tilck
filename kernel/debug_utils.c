@@ -25,7 +25,7 @@ volatile bool __in_panic;
 #define DUMP_INT_OPT(opt)  printk(NO_PREFIX "%-35s: %d\n", #opt, opt)
 #define DUMP_BOOL_OPT(opt) printk(NO_PREFIX "%-35s: %u\n", #opt, opt)
 
-void debug_show_build_opts(void)
+void debug_show_opts(void)
 {
    printk(NO_PREFIX "\n");
    printk(NO_PREFIX "------------------- BUILD OPTIONS ------------------\n");
@@ -272,7 +272,7 @@ static int debug_f_key_press_handler(u32 key, u8 c)
    switch (key) {
 
       case KEY_F1:
-         debug_show_build_opts();
+         debug_show_opts();
          return KB_HANDLER_OK_AND_STOP;
 
       case KEY_F2:
