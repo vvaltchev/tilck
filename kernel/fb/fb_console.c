@@ -344,6 +344,23 @@ static void fb_scroll_one_line_up(void)
       fb_enable_cursor();
 }
 
+static void async_pre_render_scanlines()
+{
+   if (!fb_pre_render_char_scanlines()) {
+      printk("[fb_console] WARNING: fb_pre_render_char_scanlines failed.\n");
+      return;
+   }
+
+   uptr var;
+   disable_interrupts(&var);
+   {
+      use_optimized = true;
+      framebuffer_vi.set_char_at = fb_set_char_at_optimized;
+      framebuffer_vi.set_row = fb_set_row_optimized;
+   }
+   enable_interrupts(&var);
+}
+
 static void fb_use_optimized_funcs_if_possible(void)
 {
    if (in_hypervisor())
@@ -366,15 +383,9 @@ static void fb_use_optimized_funcs_if_possible(void)
       return;
    }
 
-   if (!fb_pre_render_char_scanlines()) {
-      printk("[fb_console] WARNING: fb_pre_render_char_scanlines failed.\n");
-      return;
-   }
-
-   use_optimized = true;
-   framebuffer_vi.set_char_at = fb_set_char_at_optimized;
-   framebuffer_vi.set_row = fb_set_row_optimized;
-   printk("[fb_console] Use optimized functions\n");
+   if (kthread_create(async_pre_render_scanlines, NULL) < 0)
+      printk("[fb_console] WARNING: unable to create a kthread for "
+             "async_pre_render_scanlines\n");
 }
 
 void init_framebuffer_console(void)
