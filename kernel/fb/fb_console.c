@@ -42,6 +42,9 @@ void fb_save_under_cursor_buf(void)
    if (!under_cursor_buf)
       return;
 
+   if (cursor_row >= fb_term_rows || cursor_col >= fb_term_cols)
+      return;
+
    const u32 ix = cursor_col * font_w;
    const u32 iy = fb_offset_y + cursor_row * font_h;
    fb_copy_from_screen(ix, iy, font_w, font_h, under_cursor_buf);
@@ -50,6 +53,9 @@ void fb_save_under_cursor_buf(void)
 void fb_restore_under_cursor_buf(void)
 {
    if (!under_cursor_buf)
+      return;
+
+   if (cursor_row >= fb_term_rows || cursor_col >= fb_term_cols)
       return;
 
    const u32 ix = cursor_col * font_w;
@@ -117,17 +123,20 @@ void fb_move_cursor(u16 row, u16 col, int cursor_vga_color)
    if (cursor_vga_color >= 0)
       cursor_color = vga_rgb_colors[cursor_vga_color];
 
-   if (cursor_enabled) {
+   if (!cursor_enabled)
+      return;
 
-      fb_save_under_cursor_buf();
+   fb_save_under_cursor_buf();
 
-      if (cursor_visible) {
+   if (cursor_visible) {
+
+      if (cursor_row < fb_term_rows && cursor_col < fb_term_cols) {
          fb_draw_cursor_raw(cursor_col * font_w,
                             fb_offset_y + cursor_row * font_h,
                             cursor_color);
-
-         fb_reset_blink_timer();
       }
+
+      fb_reset_blink_timer();
    }
 }
 
