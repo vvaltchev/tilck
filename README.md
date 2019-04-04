@@ -198,35 +198,49 @@ You can run kernel's system tests this way:
 **NOTE**: in order the script to work, you need to have `python` 2.7.x
 installed as `/usr/bin/python`.
 
-One cool thing about Tilck
---------------------------------
+A comment about user experience
+----------------------------------
 
-Tilck particularly distinguishes itself from many low-level open source
-projects in one way: it really cares about the **user experience** (where "user"
-means "developer"). It's not the typical super-cool low-level project that's
-insanely complex to build; it's not a project requiring 200 things to be
+Tilck particularly distinguishes itself from many open source projects in one
+way: it really cares about the **user experience** (where "user" means
+"developer"). It's not the typical super-cool low-level project that's insanely
+complex to build and configure; it's not a project requiring 200 things to be
 installed on the host machine. Building such projects may require hours or even
 days of effort (think about special configurations e.g. cross builds). Tilck
-instead, is supposed to be trivial to build and test even for first-year CS
-students who barely can use Linux. It has a sophisticated script for building
-its own toolchain that works for the major Linux distros and a powerful CMake
-based build system. After building Tilck, a full image will be produced, ready
-to be tested with QEMU or written on a USB stick. To some degree, it's like what
-the `buildroot` project does for Linux.
+instead, is supposed to be trivial to build and test even for students who barely
+can use Linux (actually it can even be built and run on QEMU w/o KVM on
+Microsoft's WSL, aka "Bash for Windows"). It has a sophisticated script for
+building its own toolchain that works for the major Linux distros and a powerful
+CMake based build system. After building Tilck, a full image will be produced,
+ready to be tested with QEMU or written on a USB stick. (To some degree, it's
+like what the `buildroot` project does for Linux.) Of course, the project
+includes also scripts for running Tilck in QEMU with various configurations (bios
+boot (default), efi, direct multiboot with QEMU, etc.).
 
-Also, Tilck has **unit tests**, **system tests** and **self tests** all in the
-same repository, completely integrated with its build system. In addition, Tilck
-has full code coverage support with useful scripts for generating HTML reports
-with `LCOV`. Finally, it is fully integrated with `CircleCI`, which validates
-each branch with builds and test runs in a variety of configurations. The
-integration with `CodeCov` for checking online the coverage is another perk.
+#### Tests
+Tilck has **unit tests**, **system tests** and **self tests** all in the same
+repository, completely integrated with its build system. In addition, there's
+full code coverage support and useful scripts for generating HTML reports
+(see the [coverage] guide). Finally, Tilck is fully integrated with `CircleCI`,
+which validates each branch with builds and test runs in a variety
+of configurations. The integration with `CodeCov` for checking online the
+coverage is another nice perk.
 
+#### Motivation
 The reason for having the above mentioned features is to offer its users and
 potential contributors a really **nice** experience, avoiding any kind of
 frustration. Hopefully, even the most experienced build engineers will enjoy a
-zero-effort experience. Even if some parts of the project itself might be
-pretty complex, at least building and running it **must be** something anyone
-can do.
+zero-effort experience. But it's not all about reducing the frustration. It's
+also about not scaring students and junior developers who might be just curious
+to see what this project is all about and maybe eager to write a simple program
+for it and/or add a couple of printk()'s here and there in their fork.
+Hopefully, some of those people "just playing" with Tilck might actually want to
+contribute to its development.
+
+In conclusion, even if some parts of the project itself might be pretty complex,
+at least building and running its test **must be** something anyone can do.
+
+[coverage]: docs/coverage.md
 
 FAQ (by vvaltchev)
 ---------------------
