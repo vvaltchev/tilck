@@ -202,7 +202,22 @@ function build_libmusl {
       local opts4="--syslibdir=$TC/musl/install/lib"
 
       run_command2 "./configure $opts1 $opts2 $opts3 $opts4" configure.log
+
+      # Disable exit on any error because parallel builds of libmusl sometimes
+      # fail. Therefore, just run a sequential build in case of a failure.
+      set +e
+
       run_command2 "make -j" build.log
+
+      if [[ $? != 0 ]]; then
+
+         # The build parallel failed: re-enable exit on any error and run a
+         # regular (sequential) build.
+         set -e
+         run_command2 "make" build.log
+      fi
+
+      set -e # re-enable exit on any error
       run_command2 "make install" make_install.log
 
       cd $TC/musl/install/bin
