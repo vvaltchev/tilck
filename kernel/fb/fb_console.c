@@ -37,7 +37,7 @@ static u32 cursor_color;
 
 static video_interface framebuffer_vi;
 
-void fb_save_under_cursor_buf(void)
+static void fb_save_under_cursor_buf(void)
 {
    if (!under_cursor_buf)
       return;
@@ -50,7 +50,7 @@ void fb_save_under_cursor_buf(void)
    fb_copy_from_screen(ix, iy, font_w, font_h, under_cursor_buf);
 }
 
-void fb_restore_under_cursor_buf(void)
+static void fb_restore_under_cursor_buf(void)
 {
    if (!under_cursor_buf)
       return;
@@ -74,7 +74,7 @@ static void fb_reset_blink_timer(void)
 
 /* video_interface */
 
-void fb_set_char_at_failsafe(u16 row, u16 col, u16 entry)
+static void fb_set_char_at_failsafe(u16 row, u16 col, u16 entry)
 {
    fb_draw_char_failsafe(col * font_w,
                          fb_offset_y + row * font_h,
@@ -86,7 +86,7 @@ void fb_set_char_at_failsafe(u16 row, u16 col, u16 entry)
    fb_reset_blink_timer();
 }
 
-void fb_set_char_at_optimized(u16 row, u16 col, u16 entry)
+static void fb_set_char_at_optimized(u16 row, u16 col, u16 entry)
 {
    fb_draw_char_optimized(col * font_w,
                           fb_offset_y + row * font_h,
@@ -98,7 +98,7 @@ void fb_set_char_at_optimized(u16 row, u16 col, u16 entry)
    fb_reset_blink_timer();
 }
 
-void fb_clear_row(u16 row_num, u8 color)
+static void fb_clear_row(u16 row_num, u8 color)
 {
    const u32 iy = fb_offset_y + row_num * font_h;
    fb_raw_color_lines(iy, font_h, vga_rgb_colors[get_color_bg(color)]);
@@ -107,7 +107,7 @@ void fb_clear_row(u16 row_num, u8 color)
       fb_save_under_cursor_buf();
 }
 
-void fb_move_cursor(u16 row, u16 col, int cursor_vga_color)
+static void fb_move_cursor(u16 row, u16 col, int cursor_vga_color)
 {
    if (!under_cursor_buf)
       return;
@@ -140,7 +140,7 @@ void fb_move_cursor(u16 row, u16 col, int cursor_vga_color)
    }
 }
 
-void fb_enable_cursor(void)
+static void fb_enable_cursor(void)
 {
    if (cursor_enabled)
       return;
@@ -157,7 +157,7 @@ void fb_enable_cursor(void)
    fb_move_cursor(cursor_row, cursor_col, -1);
 }
 
-void fb_disable_cursor(void)
+static void fb_disable_cursor(void)
 {
    if (!cursor_enabled)
       return;
