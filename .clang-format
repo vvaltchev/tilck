@@ -1,0 +1,137 @@
+# -----------------------------------------------------------------------------
+# IMPORTANT NOTE: this clang-format YML config file does NOT define precisely
+# Tilck's coding style, but makes the tool to format any C file using a coding
+# style as close as possible to the one used in Tilck's source. Maybe one day
+# the tool will be powerful enough to support every style. In the meanwhile,
+# the rules in this file can be used as a rough guideline.
+#
+# One of the fundamental differences between Tilck's coding style and the best
+# clang-format can offer is that in reality much more exceptions (and penalties)
+# exist. For example, while its good to have space around binary operators like
+# '+', '-', '*', ',' etc., it makes sense to strip that space when that can
+# avoid a statement to be broken in two lines. Clang-format does not allow such
+# exceptions. Probably the solution here would be to do some renaming and use
+# shorter identifiers. But it's super-hard to choose good and very short names
+# sometimes. Also, as far as I've observed, clang-format cannot align bitfield
+# definitions in structs. In addition to that, clang-format does not understand
+# the use of one-line { ... } entries in macros: it expands them to multiple
+# lines. It's all about minor things, but it's extremely irritating when after
+# the format, the code looks worse then before.
+# -----------------------------------------------------------------------------
+
+---
+Language:        Cpp
+AccessModifierOffset: -1
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Right
+AlignOperands:   true
+AlignTrailingComments: true
+AllowAllArgumentsOnNextLine: false
+AllowAllConstructorInitializersOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: true
+BinPackParameters: true
+BraceWrapping:
+  AfterClass:      false
+  AfterControlStatement: false
+  AfterEnum:       false
+  AfterFunction:   true
+  AfterNamespace:  false
+  AfterObjCDeclaration: false
+  AfterStruct:     false
+  AfterUnion:      false
+  AfterExternBlock: false
+  BeforeCatch:     false
+  BeforeElse:      false
+  IndentBraces:    false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+BreakBeforeBinaryOperators: None
+BreakBeforeBraces: Custom
+BreakBeforeInheritanceComma: false
+BreakInheritanceList: BeforeColon
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializersBeforeComma: false
+BreakConstructorInitializers: BeforeComma
+BreakAfterJavaFieldAnnotations: false
+BreakStringLiterals: true
+ColumnLimit:     80
+CommentPragmas:  '^ IWYU pragma:'
+CompactNamespaces: false
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 3
+ContinuationIndentWidth: 3
+Cpp11BracedListStyle: false
+DerivePointerAlignment: false
+DisableFormat:   false
+ExperimentalAutoDetectBinPacking: true
+FixNamespaceComments: true
+ForEachMacros:
+  - list_for_each
+  - list_for_each_ro
+  - list_for_each_reverse
+IncludeBlocks:   Preserve
+IncludeCategories:
+  - Regex:           '.*'
+    Priority:        1
+IncludeIsMainRegex: ''
+IndentCaseLabels: true
+IndentPPDirectives: BeforeHash
+IndentWidth:     3
+IndentWrappedFunctionNames: false
+JavaScriptQuotes: Leave
+JavaScriptWrapImports: true
+KeepEmptyLinesAtTheStartOfBlocks: true
+MacroBlockBegin: ''
+MacroBlockEnd:   ''
+MaxEmptyLinesToKeep: 2
+NamespaceIndentation: None
+ObjCBinPackProtocolList: Auto
+ObjCBlockIndentWidth: 2
+ObjCSpaceAfterProperty: false
+ObjCSpaceBeforeProtocolList: true
+PenaltyBreakAssignment: 50
+PenaltyBreakBeforeFirstCallParameter: 100000
+PenaltyBreakComment: 200
+PenaltyBreakFirstLessLess: 120
+PenaltyBreakString: 100
+PenaltyBreakTemplateDeclaration: 10
+PenaltyExcessCharacter: 1000000
+PenaltyReturnTypeOnItsOwnLine: 1
+PointerAlignment: Right
+ReflowComments:  true
+SortIncludes:    false
+SortUsingDeclarations: false
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 1
+SpacesInAngles:  false
+SpacesInContainerLiterals: false
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+Standard:        Auto
+StatementMacros:
+TabWidth:        3
+UseTab:          Never
+...
