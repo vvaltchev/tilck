@@ -373,7 +373,7 @@ sptr sys_select(int user_nfds,
       .tv = NULL,
       .user_tv = user_tv,
       .cond_cnt = 0,
-      .timeout_ticks = 0
+      .timeout_ticks = 0,
    };
 
    sptr rc;

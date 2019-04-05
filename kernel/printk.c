@@ -97,7 +97,7 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list args)
       .right_padding = 0,
       .zero_lpad = false,
       .buf = initial_buf,
-      .buf_end = initial_buf + size
+      .buf_end = initial_buf + size,
    };
 
    /* ctx has to be a pointer because of macros shared with WRITE_STR */

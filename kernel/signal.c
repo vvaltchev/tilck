@@ -64,7 +64,7 @@ static const action_type signal_default_actions[32] =
 
    [SIGVTALRM] = action_terminate,
    [SIGXCPU] = action_terminate,
-   [SIGXFSZ] = action_terminate
+   [SIGXFSZ] = action_terminate,
 };
 
 static void do_send_signal(task_info *ti, int signum)

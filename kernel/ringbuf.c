@@ -22,7 +22,7 @@ ringbuf_init(ringbuf *rb, u32 max_elems, u32 elem_size, void *buf)
       .elems = 0,
       .max_elems = max_elems,
       .elem_size = elem_size,
-      .buf = buf
+      .buf = buf,
    };
 }
 

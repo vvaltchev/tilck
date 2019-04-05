@@ -57,7 +57,7 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
       .fptr = func,
       .ctx = {
          .arg1 = arg1,
-         .arg2 = arg2
+         .arg2 = arg2,
       }
    };
 

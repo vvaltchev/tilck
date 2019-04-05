@@ -357,7 +357,7 @@ syscall_type syscalls[] =
    [336] = sys_perf_event_open,
    [337] = sys_recvmmsg,
 
-   [TILCK_TESTCMD_SYSCALL] = sys_tilck_cmd
+   [TILCK_TESTCMD_SYSCALL] = sys_tilck_cmd,
 };
 
 void handle_syscall(regs *r)
