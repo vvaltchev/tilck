@@ -145,7 +145,7 @@ kmalloc_create_accelerator(kmalloc_accelerator *a, u32 elem_size, u32 elem_c)
       .elem_size = elem_size,
       .elem_count = elem_c,
       .curr_elem = elem_c,
-      .buf = NULL
+      .buf = NULL,
    };
 }
 

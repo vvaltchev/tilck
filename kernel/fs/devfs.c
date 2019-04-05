@@ -215,7 +215,7 @@ static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
       .exlock = NULL,
       .exunlock = NULL,
       .shlock = NULL,
-      .shunlock = NULL
+      .shunlock = NULL,
    };
 
    *out = h;

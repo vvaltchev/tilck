@@ -52,7 +52,7 @@ void system_mmap_add_ramdisk(uptr start_paddr, uptr end_paddr)
       .addr = start_paddr,
       .len = end_paddr - start_paddr,
       .type = MULTIBOOT_MEMORY_RESERVED,
-      .extra = MEM_REG_EXTRA_RAMDISK
+      .extra = MEM_REG_EXTRA_RAMDISK,
    });
 
    sort_mem_regions();
@@ -278,7 +278,7 @@ STATIC bool handle_region_overlap(int r1_index, int r2_index)
                .addr = e2,
                .len = (e1 - e2),
                .type = r1->type,
-               .extra = r1->extra
+               .extra = r1->extra,
             });
          }
       }
@@ -395,7 +395,7 @@ STATIC void add_kernel_phdrs_to_mmap(void)
          .addr = phdr->p_paddr,
          .len = phdr->p_memsz,
          .type = MULTIBOOT_MEMORY_RESERVED,
-         .extra = MEM_REG_EXTRA_KERNEL
+         .extra = MEM_REG_EXTRA_KERNEL,
       });
    }
 }
@@ -435,7 +435,7 @@ void system_mmap_set(multiboot_info_t *mbi)
       .addr = 0,
       .len = 64 * KB,
       .type = MULTIBOOT_MEMORY_RESERVED,
-      .extra = MEM_REG_EXTRA_LOWMEM
+      .extra = MEM_REG_EXTRA_LOWMEM,
    });
 
    while (ma_addr < mbi->mmap_addr + mbi->mmap_length) {
@@ -445,7 +445,7 @@ void system_mmap_set(multiboot_info_t *mbi)
          .addr = ma->addr,
          .len = ma->len,
          .type = ma->type,
-         .extra = 0
+         .extra = 0,
       });
       ma_addr += ma->size + 4;
    }

@@ -140,11 +140,11 @@ static NO_INLINE void debug_kmalloc_register_alloc(void *vaddr, size_t s)
 
 #pragma GCC diagnostic pop
 
-   alloc_entries[alloc_entries_count++] = (alloc_entry){
+   alloc_entries[alloc_entries_count++] = (alloc_entry) {
       .vaddr = vaddr,
       .size = s,
       .caller_eip = eip,
-      .leaked = true
+      .leaked = true,
    };
 
    enable_preemption();
