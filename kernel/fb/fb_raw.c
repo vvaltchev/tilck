@@ -169,7 +169,7 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
       .addr = fb_paddr,
       .len = fb_size,
       .type = MULTIBOOT_MEMORY_RESERVED,
-      .extra = MEM_REG_EXTRA_FRAMEBUFFER
+      .extra = MEM_REG_EXTRA_FRAMEBUFFER,
    });
 }
 
@@ -398,7 +398,7 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
 
    u32 arr[] = {
       vga_rgb_colors[vgaentry_get_fg(e)],
-      vga_rgb_colors[vgaentry_get_bg(e)]
+      vga_rgb_colors[vgaentry_get_bg(e)],
    };
 
    /*

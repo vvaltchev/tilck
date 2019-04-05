@@ -210,7 +210,7 @@ static video_interface framebuffer_vi =
    NULL,  /* flush_buffers: never used by fb_console */
    fb_draw_banner,
    fb_disable_banner_refresh,
-   fb_enable_banner_refresh
+   fb_enable_banner_refresh,
 };
 
 
