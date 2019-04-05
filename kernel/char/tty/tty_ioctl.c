@@ -42,7 +42,7 @@ const struct termios default_termios =
       [VWERASE]   = 0x17,        /* typical value for TERM=linux, Ctrl+W */
       [VLNEXT]    = 0x16,        /* typical value for TERM=linux, Ctrl+V */
       [VEOL2]     = 0            /* typical value for TERM=linux (unset) */
-   }
+   },
 };
 
 static int tty_ioctl_tcgets(tty *t, void *argp)
@@ -76,7 +76,7 @@ static int tty_ioctl_tiocgwinsz(tty *t, void *argp)
       .ws_row = term_get_rows(t->term_inst),
       .ws_col = term_get_cols(t->term_inst),
       .ws_xpixel = 0,
-      .ws_ypixel = 0
+      .ws_ypixel = 0,
    };
 
    int rc = copy_to_user(argp, &sz, sizeof(struct winsize));

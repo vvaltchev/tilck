@@ -22,7 +22,7 @@ tty_def_state_lf(u8 *c, u8 *color, term_action *a, void *ctx_arg)
          .type3 = a_dwrite_no_filter,
          .len = 2,
          .col = *color,
-         .ptr = (uptr)"\n\r"
+         .ptr = (uptr)"\n\r",
       };
 
       return TERM_FILTER_WRITE_BLANK;
@@ -70,7 +70,7 @@ tty_def_state_verase(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    *a = (term_action) {
       .type1 = a_del,
-      .arg = TERM_DEL_PREV_CHAR
+      .arg = TERM_DEL_PREV_CHAR,
    };
 
    return TERM_FILTER_WRITE_BLANK;
@@ -81,7 +81,7 @@ tty_def_state_vwerase(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    *a = (term_action) {
       .type1 = a_del,
-      .arg = TERM_DEL_PREV_WORD
+      .arg = TERM_DEL_PREV_WORD,
    };
 
    return TERM_FILTER_WRITE_BLANK;
@@ -111,7 +111,7 @@ tty_def_state_backspace(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    *a = (term_action) {
       .type2 = a_move_ch_and_cur_rel,
       .arg1 = LO_BITS((u32)  0, 8, u32),
-      .arg2 = LO_BITS((u32) -1, 8, u32)
+      .arg2 = LO_BITS((u32) -1, 8, u32),
    };
 
    return TERM_FILTER_WRITE_BLANK;
@@ -163,7 +163,7 @@ tty_def_print_untrasl_char(u8 *c, u8 *color, term_action *a, void *ctx_arg)
       .type3 = a_dwrite_no_filter,
       .len = (u32)len,
       .col = *color,
-      .ptr = (uptr)ctx->tmpbuf
+      .ptr = (uptr)ctx->tmpbuf,
    };
 
    return TERM_FILTER_WRITE_BLANK;
