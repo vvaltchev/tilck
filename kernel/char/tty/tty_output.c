@@ -32,7 +32,7 @@ static const u8 fg_csi_to_vga[256] =
    [94] = COLOR_BRIGHT_BLUE,
    [95] = COLOR_BRIGHT_MAGENTA,
    [96] = COLOR_BRIGHT_CYAN,
-   [97] = COLOR_BRIGHT_WHITE
+   [97] = COLOR_BRIGHT_WHITE,
 };
 
 
@@ -42,6 +42,7 @@ static const u8 fg_csi_to_vga[256] =
    #pragma GCC diagnostic ignored "-Woverride-init"
 #endif
 
+/* clang-format off */
 const s16 tty_default_trans_table[256] =
 {
    [0 ... 31] = -1,        /* not translated by default */
@@ -73,6 +74,7 @@ const s16 tty_default_trans_table[256] =
 
    [127 ... 255] = -1,     /* not translated */
 };
+/* clang-format on */
 
 const s16 tty_gfx_trans_table[256] =
 {
@@ -100,7 +102,7 @@ const s16 tty_gfx_trans_table[256] =
    ['.'] = CHAR_DARROW,
    ['-'] = CHAR_UARROW,
    ['h'] = CHAR_BLOCK_LIGHT,
-   ['0'] = CHAR_BLOCK_HEAVY
+   ['0'] = CHAR_BLOCK_HEAVY,
 };
 
 #pragma GCC diagnostic pop
@@ -125,7 +127,7 @@ tty_filter_handle_csi_ABCD(u32 *params,
    *a = (term_action) {
       .type2 = a_move_ch_and_cur_rel,
       .arg1 = LO_BITS((u32)(-d[0] + d[1]), 8, u32),
-      .arg2 = LO_BITS((u32)( d[2] - d[3]), 8, u32)
+      .arg2 = LO_BITS((u32)( d[2] - d[3]), 8, u32),
    };
 }
 
@@ -229,7 +231,7 @@ tty_move_cursor_begin_nth_row(tty *t, term_action *a, u32 row)
    *a = (term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = new_row,
-      .arg2 = 0
+      .arg2 = 0,
    };
 }
 
@@ -272,7 +274,7 @@ tty_csi_G_handler(u32 *params,
    *a = (term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = term_get_curr_row(t->term_inst),
-      .arg2 = MIN((u32)params[0], term_get_cols(t->term_inst) - 1u)
+      .arg2 = MIN((u32)params[0], term_get_cols(t->term_inst) - 1u),
    };
 }
 
@@ -293,7 +295,7 @@ tty_csi_fH_handler(u32 *params,
    *a = (term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst)-1u),
-      .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(t->term_inst)-1u)
+      .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(t->term_inst)-1u),
    };
 }
 
@@ -329,7 +331,7 @@ tty_csi_S_handler(u32 *params,
 {
    *a = (term_action) {
       .type1 = a_non_buf_scroll_up,
-      .arg = UNSAFE_MAX(1, params[0])
+      .arg = UNSAFE_MAX(1, params[0]),
    };
 }
 
@@ -343,7 +345,7 @@ tty_csi_T_handler(u32 *params,
 {
    *a = (term_action) {
       .type1 = a_non_buf_scroll_down,
-      .arg = UNSAFE_MAX(1, params[0])
+      .arg = UNSAFE_MAX(1, params[0]),
    };
 }
 
@@ -400,7 +402,7 @@ tty_csi_u_handler(u32 *params,
    *a = (term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = t->saved_cur_row,
-      .arg2 = t->saved_cur_col
+      .arg2 = t->saved_cur_col,
    };
 }
 
@@ -420,7 +422,7 @@ tty_csi_d_handler(u32 *params,
    *a = (term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst)-1u),
-      .arg2 = term_get_curr_col(t->term_inst)
+      .arg2 = term_get_curr_col(t->term_inst),
    };
 }
 
@@ -471,7 +473,7 @@ static csi_seq_handler csi_handlers[256] =
    ['s'] = tty_csi_s_handler,          /* SCP: Save Cursor Position */
    ['u'] = tty_csi_u_handler,          /* RCP: Restore Cursor Position */
    ['d'] = tty_csi_d_handler,          /* VPA: Move to row N (abs), same col */
-   ['`'] = tty_csi_hpa_handler         /* HPA: Move to col N (abs), same row */
+   ['`'] = tty_csi_hpa_handler,        /* HPA: Move to col N (abs), same row */
 };
 
 static enum term_fret
@@ -715,7 +717,7 @@ serial_tty_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
          .type3 = a_dwrite_no_filter,
          .len = 3,
          .col = *color,
-         .ptr = (uptr)"\b \b"
+         .ptr = (uptr)"\b \b",
       };
 
       return TERM_FILTER_WRITE_BLANK;
