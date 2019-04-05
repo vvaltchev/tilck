@@ -120,7 +120,7 @@ STATIC void use_kernel_arg(int arg_num, const char *arg)
       parse_arg_state_initial,
       parse_arg_state_custom_cmdline,
       parse_arg_state_set_selftest,
-      parse_arg_set_tty_count
+      parse_arg_set_tty_count,
    };
 
    table[kernel_arg_parser_state](arg_num, arg, strlen(arg));

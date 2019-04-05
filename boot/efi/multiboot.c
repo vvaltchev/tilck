@@ -114,7 +114,7 @@ static void AddMemoryRegion(UINT64 start, UINT64 end, UINT32 type)
       .size = sizeof(multiboot_memory_map_t) - sizeof(u32),
       .addr = (multiboot_uint64_t)start,
       .len = (multiboot_uint64_t)(end - start),
-      .type = type
+      .type = type,
    };
 }
 

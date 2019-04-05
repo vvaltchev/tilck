@@ -86,7 +86,7 @@ static const char *edx1_features[] =
    "htt",
    "tm",
    "ia64",
-   "pbe"
+   "pbe",
 };
 
 static const char *ecx1_features[] =
@@ -124,7 +124,7 @@ static const char *ecx1_features[] =
    "avx",
    "f16c",
    "rdrnd",
-   "hypervisor"
+   "hypervisor",
 };
 
 void dump_x86_features(void)
@@ -136,7 +136,7 @@ void dump_x86_features(void)
 
    bool *flags[] = {
       (bool *)&x86_cpu_features.edx1,
-      (bool *)&x86_cpu_features.ecx1
+      (bool *)&x86_cpu_features.ecx1,
    };
 
    const char **strings[] = {edx1_features, ecx1_features};

@@ -43,7 +43,7 @@ static const struct {
    {KEY_F9,                "\033[20~"},
    {KEY_F10,               "\033[21~"},
    {KEY_F11,               "\033[23~"},
-   {KEY_F12,               "\033[24~"}
+   {KEY_F12,               "\033[24~"},
 };
 
 bool kb_scancode_to_ansi_seq(u32 key, u8 modifiers, char *seq)

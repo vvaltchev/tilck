@@ -45,7 +45,7 @@ void initialize_test_kernel_heap()
       .addr = 0,
       .len = test_mem_size,
       .type = MULTIBOOT_MEMORY_AVAILABLE,
-      .extra = 0
+      .extra = 0,
    };
 }
 

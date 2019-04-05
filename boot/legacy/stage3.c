@@ -220,7 +220,7 @@ multiboot_info_t *setup_multiboot_info(void)
          .size = sizeof(multiboot_memory_map_t) - sizeof(u32),
          .addr = ma->base,
          .len = ma->len,
-         .type = bios_to_multiboot_mem_region(ma->type)
+         .type = bios_to_multiboot_mem_region(ma->type),
       };
    }
 
@@ -279,7 +279,7 @@ void read_memory_map(void)
          .base = bios_mem_area->base_low | ((u64)bios_mem_area->base_hi << 32),
          .len = bios_mem_area->len_low | ((u64)bios_mem_area->len_hi << 32),
          .type = bios_mem_area->type,
-         .acpi = bios_mem_area->acpi
+         .acpi = bios_mem_area->acpi,
       };
 
       memcpy(mem_areas + mem_areas_count, &m, sizeof(mem_area_t));

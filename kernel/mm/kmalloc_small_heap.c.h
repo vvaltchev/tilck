@@ -94,7 +94,7 @@ static const u32 align_type_table[4] =
     2 * sizeof(uptr),
     4 * sizeof(uptr),
     8 * sizeof(uptr),
-   16 * sizeof(uptr)
+   16 * sizeof(uptr),
 };
 
 static small_heap_node *alloc_new_small_heap(void)

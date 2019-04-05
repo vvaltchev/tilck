@@ -16,7 +16,7 @@ static const display_resolution tilck_known_resolutions[] =
    {1024, 600},
    {1024, 768},
    {1280, 1024},
-   {1920, 1080}
+   {1920, 1080},
 };
 
 bool is_tilck_known_resolution(u32 w, u32 h)

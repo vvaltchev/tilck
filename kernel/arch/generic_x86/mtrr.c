@@ -181,7 +181,7 @@ static const char *mtrr_mem_type_str[8] =
    [MEM_TYPE_WT] = "WT",
    [MEM_TYPE_WP] = "WP",
    [MEM_TYPE_WB] = "WB",
-   [MEM_TYPE_UC_] = "UC-"
+   [MEM_TYPE_UC_] = "UC-",
 };
 
 void dump_var_mtrrs(void)

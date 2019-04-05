@@ -64,7 +64,7 @@ void show_banner(void)
       "   aax    aax aax      aax      aalqaak ",
       "   aax    aax aaaaaaak maaaaaak aax  aak",
       "   mqj    mqj mqqqqqqj  mqqqqqj mqj  mqj",
-      ""
+      "",
    };
 
    const u32 padding = (u32)

@@ -40,7 +40,7 @@ static void tty_async_send_signal_to_fg_group(tty *t, int signum)
 {
    tty_and_sig_num ctx = (tty_and_sig_num) {
       .tty_num = t->minor,
-      .sig_num = signum
+      .sig_num = signum,
    };
 
    disable_preemption();

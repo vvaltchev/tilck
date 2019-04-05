@@ -181,7 +181,7 @@ static const char *get_cc_name(cc_t cc)
       CC_ENTRY(VDISCARD),
       CC_ENTRY(VWERASE),
       CC_ENTRY(VLNEXT),
-      CC_ENTRY(VEOL2)
+      CC_ENTRY(VEOL2),
 
    };
 

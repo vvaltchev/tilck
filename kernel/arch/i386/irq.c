@@ -31,7 +31,7 @@ static list irq_handlers_lists[16] = {
    make_list(irq_handlers_lists[12]),
    make_list(irq_handlers_lists[13]),
    make_list(irq_handlers_lists[14]),
-   make_list(irq_handlers_lists[15])
+   make_list(irq_handlers_lists[15]),
 };
 
 u32 unhandled_irq_count[256];

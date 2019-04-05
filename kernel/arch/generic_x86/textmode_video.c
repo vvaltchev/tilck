@@ -136,7 +136,7 @@ static const video_interface ega_text_mode_i =
    NULL, /* flush_buffers */
    NULL, /* redraw_static_elements */
    NULL, /* disable_static_elems_refresh */
-   NULL  /* enable_static_elems_refresh */
+   NULL, /* enable_static_elems_refresh */
 };
 
 void init_textmode_console(void)

@@ -20,7 +20,7 @@ void handle_irq(regs *r);
 static int nested_interrupts_count;
 static int nested_interrupts[MAX_NESTED_INTERRUPTS] =
 {
-   [0 ... MAX_NESTED_INTERRUPTS-1] = -1
+   [0 ... MAX_NESTED_INTERRUPTS-1] = -1,
 };
 
 inline void push_nested_interrupt(int int_num)

@@ -41,7 +41,7 @@ const struct termios default_termios =
       [VDISCARD]  = 0x0f,        /* typical value for TERM=linux, Ctrl+O */
       [VWERASE]   = 0x17,        /* typical value for TERM=linux, Ctrl+W */
       [VLNEXT]    = 0x16,        /* typical value for TERM=linux, Ctrl+V */
-      [VEOL2]     = 0            /* typical value for TERM=linux (unset) */
+      [VEOL2]     = 0,           /* typical value for TERM=linux (unset) */
    },
 };
 

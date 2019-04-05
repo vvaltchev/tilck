@@ -355,7 +355,7 @@ fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
       .fh = fh,
       .offset = 0,
       .curr_file_index = 0,
-      .rc = 0
+      .rc = 0,
    };
 
    u32 cluster_to_use = 0;

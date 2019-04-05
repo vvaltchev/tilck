@@ -81,7 +81,7 @@ const char *x86_exception_names[32] =
    "Reserved",
    "Reserved",
    "Reserved",
-   "Reserved"
+   "Reserved",
 };
 
 void handle_resumable_fault(regs *r)

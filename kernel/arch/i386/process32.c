@@ -129,7 +129,7 @@ kthread_create(kthread_func_ptr fun, void *arg)
       .cs = X86_KERNEL_CODE_SEL,
       .eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF,
       .useresp = 0,
-      .ss = X86_KERNEL_DATA_SEL
+      .ss = X86_KERNEL_DATA_SEL,
    };
 
    task_info *ti = allocate_new_thread(kernel_process->pi);
@@ -241,7 +241,7 @@ int setup_usermode_task(pdir_t *pdir,
       .cs = X86_USER_CODE_SEL,
       .eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF,
       .useresp = (uptr)stack_addr,
-      .ss = X86_USER_DATA_SEL
+      .ss = X86_USER_DATA_SEL,
    };
 
    int rc;

@@ -32,7 +32,7 @@ const char *months3[12] =
    "Sep",
    "Oct",
    "Nov",
-   "Dec"
+   "Dec",
 };
 
 u32 days_per_month[12] =
@@ -48,7 +48,7 @@ u32 days_per_month[12] =
    30, // sep
    31, // oct
    30, // nov
-   31  // dec
+   31, // dec
 };
 
 
@@ -150,7 +150,7 @@ sptr sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
    struct timeval tv;
    struct timezone tz = {
       .tz_minuteswest = 0,
-      .tz_dsttime = 0
+      .tz_dsttime = 0,
    };
 
    real_time_get_timeval(&tv);
@@ -205,14 +205,14 @@ sptr sys_clock_getres(clockid_t clk_id, struct timespec *user_res)
       case CLOCK_REALTIME:
          tp = (struct timespec) {
             .tv_sec = 1,
-            .tv_nsec = 0
+            .tv_nsec = 0,
          };
          break;
 
       case CLOCK_MONOTONIC:
          tp = (struct timespec) {
             .tv_sec = 0,
-            .tv_nsec = 1000000000/TIMER_HZ
+            .tv_nsec = 1000000000/TIMER_HZ,
          };
          break;
 

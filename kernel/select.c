@@ -63,7 +63,7 @@ static const func_get_rwe_cond gcf[3] = {
 static const func_rwe_ready grf[3] = {
    &vfs_read_ready,
    &vfs_write_ready,
-   &vfs_except_ready
+   &vfs_except_ready,
 };
 
 static int

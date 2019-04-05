@@ -213,7 +213,7 @@ static struct {
    {0, handle_seq_left},
    {0, handle_seq_right},
    {0, handle_seq_updown},
-   {0, handle_seq_updown}
+   {0, handle_seq_updown},
 };
 
 static void initialize_once_handle_esc_seq_table(void)

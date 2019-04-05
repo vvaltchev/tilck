@@ -283,8 +283,8 @@ int kb_get_fn_key_pressed(u32 key)
    if (key >= 256)
       return 0;
 
-   static const char fn_table[256] = {
-
+   static const char fn_table[256] =
+   {
       [KEY_F1]  =  1,
       [KEY_F2]  =  2,
       [KEY_F3]  =  3,
@@ -296,8 +296,7 @@ int kb_get_fn_key_pressed(u32 key)
       [KEY_F9]  =  9,
       [KEY_F10] = 10,
       [KEY_F11] = 11,
-      [KEY_F12] = 12
-
+      [KEY_F12] = 12,
    };
 
    return fn_table[(u8) key];
@@ -305,7 +304,7 @@ int kb_get_fn_key_pressed(u32 key)
 
 static irq_handler_node kb_irq_handler_node = {
    .node = make_list_node(kb_irq_handler_node.node),
-   .handler = keyboard_irq_handler
+   .handler = keyboard_irq_handler,
 };
 
 /* This will be executed in a tasklet */

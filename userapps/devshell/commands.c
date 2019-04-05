@@ -19,7 +19,7 @@ static const char *tt_str[] =
 {
    [TT_SHORT] = "tt_short",
    [TT_MED] = "tt_med",
-   [TT_LONG] = "tt_long"
+   [TT_LONG] = "tt_long",
 };
 
 static int get_cmds_count(void) {

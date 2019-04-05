@@ -135,7 +135,7 @@ static const bool fat32_valid_chars[256] =
    [125] = 1, /* } */
    [126] = 1, /* ~ */
 
-   [127 ... 255] = 0
+   [127 ... 255] = 0,
 };
 
 bool fat32_is_valid_filename_character(char c)

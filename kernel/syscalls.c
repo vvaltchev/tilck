@@ -123,7 +123,7 @@ sptr sys_times(struct tms *user_buf)
          .tms_utime = (clock_t) curr->total_ticks,
          .tms_stime = (clock_t) curr->total_kernel_ticks,
          .tms_cutime = 0,
-         .tms_cstime = 0
+         .tms_cstime = 0,
       };
 
    }

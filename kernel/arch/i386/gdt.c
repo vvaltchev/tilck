@@ -229,7 +229,7 @@ static void load_gdt(gdt_entry *g, u32 entries_count)
    } PACKED gdt_ptr = {
 
       (u16)(sizeof(gdt_entry) * entries_count - 1),
-      g
+      g,
    };
 
    asmVolatile("lgdt (%0)"

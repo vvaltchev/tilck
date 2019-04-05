@@ -69,22 +69,22 @@ static irq_handler_node serial_irq_handler_nodes[4] =
 {
    {
       .node = make_list_node(serial_irq_handler_nodes[0].node),
-      .handler = serial_com1_irq_handler
+      .handler = serial_com1_irq_handler,
    },
 
    {
       .node = make_list_node(serial_irq_handler_nodes[1].node),
-      .handler = serial_com2_irq_handler
+      .handler = serial_com2_irq_handler,
    },
 
    {
       .node = make_list_node(serial_irq_handler_nodes[2].node),
-      .handler = serial_com3_irq_handler
+      .handler = serial_com3_irq_handler,
    },
 
    {
       .node = make_list_node(serial_irq_handler_nodes[3].node),
-      .handler = serial_com4_irq_handler
+      .handler = serial_com4_irq_handler,
    }
 };
 

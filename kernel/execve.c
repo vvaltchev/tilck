@@ -14,7 +14,7 @@ static char *const default_env[] =
    "TERM=linux",
    "CONSOLE=/dev/console",
    "TILCK=1",
-   NULL
+   NULL,
 };
 
 static int

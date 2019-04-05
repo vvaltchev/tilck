@@ -77,7 +77,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(poll2, TT_SHORT, false),
    CMD_ENTRY(poll3, TT_SHORT, false),
 
-   CMD_END()
+   CMD_END(),
 };
 
 struct test_cmd_entry *cmds_table = _cmds_table;

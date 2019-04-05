@@ -262,7 +262,7 @@ enum irq_action timer_irq_handler(regs *context)
 
 static irq_handler_node timer_irq_handler_node = {
    .node = make_list_node(timer_irq_handler_node.node),
-   .handler = timer_irq_handler
+   .handler = timer_irq_handler,
 };
 
 void init_timer(void)
