@@ -4,22 +4,26 @@
 
 /* ---------------- term action engine --------------------- */
 
+#define ENTRY(func, n) { (action_func)(func), n }
+
 static const actions_table_item actions_table[] = {
-   [a_write] = {(action_func)term_action_write, 3},
-   [a_dwrite_no_filter] = {(action_func)term_action_dwrite_no_filter, 3},
-   [a_del] = {(action_func)term_action_del, 1},
-   [a_scroll] = {(action_func)term_action_scroll, 2},
-   [a_set_col_offset] = {(action_func)term_action_set_col_offset, 1},
-   [a_move_ch_and_cur] = {(action_func)term_action_move_ch_and_cur, 2},
-   [a_move_ch_and_cur_rel] = {(action_func)term_action_move_ch_and_cur_rel, 2},
-   [a_reset] = {(action_func)term_action_reset, 1},
-   [a_erase_in_display] = {(action_func)term_action_erase_in_display, 1},
-   [a_erase_in_line] = {(action_func)term_action_erase_in_line, 1},
-   [a_non_buf_scroll_up] = {(action_func)term_action_non_buf_scroll_up, 1},
-   [a_non_buf_scroll_down] = {(action_func)term_action_non_buf_scroll_down, 1},
-   [a_pause_video_output] = {(action_func)term_action_pause_video_output, 1},
-   [a_restart_video_output] = {(action_func)term_action_restart_video_output, 1}
+   [a_write] = ENTRY(term_action_write, 3),
+   [a_dwrite_no_filter] = ENTRY(term_action_dwrite_no_filter, 3),
+   [a_del] = ENTRY(term_action_del, 1),
+   [a_scroll] = ENTRY(term_action_scroll, 2),
+   [a_set_col_offset] = ENTRY(term_action_set_col_offset, 1),
+   [a_move_ch_and_cur] = ENTRY(term_action_move_ch_and_cur, 2),
+   [a_move_ch_and_cur_rel] = ENTRY(term_action_move_ch_and_cur_rel, 2),
+   [a_reset] = ENTRY(term_action_reset, 1),
+   [a_erase_in_display] = ENTRY(term_action_erase_in_display, 1),
+   [a_erase_in_line] = ENTRY(term_action_erase_in_line, 1),
+   [a_non_buf_scroll_up] = ENTRY(term_action_non_buf_scroll_up, 1),
+   [a_non_buf_scroll_down] = ENTRY(term_action_non_buf_scroll_down, 1),
+   [a_pause_video_output] = ENTRY(term_action_pause_video_output, 1),
+   [a_restart_video_output] = ENTRY(term_action_restart_video_output, 1),
 };
+
+#undef ENTRY
 
 static void term_execute_action(term *t, term_action *a)
 {
@@ -74,7 +78,7 @@ void term_write(term *t, const char *buf, size_t len, u8 color)
       .type3 = a_write,
       .len = UNSAFE_MIN((u32)len, (u32)MB - 1),
       .col = color,
-      .ptr = (uptr)buf
+      .ptr = (uptr)buf,
    };
 
    term_execute_or_enqueue_action(t, a);
@@ -85,7 +89,7 @@ void term_scroll_up(term *t, u32 lines)
    term_action a = {
       .type2 = a_scroll,
       .arg1 = lines,
-      .arg2 = 0
+      .arg2 = 0,
    };
 
    term_execute_or_enqueue_action(t, a);
@@ -96,7 +100,7 @@ void term_scroll_down(term *t, u32 lines)
    term_action a = {
       .type2 = a_scroll,
       .arg1 = lines,
-      .arg2 = 1
+      .arg2 = 1,
    };
 
    term_execute_or_enqueue_action(t, a);
@@ -106,7 +110,7 @@ void term_set_col_offset(term *t, u32 off)
 {
    term_action a = {
       .type1 = a_set_col_offset,
-      .arg = off
+      .arg = off,
    };
 
    term_execute_or_enqueue_action(t, a);
@@ -116,7 +120,7 @@ void term_pause_video_output(term *t)
 {
    term_action a = {
       .type1 = a_pause_video_output,
-      .arg = 0
+      .arg = 0,
    };
 
    term_execute_or_enqueue_action(t, a);
@@ -126,7 +130,7 @@ void term_restart_video_output(term *t)
 {
    term_action a = {
       .type1 = a_restart_video_output,
-      .arg = 0
+      .arg = 0,
    };
 
    term_execute_or_enqueue_action(t, a);
