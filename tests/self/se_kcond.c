@@ -72,21 +72,20 @@ static void kcond_thread_signal_generator()
 
 void selftest_kcond_short()
 {
+   int tids[3];
    kmutex_init(&cond_mutex, 0);
    kcond_init(&cond);
 
-   int tid1 = kthread_create(&kcond_thread_test, (void*) 1);
-   int tid2 = kthread_create(&kcond_thread_test, (void*) 2);
-   int tid3 = kthread_create(&kcond_thread_signal_generator, NULL);
+   tids[0] = kthread_create(&kcond_thread_test, (void*) 1);
+   VERIFY(tids[0] > 0);
 
-   VERIFY(tid1 > 0);
-   VERIFY(tid2 > 0);
-   VERIFY(tid3 > 0);
+   tids[1] = kthread_create(&kcond_thread_test, (void*) 2);
+   VERIFY(tids[1] > 0);
 
-   kthread_join(tid1);
-   kthread_join(tid2);
-   kthread_join(tid3);
+   tids[2] = kthread_create(&kcond_thread_signal_generator, NULL);
+   VERIFY(tids[2] > 0);
 
+   kthread_join_all(tids, ARRAY_SIZE(tids));
    kcond_destory(&cond);
    regular_self_test_end();
 }

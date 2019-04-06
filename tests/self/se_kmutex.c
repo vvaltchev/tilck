@@ -119,7 +119,7 @@ static void test_kmutex_thread_trylock()
 void selftest_kmutex_rec_med()
 {
    bool success;
-   int tid1, tid2, tid3;
+   int tids[3];
 
    printk("kmutex recursive test\n");
    kmutex_init(&test_mutex, KMUTEX_FL_RECURSIVE);
@@ -138,8 +138,9 @@ void selftest_kmutex_rec_med()
 
    printk("Locked 3 times (last with trylock)\n");
 
-   tid3 = kthread_create(test_kmutex_thread_trylock, NULL);
-   kthread_join(tid3);
+   tids[0] = kthread_create(test_kmutex_thread_trylock, NULL);
+   VERIFY(tids[0] > 0);
+   kthread_join(tids[0]);
 
    kmutex_unlock(&test_mutex);
    printk("Unlocked once\n");
@@ -150,16 +151,16 @@ void selftest_kmutex_rec_med()
    kmutex_unlock(&test_mutex);
    printk("Unlocked 3 times\n");
 
-   tid1 = kthread_create(test_kmutex_thread, (void *)1);
-   tid2 = kthread_create(test_kmutex_thread, (void *)2);
-   tid3 = kthread_create(test_kmutex_thread_trylock, NULL);
+   tids[0] = kthread_create(&test_kmutex_thread, (void*) 1);
+   VERIFY(tids[0] > 0);
 
-   VERIFY(tid1 > 0); VERIFY(tid2 > 0); VERIFY(tid3 > 0);
+   tids[1] = kthread_create(&test_kmutex_thread, (void*) 2);
+   VERIFY(tids[1] > 0);
 
-   kthread_join(tid1);
-   kthread_join(tid2);
-   kthread_join(tid3);
+   tids[2] = kthread_create(&test_kmutex_thread_trylock, NULL);
+   VERIFY(tids[2] > 0);
 
+   kthread_join_all(tids, ARRAY_SIZE(tids));
    kmutex_destroy(&test_mutex);
    regular_self_test_end();
 }
@@ -279,9 +280,7 @@ void selftest_kmutex_ord_med()
       tids[i] = tid;
    }
 
-   for (u32 i = 0; i < ARRAY_SIZE(tids); i++) {
-      kthread_join(tids[i]);
-   }
+   kthread_join_all(tids, ARRAY_SIZE(tids));
 
 #if KMUTEX_STATS_ENABLED
    printk("order_mutex max waiters: %u\n", order_mutex.max_num_waiters);
