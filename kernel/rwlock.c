@@ -8,10 +8,12 @@ void rwlock_rp_init(rwlock_rp *r)
    kmutex_init(&r->readers_lock, 0);
    ksem_init(&r->writers_sem);
    r->readers_count = 0;
+   DEBUG_ONLY(r->ex_owner = NULL);
 }
 
 void rwlock_rp_destroy(rwlock_rp *r)
 {
+   DEBUG_ONLY(r->ex_owner = NULL);
    r->readers_count = 0;
    ksem_destroy(&r->writers_sem);
    kmutex_destroy(&r->readers_lock);
@@ -40,10 +42,16 @@ void rwlock_rp_shunlock(rwlock_rp *r)
 void rwlock_rp_exlock(rwlock_rp *r)
 {
    ksem_wait(&r->writers_sem);
+
+   ASSERT(r->ex_owner == NULL);
+   DEBUG_ONLY(r->ex_owner = get_curr_task());
 }
 
 void rwlock_rp_exunlock(rwlock_rp *r)
 {
+   ASSERT(r->ex_owner == get_curr_task());
+   DEBUG_ONLY(r->ex_owner = NULL);
+
    ksem_signal(&r->writers_sem);
 }
 
@@ -55,10 +63,12 @@ void rwlock_wp_init(rwlock_wp *rw)
    kcond_init(&rw->c);
    rw->r = 0;
    rw->w = false;
+   DEBUG_ONLY(rw->ex_owner = NULL);
 }
 
 void rwlock_wp_destroy(rwlock_wp *rw)
 {
+   DEBUG_ONLY(rw->ex_owner = NULL);
    rw->w = false;
    rw->r = 0;
    kcond_destory(&rw->c);
@@ -123,6 +133,9 @@ void rwlock_wp_exlock(rwlock_wp *rw)
        * the rwlock. New readers cannot acquire a shared lock because `w` is set
        * and other writes cannot acquire it, for the same reason.
        */
+
+      ASSERT(rw->ex_owner == NULL);
+      DEBUG_ONLY(rw->ex_owner = get_curr_task());
    }
    kmutex_unlock(&rw->m);
 }
@@ -131,6 +144,9 @@ void rwlock_wp_exunlock(rwlock_wp *rw)
 {
    kmutex_lock(&rw->m);
    {
+      ASSERT(rw->ex_owner == get_curr_task());
+      DEBUG_ONLY(rw->ex_owner = NULL);
+
       /* The `w` flag must be set */
       ASSERT(rw->w);
 

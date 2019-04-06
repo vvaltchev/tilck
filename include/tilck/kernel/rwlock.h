@@ -12,6 +12,10 @@ typedef struct {
    ksem writers_sem;
    int readers_count;
 
+#ifdef DEBUG
+   struct task_info *ex_owner;
+#endif
+
 } rwlock_rp;
 
 void rwlock_rp_init(rwlock_rp *r);
@@ -29,6 +33,10 @@ typedef struct {
    kcond c;
    int r;     /* readers count */
    bool w;    /* writer waiting */
+
+#ifdef DEBUG
+   struct task_info *ex_owner;
+#endif
 
 } rwlock_wp;
 
