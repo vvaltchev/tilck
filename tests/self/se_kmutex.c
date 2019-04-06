@@ -10,9 +10,76 @@
 #include <tilck/kernel/self_tests.h>
 #include <tilck/kernel/timer.h>
 
-void simple_test_kthread(void *arg);
+#define KMUTEX_SEK_TH_ITERS 100000
 
 static kmutex test_mutex;
+static int sek_vars[3];
+static const int sek_set_1[3] = {1, 2, 3};
+static const int sek_set_2[3] = {10, 20, 30};
+
+static void sek_set_vars(const int *set)
+{
+   for (u32 i = 0; i < ARRAY_SIZE(sek_vars); i++) {
+      sek_vars[i] = set[i];
+      kernel_yield();
+   }
+}
+
+static void sek_check_set_eq(const int *set)
+{
+   for (u32 i = 0; i < ARRAY_SIZE(sek_vars); i++) {
+      VERIFY(sek_vars[i] == set[i]);
+      kernel_yield();
+   }
+}
+
+static void sek_thread(void *unused)
+{
+   for (int iter = 0; iter < KMUTEX_SEK_TH_ITERS; iter++) {
+
+      kmutex_lock(&test_mutex);
+      {
+         kernel_yield();
+
+         if (sek_vars[0] == sek_set_1[0]) {
+
+            sek_check_set_eq(sek_set_1);
+            sek_set_vars(sek_set_2);
+
+         } else {
+
+            sek_check_set_eq(sek_set_2);
+            sek_set_vars(sek_set_1);
+         }
+
+         kernel_yield();
+      }
+      kmutex_unlock(&test_mutex);
+
+   } // for (int iter = 0; iter < KMUTEX_SEK_TH_ITERS; iter++)
+}
+
+void selftest_kmutex_med()
+{
+   int tids[3];
+   kmutex_init(&test_mutex, 0);
+   sek_set_vars(sek_set_1);
+
+   for (int i = 0; i < 3; i++) {
+      tids[i] = kthread_create(sek_thread, NULL);
+      VERIFY(tids[i] > 0);
+   }
+
+   for (int i = 0; i < 3; i++)
+      kthread_join(tids[i]);
+
+   kmutex_destroy(&test_mutex);
+   regular_self_test_end();
+}
+
+/* -------------------------------------------------- */
+/*               Recursive mutex test                 */
+/* -------------------------------------------------- */
 
 static void test_kmutex_thread(void *arg)
 {
@@ -48,32 +115,6 @@ static void test_kmutex_thread_trylock()
    } else {
       printk("3) trylock returned FALSE\n");
    }
-}
-
-void selftest_kmutex_med()
-{
-   int tid1, tid2, tid3, tid4;
-
-   printk("kmutex basic test\n");
-   kmutex_init(&test_mutex, 0);
-
-   tid1 = kthread_create(&simple_test_kthread, NULL);
-   tid2 = kthread_create(test_kmutex_thread, (void *)1);
-   tid3 = kthread_create(test_kmutex_thread, (void *)2);
-   tid4 = kthread_create(test_kmutex_thread_trylock, NULL);
-
-   VERIFY(tid1 > 0);
-   VERIFY(tid2 > 0);
-   VERIFY(tid3 > 0);
-   VERIFY(tid4 > 0);
-
-   kthread_join(tid1);
-   kthread_join(tid2);
-   kthread_join(tid3);
-   kthread_join(tid4);
-
-   kmutex_destroy(&test_mutex);
-   regular_self_test_end();
 }
 
 void selftest_kmutex_rec_med()

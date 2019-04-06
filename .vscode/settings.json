@@ -67,6 +67,7 @@
       "tty_int.h": "c",
       "safe_ringbuf.h": "c",
       "kmalloc.h": "c",
-      "resource.h": "c"
+      "resource.h": "c",
+      "self_tests.h": "c"
    }
 }

@@ -11,4 +11,5 @@ void regular_self_test_end(void);
    static inline void kernel_run_selected_selftest(void) { }
 #endif
 
+void simple_test_kthread(void *arg);
 void selftest_kmalloc_perf_med(void);
