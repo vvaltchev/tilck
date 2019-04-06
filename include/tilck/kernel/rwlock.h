@@ -9,7 +9,7 @@
 typedef struct {
 
    kmutex readers_lock;
-   kmutex writers_lock;
+   ksem writers_sem;
    int readers_count;
 
 } rwlock_rp;
