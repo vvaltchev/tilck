@@ -9,9 +9,10 @@
 #include <tilck/kernel/self_tests.h>
 #include <tilck/kernel/timer.h>
 
-#define RWLOCK_TH_ITERS    10000
-#define RWLOCK_READERS     10
-#define RWLOCK_WRITERS     10
+#define RWLOCK_TH_ITERS    5000
+#define RWLOCK_READERS       20
+#define RWLOCK_WRITERS       20
+#define RETRY_COUNT           4
 
 static rwlock_rp test_rwlrp;
 static rwlock_wp test_rwlwp;
@@ -136,6 +137,7 @@ void selftest_rwlock_rp_med()
 {
    int rt[RWLOCK_READERS];
    int wt[RWLOCK_WRITERS];
+   int retry;
 
    readers_running = writers_running = 0;
    rwlock_rp_init(&test_rwlrp);
@@ -147,17 +149,40 @@ void selftest_rwlock_rp_med()
     * running readers.
     */
 
-   se_rwlock_rp_common(rt, wt, &se_rp_ctx);
-   kthread_join_all(rt, ARRAY_SIZE(rt));
-   printk("After readers, running writers: %d\n", writers_running);
-   VERIFY(writers_running > 0);
-   kthread_join_all(wt, ARRAY_SIZE(wt));
+   printk("-------- sub-test: join readers and then writers -----------\n");
+   for (retry = 0; retry < RETRY_COUNT; retry++) {
 
-   se_rwlock_rp_common(rt, wt, &se_rp_ctx);
-   kthread_join_all(wt, ARRAY_SIZE(wt));
-   printk("After writers, running readers: %d\n", readers_running);
-   VERIFY(readers_running == 0);
-   kthread_join_all(rt, ARRAY_SIZE(rt));
+      se_rwlock_rp_common(rt, wt, &se_rp_ctx);
+      kthread_join_all(rt, ARRAY_SIZE(rt));
+      printk("After readers, running writers: %d\n", writers_running);
+
+      if (writers_running == 0) {
+         printk("running writers == 0, expected > 0. Re-try sub-test\n");
+         continue;
+      }
+
+      /* writers_running > 0: ideal case */
+      kthread_join_all(wt, ARRAY_SIZE(wt));
+      break;
+   }
+   VERIFY(retry < RETRY_COUNT);
+
+   printk("-------- sub-test: join writers and then readers -----------\n");
+   for (retry = 0; retry < RETRY_COUNT; retry++) {
+      se_rwlock_rp_common(rt, wt, &se_rp_ctx);
+      kthread_join_all(wt, ARRAY_SIZE(wt));
+      printk("After writers, running readers: %d\n", readers_running);
+
+      if (readers_running > 0) {
+         printk("running readers > 0, expected == 0. Re-try subtest.\n");
+         continue;
+      }
+
+      /* readers_running == 0: ideal case */
+      kthread_join_all(rt, ARRAY_SIZE(rt));
+      break;
+   }
+   VERIFY(retry < RETRY_COUNT);
 
    rwlock_rp_destroy(&test_rwlrp);
    regular_self_test_end();
@@ -167,9 +192,12 @@ void selftest_rwlock_wp_med()
 {
    int rt[RWLOCK_READERS];
    int wt[RWLOCK_WRITERS];
+   int retry;
 
    readers_running = writers_running = 0;
    rwlock_wp_init(&test_rwlwp);
+
+   printk("-------- sub-test: join readers and then writers -----------\n");
 
    /*
     * Same as above, but in this case we're testing a write-preferring rwlock.
@@ -177,17 +205,43 @@ void selftest_rwlock_wp_med()
     * after joining the writers, there should be some readers running.
     */
 
-   se_rwlock_rp_common(rt, wt, &se_wp_ctx);
-   kthread_join_all(rt, ARRAY_SIZE(rt));
-   printk("After readers, running writers: %d\n", writers_running);
-   VERIFY(writers_running == 0);
-   kthread_join_all(wt, ARRAY_SIZE(wt));
+   for (retry = 0; retry < RETRY_COUNT; retry++) {
 
-   se_rwlock_rp_common(rt, wt, &se_wp_ctx);
-   kthread_join_all(wt, ARRAY_SIZE(wt));
-   printk("After writers, running readers: %d\n", readers_running);
-   VERIFY(readers_running > 0);
-   kthread_join_all(rt, ARRAY_SIZE(rt));
+      se_rwlock_rp_common(rt, wt, &se_wp_ctx);
+      kthread_join_all(rt, ARRAY_SIZE(rt));
+      printk("After readers, running writers: %d\n", writers_running);
+
+      if (writers_running > 0) {
+         printk("running writers > 0, expected == 0. Re-try sub-test.\n");
+         kthread_join_all(wt, ARRAY_SIZE(wt));
+         continue;
+      }
+
+      /* writers_running == 0: that's exactly we'd expect in the ideal case */
+      kthread_join_all(wt, ARRAY_SIZE(wt));
+      break;
+   }
+   VERIFY(retry < RETRY_COUNT);
+
+   printk("-------- sub-test: join writers and then readers -----------\n");
+
+   for (retry = 0; retry < RETRY_COUNT; retry++) {
+
+      se_rwlock_rp_common(rt, wt, &se_wp_ctx);
+      kthread_join_all(wt, ARRAY_SIZE(wt));
+      printk("After writers, running readers: %d\n", readers_running);
+
+      if (readers_running == 0) {
+         printk("running readers == 0, expected > 0. Re-try sub-test\n");
+         kthread_join_all(rt, ARRAY_SIZE(rt));
+         continue;
+      }
+
+      /* readers_running > 0: ideal case */
+      kthread_join_all(rt, ARRAY_SIZE(rt));
+      break;
+   }
+   VERIFY(retry < RETRY_COUNT);
 
    rwlock_wp_destroy(&test_rwlwp);
    regular_self_test_end();
