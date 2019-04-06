@@ -4,7 +4,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/sync.h>
 
-/* Reader-preferring R/W lock */
+/* Reader-preferring rwlock */
 
 typedef struct {
 
@@ -20,3 +20,21 @@ void rwlock_rp_shlock(rwlock_rp *r);
 void rwlock_rp_shunlock(rwlock_rp *r);
 void rwlock_rp_exlock(rwlock_rp *r);
 void rwlock_rp_exunlock(rwlock_rp *r);
+
+/* Writer-preferring rwlock */
+
+typedef struct {
+
+   kmutex m;
+   kcond c;
+   int r;     /* readers count */
+   bool w;    /* writer waiting */
+
+} rwlock_wp;
+
+void rwlock_wp_init(rwlock_wp *rw);
+void rwlock_wp_destroy(rwlock_wp *rw);
+void rwlock_wp_shlock(rwlock_wp *rw);
+void rwlock_wp_shunlock(rwlock_wp *rw);
+void rwlock_wp_exlock(rwlock_wp *rw);
+void rwlock_wp_exunlock(rwlock_wp *rw);
