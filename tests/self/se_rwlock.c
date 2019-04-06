@@ -9,7 +9,7 @@
 #include <tilck/kernel/self_tests.h>
 #include <tilck/kernel/timer.h>
 
-#define RWLOCK_TH_ITERS    5000
+#define RWLOCK_TH_ITERS    1000
 #define RWLOCK_READERS       20
 #define RWLOCK_WRITERS       20
 #define RETRY_COUNT           4
