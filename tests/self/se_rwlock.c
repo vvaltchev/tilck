@@ -132,7 +132,7 @@ static void se_rwlock_rp_common(int *rt, int *wt, se_rwlock_ctx *ctx)
    }
 }
 
-void selftest_rwlock_rp_short()
+void selftest_rwlock_rp_med()
 {
    int rt[RWLOCK_READERS];
    int wt[RWLOCK_WRITERS];
@@ -163,7 +163,7 @@ void selftest_rwlock_rp_short()
    regular_self_test_end();
 }
 
-void selftest_rwlock_wp_short()
+void selftest_rwlock_wp_med()
 {
    int rt[RWLOCK_READERS];
    int wt[RWLOCK_WRITERS];
