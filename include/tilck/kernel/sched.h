@@ -121,6 +121,7 @@ void kthread_exit(void);
 
 void kernel_sleep(u64 ticks);
 void kthread_join(int tid);
+void kthread_join_all(const int *tids, size_t n);
 
 void task_set_wakeup_timer(task_info *task, u32 ticks);
 void task_update_wakeup_timer_if_any(task_info *ti, u32 new_ticks);

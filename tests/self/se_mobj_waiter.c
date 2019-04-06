@@ -81,9 +81,7 @@ retry:
    w_tid = kthread_create(&mobj_waiter_wait_thread, NULL);
    VERIFY(w_tid > 0);
 
-   for (size_t i = 0; i < ARRAY_SIZE(conds); i++)
-      kthread_join(tids[i]);
-
+   kthread_join_all(tids, ARRAY_SIZE(tids));
    kthread_join(w_tid);
 
    for (size_t i = 0; i < ARRAY_SIZE(conds); i++)

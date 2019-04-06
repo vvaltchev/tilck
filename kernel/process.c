@@ -355,6 +355,12 @@ void kthread_join(int tid)
    enable_preemption();
 }
 
+void kthread_join_all(const int *tids, size_t n)
+{
+   for (size_t i = 0; i < n; i++)
+      kthread_join(tids[i]);
+}
+
 static int wait_for_single_pid(int pid, int *user_wstatus)
 {
    ASSERT(!is_preemption_enabled());

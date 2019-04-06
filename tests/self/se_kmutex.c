@@ -70,8 +70,7 @@ void selftest_kmutex_med()
       VERIFY(tids[i] > 0);
    }
 
-   for (int i = 0; i < 3; i++)
-      kthread_join(tids[i]);
+   kthread_join_all(tids, ARRAY_SIZE(tids));
 
    kmutex_destroy(&test_mutex);
    regular_self_test_end();
