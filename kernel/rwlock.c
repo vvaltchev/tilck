@@ -5,8 +5,6 @@
 
 void rwlock_rp_init(rwlock_rp *r)
 {
-   ASSERT(!is_preemption_enabled());
-
    kmutex_init(&r->readers_lock, 0);
    ksem_init(&r->writers_sem);
    r->readers_count = 0;
@@ -14,8 +12,6 @@ void rwlock_rp_init(rwlock_rp *r)
 
 void rwlock_rp_destroy(rwlock_rp *r)
 {
-   ASSERT(!is_preemption_enabled());
-
    r->readers_count = 0;
    ksem_destroy(&r->writers_sem);
    kmutex_destroy(&r->readers_lock);

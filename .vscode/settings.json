@@ -68,6 +68,7 @@
       "safe_ringbuf.h": "c",
       "kmalloc.h": "c",
       "resource.h": "c",
-      "self_tests.h": "c"
+      "self_tests.h": "c",
+      "interrupts.h": "c"
    }
 }
