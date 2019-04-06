@@ -14,6 +14,7 @@ enum wo_type {
    WOBJ_KMUTEX,
    WOBJ_KCOND,
    WOBJ_TASK,
+   WOBJ_SEM,
 
    /* Special "meta-object" types */
 
@@ -100,6 +101,22 @@ void mobj_waiter_set(multi_obj_waiter *w,
                      list *wait_list);
 
 void kernel_sleep_on_waiter(multi_obj_waiter *w);
+
+/*
+ * The semaphore implementation used for locking in kernel mode.
+ */
+
+typedef struct {
+
+   int counter;
+   list wait_list;
+
+} ksem;
+
+void ksem_init(ksem *s);
+void ksem_destroy(ksem *s);
+void ksem_wait(ksem *s);
+void ksem_signal(ksem *s);
 
 /*
  * The mutex implementation used for locking in kernel mode.
