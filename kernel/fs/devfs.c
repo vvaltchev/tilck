@@ -11,6 +11,7 @@
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/sync.h>
+#include <tilck/kernel/rwlock.h>
 
 #include <dirent.h> // system header
 
@@ -80,10 +81,7 @@ typedef struct {
 typedef struct {
 
    devfs_directory root_dir;
-
-   kmutex ex_mutex; // big exclusive whole-filesystem lock
-                    // TODO: use a rw-lock when available in the kernel
-
+   rwlock_wp rwlock;
    datetime_t wrt_time;
 
 } devfs_data;
@@ -331,23 +329,25 @@ static int devfs_dup(fs_handle fsh, fs_handle *dup_h)
 static void devfs_exclusive_lock(filesystem *fs)
 {
    devfs_data *d = fs->device_data;
-   kmutex_lock(&d->ex_mutex);
+   rwlock_wp_exlock(&d->rwlock);
 }
 
 static void devfs_exclusive_unlock(filesystem *fs)
 {
    devfs_data *d = fs->device_data;
-   kmutex_unlock(&d->ex_mutex);
+   rwlock_wp_exunlock(&d->rwlock);
 }
 
 static void devfs_shared_lock(filesystem *fs)
 {
-   devfs_exclusive_lock(fs);
+   devfs_data *d = fs->device_data;
+   rwlock_wp_shlock(&d->rwlock);
 }
 
 static void devfs_shared_unlock(filesystem *fs)
 {
-   devfs_exclusive_unlock(fs);
+   devfs_data *d = fs->device_data;
+   rwlock_wp_shunlock(&d->rwlock);
 }
 
 static int
@@ -431,7 +431,7 @@ filesystem *create_devfs(void)
    }
 
    list_init(&d->root_dir.files_list);
-   kmutex_init(&d->ex_mutex, KMUTEX_FL_RECURSIVE);
+   rwlock_wp_init(&d->rwlock);
 
    read_system_clock_datetime(&d->wrt_time);
    fs->fs_type_name = "devfs";
