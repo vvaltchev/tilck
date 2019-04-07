@@ -389,8 +389,7 @@ STATIC void fat_exclusive_lock(filesystem *fs)
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
 
-   fat_fs_device_data *d = fs->device_data;
-   kmutex_lock(&d->ex_mutex);
+   NOT_IMPLEMENTED();
 }
 
 STATIC void fat_exclusive_unlock(filesystem *fs)
@@ -398,8 +397,7 @@ STATIC void fat_exclusive_unlock(filesystem *fs)
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
 
-   fat_fs_device_data *d = fs->device_data;
-   kmutex_unlock(&d->ex_mutex);
+   NOT_IMPLEMENTED();
 }
 
 STATIC void fat_shared_lock(filesystem *fs)
@@ -420,26 +418,42 @@ STATIC void fat_shared_unlock(filesystem *fs)
 
 STATIC void fat_file_exlock(fs_handle h)
 {
-   // TODO: introduce a real per-file lock
-   fat_exclusive_lock(get_fs(h));
+   filesystem *fs = get_fs(h);
+
+   if (!(fs->flags & VFS_FS_RW))
+      return; /* read-only: no lock is needed */
+
+   NOT_IMPLEMENTED();
 }
 
 STATIC void fat_file_exunlock(fs_handle h)
 {
-   // TODO: introduce a real per-file lock
-   fat_exclusive_unlock(get_fs(h));
+   filesystem *fs = get_fs(h);
+
+   if (!(fs->flags & VFS_FS_RW))
+      return; /* read-only: no lock is needed */
+
+   NOT_IMPLEMENTED();
 }
 
 STATIC void fat_file_shlock(fs_handle h)
 {
-   // TODO: introduce a real per-file lock
-   fat_shared_lock(get_fs(h));
+   filesystem *fs = get_fs(h);
+
+   if (!(fs->flags & VFS_FS_RW))
+      return; /* read-only: no lock is needed */
+
+   NOT_IMPLEMENTED();
 }
 
 STATIC void fat_file_shunlock(fs_handle h)
 {
-   // TODO: introduce a real per-file lock
-   fat_shared_unlock(get_fs(h));
+   filesystem *fs = get_fs(h);
+
+   if (!(fs->flags & VFS_FS_RW))
+      return; /* read-only: no lock is needed */
+
+   NOT_IMPLEMENTED();
 }
 
 STATIC int
@@ -502,8 +516,6 @@ filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
    d->cluster_size = d->hdr->BPB_SecPerClus * d->hdr->BPB_BytsPerSec;
    d->root_entry = fat_get_rootdir(d->hdr, d->type, &d->root_cluster);
 
-   kmutex_init(&d->ex_mutex, KMUTEX_FL_RECURSIVE);
-
    filesystem *fs = kzmalloc(sizeof(filesystem));
 
    if (!fs) {
@@ -529,9 +541,6 @@ filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
 
 void fat_umount_ramdisk(filesystem *fs)
 {
-   fat_fs_device_data *d = fs->device_data;
-
-   kmutex_destroy(&d->ex_mutex);
    kfree2(fs->device_data, sizeof(fat_fs_device_data));
    kfree2(fs, sizeof(filesystem));
 }

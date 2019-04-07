@@ -18,9 +18,6 @@ typedef struct {
    fat_entry *root_entry;
    u32 root_cluster;
 
-   kmutex ex_mutex; // big exclusive whole-filesystem lock
-                    // TODO: use a rw-lock when available in the kernel
-
 } fat_fs_device_data;
 
 typedef struct {
