@@ -93,7 +93,7 @@ static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
    return 0;
 }
 
-static int create_fb_device(int minor, file_ops *ops, devfs_entry_type *t)
+static int create_fb_device(int minor, file_ops *ops, enum devfs_entry *t)
 {
    *t = DEVFS_CHAR_DEVICE;
    bzero(ops, sizeof(file_ops));

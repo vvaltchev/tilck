@@ -49,7 +49,7 @@ static bool ttyaux_read_ready(fs_handle h)
 }
 
 static int
-ttyaux_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
+ttyaux_create_device_file(int minor, file_ops *ops, enum devfs_entry *t)
 {
    *t = DEVFS_CHAR_DEVICE;
 

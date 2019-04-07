@@ -7,12 +7,10 @@
 #define DEVFS_READ_BS   4096
 #define DEVFS_WRITE_BS  4096
 
-typedef enum {
-
+enum devfs_entry {
    DEVFS_DIRECTORY,
-   DEVFS_CHAR_DEVICE
-
-} devfs_entry_type;
+   DEVFS_CHAR_DEVICE,
+};
 
 typedef struct {
 
@@ -21,7 +19,7 @@ typedef struct {
 
    /* devfs-specific fields */
 
-   devfs_entry_type type;
+   enum devfs_entry type;
    void *devfs_file_ptr;
 
    u32 read_pos;
@@ -44,11 +42,11 @@ typedef struct {
    u16 dev_minor;
    const char *name;
    file_ops fops;
-   devfs_entry_type type;
+   enum devfs_entry type;
 
 } devfs_file;
 
-typedef int (*func_create_device_file)(int, file_ops *, devfs_entry_type *);
+typedef int (*func_create_device_file)(int, file_ops *, enum devfs_entry *);
 
 typedef struct {
 

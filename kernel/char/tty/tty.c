@@ -81,7 +81,7 @@ static bool tty_read_ready(fs_handle h)
 }
 
 static int
-tty_create_device_file(int minor, file_ops *ops, devfs_entry_type *t)
+tty_create_device_file(int minor, file_ops *ops, enum devfs_entry *t)
 {
    *t = DEVFS_CHAR_DEVICE;
 
