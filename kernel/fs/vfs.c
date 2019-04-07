@@ -126,6 +126,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    }
 
    if (rc == 0) {
+      ((fs_handle_base *) *out)->fl_flags = flags;
       fs->ref_count++;
    }
 
@@ -191,6 +192,9 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
 
    if (!hb->fops.write)
       return -EINVAL;
+
+   if (!(hb->fl_flags & O_WRONLY))
+      return -EBADF; /* not opened for writing */
 
    vfs_exlock(h);
    {

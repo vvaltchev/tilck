@@ -335,7 +335,7 @@ sptr sys_stat64(const char *user_path, struct stat64 *user_statbuf)
       return -ENAMETOOLONG;
 
    //printk("sys_stat64('%s') => vfs_open(%s)\n", orig_path, path);
-   rc = vfs_open(path, &h, 0, O_RDONLY);
+   rc = vfs_open(path, &h, O_RDONLY, 0);
 
    if (rc < 0)
       return rc;

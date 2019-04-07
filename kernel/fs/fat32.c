@@ -461,13 +461,22 @@ fat_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mode)
 {
    fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
    fat_entry *e = fat_search_entry(d->hdr, d->type, path);
+   fat_file_handle *h;
 
-   if (!e)
+   if (!e) {
+
+      if (!(fs->flags & VFS_FS_RW))
+         if (fl & O_CREAT)
+            return -EROFS;
+
       return -ENOENT; /* file not found */
+   }
 
-   fat_file_handle *h = kzmalloc(sizeof(fat_file_handle));
+   if (!(fs->flags & VFS_FS_RW))
+      if ((fl & O_WRONLY) || (fl & O_APPEND))
+         return -EROFS;
 
-   if (!h)
+   if (!(h = kzmalloc(sizeof(fat_file_handle))))
       return -ENOMEM;
 
    h->fs = fs;

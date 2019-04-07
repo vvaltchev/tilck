@@ -73,7 +73,10 @@ int register_driver(driver_info *info, int arg_major)
 
 typedef struct {
 
-   /* Yes, sub-directories are NOT supported at the moment */
+   /*
+    * Yes, sub-directories are NOT supported by devfs. The whole filesystem is
+    * just one flat directory.
+    */
    list files_list;
 
 } devfs_directory;
@@ -197,9 +200,8 @@ int devfs_char_dev_stat64(fs_handle h, struct stat64 *statbuf)
 static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
 {
    devfs_file_handle *h;
-   h = kzmalloc(sizeof(devfs_file_handle));
 
-   if (!h)
+   if (!(h = kzmalloc(sizeof(devfs_file_handle))))
       return -ENOMEM;
 
    h->type = DEVFS_DIRECTORY;
@@ -223,14 +225,11 @@ static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
 static int devfs_open_file(filesystem *fs, devfs_file *pos, fs_handle *out)
 {
    devfs_file_handle *h;
-   h = kzmalloc(sizeof(devfs_file_handle));
 
-   if (!h)
+   if (!(h = kzmalloc(sizeof(devfs_file_handle))))
       return -ENOMEM;
 
-   h->read_buf = kzmalloc(DEVFS_READ_BS);
-
-   if (!h->read_buf) {
+   if (!(h->read_buf = kzmalloc(DEVFS_READ_BS))) {
       kfree2(h, sizeof(devfs_file_handle));
       return -ENOMEM;
    }
@@ -276,6 +275,9 @@ devfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
          return devfs_open_file(fs, pos, out);
       }
    }
+
+   if (fl & O_CREAT)
+      return -EROFS;
 
    return -ENOENT;
 }
