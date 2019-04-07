@@ -111,10 +111,6 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    vfs_fs_shlock(fs);
    {
       fs_path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
-
-      // printk("vfs_open('%s' as '%s' in '%s'@%u)\n",
-      //        path, fs_path, fs->fs_type_name, fs->device_id);
-
       rc = fs->open(fs, fs_path, out, flags, mode);
    }
    vfs_fs_shunlock(fs);
@@ -310,7 +306,7 @@ void vfs_fs_shunlock(filesystem *fs)
    fs->fs_shunlock(fs);
 }
 
-int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
+int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    int rc;
@@ -321,7 +317,7 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    vfs_fs_shlock(hb->fs);
    {
       // NOTE: the fs implementation MUST handle an invalid user 'dirp' pointer.
-      rc = hb->fs->getdents64(h, dirp, buf_size);
+      rc = hb->fs->getdents64(h, user_dirp, buf_size);
    }
    vfs_fs_shunlock(hb->fs);
    return rc;
