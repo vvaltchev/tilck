@@ -124,7 +124,6 @@ static void mount_first_ramdisk(void)
    if (rc != 0)
       panic("mountpoint_add() failed with error: %d", rc);
 
-   return;
    /* -------------------------------------------- */
    /* mount the ramdisk at /tmp                    */
 
