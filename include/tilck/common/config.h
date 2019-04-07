@@ -60,6 +60,7 @@
 
 #define MAX_TTYS                  9
 #define TERM_SCROLL_LINES         5
+#define MAX_MOUNTPOINTS          16
 #define MAX_NESTED_INTERRUPTS    32
 #define TTY_INPUT_BS           1024
 

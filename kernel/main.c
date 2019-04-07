@@ -102,20 +102,38 @@ static void show_system_info(void)
 
 static void mount_first_ramdisk(void)
 {
+   /* declare the ramfs_create() function */
+   filesystem *ramfs_create(void);
+
    void *ramdisk = system_mmap_get_ramdisk_vaddr(0);
+   filesystem *initrd, *ramfs;
+   int rc;
 
    if (!ramdisk) {
       printk("[WARNING] No RAMDISK found.\n");
       return;
    }
 
-   filesystem *root_fs =
-      fat_mount_ramdisk(ramdisk, VFS_FS_RO);
+   initrd = fat_mount_ramdisk(ramdisk, VFS_FS_RO);
 
-   if (!root_fs)
-      panic("Unable to mount the fat32 RAMDISK");
+   if (!initrd)
+      panic("Unable to mount the initrd fat32 RAMDISK");
 
-   int rc = mountpoint_add(root_fs, "/");
+   rc = mountpoint_add(initrd, "/");
+
+   if (rc != 0)
+      panic("mountpoint_add() failed with error: %d", rc);
+
+   return;
+   /* -------------------------------------------- */
+   /* mount the ramdisk at /tmp                    */
+
+   ramfs = ramfs_create();
+
+   if (!ramfs)
+      panic("Unable to create ramfs");
+
+   rc = mountpoint_add(ramfs, "/tmp/");
 
    if (rc != 0)
       panic("mountpoint_add() failed with error: %d", rc);

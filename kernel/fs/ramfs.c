@@ -32,7 +32,7 @@ typedef struct {
    u32 read_pos;
    u32 write_pos;
 
-} ramfs_file_handle;
+} ramfs_handle;
 
 typedef struct {
 
@@ -64,6 +64,15 @@ static void ramfs_shared_unlock(filesystem *fs)
    rwlock_wp_shunlock(&d->rwlock);
 }
 
+static int
+ramfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
+{
+   ramfs_handle *dh = h;
+   ramfs_data *d = dh->fs->device_data;
+   (void)d;
+   return 0;
+}
+
 filesystem *ramfs_create(void)
 {
    filesystem *fs;
@@ -85,7 +94,7 @@ filesystem *ramfs_create(void)
    fs->open = NULL;
    fs->close = NULL;
    fs->dup = NULL;
-   fs->getdents64 = NULL;
+   fs->getdents64 = ramfs_getdents64;
 
    fs->fs_exlock = ramfs_exclusive_lock;
    fs->fs_exunlock = ramfs_exclusive_unlock;

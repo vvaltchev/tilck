@@ -19,8 +19,7 @@ typedef struct {
 
 STATIC_ASSERT(sizeof(_mp_cursor) <= sizeof(uptr) * MP_CURSOR_SIZE_PTRS);
 
-/* Tilck is small-scale: supporting 16 mount points seems more than enough. */
-static mountpoint *mps[16];
+static mountpoint *mps[MAX_MOUNTPOINTS];
 
 int mountpoint_add(filesystem *fs, const char *path)
 {
@@ -55,7 +54,7 @@ int mountpoint_add(filesystem *fs, const char *path)
    /*
     * Mount points MUST end with '/'.
     */
-   ASSERT(path[path_len-1] == '/');
+   ASSERT(path[path_len - 1] == '/');
 
    mountpoint *mp = mdalloc(sizeof(mountpoint) + path_len + 1);
 
@@ -119,10 +118,25 @@ mountpoint *mountpoint_get_next(_mp_cursor *c)
    ASSERT(c->curr_mp >= 0);
    ASSERT(!is_preemption_enabled());
 
-   for (int i = c->curr_mp++; i < (int)ARRAY_SIZE(mps); i++) {
+   for (int i = c->curr_mp++; i < MAX_MOUNTPOINTS; i++) {
       if (mps[i] != NULL)
          return mps[i];
    }
 
    return NULL;
+}
+
+sptr
+sys_mount(const char *user_source,
+          const char *user_target,
+          const char *user_filesystemtype,
+          unsigned long mountflags,
+          const void *user_data)
+{
+   return -ENOSYS;
+}
+
+sptr sys_umount(const char *target, int flags)
+{
+   return -ENOSYS;
 }

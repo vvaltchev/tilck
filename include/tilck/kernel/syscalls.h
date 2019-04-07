@@ -57,7 +57,12 @@ CREATE_STUB_SYSCALL_IMPL(sys_lseek)
 
 sptr sys_getpid();
 
-CREATE_STUB_SYSCALL_IMPL(sys_mount)
+sptr sys_mount(const char *user_source,
+               const char *user_target,
+               const char *user_filesystemtype,
+               unsigned long mountflags,
+               const void *user_data);
+
 CREATE_STUB_SYSCALL_IMPL(sys_oldumount)
 
 sptr sys_setuid16(uptr uid);
@@ -98,8 +103,8 @@ sptr sys_geteuid16();
 sptr sys_getegid16();
 
 CREATE_STUB_SYSCALL_IMPL(sys_acct)
-CREATE_STUB_SYSCALL_IMPL(sys_umount)
 
+sptr sys_umount(const char *target, int flags);
 sptr sys_ioctl(int fd, uptr request, void *argp);
 
 CREATE_STUB_SYSCALL_IMPL(sys_fcntl)

@@ -155,15 +155,15 @@ void vfs_close(fs_handle h)
 int vfs_dup(fs_handle h, fs_handle *dup_h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+   int rc;
 
    if (!hb)
       return -EBADF;
 
-   int rc = hb->fs->dup(h, dup_h);
-
-   if (rc)
+   if ((rc = hb->fs->dup(h, dup_h)))
       return rc;
 
+   hb->fs->ref_count++;
    ASSERT(*dup_h != NULL);
    return 0;
 }
