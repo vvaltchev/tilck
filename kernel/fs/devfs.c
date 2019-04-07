@@ -415,17 +415,16 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
 
 filesystem *create_devfs(void)
 {
+   filesystem *fs;
+   devfs_data *d;
+
    /* Disallow multiple instances of devfs */
    ASSERT(devfs == NULL);
 
-   filesystem *fs = kzmalloc(sizeof(filesystem));
-
-   if (!fs)
+   if (!(fs = kzmalloc(sizeof(filesystem))))
       return NULL;
 
-   devfs_data *d = kzmalloc(sizeof(devfs_data));
-
-   if (!d) {
+   if (!(d = kzmalloc(sizeof(devfs_data)))) {
       kfree2(fs, sizeof(filesystem));
       return NULL;
    }
@@ -433,11 +432,13 @@ filesystem *create_devfs(void)
    list_init(&d->root_dir.files_list);
    rwlock_wp_init(&d->rwlock);
 
-   read_system_clock_datetime(&d->wrt_time);
    fs->fs_type_name = "devfs";
-   fs->flags = VFS_FS_RW;
    fs->device_id = vfs_get_new_device_id();
+   fs->flags = VFS_FS_RW;
    fs->device_data = d;
+
+   read_system_clock_datetime(&d->wrt_time);
+
    fs->open = devfs_open;
    fs->close = devfs_close;
    fs->dup = devfs_dup;
