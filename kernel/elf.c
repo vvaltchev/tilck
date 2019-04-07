@@ -90,7 +90,7 @@ int load_elf_program(const char *filepath,
    ASSERT(!is_preemption_enabled());
    enable_preemption();
    {
-      rc = vfs_open(filepath, &elf_file, 0, O_RDONLY);
+      rc = vfs_open(filepath, &elf_file, O_RDONLY, 0);
    }
    disable_preemption();
 
@@ -99,19 +99,11 @@ int load_elf_program(const char *filepath,
 
    ASSERT(elf_file != NULL);
 
-   if (*pdir_ref == NULL) {
-
-      *pdir_ref = pdir_clone(get_kernel_pdir());
-
-      if (!*pdir_ref) {
-         vfs_close(elf_file);
-         return -ENOMEM;
-      }
+   enable_preemption();
+   {
+      ret = vfs_read(elf_file, &header, sizeof(header));
    }
-
-   set_curr_pdir(*pdir_ref);
-
-   ret = vfs_read(elf_file, &header, sizeof(header));
+   disable_preemption();
 
    if (ret < (int)sizeof(header)) {
       rc = -ENOEXEC;
@@ -143,12 +135,26 @@ int load_elf_program(const char *filepath,
       goto out;
    }
 
-   ret = vfs_read(elf_file, phdrs, total_phdrs_size);
+   enable_preemption();
+   {
+      ret = vfs_read(elf_file, phdrs, total_phdrs_size);
+   }
+   disable_preemption();
 
    if (ret != (ssize_t)total_phdrs_size) {
       rc = -ENOEXEC;
       goto out;
    }
+
+   ASSERT(*pdir_ref == NULL);
+   *pdir_ref = pdir_clone(get_kernel_pdir());
+
+   if (!*pdir_ref) {
+      vfs_close(elf_file);
+      return -ENOMEM;
+   }
+
+   set_curr_pdir(*pdir_ref);
 
    for (int i = 0; i < header.e_phnum; i++) {
 

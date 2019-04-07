@@ -118,13 +118,13 @@ sptr sys_execve(const char *user_filename,
    task_info *curr = get_curr_task();
    ASSERT(curr != NULL);
 
-   disable_preemption();
-
    if ((rc = execve_get_path(user_filename, &abs_path)))
-      goto errend;
+      goto errend2;
 
    if ((rc = execve_get_args(user_argv, user_env, &argv, &env)))
-      goto errend;
+      goto errend2;
+
+   disable_preemption();
 
    if ((rc = load_elf_program(abs_path, &pdir, &entry, &stack_addr, &brk)))
       goto errend;
@@ -161,6 +161,7 @@ sptr sys_execve(const char *user_filename,
 
 errend:
    enable_preemption();
+errend2:
    ASSERT(rc != 0);
    return rc;
 }
