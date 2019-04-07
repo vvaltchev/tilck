@@ -33,7 +33,7 @@ sptr sys_exit(int code);
 sptr sys_fork(void);
 sptr sys_read(int fd, void *buf, size_t count);
 sptr sys_write(int fd, const void *buf, size_t count);
-sptr sys_open(const char *pathname, int flags, int mode);
+sptr sys_open(const char *pathname, int flags, mode_t mode);
 sptr sys_close(int fd);
 sptr sys_waitpid(int pid, int *wstatus, int options);
 

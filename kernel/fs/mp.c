@@ -65,6 +65,7 @@ int mountpoint_add(filesystem *fs, const char *path)
    }
 
    mp->fs = fs;
+   fs->ref_count++;
    mp->path_len = (u32)path_len;
    memcpy(mp->path, path, path_len + 1);
    mps[i] = mp;
@@ -80,6 +81,15 @@ void mountpoint_remove(filesystem *fs)
 
    for (u32 i = 0; i < ARRAY_SIZE(mps); i++) {
       if (mps[i] && mps[i]->fs == fs) {
+
+         fs->ref_count--;
+         ASSERT(fs->ref_count >= 0);
+
+         if (fs->ref_count > 0) {
+            // TODO: [mp] handle unmount of in-use FS by returning an error
+            NOT_IMPLEMENTED();
+         }
+
          mdfree(mps[i]);
          mps[i] = NULL;
          goto out;

@@ -68,6 +68,7 @@ struct filesystem {
    u32 device_id;
    u32 flags;
    void *device_data;
+   int ref_count;
 
    func_open open;
    func_close close;

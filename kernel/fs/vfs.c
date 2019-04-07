@@ -107,13 +107,27 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    }
 
    filesystem *fs = best_match->fs;
+   fs_path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
 
-   vfs_fs_shlock(fs);
-   {
-      fs_path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
+   /*
+    * NOTE: we really DO NOT need to lock the whole FS in order to open/create
+    * a file. At most, the directory where the file is/will be.
+    *
+    * TODO: make open() to NOT lock the whole FS.
+    */
+   if (flags & O_CREAT) {
+      vfs_fs_exlock(fs);
       rc = fs->open(fs, fs_path, out, flags, mode);
+      vfs_fs_exunlock(fs);
+   } else {
+      vfs_fs_shlock(fs);
+      rc = fs->open(fs, fs_path, out, flags, mode);
+      vfs_fs_shunlock(fs);
    }
-   vfs_fs_shunlock(fs);
+
+   if (rc == 0) {
+      fs->ref_count++;
+   }
 
 out:
    mountpoint_iter_end(&cur);
@@ -123,6 +137,7 @@ out:
 void vfs_close(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+   filesystem *fs = hb->fs;
 
 #ifndef UNIT_TEST_ENVIRONMENT
    process_info *pi = get_curr_task()->pi;
@@ -130,6 +145,11 @@ void vfs_close(fs_handle h)
 #endif
 
    hb->fs->close(h);
+
+   fs->ref_count--;
+
+   /* while a filesystem is mounted, the minimum ref-count it can have is 1 */
+   ASSERT(fs->ref_count > 0);
 }
 
 int vfs_dup(fs_handle h, fs_handle *dup_h)

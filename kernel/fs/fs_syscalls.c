@@ -9,6 +9,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/fault_resumable.h>
+#include <tilck/kernel/syscalls.h>
 
 #include <fcntl.h>      // system header
 
@@ -56,7 +57,7 @@ fs_handle get_fs_handle(u32 fd)
 }
 
 
-sptr sys_open(const char *user_path, int flags, int mode)
+sptr sys_open(const char *user_path, int flags, mode_t mode)
 {
    sptr ret;
    task_info *curr = get_curr_task();
@@ -88,7 +89,7 @@ sptr sys_open(const char *user_path, int flags, int mode)
 
    // TODO: make the vfs call runnable with preemption enabled
    // In order to achieve that, we'll need a per-process "fs" lock.
-   ret = vfs_open(path, &h, 0, O_RDONLY);
+   ret = vfs_open(path, &h, flags, mode);
 
    if (ret < 0)
       goto end;
@@ -99,9 +100,6 @@ sptr sys_open(const char *user_path, int flags, int mode)
    ret = (sptr) free_fd;
 
 end:
-   // printk("[TID: %i] sys_open('%s' => '%s', %x, %x) => %d\n",
-   //        curr->tid, orig_path, path, flags, mode, ret);
-
    enable_preemption();
    return ret;
 
