@@ -101,7 +101,7 @@ out:
 }
 
 static inline void
-execve_prepare_process(process_info *pi, void *brk, char *abs_path)
+execve_prepare_process(process_info *pi, void *brk, const char *abs_path)
 {
    pi->brk = brk;
    pi->initial_brk = brk;
@@ -110,6 +110,34 @@ execve_prepare_process(process_info *pi, void *brk, char *abs_path)
    close_cloexec_handles(pi);
 }
 
+int first_execve(const char *abs_path, const char *const *argv)
+{
+   int rc;
+   void *entry, *stack_addr, *brk;
+   pdir_t *pdir = NULL;
+   task_info *ti = NULL;
+
+   if ((rc = load_elf_program(abs_path, &pdir, &entry, &stack_addr, &brk)))
+      return rc;
+
+   rc = setup_usermode_task(pdir,
+                            entry,
+                            stack_addr,
+                            NULL,
+                            (char *const *)argv,
+                            default_env,
+                            &ti);
+
+   if (rc)
+      return rc;
+
+   ASSERT(ti != NULL);
+   execve_prepare_process(ti->pi, brk, abs_path);
+
+   push_nested_interrupt(-1);
+   switch_to_idle_task();
+   NOT_REACHED();
+}
 
 sptr sys_execve(const char *user_filename,
                 const char *const *user_argv,
@@ -125,16 +153,14 @@ sptr sys_execve(const char *user_filename,
    pdir_t *pdir = NULL;
    task_info *ti = NULL;
 
-   ASSERT(get_curr_task() != NULL);
-
-   task_info *curr =
-      get_curr_task() != kernel_process ? get_curr_task() : NULL;
+   task_info *curr = get_curr_task();
+   ASSERT(curr != NULL);
 
    if ((rc = execve_get_path(user_filename, &abs_path)))
-      goto errend2;
+      return rc;
 
    if ((rc = execve_get_args(user_argv, user_env, &argv, &env)))
-      goto errend2;
+      return rc;
 
    char *const default_argv[] = { abs_path, NULL };
 
@@ -162,24 +188,12 @@ sptr sys_execve(const char *user_filename,
    if (rc)
       goto errend;
 
-   enable_preemption();
-
-   ASSERT(ti != NULL);
    execve_prepare_process(ti->pi, brk, abs_path);
-
-   disable_preemption();
-
-   if (LIKELY(curr != NULL)) {
-      pop_nested_interrupt();
-      switch_to_task(ti, -1);
-   }
-
-   switch_to_idle_task();
-   NOT_REACHED();
+   pop_nested_interrupt();
+   switch_to_task(ti, -1);
 
 errend:
    enable_preemption();
-errend2:
    ASSERT(rc != 0);
    return rc;
 }

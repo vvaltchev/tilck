@@ -28,6 +28,7 @@
 #include <tilck/kernel/self_tests.h>
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/term.h>
+#include <tilck/kernel/process.h>
 
 void init_console(void)
 {
@@ -212,8 +213,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
       panic("No ramdisk and no selftest requested: nothing to do.");
    }
 
-   enable_preemption();
-   push_nested_interrupt(-1);
-   sptr rc = sys_execve(cmd_args[0], cmd_args, NULL);
+   sptr rc = first_execve(cmd_args[0], cmd_args);
    panic("execve('%s') failed with %i\n", cmd_args[0], rc);
 }
