@@ -100,6 +100,17 @@ out:
    return rc;
 }
 
+static inline void
+execve_prepare_process(process_info *pi, void *brk, char *abs_path)
+{
+   pi->brk = brk;
+   pi->initial_brk = brk;
+   pi->did_call_execve = true;
+   memcpy(pi->filepath, abs_path, strlen(abs_path) + 1);
+   close_cloexec_handles(pi);
+}
+
+
 sptr sys_execve(const char *user_filename,
                 const char *const *user_argv,
                 const char *const *user_env)
@@ -113,7 +124,6 @@ sptr sys_execve(const char *user_filename,
    char *const *env = NULL;
    pdir_t *pdir = NULL;
    task_info *ti = NULL;
-   process_info *pi;
 
    ASSERT(get_curr_task() != NULL);
 
@@ -154,14 +164,8 @@ sptr sys_execve(const char *user_filename,
 
    enable_preemption();
 
-
    ASSERT(ti != NULL);
-   pi = ti->pi;
-   pi->brk = brk;
-   pi->initial_brk = brk;
-   pi->did_call_execve = true;
-   memcpy(pi->filepath, abs_path, strlen(abs_path) + 1);
-   close_cloexec_handles(pi);
+   execve_prepare_process(ti->pi, brk, abs_path);
 
    disable_preemption();
 
