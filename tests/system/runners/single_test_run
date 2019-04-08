@@ -269,7 +269,7 @@ if failed == FAIL_SUCCESS and shell_exit_code != 0:
    print "Shell exited with code {0}.".format(shell_exit_code)
    failed = FAIL_SHELL_NO_ZERO_EXIT
 
-if dump_coverage and report_coverage:
+if failed == FAIL_SUCCESS and dump_coverage and report_coverage:
 
    try:
 
