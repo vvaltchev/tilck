@@ -392,7 +392,6 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
    task_info *curr = get_curr_task();
 
    ASSERT(curr != NULL);
-   ASSERT(ti != curr);
    ASSERT(curr->state != TASK_STATE_RUNNING);
    ASSERT(ti->state == TASK_STATE_RUNNABLE);
    ASSERT(!is_preemption_enabled());

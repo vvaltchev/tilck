@@ -232,7 +232,17 @@ out:
    vfs_close(elf_file);
    kfree2(phdrs, total_phdrs_size);
 
-   if (rc != 0) {
+   if (LIKELY(!rc)) {
+
+      /* positive case */
+      if (LIKELY(get_curr_task() != kernel_process)) {
+         task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
+         pdir_destroy(old_pdir);
+      }
+
+   } else {
+
+      /* error case */
       set_curr_pdir(old_pdir);
       pdir_destroy(*pdir_ref);
       *pdir_ref = NULL;

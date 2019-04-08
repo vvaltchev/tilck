@@ -115,8 +115,10 @@ sptr sys_execve(const char *user_filename,
    task_info *ti = NULL;
    process_info *pi;
 
-   task_info *curr = get_curr_task();
-   ASSERT(curr != NULL);
+   ASSERT(get_curr_task() != NULL);
+
+   task_info *curr =
+      get_curr_task() != kernel_process ? get_curr_task() : NULL;
 
    if ((rc = execve_get_path(user_filename, &abs_path)))
       goto errend2;
@@ -124,22 +126,25 @@ sptr sys_execve(const char *user_filename,
    if ((rc = execve_get_args(user_argv, user_env, &argv, &env)))
       goto errend2;
 
+   char *const default_argv[] = { abs_path, NULL };
+
+   /*
+    * Wishfully, it would be great to NOT keep the preemption disabled during
+    * the whole load_elf_program() as it does VFS calls. But, the problem is
+    * that the function changes the current page dir in order to being able to
+    * use new image's vaddrs. Preemption is NOT possible because task->pi->pdir
+    * still points to the older page directory, until the whole load_elf_program
+    * completes.
+    */
    disable_preemption();
 
    if ((rc = load_elf_program(abs_path, &pdir, &entry, &stack_addr, &brk)))
       goto errend;
 
-   char *const default_argv[] = { abs_path, NULL };
-
-   if (LIKELY(curr != kernel_process)) {
-      task_change_state(curr, TASK_STATE_RUNNABLE);
-      pdir_destroy(curr->pi->pdir);
-   }
-
    rc = setup_usermode_task(pdir,
                             entry,
                             stack_addr,
-                            curr != kernel_process ? curr : NULL,
+                            curr,
                             argv ? argv : default_argv,
                             env ? env : default_env,
                             &ti);
@@ -147,14 +152,23 @@ sptr sys_execve(const char *user_filename,
    if (rc)
       goto errend;
 
-   ASSERT(ti != NULL);
+   enable_preemption();
 
+
+   ASSERT(ti != NULL);
    pi = ti->pi;
    pi->brk = brk;
    pi->initial_brk = brk;
    pi->did_call_execve = true;
    memcpy(pi->filepath, abs_path, strlen(abs_path) + 1);
    close_cloexec_handles(pi);
+
+   disable_preemption();
+
+   if (LIKELY(curr != NULL)) {
+      pop_nested_interrupt();
+      switch_to_task(ti, -1);
+   }
 
    switch_to_idle_task();
    NOT_REACHED();
