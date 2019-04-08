@@ -69,6 +69,7 @@
       "kmalloc.h": "c",
       "resource.h": "c",
       "self_tests.h": "c",
-      "interrupts.h": "c"
+      "interrupts.h": "c",
+      "bintree.h": "c"
    }
 }

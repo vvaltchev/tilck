@@ -12,8 +12,13 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/rwlock.h>
 #include <tilck/kernel/datetime.h>
+#include <tilck/kernel/bintree.h>
+#include <tilck/kernel/paging.h>
 
 #include <dirent.h> // system header
+
+struct ramfs_inode;
+typedef struct ramfs_inode ramfs_inode;
 
 enum ramfs_entry {
    RAMFS_FILE,
@@ -23,11 +28,44 @@ enum ramfs_entry {
 
 typedef struct {
 
+   bintree_node node;
+   uptr offset;                  /* MUST BE divisible by PAGE_SIZE */
+   void *vaddr;
+
+} ramfs_block;
+
+typedef struct {
+
+   list_node node;
+   const char *name;
+   struct ramfs_inode *inode;
+
+} ramfs_entry;
+
+struct ramfs_inode {
+
+   int inode;
+   int ref_count;
+   enum ramfs_entry type;
+   mode_t mode;                        /* permissions + special flags */
+
+   union {
+      ramfs_block *blocks_tree_root;   /* valid when type == RAMFS_FILE */
+      list entries_list;               /* valid when type == RAMFS_DIRECTORY */
+      const char *path;                /* valid when type == RAMFS_SYMLINK */
+   };
+
+   datetime_t ctime;
+   datetime_t wtime;
+};
+
+typedef struct {
+
    /* fs_handle_base */
    FS_HANDLE_BASE_FIELDS
 
    /* ramfs-specific fields */
-   enum ramfs_entry type;
+   ramfs_inode *inode;
 
    u32 read_pos;
    u32 write_pos;
@@ -37,7 +75,9 @@ typedef struct {
 typedef struct {
 
    rwlock_wp rwlock;
-   datetime_t wrt_time;
+
+   int next_inode_num;
+   ramfs_inode root_inode;
 
 } ramfs_data;
 
@@ -85,48 +125,49 @@ int ramfs_dir_ioctl(fs_handle h, uptr request, void *arg)
    return -EINVAL;
 }
 
-int ramfs_dir_stat64(fs_handle h, struct stat64 *statbuf)
+int ramfs_stat64(fs_handle h, struct stat64 *statbuf)
 {
-   ramfs_handle *rh = h;
-   ramfs_data *d = rh->fs->device_data;
-
    if (!h)
       return -ENOENT;
 
+   ramfs_handle *rh = h;
+   ramfs_inode *inode = rh->inode;
+
    bzero(statbuf, sizeof(struct stat64));
+
    statbuf->st_dev = rh->fs->device_id;
-   statbuf->st_ino = 0;
-   statbuf->st_mode = 0555 | S_IFDIR;
-   statbuf->st_nlink = 1;
-   statbuf->st_uid = 0; /* root */
-   statbuf->st_gid = 0; /* root */
-   statbuf->st_rdev = 0; /* device ID if a special file: in this case, NO. */
+   statbuf->st_ino = (typeof(statbuf->st_ino)) inode->inode;
+   statbuf->st_mode = inode->mode;
+   statbuf->st_nlink = (typeof(statbuf->st_nlink)) inode->ref_count;
+   statbuf->st_uid = 0;  /* root */
+   statbuf->st_gid = 0;  /* root */
+   statbuf->st_rdev = 0; /* device ID if a special file: therefore, NO. */
    statbuf->st_size = 0;
-   statbuf->st_blksize = 4096;
+   statbuf->st_blksize = PAGE_SIZE;
    statbuf->st_blocks = statbuf->st_size / 512;
 
-   statbuf->st_ctim.tv_sec = datetime_to_timestamp(d->wrt_time);
-   statbuf->st_mtim.tv_sec = datetime_to_timestamp(d->wrt_time);
+   statbuf->st_ctim.tv_sec = datetime_to_timestamp(inode->ctime);
+   statbuf->st_mtim.tv_sec = datetime_to_timestamp(inode->wtime);
    statbuf->st_atim = statbuf->st_mtim;
 
    return 0;
 }
 
-static int ramfs_open_dir(filesystem *fs, fs_handle *out)
+static int ramfs_open_dir(filesystem *fs, ramfs_inode *inode, fs_handle *out)
 {
    ramfs_handle *h;
 
    if (!(h = kzmalloc(sizeof(ramfs_handle))))
       return -ENOMEM;
 
-   h->type = RAMFS_DIRECTORY;
+   h->inode = inode;
    h->fs = fs;
    h->fops = (file_ops) {
       .read = ramfs_dir_read,
       .write = ramfs_dir_write,
       .seek = ramfs_dir_seek,
       .ioctl =  ramfs_dir_ioctl,
-      .stat = ramfs_dir_stat64,
+      .stat = ramfs_stat64,
       .exlock = NULL,
       .exunlock = NULL,
       .shlock = NULL,
@@ -151,9 +192,8 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
    path++;
 
    if (!*path)
-      return ramfs_open_dir(fs, out);
+      return ramfs_open_dir(fs, &d->root_inode, out);
 
-   (void)d;
    return -ENOENT;
 }
 
@@ -185,7 +225,20 @@ filesystem *ramfs_create(void)
       return NULL;
    }
 
-   read_system_clock_datetime(&d->wrt_time);
+   rwlock_wp_init(&d->rwlock);
+
+   d->root_inode = (ramfs_inode) {
+      .inode = 1,
+      .ref_count = 1,
+      .type = RAMFS_DIRECTORY,
+      .mode = 0777 | S_IFDIR,
+      .entries_list = make_list(d->root_inode.entries_list),
+   };
+
+   read_system_clock_datetime(&d->root_inode.ctime);
+   read_system_clock_datetime(&d->root_inode.wtime);
+
+   d->next_inode_num = d->root_inode.inode + 1;
 
    fs->fs_type_name = "ramfs";
    fs->device_id = vfs_get_new_device_id();
@@ -201,8 +254,6 @@ filesystem *ramfs_create(void)
    fs->fs_exunlock = ramfs_exclusive_unlock;
    fs->fs_shlock = ramfs_shared_lock;
    fs->fs_shunlock = ramfs_shared_unlock;
-
-   rwlock_wp_init(&d->rwlock);
    return fs;
 }
 
