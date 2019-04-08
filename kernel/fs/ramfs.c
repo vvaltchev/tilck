@@ -234,6 +234,18 @@ int ramfs_stat64(fs_handle h, struct stat64 *statbuf)
    return 0;
 }
 
+static int ramfs_dup(fs_handle h, fs_handle *dup_h)
+{
+   ramfs_handle *new_h = kmalloc(sizeof(ramfs_handle));
+
+   if (!new_h)
+      return -ENOMEM;
+
+   memcpy(new_h, h, sizeof(ramfs_handle));
+   *dup_h = new_h;
+   return 0;
+}
+
 static int ramfs_open_dir(filesystem *fs, ramfs_inode *inode, fs_handle *out)
 {
    ramfs_handle *h;
@@ -425,7 +437,7 @@ filesystem *ramfs_create(void)
 
    fs->open = ramfs_open;
    fs->close = ramfs_close;
-   fs->dup = NULL;
+   fs->dup = ramfs_dup;
    fs->getdents64 = ramfs_getdents64;
 
    fs->fs_exlock = ramfs_exclusive_lock;
@@ -436,8 +448,7 @@ filesystem *ramfs_create(void)
    // //tmp
    // {
    //    ramfs_inode *i1 = ramfs_create_inode_dir(d, 0777, d->root);
-   //    int rc = ramfs_dir_add_entry(d->root, "dir1", i1);
-   //    VERIFY(rc == 0);
+   //    VERIFY(ramfs_dir_add_entry(d->root, "dir1", i1) == 0);
    // }
    // //end tmp
    return fs;
