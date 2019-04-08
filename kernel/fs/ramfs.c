@@ -124,7 +124,7 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
 
    i->inode = d->next_inode_num++;
    i->type = RAMFS_DIRECTORY;
-   i->mode = mode | S_IFDIR;
+   i->mode = (mode & 0777) | S_IFDIR;
 
    list_init(&i->entries_list);
 
@@ -144,6 +144,24 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
       kfree2(i, sizeof(ramfs_inode));
       return NULL;
    }
+
+   read_system_clock_datetime(&i->ctime);
+   i->wtime = i->ctime;
+   return i;
+}
+
+
+static ramfs_inode *
+ramfs_create_inode_file(ramfs_data *d, mode_t mode, ramfs_inode *parent)
+{
+   ramfs_inode *i = kzmalloc(sizeof(ramfs_inode));
+
+   if (!i)
+      return NULL;
+
+   i->inode = d->next_inode_num++;
+   i->type = RAMFS_FILE;
+   i->mode = (mode & 0777) | S_IFREG;
 
    read_system_clock_datetime(&i->ctime);
    i->wtime = i->ctime;
@@ -372,7 +390,21 @@ ramfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
       ent.d_ino = (typeof(ent.d_ino)) pos->inode->inode;
       ent.d_off = (s64)(offset + entry_size);
       ent.d_reclen = (u16)entry_size;
-      ent.d_type = DT_UNKNOWN;
+
+      switch (pos->inode->type) {
+         case RAMFS_DIRECTORY:
+            ent.d_type = DT_DIR;
+            break;
+         case RAMFS_FILE:
+            ent.d_type = DT_REG;
+            break;
+         case RAMFS_SYMLINK:
+            ent.d_type = DT_LNK;
+            break;
+         default:
+            ent.d_type = DT_UNKNOWN;
+            break;
+      }
 
       struct linux_dirent64 *user_ent = (void *)((char *)dirp + offset);
 
@@ -449,6 +481,9 @@ filesystem *ramfs_create(void)
    // {
    //    ramfs_inode *i1 = ramfs_create_inode_dir(d, 0777, d->root);
    //    VERIFY(ramfs_dir_add_entry(d->root, "dir1", i1) == 0);
+
+   //    ramfs_inode *i2 = ramfs_create_inode_file(d, 0644, d->root);
+   //    VERIFY(ramfs_dir_add_entry(d->root, "file1", i2) == 0);
    // }
    // //end tmp
    return fs;

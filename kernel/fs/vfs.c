@@ -109,6 +109,9 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    filesystem *fs = best_match->fs;
    fs_path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
 
+   if (flags & O_RDWR)
+      flags |= (O_RDONLY | O_WRONLY);
+
    /*
     * NOTE: we really DO NOT need to lock the whole FS in order to open/create
     * a file. At most, the directory where the file is/will be.
