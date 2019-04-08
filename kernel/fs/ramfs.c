@@ -314,32 +314,66 @@ static int ramfs_open_file(filesystem *fs, ramfs_inode *inode, fs_handle *out)
    return 0;
 }
 
+static ramfs_entry *
+ramfs_dir_get_entry_by_name(ramfs_inode *idir, const char *name, ssize_t len)
+{
+   ramfs_entry *pos;
+
+   list_for_each_ro(pos, &idir->entries_list, node) {
+      if (!strncmp(pos->name, name, (size_t) len))
+         return pos;
+   }
+
+   return NULL;
+}
+
 static int
 ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 {
-   ramfs_entry *pos;
    ramfs_data *d = fs->device_data;
+   ramfs_inode *idir = d->root;
+   ramfs_entry *e;
+   const char *pc;
 
    /*
     * Path is expected to be striped from the mountpoint prefix, but the '/'
-    * is kept. In other words, /dev/tty is /tty here.
+    * is kept. For example, if ramfs is mounted at /tmp, and the file /tmp/x
+    * is referred, here will get path == "/x".
     */
 
    ASSERT(*path == '/');
    path++;
+   pc = path;
 
-   if (!*path)
-      return ramfs_open_dir(fs, d->root, out);
+   while (*path) {
 
-   // TEMP CODE: support only a single flat directory
-
-   list_for_each_ro(pos, &d->root->entries_list, node) {
-      if (!strcmp(pos->name, path)) {
-         return ramfs_open_file(fs, pos->inode, out);
+      if (*path != '/') {
+         path++;
+         continue;
       }
+
+      /*
+       * We hit a slash '/' in the path: we now must lookup this path component.
+       *
+       * NOTE: the code in upper layers normalizes the user paths, but it makes
+       * sense to ASSERT that.
+       */
+
+      ASSERT(path[1] != '/');
+      ASSERT(path[2]);
+
+      if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
+         return -ENOENT;
+
+      idir = e->inode;
+      path++;
+      pc = path;
    }
 
-   return -ENOENT;
+   if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
+      return -ENOENT;
+
+   return ramfs_open_file(fs, e->inode, out);
 }
 
 static void ramfs_close(fs_handle h)
@@ -477,15 +511,24 @@ filesystem *ramfs_create(void)
    fs->fs_shlock = ramfs_shared_lock;
    fs->fs_shunlock = ramfs_shared_unlock;
 
-   // //tmp
+   //tmp
    // {
    //    ramfs_inode *i1 = ramfs_create_inode_dir(d, 0777, d->root);
-   //    VERIFY(ramfs_dir_add_entry(d->root, "dir1", i1) == 0);
+   //    VERIFY(ramfs_dir_add_entry(d->root, "e1", i1) == 0);
 
    //    ramfs_inode *i2 = ramfs_create_inode_file(d, 0644, d->root);
-   //    VERIFY(ramfs_dir_add_entry(d->root, "file1", i2) == 0);
+   //    VERIFY(ramfs_dir_add_entry(d->root, "e2", i2) == 0);
+
+   //    ramfs_inode *i11 = ramfs_create_inode_dir(d, 0777, i1);
+   //    VERIFY(ramfs_dir_add_entry(i1, "e11", i11) == 0);
+
+   //    ramfs_inode *i12 = ramfs_create_inode_dir(d, 0777, i1);
+   //    VERIFY(ramfs_dir_add_entry(i1, "e12", i12) == 0);
+
+   //    ramfs_inode *i111 = ramfs_create_inode_file(d, 0644, i11);
+   //    VERIFY(ramfs_dir_add_entry(i11, "e111", i111) == 0);
    // }
-   // //end tmp
+   //end tmp
    return fs;
 }
 
