@@ -37,8 +37,8 @@ typedef struct {
 typedef struct {
 
    list_node node;
-   const char *name;
    struct ramfs_inode *inode;
+   char name[256 - sizeof(list_node) - sizeof(void *)];
 
 } ramfs_entry;
 
@@ -81,7 +81,41 @@ typedef struct {
 
 } ramfs_data;
 
-static ramfs_inode *ramfs_create_inode_dir(ramfs_data *d, mode_t mode)
+static int
+ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
+{
+   ramfs_entry *e;
+   const size_t enl = strlen(iname) + 1;
+   ASSERT(idir->type == RAMFS_DIRECTORY);
+
+   if (enl > sizeof(e->name))
+      return -ENAMETOOLONG;
+
+   if (!(e = kmalloc(sizeof(ramfs_entry))))
+      return -ENOMEM;
+
+   list_node_init(&e->node);
+   e->inode = ie;
+   memcpy(e->name, iname, enl);
+
+   list_add_tail(&idir->entries_list, &e->node);
+   ie->ref_count++;
+   return 0;
+}
+
+static void
+ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
+{
+   ramfs_inode *i = e->inode;
+   ASSERT(idir->type == RAMFS_DIRECTORY);
+
+   list_remove(&e->node);
+   i->ref_count--;
+   kfree2(e, sizeof(ramfs_entry));
+}
+
+static ramfs_inode *
+ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
 {
    ramfs_inode *i = kzmalloc(sizeof(ramfs_inode));
 
@@ -93,6 +127,23 @@ static ramfs_inode *ramfs_create_inode_dir(ramfs_data *d, mode_t mode)
    i->mode = mode | S_IFDIR;
 
    list_init(&i->entries_list);
+
+   if (ramfs_dir_add_entry(i, ".", i) < 0) {
+      kfree2(i, sizeof(ramfs_inode));
+      return NULL;
+   }
+
+   if (!parent)
+      parent = i;
+
+   if (ramfs_dir_add_entry(i, "..", parent) < 0) {
+
+      ramfs_entry *e = list_first_obj(&i->entries_list, ramfs_entry, node);
+      ramfs_dir_remove_entry(i, e);
+
+      kfree2(i, sizeof(ramfs_inode));
+      return NULL;
+   }
 
    read_system_clock_datetime(&i->ctime);
    i->wtime = i->ctime;
@@ -208,9 +259,35 @@ static int ramfs_open_dir(filesystem *fs, ramfs_inode *inode, fs_handle *out)
    return 0;
 }
 
+static int ramfs_open_file(filesystem *fs, ramfs_inode *inode, fs_handle *out)
+{
+   ramfs_handle *h;
+
+   if (!(h = kzmalloc(sizeof(ramfs_handle))))
+      return -ENOMEM;
+
+   h->inode = inode;
+   h->fs = fs;
+   h->fops = (file_ops) {
+      .read = NULL,
+      .write = NULL,
+      .seek = NULL,
+      .ioctl = NULL,
+      .stat = ramfs_stat64,
+      .exlock = NULL,
+      .exunlock = NULL,
+      .shlock = NULL,
+      .shunlock = NULL,
+   };
+
+   *out = h;
+   return 0;
+}
+
 static int
 ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 {
+   ramfs_entry *pos;
    ramfs_data *d = fs->device_data;
 
    /*
@@ -223,6 +300,14 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 
    if (!*path)
       return ramfs_open_dir(fs, d->root, out);
+
+   // TEMP CODE: support only a single flat directory
+
+   list_for_each_ro(pos, &d->root->entries_list, node) {
+      if (!strcmp(pos->name, path)) {
+         return ramfs_open_file(fs, pos->inode, out);
+      }
+   }
 
    return -ENOENT;
 }
@@ -237,9 +322,60 @@ static int
 ramfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
 {
    ramfs_handle *rh = h;
-   ramfs_data *d = rh->fs->device_data;
-   (void)d;
-   return 0;
+   u32 offset = 0, curr_index = 0;
+   ramfs_inode *inode = rh->inode;
+   struct linux_dirent64 ent;
+   ramfs_entry *pos;
+
+   if (inode->type != RAMFS_DIRECTORY)
+      return -ENOTDIR;
+
+   list_for_each_ro(pos, &inode->entries_list, node) {
+
+      if (curr_index < rh->read_pos) {
+         curr_index++;
+         continue;
+      }
+
+      const char *const file_name = pos->name;
+      const u32 fl = (u32)strlen(file_name);
+      const u32 entry_size = fl + 1 + sizeof(struct linux_dirent64);
+
+      if (offset + entry_size > buf_size) {
+
+         if (!offset) {
+
+            /*
+            * We haven't "returned" any entries yet and the buffer is too small
+            * for our first entry.
+            */
+
+            return -EINVAL;
+         }
+
+         /* We "returned" at least one entry */
+         return (int)offset;
+      }
+
+      ent.d_ino = (typeof(ent.d_ino)) pos->inode->inode;
+      ent.d_off = (s64)(offset + entry_size);
+      ent.d_reclen = (u16)entry_size;
+      ent.d_type = DT_UNKNOWN;
+
+      struct linux_dirent64 *user_ent = (void *)((char *)dirp + offset);
+
+      if (copy_to_user(user_ent, &ent, sizeof(ent)) < 0)
+         return -EFAULT;
+
+      if (copy_to_user(user_ent->d_name, file_name, fl + 1) < 0)
+         return -EFAULT;
+
+      offset = (u32) ent.d_off; /* s64 to u32 precision drop */
+      curr_index++;
+      rh->read_pos++;
+   }
+
+   return (int)offset;
 }
 
 void ramfs_destroy(filesystem *fs)
@@ -275,7 +411,7 @@ filesystem *ramfs_create(void)
    fs->device_data = d;
    rwlock_wp_init(&d->rwlock);
    d->next_inode_num = 1;
-   d->root = ramfs_create_inode_dir(d, 0777);
+   d->root = ramfs_create_inode_dir(d, 0777, NULL);
 
    if (!d->root) {
       ramfs_destroy(fs);
@@ -296,6 +432,14 @@ filesystem *ramfs_create(void)
    fs->fs_exunlock = ramfs_exclusive_unlock;
    fs->fs_shlock = ramfs_shared_lock;
    fs->fs_shunlock = ramfs_shared_unlock;
+
+   // //tmp
+   // {
+   //    ramfs_inode *i1 = ramfs_create_inode_dir(d, 0777, d->root);
+   //    int rc = ramfs_dir_add_entry(d->root, "dir1", i1);
+   //    VERIFY(rc == 0);
+   // }
+   // //end tmp
    return fs;
 }
 
