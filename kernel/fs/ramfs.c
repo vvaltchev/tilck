@@ -360,10 +360,15 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
        */
 
       ASSERT(path[1] != '/');
-      ASSERT(path[2]);
 
       if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
          return -ENOENT;
+
+      if (!path[1]) {
+         /* path's last character was a slash */
+         if (e->inode->type != RAMFS_DIRECTORY)
+            return -ENOTDIR;
+      }
 
       idir = e->inode;
       path++;

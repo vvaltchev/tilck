@@ -98,7 +98,7 @@ void load_elf_kernel(const char *filepath, void **entry)
    fat_header *hdr = (fat_header *)RAMDISK_PADDR;
    void *free_space = (void *) (RAMDISK_PADDR + ramdisk_used_bytes);
 
-   fat_entry *e = fat_search_entry(hdr, fat_get_type(hdr), filepath);
+   fat_entry *e = fat_search_entry(hdr, fat_get_type(hdr), filepath, NULL);
 
    if (!e) {
       panic("Unable to open '%s'!\n", filepath);

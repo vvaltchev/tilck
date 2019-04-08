@@ -87,7 +87,7 @@ TEST(fat32, DISABLED_dumpinfo)
    fat_dump_info((void *) buf);
 
    fat_header *hdr = (fat_header*)buf;
-   fat_entry *e = fat_search_entry(hdr, fat_unknown, "/nonesistentfile");
+   fat_entry *e = fat_search_entry(hdr, fat_unknown, "/nonesistentfile", NULL);
    ASSERT_TRUE(e == NULL);
 }
 
@@ -99,7 +99,7 @@ TEST(fat32, read_content_of_shortname_file)
    fat_entry *e;
 
    hdr = (fat_header *)buf;
-   e = fat_search_entry(hdr, fat_unknown, "/testdir/dir1/f1");
+   e = fat_search_entry(hdr, fat_unknown, "/testdir/dir1/f1", NULL);
    ASSERT_TRUE(e != NULL);
 
    fat_read_whole_file(hdr, e, data, sizeof(data));
@@ -115,9 +115,12 @@ TEST(fat32, read_content_of_longname_file)
    fat_entry *e;
 
    hdr = (fat_header *)buf;
+
    e = fat_search_entry(hdr,
                         fat_unknown,
-                        "/testdir/This_is_a_file_with_a_veeeery_long_name.txt");
+                        "/testdir/This_is_a_file_with_a_veeeery_long_name.txt",
+                        NULL);
+
    ASSERT_TRUE(e != NULL);
    fat_read_whole_file(hdr, e, data, sizeof(data));
 
@@ -129,7 +132,7 @@ TEST(fat32, read_whole_file)
    fat_header *hdr = (fat_header *)
       load_once_file(PROJ_BUILD_DIR "/test_fatpart");
 
-   fat_entry *e = fat_search_entry(hdr, fat_unknown, "/bigfile");
+   fat_entry *e = fat_search_entry(hdr, fat_unknown, "/bigfile", NULL);
 
    char *content = (char *)calloc(1, e->DIR_FileSize);
    fat_read_whole_file(hdr, e, content, e->DIR_FileSize);

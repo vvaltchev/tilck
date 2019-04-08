@@ -249,6 +249,10 @@ static int devfs_open_file(filesystem *fs, devfs_file *pos, fs_handle *out)
 static int
 devfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 {
+   devfs_data *d = fs->device_data;
+   devfs_file *pos;
+   size_t pl;
+
    /*
     * Path is expected to be striped from the mountpoint prefix, but the '/'
     * is kept. In other words, /dev/tty is /tty here.
@@ -262,8 +266,10 @@ devfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
       return devfs_open_root_dir(fs, out);
    }
 
-   devfs_data *d = fs->device_data;
-   devfs_file *pos;
+   pl = strlen(path);
+
+   if (path[pl - 1] == '/')
+      pl--;
 
    /*
     * Linearly iterate our linked list: we do not expect any time soon devfs
@@ -271,7 +277,12 @@ devfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
     */
 
    list_for_each_ro(pos, &d->root_dir.files_list, dir_node) {
-      if (!strcmp(pos->name, path)) {
+
+      if (!strncmp(pos->name, path, pl) && !pos->name[pl]) {
+
+         if (path[pl] == '/')
+            return -ENOTDIR;
+
          return devfs_open_file(fs, pos, out);
       }
    }

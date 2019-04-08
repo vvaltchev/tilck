@@ -493,6 +493,7 @@ typedef struct {
    fat_entry *result;         // the found entry
    u32 subdir_cluster;        // the cluster of the subdir's we have to walk to
    fat_walk_dir_ctx walk_ctx; // walk context: contains long names
+   bool not_dir;              // path ended with '/' but entry was NOT a dir
 
 } fat_search_ctx;
 
@@ -525,7 +526,7 @@ static int fat_search_entry_cb(fat_header *hdr,
 
    if (ctx->pcl == 0) {
       if (!fat_fetch_next_component(ctx)) {
-         // The path was empty, so not path component has been fetched.
+         // The path was empty, so no path component has been fetched.
          return -1;
       }
    }
@@ -582,7 +583,17 @@ static int fat_search_entry_cb(fat_header *hdr,
    ctx->path++;
 
    if (*ctx->path == 0) {
-      ctx->result = entry; // the path just ended with '/'. That's still OK.
+
+      /*
+       * The path just ended with '/'. That's OK only if entry is acutally is
+       * a directory.
+       */
+
+      if (entry->directory)
+         ctx->result = entry;
+      else
+         ctx->not_dir = true;
+
       return -1;
    }
 
@@ -597,7 +608,7 @@ static int fat_search_entry_cb(fat_header *hdr,
 }
 
 fat_entry *
-fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
+fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath, int *err)
 {
    fat_search_ctx ctx;
    fat_entry *root;
@@ -638,6 +649,13 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath)
 
       fat_walk_directory(&ctx.walk_ctx, hdr, ft, NULL, cluster,
                          &fat_search_entry_cb, &ctx, level++);
+   }
+
+   if (err) {
+      if (ctx.not_dir)
+         *err = -20; // -ENOTDIR
+      else
+         *err = -2;  // -ENOENT
    }
 
    return ctx.result;

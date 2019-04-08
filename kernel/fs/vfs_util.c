@@ -105,8 +105,12 @@ copy_char:
 
    ASSERT(d > dest);
 
-   if (d > dest + 1 && d[-1] == '/')
-      d--; /* drop the trailing '/' */
+   if (d > dest + 1 && d[-1] == '/') {
+      if (p[-1] != '/') {
+         /* drop the trailing '/' only if the user path did NOT end with '/' */
+         d--;
+      }
+   }
 
    ASSERT(d > dest); // dest must contain at least 1 char, '/'.
    *d = 0;

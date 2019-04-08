@@ -221,7 +221,8 @@ fat_walk_directory(fat_walk_dir_ctx *ctx,
                    int level);
 
 
-fat_entry *fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath);
+fat_entry *
+fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath, int *err);
 
 size_t fat_get_file_size(fat_entry *entry);
 
