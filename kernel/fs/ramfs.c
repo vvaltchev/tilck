@@ -77,9 +77,39 @@ typedef struct {
    rwlock_wp rwlock;
 
    int next_inode_num;
-   ramfs_inode root_inode;
+   ramfs_inode *root;
 
 } ramfs_data;
+
+static ramfs_inode *ramfs_create_inode_dir(ramfs_data *d, mode_t mode)
+{
+   ramfs_inode *i = kzmalloc(sizeof(ramfs_inode));
+
+   if (!i)
+      return NULL;
+
+   i->inode = d->next_inode_num++;
+   i->type = RAMFS_DIRECTORY;
+   i->mode = mode | S_IFDIR;
+
+   list_init(&i->entries_list);
+
+   read_system_clock_datetime(&i->ctime);
+   i->wtime = i->ctime;
+   return i;
+}
+
+static int ramfs_destroy_inode(ramfs_data *d, ramfs_inode *i)
+{
+   if (i->type == RAMFS_DIRECTORY) {
+
+      if (!list_is_empty(&i->entries_list))
+         return -ENOTEMPTY;
+   }
+
+   kfree2(i, sizeof(ramfs_inode));
+   return 0;
+}
 
 static void ramfs_exclusive_lock(filesystem *fs)
 {
@@ -166,7 +196,7 @@ static int ramfs_open_dir(filesystem *fs, ramfs_inode *inode, fs_handle *out)
       .read = ramfs_dir_read,
       .write = ramfs_dir_write,
       .seek = ramfs_dir_seek,
-      .ioctl =  ramfs_dir_ioctl,
+      .ioctl = ramfs_dir_ioctl,
       .stat = ramfs_stat64,
       .exlock = NULL,
       .exunlock = NULL,
@@ -192,7 +222,7 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
    path++;
 
    if (!*path)
-      return ramfs_open_dir(fs, &d->root_inode, out);
+      return ramfs_open_dir(fs, d->root, out);
 
    return -ENOENT;
 }
@@ -212,6 +242,23 @@ ramfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    return 0;
 }
 
+void ramfs_destroy(filesystem *fs)
+{
+   ramfs_data *d = fs->device_data;
+
+   if (d) {
+
+      if (d->root) {
+         ramfs_destroy_inode(d, d->root);
+      }
+
+      rwlock_wp_destroy(&d->rwlock);
+      kfree2(d, sizeof(ramfs_data));
+   }
+
+   kfree2(fs, sizeof(filesystem));
+}
+
 filesystem *ramfs_create(void)
 {
    filesystem *fs;
@@ -221,29 +268,24 @@ filesystem *ramfs_create(void)
       return NULL;
 
    if (!(d = kzmalloc(sizeof(ramfs_data)))) {
-      kfree2(fs, sizeof(filesystem));
+      ramfs_destroy(fs);
       return NULL;
    }
 
+   fs->device_data = d;
    rwlock_wp_init(&d->rwlock);
+   d->next_inode_num = 1;
+   d->root = ramfs_create_inode_dir(d, 0777);
 
-   d->root_inode = (ramfs_inode) {
-      .inode = 1,
-      .ref_count = 1,
-      .type = RAMFS_DIRECTORY,
-      .mode = 0777 | S_IFDIR,
-      .entries_list = make_list(d->root_inode.entries_list),
-   };
+   if (!d->root) {
+      ramfs_destroy(fs);
+      return NULL;
+   }
 
-   read_system_clock_datetime(&d->root_inode.ctime);
-   read_system_clock_datetime(&d->root_inode.wtime);
-
-   d->next_inode_num = d->root_inode.inode + 1;
-
+   d->root->ref_count++;
    fs->fs_type_name = "ramfs";
    fs->device_id = vfs_get_new_device_id();
    fs->flags = VFS_FS_RW;
-   fs->device_data = d;
 
    fs->open = ramfs_open;
    fs->close = ramfs_close;
@@ -257,12 +299,3 @@ filesystem *ramfs_create(void)
    return fs;
 }
 
-void ramfs_destroy(filesystem *fs)
-{
-   ramfs_data *d = fs->device_data;
-
-   rwlock_wp_destroy(&d->rwlock);
-
-   kfree2(d, sizeof(ramfs_data));
-   kfree2(fs, sizeof(filesystem));
-}
