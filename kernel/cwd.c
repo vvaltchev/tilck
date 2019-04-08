@@ -28,10 +28,8 @@ sptr sys_chdir(const char *user_path)
    {
       rc = compute_abs_path(orig_path, pi->cwd, path, MAX_PATH);
 
-      if (rc < 0) {
-         rc = -ENAMETOOLONG;
+      if (rc != 0)
          goto out;
-      }
 
       fs_handle h = NULL;
       rc = vfs_open(path, &h, 0, O_RDONLY);

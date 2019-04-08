@@ -77,10 +77,8 @@ sptr sys_open(const char *user_path, int flags, mode_t mode)
 
    ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
 
-   if (ret < 0) {
-      ret = -ENAMETOOLONG;
+   if (ret != 0)
       goto end;
-   }
 
    u32 free_fd = get_free_handle_num(curr->pi);
 
@@ -332,7 +330,7 @@ sptr sys_stat64(const char *user_path, struct stat64 *user_statbuf)
    enable_preemption();
 
    if (rc < 0)
-      return -ENAMETOOLONG;
+      return rc;
 
    //printk("sys_stat64('%s') => vfs_open(%s)\n", orig_path, path);
    rc = vfs_open(path, &h, O_RDONLY, 0);

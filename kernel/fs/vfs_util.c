@@ -2,6 +2,7 @@
 
 #include <tilck/common/string_util.h>
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/errno.h>
 
 static void drop_last_component(char **d_ref, char *const dest)
 {
@@ -33,6 +34,11 @@ compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size)
    const char *p;
    char *d = dest;
 
+   ASSERT(*cwd == '/');
+
+   if (!*path)
+      return -ENOENT;
+
    if (*path != '/') {
 
       u32 cl = (u32)strlen(cwd);
@@ -42,7 +48,7 @@ compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size)
       ASSERT(cwd[cl - 1] == '/');
 
       if (dest_size < strlen(path) + cl + 1)
-         return -1;
+         return -ENAMETOOLONG;
 
       memcpy(dest, cwd, cl + 1);
       d = dest + cl;
@@ -51,7 +57,7 @@ compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size)
 
       /* path is absolute */
       if (dest_size < strlen(path) + 1)
-         return -1;
+         return -ENAMETOOLONG;
    }
 
 
