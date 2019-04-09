@@ -18,40 +18,62 @@ static int load_phdr(fs_handle *elf_file,
    int rc;
    ssize_t ret;
    char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
+   uptr va = phdr->p_vaddr;
 
    if (phdr->p_memsz == 0)
       return 0; /* very weird (because the phdr has type LOAD) */
 
-   uptr sz = phdr->p_vaddr + phdr->p_memsz - (uptr)vaddr;
-   size_t page_count = (sz + PAGE_SIZE - 1) / PAGE_SIZE;
+   size_t memsz = phdr->p_vaddr + phdr->p_memsz - (uptr)vaddr;
+   size_t page_count = (memsz + PAGE_SIZE - 1) / PAGE_SIZE;
+   size_t filesz_rem = phdr->p_filesz;
+   size_t tot_read = 0;
+
    *end_vaddr_ref = (uptr)vaddr + (page_count << PAGE_SHIFT);
-
-   for (u32 j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
-
-      if (is_mapped(pdir, vaddr))
-         continue;
-
-      void *p = kzmalloc(PAGE_SIZE);
-
-      if (!p)
-         return -ENOMEM;
-
-      rc = map_page(pdir, vaddr, KERNEL_VA_TO_PA(p), true, true);
-
-      if (rc != 0)
-         return rc;
-   }
 
    ret = vfs_seek(elf_file, (s64)phdr->p_offset, SEEK_SET);
 
    if (ret != (ssize_t)phdr->p_offset)
       return -ENOEXEC;
 
-   ret = vfs_read(elf_file, (void *) phdr->p_vaddr, phdr->p_filesz);
+   for (u32 j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
 
-   if (ret != (ssize_t)phdr->p_filesz)
-      return -ENOEXEC;
+      void *p;
 
+      if (!is_mapped(pdir, vaddr)) {
+
+         p = kzmalloc(PAGE_SIZE);
+
+         if (!p)
+            return -ENOMEM;
+
+         rc = map_page(pdir, vaddr, KERNEL_VA_TO_PA(p), true, true);
+
+         if (rc != 0)
+            return rc;
+
+      } else {
+
+         uptr pa = get_mapping(pdir, vaddr);
+         p = KERNEL_PA_TO_VA(pa);
+      }
+
+      if (filesz_rem > 0) {
+         size_t off = (va & OFFSET_IN_PAGE_MASK);
+         size_t page_rem = PAGE_SIZE - off;
+         size_t to_read = MIN(filesz_rem, page_rem);
+
+         ret = vfs_read(elf_file, p + off, to_read);
+
+         if (ret < (ssize_t)to_read)
+            return -ENOEXEC;
+
+         tot_read += to_read;
+         va += to_read;
+         filesz_rem -= to_read;
+      }
+   }
+
+   ASSERT(tot_read == phdr->p_filesz);
    return 0;
 }
 
