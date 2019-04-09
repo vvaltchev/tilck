@@ -375,11 +375,6 @@ void schedule_outside_interrupt_context(void)
    schedule(-1);
 }
 
-NORETURN void switch_to_idle_task_outside_interrupt_context(void)
-{
-   switch_to_task(idle_task, -1);
-}
-
 void schedule(int curr_int)
 {
    task_info *selected = NULL;

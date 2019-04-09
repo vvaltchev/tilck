@@ -103,7 +103,6 @@ void schedule(int curr_int);
 void schedule_outside_interrupt_context(void);
 
 NORETURN void switch_to_task(task_info *ti, int curr_int);
-NORETURN void switch_to_idle_task_outside_interrupt_context(void);
 
 void save_current_task_state(regs *);
 void account_ticks(void);

@@ -215,7 +215,7 @@ void kthread_exit(void)
       set_curr_task(kernel_process);
       enable_interrupts(&var);
    }
-   switch_to_idle_task_outside_interrupt_context();
+   schedule_outside_interrupt_context();
 }
 
 int setup_usermode_task(pdir_t *pdir,

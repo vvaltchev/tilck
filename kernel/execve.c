@@ -133,8 +133,7 @@ int first_execve(const char *abs_path, const char *const *argv)
 
    ASSERT(ti != NULL);
    execve_prepare_process(ti->pi, brk, abs_path);
-
-   switch_to_idle_task_outside_interrupt_context();
+   schedule_outside_interrupt_context();
    NOT_REACHED();
 }
 

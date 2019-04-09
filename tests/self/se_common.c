@@ -27,7 +27,7 @@ void kernel_run_selected_selftest(void)
    if (kthread_create(se_runner_thread, NULL) < 0)
       panic("Unable to create the se_runner_thread");
 
-   switch_to_idle_task_outside_interrupt_context();
+   schedule_outside_interrupt_context();
 }
 
 void regular_self_test_end(void)
