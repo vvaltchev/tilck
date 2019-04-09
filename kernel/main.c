@@ -139,21 +139,31 @@ static void mount_first_ramdisk(void)
       panic("mountpoint_add() failed with error: %d", rc);
 }
 
-static void wakeup_user_pid1(void)
+static void run_init_or_selftest(void)
 {
-   disable_preemption();
-   {
-      task_info *init_task = get_task(1);
+   if (self_test_to_run) {
 
-      if (!init_task)
-         panic("get_task(1) FAILED");
+      if (KERNEL_SELFTESTS) {
+         self_test_to_run();
+         return;
+      }
 
-      task_change_state(init_task, TASK_STATE_RUNNABLE);
+      panic("The kernel was not compiled with self-tests");
+
+   } else {
+
+      if (!system_mmap_get_ramdisk_vaddr(0))
+         panic("No ramdisk and no selftest requested: nothing to do.");
+
+      /* Run /bin/init or whatever program was passed in the cmdline */
+      sptr rc = first_execve(cmd_args[0], cmd_args);
+
+      if (rc != 0)
+         panic("execve('%s') failed with %i\n", cmd_args[0], rc);
    }
-   enable_preemption();
 }
 
-static void init_drivers()
+static void do_async_init()
 {
    if (!kopt_serial_console) {
       init_kb();
@@ -166,13 +176,13 @@ static void init_drivers()
 
    show_hello_message();
    show_system_info();
-   wakeup_user_pid1();
+   run_init_or_selftest();
 }
 
-static void async_init_drivers(void)
+static void async_init(void)
 {
-   if (!enqueue_tasklet0(0, &init_drivers))
-      panic("Unable to enqueue a tasklet for init_drivers()");
+   if (kthread_create(&do_async_init, NULL) < 0)
+      panic("Unable to create a kthread for do_async_init()");
 }
 
 void kmain(u32 multiboot_magic, u32 mbi_addr)
@@ -200,19 +210,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    mount_first_ramdisk();
    init_devfs();
 
-   async_init_drivers();
-
-   if (self_test_to_run) {
-      if (KERNEL_SELFTESTS)
-         kernel_run_selected_selftest(); /* This does NOT return */
-      else
-         panic("The kernel was not compiled with self-tests");
-   }
-
-   if (!system_mmap_get_ramdisk_vaddr(0)) {
-      panic("No ramdisk and no selftest requested: nothing to do.");
-   }
-
-   sptr rc = first_execve(cmd_args[0], cmd_args);
-   panic("execve('%s') failed with %i\n", cmd_args[0], rc);
+   async_init();
+   schedule_outside_interrupt_context();
 }

@@ -17,19 +17,6 @@
 #include <tilck/kernel/self_tests.h>
 #include <tilck/kernel/cmdline.h>
 
-static void se_runner_thread(void *unused)
-{
-   self_test_to_run();
-}
-
-void kernel_run_selected_selftest(void)
-{
-   if (kthread_create(se_runner_thread, NULL) < 0)
-      panic("Unable to create the se_runner_thread");
-
-   schedule_outside_interrupt_context();
-}
-
 void regular_self_test_end(void)
 {
    printk("Self-test completed.\n");

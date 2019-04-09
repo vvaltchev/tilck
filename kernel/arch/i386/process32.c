@@ -55,9 +55,9 @@ static void push_string_on_user_stack(regs *r, const char *str)
 
 static int
 push_args_on_user_stack(regs *r,
-                        char *const *argv,
+                        const char *const *argv,
                         u32 argc,
-                        char *const *env,
+                        const char *const *env,
                         u32 envc)
 {
    uptr pointers[32];
@@ -222,8 +222,8 @@ int setup_usermode_task(pdir_t *pdir,
                         void *entry,
                         void *stack_addr,
                         task_info *ti,
-                        char *const *argv,
-                        char *const *env,
+                        const char *const *argv,
+                        const char *const *env,
                         task_info **ti_ref)
 {
    regs r = {
@@ -271,11 +271,7 @@ int setup_usermode_task(pdir_t *pdir,
       if (!(ti = allocate_new_process(kernel_process, 1)))
          return -ENOMEM;
 
-      /*
-       * The first process is created in SLEEPING state and remains in that
-       * state until it's waken up at the end of init_drivers().
-       */
-      ti->state = TASK_STATE_SLEEPING;
+      ti->state = TASK_STATE_RUNNABLE;
       add_task(ti);
       memcpy(ti->pi->cwd, "/", 2);
 
@@ -291,7 +287,9 @@ int setup_usermode_task(pdir_t *pdir,
        */
       pdir_destroy(ti->pi->pdir);
       arch_specific_free_task(ti);
-      ASSERT(ti->state == TASK_STATE_RUNNABLE);
+
+      ASSERT(ti->state == TASK_STATE_RUNNING);
+      task_change_state(ti, TASK_STATE_RUNNABLE);
    }
 
    ti->pi->pdir = pdir;

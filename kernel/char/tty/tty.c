@@ -289,24 +289,4 @@ void init_tty(void)
    __curr_tty = ttys[kopt_serial_console ? TTYS0_MINOR : 1];
 
    process_set_tty(kernel_process_pi, get_curr_tty());
-
-   disable_preemption();
-   {
-      void *init_pi = task_get_pi_opaque(get_task(1));
-
-      if (init_pi != NULL) {
-
-         process_set_tty(init_pi, get_curr_tty());
-
-      } else {
-
-         /*
-          * Even if in other places having get_task(1) return NULL causes a
-          * panic, we don't want this artificial limitation in tty, which is
-          * used by the kernel as well.
-          */
-         printk("WARNING: get_task(1) FAILED\n");
-      }
-   }
-   enable_preemption();
 }

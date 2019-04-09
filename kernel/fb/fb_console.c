@@ -278,15 +278,18 @@ static void fb_draw_banner(void)
 
    u32 llen, rlen, padding, i;
    datetime_t d;
-   int rc;
+   int rc, ttynum = 1;
 
    ASSERT(fb_offset_y >= font_h);
 
    read_system_clock_datetime(&d);
 
+   if (get_curr_tty())
+      ttynum = get_curr_tty_num();
+
    rc = snprintk(lbuf, fb_term_cols - 1,
                  "Tilck [%s] framebuffer console [tty %d]",
-                 BUILDTYPE_STR, get_curr_tty_num());
+                 BUILDTYPE_STR, ttynum);
 
    ASSERT(rc > 0);
    llen = MIN((u16)rc, fb_term_cols - 1);

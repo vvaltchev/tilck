@@ -264,16 +264,7 @@ out:
    vfs_close(elf_file);
    free_elf_headers(&eh);
 
-   if (LIKELY(!rc)) {
-
-      /* positive case */
-      if (LIKELY(get_curr_task() != kernel_process)) {
-         task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
-      }
-
-   } else {
-
-      /* error case */
+   if (UNLIKELY(rc != 0)) {
       pdir_destroy(*pdir_ref);
       *pdir_ref = NULL;
    }
