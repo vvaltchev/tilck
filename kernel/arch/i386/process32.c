@@ -249,6 +249,11 @@ int setup_usermode_task(pdir_t *pdir,
    u32 env_elems = 0;
    *ti_ref = NULL;
 
+   ASSERT(!is_preemption_enabled());
+
+   /* Switch to the new page directory (we're going to write on user's stack) */
+   set_curr_pdir(pdir);
+
    while (argv[argv_elems]) argv_elems++;
    while (env[env_elems]) env_elems++;
 
@@ -280,10 +285,11 @@ int setup_usermode_task(pdir_t *pdir,
        * Common case: we're creating a new process using the data structures
        * and the PID from a forked child (the `ti` task).
        *
-       * The only thing we HAVE TO do in this case is to free all GDT and LDT
-       * entries by the current (forked) child since we're creating a totally
-       * new process now.
+       * The only things we HAVE TO do in this case is to destroy process's page
+       * directory and free all GDT and LDT entries used by the current (forked)
+       * child since we're creating a totally new process now.
        */
+      pdir_destroy(ti->pi->pdir);
       arch_specific_free_task(ti);
       ASSERT(ti->state == TASK_STATE_RUNNABLE);
    }

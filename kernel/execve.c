@@ -164,18 +164,10 @@ sptr sys_execve(const char *user_filename,
 
    char *const default_argv[] = { abs_path, NULL };
 
-   /*
-    * Wishfully, it would be great to NOT keep the preemption disabled during
-    * the whole load_elf_program() as it does VFS calls. But, the problem is
-    * that the function changes the current page dir in order to being able to
-    * use new image's vaddrs. Preemption is NOT possible because task->pi->pdir
-    * still points to the older page directory, until the whole load_elf_program
-    * completes.
-    */
-   disable_preemption();
-
    if ((rc = load_elf_program(abs_path, &pdir, &entry, &stack_addr, &brk)))
       goto errend;
+
+   disable_preemption();
 
    rc = setup_usermode_task(pdir,
                             entry,

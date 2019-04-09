@@ -114,8 +114,6 @@ static void free_elf_headers(elf_headers *eh)
 static int load_elf_headers(fs_handle elf_file, elf_headers *eh)
 {
    ssize_t rc;
-
-   ASSERT(is_preemption_enabled());
    bzero(eh, sizeof(*eh));
 
    rc = vfs_seek(elf_file, 0, SEEK_SET);
@@ -167,14 +165,10 @@ int load_elf_program(const char *filepath,
                      void **stack_addr,
                      void **brk_ref)
 {
-   pdir_t *old_pdir = get_curr_pdir();
    fs_handle elf_file = NULL;
    elf_headers eh;
    uptr brk = 0;
    int rc = 0;
-
-   ASSERT(!is_preemption_enabled());
-   enable_preemption();
 
    rc = vfs_open(filepath, &elf_file, O_RDONLY, 0);
 
@@ -192,12 +186,8 @@ int load_elf_program(const char *filepath,
       }
    }
 
-   disable_preemption();
-
    if (rc != 0)
       return rc;
-
-   set_curr_pdir(*pdir_ref);
 
    for (int i = 0; i < eh.header.e_phnum; i++) {
 
@@ -280,13 +270,11 @@ out:
       /* positive case */
       if (LIKELY(get_curr_task() != kernel_process)) {
          task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
-         pdir_destroy(old_pdir);
       }
 
    } else {
 
       /* error case */
-      set_curr_pdir(old_pdir);
       pdir_destroy(*pdir_ref);
       *pdir_ref = NULL;
    }
