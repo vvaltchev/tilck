@@ -155,7 +155,7 @@ static void run_init_or_selftest(void)
       if (!system_mmap_get_ramdisk_vaddr(0))
          panic("No ramdisk and no selftest requested: nothing to do.");
 
-      /* Run /bin/init or whatever program was passed in the cmdline */
+      /* Run /sbin/init or whatever program was passed in the cmdline */
       sptr rc = first_execve(cmd_args[0], cmd_args);
 
       if (rc != 0)

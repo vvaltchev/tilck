@@ -48,6 +48,10 @@ for x in ${apps[@]}; do
    ln "$x" bin/
 done
 
+pushd bin
+rm init     # We already put `init` in `/bin`.
+popd
+
 for x in ${extra_apps[@]}; do
    ln "$x" usr/bin/
 done
