@@ -72,6 +72,73 @@ phdr_adjust_page_access(pdir_t *pdir, Elf_Phdr *phdr)
          set_page_rw(pdir, vaddr, false);
 }
 
+typedef struct {
+
+   Elf_Ehdr header;
+   Elf_Phdr *phdrs;
+   size_t total_phdrs_size;
+
+} elf_headers;
+
+static void free_elf_headers(elf_headers *eh)
+{
+   if (!eh)
+      return;
+
+   if (eh->total_phdrs_size)
+      kfree2(eh->phdrs, eh->total_phdrs_size);
+}
+
+static int load_elf_headers(fs_handle elf_file, elf_headers *eh)
+{
+   ssize_t rc;
+
+   ASSERT(is_preemption_enabled());
+   bzero(eh, sizeof(*eh));
+
+   rc = vfs_seek(elf_file, 0, SEEK_SET);
+
+   if (rc != 0)
+      return -EIO;
+
+   rc = vfs_read(elf_file, &eh->header, sizeof(eh->header));
+
+   if (rc < (int)sizeof(eh->header))
+      return -ENOEXEC;
+
+   if (strncmp((const char *)eh->header.e_ident, ELFMAG, 4))
+      return -ENOEXEC;
+
+   if (eh->header.e_ehsize < sizeof(eh->header))
+      return -ENOEXEC;
+
+   eh->total_phdrs_size = eh->header.e_phnum * sizeof(Elf_Phdr);
+   eh->phdrs = kmalloc(eh->total_phdrs_size);
+
+   if (!eh->phdrs)
+      return -ENOMEM;
+
+   rc = vfs_seek(elf_file, (s64)eh->header.e_phoff, SEEK_SET);
+
+   if (rc != (ssize_t)eh->header.e_phoff) {
+      rc = -ENOEXEC;
+      goto errend;
+   }
+
+   rc = vfs_read(elf_file, eh->phdrs, eh->total_phdrs_size);
+
+   if (rc != (ssize_t)eh->total_phdrs_size) {
+      rc = -ENOEXEC;
+      goto errend;
+   }
+
+   return 0;
+
+errend:
+   free_elf_headers(eh);
+   return (int) rc;
+}
+
 int load_elf_program(const char *filepath,
                      pdir_t **pdir_ref,
                      void **entry,
@@ -79,87 +146,41 @@ int load_elf_program(const char *filepath,
                      void **brk_ref)
 {
    pdir_t *old_pdir = get_curr_pdir();
-   Elf_Phdr *phdrs = NULL;
-   size_t total_phdrs_size = 0;
    fs_handle elf_file = NULL;
-   Elf_Ehdr header;
-   ssize_t ret;
+   elf_headers eh;
    uptr brk = 0;
    int rc = 0;
 
    ASSERT(!is_preemption_enabled());
    enable_preemption();
-   {
-      rc = vfs_open(filepath, &elf_file, O_RDONLY, 0);
+
+   rc = vfs_open(filepath, &elf_file, O_RDONLY, 0);
+
+   if (!rc) {
+      rc = load_elf_headers(elf_file, &eh);
+
+      if (!rc) {
+         ASSERT(*pdir_ref == NULL);
+         *pdir_ref = pdir_clone(get_kernel_pdir());
+
+         if (!*pdir_ref) {
+            vfs_close(elf_file);
+            rc = -ENOMEM;
+         }
+      }
    }
+
    disable_preemption();
 
-   if (rc < 0)
+   if (rc != 0)
       return rc;
-
-   ASSERT(elf_file != NULL);
-
-   enable_preemption();
-   {
-      ret = vfs_read(elf_file, &header, sizeof(header));
-   }
-   disable_preemption();
-
-   if (ret < (int)sizeof(header)) {
-      rc = -ENOEXEC;
-      goto out;
-   }
-
-   if (strncmp((const char *)header.e_ident, ELFMAG, 4)) {
-      rc = -ENOEXEC;
-      goto out;
-   }
-
-   if (header.e_ehsize < sizeof(header)) {
-      rc = -ENOEXEC;
-      goto out;
-   }
-
-   total_phdrs_size = header.e_phnum * sizeof(Elf_Phdr);
-   phdrs = kmalloc(total_phdrs_size);
-
-   if (!phdrs) {
-      rc = -ENOMEM;
-      goto out;
-   }
-
-   ret = vfs_seek(elf_file, (s64)header.e_phoff, SEEK_SET);
-
-   if (ret != (ssize_t)header.e_phoff) {
-      rc = -ENOEXEC;
-      goto out;
-   }
-
-   enable_preemption();
-   {
-      ret = vfs_read(elf_file, phdrs, total_phdrs_size);
-   }
-   disable_preemption();
-
-   if (ret != (ssize_t)total_phdrs_size) {
-      rc = -ENOEXEC;
-      goto out;
-   }
-
-   ASSERT(*pdir_ref == NULL);
-   *pdir_ref = pdir_clone(get_kernel_pdir());
-
-   if (!*pdir_ref) {
-      vfs_close(elf_file);
-      return -ENOMEM;
-   }
 
    set_curr_pdir(*pdir_ref);
 
-   for (int i = 0; i < header.e_phnum; i++) {
+   for (int i = 0; i < eh.header.e_phnum; i++) {
 
       uptr end_vaddr = 0;
-      Elf_Phdr *phdr = phdrs + i;
+      Elf_Phdr *phdr = eh.phdrs + i;
 
       if (phdr->p_type != PT_LOAD)
          continue;
@@ -173,9 +194,9 @@ int load_elf_program(const char *filepath,
          brk = end_vaddr;
    }
 
-   for (int i = 0; i < header.e_phnum; i++) {
+   for (int i = 0; i < eh.header.e_phnum; i++) {
 
-      Elf_Phdr *phdr = phdrs + i;
+      Elf_Phdr *phdr = eh.phdrs + i;
 
       if (phdr->p_type == PT_LOAD)
          phdr_adjust_page_access(*pdir_ref, phdr);
@@ -225,12 +246,12 @@ int load_elf_program(const char *filepath,
    // Finally setting the output-params.
 
    *stack_addr = (void *) USERMODE_STACK_MAX;
-   *entry = (void *) header.e_entry;
+   *entry = (void *) eh.header.e_entry;
    *brk_ref = (void *) brk;
 
 out:
    vfs_close(elf_file);
-   kfree2(phdrs, total_phdrs_size);
+   free_elf_headers(&eh);
 
    if (LIKELY(!rc)) {
 
