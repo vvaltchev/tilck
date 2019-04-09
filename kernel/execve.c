@@ -134,8 +134,7 @@ int first_execve(const char *abs_path, const char *const *argv)
    ASSERT(ti != NULL);
    execve_prepare_process(ti->pi, brk, abs_path);
 
-   push_nested_interrupt(-1);
-   switch_to_idle_task();
+   switch_to_idle_task_outside_interrupt_context();
    NOT_REACHED();
 }
 
@@ -181,7 +180,7 @@ sptr sys_execve(const char *user_filename,
       goto errend;
 
    execve_prepare_process(ti->pi, brk, abs_path);
-   pop_nested_interrupt();
+   pop_nested_interrupt(); // POP the current SYSCALL_SOFT_INTERRUPT
    switch_to_task(ti, -1);
 
 errend:
