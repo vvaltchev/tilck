@@ -10,23 +10,22 @@
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/fault_resumable.h>
 
-static int load_phdr(fs_handle *elf_file,
-                     pdir_t *pdir,
-                     Elf_Phdr *phdr,
-                     uptr *end_vaddr_ref)
+static ssize_t
+load_phdr(fs_handle *elf_file,
+          pdir_t *pdir,
+          Elf_Phdr *phdr,
+          uptr *end_vaddr_ref)
 {
-   int rc;
-   ssize_t ret;
-   char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
+   ssize_t rc, ret;
    uptr va = phdr->p_vaddr;
-
-   if (phdr->p_memsz == 0)
-      return 0; /* very weird (because the phdr has type LOAD) */
-
-   size_t memsz = phdr->p_vaddr + phdr->p_memsz - (uptr)vaddr;
-   size_t page_count = (memsz + PAGE_SIZE - 1) / PAGE_SIZE;
    size_t filesz_rem = phdr->p_filesz;
-   size_t tot_read = 0;
+   char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
+   const size_t memsz = phdr->p_vaddr + phdr->p_memsz - (uptr)vaddr;
+   const size_t page_count = (memsz + PAGE_SIZE - 1) / PAGE_SIZE;
+   DEBUG_ONLY(size_t tot_read = 0);
+
+   if (UNLIKELY(phdr->p_memsz == 0))
+      return 0; /* very weird (because the phdr has type LOAD) */
 
    *end_vaddr_ref = (uptr)vaddr + (page_count << PAGE_SHIFT);
 
@@ -53,23 +52,23 @@ static int load_phdr(fs_handle *elf_file,
 
       } else {
 
-         uptr pa = get_mapping(pdir, vaddr);
-         p = KERNEL_PA_TO_VA(pa);
+         /* Get user's vaddr as a kernel vaddr */
+         p = KERNEL_PA_TO_VA(get_mapping(pdir, vaddr));
       }
 
-      if (filesz_rem > 0) {
-         size_t off = (va & OFFSET_IN_PAGE_MASK);
-         size_t page_rem = PAGE_SIZE - off;
-         size_t to_read = MIN(filesz_rem, page_rem);
+      if (filesz_rem) {
+
+         const size_t off = (va & OFFSET_IN_PAGE_MASK);
+         const size_t to_read = MIN(filesz_rem, (PAGE_SIZE - off));
 
          ret = vfs_read(elf_file, p + off, to_read);
 
          if (ret < (ssize_t)to_read)
             return -ENOEXEC;
 
-         tot_read += to_read;
          va += to_read;
          filesz_rem -= to_read;
+         DEBUG_ONLY(tot_read += to_read);
       }
    }
 
@@ -197,7 +196,7 @@ int load_elf_program(const char *filepath,
       if (phdr->p_type != PT_LOAD)
          continue;
 
-      rc = load_phdr(elf_file, *pdir_ref, phdr, &end_vaddr);
+      rc = (int) load_phdr(elf_file, *pdir_ref, phdr, &end_vaddr);
 
       if (rc < 0)
          goto out;
