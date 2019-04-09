@@ -346,13 +346,13 @@ static inline void save_curr_fpu_ctx_if_enabled(void)
 }
 
 static inline void
-switch_to_task_pop_nested_interrupts(int curr_irq)
+switch_to_task_pop_nested_interrupts(int curr_int)
 {
    if (KERNEL_TRACK_NESTED_INTERRUPTS) {
 
       ASSERT(get_curr_task() != NULL);
 
-      if (curr_irq != -1)
+      if (curr_int != -1)
          pop_nested_interrupt();
 
       if (get_curr_task()->running_in_kernel)
@@ -362,10 +362,12 @@ switch_to_task_pop_nested_interrupts(int curr_irq)
 }
 
 static inline void
-switch_to_task_clear_irq_mask(int curr_irq)
+switch_to_task_clear_irq_mask(int curr_int)
 {
-   if (curr_irq < 0)
+   if (!is_irq(curr_int))
       return; /* Invalid IRQ#: nothing to do. NOTE: -1 is a special value */
+
+   const int curr_irq = int_to_irq(curr_int);
 
    if (KERNEL_TRACK_NESTED_INTERRUPTS) {
 
@@ -391,7 +393,7 @@ switch_to_task_clear_irq_mask(int curr_irq)
    }
 }
 
-NORETURN void switch_to_task(task_info *ti, int curr_irq)
+NORETURN void switch_to_task(task_info *ti, int curr_int)
 {
    /* Save the value of ti->state_regs as it will be reset below */
    regs *state = ti->state_regs;
@@ -433,7 +435,7 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
 
    /* From here until the end, we have to be as fast as possible */
    disable_interrupts_forced();
-   switch_to_task_pop_nested_interrupts(curr_irq);
+   switch_to_task_pop_nested_interrupts(curr_int);
    enable_preemption();
 
    /*
@@ -442,7 +444,7 @@ NORETURN void switch_to_task(task_info *ti, int curr_irq)
     */
    ASSERT(is_preemption_enabled());
    DEBUG_VALIDATE_STACK_PTR();
-   switch_to_task_clear_irq_mask(curr_irq);
+   switch_to_task_clear_irq_mask(curr_int);
 
    if (!ti->running_in_kernel) {
 

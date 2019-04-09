@@ -375,17 +375,12 @@ void schedule_outside_interrupt_context(void)
    schedule(-1);
 }
 
-NORETURN void switch_to_idle_task(void)
-{
-   switch_to_task(idle_task, X86_PC_TIMER_IRQ);
-}
-
 NORETURN void switch_to_idle_task_outside_interrupt_context(void)
 {
    switch_to_task(idle_task, -1);
 }
 
-void schedule(int curr_irq)
+void schedule(int curr_int)
 {
    task_info *selected = NULL;
    task_info *pos;
@@ -403,7 +398,7 @@ void schedule(int curr_irq)
    }
 
    if (selected)
-      switch_to_task(selected, curr_irq);
+      switch_to_task(selected, curr_int);
 
    list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
 
@@ -429,7 +424,7 @@ void schedule(int curr_irq)
       selected = idle_task;
    }
 
-   switch_to_task(selected, curr_irq);
+   switch_to_task(selected, curr_int);
 }
 
 task_info *get_task(int tid)

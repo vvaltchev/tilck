@@ -249,12 +249,12 @@ enum irq_action timer_irq_handler(regs *context)
       }
 
       save_current_task_state(context);
-      switch_to_task(last_ready_task, get_irq_num(context));
+      switch_to_task(last_ready_task, get_int_num(context));
    }
 
    if (need_reschedule()) {
       save_current_task_state(context);
-      schedule(get_irq_num(context));
+      schedule(get_int_num(context));
    }
 
    return IRQ_FULLY_HANDLED;

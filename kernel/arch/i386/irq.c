@@ -257,3 +257,8 @@ int get_irq_num(regs *context)
 {
    return int_to_irq(context->int_num);
 }
+
+int get_int_num(regs *context)
+{
+   return context->int_num;
+}

@@ -92,6 +92,7 @@ void dump_var_mtrrs() { }
 void set_page_rw() { }
 void kb_register_keypress_handler() { }
 int get_irq_num(void *ctx) { return -1; }
+int get_int_num(void *ctx) { return -1; }
 
 bool kb_is_pressed() { return false; }
 u32 kb_get_current_modifiers(void) { return 0; }

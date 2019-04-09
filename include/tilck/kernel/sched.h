@@ -99,11 +99,10 @@ static ALWAYS_INLINE task_info *get_curr_task(void)
 }
 
 int get_curr_task_tid(void);
-void schedule(int curr_irq);
+void schedule(int curr_int);
 void schedule_outside_interrupt_context(void);
 
-NORETURN void switch_to_task(task_info *ti, int curr_irq);
-NORETURN void switch_to_idle_task(void);
+NORETURN void switch_to_task(task_info *ti, int curr_int);
 NORETURN void switch_to_idle_task_outside_interrupt_context(void);
 
 void save_current_task_state(regs *);

@@ -52,5 +52,6 @@ void save_current_fpu_regs(bool in_kernel);
 void restore_fpu_regs(void *task, bool in_kernel);
 void restore_current_fpu_regs(bool in_kernel);
 int get_irq_num(regs *context);
+int get_int_num(regs *context);
 
 bool allocate_fpu_regs(arch_task_info_members *arch_fields);
