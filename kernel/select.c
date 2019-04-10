@@ -166,10 +166,10 @@ count_signaled_conds(multi_obj_waiter *w)
    return count;
 }
 
-static u32
+static int
 count_ready_streams_per_set(u32 nfds, fd_set *set, func_rwe_ready is_ready)
 {
-   u32 count = 0;
+   int count = 0;
 
    if (!set)
       return count;
@@ -188,10 +188,10 @@ count_ready_streams_per_set(u32 nfds, fd_set *set, func_rwe_ready is_ready)
    return count;
 }
 
-static u32
+static int
 count_ready_streams(u32 nfds, fd_set *sets[3])
 {
-   u32 count = 0;
+   int count = 0;
 
    for (int i = 0; i < 3; i++) {
       count += count_ready_streams_per_set(nfds, sets[i], grf[i]);
@@ -338,7 +338,7 @@ select_compute_cond_cnt(struct select_ctx *c)
    return 0;
 }
 
-static sptr
+static int
 select_write_user_sets(struct select_ctx *c)
 {
    fd_set **sets = c->sets;
@@ -359,11 +359,11 @@ select_write_user_sets(struct select_ctx *c)
    return total_ready_count;
 }
 
-sptr sys_select(int user_nfds,
-                fd_set *user_rfds,
-                fd_set *user_wfds,
-                fd_set *user_efds,
-                struct timeval *user_tv)
+int sys_select(int user_nfds,
+               fd_set *user_rfds,
+               fd_set *user_wfds,
+               fd_set *user_efds,
+               struct timeval *user_tv)
 {
    struct select_ctx ctx = (struct select_ctx) {
 
@@ -376,7 +376,7 @@ sptr sys_select(int user_nfds,
       .timeout_ticks = 0,
    };
 
-   sptr rc;
+   int rc;
 
    if (user_nfds < 0 || user_nfds > MAX_HANDLES)
       return -EINVAL;
@@ -387,7 +387,7 @@ sptr sys_select(int user_nfds,
    if ((rc = select_read_user_tv(user_tv, &ctx.tv, &ctx.timeout_ticks)))
       return rc;
 
-   if ((rc = (sptr)count_ready_streams(ctx.nfds, ctx.sets)) > 0) {
+   if ((rc = count_ready_streams(ctx.nfds, ctx.sets)) > 0) {
       return select_write_user_sets(&ctx);
    }
 

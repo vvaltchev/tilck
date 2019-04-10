@@ -14,13 +14,13 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/timer.h>
 
-sptr sys_madvise(void *addr, size_t len, int advice)
+int sys_madvise(void *addr, size_t len, int advice)
 {
    // TODO (future): consider implementing at least part of sys_madvice().
    return 0;
 }
 
-sptr sys_nanosleep(const struct timespec *user_req, struct timespec *rem)
+int sys_nanosleep(const struct timespec *user_req, struct timespec *rem)
 {
    u64 ticks_to_sleep = 0;
    struct timespec req;
@@ -41,7 +41,7 @@ static const char uname_name[] = "Tilck";
 static const char uname_nodename[] = "tilck";
 static const char uname_release[] = "0.01";
 
-sptr sys_newuname(struct utsname *user_buf)
+int sys_newuname(struct utsname *user_buf)
 {
    struct utsname buf;
 
@@ -57,7 +57,7 @@ sptr sys_newuname(struct utsname *user_buf)
    return 0;
 }
 
-NORETURN sptr sys_exit(int exit_status)
+NORETURN int sys_exit(int exit_status)
 {
    disable_preemption();
    terminate_process(get_curr_task(), exit_status, 0 /* term_sig */);
@@ -66,7 +66,7 @@ NORETURN sptr sys_exit(int exit_status)
    NOT_REACHED();
 }
 
-NORETURN sptr sys_exit_group(int status)
+NORETURN int sys_exit_group(int status)
 {
    // TODO: update when user threads are supported
    sys_exit(status);
@@ -74,7 +74,7 @@ NORETURN sptr sys_exit_group(int status)
 
 
 /* NOTE: deprecated syscall */
-sptr sys_tkill(int tid, int sig)
+int sys_tkill(int tid, int sig)
 {
    if (sig < 0 || sig >= _NSIG || tid <= 0)
       return -EINVAL;
@@ -82,7 +82,7 @@ sptr sys_tkill(int tid, int sig)
    return send_signal(tid, sig, false);
 }
 
-sptr sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
+int sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
 {
    if (pid != tid) {
       printk("sys_tgkill: pid != tid NOT SUPPORTED yet.\n");
@@ -95,7 +95,7 @@ sptr sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
    return send_signal2(pid, tid, sig, false);
 }
 
-sptr sys_kill(int pid, int sig)
+int sys_kill(int pid, int sig)
 {
    if (pid <= 0) {
       printk("sys_kill: pid <= 0 NOT SUPPORTED yet.\n");
@@ -108,7 +108,7 @@ sptr sys_kill(int pid, int sig)
    return send_signal(pid, sig, true);
 }
 
-sptr sys_times(struct tms *user_buf)
+int sys_times(struct tms *user_buf)
 {
    task_info *curr = get_curr_task();
    struct tms buf;
@@ -132,14 +132,14 @@ sptr sys_times(struct tms *user_buf)
    if (copy_to_user(user_buf, &buf, sizeof(buf)) != 0)
       return -EBADF;
 
-   return (sptr) get_ticks();
+   return (int) get_ticks();
 }
 
 /* *************************************************************** */
 /*          Tilck-specific syscalls & helper functions             */
 /* *************************************************************** */
 
-sptr sys_tilck_run_selftest(const char *user_selftest)
+int sys_tilck_run_selftest(const char *user_selftest)
 {
    int rc;
    int tid;
@@ -167,7 +167,7 @@ sptr sys_tilck_run_selftest(const char *user_selftest)
    return 0;
 }
 
-sptr sys_tilck_cmd(enum tilck_testcmd_type cmd,
+int sys_tilck_cmd(enum tilck_testcmd_type cmd,
                    uptr a1, uptr a2, uptr a3, uptr a4)
 {
    switch (cmd) {

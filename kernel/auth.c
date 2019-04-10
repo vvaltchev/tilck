@@ -3,31 +3,31 @@
 #include <tilck/kernel/syscalls.h>
 
 /* Actual implementation, not a stub: only the root user exists. */
-sptr sys_getuid()
+int sys_getuid()
 {
    return 0;
 }
 
 /* Actual implementation, not a stub: only the root group exists. */
-sptr sys_getgid()
+int sys_getgid()
 {
    return 0;
 }
 
 /* Actual implementation, not a stub: only the root user exists. */
-sptr sys_geteuid()
+int sys_geteuid()
 {
    return 0;
 }
 
 /* Actual implementation, not a stub: only the root group exists. */
-sptr sys_getegid()
+int sys_getegid()
 {
    return 0;
 }
 
 /* Actual implementation, not a stub: only the root user exists. */
-sptr sys_setuid(uptr uid)
+int sys_setuid(uptr uid)
 {
    if (uid == 0)
       return 0;
@@ -36,7 +36,7 @@ sptr sys_setuid(uptr uid)
 }
 
 /* Actual implementation, not a stub: only the root group exists. */
-sptr sys_setgid(uptr gid)
+int sys_setgid(uptr gid)
 {
    if (gid == 0)
       return 0;
@@ -45,36 +45,36 @@ sptr sys_setgid(uptr gid)
 }
 
 /* Actual implementation: accept only 0 as UID. */
-sptr sys_setuid16(uptr uid)
+int sys_setuid16(uptr uid)
 {
    return sys_setuid((u16)uid);
 }
 
 /* Actual implementation, not a stub: only the root user exists. */
-sptr sys_getuid16()
+int sys_getuid16()
 {
    return 0;
 }
 
-sptr sys_setgid16(uptr gid)
+int sys_setgid16(uptr gid)
 {
    return sys_setgid((u16)gid);
 }
 
 /* Actual implementation, not a stub: only the root group exists. */
-sptr sys_getgid16()
+int sys_getgid16()
 {
    return 0;
 }
 
 /* Actual implementation, not a stub: only the root user exists. */
-sptr sys_geteuid16()
+int sys_geteuid16()
 {
    return 0;
 }
 
 /* Actual implementation, not a stub: only the root group exists. */
-sptr sys_getegid16()
+int sys_getegid16()
 {
    return 0;
 }

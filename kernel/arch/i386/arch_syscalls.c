@@ -13,7 +13,7 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/elf_utils.h>
 
-typedef sptr (*syscall_type)();
+typedef int (*syscall_type)();
 
 // The syscall numbers are ARCH-dependent
 syscall_type syscalls[] =

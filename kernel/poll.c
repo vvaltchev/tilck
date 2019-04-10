@@ -269,14 +269,13 @@ poll_wait_on_cond(struct pollfd *fds, u32 nfds, int timeout, u32 cond_cnt)
    return ready_fds_cnt;
 }
 
-sptr sys_poll(struct pollfd *user_fds, nfds_t user_nfds, int timeout)
+int sys_poll(struct pollfd *user_fds, nfds_t user_nfds, int timeout)
 {
    const u32 nfds = (u32) user_nfds;
    task_info *curr = get_curr_task();
    struct pollfd *fds = curr->args_copybuf;
-   sptr ready_fds_cnt;
+   int rc, ready_fds_cnt;
    u32 cond_cnt = 0;
-   int rc;
 
    if (sizeof(struct pollfd) * nfds > ARGS_COPYBUF_SIZE)
       return -EINVAL;
@@ -291,8 +290,6 @@ sptr sys_poll(struct pollfd *user_fds, nfds_t user_nfds, int timeout)
 
    if (ready_fds_cnt > 0)
       return ready_fds_cnt;
-
-   //debug_poll_args_dump(fds, nfds, timeout);
 
    if (timeout != 0)
       cond_cnt = poll_count_conds(fds, nfds);

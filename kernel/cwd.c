@@ -3,10 +3,11 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/syscalls.h>
 
-sptr sys_chdir(const char *user_path)
+int sys_chdir(const char *user_path)
 {
-   sptr rc = 0;
+   int rc = 0;
    struct stat64 statbuf;
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
@@ -72,9 +73,9 @@ out:
    return rc;
 }
 
-sptr sys_getcwd(char *user_buf, size_t buf_size)
+int sys_getcwd(char *user_buf, size_t buf_size)
 {
-   sptr ret;
+   int ret;
    size_t cwd_len;
    disable_preemption();
    {
@@ -102,7 +103,7 @@ sptr sys_getcwd(char *user_buf, size_t buf_size)
          user_buf[cwd_len - 2] = 0; /* drop the trailing '/' */
       }
 
-      ret = (sptr) cwd_len;
+      ret = (int) cwd_len;
    }
 
 out:

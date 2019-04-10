@@ -57,9 +57,9 @@ fs_handle get_fs_handle(u32 fd)
 }
 
 
-sptr sys_open(const char *user_path, int flags, mode_t mode)
+int sys_open(const char *user_path, int flags, mode_t mode)
 {
-   sptr ret;
+   int ret;
    task_info *curr = get_curr_task();
    char *orig_path = curr->args_copybuf;
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
@@ -87,7 +87,7 @@ sptr sys_open(const char *user_path, int flags, mode_t mode)
    ASSERT(h != NULL);
 
    curr->pi->handles[free_fd] = h;
-   ret = (sptr) free_fd;
+   ret = (int) free_fd;
 
 end:
    kmutex_unlock(&curr->pi->fslock);
@@ -98,11 +98,11 @@ no_fds:
    goto end;
 }
 
-sptr sys_close(int user_fd)
+int sys_close(int user_fd)
 {
    task_info *curr = get_curr_task();
    fs_handle handle;
-   sptr ret = 0;
+   int ret = 0;
    u32 fd = (u32) user_fd;
 
    if (!(handle = get_fs_handle(fd)))
@@ -118,9 +118,9 @@ sptr sys_close(int user_fd)
    return ret;
 }
 
-sptr sys_read(int user_fd, void *user_buf, size_t count)
+int sys_read(int user_fd, void *user_buf, size_t count)
 {
-   sptr ret;
+   int ret;
    task_info *curr = get_curr_task();
    fs_handle handle;
    const u32 fd = (u32) user_fd;
@@ -130,12 +130,25 @@ sptr sys_read(int user_fd, void *user_buf, size_t count)
    if (!handle)
       return -EBADF;
 
+   /*
+    * NOTE:
+    *
+    * From `man 2 read`:
+    *
+    *    On  Linux,  read()  (and similar system calls) will transfer at most
+    *    0x7ffff000 (2,147,479,552) bytes, returning the number of bytes
+    *    actually transferred. (This is true on both 32-bit and 64-bit systems.)
+    *
+    * This means that it's perfectly fine to use `int` instead of ssize_t as
+    * return type of sys_read().
+    */
+
    count = MIN(count, IO_COPYBUF_SIZE);
-   ret = vfs_read(handle, curr->io_copybuf, count);
+   ret = (int) vfs_read(handle, curr->io_copybuf, count);
 
    if (ret > 0) {
       if (copy_to_user(user_buf, curr->io_copybuf, (size_t)ret) < 0) {
-         // TODO: do we have to rewind the stream in this case?
+         // Do we have to rewind the stream in this case? It don't think so.
          ret = -EFAULT;
          goto end;
       }
@@ -145,16 +158,14 @@ end:
    return ret;
 }
 
-sptr sys_write(int user_fd, const void *user_buf, size_t count)
+int sys_write(int user_fd, const void *user_buf, size_t count)
 {
    task_info *curr = get_curr_task();
    fs_handle handle;
    sptr ret;
    const u32 fd = (u32) user_fd;
 
-   handle = get_fs_handle(fd);
-
-   if (!handle)
+   if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
    count = MIN(count, IO_COPYBUF_SIZE);
@@ -163,10 +174,10 @@ sptr sys_write(int user_fd, const void *user_buf, size_t count)
    if (ret < 0)
       return -EFAULT;
 
-   return vfs_write(handle, (char *)curr->io_copybuf, count);
+   return (int)vfs_write(handle, (char *)curr->io_copybuf, count);
 }
 
-sptr sys_ioctl(int user_fd, uptr request, void *argp)
+int sys_ioctl(int user_fd, uptr request, void *argp)
 {
    const u32 fd = (u32) user_fd;
    fs_handle handle = get_fs_handle(fd);
@@ -177,14 +188,13 @@ sptr sys_ioctl(int user_fd, uptr request, void *argp)
    return vfs_ioctl(handle, request, argp);
 }
 
-sptr sys_writev(int user_fd, const struct iovec *user_iov, int user_iovcnt)
+int sys_writev(int user_fd, const struct iovec *user_iov, int user_iovcnt)
 {
    task_info *curr = get_curr_task();
    const u32 fd = (u32) user_fd;
    const u32 iovcnt = (u32) user_iovcnt;
    fs_handle handle;
-   sptr ret = 0;
-   sptr rc;
+   int rc, ret = 0;
 
    if (user_iovcnt <= 0)
       return -EINVAL;
@@ -231,14 +241,13 @@ sptr sys_writev(int user_fd, const struct iovec *user_iov, int user_iovcnt)
    return ret;
 }
 
-sptr sys_readv(int user_fd, const struct iovec *user_iov, int user_iovcnt)
+int sys_readv(int user_fd, const struct iovec *user_iov, int user_iovcnt)
 {
    task_info *curr = get_curr_task();
    const u32 fd = (u32) user_fd;
    const u32 iovcnt = (u32) user_iovcnt;
    fs_handle handle;
-   sptr ret = 0;
-   sptr rc;
+   int rc, ret = 0;
 
    if (user_iovcnt <= 0)
       return -EINVAL;
@@ -282,7 +291,7 @@ sptr sys_readv(int user_fd, const struct iovec *user_iov, int user_iovcnt)
    return ret;
 }
 
-sptr sys_stat64(const char *user_path, struct stat64 *user_statbuf)
+int sys_stat64(const char *user_path, struct stat64 *user_statbuf)
 {
    task_info *curr = get_curr_task();
    char *orig_path = curr->args_copybuf;
@@ -324,7 +333,7 @@ out:
    return rc;
 }
 
-sptr sys_lstat64(const char *user_path, struct stat64 *user_statbuf)
+int sys_lstat64(const char *user_path, struct stat64 *user_statbuf)
 {
    /*
     * For moment, symlinks are not supported in Tilck. Therefore, make lstat()
@@ -334,7 +343,7 @@ sptr sys_lstat64(const char *user_path, struct stat64 *user_statbuf)
    return sys_stat64(user_path, user_statbuf);
 }
 
-sptr sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
+int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
 {
    /*
     * For moment, symlinks are not supported in Tilck. Therefore, just always
@@ -345,7 +354,7 @@ sptr sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
    return -EINVAL;
 }
 
-sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
+int sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
 {
    const s64 off64 = (s64)(((u64)off_hi << 32) | off_low);
    fs_handle handle;
@@ -359,7 +368,7 @@ sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
    new_off = vfs_seek(handle, off64, (int)whence);
 
    if (new_off < 0)
-      return (sptr) new_off; /* return back vfs_seek's error */
+      return (int) new_off; /* return back vfs_seek's error */
 
    if (copy_to_user(result, &new_off, sizeof(*result)))
       return -EBADF;
@@ -367,7 +376,7 @@ sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
    return 0;
 }
 
-sptr sys_getdents64(int user_fd, struct linux_dirent64 *user_dirp, u32 buf_size)
+int sys_getdents64(int user_fd, struct linux_dirent64 *user_dirp, u32 buf_size)
 {
    const u32 fd = (u32) user_fd;
    fs_handle handle;
@@ -378,15 +387,15 @@ sptr sys_getdents64(int user_fd, struct linux_dirent64 *user_dirp, u32 buf_size)
    return vfs_getdents64(handle, user_dirp, buf_size);
 }
 
-sptr sys_access(const char *pathname, int mode)
+int sys_access(const char *pathname, int mode)
 {
    // TODO: check mode and file r/w flags.
    return 0;
 }
 
-sptr sys_dup2(int oldfd, int newfd)
+int sys_dup2(int oldfd, int newfd)
 {
-   sptr rc;
+   int rc;
    fs_handle old_h, new_h;
    task_info *curr = get_curr_task();
 
@@ -421,16 +430,16 @@ sptr sys_dup2(int oldfd, int newfd)
       goto out;
 
    curr->pi->handles[newfd] = new_h;
-   rc = (sptr) newfd;
+   rc = newfd;
 
 out:
    kmutex_unlock(&curr->pi->fslock);
    return rc;
 }
 
-sptr sys_dup(int oldfd)
+int sys_dup(int oldfd)
 {
-   sptr rc;
+   int rc;
    u32 free_fd;
    process_info *pi = get_curr_task()->pi;
 
@@ -506,9 +515,9 @@ void close_cloexec_handles(process_info *pi)
    kmutex_unlock(&pi->fslock);
 }
 
-sptr sys_fcntl64(int user_fd, int cmd, int arg)
+int sys_fcntl64(int user_fd, int cmd, int arg)
 {
-   sptr rc = 0;
+   int rc = 0;
    const u32 fd = (u32) user_fd;
    task_info *curr = get_curr_task();
    fs_handle_base *hb;
