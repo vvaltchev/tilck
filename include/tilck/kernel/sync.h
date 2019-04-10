@@ -113,6 +113,12 @@ typedef struct {
 
 } ksem;
 
+#define STATIC_KSEM_INIT(s, val)                 \
+   {                                             \
+      .counter = (val),                          \
+      .wait_list = make_list(s.wait_list),       \
+   }
+
 void ksem_init(ksem *s);
 void ksem_destroy(ksem *s);
 void ksem_wait(ksem *s);
@@ -165,6 +171,11 @@ typedef struct {
    list wait_list;
 
 } kcond;
+
+#define STATIC_KCOND_INIT(s)                     \
+   {                                             \
+      .wait_list = make_list(s.wait_list),       \
+   }
 
 #define KCOND_WAIT_FOREVER 0
 
