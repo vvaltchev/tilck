@@ -11,6 +11,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/syscalls.h>
 
 #include "gdt_int.h"
 
@@ -487,7 +488,7 @@ NORETURN void switch_to_task(task_info *ti, int curr_int)
    context_switch(state);
 }
 
-sptr sys_set_tid_address(int *tidptr)
+int sys_set_tid_address(int *tidptr)
 {
    /*
     * NOTE: this syscall must always succeed. In case the user pointer

@@ -7,6 +7,7 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/fs/devfs.h>
+#include <tilck/kernel/syscalls.h>
 
 pdir_t *kernel_page_dir;
 char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
@@ -108,7 +109,7 @@ bool user_map_zero_page(uptr user_vaddr, size_t page_count)
    return true;
 }
 
-sptr sys_brk(void *new_brk)
+void *sys_brk(void *new_brk)
 {
    task_info *ti = get_curr_task();
    process_info *pi = ti->pi;
@@ -187,7 +188,7 @@ sptr sys_brk(void *new_brk)
 out:
    enable_preemption();
 ret:
-   return (sptr)pi->brk;
+   return pi->brk;
 }
 
 #define PROT_NONE       0x0             /* Page can not be accessed.  */
@@ -392,7 +393,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    return (sptr)res;
 }
 
-sptr sys_munmap(void *vaddrp, size_t len)
+int sys_munmap(void *vaddrp, size_t len)
 {
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;

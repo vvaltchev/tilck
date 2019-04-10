@@ -13,10 +13,10 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/elf_utils.h>
 
-typedef int (*syscall_type)();
+typedef sptr (*syscall_type)();
 
 // The syscall numbers are ARCH-dependent
-syscall_type syscalls[] =
+void *syscalls[] =
 {
    [0] = sys_restart_syscall,
    [1] = sys_exit,
@@ -375,6 +375,7 @@ void handle_syscall(regs *r)
    save_current_task_state(r);
 
    const u32 sn = r->eax;
+   syscall_type fptr;
 
    if (sn >= ARRAY_SIZE(syscalls) || !syscalls[sn]) {
       printk("Unknown syscall #%i\n", sn);
@@ -386,7 +387,8 @@ void handle_syscall(regs *r)
    DEBUG_VALIDATE_STACK_PTR();
    enable_preemption();
    {
-      r->eax = (u32) syscalls[sn](r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+      *(void **)(&fptr) = syscalls[sn];
+      r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
    }
    disable_preemption();
    DEBUG_VALIDATE_STACK_PTR();

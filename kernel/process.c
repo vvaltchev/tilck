@@ -12,6 +12,7 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/tty.h>
+#include <tilck/kernel/syscalls.h>
 
 #include <sys/prctl.h>        // system header
 #include <sys/wait.h>         // system header
@@ -318,19 +319,19 @@ void task_temp_kernel_free(void *ptr)
  * ***************************************************************
  */
 
-sptr sys_pause()
+int sys_pause()
 {
    task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
    kernel_yield();
    return 0;
 }
 
-sptr sys_getpid()
+int sys_getpid()
 {
    return get_curr_task()->pi->pid;
 }
 
-sptr sys_gettid()
+int sys_gettid()
 {
    return get_curr_task()->tid;
 }
@@ -400,7 +401,7 @@ static int wait_for_single_pid(int pid, int *user_wstatus)
    return pid;
 }
 
-sptr sys_waitpid(int pid, int *user_wstatus, int options)
+int sys_waitpid(int pid, int *user_wstatus, int options)
 {
    task_info *curr = get_curr_task();
    task_info *zombie = NULL;
@@ -496,7 +497,7 @@ sptr sys_waitpid(int pid, int *user_wstatus, int options)
    return zombie_tid;
 }
 
-sptr sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
+int sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
 {
    struct k_rusage ru = {0};
 
@@ -729,7 +730,7 @@ static int fork_dup_all_handles(process_info *pi)
 }
 
 // Returns child's pid
-sptr sys_fork(void)
+int sys_fork(void)
 {
    int pid;
    int rc = -EAGAIN;
@@ -799,13 +800,13 @@ out:
    return rc;
 }
 
-sptr sys_getppid()
+int sys_getppid()
 {
    return get_curr_task()->pi->parent_pid;
 }
 
 /* create new session */
-sptr sys_setsid(void)
+int sys_setsid(void)
 {
    /*
     * This is a stub implementation of setsid(): the controlling terminal
@@ -821,12 +822,12 @@ sptr sys_setsid(void)
 }
 
 /* get current session id */
-sptr sys_getsid(int pid)
+int sys_getsid(int pid)
 {
    return -ENOSYS;
 }
 
-sptr sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5)
+int sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5)
 {
    // TODO: actually implement sys_prctl()
 

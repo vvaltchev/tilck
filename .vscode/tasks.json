@@ -4,9 +4,18 @@
    "version": "2.0.0",
    "tasks": [
       {
-         "label": "build",
+         "label": "build-kernel",
          "type": "shell",
          "command": "make",
+         "group": {
+            "kind": "build",
+            "isDefault": true
+         }
+      },
+      {
+         "label": "build-gtests",
+         "type": "shell",
+         "command": "make gtests",
          "group": {
             "kind": "build",
             "isDefault": true

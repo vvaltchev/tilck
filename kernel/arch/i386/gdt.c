@@ -8,6 +8,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/user.h>
+#include <tilck/kernel/syscalls.h>
 
 #include "gdt_int.h"
 
@@ -350,18 +351,17 @@ static void gdt_set_slot_in_task(task_info *ti, u16 slot, u16 gdt_index)
    ti->arch.gdt_entries[slot] = gdt_index;
 }
 
-sptr sys_set_thread_area(user_desc *ud)
+int sys_set_thread_area(void *arg)
 {
    int rc = 0;
    gdt_entry e = {0};
    user_desc dc;
+   user_desc *ud = arg;
 
    rc = copy_from_user(&dc, ud, sizeof(user_desc));
 
    if (rc != 0)
       return -EFAULT;
-
-   //DEBUG_set_thread_area(&dc);
 
    disable_preemption();
 

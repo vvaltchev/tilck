@@ -185,7 +185,7 @@ void full_remove_user_mapping(process_info *pi, user_mapping *um);
 void remove_all_mappings_of_handle(process_info *pi, fs_handle h);
 user_mapping *process_get_user_mapping(void *vaddr);
 
-sptr first_execve(const char *abs_path, const char *const *argv);
+int first_execve(const char *abs_path, const char *const *argv);
 int setup_usermode_task(pdir_t *pdir,
                         void *entry,
                         void *stack_addr,

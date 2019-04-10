@@ -92,8 +92,8 @@ int sys_dup(int oldfd);
 
 CREATE_STUB_SYSCALL_IMPL(sys_pipe)
 
-int sys_times(struct tms *user_buf);
-int sys_brk(void *vaddr);
+uptr sys_times(struct tms *user_buf);
+void *sys_brk(void *vaddr);
 int sys_setgid16(uptr gid);
 int sys_getgid16();
 
@@ -275,7 +275,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_sendfile)
 CREATE_STUB_SYSCALL_IMPL(sys_vfork)
 CREATE_STUB_SYSCALL_IMPL(sys_getrlimit)
 
-int sys_mmap_pgoff(void *addr, size_t length, int prot,
+sptr sys_mmap_pgoff(void *addr, size_t length, int prot,
                     int flags, int fd, size_t pgoffset);
 
 CREATE_STUB_SYSCALL_IMPL(sys_truncate64)

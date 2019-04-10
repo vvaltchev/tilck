@@ -108,7 +108,7 @@ int sys_kill(int pid, int sig)
    return send_signal(pid, sig, true);
 }
 
-int sys_times(struct tms *user_buf)
+uptr sys_times(struct tms *user_buf)
 {
    task_info *curr = get_curr_task();
    struct tms buf;
@@ -130,9 +130,9 @@ int sys_times(struct tms *user_buf)
    enable_preemption();
 
    if (copy_to_user(user_buf, &buf, sizeof(buf)) != 0)
-      return -EBADF;
+      return (uptr) -EBADF;
 
-   return (int) get_ticks();
+   return (uptr) get_ticks();
 }
 
 /* *************************************************************** */

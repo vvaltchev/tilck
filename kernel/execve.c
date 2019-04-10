@@ -7,6 +7,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/elf_loader.h>
+#include <tilck/kernel/syscalls.h>
 
 static const char *const default_env[] =
 {
@@ -109,7 +110,7 @@ execve_prepare_process(process_info *pi, void *brk, const char *abs_path)
    memcpy(pi->filepath, abs_path, strlen(abs_path) + 1);
 }
 
-static sptr
+static int
 do_execve(task_info *curr_user_task,
           const char *abs_path,
           const char *const *argv,
@@ -172,12 +173,12 @@ do_execve(task_info *curr_user_task,
    return rc;
 }
 
-sptr first_execve(const char *abs_path, const char *const *argv)
+int first_execve(const char *abs_path, const char *const *argv)
 {
    return do_execve(NULL, abs_path, argv, NULL);
 }
 
-sptr sys_execve(const char *user_filename,
+int sys_execve(const char *user_filename,
                 const char *const *user_argv,
                 const char *const *user_env)
 {

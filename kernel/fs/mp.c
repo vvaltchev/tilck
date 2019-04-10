@@ -9,6 +9,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/sync.h>
+#include <tilck/kernel/syscalls.h>
 
 #include "fs_int.h"
 
@@ -128,7 +129,7 @@ mountpoint *mountpoint_get_next(_mp_cursor *c)
    return NULL;
 }
 
-sptr
+int
 sys_mount(const char *user_source,
           const char *user_target,
           const char *user_filesystemtype,
@@ -138,7 +139,7 @@ sys_mount(const char *user_source,
    return -ENOSYS;
 }
 
-sptr sys_umount(const char *target, int flags)
+int sys_umount(const char *target, int flags)
 {
    return -ENOSYS;
 }

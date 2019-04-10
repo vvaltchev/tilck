@@ -6,6 +6,7 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
+#include <tilck/kernel/syscalls.h>
 
 typedef void (*action_type)(task_info *, int signum);
 
@@ -229,12 +230,12 @@ sys_rt_sigprocmask(int how,
    return 0;
 }
 
-sptr sys_sigprocmask(uptr a1, uptr a2, uptr a3)
+int sys_sigprocmask(uptr a1, uptr a2, uptr a3)
 {
    NOT_IMPLEMENTED(); // deprecated interface
 }
 
-sptr sys_sigaction(uptr a1, uptr a2, uptr a3)
+int sys_sigaction(uptr a1, uptr a2, uptr a3)
 {
    NOT_IMPLEMENTED(); // deprecated interface
 }

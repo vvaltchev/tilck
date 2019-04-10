@@ -7,6 +7,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/sys_types.h>
+#include <tilck/kernel/syscalls.h>
 
 const char *weekdays[7] =
 {
@@ -145,7 +146,7 @@ static void monotonic_time_get_timeval(struct timeval *tv)
    tv->tv_usec = (ticks % TIMER_HZ) * 1000000 / TIMER_HZ;
 }
 
-sptr sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
+int sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
 {
    struct timeval tv;
    struct timezone tz = {
@@ -166,7 +167,7 @@ sptr sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
    return 0;
 }
 
-sptr sys_clock_gettime(clockid_t clk_id, struct timespec *user_tp)
+int sys_clock_gettime(clockid_t clk_id, struct timespec *user_tp)
 {
    struct timeval tv;
    struct timespec tp;
@@ -197,7 +198,7 @@ sptr sys_clock_gettime(clockid_t clk_id, struct timespec *user_tp)
    return 0;
 }
 
-sptr sys_clock_getres(clockid_t clk_id, struct timespec *user_res)
+int sys_clock_getres(clockid_t clk_id, struct timespec *user_res)
 {
    struct timespec tp;
 
