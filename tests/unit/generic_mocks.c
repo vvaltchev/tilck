@@ -38,7 +38,7 @@ void __wrap_printk(const char *fmt, ...)
 
 void __wrap_assert_failed(const char *expr, const char *file, int line)
 {
-	printf("Kernel assertion '%s' FAILED in %s:%d\n", expr, file, line);
+   printf("Kernel assertion '%s' FAILED in %s:%d\n", expr, file, line);
    abort();
 }
 

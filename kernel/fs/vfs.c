@@ -83,6 +83,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    mp_cursor cur;
    int rc;
 
+   NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(path != NULL);
 
    if (*path != '/')
@@ -140,6 +141,17 @@ out:
 
 void vfs_close(fs_handle h)
 {
+   /*
+    * TODO: consider forcing also vfs_close() to be run always with preemption
+    * enabled. Reason: when one day when actual I/O devices will be supported,
+    * close() might need in some cases to do some I/O.
+    *
+    * What prevents vfs_close() to run with preemption enabled is the function
+    * terminate_process() which requires disabled preemption, because of its
+    * (primitive) sync with signal handling.
+    */
+   ASSERT(h != NULL);
+
    fs_handle_base *hb = (fs_handle_base *) h;
    filesystem *fs = hb->fs;
 
@@ -149,7 +161,6 @@ void vfs_close(fs_handle h)
 #endif
 
    hb->fs->close(h);
-
    fs->ref_count--;
 
    /* while a filesystem is mounted, the minimum ref-count it can have is 1 */
@@ -158,6 +169,8 @@ void vfs_close(fs_handle h)
 
 int vfs_dup(fs_handle h, fs_handle *dup_h)
 {
+   ASSERT(h != NULL);
+
    fs_handle_base *hb = (fs_handle_base *) h;
    int rc;
 
@@ -174,6 +187,9 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
 
 ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
    fs_handle_base *hb = (fs_handle_base *) h;
    ssize_t ret;
 
@@ -190,6 +206,9 @@ ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
 
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
    fs_handle_base *hb = (fs_handle_base *) h;
    ssize_t ret;
 
@@ -209,6 +228,9 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
 
 off_t vfs_seek(fs_handle h, s64 off, int whence)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
    fs_handle_base *hb = (fs_handle_base *) h;
 
    if (!hb->fops.seek)
@@ -220,6 +242,9 @@ off_t vfs_seek(fs_handle h, s64 off, int whence)
 
 int vfs_ioctl(fs_handle h, uptr request, void *argp)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;
 
@@ -236,6 +261,9 @@ int vfs_ioctl(fs_handle h, uptr request, void *argp)
 
 int vfs_stat64(fs_handle h, struct stat64 *statbuf)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;
 
@@ -251,8 +279,10 @@ int vfs_stat64(fs_handle h, struct stat64 *statbuf)
 
 void vfs_exlock(fs_handle h)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
    fs_handle_base *hb = (fs_handle_base *) h;
-   ASSERT(hb != NULL);
 
    if (hb->fops.exlock) {
       hb->fops.exlock(h);
@@ -264,8 +294,10 @@ void vfs_exlock(fs_handle h)
 
 void vfs_exunlock(fs_handle h)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
    fs_handle_base *hb = (fs_handle_base *) h;
-   ASSERT(hb != NULL);
 
    if (hb->fops.exunlock) {
       hb->fops.exunlock(h);
@@ -277,8 +309,10 @@ void vfs_exunlock(fs_handle h)
 
 void vfs_shlock(fs_handle h)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
    fs_handle_base *hb = (fs_handle_base *) h;
-   ASSERT(hb != NULL);
 
    if (hb->fops.shlock) {
       hb->fops.shlock(h);
@@ -290,8 +324,10 @@ void vfs_shlock(fs_handle h)
 
 void vfs_shunlock(fs_handle h)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
    fs_handle_base *hb = (fs_handle_base *) h;
-   ASSERT(hb != NULL);
 
    if (hb->fops.shunlock) {
       hb->fops.shunlock(h);
@@ -303,6 +339,7 @@ void vfs_shunlock(fs_handle h)
 
 void vfs_fs_exlock(filesystem *fs)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(fs != NULL);
    ASSERT(fs->fs_exlock);
 
@@ -311,6 +348,7 @@ void vfs_fs_exlock(filesystem *fs)
 
 void vfs_fs_exunlock(filesystem *fs)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(fs != NULL);
    ASSERT(fs->fs_exunlock);
 
@@ -319,6 +357,7 @@ void vfs_fs_exunlock(filesystem *fs)
 
 void vfs_fs_shlock(filesystem *fs)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(fs != NULL);
    ASSERT(fs->fs_shlock);
 
@@ -327,6 +366,7 @@ void vfs_fs_shlock(filesystem *fs)
 
 void vfs_fs_shunlock(filesystem *fs)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(fs != NULL);
    ASSERT(fs->fs_shunlock);
 
@@ -335,6 +375,7 @@ void vfs_fs_shunlock(filesystem *fs)
 
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
    fs_handle_base *hb = (fs_handle_base *) h;
    int rc;
 
@@ -352,6 +393,7 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
 
 int vfs_fcntl(fs_handle h, int cmd, int arg)
 {
+   NO_TEST_ASSERT(is_preemption_enabled());
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;
 

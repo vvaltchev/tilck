@@ -13,6 +13,7 @@ int sys_chdir(const char *user_path)
    process_info *pi = curr->pi;
    char *orig_path = curr->args_copybuf;
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
+   fs_handle h = NULL;
 
    STATIC_ASSERT(ARRAY_SIZE(pi->cwd) == MAX_PATH);
    STATIC_ASSERT((ARGS_COPYBUF_SIZE / 2) >= MAX_PATH);
@@ -25,36 +26,28 @@ int sys_chdir(const char *user_path)
    if (rc > 0)
       return -ENAMETOOLONG;
 
-   disable_preemption();
+   kmutex_lock(&pi->fslock);
    {
-      rc = compute_abs_path(orig_path, pi->cwd, path, MAX_PATH);
-
-      if (rc != 0)
+      if ((rc = compute_abs_path(orig_path, pi->cwd, path, MAX_PATH)))
          goto out;
 
-      fs_handle h = NULL;
-      rc = vfs_open(path, &h, 0, O_RDONLY);
-
-      if (rc < 0)
+      if ((rc = vfs_open(path, &h, 0, O_RDONLY)) < 0)
          goto out; /* keep the same rc */
 
       ASSERT(h != NULL);
 
       rc = vfs_stat64(h, &statbuf);
-
-      if (rc < 0) {
-         vfs_close(h);
-         goto out;
-      }
-
       vfs_close(h);
+
+      if (rc < 0)
+         goto out;
 
       if (!S_ISDIR(statbuf.st_mode)) {
          rc = -ENOTDIR;
          goto out;
       }
 
-      u32 pl = (u32)strlen(path);
+      size_t pl = strlen(path);
       memcpy(pi->cwd, path, pl + 1);
 
       if (pl > 1) {
@@ -69,7 +62,7 @@ int sys_chdir(const char *user_path)
    }
 
 out:
-   enable_preemption();
+   kmutex_unlock(&pi->fslock);
    return rc;
 }
 
