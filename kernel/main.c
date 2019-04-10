@@ -165,6 +165,9 @@ static void run_init_or_selftest(void)
 
 static void do_async_init()
 {
+   mount_first_ramdisk();
+   init_devfs();
+
    if (!kopt_serial_console) {
       init_kb();
       register_debug_kernel_keypress_handler();
@@ -206,9 +209,6 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_syscall_interfaces();
    init_tasklets();
    init_timer();
-
-   mount_first_ramdisk();
-   init_devfs();
 
    async_init();
    schedule_outside_interrupt_context();

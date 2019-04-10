@@ -8,6 +8,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/sync.h>
 
 #include "fs_int.h"
 
@@ -20,13 +21,14 @@ typedef struct {
 STATIC_ASSERT(sizeof(_mp_cursor) <= sizeof(uptr) * MP_CURSOR_SIZE_PTRS);
 
 static mountpoint *mps[MAX_MOUNTPOINTS];
+static kmutex mp_mutex = STATIC_KMUTEX_INIT(mp_mutex, 0);
 
 int mountpoint_add(filesystem *fs, const char *path)
 {
    u32 i;
    int rc = 0;
 
-   disable_preemption();
+   kmutex_lock(&mp_mutex);
 
    for (i = 0; i < ARRAY_SIZE(mps); i++) {
 
@@ -70,13 +72,13 @@ int mountpoint_add(filesystem *fs, const char *path)
    mps[i] = mp;
 
 out:
-   enable_preemption();
+   kmutex_unlock(&mp_mutex);
    return rc;
 }
 
 void mountpoint_remove(filesystem *fs)
 {
-   disable_preemption();
+   kmutex_lock(&mp_mutex);
 
    for (u32 i = 0; i < ARRAY_SIZE(mps); i++) {
       if (mps[i] && mps[i]->fs == fs) {
@@ -98,25 +100,25 @@ void mountpoint_remove(filesystem *fs)
    panic("Unable to find mount point for filesystem at %p", fs);
 
 out:
-   enable_preemption();
+   kmutex_unlock(&mp_mutex);
 }
 
 void mountpoint_iter_begin(_mp_cursor *c)
 {
-   disable_preemption();
+   kmutex_lock(&mp_mutex);
    c->curr_mp = 0;
 }
 
 void mountpoint_iter_end(_mp_cursor *c)
 {
    c->curr_mp = -1;
-   enable_preemption();
+   kmutex_unlock(&mp_mutex);
 }
 
 mountpoint *mountpoint_get_next(_mp_cursor *c)
 {
    ASSERT(c->curr_mp >= 0);
-   ASSERT(!is_preemption_enabled());
+   ASSERT(kmutex_is_curr_task_holding_lock(&mp_mutex));
 
    for (int i = c->curr_mp++; i < MAX_MOUNTPOINTS; i++) {
       if (mps[i] != NULL)
