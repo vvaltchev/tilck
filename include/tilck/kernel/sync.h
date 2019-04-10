@@ -136,6 +136,14 @@ typedef struct {
 
 } kmutex;
 
+#define STATIC_KMUTEX_INIT(m, fl)                 \
+   {                                              \
+      .owner_task = NULL,                         \
+      .flags = 0,                                 \
+      .lock_count = 0,                            \
+      .wait_list = make_list(m.wait_list),        \
+   }
+
 #define KMUTEX_FL_RECURSIVE (1 << 0)
 
 void kmutex_init(kmutex *m, u32 flags);
