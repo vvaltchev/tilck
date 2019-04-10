@@ -45,7 +45,7 @@ debug_dump_select_args(int nfds, fd_set *rfds, fd_set *wfds,
 }
 
 struct select_ctx {
-   u32 nfds;
+   int nfds;
    fd_set *sets[3];
    fd_set *u_sets[3];
    struct timeval *tv;
@@ -74,7 +74,7 @@ select_count_cond_per_set(struct select_ctx *c,
    if (!set)
       return 0;
 
-   for (u32 i = 0; i < c->nfds; i++) {
+   for (int i = 0; i < c->nfds; i++) {
 
       if (!FD_ISSET(i, set))
          continue;
@@ -92,7 +92,7 @@ select_count_cond_per_set(struct select_ctx *c,
 }
 
 static int
-select_set_kcond(u32 nfds,
+select_set_kcond(int nfds,
                  multi_obj_waiter *w,
                  u32 *idx,
                  fd_set *set,
@@ -104,7 +104,7 @@ select_set_kcond(u32 nfds,
    if (!set)
       return 0;
 
-   for (u32 i = 0; i < nfds; i++) {
+   for (int i = 0; i < nfds; i++) {
 
       if (!FD_ISSET(i, set))
          continue;
@@ -124,14 +124,14 @@ select_set_kcond(u32 nfds,
 }
 
 static int
-select_set_ready(u32 nfds, fd_set *set, func_rwe_ready is_ready)
+select_set_ready(int nfds, fd_set *set, func_rwe_ready is_ready)
 {
    int tot = 0;
 
    if (!set)
       return tot;
 
-   for (u32 i = 0; i < nfds; i++) {
+   for (int i = 0; i < nfds; i++) {
 
       if (!FD_ISSET(i, set))
          continue;
@@ -167,14 +167,14 @@ count_signaled_conds(multi_obj_waiter *w)
 }
 
 static int
-count_ready_streams_per_set(u32 nfds, fd_set *set, func_rwe_ready is_ready)
+count_ready_streams_per_set(int nfds, fd_set *set, func_rwe_ready is_ready)
 {
    int count = 0;
 
    if (!set)
       return count;
 
-   for (u32 j = 0; j < nfds; j++) {
+   for (int j = 0; j < nfds; j++) {
 
       if (!FD_ISSET(j, set))
          continue;
@@ -189,7 +189,7 @@ count_ready_streams_per_set(u32 nfds, fd_set *set, func_rwe_ready is_ready)
 }
 
 static int
-count_ready_streams(u32 nfds, fd_set *sets[3])
+count_ready_streams(int nfds, fd_set *sets[3])
 {
    int count = 0;
 
@@ -367,7 +367,7 @@ int sys_select(int user_nfds,
 {
    struct select_ctx ctx = (struct select_ctx) {
 
-      .nfds = (u32)user_nfds,
+      .nfds = user_nfds,
       .sets = { 0 },
       .u_sets = { user_rfds, user_wfds, user_efds },
       .tv = NULL,

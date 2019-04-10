@@ -310,7 +310,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       if (!(flags & MAP_SHARED))
          return -EINVAL;
 
-      handle = get_fs_handle((u32) fd);
+      handle = get_fs_handle(fd);
 
       if (!handle)
          return -EBADF;

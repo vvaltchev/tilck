@@ -202,7 +202,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_personality)
 CREATE_STUB_SYSCALL_IMPL(sys_setfsuid16)
 CREATE_STUB_SYSCALL_IMPL(sys_setfsgid16)
 
-int sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence);
+int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *result, u32 whence);
 
 CREATE_STUB_SYSCALL_IMPL(sys_getdents)
 

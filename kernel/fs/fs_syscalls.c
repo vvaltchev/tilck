@@ -13,23 +13,23 @@
 
 #include <fcntl.h>      // system header
 
-static inline bool is_fd_in_valid_range(u32 fd)
+static inline bool is_fd_in_valid_range(int fd)
 {
-   return fd < MAX_HANDLES;
+   return 0 <= fd && fd < MAX_HANDLES;
 }
 
-static u32 get_free_handle_num_ge(process_info *pi, u32 ge)
+static int get_free_handle_num_ge(process_info *pi, int ge)
 {
    ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
 
-   for (u32 free_fd = ge; free_fd < MAX_HANDLES; free_fd++)
+   for (int free_fd = ge; free_fd < MAX_HANDLES; free_fd++)
       if (!pi->handles[free_fd])
          return free_fd;
 
-   return (u32) -1;
+   return -1;
 }
 
-static u32 get_free_handle_num(process_info *pi)
+static int get_free_handle_num(process_info *pi)
 {
    return get_free_handle_num_ge(pi, 0);
 }
@@ -42,7 +42,7 @@ static u32 get_free_handle_num(process_info *pi)
  * TODO: introduce a ref-count in the fs_base_handle struct and function like
  * put_fs_handle() or rename both to something like acquire/release_fs_handle.
  */
-fs_handle get_fs_handle(u32 fd)
+fs_handle get_fs_handle(int fd)
 {
    task_info *curr = get_curr_task();
    fs_handle handle = NULL;
@@ -59,7 +59,7 @@ fs_handle get_fs_handle(u32 fd)
 
 int sys_open(const char *user_path, int flags, mode_t mode)
 {
-   int ret;
+   int ret, free_fd;
    task_info *curr = get_curr_task();
    char *orig_path = curr->args_copybuf;
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
@@ -76,9 +76,9 @@ int sys_open(const char *user_path, int flags, mode_t mode)
    if ((ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH)))
       goto end;
 
-   u32 free_fd = get_free_handle_num(curr->pi);
+   free_fd = get_free_handle_num(curr->pi);
 
-   if (!is_fd_in_valid_range(free_fd))
+   if (free_fd < 0)
       goto no_fds;
 
    if ((ret = vfs_open(path, &h, flags, mode)) < 0)
@@ -98,12 +98,11 @@ no_fds:
    goto end;
 }
 
-int sys_close(int user_fd)
+int sys_close(int fd)
 {
    task_info *curr = get_curr_task();
    fs_handle handle;
    int ret = 0;
-   u32 fd = (u32) user_fd;
 
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
@@ -118,12 +117,11 @@ int sys_close(int user_fd)
    return ret;
 }
 
-int sys_read(int user_fd, void *user_buf, size_t count)
+int sys_read(int fd, void *user_buf, size_t count)
 {
    int ret;
    task_info *curr = get_curr_task();
    fs_handle handle;
-   const u32 fd = (u32) user_fd;
 
    handle = get_fs_handle(fd);
 
@@ -158,12 +156,11 @@ end:
    return ret;
 }
 
-int sys_write(int user_fd, const void *user_buf, size_t count)
+int sys_write(int fd, const void *user_buf, size_t count)
 {
    task_info *curr = get_curr_task();
    fs_handle handle;
    sptr ret;
-   const u32 fd = (u32) user_fd;
 
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
@@ -177,9 +174,8 @@ int sys_write(int user_fd, const void *user_buf, size_t count)
    return (int)vfs_write(handle, (char *)curr->io_copybuf, count);
 }
 
-int sys_ioctl(int user_fd, uptr request, void *argp)
+int sys_ioctl(int fd, uptr request, void *argp)
 {
-   const u32 fd = (u32) user_fd;
    fs_handle handle = get_fs_handle(fd);
 
    if (!handle)
@@ -188,10 +184,9 @@ int sys_ioctl(int user_fd, uptr request, void *argp)
    return vfs_ioctl(handle, request, argp);
 }
 
-int sys_writev(int user_fd, const struct iovec *user_iov, int user_iovcnt)
+int sys_writev(int fd, const struct iovec *user_iov, int user_iovcnt)
 {
    task_info *curr = get_curr_task();
-   const u32 fd = (u32) user_fd;
    const u32 iovcnt = (u32) user_iovcnt;
    fs_handle handle;
    int rc, ret = 0;
@@ -221,7 +216,7 @@ int sys_writev(int user_fd, const struct iovec *user_iov, int user_iovcnt)
 
    for (u32 i = 0; i < iovcnt; i++) {
 
-      rc = sys_write(user_fd, iov[i].iov_base, iov[i].iov_len);
+      rc = sys_write(fd, iov[i].iov_base, iov[i].iov_len);
 
       if (rc < 0) {
          ret = rc;
@@ -241,10 +236,9 @@ int sys_writev(int user_fd, const struct iovec *user_iov, int user_iovcnt)
    return ret;
 }
 
-int sys_readv(int user_fd, const struct iovec *user_iov, int user_iovcnt)
+int sys_readv(int fd, const struct iovec *user_iov, int user_iovcnt)
 {
    task_info *curr = get_curr_task();
-   const u32 fd = (u32) user_fd;
    const u32 iovcnt = (u32) user_iovcnt;
    fs_handle handle;
    int rc, ret = 0;
@@ -274,7 +268,7 @@ int sys_readv(int user_fd, const struct iovec *user_iov, int user_iovcnt)
 
    for (u32 i = 0; i < iovcnt; i++) {
 
-      rc = sys_read(user_fd, iov[i].iov_base, iov[i].iov_len);
+      rc = sys_read(fd, iov[i].iov_base, iov[i].iov_len);
 
       if (rc < 0) {
          ret = rc;
@@ -354,7 +348,7 @@ int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
    return -EINVAL;
 }
 
-int sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
+int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
 {
    const s64 off64 = (s64)(((u64)off_hi << 32) | off_low);
    fs_handle handle;
@@ -376,9 +370,8 @@ int sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
    return 0;
 }
 
-int sys_getdents64(int user_fd, struct linux_dirent64 *user_dirp, u32 buf_size)
+int sys_getdents64(int fd, struct linux_dirent64 *user_dirp, u32 buf_size)
 {
-   const u32 fd = (u32) user_fd;
    fs_handle handle;
 
    if (!(handle = get_fs_handle(fd)))
@@ -399,10 +392,10 @@ int sys_dup2(int oldfd, int newfd)
    fs_handle old_h, new_h;
    task_info *curr = get_curr_task();
 
-   if (!is_fd_in_valid_range((u32) oldfd))
+   if (!is_fd_in_valid_range(oldfd))
       return -EBADF;
 
-   if (!is_fd_in_valid_range((u32) newfd))
+   if (!is_fd_in_valid_range(newfd))
       return -EBADF;
 
    if (newfd == oldfd)
@@ -410,14 +403,14 @@ int sys_dup2(int oldfd, int newfd)
 
    kmutex_lock(&curr->pi->fslock);
 
-   old_h = get_fs_handle((u32) oldfd);
+   old_h = get_fs_handle(oldfd);
 
    if (!old_h) {
       rc = -EBADF;
       goto out;
    }
 
-   new_h = get_fs_handle((u32) newfd);
+   new_h = get_fs_handle(newfd);
 
    if (new_h) {
       vfs_close(new_h);
@@ -439,8 +432,7 @@ out:
 
 int sys_dup(int oldfd)
 {
-   int rc;
-   u32 free_fd;
+   int rc, free_fd;
    process_info *pi = get_curr_task()->pi;
 
    kmutex_lock(&pi->fslock);
@@ -515,10 +507,9 @@ void close_cloexec_handles(process_info *pi)
    kmutex_unlock(&pi->fslock);
 }
 
-int sys_fcntl64(int user_fd, int cmd, int arg)
+int sys_fcntl64(int fd, int cmd, int arg)
 {
    int rc = 0;
-   const u32 fd = (u32) user_fd;
    task_info *curr = get_curr_task();
    fs_handle_base *hb;
 
@@ -532,8 +523,8 @@ int sys_fcntl64(int user_fd, int cmd, int arg)
       case F_DUPFD:
          {
             kmutex_lock(&curr->pi->fslock);
-            u32 new_fd = get_free_handle_num_ge(curr->pi, (u32)arg);
-            rc = sys_dup2(user_fd, (int)new_fd);
+            int new_fd = get_free_handle_num_ge(curr->pi, arg);
+            rc = sys_dup2(fd, new_fd);
             kmutex_unlock(&curr->pi->fslock);
             return rc;
          }
@@ -541,8 +532,8 @@ int sys_fcntl64(int user_fd, int cmd, int arg)
       case F_DUPFD_CLOEXEC:
          {
             kmutex_lock(&curr->pi->fslock);
-            u32 new_fd = get_free_handle_num_ge(curr->pi, (u32)arg);
-            rc = sys_dup2(user_fd, (int)new_fd);
+            int new_fd = get_free_handle_num_ge(curr->pi, arg);
+            rc = sys_dup2(fd, new_fd);
             if (!rc) {
                fs_handle_base *h2 = get_fs_handle(new_fd);
                ASSERT(h2 != NULL);

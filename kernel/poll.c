@@ -53,14 +53,14 @@ debug_poll_args_dump(struct pollfd *fds, u32 nfds, int timeout)
 }
 
 static u32
-poll_count_conds(struct pollfd *fds, u32 nfds)
+poll_count_conds(struct pollfd *fds, nfds_t nfds)
 {
    u32 cnt = 0;
 
-   for (u32 i = 0; i < nfds; i++) {
+   for (nfds_t i = 0; i < nfds; i++) {
 
       fds[i].revents = 0;
-      fs_handle h = get_fs_handle((u32)fds[i].fd);
+      fs_handle h = get_fs_handle(fds[i].fd);
 
       if (!h) {
          fds[i].revents = POLLNVAL; /* invalid file descriptor */
@@ -95,13 +95,16 @@ poll_count_conds(struct pollfd *fds, u32 nfds)
 }
 
 static void
-poll_set_conds(multi_obj_waiter *w, struct pollfd *fds, u32 nfds, u32 cond_cnt)
+poll_set_conds(multi_obj_waiter *w,
+               struct pollfd *fds,
+               nfds_t nfds,
+               u32 cond_cnt)
 {
    u32 idx = 0;
 
-   for (u32 i = 0; i < nfds; i++) {
+   for (nfds_t i = 0; i < nfds; i++) {
 
-      fs_handle h = get_fs_handle((u32)fds[i].fd);
+      fs_handle h = get_fs_handle(fds[i].fd);
 
       if (!h) {
          fds[i].revents = POLLNVAL; /* invalid file descriptor */
@@ -150,13 +153,13 @@ poll_set_conds(multi_obj_waiter *w, struct pollfd *fds, u32 nfds, u32 cond_cnt)
 }
 
 static int
-poll_count_ready_fds(struct pollfd *fds, u32 nfds)
+poll_count_ready_fds(struct pollfd *fds, nfds_t nfds)
 {
    int cnt = 0;
 
-   for (u32 i = 0; i < nfds; i++) {
+   for (nfds_t i = 0; i < nfds; i++) {
 
-      fs_handle h = get_fs_handle((u32)fds[i].fd);
+      fs_handle h = get_fs_handle(fds[i].fd);
 
       if (!h) {
          fds[i].revents = POLLNVAL; /* invalid file descriptor */
@@ -195,7 +198,7 @@ poll_count_ready_fds(struct pollfd *fds, u32 nfds)
 }
 
 static int
-poll_wait_on_cond(struct pollfd *fds, u32 nfds, int timeout, u32 cond_cnt)
+poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, u32 cond_cnt)
 {
    task_info *curr = get_curr_task();
    multi_obj_waiter *waiter = NULL;
@@ -269,9 +272,8 @@ poll_wait_on_cond(struct pollfd *fds, u32 nfds, int timeout, u32 cond_cnt)
    return ready_fds_cnt;
 }
 
-int sys_poll(struct pollfd *user_fds, nfds_t user_nfds, int timeout)
+int sys_poll(struct pollfd *user_fds, nfds_t nfds, int timeout)
 {
-   const u32 nfds = (u32) user_nfds;
    task_info *curr = get_curr_task();
    struct pollfd *fds = curr->args_copybuf;
    int rc, ready_fds_cnt;
