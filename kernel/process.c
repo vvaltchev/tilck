@@ -86,6 +86,8 @@ void init_process_lists(process_info *pi)
    list_init(&pi->children_list);
    list_init(&pi->mappings);
    list_node_init(&pi->siblings_node);
+
+   kmutex_init(&pi->fslock, KMUTEX_FL_RECURSIVE);
 }
 
 task_info *allocate_new_process(task_info *parent, int pid)

@@ -107,7 +107,6 @@ execve_prepare_process(process_info *pi, void *brk, const char *abs_path)
    pi->initial_brk = brk;
    pi->did_call_execve = true;
    memcpy(pi->filepath, abs_path, strlen(abs_path) + 1);
-   close_cloexec_handles(pi);
 }
 
 static sptr
@@ -126,6 +125,9 @@ do_execve(task_info *curr_user_task,
 
    if ((rc = load_elf_program(abs_path, &pdir, &entry, &stack_addr, &brk)))
       return rc;
+
+   if (LIKELY(curr_user_task != NULL))
+      close_cloexec_handles(curr_user_task->pi);
 
    disable_preemption();
 
@@ -147,10 +149,10 @@ do_execve(task_info *curr_user_task,
          ASSERT(ti == curr_user_task);
 
          /*
-          * This is the only `if` handling the difference between the first
-          * execve() and all the others. In case of a regular execve(),
-          * curr_user_task will always be != NULL and we can switch again to
-          * its 'new image' with switch_to_task().
+          * This is 2nd `if` handling the difference between the first execve()
+          * and all the others. In case of a regular execve(), curr_user_task
+          * will always be != NULL and we can switch again to its 'new image'
+          * with switch_to_task().
           */
          switch_to_task(ti, SYSCALL_SOFT_INTERRUPT);
 

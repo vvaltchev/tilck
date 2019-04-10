@@ -57,9 +57,9 @@ struct process_info {
 
    void *proc_tty;
    bool did_call_execve;
-
-
    int *set_child_tid;                 /* NOTE: this is an user pointer */
+
+   kmutex fslock;                      /* protectes `handles` and `cwd` */
 
    /* large members */
 

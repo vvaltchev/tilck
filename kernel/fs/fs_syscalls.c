@@ -20,6 +20,8 @@ static inline bool is_fd_in_valid_range(u32 fd)
 
 static u32 get_free_handle_num_ge(process_info *pi, u32 ge)
 {
+   ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
+
    for (u32 free_fd = ge; free_fd < MAX_HANDLES; free_fd++)
       if (!pi->handles[free_fd])
          return free_fd;
@@ -32,12 +34,10 @@ static u32 get_free_handle_num(process_info *pi)
    return get_free_handle_num_ge(pi, 0);
 }
 
-
-
 /*
- * Even if getting the fs_handle this way is safe, using it won't be anymore
+ * Even if getting the fs_handle this way is safe now, it won't be anymore
  * after thread-support is added to the kernel. For example, a thread might
- * work with given handle while another might destroy it.
+ * work with given handle while another closes it.
  *
  * TODO: introduce a ref-count in the fs_base_handle struct and function like
  * put_fs_handle() or rename both to something like acquire/release_fs_handle.
@@ -47,12 +47,12 @@ fs_handle get_fs_handle(u32 fd)
    task_info *curr = get_curr_task();
    fs_handle handle = NULL;
 
-   disable_preemption();
-   {
-      if (is_fd_in_valid_range(fd) && curr->pi->handles[fd])
-         handle = curr->pi->handles[fd];
-   }
-   enable_preemption();
+   kmutex_lock(&curr->pi->fslock);
+
+   if (is_fd_in_valid_range(fd) && curr->pi->handles[fd])
+      handle = curr->pi->handles[fd];
+
+   kmutex_unlock(&curr->pi->fslock);
    return handle;
 }
 
@@ -68,16 +68,12 @@ sptr sys_open(const char *user_path, int flags, mode_t mode)
 
    STATIC_ASSERT((ARGS_COPYBUF_SIZE / 2) >= MAX_PATH);
 
-   ret = duplicate_user_path(orig_path, user_path, MAX_PATH, &written);
-
-   if (ret != 0)
+   if ((ret = duplicate_user_path(orig_path, user_path, MAX_PATH, &written)))
       return ret;
 
-   disable_preemption();
+   kmutex_lock(&curr->pi->fslock);
 
-   ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
-
-   if (ret != 0)
+   if ((ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH)))
       goto end;
 
    u32 free_fd = get_free_handle_num(curr->pi);
@@ -85,11 +81,7 @@ sptr sys_open(const char *user_path, int flags, mode_t mode)
    if (!is_fd_in_valid_range(free_fd))
       goto no_fds;
 
-   // TODO: make the vfs call runnable with preemption enabled
-   // In order to achieve that, we'll need a per-process "fs" lock.
-   ret = vfs_open(path, &h, flags, mode);
-
-   if (ret < 0)
+   if ((ret = vfs_open(path, &h, flags, mode)) < 0)
       goto end;
 
    ASSERT(h != NULL);
@@ -98,7 +90,7 @@ sptr sys_open(const char *user_path, int flags, mode_t mode)
    ret = (sptr) free_fd;
 
 end:
-   enable_preemption();
+   kmutex_unlock(&curr->pi->fslock);
    return ret;
 
 no_fds:
@@ -113,26 +105,16 @@ sptr sys_close(int user_fd)
    sptr ret = 0;
    u32 fd = (u32) user_fd;
 
-   disable_preemption();
-
-   handle = get_fs_handle(fd);
-
-   if (!handle) {
-      ret = -EBADF;
-      goto end;
-   }
-
-   // TODO: in order to run with preemption enabled here, we'd need to have
-   // a kind-of per-process (not per-task!) "fs" lock. Otherwise, if we make
-   // this section preemptable, a close(handle) from other thread in the same
-   // process could race with the one here below. At that point, the handle
-   // object would be destroyed and we'll panic.
+   if (!(handle = get_fs_handle(fd)))
+      return -EBADF;
 
    vfs_close(handle);
-   curr->pi->handles[fd] = NULL;
 
-end:
-   enable_preemption();
+   kmutex_lock(&curr->pi->fslock);
+   {
+      curr->pi->handles[fd] = NULL;
+   }
+   kmutex_unlock(&curr->pi->fslock);
    return ret;
 }
 
@@ -149,7 +131,7 @@ sptr sys_read(int user_fd, void *user_buf, size_t count)
       return -EBADF;
 
    count = MIN(count, IO_COPYBUF_SIZE);
-   ret = vfs_read(curr->pi->handles[fd], curr->io_copybuf, count);
+   ret = vfs_read(handle, curr->io_copybuf, count);
 
    if (ret > 0) {
       if (copy_to_user(user_buf, curr->io_copybuf, (size_t)ret) < 0) {
@@ -217,18 +199,15 @@ sptr sys_writev(int user_fd, const struct iovec *user_iov, int user_iovcnt)
    if (rc != 0)
       return -EFAULT;
 
-   handle = get_fs_handle(fd);
-
-   if (!handle)
+   if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
    vfs_exlock(handle);
 
    const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
 
-   // TODO: make the rest of the syscall run with preemption enabled.
-   // In order to achieve that, it might be necessary to expose from vfs
-   // a lock/unlock interface, or to entirely implement sys_writev in vfs.
+   // TODO: avoid grabbing a lock here. In order to achieve that, it might be
+   // necessary to entirely implement writev() in vfs.
 
    for (u32 i = 0; i < iovcnt; i++) {
 
@@ -274,12 +253,13 @@ sptr sys_readv(int user_fd, const struct iovec *user_iov, int user_iovcnt)
    if (rc != 0)
       return -EFAULT;
 
-   handle = get_fs_handle(fd);
-
-   if (!handle)
+   if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
    vfs_shlock(handle);
+
+   // TODO: avoid grabbing a lock here. In order to achieve that, it might be
+   // necessary to entirely implement readv() in vfs.
 
    const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
 
@@ -319,35 +299,25 @@ sptr sys_stat64(const char *user_path, struct stat64 *user_statbuf)
    if (rc > 0)
       return -ENAMETOOLONG;
 
-   disable_preemption();
+   kmutex_lock(&curr->pi->fslock);
    {
-      /*
-       * No preemption because CWD may change.
-       * TODO: introduce a per-process "big" lock.
-       */
       rc = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
    }
-   enable_preemption();
+   kmutex_unlock(&curr->pi->fslock);
 
    if (rc < 0)
       return rc;
 
-   //printk("sys_stat64('%s') => vfs_open(%s)\n", orig_path, path);
-   rc = vfs_open(path, &h, O_RDONLY, 0);
-
-   if (rc < 0)
+   if ((rc = vfs_open(path, &h, O_RDONLY, 0)) < 0)
       return rc;
 
    ASSERT(h != NULL);
-   rc = vfs_stat64(h, &statbuf);
 
-   if (rc < 0)
+   if ((rc = vfs_stat64(h, &statbuf)) < 0)
       goto out;
 
-   rc = copy_to_user(user_statbuf, &statbuf, sizeof(struct stat64));
-
-   if (rc < 0)
-      return -EFAULT;
+   if (copy_to_user(user_statbuf, &statbuf, sizeof(struct stat64)))
+      rc = -EFAULT;
 
 out:
    vfs_close(h);
@@ -380,13 +350,10 @@ sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
    const s64 off64 = (s64)(((u64)off_hi << 32) | off_low);
    fs_handle handle;
    s64 new_off;
-   int rc;
 
    STATIC_ASSERT(sizeof(new_off) >= sizeof(off_t));
 
-   handle = get_fs_handle(fd);
-
-   if (!handle)
+   if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
    new_off = vfs_seek(handle, off64, (int)whence);
@@ -394,9 +361,7 @@ sptr sys_llseek(u32 fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
    if (new_off < 0)
       return (sptr) new_off; /* return back vfs_seek's error */
 
-   rc = copy_to_user(result, &new_off, sizeof(*result));
-
-   if (rc != 0)
+   if (copy_to_user(result, &new_off, sizeof(*result)))
       return -EBADF;
 
    return 0;
@@ -406,18 +371,11 @@ sptr sys_getdents64(int user_fd, struct linux_dirent64 *user_dirp, u32 buf_size)
 {
    const u32 fd = (u32) user_fd;
    fs_handle handle;
-   int rc;
 
-   //printk("[TID: %d] getdents64(fd: %d, dirp: %p, buf_size: %u)\n",
-   //       get_curr_task()->tid, fd, user_dirp, buf_size);
-
-   handle = get_fs_handle(fd);
-
-   if (!handle)
+   if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
-   rc = vfs_getdents64(handle, user_dirp, buf_size);
-   return rc;
+   return vfs_getdents64(handle, user_dirp, buf_size);
 }
 
 sptr sys_access(const char *pathname, int mode)
@@ -441,7 +399,7 @@ sptr sys_dup2(int oldfd, int newfd)
    if (newfd == oldfd)
       return -EINVAL;
 
-   disable_preemption();
+   kmutex_lock(&curr->pi->fslock);
 
    old_h = get_fs_handle((u32) oldfd);
 
@@ -466,7 +424,7 @@ sptr sys_dup2(int oldfd, int newfd)
    rc = (sptr) newfd;
 
 out:
-   enable_preemption();
+   kmutex_unlock(&curr->pi->fslock);
    return rc;
 }
 
@@ -474,10 +432,11 @@ sptr sys_dup(int oldfd)
 {
    sptr rc;
    u32 free_fd;
+   process_info *pi = get_curr_task()->pi;
 
-   disable_preemption();
+   kmutex_lock(&pi->fslock);
 
-   free_fd = get_free_handle_num(get_curr_task()->pi);
+   free_fd = get_free_handle_num(pi);
 
    if (!is_fd_in_valid_range(free_fd)) {
       rc = -EMFILE;
@@ -487,7 +446,7 @@ sptr sys_dup(int oldfd)
    rc = sys_dup2(oldfd, (int) free_fd);
 
 out:
-   enable_preemption();
+   kmutex_unlock(&pi->fslock);
    return rc;
 }
 
@@ -532,6 +491,8 @@ static void debug_print_fcntl_command(int cmd)
 
 void close_cloexec_handles(process_info *pi)
 {
+   kmutex_lock(&pi->fslock);
+
    for (u32 i = 0; i < MAX_HANDLES; i++) {
 
       fs_handle_base *h = pi->handles[i];
@@ -541,14 +502,18 @@ void close_cloexec_handles(process_info *pi)
          pi->handles[i] = NULL;
       }
    }
+
+   kmutex_unlock(&pi->fslock);
 }
 
 sptr sys_fcntl64(int user_fd, int cmd, int arg)
 {
-   const u32 fd = (u32) user_fd;
-   fs_handle_base *hb = get_fs_handle(fd);
-   task_info *curr = get_curr_task();
    sptr rc = 0;
+   const u32 fd = (u32) user_fd;
+   task_info *curr = get_curr_task();
+   fs_handle_base *hb;
+
+   hb = get_fs_handle(fd);
 
    if (!hb)
       return -EBADF;
@@ -557,16 +522,16 @@ sptr sys_fcntl64(int user_fd, int cmd, int arg)
 
       case F_DUPFD:
          {
-            disable_preemption();
+            kmutex_lock(&curr->pi->fslock);
             u32 new_fd = get_free_handle_num_ge(curr->pi, (u32)arg);
             rc = sys_dup2(user_fd, (int)new_fd);
-            enable_preemption();
+            kmutex_unlock(&curr->pi->fslock);
             return rc;
          }
 
       case F_DUPFD_CLOEXEC:
          {
-            disable_preemption();
+            kmutex_lock(&curr->pi->fslock);
             u32 new_fd = get_free_handle_num_ge(curr->pi, (u32)arg);
             rc = sys_dup2(user_fd, (int)new_fd);
             if (!rc) {
@@ -574,7 +539,7 @@ sptr sys_fcntl64(int user_fd, int cmd, int arg)
                ASSERT(h2 != NULL);
                h2->fd_flags |= O_CLOEXEC;
             }
-            enable_preemption();
+            kmutex_unlock(&curr->pi->fslock);
             return rc;
          }
 
