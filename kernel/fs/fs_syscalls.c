@@ -87,7 +87,7 @@ int sys_open(const char *user_path, int flags, mode_t mode)
    ASSERT(h != NULL);
 
    curr->pi->handles[free_fd] = h;
-   ret = (int) free_fd;
+   ret = free_fd;
 
 end:
    kmutex_unlock(&curr->pi->fslock);

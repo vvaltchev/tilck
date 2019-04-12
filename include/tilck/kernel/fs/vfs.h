@@ -32,11 +32,7 @@ typedef void (*func_close) (fs_handle);
 typedef int (*func_open) (filesystem *, const char *, fs_handle *, int, mode_t);
 typedef int (*func_dup) (fs_handle, fs_handle *);
 typedef int (*func_getdents64) (fs_handle, struct linux_dirent64 *, u32);
-
-typedef void (*func_fs_ex_lock)(filesystem *);
-typedef void (*func_fs_ex_unlock)(filesystem *);
-typedef void (*func_fs_sh_lock)(filesystem *);
-typedef void (*func_fs_sh_unlock)(filesystem *);
+typedef void (*func_fslock_t)(filesystem *);
 
 /* file ops */
 typedef ssize_t (*func_read) (fs_handle, char *, size_t);
@@ -47,10 +43,7 @@ typedef int (*func_stat) (fs_handle, struct stat64 *);
 typedef int (*func_mmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_munmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_fcntl) (fs_handle, int, int);
-typedef void (*func_ex_lock)(fs_handle);
-typedef void (*func_ex_unlock)(fs_handle);
-typedef void (*func_sh_lock)(fs_handle);
-typedef void (*func_sh_unlock)(fs_handle);
+typedef void (*func_hlock_t)(fs_handle);
 
 typedef bool (*func_rwe_ready)(fs_handle);
 typedef kcond *(*func_get_rwe_cond)(fs_handle);
@@ -76,10 +69,10 @@ struct filesystem {
    func_getdents64 getdents64;
 
    /* Whole-filesystem locks */
-   func_fs_ex_lock fs_exlock;
-   func_fs_ex_unlock fs_exunlock;
-   func_fs_sh_lock fs_shlock;
-   func_fs_sh_unlock fs_shunlock;
+   func_fslock_t fs_exlock;
+   func_fslock_t fs_exunlock;
+   func_fslock_t fs_shlock;
+   func_fslock_t fs_shunlock;
 };
 
 typedef struct {
@@ -103,10 +96,10 @@ typedef struct {
    func_get_rwe_cond get_except_cond;
 
    /* optional, per-file locks */
-   func_ex_lock exlock;
-   func_ex_unlock exunlock;
-   func_sh_lock shlock;
-   func_sh_unlock shunlock;
+   func_hlock_t exlock;
+   func_hlock_t exunlock;
+   func_hlock_t shlock;
+   func_hlock_t shunlock;
 
 } file_ops;
 
