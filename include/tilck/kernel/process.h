@@ -41,7 +41,7 @@ typedef struct {
 
 struct process_info {
 
-   int ref_count;
+   REF_COUNTED_OBJECT;
 
    int pid;                   /* process id (tgid in the Linux kernel) */
    int parent_pid;

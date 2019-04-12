@@ -287,5 +287,10 @@ static ALWAYS_INLINE uptr rshift(uptr val, uptr bits)
  */
 #define SHR_BITS(val, rs, t) LO_BITS( rshift((val), (rs)), NBITS-(rs), t )
 
+#define REF_COUNTED_OBJECT    int ref_count
+#define retain_obj(p)         (++(p)->ref_count)
+#define release_obj(p)        (--(p)->ref_count)
+#define get_ref_count(p)      ((p)->ref_count)
+
 /* Includes */
 #include <tilck/common/panic.h>

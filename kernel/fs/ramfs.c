@@ -44,8 +44,9 @@ typedef struct {
 
 struct ramfs_inode {
 
+   REF_COUNTED_OBJECT;
+
    int inode;
-   int ref_count;
    enum ramfs_entry type;
    mode_t mode;                        /* permissions + special flags */
 
@@ -99,7 +100,7 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
    memcpy(e->name, iname, enl);
 
    list_add_tail(&idir->entries_list, &e->node);
-   ie->ref_count++;
+   retain_obj(ie);
    return 0;
 }
 
@@ -110,7 +111,7 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
    ASSERT(idir->type == RAMFS_DIRECTORY);
 
    list_remove(&e->node);
-   ie->ref_count--;
+   release_obj(ie);
    kfree2(e, sizeof(ramfs_entry));
 }
 
@@ -237,7 +238,7 @@ int ramfs_stat64(fs_handle h, struct stat64 *statbuf)
    statbuf->st_dev = rh->fs->device_id;
    statbuf->st_ino = (typeof(statbuf->st_ino)) inode->inode;
    statbuf->st_mode = inode->mode;
-   statbuf->st_nlink = (typeof(statbuf->st_nlink)) inode->ref_count;
+   statbuf->st_nlink = (typeof(statbuf->st_nlink)) get_ref_count(inode);
    statbuf->st_uid = 0;  /* root */
    statbuf->st_gid = 0;  /* root */
    statbuf->st_rdev = 0; /* device ID if a special file: therefore, NO. */

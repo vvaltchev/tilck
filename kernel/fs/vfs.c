@@ -158,8 +158,8 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    }
 
    filesystem *fs = best_match->fs;
-   fs->ref_count++;                    // retain the FS and release the
-   mountpoint_iter_end(&cur);          // mountpoint's lock
+   retain_obj(fs);                  // retain the FS and release the
+   mountpoint_iter_end(&cur);       // mountpoint's lock
 
    fs_path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
 
@@ -187,7 +187,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
       ((fs_handle_base *) *out)->fl_flags = flags;
    } else {
       /* open() failed, we need to release the FS */
-      fs->ref_count--;
+      release_obj(fs);
    }
 
    return rc;
@@ -215,10 +215,10 @@ void vfs_close(fs_handle h)
 #endif
 
    hb->fs->close(h);
-   fs->ref_count--;
+   release_obj(fs);
 
    /* while a filesystem is mounted, the minimum ref-count it can have is 1 */
-   ASSERT(fs->ref_count > 0);
+   ASSERT(get_ref_count(fs) > 0);
 }
 
 int vfs_dup(fs_handle h, fs_handle *dup_h)
@@ -234,7 +234,7 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
    if ((rc = hb->fs->dup(h, dup_h)))
       return rc;
 
-   hb->fs->ref_count++;
+   retain_obj(hb->fs);
    ASSERT(*dup_h != NULL);
    return 0;
 }

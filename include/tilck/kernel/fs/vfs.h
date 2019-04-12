@@ -63,12 +63,12 @@ void vfs_file_nolock(fs_handle h);
 
 struct filesystem {
 
-   const char *fs_type_name; /* statically allocated: do NOT free() */
+   REF_COUNTED_OBJECT;
 
+   const char *fs_type_name; /* statically allocated: do NOT free() */
    u32 device_id;
    u32 flags;
    void *device_data;
-   int ref_count;
 
    func_open open;
    func_close close;

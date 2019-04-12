@@ -167,7 +167,7 @@ void free_task(task_info *ti)
 
    if (is_main_thread(ti)) {
 
-      ASSERT(ti->pi->ref_count > 0);
+      ASSERT(get_ref_count(ti->pi) > 0);
 
       if (ti->pi->mmap_heap) {
          kmalloc_destroy_heap(ti->pi->mmap_heap);
@@ -175,7 +175,7 @@ void free_task(task_info *ti)
          ti->pi->mmap_heap = NULL;
       }
 
-      if (--ti->pi->ref_count == 0) {
+      if (release_obj(ti->pi) == 0) {
          list_remove(&ti->pi->siblings_node);
          kfree2(ti, sizeof(task_info) + sizeof(process_info));
       }
