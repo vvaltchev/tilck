@@ -106,11 +106,11 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
 static void
 ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
 {
-   ramfs_inode *i = e->inode;
+   ramfs_inode *ie = e->inode;
    ASSERT(idir->type == RAMFS_DIRECTORY);
 
    list_remove(&e->node);
-   i->ref_count--;
+   ie->ref_count--;
    kfree2(e, sizeof(ramfs_entry));
 }
 
@@ -501,7 +501,6 @@ filesystem *ramfs_create(void)
       return NULL;
    }
 
-   d->root->ref_count++;
    fs->fs_type_name = "ramfs";
    fs->device_id = vfs_get_new_device_id();
    fs->flags = VFS_FS_RW;
