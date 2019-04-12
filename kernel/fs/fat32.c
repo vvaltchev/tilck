@@ -456,6 +456,26 @@ STATIC void fat_file_shunlock(fs_handle h)
    NOT_IMPLEMENTED();
 }
 
+STATIC ssize_t fat_write(fs_handle h, char *buf, size_t len)
+{
+   filesystem *fs = get_fs(h);
+
+   if (!(fs->flags & VFS_FS_RW))
+      return -EBADF; /* read-only file system: can't write */
+
+   NOT_IMPLEMENTED();
+}
+
+STATIC int fat_ioctl(fs_handle h, uptr request, void *arg)
+{
+   return -EINVAL;
+}
+
+STATIC int fat_fcntl(fs_handle h, int cmd, int arg)
+{
+   return -EINVAL;
+}
+
 STATIC int
 fat_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mode)
 {
@@ -484,7 +504,9 @@ fat_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mode)
    h->fops.read = fat_read;
    h->fops.seek = fat_seek;
    h->fops.stat = fat_stat64;
-   h->fops.write = NULL;
+   h->fops.write = fat_write;
+   h->fops.ioctl = fat_ioctl;
+   h->fops.fcntl = fat_fcntl;
 
    h->fops.exlock = fat_file_exlock;
    h->fops.exunlock = fat_file_exunlock;

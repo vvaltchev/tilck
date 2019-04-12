@@ -121,22 +121,27 @@ int create_dev_file(const char *filename, u16 major, u16 minor)
    return 0;
 }
 
-ssize_t devfs_dir_read(fs_handle h, char *buf, size_t len)
+static ssize_t devfs_dir_read(fs_handle h, char *buf, size_t len)
 {
    return -EINVAL;
 }
 
-ssize_t devfs_dir_write(fs_handle h, char *buf, size_t len)
+static ssize_t devfs_dir_write(fs_handle h, char *buf, size_t len)
 {
    return -EINVAL;
 }
 
-off_t devfs_dir_seek(fs_handle h, off_t offset, int whence)
+static off_t devfs_dir_seek(fs_handle h, off_t offset, int whence)
 {
    return -EINVAL;
 }
 
-int devfs_dir_ioctl(fs_handle h, uptr request, void *arg)
+static int devfs_dir_ioctl(fs_handle h, uptr request, void *arg)
+{
+   return -EINVAL;
+}
+
+static int devfs_dir_fcntl(fs_handle h, int cmd, int arg)
 {
    return -EINVAL;
 }
@@ -210,8 +215,11 @@ static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
       .read = devfs_dir_read,
       .write = devfs_dir_write,
       .seek = devfs_dir_seek,
-      .ioctl =  devfs_dir_ioctl,
+      .ioctl = devfs_dir_ioctl,
       .stat = devfs_dir_stat64,
+      .fcntl = devfs_dir_fcntl,
+      .mmap = NULL,
+      .munmap = NULL,
       .exlock = NULL,
       .exunlock = NULL,
       .shlock = NULL,

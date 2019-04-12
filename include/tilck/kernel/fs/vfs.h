@@ -83,9 +83,11 @@ typedef struct {
    func_seek seek;
    func_ioctl ioctl;
    func_stat stat;
+   func_fcntl fcntl;
+
+   /* optional funcs */
    func_mmap mmap;
    func_munmap munmap;
-   func_fcntl fcntl;
 
    /* optional, r/w/e ready funcs */
    func_rwe_ready read_ready;

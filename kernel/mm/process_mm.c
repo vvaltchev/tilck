@@ -422,6 +422,13 @@ int sys_munmap(void *vaddrp, size_t len)
          actual_len = MAX(actual_len, mapping_len);
 
          kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
+
+         /*
+          * If there's an actual user_mapping entry, it means um->h's fops MUST
+          * HAVE mmap() implemented. Therefore, we MUST REQUIRE munmap() to be
+          * present as well.
+          */
+         ASSERT(hb->fops.munmap != NULL);
          hb->fops.munmap(hb, vaddrp, actual_len);
 
          if (actual_len == mapping_len) {

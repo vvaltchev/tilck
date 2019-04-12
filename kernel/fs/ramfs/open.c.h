@@ -1,25 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static ssize_t ramfs_dir_read(fs_handle h, char *buf, size_t len)
-{
-   return -EINVAL;
-}
-
-static ssize_t ramfs_dir_write(fs_handle h, char *buf, size_t len)
-{
-   return -EINVAL;
-}
-
-static off_t ramfs_dir_seek(fs_handle h, off_t offset, int whence)
-{
-   return -EINVAL;
-}
-
-static int ramfs_dir_ioctl(fs_handle h, uptr request, void *arg)
-{
-   return -EINVAL;
-}
-
 static int ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out)
 {
    ramfs_handle *h;
@@ -29,17 +9,49 @@ static int ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out)
 
    h->inode = inode;
    h->fs = fs;
-   h->fops = (file_ops) {
-      .read = NULL,
-      .write = NULL,
-      .seek = NULL,
-      .ioctl = NULL,
-      .stat = ramfs_stat64,
-      .exlock = ramfs_file_exlock,
-      .exunlock = ramfs_file_exunlock,
-      .shlock = ramfs_file_shlock,
-      .shunlock = ramfs_file_shunlock,
-   };
+
+   if (inode->type == RAMFS_DIRECTORY) {
+
+      h->fops = (file_ops) {
+
+         /* funcs just returning an error */
+         .read = ramfs_dir_read,
+         .write = ramfs_dir_write,
+         .seek = ramfs_dir_seek,
+         .ioctl = ramfs_dir_ioctl,
+         .fcntl = ramfs_dir_fcntl,
+
+         /* optional funcs left NULL */
+         .mmap = NULL,
+         .munmap = NULL,
+
+         /* actual funcs */
+         .stat = ramfs_stat64,
+         .exlock = ramfs_file_exlock,
+         .exunlock = ramfs_file_exunlock,
+         .shlock = ramfs_file_shlock,
+         .shunlock = ramfs_file_shunlock,
+      };
+
+   } else {
+
+      ASSERT(inode->type == RAMFS_FILE);
+
+      h->fops = (file_ops) {
+         .read = NULL,
+         .write = NULL,
+         .seek = NULL,
+         .ioctl = NULL,
+         .mmap = NULL,
+         .munmap = NULL,
+         .fcntl = NULL,
+         .stat = ramfs_stat64,
+         .exlock = ramfs_file_exlock,
+         .exunlock = ramfs_file_exunlock,
+         .shlock = ramfs_file_shlock,
+         .shunlock = ramfs_file_shunlock,
+      };
+   }
 
    *out = h;
    return 0;
