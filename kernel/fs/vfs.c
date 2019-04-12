@@ -153,11 +153,14 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    }
 
    if (!best_match) {
-      rc = -ENOENT;
-      goto out;
+      mountpoint_iter_end(&cur);
+      return -ENOENT;
    }
 
    filesystem *fs = best_match->fs;
+   fs->ref_count++;                    // retain the FS and release the
+   mountpoint_iter_end(&cur);          // mountpoint's lock
+
    fs_path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
 
    if (flags & O_RDWR)
@@ -180,12 +183,13 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    }
 
    if (rc == 0) {
+      /* open() succeeded, the FS is already retained */
       ((fs_handle_base *) *out)->fl_flags = flags;
-      fs->ref_count++;
+   } else {
+      /* open() failed, we need to release the FS */
+      fs->ref_count--;
    }
 
-out:
-   mountpoint_iter_end(&cur);
    return rc;
 }
 
