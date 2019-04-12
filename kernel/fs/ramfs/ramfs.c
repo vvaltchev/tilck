@@ -81,22 +81,22 @@ filesystem *ramfs_create(void)
    fs->fs_shunlock = ramfs_shunlock;
 
    //tmp
-   // {
-   //    ramfs_inode *i1 = ramfs_create_inode_dir(d, 0777, d->root);
-   //    VERIFY(ramfs_dir_add_entry(d->root, "e1", i1) == 0);
+   {
+      ramfs_inode *i1 = ramfs_create_inode_dir(d, 0777, d->root);
+      VERIFY(ramfs_dir_add_entry(d->root, "e1", i1) == 0);
 
-   //    ramfs_inode *i2 = ramfs_create_inode_file(d, 0644, d->root);
-   //    VERIFY(ramfs_dir_add_entry(d->root, "e2", i2) == 0);
+      ramfs_inode *i2 = ramfs_create_inode_file(d, 0644, d->root);
+      VERIFY(ramfs_dir_add_entry(d->root, "e2", i2) == 0);
 
-   //    ramfs_inode *i11 = ramfs_create_inode_dir(d, 0777, i1);
-   //    VERIFY(ramfs_dir_add_entry(i1, "e11", i11) == 0);
+      ramfs_inode *i11 = ramfs_create_inode_dir(d, 0777, i1);
+      VERIFY(ramfs_dir_add_entry(i1, "e11", i11) == 0);
 
-   //    ramfs_inode *i12 = ramfs_create_inode_dir(d, 0777, i1);
-   //    VERIFY(ramfs_dir_add_entry(i1, "e12", i12) == 0);
+      ramfs_inode *i12 = ramfs_create_inode_dir(d, 0777, i1);
+      VERIFY(ramfs_dir_add_entry(i1, "e12", i12) == 0);
 
-   //    ramfs_inode *i111 = ramfs_create_inode_file(d, 0644, i11);
-   //    VERIFY(ramfs_dir_add_entry(i11, "e111", i111) == 0);
-   // }
+      ramfs_inode *i111 = ramfs_create_inode_file(d, 0644, i11);
+      VERIFY(ramfs_dir_add_entry(i11, "e111", i111) == 0);
+   }
    //end tmp
    return fs;
 }
