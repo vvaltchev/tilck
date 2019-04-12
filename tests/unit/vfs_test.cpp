@@ -20,19 +20,18 @@ using namespace std;
 extern "C" {
    #include <tilck/kernel/fs/fat32.h>
    #include <tilck/kernel/fs/vfs.h>
-   int check_mountpoint_match(const char *mp, u32 lm, const char *path, u32 lp);
 }
 
 static int mountpoint_match_wrapper(const char *mp, const char *path)
 {
-   return check_mountpoint_match(mp, strlen(mp), path, strlen(path));
+   return mp_check_match(mp, strlen(mp), path, strlen(path));
 }
 
 // Implemented in fat32_test.cpp
 const char *load_once_file(const char *filepath, size_t *fsize = nullptr);
 void test_dump_buf(char *buf, const char *buf_name, int off, int count);
 
-TEST(vfs, check_mountpoint_match)
+TEST(vfs, mp_check_match)
 {
    EXPECT_EQ(mountpoint_match_wrapper("/", "/"), 1);
    EXPECT_EQ(mountpoint_match_wrapper("/", "/file"), 1);

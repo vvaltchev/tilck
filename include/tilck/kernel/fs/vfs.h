@@ -140,6 +140,7 @@ typedef struct {
 
 int mountpoint_add(filesystem *fs, const char *path);
 void mountpoint_remove(filesystem *fs);
+u32 mp_check_match(const char *mp, u32 lm, const char *path, u32 lp);
 
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);
 int vfs_ioctl(fs_handle h, uptr request, void *argp);

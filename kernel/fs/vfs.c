@@ -13,72 +13,122 @@
 static u32 next_device_id;
 
 /*
- * Returns:
- *  - 0 in case of non match.
- *  - strlen(mp) in case of a match
+ * ----------------------------------------------------
+ * VFS locking wrappers
+ * ----------------------------------------------------
  */
-STATIC u32
-check_mountpoint_match(const char *mp, u32 lm, const char *path, u32 lp)
-{
-   u32 m = 0;
-   const u32 min_len = MIN(lm, lp);
-
-   /*
-    * Mount points MUST end with '/'.
-    */
-   ASSERT(mp[lm-1] == '/');
-
-   for (size_t i = 0; i < min_len; i++) {
-
-      if (mp[i] != path[i])
-         break;
-
-      m++;
-   }
-
-   /*
-    * We assume that both the paths are absolute. Therefore, at least the
-    * initial '/' must match.
-    */
-   ASSERT(m > 0);
-
-   if (mp[m]) {
-
-      if (mp[m] == '/' && !mp[m + 1] && !path[m]) {
-         /* path is like '/dev' while mp is like '/dev/' */
-         return m;
-      }
-
-      /*
-       * The match stopped before the end of mount point's path.
-       * Therefore, there is no match.
-       */
-      return 0;
-   }
-
-   if (path[m-1] != '/' && path[m-1] != 0) {
-
-      /*
-       * The match stopped before the end of a path component in 'path'.
-       * In positive cases, the next character after a match (= position 'm')
-       * is either a '/' or \0.
-       */
-
-      return 0;
-   }
-
-   return m;
-}
 
 void vfs_file_nolock(fs_handle h)
 {
    /* do nothing */
 }
 
+void vfs_exlock(fs_handle h)
+{
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
+   fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (hb->fops.exlock) {
+      hb->fops.exlock(h);
+   } else {
+      ASSERT(!hb->fops.exunlock);
+      vfs_fs_exlock(get_fs(h));
+   }
+}
+
+void vfs_exunlock(fs_handle h)
+{
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
+   fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (hb->fops.exunlock) {
+      hb->fops.exunlock(h);
+   } else {
+      ASSERT(!hb->fops.exlock);
+      vfs_fs_exunlock(get_fs(h));
+   }
+}
+
+void vfs_shlock(fs_handle h)
+{
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
+   fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (hb->fops.shlock) {
+      hb->fops.shlock(h);
+   } else {
+      ASSERT(!hb->fops.shunlock);
+      vfs_fs_shlock(get_fs(h));
+   }
+}
+
+void vfs_shunlock(fs_handle h)
+{
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
+   fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (hb->fops.shunlock) {
+      hb->fops.shunlock(h);
+   } else {
+      ASSERT(!hb->fops.shlock);
+      vfs_fs_shunlock(get_fs(h));
+   }
+}
+
+void vfs_fs_exlock(filesystem *fs)
+{
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(fs != NULL);
+   ASSERT(fs->fs_exlock);
+
+   fs->fs_exlock(fs);
+}
+
+void vfs_fs_exunlock(filesystem *fs)
+{
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(fs != NULL);
+   ASSERT(fs->fs_exunlock);
+
+   fs->fs_exunlock(fs);
+}
+
+void vfs_fs_shlock(filesystem *fs)
+{
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(fs != NULL);
+   ASSERT(fs->fs_shlock);
+
+   fs->fs_shlock(fs);
+}
+
+void vfs_fs_shunlock(filesystem *fs)
+{
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(fs != NULL);
+   ASSERT(fs->fs_shunlock);
+
+   fs->fs_shunlock(fs);
+}
+
+/*
+ * ----------------------------------------------------
+ * Main VFS functions
+ * ----------------------------------------------------
+ */
+
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 {
    mountpoint *mp, *best_match = NULL;
-   u32 pl, best_match_len = 0;
+   u32 len, pl, best_match_len = 0;
    const char *fs_path;
    mp_cursor cur;
    int rc;
@@ -94,7 +144,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 
    while ((mp = mountpoint_get_next(&cur))) {
 
-      u32 len = check_mountpoint_match(mp->path, mp->path_len, path, pl);
+      len = mp_check_match(mp->path, mp->path_len, path, pl);
 
       if (len > best_match_len) {
          best_match = mp;
@@ -277,102 +327,6 @@ int vfs_stat64(fs_handle h, struct stat64 *statbuf)
    return ret;
 }
 
-void vfs_exlock(fs_handle h)
-{
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(h != NULL);
-
-   fs_handle_base *hb = (fs_handle_base *) h;
-
-   if (hb->fops.exlock) {
-      hb->fops.exlock(h);
-   } else {
-      ASSERT(!hb->fops.exunlock);
-      vfs_fs_exlock(get_fs(h));
-   }
-}
-
-void vfs_exunlock(fs_handle h)
-{
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(h != NULL);
-
-   fs_handle_base *hb = (fs_handle_base *) h;
-
-   if (hb->fops.exunlock) {
-      hb->fops.exunlock(h);
-   } else {
-      ASSERT(!hb->fops.exlock);
-      vfs_fs_exunlock(get_fs(h));
-   }
-}
-
-void vfs_shlock(fs_handle h)
-{
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(h != NULL);
-
-   fs_handle_base *hb = (fs_handle_base *) h;
-
-   if (hb->fops.shlock) {
-      hb->fops.shlock(h);
-   } else {
-      ASSERT(!hb->fops.shunlock);
-      vfs_fs_shlock(get_fs(h));
-   }
-}
-
-void vfs_shunlock(fs_handle h)
-{
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(h != NULL);
-
-   fs_handle_base *hb = (fs_handle_base *) h;
-
-   if (hb->fops.shunlock) {
-      hb->fops.shunlock(h);
-   } else {
-      ASSERT(!hb->fops.shlock);
-      vfs_fs_shunlock(get_fs(h));
-   }
-}
-
-void vfs_fs_exlock(filesystem *fs)
-{
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(fs != NULL);
-   ASSERT(fs->fs_exlock);
-
-   fs->fs_exlock(fs);
-}
-
-void vfs_fs_exunlock(filesystem *fs)
-{
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(fs != NULL);
-   ASSERT(fs->fs_exunlock);
-
-   fs->fs_exunlock(fs);
-}
-
-void vfs_fs_shlock(filesystem *fs)
-{
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(fs != NULL);
-   ASSERT(fs->fs_shlock);
-
-   fs->fs_shlock(fs);
-}
-
-void vfs_fs_shunlock(filesystem *fs)
-{
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(fs != NULL);
-   ASSERT(fs->fs_shunlock);
-
-   fs->fs_shunlock(fs);
-}
-
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
@@ -412,6 +366,12 @@ u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;
 }
+
+/*
+ * ----------------------------------------------------
+ * Ready-related VFS functions
+ * ----------------------------------------------------
+ */
 
 bool vfs_read_ready(fs_handle h)
 {
