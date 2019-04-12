@@ -100,7 +100,11 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
    e->inode = ie;
    memcpy(e->name, iname, enl);
 
-   list_add_tail(&idir->entries_list, &e->node);
+   rwlock_wp_exlock(&idir->rwlock);
+   {
+      list_add_tail(&idir->entries_list, &e->node);
+   }
+   rwlock_wp_exunlock(&idir->rwlock);
    retain_obj(ie);
    return 0;
 }
@@ -111,7 +115,11 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
    ramfs_inode *ie = e->inode;
    ASSERT(idir->type == RAMFS_DIRECTORY);
 
-   list_remove(&e->node);
+   rwlock_wp_exlock(&idir->rwlock);
+   {
+      list_remove(&e->node);
+   }
+   rwlock_wp_exunlock(&idir->rwlock);
    release_obj(ie);
    kfree2(e, sizeof(ramfs_entry));
 }
@@ -368,9 +376,10 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 {
    ramfs_data *d = fs->device_data;
    ramfs_inode *idir = d->root;
+   ramfs_inode *next_idir = NULL;
    ramfs_entry *e;
+   ramfs_inode *i;
    const char *pc;
-
    /*
     * Path is expected to be striped from the mountpoint prefix, but the '/'
     * is kept. For example, if ramfs is mounted at /tmp, and the file /tmp/x
@@ -397,24 +406,42 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 
       ASSERT(path[1] != '/');
 
-      if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
-         return -ENOENT;
+      rwlock_wp_shlock(&idir->rwlock);
+      {
+         if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc))) {
+            rwlock_wp_shunlock(&idir->rwlock);
+            return -ENOENT;
+         }
 
-      if (!path[1]) {
-         /* path's last character was a slash */
-         if (e->inode->type != RAMFS_DIRECTORY)
-            return -ENOTDIR;
+         if (!path[1]) {
+            /* path's last character was a slash */
+            if (e->inode->type != RAMFS_DIRECTORY) {
+               rwlock_wp_shunlock(&idir->rwlock);
+               return -ENOTDIR;
+            }
+         }
+
+         next_idir = e->inode;
       }
+      rwlock_wp_shunlock(&idir->rwlock);
+      idir = next_idir;
 
-      idir = e->inode;
       path++;
       pc = path;
    }
 
-   if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
-      return -ENOENT;
+   rwlock_wp_shlock(&idir->rwlock);
+   {
+      if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc))) {
+         rwlock_wp_shunlock(&idir->rwlock);
+         return -ENOENT;
+      }
 
-   return ramfs_open_file(fs, e->inode, out);
+      i = e->inode;
+   }
+   rwlock_wp_shunlock(&idir->rwlock);
+
+   return ramfs_open_file(fs, i, out);
 }
 
 static void ramfs_close(fs_handle h)
@@ -424,16 +451,14 @@ static void ramfs_close(fs_handle h)
 }
 
 static int
-ramfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
+ramfs_getdents64_int(ramfs_handle *rh,
+                     struct linux_dirent64 *dirp,
+                     u32 buf_size)
 {
-   ramfs_handle *rh = h;
-   u32 offset = 0, curr_index = 0;
    ramfs_inode *inode = rh->inode;
+   u32 offset = 0, curr_index = 0;
    struct linux_dirent64 ent;
    ramfs_entry *pos;
-
-   if (inode->type != RAMFS_DIRECTORY)
-      return -ENOTDIR;
 
    list_for_each_ro(pos, &inode->entries_list, node) {
 
@@ -495,6 +520,24 @@ ramfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    }
 
    return (int)offset;
+}
+
+static int
+ramfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
+{
+   int rc;
+   ramfs_handle *rh = h;
+   ramfs_inode *inode = rh->inode;
+
+   if (inode->type != RAMFS_DIRECTORY)
+      return -ENOTDIR;
+
+   rwlock_wp_shlock(&inode->rwlock);
+   {
+      rc = ramfs_getdents64_int(rh, dirp, buf_size);
+   }
+   rwlock_wp_shunlock(&inode->rwlock);
+   return rc;
 }
 
 void ramfs_destroy(filesystem *fs)
