@@ -49,6 +49,7 @@ struct ramfs_inode {
    int inode;
    enum ramfs_entry type;
    mode_t mode;                        /* permissions + special flags */
+   rwlock_wp rwlock;
 
    union {
       ramfs_block *blocks_tree_root;   /* valid when type == RAMFS_FILE */
@@ -115,15 +116,50 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
    kfree2(e, sizeof(ramfs_entry));
 }
 
-static ramfs_inode *
-ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
+static void ramfs_file_exlock(fs_handle h)
+{
+   ramfs_handle *rh = h;
+   rwlock_wp_exlock(&rh->inode->rwlock);
+}
+
+static void ramfs_file_exunlock(fs_handle h)
+{
+   ramfs_handle *rh = h;
+   rwlock_wp_exunlock(&rh->inode->rwlock);
+}
+
+static void ramfs_file_shlock(fs_handle h)
+{
+   ramfs_handle *rh = h;
+   rwlock_wp_shlock(&rh->inode->rwlock);
+}
+
+static void ramfs_file_shunlock(fs_handle h)
+{
+   ramfs_handle *rh = h;
+   rwlock_wp_shunlock(&rh->inode->rwlock);
+}
+
+static ramfs_inode *ramfs_new_inode(ramfs_data *d)
 {
    ramfs_inode *i = kzmalloc(sizeof(ramfs_inode));
 
    if (!i)
       return NULL;
 
+   rwlock_wp_init(&i->rwlock);
    i->inode = d->next_inode_num++;
+   return i;
+}
+
+static ramfs_inode *
+ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
+{
+   ramfs_inode *i = ramfs_new_inode(d);
+
+   if (!i)
+      return NULL;
+
    i->type = RAMFS_DIRECTORY;
    i->mode = (mode & 0777) | S_IFDIR;
 
@@ -155,12 +191,11 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
 static ramfs_inode *
 ramfs_create_inode_file(ramfs_data *d, mode_t mode, ramfs_inode *parent)
 {
-   ramfs_inode *i = kzmalloc(sizeof(ramfs_inode));
+   ramfs_inode *i = ramfs_new_inode(d);
 
    if (!i)
       return NULL;
 
-   i->inode = d->next_inode_num++;
    i->type = RAMFS_FILE;
    i->mode = (mode & 0777) | S_IFREG;
 
@@ -181,25 +216,25 @@ static int ramfs_destroy_inode(ramfs_data *d, ramfs_inode *i)
    return 0;
 }
 
-static void ramfs_exclusive_lock(filesystem *fs)
+static void ramfs_exlock(filesystem *fs)
 {
    ramfs_data *d = fs->device_data;
    rwlock_wp_exlock(&d->rwlock);
 }
 
-static void ramfs_exclusive_unlock(filesystem *fs)
+static void ramfs_exunlock(filesystem *fs)
 {
    ramfs_data *d = fs->device_data;
    rwlock_wp_exunlock(&d->rwlock);
 }
 
-static void ramfs_shared_lock(filesystem *fs)
+static void ramfs_shlock(filesystem *fs)
 {
    ramfs_data *d = fs->device_data;
    rwlock_wp_shlock(&d->rwlock);
 }
 
-static void ramfs_shared_unlock(filesystem *fs)
+static void ramfs_shunlock(filesystem *fs)
 {
    ramfs_data *d = fs->device_data;
    rwlock_wp_shunlock(&d->rwlock);
@@ -280,10 +315,10 @@ static int ramfs_open_dir(filesystem *fs, ramfs_inode *inode, fs_handle *out)
       .seek = ramfs_dir_seek,
       .ioctl = ramfs_dir_ioctl,
       .stat = ramfs_stat64,
-      .exlock = NULL,
-      .exunlock = NULL,
-      .shlock = NULL,
-      .shunlock = NULL,
+      .exlock = ramfs_file_exlock,
+      .exunlock = ramfs_file_exunlock,
+      .shlock = ramfs_file_shlock,
+      .shunlock = ramfs_file_shunlock,
    };
 
    *out = h;
@@ -305,10 +340,10 @@ static int ramfs_open_file(filesystem *fs, ramfs_inode *inode, fs_handle *out)
       .seek = NULL,
       .ioctl = NULL,
       .stat = ramfs_stat64,
-      .exlock = NULL,
-      .exunlock = NULL,
-      .shlock = NULL,
-      .shunlock = NULL,
+      .exlock = ramfs_file_exlock,
+      .exunlock = ramfs_file_exunlock,
+      .shlock = ramfs_file_shlock,
+      .shunlock = ramfs_file_shunlock,
    };
 
    *out = h;
@@ -511,10 +546,10 @@ filesystem *ramfs_create(void)
    fs->dup = ramfs_dup;
    fs->getdents64 = ramfs_getdents64;
 
-   fs->fs_exlock = ramfs_exclusive_lock;
-   fs->fs_exunlock = ramfs_exclusive_unlock;
-   fs->fs_shlock = ramfs_shared_lock;
-   fs->fs_shunlock = ramfs_shared_unlock;
+   fs->fs_exlock = ramfs_exlock;
+   fs->fs_exunlock = ramfs_exunlock;
+   fs->fs_shlock = ramfs_shlock;
+   fs->fs_shunlock = ramfs_shunlock;
 
    //tmp
    // {
