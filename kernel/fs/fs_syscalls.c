@@ -76,9 +76,7 @@ int sys_open(const char *user_path, int flags, mode_t mode)
    if ((ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH)))
       goto end;
 
-   free_fd = get_free_handle_num(curr->pi);
-
-   if (free_fd < 0)
+   if ((free_fd = get_free_handle_num(curr->pi)) < 0)
       goto no_fds;
 
    if ((ret = vfs_open(path, &h, flags, mode)) < 0)
@@ -107,10 +105,9 @@ int sys_close(int fd)
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
-   vfs_close(handle);
-
    kmutex_lock(&curr->pi->fslock);
    {
+      vfs_close(handle);
       curr->pi->handles[fd] = NULL;
    }
    kmutex_unlock(&curr->pi->fslock);
@@ -160,15 +157,13 @@ int sys_write(int fd, const void *user_buf, size_t count)
 {
    task_info *curr = get_curr_task();
    fs_handle handle;
-   sptr ret;
 
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
    count = MIN(count, IO_COPYBUF_SIZE);
-   ret = copy_from_user(curr->io_copybuf, user_buf, count);
 
-   if (ret < 0)
+   if (copy_from_user(curr->io_copybuf, user_buf, count))
       return -EFAULT;
 
    return (int)vfs_write(handle, (char *)curr->io_copybuf, count);
@@ -403,9 +398,7 @@ int sys_dup2(int oldfd, int newfd)
 
    kmutex_lock(&curr->pi->fslock);
 
-   old_h = get_fs_handle(oldfd);
-
-   if (!old_h) {
+   if (!(old_h = get_fs_handle(oldfd))) {
       rc = -EBADF;
       goto out;
    }
@@ -413,13 +406,18 @@ int sys_dup2(int oldfd, int newfd)
    new_h = get_fs_handle(newfd);
 
    if (new_h) {
+
+      /*
+       * CORNER CASE: In general, the new handle should be available, but the
+       * linux kernel allows the user code to pass also an IN-USE handle: in
+       * that case the behavior is to just silently close that handle, before
+       * reusing it.
+       */
       vfs_close(new_h);
       new_h = NULL;
    }
 
-   rc = vfs_dup(old_h, &new_h);
-
-   if (rc != 0)
+   if ((rc = vfs_dup(old_h, &new_h)))
       goto out;
 
    curr->pi->handles[newfd] = new_h;
@@ -432,21 +430,16 @@ out:
 
 int sys_dup(int oldfd)
 {
-   int rc, free_fd;
+   int rc = -EMFILE, free_fd;
    process_info *pi = get_curr_task()->pi;
 
    kmutex_lock(&pi->fslock);
 
    free_fd = get_free_handle_num(pi);
 
-   if (!is_fd_in_valid_range(free_fd)) {
-      rc = -EMFILE;
-      goto out;
-   }
+   if (is_fd_in_valid_range(free_fd))
+      rc = sys_dup2(oldfd, free_fd);
 
-   rc = sys_dup2(oldfd, (int) free_fd);
-
-out:
    kmutex_unlock(&pi->fslock);
    return rc;
 }
