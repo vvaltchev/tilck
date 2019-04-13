@@ -61,11 +61,12 @@ static int
 ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 {
    ramfs_data *d = fs->device_data;
-   ramfs_inode *idir = d->root;
    ramfs_inode *next_idir = NULL;
+   ramfs_inode *idir = d->root;
+   ramfs_inode *i = NULL;
    ramfs_entry *e;
-   ramfs_inode *i;
    const char *pc;
+
    /*
     * Path is expected to be striped from the mountpoint prefix, but the '/'
     * is kept. For example, if ramfs is mounted at /tmp, and the file /tmp/x
@@ -118,14 +119,24 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 
    rwlock_wp_shlock(&idir->rwlock);
    {
-      if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc))) {
-         rwlock_wp_shunlock(&idir->rwlock);
-         return -ENOENT;
-      }
-
-      i = e->inode;
+      if ((e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
+         i = e->inode;
    }
    rwlock_wp_shunlock(&idir->rwlock);
+
+   if (!i) {
+
+      int rc;
+
+      if (!(fl & O_CREAT))
+         return -ENOENT;
+
+      if (!(i = ramfs_create_inode_file(d, mod, idir)))
+         return -ENOSPC;
+
+      if ((rc = ramfs_dir_add_entry(idir, pc, i)))
+         return rc;
+   }
 
    return ramfs_open_int(fs, i, out);
 }
