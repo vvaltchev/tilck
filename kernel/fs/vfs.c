@@ -236,6 +236,9 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
    if ((rc = hb->fs->dup(h, dup_h)))
       return rc;
 
+   /* The new file descriptor does NOT share old file descriptor's fd_flags */
+   ((fs_handle_base*) *dup_h)->fd_flags = 0;
+
    retain_obj(hb->fs);
    ASSERT(*dup_h != NULL);
    return 0;
