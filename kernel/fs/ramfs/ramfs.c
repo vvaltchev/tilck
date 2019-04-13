@@ -6,6 +6,7 @@
 #include "dir_entries.c.h"
 #include "inodes.c.h"
 #include "stat.c.h"
+#include "rw_ops.c.h"
 #include "open.c.h"
 
 static int ramfs_dup(fs_handle h, fs_handle *dup_h)

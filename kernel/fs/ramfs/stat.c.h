@@ -17,9 +17,10 @@ static int ramfs_stat64(fs_handle h, struct stat64 *statbuf)
    statbuf->st_uid = 0;  /* root */
    statbuf->st_gid = 0;  /* root */
    statbuf->st_rdev = 0; /* device ID if a special file: therefore, NO. */
-   statbuf->st_size = 0;
+   statbuf->st_size = (typeof(statbuf->st_size)) inode->fsize;
    statbuf->st_blksize = PAGE_SIZE;
-   statbuf->st_blocks = statbuf->st_size / 512;
+   statbuf->st_blocks =
+      (typeof(statbuf->st_blocks)) (inode->blocks_count * (PAGE_SIZE / 512));
 
    statbuf->st_ctim.tv_sec = datetime_to_timestamp(inode->ctime);
    statbuf->st_mtim.tv_sec = datetime_to_timestamp(inode->wtime);

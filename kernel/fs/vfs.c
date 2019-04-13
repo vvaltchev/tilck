@@ -163,9 +163,6 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 
    fs_path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
 
-   if (flags & O_RDWR)
-      flags |= (O_RDONLY | O_WRONLY);
-
    /*
     * NOTE: we really DO NOT need to lock the whole FS in order to open/create
     * a file. At most, the directory where the file is/will be.
@@ -248,7 +245,10 @@ ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
    ssize_t ret;
 
    if (!hb->fops.read)
-      return -EINVAL;
+      return -EBADF;
+
+   if ((hb->fl_flags & O_WRONLY) && !(hb->fl_flags & O_RDWR))
+      return -EBADF; /* file not opened for reading */
 
    vfs_shlock(h);
    {
@@ -267,10 +267,10 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
    ssize_t ret;
 
    if (!hb->fops.write)
-      return -EINVAL;
+      return -EBADF;
 
-   if (!(hb->fl_flags & O_WRONLY))
-      return -EBADF; /* not opened for writing */
+   if (!(hb->fl_flags & (O_WRONLY | O_RDWR)))
+      return -EBADF; /* file not opened for writing */
 
    vfs_exlock(h);
    {

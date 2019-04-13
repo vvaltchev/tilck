@@ -71,6 +71,7 @@
       "self_tests.h": "c",
       "interrupts.h": "c",
       "bintree.h": "c",
-      "panic.h": "c"
+      "panic.h": "c",
+      "dir_entries.c.h": "c"
    }
 }

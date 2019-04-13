@@ -51,6 +51,8 @@ struct ramfs_inode {
    enum ramfs_entry type;
    mode_t mode;                        /* permissions + special flags */
    rwlock_wp rwlock;
+   size_t fsize;
+   size_t blocks_count;
 
    union {
       ramfs_block *blocks_tree_root;   /* valid when type == RAMFS_FILE */

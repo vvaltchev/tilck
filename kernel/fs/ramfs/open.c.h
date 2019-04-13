@@ -38,13 +38,13 @@ static int ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out)
       ASSERT(inode->type == RAMFS_FILE);
 
       h->fops = (file_ops) {
-         .read = NULL,
-         .write = NULL,
-         .seek = NULL,
-         .ioctl = NULL,
+         .read = ramfs_file_read,
+         .write = ramfs_file_write,
+         .seek = ramfs_file_seek,
+         .ioctl = ramfs_file_ioctl,
          .mmap = NULL,
          .munmap = NULL,
-         .fcntl = NULL,
+         .fcntl = ramfs_file_fcntl,
          .stat = ramfs_stat64,
          .exlock = ramfs_file_exlock,
          .exunlock = ramfs_file_exunlock,
@@ -131,11 +131,24 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
       if (!(fl & O_CREAT))
          return -ENOENT;
 
+      // TODO: do we have the permission to create a file in this directory?
+
       if (!(i = ramfs_create_inode_file(d, mod, idir)))
          return -ENOSPC;
 
       if ((rc = ramfs_dir_add_entry(idir, pc, i)))
          return rc;
+
+   } else {
+
+      if (!(fl & O_WRONLY) && !(i->mode & 0400))
+         return -EACCES;
+
+      if ((fl & O_WRONLY) && !(i->mode & 0200))
+         return -EACCES;
+
+      if ((fl & O_RDWR) && !(i->mode & 0600))
+         return -EACCES;
    }
 
    return ramfs_open_int(fs, i, out);
