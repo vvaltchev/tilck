@@ -104,6 +104,14 @@ out:
 static inline void
 execve_prepare_process(process_info *pi, void *brk, const char *abs_path)
 {
+   /*
+    * Close the CLOEXEC handles. Note: we couldn't do that before because they
+    * can be closed ONLY IF execve() succeeded. Only here we're sure of that.
+    */
+
+   close_cloexec_handles(pi);
+
+   /* Final steps */
    pi->brk = brk;
    pi->initial_brk = brk;
    pi->did_call_execve = true;
@@ -126,9 +134,6 @@ do_execve(task_info *curr_user_task,
 
    if ((rc = load_elf_program(abs_path, &pdir, &entry, &stack_addr, &brk)))
       return rc;
-
-   if (LIKELY(curr_user_task != NULL))
-      close_cloexec_handles(curr_user_task->pi);
 
    disable_preemption();
 
