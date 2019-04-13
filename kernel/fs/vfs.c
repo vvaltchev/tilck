@@ -180,8 +180,13 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    }
 
    if (rc == 0) {
+
       /* open() succeeded, the FS is already retained */
       ((fs_handle_base *) *out)->fl_flags = flags;
+
+      if (flags & O_CLOEXEC)
+         ((fs_handle_base *) *out)->fd_flags |= FD_CLOEXEC;
+
    } else {
       /* open() failed, we need to release the FS */
       release_obj(fs);

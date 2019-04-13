@@ -530,7 +530,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
             if (!rc) {
                fs_handle_base *h2 = get_fs_handle(new_fd);
                ASSERT(h2 != NULL);
-               h2->fd_flags |= O_CLOEXEC;
+               h2->fd_flags |= FD_CLOEXEC;
             }
             kmutex_unlock(&curr->pi->fslock);
             return rc;
