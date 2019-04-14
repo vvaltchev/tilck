@@ -38,6 +38,7 @@ DECL_CMD(poll2);
 DECL_CMD(poll3);
 DECL_CMD(bigargv);
 DECL_CMD(cloexec);
+DECL_CMD(fs1);
 
 static struct test_cmd_entry _cmds_table[] =
 {
@@ -71,6 +72,13 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(bigargv, TT_SHORT, true),
    CMD_ENTRY(cloexec, TT_SHORT, true),
 
+   CMD_ENTRY(fs1, TT_SHORT, false), // temp
+
+   /*
+    * For the moment these tests can be run only manually because they require
+    * human interaction (tty input). After the support for pipes is introduced,
+    * those tests will be updated and made automatically runnable.
+    */
    CMD_ENTRY(select1, TT_SHORT, false),
    CMD_ENTRY(select2, TT_SHORT, false),
    CMD_ENTRY(poll1, TT_SHORT, false),

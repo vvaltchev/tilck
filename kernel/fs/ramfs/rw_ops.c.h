@@ -112,7 +112,8 @@ static ssize_t ramfs_file_write(fs_handle h, char *buf, size_t len)
             break;
          }
 
-         block->offset = page_off;
+         bintree_node_init(&block->node);
+         block->offset = page;
          block->vaddr = vaddr;
 
          bintree_insert(&inode->blocks_tree_root,
