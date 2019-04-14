@@ -78,6 +78,6 @@ static void write_on_test_file(void)
 int cmd_fs1(int argc, char **argv)
 {
    create_test_file();
-   //write_on_test_file();
+   write_on_test_file();
    return 0;
 }

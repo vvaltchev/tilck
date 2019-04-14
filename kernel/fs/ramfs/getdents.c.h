@@ -6,13 +6,14 @@ ramfs_getdents64_int(ramfs_handle *rh,
                      u32 buf_size)
 {
    ramfs_inode *inode = rh->inode;
-   u32 offset = 0, curr_index = 0;
    struct linux_dirent64 ent;
+   int curr_index = 0;
    ramfs_entry *pos;
+   u32 offset = 0;
 
    list_for_each_ro(pos, &inode->entries_list, node) {
 
-      if (curr_index < rh->read_pos) {
+      if (curr_index < rh->pos) {
          curr_index++;
          continue;
       }
@@ -66,7 +67,7 @@ ramfs_getdents64_int(ramfs_handle *rh,
 
       offset = (u32) ent.d_off; /* s64 to u32 precision drop */
       curr_index++;
-      rh->read_pos++;
+      rh->pos++;
    }
 
    return (int)offset;

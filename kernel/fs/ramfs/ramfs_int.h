@@ -51,7 +51,7 @@ struct ramfs_inode {
    enum ramfs_entry type;
    mode_t mode;                        /* permissions + special flags */
    rwlock_wp rwlock;
-   size_t fsize;
+   ssize_t fsize;
    size_t blocks_count;
 
    union {
@@ -71,9 +71,7 @@ typedef struct {
 
    /* ramfs-specific fields */
    ramfs_inode *inode;
-
-   u32 read_pos;
-   u32 write_pos;
+   off_t pos;
 
 } ramfs_handle;
 

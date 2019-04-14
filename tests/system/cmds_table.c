@@ -71,8 +71,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(sig1, TT_SHORT, true),
    CMD_ENTRY(bigargv, TT_SHORT, true),
    CMD_ENTRY(cloexec, TT_SHORT, true),
-
-   CMD_ENTRY(fs1, TT_SHORT, false), // temp
+   CMD_ENTRY(fs1, TT_SHORT, true),
 
    /*
     * For the moment these tests can be run only manually because they require
