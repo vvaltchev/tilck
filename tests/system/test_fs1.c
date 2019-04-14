@@ -74,10 +74,32 @@ static void write_on_test_file(void)
    close(fd);
 }
 
+static void read_past_end(void)
+{
+   int rc, fd;
+   off_t off;
+   char buf[32] = { [0 ... 30] = 'a', [31] = 0 };
+
+   fd = open("/tmp/test1", O_RDONLY);
+
+   if (fd < 0) {
+      perror("open failed");
+      exit(1);
+   }
+
+   off = lseek(fd, 64 * 1024, SEEK_SET);
+   printf("off: %d\n", off);
+
+   rc = read(fd, buf, sizeof(buf));
+   printf("read returned: %d\n", rc);
+   printf("buf: '%s'\n", buf);
+   close(fd);
+}
 
 int cmd_fs1(int argc, char **argv)
 {
    create_test_file();
    write_on_test_file();
+   read_past_end();
    return 0;
 }

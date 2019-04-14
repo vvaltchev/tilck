@@ -292,14 +292,20 @@ off_t vfs_seek(fs_handle h, s64 off, int whence)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
+   off_t ret;
 
    fs_handle_base *hb = (fs_handle_base *) h;
 
    if (!hb->fops.seek)
       return -ESPIPE;
 
-   // NOTE: this won't really work for big offsets in case off_t is 32-bit.
-   return hb->fops.seek(h, (off_t) off, whence);
+   vfs_shlock(h);
+   {
+      // NOTE: this won't really work for big offsets in case off_t is 32-bit.
+      ret = hb->fops.seek(h, (off_t) off, whence);
+   }
+   vfs_shunlock(h);
+   return ret;
 }
 
 int vfs_ioctl(fs_handle h, uptr request, void *argp)

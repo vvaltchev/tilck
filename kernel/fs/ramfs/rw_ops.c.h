@@ -25,15 +25,17 @@ static off_t ramfs_file_seek(fs_handle h, off_t off, int whence)
          break;
 
       case SEEK_END:
-         rh->pos = rh->inode->fsize + off;
+         rh->pos = (off_t)rh->inode->fsize + off;
          break;
 
       default:
          return -EINVAL;
    }
 
-   if (rh->pos < 0)
+   if (rh->pos < 0) {
       rh->pos = 0;
+      return -EINVAL;
+   }
 
    return rh->pos;
 }
@@ -66,6 +68,10 @@ static ssize_t ramfs_file_read(fs_handle h, char *buf, size_t len)
       size_t page = (size_t)rh->pos & PAGE_MASK;
       size_t page_off = (size_t)rh->pos & OFFSET_IN_PAGE_MASK;
       size_t page_rem = PAGE_SIZE - page_off;
+
+      if (rh->pos >= (off_t)inode->fsize)
+         break;
+
       size_t file_rem = (size_t)inode->fsize - (size_t)rh->pos;
       size_t to_read = MIN3(page_rem, buf_rem, file_rem);
 
