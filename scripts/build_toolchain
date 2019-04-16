@@ -13,6 +13,18 @@ X86_TOOLCHAIN_DIR_NAME="x86_gcc_toolchain"
 
 # Arch-variables
 
+HOST_ARCH="`uname -m`"
+
+if [[ "$HOST_ARCH" == "i686" ]]; then
+
+   # We need to set HOST_ARCH to "i368", using the same convention
+   # used by ARCH and ld.
+
+   HOST_ARCH="i386"
+fi
+
+# ARCH and ARCH_* variables are all about the TARGET architecture
+
 if [[ "$ARCH" == "" ]]; then
    export ARCH="i386" # default target arch
 fi
@@ -196,7 +208,7 @@ function build_libmusl {
       git clone --branch v1.1.19 --depth 1 git://git.musl-libc.org/musl
       cd musl
 
-      local opts1="--target=${ARCH} --host=${ARCH} --build=${BUILD_ARCH}"
+      local opts1="--target=${ARCH} --host=${ARCH}"
       local opts2="--disable-shared --prefix=$TC/musl/install"
       local opts3="--exec-prefix=$TC/musl/install --enable-debug"
       local opts4="--syslibdir=$TC/musl/install/lib"
@@ -226,8 +238,17 @@ function build_libmusl {
 
       cd $TC/musl/install/include
       ln -s /usr/include/linux .
-      ln -s /usr/include/asm .
       ln -s /usr/include/asm-generic .
+
+      if [ -d /usr/include/asm ]; then
+         ln -s /usr/include/asm .
+      elif [ -d /usr/include/${HOST_ARCH}-linux-gnu/asm ]; then
+         ln -s /usr/include/${HOST_ARCH}-linux-gnu/asm .
+      else
+         msg="WARNING: unable to find the linux include asm directory"
+         echo msg >> make_install.log
+         echo msg
+      fi
 
    else
       show_skip_component_msg "LIBMUSL"
@@ -253,10 +274,19 @@ function build_gnuefi {
       local url="https://github.com/vvaltchev/gnu-efi-fork.git"
       git clone --branch 3.0.8 --depth 1 "$url" gnu-efi
       cd gnu-efi
-      run_command2 "make ARCH=${BUILD_ARCH} -j" build_${BUILD_ARCH}.log
 
-      local arch_flags="ARCH=${ARCH_EFI} prefix=${ARCH_GCC_TC}-linux-"
-      run_command2 "make $arch_flags -j" build_${ARCH_EFI}.log
+      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+
+         # Note: default case
+         run_command2 "make ARCH=${BUILD_ARCH} -j" build_${BUILD_ARCH}.log
+         local arch_flags="ARCH=${ARCH_EFI} prefix=${ARCH_GCC_TC}-linux-"
+         run_command2 "make $arch_flags -j" build_${ARCH_EFI}.log
+
+      else
+         # Special case (HOST_ARCH == ARCH)
+         run_command2 "make ARCH=${ARCH_EFI} -j" build_${ARCH_EFI}.log
+      fi
+
 
    else
       show_skip_component_msg "GNU-EFI"
@@ -333,10 +363,22 @@ function internal_build_busybox {
 
    echo "Building busybox... "
    cp $MAIN_DIR/other/busybox.config .config
+
+   if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+      # Case HOST_ARCH == ARCH
+      export SYS_CC="$CC"
+      export SYS_CXX="$CXX"
+      export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
+   fi
+
    export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
+
    run_command2 "make -j" build.log
-   cp .config .last_build_config
+
    export CROSS_COMPILE=""
+   export CC_POST_FLAGS=""
+
+   cp .config .last_build_config
 }
 
 all_funcs_list+=(build_busybox)
@@ -410,11 +452,29 @@ function build_ncurses {
       opts2="--datarootdir=/usr/share --without-cxx --without-cxx-binding"
       opts3="--without-ada --without-manpages --without-dlsym"
 
-      export CC="$GCC_TOOLCHAIN/${ARCH_GCC_TC}-linux-gcc"
+      local saved_cc="$CC"
+
+      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+
+         # Default case
+         export CC="${ARCH_GCC_TC}-linux-gcc"
+
+      else
+
+         # Case HOST_ARCH == ARCH
+         export SYS_CC="$CC"
+         export SYS_CXX="$CXX"
+         export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
+         export CC="${ARCH_GCC_TC}-linux-gcc"
+      fi
+
+
       run_command2 "./configure $opts1 $opts2 $opts3" configure.log
       run_command2 "make -j" build.log
       run_command2 "make install" install.log
-      export CC=""
+
+      export CC_POST_FLAGS=""
+      export CC="$saved_cc"
 
    else
       show_skip_component_msg "NCURSES"
@@ -434,9 +494,20 @@ function build_zlib {
       cd zlib
 
       local p="$TC/zlib/install"
-      CROSS_PREFIX="${ARCH_GCC_TC}-linux-" ./configure --prefix="$p" --static
+
+      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+         # Case HOST_ARCH == ARCH
+         export SYS_CC="$CC"
+         export SYS_CXX="$CXX"
+         export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
+      fi
+
+      export CROSS_PREFIX="${ARCH_GCC_TC}-linux-"
+
+      ./configure --prefix="$p" --static
       run_command2 "make -j" build.log
       run_command2 "make install" install.log
+      export CROSS_PREFIX=""
 
    else
       show_skip_component_msg "ZLIB"
@@ -445,30 +516,98 @@ function build_zlib {
    popd
 }
 
+function arch_checks {
+
+   if [[ "$HOST_ARCH" != *"$BUILD_ARCH"* ]]; then
+
+      echo "WARNING: Tilck is designed to be built only on $BUILD_ARCH host "
+      echo "machines no matter which target architecture has been chosen. "
+      echo "Reason: the build system uses a toolchain pre-compiled for "
+      echo "$BUILD_ARCH hosts."
+      echo
+      echo "Detected HOST_ARCH (uname -m): $HOST_ARCH"
+      echo
+      echo "The only *unofficially* supported scenario allowing HOST_ARCH != $BUILD_ARCH"
+      echo "is to have HOST_ARCH == ARCH and USE_SYSCC, CC, CXX set accordingly."
+      echo
+
+      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
+
+         if [[ "$USE_SYSCC" != "" && "$USE_SYSCC" != 0 ]]; then
+
+            echo "In this case, HOST_ARCH == ARCH and USE_SYSCC is set."
+            echo "The script can continue, but WARNING: the only scenario fully"
+            echo "supported is to build on $BUILD_ARCH *without* USE_SYSCC."
+            echo ""
+            echo -n "Proceed [Y/n] ? "
+
+            read ans
+
+            if [[ "$ans" == "" || "$ans" == "y" || "$ans" == "Y" ]]; then
+               echo "OK."
+            else
+               echo "Aborted."
+               exit 1
+            fi
+
+         else
+
+            echo "In this case USE_SYSCC, CC and CXX are NOT set."
+            echo "Unable to continue."
+            exit 1
+         fi
+
+      else
+
+         echo "In this case, HOST_ARCH ($HOST_ARCH) != ARCH ($ARCH)"
+         echo "Unable to continue."
+         exit 1
+      fi
+   fi
+}
+
+function compiler_checks {
+
+   if [[ "$USE_SYSCC" != "" && "$USE_SYSCC" != 0 ]]; then
+
+      if [[ "$CC" == "" || "$CXX" == "" ]]; then
+         echo "ERROR: setting CC and CXX is mandatory when USE_SYSCC=1."
+         exit 1
+      fi
+
+      cc_compiler="`$CC --version | cut -d ' ' -f 1 | head -1`"
+      cxx_compiler="`$CXX --version | cut -d ' ' -f 1 | head -1`"
+
+      if [[ "$cc_compiler" == "" ]]; then
+         echo "ERROR: $CC compiler NOT FOUND"
+         exit 1
+      fi
+
+      if [[ "$cxx_compiler" == "" ]]; then
+         echo "ERROR: $CXX compiler NOT FOUND"
+         exit 1
+      fi
+
+      if [ "$cc_compiler" != "gcc" ]; then
+         echo "ERROR: USE_SYSCC=1 is NOT supported with compilers other than GCC."
+         exit 1
+      fi
+
+   fi
+}
+
 ##########################################################
 #
 # MAIN
 #
 ##########################################################
 
-if [[ "$USE_SYSCC" != "" && "$USE_SYSCC" != 0 ]]; then
+default_funcs=()
 
-   if [[ "$CC" == "" || "$CXX" == "" ]]; then
-      echo "ERROR: setting CC and CXX is mandatory when USE_SYSCC=1."
-      exit 1
-   fi
-
-   compiler="`$CC --version | cut -d ' ' -f 1 | head -1`"
-
-   if [ "$compiler" != "gcc" ]; then
-      echo "ERROR: USE_SYSCC=1 is NOT supported with compilers other than GCC."
-      exit 1
-   fi
-
+if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+   default_funcs+=(download_gcc_toolchain)   # note: this is the default case
 fi
 
-default_funcs=()
-default_funcs+=(download_gcc_toolchain)
 default_funcs+=(download_cmake)
 default_funcs+=(build_gnuefi)
 default_funcs+=(build_mtools)
@@ -478,57 +617,9 @@ if [ -z "$NO_BUSYBOX" ]; then
    default_funcs+=(build_busybox)
 fi
 
-if [[ "`uname -m`" != *"$BUILD_ARCH"* ]]; then
+############################################################
 
-   echo "ERROR: Tilck can be built ONLY on $BUILD_ARCH host machines no matter"
-   echo "which target architecture has been chosen. Reason: the build "
-   echo "system uses a toolchain pre-compiled for $BUILD_ARCH hosts."
-   echo
-   echo "Detected architecture: (uname -m): `uname -m`"
-   exit 1
-fi
-
-# Exit on the first failure
-set -e
-
-# Global toolchain directory
-TC=$MAIN_DIR/toolchain
-
-GCC_TOOLCHAIN=$TC/$ARCH_TC_DIR/bin # Default cross-compiler, in $PATH.
-GCC_TOOLCHAIN_GLIBC=$TC/${ARCH_TC_DIR}_glibc/bin # NOTE: not in $PATH!
-export PATH="$MAIN_DIR/scripts/build_scripts:$GCC_TOOLCHAIN:$PATH"
-
-mkdir -p $TC
-mkdir -p $TC/cache
-cd $TC
-
-# Set the CMAKE variable in order to single functions to be able to use it
-if [ -f $TC/cmake/bin/cmake ]; then
-   CMAKE=$TC/cmake/bin/cmake
-else
-   CMAKE=cmake
-fi
-
-
-if [ "$1" == "-s" ]; then
-
-   if [ $# -ne 2 ]; then
-      echo "Expected the name of the function to call after the $1 option"
-   fi
-
-   func="$2"
-
-   if [ -n "$(type -t $func)" ] && [ "$(type -t $func)" = function ]; then
-      echo "Executing single function '$func'"
-      $func
-   else
-      echo "ERORR: The function '$func' does not exist."
-      exit 1
-   fi
-
-   exit 0
-
-elif [[ "$1" == "--help" || "$1" == "-h" ]]; then
+if [[ "$1" == "--help" || "$1" == "-h" ]]; then
 
    echo ""
    echo "Syntax:"
@@ -567,13 +658,72 @@ elif [[ "$1" == "--help" || "$1" == "-h" ]]; then
    exit 0
 fi
 
+
+# Compiler-related checks
+compiler_checks
+# Arch-related checks
+arch_checks
+
+# Exit on the first failure
+set -e
+
+# Global toolchain directory
+TC=$MAIN_DIR/toolchain
+
+export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
+
+if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+   GCC_TOOLCHAIN=$TC/$ARCH_TC_DIR/bin # Default cross-compiler, in $PATH.
+   GCC_TOOLCHAIN_GLIBC=$TC/${ARCH_TC_DIR}_glibc/bin # NOTE: not in $PATH!
+
+   # NOTE: GCC's musl pre-built toolchain overrides build_scripts/* in PATH.
+   # This means that, when HOST_ARCH == BUILD_ARCH, i686-linux-gcc will use
+   # its version and NOT the wrapper script in build_scripts which simulates
+   # its behavior using -m32 and -specs.
+   export PATH="$GCC_TOOLCHAIN:$PATH"
+fi
+
+
+mkdir -p $TC
+mkdir -p $TC/cache
+cd $TC
+
+# Set the CMAKE variable in order to single functions to be able to use it
+if [ -f $TC/cmake/bin/cmake ]; then
+   CMAKE=$TC/cmake/bin/cmake
+else
+   CMAKE=cmake
+fi
+
+
+if [ "$1" == "-s" ]; then
+
+   if [ $# -ne 2 ]; then
+      echo "Expected the name of the function to call after the $1 option"
+   fi
+
+   func="$2"
+
+   if [ -n "$(type -t $func)" ] && [ "$(type -t $func)" = function ]; then
+      echo "[build_toolchain] Executing single function '$func'"
+      $func
+      echo "[build_toolchain] Executing single function: DONE"
+   else
+      echo "ERROR: The function '$func' does not exist."
+      exit 1
+   fi
+
+   exit 0
+
+fi
+
 # Single-option parsing
 
 if [ "$1" == "-n" ] || [ "$1" == "--skip-install-pkgs" ]; then
    skip_install=true
 fi
 
-# The actual job
+# Do the actual job
 
 if [ -z "$skip_install" ]; then
    install_packages
@@ -589,3 +739,6 @@ for x in ${default_funcs[@]}; do
    $x
 done
 
+echo
+echo "*** Building custom toolchain COMPLETED ***"
+echo

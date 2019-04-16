@@ -4,11 +4,46 @@ cmake_minimum_required(VERSION 3.2)
 function (show_wrong_arch_error)
 
    set(msg "")
-   string(CONCAT msg "Currently, Tilck can be built ONLY on x86_64 host "
+   string(CONCAT msg "Tilck has been designed to be built on x86_64 host "
                      "machines no matter which target architecture has been "
                      "chosen. Reason: the build system uses a toolchain "
                      "pre-compiled for x86_64 hosts. Current system CPU: "
-                     "'${CMAKE_SYSTEM_PROCESSOR}'")
+                     "'${CMAKE_SYSTEM_PROCESSOR}'. However, in a *non* "
+                     "official way, building on HOST_ARCH == ARCH is "
+                     "supported, if USE_SYSCC, CC, CXX are set.")
+
+   message(FATAL_ERROR "${msg}")
+
+endfunction()
+
+function (show_missing_use_syscc_error)
+
+   set(msg "")
+   string(CONCAT msg "In order to build Tilck on this host architecture"
+                     "the env variables USE_SYSCC, CC and CXX *must be* set. "
+                     "WARNING: this scenario is *not* supported in an official"
+                     " way, even if it should work.")
+
+   message(FATAL_ERROR "${msg}")
+
+endfunction()
+
+function (show_same_arch_build_warning)
+
+   set(msg "")
+   string(CONCAT msg "Building with HOST_ARCH == ARCH and USE_SYSCC=1 is not"
+                     " supported in an official way")
+
+   message(WARNING "${msg}")
+
+endfunction()
+
+function (show_no_musl_syscc_error)
+
+   set(msg "")
+   string(CONCAT msg "In order to build with USE_SYSCC=1 libmusl *must be*"
+                     "in the toolchain. Run: ${BTC_SCRIPT} -s build_libmusl "
+                     "first.")
 
    message(FATAL_ERROR "${msg}")
 

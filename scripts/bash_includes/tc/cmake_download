@@ -42,8 +42,16 @@ function download_cmake {
             echo "Note: NO_SYS_CMAKE=1"
          fi
 
-         # We have to download CMake.
-         download_cmake_internal
+
+         if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+            # Default case: we have to download CMake.
+            download_cmake_internal
+         else
+            echo "ERROR: cmake >= 3.2 NOT FOUND on the system"
+            echo "In this *unofficially* supported scenario where HOST_ARCH != $BUILD_ARCH"
+            echo "you have to manually install cmake on your system"
+            exit 1
+         fi
 
       else
 

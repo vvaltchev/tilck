@@ -7,12 +7,21 @@ include(${CMAKE_SOURCE_DIR}/other/utils.cmake)
 include(${CMAKE_SOURCE_DIR}/other/errors.cmake)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
-set(BUILD_SHARED_LIBRARIES off)
+
+set(BUILD_SHARED_LIBRARIES off)           # disable shared libs globally
+set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # disable -rdynamic globally
+set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)  # disable -rdynamic globally
 
 set(DEFAULT_TARGET_ARCH "i386")
 
-if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-   show_wrong_arch_error()
+if ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+
+   set(HOST_ARCH "x86_64")
+
+elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "i686")
+
+   set(HOST_ARCH "i386")
+
 endif()
 
 # BEGIN [Environment-controlled "sticky" cache variables]
@@ -47,6 +56,22 @@ if (USE_SYSCC)
    set(SYS_CXX "${CMAKE_CXX_COMPILER}")
 endif()
 
+
+if (NOT "${HOST_ARCH}" STREQUAL "x86_64")
+
+   if (NOT "${HOST_ARCH}" STREQUAL "${ARCH}")
+      show_wrong_arch_error()
+   else()
+
+      if (USE_SYSCC)
+         show_same_arch_build_warning()
+      else()
+         show_missing_use_syscc_error()
+      endif()
+
+   endif()
+
+endif()
 
 # Reset the default flags
 set(CMAKE_C_FLAGS_DEBUG "")
@@ -187,6 +212,14 @@ endif()
 
 # END [ARCH-dependent paths]
 
+if (USE_SYSCC)
+
+   if (NOT EXISTS ${TCROOT}/musl/install/bin/musl-gcc)
+      show_no_musl_syscc_error()
+   endif()
+
+endif()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
@@ -289,7 +322,11 @@ set(COMMON_FLAGS "${GENERAL_DEFS} ${OTHER_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 ################################################################################
 
 set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/boot/legacy/bootloader.bin)
-set(EFI_x86_64_FILE ${CMAKE_BINARY_DIR}/boot/efi/BOOTX64.EFI)
+
+if ("${HOST_ARCH}" STREQUAL "x86_64")
+   set(EFI_x86_64_FILE ${CMAKE_BINARY_DIR}/boot/efi/BOOTX64.EFI)
+endif()
+
 set(EFI_ia32_FILE ${CMAKE_BINARY_DIR}/boot/efi/BOOTIA32.EFI)
 set(KERNEL_UNSTRIPPED ${CMAKE_BINARY_DIR}/elf_kernel)
 set(KERNEL_FILE ${CMAKE_BINARY_DIR}/elf_kernel_stripped)

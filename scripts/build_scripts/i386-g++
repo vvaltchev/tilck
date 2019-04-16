@@ -1,2 +1,2 @@
 #!/bin/sh
-exec $SYS_CXX -m32 -march=i686 "$@" 
+exec $SYS_CXX -m32 -march=i686 "$@" $CC_POST_FLAGS 

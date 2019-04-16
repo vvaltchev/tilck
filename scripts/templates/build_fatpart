@@ -60,12 +60,12 @@ unset IFS
 
 # hard-link EFI files
 
-if [ -s @EFI_x86_64_FILE@ ]; then
-   ln @EFI_x86_64_FILE@ EFI/BOOT/
+if [ -s "@EFI_x86_64_FILE@" ]; then
+   ln "@EFI_x86_64_FILE@" EFI/BOOT/
 fi
 
-if [ -s @EFI_ia32_FILE@ ]; then
-   ln @EFI_ia32_FILE@ EFI/BOOT/
+if [ -s "@EFI_ia32_FILE@" ]; then
+   ln "@EFI_ia32_FILE@" EFI/BOOT/
 fi
 
 # hard-link the kernel file (used also by the legacy bootloader)
