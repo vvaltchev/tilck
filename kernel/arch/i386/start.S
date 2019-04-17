@@ -23,7 +23,8 @@
 .global _start
 
 #define MULTIBOOT_FLAGS      (MULTIBOOT_PAGE_ALIGN |   \
-                              MULTIBOOT_MEMORY_INFO)
+                              MULTIBOOT_MEMORY_INFO |  \
+                              MULTIBOOT_VIDEO_MODE)
 
 #define PAGE_DIR_PADDR ((offset page_size_buf) - KERNEL_BASE_VA)
 
