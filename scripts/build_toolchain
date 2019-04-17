@@ -520,8 +520,9 @@ function arch_checks {
       echo
       echo "Detected HOST_ARCH (uname -m): $HOST_ARCH"
       echo
-      echo "The only *unofficially* supported scenario allowing HOST_ARCH != $BUILD_ARCH"
-      echo "is to have HOST_ARCH == ARCH and USE_SYSCC, CC, CXX set accordingly."
+      echo "The only (unofficially supported) scenario allowing "
+      echo "HOST_ARCH != $BUILD_ARCH is to have HOST_ARCH == ARCH and the env "
+      echo "variables USE_SYSCC, CC, CXX set correctly."
       echo
 
       if [[ "$HOST_ARCH" == "$ARCH" ]]; then
@@ -529,8 +530,8 @@ function arch_checks {
          if [[ "$USE_SYSCC" != "" && "$USE_SYSCC" != 0 ]]; then
 
             echo "In this case, HOST_ARCH == ARCH and USE_SYSCC is set."
-            echo "The script can continue, but WARNING: the only scenario fully"
-            echo "supported is to build on $BUILD_ARCH *without* USE_SYSCC."
+            echo "The script can continue, but WARNING: this scenario is not "
+            echo "tested as often as the main one (building on $BUILD_ARCH)."
             echo ""
             echo -n "Proceed [Y/n] ? "
 
