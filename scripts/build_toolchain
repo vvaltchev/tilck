@@ -215,21 +215,14 @@ function build_libmusl {
 
       run_command2 "./configure $opts1 $opts2 $opts3 $opts4" configure.log
 
-      # Disable exit on any error because parallel builds of libmusl sometimes
-      # fail. Therefore, just run a sequential build in case of a failure.
-      set +e
+      # Unfortunately, musl's build system does not support reliably parallel
+      # builds with make -j. That does not mean that make -j will usually fail.
+      # It means that *sometimes* make -j will fail OR produce corrupted objects
+      # (without failing the build!) leading to weird link errors in user apps.
+      # For that reason, it's just much more convenient to NOT use parallel
+      # builds.
 
-      run_command2 "make -j" build.log
-
-      if [[ $? != 0 ]]; then
-
-         # The build parallel failed: re-enable exit on any error and run a
-         # regular (sequential) build.
-         set -e
-         run_command2 "make" build.log
-      fi
-
-      set -e # re-enable exit on any error
+      run_command2 "make" build.log
       run_command2 "make install" make_install.log
 
       cd $TC/musl/install/bin

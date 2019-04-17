@@ -41,7 +41,7 @@ endfunction()
 function (show_no_musl_syscc_error)
 
    set(msg "")
-   string(CONCAT msg "In order to build with USE_SYSCC=1 libmusl *must be*"
+   string(CONCAT msg "In order to build with USE_SYSCC=1 libmusl *must be* "
                      "in the toolchain. Run: ${BTC_SCRIPT} -s build_libmusl "
                      "first.")
 
