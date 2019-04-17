@@ -176,6 +176,8 @@ function build_libmusl {
 
    pushd .
    local saved_path="$PATH"
+   export SYS_CC="$CC"
+   export SYS_CXX="$CXX"
 
    if ! [ -d musl ]; then
 
@@ -196,8 +198,6 @@ function build_libmusl {
 
       else
 
-         export SYS_CC="$CC"
-         export SYS_CXX="$CXX"
          export CC="$MAIN_DIR/scripts/build_scripts/${ARCH}-gcc"
          export CXX="$MAIN_DIR/scripts/build_scripts/${ARCH}-g++"
 
@@ -247,6 +247,8 @@ function build_libmusl {
       show_skip_component_msg "LIBMUSL"
    fi
 
+   export CC="$SYS_CC"
+   export CXX="$SYS_CXX"
    export PATH="$saved_path"
    popd
 }
@@ -432,6 +434,8 @@ function build_ncurses {
 
    if ! [ -d ncurses ]; then
 
+      show_work_on_component_msg "NCURSES"
+
       local ver=6.1
       local tarname=ncurses-$ver.tar.gz
 
@@ -482,6 +486,8 @@ function build_zlib {
    pushd .
 
    if ! [ -d zlib ]; then
+
+      show_work_on_component_msg "ZLIB"
 
       git clone --branch v1.2.11 --depth 1 https://github.com/madler/zlib
       cd zlib
@@ -600,6 +606,11 @@ default_funcs=()
 
 if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
    default_funcs+=(download_gcc_toolchain)   # note: this is the default case
+else
+   # We don't have our pre-build gcc-musl toolchains for HOST_ARCH, therefore
+   # be *must* build also libmusl, in order to link with musl programs compiled
+   # with the system compiler.
+   default_funcs+=(build_libmusl)
 fi
 
 default_funcs+=(download_cmake)
