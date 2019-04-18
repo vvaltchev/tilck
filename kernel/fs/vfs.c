@@ -87,36 +87,36 @@ void vfs_fs_exlock(filesystem *fs)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(fs != NULL);
-   ASSERT(fs->fs_exlock);
+   ASSERT(fs->fsops->fs_exlock);
 
-   fs->fs_exlock(fs);
+   fs->fsops->fs_exlock(fs);
 }
 
 void vfs_fs_exunlock(filesystem *fs)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(fs != NULL);
-   ASSERT(fs->fs_exunlock);
+   ASSERT(fs->fsops->fs_exunlock);
 
-   fs->fs_exunlock(fs);
+   fs->fsops->fs_exunlock(fs);
 }
 
 void vfs_fs_shlock(filesystem *fs)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(fs != NULL);
-   ASSERT(fs->fs_shlock);
+   ASSERT(fs->fsops->fs_shlock);
 
-   fs->fs_shlock(fs);
+   fs->fsops->fs_shlock(fs);
 }
 
 void vfs_fs_shunlock(filesystem *fs)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(fs != NULL);
-   ASSERT(fs->fs_shunlock);
+   ASSERT(fs->fsops->fs_shunlock);
 
-   fs->fs_shunlock(fs);
+   fs->fsops->fs_shunlock(fs);
 }
 
 /*
@@ -171,11 +171,11 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
     */
    if (flags & O_CREAT) {
       vfs_fs_exlock(fs);
-      rc = fs->open(fs, fs_path, out, flags, mode);
+      rc = fs->fsops->open(fs, fs_path, out, flags, mode);
       vfs_fs_exunlock(fs);
    } else {
       vfs_fs_shlock(fs);
-      rc = fs->open(fs, fs_path, out, flags, mode);
+      rc = fs->fsops->open(fs, fs_path, out, flags, mode);
       vfs_fs_shunlock(fs);
    }
 
@@ -216,7 +216,7 @@ void vfs_close(fs_handle h)
    remove_all_mappings_of_handle(pi, h);
 #endif
 
-   hb->fs->close(h);
+   hb->fs->fsops->close(h);
    release_obj(fs);
 
    /* while a filesystem is mounted, the minimum ref-count it can have is 1 */
@@ -233,7 +233,7 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
    if (!hb)
       return -EBADF;
 
-   if ((rc = hb->fs->dup(h, dup_h)))
+   if ((rc = hb->fs->fsops->dup(h, dup_h)))
       return rc;
 
    /* The new file descriptor does NOT share old file descriptor's fd_flags */
@@ -352,12 +352,12 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
    int rc;
 
    ASSERT(hb != NULL);
-   ASSERT(hb->fs->getdents64);
+   ASSERT(hb->fs->fsops->getdents64);
 
    vfs_fs_shlock(hb->fs);
    {
       // NOTE: the fs implementation MUST handle an invalid user 'dirp' pointer.
-      rc = hb->fs->getdents64(h, user_dirp, buf_size);
+      rc = hb->fs->fsops->getdents64(h, user_dirp, buf_size);
    }
    vfs_fs_shunlock(hb->fs);
    return rc;

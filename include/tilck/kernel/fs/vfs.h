@@ -54,6 +54,20 @@ void vfs_file_nolock(fs_handle h);
 #define VFS_FS_RO        (0)
 #define VFS_FS_RW        (1 << 0)
 
+typedef struct {
+
+   func_open open;
+   func_close close;
+   func_dup dup;
+   func_getdents64 getdents64;
+
+   func_fslock_t fs_exlock;
+   func_fslock_t fs_exunlock;
+   func_fslock_t fs_shlock;
+   func_fslock_t fs_shunlock;
+
+} fs_ops;
+
 /* This struct is Tilck's analogue of Linux's "superblock" */
 struct filesystem {
 
@@ -63,17 +77,7 @@ struct filesystem {
    u32 device_id;
    u32 flags;
    void *device_data;
-
-   func_open open;
-   func_close close;
-   func_dup dup;
-   func_getdents64 getdents64;
-
-   /* Whole-filesystem locks */
-   func_fslock_t fs_exlock;
-   func_fslock_t fs_exunlock;
-   func_fslock_t fs_shlock;
-   func_fslock_t fs_shunlock;
+   const fs_ops *fsops;
 };
 
 typedef struct {

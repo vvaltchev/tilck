@@ -44,6 +44,19 @@ void ramfs_destroy(filesystem *fs)
    kfree2(fs, sizeof(filesystem));
 }
 
+static const fs_ops static_fsops_ramfs = {
+
+   .open = ramfs_open,
+   .close = ramfs_close,
+   .dup = ramfs_dup,
+   .getdents64 = ramfs_getdents64,
+
+   .fs_exlock = ramfs_exlock,
+   .fs_exunlock = ramfs_exunlock,
+   .fs_shlock = ramfs_shlock,
+   .fs_shunlock = ramfs_shunlock,
+};
+
 filesystem *ramfs_create(void)
 {
    filesystem *fs;
@@ -70,16 +83,7 @@ filesystem *ramfs_create(void)
    fs->fs_type_name = "ramfs";
    fs->device_id = vfs_get_new_device_id();
    fs->flags = VFS_FS_RW;
-
-   fs->open = ramfs_open;
-   fs->close = ramfs_close;
-   fs->dup = ramfs_dup;
-   fs->getdents64 = ramfs_getdents64;
-
-   fs->fs_exlock = ramfs_exlock;
-   fs->fs_exunlock = ramfs_exunlock;
-   fs->fs_shlock = ramfs_shlock;
-   fs->fs_shunlock = ramfs_shunlock;
+   fs->fsops = &static_fsops_ramfs;
 
    //tmp
    {

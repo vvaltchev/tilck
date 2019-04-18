@@ -164,7 +164,7 @@ TEST(fat32, fread)
 
    ASSERT_TRUE(fs != NULL);
 
-   rc = fs->open(fs, "/bigfile", &h, 0, O_RDONLY);
+   rc = fs->fsops->open(fs, "/bigfile", &h, 0, O_RDONLY);
 
    ASSERT_TRUE(rc == 0);
    ASSERT_TRUE(h != NULL);
@@ -188,6 +188,6 @@ TEST(fat32, fread)
    } while (bytes_read == block_size);
 
    fclose(fp);
-   fs->close(h);
+   fs->fsops->close(h);
    fat_umount_ramdisk(fs);
 }

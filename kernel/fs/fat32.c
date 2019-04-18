@@ -538,6 +538,19 @@ STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
    return 0;
 }
 
+static const fs_ops static_fsops_fat = {
+
+   .open = fat_open,
+   .close = fat_close,
+   .dup = fat_dup,
+   .getdents64 = fat_getdents64,
+
+   .fs_exlock = fat_exclusive_lock,
+   .fs_exunlock = fat_exclusive_unlock,
+   .fs_shlock = fat_shared_lock,
+   .fs_shunlock = fat_shared_unlock,
+};
+
 filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
 {
    if (flags & VFS_FS_RW)
@@ -564,15 +577,8 @@ filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
    fs->flags = flags;
    fs->device_id = vfs_get_new_device_id();
    fs->device_data = d;
-   fs->open = fat_open;
-   fs->close = fat_close;
-   fs->dup = fat_dup;
-   fs->getdents64 = fat_getdents64;
+   fs->fsops = &static_fsops_fat;
 
-   fs->fs_exlock = fat_exclusive_lock;
-   fs->fs_exunlock = fat_exclusive_unlock;
-   fs->fs_shlock = fat_shared_lock;
-   fs->fs_shunlock = fat_shared_unlock;
    return fs;
 }
 

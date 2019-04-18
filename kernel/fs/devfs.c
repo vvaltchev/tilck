@@ -434,6 +434,20 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    return (int)offset;
 }
 
+static const fs_ops static_fsops_devfs = {
+
+   .open = devfs_open,
+   .close = devfs_close,
+   .dup = devfs_dup,
+   .getdents64 = devfs_getdents64,
+
+   .fs_exlock = devfs_exclusive_lock,
+   .fs_exunlock = devfs_exclusive_unlock,
+   .fs_shlock = devfs_shared_lock,
+   .fs_shunlock = devfs_shared_unlock,
+
+};
+
 filesystem *create_devfs(void)
 {
    filesystem *fs;
@@ -452,23 +466,13 @@ filesystem *create_devfs(void)
 
    list_init(&d->root_dir.files_list);
    rwlock_wp_init(&d->rwlock);
+   read_system_clock_datetime(&d->wrt_time);
 
    fs->fs_type_name = "devfs";
    fs->device_id = vfs_get_new_device_id();
    fs->flags = VFS_FS_RW;
    fs->device_data = d;
-
-   read_system_clock_datetime(&d->wrt_time);
-
-   fs->open = devfs_open;
-   fs->close = devfs_close;
-   fs->dup = devfs_dup;
-   fs->getdents64 = devfs_getdents64;
-
-   fs->fs_exlock = devfs_exclusive_lock;
-   fs->fs_exunlock = devfs_exclusive_unlock;
-   fs->fs_shlock = devfs_shared_lock;
-   fs->fs_shunlock = devfs_shared_unlock;
+   fs->fsops = &static_fsops_devfs;
 
    return fs;
 }
