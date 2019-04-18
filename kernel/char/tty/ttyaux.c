@@ -49,24 +49,23 @@ static bool ttyaux_read_ready(fs_handle h)
 }
 
 static int
-ttyaux_create_device_file(int minor, file_ops *ops, enum devfs_entry *t)
+ttyaux_create_device_file(int minor, file_ops *fops, enum devfs_entry *t)
 {
    *t = DEVFS_CHAR_DEVICE;
+   bzero(fops, sizeof(file_ops));
 
-   bzero(ops, sizeof(file_ops));
-
-   ops->read = ttyaux_read;
-   ops->write = ttyaux_write;
-   ops->ioctl = ttyaux_ioctl;
-   ops->fcntl = ttyaux_fcntl;
-   ops->get_rready_cond = ttyaux_get_rready_cond;
-   ops->read_ready = ttyaux_read_ready;
+   fops->read = ttyaux_read;
+   fops->write = ttyaux_write;
+   fops->ioctl = ttyaux_ioctl;
+   fops->fcntl = ttyaux_fcntl;
+   fops->get_rready_cond = ttyaux_get_rready_cond;
+   fops->read_ready = ttyaux_read_ready;
 
    /* the tty device-file requires NO locking */
-   ops->exlock = &vfs_file_nolock;
-   ops->exunlock = &vfs_file_nolock;
-   ops->shlock = &vfs_file_nolock;
-   ops->shunlock = &vfs_file_nolock;
+   fops->exlock = &vfs_file_nolock;
+   fops->exunlock = &vfs_file_nolock;
+   fops->shlock = &vfs_file_nolock;
+   fops->shunlock = &vfs_file_nolock;
    return 0;
 }
 

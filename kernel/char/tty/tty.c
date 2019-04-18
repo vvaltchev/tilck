@@ -81,18 +81,17 @@ static bool tty_read_ready(fs_handle h)
 }
 
 static int
-tty_create_device_file(int minor, file_ops *ops, enum devfs_entry *t)
+tty_create_device_file(int minor, file_ops *fops, enum devfs_entry *t)
 {
    *t = DEVFS_CHAR_DEVICE;
+   bzero(fops, sizeof(file_ops));
 
-   bzero(ops, sizeof(file_ops));
-
-   ops->read = tty_read;
-   ops->write = tty_write;
-   ops->ioctl = tty_ioctl;
-   ops->fcntl = tty_fcntl;
-   ops->get_rready_cond = tty_get_rready_cond;
-   ops->read_ready = tty_read_ready;
+   fops->read = tty_read;
+   fops->write = tty_write;
+   fops->ioctl = tty_ioctl;
+   fops->fcntl = tty_fcntl;
+   fops->get_rready_cond = tty_get_rready_cond;
+   fops->read_ready = tty_read_ready;
    /*
     * IMPORTANT: remember to add any NEW ops func also to ttyaux's
     * ttyaux_create_device_file() function, in ttyaux.c.
@@ -100,10 +99,10 @@ tty_create_device_file(int minor, file_ops *ops, enum devfs_entry *t)
 
 
    /* the tty device-file requires NO locking */
-   ops->exlock = &vfs_file_nolock;
-   ops->exunlock = &vfs_file_nolock;
-   ops->shlock = &vfs_file_nolock;
-   ops->shunlock = &vfs_file_nolock;
+   fops->exlock = &vfs_file_nolock;
+   fops->exunlock = &vfs_file_nolock;
+   fops->shlock = &vfs_file_nolock;
+   fops->shunlock = &vfs_file_nolock;
    return 0;
 }
 

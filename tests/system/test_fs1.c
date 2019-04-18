@@ -88,7 +88,7 @@ static void read_past_end(void)
    }
 
    off = lseek(fd, 64 * 1024, SEEK_SET);
-   printf("off: %d\n", off);
+   printf("off: %d\n", (int)off);
 
    rc = read(fd, buf, sizeof(buf));
    printf("read returned: %d\n", rc);

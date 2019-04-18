@@ -58,19 +58,15 @@ endif()
 
 
 if (NOT "${HOST_ARCH}" STREQUAL "x86_64")
-
    if (NOT "${HOST_ARCH}" STREQUAL "${ARCH}")
       show_wrong_arch_error()
    else()
-
       if (USE_SYSCC)
          show_same_arch_build_warning()
       else()
          show_missing_use_syscc_error()
       endif()
-
    endif()
-
 endif()
 
 # Reset the default flags
