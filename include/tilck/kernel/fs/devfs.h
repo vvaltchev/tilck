@@ -42,12 +42,13 @@ typedef struct {
    u16 dev_major;
    u16 dev_minor;
    const char *name;
-   file_ops fops;
+   const file_ops *fops;
    enum devfs_entry type;
 
 } devfs_file;
 
-typedef int (*func_create_device_file)(int, file_ops *, enum devfs_entry *);
+typedef int
+(*func_create_device_file)(int, const file_ops **, enum devfs_entry *);
 
 typedef struct {
 
@@ -65,3 +66,5 @@ int register_driver(driver_info *info, int major);
 int create_dev_file(const char *filename, u16 major, u16 minor);
 filesystem *get_devfs(void);
 driver_info *get_driver_info(u16 major);
+
+int devfs_char_dev_stat64(fs_handle h, struct stat64 *statbuf);

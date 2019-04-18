@@ -174,7 +174,7 @@ TEST(fat32, fread)
 
    do {
 
-      bytes_read = fat_handle->fops.read(h, buf1, block_size);
+      bytes_read = fat_handle->fops->read(h, buf1, block_size);
       bytes_read_real_file = fread(buf2, 1, block_size, fp);
 
       ASSERT_EQ(bytes_read_real_file, bytes_read);

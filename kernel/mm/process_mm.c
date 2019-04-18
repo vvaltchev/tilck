@@ -248,7 +248,7 @@ void full_remove_user_mapping(process_info *pi, user_mapping *um)
    fs_handle_base *hb = um->h;
    size_t actual_len = um->page_count << PAGE_SHIFT;
 
-   hb->fops.munmap(hb, um->vaddr, actual_len);
+   hb->fops->munmap(hb, um->vaddr, actual_len);
 
    per_heap_kfree(pi->mmap_heap,
                   um->vaddr,
@@ -320,10 +320,10 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
       devfs_handle = (devfs_file_handle *) handle;
 
-      if (!devfs_handle->fops.mmap)
+      if (!devfs_handle->fops->mmap)
          return -ENODEV; /* this device file does not support memory mapping */
 
-      ASSERT(devfs_handle->fops.munmap);
+      ASSERT(devfs_handle->fops->munmap);
       per_heap_kmalloc_flags |= KMALLOC_FL_NO_ACTUAL_ALLOC;
    }
 
@@ -364,7 +364,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    if (devfs_handle) {
 
 
-      if ((rc = devfs_handle->fops.mmap(handle, res, actual_len))) {
+      if ((rc = devfs_handle->fops->mmap(handle, res, actual_len))) {
 
          /*
          * Everything was apparently OK and the allocation in the user virtual
@@ -428,8 +428,8 @@ int sys_munmap(void *vaddrp, size_t len)
           * HAVE mmap() implemented. Therefore, we MUST REQUIRE munmap() to be
           * present as well.
           */
-         ASSERT(hb->fops.munmap != NULL);
-         hb->fops.munmap(hb, vaddrp, actual_len);
+         ASSERT(hb->fops->munmap != NULL);
+         hb->fops->munmap(hb, vaddrp, actual_len);
 
          if (actual_len == mapping_len) {
 

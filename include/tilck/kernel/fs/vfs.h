@@ -54,6 +54,7 @@ void vfs_file_nolock(fs_handle h);
 #define VFS_FS_RO        (0)
 #define VFS_FS_RW        (1 << 0)
 
+/* This struct is Tilck's analogue of Linux's "superblock" */
 struct filesystem {
 
    REF_COUNTED_OBJECT;
@@ -123,7 +124,7 @@ typedef struct {
 
 #define FS_HANDLE_BASE_FIELDS    \
    filesystem *fs;               \
-   file_ops fops;                \
+   const file_ops *fops;         \
    int fd_flags;                 \
    int fl_flags;                 \
 

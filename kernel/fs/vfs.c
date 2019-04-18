@@ -30,10 +30,10 @@ void vfs_exlock(fs_handle h)
 
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (hb->fops.exlock) {
-      hb->fops.exlock(h);
+   if (hb->fops->exlock) {
+      hb->fops->exlock(h);
    } else {
-      ASSERT(!hb->fops.exunlock);
+      ASSERT(!hb->fops->exunlock);
       vfs_fs_exlock(get_fs(h));
    }
 }
@@ -45,10 +45,10 @@ void vfs_exunlock(fs_handle h)
 
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (hb->fops.exunlock) {
-      hb->fops.exunlock(h);
+   if (hb->fops->exunlock) {
+      hb->fops->exunlock(h);
    } else {
-      ASSERT(!hb->fops.exlock);
+      ASSERT(!hb->fops->exlock);
       vfs_fs_exunlock(get_fs(h));
    }
 }
@@ -60,10 +60,10 @@ void vfs_shlock(fs_handle h)
 
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (hb->fops.shlock) {
-      hb->fops.shlock(h);
+   if (hb->fops->shlock) {
+      hb->fops->shlock(h);
    } else {
-      ASSERT(!hb->fops.shunlock);
+      ASSERT(!hb->fops->shunlock);
       vfs_fs_shlock(get_fs(h));
    }
 }
@@ -75,10 +75,10 @@ void vfs_shunlock(fs_handle h)
 
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (hb->fops.shunlock) {
-      hb->fops.shunlock(h);
+   if (hb->fops->shunlock) {
+      hb->fops->shunlock(h);
    } else {
-      ASSERT(!hb->fops.shlock);
+      ASSERT(!hb->fops->shlock);
       vfs_fs_shunlock(get_fs(h));
    }
 }
@@ -252,7 +252,7 @@ ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
    fs_handle_base *hb = (fs_handle_base *) h;
    ssize_t ret;
 
-   if (!hb->fops.read)
+   if (!hb->fops->read)
       return -EBADF;
 
    if ((hb->fl_flags & O_WRONLY) && !(hb->fl_flags & O_RDWR))
@@ -260,7 +260,7 @@ ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
 
    vfs_shlock(h);
    {
-      ret = hb->fops.read(h, buf, buf_size);
+      ret = hb->fops->read(h, buf, buf_size);
    }
    vfs_shunlock(h);
    return ret;
@@ -274,7 +274,7 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
    fs_handle_base *hb = (fs_handle_base *) h;
    ssize_t ret;
 
-   if (!hb->fops.write)
+   if (!hb->fops->write)
       return -EBADF;
 
    if (!(hb->fl_flags & (O_WRONLY | O_RDWR)))
@@ -282,7 +282,7 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
 
    vfs_exlock(h);
    {
-      ret = hb->fops.write(h, buf, buf_size);
+      ret = hb->fops->write(h, buf, buf_size);
    }
    vfs_exunlock(h);
    return ret;
@@ -296,13 +296,13 @@ off_t vfs_seek(fs_handle h, s64 off, int whence)
 
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (!hb->fops.seek)
+   if (!hb->fops->seek)
       return -ESPIPE;
 
    vfs_shlock(h);
    {
       // NOTE: this won't really work for big offsets in case off_t is 32-bit.
-      ret = hb->fops.seek(h, (off_t) off, whence);
+      ret = hb->fops->seek(h, (off_t) off, whence);
    }
    vfs_shunlock(h);
    return ret;
@@ -316,12 +316,12 @@ int vfs_ioctl(fs_handle h, uptr request, void *argp)
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;
 
-   if (!hb->fops.ioctl)
+   if (!hb->fops->ioctl)
       return -ENOTTY; // Yes, ENOTTY *IS* the right error. See the man page.
 
    vfs_exlock(h);
    {
-      ret = hb->fops.ioctl(h, request, argp);
+      ret = hb->fops->ioctl(h, request, argp);
    }
    vfs_exunlock(h);
    return ret;
@@ -335,11 +335,11 @@ int vfs_stat64(fs_handle h, struct stat64 *statbuf)
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;
 
-   ASSERT(hb->fops.stat != NULL); /* stat is NOT optional */
+   ASSERT(hb->fops->stat != NULL); /* stat is NOT optional */
 
    vfs_shlock(h);
    {
-      ret = hb->fops.stat(h, statbuf);
+      ret = hb->fops->stat(h, statbuf);
    }
    vfs_shunlock(h);
    return ret;
@@ -369,12 +369,12 @@ int vfs_fcntl(fs_handle h, int cmd, int arg)
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;
 
-   if (!hb->fops.fcntl)
+   if (!hb->fops->fcntl)
       return -EINVAL;
 
    vfs_exlock(h);
    {
-      ret = hb->fops.fcntl(h, cmd, arg);
+      ret = hb->fops->fcntl(h, cmd, arg);
    }
    vfs_exunlock(h);
    return ret;
@@ -396,12 +396,12 @@ bool vfs_read_ready(fs_handle h)
    fs_handle_base *hb = (fs_handle_base *) h;
    bool r;
 
-   if (!hb->fops.read_ready)
+   if (!hb->fops->read_ready)
       return true;
 
    vfs_shlock(h);
    {
-      r = hb->fops.read_ready(h);
+      r = hb->fops->read_ready(h);
    }
    vfs_shunlock(h);
    return r;
@@ -412,12 +412,12 @@ bool vfs_write_ready(fs_handle h)
    fs_handle_base *hb = (fs_handle_base *) h;
    bool r;
 
-   if (!hb->fops.write_ready)
+   if (!hb->fops->write_ready)
       return true;
 
    vfs_shlock(h);
    {
-      r = hb->fops.write_ready(h);
+      r = hb->fops->write_ready(h);
    }
    vfs_shunlock(h);
    return r;
@@ -428,12 +428,12 @@ bool vfs_except_ready(fs_handle h)
    fs_handle_base *hb = (fs_handle_base *) h;
    bool r;
 
-   if (!hb->fops.except_ready)
+   if (!hb->fops->except_ready)
       return false;
 
    vfs_shlock(h);
    {
-      r = hb->fops.except_ready(h);
+      r = hb->fops->except_ready(h);
    }
    vfs_shunlock(h);
    return r;
@@ -443,28 +443,28 @@ kcond *vfs_get_rready_cond(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (!hb->fops.get_rready_cond)
+   if (!hb->fops->get_rready_cond)
       return NULL;
 
-   return hb->fops.get_rready_cond(h);
+   return hb->fops->get_rready_cond(h);
 }
 
 kcond *vfs_get_wready_cond(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (!hb->fops.get_wready_cond)
+   if (!hb->fops->get_wready_cond)
       return NULL;
 
-   return hb->fops.get_wready_cond(h);
+   return hb->fops->get_wready_cond(h);
 }
 
 kcond *vfs_get_except_cond(fs_handle h)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (!hb->fops.get_except_cond)
+   if (!hb->fops->get_except_cond)
       return NULL;
 
-   return hb->fops.get_except_cond(h);
+   return hb->fops->get_except_cond(h);
 }

@@ -81,7 +81,7 @@ static bool tty_read_ready(fs_handle h)
 }
 
 static int
-tty_create_device_file(int minor, file_ops *fops, enum devfs_entry *t)
+tty_create_device_file(int minor, const file_ops **fops_r, enum devfs_entry *t)
 {
    static const file_ops static_ops_tty = {
 
@@ -89,13 +89,14 @@ tty_create_device_file(int minor, file_ops *fops, enum devfs_entry *t)
       .write = tty_write,
       .ioctl = tty_ioctl,
       .fcntl = tty_fcntl,
+      .stat = devfs_char_dev_stat64,
       .get_rready_cond = tty_get_rready_cond,
       .read_ready = tty_read_ready,
 
       /*
-      * IMPORTANT: remember to add any NEW ops func also to ttyaux's
-      * ttyaux_create_device_file() function, in ttyaux.c.
-      */
+       * IMPORTANT: remember to add any NEW ops func also to ttyaux's
+       * ttyaux_create_device_file() function, in ttyaux.c.
+       */
 
       /* the tty device-file requires NO locking */
       .exlock = vfs_file_nolock,
@@ -105,7 +106,7 @@ tty_create_device_file(int minor, file_ops *fops, enum devfs_entry *t)
    };
 
    *t = DEVFS_CHAR_DEVICE;
-   *fops = static_ops_tty;
+   *fops_r = &static_ops_tty;
    return 0;
 }
 

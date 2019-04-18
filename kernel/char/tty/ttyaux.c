@@ -49,7 +49,7 @@ static bool ttyaux_read_ready(fs_handle h)
 }
 
 static int
-ttyaux_create_device_file(int minor, file_ops *fops, enum devfs_entry *t)
+ttyaux_create_device_file(int minor, const file_ops **fops, enum devfs_entry *t)
 {
    static const file_ops static_ops_ttyaux = {
 
@@ -57,6 +57,7 @@ ttyaux_create_device_file(int minor, file_ops *fops, enum devfs_entry *t)
       .write = ttyaux_write,
       .ioctl = ttyaux_ioctl,
       .fcntl = ttyaux_fcntl,
+      .stat = devfs_char_dev_stat64,
       .get_rready_cond = ttyaux_get_rready_cond,
       .read_ready = ttyaux_read_ready,
 
@@ -68,7 +69,7 @@ ttyaux_create_device_file(int minor, file_ops *fops, enum devfs_entry *t)
    };
 
    *t = DEVFS_CHAR_DEVICE;
-   *fops = static_ops_ttyaux;
+   *fops = &static_ops_ttyaux;
    return 0;
 }
 

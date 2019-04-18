@@ -226,7 +226,7 @@ static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
 
    h->type = DEVFS_DIRECTORY;
    h->fs = fs;
-   h->fops = static_ops_devfs;
+   h->fops = &static_ops_devfs;
 
    *out = h;
    return 0;
@@ -248,9 +248,7 @@ static int devfs_open_file(filesystem *fs, devfs_file *pos, fs_handle *out)
    h->devfs_file_ptr = pos;
    h->fs = fs;
    h->fops = pos->fops;
-
-   if (!h->fops.stat)
-      h->fops.stat = devfs_char_dev_stat64;
+   ASSERT(h->fops->stat != NULL);
 
    *out = h;
    return 0;

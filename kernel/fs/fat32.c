@@ -516,7 +516,7 @@ fat_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mode)
       return -ENOMEM;
 
    h->fs = fs;
-   h->fops = static_ops_fat;
+   h->fops = &static_ops_fat;
 
    h->e = e;
    h->pos = 0;

@@ -49,12 +49,12 @@ static int ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out)
 
    if (inode->type == RAMFS_DIRECTORY) {
 
-      h->fops = static_ops_ramfs_file;
+      h->fops = &static_ops_ramfs_file;
 
    } else {
 
       ASSERT(inode->type == RAMFS_FILE);
-      h->fops = static_ops_ramfs_dir;
+      h->fops = &static_ops_ramfs_dir;
    }
 
    *out = h;
