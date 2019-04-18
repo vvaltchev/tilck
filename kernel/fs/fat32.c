@@ -476,6 +476,21 @@ STATIC int fat_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
+static const file_ops static_ops_fat = {
+
+   .read = fat_read,
+   .seek = fat_seek,
+   .stat = fat_stat64,
+   .write = fat_write,
+   .ioctl = fat_ioctl,
+   .fcntl = fat_fcntl,
+
+   .exlock = fat_file_exlock,
+   .exunlock = fat_file_exunlock,
+   .shlock = fat_file_shlock,
+   .shunlock = fat_file_shunlock,
+};
+
 STATIC int
 fat_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mode)
 {
@@ -501,17 +516,7 @@ fat_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mode)
       return -ENOMEM;
 
    h->fs = fs;
-   h->fops.read = fat_read;
-   h->fops.seek = fat_seek;
-   h->fops.stat = fat_stat64;
-   h->fops.write = fat_write;
-   h->fops.ioctl = fat_ioctl;
-   h->fops.fcntl = fat_fcntl;
-
-   h->fops.exlock = fat_file_exlock;
-   h->fops.exunlock = fat_file_exunlock;
-   h->fops.shlock = fat_file_shlock;
-   h->fops.shunlock = fat_file_shunlock;
+   h->fops = static_ops_fat;
 
    h->e = e;
    h->pos = 0;

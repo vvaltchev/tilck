@@ -204,14 +204,7 @@ int devfs_char_dev_stat64(fs_handle h, struct stat64 *statbuf)
 
 static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
 {
-   devfs_file_handle *h;
-
-   if (!(h = kzmalloc(sizeof(devfs_file_handle))))
-      return -ENOMEM;
-
-   h->type = DEVFS_DIRECTORY;
-   h->fs = fs;
-   h->fops = (file_ops) {
+   static const file_ops static_ops_devfs = {
       .read = devfs_dir_read,
       .write = devfs_dir_write,
       .seek = devfs_dir_seek,
@@ -225,6 +218,15 @@ static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
       .shlock = NULL,
       .shunlock = NULL,
    };
+
+   devfs_file_handle *h;
+
+   if (!(h = kzmalloc(sizeof(devfs_file_handle))))
+      return -ENOMEM;
+
+   h->type = DEVFS_DIRECTORY;
+   h->fs = fs;
+   h->fops = static_ops_devfs;
 
    *out = h;
    return 0;
