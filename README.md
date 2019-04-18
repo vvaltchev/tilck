@@ -114,6 +114,20 @@ for it is:
 
     ./build/run_multiboot_qemu -initrd ./build/fatpart
 
+#### Grub support
+
+`Tilck` can be easily booted with GRUB. Just edit your `/etc/grub.d/40_custom`
+file (or create another one) by adding an entry like:
+
+```
+menuentry "Tilck" {
+    multiboot <PATH-TO-TILCK>/tilck/build/elf_kernel_stripped
+    module --nounzip <PATH-TO-TILCK>/tilck/build/fatpart
+    boot
+}
+```
+After that, just run `update-grub` as root and reboot your machine.
+
 Hardware support
 --------------------
 
