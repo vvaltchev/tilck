@@ -291,6 +291,9 @@ devfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
          if (path[pl] == '/')
             return -ENOTDIR;
 
+         if ((fl & O_CREAT) && (fl & O_EXCL))
+            return -EEXIST;
+
          return devfs_open_file(fs, pos, out);
       }
    }

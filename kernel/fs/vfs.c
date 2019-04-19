@@ -135,9 +135,13 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(path != NULL);
+   ASSERT(*path == '/'); /* vfs_open() works only with absolute paths */
 
-   if (*path != '/')
-      panic("vfs_open() works only with absolute paths");
+   if (flags & O_ASYNC)
+      return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
+
+   if ((flags & __O_TMPFILE) == __O_TMPFILE)
+      return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
 
    pl = (u32)strlen(path);
    mountpoint_iter_begin(&cur);

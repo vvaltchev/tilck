@@ -72,6 +72,7 @@
       "interrupts.h": "c",
       "bintree.h": "c",
       "panic.h": "c",
-      "dir_entries.c.h": "c"
+      "dir_entries.c.h": "c",
+      "fs_int.h": "c"
    }
 }

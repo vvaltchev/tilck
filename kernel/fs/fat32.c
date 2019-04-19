@@ -508,8 +508,11 @@ fat_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mode)
       return err;
    }
 
+   if ((fl & O_CREAT) && (fl & O_EXCL))
+      return -EEXIST;
+
    if (!(fs->flags & VFS_FS_RW))
-      if ((fl & O_WRONLY) || (fl & O_APPEND))
+      if (fl & (O_WRONLY | O_RDWR))
          return -EROFS;
 
    if (!(h = kzmalloc(sizeof(fat_file_handle))))

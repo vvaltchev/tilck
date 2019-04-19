@@ -61,6 +61,29 @@ static int ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out)
    return 0;
 }
 
+static int ramfs_open_existing_checks(int fl, ramfs_inode *i)
+{
+   if (!(fl & O_WRONLY) && !(i->mode & 0400))
+      return -EACCES;
+
+   if ((fl & O_WRONLY) && !(i->mode & 0200))
+      return -EACCES;
+
+   if ((fl & O_RDWR) && !(i->mode & 0600))
+      return -EACCES;
+
+   if ((fl & O_DIRECTORY) && (i->type != RAMFS_DIRECTORY))
+      return -ENOTDIR;
+
+   if ((fl & O_CREAT) && (fl & O_EXCL))
+      return -EEXIST;
+
+   if ((fl & (O_WRONLY | O_RDWR)) && i->type == RAMFS_DIRECTORY)
+      return -EISDIR;
+
+   return 0;
+}
+
 static int
 ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 {
@@ -70,6 +93,7 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
    ramfs_inode *i = NULL;
    ramfs_entry *e;
    const char *pc;
+   int rc;
 
    /*
     * Path is expected to be striped from the mountpoint prefix, but the '/'
@@ -130,8 +154,6 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 
    if (!i) {
 
-      int rc;
-
       if (!(fl & O_CREAT))
          return -ENOENT;
 
@@ -145,14 +167,8 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 
    } else {
 
-      if (!(fl & O_WRONLY) && !(i->mode & 0400))
-         return -EACCES;
-
-      if ((fl & O_WRONLY) && !(i->mode & 0200))
-         return -EACCES;
-
-      if ((fl & O_RDWR) && !(i->mode & 0600))
-         return -EACCES;
+      if ((rc = ramfs_open_existing_checks(fl, i)))
+         return rc;
    }
 
    return ramfs_open_int(fs, i, out);
