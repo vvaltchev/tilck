@@ -54,6 +54,39 @@ static sptr ramfs_find_block_cmp(const void *obj, const void *valptr)
    return (sptr)block->offset - (sptr)searched_off;
 }
 
+
+static int ramfs_drop_blocks(void *obj_block, void *arg)
+{
+   ramfs_block *b = obj_block;
+   off_t cutoff = *(off_t *)arg;
+
+   if ((off_t)b->offset < cutoff)
+      return 0;
+
+   kfree2(b->vaddr, PAGE_SIZE);
+   kfree2(b, sizeof(ramfs_block));
+
+   /* The bintree MUST NOT need to use obj after the callback returns */
+   DEBUG_ONLY(bzero(b, sizeof(ramfs_block)));
+   return 0;
+}
+
+static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
+{
+   // TODO: ASSERT that we're holding an exclusive lock on the inode
+
+   bintree_in_order_visit(i->blocks_tree_root,
+                          ramfs_drop_blocks,
+                          &len,
+                          ramfs_block,
+                          node);
+
+   i->blocks_tree_root = NULL;
+   i->fsize = 0;
+   i->blocks_count = 0;
+   return 0;
+}
+
 static ssize_t ramfs_file_read(fs_handle h, char *buf, size_t len)
 {
    ramfs_handle *rh = h;

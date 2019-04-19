@@ -140,7 +140,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    if (flags & O_ASYNC)
       return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
 
-   if ((flags & __O_TMPFILE) == __O_TMPFILE)
+   if ((flags & O_TMPFILE) == O_TMPFILE)
       return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
 
    pl = (u32)strlen(path);
@@ -173,15 +173,12 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
     *
     * TODO: make open() to NOT lock the whole FS.
     */
-   if (flags & O_CREAT) {
-      vfs_fs_exlock(fs);
+
+   vfs_fs_exlock(fs);
+   {
       rc = fs->fsops->open(fs, fs_path, out, flags, mode);
-      vfs_fs_exunlock(fs);
-   } else {
-      vfs_fs_shlock(fs);
-      rc = fs->fsops->open(fs, fs_path, out, flags, mode);
-      vfs_fs_shunlock(fs);
    }
+   vfs_fs_exunlock(fs);
 
    if (rc == 0) {
 

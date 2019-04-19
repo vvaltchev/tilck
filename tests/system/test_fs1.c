@@ -109,12 +109,14 @@ int cmd_fs1(int argc, char **argv)
 int cmd_fs2(int argc, char **argv)
 {
    int fd, rc;
+   char buf[32];
+   struct stat statbuf;
 
    fd = creat("/tmp/new_file", 0644);
    DEVSHELL_CMD_ASSERT(fd > 0);
 
-   rc = write(fd, "test", 4);
-   DEVSHELL_CMD_ASSERT(rc == 4);
+   rc = write(fd, "test\n", 5);
+   DEVSHELL_CMD_ASSERT(rc == 5);
 
    close(fd);
 
@@ -127,6 +129,22 @@ int cmd_fs2(int argc, char **argv)
    rc = creat("/tmp/new_file", 0644);
    DEVSHELL_CMD_ASSERT(rc > 0);
    close(rc);
+
+   /*
+    * Now, since creat() implies O_TRUNC, we have to check that the file has
+    * been actually truncated.
+    */
+
+   fd = open("/tmp/new_file", O_RDONLY);
+   DEVSHELL_CMD_ASSERT(fd > 0);
+   rc = read(fd, buf, sizeof(buf));
+   DEVSHELL_CMD_ASSERT(rc == 0);
+   close(fd);
+
+   rc = stat("/tmp/new_file", &statbuf);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+   DEVSHELL_CMD_ASSERT(statbuf.st_size == 0);
+   DEVSHELL_CMD_ASSERT(statbuf.st_blocks == 0);
 
    /* Instead, this open() call using O_EXCL is expected to FAIL */
    rc = open("/tmp/new_file", O_CREAT | O_EXCL | O_WRONLY, 0644);

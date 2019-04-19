@@ -82,3 +82,7 @@ struct k_rusage {
 #ifdef BITS32
    STATIC_ASSERT(sizeof(struct k_rusage) == 136);
 #endif
+
+#ifndef O_TMPFILE
+   #define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
+#endif

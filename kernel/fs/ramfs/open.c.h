@@ -37,7 +37,8 @@ static const file_ops static_ops_ramfs_dir = {
    .shunlock = ramfs_file_shunlock,
 };
 
-static int ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out)
+static int
+ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out, int fl)
 {
    ramfs_handle *h;
 
@@ -55,6 +56,9 @@ static int ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out)
 
       ASSERT(inode->type == RAMFS_FILE);
       h->fops = &static_ops_ramfs_dir;
+
+      if (fl & O_TRUNC)
+         ramfs_inode_truncate(inode, 0);
    }
 
    *out = h;
@@ -80,6 +84,14 @@ static int ramfs_open_existing_checks(int fl, ramfs_inode *i)
 
    if ((fl & (O_WRONLY | O_RDWR)) && i->type == RAMFS_DIRECTORY)
       return -EISDIR;
+
+   /*
+    * On some systems O_TRUNC | O_RDONLY has undefined behavior and on some
+    * the file might actually be truncated. On Tilck, that is simply NOT
+    * allowed.
+    */
+   if ((fl & O_TRUNC) && !(fl & (O_WRONLY | O_RDWR)))
+      return -EINVAL;
 
    return 0;
 }
@@ -171,5 +183,5 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
          return rc;
    }
 
-   return ramfs_open_int(fs, i, out);
+   return ramfs_open_int(fs, i, out, fl);
 }
