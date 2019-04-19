@@ -94,6 +94,8 @@ static void read_past_end(void)
    printf("read returned: %d\n", rc);
    printf("buf: '%s'\n", buf);
    close(fd);
+
+   unlink("/tmp/test1");
 }
 
 int cmd_fs1(int argc, char **argv)
@@ -102,4 +104,35 @@ int cmd_fs1(int argc, char **argv)
    write_on_test_file();
    read_past_end();
    return 0;
+}
+
+int cmd_fs2(int argc, char **argv)
+{
+   int fd, rc;
+
+   fd = creat("/tmp/new_file", 0644);
+   DEVSHELL_CMD_ASSERT(fd > 0);
+
+   rc = write(fd, "test", 4);
+   DEVSHELL_CMD_ASSERT(rc == 4);
+
+   close(fd);
+
+   /*
+    * Being creat(path, mode) equivalent to:
+    *    open(path, O_CREAT|O_WRONLY|O_TRUNC, mode)
+    * we expect creat() to succeed even if the file already exists.
+    */
+
+   rc = creat("/tmp/new_file", 0644);
+   DEVSHELL_CMD_ASSERT(rc > 0);
+   close(rc);
+
+   /* Instead, this open() call using O_EXCL is expected to FAIL */
+   rc = open("/tmp/new_file", O_CREAT | O_EXCL | O_WRONLY, 0644);
+
+   DEVSHELL_CMD_ASSERT(rc < 0);
+   DEVSHELL_CMD_ASSERT(errno == EEXIST);
+
+   unlink("/tmp/new_file");
 }

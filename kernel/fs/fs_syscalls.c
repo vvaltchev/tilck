@@ -96,6 +96,17 @@ no_fds:
    goto end;
 }
 
+int sys_creat(const char *user_path, mode_t mode)
+{
+   return sys_open(user_path, O_CREAT | O_WRONLY | O_TRUNC, mode);
+}
+
+int sys_unlink(const char *pathname)
+{
+   // TODO: implement sys_unlink()
+   return 0;
+}
+
 int sys_close(int fd)
 {
    task_info *curr = get_curr_task();

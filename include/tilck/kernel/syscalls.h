@@ -36,10 +36,11 @@ int sys_write(int fd, const void *buf, size_t count);
 int sys_open(const char *pathname, int flags, mode_t mode);
 int sys_close(int fd);
 int sys_waitpid(int pid, int *wstatus, int options);
+int sys_creat(const char *pathname, mode_t mode);
 
-CREATE_STUB_SYSCALL_IMPL(sys_creat)
 CREATE_STUB_SYSCALL_IMPL(sys_link)
-CREATE_STUB_SYSCALL_IMPL(sys_unlink)
+
+int sys_unlink(const char *pathname);
 
 int sys_execve(const char *filename,
                const char *const *argv,

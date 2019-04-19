@@ -67,6 +67,7 @@ considered as *not implemented yet*.
  sys_select          | full
  sys_poll            | full
  sys_readlink        | compliant stub
+ sys_creat           | full
 
 Definitions:
 
