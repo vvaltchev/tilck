@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+#include <tilck/common/utils.h>
 
 static int ramfs_file_ioctl(fs_handle h, uptr cmd, void *argp)
 {
@@ -54,7 +55,6 @@ static sptr ramfs_find_block_cmp(const void *obj, const void *valptr)
    return (sptr)block->offset - (sptr)searched_off;
 }
 
-
 static int ramfs_drop_blocks(void *obj_block, void *arg)
 {
    ramfs_block *b = obj_block;
@@ -66,14 +66,17 @@ static int ramfs_drop_blocks(void *obj_block, void *arg)
    kfree2(b->vaddr, PAGE_SIZE);
    kfree2(b, sizeof(ramfs_block));
 
-   /* The bintree MUST NOT need to use obj after the callback returns */
+   /* The bintree MUST NOT use the obj after the callback returns */
    DEBUG_ONLY(bzero(b, sizeof(ramfs_block)));
    return 0;
 }
 
 static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
 {
-   // TODO: ASSERT that we're holding an exclusive lock on the inode
+   ASSERT(rwlock_wp_holding_exlock(&i->rwlock));
+
+   if (len < 0 || (size_t)len > i->fsize)
+      return -EINVAL;
 
    bintree_in_order_visit(i->blocks_tree_root,
                           ramfs_drop_blocks,
@@ -82,8 +85,8 @@ static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
                           node);
 
    i->blocks_tree_root = NULL;
-   i->fsize = 0;
-   i->blocks_count = 0;
+   i->fsize = (size_t) len;
+   i->blocks_count = round_up_at((uptr) len, PAGE_SIZE);
    return 0;
 }
 

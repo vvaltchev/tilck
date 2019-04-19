@@ -52,7 +52,7 @@ struct ramfs_inode {
    mode_t mode;                        /* permissions + special flags */
    rwlock_wp rwlock;
    size_t fsize;
-   size_t blocks_count;
+   size_t blocks_count;                /* count of page-size blocks */
 
    union {
       ramfs_block *blocks_tree_root;   /* valid when type == RAMFS_FILE */

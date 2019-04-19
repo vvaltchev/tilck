@@ -57,8 +57,13 @@ ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out, int fl)
       ASSERT(inode->type == RAMFS_FILE);
       h->fops = &static_ops_ramfs_dir;
 
-      if (fl & O_TRUNC)
-         ramfs_inode_truncate(inode, 0);
+      if (fl & O_TRUNC) {
+         rwlock_wp_exlock(&inode->rwlock);
+         {
+            ramfs_inode_truncate(inode, 0);
+         }
+         rwlock_wp_exunlock(&inode->rwlock);
+      }
    }
 
    *out = h;

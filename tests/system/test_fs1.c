@@ -81,11 +81,7 @@ static void read_past_end(void)
    char buf[32] = { [0 ... 30] = 'a', [31] = 0 };
 
    fd = open("/tmp/test1", O_RDONLY);
-
-   if (fd < 0) {
-      perror("open failed");
-      exit(1);
-   }
+   DEVSHELL_CMD_ASSERT(fd > 0);
 
    off = lseek(fd, 64 * 1024, SEEK_SET);
    printf("off: %d\n", (int)off);
@@ -98,11 +94,17 @@ static void read_past_end(void)
    unlink("/tmp/test1");
 }
 
+static void truncate_test_file(void)
+{
+
+}
+
 int cmd_fs1(int argc, char **argv)
 {
    create_test_file();
    write_on_test_file();
    read_past_end();
+   truncate_test_file();
    return 0;
 }
 
