@@ -17,9 +17,9 @@
 static rwlock_rp test_rwlrp;
 static rwlock_wp test_rwlwp;
 
-static int sekrp_vars[3];
-static const int sek_rp_set_1[3] = {1, 2, 3};
-static const int sek_rp_set_2[3] = {10, 20, 30};
+static int se_rwlock_vars[3];
+static const int se_rwlock_set_1[3] = {1, 2, 3};
+static const int se_rwlock_set_2[3] = {10, 20, 30};
 static ATOMIC(int) readers_running;
 static ATOMIC(int) writers_running;
 
@@ -52,23 +52,23 @@ static se_rwlock_ctx se_wp_ctx =
 };
 
 
-static void sek_set_vars(const int *set)
+static void se_rwlock_set_vars(const int *set)
 {
-   for (u32 i = 0; i < ARRAY_SIZE(sekrp_vars); i++) {
-      sekrp_vars[i] = set[i];
+   for (u32 i = 0; i < ARRAY_SIZE(se_rwlock_vars); i++) {
+      se_rwlock_vars[i] = set[i];
       kernel_yield();
    }
 }
 
-static void sek_check_set_eq(const int *set)
+static void se_rwlock_check_set_eq(const int *set)
 {
-   for (u32 i = 0; i < ARRAY_SIZE(sekrp_vars); i++) {
-      VERIFY(sekrp_vars[i] == set[i]);
+   for (u32 i = 0; i < ARRAY_SIZE(se_rwlock_vars); i++) {
+      VERIFY(se_rwlock_vars[i] == set[i]);
       kernel_yield();
    }
 }
 
-static void sek_rp_read_thread(void *arg)
+static void se_rwlock_read_thread(void *arg)
 {
    se_rwlock_ctx *ctx = arg;
    readers_running++;
@@ -77,10 +77,10 @@ static void sek_rp_read_thread(void *arg)
 
       ctx->shlock(ctx->arg);
       {
-         if (sekrp_vars[0] == sek_rp_set_1[0])
-            sek_check_set_eq(sek_rp_set_1);
+         if (se_rwlock_vars[0] == se_rwlock_set_1[0])
+            se_rwlock_check_set_eq(se_rwlock_set_1);
          else
-            sek_check_set_eq(sek_rp_set_2);
+            se_rwlock_check_set_eq(se_rwlock_set_2);
       }
       ctx->shunlock(ctx->arg);
    }
@@ -88,7 +88,7 @@ static void sek_rp_read_thread(void *arg)
    readers_running--;
 }
 
-static void sek_rp_write_thread(void *arg)
+static void se_rwlock_write_thread(void *arg)
 {
    se_rwlock_ctx *ctx = arg;
    writers_running++;
@@ -99,15 +99,15 @@ static void sek_rp_write_thread(void *arg)
       {
          kernel_yield();
 
-         if (sekrp_vars[0] == sek_rp_set_1[0]) {
+         if (se_rwlock_vars[0] == se_rwlock_set_1[0]) {
 
-            sek_check_set_eq(sek_rp_set_1);
-            sek_set_vars(sek_rp_set_2);
+            se_rwlock_check_set_eq(se_rwlock_set_1);
+            se_rwlock_set_vars(se_rwlock_set_2);
 
          } else {
 
-            sek_check_set_eq(sek_rp_set_2);
-            sek_set_vars(sek_rp_set_1);
+            se_rwlock_check_set_eq(se_rwlock_set_2);
+            se_rwlock_set_vars(se_rwlock_set_1);
          }
 
          kernel_yield();
@@ -118,17 +118,17 @@ static void sek_rp_write_thread(void *arg)
    writers_running--;
 }
 
-static void se_rwlock_rp_common(int *rt, int *wt, se_rwlock_ctx *ctx)
+static void se_rwlock_common(int *rt, int *wt, se_rwlock_ctx *ctx)
 {
-   sek_set_vars(sek_rp_set_1);
+   se_rwlock_set_vars(se_rwlock_set_1);
 
    for (u32 i = 0; i < RWLOCK_READERS; i++) {
-      rt[i] = kthread_create(sek_rp_read_thread, ctx);
+      rt[i] = kthread_create(se_rwlock_read_thread, ctx);
       VERIFY(rt[i] > 0);
    }
 
    for (u32 i = 0; i < RWLOCK_WRITERS; i++) {
-      wt[i] = kthread_create(sek_rp_write_thread, ctx);
+      wt[i] = kthread_create(se_rwlock_write_thread, ctx);
       VERIFY(wt[i] > 0);
    }
 }
@@ -152,7 +152,7 @@ void selftest_rwlock_rp_med()
    printk("-------- sub-test: join readers and then writers -----------\n");
    for (retry = 0; retry < RETRY_COUNT; retry++) {
 
-      se_rwlock_rp_common(rt, wt, &se_rp_ctx);
+      se_rwlock_common(rt, wt, &se_rp_ctx);
       kthread_join_all(rt, ARRAY_SIZE(rt));
       printk("After readers, running writers: %d\n", writers_running);
 
@@ -169,7 +169,7 @@ void selftest_rwlock_rp_med()
 
    printk("-------- sub-test: join writers and then readers -----------\n");
    for (retry = 0; retry < RETRY_COUNT; retry++) {
-      se_rwlock_rp_common(rt, wt, &se_rp_ctx);
+      se_rwlock_common(rt, wt, &se_rp_ctx);
       kthread_join_all(wt, ARRAY_SIZE(wt));
       printk("After writers, running readers: %d\n", readers_running);
 
@@ -207,7 +207,7 @@ void selftest_rwlock_wp_med()
 
    for (retry = 0; retry < RETRY_COUNT; retry++) {
 
-      se_rwlock_rp_common(rt, wt, &se_wp_ctx);
+      se_rwlock_common(rt, wt, &se_wp_ctx);
       kthread_join_all(rt, ARRAY_SIZE(rt));
       printk("After readers, running writers: %d\n", writers_running);
 
@@ -227,7 +227,7 @@ void selftest_rwlock_wp_med()
 
    for (retry = 0; retry < RETRY_COUNT; retry++) {
 
-      se_rwlock_rp_common(rt, wt, &se_wp_ctx);
+      se_rwlock_common(rt, wt, &se_wp_ctx);
       kthread_join_all(wt, ARRAY_SIZE(wt));
       printk("After writers, running readers: %d\n", readers_running);
 
