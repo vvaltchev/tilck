@@ -284,8 +284,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_ftruncate64)
 
 int sys_stat64(const char *user_path, struct stat64 *user_statbuf);
 int sys_lstat64(const char *user_path, struct stat64 *user_statbuf);
+int sys_fstat64(int fd, struct stat64 *user_statbuf);
 
-CREATE_STUB_SYSCALL_IMPL(sys_fstat64)
 CREATE_STUB_SYSCALL_IMPL(sys_lchown)
 
 int sys_getuid();

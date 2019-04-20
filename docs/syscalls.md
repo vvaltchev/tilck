@@ -44,6 +44,7 @@ considered as *not implemented yet*.
  sys_getcwd          | full
  sys_mmap_pgoff      | partial
  sys_stat64          | full
+ sys_fstat64         | full
  sys_lstat64         | partial
  sys_getuid          | compliant [3]
  sys_getgid          | compliant [3]

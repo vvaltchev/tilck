@@ -335,6 +335,24 @@ int sys_lstat64(const char *user_path, struct stat64 *user_statbuf)
    return sys_stat64(user_path, user_statbuf);
 }
 
+int sys_fstat64(int fd, struct stat64 *user_statbuf)
+{
+   struct stat64 statbuf;
+   fs_handle h;
+   int rc = 0;
+
+   if (!(h = get_fs_handle(fd)))
+      return -EBADF;
+
+   if ((rc = vfs_fstat64(h, &statbuf)))
+      return rc;
+
+   if (copy_to_user(user_statbuf, &statbuf, sizeof(struct stat64)))
+      rc = -EFAULT;
+
+   return rc;
+}
+
 int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
 {
    /*

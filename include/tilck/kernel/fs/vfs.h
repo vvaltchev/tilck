@@ -148,8 +148,8 @@ int vfs_stat64(const char *path, struct stat64 *statbuf);
 int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
-void vfs_close(fs_handle h);
 int vfs_fcntl(fs_handle h, int cmd, int arg);
+void vfs_close(fs_handle h);
 
 bool vfs_read_ready(fs_handle h);
 bool vfs_write_ready(fs_handle h);
