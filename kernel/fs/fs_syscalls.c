@@ -322,7 +322,7 @@ int sys_stat64(const char *user_path, struct stat64 *user_statbuf)
 
    ASSERT(h != NULL);
 
-   if ((rc = vfs_stat64(h, &statbuf)) < 0)
+   if ((rc = vfs_fstat64(h, &statbuf)) < 0)
       goto out;
 
    if (copy_to_user(user_statbuf, &statbuf, sizeof(struct stat64)))

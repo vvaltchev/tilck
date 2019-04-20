@@ -102,7 +102,7 @@ create_fb_device(int minor, const file_ops **fops_ref, enum devfs_entry *t)
       .ioctl = fb_ioctl,
       .mmap = fbdev_mmap,
       .munmap = fbdev_munmap,
-      .stat = devfs_char_dev_stat64,
+      .fstat = devfs_char_dev_stat64,
    };
 
    *t = DEVFS_CHAR_DEVICE;

@@ -331,7 +331,7 @@ int vfs_ioctl(fs_handle h, uptr request, void *argp)
    return ret;
 }
 
-int vfs_stat64(fs_handle h, struct stat64 *statbuf)
+int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
@@ -339,11 +339,11 @@ int vfs_stat64(fs_handle h, struct stat64 *statbuf)
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;
 
-   ASSERT(hb->fops->stat != NULL); /* stat is NOT optional */
+   ASSERT(hb->fops->fstat != NULL); /* stat is NOT optional */
 
    vfs_shlock(h);
    {
-      ret = hb->fops->stat(h, statbuf);
+      ret = hb->fops->fstat(h, statbuf);
    }
    vfs_shunlock(h);
    return ret;

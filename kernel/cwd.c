@@ -36,7 +36,7 @@ int sys_chdir(const char *user_path)
 
       ASSERT(h != NULL);
 
-      rc = vfs_stat64(h, &statbuf);
+      rc = vfs_fstat64(h, &statbuf);
       vfs_close(h);
 
       if (rc < 0)

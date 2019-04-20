@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static int ramfs_stat64(fs_handle h, struct stat64 *statbuf)
+static int ramfs_fstat64(fs_handle h, struct stat64 *statbuf)
 {
    if (!h)
       return -ENOENT;

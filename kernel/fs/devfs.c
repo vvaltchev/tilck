@@ -210,7 +210,7 @@ static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
       .write = devfs_dir_write,
       .seek = devfs_dir_seek,
       .ioctl = devfs_dir_ioctl,
-      .stat = devfs_dir_stat64,
+      .fstat = devfs_dir_stat64,
       .fcntl = devfs_dir_fcntl,
       .mmap = NULL,
       .munmap = NULL,
@@ -249,7 +249,7 @@ static int devfs_open_file(filesystem *fs, devfs_file *pos, fs_handle *out)
    h->devfs_file_ptr = pos;
    h->fs = fs;
    h->fops = pos->fops;
-   ASSERT(h->fops->stat != NULL);
+   ASSERT(h->fops->fstat != NULL);
 
    *out = h;
    return 0;

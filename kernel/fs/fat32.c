@@ -480,7 +480,7 @@ static const file_ops static_ops_fat =
 {
    .read = fat_read,
    .seek = fat_seek,
-   .stat = fat_stat64,
+   .fstat = fat_stat64,
    .write = fat_write,
    .ioctl = fat_ioctl,
    .fcntl = fat_fcntl,
