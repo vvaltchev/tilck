@@ -24,8 +24,8 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
 {
    fat_file_handle *h = (fat_file_handle *) handle;
    fat_fs_device_data *d = h->fs->device_data;
-   u32 fsize = h->e->DIR_FileSize;
-   size_t written_to_buf = 0;
+   off_t fsize = (off_t)h->e->DIR_FileSize;
+   off_t written_to_buf = 0;
 
    if (h->pos >= fsize) {
 
@@ -40,17 +40,17 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
 
       char *data = fat_get_pointer_to_cluster_data(d->hdr, h->curr_cluster);
 
-      const ssize_t file_rem = (ssize_t)(fsize - h->pos);
-      const ssize_t buf_rem = (ssize_t)(bufsize - written_to_buf);
-      const size_t cluster_offset = h->pos % d->cluster_size;
-      const ssize_t cluster_rem = (ssize_t)(d->cluster_size - cluster_offset);
-      const ssize_t to_read = MIN3(cluster_rem, buf_rem, file_rem);
+      const off_t file_rem       = fsize - h->pos;
+      const off_t buf_rem        = (off_t)bufsize - written_to_buf;
+      const off_t cluster_off    = h->pos % (off_t)d->cluster_size;
+      const off_t cluster_rem    = (off_t)d->cluster_size - cluster_off;
+      const off_t to_read        = MIN3(cluster_rem, buf_rem, file_rem);
 
       ASSERT(to_read >= 0);
 
-      memcpy(buf + written_to_buf, data + cluster_offset, (size_t)to_read);
-      written_to_buf += (size_t)to_read;
-      h->pos += (size_t)to_read;
+      memcpy(buf + written_to_buf, data + cluster_off, (size_t)to_read);
+      written_to_buf += to_read;
+      h->pos += to_read;
 
       if (to_read < cluster_rem) {
 
@@ -95,35 +95,34 @@ fat_seek_forward(fs_handle handle, off_t dist)
 {
    fat_file_handle *h = (fat_file_handle *) handle;
    fat_fs_device_data *d = h->fs->device_data;
-   u32 fsize = h->e->DIR_FileSize;
-   ssize_t moved_distance = 0;
+   off_t fsize = (off_t)h->e->DIR_FileSize;
+   off_t moved_distance = 0;
 
    if (dist == 0)
-      return (off_t)h->pos;
+      return h->pos;
 
-   if ((off_t)h->pos + dist > (off_t)fsize) {
+   if (h->pos + dist > fsize) {
       /* Allow, like Linux does, to seek past the end of a file. */
-      h->pos += (u32) dist;
+      h->pos += dist;
       h->curr_cluster = (u32) -1; /* invalid cluster */
       return (off_t) h->pos;
    }
 
    do {
 
-      const ssize_t file_rem = (ssize_t)(fsize - h->pos);
-      const ssize_t dist_rem = (ssize_t)(dist - moved_distance);
-      const size_t cluster_offset = h->pos % d->cluster_size;
-      const ssize_t cluster_rem = (ssize_t)(d->cluster_size - cluster_offset);
-      const ssize_t to_move = MIN3(cluster_rem, dist_rem, file_rem);
+      const off_t file_rem       = fsize - h->pos;
+      const off_t dist_rem       = dist - moved_distance;
+      const off_t cluster_off    = h->pos % (off_t)d->cluster_size;
+      const off_t cluster_rem    = (off_t)d->cluster_size - cluster_off;
+      const off_t to_move        = MIN3(cluster_rem, dist_rem, file_rem);
 
       ASSERT(to_move >= 0);
 
-      moved_distance += (size_t)to_move;
-      h->pos += (size_t)to_move;
+      moved_distance += to_move;
+      h->pos += to_move;
 
-      if (to_move < cluster_rem) {
+      if (to_move < cluster_rem)
          break;
-      }
 
       // find the next cluster
       u32 fatval = fat_read_fat_entry(d->hdr, d->type, h->curr_cluster, 0);

@@ -27,7 +27,7 @@ typedef struct {
 
    /* fs-specific members */
    fat_entry *e;
-   u32 pos;
+   off_t pos;
    u32 curr_cluster;
    u32 curr_file_index; /* used by fat_getdents64 */
 
