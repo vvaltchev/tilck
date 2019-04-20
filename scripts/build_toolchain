@@ -589,7 +589,7 @@ function compiler_checks {
       fi
 
       if [ "$cc_compiler" != "gcc" ]; then
-         echo "ERROR: USE_SYSCC=1 is NOT supported with compilers other than GCC."
+         echo "ERROR: USE_SYSCC=1 is NOT supported with compilers != GCC."
          exit 1
       fi
 

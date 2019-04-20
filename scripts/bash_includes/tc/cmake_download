@@ -48,8 +48,8 @@ function download_cmake {
             download_cmake_internal
          else
             echo "ERROR: cmake >= 3.2 NOT FOUND on the system"
-            echo "In this *unofficially* supported scenario where HOST_ARCH != $BUILD_ARCH"
-            echo "you have to manually install cmake on your system"
+            echo "In this *unofficially* supported scenario where HOST_ARCH !="
+            echo " $BUILD_ARCH you have to manually install cmake on the system"
             exit 1
          fi
 
