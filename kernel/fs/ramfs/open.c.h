@@ -2,11 +2,11 @@
 
 static const file_ops static_ops_ramfs = {
 
-   .read = ramfs_file_read,
-   .write = ramfs_file_write,
-   .seek = ramfs_file_seek,
-   .ioctl = ramfs_file_ioctl,
-   .fcntl = ramfs_file_fcntl,
+   .read = ramfs_read,
+   .write = ramfs_write,
+   .seek = ramfs_seek,
+   .ioctl = ramfs_ioctl,
+   .fcntl = ramfs_fcntl,
    .stat = ramfs_stat64,
    .mmap = NULL,
    .munmap = NULL,

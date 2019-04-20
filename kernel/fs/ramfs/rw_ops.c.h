@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 #include <tilck/common/utils.h>
 
-static int ramfs_file_ioctl(fs_handle h, uptr cmd, void *argp)
+static int ramfs_ioctl(fs_handle h, uptr cmd, void *argp)
 {
    return -EINVAL;
 }
 
-static int ramfs_file_fcntl(fs_handle h, int cmd, int arg)
+static int ramfs_fcntl(fs_handle h, int cmd, int arg)
 {
    return -EINVAL;
 }
 
-static off_t ramfs_file_seek(fs_handle h, off_t off, int whence)
+static off_t ramfs_seek(fs_handle h, off_t off, int whence)
 {
    ramfs_handle *rh = h;
 
@@ -90,7 +90,7 @@ static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
    return 0;
 }
 
-static ssize_t ramfs_file_read(fs_handle h, char *buf, size_t len)
+static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
 {
    ramfs_handle *rh = h;
    ramfs_inode *inode = rh->inode;
@@ -141,7 +141,7 @@ static ssize_t ramfs_file_read(fs_handle h, char *buf, size_t len)
    return (ssize_t) tot_read;
 }
 
-static ssize_t ramfs_file_write(fs_handle h, char *buf, size_t len)
+static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
 {
    ramfs_handle *rh = h;
    ramfs_inode *inode = rh->inode;
