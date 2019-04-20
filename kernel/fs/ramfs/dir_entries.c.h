@@ -53,28 +53,3 @@ ramfs_dir_get_entry_by_name(ramfs_inode *idir, const char *name, ssize_t len)
 
    return NULL;
 }
-
-static ssize_t ramfs_dir_read(fs_handle h, char *buf, size_t len)
-{
-   return -EINVAL;
-}
-
-static ssize_t ramfs_dir_write(fs_handle h, char *buf, size_t len)
-{
-   return -EINVAL;
-}
-
-static off_t ramfs_dir_seek(fs_handle h, off_t offset, int whence)
-{
-   return -EINVAL;
-}
-
-static int ramfs_dir_ioctl(fs_handle h, uptr request, void *arg)
-{
-   return -EINVAL;
-}
-
-static int ramfs_dir_fcntl(fs_handle h, int cmd, int arg)
-{
-   return -EINVAL;
-}

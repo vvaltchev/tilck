@@ -295,6 +295,9 @@ off_t vfs_seek(fs_handle h, s64 off, int whence)
    ASSERT(h != NULL);
    off_t ret;
 
+   if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)
+      return -EINVAL; /* Tilck does NOT support SEEK_DATA and SEEK_HOLE */
+
    fs_handle_base *hb = (fs_handle_base *) h;
 
    if (!hb->fops->seek)

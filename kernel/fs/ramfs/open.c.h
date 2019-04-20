@@ -1,36 +1,15 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static const file_ops static_ops_ramfs_file = {
-
-   /* funcs just returning an error */
-   .read = ramfs_dir_read,
-   .write = ramfs_dir_write,
-   .seek = ramfs_dir_seek,
-   .ioctl = ramfs_dir_ioctl,
-   .fcntl = ramfs_dir_fcntl,
-
-   /* optional funcs left NULL */
-   .mmap = NULL,
-   .munmap = NULL,
-
-   /* actual funcs */
-   .stat = ramfs_stat64,
-   .exlock = ramfs_file_exlock,
-   .exunlock = ramfs_file_exunlock,
-   .shlock = ramfs_file_shlock,
-   .shunlock = ramfs_file_shunlock,
-};
-
-static const file_ops static_ops_ramfs_dir = {
+static const file_ops static_ops_ramfs = {
 
    .read = ramfs_file_read,
    .write = ramfs_file_write,
    .seek = ramfs_file_seek,
    .ioctl = ramfs_file_ioctl,
-   .mmap = NULL,
-   .munmap = NULL,
    .fcntl = ramfs_file_fcntl,
    .stat = ramfs_stat64,
+   .mmap = NULL,
+   .munmap = NULL,
    .exlock = ramfs_file_exlock,
    .exunlock = ramfs_file_exunlock,
    .shlock = ramfs_file_shlock,
@@ -47,23 +26,12 @@ ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out, int fl)
 
    h->inode = inode;
    h->fs = fs;
+   h->fops = &static_ops_ramfs;
 
-   if (inode->type == RAMFS_DIRECTORY) {
-
-      h->fops = &static_ops_ramfs_file;
-
-   } else {
-
-      ASSERT(inode->type == RAMFS_FILE);
-      h->fops = &static_ops_ramfs_dir;
-
-      if (fl & O_TRUNC) {
-         rwlock_wp_exlock(&inode->rwlock);
-         {
-            ramfs_inode_truncate(inode, 0);
-         }
-         rwlock_wp_exunlock(&inode->rwlock);
-      }
+   if (fl & O_TRUNC) {
+      rwlock_wp_exlock(&inode->rwlock);
+      ramfs_inode_truncate(inode, 0);
+      rwlock_wp_exunlock(&inode->rwlock);
    }
 
    *out = h;
