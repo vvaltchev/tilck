@@ -15,12 +15,14 @@
 
 /* utils */
 #define RDTSC() __builtin_ia32_rdtsc()
-#define DEVSHELL_CMD_ASSERT(x)                                          \
-   do {                                                                 \
-      if (!(x)) {                                                       \
-         fprintf(stderr, "[devshell] test assert '%s' failed\n", #x);   \
-         exit(1);                                                       \
-      }                                                                 \
+#define DEVSHELL_CMD_ASSERT(x)                                              \
+   do {                                                                     \
+      if (!(x)) {                                                           \
+         fprintf(stderr, "[devshell] ASSERT '%s' FAILED.\n\t"               \
+                 "On:\t%s:%d\n\tERRNO:\t%s\n",                              \
+                 #x, __FILE__, __LINE__, strerror(errno));                  \
+         exit(1);                                                           \
+      }                                                                     \
    } while(0)
 
 

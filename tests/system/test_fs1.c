@@ -75,11 +75,11 @@ static void read_past_end(void)
    fd = open("/tmp/test1", O_RDONLY);
    DEVSHELL_CMD_ASSERT(fd > 0);
 
-   off = lseek(fd, 64 * 1024, SEEK_SET);
+   off = lseek(fd, 64 * KB, SEEK_SET);
    printf("off: %d\n", (int)off);
 
    rc = read(fd, buf, sizeof(buf));
-   printf("read returned: %d\n", rc);
+   DEVSHELL_CMD_ASSERT(rc == 0);
    printf("buf: '%s'\n", buf);
    close(fd);
 }
@@ -105,7 +105,6 @@ int cmd_fs2(int argc, char **argv)
 
    rc = write(fd, "test\n", 5);
    DEVSHELL_CMD_ASSERT(rc == 5);
-
    close(fd);
 
    /*
