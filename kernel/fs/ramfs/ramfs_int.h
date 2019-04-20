@@ -45,10 +45,15 @@ typedef struct {
 
 struct ramfs_inode {
 
+   /*
+    * Inode's ref-count is number of file handles currently pointing to this
+    * inode.
+    */
    REF_COUNTED_OBJECT;
 
    int inode;
    enum ramfs_entry type;
+   nlink_t nlink;
    mode_t mode;                        /* permissions + special flags */
    rwlock_wp rwlock;
    off_t fsize;                        /* file size in bytes */

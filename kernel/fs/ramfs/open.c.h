@@ -27,6 +27,7 @@ ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out, int fl)
    h->inode = inode;
    h->fs = fs;
    h->fops = &static_ops_ramfs;
+   retain_obj(inode);
 
    if (fl & O_TRUNC) {
       rwlock_wp_exlock(&inode->rwlock);

@@ -13,7 +13,7 @@ static int ramfs_fstat64(fs_handle h, struct stat64 *statbuf)
    statbuf->st_dev = rh->fs->device_id;
    statbuf->st_ino = (typeof(statbuf->st_ino)) inode->inode;
    statbuf->st_mode = inode->mode;
-   statbuf->st_nlink = (typeof(statbuf->st_nlink)) get_ref_count(inode);
+   statbuf->st_nlink = inode->nlink;
    statbuf->st_uid = 0;  /* root */
    statbuf->st_gid = 0;  /* root */
    statbuf->st_rdev = 0; /* device ID if a special file: therefore, NO. */

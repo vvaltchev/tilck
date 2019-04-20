@@ -24,6 +24,7 @@ static int ramfs_dup(fs_handle h, fs_handle *dup_h)
 static void ramfs_close(fs_handle h)
 {
    ramfs_handle *rh = h;
+   release_obj(rh->inode);
    kfree2(rh, sizeof(ramfs_handle));
 }
 

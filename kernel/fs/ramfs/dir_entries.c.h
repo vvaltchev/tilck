@@ -22,7 +22,7 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
       list_add_tail(&idir->entries_list, &e->node);
    }
    rwlock_wp_exunlock(&idir->rwlock);
-   retain_obj(ie);
+   ie->nlink++;
    return 0;
 }
 
@@ -37,7 +37,8 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
       list_remove(&e->node);
    }
    rwlock_wp_exunlock(&idir->rwlock);
-   release_obj(ie);
+   ASSERT(ie->nlink > 0);
+   ie->nlink--;
    kfree2(e, sizeof(ramfs_entry));
 }
 
