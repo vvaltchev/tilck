@@ -51,7 +51,7 @@ struct ramfs_inode {
    enum ramfs_entry type;
    mode_t mode;                        /* permissions + special flags */
    rwlock_wp rwlock;
-   size_t fsize;
+   off_t fsize;                        /* file size in bytes */
    size_t blocks_count;                /* count of page-size blocks */
 
    union {

@@ -75,7 +75,7 @@ static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
 {
    ASSERT(rwlock_wp_holding_exlock(&i->rwlock));
 
-   if (len < 0 || (size_t)len > i->fsize)
+   if (len < 0 || len > i->fsize)
       return -EINVAL;
 
    bintree_in_order_visit(i->blocks_tree_root,
@@ -85,7 +85,7 @@ static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
                           node);
 
    i->blocks_tree_root = NULL;
-   i->fsize = (size_t) len;
+   i->fsize = len;
    i->blocks_count = round_up_at((uptr) len, PAGE_SIZE);
    return 0;
 }
@@ -105,7 +105,7 @@ static ssize_t ramfs_file_read(fs_handle h, char *buf, size_t len)
       size_t page_off = (size_t)rh->pos & OFFSET_IN_PAGE_MASK;
       size_t page_rem = PAGE_SIZE - page_off;
 
-      if (rh->pos >= (off_t)inode->fsize)
+      if (rh->pos >= inode->fsize)
          break;
 
       size_t file_rem = (size_t)inode->fsize - (size_t)rh->pos;
@@ -194,8 +194,8 @@ static ssize_t ramfs_file_write(fs_handle h, char *buf, size_t len)
       buf_rem -= to_write;
       rh->pos += to_write;
 
-      if ((size_t)rh->pos > inode->fsize)
-         inode->fsize = (size_t) rh->pos;
+      if (rh->pos > inode->fsize)
+         inode->fsize = rh->pos;
    }
 
    if (len > 0 && !tot_written)
