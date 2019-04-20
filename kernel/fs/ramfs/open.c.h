@@ -133,9 +133,8 @@ ramfs_resolve_path(ramfs_data *d,
 
    rwlock_wp_shlock(&idir->rwlock);
    {
-      if ((e = ramfs_dir_get_entry_by_name(idir, pc, path - pc))) {
+      if ((e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
          *i_ref = e->inode;
-      }
    }
    rwlock_wp_shunlock(&idir->rwlock);
 

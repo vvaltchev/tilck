@@ -261,7 +261,7 @@ typedef struct {
 
    /* context variables */
    u32 offset;
-   u32 curr_file_index;
+   off_t curr_file_index;
 
    /* output variables */
    ssize_t rc;
@@ -282,7 +282,8 @@ fat_getdents64_cb(fat_header *hdr,
    struct linux_dirent64 ent;
    int rc;
 
-   if (ctx->curr_file_index < ctx->fh->curr_file_index) {
+   /* Reuse `pos` as file index in case a directory has been opened */
+   if (ctx->curr_file_index < ctx->fh->pos) {
       ctx->curr_file_index++;
       return 0;
    }
@@ -332,7 +333,7 @@ fat_getdents64_cb(fat_header *hdr,
 
    ctx->offset = (u32) ent.d_off; /* s64 to u32 precision drop */
    ctx->curr_file_index++;
-   ctx->fh->curr_file_index++;
+   ctx->fh->pos++;
    return 0;
 }
 
