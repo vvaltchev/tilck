@@ -70,18 +70,19 @@ static int ramfs_open_existing_checks(int fl, ramfs_inode *i)
 }
 
 static int
-ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
+ramfs_resolve_path(ramfs_data *d,
+                   const char *path,
+                   ramfs_inode **i_ref,
+                   ramfs_inode **idir_ref,
+                   const char **last_comp_ref)
 {
-   ramfs_data *d = fs->device_data;
    ramfs_inode *next_idir = NULL;
    ramfs_inode *idir = d->root;
-   ramfs_inode *i = NULL;
    ramfs_entry *e;
    const char *pc;
-   int rc;
 
    /*
-    * Path is expected to be striped from the mountpoint prefix, but the '/'
+    * Path is expected to be stripped from the mountpoint prefix, but the '/'
     * is kept. For example, if ramfs is mounted at /tmp, and the file /tmp/x
     * is referred, here will get path == "/x".
     */
@@ -132,10 +133,28 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 
    rwlock_wp_shlock(&idir->rwlock);
    {
-      if ((e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
-         i = e->inode;
+      if ((e = ramfs_dir_get_entry_by_name(idir, pc, path - pc))) {
+         *i_ref = e->inode;
+      }
    }
    rwlock_wp_shunlock(&idir->rwlock);
+
+   *idir_ref = idir;
+   *last_comp_ref = pc;
+   return 0;
+}
+
+static int
+ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
+{
+   ramfs_data *d = fs->device_data;
+   const char *last_comp = NULL;
+   ramfs_inode *idir = NULL;
+   ramfs_inode *i = NULL;
+   int rc;
+
+   if ((rc = ramfs_resolve_path(d, path, &i, &idir, &last_comp)))
+      return rc;
 
    if (!i) {
 
@@ -147,7 +166,7 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
       if (!(i = ramfs_create_inode_file(d, mod, idir)))
          return -ENOSPC;
 
-      if ((rc = ramfs_dir_add_entry(idir, pc, i)))
+      if ((rc = ramfs_dir_add_entry(idir, last_comp, i)))
          return rc;
 
    } else {
