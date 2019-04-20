@@ -204,7 +204,8 @@ int devfs_char_dev_stat64(fs_handle h, struct stat64 *statbuf)
 
 static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
 {
-   static const file_ops static_ops_devfs = {
+   static const file_ops static_ops_devfs =
+   {
       .read = devfs_dir_read,
       .write = devfs_dir_write,
       .seek = devfs_dir_seek,
@@ -437,8 +438,8 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    return (int)offset;
 }
 
-static const fs_ops static_fsops_devfs = {
-
+static const fs_ops static_fsops_devfs =
+{
    .open = devfs_open,
    .close = devfs_close,
    .dup = devfs_dup,
@@ -448,7 +449,6 @@ static const fs_ops static_fsops_devfs = {
    .fs_exunlock = devfs_exclusive_unlock,
    .fs_shlock = devfs_shared_lock,
    .fs_shunlock = devfs_shared_unlock,
-
 };
 
 filesystem *create_devfs(void)

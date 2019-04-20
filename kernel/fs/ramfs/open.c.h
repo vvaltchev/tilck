@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static const file_ops static_ops_ramfs = {
-
+static const file_ops static_ops_ramfs =
+{
    .read = ramfs_read,
    .write = ramfs_write,
    .seek = ramfs_seek,

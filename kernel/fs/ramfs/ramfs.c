@@ -44,8 +44,8 @@ void ramfs_destroy(filesystem *fs)
    kfree2(fs, sizeof(filesystem));
 }
 
-static const fs_ops static_fsops_ramfs = {
-
+static const fs_ops static_fsops_ramfs =
+{
    .open = ramfs_open,
    .close = ramfs_close,
    .dup = ramfs_dup,

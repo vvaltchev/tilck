@@ -476,8 +476,8 @@ STATIC int fat_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
-static const file_ops static_ops_fat = {
-
+static const file_ops static_ops_fat =
+{
    .read = fat_read,
    .seek = fat_seek,
    .stat = fat_stat64,
@@ -541,8 +541,8 @@ STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
    return 0;
 }
 
-static const fs_ops static_fsops_fat = {
-
+static const fs_ops static_fsops_fat =
+{
    .open = fat_open,
    .close = fat_close,
    .dup = fat_dup,
