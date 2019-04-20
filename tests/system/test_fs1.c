@@ -25,26 +25,22 @@ static void create_test_file(void)
    int fd, rc;
 
    fd = open("/tmp/test1", O_CREAT | O_WRONLY, 0644);
-
-   if (fd < 0) {
-      perror("open failed");
-      exit(1);
-   }
+   DEVSHELL_CMD_ASSERT(fd > 0);
 
    printf("writing 'a'...\n");
-   memset(pagebuf, 'a', 4096);
-   rc = write(fd, pagebuf, 4096);
-   DEVSHELL_CMD_ASSERT(rc == 4096);
+   memset(pagebuf, 'a', 3 * KB);
+   rc = write(fd, pagebuf, 3 * KB);
+   DEVSHELL_CMD_ASSERT(rc == 3 * KB);
 
    printf("writing 'b'...\n");
-   memset(pagebuf, 'b', 4096);
-   rc = write(fd, pagebuf, 4096);
-   DEVSHELL_CMD_ASSERT(rc == 4096);
+   memset(pagebuf, 'b', 3 * KB);
+   rc = write(fd, pagebuf, 3 * KB);
+   DEVSHELL_CMD_ASSERT(rc == 3 * KB);
 
    printf("writing 'c'...\n");
-   memset(pagebuf, 'c', 4096);
-   rc = write(fd, pagebuf, 4096);
-   DEVSHELL_CMD_ASSERT(rc == 4096);
+   memset(pagebuf, 'c', 3 * KB);
+   rc = write(fd, pagebuf, 3 * KB);
+   DEVSHELL_CMD_ASSERT(rc == 3 * KB);
 
    close(fd);
 }
@@ -56,11 +52,7 @@ static void write_on_test_file(void)
    char buf[32] = "hello world";
 
    fd = open("/tmp/test1", O_WRONLY);
-
-   if (fd < 0) {
-      perror("open failed");
-      exit(1);
-   }
+   DEVSHELL_CMD_ASSERT(fd > 0);
 
    rc = write(fd, buf, 32);
    DEVSHELL_CMD_ASSERT(rc == 32);
@@ -90,13 +82,6 @@ static void read_past_end(void)
    printf("read returned: %d\n", rc);
    printf("buf: '%s'\n", buf);
    close(fd);
-
-   unlink("/tmp/test1");
-}
-
-static void truncate_test_file(void)
-{
-
 }
 
 int cmd_fs1(int argc, char **argv)
@@ -104,7 +89,8 @@ int cmd_fs1(int argc, char **argv)
    create_test_file();
    write_on_test_file();
    read_past_end();
-   truncate_test_file();
+   // TODO: add a function here to check how EXACTLY the file should look like
+   unlink("/tmp/test1");
    return 0;
 }
 
@@ -114,7 +100,7 @@ int cmd_fs2(int argc, char **argv)
    char buf[32];
    struct stat statbuf;
 
-   fd = creat("/tmp/new_file", 0644);
+   fd = creat("/tmp/test2", 0644);
    DEVSHELL_CMD_ASSERT(fd > 0);
 
    rc = write(fd, "test\n", 5);
@@ -128,7 +114,7 @@ int cmd_fs2(int argc, char **argv)
     * we expect creat() to succeed even if the file already exists.
     */
 
-   rc = creat("/tmp/new_file", 0644);
+   rc = creat("/tmp/test2", 0644);
    DEVSHELL_CMD_ASSERT(rc > 0);
    close(rc);
 
@@ -137,22 +123,22 @@ int cmd_fs2(int argc, char **argv)
     * been actually truncated.
     */
 
-   fd = open("/tmp/new_file", O_RDONLY);
+   fd = open("/tmp/test2", O_RDONLY);
    DEVSHELL_CMD_ASSERT(fd > 0);
    rc = read(fd, buf, sizeof(buf));
    DEVSHELL_CMD_ASSERT(rc == 0);
    close(fd);
 
-   rc = stat("/tmp/new_file", &statbuf);
+   rc = stat("/tmp/test2", &statbuf);
    DEVSHELL_CMD_ASSERT(rc == 0);
    DEVSHELL_CMD_ASSERT(statbuf.st_size == 0);
    DEVSHELL_CMD_ASSERT(statbuf.st_blocks == 0);
 
    /* Instead, this open() call using O_EXCL is expected to FAIL */
-   rc = open("/tmp/new_file", O_CREAT | O_EXCL | O_WRONLY, 0644);
+   rc = open("/tmp/test2", O_CREAT | O_EXCL | O_WRONLY, 0644);
 
    DEVSHELL_CMD_ASSERT(rc < 0);
    DEVSHELL_CMD_ASSERT(errno == EEXIST);
 
-   unlink("/tmp/new_file");
+   unlink("/tmp/test2");
 }

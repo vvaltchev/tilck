@@ -186,15 +186,16 @@ static ssize_t ramfs_file_write(fs_handle h, char *buf, size_t len)
                         ramfs_block,
                         node);
 
-         /* We created a new block, therefore we must increase file's size */
-         inode->fsize += to_write;
          inode->blocks_count++;
       }
 
       memcpy(block->vaddr + page_off, buf + tot_written, to_write);
       tot_written += to_write;
-      rh->pos += to_write;
       buf_rem -= to_write;
+      rh->pos += to_write;
+
+      if ((size_t)rh->pos > inode->fsize)
+         inode->fsize = (size_t) rh->pos;
    }
 
    if (len > 0 && !tot_written)
