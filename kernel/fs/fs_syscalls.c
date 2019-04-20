@@ -298,7 +298,6 @@ int sys_stat64(const char *user_path, struct stat64 *user_statbuf)
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
    struct stat64 statbuf;
    int rc = 0;
-   fs_handle h = NULL;
 
    rc = copy_str_from_user(orig_path, user_path, MAX_PATH, NULL);
 
@@ -317,19 +316,12 @@ int sys_stat64(const char *user_path, struct stat64 *user_statbuf)
    if (rc < 0)
       return rc;
 
-   if ((rc = vfs_open(path, &h, O_RDONLY, 0)) < 0)
+   if ((rc = vfs_stat64(path, &statbuf)))
       return rc;
-
-   ASSERT(h != NULL);
-
-   if ((rc = vfs_fstat64(h, &statbuf)) < 0)
-      goto out;
 
    if (copy_to_user(user_statbuf, &statbuf, sizeof(struct stat64)))
       rc = -EFAULT;
 
-out:
-   vfs_close(h);
    return rc;
 }
 

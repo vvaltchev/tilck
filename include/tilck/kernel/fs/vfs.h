@@ -144,6 +144,7 @@ u32 mp_check_match(const char *mp, u32 lm, const char *path, u32 lp);
 
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);
 int vfs_ioctl(fs_handle h, uptr request, void *argp);
+int vfs_stat64(const char *path, struct stat64 *statbuf);
 int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);

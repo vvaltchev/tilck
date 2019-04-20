@@ -13,7 +13,6 @@ int sys_chdir(const char *user_path)
    process_info *pi = curr->pi;
    char *orig_path = curr->args_copybuf;
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
-   fs_handle h = NULL;
 
    STATIC_ASSERT(ARRAY_SIZE(pi->cwd) == MAX_PATH);
    STATIC_ASSERT((ARGS_COPYBUF_SIZE / 2) >= MAX_PATH);
@@ -31,15 +30,7 @@ int sys_chdir(const char *user_path)
       if ((rc = compute_abs_path(orig_path, pi->cwd, path, MAX_PATH)))
          goto out;
 
-      if ((rc = vfs_open(path, &h, 0, O_RDONLY)) < 0)
-         goto out; /* keep the same rc */
-
-      ASSERT(h != NULL);
-
-      rc = vfs_fstat64(h, &statbuf);
-      vfs_close(h);
-
-      if (rc < 0)
+      if ((rc = vfs_stat64(path, &statbuf)))
          goto out;
 
       if (!S_ISDIR(statbuf.st_mode)) {

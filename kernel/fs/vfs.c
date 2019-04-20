@@ -349,6 +349,22 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
    return ret;
 }
 
+int vfs_stat64(const char *path, struct stat64 *statbuf)
+{
+   fs_handle h = NULL;
+   int rc;
+
+   if ((rc = vfs_open(path, &h, O_RDONLY, 0)) < 0)
+      return rc;
+
+   /* If vfs_open() succeeded, `h` must be != NULL */
+   ASSERT(h != NULL);
+
+   rc = vfs_fstat64(h, statbuf);
+   vfs_close(h);
+   return 0;
+}
+
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
