@@ -195,7 +195,7 @@ bintree_insert_internal(void **root_obj_ref,
 
 void *
 bintree_find_internal(void *root_obj,
-                      void *value_ptr,
+                      const void *value_ptr,
                       cmpfun_ptr objval_cmpfun,
                       ptrdiff_t bintree_offset)
 
