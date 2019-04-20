@@ -30,7 +30,7 @@ enum ramfs_entry {
 typedef struct {
 
    bintree_node node;
-   uptr offset;                  /* MUST BE divisible by PAGE_SIZE */
+   off_t offset;                  /* MUST BE divisible by PAGE_SIZE */
    void *vaddr;
 
 } ramfs_block;

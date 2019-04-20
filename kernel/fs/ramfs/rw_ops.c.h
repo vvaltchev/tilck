@@ -94,22 +94,23 @@ static ssize_t ramfs_file_read(fs_handle h, char *buf, size_t len)
 {
    ramfs_handle *rh = h;
    ramfs_inode *inode = rh->inode;
-   size_t tot_read = 0;
-   size_t buf_rem = len;
+   off_t tot_read = 0;
+   off_t buf_rem = (off_t) len;
    ASSERT(inode->type == RAMFS_FILE);
 
    while (buf_rem > 0) {
 
       ramfs_block *block;
-      size_t page = (size_t)rh->pos & PAGE_MASK;
-      size_t page_off = (size_t)rh->pos & OFFSET_IN_PAGE_MASK;
-      size_t page_rem = PAGE_SIZE - page_off;
+      off_t page     = rh->pos & (off_t)PAGE_MASK;
+      off_t page_off = rh->pos & (off_t)OFFSET_IN_PAGE_MASK;
+      off_t page_rem = (off_t)PAGE_SIZE - page_off;
 
       if (rh->pos >= inode->fsize)
          break;
 
-      size_t file_rem = (size_t)inode->fsize - (size_t)rh->pos;
-      size_t to_read = MIN3(page_rem, buf_rem, file_rem);
+      off_t file_rem = inode->fsize - rh->pos;
+      off_t to_read = MIN3(page_rem, buf_rem, file_rem);
+      ASSERT(to_read >= 0);
 
       if (!to_read)
          break;
@@ -123,15 +124,15 @@ static ssize_t ramfs_file_read(fs_handle h, char *buf, size_t len)
 
       if (block) {
          /* reading a regular block */
-         memcpy(buf + tot_read, block->vaddr + page_off, to_read);
+         memcpy(buf + tot_read, block->vaddr + page_off, (size_t)to_read);
       } else {
          /* reading a hole */
-         memset(buf + tot_read, 0, to_read);
+         memset(buf + tot_read, 0, (size_t)to_read);
       }
 
       tot_read += to_read;
-      rh->pos += to_read;
-      buf_rem -= to_read;
+      rh->pos  += to_read;
+      buf_rem  -= to_read;
    }
 
    return (ssize_t) tot_read;
@@ -141,17 +142,17 @@ static ssize_t ramfs_file_write(fs_handle h, char *buf, size_t len)
 {
    ramfs_handle *rh = h;
    ramfs_inode *inode = rh->inode;
-   size_t tot_written = 0;
-   size_t buf_rem = len;
+   off_t tot_written = 0;
+   off_t buf_rem = (off_t)len;
    ASSERT(inode->type == RAMFS_FILE);
 
    while (buf_rem > 0) {
 
       ramfs_block *block;
-      size_t page = (size_t)rh->pos & PAGE_MASK;
-      size_t page_off = (size_t)rh->pos & OFFSET_IN_PAGE_MASK;
-      size_t page_rem = PAGE_SIZE - page_off;
-      size_t to_write = MIN(page_rem, buf_rem);
+      off_t page     = rh->pos & (off_t)PAGE_MASK;
+      off_t page_off = rh->pos & (off_t)OFFSET_IN_PAGE_MASK;
+      off_t page_rem = (off_t)PAGE_SIZE - page_off;
+      off_t to_write = MIN(page_rem, buf_rem);
 
       ASSERT(to_write > 0);
 
@@ -189,7 +190,7 @@ static ssize_t ramfs_file_write(fs_handle h, char *buf, size_t len)
          inode->blocks_count++;
       }
 
-      memcpy(block->vaddr + page_off, buf + tot_written, to_write);
+      memcpy(block->vaddr + page_off, buf + tot_written, (size_t)to_write);
       tot_written += to_write;
       buf_rem -= to_write;
       rh->pos += to_write;
