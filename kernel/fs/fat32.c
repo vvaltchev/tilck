@@ -210,6 +210,12 @@ fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
    return d;
 }
 
+static inline ino_t fat_handle_to_inode(fat_file_handle *fh)
+{
+   fat_fs_device_data *d = fh->fs->device_data;
+   return (ino_t)((sptr)fh->e - (sptr)d->hdr);
+}
+
 STATIC int fat_stat64(fs_handle h, struct stat64 *statbuf)
 {
    fat_file_handle *fh = h;
@@ -221,7 +227,7 @@ STATIC int fat_stat64(fs_handle h, struct stat64 *statbuf)
    bzero(statbuf, sizeof(struct stat64));
 
    statbuf->st_dev = fh->fs->device_id;
-   statbuf->st_ino = 0;
+   statbuf->st_ino = fat_handle_to_inode(fh);
    statbuf->st_mode = 0555;
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
