@@ -85,7 +85,6 @@ void mountpoint_remove(filesystem *fs)
       if (mps[i] && mps[i]->fs == fs) {
 
          release_obj(fs);
-         ASSERT(get_ref_count(fs) >= 0);
 
          if (get_ref_count(fs) > 0) {
             // TODO: [mp] handle unmount of in-use FS by returning an error

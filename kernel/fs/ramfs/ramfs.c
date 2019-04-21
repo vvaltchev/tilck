@@ -17,6 +17,7 @@ static int ramfs_dup(fs_handle h, fs_handle *dup_h)
       return -ENOMEM;
 
    memcpy(new_h, h, sizeof(ramfs_handle));
+   retain_obj(new_h->inode);
    *dup_h = new_h;
    return 0;
 }
@@ -25,10 +26,32 @@ static void ramfs_close(fs_handle h)
 {
    ramfs_handle *rh = h;
    release_obj(rh->inode);
+
+   if (!get_ref_count(rh->inode) && !rh->inode->nlink) {
+
+      /*
+       * !get_ref_count(rh->inode) => no handle referring to this inode
+       * !rh->inode->nlink         => no dir entry referring to this inode
+       *
+       * It means the last link (dir entry) pointing to this inode has been
+       * removed while the current task was keeping opened a handle to this
+       * inode. Now, nobody can get to this inode anymore. We have to destroy
+       * it.
+       */
+
+      ramfs_inode_truncate(rh->inode, 0);
+      ramfs_destroy_inode(rh->fs->device_data, rh->inode);
+   }
+
    kfree2(rh, sizeof(ramfs_handle));
 }
 
-void ramfs_destroy(filesystem *fs)
+/*
+ * This function is supposed to be called ONLY by ramfs_create() in its error
+ * path, as a clean-up. It is *not* a proper way to destroy a whole ramfs
+ * instance after unmounting it.
+ */
+static void ramfs_err_case_destroy(filesystem *fs)
 {
    ramfs_data *d = fs->device_data;
 
@@ -67,7 +90,7 @@ filesystem *ramfs_create(void)
       return NULL;
 
    if (!(d = kzmalloc(sizeof(ramfs_data)))) {
-      ramfs_destroy(fs);
+      ramfs_err_case_destroy(fs);
       return NULL;
    }
 
@@ -77,7 +100,7 @@ filesystem *ramfs_create(void)
    d->root = ramfs_create_inode_dir(d, 0777, NULL);
 
    if (!d->root) {
-      ramfs_destroy(fs);
+      ramfs_err_case_destroy(fs);
       return NULL;
    }
 

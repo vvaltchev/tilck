@@ -65,12 +65,20 @@ ramfs_create_inode_file(ramfs_data *d, mode_t mode, ramfs_inode *parent)
 
 static int ramfs_destroy_inode(ramfs_data *d, ramfs_inode *i)
 {
-   if (i->type == RAMFS_DIRECTORY) {
+   /*
+    * We can destroy only inodes referring to NO blocks (= data) in case of
+    * files and no entries in case of directories. Also, we have to be SURE that
+    * no dir entry nor file handle points to it.
+    */
+   ASSERT(get_ref_count(i) == 0);
+   ASSERT(i->nlink == 0);
 
-      if (!list_is_empty(&i->entries_list))
-         return -ENOTEMPTY;
-   }
+   if (i->type == RAMFS_DIRECTORY)
+      ASSERT(list_is_empty(&i->entries_list));
+   else if (i->type == RAMFS_FILE)
+      ASSERT(i->blocks_tree_root == NULL);
 
+   rwlock_wp_destroy(&i->rwlock);
    kfree2(i, sizeof(ramfs_inode));
    return 0;
 }

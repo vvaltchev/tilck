@@ -217,7 +217,7 @@ void vfs_close(fs_handle h)
    remove_all_mappings_of_handle(pi, h);
 #endif
 
-   hb->fs->fsops->close(h);
+   fs->fsops->close(h);
    release_obj(fs);
 
    /* while a filesystem is mounted, the minimum ref-count it can have is 1 */
