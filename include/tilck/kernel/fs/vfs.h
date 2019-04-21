@@ -49,7 +49,7 @@ typedef bool (*func_rwe_ready)(fs_handle);
 typedef kcond *(*func_get_rwe_cond)(fs_handle);
 
 /* Used by the devices when want to remove any locking from a file */
-void vfs_file_nolock(fs_handle h);
+#define vfs_file_nolock    NULL
 
 #define VFS_FS_RO        (0)
 #define VFS_FS_RW        (1 << 0)
@@ -102,7 +102,7 @@ typedef struct {
    func_get_rwe_cond get_wready_cond;
    func_get_rwe_cond get_except_cond;
 
-   /* optional, per-file locks */
+   /* optional, per-file locks (use vfs_file_nolock, when appropriate) */
    func_hlock_t exlock;
    func_hlock_t exunlock;
    func_hlock_t shlock;

@@ -18,11 +18,6 @@ static u32 next_device_id;
  * ----------------------------------------------------
  */
 
-void vfs_file_nolock(fs_handle h)
-{
-   /* do nothing */
-}
-
 void vfs_exlock(fs_handle h)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
@@ -30,12 +25,8 @@ void vfs_exlock(fs_handle h)
 
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (hb->fops->exlock) {
+   if (hb->fops->exlock)
       hb->fops->exlock(h);
-   } else {
-      ASSERT(!hb->fops->exunlock);
-      vfs_fs_exlock(get_fs(h));
-   }
 }
 
 void vfs_exunlock(fs_handle h)
@@ -45,12 +36,8 @@ void vfs_exunlock(fs_handle h)
 
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (hb->fops->exunlock) {
+   if (hb->fops->exunlock)
       hb->fops->exunlock(h);
-   } else {
-      ASSERT(!hb->fops->exlock);
-      vfs_fs_exunlock(get_fs(h));
-   }
 }
 
 void vfs_shlock(fs_handle h)
@@ -60,12 +47,8 @@ void vfs_shlock(fs_handle h)
 
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (hb->fops->shlock) {
+   if (hb->fops->shlock)
       hb->fops->shlock(h);
-   } else {
-      ASSERT(!hb->fops->shunlock);
-      vfs_fs_shlock(get_fs(h));
-   }
 }
 
 void vfs_shunlock(fs_handle h)
@@ -75,12 +58,8 @@ void vfs_shunlock(fs_handle h)
 
    fs_handle_base *hb = (fs_handle_base *) h;
 
-   if (hb->fops->shunlock) {
+   if (hb->fops->shunlock)
       hb->fops->shunlock(h);
-   } else {
-      ASSERT(!hb->fops->shlock);
-      vfs_fs_shunlock(get_fs(h));
-   }
 }
 
 void vfs_fs_exlock(filesystem *fs)

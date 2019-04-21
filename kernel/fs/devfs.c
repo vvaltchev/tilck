@@ -214,10 +214,10 @@ static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
       .fcntl = devfs_dir_fcntl,
       .mmap = NULL,
       .munmap = NULL,
-      .exlock = NULL,
-      .exunlock = NULL,
-      .shlock = NULL,
-      .shunlock = NULL,
+      .exlock = vfs_file_nolock,
+      .exunlock = vfs_file_nolock,
+      .shlock = vfs_file_nolock,
+      .shunlock = vfs_file_nolock,
    };
 
    devfs_file_handle *h;
