@@ -118,8 +118,15 @@ ramfs_resolve_path(ramfs_data *d,
       pc = ++path;
    }
 
-   if ((e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
-      *i_ref = e->inode;
+   if (path - pc > 0) {
+
+      if ((e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
+         *i_ref = e->inode;
+
+   } else {
+
+      *i_ref = d->root;
+   }
 
    *idir_ref = idir;
    *last_comp_ref = pc;

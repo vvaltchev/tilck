@@ -49,7 +49,8 @@ ramfs_dir_get_entry_by_name(ramfs_inode *idir, const char *name, ssize_t len)
 
    list_for_each_ro(pos, &idir->entries_list, node) {
       if (!strncmp(pos->name, name, (size_t) len))
-         return pos;
+         if (!pos->name[len])
+            return pos;
    }
 
    return NULL;
