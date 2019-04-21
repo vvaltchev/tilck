@@ -44,6 +44,7 @@ typedef struct {
    const char *name;
    const file_ops *fops;
    enum devfs_entry type;
+   ino_t inode;
 
 } devfs_file;
 

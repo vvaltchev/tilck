@@ -79,6 +79,7 @@ typedef struct {
     * just one flat directory.
     */
    list files_list;
+   ino_t inode;
 
 } devfs_directory;
 
@@ -87,8 +88,14 @@ typedef struct {
    devfs_directory root_dir;
    rwlock_wp rwlock;
    datetime_t wrt_time;
+   ino_t next_inode;
 
 } devfs_data;
+
+static inline ino_t devfs_get_next_inode(devfs_data *d)
+{
+   return d->next_inode++;
+}
 
 int create_dev_file(const char *filename, u16 major, u16 minor)
 {
@@ -106,6 +113,7 @@ int create_dev_file(const char *filename, u16 major, u16 minor)
    if (!f)
       return -ENOMEM;
 
+   f->inode = devfs_get_next_inode(d);
    list_node_init(&f->dir_node);
    f->name = filename;
    f->dev_major = major;
@@ -156,14 +164,16 @@ int devfs_stat64(fs_handle h, struct stat64 *statbuf)
    bzero(statbuf, sizeof(struct stat64));
 
    statbuf->st_dev = dh->fs->device_id;
-   statbuf->st_ino = 0;
 
-   if (dh->type == DEVFS_CHAR_DEVICE)
+   if (dh->type == DEVFS_CHAR_DEVICE) {
       statbuf->st_mode = 0666 | S_IFCHR;
-   else if (dh->type == DEVFS_DIRECTORY)
+      statbuf->st_ino = df->inode;
+   } else if (dh->type == DEVFS_DIRECTORY) {
       statbuf->st_mode = 0555 | S_IFDIR;
-   else
+      statbuf->st_ino = ddata->root_dir.inode;
+   } else {
       NOT_REACHED();
+   }
 
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
@@ -447,6 +457,8 @@ filesystem *create_devfs(void)
       return NULL;
    }
 
+   d->next_inode = 1;
+   d->root_dir.inode = devfs_get_next_inode(d);
    list_init(&d->root_dir.files_list);
    rwlock_wp_init(&d->rwlock);
    read_system_clock_datetime(&d->wrt_time);
