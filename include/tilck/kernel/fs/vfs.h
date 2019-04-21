@@ -54,6 +54,21 @@ typedef kcond *(*func_get_rwe_cond)(fs_handle);
 #define VFS_FS_RO        (0)
 #define VFS_FS_RW        (1 << 0)
 
+/*
+ * Operations affecting the file system structure (directories, files, etc.).
+ *
+ * What are the fs-lock functions
+ * ---------------------------------
+ *
+ * The four fs-lock funcs below are supposed to be implemented by each
+ * filesystem in order to protect its tree structure from races, typically by
+ * using a read-write lock under the hood. Yes, that means that for example two
+ * creat() operations even in separate directories cannot happen at the same
+ * time, on the same FS. But, given that Tilck does NOT support SMP, this
+ * approach not only offers a great simplification, but it actually increases
+ * the overall throughput of the system (fine-grain per-directory locking is
+ * pretty expensive).
+ */
 typedef struct {
 
    func_open open;
@@ -61,6 +76,7 @@ typedef struct {
    func_dup dup;
    func_getdents64 getdents64;
 
+   /* file system structure lock funcs */
    func_fslock_t fs_exlock;
    func_fslock_t fs_exunlock;
    func_fslock_t fs_shlock;

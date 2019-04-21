@@ -217,9 +217,6 @@ int sys_writev(int fd, const struct iovec *user_iov, int user_iovcnt)
 
    const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
 
-   // TODO: avoid grabbing a lock here. In order to achieve that, it might be
-   // necessary to entirely implement writev() in vfs.
-
    for (u32 i = 0; i < iovcnt; i++) {
 
       rc = sys_write(fd, iov[i].iov_base, iov[i].iov_len);
@@ -266,9 +263,6 @@ int sys_readv(int fd, const struct iovec *user_iov, int user_iovcnt)
       return -EBADF;
 
    vfs_shlock(handle);
-
-   // TODO: avoid grabbing a lock here. In order to achieve that, it might be
-   // necessary to entirely implement readv() in vfs.
 
    const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
 

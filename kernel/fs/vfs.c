@@ -146,13 +146,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 
    fs_path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
 
-   /*
-    * NOTE: we really DO NOT need to lock the whole FS in order to open/create
-    * a file. At most, the directory where the file is/will be.
-    *
-    * TODO: make open() to NOT lock the whole FS.
-    */
-
+   /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
    {
       rc = fs->fsops->open(fs, fs_path, out, flags, mode);
@@ -353,6 +347,7 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
    ASSERT(hb != NULL);
    ASSERT(hb->fs->fsops->getdents64);
 
+   /* See the comment in vfs.h about the "fs-locks" */
    vfs_fs_shlock(hb->fs);
    {
       // NOTE: the fs implementation MUST handle an invalid user 'dirp' pointer.

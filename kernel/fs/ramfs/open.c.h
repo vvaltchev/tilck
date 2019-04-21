@@ -77,7 +77,6 @@ ramfs_resolve_path(ramfs_data *d,
                    ramfs_inode **idir_ref,
                    const char **last_comp_ref)
 {
-   ramfs_inode *next_idir = NULL;
    ramfs_inode *idir = d->root;
    ramfs_entry *e;
    const char *pc;
@@ -89,8 +88,7 @@ ramfs_resolve_path(ramfs_data *d,
     */
 
    ASSERT(*path == '/');
-   path++;
-   pc = path;
+   pc = ++path;
 
    while (*path) {
 
@@ -108,36 +106,21 @@ ramfs_resolve_path(ramfs_data *d,
 
       ASSERT(path[1] != '/');
 
-      rwlock_wp_shlock(&idir->rwlock);
-      {
-         if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc))) {
-            rwlock_wp_shunlock(&idir->rwlock);
-            return -ENOENT;
-         }
+      if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
+         return -ENOENT;
 
-         if (!path[1]) {
-            /* path's last character was a slash */
-            if (e->inode->type != RAMFS_DIRECTORY) {
-               rwlock_wp_shunlock(&idir->rwlock);
-               return -ENOTDIR;
-            }
-         }
-
-         next_idir = e->inode;
+      if (!path[1]) {
+         /* path's last character was a slash */
+         if (e->inode->type != RAMFS_DIRECTORY)
+            return -ENOTDIR;
       }
-      rwlock_wp_shunlock(&idir->rwlock);
-      idir = next_idir;
 
-      path++;
-      pc = path;
+      idir = e->inode;
+      pc = ++path;
    }
 
-   rwlock_wp_shlock(&idir->rwlock);
-   {
-      if ((e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
-         *i_ref = e->inode;
-   }
-   rwlock_wp_shunlock(&idir->rwlock);
+   if ((e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
+      *i_ref = e->inode;
 
    *idir_ref = idir;
    *last_comp_ref = pc;
