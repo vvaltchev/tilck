@@ -101,10 +101,17 @@ int sys_creat(const char *user_path, mode_t mode)
    return sys_open(user_path, O_CREAT | O_WRONLY | O_TRUNC, mode);
 }
 
-int sys_unlink(const char *pathname)
+int sys_unlink(const char *user_path)
 {
-   // TODO: implement sys_unlink()
-   return 0;
+   task_info *curr = get_curr_task();
+   char *path = curr->args_copybuf;
+   size_t written = 0;
+   int ret;
+
+   if ((ret = duplicate_user_path(path, user_path, MAX_PATH, &written)))
+      return ret;
+
+   return vfs_unlink(path);
 }
 
 int sys_close(int fd)

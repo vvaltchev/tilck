@@ -98,31 +98,17 @@ void vfs_fs_shunlock(filesystem *fs)
    fs->fsops->fs_shunlock(fs);
 }
 
-/*
- * ----------------------------------------------------
- * Main VFS functions
- * ----------------------------------------------------
- */
-
-int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
+static filesystem *
+get_retained_fs_at(const char *path, const char **fs_path_ref)
 {
    mountpoint *mp, *best_match = NULL;
    u32 len, pl, best_match_len = 0;
-   const char *fs_path;
+   filesystem *fs = NULL;
    mp_cursor cur;
-   int rc;
 
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* vfs_open() works only with absolute paths */
-
-   if (flags & O_ASYNC)
-      return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
-
-   if ((flags & O_TMPFILE) == O_TMPFILE)
-      return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
-
+   *fs_path_ref = NULL;
    pl = (u32)strlen(path);
+
    mountpoint_iter_begin(&cur);
 
    while ((mp = mountpoint_get_next(&cur))) {
@@ -135,16 +121,41 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
       }
    }
 
-   if (!best_match) {
-      mountpoint_iter_end(&cur);
-      return -ENOENT;
+   if (best_match) {
+      *fs_path_ref = (best_match_len < pl) ? path + best_match_len - 1 : "/";
+      fs = best_match->fs;
+      retain_obj(fs);
    }
 
-   filesystem *fs = best_match->fs;
-   retain_obj(fs);                  // retain the FS and release the
-   mountpoint_iter_end(&cur);       // mountpoint's lock
+   mountpoint_iter_end(&cur);
+   return fs;
+}
 
-   fs_path = (best_match_len < pl) ? path + best_match_len - 1 : "/";
+
+/*
+ * ----------------------------------------------------
+ * Main VFS functions
+ * ----------------------------------------------------
+ */
+
+int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
+{
+   const char *fs_path;
+   filesystem *fs;
+   int rc;
+
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(path != NULL);
+   ASSERT(*path == '/'); /* vfs_open() works only with absolute paths */
+
+   if (flags & O_ASYNC)
+      return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
+
+   if ((flags & O_TMPFILE) == O_TMPFILE)
+      return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
+
+   if (!(fs = get_retained_fs_at(path, &fs_path)))
+      return -ENOENT;
 
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
@@ -372,6 +383,11 @@ int vfs_fcntl(fs_handle h, int cmd, int arg)
    }
    vfs_exunlock(h);
    return ret;
+}
+
+int vfs_unlink(const char *path)
+{
+   return -EROFS;
 }
 
 u32 vfs_get_new_device_id(void)

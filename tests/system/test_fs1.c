@@ -140,4 +140,5 @@ int cmd_fs2(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(errno == EEXIST);
 
    unlink("/tmp/test2");
+   return 0;
 }
