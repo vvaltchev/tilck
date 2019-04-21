@@ -323,11 +323,9 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
    fs_handle_base *hb = (fs_handle_base *) h;
    int ret;
 
-   ASSERT(hb->fops->fstat != NULL); /* stat is NOT optional */
-
    vfs_shlock(h);
    {
-      ret = hb->fops->fstat(h, statbuf);
+      ret = hb->fs->fsops->fstat(h, statbuf);
    }
    vfs_shunlock(h);
    return ret;

@@ -77,6 +77,7 @@ typedef struct {
    func_dup dup;
    func_getdents64 getdents64;
    func_unlink unlink;
+   func_fstat fstat;
 
    /* file system structure lock funcs */
    func_fslock_t fs_exlock;
@@ -105,7 +106,6 @@ typedef struct {
    func_write write;
    func_seek seek;
    func_ioctl ioctl;
-   func_fstat fstat;
    func_fcntl fcntl;
 
    /* optional funcs */

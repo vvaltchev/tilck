@@ -486,7 +486,6 @@ static const file_ops static_ops_fat =
 {
    .read = fat_read,
    .seek = fat_seek,
-   .fstat = fat_stat64,
    .write = fat_write,
    .ioctl = fat_ioctl,
    .fcntl = fat_fcntl,
@@ -553,6 +552,7 @@ static const fs_ops static_fsops_fat =
    .close = fat_close,
    .dup = fat_dup,
    .getdents64 = fat_getdents64,
+   .fstat = fat_stat64,
 
    .fs_exlock = fat_exclusive_lock,
    .fs_exunlock = fat_exclusive_unlock,

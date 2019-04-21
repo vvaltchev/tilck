@@ -12,6 +12,7 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/rwlock.h>
+#include <tilck/kernel/paging.h>
 
 #include <dirent.h> // system header
 
@@ -146,34 +147,7 @@ static int devfs_dir_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
-int devfs_dir_stat64(fs_handle h, struct stat64 *statbuf)
-{
-   devfs_file_handle *dh = h;
-   devfs_data *ddata = dh->fs->device_data;
-
-   if (!h)
-      return -ENOENT;
-
-   bzero(statbuf, sizeof(struct stat64));
-   statbuf->st_dev = dh->fs->device_id;
-   statbuf->st_ino = 0;
-   statbuf->st_mode = 0555 | S_IFDIR;
-   statbuf->st_nlink = 1;
-   statbuf->st_uid = 0; /* root */
-   statbuf->st_gid = 0; /* root */
-   statbuf->st_rdev = 0; /* device ID if a special file: in this case, NO. */
-   statbuf->st_size = 0;
-   statbuf->st_blksize = 4096;
-   statbuf->st_blocks = statbuf->st_size / 512;
-
-   statbuf->st_ctim.tv_sec = datetime_to_timestamp(ddata->wrt_time);
-   statbuf->st_mtim.tv_sec = datetime_to_timestamp(ddata->wrt_time);
-   statbuf->st_atim = statbuf->st_mtim;
-
-   return 0;
-}
-
-int devfs_char_dev_stat64(fs_handle h, struct stat64 *statbuf)
+int devfs_stat64(fs_handle h, struct stat64 *statbuf)
 {
    devfs_file_handle *dh = h;
    devfs_file *df = dh->devfs_file_ptr;
@@ -183,17 +157,24 @@ int devfs_char_dev_stat64(fs_handle h, struct stat64 *statbuf)
 
    statbuf->st_dev = dh->fs->device_id;
    statbuf->st_ino = 0;
-   statbuf->st_mode = 0666;
+
+   if (dh->type == DEVFS_CHAR_DEVICE)
+      statbuf->st_mode = 0666 | S_IFCHR;
+   else if (dh->type == DEVFS_DIRECTORY)
+      statbuf->st_mode = 0555 | S_IFDIR;
+   else
+      NOT_REACHED();
+
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
    statbuf->st_gid = 0; /* root */
-   statbuf->st_rdev = (dev_t)(df->dev_major << 8 | df->dev_minor);
-   statbuf->st_size = 0;
-   statbuf->st_blksize = 4096;
-   statbuf->st_blocks = 0;
 
    if (dh->type == DEVFS_CHAR_DEVICE)
-      statbuf->st_mode |= S_IFCHR;
+      statbuf->st_rdev = (dev_t)(df->dev_major << 8 | df->dev_minor);
+
+   statbuf->st_size = 0;
+   statbuf->st_blksize = PAGE_SIZE;
+   statbuf->st_blocks = 0;
 
    statbuf->st_ctim.tv_sec = datetime_to_timestamp(ddata->wrt_time);
    statbuf->st_mtim.tv_sec = datetime_to_timestamp(ddata->wrt_time);
@@ -202,24 +183,23 @@ int devfs_char_dev_stat64(fs_handle h, struct stat64 *statbuf)
    return 0;
 }
 
+static const file_ops static_ops_devfs =
+{
+   .read = devfs_dir_read,
+   .write = devfs_dir_write,
+   .seek = devfs_dir_seek,
+   .ioctl = devfs_dir_ioctl,
+   .fcntl = devfs_dir_fcntl,
+   .mmap = NULL,
+   .munmap = NULL,
+   .exlock = vfs_file_nolock,
+   .exunlock = vfs_file_nolock,
+   .shlock = vfs_file_nolock,
+   .shunlock = vfs_file_nolock,
+};
+
 static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
 {
-   static const file_ops static_ops_devfs =
-   {
-      .read = devfs_dir_read,
-      .write = devfs_dir_write,
-      .seek = devfs_dir_seek,
-      .ioctl = devfs_dir_ioctl,
-      .fstat = devfs_dir_stat64,
-      .fcntl = devfs_dir_fcntl,
-      .mmap = NULL,
-      .munmap = NULL,
-      .exlock = vfs_file_nolock,
-      .exunlock = vfs_file_nolock,
-      .shlock = vfs_file_nolock,
-      .shunlock = vfs_file_nolock,
-   };
-
    devfs_file_handle *h;
 
    if (!(h = kzmalloc(sizeof(devfs_file_handle))))
@@ -249,7 +229,6 @@ static int devfs_open_file(filesystem *fs, devfs_file *pos, fs_handle *out)
    h->devfs_file_ptr = pos;
    h->fs = fs;
    h->fops = pos->fops;
-   ASSERT(h->fops->fstat != NULL);
 
    *out = h;
    return 0;
@@ -444,6 +423,7 @@ static const fs_ops static_fsops_devfs =
    .close = devfs_close,
    .dup = devfs_dup,
    .getdents64 = devfs_getdents64,
+   .fstat = devfs_stat64,
 
    .fs_exlock = devfs_exclusive_lock,
    .fs_exunlock = devfs_exclusive_unlock,

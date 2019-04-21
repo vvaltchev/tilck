@@ -66,5 +66,3 @@ int register_driver(driver_info *info, int major);
 int create_dev_file(const char *filename, u16 major, u16 minor);
 filesystem *get_devfs(void);
 driver_info *get_driver_info(u16 major);
-
-int devfs_char_dev_stat64(fs_handle h, struct stat64 *statbuf);

@@ -74,6 +74,7 @@ static const fs_ops static_fsops_ramfs =
    .close = ramfs_close,
    .dup = ramfs_dup,
    .getdents64 = ramfs_getdents64,
+   .fstat = ramfs_fstat64,
 
    .fs_exlock = ramfs_exlock,
    .fs_exunlock = ramfs_exunlock,

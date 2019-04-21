@@ -57,7 +57,6 @@ ttyaux_create_device_file(int minor, const file_ops **fops, enum devfs_entry *t)
       .write = ttyaux_write,
       .ioctl = ttyaux_ioctl,
       .fcntl = ttyaux_fcntl,
-      .fstat = devfs_char_dev_stat64,
       .get_rready_cond = ttyaux_get_rready_cond,
       .read_ready = ttyaux_read_ready,
 

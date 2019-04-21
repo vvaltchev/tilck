@@ -89,7 +89,6 @@ tty_create_device_file(int minor, const file_ops **fops_r, enum devfs_entry *t)
       .write = tty_write,
       .ioctl = tty_ioctl,
       .fcntl = tty_fcntl,
-      .fstat = devfs_char_dev_stat64,
       .get_rready_cond = tty_get_rready_cond,
       .read_ready = tty_read_ready,
 
