@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/datetime.h>
 
 u32 spur_irq_count;
 u32 unhandled_irq_count[256];
@@ -54,6 +55,11 @@ void __wrap_not_implemented(const char *file, int line)
    abort();
 }
 
+void cmos_read_datetime(datetime_t *out)
+{
+   memset(out, 0, sizeof(*out));
+}
+
 void __wrap_kmutex_lock(void *m) { }
 void __wrap_kmutex_unlock(void *m) { }
 
@@ -86,7 +92,6 @@ void arch_specific_new_task_setup() { NOT_REACHED(); }
 void arch_specific_free_task() { NOT_REACHED(); }
 void fpu_context_begin() { }
 void fpu_context_end() { }
-void cmos_read_datetime() { NOT_REACHED(); }
 void map_zero_pages() { NOT_REACHED(); }
 void dump_var_mtrrs() { }
 void set_page_rw() { }

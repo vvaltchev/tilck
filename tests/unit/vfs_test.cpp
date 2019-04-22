@@ -18,8 +18,11 @@ using namespace std;
 #include "kernel_init_funcs.h"
 
 extern "C" {
+
    #include <tilck/kernel/fs/fat32.h>
    #include <tilck/kernel/fs/vfs.h>
+
+   filesystem *ramfs_create(void);
 }
 
 static int mountpoint_match_wrapper(const char *mp, const char *path)
@@ -195,6 +198,39 @@ TEST(vfs, fseek)
    fat_umount_ramdisk(fat_fs);
 }
 
+static void create_test_file(int n)
+{
+   char path[256];
+   fs_handle h;
+   int rc;
+
+   sprintf(path, "/test_%d", n);
+
+   rc = vfs_open(path, &h, O_CREAT, 0644);
+   ASSERT_EQ(rc, 0);
+
+   vfs_close(h);
+}
+
+TEST(vfs_perf, creat)
+{
+   filesystem *fs;
+   int rc;
+
+   init_kmalloc_for_tests();
+   fs = ramfs_create();
+
+   ASSERT_TRUE(fs != NULL);
+
+   rc = mountpoint_add(fs, "/");
+   ASSERT_EQ(rc, 0);
+
+   for (int i = 0; i < 100; i++)
+      create_test_file(i);
+
+   mountpoint_remove(fs);
+   // TODO: destroy ramfs
+}
 
 string compute_abs_path_wrapper(const char *cwd, const char *path)
 {
