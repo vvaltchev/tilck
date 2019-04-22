@@ -23,8 +23,6 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
    i->type = RAMFS_DIRECTORY;
    i->mode = (mode & 0777) | S_IFDIR;
 
-   list_init(&i->entries_list);
-
    if (ramfs_dir_add_entry(i, ".", i) < 0) {
       kfree2(i, sizeof(ramfs_inode));
       return NULL;
@@ -35,7 +33,7 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
 
    if (ramfs_dir_add_entry(i, "..", parent) < 0) {
 
-      ramfs_entry *e = list_first_obj(&i->entries_list, ramfs_entry, node);
+      ramfs_entry *e = i->entries_tree_root;
       ramfs_dir_remove_entry(i, e);
 
       kfree2(i, sizeof(ramfs_inode));
@@ -73,10 +71,11 @@ static int ramfs_destroy_inode(ramfs_data *d, ramfs_inode *i)
    ASSERT(get_ref_count(i) == 0);
    ASSERT(i->nlink == 0);
 
-   if (i->type == RAMFS_DIRECTORY)
-      ASSERT(list_is_empty(&i->entries_list));
-   else if (i->type == RAMFS_FILE)
+   if (i->type == RAMFS_DIRECTORY) {
+      ASSERT(i->entries_tree_root == NULL);
+   } else if (i->type == RAMFS_FILE) {
       ASSERT(i->blocks_tree_root == NULL);
+   }
 
    rwlock_wp_destroy(&i->rwlock);
    kfree2(i, sizeof(ramfs_inode));

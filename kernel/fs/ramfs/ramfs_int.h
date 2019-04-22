@@ -35,11 +35,13 @@ typedef struct {
 
 } ramfs_block;
 
+#define RAMFS_ENTRY_MAX_LEN (256 - sizeof(bintree_node) - sizeof(void *))
+
 typedef struct {
 
-   list_node node;
+   bintree_node node;
    struct ramfs_inode *inode;
-   char name[256 - sizeof(list_node) - sizeof(void *)];
+   char name[RAMFS_ENTRY_MAX_LEN];
 
 } ramfs_entry;
 
@@ -61,7 +63,7 @@ struct ramfs_inode {
 
    union {
       ramfs_block *blocks_tree_root;   /* valid when type == RAMFS_FILE */
-      list entries_list;               /* valid when type == RAMFS_DIRECTORY */
+      ramfs_entry *entries_tree_root;  /* valid when type == RAMFS_DIRECTORY */
       const char *path;                /* valid when type == RAMFS_SYMLINK */
    };
 

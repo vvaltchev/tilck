@@ -1,5 +1,19 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+static sptr ramfs_insert_remove_entry_cmp(const void *a, const void *b)
+{
+   const ramfs_entry *e1 = a;
+   const ramfs_entry *e2 = b;
+   return strcmp(e1->name, e2->name);
+}
+
+static sptr ramfs_find_entry_cmp(const void *obj, const void *valptr)
+{
+   const ramfs_entry *e = obj;
+   const char *searched_str = valptr;
+   return strcmp(e->name, searched_str);
+}
+
 static int
 ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
 {
@@ -13,10 +27,16 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
    if (!(e = kmalloc(sizeof(ramfs_entry))))
       return -ENOMEM;
 
-   list_node_init(&e->node);
+   bintree_node_init(&e->node);
    e->inode = ie;
    memcpy(e->name, iname, enl);
-   list_add_tail(&idir->entries_list, &e->node);
+
+   bintree_insert(&idir->entries_tree_root,
+                  e,
+                  ramfs_insert_remove_entry_cmp,
+                  ramfs_entry,
+                  node);
+
    ie->nlink++;
    return 0;
 }
@@ -26,7 +46,13 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
 {
    ramfs_inode *ie = e->inode;
    ASSERT(idir->type == RAMFS_DIRECTORY);
-   list_remove(&e->node);
+
+   bintree_remove(&idir->entries_tree_root,
+                  e,
+                  ramfs_insert_remove_entry_cmp,
+                  ramfs_entry,
+                  node);
+
    ASSERT(ie->nlink > 0);
    ie->nlink--;
    kfree2(e, sizeof(ramfs_entry));
@@ -35,13 +61,13 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
 static ramfs_entry *
 ramfs_dir_get_entry_by_name(ramfs_inode *idir, const char *name, ssize_t len)
 {
-   ramfs_entry *pos;
+   char buf[RAMFS_ENTRY_MAX_LEN];
+   memcpy(buf, name, (size_t) len);
+   buf[len] = 0;
 
-   list_for_each_ro(pos, &idir->entries_list, node) {
-      if (!strncmp(pos->name, name, (size_t) len))
-         if (!pos->name[len])
-            return pos;
-   }
-
-   return NULL;
+   return bintree_find(idir->entries_tree_root,
+                       buf,
+                       ramfs_find_entry_cmp,
+                       ramfs_entry,
+                       node);
 }
