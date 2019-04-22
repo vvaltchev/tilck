@@ -146,7 +146,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* vfs_open() works only with absolute paths */
+   ASSERT(*path == '/'); /* VFS works only with absolute paths */
 
    if (flags & O_ASYNC)
       return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
@@ -385,7 +385,28 @@ int vfs_fcntl(fs_handle h, int cmd, int arg)
 
 int vfs_unlink(const char *path)
 {
-   return -EROFS;
+   const char *fs_path;
+   filesystem *fs;
+   int rc;
+
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(path != NULL);
+   ASSERT(*path == '/'); /* VFS works only with absolute paths */
+
+   if (!(fs = get_retained_fs_at(path, &fs_path)))
+      return -ENOENT;
+
+   if (!fs->fsops->unlink)
+      return -EROFS;
+
+   /* See the comment in vfs.h about the "fs-lock" funcs */
+   vfs_fs_exlock(fs);
+   {
+      rc = fs->fsops->unlink(fs, fs_path);
+   }
+   vfs_fs_exunlock(fs);
+   release_obj(fs);     /* it was retained by get_retained_fs_at() */
+   return rc;
 }
 
 u32 vfs_get_new_device_id(void)

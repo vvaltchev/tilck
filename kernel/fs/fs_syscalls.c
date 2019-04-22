@@ -104,11 +104,15 @@ int sys_creat(const char *user_path, mode_t mode)
 int sys_unlink(const char *user_path)
 {
    task_info *curr = get_curr_task();
-   char *path = curr->args_copybuf;
+   char *orig_path = curr->args_copybuf;
+   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
    size_t written = 0;
    int ret;
 
-   if ((ret = duplicate_user_path(path, user_path, MAX_PATH, &written)))
+   if ((ret = duplicate_user_path(orig_path, user_path, MAX_PATH, &written)))
+      return ret;
+
+   if ((ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH)))
       return ret;
 
    return vfs_unlink(path);

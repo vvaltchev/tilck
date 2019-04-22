@@ -88,3 +88,12 @@ typedef struct {
    ramfs_inode *root;
 
 } ramfs_data;
+
+typedef struct {
+
+   ramfs_inode *i;         // both the entry and the inode are required because
+   ramfs_entry *e;         // the root dir has no entry.
+   ramfs_inode *idir;
+   const char *last_comp;
+
+} ramfs_resolved_path;

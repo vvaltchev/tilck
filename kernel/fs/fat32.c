@@ -552,6 +552,7 @@ static const fs_ops static_fsops_fat =
    .close = fat_close,
    .dup = fat_dup,
    .getdents64 = fat_getdents64,
+   .unlink = NULL,
    .fstat = fat_stat64,
 
    .fs_exlock = fat_exclusive_lock,

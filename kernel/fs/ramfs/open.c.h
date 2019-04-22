@@ -72,13 +72,12 @@ static int ramfs_open_existing_checks(int fl, ramfs_inode *i)
 static int
 ramfs_resolve_path(ramfs_data *d,
                    const char *path,
-                   ramfs_inode **i_ref,
-                   ramfs_inode **idir_ref,
-                   const char **last_comp_ref)
+                   ramfs_resolved_path *rp)
 {
    ramfs_inode *idir = d->root;
    ramfs_entry *e;
    const char *pc;
+   bzero(rp, sizeof(ramfs_resolved_path));
 
    /*
     * Path is expected to be stripped from the mountpoint prefix, but the '/'
@@ -120,16 +119,18 @@ ramfs_resolve_path(ramfs_data *d,
 
    if (path - pc > 0) {
 
-      if ((e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
-         *i_ref = e->inode;
+      if ((e = ramfs_dir_get_entry_by_name(idir, pc, path - pc))) {
+         rp->e = e;
+         rp->i = e->inode;
+      }
 
    } else {
 
-      *i_ref = d->root;
+      rp->i = d->root;
    }
 
-   *idir_ref = idir;
-   *last_comp_ref = pc;
+   rp->idir = idir;
+   rp->last_comp = pc;
    return 0;
 }
 
@@ -137,32 +138,30 @@ static int
 ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
 {
    ramfs_data *d = fs->device_data;
-   const char *last_comp = NULL;
-   ramfs_inode *idir = NULL;
-   ramfs_inode *i = NULL;
+   ramfs_resolved_path rp;
    int rc;
 
-   if ((rc = ramfs_resolve_path(d, path, &i, &idir, &last_comp)))
+   if ((rc = ramfs_resolve_path(d, path, &rp)))
       return rc;
 
-   if (!i) {
+   if (!rp.i) {
 
       if (!(fl & O_CREAT))
          return -ENOENT;
 
       // TODO: do we have the permission to create a file in this directory?
 
-      if (!(i = ramfs_create_inode_file(d, mod, idir)))
+      if (!(rp.i = ramfs_create_inode_file(d, mod, rp.idir)))
          return -ENOSPC;
 
-      if ((rc = ramfs_dir_add_entry(idir, last_comp, i)))
+      if ((rc = ramfs_dir_add_entry(rp.idir, rp.last_comp, rp.i)))
          return rc;
 
    } else {
 
-      if ((rc = ramfs_open_existing_checks(fl, i)))
+      if ((rc = ramfs_open_existing_checks(fl, rp.i)))
          return rc;
    }
 
-   return ramfs_open_int(fs, i, out, fl);
+   return ramfs_open_int(fs, rp.i, out, fl);
 }

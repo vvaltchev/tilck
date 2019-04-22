@@ -16,12 +16,7 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
    list_node_init(&e->node);
    e->inode = ie;
    memcpy(e->name, iname, enl);
-
-   rwlock_wp_exlock(&idir->rwlock);
-   {
-      list_add_tail(&idir->entries_list, &e->node);
-   }
-   rwlock_wp_exunlock(&idir->rwlock);
+   list_add_tail(&idir->entries_list, &e->node);
    ie->nlink++;
    return 0;
 }
@@ -31,12 +26,7 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
 {
    ramfs_inode *ie = e->inode;
    ASSERT(idir->type == RAMFS_DIRECTORY);
-
-   rwlock_wp_exlock(&idir->rwlock);
-   {
-      list_remove(&e->node);
-   }
-   rwlock_wp_exunlock(&idir->rwlock);
+   list_remove(&e->node);
    ASSERT(ie->nlink > 0);
    ie->nlink--;
    kfree2(e, sizeof(ramfs_entry));

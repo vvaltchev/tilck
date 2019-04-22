@@ -9,6 +9,42 @@
 #include "rw_ops.c.h"
 #include "open.c.h"
 
+static int ramfs_unlink(filesystem *fs, const char *path)
+{
+   ramfs_data *d = fs->device_data;
+   ramfs_resolved_path rp;
+   int rc;
+
+   ASSERT(rwlock_wp_holding_exlock(&d->rwlock));
+
+   if ((rc = ramfs_resolve_path(d, path, &rp)))
+      return rc;
+
+   if (rp.i->type == RAMFS_DIRECTORY)
+      return -EISDIR;
+
+   /*
+    * The only case when `rp->e` is NULL is when path == "/", but we have just
+    * checked the directory case. Therefore, `rp->e` must be valid.
+    */
+   ASSERT(rp.e != NULL);
+
+   /* Remove the dir entry */
+   ramfs_dir_remove_entry(rp.idir, rp.e);
+
+   /* Trucate and delete the inode, if it's not used */
+   if (!rp.i->nlink && !get_ref_count(rp.i)) {
+      rwlock_wp_exlock(&rp.i->rwlock);
+      {
+         ramfs_inode_truncate(rp.i, 0);
+      }
+      rwlock_wp_exunlock(&rp.i->rwlock);
+      ramfs_destroy_inode(d, rp.i);
+   }
+
+   return 0;
+}
+
 static int ramfs_dup(fs_handle h, fs_handle *dup_h)
 {
    ramfs_handle *new_h = kmalloc(sizeof(ramfs_handle));
@@ -74,6 +110,7 @@ static const fs_ops static_fsops_ramfs =
    .close = ramfs_close,
    .dup = ramfs_dup,
    .getdents64 = ramfs_getdents64,
+   .unlink = ramfs_unlink,
    .fstat = ramfs_fstat64,
 
    .fs_exlock = ramfs_exlock,

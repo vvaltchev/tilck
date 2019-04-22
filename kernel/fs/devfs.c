@@ -433,6 +433,7 @@ static const fs_ops static_fsops_devfs =
    .close = devfs_close,
    .dup = devfs_dup,
    .getdents64 = devfs_getdents64,
+   .unlink = NULL,
    .fstat = devfs_stat64,
 
    .fs_exlock = devfs_exclusive_lock,
