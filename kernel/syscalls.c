@@ -135,6 +135,12 @@ uptr sys_times(struct tms *user_buf)
    return (uptr) get_ticks();
 }
 
+int sys_vfork()
+{
+   // TODO: consider actually implementing vfork().
+   return sys_fork();
+}
+
 /* *************************************************************** */
 /*          Tilck-specific syscalls & helper functions             */
 /* *************************************************************** */

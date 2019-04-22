@@ -69,6 +69,8 @@ considered as *not implemented yet*.
  sys_poll            | full
  sys_readlink        | compliant stub
  sys_creat           | full
+ sys_unlink          | full
+ sys_vfork           | compliant
 
 Definitions:
 

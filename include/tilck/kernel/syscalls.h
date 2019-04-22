@@ -273,7 +273,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_capget)
 CREATE_STUB_SYSCALL_IMPL(sys_capset)
 CREATE_STUB_SYSCALL_IMPL(sys_sigaltstack)
 CREATE_STUB_SYSCALL_IMPL(sys_sendfile)
-CREATE_STUB_SYSCALL_IMPL(sys_vfork)
+
+int sys_vfork();
+
 CREATE_STUB_SYSCALL_IMPL(sys_getrlimit)
 
 sptr sys_mmap_pgoff(void *addr, size_t length, int prot,
