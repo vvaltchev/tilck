@@ -209,6 +209,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_syscall_interfaces();
    init_tasklets();
    init_timer();
+   init_system_clock();
 
    async_init();
    schedule_outside_interrupt_context();

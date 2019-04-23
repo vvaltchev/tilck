@@ -35,3 +35,4 @@ static inline bool is_leap_year(u32 year)
 
 void read_system_clock_datetime(datetime_t *out);
 time_t datetime_to_timestamp(datetime_t d);
+void init_system_clock(void);
