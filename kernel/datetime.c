@@ -175,6 +175,13 @@ time_t datetime_to_timestamp(datetime_t d)
    return result;
 }
 
+time_t read_system_clock_timestamp(void)
+{
+   datetime_t dt;
+   read_system_clock_datetime(&dt);
+   return datetime_to_timestamp(dt);
+}
+
 static void real_time_get_timeval(struct timeval *tv)
 {
    datetime_t d;

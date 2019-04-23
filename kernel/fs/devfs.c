@@ -87,7 +87,7 @@ typedef struct {
 
    devfs_directory root_dir;
    rwlock_wp rwlock;
-   datetime_t wrt_time;
+   time_t wrt_time;
    ino_t next_inode;
 
 } devfs_data;
@@ -186,8 +186,8 @@ int devfs_stat64(fs_handle h, struct stat64 *statbuf)
    statbuf->st_blksize = PAGE_SIZE;
    statbuf->st_blocks = 0;
 
-   statbuf->st_ctim.tv_sec = datetime_to_timestamp(ddata->wrt_time);
-   statbuf->st_mtim.tv_sec = datetime_to_timestamp(ddata->wrt_time);
+   statbuf->st_ctim.tv_sec = ddata->wrt_time;
+   statbuf->st_mtim = statbuf->st_ctim;
    statbuf->st_atim = statbuf->st_mtim;
 
    return 0;
@@ -462,7 +462,7 @@ filesystem *create_devfs(void)
    d->root_dir.inode = devfs_get_next_inode(d);
    list_init(&d->root_dir.files_list);
    rwlock_wp_init(&d->rwlock);
-   read_system_clock_datetime(&d->wrt_time);
+   d->wrt_time = read_system_clock_timestamp();
 
    fs->fs_type_name = "devfs";
    fs->device_id = vfs_get_new_device_id();

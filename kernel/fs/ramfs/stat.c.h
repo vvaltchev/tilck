@@ -22,8 +22,8 @@ static int ramfs_fstat64(fs_handle h, struct stat64 *statbuf)
    statbuf->st_blocks =
       (typeof(statbuf->st_blocks)) (inode->blocks_count * (PAGE_SIZE / 512));
 
-   statbuf->st_ctim.tv_sec = datetime_to_timestamp(inode->ctime);
-   statbuf->st_mtim.tv_sec = datetime_to_timestamp(inode->wtime);
+   statbuf->st_ctim.tv_sec = inode->ctime;
+   statbuf->st_mtim.tv_sec = inode->mtime;
    statbuf->st_atim = statbuf->st_mtim;
 
    return 0;

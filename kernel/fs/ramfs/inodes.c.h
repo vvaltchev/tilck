@@ -40,8 +40,8 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
       return NULL;
    }
 
-   read_system_clock_datetime(&i->ctime);
-   i->wtime = i->ctime;
+   i->ctime = read_system_clock_timestamp();
+   i->mtime = i->ctime;
    return i;
 }
 
@@ -56,8 +56,8 @@ ramfs_create_inode_file(ramfs_data *d, mode_t mode, ramfs_inode *parent)
    i->type = RAMFS_FILE;
    i->mode = (mode & 0777) | S_IFREG;
 
-   read_system_clock_datetime(&i->ctime);
-   i->wtime = i->ctime;
+   i->ctime = read_system_clock_timestamp();
+   i->mtime = i->ctime;
    return i;
 }
 

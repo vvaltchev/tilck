@@ -67,8 +67,8 @@ struct ramfs_inode {
       const char *path;                /* valid when type == RAMFS_SYMLINK */
    };
 
-   datetime_t ctime;
-   datetime_t wtime;
+   time_t ctime;
+   time_t mtime;
 };
 
 typedef struct {
