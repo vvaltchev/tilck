@@ -45,11 +45,14 @@ int cmd_fs_perf1(int argc, char **argv)
 {
    const int n = 1000;
    u64 start, end, elapsed;
+   const char *dest_dir = argc > 0 ? argv[0] : "/tmp";
+
+   printf("Using '%s' as test dir\n", dest_dir);
 
    start = RDTSC();
 
    for (int i = 0; i < n; i++)
-      create_file("/tmp", i);
+      create_file(dest_dir, i);
 
    end = RDTSC();
    elapsed = (end - start) / n;
@@ -58,7 +61,7 @@ int cmd_fs_perf1(int argc, char **argv)
    printf("Avg. creat() cost:  %4llu K cycles\n", elapsed / 1000);
 
    for (int i = 0; i < n; i++)
-     remove_file("/tmp", i);
+     remove_file(dest_dir, i);
 
    end = RDTSC();
    elapsed = (end - start) / n;
