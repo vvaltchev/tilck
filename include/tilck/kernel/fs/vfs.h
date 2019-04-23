@@ -33,6 +33,7 @@ typedef int (*func_open) (filesystem *, const char *, fs_handle *, int, mode_t);
 typedef int (*func_dup) (fs_handle, fs_handle *);
 typedef int (*func_getdents64) (fs_handle, struct linux_dirent64 *, u32);
 typedef int (*func_unlink) (filesystem *, const char *);
+typedef int (*func_mkdir) (filesystem *, const char *, mode_t);
 typedef void (*func_fslock_t)(filesystem *);
 
 /* file ops */
@@ -78,6 +79,7 @@ typedef struct {
    func_getdents64 getdents64;
    func_unlink unlink;
    func_fstat fstat;
+   func_mkdir mkdir;
 
    /* file system structure lock funcs */
    func_fslock_t fs_exlock;
@@ -168,6 +170,7 @@ int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
 int vfs_fcntl(fs_handle h, int cmd, int arg);
 int vfs_unlink(const char *path);
+int vfs_mkdir(const char *path, mode_t mode);
 void vfs_close(fs_handle h);
 
 bool vfs_read_ready(fs_handle h);

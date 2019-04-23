@@ -155,8 +155,10 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
       if (!(rp.i = ramfs_create_inode_file(d, mod, rp.idir)))
          return -ENOSPC;
 
-      if ((rc = ramfs_dir_add_entry(rp.idir, rp.last_comp, rp.i)))
+      if ((rc = ramfs_dir_add_entry(rp.idir, rp.last_comp, rp.i))) {
+         ramfs_destroy_inode(d, rp.i);
          return rc;
+      }
 
    } else {
 

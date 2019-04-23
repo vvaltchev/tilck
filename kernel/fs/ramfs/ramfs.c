@@ -85,6 +85,35 @@ static void ramfs_close(fs_handle h)
    kfree2(rh, sizeof(ramfs_handle));
 }
 
+static int ramfs_mkdir(filesystem *fs, const char *path, mode_t mode)
+{
+   ramfs_data *d = fs->device_data;
+   ramfs_resolved_path rp;
+   ramfs_inode *new_dir;
+   int rc;
+
+   if ((rc = ramfs_resolve_path(d, path, &rp)))
+      return rc;
+
+   if (rp.i)
+      return -EEXIST;
+
+   if (!(rp.idir->mode & 0300)) /* write + execute */
+      return -EACCES;
+
+   new_dir = ramfs_create_inode_dir(d, mode, rp.idir);
+
+   if (!new_dir)
+      return -ENOSPC;
+
+   if ((rc = ramfs_dir_add_entry(rp.idir, rp.last_comp, new_dir))) {
+      ramfs_destroy_inode(d, new_dir);
+      return rc;
+   }
+
+   return rc;
+}
+
 /*
  * This function is supposed to be called ONLY by ramfs_create() in its error
  * path, as a clean-up. It is *not* a proper way to destroy a whole ramfs
@@ -114,6 +143,7 @@ static const fs_ops static_fsops_ramfs =
    .dup = ramfs_dup,
    .getdents64 = ramfs_getdents64,
    .unlink = ramfs_unlink,
+   .mkdir = ramfs_mkdir,
    .fstat = ramfs_fstat64,
 
    .fs_exlock = ramfs_exlock,
@@ -152,7 +182,7 @@ filesystem *ramfs_create(void)
 
    //tmp
    {
-      ramfs_inode *i1 = ramfs_create_inode_dir(d, 0777, d->root);
+      ramfs_inode *i1 = ramfs_create_inode_dir(d, 0755, d->root);
       VERIFY(ramfs_dir_add_entry(d->root, "e1", i1) == 0);
 
       ramfs_inode *i2 = ramfs_create_inode_file(d, 0644, d->root);

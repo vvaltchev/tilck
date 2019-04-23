@@ -396,6 +396,9 @@ int vfs_unlink(const char *path)
    if (!(fs = get_retained_fs_at(path, &fs_path)))
       return -ENOENT;
 
+   if (!(fs->flags & VFS_FS_RW))
+      return -EROFS;
+
    if (!fs->fsops->unlink)
       return -EROFS;
 
@@ -403,6 +406,35 @@ int vfs_unlink(const char *path)
    vfs_fs_exlock(fs);
    {
       rc = fs->fsops->unlink(fs, fs_path);
+   }
+   vfs_fs_exunlock(fs);
+   release_obj(fs);     /* it was retained by get_retained_fs_at() */
+   return rc;
+}
+
+int vfs_mkdir(const char *path, mode_t mode)
+{
+   const char *fs_path;
+   filesystem *fs;
+   int rc;
+
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(path != NULL);
+   ASSERT(*path == '/'); /* VFS works only with absolute paths */
+
+   if (!(fs = get_retained_fs_at(path, &fs_path)))
+      return -ENOENT;
+
+   if (!(fs->flags & VFS_FS_RW))
+      return -EROFS;
+
+   if (!fs->fsops->mkdir)
+      return -EPERM;
+
+   /* See the comment in vfs.h about the "fs-lock" funcs */
+   vfs_fs_exlock(fs);
+   {
+      rc = fs->fsops->mkdir(fs, fs_path, mode);
    }
    vfs_fs_exunlock(fs);
    release_obj(fs);     /* it was retained by get_retained_fs_at() */

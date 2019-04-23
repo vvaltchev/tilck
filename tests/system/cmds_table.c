@@ -76,7 +76,6 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(cloexec, TT_SHORT, true),
    CMD_ENTRY(fs1, TT_SHORT, true),
    CMD_ENTRY(fs2, TT_SHORT, true),
-
    CMD_ENTRY(fs_perf1, TT_SHORT, true),
    CMD_ENTRY(fs_perf2, TT_SHORT, true),
 
