@@ -151,6 +151,9 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
    /* We can be sure it's a file because dirs cannot be open for writing */
    ASSERT(inode->type == RAMFS_FILE);
 
+   if (rh->fl_flags & O_APPEND)
+      rh->pos = inode->fsize;
+
    while (buf_rem > 0) {
 
       ramfs_block *block;
