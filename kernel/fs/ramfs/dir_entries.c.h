@@ -27,6 +27,8 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
    if (!(e = kmalloc(sizeof(ramfs_entry))))
       return -ENOMEM;
 
+   ASSERT(ie->parent_dir != NULL);
+
    bintree_node_init(&e->node);
    e->inode = ie;
    memcpy(e->name, iname, enl);

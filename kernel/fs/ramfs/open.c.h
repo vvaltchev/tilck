@@ -149,7 +149,8 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
       if (!(fl & O_CREAT))
          return -ENOENT;
 
-      // TODO: do we have the permission to create a file in this directory?
+      if (!(rp.idir->mode & 0300)) /* write + execute */
+         return -EACCES;
 
       if (!(rp.i = ramfs_create_inode_file(d, mod, rp.idir)))
          return -ENOSPC;
@@ -158,6 +159,9 @@ ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
          return rc;
 
    } else {
+
+      if (!(rp.idir->mode & 0500)) /* read + execute */
+         return -EACCES;
 
       if ((rc = ramfs_open_existing_checks(fl, rp.i)))
          return rc;

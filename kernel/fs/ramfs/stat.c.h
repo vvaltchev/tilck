@@ -8,6 +8,9 @@ static int ramfs_fstat64(fs_handle h, struct stat64 *statbuf)
    ramfs_handle *rh = h;
    ramfs_inode *inode = rh->inode;
 
+   if (!(inode->parent_dir->mode & 0500)) /* read + execute */
+      return -EACCES;
+
    bzero(statbuf, sizeof(struct stat64));
 
    statbuf->st_dev = rh->fs->device_id;

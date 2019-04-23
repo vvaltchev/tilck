@@ -23,6 +23,9 @@ static int ramfs_unlink(filesystem *fs, const char *path)
    if (rp.i->type == RAMFS_DIRECTORY)
       return -EISDIR;
 
+   if (!(rp.idir->mode & 0200)) /* write permission */
+      return -EACCES;
+
    /*
     * The only case when `rp->e` is NULL is when path == "/", but we have just
     * checked the directory case. Therefore, `rp->e` must be valid.

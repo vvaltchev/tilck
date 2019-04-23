@@ -60,6 +60,7 @@ struct ramfs_inode {
    rwlock_wp rwlock;
    off_t fsize;                        /* file size in bytes */
    size_t blocks_count;                /* count of page-size blocks */
+   struct ramfs_inode *parent_dir;
 
    union {
       ramfs_block *blocks_tree_root;   /* valid when type == RAMFS_FILE */

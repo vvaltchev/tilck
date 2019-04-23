@@ -112,6 +112,9 @@ ramfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    if (inode->type != RAMFS_DIRECTORY)
       return -ENOTDIR;
 
+   if (!(inode->mode & 0400)) /* read permission */
+      return -EACCES;
+
    rwlock_wp_shlock(&inode->rwlock);
    {
       rc = ramfs_getdents64_int(rh, dirp, buf_size);

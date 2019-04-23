@@ -23,13 +23,17 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
    i->type = RAMFS_DIRECTORY;
    i->mode = (mode & 0777) | S_IFDIR;
 
+   if (!parent) {
+      /* root case */
+      parent = i;
+   }
+
+   i->parent_dir = parent;
+
    if (ramfs_dir_add_entry(i, ".", i) < 0) {
       kfree2(i, sizeof(ramfs_inode));
       return NULL;
    }
-
-   if (!parent)
-      parent = i;
 
    if (ramfs_dir_add_entry(i, "..", parent) < 0) {
 
@@ -56,6 +60,7 @@ ramfs_create_inode_file(ramfs_data *d, mode_t mode, ramfs_inode *parent)
    i->type = RAMFS_FILE;
    i->mode = (mode & 0777) | S_IFREG;
 
+   i->parent_dir = parent;
    i->ctime = read_system_clock_timestamp();
    i->mtime = i->ctime;
    return i;
