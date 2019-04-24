@@ -40,6 +40,7 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
                   node);
 
    ie->nlink++;
+   idir->num_entries++;
    return 0;
 }
 
@@ -57,6 +58,7 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
 
    ASSERT(ie->nlink > 0);
    ie->nlink--;
+   idir->num_entries--;
    kfree2(e, sizeof(ramfs_entry));
 }
 

@@ -20,7 +20,23 @@ static int ramfs_fstat64(fs_handle h, struct stat64 *statbuf)
    statbuf->st_uid = 0;  /* root */
    statbuf->st_gid = 0;  /* root */
    statbuf->st_rdev = 0; /* device ID if a special file: therefore, NO. */
-   statbuf->st_size = (typeof(statbuf->st_size)) inode->fsize;
+
+   switch (inode->type) {
+
+      case RAMFS_FILE:
+         statbuf->st_size = (typeof(statbuf->st_size)) inode->fsize;
+         break;
+
+      case RAMFS_DIRECTORY:
+         statbuf->st_size = (typeof(statbuf->st_size))
+            (inode->num_entries * (off_t) sizeof(ramfs_entry));
+         break;
+
+      case RAMFS_SYMLINK:
+         statbuf->st_size = (typeof(statbuf->st_size)) inode->path_len;
+         break;
+   }
+
    statbuf->st_blksize = PAGE_SIZE;
    statbuf->st_blocks =
       (typeof(statbuf->st_blocks)) (inode->blocks_count * (PAGE_SIZE / 512));

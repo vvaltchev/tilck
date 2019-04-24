@@ -435,6 +435,7 @@ static const fs_ops static_fsops_devfs =
    .getdents64 = devfs_getdents64,
    .unlink = NULL,
    .mkdir = NULL,
+   .rmdir = NULL,
    .fstat = devfs_stat64,
 
    .fs_exlock = devfs_exclusive_lock,

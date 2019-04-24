@@ -56,11 +56,16 @@ struct ramfs_inode {
    int inode;
    enum ramfs_entry type;
    nlink_t nlink;
-   mode_t mode;                        /* permissions + special flags */
+   mode_t mode;
    rwlock_wp rwlock;
-   off_t fsize;                        /* file size in bytes */
    size_t blocks_count;                /* count of page-size blocks */
    struct ramfs_inode *parent_dir;
+
+   union {
+      off_t fsize;                     /* valid when type == RAMFS_FILE */
+      off_t num_entries;               /* valid when type == RAMFS_DIRECTORY */
+      off_t path_len;                  /* valid when type == RAMFS_SYMLINK */
+   };
 
    union {
       ramfs_block *blocks_tree_root;   /* valid when type == RAMFS_FILE */
