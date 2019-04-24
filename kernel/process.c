@@ -319,6 +319,14 @@ void task_temp_kernel_free(void *ptr)
  * ***************************************************************
  */
 
+mode_t sys_umask(mode_t mask)
+{
+   process_info *pi = get_curr_task()->pi;
+   mode_t old = pi->umask;
+   pi->umask = mask & 0777;
+   return old;
+}
+
 int sys_pause()
 {
    task_change_state(get_curr_task(), TASK_STATE_SLEEPING);

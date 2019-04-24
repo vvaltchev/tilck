@@ -60,6 +60,7 @@ struct process_info {
    int *set_child_tid;                 /* NOTE: this is an user pointer */
 
    kmutex fslock;                      /* protectes `handles` and `cwd` */
+   mode_t umask;
 
    /* large members */
 

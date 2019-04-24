@@ -68,6 +68,9 @@ int sys_open(const char *user_path, int flags, mode_t mode)
 
    STATIC_ASSERT((ARGS_COPYBUF_SIZE / 2) >= MAX_PATH);
 
+   /* Apply the umask upfront */
+   mode &= ~curr->pi->umask;
+
    if ((ret = duplicate_user_path(orig_path, user_path, MAX_PATH, &written)))
       return ret;
 
@@ -143,6 +146,9 @@ int sys_mkdir(const char *user_path, mode_t mode)
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
    size_t written = 0;
    int ret;
+
+   /* Apply the umask upfront */
+   mode &= ~curr->pi->umask;
 
    if ((ret = duplicate_user_path(orig_path, user_path, MAX_PATH, &written)))
       return ret;

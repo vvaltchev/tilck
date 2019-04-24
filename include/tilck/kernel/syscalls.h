@@ -113,7 +113,9 @@ int sys_ioctl(int fd, uptr request, void *argp);
 CREATE_STUB_SYSCALL_IMPL(sys_fcntl)
 CREATE_STUB_SYSCALL_IMPL(sys_setpgid)
 CREATE_STUB_SYSCALL_IMPL(sys_olduname)
-CREATE_STUB_SYSCALL_IMPL(sys_umask)
+
+mode_t sys_umask(mode_t mask);
+
 CREATE_STUB_SYSCALL_IMPL(sys_chroot)
 CREATE_STUB_SYSCALL_IMPL(sys_ustat)
 

@@ -71,6 +71,7 @@ considered as *not implemented yet*.
  sys_creat           | full
  sys_unlink          | full
  sys_vfork           | compliant
+ sys_umask           | full
 
 Definitions:
 

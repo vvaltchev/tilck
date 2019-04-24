@@ -272,6 +272,7 @@ int setup_usermode_task(pdir_t *pdir,
       if (!(ti = allocate_new_process(kernel_process, 1)))
          return -ENOMEM;
 
+      ti->pi->umask = 0022;
       ti->state = TASK_STATE_RUNNABLE;
       add_task(ti);
       memcpy(ti->pi->cwd, "/", 2);
