@@ -28,6 +28,7 @@ static ALWAYS_INLINE bool in_panic(void)
    #endif
 
    #define DEBUG_ONLY(x) x
+   #define DEBUG_ONLY_UNSAFE(x) x
    #define DEBUG_CHECKED_SUCCESS(x)       \
       do {                                \
          bool __checked_success = x;      \
@@ -37,18 +38,19 @@ static ALWAYS_INLINE bool in_panic(void)
    #ifndef UNIT_TEST_ENVIRONMENT
       #define NO_TEST_ASSERT(x) ASSERT(x)
    #else
-      #define NO_TEST_ASSERT(x)
+      #define NO_TEST_ASSERT(x) do { /* nothing */ } while (0)
    #endif
 
 #else
 
    #ifndef NO_TILCK_ASSERT
-      #define ASSERT(x)
+      #define ASSERT(x) do { /* nothing */ } while (0)
    #endif
 
-   #define DEBUG_ONLY(x)
+   #define DEBUG_ONLY_UNSAFE(x) /* expand to nothing */
+   #define DEBUG_ONLY(x) do { /* nothing */ } while (0)
+   #define NO_TEST_ASSERT(x) do { /* nothing */ } while (0)
    #define DEBUG_CHECKED_SUCCESS(x) x
-   #define NO_TEST_ASSERT(x)
 
 #endif
 

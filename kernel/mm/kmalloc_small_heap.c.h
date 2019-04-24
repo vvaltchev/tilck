@@ -137,7 +137,7 @@ static small_heap_node *alloc_new_small_heap(void)
    // Allocate heap's metadata inside the heap itself
    actual_size = new_node->heap.metadata_size;
 
-   DEBUG_ONLY(void *actual_md_alloc = )
+   DEBUG_ONLY_UNSAFE(void *actual_md_alloc = )
       per_heap_kmalloc(&new_node->heap, &actual_size, 0);
    ASSERT(actual_md_alloc == md_alloc);
 
