@@ -299,13 +299,12 @@ Linux for that. The idea at the moment to implement a kernel as simple as possib
 able to run a class of Linux console applications. At some point in the future
 `Tilck` might actually have a chance to be used in production embedded environments,
 but it still will be *by design* limited in terms of features compared to the Linux
-kernel. For example, `Tilck` will probably **never** support:
+kernel. For example, `Tilck` will *probably* never support:
 
 * Swap
 * I/O cache
 * SMP
-* Authentication
-* Permissions (except ro/rw attributes)
+* Multiple users
 
 `Tilck`'s whole purpose is being *simple* and *extremely-deterministic*, while
 most of the above-mentioned features introduce a substantial amount of complexity
