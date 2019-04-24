@@ -259,6 +259,8 @@ typedef sptr (*cmpfun_ptr)(const void *a, const void *b);
  *    u32 var = 123;
  *    u.a = var; // does NOT compile with -Wconversion
  *    u.a = LO_BITS(var, 20, u32); // always compiles
+ *
+ * NOTE: Tilck support only clang's -Wconversion, not GCC's.
  */
 
 #if defined(BITS64)
@@ -268,24 +270,12 @@ typedef sptr (*cmpfun_ptr)(const void *a, const void *b);
 #endif
 
 /*
- * We NEED a rshift() non-macro function because with gcc and -Wconversion
- * statements like (see the union above):
- *
- *    u.a = (var >> bits) & MASK;
- *
- * Do not compile. See: https://stackoverflow.com/questions/54421737
- */
-static ALWAYS_INLINE uptr rshift(uptr val, uptr bits)
-{
-   return val >> bits;
-}
-
-
-/*
  * Like LO_BITS() but first right-shift `val` by `rs` bits and than get its
  * lower N-rs bits in a -Wconversion-safe way.
+ *
+ * NOTE: Tilck support only clang's -Wconversion, not GCC's.
  */
-#define SHR_BITS(val, rs, t) LO_BITS( rshift((val), (rs)), NBITS-(rs), t )
+#define SHR_BITS(val, rs, t) LO_BITS( ((val) >> (rs)), NBITS-(rs), t )
 
 /* Includes */
 #include <tilck/common/panic.h>
