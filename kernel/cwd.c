@@ -43,8 +43,8 @@ int sys_chdir(const char *user_path)
 
       if (pl > 1) {
 
-         /* compute_abs_path always returns a path without a trailing '/' */
-         ASSERT(pi->cwd[pl - 1] != '/');
+         if (pi->cwd[pl - 1] == '/')
+            pl--; /* drop the trailing slash */
 
          /* on the other side, pi->cwd has always a trailing '/' */
          pi->cwd[pl] = '/';

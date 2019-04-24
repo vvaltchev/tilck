@@ -104,13 +104,25 @@ ramfs_resolve_path(ramfs_data *d,
 
       ASSERT(path[1] != '/');
 
-      if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc)))
-         return -ENOENT;
+      if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc))) {
+
+         if (path[1])
+            return -ENOENT; /* the path does NOT end here: no such entity */
+
+         /* no such entity, but the path ends here, with a trailing slash */
+         break;
+      }
+
+      /* We've found an entity for this path component (pc) */
 
       if (!path[1]) {
-         /* path's last character was a slash */
+
+         /* the path ends here, with a trailing slash */
+
          if (e->inode->type != RAMFS_DIRECTORY)
-            return -ENOTDIR;
+            return -ENOTDIR; /* that's a problem only if `e` is NOT a dir */
+
+         break;
       }
 
       idir = e->inode;

@@ -33,6 +33,9 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
    e->inode = ie;
    memcpy(e->name, iname, enl);
 
+   if (e->name[enl-2] == '/')
+      e->name[enl-2] = 0; /* drop the trailing slash */
+
    bintree_insert(&idir->entries_tree_root,
                   e,
                   ramfs_insert_remove_entry_cmp,
