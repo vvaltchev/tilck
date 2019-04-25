@@ -124,6 +124,7 @@ ramfs_get_entry(filesystem *fs,
       *entry = (vfs_dir_entry) {
          .inode = d->root,
          .dir_inode = d->root,
+         .dir_entry = NULL,
          .type = VFS_DIR,
       };
 
@@ -135,6 +136,7 @@ ramfs_get_entry(filesystem *fs,
    *entry = (vfs_dir_entry) {
       .inode = re ? re->inode : NULL,
       .dir_inode = idir,
+      .dir_entry = re,
       .type = re ? re->inode->type : VFS_NONE,
    };
 }

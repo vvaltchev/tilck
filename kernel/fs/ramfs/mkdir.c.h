@@ -25,45 +25,42 @@ static int ramfs_mkdir(vfs_path *p, mode_t mode)
 }
 
 
-static int ramfs_rmdir(filesystem *fs, const char *path)
+static int ramfs_rmdir(vfs_path *p)
 {
-   ramfs_data *d = fs->device_data;
-   ramfs_resolved_path rp;
-   int rc;
+   ramfs_vfs_entry *rp = (ramfs_vfs_entry *) &p->entry;
+   ramfs_data *d = p->fs->device_data;
+   ramfs_inode *i = rp->inode;
 
    ASSERT(rwlock_wp_holding_exlock(&d->rwlock));
 
-   if ((rc = ramfs_resolve_path(d, path, &rp)))
-      return rc;
-
-   if (rp.i->type != VFS_DIR)
+   if (rp->type != VFS_DIR)
       return -ENOTDIR;
 
-   if (!(rp.idir->mode & 0200)) /* write permission */
+   if (!(rp->dir_inode->mode & 0200)) /* write permission */
       return -EACCES;
 
-   if (!rp.e)
-      return -EINVAL; /* root directory case */
+   if (!rp->dir_entry)
+      return -EINVAL; /* root dir case */
 
-   if (rp.last_comp[0] == '.' && !rp.last_comp[1])
+   if (p->last_comp[0] == '.' && !p->last_comp[1])
       return -EINVAL; /* trying to delete /a/b/c/. */
 
-   if (rp.i->num_entries > 2)
+   if (i->num_entries > 2)
       return -ENOTEMPTY; /* empty dirs have two entries: '.' and '..' */
 
-   ASSERT(rp.i->entries_tree_root != NULL);
-   ramfs_dir_remove_entry(rp.i, rp.i->entries_tree_root); /* drop '.' */
+   ASSERT(i->entries_tree_root != NULL);
+   ramfs_dir_remove_entry(i, i->entries_tree_root);   // drop .
 
-   ASSERT(rp.i->entries_tree_root != NULL);
-   ramfs_dir_remove_entry(rp.i, rp.i->entries_tree_root); /* drop '..' */
+   ASSERT(i->entries_tree_root != NULL);
+   ramfs_dir_remove_entry(i, i->entries_tree_root);   // drop ..
 
-   ASSERT(rp.i->num_entries == 0);
-   ASSERT(rp.i->entries_tree_root == NULL);
+   ASSERT(i->num_entries == 0);
+   ASSERT(i->entries_tree_root == NULL);
 
    /* Remove the dir entry */
-   ramfs_dir_remove_entry(rp.idir, rp.e);
+   ramfs_dir_remove_entry(rp->dir_inode, rp->dir_entry);
 
    /* Destroy the inode */
-   ramfs_destroy_inode(d, rp.i);
+   ramfs_destroy_inode(d, i);
    return 0;
 }

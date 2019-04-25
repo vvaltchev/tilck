@@ -100,4 +100,4 @@ typedef struct {
 
 } ramfs_resolved_path;
 
-CREATE_VFS_ENTRY_STRUCT(ramfs_vfs_entry, ramfs_inode *);
+CREATE_VFS_ENTRY_STRUCT(ramfs_vfs_entry, ramfs_inode *, ramfs_entry *);
