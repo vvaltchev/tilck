@@ -15,13 +15,14 @@ static int ramfs_unlink(vfs_path *p)
    ramfs_vfs_entry *rp = (ramfs_vfs_entry *) &p->entry;
    ramfs_data *d = p->fs->device_data;
    ramfs_inode *i = rp->inode;
+   ramfs_inode *idir = rp->dir_inode;
 
    ASSERT(rwlock_wp_holding_exlock(&d->rwlock));
 
    if (i->type == VFS_DIR)
       return -EISDIR;
 
-   if (!(rp->dir_inode->mode & 0200)) /* write permission */
+   if (!(idir->mode & 0200)) /* write permission */
       return -EACCES;
 
    /*
@@ -31,7 +32,7 @@ static int ramfs_unlink(vfs_path *p)
    ASSERT(rp->dir_entry != NULL);
 
    /* Remove the dir entry */
-   ramfs_dir_remove_entry(rp->dir_inode, rp->dir_entry);
+   ramfs_dir_remove_entry(idir, rp->dir_entry);
 
    /* Trucate and delete the inode, if it's not used */
    if (!i->nlink && !get_ref_count(i)) {

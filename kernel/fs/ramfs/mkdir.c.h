@@ -24,7 +24,6 @@ static int ramfs_mkdir(vfs_path *p, mode_t mode)
    return rc;
 }
 
-
 static int ramfs_rmdir(vfs_path *p)
 {
    ramfs_vfs_entry *rp = (ramfs_vfs_entry *) &p->entry;

@@ -385,17 +385,20 @@ int vfs_fcntl(fs_handle h, int cmd, int arg)
 
 static int vfs_resolve(filesystem *fs, const char *path, vfs_path *rp)
 {
+   func_get_entry get_entry = fs->fsops->get_entry;
    vfs_dir_entry e;
    const char *pc;
    void *idir;
 
-   fs->fsops->get_entry(fs, NULL, NULL, 0, &e);
+   get_entry(fs, NULL, NULL, 0, &e);
 
    idir = e.inode; /* idir = root's inode */
    bzero(rp, sizeof(*rp));
 
    ASSERT(*path == '/');
    pc = ++path;
+
+   /* Always set the `fs` field, no matter what */
    rp->fs = fs;
 
    if (!*path) {
@@ -421,7 +424,7 @@ static int vfs_resolve(filesystem *fs, const char *path, vfs_path *rp)
 
       ASSERT(path[1] != '/');
 
-      fs->fsops->get_entry(fs, idir, pc, path - pc, &e);
+      get_entry(fs, idir, pc, path - pc, &e);
 
       if (!e.inode) {
 
@@ -450,7 +453,7 @@ static int vfs_resolve(filesystem *fs, const char *path, vfs_path *rp)
 
    ASSERT(path - pc > 0);
 
-   fs->fsops->get_entry(fs, idir, pc, path - pc, &rp->entry);
+   get_entry(fs, idir, pc, path - pc, &rp->entry);
    rp->last_comp = pc;
    return 0;
 }
