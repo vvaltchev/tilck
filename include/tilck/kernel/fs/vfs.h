@@ -77,7 +77,7 @@ typedef void (*func_get_entry) (filesystem *fs,
                                 void *dir_inode,
                                 const char *name,
                                 ssize_t name_len,
-                                fs_path_struct *e);
+                                fs_path_struct *fs_path);
 
 /* file ops */
 typedef ssize_t (*func_read) (fs_handle, char *, size_t);

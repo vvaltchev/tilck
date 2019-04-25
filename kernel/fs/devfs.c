@@ -244,48 +244,22 @@ static int devfs_open_file(filesystem *fs, devfs_file *pos, fs_handle *out)
    return 0;
 }
 
+CREATE_FS_PATH_STRUCT(devfs_path, devfs_file *, devfs_file *);
+
 static int
-devfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
+devfs_open(vfs_path *p, fs_handle *out, int fl, mode_t mod)
 {
-   devfs_data *d = fs->device_data;
-   devfs_file *pos;
-   size_t pl;
+   devfs_path *dp = (devfs_path *) &p->fs_path;
 
-   /*
-    * Path is expected to be striped from the mountpoint prefix, but the '/'
-    * is kept. In other words, /dev/tty is /tty here.
-    */
+   if (dp->inode) {
 
-   ASSERT(*path == '/');
-   path++;
+      if (dp->type == VFS_DIR)
+         return devfs_open_root_dir(p->fs, out);
 
-   if (!*path) {
-      /* path was "/" */
-      return devfs_open_root_dir(fs, out);
-   }
+      if ((fl & O_CREAT) && (fl & O_EXCL))
+         return -EEXIST;
 
-   pl = strlen(path);
-
-   if (path[pl - 1] == '/')
-      pl--;
-
-   /*
-    * Linearly iterate our linked list: we do not expect any time soon devfs
-    * to contain more than a few files.
-    */
-
-   list_for_each_ro(pos, &d->root_dir.files_list, dir_node) {
-
-      if (!strncmp(pos->name, path, pl) && !pos->name[pl]) {
-
-         if (path[pl] == '/')
-            return -ENOTDIR;
-
-         if ((fl & O_CREAT) && (fl & O_EXCL))
-            return -EEXIST;
-
-         return devfs_open_file(fs, pos, out);
-      }
+      return devfs_open_file(p->fs, dp->inode, out);
    }
 
    if (fl & O_CREAT)
@@ -427,9 +401,51 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    return (int)offset;
 }
 
+static void
+devfs_get_entry(filesystem *fs,
+                void *dir_inode,
+                const char *name,
+                ssize_t name_len,
+                fs_path_struct *fs_path)
+{
+   devfs_data *d = fs->device_data;
+   devfs_directory *dir;
+   devfs_file *pos;
+
+   if (!dir_inode) {
+
+      *fs_path = (fs_path_struct) {
+         .inode      = &d->root_dir,
+         .dir_inode  = &d->root_dir,
+         .dir_entry  = NULL,
+         .type       = VFS_DIR,
+      };
+
+      return;
+   }
+
+   dir = dir_inode;
+   bzero(fs_path, sizeof(*fs_path));
+
+   list_for_each_ro(pos, &dir->files_list, dir_node) {
+      if (!strncmp(pos->name, name, (size_t)name_len))
+         if (!pos->name[name_len])
+            break;
+   }
+
+   if (&pos->dir_node != (list_node *) &dir->files_list) {
+      *fs_path = (fs_path_struct) {
+         .inode         = pos,
+         .dir_inode     = dir,
+         .dir_entry     = pos,
+         .type          = VFS_FILE,
+      };
+   }
+}
+
 static const fs_ops static_fsops_devfs =
 {
-   .open = devfs_open,
+   .open2 = devfs_open,
    .close = devfs_close,
    .dup = devfs_dup,
    .getdents64 = devfs_getdents64,
@@ -437,7 +453,7 @@ static const fs_ops static_fsops_devfs =
    .mkdir = NULL,
    .rmdir = NULL,
    .fstat = devfs_stat64,
-   .get_entry = NULL,
+   .get_entry = devfs_get_entry,
 
    .fs_exlock = devfs_exclusive_lock,
    .fs_exunlock = devfs_exclusive_unlock,
