@@ -141,7 +141,7 @@ ramfs_get_entry(filesystem *fs,
 
 static const fs_ops static_fsops_ramfs =
 {
-   .open = ramfs_open,
+   .open2 = ramfs_open,
    .close = ramfs_close,
    .dup = ramfs_dup,
    .getdents64 = ramfs_getdents64,

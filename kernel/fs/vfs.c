@@ -138,6 +138,82 @@ get_retained_fs_at(const char *path, const char **fs_path_ref)
  * ----------------------------------------------------
  */
 
+
+static int vfs_resolve(filesystem *fs, const char *path, vfs_path *rp)
+{
+   func_get_entry get_entry = fs->fsops->get_entry;
+   vfs_dir_entry e;
+   const char *pc;
+   void *idir;
+
+   get_entry(fs, NULL, NULL, 0, &e);
+
+   idir = e.inode; /* idir = root's inode */
+   bzero(rp, sizeof(*rp));
+
+   ASSERT(*path == '/');
+   pc = ++path;
+
+   /* Always set the `fs` field, no matter what */
+   rp->fs = fs;
+
+   if (!*path) {
+      /* path was just "/" */
+      rp->entry = e;
+      rp->last_comp = path;
+      return 0;
+   }
+
+   while (*path) {
+
+      if (*path != '/') {
+         path++;
+         continue;
+      }
+
+      /*
+       * We hit a slash '/' in the path: we now must lookup this path component.
+       *
+       * NOTE: the code in upper layers normalizes the user paths, but it makes
+       * sense to ASSERT that.
+       */
+
+      ASSERT(path[1] != '/');
+
+      get_entry(fs, idir, pc, path - pc, &e);
+
+      if (!e.inode) {
+
+         if (path[1])
+            return -ENOENT; /* the path does NOT end here: no such entity */
+
+         /* no such entity, but the path ends here, with a trailing slash */
+         break;
+      }
+
+      /* We've found an entity for this path component (pc) */
+
+      if (!path[1]) {
+
+         /* the path ends here, with a trailing slash */
+
+         if (e.type != VFS_DIR)
+            return -ENOTDIR; /* that's a problem only if `e` is NOT a dir */
+
+         break;
+      }
+
+      idir = e.inode;
+      pc = ++path;
+   }
+
+   ASSERT(path - pc > 0);
+
+   get_entry(fs, idir, pc, path - pc, &rp->entry);
+   rp->last_comp = pc;
+   return 0;
+}
+
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 {
    const char *fs_path;
@@ -160,7 +236,17 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
    {
-      rc = fs->fsops->open(fs, fs_path, out, flags, mode);
+      if (fs->fsops->open2) {
+
+         vfs_path p;
+         rc = vfs_resolve(fs, fs_path, &p);
+
+         if (!rc)
+            rc = fs->fsops->open2(&p, out, flags, mode);
+
+      } else {
+         rc = fs->fsops->open(fs, fs_path, out, flags, mode);
+      }
    }
    vfs_fs_exunlock(fs);
 
@@ -381,81 +467,6 @@ int vfs_fcntl(fs_handle h, int cmd, int arg)
    }
    vfs_exunlock(h);
    return ret;
-}
-
-static int vfs_resolve(filesystem *fs, const char *path, vfs_path *rp)
-{
-   func_get_entry get_entry = fs->fsops->get_entry;
-   vfs_dir_entry e;
-   const char *pc;
-   void *idir;
-
-   get_entry(fs, NULL, NULL, 0, &e);
-
-   idir = e.inode; /* idir = root's inode */
-   bzero(rp, sizeof(*rp));
-
-   ASSERT(*path == '/');
-   pc = ++path;
-
-   /* Always set the `fs` field, no matter what */
-   rp->fs = fs;
-
-   if (!*path) {
-      /* path was just "/" */
-      rp->entry = e;
-      rp->last_comp = path;
-      return 0;
-   }
-
-   while (*path) {
-
-      if (*path != '/') {
-         path++;
-         continue;
-      }
-
-      /*
-       * We hit a slash '/' in the path: we now must lookup this path component.
-       *
-       * NOTE: the code in upper layers normalizes the user paths, but it makes
-       * sense to ASSERT that.
-       */
-
-      ASSERT(path[1] != '/');
-
-      get_entry(fs, idir, pc, path - pc, &e);
-
-      if (!e.inode) {
-
-         if (path[1])
-            return -ENOENT; /* the path does NOT end here: no such entity */
-
-         /* no such entity, but the path ends here, with a trailing slash */
-         break;
-      }
-
-      /* We've found an entity for this path component (pc) */
-
-      if (!path[1]) {
-
-         /* the path ends here, with a trailing slash */
-
-         if (e.type != VFS_DIR)
-            return -ENOTDIR; /* that's a problem only if `e` is NOT a dir */
-
-         break;
-      }
-
-      idir = e.inode;
-      pc = ++path;
-   }
-
-   ASSERT(path - pc > 0);
-
-   get_entry(fs, idir, pc, path - pc, &rp->entry);
-   rp->last_comp = pc;
-   return 0;
 }
 
 int vfs_mkdir(const char *path, mode_t mode)

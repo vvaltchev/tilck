@@ -65,6 +65,7 @@ typedef struct {
 /* fs ops */
 typedef void (*func_close) (fs_handle);
 typedef int (*func_open) (filesystem *, const char *, fs_handle *, int, mode_t);
+typedef int (*func_open2) (vfs_path *, fs_handle *, int, mode_t); // temp!!
 typedef int (*func_dup) (fs_handle, fs_handle *);
 typedef int (*func_getdents64) (fs_handle, struct linux_dirent64 *, u32);
 typedef int (*func_unlink) (vfs_path *p);
@@ -116,6 +117,7 @@ typedef kcond *(*func_get_rwe_cond)(fs_handle);
 typedef struct {
 
    func_open open;
+   func_open2 open2;
    func_close close;
    func_dup dup;
    func_getdents64 getdents64;

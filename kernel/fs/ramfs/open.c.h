@@ -70,116 +70,38 @@ static int ramfs_open_existing_checks(int fl, ramfs_inode *i)
 }
 
 static int
-ramfs_resolve_path(ramfs_data *d,
-                   const char *path,
-                   ramfs_resolved_path *rp)
+ramfs_open(vfs_path *p, fs_handle *out, int fl, mode_t mod)
 {
-   ramfs_inode *idir = d->root;
-   ramfs_entry *e;
-   const char *pc;
-   bzero(rp, sizeof(ramfs_resolved_path));
-
-   /*
-    * Path is expected to be stripped from the mountpoint prefix, but the '/'
-    * is kept. For example, if ramfs is mounted at /tmp, and the file /tmp/x
-    * is referred, here will get path == "/x".
-    */
-
-   ASSERT(*path == '/');
-   pc = ++path;
-
-   while (*path) {
-
-      if (*path != '/') {
-         path++;
-         continue;
-      }
-
-      /*
-       * We hit a slash '/' in the path: we now must lookup this path component.
-       *
-       * NOTE: the code in upper layers normalizes the user paths, but it makes
-       * sense to ASSERT that.
-       */
-
-      ASSERT(path[1] != '/');
-
-      if (!(e = ramfs_dir_get_entry_by_name(idir, pc, path - pc))) {
-
-         if (path[1])
-            return -ENOENT; /* the path does NOT end here: no such entity */
-
-         /* no such entity, but the path ends here, with a trailing slash */
-         break;
-      }
-
-      /* We've found an entity for this path component (pc) */
-
-      if (!path[1]) {
-
-         /* the path ends here, with a trailing slash */
-
-         if (e->inode->type != VFS_DIR)
-            return -ENOTDIR; /* that's a problem only if `e` is NOT a dir */
-
-         break;
-      }
-
-      idir = e->inode;
-      pc = ++path;
-   }
-
-   if (path - pc > 0) {
-
-      if ((e = ramfs_dir_get_entry_by_name(idir, pc, path - pc))) {
-         rp->e = e;
-         rp->i = e->inode;
-      }
-
-   } else {
-
-      rp->i = d->root;
-   }
-
-   rp->idir = idir;
-   rp->last_comp = pc;
-   return 0;
-}
-
-static int
-ramfs_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mod)
-{
-   ramfs_data *d = fs->device_data;
-   ramfs_resolved_path rp;
+   ramfs_vfs_entry *rp = (ramfs_vfs_entry *) &p->entry;
+   ramfs_data *d = p->fs->device_data;
+   ramfs_inode *i = rp->inode;
+   ramfs_inode *idir = rp->dir_inode;
    int rc;
 
-   if ((rc = ramfs_resolve_path(d, path, &rp)))
-      return rc;
-
-   if (!rp.i) {
+   if (!i) {
 
       if (!(fl & O_CREAT))
          return -ENOENT;
 
-      if (!(rp.idir->mode & 0300)) /* write + execute */
+      if (!(idir->mode & 0300)) /* write + execute */
          return -EACCES;
 
-      if (!(rp.i = ramfs_create_inode_file(d, mod, rp.idir)))
+      if (!(i = ramfs_create_inode_file(d, mod, idir)))
          return -ENOSPC;
 
-      if ((rc = ramfs_dir_add_entry(rp.idir, rp.last_comp, rp.i))) {
-         ramfs_destroy_inode(d, rp.i);
+      if ((rc = ramfs_dir_add_entry(idir, p->last_comp, i))) {
+         ramfs_destroy_inode(d, i);
          return rc;
       }
 
    } else {
 
-      if (!(rp.idir->mode & 0500)) /* read + execute */
+      if (!(idir->mode & 0500)) /* read + execute */
          return -EACCES;
 
-      if ((rc = ramfs_open_existing_checks(fl, rp.i)))
+      if ((rc = ramfs_open_existing_checks(fl, i)))
          return rc;
    }
 
-   return ramfs_open_int(fs, rp.i, out, fl);
+   return ramfs_open_int(p->fs, i, out, fl);
 }
