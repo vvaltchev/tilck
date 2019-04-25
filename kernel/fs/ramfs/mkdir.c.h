@@ -2,7 +2,7 @@
 
 static int ramfs_mkdir(vfs_path *p, mode_t mode)
 {
-   ramfs_vfs_entry *rp = (ramfs_vfs_entry *) &p->entry;
+   ramfs_path *rp = (ramfs_path *) &p->fs_path;
    ramfs_data *d = p->fs->device_data;
    ramfs_inode *new_dir;
    int rc;
@@ -26,7 +26,7 @@ static int ramfs_mkdir(vfs_path *p, mode_t mode)
 
 static int ramfs_rmdir(vfs_path *p)
 {
-   ramfs_vfs_entry *rp = (ramfs_vfs_entry *) &p->entry;
+   ramfs_path *rp = (ramfs_path *) &p->fs_path;
    ramfs_data *d = p->fs->device_data;
    ramfs_inode *i = rp->inode;
 

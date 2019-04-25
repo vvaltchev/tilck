@@ -91,4 +91,4 @@ typedef struct {
 
 } ramfs_data;
 
-CREATE_VFS_ENTRY_STRUCT(ramfs_vfs_entry, ramfs_inode *, ramfs_entry *);
+CREATE_FS_PATH_STRUCT(ramfs_path, ramfs_inode *, ramfs_entry *);

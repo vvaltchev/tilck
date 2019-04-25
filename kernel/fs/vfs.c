@@ -142,7 +142,7 @@ get_retained_fs_at(const char *path, const char **fs_path_ref)
 static int vfs_resolve(filesystem *fs, const char *path, vfs_path *rp)
 {
    func_get_entry get_entry = fs->fsops->get_entry;
-   vfs_dir_entry e;
+   fs_path_struct e;
    const char *pc;
    void *idir;
 
@@ -159,7 +159,7 @@ static int vfs_resolve(filesystem *fs, const char *path, vfs_path *rp)
 
    if (!*path) {
       /* path was just "/" */
-      rp->entry = e;
+      rp->fs_path = e;
       rp->last_comp = path;
       return 0;
    }
@@ -209,7 +209,7 @@ static int vfs_resolve(filesystem *fs, const char *path, vfs_path *rp)
 
    ASSERT(path - pc > 0);
 
-   get_entry(fs, idir, pc, path - pc, &rp->entry);
+   get_entry(fs, idir, pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
    return 0;
 }

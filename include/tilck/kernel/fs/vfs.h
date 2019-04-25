@@ -38,7 +38,7 @@ enum vfs_entry_type {
    VFS_PIPE,
 };
 
-#define CREATE_VFS_ENTRY_STRUCT(name, inode_type, fs_entry_type)          \
+#define CREATE_FS_PATH_STRUCT(name, inode_type, fs_entry_type)            \
                                                                           \
    STATIC_ASSERT(sizeof(inode_type) == sizeof(void *));                   \
    STATIC_ASSERT(sizeof(fs_entry_type) == sizeof(void *));                \
@@ -50,12 +50,12 @@ enum vfs_entry_type {
       enum vfs_entry_type type;                                           \
    } name                                                                 \
 
-CREATE_VFS_ENTRY_STRUCT(vfs_dir_entry, void *, void *);
+CREATE_FS_PATH_STRUCT(fs_path_struct, void *, void *);
 
 typedef struct {
 
    filesystem *fs;
-   vfs_dir_entry entry;
+   fs_path_struct fs_path;
 
    /* other fields */
    const char *last_comp;
@@ -77,7 +77,7 @@ typedef void (*func_get_entry) (filesystem *fs,
                                 void *dir_inode,
                                 const char *name,
                                 ssize_t name_len,
-                                vfs_dir_entry *e);
+                                fs_path_struct *e);
 
 /* file ops */
 typedef ssize_t (*func_read) (fs_handle, char *, size_t);

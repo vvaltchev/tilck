@@ -12,7 +12,7 @@
 
 static int ramfs_unlink(vfs_path *p)
 {
-   ramfs_vfs_entry *rp = (ramfs_vfs_entry *) &p->entry;
+   ramfs_path *rp = (ramfs_path *) &p->fs_path;
    ramfs_data *d = p->fs->device_data;
    ramfs_inode *i = rp->inode;
    ramfs_inode *idir = rp->dir_inode;
@@ -111,7 +111,7 @@ ramfs_get_entry(filesystem *fs,
                 void *dir_inode,
                 const char *name,
                 ssize_t name_len,
-                vfs_dir_entry *entry)
+                fs_path_struct *entry)
 {
    ramfs_data *d = fs->device_data;
    ramfs_inode *idir = dir_inode;
@@ -119,7 +119,7 @@ ramfs_get_entry(filesystem *fs,
 
    if (!dir_inode) {
 
-      *entry = (vfs_dir_entry) {
+      *entry = (fs_path_struct) {
          .inode = d->root,
          .dir_inode = d->root,
          .dir_entry = NULL,
@@ -131,7 +131,7 @@ ramfs_get_entry(filesystem *fs,
 
    re = ramfs_dir_get_entry_by_name(idir, name, name_len);
 
-   *entry = (vfs_dir_entry) {
+   *entry = (fs_path_struct) {
       .inode = re ? re->inode : NULL,
       .dir_inode = idir,
       .dir_entry = re,
