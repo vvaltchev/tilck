@@ -96,9 +96,9 @@ static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
    ramfs_inode *inode = rh->inode;
    off_t tot_read = 0;
    off_t buf_rem = (off_t) len;
-   ASSERT(inode->type == RAMFS_FILE);
+   ASSERT(inode->type == VFS_FILE);
 
-   if (inode->type == RAMFS_DIRECTORY)
+   if (inode->type == VFS_DIR)
       return -EISDIR;
 
    while (buf_rem > 0) {
@@ -149,7 +149,7 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
    off_t buf_rem = (off_t)len;
 
    /* We can be sure it's a file because dirs cannot be open for writing */
-   ASSERT(inode->type == RAMFS_FILE);
+   ASSERT(inode->type == VFS_FILE);
 
    if (rh->fl_flags & O_APPEND)
       rh->pos = inode->fsize;

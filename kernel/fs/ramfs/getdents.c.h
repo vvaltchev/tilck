@@ -46,13 +46,13 @@ static int ramfs_getdents64_cb(void *obj, void *arg)
    ctx->ent.d_reclen = (u16)entry_size;
 
    switch (pos->inode->type) {
-      case RAMFS_DIRECTORY:
+      case VFS_DIR:
          ctx->ent.d_type = DT_DIR;
          break;
-      case RAMFS_FILE:
+      case VFS_FILE:
          ctx->ent.d_type = DT_REG;
          break;
-      case RAMFS_SYMLINK:
+      case VFS_SYMLINK:
          ctx->ent.d_type = DT_LNK;
          break;
       default:
@@ -109,7 +109,7 @@ ramfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    ramfs_handle *rh = h;
    ramfs_inode *inode = rh->inode;
 
-   if (inode->type != RAMFS_DIRECTORY)
+   if (inode->type != VFS_DIR)
       return -ENOTDIR;
 
    if (!(inode->mode & 0400)) /* read permission */

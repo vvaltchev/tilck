@@ -21,7 +21,7 @@ static int ramfs_unlink(filesystem *fs, const char *path)
    if ((rc = ramfs_resolve_path(d, path, &rp)))
       return rc;
 
-   if (rp.i->type == RAMFS_DIRECTORY)
+   if (rp.i->type == VFS_DIR)
       return -EISDIR;
 
    if (!(rp.idir->mode & 0200)) /* write permission */
@@ -108,6 +108,37 @@ static void ramfs_err_case_destroy(filesystem *fs)
    kfree2(fs, sizeof(filesystem));
 }
 
+static void
+ramfs_get_entry(filesystem *fs,
+                void *dir_inode,
+                const char *name,
+                ssize_t name_len,
+                vfs_dir_entry *entry)
+{
+   ramfs_data *d = fs->device_data;
+   ramfs_inode *idir = dir_inode;
+   ramfs_entry *re;
+
+   if (!dir_inode) {
+
+      *entry = (vfs_dir_entry) {
+         .inode = d->root,
+         .dir_inode = d->root,
+         .type = VFS_DIR,
+      };
+
+      return;
+   }
+
+   re = ramfs_dir_get_entry_by_name(idir, name, name_len);
+
+   *entry = (vfs_dir_entry) {
+      .inode = re ? re->inode : NULL,
+      .dir_inode = idir,
+      .type = re ? re->inode->type : VFS_NONE,
+   };
+}
+
 static const fs_ops static_fsops_ramfs =
 {
    .open = ramfs_open,
@@ -118,6 +149,7 @@ static const fs_ops static_fsops_ramfs =
    .mkdir = ramfs_mkdir,
    .rmdir = ramfs_rmdir,
    .fstat = ramfs_fstat64,
+   .get_entry = ramfs_get_entry,
 
    .fs_exlock = ramfs_exlock,
    .fs_exunlock = ramfs_exunlock,

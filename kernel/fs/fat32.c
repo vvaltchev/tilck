@@ -556,6 +556,7 @@ static const fs_ops static_fsops_fat =
    .mkdir = NULL,
    .rmdir = NULL,
    .fstat = fat_stat64,
+   .get_entry = NULL,
 
    .fs_exlock = fat_exclusive_lock,
    .fs_exunlock = fat_exclusive_unlock,

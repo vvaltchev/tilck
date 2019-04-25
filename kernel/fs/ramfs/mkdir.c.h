@@ -1,25 +1,22 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static int ramfs_mkdir(filesystem *fs, const char *path, mode_t mode)
+static int ramfs_mkdir(vfs_path *p, mode_t mode)
 {
-   ramfs_data *d = fs->device_data;
-   ramfs_resolved_path rp;
+   ramfs_vfs_entry *rp = (ramfs_vfs_entry *) &p->entry;
+   ramfs_data *d = p->fs->device_data;
    ramfs_inode *new_dir;
    int rc;
 
-   if ((rc = ramfs_resolve_path(d, path, &rp)))
-      return rc;
-
-   if (rp.i)
+   if (rp->inode)
       return -EEXIST;
 
-   if (!(rp.idir->mode & 0300)) /* write + execute */
+   if (!(rp->dir_inode->mode & 0300)) /* write + execute */
       return -EACCES;
 
-   if (!(new_dir = ramfs_create_inode_dir(d, mode, rp.idir)))
+   if (!(new_dir = ramfs_create_inode_dir(d, mode, rp->dir_inode)))
       return -ENOSPC;
 
-   if ((rc = ramfs_dir_add_entry(rp.idir, rp.last_comp, new_dir))) {
+   if ((rc = ramfs_dir_add_entry(rp->dir_inode, p->last_comp, new_dir))) {
       ramfs_destroy_inode(d, new_dir);
       return rc;
    }
@@ -39,7 +36,7 @@ static int ramfs_rmdir(filesystem *fs, const char *path)
    if ((rc = ramfs_resolve_path(d, path, &rp)))
       return rc;
 
-   if (rp.i->type != RAMFS_DIRECTORY)
+   if (rp.i->type != VFS_DIR)
       return -ENOTDIR;
 
    if (!(rp.idir->mode & 0200)) /* write permission */

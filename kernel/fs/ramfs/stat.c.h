@@ -23,17 +23,21 @@ static int ramfs_fstat64(fs_handle h, struct stat64 *statbuf)
 
    switch (inode->type) {
 
-      case RAMFS_FILE:
+      case VFS_FILE:
          statbuf->st_size = (typeof(statbuf->st_size)) inode->fsize;
          break;
 
-      case RAMFS_DIRECTORY:
+      case VFS_DIR:
          statbuf->st_size = (typeof(statbuf->st_size))
             (inode->num_entries * (off_t) sizeof(ramfs_entry));
          break;
 
-      case RAMFS_SYMLINK:
+      case VFS_SYMLINK:
          statbuf->st_size = (typeof(statbuf->st_size)) inode->path_len;
+         break;
+
+      default:
+         NOT_IMPLEMENTED();
          break;
    }
 

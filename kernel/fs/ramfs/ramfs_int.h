@@ -21,12 +21,6 @@
 struct ramfs_inode;
 typedef struct ramfs_inode ramfs_inode;
 
-enum ramfs_entry {
-   RAMFS_FILE,
-   RAMFS_DIRECTORY,
-   RAMFS_SYMLINK,
-};
-
 typedef struct {
 
    bintree_node node;
@@ -54,7 +48,7 @@ struct ramfs_inode {
    REF_COUNTED_OBJECT;
 
    int inode;
-   enum ramfs_entry type;
+   enum vfs_entry_type type;
    nlink_t nlink;
    mode_t mode;
    rwlock_wp rwlock;
@@ -62,15 +56,15 @@ struct ramfs_inode {
    struct ramfs_inode *parent_dir;
 
    union {
-      off_t fsize;                     /* valid when type == RAMFS_FILE */
-      off_t num_entries;               /* valid when type == RAMFS_DIRECTORY */
-      off_t path_len;                  /* valid when type == RAMFS_SYMLINK */
+      off_t fsize;                     /* valid when type == VFS_FILE */
+      off_t num_entries;               /* valid when type == VFS_DIR */
+      off_t path_len;                  /* valid when type == VFS_SYMLINK */
    };
 
    union {
-      ramfs_block *blocks_tree_root;   /* valid when type == RAMFS_FILE */
-      ramfs_entry *entries_tree_root;  /* valid when type == RAMFS_DIRECTORY */
-      const char *path;                /* valid when type == RAMFS_SYMLINK */
+      ramfs_block *blocks_tree_root;   /* valid when type == VFS_FILE */
+      ramfs_entry *entries_tree_root;  /* valid when type == VFS_DIR */
+      const char *path;                /* valid when type == VFS_SYMLINK */
    };
 
    time_t ctime;
@@ -105,3 +99,5 @@ typedef struct {
    const char *last_comp;
 
 } ramfs_resolved_path;
+
+CREATE_VFS_ENTRY_STRUCT(ramfs_vfs_entry, ramfs_inode *);

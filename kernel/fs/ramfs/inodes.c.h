@@ -20,7 +20,7 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
    if (!i)
       return NULL;
 
-   i->type = RAMFS_DIRECTORY;
+   i->type = VFS_DIR;
    i->mode = (mode & 0777) | S_IFDIR;
 
    if (!parent) {
@@ -57,7 +57,7 @@ ramfs_create_inode_file(ramfs_data *d, mode_t mode, ramfs_inode *parent)
    if (!i)
       return NULL;
 
-   i->type = RAMFS_FILE;
+   i->type = VFS_FILE;
    i->mode = (mode & 0777) | S_IFREG;
 
    i->parent_dir = parent;
@@ -76,9 +76,9 @@ static int ramfs_destroy_inode(ramfs_data *d, ramfs_inode *i)
    ASSERT(get_ref_count(i) == 0);
    ASSERT(i->nlink == 0);
 
-   if (i->type == RAMFS_DIRECTORY) {
+   if (i->type == VFS_DIR) {
       ASSERT(i->entries_tree_root == NULL);
-   } else if (i->type == RAMFS_FILE) {
+   } else if (i->type == VFS_FILE) {
       ASSERT(i->blocks_tree_root == NULL);
    }
 

@@ -437,6 +437,7 @@ static const fs_ops static_fsops_devfs =
    .mkdir = NULL,
    .rmdir = NULL,
    .fstat = devfs_stat64,
+   .get_entry = NULL,
 
    .fs_exlock = devfs_exclusive_lock,
    .fs_exunlock = devfs_exclusive_unlock,

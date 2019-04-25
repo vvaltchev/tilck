@@ -383,39 +383,83 @@ int vfs_fcntl(fs_handle h, int cmd, int arg)
    return ret;
 }
 
-int vfs_unlink(const char *path)
+static int vfs_resolve(filesystem *fs, const char *path, vfs_path *rp)
 {
-   const char *fs_path;
-   filesystem *fs;
-   int rc;
+   vfs_dir_entry e;
+   const char *pc;
+   void *idir;
 
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* VFS works only with absolute paths */
+   fs->fsops->get_entry(fs, NULL, NULL, 0, &e);
 
-   if (!(fs = get_retained_fs_at(path, &fs_path)))
-      return -ENOENT;
+   idir = e.inode; /* idir = root's inode */
+   bzero(rp, sizeof(*rp));
 
-   if (!(fs->flags & VFS_FS_RW))
-      return -EROFS;
+   ASSERT(*path == '/');
+   pc = ++path;
+   rp->fs = fs;
 
-   if (!fs->fsops->unlink)
-      return -EROFS;
-
-   /* See the comment in vfs.h about the "fs-lock" funcs */
-   vfs_fs_exlock(fs);
-   {
-      rc = fs->fsops->unlink(fs, fs_path);
+   if (!*path) {
+      /* path was just "/" */
+      rp->entry = e;
+      rp->last_comp = path;
+      return 0;
    }
-   vfs_fs_exunlock(fs);
-   release_obj(fs);     /* it was retained by get_retained_fs_at() */
-   return rc;
+
+   while (*path) {
+
+      if (*path != '/') {
+         path++;
+         continue;
+      }
+
+      /*
+       * We hit a slash '/' in the path: we now must lookup this path component.
+       *
+       * NOTE: the code in upper layers normalizes the user paths, but it makes
+       * sense to ASSERT that.
+       */
+
+      ASSERT(path[1] != '/');
+
+      fs->fsops->get_entry(fs, idir, pc, path - pc, &e);
+
+      if (!e.inode) {
+
+         if (path[1])
+            return -ENOENT; /* the path does NOT end here: no such entity */
+
+         /* no such entity, but the path ends here, with a trailing slash */
+         break;
+      }
+
+      /* We've found an entity for this path component (pc) */
+
+      if (!path[1]) {
+
+         /* the path ends here, with a trailing slash */
+
+         if (e.type != VFS_DIR)
+            return -ENOTDIR; /* that's a problem only if `e` is NOT a dir */
+
+         break;
+      }
+
+      idir = e.inode;
+      pc = ++path;
+   }
+
+   ASSERT(path - pc > 0);
+
+   fs->fsops->get_entry(fs, idir, pc, path - pc, &rp->entry);
+   rp->last_comp = pc;
+   return 0;
 }
 
 int vfs_mkdir(const char *path, mode_t mode)
 {
    const char *fs_path;
    filesystem *fs;
+   vfs_path p;
    int rc;
 
    NO_TEST_ASSERT(is_preemption_enabled());
@@ -434,7 +478,10 @@ int vfs_mkdir(const char *path, mode_t mode)
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
    {
-      rc = fs->fsops->mkdir(fs, fs_path, mode);
+      rc = vfs_resolve(fs, fs_path, &p);
+
+      if (!rc)
+         rc = fs->fsops->mkdir(&p, mode);
    }
    vfs_fs_exunlock(fs);
    release_obj(fs);     /* it was retained by get_retained_fs_at() */
@@ -464,6 +511,35 @@ int vfs_rmdir(const char *path)
    vfs_fs_exlock(fs);
    {
       rc = fs->fsops->rmdir(fs, fs_path);
+   }
+   vfs_fs_exunlock(fs);
+   release_obj(fs);     /* it was retained by get_retained_fs_at() */
+   return rc;
+}
+
+int vfs_unlink(const char *path)
+{
+   const char *fs_path;
+   filesystem *fs;
+   int rc;
+
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(path != NULL);
+   ASSERT(*path == '/'); /* VFS works only with absolute paths */
+
+   if (!(fs = get_retained_fs_at(path, &fs_path)))
+      return -ENOENT;
+
+   if (!(fs->flags & VFS_FS_RW))
+      return -EROFS;
+
+   if (!fs->fsops->unlink)
+      return -EROFS;
+
+   /* See the comment in vfs.h about the "fs-lock" funcs */
+   vfs_fs_exlock(fs);
+   {
+      rc = fs->fsops->unlink(fs, fs_path);
    }
    vfs_fs_exunlock(fs);
    release_obj(fs);     /* it was retained by get_retained_fs_at() */

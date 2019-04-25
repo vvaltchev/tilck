@@ -27,15 +27,54 @@ typedef void *fs_handle;
 
 typedef struct filesystem filesystem;
 
+enum vfs_entry_type {
+
+   VFS_NONE = 0,
+   VFS_FILE,
+   VFS_DIR,
+   VFS_SYMLINK,
+   VFS_CHDEV,
+   VFS_BLKDEV,
+   VFS_PIPE,
+};
+
+#define CREATE_VFS_ENTRY_STRUCT(name, inode_type)          \
+                                                           \
+   STATIC_ASSERT(sizeof(inode_type) == sizeof(void *));    \
+                                                           \
+   typedef struct {                                        \
+      inode_type inode;                                    \
+      inode_type dir_inode;                                \
+      enum vfs_entry_type type;                            \
+   } name                                                  \
+
+CREATE_VFS_ENTRY_STRUCT(vfs_dir_entry, void *);
+
+typedef struct {
+
+   filesystem *fs;
+   vfs_dir_entry entry;
+
+   /* other fields */
+   const char *last_comp;
+
+} vfs_path;
+
 /* fs ops */
 typedef void (*func_close) (fs_handle);
 typedef int (*func_open) (filesystem *, const char *, fs_handle *, int, mode_t);
 typedef int (*func_dup) (fs_handle, fs_handle *);
 typedef int (*func_getdents64) (fs_handle, struct linux_dirent64 *, u32);
 typedef int (*func_unlink) (filesystem *, const char *);
-typedef int (*func_mkdir) (filesystem *, const char *, mode_t);
+typedef int (*func_mkdir) (vfs_path *p, mode_t);
 typedef int (*func_rmdir) (filesystem *, const char *);
 typedef void (*func_fslock_t)(filesystem *);
+
+typedef void (*func_get_entry) (filesystem *fs,
+                                void *dir_inode,
+                                const char *name,
+                                ssize_t name_len,
+                                vfs_dir_entry *e);
 
 /* file ops */
 typedef ssize_t (*func_read) (fs_handle, char *, size_t);
@@ -82,6 +121,7 @@ typedef struct {
    func_fstat fstat;
    func_mkdir mkdir;
    func_rmdir rmdir;
+   func_get_entry get_entry;
 
    /* file system structure lock funcs */
    func_fslock_t fs_exlock;

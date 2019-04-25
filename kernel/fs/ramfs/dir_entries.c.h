@@ -19,7 +19,7 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
 {
    ramfs_entry *e;
    const size_t enl = strlen(iname) + 1;
-   ASSERT(idir->type == RAMFS_DIRECTORY);
+   ASSERT(idir->type == VFS_DIR);
 
    if (enl > sizeof(e->name))
       return -ENAMETOOLONG;
@@ -51,7 +51,7 @@ static void
 ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
 {
    ramfs_inode *ie = e->inode;
-   ASSERT(idir->type == RAMFS_DIRECTORY);
+   ASSERT(idir->type == VFS_DIR);
 
    bintree_remove(&idir->entries_tree_root,
                   e,

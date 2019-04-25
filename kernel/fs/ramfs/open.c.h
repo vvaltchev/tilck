@@ -49,13 +49,13 @@ static int ramfs_open_existing_checks(int fl, ramfs_inode *i)
    if ((fl & O_RDWR) && !(i->mode & 0600))
       return -EACCES;
 
-   if ((fl & O_DIRECTORY) && (i->type != RAMFS_DIRECTORY))
+   if ((fl & O_DIRECTORY) && (i->type != VFS_DIR))
       return -ENOTDIR;
 
    if ((fl & O_CREAT) && (fl & O_EXCL))
       return -EEXIST;
 
-   if ((fl & (O_WRONLY | O_RDWR)) && i->type == RAMFS_DIRECTORY)
+   if ((fl & (O_WRONLY | O_RDWR)) && i->type == VFS_DIR)
       return -EISDIR;
 
    /*
@@ -119,7 +119,7 @@ ramfs_resolve_path(ramfs_data *d,
 
          /* the path ends here, with a trailing slash */
 
-         if (e->inode->type != RAMFS_DIRECTORY)
+         if (e->inode->type != VFS_DIR)
             return -ENOTDIR; /* that's a problem only if `e` is NOT a dir */
 
          break;
