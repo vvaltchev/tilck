@@ -33,8 +33,8 @@ enum vfs_entry_type {
    VFS_FILE,
    VFS_DIR,
    VFS_SYMLINK,
-   VFS_CHDEV,
-   VFS_BLKDEV,
+   VFS_CHAR_DEV,
+   VFS_BLOCK_DEV,
    VFS_PIPE,
 };
 

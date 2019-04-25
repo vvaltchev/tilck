@@ -49,7 +49,7 @@ static bool ttyaux_read_ready(fs_handle h)
 }
 
 static int
-ttyaux_create_device_file(int minor, const file_ops **fops, enum devfs_entry *t)
+ttyaux_create_device_file(int minor, const file_ops **fops, enum vfs_entry_type *t)
 {
    static const file_ops static_ops_ttyaux = {
 
@@ -67,7 +67,7 @@ ttyaux_create_device_file(int minor, const file_ops **fops, enum devfs_entry *t)
       .shunlock = vfs_file_nolock,
    };
 
-   *t = DEVFS_CHAR_DEVICE;
+   *t = VFS_CHAR_DEV;
    *fops = &static_ops_ttyaux;
    return 0;
 }

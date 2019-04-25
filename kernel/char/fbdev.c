@@ -94,7 +94,7 @@ static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
 }
 
 static int
-create_fb_device(int minor, const file_ops **fops_ref, enum devfs_entry *t)
+create_fb_device(int minor, const file_ops **fops_ref, enum vfs_entry_type *t)
 {
    static const file_ops static_ops_fb = {
       .read = fb_read,
@@ -104,7 +104,7 @@ create_fb_device(int minor, const file_ops **fops_ref, enum devfs_entry *t)
       .munmap = fbdev_munmap,
    };
 
-   *t = DEVFS_CHAR_DEVICE;
+   *t = VFS_CHAR_DEV;
    *fops_ref = &static_ops_fb;
    return 0;
 }

@@ -165,10 +165,10 @@ int devfs_stat64(fs_handle h, struct stat64 *statbuf)
 
    statbuf->st_dev = dh->fs->device_id;
 
-   if (dh->type == DEVFS_CHAR_DEVICE) {
+   if (dh->type == VFS_CHAR_DEV) {
       statbuf->st_mode = 0666 | S_IFCHR;
       statbuf->st_ino = df->inode;
-   } else if (dh->type == DEVFS_DIRECTORY) {
+   } else if (dh->type == VFS_DIR) {
       statbuf->st_mode = 0555 | S_IFDIR;
       statbuf->st_ino = ddata->root_dir.inode;
    } else {
@@ -179,7 +179,7 @@ int devfs_stat64(fs_handle h, struct stat64 *statbuf)
    statbuf->st_uid = 0; /* root */
    statbuf->st_gid = 0; /* root */
 
-   if (dh->type == DEVFS_CHAR_DEVICE)
+   if (dh->type == VFS_CHAR_DEV)
       statbuf->st_rdev = (dev_t)(df->dev_major << 8 | df->dev_minor);
 
    statbuf->st_size = 0;
@@ -215,7 +215,7 @@ static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
    if (!(h = kzmalloc(sizeof(devfs_file_handle))))
       return -ENOMEM;
 
-   h->type = DEVFS_DIRECTORY;
+   h->type = VFS_DIR;
    h->fs = fs;
    h->fops = &static_ops_devfs;
 
@@ -373,7 +373,7 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    struct linux_dirent64 ent;
    devfs_file *pos;
 
-   if (dh->type != DEVFS_DIRECTORY)
+   if (dh->type != VFS_DIR)
       return -ENOTDIR;
 
    list_for_each_ro(pos, &d->root_dir.files_list, dir_node) {
@@ -408,7 +408,7 @@ devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
       ent.d_reclen = (u16)entry_size;
       ent.d_type = DT_UNKNOWN;
 
-      if (dh->type == DEVFS_CHAR_DEVICE)
+      if (dh->type == VFS_CHAR_DEV)
          ent.d_type = DT_CHR;
 
       struct linux_dirent64 *user_ent = (void *)((char *)dirp + offset);
