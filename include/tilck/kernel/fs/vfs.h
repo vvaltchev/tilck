@@ -67,7 +67,7 @@ typedef void (*func_close) (fs_handle);
 typedef int (*func_open) (filesystem *, const char *, fs_handle *, int, mode_t);
 typedef int (*func_dup) (fs_handle, fs_handle *);
 typedef int (*func_getdents64) (fs_handle, struct linux_dirent64 *, u32);
-typedef int (*func_unlink) (filesystem *, const char *);
+typedef int (*func_unlink) (vfs_path *p);
 typedef int (*func_mkdir) (vfs_path *p, mode_t);
 typedef int (*func_rmdir) (vfs_path *p);
 typedef void (*func_fslock_t)(filesystem *);

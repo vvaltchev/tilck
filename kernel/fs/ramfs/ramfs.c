@@ -10,40 +10,37 @@
 #include "open.c.h"
 #include "mkdir.c.h"
 
-static int ramfs_unlink(filesystem *fs, const char *path)
+static int ramfs_unlink(vfs_path *p)
 {
-   ramfs_data *d = fs->device_data;
-   ramfs_resolved_path rp;
-   int rc;
+   ramfs_vfs_entry *rp = (ramfs_vfs_entry *) &p->entry;
+   ramfs_data *d = p->fs->device_data;
+   ramfs_inode *i = rp->inode;
 
    ASSERT(rwlock_wp_holding_exlock(&d->rwlock));
 
-   if ((rc = ramfs_resolve_path(d, path, &rp)))
-      return rc;
-
-   if (rp.i->type == VFS_DIR)
+   if (i->type == VFS_DIR)
       return -EISDIR;
 
-   if (!(rp.idir->mode & 0200)) /* write permission */
+   if (!(rp->dir_inode->mode & 0200)) /* write permission */
       return -EACCES;
 
    /*
     * The only case when `rp->e` is NULL is when path == "/", but we have just
     * checked the directory case. Therefore, `rp->e` must be valid.
     */
-   ASSERT(rp.e != NULL);
+   ASSERT(rp->dir_entry != NULL);
 
    /* Remove the dir entry */
-   ramfs_dir_remove_entry(rp.idir, rp.e);
+   ramfs_dir_remove_entry(rp->dir_inode, rp->dir_entry);
 
    /* Trucate and delete the inode, if it's not used */
-   if (!rp.i->nlink && !get_ref_count(rp.i)) {
-      rwlock_wp_exlock(&rp.i->rwlock);
+   if (!i->nlink && !get_ref_count(i)) {
+      rwlock_wp_exlock(&i->rwlock);
       {
-         ramfs_inode_truncate(rp.i, 0);
+         ramfs_inode_truncate(i, 0);
       }
-      rwlock_wp_exunlock(&rp.i->rwlock);
-      ramfs_destroy_inode(d, rp.i);
+      rwlock_wp_exunlock(&i->rwlock);
+      ramfs_destroy_inode(d, i);
    }
 
    return 0;

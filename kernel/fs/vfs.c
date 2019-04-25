@@ -525,6 +525,7 @@ int vfs_unlink(const char *path)
 {
    const char *fs_path;
    filesystem *fs;
+   vfs_path p;
    int rc;
 
    NO_TEST_ASSERT(is_preemption_enabled());
@@ -543,7 +544,10 @@ int vfs_unlink(const char *path)
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
    {
-      rc = fs->fsops->unlink(fs, fs_path);
+      rc = vfs_resolve(fs, fs_path, &p);
+
+      if (!rc)
+         rc = fs->fsops->unlink(&p);
    }
    vfs_fs_exunlock(fs);
    release_obj(fs);     /* it was retained by get_retained_fs_at() */
