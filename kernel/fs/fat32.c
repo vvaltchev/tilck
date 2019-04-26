@@ -388,7 +388,7 @@ fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
    if (ctx.rc != 0)
       return (int)ctx.rc;
 
-   return (int) ctx.offset;
+   return (int)ctx.offset;
 }
 
 STATIC void fat_exclusive_lock(filesystem *fs)
@@ -560,36 +560,22 @@ fat_get_entry(filesystem *fs,
    u32 dir_cluster;
    fat_search_ctx ctx;
 
-   if (!dir_inode) {
+   if (!dir_inode && !name) {
 
-      if (!name) {
+      /* both dir_inode and name are NULL: getting a path to the root dir */
 
-         /* both dir_inode and name are NULL: getting a path to the root dir */
+      *fp = (fat_fs_path) {
+         .entry            = d->root_entry,
+         .parent_entry     = d->root_entry,
+         .unused           = NULL,
+         .type             = VFS_DIR,
+      };
 
-         *fp = (fat_fs_path) {
-            .entry            = d->root_entry,
-            .parent_entry     = d->root_entry,
-            .unused           = NULL,
-            .type             = VFS_DIR,
-         };
-
-         return;
-      }
-
-      /*
-       * name is *not* NULL: that means that dir_inode is NULL just because
-       * it refers to the root directory.
-       */
-
-      dir_entry = d->root_entry;
-      dir_cluster = d->root_cluster;
-
-   } else {
-
-      /* dir_inode is VALID */
-      dir_entry = dir_inode;
-      dir_cluster = fat_get_first_cluster_generic(d, dir_entry);
+      return;
    }
+
+   dir_entry = dir_inode ? dir_inode : d->root_entry;
+   dir_cluster = fat_get_first_cluster_generic(d, dir_entry);
 
    fat_init_search_ctx(&ctx, name, true);
    fat_walk_directory(&ctx.walk_ctx,
