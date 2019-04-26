@@ -236,16 +236,25 @@ u32 fat_get_used_bytes(fat_header *hdr);
 
 typedef struct {
 
+   // Input fields
    const char *path;          // the searched path.
+   bool single_comp;          // search only for the first component
+
+   // Output fields
+   fat_entry *result;         // the found entry
+   u32 subdir_cluster;        // the cluster of the subdir's we have to walk to
+   bool not_dir;              // path ended with '/' but entry was NOT a dir
+
+   // Internal fields
    char pc[256];              // path component
    size_t pcl;                // path component's length
    char shortname[16];        // short name of the current entry
-   fat_entry *result;         // the found entry
-   u32 subdir_cluster;        // the cluster of the subdir's we have to walk to
    fat_walk_dir_ctx walk_ctx; // walk context: contains long names
-   bool not_dir;              // path ended with '/' but entry was NOT a dir
 
 } fat_search_ctx;
+
+void
+fat_init_search_ctx(fat_search_ctx *ctx, const char *path, bool single_comp);
 
 int fat_search_entry_cb(fat_header *hdr,
                         fat_type ft,

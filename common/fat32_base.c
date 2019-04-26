@@ -552,7 +552,7 @@ int fat_search_entry_cb(fat_header *hdr,
 
    // we've found a match.
 
-   if (*ctx->path == 0) {
+   if (ctx->single_comp || *ctx->path == 0) {
       ctx->result = entry; // if the path ended, that's it. Just return.
       return -1;
    }
@@ -582,14 +582,27 @@ int fat_search_entry_cb(fat_header *hdr,
       return -1;
    }
 
-   if (!entry->directory) {
+   if (!entry->directory)
       return -1; // if the entry is not a directory, we failed.
-   }
 
    // The path did not end: we have to do a walk in the sub-dir.
    ctx->pcl = 0;
    ctx->subdir_cluster = fat_get_first_cluster(entry);
    return -1;
+}
+
+void
+fat_init_search_ctx(fat_search_ctx *ctx, const char *path, bool single_comp)
+{
+   bzero(ctx, sizeof(fat_search_ctx));
+
+#ifdef __clang_analyzer__
+   ctx->pcl = 0;       /* SA: make it sure ctx.pcl is zeroed */
+   ctx->result = NULL; /* SA: make it sure ctx.result is zeroed */
+#endif
+
+   ctx->path = path;
+   ctx->single_comp = single_comp;
 }
 
 fat_entry *
@@ -613,15 +626,7 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath, int *err)
       return root;
    }
 
-   bzero(&ctx, sizeof(ctx));
-
-#ifdef __clang_analyzer__
-   ctx.pcl = 0;       /* SA: make it sure ctx.pcl is zeroed */
-   ctx.result = NULL; /* SA: make it sure ctx.result is zeroed */
-#endif
-
-   ctx.path = abspath;
-
+   fat_init_search_ctx(&ctx, abspath, false);
    fat_walk_directory(&ctx.walk_ctx, hdr, ft, root, root_dir_cluster,
                       &fat_search_entry_cb, &ctx);
 
@@ -636,7 +641,7 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath, int *err)
 
    if (err) {
       if (ctx.not_dir)
-         *err = -20; // -ENOTDIR
+         *err = -20; /* -ENOTDIR */
       else
          *err = !ctx.result ? -2 /* ENOENT */: 0;
    }

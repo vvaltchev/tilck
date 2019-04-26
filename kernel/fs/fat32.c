@@ -555,6 +555,7 @@ fat_get_entry(filesystem *fs,
    fat_fs_path *fp = (fat_fs_path *)fs_path;
    fat_entry *dir_entry;
    u32 dir_cluster;
+   fat_search_ctx ctx;
 
    if (!dir_inode) {
 
@@ -596,25 +597,6 @@ fat_get_entry(filesystem *fs,
     * set to a valid value. We can finally call fat_walk_directory().
     */
 
-   fat_search_ctx ctx;
-   char buf[256];
-
-   bzero(&ctx, sizeof(ctx));
-
-#ifdef __clang_analyzer__
-   ctx.pcl = 0;       /* SA: make it sure ctx.pcl is zeroed */
-   ctx.result = NULL; /* SA: make it sure ctx.result is zeroed */
-#endif
-
-   if (!name[name_len]) {
-      ctx.path = name;
-   } else {
-      ASSERT(name_len < (ssize_t)sizeof(buf));
-      memcpy(buf, name, (size_t)name_len);
-      buf[name_len] = 0;
-      ctx.path = buf;
-   }
-
    if (dir_cluster) {
 
       /*
@@ -625,6 +607,7 @@ fat_get_entry(filesystem *fs,
       dir_entry = NULL;
    }
 
+   fat_init_search_ctx(&ctx, name, true);
    fat_walk_directory(&ctx.walk_ctx, d->hdr, d->type, dir_entry, dir_cluster,
                       &fat_search_entry_cb, &ctx);
 
