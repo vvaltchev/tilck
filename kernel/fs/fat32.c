@@ -591,30 +591,20 @@ fat_get_entry(filesystem *fs,
       dir_cluster = fat_get_first_cluster_generic(d, dir_entry);
    }
 
-   /*
-    * OK, now we have for sure exactly ONE of `dir_entry` and `dir_cluster`
-    * set to a valid value. We can finally call fat_walk_directory().
-    */
-
-   if (dir_cluster) {
-
-      /*
-       * If we have a valid dir_cluster, we have to set dir_entry to NULL
-       * because fat_walk_directory() expects exactly one of the `entry`
-       * and `cluster` to be valid.
-       */
-      dir_entry = NULL;
-   }
-
    fat_init_search_ctx(&ctx, name, true);
-   fat_walk_directory(&ctx.walk_ctx, d->hdr, d->type, dir_entry, dir_cluster,
-                      &fat_search_entry_cb, &ctx);
+   fat_walk_directory(&ctx.walk_ctx,
+                      d->hdr,
+                      d->type,
+                      !dir_cluster ? dir_entry : NULL,
+                      dir_cluster,
+                      &fat_search_entry_cb,
+                      &ctx);
 
    fat_entry *res = !ctx.not_dir ? ctx.result : NULL;
 
    *fp = (fat_fs_path) {
       .entry         = res,
-      .parent_entry  = NULL,
+      .parent_entry  = dir_entry,
       .unused        = NULL,
       .type          = res ? (res->directory ? VFS_DIR : VFS_FILE) : VFS_NONE,
    };
