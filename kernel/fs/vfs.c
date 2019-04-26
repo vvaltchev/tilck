@@ -218,6 +218,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 {
    const char *fs_path;
    filesystem *fs;
+   vfs_path p;
    int rc;
 
    NO_TEST_ASSERT(is_preemption_enabled());
@@ -236,17 +237,10 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
    {
-      if (fs->fsops->open2) {
+      rc = vfs_resolve(fs, fs_path, &p);
 
-         vfs_path p;
-         rc = vfs_resolve(fs, fs_path, &p);
-
-         if (!rc)
-            rc = fs->fsops->open2(&p, out, flags, mode);
-
-      } else {
-         rc = fs->fsops->open(fs, fs_path, out, flags, mode);
-      }
+      if (!rc)
+         rc = fs->fsops->open2(&p, out, flags, mode);
    }
    vfs_fs_exunlock(fs);
 
