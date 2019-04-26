@@ -445,7 +445,7 @@ devfs_get_entry(filesystem *fs,
 
 static const fs_ops static_fsops_devfs =
 {
-   .open2 = devfs_open,
+   .open = devfs_open,
    .close = devfs_close,
    .dup = devfs_dup,
    .getdents64 = devfs_getdents64,

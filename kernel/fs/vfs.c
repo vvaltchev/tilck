@@ -240,7 +240,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
       rc = vfs_resolve(fs, fs_path, &p);
 
       if (!rc)
-         rc = fs->fsops->open2(&p, out, flags, mode);
+         rc = fs->fsops->open(&p, out, flags, mode);
    }
    vfs_fs_exunlock(fs);
 

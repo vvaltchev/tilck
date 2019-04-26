@@ -598,7 +598,7 @@ fat_get_entry(filesystem *fs,
 
 static const fs_ops static_fsops_fat =
 {
-   .open2 = fat_open,
+   .open = fat_open,
    .close = fat_close,
    .dup = fat_dup,
    .getdents64 = fat_getdents64,
