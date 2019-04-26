@@ -546,6 +546,97 @@ STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
    return 0;
 }
 
+static void
+fat_get_entry(filesystem *fs,
+              void *dir_inode,
+              const char *name,
+              ssize_t name_len,
+              fs_path_struct *fs_path)
+{
+   fat_fs_device_data *d = fs->device_data;
+   fat_fs_path *fp = (fat_fs_path *)fs_path;
+   fat_entry *dir_entry;
+   u32 dir_cluster;
+
+   if (!dir_inode) {
+
+      if (!name) {
+
+         /* both dir_inode and name are NULL: getting a path to the root dir */
+
+         *fp = (fat_fs_path) {
+            .entry            = d->root_entry,
+            .parent_entry     = d->root_entry,
+            .parent_cluster   = d->root_cluster,
+            .type             = VFS_DIR,
+         };
+
+         return;
+      }
+
+      /*
+       * name is *not* NULL: that means that dir_inode is NULL just because
+       * it refers to the root directory.
+       */
+
+      dir_entry = d->root_entry;
+      dir_cluster = d->root_cluster;
+
+   } else {
+
+      /* dir_inode is VALID */
+      dir_entry = dir_inode;
+
+      if (dir_entry == d->root_entry) {
+
+         /*
+          * If dir_entry is the root entry AND it is NOT NULL, that means that
+          * we're using FAT-16 and therefore the root cluster has to be invalid.
+          */
+
+         dir_cluster = d->root_cluster;
+         ASSERT(dir_cluster == 0);
+
+      } else {
+
+         /*
+          * If instead, dir_entry is != root's entry, we have to get its first
+          * cluster and than set it to NULL as fat_walk_directory() expects
+          * exactly one of the `entry` and `cluster` to be valid.
+          */
+         dir_cluster = fat_get_first_cluster(dir_entry);
+         dir_entry = NULL;
+      }
+   }
+
+   /*
+    * OK, now we have for sure exactly ONE of `dir_entry` and `dir_cluster`
+    * set to a valid value. We can finally call fat_walk_directory().
+    */
+
+   fat_search_ctx ctx;
+   char buf[256];
+
+   bzero(&ctx, sizeof(ctx));
+
+#ifdef __clang_analyzer__
+   ctx.pcl = 0;       /* SA: make it sure ctx.pcl is zeroed */
+   ctx.result = NULL; /* SA: make it sure ctx.result is zeroed */
+#endif
+
+   if (!name[name_len]) {
+      ctx.path = name;
+   } else {
+      ASSERT(name_len < (ssize_t)sizeof(buf));
+      memcpy(buf, name, (size_t)name_len);
+      buf[name_len] = 0;
+      ctx.path = buf;
+   }
+
+   fat_walk_directory(&ctx.walk_ctx, d->hdr, d->type, dir_entry, dir_cluster,
+                      &fat_search_entry_cb, &ctx, 0);
+}
+
 static const fs_ops static_fsops_fat =
 {
    .open = fat_open,

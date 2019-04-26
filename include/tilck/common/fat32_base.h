@@ -77,14 +77,14 @@ typedef struct PACKED {
 
    char DIR_Name[11];
 
-   u8 readonly : 1; // lower-bit
+   u8 readonly : 1;     // lower-bit
    u8 hidden : 1;
    u8 system : 1;
    u8 volume_id : 1;
    u8 directory : 1;
    u8 archive : 1;
-   u8 resbit1 : 1;  // reserved bit
-   u8 resbit2 : 1;  // reserved bit
+   u8 resbit1 : 1;      // reserved bit
+   u8 resbit2 : 1;      // reserved bit
 
    u8 DIR_NTRes;        // reserved to be used by Windows NT
 
@@ -233,3 +233,25 @@ fat_read_whole_file(fat_header *hdr,
                     size_t dest_buf_size);
 
 u32 fat_get_used_bytes(fat_header *hdr);
+
+// IMPLEMENTATION INTERNALS --------------------------------------------------
+
+typedef struct {
+
+   const char *path;          // the searched path.
+   char pc[256];              // path component
+   size_t pcl;                // path component's length
+   char shortname[16];        // short name of the current entry
+   fat_entry *result;         // the found entry
+   u32 subdir_cluster;        // the cluster of the subdir's we have to walk to
+   fat_walk_dir_ctx walk_ctx; // walk context: contains long names
+   bool not_dir;              // path ended with '/' but entry was NOT a dir
+
+} fat_search_ctx;
+
+int fat_search_entry_cb(fat_header *hdr,
+                        fat_type ft,
+                        fat_entry *entry,
+                        const char *long_name,
+                        void *arg,
+                        int level);

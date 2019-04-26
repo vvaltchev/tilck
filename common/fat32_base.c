@@ -484,19 +484,6 @@ void fat_get_short_name(fat_entry *entry, char *destbuf)
    destbuf[d] = 0;
 }
 
-typedef struct {
-
-   const char *path;          // the searched path.
-   char pc[256];              // path component
-   size_t pcl;                // path component's length
-   char shortname[16];        // short name of the current entry
-   fat_entry *result;         // the found entry
-   u32 subdir_cluster;        // the cluster of the subdir's we have to walk to
-   fat_walk_dir_ctx walk_ctx; // walk context: contains long names
-   bool not_dir;              // path ended with '/' but entry was NOT a dir
-
-} fat_search_ctx;
-
 static bool fat_fetch_next_component(fat_search_ctx *ctx)
 {
    ASSERT(ctx->pcl == 0);
@@ -515,12 +502,12 @@ static bool fat_fetch_next_component(fat_search_ctx *ctx)
    return ctx->pcl != 0;
 }
 
-static int fat_search_entry_cb(fat_header *hdr,
-                               fat_type ft,
-                               fat_entry *entry,
-                               const char *long_name,
-                               void *arg,
-                               int level)
+int fat_search_entry_cb(fat_header *hdr,
+                        fat_type ft,
+                        fat_entry *entry,
+                        const char *long_name,
+                        void *arg,
+                        int level)
 {
    fat_search_ctx *ctx = arg;
 
@@ -632,7 +619,7 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath, int *err)
    bzero(&ctx, sizeof(ctx));
 
 #ifdef __clang_analyzer__
-   ctx.pcl = 0; /* SA: make it sure ctx.pcl is zeroed */
+   ctx.pcl = 0;       /* SA: make it sure ctx.pcl is zeroed */
    ctx.result = NULL; /* SA: make it sure ctx.result is zeroed */
 #endif
 

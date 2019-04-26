@@ -39,6 +39,7 @@
    "C_Cpp.configurationWarnings": "Disabled",
    "C_Cpp.errorSquiggles": "Disabled",
    "cmake.generator": "Unix Makefiles",
+   "workbench.editor.enablePreview": false,
    "files.associations": {
       "x86_utils.h": "c",
       "time.h": "c",
