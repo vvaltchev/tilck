@@ -279,8 +279,7 @@ fat_getdents64_cb(fat_header *hdr,
                   fat_type ft,
                   fat_entry *entry,
                   const char *long_name,
-                  void *arg,
-                  int level)
+                  void *arg)
 {
    char short_name[16];
    const char *file_name = long_name ? long_name : short_name;
@@ -378,8 +377,7 @@ fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
                            NULL,
                            cluster_to_use,
                            fat_getdents64_cb,
-                           &ctx, /* arg */
-                           0 /* depth level */);
+                           &ctx); /* arg */
 
    if (rc != 0)
       return rc;
@@ -634,7 +632,7 @@ fat_get_entry(filesystem *fs,
    }
 
    fat_walk_directory(&ctx.walk_ctx, d->hdr, d->type, dir_entry, dir_cluster,
-                      &fat_search_entry_cb, &ctx, 0);
+                      &fat_search_entry_cb, &ctx);
 }
 
 static const fs_ops static_fsops_fat =

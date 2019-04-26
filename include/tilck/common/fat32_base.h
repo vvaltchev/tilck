@@ -207,8 +207,7 @@ typedef int (*fat_dentry_cb)(fat_header *,
                              fat_type,
                              fat_entry *,
                              const char *, /* long name */
-                             void *, /* user data pointer */
-                             int); /* depth level */
+                             void *);      /* user data pointer */
 
 int
 fat_walk_directory(fat_walk_dir_ctx *ctx,
@@ -217,8 +216,7 @@ fat_walk_directory(fat_walk_dir_ctx *ctx,
                    fat_entry *entry,
                    u32 cluster,
                    fat_dentry_cb cb,
-                   void *arg,
-                   int level);
+                   void *arg);
 
 
 fat_entry *
@@ -253,5 +251,4 @@ int fat_search_entry_cb(fat_header *hdr,
                         fat_type ft,
                         fat_entry *entry,
                         const char *long_name,
-                        void *arg,
-                        int level);
+                        void *arg);

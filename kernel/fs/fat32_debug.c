@@ -80,19 +80,25 @@ static void dump_entry_attrs(fat_entry *entry)
    printk("archive:   %u\n", entry->archive);
 }
 
+typedef struct {
+
+   fat_walk_dir_ctx walk_ctx;
+   int level;
+
+} debug_fat_walk_ctx;
 
 static int dump_dir_entry(fat_header *hdr,
                           fat_type ft,
                           fat_entry *entry,
                           const char *long_name,
-                          void *arg,
-                          int level)
+                          void *arg)
 {
    char shortname[16];
    fat_get_short_name(entry, shortname);
+   debug_fat_walk_ctx *ctx = arg;
 
    char indentbuf[4*16] = {0};
-   for (int i = 0; i < 4*level; i++)
+   for (int i = 0; i < 4 * ctx->level; i++)
       indentbuf[i] = ' ';
 
    if (!entry->directory) {
@@ -109,14 +115,17 @@ static int dump_dir_entry(fat_header *hdr,
    if (entry->directory) {
       if (strcmp(shortname, ".") && strcmp(shortname, "..")) {
 
-         fat_walk_directory((fat_walk_dir_ctx*)arg,
+         ctx->level++;
+
+         fat_walk_directory(&ctx->walk_ctx,
                             hdr,
                             ft,
                             NULL,
                             fat_get_first_cluster(entry),
                             &dump_dir_entry,
-                            arg,
-                            level + 1);
+                            arg);
+
+         ctx->level--;
       }
    }
 
@@ -143,14 +152,14 @@ void fat_dump_info(void *fatpart_begin)
    u32 root_dir_cluster;
    fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
 
-   fat_walk_dir_ctx walk_ctx;
+   debug_fat_walk_ctx ctx;
+   ctx.level = 0;
 
-   fat_walk_directory(&walk_ctx,
+   fat_walk_directory(&ctx.walk_ctx,
                       hdr,
                       ft,
                       root,
                       root_dir_cluster,
-                      &dump_dir_entry, // callback
-                      &walk_ctx,       // arg
-                      0);              // level
+                      &dump_dir_entry,
+                      &ctx);
 }

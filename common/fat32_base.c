@@ -231,8 +231,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
                        fat_entry *entry,
                        u32 cluster,
                        fat_dentry_cb cb,
-                       void *arg,
-                       int level)
+                       void *arg)
 {
    const u32 entries_per_cluster =
       ((u32)hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus) / sizeof(fat_entry);
@@ -297,7 +296,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
             }
          }
 
-         int ret = cb(hdr, ft, entry + i, long_name_ptr, arg, level);
+         int ret = cb(hdr, ft, entry + i, long_name_ptr, arg);
 
          ctx->lname_sz = 0;
          ctx->lname_chksum = -1;
@@ -506,8 +505,7 @@ int fat_search_entry_cb(fat_header *hdr,
                         fat_type ft,
                         fat_entry *entry,
                         const char *long_name,
-                        void *arg,
-                        int level)
+                        void *arg)
 {
    fat_search_ctx *ctx = arg;
 
@@ -600,7 +598,6 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath, int *err)
    fat_search_ctx ctx;
    fat_entry *root;
    u32 root_dir_cluster;
-   int level;
 
    if (ft == fat_unknown) {
        ft = fat_get_type(hdr);
@@ -625,9 +622,8 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath, int *err)
 
    ctx.path = abspath;
 
-   level = 0;
    fat_walk_directory(&ctx.walk_ctx, hdr, ft, root, root_dir_cluster,
-                      &fat_search_entry_cb, &ctx, level++);
+                      &fat_search_entry_cb, &ctx);
 
    while (ctx.subdir_cluster) {
 
@@ -635,7 +631,7 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath, int *err)
       ctx.subdir_cluster = 0;
 
       fat_walk_directory(&ctx.walk_ctx, hdr, ft, NULL, cluster,
-                         &fat_search_entry_cb, &ctx, level++);
+                         &fat_search_entry_cb, &ctx);
    }
 
    if (err) {
