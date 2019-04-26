@@ -12,6 +12,17 @@
 
 #include <dirent.h> // system header
 
+/*
+ * Generic version of fat_get_first_cluster() that works also when `e` is the
+ * root entry.
+ */
+
+static inline u32
+fat_get_first_cluster_generic(fat_fs_device_data *d, fat_entry *e)
+{
+   return e == d->root_entry ? d->root_cluster : fat_get_first_cluster(e);
+}
+
 STATIC void
 fat_close(fs_handle handle)
 {
@@ -363,19 +374,11 @@ fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
       .rc = 0,
    };
 
-   u32 cluster_to_use = 0;
-
-   if (fh->e == dd->root_entry) {
-      cluster_to_use = dd->root_cluster;
-   } else {
-      cluster_to_use = fat_get_first_cluster(fh->e);
-   }
-
    rc = fat_walk_directory(&walk_ctx,
                            dd->hdr,
                            dd->type,
                            NULL,
-                           cluster_to_use,
+                           fat_get_first_cluster_generic(dd, fh->e),
                            fat_getdents64_cb,
                            &ctx); /* arg */
 
@@ -585,11 +588,7 @@ fat_get_entry(filesystem *fs,
 
       /* dir_inode is VALID */
       dir_entry = dir_inode;
-
-      if (dir_entry == d->root_entry)
-         dir_cluster = d->root_cluster;
-      else
-         dir_cluster = fat_get_first_cluster(dir_entry);
+      dir_cluster = fat_get_first_cluster_generic(d, dir_entry);
    }
 
    /*
