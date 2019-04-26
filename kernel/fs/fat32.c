@@ -495,12 +495,12 @@ static const file_ops static_ops_fat =
 };
 
 STATIC int
-fat_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mode)
+fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
 {
-   int err = 0;
    fat_file_handle *h;
-   fat_fs_device_data *d = (fat_fs_device_data *) fs->device_data;
-   fat_entry *e = fat_search_entry(d->hdr, d->type, path, &err);
+   filesystem *fs = p->fs;
+   fat_fs_path *fp = (fat_fs_path *)&p->fs_path;
+   fat_entry *e = fp->entry;
 
    if (!e) {
 
@@ -508,7 +508,7 @@ fat_open(filesystem *fs, const char *path, fs_handle *out, int fl, mode_t mode)
          if (fl & O_CREAT)
             return -EROFS;
 
-      return err;
+      return -ENOENT;
    }
 
    if ((fl & O_CREAT) && (fl & O_EXCL))
@@ -565,7 +565,7 @@ fat_get_entry(filesystem *fs,
          *fp = (fat_fs_path) {
             .entry            = d->root_entry,
             .parent_entry     = d->root_entry,
-            .parent_cluster   = d->root_cluster,
+            .unused           = NULL,
             .type             = VFS_DIR,
          };
 
@@ -585,26 +585,10 @@ fat_get_entry(filesystem *fs,
       /* dir_inode is VALID */
       dir_entry = dir_inode;
 
-      if (dir_entry == d->root_entry) {
-
-         /*
-          * If dir_entry is the root entry AND it is NOT NULL, that means that
-          * we're using FAT-16 and therefore the root cluster has to be invalid.
-          */
-
+      if (dir_entry == d->root_entry)
          dir_cluster = d->root_cluster;
-         ASSERT(dir_cluster == 0);
-
-      } else {
-
-         /*
-          * If instead, dir_entry is != root's entry, we have to get its first
-          * cluster and than set it to NULL as fat_walk_directory() expects
-          * exactly one of the `entry` and `cluster` to be valid.
-          */
+      else
          dir_cluster = fat_get_first_cluster(dir_entry);
-         dir_entry = NULL;
-      }
    }
 
    /*
@@ -631,13 +615,32 @@ fat_get_entry(filesystem *fs,
       ctx.path = buf;
    }
 
+   if (dir_cluster) {
+
+      /*
+       * If we have a valid dir_cluster, we have to set dir_entry to NULL
+       * because fat_walk_directory() expects exactly one of the `entry`
+       * and `cluster` to be valid.
+       */
+      dir_entry = NULL;
+   }
+
    fat_walk_directory(&ctx.walk_ctx, d->hdr, d->type, dir_entry, dir_cluster,
                       &fat_search_entry_cb, &ctx);
+
+   fat_entry *res = !ctx.not_dir ? ctx.result : NULL;
+
+   *fp = (fat_fs_path) {
+      .entry         = res,
+      .parent_entry  = NULL,
+      .unused        = NULL,
+      .type          = res ? (res->directory ? VFS_DIR : VFS_FILE) : VFS_NONE,
+   };
 }
 
 static const fs_ops static_fsops_fat =
 {
-   .open = fat_open,
+   .open2 = fat_open,
    .close = fat_close,
    .dup = fat_dup,
    .getdents64 = fat_getdents64,
@@ -645,7 +648,7 @@ static const fs_ops static_fsops_fat =
    .mkdir = NULL,
    .rmdir = NULL,
    .fstat = fat_stat64,
-   .get_entry = NULL,
+   .get_entry = fat_get_entry,
 
    .fs_exlock = fat_exclusive_lock,
    .fs_exunlock = fat_exclusive_unlock,

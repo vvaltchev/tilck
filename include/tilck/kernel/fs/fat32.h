@@ -38,24 +38,15 @@ datetime_t fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth);
 
 /*
  * On FAT, there are no inodes and dir entries. Just dir entries.
- * But, in order to walk a directory we generally need its first cluster,
- * except that on FAT-12 and FAT-16, there's no cluster# for the root dir
- * as it is NOT a cluster-chain. We have only a fat_entry* for its entries.
- * On FAT32 instead, we don't have a fat_entry*, but just a cluster number
- * and the root directory *is* a cluster-chain. Therefore, at least for the
- * parent dir, we need both a fat_entry* and cluster number to cover all the
- * cases.
- *
- * Since there in FAT there's no difference between `inode` and `entry`,
- * what is called `inode` in VFS will be a fat_entry* here. The dir_entry
- * field instead, will be used as parent dir cluster number.
+ * Therefore, what is called `inode` in VFS will be a `entry` here.
+ * The `dir_entry` instead will be unused.
  */
 
 #define inode        entry
 #define dir_inode    parent_entry
-#define dir_entry    parent_cluster
+#define dir_entry    unused
 
-CREATE_FS_PATH_STRUCT(fat_fs_path, fat_entry *, uptr);
+CREATE_FS_PATH_STRUCT(fat_fs_path, fat_entry *, void *);
 
 #undef inode
 #undef dir_inode

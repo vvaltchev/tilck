@@ -638,7 +638,7 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath, int *err)
       if (ctx.not_dir)
          *err = -20; // -ENOTDIR
       else
-         *err = -2;  // -ENOENT
+         *err = !ctx.result ? -2 /* ENOENT */: 0;
    }
 
    return ctx.result;
