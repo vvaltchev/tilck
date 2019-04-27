@@ -513,7 +513,7 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
    int rc;
 
    ASSERT(hb != NULL);
-   ASSERT(hb->fs->fsops->getdents_new);
+   ASSERT(hb->fs->fsops->getdents);
 
    vfs_getdents_ctx ctx = {
       .h = hb,
@@ -527,7 +527,7 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
    /* See the comment in vfs.h about the "fs-locks" */
    vfs_fs_shlock(hb->fs);
    {
-      rc = hb->fs->fsops->getdents_new(hb, &vfs_getdents_cb, &ctx);
+      rc = hb->fs->fsops->getdents(hb, &vfs_getdents_cb, &ctx);
 
       if (!rc)
          rc = (int) ctx.offset;

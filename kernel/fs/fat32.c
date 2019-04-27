@@ -282,18 +282,18 @@ typedef struct {
    void *vfs_ctx;
    int rc;
 
-} fat_getdents_ctx_new;
+} fat_getdents_ctx;
 
 static int
-fat_getdents_new_cb(fat_header *hdr,
-                    fat_type ft,
-                    fat_entry *entry,
-                    const char *long_name,
-                    void *arg)
+fat_getdents_cb(fat_header *hdr,
+                fat_type ft,
+                fat_entry *entry,
+                const char *long_name,
+                void *arg)
 {
    char short_name[16];
    const char *file_name = long_name ? long_name : short_name;
-   fat_getdents_ctx_new *ctx = arg;
+   fat_getdents_ctx *ctx = arg;
 
    if (file_name == short_name)
       fat_get_short_name(entry, short_name);
@@ -307,7 +307,7 @@ fat_getdents_new_cb(fat_header *hdr,
    return ctx->vfs_cb(&dent, ctx->vfs_ctx);
 }
 
-static int fat_getdents_new(fs_handle h, get_dents_func_cb cb, void *arg)
+static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 {
    fat_file_handle *fh = h;
    fat_fs_device_data *d = fh->fs->device_data;
@@ -317,7 +317,7 @@ static int fat_getdents_new(fs_handle h, get_dents_func_cb cb, void *arg)
    if (!fh->e->directory && !fh->e->volume_id)
       return -ENOTDIR;
 
-   fat_getdents_ctx_new ctx = {
+   fat_getdents_ctx ctx = {
       .vfs_cb = cb,
       .vfs_ctx = arg,
       .rc = 0,
@@ -328,7 +328,7 @@ static int fat_getdents_new(fs_handle h, get_dents_func_cb cb, void *arg)
                            d->type,
                            NULL,
                            fat_get_first_cluster_generic(d, fh->e),
-                           fat_getdents_new_cb,
+                           fat_getdents_cb,
                            &ctx);
 
    return rc ? rc : ctx.rc;
@@ -544,7 +544,7 @@ static const fs_ops static_fsops_fat =
    .open = fat_open,
    .close = fat_close,
    .dup = fat_dup,
-   .getdents_new = fat_getdents_new,
+   .getdents = fat_getdents,
    .unlink = NULL,
    .mkdir = NULL,
    .rmdir = NULL,

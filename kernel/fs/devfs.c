@@ -338,7 +338,7 @@ static void devfs_shared_unlock(filesystem *fs)
    rwlock_wp_shunlock(&d->rwlock);
 }
 
-static int devfs_getdents_new(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
+static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
 {
    devfs_file_handle *dh = h;
    devfs_data *d = dh->fs->device_data;
@@ -410,7 +410,7 @@ static const fs_ops static_fsops_devfs =
    .open = devfs_open,
    .close = devfs_close,
    .dup = devfs_dup,
-   .getdents_new = devfs_getdents_new,
+   .getdents = devfs_getdents,
    .unlink = NULL,
    .mkdir = NULL,
    .rmdir = NULL,

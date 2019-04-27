@@ -76,7 +76,7 @@ typedef int (*get_dents_func_cb)(vfs_dent64 *, void *);
 typedef void (*func_close) (fs_handle);
 typedef int (*func_open) (vfs_path *, fs_handle *, int, mode_t);
 typedef int (*func_dup) (fs_handle, fs_handle *);
-typedef int (*func_getdents_new) (fs_handle, get_dents_func_cb, void *);
+typedef int (*func_getdents) (fs_handle, get_dents_func_cb, void *);
 typedef int (*func_unlink) (vfs_path *p);
 typedef int (*func_mkdir) (vfs_path *p, mode_t);
 typedef int (*func_rmdir) (vfs_path *p);
@@ -129,7 +129,7 @@ typedef struct {
    func_open open;
    func_close close;
    func_dup dup;
-   func_getdents_new getdents_new;
+   func_getdents getdents;
    func_unlink unlink;
    func_fstat fstat;
    func_mkdir mkdir;
