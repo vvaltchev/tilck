@@ -7,8 +7,11 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/user.h>
 
 #include "fs_int.h"
+
+#include <dirent.h> // system header
 
 static u32 next_device_id;
 
@@ -427,6 +430,80 @@ int vfs_stat64(const char *path, struct stat64 *statbuf)
    return 0;
 }
 
+typedef struct {
+
+   fs_handle_base *h;
+   struct linux_dirent64 *dirp;
+   u32 buf_size;
+   u32 offset;
+   int curr_index;
+   struct linux_dirent64 ent;
+
+} vfs_getdents_ctx;
+
+static int vfs_getdents_cb(vfs_dent64 *vde, void *arg)
+{
+   vfs_getdents_ctx *ctx = arg;
+
+   if (ctx->curr_index < ctx->h->pos) {
+      ctx->curr_index++;
+      return 0; // continue
+   }
+
+   const char *file_name = vde->name;
+
+   const u32 fl = (u32)strlen(file_name);
+   const u32 entry_size = fl + 1 + sizeof(struct linux_dirent64);
+
+   if (ctx->offset + entry_size > ctx->buf_size) {
+
+      if (!ctx->offset) {
+
+         /*
+         * We haven't "returned" any entries yet and the buffer is too small
+         * for our first entry.
+         */
+
+         return -EINVAL;
+      }
+
+      /* We "returned" at least one entry */
+      return (int)ctx->offset;
+   }
+
+   ctx->ent.d_ino = vde->ino;
+   ctx->ent.d_off = (s64)(ctx->offset + entry_size);
+   ctx->ent.d_reclen = (u16)entry_size;
+
+   switch (vde->type) {
+      case VFS_DIR:
+         ctx->ent.d_type = DT_DIR;
+         break;
+      case VFS_FILE:
+         ctx->ent.d_type = DT_REG;
+         break;
+      case VFS_SYMLINK:
+         ctx->ent.d_type = DT_LNK;
+         break;
+      default:
+         ctx->ent.d_type = DT_UNKNOWN;
+         break;
+   }
+
+   struct linux_dirent64 *user_ent = (void *)((char *)ctx->dirp + ctx->offset);
+
+   if (copy_to_user(user_ent, &ctx->ent, sizeof(ctx->ent)) < 0)
+      return -EFAULT;
+
+   if (copy_to_user(user_ent->d_name, file_name, fl + 1) < 0)
+      return -EFAULT;
+
+   ctx->offset = (u32) ctx->ent.d_off; /* s64 to u32 precision drop */
+   ctx->curr_index++;
+   ctx->h->pos++;
+   return 0;
+}
+
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
@@ -434,13 +511,32 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
    int rc;
 
    ASSERT(hb != NULL);
-   ASSERT(hb->fs->fsops->getdents64);
+   ASSERT(hb->fs->fsops->getdents64 || hb->fs->fsops->getdents_new);
 
    /* See the comment in vfs.h about the "fs-locks" */
    vfs_fs_shlock(hb->fs);
    {
-      // NOTE: the fs implementation MUST handle an invalid user 'dirp' pointer.
-      rc = hb->fs->fsops->getdents64(h, user_dirp, buf_size);
+      if (hb->fs->fsops->getdents_new) {
+
+         vfs_getdents_ctx ctx = {
+            .h = hb,
+            .dirp = user_dirp,
+            .buf_size = buf_size,
+            .offset = 0,
+            .curr_index = 0,
+            .ent = { 0 },
+         };
+
+         rc = hb->fs->fsops->getdents_new(hb, &vfs_getdents_cb, &ctx);
+
+         if (!rc)
+            rc = (int) ctx.offset;
+
+      } else {
+         // NOTE: the fs implementation MUST handle an invalid
+         // user 'dirp' pointer.
+         rc = hb->fs->fsops->getdents64(h, user_dirp, buf_size);
+      }
    }
    vfs_fs_shunlock(hb->fs);
    return rc;

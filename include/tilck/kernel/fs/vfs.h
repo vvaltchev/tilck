@@ -62,15 +62,27 @@ typedef struct {
 
 } vfs_path;
 
+typedef struct {
+
+   s64 ino;
+   enum vfs_entry_type type;
+   const char *name;
+
+} vfs_dent64;
+
+typedef int (*get_dents_func_cb)(vfs_dent64 *, void *);
+
 /* fs ops */
 typedef void (*func_close) (fs_handle);
 typedef int (*func_open) (vfs_path *, fs_handle *, int, mode_t);
 typedef int (*func_dup) (fs_handle, fs_handle *);
 typedef int (*func_getdents64) (fs_handle, struct linux_dirent64 *, u32);
+typedef int (*func_getdents_new) (fs_handle, get_dents_func_cb, void *);
 typedef int (*func_unlink) (vfs_path *p);
 typedef int (*func_mkdir) (vfs_path *p, mode_t);
 typedef int (*func_rmdir) (vfs_path *p);
 typedef void (*func_fslock_t)(filesystem *);
+
 
 typedef void (*func_get_entry) (filesystem *fs,
                                 void *dir_inode,
@@ -119,6 +131,7 @@ typedef struct {
    func_close close;
    func_dup dup;
    func_getdents64 getdents64;
+   func_getdents_new getdents_new;
    func_unlink unlink;
    func_fstat fstat;
    func_mkdir mkdir;
@@ -195,6 +208,7 @@ typedef struct {
    const file_ops *fops;         \
    int fd_flags;                 \
    int fl_flags;                 \
+   off_t pos;                    \
 
 typedef struct {
 

@@ -78,7 +78,6 @@ typedef struct {
 
    /* ramfs-specific fields */
    ramfs_inode *inode;
-   off_t pos;
 
 } ramfs_handle;
 
