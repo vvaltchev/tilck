@@ -301,8 +301,8 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
          ctx->lname_sz = 0;
          ctx->lname_chksum = -1;
 
-         if (ret < 0) {
-            /* the callback returns a value < 0 to request a walk STOP. */
+         if (ret) {
+            /* the callback returns a value != 0 to request a walk STOP. */
             return 0;
          }
       }

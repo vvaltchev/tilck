@@ -222,10 +222,16 @@ fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
    return d;
 }
 
+static inline tilck_inode_t
+fat_entry_to_inode(fat_header *hdr, fat_entry *e)
+{
+   return (tilck_inode_t)((sptr)e - (sptr)hdr);
+}
+
 static inline tilck_inode_t fat_handle_to_inode(fat_file_handle *fh)
 {
    fat_fs_device_data *d = fh->fs->device_data;
-   return (tilck_inode_t)((sptr)fh->e - (sptr)d->hdr);
+   return fat_entry_to_inode(d->hdr, fh->e);
 }
 
 STATIC int fat_stat64(fs_handle h, struct stat64 *statbuf)
@@ -272,124 +278,60 @@ STATIC int fat_stat64(fs_handle h, struct stat64 *statbuf)
 
 typedef struct {
 
-   /* input variables */
-   struct linux_dirent64 *dirp;
-   u32 buf_size;
-   fat_file_handle *fh;
+   get_dents_func_cb vfs_cb;
+   void *vfs_ctx;
+   int rc;
 
-   /* context variables */
-   u32 offset;
-   off_t curr_file_index;
+} fat_getdents_ctx_new;
 
-   /* output variables */
-   ssize_t rc;
-
-} getdents64_walk_ctx;
-
-STATIC int
-fat_getdents64_cb(fat_header *hdr,
-                  fat_type ft,
-                  fat_entry *entry,
-                  const char *long_name,
-                  void *arg)
+static int
+fat_getdents_new_cb(fat_header *hdr,
+                    fat_type ft,
+                    fat_entry *entry,
+                    const char *long_name,
+                    void *arg)
 {
    char short_name[16];
    const char *file_name = long_name ? long_name : short_name;
-   getdents64_walk_ctx *ctx = arg;
-   struct linux_dirent64 ent;
-   int rc;
-
-   /* Reuse `pos` as file index in case a directory has been opened */
-   if (ctx->curr_file_index < ctx->fh->pos) {
-      ctx->curr_file_index++;
-      return 0;
-   }
+   fat_getdents_ctx_new *ctx = arg;
 
    if (file_name == short_name)
       fat_get_short_name(entry, short_name);
 
-   const u32 fl = (u32)strlen(file_name);
-   const u32 entry_size = fl + 1 + sizeof(struct linux_dirent64);
+   vfs_dent64 dent = {
+      .ino = fat_entry_to_inode(hdr, entry),
+      .type = entry->directory ? VFS_DIR : VFS_FILE,
+      .name = file_name,
+   };
 
-   if (ctx->offset + entry_size > ctx->buf_size) {
-
-      if (!ctx->offset) {
-
-         /*
-          * We haven't "returned" any entries yet and the buffer is too small
-          * for our first entry.
-          */
-
-         ctx->rc = -EINVAL;
-         return -1; /* stop the walk */
-      }
-
-      /* We "returned" at least one entry */
-      return -1; /* stop the walk */
-   }
-
-   ent.d_ino = 0;
-   ent.d_off = ctx->offset + entry_size;
-   ent.d_reclen = (u16) entry_size;
-   ent.d_type = entry->directory ? DT_DIR : DT_REG;
-
-   struct linux_dirent64 *user_ent = (void *)((char *)ctx->dirp + ctx->offset);
-   rc = copy_to_user(user_ent, &ent, sizeof(ent));
-
-   if (rc < 0) {
-      ctx->rc = -EFAULT;
-      return -1; /* stop the walk */
-   }
-
-   rc = copy_to_user(user_ent->d_name, file_name, fl + 1);
-
-   if (rc < 0) {
-      ctx->rc = -EFAULT;
-      return -1; /* stop the walk */
-   }
-
-   ctx->offset = (u32) ent.d_off; /* s64 to u32 precision drop */
-   ctx->curr_file_index++;
-   ctx->fh->pos++;
-   return 0;
+   return ctx->vfs_cb(&dent, ctx->vfs_ctx);
 }
 
-STATIC int
-fat_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
+static int fat_getdents_new(fs_handle h, get_dents_func_cb cb, void *arg)
 {
    fat_file_handle *fh = h;
+   fat_fs_device_data *d = fh->fs->device_data;
+   fat_walk_dir_ctx walk_ctx = {0};
    int rc;
 
    if (!fh->e->directory && !fh->e->volume_id)
       return -ENOTDIR;
 
-   fat_fs_device_data *dd = fh->fs->device_data;
-   fat_walk_dir_ctx walk_ctx = {0};
-
-   getdents64_walk_ctx ctx = {
-      .dirp = dirp,
-      .buf_size = buf_size,
-      .fh = fh,
-      .offset = 0,
-      .curr_file_index = 0,
+   fat_getdents_ctx_new ctx = {
+      .vfs_cb = cb,
+      .vfs_ctx = arg,
       .rc = 0,
    };
 
    rc = fat_walk_directory(&walk_ctx,
-                           dd->hdr,
-                           dd->type,
+                           d->hdr,
+                           d->type,
                            NULL,
-                           fat_get_first_cluster_generic(dd, fh->e),
-                           fat_getdents64_cb,
-                           &ctx); /* arg */
+                           fat_get_first_cluster_generic(d, fh->e),
+                           fat_getdents_new_cb,
+                           &ctx);
 
-   if (rc != 0)
-      return rc;
-
-   if (ctx.rc != 0)
-      return (int)ctx.rc;
-
-   return (int)ctx.offset;
+   return rc ? rc : ctx.rc;
 }
 
 STATIC void fat_exclusive_lock(filesystem *fs)
@@ -602,7 +544,7 @@ static const fs_ops static_fsops_fat =
    .open = fat_open,
    .close = fat_close,
    .dup = fat_dup,
-   .getdents64 = fat_getdents64,
+   .getdents_new = fat_getdents_new,
    .unlink = NULL,
    .mkdir = NULL,
    .rmdir = NULL,
