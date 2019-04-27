@@ -9,6 +9,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/user.h>
+#include <tilck/kernel/sys_types.h>
 
 #include <dirent.h> // system header
 
@@ -221,10 +222,10 @@ fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
    return d;
 }
 
-static inline ino_t fat_handle_to_inode(fat_file_handle *fh)
+static inline tilck_inode_t fat_handle_to_inode(fat_file_handle *fh)
 {
    fat_fs_device_data *d = fh->fs->device_data;
-   return (ino_t)((sptr)fh->e - (sptr)d->hdr);
+   return (tilck_inode_t)((sptr)fh->e - (sptr)d->hdr);
 }
 
 STATIC int fat_stat64(fs_handle h, struct stat64 *statbuf)
@@ -328,7 +329,7 @@ fat_getdents64_cb(fat_header *hdr,
    }
 
    ent.d_ino = 0;
-   ent.d_off = (s64)(ctx->offset + entry_size);
+   ent.d_off = ctx->offset + entry_size;
    ent.d_reclen = (u16) entry_size;
    ent.d_type = entry->directory ? DT_DIR : DT_REG;
 

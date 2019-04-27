@@ -13,7 +13,7 @@ static int ramfs_getdents_new_cb(void *obj, void *arg)
    ramfs_entry *pos = obj;
 
    vfs_dent64 dent = {
-      .ino = pos->inode->inode,
+      .ino = pos->inode->ino,
       .type = pos->inode->type,
       .name = pos->name,
    };

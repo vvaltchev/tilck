@@ -14,7 +14,7 @@ static int ramfs_fstat64(fs_handle h, struct stat64 *statbuf)
    bzero(statbuf, sizeof(struct stat64));
 
    statbuf->st_dev = rh->fs->device_id;
-   statbuf->st_ino = (typeof(statbuf->st_ino)) inode->inode;
+   statbuf->st_ino = inode->ino;
    statbuf->st_mode = inode->mode;
    statbuf->st_nlink = inode->nlink;
    statbuf->st_uid = 0;  /* root */

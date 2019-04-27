@@ -47,7 +47,7 @@ struct ramfs_inode {
     */
    REF_COUNTED_OBJECT;
 
-   int inode;
+   tilck_inode_t ino;
    enum vfs_entry_type type;
    nlink_t nlink;
    mode_t mode;
@@ -85,7 +85,7 @@ typedef struct {
 
    rwlock_wp rwlock;
 
-   int next_inode_num;
+   tilck_inode_t next_inode_num;
    ramfs_inode *root;
 
 } ramfs_data;

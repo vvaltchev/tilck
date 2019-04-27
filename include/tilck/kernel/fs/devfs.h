@@ -39,7 +39,7 @@ typedef struct {
    const char *name;
    const file_ops *fops;
    enum vfs_entry_type type;
-   ino_t inode;
+   tilck_inode_t inode;
 
 } devfs_file;
 

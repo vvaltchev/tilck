@@ -79,7 +79,7 @@ typedef struct {
     * just one flat directory.
     */
    list files_list;
-   ino_t inode;
+   tilck_inode_t inode;
 
 } devfs_directory;
 
@@ -88,11 +88,11 @@ typedef struct {
    devfs_directory root_dir;
    rwlock_wp rwlock;
    time_t wrt_time;
-   ino_t next_inode;
+   tilck_inode_t next_inode;
 
 } devfs_data;
 
-static inline ino_t devfs_get_next_inode(devfs_data *d)
+static inline tilck_inode_t devfs_get_next_inode(devfs_data *d)
 {
    return d->next_inode++;
 }
@@ -338,67 +338,29 @@ static void devfs_shared_unlock(filesystem *fs)
    rwlock_wp_shunlock(&d->rwlock);
 }
 
-static int
-devfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 buf_size)
+static int devfs_getdents_new(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
 {
    devfs_file_handle *dh = h;
    devfs_data *d = dh->fs->device_data;
-   u32 offset = 0, curr_index = 0;
-   struct linux_dirent64 ent;
    devfs_file *pos;
+   int rc;
 
    if (dh->type != VFS_DIR)
       return -ENOTDIR;
 
    list_for_each_ro(pos, &d->root_dir.files_list, dir_node) {
 
-      if (curr_index < dh->read_pos) {
-         curr_index++;
-         continue;
-      }
+      vfs_dent64 dent = {
+         .ino = pos->inode,
+         .type = pos->type,
+         .name = pos->name,
+      };
 
-      const char *const file_name = pos->name;
-      const u32 fl = (u32)strlen(file_name);
-      const u32 entry_size = fl + 1 + sizeof(struct linux_dirent64);
-
-      if (offset + entry_size > buf_size) {
-
-         if (!offset) {
-
-            /*
-            * We haven't "returned" any entries yet and the buffer is too small
-            * for our first entry.
-            */
-
-            return -EINVAL;
-         }
-
-         /* We "returned" at least one entry */
-         return (int)offset;
-      }
-
-      ent.d_ino = 0;
-      ent.d_off = (s64)(offset + entry_size);
-      ent.d_reclen = (u16)entry_size;
-      ent.d_type = DT_UNKNOWN;
-
-      if (dh->type == VFS_CHAR_DEV)
-         ent.d_type = DT_CHR;
-
-      struct linux_dirent64 *user_ent = (void *)((char *)dirp + offset);
-
-      if (copy_to_user(user_ent, &ent, sizeof(ent)) < 0)
-         return -EFAULT;
-
-      if (copy_to_user(user_ent->d_name, file_name, fl + 1) < 0)
-         return -EFAULT;
-
-      offset = (u32) ent.d_off; /* s64 to u32 precision drop */
-      curr_index++;
-      dh->read_pos++;
+      if ((rc = vfs_cb(&dent, arg)))
+         break;
    }
 
-   return (int)offset;
+   return rc;
 }
 
 static void
@@ -448,7 +410,7 @@ static const fs_ops static_fsops_devfs =
    .open = devfs_open,
    .close = devfs_close,
    .dup = devfs_dup,
-   .getdents64 = devfs_getdents64,
+   .getdents_new = devfs_getdents_new,
    .unlink = NULL,
    .mkdir = NULL,
    .rmdir = NULL,

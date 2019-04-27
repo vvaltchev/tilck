@@ -64,7 +64,7 @@ typedef struct {
 
 typedef struct {
 
-   s64 ino;
+   tilck_inode_t ino;
    enum vfs_entry_type type;
    const char *name;
 

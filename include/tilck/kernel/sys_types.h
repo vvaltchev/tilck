@@ -31,10 +31,12 @@
 #include <sys/stat.h>     // system header
 #include <fcntl.h>        // system header
 
+typedef u64 tilck_inode_t;
+
 /* From the man page of getdents64() */
 struct linux_dirent64 {
-   s64            d_ino;    /* 64-bit inode number */
-   s64            d_off;    /* 64-bit offset to next structure */
+   u64            d_ino;    /* 64-bit inode number */
+   u64            d_off;    /* 64-bit offset to next structure */
    unsigned short d_reclen; /* Size of this dirent */
    unsigned char  d_type;   /* File type */
    char           d_name[]; /* Filename (null-terminated) */
