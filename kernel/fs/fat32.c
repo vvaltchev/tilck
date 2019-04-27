@@ -9,7 +9,6 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/user.h>
-#include <tilck/kernel/sys_types.h>
 
 #include <dirent.h> // system header
 
