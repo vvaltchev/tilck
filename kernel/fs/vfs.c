@@ -513,32 +513,24 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
    int rc;
 
    ASSERT(hb != NULL);
-   ASSERT(hb->fs->fsops->getdents64 || hb->fs->fsops->getdents_new);
+   ASSERT(hb->fs->fsops->getdents_new);
+
+   vfs_getdents_ctx ctx = {
+      .h = hb,
+      .dirp = user_dirp,
+      .buf_size = buf_size,
+      .offset = 0,
+      .curr_index = 0,
+      .ent = { 0 },
+   };
 
    /* See the comment in vfs.h about the "fs-locks" */
    vfs_fs_shlock(hb->fs);
    {
-      if (hb->fs->fsops->getdents_new) {
+      rc = hb->fs->fsops->getdents_new(hb, &vfs_getdents_cb, &ctx);
 
-         vfs_getdents_ctx ctx = {
-            .h = hb,
-            .dirp = user_dirp,
-            .buf_size = buf_size,
-            .offset = 0,
-            .curr_index = 0,
-            .ent = { 0 },
-         };
-
-         rc = hb->fs->fsops->getdents_new(hb, &vfs_getdents_cb, &ctx);
-
-         if (!rc)
-            rc = (int) ctx.offset;
-
-      } else {
-         // NOTE: the fs implementation MUST handle an invalid
-         // user 'dirp' pointer.
-         rc = hb->fs->fsops->getdents64(h, user_dirp, buf_size);
-      }
+      if (!rc)
+         rc = (int) ctx.offset;
    }
    vfs_fs_shunlock(hb->fs);
    return rc;
