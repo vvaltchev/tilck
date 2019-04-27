@@ -441,6 +441,24 @@ typedef struct {
 
 } vfs_getdents_ctx;
 
+static inline unsigned char
+vfs_type_to_linux_dirent_type(enum vfs_entry_type t)
+{
+   static const unsigned char table[] =
+   {
+      [VFS_NONE]        = DT_UNKNOWN,
+      [VFS_FILE]        = DT_REG,
+      [VFS_DIR]         = DT_DIR,
+      [VFS_SYMLINK]     = DT_LNK,
+      [VFS_CHAR_DEV]    = DT_CHR,
+      [VFS_BLOCK_DEV]   = DT_BLK,
+      [VFS_PIPE]        = DT_FIFO,
+   };
+
+   ASSERT(t != VFS_NONE);
+   return table[t];
+}
+
 static int vfs_getdents_cb(vfs_dent64 *vde, void *arg)
 {
    vfs_getdents_ctx *ctx = arg;
@@ -474,21 +492,7 @@ static int vfs_getdents_cb(vfs_dent64 *vde, void *arg)
    ctx->ent.d_ino = vde->ino;
    ctx->ent.d_off = (s64)(ctx->offset + entry_size);
    ctx->ent.d_reclen = (u16)entry_size;
-
-   switch (vde->type) {
-      case VFS_DIR:
-         ctx->ent.d_type = DT_DIR;
-         break;
-      case VFS_FILE:
-         ctx->ent.d_type = DT_REG;
-         break;
-      case VFS_SYMLINK:
-         ctx->ent.d_type = DT_LNK;
-         break;
-      default:
-         ctx->ent.d_type = DT_UNKNOWN;
-         break;
-   }
+   ctx->ent.d_type = vfs_type_to_linux_dirent_type(vde->type);
 
    struct linux_dirent64 *user_ent = (void *)((char *)ctx->dirp + ctx->offset);
 

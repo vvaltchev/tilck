@@ -31,7 +31,6 @@
 #include <sys/stat.h>     // system header
 #include <fcntl.h>        // system header
 
-
 /* From the man page of getdents64() */
 struct linux_dirent64 {
    s64            d_ino;    /* 64-bit inode number */

@@ -29,13 +29,13 @@ typedef struct filesystem filesystem;
 
 enum vfs_entry_type {
 
-   VFS_NONE = 0,
-   VFS_FILE,
-   VFS_DIR,
-   VFS_SYMLINK,
-   VFS_CHAR_DEV,
-   VFS_BLOCK_DEV,
-   VFS_PIPE,
+   VFS_NONE       = 0,
+   VFS_FILE       = 1,
+   VFS_DIR        = 2,
+   VFS_SYMLINK    = 3,
+   VFS_CHAR_DEV   = 4,
+   VFS_BLOCK_DEV  = 5,
+   VFS_PIPE       = 6,
 };
 
 #define CREATE_FS_PATH_STRUCT(name, inode_type, fs_entry_type)            \
