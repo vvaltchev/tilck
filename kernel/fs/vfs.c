@@ -468,10 +468,8 @@ static int vfs_getdents_cb(vfs_dent64 *vde, void *arg)
       return 0; // continue
    }
 
-   const char *file_name = vde->name;
-
-   const u32 fl = (u32)strlen(file_name);
-   const u32 entry_size = fl + 1 + sizeof(struct linux_dirent64);
+   const u16 fl = (u16)strlen(vde->name);
+   const u16 entry_size = sizeof(struct linux_dirent64) + fl + 1;
 
    if (ctx->offset + entry_size > ctx->buf_size) {
 
@@ -486,12 +484,12 @@ static int vfs_getdents_cb(vfs_dent64 *vde, void *arg)
       }
 
       /* We "returned" at least one entry */
-      return (int)ctx->offset;
+      return (int) ctx->offset;
    }
 
    ctx->ent.d_ino = vde->ino;
-   ctx->ent.d_off = (s64)(ctx->offset + entry_size);
-   ctx->ent.d_reclen = (u16)entry_size;
+   ctx->ent.d_off = ctx->offset + entry_size;
+   ctx->ent.d_reclen = entry_size;
    ctx->ent.d_type = vfs_type_to_linux_dirent_type(vde->type);
 
    struct linux_dirent64 *user_ent = (void *)((char *)ctx->dirp + ctx->offset);
@@ -499,10 +497,10 @@ static int vfs_getdents_cb(vfs_dent64 *vde, void *arg)
    if (copy_to_user(user_ent, &ctx->ent, sizeof(ctx->ent)) < 0)
       return -EFAULT;
 
-   if (copy_to_user(user_ent->d_name, file_name, fl + 1) < 0)
+   if (copy_to_user(user_ent->d_name, vde->name, fl + 1) < 0)
       return -EFAULT;
 
-   ctx->offset = (u32) ctx->ent.d_off; /* s64 to u32 precision drop */
+   ctx->offset += entry_size;
    ctx->curr_index++;
    ctx->h->pos++;
    return 0;
