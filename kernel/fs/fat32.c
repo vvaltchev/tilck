@@ -277,8 +277,10 @@ STATIC int fat_stat64(fs_handle h, struct stat64 *statbuf)
 
 typedef struct {
 
+   fat_file_handle *fh;
    get_dents_func_cb vfs_cb;
    void *vfs_ctx;
+   off_t curr_index;
    int rc;
 
 } fat_getdents_ctx;
@@ -293,17 +295,28 @@ fat_getdents_cb(fat_header *hdr,
    char short_name[16];
    const char *file_name = long_name ? long_name : short_name;
    fat_getdents_ctx *ctx = arg;
+   int rc;
+
+   if (ctx->curr_index < ctx->fh->pos) {
+      ctx->curr_index++;
+      return 0;
+   }
 
    if (file_name == short_name)
       fat_get_short_name(entry, short_name);
 
    vfs_dent64 dent = {
-      .ino = fat_entry_to_inode(hdr, entry),
+      .ino  = fat_entry_to_inode(hdr, entry),
       .type = entry->directory ? VFS_DIR : VFS_FILE,
       .name = file_name,
    };
 
-   return ctx->vfs_cb(&dent, ctx->vfs_ctx);
+   if (!(rc = ctx->vfs_cb(&dent, ctx->vfs_ctx))) {
+      ctx->fh->pos++;
+      ctx->curr_index++;
+   }
+
+   return rc;
 }
 
 static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
@@ -317,8 +330,10 @@ static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
       return -ENOTDIR;
 
    fat_getdents_ctx ctx = {
+      .fh = fh,
       .vfs_cb = cb,
       .vfs_ctx = arg,
+      .curr_index = 0,
       .rc = 0,
    };
 

@@ -158,7 +158,7 @@ static int devfs_dir_fcntl(fs_handle h, int cmd, int arg)
 int devfs_stat64(fs_handle h, struct stat64 *statbuf)
 {
    devfs_file_handle *dh = h;
-   devfs_file *df = dh->devfs_file_ptr;
+   devfs_file *df = dh->file;
    devfs_data *ddata = dh->fs->device_data;
 
    bzero(statbuf, sizeof(struct stat64));
@@ -235,10 +235,10 @@ static int devfs_open_file(filesystem *fs, devfs_file *pos, fs_handle *out)
       return -ENOMEM;
    }
 
-   h->type = pos->type;
-   h->devfs_file_ptr = pos;
-   h->fs = fs;
-   h->fops = pos->fops;
+   h->type  = pos->type;
+   h->file  = pos;
+   h->fs    = fs;
+   h->fops  = pos->fops;
 
    *out = h;
    return 0;
@@ -342,18 +342,20 @@ static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
 {
    devfs_file_handle *dh = h;
    devfs_data *d = dh->fs->device_data;
-   devfs_file *pos;
    int rc;
 
    if (dh->type != VFS_DIR)
       return -ENOTDIR;
 
-   list_for_each_ro(pos, &d->root_dir.files_list, dir_node) {
+   if (!dh->dpos)
+      dh->dpos = list_first_obj(&d->root_dir.files_list, devfs_file, dir_node);
+
+   list_for_each_ro_kp(dh->dpos, &d->root_dir.files_list, dir_node) {
 
       vfs_dent64 dent = {
-         .ino = pos->inode,
-         .type = pos->type,
-         .name = pos->name,
+         .ino  = dh->dpos->inode,
+         .type = dh->dpos->type,
+         .name = dh->dpos->name,
       };
 
       if ((rc = vfs_cb(&dent, arg)))

@@ -30,6 +30,8 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
    ASSERT(ie->parent_dir != NULL);
 
    bintree_node_init(&e->node);
+   list_node_init(&e->lnode);
+
    e->inode = ie;
    memcpy(e->name, iname, enl);
 
@@ -41,6 +43,8 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
                   ramfs_insert_remove_entry_cmp,
                   ramfs_entry,
                   node);
+
+   list_add_tail(&idir->entries_list, &e->lnode);
 
    ie->nlink++;
    idir->num_entries++;
@@ -58,6 +62,8 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
                   ramfs_insert_remove_entry_cmp,
                   ramfs_entry,
                   node);
+
+   list_remove(&e->lnode);
 
    ASSERT(ie->nlink > 0);
    ie->nlink--;

@@ -29,7 +29,7 @@ STATIC_ASSERT(ARRAY_SIZE(ttys) > MAX_TTYS);
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
    devfs_file_handle *dh = h;
-   devfs_file *df = dh->devfs_file_ptr;
+   devfs_file *df = dh->file;
    tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_read_int(t, dh, buf, size);
@@ -38,7 +38,7 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 {
    devfs_file_handle *dh = h;
-   devfs_file *df = dh->devfs_file_ptr;
+   devfs_file *df = dh->file;
    tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_write_int(t, dh, buf, size);
@@ -47,7 +47,7 @@ static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 static int tty_ioctl(fs_handle h, uptr request, void *argp)
 {
    devfs_file_handle *dh = h;
-   devfs_file *df = dh->devfs_file_ptr;
+   devfs_file *df = dh->file;
    tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_ioctl_int(t, dh, request, argp);
@@ -56,7 +56,7 @@ static int tty_ioctl(fs_handle h, uptr request, void *argp)
 static int tty_fcntl(fs_handle h, int cmd, int arg)
 {
    devfs_file_handle *dh = h;
-   devfs_file *df = dh->devfs_file_ptr;
+   devfs_file *df = dh->file;
    tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_fcntl_int(t, dh, cmd, arg);
@@ -65,7 +65,7 @@ static int tty_fcntl(fs_handle h, int cmd, int arg)
 static kcond *tty_get_rready_cond(fs_handle h)
 {
    devfs_file_handle *dh = h;
-   devfs_file *df = dh->devfs_file_ptr;
+   devfs_file *df = dh->file;
    tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return &t->input_cond;
@@ -74,7 +74,7 @@ static kcond *tty_get_rready_cond(fs_handle h)
 static bool tty_read_ready(fs_handle h)
 {
    devfs_file_handle *dh = h;
-   devfs_file *df = dh->devfs_file_ptr;
+   devfs_file *df = dh->file;
    tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_read_ready_int(t, dh);

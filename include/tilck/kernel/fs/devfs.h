@@ -9,29 +9,6 @@
 
 typedef struct {
 
-   /* fs_handle_base */
-   FS_HANDLE_BASE_FIELDS
-
-   /* devfs-specific fields */
-
-   enum vfs_entry_type type;
-   void *devfs_file_ptr;
-
-   u32 read_pos;
-   u32 write_pos;
-   u32 read_buf_used;
-   u32 write_buf_used;
-
-   char *read_buf;
-   char *write_buf;
-
-   bool read_allowed_to_return;
-   bool write_allowed_to_return;
-
-} devfs_file_handle;
-
-typedef struct {
-
    list_node dir_node;
 
    u16 dev_major;
@@ -42,6 +19,38 @@ typedef struct {
    tilck_inode_t inode;
 
 } devfs_file;
+
+typedef struct {
+
+   /* fs_handle_base */
+   FS_HANDLE_BASE_FIELDS
+
+   /* devfs-specific fields */
+   enum vfs_entry_type type;
+
+   union {
+
+      devfs_file *dpos;                /* valid only if type == VFS_DIR */
+
+      struct {
+         devfs_file *file;             /* valid only if type != VFS_DIR */
+
+         off_t read_pos;
+         off_t write_pos;
+
+         off_t read_buf_used;
+         off_t write_buf_used;
+
+         char *read_buf;
+         char *write_buf;
+
+         bool read_allowed_to_return;
+         bool write_allowed_to_return;
+      };
+   };
+
+} devfs_file_handle;
+
 
 typedef int
 (*func_create_device_file)(int, const file_ops **, enum vfs_entry_type *);

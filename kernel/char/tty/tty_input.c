@@ -310,8 +310,10 @@ int tty_keypress_handler(u32 key, u8 c)
 
 static size_t tty_flush_read_buf(devfs_file_handle *h, char *buf, size_t size)
 {
-   size_t rem = h->read_buf_used - h->read_pos;
-   size_t m = MIN(rem, size);
+   ssize_t rem = h->read_buf_used - h->read_pos;
+   ASSERT(rem >= 0);
+
+   size_t m = MIN((size_t)rem, size);
    memcpy(buf, h->read_buf + h->read_pos, m);
    h->read_pos += m;
 

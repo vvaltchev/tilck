@@ -205,8 +205,7 @@ typedef struct {
    filesystem *fs;               \
    const file_ops *fops;         \
    int fd_flags;                 \
-   int fl_flags;                 \
-   off_t pos;                    \
+   int fl_flags;
 
 typedef struct {
 

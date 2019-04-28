@@ -28,6 +28,7 @@ typedef struct {
    /* fs-specific members */
    fat_entry *e;
    u32 curr_cluster;
+   off_t pos;
 
 } fat_file_handle;
 
