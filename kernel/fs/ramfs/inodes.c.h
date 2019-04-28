@@ -23,6 +23,7 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
    i->type = VFS_DIR;
    i->mode = (mode & 0777) | S_IFDIR;
    list_init(&i->entries_list);
+   list_init(&i->handles_list);
 
    if (!parent) {
       /* root case */

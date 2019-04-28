@@ -28,6 +28,18 @@ ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out, int fl)
    h->fops = &static_ops_ramfs;
    retain_obj(inode);
 
+   if (inode->type == VFS_DIR) {
+
+      /*
+       * If we're opening a directory, register its handle in inode's handles
+       * list so that if unlink() is called on an entry E and there are open
+       * handles to E's parent-dir where h->dpos == E, their dpos is moved
+       * forward. This is a VERY CORNER CASE, but it *MUST BE* handled.
+       */
+      list_node_init(&h->node);
+      list_add_tail(&inode->handles_list, &h->node);
+   }
+
    if (fl & O_TRUNC) {
       rwlock_wp_exlock(&inode->rwlock);
       ramfs_inode_truncate(inode, 0);

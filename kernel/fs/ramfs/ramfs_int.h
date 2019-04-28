@@ -72,6 +72,7 @@ struct ramfs_inode {
          off_t num_entries;
          ramfs_entry *entries_tree_root;
          list entries_list;
+         list handles_list;
       };
 
       /* valid when type == VFS_SYMLINK */
@@ -91,8 +92,14 @@ typedef struct {
    FS_HANDLE_BASE_FIELDS
 
    /* ramfs-specific fields */
+
+   /* valid only if inode->type == VFS_DIR */
+   struct {
+      list_node node;               /* node in inode->handles_list */
+      ramfs_entry *dpos;            /* current entry position */
+   };
+
    ramfs_inode *inode;
-   ramfs_entry *dpos;            /* valid only if inode->type == VFS_DIR */
    off_t pos;
 
 } ramfs_handle;

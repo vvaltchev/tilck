@@ -54,8 +54,22 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
 static void
 ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
 {
+   ramfs_handle *pos;
    ramfs_inode *ie = e->inode;
    ASSERT(idir->type == VFS_DIR);
+
+   /*
+    * Before removing this entry, we have to check if, among the handles opened
+    * for `idir`, there are any having dpos == e. For each one of them, we have
+    * to move `dpos` forward, before removing the entry `e`.
+    */
+
+   list_for_each_ro(pos, &idir->handles_list, node) {
+
+      if (pos->dpos == e) {
+         pos->dpos = list_next_obj(pos->dpos, lnode);
+      }
+   }
 
    bintree_remove(&idir->entries_tree_root,
                   e,

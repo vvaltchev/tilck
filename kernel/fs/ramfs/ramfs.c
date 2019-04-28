@@ -63,6 +63,12 @@ static int ramfs_dup(fs_handle h, fs_handle *dup_h)
 static void ramfs_close(fs_handle h)
 {
    ramfs_handle *rh = h;
+
+   if (rh->inode->type == VFS_DIR) {
+      /* Remove this handle from h->inode->handles_list */
+      list_remove(&rh->node);
+   }
+
    release_obj(rh->inode);
 
    if (!get_ref_count(rh->inode) && !rh->inode->nlink) {
