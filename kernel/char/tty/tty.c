@@ -81,7 +81,9 @@ static bool tty_read_ready(fs_handle h)
 }
 
 static int
-tty_create_device_file(int minor, const file_ops **fops_r, enum vfs_entry_type *t)
+tty_create_device_file(int minor,
+                       const file_ops **fops_r,
+                       enum vfs_entry_type *t)
 {
    static const file_ops static_ops_tty = {
 
