@@ -41,7 +41,7 @@ function do_build_no_nested_irq_tracking {
 }
 
 function do_build_syscc {
-   SYSCC=1 $CM
+   USE_SYSCC=1 $CM
 }
 
 function do_build_clang_wconv {
