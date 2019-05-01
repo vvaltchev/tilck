@@ -315,7 +315,7 @@ int vfs_unlink(const char *path)
       rc = vfs_resolve(fs, fs_path, &p);
 
       if (!rc)
-         rc = fs->fsops->unlink(&p);
+         rc = p.fs_path.inode ? fs->fsops->unlink(&p) : -ENOENT;
    }
    vfs_fs_exunlock(fs);
    release_obj(fs);     /* it was retained by get_retained_fs_at() */

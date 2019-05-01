@@ -57,6 +57,21 @@ void dump_list_of_commands(void);
 int read_command(char *buf, int buf_size);
 void dump_coverage_files(void);
 
+/* From the man page of getdents64() */
+struct linux_dirent64 {
+   u64            d_ino;    /* 64-bit inode number */
+   u64            d_off;    /* 64-bit offset to next structure */
+   unsigned short d_reclen; /* Size of this dirent */
+   unsigned char  d_type;   /* File type */
+   char           d_name[]; /* Filename (null-terminated) */
+};
+
+static inline int
+getdents64(unsigned fd, struct linux_dirent64 *dirp, unsigned count)
+{
+   return sysenter_call3(220, fd, dirp, count);
+}
+
 static inline int tilck_get_num_gcov_files(void)
 {
    return sysenter_call1(TILCK_TESTCMD_SYSCALL,

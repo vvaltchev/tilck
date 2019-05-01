@@ -14,13 +14,15 @@
 #include <sys/syscall.h>
 #include <sys/mman.h>
 #include <sys/time.h>
+#include <dirent.h>
 
 #include "devshell.h"
 #include "sysenter.h"
+#include "test_common.h"
 
 static char pagebuf[4096];
 
-static void create_test_file(void)
+static void create_test_file1(void)
 {
    int fd, rc;
 
@@ -84,9 +86,12 @@ static void read_past_end(void)
    close(fd);
 }
 
+/*
+ * Generic create file/write/read/seek test
+ */
 int cmd_fs1(int argc, char **argv)
 {
-   create_test_file();
+   create_test_file1();
    write_on_test_file();
    read_past_end();
    // TODO: add a function here to check how EXACTLY the file should look like
@@ -94,6 +99,9 @@ int cmd_fs1(int argc, char **argv)
    return 0;
 }
 
+/*
+ * Test creat() [indirectly O_TRUNC] and open(O_CREAT + O_EXCL).
+ */
 int cmd_fs2(int argc, char **argv)
 {
    int fd, rc;
@@ -140,5 +148,94 @@ int cmd_fs2(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(errno == EEXIST);
 
    unlink("/tmp/test2");
+   return 0;
+}
+
+/*
+ * Test a corner case for RAMFS: remove the next dentry while reading the
+ * contents of a directory with getdents64().
+ */
+int cmd_fs3(int argc, char **argv)
+{
+   struct linux_dirent64 *de;
+   char dentsbuf[192];
+   int fd, rc, off = 0;
+   DIR *d;
+
+   rc = mkdir("/tmp/r", 0755);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   for (int i = 0; i < 20; i++)
+      create_test_file("/tmp/r", i);
+
+   d = opendir("/tmp/r");
+   DEVSHELL_CMD_ASSERT(d != NULL);
+
+   fd = dirfd(d);
+   rc = getdents64(fd, (void *)dentsbuf, sizeof(dentsbuf));
+   DEVSHELL_CMD_ASSERT(rc > 0);
+
+   printf("getdents64: %d\n", rc);
+
+   for (de = (void *) dentsbuf, off = 0; off < rc; off += de->d_reclen) {
+      de = (void *)(dentsbuf + off);
+      // printf("entry: '%s'\n", de->d_name);
+   }
+
+   int last_n = atoi(de->d_name + 5); /* skip "test_" */
+   printf("last entry: '%s' (%d)\n", de->d_name, last_n);
+
+   /*
+    * The next elem, at least on Tilck's ramfs, will be "test_${last_n+1}"
+    * because the getdents64 keep the creation order. Remove that elem.
+    */
+
+   printf("Remove the next entry: test_%03d\n", last_n + 1);
+   remove_test_file("/tmp/r", last_n + 1);
+
+   /*
+    * Now, if this special case has been handled correctly, we should continue
+    * from last_n + 2.
+    */
+
+   rc = getdents64(fd, (void *)dentsbuf, sizeof(dentsbuf));
+   DEVSHELL_CMD_ASSERT(rc > 0);
+
+   printf("getdents64: %d\n", rc);
+
+   if (getenv("TILCK")) {
+
+      /*
+       * Tilck's RAMFS keep the creation order: that's why we can reason about
+       * which dentry will the next one. In general, that's not possible.
+       */
+
+      de = (void *) dentsbuf;
+      printf("Next entry: '%s'\n", de->d_name);
+      DEVSHELL_CMD_ASSERT(atoi(de->d_name + 5) == last_n + 2);
+      printf("The next dentry was last_n + 2 as expected\n");
+   }
+
+   rc = closedir(d);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   for (int i = 0; i < 20; i++) {
+
+      if (i != last_n+1) {
+
+         remove_test_file("/tmp/r", i);
+
+      } else {
+
+         char buf[32];
+         sprintf(buf, "/tmp/r/%d", i);
+         rc = unlink(buf);
+         DEVSHELL_CMD_ASSERT(rc < 0);
+         DEVSHELL_CMD_ASSERT(errno == ENOENT);
+      }
+   }
+
+   rc = rmdir("/tmp/r");
+   DEVSHELL_CMD_ASSERT(rc == 0);
    return 0;
 }

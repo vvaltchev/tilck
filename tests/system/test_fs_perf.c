@@ -18,24 +18,24 @@
 #include "devshell.h"
 #include "sysenter.h"
 
-static void create_file(const char *path, int n)
+void create_test_file(const char *path, int n)
 {
    char abs_path[256];
    int rc;
 
-   sprintf(abs_path, "%s/test_%d", path, n);
+   sprintf(abs_path, "%s/test_%03d", path, n);
 
    rc = creat(abs_path, 0644);
    DEVSHELL_CMD_ASSERT(rc > 0);
    close(rc);
 }
 
-static void remove_file(const char *path, int n)
+void remove_test_file(const char *path, int n)
 {
    char abs_path[256];
    int rc;
 
-   sprintf(abs_path, "%s/test_%d", path, n);
+   sprintf(abs_path, "%s/test_%03d", path, n);
 
    rc = unlink(abs_path);
    DEVSHELL_CMD_ASSERT(rc == 0);
@@ -51,7 +51,7 @@ int cmd_fs_perf1(int argc, char **argv)
    start = RDTSC();
 
    for (int i = 0; i < n; i++)
-      create_file(dest_dir, i);
+      create_test_file(dest_dir, i);
 
    end = RDTSC();
    elapsed = (end - start) / n;
@@ -60,7 +60,7 @@ int cmd_fs_perf1(int argc, char **argv)
    printf("Avg. creat() cost:  %4llu K cycles\n", elapsed / 1000);
 
    for (int i = 0; i < n; i++)
-     remove_file(dest_dir, i);
+     remove_test_file(dest_dir, i);
 
    end = RDTSC();
    elapsed = (end - start) / n;
