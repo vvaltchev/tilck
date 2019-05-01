@@ -38,12 +38,11 @@ ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out, int fl)
        */
       list_node_init(&h->node);
       list_add_tail(&inode->handles_list, &h->node);
+      h->dpos = list_first_obj(&inode->entries_list, ramfs_entry, lnode);
    }
 
    if (fl & O_TRUNC) {
-      rwlock_wp_exlock(&inode->rwlock);
-      ramfs_inode_truncate(inode, 0);
-      rwlock_wp_exunlock(&inode->rwlock);
+      ramfs_inode_truncate_safe(inode, 0);
    }
 
    *out = h;

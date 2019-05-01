@@ -239,3 +239,121 @@ int cmd_fs3(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(rc == 0);
    return 0;
 }
+
+static void
+fs4_aux_read_dents(DIR *d,        /* dir handle */
+                   long *dposs,   /* array of positions */
+                   int s,         /* start index */
+                   int n,         /* if >= 0, #elems, otherwise, all of them */
+                   int j,         /* if >= 0, index of element to check name */
+                   const char *v) /* if j >= 0, check name[j] == v */
+{
+   struct dirent *de;
+
+   for (int i = s; n >= 0 ? (i < s + n) : 1; i++) {
+
+      if (telldir(d) != dposs[i]) {
+         printf("telldir != dposs for i = %d\n", i);
+         printf("telldir: %d\n", telldir(d));
+         printf("dposs:   %d\n", dposs[i]);
+         exit(1);
+      }
+
+      de = readdir(d);
+
+      if (n >= 0)
+         DEVSHELL_CMD_ASSERT(de != NULL);
+      else if (!de)
+         break;
+
+      //printf("dposs[%3d]: %11ld, entry: %s\n", i, dposs[i], de->d_name);
+
+      if (i == 0)
+         DEVSHELL_CMD_ASSERT(strcmp(de->d_name, ".") == 0);
+
+      if (i == 1)
+         DEVSHELL_CMD_ASSERT(strcmp(de->d_name, "..") == 0);
+
+      if (j >= 0 && i == j)
+         DEVSHELL_CMD_ASSERT(strcmp(de->d_name, v) == 0);
+   }
+}
+
+/*
+ * Test telldir(), seekdir() and rewinddir() on RAMFS.
+ */
+int cmd_fs4(int argc, char **argv)
+{
+   char saved_entry_name[256];
+   const int n_files = 100;
+   const int seek_n = 90, seek_n2 = 4;
+   struct dirent *de;
+   long dposs[n_files + 3];
+   int rc;
+   DIR *d;
+
+   /* preparing the test environment */
+   rc = mkdir("/tmp/r", 0755);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   for (int i = 0; i < n_files; i++)
+      create_test_file("/tmp/r", i);
+
+   d = opendir("/tmp/r");
+   DEVSHELL_CMD_ASSERT(d != NULL);
+
+   /* ---------------- actual test's code --------------------- */
+
+   printf("Reading dir entries...\n");
+
+   for (int i = 0; ; i++) {
+
+      dposs[i] = telldir(d);
+      de = readdir(d);
+
+      if (!de) {
+         printf("Done (%d dirents)\n", i);
+         DEVSHELL_CMD_ASSERT(i == n_files+2);
+         break;
+      }
+
+      if (i == seek_n)
+         strcpy(saved_entry_name, de->d_name);
+
+      //printf("dposs[%3d]: %11ld, entry: %s\n", i, dposs[i], de->d_name);
+   }
+
+   printf("seek to the position of entry #%d: %ld\n", seek_n, dposs[seek_n]);
+   seekdir(d, dposs[seek_n]);
+
+   fs4_aux_read_dents(d, dposs, seek_n, -1, seek_n, saved_entry_name);
+
+   printf("seek to the position of entry #%d: %ld\n", seek_n2, dposs[seek_n2]);
+   seekdir(d, dposs[seek_n2]);
+
+   fs4_aux_read_dents(d, dposs, seek_n2, 4, -1, NULL);
+
+   seekdir(d, 0);
+   printf("seek to the position of entry #0: 0\n");
+   DEVSHELL_CMD_ASSERT(telldir(d) == 0);
+
+   fs4_aux_read_dents(d, dposs, 0, 4, -1, NULL);
+
+   printf("Do rewinddir()...\n");
+   rewinddir(d);
+   DEVSHELL_CMD_ASSERT(telldir(d) == 0);
+
+   fs4_aux_read_dents(d, dposs, 0, 4, -1, NULL);
+   printf("Everything looks good\n");
+
+   /* clean up the test environment */
+   rc = closedir(d);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   for (int i = 0; i < n_files; i++)
+      remove_test_file("/tmp/r", i);
+
+   rc = rmdir("/tmp/r");
+   DEVSHELL_CMD_ASSERT(rc == 0);
+   return 0;
+}

@@ -30,13 +30,14 @@ typedef struct {
 } ramfs_block;
 
 #define RAMFS_ENTRY_MAX_LEN \
-   (256 - sizeof(bintree_node) - sizeof(list_node) - sizeof(void *))
+   (256 - sizeof(bintree_node) - sizeof(list_node) - sizeof(void *) - 1)
 
 typedef struct {
 
    bintree_node node;
    list_node lnode;
    struct ramfs_inode *inode;
+   u8 name_len;                     /* NOTE: includes the final \0 */
    char name[RAMFS_ENTRY_MAX_LEN];
 
 } ramfs_entry;
@@ -92,15 +93,13 @@ typedef struct {
    FS_HANDLE_BASE_FIELDS
 
    /* ramfs-specific fields */
+   ramfs_inode *inode;
 
    /* valid only if inode->type == VFS_DIR */
    struct {
       list_node node;               /* node in inode->handles_list */
       ramfs_entry *dpos;            /* current entry position */
    };
-
-   ramfs_inode *inode;
-   off_t pos;
 
 } ramfs_handle;
 

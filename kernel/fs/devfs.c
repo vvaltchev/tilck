@@ -342,7 +342,7 @@ static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
 {
    devfs_file_handle *dh = h;
    devfs_data *d = dh->fs->device_data;
-   int rc;
+   int rc = 0;
 
    if (dh->type != VFS_DIR)
       return -ENOTDIR;
@@ -355,6 +355,7 @@ static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
       vfs_dent64 dent = {
          .ino  = dh->dpos->inode,
          .type = dh->dpos->type,
+         .name_len = (u8) strlen(dh->dpos->name) + 1,
          .name = dh->dpos->name,
       };
 

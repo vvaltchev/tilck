@@ -11,9 +11,45 @@ static int ramfs_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
+static off_t ramfs_dir_seek(ramfs_handle *rh, off_t target_off)
+{
+   ramfs_inode *i = rh->inode;
+   ramfs_entry *dpos;
+   off_t off = 0;
+
+   list_for_each_ro(dpos, &i->entries_list, lnode) {
+
+      if (off == target_off) {
+         rh->pos = off;
+         rh->dpos = dpos;
+         break;
+      }
+
+      off++;
+   }
+
+   return rh->pos;
+}
+
 static off_t ramfs_seek(fs_handle h, off_t off, int whence)
 {
    ramfs_handle *rh = h;
+   ramfs_inode *i = rh->inode;
+
+   if (i->type == VFS_DIR) {
+
+      if (whence != SEEK_SET || off < 0) {
+         /*
+          * Dirents offsets are NOT regular offsets having an actual scalar
+          * value. They have to be treated as *opaque* values. Therefore, it
+          * does not make ANY sense to accept values of `whence` other than
+          * just SEEK_SET.
+          */
+         return -EINVAL;
+      }
+
+      return ramfs_dir_seek(rh, off);
+   }
 
    switch (whence) {
 
@@ -26,7 +62,7 @@ static off_t ramfs_seek(fs_handle h, off_t off, int whence)
          break;
 
       case SEEK_END:
-         rh->pos = (off_t)rh->inode->fsize + off;
+         rh->pos = (off_t)i->fsize + off;
          break;
 
       default:
@@ -88,6 +124,17 @@ static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
    i->fsize = len;
    i->blocks_count = round_up_at((uptr) len, PAGE_SIZE);
    return 0;
+}
+
+static int ramfs_inode_truncate_safe(ramfs_inode *i, off_t len)
+{
+   int rc;
+   rwlock_wp_exlock(&i->rwlock);
+   {
+      rc = ramfs_inode_truncate(i, len);
+   }
+   rwlock_wp_exunlock(&i->rwlock);
+   return rc;
 }
 
 static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)

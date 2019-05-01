@@ -47,6 +47,17 @@ static int ramfs_rmdir(vfs_path *p)
    if (i->num_entries > 2)
       return -ENOTEMPTY; /* empty dirs have two entries: '.' and '..' */
 
+   if (get_ref_count(i) > 0) {
+
+      /*
+       * For the moment, we won't support deleting a directory opened somewhere
+       * as this is allowed by POSIX. Linux typically allowed that, both for
+       * files and for directories. On Tilck let's try to keep that allowed only
+       * for files. TODO: consider supporting removal of in-use directories.
+       */
+      return -EBUSY;
+   }
+
    ASSERT(i->entries_tree_root != NULL);
    ramfs_dir_remove_entry(i, i->entries_tree_root);   // drop .
 

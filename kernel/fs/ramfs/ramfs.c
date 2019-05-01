@@ -36,11 +36,7 @@ static int ramfs_unlink(vfs_path *p)
 
    /* Trucate and delete the inode, if it's not used */
    if (!i->nlink && !get_ref_count(i)) {
-      rwlock_wp_exlock(&i->rwlock);
-      {
-         ramfs_inode_truncate(i, 0);
-      }
-      rwlock_wp_exunlock(&i->rwlock);
+      ramfs_inode_truncate_safe(i, 0);
       ramfs_destroy_inode(d, i);
    }
 
@@ -63,19 +59,20 @@ static int ramfs_dup(fs_handle h, fs_handle *dup_h)
 static void ramfs_close(fs_handle h)
 {
    ramfs_handle *rh = h;
+   ramfs_inode *i = rh->inode;
 
-   if (rh->inode->type == VFS_DIR) {
+   if (i->type == VFS_DIR) {
       /* Remove this handle from h->inode->handles_list */
       list_remove(&rh->node);
    }
 
-   release_obj(rh->inode);
+   release_obj(i);
 
-   if (!get_ref_count(rh->inode) && !rh->inode->nlink) {
+   if (!get_ref_count(i) && !i->nlink) {
 
       /*
-       * !get_ref_count(rh->inode) => no handle referring to this inode
-       * !rh->inode->nlink         => no dir entry referring to this inode
+       * !get_ref_count(i) => no handle referring to this inode
+       * !i->nlink         => no dir entry referring to this inode
        *
        * It means the last link (dir entry) pointing to this inode has been
        * removed while the current task was keeping opened a handle to this
@@ -83,8 +80,10 @@ static void ramfs_close(fs_handle h)
        * it.
        */
 
-      ramfs_inode_truncate(rh->inode, 0);
-      ramfs_destroy_inode(rh->fs->device_data, rh->inode);
+      if (i->type == VFS_FILE)
+         ramfs_inode_truncate_safe(i, 0);
+
+      ramfs_destroy_inode(rh->fs->device_data, i);
    }
 
    kfree2(rh, sizeof(ramfs_handle));

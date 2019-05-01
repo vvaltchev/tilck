@@ -18,7 +18,7 @@ static int
 ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
 {
    ramfs_entry *e;
-   const size_t enl = strlen(iname) + 1;
+   size_t enl = strlen(iname) + 1;
    ASSERT(idir->type == VFS_DIR);
 
    if (enl > sizeof(e->name))
@@ -35,8 +35,12 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
    e->inode = ie;
    memcpy(e->name, iname, enl);
 
-   if (e->name[enl-2] == '/')
+   if (e->name[enl-2] == '/') {
       e->name[enl-2] = 0; /* drop the trailing slash */
+      enl--;
+   }
+
+   e->name_len = (u8) enl;
 
    bintree_insert(&idir->entries_tree_root,
                   e,
@@ -66,9 +70,8 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
 
    list_for_each_ro(pos, &idir->handles_list, node) {
 
-      if (pos->dpos == e) {
+      if (pos->dpos == e)
          pos->dpos = list_next_obj(pos->dpos, lnode);
-      }
    }
 
    bintree_remove(&idir->entries_tree_root,

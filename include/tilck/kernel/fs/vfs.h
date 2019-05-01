@@ -66,6 +66,7 @@ typedef struct {
 
    tilck_inode_t ino;
    enum vfs_entry_type type;
+   u8 name_len;               /* NODE: includes the final \0 */
    const char *name;
 
 } vfs_dent64;
@@ -205,7 +206,8 @@ typedef struct {
    filesystem *fs;               \
    const file_ops *fops;         \
    int fd_flags;                 \
-   int fl_flags;
+   int fl_flags;                 \
+   off_t pos;                        /* file: offset, dir: opaque entry index */
 
 typedef struct {
 

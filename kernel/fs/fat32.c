@@ -295,7 +295,7 @@ fat_getdents_cb(fat_header *hdr,
    char short_name[16];
    const char *file_name = long_name ? long_name : short_name;
    fat_getdents_ctx *ctx = arg;
-   int rc;
+   int rc = 0;
 
    if (ctx->curr_index < ctx->fh->pos) {
       ctx->curr_index++;
@@ -308,11 +308,11 @@ fat_getdents_cb(fat_header *hdr,
    vfs_dent64 dent = {
       .ino  = fat_entry_to_inode(hdr, entry),
       .type = entry->directory ? VFS_DIR : VFS_FILE,
+      .name_len = (u8) strlen(file_name) + 1,
       .name = file_name,
    };
 
    if (!(rc = ctx->vfs_cb(&dent, ctx->vfs_ctx))) {
-      ctx->fh->pos++;
       ctx->curr_index++;
    }
 
