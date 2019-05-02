@@ -133,6 +133,9 @@ set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
 set(WCONV OFF CACHE BOOL
     "Compile with -Wconversion when clang is used")
 
+set(FAT_TEST_DIR OFF CACHE BOOL
+    "Create a test dir with many files in the FAT32 init ramdisk")
+
 list(
    APPEND kernel_opts_list
 
@@ -165,6 +168,7 @@ list(
    KMALLOC_HEAPS_CREATION_DEBUG
    BOOTLOADER_POISON_MEMORY
    WCONV
+   FAT_TEST_DIR
 )
 
 ###########################################################

@@ -100,6 +100,15 @@ function add_busybox {
 }
 
 function add_fat_test_dir {
+
+   if [[ "@FAT_TEST_DIR@" == "0"   ||
+         "@FAT_TEST_DIR@" == "off" ||
+         "@FAT_TEST_DIR@" == "OFF" ||
+         "@FAT_TEST_DIR@" == "false" ]]
+   then
+      return
+   fi
+
    mkdir -p tdir
    pushd tdir
       for i in {0..99}; do
