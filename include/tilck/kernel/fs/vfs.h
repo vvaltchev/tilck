@@ -107,8 +107,9 @@ typedef kcond *(*func_get_rwe_cond)(fs_handle);
 /* Used by the devices when want to remove any locking from a file */
 #define vfs_file_nolock    NULL
 
-#define VFS_FS_RO        (0)
-#define VFS_FS_RW        (1 << 0)
+#define VFS_FS_RO                  (0)  /* filesystem mounted in RO mode */
+#define VFS_FS_RW             (1 << 0)  /* filesystem mounted in RW mode */
+#define VFS_FS_RQ_DE_SKIP     (1 << 1)  /* FS requires vfs dents skip */
 
 /*
  * Operations affecting the file system structure (directories, files, etc.).

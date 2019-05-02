@@ -6,6 +6,7 @@ typedef struct {
    struct linux_dirent64 *user_dirp;
    u32 buf_size;
    u32 offset;
+   u32 fs_flags;
    off_t off;
    struct linux_dirent64 ent;
 
@@ -31,10 +32,29 @@ vfs_type_to_linux_dirent_type(enum vfs_entry_type t)
 
 static int vfs_getdents_cb(vfs_dent64 *vde, void *arg)
 {
-   vfs_getdents_ctx *ctx = arg;
-
    const u16 entry_size = sizeof(struct linux_dirent64) + vde->name_len;
    struct linux_dirent64 *user_ent;
+   vfs_getdents_ctx *ctx = arg;
+
+   if (ctx->fs_flags & VFS_FS_RQ_DE_SKIP) {
+
+      /*
+       * Pseudo-hack used fortunately *only* by the FAT32 filesystem: it
+       * implements here in the VFS layer a trivial mechanism to skip the first
+       * `pos` entries of a directory in case the filesystem does not have a
+       * way to just "save" the current position and resume from there in each
+       * call of the fs-op getdents().
+       *
+       * TODO: implement in FAT32 a way to walk a directory step-by-step,
+       * instead of having to walk all the entries every time and skipping the
+       * already "returned" entries. This way we could drop VFS_FS_RQ_DE_SKIP.
+       */
+
+      if (ctx->off < ctx->h->pos) {
+         ctx->off++;
+         return 0; /* skip the dentry */
+      }
+   }
 
    if (ctx->offset + entry_size > ctx->buf_size) {
 
@@ -53,7 +73,7 @@ static int vfs_getdents_cb(vfs_dent64 *vde, void *arg)
    }
 
    ctx->ent.d_ino    = vde->ino;
-   ctx->ent.d_off    = (u64) ctx->off;
+   ctx->ent.d_off    = (u64) ctx->off + 1; /* "offset" (=ID) of the next dent */
    ctx->ent.d_reclen = entry_size;
    ctx->ent.d_type   = vfs_type_to_linux_dirent_type(vde->type);
 
@@ -85,7 +105,8 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
       .user_dirp     = user_dirp,
       .buf_size      = buf_size,
       .offset        = 0,
-      .off           = ctx.h->pos + 1,
+      .fs_flags      = hb->fs->flags,
+      .off           = hb->fs->flags & VFS_FS_RQ_DE_SKIP ? 0 : ctx.h->pos,
       .ent           = { 0 },
    };
 
