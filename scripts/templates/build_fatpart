@@ -15,85 +15,130 @@ mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd
 mcopy=$mtoolsdir/mcopy
 
-if [ ! -f $dest ]; then
-   # If the 'fatpart' file does not already exist
-   dd status=none if=/dev/zero of=$dest bs=1M count=35
-fi
+function pushd {
+   command pushd "$@" > /dev/null
+}
 
-# mformat options
-# -d <N> ; num of FAT copies
-# -F     ; force FAT32 to be used
-# -c <N> ; sectors per cluster
-# -t <N> ; cylinders
-# -h <N> ; heads
-# -s <N> ; sectors
-$mformat -i $dest -d 1 -F -c 1 -t 70 -h 16 -s 63 ::
-$mlabel -i $dest ::TILCK
+function popd {
+   command popd "$@" > /dev/null
+}
 
-rm -rf $bdir/sysroot
-cp -r $maindir/sysroot $bdir/
+function create_fatpart_if_necessary {
+   if [ ! -f $dest ]; then
+      # If the 'fatpart' file does not already exist
+      dd status=none if=/dev/zero of=$dest bs=1M count=35
+   fi
+}
 
-# Remove the README file that is not supposed to be in the actual sysroot
-rm $bdir/sysroot/README
+function format_fatpart {
+   # mformat options
+   # -d <N> ; num of FAT copies
+   # -F     ; force FAT32 to be used
+   # -c <N> ; sectors per cluster
+   # -t <N> ; cylinders
+   # -h <N> ; heads
+   # -s <N> ; sectors
+   $mformat -i $dest -d 1 -F -c 1 -t 70 -h 16 -s 63 ::
+   $mlabel -i $dest ::TILCK
+}
 
-cd $bdir/sysroot
-ln $bdir/userapps/init sbin/
+function create_sysroot_skeleton {
+   rm -rf $bdir/sysroot
+   cp -r $maindir/sysroot $bdir/
+   cd $bdir/sysroot
 
-IFS=";"
+   # Remove the README file that is not supposed to be in the actual sysroot
+   rm README
+}
 
-apps="@USERAPPS_FILES_LIST@"
-extra_apps="@EXTRA_APPS_LIST@"
+function add_apps {
 
-for x in ${apps[@]}; do
-   ln "$x" bin/
-done
+   IFS=";"
 
-pushd bin
-rm init     # We already put `init` in `/bin`.
-popd
+   ln $bdir/userapps/init sbin/
 
-for x in ${extra_apps[@]}; do
-   ln "$x" usr/bin/
-done
+   apps="@USERAPPS_FILES_LIST@"
+   extra_apps="@EXTRA_APPS_LIST@"
 
-unset IFS
-
-mkdir -p tdir
-pushd tdir
-   for i in {0..99}; do
-      if [ $i -lt 10 ]; then
-         n="0"
-      else
-         n=""
-      fi
-      echo > test_$n$i
+   for x in ${apps[@]}; do
+      ln "$x" bin/
    done
-popd
 
-# hard-link EFI files
+   pushd bin
+   rm init     # We already put `init` in `/bin`.
+   popd
 
-if [ -s "@EFI_x86_64_FILE@" ]; then
-   ln "@EFI_x86_64_FILE@" EFI/BOOT/
-fi
+   for x in ${extra_apps[@]}; do
+      ln "$x" usr/bin/
+   done
 
-if [ -s "@EFI_ia32_FILE@" ]; then
-   ln "@EFI_ia32_FILE@" EFI/BOOT/
-fi
+   unset IFS
+}
 
-# hard-link the kernel file (used also by the legacy bootloader)
-ln @KERNEL_FILE@ @KERNEL_FATPART_PATH@
+function add_efi_files {
 
-if [ -d $tc/busybox ]; then
-   ln $tc/busybox/busybox bin/
-fi
+   # hard-link EFI files
 
-# first, create the directories
-for f in $(find * -type d); do
-   $mmd -i $dest $f
-done
+   if [ -s "@EFI_x86_64_FILE@" ]; then
+      ln "@EFI_x86_64_FILE@" EFI/BOOT/
+   fi
 
-# then, copy all the files in sysroot
-for f in $(find * -type f); do
-   $mcopy -i $dest $f ::/$f
-done
+   if [ -s "@EFI_ia32_FILE@" ]; then
+      ln "@EFI_ia32_FILE@" EFI/BOOT/
+   fi
+}
 
+function add_tilck_kernel {
+   # hard-link the kernel file (used also by the legacy bootloader)
+   ln @KERNEL_FILE@ @KERNEL_FATPART_PATH@
+}
+
+function add_busybox {
+   if [ -d $tc/busybox ]; then
+      ln $tc/busybox/busybox bin/
+   fi
+}
+
+function add_fat_test_dir {
+   mkdir -p tdir
+   pushd tdir
+      for i in {0..99}; do
+         if [ $i -lt 10 ]; then
+            n="0"
+         else
+            n=""
+         fi
+         echo > test_$n$i
+      done
+   popd
+}
+
+function make_fatpart {
+
+   create_fatpart_if_necessary
+   format_fatpart
+
+   # first, create the directories
+   for f in $(find * -type d); do
+      $mmd -i $dest $f
+   done
+
+   # then, copy all the files in sysroot
+   for f in $(find * -type f); do
+      $mcopy -i $dest $f ::/$f
+   done
+}
+
+# -----------------------------------------------------------------------------
+# MAIN
+# -----------------------------------------------------------------------------
+
+create_sysroot_skeleton
+
+add_apps
+add_efi_files
+add_tilck_kernel
+add_fat_test_dir
+add_busybox
+
+make_fatpart
