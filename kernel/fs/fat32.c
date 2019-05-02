@@ -14,7 +14,8 @@
 
 /*
  * Generic version of fat_get_first_cluster() that works also when `e` is the
- * root entry.
+ * root entry. NOTE: this function still will return 0 in case of FAT16 and
+ * and e == root, simply because of FAT16 the root dir is NOT a cluster chain.
  */
 
 static inline u32
@@ -337,11 +338,13 @@ static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
       .rc = 0,
    };
 
+   u32 dir_cluster = fat_get_first_cluster_generic(d, fh->e);
+
    rc = fat_walk_directory(&walk_ctx,
                            d->hdr,
                            d->type,
-                           NULL,
-                           fat_get_first_cluster_generic(d, fh->e),
+                           !dir_cluster ? fh->e : NULL,
+                           dir_cluster,
                            fat_getdents_cb,
                            &ctx);
 

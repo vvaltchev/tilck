@@ -435,12 +435,12 @@ fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft, u32 *cluster /* out */)
          (u32)hdr->BPB_RsvdSecCnt + (u32)(hdr->BPB_NumFATs * hdr->BPB_FATSz16);
 
       sector = FirstDataSector;
-      *cluster = 0;
+      *cluster = 0; /* On FAT16 the root dir entry is NOT a cluster chain! */
 
    } else {
 
-      // FAT32
-      fat32_header2 *h32 = (fat32_header2*) (hdr+1);
+      /* FAT32 case */
+      fat32_header2 *h32 = (fat32_header2 *) (hdr + 1);
       *cluster = h32->BPB_RootClus;
       sector = fat_get_sector_for_cluster(hdr, *cluster);
    }
