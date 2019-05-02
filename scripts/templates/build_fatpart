@@ -58,6 +58,18 @@ done
 
 unset IFS
 
+mkdir -p tdir
+pushd tdir
+   for i in {0..99}; do
+      if [ $i -lt 10 ]; then
+         n="0"
+      else
+         n=""
+      fi
+      echo > test_$n$i
+   done
+popd
+
 # hard-link EFI files
 
 if [ -s "@EFI_x86_64_FILE@" ]; then
