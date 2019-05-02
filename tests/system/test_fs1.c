@@ -279,30 +279,12 @@ fs4_aux_read_dents(DIR *d,        /* dir handle */
    }
 }
 
-/*
- * Test telldir(), seekdir() and rewinddir() on RAMFS.
- */
-int cmd_fs4(int argc, char **argv)
+static void generic_fs_dir_seek_test(DIR *d, const int n_files)
 {
-   char saved_entry_name[256];
-   const int n_files = 100;
    const int seek_n = 90, seek_n2 = 4;
-   struct dirent *de;
+   char saved_entry_name[256];
    long dposs[n_files + 3];
-   int rc;
-   DIR *d;
-
-   /* preparing the test environment */
-   rc = mkdir("/tmp/r", 0755);
-   DEVSHELL_CMD_ASSERT(rc == 0);
-
-   for (int i = 0; i < n_files; i++)
-      create_test_file("/tmp/r", i);
-
-   d = opendir("/tmp/r");
-   DEVSHELL_CMD_ASSERT(d != NULL);
-
-   /* ---------------- actual test's code --------------------- */
+   struct dirent *de;
 
    printf("Reading dir entries...\n");
 
@@ -345,8 +327,32 @@ int cmd_fs4(int argc, char **argv)
 
    fs4_aux_read_dents(d, dposs, 0, 4, -1, NULL);
    printf("Everything looks good\n");
+}
 
-   /* clean up the test environment */
+/*
+ * Test telldir(), seekdir() and rewinddir() on RAMFS.
+ */
+int cmd_fs4(int argc, char **argv)
+{
+   const int n_files = 100;
+   int rc;
+   DIR *d;
+
+   /* preparing the test environment */
+   rc = mkdir("/tmp/r", 0755);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   for (int i = 0; i < n_files; i++)
+      create_test_file("/tmp/r", i);
+
+   d = opendir("/tmp/r");
+   DEVSHELL_CMD_ASSERT(d != NULL);
+
+   /* ---------------- actual test's code --------------------- */
+
+   generic_fs_dir_seek_test(d, n_files);
+
+   /* ---------------- clean up the test environment ----------- */
    rc = closedir(d);
    DEVSHELL_CMD_ASSERT(rc == 0);
 
