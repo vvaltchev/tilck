@@ -39,7 +39,7 @@ file(
    "${CMAKE_SOURCE_DIR}/common/arch/generic_x86/*.c"
 )
 
-set(STAGE3_ASM_SOURCES "stage3/stage3_entry.S" "stage3/stage3_rm_calls.S")
+set(STAGE3_ASM_SOURCES "stage3/entry.S" "stage3/rm_calls.S")
 
 #### COMMENTED BLOCK: See the comments in elf_stage3_script.ld.
 
