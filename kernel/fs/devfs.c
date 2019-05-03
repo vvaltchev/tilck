@@ -140,8 +140,30 @@ static ssize_t devfs_dir_write(fs_handle h, char *buf, size_t len)
    return -EINVAL;
 }
 
-static off_t devfs_dir_seek(fs_handle h, off_t offset, int whence)
+static off_t devfs_dir_seek(fs_handle h, off_t target_off, int whence)
 {
+   devfs_file_handle *dh = h;
+   devfs_data *d = dh->fs->device_data;
+   devfs_file *pos;
+   off_t off = 0;
+
+   if (target_off < 0 || whence != SEEK_SET)
+      return -EINVAL;
+
+   list_for_each_ro(pos, &d->root_dir.files_list, dir_node) {
+
+      if (off == target_off)
+         break;
+
+      off++;
+   }
+
+   if (off == target_off) {
+      dh->dpos = pos;
+      dh->pos = off;
+      return dh->pos;
+   }
+
    return -EINVAL;
 }
 

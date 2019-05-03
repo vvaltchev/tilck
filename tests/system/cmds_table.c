@@ -43,6 +43,7 @@ DECL_CMD(fs2);
 DECL_CMD(fs3);
 DECL_CMD(fs4);
 DECL_CMD(fs5);
+DECL_CMD(fs6);
 DECL_CMD(fs_perf1);
 DECL_CMD(fs_perf2);
 
@@ -82,6 +83,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(fs3, TT_SHORT, true),
    CMD_ENTRY(fs4, TT_SHORT, true),
    CMD_ENTRY(fs5, TT_SHORT, true),
+   CMD_ENTRY(fs6, TT_SHORT, true),
    CMD_ENTRY(fs_perf1, TT_SHORT, true),
    CMD_ENTRY(fs_perf2, TT_SHORT, true),
 

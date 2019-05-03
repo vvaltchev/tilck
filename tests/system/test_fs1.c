@@ -246,7 +246,8 @@ fs4_aux_read_dents(DIR *d,        /* dir handle */
                    int s,         /* start index */
                    int n,         /* if >= 0, #elems, otherwise, all of them */
                    int j,         /* if >= 0, index of element to check name */
-                   const char *v) /* if j >= 0, check name[j] == v */
+                   const char *v, /* if j >= 0, check name[j] == v */
+                   bool cdots)    /* check that '.' and '..' exist */
 {
    struct dirent *de;
 
@@ -268,20 +269,26 @@ fs4_aux_read_dents(DIR *d,        /* dir handle */
 
       // printf("dposs[%3d]: %11ld, entry: %s\n", i, dposs[i], de->d_name);
 
-      if (i == 0)
-         DEVSHELL_CMD_ASSERT(strcmp(de->d_name, ".") == 0);
+      if (cdots) {
+         if (i == 0)
+            DEVSHELL_CMD_ASSERT(strcmp(de->d_name, ".") == 0);
 
-      if (i == 1)
-         DEVSHELL_CMD_ASSERT(strcmp(de->d_name, "..") == 0);
+         if (i == 1)
+            DEVSHELL_CMD_ASSERT(strcmp(de->d_name, "..") == 0);
+      }
 
       if (j >= 0 && i == j)
          DEVSHELL_CMD_ASSERT(strcmp(de->d_name, v) == 0);
    }
 }
 
-static void generic_fs_dir_seek_test(DIR *d, const int n_files)
+static void
+generic_fs_dir_seek_test(DIR *d,
+                         const int n_files,
+                         const int seek_n,
+                         const int seek_n2,
+                         bool cdots)
 {
-   const int seek_n = 90, seek_n2 = 4;
    char saved_entry_name[256];
    long dposs[n_files + 3];
    struct dirent *de;
@@ -295,7 +302,12 @@ static void generic_fs_dir_seek_test(DIR *d, const int n_files)
 
       if (!de) {
          printf("Done (%d dirents)\n", i);
-         DEVSHELL_CMD_ASSERT(i == n_files+2);
+
+         if (cdots)
+            DEVSHELL_CMD_ASSERT(i >= n_files+2);
+         else
+            DEVSHELL_CMD_ASSERT(i >= n_files);
+
          break;
       }
 
@@ -308,24 +320,24 @@ static void generic_fs_dir_seek_test(DIR *d, const int n_files)
    printf("seek to the position of entry #%d: %ld\n", seek_n, dposs[seek_n]);
    seekdir(d, dposs[seek_n]);
 
-   fs4_aux_read_dents(d, dposs, seek_n, -1, seek_n, saved_entry_name);
+   fs4_aux_read_dents(d, dposs, seek_n, -1, seek_n, saved_entry_name, cdots);
 
    printf("seek to the position of entry #%d: %ld\n", seek_n2, dposs[seek_n2]);
    seekdir(d, dposs[seek_n2]);
 
-   fs4_aux_read_dents(d, dposs, seek_n2, 4, -1, NULL);
+   fs4_aux_read_dents(d, dposs, seek_n2, 4, -1, NULL, cdots);
 
    seekdir(d, 0);
    printf("seek to the position of entry #0: 0\n");
    DEVSHELL_CMD_ASSERT(telldir(d) == 0);
 
-   fs4_aux_read_dents(d, dposs, 0, 4, -1, NULL);
+   fs4_aux_read_dents(d, dposs, 0, 4, -1, NULL, cdots);
 
    printf("Do rewinddir()...\n");
    rewinddir(d);
    DEVSHELL_CMD_ASSERT(telldir(d) == 0);
 
-   fs4_aux_read_dents(d, dposs, 0, 4, -1, NULL);
+   fs4_aux_read_dents(d, dposs, 0, 4, -1, NULL, cdots);
    printf("Everything looks good\n");
 }
 
@@ -350,7 +362,7 @@ int cmd_fs4(int argc, char **argv)
 
    /* ---------------- actual test's code --------------------- */
 
-   generic_fs_dir_seek_test(d, n_files);
+   generic_fs_dir_seek_test(d, n_files, 90, 4, true);
 
    /* ---------------- clean up the test environment ----------- */
    rc = closedir(d);
@@ -381,7 +393,25 @@ int cmd_fs5(int argc, char **argv)
    d = opendir("/tdir");
    DEVSHELL_CMD_ASSERT(d != NULL);
 
-   generic_fs_dir_seek_test(d, n_files);
+   generic_fs_dir_seek_test(d, n_files, 90, 4, true);
+
+   rc = closedir(d);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+   return 0;
+}
+
+/*
+ * Test telldir(), seekdir() and rewinddir() on DEVFS
+ */
+int cmd_fs6(int argc, char **argv)
+{
+   DIR *d;
+   int rc;
+
+   d = opendir("/dev");
+   DEVSHELL_CMD_ASSERT(d != NULL);
+
+   generic_fs_dir_seek_test(d, 6, 5, 2, false);
 
    rc = closedir(d);
    DEVSHELL_CMD_ASSERT(rc == 0);
