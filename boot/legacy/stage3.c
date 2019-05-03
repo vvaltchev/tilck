@@ -14,15 +14,7 @@
 #include "realmode_call.h"
 #include "vbe.h"
 #include "mm.h"
-
-#define RAMDISK_PADDR   (KERNEL_PADDR + KERNEL_MAX_SIZE)
-#define MBI_PADDR       (64 * KB)
-#define MEM_AREAS_BUF   (16 * KB)
-
-/*
- * Checks if 'addr' is in the range [begin, end).
- */
-#define IN(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
+#include "common.h"
 
 static mem_area_t *mem_areas = (void *) MEM_AREAS_BUF;
 static u32 mem_areas_count;
@@ -66,12 +58,10 @@ static void load_elf_kernel(const char *filepath, void **entry)
 {
    fat_header *hdr = (fat_header *)RAMDISK_PADDR;
    void *free_space = (void *) (RAMDISK_PADDR + ramdisk_used_bytes);
+   fat_entry *e;
 
-   fat_entry *e = fat_search_entry(hdr, fat_get_type(hdr), filepath, NULL);
-
-   if (!e) {
+   if (!(e = fat_search_entry(hdr, fat_get_type(hdr), filepath, NULL)))
       panic("Unable to open '%s'!\n", filepath);
-   }
 
    fat_read_whole_file(hdr, e, free_space, KERNEL_MAX_SIZE);
 
