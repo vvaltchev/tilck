@@ -23,7 +23,7 @@ extern u8 fb_blue_mask_size;
 extern bool graphics_mode;
 extern u16 selected_mode;
 
-void debug_show_detailed_mode_info(ModeInfoBlock *mi)
+static void debug_show_detailed_mode_info(ModeInfoBlock *mi)
 {
    printk("Detailed mode info:\n");
    printk("fb_paddr: %p\n", fb_paddr);

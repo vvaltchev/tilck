@@ -53,8 +53,8 @@ static inline u32 bios_to_multiboot_mem_region(u32 bios_mem_type)
 }
 
 
-mem_area_t *mem_areas = (void *)(16 * KB + sizeof(mem_area_t));
-u32 mem_areas_count = 0;
+static mem_area_t *mem_areas = (void *)(16 * KB + sizeof(mem_area_t));
+static u32 mem_areas_count = 0;
 
 bool graphics_mode; // false = text mode
 
@@ -84,7 +84,7 @@ static u32 ramdisk_first_data_sector;
 
 void ask_user_video_mode(void);
 
-void calculate_ramdisk_fat_size(void)
+static void calculate_ramdisk_fat_size(void)
 {
    fat_header *hdr = (fat_header *)RAMDISK_PADDR;
    const u32 sector_size = fat_get_sector_size(hdr);
@@ -93,7 +93,7 @@ void calculate_ramdisk_fat_size(void)
    ramdisk_max_size = fat_get_TotSec(hdr) * sector_size;
 }
 
-void load_elf_kernel(const char *filepath, void **entry)
+static void load_elf_kernel(const char *filepath, void **entry)
 {
    fat_header *hdr = (fat_header *)RAMDISK_PADDR;
    void *free_space = (void *) (RAMDISK_PADDR + ramdisk_used_bytes);
@@ -122,9 +122,8 @@ void load_elf_kernel(const char *filepath, void **entry)
 
       Elf32_Phdr *phdr = phdrs + i;
 
-      if (phdr->p_type != PT_LOAD) {
+      if (phdr->p_type != PT_LOAD)
          continue; // Ignore non-load segments.
-      }
 
       VERIFY(phdr->p_vaddr >= KERNEL_BASE_VA);
       VERIFY(phdr->p_paddr >= KERNEL_PADDR);
@@ -146,7 +145,7 @@ void load_elf_kernel(const char *filepath, void **entry)
    }
 }
 
-multiboot_info_t *setup_multiboot_info(void)
+static multiboot_info_t *setup_multiboot_info(void)
 {
    multiboot_info_t *mbi;
    multiboot_module_t *mod;
@@ -227,7 +226,7 @@ multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
-void read_memory_map(void)
+static void read_memory_map(void)
 {
    typedef struct PACKED {
 
@@ -287,7 +286,7 @@ void read_memory_map(void)
    }
 }
 
-void dump_mem_map(void)
+static void dump_mem_map(void)
 {
    for (u32 i = 0; i < mem_areas_count; i++) {
       mem_area_t *m = mem_areas + i;
@@ -295,7 +294,7 @@ void dump_mem_map(void)
    }
 }
 
-void poison_usable_memory(void)
+static void poison_usable_memory(void)
 {
    for (u32 i = 0; i < mem_areas_count; i++) {
 
