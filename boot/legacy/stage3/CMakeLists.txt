@@ -27,10 +27,11 @@ set(
    -fno-omit-frame-pointer
    -fno-pic
    -fno-asynchronous-unwind-tables
-   -fno-zero-initialized-in-bss
    -fno-exceptions
    -fno-stack-protector
+   -fwrapv
    -static
+   -Wvla
 
    # Disable the generation of any kind of FPU instructions
    -mno-80387
