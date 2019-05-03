@@ -12,7 +12,7 @@ file(
 set(STAGE3_ASM_SOURCES "entry.S" "rm_calls.S")
 
 configure_file(
-   link_script.ld
+   linker_script.ld
    ${STAGE3_SCRIPT}
    @ONLY
 )
