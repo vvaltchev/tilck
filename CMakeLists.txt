@@ -76,12 +76,12 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "")
 set(CMAKE_C_FLAGS_RELEASE "")
 
 # Compile options
-set(ARCH_GTESTS OFF CACHE BOOL "Build unit tests for target architecture")
+set(ARCH_GTESTS         OFF CACHE BOOL   "Build unit tests for the target arch")
 
 # Non-boolean kernel options
-set(TIMER_HZ 100 CACHE STRING "System timer HZ")
-set(USER_STACK_PAGES 16 CACHE STRING "User apps stack size in pages")
-set(TTY_COUNT 2 CACHE STRING "Number of TTYs")
+set(TIMER_HZ            100 CACHE STRING "System timer HZ")
+set(USER_STACK_PAGES     16 CACHE STRING "User apps stack size in pages")
+set(TTY_COUNT             2 CACHE STRING "Number of TTYs")
 set(USERAPPS_CFLAGS "-ggdb" CACHE STRING "Build flags for C/C++ user programs")
 
 # Kernel options (enabled by default)
@@ -173,11 +173,11 @@ list(
 
 ###########################################################
 
-set(BUILD_SCRIPTS ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
-set(BUILD_APPS ${CMAKE_BINARY_DIR}/scripts/build_apps)
-set(TCROOT ${CMAKE_SOURCE_DIR}/toolchain)
-set(BTC_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
-set(COVERAGE_HTML_DIR ${CMAKE_BINARY_DIR}/coverage_html)
+set(BUILD_SCRIPTS       ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
+set(BUILD_APPS          ${CMAKE_BINARY_DIR}/scripts/build_apps)
+set(TCROOT              ${CMAKE_SOURCE_DIR}/toolchain)
+set(BTC_SCRIPT          ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
+set(COVERAGE_HTML_DIR   ${CMAKE_BINARY_DIR}/coverage_html)
 
 if (NOT EXISTS ${TCROOT})
    message(FATAL_ERROR "Toolchain not found: run ${BTC_SCRIPT} first.")
@@ -185,13 +185,13 @@ endif()
 
 if (${ARCH} STREQUAL "i386")
 
-   set(ARCH_SHORT "x86")
-   set(ARCH_FAMILY "generic_x86")
-   set(ARCH_ELF_NAME "elf32-i386")
-   set(ARCH_LD_OUTPUT "elf_i386")
-   set(ARCH_GCC_TC "i686")
-   set(ARCH_GCC_FLAGS "-m32 -march=${ARCH_GCC_TC}")
-   set(ARCH_TC_DIR "x86_gcc_toolchain")
+   set(ARCH_SHORT       "x86")
+   set(ARCH_FAMILY      "generic_x86")
+   set(ARCH_ELF_NAME    "elf32-i386")
+   set(ARCH_LD_OUTPUT   "elf_i386")
+   set(ARCH_GCC_TC      "i686")
+   set(ARCH_GCC_FLAGS   "-m32 -march=${ARCH_GCC_TC}")
+   set(ARCH_TC_DIR      "x86_gcc_toolchain")
 
 else()
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
@@ -200,15 +200,15 @@ endif()
 # BEGIN [ARCH-dependent paths]
 
    # Main toolchain (musl)
-   set(GCC_TC_ROOT ${TCROOT}/${ARCH_TC_DIR})
-   set(GCC_TC_LIBC_DIRNAME ${ARCH_GCC_TC}-buildroot-linux-musl)
-   set(GCC_TC_SYSROOT ${GCC_TC_ROOT}/${GCC_TC_LIBC_DIRNAME}/sysroot)
-   set(GCC_TC_ISYSTEM ${GCC_TC_SYSROOT}/usr/include)
-   set(GCC_TOOLCHAIN ${GCC_TC_ROOT}/bin)
+   set(GCC_TC_ROOT            ${TCROOT}/${ARCH_TC_DIR})
+   set(GCC_TC_LIBC_DIRNAME    ${ARCH_GCC_TC}-buildroot-linux-musl)
+   set(GCC_TC_SYSROOT         ${GCC_TC_ROOT}/${GCC_TC_LIBC_DIRNAME}/sysroot)
+   set(GCC_TC_ISYSTEM         ${GCC_TC_SYSROOT}/usr/include)
+   set(GCC_TOOLCHAIN          ${GCC_TC_ROOT}/bin)
 
    # Glibc toolchain
-   set(GCC_TC_GLIBC_ROOT ${TCROOT}/${ARCH_TC_DIR}_glibc)
-   set(GCC_TOOLCHAIN_GLIBC ${GCC_TC_GLIBC_ROOT}/bin)
+   set(GCC_TC_GLIBC_ROOT      ${TCROOT}/${ARCH_TC_DIR}_glibc)
+   set(GCC_TOOLCHAIN_GLIBC    ${GCC_TC_GLIBC_ROOT}/bin)
 
 # END [ARCH-dependent paths]
 
@@ -321,17 +321,17 @@ set(COMMON_FLAGS "${GENERAL_DEFS} ${OTHER_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 
 ################################################################################
 
-set(BOOTLOADER_BIN_FILE ${CMAKE_BINARY_DIR}/boot/legacy/bootloader.bin)
+set(BOOTLOADER_BIN_FILE    ${CMAKE_BINARY_DIR}/boot/legacy/bootloader.bin)
 
 if ("${HOST_ARCH}" STREQUAL "x86_64")
-   set(EFI_x86_64_FILE ${CMAKE_BINARY_DIR}/boot/efi/BOOTX64.EFI)
+   set(EFI_x86_64_FILE     ${CMAKE_BINARY_DIR}/boot/efi/BOOTX64.EFI)
 endif()
 
-set(EFI_ia32_FILE ${CMAKE_BINARY_DIR}/boot/efi/BOOTIA32.EFI)
-set(KERNEL_UNSTRIPPED ${CMAKE_BINARY_DIR}/tilck_unstripped)
-set(KERNEL_FILE ${CMAKE_BINARY_DIR}/tilck)
-set(IMG_FILE ${CMAKE_BINARY_DIR}/tilck.img)
-set(GPT_IMG_FILE ${CMAKE_BINARY_DIR}/gpt_tilck.img)
+set(EFI_ia32_FILE          ${CMAKE_BINARY_DIR}/boot/efi/BOOTIA32.EFI)
+set(KERNEL_UNSTRIPPED      ${CMAKE_BINARY_DIR}/tilck_unstripped)
+set(KERNEL_FILE            ${CMAKE_BINARY_DIR}/tilck)
+set(IMG_FILE               ${CMAKE_BINARY_DIR}/tilck.img)
+set(GPT_IMG_FILE           ${CMAKE_BINARY_DIR}/gpt_tilck.img)
 
 set(KERNEL_FATPART_PATH "EFI/BOOT/tilck")
 string(REPLACE "/" "\\\\" KERNEL_FATPART_PATH_EFI "${KERNEL_FATPART_PATH}")
@@ -339,9 +339,9 @@ string(REPLACE "/" "\\\\" KERNEL_FATPART_PATH_EFI "${KERNEL_FATPART_PATH}")
 ################################################################################
 # Bootloaders, build-scripts and link-scripts config
 
-set(BL_ST2_DATA_SEG 0x2000)
-set(EARLY_BOOT_SZ 4096)
-set(STAGE3_ENTRY_OFF 4096)
+set(BL_ST2_DATA_SEG  0x2000)
+set(EARLY_BOOT_SZ      4096)
+set(STAGE3_ENTRY_OFF   4096)
 
 set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
 set(QEMU_COMMON_OPTS      "-rtc base=localtime")
