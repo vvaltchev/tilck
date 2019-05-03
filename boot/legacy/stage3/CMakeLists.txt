@@ -65,7 +65,7 @@ JOIN("${STAGE3_LINK_FLAGS_LIST}" ${SPACE} STAGE3_LINK_FLAGS)
 
 add_executable(
 
-   elf_stage3
+   elf_stage3_unstripped
 
    ${STAGE3_ASM_SOURCES}
    ${STAGE3_C_SOURCES}
@@ -73,7 +73,7 @@ add_executable(
 
 set_target_properties(
 
-   elf_stage3
+   elf_stage3_unstripped
 
    PROPERTIES
       COMPILE_FLAGS ${STAGE3_BUILD_FLAGS}
@@ -83,4 +83,4 @@ set_target_properties(
 
 
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
-target_link_libraries(elf_stage3 gcc)
+target_link_libraries(elf_stage3_unstripped gcc)

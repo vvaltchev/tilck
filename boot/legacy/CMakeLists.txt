@@ -6,7 +6,7 @@ set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
 set_cross_compiler()
 
-# Common directories, both for early_boot and for elf_stage3
+# Common directories, both for early_boot and for elf_stage3_unstripped
 include_directories(
    ${CMAKE_SOURCE_DIR}/include
    ${CMAKE_SOURCE_DIR}/include/system_headers
@@ -35,15 +35,15 @@ set(dd_opts1 "status=none" "conv=notrunc" "oflag=append")
 
 add_custom_command(
    OUTPUT
-      elf_stage3_stripped
-   COMMAND
-      ${TOOL_STRIP} --strip-debug stage3/elf_stage3 -o elf_stage3_stripped
-   COMMAND
-      elfhack elf_stage3_stripped --verify-flat-elf
-   COMMAND
-      elfhack elf_stage3_stripped --check-entry-point ${BL_BASE_ADDR}
-   DEPENDS
       elf_stage3
+   COMMAND
+      ${TOOL_STRIP} --strip-debug stage3/elf_stage3_unstripped -o elf_stage3
+   COMMAND
+      elfhack elf_stage3 --verify-flat-elf
+   COMMAND
+      elfhack elf_stage3 --check-entry-point ${BL_BASE_ADDR}
+   DEPENDS
+      elf_stage3_unstripped
 )
 
 add_custom_command(
@@ -52,9 +52,9 @@ add_custom_command(
    COMMAND
       cp early_boot ${BOOTLOADER_BIN_FILE}
    COMMAND
-      dd ${dd_opts1} if=elf_stage3_stripped of=${BOOTLOADER_BIN_FILE}
+      dd ${dd_opts1} if=elf_stage3 of=${BOOTLOADER_BIN_FILE}
    DEPENDS
-      early_boot elf_stage3_stripped
+      early_boot elf_stage3
    COMMENT
       "Linking the legacy BIOS bootloader"
 )
