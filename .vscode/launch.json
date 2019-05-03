@@ -9,7 +9,7 @@
          "name": "(gdb) Tilck Kernel",
          "type": "cppdbg",
          "request": "launch",
-         "program": "${workspaceFolder}/build/elf_kernel",
+         "program": "${workspaceFolder}/build/tilck_unstripped",
          "MIMode": "gdb",
          "miDebuggerServerAddress": "localhost:1234",
          "cwd": "${workspaceRoot}",

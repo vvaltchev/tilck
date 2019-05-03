@@ -107,7 +107,7 @@ Other bootloaders
 qemu's simple bootloader designed as a shortcut for loading directly the Linux
 kernel, without any on-disk bootloaders can perfectly work with `Tilck`:
 
-    qemu-system-i386 -kernel ./build/elf_kernel_stripped -initrd ./build/fatpart
+    qemu-system-i386 -kernel ./build/tilck -initrd ./build/fatpart
 
 Actually that way of booting the kernel is used in the system tests. A shortcut
 for it is:
@@ -121,7 +121,7 @@ file (or create another one) by adding an entry like:
 
 ```
 menuentry "Tilck" {
-    multiboot <PATH-TO-TILCK>/tilck/build/elf_kernel_stripped
+    multiboot <PATH-TO-TILCK>/tilck/build/tilck
     module --nounzip <PATH-TO-TILCK>/tilck/build/fatpart
     boot
 }

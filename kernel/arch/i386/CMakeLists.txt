@@ -54,7 +54,7 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 add_executable(
 
-   elf_kernel
+   tilck_unstripped
 
    ${ARCH_START_FILE} ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES}
 )
@@ -73,7 +73,7 @@ JOIN("${KERNEL_LINK_FLAGS_LIST}" ${SPACE} KERNEL_LINK_FLAGS)
 
 set_target_properties(
 
-   elf_kernel
+   tilck_unstripped
 
    PROPERTIES
       COMPILE_FLAGS "${KERNEL_FLAGS} ${ACTUAL_KERNEL_ONLY_FLAGS}"
@@ -81,12 +81,12 @@ set_target_properties(
       LINK_DEPENDS ${KERNEL_SCRIPT}
 )
 
-add_dependencies(elf_kernel fonts)
-target_link_libraries(elf_kernel ${CMAKE_CURRENT_BINARY_DIR}/font8x16.o)
-target_link_libraries(elf_kernel ${CMAKE_CURRENT_BINARY_DIR}/font16x32.o)
+add_dependencies(tilck_unstripped fonts)
+target_link_libraries(tilck_unstripped ${CMAKE_CURRENT_BINARY_DIR}/font8x16.o)
+target_link_libraries(tilck_unstripped ${CMAKE_CURRENT_BINARY_DIR}/font16x32.o)
 
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
-target_link_libraries(elf_kernel gcc)
+target_link_libraries(tilck_unstripped gcc)
 
 add_custom_command(
    OUTPUT
@@ -116,7 +116,7 @@ add_custom_command(
    COMMAND
       elfhack ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
    DEPENDS
-      elfhack elf_kernel
+      elfhack tilck_unstripped
    COMMENT
       "Preparing kernel's stripped binary"
 )
