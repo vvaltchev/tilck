@@ -13,48 +13,19 @@
 #include "basic_term.h"
 #include "realmode_call.h"
 #include "vbe.h"
+#include "mm.h"
 
 #define RAMDISK_PADDR   (KERNEL_PADDR + KERNEL_MAX_SIZE)
-#define MBI_PADDR       (0x10000)
+#define MBI_PADDR       (64 * KB)
+#define MEM_AREAS_BUF   (16 * KB)
 
 /*
  * Checks if 'addr' is in the range [begin, end).
  */
 #define IN(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
 
-
-typedef struct {
-
-   u64 base;
-   u64 len;
-   u32 type;
-   u32 acpi;
-
-} mem_area_t;
-
-#define BIOS_INT15h_READ_MEMORY_MAP        0xE820
-#define BIOS_INT15h_READ_MEMORY_MAP_MAGIC  0x534D4150
-
-#define MEM_USABLE             1
-#define MEM_RESERVED           2
-#define MEM_ACPI_RECLAIMABLE   3
-#define MEM_ACPI_NVS_MEMORY    4
-#define MEM_BAD                5
-
-static inline u32 bios_to_multiboot_mem_region(u32 bios_mem_type)
-{
-   STATIC_ASSERT(MEM_USABLE == MULTIBOOT_MEMORY_AVAILABLE);
-   STATIC_ASSERT(MEM_RESERVED == MULTIBOOT_MEMORY_RESERVED);
-   STATIC_ASSERT(MEM_ACPI_RECLAIMABLE == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE);
-   STATIC_ASSERT(MEM_ACPI_NVS_MEMORY == MULTIBOOT_MEMORY_NVS);
-   STATIC_ASSERT(MEM_BAD == MULTIBOOT_MEMORY_BADRAM);
-
-   return bios_mem_type;
-}
-
-
-static mem_area_t *mem_areas = (void *)(16 * KB + sizeof(mem_area_t));
-static u32 mem_areas_count = 0;
+static mem_area_t *mem_areas = (void *) MEM_AREAS_BUF;
+static u32 mem_areas_count;
 
 bool graphics_mode; // false = text mode
 
@@ -81,8 +52,6 @@ u32 cylinders_count;
 static u32 ramdisk_max_size;
 static u32 ramdisk_used_bytes;
 static u32 ramdisk_first_data_sector;
-
-void ask_user_video_mode(void);
 
 static void calculate_ramdisk_fat_size(void)
 {
@@ -226,91 +195,6 @@ static multiboot_info_t *setup_multiboot_info(void)
    return mbi;
 }
 
-static void read_memory_map(void)
-{
-   typedef struct PACKED {
-
-      u32 base_low;
-      u32 base_hi;
-      u32 len_low;
-      u32 len_hi;
-      u32 type;
-      u32 acpi;
-
-   } bios_mem_area_t;
-
-   STATIC_ASSERT(sizeof(bios_mem_area_t) <= sizeof(mem_area_t));
-
-   u32 eax, ebx, ecx, edx, esi, edi, flags;
-
-   bios_mem_area_t *bios_mem_area = ((void *) (mem_areas - 1));
-   bzero(bios_mem_area, sizeof(bios_mem_area_t));
-
-   /* es = 0 */
-   edi = (u32)bios_mem_area;
-   ebx = 0;
-
-   while (true) {
-
-      mem_areas->acpi = 1;
-      eax = BIOS_INT15h_READ_MEMORY_MAP;
-      edx = BIOS_INT15h_READ_MEMORY_MAP_MAGIC;
-      ecx = sizeof(bios_mem_area_t);
-
-      realmode_call(&realmode_int_15h, &eax, &ebx,
-                    &ecx, &edx, &esi, &edi, &flags);
-
-      if (!ebx)
-         break;
-
-      if (flags & EFLAGS_CF) {
-
-         if (mem_areas_count > 0)
-            break;
-
-         panic("Error while reading memory map: CF set");
-      }
-
-      if (eax != BIOS_INT15h_READ_MEMORY_MAP_MAGIC)
-         panic("Error while reading memory map: eax != magic");
-
-      mem_area_t m = {
-         .base = bios_mem_area->base_low | ((u64)bios_mem_area->base_hi << 32),
-         .len = bios_mem_area->len_low | ((u64)bios_mem_area->len_hi << 32),
-         .type = bios_mem_area->type,
-         .acpi = bios_mem_area->acpi,
-      };
-
-      memcpy(mem_areas + mem_areas_count, &m, sizeof(mem_area_t));
-      mem_areas_count++;
-   }
-}
-
-static void dump_mem_map(void)
-{
-   for (u32 i = 0; i < mem_areas_count; i++) {
-      mem_area_t *m = mem_areas + i;
-      printk("mem area 0x%llx - 0x%llx (%u)\n", m->base, m->len, m->type);
-   }
-}
-
-static void poison_usable_memory(void)
-{
-   for (u32 i = 0; i < mem_areas_count; i++) {
-
-      mem_area_t *ma = mem_areas + i;
-
-      if (ma->type == MEM_USABLE && ma->base >= MB) {
-
-         /* Poison only memory regions above the first MB */
-
-         memset32((void *)(uptr)ma->base,
-                  KMALLOC_FREE_MEM_POISON_VAL,
-                  (u32)ma->len / 4);
-      }
-   }
-}
-
 void bootloader_main(void)
 {
    void *entry;
@@ -335,11 +219,10 @@ void bootloader_main(void)
       panic("Sorry, but your CPU is too old: no PSE (page size extension)");
    }
 
-   read_memory_map();
-   //dump_mem_map();
+   mem_areas_count = read_memory_map(mem_areas);
 
 #if BOOTLOADER_POISON_MEMORY
-   poison_usable_memory();
+   poison_usable_memory(mem_areas, mem_areas_count);
 #endif
 
    bool success =
