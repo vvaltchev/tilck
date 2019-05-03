@@ -154,51 +154,109 @@ fat_seek_forward(fs_handle handle, off_t dist)
    return (off_t)h->pos;
 }
 
+static int
+fat_count_dirents_cb(fat_header *hdr,
+                     fat_type ft,
+                     fat_entry *entry,
+                     const char *long_name,
+                     void *arg)
+{
+   (*(off_t *)arg)++;
+   return 0;
+}
+
+/*
+ * Count the number of entries in a given FAT directory.
+ *
+ * TODO: implement fat_count_dirents() in a more efficient way.
+ */
+STATIC off_t fat_count_dirents(fat_fs_device_data *d, fat_entry *e)
+{
+   fat_walk_dir_ctx walk_ctx = {0};
+   off_t count = 0;
+   int rc;
+
+   ASSERT(e->directory);
+   u32 dir_cluster = fat_get_first_cluster_generic(d, e);
+
+   rc = fat_walk_directory(&walk_ctx,
+                           d->hdr,
+                           d->type,
+                           !dir_cluster ? e : NULL,
+                           dir_cluster,
+                           fat_count_dirents_cb,
+                           &count);
+
+   return rc ? rc : count;
+}
+
+static off_t fat_seek_dir(fat_file_handle *fh, off_t off)
+{
+   if (off < 0)
+      return -EINVAL;
+
+   if (off > fat_count_dirents(fh->fs->device_data, fh->e))
+      return -EINVAL;
+
+   fh->pos = off;
+   return fh->pos;
+}
+
 STATIC off_t
 fat_seek(fs_handle handle, off_t off, int whence)
 {
-   off_t curr_pos = (off_t) ((fat_file_handle *)handle)->pos;
+   fat_file_handle *fh = handle;
+
+   if (fh->e->directory) {
+
+      if (whence != SEEK_SET)
+         return -EINVAL;
+
+      return fat_seek_dir(fh, off);
+   }
+
+   off_t curr_pos = fh->pos;
 
    switch (whence) {
 
-   case SEEK_SET:
+      case SEEK_SET:
 
-      if (off < 0)
-         return -EINVAL; /* invalid negative offset */
+         if (off < 0)
+            return -EINVAL; /* invalid negative offset */
 
-      fat_rewind(handle);
-      break;
-
-   case SEEK_END:
-
-      if (off >= 0)
+         fat_rewind(handle);
          break;
 
-      fat_file_handle *h = (fat_file_handle *) handle;
-      off = (off_t) h->e->DIR_FileSize + off;
+      case SEEK_END:
 
-      if (off < 0)
-         return -EINVAL;
+         if (off >= 0)
+            break;
 
-      fat_rewind(handle);
-      break;
-
-   case SEEK_CUR:
-
-      if (off < 0) {
-
-         off = curr_pos + off;
+         fat_file_handle *h = (fat_file_handle *) handle;
+         off = (off_t) h->e->DIR_FileSize + off;
 
          if (off < 0)
             return -EINVAL;
 
          fat_rewind(handle);
-      }
+         break;
 
-      break;
+      case SEEK_CUR:
 
-   default:
-      return -EINVAL;
+         if (off < 0) {
+
+            off = curr_pos + off;
+
+            if (off < 0)
+               return -EINVAL;
+
+            fat_rewind(handle);
+         }
+
+         break;
+
+      default:
+         return -EINVAL;
    }
 
    return fat_seek_forward(handle, off);

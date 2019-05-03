@@ -266,7 +266,7 @@ fs4_aux_read_dents(DIR *d,        /* dir handle */
       else if (!de)
          break;
 
-      //printf("dposs[%3d]: %11ld, entry: %s\n", i, dposs[i], de->d_name);
+      // printf("dposs[%3d]: %11ld, entry: %s\n", i, dposs[i], de->d_name);
 
       if (i == 0)
          DEVSHELL_CMD_ASSERT(strcmp(de->d_name, ".") == 0);
@@ -302,7 +302,7 @@ static void generic_fs_dir_seek_test(DIR *d, const int n_files)
       if (i == seek_n)
          strcpy(saved_entry_name, de->d_name);
 
-      //printf("dposs[%3d]: %11ld, entry: %s\n", i, dposs[i], de->d_name);
+      // printf("dposs[%3d]: %11ld, entry: %s\n", i, dposs[i], de->d_name);
    }
 
    printf("seek to the position of entry #%d: %ld\n", seek_n, dposs[seek_n]);
@@ -360,6 +360,30 @@ int cmd_fs4(int argc, char **argv)
       remove_test_file("/tmp/r", i);
 
    rc = rmdir("/tmp/r");
+   DEVSHELL_CMD_ASSERT(rc == 0);
+   return 0;
+}
+
+/*
+ * Test telldir(), seekdir() and rewinddir() on FAT32
+ */
+int cmd_fs5(int argc, char **argv)
+{
+   const int n_files = 100;
+   DIR *d;
+   int rc;
+
+   if (!FAT_TEST_DIR) {
+      printf("[devshell] Skip fs5 because FAT_TEST_DIR == 0\n");
+      return 0;
+   }
+
+   d = opendir("/tdir");
+   DEVSHELL_CMD_ASSERT(d != NULL);
+
+   generic_fs_dir_seek_test(d, n_files);
+
+   rc = closedir(d);
    DEVSHELL_CMD_ASSERT(rc == 0);
    return 0;
 }
