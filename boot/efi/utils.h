@@ -5,11 +5,6 @@
 
 #define PAGE_SIZE         4096
 
-/*
- * Checks if 'addr' is in the range [begin, end).
- */
-#define IN_RANGE(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
-
 #define CHECK(cond)                                  \
    do {                                              \
       if (!(cond)) {                                 \

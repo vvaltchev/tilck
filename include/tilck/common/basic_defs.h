@@ -277,6 +277,9 @@ typedef sptr (*cmpfun_ptr)(const void *a, const void *b);
  */
 #define SHR_BITS(val, rs, t) LO_BITS( ((val) >> (rs)), NBITS-(rs), t )
 
+/* Checks if 'addr' is in the range [begin, end) */
+#define IN_RANGE(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
+
 /* Includes */
 #include <tilck/common/panic.h>
 

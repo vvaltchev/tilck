@@ -92,7 +92,10 @@ static void load_elf_kernel(const char *filepath, void **entry)
       memmove((void *)phdr->p_paddr,
               (char *)header + phdr->p_offset, phdr->p_filesz);
 
-      if (IN(header->e_entry, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz)) {
+      if (IN_RANGE(header->e_entry,
+                   phdr->p_vaddr,
+                   phdr->p_vaddr + phdr->p_filesz))
+      {
          /*
           * If e_entry is a vaddr (address >= KERNEL_BASE_VA), we need to
           * calculate its paddr because here paging is OFF. Therefore,

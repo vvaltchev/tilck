@@ -4,9 +4,8 @@
 #include "utils.h"
 #include <elf.h>
 
-#define TEMP_KERNEL_ADDR  (KERNEL_PADDR + KERNEL_MAX_SIZE)
-
-#define KERNEL_FILE CONCAT(L, KERNEL_FILE_PATH_EFI)
+#define TEMP_KERNEL_ADDR   (KERNEL_PADDR + KERNEL_MAX_SIZE)
+#define KERNEL_FILE        CONCAT(L, KERNEL_FILE_PATH_EFI)
 
 EFI_STATUS
 LoadElfKernel(EFI_BOOT_SERVICES *BS,
@@ -66,7 +65,8 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS,
 
       if (IN_RANGE(header->e_entry,
                    phdr->p_vaddr,
-                   phdr->p_vaddr + phdr->p_filesz)) {
+                   phdr->p_vaddr + phdr->p_filesz))
+      {
          /*
           * If e_entry is a vaddr (address >= KERNEL_BASE_VA), we need to
           * calculate its paddr because here paging is OFF. Therefore,
