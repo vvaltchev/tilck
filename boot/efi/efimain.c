@@ -90,7 +90,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    /* --- point of no-return: from here on in we MUST NOT fail --- */
 
-   kernel_entry = simple_elf_loader((void *)(UINTN)kernel_file_paddr);
+   kernel_entry = simple_elf_loader(TO_PTR(kernel_file_paddr));
    JumpToKernel(mbi, kernel_entry);
 
 end:

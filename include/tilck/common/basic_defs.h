@@ -280,6 +280,21 @@ typedef sptr (*cmpfun_ptr)(const void *a, const void *b);
 /* Checks if 'addr' is in the range [begin, end) */
 #define IN_RANGE(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
 
+/*
+ * Brutal double-cast converting any integer to a void * pointer.
+ *
+ * This unsafe macro is a nice cosmetic sugar for all the cases where a integer
+ * not always having pointer-size width has to be converted to a pointer.
+ *
+ * Typical use cases:
+ *    - multiboot 1 code uses 32-bit integers for rappresenting addresses, even
+ *      on 64-bit architectures.
+ *
+ *    - in EFI code, EFI_PHYSICAL_ADDRESS is 64-bit wide, even on 32-bit
+ *      machines.
+ */
+#define TO_PTR(n) ((void *)(uptr)(n))
+
 /* Includes */
 #include <tilck/common/panic.h>
 

@@ -22,7 +22,7 @@ void *simple_elf_loader(void *elf)
    void *entry;
 
    /* Just set the entry in case the search with IN_RANGE() below fails */
-   entry = (void *)(uptr)header->e_entry;
+   entry = TO_PTR(header->e_entry);
 
    for (int i = 0; i < header->e_phnum; i++, phdr++) {
 
@@ -30,8 +30,8 @@ void *simple_elf_loader(void *elf)
       if (phdr->p_type != PT_LOAD)
          continue;
 
-      bzero((void *)(uptr)phdr->p_paddr, phdr->p_memsz);
-      memcpy((void *)(uptr)phdr->p_paddr,
+      bzero(TO_PTR(phdr->p_paddr), phdr->p_memsz);
+      memcpy(TO_PTR(phdr->p_paddr),
              (char *) header + phdr->p_offset,
              phdr->p_filesz);
 
@@ -46,8 +46,7 @@ void *simple_elf_loader(void *elf)
           * to the paddr of the segment.
           */
 
-         entry =
-            (void *)(uptr)(phdr->p_paddr + (header->e_entry - phdr->p_vaddr));
+         entry = TO_PTR(phdr->p_paddr + (header->e_entry - phdr->p_vaddr));
       }
    }
 

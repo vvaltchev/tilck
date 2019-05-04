@@ -70,7 +70,7 @@ LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
    HANDLE_EFI_ERROR("fileProt->Open");
 
    Print(L"File Read()...\r\n");
-   status = fileProt->Read(fileHandle, &bufSize, (void *)(UINTN)*paddr);
+   status = fileProt->Read(fileHandle, &bufSize, TO_PTR(*paddr));
    HANDLE_EFI_ERROR("fileProt->Read");
 
    Print(L"Size read: %d\r\n", bufSize);

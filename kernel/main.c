@@ -49,7 +49,7 @@ void init_console(void)
 
 static void read_multiboot_info(u32 magic, u32 mbi_addr)
 {
-   multiboot_info_t *mbi = (void *)(uptr)mbi_addr;
+   multiboot_info_t *mbi = TO_PTR(mbi_addr);
 
    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
       panic("The Tilck kernel requires a multiboot-compatible bootloader");
@@ -59,7 +59,7 @@ static void read_multiboot_info(u32 magic, u32 mbi_addr)
 
    if (mbi->flags & MULTIBOOT_INFO_MODS) {
 
-      multiboot_module_t *mods = (void *)(uptr)mbi->mods_addr;
+      multiboot_module_t *mods = TO_PTR(mbi->mods_addr);
 
       for (u32 i = 0; i < mbi->mods_count; i++)
          system_mmap_add_ramdisk(mods[i].mod_start, mods[i].mod_end);

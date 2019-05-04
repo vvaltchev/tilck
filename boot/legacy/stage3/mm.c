@@ -85,7 +85,7 @@ void poison_usable_memory(mem_area_t *mem_areas, u32 mem_areas_count)
 
          /* Poison only memory regions above the first MB */
 
-         memset32((void *)(uptr)ma->base,
+         memset32(TO_PTR(ma->base),
                   KMALLOC_FREE_MEM_POISON_VAL,
                   (u32)ma->len / 4);
       }

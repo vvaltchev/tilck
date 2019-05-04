@@ -53,7 +53,7 @@ LoadRamdisk(EFI_HANDLE image,
                               1, /* just 1 page */
                               ramdisk_paddr_ref);
    HANDLE_EFI_ERROR("AllocatePages");
-   fat_hdr = (void *)(UINTN)*ramdisk_paddr_ref;
+   fat_hdr = TO_PTR(*ramdisk_paddr_ref);
 
    status = ioprot->ReadDisk(ioprot,
                              blockio->Media->MediaId,
@@ -76,7 +76,7 @@ LoadRamdisk(EFI_HANDLE image,
                               (total_fat_size / PAGE_SIZE) + 1,
                               ramdisk_paddr_ref);
    HANDLE_EFI_ERROR("AllocatePages");
-   fat_hdr = (void *)(UINTN)*ramdisk_paddr_ref;
+   fat_hdr = TO_PTR(*ramdisk_paddr_ref);
 
    status = ioprot->ReadDisk(ioprot,
                              blockio->Media->MediaId,
@@ -113,7 +113,7 @@ LoadRamdisk(EFI_HANDLE image,
                               (total_used_bytes / PAGE_SIZE) + 1,
                               ramdisk_paddr_ref);
    HANDLE_EFI_ERROR("AllocatePages");
-   fat_hdr = (void *)(UINTN)*ramdisk_paddr_ref;
+   fat_hdr = TO_PTR(*ramdisk_paddr_ref);
 
    status = ioprot->ReadDisk(ioprot,
                              blockio->Media->MediaId,

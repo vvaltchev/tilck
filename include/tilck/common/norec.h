@@ -42,7 +42,7 @@ struct explicit_stack_elem2 { void *ret_addr, *arg1, *arg2; };
       VERIFY(STACK_SIZE_VAR < (int)ARRAY_SIZE(STACK_VAR));             \
       STACK_VAR[STACK_SIZE_VAR++] = (typeof(STACK_VAR[0])) {           \
          &&CONCAT(after_, __LINE__),                                   \
-         (void *)(uptr)(a1)                                            \
+         TO_PTR(a1)                                                    \
       };                                                               \
       STACK_VAR[STACK_SIZE_VAR].ret_addr = NULL;                       \
       goto loop_end;                                                   \
@@ -54,8 +54,8 @@ struct explicit_stack_elem2 { void *ret_addr, *arg1, *arg2; };
       VERIFY(STACK_SIZE_VAR < (int)ARRAY_SIZE(STACK_VAR));             \
       STACK_VAR[STACK_SIZE_VAR++] = (typeof(STACK_VAR[0])) {           \
          &&CONCAT(after_, __LINE__),                                   \
-         (void *)(uptr)(a1),                                           \
-         (void *)(uptr)(a2)                                            \
+         TO_PTR(a1),                                                   \
+         TO_PTR(a2)                                                    \
       };                                                               \
       STACK_VAR[STACK_SIZE_VAR].ret_addr = NULL;                       \
       goto loop_end;                                                   \

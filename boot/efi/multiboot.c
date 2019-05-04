@@ -25,8 +25,8 @@ AllocateMbi(void)
                               &multiboot_buffer);
    HANDLE_EFI_ERROR("AllocatePages");
 
-   BS->SetMem((void *)(UINTN)multiboot_buffer, 1 * PAGE_SIZE, 0);
-   mbi = (multiboot_info_t *)(UINTN)multiboot_buffer;
+   BS->SetMem(TO_PTR(multiboot_buffer), 1 * PAGE_SIZE, 0);
+   mbi = TO_PTR(multiboot_buffer);
 
 end:
    return status;
@@ -137,8 +137,8 @@ MultibootSaveMemoryMap(UINTN *mapkey)
                               &multiboot_mmap_paddr);
    HANDLE_EFI_ERROR("AllocatePages");
 
-   BS->SetMem((void *)(UINTN)multiboot_mmap_paddr, 1 * PAGE_SIZE, 0);
-   multiboot_mmap = (multiboot_memory_map_t *)(UINTN)multiboot_mmap_paddr;
+   BS->SetMem(TO_PTR(multiboot_mmap_paddr), 1 * PAGE_SIZE, 0);
+   multiboot_mmap = TO_PTR(multiboot_mmap_paddr);
 
    status = GetMemoryMap(mapkey);
    HANDLE_EFI_ERROR("GetMemoryMap");
@@ -201,9 +201,9 @@ MbiSetRamdisk(EFI_PHYSICAL_ADDRESS ramdisk_paddr, UINTN ramdisk_size)
                               &multiboot_mod_addr);
    HANDLE_EFI_ERROR("AllocatePages");
 
-   BS->SetMem((void *)(UINTN)multiboot_mod_addr, 1 * PAGE_SIZE, 0);
+   BS->SetMem(TO_PTR(multiboot_mod_addr), 1 * PAGE_SIZE, 0);
 
-   mod = (multiboot_module_t *)(UINTN)multiboot_mod_addr;
+   mod = TO_PTR(multiboot_mod_addr);
    mod->mod_start = ramdisk_paddr;
    mod->mod_end = mod->mod_start + ramdisk_size;
 
