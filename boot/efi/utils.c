@@ -50,7 +50,7 @@ EFI_STATUS
 LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
                  EFI_FILE_PROTOCOL *fileProt,
                  INTN pagesCount,
-                 EFI_PHYSICAL_ADDRESS paddr,
+                 EFI_PHYSICAL_ADDRESS *paddr,
                  CHAR16 *filePath)
 {
    EFI_STATUS status = EFI_SUCCESS;
@@ -58,7 +58,10 @@ LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
    UINTN bufSize = pagesCount * PAGE_SIZE;
    UINT32 crc32 = 0;
 
-   BS->AllocatePages(AllocateAddress, EfiLoaderData, pagesCount, &paddr);
+   status = BS->AllocatePages(AllocateAnyPages,
+                              EfiLoaderData,
+                              pagesCount,
+                              paddr);
    HANDLE_EFI_ERROR("AllocatePages");
 
    Print(L"File Open('%s')...\r\n", filePath);
@@ -67,7 +70,7 @@ LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
    HANDLE_EFI_ERROR("fileProt->Open");
 
    Print(L"File Read()...\r\n");
-   status = fileProt->Read(fileHandle, &bufSize, (void *)(UINTN)paddr);
+   status = fileProt->Read(fileHandle, &bufSize, (void *)(UINTN)*paddr);
    HANDLE_EFI_ERROR("fileProt->Read");
 
    Print(L"Size read: %d\r\n", bufSize);
@@ -80,4 +83,39 @@ LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
 
 end:
    return status;
+}
+
+EFI_STATUS
+GetMemoryMap(UINTN *mapkey)
+{
+   UINT32 desc_ver;
+   EFI_STATUS status;
+
+   mmap_size = sizeof(mmap);
+   status = BS->GetMemoryMap(&mmap_size, mmap, mapkey, &desc_size, &desc_ver);
+   HANDLE_EFI_ERROR("BS->GetMemoryMap");
+
+end:
+   return status;
+}
+
+EFI_MEMORY_DESCRIPTOR *
+GetMemDescForAddress(EFI_PHYSICAL_ADDRESS paddr)
+{
+   EFI_MEMORY_DESCRIPTOR *desc = NULL;
+   desc = (void *)mmap;
+
+   do {
+
+      UINT64 start = desc->PhysicalStart;
+      UINT64 end = start + desc->NumberOfPages * PAGE_SIZE;
+
+      if (IN_RANGE(paddr, start, end))
+         return desc;
+
+      desc = (void *)desc + desc_size;
+
+   } while ((UINTN)desc < (UINTN)mmap + mmap_size);
+
+   return NULL;
 }

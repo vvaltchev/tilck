@@ -11,9 +11,12 @@
 extern multiboot_info_t *mbi;
 
 EFI_STATUS
-LoadElfKernel(EFI_BOOT_SERVICES *BS,
-              EFI_FILE_PROTOCOL *fileProt,
-              void **entry);
+LoadKernelFile(EFI_BOOT_SERVICES *BS,
+               EFI_FILE_PROTOCOL *fileProt,
+               EFI_PHYSICAL_ADDRESS *filePaddr);
+
+void
+LoadElfKernel(EFI_PHYSICAL_ADDRESS filePaddr, void **entry);
 
 EFI_STATUS AllocateMbi(void);
 EFI_STATUS MultibootSaveMemoryMap(UINTN *mapkey);

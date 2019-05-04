@@ -6,6 +6,8 @@
 #define EFI_MBI_MAX_ADDR (64 * KB)
 
 EFI_MEMORY_DESCRIPTOR mmap[512];
+UINTN mmap_size;
+UINTN desc_size;
 
 multiboot_info_t *mbi;
 multiboot_memory_map_t *multiboot_mmap;
@@ -126,9 +128,6 @@ MultibootSaveMemoryMap(UINTN *mapkey)
    UINT32 last_type = (UINT32) -1;
    UINT64 last_start = 0;
    UINT64 last_end = 0;
-   UINTN mmap_size;
-   UINTN desc_size;
-   UINT32 desc_ver;
 
    EFI_PHYSICAL_ADDRESS multiboot_mmap_paddr = EFI_MBI_MAX_ADDR;
 
@@ -141,9 +140,8 @@ MultibootSaveMemoryMap(UINTN *mapkey)
    BS->SetMem((void *)(UINTN)multiboot_mmap_paddr, 1 * PAGE_SIZE, 0);
    multiboot_mmap = (multiboot_memory_map_t *)(UINTN)multiboot_mmap_paddr;
 
-   mmap_size = sizeof(mmap);
-   status = BS->GetMemoryMap(&mmap_size, mmap, mapkey, &desc_size, &desc_ver);
-   HANDLE_EFI_ERROR("BS->GetMemoryMap");
+   status = GetMemoryMap(mapkey);
+   HANDLE_EFI_ERROR("GetMemoryMap");
 
    mbi->flags |= MULTIBOOT_INFO_MEM_MAP;
    desc = (void *)mmap;
@@ -152,7 +150,7 @@ MultibootSaveMemoryMap(UINTN *mapkey)
 
       UINT32 type = EfiToMultibootMemType(desc->Type);
       UINT64 start = desc->PhysicalStart;
-      UINT64 end = start + desc->NumberOfPages * 4096;
+      UINT64 end = start + desc->NumberOfPages * PAGE_SIZE;
 
       if (last_type != type || last_end != start) {
 

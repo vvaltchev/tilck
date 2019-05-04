@@ -4,38 +4,49 @@
 #include "utils.h"
 #include <elf.h>
 
-#define TEMP_KERNEL_ADDR   (KERNEL_PADDR + KERNEL_MAX_SIZE)
 #define KERNEL_FILE        CONCAT(L, KERNEL_FILE_PATH_EFI)
 
 EFI_STATUS
-LoadElfKernel(EFI_BOOT_SERVICES *BS,
-              EFI_FILE_PROTOCOL *fileProt,
-              void **entry)
+KernelLoadMemoryChecks(void)
 {
-   EFI_STATUS status = EFI_LOAD_ERROR;
-   EFI_PHYSICAL_ADDRESS kernel_paddr = KERNEL_PADDR;
+   EFI_MEMORY_DESCRIPTOR *mem_desc1;
+   EFI_MEMORY_DESCRIPTOR *mem_desc2;
 
-   /*
-    * Temporary load the whole kernel file in a safe location.
-    */
-   status = LoadFileFromDisk(BS, fileProt, KERNEL_MAX_SIZE / PAGE_SIZE,
-                             TEMP_KERNEL_ADDR, KERNEL_FILE);
-   HANDLE_EFI_ERROR("LoadFileFromDisk");
+   mem_desc1 = GetMemDescForAddress(KERNEL_PADDR);
 
-   Print(L"Kernel loaded in temporary paddr.\n");
-   Print(L"Allocating memory for final kernel's location...\n");
+   if (!mem_desc1) {
+      Print(L"ERROR: unable to find memory type for KERNEL's paddr\r\n");
+      return EFI_LOAD_ERROR;
+   }
 
-   status = BS->AllocatePages(AllocateAddress,
-                              EfiLoaderData,
-                              KERNEL_MAX_SIZE / PAGE_SIZE,
-                              &kernel_paddr);
+   mem_desc2 = GetMemDescForAddress(KERNEL_PADDR + KERNEL_MAX_SIZE - 1);
 
-   HANDLE_EFI_ERROR("AllocatePages");
-   Print(L"Memory allocated.\n");
+   if (!mem_desc2) {
+      Print(L"ERROR: unable to find memory type for KERNEL's end paddr\r\n");
+      return EFI_LOAD_ERROR;
+   }
 
-   CHECK(kernel_paddr == KERNEL_PADDR);
+   if (mem_desc1 != mem_desc2) {
+      Print(L"ERROR: multiple regions in kernel's load paddr range\r\n");
+      return EFI_LOAD_ERROR;
+   }
 
-   Elf32_Ehdr *header = (Elf32_Ehdr *)TEMP_KERNEL_ADDR;
+   if (mem_desc1->Type != EfiConventionalMemory &&
+       mem_desc1->Type != EfiBootServicesCode &&
+       mem_desc1->Type != EfiBootServicesData)
+   {
+      Print(L"ERROR: kernel's load paddr range in unused memory region\r\n");
+      return EFI_LOAD_ERROR;
+   }
+
+   return EFI_SUCCESS;
+}
+
+EFI_STATUS
+ElfChecks(EFI_PHYSICAL_ADDRESS filePaddr)
+{
+   EFI_STATUS status = EFI_SUCCESS;
+   Elf32_Ehdr *header = (Elf32_Ehdr *)(UINTN)filePaddr;
 
    CHECK(header->e_ident[EI_MAG0] == ELFMAG0);
    CHECK(header->e_ident[EI_MAG1] == ELFMAG1);
@@ -56,12 +67,52 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS,
       CHECK(phdr->p_vaddr >= KERNEL_BASE_VA);
       CHECK(phdr->p_paddr >= KERNEL_PADDR);
       CHECK(phdr->p_paddr < KERNEL_PADDR + KERNEL_MAX_SIZE);
+   }
 
-      BS->SetMem((void *)(UINTN)phdr->p_paddr, phdr->p_memsz, 0);
+end:
+   return status;
+}
 
-      BS->CopyMem((void *)(UINTN)phdr->p_paddr,
-                  (char *) header + phdr->p_offset,
-                  phdr->p_filesz);
+EFI_STATUS
+LoadKernelFile(EFI_BOOT_SERVICES *BS,
+               EFI_FILE_PROTOCOL *fileProt,
+               EFI_PHYSICAL_ADDRESS *filePaddr)
+{
+   EFI_STATUS status = EFI_LOAD_ERROR;
+
+   /* Temporary load the whole kernel file in a safe location */
+   status = LoadFileFromDisk(BS,
+                             fileProt,
+                             KERNEL_MAX_SIZE / PAGE_SIZE,
+                             filePaddr,
+                             KERNEL_FILE);
+
+   HANDLE_EFI_ERROR("LoadFileFromDisk");
+   Print(L"Kernel file loaded at temporary paddr: 0x%08x\n", *filePaddr);
+   status = ElfChecks(*filePaddr);
+
+end:
+   return status;
+}
+
+#include <tilck/common/string_util.h>
+
+void
+LoadElfKernel(EFI_PHYSICAL_ADDRESS filePaddr, void **entry)
+{
+   Elf32_Ehdr *header = (Elf32_Ehdr *)(UINTN)filePaddr;
+   Elf32_Phdr *phdr = (Elf32_Phdr *)(UINTN)(filePaddr + header->e_phoff);
+
+   for (int i = 0; i < header->e_phnum; i++, phdr++) {
+
+      // Ignore non-load segments.
+      if (phdr->p_type != PT_LOAD)
+         continue;
+
+      bzero((void *)(UINTN)phdr->p_paddr, phdr->p_memsz);
+      memcpy((void *)(UINTN)phdr->p_paddr,
+             (char *) header + phdr->p_offset,
+             phdr->p_filesz);
 
       if (IN_RANGE(header->e_entry,
                    phdr->p_vaddr,
@@ -78,13 +129,4 @@ LoadElfKernel(EFI_BOOT_SERVICES *BS,
             (void *)(UINTN)(phdr->p_paddr + (header->e_entry - phdr->p_vaddr));
       }
    }
-
-   status = BS->FreePages(TEMP_KERNEL_ADDR, KERNEL_MAX_SIZE / PAGE_SIZE);
-   HANDLE_EFI_ERROR("FreePages");
-
-   Print(L"ELF kernel loaded. Entry: 0x%x\n", *entry);
-   status = EFI_SUCCESS;
-
-end:
-   return status;
 }

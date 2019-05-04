@@ -3,7 +3,6 @@
 #include "defs.h"
 #include "utils.h"
 
-
 /**
  * efi_main - The entry point for the EFI application
  * @image: firmware-allocated handle that identifies the image
@@ -17,6 +16,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fileFsProt;
    EFI_FILE_PROTOCOL *fileProt;
    EFI_PHYSICAL_ADDRESS ramdisk_paddr;
+   EFI_PHYSICAL_ADDRESS kernel_file_paddr;
    UINTN ramdisk_size, mapkey, fb_paddr;
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION gfx_mode_info;
    EFI_BOOT_SERVICES *BS = ST->BootServices;
@@ -54,8 +54,14 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = fileFsProt->OpenVolume(fileFsProt, &fileProt);
    HANDLE_EFI_ERROR("OpenVolume");
 
-   status = LoadElfKernel(BS, fileProt, &kernel_entry);
-   HANDLE_EFI_ERROR("LoadElfKernel");
+   status = LoadKernelFile(BS, fileProt, &kernel_file_paddr);
+   HANDLE_EFI_ERROR("LoadKernelFile");
+
+   status = GetMemoryMap(&mapkey);
+   HANDLE_EFI_ERROR("GetMemoryMap");
+
+   status = KernelLoadMemoryChecks();
+   HANDLE_EFI_ERROR("KernelLoadMemoryChecks");
 
    // ------------------------------------------------------------------ //
 
@@ -80,6 +86,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = BS->ExitBootServices(image, mapkey);
    HANDLE_EFI_ERROR("BS->ExitBootServices");
 
+   /* --- point of no-return: from here on in we MUST NOT fail --- */
+
+   LoadElfKernel(kernel_file_paddr, &kernel_entry);
    JumpToKernel(mbi, kernel_entry);
 
 end:
