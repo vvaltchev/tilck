@@ -2,6 +2,8 @@
 
 #include "defs.h"
 #include "utils.h"
+#include <tilck/common/simple_elf_loader.c.h>
+
 
 /**
  * efi_main - The entry point for the EFI application
@@ -88,7 +90,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    /* --- point of no-return: from here on in we MUST NOT fail --- */
 
-   LoadElfKernel(kernel_file_paddr, &kernel_entry);
+   kernel_entry = simple_elf_loader((void *)(UINTN)kernel_file_paddr);
    JumpToKernel(mbi, kernel_entry);
 
 end:

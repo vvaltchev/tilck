@@ -94,39 +94,3 @@ LoadKernelFile(EFI_BOOT_SERVICES *BS,
 end:
    return status;
 }
-
-#include <tilck/common/string_util.h>
-
-void
-LoadElfKernel(EFI_PHYSICAL_ADDRESS filePaddr, void **entry)
-{
-   Elf32_Ehdr *header = (Elf32_Ehdr *)(UINTN)filePaddr;
-   Elf32_Phdr *phdr = (Elf32_Phdr *)(UINTN)(filePaddr + header->e_phoff);
-
-   for (int i = 0; i < header->e_phnum; i++, phdr++) {
-
-      // Ignore non-load segments.
-      if (phdr->p_type != PT_LOAD)
-         continue;
-
-      bzero((void *)(UINTN)phdr->p_paddr, phdr->p_memsz);
-      memcpy((void *)(UINTN)phdr->p_paddr,
-             (char *) header + phdr->p_offset,
-             phdr->p_filesz);
-
-      if (IN_RANGE(header->e_entry,
-                   phdr->p_vaddr,
-                   phdr->p_vaddr + phdr->p_filesz))
-      {
-         /*
-          * If e_entry is a vaddr (address >= KERNEL_BASE_VA), we need to
-          * calculate its paddr because here paging is OFF. Therefore,
-          * compute its offset from the beginning of the segment and add it
-          * to the paddr of the segment.
-          */
-
-         *entry =
-            (void *)(UINTN)(phdr->p_paddr + (header->e_entry - phdr->p_vaddr));
-      }
-   }
-}

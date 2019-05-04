@@ -6,8 +6,8 @@
 #include <tilck/common/utils.h>
 #include <tilck/common/arch/generic_x86/x86_utils.h>
 #include <tilck/common/arch/generic_x86/cpu_features.h>
+#include <tilck/common/simple_elf_loader.c.h>
 
-#include <elf.h>
 #include <multiboot.h>
 
 #include "basic_term.h"
@@ -73,38 +73,7 @@ static void load_elf_kernel(const char *filepath, void **entry)
    VERIFY(header->e_ident[EI_MAG3] == ELFMAG3);
    VERIFY(header->e_ehsize == sizeof(*header));
 
-   *entry = (void *)header->e_entry;
-
-   Elf32_Phdr *phdrs = (Elf32_Phdr *)((char *)header + header->e_phoff);
-
-   for (int i = 0; i < header->e_phnum; i++) {
-
-      Elf32_Phdr *phdr = phdrs + i;
-
-      if (phdr->p_type != PT_LOAD)
-         continue; // Ignore non-load segments.
-
-      VERIFY(phdr->p_vaddr >= KERNEL_BASE_VA);
-      VERIFY(phdr->p_paddr >= KERNEL_PADDR);
-
-      bzero((void *)phdr->p_paddr, phdr->p_memsz);
-
-      memmove((void *)phdr->p_paddr,
-              (char *)header + phdr->p_offset, phdr->p_filesz);
-
-      if (IN_RANGE(header->e_entry,
-                   phdr->p_vaddr,
-                   phdr->p_vaddr + phdr->p_filesz))
-      {
-         /*
-          * If e_entry is a vaddr (address >= KERNEL_BASE_VA), we need to
-          * calculate its paddr because here paging is OFF. Therefore,
-          * compute its offset from the beginning of the segment and add it
-          * to the paddr of the segment.
-          */
-         *entry = (void *) (phdr->p_paddr + (header->e_entry - phdr->p_vaddr));
-      }
-   }
+   *entry = simple_elf_loader(header);
 }
 
 static multiboot_info_t *setup_multiboot_info(void)

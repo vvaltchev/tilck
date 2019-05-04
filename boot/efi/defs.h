@@ -15,9 +15,6 @@ LoadKernelFile(EFI_BOOT_SERVICES *BS,
                EFI_FILE_PROTOCOL *fileProt,
                EFI_PHYSICAL_ADDRESS *filePaddr);
 
-void
-LoadElfKernel(EFI_PHYSICAL_ADDRESS filePaddr, void **entry);
-
 EFI_STATUS AllocateMbi(void);
 EFI_STATUS MultibootSaveMemoryMap(UINTN *mapkey);
 EFI_STATUS MbiSetRamdisk(EFI_PHYSICAL_ADDRESS ramdisk_paddr,
