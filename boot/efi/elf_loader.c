@@ -6,37 +6,49 @@
 
 #define KERNEL_FILE        CONCAT(L, KERNEL_FILE_PATH_EFI)
 
+static inline bool
+IsMemRegionUsable(EFI_MEMORY_DESCRIPTOR *m)
+{
+   return m->Type == EfiConventionalMemory ||
+          m->Type == EfiBootServicesCode   ||
+          m->Type == EfiBootServicesData;
+}
+
+static inline EFI_PHYSICAL_ADDRESS
+GetEndOfRegion(EFI_MEMORY_DESCRIPTOR *m)
+{
+   return m->PhysicalStart + m->NumberOfPages * PAGE_SIZE;
+}
+
 EFI_STATUS
 KernelLoadMemoryChecks(void)
 {
-   EFI_MEMORY_DESCRIPTOR *mem_desc1;
-   EFI_MEMORY_DESCRIPTOR *mem_desc2;
+   EFI_MEMORY_DESCRIPTOR *m;
+   EFI_PHYSICAL_ADDRESS p = KERNEL_PADDR;
+   EFI_PHYSICAL_ADDRESS pend = KERNEL_PADDR + KERNEL_MAX_SIZE;
 
-   mem_desc1 = GetMemDescForAddress(KERNEL_PADDR);
+   while (p < pend) {
 
-   if (!mem_desc1) {
-      Print(L"ERROR: unable to find memory type for KERNEL's paddr\r\n");
-      return EFI_LOAD_ERROR;
-   }
+      m = GetMemDescForAddress(p);
 
-   mem_desc2 = GetMemDescForAddress(KERNEL_PADDR + KERNEL_MAX_SIZE - 1);
+      if (!m) {
+         Print(L"ERROR: unable to find memory region for kernel's paddr: "
+               "0x%08x\r\n", p);
+         return EFI_LOAD_ERROR;
+      }
 
-   if (!mem_desc2) {
-      Print(L"ERROR: unable to find memory type for KERNEL's end paddr\r\n");
-      return EFI_LOAD_ERROR;
-   }
+      if (!IsMemRegionUsable(m)) {
 
-   if (mem_desc1 != mem_desc2) {
-      Print(L"ERROR: multiple regions in kernel's load paddr range\r\n");
-      return EFI_LOAD_ERROR;
-   }
+         Print(L"ERROR: kernel's load area contains unusable mem areas\r\n");
+         Print(L"Kernel's load area:  0x%08x - 0x%08x\r\n", KERNEL_PADDR, pend);
+         Print(L"Unusable mem region: 0x%08x - 0x%08x\r\n",
+               m->PhysicalStart, GetEndOfRegion(m));
+         Print(L"Region type: %d\r\n", m->Type);
 
-   if (mem_desc1->Type != EfiConventionalMemory &&
-       mem_desc1->Type != EfiBootServicesCode &&
-       mem_desc1->Type != EfiBootServicesData)
-   {
-      Print(L"ERROR: kernel's load paddr range in unused memory region\r\n");
-      return EFI_LOAD_ERROR;
+         return EFI_LOAD_ERROR;
+      }
+
+      p = GetEndOfRegion(m);
    }
 
    return EFI_SUCCESS;
