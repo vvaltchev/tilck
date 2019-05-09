@@ -16,9 +16,6 @@
 #include "mm.h"
 #include "common.h"
 
-static mem_area_t *mem_areas = (void *) MEM_AREAS_BUF;
-static u32 mem_areas_count;
-
 bool graphics_mode; // false = text mode
 
 u32 fb_paddr;
@@ -53,7 +50,8 @@ static void calculate_ramdisk_fat_size(fat_header *hdr)
 }
 
 static void
-load_elf_kernel(uptr ramdisk,
+load_elf_kernel(mem_info *mi,
+                uptr ramdisk,
                 uptr ramdisk_size,
                 const char *filepath,
                 void **entry)
@@ -62,11 +60,7 @@ load_elf_kernel(uptr ramdisk,
    uptr free_space;
    fat_entry *e;
 
-   free_space =
-      get_usable_mem(mem_areas,
-                     mem_areas_count,
-                     ramdisk + ramdisk_size,
-                     KERNEL_MAX_SIZE);
+   free_space = get_usable_mem(mi, ramdisk + ramdisk_size, KERNEL_MAX_SIZE);
 
    if (!free_space)
       panic("No free space for kernel file after %p", ramdisk + ramdisk_size);
@@ -88,7 +82,7 @@ load_elf_kernel(uptr ramdisk,
 }
 
 static multiboot_info_t *
-setup_multiboot_info(uptr ramdisk_paddr, uptr ramdisk_size)
+setup_multiboot_info(mem_info *mi, uptr ramdisk_paddr, uptr ramdisk_size)
 {
    multiboot_info_t *mbi;
    multiboot_module_t *mod;
@@ -139,11 +133,11 @@ setup_multiboot_info(uptr ramdisk_paddr, uptr ramdisk_size)
       (void *)mbi->mods_addr + (mbi->mods_count * sizeof(multiboot_module_t));
 
    mbi->mmap_addr = (u32)mmmap;
-   mbi->mmap_length = mem_areas_count * sizeof(multiboot_memory_map_t);
+   mbi->mmap_length = mi->mem_areas_count * sizeof(multiboot_memory_map_t);
 
-   for (u32 i = 0; i < mem_areas_count; i++) {
+   for (u32 i = 0; i < mi->mem_areas_count; i++) {
 
-      mem_area_t *ma = mem_areas + i;
+      mem_area_t *ma = mi->mem_areas + i;
 
       if (ma->type == MEM_USABLE) {
          if (ma->base < mbi->mem_lower * KB)
@@ -166,13 +160,14 @@ setup_multiboot_info(uptr ramdisk_paddr, uptr ramdisk_size)
 
 void bootloader_main(void)
 {
-   void *entry;
    multiboot_info_t *mbi;
-   u32 ramdisk_used_sectors;
-   u32 ramdisk_used_bytes;
-   uptr ramdisk_paddr;
+   u32 rd_size;            /* ramdisk size (used bytes in the fat partition) */
+   u32 rd_sectors;         /* rd_size in 512-bytes sectors (rounded-up) */
+   uptr rd_paddr;          /* ramdisk physical address */
    uptr free_mem;
+   void *entry;
    bool success;
+   mem_info mi;
 
    vga_set_video_mode(VGA_COLOR_TEXT_MODE_80x25);
    init_bt();
@@ -191,10 +186,10 @@ void bootloader_main(void)
    if (!x86_cpu_features.edx1.pse)
       panic("Sorry, but your CPU is too old: no PSE (page size extension)");
 
-   mem_areas_count = read_memory_map(mem_areas);
+   read_memory_map((void *)MEM_AREAS_BUF, MEM_AREAS_BUF_SIZE, &mi);
 
 #if BOOTLOADER_POISON_MEMORY
-   poison_usable_memory(mem_areas, mem_areas_count);
+   poison_usable_memory(&mi);
 #endif
 
    success =
@@ -207,12 +202,7 @@ void bootloader_main(void)
       panic("read_write_params failed");
 
    printk("Loading ramdisk... ");
-
-   free_mem =
-      get_usable_mem_or_panic(mem_areas,
-                              mem_areas_count,
-                              KERNEL_MAX_END_PADDR,
-                              SECTOR_SIZE);
+   free_mem = get_usable_mem_or_panic(&mi, KERNEL_MAX_END_PADDR, SECTOR_SIZE);
 
    // Read FAT's header
    read_sectors(free_mem, RAMDISK_SECTOR, 1 /* read just 1 sector */);
@@ -220,8 +210,7 @@ void bootloader_main(void)
    calculate_ramdisk_fat_size((void *)free_mem);
 
    free_mem =
-      get_usable_mem_or_panic(mem_areas,
-                              mem_areas_count,
+      get_usable_mem_or_panic(&mi,
                               KERNEL_MAX_END_PADDR,
                               SECTOR_SIZE * (ramdisk_first_data_sector + 1));
 
@@ -229,27 +218,26 @@ void bootloader_main(void)
    read_sectors(free_mem, RAMDISK_SECTOR, ramdisk_first_data_sector + 1);
 
    // Finally we're able to determine how big is the fatpart (pure data)
-   ramdisk_used_bytes = fat_get_used_bytes((void *)free_mem);
-   ramdisk_used_sectors = (ramdisk_used_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
+   rd_size = fat_get_used_bytes((void *)free_mem);
+   rd_sectors = (rd_size + SECTOR_SIZE - 1) / SECTOR_SIZE;
 
    free_mem =
-      get_usable_mem(mem_areas,
-                     mem_areas_count,
+      get_usable_mem(&mi,
                      KERNEL_MAX_END_PADDR,
-                     SECTOR_SIZE * ramdisk_used_sectors);
+                     SECTOR_SIZE * rd_sectors);
 
    if (!free_mem) {
       panic("Unable to allocate %u KB after %p for the ramdisk",
-            SECTOR_SIZE * ramdisk_used_sectors / KB, KERNEL_MAX_END_PADDR);
+            SECTOR_SIZE * rd_sectors / KB, KERNEL_MAX_END_PADDR);
    }
 
-   ramdisk_paddr = free_mem;
-   read_sectors(ramdisk_paddr, RAMDISK_SECTOR, ramdisk_used_sectors);
+   rd_paddr = free_mem;
+   read_sectors(rd_paddr, RAMDISK_SECTOR, rd_sectors);
 
    printk("[ OK ]\n");
    printk("Loading the ELF kernel... ");
 
-   load_elf_kernel(ramdisk_paddr, ramdisk_used_bytes, KERNEL_FILE_PATH, &entry);
+   load_elf_kernel(&mi, rd_paddr, rd_size, KERNEL_FILE_PATH, &entry);
 
    printk("[ OK ]\n\n");
 
@@ -262,7 +250,7 @@ void bootloader_main(void)
       ask_user_video_mode();
    }
 
-   mbi = setup_multiboot_info(ramdisk_paddr, ramdisk_used_bytes);
+   mbi = setup_multiboot_info(&mi, rd_paddr, rd_size);
 
    /* Jump to the kernel */
    asmVolatile("jmp *%%ecx"

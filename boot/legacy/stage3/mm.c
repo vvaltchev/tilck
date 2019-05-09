@@ -12,7 +12,7 @@
 #define BIOS_INT15h_READ_MEMORY_MAP        0xE820
 #define BIOS_INT15h_READ_MEMORY_MAP_MAGIC  0x534D4150
 
-u32 read_memory_map(mem_area_t *mem_areas)
+void read_memory_map(void *buf, size_t buf_size, mem_info *mi)
 {
    typedef struct PACKED {
 
@@ -28,6 +28,8 @@ u32 read_memory_map(mem_area_t *mem_areas)
    STATIC_ASSERT(sizeof(bios_mem_area_t) <= sizeof(mem_area_t));
 
    u32 eax, ebx, ecx, edx, esi, edi, flags;
+   mem_area_t *mem_areas = buf;
+   uptr buf_end = (uptr) buf + buf_size;
    u32 mem_areas_count = 0;
 
    bios_mem_area_t *bios_mem_area = ((void *) (mem_areas - 1));
@@ -68,18 +70,25 @@ u32 read_memory_map(mem_area_t *mem_areas)
          .acpi = bios_mem_area->acpi,
       };
 
+      if ((uptr)(mem_areas + mem_areas_count + sizeof(mem_area_t)) > buf_end)
+         panic("No enough memory for the memory map");
+
+      if ((uptr)(mem_areas + mem_areas_count) == (uptr)bios_mem_area)
+         panic("No enough memory for the memory map");
+
       memcpy(mem_areas + mem_areas_count, &m, sizeof(mem_area_t));
       mem_areas_count++;
    }
 
-   return mem_areas_count;
+   mi->mem_areas = mem_areas;
+   mi->mem_areas_count = mem_areas_count;
 }
 
-void poison_usable_memory(mem_area_t *mem_areas, u32 mem_areas_count)
+void poison_usable_memory(mem_info *mi)
 {
-   for (u32 i = 0; i < mem_areas_count; i++) {
+   for (u32 i = 0; i < mi->mem_areas_count; i++) {
 
-      mem_area_t *ma = mem_areas + i;
+      mem_area_t *ma = mi->mem_areas + i;
 
       if (ma->type == MEM_USABLE && ma->base >= MB) {
 
@@ -92,15 +101,11 @@ void poison_usable_memory(mem_area_t *mem_areas, u32 mem_areas_count)
    }
 }
 
-uptr
-get_usable_mem(mem_area_t *mem_areas,
-               u32 mem_areas_count,
-               uptr min_paddr,
-               uptr size)
+uptr get_usable_mem(mem_info *mi, uptr min_paddr, uptr size)
 {
-   for (u32 i = 0; i < mem_areas_count; i++) {
+   for (u32 i = 0; i < mi->mem_areas_count; i++) {
 
-      mem_area_t *ma = mem_areas + i;
+      mem_area_t *ma = mi->mem_areas + i;
       uptr mbase = ma->base;
       uptr mend = ma->base + ma->len;
 
@@ -128,13 +133,9 @@ get_usable_mem(mem_area_t *mem_areas,
    return 0;
 }
 
-uptr
-get_usable_mem_or_panic(mem_area_t *mem_areas,
-                        u32 mem_areas_count,
-                        uptr min_paddr,
-                        uptr size)
+uptr get_usable_mem_or_panic(mem_info *mi, uptr min_paddr, uptr size)
 {
-   uptr free_mem = get_usable_mem(mem_areas, mem_areas_count, min_paddr, size);
+   uptr free_mem = get_usable_mem(mi, min_paddr, size);
 
    if (!free_mem)
       panic("Unable to allocate %u bytes after %p", size, min_paddr);

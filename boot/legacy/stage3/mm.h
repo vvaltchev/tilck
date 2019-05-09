@@ -18,24 +18,28 @@ typedef struct {
 
 } mem_area_t;
 
-u32 read_memory_map(mem_area_t *mem_areas);
-void poison_usable_memory(mem_area_t *mem_areas, u32 mem_areas_count);
+typedef struct {
+
+   mem_area_t *mem_areas;
+   u32 mem_areas_count;
+
+} mem_info;
+
+/*
+ * Reads from BIOS system's memory map and store it in the ma_buffer.
+ * At the end, it sets the fields of the mem_info structure `mi`.
+ */
+void read_memory_map(void *buffer, size_t buf_size, mem_info *mi);
+void poison_usable_memory(mem_info *mi);
 
 /*
  * Get the first usable memory area of size `size` with address >= `min_paddr`.
  * Returns `0` in case of failure.
  */
-uptr
-get_usable_mem(mem_area_t *mem_areas,
-               u32 mem_areas_count,
-               uptr min_paddr,
-               uptr size);
+uptr get_usable_mem(mem_info *mi, uptr min_paddr, uptr size);
 
-uptr
-get_usable_mem_or_panic(mem_area_t *mem_areas,
-                        u32 mem_areas_count,
-                        uptr min_paddr,
-                        uptr size);
+/* Wrapper of get_usable_mem() which triggers PANIC instead of returning 0 */
+uptr get_usable_mem_or_panic(mem_info *mi, uptr min_paddr, uptr size);
 
 static inline u32 bios_to_multiboot_mem_region(u32 bios_mem_type)
 {
