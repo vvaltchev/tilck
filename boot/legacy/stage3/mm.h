@@ -21,7 +21,7 @@ typedef struct {
 typedef struct {
 
    mem_area_t *mem_areas;
-   u32 mem_areas_count;
+   u32 count;
 
 } mem_info;
 

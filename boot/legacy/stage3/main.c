@@ -133,9 +133,9 @@ setup_multiboot_info(mem_info *mi, uptr ramdisk_paddr, uptr ramdisk_size)
       (void *)mbi->mods_addr + (mbi->mods_count * sizeof(multiboot_module_t));
 
    mbi->mmap_addr = (u32)mmmap;
-   mbi->mmap_length = mi->mem_areas_count * sizeof(multiboot_memory_map_t);
+   mbi->mmap_length = mi->count * sizeof(multiboot_memory_map_t);
 
-   for (u32 i = 0; i < mi->mem_areas_count; i++) {
+   for (u32 i = 0; i < mi->count; i++) {
 
       mem_area_t *ma = mi->mem_areas + i;
 

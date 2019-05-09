@@ -81,12 +81,12 @@ void read_memory_map(void *buf, size_t buf_size, mem_info *mi)
    }
 
    mi->mem_areas = mem_areas;
-   mi->mem_areas_count = mem_areas_count;
+   mi->count = mem_areas_count;
 }
 
 void poison_usable_memory(mem_info *mi)
 {
-   for (u32 i = 0; i < mi->mem_areas_count; i++) {
+   for (u32 i = 0; i < mi->count; i++) {
 
       mem_area_t *ma = mi->mem_areas + i;
 
@@ -103,7 +103,7 @@ void poison_usable_memory(mem_info *mi)
 
 uptr get_usable_mem(mem_info *mi, uptr min_paddr, uptr size)
 {
-   for (u32 i = 0; i < mi->mem_areas_count; i++) {
+   for (u32 i = 0; i < mi->count; i++) {
 
       mem_area_t *ma = mi->mem_areas + i;
       uptr mbase = ma->base;
