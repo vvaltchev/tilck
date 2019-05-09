@@ -40,6 +40,7 @@ u32 cylinders_count;
 
 static u32 ramdisk_max_size;
 static u32 ramdisk_first_data_sector;
+static mem_area_t ma_buf[64];
 
 static void calculate_ramdisk_fat_size(fat_header *hdr)
 {
@@ -84,13 +85,26 @@ load_elf_kernel(mem_info *mi,
 static multiboot_info_t *
 setup_multiboot_info(mem_info *mi, uptr ramdisk_paddr, uptr ramdisk_size)
 {
+   uptr free_mem;
    multiboot_info_t *mbi;
    multiboot_module_t *mod;
 
-   mbi = (multiboot_info_t *) MBI_PADDR;
+   /* Try first in the 1st 64 KB segment */
+   free_mem = get_usable_mem(mi, 16 * KB, 48 * KB);
+
+   if (!free_mem) {
+
+      /* Second try in the 2nd 64 KB segment */
+      free_mem = get_usable_mem(mi, 64 * KB, 48 * KB);
+
+      if (!free_mem)
+         panic("Unable to allocate memory for the multiboot info");
+   }
+
+   mbi = (multiboot_info_t *) free_mem;
    bzero(mbi, sizeof(*mbi));
 
-   mod = (multiboot_module_t *)(MBI_PADDR + sizeof(*mbi));
+   mod = (multiboot_module_t *)((char*)mbi + sizeof(*mbi));
    bzero(mod, sizeof(*mod));
 
    mbi->flags |= MULTIBOOT_INFO_MEMORY;
@@ -186,7 +200,7 @@ void bootloader_main(void)
    if (!x86_cpu_features.edx1.pse)
       panic("Sorry, but your CPU is too old: no PSE (page size extension)");
 
-   read_memory_map((void *)MEM_AREAS_BUF, MEM_AREAS_BUF_SIZE, &mi);
+   read_memory_map(ma_buf, sizeof(ma_buf), &mi);
 
 #if BOOTLOADER_POISON_MEMORY
    poison_usable_memory(&mi);
@@ -241,13 +255,13 @@ void bootloader_main(void)
 
    printk("[ OK ]\n\n");
 
-   ask_user_video_mode();
+   ask_user_video_mode(&mi);
 
    while (!vbe_set_video_mode(selected_mode)) {
       printk("ERROR: unable to set the selected video mode!\n");
       printk("       vbe_set_video_mode(0x%x) failed.\n\n", selected_mode);
       printk("Please select a different video mode.\n\n");
-      ask_user_video_mode();
+      ask_user_video_mode(&mi);
    }
 
    mbi = setup_multiboot_info(&mi, rd_paddr, rd_size);

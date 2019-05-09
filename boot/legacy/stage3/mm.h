@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <multiboot.h>
 
 #define MEM_USABLE             1
 #define MEM_RESERVED           2

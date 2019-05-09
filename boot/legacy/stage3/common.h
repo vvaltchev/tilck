@@ -4,13 +4,11 @@
 
 #define KERNEL_MAX_END_PADDR (KERNEL_PADDR + KERNEL_MAX_SIZE)
 
-/* Where the memory map will be: must be in the lowest 64 KB and hard-coded. */
-#define BIOS_MEM_AREA_BUF   (15 * KB)
-#define MEM_AREAS_BUF       (16 * KB)
-#define MEM_AREAS_BUF_SIZE  (48 * KB)
-
-/* Where the multiboot info will be stored. In theory, it could be anywhere. */
-#define MBI_PADDR           (64 * KB)
+/*
+ * Static address of a single bios memory area struct: it must be in the lowest
+ * 64 KB and must be hard-coded (because we don't know the memory map yet!).
+ */
+#define BIOS_MEM_AREA_BUF   (16 * KB)
 
 extern u32 fb_paddr;
 extern u32 fb_pitch;

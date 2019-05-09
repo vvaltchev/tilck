@@ -91,13 +91,30 @@ static void show_modes_aux(u16 *modes,
    }
 }
 
-void ask_user_video_mode(void)
+void ask_user_video_mode(mem_info *minfo)
 {
-   VbeInfoBlock *vb = (void *)0x2000;
-   ModeInfoBlock *mi = (void *)0x3000;
-
+   uptr free_mem;
+   VbeInfoBlock *vb;
+   ModeInfoBlock *mi;
    u16 known_modes[10];
    int known_modes_count = 0;
+
+   free_mem = get_usable_mem(minfo, 0x1000, 4 * KB);
+
+   if (!free_mem) {
+      printk("Unable to allocate memory for VbeInfoBlock\n");
+      return;
+   }
+
+   vb = (void *)free_mem;
+   free_mem = get_usable_mem(minfo, free_mem + 4 * KB, 4 * KB);
+
+   if (!free_mem) {
+      printk("Unable to allocate memory for ModeInfoBlock\n");
+      return;
+   }
+
+   mi = (void *)free_mem;
 
    if (!vbe_get_info_block(vb)) {
       printk("VBE get info failed. Only the text mode is available.\n");
