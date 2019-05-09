@@ -5,6 +5,7 @@
 #define KERNEL_MAX_END_PADDR (KERNEL_PADDR + KERNEL_MAX_SIZE)
 
 /* Where the memory map will be: must be in the lowest 64 KB and hard-coded. */
+#define BIOS_MEM_AREA_BUF   (15 * KB)
 #define MEM_AREAS_BUF       (16 * KB)
 #define MEM_AREAS_BUF_SIZE  (48 * KB)
 

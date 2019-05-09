@@ -7,6 +7,7 @@
 #include <multiboot.h>
 
 #include "realmode_call.h"
+#include "common.h"
 #include "mm.h"
 
 #define BIOS_INT15h_READ_MEMORY_MAP        0xE820
@@ -14,7 +15,7 @@
 
 void read_memory_map(void *buf, size_t buf_size, mem_info *mi)
 {
-   typedef struct PACKED {
+   struct PACKED {
 
       u32 base_low;
       u32 base_hi;
@@ -23,19 +24,19 @@ void read_memory_map(void *buf, size_t buf_size, mem_info *mi)
       u32 type;
       u32 acpi;
 
-   } bios_mem_area_t;
-
-   STATIC_ASSERT(sizeof(bios_mem_area_t) <= sizeof(mem_area_t));
+   } *bios_mem_area = (void *)BIOS_MEM_AREA_BUF;
 
    u32 eax, ebx, ecx, edx, esi, edi, flags;
    mem_area_t *mem_areas = buf;
    uptr buf_end = (uptr) buf + buf_size;
    u32 mem_areas_count = 0;
 
-   bios_mem_area_t *bios_mem_area = ((void *) (mem_areas - 1));
-   bzero(bios_mem_area, sizeof(bios_mem_area_t));
-
-   /* es = 0 */
+   /*
+    * NOTE: ES = 0. This means that `bios_mem_area` MUST BE a pointer in the
+    * first 64 KB. In order to support pointers in the 1st MB, realmode_call()
+    * has to be extended to support passing a value for the ES segment register
+    * as well.
+    */
    edi = (u32)bios_mem_area;
    ebx = 0;
 
@@ -44,7 +45,7 @@ void read_memory_map(void *buf, size_t buf_size, mem_info *mi)
       mem_areas->acpi = 1;
       eax = BIOS_INT15h_READ_MEMORY_MAP;
       edx = BIOS_INT15h_READ_MEMORY_MAP_MAGIC;
-      ecx = sizeof(bios_mem_area_t);
+      ecx = sizeof(*bios_mem_area);
 
       realmode_call(&realmode_int_15h, &eax, &ebx,
                     &ecx, &edx, &esi, &edi, &flags);
@@ -71,9 +72,6 @@ void read_memory_map(void *buf, size_t buf_size, mem_info *mi)
       };
 
       if ((uptr)(mem_areas + mem_areas_count + sizeof(mem_area_t)) > buf_end)
-         panic("No enough memory for the memory map");
-
-      if ((uptr)(mem_areas + mem_areas_count) == (uptr)bios_mem_area)
          panic("No enough memory for the memory map");
 
       memcpy(mem_areas + mem_areas_count, &m, sizeof(mem_area_t));
