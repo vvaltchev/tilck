@@ -91,3 +91,53 @@ void poison_usable_memory(mem_area_t *mem_areas, u32 mem_areas_count)
       }
    }
 }
+
+uptr
+get_usable_mem(mem_area_t *mem_areas,
+               u32 mem_areas_count,
+               uptr min_paddr,
+               uptr size)
+{
+   for (u32 i = 0; i < mem_areas_count; i++) {
+
+      mem_area_t *ma = mem_areas + i;
+      uptr mbase = ma->base;
+      uptr mend = ma->base + ma->len;
+
+      if (ma->type != MEM_USABLE)
+         continue;
+
+      if (mend <= min_paddr)
+         continue;
+
+      if (mbase < min_paddr) {
+         /*
+          * The memory area starts before our the min address we can use,
+          * therefore, for our purposes it's as if it just started at min_addr.
+          */
+         mbase = min_paddr;
+      }
+
+      if ((mend - mbase) >= size) {
+
+         /* Great, we have enough space in this area. */
+         return mbase;
+      }
+   }
+
+   return 0;
+}
+
+uptr
+get_usable_mem_or_panic(mem_area_t *mem_areas,
+                        u32 mem_areas_count,
+                        uptr min_paddr,
+                        uptr size)
+{
+   uptr free_mem = get_usable_mem(mem_areas, mem_areas_count, min_paddr, size);
+
+   if (!free_mem)
+      panic("Unable to allocate %u bytes after %p", size, min_paddr);
+
+   return free_mem;
+}

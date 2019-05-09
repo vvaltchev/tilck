@@ -2,14 +2,13 @@
 
 #pragma once
 
-#define RAMDISK_PADDR   (KERNEL_PADDR + KERNEL_MAX_SIZE)
-#define MBI_PADDR       (64 * KB)
+#define KERNEL_MAX_END_PADDR (KERNEL_PADDR + KERNEL_MAX_SIZE)
+
+/* Where the memory map will be: must be in the lowest 64 KB and hard-coded. */
 #define MEM_AREAS_BUF   (16 * KB)
 
-/*
- * Checks if 'addr' is in the range [begin, end).
- */
-#define IN(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
+/* Where the multiboot info will be stored. In theory, it could be anywhere. */
+#define MBI_PADDR       (64 * KB)
 
 extern u32 fb_paddr;
 extern u32 fb_pitch;

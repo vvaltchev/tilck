@@ -21,6 +21,22 @@ typedef struct {
 u32 read_memory_map(mem_area_t *mem_areas);
 void poison_usable_memory(mem_area_t *mem_areas, u32 mem_areas_count);
 
+/*
+ * Get the first usable memory area of size `size` with address >= `min_paddr`.
+ * Returns `0` in case of failure.
+ */
+uptr
+get_usable_mem(mem_area_t *mem_areas,
+               u32 mem_areas_count,
+               uptr min_paddr,
+               uptr size);
+
+uptr
+get_usable_mem_or_panic(mem_area_t *mem_areas,
+                        u32 mem_areas_count,
+                        uptr min_paddr,
+                        uptr size);
+
 static inline u32 bios_to_multiboot_mem_region(u32 bios_mem_type)
 {
    STATIC_ASSERT(MEM_USABLE == MULTIBOOT_MEMORY_AVAILABLE);

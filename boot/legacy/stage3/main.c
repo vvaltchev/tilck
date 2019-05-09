@@ -42,7 +42,6 @@ u32 heads_per_cylinder;
 u32 cylinders_count;
 
 static u32 ramdisk_max_size;
-static u32 ramdisk_used_bytes;
 static u32 ramdisk_first_data_sector;
 
 static void calculate_ramdisk_fat_size(fat_header *hdr)
@@ -53,16 +52,29 @@ static void calculate_ramdisk_fat_size(fat_header *hdr)
    ramdisk_max_size = fat_get_TotSec(hdr) * sector_size;
 }
 
-static void load_elf_kernel(const char *filepath, void **entry)
+static void
+load_elf_kernel(uptr ramdisk,
+                uptr ramdisk_size,
+                const char *filepath,
+                void **entry)
 {
-   fat_header *hdr = (fat_header *)RAMDISK_PADDR;
-   void *free_space = (void *) (RAMDISK_PADDR + ramdisk_used_bytes);
+   fat_header *hdr = (fat_header *)ramdisk;
+   uptr free_space;
    fat_entry *e;
 
-   if (!(e = fat_search_entry(hdr, fat_get_type(hdr), filepath, NULL)))
-      panic("Unable to open '%s'!\n", filepath);
+   free_space =
+      get_usable_mem(mem_areas,
+                     mem_areas_count,
+                     ramdisk + ramdisk_size,
+                     KERNEL_MAX_SIZE);
 
-   fat_read_whole_file(hdr, e, free_space, KERNEL_MAX_SIZE);
+   if (!free_space)
+      panic("No free space for kernel file after %p", ramdisk + ramdisk_size);
+
+   if (!(e = fat_search_entry(hdr, fat_get_type(hdr), filepath, NULL)))
+      panic("Unable to open '%s'!", filepath);
+
+   fat_read_whole_file(hdr, e, (void *)free_space, KERNEL_MAX_SIZE);
 
    Elf32_Ehdr *header = (Elf32_Ehdr *)free_space;
 
@@ -75,7 +87,8 @@ static void load_elf_kernel(const char *filepath, void **entry)
    *entry = simple_elf_loader(header);
 }
 
-static multiboot_info_t *setup_multiboot_info(void)
+static multiboot_info_t *
+setup_multiboot_info(uptr ramdisk_paddr, uptr ramdisk_size)
 {
    multiboot_info_t *mbi;
    multiboot_module_t *mod;
@@ -117,13 +130,8 @@ static multiboot_info_t *setup_multiboot_info(void)
    mbi->flags |= MULTIBOOT_INFO_MODS;
    mbi->mods_addr = (u32)mod;
    mbi->mods_count = 1;
-   mod->mod_start = RAMDISK_PADDR;
-
-   /*
-    * Pass via multiboot 'used bytes' as RAMDISK size instead of the real
-    * RAMDISK size. This is useful if the kernel uses the RAMDISK read-only.
-    */
-   mod->mod_end = mod->mod_start + ramdisk_used_bytes;
+   mod->mod_start = ramdisk_paddr;
+   mod->mod_end = mod->mod_start + ramdisk_size;
 
    mbi->flags |= MULTIBOOT_INFO_MEM_MAP;
 
@@ -161,6 +169,10 @@ void bootloader_main(void)
    void *entry;
    multiboot_info_t *mbi;
    u32 ramdisk_used_sectors;
+   u32 ramdisk_used_bytes;
+   uptr ramdisk_paddr;
+   uptr free_mem;
+   bool success;
 
    vga_set_video_mode(VGA_COLOR_TEXT_MODE_80x25);
    init_bt();
@@ -176,9 +188,8 @@ void bootloader_main(void)
 
    get_cpu_features();
 
-   if (!x86_cpu_features.edx1.pse) {
+   if (!x86_cpu_features.edx1.pse)
       panic("Sorry, but your CPU is too old: no PSE (page size extension)");
-   }
 
    mem_areas_count = read_memory_map(mem_areas);
 
@@ -186,7 +197,7 @@ void bootloader_main(void)
    poison_usable_memory(mem_areas, mem_areas_count);
 #endif
 
-   bool success =
+   success =
       read_drive_params(current_device,
                         &sectors_per_track,
                         &heads_per_cylinder,
@@ -197,24 +208,48 @@ void bootloader_main(void)
 
    printk("Loading ramdisk... ");
 
-   // Read FAT's header
-   read_sectors(RAMDISK_PADDR, RAMDISK_SECTOR, 1 /* read just 1 sector */);
+   free_mem =
+      get_usable_mem_or_panic(mem_areas,
+                              mem_areas_count,
+                              KERNEL_MAX_END_PADDR,
+                              SECTOR_SIZE);
 
-   calculate_ramdisk_fat_size((void *)RAMDISK_PADDR);
+   // Read FAT's header
+   read_sectors(free_mem, RAMDISK_SECTOR, 1 /* read just 1 sector */);
+
+   calculate_ramdisk_fat_size((void *)free_mem);
+
+   free_mem =
+      get_usable_mem_or_panic(mem_areas,
+                              mem_areas_count,
+                              KERNEL_MAX_END_PADDR,
+                              SECTOR_SIZE * (ramdisk_first_data_sector + 1));
 
    // Now read all the meta-data up to the first data sector.
-   read_sectors(RAMDISK_PADDR, RAMDISK_SECTOR, ramdisk_first_data_sector + 1);
+   read_sectors(free_mem, RAMDISK_SECTOR, ramdisk_first_data_sector + 1);
 
    // Finally we're able to determine how big is the fatpart (pure data)
-   ramdisk_used_bytes = fat_get_used_bytes((void *)RAMDISK_PADDR);
-
+   ramdisk_used_bytes = fat_get_used_bytes((void *)free_mem);
    ramdisk_used_sectors = (ramdisk_used_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
-   read_sectors(RAMDISK_PADDR, RAMDISK_SECTOR, ramdisk_used_sectors);
+
+   free_mem =
+      get_usable_mem(mem_areas,
+                     mem_areas_count,
+                     KERNEL_MAX_END_PADDR,
+                     SECTOR_SIZE * ramdisk_used_sectors);
+
+   if (!free_mem) {
+      panic("Unable to allocate %u KB after %p for the ramdisk",
+            SECTOR_SIZE * ramdisk_used_sectors / KB, KERNEL_MAX_END_PADDR);
+   }
+
+   ramdisk_paddr = free_mem;
+   read_sectors(ramdisk_paddr, RAMDISK_SECTOR, ramdisk_used_sectors);
 
    printk("[ OK ]\n");
    printk("Loading the ELF kernel... ");
 
-   load_elf_kernel(KERNEL_FILE_PATH, &entry);
+   load_elf_kernel(ramdisk_paddr, ramdisk_used_bytes, KERNEL_FILE_PATH, &entry);
 
    printk("[ OK ]\n\n");
 
@@ -227,7 +262,7 @@ void bootloader_main(void)
       ask_user_video_mode();
    }
 
-   mbi = setup_multiboot_info();
+   mbi = setup_multiboot_info(ramdisk_paddr, ramdisk_used_bytes);
 
    /* Jump to the kernel */
    asmVolatile("jmp *%%ecx"
