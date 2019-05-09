@@ -4,100 +4,97 @@
 #include <tilck/common/arch/generic_x86/x86_utils.h>
 #include <tilck/common/color_defs.h>
 
-#define TERMINAL_VIDEO_ADDR ((u16*)(0xB8000))
+#define VIDEO_ADDR ((u16*)(0xB8000))
 
-#define TERM_WIDTH  80u
-#define TERM_HEIGHT 25u
+#define TERM_COLS  80
+#define TERM_ROWS  25
 
-u16 terminal_row = 0;
-u16 terminal_column = 0;
-u16 terminal_color = 0;
+static u16 curr_row;
+static u16 curr_col;
+static u16 curr_color;
 
-void bt_setcolor(uint8_t color)
+void bt_setcolor(u8 color)
 {
-   terminal_color = color;
+   curr_color = color;
 }
 
 void bt_movecur(int row, int col)
 {
-   u16 position = (uint16_t)(
-      ((uint16_t)row * TERM_WIDTH) + (uint16_t)col
-   );
+   row = BOUND(row, 0, TERM_ROWS - 1);
+   col = BOUND(col, 0, TERM_COLS - 1);
+
+   u16 position = row * TERM_COLS + col;
 
    // cursor LOW port to vga INDEX register
    outb(0x3D4, 0x0F);
-   outb(0x3D5, (uint8_t)(position & 0xFF));
+   outb(0x3D5, (u8)(position & 0xFF));
    // cursor HIGH port to vga INDEX register
    outb(0x3D4, 0x0E);
-   outb(0x3D5, (uint8_t)((position >> 8) & 0xFF));
+   outb(0x3D5, (u8)((position >> 8) & 0xFF));
 
-   terminal_row = (u16)row;
-   terminal_column = (u16)col;
+   curr_row = (u16)row;
+   curr_col = (u16)col;
 }
-
 
 static void bt_incr_row()
 {
-   if (terminal_row < TERM_HEIGHT - 1) {
-      ++terminal_row;
+   if (curr_row < TERM_ROWS - 1) {
+      ++curr_row;
       return;
    }
 
    // We have to scroll...
 
-   memmove(TERMINAL_VIDEO_ADDR,
-           TERMINAL_VIDEO_ADDR + TERM_WIDTH,
-           TERM_WIDTH * (TERM_HEIGHT - 1) * 2);
+   memmove(VIDEO_ADDR,
+           VIDEO_ADDR + TERM_COLS,
+           TERM_COLS * (TERM_ROWS - 1) * 2);
 
-   volatile uint16_t *lastRow =
-      (volatile uint16_t *)TERMINAL_VIDEO_ADDR + TERM_WIDTH * (TERM_HEIGHT - 1);
-
-   for (u32 i = 0; i < TERM_WIDTH; i++) {
-      lastRow[i] = make_vgaentry(' ', terminal_color);
-   }
+   u16 *lastRow = VIDEO_ADDR + TERM_COLS * (TERM_ROWS - 1);
+   memset16(lastRow, make_vgaentry(' ', curr_color), TERM_COLS);
 }
 
 void bt_write_char(char c)
 {
    if (c == '\n') {
-      terminal_column = 0;
+      curr_col = 0;
       bt_incr_row();
-      bt_movecur(terminal_row, terminal_column);
+      bt_movecur(curr_row, curr_col);
       return;
    }
 
    if (c == '\r') {
-      terminal_column = 0;
-      bt_movecur(terminal_row, terminal_column);
+      curr_col = 0;
+      bt_movecur(curr_row, curr_col);
       return;
    }
 
-   if (c == '\t') {
+   if (c == '\t')
       return;
-   }
 
-   volatile uint16_t *video = (volatile uint16_t *)TERMINAL_VIDEO_ADDR;
+   volatile u16 *video = (volatile u16 *)VIDEO_ADDR;
 
-   const size_t offset = terminal_row * TERM_WIDTH + terminal_column;
-   video[offset] = make_vgaentry(c, terminal_color);
-   ++terminal_column;
+   const size_t offset = curr_row * TERM_COLS + curr_col;
+   video[offset] = make_vgaentry(c, curr_color);
+   ++curr_col;
 
-   if (terminal_column == TERM_WIDTH) {
-      terminal_column = 0;
+   if (curr_col == TERM_COLS) {
+      curr_col = 0;
       bt_incr_row();
    }
 
-   bt_movecur(terminal_row, terminal_column);
+   bt_movecur(curr_row, curr_col);
 }
 
 void init_bt(void)
 {
+   /*
+    * Set the current row and the current col to 0, in case the BSS variables
+    * were not zero-ed because of some bug. We still need to be able to show
+    * something on the screen.
+    */
+   curr_row = curr_col = 0;
+
    bt_movecur(0, 0);
-
    bt_setcolor(make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
-   volatile uint16_t *ptr = (volatile uint16_t *)TERMINAL_VIDEO_ADDR;
-
-   for (u32 i = 0; i < TERM_WIDTH*TERM_HEIGHT; ++i) {
-      *ptr++ = make_vgaentry(' ', terminal_color);
-   }
+   memset16(VIDEO_ADDR, make_vgaentry(' ', curr_color), TERM_COLS * TERM_ROWS);
 }

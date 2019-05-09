@@ -5,3 +5,5 @@
 
 void init_bt(void);
 void bt_write_char(char c);
+void bt_setcolor(u8 color);
+void bt_movecur(int row, int col);
