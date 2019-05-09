@@ -63,7 +63,7 @@ u32 read_memory_map(mem_area_t *mem_areas)
 
       mem_area_t m = {
          .base = bios_mem_area->base_low | ((u64)bios_mem_area->base_hi << 32),
-         .len = bios_mem_area->len_low | ((u64)bios_mem_area->len_hi << 32),
+         .len  = bios_mem_area->len_low  | ((u64)bios_mem_area->len_hi << 32),
          .type = bios_mem_area->type,
          .acpi = bios_mem_area->acpi,
       };
@@ -83,7 +83,7 @@ void poison_usable_memory(mem_area_t *mem_areas, u32 mem_areas_count)
 
       if (ma->type == MEM_USABLE && ma->base >= MB) {
 
-         /* Poison only memory regions above the first MB */
+         /* Poison only memory regions above the 1st MB */
 
          memset32(TO_PTR(ma->base),
                   KMALLOC_FREE_MEM_POISON_VAL,

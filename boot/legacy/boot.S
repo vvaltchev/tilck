@@ -34,7 +34,7 @@ bios_parameter_pack:
 
 sectorsize:              .word SECTOR_SIZE
 sectors_per_cluster:     .byte 1
-reserved_sectors:        .word 2048
+reserved_sectors:        .word RAMDISK_SECTOR
 number_of_FATs:          .byte 1
 root_entries:            .word 240
 small_sector_count:      .word 0    # the value large_total_sectors is used.
@@ -44,7 +44,7 @@ sectors_per_FAT:         .word 9
 
 phys_sectors_per_track:  .word 63
 num_heads:               .word 16
-hidden_sectors:          .long 2048
+hidden_sectors:          .long RAMDISK_SECTOR
 large_total_sectors:     .long (37*MB)/SECTOR_SIZE
 
 drive_number:            .byte 0x80
@@ -65,8 +65,8 @@ reloc:
    mov ax, BL_ST2_DATA_SEG
    mov es, ax
 
-   xor si, si # si = 0
-   xor di, di # di = 0
+   xor si, si  # si = 0
+   xor di, di  # di = 0
    mov cx, 256 # 256 words = 512 bytes
    rep movsw
 

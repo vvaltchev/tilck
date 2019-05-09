@@ -45,9 +45,8 @@ static u32 ramdisk_max_size;
 static u32 ramdisk_used_bytes;
 static u32 ramdisk_first_data_sector;
 
-static void calculate_ramdisk_fat_size(void)
+static void calculate_ramdisk_fat_size(fat_header *hdr)
 {
-   fat_header *hdr = (fat_header *)RAMDISK_PADDR;
    const u32 sector_size = fat_get_sector_size(hdr);
 
    ramdisk_first_data_sector = fat_get_first_data_sector(hdr);
@@ -199,18 +198,18 @@ void bootloader_main(void)
    printk("Loading ramdisk... ");
 
    // Read FAT's header
-   read_sectors(RAMDISK_PADDR, 2048, 1 /* read just 1 sector */);
+   read_sectors(RAMDISK_PADDR, RAMDISK_SECTOR, 1 /* read just 1 sector */);
 
-   calculate_ramdisk_fat_size();
+   calculate_ramdisk_fat_size((void *)RAMDISK_PADDR);
 
    // Now read all the meta-data up to the first data sector.
-   read_sectors(RAMDISK_PADDR, 2048, ramdisk_first_data_sector + 1);
+   read_sectors(RAMDISK_PADDR, RAMDISK_SECTOR, ramdisk_first_data_sector + 1);
 
    // Finally we're able to determine how big is the fatpart (pure data)
    ramdisk_used_bytes = fat_get_used_bytes((void *)RAMDISK_PADDR);
 
    ramdisk_used_sectors = (ramdisk_used_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
-   read_sectors(RAMDISK_PADDR, 2048, ramdisk_used_sectors);
+   read_sectors(RAMDISK_PADDR, RAMDISK_SECTOR, ramdisk_used_sectors);
 
    printk("[ OK ]\n");
    printk("Loading the ELF kernel... ");
