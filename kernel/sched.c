@@ -34,20 +34,6 @@ int get_curr_task_tid(void)
    return c ? c->tid : 0;
 }
 
-static sptr ti_insert_remove_cmp(const void *a, const void *b)
-{
-   const task_info *t1 = a;
-   const task_info *t2 = b;
-   return t1->tid - t2->tid;
-}
-
-static sptr ti_find_cmp(const void *obj, const void *valptr)
-{
-   const task_info *task = obj;
-   int searched_tid = *(const int *)valptr;
-   return task->tid - searched_tid;
-}
-
 typedef struct {
 
    int lowest_available;
@@ -307,11 +293,11 @@ void add_task(task_info *ti)
    {
       task_add_to_state_list(ti);
 
-      bintree_insert(&tree_by_tid_root,
-                     ti,
-                     ti_insert_remove_cmp,
-                     task_info,
-                     tree_by_tid_node);
+      bintree_insert_ptr(&tree_by_tid_root,
+                         ti,
+                         task_info,
+                         tree_by_tid_node,
+                         tid);
    }
    enable_preemption();
 }
@@ -324,11 +310,11 @@ void remove_task(task_info *ti)
 
       task_remove_from_state_list(ti);
 
-      bintree_remove(&tree_by_tid_root,
-                     ti,
-                     ti_insert_remove_cmp,
-                     task_info,
-                     tree_by_tid_node);
+      bintree_remove_ptr(&tree_by_tid_root,
+                         ti,
+                         task_info,
+                         tree_by_tid_node,
+                         tid);
 
       free_task(ti);
    }
@@ -424,14 +410,15 @@ void schedule(int curr_int)
 
 task_info *get_task(int tid)
 {
+   sptr ltid = tid;
    task_info *res = NULL;
    ASSERT(!is_preemption_enabled());
 
-   res = bintree_find(tree_by_tid_root,
-                      &tid,
-                      ti_find_cmp,
-                      task_info,
-                      tree_by_tid_node);
+   res = bintree_find_ptr(tree_by_tid_root,
+                          &ltid,
+                          task_info,
+                          tree_by_tid_node,
+                          tid);
 
    return res;
 }

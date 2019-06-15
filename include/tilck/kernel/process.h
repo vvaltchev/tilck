@@ -78,6 +78,18 @@ typedef struct process_info process_info;
 struct task_info {
 
    int tid;                 /* User/kernel task ID (pid in the Linux kernel) */
+
+#ifdef BITS64
+
+   /*
+    * For the moment, `tid` has everywhere `int` as type, while the field is
+    * used as key with the bintree_*_int functions which use pointer-sized
+    * integers. Therefore, in case sizeof(sptr) > sizeof(int), we need some
+    * padding.
+    */
+   int padding_0;
+#endif
+
    process_info *pi;
 
    bool is_main_thread;     /* value of `tid == pi->pid` */
