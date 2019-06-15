@@ -88,10 +88,22 @@ bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset);
                          (value), (objval_cmpfun),                            \
                          OFFSET_OF(struct_type, elem_name))
 
+#define bintree_find_int(root_obj, value, struct_type, elem_name, field_name) \
+   bintree_find_internal((void*)(root_obj),                                   \
+                         (value), (objval_cmpfun),                            \
+                         OFFSET_OF(struct_type, elem_name),                   \
+                         OFFSET_OF(struct_type, field_name))
+
 #define bintree_remove(rootref, value, objval_cmpfun, struct_type, elem_name) \
    bintree_remove_internal((void**)(rootref),                                 \
                            (value), (objval_cmpfun),                          \
                            OFFSET_OF(struct_type, elem_name))
+
+#define bintree_remove_int(rootref, value, struct_type, elem_name, field_name) \
+   bintree_remove_internal((void**)(rootref),                                  \
+                           (value), (objval_cmpfun),                           \
+                           OFFSET_OF(struct_type, elem_name),                  \
+                           OFFSET_OF(struct_type, field_name))
 
 #define bintree_in_order_visit(root_obj, cb, cb_arg, struct_type, elem_name)  \
    bintree_in_order_visit_internal((void *)(root_obj),                        \

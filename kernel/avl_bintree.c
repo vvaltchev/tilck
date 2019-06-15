@@ -408,3 +408,79 @@ bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
 
    return root_obj;
 }
+
+/*
+ * -----------------------------------------------------------------------
+ *
+ * Functions specialized for signed pointer-size comparison fields
+ *
+ * -----------------------------------------------------------------------
+ */
+
+static ALWAYS_INLINE sptr
+bintree_insrem_int_cmp(const void *a, const void *b, ptrdiff_t field_off)
+{
+   const char *f1 = (const char *)a + field_off;
+   const char *f2 = (const char *)b + field_off;
+   return *(sptr *)f1 - *(sptr *)f2;
+}
+
+static ALWAYS_INLINE sptr
+bintree_find_int_cmp(const void *obj, const sptr *valptr, ptrdiff_t field_off)
+{
+   sptr obj_field_val = *(sptr *)((const char *)obj + field_off);
+   return obj_field_val - *valptr;
+}
+
+void *
+bintree_find_int_internal(void *root_obj,
+                          const void *value_ptr,
+                          ptrdiff_t bintree_offset,
+                          ptrdiff_t field_off)
+{
+   while (root_obj) {
+
+      sptr c = bintree_find_int_cmp(root_obj, value_ptr, field_off);
+
+      if (c == 0)
+         return root_obj;
+
+      // root_obj is smaller then val => val is bigger => go right.
+      root_obj = c < 0 ? RIGHT_OF(root_obj) : LEFT_OF(root_obj);
+   }
+
+   return NULL;
+}
+
+void *
+bintree_remove_int_internal(void **root_obj_ref,
+                            void *value_ptr,
+                            ptrdiff_t bintree_offset,
+                            ptrdiff_t field_off)
+{
+   void **stack[MAX_TREE_HEIGHT] = {0};
+   int stack_size = 0;
+
+   ASSERT(root_obj_ref != NULL);
+   STACK_PUSH(root_obj_ref);
+
+   while (true) {
+
+      root_obj_ref = STACK_TOP();
+
+      if (!*root_obj_ref)
+         return NULL; // we did not find the object.
+
+      sptr c = bintree_insrem_int_cmp(*root_obj_ref, value_ptr, field_off);
+
+      if (!c)
+         break;
+
+      // *root_obj_ref is smaller then val => val is bigger => go right.
+      STACK_PUSH(c < 0 ? &RIGHT_OF(*root_obj_ref) : &LEFT_OF(*root_obj_ref));
+   }
+
+   void *deleted_obj = *root_obj_ref;
+   bintree_remove_internal_aux(root_obj_ref, stack, stack_size, bintree_offset);
+   return deleted_obj;
+}
