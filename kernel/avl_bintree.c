@@ -377,3 +377,28 @@ bintree_in_rorder_visit_internal(void *obj,
 
    return 0;
 }
+
+
+void *
+bintree_get_first_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
+{
+   if (!root_obj)
+      return NULL;
+
+   while (LEFT_OF(root_obj) != NULL)
+      root_obj = LEFT_OF(root_obj);
+
+   return root_obj;
+}
+
+void *
+bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
+{
+   if (!root_obj)
+      return NULL;
+
+   while (RIGHT_OF(root_obj) != NULL)
+      root_obj = RIGHT_OF(root_obj);
+
+   return root_obj;
+}

@@ -347,6 +347,28 @@ TEST(avl_bintree, in_order_visit_after_insert_is_correct)
    ASSERT_TRUE(is_rsorted(rev_ordered_nums, elems));
 }
 
+TEST(avl_bintree, first_last_obj)
+{
+   constexpr const int elems = 32;
+   int_struct arr[elems];
+
+   for (int i = 0; i < elems; i++)
+      arr[i] = int_struct(i + 1);
+
+   int_struct *root = NULL;
+
+   for (int i = 0; i < elems; i++)
+      bintree_insert(&root, &arr[i], my_cmpfun, int_struct, node);
+
+   int_struct *f = (int_struct *)bintree_get_first_obj(root, int_struct, node);
+   ASSERT_TRUE(f != NULL);
+   ASSERT_TRUE(f == &arr[0]);
+
+   int_struct *l = (int_struct *)bintree_get_last_obj(root, int_struct, node);
+   ASSERT_TRUE(l != NULL);
+   ASSERT_TRUE(l == &arr[elems - 1]);
+}
+
 static void test_insert_rand_data(int iters, int elems, bool slow_checks)
 {
    random_device rdev;
