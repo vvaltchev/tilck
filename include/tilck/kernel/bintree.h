@@ -67,6 +67,12 @@ bintree_in_order_visit_internal(void *root_obj,
                                 void *visit_cb_arg,
                                 ptrdiff_t bintree_offset);
 
+int
+bintree_in_rorder_visit_internal(void *root_obj,
+                                 bintree_visit_cb visit_cb,
+                                 void *visit_cb_arg,
+                                 ptrdiff_t bintree_offset);
+
 
 #define bintree_insert(rootref, obj, cmpfun, struct_type, elem_name)   \
    bintree_insert_internal((void **)(rootref), (void*)obj, cmpfun,     \
@@ -86,3 +92,8 @@ bintree_in_order_visit_internal(void *root_obj,
    bintree_in_order_visit_internal((void *)(root_obj),                        \
                                    (cb), (cb_arg),                            \
                                    OFFSET_OF(struct_type, elem_name))
+
+#define bintree_in_rorder_visit(root_obj, cb, cb_arg, struct_type, elem_name) \
+   bintree_in_rorder_visit_internal((void *)(root_obj),                       \
+                                    (cb), (cb_arg),                           \
+                                    OFFSET_OF(struct_type, elem_name))

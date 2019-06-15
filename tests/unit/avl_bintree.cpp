@@ -107,6 +107,20 @@ in_order_visit(int_struct *obj,
                           node);
 }
 
+static void
+in_rorder_visit(int_struct *obj,
+                int *arr,
+                int arr_size)
+{
+   visit_ctx ctx = {arr, arr_size, 0};
+
+   bintree_in_rorder_visit(obj,
+                           visit_add_val_to_arr,
+                           (void *)&ctx,
+                           int_struct,
+                           node);
+}
+
 static bool
 check_binary_search_tree(int_struct *obj)
 {
@@ -153,6 +167,18 @@ static bool is_sorted(int *arr, int size)
    return true;
 }
 
+static bool is_rsorted(int *arr, int size)
+{
+   if (size <= 1)
+      return true;
+
+   for (int i = 1; i < size; i++) {
+      if (arr[i-1] < arr[i])
+         return false;
+   }
+
+   return true;
+}
 
 static void dump_array(int *arr, int size)
 {
@@ -307,14 +333,18 @@ TEST(avl_bintree, in_order_visit_after_insert_is_correct)
    for (int i = 0; i < elems; i++)
       arr[i] = int_struct(i + 1);
 
-   int_struct *root = &arr[0];
+   int_struct *root = NULL;
 
-   for (int i = 1; i < elems; i++)
+   for (int i = 0; i < elems; i++)
       bintree_insert(&root, &arr[i], my_cmpfun, int_struct, node);
 
    int ordered_nums[elems];
    in_order_visit(root, ordered_nums, elems);
    ASSERT_TRUE(is_sorted(ordered_nums, elems));
+
+   int rev_ordered_nums[elems];
+   in_rorder_visit(root, rev_ordered_nums, elems);
+   ASSERT_TRUE(is_rsorted(rev_ordered_nums, elems));
 }
 
 static void test_insert_rand_data(int iters, int elems, bool slow_checks)

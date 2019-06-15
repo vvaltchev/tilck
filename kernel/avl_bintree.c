@@ -2,12 +2,12 @@
 
 #include <tilck/kernel/bintree.h>
 
-#define MAX_TREE_HEIGHT 32
-#define ALLOWED_IMBALANCE 1
+#define MAX_TREE_HEIGHT       32
+#define ALLOWED_IMBALANCE      1
 
-#define STACK_PUSH(r) (stack[stack_size++] = (r))
-#define STACK_TOP() (stack[stack_size-1])
-#define STACK_POP() (stack[--stack_size])
+#define STACK_PUSH(r)   (stack[stack_size++] = (r))
+#define STACK_TOP()     (stack[stack_size-1])
+#define STACK_POP()     (stack[--stack_size])
 
 
 static inline bintree_node *
@@ -331,6 +331,45 @@ bintree_in_order_visit_internal(void *obj,
 
       if (right_obj)
          SIMULATE_CALL1(right_obj);
+
+      SIMULATE_RETURN_NULL();
+      NOREC_LOOP_END();
+   }
+
+   return 0;
+}
+
+int
+bintree_in_rorder_visit_internal(void *obj,
+                                 bintree_visit_cb visit_cb,
+                                 void *visit_cb_arg,
+                                 ptrdiff_t bintree_offset)
+{
+   int r;
+
+   if (!obj)
+      return 0;
+
+   CREATE_SHADOW_STACK(MAX_TREE_HEIGHT, 1);
+   SIMULATE_CALL1(obj);
+
+   while (stack_size) {
+
+      obj = LOAD_ARG_FROM_STACK(1, void *);
+
+      void *left_obj = LEFT_OF(obj);
+      void *right_obj = RIGHT_OF(obj);
+
+      HANDLE_SIMULATED_RETURN();
+
+      if (right_obj)
+         SIMULATE_CALL1(right_obj);
+
+      if ((r = visit_cb(obj, visit_cb_arg)))
+         return r;
+
+      if (left_obj)
+         SIMULATE_CALL1(left_obj);
 
       SIMULATE_RETURN_NULL();
       NOREC_LOOP_END();
