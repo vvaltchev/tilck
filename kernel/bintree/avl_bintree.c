@@ -10,13 +10,13 @@
 #define STACK_POP()     (stack[--stack_size])
 
 
-static inline bintree_node *
+static ALWAYS_INLINE bintree_node *
 obj_to_bintree_node(void *obj, ptrdiff_t offset)
 {
    return obj ? (bintree_node *)((char*)obj + offset) : NULL;
 }
 
-static inline void *
+static ALWAYS_INLINE void *
 bintree_node_to_obj(bintree_node *node, ptrdiff_t offset)
 {
    return node ? (void *)((char*)node - offset) : NULL;
