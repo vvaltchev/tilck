@@ -79,12 +79,29 @@ bintree_get_first_obj_internal(void *root_obj, ptrdiff_t bintree_offset);
 void *
 bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset);
 
+bool
+bintree_insert_int_internal(void **root_obj_ref,
+                            void *obj,
+                            ptrdiff_t bintree_offset,
+                            ptrdiff_t field_off);
+void *
+bintree_find_int_internal(void *root_obj,
+                          const void *value_ptr,
+                          ptrdiff_t bintree_offset,
+                          ptrdiff_t field_off);
+void *
+bintree_remove_int_internal(void **root_obj_ref,
+                            void *value_ptr,
+                            ptrdiff_t bintree_offset,
+                            ptrdiff_t field_off);
+
+
 #define bintree_insert(rootref, obj, cmpfun, struct_type, elem_name)          \
    bintree_insert_internal((void **)(rootref), (void*)obj, cmpfun,            \
                            OFFSET_OF(struct_type, elem_name))
 
 #define bintree_insert_int(rootref, obj, struct_type, elem_name, field_name)  \
-   bintree_insert_int_internal((void **)(rootref), (void*)obj, cmpfun,        \
+   bintree_insert_int_internal((void **)(rootref), (void*)obj,                \
                                OFFSET_OF(struct_type, elem_name),             \
                                OFFSET_OF(struct_type, field_name))
 
@@ -94,10 +111,10 @@ bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset);
                          OFFSET_OF(struct_type, elem_name))
 
 #define bintree_find_int(root_obj, value, struct_type, elem_name, field_name) \
-   bintree_find_internal((void*)(root_obj),                                   \
-                         (value), (objval_cmpfun),                            \
-                         OFFSET_OF(struct_type, elem_name),                   \
-                         OFFSET_OF(struct_type, field_name))
+   bintree_find_int_internal((void*)(root_obj),                               \
+                             (value),                                         \
+                             OFFSET_OF(struct_type, elem_name),               \
+                             OFFSET_OF(struct_type, field_name))
 
 #define bintree_remove(rootref, value, objval_cmpfun, struct_type, elem_name) \
    bintree_remove_internal((void**)(rootref),                                 \
@@ -105,8 +122,8 @@ bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset);
                            OFFSET_OF(struct_type, elem_name))
 
 #define bintree_remove_int(rootref, value, struct_type, elem_name, field_name) \
-   bintree_remove_internal((void**)(rootref),                                  \
-                           (value), (objval_cmpfun),                           \
+   bintree_remove_int_internal((void**)(rootref),                              \
+                           (value),                                            \
                            OFFSET_OF(struct_type, elem_name),                  \
                            OFFSET_OF(struct_type, field_name))
 
