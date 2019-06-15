@@ -29,8 +29,20 @@ typedef struct {
 
 } ramfs_block;
 
-#define RAMFS_ENTRY_MAX_LEN \
-   (256 - sizeof(bintree_node) - sizeof(list_node) - sizeof(void *) - 1)
+/*
+ * Ramfs entries do not *necessarily* need to have a fixed size, as they are
+ * allocated dynamically on the heap. Said that, a fixed-size entry struct is
+ * simpler to manage and faster to alloc/free, in particular with Tilck's
+ * current kmalloc implementation.
+ */
+#define RAMFS_ENTRY_SIZE 256
+#define RAMFS_ENTRY_MAX_LEN (                   \
+   RAMFS_ENTRY_SIZE                             \
+   - sizeof(bintree_node)                       \
+   - sizeof(list_node)                          \
+   - sizeof(struct ramfs_inode *)               \
+   - sizeof(u8)                                 \
+)
 
 typedef struct {
 
@@ -42,13 +54,13 @@ typedef struct {
 
 } ramfs_entry;
 
-STATIC_ASSERT(sizeof(ramfs_entry) == 256);
+STATIC_ASSERT(sizeof(ramfs_entry) == RAMFS_ENTRY_SIZE);
 
 struct ramfs_inode {
 
    /*
-    * Inode's ref-count is number of file handles currently pointing to this
-    * inode.
+    * Inode's ref-count is the number of file handles currently pointing to
+    * this inode.
     */
    REF_COUNTED_OBJECT;
 
