@@ -611,6 +611,7 @@ static const fs_ops static_fsops_fat =
    .unlink = NULL,
    .mkdir = NULL,
    .rmdir = NULL,
+   .truncate = NULL,
    .fstat = fat_stat64,
    .get_entry = fat_get_entry,
 

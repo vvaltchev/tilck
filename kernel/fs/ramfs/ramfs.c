@@ -153,6 +153,7 @@ static const fs_ops static_fsops_ramfs =
    .unlink = ramfs_unlink,
    .mkdir = ramfs_mkdir,
    .rmdir = ramfs_rmdir,
+   .truncate = ramfs_truncate,
    .fstat = ramfs_fstat64,
    .get_entry = ramfs_get_entry,
 

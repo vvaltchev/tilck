@@ -91,22 +91,6 @@ static sptr ramfs_find_block_cmp(const void *obj, const void *valptr)
    return (sptr)block->offset - (sptr)searched_off;
 }
 
-static int ramfs_drop_blocks(void *obj_block, void *arg)
-{
-   ramfs_block *b = obj_block;
-   off_t cutoff = *(off_t *)arg;
-
-   if ((off_t)b->offset < cutoff)
-      return 0;
-
-   kfree2(b->vaddr, PAGE_SIZE);
-   kfree2(b, sizeof(ramfs_block));
-
-   /* The bintree MUST NOT use the obj after the callback returns */
-   DEBUG_ONLY(bzero(b, sizeof(ramfs_block)));
-   return 0;
-}
-
 static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
 {
    ASSERT(rwlock_wp_holding_exlock(&i->rwlock));
@@ -114,13 +98,39 @@ static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
    if (len < 0 || len > i->fsize)
       return -EINVAL;
 
-   bintree_in_order_visit(i->blocks_tree_root,
-                          ramfs_drop_blocks,
-                          &len,
-                          ramfs_block,
-                          node);
+   if (i->type == VFS_DIR)
+      return -EISDIR;
 
-   i->blocks_tree_root = NULL;
+   /*
+    * Truncate syscalls cannot get here unless the inode is a file or a
+    * directory. In case of a symlink, we'll get here the corresponding file.
+    * In case of special files instead, the VFS layer should have already
+    * redirected the truncate call to a different layer.
+    */
+   ASSERT(i->type == VFS_FILE);
+
+   while (true) {
+
+      ramfs_block *b =
+         bintree_get_last_obj(i->blocks_tree_root, ramfs_block, node);
+
+      if (!b || b->offset < len)
+         break;
+
+      /* Remove the block object from the tree */
+      bintree_remove(&i->blocks_tree_root,
+                     b,
+                     ramfs_insert_remove_block_cmp,
+                     ramfs_block,
+                     node);
+
+      /* Free the memory pointed by this block */
+      kfree2(b->vaddr, PAGE_SIZE);
+
+      /* Free the memory used by the block object itself */
+      kfree2(b, sizeof(ramfs_block));
+   }
+
    i->fsize = len;
    i->blocks_count = round_up_at((uptr) len, PAGE_SIZE);
    return 0;
@@ -135,6 +145,17 @@ static int ramfs_inode_truncate_safe(ramfs_inode *i, off_t len)
    }
    rwlock_wp_exunlock(&i->rwlock);
    return rc;
+}
+
+static int ramfs_truncate(vfs_path *p, off_t len)
+{
+   ramfs_path *rp = (ramfs_path *) &p->fs_path;
+
+   /*
+    * NOTE: we don't support len > fsize at the moment.
+    * TODO: add in ramfs support for truncate with len > fsize.
+    */
+   return ramfs_inode_truncate_safe(rp->inode, len);
 }
 
 static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)

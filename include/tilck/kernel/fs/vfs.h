@@ -81,7 +81,8 @@ typedef int (*func_getdents) (fs_handle, get_dents_func_cb, void *);
 typedef int (*func_unlink) (vfs_path *p);
 typedef int (*func_mkdir) (vfs_path *p, mode_t);
 typedef int (*func_rmdir) (vfs_path *p);
-typedef void (*func_fslock_t)(filesystem *);
+typedef int (*func_truncate) (vfs_path *p, off_t len);
+typedef void (*func_fslock_t) (filesystem *);
 
 
 typedef void (*func_get_entry) (filesystem *fs,
@@ -136,6 +137,7 @@ typedef struct {
    func_fstat fstat;
    func_mkdir mkdir;
    func_rmdir rmdir;
+   func_truncate truncate;
    func_get_entry get_entry;
 
    /* file system structure lock funcs */
@@ -230,6 +232,7 @@ int vfs_fcntl(fs_handle h, int cmd, int arg);
 int vfs_unlink(const char *path);
 int vfs_mkdir(const char *path, mode_t mode);
 int vfs_rmdir(const char *path);
+int vfs_truncate(const char *path, off_t length);
 void vfs_close(fs_handle h);
 
 bool vfs_read_ready(fs_handle h);

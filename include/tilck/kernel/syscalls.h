@@ -210,7 +210,7 @@ int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *result, u32 whence);
 CREATE_STUB_SYSCALL_IMPL(sys_getdents)
 
 int sys_select(int nfds, fd_set *readfds, fd_set *writefds,
-                fd_set *exceptfds, struct timeval *timeout);
+               fd_set *exceptfds, struct timeval *timeout);
 
 CREATE_STUB_SYSCALL_IMPL(sys_flock)
 CREATE_STUB_SYSCALL_IMPL(sys_msync)
@@ -283,7 +283,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_getrlimit)
 sptr sys_mmap_pgoff(void *addr, size_t length, int prot,
                     int flags, int fd, size_t pgoffset);
 
-CREATE_STUB_SYSCALL_IMPL(sys_truncate64)
+int sys_truncate64(const char *user_path, s64 length);
+
 CREATE_STUB_SYSCALL_IMPL(sys_ftruncate64)
 
 int sys_stat64(const char *user_path, struct stat64 *user_statbuf);

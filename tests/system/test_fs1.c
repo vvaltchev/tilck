@@ -22,7 +22,7 @@
 
 static char pagebuf[4096];
 
-static void create_test_file1(void)
+void create_test_file1(void)
 {
    int fd, rc;
 
@@ -47,7 +47,7 @@ static void create_test_file1(void)
    close(fd);
 }
 
-static void write_on_test_file(void)
+void write_on_test_file1(void)
 {
    int fd, rc;
    off_t off;
@@ -92,7 +92,7 @@ static void read_past_end(void)
 int cmd_fs1(int argc, char **argv)
 {
    create_test_file1();
-   write_on_test_file();
+   write_on_test_file1();
    read_past_end();
    // TODO: add a function here to check how EXACTLY the file should look like
    unlink("/tmp/test1");

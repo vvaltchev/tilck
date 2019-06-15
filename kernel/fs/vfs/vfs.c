@@ -323,6 +323,39 @@ int vfs_unlink(const char *path)
    return rc;
 }
 
+int vfs_truncate(const char *path, off_t len)
+{
+   const char *fs_path;
+   filesystem *fs;
+   vfs_path p;
+   int rc;
+
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(path != NULL);
+   ASSERT(*path == '/'); /* VFS works only with absolute paths */
+
+   if (!(fs = get_retained_fs_at(path, &fs_path)))
+      return -ENOENT;
+
+   if (!(fs->flags & VFS_FS_RW))
+      return -EROFS;
+
+   if (!fs->fsops->truncate)
+      return -EROFS;
+
+   /* See the comment in vfs.h about the "fs-lock" funcs */
+   vfs_fs_exlock(fs);
+   {
+      rc = vfs_resolve(fs, fs_path, &p);
+
+      if (!rc)
+         rc = p.fs_path.inode ? fs->fsops->truncate(&p, len) : -ENOENT;
+   }
+   vfs_fs_exunlock(fs);
+   release_obj(fs);     /* it was retained by get_retained_fs_at() */
+   return rc;
+}
+
 u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;
