@@ -79,9 +79,14 @@ bintree_get_first_obj_internal(void *root_obj, ptrdiff_t bintree_offset);
 void *
 bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset);
 
-#define bintree_insert(rootref, obj, cmpfun, struct_type, elem_name)   \
-   bintree_insert_internal((void **)(rootref), (void*)obj, cmpfun,     \
+#define bintree_insert(rootref, obj, cmpfun, struct_type, elem_name)          \
+   bintree_insert_internal((void **)(rootref), (void*)obj, cmpfun,            \
                            OFFSET_OF(struct_type, elem_name))
+
+#define bintree_insert_int(rootref, obj, struct_type, elem_name, field_name)  \
+   bintree_insert_int_internal((void **)(rootref), (void*)obj, cmpfun,        \
+                               OFFSET_OF(struct_type, elem_name),             \
+                               OFFSET_OF(struct_type, field_name))
 
 #define bintree_find(root_obj, value, objval_cmpfun, struct_type, elem_name)  \
    bintree_find_internal((void*)(root_obj),                                   \

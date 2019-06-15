@@ -124,75 +124,6 @@ static void balance(void **obj_ref, ptrdiff_t bintree_offset)
    UPDATE_HEIGHT(OBJTN(*obj_ref));
 }
 
-
-bool
-bintree_insert_internal(void **root_obj_ref,
-                        void *obj,
-                        cmpfun_ptr cmp,
-                        ptrdiff_t bintree_offset)
-{
-   ASSERT(root_obj_ref != NULL);
-
-   if (!*root_obj_ref) {
-      *root_obj_ref = obj;
-      return true;
-   }
-
-   /*
-    * It will contain the whole reverse path leaf to root objects traversed:
-    * that is needed for the balance at the end (it simulates the stack
-    * unwinding that happens for recursive implementations).
-    */
-   void **stack[MAX_TREE_HEIGHT] = {0};
-   int stack_size = 0;
-
-   STACK_PUSH(root_obj_ref);
-
-   while (true) {
-
-      root_obj_ref = STACK_TOP();
-
-      ASSERT(root_obj_ref != NULL);
-      ASSERT(*root_obj_ref != NULL);
-
-      bintree_node *root = OBJTN(*root_obj_ref);
-
-      sptr c = cmp(obj, *root_obj_ref);
-
-      if (!c)
-         return false; // such elem already exists.
-
-      if (c < 0) {
-
-         if (!root->left_obj) {
-            root->left_obj = obj;
-            BALANCE(&root->left_obj);
-            BALANCE(root_obj_ref);
-            break;
-         }
-
-         STACK_PUSH(&root->left_obj);
-         continue;
-      }
-
-      // case c > 0
-
-      if (!root->right_obj) {
-         root->right_obj = obj;
-         BALANCE(&root->right_obj);
-         BALANCE(root_obj_ref);
-         break;
-      }
-
-      STACK_PUSH(&root->right_obj);
-   }
-
-   while (stack_size > 0)
-      BALANCE(STACK_POP());
-
-   return true;
-}
-
 static void
 bintree_remove_internal_aux(void **root_obj_ref,
                             void ***stack,
@@ -331,7 +262,6 @@ bintree_in_rorder_visit_internal(void *obj,
    return 0;
 }
 
-
 void *
 bintree_get_first_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
 {
@@ -373,8 +303,10 @@ bintree_find_int_cmp(const void *obj, const sptr *valptr, ptrdiff_t field_off)
 
 #define BINTREE_INT_FUNCS 0
 #include "avl_find.c.h"
+#include "avl_insert.c.h"
 #include "avl_remove.c.h"
 #undef BINTREE_INT_FUNCS
 #define BINTREE_INT_FUNCS 1
 #include "avl_find.c.h"
+#include "avl_insert.c.h"
 #include "avl_remove.c.h"
