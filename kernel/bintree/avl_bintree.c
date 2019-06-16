@@ -214,10 +214,10 @@ bintree_insrem_ptr_cmp(const void *a, const void *b, ptrdiff_t field_off)
 }
 
 static ALWAYS_INLINE sptr
-bintree_find_ptr_cmp(const void *obj, const sptr *valptr, ptrdiff_t field_off)
+bintree_find_ptr_cmp(const void *obj, const void *val, ptrdiff_t field_off)
 {
    sptr obj_field_val = *(sptr *)((const char *)obj + field_off);
-   return obj_field_val - *valptr;
+   return obj_field_val - (sptr)val;
 }
 
 /* First, instantiate the generic find, insert and remove functions */

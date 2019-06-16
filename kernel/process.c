@@ -277,7 +277,7 @@ void task_temp_kernel_free(void *ptr)
    disable_preemption();
    {
       alloc = bintree_find_ptr(&curr->kallocs_tree_root,
-                               &ptr,
+                               ptr,
                                kernel_alloc,
                                node,
                                vaddr);

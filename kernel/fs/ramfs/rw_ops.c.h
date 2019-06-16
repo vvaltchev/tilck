@@ -173,7 +173,7 @@ static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
          break;
 
       block = bintree_find_ptr(inode->blocks_tree_root,
-                               &page,
+                               page,
                                ramfs_block,
                                node,
                                offset);
@@ -218,7 +218,7 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
       ASSERT(to_write > 0);
 
       block = bintree_find_ptr(inode->blocks_tree_root,
-                               &page,
+                               page,
                                ramfs_block,
                                node,
                                offset);

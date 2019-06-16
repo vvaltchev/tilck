@@ -125,14 +125,30 @@ bintree_remove_ptr_internal(void **root_obj_ref,
                                OFFSET_OF(struct_type, elem_name),             \
                                OFFSET_OF(struct_type, field_name))
 
+/*
+ * Find the object with key `value` according to objval_cmpfun.
+ * The `value` will be passes as it is to `objval_cmpfun`, which will see it
+ * as a const void * pointer. Whether `value` is a pointer to a value or the
+ * value itself represented in a pointer, depends entirely on the caller, who
+ * controls `objval_cmpfun`. But, it's worth mentioning that, typically, `value`
+ * here is a pointer to a value (e.g. pointer to char array), not the value
+ * itself. In case the value itself can fit in a pointer, usually is better to
+ * use bintree_find_ptr() because it's faster. But WARNING: bintree_find_ptr()
+ * treats `value` as a value, not as a pointer to a value and that's hard-coded.
+ */
 #define bintree_find(root_obj, value, objval_cmpfun, struct_type, elem_name)  \
    bintree_find_internal((void*)(root_obj),                                   \
                          (value), (objval_cmpfun),                            \
                          OFFSET_OF(struct_type, elem_name))
 
+/*
+ * Find the object with key `value`, where value is a pointer-sized integer.
+ * The comparison function is hard-coded and it just compares the given field
+ * (`field_name`) of each obj to the given value.
+ */
 #define bintree_find_ptr(root_obj, value, struct_type, elem_name, field_name) \
    bintree_find_ptr_internal((void*)(root_obj),                               \
-                             (value),                                         \
+                             TO_PTR(value),                                   \
                              OFFSET_OF(struct_type, elem_name),               \
                              OFFSET_OF(struct_type, field_name))
 

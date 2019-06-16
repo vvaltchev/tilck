@@ -415,7 +415,7 @@ task_info *get_task(int tid)
    ASSERT(!is_preemption_enabled());
 
    res = bintree_find_ptr(tree_by_tid_root,
-                          &ltid,
+                          ltid,
                           task_info,
                           tree_by_tid_node,
                           tid);
