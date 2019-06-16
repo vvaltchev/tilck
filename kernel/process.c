@@ -230,20 +230,6 @@ user_mapping *process_get_user_mapping(void *vaddr)
    return NULL;
 }
 
-static sptr kernel_alloc_cmp(const void *a, const void *b)
-{
-   const kernel_alloc *ka = a;
-   const kernel_alloc *kb = b;
-
-   return ka->vaddr - kb->vaddr;
-}
-
-static sptr kernel_alloc_find_cmp(const void *obj, const void *valptr)
-{
-   const kernel_alloc *ka = obj;
-   return ka->vaddr - valptr;
-}
-
 void *task_temp_kernel_alloc(size_t size)
 {
    task_info *curr = get_curr_task();
@@ -263,11 +249,11 @@ void *task_temp_kernel_alloc(size_t size)
             alloc->vaddr = ptr;
             alloc->size = size;
 
-            bintree_insert(&curr->kallocs_tree_root,
-                           alloc,
-                           &kernel_alloc_cmp,
-                           kernel_alloc,
-                           node);
+            bintree_insert_ptr(&curr->kallocs_tree_root,
+                               alloc,
+                               kernel_alloc,
+                               node,
+                               vaddr);
 
          } else {
 
@@ -290,21 +276,21 @@ void task_temp_kernel_free(void *ptr)
 
    disable_preemption();
    {
-      alloc = bintree_find(&curr->kallocs_tree_root,
-                           ptr,
-                           &kernel_alloc_find_cmp,
-                           kernel_alloc,
-                           node);
+      alloc = bintree_find_ptr(&curr->kallocs_tree_root,
+                               &ptr,
+                               kernel_alloc,
+                               node,
+                               vaddr);
 
       ASSERT(alloc != NULL);
 
       kfree2(alloc->vaddr, alloc->size);
 
-      bintree_remove(&curr->kallocs_tree_root,
-                     alloc,
-                     &kernel_alloc_cmp,
-                     kernel_alloc,
-                     node);
+      bintree_remove_ptr(&curr->kallocs_tree_root,
+                         alloc,
+                         kernel_alloc,
+                         node,
+                         vaddr);
 
       kfree2(alloc, sizeof(kernel_alloc));
    }
@@ -598,11 +584,11 @@ task_free_all_kernel_allocs(task_info *ti)
       kfree2(alloc->vaddr, alloc->size);
 
       /* Remove the kernel_alloc elem from the tree */
-      bintree_remove(&ti->kallocs_tree_root,
-                     alloc,
-                     &kernel_alloc_cmp,
-                     kernel_alloc,
-                     node);
+      bintree_remove_ptr(&ti->kallocs_tree_root,
+                         alloc,
+                         kernel_alloc,
+                         node,
+                         vaddr);
 
       /* Free the kernel_alloc object itself */
       kfree2(alloc, sizeof(kernel_alloc));
