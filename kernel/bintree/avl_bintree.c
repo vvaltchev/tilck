@@ -287,7 +287,7 @@ bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
 }
 
 static ALWAYS_INLINE sptr
-bintree_insrem_int_cmp(const void *a, const void *b, ptrdiff_t field_off)
+bintree_insrem_ptr_cmp(const void *a, const void *b, ptrdiff_t field_off)
 {
    const char *f1 = (const char *)a + field_off;
    const char *f2 = (const char *)b + field_off;
@@ -295,18 +295,23 @@ bintree_insrem_int_cmp(const void *a, const void *b, ptrdiff_t field_off)
 }
 
 static ALWAYS_INLINE sptr
-bintree_find_int_cmp(const void *obj, const sptr *valptr, ptrdiff_t field_off)
+bintree_find_ptr_cmp(const void *obj, const sptr *valptr, ptrdiff_t field_off)
 {
    sptr obj_field_val = *(sptr *)((const char *)obj + field_off);
    return obj_field_val - *valptr;
 }
 
-#define BINTREE_INT_FUNCS 0
+/* First, instantiate the generic find, insert and remove functions */
+#define BINTREE_PTR_FUNCS 0
+
 #include "avl_find.c.h"
 #include "avl_insert.c.h"
 #include "avl_remove.c.h"
-#undef BINTREE_INT_FUNCS
-#define BINTREE_INT_FUNCS 1
+
+#undef BINTREE_PTR_FUNCS
+#define BINTREE_PTR_FUNCS 1
+
+/* Then, instantiate the specialized versions of those functions */
 #include "avl_find.c.h"
 #include "avl_insert.c.h"
 #include "avl_remove.c.h"

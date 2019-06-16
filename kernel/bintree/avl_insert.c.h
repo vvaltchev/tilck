@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#if BINTREE_INT_FUNCS
-   #define CMP(a, b) bintree_insrem_int_cmp(a, b, field_off)
+#if BINTREE_PTR_FUNCS
+   #define CMP(a, b) bintree_insrem_ptr_cmp(a, b, field_off)
 #else
    #define CMP(a, b) objval_cmpfun(a, b)
 #endif
 
-#if BINTREE_INT_FUNCS
+#if BINTREE_PTR_FUNCS
 bool
-bintree_insert_int_internal(void **root_obj_ref,
+bintree_insert_ptr_internal(void **root_obj_ref,
                             void *obj,
                             ptrdiff_t bintree_offset,
                             ptrdiff_t field_off)
