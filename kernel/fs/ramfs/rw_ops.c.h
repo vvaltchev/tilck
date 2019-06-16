@@ -77,20 +77,6 @@ static off_t ramfs_seek(fs_handle h, off_t off, int whence)
    return rh->pos;
 }
 
-static sptr ramfs_insert_remove_block_cmp(const void *a, const void *b)
-{
-   const ramfs_block *b1 = a;
-   const ramfs_block *b2 = b;
-   return (sptr)b1->offset - (sptr)b2->offset;
-}
-
-static sptr ramfs_find_block_cmp(const void *obj, const void *valptr)
-{
-   const ramfs_block *block = obj;
-   size_t searched_off = *(const size_t *)valptr;
-   return (sptr)block->offset - (sptr)searched_off;
-}
-
 static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
 {
    ASSERT(rwlock_wp_holding_exlock(&i->rwlock));
@@ -118,11 +104,11 @@ static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
          break;
 
       /* Remove the block object from the tree */
-      bintree_remove(&i->blocks_tree_root,
-                     b,
-                     ramfs_insert_remove_block_cmp,
-                     ramfs_block,
-                     node);
+      bintree_remove_ptr(&i->blocks_tree_root,
+                         b,
+                         ramfs_block,
+                         node,
+                         offset);
 
       /* Free the memory pointed by this block */
       kfree2(b->vaddr, PAGE_SIZE);
@@ -186,12 +172,11 @@ static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
       if (!to_read)
          break;
 
-      block = bintree_find(inode->blocks_tree_root,
-                           &page,
-                           ramfs_find_block_cmp,
-                           ramfs_block,
-                           node);
-
+      block = bintree_find_ptr(inode->blocks_tree_root,
+                               &page,
+                               ramfs_block,
+                               node,
+                               offset);
 
       if (block) {
          /* reading a regular block */
@@ -232,11 +217,11 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
 
       ASSERT(to_write > 0);
 
-      block = bintree_find(inode->blocks_tree_root,
-                           &page,
-                           ramfs_find_block_cmp,
-                           ramfs_block,
-                           node);
+      block = bintree_find_ptr(inode->blocks_tree_root,
+                               &page,
+                               ramfs_block,
+                               node,
+                               offset);
 
       /* Assert that if page_off > 0, the block is present */
       ASSERT(!page_off || block);
@@ -257,11 +242,11 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
          block->offset = page;
          block->vaddr = vaddr;
 
-         bintree_insert(&inode->blocks_tree_root,
-                        block,
-                        ramfs_insert_remove_block_cmp,
-                        ramfs_block,
-                        node);
+         bintree_insert_ptr(&inode->blocks_tree_root,
+                            block,
+                            ramfs_block,
+                            node,
+                            offset);
 
          inode->blocks_count++;
       }
