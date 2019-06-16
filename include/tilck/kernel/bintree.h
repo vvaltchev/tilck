@@ -65,13 +65,8 @@ int
 bintree_in_order_visit_internal(void *root_obj,
                                 bintree_visit_cb visit_cb,
                                 void *visit_cb_arg,
-                                ptrdiff_t bintree_offset);
-
-int
-bintree_in_rorder_visit_internal(void *root_obj,
-                                 bintree_visit_cb visit_cb,
-                                 void *visit_cb_arg,
-                                 ptrdiff_t bintree_offset);
+                                ptrdiff_t bintree_offset,
+                                bool reverse);
 
 void *
 bintree_get_first_obj_internal(void *root_obj, ptrdiff_t bintree_offset);
@@ -130,12 +125,14 @@ bintree_remove_ptr_internal(void **root_obj_ref,
 #define bintree_in_order_visit(root_obj, cb, cb_arg, struct_type, elem_name)  \
    bintree_in_order_visit_internal((void *)(root_obj),                        \
                                    (cb), (cb_arg),                            \
-                                   OFFSET_OF(struct_type, elem_name))
+                                   OFFSET_OF(struct_type, elem_name),         \
+                                   false)
 
 #define bintree_in_rorder_visit(root_obj, cb, cb_arg, struct_type, elem_name) \
-   bintree_in_rorder_visit_internal((void *)(root_obj),                       \
-                                    (cb), (cb_arg),                           \
-                                    OFFSET_OF(struct_type, elem_name))
+   bintree_in_order_visit_internal((void *)(root_obj),                        \
+                                   (cb), (cb_arg),                            \
+                                   OFFSET_OF(struct_type, elem_name),         \
+                                   true)
 
 #define bintree_get_first_obj(root_obj, struct_type, elem_name)               \
    bintree_get_first_obj_internal((void *)(root_obj),                         \
