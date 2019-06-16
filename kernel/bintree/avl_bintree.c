@@ -2,7 +2,6 @@
 
 #include <tilck/kernel/bintree.h>
 
-#define MAX_TREE_HEIGHT       32
 #define ALLOWED_IMBALANCE      1
 
 #define STACK_PUSH(r)   (stack[stack_size++] = (r))
@@ -39,7 +38,7 @@ update_height(bintree_node *node, ptrdiff_t bintree_offset)
 
 
 /*
- * rotate the left child of *obj_ref clock-wise
+ * rotate the left child of *obj_ref [which is called `n`] clock-wise
  *
  *         (n)                  (nl)
  *         /  \                 /  \
@@ -182,6 +181,59 @@ bintree_remove_internal_aux(void **root_obj_ref,
 }
 
 
+void *
+bintree_get_first_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
+{
+   if (!root_obj)
+      return NULL;
+
+   while (LEFT_OF(root_obj) != NULL)
+      root_obj = LEFT_OF(root_obj);
+
+   return root_obj;
+}
+
+void *
+bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
+{
+   if (!root_obj)
+      return NULL;
+
+   while (RIGHT_OF(root_obj) != NULL)
+      root_obj = RIGHT_OF(root_obj);
+
+   return root_obj;
+}
+
+static ALWAYS_INLINE sptr
+bintree_insrem_ptr_cmp(const void *a, const void *b, ptrdiff_t field_off)
+{
+   const char *f1 = (const char *)a + field_off;
+   const char *f2 = (const char *)b + field_off;
+   return *(sptr *)f1 - *(sptr *)f2;
+}
+
+static ALWAYS_INLINE sptr
+bintree_find_ptr_cmp(const void *obj, const sptr *valptr, ptrdiff_t field_off)
+{
+   sptr obj_field_val = *(sptr *)((const char *)obj + field_off);
+   return obj_field_val - *valptr;
+}
+
+/* First, instantiate the generic find, insert and remove functions */
+#define BINTREE_PTR_FUNCS 0
+#include "avl_find.c.h"
+#include "avl_insert.c.h"
+#include "avl_remove.c.h"
+#undef BINTREE_PTR_FUNCS
+
+/* Then, instantiate the specialized versions of those functions */
+#define BINTREE_PTR_FUNCS 1
+#include "avl_find.c.h"
+#include "avl_insert.c.h"
+#include "avl_remove.c.h"
+#undef BINTREE_PTR_FUNCS
+
 #include <tilck/common/norec.h>
 
 int
@@ -224,56 +276,60 @@ bintree_in_order_visit_internal(void *obj,
    return 0;
 }
 
-void *
-bintree_get_first_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
+/* Re-define STACK_VAR and STACK_SIZE_VAR in order to use them from `ctx` */
+#undef   STACK_VAR
+#undef   STACK_SIZE_VAR
+#define  STACK_VAR       ctx->stack
+#define  STACK_SIZE_VAR  ctx->stack_size
+#include <tilck/common/norec.h>
+
+void
+bintree_in_order_visit_start_internal(bintree_walk_ctx *ctx,
+                                      void *obj,
+                                      ptrdiff_t bintree_offset,
+                                      bool reverse)
 {
-   if (!root_obj)
-      return NULL;
+   *ctx = (bintree_walk_ctx) {
+      .bintree_offset = bintree_offset,
+      .obj = obj,
+      .reverse = reverse,
+      .next_called = false
+   };
 
-   while (LEFT_OF(root_obj) != NULL)
-      root_obj = LEFT_OF(root_obj);
-
-   return root_obj;
+   INIT_SHADOW_STACK();
 }
 
 void *
-bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
+bintree_in_order_visit_next(bintree_walk_ctx *ctx)
 {
-   if (!root_obj)
-      return NULL;
+   const ptrdiff_t bintree_offset = ctx->bintree_offset;
 
-   while (RIGHT_OF(root_obj) != NULL)
-      root_obj = RIGHT_OF(root_obj);
+   if (UNLIKELY(!ctx->next_called)) {
 
-   return root_obj;
+      ctx->next_called = true;
+
+      if (ctx->obj)
+         SIMULATE_CALL1(ctx->obj);
+   }
+
+   NOREC_LOOP_BEGIN
+   {
+      void *obj = LOAD_ARG_FROM_STACK(1, void *);
+      void *left_obj = LIKELY(!ctx->reverse) ? LEFT_OF(obj) : RIGHT_OF(obj);
+      void *right_obj = LIKELY(!ctx->reverse) ? RIGHT_OF(obj) : LEFT_OF(obj);
+
+      HANDLE_SIMULATED_RETURN();
+
+      if (left_obj)
+         SIMULATE_CALL1(left_obj);
+
+      SIMULATE_YIELD(obj);
+
+      if (right_obj)
+         SIMULATE_CALL1(right_obj);
+
+      SIMULATE_RETURN_NULL();
+   }
+   NOREC_LOOP_END
+   return NULL;
 }
-
-static ALWAYS_INLINE sptr
-bintree_insrem_ptr_cmp(const void *a, const void *b, ptrdiff_t field_off)
-{
-   const char *f1 = (const char *)a + field_off;
-   const char *f2 = (const char *)b + field_off;
-   return *(sptr *)f1 - *(sptr *)f2;
-}
-
-static ALWAYS_INLINE sptr
-bintree_find_ptr_cmp(const void *obj, const sptr *valptr, ptrdiff_t field_off)
-{
-   sptr obj_field_val = *(sptr *)((const char *)obj + field_off);
-   return obj_field_val - *valptr;
-}
-
-/* First, instantiate the generic find, insert and remove functions */
-#define BINTREE_PTR_FUNCS 0
-
-#include "avl_find.c.h"
-#include "avl_insert.c.h"
-#include "avl_remove.c.h"
-
-#undef BINTREE_PTR_FUNCS
-#define BINTREE_PTR_FUNCS 1
-
-/* Then, instantiate the specialized versions of those functions */
-#include "avl_find.c.h"
-#include "avl_insert.c.h"
-#include "avl_remove.c.h"

@@ -5,6 +5,8 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
+#define MAX_TREE_HEIGHT       32
+
 typedef struct bintree_node bintree_node;
 
 struct bintree_node {
@@ -17,6 +19,21 @@ static inline void bintree_node_init(bintree_node *node)
 {
    bzero(node, sizeof(bintree_node));
 }
+
+#include <tilck/common/norec.h>
+
+typedef struct {
+
+   DECLARE_SHADOW_STACK(MAX_TREE_HEIGHT, 1)
+   ptrdiff_t bintree_offset;
+   void *obj;
+   bool reverse;
+   bool next_called;
+
+} bintree_walk_ctx;
+
+#undef STACK_VAR
+#undef STACK_SIZE_VAR
 
 /*
  * bintree_find_internal() returns true it was actually able to insert the
@@ -67,6 +84,14 @@ bintree_in_order_visit_internal(void *root_obj,
                                 void *visit_cb_arg,
                                 ptrdiff_t bintree_offset,
                                 bool reverse);
+
+void
+bintree_in_order_visit_start_internal(bintree_walk_ctx *ctx,
+                                      void *obj,
+                                      ptrdiff_t bintree_offset,
+                                      bool reverse);
+void *
+bintree_in_order_visit_next(bintree_walk_ctx *ctx);
 
 void *
 bintree_get_first_obj_internal(void *root_obj, ptrdiff_t bintree_offset);
@@ -141,3 +166,9 @@ bintree_remove_ptr_internal(void **root_obj_ref,
 #define bintree_get_last_obj(root_obj, struct_type, elem_name)               \
    bintree_get_last_obj_internal((void *)(root_obj),                         \
                                  OFFSET_OF(struct_type, elem_name))
+
+#define bintree_in_order_visit_start(ctx, obj, struct_type, elem_name, rev)  \
+   bintree_in_order_visit_start_internal(ctx,                                \
+                                         (void*)(obj),                       \
+                                         OFFSET_OF(struct_type, elem_name),  \
+                                         rev)

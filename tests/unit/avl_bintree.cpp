@@ -89,36 +89,45 @@ static int visit_add_val_to_arr(void *obj, void *arg)
 
    assert(ctx->curr_size < ctx->arr_size);
    ctx->arr[ctx->curr_size++] = s->val;
-
    return 0;
 }
 
 static void
 in_order_visit(int_struct *obj,
                int *arr,
-               int arr_size)
+               int arr_size,
+               bool reverse = false)
 {
    visit_ctx ctx = {arr, arr_size, 0};
 
-   bintree_in_order_visit(obj,
-                          visit_add_val_to_arr,
-                          (void *)&ctx,
-                          int_struct,
-                          node);
+   if (!reverse)
+      bintree_in_order_visit(obj,
+                             visit_add_val_to_arr,
+                             (void *)&ctx,
+                             int_struct,
+                             node);
+   else
+      bintree_in_rorder_visit(obj,
+                              visit_add_val_to_arr,
+                              (void *)&ctx,
+                              int_struct,
+                              node);
 }
 
 static void
-in_rorder_visit(int_struct *obj,
-                int *arr,
-                int arr_size)
+sbs_in_order_visit(int_struct *obj,
+                   int *arr,
+                   int arr_size,
+                   bool reverse = false)
 {
    visit_ctx ctx = {arr, arr_size, 0};
+   bintree_walk_ctx walk_ctx;
 
-   bintree_in_rorder_visit(obj,
-                           visit_add_val_to_arr,
-                           (void *)&ctx,
-                           int_struct,
-                           node);
+   bintree_in_order_visit_start(&walk_ctx, obj, int_struct, node, reverse);
+
+   while ((obj = (int_struct *)bintree_in_order_visit_next(&walk_ctx))) {
+      visit_add_val_to_arr(obj, &ctx);
+   }
 }
 
 static bool
@@ -325,25 +334,45 @@ void check_height_vs_elems(int_struct *obj, int elems)
  */
 
 
-TEST(avl_bintree, in_order_visit_after_insert_is_correct)
+TEST(avl_bintree, in_order_visit_with_callback)
 {
    constexpr const int elems = 32;
    int_struct arr[elems];
+   int_struct *root = NULL;
 
    for (int i = 0; i < elems; i++)
       arr[i] = int_struct(i + 1);
-
-   int_struct *root = NULL;
 
    for (int i = 0; i < elems; i++)
       bintree_insert(&root, &arr[i], my_cmpfun, int_struct, node);
 
    int ordered_nums[elems];
-   in_order_visit(root, ordered_nums, elems);
+   in_order_visit(root, ordered_nums, elems, false);
    ASSERT_TRUE(is_sorted(ordered_nums, elems));
 
    int rev_ordered_nums[elems];
-   in_rorder_visit(root, rev_ordered_nums, elems);
+   in_order_visit(root, rev_ordered_nums, elems, true);
+   ASSERT_TRUE(is_rsorted(rev_ordered_nums, elems));
+}
+
+TEST(avl_bintree, in_order_visit_step_by_step)
+{
+   constexpr const int elems = 32;
+   int_struct arr[elems];
+   int_struct *root = NULL;
+
+   for (int i = 0; i < elems; i++)
+      arr[i] = int_struct(i + 1);
+
+   for (int i = 0; i < elems; i++)
+      bintree_insert(&root, &arr[i], my_cmpfun, int_struct, node);
+
+   int ordered_nums[elems];
+   sbs_in_order_visit(root, ordered_nums, elems, false);
+   ASSERT_TRUE(is_sorted(ordered_nums, elems));
+
+   int rev_ordered_nums[elems];
+   sbs_in_order_visit(root, rev_ordered_nums, elems, true);
    ASSERT_TRUE(is_rsorted(rev_ordered_nums, elems));
 }
 
@@ -351,11 +380,10 @@ TEST(avl_bintree, first_last_obj)
 {
    constexpr const int elems = 32;
    int_struct arr[elems];
+   int_struct *root = NULL;
 
    for (int i = 0; i < elems; i++)
       arr[i] = int_struct(i + 1);
-
-   int_struct *root = NULL;
 
    for (int i = 0; i < elems; i++)
       bintree_insert(&root, &arr[i], my_cmpfun, int_struct, node);
