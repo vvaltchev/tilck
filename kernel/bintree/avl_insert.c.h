@@ -54,25 +54,22 @@ bintree_insert_internal(void **root_obj_ref,
 
          if (!root->left_obj) {
             root->left_obj = obj;
-            BALANCE(&root->left_obj);
-            BALANCE(root_obj_ref);
             break;
          }
 
          STACK_PUSH(&root->left_obj);
-         continue;
+
+      } else {
+
+         // case c > 0
+
+         if (!root->right_obj) {
+            root->right_obj = obj;
+            break;
+         }
+
+         STACK_PUSH(&root->right_obj);
       }
-
-      // case c > 0
-
-      if (!root->right_obj) {
-         root->right_obj = obj;
-         BALANCE(&root->right_obj);
-         BALANCE(root_obj_ref);
-         break;
-      }
-
-      STACK_PUSH(&root->right_obj);
    }
 
    while (stack_size > 0)
