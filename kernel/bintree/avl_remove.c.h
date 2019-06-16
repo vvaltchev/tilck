@@ -9,39 +9,28 @@
 #if BINTREE_PTR_FUNCS
 void *
 bintree_remove_ptr_internal(void **root_obj_ref,
-                            void *value_ptr,
+                            void *obj_or_value,
                             ptrdiff_t bintree_offset,
                             ptrdiff_t field_off)
 #else
 void *
 bintree_remove_internal(void **root_obj_ref,
-                        void *value_ptr,
-                        cmpfun_ptr objval_cmpfun, // cmp(root_obj, value_ptr)
+                        void *obj_or_value,
+                        cmpfun_ptr objval_cmpfun,
                         ptrdiff_t bintree_offset)
 #endif
 {
    void **stack[MAX_TREE_HEIGHT];
    int stack_size = 0;
-   sptr c;
+   void *deleted_obj;
 
-   ASSERT(root_obj_ref != NULL);
-   STACK_PUSH(root_obj_ref);
+   AVL_BUILD_PATH_TO_OBJ();
+   deleted_obj = *STACK_TOP();
 
-   while (true) {
+   if (!deleted_obj)
+      return NULL;   /* element not found */
 
-      root_obj_ref = STACK_TOP();
-
-      if (!*root_obj_ref)
-         return NULL;   // we did not find the object.
-
-      if (!(c = CMP(value_ptr, *root_obj_ref)))
-         break;         // bingo! that's our node
-
-      STACK_PUSH(c < 0 ? &LEFT_OF(*root_obj_ref) : &RIGHT_OF(*root_obj_ref));
-   }
-
-   void *deleted_obj = *root_obj_ref;
-   bintree_remove_internal_aux(root_obj_ref, stack, stack_size, bintree_offset);
+   bintree_remove_internal_aux(STACK_TOP(), stack, stack_size, bintree_offset);
    return deleted_obj;
 }
 

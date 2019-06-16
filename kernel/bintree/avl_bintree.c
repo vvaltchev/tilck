@@ -231,6 +231,46 @@ bintree_find_ptr_cmp(const void *obj, const void *val, ptrdiff_t field_off)
    return obj_field_val - (sptr)val;
 }
 
+/*
+ * A powerful macro containing the common code between insert and remove.
+ * Briefly, it finds the place where the given `obj_or_value` is (remove)
+ * or will be (insert), leaving the node-to-root path in the explicit
+ * stack (assumed to exist).
+ *
+ * This common code has been implemented as a "dirty macro" because a
+ * proper C implementation using a function and a dedicated structure
+ * for the stack caused an overhead of about 2% due to the necessary
+ * indirections (even with -O3 and ALWAYS_INLINE). All the possible
+ * alternatives were:
+ *
+ *    - keeping duplicate code between insert and remove
+ *
+ *    - sharing the code with a C function + bintree_stack struct and
+ *      paying 2% overhead for that luxory
+ *
+ *    - sharing the code with a macro getting 0% overhead but living
+ *      with the potential problems that macros like that might cause
+ *      when the code is changed often enough
+ */
+#define AVL_BUILD_PATH_TO_OBJ()                                        \
+   do {                                                                \
+      ASSERT(root_obj_ref != NULL);                                    \
+      STACK_PUSH(root_obj_ref);                                        \
+                                                                       \
+      while (*STACK_TOP()) {                                           \
+                                                                       \
+         sptr c;                                                       \
+         void **obj_ref = STACK_TOP();                                 \
+         bintree_node *node = OBJTN(*obj_ref);                         \
+                                                                       \
+         if (!(c = CMP(*obj_ref, obj_or_value)))                       \
+            break;                                                     \
+                                                                       \
+         STACK_PUSH(c < 0 ? &node->right_obj : &node->left_obj);       \
+      }                                                                \
+   } while (0)
+
+
 /* First, instantiate the generic find, insert and remove functions */
 #define BINTREE_PTR_FUNCS 0
 #include "avl_find.c.h"
