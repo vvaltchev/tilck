@@ -34,43 +34,29 @@ bintree_insert_internal(void **root_obj_ref,
     */
    void **stack[MAX_TREE_HEIGHT] = {0};
    int stack_size = 0;
+   void **dest = root_obj_ref;
    sptr c;
 
    STACK_PUSH(root_obj_ref);
 
-   while (true) {
+   while (*dest) {
 
       root_obj_ref = STACK_TOP();
 
       ASSERT(root_obj_ref != NULL);
       ASSERT(*root_obj_ref != NULL);
 
-      bintree_node *root = OBJTN(*root_obj_ref);
+      bintree_node *node = OBJTN(*root_obj_ref);
 
       if (!(c = CMP(obj, *root_obj_ref)))
          return false; // such elem already exists.
 
-      if (c < 0) {
-
-         if (!root->left_obj) {
-            root->left_obj = obj;
-            break;
-         }
-
-         STACK_PUSH(&root->left_obj);
-
-      } else {
-
-         // case c > 0
-
-         if (!root->right_obj) {
-            root->right_obj = obj;
-            break;
-         }
-
-         STACK_PUSH(&root->right_obj);
-      }
+      dest = c < 0 ? &node->left_obj : &node->right_obj;
+      STACK_PUSH(dest);
    }
+
+   /* Place our object in its right destination */
+   *dest = obj;
 
    while (stack_size > 0)
       BALANCE(STACK_POP());

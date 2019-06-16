@@ -34,11 +34,10 @@ bintree_remove_internal(void **root_obj_ref,
       if (!*root_obj_ref)
          return NULL;   // we did not find the object.
 
-      if (!(c = CMP(*root_obj_ref, value_ptr)))
+      if (!(c = CMP(value_ptr, *root_obj_ref)))
          break;         // bingo! that's our node
 
-      // *root_obj_ref is smaller then val => val is bigger => go right.
-      STACK_PUSH(c < 0 ? &RIGHT_OF(*root_obj_ref) : &LEFT_OF(*root_obj_ref));
+      STACK_PUSH(c < 0 ? &LEFT_OF(*root_obj_ref) : &RIGHT_OF(*root_obj_ref));
    }
 
    void *deleted_obj = *root_obj_ref;
