@@ -20,7 +20,7 @@ bintree_remove_internal(void **root_obj_ref,
                         ptrdiff_t bintree_offset)
 #endif
 {
-   void **stack[MAX_TREE_HEIGHT] = {0};
+   void **stack[MAX_TREE_HEIGHT];
    int stack_size = 0;
    sptr c;
 
