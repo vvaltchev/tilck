@@ -251,10 +251,9 @@ bintree_in_order_visit_internal(void *obj,
    CREATE_SHADOW_STACK(MAX_TREE_HEIGHT, 1);
    SIMULATE_CALL1(obj);
 
-   while (stack_size) {
-
+   NOREC_LOOP_BEGIN
+   {
       obj = LOAD_ARG_FROM_STACK(1, void *);
-
       void *left_obj = LIKELY(!reverse) ? LEFT_OF(obj) : RIGHT_OF(obj);
       void *right_obj = LIKELY(!reverse) ? RIGHT_OF(obj) : LEFT_OF(obj);
 
@@ -270,9 +269,8 @@ bintree_in_order_visit_internal(void *obj,
          SIMULATE_CALL1(right_obj);
 
       SIMULATE_RETURN_NULL();
-      NOREC_LOOP_END();
    }
-
+   NOREC_LOOP_END
    return 0;
 }
 

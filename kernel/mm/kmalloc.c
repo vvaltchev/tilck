@@ -313,8 +313,8 @@ internal_kmalloc(kmalloc_heap *h,
 
    SIMULATE_CALL2(start_node_size, start_node);
 
-   while (stack_size) {
-
+   NOREC_LOOP_BEGIN
+   {
       // Load the "stack" (function arguments)
       const size_t node_size = LOAD_ARG_FROM_STACK(1, size_t);
       const int node = LOAD_ARG_FROM_STACK(2, int);
@@ -423,9 +423,8 @@ internal_kmalloc(kmalloc_heap *h,
 
       // In case both the nodes are full, just return NULL.
       SIMULATE_RETURN_NULL();
-      NOREC_LOOP_END();
    }
-
+   NOREC_LOOP_END
    return NULL;
 }
 
