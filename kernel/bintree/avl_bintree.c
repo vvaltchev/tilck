@@ -38,12 +38,12 @@ update_height(bintree_node *node, ptrdiff_t bintree_offset)
 
 
 /*
- * rotate the left child of *obj_ref [which is called `n`] clock-wise
+ * Rotate the left child of *obj_ref [which is called `n`] clock-wise
  *
  *         (n)                  (nl)
  *         /  \                 /  \
- *       (nl) (nr)   ==>    (nll)  (n)
- *       /  \                     /   \
+ *       (nl) (nr)    =>    (nll)  (n)
+ *       /  \                      /  \
  *    (nll) (nlr)               (nlr) (nr)
  */
 
@@ -65,7 +65,13 @@ void rotate_left_child(void **obj_ref, ptrdiff_t bintree_offset)
 }
 
 /*
- * rotate the right child of *obj_ref counterclock-wise (symmetric function)
+ * Rotate the right child of *obj_ref counterclock-wise (symmetric function)
+ *
+ *       (n)                     (nr)
+ *       /  \                    /  \
+ *    (nl)  (nr)      =>       (n)  (nrr)
+ *          /  \               /  \
+ *       (nrl) (nrr)         (nl) (nrl)
  */
 
 void rotate_right_child(void **obj_ref, ptrdiff_t bintree_offset)
@@ -300,13 +306,24 @@ bintree_in_order_visit_start_internal(bintree_walk_ctx *ctx,
 void *
 bintree_in_order_visit_next(bintree_walk_ctx *ctx)
 {
+   /*
+    * This declaration is necessary to make the LEFT_OF() and RIGHT_OF() macros
+    * to work. NOTE: in *no* case this function might have stack variables other
+    * than just aliases of variables taken from `ctx`. That's because it has to
+    * support our simple yield mechanism: all of its state *must be* in `ctx`.
+    */
    const ptrdiff_t bintree_offset = ctx->bintree_offset;
 
    if (UNLIKELY(!ctx->next_called)) {
 
+      /*
+       * When this function is called for the time for a given context, an
+       * initial "call" has to be made in order to create the first frame in our
+       * explicit stack.
+       */
       ctx->next_called = true;
 
-      if (ctx->obj)
+      if (LIKELY(ctx->obj != NULL))
          SIMULATE_CALL1(ctx->obj);
    }
 
