@@ -34,6 +34,7 @@ bintree_insert_internal(void **root_obj_ref,
     */
    void **stack[MAX_TREE_HEIGHT] = {0};
    int stack_size = 0;
+   sptr c;
 
    STACK_PUSH(root_obj_ref);
 
@@ -46,9 +47,7 @@ bintree_insert_internal(void **root_obj_ref,
 
       bintree_node *root = OBJTN(*root_obj_ref);
 
-      sptr c = CMP(obj, *root_obj_ref);
-
-      if (!c)
+      if (!(c = CMP(obj, *root_obj_ref)))
          return false; // such elem already exists.
 
       if (c < 0) {

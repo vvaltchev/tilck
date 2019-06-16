@@ -22,6 +22,7 @@ bintree_remove_internal(void **root_obj_ref,
 {
    void **stack[MAX_TREE_HEIGHT] = {0};
    int stack_size = 0;
+   sptr c;
 
    ASSERT(root_obj_ref != NULL);
    STACK_PUSH(root_obj_ref);
@@ -31,12 +32,10 @@ bintree_remove_internal(void **root_obj_ref,
       root_obj_ref = STACK_TOP();
 
       if (!*root_obj_ref)
-         return NULL; // we did not find the object.
+         return NULL;   // we did not find the object.
 
-      sptr c = CMP(*root_obj_ref, value_ptr);
-
-      if (!c)
-         break;
+      if (!(c = CMP(*root_obj_ref, value_ptr)))
+         break;         // bingo! that's our node
 
       // *root_obj_ref is smaller then val => val is bigger => go right.
       STACK_PUSH(c < 0 ? &RIGHT_OF(*root_obj_ref) : &LEFT_OF(*root_obj_ref));

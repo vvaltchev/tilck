@@ -20,11 +20,11 @@ bintree_find_internal(void *root_obj,
                       ptrdiff_t bintree_offset)
 #endif
 {
+   sptr c;
+
    while (root_obj) {
 
-      sptr c = CMP(root_obj, value_ptr);
-
-      if (c == 0)
+      if (!(c = CMP(root_obj, value_ptr)))
          return root_obj;
 
       // root_obj is smaller then val => val is bigger => go right.

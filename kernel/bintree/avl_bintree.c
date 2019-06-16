@@ -129,6 +129,11 @@ static void balance(void **obj_ref, ptrdiff_t bintree_offset)
    UPDATE_HEIGHT(OBJTN(*obj_ref));
 }
 
+/*
+ * This function does the actual node removal and it's called exclusively
+ * by bintree_remove_internal() and bintree_remove_ptr_internal() after
+ * building the full-path from the tree's root to the node to remove.
+ */
 static void
 bintree_remove_internal_aux(void **root_obj_ref,
                             void ***stack,
