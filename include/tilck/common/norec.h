@@ -27,8 +27,29 @@
    struct explicit_stack_elem##nargs STACK_VAR[size];                  \
    int STACK_SIZE_VAR;
 
+/*
+ * Init our stack.
+ *
+ * NOTE: it's mandatory to zero it because HANDLE_SIMULATED_RETURN()
+ * relies on that. It checks `ret_addr` at position `stack_size` expecting
+ * to find NULL or a valid value. Each time a "simulated call" occurrs
+ * during the first call-chain (= before any return) the stack_size moves
+ * forward, but the last written element is always stack[stack_size-1],
+ * therefore stack[stack_size] is always dirty.
+ *
+ * The whole reason for that is that SIMULATE_RETURN_NULL() decrements
+ * stack_size: HANDLE_SIMULATED_RETURN() has no other choice than reading
+ * "beyond" stack's limit by 1 element in order to jump to the return addr
+ * left by the last SIMULATE_CALL(), which has now been just dropped
+ * "off-stack" by HANDLE_SIMULATED_RETURN(). Of course, there's always the
+ * case where no such call existed. That's why we zero the stack and
+ * HANDLE_SIMULATED_RETURN() checks if the address is != NULL before jumping.
+ */
 #define INIT_SHADOW_STACK()                                            \
-   STACK_SIZE_VAR = 0;
+   do {                                                                \
+      STACK_SIZE_VAR = 0;                                              \
+      bzero(STACK_VAR, sizeof(STACK_VAR));                             \
+   } while (0)
 
 #define CREATE_SHADOW_STACK(size, nargs)                               \
    DECLARE_SHADOW_STACK(size, nargs)                                   \
