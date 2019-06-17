@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 BUILD_DIR=@CMAKE_BINARY_DIR@
 qemu-system-i386 @QEMU_COMMON_OPTS@ -s @QEMU_RAM_OPT@            \

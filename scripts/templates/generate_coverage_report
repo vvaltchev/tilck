@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
 # If TEST_GCOV is empty/unset but TRAVIS/CIRCLECI is set, exit

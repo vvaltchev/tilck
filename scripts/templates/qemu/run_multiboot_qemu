@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if uname -a | grep Microsoft &> /dev/null; then
    echo "It looks like you're using WSL (a.k.a. \"Bash for Windows\"): "
