@@ -356,6 +356,16 @@ int vfs_truncate(const char *path, off_t len)
    return rc;
 }
 
+int vfs_ftruncate(fs_handle h, off_t length)
+{
+   fs_handle_base *hb = (fs_handle_base *) h;
+
+   if (!hb->fops->ftruncate)
+      return -EROFS;
+
+   return hb->fops->ftruncate(h, length);
+}
+
 u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;

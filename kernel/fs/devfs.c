@@ -222,6 +222,7 @@ static const file_ops static_ops_devfs =
    .seek = devfs_dir_seek,
    .ioctl = devfs_dir_ioctl,
    .fcntl = devfs_dir_fcntl,
+   .ftruncate = NULL,
    .mmap = NULL,
    .munmap = NULL,
    .exlock = vfs_file_nolock,

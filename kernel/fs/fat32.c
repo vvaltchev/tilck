@@ -496,7 +496,7 @@ static const file_ops static_ops_fat =
    .write = fat_write,
    .ioctl = fat_ioctl,
    .fcntl = fat_fcntl,
-
+   .ftruncate = NULL,
    .exlock = fat_file_exlock,
    .exunlock = fat_file_exunlock,
    .shlock = fat_file_shlock,

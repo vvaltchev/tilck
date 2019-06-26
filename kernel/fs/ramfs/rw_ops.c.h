@@ -144,6 +144,12 @@ static int ramfs_truncate(vfs_path *p, off_t len)
    return ramfs_inode_truncate_safe(rp->inode, len);
 }
 
+static int ramfs_ftruncate(fs_handle h, off_t len)
+{
+   ramfs_handle *rh = h;
+   return ramfs_inode_truncate_safe(rh->inode, len);
+}
+
 static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
 {
    ramfs_handle *rh = h;

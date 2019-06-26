@@ -440,6 +440,17 @@ int sys_truncate64(const char *user_path, s64 len)
    return vfs_truncate(path, (off_t)len);
 }
 
+int sys_ftruncate64(int fd, s64 len)
+{
+   fs_handle h;
+
+   if (!(h = get_fs_handle(fd)))
+      return -EBADF;
+
+   // NOTE: truncating the 64-bit length to a pointer-size integer
+   return vfs_ftruncate(h, (off_t)len);
+}
+
 int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
 {
    const s64 off64 = (s64)(((u64)off_hi << 32) | off_low);

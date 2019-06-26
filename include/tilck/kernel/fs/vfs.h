@@ -101,6 +101,7 @@ typedef int (*func_mmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_munmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_fcntl) (fs_handle, int, int);
 typedef void (*func_hlock_t)(fs_handle);
+typedef int (*func_ftruncate)(fs_handle, off_t);
 
 typedef bool (*func_rwe_ready)(fs_handle);
 typedef kcond *(*func_get_rwe_cond)(fs_handle);
@@ -169,6 +170,9 @@ typedef struct {
    func_ioctl ioctl;
    func_fcntl fcntl;
 
+   /* mandatory only for R/W filesystems */
+   func_ftruncate ftruncate;
+
    /* optional funcs */
    func_mmap mmap;
    func_munmap munmap;
@@ -233,6 +237,7 @@ int vfs_unlink(const char *path);
 int vfs_mkdir(const char *path, mode_t mode);
 int vfs_rmdir(const char *path);
 int vfs_truncate(const char *path, off_t length);
+int vfs_ftruncate(fs_handle h, off_t length);
 void vfs_close(fs_handle h);
 
 bool vfs_read_ready(fs_handle h);

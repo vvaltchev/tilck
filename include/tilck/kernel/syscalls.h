@@ -284,9 +284,7 @@ sptr sys_mmap_pgoff(void *addr, size_t length, int prot,
                     int flags, int fd, size_t pgoffset);
 
 int sys_truncate64(const char *user_path, s64 length);
-
-CREATE_STUB_SYSCALL_IMPL(sys_ftruncate64)
-
+int sys_ftruncate64(int fd, s64 length);
 int sys_stat64(const char *user_path, struct stat64 *user_statbuf);
 int sys_lstat64(const char *user_path, struct stat64 *user_statbuf);
 int sys_fstat64(int fd, struct stat64 *user_statbuf);
