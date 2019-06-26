@@ -1,0 +1,9 @@
+# Ignore everything
+/*
+
+# Except two files
+!CMakeLists.txt
+!README.md
+
+
+
