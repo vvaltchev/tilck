@@ -336,20 +336,14 @@ void account_ticks(void)
 bool need_reschedule(void)
 {
    task_info *curr = get_curr_task();
-   ASSERT(curr != NULL);
-
    task_info *tasklet_runner = get_hi_prio_ready_tasklet_runner();
 
-   if (tasklet_runner) {
-
-      if (tasklet_runner == curr)
-         return false;
-
+   if (tasklet_runner && tasklet_runner != curr)
       return true;
-   }
 
    if (curr->time_slot_ticks < TIME_SLOT_TICKS &&
-       curr->state == TASK_STATE_RUNNING) {
+       curr->state == TASK_STATE_RUNNING)
+   {
       return false;
    }
 
