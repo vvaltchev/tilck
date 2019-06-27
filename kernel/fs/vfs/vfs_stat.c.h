@@ -12,7 +12,7 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
 
    vfs_shlock(h);
    {
-      ret = fsops->new_stat(fs, fsops->get_inode(h), statbuf);
+      ret = fsops->stat(fs, fsops->get_inode(h), statbuf);
    }
    vfs_shunlock(h);
    return ret;
@@ -39,7 +39,7 @@ int vfs_stat64(const char *path, struct stat64 *statbuf)
 
       if (!rc)
          rc = p.fs_path.inode
-            ? fs->fsops->new_stat(fs, p.fs_path.inode, statbuf)
+            ? fs->fsops->stat(fs, p.fs_path.inode, statbuf)
             : -ENOENT;
    }
    vfs_fs_exunlock(fs);

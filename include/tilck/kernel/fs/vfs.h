@@ -90,7 +90,7 @@ typedef int (*func_open) (vfs_path *, fs_handle *, int, mode_t);
 typedef int (*func_dup) (fs_handle, fs_handle *);
 typedef int (*func_getdents) (fs_handle, get_dents_func_cb, void *);
 typedef int (*func_unlink) (vfs_path *p);
-typedef int (*func_new_stat) (filesystem *, vfs_inode_ptr_t, struct stat64 *);
+typedef int (*func_stat) (filesystem *, vfs_inode_ptr_t, struct stat64 *);
 typedef int (*func_mkdir) (vfs_path *p, mode_t);
 typedef int (*func_rmdir) (vfs_path *p);
 typedef void (*func_fslock_t) (filesystem *);
@@ -109,7 +109,6 @@ typedef ssize_t (*func_read) (fs_handle, char *, size_t);
 typedef ssize_t (*func_write) (fs_handle, char *, size_t);
 typedef off_t (*func_seek) (fs_handle, off_t, int);
 typedef int (*func_ioctl) (fs_handle, uptr, void *);
-typedef int (*func_fstat) (fs_handle, struct stat64 *); // TODO: REMOVE
 typedef int (*func_mmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_munmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_fcntl) (fs_handle, int, int);
@@ -148,8 +147,7 @@ typedef struct {
    func_dup dup;
    func_getdents getdents;
    func_unlink unlink;
-   func_new_stat new_stat;
-   func_fstat fstat;
+   func_stat stat;
    func_mkdir mkdir;
    func_rmdir rmdir;
    func_truncate truncate;

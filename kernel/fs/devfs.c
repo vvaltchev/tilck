@@ -453,7 +453,7 @@ static const fs_ops static_fsops_devfs =
    .mkdir = NULL,
    .rmdir = NULL,
    .truncate = NULL,
-   .new_stat = devfs_stat,
+   .stat = devfs_stat,
    .get_entry = devfs_get_entry,
 
    .fs_exlock = devfs_exclusive_lock,
