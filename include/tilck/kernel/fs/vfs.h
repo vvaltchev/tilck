@@ -90,7 +90,6 @@ typedef int (*func_open) (vfs_path *, fs_handle *, int, mode_t);
 typedef int (*func_dup) (fs_handle, fs_handle *);
 typedef int (*func_getdents) (fs_handle, get_dents_func_cb, void *);
 typedef int (*func_unlink) (vfs_path *p);
-typedef int (*func_stat) (filesystem *, vfs_inode_ptr_t, struct stat64 *);
 typedef int (*func_mkdir) (vfs_path *p, mode_t);
 typedef int (*func_rmdir) (vfs_path *p);
 typedef void (*func_fslock_t) (filesystem *);
@@ -102,7 +101,8 @@ typedef void (*func_get_entry) (filesystem *fs,
                                 fs_path_struct *fs_path);
 
 /* mixed fs/file ops */
-typedef int (*func_truncate) (vfs_inode_ptr_t, off_t len);
+typedef int (*func_stat) (filesystem *, vfs_inode_ptr_t, struct stat64 *);
+typedef int (*func_truncate) (filesystem *, vfs_inode_ptr_t, off_t);
 
 /* file ops */
 typedef ssize_t (*func_read) (fs_handle, char *, size_t);
@@ -112,13 +112,13 @@ typedef int (*func_ioctl) (fs_handle, uptr, void *);
 typedef int (*func_mmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_munmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_fcntl) (fs_handle, int, int);
-typedef void (*func_hlock_t)(fs_handle);
+typedef void (*func_hlock_t) (fs_handle);
 
-typedef bool (*func_rwe_ready)(fs_handle);
-typedef kcond *(*func_get_rwe_cond)(fs_handle);
+typedef bool (*func_rwe_ready) (fs_handle);
+typedef kcond *(*func_get_rwe_cond) (fs_handle);
 
 /* Used by the devices when want to remove any locking from a file */
-#define vfs_file_nolock    NULL
+#define vfs_file_nolock           NULL
 
 #define VFS_FS_RO                  (0)  /* filesystem mounted in RO mode */
 #define VFS_FS_RW             (1 << 0)  /* filesystem mounted in RW mode */

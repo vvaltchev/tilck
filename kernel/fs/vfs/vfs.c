@@ -350,7 +350,7 @@ int vfs_truncate(const char *path, off_t len)
 
       if (!rc)
          rc = p.fs_path.inode
-            ? fs->fsops->truncate(p.fs_path.inode, len)
+            ? fs->fsops->truncate(fs, p.fs_path.inode, len)
             : -ENOENT;
    }
    vfs_fs_exunlock(fs);
@@ -366,7 +366,7 @@ int vfs_ftruncate(fs_handle h, off_t length)
    if (!fsops->truncate)
       return -EROFS;
 
-   return fsops->truncate(fsops->get_inode(h), length);
+   return fsops->truncate(hb->fs, fsops->get_inode(h), length);
 }
 
 u32 vfs_get_new_device_id(void)
