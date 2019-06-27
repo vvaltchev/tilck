@@ -16,7 +16,7 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
    return ret;
 }
 
-int vfs_stat64(const char *path, struct stat64 *statbuf)
+static int old_vfs_stat64(const char *path, struct stat64 *statbuf)
 {
    fs_handle h = NULL;
    int rc;
@@ -30,4 +30,39 @@ int vfs_stat64(const char *path, struct stat64 *statbuf)
    rc = vfs_fstat64(h, statbuf);
    vfs_close(h);
    return 0;
+}
+
+int vfs_stat64(const char *path, struct stat64 *statbuf)
+{
+   const char *fs_path;
+   filesystem *fs;
+   vfs_path p;
+   int rc;
+
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(path != NULL);
+   ASSERT(*path == '/'); /* VFS works only with absolute paths */
+
+   if (!(fs = get_retained_fs_at(path, &fs_path)))
+      return -ENOENT;
+
+   if (!fs->fsops->new_stat) {
+      printk("using the old stat for fs: %s\n", fs->fs_type_name);
+      release_obj(fs);
+      return old_vfs_stat64(path, statbuf);
+   }
+
+   /* See the comment in vfs.h about the "fs-lock" funcs */
+   vfs_fs_exlock(fs);
+   {
+      rc = vfs_resolve(fs, fs_path, &p);
+
+      if (!rc)
+         rc = p.fs_path.inode
+            ? fs->fsops->new_stat(fs, p.fs_path.inode, statbuf)
+            : -ENOENT;
+   }
+   vfs_fs_exunlock(fs);
+   release_obj(fs);     /* it was retained by get_retained_fs_at() */
+   return rc;
 }
