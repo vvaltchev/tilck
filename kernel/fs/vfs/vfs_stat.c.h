@@ -12,31 +12,10 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
 
    vfs_shlock(h);
    {
-      if (fsops->new_stat) {
-         ret = fsops->new_stat(fs, fsops->get_inode(h), statbuf);
-      } else {
-         printk("[fstat] Use the *old* fstat impl for %s\n", fs->fs_type_name);
-         ret = fsops->fstat(h, statbuf);
-      }
+      ret = fsops->new_stat(fs, fsops->get_inode(h), statbuf);
    }
    vfs_shunlock(h);
    return ret;
-}
-
-static int old_vfs_stat64(const char *path, struct stat64 *statbuf)
-{
-   fs_handle h = NULL;
-   int rc;
-
-   if ((rc = vfs_open(path, &h, O_RDONLY, 0)) < 0)
-      return rc;
-
-   /* If vfs_open() succeeded, `h` must be != NULL */
-   ASSERT(h != NULL);
-
-   rc = vfs_fstat64(h, statbuf);
-   vfs_close(h);
-   return 0;
 }
 
 int vfs_stat64(const char *path, struct stat64 *statbuf)
@@ -52,12 +31,6 @@ int vfs_stat64(const char *path, struct stat64 *statbuf)
 
    if (!(fs = get_retained_fs_at(path, &fs_path)))
       return -ENOENT;
-
-   if (!fs->fsops->new_stat) {
-      printk("using the old stat for fs: %s\n", fs->fs_type_name);
-      release_obj(fs);
-      return old_vfs_stat64(path, statbuf);
-   }
 
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
