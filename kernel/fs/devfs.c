@@ -78,6 +78,7 @@ typedef struct {
     * Yes, sub-directories are NOT supported by devfs. The whole filesystem is
     * just one flat directory.
     */
+   enum vfs_entry_type type;
    list files_list;
    tilck_inode_t inode;
 
@@ -177,31 +178,37 @@ static int devfs_dir_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
-int devfs_fstat(fs_handle h, struct stat64 *statbuf)
+int devfs_stat(filesystem *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
-   devfs_handle *dh = h;
-   devfs_file *df = dh->file;
-   devfs_data *ddata = dh->fs->device_data;
+   devfs_file *df = i;
+   devfs_data *ddata = fs->device_data;
 
    bzero(statbuf, sizeof(struct stat64));
 
-   statbuf->st_dev = dh->fs->device_id;
+   statbuf->st_dev = fs->device_id;
 
-   if (dh->type == VFS_CHAR_DEV) {
-      statbuf->st_mode = 0666 | S_IFCHR;
-      statbuf->st_ino = df->inode;
-   } else if (dh->type == VFS_DIR) {
-      statbuf->st_mode = 0555 | S_IFDIR;
-      statbuf->st_ino = ddata->root_dir.inode;
-   } else {
-      NOT_REACHED();
+   switch (df->type) {
+
+      case VFS_DIR:
+         ASSERT(i == &ddata->root_dir);
+         statbuf->st_mode = 0555 | S_IFDIR;
+         statbuf->st_ino = ddata->root_dir.inode;
+         break;
+
+      case VFS_CHAR_DEV:
+         statbuf->st_mode = 0666 | S_IFCHR;
+         statbuf->st_ino = df->inode;
+         break;
+
+      default:
+         panic("[devfs] Invalid type: %d", df->type);
    }
 
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
    statbuf->st_gid = 0; /* root */
 
-   if (dh->type == VFS_CHAR_DEV)
+   if (df->type == VFS_CHAR_DEV)
       statbuf->st_rdev = (dev_t)(df->dev_major << 8 | df->dev_minor);
 
    statbuf->st_size = 0;
@@ -446,7 +453,7 @@ static const fs_ops static_fsops_devfs =
    .mkdir = NULL,
    .rmdir = NULL,
    .truncate = NULL,
-   .fstat = devfs_fstat,
+   .new_stat = devfs_stat,
    .get_entry = devfs_get_entry,
 
    .fs_exlock = devfs_exclusive_lock,
@@ -472,6 +479,7 @@ filesystem *create_devfs(void)
    }
 
    d->next_inode = 1;
+   d->root_dir.type = VFS_DIR;
    d->root_dir.inode = devfs_get_next_inode(d);
    list_init(&d->root_dir.files_list);
    rwlock_wp_init(&d->rwlock);
