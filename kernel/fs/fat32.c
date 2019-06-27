@@ -292,7 +292,7 @@ static inline tilck_inode_t fat_handle_to_inode(fat_handle *fh)
    return fat_entry_to_inode(d->hdr, fh->e);
 }
 
-STATIC int fat_stat64(fs_handle h, struct stat64 *statbuf)
+STATIC int fat_fstat(fs_handle h, struct stat64 *statbuf)
 {
    fat_handle *fh = h;
    datetime_t crt_time, wrt_time;
@@ -612,7 +612,7 @@ static const fs_ops static_fsops_fat =
    .mkdir = NULL,
    .rmdir = NULL,
    .truncate = NULL,
-   .fstat = fat_stat64,
+   .fstat = fat_fstat,
    .get_entry = fat_get_entry,
 
    .fs_exlock = fat_exclusive_lock,
