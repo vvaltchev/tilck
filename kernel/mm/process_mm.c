@@ -267,7 +267,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
    fs_handle_base *handle = NULL;
-   devfs_file_handle *devfs_handle = NULL;
+   devfs_file_handle *dh = NULL;
    u32 per_heap_kmalloc_flags = KMALLOC_FL_MULTI_STEP | PAGE_SIZE;
    user_mapping *um = NULL;
    size_t actual_len;
@@ -318,12 +318,12 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       if (handle->fs != get_devfs())
          return -ENODEV; /* only special dev files can be memory-mapped */
 
-      devfs_handle = (devfs_file_handle *) handle;
+      dh = (devfs_file_handle *) handle;
 
-      if (!devfs_handle->fops->mmap)
+      if (!dh->fops->mmap)
          return -ENODEV; /* this device file does not support memory mapping */
 
-      ASSERT(devfs_handle->fops->munmap);
+      ASSERT(dh->fops->munmap);
       per_heap_kmalloc_flags |= KMALLOC_FL_NO_ACTUAL_ALLOC;
    }
 
@@ -337,10 +337,10 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
                              &actual_len,
                              per_heap_kmalloc_flags);
 
-      if (devfs_handle) {
+      if (dh) {
 
          size_t mapping_page_count = actual_len >> PAGE_SHIFT;
-         um = process_add_user_mapping(devfs_handle, res, mapping_page_count);
+         um = process_add_user_mapping(dh, res, mapping_page_count);
 
          if (!um) {
             per_heap_kfree(pi->mmap_heap,
@@ -361,10 +361,10 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       return -ENOMEM;
 
 
-   if (devfs_handle) {
+   if (dh) {
 
 
-      if ((rc = devfs_handle->fops->mmap(handle, res, actual_len))) {
+      if ((rc = dh->fops->mmap(handle, res, actual_len))) {
 
          /*
          * Everything was apparently OK and the allocation in the user virtual
