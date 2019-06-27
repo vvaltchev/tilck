@@ -33,7 +33,8 @@ get_retained_fs_at(const char *path, const char **fs_path_ref)
    return fs;
 }
 
-static int vfs_resolve(filesystem *fs, const char *path, vfs_path *rp)
+static int
+vfs_resolve(filesystem *fs, const char *path, vfs_path *rp, bool res_last_sl)
 {
    func_get_entry get_entry = fs->fsops->get_entry;
    fs_path_struct e;

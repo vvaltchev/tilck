@@ -30,7 +30,7 @@ int sys_chdir(const char *user_path)
       if ((rc = compute_abs_path(orig_path, pi->cwd, path, MAX_PATH)))
          goto out;
 
-      if ((rc = vfs_stat64(path, &statbuf)))
+      if ((rc = vfs_stat64(path, &statbuf, true)))
          goto out;
 
       if (!S_ISDIR(statbuf.st_mode)) {

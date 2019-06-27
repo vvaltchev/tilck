@@ -49,7 +49,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
    {
-      rc = vfs_resolve(fs, fs_path, &p);
+      rc = vfs_resolve(fs, fs_path, &p, true);
 
       if (!rc)
          rc = fs->fsops->open(&p, out, flags, mode);
@@ -247,7 +247,7 @@ int vfs_mkdir(const char *path, mode_t mode)
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
    {
-      rc = vfs_resolve(fs, fs_path, &p);
+      rc = vfs_resolve(fs, fs_path, &p, true);
 
       if (!rc)
          rc = fs->fsops->mkdir(&p, mode);
@@ -280,7 +280,7 @@ int vfs_rmdir(const char *path)
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
    {
-      rc = vfs_resolve(fs, fs_path, &p);
+      rc = vfs_resolve(fs, fs_path, &p, true);
 
       if (!rc)
          rc = fs->fsops->rmdir(&p);
@@ -313,7 +313,7 @@ int vfs_unlink(const char *path)
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
    {
-      rc = vfs_resolve(fs, fs_path, &p);
+      rc = vfs_resolve(fs, fs_path, &p, true);
 
       if (!rc)
          rc = p.fs_path.inode ? fs->fsops->unlink(&p) : -ENOENT;
@@ -346,7 +346,7 @@ int vfs_truncate(const char *path, off_t len)
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
    {
-      rc = vfs_resolve(fs, fs_path, &p);
+      rc = vfs_resolve(fs, fs_path, &p, true);
 
       if (!rc)
          rc = p.fs_path.inode

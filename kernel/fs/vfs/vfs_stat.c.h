@@ -18,7 +18,7 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
    return ret;
 }
 
-int vfs_stat64(const char *path, struct stat64 *statbuf)
+int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl)
 {
    const char *fs_path;
    filesystem *fs;
@@ -35,7 +35,7 @@ int vfs_stat64(const char *path, struct stat64 *statbuf)
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
    {
-      rc = vfs_resolve(fs, fs_path, &p);
+      rc = vfs_resolve(fs, fs_path, &p, res_last_sl);
 
       if (!rc)
          rc = p.fs_path.inode
