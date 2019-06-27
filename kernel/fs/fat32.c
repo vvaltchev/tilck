@@ -27,14 +27,14 @@ fat_get_first_cluster_generic(fat_fs_device_data *d, fat_entry *e)
 STATIC void
 fat_close(fs_handle handle)
 {
-   fat_file_handle *h = (fat_file_handle *)handle;
-   kfree2(h, sizeof(fat_file_handle));
+   fat_handle *h = (fat_handle *)handle;
+   kfree2(h, sizeof(fat_handle));
 }
 
 STATIC ssize_t
 fat_read(fs_handle handle, char *buf, size_t bufsize)
 {
-   fat_file_handle *h = (fat_file_handle *) handle;
+   fat_handle *h = (fat_handle *) handle;
    fat_fs_device_data *d = h->fs->device_data;
    off_t fsize = (off_t)h->e->DIR_FileSize;
    off_t written_to_buf = 0;
@@ -96,7 +96,7 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
 STATIC int
 fat_rewind(fs_handle handle)
 {
-   fat_file_handle *h = (fat_file_handle *) handle;
+   fat_handle *h = (fat_handle *) handle;
    h->pos = 0;
    h->curr_cluster = fat_get_first_cluster(h->e);
    return 0;
@@ -105,7 +105,7 @@ fat_rewind(fs_handle handle)
 STATIC off_t
 fat_seek_forward(fs_handle handle, off_t dist)
 {
-   fat_file_handle *h = (fat_file_handle *) handle;
+   fat_handle *h = (fat_handle *) handle;
    fat_fs_device_data *d = h->fs->device_data;
    off_t fsize = (off_t)h->e->DIR_FileSize;
    off_t moved_distance = 0;
@@ -190,7 +190,7 @@ STATIC off_t fat_count_dirents(fat_fs_device_data *d, fat_entry *e)
    return rc ? rc : count;
 }
 
-static off_t fat_seek_dir(fat_file_handle *fh, off_t off)
+static off_t fat_seek_dir(fat_handle *fh, off_t off)
 {
    if (off < 0)
       return -EINVAL;
@@ -205,7 +205,7 @@ static off_t fat_seek_dir(fat_file_handle *fh, off_t off)
 STATIC off_t
 fat_seek(fs_handle handle, off_t off, int whence)
 {
-   fat_file_handle *fh = handle;
+   fat_handle *fh = handle;
 
    if (fh->e->directory) {
 
@@ -232,7 +232,7 @@ fat_seek(fs_handle handle, off_t off, int whence)
          if (off >= 0)
             break;
 
-         fat_file_handle *h = (fat_file_handle *) handle;
+         fat_handle *h = (fat_handle *) handle;
          off = (off_t) h->e->DIR_FileSize + off;
 
          if (off < 0)
@@ -286,7 +286,7 @@ fat_entry_to_inode(fat_header *hdr, fat_entry *e)
    return (tilck_inode_t)((sptr)e - (sptr)hdr);
 }
 
-static inline tilck_inode_t fat_handle_to_inode(fat_file_handle *fh)
+static inline tilck_inode_t fat_handle_to_inode(fat_handle *fh)
 {
    fat_fs_device_data *d = fh->fs->device_data;
    return fat_entry_to_inode(d->hdr, fh->e);
@@ -294,7 +294,7 @@ static inline tilck_inode_t fat_handle_to_inode(fat_file_handle *fh)
 
 STATIC int fat_stat64(fs_handle h, struct stat64 *statbuf)
 {
-   fat_file_handle *fh = h;
+   fat_handle *fh = h;
    datetime_t crt_time, wrt_time;
 
    if (!h)
@@ -336,7 +336,7 @@ STATIC int fat_stat64(fs_handle h, struct stat64 *statbuf)
 
 typedef struct {
 
-   fat_file_handle *fh;
+   fat_handle *fh;
    get_dents_func_cb vfs_cb;
    void *vfs_ctx;
    int rc;
@@ -369,7 +369,7 @@ fat_getdents_cb(fat_header *hdr,
 
 static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 {
-   fat_file_handle *fh = h;
+   fat_handle *fh = h;
    fat_fs_device_data *d = fh->fs->device_data;
    fat_walk_dir_ctx walk_ctx = {0};
    int rc;
@@ -506,7 +506,7 @@ static const file_ops static_ops_fat =
 STATIC int
 fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
 {
-   fat_file_handle *h;
+   fat_handle *h;
    filesystem *fs = p->fs;
    fat_fs_path *fp = (fat_fs_path *)&p->fs_path;
    fat_entry *e = fp->entry;
@@ -527,7 +527,7 @@ fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
       if (fl & (O_WRONLY | O_RDWR))
          return -EROFS;
 
-   if (!(h = kzmalloc(sizeof(fat_file_handle))))
+   if (!(h = kzmalloc(sizeof(fat_handle))))
       return -ENOMEM;
 
    h->fs = fs;
@@ -543,12 +543,12 @@ fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
 
 STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
 {
-   fat_file_handle *new_h = kmalloc(sizeof(fat_file_handle));
+   fat_handle *new_h = kmalloc(sizeof(fat_handle));
 
    if (!new_h)
       return -ENOMEM;
 
-   memcpy(new_h, h, sizeof(fat_file_handle));
+   memcpy(new_h, h, sizeof(fat_handle));
    *dup_h = new_h;
    return 0;
 }
