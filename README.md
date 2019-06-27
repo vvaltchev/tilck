@@ -344,10 +344,10 @@ decided to stick initially with the `i686` architecture for the following reason
 
 Said that, likely I'll make `Tilck` to support also `x86_64` and being able to run
 in `long mode` at some point but, given the long-term plans for it as a tiny kernel
-for embedded systems, making it to run on `ARM` machines it certainly important.
-Unfortunately, the project at the moment is still not developed enough to be
-actually useful on its first architecture, therefore spending a lot of effort to
-make it run on a second architecture does not make much sense (at this stage).
+for embedded systems, making it to run on `ARM` machines has priority over supporting
+`x86_64`. Anyway, at this stage, making the kernel (mostly arch-independent code)
+powerful enough has absolute priority over the support for any specific architecture.
+`i686` was just a pragmatic choice for its first archicture.
 
 #### Why using FAT32?
 
