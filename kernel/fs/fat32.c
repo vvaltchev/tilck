@@ -286,46 +286,40 @@ fat_entry_to_inode(fat_header *hdr, fat_entry *e)
    return (tilck_inode_t)((sptr)e - (sptr)hdr);
 }
 
-static inline tilck_inode_t fat_handle_to_inode(fat_handle *fh)
+STATIC int fat_stat(filesystem *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
-   fat_fs_device_data *d = fh->fs->device_data;
-   return fat_entry_to_inode(d->hdr, fh->e);
-}
-
-STATIC int fat_fstat(fs_handle h, struct stat64 *statbuf)
-{
-   fat_handle *fh = h;
+   fat_entry *e = i;
    datetime_t crt_time, wrt_time;
 
-   if (!h)
+   if (!e)
       return -ENOENT;
 
    bzero(statbuf, sizeof(struct stat64));
 
-   statbuf->st_dev = fh->fs->device_id;
-   statbuf->st_ino = fat_handle_to_inode(fh);
+   statbuf->st_dev = fs->device_id;
+   statbuf->st_ino = fat_entry_to_inode(fs->device_data, e);
    statbuf->st_mode = 0555;
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
    statbuf->st_gid = 0; /* root */
    statbuf->st_rdev = 0; /* device ID, if a special file */
-   statbuf->st_size = fh->e->DIR_FileSize;
+   statbuf->st_size = e->DIR_FileSize;
    statbuf->st_blksize = 4096;
    statbuf->st_blocks = statbuf->st_size / 512;
 
-   if (fh->e->directory || fh->e->volume_id)
+   if (e->directory || e->volume_id)
       statbuf->st_mode |= S_IFDIR;
    else
       statbuf->st_mode |= S_IFREG;
 
    crt_time =
-      fat_datetime_to_regular_datetime(fh->e->DIR_CrtDate,
-                                       fh->e->DIR_CrtTime,
-                                       fh->e->DIR_CrtTimeTenth);
+      fat_datetime_to_regular_datetime(e->DIR_CrtDate,
+                                       e->DIR_CrtTime,
+                                       e->DIR_CrtTimeTenth);
 
    wrt_time =
-      fat_datetime_to_regular_datetime(fh->e->DIR_WrtDate,
-                                       fh->e->DIR_WrtTime,
+      fat_datetime_to_regular_datetime(e->DIR_WrtDate,
+                                       e->DIR_WrtTime,
                                        0 /* No WrtTimeTenth */);
 
    statbuf->st_ctim.tv_sec = datetime_to_timestamp(crt_time);
@@ -617,7 +611,7 @@ static const fs_ops static_fsops_fat =
    .mkdir = NULL,
    .rmdir = NULL,
    .truncate = NULL,
-   .fstat = fat_fstat,
+   .new_stat = fat_stat,
    .get_entry = fat_get_entry,
 
    .fs_exlock = fat_exclusive_lock,

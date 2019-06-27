@@ -6,11 +6,18 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
    ASSERT(h != NULL);
 
    fs_handle_base *hb = (fs_handle_base *) h;
+   filesystem *fs = hb->fs;
+   const fs_ops *fsops = fs->fsops;
    int ret;
 
    vfs_shlock(h);
    {
-      ret = hb->fs->fsops->fstat(h, statbuf);
+      if (fsops->new_stat) {
+         ret = fsops->new_stat(fs, fsops->get_inode(h), statbuf);
+      } else {
+         printk("[fstat] Use the *old* fstat impl for %s\n", fs->fs_type_name);
+         ret = fsops->fstat(h, statbuf);
+      }
    }
    vfs_shunlock(h);
    return ret;
