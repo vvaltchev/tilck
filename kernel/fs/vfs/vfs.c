@@ -349,7 +349,9 @@ int vfs_truncate(const char *path, off_t len)
       rc = vfs_resolve(fs, fs_path, &p);
 
       if (!rc)
-         rc = p.fs_path.inode ? fs->fsops->truncate(&p, len) : -ENOENT;
+         rc = p.fs_path.inode
+            ? fs->fsops->truncate(p.fs_path.inode, len)
+            : -ENOENT;
    }
    vfs_fs_exunlock(fs);
    release_obj(fs);     /* it was retained by get_retained_fs_at() */
@@ -359,11 +361,12 @@ int vfs_truncate(const char *path, off_t len)
 int vfs_ftruncate(fs_handle h, off_t length)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
+   const fs_ops *fsops = hb->fs->fsops;
 
-   if (!hb->fops->ftruncate)
+   if (!fsops->truncate)
       return -EROFS;
 
-   return hb->fops->ftruncate(h, length);
+   return fsops->truncate(fsops->get_inode(h), length);
 }
 
 u32 vfs_get_new_device_id(void)

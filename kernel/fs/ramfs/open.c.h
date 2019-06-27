@@ -7,7 +7,6 @@ static const file_ops static_ops_ramfs =
    .seek = ramfs_seek,
    .ioctl = ramfs_ioctl,
    .fcntl = ramfs_fcntl,
-   .ftruncate = ramfs_ftruncate,
    .mmap = NULL,
    .munmap = NULL,
    .exlock = ramfs_file_exlock,

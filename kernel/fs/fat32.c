@@ -496,7 +496,6 @@ static const file_ops static_ops_fat =
    .write = fat_write,
    .ioctl = fat_ioctl,
    .fcntl = fat_fcntl,
-   .ftruncate = NULL,
    .exlock = fat_file_exlock,
    .exunlock = fat_file_exunlock,
    .shlock = fat_file_shlock,
@@ -602,8 +601,14 @@ fat_get_entry(filesystem *fs,
    };
 }
 
+static vfs_inode_ptr_t fat_get_inode(fs_handle h)
+{
+   return ((fat_handle *)h)->e;
+}
+
 static const fs_ops static_fsops_fat =
 {
+   .get_inode = fat_get_inode,
    .open = fat_open,
    .close = fat_close,
    .dup = fat_dup,

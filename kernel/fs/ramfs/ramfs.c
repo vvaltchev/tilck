@@ -144,8 +144,14 @@ ramfs_get_entry(filesystem *fs,
    };
 }
 
+static vfs_inode_ptr_t ramfs_getinode(fs_handle h)
+{
+   return ((ramfs_handle *)h)->inode;
+}
+
 static const fs_ops static_fsops_ramfs =
 {
+   .get_inode = ramfs_getinode,
    .open = ramfs_open,
    .close = ramfs_close,
    .dup = ramfs_dup,

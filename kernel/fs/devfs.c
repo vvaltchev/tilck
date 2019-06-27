@@ -222,7 +222,6 @@ static const file_ops static_ops_devfs =
    .seek = devfs_dir_seek,
    .ioctl = devfs_dir_ioctl,
    .fcntl = devfs_dir_fcntl,
-   .ftruncate = NULL,
    .mmap = NULL,
    .munmap = NULL,
    .exlock = vfs_file_nolock,
@@ -431,8 +430,14 @@ devfs_get_entry(filesystem *fs,
    }
 }
 
+static vfs_inode_ptr_t devfs_get_inode(fs_handle h)
+{
+   return ((devfs_handle *)h)->file;
+}
+
 static const fs_ops static_fsops_devfs =
 {
+   .get_inode = devfs_get_inode,
    .open = devfs_open,
    .close = devfs_close,
    .dup = devfs_dup,

@@ -38,9 +38,18 @@ enum vfs_entry_type {
    VFS_PIPE       = 6,
 };
 
+/*
+ * VFS opaque inode pointer.
+ *
+ * It is the primary member the fs_path_struct and it's used by functions like
+ * (stat, fstat), (truncate, ftruncate) in order to have a common implementation
+ * in the FS layer.
+ */
+typedef void *vfs_inode_ptr_t;
+
 #define CREATE_FS_PATH_STRUCT(name, inode_type, fs_entry_type)            \
                                                                           \
-   STATIC_ASSERT(sizeof(inode_type) == sizeof(void *));                   \
+   STATIC_ASSERT(sizeof(inode_type) == sizeof(vfs_inode_ptr_t));          \
    STATIC_ASSERT(sizeof(fs_entry_type) == sizeof(void *));                \
                                                                           \
    typedef struct {                                                       \
@@ -50,7 +59,7 @@ enum vfs_entry_type {
       enum vfs_entry_type type;                                           \
    } name                                                                 \
 
-CREATE_FS_PATH_STRUCT(fs_path_struct, void *, void *);
+CREATE_FS_PATH_STRUCT(fs_path_struct, vfs_inode_ptr_t, void *);
 
 typedef struct {
 
@@ -66,7 +75,7 @@ typedef struct {
 
    tilck_inode_t ino;
    enum vfs_entry_type type;
-   u8 name_len;               /* NODE: includes the final \0 */
+   u8 name_len;               /* NODE: includes the final '\0' */
    const char *name;
 
 } vfs_dent64;
@@ -74,6 +83,8 @@ typedef struct {
 typedef int (*get_dents_func_cb)(vfs_dent64 *, void *);
 
 /* fs ops */
+typedef vfs_inode_ptr_t (*func_get_inode)(fs_handle);
+
 typedef void (*func_close) (fs_handle);
 typedef int (*func_open) (vfs_path *, fs_handle *, int, mode_t);
 typedef int (*func_dup) (fs_handle, fs_handle *);
@@ -81,15 +92,16 @@ typedef int (*func_getdents) (fs_handle, get_dents_func_cb, void *);
 typedef int (*func_unlink) (vfs_path *p);
 typedef int (*func_mkdir) (vfs_path *p, mode_t);
 typedef int (*func_rmdir) (vfs_path *p);
-typedef int (*func_truncate) (vfs_path *p, off_t len);
 typedef void (*func_fslock_t) (filesystem *);
-
 
 typedef void (*func_get_entry) (filesystem *fs,
                                 void *dir_inode,
                                 const char *name,
                                 ssize_t name_len,
                                 fs_path_struct *fs_path);
+
+/* mixed fs/file ops */
+typedef int (*func_truncate) (vfs_inode_ptr_t, off_t len);
 
 /* file ops */
 typedef ssize_t (*func_read) (fs_handle, char *, size_t);
@@ -101,7 +113,6 @@ typedef int (*func_mmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_munmap) (fs_handle, void *vaddr, size_t);
 typedef int (*func_fcntl) (fs_handle, int, int);
 typedef void (*func_hlock_t)(fs_handle);
-typedef int (*func_ftruncate)(fs_handle, off_t);
 
 typedef bool (*func_rwe_ready)(fs_handle);
 typedef kcond *(*func_get_rwe_cond)(fs_handle);
@@ -130,6 +141,7 @@ typedef kcond *(*func_get_rwe_cond)(fs_handle);
  */
 typedef struct {
 
+   func_get_inode get_inode;
    func_open open;
    func_close close;
    func_dup dup;
@@ -169,9 +181,6 @@ typedef struct {
    func_seek seek;
    func_ioctl ioctl;
    func_fcntl fcntl;
-
-   /* mandatory only for R/W filesystems */
-   func_ftruncate ftruncate;
 
    /* optional funcs */
    func_mmap mmap;
