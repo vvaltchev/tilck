@@ -364,5 +364,4 @@ Initially, it looked pretty weird to me, but at some point I felt in love with
 the way my code looked with soft tabs of length=3. I got convinced that 2 spaces
 are just not enough, while 4 spaces are somehow "too much". Therefore, when I
 started the project in 2016, I decided to stick with tab size I liked more, even
-if I totally agree that using 4 spaces would have been better for most of the
-people.
+if I totally agree that using 4 spaces would have been better for most people.
