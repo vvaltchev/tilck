@@ -177,7 +177,7 @@ static int devfs_dir_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
-int devfs_stat64(fs_handle h, struct stat64 *statbuf)
+int devfs_fstat(fs_handle h, struct stat64 *statbuf)
 {
    devfs_handle *dh = h;
    devfs_file *df = dh->file;
@@ -441,7 +441,7 @@ static const fs_ops static_fsops_devfs =
    .mkdir = NULL,
    .rmdir = NULL,
    .truncate = NULL,
-   .fstat = devfs_stat64,
+   .fstat = devfs_fstat,
    .get_entry = devfs_get_entry,
 
    .fs_exlock = devfs_exclusive_lock,
