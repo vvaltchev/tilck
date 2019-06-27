@@ -696,7 +696,7 @@ tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    return table[ctx->state](c, color, a, ctx);
 }
 
-ssize_t tty_write_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
+ssize_t tty_write_int(tty *t, devfs_handle *h, char *buf, size_t size)
 {
    /* term_write's size is limited to 2^20 - 1 */
    size = MIN(size, (size_t)MB - 1);

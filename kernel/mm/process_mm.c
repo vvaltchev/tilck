@@ -267,7 +267,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
    fs_handle_base *handle = NULL;
-   devfs_file_handle *dh = NULL;
+   devfs_handle *dh = NULL;
    u32 per_heap_kmalloc_flags = KMALLOC_FL_MULTI_STEP | PAGE_SIZE;
    user_mapping *um = NULL;
    size_t actual_len;
@@ -318,7 +318,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       if (handle->fs != get_devfs())
          return -ENODEV; /* only special dev files can be memory-mapped */
 
-      dh = (devfs_file_handle *) handle;
+      dh = (devfs_handle *) handle;
 
       if (!dh->fops->mmap)
          return -ENODEV; /* this device file does not support memory mapping */

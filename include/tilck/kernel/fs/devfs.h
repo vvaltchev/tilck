@@ -49,7 +49,7 @@ typedef struct {
       };
    };
 
-} devfs_file_handle;
+} devfs_handle;
 
 
 typedef int

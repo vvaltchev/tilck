@@ -188,7 +188,7 @@ static int tty_ioctl_TIOCSPGRP(tty *t, const int *user_pgrp)
    return -EINVAL;
 }
 
-int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp)
+int tty_ioctl_int(tty *t, devfs_handle *h, uptr request, void *argp)
 {
    switch (request) {
 
@@ -232,7 +232,7 @@ int tty_ioctl_int(tty *t, devfs_file_handle *h, uptr request, void *argp)
    }
 }
 
-int tty_fcntl_int(tty *t, devfs_file_handle *h, int cmd, int arg)
+int tty_fcntl_int(tty *t, devfs_handle *h, int cmd, int arg)
 {
    return -EINVAL;
 }
