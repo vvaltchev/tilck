@@ -36,7 +36,10 @@ static int ramfs_unlink(vfs_path *p)
 
    /* Trucate and delete the inode, if it's not used */
    if (!i->nlink && !get_ref_count(i)) {
-      ramfs_inode_truncate_safe(i, 0);
+
+      if (i->type == VFS_FILE)
+         ramfs_inode_truncate_safe(i, 0);
+
       ramfs_destroy_inode(d, i);
    }
 
