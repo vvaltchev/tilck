@@ -93,6 +93,7 @@ typedef int (*func_unlink) (vfs_path *p);
 typedef int (*func_mkdir) (vfs_path *p, mode_t);
 typedef int (*func_rmdir) (vfs_path *p);
 typedef int (*func_symlink) (const char *, vfs_path *);
+typedef int (*func_readlink) (vfs_path *, char *);
 typedef void (*func_fslock_t) (filesystem *);
 
 typedef void (*func_get_entry) (filesystem *fs,
@@ -152,6 +153,7 @@ typedef struct {
    func_mkdir mkdir;
    func_rmdir rmdir;
    func_symlink symlink;
+   func_readlink readlink;
    func_truncate truncate;
    func_get_entry get_entry;
 
@@ -250,6 +252,7 @@ int vfs_rmdir(const char *path);
 int vfs_truncate(const char *path, off_t length);
 int vfs_ftruncate(fs_handle h, off_t length);
 int vfs_symlink(const char *target, const char *linkpath);
+int vfs_readlink(const char *path, char *buf);
 void vfs_close(fs_handle h);
 
 bool vfs_read_ready(fs_handle h);

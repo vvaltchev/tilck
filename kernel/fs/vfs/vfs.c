@@ -405,6 +405,11 @@ int vfs_symlink(const char *target, const char *linkpath)
    return rc;
 }
 
+int vfs_readlink(const char *path, char *buf)
+{
+   return -EINVAL;
+}
+
 u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;

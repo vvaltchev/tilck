@@ -442,13 +442,44 @@ int sys_symlink(const char *u_target, const char *u_linkpath)
 
 int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
 {
-   /*
-    * For moment, symlinks are not supported in Tilck. Therefore, just always
-    * -EINVAL, the correct error for the case the named file is NOT a symbolic
-    * link.
-    */
+   task_info *curr = get_curr_task();
+   char *orig_path = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 0;
+   char *path      = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 1;
+   char *buf       = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 2;
+   size_t ret_bs;
+   int rc;
 
-   return -EINVAL;
+   STATIC_ASSERT(ARGS_COPYBUF_SIZE / 4 >= MAX_PATH);
+
+   rc = copy_str_from_user(orig_path, u_pathname, MAX_PATH, NULL);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -ENAMETOOLONG;
+
+   kmutex_lock(&curr->pi->fslock);
+   {
+      rc = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
+   }
+   kmutex_unlock(&curr->pi->fslock);
+
+   if (rc < 0)
+      return rc;
+
+   rc = vfs_readlink(path, buf);
+
+   if (rc < 0)
+      return rc;
+
+   ret_bs = (size_t) rc;
+   rc = copy_to_user(u_buf, buf, MIN(ret_bs, u_bufsize));
+
+   if (rc < 0)
+      return -EFAULT;
+
+   return (int) ret_bs;
 }
 
 int sys_truncate64(const char *user_path, s64 len)
