@@ -407,7 +407,41 @@ int vfs_symlink(const char *target, const char *linkpath)
 
 int vfs_readlink(const char *path, char *buf)
 {
-   return -EINVAL;
+   const char *fs_path;
+   filesystem *fs;
+   vfs_path p;
+   int rc;
+
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(path != NULL);
+   ASSERT(*path == '/'); /* VFS works only with absolute paths */
+
+   if (!(fs = get_retained_fs_at(path, &fs_path)))
+      return -ENOENT;
+
+   if (!fs->fsops->readlink) {
+
+       /*
+        * If there's no readlink(), symlinks are not supported by the FS, ergo
+        * the last component of `path` cannot be referring to a symlink.
+        */
+      return -EINVAL;
+   }
+
+   /* See the comment in vfs.h about the "fs-lock" funcs */
+   vfs_fs_exlock(fs);
+   {
+      rc = vfs_resolve(fs, fs_path, &p, true);
+
+      if (!rc)
+         rc = p.fs_path.inode
+            ? fs->fsops->readlink(&p, buf)
+            : -ENOENT;
+
+   }
+   vfs_fs_exunlock(fs);
+   release_obj(fs);     /* it was retained by get_retained_fs_at() */
+   return rc;
 }
 
 u32 vfs_get_new_device_id(void)
