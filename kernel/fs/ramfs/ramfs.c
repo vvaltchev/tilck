@@ -162,6 +162,18 @@ static int ramfs_symlink(const char *target, vfs_path *lp)
    return ramfs_dir_add_entry(lp->fs_path.dir_inode, lp->last_comp, n);
 }
 
+/* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
+static int ramfs_readlink(vfs_path *p, char *buf)
+{
+   ramfs_inode *i = p->fs_path.inode;
+
+   if (i->type != VFS_SYMLINK)
+      return -EINVAL;
+
+   memcpy(buf, i->path, i->path_len); /* skip final \0 */
+   return (int) i->path_len;
+}
+
 static const fs_ops static_fsops_ramfs =
 {
    .get_inode = ramfs_getinode,
@@ -175,6 +187,7 @@ static const fs_ops static_fsops_ramfs =
    .truncate = ramfs_truncate,
    .stat = ramfs_stat,
    .symlink = ramfs_symlink,
+   .readlink = ramfs_readlink,
    .get_entry = ramfs_get_entry,
 
    .fs_exlock = ramfs_exlock,

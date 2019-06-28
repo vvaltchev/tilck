@@ -405,6 +405,7 @@ int vfs_symlink(const char *target, const char *linkpath)
    return rc;
 }
 
+/* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
 int vfs_readlink(const char *path, char *buf)
 {
    const char *fs_path;
