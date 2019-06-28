@@ -432,7 +432,7 @@ int vfs_readlink(const char *path, char *buf)
    /* See the comment in vfs.h about the "fs-lock" funcs */
    vfs_fs_exlock(fs);
    {
-      rc = vfs_resolve(fs, fs_path, &p, true);
+      rc = vfs_resolve(fs, fs_path, &p, false);
 
       if (!rc)
          rc = p.fs_path.inode
