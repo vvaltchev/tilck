@@ -369,6 +369,42 @@ int vfs_ftruncate(fs_handle h, off_t length)
    return fsops->truncate(hb->fs, fsops->get_inode(h), length);
 }
 
+int vfs_symlink(const char *target, const char *linkpath)
+{
+   const char *link_fs_path;
+   filesystem *link_fs;
+   vfs_path p;
+   int rc;
+
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(linkpath != NULL);
+   ASSERT(*linkpath == '/'); /* VFS works only with absolute paths */
+
+   if (!(link_fs = get_retained_fs_at(linkpath, &link_fs_path)))
+      return -ENOENT;
+
+   if (!(link_fs->flags & VFS_FS_RW))
+      return -EROFS;
+
+   if (!link_fs->fsops->symlink)
+      return -EPERM; /* symlinks not supported */
+
+   /* See the comment in vfs.h about the "fs-lock" funcs */
+   vfs_fs_exlock(link_fs);
+   {
+      rc = vfs_resolve(link_fs, link_fs_path, &p, true);
+
+      if (!rc)
+         rc = p.fs_path.inode
+            ? -EEXIST /* the linkpath already exists! */
+            : link_fs->fsops->symlink(target, &p);
+
+   }
+   vfs_fs_exunlock(link_fs);
+   release_obj(link_fs);     /* it was retained by get_retained_fs_at() */
+   return rc;
+}
+
 u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;

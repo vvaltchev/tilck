@@ -425,6 +425,9 @@ int sys_symlink(const char *u_target, const char *u_linkpath)
    if (rc > 0)
       return -ENAMETOOLONG;
 
+   if (!*target || !*linkpath)
+      return -ENOENT; /* target or linkpath is an empty string */
+
    kmutex_lock(&curr->pi->fslock);
    {
       rc = compute_abs_path(linkpath, curr->pi->cwd, abs_linkpath, MAX_PATH);
@@ -434,9 +437,8 @@ int sys_symlink(const char *u_target, const char *u_linkpath)
    if (rc < 0)
       return rc;
 
-   printk("symlink %s -> %s\n", abs_linkpath, target);
-
-   return -ENOSYS;
+   printk("[syscall] symlink %s -> %s\n", abs_linkpath, target);
+   return vfs_symlink(target, abs_linkpath);
 }
 
 int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
