@@ -149,6 +149,19 @@ static vfs_inode_ptr_t ramfs_getinode(fs_handle h)
    return ((ramfs_handle *)h)->inode;
 }
 
+static int ramfs_symlink(const char *target, vfs_path *lp)
+{
+   ramfs_data *d = lp->fs->device_data;
+   ramfs_inode *n;
+
+   n = ramfs_create_inode_symlink(d, lp->fs_path.dir_inode, target);
+
+   if (!n)
+      return -ENOSPC;
+
+   return ramfs_dir_add_entry(lp->fs_path.dir_inode, lp->last_comp, n);
+}
+
 static const fs_ops static_fsops_ramfs =
 {
    .get_inode = ramfs_getinode,
@@ -161,6 +174,7 @@ static const fs_ops static_fsops_ramfs =
    .rmdir = ramfs_rmdir,
    .truncate = ramfs_truncate,
    .stat = ramfs_stat,
+   .symlink = ramfs_symlink,
    .get_entry = ramfs_get_entry,
 
    .fs_exlock = ramfs_exlock,

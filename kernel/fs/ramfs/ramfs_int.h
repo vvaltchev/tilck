@@ -90,8 +90,8 @@ struct ramfs_inode {
 
       /* valid when type == VFS_SYMLINK */
       struct {
-         off_t path_len;
-         const char *path;
+         size_t path_len;
+         char *path;
       };
    };
 

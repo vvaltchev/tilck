@@ -7,6 +7,7 @@ static ramfs_inode *ramfs_new_inode(ramfs_data *d)
    if (!i)
       return NULL;
 
+   i->type = VFS_NONE;
    rwlock_wp_init(&i->rwlock);
    i->ino = d->next_inode_num++;
    return i;
@@ -78,13 +79,60 @@ static int ramfs_destroy_inode(ramfs_data *d, ramfs_inode *i)
    ASSERT(get_ref_count(i) == 0);
    ASSERT(i->nlink == 0);
 
-   if (i->type == VFS_DIR) {
-      ASSERT(i->entries_tree_root == NULL);
-   } else if (i->type == VFS_FILE) {
-      ASSERT(i->blocks_tree_root == NULL);
+   switch (i->type) {
+
+      case VFS_NONE:
+         /* do nothing */
+         break;
+
+      case VFS_FILE:
+         ASSERT(i->blocks_tree_root == NULL);
+         break;
+
+      case VFS_DIR:
+         ASSERT(i->entries_tree_root == NULL);
+         break;
+
+      case VFS_SYMLINK:
+         kfree2(i->path, i->path_len + 1);
+         break;
+
+      default:
+         NOT_IMPLEMENTED();
    }
 
    rwlock_wp_destroy(&i->rwlock);
    kfree2(i, sizeof(ramfs_inode));
    return 0;
+}
+
+static ramfs_inode *
+ramfs_create_inode_symlink(ramfs_data *d,
+                           ramfs_inode *parent,
+                           const char *target)
+{
+   ramfs_inode *i = ramfs_new_inode(d);
+   char *path;
+   size_t pl;
+
+   if (!i)
+      return NULL;
+
+   pl = strlen(target);
+
+   if (!(path = kmalloc(pl + 1))) {
+      ramfs_destroy_inode(d, i);
+      return NULL;
+   }
+
+   memcpy(path, target, pl + 1);
+
+   i->type = VFS_SYMLINK;
+   i->mode = 0777 | S_IFLNK;
+   i->parent_dir = parent;
+   i->path_len = pl;
+   i->path = path;
+   i->ctime = read_system_clock_timestamp();
+   i->mtime = i->ctime;
+   return i;
 }

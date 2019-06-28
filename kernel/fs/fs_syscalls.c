@@ -437,7 +437,6 @@ int sys_symlink(const char *u_target, const char *u_linkpath)
    if (rc < 0)
       return rc;
 
-   printk("[syscall] symlink %s -> %s\n", abs_linkpath, target);
    return vfs_symlink(target, abs_linkpath);
 }
 
