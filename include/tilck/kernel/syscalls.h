@@ -142,7 +142,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_settimeofday)
 CREATE_STUB_SYSCALL_IMPL(sys_getgroups16)
 CREATE_STUB_SYSCALL_IMPL(sys_setgroups16)
 CREATE_STUB_SYSCALL_IMPL(sys_old_select)
-CREATE_STUB_SYSCALL_IMPL(sys_symlink)
+
+int sys_symlink(const char *u_target, const char *u_linkpath);
+
 CREATE_STUB_SYSCALL_IMPL(sys_lstat)
 
 int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize);

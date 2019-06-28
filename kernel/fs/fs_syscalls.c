@@ -401,6 +401,44 @@ int sys_fstat64(int fd, struct stat64 *user_statbuf)
    return rc;
 }
 
+int sys_symlink(const char *u_target, const char *u_linkpath)
+{
+   task_info *curr     = get_curr_task();
+   char *target        = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 0;
+   char *linkpath      = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 1;
+   char *abs_linkpath  = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 2;
+   int rc = 0;
+
+   rc = copy_str_from_user(target, u_target, MAX_PATH, NULL);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -ENAMETOOLONG;
+
+   rc = copy_str_from_user(linkpath, u_linkpath, MAX_PATH, NULL);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -ENAMETOOLONG;
+
+   kmutex_lock(&curr->pi->fslock);
+   {
+      rc = compute_abs_path(linkpath, curr->pi->cwd, abs_linkpath, MAX_PATH);
+   }
+   kmutex_unlock(&curr->pi->fslock);
+
+   if (rc < 0)
+      return rc;
+
+   printk("symlink %s -> %s\n", abs_linkpath, target);
+
+   return -ENOSYS;
+}
+
 int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
 {
    /*
