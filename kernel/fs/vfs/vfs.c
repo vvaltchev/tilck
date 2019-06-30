@@ -38,7 +38,7 @@ static void __nr_check(bool *check)
    ASSERT(path_param != NULL);                                          \
    ASSERT(*path_param == '/');                                          \
                                                                         \
-   if ((rc = vfs_resolve_new(path_param, &p, exlock, rl)) < 0)          \
+   if ((rc = vfs_resolve(path_param, &p, exlock, rl)) < 0)              \
       return rc;                                                        \
                                                                         \
    ASSERT(p.fs != NULL);                                                \

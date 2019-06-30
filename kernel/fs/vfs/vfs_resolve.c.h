@@ -34,10 +34,10 @@ get_retained_fs_at(const char *path, const char **fs_path_ref)
 }
 
 static int
-_vfs_resolve_new(filesystem *fs,
-                 const char *path,
-                 vfs_path *rp,
-                 bool res_last_sl)
+__vfs_resolve(filesystem *fs,
+              const char *path,
+              vfs_path *rp,
+              bool res_last_sl)
 {
    func_get_entry get_entry = fs->fsops->get_entry;
    fs_path_struct e;
@@ -122,7 +122,7 @@ _vfs_resolve_new(filesystem *fs,
  * FS with release_obj().
  */
 static int
-vfs_resolve_new(const char *path, vfs_path *rp, bool exlock, bool res_last_sl)
+vfs_resolve(const char *path, vfs_path *rp, bool exlock, bool res_last_sl)
 {
    int rc;
    const char *fs_path;
@@ -134,7 +134,7 @@ vfs_resolve_new(const char *path, vfs_path *rp, bool exlock, bool res_last_sl)
    /* See the comment in vfs.h about the "fs-lock" funcs */
    exlock ? vfs_fs_exlock(rp->fs) : vfs_fs_shlock(rp->fs);
 
-   rc = _vfs_resolve_new(rp->fs, fs_path, rp, res_last_sl);
+   rc = __vfs_resolve(rp->fs, fs_path, rp, res_last_sl);
 
    if (rc < 0) {
       /* resolve failed: release the lock and the fs */
