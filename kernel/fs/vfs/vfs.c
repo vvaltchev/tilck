@@ -12,13 +12,36 @@
 #include <dirent.h> // system header
 
 #include "../fs_int.h"
+
+static u32 next_device_id;
+
+#define VFS_FS_PATH_FUNCS_COMMON_HEADER(path_param, exlock, rl)         \
+                                                                        \
+   filesystem *fs;                                                      \
+   vfs_path p;                                                          \
+   int rc;                                                              \
+                                                                        \
+   NO_TEST_ASSERT(is_preemption_enabled());                             \
+   ASSERT(path_param != NULL);                                          \
+   ASSERT(*path_param == '/');                                          \
+                                                                        \
+   if ((rc = vfs_resolve_new(path_param, &p, exlock, rl)) < 0)          \
+      return rc;                                                        \
+                                                                        \
+   ASSERT(p.fs != NULL);                                                \
+   fs = p.fs;
+
+#define VFS_FS_PATH_FUNCS_COMMON_FOOTER(path_param, exlock, rl)         \
+out:                                                                    \
+   exlock ? vfs_fs_exunlock(fs) : vfs_fs_shunlock(fs);                  \
+   release_obj(fs);                                                     \
+   return rc;
+
 #include "vfs_locking.c.h"
 #include "vfs_resolve.c.h"
 #include "vfs_stat.c.h"
 #include "vfs_getdents.c.h"
 #include "vfs_op_ready.c.h"
-
-static u32 next_device_id;
 
 /*
  * ----------------------------------------------------
@@ -292,20 +315,12 @@ int vfs_rmdir(const char *path)
 
 int vfs_unlink(const char *path)
 {
-   vfs_path p;
-   int rc;
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, false)
 
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* VFS works only with absolute paths */
-
-   if ((rc = vfs_resolve_new(path, &p, true, false)) < 0)
-      return rc;
-
-   if (p.fs->fsops->unlink) {
-      if (p.fs->flags & VFS_FS_RW) {
+   if (fs->fsops->unlink) {
+      if (fs->flags & VFS_FS_RW) {
          rc = p.fs_path.inode
-            ? p.fs->fsops->unlink(&p)
+            ? fs->fsops->unlink(&p)
             : -ENOENT;
       } else {
          rc = -EROFS;
@@ -314,30 +329,18 @@ int vfs_unlink(const char *path)
       rc = -EROFS;
    }
 
-   vfs_fs_exunlock(p.fs);
-   release_obj(p.fs);
-   return rc;
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, true, false)
 }
 
 int vfs_truncate(const char *path, off_t len)
 {
-   vfs_path p;
-   int rc;
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, true)
 
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* VFS works only with absolute paths */
+   if (fs->fsops->truncate) {
 
-   if ((rc = vfs_resolve_new(path, &p, false, true)) < 0)
-      return rc;
-
-   ASSERT(p.fs != NULL);
-
-   if (p.fs->fsops->truncate) {
-
-      if (p.fs->flags & VFS_FS_RW) {
+      if (fs->flags & VFS_FS_RW) {
          rc = p.fs_path.inode
-            ? p.fs->fsops->truncate(p.fs, p.fs_path.inode, len)
+            ? fs->fsops->truncate(fs, p.fs_path.inode, len)
             : -ENOENT;
       } else {
          rc = -EROFS;
@@ -347,9 +350,7 @@ int vfs_truncate(const char *path, off_t len)
       rc = -EROFS;
    }
 
-   vfs_fs_shunlock(p.fs);
-   release_obj(p.fs);
-   return rc;
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, false, true)
 }
 
 int vfs_ftruncate(fs_handle h, off_t length)
@@ -365,24 +366,14 @@ int vfs_ftruncate(fs_handle h, off_t length)
 
 int vfs_symlink(const char *target, const char *linkpath)
 {
-   vfs_path p;
-   int rc;
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(linkpath, true, false)
 
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(linkpath != NULL);
-   ASSERT(*linkpath == '/'); /* VFS works only with absolute paths */
+   if (fs->fsops->symlink) {
 
-   if ((rc = vfs_resolve_new(linkpath, &p, true, false)) < 0)
-      return rc;
-
-   ASSERT(p.fs != NULL);
-
-   if (p.fs->fsops->symlink) {
-
-      if (p.fs->flags & VFS_FS_RW) {
+      if (fs->flags & VFS_FS_RW) {
          rc = p.fs_path.inode
             ? -EEXIST /* the linkpath already exists! */
-            : p.fs->fsops->symlink(target, &p);
+            : fs->fsops->symlink(target, &p);
       } else {
          rc = -EROFS;
       }
@@ -391,33 +382,20 @@ int vfs_symlink(const char *target, const char *linkpath)
       rc = -EPERM; /* symlinks not supported */
    }
 
-   vfs_fs_exunlock(p.fs);
-   release_obj(p.fs);     /* it was retained by get_retained_fs_at() */
-   return rc;
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, true, false)
 }
 
 /* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
 int vfs_readlink(const char *path, char *buf)
 {
-   vfs_path p;
-   int rc;
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, false)
 
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* VFS works only with absolute paths */
-
-   if ((rc = vfs_resolve_new(path, &p, false, false)) < 0)
-      return rc;
-
-   /* resolve succeeded */
-   ASSERT(p.fs != NULL);
-
-   if (p.fs->fsops->readlink) {
+   if (fs->fsops->readlink) {
 
       /* there is a readlink function */
 
       rc = p.fs_path.inode
-         ? p.fs->fsops->readlink(&p, buf)
+         ? fs->fsops->readlink(&p, buf)
          : -ENOENT;
 
    } else {
@@ -429,9 +407,7 @@ int vfs_readlink(const char *path, char *buf)
       rc = -EINVAL;
    }
 
-   vfs_fs_shunlock(p.fs);
-   release_obj(p.fs);
-   return rc;
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, false, false)
 }
 
 u32 vfs_get_new_device_id(void)
