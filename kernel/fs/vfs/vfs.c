@@ -258,37 +258,34 @@ int vfs_fcntl(fs_handle h, int cmd, int arg)
    return ret;
 }
 
-int vfs_mkdir(const char *path, mode_t mode)
+int vfs_ftruncate(fs_handle h, off_t length)
 {
-   const char *fs_path;
-   filesystem *fs;
-   vfs_path p;
-   int rc;
+   fs_handle_base *hb = (fs_handle_base *) h;
+   const fs_ops *fsops = hb->fs->fsops;
 
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* VFS works only with absolute paths */
-
-   if (!(fs = get_retained_fs_at(path, &fs_path)))
-      return -ENOENT;
-
-   if (!(fs->flags & VFS_FS_RW))
+   if (!fsops->truncate)
       return -EROFS;
 
-   if (!fs->fsops->mkdir)
-      return -EPERM;
+   return fsops->truncate(hb->fs, fsops->get_inode(h), length);
+}
 
-   /* See the comment in vfs.h about the "fs-lock" funcs */
-   vfs_fs_exlock(fs);
-   {
-      rc = vfs_resolve(fs, fs_path, &p, true);
+int vfs_mkdir(const char *path, mode_t mode)
+{
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, false)
 
-      if (!rc)
-         rc = fs->fsops->mkdir(&p, mode);
+   if (fs->fsops->mkdir) {
+      if (fs->flags & VFS_FS_RW) {
+         rc = p.fs_path.inode
+            ? -EEXIST
+            :  fs->fsops->mkdir(&p, mode);
+      } else {
+         return -EROFS;
+      }
+   } else {
+      rc = -EPERM;
    }
-   vfs_fs_exunlock(fs);
-   release_obj(fs);     /* it was retained by get_retained_fs_at() */
-   return rc;
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, true, false)
 }
 
 int vfs_rmdir(const char *path)
@@ -348,17 +345,6 @@ int vfs_truncate(const char *path, off_t len)
    }
 
    VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, false, true)
-}
-
-int vfs_ftruncate(fs_handle h, off_t length)
-{
-   fs_handle_base *hb = (fs_handle_base *) h;
-   const fs_ops *fsops = hb->fs->fsops;
-
-   if (!fsops->truncate)
-      return -EROFS;
-
-   return fsops->truncate(hb->fs, fsops->get_inode(h), length);
 }
 
 int vfs_symlink(const char *target, const char *linkpath)
