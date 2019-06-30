@@ -325,8 +325,6 @@ int vfs_unlink(const char *path)
 
 int vfs_truncate(const char *path, off_t len)
 {
-   const char *fs_path;
-   filesystem *fs;
    vfs_path p;
    int rc;
 
@@ -334,27 +332,27 @@ int vfs_truncate(const char *path, off_t len)
    ASSERT(path != NULL);
    ASSERT(*path == '/'); /* VFS works only with absolute paths */
 
-   if (!(fs = get_retained_fs_at(path, &fs_path)))
-      return -ENOENT;
+   if ((rc = vfs_resolve_new(path, &p, false, true)) < 0)
+      return rc;
 
-   if (!(fs->flags & VFS_FS_RW))
-      return -EROFS;
+   ASSERT(p.fs != NULL);
 
-   if (!fs->fsops->truncate)
-      return -EROFS;
+   if (p.fs->fsops->truncate) {
 
-   /* See the comment in vfs.h about the "fs-lock" funcs */
-   vfs_fs_exlock(fs);
-   {
-      rc = vfs_resolve(fs, fs_path, &p, true);
-
-      if (!rc)
+      if (p.fs->flags & VFS_FS_RW) {
          rc = p.fs_path.inode
-            ? fs->fsops->truncate(fs, p.fs_path.inode, len)
+            ? p.fs->fsops->truncate(p.fs, p.fs_path.inode, len)
             : -ENOENT;
+      } else {
+         return -EROFS;
+      }
+
+   } else {
+      rc = -EROFS;
    }
-   vfs_fs_exunlock(fs);
-   release_obj(fs);     /* it was retained by get_retained_fs_at() */
+
+   vfs_fs_shunlock(p.fs);
+   release_obj(p.fs);
    return rc;
 }
 
@@ -381,7 +379,10 @@ int vfs_symlink(const char *target, const char *linkpath)
    if ((rc = vfs_resolve_new(linkpath, &p, true, false)) < 0)
       return rc;
 
+   ASSERT(p.fs != NULL);
+
    if (p.fs->fsops->symlink) {
+
       if (p.fs->flags & VFS_FS_RW) {
          rc = p.fs_path.inode
             ? -EEXIST /* the linkpath already exists! */
@@ -389,6 +390,7 @@ int vfs_symlink(const char *target, const char *linkpath)
       } else {
          rc = -EROFS;
       }
+
    } else {
       rc = -EPERM; /* symlinks not supported */
    }
