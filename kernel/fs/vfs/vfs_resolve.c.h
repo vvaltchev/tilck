@@ -210,6 +210,7 @@ vfs_resolve_new(const char *path, vfs_path *rp, bool exlock, bool res_last_sl)
    if (!(rp->fs = get_retained_fs_at(path, &fs_path)))
       return -ENOENT;
 
+   /* See the comment in vfs.h about the "fs-lock" funcs */
    exlock ? vfs_fs_exlock(rp->fs) : vfs_fs_shlock(rp->fs);
 
    rc = _vfs_resolve_new(rp->fs, fs_path, rp, res_last_sl);
