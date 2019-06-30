@@ -12,6 +12,10 @@
 #include <dirent.h> // system header
 
 #include "../fs_int.h"
+#include "vfs_locking.c.h"
+#include "vfs_resolve.c.h"
+#include "vfs_getdents.c.h"
+#include "vfs_op_ready.c.h"
 
 static u32 next_device_id;
 
@@ -48,42 +52,7 @@ out:                                                                    \
    release_obj(fs);                                                     \
    return rc;
 
-#include "vfs_locking.c.h"
-#include "vfs_resolve.c.h"
-#include "vfs_stat.c.h"
-#include "vfs_getdents.c.h"
-#include "vfs_op_ready.c.h"
-
-/*
- * ----------------------------------------------------
- * Main VFS functions
- * ----------------------------------------------------
- */
-
-int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
-{
-   if (flags & O_ASYNC)
-      return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
-
-   if ((flags & O_TMPFILE) == O_TMPFILE)
-      return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
-
-   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, true)
-
-   if (!(rc = fs->fsops->open(&p, out, flags, mode))) {
-
-      /* open() succeeded, the FS is already retained */
-      ((fs_handle_base *) *out)->fl_flags = flags;
-
-      if (flags & O_CLOEXEC)
-         ((fs_handle_base *) *out)->fd_flags |= FD_CLOEXEC;
-
-      /* file handles retain their filesystem */
-      retain_obj(fs);
-   }
-
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, true, true)
-}
+/* ------------ handle-based functions ------------- */
 
 void vfs_close(fs_handle h)
 {
@@ -246,6 +215,62 @@ int vfs_ftruncate(fs_handle h, off_t length)
       return -EROFS;
 
    return fsops->truncate(hb->fs, fsops->get_inode(h), length);
+}
+
+int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
+{
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
+   fs_handle_base *hb = (fs_handle_base *) h;
+   filesystem *fs = hb->fs;
+   const fs_ops *fsops = fs->fsops;
+   int ret;
+
+   vfs_shlock(h);
+   {
+      ret = fsops->stat(fs, fsops->get_inode(h), statbuf);
+   }
+   vfs_shunlock(h);
+   return ret;
+}
+
+/* ----------- path-based functions -------------- */
+
+int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
+{
+   if (flags & O_ASYNC)
+      return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
+
+   if ((flags & O_TMPFILE) == O_TMPFILE)
+      return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
+
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, true)
+
+   if (!(rc = fs->fsops->open(&p, out, flags, mode))) {
+
+      /* open() succeeded, the FS is already retained */
+      ((fs_handle_base *) *out)->fl_flags = flags;
+
+      if (flags & O_CLOEXEC)
+         ((fs_handle_base *) *out)->fd_flags |= FD_CLOEXEC;
+
+      /* file handles retain their filesystem */
+      retain_obj(fs);
+   }
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, true, true)
+}
+
+int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl)
+{
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, res_last_sl)
+
+   rc = p.fs_path.inode
+      ? fs->fsops->stat(fs, p.fs_path.inode, statbuf)
+      : -ENOENT;
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, false, res_last_sl)
 }
 
 int vfs_mkdir(const char *path, mode_t mode)
