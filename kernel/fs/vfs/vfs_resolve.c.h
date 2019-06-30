@@ -195,13 +195,15 @@ _vfs_resolve_new(filesystem *fs,
  * lock depending on `exlock`. The last component of the path, if a symlink, is
  * resolved only with `res_last_sl` is true.
  *
- * NOTE: the filesystem is returned as `rp->fs` RETAINED and LOCKED.
- * The called is supposed to first release the right lock with vfs_shunlock() or
- * with vfs_exunlock() and then to release the FS with release_obj().
+ * NOTE: when the function succeedes (-> return 0), the filesystem is returned
+ * as `rp->fs` RETAINED and LOCKED. The caller is supposed to first release the
+ * right lock with vfs_shunlock() or with vfs_exunlock() and then to release the
+ * FS with release_obj().
  */
 static int
 vfs_resolve_new(const char *path, vfs_path *rp, bool exlock, bool res_last_sl)
 {
+   int rc;
    const char *fs_path;
    bzero(rp, sizeof(*rp));
 
@@ -210,5 +212,13 @@ vfs_resolve_new(const char *path, vfs_path *rp, bool exlock, bool res_last_sl)
 
    exlock ? vfs_fs_exlock(rp->fs) : vfs_fs_shlock(rp->fs);
 
-   return _vfs_resolve_new(rp->fs, fs_path, rp, res_last_sl);
+   rc = _vfs_resolve_new(rp->fs, fs_path, rp, res_last_sl);
+
+   if (rc < 0) {
+      /* resolve failed: release the lock and the fs */
+      exlock ? vfs_fs_exunlock(rp->fs) : vfs_fs_shunlock(rp->fs);
+      release_obj(rp->fs); /* it was retained by get_retained_fs_at() */
+   }
+
+   return rc;
 }

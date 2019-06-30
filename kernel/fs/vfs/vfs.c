@@ -408,8 +408,6 @@ int vfs_symlink(const char *target, const char *linkpath)
 /* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
 int vfs_readlink(const char *path, char *buf)
 {
-   const char *fs_path;
-   filesystem *fs;
    vfs_path p;
    int rc;
 
@@ -417,31 +415,31 @@ int vfs_readlink(const char *path, char *buf)
    ASSERT(path != NULL);
    ASSERT(*path == '/'); /* VFS works only with absolute paths */
 
-   if (!(fs = get_retained_fs_at(path, &fs_path)))
-      return -ENOENT;
+   if ((rc = vfs_resolve_new(path, &p, false, false)) < 0)
+      return rc;
 
-   if (!fs->fsops->readlink) {
+   /* resolve succeeded */
+   ASSERT(p.fs != NULL);
 
-       /*
-        * If there's no readlink(), symlinks are not supported by the FS, ergo
-        * the last component of `path` cannot be referring to a symlink.
-        */
-      return -EINVAL;
+   if (p.fs->fsops->readlink) {
+
+      /* there is a readlink function */
+
+      rc = p.fs_path.inode
+         ? p.fs->fsops->readlink(&p, buf)
+         : -ENOENT;
+
+   } else {
+
+      /*
+       * If there's no readlink(), symlinks are not supported by the FS, ergo
+       * the last component of `path` cannot be referring to a symlink.
+       */
+      rc = -EINVAL;
    }
 
-   /* See the comment in vfs.h about the "fs-lock" funcs */
-   vfs_fs_exlock(fs);
-   {
-      rc = vfs_resolve(fs, fs_path, &p, false);
-
-      if (!rc)
-         rc = p.fs_path.inode
-            ? fs->fsops->readlink(&p, buf)
-            : -ENOENT;
-
-   }
-   vfs_fs_exunlock(fs);
-   release_obj(fs);     /* it was retained by get_retained_fs_at() */
+   vfs_fs_shunlock(p.fs);
+   release_obj(p.fs);
    return rc;
 }
 
