@@ -19,20 +19,20 @@ static const char *const default_env[] =
 };
 
 static int
-execve_get_path(const char *user_filename, char **abs_path_ref)
+execve_get_path(const char *user_filename, char **path_ref)
 {
    int rc = 0;
    task_info *curr = get_curr_task();
-   char *abs_path = curr->io_copybuf;
-   char *orig_file_path = curr->args_copybuf;
+   char *path = curr->io_copybuf;
+   char *orig_path = curr->args_copybuf;
    size_t written = 0;
 
    if (UNLIKELY(curr == kernel_process)) {
-      *abs_path_ref = (char *)user_filename;
+      *path_ref = (char *)user_filename;
       goto out;
    }
 
-   rc = duplicate_user_path(orig_file_path,
+   rc = duplicate_user_path(orig_path,
                             user_filename,
                             MIN((uptr)MAX_PATH, ARGS_COPYBUF_SIZE),
                             &written);
@@ -42,12 +42,10 @@ execve_get_path(const char *user_filename, char **abs_path_ref)
 
    STATIC_ASSERT(IO_COPYBUF_SIZE >= MAX_PATH);
 
-   rc = compute_abs_path(orig_file_path, curr->pi->cwd, abs_path, MAX_PATH);
-
-   if (rc != 0)
+   if ((rc = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH)))
       goto out;
 
-   *abs_path_ref = abs_path;
+   *path_ref = path;
 
 out:
    return rc;
@@ -102,7 +100,7 @@ out:
 }
 
 static inline void
-execve_prepare_process(process_info *pi, void *brk, const char *abs_path)
+execve_prepare_process(process_info *pi, void *brk, const char *path)
 {
    /*
     * Close the CLOEXEC handles. Note: we couldn't do that before because they
@@ -115,12 +113,17 @@ execve_prepare_process(process_info *pi, void *brk, const char *abs_path)
    pi->brk = brk;
    pi->initial_brk = brk;
    pi->did_call_execve = true;
-   memcpy(pi->filepath, abs_path, strlen(abs_path) + 1);
+
+   /*
+    * TODO: here we might need the canonical file path instead of just any
+    * usable path.
+    */
+   memcpy(pi->filepath, path, strlen(path) + 1);
 }
 
 static int
 do_execve(task_info *curr_user_task,
-          const char *abs_path,
+          const char *path,
           const char *const *argv,
           const char *const *env)
 {
@@ -128,11 +131,11 @@ do_execve(task_info *curr_user_task,
    pdir_t *pdir = NULL;
    task_info *ti = NULL;
    void *entry, *stack_addr, *brk;
-   const char *const default_argv[] = { abs_path, NULL };
+   const char *const default_argv[] = { path, NULL };
 
    ASSERT(is_preemption_enabled());
 
-   if ((rc = load_elf_program(abs_path, &pdir, &entry, &stack_addr, &brk)))
+   if ((rc = load_elf_program(path, &pdir, &entry, &stack_addr, &brk)))
       return rc;
 
    disable_preemption();
@@ -148,7 +151,7 @@ do_execve(task_info *curr_user_task,
    if (LIKELY(!rc)) {
 
       /* Positive case: setup_usermode_task() succeeded */
-      execve_prepare_process(ti->pi, brk, abs_path);
+      execve_prepare_process(ti->pi, brk, path);
 
       if (LIKELY(curr_user_task != NULL)) {
 
@@ -178,31 +181,31 @@ do_execve(task_info *curr_user_task,
    return rc;
 }
 
-int first_execve(const char *abs_path, const char *const *argv)
+int first_execve(const char *path, const char *const *argv)
 {
-   return do_execve(NULL, abs_path, argv, NULL);
+   return do_execve(NULL, path, argv, NULL);
 }
 
 int sys_execve(const char *user_filename,
-                const char *const *user_argv,
-                const char *const *user_env)
+               const char *const *user_argv,
+               const char *const *user_env)
 {
    int rc;
-   char *abs_path;
+   char *path;
    char *const *argv = NULL;
    char *const *env = NULL;
 
    task_info *curr = get_curr_task();
    ASSERT(curr != NULL);
 
-   if ((rc = execve_get_path(user_filename, &abs_path)))
+   if ((rc = execve_get_path(user_filename, &path)))
       return rc;
 
    if ((rc = execve_get_args(user_argv, user_env, &argv, &env)))
       return rc;
 
    return do_execve(curr,
-                    abs_path,
+                    path,
                     (const char *const *)argv,
                     (const char *const *)env);
 }
