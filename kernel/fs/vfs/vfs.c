@@ -15,11 +15,20 @@
 
 static u32 next_device_id;
 
+static void __nr_check(bool *check)
+{
+   if (!*check)
+      panic("Detected return in VFS func using common header/footer");
+}
+
 #define VFS_FS_PATH_FUNCS_COMMON_HEADER(path_param, exlock, rl)         \
                                                                         \
    filesystem *fs;                                                      \
    vfs_path p;                                                          \
    int rc;                                                              \
+   DEBUG_ONLY(const bool __saved_exlock = exlock);                      \
+   DEBUG_ONLY(bool no_ret_check __attribute__((cleanup(__nr_check))));  \
+   DEBUG_ONLY(no_ret_check = false);                                    \
                                                                         \
    NO_TEST_ASSERT(is_preemption_enabled());                             \
    ASSERT(path_param != NULL);                                          \
@@ -33,6 +42,8 @@ static u32 next_device_id;
 
 #define VFS_FS_PATH_FUNCS_COMMON_FOOTER(path_param, exlock, rl)         \
 out:                                                                    \
+   DEBUG_ONLY(no_ret_check = true);                                     \
+   ASSERT(exlock == __saved_exlock);                                    \
    exlock ? vfs_fs_exunlock(fs) : vfs_fs_shunlock(fs);                  \
    release_obj(fs);                                                     \
    return rc;
