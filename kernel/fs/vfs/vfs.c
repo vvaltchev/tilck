@@ -292,8 +292,6 @@ int vfs_rmdir(const char *path)
 
 int vfs_unlink(const char *path)
 {
-   const char *fs_path;
-   filesystem *fs;
    vfs_path p;
    int rc;
 
@@ -301,25 +299,23 @@ int vfs_unlink(const char *path)
    ASSERT(path != NULL);
    ASSERT(*path == '/'); /* VFS works only with absolute paths */
 
-   if (!(fs = get_retained_fs_at(path, &fs_path)))
-      return -ENOENT;
+   if ((rc = vfs_resolve_new(path, &p, true, false)) < 0)
+      return rc;
 
-   if (!(fs->flags & VFS_FS_RW))
-      return -EROFS;
-
-   if (!fs->fsops->unlink)
-      return -EROFS;
-
-   /* See the comment in vfs.h about the "fs-lock" funcs */
-   vfs_fs_exlock(fs);
-   {
-      rc = vfs_resolve(fs, fs_path, &p, true);
-
-      if (!rc)
-         rc = p.fs_path.inode ? fs->fsops->unlink(&p) : -ENOENT;
+   if (p.fs->fsops->unlink) {
+      if (p.fs->flags & VFS_FS_RW) {
+         rc = p.fs_path.inode
+            ? p.fs->fsops->unlink(&p)
+            : -ENOENT;
+      } else {
+         rc = -EROFS;
+      }
+   } else {
+      rc = -EROFS;
    }
-   vfs_fs_exunlock(fs);
-   release_obj(fs);     /* it was retained by get_retained_fs_at() */
+
+   vfs_fs_exunlock(p.fs);
+   release_obj(p.fs);
    return rc;
 }
 
@@ -344,7 +340,7 @@ int vfs_truncate(const char *path, off_t len)
             ? p.fs->fsops->truncate(p.fs, p.fs_path.inode, len)
             : -ENOENT;
       } else {
-         return -EROFS;
+         rc = -EROFS;
       }
 
    } else {
