@@ -62,35 +62,15 @@ out:                                                                    \
 
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 {
-   const char *fs_path;
-   filesystem *fs;
-   vfs_path p;
-   int rc;
-
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* VFS works only with absolute paths */
-
    if (flags & O_ASYNC)
       return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
 
    if ((flags & O_TMPFILE) == O_TMPFILE)
       return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
 
-   if (!(fs = get_retained_fs_at(path, &fs_path)))
-      return -ENOENT;
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, true)
 
-   /* See the comment in vfs.h about the "fs-lock" funcs */
-   vfs_fs_exlock(fs);
-   {
-      rc = vfs_resolve(fs, fs_path, &p, true);
-
-      if (!rc)
-         rc = fs->fsops->open(&p, out, flags, mode);
-   }
-   vfs_fs_exunlock(fs);
-
-   if (rc == 0) {
+   if (!(rc = fs->fsops->open(&p, out, flags, mode))) {
 
       /* open() succeeded, the FS is already retained */
       ((fs_handle_base *) *out)->fl_flags = flags;
@@ -98,12 +78,11 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
       if (flags & O_CLOEXEC)
          ((fs_handle_base *) *out)->fd_flags |= FD_CLOEXEC;
 
-   } else {
-      /* open() failed, we need to release the FS */
-      release_obj(fs);
+      /* file handles retain their filesystem */
+      retain_obj(fs);
    }
 
-   return rc;
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, true, true)
 }
 
 void vfs_close(fs_handle h)
