@@ -34,29 +34,26 @@ get_retained_fs_at(const char *path, const char **fs_path_ref)
 }
 
 static int
-__vfs_resolve(filesystem *fs,
+__vfs_resolve(func_get_entry get_entry,
               const char *path,
               vfs_path *rp,
               bool res_last_sl)
 {
-   func_get_entry get_entry = fs->fsops->get_entry;
-   fs_path_struct e;
    const char *pc;
    void *idir;
 
-   get_entry(fs, NULL, NULL, 0, &e);
+   /* the vfs_path `rp` is assumed to be valid */
+   ASSERT(rp->fs != NULL);
+   ASSERT(rp->fs_path.inode != NULL);
 
-   idir = e.inode; /* idir = root's inode */
-
+   /* the path cannot start in the middle of some component */
    ASSERT(*path == '/');
-   pc = ++path;
 
-   /* Always set the `fs` field, no matter what */
-   rp->fs = fs;
+   idir = rp->fs_path.inode; /* idir = the initial inode */
+   pc = ++path;
 
    if (!*path) {
       /* path was just "/" */
-      rp->fs_path = e;
       rp->last_comp = path;
       return 0;
    }
@@ -77,9 +74,9 @@ __vfs_resolve(filesystem *fs,
 
       ASSERT(path[1] != '/');
 
-      get_entry(fs, idir, pc, path - pc, &e);
+      get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
 
-      if (!e.inode) {
+      if (!rp->fs_path.inode) {
 
          if (path[1])
             return -ENOENT; /* the path does NOT end here: no such entity */
@@ -92,21 +89,24 @@ __vfs_resolve(filesystem *fs,
 
       if (!path[1]) {
 
-         /* the path ends here, with a trailing slash */
+         /*
+          * The path ends here, with a trailing slash and that's a problem only
+          * if `rp->fs_path` is NOT a directory.
+          */
 
-         if (e.type != VFS_DIR)
-            return -ENOTDIR; /* that's a problem only if `e` is NOT a dir */
+         if (rp->fs_path.type != VFS_DIR)
+            return -ENOTDIR;
 
          break;
       }
 
-      idir = e.inode;
+      idir = rp->fs_path.inode;
       pc = ++path;
    }
 
    ASSERT(path - pc > 0);
 
-   get_entry(fs, idir, pc, path - pc, &rp->fs_path);
+   get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
    return 0;
 }
@@ -126,15 +126,22 @@ vfs_resolve(const char *path, vfs_path *rp, bool exlock, bool res_last_sl)
 {
    int rc;
    const char *fs_path;
+   func_get_entry get_entry;
+
    bzero(rp, sizeof(*rp));
 
    if (!(rp->fs = get_retained_fs_at(path, &fs_path)))
       return -ENOENT;
 
+   get_entry = rp->fs->fsops->get_entry;
+   ASSERT(get_entry != NULL);
+
    /* See the comment in vfs.h about the "fs-lock" funcs */
    exlock ? vfs_fs_exlock(rp->fs) : vfs_fs_shlock(rp->fs);
 
-   rc = __vfs_resolve(rp->fs, fs_path, rp, res_last_sl);
+   /* Get root's entry */
+   get_entry(rp->fs, NULL, NULL, 0, &rp->fs_path);
+   rc = __vfs_resolve(get_entry, fs_path, rp, res_last_sl);
 
    if (rc < 0) {
       /* resolve failed: release the lock and the fs */
