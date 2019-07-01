@@ -33,7 +33,7 @@ get_retained_fs_at(const char *path, const char **fs_path_ref)
    return fs;
 }
 
-static int
+STATIC int
 __vfs_resolve(func_get_entry get_entry,
               const char *path,
               vfs_path *rp,
@@ -46,11 +46,13 @@ __vfs_resolve(func_get_entry get_entry,
    ASSERT(rp->fs != NULL);
    ASSERT(rp->fs_path.inode != NULL);
 
-   /* the path cannot start in the middle of some component */
-   ASSERT(*path == '/');
+   /* assume the path to be non-empty */
+   ASSERT(*path);
 
    idir = rp->fs_path.inode; /* idir = the initial inode */
-   pc = ++path;
+
+   /* if the path starts with '/', the current component starts at path+1 */
+   pc = *path == '/' ? ++path : path;
 
    if (!*path) {
       /* path was just "/" */
@@ -67,12 +69,16 @@ __vfs_resolve(func_get_entry get_entry,
 
       /*
        * We hit a slash '/' in the path: we now must lookup this path component.
-       *
-       * NOTE: the code in upper layers normalizes the user paths, but it makes
-       * sense to ASSERT that.
+       * Corner cases:
+       *    1. multiple slashes
+       *    2. special directory '.'
+       *    3. special directory '..'
        */
 
-      ASSERT(path[1] != '/');
+      while (path[1] == '/') /* handle the case of multiple slashes */
+         path++;
+
+      // TODO: handle the other cases.
 
       get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
 
@@ -121,7 +127,7 @@ __vfs_resolve(func_get_entry get_entry,
  * right lock with vfs_shunlock() or with vfs_exunlock() and then to release the
  * FS with release_obj().
  */
-static int
+STATIC int
 vfs_resolve(const char *path, vfs_path *rp, bool exlock, bool res_last_sl)
 {
    int rc;
