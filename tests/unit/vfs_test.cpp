@@ -10,6 +10,9 @@
 #include <iostream>
 #include <vector>
 #include <random>
+#include <map>
+#include <unordered_map>
+#include <algorithm>
 
 using namespace std;
 
@@ -23,6 +26,15 @@ extern "C" {
    #include <tilck/kernel/fs/vfs.h>
 
    filesystem *ramfs_create(void);
+   int __vfs_resolve(func_get_entry get_entry,
+                     const char *path,
+                     vfs_path *rp,
+                     bool res_last_sl);
+
+   int vfs_resolve(const char *path,
+                   vfs_path *rp,
+                   bool exlock,
+                   bool res_last_sl);
 }
 
 static int mountpoint_match_wrapper(const char *mp, const char *path)
@@ -290,4 +302,73 @@ TEST(compute_abs_path, tests)
    EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "..a"), "/a/b/c/..a");
    EXPECT_EQ(compute_abs_path_wrapper("/", "something.."), "/something..");
    EXPECT_EQ(compute_abs_path_wrapper("/", "something."), "/something.");
+}
+
+
+/* -------- Tests for the vfs_resolve() function ----------- */
+
+struct test_fs_elem {
+
+   map<string, test_fs_elem *> children;
+};
+
+pair<string, test_fs_elem *> ce(string&& s, test_fs_elem *e)
+{
+   return make_pair<string, test_fs_elem *>(move(s), move(e));
+}
+
+static const test_fs_elem *fs_root = new test_fs_elem{{ce(
+
+   "a",
+   new test_fs_elem{{ce(
+
+      "b",
+      new test_fs_elem{{ce(
+         "c",
+         nullptr
+      )}}
+
+   )}}
+
+)}};
+
+void
+test_get_entry(filesystem *fs,
+               void *dir_inode,
+               const char *name,
+               ssize_t name_len,
+               fs_path_struct *fs_path)
+{
+   if (!name) {
+      fs_path->inode = (void *)fs_root;
+      fs_path->dir_inode = (void *)fs_root;
+      return;
+   }
+
+   string s{name, (size_t)name_len};
+   cout << "get entry name: " << s << endl;
+
+   test_fs_elem *e = (test_fs_elem *)dir_inode;
+   auto it = e->children.find(s);
+
+   if (it != e->children.end()) {
+      fs_path->inode = it->second;
+   } else {
+      fs_path->inode = nullptr;
+   }
+
+   fs_path->dir_inode = e;
+}
+
+TEST(vfs_resolve, basic_test)
+{
+   vfs_path p;
+   bzero(&p, sizeof(p));
+
+   p.fs = (filesystem *)0xaabbccdd;
+   p.fs_path.inode = (void *)fs_root;
+   p.fs_path.dir_inode = (void *)fs_root;
+   p.fs_path.dir_entry = nullptr;
+
+   __vfs_resolve(&test_get_entry, "/a/b/c", &p, true);
 }
