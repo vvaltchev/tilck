@@ -75,5 +75,6 @@
       "panic.h": "c",
       "dir_entries.c.h": "c",
       "fs_int.h": "c"
-   }
+   },
+   "python.pythonPath": "/usr/bin/python"
 }
