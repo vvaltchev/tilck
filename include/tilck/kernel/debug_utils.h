@@ -22,4 +22,5 @@ void validate_stack_pointer_int(const char *file, int line);
 
 void debug_qemu_turn_off_machine(void);
 void register_debug_kernel_keypress_handler(void);
-
+void init_extra_debug_features();
+void set_sched_alive_thread_enabled(bool enabled);

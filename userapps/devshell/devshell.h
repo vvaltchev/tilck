@@ -102,3 +102,11 @@ tilck_debug_qemu_poweroff(void)
 {
    return sysenter_call1(TILCK_TESTCMD_SYSCALL, TILCK_TESTCMD_QEMU_POWEROFF);
 }
+
+static inline int
+tilck_set_sched_alive_thread_enabled(bool enabled)
+{
+   return sysenter_call2(TILCK_TESTCMD_SYSCALL,
+                         TILCK_TESTCMD_SET_SAT_ENABLED,
+                         enabled);
+}

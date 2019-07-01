@@ -197,8 +197,11 @@ int sys_tilck_cmd(enum tilck_testcmd_type cmd,
          debug_qemu_turn_off_machine();
          return 0;
 
+      case TILCK_TESTCMD_SET_SAT_ENABLED:
+         set_sched_alive_thread_enabled((bool)a1);
+         return 0;
+
       default:
-         break;
+         return -EINVAL;
    }
-   return -EINVAL;
 }

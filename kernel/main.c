@@ -171,21 +171,6 @@ static void init_kb_if_necessary()
    }
 }
 
-static void sched_alive_thread()
-{
-   for (int counter = 0; ; counter++) {
-      printk("---- Sched alive thread: %d ----\n", counter);
-      kernel_sleep(TIMER_HZ);
-   }
-}
-
-static void init_extra_debug_features()
-{
-   if (kopt_sched_alive_thread)
-      if (kthread_create(&sched_alive_thread, NULL) < 0)
-         panic("Unable to create a kthread for sched_alive_thread()");
-}
-
 static void do_async_init()
 {
    mount_first_ramdisk();
