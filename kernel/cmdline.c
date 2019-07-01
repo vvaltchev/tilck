@@ -12,6 +12,7 @@ const char *cmd_args[MAX_CMD_ARGS] = { "/sbin/init", [1 ... 15] = NULL };
 void (*self_test_to_run)(void);
 int kopt_tty_count = TTY_COUNT;
 bool kopt_serial_console;
+bool kopt_sched_alive_thread;
 
 /* static variables */
 
@@ -91,6 +92,11 @@ parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
    if (!strcmp(arg, "-sercon")) {
       kopt_serial_console = true;
       kopt_tty_count = 1;
+      return;
+   }
+
+   if (!strcmp(arg, "-sat")) {
+      kopt_sched_alive_thread = true;
       return;
    }
 

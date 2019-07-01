@@ -163,19 +163,38 @@ static void run_init_or_selftest(void)
    }
 }
 
-static void do_async_init()
+static void init_kb_if_necessary()
 {
-   mount_first_ramdisk();
-   init_devfs();
-
    if (!kopt_serial_console) {
       init_kb();
       register_debug_kernel_keypress_handler();
    }
+}
 
+static void sched_alive_thread()
+{
+   for (int counter = 0; ; counter++) {
+      printk("---- Sched alive thread: %d ----\n", counter);
+      kernel_sleep(TIMER_HZ);
+   }
+}
+
+static void init_extra_debug_features()
+{
+   if (kopt_sched_alive_thread)
+      if (kthread_create(&sched_alive_thread, NULL) < 0)
+         panic("Unable to create a kthread for sched_alive_thread()");
+}
+
+static void do_async_init()
+{
+   mount_first_ramdisk();
+   init_devfs();
+   init_kb_if_necessary();
    init_tty();
    init_fbdev();
    init_serial_comm();
+   init_extra_debug_features();
 
    show_hello_message();
    show_system_info();

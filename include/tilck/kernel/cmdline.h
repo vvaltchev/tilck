@@ -8,7 +8,9 @@
 
 extern const char *cmd_args[MAX_CMD_ARGS];
 extern void (*self_test_to_run)(void);
+
 extern int kopt_tty_count;
 extern bool kopt_serial_console;
+extern bool kopt_sched_alive_thread;
 
 void parse_kernel_cmdline(const char *cmdline);
