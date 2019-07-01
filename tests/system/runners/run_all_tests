@@ -212,7 +212,24 @@ def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero):
 
    if fail_on_zero:
       if tests_to_run['selftest'] + tests_to_run['shellcmd'] == 0:
-         print("ERROR: No tests matching the '{0}' regex".format(reg))
+
+         found = []
+         for tt in test_types:
+            for x in tests_by_type[tt]:
+               if re.match(reg, x[0]):
+                  found.append(x)
+
+         if not found:
+            print("ERROR: No tests matching the '{0}' regex.".format(reg))
+         else:
+            print("ERROR: No tests matching "
+                  "the '{0}' regex having timeout <= {1}"
+                  .format(reg, max_test_timeout))
+            print("Tests matching the regex with timeout > {0}:"
+                  .format(max_test_timeout))
+            for x in found:
+               print("  {0} [timeout: {1}s]".format(x[0].ljust(20), x[1]))
+
          sys.exit(1)
 
 def dump_test_stats():
