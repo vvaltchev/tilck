@@ -25,7 +25,7 @@ error_codes_strings = {
 
 SHORT_TEST_TIMEOUT = 12
 MED_TEST_TIMEOUT   = 24
-LONG_TEST_TIMEOUT  = 36
+LONG_TEST_TIMEOUT  = 60
 
 test_types = ['selftest', 'shellcmd']
 pretty_names_list = ['Self tests', 'Shell cmd tests']

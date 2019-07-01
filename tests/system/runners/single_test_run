@@ -127,6 +127,15 @@ def ProcessLine(line):
       HandleHelloMsg(stripped)
       return
 
+   # NOTE: we could kill the VM immediately after a kernel panic, but we'll
+   # loose the backtrace. TODO: detect kernel panic here, but kill the VM after
+   # a some timeout (e.g. 1 sec).
+   #
+   # if stripped.find("KERNEL PANIC") != -1:
+   #    print "[system test runner] Detected kernel panic: KILLING the VM."
+   #    failed = FAIL_PANIC
+   #    process.send_signal(signal.SIGINT)
+
    if not dumping_gcda_files:
 
       output += stripped + "\n"
@@ -185,12 +194,16 @@ def RunTheVM():
    if not in_travis and not in_circleci:
       args.append('-enable-kvm')
 
+   kernel_cmdline = '-sercon '
    cmdline = '/bin/devshell'
    init_opts = ''
 
    if dump_coverage:
       cmdline += ' -dcov'
       init_opts = '-q '
+
+   if in_circleci:
+      kernel_cmdline += ' -sat' # enable sched alive (debug) thread
 
    if TEST_TYPE == 'shellcmd':
 
@@ -205,8 +218,7 @@ def RunTheVM():
    else:
       sys.exit(1)
 
-   kernel_cmdline = '-sercon '
-   kernel_cmdline += '-cmd /sbin/init {0} -- {1}'.format(init_opts, cmdline)
+   kernel_cmdline += ' -cmd /sbin/init {0} -- {1}'.format(init_opts, cmdline)
 
    args += ['-initrd', FATPART_FILE, '-append', kernel_cmdline]
 
