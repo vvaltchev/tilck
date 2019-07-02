@@ -322,7 +322,7 @@ static test_fs_elem *fs_root =
          NODE(
             "b",
             NODE(
-               "c1",
+               "c",
                NODE("f1"),
                NODE("f2"),
             ),
@@ -342,11 +342,11 @@ test_get_entry(filesystem *fs,
       fs_path->type = VFS_DIR;
       fs_path->inode = (void *)fs_root;
       fs_path->dir_inode = (void *)fs_root;
+      fs_path->dir_entry = nullptr;
       return;
    }
 
    string s{name, (size_t)name_len};
-
    test_fs_elem *e = (test_fs_elem *)dir_inode;
    auto it = e->c.find(s);
 
@@ -366,10 +366,7 @@ static int resolve(const char *path, vfs_path *p, bool res_last_sl)
    if (*path == '/') {
       bzero(p, sizeof(*p));
       p->fs = (filesystem *)0xaabbccdd;
-      p->fs_path.type = VFS_DIR;
-      p->fs_path.inode = (void *)fs_root;
-      p->fs_path.dir_inode = (void *)fs_root;
-      p->fs_path.dir_entry = nullptr;
+      test_get_entry(p->fs, nullptr, nullptr, 0, &p->fs_path);
    }
 
    return __vfs_resolve(&test_get_entry, path, p, res_last_sl);
@@ -380,19 +377,74 @@ TEST(vfs_resolve, basic_test)
    int rc;
    vfs_path p;
 
+   /* empty path */
+   rc = resolve("", &p, true);
+   ASSERT_EQ(rc, -ENOENT);
+
+   /* root path */
    rc = resolve("/", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs_root);
+   ASSERT_TRUE(p.fs_path.dir_inode == fs_root);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
 
+   /* regular 1-level path */
    rc = resolve("/a", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]);
+   ASSERT_TRUE(p.fs_path.dir_inode == fs_root);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
 
+   /* non-existent 1-level path */
+   rc = resolve("/x", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == nullptr);
+   ASSERT_TRUE(p.fs_path.dir_inode == fs_root);
+   ASSERT_TRUE(p.fs_path.type == VFS_NONE);
+
+   /* regular 2-level path */
    rc = resolve("/a/b", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]->c["b"]);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
 
+   /* regular 2-level path + trailing slash */
    rc = resolve("/a/b/", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]->c["b"]);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
+
+   /* 2-level path with non-existent component in the middle */
+   rc = resolve("/x/b", &p, true);
+   ASSERT_EQ(rc, -ENOENT);
+
+   /* 4-level path ending with file */
+   rc = resolve("/a/b/c/f1", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]->c["b"]->c["c"]->c["f1"]);
+   ASSERT_TRUE(p.fs_path.dir_inode == fs_root->c["a"]->c["b"]->c["c"]);
+   ASSERT_TRUE(p.fs_path.type == VFS_FILE);
+
+   /* 4-level path ending with file + trailing slash */
+   rc = resolve("/a/b/c/f1/", &p, true);
+   ASSERT_EQ(rc, -ENOTDIR);
+
+   /* multiple slashes [in the middle] */
+   rc = resolve("/a/b/c////f1", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]->c["b"]->c["c"]->c["f1"]);
+   ASSERT_TRUE(p.fs_path.dir_inode == fs_root->c["a"]->c["b"]->c["c"]);
+   ASSERT_TRUE(p.fs_path.type == VFS_FILE);
+
+   /* multiple slashes [at the beginning] */
+   rc = resolve("//a/b/c/f1", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]->c["b"]->c["c"]->c["f1"]);
+   ASSERT_TRUE(p.fs_path.type == VFS_FILE);
+
+   /* multiple slashes [at the end] */
+   rc = resolve("/a/b/////", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]->c["b"]);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
 }
