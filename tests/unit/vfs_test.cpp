@@ -309,13 +309,13 @@ TEST(compute_abs_path, tests)
 
 struct test_fs_elem {
 
-   map<string, test_fs_elem *> children;
+   map<string, test_fs_elem *> c; /* children */
 };
 
 #define ROOT_NODE(...) new test_fs_elem{{ __VA_ARGS__ }}
 #define NODE(name, ...) make_pair(name, ROOT_NODE( __VA_ARGS__ ))
 
-static const test_fs_elem *fs_root =
+static test_fs_elem *fs_root =
    ROOT_NODE(
       NODE(
          "a",
@@ -346,12 +346,11 @@ test_get_entry(filesystem *fs,
    }
 
    string s{name, (size_t)name_len};
-   cout << "get entry name: " << s << endl;
 
    test_fs_elem *e = (test_fs_elem *)dir_inode;
-   auto it = e->children.find(s);
+   auto it = e->c.find(s);
 
-   if (it != e->children.end()) {
+   if (it != e->c.end()) {
       fs_path->inode = it->second;
       fs_path->type = name[0] == 'f' ? VFS_FILE : VFS_DIR;
    } else {
@@ -362,16 +361,38 @@ test_get_entry(filesystem *fs,
    fs_path->dir_inode = e;
 }
 
+static int resolve(const char *path, vfs_path *p, bool res_last_sl)
+{
+   if (*path == '/') {
+      bzero(p, sizeof(*p));
+      p->fs = (filesystem *)0xaabbccdd;
+      p->fs_path.type = VFS_DIR;
+      p->fs_path.inode = (void *)fs_root;
+      p->fs_path.dir_inode = (void *)fs_root;
+      p->fs_path.dir_entry = nullptr;
+   }
+
+   return __vfs_resolve(&test_get_entry, path, p, res_last_sl);
+}
+
 TEST(vfs_resolve, basic_test)
 {
+   int rc;
    vfs_path p;
-   bzero(&p, sizeof(p));
 
-   p.fs = (filesystem *)0xaabbccdd;
-   p.fs_path.type = VFS_DIR;
-   p.fs_path.inode = (void *)fs_root;
-   p.fs_path.dir_inode = (void *)fs_root;
-   p.fs_path.dir_entry = nullptr;
+   rc = resolve("/", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root);
 
-   __vfs_resolve(&test_get_entry, "/a/b/c", &p, true);
+   rc = resolve("/a", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]);
+
+   rc = resolve("/a/b", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]->c["b"]);
+
+   rc = resolve("/a/b/", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]->c["b"]);
 }
