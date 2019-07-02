@@ -33,6 +33,42 @@ get_retained_fs_at(const char *path, const char **fs_path_ref)
    return fs;
 }
 
+STATIC const char *
+__vfs_res_handle_dots(const char *path, vfs_path *rp, bool res_last_sl)
+{
+
+   /* Handle the case of multiple slashes. */
+   while (path[1] == '/')
+      path++;
+
+   if (path[1] == '.') {
+
+      /*
+         * The current char is '/', but the next one is '.'.
+         * Possible cases:
+         *    1. '.' is just the first char of a dir entry.
+         *       In this case the following char must be != '/' and != '.'
+         *    2. '.' is followed by '.'. In this case:
+         *          - if the character after ".." is != 0 and != '/', this is
+         *            still the prefix of some entry name
+         *          - if the char is 0 or '/', we have to go to the parent
+         *            directory.
+         *    3. '.' is followed by 0 or '/': we have to remain here and go on.
+         */
+
+      if (!path[2])
+         return NULL;
+
+      if (path[2] == '/') {
+         path += 2;
+      } else if (path[2] == '.') {
+         NOT_IMPLEMENTED();
+      }
+   }
+
+   return path;
+}
+
 STATIC int
 __vfs_resolve(func_get_entry get_entry,
               const char *path,
@@ -49,12 +85,13 @@ __vfs_resolve(func_get_entry get_entry,
    if (!*path)
       return -ENOENT;
 
-   idir = rp->fs_path.inode; /* idir = the initial inode */
-   pc = path;
+   rp->last_comp = path;
 
-   /* skip one or more slashes at the beginning */
-   while (*path == '/')
-      pc = ++path;
+   if (!(path = __vfs_res_handle_dots(path-1, rp, res_last_sl)))
+      return 0;
+
+   idir = rp->fs_path.inode; /* idir = the initial inode */
+   pc = ++path;
 
    if (!*path) {
       /* path was just "/" */
@@ -69,6 +106,9 @@ __vfs_resolve(func_get_entry get_entry,
          continue;
       }
 
+      get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
+      rp->last_comp = pc;
+
       /*
        * We hit a slash '/' in the path: we now must lookup this path component.
        * Corner cases:
@@ -77,12 +117,8 @@ __vfs_resolve(func_get_entry get_entry,
        *    3. special directory '..'
        */
 
-      // TODO: handle the other cases.
-
-      get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
-
-      while (path[1] == '/') /* handle the case of multiple slashes */
-         path++;
+      if (!(path = __vfs_res_handle_dots(path, rp, res_last_sl)))
+         return 0;
 
       if (!rp->fs_path.inode) {
          return path[1]
@@ -95,8 +131,6 @@ __vfs_resolve(func_get_entry get_entry,
       if (!path[1]) {
 
          /* The path ends here, with a trailing slash */
-         rp->last_comp = pc;
-
          return rp->fs_path.type != VFS_DIR
             ? -ENOTDIR /* if the entry is not a dir, that's a problem */
             : 0;
