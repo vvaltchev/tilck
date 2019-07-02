@@ -34,35 +34,20 @@ get_retained_fs_at(const char *path, const char **fs_path_ref)
 }
 
 STATIC const char *
-__vfs_res_handle_dots(const char *path, vfs_path *rp, bool res_last_sl)
+__vfs_res_handle_dot_slash(const char *path)
 {
-
    /* Handle the case of multiple slashes. */
    while (path[1] == '/')
       path++;
 
+   /* Handle the case of a single '.' */
    if (path[1] == '.') {
 
-      /*
-         * The current char is '/', but the next one is '.'.
-         * Possible cases:
-         *    1. '.' is just the first char of a dir entry.
-         *       In this case the following char must be != '/' and != '.'
-         *    2. '.' is followed by '.'. In this case:
-         *          - if the character after ".." is != 0 and != '/', this is
-         *            still the prefix of some entry name
-         *          - if the char is 0 or '/', we have to go to the parent
-         *            directory.
-         *    3. '.' is followed by 0 or '/': we have to remain here and go on.
-         */
-
       if (!path[2])
-         return NULL;
+         return NULL; /* NULL means return 0 in the caller */
 
       if (path[2] == '/') {
-         path += 2;
-      } else if (path[2] == '.') {
-         NOT_IMPLEMENTED();
+         path += 2;   /* just skip the "/." substring */
       }
    }
 
@@ -75,8 +60,11 @@ __vfs_resolve(func_get_entry get_entry,
               vfs_path *rp,
               bool res_last_sl)
 {
-   const char *pc;
-   void *idir;
+   const fs_path_struct orig_fs_path = rp->fs_path;
+   const char *const orig_path = path;
+   void *idir[32];
+   u8 pc_offs[32];
+   uptr ss = 0;        /* stack size */
 
    /* the vfs_path `rp` is assumed to be valid */
    ASSERT(rp->fs != NULL);
@@ -87,11 +75,13 @@ __vfs_resolve(func_get_entry get_entry,
 
    rp->last_comp = path;
 
-   if (!(path = __vfs_res_handle_dots(path-1, rp, res_last_sl)))
+   if (!(path = __vfs_res_handle_dot_slash(path - 1)))
       return 0;
 
-   idir = rp->fs_path.inode; /* idir = the initial inode */
-   pc = ++path;
+   ++path;
+   pc_offs[ss] = (u8) (path - orig_path);
+   idir[ss] = rp->fs_path.inode; /* idir = the initial inode */
+   ss++;
 
    if (!*path) {
       /* path was just "/" */
@@ -101,23 +91,46 @@ __vfs_resolve(func_get_entry get_entry,
 
    while (*path) {
 
+      if (path[0] == '.' && path[1] == '.' && (!path[2] || path[2] == '/')) {
+
+         if (ss > 2) {
+
+            ss--;
+            const char *pc = orig_path + (sptr) pc_offs[ss - 1];
+            const char *oldpc = orig_path + (sptr) pc_offs[ss - 2];
+            get_entry(rp->fs, idir[ss-2], oldpc, pc-oldpc-1, &rp->fs_path);
+            rp->last_comp = oldpc;
+
+         } else {
+
+            rp->fs_path = orig_fs_path;
+
+            if (ss > 1)
+               ss--;
+         }
+
+         path += 2;
+
+         if (!path[0] || (path[0] == '/' && !path[1]))
+            return 0;
+
+         path++;
+         continue;
+      }
+
       if (*path != '/') {
          path++;
          continue;
       }
 
-      get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
-      rp->last_comp = pc;
 
-      /*
-       * We hit a slash '/' in the path: we now must lookup this path component.
-       * Corner cases:
-       *    1. multiple slashes
-       *    2. special directory '.'
-       *    3. special directory '..'
-       */
+      {
+         const char *pc = orig_path + (sptr) pc_offs[ss - 1];
+         get_entry(rp->fs, idir[ss-1], pc, path - pc, &rp->fs_path);
+         rp->last_comp = pc;
+      }
 
-      if (!(path = __vfs_res_handle_dots(path, rp, res_last_sl)))
+      if (!(path = __vfs_res_handle_dot_slash(path)))
          return 0;
 
       if (!rp->fs_path.inode) {
@@ -136,13 +149,21 @@ __vfs_resolve(func_get_entry get_entry,
             : 0;
       }
 
-      idir = rp->fs_path.inode;
-      pc = ++path;
+      if (ss == ARRAY_SIZE(idir))
+         return -ENAMETOOLONG;
+
+      path++;
+      idir[ss] = rp->fs_path.inode;
+      pc_offs[ss] = (u8)(path - orig_path);
+      ss++;
    }
 
-   ASSERT(path - pc > 0);
-   get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
-   rp->last_comp = pc;
+   {
+      const char *pc = orig_path + (sptr) pc_offs[ss - 1];
+      ASSERT(path - pc > 0);
+      get_entry(rp->fs, idir[ss-1], pc, path - pc, &rp->fs_path);
+      rp->last_comp = pc;
+   }
    return 0;
 }
 

@@ -348,6 +348,8 @@ test_get_entry(filesystem *fs,
    }
 
    string s{name, (size_t)name_len};
+   //cout << "get_entry: '" << s << "'" << endl;
+
    test_fs_elem *e = (test_fs_elem *)dir_inode;
    auto it = e->c.find(s);
 
@@ -504,5 +506,56 @@ TEST(vfs_resolve, single_dot)
    rc = resolve("/a/./b/c", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]->c["b"]->c["c"]);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
+}
+
+TEST(vfs_resolve, double_dot)
+{
+   int rc;
+   vfs_path p;
+
+   rc = resolve("/a/b/c/..", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]->c["b"]);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
+
+   rc = resolve("/a/b/c/../", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]->c["b"]);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
+
+   rc = resolve("/a/b/c/../..", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
+
+   rc = resolve("/a/b/c/../../", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root->c["a"]);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
+
+   rc = resolve("/a/..", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
+
+   rc = resolve("/a/../", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
+
+   rc = resolve("/a/../..", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
+
+   rc = resolve("/..", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root);
+   ASSERT_TRUE(p.fs_path.type == VFS_DIR);
+
+   rc = resolve("/../..", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == fs_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
 }
