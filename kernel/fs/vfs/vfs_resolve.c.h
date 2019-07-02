@@ -46,13 +46,15 @@ __vfs_resolve(func_get_entry get_entry,
    ASSERT(rp->fs != NULL);
    ASSERT(rp->fs_path.inode != NULL);
 
-   /* assume the path to be non-empty */
-   ASSERT(*path);
+   if (!*path)
+      return -ENOENT;
 
    idir = rp->fs_path.inode; /* idir = the initial inode */
+   pc = path;
 
-   /* if the path starts with '/', the current component starts at path+1 */
-   pc = *path == '/' ? ++path : path;
+   /* skip one or more slashes at the beginning */
+   while (*path == '/')
+      pc = ++path;
 
    if (!*path) {
       /* path was just "/" */
@@ -75,35 +77,29 @@ __vfs_resolve(func_get_entry get_entry,
        *    3. special directory '..'
        */
 
-      while (path[1] == '/') /* handle the case of multiple slashes */
-         path++;
-
       // TODO: handle the other cases.
 
       get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
 
+      while (path[1] == '/') /* handle the case of multiple slashes */
+         path++;
+
       if (!rp->fs_path.inode) {
-
-         if (path[1])
-            return -ENOENT; /* the path does NOT end here: no such entity */
-
-         /* no such entity, but the path ends here, with a trailing slash */
-         break;
+         return path[1]
+            ? -ENOENT /* the path does NOT end here: no such entity */
+            : 0;      /* the path just ends with a trailing slash */
       }
 
       /* We've found an entity for this path component (pc) */
 
       if (!path[1]) {
 
-         /*
-          * The path ends here, with a trailing slash and that's a problem only
-          * if `rp->fs_path` is NOT a directory.
-          */
+         /* The path ends here, with a trailing slash */
+         rp->last_comp = pc;
 
-         if (rp->fs_path.type != VFS_DIR)
-            return -ENOTDIR;
-
-         break;
+         return rp->fs_path.type != VFS_DIR
+            ? -ENOTDIR /* if the entry is not a dir, that's a problem */
+            : 0;
       }
 
       idir = rp->fs_path.inode;
@@ -111,7 +107,6 @@ __vfs_resolve(func_get_entry get_entry,
    }
 
    ASSERT(path - pc > 0);
-
    get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
    return 0;
