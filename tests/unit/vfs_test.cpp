@@ -312,25 +312,24 @@ struct test_fs_elem {
    map<string, test_fs_elem *> children;
 };
 
-pair<string, test_fs_elem *> ce(string&& s, test_fs_elem *e)
-{
-   return make_pair<string, test_fs_elem *>(move(s), move(e));
-}
+#define ROOT_NODE(...) new test_fs_elem{{ __VA_ARGS__ }}
+#define NODE(name, ...) make_pair(name, ROOT_NODE( __VA_ARGS__ ))
 
-static const test_fs_elem *fs_root = new test_fs_elem{{ce(
-
-   "a",
-   new test_fs_elem{{ce(
-
-      "b",
-      new test_fs_elem{{ce(
-         "c",
-         nullptr
-      )}}
-
-   )}}
-
-)}};
+static const test_fs_elem *fs_root =
+   ROOT_NODE(
+      NODE(
+         "a",
+         NODE(
+            "b",
+            NODE(
+               "c1",
+               NODE("f1"),
+               NODE("f2"),
+            ),
+            NODE("c2")
+         )
+      )
+   );
 
 void
 test_get_entry(filesystem *fs,
@@ -340,6 +339,7 @@ test_get_entry(filesystem *fs,
                fs_path_struct *fs_path)
 {
    if (!name) {
+      fs_path->type = VFS_DIR;
       fs_path->inode = (void *)fs_root;
       fs_path->dir_inode = (void *)fs_root;
       return;
@@ -353,8 +353,10 @@ test_get_entry(filesystem *fs,
 
    if (it != e->children.end()) {
       fs_path->inode = it->second;
+      fs_path->type = name[0] == 'f' ? VFS_FILE : VFS_DIR;
    } else {
       fs_path->inode = nullptr;
+      fs_path->type = VFS_NONE;
    }
 
    fs_path->dir_inode = e;
@@ -366,6 +368,7 @@ TEST(vfs_resolve, basic_test)
    bzero(&p, sizeof(p));
 
    p.fs = (filesystem *)0xaabbccdd;
+   p.fs_path.type = VFS_DIR;
    p.fs_path.inode = (void *)fs_root;
    p.fs_path.dir_inode = (void *)fs_root;
    p.fs_path.dir_entry = nullptr;
