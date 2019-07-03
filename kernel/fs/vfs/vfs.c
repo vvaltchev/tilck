@@ -283,7 +283,7 @@ int vfs_mkdir(const char *path, mode_t mode)
             ? -EEXIST
             :  fs->fsops->mkdir(&p, mode);
       } else {
-         return -EROFS;
+         rc = -EROFS;
       }
    } else {
       rc = -EPERM;
