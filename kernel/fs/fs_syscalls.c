@@ -61,8 +61,7 @@ int sys_open(const char *user_path, int flags, mode_t mode)
 {
    int ret, free_fd;
    task_info *curr = get_curr_task();
-   char *orig_path = curr->args_copybuf;
-   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
+   char *path = curr->args_copybuf;
    size_t written = 0;
    fs_handle h = NULL;
 
@@ -71,13 +70,10 @@ int sys_open(const char *user_path, int flags, mode_t mode)
    /* Apply the umask upfront */
    mode &= ~curr->pi->umask;
 
-   if ((ret = duplicate_user_path(orig_path, user_path, MAX_PATH, &written)))
+   if ((ret = duplicate_user_path(path, user_path, MAX_PATH, &written)))
       return ret;
 
    kmutex_lock(&curr->pi->fslock);
-
-   if ((ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH)))
-      goto end;
 
    if ((free_fd = get_free_handle_num(curr->pi)) < 0)
       goto no_fds;

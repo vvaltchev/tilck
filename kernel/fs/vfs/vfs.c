@@ -37,7 +37,6 @@ static void __nr_check(bool *check)
                                                                         \
    NO_TEST_ASSERT(is_preemption_enabled());                             \
    ASSERT(path_param != NULL);                                          \
-   ASSERT(*path_param == '/');                                          \
                                                                         \
    if ((rc = vfs_resolve(path_param, &p, lc, exlock, rl)) < 0) {        \
       DEBUG_ONLY(no_ret_check = true);                                  \
