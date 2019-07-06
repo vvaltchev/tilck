@@ -30,11 +30,6 @@ extern "C" {
                      const char *path,
                      vfs_path *rp,
                      bool res_last_sl);
-
-   int vfs_resolve(const char *path,
-                   vfs_path *rp,
-                   bool exlock,
-                   bool res_last_sl);
 }
 
 static int mountpoint_match_wrapper(const char *mp, const char *path)

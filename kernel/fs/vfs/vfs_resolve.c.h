@@ -178,7 +178,11 @@ __vfs_resolve(func_get_entry get_entry,
  * FS with release_obj().
  */
 STATIC int
-vfs_resolve(const char *path, vfs_path *rp, bool exlock, bool res_last_sl)
+vfs_resolve(const char *path,
+            vfs_path *rp,
+            char *last_comp,
+            bool exlock,
+            bool res_last_sl)
 {
    int rc;
    const char *fs_path;
@@ -203,6 +207,13 @@ vfs_resolve(const char *path, vfs_path *rp, bool exlock, bool res_last_sl)
       /* resolve failed: release the lock and the fs */
       exlock ? vfs_fs_exunlock(rp->fs) : vfs_fs_shunlock(rp->fs);
       release_obj(rp->fs); /* it was retained by get_retained_fs_at() */
+   }
+
+   if (last_comp) {
+      memcpy(last_comp, rp->last_comp, strlen(rp->last_comp)+1);
+      rp->last_comp = last_comp;
+   } else {
+      rp->last_comp = NULL;
    }
 
    return rc;
