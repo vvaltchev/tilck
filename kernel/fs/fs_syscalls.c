@@ -441,29 +441,19 @@ int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
 int sys_truncate64(const char *user_path, s64 len)
 {
    task_info *curr = get_curr_task();
-   char *orig_path = curr->args_copybuf;
-   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
+   char *path = curr->args_copybuf;
    int rc;
 
    if (len < 0)
       return -EINVAL;
 
-   rc = copy_str_from_user(orig_path, user_path, MAX_PATH, NULL);
+   rc = copy_str_from_user(path, user_path, MAX_PATH, NULL);
 
    if (rc < 0)
       return -EFAULT;
 
    if (rc > 0)
       return -ENAMETOOLONG;
-
-   kmutex_lock(&curr->pi->fslock);
-   {
-      rc = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
-   }
-   kmutex_unlock(&curr->pi->fslock);
-
-   if (rc < 0)
-      return rc;
 
    // NOTE: truncating the 64-bit length to a pointer-size integer
    return vfs_truncate(path, (off_t)len);
