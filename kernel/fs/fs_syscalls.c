@@ -326,27 +326,17 @@ call_vfs_stat64(const char *user_path,
                 bool res_last_sl)
 {
    task_info *curr = get_curr_task();
-   char *orig_path = curr->args_copybuf;
-   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
+   char *path = curr->args_copybuf;
    struct stat64 statbuf;
    int rc = 0;
 
-   rc = copy_str_from_user(orig_path, user_path, MAX_PATH, NULL);
+   rc = copy_str_from_user(path, user_path, MAX_PATH, NULL);
 
    if (rc < 0)
       return -EFAULT;
 
    if (rc > 0)
       return -ENAMETOOLONG;
-
-   kmutex_lock(&curr->pi->fslock);
-   {
-      rc = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
-   }
-   kmutex_unlock(&curr->pi->fslock);
-
-   if (rc < 0)
-      return rc;
 
    if ((rc = vfs_stat64(path, &statbuf, res_last_sl)))
       return rc;
