@@ -380,8 +380,9 @@ int sys_symlink(const char *u_target, const char *u_linkpath)
    task_info *curr     = get_curr_task();
    char *target        = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 0;
    char *linkpath      = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 1;
-   char *abs_linkpath  = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 2;
    int rc = 0;
+
+   STATIC_ASSERT(ARGS_COPYBUF_SIZE / 4 >= MAX_PATH);
 
    rc = copy_str_from_user(target, u_target, MAX_PATH, NULL);
 
@@ -402,16 +403,7 @@ int sys_symlink(const char *u_target, const char *u_linkpath)
    if (!*target || !*linkpath)
       return -ENOENT; /* target or linkpath is an empty string */
 
-   kmutex_lock(&curr->pi->fslock);
-   {
-      rc = compute_abs_path(linkpath, curr->pi->cwd, abs_linkpath, MAX_PATH);
-   }
-   kmutex_unlock(&curr->pi->fslock);
-
-   if (rc < 0)
-      return rc;
-
-   return vfs_symlink(target, abs_linkpath);
+   return vfs_symlink(target, linkpath);
 }
 
 int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
