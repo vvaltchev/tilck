@@ -188,9 +188,31 @@ vfs_resolve(const char *path,
    const char *fs_path;
    func_get_entry get_entry;
 
+#ifndef UNIT_TEST_ENVIRONMENT
+
+   char abs_path[MAX_PATH];
+   task_info *curr = get_curr_task();
+
+   kmutex_lock(&curr->pi->fslock);
+   {
+      rc = compute_abs_path(path, curr->pi->cwd, abs_path, MAX_PATH);
+   }
+   kmutex_unlock(&curr->pi->fslock);
+
+   if (rc < 0)
+      return rc;
+
+#else
+
+   const char *abs_path = path;
+
+#endif
+
+
+
    bzero(rp, sizeof(*rp));
 
-   if (!(rp->fs = get_retained_fs_at(path, &fs_path)))
+   if (!(rp->fs = get_retained_fs_at(abs_path, &fs_path)))
       return -ENOENT;
 
    get_entry = rp->fs->fsops->get_entry;
