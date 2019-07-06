@@ -30,14 +30,17 @@ void create_test_file(const char *path, int n)
    close(rc);
 }
 
-void remove_test_file(const char *path, int n)
+int remove_test_file(const char *path, int n)
 {
    char abs_path[256];
-   int rc;
-
    sprintf(abs_path, "%s/test_%03d", path, n);
+   return unlink(abs_path);
+}
 
-   rc = unlink(abs_path);
+void remove_test_file_expecting_success(const char *path, int n)
+{
+   int rc;
+   rc = remove_test_file(path, n);
    DEVSHELL_CMD_ASSERT(rc == 0);
 }
 
@@ -60,7 +63,7 @@ int cmd_fs_perf1(int argc, char **argv)
    printf("Avg. creat() cost:  %4llu K cycles\n", elapsed / 1000);
 
    for (int i = 0; i < n; i++)
-     remove_test_file(dest_dir, i);
+     remove_test_file_expecting_success(dest_dir, i);
 
    end = RDTSC();
    elapsed = (end - start) / n;
