@@ -147,18 +147,14 @@ int sys_close(int fd)
 int sys_mkdir(const char *user_path, mode_t mode)
 {
    task_info *curr = get_curr_task();
-   char *orig_path = curr->args_copybuf;
-   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
+   char *path = curr->args_copybuf;
    size_t written = 0;
    int ret;
 
    /* Apply the umask upfront */
    mode &= ~curr->pi->umask;
 
-   if ((ret = duplicate_user_path(orig_path, user_path, MAX_PATH, &written)))
-      return ret;
-
-   if ((ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH)))
+   if ((ret = duplicate_user_path(path, user_path, MAX_PATH, &written)))
       return ret;
 
    return vfs_mkdir(path, mode);
