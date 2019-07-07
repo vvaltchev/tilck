@@ -152,9 +152,11 @@ void create_kernel_process(void)
    list_init(&sleeping_tasks_list);
    list_init(&zombie_tasks_list);
 
+#ifndef UNIT_TEST_ENVIRONMENT
    if (!in_panic()) {
       VERIFY(create_new_pid() == 0);
    }
+#endif
 
    ASSERT(s_kernel_ti->tid == 0);
    ASSERT(s_kernel_pi->pid == 0);
@@ -174,10 +176,12 @@ void create_kernel_process(void)
    kernel_process = s_kernel_ti;
    kernel_process_pi = s_kernel_ti->pi;
 
+#ifndef UNIT_TEST_ENVIRONMENT
    if (!in_panic()) {
       VERIFY(arch_specific_new_task_setup(s_kernel_ti, NULL));
       add_task(kernel_process);
    }
+#endif
 
    set_curr_task(kernel_process);
 }
