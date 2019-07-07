@@ -19,35 +19,24 @@ static const char *const default_env[] =
 };
 
 static int
-execve_get_path(const char *user_filename, char **path_ref)
+execve_get_path(const char *user_path, char **path_ref)
 {
    int rc = 0;
    task_info *curr = get_curr_task();
    char *path = curr->io_copybuf;
-   char *orig_path = curr->args_copybuf;
    size_t written = 0;
+   STATIC_ASSERT(IO_COPYBUF_SIZE > MAX_PATH);
 
-   if (UNLIKELY(curr == kernel_process)) {
-      *path_ref = (char *)user_filename;
-      goto out;
+   if (LIKELY(curr != kernel_process)) {
+
+      if (!(rc = duplicate_user_path(path, user_path, MAX_PATH, &written)))
+         *path_ref = path;
+
+   } else {
+
+     *path_ref = (char *)user_path;
    }
 
-   rc = duplicate_user_path(orig_path,
-                            user_filename,
-                            MIN((uptr)MAX_PATH, ARGS_COPYBUF_SIZE),
-                            &written);
-
-   if (rc != 0)
-      goto out;
-
-   STATIC_ASSERT(IO_COPYBUF_SIZE >= MAX_PATH);
-
-   if ((rc = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH)))
-      goto out;
-
-   *path_ref = path;
-
-out:
    return rc;
 }
 
@@ -116,7 +105,8 @@ execve_prepare_process(process_info *pi, void *brk, const char *path)
 
    /*
     * TODO: here we might need the canonical file path instead of just any
-    * usable path.
+    * usable path. In alternative, we might, even better use a vfs_path instead
+    * of a string path.
     */
    memcpy(pi->filepath, path, strlen(path) + 1);
 }
