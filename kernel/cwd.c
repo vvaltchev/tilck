@@ -61,9 +61,11 @@ int sys_getcwd(char *user_buf, size_t buf_size)
 {
    int ret;
    size_t cwd_len;
-   disable_preemption();
+   process_info *pi = get_curr_task()->pi;
+
+   kmutex_lock(&pi->fslock);
    {
-      cwd_len = strlen(get_curr_task()->pi->cwd) + 1;
+      cwd_len = strlen(pi->cwd) + 1;
 
       if (!user_buf || !buf_size) {
          ret = -EINVAL;
@@ -75,7 +77,7 @@ int sys_getcwd(char *user_buf, size_t buf_size)
          goto out;
       }
 
-      ret = copy_to_user(user_buf, get_curr_task()->pi->cwd, cwd_len);
+      ret = copy_to_user(user_buf, pi->cwd, cwd_len);
 
       if (ret < 0) {
          ret = -EFAULT;
@@ -91,6 +93,6 @@ int sys_getcwd(char *user_buf, size_t buf_size)
    }
 
 out:
-   enable_preemption();
+   kmutex_unlock(&pi->fslock);
    return ret;
 }
