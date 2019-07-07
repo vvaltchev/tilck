@@ -187,9 +187,6 @@ vfs_resolve(const char *path,
    int rc;
    const char *fs_path;
    func_get_entry get_entry;
-
-#ifndef UNIT_TEST_ENVIRONMENT
-
    char abs_path[MAX_PATH];
    task_info *curr = get_curr_task();
 
@@ -201,14 +198,6 @@ vfs_resolve(const char *path,
 
    if (rc < 0)
       return rc;
-
-#else
-
-   const char *abs_path = path;
-
-#endif
-
-
 
    bzero(rp, sizeof(*rp));
 
