@@ -188,18 +188,24 @@ vfs_resolve(const char *path,
    const char *fs_path;
    func_get_entry get_entry;
    char abs_path[MAX_PATH];
-   task_info *curr = get_curr_task();
-
-   kmutex_lock(&curr->pi->fslock);
-   {
-      rc = compute_abs_path(path, curr->pi->cwd, abs_path, MAX_PATH);
-   }
-   kmutex_unlock(&curr->pi->fslock);
-
-   if (rc < 0)
-      return rc;
-
+   process_info *pi = get_curr_task()->pi;
    bzero(rp, sizeof(*rp));
+
+   if (*path != '/') {
+
+      kmutex_lock(&pi->fslock);
+      {
+         rc = compute_abs_path(path, pi->cwd, abs_path, MAX_PATH);
+      }
+      kmutex_unlock(&pi->fslock);
+
+      if (rc < 0)
+         return rc;
+
+   } else {
+
+      memcpy(abs_path, path, strlen(path) + 1);
+   }
 
    if (!(rp->fs = get_retained_fs_at(abs_path, &fs_path)))
       return -ENOENT;
