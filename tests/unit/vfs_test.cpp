@@ -24,6 +24,7 @@ extern "C" {
 
    #include <tilck/kernel/fs/fat32.h>
    #include <tilck/kernel/fs/vfs.h>
+   #include <tilck/kernel/sched.h>
 
    filesystem *ramfs_create(void);
    int __vfs_resolve(func_get_entry get_entry,
@@ -54,6 +55,7 @@ TEST(vfs, mp_check_match)
 TEST(vfs, read_content_of_longname_file)
 {
    init_kmalloc_for_tests();
+   create_kernel_process();
 
    const char *buf = load_once_file(PROJ_BUILD_DIR "/test_fatpart");
    char data[128] = {0};
@@ -84,6 +86,7 @@ TEST(vfs, read_content_of_longname_file)
 TEST(vfs, fseek)
 {
    init_kmalloc_for_tests();
+   create_kernel_process();
 
    random_device rdev;
    const auto seed = rdev();
@@ -225,6 +228,8 @@ TEST(vfs_perf, creat)
    int rc;
 
    init_kmalloc_for_tests();
+   create_kernel_process();
+
    fs = ramfs_create();
 
    ASSERT_TRUE(fs != NULL);
@@ -374,6 +379,8 @@ TEST(vfs_resolve, basic_test)
 {
    int rc;
    vfs_path p;
+
+   create_kernel_process();
 
    /* root path */
    rc = resolve("/", &p, true);
