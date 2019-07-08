@@ -95,6 +95,7 @@ typedef int (*func_rmdir) (vfs_path *p);
 typedef int (*func_symlink) (const char *, vfs_path *);
 typedef int (*func_readlink) (vfs_path *, char *);
 typedef void (*func_fslock_t) (filesystem *);
+typedef int (*func_rr_inode) (filesystem *, vfs_inode_ptr_t);
 
 typedef void (*func_get_entry) (filesystem *fs,
                                 void *dir_inode,
@@ -156,6 +157,8 @@ typedef struct {
    func_readlink readlink;
    func_truncate truncate;
    func_get_entry get_entry;
+   func_rr_inode retain_inode;
+   func_rr_inode release_inode;
 
    /* file system structure lock funcs */
    func_fslock_t fs_exlock;
