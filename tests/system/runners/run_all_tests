@@ -261,14 +261,14 @@ def main():
       tests_by_type['shellcmd'] = []
       del sys.argv[1]
 
+   if len(sys.argv) >= 2 and sys.argv[1] == '-o':
+      show_output = True
+      del sys.argv[1]
+
    if len(sys.argv) >= 2:
 
       if sys.argv[1] == '-l':
          show_tests_and_exit()
-
-      if sys.argv[1] == '-o':
-         show_output = True
-         del sys.argv[1]
 
       if sys.argv[1].startswith('-'):
          show_help_and_exit()
