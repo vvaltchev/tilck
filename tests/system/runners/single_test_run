@@ -11,6 +11,7 @@ import threading
 import struct
 import zlib
 import base64
+from fcntl import *
 
 # Constants
 
@@ -176,6 +177,27 @@ def ProcessLine(line):
 
 def RunTheVM():
 
+   def ProcessText(text):
+
+      # python's split always leaves an empty element in case of a trailing
+      # delimiter. For example:
+      #
+      #     "a,b,c,".split(",")
+      #
+      # produces
+      #
+      #     ["a", "b", "c", ""]
+      #
+      # Therefore, it's always OK to discard the last line and return it, to
+      # be used for the next (which will be appended to it).
+
+      lines = text.split("\n")
+
+      for ln in lines[:-1]:
+         ProcessLine(ln)
+
+      return lines[-1]
+
    global output
    global process
    global failed
@@ -227,10 +249,55 @@ def RunTheVM():
 
    print('-' * 80)
    print('\n')
+
+   # Run the QEMU process by using a PIPE for its stdout
    process = subprocess.Popen(args, stdout=subprocess.PIPE)
 
-   for line in iter(process.stdout.readline,''):
-      ProcessLine(line)
+   # Get the current flags for the `stdout` file descriptor
+   fl = fcntl(process.stdout.fileno(), F_GETFL)
+
+   # Make the `stdout` file descriptor non-blocking
+   fcntl(process.stdout.fileno(), F_SETFL, fl | os.O_NONBLOCK)
+
+   read_anything = False
+   start_time = time.time()
+   incompleteLine = ''
+
+   while True:
+
+      try:
+
+         text = process.stdout.read()
+
+         # read() returns an empty string only in case of EOF
+         if not text:
+            ProcessText(incompleteLine)
+            process.wait()
+            break
+
+         if not read_anything:
+            elapsed = time.time() - start_time
+            read_anything = True
+            print "[system test runner] First output after %.2f s" % elapsed
+
+         start_time = time.time()
+         text = incompleteLine + text
+         incompleteLine = ProcessText(text)
+
+      except IOError:
+
+         if not read_anything:
+            time.sleep(0.1)
+            continue
+
+         curr_time = time.time()
+         e = curr_time - start_time
+
+         if e >= 1.0:
+            print "[system test runner] WARNING: got nothing in %.2f sec" % e
+            start_time = curr_time
+
+         time.sleep(0.1)
 
    print('-' * 80)
 
