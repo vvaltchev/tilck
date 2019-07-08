@@ -63,11 +63,11 @@ int mp2_add(filesystem *target_fs, const char *target_path)
       return -ENOTDIR;
    }
 
-   // TODO: retain p.fs_path.inode here, before releasing the fs lock.
+   p.fs->fsops->retain_inode(p.fs, p.fs_path.inode);
 
    /*
     * Unlock the host fs but do *not* release its ref-count: each entry in the
-    * `mps` table retains its `host_fs` object.
+    * `mps` table retains its `host_fs` and `host_fs_inode` objects.
     */
    vfs_fs_shunlock(p.fs);
    kmutex_lock(&mp2_mutex);
@@ -75,8 +75,10 @@ int mp2_add(filesystem *target_fs, const char *target_path)
    /* we need to have the root filesystem set */
    ASSERT(mp2_root != NULL);
 
-   if (mp2_get_mp_at_nolock(p.fs, p.fs_path.inode))
+   if (mp2_get_mp_at_nolock(p.fs, p.fs_path.inode)) {
+      p.fs->fsops->release_inode(p.fs, p.fs_path.inode);
       return -EBUSY; /* the target path is already a mount-point */
+   }
 
    /* search for a free slot in the `mps` table */
    for (i = 0; i < ARRAY_SIZE(mps); i++)
@@ -99,6 +101,7 @@ int mp2_add(filesystem *target_fs, const char *target_path)
 
       /* no free slot, sorry */
       rc = -EMFILE;
+      p.fs->fsops->release_inode(p.fs, p.fs_path.inode);
       release_obj(p.fs);
    }
 

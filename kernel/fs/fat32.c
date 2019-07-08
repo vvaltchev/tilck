@@ -600,6 +600,22 @@ static vfs_inode_ptr_t fat_get_inode(fs_handle h)
    return ((fat_handle *)h)->e;
 }
 
+static int fat_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
+{
+   if (fs->flags & VFS_FS_RW)
+      NOT_IMPLEMENTED();
+
+   return 1;
+}
+
+static int fat_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
+{
+   if (fs->flags & VFS_FS_RW)
+      NOT_IMPLEMENTED();
+
+   return 1;
+}
+
 static const fs_ops static_fsops_fat =
 {
    .get_inode = fat_get_inode,
@@ -613,6 +629,8 @@ static const fs_ops static_fsops_fat =
    .truncate = NULL,
    .stat = fat_stat,
    .get_entry = fat_get_entry,
+   .retain_inode = fat_retain_inode,
+   .release_inode = fat_release_inode,
 
    .fs_exlock = fat_exclusive_lock,
    .fs_exunlock = fat_exclusive_unlock,

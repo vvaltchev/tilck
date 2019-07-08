@@ -442,6 +442,22 @@ static vfs_inode_ptr_t devfs_get_inode(fs_handle h)
    return ((devfs_handle *)h)->file;
 }
 
+static int devfs_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
+{
+   if (fs->flags & VFS_FS_RW)
+      NOT_IMPLEMENTED();
+
+   return 1;
+}
+
+static int devfs_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
+{
+   if (fs->flags & VFS_FS_RW)
+      NOT_IMPLEMENTED();
+
+   return 1;
+}
+
 static const fs_ops static_fsops_devfs =
 {
    .get_inode = devfs_get_inode,
@@ -455,6 +471,8 @@ static const fs_ops static_fsops_devfs =
    .truncate = NULL,
    .stat = devfs_stat,
    .get_entry = devfs_get_entry,
+   .retain_inode = devfs_retain_inode,
+   .release_inode = devfs_release_inode,
 
    .fs_exlock = devfs_exclusive_lock,
    .fs_exunlock = devfs_exclusive_unlock,
