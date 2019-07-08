@@ -16,6 +16,7 @@
 #include "vfs_resolve.c.h"
 #include "vfs_getdents.c.h"
 #include "vfs_op_ready.c.h"
+#include "vfs_mp2.c.h"
 
 static u32 next_device_id;
 

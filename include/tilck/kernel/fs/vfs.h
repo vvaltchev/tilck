@@ -206,14 +206,6 @@ typedef struct {
 
 } file_ops;
 
-typedef struct {
-
-   filesystem *fs;
-   u32 path_len;
-   char path[0];
-
-} mountpoint;
-
 /*
  * Each fs_handle struct should contain at its beginning the fields of the
  * following base struct [a rough attempt to emulate inheritance in C].
@@ -235,9 +227,7 @@ typedef struct {
 
 } fs_handle_base;
 
-int mountpoint_add(filesystem *fs, const char *path);
-void mountpoint_remove(filesystem *fs);
-u32 mp_check_match(const char *mp, u32 lm, const char *path, u32 lp);
+
 
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);
 int vfs_ioctl(fs_handle h, uptr request, void *argp);
@@ -292,3 +282,22 @@ u32 vfs_get_new_device_id(void);
 fs_handle get_fs_handle(int fd);
 void close_cloexec_handles(process_info *pi);
 
+/* ------------ Current mount point interface ------------- */
+
+typedef struct {
+
+   filesystem *fs;
+   u32 path_len;
+   char path[0];
+
+} mountpoint;
+
+int mountpoint_add(filesystem *fs, const char *path);
+void mountpoint_remove(filesystem *fs);
+u32 mp_check_match(const char *mp, u32 lm, const char *path, u32 lp);
+
+/* ------------ NEW mount point interface ------------- */
+
+int mp2_init(filesystem *root_fs);
+int mp2_add(filesystem *fs, const char *target_path);
+int mp2_remove(const char *target_path);
