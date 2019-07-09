@@ -21,7 +21,7 @@ int mp2_init(filesystem *root_fs)
    return 0;
 }
 
-filesystem *mp2_get_mp_at_nolock(filesystem *host_fs, vfs_inode_ptr_t inode)
+filesystem *mp2_get_at_nolock(filesystem *host_fs, vfs_inode_ptr_t inode)
 {
    ASSERT(kmutex_is_curr_task_holding_lock(&mp2_mutex));
 
@@ -32,12 +32,12 @@ filesystem *mp2_get_mp_at_nolock(filesystem *host_fs, vfs_inode_ptr_t inode)
    return NULL;
 }
 
-filesystem *mp2_get_mp_at(filesystem *host_fs, vfs_inode_ptr_t inode)
+filesystem *mp2_get_at(filesystem *host_fs, vfs_inode_ptr_t inode)
 {
    filesystem *ret;
    kmutex_lock(&mp2_mutex);
    {
-      ret = mp2_get_mp_at_nolock(host_fs, inode);
+      ret = mp2_get_at_nolock(host_fs, inode);
    }
    kmutex_unlock(&mp2_mutex);
    return ret;
@@ -75,7 +75,7 @@ int mp2_add(filesystem *target_fs, const char *target_path)
    /* we need to have the root filesystem set */
    ASSERT(mp2_root != NULL);
 
-   if (mp2_get_mp_at_nolock(p.fs, p.fs_path.inode)) {
+   if (mp2_get_at_nolock(p.fs, p.fs_path.inode)) {
       p.fs->fsops->release_inode(p.fs, p.fs_path.inode);
       return -EBUSY; /* the target path is already a mount-point */
    }

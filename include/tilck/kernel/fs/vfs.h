@@ -304,4 +304,4 @@ u32 mp_check_match(const char *mp, u32 lm, const char *path, u32 lp);
 int mp2_init(filesystem *root_fs);
 int mp2_add(filesystem *fs, const char *target_path);
 int mp2_remove(const char *target_path);
-filesystem *mp2_get_mp_at(filesystem *host_fs, vfs_inode_ptr_t inode);
+filesystem *mp2_get_at(filesystem *host_fs, vfs_inode_ptr_t inode);
