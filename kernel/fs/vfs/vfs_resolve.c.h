@@ -66,7 +66,7 @@ typedef struct {
 
 } vfs_resolve_int_ctx;
 
-STATIC inline void
+static inline void
 __vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx, const char *path)
 {
    vfs_path *rp = ctx->rp;
@@ -77,7 +77,7 @@ __vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx, const char *path)
    rp->last_comp = pc;
 }
 
-STATIC inline int
+static inline int
 __vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
                          const char *path,
                          vfs_inode_ptr_t idir)
@@ -91,13 +91,13 @@ __vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
    return 0;
 }
 
-STATIC inline bool
+static inline bool
 __vfs_res_hit_dot_dot(const char *path)
 {
    return path[0] == '.' && path[1] == '.' && (!path[2] || path[2] == '/');
 }
 
-STATIC inline bool
+static inline bool
 __vfs_res_does_path_end_here(const char *path)
 {
    return !path[0] || (path[0] == '/' && !path[1]);
@@ -107,7 +107,7 @@ __vfs_res_does_path_end_here(const char *path)
  * Returns `true` if the caller has to return 0, or `false` if the caller should
  * continue the loop.
  */
-STATIC bool
+STATIC void
 __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
                          const char **path_ref)
 {
@@ -131,12 +131,6 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
    }
 
    *path_ref += 2;
-
-   if (__vfs_res_does_path_end_here(*path_ref))
-      return true;
-
-   (*path_ref)++;
-   return false;
 }
 
 STATIC int
@@ -166,7 +160,6 @@ __vfs_resolve(func_get_entry get_entry,
       return 0;
 
    ++path;
-   __vfs_resolve_stack_push(&ctx, path, rp->fs_path.inode);
 
    if (!*path) {
       /* path was just "/" */
@@ -174,18 +167,19 @@ __vfs_resolve(func_get_entry get_entry,
       return 0;
    }
 
-   while (*path) {
+   __vfs_resolve_stack_push(&ctx, path, rp->fs_path.inode);
+
+   for (; *path; path++) {
 
       if (__vfs_res_hit_dot_dot(path)) {
-         if (__vfs_res_handle_dot_dot(&ctx, &path))
+         __vfs_res_handle_dot_dot(&ctx, &path);
+         if (__vfs_res_does_path_end_here(path))
             return 0;
          continue;
       }
 
-      if (*path != '/') {
-         path++;
+      if (*path != '/')
          continue;
-      }
 
       __vfs_resolve_get_entry(&ctx, path);
 
@@ -208,8 +202,7 @@ __vfs_resolve(func_get_entry get_entry,
             : 0;
       }
 
-      path++;
-      __vfs_resolve_stack_push(&ctx, path, rp->fs_path.inode);
+      __vfs_resolve_stack_push(&ctx, path+1, rp->fs_path.inode);
    }
 
    __vfs_resolve_get_entry(&ctx, path);
