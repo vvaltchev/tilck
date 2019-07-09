@@ -108,13 +108,16 @@ __vfs_res_does_path_end_here(const char *path)
  * Returns `true` if the caller has to return 0, or `false` if the caller should
  * continue the loop.
  */
-STATIC void
+STATIC bool
 __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
                          const char **path_ref)
 {
    vfs_path *const rp = ctx->rp;
    filesystem *const fs = rp->fs;
    const char *const orig_path = ctx->orig_path;
+
+   if (!__vfs_res_hit_dot_dot(*path_ref))
+      return false;
 
    if (ctx->ss > 2) {
 
@@ -133,6 +136,7 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
    }
 
    *path_ref += 2;
+   return true;
 }
 
 STATIC int
@@ -171,10 +175,11 @@ __vfs_resolve(const char *path,
 
    for (; *path; path++) {
 
-      if (__vfs_res_hit_dot_dot(path)) {
-         __vfs_res_handle_dot_dot(&ctx, &path);
+      if (__vfs_res_handle_dot_dot(&ctx, &path)) {
+
          if (__vfs_res_does_path_end_here(path))
             return 0;
+
          continue;
       }
 
