@@ -320,7 +320,10 @@ vfs_resolve(const char *path,
 
    } else {
 
-      memcpy(abs_path, path, MAX_PATH);
+      rc = compute_abs_path(path, "/", abs_path, MAX_PATH);
+
+      if (rc < 0)
+         return rc;
 
       /* new (experimental) code */
       // rp->fs = mp2_get_root();
