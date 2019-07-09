@@ -33,22 +33,22 @@ get_retained_fs_at(const char *path, const char **fs_path_ref)
    return fs;
 }
 
-STATIC const char *
+static inline const char *
 __vfs_res_handle_dot_slash(const char *path)
 {
    /* Handle the case of multiple slashes. */
-   while (path[1] == '/')
+   while (*path == '/')
       path++;
 
    /* Handle the case of a single '.' */
-   if (path[1] == '.') {
+   if (*path == '.') {
 
-      if (!path[2]) {
+      if (!path[1]) {
 
          /* case: /a/b/c/. */
          path++;
 
-      } else if (path[2] == '/') {
+      } else if (path[1] == '/') {
 
          /* case: /a/b/c/./ */
          path += 2;   /* just skip the "/." substring */
@@ -186,8 +186,7 @@ __vfs_res_handle_trivial_path(vfs_resolve_int_ctx *ctx,
       return true;
    }
 
-   *path_ref = __vfs_res_handle_dot_slash(*path_ref - 1);
-   (*path_ref)++;
+   *path_ref = __vfs_res_handle_dot_slash(*path_ref);
 
    if (!**path_ref) {
       /* path was just "/" */
@@ -237,7 +236,7 @@ __vfs_resolve(const char *path,
       /* ------- we hit a slash in path: handle the component ------- */
       __vfs_resolve_get_entry(&ctx, path);
 
-      path = __vfs_res_handle_dot_slash(path);
+      path = __vfs_res_handle_dot_slash(path + 1) - 1;
 
       if (__vfs_resolve_have_to_return(&ctx, path, &rc))
          return rc;
