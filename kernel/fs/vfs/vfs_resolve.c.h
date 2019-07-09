@@ -139,11 +139,43 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
    return true;
 }
 
+static inline bool
+__vfs_resolve_have_to_return(vfs_resolve_int_ctx *ctx,
+                             const char *path,
+                             int *rc)
+{
+   vfs_path *const rp = ctx->rp;
+
+   if (!rp->fs_path.inode) {
+
+      *rc = path[1]
+         ? -ENOENT /* the path does NOT end here: no such entity */
+         : 0;      /* the path just ends with a trailing slash */
+
+      return true;
+   }
+
+   /* We've found an entity for this path component (pc) */
+
+   if (!path[1]) {
+
+      /* The path ends here, with a trailing slash */
+      *rc = rp->fs_path.type != VFS_DIR
+         ? -ENOTDIR /* if the entry is not a dir, that's a problem */
+         : 0;
+
+      return true;
+   }
+
+   return false;
+}
+
 STATIC int
 __vfs_resolve(const char *path,
               vfs_path *rp,
               bool res_last_sl)
 {
+   int rc;
    vfs_resolve_int_ctx ctx = {
       .rp = rp,
       .orig_path = path,
@@ -154,18 +186,15 @@ __vfs_resolve(const char *path,
    /* the vfs_path `rp` is assumed to be valid */
    ASSERT(rp->fs != NULL);
    ASSERT(rp->fs_path.inode != NULL);
+   rp->last_comp = path;
 
    if (!*path)
       return -ENOENT;
 
-   rp->last_comp = path;
-
    if (!(path = __vfs_res_handle_dot_slash(path - 1)))
       return 0;
 
-   ++path;
-
-   if (!*path) {
+   if (!*++path) {
       /* path was just "/" */
       rp->last_comp = path;
       return 0;
@@ -186,30 +215,19 @@ __vfs_resolve(const char *path,
       if (*path != '/')
          continue;
 
+      /* ------- we hit a slash in path: handle the component ------- */
       __vfs_resolve_get_entry(&ctx, path);
 
       if (!(path = __vfs_res_handle_dot_slash(path)))
          return 0;
 
-      if (!rp->fs_path.inode) {
-         return path[1]
-            ? -ENOENT /* the path does NOT end here: no such entity */
-            : 0;      /* the path just ends with a trailing slash */
-      }
+      if (__vfs_resolve_have_to_return(&ctx, path, &rc))
+         return rc;
 
-      /* We've found an entity for this path component (pc) */
-
-      if (!path[1]) {
-
-         /* The path ends here, with a trailing slash */
-         return rp->fs_path.type != VFS_DIR
-            ? -ENOTDIR /* if the entry is not a dir, that's a problem */
-            : 0;
-      }
-
-      __vfs_resolve_stack_push(&ctx, path+1, rp->fs_path.inode);
+      __vfs_resolve_stack_push(&ctx, path + 1, rp->fs_path.inode);
    }
 
+   /* path ended without '/': we have to resolve the last component now */
    __vfs_resolve_get_entry(&ctx, path);
    return 0;
 }
