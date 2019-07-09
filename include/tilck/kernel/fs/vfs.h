@@ -144,6 +144,7 @@ typedef kcond *(*func_get_rwe_cond) (fs_handle);
  */
 typedef struct {
 
+   func_get_entry get_entry;
    func_get_inode get_inode;
    func_open open;
    func_close close;
@@ -156,7 +157,6 @@ typedef struct {
    func_symlink symlink;
    func_readlink readlink;
    func_truncate truncate;
-   func_get_entry get_entry;
    func_rr_inode retain_inode;
    func_rr_inode release_inode;
 

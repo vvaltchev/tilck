@@ -56,7 +56,6 @@ __vfs_res_handle_dot_slash(const char *path)
 
 typedef struct {
 
-   func_get_entry get_entry;
    vfs_path *rp;                /* pointer to the out-parameter vfs_path */
    const char *orig_path;       /* original path (used for offsets) */
    fs_path_struct orig_fs_path; /* original value of rp->fs_path */
@@ -69,11 +68,13 @@ typedef struct {
 static inline void
 __vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx, const char *path)
 {
-   vfs_path *rp = ctx->rp;
    const uptr ss = ctx->ss;
-   const char *pc = ctx->orig_path + (sptr) ctx->pc_offs[ss - 1];
+   vfs_path *const rp = ctx->rp;
+   filesystem *const fs = rp->fs;
+   const char *const pc = ctx->orig_path + (sptr) ctx->pc_offs[ss - 1];
+
    ASSERT(path - pc > 0);
-   ctx->get_entry(rp->fs, ctx->idir[ss - 1], pc, path - pc, &rp->fs_path);
+   fs->fsops->get_entry(fs, ctx->idir[ss - 1], pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
 }
 
@@ -111,16 +112,17 @@ STATIC void
 __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
                          const char **path_ref)
 {
-   vfs_path *rp = ctx->rp;
-   const char *orig_path = ctx->orig_path;
+   vfs_path *const rp = ctx->rp;
+   filesystem *const fs = rp->fs;
+   const char *const orig_path = ctx->orig_path;
 
    if (ctx->ss > 2) {
 
       const uptr ss = --ctx->ss;
       const char *pc = orig_path + (sptr) ctx->pc_offs[ss - 1];
-      const char *oldpc = orig_path + (sptr) ctx->pc_offs[ss - 2];
-      ctx->get_entry(rp->fs, ctx->idir[ss-2], oldpc, pc-oldpc-1, &rp->fs_path);
-      rp->last_comp = oldpc;
+      const char *old = orig_path + (sptr) ctx->pc_offs[ss - 2];
+      fs->fsops->get_entry(fs, ctx->idir[ss-2], old, pc-old-1, &rp->fs_path);
+      rp->last_comp = old;
 
    } else {
 
@@ -134,13 +136,11 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
 }
 
 STATIC int
-__vfs_resolve(func_get_entry get_entry,
-              const char *path,
+__vfs_resolve(const char *path,
               vfs_path *rp,
               bool res_last_sl)
 {
    vfs_resolve_int_ctx ctx = {
-      .get_entry = get_entry,
       .rp = rp,
       .orig_path = path,
       .orig_fs_path = rp->fs_path,
@@ -228,7 +228,6 @@ vfs_resolve(const char *path,
 {
    int rc;
    const char *fs_path;
-   func_get_entry get_entry;
    char abs_path[MAX_PATH];
    process_info *pi = get_curr_task()->pi;
    bzero(rp, sizeof(*rp));
@@ -252,15 +251,12 @@ vfs_resolve(const char *path,
    if (!(rp->fs = get_retained_fs_at(abs_path, &fs_path)))
       return -ENOENT;
 
-   get_entry = rp->fs->fsops->get_entry;
-   ASSERT(get_entry != NULL);
-
    /* See the comment in vfs.h about the "fs-lock" funcs */
    exlock ? vfs_fs_exlock(rp->fs) : vfs_fs_shlock(rp->fs);
 
    /* Get root's entry */
-   get_entry(rp->fs, NULL, NULL, 0, &rp->fs_path);
-   rc = __vfs_resolve(get_entry, fs_path, rp, res_last_sl);
+   rp->fs->fsops->get_entry(rp->fs, NULL, NULL, 0, &rp->fs_path);
+   rc = __vfs_resolve(fs_path, rp, res_last_sl);
 
    if (rc < 0) {
       /* resolve failed: release the lock and the fs */

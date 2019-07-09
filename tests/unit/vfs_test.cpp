@@ -27,8 +27,7 @@ extern "C" {
    #include <tilck/kernel/sched.h>
 
    filesystem *ramfs_create(void);
-   int __vfs_resolve(func_get_entry get_entry,
-                     const char *path,
+   int __vfs_resolve(const char *path,
                      vfs_path *rp,
                      bool res_last_sl);
 }
@@ -333,11 +332,11 @@ static test_fs_elem *fs_root =
    );
 
 void
-test_get_entry(filesystem *fs,
-               void *dir_inode,
-               const char *name,
-               ssize_t name_len,
-               fs_path_struct *fs_path)
+testfs1_get_entry(filesystem *fs,
+                  void *dir_inode,
+                  const char *name,
+                  ssize_t name_len,
+                  fs_path_struct *fs_path)
 {
    if (!name) {
       fs_path->type = VFS_DIR;
@@ -364,15 +363,53 @@ test_get_entry(filesystem *fs,
    fs_path->dir_inode = e;
 }
 
+/*
+ * Unfortunately, in C++ non-trivial designated initializers are not supported,
+ * so we have to explicitly initialize all the members, in order!
+ */
+static const fs_ops static_fsops_testfs1 = {
+
+   testfs1_get_entry,   /* get_entry */
+   NULL,                /* get_inode */
+   NULL,                /* open */
+   NULL,                /* close */
+   NULL,                /* dup */
+   NULL,                /* getdents */
+   NULL,                /* unlink */
+   NULL,                /* stat */
+   NULL,                /* mkdir */
+   NULL,                /* rmdir */
+   NULL,                /* symlink */
+   NULL,                /* readlink */
+   NULL,                /* truncate */
+   NULL,                /* retain_inode */
+   NULL,                /* release_inode */
+   NULL,                /* fs_exlock */
+   NULL,                /* fs_exunlock */
+   NULL,                /* fs_shlock */
+   NULL,                /* fs_shunlock */
+};
+
+
+static filesystem testfs1 = {
+
+   1,                        /* ref-count */
+   "testfs1",                /* fs type name */
+   0,                        /* device_id */
+   0,                        /* flags */
+   NULL,                     /* device_data */
+   &static_fsops_testfs1,    /* fsops */
+};
+
 static int resolve(const char *path, vfs_path *p, bool res_last_sl)
 {
    if (*path == '/') {
       bzero(p, sizeof(*p));
-      p->fs = (filesystem *)0xaabbccdd;
-      test_get_entry(p->fs, nullptr, nullptr, 0, &p->fs_path);
+      p->fs = &testfs1;
+      testfs1_get_entry(p->fs, nullptr, nullptr, 0, &p->fs_path);
    }
 
-   return __vfs_resolve(&test_get_entry, path, p, res_last_sl);
+   return __vfs_resolve(path, p, res_last_sl);
 }
 
 TEST(vfs_resolve, basic_test)
