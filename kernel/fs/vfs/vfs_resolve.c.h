@@ -54,6 +54,15 @@ __vfs_res_handle_dot_slash(const char *path)
    return path;
 }
 
+typedef struct {
+
+   const char *orig_path;     /* original path (used for offsets) */
+   void *idir[32];            /* directory inodes */
+   u8 pc_offs[32];            /* path component offset (from orig_path) */
+   uptr ss;                   /* stack size */
+
+} vfs_resolve_int_ctx;
+
 STATIC int
 __vfs_resolve(func_get_entry get_entry,
               const char *path,
@@ -61,10 +70,11 @@ __vfs_resolve(func_get_entry get_entry,
               bool res_last_sl)
 {
    const fs_path_struct orig_fs_path = rp->fs_path;
-   const char *const orig_path = path;
-   void *idir[32];
-   u8 pc_offs[32];
-   uptr ss = 0;        /* stack size */
+
+   vfs_resolve_int_ctx ctx = {
+      .orig_path = path,
+      .ss = 0,
+   };
 
    /* the vfs_path `rp` is assumed to be valid */
    ASSERT(rp->fs != NULL);
@@ -79,9 +89,9 @@ __vfs_resolve(func_get_entry get_entry,
       return 0;
 
    ++path;
-   pc_offs[ss] = (u8) (path - orig_path);
-   idir[ss] = rp->fs_path.inode; /* idir = the initial inode */
-   ss++;
+   ctx.pc_offs[ctx.ss] = (u8) (path - ctx.orig_path);
+   ctx.idir[ctx.ss] = rp->fs_path.inode; /* idir = the initial inode */
+   ctx.ss++;
 
    if (!*path) {
       /* path was just "/" */
@@ -93,20 +103,20 @@ __vfs_resolve(func_get_entry get_entry,
 
       if (path[0] == '.' && path[1] == '.' && (!path[2] || path[2] == '/')) {
 
-         if (ss > 2) {
+         if (ctx.ss > 2) {
 
-            ss--;
-            const char *pc = orig_path + (sptr) pc_offs[ss - 1];
-            const char *oldpc = orig_path + (sptr) pc_offs[ss - 2];
-            get_entry(rp->fs, idir[ss-2], oldpc, pc-oldpc-1, &rp->fs_path);
+            ctx.ss--;
+            const char *pc = ctx.orig_path + (sptr) ctx.pc_offs[ctx.ss - 1];
+            const char *oldpc = ctx.orig_path + (sptr) ctx.pc_offs[ctx.ss - 2];
+            get_entry(rp->fs, ctx.idir[ctx.ss-2], oldpc, pc-oldpc-1, &rp->fs_path);
             rp->last_comp = oldpc;
 
          } else {
 
             rp->fs_path = orig_fs_path;
 
-            if (ss > 1)
-               ss--;
+            if (ctx.ss > 1)
+               ctx.ss--;
          }
 
          path += 2;
@@ -125,8 +135,9 @@ __vfs_resolve(func_get_entry get_entry,
 
 
       {
-         const char *pc = orig_path + (sptr) pc_offs[ss - 1];
-         get_entry(rp->fs, idir[ss-1], pc, path - pc, &rp->fs_path);
+         const char *pc = ctx.orig_path + (sptr) ctx.pc_offs[ctx.ss - 1];
+         ASSERT(path - pc > 0);
+         get_entry(rp->fs, ctx.idir[ctx.ss-1], pc, path - pc, &rp->fs_path);
          rp->last_comp = pc;
       }
 
@@ -149,19 +160,19 @@ __vfs_resolve(func_get_entry get_entry,
             : 0;
       }
 
-      if (ss == ARRAY_SIZE(idir))
+      if (ctx.ss == ARRAY_SIZE(ctx.idir))
          return -ENAMETOOLONG;
 
       path++;
-      idir[ss] = rp->fs_path.inode;
-      pc_offs[ss] = (u8)(path - orig_path);
-      ss++;
+      ctx.idir[ctx.ss] = rp->fs_path.inode;
+      ctx.pc_offs[ctx.ss] = (u8)(path - ctx.orig_path);
+      ctx.ss++;
    }
 
    {
-      const char *pc = orig_path + (sptr) pc_offs[ss - 1];
+      const char *pc = ctx.orig_path + (sptr) ctx.pc_offs[ctx.ss - 1];
       ASSERT(path - pc > 0);
-      get_entry(rp->fs, idir[ss-1], pc, path - pc, &rp->fs_path);
+      get_entry(rp->fs, ctx.idir[ctx.ss-1], pc, path - pc, &rp->fs_path);
       rp->last_comp = pc;
    }
    return 0;
