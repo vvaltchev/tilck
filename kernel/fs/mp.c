@@ -24,6 +24,13 @@ STATIC_ASSERT(sizeof(_mp_cursor) <= sizeof(uptr) * MP_CURSOR_SIZE_PTRS);
 static mountpoint *mps[MAX_MOUNTPOINTS];
 static kmutex mp_mutex = STATIC_KMUTEX_INIT(mp_mutex, 0);
 
+#ifdef UNIT_TEST_ENVIRONMENT
+void mountpoint_reset(void)
+{
+   bzero(mps, sizeof(mps));
+}
+#endif
+
 int mountpoint_add(filesystem *fs, const char *path)
 {
    u32 i;

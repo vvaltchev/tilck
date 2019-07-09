@@ -27,6 +27,7 @@ extern "C" {
    #include <tilck/kernel/sched.h>
 
    filesystem *ramfs_create(void);
+   void mountpoint_reset(void);
 
    int __vfs_resolve(const char *path,
                      vfs_path *rp,
@@ -57,6 +58,7 @@ TEST(vfs, read_content_of_longname_file)
 {
    init_kmalloc_for_tests();
    create_kernel_process();
+   mountpoint_reset();
 
    const char *buf = load_once_file(PROJ_BUILD_DIR "/test_fatpart");
    char data[128] = {0};
@@ -88,6 +90,7 @@ TEST(vfs, fseek)
 {
    init_kmalloc_for_tests();
    create_kernel_process();
+   mountpoint_reset();
 
    random_device rdev;
    const auto seed = rdev();
@@ -230,6 +233,7 @@ TEST(vfs_perf, creat)
 
    init_kmalloc_for_tests();
    create_kernel_process();
+   mountpoint_reset();
 
    fs = ramfs_create();
 

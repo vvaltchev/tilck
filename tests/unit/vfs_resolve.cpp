@@ -25,6 +25,8 @@ extern "C" {
    #include <tilck/kernel/fs/vfs.h>
    #include <tilck/kernel/sched.h>
 
+   void mountpoint_reset(void);
+
    int __vfs_resolve(const char *path,
                      vfs_path *rp,
                      bool exlock,
@@ -358,6 +360,7 @@ TEST(vfs_resolve_multi_fs, basic_case)
 
    init_kmalloc_for_tests();
    create_kernel_process();
+   mountpoint_reset();
 
    mountpoint_add(&testfs1, "/"); // older interface. TODO: remove
    mp2_init(&testfs1);
