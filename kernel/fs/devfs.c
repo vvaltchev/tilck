@@ -444,17 +444,13 @@ static vfs_inode_ptr_t devfs_get_inode(fs_handle h)
 
 static int devfs_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
 {
-   if (fs->flags & VFS_FS_RW)
-      NOT_IMPLEMENTED();
-
+   /* devfs does not support removal of inodes after boot */
    return 1;
 }
 
 static int devfs_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
 {
-   if (fs->flags & VFS_FS_RW)
-      NOT_IMPLEMENTED();
-
+   /* devfs does not support removal of inodes after boot */
    return 1;
 }
 
@@ -514,13 +510,16 @@ filesystem *create_devfs(void)
 
 void init_devfs(void)
 {
+   int rc;
    devfs = create_devfs();
 
    if (!devfs)
       panic("Unable to create devfs");
 
-   int rc = mountpoint_add(devfs, "/dev/");
-
-   if (rc != 0)
+   if ((rc = mountpoint_add(devfs, "/dev/")))
       panic("mountpoint_add() failed with error: %d", rc);
+
+   /* use the new mount point interface in parallel with the old one */
+   if ((rc = mp2_add(devfs, "/dev/")))
+      panic("mp2_add() failed with error: %d", rc);
 }

@@ -21,6 +21,12 @@ int mp2_init(filesystem *root_fs)
    return 0;
 }
 
+filesystem *mp2_get_root(void)
+{
+   ASSERT(mp2_root != NULL);
+   return mp2_root;
+}
+
 filesystem *mp2_get_at_nolock(filesystem *host_fs, vfs_inode_ptr_t inode)
 {
    ASSERT(kmutex_is_curr_task_holding_lock(&mp2_mutex));
