@@ -15,9 +15,14 @@ static filesystem *mp2_root;
 int mp2_init(filesystem *root_fs)
 {
    /* do not support changing the root filesystem */
-   ASSERT(!mp2_root);
+   NO_TEST_ASSERT(!mp2_root);
 
    mp2_root = root_fs;
+
+#ifdef UNIT_TEST_ENVIRONMENT
+   bzero(mps, sizeof(mps));
+#endif
+
    return 0;
 }
 
@@ -38,12 +43,13 @@ filesystem *mp2_get_at_nolock(filesystem *host_fs, vfs_inode_ptr_t inode)
    return NULL;
 }
 
-filesystem *mp2_get_at(filesystem *host_fs, vfs_inode_ptr_t inode)
+filesystem *mp2_get_retained_at(filesystem *host_fs, vfs_inode_ptr_t inode)
 {
    filesystem *ret;
    kmutex_lock(&mp2_mutex);
    {
-      ret = mp2_get_at_nolock(host_fs, inode);
+      if ((ret = mp2_get_at_nolock(host_fs, inode)))
+         retain_obj(ret);
    }
    kmutex_unlock(&mp2_mutex);
    return ret;

@@ -58,16 +58,46 @@ __vfs_res_handle_dot_slash(const char *path)
    return path;
 }
 
+static inline void __vfs_smart_fs_lock(filesystem *fs, bool exlock)
+{
+   /* See the comment in vfs.h about the "fs-lock" funcs */
+   exlock ? vfs_fs_exlock(fs) : vfs_fs_shlock(fs);
+}
+
+static inline void __vfs_smart_fs_unlock(filesystem *fs, bool exlock)
+{
+   /* See the comment in vfs.h about the "fs-lock" funcs */
+   exlock ? vfs_fs_exunlock(fs) : vfs_fs_shunlock(fs);
+}
+
 typedef struct {
 
    vfs_path *rp;                /* pointer to the out-parameter vfs_path */
    const char *orig_path;       /* original path (used for offsets) */
    fs_path_struct orig_fs_path; /* original value of rp->fs_path */
-   vfs_inode_ptr_t idir[32];    /* directory inodes */
-   u8 pc_offs[32];              /* path component offset (from orig_path) */
    uptr ss;                     /* stack size */
+   bool exlock;                 /* true -> exlock, false -> shlock */
+   vfs_inode_ptr_t idir[32];    /* directory inodes */
+   filesystem *fss[32];         /* filesystems */
+   u8 pc_offs[32];              /* path component offset (from orig_path) */
 
 } vfs_resolve_int_ctx;
+
+static inline int
+__vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
+                         const char *path,
+                         filesystem *fs,
+                         vfs_inode_ptr_t idir)
+{
+   if (ctx->ss == ARRAY_SIZE(ctx->idir))
+      return -ENAMETOOLONG;
+
+   ctx->pc_offs[ctx->ss] = (u8) (path - ctx->orig_path);
+   ctx->idir[ctx->ss] = idir;
+   ctx->fss[ctx->ss] = fs;
+   ctx->ss++;
+   return 0;
+}
 
 static inline void
 __vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx, const char *path)
@@ -80,20 +110,23 @@ __vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx, const char *path)
    ASSERT(path - pc > 0);
    fs->fsops->get_entry(fs, ctx->idir[ss - 1], pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
-}
 
-static inline int
-__vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
-                         const char *path,
-                         vfs_inode_ptr_t idir)
-{
-   if (ctx->ss == ARRAY_SIZE(ctx->idir))
-      return -ENAMETOOLONG;
+   filesystem *target_fs = mp2_get_retained_at(rp->fs, rp->fs_path.inode);
 
-   ctx->pc_offs[ctx->ss] = (u8) (path - ctx->orig_path);
-   ctx->idir[ctx->ss] = idir;
-   ctx->ss++;
-   return 0;
+   if (target_fs) {
+
+      /* unlock and release the current (host) filesystem */
+      __vfs_smart_fs_unlock(rp->fs, ctx->exlock);
+      release_obj(rp->fs);
+
+      /* lock the new (target) filesystem. NOTE: it's already retained */
+      __vfs_smart_fs_lock(target_fs, ctx->exlock);
+
+      rp->fs = target_fs;
+
+      /* Get root's entry */
+      target_fs->fsops->get_entry(target_fs, NULL, NULL, 0, &rp->fs_path);
+   }
 }
 
 static inline bool
@@ -201,6 +234,7 @@ __vfs_res_handle_trivial_path(vfs_resolve_int_ctx *ctx,
 STATIC int
 __vfs_resolve(const char *path,
               vfs_path *rp,
+              bool exlock,
               bool res_last_sl)
 {
    int rc;
@@ -209,6 +243,7 @@ __vfs_resolve(const char *path,
       .orig_path = path,
       .orig_fs_path = rp->fs_path,
       .ss = 0,
+      .exlock = exlock,
    };
 
    /* the vfs_path `rp` is assumed to be valid */
@@ -218,7 +253,7 @@ __vfs_resolve(const char *path,
    if (__vfs_res_handle_trivial_path(&ctx, &path, &rc))
       return rc;
 
-   __vfs_resolve_stack_push(&ctx, path, rp->fs_path.inode);
+   __vfs_resolve_stack_push(&ctx, path, rp->fs, rp->fs_path.inode);
 
    for (; *path; path++) {
 
@@ -241,7 +276,7 @@ __vfs_resolve(const char *path,
       if (__vfs_resolve_have_to_return(&ctx, path, &rc))
          return rc;
 
-      __vfs_resolve_stack_push(&ctx, path + 1, rp->fs_path.inode);
+      __vfs_resolve_stack_push(&ctx, path + 1, rp->fs, rp->fs_path.inode);
    }
 
    /* path ended without '/': we have to resolve the last component now */
@@ -285,22 +320,26 @@ vfs_resolve(const char *path,
 
    } else {
 
-      memcpy(abs_path, path, strlen(path) + 1);
+      memcpy(abs_path, path, MAX_PATH);
+
+      /* new (experimental) code */
+      // rp->fs = mp2_get_root();
+      // retain_obj(rp->fs);
+      // fs_path = path;
    }
 
    if (!(rp->fs = get_retained_fs_at(abs_path, &fs_path)))
       return -ENOENT;
 
-   /* See the comment in vfs.h about the "fs-lock" funcs */
-   exlock ? vfs_fs_exlock(rp->fs) : vfs_fs_shlock(rp->fs);
+   __vfs_smart_fs_lock(rp->fs, exlock);
 
    /* Get root's entry */
    rp->fs->fsops->get_entry(rp->fs, NULL, NULL, 0, &rp->fs_path);
-   rc = __vfs_resolve(fs_path, rp, res_last_sl);
+   rc = __vfs_resolve(fs_path, rp, exlock, res_last_sl);
 
    if (rc < 0) {
       /* resolve failed: release the lock and the fs */
-      exlock ? vfs_fs_exunlock(rp->fs) : vfs_fs_shunlock(rp->fs);
+      __vfs_smart_fs_unlock(rp->fs, exlock);
       release_obj(rp->fs); /* it was retained by get_retained_fs_at() */
    }
 
