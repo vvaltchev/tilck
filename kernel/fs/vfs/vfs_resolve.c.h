@@ -59,7 +59,7 @@ typedef struct {
    func_get_entry get_entry;
    vfs_path *rp;              /* pointer to the out-parameter vfs_path */
    const char *orig_path;     /* original path (used for offsets) */
-   void *idir[32];            /* directory inodes */
+   vfs_inode_ptr_t idir[32];  /* directory inodes */
    u8 pc_offs[32];            /* path component offset (from orig_path) */
    uptr ss;                   /* stack size */
 
@@ -74,6 +74,20 @@ __vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx, const char *path)
    ASSERT(path - pc > 0);
    ctx->get_entry(rp->fs, ctx->idir[ss - 1], pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
+}
+
+STATIC inline int
+__vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
+                         const char *path,
+                         vfs_inode_ptr_t idir)
+{
+   if (ctx->ss == ARRAY_SIZE(ctx->idir))
+      return -ENAMETOOLONG;
+
+   ctx->pc_offs[ctx->ss] = (u8) (path - ctx->orig_path);
+   ctx->idir[ctx->ss] = idir;
+   ctx->ss++;
+   return 0;
 }
 
 STATIC int
@@ -104,9 +118,7 @@ __vfs_resolve(func_get_entry get_entry,
       return 0;
 
    ++path;
-   ctx.pc_offs[ctx.ss] = (u8) (path - ctx.orig_path);
-   ctx.idir[ctx.ss] = rp->fs_path.inode; /* idir = the initial inode */
-   ctx.ss++;
+   __vfs_resolve_stack_push(&ctx, path, rp->fs_path.inode);
 
    if (!*path) {
       /* path was just "/" */
@@ -169,13 +181,8 @@ __vfs_resolve(func_get_entry get_entry,
             : 0;
       }
 
-      if (ctx.ss == ARRAY_SIZE(ctx.idir))
-         return -ENAMETOOLONG;
-
       path++;
-      ctx.idir[ctx.ss] = rp->fs_path.inode;
-      ctx.pc_offs[ctx.ss] = (u8)(path - ctx.orig_path);
-      ctx.ss++;
+      __vfs_resolve_stack_push(&ctx, path, rp->fs_path.inode);
    }
 
    __vfs_resolve_get_entry(&ctx, path);
