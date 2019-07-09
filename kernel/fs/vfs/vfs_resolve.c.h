@@ -90,6 +90,12 @@ __vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
    return 0;
 }
 
+STATIC inline bool
+__vfs_res_hit_dot_dot(const char *path)
+{
+   return path[0] == '.' && path[1] == '.' && (!path[2] || path[2] == '/');
+}
+
 STATIC int
 __vfs_resolve(func_get_entry get_entry,
               const char *path,
@@ -128,7 +134,7 @@ __vfs_resolve(func_get_entry get_entry,
 
    while (*path) {
 
-      if (path[0] == '.' && path[1] == '.' && (!path[2] || path[2] == '/')) {
+      if (__vfs_res_hit_dot_dot(path)) {
 
          if (ctx.ss > 2) {
 
