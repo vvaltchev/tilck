@@ -174,6 +174,31 @@ __vfs_resolve_have_to_return(vfs_resolve_int_ctx *ctx,
    return false;
 }
 
+static inline bool
+__vfs_res_handle_trivial_path(vfs_resolve_int_ctx *ctx,
+                              const char **path_ref,
+                              int *rc)
+{
+   ctx->rp->last_comp = *path_ref;
+
+   if (!**path_ref) {
+      *rc = -ENOENT;
+      return true;
+   }
+
+   *path_ref = __vfs_res_handle_dot_slash(*path_ref - 1);
+   (*path_ref)++;
+
+   if (!**path_ref) {
+      /* path was just "/" */
+      ctx->rp->last_comp = *path_ref;
+      *rc = 0;
+      return true;
+   }
+
+   return false;
+}
+
 STATIC int
 __vfs_resolve(const char *path,
               vfs_path *rp,
@@ -190,18 +215,9 @@ __vfs_resolve(const char *path,
    /* the vfs_path `rp` is assumed to be valid */
    ASSERT(rp->fs != NULL);
    ASSERT(rp->fs_path.inode != NULL);
-   rp->last_comp = path;
 
-   if (!*path)
-      return -ENOENT;
-
-   path = __vfs_res_handle_dot_slash(path - 1);
-
-   if (!*++path) {
-      /* path was just "/" */
-      rp->last_comp = path;
-      return 0;
-   }
+   if (__vfs_res_handle_trivial_path(&ctx, &path, &rc))
+      return rc;
 
    __vfs_resolve_stack_push(&ctx, path, rp->fs_path.inode);
 
