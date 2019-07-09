@@ -43,10 +43,14 @@ __vfs_res_handle_dot_slash(const char *path)
    /* Handle the case of a single '.' */
    if (path[1] == '.') {
 
-      if (!path[2])
-         return NULL; /* NULL means return 0 in the caller */
+      if (!path[2]) {
 
-      if (path[2] == '/') {
+         /* case: /a/b/c/. */
+         path++;
+
+      } else if (path[2] == '/') {
+
+         /* case: /a/b/c/./ */
          path += 2;   /* just skip the "/." substring */
       }
    }
@@ -191,8 +195,7 @@ __vfs_resolve(const char *path,
    if (!*path)
       return -ENOENT;
 
-   if (!(path = __vfs_res_handle_dot_slash(path - 1)))
-      return 0;
+   path = __vfs_res_handle_dot_slash(path - 1);
 
    if (!*++path) {
       /* path was just "/" */
@@ -218,8 +221,7 @@ __vfs_resolve(const char *path,
       /* ------- we hit a slash in path: handle the component ------- */
       __vfs_resolve_get_entry(&ctx, path);
 
-      if (!(path = __vfs_res_handle_dot_slash(path)))
-         return 0;
+      path = __vfs_res_handle_dot_slash(path);
 
       if (__vfs_resolve_have_to_return(&ctx, path, &rc))
          return rc;
