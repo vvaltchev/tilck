@@ -180,6 +180,7 @@ static int ramfs_readlink(vfs_path *p, char *buf)
 static int ramfs_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
 {
    int rc;
+   ASSERT(inode != NULL);
 
    if (!(fs->flags & VFS_FS_RW))
       return 1;
@@ -195,6 +196,7 @@ static int ramfs_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
 static int ramfs_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
 {
    int rc;
+   ASSERT(inode != NULL);
 
    if (!(fs->flags & VFS_FS_RW))
       return 1;

@@ -154,7 +154,7 @@ int cmd_runall(int argc, char **argv)
    printf(COLOR_YELLOW "[devshell] ");
 
    printf(passed == to_run ? COLOR_GREEN : COLOR_RED);
-   printf("Tests passed %d/%d" RESET_ATTRS " ", to_run, passed);
+   printf("Tests passed %d/%d" RESET_ATTRS " ", passed, to_run);
    printf("(%llu ms)\n\n", end_ms - start_ms);
 
    if (dump_coverage) {

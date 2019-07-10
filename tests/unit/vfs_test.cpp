@@ -68,6 +68,7 @@ TEST(vfs, read_content_of_longname_file)
 
    int r = mountpoint_add(fat_fs, "/");
    ASSERT_EQ(r, 0);
+   mp2_init(fat_fs);
 
    const char *file_path =
       "/testdir/This_is_a_file_with_a_veeeery_long_name.txt";
@@ -241,6 +242,7 @@ TEST(vfs_perf, creat)
 
    rc = mountpoint_add(fs, "/");
    ASSERT_EQ(rc, 0);
+   mp2_init(fs);
 
    for (int i = 0; i < 100; i++)
       create_test_file(i);

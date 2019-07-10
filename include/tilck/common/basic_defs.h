@@ -232,7 +232,7 @@ typedef sptr (*cmpfun_ptr)(const void *a, const void *b);
     * kind of additional linker tricks.
     */
 
-   #ifdef KERNEL_TEST
+   #ifdef UNIT_TEST_ENVIRONMENT
       #define STATIC           WEAK
       #define STATIC_INLINE    WEAK
    #else

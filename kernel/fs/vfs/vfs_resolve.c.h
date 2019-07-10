@@ -70,31 +70,19 @@ static inline void __vfs_smart_fs_unlock(filesystem *fs, bool exlock)
    exlock ? vfs_fs_exunlock(fs) : vfs_fs_shunlock(fs);
 }
 
-typedef struct {
-
-   vfs_path *rp;                /* pointer to the out-parameter vfs_path */
-   const char *orig_path;       /* original path (used for offsets) */
-   fs_path_struct orig_fs_path; /* original value of rp->fs_path */
-   uptr ss;                     /* stack size */
-   bool exlock;                 /* true -> exlock, false -> shlock */
-   vfs_inode_ptr_t idir[32];    /* directory inodes */
-   filesystem *fss[32];         /* filesystems */
-   u8 pc_offs[32];              /* path component offset (from orig_path) */
-
-} vfs_resolve_int_ctx;
-
-static inline int
+STATIC int
 __vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
                          const char *path,
-                         filesystem *fs,
-                         vfs_inode_ptr_t idir)
+                         const vfs_path *p)
 {
-   if (ctx->ss == ARRAY_SIZE(ctx->idir))
+   if (ctx->ss == ARRAY_SIZE(ctx->paths))
       return -ENAMETOOLONG;
 
-   ctx->pc_offs[ctx->ss] = (u8) (path - ctx->orig_path);
-   ctx->idir[ctx->ss] = idir;
-   ctx->fss[ctx->ss] = fs;
+   if (p->fs_path.inode)
+      p->fs->fsops->retain_inode(p->fs, p->fs_path.inode);
+
+   ctx->paths[ctx->ss] = *p;
+   ctx->paths[ctx->ss].last_comp = path;
    ctx->ss++;
    return 0;
 }
@@ -117,10 +105,9 @@ __vfs_resolve_get_entry_raw(vfs_inode_ptr_t idir,
       __vfs_smart_fs_unlock(rp->fs, exlock);
       release_obj(rp->fs);
 
-      /* lock the new (target) filesystem. NOTE: it's already retained */
-      __vfs_smart_fs_lock(target_fs, exlock);
-
       rp->fs = target_fs;
+      /* lock the new (target) filesystem. NOTE: it's already retained */
+      __vfs_smart_fs_lock(rp->fs, exlock);
 
       /* Get root's entry */
       target_fs->fsops->get_entry(target_fs, NULL, NULL, 0, &rp->fs_path);
@@ -128,14 +115,20 @@ __vfs_resolve_get_entry_raw(vfs_inode_ptr_t idir,
 }
 
 static void
-__vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx, const char *path)
+__vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
+                        const char *path,
+                        vfs_path *np)
 {
-   const uptr ss = ctx->ss;
-   vfs_path *const rp = ctx->rp;
-   const char *const pc = ctx->orig_path + (sptr) ctx->pc_offs[ss - 1];
+   const int ss = ctx->ss;
+   vfs_path *rp = &ctx->paths[ss-1];
+   *np = *rp;
 
-   ASSERT(path - pc > 0);
-   __vfs_resolve_get_entry_raw(ctx->idir[ss-1], pc, path, rp, ctx->exlock);
+   ASSERT(path - ctx->paths[ss-1].last_comp > 0);
+   __vfs_resolve_get_entry_raw(ctx->paths[ss-1].fs_path.inode,
+                               ctx->paths[ss-1].last_comp,
+                               path,
+                               np,
+                               ctx->exlock);
 }
 
 static inline bool
@@ -158,38 +151,16 @@ STATIC bool
 __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
                          const char **path_ref)
 {
-   vfs_path *const rp = ctx->rp;
-   filesystem **fss = ctx->fss;
-   const char *const orig_path = ctx->orig_path;
-
    if (!__vfs_res_hit_dot_dot(*path_ref))
       return false;
 
-   if (ctx->ss > 2) {
+   if (ctx->ss > 1) {
 
-      /*
-       * In order to get the previous entry, we goto the entry before the
-       * previous and call get_entry passing to it the path component of the
-       * previous component (which is one of its children).
-       *
-       * A much simpler and elegant solution would be to have an API to query
-       * the FS for its parent inode like:
-       *    vfs_get_parent_inode(vfs_inode_ptr_t, vfs_path *)
-       */
+      int ss = --ctx->ss;
 
-      const uptr ss = --ctx->ss;
-      const char *pc = orig_path + (sptr) ctx->pc_offs[ss - 1];
-      const char *old = orig_path + (sptr) ctx->pc_offs[ss - 2];
-
-      rp->fs = fss[ss-2];
-      __vfs_resolve_get_entry_raw(ctx->idir[ss-2], old, pc-1, rp, ctx->exlock);
-
-   } else {
-
-      rp->fs_path = ctx->orig_fs_path;
-
-      if (ctx->ss > 1)
-         ctx->ss--;
+      if (ss > 1 && ctx->paths[ss - 1].fs != ctx->paths[ss - 2].fs)
+         for (int i = ss - 1; i >= 1; i--)
+            ctx->paths[i].last_comp = ctx->paths[i-1].last_comp;
    }
 
    *path_ref += 2;
@@ -197,12 +168,8 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
 }
 
 static inline bool
-__vfs_resolve_have_to_return(vfs_resolve_int_ctx *ctx,
-                             const char *path,
-                             int *rc)
+__vfs_resolve_have_to_return(const char *path, vfs_path *rp, int *rc)
 {
-   vfs_path *const rp = ctx->rp;
-
    if (!rp->fs_path.inode) {
 
       *rc = path[1]
@@ -230,9 +197,10 @@ __vfs_resolve_have_to_return(vfs_resolve_int_ctx *ctx,
 static inline bool
 __vfs_res_handle_trivial_path(vfs_resolve_int_ctx *ctx,
                               const char **path_ref,
+                              vfs_path *rp,
                               int *rc)
 {
-   ctx->rp->last_comp = *path_ref;
+   rp->last_comp = *path_ref;
 
    if (!**path_ref) {
       *rc = -ENOENT;
@@ -240,10 +208,10 @@ __vfs_res_handle_trivial_path(vfs_resolve_int_ctx *ctx,
    }
 
    *path_ref = __vfs_res_handle_dot_slash(*path_ref);
+   rp->last_comp = *path_ref;
 
    if (!**path_ref) {
       /* path was just "/" */
-      ctx->rp->last_comp = *path_ref;
       *rc = 0;
       return true;
    }
@@ -252,32 +220,23 @@ __vfs_res_handle_trivial_path(vfs_resolve_int_ctx *ctx,
 }
 
 STATIC int
-__vfs_resolve(const char *path,
-              vfs_path *rp,
-              bool exlock,
-              bool res_last_sl)
+__vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
 {
    int rc;
-   vfs_resolve_int_ctx ctx = {
-      .rp = rp,
-      .orig_path = path,
-      .orig_fs_path = rp->fs_path,
-      .ss = 0,
-      .exlock = exlock,
-   };
+   const char *path = ctx->orig_path;
+   vfs_path *rp = &ctx->paths[ctx->ss-1];
+   vfs_path np = *rp;
 
    /* the vfs_path `rp` is assumed to be valid */
    ASSERT(rp->fs != NULL);
    ASSERT(rp->fs_path.inode != NULL);
 
-   if (__vfs_res_handle_trivial_path(&ctx, &path, &rc))
+   if (__vfs_res_handle_trivial_path(ctx, &path, rp, &rc))
       return rc;
-
-   __vfs_resolve_stack_push(&ctx, path, rp->fs, rp->fs_path.inode);
 
    for (; *path; path++) {
 
-      if (__vfs_res_handle_dot_dot(&ctx, &path)) {
+      if (__vfs_res_handle_dot_dot(ctx, &path)) {
 
          if (__vfs_res_does_path_end_here(path))
             return 0;
@@ -289,19 +248,30 @@ __vfs_resolve(const char *path,
          continue;
 
       /* ------- we hit a slash in path: handle the component ------- */
-      __vfs_resolve_get_entry(&ctx, path);
+      __vfs_resolve_get_entry(ctx, path, &np);
 
       path = __vfs_res_handle_dot_slash(path + 1) - 1;
 
-      if (__vfs_resolve_have_to_return(&ctx, path, &rc))
-         return rc;
+      if (__vfs_resolve_have_to_return(path, &np, &rc)) {
 
-      __vfs_resolve_stack_push(&ctx, path + 1, rp->fs, rp->fs_path.inode);
+         if (rc)
+            return rc;
+
+         goto out;
+      }
+
+      __vfs_resolve_stack_push(ctx, path + 1, &np);
    }
 
    /* path ended without '/': we have to resolve the last component now */
-   __vfs_resolve_get_entry(&ctx, path);
-   return 0;
+   __vfs_resolve_get_entry(ctx, path, &np);
+
+out:
+   //printk("out: path is '%s'\n", path);
+   rc = __vfs_resolve_stack_push(ctx, np.last_comp, &np);
+   //printk("orig path: '%s'\n", ctx->orig_path);
+   //printk("ret with last_comp: '%s'\n", np.last_comp);
+   return rc;
 }
 
 /*
@@ -362,12 +332,32 @@ vfs_resolve(const char *path,
 
    /* Get root's entry */
    rp->fs->fsops->get_entry(rp->fs, NULL, NULL, 0, &rp->fs_path);
-   rc = __vfs_resolve(fs_path, rp, exlock, res_last_sl);
+
+   vfs_resolve_int_ctx ctx = {
+      .orig_path = fs_path,
+      .ss = 0,
+      .exlock = exlock,
+   };
+
+   rc = __vfs_resolve_stack_push(&ctx, ctx.orig_path, rp);
+   ASSERT(rc == 0);
+
+   rc = __vfs_resolve(&ctx, res_last_sl);
+   ASSERT(ctx.ss >= 1);
 
    if (rc < 0) {
       /* resolve failed: release the lock and the fs */
-      __vfs_smart_fs_unlock(rp->fs, exlock);
-      release_obj(rp->fs); /* it was retained by get_retained_fs_at() */
+      filesystem *fs = ctx.paths[ctx.ss - 1].fs;
+      __vfs_smart_fs_unlock(fs, exlock);
+      release_obj(fs); /* it was retained by get_retained_fs_at() */
+   }
+
+   *rp = ctx.paths[ctx.ss - 1];
+
+   for (int i = ctx.ss - 1; i >= 0; i--) {
+      filesystem *fs = ctx.paths[i].fs;
+      if (ctx.paths[i].fs_path.inode)
+         fs->fsops->release_inode(fs, ctx.paths[i].fs_path.inode);
    }
 
    if (last_comp) {
@@ -377,5 +367,12 @@ vfs_resolve(const char *path,
       rp->last_comp = NULL;
    }
 
+   // printk("vfs_resolve('%s'): %s [%d]\n",
+   //        path,
+   //        rp->fs_path.inode
+   //          ? "OK"
+   //          : (rc == 0 ? "OK-new-file" : "FAILED"),
+   //          rc
+   //       );
    return rc;
 }
