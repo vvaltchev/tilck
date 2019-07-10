@@ -160,6 +160,7 @@ static int resolve(const char *path, vfs_path *p, bool res_last_sl)
    if (*path == '/') {
       bzero(p, sizeof(*p));
       p->fs = &testfs1;
+      retain_obj(p->fs);
       testfs1_get_entry(p->fs, nullptr, nullptr, 0, &p->fs_path);
    }
 
@@ -365,9 +366,95 @@ TEST(vfs_resolve_multi_fs, basic_case)
    mountpoint_add(&testfs1, "/"); // older interface. TODO: remove
    mp2_init(&testfs1);
    mp2_add(&testfs2, "/a/b/c2");
+
+   /* target-fs's root without slash */
+   rc = resolve("/a/b/c2", &p, true);
+
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs2_root);
+
+   /* target-fs's root with slash */
+   rc = resolve("/a/b/c2/", &p, true);
+
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs2_root);
+
    rc = resolve("/a/b/c2/x", &p, true);
 
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != NULL);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]);
+
+   rc = resolve("/a/b/c2/f_fs2_1", &p, true);
+
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs2_root->c["f_fs2_1"]);
+
+   rc = resolve("/a/b/c2/x/y", &p, true);
+
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]);
+
+   rc = resolve("/a/b/c2/x/y/z", &p, true);
+
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]->c["z"]);
+
+   rc = resolve("/a/b/c2/x/y/z/", &p, true);
+
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]->c["z"]);
+}
+
+TEST(vfs_resolve_multi_fs, dot_dot)
+{
+   int rc;
+   vfs_path p;
+
+   init_kmalloc_for_tests();
+   create_kernel_process();
+   mountpoint_reset();
+
+   mountpoint_add(&testfs1, "/"); // older interface. TODO: remove
+   mp2_init(&testfs1);
+   mp2_add(&testfs2, "/a/b/c2");
+
+   rc = resolve("/a/b/c2/x/y/z/..", &p, true);
+
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]);
+
+   rc = resolve("/a/b/c2/x/y/z/../", &p, true);
+
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]);
+
+   rc = resolve("/a/b/c2/x/..", &p, true);
+
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs2_root);
+
+   rc = resolve("/a/b/c2/x/../", &p, true);
+
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs2_root);
+   ASSERT_TRUE(p.fs == &testfs2);
+
+   /* ../ crossing the fs-boundary [c2 is a mount-point] */
+   rc = resolve("/a/b/c2/x/../..", &p, true);
+
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]->c["b"]);
+   ASSERT_TRUE(p.fs == &testfs1);
 }

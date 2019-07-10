@@ -99,16 +99,14 @@ __vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
    return 0;
 }
 
-static inline void
-__vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx, const char *path)
+static void
+__vfs_resolve_get_entry_raw(vfs_inode_ptr_t idir,
+                            const char *pc,
+                            const char *path,
+                            vfs_path *rp,
+                            bool exlock)
 {
-   const uptr ss = ctx->ss;
-   vfs_path *const rp = ctx->rp;
-   filesystem *const fs = rp->fs;
-   const char *const pc = ctx->orig_path + (sptr) ctx->pc_offs[ss - 1];
-
-   ASSERT(path - pc > 0);
-   fs->fsops->get_entry(fs, ctx->idir[ss - 1], pc, path - pc, &rp->fs_path);
+   rp->fs->fsops->get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
 
    filesystem *target_fs = mp2_get_retained_at(rp->fs, rp->fs_path.inode);
@@ -116,17 +114,28 @@ __vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx, const char *path)
    if (target_fs) {
 
       /* unlock and release the current (host) filesystem */
-      __vfs_smart_fs_unlock(rp->fs, ctx->exlock);
+      __vfs_smart_fs_unlock(rp->fs, exlock);
       release_obj(rp->fs);
 
       /* lock the new (target) filesystem. NOTE: it's already retained */
-      __vfs_smart_fs_lock(target_fs, ctx->exlock);
+      __vfs_smart_fs_lock(target_fs, exlock);
 
       rp->fs = target_fs;
 
       /* Get root's entry */
       target_fs->fsops->get_entry(target_fs, NULL, NULL, 0, &rp->fs_path);
    }
+}
+
+static void
+__vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx, const char *path)
+{
+   const uptr ss = ctx->ss;
+   vfs_path *const rp = ctx->rp;
+   const char *const pc = ctx->orig_path + (sptr) ctx->pc_offs[ss - 1];
+
+   ASSERT(path - pc > 0);
+   __vfs_resolve_get_entry_raw(ctx->idir[ss-1], pc, path, rp, ctx->exlock);
 }
 
 static inline bool
@@ -150,7 +159,7 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
                          const char **path_ref)
 {
    vfs_path *const rp = ctx->rp;
-   filesystem *const fs = rp->fs;
+   filesystem **fss = ctx->fss;
    const char *const orig_path = ctx->orig_path;
 
    if (!__vfs_res_hit_dot_dot(*path_ref))
@@ -158,11 +167,22 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
 
    if (ctx->ss > 2) {
 
+      /*
+       * In order to get the previous entry, we goto the entry before the
+       * previous and call get_entry passing to it the path component of the
+       * previous component (which is one of its children).
+       *
+       * A much simpler and elegant solution would be to have an API to query
+       * the FS for its parent inode like:
+       *    vfs_get_parent_inode(vfs_inode_ptr_t, vfs_path *)
+       */
+
       const uptr ss = --ctx->ss;
       const char *pc = orig_path + (sptr) ctx->pc_offs[ss - 1];
       const char *old = orig_path + (sptr) ctx->pc_offs[ss - 2];
-      fs->fsops->get_entry(fs, ctx->idir[ss-2], old, pc-old-1, &rp->fs_path);
-      rp->last_comp = old;
+
+      rp->fs = fss[ss-2];
+      __vfs_resolve_get_entry_raw(ctx->idir[ss-2], old, pc-1, rp, ctx->exlock);
 
    } else {
 
@@ -318,6 +338,10 @@ vfs_resolve(const char *path,
       if (rc < 0)
          return rc;
 
+
+      if (!(rp->fs = get_retained_fs_at(abs_path, &fs_path)))
+         return -ENOENT;
+
    } else {
 
       rc = compute_abs_path(path, "/", abs_path, MAX_PATH);
@@ -325,14 +349,14 @@ vfs_resolve(const char *path,
       if (rc < 0)
          return rc;
 
+      if (!(rp->fs = get_retained_fs_at(abs_path, &fs_path)))
+         return -ENOENT;
+
       /* new (experimental) code */
       // rp->fs = mp2_get_root();
       // retain_obj(rp->fs);
       // fs_path = path;
    }
-
-   if (!(rp->fs = get_retained_fs_at(abs_path, &fs_path)))
-      return -ENOENT;
 
    __vfs_smart_fs_lock(rp->fs, exlock);
 
