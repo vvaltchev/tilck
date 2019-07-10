@@ -73,7 +73,7 @@ static test_fs_elem *fs2_root =
    );
 
 void
-testfs1_get_entry(filesystem *fs,
+testfs_get_entry(filesystem *fs,
                   void *dir_inode,
                   const char *name,
                   ssize_t name_len,
@@ -111,9 +111,9 @@ static int vfs_test_rri(filesystem *, vfs_inode_ptr_t) { return 1; }
  * Unfortunately, in C++ non-trivial designated initializers are not supported,
  * so we have to explicitly initialize all the members, in order!
  */
-static const fs_ops static_fsops_testfs1 = {
+static const fs_ops static_fsops_testfs = {
 
-   testfs1_get_entry,   /* get_entry */
+   testfs_get_entry,    /* get_entry */
    NULL,                /* get_inode */
    NULL,                /* open */
    NULL,                /* close */
@@ -141,7 +141,7 @@ static filesystem testfs1 = {
    0,                        /* device_id */
    0,                        /* flags */
    fs1_root,                 /* device_data */
-   &static_fsops_testfs1,    /* fsops */
+   &static_fsops_testfs,     /* fsops */
 };
 
 static filesystem testfs2 = {
@@ -151,7 +151,7 @@ static filesystem testfs2 = {
    0,                        /* device_id */
    0,                        /* flags */
    fs2_root,                 /* device_data */
-   &static_fsops_testfs1,    /* fsops */
+   &static_fsops_testfs,     /* fsops */
 };
 
 
@@ -161,7 +161,7 @@ static int resolve(const char *path, vfs_path *p, bool res_last_sl)
       bzero(p, sizeof(*p));
       p->fs = &testfs1;
       retain_obj(p->fs);
-      testfs1_get_entry(p->fs, nullptr, nullptr, 0, &p->fs_path);
+      testfs_get_entry(p->fs, nullptr, nullptr, 0, &p->fs_path);
    }
 
    return __vfs_resolve(path, p, true, res_last_sl);
