@@ -308,7 +308,6 @@ vfs_resolve(const char *path,
       if (rc < 0)
          return rc;
 
-
       if (!(rp->fs = get_retained_fs_at(abs_path, &fs_path)))
          return -ENOENT;
 

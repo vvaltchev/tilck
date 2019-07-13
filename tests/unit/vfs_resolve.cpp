@@ -165,23 +165,29 @@ static int resolve(const char *path, vfs_path *p, bool res_last_sl)
    return vfs_resolve(path, p, NULL, true, res_last_sl);
 }
 
-void vfs_resolve_test_setup()
-{
-   init_kmalloc_for_tests();
-   create_kernel_process();
-   mountpoint_reset();
+class vfs_resolve_test : public ::testing::Test {
 
-   mountpoint_add(&testfs1, "/"); // older interface. TODO: remove
-   mp2_init(&testfs1);
-   mp2_add(&testfs2, "/a/b/c2");
-}
+protected:
 
-TEST(vfs_resolve, basic_test)
+   void SetUp() override {
+      init_kmalloc_for_tests();
+      create_kernel_process();
+      mountpoint_reset();
+
+      mountpoint_add(&testfs1, "/"); // older interface. TODO: remove
+      mp2_init(&testfs1);
+      mp2_add(&testfs2, "/a/b/c2");
+   }
+
+   void TearDown() override {
+      /* do nothing, at the moment */
+   }
+};
+
+TEST_F(vfs_resolve_test, basic_test)
 {
    int rc;
    vfs_path p;
-
-   vfs_resolve_test_setup();
 
    /* root path */
    rc = resolve("/", &p, true);
@@ -240,12 +246,10 @@ TEST(vfs_resolve, basic_test)
    ASSERT_STREQ(p.last_comp, "f1/");
 }
 
-TEST(vfs_resolve, corner_cases)
+TEST_F(vfs_resolve_test, corner_cases)
 {
    int rc;
    vfs_path p;
-
-   vfs_resolve_test_setup();
 
    /* empty path */
    rc = resolve("", &p, true);
@@ -298,12 +302,10 @@ TEST(vfs_resolve, corner_cases)
    ASSERT_STREQ(p.last_comp, ".hdir/");
 }
 
-TEST(vfs_resolve, single_dot)
+TEST_F(vfs_resolve_test, single_dot)
 {
    int rc;
    vfs_path p;
-
-   vfs_resolve_test_setup();
 
    rc = resolve("/a/.", &p, true);
    ASSERT_EQ(rc, 0);
@@ -336,12 +338,10 @@ TEST(vfs_resolve, single_dot)
    ASSERT_STREQ(p.last_comp, "c");
 }
 
-TEST(vfs_resolve, double_dot)
+TEST_F(vfs_resolve_test, double_dot)
 {
    int rc;
    vfs_path p;
-
-   vfs_resolve_test_setup();
 
    rc = resolve("/a/b/c/..", &p, true);
    ASSERT_EQ(rc, 0);
@@ -410,8 +410,6 @@ TEST(vfs_resolve_multi_fs, basic_case)
    int rc;
    vfs_path p;
 
-   vfs_resolve_test_setup();
-
    /* target-fs's root without slash */
    rc = resolve("/a/b/c2", &p, true);
    ASSERT_EQ(rc, 0);
@@ -461,8 +459,6 @@ TEST(vfs_resolve_multi_fs, dot_dot)
 {
    int rc;
    vfs_path p;
-
-   vfs_resolve_test_setup();
 
    rc = resolve("/a/b/c2/x/y/z/..", &p, true);
    ASSERT_EQ(rc, 0);
