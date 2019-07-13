@@ -314,6 +314,7 @@ vfs_resolve(const char *path,
 
    } else {
 
+#ifndef KERNEL_TEST
       rc = compute_abs_path(path, "/", abs_path, MAX_PATH);
 
       if (rc < 0)
@@ -321,11 +322,12 @@ vfs_resolve(const char *path,
 
       if (!(rp->fs = get_retained_fs_at(abs_path, &fs_path)))
          return -ENOENT;
-
+#else
       /* new (experimental) code */
-      // rp->fs = mp2_get_root();
-      // retain_obj(rp->fs);
-      // fs_path = path;
+      rp->fs = mp2_get_root();
+      retain_obj(rp->fs);
+      fs_path = path;
+#endif
    }
 
    __vfs_smart_fs_lock(rp->fs, exlock);
@@ -360,19 +362,14 @@ vfs_resolve(const char *path,
          fs->fsops->release_inode(fs, ctx.paths[i].fs_path.inode);
    }
 
+#ifndef KERNEL_TEST
    if (last_comp) {
       memcpy(last_comp, rp->last_comp, strlen(rp->last_comp)+1);
       rp->last_comp = last_comp;
    } else {
       rp->last_comp = NULL;
    }
+#endif
 
-   // printk("vfs_resolve('%s'): %s [%d]\n",
-   //        path,
-   //        rp->fs_path.inode
-   //          ? "OK"
-   //          : (rc == 0 ? "OK-new-file" : "FAILED"),
-   //          rc
-   //       );
    return rc;
 }
