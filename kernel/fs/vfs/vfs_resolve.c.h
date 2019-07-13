@@ -292,7 +292,7 @@ vfs_resolve(const char *path,
             bool res_last_sl)
 {
    int rc;
-   const char *fs_path;
+   const char *fs_path = path;
    char abs_path[MAX_PATH];
    process_info *pi = get_curr_task()->pi;
    bzero(rp, sizeof(*rp));
@@ -314,18 +314,15 @@ vfs_resolve(const char *path,
    } else {
 
 #ifndef KERNEL_TEST
-      rc = compute_abs_path(path, "/", abs_path, MAX_PATH);
-
-      if (rc < 0)
+      if ((rc = compute_abs_path(path, "/", abs_path, MAX_PATH)) < 0)
          return rc;
+#endif
 
-      if (!(rp->fs = get_retained_fs_at(abs_path, &fs_path)))
-         return -ENOENT;
-#else
-      /* new (experimental) code */
       rp->fs = mp2_get_root();
       retain_obj(rp->fs);
-      fs_path = path;
+
+#ifndef KERNEL_TEST
+      fs_path = abs_path;
 #endif
    }
 
