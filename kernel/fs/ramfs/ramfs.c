@@ -179,34 +179,22 @@ static int ramfs_readlink(vfs_path *p, char *buf)
 
 static int ramfs_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
 {
-   int rc;
    ASSERT(inode != NULL);
 
    if (!(fs->flags & VFS_FS_RW))
       return 1;
 
-   disable_preemption();
-   {
-      rc = retain_obj((ramfs_inode *)inode);
-   }
-   enable_preemption();
-   return rc;
+   return retain_obj((ramfs_inode *)inode);
 }
 
 static int ramfs_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
 {
-   int rc;
    ASSERT(inode != NULL);
 
    if (!(fs->flags & VFS_FS_RW))
       return 1;
 
-   disable_preemption();
-   {
-      rc = release_obj((ramfs_inode *)inode);
-   }
-   enable_preemption();
-   return rc;
+   return release_obj((ramfs_inode *)inode);
 }
 
 static const fs_ops static_fsops_ramfs =
