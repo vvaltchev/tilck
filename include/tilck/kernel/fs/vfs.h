@@ -259,6 +259,26 @@ ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);
 off_t vfs_seek(fs_handle h, s64 off, int whence);
 
+static inline void vfs_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
+{
+   fs->fsops->retain_inode(fs, inode);
+}
+
+static inline void vfs_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
+{
+   fs->fsops->release_inode(fs, inode);
+}
+
+static inline void vfs_retain_inode_at(vfs_path *p)
+{
+   vfs_retain_inode(p->fs, p->fs_path.inode);
+}
+
+static inline void vfs_release_inode_at(vfs_path *p)
+{
+   vfs_release_inode(p->fs, p->fs_path.inode);
+}
+
 static ALWAYS_INLINE filesystem *get_fs(fs_handle h)
 {
    ASSERT(h != NULL);

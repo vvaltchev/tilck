@@ -73,13 +73,13 @@ static inline void vfs_smart_fs_unlock(filesystem *fs, bool exlock)
 STATIC int
 __vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
                          const char *path,
-                         const vfs_path *p)
+                         vfs_path *p)
 {
    if (ctx->ss == ARRAY_SIZE(ctx->paths))
       return -ENAMETOOLONG;
 
    if (p->fs_path.inode)
-      p->fs->fsops->retain_inode(p->fs, p->fs_path.inode);
+      vfs_retain_inode_at(p);
 
    ctx->paths[ctx->ss] = *p;
    ctx->paths[ctx->ss].last_comp = path;
@@ -361,9 +361,8 @@ vfs_resolve(const char *path,
    *rp = ctx.paths[ctx.ss - 1];
 
    for (int i = ctx.ss - 1; i >= 0; i--) {
-      filesystem *fs = ctx.paths[i].fs;
       if (ctx.paths[i].fs_path.inode)
-         fs->fsops->release_inode(fs, ctx.paths[i].fs_path.inode);
+         vfs_release_inode_at(&ctx.paths[i]);
    }
 
 #ifndef KERNEL_TEST
