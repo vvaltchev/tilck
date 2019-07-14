@@ -28,8 +28,6 @@ extern "C" {
 
    void mountpoint_reset(void);
 
-   int __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl);
-
    int
    vfs_resolve(const char *path,
                vfs_path *rp,

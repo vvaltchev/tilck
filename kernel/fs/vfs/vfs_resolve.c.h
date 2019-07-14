@@ -165,10 +165,15 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
             ctx->paths[i].last_comp = ctx->paths[i-1].last_comp;
 
       if (fs != old_fs) {
+
+         /* first, retain the new fs */
+         retain_obj(fs);
+
+         /* then, unlock and release the old fs */
          vfs_smart_fs_unlock(old_fs, ctx->exlock);
          release_obj(old_fs);
 
-         retain_obj(fs);
+         /* finally, lock the new fs */
          vfs_smart_fs_lock(fs, ctx->exlock);
       }
    }
@@ -294,7 +299,7 @@ out:
  * right lock with vfs_shunlock() or with vfs_exunlock() and then to release the
  * FS with release_obj().
  */
-STATIC int
+int
 vfs_resolve(const char *path,
             vfs_path *rp,
             char *last_comp,

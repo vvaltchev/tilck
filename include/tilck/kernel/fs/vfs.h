@@ -301,6 +301,20 @@ u32 mp_check_match(const char *mp, u32 lm, const char *path, u32 lp);
 
 /* ------------ NEW mount point interface ------------- */
 
+/*
+ * Resolves `path` and returns in `rp` the corresponding VFS path with the
+ * filesystem retained and locked, in case of success (return 0).
+ *
+ * In case of failure, it returns a value < 0 and the it does *not* require
+ * any further clean-up.
+ */
+int
+vfs_resolve(const char *path,
+            vfs_path *rp,
+            char *last_comp,
+            bool exlock,
+            bool res_last_sl);
+
 int mp2_init(filesystem *root_fs);
 int mp2_add(filesystem *fs, const char *target_path);
 int mp2_remove(const char *target_path);

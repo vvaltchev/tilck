@@ -27,8 +27,3 @@ typedef struct {
    bool exlock;                 /* true -> use exlock, false -> use shlock */
 
 } vfs_resolve_int_ctx;
-
-STATIC int
-__vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
-                         const char *path,
-                         const vfs_path *p);

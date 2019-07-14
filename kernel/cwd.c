@@ -4,11 +4,12 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/syscalls.h>
+#include <tilck/kernel/fs/vfs.h>
 
 int sys_chdir(const char *user_path)
 {
    int rc = 0;
-   struct stat64 statbuf;
+   vfs_path p;
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
    char *orig_path = curr->args_copybuf;
@@ -27,16 +28,28 @@ int sys_chdir(const char *user_path)
 
    kmutex_lock(&pi->fslock);
    {
-      if ((rc = compute_abs_path(orig_path, pi->cwd, path, MAX_PATH)))
+      if ((rc = vfs_resolve(orig_path, &p, NULL, false, true)))
          goto out;
 
-      if ((rc = vfs_stat64(path, &statbuf, true)))
-         goto out;
-
-      if (!S_ISDIR(statbuf.st_mode)) {
-         rc = -ENOTDIR;
+      if (!p.fs_path.inode) {
+         rc = -ENOENT;
+         vfs_fs_shunlock(p.fs);
+         release_obj(p.fs);
          goto out;
       }
+
+      if (p.fs_path.type != VFS_DIR) {
+         rc = -ENOTDIR;
+         vfs_fs_shunlock(p.fs);
+         release_obj(p.fs);
+         goto out;
+      }
+
+      vfs_fs_shunlock(p.fs); // TODO: this is an unsafe hack, remove it.
+      release_obj(p.fs);     // TODO: this is an unsafe hack, remove it.
+
+      if ((rc = compute_abs_path(orig_path, pi->cwd, path, MAX_PATH)))
+         goto out;
 
       size_t pl = strlen(path);
       memcpy(pi->cwd, path, pl + 1);
