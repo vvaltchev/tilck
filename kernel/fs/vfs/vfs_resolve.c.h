@@ -58,13 +58,13 @@ __vfs_res_handle_dot_slash(const char *path)
    return path;
 }
 
-static inline void __vfs_smart_fs_lock(filesystem *fs, bool exlock)
+static inline void vfs_smart_fs_lock(filesystem *fs, bool exlock)
 {
    /* See the comment in vfs.h about the "fs-lock" funcs */
    exlock ? vfs_fs_exlock(fs) : vfs_fs_shlock(fs);
 }
 
-static inline void __vfs_smart_fs_unlock(filesystem *fs, bool exlock)
+static inline void vfs_smart_fs_unlock(filesystem *fs, bool exlock)
 {
    /* See the comment in vfs.h about the "fs-lock" funcs */
    exlock ? vfs_fs_exunlock(fs) : vfs_fs_shunlock(fs);
@@ -102,12 +102,12 @@ __vfs_resolve_get_entry_raw(vfs_inode_ptr_t idir,
    if (target_fs) {
 
       /* unlock and release the current (host) filesystem */
-      __vfs_smart_fs_unlock(rp->fs, exlock);
+      vfs_smart_fs_unlock(rp->fs, exlock);
       release_obj(rp->fs);
 
       rp->fs = target_fs;
       /* lock the new (target) filesystem. NOTE: it's already retained */
-      __vfs_smart_fs_lock(rp->fs, exlock);
+      vfs_smart_fs_lock(rp->fs, exlock);
 
       /* Get root's entry */
       target_fs->fsops->get_entry(target_fs, NULL, NULL, 0, &rp->fs_path);
@@ -326,7 +326,7 @@ vfs_resolve(const char *path,
 #endif
    }
 
-   __vfs_smart_fs_lock(rp->fs, exlock);
+   vfs_smart_fs_lock(rp->fs, exlock);
 
    /* Get root's entry */
    rp->fs->fsops->get_entry(rp->fs, NULL, NULL, 0, &rp->fs_path);
@@ -346,7 +346,7 @@ vfs_resolve(const char *path,
    if (rc < 0) {
       /* resolve failed: release the lock and the fs */
       filesystem *fs = ctx.paths[ctx.ss - 1].fs;
-      __vfs_smart_fs_unlock(fs, exlock);
+      vfs_smart_fs_unlock(fs, exlock);
       release_obj(fs); /* it was retained by get_retained_fs_at() */
    }
 

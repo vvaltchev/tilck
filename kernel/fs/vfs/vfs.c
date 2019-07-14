@@ -51,7 +51,7 @@ static void __nr_check(bool *check)
 out:                                                                    \
    DEBUG_ONLY(no_ret_check = true);                                     \
    ASSERT(exlock == __saved_exlock);                                    \
-   exlock ? vfs_fs_exunlock(fs) : vfs_fs_shunlock(fs);                  \
+   vfs_smart_fs_unlock(fs, exlock);                                     \
    release_obj(fs);                                                     \
    return rc;
 

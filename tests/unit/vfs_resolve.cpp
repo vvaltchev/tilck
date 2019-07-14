@@ -61,7 +61,8 @@ static test_fs_elem *fs1_root =
             NODE("c2"),
             NODE(".hdir"),
          )
-      )
+      ),
+      NODE("dev")
    );
 
 static test_fs_elem *fs2_root =
@@ -177,6 +178,7 @@ protected:
       mountpoint_add(&testfs1, "/"); // older interface. TODO: remove
       mp2_init(&testfs1);
       mp2_add(&testfs2, "/a/b/c2");
+      mp2_add(&testfs2, "/dev");
    }
 
    void TearDown() override {
@@ -492,4 +494,11 @@ TEST(vfs_resolve_multi_fs, dot_dot)
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]->c["b"]);
    ASSERT_TRUE(p.fs == &testfs1);
    ASSERT_STREQ(p.last_comp, "b/c2/x/../..");
+
+   rc = resolve("/dev/..", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs1_root);
+   ASSERT_TRUE(p.fs == &testfs1);
+   //ASSERT_STREQ(p.last_comp, ""); // TODO: fix this!!
 }
