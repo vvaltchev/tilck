@@ -157,10 +157,20 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
    if (ctx->ss > 1) {
 
       int ss = --ctx->ss;
+      filesystem *old_fs = ctx->paths[ss].fs;
+      filesystem *fs = ctx->paths[ss-1].fs;
 
       if (ss > 1 && ctx->paths[ss - 1].fs != ctx->paths[ss - 2].fs)
          for (int i = ss - 1; i >= 1; i--)
             ctx->paths[i].last_comp = ctx->paths[i-1].last_comp;
+
+      if (fs != old_fs) {
+         vfs_smart_fs_unlock(old_fs, ctx->exlock);
+         release_obj(old_fs);
+
+         retain_obj(fs);
+         vfs_smart_fs_lock(fs, ctx->exlock);
+      }
    }
 
    *path_ref += 2;
@@ -292,12 +302,13 @@ vfs_resolve(const char *path,
             bool res_last_sl)
 {
    int rc;
-   const char *fs_path = path;
-   char abs_path[MAX_PATH];
+   const char *fs_path;
    process_info *pi = get_curr_task()->pi;
    bzero(rp, sizeof(*rp));
 
    if (*path != '/') {
+
+      char abs_path[MAX_PATH];
 
       kmutex_lock(&pi->fslock);
       {
@@ -313,17 +324,9 @@ vfs_resolve(const char *path,
 
    } else {
 
-#ifndef KERNEL_TEST
-      if ((rc = compute_abs_path(path, "/", abs_path, MAX_PATH)) < 0)
-         return rc;
-#endif
-
       rp->fs = mp2_get_root();
       retain_obj(rp->fs);
-
-#ifndef KERNEL_TEST
-      fs_path = abs_path;
-#endif
+      fs_path = path;
    }
 
    vfs_smart_fs_lock(rp->fs, exlock);
