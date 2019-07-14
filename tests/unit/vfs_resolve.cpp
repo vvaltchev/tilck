@@ -41,10 +41,11 @@ extern "C" {
 
 struct test_fs_elem {
 
+   int ref_count;
    map<string, test_fs_elem *> c; /* children */
 };
 
-#define ROOT_NODE(...) new test_fs_elem{{ __VA_ARGS__ }}
+#define ROOT_NODE(...) new test_fs_elem{0, { __VA_ARGS__ }}
 #define NODE(name, ...) make_pair(name, ROOT_NODE( __VA_ARGS__ ))
 
 static test_fs_elem *fs1_root =
@@ -110,8 +111,38 @@ testfs_get_entry(filesystem *fs,
    fs_path->dir_inode = e;
 }
 
-static void vfs_test_fs_nolock(filesystem *) { }
-static int vfs_test_rri(filesystem *, vfs_inode_ptr_t) { return 1; }
+static void vfs_test_fs_exlock(filesystem *fs)
+{
+   //printf("EXLOCK: %s\n", fs->fs_type_name);
+}
+
+static void vfs_test_fs_exunlock(filesystem *fs)
+{
+   //printf("EXUNLOCK: %s\n", fs->fs_type_name);
+}
+
+static void vfs_test_fs_shlock(filesystem *fs)
+{
+   //printf("SHLOCK: %s\n", fs->fs_type_name);
+}
+
+static void vfs_test_fs_shunlock(filesystem *fs)
+{
+   //printf("SHUNLOCK: %s\n", fs->fs_type_name);
+}
+
+static int vfs_test_retain_inode(filesystem *fs, vfs_inode_ptr_t i)
+{
+   test_fs_elem *e = (test_fs_elem *)i;
+   return ++e->ref_count;
+}
+
+static int vfs_test_release_inode(filesystem *fs, vfs_inode_ptr_t i)
+{
+   test_fs_elem *e = (test_fs_elem *)i;
+   assert(e->ref_count > 0);
+   return --e->ref_count;
+}
 
 /*
  * Unfortunately, in C++ non-trivial designated initializers are not supported,
@@ -119,25 +150,25 @@ static int vfs_test_rri(filesystem *, vfs_inode_ptr_t) { return 1; }
  */
 static const fs_ops static_fsops_testfs = {
 
-   testfs_get_entry,    /* get_entry */
-   NULL,                /* get_inode */
-   NULL,                /* open */
-   NULL,                /* close */
-   NULL,                /* dup */
-   NULL,                /* getdents */
-   NULL,                /* unlink */
-   NULL,                /* stat */
-   NULL,                /* mkdir */
-   NULL,                /* rmdir */
-   NULL,                /* symlink */
-   NULL,                /* readlink */
-   NULL,                /* truncate */
-   vfs_test_rri,        /* retain_inode */
-   vfs_test_rri,        /* release_inode */
-   vfs_test_fs_nolock,  /* fs_exlock */
-   vfs_test_fs_nolock,  /* fs_exunlock */
-   vfs_test_fs_nolock,  /* fs_shlock */
-   vfs_test_fs_nolock,  /* fs_shunlock */
+   testfs_get_entry,             /* get_entry */
+   NULL,                         /* get_inode */
+   NULL,                         /* open */
+   NULL,                         /* close */
+   NULL,                         /* dup */
+   NULL,                         /* getdents */
+   NULL,                         /* unlink */
+   NULL,                         /* stat */
+   NULL,                         /* mkdir */
+   NULL,                         /* rmdir */
+   NULL,                         /* symlink */
+   NULL,                         /* readlink */
+   NULL,                         /* truncate */
+   vfs_test_retain_inode,        /* retain_inode */
+   vfs_test_release_inode,       /* release_inode */
+   vfs_test_fs_exlock,           /* fs_exlock */
+   vfs_test_fs_exunlock,         /* fs_exunlock */
+   vfs_test_fs_shlock,           /* fs_shlock */
+   vfs_test_fs_shunlock,         /* fs_shunlock */
 };
 
 static filesystem testfs1 = {
@@ -185,6 +216,8 @@ protected:
       /* do nothing, at the moment */
    }
 };
+
+class vfs_resolve_multi_fs : public vfs_resolve_test { };
 
 TEST_F(vfs_resolve_test, basic_test)
 {
@@ -407,7 +440,7 @@ TEST_F(vfs_resolve_test, double_dot)
    //ASSERT_STREQ(p.last_comp, ""); // TODO: fix this!!
 }
 
-TEST(vfs_resolve_multi_fs, basic_case)
+TEST_F(vfs_resolve_multi_fs, basic_case)
 {
    int rc;
    vfs_path p;
@@ -457,7 +490,7 @@ TEST(vfs_resolve_multi_fs, basic_case)
    ASSERT_STREQ(p.last_comp, "z/");
 }
 
-TEST(vfs_resolve_multi_fs, dot_dot)
+TEST_F(vfs_resolve_multi_fs, dot_dot)
 {
    int rc;
    vfs_path p;
