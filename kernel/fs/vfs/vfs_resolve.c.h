@@ -307,43 +307,41 @@ vfs_resolve(const char *path,
             bool res_last_sl)
 {
    int rc;
-   const char *fs_path;
    process_info *pi = get_curr_task()->pi;
    bzero(rp, sizeof(*rp));
 
-   if (*path != '/') {
+   vfs_resolve_int_ctx ctx = {
+      .orig_path = path,
+      .ss = 0,
+      .exlock = exlock,
+   };
 
-      char abs_path[MAX_PATH];
+   if (*path != '/') {
 
       kmutex_lock(&pi->fslock);
       {
-         rc = compute_abs_path(path, pi->cwd, abs_path, MAX_PATH);
+         if (!pi->cwd2.fs) {
+            vfs_path *tp = &pi->cwd2;
+            tp->fs = mp2_get_root();
+            tp->fs->fsops->get_entry(tp->fs, NULL, NULL, 0, &tp->fs_path);
+         }
+
+         *rp = pi->cwd2;
       }
       kmutex_unlock(&pi->fslock);
 
-      if (rc < 0)
-         return rc;
-
-      if (!(rp->fs = get_retained_fs_at(abs_path, &fs_path)))
-         return -ENOENT;
+      retain_obj(rp->fs);
+      vfs_smart_fs_lock(rp->fs, exlock);
 
    } else {
 
       rp->fs = mp2_get_root();
       retain_obj(rp->fs);
-      fs_path = path;
+      vfs_smart_fs_lock(rp->fs, exlock);
+
+      /* Get root's entry */
+      rp->fs->fsops->get_entry(rp->fs, NULL, NULL, 0, &rp->fs_path);
    }
-
-   vfs_smart_fs_lock(rp->fs, exlock);
-
-   /* Get root's entry */
-   rp->fs->fsops->get_entry(rp->fs, NULL, NULL, 0, &rp->fs_path);
-
-   vfs_resolve_int_ctx ctx = {
-      .orig_path = fs_path,
-      .ss = 0,
-      .exlock = exlock,
-   };
 
    rc = __vfs_resolve_stack_push(&ctx, ctx.orig_path, rp);
    ASSERT(rc == 0);

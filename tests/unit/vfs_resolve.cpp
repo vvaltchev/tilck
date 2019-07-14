@@ -287,7 +287,7 @@ TEST_F(vfs_resolve_test, corner_cases)
    /* empty path */
    rc = resolve("", &p, true);
    ASSERT_EQ(rc, -ENOENT);
-   ASSERT_STREQ(p.last_comp, nullptr);
+   ASSERT_STREQ(p.last_comp, "");
 
    /* multiple slashes [root] */
    rc = resolve("/////", &p, true);

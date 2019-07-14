@@ -45,6 +45,9 @@ int sys_chdir(const char *user_path)
          goto out;
       }
 
+      // NOTE: inode retain is missing. TODO: fix that!!
+      pi->cwd2 = p;
+
       vfs_fs_shunlock(p.fs); // TODO: this is an unsafe hack, remove it.
       release_obj(p.fs);     // TODO: this is an unsafe hack, remove it.
 
