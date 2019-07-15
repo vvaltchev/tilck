@@ -285,6 +285,22 @@ static ALWAYS_INLINE filesystem *get_fs(fs_handle h)
    return ((fs_handle_base *)h)->fs;
 }
 
+static ALWAYS_INLINE void
+vfs_get_entry(filesystem *fs,
+              vfs_inode_ptr_t inode,
+              const char *name,
+              ssize_t name_len,
+              fs_path_struct *fs_path)
+{
+   fs->fsops->get_entry(fs, inode, name, name_len, fs_path);
+}
+
+static ALWAYS_INLINE void
+vfs_get_root_entry(filesystem *fs, fs_path_struct *fs_path)
+{
+   vfs_get_entry(fs, NULL, NULL, 0, fs_path);
+}
+
 /* Per-file locks */
 void vfs_exlock(fs_handle h);
 void vfs_exunlock(fs_handle h);

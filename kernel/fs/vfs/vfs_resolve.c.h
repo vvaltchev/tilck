@@ -109,7 +109,7 @@ __vfs_resolve_get_entry_raw(vfs_inode_ptr_t idir,
                             vfs_path *rp,
                             bool exlock)
 {
-   rp->fs->fsops->get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
+   vfs_get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
 
    filesystem *target_fs = mp2_get_retained_at(rp->fs, rp->fs_path.inode);
@@ -125,7 +125,7 @@ __vfs_resolve_get_entry_raw(vfs_inode_ptr_t idir,
       vfs_smart_fs_lock(rp->fs, exlock);
 
       /* Get root's entry */
-      target_fs->fsops->get_entry(target_fs, NULL, NULL, 0, &rp->fs_path);
+      vfs_get_root_entry(target_fs, &rp->fs_path);
    }
 }
 
@@ -172,47 +172,41 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
    vfs_path p = ctx->paths[ctx->ss - 1];
    fs_path_struct root_fsp;
 
-   p.fs->fsops->get_entry(p.fs, NULL, NULL, 0, &root_fsp);
+   /* Get the root inode of the current file system */
+   vfs_get_root_entry(p.fs, &root_fsp);
 
    if (root_fsp.inode != p.fs_path.inode) {
 
-      /* in this very fs, we can go further up */
-      p.fs->fsops->get_entry(p.fs, p.fs_path.inode, "..", 2, &p.fs_path);
+      /* in this fs, we can go further up */
+      vfs_get_entry(p.fs, p.fs_path.inode, "..", 2, &p.fs_path);
+      __vfs_resolve_stack_replace_top(ctx, *path_ref, &p);
+
+   } else if (p.fs != mp2_get_root()) {
+
+      /* we have to go beyond the mount-point */
+      int rc;
+      mountpoint2 mp;
+
+      rc = mp2_get_mountpoint_of(p.fs, &mp);
+      ASSERT(rc == 0);
+      ASSERT(mp.host_fs != p.fs);
+      ASSERT(mp.target_fs == p.fs);
+      ASSERT(mp.host_fs_inode != NULL);
+
+      retain_obj(mp.host_fs);
+      vfs_smart_fs_unlock(p.fs, ctx->exlock);
+      vfs_smart_fs_lock(mp.host_fs, ctx->exlock);
+
+      p.fs = mp.host_fs;
+      vfs_get_entry(p.fs, mp.host_fs_inode, "..", 2, &p.fs_path);
+
+      ASSERT(p.fs_path.inode != NULL);
+      ASSERT(p.fs_path.type == VFS_DIR);
+
       __vfs_resolve_stack_replace_top(ctx, *path_ref, &p);
 
    } else {
-
-      if (p.fs != mp2_get_root()) {
-
-         /* we have to go beyond the mount-point */
-         int rc;
-         mountpoint2 mp;
-
-         rc = mp2_get_mountpoint_of(p.fs, &mp);
-         ASSERT(rc == 0);
-         ASSERT(mp.host_fs != p.fs);
-         ASSERT(mp.target_fs == p.fs);
-         ASSERT(mp.host_fs_inode != NULL);
-
-         retain_obj(mp.host_fs);
-         vfs_smart_fs_unlock(p.fs, ctx->exlock);
-         vfs_smart_fs_lock(mp.host_fs, ctx->exlock);
-
-         p.fs = mp.host_fs;
-         p.fs->fsops->get_entry(p.fs,
-                                mp.host_fs_inode,
-                                "..",
-                                2,
-                                &p.fs_path);
-
-         ASSERT(p.fs_path.inode != NULL);
-         ASSERT(p.fs_path.type == VFS_DIR);
-
-         __vfs_resolve_stack_replace_top(ctx, *path_ref, &p);
-
-      } else {
-         /* there's nowhere to go further */
-      }
+      /* there's nowhere to go further */
    }
 
    *path_ref += 2;
@@ -357,7 +351,7 @@ vfs_resolve(const char *path,
          if (!pi->cwd2.fs) {
             vfs_path *tp = &pi->cwd2;
             tp->fs = mp2_get_root();
-            tp->fs->fsops->get_entry(tp->fs, NULL, NULL, 0, &tp->fs_path);
+            vfs_get_root_entry(tp->fs, &tp->fs_path);
          }
 
          *rp = pi->cwd2;
@@ -374,7 +368,7 @@ vfs_resolve(const char *path,
       vfs_smart_fs_lock(rp->fs, exlock);
 
       /* Get root's entry */
-      rp->fs->fsops->get_entry(rp->fs, NULL, NULL, 0, &rp->fs_path);
+      vfs_get_root_entry(rp->fs, &rp->fs_path);
    }
 
    rc = __vfs_resolve_stack_push(&ctx, ctx.orig_path, rp);
