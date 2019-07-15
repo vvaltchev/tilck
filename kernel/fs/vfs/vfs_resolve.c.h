@@ -176,6 +176,15 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
          /* finally, lock the new fs */
          vfs_smart_fs_lock(fs, ctx->exlock);
       }
+
+   } else {
+
+      /*
+       * We can't get further than this using our stack (ctx->paths), but,
+       * unless we're in the very root, get can go to the parent directory.
+       *
+       */
+
    }
 
    *path_ref += 2;

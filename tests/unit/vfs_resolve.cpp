@@ -24,6 +24,7 @@ extern "C" {
 
    #include <tilck/kernel/fs/vfs.h>
    #include <tilck/kernel/sched.h>
+   #include <tilck/kernel/process.h>
    #include "kernel/fs/fs_int.h"
 
    void mountpoint_reset(void);
@@ -192,7 +193,14 @@ static filesystem testfs2 = {
 
 static int resolve(const char *path, vfs_path *p, bool res_last_sl)
 {
-   return vfs_resolve(path, p, NULL, true, res_last_sl);
+   int rc;
+
+   if ((rc = vfs_resolve(path, p, NULL, true, res_last_sl)) < 0)
+      return rc;
+
+   vfs_fs_exunlock(p->fs);
+   release_obj(p->fs);
+   return rc;
 }
 
 class vfs_resolve_test : public ::testing::Test {
@@ -532,4 +540,33 @@ TEST_F(vfs_resolve_multi_fs, dot_dot)
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs == &testfs1);
    //ASSERT_STREQ(p.last_comp, ""); // TODO: fix this!!
+}
+
+TEST_F(vfs_resolve_multi_fs, rel_paths)
+{
+   int rc;
+   vfs_path p;
+   process_info *pi = get_curr_task()->pi;
+
+   rc = resolve("/dev/", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs2_root);
+   ASSERT_TRUE(p.fs == &testfs2);
+
+   pi->cwd2 = p;
+   bzero(&p, sizeof(p));
+
+   rc = resolve(".", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs2_root);
+   ASSERT_TRUE(p.fs == &testfs2);
+
+   // TODO: fix this!!
+   // rc = resolve("..", &p, true);
+   // ASSERT_EQ(rc, 0);
+   // ASSERT_TRUE(p.fs_path.inode != NULL);
+   // ASSERT_TRUE(p.fs_path.inode == fs1_root);
+   // ASSERT_TRUE(p.fs == &testfs1);
 }
