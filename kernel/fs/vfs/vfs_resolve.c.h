@@ -87,6 +87,21 @@ __vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
    return 0;
 }
 
+STATIC int
+__vfs_resolve_stack_replace_top(vfs_resolve_int_ctx *ctx,
+                                const char *path,
+                                vfs_path *p)
+{
+   vfs_path *cp;
+   ASSERT(ctx->ss > 0);
+   cp = &ctx->paths[--ctx->ss];
+
+   if (cp->fs_path.inode)
+      vfs_release_inode_at(cp);
+
+   return __vfs_resolve_stack_push(ctx, path, p);
+}
+
 static void
 __vfs_resolve_get_entry_raw(vfs_inode_ptr_t idir,
                             const char *pc,
@@ -154,83 +169,49 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
    if (!__vfs_res_hit_dot_dot(*path_ref))
       return false;
 
-   if (ctx->ss > 1) {
+   vfs_path p = ctx->paths[ctx->ss - 1];
+   fs_path_struct root_fsp;
 
-      int ss = --ctx->ss;
-      filesystem *old_fs = ctx->paths[ss].fs;
-      filesystem *fs = ctx->paths[ss-1].fs;
+   p.fs->fsops->get_entry(p.fs, NULL, NULL, 0, &root_fsp);
 
-      if (ss > 1 && ctx->paths[ss - 1].fs != ctx->paths[ss - 2].fs)
-         for (int i = ss - 1; i >= 1; i--)
-            ctx->paths[i].last_comp = ctx->paths[i-1].last_comp;
+   if (root_fsp.inode != p.fs_path.inode) {
 
-      if (fs != old_fs) {
-
-         /* first, retain the new fs */
-         retain_obj(fs);
-
-         /* then, unlock and release the old fs */
-         vfs_smart_fs_unlock(old_fs, ctx->exlock);
-         release_obj(old_fs);
-
-         /* finally, lock the new fs */
-         vfs_smart_fs_lock(fs, ctx->exlock);
-      }
+      /* in this very fs, we can go further up */
+      p.fs->fsops->get_entry(p.fs, p.fs_path.inode, "..", 2, &p.fs_path);
+      __vfs_resolve_stack_replace_top(ctx, *path_ref, &p);
 
    } else {
 
-      /*
-       * We can't get further than this using our stack (ctx->paths), but,
-       * unless we're in the very root, get can go to the parent directory.
-       *
-       */
+      if (p.fs != mp2_get_root()) {
 
-      vfs_path *p = &ctx->paths[ctx->ss - 1];
-      fs_path_struct root_fsp;
+         /* we have to go beyond the mount-point */
+         int rc;
+         mountpoint2 mp;
 
-      p->fs->fsops->get_entry(p->fs, NULL, NULL, 0, &root_fsp);
+         rc = mp2_get_mountpoint_of(p.fs, &mp);
+         ASSERT(rc == 0);
+         ASSERT(mp.host_fs != p.fs);
+         ASSERT(mp.target_fs == p.fs);
+         ASSERT(mp.host_fs_inode != NULL);
 
-      if (root_fsp.inode != p->fs_path.inode) {
+         retain_obj(mp.host_fs);
+         vfs_smart_fs_unlock(p.fs, ctx->exlock);
+         vfs_smart_fs_lock(mp.host_fs, ctx->exlock);
 
-         /* in this very fs, we can go further up */
-         vfs_release_inode_at(p);
-         p->fs->fsops->get_entry(p->fs, p->fs_path.inode, "..", 2, &p->fs_path);
+         p.fs = mp.host_fs;
+         p.fs->fsops->get_entry(p.fs,
+                                mp.host_fs_inode,
+                                "..",
+                                2,
+                                &p.fs_path);
+
+         ASSERT(p.fs_path.inode != NULL);
+         ASSERT(p.fs_path.type == VFS_DIR);
+
+         __vfs_resolve_stack_replace_top(ctx, *path_ref, &p);
 
       } else {
-
-         if (p->fs != mp2_get_root()) {
-
-            /* we have to go beyond the mount-point */
-            int rc;
-            mountpoint2 mp;
-
-            vfs_release_inode_at(p);
-
-            rc = mp2_get_mountpoint_of(p->fs, &mp);
-            ASSERT(rc == 0);
-            ASSERT(mp.host_fs != p->fs);
-            ASSERT(mp.target_fs == p->fs);
-            ASSERT(mp.host_fs_inode != NULL);
-
-            retain_obj(mp.host_fs);
-            vfs_smart_fs_unlock(p->fs, ctx->exlock);
-            vfs_smart_fs_lock(mp.host_fs, ctx->exlock);
-
-            p->fs = mp.host_fs;
-            p->fs->fsops->get_entry(p->fs,
-                                    mp.host_fs_inode,
-                                    "..",
-                                    2,
-                                    &p->fs_path);
-
-            ASSERT(p->fs_path.inode != NULL);
-            ASSERT(p->fs_path.type == VFS_DIR);
-
-            vfs_retain_inode_at(p);
-
-         } else {
-            /* there's nowhere to go further */
-         }
+         /* there's nowhere to go further */
       }
    }
 
@@ -331,17 +312,14 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
          goto out;
       }
 
-      __vfs_resolve_stack_push(ctx, path + 1, &np);
+      __vfs_resolve_stack_replace_top(ctx, path + 1, &np);
    }
 
    /* path ended without '/': we have to resolve the last component now */
    __vfs_resolve_get_entry(ctx, path, &np);
 
 out:
-   //printk("out: path is '%s'\n", path);
-   rc = __vfs_resolve_stack_push(ctx, np.last_comp, &np);
-   //printk("orig path: '%s'\n", ctx->orig_path);
-   //printk("ret with last_comp: '%s'\n", np.last_comp);
+   rc = __vfs_resolve_stack_replace_top(ctx, np.last_comp, &np);
    return rc;
 }
 
