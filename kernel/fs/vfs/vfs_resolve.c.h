@@ -193,6 +193,7 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
       if (root_fsp.inode != p->fs_path.inode) {
 
          /* in this very fs, we can go further up */
+         vfs_release_inode_at(p);
          p->fs->fsops->get_entry(p->fs, p->fs_path.inode, "..", 2, &p->fs_path);
 
       } else {
@@ -202,6 +203,8 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
             /* we have to go beyond the mount-point */
             int rc;
             mountpoint2 mp;
+
+            vfs_release_inode_at(p);
 
             rc = mp2_get_mountpoint_of(p->fs, &mp);
             ASSERT(rc == 0);
@@ -222,6 +225,8 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
 
             ASSERT(p->fs_path.inode != NULL);
             ASSERT(p->fs_path.type == VFS_DIR);
+
+            vfs_retain_inode_at(p);
 
          } else {
             /* there's nowhere to go further */

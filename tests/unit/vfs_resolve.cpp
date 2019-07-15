@@ -130,17 +130,17 @@ testfs_get_entry(filesystem *fs,
    test_fs_elem *e = (test_fs_elem *)dir_inode;
    //cout << "get_entry: '" << s << "'" << endl;
 
-   if (s == "..") {
-      e = e->parent;
-      // fall-through
-   }
+   if (s == "." || s == "..") {
 
-   if (s[0] == '.' && s.size() == 1) {
+      if (s == "..")
+         e = e->parent;
+
       fs_path->inode = (void *)e;
       fs_path->type = e->name[0] == 'f' ? VFS_FILE : VFS_DIR;
       fs_path->dir_inode = e->parent;
       return;
    }
+
 
    auto it = e->c.find(s);
 
@@ -618,10 +618,9 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
    ASSERT_TRUE(p.fs_path.inode == fs3_root);
    ASSERT_TRUE(p.fs == &testfs3);
 
-   // TODO: fix this!!
-   // rc = resolve("..", &p, true);
-   // ASSERT_EQ(rc, 0);
-   // ASSERT_TRUE(p.fs_path.inode != NULL);
-   // ASSERT_TRUE(p.fs_path.inode == fs1_root);
-   // ASSERT_TRUE(p.fs == &testfs1);
+   rc = resolve("..", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs1_root);
+   ASSERT_TRUE(p.fs == &testfs1);
 }
