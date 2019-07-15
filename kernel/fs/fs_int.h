@@ -21,6 +21,14 @@ mountpoint *mountpoint_get_next(mp_cursor *c);
 
 typedef struct {
 
+   filesystem *host_fs;
+   vfs_inode_ptr_t host_fs_inode;
+   filesystem *target_fs;
+
+} mountpoint2;
+
+typedef struct {
+
    const char *orig_path;       /* original path (used for offsets) */
    vfs_path paths[32];          /* paths stack */
    int ss;                      /* stack size */

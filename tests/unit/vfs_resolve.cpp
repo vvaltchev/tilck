@@ -40,12 +40,15 @@ extern "C" {
 
 struct test_fs_elem {
 
+   const char *name;
+   test_fs_elem *parent;
    int ref_count;
    map<string, test_fs_elem *> c; /* children */
 };
 
-#define ROOT_NODE(...) new test_fs_elem{0, { __VA_ARGS__ }}
-#define NODE(name, ...) make_pair(name, ROOT_NODE( __VA_ARGS__ ))
+#define NODE_RAW(name, ...) new test_fs_elem{name, 0, 0, { __VA_ARGS__ }}
+#define NODE(name, ...) make_pair(name, NODE_RAW( name, __VA_ARGS__ ))
+#define ROOT_NODE(...) NODE_RAW("", __VA_ARGS__)
 
 static test_fs_elem *fs1_root =
    ROOT_NODE(
@@ -78,6 +81,29 @@ static test_fs_elem *fs2_root =
       NODE("f_fs2_2")
    );
 
+static test_fs_elem *fs3_root =
+   ROOT_NODE(
+      NODE(
+         "xd",
+         NODE(
+            "yd",
+            NODE("zd")
+         )
+      ),
+      NODE("fd1"),
+      NODE("fd2")
+   );
+
+static bool are_test_fs_parents_set;
+
+static void test_fs_do_set_parents(test_fs_elem *node)
+{
+   for (auto &p : node->c) {
+      p.second->parent = node;
+      test_fs_do_set_parents(p.second);
+   }
+}
+
 void
 testfs_get_entry(filesystem *fs,
                   void *dir_inode,
@@ -85,6 +111,13 @@ testfs_get_entry(filesystem *fs,
                   ssize_t name_len,
                   fs_path_struct *fs_path)
 {
+   if (!are_test_fs_parents_set) {
+      test_fs_do_set_parents(fs1_root);
+      test_fs_do_set_parents(fs2_root);
+      test_fs_do_set_parents(fs3_root);
+      are_test_fs_parents_set = true;
+   }
+
    if (!name) {
       fs_path->type = VFS_DIR;
       fs_path->inode = fs->device_data;
@@ -94,14 +127,26 @@ testfs_get_entry(filesystem *fs,
    }
 
    string s{name, (size_t)name_len};
+   test_fs_elem *e = (test_fs_elem *)dir_inode;
    //cout << "get_entry: '" << s << "'" << endl;
 
-   test_fs_elem *e = (test_fs_elem *)dir_inode;
+   if (s == "..") {
+      e = e->parent;
+      // fall-through
+   }
+
+   if (s[0] == '.' && s.size() == 1) {
+      fs_path->inode = (void *)e;
+      fs_path->type = e->name[0] == 'f' ? VFS_FILE : VFS_DIR;
+      fs_path->dir_inode = e->parent;
+      return;
+   }
+
    auto it = e->c.find(s);
 
    if (it != e->c.end()) {
       fs_path->inode = it->second;
-      fs_path->type = name[0] == 'f' ? VFS_FILE : VFS_DIR;
+      fs_path->type = it->first[0] == 'f' ? VFS_FILE : VFS_DIR;
    } else {
       fs_path->inode = nullptr;
       fs_path->type = VFS_NONE;
@@ -190,6 +235,16 @@ static filesystem testfs2 = {
    &static_fsops_testfs,     /* fsops */
 };
 
+static filesystem testfs3 = {
+
+   1,                        /* ref-count */
+   "testfs3",                /* fs type name */
+   0,                        /* device_id */
+   0,                        /* flags */
+   fs3_root,                 /* device_data */
+   &static_fsops_testfs,     /* fsops */
+};
+
 
 static int resolve(const char *path, vfs_path *p, bool res_last_sl)
 {
@@ -215,7 +270,7 @@ protected:
       mountpoint_add(&testfs1, "/"); // older interface. TODO: remove
       mp2_init(&testfs1);
       mp2_add(&testfs2, "/a/b/c2");
-      mp2_add(&testfs2, "/dev");
+      mp2_add(&testfs3, "/dev");
    }
 
    void TearDown() override {
@@ -551,8 +606,8 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
    rc = resolve("/dev/", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != NULL);
-   ASSERT_TRUE(p.fs_path.inode == fs2_root);
-   ASSERT_TRUE(p.fs == &testfs2);
+   ASSERT_TRUE(p.fs_path.inode == fs3_root);
+   ASSERT_TRUE(p.fs == &testfs3);
 
    pi->cwd2 = p;
    bzero(&p, sizeof(p));
@@ -560,8 +615,8 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
    rc = resolve(".", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != NULL);
-   ASSERT_TRUE(p.fs_path.inode == fs2_root);
-   ASSERT_TRUE(p.fs == &testfs2);
+   ASSERT_TRUE(p.fs_path.inode == fs3_root);
+   ASSERT_TRUE(p.fs == &testfs3);
 
    // TODO: fix this!!
    // rc = resolve("..", &p, true);

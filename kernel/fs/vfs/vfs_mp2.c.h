@@ -1,13 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-typedef struct {
-
-   filesystem *host_fs;
-   vfs_inode_ptr_t host_fs_inode;
-   filesystem *target_fs;
-
-} mountpoint2;
-
 static kmutex mp2_mutex = STATIC_KMUTEX_INIT(mp2_mutex, 0);
 static mountpoint2 mps2[MAX_MOUNTPOINTS];
 static filesystem *mp2_root;
@@ -55,6 +47,26 @@ filesystem *mp2_get_retained_at(filesystem *host_fs, vfs_inode_ptr_t inode)
    return ret;
 }
 
+int mp2_get_mountpoint_of(filesystem *target_fs, mountpoint2 *mp)
+{
+   uptr i;
+   int rc = -ENOENT;
+
+   kmutex_lock(&mp2_mutex);
+   {
+      for (i = 0; i < ARRAY_SIZE(mps2); i++)
+         if (mps2[i].target_fs == target_fs)
+            break;
+
+      if (i < ARRAY_SIZE(mps2)) {
+         *mp = mps2[i];
+         rc = 0;
+      }
+   }
+   kmutex_unlock(&mp2_mutex);
+   return rc;
+}
+
 int mp2_add(filesystem *target_fs, const char *target_path)
 {
    vfs_path p;
@@ -89,7 +101,16 @@ int mp2_add(filesystem *target_fs, const char *target_path)
 
    if (mp2_get_at_nolock(p.fs, p.fs_path.inode)) {
       p.fs->fsops->release_inode(p.fs, p.fs_path.inode);
+      kmutex_unlock(&mp2_mutex);
       return -EBUSY; /* the target path is already a mount-point */
+   }
+
+   for (i = 0; i < ARRAY_SIZE(mps2); i++) {
+      if (mps2[i].target_fs == target_fs) {
+         p.fs->fsops->release_inode(p.fs, p.fs_path.inode);
+         kmutex_unlock(&mp2_mutex);
+         return -EPERM; /* mounting multiple times a FS is NOT permitted */
+      }
    }
 
    /* search for a free slot in the `mps2` table */

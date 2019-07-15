@@ -185,6 +185,48 @@ __vfs_res_handle_dot_dot(vfs_resolve_int_ctx *ctx,
        *
        */
 
+      vfs_path *p = &ctx->paths[ctx->ss - 1];
+      fs_path_struct root_fsp;
+
+      p->fs->fsops->get_entry(p->fs, NULL, NULL, 0, &root_fsp);
+
+      if (root_fsp.inode != p->fs_path.inode) {
+
+         /* in this very fs, we can go further up */
+         p->fs->fsops->get_entry(p->fs, p->fs_path.inode, "..", 2, &p->fs_path);
+
+      } else {
+
+         if (p->fs != mp2_get_root()) {
+
+            /* we have to go beyond the mount-point */
+            int rc;
+            mountpoint2 mp;
+
+            rc = mp2_get_mountpoint_of(p->fs, &mp);
+            ASSERT(rc == 0);
+            ASSERT(mp.host_fs != p->fs);
+            ASSERT(mp.target_fs == p->fs);
+            ASSERT(mp.host_fs_inode != NULL);
+
+            retain_obj(mp.host_fs);
+            vfs_smart_fs_unlock(p->fs, ctx->exlock);
+            vfs_smart_fs_lock(mp.host_fs, ctx->exlock);
+
+            p->fs = mp.host_fs;
+            p->fs->fsops->get_entry(p->fs,
+                                    mp.host_fs_inode,
+                                    "..",
+                                    2,
+                                    &p->fs_path);
+
+            ASSERT(p->fs_path.inode != NULL);
+            ASSERT(p->fs_path.type == VFS_DIR);
+
+         } else {
+            /* there's nowhere to go further */
+         }
+      }
    }
 
    *path_ref += 2;
