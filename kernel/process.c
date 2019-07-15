@@ -115,6 +115,8 @@ task_info *allocate_new_process(task_info *parent, int pid)
    ti->is_main_thread = true;
    pi->did_call_execve = false;
 
+   // TODO: retain fs/inode for pi->cwd2 is missing. This this!!
+
    if (!do_common_task_allocations(ti) ||
        !arch_specific_new_task_setup(ti, parent))
    {

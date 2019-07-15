@@ -28,13 +28,6 @@ extern "C" {
    #include "kernel/fs/fs_int.h"
 
    void mountpoint_reset(void);
-
-   int
-   vfs_resolve(const char *path,
-               vfs_path *rp,
-               char *last_comp,
-               bool exlock,
-               bool res_last_sl);
 }
 
 
@@ -250,7 +243,7 @@ static int resolve(const char *path, vfs_path *p, bool res_last_sl)
 {
    int rc;
 
-   if ((rc = vfs_resolve(path, p, NULL, true, res_last_sl)) < 0)
+   if ((rc = vfs_resolve(path, p, true, res_last_sl)) < 0)
       return rc;
 
    vfs_fs_exunlock(p->fs);

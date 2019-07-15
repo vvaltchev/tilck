@@ -28,7 +28,7 @@ int sys_chdir(const char *user_path)
 
    kmutex_lock(&pi->fslock);
    {
-      if ((rc = vfs_resolve(orig_path, &p, NULL, false, true)))
+      if ((rc = vfs_resolve(orig_path, &p, false, true)))
          goto out;
 
       if (!p.fs_path.inode) {

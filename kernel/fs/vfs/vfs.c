@@ -28,7 +28,6 @@ static void __nr_check(bool *check)
 
 #define VFS_FS_PATH_FUNCS_COMMON_HEADER(path_param, exlock, rl)         \
                                                                         \
-   char lc[MAX_PATH]; /* last comp */                                   \
    filesystem *fs;                                                      \
    vfs_path p;                                                          \
    int rc;                                                              \
@@ -39,7 +38,7 @@ static void __nr_check(bool *check)
    NO_TEST_ASSERT(is_preemption_enabled());                             \
    ASSERT(path_param != NULL);                                          \
                                                                         \
-   if ((rc = vfs_resolve(path_param, &p, lc, exlock, rl)) < 0) {        \
+   if ((rc = vfs_resolve(path_param, &p, exlock, rl)) < 0) {            \
       DEBUG_ONLY(no_ret_check = true);                                  \
       return rc;                                                        \
    }                                                                    \

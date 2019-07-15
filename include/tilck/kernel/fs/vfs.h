@@ -347,7 +347,6 @@ u32 mp_check_match(const char *mp, u32 lm, const char *path, u32 lp);
 int
 vfs_resolve(const char *path,
             vfs_path *rp,
-            char *last_comp,
             bool exlock,
             bool res_last_sl);
 

@@ -329,7 +329,6 @@ out:
 int
 vfs_resolve(const char *path,
             vfs_path *rp,
-            char *last_comp,
             bool exlock,
             bool res_last_sl)
 {
@@ -351,6 +350,7 @@ vfs_resolve(const char *path,
             vfs_path *tp = &pi->cwd2;
             tp->fs = mp2_get_root();
             vfs_get_root_entry(tp->fs, &tp->fs_path);
+            // TODO: retain fs/inode ?
          }
 
          *rp = pi->cwd2;
@@ -389,15 +389,6 @@ vfs_resolve(const char *path,
       if (ctx.paths[i].fs_path.inode)
          vfs_release_inode_at(&ctx.paths[i]);
    }
-
-#ifndef KERNEL_TEST
-   if (last_comp) {
-      memcpy(last_comp, rp->last_comp, strlen(rp->last_comp)+1);
-      rp->last_comp = last_comp;
-   } else {
-      rp->last_comp = NULL;
-   }
-#endif
 
    return rc;
 }

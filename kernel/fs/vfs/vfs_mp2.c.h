@@ -78,7 +78,7 @@ int mp2_add(filesystem *target_fs, const char *target_path)
     * host_fs's inode.
     */
 
-   if ((rc = vfs_resolve(target_path, &p, NULL, false, true)))
+   if ((rc = vfs_resolve(target_path, &p, false, true)))
       return rc;
 
    if (p.fs_path.type != VFS_DIR) {
