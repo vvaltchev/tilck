@@ -2,9 +2,10 @@
 
 #pragma once
 
-#include <tilck/common/basic_defs.h>
-
 extern "C" {
+
+   #include <tilck/common/basic_defs.h>
+
    void init_pageframe_allocator();
    void init_kmalloc();
    void init_tasklets();
