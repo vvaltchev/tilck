@@ -496,7 +496,7 @@ filesystem *create_devfs(void)
    d->root_dir.type = VFS_DIR;
    d->root_dir.inode = devfs_get_next_inode(d);
    list_init(&d->root_dir.files_list);
-   rwlock_wp_init(&d->rwlock);
+   rwlock_wp_init(&d->rwlock, false);
    d->wrt_time = read_system_clock_timestamp();
 
    fs->fs_type_name = "devfs";

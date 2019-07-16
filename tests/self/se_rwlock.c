@@ -195,7 +195,7 @@ void selftest_rwlock_wp_med()
    int retry;
 
    readers_running = writers_running = 0;
-   rwlock_wp_init(&test_rwlwp);
+   rwlock_wp_init(&test_rwlwp, false);
 
    printk("-------- sub-test: join readers and then writers -----------\n");
 

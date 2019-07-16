@@ -8,7 +8,7 @@ static ramfs_inode *ramfs_new_inode(ramfs_data *d)
       return NULL;
 
    i->type = VFS_NONE;
-   rwlock_wp_init(&i->rwlock);
+   rwlock_wp_init(&i->rwlock, true);
    i->ino = d->next_inode_num++;
    return i;
 }

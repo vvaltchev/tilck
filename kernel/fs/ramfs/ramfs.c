@@ -235,7 +235,7 @@ filesystem *ramfs_create(void)
    }
 
    fs->device_data = d;
-   rwlock_wp_init(&d->rwlock);
+   rwlock_wp_init(&d->rwlock, false);
    d->next_inode_num = 1;
    d->root = ramfs_create_inode_dir(d, 0777, NULL);
 

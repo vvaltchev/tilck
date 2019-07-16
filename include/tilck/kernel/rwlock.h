@@ -44,18 +44,17 @@ void rwlock_rp_exunlock(rwlock_rp *r);
 
 typedef struct {
 
+   struct task_info *ex_owner;
    kmutex m;
    kcond c;
    int r;     /* readers count */
    bool w;    /* writer waiting */
-
-#ifdef DEBUG
-   struct task_info *ex_owner;
-#endif
+   bool rec;  /* is exlock operation recursive */
+   u16 rc;    /* recursive locking count */
 
 } rwlock_wp;
 
-void rwlock_wp_init(rwlock_wp *rw);
+void rwlock_wp_init(rwlock_wp *rw, bool recursive);
 void rwlock_wp_destroy(rwlock_wp *rw);
 void rwlock_wp_shlock(rwlock_wp *rw);
 void rwlock_wp_shunlock(rwlock_wp *rw);
