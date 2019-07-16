@@ -122,6 +122,23 @@ function add_fat_test_dir {
    popd
 }
 
+function add_tcc {
+
+   if [ ! -d $tc/tcc ]; then
+      return
+   fi
+
+   local musl=@GCC_TC_SYSROOT@/lib/
+
+   mkdir -p lib/tcc
+   cp -r $tc/tcc/include lib/tcc
+   ln $tc/tcc/tcclib.h lib/tcc/include
+   ln $tc/tcc/@ARCH@-libtcc1.a lib/tcc
+   ln $tc/tcc/@ARCH@-tcc bin/tcc
+
+   cp -r $musl lib/@ARCH_GCC_TC@-tilck-musl
+}
+
 function make_fatpart {
 
    create_fatpart_if_necessary
@@ -149,5 +166,6 @@ add_efi_files
 add_tilck_kernel
 add_fat_test_dir
 add_busybox
+add_tcc
 
 make_fatpart

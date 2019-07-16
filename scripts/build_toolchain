@@ -503,7 +503,7 @@ function build_zlib {
 
       export CROSS_PREFIX="${ARCH_GCC_TC}-linux-"
 
-      ./configure --prefix="$p" --static
+      run_command2 "./configure --prefix='$p' --static" configure.log
       run_command2 "make -j" build.log
       run_command2 "make install" install.log
       export CROSS_PREFIX=""
@@ -512,6 +512,53 @@ function build_zlib {
       show_skip_component_msg "ZLIB"
    fi
 
+   popd
+}
+
+all_funcs_list+=(build_tcc)
+function build_tcc {
+
+   pushd .
+
+   if [ ! -d tcc ]; then
+
+      show_work_on_component_msg "TCC"
+      git clone git://repo.or.cz/tinycc.git tcc
+
+      cd tcc
+
+      # Variables for making the compiler to work on Tilck
+      local p="/"
+      local lib="/lib/$ARCH_GCC_TC-tilck-musl"
+
+      # To test it on the Linux build machine
+      # local p="$tc/tcc/install"
+      # local libmusl=$tc/$ARCH_GCC_TC-buildroot-linux-musl/sysroot/lib
+
+      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+
+         # Default case: we're building on x86_64
+         local tc=$TC/$ARCH_TC_DIR
+         local ldflags="-Wl,--oformat=$ARCH_ELF_NAME -static"
+         local flags="--enable-cross --cross-prefix=$ARCH_GCC_TC-linux-"
+         local flags="$flags --enable-static --cpu=$ARCH"
+         local af="$flags --prefix=$p --extra-ldflags='$ldflags'"
+         local af="$af --crtprefix=$lib --libpaths=$lib"
+
+         run_command2 "./configure $af" configure.log
+         run_command2 "make -j" build.log
+
+      else
+
+         echo "Building TinyCC on $HOST_ARCH is not supported at the moment"
+         rmdir tcc
+         exit 1
+      fi
+
+   else
+
+      show_skip_component_msg "TCC"
+   fi
    popd
 }
 
