@@ -32,7 +32,7 @@ static void __nr_check(bool *check)
    filesystem *fs;                                                      \
    vfs_path p;                                                          \
    int rc;                                                              \
-   DEBUG_ONLY(const bool __saved_exlock = exlock);                      \
+   const bool __saved_exlock = exlock;                                  \
    DEBUG_ONLY(bool no_ret_check __attribute__((cleanup(__nr_check))));  \
    DEBUG_ONLY(no_ret_check = false);                                    \
                                                                         \
@@ -47,11 +47,10 @@ static void __nr_check(bool *check)
    ASSERT(p.fs != NULL);                                                \
    fs = p.fs;
 
-#define VFS_FS_PATH_FUNCS_COMMON_FOOTER(path_param, exlock, rl)         \
+#define VFS_FS_PATH_FUNCS_COMMON_FOOTER()                               \
 out:                                                                    \
    DEBUG_ONLY(no_ret_check = true);                                     \
-   ASSERT(exlock == __saved_exlock);                                    \
-   vfs_smart_fs_unlock(fs, exlock);                                     \
+   vfs_smart_fs_unlock(fs, __saved_exlock);                             \
    release_obj(fs);                                                     \
    return rc;
 
@@ -262,7 +261,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
       retain_obj(fs);
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, true, true)
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
 int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl)
@@ -273,7 +272,7 @@ int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl)
       ? fs->fsops->stat(fs, p.fs_path.inode, statbuf)
       : -ENOENT;
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, false, res_last_sl)
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
 int vfs_mkdir(const char *path, mode_t mode)
@@ -292,7 +291,7 @@ int vfs_mkdir(const char *path, mode_t mode)
       rc = -EPERM;
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, true, false)
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
 int vfs_rmdir(const char *path)
@@ -311,7 +310,7 @@ int vfs_rmdir(const char *path)
       rc = -EPERM;
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, true, false)
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
 int vfs_unlink(const char *path)
@@ -330,7 +329,7 @@ int vfs_unlink(const char *path)
       rc = -EROFS;
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, true, false)
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
 int vfs_truncate(const char *path, off_t len)
@@ -351,7 +350,7 @@ int vfs_truncate(const char *path, off_t len)
       rc = -EROFS;
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, false, true)
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
 int vfs_symlink(const char *target, const char *linkpath)
@@ -372,7 +371,7 @@ int vfs_symlink(const char *target, const char *linkpath)
       rc = -EPERM; /* symlinks not supported */
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, true, false)
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
 /* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
@@ -397,7 +396,7 @@ int vfs_readlink(const char *path, char *buf)
       rc = -EINVAL;
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER(path, false, false)
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
 u32 vfs_get_new_device_id(void)
