@@ -209,10 +209,10 @@ vfs_resolve_have_to_return(const char *path, vfs_path *rp, int *rc)
 }
 
 static inline bool
-__vfs_res_handle_trivial_path(vfs_resolve_int_ctx *ctx,
-                              const char **path_ref,
-                              vfs_path *rp,
-                              int *rc)
+vfs_res_handle_trivial_path(vfs_resolve_int_ctx *ctx,
+                            const char **path_ref,
+                            vfs_path *rp,
+                            int *rc)
 {
    rp->last_comp = *path_ref;
 
@@ -245,7 +245,7 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
    ASSERT(rp->fs != NULL);
    ASSERT(rp->fs_path.inode != NULL);
 
-   if (__vfs_res_handle_trivial_path(ctx, &path, rp, &rc))
+   if (vfs_res_handle_trivial_path(ctx, &path, rp, &rc))
       return rc;
 
    for (; *path; path++) {
@@ -284,6 +284,27 @@ out:
    return vfs_resolve_stack_replace_top(ctx, np.last_comp, &np);
 }
 
+static void
+get_current_vfs_path(vfs_path *rp)
+{
+   process_info *pi = get_curr_task()->pi;
+
+   kmutex_lock(&pi->fslock);
+   {
+      /* lazy set the default path to root */
+      if (UNLIKELY(!pi->cwd2.fs)) {
+         vfs_path *tp = &pi->cwd2;
+         tp->fs = mp2_get_root();
+         vfs_get_root_entry(tp->fs, &tp->fs_path);
+         // TODO: retain fs/inode ?
+      }
+
+      /* Just copy `cwd2` into the address pointed by `rp` */
+      *rp = pi->cwd2;
+   }
+   kmutex_unlock(&pi->fslock);
+}
+
 /*
  * Resolves the path, locking the last filesystem with an exclusive or a shared
  * lock depending on `exlock`. The last component of the path, if a symlink, is
@@ -301,7 +322,6 @@ vfs_resolve(const char *path,
             bool res_last_sl)
 {
    int rc;
-   process_info *pi = get_curr_task()->pi;
    bzero(rp, sizeof(*rp));
 
    vfs_resolve_int_ctx ctx = {
@@ -310,32 +330,18 @@ vfs_resolve(const char *path,
       .exlock = exlock,
    };
 
-   if (*path != '/') {
-
-      kmutex_lock(&pi->fslock);
-      {
-         if (!pi->cwd2.fs) {
-            vfs_path *tp = &pi->cwd2;
-            tp->fs = mp2_get_root();
-            vfs_get_root_entry(tp->fs, &tp->fs_path);
-            // TODO: retain fs/inode ?
-         }
-
-         *rp = pi->cwd2;
-      }
-      kmutex_unlock(&pi->fslock);
-
-      retain_obj(rp->fs);
-      vfs_smart_fs_lock(rp->fs, exlock);
-
-   } else {
+   if (*path == '/') {
 
       rp->fs = mp2_get_root();
       retain_obj(rp->fs);
       vfs_smart_fs_lock(rp->fs, exlock);
-
-      /* Get root's entry */
       vfs_get_root_entry(rp->fs, &rp->fs_path);
+
+   } else {
+
+      get_current_vfs_path(rp);
+      retain_obj(rp->fs);
+      vfs_smart_fs_lock(rp->fs, exlock);
    }
 
    rc = vfs_resolve_stack_push(&ctx, ctx.orig_path, rp);
@@ -344,18 +350,19 @@ vfs_resolve(const char *path,
    rc = __vfs_resolve(&ctx, res_last_sl);
    ASSERT(ctx.ss >= 1);
 
-   if (rc < 0) {
-      /* resolve failed: release the lock and the fs */
-      filesystem *fs = ctx.paths[ctx.ss - 1].fs;
-      vfs_smart_fs_unlock(fs, exlock);
-      release_obj(fs);
-   }
-
+   /* Store out the last frame in the caller-provided vfs_path */
    *rp = ctx.paths[ctx.ss - 1];
 
-   for (int i = ctx.ss - 1; i >= 0; i--) {
+   /* Release the retained inodes in the stack */
+   for (int i = 0; i < ctx.ss; i++) {
       if (ctx.paths[i].fs_path.inode)
          vfs_release_inode_at(&ctx.paths[i]);
+   }
+
+   if (rc < 0) {
+      /* resolve failed: release the lock and the fs */
+      vfs_smart_fs_unlock(rp->fs, exlock);
+      release_obj(rp->fs);
    }
 
    return rc;
