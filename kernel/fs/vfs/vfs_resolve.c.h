@@ -150,7 +150,6 @@ vfs_resolve_handle_dot_dot(vfs_resolve_int_ctx *ctx,
 
       /* in this fs, we can go further up */
       vfs_get_entry(p.fs, p.fs_path.inode, "..", 2, &p.fs_path);
-      vfs_resolve_stack_replace_top(ctx, lc, &p);
 
    } else if (p.fs != mp2_get_root()) {
 
@@ -174,12 +173,11 @@ vfs_resolve_handle_dot_dot(vfs_resolve_int_ctx *ctx,
       ASSERT(p.fs_path.inode != NULL);
       ASSERT(p.fs_path.type == VFS_DIR);
 
-      vfs_resolve_stack_replace_top(ctx, lc, &p);
-
    } else {
       /* there's nowhere to go further */
    }
 
+   vfs_resolve_stack_replace_top(ctx, lc, &p);
    return true;
 }
 

@@ -479,19 +479,19 @@ TEST_F(vfs_resolve_test, double_dot)
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
-   //ASSERT_STREQ(p.last_comp, ".."); // TODO: fix!!
+   ASSERT_STREQ(p.last_comp, "");
 
    rc = resolve("/..", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
-   //ASSERT_STREQ(p.last_comp, "..");
+   ASSERT_STREQ(p.last_comp, "");
 
    rc = resolve("/../..", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
-   //ASSERT_STREQ(p.last_comp, "..");
+   ASSERT_STREQ(p.last_comp, "");
 }
 
 TEST_F(vfs_resolve_multi_fs, basic_case)
