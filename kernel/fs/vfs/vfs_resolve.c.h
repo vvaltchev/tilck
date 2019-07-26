@@ -105,9 +105,9 @@ vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
    vfs_path *rp = &ctx->paths[ss-1];
    *np = *rp;
 
-   ASSERT(path - ctx->paths[ss-1].last_comp > 0);
-   __vfs_resolve_get_entry_raw(ctx->paths[ss-1].fs_path.inode,
-                               ctx->paths[ss-1].last_comp,
+   ASSERT(path - rp->last_comp > 0);
+   __vfs_resolve_get_entry_raw(rp->fs_path.inode,
+                               rp->last_comp,
                                path,
                                np,
                                ctx->exlock);
