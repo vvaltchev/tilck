@@ -1,38 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static filesystem *
-get_retained_fs_at(const char *path, const char **fs_path_ref)
-{
-   mountpoint *mp, *best_match = NULL;
-   u32 len, pl, best_match_len = 0;
-   filesystem *fs = NULL;
-   mp_cursor cur;
-
-   *fs_path_ref = NULL;
-   pl = (u32)strlen(path);
-
-   mountpoint_iter_begin(&cur);
-
-   while ((mp = mountpoint_get_next(&cur))) {
-
-      len = mp_check_match(mp->path, mp->path_len, path, pl);
-
-      if (len > best_match_len) {
-         best_match = mp;
-         best_match_len = len;
-      }
-   }
-
-   if (best_match) {
-      *fs_path_ref = (best_match_len < pl) ? path + best_match_len - 1 : "/";
-      fs = best_match->fs;
-      retain_obj(fs);
-   }
-
-   mountpoint_iter_end(&cur);
-   return fs;
-}
-
 static inline const char *
 vfs_res_handle_dot_slash(const char *path)
 {
@@ -72,8 +39,8 @@ static inline void vfs_smart_fs_unlock(filesystem *fs, bool exlock)
 
 STATIC int
 vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
-                         const char *path,
-                         vfs_path *p)
+                       const char *path,
+                       vfs_path *p)
 {
    if (ctx->ss == ARRAY_SIZE(ctx->paths))
       return -ENAMETOOLONG;
@@ -89,8 +56,8 @@ vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
 
 STATIC int
 vfs_resolve_stack_replace_top(vfs_resolve_int_ctx *ctx,
-                                const char *path,
-                                vfs_path *p)
+                              const char *path,
+                              vfs_path *p)
 {
    vfs_path *cp;
    ASSERT(ctx->ss > 0);
@@ -131,8 +98,8 @@ __vfs_resolve_get_entry_raw(vfs_inode_ptr_t idir,
 
 static void
 vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
-                        const char *path,
-                        vfs_path *np)
+                      const char *path,
+                      vfs_path *np)
 {
    const int ss = ctx->ss;
    vfs_path *rp = &ctx->paths[ss-1];
