@@ -586,12 +586,24 @@ fat_get_entry(filesystem *fs,
                       &ctx);
 
    fat_entry *res = !ctx.not_dir ? ctx.result : NULL;
+   enum vfs_entry_type type = VFS_NONE;
+
+   if (res) {
+
+      u32 clu = fat_get_first_cluster(res);
+      type = res->directory ? VFS_DIR : VFS_FILE;
+
+      if (clu == 0 || clu == d->root_cluster) {
+         res = d->root_entry;
+         type = VFS_DIR;
+      }
+   }
 
    *fp = (fat_fs_path) {
       .entry         = res,
       .parent_entry  = dir_entry,
       .unused        = NULL,
-      .type          = res ? (res->directory ? VFS_DIR : VFS_FILE) : VFS_NONE,
+      .type          = type,
    };
 }
 

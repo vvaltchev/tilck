@@ -171,6 +171,10 @@ vfs_resolve_handle_dot_dot(vfs_resolve_int_ctx *ctx,
 
    vfs_path p = ctx->paths[ctx->ss - 1];
    fs_path_struct root_fsp;
+   const char *lc;
+
+   *path_ref += 2;
+   lc = **path_ref ? *path_ref + 1 : *path_ref;
 
    /* Get the root inode of the current file system */
    vfs_get_root_entry(p.fs, &root_fsp);
@@ -179,7 +183,7 @@ vfs_resolve_handle_dot_dot(vfs_resolve_int_ctx *ctx,
 
       /* in this fs, we can go further up */
       vfs_get_entry(p.fs, p.fs_path.inode, "..", 2, &p.fs_path);
-      vfs_resolve_stack_replace_top(ctx, *path_ref, &p);
+      vfs_resolve_stack_replace_top(ctx, lc, &p);
 
    } else if (p.fs != mp2_get_root()) {
 
@@ -203,13 +207,12 @@ vfs_resolve_handle_dot_dot(vfs_resolve_int_ctx *ctx,
       ASSERT(p.fs_path.inode != NULL);
       ASSERT(p.fs_path.type == VFS_DIR);
 
-      vfs_resolve_stack_replace_top(ctx, *path_ref, &p);
+      vfs_resolve_stack_replace_top(ctx, lc, &p);
 
    } else {
       /* there's nowhere to go further */
    }
 
-   *path_ref += 2;
    return true;
 }
 
@@ -380,7 +383,7 @@ vfs_resolve(const char *path,
       /* resolve failed: release the lock and the fs */
       filesystem *fs = ctx.paths[ctx.ss - 1].fs;
       vfs_smart_fs_unlock(fs, exlock);
-      release_obj(fs); /* it was retained by get_retained_fs_at() */
+      release_obj(fs);
    }
 
    *rp = ctx.paths[ctx.ss - 1];

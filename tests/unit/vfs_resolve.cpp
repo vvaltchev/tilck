@@ -588,6 +588,12 @@ TEST_F(vfs_resolve_multi_fs, dot_dot)
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs == &testfs1);
    //ASSERT_STREQ(p.last_comp, ""); // TODO: fix this!!
+
+   rc = resolve("/dev/../a", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]);
+   ASSERT_TRUE(p.fs == &testfs1);
 }
 
 TEST_F(vfs_resolve_multi_fs, rel_paths)
