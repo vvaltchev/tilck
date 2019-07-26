@@ -548,6 +548,9 @@ function build_tcc {
          run_command2 "./configure $af" configure.log
          run_command2 "make -j" build.log
 
+         # Note the configure --strip-binaries option does not work
+         $ARCH_GCC_TC-linux-strip --strip-all $ARCH-tcc
+
       else
 
          echo "Building TinyCC on $HOST_ARCH is not supported at the moment"
