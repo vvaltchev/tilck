@@ -657,8 +657,26 @@ function compiler_checks {
    if [[ "$USE_SYSCC" != "" && "$USE_SYSCC" != 0 ]]; then
 
       if [[ "$CC" == "" || "$CXX" == "" ]]; then
-         echo "ERROR: setting CC and CXX is mandatory when USE_SYSCC=1."
-         exit 1
+
+         echo "WARNING: CC and CXX should both be set when USE_SYSCC=1."
+         echo -n "Do you want just to use gcc and g++? [Y/n] "
+         read ans
+
+         if [[ "$ans" == "" || "$ans" == "y" || "$ans" == "Y" ]]; then
+
+            echo "----------------------------------------------------------"
+            echo "Setting:"
+            echo "   CC=gcc"
+            echo "   CXX=g++"
+            echo ""
+            export CC="gcc"
+            export CXX="g++"
+
+         else
+
+            echo "Aborted."
+            exit 1
+         fi
       fi
 
       cc_compiler="`$CC --version | cut -d ' ' -f 1 | head -1`"
