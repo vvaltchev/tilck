@@ -9,12 +9,12 @@ int mp2_init(filesystem *root_fs)
    /* do not support changing the root filesystem */
    NO_TEST_ASSERT(!mp2_root);
 
-   mp2_root = root_fs;
-
 #ifdef UNIT_TEST_ENVIRONMENT
    bzero(mps2, sizeof(mps2));
 #endif
 
+   mp2_root = root_fs;
+   retain_obj(mp2_root);
    return 0;
 }
 

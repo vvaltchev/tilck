@@ -120,9 +120,6 @@ static void mount_first_ramdisk(void)
    if (!initrd)
       panic("Unable to mount the initrd fat32 RAMDISK");
 
-   if ((rc = mountpoint_add(initrd, "/")))
-      panic("mountpoint_add() failed with error: %d", rc);
-
    /* use the new mount point interface in parallel with the old one */
    if ((rc = mp2_init(initrd)))
       panic("mp2_init() failed with error: %d", rc);
@@ -135,10 +132,6 @@ static void mount_first_ramdisk(void)
    if (!ramfs)
       panic("Unable to create ramfs");
 
-   if ((rc = mountpoint_add(ramfs, "/tmp/")))
-      panic("mountpoint_add() failed with error: %d", rc);
-
-   /* use the new mount point interface in parallel with the old one */
    if ((rc = mp2_add(ramfs, "/tmp/")))
       panic("mp2_add() failed with error: %d", rc);
 }

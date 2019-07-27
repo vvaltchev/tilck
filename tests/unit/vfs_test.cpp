@@ -27,47 +27,24 @@ extern "C" {
    #include <tilck/kernel/sched.h>
 
    filesystem *ramfs_create(void);
-   void mountpoint_reset(void);
-
-   int __vfs_resolve(const char *path,
-                     vfs_path *rp,
-                     bool exlock,
-                     bool res_last_sl);
-}
-
-static int mountpoint_match_wrapper(const char *mp, const char *path)
-{
-   return mp_check_match(mp, strlen(mp), path, strlen(path));
 }
 
 // Implemented in fat32_test.cpp
 const char *load_once_file(const char *filepath, size_t *fsize = nullptr);
 void test_dump_buf(char *buf, const char *buf_name, int off, int count);
 
-TEST(vfs, mp_check_match)
-{
-   EXPECT_EQ(mountpoint_match_wrapper("/", "/"), 1);
-   EXPECT_EQ(mountpoint_match_wrapper("/", "/file"), 1);
-   EXPECT_EQ(mountpoint_match_wrapper("/", "/dir1/file2"), 1);
-   EXPECT_EQ(mountpoint_match_wrapper("/dev/", "/dev/tty0"), 5);
-   EXPECT_EQ(mountpoint_match_wrapper("/devices/", "/dev"), 0);
-   EXPECT_EQ(mountpoint_match_wrapper("/dev/", "/dev"), 4);
-}
-
 TEST(vfs, read_content_of_longname_file)
 {
    init_kmalloc_for_tests();
    create_kernel_process();
-   mountpoint_reset();
 
+   int r;
    const char *buf = load_once_file(PROJ_BUILD_DIR "/test_fatpart");
    char data[128] = {0};
 
    filesystem *fat_fs = fat_mount_ramdisk((void *) buf, VFS_FS_RO);
    ASSERT_TRUE(fat_fs != NULL);
 
-   int r = mountpoint_add(fat_fs, "/");
-   ASSERT_EQ(r, 0);
    mp2_init(fat_fs);
 
    const char *file_path =
@@ -83,7 +60,7 @@ TEST(vfs, read_content_of_longname_file)
    EXPECT_GT(res, 0);
    ASSERT_STREQ("Content of file with a long name\n", data);
 
-   mountpoint_remove(fat_fs);
+   // TODO: call mp2_remove()
    fat_umount_ramdisk(fat_fs);
 }
 
@@ -91,7 +68,6 @@ TEST(vfs, fseek)
 {
    init_kmalloc_for_tests();
    create_kernel_process();
-   mountpoint_reset();
 
    random_device rdev;
    const auto seed = rdev();
@@ -104,6 +80,7 @@ TEST(vfs, fseek)
 
    cout << "[ INFO     ] random seed: " << seed << endl;
 
+   int r;
    size_t fatpart_size;
    const char *fatpart =
       load_once_file(PROJ_BUILD_DIR "/test_fatpart", &fatpart_size);
@@ -111,8 +88,7 @@ TEST(vfs, fseek)
    filesystem *fat_fs = fat_mount_ramdisk((void *) fatpart, VFS_FS_RO);
    ASSERT_TRUE(fat_fs != NULL);
 
-   int r = mountpoint_add(fat_fs, "/");
-   ASSERT_EQ(r, 0);
+   mp2_init(fat_fs);
 
    const char *fatpart_file_path = "/bigfile";
    const char *real_file_path = PROJ_BUILD_DIR "/test_sysroot/bigfile";
@@ -209,7 +185,7 @@ TEST(vfs, fseek)
    vfs_close(h);
    close(fd);
 
-   mountpoint_remove(fat_fs);
+   // TODO: call mp2_remove()
    fat_umount_ramdisk(fat_fs);
 }
 
@@ -230,24 +206,17 @@ static void create_test_file(int n)
 TEST(vfs_perf, creat)
 {
    filesystem *fs;
-   int rc;
 
    init_kmalloc_for_tests();
    create_kernel_process();
-   mountpoint_reset();
 
    fs = ramfs_create();
-
    ASSERT_TRUE(fs != NULL);
-
-   rc = mountpoint_add(fs, "/");
-   ASSERT_EQ(rc, 0);
    mp2_init(fs);
 
    for (int i = 0; i < 100; i++)
       create_test_file(i);
 
-   mountpoint_remove(fs);
    // TODO: destroy ramfs
 }
 

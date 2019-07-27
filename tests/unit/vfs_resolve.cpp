@@ -256,18 +256,17 @@ class vfs_resolve_test : public ::testing::Test {
 protected:
 
    void SetUp() override {
+
       init_kmalloc_for_tests();
       create_kernel_process();
-      mountpoint_reset();
 
-      mountpoint_add(&testfs1, "/"); // older interface. TODO: remove
       mp2_init(&testfs1);
       mp2_add(&testfs2, "/a/b/c2");
       mp2_add(&testfs3, "/dev");
    }
 
    void TearDown() override {
-      /* do nothing, at the moment */
+      // TODO: call mp2_remove() for each fs
    }
 };
 

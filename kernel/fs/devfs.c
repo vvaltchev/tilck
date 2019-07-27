@@ -516,10 +516,6 @@ void init_devfs(void)
    if (!devfs)
       panic("Unable to create devfs");
 
-   if ((rc = mountpoint_add(devfs, "/dev/")))
-      panic("mountpoint_add() failed with error: %d", rc);
-
-   /* use the new mount point interface in parallel with the old one */
    if ((rc = mp2_add(devfs, "/dev/")))
       panic("mp2_add() failed with error: %d", rc);
 }
