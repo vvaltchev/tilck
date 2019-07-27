@@ -122,6 +122,8 @@ extern "C++" {
 
 #define REF_COUNTED_OBJECT    int ref_count
 
+#if !SLOW_DEBUG_REF_COUNT
+
 /* Return the new value */
 static ALWAYS_INLINE int __retain_obj(int *ref_count)
 {
@@ -138,6 +140,13 @@ static ALWAYS_INLINE int __release_obj(int *ref_count)
    ASSERT(old > 0);
    return old - 1;
 }
+
+#else
+
+int __retain_obj(int *ref_count);
+int __release_obj(int *ref_count);
+
+#endif
 
 static ALWAYS_INLINE int __get_ref_count(int *ref_count)
 {

@@ -9,8 +9,12 @@
 
 #include <generated_config.h>
 
+/* Constants that have no reason to be changed */
 #define KMALLOC_FREE_MEM_POISON_VAL    0xFAABCAFE
+
+/* Special advanced developer-only debug utils */
 #define KMUTEX_STATS_ENABLED                    0
+#define SLOW_DEBUG_REF_COUNT                    0
 
 /* ------------------------------- */
 

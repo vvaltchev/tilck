@@ -332,3 +332,42 @@ void set_sched_alive_thread_enabled(bool enabled)
 {
    sched_alive_thread_enabled = enabled;
 }
+
+
+#if SLOW_DEBUG_REF_COUNT
+
+/*
+ * Set here the address of the ref_count to track.
+ */
+void *debug_refcount_obj = NULL;
+
+/* Return the new value */
+int __retain_obj(int *ref_count)
+{
+   int ret;
+   ATOMIC(int) *atomic = (ATOMIC(int) *)ref_count;
+   ret = atomic_fetch_add_explicit(atomic, 1, mo_relaxed) + 1;
+
+   if (!debug_refcount_obj || ref_count == debug_refcount_obj) {
+      printk("refcount at %p: %d -> %d\n", ref_count, ret-1, ret);
+   }
+
+   return ret;
+}
+
+/* Return the new value */
+int __release_obj(int *ref_count)
+{
+   int old, ret;
+   ATOMIC(int) *atomic = (ATOMIC(int) *)ref_count;
+   old = atomic_fetch_sub_explicit(atomic, 1, mo_relaxed);
+   ASSERT(old > 0);
+   ret = old - 1;
+
+   if (!debug_refcount_obj || ref_count == debug_refcount_obj) {
+      printk("refcount at %p: %d -> %d\n", ref_count, old, ret);
+   }
+
+   return ret;
+}
+#endif
