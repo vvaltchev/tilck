@@ -522,6 +522,10 @@ function build_tcc {
 
    if [ ! -d tcc ]; then
 
+      DOWNLOAD_IGNORING_SYSCC="1"
+      download_x86_gcc_toolchain
+      DOWNLOAD_IGNORING_SYSCC=""
+
       show_work_on_component_msg "TCC"
       git clone git://repo.or.cz/tinycc.git tcc
 
@@ -535,28 +539,32 @@ function build_tcc {
       # local p="$tc/tcc/install"
       # local libmusl=$tc/$ARCH_GCC_TC-buildroot-linux-musl/sysroot/lib
 
-      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+      local tc=$TC/$ARCH_TC_DIR
+      local ldflags="-Wl,--oformat=$ARCH_ELF_NAME -static"
 
-         # Default case: we're building on x86_64
-         local tc=$TC/$ARCH_TC_DIR
-         local ldflags="-Wl,--oformat=$ARCH_ELF_NAME -static"
-         local flags="--enable-cross --cross-prefix=$ARCH_GCC_TC-linux-"
-         local flags="$flags --enable-static --cpu=$ARCH"
-         local af="$flags --prefix=$p --extra-ldflags='$ldflags'"
-         local af="$af --crtprefix=$lib --libpaths=$lib"
 
-         run_command2 "./configure $af" configure.log
-         run_command2 "make -j" build.log
-
-         # Note the configure --strip-binaries option does not work
-         $ARCH_GCC_TC-linux-strip --strip-all $ARCH-tcc
-
+      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+         # Case HOST_ARCH == ARCH
+         export SYS_CC="$CC"
+         export SYS_CXX="$CXX"
+         export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
+         local flags="--enable-cross"
+         local STRIP="strip"
       else
-
-         echo "Building TinyCC on $HOST_ARCH is not supported at the moment"
-         rmdir tcc
-         exit 1
+         # Default case, building on BUILD_ARCH
+         local STRIP="$ARCH_GCC_TC-linux-strip"
+         local flags="--enable-cross --cross-prefix=$ARCH_GCC_TC-linux-"
       fi
+
+      local flags="$flags --enable-static --cpu=$ARCH"
+      local af="$flags --prefix=$p --extra-ldflags='$ldflags'"
+      local af="$af --crtprefix=$lib --libpaths=$lib"
+
+      run_command2 "./configure $af" configure.log
+      run_command2 "make -j" build.log
+
+      # Note the configure --strip-binaries option does not work
+      $STRIP --strip-all $ARCH-tcc
 
    else
 
