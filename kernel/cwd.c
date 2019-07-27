@@ -45,14 +45,38 @@ int sys_chdir(const char *user_path)
          goto out;
       }
 
-      // NOTE: inode retain is missing. TODO: fix that!!
+      if (LIKELY(pi->cwd2.fs != NULL)) {
+
+         /*
+          * Default case: pi->cwd2 is set.
+          * We have to release the inode at that path and the fs containing it
+          * as well.
+          */
+
+         vfs_release_inode_at(&pi->cwd2);
+         release_obj(pi->cwd2.fs);
+      }
+
+      /*
+       * Here we have a vfs_path with `fs` retained. We need to retain the `fs`
+       * anyway, therefore, just don't touch its ref-count. What we must do is
+       * to retain the inode pointed by this vfs_path and release the shared
+       * lock vfs_resolve() acquired for us on its owner fs.
+       */
+      vfs_retain_inode_at(&p);
+      vfs_fs_shunlock(p.fs);
       pi->cwd2 = p;
 
-      vfs_fs_shunlock(p.fs); // TODO: this is an unsafe hack, remove it.
-      release_obj(p.fs);     // TODO: this is an unsafe hack, remove it.
 
-      if ((rc = compute_abs_path(orig_path, pi->cwd, path, MAX_PATH)))
-         goto out;
+      DEBUG_ONLY_UNSAFE(rc =)
+         compute_abs_path(orig_path, pi->cwd, path, MAX_PATH);
+
+      /*
+       * compute_abs_path() MUST NOT fail, because we have been already able
+       * to resolve the path.
+       */
+      ASSERT(rc == 0);
+
 
       size_t pl = strlen(path);
       memcpy(pi->cwd, path, pl + 1);

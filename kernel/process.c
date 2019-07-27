@@ -115,7 +115,19 @@ task_info *allocate_new_process(task_info *parent, int pid)
    ti->is_main_thread = true;
    pi->did_call_execve = false;
 
-   // TODO: retain fs/inode for pi->cwd2 is missing. This this!!
+   if (LIKELY(pi->cwd2.fs != NULL)) {
+
+      /*
+       * We're forking a process which has a CWD set. Therefore, we have to
+       * retain inode pointed by the pi->cwd2 vfs_path and retain its owning
+       * `fs` as well. When we change the current working directory or when
+       * the process dies, those ref-counts are released.
+       *
+       * See sys_chdir() and free_task() [below].
+       */
+      vfs_retain_inode_at(&pi->cwd2);
+      retain_obj(pi->cwd2.fs);
+   }
 
    if (!do_common_task_allocations(ti) ||
        !arch_specific_new_task_setup(ti, parent))
@@ -169,17 +181,31 @@ void free_task(task_info *ti)
 
    if (is_main_thread(ti)) {
 
-      ASSERT(get_ref_count(ti->pi) > 0);
+      process_info *pi = ti->pi;
+      ASSERT(get_ref_count(pi) > 0);
 
-      if (ti->pi->mmap_heap) {
-         kmalloc_destroy_heap(ti->pi->mmap_heap);
-         kfree2(ti->pi->mmap_heap, kmalloc_get_heap_struct_size());
-         ti->pi->mmap_heap = NULL;
+      if (pi->mmap_heap) {
+         kmalloc_destroy_heap(pi->mmap_heap);
+         kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
+         pi->mmap_heap = NULL;
       }
 
-      if (release_obj(ti->pi) == 0) {
-         list_remove(&ti->pi->siblings_node);
+      if (release_obj(pi) == 0) {
+         list_remove(&pi->siblings_node);
          kfree2(ti, sizeof(task_info) + sizeof(process_info));
+      }
+
+      if (LIKELY(pi->cwd2.fs != NULL)) {
+
+         /*
+          * When we change the current directory or when we fork a process, we
+          * set a new value for the vfs_path pi->cwd2 which has its inode
+          * retained as well as its owning fs. Here we have to release those
+          * ref-counts.
+          */
+
+         vfs_release_inode_at(&pi->cwd2);
+         release_obj(pi->cwd2.fs);
       }
 
    } else {
