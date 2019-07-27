@@ -6,6 +6,48 @@
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/fs/vfs.h>
 
+static void
+set_process_str_cwd(process_info *pi, const char *path)
+{
+   ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
+
+   size_t pl = strlen(path);
+   memcpy(pi->cwd, path, pl + 1);
+
+   if (pl > 1) {
+
+      if (pi->cwd[pl - 1] == '/')
+         pl--; /* drop the trailing slash */
+
+      /* on the other side, pi->cwd has always a trailing '/' */
+      pi->cwd[pl] = '/';
+      pi->cwd[pl + 1] = 0;
+   }
+}
+
+static int
+getcwd_nolock(process_info *pi, char *user_buf, size_t buf_size)
+{
+   ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
+   const size_t cl = strlen(pi->cwd) + 1;
+
+   if (!user_buf || !buf_size)
+      return -EINVAL;
+
+   if (buf_size < cl)
+      return -ERANGE;
+
+   if (copy_to_user(user_buf, pi->cwd, cl))
+      return -EFAULT;
+
+   if (cl > 2) { /* NOTE: `cl` counts the trailing `\0` */
+      ASSERT(user_buf[cl - 2] == '/');
+      user_buf[cl - 2] = 0; /* drop the trailing '/' */
+   }
+
+   return (int) cl;
+}
+
 int sys_chdir(const char *user_path)
 {
    int rc = 0;
@@ -67,7 +109,6 @@ int sys_chdir(const char *user_path)
       vfs_fs_shunlock(p.fs);
       pi->cwd2 = p;
 
-
       DEBUG_ONLY_UNSAFE(rc =)
          compute_abs_path(orig_path, pi->cwd, path, MAX_PATH);
 
@@ -77,19 +118,7 @@ int sys_chdir(const char *user_path)
        */
       ASSERT(rc == 0);
 
-
-      size_t pl = strlen(path);
-      memcpy(pi->cwd, path, pl + 1);
-
-      if (pl > 1) {
-
-         if (pi->cwd[pl - 1] == '/')
-            pl--; /* drop the trailing slash */
-
-         /* on the other side, pi->cwd has always a trailing '/' */
-         pi->cwd[pl] = '/';
-         pi->cwd[pl + 1] = 0;
-      }
+      set_process_str_cwd(pi, path);
    }
 
 out:
@@ -99,40 +128,13 @@ out:
 
 int sys_getcwd(char *user_buf, size_t buf_size)
 {
-   int ret;
-   size_t cwd_len;
+   int rc;
    process_info *pi = get_curr_task()->pi;
 
    kmutex_lock(&pi->fslock);
    {
-      cwd_len = strlen(pi->cwd) + 1;
-
-      if (!user_buf || !buf_size) {
-         ret = -EINVAL;
-         goto out;
-      }
-
-      if (buf_size < cwd_len) {
-         ret = -ERANGE;
-         goto out;
-      }
-
-      ret = copy_to_user(user_buf, pi->cwd, cwd_len);
-
-      if (ret < 0) {
-         ret = -EFAULT;
-         goto out;
-      }
-
-      if (cwd_len > 2) { /* NOTE: cwd_len includes the trailing \0 */
-         ASSERT(user_buf[cwd_len - 2] == '/');
-         user_buf[cwd_len - 2] = 0; /* drop the trailing '/' */
-      }
-
-      ret = (int) cwd_len;
+      rc = getcwd_nolock(pi, user_buf, buf_size);
    }
-
-out:
    kmutex_unlock(&pi->fslock);
-   return ret;
+   return rc;
 }
