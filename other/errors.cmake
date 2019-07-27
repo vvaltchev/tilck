@@ -19,7 +19,7 @@ endfunction()
 function (show_missing_use_syscc_error)
 
    set(msg "")
-   string(CONCAT msg "In order to build Tilck on this host architecture"
+   string(CONCAT msg "In order to build Tilck on this host architecture "
                      "the env variables USE_SYSCC, CC and CXX *must be* set. "
                      "WARNING: this scenario is *not* supported in an official"
                      " way, even if it should work.")
