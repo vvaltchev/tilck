@@ -562,7 +562,7 @@ function build_tcc {
 
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
-         export CC_POST_FLAG="-specs $TC/musl/install/lib/musl-gcc.specs"
+         export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
 
          # Hack: unfortunately, while tcc's build system uses the
          # just-built tcc in order to build libtcc1.a and, one of its files
