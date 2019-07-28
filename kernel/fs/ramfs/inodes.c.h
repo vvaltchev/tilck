@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#define DEBUG_RAMFS_CREATE_INODE_PRINTK      0
+
 static ramfs_inode *ramfs_new_inode(ramfs_data *d)
 {
    ramfs_inode *i = kzmalloc(sizeof(ramfs_inode));
@@ -10,6 +12,11 @@ static ramfs_inode *ramfs_new_inode(ramfs_data *d)
    i->type = VFS_NONE;
    rwlock_wp_init(&i->rwlock, true);
    i->ino = d->next_inode_num++;
+
+   if (DEBUG_RAMFS_CREATE_INODE_PRINTK) {
+      printk("[ramfs] Create inode with ref_count at %p\n", &i->ref_count);
+   }
+
    return i;
 }
 
