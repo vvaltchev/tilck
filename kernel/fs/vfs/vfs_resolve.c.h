@@ -83,11 +83,11 @@ vfs_resolve_stack_replace_top(vfs_resolve_int_ctx *ctx,
 }
 
 static void
-__vfs_resolve_get_entry_raw(vfs_inode_ptr_t idir,
-                            const char *pc,
-                            const char *path,
-                            vfs_path *rp,
-                            bool exlock)
+__vfs_resolve_get_entry(vfs_inode_ptr_t idir,
+                        const char *pc,
+                        const char *path,
+                        vfs_path *rp,
+                        bool exlock)
 {
    vfs_get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
@@ -152,11 +152,11 @@ vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
    *np = *rp;
 
    ASSERT(path - rp->last_comp > 0);
-   __vfs_resolve_get_entry_raw(rp->fs_path.inode,
-                               rp->last_comp,
-                               path,
-                               np,
-                               ctx->exlock);
+   __vfs_resolve_get_entry(rp->fs_path.inode,
+                           rp->last_comp,
+                           path,
+                           np,
+                           ctx->exlock);
 }
 
 static inline bool
