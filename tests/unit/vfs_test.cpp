@@ -6,7 +6,6 @@
 
 #include <cstdio>
 #include <cstring>
-
 #include <iostream>
 #include <vector>
 #include <random>
@@ -14,30 +13,15 @@
 #include <unordered_map>
 #include <algorithm>
 
+#include "vfs_test.h"
+
 using namespace std;
 
-#include <gtest/gtest.h>
+class vfs : public vfs_test_base { };
+class vfs_perf : public vfs_test_base { };
 
-#include "kernel_init_funcs.h"
-
-extern "C" {
-
-   #include <tilck/kernel/fs/fat32.h>
-   #include <tilck/kernel/fs/vfs.h>
-   #include <tilck/kernel/sched.h>
-
-   filesystem *ramfs_create(void);
-}
-
-// Implemented in fat32_test.cpp
-const char *load_once_file(const char *filepath, size_t *fsize = nullptr);
-void test_dump_buf(char *buf, const char *buf_name, int off, int count);
-
-TEST(vfs, read_content_of_longname_file)
+TEST_F(vfs, read_content_of_longname_file)
 {
-   init_kmalloc_for_tests();
-   create_kernel_process();
-
    int r;
    const char *buf = load_once_file(PROJ_BUILD_DIR "/test_fatpart");
    char data[128] = {0};
@@ -64,11 +48,8 @@ TEST(vfs, read_content_of_longname_file)
    fat_umount_ramdisk(fat_fs);
 }
 
-TEST(vfs, fseek)
+TEST_F(vfs, fseek)
 {
-   init_kmalloc_for_tests();
-   create_kernel_process();
-
    random_device rdev;
    const auto seed = rdev();
    default_random_engine engine(seed);
@@ -203,12 +184,9 @@ static void create_test_file(int n)
    vfs_close(h);
 }
 
-TEST(vfs_perf, creat)
+TEST_F(vfs_perf, creat)
 {
    filesystem *fs;
-
-   init_kmalloc_for_tests();
-   create_kernel_process();
 
    fs = ramfs_create();
    ASSERT_TRUE(fs != NULL);

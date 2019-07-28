@@ -14,22 +14,9 @@
 #include <unordered_map>
 #include <algorithm>
 
+#include "vfs_test.h"
+
 using namespace std;
-
-#include <gtest/gtest.h>
-
-#include "kernel_init_funcs.h"
-
-extern "C" {
-
-   #include <tilck/kernel/fs/vfs.h>
-   #include <tilck/kernel/sched.h>
-   #include <tilck/kernel/process.h>
-   #include "kernel/fs/fs_int.h"
-
-   void mountpoint_reset(void);
-}
-
 
 struct test_fs_elem {
 
@@ -251,14 +238,13 @@ static int resolve(const char *path, vfs_path *p, bool res_last_sl)
    return rc;
 }
 
-class vfs_resolve_test : public ::testing::Test {
+class vfs_resolve_test : public vfs_test_base {
 
 protected:
 
    void SetUp() override {
 
-      init_kmalloc_for_tests();
-      create_kernel_process();
+      vfs_test_base::SetUp();
 
       mp2_init(&testfs1);
       mp2_add(&testfs2, "/a/b/c2");
@@ -266,7 +252,9 @@ protected:
    }
 
    void TearDown() override {
+
       // TODO: call mp2_remove() for each fs
+      vfs_test_base::TearDown();
    }
 };
 
