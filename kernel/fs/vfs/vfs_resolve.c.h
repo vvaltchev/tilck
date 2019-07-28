@@ -143,10 +143,11 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
    return 0;
 }
 
-static void
+static int
 vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
                       const char *path,
-                      vfs_path *np)
+                      vfs_path *np,
+                      bool res_symlinks)
 {
    vfs_path *rp = vfs_resolve_stack_top(ctx);
    *np = *rp;
@@ -157,6 +158,11 @@ vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
                            path,
                            np,
                            ctx->exlock);
+
+   if (np->fs_path.type == VFS_SYMLINK && res_symlinks)
+      return vfs_resolve_symlink(ctx, np);
+
+   return 0;
 }
 
 static inline bool
@@ -308,12 +314,8 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
          continue;
 
       /* ------- we hit a slash in path: handle the component ------- */
-      vfs_resolve_get_entry(ctx, path, &np);
-
-      if (np.fs_path.type == VFS_SYMLINK) {
-         if ((rc = vfs_resolve_symlink(ctx, &np)))
-            return rc;
-      }
+      if ((rc = vfs_resolve_get_entry(ctx, path, &np, true)))
+         return rc;
 
       path = vfs_res_handle_dot_slash(path + 1) - 1;
 
@@ -329,11 +331,8 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
    }
 
    /* path ended without '/': we have to resolve the last component now */
-   vfs_resolve_get_entry(ctx, path, &np);
-
-   if (np.fs_path.type == VFS_SYMLINK && res_last_sl)
-      if ((rc = vfs_resolve_symlink(ctx, &np)))
-         return rc;
+   if ((rc = vfs_resolve_get_entry(ctx, path, &np, res_last_sl)))
+      return rc;
 
 out:
    return vfs_resolve_stack_replace_top(ctx, np.last_comp, &np);
