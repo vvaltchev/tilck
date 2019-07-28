@@ -590,10 +590,10 @@ fat_get_entry(filesystem *fs,
 
    if (res) {
 
-      u32 clu = fat_get_first_cluster(res);
+      const u32 clu = fat_get_first_cluster(res);
       type = res->directory ? VFS_DIR : VFS_FILE;
 
-      if (clu == 0 || clu == d->root_cluster) {
+      if (type == VFS_DIR && (clu == 0 || clu == d->root_cluster)) {
          res = d->root_entry;
          type = VFS_DIR;
       }
