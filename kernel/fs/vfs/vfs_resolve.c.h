@@ -37,13 +37,26 @@ static inline void vfs_smart_fs_unlock(filesystem *fs, bool exlock)
    exlock ? vfs_fs_exunlock(fs) : vfs_fs_shunlock(fs);
 }
 
-STATIC int
+static inline void
+vfs_resolve_stack_pop(vfs_resolve_int_ctx *ctx)
+{
+   ASSERT(ctx->ss > 0);
+   ctx->ss--;
+}
+
+static inline vfs_path *
+vfs_resolve_stack_top(vfs_resolve_int_ctx *ctx)
+{
+   return &ctx->paths[ctx->ss - 1];
+}
+
+static int
 vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
                        const char *path,
                        vfs_path *p)
 {
    if (ctx->ss == ARRAY_SIZE(ctx->paths))
-      return -ENAMETOOLONG;
+      return -ELOOP;
 
    if (p->fs_path.inode)
       vfs_retain_inode_at(p);
@@ -54,7 +67,7 @@ vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
    return 0;
 }
 
-STATIC int
+static int
 vfs_resolve_stack_replace_top(vfs_resolve_int_ctx *ctx,
                               const char *path,
                               vfs_path *p)
@@ -96,13 +109,46 @@ __vfs_resolve_get_entry_raw(vfs_inode_ptr_t idir,
    }
 }
 
+/* See the code below */
+static int __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl);
+
+static int
+vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
+{
+   int rc;
+   const char *saved_path = ctx->orig_path;
+   char symlink[MAX_PATH];
+   vfs_path *rp = vfs_resolve_stack_top(ctx);
+
+   if ((rc = rp->fs->fsops->readlink(np, symlink)) < 0)
+      return rc;
+
+   /* readlink() does not zero-terminate the buffer */
+   symlink[rc] = 0;
+
+   if ((rc = vfs_resolve_stack_push(ctx, symlink, rp)) < 0)
+      return rc;
+
+   ctx->orig_path = symlink;
+
+   rc = __vfs_resolve(ctx, true);
+
+   *np = *vfs_resolve_stack_top(ctx);
+   vfs_resolve_stack_pop(ctx);
+   ctx->orig_path = saved_path;
+
+   if (rc < 0)
+      return rc;
+
+   return 0;
+}
+
 static void
 vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
                       const char *path,
                       vfs_path *np)
 {
-   const int ss = ctx->ss;
-   vfs_path *rp = &ctx->paths[ss-1];
+   vfs_path *rp = vfs_resolve_stack_top(ctx);
    *np = *rp;
 
    ASSERT(path - rp->last_comp > 0);
@@ -136,7 +182,7 @@ vfs_resolve_handle_dot_dot(vfs_resolve_int_ctx *ctx,
    if (!__vfs_res_hit_dot_dot(*path_ref))
       return false;
 
-   vfs_path p = ctx->paths[ctx->ss - 1];
+   vfs_path p = *vfs_resolve_stack_top(ctx);
    fs_path_struct root_fsp;
    const char *lc;
 
@@ -233,12 +279,12 @@ vfs_res_handle_trivial_path(vfs_resolve_int_ctx *ctx,
    return false;
 }
 
-STATIC int
+static int
 __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
 {
    int rc;
    const char *path = ctx->orig_path;
-   vfs_path *rp = &ctx->paths[ctx->ss-1];
+   vfs_path *rp = vfs_resolve_stack_top(ctx);
    vfs_path np = *rp;
 
    /* the vfs_path `rp` is assumed to be valid */
@@ -264,6 +310,11 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
       /* ------- we hit a slash in path: handle the component ------- */
       vfs_resolve_get_entry(ctx, path, &np);
 
+      if (np.fs_path.type == VFS_SYMLINK) {
+         if ((rc = vfs_resolve_symlink(ctx, &np)))
+            return rc;
+      }
+
       path = vfs_res_handle_dot_slash(path + 1) - 1;
 
       if (vfs_resolve_have_to_return(path, &np, &rc)) {
@@ -279,6 +330,10 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
 
    /* path ended without '/': we have to resolve the last component now */
    vfs_resolve_get_entry(ctx, path, &np);
+
+   if (np.fs_path.type == VFS_SYMLINK && res_last_sl)
+      if ((rc = vfs_resolve_symlink(ctx, &np)))
+         return rc;
 
 out:
    return vfs_resolve_stack_replace_top(ctx, np.last_comp, &np);

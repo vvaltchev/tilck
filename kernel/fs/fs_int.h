@@ -14,7 +14,7 @@ typedef struct {
 typedef struct {
 
    const char *orig_path;       /* original path (used for offsets) */
-   vfs_path paths[32];          /* paths stack */
+   vfs_path paths[4];           /* paths stack */
    int ss;                      /* stack size */
    bool exlock;                 /* true -> use exlock, false -> use shlock */
 
