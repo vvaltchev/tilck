@@ -17,19 +17,38 @@
 
 using namespace std;
 
-class vfs : public vfs_test_base { };
-class vfs_perf : public vfs_test_base { };
+class vfs_misc : public vfs_test_base {
 
-TEST_F(vfs, read_content_of_longname_file)
+protected:
+
+   filesystem *fat_fs;
+   size_t fatpart_size;
+
+   void SetUp() override {
+
+      vfs_test_base::SetUp();
+
+      const char *buf =
+         load_once_file(PROJ_BUILD_DIR "/test_fatpart", &fatpart_size);
+      fat_fs = fat_mount_ramdisk((void *) buf, VFS_FS_RO);
+      ASSERT_TRUE(fat_fs != NULL);
+
+      mp2_init(fat_fs);
+   }
+
+   void TearDown() override {
+
+      fat_umount_ramdisk(fat_fs);
+      vfs_test_base::TearDown();
+   }
+};
+
+class vfs_perf : public vfs_misc { };
+
+TEST_F(vfs_misc, read_content_of_longname_file)
 {
    int r;
-   const char *buf = load_once_file(PROJ_BUILD_DIR "/test_fatpart");
    char data[128] = {0};
-
-   filesystem *fat_fs = fat_mount_ramdisk((void *) buf, VFS_FS_RO);
-   ASSERT_TRUE(fat_fs != NULL);
-
-   mp2_init(fat_fs);
 
    const char *file_path =
       "/testdir/This_is_a_file_with_a_veeeery_long_name.txt";
@@ -43,12 +62,9 @@ TEST_F(vfs, read_content_of_longname_file)
 
    EXPECT_GT(res, 0);
    ASSERT_STREQ("Content of file with a long name\n", data);
-
-   // TODO: call mp2_remove()
-   fat_umount_ramdisk(fat_fs);
 }
 
-TEST_F(vfs, fseek)
+TEST_F(vfs_misc, fseek)
 {
    random_device rdev;
    const auto seed = rdev();
@@ -62,15 +78,6 @@ TEST_F(vfs, fseek)
    cout << "[ INFO     ] random seed: " << seed << endl;
 
    int r;
-   size_t fatpart_size;
-   const char *fatpart =
-      load_once_file(PROJ_BUILD_DIR "/test_fatpart", &fatpart_size);
-
-   filesystem *fat_fs = fat_mount_ramdisk((void *) fatpart, VFS_FS_RO);
-   ASSERT_TRUE(fat_fs != NULL);
-
-   mp2_init(fat_fs);
-
    const char *fatpart_file_path = "/bigfile";
    const char *real_file_path = PROJ_BUILD_DIR "/test_sysroot/bigfile";
 
@@ -165,9 +172,6 @@ TEST_F(vfs, fseek)
 
    vfs_close(h);
    close(fd);
-
-   // TODO: call mp2_remove()
-   fat_umount_ramdisk(fat_fs);
 }
 
 static void create_test_file(int n)
