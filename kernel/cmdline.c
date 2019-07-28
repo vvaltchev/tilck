@@ -8,7 +8,7 @@
 #include <tilck/kernel/cmdline.h>
 
 /* shared global variables */
-const char *cmd_args[MAX_CMD_ARGS] = { "/sbin/init", [1 ... 15] = NULL };
+const char *cmd_args[MAX_CMD_ARGS] = { "/bin/init", [1 ... 15] = NULL };
 void (*self_test_to_run)(void);
 int kopt_tty_count = TTY_COUNT;
 bool kopt_serial_console;

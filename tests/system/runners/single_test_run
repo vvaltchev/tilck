@@ -240,7 +240,7 @@ def RunTheVM():
    else:
       sys.exit(1)
 
-   kernel_cmdline += ' -cmd /sbin/init {0} -- {1}'.format(init_opts, cmdline)
+   kernel_cmdline += ' -cmd /bin/init {0} -- {1}'.format(init_opts, cmdline)
 
    args += ['-initrd', FATPART_FILE, '-append', kernel_cmdline]
 

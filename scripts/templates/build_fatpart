@@ -66,21 +66,12 @@ function add_apps {
 
    IFS=";"
 
-   cp $bdir/userapps/init sbin/
-   strip_binary sbin/init
-
    apps="@USERAPPS_FILES_LIST@"
    extra_apps="@EXTRA_APPS_LIST@"
 
    for x in ${apps[@]}; do
-
-      if [[ "$(basename -- $x)" == "init" ]]; then
-         continue;
-      fi
-
       cp "$x" bin/
       strip_binary "bin/$(basename -- $x)"
-
    done
 
    for x in ${extra_apps[@]}; do
