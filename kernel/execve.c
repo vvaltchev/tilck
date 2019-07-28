@@ -27,15 +27,8 @@ execve_get_path(const char *user_path, char **path_ref)
    size_t written = 0;
    STATIC_ASSERT(IO_COPYBUF_SIZE > MAX_PATH);
 
-   if (LIKELY(curr != kernel_process)) {
-
-      if (!(rc = duplicate_user_path(path, user_path, MAX_PATH, &written)))
-         *path_ref = path;
-
-   } else {
-
-     *path_ref = (char *)user_path;
-   }
+   if (!(rc = duplicate_user_path(path, user_path, MAX_PATH, &written)))
+      *path_ref = path;
 
    return rc;
 }
@@ -54,12 +47,6 @@ execve_get_args(const char *const *user_argv,
 
    char *dest = (char *)curr->args_copybuf;
    size_t written = 0;
-
-   if (UNLIKELY(curr == kernel_process)) {
-      *argv_ref = (char *const *)user_argv;
-      *env_ref = (char *const *)user_env;
-      goto out;
-   }
 
    if (user_argv) {
       argv = (char *const *) (dest + written);
