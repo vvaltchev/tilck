@@ -55,14 +55,17 @@ vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
                        const char *path,
                        vfs_path *p)
 {
-   if (ctx->ss == ARRAY_SIZE(ctx->paths))
+   const int ss = ctx->ss;
+
+   if (ss == ARRAY_SIZE(ctx->paths))
       return -ELOOP;
 
    if (p->fs_path.inode)
       vfs_retain_inode_at(p);
 
-   ctx->paths[ctx->ss] = *p;
-   ctx->paths[ctx->ss].last_comp = path;
+   ctx->orig_paths[ss] = path;
+   ctx->paths[ss] = *p;
+   ctx->paths[ss].last_comp = path;
    ctx->ss++;
    return 0;
 }
@@ -118,7 +121,6 @@ static int
 vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
 {
    int rc;
-   const char *saved_path = ctx->orig_path;
    char symlink[MAX_PATH];
    vfs_path *rp = vfs_resolve_stack_top(ctx);
 
@@ -133,13 +135,10 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
    if ((rc = vfs_resolve_stack_push(ctx, symlink, rp)) < 0)
       return rc;
 
-   ctx->orig_path = symlink;
-
    rc = __vfs_resolve(ctx, true);
 
    *np = *vfs_resolve_stack_top(ctx);
    vfs_resolve_stack_pop(ctx);
-   ctx->orig_path = saved_path;
 
    if (rc < 0)
       return rc;
@@ -293,7 +292,7 @@ static int
 __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
 {
    int rc;
-   const char *path = ctx->orig_path;
+   const char *path = ctx->orig_paths[ctx->ss - 1];
    vfs_path *rp = vfs_resolve_stack_top(ctx);
    vfs_path np = *rp;
 
@@ -386,7 +385,6 @@ vfs_resolve(const char *path,
    bzero(rp, sizeof(*rp));
 
    vfs_resolve_int_ctx ctx = {
-      .orig_path = path,
       .ss = 0,
       .exlock = exlock,
    };
@@ -405,7 +403,7 @@ vfs_resolve(const char *path,
       vfs_smart_fs_lock(rp->fs, exlock);
    }
 
-   rc = vfs_resolve_stack_push(&ctx, ctx.orig_path, rp);
+   rc = vfs_resolve_stack_push(&ctx, path, rp);
    ASSERT(rc == 0);
 
    rc = __vfs_resolve(&ctx, res_last_sl);

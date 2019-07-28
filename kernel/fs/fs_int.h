@@ -11,11 +11,15 @@ typedef struct {
 
 } mountpoint2;
 
+#define RESOLVE_STACK_SIZE       4
+
 typedef struct {
 
-   const char *orig_path;       /* original path (used for offsets) */
-   vfs_path paths[4];           /* paths stack */
-   int ss;                      /* stack size */
-   bool exlock;                 /* true -> use exlock, false -> use shlock */
+   int ss;                                       /* stack size */
+   bool exlock;                                  /* true -> use exlock,
+                                                    false -> use shlock */
+
+   const char *orig_paths[RESOLVE_STACK_SIZE];   /* original paths stack */
+   vfs_path paths[RESOLVE_STACK_SIZE];           /* paths stack */
 
 } vfs_resolve_int_ctx;
