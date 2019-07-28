@@ -158,6 +158,11 @@ function make_fatpart {
 
    # then, copy all the files in sysroot
    for f in $(find * -type f); do
+
+      if [[ "$(basename -- $f)" == ".gitignore" ]]; then
+         continue;
+      fi
+
       $mcopy -i $dest $f ::/$f
    done
 }
