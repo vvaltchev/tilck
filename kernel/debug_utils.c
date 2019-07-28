@@ -18,13 +18,19 @@
 #include <elf.h>         // system header
 #include <multiboot.h>   // system header in include/system_headers
 
+/* --------- Color constants ---------- */
+#define COLOR_RED     "\033[31m"
+#define COLOR_GREEN   "\033[32m"
+#define COLOR_YELLOW  "\033[93m"
+#define RESET_ATTRS   "\033[0m"
+/* ------------------------------------ */
+
 volatile bool __in_panic;
 
-#define SHOW_INT(name, val)  printk(NO_PREFIX "%-35s: %d\n", name, val)
-
-#define DUMP_STR_OPT(opt)  printk(NO_PREFIX "%-35s: %s\n", #opt, opt)
-#define DUMP_INT_OPT(opt)  printk(NO_PREFIX "%-35s: %d\n", #opt, opt)
-#define DUMP_BOOL_OPT(opt) printk(NO_PREFIX "%-35s: %u\n", #opt, opt)
+#define SHOW_INT(name, val)   printk(NO_PREFIX "%-35s: %d\n", name, val)
+#define DUMP_STR_OPT(opt)     printk(NO_PREFIX "%-35s: %s\n", #opt, opt)
+#define DUMP_INT_OPT(opt)     printk(NO_PREFIX "%-35s: %d\n", #opt, opt)
+#define DUMP_BOOL_OPT(opt)    printk(NO_PREFIX "%-35s: %u\n", #opt, opt)
 
 void debug_show_opts(void)
 {
@@ -339,7 +345,7 @@ void set_sched_alive_thread_enabled(bool enabled)
 /*
  * Set here the address of the ref_count to track.
  */
-void *debug_refcount_obj = NULL;
+void *debug_refcount_obj = (void *)0;
 
 /* Return the new value */
 int __retain_obj(int *ref_count)
@@ -349,7 +355,8 @@ int __retain_obj(int *ref_count)
    ret = atomic_fetch_add_explicit(atomic, 1, mo_relaxed) + 1;
 
    if (!debug_refcount_obj || ref_count == debug_refcount_obj) {
-      printk("refcount at %p: %d -> %d\n", ref_count, ret-1, ret);
+      printk(COLOR_GREEN "refcount at %p: %d -> %d" RESET_ATTRS "\n",
+             ref_count, ret-1, ret);
    }
 
    return ret;
@@ -365,7 +372,8 @@ int __release_obj(int *ref_count)
    ret = old - 1;
 
    if (!debug_refcount_obj || ref_count == debug_refcount_obj) {
-      printk("refcount at %p: %d -> %d\n", ref_count, old, ret);
+      printk(COLOR_RED "refcount at %p: %d -> %d" RESET_ATTRS "\n",
+             ref_count, old, ret);
    }
 
    return ret;
