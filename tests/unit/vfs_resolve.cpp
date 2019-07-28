@@ -8,57 +8,59 @@ using namespace std;
 struct test_fs_elem {
 
    const char *name;
+   vfs_entry_type type;
    test_fs_elem *parent;
    int ref_count;
    map<string, test_fs_elem *> c; /* children */
 };
 
-#define NODE_RAW(name, ...) new test_fs_elem{name, 0, 0, { __VA_ARGS__ }}
-#define NODE(name, ...) make_pair(name, NODE_RAW( name, __VA_ARGS__ ))
-#define ROOT_NODE(...) NODE_RAW("", __VA_ARGS__)
+#define NODE_RAW(name, t, ...) new test_fs_elem{name, t, 0, 0, { __VA_ARGS__ }}
+#define N_FILE(name) make_pair(name, NODE_RAW( name, VFS_FILE ))
+#define N_DIR(name, ...) make_pair(name, NODE_RAW( name, VFS_DIR, __VA_ARGS__ ))
+#define ROOT_NODE(...) NODE_RAW("", VFS_DIR, __VA_ARGS__)
 
 static test_fs_elem *fs1_root =
    ROOT_NODE(
-      NODE(
+      N_DIR(
          "a",
-         NODE(
+         N_DIR(
             "b",
-            NODE(
+            N_DIR(
                "c",
-               NODE("f1"),
-               NODE("f2"),
+               N_FILE("f1"),
+               N_FILE("f2"),
             ),
-            NODE("c2"),
-            NODE(".hdir"),
+            N_DIR("c2"),
+            N_DIR(".hdir"),
          )
       ),
-      NODE("dev")
+      N_DIR("dev")
    );
 
 static test_fs_elem *fs2_root =
    ROOT_NODE(
-      NODE(
+      N_DIR(
          "x",
-         NODE(
+         N_DIR(
             "y",
-            NODE("z")
+            N_DIR("z")
          )
       ),
-      NODE("f_fs2_1"),
-      NODE("f_fs2_2")
+      N_FILE("f_fs2_1"),
+      N_FILE("f_fs2_2")
    );
 
 static test_fs_elem *fs3_root =
    ROOT_NODE(
-      NODE(
+      N_DIR(
          "xd",
-         NODE(
+         N_DIR(
             "yd",
-            NODE("zd")
+            N_DIR("zd")
          )
       ),
-      NODE("fd1"),
-      NODE("fd2")
+      N_FILE("fd1"),
+      N_FILE("fd2")
    );
 
 static bool are_test_fs_parents_set;
@@ -103,7 +105,7 @@ testfs_get_entry(filesystem *fs,
          e = e->parent;
 
       fs_path->inode = (void *)e;
-      fs_path->type = e->name[0] == 'f' ? VFS_FILE : VFS_DIR;
+      fs_path->type = e->type;
       fs_path->dir_inode = e->parent;
       return;
    }
@@ -113,7 +115,7 @@ testfs_get_entry(filesystem *fs,
 
    if (it != e->c.end()) {
       fs_path->inode = it->second;
-      fs_path->type = it->first[0] == 'f' ? VFS_FILE : VFS_DIR;
+      fs_path->type = it->second->type;
    } else {
       fs_path->inode = nullptr;
       fs_path->type = VFS_NONE;
