@@ -121,10 +121,8 @@ static int
 vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
 {
    int rc;
-   char symlink[MAX_PATH];
+   char *symlink = ctx->sym_paths[ctx->ss - 1];
    vfs_path *rp = vfs_resolve_stack_top(ctx);
-
-   DEBUG_VALIDATE_STACK_PTR();
 
    if ((rc = rp->fs->fsops->readlink(np, symlink)) < 0)
       return rc;
@@ -139,11 +137,7 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
 
    *np = *vfs_resolve_stack_top(ctx);
    vfs_resolve_stack_pop(ctx);
-
-   if (rc < 0)
-      return rc;
-
-   return 0;
+   return rc;
 }
 
 static int
