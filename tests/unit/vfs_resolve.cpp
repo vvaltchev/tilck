@@ -63,7 +63,41 @@ static test_fs_elem *fs3_root =
       N_FILE("fd2")
    );
 
+static map<test_fs_elem *, test_fs_elem *> test_mps;
 static bool are_test_fs_parents_set;
+
+static void test_fs_register_mp(test_fs_elem *where, test_fs_elem *target)
+{
+   auto it = test_mps.find(where);
+   ASSERT_TRUE(it == test_mps.end());
+
+   test_mps[where] = target;
+}
+
+static void test_fs_clear_mps()
+{
+   test_mps.clear();
+}
+
+static bool test_fs_is_mountpoint(test_fs_elem *e)
+{
+   return test_mps.find(e) != test_mps.end();
+}
+
+static void test_fs_reset_refcounts(test_fs_elem *node)
+{
+   for (auto &p : node->c) {
+      p.second->ref_count = 0;
+      test_fs_reset_refcounts(p.second);
+   }
+}
+
+static void reset_all_fs_refcounts()
+{
+   test_fs_reset_refcounts(fs1_root);
+   test_fs_reset_refcounts(fs2_root);
+   test_fs_reset_refcounts(fs3_root);
+}
 
 static void test_fs_do_set_parents(test_fs_elem *node)
 {
@@ -71,6 +105,29 @@ static void test_fs_do_set_parents(test_fs_elem *node)
       p.second->parent = node;
       test_fs_do_set_parents(p.second);
    }
+}
+
+static void test_fs_check_refcounts(test_fs_elem *node)
+{
+   for (auto &p : node->c) {
+
+      test_fs_elem *e = p.second;
+
+      if (test_fs_is_mountpoint(e)) {
+         ASSERT_EQ(e->ref_count, 1) << "[Info] mp node: " << p.first;
+      } else {
+         ASSERT_EQ(e->ref_count, 0) << "[Info] node: " << p.first;
+      }
+
+      test_fs_check_refcounts(e);
+   }
+}
+
+static void check_all_fs_refcounts()
+{
+   test_fs_check_refcounts(fs1_root);
+   test_fs_check_refcounts(fs2_root);
+   test_fs_check_refcounts(fs3_root);
 }
 
 void
@@ -238,11 +295,16 @@ protected:
       mp2_init(&testfs1);
       mp2_add(&testfs2, "/a/b/c2");
       mp2_add(&testfs3, "/dev");
+
+      test_fs_register_mp(fs1_root->c["a"]->c["b"]->c["c2"], fs2_root);
+      test_fs_register_mp(fs1_root->c["dev"], fs3_root);
    }
 
    void TearDown() override {
 
       // TODO: call mp2_remove() for each fs
+      reset_all_fs_refcounts();
+      test_fs_clear_mps();
       vfs_test_base::TearDown();
    }
 };
@@ -261,6 +323,7 @@ TEST_F(vfs_resolve_test, basic_test)
    ASSERT_TRUE(p.fs_path.dir_inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* regular 1-level path */
    rc = resolve("/a", &p, true);
@@ -269,6 +332,7 @@ TEST_F(vfs_resolve_test, basic_test)
    ASSERT_TRUE(p.fs_path.dir_inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "a");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* non-existent 1-level path */
    rc = resolve("/x", &p, true);
@@ -277,6 +341,7 @@ TEST_F(vfs_resolve_test, basic_test)
    ASSERT_TRUE(p.fs_path.dir_inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_NONE);
    ASSERT_STREQ(p.last_comp, "x");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* regular 2-level path */
    rc = resolve("/a/b", &p, true);
@@ -284,6 +349,7 @@ TEST_F(vfs_resolve_test, basic_test)
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]->c["b"]);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "b");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* regular 2-level path + trailing slash */
    rc = resolve("/a/b/", &p, true);
@@ -291,11 +357,13 @@ TEST_F(vfs_resolve_test, basic_test)
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]->c["b"]);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "b/");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* 2-level path with non-existent component in the middle */
    rc = resolve("/x/b", &p, true);
    ASSERT_EQ(rc, -ENOENT);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* 4-level path ending with file */
    rc = resolve("/a/b/c/f1", &p, true);
@@ -304,11 +372,13 @@ TEST_F(vfs_resolve_test, basic_test)
    ASSERT_TRUE(p.fs_path.dir_inode == fs1_root->c["a"]->c["b"]->c["c"]);
    ASSERT_TRUE(p.fs_path.type == VFS_FILE);
    ASSERT_STREQ(p.last_comp, "f1");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* 4-level path ending with file + trailing slash */
    rc = resolve("/a/b/c/f1/", &p, true);
    ASSERT_EQ(rc, -ENOTDIR);
    ASSERT_STREQ(p.last_comp, "f1/");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 }
 
 TEST_F(vfs_resolve_test, corner_cases)
@@ -320,6 +390,7 @@ TEST_F(vfs_resolve_test, corner_cases)
    rc = resolve("", &p, true);
    ASSERT_EQ(rc, -ENOENT);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* multiple slashes [root] */
    rc = resolve("/////", &p, true);
@@ -327,6 +398,7 @@ TEST_F(vfs_resolve_test, corner_cases)
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* multiple slashes [in the middle] */
    rc = resolve("/a/b/c////f1", &p, true);
@@ -335,6 +407,7 @@ TEST_F(vfs_resolve_test, corner_cases)
    ASSERT_TRUE(p.fs_path.dir_inode == fs1_root->c["a"]->c["b"]->c["c"]);
    ASSERT_TRUE(p.fs_path.type == VFS_FILE);
    ASSERT_STREQ(p.last_comp, "f1");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* multiple slashes [at the beginning] */
    rc = resolve("//a/b/c/f1", &p, true);
@@ -342,6 +415,7 @@ TEST_F(vfs_resolve_test, corner_cases)
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]->c["b"]->c["c"]->c["f1"]);
    ASSERT_TRUE(p.fs_path.type == VFS_FILE);
    ASSERT_STREQ(p.last_comp, "f1");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* multiple slashes [at the end] */
    rc = resolve("/a/b/////", &p, true);
@@ -349,6 +423,7 @@ TEST_F(vfs_resolve_test, corner_cases)
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]->c["b"]);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "b/////");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* dir entry starting with '.' */
    rc = resolve("/a/b/.hdir", &p, true);
@@ -357,6 +432,7 @@ TEST_F(vfs_resolve_test, corner_cases)
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_TRUE(p.fs_path.dir_inode == fs1_root->c["a"]->c["b"]);
    ASSERT_STREQ(p.last_comp, ".hdir");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* dir entry starting with '.' + trailing slash */
    rc = resolve("/a/b/.hdir/", &p, true);
@@ -365,6 +441,7 @@ TEST_F(vfs_resolve_test, corner_cases)
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_TRUE(p.fs_path.dir_inode == fs1_root->c["a"]->c["b"]);
    ASSERT_STREQ(p.last_comp, ".hdir/");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 }
 
 TEST_F(vfs_resolve_test, single_dot)
@@ -377,30 +454,35 @@ TEST_F(vfs_resolve_test, single_dot)
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "a/.");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/./", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "a/./");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/.", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/./", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/./b/c", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]->c["b"]->c["c"]);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "c");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 }
 
 TEST_F(vfs_resolve_test, double_dot)
@@ -413,24 +495,28 @@ TEST_F(vfs_resolve_test, double_dot)
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]->c["b"]);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c/../", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]->c["b"]);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c/../..", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c/../../", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c/../../new", &p, true);
    ASSERT_EQ(rc, 0);
@@ -438,36 +524,42 @@ TEST_F(vfs_resolve_test, double_dot)
    ASSERT_TRUE(p.fs_path.dir_inode == fs1_root->c["a"]);
    ASSERT_TRUE(p.fs_path.type == VFS_NONE);
    ASSERT_STREQ(p.last_comp, "new");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/..", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/../", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/../..", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/..", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/../..", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 }
 
 TEST_F(vfs_resolve_multi_fs, basic_case)
@@ -481,6 +573,7 @@ TEST_F(vfs_resolve_multi_fs, basic_case)
    ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root);
    ASSERT_STREQ(p.last_comp, "c2");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* target-fs's root with slash */
    rc = resolve("/a/b/c2/", &p, true);
@@ -488,36 +581,42 @@ TEST_F(vfs_resolve_multi_fs, basic_case)
    ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root);
    ASSERT_STREQ(p.last_comp, "c2/");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c2/x", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]);
    ASSERT_STREQ(p.last_comp, "x");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c2/f_fs2_1", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["f_fs2_1"]);
    ASSERT_STREQ(p.last_comp, "f_fs2_1");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c2/x/y", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]);
    ASSERT_STREQ(p.last_comp, "y");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c2/x/y/z", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]->c["z"]);
    ASSERT_STREQ(p.last_comp, "z");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c2/x/y/z/", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]->c["z"]);
    ASSERT_STREQ(p.last_comp, "z/");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 }
 
 TEST_F(vfs_resolve_multi_fs, dot_dot)
@@ -530,12 +629,14 @@ TEST_F(vfs_resolve_multi_fs, dot_dot)
    ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c2/x/y/z/../", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* new file after '..' */
    rc = resolve("/a/b/c2/x/y/z/../new_file", &p, true);
@@ -543,6 +644,7 @@ TEST_F(vfs_resolve_multi_fs, dot_dot)
    ASSERT_TRUE(p.fs_path.inode == nullptr);
    ASSERT_TRUE(p.fs_path.dir_inode == fs2_root->c["x"]->c["y"]);
    ASSERT_STREQ(p.last_comp, "new_file");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* new dir after '..' */
    rc = resolve("/a/b/c2/x/y/z/../new_dir/", &p, true);
@@ -550,12 +652,14 @@ TEST_F(vfs_resolve_multi_fs, dot_dot)
    ASSERT_TRUE(p.fs_path.inode == nullptr);
    ASSERT_TRUE(p.fs_path.dir_inode == fs2_root->c["x"]->c["y"]);
    ASSERT_STREQ(p.last_comp, "new_dir/");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c2/x/..", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c2/x/../", &p, true);
    ASSERT_EQ(rc, 0);
@@ -563,6 +667,7 @@ TEST_F(vfs_resolve_multi_fs, dot_dot)
    ASSERT_TRUE(p.fs_path.inode == fs2_root);
    ASSERT_TRUE(p.fs == &testfs2);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* ../ crossing the fs-boundary [c2 is a mount-point] */
    rc = resolve("/a/b/c2/x/../..", &p, true);
@@ -571,6 +676,7 @@ TEST_F(vfs_resolve_multi_fs, dot_dot)
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]->c["b"]);
    ASSERT_TRUE(p.fs == &testfs1);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/dev/..", &p, true);
    ASSERT_EQ(rc, 0);
@@ -578,12 +684,14 @@ TEST_F(vfs_resolve_multi_fs, dot_dot)
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs == &testfs1);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/dev/../a", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]);
    ASSERT_TRUE(p.fs == &testfs1);
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 }
 
 TEST_F(vfs_resolve_multi_fs, rel_paths)
@@ -598,6 +706,7 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
    ASSERT_TRUE(p.fs_path.inode == fs3_root);
    ASSERT_TRUE(p.fs == &testfs3);
    ASSERT_STREQ(p.last_comp, "dev/");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    pi->cwd2 = p;
    bzero(&p, sizeof(p));
@@ -608,6 +717,7 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
    ASSERT_TRUE(p.fs_path.inode == fs3_root);
    ASSERT_TRUE(p.fs == &testfs3);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("..", &p, true);
    ASSERT_EQ(rc, 0);
@@ -615,4 +725,5 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs == &testfs1);
    ASSERT_STREQ(p.last_comp, "");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 }
