@@ -4,17 +4,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <cstdio>
-#include <cstring>
 #include <iostream>
-#include <vector>
 #include <random>
-#include <map>
-#include <unordered_map>
-#include <algorithm>
 
 #include "vfs_test.h"
-
 using namespace std;
 
 class vfs_misc : public vfs_test_base {
@@ -28,8 +21,7 @@ protected:
 
       vfs_test_base::SetUp();
 
-      const char *buf =
-         load_once_file(PROJ_BUILD_DIR "/test_fatpart", &fatpart_size);
+      const char *buf = load_once_file(TEST_FATPART_FILE, &fatpart_size);
       fat_fs = fat_mount_ramdisk((void *) buf, VFS_FS_RO);
       ASSERT_TRUE(fat_fs != NULL);
 
@@ -42,8 +34,6 @@ protected:
       vfs_test_base::TearDown();
    }
 };
-
-class vfs_perf : public vfs_misc { };
 
 TEST_F(vfs_misc, read_content_of_longname_file)
 {
@@ -172,34 +162,6 @@ TEST_F(vfs_misc, fseek)
 
    vfs_close(h);
    close(fd);
-}
-
-static void create_test_file(int n)
-{
-   char path[256];
-   fs_handle h;
-   int rc;
-
-   sprintf(path, "/test_%d", n);
-
-   rc = vfs_open(path, &h, O_CREAT, 0644);
-   ASSERT_EQ(rc, 0);
-
-   vfs_close(h);
-}
-
-TEST_F(vfs_perf, creat)
-{
-   filesystem *fs;
-
-   fs = ramfs_create();
-   ASSERT_TRUE(fs != NULL);
-   mp2_init(fs);
-
-   for (int i = 0; i < 100; i++)
-      create_test_file(i);
-
-   // TODO: destroy ramfs
 }
 
 string compute_abs_path_wrapper(const char *cwd, const char *path)

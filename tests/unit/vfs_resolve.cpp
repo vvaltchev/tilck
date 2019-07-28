@@ -1,21 +1,8 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include <cstdio>
-#include <cstring>
-
 #include <iostream>
-#include <vector>
-#include <random>
 #include <map>
-#include <unordered_map>
-#include <algorithm>
-
 #include "vfs_test.h"
-
 using namespace std;
 
 struct test_fs_elem {

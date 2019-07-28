@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <gtest/gtest.h>
-
 #include "kernel_init_funcs.h"
 
 extern "C" {
@@ -14,6 +13,8 @@ extern "C" {
 
    filesystem *ramfs_create(void);
 }
+
+#define TEST_FATPART_FILE     PROJ_BUILD_DIR "/test_fatpart"
 
 // Implemented in fat32_test.cpp
 const char *load_once_file(const char *filepath, size_t *fsize = nullptr);
