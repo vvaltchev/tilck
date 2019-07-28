@@ -158,30 +158,30 @@ static int vfs_test_release_inode(filesystem *fs, vfs_inode_ptr_t i)
 }
 
 /*
- * Unfortunately, in C++ non-trivial designated initializers are not supported,
- * so we have to explicitly initialize all the members, in order!
+ * Unfortunately, in C++ non-trivial designated initializers are fully not
+ * supported, so we have to explicitly initialize all the members, in order!
  */
 static const fs_ops static_fsops_testfs = {
 
-   testfs_get_entry,             /* get_entry */
-   NULL,                         /* get_inode */
-   NULL,                         /* open */
-   NULL,                         /* close */
-   NULL,                         /* dup */
-   NULL,                         /* getdents */
-   NULL,                         /* unlink */
-   NULL,                         /* stat */
-   NULL,                         /* mkdir */
-   NULL,                         /* rmdir */
-   NULL,                         /* symlink */
-   NULL,                         /* readlink */
-   NULL,                         /* truncate */
-   vfs_test_retain_inode,        /* retain_inode */
-   vfs_test_release_inode,       /* release_inode */
-   vfs_test_fs_exlock,           /* fs_exlock */
-   vfs_test_fs_exunlock,         /* fs_exunlock */
-   vfs_test_fs_shlock,           /* fs_shlock */
-   vfs_test_fs_shunlock,         /* fs_shunlock */
+   .get_entry           = testfs_get_entry,
+   .get_inode           = nullptr,
+   .open                = nullptr,
+   .close               = nullptr,
+   .dup                 = nullptr,
+   .getdents            = nullptr,
+   .unlink              = nullptr,
+   .stat                = nullptr,
+   .mkdir               = nullptr,
+   .rmdir               = nullptr,
+   .symlink             = nullptr,
+   .readlink            = nullptr,
+   .truncate            = nullptr,
+   .retain_inode        = vfs_test_retain_inode,
+   .release_inode       = vfs_test_release_inode,
+   .fs_exlock           = vfs_test_fs_exlock,
+   .fs_exunlock         = vfs_test_fs_exunlock,
+   .fs_shlock           = vfs_test_fs_shlock,
+   .fs_shunlock         = vfs_test_fs_shunlock,
 };
 
 static filesystem testfs1 = {
@@ -478,44 +478,44 @@ TEST_F(vfs_resolve_multi_fs, basic_case)
    /* target-fs's root without slash */
    rc = resolve("/a/b/c2", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root);
    ASSERT_STREQ(p.last_comp, "c2");
 
    /* target-fs's root with slash */
    rc = resolve("/a/b/c2/", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root);
    ASSERT_STREQ(p.last_comp, "c2/");
 
    rc = resolve("/a/b/c2/x", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]);
    ASSERT_STREQ(p.last_comp, "x");
 
    rc = resolve("/a/b/c2/f_fs2_1", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["f_fs2_1"]);
    ASSERT_STREQ(p.last_comp, "f_fs2_1");
 
    rc = resolve("/a/b/c2/x/y", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]);
    ASSERT_STREQ(p.last_comp, "y");
 
    rc = resolve("/a/b/c2/x/y/z", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]->c["z"]);
    ASSERT_STREQ(p.last_comp, "z");
 
    rc = resolve("/a/b/c2/x/y/z/", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]->c["z"]);
    ASSERT_STREQ(p.last_comp, "z/");
 }
@@ -527,39 +527,39 @@ TEST_F(vfs_resolve_multi_fs, dot_dot)
 
    rc = resolve("/a/b/c2/x/y/z/..", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]);
    ASSERT_STREQ(p.last_comp, "");
 
    rc = resolve("/a/b/c2/x/y/z/../", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root->c["x"]->c["y"]);
    ASSERT_STREQ(p.last_comp, "");
 
    /* new file after '..' */
    rc = resolve("/a/b/c2/x/y/z/../new_file", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode == NULL);
+   ASSERT_TRUE(p.fs_path.inode == nullptr);
    ASSERT_TRUE(p.fs_path.dir_inode == fs2_root->c["x"]->c["y"]);
    ASSERT_STREQ(p.last_comp, "new_file");
 
    /* new dir after '..' */
    rc = resolve("/a/b/c2/x/y/z/../new_dir/", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode == NULL);
+   ASSERT_TRUE(p.fs_path.inode == nullptr);
    ASSERT_TRUE(p.fs_path.dir_inode == fs2_root->c["x"]->c["y"]);
    ASSERT_STREQ(p.last_comp, "new_dir/");
 
    rc = resolve("/a/b/c2/x/..", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root);
    ASSERT_STREQ(p.last_comp, "");
 
    rc = resolve("/a/b/c2/x/../", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs2_root);
    ASSERT_TRUE(p.fs == &testfs2);
    ASSERT_STREQ(p.last_comp, "");
@@ -567,21 +567,21 @@ TEST_F(vfs_resolve_multi_fs, dot_dot)
    /* ../ crossing the fs-boundary [c2 is a mount-point] */
    rc = resolve("/a/b/c2/x/../..", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]->c["b"]);
    ASSERT_TRUE(p.fs == &testfs1);
    ASSERT_STREQ(p.last_comp, "");
 
    rc = resolve("/dev/..", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs == &testfs1);
    ASSERT_STREQ(p.last_comp, "");
 
    rc = resolve("/dev/../a", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs1_root->c["a"]);
    ASSERT_TRUE(p.fs == &testfs1);
 }
@@ -594,7 +594,7 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
 
    rc = resolve("/dev/", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs3_root);
    ASSERT_TRUE(p.fs == &testfs3);
    ASSERT_STREQ(p.last_comp, "dev/");
@@ -604,14 +604,14 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
 
    rc = resolve(".", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs3_root);
    ASSERT_TRUE(p.fs == &testfs3);
    ASSERT_STREQ(p.last_comp, "");
 
    rc = resolve("..", &p, true);
    ASSERT_EQ(rc, 0);
-   ASSERT_TRUE(p.fs_path.inode != NULL);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == fs1_root);
    ASSERT_TRUE(p.fs == &testfs1);
    ASSERT_STREQ(p.last_comp, "");
