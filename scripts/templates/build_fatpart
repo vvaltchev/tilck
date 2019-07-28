@@ -8,12 +8,23 @@ maindir="@CMAKE_SOURCE_DIR@"
 bdir="@CMAKE_BINARY_DIR@"
 dest="@CMAKE_BINARY_DIR@/fatpart"
 tc="@TCROOT@"
+archgcc="@ARCH_GCC_TC@"
+strip="@STRIP@"
+gcctc="@GCC_TOOLCHAIN@"
+
+if [ -f "$gcctc/$archgcc-linux-strip" ]; then
+   strip="$gcctc/$archgcc-linux-strip"
+fi
 
 mtoolsdir=$tc/mtools
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd
 mcopy=$mtoolsdir/mcopy
+
+function strip_binary {
+   $strip -s "$1"
+}
 
 function pushd {
    command pushd "$@" > /dev/null
@@ -55,21 +66,26 @@ function add_apps {
 
    IFS=";"
 
-   ln $bdir/userapps/init sbin/
+   cp $bdir/userapps/init sbin/
+   strip_binary sbin/init
 
    apps="@USERAPPS_FILES_LIST@"
    extra_apps="@EXTRA_APPS_LIST@"
 
    for x in ${apps[@]}; do
-      ln "$x" bin/
+
+      if [[ "$(basename -- $x)" == "init" ]]; then
+         continue;
+      fi
+
+      cp "$x" bin/
+      strip_binary "bin/$(basename -- $x)"
+
    done
 
-   pushd bin
-   rm init     # We already put `init` in `/bin`.
-   popd
-
    for x in ${extra_apps[@]}; do
-      ln "$x" usr/bin/
+      cp "$x" usr/bin/
+      strip_binary "usr/bin/$(basename -- $x)"
    done
 
    unset IFS
