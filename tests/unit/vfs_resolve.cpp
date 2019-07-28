@@ -12,12 +12,23 @@ struct test_fs_elem {
    test_fs_elem *parent;
    int ref_count;
    map<string, test_fs_elem *> children;
+
+   test_fs_elem *set_parents() {
+
+      for (auto &p : children) {
+         p.second->parent = this;
+         p.second->set_parents();
+      }
+
+      return this;
+   }
 };
+
 
 #define NODE_RAW(name, t, ...) new test_fs_elem{name, t, 0, 0, { __VA_ARGS__ }}
 #define N_FILE(name) make_pair(name, NODE_RAW( name, VFS_FILE ))
 #define N_DIR(name, ...) make_pair(name, NODE_RAW( name, VFS_DIR, __VA_ARGS__ ))
-#define ROOT_NODE(...) NODE_RAW("", VFS_DIR, __VA_ARGS__)
+#define ROOT_NODE(...) (NODE_RAW("", VFS_DIR, __VA_ARGS__))->set_parents()
 
 static test_fs_elem *fs1 =
    ROOT_NODE(
@@ -64,7 +75,6 @@ static test_fs_elem *fs3 =
    );
 
 static map<test_fs_elem *, test_fs_elem *> test_mps;
-static bool are_test_fs_parents_set;
 
 static void test_fs_register_mp(test_fs_elem *where, test_fs_elem *target)
 {
@@ -99,14 +109,6 @@ static void reset_all_fs_refcounts()
    test_fs_reset_refcounts(fs3);
 }
 
-static void test_fs_do_set_parents(test_fs_elem *node)
-{
-   for (auto &p : node->children) {
-      p.second->parent = node;
-      test_fs_do_set_parents(p.second);
-   }
-}
-
 static void test_fs_check_refcounts(test_fs_elem *node)
 {
    for (auto &p : node->children) {
@@ -130,21 +132,14 @@ static void check_all_fs_refcounts()
    test_fs_check_refcounts(fs3);
 }
 
-void
+static void
 testfs_get_entry(filesystem *fs,
-                  void *dir_inode,
-                  const char *name,
-                  ssize_t name_len,
-                  fs_path_struct *fs_path)
+                 void *dir_inode,
+                 const char *name,
+                 ssize_t name_len,
+                 fs_path_struct *fs_path)
 {
-   if (!are_test_fs_parents_set) {
-      test_fs_do_set_parents(fs1);
-      test_fs_do_set_parents(fs2);
-      test_fs_do_set_parents(fs3);
-      are_test_fs_parents_set = true;
-   }
-
-   if (!name) {
+   if (!dir_inode && !name) {
       fs_path->type = VFS_DIR;
       fs_path->inode = fs->device_data;
       fs_path->dir_inode = fs->device_data;
