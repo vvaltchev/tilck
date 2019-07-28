@@ -13,7 +13,7 @@ void dump_regs(regs *r);
 
 void validate_stack_pointer_int(const char *file, int line);
 
-#ifdef DEBUG
+#if defined(DEBUG) && !defined(UNIT_TEST_ENVIRONMENT)
 #  define DEBUG_VALIDATE_STACK_PTR() validate_stack_pointer_int(__FILE__, \
                                                                 __LINE__)
 #else
