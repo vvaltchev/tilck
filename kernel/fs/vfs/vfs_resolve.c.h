@@ -89,6 +89,8 @@ __vfs_resolve_get_entry(vfs_inode_ptr_t idir,
                         vfs_path *rp,
                         bool exlock)
 {
+   DEBUG_VALIDATE_STACK_PTR();
+
    vfs_get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
 
@@ -119,6 +121,8 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
    const char *saved_path = ctx->orig_path;
    char symlink[MAX_PATH];
    vfs_path *rp = vfs_resolve_stack_top(ctx);
+
+   DEBUG_VALIDATE_STACK_PTR();
 
    if ((rc = rp->fs->fsops->readlink(np, symlink)) < 0)
       return rc;
@@ -181,7 +185,7 @@ vfs_res_does_path_end_here(const char *path)
  * Returns `true` if the caller has to return 0, or `false` if the caller should
  * continue the loop.
  */
-STATIC bool
+static bool
 vfs_resolve_handle_dot_dot(vfs_resolve_int_ctx *ctx,
                            const char **path_ref)
 {
@@ -292,6 +296,8 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
    const char *path = ctx->orig_path;
    vfs_path *rp = vfs_resolve_stack_top(ctx);
    vfs_path np = *rp;
+
+   DEBUG_VALIDATE_STACK_PTR();
 
    /* the vfs_path `rp` is assumed to be valid */
    ASSERT(rp->fs != NULL);

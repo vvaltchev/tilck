@@ -8,6 +8,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/user.h>
+#include <tilck/kernel/debug_utils.h>
 
 #include <dirent.h> // system header
 
