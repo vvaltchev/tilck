@@ -132,6 +132,7 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
    char *symlink = ctx->sym_paths[ctx->ss - 1];
    vfs_path *rp = vfs_resolve_stack_top(ctx);
    vfs_path np2;
+   DEBUG_ONLY_UNSAFE(int saved_ss = ctx->ss);
 
    if ((rc = rp->fs->fsops->readlink(np, symlink)) < 0)
       return rc;
@@ -153,7 +154,14 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
 
    rc = __vfs_resolve(ctx, true);
 
+   /* At the end, resolve() must use exactly 1 stack frame */
+   ASSERT(ctx->ss == saved_ss + 1);
+
    *np = *vfs_resolve_stack_top(ctx);
+
+   if (np->fs_path.inode)
+      vfs_release_inode_at(np);
+
    vfs_resolve_stack_pop(ctx);
    return rc;
 }
@@ -416,16 +424,15 @@ vfs_resolve(const char *path,
    ASSERT(rc == 0);
 
    rc = __vfs_resolve(&ctx, res_last_sl);
-   ASSERT(ctx.ss >= 1);
+
+   /* At the end, resolve() must use exactly 1 stack frame */
+   ASSERT(ctx.ss == 1);
 
    /* Store out the last frame in the caller-provided vfs_path */
-   *rp = ctx.paths[ctx.ss - 1];
+   *rp = ctx.paths[0];
 
-   /* Release the retained inodes in the stack */
-   for (int i = 0; i < ctx.ss; i++) {
-      if (ctx.paths[i].fs_path.inode)
-         vfs_release_inode_at(&ctx.paths[i]);
-   }
+   if (rp->fs_path.inode)
+      vfs_release_inode_at(rp);
 
    if (rc < 0) {
       /* resolve failed: release the lock and the fs */
