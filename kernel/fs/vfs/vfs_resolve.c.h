@@ -114,6 +114,14 @@ __vfs_resolve_get_entry(vfs_inode_ptr_t idir,
    }
 }
 
+static void get_locked_and_retained_root(vfs_path *rp, bool exlock)
+{
+   rp->fs = mp2_get_root();
+   retain_obj(rp->fs);
+   vfs_smart_fs_lock(rp->fs, exlock);
+   vfs_get_root_entry(rp->fs, &rp->fs_path);
+}
+
 /* See the code below */
 static int __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl);
 
@@ -123,12 +131,22 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
    int rc;
    char *symlink = ctx->sym_paths[ctx->ss - 1];
    vfs_path *rp = vfs_resolve_stack_top(ctx);
+   vfs_path np2;
 
    if ((rc = rp->fs->fsops->readlink(np, symlink)) < 0)
       return rc;
 
    /* readlink() does not zero-terminate the buffer */
    symlink[rc] = 0;
+
+   if (*symlink == '/') {
+
+      vfs_smart_fs_unlock(rp->fs, ctx->exlock);
+      release_obj(rp->fs);
+
+      rp = &np2;
+      get_locked_and_retained_root(rp, ctx->exlock);
+   }
 
    if ((rc = vfs_resolve_stack_push(ctx, symlink, rp)) < 0)
       return rc;
@@ -385,10 +403,7 @@ vfs_resolve(const char *path,
 
    if (*path == '/') {
 
-      rp->fs = mp2_get_root();
-      retain_obj(rp->fs);
-      vfs_smart_fs_lock(rp->fs, exlock);
-      vfs_get_root_entry(rp->fs, &rp->fs_path);
+      get_locked_and_retained_root(rp, exlock);
 
    } else {
 
