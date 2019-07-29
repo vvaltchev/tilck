@@ -527,14 +527,14 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
 
 TEST_F(vfs_resolve_symlinks, basic_tests)
 {
-   // int rc;
-   // vfs_path p;
+   int rc;
+   vfs_path p;
 
-   // rc = resolve("/abs_s1", &p, true);
-   // ASSERT_EQ(rc, 0);
-   // ASSERT_TRUE(p.fs_path.inode != nullptr);
-   // ASSERT_TRUE(p.fs == &testfs1);
-   // ASSERT_TRUE(p.fs_path.inode == path(fs1, {"a", "b", "c", "f1"}));
-   // ASSERT_STREQ(p.last_comp, "abs_s1");
-   // ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
+   rc = resolve("/abs_s1", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
+   ASSERT_TRUE(p.fs == &testfs1);
+   ASSERT_TRUE(p.fs_path.inode == path(fs1, {"a", "b", "c", "f1"}));
+   //ASSERT_STREQ(p.last_comp, "abs_s1"); // TODO: fix this!
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 }

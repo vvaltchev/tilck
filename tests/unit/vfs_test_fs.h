@@ -36,7 +36,7 @@ struct tfs_entry {
 
 #define _NODE(n, t, s, ...) new tfs_entry{n, t, s, 0, 0, {__VA_ARGS__}}
 #define N_FILE(name) make_pair(name, _NODE(name, VFS_FILE, 0))
-#define N_SYM(name, s) make_pair(name, _NODE(name, VFS_FILE, s))
+#define N_SYM(name, s) make_pair(name, _NODE(name, VFS_SYMLINK, s))
 #define N_DIR(name, ...) make_pair(name, _NODE(name, VFS_DIR, 0, __VA_ARGS__))
 #define ROOT_NODE(...) (_NODE("", VFS_DIR, 0, __VA_ARGS__))->set_parents()
 

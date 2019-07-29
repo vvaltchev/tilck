@@ -115,6 +115,16 @@ static int vfs_test_release_inode(filesystem *fs, vfs_inode_ptr_t i)
    return --e->ref_count;
 }
 
+static int test_fs_readlink(vfs_path *rp, char *buf)
+{
+   tfs_entry *e = (tfs_entry *)rp->fs_path.inode;
+
+   if (e->type != VFS_SYMLINK)
+      return -ENOLINK;
+
+   strcpy(buf, e->symlink);
+   return strlen(e->symlink);
+}
 
 /*
  * Unfortunately, in C++ non-trivial designated initializers are fully not
@@ -133,7 +143,7 @@ extern const fs_ops static_fsops_testfs = {
    .mkdir               = nullptr,
    .rmdir               = nullptr,
    .symlink             = nullptr,
-   .readlink            = nullptr,
+   .readlink            = test_fs_readlink,
    .truncate            = nullptr,
    .retain_inode        = vfs_test_retain_inode,
    .release_inode       = vfs_test_release_inode,
