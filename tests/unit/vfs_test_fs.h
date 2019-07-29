@@ -51,12 +51,12 @@ inline filesystem create_test_fs(const char *name, tfs_entry *root)
 {
    filesystem fs {
 
-      1,                        /* ref-count */
-      name,                     /* fs type name */
-      0,                        /* device_id */
-      0,                        /* flags */
-      root,                     /* device_data */
-      &static_fsops_testfs,     /* fsops */
+      .ref_count        = 1,
+      .fs_type_name     = name,
+      .device_id        = 0,
+      .flags            = 0,
+      .device_data      = root,
+      .fsops            = &static_fsops_testfs,
    };
 
    return fs;
