@@ -77,7 +77,8 @@
       "fs_int.h": "c",
       "sync.h": "c",
       "rwlock.h": "c",
-      "initializer_list": "cpp"
+      "initializer_list": "cpp",
+      "iostream": "cpp"
    },
    "python.pythonPath": "/usr/bin/python"
 }
