@@ -5,15 +5,16 @@
 #include "vfs_test.h"
 using namespace std;
 
-struct test_fs_elem {
+struct tfs_entry {
 
    const char *name;
    vfs_entry_type type;
-   test_fs_elem *parent;
+   const char *symlink;
+   tfs_entry *parent;
    int ref_count;
-   map<string, test_fs_elem *> children;
+   map<string, tfs_entry *> children;
 
-   test_fs_elem *set_parents() {
+   tfs_entry *set_parents() {
 
       for (auto &p : children) {
          p.second->parent = this;
@@ -25,12 +26,13 @@ struct test_fs_elem {
 };
 
 
-#define NODE_RAW(name, t, ...) new test_fs_elem{name, t, 0, 0, { __VA_ARGS__ }}
-#define N_FILE(name) make_pair(name, NODE_RAW( name, VFS_FILE ))
-#define N_DIR(name, ...) make_pair(name, NODE_RAW( name, VFS_DIR, __VA_ARGS__ ))
-#define ROOT_NODE(...) (NODE_RAW("", VFS_DIR, __VA_ARGS__))->set_parents()
+#define _NODE(n, t, s, ...) new tfs_entry{n, t, s, 0, 0, {__VA_ARGS__}}
+#define N_FILE(name) make_pair(name, _NODE(name, VFS_FILE, 0))
+#define N_SYM(name, s) make_pair(name, _NODE(name, VFS_FILE, s))
+#define N_DIR(name, ...) make_pair(name, _NODE(name, VFS_DIR, 0, __VA_ARGS__))
+#define ROOT_NODE(...) (_NODE("", VFS_DIR, 0, __VA_ARGS__))->set_parents()
 
-static test_fs_elem *fs1 =
+static tfs_entry *fs1 =
    ROOT_NODE(
       N_DIR(
          "a",
@@ -48,7 +50,7 @@ static test_fs_elem *fs1 =
       N_DIR("dev")
    );
 
-static test_fs_elem *fs2 =
+static tfs_entry *fs2 =
    ROOT_NODE(
       N_DIR(
          "x",
@@ -57,11 +59,11 @@ static test_fs_elem *fs2 =
             N_DIR("z")
          )
       ),
-      N_FILE("f_fs2_1"),
-      N_FILE("f_fs2_2")
+      N_FILE("fs2_1"),
+      N_FILE("fs2_2")
    );
 
-static test_fs_elem *fs3 =
+static tfs_entry *fs3 =
    ROOT_NODE(
       N_DIR(
          "xd",
@@ -74,9 +76,9 @@ static test_fs_elem *fs3 =
       N_FILE("fd2")
    );
 
-static map<test_fs_elem *, test_fs_elem *> test_mps;
+static map<tfs_entry *, tfs_entry *> test_mps;
 
-static void test_fs_register_mp(test_fs_elem *where, test_fs_elem *target)
+static void test_fs_register_mp(tfs_entry *where, tfs_entry *target)
 {
    auto it = test_mps.find(where);
    ASSERT_TRUE(it == test_mps.end());
@@ -89,12 +91,12 @@ static void test_fs_clear_mps()
    test_mps.clear();
 }
 
-static bool test_fs_is_mountpoint(test_fs_elem *e)
+static bool test_fs_is_mountpoint(tfs_entry *e)
 {
    return test_mps.find(e) != test_mps.end();
 }
 
-static void test_fs_reset_refcounts(test_fs_elem *node)
+static void test_fs_reset_refcounts(tfs_entry *node)
 {
    for (auto &p : node->children) {
       p.second->ref_count = 0;
@@ -109,11 +111,11 @@ static void reset_all_fs_refcounts()
    test_fs_reset_refcounts(fs3);
 }
 
-static void test_fs_check_refcounts(test_fs_elem *node)
+static void test_fs_check_refcounts(tfs_entry *node)
 {
    for (auto &p : node->children) {
 
-      test_fs_elem *e = p.second;
+      tfs_entry *e = p.second;
 
       if (test_fs_is_mountpoint(e)) {
          ASSERT_EQ(e->ref_count, 1) << "[Info] mp node: " << p.first;
@@ -148,7 +150,7 @@ testfs_get_entry(filesystem *fs,
    }
 
    string s{name, (size_t)name_len};
-   test_fs_elem *e = (test_fs_elem *)dir_inode;
+   tfs_entry *e = (tfs_entry *)dir_inode;
    //cout << "get_entry: '" << s << "'" << endl;
 
    if (s == "." || s == "..") {
@@ -198,13 +200,13 @@ static void vfs_test_fs_shunlock(filesystem *fs)
 
 static int vfs_test_retain_inode(filesystem *fs, vfs_inode_ptr_t i)
 {
-   test_fs_elem *e = (test_fs_elem *)i;
+   tfs_entry *e = (tfs_entry *)i;
    return ++e->ref_count;
 }
 
 static int vfs_test_release_inode(filesystem *fs, vfs_inode_ptr_t i)
 {
-   test_fs_elem *e = (test_fs_elem *)i;
+   tfs_entry *e = (tfs_entry *)i;
    assert(e->ref_count > 0);
    return --e->ref_count;
 }
@@ -279,8 +281,8 @@ static int resolve(const char *path, vfs_path *p, bool res_last_sl)
    return rc;
 }
 
-static test_fs_elem *
-path(test_fs_elem *e, initializer_list<const char *> comps)
+static tfs_entry *
+path(tfs_entry *e, initializer_list<const char *> comps)
 {
    for (auto comp_name : comps) {
 
@@ -322,6 +324,7 @@ protected:
 };
 
 class vfs_resolve_multi_fs : public vfs_resolve_test { };
+class vfs_resolve_symlinks : public vfs_resolve_test { };
 
 TEST_F(vfs_resolve_test, basic_test)
 {
@@ -602,11 +605,11 @@ TEST_F(vfs_resolve_multi_fs, basic_case)
    ASSERT_STREQ(p.last_comp, "x");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
-   rc = resolve("/a/b/c2/f_fs2_1", &p, true);
+   rc = resolve("/a/b/c2/fs2_1", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != nullptr);
-   ASSERT_TRUE(p.fs_path.inode == path(fs2, {"f_fs2_1"}));
-   ASSERT_STREQ(p.last_comp, "f_fs2_1");
+   ASSERT_TRUE(p.fs_path.inode == path(fs2, {"fs2_1"}));
+   ASSERT_STREQ(p.last_comp, "fs2_1");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/b/c2/x/y", &p, true);
@@ -738,4 +741,9 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
    ASSERT_TRUE(p.fs == &testfs1);
    ASSERT_STREQ(p.last_comp, "");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
+}
+
+TEST_F(vfs_resolve_symlinks, basic_tests)
+{
+
 }
