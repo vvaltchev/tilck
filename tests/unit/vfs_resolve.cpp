@@ -59,6 +59,10 @@ static void reset_all_fs_refcounts()
    root1->reset_refcounts();
    root2->reset_refcounts();
    root3->reset_refcounts();
+
+   fs1.ref_count = 1;
+   fs2.ref_count = 1;
+   fs3.ref_count = 1;
 }
 
 static void check_all_fs_refcounts()
@@ -67,7 +71,7 @@ static void check_all_fs_refcounts()
    test_fs_check_refcounts(root2);
    test_fs_check_refcounts(root3);
 
-   // ASSERT_EQ(fs1.ref_count, 4);
+   // ASSERT_EQ(fs1.ref_count, 5);
    // ASSERT_EQ(fs2.ref_count, 2);
    // ASSERT_EQ(fs3.ref_count, 2);
 }
@@ -90,6 +94,8 @@ protected:
 
    void SetUp() override {
 
+      // cout << "At SetUp [1], fs1 refcount: " << fs1.ref_count << endl;
+
       vfs_test_base::SetUp();
 
       mp2_init(&fs1);
@@ -99,15 +105,50 @@ protected:
       test_fs_register_mp(path(root1, {"a", "b", "c2"}), root2);
       test_fs_register_mp(path(root1, {"dev"}), root3);
 
+      {
+         vfs_path *tp = &get_curr_task()->pi->cwd2;
+         tp->fs = mp2_get_root();
+         vfs_get_root_entry(tp->fs, &tp->fs_path);
+         retain_obj(tp->fs);
+         vfs_retain_inode_at(tp);
+      }
+
+      // cout << "At SetUp [2], fs1 refcount: " << fs1.ref_count << endl;
+      // cout << "At SetUp [2], fs2 refcount: " << fs2.ref_count << endl;
+      // cout << "At SetUp [2], fs3 refcount: " << fs3.ref_count << endl;
       ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
    }
 
    void TearDown() override {
 
-      // TODO: call mp2_remove() for each fs
+      ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
+
+      // cout << "At TearDown [1], fs1 refcount: " << fs1.ref_count << endl;
+      // cout << "At TearDown [1], fs2 refcount: " << fs2.ref_count << endl;
+      // cout << "At TearDown [1], fs3 refcount: " << fs3.ref_count << endl;
+
+      release_obj(mp2_get_root());
+
+      /*
+       * Compensate the effect of mp2_init, mp2_add etc.
+       * TODO: implement and call mp2_remove() for each fs instead.
+       */
+
+      release_obj(&fs1); /* mp2_init(&fs1) */
+      release_obj(&fs1); /* mp2_add(&fs2,...) */
+      release_obj(&fs1); /* mp2_add(&fs3,...) */
+      release_obj(&fs2);
+      release_obj(&fs3);
+
+      //cout << "At TearDown [2], fs1 refcount: " << fs1.ref_count << endl;
+
       reset_all_fs_refcounts();
       test_fs_clear_mps();
       vfs_test_base::TearDown();
+
+      // cout << "At TearDown [3], fs1 refcount: " << fs1.ref_count << endl;
+      // cout << "At TearDown [3], fs2 refcount: " << fs2.ref_count << endl;
+      // cout << "At TearDown [3], fs3 refcount: " << fs3.ref_count << endl;
    }
 };
 
@@ -118,6 +159,8 @@ TEST_F(vfs_resolve_test, basic_test)
 {
    int rc;
    vfs_path p;
+
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* root path */
    rc = resolve("/", &p, true);
@@ -188,6 +231,8 @@ TEST_F(vfs_resolve_test, corner_cases)
 {
    int rc;
    vfs_path p;
+
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* empty path */
    rc = resolve("", &p, true);
