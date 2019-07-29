@@ -47,10 +47,10 @@ filesystem *mp2_get_retained_at(filesystem *host_fs, vfs_inode_ptr_t inode)
    return ret;
 }
 
-int mp2_get_mountpoint_of(filesystem *target_fs, mountpoint2 *mp)
+mountpoint2 *mp2_get_retained_mp_of(filesystem *target_fs)
 {
    uptr i;
-   int rc = -ENOENT;
+   mountpoint2 *res = NULL;
 
    kmutex_lock(&mp2_mutex);
    {
@@ -59,12 +59,12 @@ int mp2_get_mountpoint_of(filesystem *target_fs, mountpoint2 *mp)
             break;
 
       if (i < ARRAY_SIZE(mps2)) {
-         *mp = mps2[i];
-         rc = 0;
+         res = &mps2[i];
+         retain_obj(res);
       }
    }
    kmutex_unlock(&mp2_mutex);
-   return rc;
+   return res;
 }
 
 int mp2_add(filesystem *target_fs, const char *target_path)

@@ -253,21 +253,42 @@ vfs_resolve_handle_dot_dot(vfs_resolve_int_ctx *ctx,
    } else if (p.fs != mp2_get_root()) {
 
       /* we have to go beyond the mount-point */
-      int rc;
-      mountpoint2 mp;
+      mountpoint2 *mp = mp2_get_retained_mp_of(p.fs);
 
-      rc = mp2_get_mountpoint_of(p.fs, &mp);
-      ASSERT(rc == 0);
-      ASSERT(mp.host_fs != p.fs);
-      ASSERT(mp.target_fs == p.fs);
-      ASSERT(mp.host_fs_inode != NULL);
+      ASSERT(mp != NULL);
+      ASSERT(mp->host_fs != p.fs);
+      ASSERT(mp->target_fs == p.fs);
+      ASSERT(mp->host_fs_inode != NULL);
 
-      retain_obj(mp.host_fs);
+      /*
+       * Here it's tricky: we have to switch the FS we're using for the
+       * resolving. Current state:
+       *
+       *    1. The current FS is pointed by p.fs
+       *    2. The current FS is locked (exlock or shlock)
+       *    3. The current FS is retained
+       *    4. The current dir in the current FS is retained
+       *    5. The mountpoint where the current FS is retained
+       *
+       * Therefore, we need to (the order matters):
+       *
+       *    1. retain the new FS
+       *    2. unlock the current FS
+       *    3. lock the new FS
+       *    4. release the current FS (now unlocked)
+       *    5. release the mountpoint
+       *
+       * NOTE: the current dir in the current FS won't be released here. That
+       * will happen in vfs_resolve_stack_replace_top().
+       */
+      retain_obj(mp->host_fs);
       vfs_smart_fs_unlock(p.fs, ctx->exlock);
-      vfs_smart_fs_lock(mp.host_fs, ctx->exlock);
+      vfs_smart_fs_lock(mp->host_fs, ctx->exlock);
+      release_obj(p.fs);
+      release_obj(mp);
 
-      p.fs = mp.host_fs;
-      vfs_get_entry(p.fs, mp.host_fs_inode, "..", 2, &p.fs_path);
+      p.fs = mp->host_fs;
+      vfs_get_entry(p.fs, mp->host_fs_inode, "..", 2, &p.fs_path);
 
       ASSERT(p.fs_path.inode != NULL);
       ASSERT(p.fs_path.type == VFS_DIR);

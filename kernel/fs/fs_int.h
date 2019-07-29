@@ -5,6 +5,8 @@
 
 typedef struct {
 
+   REF_COUNTED_OBJECT;
+
    filesystem *host_fs;
    vfs_inode_ptr_t host_fs_inode;
    filesystem *target_fs;
