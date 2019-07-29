@@ -129,10 +129,13 @@ static int
 vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
 {
    int rc;
+   const char *lc = np->last_comp;
    char *symlink = ctx->sym_paths[ctx->ss - 1];
    vfs_path *rp = vfs_resolve_stack_top(ctx);
    vfs_path np2;
    DEBUG_ONLY_UNSAFE(int saved_ss = ctx->ss);
+
+   ASSERT(np->fs_path.type == VFS_SYMLINK);
 
    if ((rc = rp->fs->fsops->readlink(np, symlink)) < 0)
       return rc;
@@ -149,6 +152,7 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
       get_locked_and_retained_root(rp, ctx->exlock);
    }
 
+   /* Push the current vfs path on the stack and call __vfs_resolve() */
    if ((rc = vfs_resolve_stack_push(ctx, symlink, rp)) < 0)
       return rc;
 
@@ -157,9 +161,29 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
    /* At the end, resolve() must use exactly 1 stack frame */
    ASSERT(ctx->ss == saved_ss + 1);
 
+   /*
+    * Now replace our new path with stack's top (the result of __vfs_resolve).
+    * Note: we have to override the value of `last_comp` with the older one
+    * because its value does make any sense from the caller's point of view.
+    * Example:
+    *
+    *    resolve('/a/b'), where 'b' is a symlink to /x/y/z.
+    *
+    * We expect the last_comp to be 'b', not 'z'.
+    */
    *np = *vfs_resolve_stack_top(ctx);
+   np->last_comp = lc;
 
-   if (np->fs_path.inode)
+   /*
+    * __vfs_resolve() always retains the resolved inode, unless it returned a
+    * value < 0 (error). It might seem unsafe to release the inode here as its
+    * ref-count could drop to 0 until we get to stack_replace_top(), but
+    * actually it's safe because we're holding *at least* a shared lock on
+    * the FS owning this inode. What it matters is that we retained the inode
+    * before releasing the lock (fs change case).
+    */
+
+   if (!rc && np->fs_path.inode)
       vfs_release_inode_at(np);
 
    vfs_resolve_stack_pop(ctx);
@@ -315,7 +339,6 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
    const char *path = ctx->orig_paths[ctx->ss - 1];
    vfs_path *rp = vfs_resolve_stack_top(ctx);
    vfs_path np = *rp;
-
    DEBUG_VALIDATE_STACK_PTR();
 
    /* the vfs_path `rp` is assumed to be valid */
