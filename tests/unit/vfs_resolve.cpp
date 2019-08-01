@@ -377,6 +377,14 @@ TEST_F(vfs_resolve_test, double_dot)
    ASSERT_STREQ(p.last_comp, "new");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
+   rc = resolve("/a/b/c/../../new/", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode == nullptr);
+   ASSERT_TRUE(p.fs_path.dir_inode == path(root1, {"a"}));
+   ASSERT_TRUE(p.fs_path.type == VFS_NONE);
+   ASSERT_STREQ(p.last_comp, "new/");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
+
    rc = resolve("/a/..", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == root1);

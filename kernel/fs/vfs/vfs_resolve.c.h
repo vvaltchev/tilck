@@ -70,7 +70,7 @@ vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
    return 0;
 }
 
-static int
+static void
 vfs_resolve_stack_replace_top(vfs_resolve_int_ctx *ctx,
                               const char *path,
                               vfs_path *p)
@@ -82,7 +82,8 @@ vfs_resolve_stack_replace_top(vfs_resolve_int_ctx *ctx,
    if (cp->fs_path.inode)
       vfs_release_inode_at(cp);
 
-   return vfs_resolve_stack_push(ctx, path, p);
+   /* push cannot fail here because we've just dropped one frame */
+   vfs_resolve_stack_push(ctx, path, p);
 }
 
 static void
@@ -286,6 +287,11 @@ vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
 
    *np = *rp;
 
+   /*
+    * If the path component is empty (e.g. 'a//b' contains 3 path components:
+    * 'a', '', 'b') or if the path component is '.', then just return keeping
+    * the same VFS path.
+    */
    if (lc == path || (lc[0] == '.' && (lc[1] == '/' || !lc[1])))
       return 0;
 
@@ -331,7 +337,7 @@ vfs_resolve_have_to_return(const char *path, vfs_path *rp, int *rc)
 static int
 __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
 {
-   int rc;
+   int rc = 0;
    const char *path = ctx->orig_paths[ctx->ss - 1];
    vfs_path *rp = vfs_resolve_stack_top(ctx);
    vfs_path np = *rp;
@@ -352,13 +358,8 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
       if ((rc = vfs_resolve_get_entry(ctx, path, &np, true)))
          return rc;
 
-      if (vfs_resolve_have_to_return(path, &np, &rc)) {
-
-         if (rc)
-            return rc;
-
+      if (vfs_resolve_have_to_return(path, &np, &rc))
          goto out;
-      }
 
       vfs_resolve_stack_replace_top(ctx, path + 1, &np);
    }
@@ -368,7 +369,11 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
       return rc;
 
 out:
-   return vfs_resolve_stack_replace_top(ctx, np.last_comp, &np);
+
+   if (!rc)
+      vfs_resolve_stack_replace_top(ctx, np.last_comp, &np);
+
+   return rc;
 }
 
 static void
