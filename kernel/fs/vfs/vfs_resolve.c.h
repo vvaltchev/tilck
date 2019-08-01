@@ -279,15 +279,18 @@ vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
                       bool res_symlinks)
 {
    vfs_path *rp = vfs_resolve_stack_top(ctx);
+   const char *const lc = rp->last_comp;
 
-   if (vfs_resolve_handle_dot_dot(ctx, rp->last_comp, np))
+   if (vfs_resolve_handle_dot_dot(ctx, lc, np))
       return 0;
 
    *np = *rp;
 
-   ASSERT(path - rp->last_comp > 0);
+   if (lc == path || (lc[0] == '.' && (lc[1] == '/' || !lc[1])))
+      return 0;
+
    __vfs_resolve_get_entry(rp->fs_path.inode,
-                           rp->last_comp,
+                           lc,
                            path,
                            np,
                            ctx->exlock);
@@ -325,31 +328,6 @@ vfs_resolve_have_to_return(const char *path, vfs_path *rp, int *rc)
    return false;
 }
 
-static inline bool
-vfs_res_handle_trivial_path(vfs_resolve_int_ctx *ctx,
-                            const char **path_ref,
-                            vfs_path *rp,
-                            int *rc)
-{
-   rp->last_comp = *path_ref;
-
-   if (!**path_ref) {
-      *rc = -ENOENT;
-      return true;
-   }
-
-   *path_ref = vfs_res_handle_dot_slash(*path_ref);
-   rp->last_comp = *path_ref;
-
-   if (!**path_ref) {
-      /* path was just "/" */
-      *rc = 0;
-      return true;
-   }
-
-   return false;
-}
-
 static int
 __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
 {
@@ -359,23 +337,20 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
    vfs_path np = *rp;
    DEBUG_VALIDATE_STACK_PTR();
 
+   if (!*path)
+      return -ENOENT;
+
    /* the vfs_path `rp` is assumed to be valid */
    ASSERT(rp->fs != NULL);
    ASSERT(rp->fs_path.inode != NULL);
-
-   if (vfs_res_handle_trivial_path(ctx, &path, rp, &rc))
-      return rc;
 
    for (; *path; path++) {
 
       if (*path != '/')
          continue;
 
-      /* ------- we hit a slash in path: handle the component ------- */
       if ((rc = vfs_resolve_get_entry(ctx, path, &np, true)))
          return rc;
-
-      path = vfs_res_handle_dot_slash(path + 1) - 1;
 
       if (vfs_resolve_have_to_return(path, &np, &rc)) {
 
@@ -456,6 +431,15 @@ vfs_resolve(const char *path,
 
    /* Store out the last frame in the caller-provided vfs_path */
    *rp = ctx.paths[0];
+
+   /*
+    * Handle corner cases like 'a/b/c//////'.
+    * The last_comp must be 'c//////' instead of '/', as returned by
+    * __vfs_resolve().
+    */
+   if (*rp->last_comp == '/') {
+      for (; rp->last_comp > path && *--rp->last_comp == '/'; ) { }
+   }
 
    if (rp->fs_path.inode)
       vfs_release_inode_at(rp);

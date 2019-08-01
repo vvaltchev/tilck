@@ -171,7 +171,7 @@ TEST_F(vfs_resolve_test, basic_test)
    ASSERT_TRUE(p.fs_path.inode == root1);
    ASSERT_TRUE(p.fs_path.dir_inode == root1);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
-   ASSERT_STREQ(p.last_comp, "");
+   ASSERT_STREQ(p.last_comp, "/");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* regular 1-level path */
@@ -248,7 +248,7 @@ TEST_F(vfs_resolve_test, corner_cases)
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == root1);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
-   ASSERT_STREQ(p.last_comp, "");
+   ASSERT_STREQ(p.last_comp, "/////");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    /* multiple slashes [in the middle] */
@@ -304,28 +304,28 @@ TEST_F(vfs_resolve_test, single_dot)
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == path(root1, {"a"}));
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
-   ASSERT_STREQ(p.last_comp, "a/.");
+   ASSERT_STREQ(p.last_comp, ".");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/./", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == path(root1, {"a"}));
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
-   ASSERT_STREQ(p.last_comp, "a/./");
+   ASSERT_STREQ(p.last_comp, "./");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/.", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == root1);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
-   ASSERT_STREQ(p.last_comp, "");
+   ASSERT_STREQ(p.last_comp, ".");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/./", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode == root1);
    ASSERT_TRUE(p.fs_path.type == VFS_DIR);
-   ASSERT_STREQ(p.last_comp, "");
+   ASSERT_STREQ(p.last_comp, "./");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("/a/./b/c", &p, true);
@@ -567,7 +567,7 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
    ASSERT_TRUE(p.fs_path.inode != nullptr);
    ASSERT_TRUE(p.fs_path.inode == root3);
    ASSERT_TRUE(p.fs == &fs3);
-   ASSERT_STREQ(p.last_comp, "");
+   ASSERT_STREQ(p.last_comp, ".");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
    rc = resolve("..", &p, true);
