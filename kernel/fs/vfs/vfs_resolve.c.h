@@ -416,14 +416,7 @@ get_current_vfs_path(vfs_path *rp)
 
    kmutex_lock(&pi->fslock);
    {
-      /* lazy set the default path to root */
-      if (UNLIKELY(pi->cwd2.fs == NULL)) {
-         vfs_path *tp = &pi->cwd2;
-         tp->fs = mp2_get_root();
-         vfs_get_root_entry(tp->fs, &tp->fs_path);
-         retain_obj(tp->fs);
-         vfs_retain_inode_at(tp);
-      }
+      ASSERT(pi->cwd2.fs != NULL);
 
       /* Just copy `cwd2` into the address pointed by `rp` */
       *rp = pi->cwd2;

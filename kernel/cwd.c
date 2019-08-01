@@ -48,6 +48,38 @@ getcwd_nolock(process_info *pi, char *user_buf, size_t buf_size)
    return (int) cl;
 }
 
+/*
+ * This function does NOT release the former `fs` and `path` and should be
+ * used ONLY directly once during the initialization in main.c and during
+ * fork(). For all the other cases, call process_set_cwd2_nolock().
+ */
+void process_set_cwd2_nolock_raw(process_info *pi, vfs_path *tp)
+{
+   ASSERT(tp->fs != NULL);
+   ASSERT(tp->fs_path.inode != NULL);
+
+   retain_obj(tp->fs);
+   vfs_retain_inode_at(tp);
+   pi->cwd2 = *tp;
+}
+
+void process_set_cwd2_nolock(vfs_path *tp)
+{
+   process_info *pi = get_curr_task()->pi;
+   ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
+   ASSERT(pi->cwd2.fs != NULL);
+   ASSERT(pi->cwd2.fs_path.inode != NULL);
+
+   /*
+    * We have to release the inode at that path and the fs containing it, before
+    * changing them with process_set_cwd2_nolock_raw().
+    */
+
+   vfs_release_inode_at(&pi->cwd2);
+   release_obj(pi->cwd2.fs);
+   process_set_cwd2_nolock_raw(pi, tp);
+}
+
 int sys_chdir(const char *user_path)
 {
    int rc = 0;
@@ -87,27 +119,14 @@ int sys_chdir(const char *user_path)
          goto out;
       }
 
-      if (LIKELY(pi->cwd2.fs != NULL)) {
-
-         /*
-          * Default case: pi->cwd2 is set.
-          * We have to release the inode at that path and the fs containing it
-          * as well.
-          */
-
-         vfs_release_inode_at(&pi->cwd2);
-         release_obj(pi->cwd2.fs);
-      }
+      process_set_cwd2_nolock(&p);
 
       /*
-       * Here we have a vfs_path with `fs` retained. We need to retain the `fs`
-       * anyway, therefore, just don't touch its ref-count. What we must do is
-       * to retain the inode pointed by this vfs_path and release the shared
-       * lock vfs_resolve() acquired for us on its owner fs.
+       * We need to unlock and release the fs because vfs_resolve() retained
+       * and locked it.
        */
-      vfs_retain_inode_at(&p);
       vfs_fs_shunlock(p.fs);
-      pi->cwd2 = p;
+      release_obj(p.fs);
 
       DEBUG_ONLY_UNSAFE(rc =)
          compute_abs_path(orig_path, pi->cwd, path, MAX_PATH);

@@ -101,7 +101,7 @@ static void show_system_info(void)
    show_banner();
 }
 
-static void mount_first_ramdisk(void)
+static void mount_initrd(void)
 {
    /* declare the ramfs_create() function */
    filesystem *ramfs_create(void);
@@ -115,25 +115,31 @@ static void mount_first_ramdisk(void)
       return;
    }
 
-   initrd = fat_mount_ramdisk(ramdisk, VFS_FS_RO);
-
-   if (!initrd)
+   if (!(initrd = fat_mount_ramdisk(ramdisk, VFS_FS_RO)))
       panic("Unable to mount the initrd fat32 RAMDISK");
 
-   /* use the new mount point interface in parallel with the old one */
    if ((rc = mp2_init(initrd)))
       panic("mp2_init() failed with error: %d", rc);
 
    /* -------------------------------------------- */
    /* mount the ramdisk at /tmp                    */
 
-   ramfs = ramfs_create();
-
-   if (!ramfs)
+   if (!(ramfs = ramfs_create()))
       panic("Unable to create ramfs");
 
    if ((rc = mp2_add(ramfs, "/tmp/")))
       panic("mp2_add() failed with error: %d", rc);
+
+   /* Set kernel's process `cwd2` to the root folder */
+   {
+      vfs_path tp;
+      process_info *pi = kernel_process_pi;
+      ASSERT(pi == get_curr_task()->pi);
+
+      tp.fs = mp2_get_root();
+      vfs_get_root_entry(tp.fs, &tp.fs_path);
+      process_set_cwd2_nolock_raw(pi, &tp);
+   }
 }
 
 static void run_init_or_selftest(void)
@@ -170,7 +176,7 @@ static void init_kb_if_necessary()
 
 static void do_async_init()
 {
-   mount_first_ramdisk();
+   mount_initrd();
    init_devfs();
    init_kb_if_necessary();
    init_tty();

@@ -93,7 +93,7 @@ void init_process_lists(process_info *pi)
 
 task_info *allocate_new_process(task_info *parent, int pid)
 {
-   process_info *pi;
+   process_info *pi, *parent_pi = parent->pi;
    task_info *ti = kmalloc(sizeof(task_info) + sizeof(process_info));
 
    if (!ti)
@@ -105,9 +105,9 @@ task_info *allocate_new_process(task_info *parent, int pid)
    ASSERT(parent != NULL);
 
    memcpy(ti, parent, sizeof(task_info));
-   memcpy(pi, parent->pi, sizeof(process_info));
-   pi->parent_pid = parent->pi->pid;
-   pi->mmap_heap = kmalloc_heap_dup(parent->pi->mmap_heap);
+   memcpy(pi, parent_pi, sizeof(process_info));
+   pi->parent_pid = parent_pi->pid;
+   pi->mmap_heap = kmalloc_heap_dup(parent_pi->mmap_heap);
 
    pi->ref_count = 1;
    pi->pid = pid;
@@ -115,19 +115,8 @@ task_info *allocate_new_process(task_info *parent, int pid)
    ti->is_main_thread = true;
    pi->did_call_execve = false;
 
-   if (LIKELY(pi->cwd2.fs != NULL)) {
-
-      /*
-       * We're forking a process which has a CWD set. Therefore, we have to
-       * retain inode pointed by the pi->cwd2 vfs_path and retain its owning
-       * `fs` as well. When we change the current working directory or when
-       * the process dies, those ref-counts are released.
-       *
-       * See sys_chdir() and free_task() [below].
-       */
-      vfs_retain_inode_at(&pi->cwd2);
-      retain_obj(pi->cwd2.fs);
-   }
+   /* Copy parent's `cwd2` while retaining the `fs` and the inode obj */
+   process_set_cwd2_nolock_raw(pi, &parent_pi->cwd2);
 
    if (!do_common_task_allocations(ti) ||
        !arch_specific_new_task_setup(ti, parent))
