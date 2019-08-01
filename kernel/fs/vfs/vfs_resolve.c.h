@@ -175,16 +175,18 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
    np->last_comp = lc;
 
    /*
-    * __vfs_resolve() always retains the resolved inode, unless it returned a
-    * value < 0 (error). It might seem unsafe to release the inode here as its
-    * ref-count could drop to 0 until we get to stack_replace_top(), but
-    * actually it's safe because we're holding *at least* a shared lock on
-    * the FS owning this inode. What it matters is that we retained the inode
-    * before releasing the lock (fs change case).
+    * __vfs_resolve() always retains the resolved inode. It might seem unsafe
+    * to release the inode here as its ref-count could drop to 0 until we get
+    * to stack_replace_top(), but actually it's safe because we're holding
+    * *at least* a shared lock on the FS owning this inode. What it matters is
+    * that we retained the inode before releasing the lock (fs change case).
     */
 
-   if (!rc && np->fs_path.inode)
+   if (np->fs_path.inode)
       vfs_release_inode_at(np);
+
+   if (np->fs && np->fs != rp->fs)
+      vfs_smart_fs_unlock(np->fs, ctx->exlock);
 
    vfs_resolve_stack_pop(ctx);
    return rc;
@@ -482,6 +484,7 @@ vfs_resolve(const char *path,
       /* resolve failed: release the lock and the fs */
       vfs_smart_fs_unlock(rp->fs, exlock);
       release_obj(rp->fs);
+      bzero(rp, sizeof(vfs_path));
    }
 
    return rc;
