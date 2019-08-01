@@ -192,38 +192,10 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
    return rc;
 }
 
-static int
-vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
-                      const char *path,
-                      vfs_path *np,
-                      bool res_symlinks)
-{
-   vfs_path *rp = vfs_resolve_stack_top(ctx);
-   *np = *rp;
-
-   ASSERT(path - rp->last_comp > 0);
-   __vfs_resolve_get_entry(rp->fs_path.inode,
-                           rp->last_comp,
-                           path,
-                           np,
-                           ctx->exlock);
-
-   if (np->fs_path.type == VFS_SYMLINK && res_symlinks)
-      return vfs_resolve_symlink(ctx, np);
-
-   return 0;
-}
-
 static inline bool
 __vfs_res_hit_dot_dot(const char *path)
 {
    return path[0] == '.' && path[1] == '.' && (!path[2] || path[2] == '/');
-}
-
-static inline bool
-vfs_res_does_path_end_here(const char *path)
-{
-   return !path[0] || (path[0] == '/' && !path[1]);
 }
 
 /*
@@ -232,41 +204,39 @@ vfs_res_does_path_end_here(const char *path)
  */
 static bool
 vfs_resolve_handle_dot_dot(vfs_resolve_int_ctx *ctx,
-                           const char **path_ref)
+                           const char *path,
+                           vfs_path *np)
 {
-   if (!__vfs_res_hit_dot_dot(*path_ref))
+   fs_path_struct root_fsp;
+
+   if (!__vfs_res_hit_dot_dot(path))
       return false;
 
-   vfs_path p = *vfs_resolve_stack_top(ctx);
-   fs_path_struct root_fsp;
-   const char *lc;
-
-   *path_ref += 2;
-   lc = **path_ref ? *path_ref + 1 : *path_ref;
+   *np = *vfs_resolve_stack_top(ctx);
 
    /* Get the root inode of the current file system */
-   vfs_get_root_entry(p.fs, &root_fsp);
+   vfs_get_root_entry(np->fs, &root_fsp);
 
-   if (root_fsp.inode != p.fs_path.inode) {
+   if (root_fsp.inode != np->fs_path.inode) {
 
       /* in this fs, we can go further up */
-      vfs_get_entry(p.fs, p.fs_path.inode, "..", 2, &p.fs_path);
+      vfs_get_entry(np->fs, np->fs_path.inode, "..", 2, &np->fs_path);
 
-   } else if (p.fs != mp2_get_root()) {
+   } else if (np->fs != mp2_get_root()) {
 
       /* we have to go beyond the mount-point */
-      mountpoint2 *mp = mp2_get_retained_mp_of(p.fs);
+      mountpoint2 *mp = mp2_get_retained_mp_of(np->fs);
 
       ASSERT(mp != NULL);
-      ASSERT(mp->host_fs != p.fs);
-      ASSERT(mp->target_fs == p.fs);
+      ASSERT(mp->host_fs != np->fs);
+      ASSERT(mp->target_fs == np->fs);
       ASSERT(mp->host_fs_inode != NULL);
 
       /*
        * Here it's tricky: we have to switch the FS we're using for the
        * resolving. Current state:
        *
-       *    1. The current FS is pointed by p.fs
+       *    1. The current FS is pointed by np->fs
        *    2. The current FS is locked (exlock or shlock)
        *    3. The current FS is retained
        *    4. The current dir in the current FS is retained
@@ -284,23 +254,48 @@ vfs_resolve_handle_dot_dot(vfs_resolve_int_ctx *ctx,
        * will happen in vfs_resolve_stack_replace_top().
        */
       retain_obj(mp->host_fs);
-      vfs_smart_fs_unlock(p.fs, ctx->exlock);
+      vfs_smart_fs_unlock(np->fs, ctx->exlock);
       vfs_smart_fs_lock(mp->host_fs, ctx->exlock);
-      release_obj(p.fs);
+      release_obj(np->fs);
       release_obj(mp);
 
-      p.fs = mp->host_fs;
-      vfs_get_entry(p.fs, mp->host_fs_inode, "..", 2, &p.fs_path);
+      np->fs = mp->host_fs;
+      vfs_get_entry(np->fs, mp->host_fs_inode, "..", 2, &np->fs_path);
 
-      ASSERT(p.fs_path.inode != NULL);
-      ASSERT(p.fs_path.type == VFS_DIR);
+      ASSERT(np->fs_path.inode != NULL);
+      ASSERT(np->fs_path.type == VFS_DIR);
 
    } else {
       /* there's nowhere to go further */
    }
 
-   vfs_resolve_stack_replace_top(ctx, lc, &p);
    return true;
+}
+
+static int
+vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
+                      const char *path,
+                      vfs_path *np,
+                      bool res_symlinks)
+{
+   vfs_path *rp = vfs_resolve_stack_top(ctx);
+
+   if (vfs_resolve_handle_dot_dot(ctx, rp->last_comp, np))
+      return 0;
+
+   *np = *rp;
+
+   ASSERT(path - rp->last_comp > 0);
+   __vfs_resolve_get_entry(rp->fs_path.inode,
+                           rp->last_comp,
+                           path,
+                           np,
+                           ctx->exlock);
+
+   if (np->fs_path.type == VFS_SYMLINK && res_symlinks)
+      return vfs_resolve_symlink(ctx, np);
+
+   return 0;
 }
 
 static inline bool
@@ -372,14 +367,6 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
       return rc;
 
    for (; *path; path++) {
-
-      if (vfs_resolve_handle_dot_dot(ctx, &path)) {
-
-         if (vfs_res_does_path_end_here(path))
-            return 0;
-
-         continue;
-      }
 
       if (*path != '/')
          continue;

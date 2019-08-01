@@ -59,7 +59,7 @@ testfs_get_entry(filesystem *fs,
 
    if (s == "." || s == "..") {
 
-      if (s == "..")
+      if (s == ".." && e->parent != nullptr)
          e = e->parent;
 
       fs_path->inode = (void *)e;
