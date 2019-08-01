@@ -8,6 +8,8 @@ static tfs_entry *root1 =
    ROOT_NODE(
       N_DIR(
          "a",
+         N_SYM("linkToOtherFs1", "./b/c2/fs2_1"),
+         N_SYM("linkToOtherFs2", "./b/c2/x/l1"),
          N_SYM("p2", "b/p3"),
          N_DIR(
             "b",
@@ -38,6 +40,7 @@ static tfs_entry *root2 =
    ROOT_NODE(
       N_DIR(
          "x",
+         N_SYM("l1", "/a"),
          N_DIR(
             "y",
             N_DIR("z")
@@ -661,10 +664,50 @@ TEST_F(vfs_resolve_symlinks, too_many_links_eloop)
    int rc;
    vfs_path p;
 
+   /* 1 plus max nested symlinks */
    rc = resolve("/p1", &p, true);
    ASSERT_EQ(rc, -ELOOP);
    ASSERT_TRUE(p.fs == nullptr);
    ASSERT_TRUE(p.fs_path.inode == nullptr);
    ASSERT_TRUE(p.last_comp == nullptr);
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
+
+   /* 2 plus max nested symlinks */
+   rc = resolve("/p0", &p, true);
+   ASSERT_EQ(rc, -ELOOP);
+   ASSERT_TRUE(p.fs == nullptr);
+   ASSERT_TRUE(p.fs_path.inode == nullptr);
+   ASSERT_TRUE(p.last_comp == nullptr);
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
+}
+
+
+TEST_F(vfs_resolve_symlinks, cross_fs_symlinks)
+{
+   int rc;
+   vfs_path p;
+
+   rc = resolve("/a/linkToOtherFs1", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
+   ASSERT_TRUE(p.fs == &fs2);
+   ASSERT_TRUE(p.fs_path.inode == path(root2, {"fs2_1"}));
+   ASSERT_STREQ(p.last_comp, "linkToOtherFs1");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
+
+   rc = resolve("/a/linkToOtherFs2", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
+   ASSERT_TRUE(p.fs == &fs1);
+   ASSERT_TRUE(p.fs_path.inode == path(root1, {"a"}));
+   ASSERT_STREQ(p.last_comp, "linkToOtherFs2");
+   ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
+
+   rc = resolve("/a/linkToOtherFs2/b", &p, true);
+   ASSERT_EQ(rc, 0);
+   ASSERT_TRUE(p.fs_path.inode != nullptr);
+   ASSERT_TRUE(p.fs == &fs1);
+   ASSERT_TRUE(p.fs_path.inode == path(root1, {"a", "b"}));
+   ASSERT_STREQ(p.last_comp, "b");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 }
