@@ -1,30 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static inline const char *
-vfs_res_handle_dot_slash(const char *path)
-{
-   /* Handle the case of multiple slashes. */
-   while (*path == '/')
-      path++;
-
-   /* Handle the case of a single '.' */
-   if (*path == '.') {
-
-      if (!path[1]) {
-
-         /* case: /a/b/c/. */
-         path++;
-
-      } else if (path[1] == '/') {
-
-         /* case: /a/b/c/./ */
-         path += 2;   /* just skip the "/." substring */
-      }
-   }
-
-   return path;
-}
-
 static inline void vfs_smart_fs_lock(filesystem *fs, bool exlock)
 {
    /* See the comment in vfs.h about the "fs-lock" funcs */
@@ -199,10 +174,7 @@ __vfs_res_hit_dot_dot(const char *path)
    return path[0] == '.' && path[1] == '.' && (!path[2] || path[2] == '/');
 }
 
-/*
- * Returns `true` if the caller has to return 0, or `false` if the caller should
- * continue the loop.
- */
+/* Returns true if the current path component was actually '..' */
 static bool
 vfs_resolve_handle_dot_dot(vfs_resolve_int_ctx *ctx,
                            const char *path,
@@ -308,7 +280,7 @@ vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
 }
 
 static inline bool
-vfs_resolve_have_to_return(const char *path, vfs_path *rp, int *rc)
+vfs_resolve_have_to_stop(const char *path, vfs_path *rp, int *rc)
 {
    if (!rp->fs_path.inode) {
 
@@ -358,20 +330,21 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
       if ((rc = vfs_resolve_get_entry(ctx, path, &np, true)))
          return rc;
 
-      if (vfs_resolve_have_to_return(path, &np, &rc))
-         goto out;
+      if (vfs_resolve_have_to_stop(path, &np, &rc))
+         break;
 
       vfs_resolve_stack_replace_top(ctx, path + 1, &np);
    }
 
-   /* path ended without '/': we have to resolve the last component now */
-   if ((rc = vfs_resolve_get_entry(ctx, path, &np, res_last_sl)))
-      return rc;
+   if (*path == 0) {
+      /* path ended without '/': we have to resolve the last component now */
+      rc = vfs_resolve_get_entry(ctx, path, &np, res_last_sl);
+   }
 
-out:
-
-   if (!rc)
+   if (!rc) {
+      /* replace the last frame only in case of no errors */
       vfs_resolve_stack_replace_top(ctx, np.last_comp, &np);
+   }
 
    return rc;
 }
