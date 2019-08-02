@@ -546,6 +546,11 @@ STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
    return 0;
 }
 
+static ALWAYS_INLINE bool slash_or_nul(char c)
+{
+   return !c || c == '/';
+}
+
 static void
 fat_get_entry(filesystem *fs,
               void *dir_inode,
@@ -563,6 +568,8 @@ fat_get_entry(filesystem *fs,
 
       /* both dir_inode and name are NULL: getting a path to the root dir */
 
+return_root_entry:
+
       *fp = (fat_fs_path) {
          .entry            = d->root_entry,
          .parent_entry     = d->root_entry,
@@ -575,6 +582,12 @@ fat_get_entry(filesystem *fs,
 
    dir_entry = dir_inode ? dir_inode : d->root_entry;
    dir_cluster = fat_get_first_cluster_generic(d, dir_entry);
+
+   if (UNLIKELY(dir_entry == d->root_entry)) {
+      if (UNLIKELY(name[0] == '.'))
+         if (slash_or_nul(name[1]) || (name[1] == '.' && slash_or_nul(name[2])))
+            goto return_root_entry;
+   }
 
    fat_init_search_ctx(&ctx, name, true);
    fat_walk_directory(&ctx.walk_ctx,
