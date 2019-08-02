@@ -90,7 +90,7 @@ __vfs_resolve_get_entry(vfs_inode_ptr_t idir,
    }
 }
 
-static void get_locked_and_retained_root(vfs_path *rp, bool exlock)
+static void get_locked_retained_root(vfs_path *rp, bool exlock)
 {
    rp->fs = mp2_get_root();
    retain_obj(rp->fs);
@@ -125,7 +125,7 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
       release_obj(rp->fs);
 
       rp = &np2;
-      get_locked_and_retained_root(rp, ctx->exlock);
+      get_locked_retained_root(rp, ctx->exlock);
    }
 
    /* Push the current vfs path on the stack and call __vfs_resolve() */
@@ -169,21 +169,21 @@ vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
 }
 
 static inline bool
-__vfs_res_hit_dot_dot(const char *path)
+vfs_is_path_dotdot(const char *path)
 {
-   return path[0] == '.' && path[1] == '.' && (!path[2] || path[2] == '/');
+   return path[0] == '.' && path[1] == '.' && slash_or_nul(path[2]);
 }
 
-/* Returns true if the current path component was actually '..' */
+/* Returns true if the function completely handled the current component */
 static bool
-vfs_resolve_handle_dot_dot(vfs_resolve_int_ctx *ctx,
+vfs_handle_cross_fs_dotdot(vfs_resolve_int_ctx *ctx,
                            const char *path,
                            vfs_path *np)
 {
    fs_path_struct root_fsp;
    mountpoint2 *mp;
 
-   if (!__vfs_res_hit_dot_dot(path))
+   if (!vfs_is_path_dotdot(path))
       return false;
 
    *np = *vfs_resolve_stack_top(ctx);
@@ -252,7 +252,7 @@ vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
    vfs_path *rp = vfs_resolve_stack_top(ctx);
    const char *const lc = rp->last_comp;
 
-   if (vfs_resolve_handle_dot_dot(ctx, lc, np))
+   if (vfs_handle_cross_fs_dotdot(ctx, lc, np))
       return 0;
 
    *np = *rp;
@@ -347,7 +347,7 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
 }
 
 static void
-get_current_vfs_path(vfs_path *rp)
+get_locked_retained_cwd(vfs_path *rp, bool exlock)
 {
    process_info *pi = get_curr_task()->pi;
 
@@ -357,8 +357,10 @@ get_current_vfs_path(vfs_path *rp)
 
       /* Just copy `cwd2` into the address pointed by `rp` */
       *rp = pi->cwd2;
+      retain_obj(rp->fs);
    }
    kmutex_unlock(&pi->fslock);
+   vfs_smart_fs_lock(rp->fs, exlock);
 }
 
 /*
@@ -385,16 +387,10 @@ vfs_resolve(const char *path,
       .exlock = exlock,
    };
 
-   if (*path == '/') {
-
-      get_locked_and_retained_root(rp, exlock);
-
-   } else {
-
-      get_current_vfs_path(rp);
-      retain_obj(rp->fs);
-      vfs_smart_fs_lock(rp->fs, exlock);
-   }
+   if (*path == '/')
+      get_locked_retained_root(rp, exlock);
+   else
+      get_locked_retained_cwd(rp, exlock);
 
    rc = vfs_resolve_stack_push(&ctx, path, rp);
    ASSERT(rc == 0);
@@ -407,19 +403,22 @@ vfs_resolve(const char *path,
    /* Store out the last frame in the caller-provided vfs_path */
    *rp = ctx.paths[0];
 
-   /*
-    * Handle corner cases like 'a/b/c//////'.
-    * The last_comp must be 'c//////' instead of '/', as returned by
-    * __vfs_resolve().
-    */
-   if (*rp->last_comp == '/') {
-      for (; rp->last_comp > path && *--rp->last_comp == '/'; ) { }
-   }
-
    if (rp->fs_path.inode)
       vfs_release_inode_at(rp);
 
-   if (rc < 0) {
+   if (rc == 0) {
+
+      /*
+       * Resolve succeeded. Handle corner cases like 'a/b/c//'.
+       * The last_comp must be 'c//' instead of '/', as returned by
+       * __vfs_resolve().
+       */
+      if (*rp->last_comp == '/') {
+         for (; rp->last_comp > path && *--rp->last_comp == '/'; ) { }
+      }
+
+   } else {
+
       /* resolve failed: release the lock and the fs */
       vfs_smart_fs_unlock(rp->fs, exlock);
       release_obj(rp->fs);
