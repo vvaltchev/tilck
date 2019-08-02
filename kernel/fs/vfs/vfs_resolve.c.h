@@ -260,11 +260,10 @@ vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
    *np = *rp;
 
    /*
-    * If the path component is empty (e.g. 'a//b' contains 3 path components:
-    * 'a', '', 'b') or if the path component is '.', then just return keeping
-    * the same VFS path.
+    * If the path component is empty (e.g. in 2nd component in 'a//b'), just
+    * return keeping the same VFS path.
     */
-   if (lc == path || (lc[0] == '.' && (lc[1] == '/' || !lc[1])))
+   if (lc == path)
       return 0;
 
    __vfs_resolve_get_entry(rp->fs_path.inode,
