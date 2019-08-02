@@ -546,11 +546,6 @@ STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
    return 0;
 }
 
-static ALWAYS_INLINE bool slash_or_nul(char c)
-{
-   return !c || c == '/';
-}
-
 static void
 fat_get_entry(filesystem *fs,
               void *dir_inode,

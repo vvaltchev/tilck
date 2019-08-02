@@ -40,6 +40,11 @@ static ALWAYS_INLINE int isdigit(int c) {
    return c >= '0' && c <= '9';
 }
 
+static ALWAYS_INLINE bool slash_or_nul(char c)
+{
+   return !c || c == '/';
+}
+
 #if defined(__i386__) || defined(__x86_64__)
 #include <tilck/common/arch/generic_x86/asm_x86_strings.h>
 #endif
