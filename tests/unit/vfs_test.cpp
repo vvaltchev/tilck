@@ -164,10 +164,10 @@ TEST_F(vfs_misc, fseek)
    close(fd);
 }
 
-string compute_abs_path_wrapper(const char *cwd, const char *path)
+string compute_abs_path_wrapper(const char *str_cwd, const char *path)
 {
    char dest[256];
-   int rc = compute_abs_path(path, cwd, dest, sizeof(dest));
+   int rc = compute_abs_path(path, str_cwd, dest, sizeof(dest));
 
    if (rc < 0)
       return "<error>";
@@ -195,7 +195,7 @@ TEST(compute_abs_path, tests)
    EXPECT_EQ(compute_abs_path_wrapper("/", "./a/b/c/.."), "/a/b");
    EXPECT_EQ(compute_abs_path_wrapper("/", "./a/b/c/../"), "/a/b/");
 
-   /* path is relative, cwd != / */
+   /* path is relative, str_cwd != / */
    EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "a"), "/a/b/c/a");
    EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "a/"), "/a/b/c/a/");
    EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", ".."), "/a/b");

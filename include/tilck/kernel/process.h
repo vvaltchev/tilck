@@ -59,7 +59,7 @@ struct process_info {
    bool did_call_execve;
    int *set_child_tid;                 /* NOTE: this is an user pointer */
 
-   kmutex fslock;                      /* protects `handles` and `cwd` */
+   kmutex fslock;                      /* protects `handles` and `cwd2` */
    mode_t umask;
 
    vfs_path cwd2;                      /* CWD as a vfs_path */
@@ -67,7 +67,7 @@ struct process_info {
    /* large members */
 
    char filepath[MAX_PATH];               /* executable's path */
-   char cwd[MAX_PATH];                    /* current working directory */
+   char str_cwd[MAX_PATH];                /* current working directory */
    fs_handle handles[MAX_HANDLES];        /* just a small fixed-size array */
 
    __sighandler_t sa_handlers[_NSIG];

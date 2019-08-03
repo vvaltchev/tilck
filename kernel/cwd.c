@@ -12,16 +12,16 @@ set_process_str_cwd(process_info *pi, const char *path)
    ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
 
    size_t pl = strlen(path);
-   memcpy(pi->cwd, path, pl + 1);
+   memcpy(pi->str_cwd, path, pl + 1);
 
    if (pl > 1) {
 
-      if (pi->cwd[pl - 1] == '/')
+      if (pi->str_cwd[pl - 1] == '/')
          pl--; /* drop the trailing slash */
 
-      /* on the other side, pi->cwd has always a trailing '/' */
-      pi->cwd[pl] = '/';
-      pi->cwd[pl + 1] = 0;
+      /* on the other side, pi->str_cwd has always a trailing '/' */
+      pi->str_cwd[pl] = '/';
+      pi->str_cwd[pl + 1] = 0;
    }
 }
 
@@ -29,7 +29,7 @@ static int
 getcwd_nolock(process_info *pi, char *user_buf, size_t buf_size)
 {
    ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
-   const size_t cl = strlen(pi->cwd) + 1;
+   const size_t cl = strlen(pi->str_cwd) + 1;
 
    if (!user_buf || !buf_size)
       return -EINVAL;
@@ -37,7 +37,7 @@ getcwd_nolock(process_info *pi, char *user_buf, size_t buf_size)
    if (buf_size < cl)
       return -ERANGE;
 
-   if (copy_to_user(user_buf, pi->cwd, cl))
+   if (copy_to_user(user_buf, pi->str_cwd, cl))
       return -EFAULT;
 
    if (cl > 2) { /* NOTE: `cl` counts the trailing `\0` */
@@ -89,7 +89,7 @@ int sys_chdir(const char *user_path)
    char *orig_path = curr->args_copybuf;
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
 
-   STATIC_ASSERT(ARRAY_SIZE(pi->cwd) == MAX_PATH);
+   STATIC_ASSERT(ARRAY_SIZE(pi->str_cwd) == MAX_PATH);
    STATIC_ASSERT((ARGS_COPYBUF_SIZE / 2) >= MAX_PATH);
 
    rc = copy_str_from_user(orig_path, user_path, MAX_PATH, NULL);
@@ -129,7 +129,7 @@ int sys_chdir(const char *user_path)
       release_obj(p.fs);
 
       DEBUG_ONLY_UNSAFE(rc =)
-         compute_abs_path(orig_path, pi->cwd, path, MAX_PATH);
+         compute_abs_path(orig_path, pi->str_cwd, path, MAX_PATH);
 
       /*
        * compute_abs_path() MUST NOT fail, because we have been already able

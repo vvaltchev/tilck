@@ -169,7 +169,7 @@ void create_kernel_process(void)
 
    s_kernel_ti->is_main_thread = true;
    s_kernel_ti->running_in_kernel = true;
-   memcpy(s_kernel_pi->cwd, "/", 2);
+   memcpy(s_kernel_pi->str_cwd, "/", 2);
 
    s_kernel_ti->state = TASK_STATE_SLEEPING;
 
