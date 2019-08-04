@@ -353,10 +353,10 @@ get_locked_retained_cwd(vfs_path *rp, bool exlock)
 
    kmutex_lock(&pi->fslock);
    {
-      ASSERT(pi->cwd2.fs != NULL);
+      ASSERT(pi->cwd.fs != NULL);
 
-      /* Just copy `cwd2` into the address pointed by `rp` */
-      *rp = pi->cwd2;
+      /* Just copy `cwd` into the address pointed by `rp` */
+      *rp = pi->cwd;
       retain_obj(rp->fs);
    }
    kmutex_unlock(&pi->fslock);

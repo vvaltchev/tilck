@@ -118,11 +118,11 @@ protected:
 
       {
          /*
-          * The kernel_process does not have `cwd2` set.
+          * The kernel_process does not have `cwd` set.
           * That is set in a lazy way on the first vfs_resolve() call.
-          * TODO: make `cwd2` to be always set.
+          * TODO: make `cwd` to be always set.
           */
-         vfs_path *tp = &get_curr_task()->pi->cwd2;
+         vfs_path *tp = &get_curr_task()->pi->cwd;
          tp->fs = mp2_get_root();
          vfs_get_root_entry(tp->fs, &tp->fs_path);
          retain_obj(tp->fs);
@@ -567,7 +567,7 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
    ASSERT_STREQ(p.last_comp, "dev/");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
-   pi->cwd2 = p;
+   pi->cwd = p;
    bzero(&p, sizeof(p));
 
    rc = resolve(".", &p, true);

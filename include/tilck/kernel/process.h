@@ -59,10 +59,10 @@ struct process_info {
    bool did_call_execve;
    int *set_child_tid;                 /* NOTE: this is an user pointer */
 
-   kmutex fslock;                      /* protects `handles` and `cwd2` */
+   kmutex fslock;                      /* protects `handles` and `cwd` */
    mode_t umask;
 
-   vfs_path cwd2;                      /* CWD as a vfs_path */
+   vfs_path cwd;                       /* CWD as a vfs_path */
 
    /* large members */
 

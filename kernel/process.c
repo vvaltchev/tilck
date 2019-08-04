@@ -115,8 +115,8 @@ task_info *allocate_new_process(task_info *parent, int pid)
    ti->is_main_thread = true;
    pi->did_call_execve = false;
 
-   /* Copy parent's `cwd2` while retaining the `fs` and the inode obj */
-   process_set_cwd2_nolock_raw(pi, &parent_pi->cwd2);
+   /* Copy parent's `cwd` while retaining the `fs` and the inode obj */
+   process_set_cwd2_nolock_raw(pi, &parent_pi->cwd);
 
    if (!do_common_task_allocations(ti) ||
        !arch_specific_new_task_setup(ti, parent))
@@ -184,17 +184,17 @@ void free_task(task_info *ti)
          kfree2(ti, sizeof(task_info) + sizeof(process_info));
       }
 
-      if (LIKELY(pi->cwd2.fs != NULL)) {
+      if (LIKELY(pi->cwd.fs != NULL)) {
 
          /*
           * When we change the current directory or when we fork a process, we
-          * set a new value for the vfs_path pi->cwd2 which has its inode
+          * set a new value for the vfs_path pi->cwd which has its inode
           * retained as well as its owning fs. Here we have to release those
           * ref-counts.
           */
 
-         vfs_release_inode_at(&pi->cwd2);
-         release_obj(pi->cwd2.fs);
+         vfs_release_inode_at(&pi->cwd);
+         release_obj(pi->cwd.fs);
       }
 
    } else {

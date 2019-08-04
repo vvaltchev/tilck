@@ -60,23 +60,23 @@ void process_set_cwd2_nolock_raw(process_info *pi, vfs_path *tp)
 
    retain_obj(tp->fs);
    vfs_retain_inode_at(tp);
-   pi->cwd2 = *tp;
+   pi->cwd = *tp;
 }
 
 void process_set_cwd2_nolock(vfs_path *tp)
 {
    process_info *pi = get_curr_task()->pi;
    ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
-   ASSERT(pi->cwd2.fs != NULL);
-   ASSERT(pi->cwd2.fs_path.inode != NULL);
+   ASSERT(pi->cwd.fs != NULL);
+   ASSERT(pi->cwd.fs_path.inode != NULL);
 
    /*
     * We have to release the inode at that path and the fs containing it, before
     * changing them with process_set_cwd2_nolock_raw().
     */
 
-   vfs_release_inode_at(&pi->cwd2);
-   release_obj(pi->cwd2.fs);
+   vfs_release_inode_at(&pi->cwd);
+   release_obj(pi->cwd.fs);
    process_set_cwd2_nolock_raw(pi, tp);
 }
 

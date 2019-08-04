@@ -130,7 +130,7 @@ static void mount_initrd(void)
    if ((rc = mp2_add(ramfs, "/tmp/")))
       panic("mp2_add() failed with error: %d", rc);
 
-   /* Set kernel's process `cwd2` to the root folder */
+   /* Set kernel's process `cwd` to the root folder */
    {
       vfs_path tp;
       process_info *pi = kernel_process_pi;
