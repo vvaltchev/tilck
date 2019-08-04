@@ -10,6 +10,18 @@
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/fault_resumable.h>
 
+
+#if defined(__x86_64__)
+   #define ELF_CURR_ARCH   EM_X86_64
+   #define ELF_CURR_CLASS  ELFCLASS64
+#elif defined(__i386__)
+   #define ELF_CURR_ARCH   EM_386
+   #define ELF_CURR_CLASS  ELFCLASS32
+#else
+   #error Architecture not supported.
+#endif
+
+
 static ssize_t
 load_phdr(fs_handle *elf_file,
           pdir_t *pdir,
@@ -126,6 +138,15 @@ static int load_elf_headers(fs_handle elf_file, elf_headers *eh)
       return -ENOEXEC;
 
    if (strncmp((const char *)eh->header.e_ident, ELFMAG, 4))
+      return -ENOEXEC;
+
+   if (eh->header.e_ident[EI_CLASS] != ELF_CURR_CLASS)
+      return -ENOEXEC;
+
+   if (eh->header.e_type != ET_EXEC)
+      return -ENOEXEC;
+
+   if (eh->header.e_machine != ELF_CURR_ARCH)
       return -ENOEXEC;
 
    if (eh->header.e_ehsize < sizeof(eh->header))
