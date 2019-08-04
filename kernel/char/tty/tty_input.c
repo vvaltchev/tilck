@@ -308,7 +308,7 @@ int tty_keypress_handler(u32 key, u8 c)
    return tty_keypress_handler_int(t, key, c, true);
 }
 
-static size_t tty_flush_read_buf(devfs_file_handle *h, char *buf, size_t size)
+static size_t tty_flush_read_buf(devfs_handle *h, char *buf, size_t size)
 {
    ssize_t rem = h->read_buf_used - h->read_pos;
    ASSERT(rem >= 0);
@@ -332,7 +332,7 @@ static size_t tty_flush_read_buf(devfs_file_handle *h, char *buf, size_t size)
  */
 static bool
 tty_internal_read_single_char_from_kb(tty *t,
-                                      devfs_file_handle *h,
+                                      devfs_handle *h,
                                       bool *delim_break)
 {
    u8 c = kb_buf_read_elem(t);
@@ -362,7 +362,7 @@ tty_internal_read_single_char_from_kb(tty *t,
 
 static inline bool
 tty_internal_should_read_return(tty *t,
-                                devfs_file_handle *h,
+                                devfs_handle *h,
                                 size_t read_cnt,
                                 bool delim_break)
 {
@@ -377,7 +377,7 @@ tty_internal_should_read_return(tty *t,
    return read_cnt >= t->c_term.c_cc[VMIN];
 }
 
-bool tty_read_ready_int(tty *t, devfs_file_handle *h)
+bool tty_read_ready_int(tty *t, devfs_handle *h)
 {
    if (t->c_term.c_lflag & ICANON) {
       return h->read_allowed_to_return || t->end_line_delim_count > 0;
@@ -387,7 +387,7 @@ bool tty_read_ready_int(tty *t, devfs_file_handle *h)
    return ringbuf_get_elems(&t->input_ringbuf) >= t->c_term.c_cc[VMIN];
 }
 
-ssize_t tty_read_int(tty *t, devfs_file_handle *h, char *buf, size_t size)
+ssize_t tty_read_int(tty *t, devfs_handle *h, char *buf, size_t size)
 {
    size_t read_count = 0;
    bool delim_break;

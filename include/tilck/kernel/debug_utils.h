@@ -13,7 +13,7 @@ void dump_regs(regs *r);
 
 void validate_stack_pointer_int(const char *file, int line);
 
-#ifdef DEBUG
+#if defined(DEBUG) && !defined(UNIT_TEST_ENVIRONMENT)
 #  define DEBUG_VALIDATE_STACK_PTR() validate_stack_pointer_int(__FILE__, \
                                                                 __LINE__)
 #else
@@ -22,4 +22,5 @@ void validate_stack_pointer_int(const char *file, int line);
 
 void debug_qemu_turn_off_machine(void);
 void register_debug_kernel_keypress_handler(void);
-
+void init_extra_debug_features();
+void set_sched_alive_thread_enabled(bool enabled);

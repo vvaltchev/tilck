@@ -3,16 +3,26 @@
 #pragma once
 #include <tilck/kernel/fs/vfs.h>
 
-#define MP_CURSOR_SIZE_PTRS 1
-
-/* Opaque mountpoint cursor type */
 typedef struct {
-   uptr data[MP_CURSOR_SIZE_PTRS];
-} mp_cursor;
 
+   REF_COUNTED_OBJECT;
 
-#ifndef _TILCK_MP_C_
-void mountpoint_iter_begin(mp_cursor *c);
-void mountpoint_iter_end(mp_cursor *c);
-mountpoint *mountpoint_get_next(mp_cursor *c);
-#endif
+   filesystem *host_fs;
+   vfs_inode_ptr_t host_fs_inode;
+   filesystem *target_fs;
+
+} mountpoint2;
+
+#define RESOLVE_STACK_SIZE       4
+
+typedef struct {
+
+   int ss;                                       /* stack size */
+   bool exlock;                                  /* true -> use exlock,
+                                                    false -> use shlock */
+
+   const char *orig_paths[RESOLVE_STACK_SIZE];   /* original paths stack */
+   vfs_path paths[RESOLVE_STACK_SIZE];           /* vfs paths stack */
+   char sym_paths[RESOLVE_STACK_SIZE][MAX_PATH]; /* symlinks paths stack */
+
+} vfs_resolve_int_ctx;

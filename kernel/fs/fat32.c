@@ -27,14 +27,14 @@ fat_get_first_cluster_generic(fat_fs_device_data *d, fat_entry *e)
 STATIC void
 fat_close(fs_handle handle)
 {
-   fat_file_handle *h = (fat_file_handle *)handle;
-   kfree2(h, sizeof(fat_file_handle));
+   fat_handle *h = (fat_handle *)handle;
+   kfree2(h, sizeof(fat_handle));
 }
 
 STATIC ssize_t
 fat_read(fs_handle handle, char *buf, size_t bufsize)
 {
-   fat_file_handle *h = (fat_file_handle *) handle;
+   fat_handle *h = (fat_handle *) handle;
    fat_fs_device_data *d = h->fs->device_data;
    off_t fsize = (off_t)h->e->DIR_FileSize;
    off_t written_to_buf = 0;
@@ -96,7 +96,7 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
 STATIC int
 fat_rewind(fs_handle handle)
 {
-   fat_file_handle *h = (fat_file_handle *) handle;
+   fat_handle *h = (fat_handle *) handle;
    h->pos = 0;
    h->curr_cluster = fat_get_first_cluster(h->e);
    return 0;
@@ -105,7 +105,7 @@ fat_rewind(fs_handle handle)
 STATIC off_t
 fat_seek_forward(fs_handle handle, off_t dist)
 {
-   fat_file_handle *h = (fat_file_handle *) handle;
+   fat_handle *h = (fat_handle *) handle;
    fat_fs_device_data *d = h->fs->device_data;
    off_t fsize = (off_t)h->e->DIR_FileSize;
    off_t moved_distance = 0;
@@ -190,7 +190,7 @@ STATIC off_t fat_count_dirents(fat_fs_device_data *d, fat_entry *e)
    return rc ? rc : count;
 }
 
-static off_t fat_seek_dir(fat_file_handle *fh, off_t off)
+static off_t fat_seek_dir(fat_handle *fh, off_t off)
 {
    if (off < 0)
       return -EINVAL;
@@ -205,7 +205,7 @@ static off_t fat_seek_dir(fat_file_handle *fh, off_t off)
 STATIC off_t
 fat_seek(fs_handle handle, off_t off, int whence)
 {
-   fat_file_handle *fh = handle;
+   fat_handle *fh = handle;
 
    if (fh->e->directory) {
 
@@ -232,7 +232,7 @@ fat_seek(fs_handle handle, off_t off, int whence)
          if (off >= 0)
             break;
 
-         fat_file_handle *h = (fat_file_handle *) handle;
+         fat_handle *h = (fat_handle *) handle;
          off = (off_t) h->e->DIR_FileSize + off;
 
          if (off < 0)
@@ -286,46 +286,40 @@ fat_entry_to_inode(fat_header *hdr, fat_entry *e)
    return (tilck_inode_t)((sptr)e - (sptr)hdr);
 }
 
-static inline tilck_inode_t fat_handle_to_inode(fat_file_handle *fh)
+STATIC int fat_stat(filesystem *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
-   fat_fs_device_data *d = fh->fs->device_data;
-   return fat_entry_to_inode(d->hdr, fh->e);
-}
-
-STATIC int fat_stat64(fs_handle h, struct stat64 *statbuf)
-{
-   fat_file_handle *fh = h;
+   fat_entry *e = i;
    datetime_t crt_time, wrt_time;
 
-   if (!h)
+   if (!e)
       return -ENOENT;
 
    bzero(statbuf, sizeof(struct stat64));
 
-   statbuf->st_dev = fh->fs->device_id;
-   statbuf->st_ino = fat_handle_to_inode(fh);
+   statbuf->st_dev = fs->device_id;
+   statbuf->st_ino = fat_entry_to_inode(fs->device_data, e);
    statbuf->st_mode = 0555;
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
    statbuf->st_gid = 0; /* root */
    statbuf->st_rdev = 0; /* device ID, if a special file */
-   statbuf->st_size = fh->e->DIR_FileSize;
+   statbuf->st_size = e->DIR_FileSize;
    statbuf->st_blksize = 4096;
    statbuf->st_blocks = statbuf->st_size / 512;
 
-   if (fh->e->directory || fh->e->volume_id)
+   if (e->directory || e->volume_id)
       statbuf->st_mode |= S_IFDIR;
    else
       statbuf->st_mode |= S_IFREG;
 
    crt_time =
-      fat_datetime_to_regular_datetime(fh->e->DIR_CrtDate,
-                                       fh->e->DIR_CrtTime,
-                                       fh->e->DIR_CrtTimeTenth);
+      fat_datetime_to_regular_datetime(e->DIR_CrtDate,
+                                       e->DIR_CrtTime,
+                                       e->DIR_CrtTimeTenth);
 
    wrt_time =
-      fat_datetime_to_regular_datetime(fh->e->DIR_WrtDate,
-                                       fh->e->DIR_WrtTime,
+      fat_datetime_to_regular_datetime(e->DIR_WrtDate,
+                                       e->DIR_WrtTime,
                                        0 /* No WrtTimeTenth */);
 
    statbuf->st_ctim.tv_sec = datetime_to_timestamp(crt_time);
@@ -336,7 +330,7 @@ STATIC int fat_stat64(fs_handle h, struct stat64 *statbuf)
 
 typedef struct {
 
-   fat_file_handle *fh;
+   fat_handle *fh;
    get_dents_func_cb vfs_cb;
    void *vfs_ctx;
    int rc;
@@ -369,7 +363,7 @@ fat_getdents_cb(fat_header *hdr,
 
 static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 {
-   fat_file_handle *fh = h;
+   fat_handle *fh = h;
    fat_fs_device_data *d = fh->fs->device_data;
    fat_walk_dir_ctx walk_ctx = {0};
    int rc;
@@ -496,7 +490,6 @@ static const file_ops static_ops_fat =
    .write = fat_write,
    .ioctl = fat_ioctl,
    .fcntl = fat_fcntl,
-
    .exlock = fat_file_exlock,
    .exunlock = fat_file_exunlock,
    .shlock = fat_file_shlock,
@@ -506,7 +499,7 @@ static const file_ops static_ops_fat =
 STATIC int
 fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
 {
-   fat_file_handle *h;
+   fat_handle *h;
    filesystem *fs = p->fs;
    fat_fs_path *fp = (fat_fs_path *)&p->fs_path;
    fat_entry *e = fp->entry;
@@ -527,7 +520,7 @@ fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
       if (fl & (O_WRONLY | O_RDWR))
          return -EROFS;
 
-   if (!(h = kzmalloc(sizeof(fat_file_handle))))
+   if (!(h = kzmalloc(sizeof(fat_handle))))
       return -ENOMEM;
 
    h->fs = fs;
@@ -543,12 +536,12 @@ fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
 
 STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
 {
-   fat_file_handle *new_h = kmalloc(sizeof(fat_file_handle));
+   fat_handle *new_h = kmalloc(sizeof(fat_handle));
 
    if (!new_h)
       return -ENOMEM;
 
-   memcpy(new_h, h, sizeof(fat_file_handle));
+   memcpy(new_h, h, sizeof(fat_handle));
    *dup_h = new_h;
    return 0;
 }
@@ -570,6 +563,8 @@ fat_get_entry(filesystem *fs,
 
       /* both dir_inode and name are NULL: getting a path to the root dir */
 
+return_root_entry:
+
       *fp = (fat_fs_path) {
          .entry            = d->root_entry,
          .parent_entry     = d->root_entry,
@@ -583,6 +578,12 @@ fat_get_entry(filesystem *fs,
    dir_entry = dir_inode ? dir_inode : d->root_entry;
    dir_cluster = fat_get_first_cluster_generic(d, dir_entry);
 
+   if (UNLIKELY(dir_entry == d->root_entry)) {
+      if (UNLIKELY(name[0] == '.'))
+         if (slash_or_nul(name[1]) || (name[1] == '.' && slash_or_nul(name[2])))
+            goto return_root_entry;
+   }
+
    fat_init_search_ctx(&ctx, name, true);
    fat_walk_directory(&ctx.walk_ctx,
                       d->hdr,
@@ -593,17 +594,51 @@ fat_get_entry(filesystem *fs,
                       &ctx);
 
    fat_entry *res = !ctx.not_dir ? ctx.result : NULL;
+   enum vfs_entry_type type = VFS_NONE;
+
+   if (res) {
+
+      const u32 clu = fat_get_first_cluster(res);
+      type = res->directory ? VFS_DIR : VFS_FILE;
+
+      if (type == VFS_DIR && (clu == 0 || clu == d->root_cluster)) {
+         res = d->root_entry;
+         type = VFS_DIR;
+      }
+   }
 
    *fp = (fat_fs_path) {
       .entry         = res,
       .parent_entry  = dir_entry,
       .unused        = NULL,
-      .type          = res ? (res->directory ? VFS_DIR : VFS_FILE) : VFS_NONE,
+      .type          = type,
    };
+}
+
+static vfs_inode_ptr_t fat_get_inode(fs_handle h)
+{
+   return ((fat_handle *)h)->e;
+}
+
+static int fat_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
+{
+   if (fs->flags & VFS_FS_RW)
+      NOT_IMPLEMENTED();
+
+   return 1;
+}
+
+static int fat_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
+{
+   if (fs->flags & VFS_FS_RW)
+      NOT_IMPLEMENTED();
+
+   return 1;
 }
 
 static const fs_ops static_fsops_fat =
 {
+   .get_inode = fat_get_inode,
    .open = fat_open,
    .close = fat_close,
    .dup = fat_dup,
@@ -612,8 +647,10 @@ static const fs_ops static_fsops_fat =
    .mkdir = NULL,
    .rmdir = NULL,
    .truncate = NULL,
-   .fstat = fat_stat64,
+   .stat = fat_stat,
    .get_entry = fat_get_entry,
+   .retain_inode = fat_retain_inode,
+   .release_inode = fat_release_inode,
 
    .fs_exlock = fat_exclusive_lock,
    .fs_exunlock = fat_exclusive_unlock,

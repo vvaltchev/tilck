@@ -208,7 +208,19 @@ static void setup_console_for_shell(int tty)
 int main(int argc, char **argv, char **env)
 {
    int shell_pids[MAX_TTYS];
-   int pid;
+   int pid = getpid();
+
+   if (pid != 1) {
+
+      fprintf(stderr,
+              "FATAL ERROR: init has pid %d.\n"
+              "Init expects to be the 1st user process (pid 1) "
+              "to run on the system.\n"
+              "Running it on an already running system is *not* supported.\n\n",
+              pid);
+
+      return 1;
+   }
 
    /* Ignore SIGINT and SIGQUIT */
    signal(SIGINT, SIG_IGN);

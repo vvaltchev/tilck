@@ -61,8 +61,7 @@ int sys_open(const char *user_path, int flags, mode_t mode)
 {
    int ret, free_fd;
    task_info *curr = get_curr_task();
-   char *orig_path = curr->args_copybuf;
-   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
+   char *path = curr->args_copybuf;
    size_t written = 0;
    fs_handle h = NULL;
 
@@ -71,13 +70,10 @@ int sys_open(const char *user_path, int flags, mode_t mode)
    /* Apply the umask upfront */
    mode &= ~curr->pi->umask;
 
-   if ((ret = duplicate_user_path(orig_path, user_path, MAX_PATH, &written)))
+   if ((ret = duplicate_user_path(path, user_path, MAX_PATH, &written)))
       return ret;
 
    kmutex_lock(&curr->pi->fslock);
-
-   if ((ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH)))
-      goto end;
 
    if ((free_fd = get_free_handle_num(curr->pi)) < 0)
       goto no_fds;
@@ -107,15 +103,11 @@ int sys_creat(const char *user_path, mode_t mode)
 int sys_unlink(const char *user_path)
 {
    task_info *curr = get_curr_task();
-   char *orig_path = curr->args_copybuf;
-   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
+   char *path = curr->args_copybuf;
    size_t written = 0;
    int ret;
 
-   if ((ret = duplicate_user_path(orig_path, user_path, MAX_PATH, &written)))
-      return ret;
-
-   if ((ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH)))
+   if ((ret = duplicate_user_path(path, user_path, MAX_PATH, &written)))
       return ret;
 
    return vfs_unlink(path);
@@ -124,15 +116,11 @@ int sys_unlink(const char *user_path)
 int sys_rmdir(const char *user_path)
 {
    task_info *curr = get_curr_task();
-   char *orig_path = curr->args_copybuf;
-   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
+   char *path = curr->args_copybuf;
    size_t written = 0;
    int ret;
 
-   if ((ret = duplicate_user_path(orig_path, user_path, MAX_PATH, &written)))
-      return ret;
-
-   if ((ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH)))
+   if ((ret = duplicate_user_path(path, user_path, MAX_PATH, &written)))
       return ret;
 
    return vfs_rmdir(path);
@@ -159,18 +147,14 @@ int sys_close(int fd)
 int sys_mkdir(const char *user_path, mode_t mode)
 {
    task_info *curr = get_curr_task();
-   char *orig_path = curr->args_copybuf;
-   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
+   char *path = curr->args_copybuf;
    size_t written = 0;
    int ret;
 
    /* Apply the umask upfront */
    mode &= ~curr->pi->umask;
 
-   if ((ret = duplicate_user_path(orig_path, user_path, MAX_PATH, &written)))
-      return ret;
-
-   if ((ret = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH)))
+   if ((ret = duplicate_user_path(path, user_path, MAX_PATH, &written)))
       return ret;
 
    return vfs_mkdir(path, mode);
@@ -336,15 +320,17 @@ int sys_readv(int fd, const struct iovec *user_iov, int user_iovcnt)
    return ret;
 }
 
-int sys_stat64(const char *user_path, struct stat64 *user_statbuf)
+static int
+call_vfs_stat64(const char *user_path,
+                struct stat64 *user_statbuf,
+                bool res_last_sl)
 {
    task_info *curr = get_curr_task();
-   char *orig_path = curr->args_copybuf;
-   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
+   char *path = curr->args_copybuf;
    struct stat64 statbuf;
    int rc = 0;
 
-   rc = copy_str_from_user(orig_path, user_path, MAX_PATH, NULL);
+   rc = copy_str_from_user(path, user_path, MAX_PATH, NULL);
 
    if (rc < 0)
       return -EFAULT;
@@ -352,16 +338,7 @@ int sys_stat64(const char *user_path, struct stat64 *user_statbuf)
    if (rc > 0)
       return -ENAMETOOLONG;
 
-   kmutex_lock(&curr->pi->fslock);
-   {
-      rc = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
-   }
-   kmutex_unlock(&curr->pi->fslock);
-
-   if (rc < 0)
-      return rc;
-
-   if ((rc = vfs_stat64(path, &statbuf)))
+   if ((rc = vfs_stat64(path, &statbuf, res_last_sl)))
       return rc;
 
    if (copy_to_user(user_statbuf, &statbuf, sizeof(struct stat64)))
@@ -370,14 +347,14 @@ int sys_stat64(const char *user_path, struct stat64 *user_statbuf)
    return rc;
 }
 
+int sys_stat64(const char *user_path, struct stat64 *user_statbuf)
+{
+   return call_vfs_stat64(user_path, user_statbuf, true);
+}
+
 int sys_lstat64(const char *user_path, struct stat64 *user_statbuf)
 {
-   /*
-    * For moment, symlinks are not supported in Tilck. Therefore, make lstat()
-    * behave exactly as stat().
-    */
-
-   return sys_stat64(user_path, user_statbuf);
+   return call_vfs_stat64(user_path, user_statbuf, false);
 }
 
 int sys_fstat64(int fd, struct stat64 *user_statbuf)
@@ -398,28 +375,16 @@ int sys_fstat64(int fd, struct stat64 *user_statbuf)
    return rc;
 }
 
-int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
+int sys_symlink(const char *u_target, const char *u_linkpath)
 {
-   /*
-    * For moment, symlinks are not supported in Tilck. Therefore, just always
-    * -EINVAL, the correct error for the case the named file is NOT a symbolic
-    * link.
-    */
+   task_info *curr     = get_curr_task();
+   char *target        = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 0;
+   char *linkpath      = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 1;
+   int rc = 0;
 
-   return -EINVAL;
-}
+   STATIC_ASSERT(ARGS_COPYBUF_SIZE / 4 >= MAX_PATH);
 
-int sys_truncate64(const char *user_path, s64 len)
-{
-   task_info *curr = get_curr_task();
-   char *orig_path = curr->args_copybuf;
-   char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
-   int rc;
-
-   if (len < 0)
-      return -EINVAL;
-
-   rc = copy_str_from_user(orig_path, user_path, MAX_PATH, NULL);
+   rc = copy_str_from_user(target, u_target, MAX_PATH, NULL);
 
    if (rc < 0)
       return -EFAULT;
@@ -427,17 +392,82 @@ int sys_truncate64(const char *user_path, s64 len)
    if (rc > 0)
       return -ENAMETOOLONG;
 
-   kmutex_lock(&curr->pi->fslock);
-   {
-      rc = compute_abs_path(orig_path, curr->pi->cwd, path, MAX_PATH);
-   }
-   kmutex_unlock(&curr->pi->fslock);
+   rc = copy_str_from_user(linkpath, u_linkpath, MAX_PATH, NULL);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -ENAMETOOLONG;
+
+   if (!*target || !*linkpath)
+      return -ENOENT; /* target or linkpath is an empty string */
+
+   return vfs_symlink(target, linkpath);
+}
+
+int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
+{
+   task_info *curr = get_curr_task();
+   char *path = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 0;
+   char *buf       = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 1;
+   size_t ret_bs;
+   int rc;
+
+   STATIC_ASSERT(ARGS_COPYBUF_SIZE / 4 >= MAX_PATH);
+
+   rc = copy_str_from_user(path, u_pathname, MAX_PATH, NULL);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -ENAMETOOLONG;
+
+   rc = vfs_readlink(path, buf);
 
    if (rc < 0)
       return rc;
 
+   ret_bs = (size_t) rc;
+   rc = copy_to_user(u_buf, buf, MIN(ret_bs, u_bufsize));
+
+   if (rc < 0)
+      return -EFAULT;
+
+   return (int) ret_bs;
+}
+
+int sys_truncate64(const char *user_path, s64 len)
+{
+   task_info *curr = get_curr_task();
+   char *path = curr->args_copybuf;
+   int rc;
+
+   if (len < 0)
+      return -EINVAL;
+
+   rc = copy_str_from_user(path, user_path, MAX_PATH, NULL);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -ENAMETOOLONG;
+
    // NOTE: truncating the 64-bit length to a pointer-size integer
    return vfs_truncate(path, (off_t)len);
+}
+
+int sys_ftruncate64(int fd, s64 len)
+{
+   fs_handle h;
+
+   if (!(h = get_fs_handle(fd)))
+      return -EBADF;
+
+   // NOTE: truncating the 64-bit length to a pointer-size integer
+   return vfs_ftruncate(h, (off_t)len);
 }
 
 int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)

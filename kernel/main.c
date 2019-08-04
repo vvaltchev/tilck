@@ -101,7 +101,7 @@ static void show_system_info(void)
    show_banner();
 }
 
-static void mount_first_ramdisk(void)
+static void mount_initrd(void)
 {
    /* declare the ramfs_create() function */
    filesystem *ramfs_create(void);
@@ -115,28 +115,31 @@ static void mount_first_ramdisk(void)
       return;
    }
 
-   initrd = fat_mount_ramdisk(ramdisk, VFS_FS_RO);
-
-   if (!initrd)
+   if (!(initrd = fat_mount_ramdisk(ramdisk, VFS_FS_RO)))
       panic("Unable to mount the initrd fat32 RAMDISK");
 
-   rc = mountpoint_add(initrd, "/");
-
-   if (rc != 0)
-      panic("mountpoint_add() failed with error: %d", rc);
+   if ((rc = mp2_init(initrd)))
+      panic("mp2_init() failed with error: %d", rc);
 
    /* -------------------------------------------- */
    /* mount the ramdisk at /tmp                    */
 
-   ramfs = ramfs_create();
-
-   if (!ramfs)
+   if (!(ramfs = ramfs_create()))
       panic("Unable to create ramfs");
 
-   rc = mountpoint_add(ramfs, "/tmp/");
+   if ((rc = mp2_add(ramfs, "/tmp/")))
+      panic("mp2_add() failed with error: %d", rc);
 
-   if (rc != 0)
-      panic("mountpoint_add() failed with error: %d", rc);
+   /* Set kernel's process `cwd` to the root folder */
+   {
+      vfs_path tp;
+      process_info *pi = kernel_process_pi;
+      ASSERT(pi == get_curr_task()->pi);
+
+      tp.fs = mp2_get_root();
+      vfs_get_root_entry(tp.fs, &tp.fs_path);
+      process_set_cwd2_nolock_raw(pi, &tp);
+   }
 }
 
 static void run_init_or_selftest(void)
@@ -155,7 +158,7 @@ static void run_init_or_selftest(void)
       if (!system_mmap_get_ramdisk_vaddr(0))
          panic("No ramdisk and no selftest requested: nothing to do.");
 
-      /* Run /sbin/init or whatever program was passed in the cmdline */
+      /* Run /bin/init or whatever program was passed in the cmdline */
       sptr rc = first_execve(cmd_args[0], cmd_args);
 
       if (rc != 0)
@@ -163,19 +166,23 @@ static void run_init_or_selftest(void)
    }
 }
 
-static void do_async_init()
+static void init_kb_if_necessary()
 {
-   mount_first_ramdisk();
-   init_devfs();
-
    if (!kopt_serial_console) {
       init_kb();
       register_debug_kernel_keypress_handler();
    }
+}
 
+static void do_async_init()
+{
+   mount_initrd();
+   init_devfs();
+   init_kb_if_necessary();
    init_tty();
    init_fbdev();
    init_serial_comm();
+   init_extra_debug_features();
 
    show_hello_message();
    show_system_info();

@@ -152,9 +152,11 @@ void create_kernel_process(void)
    list_init(&sleeping_tasks_list);
    list_init(&zombie_tasks_list);
 
+#ifndef UNIT_TEST_ENVIRONMENT
    if (!in_panic()) {
       VERIFY(create_new_pid() == 0);
    }
+#endif
 
    ASSERT(s_kernel_ti->tid == 0);
    ASSERT(s_kernel_pi->pid == 0);
@@ -167,17 +169,19 @@ void create_kernel_process(void)
 
    s_kernel_ti->is_main_thread = true;
    s_kernel_ti->running_in_kernel = true;
-   memcpy(s_kernel_pi->cwd, "/", 2);
+   memcpy(s_kernel_pi->str_cwd, "/", 2);
 
    s_kernel_ti->state = TASK_STATE_SLEEPING;
 
    kernel_process = s_kernel_ti;
    kernel_process_pi = s_kernel_ti->pi;
 
+#ifndef UNIT_TEST_ENVIRONMENT
    if (!in_panic()) {
       VERIFY(arch_specific_new_task_setup(s_kernel_ti, NULL));
       add_task(kernel_process);
    }
+#endif
 
    set_curr_task(kernel_process);
 }
@@ -336,20 +340,14 @@ void account_ticks(void)
 bool need_reschedule(void)
 {
    task_info *curr = get_curr_task();
-   ASSERT(curr != NULL);
-
    task_info *tasklet_runner = get_hi_prio_ready_tasklet_runner();
 
-   if (tasklet_runner) {
-
-      if (tasklet_runner == curr)
-         return false;
-
+   if (tasklet_runner && tasklet_runner != curr)
       return true;
-   }
 
    if (curr->time_slot_ticks < TIME_SLOT_TICKS &&
-       curr->state == TASK_STATE_RUNNING) {
+       curr->state == TASK_STATE_RUNNING)
+   {
       return false;
    }
 

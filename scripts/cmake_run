@@ -11,6 +11,21 @@ MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 
 source $MAIN_DIR/scripts/bash_includes/script_utils
 
+if [[ "$1" == "--contrib" ]]; then
+
+   export CC='clang'
+   export CXX='clang++'
+   export CMAKE_ARGS='-DKERNEL_SYSCC=1 -DWCONV=1'
+
+   echo
+   echo -e "${YELLOW}Contributor mode${RATTRS}: "
+   echo
+   echo -e "   - CC=${LMAGENTA}'${CC}'${RATTRS}"
+   echo -e "   - CXX=${LMAGENTA}'${CXX}'${RATTRS}"
+   echo -e "   - CMAKE_ARGS=${LMAGENTA}'${CMAKE_ARGS}'${RATTRS}"
+   echo
+fi
+
 curr_dir="`pwd`"
 
 if [[ "$curr_dir" == "$MAIN_DIR" ]]; then

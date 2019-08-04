@@ -232,7 +232,7 @@ typedef sptr (*cmpfun_ptr)(const void *a, const void *b);
     * kind of additional linker tricks.
     */
 
-   #ifdef KERNEL_TEST
+   #ifdef UNIT_TEST_ENVIRONMENT
       #define STATIC           WEAK
       #define STATIC_INLINE    WEAK
    #else
@@ -298,16 +298,3 @@ typedef sptr (*cmpfun_ptr)(const void *a, const void *b);
 /* Includes */
 #include <tilck/common/panic.h>
 
-#define REF_COUNTED_OBJECT    int ref_count
-#define retain_obj(p)         (++(p)->ref_count)
-#define get_ref_count(p)      ((p)->ref_count)
-
-static ALWAYS_INLINE int __release_obj(int *ref_count)
-{
-#ifdef ASSERT
-   ASSERT(*ref_count > 0);
-#endif
-   return --(*ref_count);
-}
-
-#define release_obj(p)        (__release_obj(&(p)->ref_count))

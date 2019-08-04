@@ -27,7 +27,7 @@ jobs:
       - image: vvaltchev/tilck_build:latest
     environment:
       - RELEASE: 1
-      - CMAKE_ARGS:
+      - CMAKE_ARGS: -DDEBUG_CHECKS_IN_RELEASE_BUILD=0
       - GTEST_SHUFFLE: 0
     steps:
       - checkout
@@ -73,7 +73,7 @@ jobs:
       - image: vvaltchev/tilck_build:latest
     environment:
       - RELEASE: 0
-      - CMAKE_ARGS: -DKERNEL_USE_SYSTEM_CC=1
+      - CMAKE_ARGS: -DKERNEL_SYSCC=1 -DWCONV=1
       - CC: clang
       - CXX: clang++
       - GTEST_SHUFFLE: 0

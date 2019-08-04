@@ -13,17 +13,24 @@
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/fb_console.h>
+#include <tilck/kernel/cmdline.h>
 
 #include <elf.h>         // system header
 #include <multiboot.h>   // system header in include/system_headers
 
+/* --------- Color constants ---------- */
+#define COLOR_RED     "\033[31m"
+#define COLOR_GREEN   "\033[32m"
+#define COLOR_YELLOW  "\033[93m"
+#define RESET_ATTRS   "\033[0m"
+/* ------------------------------------ */
+
 volatile bool __in_panic;
 
-#define SHOW_INT(name, val)  printk(NO_PREFIX "%-35s: %d\n", name, val)
-
-#define DUMP_STR_OPT(opt)  printk(NO_PREFIX "%-35s: %s\n", #opt, opt)
-#define DUMP_INT_OPT(opt)  printk(NO_PREFIX "%-35s: %d\n", #opt, opt)
-#define DUMP_BOOL_OPT(opt) printk(NO_PREFIX "%-35s: %u\n", #opt, opt)
+#define SHOW_INT(name, val)   printk(NO_PREFIX "%-35s: %d\n", name, val)
+#define DUMP_STR_OPT(opt)     printk(NO_PREFIX "%-35s: %s\n", #opt, opt)
+#define DUMP_INT_OPT(opt)     printk(NO_PREFIX "%-35s: %d\n", #opt, opt)
+#define DUMP_BOOL_OPT(opt)    printk(NO_PREFIX "%-35s: %u\n", #opt, opt)
 
 void debug_show_opts(void)
 {
@@ -303,3 +310,72 @@ void register_debug_kernel_keypress_handler(void)
 }
 
 #endif // UNIT_TEST_ENVIRONMENT
+
+/*
+ * NOTE: this flag affect affect sched_alive_thread() only when it is actually
+ * running. By default it does *not* run. It gets activated only by the kernel
+ * cmdline option -sat.
+ */
+static volatile bool sched_alive_thread_enabled = true;
+
+static void sched_alive_thread()
+{
+   for (int counter = 0; ; counter++) {
+      if (sched_alive_thread_enabled)
+         printk("---- Sched alive thread: %d ----\n", counter);
+      kernel_sleep(TIMER_HZ);
+   }
+}
+
+void init_extra_debug_features()
+{
+   if (kopt_sched_alive_thread)
+      if (kthread_create(&sched_alive_thread, NULL) < 0)
+         panic("Unable to create a kthread for sched_alive_thread()");
+}
+
+void set_sched_alive_thread_enabled(bool enabled)
+{
+   sched_alive_thread_enabled = enabled;
+}
+
+
+#if SLOW_DEBUG_REF_COUNT
+
+/*
+ * Set here the address of the ref_count to track.
+ */
+void *debug_refcount_obj = (void *)0;
+
+/* Return the new value */
+int __retain_obj(int *ref_count)
+{
+   int ret;
+   ATOMIC(int) *atomic = (ATOMIC(int) *)ref_count;
+   ret = atomic_fetch_add_explicit(atomic, 1, mo_relaxed) + 1;
+
+   if (!debug_refcount_obj || ref_count == debug_refcount_obj) {
+      printk(COLOR_GREEN "refcount at %p: %d -> %d" RESET_ATTRS "\n",
+             ref_count, ret-1, ret);
+   }
+
+   return ret;
+}
+
+/* Return the new value */
+int __release_obj(int *ref_count)
+{
+   int old, ret;
+   ATOMIC(int) *atomic = (ATOMIC(int) *)ref_count;
+   old = atomic_fetch_sub_explicit(atomic, 1, mo_relaxed);
+   ASSERT(old > 0);
+   ret = old - 1;
+
+   if (!debug_refcount_obj || ref_count == debug_refcount_obj) {
+      printk(COLOR_RED "refcount at %p: %d -> %d" RESET_ATTRS "\n",
+             ref_count, old, ret);
+   }
+
+   return ret;
+}
+#endif

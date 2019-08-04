@@ -72,6 +72,8 @@ considered as *not implemented yet*.
  sys_unlink          | full
  sys_vfork           | compliant
  sys_umask           | full
+ sys_truncate64      | partial [11]
+ sys_ftruncate64     | partial [11]
 
 Definitions:
 
@@ -116,3 +118,5 @@ Notes:
 9. At the moment `times()` just updates `tms_utime` and `tms_stime`.
 
 10. Only the clocks CLOCK_REALTIME and CLOCK_MONOTONIC are supported.
+
+11. Truncate called with `length` > `file size` is not supported yet.

@@ -25,11 +25,11 @@ extern list zombie_tasks_list;
 extern ATOMIC(u32) disable_preemption_count;
 
 enum task_state {
-   TASK_STATE_INVALID = 0,
-   TASK_STATE_RUNNABLE = 1,
-   TASK_STATE_RUNNING = 2,
-   TASK_STATE_SLEEPING = 3,
-   TASK_STATE_ZOMBIE = 4
+   TASK_STATE_INVALID   = 0,
+   TASK_STATE_RUNNABLE  = 1,
+   TASK_STATE_RUNNING   = 2,
+   TASK_STATE_SLEEPING  = 3,
+   TASK_STATE_ZOMBIE    = 4
 };
 
 void init_sched(void);
@@ -43,15 +43,19 @@ static ALWAYS_INLINE void disable_preemption(void)
 
 static ALWAYS_INLINE void enable_preemption(void)
 {
-   u32 oldval = atomic_fetch_sub_explicit(&disable_preemption_count,
-                                          1U, mo_relaxed);
+   DEBUG_ONLY_UNSAFE(u32 oldval =)
+   atomic_fetch_sub_explicit(&disable_preemption_count, 1U, mo_relaxed);
 
    ASSERT(oldval > 0);
-   (void)oldval;
 }
 
 #ifdef DEBUG
 
+/*
+ * This function is supposed to be used only in ASSERTs or in special debug-only
+ * pieces of code. No "regular" code should use is_preemption_enabled() to
+ * change its behavior.
+ */
 static ALWAYS_INLINE bool is_preemption_enabled(void)
 {
    return disable_preemption_count == 0;

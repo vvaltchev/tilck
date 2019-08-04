@@ -4,58 +4,41 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <cstdio>
-#include <cstring>
-
 #include <iostream>
-#include <vector>
 #include <random>
 
+#include "vfs_test.h"
 using namespace std;
 
-#include <gtest/gtest.h>
+class vfs_misc : public vfs_test_base {
 
-#include "kernel_init_funcs.h"
+protected:
 
-extern "C" {
+   filesystem *fat_fs;
+   size_t fatpart_size;
 
-   #include <tilck/kernel/fs/fat32.h>
-   #include <tilck/kernel/fs/vfs.h>
+   void SetUp() override {
 
-   filesystem *ramfs_create(void);
-}
+      vfs_test_base::SetUp();
 
-static int mountpoint_match_wrapper(const char *mp, const char *path)
+      const char *buf = load_once_file(TEST_FATPART_FILE, &fatpart_size);
+      fat_fs = fat_mount_ramdisk((void *) buf, VFS_FS_RO);
+      ASSERT_TRUE(fat_fs != NULL);
+
+      mp2_init(fat_fs);
+   }
+
+   void TearDown() override {
+
+      fat_umount_ramdisk(fat_fs);
+      vfs_test_base::TearDown();
+   }
+};
+
+TEST_F(vfs_misc, read_content_of_longname_file)
 {
-   return mp_check_match(mp, strlen(mp), path, strlen(path));
-}
-
-// Implemented in fat32_test.cpp
-const char *load_once_file(const char *filepath, size_t *fsize = nullptr);
-void test_dump_buf(char *buf, const char *buf_name, int off, int count);
-
-TEST(vfs, mp_check_match)
-{
-   EXPECT_EQ(mountpoint_match_wrapper("/", "/"), 1);
-   EXPECT_EQ(mountpoint_match_wrapper("/", "/file"), 1);
-   EXPECT_EQ(mountpoint_match_wrapper("/", "/dir1/file2"), 1);
-   EXPECT_EQ(mountpoint_match_wrapper("/dev/", "/dev/tty0"), 5);
-   EXPECT_EQ(mountpoint_match_wrapper("/devices/", "/dev"), 0);
-   EXPECT_EQ(mountpoint_match_wrapper("/dev/", "/dev"), 4);
-}
-
-TEST(vfs, read_content_of_longname_file)
-{
-   init_kmalloc_for_tests();
-
-   const char *buf = load_once_file(PROJ_BUILD_DIR "/test_fatpart");
+   int r;
    char data[128] = {0};
-
-   filesystem *fat_fs = fat_mount_ramdisk((void *) buf, VFS_FS_RO);
-   ASSERT_TRUE(fat_fs != NULL);
-
-   int r = mountpoint_add(fat_fs, "/");
-   ASSERT_EQ(r, 0);
 
    const char *file_path =
       "/testdir/This_is_a_file_with_a_veeeery_long_name.txt";
@@ -69,15 +52,10 @@ TEST(vfs, read_content_of_longname_file)
 
    EXPECT_GT(res, 0);
    ASSERT_STREQ("Content of file with a long name\n", data);
-
-   mountpoint_remove(fat_fs);
-   fat_umount_ramdisk(fat_fs);
 }
 
-TEST(vfs, fseek)
+TEST_F(vfs_misc, fseek)
 {
-   init_kmalloc_for_tests();
-
    random_device rdev;
    const auto seed = rdev();
    default_random_engine engine(seed);
@@ -89,16 +67,7 @@ TEST(vfs, fseek)
 
    cout << "[ INFO     ] random seed: " << seed << endl;
 
-   size_t fatpart_size;
-   const char *fatpart =
-      load_once_file(PROJ_BUILD_DIR "/test_fatpart", &fatpart_size);
-
-   filesystem *fat_fs = fat_mount_ramdisk((void *) fatpart, VFS_FS_RO);
-   ASSERT_TRUE(fat_fs != NULL);
-
-   int r = mountpoint_add(fat_fs, "/");
-   ASSERT_EQ(r, 0);
-
+   int r;
    const char *fatpart_file_path = "/bigfile";
    const char *real_file_path = PROJ_BUILD_DIR "/test_sysroot/bigfile";
 
@@ -193,49 +162,12 @@ TEST(vfs, fseek)
 
    vfs_close(h);
    close(fd);
-
-   mountpoint_remove(fat_fs);
-   fat_umount_ramdisk(fat_fs);
 }
 
-static void create_test_file(int n)
-{
-   char path[256];
-   fs_handle h;
-   int rc;
-
-   sprintf(path, "/test_%d", n);
-
-   rc = vfs_open(path, &h, O_CREAT, 0644);
-   ASSERT_EQ(rc, 0);
-
-   vfs_close(h);
-}
-
-TEST(vfs_perf, creat)
-{
-   filesystem *fs;
-   int rc;
-
-   init_kmalloc_for_tests();
-   fs = ramfs_create();
-
-   ASSERT_TRUE(fs != NULL);
-
-   rc = mountpoint_add(fs, "/");
-   ASSERT_EQ(rc, 0);
-
-   for (int i = 0; i < 100; i++)
-      create_test_file(i);
-
-   mountpoint_remove(fs);
-   // TODO: destroy ramfs
-}
-
-string compute_abs_path_wrapper(const char *cwd, const char *path)
+string compute_abs_path_wrapper(const char *str_cwd, const char *path)
 {
    char dest[256];
-   int rc = compute_abs_path(path, cwd, dest, sizeof(dest));
+   int rc = compute_abs_path(path, str_cwd, dest, sizeof(dest));
 
    if (rc < 0)
       return "<error>";
@@ -263,7 +195,7 @@ TEST(compute_abs_path, tests)
    EXPECT_EQ(compute_abs_path_wrapper("/", "./a/b/c/.."), "/a/b");
    EXPECT_EQ(compute_abs_path_wrapper("/", "./a/b/c/../"), "/a/b/");
 
-   /* path is relative, cwd != / */
+   /* path is relative, str_cwd != / */
    EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "a"), "/a/b/c/a");
    EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "a/"), "/a/b/c/a/");
    EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", ".."), "/a/b");
@@ -291,3 +223,4 @@ TEST(compute_abs_path, tests)
    EXPECT_EQ(compute_abs_path_wrapper("/", "something.."), "/something..");
    EXPECT_EQ(compute_abs_path_wrapper("/", "something."), "/something.");
 }
+

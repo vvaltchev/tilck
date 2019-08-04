@@ -29,34 +29,34 @@ static void drop_last_component(char **d_ref, char *const dest)
 }
 
 int
-compute_abs_path(const char *path, const char *cwd, char *dest, u32 dest_size)
+compute_abs_path(const char *path, const char *str_cwd, char *dest, u32 dest_s)
 {
    const char *p;
    char *d = dest;
 
-   ASSERT(*cwd == '/');
+   ASSERT(*str_cwd == '/');
 
    if (!*path)
       return -ENOENT;
 
    if (*path != '/') {
 
-      u32 cl = (u32)strlen(cwd);
+      u32 cl = (u32)strlen(str_cwd);
       ASSERT(cl > 0);
 
       /* The current working directory is ALWAYS supposed to be ending in '/' */
-      ASSERT(cwd[cl - 1] == '/');
+      ASSERT(str_cwd[cl - 1] == '/');
 
-      if (dest_size < strlen(path) + cl + 1)
+      if (dest_s < strlen(path) + cl + 1)
          return -ENAMETOOLONG;
 
-      memcpy(dest, cwd, cl + 1);
+      memcpy(dest, str_cwd, cl + 1);
       d = dest + cl;
 
    } else {
 
       /* path is absolute */
-      if (dest_size < strlen(path) + 1)
+      if (dest_s < strlen(path) + 1)
          return -ENAMETOOLONG;
    }
 

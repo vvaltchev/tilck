@@ -9,7 +9,11 @@ void switch_to_initial_kernel_stack(void);
 
 static ALWAYS_INLINE void set_curr_task(task_info *ti)
 {
+
+#ifndef UNIT_TEST_ENVIRONMENT
    DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(!are_interrupts_enabled());
+#endif
+
    __current = ti;
 }

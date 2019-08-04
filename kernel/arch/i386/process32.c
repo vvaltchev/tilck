@@ -275,7 +275,7 @@ int setup_usermode_task(pdir_t *pdir,
       ti->pi->umask = 0022;
       ti->state = TASK_STATE_RUNNABLE;
       add_task(ti);
-      memcpy(ti->pi->cwd, "/", 2);
+      memcpy(ti->pi->str_cwd, "/", 2);
 
    } else {
 

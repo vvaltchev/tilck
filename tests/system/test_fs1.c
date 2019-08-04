@@ -191,7 +191,7 @@ int cmd_fs3(int argc, char **argv)
     */
 
    printf("Remove the next entry: test_%03d\n", last_n + 1);
-   remove_test_file("/tmp/r", last_n + 1);
+   remove_test_file_expecting_success("/tmp/r", last_n + 1);
 
    /*
     * Now, if this special case has been handled correctly, we should continue
@@ -223,13 +223,11 @@ int cmd_fs3(int argc, char **argv)
 
       if (i != last_n+1) {
 
-         remove_test_file("/tmp/r", i);
+         remove_test_file_expecting_success("/tmp/r", i);
 
       } else {
 
-         char buf[32];
-         sprintf(buf, "/tmp/r/%d", i);
-         rc = unlink(buf);
+         rc = remove_test_file("/tmp/r", i);
          DEVSHELL_CMD_ASSERT(rc < 0);
          DEVSHELL_CMD_ASSERT(errno == ENOENT);
       }
@@ -369,7 +367,7 @@ int cmd_fs4(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(rc == 0);
 
    for (int i = 0; i < n_files; i++)
-      remove_test_file("/tmp/r", i);
+      remove_test_file_expecting_success("/tmp/r", i);
 
    rc = rmdir("/tmp/r");
    DEVSHELL_CMD_ASSERT(rc == 0);

@@ -8,12 +8,23 @@ maindir="@CMAKE_SOURCE_DIR@"
 bdir="@CMAKE_BINARY_DIR@"
 dest="@CMAKE_BINARY_DIR@/fatpart"
 tc="@TCROOT@"
+archgcc="@ARCH_GCC_TC@"
+strip="@STRIP@"
+gcctc="@GCC_TOOLCHAIN@"
+
+if [ -f "$gcctc/$archgcc-linux-strip" ]; then
+   strip="$gcctc/$archgcc-linux-strip"
+fi
 
 mtoolsdir=$tc/mtools
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd
 mcopy=$mtoolsdir/mcopy
+
+function strip_binary {
+   $strip -s "$1"
+}
 
 function pushd {
    command pushd "$@" > /dev/null
@@ -55,21 +66,17 @@ function add_apps {
 
    IFS=";"
 
-   ln $bdir/userapps/init sbin/
-
    apps="@USERAPPS_FILES_LIST@"
    extra_apps="@EXTRA_APPS_LIST@"
 
    for x in ${apps[@]}; do
-      ln "$x" bin/
+      cp "$x" bin/
+      strip_binary "bin/$(basename -- $x)"
    done
 
-   pushd bin
-   rm init     # We already put `init` in `/bin`.
-   popd
-
    for x in ${extra_apps[@]}; do
-      ln "$x" usr/bin/
+      cp "$x" usr/bin/
+      strip_binary "usr/bin/$(basename -- $x)"
    done
 
    unset IFS
@@ -122,6 +129,23 @@ function add_fat_test_dir {
    popd
 }
 
+function add_tcc {
+
+   if [ ! -d $tc/tcc ]; then
+      return
+   fi
+
+   local musl=@GCC_TC_SYSROOT@/lib/
+
+   mkdir -p lib/tcc
+   cp -r $tc/tcc/include lib/tcc
+   ln $tc/tcc/tcclib.h lib/tcc/include
+   ln $tc/tcc/@ARCH@-libtcc1.a lib/tcc
+   ln $tc/tcc/@ARCH@-tcc bin/tcc
+
+   cp -r $musl lib/@ARCH_GCC_TC@-tilck-musl
+}
+
 function make_fatpart {
 
    create_fatpart_if_necessary
@@ -134,6 +158,11 @@ function make_fatpart {
 
    # then, copy all the files in sysroot
    for f in $(find * -type f); do
+
+      if [[ "$(basename -- $f)" == ".gitignore" ]]; then
+         continue;
+      fi
+
       $mcopy -i $dest $f ::/$f
    done
 }
@@ -149,5 +178,6 @@ add_efi_files
 add_tilck_kernel
 add_fat_test_dir
 add_busybox
+add_tcc
 
 make_fatpart

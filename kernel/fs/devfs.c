@@ -78,6 +78,7 @@ typedef struct {
     * Yes, sub-directories are NOT supported by devfs. The whole filesystem is
     * just one flat directory.
     */
+   enum vfs_entry_type type;
    list files_list;
    tilck_inode_t inode;
 
@@ -142,7 +143,7 @@ static ssize_t devfs_dir_write(fs_handle h, char *buf, size_t len)
 
 static off_t devfs_dir_seek(fs_handle h, off_t target_off, int whence)
 {
-   devfs_file_handle *dh = h;
+   devfs_handle *dh = h;
    devfs_data *d = dh->fs->device_data;
    devfs_file *pos;
    off_t off = 0;
@@ -177,31 +178,37 @@ static int devfs_dir_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
-int devfs_stat64(fs_handle h, struct stat64 *statbuf)
+int devfs_stat(filesystem *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
-   devfs_file_handle *dh = h;
-   devfs_file *df = dh->file;
-   devfs_data *ddata = dh->fs->device_data;
+   devfs_file *df = i;
+   devfs_data *ddata = fs->device_data;
 
    bzero(statbuf, sizeof(struct stat64));
 
-   statbuf->st_dev = dh->fs->device_id;
+   statbuf->st_dev = fs->device_id;
 
-   if (dh->type == VFS_CHAR_DEV) {
-      statbuf->st_mode = 0666 | S_IFCHR;
-      statbuf->st_ino = df->inode;
-   } else if (dh->type == VFS_DIR) {
-      statbuf->st_mode = 0555 | S_IFDIR;
-      statbuf->st_ino = ddata->root_dir.inode;
-   } else {
-      NOT_REACHED();
+   switch (df->type) {
+
+      case VFS_DIR:
+         ASSERT(i == &ddata->root_dir);
+         statbuf->st_mode = 0555 | S_IFDIR;
+         statbuf->st_ino = ddata->root_dir.inode;
+         break;
+
+      case VFS_CHAR_DEV:
+         statbuf->st_mode = 0666 | S_IFCHR;
+         statbuf->st_ino = df->inode;
+         break;
+
+      default:
+         panic("[devfs] Invalid type: %d", df->type);
    }
 
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
    statbuf->st_gid = 0; /* root */
 
-   if (dh->type == VFS_CHAR_DEV)
+   if (df->type == VFS_CHAR_DEV)
       statbuf->st_rdev = (dev_t)(df->dev_major << 8 | df->dev_minor);
 
    statbuf->st_size = 0;
@@ -232,9 +239,9 @@ static const file_ops static_ops_devfs =
 
 static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
 {
-   devfs_file_handle *h;
+   devfs_handle *h;
 
-   if (!(h = kzmalloc(sizeof(devfs_file_handle))))
+   if (!(h = kzmalloc(sizeof(devfs_handle))))
       return -ENOMEM;
 
    h->type = VFS_DIR;
@@ -247,13 +254,13 @@ static int devfs_open_root_dir(filesystem *fs, fs_handle *out)
 
 static int devfs_open_file(filesystem *fs, devfs_file *pos, fs_handle *out)
 {
-   devfs_file_handle *h;
+   devfs_handle *h;
 
-   if (!(h = kzmalloc(sizeof(devfs_file_handle))))
+   if (!(h = kzmalloc(sizeof(devfs_handle))))
       return -ENOMEM;
 
    if (!(h->read_buf = kzmalloc(DEVFS_READ_BS))) {
-      kfree2(h, sizeof(devfs_file_handle));
+      kfree2(h, sizeof(devfs_handle));
       return -ENOMEM;
    }
 
@@ -292,29 +299,29 @@ devfs_open(vfs_path *p, fs_handle *out, int fl, mode_t mod)
 
 static void devfs_close(fs_handle h)
 {
-   devfs_file_handle *devh = h;
+   devfs_handle *devh = h;
    kfree2(devh->read_buf, DEVFS_READ_BS);
    kfree2(devh->write_buf, DEVFS_WRITE_BS);
-   kfree2(devh, sizeof(devfs_file_handle));
+   kfree2(devh, sizeof(devfs_handle));
 }
 
 static int devfs_dup(fs_handle fsh, fs_handle *dup_h)
 {
-   devfs_file_handle *h = fsh;
-   devfs_file_handle *h2;
-   h2 = kzmalloc(sizeof(devfs_file_handle));
+   devfs_handle *h = fsh;
+   devfs_handle *h2;
+   h2 = kzmalloc(sizeof(devfs_handle));
 
    if (!h2)
       return -ENOMEM;
 
-   memcpy(h2, h, sizeof(devfs_file_handle));
+   memcpy(h2, h, sizeof(devfs_handle));
 
    if (h->read_buf) {
 
       h2->read_buf = kmalloc(DEVFS_READ_BS);
 
       if (!h2->read_buf) {
-         kfree2(h2, sizeof(devfs_file_handle));
+         kfree2(h2, sizeof(devfs_handle));
          return -ENOMEM;
       }
 
@@ -327,7 +334,7 @@ static int devfs_dup(fs_handle fsh, fs_handle *dup_h)
 
       if (!h2->write_buf) {
          kfree2(h->read_buf, DEVFS_READ_BS);
-         kfree2(h2, sizeof(devfs_file_handle));
+         kfree2(h2, sizeof(devfs_handle));
          return -ENOMEM;
       }
    }
@@ -362,7 +369,7 @@ static void devfs_shared_unlock(filesystem *fs)
 
 static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
 {
-   devfs_file_handle *dh = h;
+   devfs_handle *dh = h;
    devfs_data *d = dh->fs->device_data;
    int rc = 0;
 
@@ -430,8 +437,26 @@ devfs_get_entry(filesystem *fs,
    }
 }
 
+static vfs_inode_ptr_t devfs_get_inode(fs_handle h)
+{
+   return ((devfs_handle *)h)->file;
+}
+
+static int devfs_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
+{
+   /* devfs does not support removal of inodes after boot */
+   return 1;
+}
+
+static int devfs_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
+{
+   /* devfs does not support removal of inodes after boot */
+   return 1;
+}
+
 static const fs_ops static_fsops_devfs =
 {
+   .get_inode = devfs_get_inode,
    .open = devfs_open,
    .close = devfs_close,
    .dup = devfs_dup,
@@ -440,8 +465,10 @@ static const fs_ops static_fsops_devfs =
    .mkdir = NULL,
    .rmdir = NULL,
    .truncate = NULL,
-   .fstat = devfs_stat64,
+   .stat = devfs_stat,
    .get_entry = devfs_get_entry,
+   .retain_inode = devfs_retain_inode,
+   .release_inode = devfs_release_inode,
 
    .fs_exlock = devfs_exclusive_lock,
    .fs_exunlock = devfs_exclusive_unlock,
@@ -466,9 +493,10 @@ filesystem *create_devfs(void)
    }
 
    d->next_inode = 1;
+   d->root_dir.type = VFS_DIR;
    d->root_dir.inode = devfs_get_next_inode(d);
    list_init(&d->root_dir.files_list);
-   rwlock_wp_init(&d->rwlock);
+   rwlock_wp_init(&d->rwlock, false);
    d->wrt_time = read_system_clock_timestamp();
 
    fs->fs_type_name = "devfs";
@@ -482,13 +510,12 @@ filesystem *create_devfs(void)
 
 void init_devfs(void)
 {
+   int rc;
    devfs = create_devfs();
 
    if (!devfs)
       panic("Unable to create devfs");
 
-   int rc = mountpoint_add(devfs, "/dev/");
-
-   if (rc != 0)
-      panic("mountpoint_add() failed with error: %d", rc);
+   if ((rc = mp2_add(devfs, "/dev/")))
+      panic("mp2_add() failed with error: %d", rc);
 }

@@ -117,3 +117,43 @@ extern "C++" {
 
 #define atomic_cas_strong(p, ep, nv, m1, m2) \
    atomic_compare_exchange_strong_explicit((p), (ep), (nv), (m1), (m2))
+
+/* ---- Basic reference counting ---- */
+
+#define REF_COUNTED_OBJECT    int ref_count
+
+#if !SLOW_DEBUG_REF_COUNT
+
+/* Return the new value */
+static ALWAYS_INLINE int __retain_obj(int *ref_count)
+{
+   ATOMIC(int) *atomic = (ATOMIC(int) *)ref_count;
+   return atomic_fetch_add_explicit(atomic, 1, mo_relaxed) + 1;
+}
+
+/* Return the new value */
+static ALWAYS_INLINE int __release_obj(int *ref_count)
+{
+   int old;
+   ATOMIC(int) *atomic = (ATOMIC(int) *)ref_count;
+   old = atomic_fetch_sub_explicit(atomic, 1, mo_relaxed);
+   ASSERT(old > 0);
+   return old - 1;
+}
+
+#else
+
+int __retain_obj(int *ref_count);
+int __release_obj(int *ref_count);
+
+#endif
+
+static ALWAYS_INLINE int __get_ref_count(int *ref_count)
+{
+   ATOMIC(int) *atomic = (ATOMIC(int) *)ref_count;
+   return atomic_load_explicit(atomic, mo_relaxed);
+}
+
+#define retain_obj(p)         (__retain_obj(&(p)->ref_count))
+#define release_obj(p)        (__release_obj(&(p)->ref_count))
+#define get_ref_count(p)      (__get_ref_count(&(p)->ref_count))

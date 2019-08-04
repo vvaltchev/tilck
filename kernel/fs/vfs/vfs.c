@@ -8,69 +8,53 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/user.h>
+#include <tilck/kernel/debug_utils.h>
 
 #include <dirent.h> // system header
 
 #include "../fs_int.h"
+#include "vfs_mp2.c.h"
 #include "vfs_locking.c.h"
 #include "vfs_resolve.c.h"
-#include "vfs_stat.c.h"
 #include "vfs_getdents.c.h"
 #include "vfs_op_ready.c.h"
 
 static u32 next_device_id;
 
-/*
- * ----------------------------------------------------
- * Main VFS functions
- * ----------------------------------------------------
- */
-
-int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
+static void __nr_check(bool *check)
 {
-   const char *fs_path;
-   filesystem *fs;
-   vfs_path p;
-   int rc;
-
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* VFS works only with absolute paths */
-
-   if (flags & O_ASYNC)
-      return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
-
-   if ((flags & O_TMPFILE) == O_TMPFILE)
-      return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
-
-   if (!(fs = get_retained_fs_at(path, &fs_path)))
-      return -ENOENT;
-
-   /* See the comment in vfs.h about the "fs-lock" funcs */
-   vfs_fs_exlock(fs);
-   {
-      rc = vfs_resolve(fs, fs_path, &p);
-
-      if (!rc)
-         rc = fs->fsops->open(&p, out, flags, mode);
-   }
-   vfs_fs_exunlock(fs);
-
-   if (rc == 0) {
-
-      /* open() succeeded, the FS is already retained */
-      ((fs_handle_base *) *out)->fl_flags = flags;
-
-      if (flags & O_CLOEXEC)
-         ((fs_handle_base *) *out)->fd_flags |= FD_CLOEXEC;
-
-   } else {
-      /* open() failed, we need to release the FS */
-      release_obj(fs);
-   }
-
-   return rc;
+   if (!*check)
+      panic("Detected return in VFS func using common header/footer");
 }
+
+#define VFS_FS_PATH_FUNCS_COMMON_HEADER(path_param, exlock, rl)         \
+                                                                        \
+   filesystem *fs;                                                      \
+   vfs_path p;                                                          \
+   int rc;                                                              \
+   const bool __saved_exlock = exlock;                                  \
+   DEBUG_ONLY(bool no_ret_check __attribute__((cleanup(__nr_check))));  \
+   DEBUG_ONLY(no_ret_check = false);                                    \
+                                                                        \
+   NO_TEST_ASSERT(is_preemption_enabled());                             \
+   ASSERT(path_param != NULL);                                          \
+                                                                        \
+   if ((rc = vfs_resolve(path_param, &p, exlock, rl)) < 0) {            \
+      DEBUG_ONLY(no_ret_check = true);                                  \
+      return rc;                                                        \
+   }                                                                    \
+                                                                        \
+   ASSERT(p.fs != NULL);                                                \
+   fs = p.fs;
+
+#define VFS_FS_PATH_FUNCS_COMMON_FOOTER()                               \
+out:                                                                    \
+   DEBUG_ONLY(no_ret_check = true);                                     \
+   vfs_smart_fs_unlock(fs, __saved_exlock);                             \
+   release_obj(fs);                                                     \
+   return rc;
+
+/* ------------ handle-based functions ------------- */
 
 void vfs_close(fs_handle h)
 {
@@ -224,136 +208,195 @@ int vfs_fcntl(fs_handle h, int cmd, int arg)
    return ret;
 }
 
-int vfs_mkdir(const char *path, mode_t mode)
+int vfs_ftruncate(fs_handle h, off_t length)
 {
-   const char *fs_path;
-   filesystem *fs;
-   vfs_path p;
-   int rc;
+   fs_handle_base *hb = (fs_handle_base *) h;
+   const fs_ops *fsops = hb->fs->fsops;
 
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* VFS works only with absolute paths */
-
-   if (!(fs = get_retained_fs_at(path, &fs_path)))
-      return -ENOENT;
-
-   if (!(fs->flags & VFS_FS_RW))
+   if (!fsops->truncate)
       return -EROFS;
 
-   if (!fs->fsops->mkdir)
-      return -EPERM;
+   return fsops->truncate(hb->fs, fsops->get_inode(h), length);
+}
 
-   /* See the comment in vfs.h about the "fs-lock" funcs */
-   vfs_fs_exlock(fs);
+int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
+{
+   NO_TEST_ASSERT(is_preemption_enabled());
+   ASSERT(h != NULL);
+
+   fs_handle_base *hb = (fs_handle_base *) h;
+   filesystem *fs = hb->fs;
+   const fs_ops *fsops = fs->fsops;
+   int ret;
+
+   vfs_shlock(h);
    {
-      rc = vfs_resolve(fs, fs_path, &p);
-
-      if (!rc)
-         rc = fs->fsops->mkdir(&p, mode);
+      ret = fsops->stat(fs, fsops->get_inode(h), statbuf);
    }
-   vfs_fs_exunlock(fs);
-   release_obj(fs);     /* it was retained by get_retained_fs_at() */
-   return rc;
+   vfs_shunlock(h);
+   return ret;
+}
+
+/* ----------- path-based functions -------------- */
+
+int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
+{
+   if (flags & O_ASYNC)
+      return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
+
+   if ((flags & O_TMPFILE) == O_TMPFILE)
+      return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
+
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, true)
+
+   if (!(rc = fs->fsops->open(&p, out, flags, mode))) {
+
+      /* open() succeeded, the FS is already retained */
+      ((fs_handle_base *) *out)->fl_flags = flags;
+
+      if (flags & O_CLOEXEC)
+         ((fs_handle_base *) *out)->fd_flags |= FD_CLOEXEC;
+
+      /* file handles retain their filesystem */
+      retain_obj(fs);
+   }
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+}
+
+int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl)
+{
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, res_last_sl)
+
+   rc = p.fs_path.inode
+      ? fs->fsops->stat(fs, p.fs_path.inode, statbuf)
+      : -ENOENT;
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+}
+
+int vfs_mkdir(const char *path, mode_t mode)
+{
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, false)
+
+   if (fs->fsops->mkdir) {
+      if (fs->flags & VFS_FS_RW) {
+         rc = p.fs_path.inode
+            ? -EEXIST
+            :  fs->fsops->mkdir(&p, mode);
+      } else {
+         rc = -EROFS;
+      }
+   } else {
+      rc = -EPERM;
+   }
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
 int vfs_rmdir(const char *path)
 {
-   const char *fs_path;
-   filesystem *fs;
-   vfs_path p;
-   int rc;
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, false)
 
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* VFS works only with absolute paths */
-
-   if (!(fs = get_retained_fs_at(path, &fs_path)))
-      return -ENOENT;
-
-   if (!(fs->flags & VFS_FS_RW))
-      return -EROFS;
-
-   if (!fs->fsops->rmdir)
-      return -EPERM;
-
-   /* See the comment in vfs.h about the "fs-lock" funcs */
-   vfs_fs_exlock(fs);
-   {
-      rc = vfs_resolve(fs, fs_path, &p);
-
-      if (!rc)
-         rc = fs->fsops->rmdir(&p);
+   if (fs->fsops->rmdir) {
+      if (fs->flags & VFS_FS_RW) {
+         rc = p.fs_path.inode
+            ? fs->fsops->rmdir(&p)
+            : -ENOENT;
+      } else {
+         rc = -EROFS;
+      }
+   } else {
+      rc = -EPERM;
    }
-   vfs_fs_exunlock(fs);
-   release_obj(fs);     /* it was retained by get_retained_fs_at() */
-   return rc;
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
 int vfs_unlink(const char *path)
 {
-   const char *fs_path;
-   filesystem *fs;
-   vfs_path p;
-   int rc;
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, false)
 
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* VFS works only with absolute paths */
-
-   if (!(fs = get_retained_fs_at(path, &fs_path)))
-      return -ENOENT;
-
-   if (!(fs->flags & VFS_FS_RW))
-      return -EROFS;
-
-   if (!fs->fsops->unlink)
-      return -EROFS;
-
-   /* See the comment in vfs.h about the "fs-lock" funcs */
-   vfs_fs_exlock(fs);
-   {
-      rc = vfs_resolve(fs, fs_path, &p);
-
-      if (!rc)
-         rc = p.fs_path.inode ? fs->fsops->unlink(&p) : -ENOENT;
+   if (fs->fsops->unlink) {
+      if (fs->flags & VFS_FS_RW) {
+         rc = p.fs_path.inode
+            ? fs->fsops->unlink(&p)
+            : -ENOENT;
+      } else {
+         rc = -EROFS;
+      }
+   } else {
+      rc = -EROFS;
    }
-   vfs_fs_exunlock(fs);
-   release_obj(fs);     /* it was retained by get_retained_fs_at() */
-   return rc;
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
 int vfs_truncate(const char *path, off_t len)
 {
-   const char *fs_path;
-   filesystem *fs;
-   vfs_path p;
-   int rc;
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, true)
 
-   NO_TEST_ASSERT(is_preemption_enabled());
-   ASSERT(path != NULL);
-   ASSERT(*path == '/'); /* VFS works only with absolute paths */
+   if (fs->fsops->truncate) {
 
-   if (!(fs = get_retained_fs_at(path, &fs_path)))
-      return -ENOENT;
+      if (fs->flags & VFS_FS_RW) {
+         rc = p.fs_path.inode
+            ? fs->fsops->truncate(fs, p.fs_path.inode, len)
+            : -ENOENT;
+      } else {
+         rc = -EROFS;
+      }
 
-   if (!(fs->flags & VFS_FS_RW))
-      return -EROFS;
-
-   if (!fs->fsops->truncate)
-      return -EROFS;
-
-   /* See the comment in vfs.h about the "fs-lock" funcs */
-   vfs_fs_exlock(fs);
-   {
-      rc = vfs_resolve(fs, fs_path, &p);
-
-      if (!rc)
-         rc = p.fs_path.inode ? fs->fsops->truncate(&p, len) : -ENOENT;
+   } else {
+      rc = -EROFS;
    }
-   vfs_fs_exunlock(fs);
-   release_obj(fs);     /* it was retained by get_retained_fs_at() */
-   return rc;
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+}
+
+int vfs_symlink(const char *target, const char *linkpath)
+{
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(linkpath, true, false)
+
+   if (fs->fsops->symlink) {
+
+      if (fs->flags & VFS_FS_RW) {
+         rc = p.fs_path.inode
+            ? -EEXIST /* the linkpath already exists! */
+            : fs->fsops->symlink(target, &p);
+      } else {
+         rc = -EROFS;
+      }
+
+   } else {
+      rc = -EPERM; /* symlinks not supported */
+   }
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+}
+
+/* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
+int vfs_readlink(const char *path, char *buf)
+{
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, false)
+
+   if (fs->fsops->readlink) {
+
+      /* there is a readlink function */
+
+      rc = p.fs_path.inode
+         ? fs->fsops->readlink(&p, buf)
+         : -ENOENT;
+
+   } else {
+
+      /*
+       * If there's no readlink(), symlinks are not supported by the FS, ergo
+       * the last component of `path` cannot be referring to a symlink.
+       */
+      rc = -EINVAL;
+   }
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
 u32 vfs_get_new_device_id(void)

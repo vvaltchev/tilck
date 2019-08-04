@@ -93,7 +93,7 @@ void init_process_lists(process_info *pi)
 
 task_info *allocate_new_process(task_info *parent, int pid)
 {
-   process_info *pi;
+   process_info *pi, *parent_pi = parent->pi;
    task_info *ti = kmalloc(sizeof(task_info) + sizeof(process_info));
 
    if (!ti)
@@ -105,15 +105,18 @@ task_info *allocate_new_process(task_info *parent, int pid)
    ASSERT(parent != NULL);
 
    memcpy(ti, parent, sizeof(task_info));
-   memcpy(pi, parent->pi, sizeof(process_info));
-   pi->parent_pid = parent->pi->pid;
-   pi->mmap_heap = kmalloc_heap_dup(parent->pi->mmap_heap);
+   memcpy(pi, parent_pi, sizeof(process_info));
+   pi->parent_pid = parent_pi->pid;
+   pi->mmap_heap = kmalloc_heap_dup(parent_pi->mmap_heap);
 
    pi->ref_count = 1;
    pi->pid = pid;
    ti->tid = pid;
    ti->is_main_thread = true;
    pi->did_call_execve = false;
+
+   /* Copy parent's `cwd` while retaining the `fs` and the inode obj */
+   process_set_cwd2_nolock_raw(pi, &parent_pi->cwd);
 
    if (!do_common_task_allocations(ti) ||
        !arch_specific_new_task_setup(ti, parent))
@@ -167,17 +170,31 @@ void free_task(task_info *ti)
 
    if (is_main_thread(ti)) {
 
-      ASSERT(get_ref_count(ti->pi) > 0);
+      process_info *pi = ti->pi;
+      ASSERT(get_ref_count(pi) > 0);
 
-      if (ti->pi->mmap_heap) {
-         kmalloc_destroy_heap(ti->pi->mmap_heap);
-         kfree2(ti->pi->mmap_heap, kmalloc_get_heap_struct_size());
-         ti->pi->mmap_heap = NULL;
+      if (pi->mmap_heap) {
+         kmalloc_destroy_heap(pi->mmap_heap);
+         kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
+         pi->mmap_heap = NULL;
       }
 
-      if (release_obj(ti->pi) == 0) {
-         list_remove(&ti->pi->siblings_node);
+      if (release_obj(pi) == 0) {
+         list_remove(&pi->siblings_node);
          kfree2(ti, sizeof(task_info) + sizeof(process_info));
+      }
+
+      if (LIKELY(pi->cwd.fs != NULL)) {
+
+         /*
+          * When we change the current directory or when we fork a process, we
+          * set a new value for the vfs_path pi->cwd which has its inode
+          * retained as well as its owning fs. Here we have to release those
+          * ref-counts.
+          */
+
+         vfs_release_inode_at(&pi->cwd);
+         release_obj(pi->cwd.fs);
       }
 
    } else {

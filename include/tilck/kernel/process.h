@@ -59,13 +59,15 @@ struct process_info {
    bool did_call_execve;
    int *set_child_tid;                 /* NOTE: this is an user pointer */
 
-   kmutex fslock;                      /* protectes `handles` and `cwd` */
+   kmutex fslock;                      /* protects `handles` and `cwd` */
    mode_t umask;
+
+   vfs_path cwd;                       /* CWD as a vfs_path */
 
    /* large members */
 
    char filepath[MAX_PATH];               /* executable's path */
-   char cwd[MAX_PATH];                    /* current working directory */
+   char str_cwd[MAX_PATH];                /* current working directory */
    fs_handle handles[MAX_HANDLES];        /* just a small fixed-size array */
 
    __sighandler_t sa_handlers[_NSIG];
@@ -222,5 +224,7 @@ void init_process_lists(process_info *pi);
 void *task_temp_kernel_alloc(size_t size);
 void task_temp_kernel_free(void *ptr);
 
+void process_set_cwd2_nolock(vfs_path *tp);
+void process_set_cwd2_nolock_raw(process_info *pi, vfs_path *tp);
 void terminate_process(task_info *ti, int exit_code, int term_sig);
 void debug_show_task_list(void);

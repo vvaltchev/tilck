@@ -9,13 +9,13 @@
 
 typedef struct {
 
+   enum vfs_entry_type type;
    list_node dir_node;
 
    u16 dev_major;
    u16 dev_minor;
    const char *name;
    const file_ops *fops;
-   enum vfs_entry_type type;
    tilck_inode_t inode;
 
 } devfs_file;
@@ -49,7 +49,7 @@ typedef struct {
       };
    };
 
-} devfs_file_handle;
+} devfs_handle;
 
 
 typedef int

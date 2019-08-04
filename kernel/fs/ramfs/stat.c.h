@@ -1,19 +1,19 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static int ramfs_fstat64(fs_handle h, struct stat64 *statbuf)
+static int
+ramfs_stat(filesystem *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
-   if (!h)
+   if (!i)
       return -ENOENT;
 
-   ramfs_handle *rh = h;
-   ramfs_inode *inode = rh->inode;
+   ramfs_inode *inode = i;
 
    if (!(inode->parent_dir->mode & 0500)) /* read + execute */
       return -EACCES;
 
    bzero(statbuf, sizeof(struct stat64));
 
-   statbuf->st_dev = rh->fs->device_id;
+   statbuf->st_dev = fs->device_id;
    statbuf->st_ino = inode->ino;
    statbuf->st_mode = inode->mode;
    statbuf->st_nlink = inode->nlink;

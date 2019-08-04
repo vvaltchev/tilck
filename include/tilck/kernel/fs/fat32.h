@@ -29,7 +29,7 @@ typedef struct {
    fat_entry *e;
    u32 curr_cluster;
 
-} fat_file_handle;
+} fat_handle;
 
 filesystem *fat_mount_ramdisk(void *vaddr, u32 flags);
 void fat_umount_ramdisk(filesystem *fs);

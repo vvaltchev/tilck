@@ -51,7 +51,7 @@ void simple_test_kthread(void *arg)
 
 #endif
 
-      if (!(i % (64*MB))) {
+      if (!(i % (8*MB))) {
          printk("[kthread] i = %i\n", i/MB);
       }
    }

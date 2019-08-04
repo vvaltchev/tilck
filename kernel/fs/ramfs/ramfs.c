@@ -36,7 +36,10 @@ static int ramfs_unlink(vfs_path *p)
 
    /* Trucate and delete the inode, if it's not used */
    if (!i->nlink && !get_ref_count(i)) {
-      ramfs_inode_truncate_safe(i, 0);
+
+      if (i->type == VFS_FILE)
+         ramfs_inode_truncate_safe(i, 0);
+
       ramfs_destroy_inode(d, i);
    }
 
@@ -144,8 +147,59 @@ ramfs_get_entry(filesystem *fs,
    };
 }
 
+static vfs_inode_ptr_t ramfs_getinode(fs_handle h)
+{
+   return ((ramfs_handle *)h)->inode;
+}
+
+static int ramfs_symlink(const char *target, vfs_path *lp)
+{
+   ramfs_data *d = lp->fs->device_data;
+   ramfs_inode *n;
+
+   n = ramfs_create_inode_symlink(d, lp->fs_path.dir_inode, target);
+
+   if (!n)
+      return -ENOSPC;
+
+   return ramfs_dir_add_entry(lp->fs_path.dir_inode, lp->last_comp, n);
+}
+
+/* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
+static int ramfs_readlink(vfs_path *p, char *buf)
+{
+   ramfs_inode *i = p->fs_path.inode;
+
+   if (i->type != VFS_SYMLINK)
+      return -EINVAL;
+
+   memcpy(buf, i->path, i->path_len); /* skip final \0 */
+   return (int) i->path_len;
+}
+
+static int ramfs_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
+{
+   ASSERT(inode != NULL);
+
+   if (!(fs->flags & VFS_FS_RW))
+      return 1;
+
+   return retain_obj((ramfs_inode *)inode);
+}
+
+static int ramfs_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
+{
+   ASSERT(inode != NULL);
+
+   if (!(fs->flags & VFS_FS_RW))
+      return 1;
+
+   return release_obj((ramfs_inode *)inode);
+}
+
 static const fs_ops static_fsops_ramfs =
 {
+   .get_inode = ramfs_getinode,
    .open = ramfs_open,
    .close = ramfs_close,
    .dup = ramfs_dup,
@@ -154,8 +208,12 @@ static const fs_ops static_fsops_ramfs =
    .mkdir = ramfs_mkdir,
    .rmdir = ramfs_rmdir,
    .truncate = ramfs_truncate,
-   .fstat = ramfs_fstat64,
+   .stat = ramfs_stat,
+   .symlink = ramfs_symlink,
+   .readlink = ramfs_readlink,
    .get_entry = ramfs_get_entry,
+   .retain_inode = ramfs_retain_inode,
+   .release_inode = ramfs_release_inode,
 
    .fs_exlock = ramfs_exlock,
    .fs_exunlock = ramfs_exunlock,
@@ -177,7 +235,7 @@ filesystem *ramfs_create(void)
    }
 
    fs->device_data = d;
-   rwlock_wp_init(&d->rwlock);
+   rwlock_wp_init(&d->rwlock, false);
    d->next_inode_num = 1;
    d->root = ramfs_create_inode_dir(d, 0777, NULL);
 
@@ -190,25 +248,6 @@ filesystem *ramfs_create(void)
    fs->device_id = vfs_get_new_device_id();
    fs->flags = VFS_FS_RW;
    fs->fsops = &static_fsops_ramfs;
-
-   //tmp
-   {
-      ramfs_inode *i1 = ramfs_create_inode_dir(d, 0755, d->root);
-      VERIFY(ramfs_dir_add_entry(d->root, "e1", i1) == 0);
-
-      ramfs_inode *i2 = ramfs_create_inode_file(d, 0644, d->root);
-      VERIFY(ramfs_dir_add_entry(d->root, "e2", i2) == 0);
-
-      ramfs_inode *i11 = ramfs_create_inode_dir(d, 0777, i1);
-      VERIFY(ramfs_dir_add_entry(i1, "e11", i11) == 0);
-
-      ramfs_inode *i12 = ramfs_create_inode_dir(d, 0777, i1);
-      VERIFY(ramfs_dir_add_entry(i1, "e12", i12) == 0);
-
-      ramfs_inode *i111 = ramfs_create_inode_file(d, 0644, i11);
-      VERIFY(ramfs_dir_add_entry(i11, "e111", i111) == 0);
-   }
-   //end tmp
    return fs;
 }
 

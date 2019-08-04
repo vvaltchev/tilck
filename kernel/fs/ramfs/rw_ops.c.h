@@ -133,15 +133,13 @@ static int ramfs_inode_truncate_safe(ramfs_inode *i, off_t len)
    return rc;
 }
 
-static int ramfs_truncate(vfs_path *p, off_t len)
+static int ramfs_truncate(filesystem *fs, vfs_inode_ptr_t i, off_t len)
 {
-   ramfs_path *rp = (ramfs_path *) &p->fs_path;
-
    /*
     * NOTE: we don't support len > fsize at the moment.
     * TODO: add in ramfs support for truncate with len > fsize.
     */
-   return ramfs_inode_truncate_safe(rp->inode, len);
+   return ramfs_inode_truncate_safe(i, len);
 }
 
 static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)

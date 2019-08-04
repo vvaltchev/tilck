@@ -31,10 +31,10 @@ void __wrap_printk(const char *fmt, ...)
    if (suppress_printk)
       return;
 
-	va_list args;
-	va_start(args, fmt);
-	vprintf(fmt, args);
-	va_end(args);
+   va_list args;
+   va_start(args, fmt);
+   vprintf(fmt, args);
+   va_end(args);
 }
 
 void __wrap_assert_failed(const char *expr, const char *file, int line)
@@ -59,9 +59,6 @@ void cmos_read_datetime(datetime_t *out)
 {
    memset(out, 0, sizeof(*out));
 }
-
-void __wrap_kmutex_lock(void *m) { }
-void __wrap_kmutex_unlock(void *m) { }
 
 void init_serial_port() { }
 void serial_write() { }

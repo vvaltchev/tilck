@@ -40,14 +40,14 @@ function generic_get_version_str {
 # $1 = command
 function run_command {
    echo "Running command: $1"
-   $1
+   eval "$1"
 }
 
 # $1 = command
 # $2 = output file
 function run_command2 {
    echo "Running command: $1 &> $2"
-   $1 &> $2
+   eval "$1 &> $2"
 }
 
 pushd () {

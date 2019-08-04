@@ -35,6 +35,7 @@ static ALWAYS_INLINE bool in_panic(void)
          ASSERT(__checked_success);       \
       } while (0)
 
+   /* NO_TEST_ASSERT is like ASSERT(x) but it's ignored in unit tests */
    #ifndef UNIT_TEST_ENVIRONMENT
       #define NO_TEST_ASSERT(x) ASSERT(x)
    #else
@@ -54,7 +55,7 @@ static ALWAYS_INLINE bool in_panic(void)
 
 #endif
 
-/* VERIFY is like ASSERT, but is enabled on release builds as well */
+/* VERIFY is like ASSERT, but it's enabled on release builds as well */
 #define VERIFY(x)                                                    \
    do {                                                              \
       if (UNLIKELY(!(x))) {                                          \

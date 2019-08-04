@@ -142,7 +142,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_settimeofday)
 CREATE_STUB_SYSCALL_IMPL(sys_getgroups16)
 CREATE_STUB_SYSCALL_IMPL(sys_setgroups16)
 CREATE_STUB_SYSCALL_IMPL(sys_old_select)
-CREATE_STUB_SYSCALL_IMPL(sys_symlink)
+
+int sys_symlink(const char *u_target, const char *u_linkpath);
+
 CREATE_STUB_SYSCALL_IMPL(sys_lstat)
 
 int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize);
@@ -284,9 +286,7 @@ sptr sys_mmap_pgoff(void *addr, size_t length, int prot,
                     int flags, int fd, size_t pgoffset);
 
 int sys_truncate64(const char *user_path, s64 length);
-
-CREATE_STUB_SYSCALL_IMPL(sys_ftruncate64)
-
+int sys_ftruncate64(int fd, s64 length);
 int sys_stat64(const char *user_path, struct stat64 *user_statbuf);
 int sys_lstat64(const char *user_path, struct stat64 *user_statbuf);
 int sys_fstat64(int fd, struct stat64 *user_statbuf);

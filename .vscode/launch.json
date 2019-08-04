@@ -17,6 +17,16 @@
       },
 
       {
+         "name": "(gdb) Tilck Unit Tests",
+         "type": "cppdbg",
+         "request": "launch",
+         "program": "${workspaceFolder}/build/gtests",
+         "MIMode": "gdb",
+         "cwd": "${workspaceRoot}",
+         "stopAtEntry": false
+      },
+
+      {
          "name": "(gdb) Busybox on Tilck",
          "type": "cppdbg",
          "request": "launch",

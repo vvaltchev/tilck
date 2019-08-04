@@ -59,6 +59,7 @@ void dump_coverage_files(void)
    unsigned fsize;
    const int fn = tilck_get_num_gcov_files(); // this syscall cannot fail
 
+   tilck_set_sched_alive_thread_enabled(false);
    printf("** GCOV gcda files **\n");
 
    for (int i = 0; i < fn; i++) {
@@ -94,4 +95,6 @@ void dump_coverage_files(void)
       free(zbuf);
       free(buf);
    }
+
+   tilck_set_sched_alive_thread_enabled(true);
 }
