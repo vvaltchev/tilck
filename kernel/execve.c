@@ -124,18 +124,27 @@ execve_handle_script(char *hdr,
          return -E2BIG; /* too many args */
    }
 
+   hdr += 2; /* skip the "shebang" sequence "#!" */
+
+   /* skip the spaces between #! and the beginning of the path */
+   while (*hdr == ' ') hdr++;
+
+   /* if nothing is left, that's a bad executable */
+   if (!*hdr)
+      return -ENOEXEC;
+
    for (char *l = NULL, *p = hdr; *p && p < hdr + ELF_RAW_HEADER_SIZE; p++) {
 
       if (*p == ' ' && !l) {
          *p++ = 0;
          l = p;
-         *na++ = hdr + 2;
+         *na++ = hdr;
       }
 
       if (*p == '\n') {
 
          *p = 0;
-         *na++ = !l ? hdr + 2 : l;
+         *na++ = !l ? hdr : l;
 
          for (i = 0; argv[i]; i++)
             na[i] = argv[i];
@@ -166,7 +175,7 @@ do_execve(task_info *curr_user_task,
    ASSERT(is_preemption_enabled());
 
    if ((rc = load_elf_program(path, hdr, &pdir, &entry, &stack_addr, &brk))) {
-      if (rc == -ENOEXEC && hdr[0] == '#' && hdr[1] == '!' && hdr[2] == '/') {
+      if (rc == -ENOEXEC && hdr[0] == '#' && hdr[1] == '!') {
 
          if (reclvl == MAX_SCRIPT_REC)
             return -EPERM; /* TODO: is EPERM the right error? Check this! */
