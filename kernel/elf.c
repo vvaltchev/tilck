@@ -3,6 +3,7 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/utils.h>
 
+#include <tilck/kernel/elf_loader.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/fs/vfs.h>
@@ -107,7 +108,8 @@ phdr_adjust_page_access(pdir_t *pdir, Elf_Phdr *phdr)
 
 typedef struct {
 
-   Elf_Ehdr header;
+   char *header_buf;
+   Elf_Ehdr *header;
    Elf_Phdr *phdrs;
    size_t total_phdrs_size;
 
@@ -122,45 +124,45 @@ static void free_elf_headers(elf_headers *eh)
       kfree2(eh->phdrs, eh->total_phdrs_size);
 }
 
-static int load_elf_headers(fs_handle elf_file, elf_headers *eh)
+static int load_elf_headers(fs_handle elf_file, char *hdr_buf, elf_headers *eh)
 {
    ssize_t rc;
    bzero(eh, sizeof(*eh));
 
-   rc = vfs_seek(elf_file, 0, SEEK_SET);
-
-   if (rc != 0)
+   if ((rc = vfs_seek(elf_file, 0, SEEK_SET)))
       return -EIO;
 
-   rc = vfs_read(elf_file, &eh->header, sizeof(eh->header));
+   rc = vfs_read(elf_file, hdr_buf, ELF_RAW_HEADER_SIZE);
 
-   if (rc < (int)sizeof(eh->header))
+   if (rc < (int)sizeof(*eh->header))
       return -ENOEXEC;
 
-   if (strncmp((const char *)eh->header.e_ident, ELFMAG, 4))
+   eh->header = (void *)hdr_buf;
+
+   if (strncmp((const char *)eh->header->e_ident, ELFMAG, 4))
       return -ENOEXEC;
 
-   if (eh->header.e_ident[EI_CLASS] != ELF_CURR_CLASS)
+   if (eh->header->e_ident[EI_CLASS] != ELF_CURR_CLASS)
       return -ENOEXEC;
 
-   if (eh->header.e_type != ET_EXEC)
+   if (eh->header->e_type != ET_EXEC)
       return -ENOEXEC;
 
-   if (eh->header.e_machine != ELF_CURR_ARCH)
+   if (eh->header->e_machine != ELF_CURR_ARCH)
       return -ENOEXEC;
 
-   if (eh->header.e_ehsize < sizeof(eh->header))
+   if (eh->header->e_ehsize < sizeof(eh->header))
       return -ENOEXEC;
 
-   eh->total_phdrs_size = eh->header.e_phnum * sizeof(Elf_Phdr);
+   eh->total_phdrs_size = eh->header->e_phnum * sizeof(Elf_Phdr);
    eh->phdrs = kmalloc(eh->total_phdrs_size);
 
    if (!eh->phdrs)
       return -ENOMEM;
 
-   rc = vfs_seek(elf_file, (s64)eh->header.e_phoff, SEEK_SET);
+   rc = vfs_seek(elf_file, (s64)eh->header->e_phoff, SEEK_SET);
 
-   if (rc != (ssize_t)eh->header.e_phoff) {
+   if (rc != (ssize_t)eh->header->e_phoff) {
       rc = -ENOEXEC;
       goto errend;
    }
@@ -180,6 +182,7 @@ errend:
 }
 
 int load_elf_program(const char *filepath,
+                     char *header_buf,
                      pdir_t **pdir_ref,
                      void **entry,
                      void **stack_addr,
@@ -188,28 +191,22 @@ int load_elf_program(const char *filepath,
    fs_handle elf_file = NULL;
    elf_headers eh;
    uptr brk = 0;
-   int rc = 0;
+   int rc;
 
-   rc = vfs_open(filepath, &elf_file, O_RDONLY, 0);
-
-   if (!rc) {
-      rc = load_elf_headers(elf_file, &eh);
-
-      if (!rc) {
-         ASSERT(*pdir_ref == NULL);
-         *pdir_ref = pdir_clone(get_kernel_pdir());
-
-         if (!*pdir_ref) {
-            vfs_close(elf_file);
-            rc = -ENOMEM;
-         }
-      }
-   }
-
-   if (rc != 0)
+   if ((rc = vfs_open(filepath, &elf_file, O_RDONLY, 0)))
       return rc;
 
-   for (int i = 0; i < eh.header.e_phnum; i++) {
+   if ((rc = load_elf_headers(elf_file, header_buf, &eh)))
+      return rc;
+
+   ASSERT(*pdir_ref == NULL);
+
+   if (!(*pdir_ref = pdir_clone(get_kernel_pdir()))) {
+      rc = -ENOMEM;
+      goto out;
+   }
+
+   for (int i = 0; i < eh.header->e_phnum; i++) {
 
       uptr end_vaddr = 0;
       Elf_Phdr *phdr = eh.phdrs + i;
@@ -226,7 +223,7 @@ int load_elf_program(const char *filepath,
          brk = end_vaddr;
    }
 
-   for (int i = 0; i < eh.header.e_phnum; i++) {
+   for (int i = 0; i < eh.header->e_phnum; i++) {
 
       Elf_Phdr *phdr = eh.phdrs + i;
 
@@ -278,7 +275,7 @@ int load_elf_program(const char *filepath,
    // Finally setting the output-params.
 
    *stack_addr = (void *) USERMODE_STACK_MAX;
-   *entry = (void *) eh.header.e_entry;
+   *entry = (void *) eh.header->e_entry;
    *brk_ref = (void *) brk;
 
 out:
@@ -286,8 +283,10 @@ out:
    free_elf_headers(&eh);
 
    if (UNLIKELY(rc != 0)) {
-      pdir_destroy(*pdir_ref);
-      *pdir_ref = NULL;
+      if (*pdir_ref) {
+         pdir_destroy(*pdir_ref);
+         *pdir_ref = NULL;
+      }
    }
 
    return rc;

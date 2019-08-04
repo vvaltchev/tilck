@@ -8,6 +8,7 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/elf_loader.h>
 #include <tilck/kernel/syscalls.h>
+#include <tilck/kernel/debug_utils.h>
 
 static const char *const default_env[] =
 {
@@ -102,18 +103,82 @@ static int
 do_execve(task_info *curr_user_task,
           const char *path,
           const char *const *argv,
-          const char *const *env)
+          const char *const *env,
+          int reclvl);
+
+static inline int
+execve_handle_script(char *hdr,
+                     task_info *curr_user_task,
+                     const char *const *argv,
+                     const char *const *env,
+                     int reclvl)
+{
+   const char *new_argv[USERAPP_MAX_ARGS_COUNT];
+   const char **na = new_argv;
+   int i;
+
+   hdr[ELF_RAW_HEADER_SIZE - 1] = 0;
+
+   for (i = 0; argv[i]; i++) {
+      if (i >= (int)ARRAY_SIZE(new_argv) - 2)
+         return -E2BIG; /* too many args */
+   }
+
+   for (char *l = NULL, *p = hdr; *p && p < hdr + ELF_RAW_HEADER_SIZE; p++) {
+
+      if (*p == ' ' && !l) {
+         *p++ = 0;
+         l = p;
+         *na++ = hdr + 2;
+      }
+
+      if (*p == '\n') {
+
+         *p = 0;
+         *na++ = !l ? hdr + 2 : l;
+
+         for (i = 0; argv[i]; i++)
+            na[i] = argv[i];
+
+         na[i] = NULL;
+         break;
+      }
+   }
+
+   return do_execve(curr_user_task, new_argv[0], new_argv, env, reclvl + 1);
+}
+
+static int
+do_execve(task_info *curr_user_task,
+          const char *path,
+          const char *const *argv,
+          const char *const *env,
+          int reclvl)
 {
    int rc;
    pdir_t *pdir = NULL;
    task_info *ti = NULL;
    void *entry, *stack_addr, *brk;
+   char hdr[ELF_RAW_HEADER_SIZE] = {0};
    const char *const default_argv[] = { path, NULL };
 
+   DEBUG_VALIDATE_STACK_PTR();
    ASSERT(is_preemption_enabled());
 
-   if ((rc = load_elf_program(path, &pdir, &entry, &stack_addr, &brk)))
+   if ((rc = load_elf_program(path, hdr, &pdir, &entry, &stack_addr, &brk))) {
+      if (rc == -ENOEXEC && hdr[0] == '#' && hdr[1] == '!' && hdr[2] == '/') {
+
+         if (reclvl == MAX_SCRIPT_REC)
+            return -EPERM; /* TODO: is EPERM the right error? Check this! */
+
+         rc = execve_handle_script(hdr,
+                                   curr_user_task,
+                                   argv ? argv : default_argv,
+                                   env,
+                                   reclvl);
+      }
       return rc;
+   }
 
    disable_preemption();
 
@@ -160,7 +225,7 @@ do_execve(task_info *curr_user_task,
 
 int first_execve(const char *path, const char *const *argv)
 {
-   return do_execve(NULL, path, argv, NULL);
+   return do_execve(NULL, path, argv, NULL, 0);
 }
 
 int sys_execve(const char *user_filename,
@@ -184,5 +249,6 @@ int sys_execve(const char *user_filename,
    return do_execve(curr,
                     path,
                     (const char *const *)argv,
-                    (const char *const *)env);
+                    (const char *const *)env,
+                    0);
 }
