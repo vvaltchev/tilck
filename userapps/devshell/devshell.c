@@ -224,13 +224,9 @@ int main(int argc, char **argv, char **env)
 {
    static char cmdline_buf[256];
    static char cwd_buf[256];
-   static struct utsname utsname_buf;
 
    signal(SIGINT, SIG_IGN);
    signal(SIGQUIT, SIG_IGN);
-
-   int uid = geteuid();
-   struct passwd *pwd = getpwuid(uid);
 
    shell_argv = argv;
    shell_env = env;
@@ -240,16 +236,6 @@ int main(int argc, char **argv, char **env)
       exit(1);
    }
 
-   if (!pwd) {
-      printf("ERROR: getpwuid() returned NULL\n");
-      return 1;
-   }
-
-   if (uname(&utsname_buf) < 0) {
-      perror("uname() failed");
-      return 1;
-   }
-
    while (true) {
 
       if (getcwd(cwd_buf, sizeof(cwd_buf)) != cwd_buf) {
@@ -257,12 +243,7 @@ int main(int argc, char **argv, char **env)
          return 1;
       }
 
-      printf("%s@%s:%s%c ",
-             pwd->pw_name,
-             utsname_buf.nodename,
-             cwd_buf,
-             !uid ? '#' : '$');
-
+      printf(COLOR_RED "[TilckDevShell]" RESET_ATTRS ":%s# ", cwd_buf);
       fflush(stdout);
 
       int rc = read_command(cmdline_buf, sizeof(cmdline_buf));
