@@ -99,32 +99,36 @@ execve_prepare_process(process_info *pi, void *brk, const char *path)
    memcpy(pi->filepath, path, strlen(path) + 1);
 }
 
+typedef struct {
+
+   task_info *curr_user_task;
+   const char *const *env;
+   int reclvl;
+
+   char hdr_stack[MAX_SCRIPT_REC + 1][ELF_RAW_HEADER_SIZE];
+   const char *argv_stack[MAX_SCRIPT_REC][USERAPP_MAX_ARGS_COUNT];
+
+} execve_ctx;
+
 static int
-do_execve(task_info *curr_user_task,
-          const char *path,
-          const char *const *argv,
-          const char *const *env,
-          int reclvl);
+do_execve_int(execve_ctx *ctx, const char *path, const char *const *argv);
 
 static inline int
-execve_handle_script(char *hdr,
-                     task_info *curr_user_task,
-                     const char *const *argv,
-                     const char *const *env,
-                     int reclvl)
+execve_handle_script(execve_ctx *ctx, const char *const *argv)
 {
-   const char *new_argv[USERAPP_MAX_ARGS_COUNT];
+   const char **new_argv = ctx->argv_stack[ctx->reclvl];
+   char *hdr = ctx->hdr_stack[ctx->reclvl];
    const char **na = new_argv;
    int i;
 
    hdr[ELF_RAW_HEADER_SIZE - 1] = 0;
 
    for (i = 0; argv[i]; i++) {
-      if (i >= (int)ARRAY_SIZE(new_argv) - 2)
+      if (i >= USERAPP_MAX_ARGS_COUNT - 2)
          return -E2BIG; /* too many args */
    }
 
-   hdr += 2; /* skip the "shebang" sequence "#!" */
+   hdr += 2; /* skip the shebang sequence ("#!") */
 
    /* skip the spaces between #! and the beginning of the path */
    while (*hdr == ' ') hdr++;
@@ -144,47 +148,41 @@ execve_handle_script(char *hdr,
       if (*p == '\n') {
 
          *p = 0;
-         *na++ = !l ? hdr : l;
+         *na++ = l ? l : hdr;
 
          for (i = 0; argv[i]; i++)
             na[i] = argv[i];
 
          na[i] = NULL;
-         break;
+         ctx->reclvl++;
+         return do_execve_int(ctx, new_argv[0], new_argv);
       }
    }
 
-   return do_execve(curr_user_task, new_argv[0], new_argv, env, reclvl + 1);
+   /* We did not hit '\n': this cannot be accepted as a valid script */
+   return -ENOEXEC;
 }
 
 static int
-do_execve(task_info *curr_user_task,
-          const char *path,
-          const char *const *argv,
-          const char *const *env,
-          int reclvl)
+do_execve_int(execve_ctx *ctx, const char *path, const char *const *argv)
 {
    int rc;
    pdir_t *pdir = NULL;
    task_info *ti = NULL;
    void *entry, *stack_addr, *brk;
-   char hdr[ELF_RAW_HEADER_SIZE] = {0};
-   const char *const default_argv[] = { path, NULL };
+   char *hdr = ctx->hdr_stack[ctx->reclvl];
 
    DEBUG_VALIDATE_STACK_PTR();
    ASSERT(is_preemption_enabled());
+   bzero(hdr, ELF_RAW_HEADER_SIZE);
 
    if ((rc = load_elf_program(path, hdr, &pdir, &entry, &stack_addr, &brk))) {
       if (rc == -ENOEXEC && hdr[0] == '#' && hdr[1] == '!') {
 
-         if (reclvl == MAX_SCRIPT_REC)
-            return -EPERM; /* TODO: is EPERM the right error? Check this! */
+         if (ctx->reclvl == MAX_SCRIPT_REC)
+            return -ELOOP;
 
-         rc = execve_handle_script(hdr,
-                                   curr_user_task,
-                                   argv ? argv : default_argv,
-                                   env,
-                                   reclvl);
+         rc = execve_handle_script(ctx, argv);
       }
       return rc;
    }
@@ -194,9 +192,9 @@ do_execve(task_info *curr_user_task,
    rc = setup_usermode_task(pdir,
                             entry,
                             stack_addr,
-                            curr_user_task,
-                            argv ? argv : default_argv,
-                            env ? env : default_env,
+                            ctx->curr_user_task,
+                            argv,
+                            ctx->env,
                             &ti);
 
    if (LIKELY(!rc)) {
@@ -204,9 +202,9 @@ do_execve(task_info *curr_user_task,
       /* Positive case: setup_usermode_task() succeeded */
       execve_prepare_process(ti->pi, brk, path);
 
-      if (LIKELY(curr_user_task != NULL)) {
+      if (LIKELY(ctx->curr_user_task != NULL)) {
 
-         ASSERT(ti == curr_user_task);
+         ASSERT(ti == ctx->curr_user_task);
 
          /*
           * This is 2nd `if` handling the difference between the first execve()
@@ -232,9 +230,26 @@ do_execve(task_info *curr_user_task,
    return rc;
 }
 
+static int
+do_execve(task_info *curr_user_task,
+          const char *path,
+          const char *const *argv,
+          const char *const *env)
+{
+   const char *const default_argv[] = { path, NULL };
+
+   execve_ctx ctx = {
+      .curr_user_task = curr_user_task,
+      .env = env ? env : default_env,
+      .reclvl = 0,
+   };
+
+   return do_execve_int(&ctx, path, argv ? argv : default_argv);
+}
+
 int first_execve(const char *path, const char *const *argv)
 {
-   return do_execve(NULL, path, argv, NULL, 0);
+   return do_execve(NULL, path, argv, NULL);
 }
 
 int sys_execve(const char *user_filename,
@@ -258,6 +273,5 @@ int sys_execve(const char *user_filename,
    return do_execve(curr,
                     path,
                     (const char *const *)argv,
-                    (const char *const *)env,
-                    0);
+                    (const char *const *)env);
 }
