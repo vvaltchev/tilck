@@ -18,8 +18,10 @@
 
 #include <tilck/common/basic_defs.h> /* for MIN() and ARRAY_SIZE() */
 
-#define DEFAULT_SHELL "/bin/devshell"
+#define START_SCRIPT    "/initrd/etc/start"
+#define DEFAULT_SHELL   "/bin/devshell"
 
+static char *start_script_args[2] = { START_SCRIPT, NULL };
 static char *shell_args[16] = { DEFAULT_SHELL, [1 ... 15] = NULL };
 
 /* -- command line options -- */
@@ -96,6 +98,43 @@ static void open_std_handles(int tty)
    }
 }
 
+static void run_start_script(void)
+{
+   int rc, wstatus;
+   pid_t pid;
+
+   pid = fork();
+
+   if (pid < 0) {
+      printf("[init] fork() failed with %d\n", pid);
+      call_exit(1);
+   }
+
+   if (!pid) {
+
+      rc = execve(start_script_args[0], start_script_args, NULL);
+      printf("[init] execve(%s) failed with %d\n", start_script_args[0], rc);
+      exit(1);
+   }
+
+   rc = waitpid(-1, &wstatus, 0);
+
+   if (rc != pid) {
+      printf("[init] waitpid(-1) returned %d instead of pid %d\n", rc, pid);
+      call_exit(1);
+   }
+
+   if (!WIFEXITED(wstatus)) {
+      printf("[init] Start script killed by sig %d\n", WTERMSIG(wstatus));
+      call_exit(1);
+   }
+
+   if (WEXITSTATUS(wstatus) != 0) {
+      printf("[init] Start script exited with %d\n", WEXITSTATUS(wstatus));
+      call_exit(1);
+   }
+}
+
 static void do_initial_setup(void)
 {
    if (getenv("TILCK")) {
@@ -106,6 +145,8 @@ static void do_initial_setup(void)
          printf("[init] ERROR: my pid is %i instead of 1\n", getpid());
          call_exit(1);
       }
+
+      run_start_script();
 
    } else {
 
@@ -225,7 +266,6 @@ int main(int argc, char **argv, char **env)
    /* Ignore SIGINT and SIGQUIT */
    signal(SIGINT, SIG_IGN);
    signal(SIGQUIT, SIG_IGN);
-
 
    do_initial_setup();
    parse_opts(argc - 1, argv + 1);

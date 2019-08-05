@@ -1,0 +1,12 @@
+#!/initrd/bin/busybox ash
+
+dirs="bin etc usr"
+
+for d in $dirs; do
+
+   mkdir "/$d"
+   for x in /initrd/$d/*; do
+      ln -s $x /$d
+   done
+
+done

@@ -110,25 +110,17 @@ static void mount_initrd(void)
    filesystem *initrd, *ramfs;
    int rc;
 
-   if (!ramdisk) {
-      printk("[WARNING] No RAMDISK found.\n");
-      return;
-   }
-
-   if (!(initrd = fat_mount_ramdisk(ramdisk, VFS_FS_RO)))
-      panic("Unable to mount the initrd fat32 RAMDISK");
-
-   if ((rc = mp2_init(initrd)))
-      panic("mp2_init() failed with error: %d", rc);
-
-   /* -------------------------------------------- */
-   /* mount the ramdisk at /tmp                    */
-
    if (!(ramfs = ramfs_create()))
       panic("Unable to create ramfs");
 
-   if ((rc = mp2_add(ramfs, "/tmp/")))
-      panic("mp2_add() failed with error: %d", rc);
+   if ((rc = mp2_init(ramfs)))
+      panic("mp2_init() failed with error: %d", rc);
+
+   if ((rc = vfs_mkdir("/dev", 0777)))
+      panic("vfs_mkdir(\"/dev\") failed with error: %d", rc);
+
+   if ((rc = vfs_mkdir("/tmp", 0777)))
+      panic("vfs_mkdir(\"/tmp\") failed with error: %d", rc);
 
    /* Set kernel's process `cwd` to the root folder */
    {
@@ -139,6 +131,22 @@ static void mount_initrd(void)
       tp.fs = mp2_get_root();
       vfs_get_root_entry(tp.fs, &tp.fs_path);
       process_set_cwd2_nolock_raw(pi, &tp);
+   }
+
+   if (LIKELY(ramdisk != NULL)) {
+
+      if (!(initrd = fat_mount_ramdisk(ramdisk, VFS_FS_RO)))
+         panic("Unable to mount the initrd fat32 RAMDISK");
+
+      if ((rc = vfs_mkdir("/initrd", 0777)))
+         panic("vfs_mkdir(\"/initrd\") failed with error: %d", rc);
+
+      if ((rc = mp2_add(initrd, "/initrd")))
+         panic("mp2_add() failed with error: %d", rc);
+
+   } else {
+
+      printk("[WARNING] No RAMDISK found.\n");
    }
 }
 
