@@ -19,7 +19,7 @@
 #include <tilck/common/basic_defs.h> /* for MIN() and ARRAY_SIZE() */
 
 #define START_SCRIPT    "/initrd/etc/start"
-#define DEFAULT_SHELL   "/bin/devshell"
+#define DEFAULT_SHELL   "/usr/bin/devshell"
 
 static char *start_script_args[2] = { START_SCRIPT, NULL };
 static char *shell_args[16] = { DEFAULT_SHELL, [1 ... 15] = NULL };

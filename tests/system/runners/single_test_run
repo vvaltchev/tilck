@@ -25,7 +25,7 @@ FAIL_GCOV_ERROR = 6
 
 # Other constants
 INIT_PATH = '/initrd/bin/init'
-DEVSHELL_PATH = '/initrd/bin/devshell'
+DEVSHELL_PATH = '/initrd/usr/bin/devshell'
 KERNEL_HELLO_MSG = 'Hello from Tilck!'
 KERNEL_DUMP_GCDA_STR = '** GCOV gcda files **'
 KERNEL_FILE = '@KERNEL_FILE@'
