@@ -19,6 +19,20 @@ static const char *const default_env[] =
    NULL,
 };
 
+typedef struct {
+
+   task_info *curr_user_task;
+   const char *const *env;
+   int reclvl;
+
+   char hdr_stack[MAX_SCRIPT_REC + 1][ELF_RAW_HEADER_SIZE];
+   const char *argv_stack[MAX_SCRIPT_REC][USERAPP_MAX_ARGS_COUNT];
+
+} execve_ctx;
+
+static int
+do_execve_int(execve_ctx *ctx, const char *path, const char *const *argv);
+
 static int
 execve_get_path(const char *user_path, char **path_ref)
 {
@@ -98,20 +112,6 @@ execve_prepare_process(process_info *pi, void *brk, const char *path)
     */
    memcpy(pi->filepath, path, strlen(path) + 1);
 }
-
-typedef struct {
-
-   task_info *curr_user_task;
-   const char *const *env;
-   int reclvl;
-
-   char hdr_stack[MAX_SCRIPT_REC + 1][ELF_RAW_HEADER_SIZE];
-   const char *argv_stack[MAX_SCRIPT_REC][USERAPP_MAX_ARGS_COUNT];
-
-} execve_ctx;
-
-static int
-do_execve_int(execve_ctx *ctx, const char *path, const char *const *argv);
 
 static inline int
 execve_handle_script(execve_ctx *ctx, const char *const *argv)
