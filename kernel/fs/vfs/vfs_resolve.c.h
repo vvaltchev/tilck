@@ -338,11 +338,7 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
       rc = vfs_resolve_get_entry(ctx, path, &np, res_last_sl);
    }
 
-   if (!rc) {
-      /* replace the last frame only in case of no errors */
-      vfs_resolve_stack_replace_top(ctx, np.last_comp, &np);
-   }
-
+   vfs_resolve_stack_replace_top(ctx, np.last_comp, &np);
    return rc;
 }
 
