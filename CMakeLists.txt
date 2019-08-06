@@ -421,6 +421,7 @@ add_custom_command(
 
       fat_get_used_bytes
       ${CMAKE_BINARY_DIR}/scripts/build_apps/fat_get_used_bytes
+      ${CMAKE_SOURCE_DIR}/sysroot/etc/start
       ${BUILD_SCRIPTS_FILES_LIST}
 
    COMMENT
