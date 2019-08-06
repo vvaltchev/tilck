@@ -5,27 +5,41 @@ dirs="bin etc usr"
 
 for d in $dirs; do
 
-   mkdir "/$d"
+   mkdir $d
    for x in /initrd/$d/*; do
-      ln -s $x /$d
-   done
 
+      if [ -f $x ]; then
+
+         ln -s $x $d/
+
+      elif [ -d $x ]; then
+
+         dname=${x##*/}      # like $(basename $x) but does not use sys_pipe()
+         mkdir /$d/$dname
+
+         for y in /initrd/$d/$dname/*; do
+            ln -s $y /$d/$dname/
+         done
+      fi
+   done
 done
+
+
 
 # No need to symlink `init` in /bin. It has to be called only once.
 rm /bin/init
 
 # Symlink all the busybox commands
 # Note: since sys_pipe() is not implemented in Tilck yet, we have to use a
-# disgusting way to achieve the same result.
+# disgusting crappy way to achieve the same result.
 # TODO: re-write this when sys_pipe() is implemented.
 
 bb="/initrd/bin/busybox"
 
 cd /tmp
 $bb --list > cmds
-$bb wc -l cmds > _len
-$bb cut -d " " -f 1 < _len > len
+wc -l cmds > _len
+cut -d " " -f 1 < _len > len
 rm _len
 count=""
 read count < len
@@ -34,9 +48,9 @@ rm len
 i=1
 while [[ $i -le $count ]]; do
 
-   head -$i cmds > t
-   $bb tail -1 t > t2
    val=""
+   head -$i cmds > t
+   tail -1 t > t2
    read val < t2
    if [[ "$val" != "busybox" ]]; then
       ln -s $bb /bin/$val
