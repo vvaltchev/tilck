@@ -398,15 +398,15 @@ static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
 static void
 devfs_get_entry(filesystem *fs,
                 void *dir_inode,
-                const char *name,
-                ssize_t name_len,
+                const char *n,             /* entry name */
+                ssize_t nl,                /* name len */
                 fs_path_struct *fs_path)
 {
    devfs_data *d = fs->device_data;
    devfs_directory *dir;
    devfs_file *pos;
 
-   if (!dir_inode) {
+   if (!dir_inode || (n[0] == '.' && (nl == 1 || (n[1] == '.' && nl == 2)))) {
 
       *fs_path = (fs_path_struct) {
          .inode      = &d->root_dir,
@@ -422,8 +422,8 @@ devfs_get_entry(filesystem *fs,
    bzero(fs_path, sizeof(*fs_path));
 
    list_for_each_ro(pos, &dir->files_list, dir_node) {
-      if (!strncmp(pos->name, name, (size_t)name_len))
-         if (!pos->name[name_len])
+      if (!strncmp(pos->name, n, (size_t)nl))
+         if (!pos->name[nl])
             break;
    }
 
