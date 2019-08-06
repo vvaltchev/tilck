@@ -27,6 +27,7 @@ static char *shell_args[16] = { DEFAULT_SHELL, [1 ... 15] = NULL };
 /* -- command line options -- */
 
 static bool opt_quiet;
+static bool opt_nostart;
 
 /* -- end -- */
 
@@ -146,8 +147,6 @@ static void do_initial_setup(void)
          call_exit(1);
       }
 
-      run_start_script();
-
    } else {
 
       if (prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) < 0)
@@ -176,6 +175,7 @@ static void show_help_and_exit(void)
    printf("    init                Regular run. Shell: %s\n", DEFAULT_SHELL);
    printf("    init -h/--help      Show this help and exit\n");
    printf("    init -q             Quiet: don't report exit of orphan tasks\n");
+   printf("    init -ns            Don't run the script: %s", START_SCRIPT);
    printf("    init -- <cmdline>   "
           "Run the specified cmdline instead of the default one.\n");
    printf("                        "
@@ -196,6 +196,12 @@ begin:
 
    if (!strcmp(*argv, "-q")) {
       opt_quiet = true;
+      argc--; argv++;
+      goto begin;
+   }
+
+   if (!strcmp(*argv, "-ns")) {
+      opt_nostart = true;
       argc--; argv++;
       goto begin;
    }
@@ -270,12 +276,18 @@ int main(int argc, char **argv, char **env)
    do_initial_setup();
    parse_opts(argc - 1, argv + 1);
 
+   if (!opt_nostart) {
+      run_start_script();
+   } else {
+      printf("[init] Skipping the start script\n");
+   }
+
    for (int tty = 1; tty <= get_tty_count(); tty++) {
 
       pid = fork();
 
       if (pid < 0) {
-         perror("fork() failed");
+         perror("[init] fork() failed");
          call_exit(1);
       }
 
@@ -284,7 +296,7 @@ int main(int argc, char **argv, char **env)
          setup_console_for_shell(tty);
 
          if (execve(shell_args[0], shell_args, NULL) < 0) {
-            perror("execve failed");
+            perror("[init] execve failed");
             call_exit(1);
          }
       }
