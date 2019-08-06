@@ -16,6 +16,8 @@ static const char *const default_env[] =
    "TERM=linux",
    "CONSOLE=/dev/console",
    "TILCK=1",
+   "HOME=/",
+   "PS1=\\[\\e[01;32m\\]\\u@\\h\\[\\e[00m\\]:$PWD# ",
    NULL,
 };
 
