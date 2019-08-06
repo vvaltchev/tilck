@@ -546,6 +546,17 @@ STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
    return 0;
 }
 
+static inline void
+fat_get_root_entry(fat_fs_device_data *d, fat_fs_path *fp)
+{
+   *fp = (fat_fs_path) {
+      .entry            = d->root_entry,
+      .parent_entry     = d->root_entry,
+      .unused           = NULL,
+      .type             = VFS_DIR,
+   };
+}
+
 static void
 fat_get_entry(filesystem *fs,
               void *dir_inode,
@@ -559,30 +570,15 @@ fat_get_entry(filesystem *fs,
    u32 dir_cluster;
    fat_search_ctx ctx;
 
-   if (!dir_inode && !name) {
-
-      /* both dir_inode and name are NULL: getting a path to the root dir */
-
-return_root_entry:
-
-      *fp = (fat_fs_path) {
-         .entry            = d->root_entry,
-         .parent_entry     = d->root_entry,
-         .unused           = NULL,
-         .type             = VFS_DIR,
-      };
-
-      return;
-   }
+   if (!dir_inode && !name)              // both dir_inode and name are NULL:
+      return fat_get_root_entry(d, fp);  // getting a path to the root dir
 
    dir_entry = dir_inode ? dir_inode : d->root_entry;
    dir_cluster = fat_get_first_cluster_generic(d, dir_entry);
 
-   if (UNLIKELY(dir_entry == d->root_entry)) {
-      if (UNLIKELY(name[0] == '.'))
-         if (slash_or_nul(name[1]) || (name[1] == '.' && slash_or_nul(name[2])))
-            goto return_root_entry;
-   }
+   if (UNLIKELY(dir_entry == d->root_entry))
+      if (is_dot_or_dotdot(name, (int)name_len))
+         return fat_get_root_entry(d, fp);
 
    fat_init_search_ctx(&ctx, name, true);
    fat_walk_directory(&ctx.walk_ctx,

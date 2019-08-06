@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-
 #include <tilck/common/basic_defs.h>
 
 #if !defined(TESTING) && !defined(USERMODE_APP)
@@ -43,6 +42,11 @@ static ALWAYS_INLINE int isdigit(int c) {
 static ALWAYS_INLINE bool slash_or_nul(char c)
 {
    return !c || c == '/';
+}
+
+static inline bool is_dot_or_dotdot(const char *n, int nl)
+{
+   return (n[0] == '.' && (nl == 1 || (n[1] == '.' && nl == 2)));
 }
 
 #if defined(__i386__) || defined(__x86_64__)
