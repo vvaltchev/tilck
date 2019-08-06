@@ -1,5 +1,6 @@
 #!/initrd/bin/busybox ash
 
+# Symlink the essential directories from /initrd to /
 dirs="bin etc usr"
 
 for d in $dirs; do
@@ -10,3 +11,38 @@ for d in $dirs; do
    done
 
 done
+
+# No need to symlink `init` in /bin. It has to be called only once.
+rm /bin/init
+
+# Symlink all the busybox commands
+# Note: since sys_pipe() is not implemented in Tilck yet, we have to use a
+# disgusting way to achieve the same result.
+# TODO: re-write this when sys_pipe() is implemented.
+
+bb="/initrd/bin/busybox"
+
+cd /tmp
+$bb --list > cmds
+$bb wc -l cmds > _len
+$bb cut -d " " -f 1 < _len > len
+rm _len
+count=""
+read count < len
+rm len
+
+i=1
+while [[ $i -le $count ]]; do
+
+   head -$i cmds > t
+   $bb tail -1 t > t2
+   val=""
+   read val < t2
+   if [[ "$val" != "busybox" ]]; then
+      ln -s $bb /bin/$val
+   fi
+   i=$((i+1));
+done
+
+# Delete the temporary files used in this dirty hack
+rm cmds t t2
