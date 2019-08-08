@@ -28,32 +28,26 @@ static void shell_builtin_cd(int argc)
    int rc = 0;
    const char *dest_dir = "/";
 
-   if (argc == 2 && strlen(cmd_argv[1])) {
+   if (argc == 2 && strlen(cmd_argv[1]))
       dest_dir = cmd_argv[1];
-   }
 
    if (argc > 2) {
       printf("cd: too many arguments\n");
       return;
    }
 
-   rc = chdir(dest_dir);
-
-   if (rc < 0)
-      goto cd_error;
-
-   return;
-
-cd_error:
-   perror("cd");
-   return;
+   if (chdir(dest_dir))
+      perror("cd");
 }
 
-static bool file_exists(const char *filepath)
+static bool is_file(const char *filepath)
 {
    struct stat statbuf;
-   int rc = stat(filepath, &statbuf);
-   return !rc;
+
+   if (stat(filepath, &statbuf) < 0)
+      return false;
+
+   return (statbuf.st_mode & S_IFMT) == S_IFREG;
 }
 
 static void wait_child_cmd(int child_pid)
@@ -79,6 +73,8 @@ static void wait_child_cmd(int child_pid)
 
 static void shell_run_child(int argc)
 {
+   int saved_errno;
+
    /* Reset all the signal handlers to their default behavior */
    for (int i = 1; i < _NSIG; i++)
      signal(i, SIG_DFL);
@@ -87,8 +83,8 @@ static void shell_run_child(int argc)
 
    /* Since we got here, cmd_argv[0] was NOT a known built-in command */
 
-   if (!file_exists(cmd_argv[0]) && argc < MAX_ARGS) {
-      if (file_exists("/bin/busybox")) {
+   if (!is_file(cmd_argv[0]) && argc < MAX_ARGS) {
+      if (is_file("/bin/busybox")) {
 
          for (int i = argc; i > 0; i--)
             cmd_argv[i] = cmd_argv[i - 1];
@@ -99,35 +95,72 @@ static void shell_run_child(int argc)
    }
 
    execve(cmd_argv[0], cmd_argv, shell_env);
-   int saved_errno = errno;
+
+   /* if we got here, execve() failed */
+   saved_errno = errno;
    perror(cmd_argv[0]);
    exit(saved_errno);
 }
 
 static void process_cmd_line(const char *cmd_line)
 {
+   int child_pid;
    int argc = 0;
-   const char *p = cmd_line;
+   char quote_char;
+   char *arg = NULL;
+   bool in_arg = false;
+   bool in_quotes = false;
 
-   while (*p && argc < MAX_ARGS) {
+   for (const char *p = cmd_line; *p && *p != '\n'; p++) {
 
-      char *ap = cmd_arg_buffers[argc];
+      if (!in_arg) {
 
-      while (*p == ' ') p++;
+         if (*p == ' ')
+            continue;
 
-      while (*p && *p != ' ' && *p != '\n') {
-         *ap++ = *p++;
+         if (argc == MAX_ARGS)
+            break;
+
+         in_arg = true;
+         cmd_argv[argc] = cmd_arg_buffers[argc];
+         arg = cmd_argv[argc];
+         argc++;
       }
 
-      *ap = 0;
-      cmd_argv[argc] = cmd_arg_buffers[argc];
-      argc++;
+      if (!in_quotes) {
 
-      if (*p == '\n')
-         break;
+         if (*p == ' ') {
+            in_arg = false;
+            *arg = 0;
+            continue;
+         }
+
+         if (*p == '\'' || *p == '"') {
+            in_quotes = true;
+            quote_char = *p;
+            continue;
+         }
+
+      } else {
+
+         if (*p == quote_char) {
+            in_quotes = false;
+            continue;
+         }
+      }
+
+      *arg++ = *p;
    }
 
+   if (in_arg)
+      *arg = 0;
+
    cmd_argv[argc] = NULL;
+
+   if (in_quotes) {
+      fprintf(stderr, "[shell] ERROR: Unterminated quote %c\n", quote_char);
+      return;
+   }
 
    if (!cmd_argv[0][0])
       return;
@@ -138,26 +171,19 @@ static void process_cmd_line(const char *cmd_line)
    }
 
    if (!strcmp(cmd_argv[0], "exit")) {
-      printf("[shell] regular exit\n");
       exit(0);
    }
 
-   // printf("[process_cmd_line] args(%i):\n", argc);
-   // for (int i = 0; cmd_argv[i] != NULL; i++)
-   //    printf("[process_cmd_line] argv[%i] = '%s'\n", i, cmd_argv[i]);
-
-   int child_pid = fork();
-
-   if (child_pid < -1) {
+   if ((child_pid = fork()) < 0) {
       perror("fork failed");
       return;
    }
 
    if (!child_pid) {
       shell_run_child(argc);
-   } else {
-      wait_child_cmd(child_pid);
    }
+
+   wait_child_cmd(child_pid);
 }
 
 static void show_help_and_exit(void)
