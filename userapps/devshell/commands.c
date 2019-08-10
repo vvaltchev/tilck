@@ -182,13 +182,12 @@ int cmd_help(int argc, char **argv)
    printf("\n");
    printf(COLOR_RED "Tilck development shell\n" RESET_ATTRS);
 
-   printf("This application is a small dev-only utility written in ");
-   printf("order to allow running\nsimple programs, while proper shells ");
-   printf("like ASH can't run on Tilck yet. Behavior:\nif a given command ");
-   printf("isn't an executable (e.g. /bin/termtest), it is forwarded ");
-   printf("to\n" COLOR_YELLOW "/bin/busybox" RESET_ATTRS);
-   printf(". That's how several programs like 'ls' work. Type --help to see\n");
-   printf("all the commands built in busybox.\n\n");
+   printf("This application is a small dev-only utility originally written ");
+   printf("in order to \nallow running simple programs, while proper shells ");
+   printf("like ASH couldn't run on \nTilck yet. Today, " COLOR_YELLOW);
+   printf("ASH works on Tilck" RESET_ATTRS " and this ");
+   printf(COLOR_YELLOW "devshell" RESET_ATTRS " is used as a runner \n");
+   printf("for system tests (often called 'shellcmds' for this reason).\n\n");
 
    printf(COLOR_RED "Built-in commands\n" RESET_ATTRS);
    printf("    help         shows this help\n");
