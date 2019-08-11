@@ -102,9 +102,8 @@ static void shell_run_child(int argc)
    exit(saved_errno);
 }
 
-static void process_cmd_line(const char *cmd_line)
+static int parse_cmd_line(const char *cmd_line)
 {
-   int child_pid;
    int argc = 0;
    char quote_char;
    char *arg = NULL;
@@ -159,10 +158,18 @@ static void process_cmd_line(const char *cmd_line)
 
    if (in_quotes) {
       fprintf(stderr, "[shell] ERROR: Unterminated quote %c\n", quote_char);
-      return;
+      return 0;
    }
 
-   if (!cmd_argv[0][0])
+   return argc;
+}
+
+static void process_cmd_line(const char *cmd_line)
+{
+   int child_pid;
+   int argc = parse_cmd_line(cmd_line);
+
+   if (!argc || !cmd_argv[0][0])
       return;
 
    if (!strcmp(cmd_argv[0], "cd")) {
@@ -259,6 +266,7 @@ int main(int argc, char **argv, char **env)
       exit(1);
    }
 
+   /* No command specified in the options: run in interactive mode */
    if (getuid() != 0)
       uc = '$';
 
