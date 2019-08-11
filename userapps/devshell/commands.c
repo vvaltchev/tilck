@@ -164,7 +164,7 @@ int cmd_runall(int argc, char **argv)
    exit(any_failure);
 }
 
-void dump_list_of_commands(void)
+void dump_list_of_commands_and_exit(void)
 {
    for (int i = 1; i < get_cmds_count(); i++) {
       if (cmds_table[i].enabled_in_st)
@@ -174,11 +174,8 @@ void dump_list_of_commands(void)
    exit(0);
 }
 
-int cmd_help(int argc, char **argv)
+void show_common_help_intro(void)
 {
-   size_t n, row_len;
-   char buf[64];
-
    printf("\n");
    printf(COLOR_RED "Tilck development shell\n" RESET_ATTRS);
 
@@ -188,6 +185,14 @@ int cmd_help(int argc, char **argv)
    printf("ASH works on Tilck" RESET_ATTRS " and this ");
    printf(COLOR_YELLOW "devshell" RESET_ATTRS " is used as a runner \n");
    printf("for system tests (often called 'shellcmds' for this reason).\n\n");
+}
+
+int cmd_help(int argc, char **argv)
+{
+   size_t n, row_len;
+   char buf[64];
+
+   show_common_help_intro();
 
    printf(COLOR_RED "Built-in commands\n" RESET_ATTRS);
    printf("    help         shows this help\n");

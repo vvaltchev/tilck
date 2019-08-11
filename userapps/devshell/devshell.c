@@ -188,9 +188,11 @@ static void process_cmd_line(const char *cmd_line)
 
 static void show_help_and_exit(void)
 {
-   printf("\nUsage:\n\n");
+   show_common_help_intro();
+
+   printf(COLOR_RED "Usage:" RESET_ATTRS "\n\n");
    printf("    devshell %-15s Just run the interactive shell\n", " ");
-   printf("    devshell %-15s Show this help and exit\n\n", "-h/--help");
+   printf("    devshell %-15s Show this help and exit\n\n", "-h, --help");
 
    printf("    Internal test-infrastructure options\n");
    printf("    ------------------------------------\n\n");
@@ -220,8 +222,7 @@ begin:
    }
 
    if (!strcmp(*argv, "-l")) {
-      dump_list_of_commands();
-      /* not reached */
+      dump_list_of_commands_and_exit();
    }
 
    if (argc == 1)
@@ -250,6 +251,8 @@ int main(int argc, char **argv, char **env)
 {
    static char cmdline_buf[256];
    static char cwd_buf[256];
+   char uc = '#';
+   int rc;
 
    signal(SIGINT, SIG_IGN);
    signal(SIGQUIT, SIG_IGN);
@@ -262,6 +265,9 @@ int main(int argc, char **argv, char **env)
       exit(1);
    }
 
+   if (getuid() != 0)
+      uc = '$';
+
    while (true) {
 
       if (getcwd(cwd_buf, sizeof(cwd_buf)) != cwd_buf) {
@@ -269,13 +275,13 @@ int main(int argc, char **argv, char **env)
          return 1;
       }
 
-      printf(COLOR_RED "[TilckDevShell]" RESET_ATTRS ":%s# ", cwd_buf);
+      printf(COLOR_RED "[TilckDevShell]" RESET_ATTRS ":%s%c ", cwd_buf, uc);
       fflush(stdout);
 
-      int rc = read_command(cmdline_buf, sizeof(cmdline_buf));
+      rc = read_command(cmdline_buf, sizeof(cmdline_buf));
 
       if (rc < 0) {
-         printf("I/O error\n");
+         fprintf(stderr, "I/O error\n");
          break;
       }
 

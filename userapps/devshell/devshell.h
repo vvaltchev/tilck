@@ -53,9 +53,10 @@ struct test_cmd_entry {
 };
 
 void run_if_known_command(const char *cmd, int argc, char **argv);
-void dump_list_of_commands(void);
+void dump_list_of_commands_and_exit(void);
 int read_command(char *buf, int buf_size);
 void dump_coverage_files(void);
+void show_common_help_intro(void);
 
 /* From the man page of getdents64() */
 struct linux_dirent64 {
