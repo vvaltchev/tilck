@@ -207,44 +207,38 @@ static void show_help_and_exit(void)
 
 static void parse_opt(int argc, char **argv)
 {
-begin:
+   for (; argc > 0; argc--, argv++) {
 
-   if (!argc)
-      return;
+      if (!strlen(*argv))
+         continue;
 
-   if (!strlen(*argv)) {
-      argc--; argv++;
-      goto begin;
+      if (!strcmp(*argv, "-h") || !strcmp(*argv, "--help"))
+         show_help_and_exit();
+
+      if (!strcmp(*argv, "-l"))
+         dump_list_of_commands_and_exit();
+
+      if (argc == 1)
+         goto unknown_opt;
+
+      /* argc > 1 */
+
+      if (!strcmp(*argv, "-dcov")) {
+         dump_coverage = true;
+         continue;
+      }
+
+      if (!strcmp(*argv, "-c")) {
+         printf("[shell] Executing built-in command '%s'\n", argv[1]);
+         run_if_known_command(argv[1], argc - 2, argv + 2);
+         printf("[shell] Unknown built-in command '%s'\n", argv[1]);
+         return;
+      }
+
+   unknown_opt:
+      printf("[shell] Unknown option '%s'\n", *argv);
+      break;
    }
-
-   if (!strcmp(*argv, "-h") || !strcmp(*argv, "--help")) {
-      show_help_and_exit();
-   }
-
-   if (!strcmp(*argv, "-l")) {
-      dump_list_of_commands_and_exit();
-   }
-
-   if (argc == 1)
-      goto unknown_opt;
-
-   /* argc > 1 */
-
-   if (!strcmp(*argv, "-dcov")) {
-      dump_coverage = true;
-      argc--; argv++;
-      goto begin;
-   }
-
-   if (!strcmp(*argv, "-c")) {
-      printf("[shell] Executing built-in command '%s'\n", argv[1]);
-      run_if_known_command(argv[1], argc - 2, argv + 2);
-      printf("[shell] Unknown built-in command '%s'\n", argv[1]);
-      return;
-   }
-
-unknown_opt:
-   printf("[shell] Unknown option '%s'\n", *argv);
 }
 
 int main(int argc, char **argv, char **env)
