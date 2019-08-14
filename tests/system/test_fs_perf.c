@@ -104,5 +104,8 @@ int cmd_fs_perf2(int argc, char **argv)
 
    printf("Tot written: %d KB\n", n);
    printf("Avg. cost per KB: %4llu cycles\n", elapsed / KB);
+
+   rc = unlink(path);
+   DEVSHELL_CMD_ASSERT(rc == 0);
    return 0;
 }
