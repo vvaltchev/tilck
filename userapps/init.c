@@ -269,9 +269,10 @@ int main(int argc, char **argv, char **env)
       return 1;
    }
 
-   /* Ignore SIGINT and SIGQUIT */
+   /* Ignore SIGINT, SIGQUIT, SIGTERM */
    signal(SIGINT, SIG_IGN);
    signal(SIGQUIT, SIG_IGN);
+   signal(SIGTERM, SIG_IGN);
 
    do_initial_setup();
    parse_opts(argc - 1, argv + 1);
