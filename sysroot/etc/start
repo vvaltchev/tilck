@@ -24,39 +24,5 @@ for d in $dirs; do
    done
 done
 
-
-
-# No need to symlink `init` in /bin. It has to be called only once.
-rm /bin/init
-
-# Symlink all the busybox commands
-# Note: since sys_pipe() is not implemented in Tilck yet, we have to use a
-# disgusting crappy way to achieve the same result.
-# TODO: re-write this when sys_pipe() is implemented.
-
-bb="/initrd/bin/busybox"
-
-cd /tmp
-$bb --list > cmds
-wc -l cmds > _len
-cut -d " " -f 1 < _len > len
-rm _len
-count=""
-read count < len
-rm len
-
-i=1
-while [[ $i -le $count ]]; do
-
-   val=""
-   head -$i cmds > t
-   tail -1 t > t2
-   read val < t2
-   if [[ "$val" != "busybox" ]]; then
-      ln -s $bb /bin/$val
-   fi
-   i=$((i+1));
-done
-
-# Delete the temporary files used in this dirty hack
-rm cmds t t2
+# Create symlinks for all the busybox's applets
+/initrd/bin/busybox --install -s /bin
