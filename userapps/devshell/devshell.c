@@ -25,8 +25,8 @@ static char *cmd_argv[MAX_ARGS];
 
 static const char *devshell_path[] = {
 
-   "/bin",
-   "/usr/bin"
+   "/bin/",
+   "/usr/bin/"
 };
 
 static bool contains_slash(const char *s) {
@@ -48,12 +48,16 @@ static void shell_builtin_cd(int argc)
       dest_dir = cmd_argv[1];
 
    if (argc > 2) {
-      printf("cd: too many arguments\n");
+      fprintf(stderr, PFX "cd: too many arguments\n");
       return;
    }
 
-   if (chdir(dest_dir))
-      perror("cd");
+   if (chdir(dest_dir)) {
+      fprintf(stderr,
+              PFX "cd: can't cd to '%s': %s\n",
+              dest_dir,
+              strerror(errno));
+   }
 }
 
 static bool is_file(const char *filepath)
@@ -77,14 +81,14 @@ static void wait_child_cmd(int child_pid)
       printf("\n");
 
       if (term_sig != SIGINT)
-         printf("[shell] command terminated by signal: %d (%s)\n",
+         printf(PFX "Command terminated by signal: %d (%s)\n",
                 term_sig, strsignal(term_sig));
 
       return;
    }
 
    if (WEXITSTATUS(wstatus))
-      printf("[shell] command exited with status: %d\n", WEXITSTATUS(wstatus));
+      printf(PFX "Command exited with status: %d\n", WEXITSTATUS(wstatus));
 }
 
 static void shell_run_child(int argc)
@@ -104,14 +108,13 @@ static void shell_run_child(int argc)
    if (!contains_slash(cmd_argv[0])) {
 
       if (argc > MAX_ARGS) {
-         fprintf(stderr, "[shell] Too many arguments. Limit: %d\n", MAX_ARGS);
+         fprintf(stderr, PFX "Too many arguments. Limit: %d\n", MAX_ARGS);
          exit(1);
       }
 
       for (i = 0; i < ARRAY_SIZE(devshell_path); i++) {
 
          strcpy(buf, devshell_path[i]);
-         strcat(buf, "/");
          strcat(buf, cmd_argv[0]);
 
          if (is_file(buf))
@@ -119,7 +122,7 @@ static void shell_run_child(int argc)
       }
 
       if (i == ARRAY_SIZE(devshell_path)) {
-         fprintf(stderr, "[shell] Command '%s' not found\n", cmd_argv[0]);
+         fprintf(stderr, PFX "Command '%s' not found\n", cmd_argv[0]);
          exit(1);
       }
 
@@ -189,7 +192,7 @@ static int parse_cmd_line(const char *cmd_line)
    cmd_argv[argc] = NULL;
 
    if (in_quotes) {
-      fprintf(stderr, "[shell] ERROR: Unterminated quote %c\n", quote_char);
+      fprintf(stderr, PFX "ERROR: Unterminated quote %c\n", quote_char);
       return 0;
    }
 
@@ -268,14 +271,14 @@ static void parse_opt(int argc, char **argv)
       }
 
       if (!strcmp(*argv, "-c")) {
-         printf("[shell] Executing built-in command '%s'\n", argv[1]);
+         printf(PFX "Executing built-in command '%s'\n", argv[1]);
          run_if_known_command(argv[1], argc - 2, argv + 2);
-         printf("[shell] Unknown built-in command '%s'\n", argv[1]);
+         printf(PFX "Unknown built-in command '%s'\n", argv[1]);
          return;
       }
 
    unknown_opt:
-      printf("[shell] Unknown option '%s'\n", *argv);
+      printf(PFX "Unknown option '%s'\n", *argv);
       break;
    }
 }
@@ -305,7 +308,7 @@ int main(int argc, char **argv, char **env)
    while (true) {
 
       if (getcwd(cwd_buf, sizeof(cwd_buf)) != cwd_buf) {
-         perror("Shell: getcwd() failed");
+         fprintf(stderr, PFX "getcwd() failed: %s", strerror(errno));
          return 1;
       }
 
@@ -315,7 +318,7 @@ int main(int argc, char **argv, char **env)
       rc = read_command(cmdline_buf, sizeof(cmdline_buf));
 
       if (rc < 0) {
-         fprintf(stderr, "I/O error\n");
+         fprintf(stderr, PFX "I/O error\n");
          break;
       }
 

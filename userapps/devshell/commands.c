@@ -40,7 +40,7 @@ static int get_cmds_count(void) {
 int cmd_selftest(int argc, char **argv)
 {
    if (argc < 1) {
-      printf("[shell] Expected selftest name argument.\n");
+      fprintf(stderr, PFX "Expected selftest name argument.\n");
       return 1;
    }
 
@@ -51,7 +51,7 @@ int cmd_selftest(int argc, char **argv)
                      NULL);
 
    if (rc != 0) {
-      printf("[shell] Invalid selftest '%s'\n", argv[0]);
+      fprintf(stderr, PFX "Invalid selftest '%s'\n", argv[0]);
       return 1;
    }
 
@@ -87,7 +87,7 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
 
    start_ms = get_monotonic_time_ms();
 
-   printf(COLOR_YELLOW "[devshell] ");
+   printf(COLOR_YELLOW PFX);
    printf(COLOR_GREEN "[RUN   ] " RESET_ATTRS "%s"  "\n", name);
 
    child_pid = fork();
@@ -117,7 +117,7 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
    end_ms = get_monotonic_time_ms();
 
    pass = WIFEXITED(wstatus) && (WEXITSTATUS(wstatus) == 0);
-   printf(COLOR_YELLOW "[devshell] %s", pass_fail_strings[pass]);
+   printf(COLOR_YELLOW PFX "%s", pass_fail_strings[pass]);
    printf("%s (%llu ms)\n\n", name, end_ms - start_ms);
    return pass;
 }
@@ -149,9 +149,9 @@ int cmd_runall(int argc, char **argv)
 
    end_ms = get_monotonic_time_ms();
 
-   printf(COLOR_YELLOW "[devshell] ");
+   printf(COLOR_YELLOW PFX);
    printf("------------------------------------------------------------\n");
-   printf(COLOR_YELLOW "[devshell] ");
+   printf(COLOR_YELLOW PFX);
 
    printf(passed == to_run ? COLOR_GREEN : COLOR_RED);
    printf("Tests passed %d/%d" RESET_ATTRS " ", passed, to_run);

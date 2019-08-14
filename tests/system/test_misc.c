@@ -21,9 +21,9 @@
 
 int cmd_loop(int argc, char **argv)
 {
-   printf("[shell] do a long loop\n");
+   printf(PFX "Do a long NOP loop\n");
    for (int i = 0; i < (2 * 1000 * 1000 * 1000); i++) {
-      asmVolatile ("nop");
+      asmVolatile("nop");
    }
 
    return 0;
@@ -206,7 +206,7 @@ int cmd_cloexec(int argc, char **argv)
       if (!strcmp(argv[0], "do_exec"))
          return cloexec_do_exec(argc, argv);
 
-      printf("[devshell][cloexec] Invalid sub-command '%s'\n", argv[0]);
+      printf(PFX "[cloexec] Invalid sub-command '%s'\n", argv[0]);
       return 1;
    }
 
