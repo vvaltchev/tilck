@@ -687,3 +687,9 @@ int sys_fcntl64(int fd, int cmd, int arg)
 
    return rc;
 }
+
+int sys_sync()
+{
+   /* Do nothing, for the moment */
+   return 0;
+}

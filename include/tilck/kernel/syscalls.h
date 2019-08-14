@@ -81,8 +81,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_utime)
 int sys_access(const char *pathname, int mode);
 
 CREATE_STUB_SYSCALL_IMPL(sys_nice)
-CREATE_STUB_SYSCALL_IMPL(sys_sync)
 
+int sys_sync();
 int sys_kill(int pid, int sig);
 
 CREATE_STUB_SYSCALL_IMPL(sys_rename)

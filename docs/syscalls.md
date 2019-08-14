@@ -67,13 +67,15 @@ considered as *not implemented yet*.
  sys_clock_getres    | compliant [10]
  sys_select          | full
  sys_poll            | full
- sys_readlink        | compliant stub
+ sys_readlink        | full
  sys_creat           | full
  sys_unlink          | full
- sys_vfork           | compliant
+ sys_symlink         | full
+ sys_vfork           | compliant [11]
  sys_umask           | full
- sys_truncate64      | partial [11]
- sys_ftruncate64     | partial [11]
+ sys_truncate64      | partial [12]
+ sys_ftruncate64     | partial [12]
+ sys_sync            | compliant [13]
 
 Definitions:
 
@@ -95,7 +97,7 @@ Notes:
    /dev at the moment because the filesystem used by Tilck is only read-only.
 
 2. The cases pid < -1, pid == -1 and pid == 0 are treated in the same way
-   because Tilck does not support multiple users/groups. See note [3].
+   because Tilck does not support process groups.
 
 3. Tilck does not support *by design* multiple users nor any form of
    authentication. Therefore, the following statement is always true:
@@ -119,4 +121,9 @@ Notes:
 
 10. Only the clocks CLOCK_REALTIME and CLOCK_MONOTONIC are supported.
 
-11. Truncate called with `length` > `file size` is not supported yet.
+11. Behaves exactly as `fork()`.
+
+12. Truncate called with `length` > `file size` is not supported yet.
+
+13. Since there is no disk cache nor disk support in general, `sync()` just
+    does nothing.
