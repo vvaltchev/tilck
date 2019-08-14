@@ -15,21 +15,21 @@ considered as *not implemented yet*.
  sys_fork            | full
  sys_read            | full
  sys_write           | full
- sys_open            | partial [1]
+ sys_open            | partial++ [1]
  sys_close           | full
  sys_waitpid         | compliant [2]
  sys_execve          | full
  sys_chdir           | full
  sys_getpid          | full
- sys_setuid16        | compliant [3]
- sys_getuid16        | compliant [3]
+ sys_setuid16        | limited [3]
+ sys_getuid16        | limited [3]
  sys_pause           | stub
  sys_access          | partial
  sys_brk             | full
- sys_setgid16        | compliant [3]
- sys_getgid16        | compliant [3]
- sys_seteuid16       | compliant [3]
- sys_setegid16       | compliant [3]
+ sys_setgid16        | limited [3]
+ sys_getgid16        | limited [3]
+ sys_seteuid16       | limited [3]
+ sys_setegid16       | limited [3]
  sys_ioctl           | partial
  sys_getppid         | full
  sys_gettimeofday    | full
@@ -46,12 +46,12 @@ considered as *not implemented yet*.
  sys_stat64          | full
  sys_fstat64         | full
  sys_lstat64         | partial
- sys_getuid          | compliant [3]
- sys_getgid          | compliant [3]
- sys_geteuid         | compliant [3]
- sys_getegid         | compliant [3]
- sys_setuid          | compliant [3]
- sys_setgid          | compliant [3]
+ sys_getuid          | limited [3]
+ sys_getgid          | limited [3]
+ sys_geteuid         | limited [3]
+ sys_getegid         | limited [3]
+ sys_setuid          | limited [3]
+ sys_setgid          | limited [3]
  sys_getdents64      | full
  sys_fcntl64         | stub
  sys_gettid          | minimal [4]
@@ -76,33 +76,38 @@ considered as *not implemented yet*.
  sys_truncate64      | partial [12]
  sys_ftruncate64     | partial [12]
  sys_sync            | compliant [13]
+ sys_chown           | limited [3]
 
 Definitions:
 
  Support level | Meaning
 ---------------|---------------------------
- full          | Syscall fully supported
+ full          | Syscall 100% supported.
+ partial       | Syscall partially supported, work-in-progress
+ partial++     | All of the really important flags and modes are supported
+ ...           | Most of the advanced stuff very likely is still not supported.
  stub          | The syscall does not return -ENOSYS, but it has actually a stub
  ...           | implementation, at the moment.
- partial       | Syscall partially supported, work-in-progress
  minimal       | Like partial, just even less features are supported
  compliant     | Syscall supported in a way compliant with a full
  ...           | implementation, but actually it has several limitations due to
  ...           | the different design of Tilck. Example: see the note [3].
+ limited       | The syscall supports by design only a subset of the cases
+ ...           | supported by the Linux implementation.
 
 Notes:
 
-1. open() work both for reading and writing files, but 'flags' and 'mode' are
-   ignored at the moment. Also, it is possible only to write special files in
-   /dev at the moment because the filesystem used by Tilck is only read-only.
+1. The syscall open() now supports read/write access, file creation, mode
+   setting and flags like O_APPEND, O_CLOEXEC, O_EXCL, O_TRUNC. All the
+   "advanced" flags are not supported yet.
 
 2. The cases pid < -1, pid == -1 and pid == 0 are treated in the same way
    because Tilck does not support process groups.
 
 3. Tilck does not support *by design* multiple users nor any form of
    authentication. Therefore, the following statement is always true:
-   UID == GID == EUID == EGID == 0.
-   The syscall setuid() is compliant because it succeeds when uid is 0.
+   UID == GID == EUID == EGID == 0. All the calls like setuid(), seteuid(),
+   setgid(), setegid(), chown() etc. succeed only when UID/GID == 0.
 
 4. Because the lack of thread support, `gettid()` is the same as `getpid()`
 

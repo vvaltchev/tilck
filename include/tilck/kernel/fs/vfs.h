@@ -246,6 +246,7 @@ int vfs_truncate(const char *path, off_t length);
 int vfs_ftruncate(fs_handle h, off_t length);
 int vfs_symlink(const char *target, const char *linkpath);
 int vfs_readlink(const char *path, char *buf);
+int vfs_chown(const char *path, int owner, int group, bool reslink);
 void vfs_close(fs_handle h);
 
 bool vfs_read_ready(fs_handle h);

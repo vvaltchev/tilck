@@ -290,8 +290,7 @@ int sys_ftruncate64(int fd, s64 length);
 int sys_stat64(const char *user_path, struct stat64 *user_statbuf);
 int sys_lstat64(const char *user_path, struct stat64 *user_statbuf);
 int sys_fstat64(int fd, struct stat64 *user_statbuf);
-
-CREATE_STUB_SYSCALL_IMPL(sys_lchown)
+int sys_lchown(const char *u_path, int owner, int group);
 
 int sys_getuid();
 int sys_getgid();
@@ -307,7 +306,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_setresuid)
 CREATE_STUB_SYSCALL_IMPL(sys_getresuid)
 CREATE_STUB_SYSCALL_IMPL(sys_setresgid)
 CREATE_STUB_SYSCALL_IMPL(sys_getresgid)
-CREATE_STUB_SYSCALL_IMPL(sys_chown)
+int sys_chown(const char *u_path, int owner, int group);
 
 int sys_setuid(uptr uid);
 int sys_setgid(uptr gid);

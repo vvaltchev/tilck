@@ -399,6 +399,16 @@ int vfs_readlink(const char *path, char *buf)
    VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
+int vfs_chown(const char *path, int owner, int group, bool reslink)
+{
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, reslink)
+
+   /* Tilck does not support other UIDs, GIDs than 0 */
+   rc = (owner == 0 && group == 0) ? 0 : -EPERM;
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+}
+
 u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;
