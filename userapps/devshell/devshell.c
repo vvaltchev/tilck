@@ -23,6 +23,22 @@ char **shell_env;
 static char cmd_arg_buffers[MAX_ARGS][256];
 static char *cmd_argv[MAX_ARGS];
 
+static const char *devshell_path[] = {
+
+   "/bin",
+   "/usr/bin"
+};
+
+static bool contains_slash(const char *s) {
+
+   for (; *s; s++) {
+      if (*s == '/')
+         return true;
+   }
+
+   return false;
+}
+
 static void shell_builtin_cd(int argc)
 {
    int rc = 0;
@@ -73,7 +89,9 @@ static void wait_child_cmd(int child_pid)
 
 static void shell_run_child(int argc)
 {
+   char buf[MAX_PATH];
    int saved_errno;
+   unsigned i;
 
    /* Reset all the signal handlers to their default behavior */
    for (int i = 1; i < _NSIG; i++)
@@ -83,15 +101,29 @@ static void shell_run_child(int argc)
 
    /* Since we got here, cmd_argv[0] was NOT a known built-in command */
 
-   if (!is_file(cmd_argv[0]) && argc < MAX_ARGS) {
-      if (is_file("/bin/busybox")) {
+   if (!contains_slash(cmd_argv[0])) {
 
-         for (int i = argc; i > 0; i--)
-            cmd_argv[i] = cmd_argv[i - 1];
-
-         cmd_argv[++argc] = NULL;
-         cmd_argv[0] = "/bin/busybox";
+      if (argc > MAX_ARGS) {
+         fprintf(stderr, "[shell] Too many arguments. Limit: %d\n", MAX_ARGS);
+         exit(1);
       }
+
+      for (i = 0; i < ARRAY_SIZE(devshell_path); i++) {
+
+         strcpy(buf, devshell_path[i]);
+         strcat(buf, "/");
+         strcat(buf, cmd_argv[0]);
+
+         if (is_file(buf))
+            break;
+      }
+
+      if (i == ARRAY_SIZE(devshell_path)) {
+         fprintf(stderr, "[shell] Command '%s' not found\n", cmd_argv[0]);
+         exit(1);
+      }
+
+      cmd_argv[0] = buf;
    }
 
    execve(cmd_argv[0], cmd_argv, shell_env);
