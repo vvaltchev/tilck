@@ -14,6 +14,15 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/timer.h>
 
+#define LINUX_REBOOT_MAGIC1         0xfee1dead
+#define LINUX_REBOOT_MAGIC2          672274793
+#define LINUX_REBOOT_MAGIC2A          85072278
+#define LINUX_REBOOT_MAGIC2B         369367448
+#define LINUX_REBOOT_MAGIC2C         537993216
+
+#define LINUX_REBOOT_CMD_RESTART     0x1234567
+#define LINUX_REBOOT_CMD_RESTART2   0xa1b2c3d4
+
 int sys_madvise(void *addr, size_t len, int advice)
 {
    // TODO (future): consider implementing at least part of sys_madvice().
@@ -139,6 +148,29 @@ int sys_vfork()
 {
    // TODO: consider actually implementing vfork().
    return sys_fork();
+}
+
+int sys_reboot(u32 magic, u32 magic2, u32 cmd, void *arg)
+{
+   if (magic != LINUX_REBOOT_MAGIC1)
+      return -EINVAL;
+
+   if (magic2 != LINUX_REBOOT_MAGIC2  &&
+       magic2 != LINUX_REBOOT_MAGIC2A &&
+       magic2 != LINUX_REBOOT_MAGIC2B &&
+       magic2 != LINUX_REBOOT_MAGIC2C)
+   {
+      return -EINVAL;
+   }
+
+   if (cmd == LINUX_REBOOT_CMD_RESTART ||
+       cmd == LINUX_REBOOT_CMD_RESTART2)
+   {
+      printk("Restarting system\n");
+      reboot();
+   }
+
+   return -EINVAL;
 }
 
 /* *************************************************************** */

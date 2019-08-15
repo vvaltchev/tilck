@@ -151,7 +151,9 @@ int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize);
 
 CREATE_STUB_SYSCALL_IMPL(sys_uselib)
 CREATE_STUB_SYSCALL_IMPL(sys_swapon)
-CREATE_STUB_SYSCALL_IMPL(sys_reboot)
+
+int sys_reboot(u32 magic, u32 magic2, u32 cmd, void *arg);
+
 CREATE_STUB_SYSCALL_IMPL(sys_old_readdir)
 CREATE_STUB_SYSCALL_IMPL(sys_old_mmap)
 
