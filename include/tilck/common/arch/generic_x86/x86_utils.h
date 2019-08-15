@@ -383,3 +383,5 @@ static ALWAYS_INLINE void __set_curr_pdir(uptr paddr)
 {
    write_cr3(paddr);
 }
+
+void x86_pc_8042_reboot(void);
