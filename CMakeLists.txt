@@ -33,8 +33,8 @@ define_env_cache_bool_var(KERNEL_GCOV)
 
 # USE_SYSCC-related variables
 define_env_cache_bool_var(USE_SYSCC)
-define_env_cache_str_var(OBJCOPY "objcopy")
-define_env_cache_str_var(STRIP "strip")
+define_env_cache_str_var(OBJCOPY "${CMAKE_OBJCOPY}")
+define_env_cache_str_var(STRIP "${CMAKE_STRIP}")
 define_env_cache_str_var(GCOV "gcov")
 
 # Debug cache variables
@@ -44,7 +44,7 @@ define_env_cache_str_var(GCOV "gcov")
 # time CMake is run, it makes sense to check for the next runs whether the env
 # vars CC/CXX changed (if set) by the user or an incorrect script. In case
 # they are, we have to stop the build because their new value will be otherwise
-# completely ignored. In order words, "fail early".
+# completely ignored. In order words, fail *early*.
 
 define_env_cache_str_var(CC "<unset>")
 define_env_cache_str_var(CXX "<unset>")
