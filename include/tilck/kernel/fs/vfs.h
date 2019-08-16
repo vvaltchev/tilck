@@ -94,7 +94,7 @@ typedef int     (*func_mkdir)     (vfs_path *p, mode_t);
 typedef int     (*func_rmdir)     (vfs_path *p);
 typedef int     (*func_symlink)   (const char *, vfs_path *);
 typedef int     (*func_readlink)  (vfs_path *, char *);
-typedef int     (*func_chmod)     (vfs_path *, mode_t);
+typedef int     (*func_chmod)     (filesystem *, vfs_inode_ptr_t, mode_t);
 typedef void    (*func_fslock_t)  (filesystem *);
 typedef int     (*func_rr_inode)  (filesystem *, vfs_inode_ptr_t);
 
@@ -232,7 +232,6 @@ typedef struct {
 } fs_handle_base;
 
 
-
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);
 int vfs_ioctl(fs_handle h, uptr request, void *argp);
 int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl);
@@ -249,6 +248,7 @@ int vfs_symlink(const char *target, const char *linkpath);
 int vfs_readlink(const char *path, char *buf);
 int vfs_chown(const char *path, int owner, int group, bool reslink);
 int vfs_chmod(const char *path, mode_t mode);
+int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);
 
 bool vfs_read_ready(fs_handle h);

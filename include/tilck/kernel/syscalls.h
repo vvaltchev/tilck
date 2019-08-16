@@ -163,7 +163,9 @@ int sys_munmap(void *vaddr, size_t len);
 
 CREATE_STUB_SYSCALL_IMPL(sys_truncate)
 CREATE_STUB_SYSCALL_IMPL(sys_ftruncate)
-CREATE_STUB_SYSCALL_IMPL(sys_fchmod)
+
+int sys_fchmod(int fd, mode_t mode);
+
 CREATE_STUB_SYSCALL_IMPL(sys_fchown16)
 CREATE_STUB_SYSCALL_IMPL(sys_getpriority)
 CREATE_STUB_SYSCALL_IMPL(sys_setpriority)

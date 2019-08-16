@@ -752,3 +752,17 @@ int sys_chmod(const char *u_path, mode_t mode)
 
    return vfs_chmod(path, mode);
 }
+
+int sys_fchmod(int fd, mode_t mode)
+{
+   fs_handle_base *hb;
+   hb = get_fs_handle(fd);
+
+   if (!hb)
+      return -EBADF;
+
+   if (!(hb->fs->flags & VFS_FS_RW))
+      return -EROFS;
+
+   return vfs_fchmod(hb, mode);
+}

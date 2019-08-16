@@ -79,6 +79,7 @@ considered as *not implemented yet*.
  sys_chown           | limited [3]
  sys_fchown          | limited [3]
  sys_chmod           | full
+ sys_fchmod          | full
 
 Definitions:
 
@@ -101,7 +102,7 @@ Notes:
 
 1. The syscall open() now supports read/write access, file creation, mode
    setting and flags like O_APPEND, O_CLOEXEC, O_EXCL, O_TRUNC. All the
-   "advanced" flags are not supported yet.
+   "advanced" flags like O_ASYNC are not supported yet.
 
 2. The cases pid < -1, pid == -1 and pid == 0 are treated in the same way
    because Tilck does not support process groups.

@@ -197,19 +197,29 @@ static int ramfs_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
    return release_obj((ramfs_inode *)inode);
 }
 
-static int ramfs_chmod(vfs_path *p, mode_t mode)
+static int ramfs_chmod(filesystem *fs, vfs_inode_ptr_t inode, mode_t mode)
 {
-   ramfs_inode *i = p->fs_path.inode;
-   const mode_t special_bits = mode & (mode_t)~0777;
-   const mode_t curr_spec_bits = i->mode & (mode_t)~0777;
+   ramfs_inode *i = inode;
+   int rc;
 
-   if (special_bits && special_bits != curr_spec_bits) {
-      /* Special bits (e.g. sticky bit etc.) are not supported by Tilck */
-      return -EPERM;
+   rwlock_wp_exlock(&i->rwlock);
+   {
+      const mode_t special_bits = mode & (mode_t)~0777;
+      const mode_t curr_spec_bits = i->mode & (mode_t)~0777;
+
+      if (!special_bits || special_bits == curr_spec_bits) {
+
+         i->mode = curr_spec_bits | (mode & 0777);
+         rc = 0;
+
+      } else {
+
+         /* Special bits (e.g. sticky bit etc.) are not supported by Tilck */
+         rc = -EPERM;
+      }
    }
-
-   i->mode = curr_spec_bits | (mode & 0777);
-   return 0;
+   rwlock_wp_exunlock(&i->rwlock);
+   return rc;
 }
 
 static const fs_ops static_fsops_ramfs =
