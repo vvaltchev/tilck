@@ -79,7 +79,8 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
       list(APPEND EXTRA_APPS_LIST_copy ${ARGV0})
       set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST_copy})
       set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST_copy} PARENT_SCOPE)
-      message(STATUS "Adding EXTRA APP: ${ARGV0}")
+      file(RELATIVE_PATH relPath "${CMAKE_BINARY_DIR}" "${ARGV0}")
+      message(STATUS "Adding EXTRA APP: ${relPath}")
    endmacro()
 
    add_subdirectory(extra)
@@ -103,6 +104,7 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
 
       if (result EQUAL 1)
 
+         set(msg1 "")
          string(CONCAT msg1 "The busybox build in the toolchain has a "
                             "different config than the one in the source. "
                             "This might have undesired effects. ")
@@ -111,9 +113,10 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
              "$ENV{TRAVIS}" STREQUAL "" AND
              "$ENV{CI}" STREQUAL "")
 
+            set(msg2 "")
             string(CONCAT msg2 "How to fix it: \n"
-                               "   1) rm -rf ${TCROOT}/busybox \n"
-                               "   2) ${BTC_SCRIPT} -s build_busybox")
+                               "   1) rm -rf ${TCROOT_REL}/busybox\n"
+                               "   2) ${BTC_SCRIPT_REL} -s build_busybox")
 
             message(FATAL_ERROR "\n${msg1}\n${msg2}")
 

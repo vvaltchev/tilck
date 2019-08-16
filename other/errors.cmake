@@ -12,7 +12,7 @@ function (show_wrong_arch_error)
                      "official way, building on HOST_ARCH == ARCH is "
                      "supported, if USE_SYSCC, CC, CXX are set.")
 
-   message(FATAL_ERROR "${msg}")
+   message(FATAL_ERROR "\n${msg}")
 
 endfunction()
 
@@ -24,7 +24,7 @@ function (show_missing_use_syscc_error)
                      "WARNING: this scenario is *not* supported in an official"
                      " way, even if it should work.")
 
-   message(FATAL_ERROR "${msg}")
+   message(FATAL_ERROR "\n${msg}")
 
 endfunction()
 
@@ -34,7 +34,7 @@ function (show_same_arch_build_warning)
    string(CONCAT msg "Building with HOST_ARCH == ARCH and USE_SYSCC=1 is not"
                      " supported in an official way")
 
-   message(WARNING "${msg}")
+   message(WARNING "\n${msg}")
 
 endfunction()
 
@@ -42,10 +42,10 @@ function (show_no_musl_syscc_error)
 
    set(msg "")
    string(CONCAT msg "In order to build with USE_SYSCC=1 libmusl *must be* "
-                     "in the toolchain. Run: ${BTC_SCRIPT} -s build_libmusl "
-                     "first.")
+                     "in the toolchain. "
+                     "Run: ${BTC_SCRIPT_REL} -s build_libmusl first.")
 
-   message(FATAL_ERROR "${msg}")
+   message(FATAL_ERROR "\n${msg}")
 
 endfunction()
 
@@ -80,7 +80,7 @@ endfunction()
 
 macro (show_missing_lcov_error)
    message(FATAL_ERROR "TEST_GCOV/KERNEL_GCOV set but no lcov in toolchain. "
-                       "Run ${BTC_SCRIPT} -s build_lcov first.")
+                       "Run ${BTC_SCRIPT_REL} -s build_lcov first.")
 endmacro()
 
 macro (no_googletest_lib_fake_error_target)
@@ -93,7 +93,7 @@ macro (no_googletest_lib_fake_error_target)
       COMMAND echo "==== ERROR: No googletest in toolchain ===="
       COMMAND echo
       COMMAND echo "Instructions:"
-      COMMAND echo "  - Run ${BTC_SCRIPT} -s ${GTEST_BTC_COMMAND}"
+      COMMAND echo "  - Run ${BTC_SCRIPT_REL} -s ${GTEST_BTC_COMMAND}"
       COMMAND echo "  - rm -rf ${CMAKE_BINARY_DIR}"
       COMMAND echo "  - Run this command again"
       COMMAND echo

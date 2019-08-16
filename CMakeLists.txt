@@ -179,8 +179,11 @@ set(TCROOT              ${CMAKE_SOURCE_DIR}/toolchain)
 set(BTC_SCRIPT          ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 set(COVERAGE_HTML_DIR   ${CMAKE_BINARY_DIR}/coverage_html)
 
+file(RELATIVE_PATH      BTC_SCRIPT_REL ${CMAKE_SOURCE_DIR} ${BTC_SCRIPT})
+file(RELATIVE_PATH      TCROOT_REL     ${CMAKE_SOURCE_DIR}     ${TCROOT})
+
 if (NOT EXISTS ${TCROOT})
-   message(FATAL_ERROR "Toolchain not found: run ${BTC_SCRIPT} first.")
+   message(FATAL_ERROR "Toolchain not found: run ${BTC_SCRIPT_REL} first.")
 endif()
 
 if (${ARCH} STREQUAL "i386")
