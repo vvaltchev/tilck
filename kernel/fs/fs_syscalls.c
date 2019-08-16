@@ -716,6 +716,20 @@ int sys_lchown(const char *u_path, int owner, int group)
    return do_chown(u_path, owner, group, false);
 }
 
+int sys_fchown(int fd, uid_t owner, gid_t group)
+{
+   fs_handle_base *hb;
+   hb = get_fs_handle(fd);
+
+   if (!hb)
+      return -EBADF;
+
+   if (!(hb->fs->flags & VFS_FS_RW))
+      return -EROFS;
+
+   return (owner == 0 && group == 0) ? 0 : -EPERM;
+}
+
 int sys_sync()
 {
    /* Do nothing, for the moment */

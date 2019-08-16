@@ -77,6 +77,7 @@ considered as *not implemented yet*.
  sys_ftruncate64     | partial [12]
  sys_sync            | compliant [13]
  sys_chown           | limited [3]
+ sys_fchown          | limited [3]
  sys_chmod           | full
 
 Definitions:

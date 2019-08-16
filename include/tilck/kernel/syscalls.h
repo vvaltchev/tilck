@@ -305,13 +305,15 @@ CREATE_STUB_SYSCALL_IMPL(sys_setreuid)
 CREATE_STUB_SYSCALL_IMPL(sys_setregid)
 CREATE_STUB_SYSCALL_IMPL(sys_getgroups)
 CREATE_STUB_SYSCALL_IMPL(sys_setgroups)
-CREATE_STUB_SYSCALL_IMPL(sys_fchown)
+
+int sys_fchown(int fd, uid_t owner, gid_t group);
+
 CREATE_STUB_SYSCALL_IMPL(sys_setresuid)
 CREATE_STUB_SYSCALL_IMPL(sys_getresuid)
 CREATE_STUB_SYSCALL_IMPL(sys_setresgid)
 CREATE_STUB_SYSCALL_IMPL(sys_getresgid)
-int sys_chown(const char *u_path, int owner, int group);
 
+int sys_chown(const char *u_path, int owner, int group);
 int sys_setuid(uptr uid);
 int sys_setgid(uptr gid);
 
@@ -321,7 +323,6 @@ CREATE_STUB_SYSCALL_IMPL(sys_pivot_root)
 CREATE_STUB_SYSCALL_IMPL(sys_mincore)
 
 int sys_madvise(void *addr, size_t len, int advice);
-
 int sys_getdents64(int fd, struct linux_dirent64 *dirp, u32 buf_size);
 int sys_fcntl64(int fd, int cmd, int arg);
 int sys_gettid();
