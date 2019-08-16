@@ -17,7 +17,7 @@ else()
                      "If you really need to use EFI boot on x86_64 machines "
                      "please use GCC as C compiler.")
 
-   message(WARNING "${msg}")
+   message(WARNING "\n${msg}")
 
    add_custom_command(
       OUTPUT
