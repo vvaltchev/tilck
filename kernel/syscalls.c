@@ -206,7 +206,7 @@ int sys_tilck_run_selftest(const char *user_selftest)
 }
 
 int sys_tilck_cmd(enum tilck_testcmd_type cmd,
-                   uptr a1, uptr a2, uptr a3, uptr a4)
+                  uptr a1, uptr a2, uptr a3, uptr a4)
 {
    switch (cmd) {
 

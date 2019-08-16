@@ -40,9 +40,9 @@ int sys_creat(const char *pathname, mode_t mode);
 
 CREATE_STUB_SYSCALL_IMPL(sys_link)
 
-int sys_unlink(const char *pathname);
+int sys_unlink(const char *u_path);
 
-int sys_execve(const char *filename,
+int sys_execve(const char *u_path,
                const char *const *argv,
                const char *const *env);
 
@@ -50,7 +50,9 @@ int sys_chdir(const char *path);
 
 CREATE_STUB_SYSCALL_IMPL(sys_time)
 CREATE_STUB_SYSCALL_IMPL(sys_mknod)
-CREATE_STUB_SYSCALL_IMPL(sys_chmod)
+
+int sys_chmod(const char *u_path, mode_t mode);
+
 CREATE_STUB_SYSCALL_IMPL(sys_lchown16)
 CREATE_STUB_SYSCALL_IMPL(sys_break)
 CREATE_STUB_SYSCALL_IMPL(sys_oldstat)

@@ -145,6 +145,7 @@ extern const fs_ops static_fsops_testfs = {
    .symlink             = nullptr,
    .readlink            = test_fs_readlink,
    .truncate            = nullptr,
+   .chmod               = nullptr,
    .retain_inode        = vfs_test_retain_inode,
    .release_inode       = vfs_test_release_inode,
    .fs_exlock           = vfs_test_fs_exlock,

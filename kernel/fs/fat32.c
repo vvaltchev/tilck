@@ -644,6 +644,7 @@ static const fs_ops static_fsops_fat =
    .rmdir = NULL,
    .truncate = NULL,
    .stat = fat_stat,
+   .chmod = NULL,
    .get_entry = fat_get_entry,
    .retain_inode = fat_retain_inode,
    .release_inode = fat_release_inode,

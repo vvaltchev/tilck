@@ -721,3 +721,20 @@ int sys_sync()
    /* Do nothing, for the moment */
    return 0;
 }
+
+int sys_chmod(const char *u_path, mode_t mode)
+{
+   task_info *curr = get_curr_task();
+   char *path = curr->args_copybuf;
+   int rc;
+
+   rc = copy_str_from_user(path, u_path, MAX_PATH, NULL);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -ENAMETOOLONG;
+
+   return vfs_chmod(path, mode);
+}

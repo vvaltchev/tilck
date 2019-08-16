@@ -409,6 +409,19 @@ int vfs_chown(const char *path, int owner, int group, bool reslink)
    VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
+int vfs_chmod(const char *path, mode_t mode)
+{
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, true)
+
+   rc = p.fs_path.inode
+         ? p.fs->flags & VFS_FS_RW
+            ? p.fs->fsops->chmod(&p, mode)
+            : -EROFS
+         : -ENOENT;
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+}
+
 u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;

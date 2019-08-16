@@ -197,6 +197,21 @@ static int ramfs_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
    return release_obj((ramfs_inode *)inode);
 }
 
+static int ramfs_chmod(vfs_path *p, mode_t mode)
+{
+   ramfs_inode *i = p->fs_path.inode;
+   const mode_t special_bits = mode & (mode_t)~0777;
+   const mode_t curr_spec_bits = i->mode & (mode_t)~0777;
+
+   if (special_bits && special_bits != curr_spec_bits) {
+      /* Special bits (e.g. sticky bit etc.) are not supported by Tilck */
+      return -EPERM;
+   }
+
+   i->mode = curr_spec_bits | (mode & 0777);
+   return 0;
+}
+
 static const fs_ops static_fsops_ramfs =
 {
    .get_inode = ramfs_getinode,
@@ -211,6 +226,7 @@ static const fs_ops static_fsops_ramfs =
    .stat = ramfs_stat,
    .symlink = ramfs_symlink,
    .readlink = ramfs_readlink,
+   .chmod = ramfs_chmod,
    .get_entry = ramfs_get_entry,
    .retain_inode = ramfs_retain_inode,
    .release_inode = ramfs_release_inode,
