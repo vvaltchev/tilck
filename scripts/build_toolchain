@@ -347,6 +347,9 @@ function config_busybox {
    echo -n "Do you want to update busybox.config with the new config? [Y/n]: "
    read answer
 
+   # Remove the date-time row (in order to allow config diff to work)
+   sed -i -e '4d' .config
+
    if [[ "$answer" == "" || "$answer" == "y" ]]; then
       cp .config $MAIN_DIR/other/busybox.config
       echo "Source file $MAIN_DIR/other/busybox.config UPDATED"
@@ -375,6 +378,10 @@ function internal_build_busybox {
    export CROSS_COMPILE=""
    export CC_POST_FLAGS=""
 
+   # Remove the date-time row (in order to allow config diff to work)
+   sed -i -e '4d' .config
+
+   # Save a copy of the last built .config file
    cp .config .last_build_config
 }
 
