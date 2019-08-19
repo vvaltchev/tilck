@@ -80,7 +80,8 @@
       "initializer_list": "cpp",
       "iostream": "cpp",
       "tty.h": "c",
-      "fb_console.h": "c"
+      "fb_console.h": "c",
+      "debug_utils.h": "c"
    },
    "python.pythonPath": "/usr/bin/python"
 }

@@ -28,7 +28,7 @@
 #define DUMP_INT_OPT(opt)     printk(NO_PREFIX "%-35s: %d\n", #opt, opt)
 #define DUMP_BOOL_OPT(opt)    printk(NO_PREFIX "%-35s: %u\n", #opt, opt)
 
-void debug_show_opts(void)
+static void debug_show_opts(void)
 {
    printk(NO_PREFIX "\n");
    printk(NO_PREFIX "------------------- BUILD OPTIONS ------------------\n");
@@ -125,7 +125,7 @@ static void debug_dump_unhandled_irq_count(void)
    printk(NO_PREFIX "\n");
 }
 
-void debug_show_spurious_irq_count(void)
+static void debug_show_spurious_irq_count(void)
 {
    printk(NO_PREFIX "\n");
    printk(NO_PREFIX "Kernel IRQ-related counters\n\n");
@@ -245,7 +245,7 @@ static void debug_dump_task_table_hr(void)
    printk(NO_PREFIX "%s", debug_get_task_dump_util_str(HLINE));
 }
 
-void debug_show_task_list(void)
+static void debug_show_task_list(void)
 {
    printk(NO_PREFIX "\n\n");
 
