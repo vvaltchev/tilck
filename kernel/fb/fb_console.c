@@ -287,9 +287,15 @@ static void fb_draw_banner(void)
    if (get_curr_tty())
       ttynum = get_curr_tty_num();
 
-   rc = snprintk(lbuf, fb_term_cols - 1,
-                 "Tilck [%s] framebuffer console [tty %d]",
-                 BUILDTYPE_STR, ttynum);
+   if (ttynum > 0) {
+      rc = snprintk(lbuf, fb_term_cols - 1,
+                    "Tilck [%s] fb console [tty %d]",
+                    BUILDTYPE_STR, ttynum);
+   } else {
+      rc = snprintk(lbuf, fb_term_cols - 1,
+                    "Tilck [%s] fb console [tty: kernel debug panel]",
+                    BUILDTYPE_STR);
+   }
 
    ASSERT(rc > 0);
    llen = MIN((u16)rc, fb_term_cols - 1);

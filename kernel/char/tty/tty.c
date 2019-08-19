@@ -23,6 +23,7 @@ STATIC_ASSERT(TTY_COUNT <= MAX_TTYS);
 tty *ttys[128];
 tty *__curr_tty;
 int tty_tasklet_runner;
+static const video_interface *first_term_initial_vi;
 
 static keypress_handler_elem tty_keypress_handler_elem =
 {
@@ -153,7 +154,7 @@ tty_allocate_and_init_new_term(u16 serial_port_fwd)
       panic("TTY: no enough memory a new term instance");
 
    if (init_term(new_term,
-                 term_get_vi(ttys[1]->term_inst),
+                 first_term_initial_vi,
                  term_get_rows(ttys[1]->term_inst),
                  term_get_cols(ttys[1]->term_inst),
                  serial_port_fwd) < 0)
@@ -196,6 +197,23 @@ tty_full_destroy(tty *t)
    }
 
    kfree2(t, sizeof(tty));
+}
+
+tty *create_tty_nodev(void)
+{
+   tty *const t = allocate_and_init_tty(0, 0);
+
+   if (!t)
+      return NULL;
+
+   tty_input_init(t);
+
+   term_set_filter(t->term_inst,
+                   tty_term_write_filter,
+                   &t->filter_ctx);
+
+   tty_update_default_state_tables(t);
+   return t;
 }
 
 static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
@@ -261,6 +279,7 @@ static void init_serial_ttys(void)
 
 void init_tty(void)
 {
+   first_term_initial_vi = term_get_vi(get_curr_term());
    driver_info *di = kzmalloc(sizeof(driver_info));
 
    if (!di)

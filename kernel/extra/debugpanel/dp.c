@@ -267,10 +267,52 @@ static void debug_show_task_list(void)
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
-static int debug_f_key_press_handler(u32 key, u8 c)
+static bool in_debug_panel;
+static tty *dp_tty;
+static tty *saved_tty;
+
+static int dp_debug_panel_off_keypress(u32 key, u8 c)
 {
-   if (!kb_is_ctrl_pressed())
+   if (kb_is_ctrl_pressed() && key == KEY_F12) {
+
+      if (!dp_tty) {
+
+         dp_tty = create_tty_nodev();
+
+         if (!dp_tty) {
+            printk("ERROR: no enough memory for debug panel's TTY\n");
+            return KB_HANDLER_OK_AND_STOP;
+         }
+      }
+
+      saved_tty = get_curr_tty();
+
+      if (set_curr_tty(dp_tty) == 0) {
+         in_debug_panel = true;
+      }
+
+      return KB_HANDLER_OK_AND_STOP;
+   }
+
+   return KB_HANDLER_NAK;
+}
+
+static int dp_keypress_handler(u32 key, u8 c)
+{
+   if (kopt_serial_console)
       return KB_HANDLER_NAK;
+
+   if (!in_debug_panel)
+      return dp_debug_panel_off_keypress(key, c);
+
+   if (c == 'q') {
+
+      if (set_curr_tty(saved_tty) == 0) {
+         in_debug_panel = false;
+      }
+
+      return KB_HANDLER_OK_AND_STOP;
+   }
 
    switch (key) {
 
@@ -293,15 +335,14 @@ static int debug_f_key_press_handler(u32 key, u8 c)
       case KEY_F5:
          debug_show_spurious_irq_count();
          return KB_HANDLER_OK_AND_STOP;
-
-      default:
-         return KB_HANDLER_NAK;
    }
+
+   return KB_HANDLER_OK_AND_STOP;
 }
 
 static keypress_handler_elem debug_keypress_handler_elem =
 {
-   .handler = &debug_f_key_press_handler
+   .handler = &dp_keypress_handler
 };
 
 __attribute__((constructor))
