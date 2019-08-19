@@ -15,67 +15,7 @@
 #include <tilck/kernel/fb_console.h>
 #include <tilck/kernel/cmdline.h>
 
-/* --------- Color constants ---------- */
-#define COLOR_RED     "\033[31m"
-#define COLOR_GREEN   "\033[32m"
-#define COLOR_YELLOW  "\033[93m"
-#define RESET_ATTRS   "\033[0m"
-/* ------------------------------------ */
-
-
-#define SHOW_INT(name, val)   printk(NO_PREFIX "%-35s: %d\n", name, val)
-#define DUMP_STR_OPT(opt)     printk(NO_PREFIX "%-35s: %s\n", #opt, opt)
-#define DUMP_INT_OPT(opt)     printk(NO_PREFIX "%-35s: %d\n", #opt, opt)
-#define DUMP_BOOL_OPT(opt)    printk(NO_PREFIX "%-35s: %u\n", #opt, opt)
-
-static void debug_show_opts(void)
-{
-   printk(NO_PREFIX "\n");
-   printk(NO_PREFIX "------------------- BUILD OPTIONS ------------------\n");
-#ifdef RELEASE
-   DUMP_INT_OPT(RELEASE);
-#endif
-
-   DUMP_STR_OPT(BUILDTYPE_STR);
-
-   // Non-boolean kernel options
-   DUMP_INT_OPT(TIMER_HZ);
-   DUMP_INT_OPT(USER_STACK_PAGES);
-
-   // Boolean options ENABLED by default
-   DUMP_BOOL_OPT(KERNEL_TRACK_NESTED_INTERRUPTS);
-   DUMP_BOOL_OPT(PANIC_SHOW_STACKTRACE);
-   DUMP_BOOL_OPT(DEBUG_CHECKS_IN_RELEASE_BUILD);
-   DUMP_BOOL_OPT(KERNEL_SELFTESTS);
-
-   // Boolean options DISABLED by default
-   DUMP_BOOL_OPT(KERNEL_GCOV);
-   DUMP_BOOL_OPT(FORK_NO_COW);
-   DUMP_BOOL_OPT(MMAP_NO_COW);
-   DUMP_BOOL_OPT(PANIC_SHOW_REGS);
-   DUMP_BOOL_OPT(KMALLOC_FREE_MEM_POISONING);
-   DUMP_BOOL_OPT(KMALLOC_SUPPORT_DEBUG_LOG);
-   DUMP_BOOL_OPT(KMALLOC_SUPPORT_LEAK_DETECTOR);
-   DUMP_BOOL_OPT(KMALLOC_HEAPS_CREATION_DEBUG);
-   DUMP_BOOL_OPT(BOOTLOADER_POISON_MEMORY);
-   printk(NO_PREFIX "\n");
-
-#ifndef UNIT_TEST_ENVIRONMENT
-
-   printk(NO_PREFIX "------------------- RUNTIME ------------------\n");
-   SHOW_INT("TERM_ROWS", term_get_rows(get_curr_term()));
-   SHOW_INT("TERM_COLS", term_get_cols(get_curr_term()));
-   SHOW_INT("USE_FRAMEBUFFER", use_framebuffer());
-   SHOW_INT("FB_OPT_FUNCS", fb_is_using_opt_funcs());
-   SHOW_INT("FB_RES_X", fb_get_res_x());
-   SHOW_INT("FB_RES_Y", fb_get_res_y());
-   SHOW_INT("FB_BBP", fb_get_bbp());
-   SHOW_INT("FB_FONT_W", fb_get_font_w());
-   SHOW_INT("FB_FONT_H", fb_get_font_h());
-   printk(NO_PREFIX "\n");
-
-#endif
-}
+#include "termutil.h"
 
 static void debug_dump_slow_irq_handler_count(void)
 {
@@ -264,12 +204,41 @@ static void debug_show_task_list(void)
    printk(NO_PREFIX "\n");
 }
 
-
 #ifndef UNIT_TEST_ENVIRONMENT
+
+
+void dp_func1_options(void);
+
+static void func2_memmap(void)
+{
+   dp_move_cursor(dp_rows / 2, 0);
+   printk(NO_PREFIX "func2: memmap");
+}
+
+static void func3_heaps(void)
+{
+   dp_move_cursor(dp_rows / 2, 0);
+   printk(NO_PREFIX "func3: heaps");
+}
+
+static void func4_tasks(void)
+{
+   dp_move_cursor(dp_rows / 2, 0);
+   printk(NO_PREFIX "func4: tasks");
+}
+
+static void func5_irqs(void)
+{
+   dp_move_cursor(dp_rows / 2, 0);
+   printk(NO_PREFIX "func5: irqs");
+}
 
 static bool in_debug_panel;
 static tty *dp_tty;
 static tty *saved_tty;
+int dp_rows;
+int dp_cols;
+static void (*dp_func)(void) = dp_func1_options;
 
 static int dp_debug_panel_off_keypress(u32 key, u8 c)
 {
@@ -289,6 +258,8 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
 
       if (set_curr_tty(dp_tty) == 0) {
          in_debug_panel = true;
+         dp_rows = term_get_rows(get_curr_term());
+         dp_cols = term_get_cols(get_curr_term());
       }
 
       return KB_HANDLER_OK_AND_STOP;
@@ -297,15 +268,18 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
    return KB_HANDLER_NAK;
 }
 
+
 static int dp_keypress_handler(u32 key, u8 c)
 {
    if (kopt_serial_console)
       return KB_HANDLER_NAK;
 
-   if (!in_debug_panel)
-      return dp_debug_panel_off_keypress(key, c);
+   if (!in_debug_panel) {
+      if (dp_debug_panel_off_keypress(key, c) == KB_HANDLER_NAK)
+         return KB_HANDLER_NAK;
+   }
 
-   if (c == 'q') {
+   if (!kb_is_ctrl_pressed() && key == KEY_F12) {
 
       if (set_curr_tty(saved_tty) == 0) {
          in_debug_panel = false;
@@ -317,25 +291,63 @@ static int dp_keypress_handler(u32 key, u8 c)
    switch (key) {
 
       case KEY_F1:
-         debug_show_opts();
-         return KB_HANDLER_OK_AND_STOP;
+         dp_func = dp_func1_options;
+         break;
 
       case KEY_F2:
-         debug_kmalloc_dump_mem_usage();
-         return KB_HANDLER_OK_AND_STOP;
+         dp_func = func2_memmap;
+         break;
 
       case KEY_F3:
-         dump_system_memory_map();
-         return KB_HANDLER_OK_AND_STOP;
+         dp_func = func3_heaps;
+         break;
 
       case KEY_F4:
-         debug_show_task_list();
-         return KB_HANDLER_OK_AND_STOP;
+         dp_func = func4_tasks;
+         break;
 
       case KEY_F5:
-         debug_show_spurious_irq_count();
-         return KB_HANDLER_OK_AND_STOP;
+         dp_func = func5_irqs;
+         break;
    }
+
+   dp_clear();
+   dp_move_cursor(0, 0);
+   printk(NO_PREFIX);
+   printk(NO_PREFIX COLOR_YELLOW "[TilckDebugPanel] " RESET_ATTRS);
+
+   dp_write_header(1, "[Options] ", dp_func == dp_func1_options);
+   dp_write_header(2, "[MemMap] ", dp_func == func2_memmap);
+   dp_write_header(3, "[Heaps] ", dp_func == func3_heaps);
+   dp_write_header(4, "[Tasks] ", dp_func == func4_tasks);
+   dp_write_header(5, "[IRQs] ", dp_func == func5_irqs);
+   dp_write_header(12, "[Quit] ", false);
+
+   dp_func();
+   dp_move_cursor(999,999);
+
+   // switch (key) {
+
+   //    case KEY_F1:
+   //       debug_show_opts();
+   //       return KB_HANDLER_OK_AND_STOP;
+
+   //    case KEY_F2:
+   //       debug_kmalloc_dump_mem_usage();
+   //       return KB_HANDLER_OK_AND_STOP;
+
+   //    case KEY_F3:
+   //       dump_system_memory_map();
+   //       return KB_HANDLER_OK_AND_STOP;
+
+   //    case KEY_F4:
+   //       debug_show_task_list();
+   //       return KB_HANDLER_OK_AND_STOP;
+
+   //    case KEY_F5:
+   //       debug_show_spurious_irq_count();
+   //       return KB_HANDLER_OK_AND_STOP;
+   // }
 
    return KB_HANDLER_OK_AND_STOP;
 }
