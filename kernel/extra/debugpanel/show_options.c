@@ -6,18 +6,23 @@
 #include <tilck/kernel/fb_console.h>
 #include "termutil.h"
 
-#define SHOW_INT(name, val)  printk(NO_PREFIX DP_COLOR "%-32s: %d\n", name, val)
-#define DUMP_STR_OPT(opt)    printk(NO_PREFIX DP_COLOR "%-32s: %s\n", #opt, opt)
-#define DUMP_INT_OPT(opt)    printk(NO_PREFIX DP_COLOR "%-32s: %d\n", #opt, opt)
-#define DUMP_BOOL_OPT(opt)   printk(NO_PREFIX DP_COLOR "%-32s: %u\n", #opt, opt)
+#ifdef RELEASE
+   #define RELEASE_INT 1
+#else
+   #define RELEASE_INT 0
+#endif
+
+
+#define SHOW_INT(name, val)  dp_printk(DP_COLOR "%-32s: %d\n", name, val)
+#define DUMP_STR_OPT(opt)    dp_printk(DP_COLOR "%-32s: %s\n", #opt, opt)
+#define DUMP_INT_OPT(opt)    dp_printk(DP_COLOR "%-32s: %d\n", #opt, opt)
+#define DUMP_BOOL_OPT(opt)   dp_printk(DP_COLOR "%-32s: %u\n", #opt, opt)
 
 void dp_func1_options(void)
 {
-   printk(NO_PREFIX DP_COLOR "\n\n");
-#ifdef RELEASE
-   DUMP_INT_OPT(RELEASE);
-#endif
+   dp_printk(DP_COLOR "\n\n");
 
+   DUMP_INT_OPT(RELEASE_INT);
    DUMP_STR_OPT(BUILDTYPE_STR);
 
    // Non-boolean kernel options
@@ -40,7 +45,8 @@ void dp_func1_options(void)
    DUMP_BOOL_OPT(KMALLOC_SUPPORT_LEAK_DETECTOR);
    DUMP_BOOL_OPT(KMALLOC_HEAPS_CREATION_DEBUG);
    DUMP_BOOL_OPT(BOOTLOADER_POISON_MEMORY);
-   printk(NO_PREFIX DP_COLOR "\n");
+
+   dp_printk(DP_COLOR "\n");
 
 // #ifndef UNIT_TEST_ENVIRONMENT
 

@@ -233,12 +233,54 @@ static void func5_irqs(void)
    printk(NO_PREFIX "func5: irqs");
 }
 
+typedef struct {
+
+   const char *label;
+   void (*draw_func)(void);
+   keypress_func on_keypress_func;
+
+} dp_context;
+
 static bool in_debug_panel;
+static bool ui_need_update;
 static tty *dp_tty;
 static tty *saved_tty;
 int dp_rows;
 int dp_cols;
-static void (*dp_func)(void) = dp_func1_options;
+static const dp_context *dp_ctx;
+
+static const dp_context dp_contexts[] =
+{
+   {
+      .label = "Options",
+      .draw_func = dp_func1_options,
+      .on_keypress_func = NULL,
+   },
+
+   {
+      .label = "MemMap",
+      .draw_func = func2_memmap,
+      .on_keypress_func = NULL,
+   },
+
+   {
+      .label = "Heaps",
+      .draw_func = func3_heaps,
+      .on_keypress_func = NULL,
+   },
+
+   {
+      .label = "Tasks",
+      .draw_func = func4_tasks,
+      .on_keypress_func = NULL,
+   },
+
+   {
+      .label = "IRQs",
+      .draw_func = func5_irqs,
+      .on_keypress_func = NULL,
+   },
+};
 
 static int dp_debug_panel_off_keypress(u32 key, u8 c)
 {
@@ -252,6 +294,8 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
             printk("ERROR: no enough memory for debug panel's TTY\n");
             return KB_HANDLER_OK_AND_STOP;
          }
+
+         dp_ctx = &dp_contexts[0];
       }
 
       saved_tty = get_curr_tty();
@@ -268,15 +312,36 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
    return KB_HANDLER_NAK;
 }
 
+static void redraw_screen(void)
+{
+   dp_clear();
+   dp_move_cursor(0, 0);
+   dp_printk(COLOR_YELLOW "[TilckDebugPanel] " RESET_ATTRS);
+
+   for (int i = 0; i < (int)ARRAY_SIZE(dp_contexts); i++) {
+      dp_write_header(i+1, dp_contexts[i].label, dp_ctx == &dp_contexts[i]);
+   }
+
+   dp_write_header(12, "Quit", false);
+   dp_ctx->draw_func();
+
+   dp_move_cursor(999,999);
+   ui_need_update = false;
+}
 
 static int dp_keypress_handler(u32 key, u8 c)
 {
+   int rc;
+
    if (kopt_serial_console)
       return KB_HANDLER_NAK;
 
    if (!in_debug_panel) {
+
       if (dp_debug_panel_off_keypress(key, c) == KB_HANDLER_NAK)
          return KB_HANDLER_NAK;
+
+      ui_need_update = true;
    }
 
    if (!kb_is_ctrl_pressed() && key == KEY_F12) {
@@ -288,62 +353,40 @@ static int dp_keypress_handler(u32 key, u8 c)
       return KB_HANDLER_OK_AND_STOP;
    }
 
-   switch (key) {
+   rc = kb_get_fn_key_pressed(key);
 
-      case KEY_F1:
-         dp_func = dp_func1_options;
-         break;
+   if (rc > 0 && rc <= (int)ARRAY_SIZE(dp_contexts)) {
 
-      case KEY_F2:
-         dp_func = func2_memmap;
-         break;
+      /* key F1 .. F5 pressed */
 
-      case KEY_F3:
-         dp_func = func3_heaps;
-         break;
+      if (dp_ctx != &dp_contexts[rc-1]) {
+         dp_ctx = &dp_contexts[rc-1];
+         ui_need_update = true;
+      }
 
-      case KEY_F4:
-         dp_func = func4_tasks;
-         break;
+   } else {
 
-      case KEY_F5:
-         dp_func = func5_irqs;
-         break;
+      if (dp_ctx->on_keypress_func) {
+         rc = dp_ctx->on_keypress_func(key, c);
+
+         if (rc == KB_HANDLER_OK_AND_STOP)
+            return rc; /* skip redraw_screen() */
+      }
    }
 
-   dp_clear();
-   dp_move_cursor(0, 0);
-   printk(NO_PREFIX);
-   printk(NO_PREFIX COLOR_YELLOW "[TilckDebugPanel] " RESET_ATTRS);
-
-   dp_write_header(1, "[Options] ", dp_func == dp_func1_options);
-   dp_write_header(2, "[MemMap] ", dp_func == func2_memmap);
-   dp_write_header(3, "[Heaps] ", dp_func == func3_heaps);
-   dp_write_header(4, "[Tasks] ", dp_func == func4_tasks);
-   dp_write_header(5, "[IRQs] ", dp_func == func5_irqs);
-   dp_write_header(12, "[Quit] ", false);
-
-   dp_func();
-   dp_move_cursor(999,999);
+   if (ui_need_update)
+      redraw_screen();
 
    // switch (key) {
-
-   //    case KEY_F1:
-   //       debug_show_opts();
-   //       return KB_HANDLER_OK_AND_STOP;
-
    //    case KEY_F2:
    //       debug_kmalloc_dump_mem_usage();
    //       return KB_HANDLER_OK_AND_STOP;
-
    //    case KEY_F3:
    //       dump_system_memory_map();
    //       return KB_HANDLER_OK_AND_STOP;
-
    //    case KEY_F4:
    //       debug_show_task_list();
    //       return KB_HANDLER_OK_AND_STOP;
-
    //    case KEY_F5:
    //       debug_show_spurious_irq_count();
    //       return KB_HANDLER_OK_AND_STOP;

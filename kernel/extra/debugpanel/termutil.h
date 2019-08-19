@@ -11,7 +11,8 @@
 #define COLOR_YELLOW  "\033[93m"
 #define RESET_ATTRS   "\033[0m"
 
-#define DP_COLOR      COLOR_WHITE
+#define DP_COLOR                COLOR_WHITE
+#define dp_printk(...)          printk(NO_PREFIX __VA_ARGS__)
 
 extern int dp_rows;
 extern int dp_cols;
@@ -28,8 +29,8 @@ static inline void dp_move_cursor(int row, int col)
 static inline void dp_write_header(int i, const char *s, bool selected)
 {
    if (selected) {
-      printk(NO_PREFIX DP_COLOR "%d" REVERSE_VIDEO "%s" RESET_ATTRS " ",i , s);
+      dp_printk(DP_COLOR "%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ", i, s);
    } else {
-      printk(NO_PREFIX DP_COLOR "%d%s" RESET_ATTRS " ", i, s);
+      dp_printk(DP_COLOR "%d[%s]" RESET_ATTRS " ", i, s);
    }
 }
