@@ -4,15 +4,8 @@
 #include <tilck/common/string_util.h>
 
 #include <tilck/kernel/debug_utils.h>
-#include <tilck/kernel/irq.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/timer.h>
-#include <tilck/kernel/kb.h>
-#include <tilck/kernel/system_mmap.h>
-#include <tilck/kernel/term.h>
-#include <tilck/kernel/elf_utils.h>
-#include <tilck/kernel/tty.h>
-#include <tilck/kernel/fb_console.h>
 #include <tilck/kernel/cmdline.h>
 
 #include <elf.h>         // system header
