@@ -176,10 +176,8 @@ static void run_init_or_selftest(void)
 
 static void init_kb_if_necessary()
 {
-   if (!kopt_serial_console) {
+   if (!kopt_serial_console)
       init_kb();
-      register_debug_kernel_keypress_handler();
-   }
 }
 
 static void do_async_init()

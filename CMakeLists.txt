@@ -96,7 +96,10 @@ set(DEBUG_CHECKS_IN_RELEASE_BUILD ON CACHE BOOL
     "Keep checking ASSERTs and other debug checks even in release builds")
 
 set(KERNEL_SELFTESTS ON CACHE BOOL
-    "Compile the kernel with self tests support")
+    "Compile-in self-tests in the kernel")
+
+set(KERNEL_DEBUG_PANEL ON CACHE BOOL
+    "Compile-in the debug panel in the kernel")
 
 # Kernel options (disabled by default)
 

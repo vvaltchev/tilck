@@ -78,7 +78,9 @@
       "sync.h": "c",
       "rwlock.h": "c",
       "initializer_list": "cpp",
-      "iostream": "cpp"
+      "iostream": "cpp",
+      "tty.h": "c",
+      "fb_console.h": "c"
    },
    "python.pythonPath": "/usr/bin/python"
 }
