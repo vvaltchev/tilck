@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.2)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 add_definitions(-DUSERMODE_APP)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb")
 
 file(GLOB ELFHACK_SOURCES "elfhack.c")
 
