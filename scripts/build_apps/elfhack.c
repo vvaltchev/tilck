@@ -17,7 +17,7 @@
 #define USE_ELF32
 #include <tilck/common/elf_types.h>
 
-#define MMAP_SIZE (1024 * 1024)
+#define MMAP_SIZE (8 * 1024 * 1024)
 
 Elf_Shdr *get_section(void *mapped_elf_file, const char *section_name)
 {
