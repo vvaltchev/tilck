@@ -417,8 +417,13 @@ void call_kernel_global_ctors(void)
    void (*ctor)(void);
    Elf_Shdr *ctors = kernel_elf_get_section(".ctors");
 
-   if (!ctors)
-      return;
+   if (!ctors) {
+
+      ctors = kernel_elf_get_section(".init_array");
+
+      if (!ctors)
+         return;
+   }
 
    void **ctors_begin = (void **)ctors->sh_addr;
    void **ctors_end = (void **)(ctors->sh_addr + ctors->sh_size);
