@@ -26,18 +26,6 @@ static tty *dp_tty;
 static tty *saved_tty;
 static const dp_context *dp_ctx;
 
-static void func2_memmap(void)
-{
-   dp_move_cursor(dp_rows / 2, 0);
-   printk(NO_PREFIX "func2: memmap");
-}
-
-static void func3_heaps(void)
-{
-   dp_move_cursor(dp_rows / 2, 0);
-   printk(NO_PREFIX "func3: heaps");
-}
-
 static const dp_context dp_contexts[] =
 {
    {
@@ -48,13 +36,13 @@ static const dp_context dp_contexts[] =
 
    {
       .label = "MemMap",
-      .draw_func = func2_memmap,
+      .draw_func = dump_system_memory_map,
       .on_keypress_func = NULL,
    },
 
    {
       .label = "Heaps",
-      .draw_func = func3_heaps,
+      .draw_func = debug_kmalloc_dump_mem_usage,
       .on_keypress_func = NULL,
    },
 
@@ -165,15 +153,6 @@ static int dp_keypress_handler(u32 key, u8 c)
 
    if (ui_need_update)
       redraw_screen();
-
-   // switch (key) {
-   //    case KEY_F2:
-   //       debug_kmalloc_dump_mem_usage();
-   //       return KB_HANDLER_OK_AND_STOP;
-   //    case KEY_F3:
-   //       dump_system_memory_map();
-   //       return KB_HANDLER_OK_AND_STOP;
-   // }
 
    return KB_HANDLER_OK_AND_STOP;
 }
