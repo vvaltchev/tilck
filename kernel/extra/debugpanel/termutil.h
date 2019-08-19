@@ -14,9 +14,6 @@
 #define DP_COLOR                COLOR_WHITE
 #define dp_printk(...)          printk(NO_PREFIX __VA_ARGS__)
 
-extern int dp_rows;
-extern int dp_cols;
-
 static inline void dp_clear(void) {
    printk(NO_PREFIX ERASE_DISPLAY);
 }

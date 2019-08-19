@@ -18,7 +18,7 @@
 #define DUMP_INT_OPT(opt)    dp_printk(DP_COLOR "%-32s: %d\n", #opt, opt)
 #define DUMP_BOOL_OPT(opt)   dp_printk(DP_COLOR "%-32s: %u\n", #opt, opt)
 
-void dp_func1_options(void)
+void dp_show_opts(void)
 {
    dp_printk(DP_COLOR "\n\n");
 
