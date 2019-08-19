@@ -182,7 +182,7 @@ STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 #define UNSAFE_BOUND(val, minval, maxval)                             \
    UNSAFE_MIN(UNSAFE_MAX((val), (minval)), (maxval))
 
-#define BOUND(val, minval, maxval)                                    \
+#define CLAMP(val, minval, maxval)                                    \
    ({                                                                 \
       const typeof(val) CONCAT(_v, __LINE__) = (val);                 \
       const typeof(minval) CONCAT(_mv, __LINE__) = (minval);          \

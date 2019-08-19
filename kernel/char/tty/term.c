@@ -138,7 +138,7 @@ static void ts_set_scroll(term *t, u32 requested_scroll)
          ? t->max_scroll - t->extra_buffer_rows
          : 0;
 
-   requested_scroll = BOUND(requested_scroll, min_scroll, t->max_scroll);
+   requested_scroll = CLAMP(requested_scroll, min_scroll, t->max_scroll);
 
    if (requested_scroll == t->scroll)
       return; /* nothing to do */
@@ -427,8 +427,8 @@ static void term_action_move_ch_and_cur(term *t, int row, int col, ...)
    if (!t->buffer)
       return;
 
-   t->r = (u16) BOUND(row, 0, t->rows - 1);
-   t->c = (u16) BOUND(col, 0, t->cols - 1);
+   t->r = (u16) CLAMP(row, 0, t->rows - 1);
+   t->c = (u16) CLAMP(col, 0, t->cols - 1);
    t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (t->vi->flush_buffers)
@@ -440,8 +440,8 @@ static void term_action_move_ch_and_cur_rel(term *t, s8 dr, s8 dc, ...)
    if (!t->buffer)
       return;
 
-   t->r = (u16) BOUND((int)t->r + dr, 0, t->rows - 1);
-   t->c = (u16) BOUND((int)t->c + dc, 0, t->cols - 1);
+   t->r = (u16) CLAMP((int)t->r + dr, 0, t->rows - 1);
+   t->c = (u16) CLAMP((int)t->c + dc, 0, t->cols - 1);
    t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (t->vi->flush_buffers)
