@@ -303,10 +303,14 @@ static int debug_f_key_press_handler(u32 key, u8 c)
    }
 }
 
+static keypress_handler_elem debug_keypress_handler_elem =
+{
+   .handler = &debug_f_key_press_handler
+};
+
 void register_debug_kernel_keypress_handler(void)
 {
-   if (kb_register_keypress_handler(&debug_f_key_press_handler) < 0)
-      panic("Unable to register debug Fn keypress handler");
+   kb_register_keypress_handler(&debug_keypress_handler_elem);
 }
 
 #endif // UNIT_TEST_ENVIRONMENT

@@ -24,6 +24,11 @@ tty *ttys[128];
 tty *__curr_tty;
 int tty_tasklet_runner;
 
+static keypress_handler_elem tty_keypress_handler_elem =
+{
+   .handler = &tty_keypress_handler
+};
+
 STATIC_ASSERT(ARRAY_SIZE(ttys) > MAX_TTYS);
 
 static ssize_t tty_read(fs_handle h, char *buf, size_t size)
@@ -279,8 +284,7 @@ void init_tty(void)
    disable_preemption();
    {
       if (!kopt_serial_console)
-         if (kb_register_keypress_handler(&tty_keypress_handler) < 0)
-            panic("TTY: unable to register keypress handler");
+         kb_register_keypress_handler(&tty_keypress_handler_elem);
 
       tty_tasklet_runner = create_tasklet_thread(100, 1024);
 
