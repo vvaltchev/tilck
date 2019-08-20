@@ -300,10 +300,6 @@ void init_kmalloc(void)
    insertion_sort_ptr(heaps,
                       used_heaps,
                       greater_than_heap_cmp);
-
-#if KMALLOC_HEAPS_CREATION_DEBUG
-   debug_dump_all_heaps_info();
-#endif
 }
 
 bool
