@@ -12,6 +12,30 @@
 
 #include "termutil.h"
 
+const char *debug_get_state_name(enum task_state state)
+{
+   switch (state) {
+
+      case TASK_STATE_INVALID:
+         return "?";
+
+      case TASK_STATE_RUNNABLE:
+         return "r";
+
+      case TASK_STATE_RUNNING:
+         return "R";
+
+      case TASK_STATE_SLEEPING:
+         return "s";
+
+      case TASK_STATE_ZOMBIE:
+         return "Z";
+
+      default:
+         NOT_REACHED();
+   }
+}
+
 static int debug_get_tn_for_tasklet_runner(task_info *ti)
 {
    for (u32 i = 0; i < MAX_TASKLET_THREADS; i++)
@@ -32,40 +56,43 @@ static const char *
 debug_get_task_dump_util_str(enum task_dump_util_str t)
 {
    static bool initialized;
-   static char fmt[80] = NO_PREFIX DP_COLOR;
-   static char hfmt[80];
-   static char header[256];
-   static char hline_sep[256] =
-      "+-----------+-------+-------+----------+-----+";
+   static char fmt[120] = NO_PREFIX DP_COLOR;
+   static char hfmt[120];
+   static char header[120];
+   static char hline_sep[120] = "qqqqqqqqqqqnqqqqqqqnqqqqqqqnqqqnqqqqqn";
 
    static char *hline_sep_end = &hline_sep[sizeof(hline_sep)];
 
    if (!initialized) {
 
-      int path_field_len = (DP_W - 80) + 27;
+      int path_field_len = (DP_W - 80) + 36;
 
       snprintk(fmt+9, sizeof(fmt)-9,
-               "\033[%dC| %%-9d | %%-5d | %%-5d | %%-8s | %%-3d | %%-%ds |\n",
+               "\033[%dC %%-9d "
+               TERM_VLINE " %%-5d "
+               TERM_VLINE " %%-5d "
+               TERM_VLINE " %%-1s "
+               TERM_VLINE " %%-3d "
+               TERM_VLINE " %%-%ds\n",
                dp_start_col+1, path_field_len);
 
       snprintk(hfmt, sizeof(hfmt),
-               "| %%-9s | %%-5s | %%-5s | %%-8s | %%-3s | %%-%ds |",
+               " %%-9s "
+               TERM_VLINE " %%-5s "
+               TERM_VLINE " %%-5s "
+               TERM_VLINE " %%-1s "
+               TERM_VLINE " %%-3s "
+               TERM_VLINE " %%-%ds",
                path_field_len);
 
       snprintk(header, sizeof(header), hfmt,
-               "tid", "pid", "ppid", "state", "tty", "path or kernel thread");
+               "tid", "pid", "ppid", "S", "tty", "path or kernel thread");
 
       char *p = hline_sep + strlen(hline_sep);
 
       for (int i = 0; i < path_field_len + 2 && p < hline_sep_end; i++, p++) {
-         *p = '-';
+         *p = 'q';
       }
-
-      if (p < hline_sep_end)
-         *p++ = '+';
-
-      // if (p < hline_sep_end)
-      //    *p++ = '\n';
 
       initialized = true;
    }
@@ -118,14 +145,12 @@ static int debug_per_task_cb(void *obj, void *arg)
 
 static void debug_dump_task_table_hr(void)
 {
-   dp_printkln("%s", debug_get_task_dump_util_str(HLINE));
+   dp_printkln(GFX_ON "%s" GFX_OFF, debug_get_task_dump_util_str(HLINE));
 }
 
 void do_show_tasks(void)
 {
-   debug_dump_task_table_hr();
    dp_printkln("%s", debug_get_task_dump_util_str(HEADER));
-
    debug_dump_task_table_hr();
 
    disable_preemption();
@@ -133,6 +158,4 @@ void do_show_tasks(void)
       iterate_over_tasks(debug_per_task_cb, NULL);
    }
    enable_preemption();
-
-   debug_dump_task_table_hr();
 }

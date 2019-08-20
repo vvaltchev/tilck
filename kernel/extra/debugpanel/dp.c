@@ -195,8 +195,11 @@ static int dp_keypress_handler(u32 key, u8 c)
       }
    }
 
-   if (ui_need_update)
+   if (ui_need_update) {
+      term_pause_video_output(get_curr_term());
       redraw_screen();
+      term_restart_video_output(get_curr_term());
+   }
 
    return KB_HANDLER_OK_AND_STOP;
 }
