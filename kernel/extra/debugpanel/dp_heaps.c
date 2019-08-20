@@ -11,9 +11,11 @@ void dp_show_kmalloc_heaps(void)
 {
    static size_t heaps_alloc[KMALLOC_HEAPS_COUNT];
    static debug_kmalloc_heap_info hi;
+   static debug_kmalloc_stats stats;
 
    size_t tot_usable_mem_kb = 0;
    size_t tot_used_mem_kb = 0;
+   sptr tot_diff = 0;
 
    dp_printk(
       "  "
@@ -47,6 +49,7 @@ void dp_show_kmalloc_heaps(void)
 
       tot_usable_mem_kb += size_kb;
       tot_used_mem_kb += allocated_kb;
+      tot_diff += hi.mem_allocated - heaps_alloc[i];
       heaps_alloc[i] = hi.mem_allocated;
    }
 
@@ -54,13 +57,17 @@ void dp_show_kmalloc_heaps(void)
    ASSERT(tot_usable_mem_kb > 0);
 
    dp_printk("\n");
-   dp_printk("  Total usable: %6u KB\n", tot_usable_mem_kb);
-   dp_printk("  Total used:   %6u KB (%u%%)\n\n",
+   dp_printk("  Total usable:  %6u KB\n", tot_usable_mem_kb);
+   dp_printk("  Total used:    %6u KB (%u%%)\n",
              tot_used_mem_kb, (tot_used_mem_kb * 100) / tot_usable_mem_kb);
+   dp_printk("  Total diff:    %6d KB [%d B]\n\n",
+             tot_diff / (sptr)KB, tot_diff);
 
-   // dp_printk("Small heaps: count: %d [peak: %d], non-full: %d [peak: %d]\n\n",
-   //           total_small_heaps_count,
-   //           peak_small_heaps_count,
-   //           not_full_small_heaps_count,
-   //           peak_non_full_small_heaps_count);
+   debug_kmalloc_get_stats(&stats);
+
+   dp_printk("  Small heaps: count: %d [peak: %d], non-full: %d [peak: %d]\n",
+             stats.small_heaps.tot_count,
+             stats.small_heaps.peak_count,
+             stats.small_heaps.not_full_count,
+             stats.small_heaps.peak_not_full_count);
 }
