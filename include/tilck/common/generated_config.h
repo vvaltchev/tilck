@@ -27,7 +27,7 @@
 /* enabled by default */
 #cmakedefine01 KRN_TRACK_NESTED_INTERR
 #cmakedefine01 PANIC_SHOW_STACKTRACE
-#cmakedefine01 DEBUG_CHECKS_IN_RELEASE_BUILD
+#cmakedefine01 DEBUG_CHECKS_IN_RELEASE
 #cmakedefine01 KERNEL_SELFTESTS
 
 /* disabled by default */
@@ -42,7 +42,7 @@
 #cmakedefine01 BOOTLOADER_POISON_MEMORY
 #cmakedefine01 FAT_TEST_DIR
 
-#if DEBUG_CHECKS_IN_RELEASE_BUILD
+#if DEBUG_CHECKS_IN_RELEASE
    #ifdef NDEBUG
       #undef NDEBUG
       #define DEBUG
