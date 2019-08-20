@@ -13,10 +13,10 @@
 #endif
 
 
-#define SHOW_INT(name, val)  dp_printk(DP_COLOR "  %-32s: %d\n", name, val)
-#define DUMP_STR_OPT(opt)    dp_printk(DP_COLOR "  %-32s: %s\n", #opt, opt)
-#define DUMP_INT_OPT(opt)    dp_printk(DP_COLOR "  %-32s: %d\n", #opt, opt)
-#define DUMP_BOOL_OPT(opt)   dp_printk(DP_COLOR "  %-32s: %u\n", #opt, opt)
+#define SHOW_INT(name, val)  dp_printkln(DP_COLOR "%-32s: %d", name, val)
+#define DUMP_STR_OPT(opt)    dp_printkln(DP_COLOR "%-32s: %s", #opt, opt)
+#define DUMP_INT_OPT(opt)    dp_printkln(DP_COLOR "%-32s: %d", #opt, opt)
+#define DUMP_BOOL_OPT(opt)   dp_printkln(DP_COLOR "%-32s: %u", #opt, opt)
 
 void dp_show_opts(void)
 {

@@ -3,16 +3,11 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
-#include <tilck/kernel/debug_utils.h>
-#include <tilck/kernel/irq.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/timer.h>
-#include <tilck/kernel/kb.h>
-#include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/tty.h>
-#include <tilck/kernel/fb_console.h>
 #include <tilck/kernel/cmdline.h>
 
 #include "termutil.h"
@@ -37,7 +32,7 @@ static const char *
 debug_get_task_dump_util_str(enum task_dump_util_str t)
 {
    static bool initialized;
-   static char fmt[80] = NO_PREFIX;
+   static char fmt[80] = NO_PREFIX DP_COLOR;
    static char hfmt[80];
    static char header[256];
    static char hline_sep[256] =
@@ -47,14 +42,14 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
 
    if (!initialized) {
 
-      int path_field_len = (term_get_cols(get_curr_term()) - 80) + 31;
+      int path_field_len = (DP_W - 80) + 27;
 
-      snprintk(fmt + 4, sizeof(fmt) - 4,
-               "| %%-9d | %%-5d | %%-5d | %%-8s | %%-3d | %%-%ds |\n",
-               path_field_len);
+      snprintk(fmt+9, sizeof(fmt)-9,
+               "\033[%dC| %%-9d | %%-5d | %%-5d | %%-8s | %%-3d | %%-%ds |\n",
+               dp_start_col+1, path_field_len);
 
       snprintk(hfmt, sizeof(hfmt),
-               "| %%-9s | %%-5s | %%-5s | %%-8s | %%-3s | %%-%ds |\n",
+               "| %%-9s | %%-5s | %%-5s | %%-8s | %%-3s | %%-%ds |",
                path_field_len);
 
       snprintk(header, sizeof(header), hfmt,
@@ -69,8 +64,8 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
       if (p < hline_sep_end)
          *p++ = '+';
 
-      if (p < hline_sep_end)
-         *p++ = '\n';
+      // if (p < hline_sep_end)
+      //    *p++ = '\n';
 
       initialized = true;
    }
@@ -111,9 +106,9 @@ static int debug_per_task_cb(void *obj, void *arg)
    const char *kfunc = find_sym_at_addr((uptr)ti->what, NULL, NULL);
 
    if (!is_tasklet_runner(ti)) {
-      snprintk(buf, sizeof(buf), "<ker: %s>", kfunc);
+      snprintk(buf, sizeof(buf), "<%s>", kfunc);
    } else {
-      snprintk(buf, sizeof(buf), "<ker: %s[%d]>",
+      snprintk(buf, sizeof(buf), "<%s[%d]>",
                kfunc, debug_get_tn_for_tasklet_runner(ti));
    }
 
@@ -123,15 +118,13 @@ static int debug_per_task_cb(void *obj, void *arg)
 
 static void debug_dump_task_table_hr(void)
 {
-   printk(NO_PREFIX "%s", debug_get_task_dump_util_str(HLINE));
+   dp_printkln("%s", debug_get_task_dump_util_str(HLINE));
 }
 
 void do_show_tasks(void)
 {
-   printk(NO_PREFIX "\n\n");
-
    debug_dump_task_table_hr();
-   printk(NO_PREFIX "%s", debug_get_task_dump_util_str(HEADER));
+   dp_printkln("%s", debug_get_task_dump_util_str(HEADER));
 
    debug_dump_task_table_hr();
 
@@ -142,5 +135,4 @@ void do_show_tasks(void)
    enable_preemption();
 
    debug_dump_task_table_hr();
-   printk(NO_PREFIX "\n");
 }

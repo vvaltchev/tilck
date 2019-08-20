@@ -20,6 +20,9 @@
 
 int dp_rows;
 int dp_cols;
+int dp_start_row;
+int dp_start_col;
+
 static bool in_debug_panel;
 static bool ui_need_update;
 static tty *dp_tty;
@@ -81,6 +84,8 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
          in_debug_panel = true;
          dp_rows = term_get_rows(get_curr_term());
          dp_cols = term_get_cols(get_curr_term());
+         dp_start_row = (dp_rows - DP_H) / 2 + 1;
+         dp_start_col = (dp_cols - DP_W) / 2 + 1;
       }
 
       return KB_HANDLER_OK_AND_STOP;
@@ -89,22 +94,58 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
    return KB_HANDLER_NAK;
 }
 
+void dp_draw_rect(int row, int col, int h, int w)
+{
+   ASSERT(w >= 2);
+   ASSERT(h >= 2);
+
+   dp_printk(GFX_ON);
+   dp_move_cursor(row, col);
+   dp_printk("l");
+
+   for (int i = 0; i < w-2; i++) {
+      dp_printk("q");
+   }
+
+   dp_printk("k");
+
+   for (int i = 1; i < h-1; i++) {
+
+      dp_move_cursor(row+i, col);
+      dp_printk("x");
+
+      dp_move_cursor(row+i, col+w-1);
+      dp_printk("x");
+   }
+
+   dp_move_cursor(row+h-1, col);
+   dp_printk("m");
+
+   for (int i = 0; i < w-2; i++) {
+      dp_printk("q");
+   }
+
+   dp_printk("j");
+   dp_printk(GFX_OFF);
+}
+
 static void redraw_screen(void)
 {
    dp_clear();
-   dp_move_cursor(1, 1);
-   dp_printk(COLOR_YELLOW "TilckDebugPanel" RESET_ATTRS);
-   dp_move_cursor(3, 3);
+   dp_move_cursor(dp_start_row + 1, dp_start_col + 2);
 
    for (int i = 0; i < (int)ARRAY_SIZE(dp_contexts); i++) {
       dp_write_header(i+1, dp_contexts[i].label, dp_ctx == &dp_contexts[i]);
    }
 
    dp_write_header(12, "Quit", false);
-   dp_move_cursor(5, 1);
+   dp_move_cursor(dp_start_row + 3, 1);
 
    dp_ctx->draw_func();
 
+   dp_draw_rect(dp_start_row, dp_start_col, DP_H, DP_W);
+   dp_move_cursor(dp_start_row, dp_start_col + 2);
+   dp_printk(COLOR_YELLOW "TilckDebugPanel" RESET_ATTRS);
    dp_move_cursor(999,999);
    ui_need_update = false;
 }

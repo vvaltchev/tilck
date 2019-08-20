@@ -327,7 +327,7 @@ static void fb_draw_banner(void)
                       vga_rgb_colors[COLOR_BLACK]);
 }
 
-static void fb_update_banner_kthread()
+static void fb_update_banner()
 {
    while (true) {
 
@@ -459,8 +459,8 @@ void init_framebuffer_console(void)
    }
 
    if (fb_offset_y) {
-      if (kthread_create(fb_update_banner_kthread, NULL) < 0)
-         printk("WARNING: unable to create the fb_update_banner_kthread\n");
+      if (kthread_create(fb_update_banner, NULL) < 0)
+         printk("WARNING: unable to create the fb_update_banner\n");
    }
 }
 

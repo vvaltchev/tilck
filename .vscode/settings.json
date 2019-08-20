@@ -83,7 +83,8 @@
       "fb_console.h": "c",
       "debug_utils.h": "c",
       "dp_int.h": "c",
-      "kmalloc_heaps.c.h": "c"
+      "kmalloc_heaps.c.h": "c",
+      "termutil.h": "c"
    },
    "python.pythonPath": "/usr/bin/python"
 }
