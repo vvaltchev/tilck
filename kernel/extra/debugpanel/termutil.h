@@ -4,9 +4,6 @@
 #include <tilck/common/string_util.h>
 #include "dp_int.h"
 
-#define DP_W   76
-#define DP_H   23
-
 #define ERASE_DISPLAY "\033[2J"
 #define REVERSE_VIDEO "\033[7m"
 #define COLOR_WHITE   "\033[97m"

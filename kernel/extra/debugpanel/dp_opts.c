@@ -16,7 +16,7 @@
 #define L_DUMP_INT_OPT(opt)    dp_printkln(DP_COLOR "%-30s: %d", #opt, opt)
 #define L_DUMP_BOOL_OPT(opt)   dp_printkln(DP_COLOR "%-30s: %u", #opt, opt)
 
-#define R_SHOW_INT(name, val)  dp_printk(DP_COLOR "%-20s: %d", name, val)
+#define R_SHOW_INT(name, val)  dp_printk(DP_COLOR "%-16s: %d", name, val)
 
 void dp_show_opts(void)
 {

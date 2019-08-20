@@ -116,6 +116,7 @@ static int debug_per_task_cb(void *obj, void *arg)
 {
    const char *fmt = debug_get_task_dump_util_str(ROW_FMT);
    task_info *ti = obj;
+   char buf[128];
 
    if (!ti->tid)
       return 0; /* skip the main kernel task */
@@ -129,7 +130,6 @@ static int debug_per_task_cb(void *obj, void *arg)
       return 0;
    }
 
-   char buf[128];
    const char *kfunc = find_sym_at_addr((uptr)ti->what, NULL, NULL);
 
    if (!is_tasklet_runner(ti)) {

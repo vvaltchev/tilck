@@ -3,6 +3,9 @@
 #pragma once
 #include <tilck/kernel/kb.h>
 
+#define DP_W   76
+#define DP_H   23
+
 void dp_show_opts(void);
 void do_show_tasks(void);
 void dp_show_irq_stats(void);
