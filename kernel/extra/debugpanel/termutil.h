@@ -58,4 +58,4 @@ static inline void dp_write_header(int i, const char *s, bool selected)
    }
 }
 
-void dp_draw_rect(int row, int col, int w, int h);
+void dp_draw_rect(int row, int col, int h, int w);
