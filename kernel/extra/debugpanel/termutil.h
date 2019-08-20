@@ -17,6 +17,8 @@
 #define GFX_ON        "\033(0"
 #define GFX_OFF       "\033(B"
 
+#define TERM_VLINE    GFX_ON "x" GFX_OFF
+
 #define DP_COLOR                COLOR_WHITE
 #define dp_printk(...)          printk(NO_PREFIX COLOR_WHITE __VA_ARGS__)
 #define dp_printkln(...)                                                   \
@@ -32,6 +34,10 @@ static inline void dp_move_right(int n) {
 
 static inline void dp_move_left(int n) {
    printk(NO_PREFIX "\033[%dD", n);
+}
+
+static inline void dp_move_to_col(int n) {
+   printk(NO_PREFIX "\033[%dG", n);
 }
 
 static inline void dp_clear(void) {
