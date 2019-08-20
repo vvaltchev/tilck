@@ -121,5 +121,3 @@ void reset_mtrr(u32 num);
 void set_mtrr(u32 num, u64 paddr, u32 pow2size, u8 mem_type);
 u32 get_var_mttrs_count(void);
 int get_free_mtrr(void);
-
-void dump_var_mtrrs(void);

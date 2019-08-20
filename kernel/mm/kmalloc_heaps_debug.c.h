@@ -48,8 +48,6 @@ void debug_kmalloc_dump_mem_usage(void)
    size_t tot_usable_mem_kb = 0;
    size_t tot_used_mem_kb = 0;
 
-   printk(NO_PREFIX "\n\nKMALLOC HEAPS: \n\n");
-
    printk(NO_PREFIX
       "| H# | R# |   vaddr    | size (KB) | used |  MBS  |   diff (B)    |\n");
 

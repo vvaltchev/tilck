@@ -36,7 +36,7 @@ static const dp_context dp_contexts[] =
 
    {
       .label = "MemMap",
-      .draw_func = dump_system_memory_map,
+      .draw_func = dp_show_sys_mmap,
       .on_keypress_func = NULL,
    },
 
@@ -92,14 +92,17 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
 static void redraw_screen(void)
 {
    dp_clear();
-   dp_move_cursor(0, 0);
-   dp_printk(COLOR_YELLOW "[TilckDebugPanel] " RESET_ATTRS);
+   dp_move_cursor(1, 1);
+   dp_printk(COLOR_YELLOW "TilckDebugPanel" RESET_ATTRS);
+   dp_move_cursor(2, 3);
 
    for (int i = 0; i < (int)ARRAY_SIZE(dp_contexts); i++) {
       dp_write_header(i+1, dp_contexts[i].label, dp_ctx == &dp_contexts[i]);
    }
 
    dp_write_header(12, "Quit", false);
+   dp_move_cursor(4, 1);
+
    dp_ctx->draw_func();
 
    dp_move_cursor(999,999);

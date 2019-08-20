@@ -67,7 +67,6 @@ static void debug_dump_unhandled_irq_count(void)
 
 void dp_show_irq_stats(void)
 {
-   dp_printk("\n\n");
    dp_printk("Kernel IRQ-related counters\n\n");
 
    debug_dump_slow_irq_handler_count();
