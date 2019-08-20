@@ -21,7 +21,7 @@ static void debug_dump_slow_irq_handler_count(void)
 {
    extern u32 slow_timer_irq_handler_count;
 
-   if (KERNEL_TRACK_NESTED_INTERRUPTS) {
+   if (KRN_TRACK_NESTED_INTERR) {
       dp_printkln("   Slow timer irq handler counter: %u",
                   slow_timer_irq_handler_count);
    }

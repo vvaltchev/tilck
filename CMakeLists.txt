@@ -86,7 +86,7 @@ set(USERAPPS_CFLAGS "-ggdb" CACHE STRING "Build flags for C/C++ user programs")
 
 # Kernel options (enabled by default)
 
-set(KERNEL_TRACK_NESTED_INTERRUPTS ON CACHE BOOL
+set(KRN_TRACK_NESTED_INTERR ON CACHE BOOL
     "Track the nested interrupts")
 
 set(PANIC_SHOW_STACKTRACE ON CACHE BOOL
@@ -152,7 +152,7 @@ list(
    USER_STACK_PAGES
 
    # Boolean options ENABLED by default
-   KERNEL_TRACK_NESTED_INTERRUPTS
+   KRN_TRACK_NESTED_INTERR
    PANIC_SHOW_STACKTRACE
    DEBUG_CHECKS_IN_RELEASE_BUILD
    KERNEL_SELFTESTS

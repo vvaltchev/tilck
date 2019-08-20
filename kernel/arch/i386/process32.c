@@ -348,7 +348,7 @@ static inline void save_curr_fpu_ctx_if_enabled(void)
 static inline void
 switch_to_task_pop_nested_interrupts(int curr_int)
 {
-   if (KERNEL_TRACK_NESTED_INTERRUPTS) {
+   if (KRN_TRACK_NESTED_INTERR) {
 
       ASSERT(get_curr_task() != NULL);
 
@@ -369,7 +369,7 @@ switch_to_task_clear_irq_mask(int curr_int)
 
    const int curr_irq = int_to_irq(curr_int);
 
-   if (KERNEL_TRACK_NESTED_INTERRUPTS) {
+   if (KRN_TRACK_NESTED_INTERR) {
 
       /*
        * When nested interrupts are tracked, nested IRQ #0 are allowed and in no
@@ -456,7 +456,7 @@ NORETURN void switch_to_task(task_info *ti, int curr_int)
        * The new task was running in kernel when it was preempted.
        *
        * In theory, there's nothing we have to do here, and that's exactly
-       * what happens when KERNEL_TRACK_NESTED_INTERRUPTS is 0. But, our nice
+       * what happens when KRN_TRACK_NESTED_INTERR is 0. But, our nice
        * debug feature for nested interrupts tracking requires a little work:
        * because of its assumptions (hard-coded in ASSERTS) are that when the
        * kernel is running, it's always inside some kind of interrupt handler

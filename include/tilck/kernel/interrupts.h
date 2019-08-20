@@ -15,7 +15,7 @@ typedef struct {
 void set_fault_handler(int fault, void *ptr);
 void end_fault_handler_state(void);
 
-#if KERNEL_TRACK_NESTED_INTERRUPTS
+#if KRN_TRACK_NESTED_INTERR
 void check_not_in_irq_handler(void);
 void check_in_irq_handler(void);
 void push_nested_interrupt(int int_num);
