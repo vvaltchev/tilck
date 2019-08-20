@@ -41,51 +41,47 @@ typedef struct {
 
 STATIC_ASSERT(sizeof(small_heap_block_metadata) == 2 * sizeof(uptr));
 
-STATIC int total_small_heaps_count;
-STATIC int peak_small_heaps_count;
-STATIC int not_full_small_heaps_count;
-STATIC int peak_non_full_small_heaps_count;
-
+STATIC kmalloc_small_heaps_stats shs;
 STATIC list small_not_full_heaps_list;
 
 static inline void
 record_small_heap_as_not_full(small_heap_node *node)
 {
    list_add_head(&small_not_full_heaps_list, &node->not_full_heaps_node);
-   not_full_small_heaps_count++;
+   shs.not_full_count++;
 
-   if (not_full_small_heaps_count > peak_non_full_small_heaps_count)
-      peak_non_full_small_heaps_count = not_full_small_heaps_count;
+   if (shs.not_full_count > shs.peak_not_full_count)
+      shs.peak_not_full_count = shs.not_full_count;
 }
 
 static inline void
 record_small_heap_as_full(small_heap_node *node)
 {
-   ASSERT(not_full_small_heaps_count > 0);
-   not_full_small_heaps_count--;
+   ASSERT(shs.not_full_count > 0);
+   shs.not_full_count--;
    list_remove(&node->not_full_heaps_node);
 }
 
 static inline void
 register_small_heap_node(small_heap_node *new_node)
 {
-   total_small_heaps_count++;
+   shs.tot_count++;
 
    if (new_node->heap.mem_allocated < new_node->heap.size)
       record_small_heap_as_not_full(new_node);
 
-   if (total_small_heaps_count > peak_small_heaps_count)
-      peak_small_heaps_count = total_small_heaps_count;
+   if (shs.tot_count > shs.peak_count)
+      shs.peak_count = shs.tot_count;
 }
 
 static inline void
 unregister_small_heap_node(small_heap_node *node)
 {
-   ASSERT(total_small_heaps_count > 0);
-   total_small_heaps_count--;
+   ASSERT(shs.tot_count > 0);
+   shs.tot_count--;
 
-   ASSERT(not_full_small_heaps_count > 0);
-   not_full_small_heaps_count--;
+   ASSERT(shs.not_full_count > 0);
+   shs.not_full_count--;
    list_remove(&node->not_full_heaps_node);
 }
 

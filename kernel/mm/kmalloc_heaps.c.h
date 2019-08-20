@@ -325,3 +325,11 @@ debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i)
 
    return true;
 }
+
+void
+debug_kmalloc_get_stats(debug_kmalloc_stats *stats)
+{
+   *stats = (debug_kmalloc_stats) {
+      .small_heaps = shs
+   };
+}
