@@ -7,9 +7,9 @@
 #include "termutil.h"
 
 #ifdef RELEASE
-   #define RELEASE_INT 1
+   #define IS_RELEASE_BUILD 1
 #else
-   #define RELEASE_INT 0
+   #define IS_RELEASE_BUILD 0
 #endif
 
 
@@ -20,7 +20,7 @@
 
 void dp_show_opts(void)
 {
-   DUMP_INT_OPT(RELEASE_INT);
+   DUMP_INT_OPT(IS_RELEASE_BUILD);
    DUMP_STR_OPT(BUILDTYPE_STR);
 
    // Non-boolean kernel options

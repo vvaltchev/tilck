@@ -33,12 +33,12 @@ static void debug_dump_spur_irq_count(void)
    const u64 ticks = get_ticks();
 
    if (ticks > TIMER_HZ)
-      dp_printk("   Spurious IRQ count: %u (%u/sec)\n",
-                spur_irq_count,
-                spur_irq_count / (ticks / TIMER_HZ));
+      dp_printk("     Spurious IRQ count: %u (%u/sec)\n",
+                 spur_irq_count,
+                 spur_irq_count / (ticks / TIMER_HZ));
    else
-      dp_printk("   Spurious IRQ count: %u (< 1 sec)\n",
-                spur_irq_count, spur_irq_count);
+      dp_printk("     Spurious IRQ count: %u (< 1 sec)\n",
+                 spur_irq_count, spur_irq_count);
 }
 
 static void debug_dump_unhandled_irq_count(void)
@@ -53,12 +53,12 @@ static void debug_dump_unhandled_irq_count(void)
       return;
 
    dp_printk("\n");
-   dp_printk("Unhandled IRQs count table\n\n");
+   dp_printk("  Unhandled IRQs count table\n\n");
 
    for (u32 i = 0; i < ARRAY_SIZE(unhandled_irq_count); i++) {
 
       if (unhandled_irq_count[i])
-         dp_printk("   IRQ #%3u: %3u unhandled\n", i,
+         dp_printk("     IRQ #%3u: %3u unhandled\n", i,
                    unhandled_irq_count[i]);
    }
 
@@ -67,7 +67,7 @@ static void debug_dump_unhandled_irq_count(void)
 
 void dp_show_irq_stats(void)
 {
-   dp_printk("Kernel IRQ-related counters\n\n");
+   dp_printk("  Kernel IRQ-related counters\n\n");
 
    debug_dump_slow_irq_handler_count();
    debug_dump_spur_irq_count();

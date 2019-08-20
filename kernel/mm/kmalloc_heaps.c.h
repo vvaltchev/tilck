@@ -306,3 +306,22 @@ void init_kmalloc(void)
 #endif
 }
 
+bool
+debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i)
+{
+   kmalloc_heap *h = heaps[heap_num];
+
+   if (!h)
+      return false;
+
+   *i = (debug_kmalloc_heap_info) {
+      .vaddr = h->vaddr,
+      .size = h->size,
+      .mem_allocated = h->mem_allocated,
+      .min_block_size = h->min_block_size,
+      .alloc_block_size = h->alloc_block_size,
+      .region = h->region,
+   };
+
+   return true;
+}

@@ -7,6 +7,7 @@ void dp_show_opts(void);
 void do_show_tasks(void);
 void dp_show_irq_stats(void);
 void dp_show_sys_mmap(void);
+void dp_show_kmalloc_heaps(void);
 
 typedef struct {
 

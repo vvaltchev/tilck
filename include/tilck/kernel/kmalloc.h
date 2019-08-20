@@ -111,9 +111,20 @@ void *mdalloc(size_t size);
 void mdfree(void *b);
 
 
-/* kmalloc debug helpers */
+/* ----------------- kmalloc debug helpers -------------------- */
 
-void debug_kmalloc_dump_mem_usage(void);
+typedef struct {
+
+   uptr vaddr;
+   size_t size;
+   size_t mem_allocated;
+   size_t min_block_size;
+   size_t alloc_block_size;
+   int region;
+
+} debug_kmalloc_heap_info;
+
+bool debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i);
 void debug_kmalloc_start_leak_detector(bool save_metadata);
 void debug_kmalloc_stop_leak_detector(bool show_leaks);
 

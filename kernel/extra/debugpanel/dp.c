@@ -42,7 +42,7 @@ static const dp_context dp_contexts[] =
 
    {
       .label = "Heaps",
-      .draw_func = debug_kmalloc_dump_mem_usage,
+      .draw_func = dp_show_kmalloc_heaps,
       .on_keypress_func = NULL,
    },
 
@@ -94,14 +94,14 @@ static void redraw_screen(void)
    dp_clear();
    dp_move_cursor(1, 1);
    dp_printk(COLOR_YELLOW "TilckDebugPanel" RESET_ATTRS);
-   dp_move_cursor(2, 3);
+   dp_move_cursor(3, 3);
 
    for (int i = 0; i < (int)ARRAY_SIZE(dp_contexts); i++) {
       dp_write_header(i+1, dp_contexts[i].label, dp_ctx == &dp_contexts[i]);
    }
 
    dp_write_header(12, "Quit", false);
-   dp_move_cursor(4, 1);
+   dp_move_cursor(5, 1);
 
    dp_ctx->draw_func();
 

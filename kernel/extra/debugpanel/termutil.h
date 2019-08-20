@@ -12,7 +12,7 @@
 #define RESET_ATTRS   "\033[0m"
 
 #define DP_COLOR                COLOR_WHITE
-#define dp_printk(...)          printk(NO_PREFIX __VA_ARGS__)
+#define dp_printk(...)          printk(NO_PREFIX COLOR_WHITE __VA_ARGS__)
 
 static inline void dp_clear(void) {
    printk(NO_PREFIX ERASE_DISPLAY);
