@@ -9,6 +9,7 @@
 #include <tilck/kernel/cmdline.h>
 
 #include "termutil.h"
+#define MAX_EXEC_PATH_LEN     36
 
 static int row;
 
@@ -65,7 +66,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
 
    if (!initialized) {
 
-      int path_field_len = (DP_W - 80) + 36;
+      int path_field_len = (DP_W - 80) + MAX_EXEC_PATH_LEN;
 
       snprintk(fmt, sizeof(fmt),
                " %%-9d "
@@ -116,17 +117,28 @@ static int debug_per_task_cb(void *obj, void *arg)
 {
    const char *fmt = debug_get_task_dump_util_str(ROW_FMT);
    task_info *ti = obj;
+   process_info *pi = ti->pi;
    char buf[128];
+   char path[MAX_EXEC_PATH_LEN + 1];
+   char path2[MAX_EXEC_PATH_LEN + 1];
+   const char *orig_path = pi->filepath;
 
    if (!ti->tid)
       return 0; /* skip the main kernel task */
+
+   if (strlen(orig_path) < MAX_EXEC_PATH_LEN - 2) {
+      snprintk(path, sizeof(path), "%s", orig_path);
+   } else {
+      snprintk(path2, sizeof(path) - 6, "%s", orig_path);
+      snprintk(path, sizeof(path), "%s...", path2);
+   }
 
    const char *state = debug_get_state_name(ti->state);
    int ttynum = tty_get_num(ti->pi->proc_tty);
 
    if (!is_kernel_thread(ti)) {
-      dp_write(row++, 0, fmt, ti->tid, ti->pi->pid,
-               ti->pi->parent_pid, state, ttynum, ti->pi->filepath);
+      dp_write(row++, 0, fmt, ti->tid, pi->pid,
+               pi->parent_pid, state, ttynum, path);
       return 0;
    }
 
@@ -139,7 +151,7 @@ static int debug_per_task_cb(void *obj, void *arg)
                kfunc, debug_get_tn_for_tasklet_runner(ti));
    }
 
-   dp_write(row++, 0, fmt, ti->tid, ti->pi->pid, ti->pi->parent_pid, state, 0, buf);
+   dp_write(row++, 0, fmt, ti->tid, pi->pid, pi->parent_pid, state, 0, buf);
    return 0;
 }
 
