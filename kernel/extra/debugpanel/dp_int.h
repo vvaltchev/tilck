@@ -22,6 +22,7 @@ extern int dp_rows;
 extern int dp_cols;
 extern int dp_start_row;
 extern int dp_start_col;
+extern bool ui_need_update;
 
 static inline sptr dp_int_abs(sptr val) {
    return val >= 0 ? val : -val;

@@ -5,7 +5,7 @@
 #include <tilck/kernel/term.h>
 #include "termutil.h"
 
-void dp_printk(const char *fmt, ...)
+void dp_write_raw(const char *fmt, ...)
 {
    char buf[256];
    va_list args;
@@ -18,7 +18,7 @@ void dp_printk(const char *fmt, ...)
    term_write(get_curr_term(), buf, (size_t)rc, 15);
 }
 
-void dp_printkln(const char *fmt, ...)
+void dp_writeln(const char *fmt, ...)
 {
    char buf[256];
    va_list args;
@@ -38,32 +38,32 @@ void dp_draw_rect(int row, int col, int h, int w)
    ASSERT(w >= 2);
    ASSERT(h >= 2);
 
-   dp_printk(GFX_ON);
+   dp_write_raw(GFX_ON);
    dp_move_cursor(row, col);
-   dp_printk("l");
+   dp_write_raw("l");
 
    for (int i = 0; i < w-2; i++) {
-      dp_printk("q");
+      dp_write_raw("q");
    }
 
-   dp_printk("k");
+   dp_write_raw("k");
 
    for (int i = 1; i < h-1; i++) {
 
       dp_move_cursor(row+i, col);
-      dp_printk("x");
+      dp_write_raw("x");
 
       dp_move_cursor(row+i, col+w-1);
-      dp_printk("x");
+      dp_write_raw("x");
    }
 
    dp_move_cursor(row+h-1, col);
-   dp_printk("m");
+   dp_write_raw("m");
 
    for (int i = 0; i < w-2; i++) {
-      dp_printk("q");
+      dp_write_raw("q");
    }
 
-   dp_printk("j");
-   dp_printk(GFX_OFF);
+   dp_write_raw("j");
+   dp_write_raw(GFX_OFF);
 }

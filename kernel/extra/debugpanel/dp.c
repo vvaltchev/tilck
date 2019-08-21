@@ -22,9 +22,9 @@ int dp_rows;
 int dp_cols;
 int dp_start_row;
 int dp_start_col;
+bool ui_need_update;
 
 static bool in_debug_panel;
-static bool ui_need_update;
 static tty *dp_tty;
 static tty *saved_tty;
 static const dp_screen *dp_ctx;
@@ -98,7 +98,7 @@ static void redraw_screen(void)
 
    dp_draw_rect(dp_start_row, dp_start_col, DP_H, DP_W);
    dp_move_cursor(dp_start_row, dp_start_col + 2);
-   dp_printk(ESC_COLOR_YELLOW "TilckDebugPanel" RESET_ATTRS);
+   dp_write_raw(ESC_COLOR_YELLOW "[ TilckDebugPanel ]" RESET_ATTRS);
    dp_move_cursor(999,999);
    ui_need_update = false;
 }

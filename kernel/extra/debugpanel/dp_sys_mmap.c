@@ -29,13 +29,13 @@ static const char *mem_region_extra_to_str(u32 e)
 
 static void dump_memory_map(memory_region_t *regions, int count)
 {
-   dp_printkln("           START                 END        (T, Extr)");
+   dp_writeln("           START                 END        (T, Extr)");
 
    for (int i = 0; i < count; i++) {
 
       memory_region_t *ma = regions + i;
 
-      dp_printkln("%02d) 0x%016llx - 0x%016llx (%d, %s) [%8u KB]", i,
+      dp_writeln("%02d) 0x%016llx - 0x%016llx (%d, %s) [%8u KB]", i,
                   ma->addr, ma->addr + ma->len,
                   ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
    }
@@ -60,12 +60,12 @@ static const char *mtrr_mem_type_str[8] =
 static void dump_var_mtrrs(void)
 {
    if (!get_var_mttrs_count()) {
-      dp_printkln("MTRRs: not supported on this CPU");
+      dp_writeln("MTRRs: not supported on this CPU");
       return;
    }
 
    u64 mtrr_dt = rdmsr(MSR_IA32_MTRR_DEF_TYPE);
-   dp_printkln("MTRRs (default type: %s):",
+   dp_writeln("MTRRs (default type: %s):",
                mtrr_mem_type_str[mtrr_dt & 0xff]);
 
    for (u32 i = 0; i < get_var_mttrs_count(); i++) {
@@ -92,10 +92,10 @@ static void dump_var_mtrrs(void)
       }
 
       if (one_block) {
-         dp_printkln("%02d) 0x%llx %s [%8llu KB]",
+         dp_writeln("%02d) 0x%llx %s [%8llu KB]",
                      i, physBaseVal, mtrr_mem_type_str[mem_type], sz);
       } else {
-         dp_printkln("%02d) 0x%llx %s [%8s]",
+         dp_writeln("%02d) 0x%llx %s [%8s]",
                      i, physBaseVal, mtrr_mem_type_str[mem_type], "???");
       }
    }

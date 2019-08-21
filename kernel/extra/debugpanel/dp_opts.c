@@ -12,11 +12,11 @@
    #define IS_RELEASE_BUILD 0
 #endif
 
-#define L_DUMP_STR_OPT(opt)    dp_printkln(DP_ESC_COLOR "%-30s: %s", #opt, opt)
-#define L_DUMP_INT_OPT(opt)    dp_printkln(DP_ESC_COLOR "%-30s: %d", #opt, opt)
-#define L_DUMP_BOOL_OPT(opt)   dp_printkln(DP_ESC_COLOR "%-30s: %u", #opt, opt)
+#define L_DUMP_STR_OPT(opt)    dp_writeln(DP_ESC_COLOR "%-30s: %s", #opt, opt)
+#define L_DUMP_INT_OPT(opt)    dp_writeln(DP_ESC_COLOR "%-30s: %d", #opt, opt)
+#define L_DUMP_BOOL_OPT(opt)   dp_writeln(DP_ESC_COLOR "%-30s: %u", #opt, opt)
 
-#define R_SHOW_INT(name, val)  dp_printk(DP_ESC_COLOR "%-16s: %d", name, val)
+#define R_SHOW_INT(name, val)  dp_write_raw(DP_ESC_COLOR "%-16s: %d", name, val)
 
 static void dp_show_opts(void)
 {
@@ -25,7 +25,7 @@ static void dp_show_opts(void)
 
    dp_draw_rect(row, dp_start_col + 1, 19, 45);
    dp_move_cursor(row, dp_start_col + 1 + 2);
-   dp_printk(ESC_COLOR_GREEN "[ Build-time ]" RESET_ATTRS "\n");
+   dp_write_raw(ESC_COLOR_GREEN "[ Build-time ]" RESET_ATTRS "\n");
    dp_start_col++;
 
    L_DUMP_INT_OPT(IS_RELEASE_BUILD);
@@ -55,7 +55,7 @@ static void dp_show_opts(void)
 
    dp_draw_rect(row, right_col, 19, 28);
    dp_move_cursor(row, right_col + 2);
-   dp_printk(ESC_COLOR_GREEN "[ Boot-time ]" RESET_ATTRS);
+   dp_write_raw(ESC_COLOR_GREEN "[ Boot-time ]" RESET_ATTRS);
 
    dp_move_cursor(row + 1, right_col + 2);
    R_SHOW_INT("TERM_ROWS", term_get_rows(get_curr_term()));

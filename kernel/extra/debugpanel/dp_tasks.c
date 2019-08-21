@@ -145,12 +145,12 @@ static int debug_per_task_cb(void *obj, void *arg)
 
 static void debug_dump_task_table_hr(void)
 {
-   dp_printkln(GFX_ON "%s" GFX_OFF, debug_get_task_dump_util_str(HLINE));
+   dp_writeln(GFX_ON "%s" GFX_OFF, debug_get_task_dump_util_str(HLINE));
 }
 
 static void dp_show_tasks(void)
 {
-   dp_printkln("%s", debug_get_task_dump_util_str(HEADER));
+   dp_writeln("%s", debug_get_task_dump_util_str(HEADER));
    debug_dump_task_table_hr();
 
    disable_preemption();
