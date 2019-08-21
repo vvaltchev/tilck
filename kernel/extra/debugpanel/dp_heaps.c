@@ -3,7 +3,6 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/kernel/kmalloc.h>
-#include <tilck/kernel/term.h>
 
 #include "termutil.h"
 #include "dp_int.h"
@@ -17,7 +16,7 @@ static void dp_show_kmalloc_heaps(void)
    size_t tot_usable_mem_kb = 0;
    size_t tot_used_mem_kb = 0;
    sptr tot_diff = 0;
-   const int row = term_get_curr_row(get_curr_term()) + 1;
+   const int row = dp_screen_start_row;
 
    for (int i = 0; i < KMALLOC_HEAPS_COUNT; i++) {
 

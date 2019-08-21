@@ -2,12 +2,10 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
-
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/kb.h>
-#include <tilck/kernel/term.h>
 
 #include "termutil.h"
 
@@ -63,7 +61,7 @@ static void debug_dump_unhandled_irq_count(void)
 
 static void dp_show_irq_stats(void)
 {
-   row = term_get_curr_row(get_curr_term()) + 1;
+   row = dp_screen_start_row;
 
    dp_write(row++, 0, "Kernel IRQ-related counters");
    debug_dump_slow_irq_handler_count();

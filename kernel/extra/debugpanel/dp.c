@@ -19,6 +19,7 @@
 #include "dp_int.h"
 
 void dp_write_raw(const char *fmt, ...);
+void dp_draw_rect_raw(int row, int col, int h, int w);
 
 static inline void dp_write_header(int i, const char *s, bool selected)
 {
@@ -32,22 +33,35 @@ static inline void dp_write_header(int i, const char *s, bool selected)
 int dp_rows;
 int dp_cols;
 int dp_start_row;
+int dp_end_row;
 int dp_start_col;
+int dp_screen_start_row;
+int dp_screen_rows_count;
 bool ui_need_update;
+dp_screen *dp_ctx;
 
 static bool in_debug_panel;
 static tty *dp_tty;
 static tty *saved_tty;
-static const dp_screen *dp_ctx;
 static list dp_screens_list = make_list(dp_screens_list);
 
 static void dp_enter(void)
 {
+   dp_screen *pos;
+
    in_debug_panel = true;
    dp_rows = term_get_rows(get_curr_term());
    dp_cols = term_get_cols(get_curr_term());
    dp_start_row = (dp_rows - DP_H) / 2 + 1;
    dp_start_col = (dp_cols - DP_W) / 2 + 1;
+   dp_end_row = dp_start_row + DP_H;
+   dp_screen_start_row = dp_start_row + 3;
+   dp_screen_rows_count = (DP_H - 2 - (dp_screen_start_row - dp_start_row));
+
+   list_for_each_ro(pos, &dp_screens_list, node) {
+      pos->row_off = 0;
+      pos->row_max = 0;
+   }
 }
 
 static void dp_exit(void)
@@ -112,13 +126,17 @@ static void redraw_screen(void)
    }
 
    dp_write_header(12, "Quit", false);
-   dp_move_cursor(dp_start_row + 3, 1);
 
    dp_ctx->draw_func();
 
-   dp_draw_rect(dp_start_row, dp_start_col, DP_H, DP_W);
+   dp_draw_rect_raw(dp_start_row, dp_start_col, DP_H, DP_W);
    dp_move_cursor(dp_start_row, dp_start_col + 2);
    dp_write_raw(ESC_COLOR_YELLOW "[ TilckDebugPanel ]" RESET_ATTRS);
+   dp_write_raw("[rows %02d - %02d of %02d]",
+                dp_ctx->row_off + 1,
+                MIN(dp_ctx->row_off + 1 + dp_screen_rows_count,
+                    dp_ctx->row_max + 1),
+                dp_ctx->row_max + 1);
    dp_move_cursor(999,999);
    ui_need_update = false;
 }
@@ -158,6 +176,20 @@ static int dp_keypress_handler(u32 key, u8 c)
             ui_need_update = true;
             break;
          }
+      }
+
+   } else if (key == KEY_DOWN) {
+
+      if (dp_ctx->row_off + dp_screen_rows_count < dp_ctx->row_max) {
+         dp_ctx->row_off++;
+         ui_need_update = true;
+      }
+
+   } else if (key == KEY_UP) {
+
+      if (dp_ctx->row_off > 0) {
+         dp_ctx->row_off--;
+         ui_need_update = true;
       }
    }
 

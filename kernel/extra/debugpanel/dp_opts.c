@@ -21,7 +21,7 @@
 
 static void dp_show_opts(void)
 {
-   const int row = term_get_curr_row(get_curr_term()) + 1;
+   const int row = dp_screen_start_row;
    const int rcol = dp_start_col + 47;
 
    dp_draw_rect(row, dp_start_col + 1, 19, 45);

@@ -23,6 +23,18 @@ void dp_write(int row, int col, const char *fmt, ...)
    char buf[256];
    va_list args;
    int rc;
+   const int relrow = row - dp_screen_start_row;
+
+   if (relrow > dp_ctx->row_max)
+      dp_ctx->row_max = relrow;
+
+   if (relrow < dp_ctx->row_off)
+      return;
+
+   row -= dp_ctx->row_off;
+
+   if (row > dp_end_row - 2)
+     return;
 
    va_start(args, fmt);
    rc = vsnprintk(buf, sizeof(buf), fmt, args);
@@ -35,7 +47,7 @@ void dp_write(int row, int col, const char *fmt, ...)
    term_write(get_curr_term(), buf, (size_t)rc, 15);
 }
 
-void dp_draw_rect(int row, int col, int h, int w)
+void dp_draw_rect_raw(int row, int col, int h, int w)
 {
    ASSERT(w >= 2);
    ASSERT(h >= 2);
@@ -67,5 +79,34 @@ void dp_draw_rect(int row, int col, int h, int w)
    }
 
    dp_write_raw("j");
+   dp_write_raw(GFX_OFF);
+}
+
+void dp_draw_rect(int row, int col, int h, int w)
+{
+   ASSERT(w >= 2);
+   ASSERT(h >= 2);
+
+   dp_write_raw(GFX_ON);
+   dp_write(row, col, "l");
+
+   for (int i = 0; i <= w-2; i++) {
+      dp_write(row, col+i+1, "q");
+   }
+
+   dp_write(row, col+w-2+1, "k");
+
+   for (int i = 1; i < h-1; i++) {
+      dp_write(row+i, col, "x");
+      dp_write(row+i, col+w-1, "x");
+   }
+
+   dp_write(row+h-1, col, "m");
+
+   for (int i = 0; i <= w-2; i++) {
+      dp_write(row+h-1, col+i+1, "q");
+   }
+
+   dp_write(row+h-1, col+w-2+1, "j");
    dp_write_raw(GFX_OFF);
 }

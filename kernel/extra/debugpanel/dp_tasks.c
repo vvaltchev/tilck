@@ -2,10 +2,8 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
-
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/timer.h>
-#include <tilck/kernel/term.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/cmdline.h>
@@ -152,7 +150,7 @@ static void debug_dump_task_table_hr(void)
 
 static void dp_show_tasks(void)
 {
-   row = term_get_curr_row(get_curr_term()) + 1;
+   row = dp_screen_start_row;
    dp_write(row++, 0, "%s", debug_get_task_dump_util_str(HEADER));
    debug_dump_task_table_hr();
 

@@ -3,11 +3,9 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/utils.h>
-
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/system_mmap.h>
-#include <tilck/kernel/term.h>
 
 #include "termutil.h"
 #include "dp_int.h"
@@ -108,7 +106,7 @@ static void dump_var_mtrrs(void)
 
 static void dp_show_sys_mmap(void)
 {
-   row = term_get_curr_row(get_curr_term()) + 1;
+   row = dp_screen_start_row;
    dump_memory_map(mem_regions, mem_regions_count);
 
 #ifdef __arch__x86__
