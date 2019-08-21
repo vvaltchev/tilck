@@ -23,9 +23,9 @@ void dp_write_raw(const char *fmt, ...);
 static inline void dp_write_header(int i, const char *s, bool selected)
 {
    if (selected) {
-      dp_write_raw(DP_ESC_COLOR "%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ", i, s);
+      dp_write_raw("%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ", i, s);
    } else {
-      dp_write_raw(DP_ESC_COLOR "%d[%s]" RESET_ATTRS " ", i, s);
+      dp_write_raw("%d[%s]" RESET_ATTRS " ", i, s);
    }
 }
 
@@ -40,6 +40,20 @@ static tty *dp_tty;
 static tty *saved_tty;
 static const dp_screen *dp_ctx;
 static list dp_screens_list = make_list(dp_screens_list);
+
+static void dp_enter(void)
+{
+   in_debug_panel = true;
+   dp_rows = term_get_rows(get_curr_term());
+   dp_cols = term_get_cols(get_curr_term());
+   dp_start_row = (dp_rows - DP_H) / 2 + 1;
+   dp_start_col = (dp_cols - DP_W) / 2 + 1;
+}
+
+static void dp_exit(void)
+{
+   in_debug_panel = false;
+}
 
 void dp_register_screen(dp_screen *screen)
 {
@@ -77,13 +91,8 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
 
       saved_tty = get_curr_tty();
 
-      if (set_curr_tty(dp_tty) == 0) {
-         in_debug_panel = true;
-         dp_rows = term_get_rows(get_curr_term());
-         dp_cols = term_get_cols(get_curr_term());
-         dp_start_row = (dp_rows - DP_H) / 2 + 1;
-         dp_start_col = (dp_cols - DP_W) / 2 + 1;
-      }
+      if (set_curr_tty(dp_tty) == 0)
+         dp_enter();
 
       return KB_HANDLER_OK_AND_STOP;
    }
@@ -129,11 +138,10 @@ static int dp_keypress_handler(u32 key, u8 c)
       ui_need_update = true;
    }
 
-   if (!kb_is_ctrl_pressed() && key == KEY_F12) {
+   if (!kb_is_ctrl_pressed() && (key == KEY_F12 || c == 'q')) {
 
-      if (set_curr_tty(saved_tty) == 0) {
-         in_debug_panel = false;
-      }
+      if (set_curr_tty(saved_tty) == 0)
+         dp_exit();
 
       return KB_HANDLER_OK_AND_STOP;
    }
