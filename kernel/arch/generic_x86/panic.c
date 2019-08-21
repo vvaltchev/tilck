@@ -109,10 +109,14 @@ NORETURN void panic(const char *fmt, ...)
       if (get_curr_tty() != NULL)
          tty_setup_for_panic(get_curr_tty());
 
+      /* In case the video output has been paused, we MUST restart it */
+      term_restart_video_output(get_curr_term());
+
    } else {
 
       init_console();
    }
+
 
    /* Hopefully, we can print something on screen */
 
