@@ -18,6 +18,17 @@
 #include "termutil.h"
 #include "dp_int.h"
 
+void dp_write_raw(const char *fmt, ...);
+
+static inline void dp_write_header(int i, const char *s, bool selected)
+{
+   if (selected) {
+      dp_write_raw(DP_ESC_COLOR "%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ", i, s);
+   } else {
+      dp_write_raw(DP_ESC_COLOR "%d[%s]" RESET_ATTRS " ", i, s);
+   }
+}
+
 int dp_rows;
 int dp_cols;
 int dp_start_row;

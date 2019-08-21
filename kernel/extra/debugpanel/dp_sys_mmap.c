@@ -7,9 +7,12 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/system_mmap.h>
+#include <tilck/kernel/term.h>
 
 #include "termutil.h"
 #include "dp_int.h"
+
+static int row;
 
 static const char *mem_region_extra_to_str(u32 e)
 {
@@ -29,18 +32,18 @@ static const char *mem_region_extra_to_str(u32 e)
 
 static void dump_memory_map(memory_region_t *regions, int count)
 {
-   dp_writeln("           START                 END        (T, Extr)");
+   dp_write(row++, 0, "           START                 END        (T, Extr)");
 
    for (int i = 0; i < count; i++) {
 
       memory_region_t *ma = regions + i;
 
-      dp_writeln("%02d) 0x%016llx - 0x%016llx (%d, %s) [%8u KB]", i,
-                  ma->addr, ma->addr + ma->len,
-                  ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
+      dp_write(row++, 0, "%02d) 0x%016llx - 0x%016llx (%d, %s) [%8u KB]", i,
+               ma->addr, ma->addr + ma->len,
+               ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
    }
 
-   dp_writeln("");
+   row++;
 }
 
 #ifdef __arch__x86__
@@ -60,13 +63,13 @@ static const char *mtrr_mem_type_str[8] =
 static void dump_var_mtrrs(void)
 {
    if (!get_var_mttrs_count()) {
-      dp_writeln("MTRRs: not supported on this CPU");
+      dp_write(row++, 0, "MTRRs: not supported on this CPU");
       return;
    }
 
    u64 mtrr_dt = rdmsr(MSR_IA32_MTRR_DEF_TYPE);
-   dp_writeln("MTRRs (default type: %s):",
-               mtrr_mem_type_str[mtrr_dt & 0xff]);
+   dp_write(row++, 0, "MTRRs (default type: %s):",
+            mtrr_mem_type_str[mtrr_dt & 0xff]);
 
    for (u32 i = 0; i < get_var_mttrs_count(); i++) {
 
@@ -92,11 +95,11 @@ static void dump_var_mtrrs(void)
       }
 
       if (one_block) {
-         dp_writeln("%02d) 0x%llx %s [%8llu KB]",
-                     i, physBaseVal, mtrr_mem_type_str[mem_type], sz);
+         dp_write(row++, 0, "%02d) 0x%llx %s [%8llu KB]",
+                  i, physBaseVal, mtrr_mem_type_str[mem_type], sz);
       } else {
-         dp_writeln("%02d) 0x%llx %s [%8s]",
-                     i, physBaseVal, mtrr_mem_type_str[mem_type], "???");
+         dp_write(row++, 0, "%02d) 0x%llx %s [%8s]",
+                  i, physBaseVal, mtrr_mem_type_str[mem_type], "???");
       }
    }
 }
@@ -105,6 +108,7 @@ static void dump_var_mtrrs(void)
 
 static void dp_show_sys_mmap(void)
 {
+   row = term_get_curr_row(get_curr_term()) + 1;
    dump_memory_map(mem_regions, mem_regions_count);
 
 #ifdef __arch__x86__

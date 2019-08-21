@@ -5,25 +5,21 @@
 
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/irq.h>
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/kb.h>
-#include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/term.h>
-#include <tilck/kernel/elf_utils.h>
-#include <tilck/kernel/tty.h>
-#include <tilck/kernel/fb_console.h>
-#include <tilck/kernel/cmdline.h>
 
 #include "termutil.h"
+
+static int row;
 
 static void debug_dump_slow_irq_handler_count(void)
 {
    extern u32 slow_timer_irq_handler_count;
 
    if (KRN_TRACK_NESTED_INTERR) {
-      dp_writeln("   Slow timer irq handler counter: %u",
-                  slow_timer_irq_handler_count);
+      dp_write(row++, 0, "   Slow timer irq handler counter: %u",
+               slow_timer_irq_handler_count);
    }
 }
 
@@ -33,12 +29,12 @@ static void debug_dump_spur_irq_count(void)
    const u64 ticks = get_ticks();
 
    if (ticks > TIMER_HZ)
-      dp_writeln("   Spurious IRQ count: %u (%u/sec)",
-                  spur_irq_count,
-                  spur_irq_count / (ticks / TIMER_HZ));
+      dp_write(row++, 0, "   Spurious IRQ count: %u (%u/sec)",
+               spur_irq_count,
+               spur_irq_count / (ticks / TIMER_HZ));
    else
-      dp_writeln("   Spurious IRQ count: %u (< 1 sec)",
-                  spur_irq_count, spur_irq_count);
+      dp_write(row++, 0, "   Spurious IRQ count: %u (< 1 sec)",
+               spur_irq_count, spur_irq_count);
 }
 
 static void debug_dump_unhandled_irq_count(void)
@@ -52,23 +48,24 @@ static void debug_dump_unhandled_irq_count(void)
    if (!tot_count)
       return;
 
-   dp_writeln("");
-   dp_writeln("Unhandled IRQs count table\n");
+   row++;
+   dp_write(row, 0, "Unhandled IRQs count table\n");
 
    for (u32 i = 0; i < ARRAY_SIZE(unhandled_irq_count); i++) {
 
       if (unhandled_irq_count[i])
-         dp_writeln("   IRQ #%3u: %3u unhandled", i,
-                     unhandled_irq_count[i]);
+         dp_write(row, 0, "   IRQ #%3u: %3u unhandled", i,
+                  unhandled_irq_count[i]);
    }
 
-   dp_writeln("");
+   row++;
 }
 
 static void dp_show_irq_stats(void)
 {
-   dp_writeln("Kernel IRQ-related counters\n");
+   row = term_get_curr_row(get_curr_term()) + 1;
 
+   dp_write(row++, 0, "Kernel IRQ-related counters");
    debug_dump_slow_irq_handler_count();
    debug_dump_spur_irq_count();
    debug_dump_unhandled_irq_count();

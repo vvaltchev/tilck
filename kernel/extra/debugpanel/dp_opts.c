@@ -12,77 +12,61 @@
    #define IS_RELEASE_BUILD 0
 #endif
 
-#define L_DUMP_STR_OPT(opt)    dp_writeln(DP_ESC_COLOR "%-30s: %s", #opt, opt)
-#define L_DUMP_INT_OPT(opt)    dp_writeln(DP_ESC_COLOR "%-30s: %d", #opt, opt)
-#define L_DUMP_BOOL_OPT(opt)   dp_writeln(DP_ESC_COLOR "%-30s: %u", #opt, opt)
+#define DUMP_STR_OPT(r, c, opt)    dp_write(r, c, "%-30s: %s", #opt, opt)
+#define DUMP_INT_OPT(r, c, opt)    dp_write(r, c, "%-30s: %d", #opt, opt)
+#define DUMP_BOOL_OPT(r, c, opt)   dp_write(r, c, "%-30s: %u", #opt, opt)
 
-#define R_SHOW_INT(name, val)  dp_write_raw(DP_ESC_COLOR "%-16s: %d", name, val)
+#define DUMP_INT(r, c, name, val)  \
+   dp_write(r, c, DP_ESC_COLOR "%-16s: %d", name, val)
 
 static void dp_show_opts(void)
 {
    const int row = term_get_curr_row(get_curr_term()) + 1;
-   const int right_col = dp_start_col + 47;
+   const int rcol = dp_start_col + 47;
 
    dp_draw_rect(row, dp_start_col + 1, 19, 45);
-   dp_move_cursor(row, dp_start_col + 1 + 2);
-   dp_write_raw(ESC_COLOR_GREEN "[ Build-time ]" RESET_ATTRS "\n");
+   dp_write(row, dp_start_col + 3,
+            ESC_COLOR_GREEN "[ Build-time ]" RESET_ATTRS);
+
    dp_start_col++;
 
-   L_DUMP_INT_OPT(IS_RELEASE_BUILD);
-   L_DUMP_STR_OPT(BUILDTYPE_STR);
+   DUMP_INT_OPT(row+1, 0, IS_RELEASE_BUILD);
+   DUMP_STR_OPT(row+2, 0, BUILDTYPE_STR);
 
    // Non-boolean kernel options
-   L_DUMP_INT_OPT(TIMER_HZ);
-   L_DUMP_INT_OPT(USER_STACK_PAGES);
+   DUMP_INT_OPT(row+3, 0, TIMER_HZ);
+   DUMP_INT_OPT(row+4, 0, USER_STACK_PAGES);
 
    // Boolean options ENABLED by default
-   L_DUMP_BOOL_OPT(KRN_TRACK_NESTED_INTERR);
-   L_DUMP_BOOL_OPT(PANIC_SHOW_STACKTRACE);
-   L_DUMP_BOOL_OPT(DEBUG_CHECKS_IN_RELEASE);
-   L_DUMP_BOOL_OPT(KERNEL_SELFTESTS);
+   DUMP_BOOL_OPT(row+5, 0, KRN_TRACK_NESTED_INTERR);
+   DUMP_BOOL_OPT(row+6, 0, PANIC_SHOW_STACKTRACE);
+   DUMP_BOOL_OPT(row+7, 0, DEBUG_CHECKS_IN_RELEASE);
+   DUMP_BOOL_OPT(row+8, 0, KERNEL_SELFTESTS);
 
    // Boolean options DISABLED by default
-   L_DUMP_BOOL_OPT(KERNEL_GCOV);
-   L_DUMP_BOOL_OPT(FORK_NO_COW);
-   L_DUMP_BOOL_OPT(MMAP_NO_COW);
-   L_DUMP_BOOL_OPT(PANIC_SHOW_REGS);
-   L_DUMP_BOOL_OPT(KMALLOC_FREE_MEM_POISONING);
-   L_DUMP_BOOL_OPT(KMALLOC_SUPPORT_DEBUG_LOG);
-   L_DUMP_BOOL_OPT(KMALLOC_SUPPORT_LEAK_DETECTOR);
-   L_DUMP_BOOL_OPT(BOOTLOADER_POISON_MEMORY);
+   DUMP_BOOL_OPT(row+9, 0, KERNEL_GCOV);
+   DUMP_BOOL_OPT(row+10, 0, FORK_NO_COW);
+   DUMP_BOOL_OPT(row+11, 0, MMAP_NO_COW);
+   DUMP_BOOL_OPT(row+12, 0, PANIC_SHOW_REGS);
+   DUMP_BOOL_OPT(row+13, 0, KMALLOC_FREE_MEM_POISONING);
+   DUMP_BOOL_OPT(row+14, 0, KMALLOC_SUPPORT_DEBUG_LOG);
+   DUMP_BOOL_OPT(row+15, 0, KMALLOC_SUPPORT_LEAK_DETECTOR);
+   DUMP_BOOL_OPT(row+16, 0, BOOTLOADER_POISON_MEMORY);
 
    dp_start_col--;
 
-   dp_draw_rect(row, right_col, 19, 28);
-   dp_move_cursor(row, right_col + 2);
-   dp_write_raw(ESC_COLOR_GREEN "[ Boot-time ]" RESET_ATTRS);
+   dp_draw_rect(row, rcol, 19, 28);
+   dp_write(row+0, rcol+2, ESC_COLOR_GREEN "[ Boot-time ]" RESET_ATTRS);
 
-   dp_move_cursor(row + 1, right_col + 2);
-   R_SHOW_INT("TERM_ROWS", term_get_rows(get_curr_term()));
-
-   dp_move_cursor(row + 2, right_col + 2);
-   R_SHOW_INT("TERM_COLS", term_get_cols(get_curr_term()));
-
-   dp_move_cursor(row + 3, right_col + 2);
-   R_SHOW_INT("USE_FRAMEBUFFER", use_framebuffer());
-
-   dp_move_cursor(row + 4, right_col + 2);
-   R_SHOW_INT("FB_OPT_FUNCS", fb_is_using_opt_funcs());
-
-   dp_move_cursor(row + 5, right_col + 2);
-   R_SHOW_INT("FB_RES_X", fb_get_res_x());
-
-   dp_move_cursor(row + 6, right_col + 2);
-   R_SHOW_INT("FB_RES_Y", fb_get_res_y());
-
-   dp_move_cursor(row + 7, right_col + 2);
-   R_SHOW_INT("FB_BBP", fb_get_bbp());
-
-   dp_move_cursor(row + 8, right_col + 2);
-   R_SHOW_INT("FB_FONT_W", fb_get_font_w());
-
-   dp_move_cursor(row + 9, right_col + 2);
-   R_SHOW_INT("FB_FONT_H", fb_get_font_h());
+   DUMP_INT(row+1, rcol+2, "TERM_ROWS", term_get_rows(get_curr_term()));
+   DUMP_INT(row+2, rcol+2, "TERM_COLS", term_get_cols(get_curr_term()));
+   DUMP_INT(row+3, rcol+2, "USE_FRAMEBUFFER", use_framebuffer());
+   DUMP_INT(row+4, rcol+2, "FB_OPT_FUNCS", fb_is_using_opt_funcs());
+   DUMP_INT(row+5, rcol+2, "FB_RES_X", fb_get_res_x());
+   DUMP_INT(row+6, rcol+2, "FB_RES_Y", fb_get_res_y());
+   DUMP_INT(row+7, rcol+2, "FB_BBP", fb_get_bbp());
+   DUMP_INT(row+8, rcol+2, "FB_FONT_W", fb_get_font_w());
+   DUMP_INT(row+9, rcol+2, "FB_FONT_H", fb_get_font_h());
 }
 
 static dp_screen dp_opts_screen =

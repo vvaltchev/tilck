@@ -18,7 +18,7 @@ void dp_write_raw(const char *fmt, ...)
    term_write(get_curr_term(), buf, (size_t)rc, 15);
 }
 
-void dp_writeln(const char *fmt, ...)
+void dp_write(int row, int col, const char *fmt, ...)
 {
    char buf[256];
    va_list args;
@@ -28,9 +28,11 @@ void dp_writeln(const char *fmt, ...)
    rc = vsnprintk(buf, sizeof(buf), fmt, args);
    va_end(args);
 
-   dp_move_right(dp_start_col + 1);
+   if (col == 0)
+      col = dp_start_col + 2;
+
+   dp_move_cursor(row, col);
    term_write(get_curr_term(), buf, (size_t)rc, 15);
-   term_write(get_curr_term(), "\n", 1, 15);
 }
 
 void dp_draw_rect(int row, int col, int h, int w)
