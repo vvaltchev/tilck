@@ -5,6 +5,19 @@
 #include <tilck/kernel/term.h>
 #include "termutil.h"
 
+void dp_printk(const char *fmt, ...)
+{
+   char buf[256];
+   va_list args;
+   int rc;
+
+   va_start(args, fmt);
+   rc = vsnprintk(buf, sizeof(buf), fmt, args);
+   va_end(args);
+
+   term_write(get_curr_term(), buf, (size_t)rc, 15);
+}
+
 void dp_printkln(const char *fmt, ...)
 {
    char buf[256];

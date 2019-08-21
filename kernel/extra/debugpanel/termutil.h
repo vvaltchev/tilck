@@ -14,11 +14,11 @@
 #define GFX_ON             "\033(0"
 #define GFX_OFF            "\033(B"
 
-#define TERM_VLINE    GFX_ON "x" GFX_OFF
+#define TERM_VLINE         GFX_ON "x" GFX_OFF
 
-#define DP_COLOR                ESC_COLOR_WHITE
-#define dp_printk(...)          printk(NO_PREFIX DP_COLOR __VA_ARGS__)
+#define DP_ESC_COLOR            ESC_COLOR_WHITE
 
+void dp_printk(const char *fmt, ...);
 void dp_printkln(const char *fmt, ...);
 
 static inline void dp_move_right(int n) {
@@ -45,10 +45,18 @@ static inline void dp_move_cursor(int row, int col)
 static inline void dp_write_header(int i, const char *s, bool selected)
 {
    if (selected) {
-      dp_printk(DP_COLOR "%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ", i, s);
+      dp_printk(DP_ESC_COLOR "%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ", i, s);
    } else {
-      dp_printk(DP_COLOR "%d[%s]" RESET_ATTRS " ", i, s);
+      dp_printk(DP_ESC_COLOR "%d[%s]" RESET_ATTRS " ", i, s);
    }
 }
 
 void dp_draw_rect(int row, int col, int h, int w);
+
+static inline const char *
+dp_sign_value_esc_color(sptr val)
+{
+   return val > 0
+            ? ESC_COLOR_GREEN
+            : val < 0 ? ESC_COLOR_RED : DP_ESC_COLOR;
+}

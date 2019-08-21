@@ -56,7 +56,7 @@ static const char *
 debug_get_task_dump_util_str(enum task_dump_util_str t)
 {
    static bool initialized;
-   static char fmt[120] = NO_PREFIX DP_COLOR;
+   static char fmt[120] = NO_PREFIX DP_ESC_COLOR;
    static char hfmt[120];
    static char header[120];
    static char hline_sep[120] = "qqqqqqqqqqqnqqqqqqqnqqqqqqqnqqqnqqqqqn";
