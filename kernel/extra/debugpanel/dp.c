@@ -59,14 +59,25 @@ static void dp_enter(void)
    dp_screen_rows = (DP_H - 2 - (dp_screen_start_row - dp_start_row));
 
    list_for_each_ro(pos, &dp_screens_list, node) {
+
       pos->row_off = 0;
       pos->row_max = 0;
+
+      if (pos->on_dp_enter)
+         pos->on_dp_enter();
    }
 }
 
 static void dp_exit(void)
 {
+   dp_screen *pos;
    in_debug_panel = false;
+
+   list_for_each_ro(pos, &dp_screens_list, node) {
+
+      if (pos->on_dp_exit)
+         pos->on_dp_exit();
+   }
 }
 
 void dp_register_screen(dp_screen *screen)

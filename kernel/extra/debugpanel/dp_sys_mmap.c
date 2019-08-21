@@ -30,18 +30,18 @@ static const char *mem_region_extra_to_str(u32 e)
 
 static void dump_memory_map(memory_region_t *regions, int count)
 {
-   dp_write(row++, 0, "           START                 END        (T, Extr)");
+   dp_writeln("           START                 END        (T, Extr)");
 
    for (int i = 0; i < count; i++) {
 
       memory_region_t *ma = regions + i;
 
-      dp_write(row++, 0, "%02d) 0x%016llx - 0x%016llx (%d, %s) [%8u KB]", i,
-               ma->addr, ma->addr + ma->len,
-               ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
+      dp_writeln("%02d) 0x%016llx - 0x%016llx (%d, %s) [%8u KB]", i,
+                 ma->addr, ma->addr + ma->len,
+                 ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
    }
 
-   row++;
+   dp_writeln("");
 }
 
 #ifdef __arch__x86__
@@ -61,13 +61,13 @@ static const char *mtrr_mem_type_str[8] =
 static void dump_var_mtrrs(void)
 {
    if (!get_var_mttrs_count()) {
-      dp_write(row++, 0, "MTRRs: not supported on this CPU");
+      dp_writeln("MTRRs: not supported on this CPU");
       return;
    }
 
    u64 mtrr_dt = rdmsr(MSR_IA32_MTRR_DEF_TYPE);
-   dp_write(row++, 0, "MTRRs (default type: %s):",
-            mtrr_mem_type_str[mtrr_dt & 0xff]);
+   dp_writeln("MTRRs (default type: %s):",
+              mtrr_mem_type_str[mtrr_dt & 0xff]);
 
    for (u32 i = 0; i < get_var_mttrs_count(); i++) {
 
@@ -93,11 +93,11 @@ static void dump_var_mtrrs(void)
       }
 
       if (one_block) {
-         dp_write(row++, 0, "%02d) 0x%llx %s [%8llu KB]",
-                  i, physBaseVal, mtrr_mem_type_str[mem_type], sz);
+         dp_writeln("%02d) 0x%llx %s [%8llu KB]",
+                    i, physBaseVal, mtrr_mem_type_str[mem_type], sz);
       } else {
-         dp_write(row++, 0, "%02d) 0x%llx %s [%8s]",
-                  i, physBaseVal, mtrr_mem_type_str[mem_type], "???");
+         dp_writeln("%02d) 0x%llx %s [%8s]",
+                    i, physBaseVal, mtrr_mem_type_str[mem_type], "???");
       }
    }
 }
@@ -112,6 +112,8 @@ static void dp_show_sys_mmap(void)
 #ifdef __arch__x86__
    dump_var_mtrrs();
 #endif
+
+   dp_writeln("");
 }
 
 static dp_screen dp_memmap_screen =

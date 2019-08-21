@@ -137,8 +137,8 @@ static int debug_per_task_cb(void *obj, void *arg)
    int ttynum = tty_get_num(ti->pi->proc_tty);
 
    if (!is_kernel_thread(ti)) {
-      dp_write(row++, 0, fmt, ti->tid, pi->pid,
-               pi->parent_pid, state, ttynum, path);
+      dp_writeln(fmt, ti->tid, pi->pid,
+                 pi->parent_pid, state, ttynum, path);
       return 0;
    }
 
@@ -151,19 +151,19 @@ static int debug_per_task_cb(void *obj, void *arg)
                kfunc, debug_get_tn_for_tasklet_runner(ti));
    }
 
-   dp_write(row++, 0, fmt, ti->tid, pi->pid, pi->parent_pid, state, 0, buf);
+   dp_writeln(fmt, ti->tid, pi->pid, pi->parent_pid, state, 0, buf);
    return 0;
 }
 
 static void debug_dump_task_table_hr(void)
 {
-   dp_write(row++, 0, GFX_ON "%s" GFX_OFF, debug_get_task_dump_util_str(HLINE));
+   dp_writeln(GFX_ON "%s" GFX_OFF, debug_get_task_dump_util_str(HLINE));
 }
 
 static void dp_show_tasks(void)
 {
    row = dp_screen_start_row;
-   dp_write(row++, 0, "%s", debug_get_task_dump_util_str(HEADER));
+   dp_writeln("%s", debug_get_task_dump_util_str(HEADER));
    debug_dump_task_table_hr();
 
    disable_preemption();
@@ -171,6 +171,7 @@ static void dp_show_tasks(void)
       iterate_over_tasks(debug_per_task_cb, NULL);
    }
    enable_preemption();
+   dp_writeln("");
 }
 
 static dp_screen dp_tasks_screen =

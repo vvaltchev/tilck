@@ -20,6 +20,12 @@
 void dp_write(int row, int col, const char *fmt, ...);
 void dp_draw_rect(const char *label, int row, int col, int h, int w);
 
+/* WARNING: dirty macro expecting a local `row` variable to be defined */
+#define dp_writeln(...)  dp_write(row++, 0, __VA_ARGS__)
+
+/* WARNING: dirty macro expecting both `row` and `col` to be defined */
+#define dp_writeln2(...) dp_write(row++, col, __VA_ARGS__)
+
 static inline void dp_move_right(int n) {
    printk(NO_PREFIX "\033[%dC", n);
 }

@@ -16,6 +16,8 @@ typedef struct {
    int row_max;
    const char *label;
    void (*draw_func)(void);
+   void (*on_dp_enter)(void);
+   void (*on_dp_exit)(void);
    keypress_func on_keypress_func;
 
 } dp_screen;
