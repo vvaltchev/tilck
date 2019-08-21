@@ -66,14 +66,12 @@ static void dp_show_opts(void)
    max_rows = MAX(rows_left, rows_right);
 
    /* left rectangle */
-   dp_draw_rect(dp_screen_start_row, dp_start_col + 1, max_rows+2, 45);
-   dp_write(dp_screen_start_row, dp_start_col + 3,
-            ESC_COLOR_GREEN "[ Build-time ]" RESET_ATTRS);
+   dp_draw_rect("Build-time",
+                dp_screen_start_row, dp_start_col + 1, max_rows+2, 45);
 
    /* right rectangle */
-   dp_draw_rect(dp_screen_start_row, col - 2, max_rows+2, 28);
-   dp_write(dp_screen_start_row, col,
-            ESC_COLOR_GREEN "[ Boot-time ]" RESET_ATTRS);
+   dp_draw_rect("Boot-time",
+                dp_screen_start_row, col - 2, max_rows+2, 28);
 }
 
 static dp_screen dp_opts_screen =

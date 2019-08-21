@@ -18,7 +18,7 @@
 #define DP_ESC_COLOR       ESC_COLOR_WHITE
 
 void dp_write(int row, int col, const char *fmt, ...);
-void dp_draw_rect(int row, int col, int h, int w);
+void dp_draw_rect(const char *label, int row, int col, int h, int w);
 
 static inline void dp_move_right(int n) {
    printk(NO_PREFIX "\033[%dC", n);

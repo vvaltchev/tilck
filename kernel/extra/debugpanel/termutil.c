@@ -82,7 +82,7 @@ void dp_draw_rect_raw(int row, int col, int h, int w)
    dp_write_raw(GFX_OFF);
 }
 
-void dp_draw_rect(int row, int col, int h, int w)
+void dp_draw_rect(const char *label, int row, int col, int h, int w)
 {
    ASSERT(w >= 2);
    ASSERT(h >= 2);
@@ -109,4 +109,8 @@ void dp_draw_rect(int row, int col, int h, int w)
 
    dp_write(row+h-1, col+w-2+1, "j");
    dp_write_raw(GFX_OFF);
+
+   if (label) {
+      dp_write(row, col + 2, ESC_COLOR_GREEN "[ %s ]" RESET_ATTRS, label);
+   }
 }
