@@ -4,6 +4,8 @@
 #include <tilck/common/string_util.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/fb_console.h>
+#include <tilck/kernel/cmdline.h>
+
 #include "termutil.h"
 
 #ifdef RELEASE
@@ -50,8 +52,9 @@ static void dp_show_opts(void)
 
    rows_left = row - dp_screen_start_row - 1;
    row = dp_screen_start_row+1;
-   col = dp_start_col + 49;
+   col = dp_start_col + 48;
 
+   DUMP_INT("HYPERVISOR", in_hypervisor());
    DUMP_INT("TERM_ROWS", term_get_rows(get_curr_term()));
    DUMP_INT("TERM_COLS", term_get_cols(get_curr_term()));
    DUMP_INT("USE_FRAMEBUFFER", use_framebuffer());
@@ -61,6 +64,7 @@ static void dp_show_opts(void)
    DUMP_INT("FB_BBP", fb_get_bbp());
    DUMP_INT("FB_FONT_W", fb_get_font_w());
    DUMP_INT("FB_FONT_H", fb_get_font_h());
+   DUMP_INT("TTY_COUNT", kopt_tty_count);
 
    rows_right = row - dp_screen_start_row - 1;
    max_rows = MAX(rows_left, rows_right);
@@ -71,7 +75,7 @@ static void dp_show_opts(void)
 
    /* right rectangle */
    dp_draw_rect("Boot-time",
-                dp_screen_start_row, col - 2, max_rows+2, 28);
+                dp_screen_start_row, col - 2, max_rows+2, 29);
 }
 
 static dp_screen dp_opts_screen =
