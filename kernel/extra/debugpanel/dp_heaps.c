@@ -54,7 +54,7 @@ static void dp_show_kmalloc_heaps(void)
    dp_printkln("Used:    %6u KB (%u%%)",
                tot_used_mem_kb, (tot_used_mem_kb * 100) / tot_usable_mem_kb);
    dp_printkln("Diff:   %s%s%6d KB" RESET_ATTRS " [%d B]",
-               tot_diff > 0 ? COLOR_GREEN : tot_diff < 0 ? COLOR_RED : DP_COLOR,
+               tot_diff > 0 ? ESC_COLOR_GREEN : tot_diff < 0 ? ESC_COLOR_RED : DP_COLOR,
                tot_diff > 0 ? "+" : " ",
                tot_diff / (sptr)KB,
                tot_diff);

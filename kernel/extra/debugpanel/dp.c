@@ -80,41 +80,6 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
    return KB_HANDLER_NAK;
 }
 
-void dp_draw_rect(int row, int col, int h, int w)
-{
-   ASSERT(w >= 2);
-   ASSERT(h >= 2);
-
-   dp_printk(GFX_ON);
-   dp_move_cursor(row, col);
-   dp_printk("l");
-
-   for (int i = 0; i < w-2; i++) {
-      dp_printk("q");
-   }
-
-   dp_printk("k");
-
-   for (int i = 1; i < h-1; i++) {
-
-      dp_move_cursor(row+i, col);
-      dp_printk("x");
-
-      dp_move_cursor(row+i, col+w-1);
-      dp_printk("x");
-   }
-
-   dp_move_cursor(row+h-1, col);
-   dp_printk("m");
-
-   for (int i = 0; i < w-2; i++) {
-      dp_printk("q");
-   }
-
-   dp_printk("j");
-   dp_printk(GFX_OFF);
-}
-
 static void redraw_screen(void)
 {
    dp_screen *pos;
@@ -133,7 +98,7 @@ static void redraw_screen(void)
 
    dp_draw_rect(dp_start_row, dp_start_col, DP_H, DP_W);
    dp_move_cursor(dp_start_row, dp_start_col + 2);
-   dp_printk(COLOR_YELLOW "TilckDebugPanel" RESET_ATTRS);
+   dp_printk(ESC_COLOR_YELLOW "TilckDebugPanel" RESET_ATTRS);
    dp_move_cursor(999,999);
    ui_need_update = false;
 }
