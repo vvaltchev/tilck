@@ -51,6 +51,7 @@ void term_scroll_down(term *t, u32 lines);
 void term_set_col_offset(term *t, u32 off);
 void term_pause_video_output(term *t);
 void term_restart_video_output(term *t);
+void term_set_cursor_enabled(term *t, bool value);
 
 /* --- debug funcs --- */
 void debug_term_dump_font_table(term *t);

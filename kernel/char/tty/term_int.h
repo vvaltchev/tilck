@@ -23,12 +23,12 @@ enum term_action {
    a_erase_in_line,
    a_pause_video_output,
    a_restart_video_output,
+   a_enable_cursor,
    a_non_buf_scroll,   /*
                         * non_buf scroll: arg1 = rows, arg2 = direction
                         * up => text moves up => new blank lines at the bottom
                         * down => text moves down => new blank lines at the top
                         */
-
 };
 
 typedef void (*action_func)(term *t, ...);
