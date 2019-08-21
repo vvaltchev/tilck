@@ -48,10 +48,12 @@ static list dp_screens_list = make_list(dp_screens_list);
 static void dp_enter(void)
 {
    dp_screen *pos;
+   term *t = get_curr_term();
+   term_set_cursor_enabled(t, false);
 
    in_debug_panel = true;
-   dp_rows = term_get_rows(get_curr_term());
-   dp_cols = term_get_cols(get_curr_term());
+   dp_rows = term_get_rows(t);
+   dp_cols = term_get_cols(t);
    dp_start_row = (dp_rows - DP_H) / 2 + 1;
    dp_start_col = (dp_cols - DP_W) / 2 + 1;
    dp_end_row = dp_start_row + DP_H;
@@ -78,6 +80,8 @@ static void dp_exit(void)
       if (pos->on_dp_exit)
          pos->on_dp_exit();
    }
+
+   term_set_cursor_enabled(get_curr_term(), true);
 }
 
 void dp_register_screen(dp_screen *screen)
@@ -154,8 +158,6 @@ static void redraw_screen(void)
 
    dp_move_cursor(dp_end_row - 1, dp_start_col + DP_W - rc - 2);
    dp_write_raw(ESC_COLOR_RED "%s" RESET_ATTRS, buf);
-
-   dp_move_cursor(999,999);
    ui_need_update = false;
 }
 
@@ -174,7 +176,9 @@ static int dp_keypress_handler(u32 key, u8 c)
       ui_need_update = true;
    }
 
-   if (!kb_is_ctrl_pressed() && (key == KEY_F12 || c == 'q')) {
+   ASSERT(in_debug_panel);
+
+   if (c == 'q' || (!kb_is_ctrl_pressed() && key == KEY_F12)) {
 
       if (set_curr_tty(saved_tty) == 0)
          dp_exit();
