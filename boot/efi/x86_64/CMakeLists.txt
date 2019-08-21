@@ -12,12 +12,15 @@ if (${MS_ABI_SUPPORTED})
 
 else()
 
-   string(CONCAT msg "Unable to build ${EFI_${EFI_ARCH}_FILE}: "
+   file(RELATIVE_PATH relPath ${CMAKE_BINARY_DIR} ${EFI_${EFI_ARCH}_FILE})
+
+   set(msg "")
+   string(CONCAT msg "Unable to build `${relPath}`: "
                      "the system compiler does not support MS_ABI. "
                      "If you really need to use EFI boot on x86_64 machines "
                      "please use GCC as C compiler.")
 
-   message(WARNING "${msg}")
+   message(WARNING "\n${msg}")
 
    add_custom_command(
       OUTPUT

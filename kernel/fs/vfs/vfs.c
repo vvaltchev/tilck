@@ -399,6 +399,36 @@ int vfs_readlink(const char *path, char *buf)
    VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
+int vfs_chown(const char *path, int owner, int group, bool reslink)
+{
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, reslink)
+
+   /* Tilck does not support UIDs, GIDs other than 0 */
+   rc = (owner == 0 && group == 0) ? 0 : -EPERM;
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+}
+
+int vfs_chmod(const char *path, mode_t mode)
+{
+   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, true)
+
+   rc = p.fs_path.inode
+         ? p.fs->flags & VFS_FS_RW
+            ? p.fs->fsops->chmod(p.fs, p.fs_path.inode, mode)
+            : -EROFS
+         : -ENOENT;
+
+   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+}
+
+int vfs_fchmod(fs_handle h, mode_t mode)
+{
+   fs_handle_base *hb = h;
+   const fs_ops *fsops = hb->fs->fsops;
+   return fsops->chmod(hb->fs, fsops->get_inode(h), mode);
+}
+
 u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;

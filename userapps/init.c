@@ -18,13 +18,16 @@
 
 #include <tilck/common/basic_defs.h> /* for MIN() and ARRAY_SIZE() */
 
-#define DEFAULT_SHELL "/bin/devshell"
+#define START_SCRIPT    "/initrd/etc/start"
+#define DEFAULT_SHELL   "/usr/bin/devshell"
 
+static char *start_script_args[2] = { START_SCRIPT, NULL };
 static char *shell_args[16] = { DEFAULT_SHELL, [1 ... 15] = NULL };
 
 /* -- command line options -- */
 
 static bool opt_quiet;
+static bool opt_nostart;
 
 /* -- end -- */
 
@@ -96,6 +99,43 @@ static void open_std_handles(int tty)
    }
 }
 
+static void run_start_script(void)
+{
+   int rc, wstatus;
+   pid_t pid;
+
+   pid = fork();
+
+   if (pid < 0) {
+      printf("[init] fork() failed with %d\n", pid);
+      call_exit(1);
+   }
+
+   if (!pid) {
+
+      rc = execve(start_script_args[0], start_script_args, NULL);
+      printf("[init] execve(%s) failed with %d\n", start_script_args[0], rc);
+      exit(1);
+   }
+
+   rc = waitpid(-1, &wstatus, 0);
+
+   if (rc != pid) {
+      printf("[init] waitpid(-1) returned %d instead of pid %d\n", rc, pid);
+      call_exit(1);
+   }
+
+   if (!WIFEXITED(wstatus)) {
+      printf("[init] Start script killed by sig %d\n", WTERMSIG(wstatus));
+      call_exit(1);
+   }
+
+   if (WEXITSTATUS(wstatus) != 0) {
+      printf("[init] Start script exited with %d\n", WEXITSTATUS(wstatus));
+      call_exit(1);
+   }
+}
+
 static void do_initial_setup(void)
 {
    if (getenv("TILCK")) {
@@ -135,6 +175,7 @@ static void show_help_and_exit(void)
    printf("    init                Regular run. Shell: %s\n", DEFAULT_SHELL);
    printf("    init -h/--help      Show this help and exit\n");
    printf("    init -q             Quiet: don't report exit of orphan tasks\n");
+   printf("    init -ns            Don't run the script: %s", START_SCRIPT);
    printf("    init -- <cmdline>   "
           "Run the specified cmdline instead of the default one.\n");
    printf("                        "
@@ -155,6 +196,12 @@ begin:
 
    if (!strcmp(*argv, "-q")) {
       opt_quiet = true;
+      argc--; argv++;
+      goto begin;
+   }
+
+   if (!strcmp(*argv, "-ns")) {
+      opt_nostart = true;
       argc--; argv++;
       goto begin;
    }
@@ -222,20 +269,26 @@ int main(int argc, char **argv, char **env)
       return 1;
    }
 
-   /* Ignore SIGINT and SIGQUIT */
+   /* Ignore SIGINT, SIGQUIT, SIGTERM */
    signal(SIGINT, SIG_IGN);
    signal(SIGQUIT, SIG_IGN);
-
+   signal(SIGTERM, SIG_IGN);
 
    do_initial_setup();
    parse_opts(argc - 1, argv + 1);
+
+   if (!opt_nostart) {
+      run_start_script();
+   } else {
+      printf("[init] Skipping the start script\n");
+   }
 
    for (int tty = 1; tty <= get_tty_count(); tty++) {
 
       pid = fork();
 
       if (pid < 0) {
-         perror("fork() failed");
+         perror("[init] fork() failed");
          call_exit(1);
       }
 
@@ -244,7 +297,7 @@ int main(int argc, char **argv, char **env)
          setup_console_for_shell(tty);
 
          if (execve(shell_args[0], shell_args, NULL) < 0) {
-            perror("execve failed");
+            perror("[init] execve failed");
             call_exit(1);
          }
       }

@@ -65,20 +65,21 @@ function create_sysroot_skeleton {
 function add_apps {
 
    IFS=";"
+   local all_apps="@USERAPPS_FILES_LIST@;@EXTRA_APPS_LIST@"
 
-   apps="@USERAPPS_FILES_LIST@"
-   extra_apps="@EXTRA_APPS_LIST@"
+   for x in ${all_apps[@]}; do
 
-   for x in ${apps[@]}; do
-      cp "$x" bin/
-      strip_binary "bin/$(basename -- $x)"
+      local name=$(basename -- $x)
+      local dest_dir="usr/bin"
+
+      if [[ "$name" == "init" ]]; then
+         dest_dir="bin"
+      fi
+
+      cp "$x" $dest_dir
+      strip_binary "$dest_dir/$name"
+
    done
-
-   for x in ${extra_apps[@]}; do
-      cp "$x" usr/bin/
-      strip_binary "usr/bin/$(basename -- $x)"
-   done
-
    unset IFS
 }
 

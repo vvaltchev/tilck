@@ -24,6 +24,8 @@ FAIL_SHELL_NO_ZERO_EXIT = 5
 FAIL_GCOV_ERROR = 6
 
 # Other constants
+INIT_PATH = '/initrd/bin/init'
+DEVSHELL_PATH = '/initrd/usr/bin/devshell'
 KERNEL_HELLO_MSG = 'Hello from Tilck!'
 KERNEL_DUMP_GCDA_STR = '** GCOV gcda files **'
 KERNEL_FILE = '@KERNEL_FILE@'
@@ -217,12 +219,12 @@ def RunTheVM():
       args.append('-enable-kvm')
 
    kernel_cmdline = '-sercon '
-   cmdline = '/bin/devshell'
-   init_opts = ''
+   cmdline = DEVSHELL_PATH
+   init_opts = '-ns'
 
    if dump_coverage:
       cmdline += ' -dcov'
-      init_opts = '-q '
+      init_opts += ' -q'
 
    if in_circleci:
       kernel_cmdline += ' -sat' # enable sched alive (debug) thread
@@ -240,8 +242,7 @@ def RunTheVM():
    else:
       sys.exit(1)
 
-   kernel_cmdline += ' -cmd /bin/init {0} -- {1}'.format(init_opts, cmdline)
-
+   kernel_cmdline += ' -cmd {0} {1} -- {2}'.format(INIT_PATH,init_opts,cmdline)
    args += ['-initrd', FATPART_FILE, '-append', kernel_cmdline]
 
    if verbose:

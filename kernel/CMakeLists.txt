@@ -23,21 +23,7 @@ if (WCONV)
    list(APPEND GENERAL_KERNEL_FLAGS_LIST "-Wconversion")
 endif()
 
-if (FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
-   list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-loop-vectorize)
-endif()
-
-if (FLAG_NO_TREE_VEC_SUPPORTED)
-   list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-vectorize)
-endif()
-
-if (FLAG_NO_TREE_SLP_VEC_SUPPORTED)
-   list(APPEND GENERAL_KERNEL_FLAGS_LIST -fno-tree-slp-vectorize)
-endif()
-
-
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
-
 set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 
 include_directories(${CMAKE_SOURCE_DIR}/include)

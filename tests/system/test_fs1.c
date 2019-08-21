@@ -384,7 +384,7 @@ int cmd_fs5(int argc, char **argv)
    int rc;
 
    if (!FAT_TEST_DIR) {
-      printf("[devshell] Skip fs5 because FAT_TEST_DIR == 0\n");
+      printf(PFX "Skip fs5 because FAT_TEST_DIR == 0\n");
       return 0;
    }
 

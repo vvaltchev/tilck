@@ -18,7 +18,7 @@
 #define DEVSHELL_CMD_ASSERT(x)                                              \
    do {                                                                     \
       if (!(x)) {                                                           \
-         fprintf(stderr, "[devshell] ASSERT '%s' FAILED.\n\t"               \
+         fprintf(stderr, PFX "ASSERT '%s' FAILED.\n\t"                      \
                  "On:\t%s:%d\n\tERRNO:\t%s\n",                              \
                  #x, __FILE__, __LINE__, strerror(errno));                  \
          exit(1);                                                           \
@@ -31,6 +31,7 @@
 #define COLOR_GREEN   "\033[32m"
 #define COLOR_YELLOW  "\033[93m"
 #define RESET_ATTRS   "\033[0m"
+#define PFX           "[devshell] "
 /* --- */
 
 extern bool dump_coverage;
@@ -53,9 +54,10 @@ struct test_cmd_entry {
 };
 
 void run_if_known_command(const char *cmd, int argc, char **argv);
-void dump_list_of_commands(void);
+void dump_list_of_commands_and_exit(void);
 int read_command(char *buf, int buf_size);
 void dump_coverage_files(void);
+void show_common_help_intro(void);
 
 /* From the man page of getdents64() */
 struct linux_dirent64 {

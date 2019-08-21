@@ -301,7 +301,7 @@ out:
 }
 
 // Reboot procedure using the 8042 PS/2 controller
-void reboot(void)
+void x86_pc_8042_reboot(void)
 {
    disable_interrupts_forced(); /* Disable the interrupts before rebooting */
 

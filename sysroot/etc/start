@@ -1,0 +1,28 @@
+#!/initrd/bin/busybox ash
+
+# Symlink the essential directories from /initrd to /
+dirs="bin etc usr"
+
+for d in $dirs; do
+
+   mkdir $d
+   for x in /initrd/$d/*; do
+
+      if [ -f $x ]; then
+
+         ln -s $x $d/
+
+      elif [ -d $x ]; then
+
+         dname=${x##*/}      # like $(basename $x) but does not use sys_pipe()
+         mkdir /$d/$dname
+
+         for y in /initrd/$d/$dname/*; do
+            ln -s $y /$d/$dname/
+         done
+      fi
+   done
+done
+
+# Create symlinks for all the busybox's applets
+/initrd/bin/busybox --install -s /bin

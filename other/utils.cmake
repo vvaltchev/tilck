@@ -36,12 +36,13 @@ macro(define_env_cache_str_var)
          if (NOT "$ENV{${ARGV0}}" STREQUAL "")
             if (NOT "$ENV{${ARGV0}}" STREQUAL "${${ARGV0}}")
 
+               set(msg "")
                string(CONCAT msg "Environment var ${ARGV0}='$ENV{${ARGV0}}' "
                                  "differs from cached value='${${ARGV0}}'. "
                                  "The whole build directory must be ERASED "
                                  "in order to change that.")
 
-               message(FATAL_ERROR "${msg}")
+               message(FATAL_ERROR "\n${msg}")
             endif()
          endif()
       endif()
@@ -65,12 +66,13 @@ macro(define_env_cache_bool_var)
       if (NOT "$ENV{${ARGV0}}" STREQUAL "")
          if (NOT "$ENV{${ARGV0}}" STREQUAL "${_CACHE_${ARGV0}}")
 
+            set(msg "")
             string(CONCAT msg "Environment variable ${ARGV0}='$ENV{${ARGV0}}' "
                               "differs from cached value='${${ARGV0}}'. "
                               "The whole build directory must be ERASED "
                               "in order to change that.")
 
-            message(FATAL_ERROR "${msg}")
+            message(FATAL_ERROR "\n${msg}")
          endif()
       endif()
    endif()

@@ -16,6 +16,8 @@ static const char *const default_env[] =
    "TERM=linux",
    "CONSOLE=/dev/console",
    "TILCK=1",
+   "HOME=/",
+   "PS1=\\[\\e[01;32m\\]\\u@\\h\\[\\e[00m\\]:$PWD# ",
    NULL,
 };
 
@@ -236,15 +238,16 @@ do_execve(task_info *curr_user_task,
           const char *const *argv,
           const char *const *env)
 {
+   task_info *ti = get_curr_task();
    const char *const default_argv[] = { path, NULL };
+   execve_ctx *ctx = (void *) ti->io_copybuf + MAX_PATH;
+   STATIC_ASSERT(IO_COPYBUF_SIZE > MAX_PATH + sizeof(execve_ctx));
 
-   execve_ctx ctx = {
-      .curr_user_task = curr_user_task,
-      .env = env ? env : default_env,
-      .reclvl = 0,
-   };
+   ctx->curr_user_task = curr_user_task;
+   ctx->env = env ? env : default_env;
+   ctx->reclvl = 0;
 
-   return do_execve_int(&ctx, path, argv ? argv : default_argv);
+   return do_execve_int(ctx, path, argv ? argv : default_argv);
 }
 
 int first_execve(const char *path, const char *const *argv)

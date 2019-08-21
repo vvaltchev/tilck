@@ -23,37 +23,51 @@ char **shell_env;
 static char cmd_arg_buffers[MAX_ARGS][256];
 static char *cmd_argv[MAX_ARGS];
 
+static const char *devshell_path[] = {
+
+   "/bin/",
+   "/usr/bin/"
+};
+
+static bool contains_slash(const char *s) {
+
+   for (; *s; s++) {
+      if (*s == '/')
+         return true;
+   }
+
+   return false;
+}
+
 static void shell_builtin_cd(int argc)
 {
    int rc = 0;
    const char *dest_dir = "/";
 
-   if (argc == 2 && strlen(cmd_argv[1])) {
+   if (argc == 2 && strlen(cmd_argv[1]))
       dest_dir = cmd_argv[1];
-   }
 
    if (argc > 2) {
-      printf("cd: too many arguments\n");
+      fprintf(stderr, PFX "cd: too many arguments\n");
       return;
    }
 
-   rc = chdir(dest_dir);
-
-   if (rc < 0)
-      goto cd_error;
-
-   return;
-
-cd_error:
-   perror("cd");
-   return;
+   if (chdir(dest_dir)) {
+      fprintf(stderr,
+              PFX "cd: can't cd to '%s': %s\n",
+              dest_dir,
+              strerror(errno));
+   }
 }
 
-static bool file_exists(const char *filepath)
+static bool is_file(const char *filepath)
 {
    struct stat statbuf;
-   int rc = stat(filepath, &statbuf);
-   return !rc;
+
+   if (stat(filepath, &statbuf) < 0)
+      return false;
+
+   return (statbuf.st_mode & S_IFMT) == S_IFREG;
 }
 
 static void wait_child_cmd(int child_pid)
@@ -67,18 +81,22 @@ static void wait_child_cmd(int child_pid)
       printf("\n");
 
       if (term_sig != SIGINT)
-         printf("[shell] command terminated by signal: %d (%s)\n",
+         printf(PFX "Command terminated by signal: %d (%s)\n",
                 term_sig, strsignal(term_sig));
 
       return;
    }
 
    if (WEXITSTATUS(wstatus))
-      printf("[shell] command exited with status: %d\n", WEXITSTATUS(wstatus));
+      printf(PFX "Command exited with status: %d\n", WEXITSTATUS(wstatus));
 }
 
 static void shell_run_child(int argc)
 {
+   char buf[MAX_PATH];
+   int saved_errno;
+   unsigned i;
+
    /* Reset all the signal handlers to their default behavior */
    for (int i = 1; i < _NSIG; i++)
      signal(i, SIG_DFL);
@@ -87,49 +105,106 @@ static void shell_run_child(int argc)
 
    /* Since we got here, cmd_argv[0] was NOT a known built-in command */
 
-   if (!file_exists(cmd_argv[0]) && argc < MAX_ARGS) {
-      if (file_exists("/bin/busybox")) {
+   if (!contains_slash(cmd_argv[0])) {
 
-         for (int i = argc; i > 0; i--)
-            cmd_argv[i] = cmd_argv[i - 1];
-
-         cmd_argv[++argc] = NULL;
-         cmd_argv[0] = "/bin/busybox";
+      if (argc > MAX_ARGS) {
+         fprintf(stderr, PFX "Too many arguments. Limit: %d\n", MAX_ARGS);
+         exit(1);
       }
+
+      for (i = 0; i < ARRAY_SIZE(devshell_path); i++) {
+
+         strcpy(buf, devshell_path[i]);
+         strcat(buf, cmd_argv[0]);
+
+         if (is_file(buf))
+            break;
+      }
+
+      if (i == ARRAY_SIZE(devshell_path)) {
+         fprintf(stderr, PFX "Command '%s' not found\n", cmd_argv[0]);
+         exit(1);
+      }
+
+      cmd_argv[0] = buf;
    }
 
    execve(cmd_argv[0], cmd_argv, shell_env);
-   int saved_errno = errno;
+
+   /* if we got here, execve() failed */
+   saved_errno = errno;
    perror(cmd_argv[0]);
    exit(saved_errno);
 }
 
-static void process_cmd_line(const char *cmd_line)
+static int parse_cmd_line(const char *cmd_line)
 {
    int argc = 0;
-   const char *p = cmd_line;
+   char quote_char;
+   char *arg = NULL;
+   bool in_arg = false;
+   bool in_quotes = false;
 
-   while (*p && argc < MAX_ARGS) {
+   for (const char *p = cmd_line; *p && *p != '\n'; p++) {
 
-      char *ap = cmd_arg_buffers[argc];
+      if (!in_arg) {
 
-      while (*p == ' ') p++;
+         if (*p == ' ')
+            continue;
 
-      while (*p && *p != ' ' && *p != '\n') {
-         *ap++ = *p++;
+         if (argc == MAX_ARGS)
+            break;
+
+         in_arg = true;
+         cmd_argv[argc] = cmd_arg_buffers[argc];
+         arg = cmd_argv[argc];
+         argc++;
       }
 
-      *ap = 0;
-      cmd_argv[argc] = cmd_arg_buffers[argc];
-      argc++;
+      if (!in_quotes) {
 
-      if (*p == '\n')
-         break;
+         if (*p == ' ') {
+            in_arg = false;
+            *arg = 0;
+            continue;
+         }
+
+         if (*p == '\'' || *p == '"') {
+            in_quotes = true;
+            quote_char = *p;
+            continue;
+         }
+
+      } else {
+
+         if (*p == quote_char) {
+            in_quotes = false;
+            continue;
+         }
+      }
+
+      *arg++ = *p;
    }
+
+   if (in_arg)
+      *arg = 0;
 
    cmd_argv[argc] = NULL;
 
-   if (!cmd_argv[0][0])
+   if (in_quotes) {
+      fprintf(stderr, PFX "ERROR: Unterminated quote %c\n", quote_char);
+      return 0;
+   }
+
+   return argc;
+}
+
+static void process_cmd_line(const char *cmd_line)
+{
+   int child_pid;
+   int argc = parse_cmd_line(cmd_line);
+
+   if (!argc || !cmd_argv[0][0])
       return;
 
    if (!strcmp(cmd_argv[0], "cd")) {
@@ -138,33 +213,28 @@ static void process_cmd_line(const char *cmd_line)
    }
 
    if (!strcmp(cmd_argv[0], "exit")) {
-      printf("[shell] regular exit\n");
       exit(0);
    }
 
-   // printf("[process_cmd_line] args(%i):\n", argc);
-   // for (int i = 0; cmd_argv[i] != NULL; i++)
-   //    printf("[process_cmd_line] argv[%i] = '%s'\n", i, cmd_argv[i]);
-
-   int child_pid = fork();
-
-   if (child_pid < -1) {
+   if ((child_pid = fork()) < 0) {
       perror("fork failed");
       return;
    }
 
    if (!child_pid) {
       shell_run_child(argc);
-   } else {
-      wait_child_cmd(child_pid);
    }
+
+   wait_child_cmd(child_pid);
 }
 
 static void show_help_and_exit(void)
 {
-   printf("\nUsage:\n\n");
+   show_common_help_intro();
+
+   printf(COLOR_RED "Usage:" RESET_ATTRS "\n\n");
    printf("    devshell %-15s Just run the interactive shell\n", " ");
-   printf("    devshell %-15s Show this help and exit\n\n", "-h/--help");
+   printf("    devshell %-15s Show this help and exit\n\n", "-h, --help");
 
    printf("    Internal test-infrastructure options\n");
    printf("    ------------------------------------\n\n");
@@ -179,58 +249,49 @@ static void show_help_and_exit(void)
 
 static void parse_opt(int argc, char **argv)
 {
-begin:
+   for (; argc > 0; argc--, argv++) {
 
-   if (!argc)
-      return;
+      if (!strlen(*argv))
+         continue;
 
-   if (!strlen(*argv)) {
-      argc--; argv++;
-      goto begin;
+      if (!strcmp(*argv, "-h") || !strcmp(*argv, "--help"))
+         show_help_and_exit();
+
+      if (!strcmp(*argv, "-l"))
+         dump_list_of_commands_and_exit();
+
+      if (argc == 1)
+         goto unknown_opt;
+
+      /* argc > 1 */
+
+      if (!strcmp(*argv, "-dcov")) {
+         dump_coverage = true;
+         continue;
+      }
+
+      if (!strcmp(*argv, "-c")) {
+         printf(PFX "Executing built-in command '%s'\n", argv[1]);
+         run_if_known_command(argv[1], argc - 2, argv + 2);
+         printf(PFX "Unknown built-in command '%s'\n", argv[1]);
+         return;
+      }
+
+   unknown_opt:
+      printf(PFX "Unknown option '%s'\n", *argv);
+      break;
    }
-
-   if (!strcmp(*argv, "-h") || !strcmp(*argv, "--help")) {
-      show_help_and_exit();
-   }
-
-   if (!strcmp(*argv, "-l")) {
-      dump_list_of_commands();
-      /* not reached */
-   }
-
-   if (argc == 1)
-      goto unknown_opt;
-
-   /* argc > 1 */
-
-   if (!strcmp(*argv, "-dcov")) {
-      dump_coverage = true;
-      argc--; argv++;
-      goto begin;
-   }
-
-   if (!strcmp(*argv, "-c")) {
-      printf("[shell] Executing built-in command '%s'\n", argv[1]);
-      run_if_known_command(argv[1], argc - 2, argv + 2);
-      printf("[shell] Unknown built-in command '%s'\n", argv[1]);
-      return;
-   }
-
-unknown_opt:
-   printf("[shell] Unknown option '%s'\n", *argv);
 }
 
 int main(int argc, char **argv, char **env)
 {
    static char cmdline_buf[256];
    static char cwd_buf[256];
-   static struct utsname utsname_buf;
+   char uc = '#';
+   int rc;
 
    signal(SIGINT, SIG_IGN);
    signal(SIGQUIT, SIG_IGN);
-
-   int uid = geteuid();
-   struct passwd *pwd = getpwuid(uid);
 
    shell_argv = argv;
    shell_env = env;
@@ -240,35 +301,24 @@ int main(int argc, char **argv, char **env)
       exit(1);
    }
 
-   if (!pwd) {
-      printf("ERROR: getpwuid() returned NULL\n");
-      return 1;
-   }
-
-   if (uname(&utsname_buf) < 0) {
-      perror("uname() failed");
-      return 1;
-   }
+   /* No command specified in the options: run in interactive mode */
+   if (getuid() != 0)
+      uc = '$';
 
    while (true) {
 
       if (getcwd(cwd_buf, sizeof(cwd_buf)) != cwd_buf) {
-         perror("Shell: getcwd() failed");
+         fprintf(stderr, PFX "getcwd() failed: %s", strerror(errno));
          return 1;
       }
 
-      printf("%s@%s:%s%c ",
-             pwd->pw_name,
-             utsname_buf.nodename,
-             cwd_buf,
-             !uid ? '#' : '$');
-
+      printf(COLOR_RED "[TilckDevShell]" RESET_ATTRS ":%s%c ", cwd_buf, uc);
       fflush(stdout);
 
-      int rc = read_command(cmdline_buf, sizeof(cmdline_buf));
+      rc = read_command(cmdline_buf, sizeof(cmdline_buf));
 
       if (rc < 0) {
-         printf("I/O error\n");
+         fprintf(stderr, PFX "I/O error\n");
          break;
       }
 

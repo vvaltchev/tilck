@@ -189,12 +189,23 @@ int load_elf_program(const char *filepath,
                      void **brk_ref)
 {
    fs_handle elf_file = NULL;
+   struct stat64 statbuf;
    elf_headers eh;
    uptr brk = 0;
    int rc;
 
    if ((rc = vfs_open(filepath, &elf_file, O_RDONLY, 0)))
       return rc;
+
+   if ((rc = vfs_fstat64(elf_file, &statbuf))) {
+      vfs_close(elf_file);
+      return rc;
+   }
+
+   if (!(statbuf.st_mode & S_IXUSR)) {
+      vfs_close(elf_file);
+      return -EACCES;
+   }
 
    if ((rc = load_elf_headers(elf_file, header_buf, &eh)))
       return rc;

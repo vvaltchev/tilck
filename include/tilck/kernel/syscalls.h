@@ -40,9 +40,9 @@ int sys_creat(const char *pathname, mode_t mode);
 
 CREATE_STUB_SYSCALL_IMPL(sys_link)
 
-int sys_unlink(const char *pathname);
+int sys_unlink(const char *u_path);
 
-int sys_execve(const char *filename,
+int sys_execve(const char *u_path,
                const char *const *argv,
                const char *const *env);
 
@@ -50,7 +50,9 @@ int sys_chdir(const char *path);
 
 CREATE_STUB_SYSCALL_IMPL(sys_time)
 CREATE_STUB_SYSCALL_IMPL(sys_mknod)
-CREATE_STUB_SYSCALL_IMPL(sys_chmod)
+
+int sys_chmod(const char *u_path, mode_t mode);
+
 CREATE_STUB_SYSCALL_IMPL(sys_lchown16)
 CREATE_STUB_SYSCALL_IMPL(sys_break)
 CREATE_STUB_SYSCALL_IMPL(sys_oldstat)
@@ -81,8 +83,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_utime)
 int sys_access(const char *pathname, int mode);
 
 CREATE_STUB_SYSCALL_IMPL(sys_nice)
-CREATE_STUB_SYSCALL_IMPL(sys_sync)
 
+int sys_sync();
 int sys_kill(int pid, int sig);
 
 CREATE_STUB_SYSCALL_IMPL(sys_rename)
@@ -151,7 +153,9 @@ int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize);
 
 CREATE_STUB_SYSCALL_IMPL(sys_uselib)
 CREATE_STUB_SYSCALL_IMPL(sys_swapon)
-CREATE_STUB_SYSCALL_IMPL(sys_reboot)
+
+int sys_reboot(u32 magic, u32 magic2, u32 cmd, void *arg);
+
 CREATE_STUB_SYSCALL_IMPL(sys_old_readdir)
 CREATE_STUB_SYSCALL_IMPL(sys_old_mmap)
 
@@ -159,7 +163,9 @@ int sys_munmap(void *vaddr, size_t len);
 
 CREATE_STUB_SYSCALL_IMPL(sys_truncate)
 CREATE_STUB_SYSCALL_IMPL(sys_ftruncate)
-CREATE_STUB_SYSCALL_IMPL(sys_fchmod)
+
+int sys_fchmod(int fd, mode_t mode);
+
 CREATE_STUB_SYSCALL_IMPL(sys_fchown16)
 CREATE_STUB_SYSCALL_IMPL(sys_getpriority)
 CREATE_STUB_SYSCALL_IMPL(sys_setpriority)
@@ -290,8 +296,7 @@ int sys_ftruncate64(int fd, s64 length);
 int sys_stat64(const char *user_path, struct stat64 *user_statbuf);
 int sys_lstat64(const char *user_path, struct stat64 *user_statbuf);
 int sys_fstat64(int fd, struct stat64 *user_statbuf);
-
-CREATE_STUB_SYSCALL_IMPL(sys_lchown)
+int sys_lchown(const char *u_path, int owner, int group);
 
 int sys_getuid();
 int sys_getgid();
@@ -302,13 +307,15 @@ CREATE_STUB_SYSCALL_IMPL(sys_setreuid)
 CREATE_STUB_SYSCALL_IMPL(sys_setregid)
 CREATE_STUB_SYSCALL_IMPL(sys_getgroups)
 CREATE_STUB_SYSCALL_IMPL(sys_setgroups)
-CREATE_STUB_SYSCALL_IMPL(sys_fchown)
+
+int sys_fchown(int fd, uid_t owner, gid_t group);
+
 CREATE_STUB_SYSCALL_IMPL(sys_setresuid)
 CREATE_STUB_SYSCALL_IMPL(sys_getresuid)
 CREATE_STUB_SYSCALL_IMPL(sys_setresgid)
 CREATE_STUB_SYSCALL_IMPL(sys_getresgid)
-CREATE_STUB_SYSCALL_IMPL(sys_chown)
 
+int sys_chown(const char *u_path, int owner, int group);
 int sys_setuid(uptr uid);
 int sys_setgid(uptr gid);
 
@@ -318,7 +325,6 @@ CREATE_STUB_SYSCALL_IMPL(sys_pivot_root)
 CREATE_STUB_SYSCALL_IMPL(sys_mincore)
 
 int sys_madvise(void *addr, size_t len, int advice);
-
 int sys_getdents64(int fd, struct linux_dirent64 *dirp, u32 buf_size);
 int sys_fcntl64(int fd, int cmd, int arg);
 int sys_gettid();

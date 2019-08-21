@@ -33,8 +33,8 @@ define_env_cache_bool_var(KERNEL_GCOV)
 
 # USE_SYSCC-related variables
 define_env_cache_bool_var(USE_SYSCC)
-define_env_cache_str_var(OBJCOPY "objcopy")
-define_env_cache_str_var(STRIP "strip")
+define_env_cache_str_var(OBJCOPY "${CMAKE_OBJCOPY}")
+define_env_cache_str_var(STRIP "${CMAKE_STRIP}")
 define_env_cache_str_var(GCOV "gcov")
 
 # Debug cache variables
@@ -44,7 +44,7 @@ define_env_cache_str_var(GCOV "gcov")
 # time CMake is run, it makes sense to check for the next runs whether the env
 # vars CC/CXX changed (if set) by the user or an incorrect script. In case
 # they are, we have to stop the build because their new value will be otherwise
-# completely ignored. In order words, "fail early".
+# completely ignored. In order words, fail *early*.
 
 define_env_cache_str_var(CC "<unset>")
 define_env_cache_str_var(CXX "<unset>")
@@ -179,8 +179,11 @@ set(TCROOT              ${CMAKE_SOURCE_DIR}/toolchain)
 set(BTC_SCRIPT          ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 set(COVERAGE_HTML_DIR   ${CMAKE_BINARY_DIR}/coverage_html)
 
+file(RELATIVE_PATH      BTC_SCRIPT_REL ${CMAKE_SOURCE_DIR} ${BTC_SCRIPT})
+file(RELATIVE_PATH      TCROOT_REL     ${CMAKE_SOURCE_DIR}     ${TCROOT})
+
 if (NOT EXISTS ${TCROOT})
-   message(FATAL_ERROR "Toolchain not found: run ${BTC_SCRIPT} first.")
+   message(FATAL_ERROR "Toolchain not found: run ${BTC_SCRIPT_REL} first.")
 endif()
 
 if (${ARCH} STREQUAL "i386")
@@ -228,10 +231,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 message(STATUS "SYS CC compiler name: ${CMAKE_C_COMPILER_ID}")
 message(STATUS "SYS CXX compiler name: ${CMAKE_CXX_COMPILER_ID}")
-
-CHECK_C_COMPILER_FLAG(-fno-tree-loop-vectorize FLAG_NO_TREE_LOOP_VEC_SUPPORTED)
-CHECK_C_COMPILER_FLAG(-fno-tree-vectorize FLAG_NO_TREE_VEC_SUPPORTED)
-CHECK_C_COMPILER_FLAG(-fno-tree-slp-vectorize FLAG_NO_TREE_SLP_VEC_SUPPORTED)
 
 set(GENERAL_DEFS_LIST "")
 
@@ -314,8 +313,8 @@ endif()
 
 JOIN("${GENERAL_DEFS_LIST}" ${SPACE} GENERAL_DEFS)
 JOIN("${OTHER_CFLAGS_LIST}" ${SPACE} OTHER_CFLAGS)
-JOIN("${OPT_FLAGS_LIST}" ${SPACE} OPT_FLAGS)
-JOIN("${WARN_FLAGS_LIST}" ${SPACE} WARN_FLAGS)
+JOIN("${OPT_FLAGS_LIST}"    ${SPACE} OPT_FLAGS)
+JOIN("${WARN_FLAGS_LIST}"   ${SPACE} WARN_FLAGS)
 
 set(COMMON_FLAGS "${GENERAL_DEFS} ${OTHER_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 
@@ -421,6 +420,7 @@ add_custom_command(
 
       fat_get_used_bytes
       ${CMAKE_BINARY_DIR}/scripts/build_apps/fat_get_used_bytes
+      ${CMAKE_SOURCE_DIR}/sysroot/etc/start
       ${BUILD_SCRIPTS_FILES_LIST}
 
    COMMENT

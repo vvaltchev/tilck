@@ -80,45 +80,45 @@ typedef struct {
 
 } vfs_dent64;
 
-typedef int (*get_dents_func_cb)(vfs_dent64 *, void *);
+typedef int (*get_dents_func_cb) (vfs_dent64 *, void *);
 
 /* fs ops */
-typedef vfs_inode_ptr_t (*func_get_inode)(fs_handle);
+typedef vfs_inode_ptr_t (*func_get_inode) (fs_handle);
 
-typedef void (*func_close) (fs_handle);
-typedef int (*func_open) (vfs_path *, fs_handle *, int, mode_t);
-typedef int (*func_dup) (fs_handle, fs_handle *);
-typedef int (*func_getdents) (fs_handle, get_dents_func_cb, void *);
-typedef int (*func_unlink) (vfs_path *p);
-typedef int (*func_mkdir) (vfs_path *p, mode_t);
-typedef int (*func_rmdir) (vfs_path *p);
-typedef int (*func_symlink) (const char *, vfs_path *);
-typedef int (*func_readlink) (vfs_path *, char *);
-typedef void (*func_fslock_t) (filesystem *);
-typedef int (*func_rr_inode) (filesystem *, vfs_inode_ptr_t);
+typedef void    (*func_close)     (fs_handle);
+typedef int     (*func_open)      (vfs_path *, fs_handle *, int, mode_t);
+typedef int     (*func_dup)       (fs_handle, fs_handle *);
+typedef int     (*func_getdents)  (fs_handle, get_dents_func_cb, void *);
+typedef int     (*func_unlink)    (vfs_path *p);
+typedef int     (*func_mkdir)     (vfs_path *p, mode_t);
+typedef int     (*func_rmdir)     (vfs_path *p);
+typedef int     (*func_symlink)   (const char *, vfs_path *);
+typedef int     (*func_readlink)  (vfs_path *, char *);
+typedef int     (*func_chmod)     (filesystem *, vfs_inode_ptr_t, mode_t);
+typedef void    (*func_fslock_t)  (filesystem *);
+typedef int     (*func_rr_inode)  (filesystem *, vfs_inode_ptr_t);
 
-typedef void (*func_get_entry) (filesystem *fs,
-                                void *dir_inode,
-                                const char *name,
-                                ssize_t name_len,
-                                fs_path_struct *fs_path);
+typedef void    (*func_get_entry) (filesystem *fs,
+                                   void *dir_inode,
+                                   const char *name,
+                                   ssize_t name_len,
+                                   fs_path_struct *fs_path);
 
 /* mixed fs/file ops */
-typedef int (*func_stat) (filesystem *, vfs_inode_ptr_t, struct stat64 *);
-typedef int (*func_truncate) (filesystem *, vfs_inode_ptr_t, off_t);
+typedef int     (*func_stat)   (filesystem *, vfs_inode_ptr_t, struct stat64 *);
+typedef int     (*func_trunc)  (filesystem *, vfs_inode_ptr_t, off_t);
 
 /* file ops */
-typedef ssize_t (*func_read) (fs_handle, char *, size_t);
-typedef ssize_t (*func_write) (fs_handle, char *, size_t);
-typedef off_t (*func_seek) (fs_handle, off_t, int);
-typedef int (*func_ioctl) (fs_handle, uptr, void *);
-typedef int (*func_mmap) (fs_handle, void *vaddr, size_t);
-typedef int (*func_munmap) (fs_handle, void *vaddr, size_t);
-typedef int (*func_fcntl) (fs_handle, int, int);
-typedef void (*func_hlock_t) (fs_handle);
-
-typedef bool (*func_rwe_ready) (fs_handle);
-typedef kcond *(*func_get_rwe_cond) (fs_handle);
+typedef ssize_t (*func_read)         (fs_handle, char *, size_t);
+typedef ssize_t (*func_write)        (fs_handle, char *, size_t);
+typedef off_t   (*func_seek)         (fs_handle, off_t, int);
+typedef int     (*func_ioctl)        (fs_handle, uptr, void *);
+typedef int     (*func_mmap)         (fs_handle, void *vaddr, size_t);
+typedef int     (*func_munmap)       (fs_handle, void *vaddr, size_t);
+typedef int     (*func_fcntl)        (fs_handle, int, int);
+typedef void    (*func_hlock_t)      (fs_handle);
+typedef bool    (*func_rwe_ready)    (fs_handle);
+typedef kcond  *(*func_get_rwe_cond) (fs_handle);
 
 /* Used by the devices when want to remove any locking from a file */
 #define vfs_file_nolock           NULL
@@ -156,7 +156,8 @@ typedef struct {
    func_rmdir rmdir;
    func_symlink symlink;
    func_readlink readlink;
-   func_truncate truncate;
+   func_trunc truncate;
+   func_chmod chmod;
    func_rr_inode retain_inode;
    func_rr_inode release_inode;
 
@@ -231,7 +232,6 @@ typedef struct {
 } fs_handle_base;
 
 
-
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);
 int vfs_ioctl(fs_handle h, uptr request, void *argp);
 int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl);
@@ -246,6 +246,9 @@ int vfs_truncate(const char *path, off_t length);
 int vfs_ftruncate(fs_handle h, off_t length);
 int vfs_symlink(const char *target, const char *linkpath);
 int vfs_readlink(const char *path, char *buf);
+int vfs_chown(const char *path, int owner, int group, bool reslink);
+int vfs_chmod(const char *path, mode_t mode);
+int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);
 
 bool vfs_read_ready(fs_handle h);

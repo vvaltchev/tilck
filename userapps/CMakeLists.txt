@@ -66,7 +66,6 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
    endif()
 # [/ncurses test app]
 
-
 # [extra]
 # This macro makes the integration with extra apps much easier.
 # It's enough for the external app to just add a call to tilck_add_extra_app()
@@ -80,7 +79,8 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
       list(APPEND EXTRA_APPS_LIST_copy ${ARGV0})
       set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST_copy})
       set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST_copy} PARENT_SCOPE)
-      message(STATUS "Adding EXTRA APP: ${ARGV0}")
+      file(RELATIVE_PATH relPath "${CMAKE_BINARY_DIR}" "${ARGV0}")
+      message(STATUS "Adding EXTRA APP: ${relPath}")
    endmacro()
 
    add_subdirectory(extra)
@@ -89,3 +89,50 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
    set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST} PARENT_SCOPE)
 
 # [/extra]
+
+
+# [busybox]
+
+   if (EXISTS ${TCROOT}/busybox/.config)
+      execute_process(
+         COMMAND ${CMAKE_COMMAND}
+         -E compare_files
+            ${TCROOT}/busybox/.config
+            ${CMAKE_SOURCE_DIR}/other/busybox.config
+         RESULT_VARIABLE result
+      )
+
+      if (result EQUAL 1)
+
+         set(msg1 "")
+         string(CONCAT msg1 "The busybox build in the toolchain has a "
+                            "different config than the one in the source. "
+                            "This might have undesired effects. ")
+
+         if ("$ENV{CIRCLECI}" STREQUAL "" AND
+             "$ENV{TRAVIS}" STREQUAL "" AND
+             "$ENV{CI}" STREQUAL "")
+
+            set(msg2 "")
+            string(CONCAT msg2 "How to fix it: \n"
+                               "   1) rm -rf ${TCROOT_REL}/busybox\n"
+                               "   2) ${BTC_SCRIPT_REL} -s build_busybox")
+
+            message(FATAL_ERROR "\n${msg1}\n${msg2}")
+
+         else()
+
+            message(WARNING "\n${msg1}\n${msg2}")
+
+         endif()
+
+      elseif (result EQUAL 0)
+
+         # Nothing to do, everything is fine :-)
+
+      else()
+         message(FATAL_ERROR "Error while comparing the busybox config files.")
+      endif()
+   endif()
+
+# [/busybox]

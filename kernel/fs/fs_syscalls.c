@@ -687,3 +687,82 @@ int sys_fcntl64(int fd, int cmd, int arg)
 
    return rc;
 }
+
+static int
+do_chown(const char *u_path, int owner, int group, bool reslink)
+{
+   task_info *curr = get_curr_task();
+   char *path = curr->args_copybuf;
+   int rc;
+
+   rc = copy_str_from_user(path, u_path, MAX_PATH, NULL);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -ENAMETOOLONG;
+
+   return vfs_chown(path, owner, group, reslink);
+}
+
+int sys_chown(const char *u_path, int owner, int group)
+{
+   return do_chown(u_path, owner, group, true);
+}
+
+int sys_lchown(const char *u_path, int owner, int group)
+{
+   return do_chown(u_path, owner, group, false);
+}
+
+int sys_fchown(int fd, uid_t owner, gid_t group)
+{
+   fs_handle_base *hb;
+   hb = get_fs_handle(fd);
+
+   if (!hb)
+      return -EBADF;
+
+   if (!(hb->fs->flags & VFS_FS_RW))
+      return -EROFS;
+
+   return (owner == 0 && group == 0) ? 0 : -EPERM;
+}
+
+int sys_sync()
+{
+   /* Do nothing, for the moment */
+   return 0;
+}
+
+int sys_chmod(const char *u_path, mode_t mode)
+{
+   task_info *curr = get_curr_task();
+   char *path = curr->args_copybuf;
+   int rc;
+
+   rc = copy_str_from_user(path, u_path, MAX_PATH, NULL);
+
+   if (rc < 0)
+      return -EFAULT;
+
+   if (rc > 0)
+      return -ENAMETOOLONG;
+
+   return vfs_chmod(path, mode);
+}
+
+int sys_fchmod(int fd, mode_t mode)
+{
+   fs_handle_base *hb;
+   hb = get_fs_handle(fd);
+
+   if (!hb)
+      return -EBADF;
+
+   if (!(hb->fs->flags & VFS_FS_RW))
+      return -EROFS;
+
+   return vfs_fchmod(hb, mode);
+}
