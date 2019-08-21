@@ -349,13 +349,20 @@ for embedded systems, making it to run on `ARM` machines has priority over suppo
 powerful enough has absolute priority over the support for any specific architecture.
 `i686` was just a pragmatic choice for its first archicture.
 
-#### Why using FAT32?
+#### Why having support for FAT32?
 
-Even if FAT32 is today the only filesystem supported by `Tilck`, in the next months
-it will be used only as an initial read-only ramdisk. The main filesystem will be a
-custom ramfs, while the FAT32 ramdisk will remain mounted (likely) under /boot. The
-#1 reason for using FAT32 was that it is required for booting using UEFI. Therefore,
-it was convienent to store there also all the rest of the files.
+The 1st reason for using FAT32 was that it is required for booting using UEFI.
+Therefore, it was convienent in terms of reduced complexity (compared to
+supporting `tgz` in the kernel) to store there also all the rest of the "initrd"
+files (init, busybox etc.). After the boot, `ramfs` is mounted at root, while
+the FAT32 boot partition is mounted at /initrd. The 2nd reason for keeping
+/initrd mounted instead of just copying everything in / and then unmounting it,
+is to minimize the peak in memory usage during boot. Consider the idea if having
+a `tgz` archive and having to extract all of its files in the root directory:
+doing that will require, even for short period of time, keeping both the archive
+and the its contents in memory. This is against Tilck's effort to reduce its
+memory footprint as much as possible, allowing it to run, potentially, on very
+limited systems.
 
 #### Why using 3 spaces as (soft) tab size?
 
