@@ -103,11 +103,25 @@ static void dump_var_mtrrs(void)
 
 #endif
 
-void dp_show_sys_mmap(void)
+static void dp_show_sys_mmap(void)
 {
    dump_memory_map(mem_regions, mem_regions_count);
 
 #ifdef __arch__x86__
    dump_var_mtrrs();
 #endif
+}
+
+static dp_screen dp_memmap_screen =
+{
+   .index = 1,
+   .label = "MemMap",
+   .draw_func = dp_show_sys_mmap,
+   .on_keypress_func = NULL,
+};
+
+__attribute__((constructor))
+static void dp_memmap_init(void)
+{
+   dp_register_screen(&dp_memmap_screen);
 }

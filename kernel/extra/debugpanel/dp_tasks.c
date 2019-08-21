@@ -148,7 +148,7 @@ static void debug_dump_task_table_hr(void)
    dp_printkln(GFX_ON "%s" GFX_OFF, debug_get_task_dump_util_str(HLINE));
 }
 
-void do_show_tasks(void)
+static void dp_show_tasks(void)
 {
    dp_printkln("%s", debug_get_task_dump_util_str(HEADER));
    debug_dump_task_table_hr();
@@ -158,4 +158,18 @@ void do_show_tasks(void)
       iterate_over_tasks(debug_per_task_cb, NULL);
    }
    enable_preemption();
+}
+
+static dp_screen dp_tasks_screen =
+{
+   .index = 3,
+   .label = "Tasks",
+   .draw_func = dp_show_tasks,
+   .on_keypress_func = NULL,
+};
+
+__attribute__((constructor))
+static void dp_tasks_init(void)
+{
+   dp_register_screen(&dp_tasks_screen);
 }

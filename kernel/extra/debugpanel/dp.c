@@ -27,40 +27,26 @@ static bool in_debug_panel;
 static bool ui_need_update;
 static tty *dp_tty;
 static tty *saved_tty;
-static const dp_context *dp_ctx;
+static const dp_screen *dp_ctx;
+static list dp_screens_list = make_list(dp_screens_list);
 
-static const dp_context dp_contexts[] =
+void dp_register_screen(dp_screen *screen)
 {
-   {
-      .label = "Options",
-      .draw_func = dp_show_opts,
-      .on_keypress_func = NULL,
-   },
+   dp_screen *pos;
+   list_node *pred = (list_node *)&dp_screens_list;
 
-   {
-      .label = "MemMap",
-      .draw_func = dp_show_sys_mmap,
-      .on_keypress_func = NULL,
-   },
+   list_for_each_ro(pos, &dp_screens_list, node) {
 
-   {
-      .label = "Heaps",
-      .draw_func = dp_show_kmalloc_heaps,
-      .on_keypress_func = NULL,
-   },
+      if (pos->index < screen->index)
+         pred = &pos->node;
 
-   {
-      .label = "Tasks",
-      .draw_func = do_show_tasks,
-      .on_keypress_func = NULL,
-   },
+      if (pos->index == screen->index)
+         panic("[debugpanel] Index conflict while registering %s at %d",
+               screen->label, screen->index);
+   }
 
-   {
-      .label = "IRQs",
-      .draw_func = dp_show_irq_stats,
-      .on_keypress_func = NULL,
-   },
-};
+   list_add_after(pred, &screen->node);
+}
 
 static int dp_debug_panel_off_keypress(u32 key, u8 c)
 {
@@ -75,7 +61,7 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
             return KB_HANDLER_OK_AND_STOP;
          }
 
-         dp_ctx = &dp_contexts[0];
+         dp_ctx = list_first_obj(&dp_screens_list, dp_screen, node);
       }
 
       saved_tty = get_curr_tty();
@@ -131,11 +117,13 @@ void dp_draw_rect(int row, int col, int h, int w)
 
 static void redraw_screen(void)
 {
+   dp_screen *pos;
+
    dp_clear();
    dp_move_cursor(dp_start_row + 1, dp_start_col + 2);
 
-   for (int i = 0; i < (int)ARRAY_SIZE(dp_contexts); i++) {
-      dp_write_header(i+1, dp_contexts[i].label, dp_ctx == &dp_contexts[i]);
+   list_for_each_ro(pos, &dp_screens_list, node) {
+      dp_write_header(pos->index+1, pos->label, pos == dp_ctx);
    }
 
    dp_write_header(12, "Quit", false);
@@ -176,24 +164,27 @@ static int dp_keypress_handler(u32 key, u8 c)
 
    rc = kb_get_fn_key_pressed(key);
 
-   if (rc > 0 && rc <= (int)ARRAY_SIZE(dp_contexts)) {
+   if (rc > 0) {
 
-      /* key F1 .. F5 pressed */
+      dp_screen *pos;
+      list_for_each_ro(pos, &dp_screens_list, node) {
 
-      if (dp_ctx != &dp_contexts[rc-1]) {
-         dp_ctx = &dp_contexts[rc-1];
-         ui_need_update = true;
-      }
-
-   } else {
-
-      if (dp_ctx->on_keypress_func) {
-         rc = dp_ctx->on_keypress_func(key, c);
-
-         if (rc == KB_HANDLER_OK_AND_STOP)
-            return rc; /* skip redraw_screen() */
+         if (pos->index == rc - 1 && pos != dp_ctx) {
+            dp_ctx = pos;
+            ui_need_update = true;
+            break;
+         }
       }
    }
+
+   if (!ui_need_update && dp_ctx->on_keypress_func) {
+
+      rc = dp_ctx->on_keypress_func(key, c);
+
+      if (rc == KB_HANDLER_OK_AND_STOP)
+         return rc; /* skip redraw_screen() */
+   }
+
 
    if (ui_need_update) {
       term_pause_video_output(get_curr_term());
@@ -204,7 +195,7 @@ static int dp_keypress_handler(u32 key, u8 c)
    return KB_HANDLER_OK_AND_STOP;
 }
 
-static keypress_handler_elem debug_keypress_handler_elem =
+static keypress_handler_elem debugpanel_handler_elem =
 {
    .handler = &dp_keypress_handler
 };
@@ -212,5 +203,5 @@ static keypress_handler_elem debug_keypress_handler_elem =
 __attribute__((constructor))
 static void init_debug_panel()
 {
-   kb_register_keypress_handler(&debug_keypress_handler_elem);
+   kb_register_keypress_handler(&debugpanel_handler_elem);
 }

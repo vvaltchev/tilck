@@ -65,11 +65,25 @@ static void debug_dump_unhandled_irq_count(void)
    dp_printkln("");
 }
 
-void dp_show_irq_stats(void)
+static void dp_show_irq_stats(void)
 {
    dp_printkln("Kernel IRQ-related counters\n");
 
    debug_dump_slow_irq_handler_count();
    debug_dump_spur_irq_count();
    debug_dump_unhandled_irq_count();
+}
+
+static dp_screen dp_irqs_screen =
+{
+   .index = 4,
+   .label = "IRQs",
+   .draw_func = dp_show_irq_stats,
+   .on_keypress_func = NULL,
+};
+
+__attribute__((constructor))
+static void dp_irqs_init(void)
+{
+   dp_register_screen(&dp_irqs_screen);
 }

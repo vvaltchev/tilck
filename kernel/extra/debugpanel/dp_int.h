@@ -2,23 +2,21 @@
 
 #pragma once
 #include <tilck/kernel/kb.h>
+#include <tilck/kernel/list.h>
 
 #define DP_W   76
 #define DP_H   23
 
-void dp_show_opts(void);
-void do_show_tasks(void);
-void dp_show_irq_stats(void);
-void dp_show_sys_mmap(void);
-void dp_show_kmalloc_heaps(void);
-
 typedef struct {
 
+   list_node node;
+
+   int index;
    const char *label;
    void (*draw_func)(void);
    keypress_func on_keypress_func;
 
-} dp_context;
+} dp_screen;
 
 extern int dp_rows;
 extern int dp_cols;
@@ -28,3 +26,5 @@ extern int dp_start_col;
 static inline sptr dp_int_abs(sptr val) {
    return val >= 0 ? val : -val;
 }
+
+void dp_register_screen(dp_screen *screen);

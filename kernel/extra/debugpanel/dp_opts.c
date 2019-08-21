@@ -18,7 +18,7 @@
 
 #define R_SHOW_INT(name, val)  dp_printk(DP_COLOR "%-16s: %d", name, val)
 
-void dp_show_opts(void)
+static void dp_show_opts(void)
 {
    const int row = term_get_curr_row(get_curr_term()) + 1;
    const int right_col = dp_start_col + 47;
@@ -83,4 +83,18 @@ void dp_show_opts(void)
 
    dp_move_cursor(row + 9, right_col + 2);
    R_SHOW_INT("FB_FONT_H", fb_get_font_h());
+}
+
+static dp_screen dp_opts_screen =
+{
+   .index = 0,
+   .label = "Options",
+   .draw_func = dp_show_opts,
+   .on_keypress_func = NULL,
+};
+
+__attribute__((constructor))
+static void dp_opts_init(void)
+{
+   dp_register_screen(&dp_opts_screen);
 }

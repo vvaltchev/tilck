@@ -8,7 +8,7 @@
 #include "termutil.h"
 #include "dp_int.h"
 
-void dp_show_kmalloc_heaps(void)
+static void dp_show_kmalloc_heaps(void)
 {
    static size_t heaps_alloc[KMALLOC_HEAPS_COUNT];
    static debug_kmalloc_heap_info hi;
@@ -113,4 +113,18 @@ void dp_show_kmalloc_heaps(void)
 
       heaps_alloc[i] = hi.mem_allocated;
    }
+}
+
+static dp_screen dp_heaps_screen =
+{
+   .index = 2,
+   .label = "Heaps",
+   .draw_func = dp_show_kmalloc_heaps,
+   .on_keypress_func = NULL,
+};
+
+__attribute__((constructor))
+static void dp_heaps_init(void)
+{
+   dp_register_screen(&dp_heaps_screen);
 }
