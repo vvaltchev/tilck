@@ -36,7 +36,7 @@ int dp_start_row;
 int dp_end_row;
 int dp_start_col;
 int dp_screen_start_row;
-int dp_screen_rows_count;
+int dp_screen_rows;
 bool ui_need_update;
 dp_screen *dp_ctx;
 
@@ -56,7 +56,7 @@ static void dp_enter(void)
    dp_start_col = (dp_cols - DP_W) / 2 + 1;
    dp_end_row = dp_start_row + DP_H;
    dp_screen_start_row = dp_start_row + 3;
-   dp_screen_rows_count = (DP_H - 2 - (dp_screen_start_row - dp_start_row));
+   dp_screen_rows = (DP_H - 2 - (dp_screen_start_row - dp_start_row));
 
    list_for_each_ro(pos, &dp_screens_list, node) {
       pos->row_off = 0;
@@ -117,6 +117,8 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
 static void redraw_screen(void)
 {
    dp_screen *pos;
+   char buf[64];
+   int rc;
 
    dp_clear();
    dp_move_cursor(dp_start_row + 1, dp_start_col + 2);
@@ -132,11 +134,16 @@ static void redraw_screen(void)
    dp_draw_rect_raw(dp_start_row, dp_start_col, DP_H, DP_W);
    dp_move_cursor(dp_start_row, dp_start_col + 2);
    dp_write_raw(ESC_COLOR_YELLOW "[ TilckDebugPanel ]" RESET_ATTRS);
-   dp_write_raw("[rows %02d - %02d of %02d]",
-                dp_ctx->row_off + 1,
-                MIN(dp_ctx->row_off + 1 + dp_screen_rows_count,
-                    dp_ctx->row_max + 1),
-                dp_ctx->row_max + 1);
+
+   rc = snprintk(buf, sizeof(buf),
+                 "[rows %02d - %02d of %02d]",
+                 dp_ctx->row_off + 1,
+                 MIN(dp_ctx->row_off + dp_screen_rows, dp_ctx->row_max) + 1,
+                 dp_ctx->row_max + 1);
+
+   dp_move_cursor(dp_end_row - 1, dp_start_col + DP_W - rc - 2);
+   dp_write_raw(ESC_COLOR_RED "%s" RESET_ATTRS, buf);
+
    dp_move_cursor(999,999);
    ui_need_update = false;
 }
@@ -180,7 +187,7 @@ static int dp_keypress_handler(u32 key, u8 c)
 
    } else if (key == KEY_DOWN) {
 
-      if (dp_ctx->row_off + dp_screen_rows_count < dp_ctx->row_max) {
+      if (dp_ctx->row_off + dp_screen_rows < dp_ctx->row_max) {
          dp_ctx->row_off++;
          ui_need_update = true;
       }

@@ -26,7 +26,7 @@ extern int dp_start_row;
 extern int dp_end_row;
 extern int dp_start_col;
 extern int dp_screen_start_row;
-extern int dp_screen_rows_count;
+extern int dp_screen_rows;
 extern bool ui_need_update;
 extern dp_screen *dp_ctx;
 
