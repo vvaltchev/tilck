@@ -17,8 +17,7 @@ static const actions_table_item actions_table[] = {
    [a_reset] = ENTRY(term_action_reset, 1),
    [a_erase_in_display] = ENTRY(term_action_erase_in_display, 1),
    [a_erase_in_line] = ENTRY(term_action_erase_in_line, 1),
-   [a_non_buf_scroll_up] = ENTRY(term_action_non_buf_scroll_up, 1),
-   [a_non_buf_scroll_down] = ENTRY(term_action_non_buf_scroll_down, 1),
+   [a_non_buf_scroll] = ENTRY(term_action_non_buf_scroll, 1),
    [a_pause_video_output] = ENTRY(term_action_pause_video_output, 1),
    [a_restart_video_output] = ENTRY(term_action_restart_video_output, 1),
 };

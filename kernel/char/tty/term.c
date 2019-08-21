@@ -597,6 +597,19 @@ static void term_action_non_buf_scroll_down(term *t, u16 n, ...)
    term_redraw(t);
 }
 
+static void term_action_non_buf_scroll(term *t, u16 n, u16 dir, ...)
+{
+   if (dir == non_buf_scroll_up) {
+
+      term_action_non_buf_scroll_up(t, n);
+
+   } else {
+
+      ASSERT(dir == non_buf_scroll_down);
+      term_action_non_buf_scroll_down(t, n);
+   }
+}
+
 static void term_action_pause_video_output(term *t, ...)
 {
    if (t->vi->disable_static_elems_refresh)

@@ -330,8 +330,9 @@ tty_csi_S_handler(u32 *params,
                   twfilter_ctx_t *ctx)
 {
    *a = (term_action) {
-      .type1 = a_non_buf_scroll_up,
-      .arg = UNSAFE_MAX(1, params[0]),
+      .type2 = a_non_buf_scroll,
+      .arg1 = UNSAFE_MAX(1, params[0]),
+      .arg2 = non_buf_scroll_up,
    };
 }
 
@@ -344,8 +345,9 @@ tty_csi_T_handler(u32 *params,
                   twfilter_ctx_t *ctx)
 {
    *a = (term_action) {
-      .type1 = a_non_buf_scroll_down,
-      .arg = UNSAFE_MAX(1, params[0]),
+      .type2 = a_non_buf_scroll,
+      .arg1 = UNSAFE_MAX(1, params[0]),
+      .arg2 = non_buf_scroll_down,
    };
 }
 

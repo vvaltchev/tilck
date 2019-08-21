@@ -3,23 +3,31 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
+enum term_non_buf_scroll_type {
+   non_buf_scroll_up,
+   non_buf_scroll_down
+};
+
 enum term_action {
 
    a_none,
    a_write,
    a_dwrite_no_filter,   /* direct write w/o filters/scroll/move_cursor/flush */
    a_del,
-   a_scroll,               /* > 0 scrollup: text moves DOWN; < 0 the opposite */
+   a_scroll,               /* arg1 = rows, arg2 = direction */
    a_set_col_offset,
    a_move_ch_and_cur,
    a_move_ch_and_cur_rel,
    a_reset,
    a_erase_in_display,
    a_erase_in_line,
-   a_non_buf_scroll_up,   /* text moves up => new blank lines at the bottom  */
-   a_non_buf_scroll_down, /* text moves down => new blank lines at the top   */
    a_pause_video_output,
-   a_restart_video_output
+   a_restart_video_output,
+   a_non_buf_scroll,   /*
+                        * non_buf scroll: arg1 = rows, arg2 = direction
+                        * up => text moves up => new blank lines at the bottom
+                        * down => text moves down => new blank lines at the top
+                        */
 
 };
 
