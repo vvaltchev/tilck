@@ -56,7 +56,7 @@ static const char *
 debug_get_task_dump_util_str(enum task_dump_util_str t)
 {
    static bool initialized;
-   static char fmt[120] = NO_PREFIX DP_ESC_COLOR;
+   static char fmt[120];
    static char hfmt[120];
    static char header[120];
    static char hline_sep[120] = "qqqqqqqqqqqnqqqqqqqnqqqqqqqnqqqnqqqqqn";
@@ -67,13 +67,13 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
 
       int path_field_len = (DP_W - 80) + 36;
 
-      snprintk(fmt+9, sizeof(fmt)-9,
-               "\033[%dC %%-9d "
+      snprintk(fmt, sizeof(fmt),
+               " %%-9d "
                TERM_VLINE " %%-5d "
                TERM_VLINE " %%-5d "
                TERM_VLINE " %%-1s "
                TERM_VLINE " %%-3d "
-               TERM_VLINE " %%-%ds\n",
+               TERM_VLINE " %%-%ds",
                dp_start_col+1, path_field_len);
 
       snprintk(hfmt, sizeof(hfmt),
@@ -125,8 +125,8 @@ static int debug_per_task_cb(void *obj, void *arg)
    int ttynum = tty_get_num(ti->pi->proc_tty);
 
    if (!is_kernel_thread(ti)) {
-      printk(fmt, ti->tid, ti->pi->pid,
-             ti->pi->parent_pid, state, ttynum, ti->pi->filepath);
+      dp_writeln(fmt, ti->tid, ti->pi->pid,
+                 ti->pi->parent_pid, state, ttynum, ti->pi->filepath);
       return 0;
    }
 
@@ -139,7 +139,7 @@ static int debug_per_task_cb(void *obj, void *arg)
                kfunc, debug_get_tn_for_tasklet_runner(ti));
    }
 
-   printk(fmt, ti->tid, ti->pi->pid, ti->pi->parent_pid, state, 0, buf);
+   dp_writeln(fmt, ti->tid, ti->pi->pid, ti->pi->parent_pid, state, 0, buf);
    return 0;
 }
 

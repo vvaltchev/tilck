@@ -40,7 +40,7 @@ static void dump_memory_map(memory_region_t *regions, int count)
                   ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
    }
 
-   printk(NO_PREFIX "\n");
+   dp_writeln("");
 }
 
 #ifdef __arch__x86__
