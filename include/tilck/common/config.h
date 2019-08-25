@@ -62,11 +62,12 @@
 
 #define USER_VSDO_LIKE_PAGE_VADDR  (LINEAR_MAPPING_END)
 
-#define MAX_TTYS                  9
-#define TERM_SCROLL_LINES         5
-#define MAX_MOUNTPOINTS          16
-#define MAX_NESTED_INTERRUPTS    32
-#define TTY_INPUT_BS           1024
+#define MAX_TTYS                                    9
+#define TERM_SCROLL_LINES                           5
+#define MAX_MOUNTPOINTS                            16
+#define MAX_NESTED_INTERRUPTS                      32
+#define TTY_INPUT_BS                             1024
+#define FBCON_OPT_FUNCS_MIN_FREE_HEAP       (16 * MB)
 
 /*
  * User tasks constants

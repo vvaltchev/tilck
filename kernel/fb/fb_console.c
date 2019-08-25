@@ -392,6 +392,11 @@ static void fb_use_optimized_funcs_if_possible(void)
       return;
    }
 
+   if (kmalloc_get_max_tot_heap_free() < FBCON_OPT_FUNCS_MIN_FREE_HEAP) {
+      printk("[fb_console] Not using fast funcs in order to save memory\n");
+      return;
+   }
+
    if (kthread_create(async_pre_render_scanlines, NULL) < 0)
       printk("[fb_console] WARNING: unable to create a kthread for "
              "async_pre_render_scanlines\n");
