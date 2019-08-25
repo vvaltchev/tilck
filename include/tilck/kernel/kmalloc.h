@@ -106,6 +106,7 @@ static inline void *kzmalloc(size_t size)
 }
 
 size_t kmalloc_get_heap_struct_size(void);
+size_t kmalloc_get_max_tot_heap_free(void);
 
 void *mdalloc(size_t size);
 void mdfree(void *b);

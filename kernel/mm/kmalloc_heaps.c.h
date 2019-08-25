@@ -19,6 +19,7 @@
 STATIC kmalloc_heap first_heap_struct;
 STATIC kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
 STATIC u32 used_heaps;
+STATIC size_t max_tot_heap_mem_free;
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
@@ -300,6 +301,21 @@ void init_kmalloc(void)
    insertion_sort_ptr(heaps,
                       used_heaps,
                       greater_than_heap_cmp);
+
+   for (int i = 0; i < KMALLOC_HEAPS_COUNT; i++) {
+
+      kmalloc_heap *h = heaps[i];
+
+      if (!h)
+         continue;
+
+      max_tot_heap_mem_free += (h->size - h->mem_allocated);
+   }
+}
+
+size_t kmalloc_get_max_tot_heap_free(void)
+{
+   return max_tot_heap_mem_free;
 }
 
 bool
