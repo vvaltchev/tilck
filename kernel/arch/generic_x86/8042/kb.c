@@ -25,19 +25,12 @@ enum kb_state {
 
 };
 
-typedef struct {
-
-   list_node node;
-   keypress_func handler;
-
-} keypress_handler_elem;
-
 int kb_tasklet_runner = -1;
 static enum kb_state kb_curr_state;
 static bool key_pressed_state[2][128];
 static bool numLock = true;
 static bool capsLock = false;
-static list keypress_handlers;
+static list keypress_handlers = make_list(keypress_handlers);
 
 bool kb_is_pressed(u32 key)
 {
@@ -81,18 +74,9 @@ static u8 translate_printable_key(u32 key)
    return c;
 }
 
-int kb_register_keypress_handler(keypress_func f)
+void kb_register_keypress_handler(keypress_handler_elem *e)
 {
-   keypress_handler_elem *e = kmalloc(sizeof(keypress_handler_elem));
-
-   if (!e)
-      return -ENOMEM;
-
-   list_node_init(&e->node);
-   e->handler = f;
-
    list_add_tail(&keypress_handlers, &e->node);
-   return 0;
 }
 
 static int kb_call_keypress_handlers(u32 raw_key, u8 printable_char)
@@ -307,12 +291,10 @@ static irq_handler_node kb_irq_handler_node = {
    .handler = keyboard_irq_handler,
 };
 
-/* This will be executed in a tasklet */
+/* This will be executed in a kernel thread */
 void init_kb(void)
 {
    disable_preemption();
-
-   list_init(&keypress_handlers);
 
    if (!kb_ctrl_self_test()) {
 

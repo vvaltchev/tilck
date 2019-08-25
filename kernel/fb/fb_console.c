@@ -287,9 +287,15 @@ static void fb_draw_banner(void)
    if (get_curr_tty())
       ttynum = get_curr_tty_num();
 
-   rc = snprintk(lbuf, fb_term_cols - 1,
-                 "Tilck [%s] framebuffer console [tty %d]",
-                 BUILDTYPE_STR, ttynum);
+   if (ttynum > 0) {
+      rc = snprintk(lbuf, fb_term_cols - 1,
+                    "Tilck [%s] fb console [tty %d]",
+                    BUILDTYPE_STR, ttynum);
+   } else {
+      rc = snprintk(lbuf, fb_term_cols - 1,
+                    "Tilck [%s] fb console [tty: kernel debug panel]",
+                    BUILDTYPE_STR);
+   }
 
    ASSERT(rc > 0);
    llen = MIN((u16)rc, fb_term_cols - 1);
@@ -321,7 +327,7 @@ static void fb_draw_banner(void)
                       vga_rgb_colors[COLOR_BLACK]);
 }
 
-static void fb_update_banner_kthread()
+static void fb_update_banner()
 {
    while (true) {
 
@@ -383,6 +389,11 @@ static void fb_use_optimized_funcs_if_possible(void)
       printk("[fb_console] WARNING: using slower code for bpp = %d\n",
              fb_get_bpp());
       printk("[fb_console] switch to a resolution with bpp = 32 if possible\n");
+      return;
+   }
+
+   if (kmalloc_get_max_tot_heap_free() < FBCON_OPT_FUNCS_MIN_FREE_HEAP) {
+      printk("[fb_console] Not using fast funcs in order to save memory\n");
       return;
    }
 
@@ -453,8 +464,8 @@ void init_framebuffer_console(void)
    }
 
    if (fb_offset_y) {
-      if (kthread_create(fb_update_banner_kthread, NULL) < 0)
-         printk("WARNING: unable to create the fb_update_banner_kthread\n");
+      if (kthread_create(fb_update_banner, NULL) < 0)
+         printk("WARNING: unable to create the fb_update_banner\n");
    }
 }
 

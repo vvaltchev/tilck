@@ -106,14 +106,43 @@ static inline void *kzmalloc(size_t size)
 }
 
 size_t kmalloc_get_heap_struct_size(void);
+size_t kmalloc_get_max_tot_heap_free(void);
 
 void *mdalloc(size_t size);
 void mdfree(void *b);
 
 
-/* kmalloc debug helpers */
+/* ----------------- kmalloc debug helpers -------------------- */
 
-void debug_kmalloc_dump_mem_usage(void);
+typedef struct {
+
+   uptr vaddr;
+   size_t size;
+   size_t mem_allocated;
+   size_t min_block_size;
+   size_t alloc_block_size;
+   int region;
+
+} debug_kmalloc_heap_info;
+
+typedef struct {
+
+   int tot_count;
+   int peak_count;
+   int not_full_count;
+   int peak_not_full_count;
+
+} kmalloc_small_heaps_stats;
+
+typedef struct {
+
+   kmalloc_small_heaps_stats small_heaps;
+
+} debug_kmalloc_stats;
+
+bool debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i);
+void debug_kmalloc_get_stats(debug_kmalloc_stats *stats);
+
 void debug_kmalloc_start_leak_detector(bool save_metadata);
 void debug_kmalloc_stop_leak_detector(bool show_leaks);
 

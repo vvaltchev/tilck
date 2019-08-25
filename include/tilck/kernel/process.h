@@ -227,4 +227,3 @@ void task_temp_kernel_free(void *ptr);
 void process_set_cwd2_nolock(vfs_path *tp);
 void process_set_cwd2_nolock_raw(process_info *pi, vfs_path *tp);
 void terminate_process(task_info *ti, int exit_code, int term_sig);
-void debug_show_task_list(void);

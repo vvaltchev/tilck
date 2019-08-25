@@ -13,5 +13,3 @@ void irq_uninstall_handler(u8 irq, irq_handler_node *n);
 
 void irq_set_mask(int irq);
 void irq_clear_mask(int irq);
-
-void debug_show_spurious_irq_count(void);

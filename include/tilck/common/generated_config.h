@@ -25,9 +25,9 @@
 #define TTY_COUNT              (@TTY_COUNT@)
 
 /* enabled by default */
-#cmakedefine01 KERNEL_TRACK_NESTED_INTERRUPTS
+#cmakedefine01 KRN_TRACK_NESTED_INTERR
 #cmakedefine01 PANIC_SHOW_STACKTRACE
-#cmakedefine01 DEBUG_CHECKS_IN_RELEASE_BUILD
+#cmakedefine01 DEBUG_CHECKS_IN_RELEASE
 #cmakedefine01 KERNEL_SELFTESTS
 
 /* disabled by default */
@@ -38,11 +38,10 @@
 #cmakedefine01 KMALLOC_FREE_MEM_POISONING
 #cmakedefine01 KMALLOC_SUPPORT_DEBUG_LOG
 #cmakedefine01 KMALLOC_SUPPORT_LEAK_DETECTOR
-#cmakedefine01 KMALLOC_HEAPS_CREATION_DEBUG
 #cmakedefine01 BOOTLOADER_POISON_MEMORY
 #cmakedefine01 FAT_TEST_DIR
 
-#if DEBUG_CHECKS_IN_RELEASE_BUILD
+#if DEBUG_CHECKS_IN_RELEASE
    #ifdef NDEBUG
       #undef NDEBUG
       #define DEBUG

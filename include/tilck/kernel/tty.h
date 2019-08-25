@@ -23,3 +23,7 @@ static inline int get_curr_tty_num(void)
 {
    return tty_get_num(get_curr_tty());
 }
+
+/* Used only by the debug panel */
+int set_curr_tty(tty *t);
+tty *create_tty_nodev(void);

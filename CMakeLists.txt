@@ -86,17 +86,20 @@ set(USERAPPS_CFLAGS "-ggdb" CACHE STRING "Build flags for C/C++ user programs")
 
 # Kernel options (enabled by default)
 
-set(KERNEL_TRACK_NESTED_INTERRUPTS ON CACHE BOOL
+set(KRN_TRACK_NESTED_INTERR ON CACHE BOOL
     "Track the nested interrupts")
 
 set(PANIC_SHOW_STACKTRACE ON CACHE BOOL
     "Show the stacktrace in case of a kernel panic")
 
-set(DEBUG_CHECKS_IN_RELEASE_BUILD ON CACHE BOOL
+set(DEBUG_CHECKS_IN_RELEASE ON CACHE BOOL
     "Keep checking ASSERTs and other debug checks even in release builds")
 
 set(KERNEL_SELFTESTS ON CACHE BOOL
-    "Compile the kernel with self tests support")
+    "Compile-in self-tests in the kernel")
+
+set(KERNEL_DEBUG_PANEL ON CACHE BOOL
+    "Compile-in the debug panel in the kernel")
 
 # Kernel options (disabled by default)
 
@@ -124,9 +127,6 @@ set(KMALLOC_SUPPORT_DEBUG_LOG OFF CACHE BOOL
 set(KMALLOC_SUPPORT_LEAK_DETECTOR OFF CACHE BOOL
     "Compile-in kmalloc's leak detector")
 
-set(KMALLOC_HEAPS_CREATION_DEBUG OFF CACHE BOOL
-    "Make init_kmalloc() to list the heaps")
-
 set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
     "Make the bootloader to poison all the available memory")
 
@@ -149,9 +149,9 @@ list(
    USER_STACK_PAGES
 
    # Boolean options ENABLED by default
-   KERNEL_TRACK_NESTED_INTERRUPTS
+   KRN_TRACK_NESTED_INTERR
    PANIC_SHOW_STACKTRACE
-   DEBUG_CHECKS_IN_RELEASE_BUILD
+   DEBUG_CHECKS_IN_RELEASE
    KERNEL_SELFTESTS
 
    # Boolean options DISABLED by default
@@ -165,7 +165,6 @@ list(
    KMALLOC_FREE_MEM_POISONING
    KMALLOC_SUPPORT_DEBUG_LOG
    KMALLOC_SUPPORT_LEAK_DETECTOR
-   KMALLOC_HEAPS_CREATION_DEBUG
    BOOTLOADER_POISON_MEMORY
    WCONV
    FAT_TEST_DIR

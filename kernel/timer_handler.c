@@ -14,7 +14,7 @@
 
 u64 __ticks; /* ticks since the timer started */
 
-#if KERNEL_TRACK_NESTED_INTERRUPTS
+#if KRN_TRACK_NESTED_INTERR
 u32 slow_timer_irq_handler_count;
 #endif
 
@@ -179,10 +179,10 @@ static ALWAYS_INLINE void debug_timer_irq_sanity_checks(void)
     * The ASSERT below checks that.
     */
 
-#if defined(DEBUG) && KERNEL_TRACK_NESTED_INTERRUPTS
+#if defined(DEBUG) && KRN_TRACK_NESTED_INTERR
    {
       uptr var;
-      disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
+      disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
       int c = get_nested_interrupts_count();
       ASSERT(c == 1 || (c == 2 && in_syscall()));
       enable_interrupts(&var);
@@ -193,10 +193,10 @@ static ALWAYS_INLINE void debug_timer_irq_sanity_checks(void)
 static ALWAYS_INLINE bool timer_nested_irq(void)
 {
 
-#if KERNEL_TRACK_NESTED_INTERRUPTS
+#if KRN_TRACK_NESTED_INTERR
 
    uptr var;
-   disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
+   disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
 
    if (in_nested_irq_num(X86_PC_TIMER_IRQ)) {
       slow_timer_irq_handler_count++;
@@ -213,7 +213,7 @@ static ALWAYS_INLINE bool timer_nested_irq(void)
 
 enum irq_action timer_irq_handler(regs *context)
 {
-   if (KERNEL_TRACK_NESTED_INTERRUPTS)
+   if (KRN_TRACK_NESTED_INTERR)
       if (timer_nested_irq())
          return IRQ_FULLY_HANDLED;
 

@@ -39,6 +39,14 @@ set(
    "${CMAKE_SOURCE_DIR}/common/*.c"
 )
 
+if (KERNEL_DEBUG_PANEL)
+   list(
+         APPEND
+         KERNEL_NOARCH_SOURCES_GLOB
+         "${CMAKE_SOURCE_DIR}/kernel/extra/debugpanel/*.c"
+   )
+endif()
+
 if (KERNEL_SELFTESTS)
    list(
          APPEND

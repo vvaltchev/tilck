@@ -15,7 +15,7 @@ void handle_syscall(regs *);
 void handle_fault(regs *);
 void handle_irq(regs *r);
 
-#if KERNEL_TRACK_NESTED_INTERRUPTS
+#if KRN_TRACK_NESTED_INTERR
 
 static int nested_interrupts_count;
 static int nested_interrupts[MAX_NESTED_INTERRUPTS] =
@@ -26,7 +26,7 @@ static int nested_interrupts[MAX_NESTED_INTERRUPTS] =
 inline void push_nested_interrupt(int int_num)
 {
    uptr var;
-   disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
+   disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
    {
       ASSERT(nested_interrupts_count < MAX_NESTED_INTERRUPTS);
       ASSERT(nested_interrupts_count >= 0);
@@ -38,7 +38,7 @@ inline void push_nested_interrupt(int int_num)
 inline void pop_nested_interrupt(void)
 {
    uptr var;
-   disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
+   disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
    {
       nested_interrupts_count--;
       ASSERT(nested_interrupts_count >= 0);
@@ -62,7 +62,7 @@ void check_not_in_irq_handler(void)
    uptr var;
 
    if (!in_panic()) {
-      disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
+      disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
       {
          if (nested_interrupts_count > 0)
             if (is_irq(nested_interrupts[nested_interrupts_count - 1]))
@@ -79,7 +79,7 @@ void check_in_no_other_irq_than_timer(void)
    if (in_panic())
       return;
 
-   disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
+   disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
    {
       if (nested_interrupts_count > 0) {
 
@@ -98,7 +98,7 @@ void check_in_irq_handler(void)
 
    if (!in_panic()) {
 
-      disable_interrupts(&var); /* under #if KERNEL_TRACK_NESTED_INTERRUPTS */
+      disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
 
       if (nested_interrupts_count > 0) {
          if (is_irq(nested_interrupts[nested_interrupts_count - 1])) {
@@ -196,7 +196,7 @@ static void DEBUG_check_preemption_enabled_for_usermode(void)
 static ALWAYS_INLINE void DEBUG_check_not_same_interrupt_nested(int n) { }
 static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode(void) { }
 
-#endif // KERNEL_TRACK_NESTED_INTERRUPTS
+#endif // KRN_TRACK_NESTED_INTERR
 
 
 void irq_entry(regs *r)

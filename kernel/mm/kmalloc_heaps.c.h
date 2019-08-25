@@ -19,6 +19,7 @@
 STATIC kmalloc_heap first_heap_struct;
 STATIC kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
 STATIC u32 used_heaps;
+STATIC size_t max_tot_heap_mem_free;
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
@@ -301,8 +302,46 @@ void init_kmalloc(void)
                       used_heaps,
                       greater_than_heap_cmp);
 
-#if KMALLOC_HEAPS_CREATION_DEBUG
-   debug_dump_all_heaps_info();
-#endif
+   for (int i = 0; i < KMALLOC_HEAPS_COUNT; i++) {
+
+      kmalloc_heap *h = heaps[i];
+
+      if (!h)
+         continue;
+
+      max_tot_heap_mem_free += (h->size - h->mem_allocated);
+   }
 }
 
+size_t kmalloc_get_max_tot_heap_free(void)
+{
+   return max_tot_heap_mem_free;
+}
+
+bool
+debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i)
+{
+   kmalloc_heap *h = heaps[heap_num];
+
+   if (!h)
+      return false;
+
+   *i = (debug_kmalloc_heap_info) {
+      .vaddr = h->vaddr,
+      .size = h->size,
+      .mem_allocated = h->mem_allocated,
+      .min_block_size = h->min_block_size,
+      .alloc_block_size = h->alloc_block_size,
+      .region = h->region,
+   };
+
+   return true;
+}
+
+void
+debug_kmalloc_get_stats(debug_kmalloc_stats *stats)
+{
+   *stats = (debug_kmalloc_stats) {
+      .small_heaps = shs
+   };
+}

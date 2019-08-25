@@ -103,7 +103,7 @@ void init_irq_handling(void)
 
 static inline void handle_irq_set_mask(int irq)
 {
-   if (KERNEL_TRACK_NESTED_INTERRUPTS) {
+   if (KRN_TRACK_NESTED_INTERR) {
 
       /*
        * We can really allow nested IRQ0 only if we track the nested interrupts,
@@ -121,7 +121,7 @@ static inline void handle_irq_set_mask(int irq)
 
 static inline void handle_irq_clear_mask(int irq)
 {
-   if (KERNEL_TRACK_NESTED_INTERRUPTS) {
+   if (KRN_TRACK_NESTED_INTERR) {
 
       if (irq != X86_PC_TIMER_IRQ)
          irq_clear_mask(irq);

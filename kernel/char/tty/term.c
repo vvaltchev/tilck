@@ -20,6 +20,8 @@
 struct term {
 
    bool initialized;
+   bool cursor_enabled;
+
    u16 tabsize;
    u16 cols;
    u16 rows;
@@ -107,6 +109,21 @@ static ALWAYS_INLINE u8 get_curr_cell_color(term *t)
    return vgaentry_get_color(buffer_get_entry(t, t->r, t->c));
 }
 
+static void term_action_enable_cursor(term *t, u16 val, ...)
+{
+   if (val == 0) {
+
+      t->vi->disable_cursor();
+      t->cursor_enabled = false;
+
+   } else {
+
+      ASSERT(val == 1);
+      t->vi->enable_cursor();
+      t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+      t->cursor_enabled = true;
+   }
+}
 static void term_redraw(term *t)
 {
    if (!t->buffer)
@@ -138,7 +155,7 @@ static void ts_set_scroll(term *t, u32 requested_scroll)
          ? t->max_scroll - t->extra_buffer_rows
          : 0;
 
-   requested_scroll = BOUND(requested_scroll, min_scroll, t->max_scroll);
+   requested_scroll = CLAMP(requested_scroll, min_scroll, t->max_scroll);
 
    if (requested_scroll == t->scroll)
       return; /* nothing to do */
@@ -190,11 +207,17 @@ static void term_int_scroll_up(term *t, u32 lines)
 {
    ts_scroll_up(t, lines);
 
-   if (!ts_is_at_bottom(t)) {
-      t->vi->disable_cursor();
-   } else {
-      t->vi->enable_cursor();
-      t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+   if (t->cursor_enabled) {
+
+      if (!ts_is_at_bottom(t)) {
+
+         t->vi->disable_cursor();
+
+      } else {
+
+         t->vi->enable_cursor();
+         t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+      }
    }
 
    if (t->vi->flush_buffers)
@@ -205,9 +228,11 @@ static void term_int_scroll_down(term *t, u32 lines)
 {
    ts_scroll_down(t, lines);
 
-   if (ts_is_at_bottom(t)) {
-      t->vi->enable_cursor();
-      t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+   if (t->cursor_enabled) {
+      if (ts_is_at_bottom(t)) {
+         t->vi->enable_cursor();
+         t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+      }
    }
 
    if (t->vi->flush_buffers)
@@ -400,7 +425,8 @@ static void term_action_write(term *t, char *buf, u32 len, u8 color)
          term_execute_action(t, &a);
    }
 
-   vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+   if (t->cursor_enabled)
+      vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (vi->flush_buffers)
       vi->flush_buffers();
@@ -427,9 +453,11 @@ static void term_action_move_ch_and_cur(term *t, int row, int col, ...)
    if (!t->buffer)
       return;
 
-   t->r = (u16) BOUND(row, 0, t->rows - 1);
-   t->c = (u16) BOUND(col, 0, t->cols - 1);
-   t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+   t->r = (u16) CLAMP(row, 0, t->rows - 1);
+   t->c = (u16) CLAMP(col, 0, t->cols - 1);
+
+   if (t->cursor_enabled)
+      t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (t->vi->flush_buffers)
       t->vi->flush_buffers();
@@ -440,9 +468,11 @@ static void term_action_move_ch_and_cur_rel(term *t, s8 dr, s8 dc, ...)
    if (!t->buffer)
       return;
 
-   t->r = (u16) BOUND((int)t->r + dr, 0, t->rows - 1);
-   t->c = (u16) BOUND((int)t->c + dc, 0, t->cols - 1);
-   t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+   t->r = (u16) CLAMP((int)t->r + dr, 0, t->rows - 1);
+   t->c = (u16) CLAMP((int)t->c + dc, 0, t->cols - 1);
+
+   if (t->cursor_enabled)
+      t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 
    if (t->vi->flush_buffers)
       t->vi->flush_buffers();
@@ -511,8 +541,10 @@ static void term_action_erase_in_display(term *t, int mode, ...)
             u16 row = t->r;
             u16 col = t->c;
             term_action_reset(t);
-            t->vi->move_cursor(row, col, make_color(DEFAULT_FG_COLOR,
-                                                    DEFAULT_BG_COLOR));
+
+            if (t->cursor_enabled)
+               t->vi->move_cursor(row, col, make_color(DEFAULT_FG_COLOR,
+                                                       DEFAULT_BG_COLOR));
          }
          break;
 
@@ -597,6 +629,19 @@ static void term_action_non_buf_scroll_down(term *t, u16 n, ...)
    term_redraw(t);
 }
 
+static void term_action_non_buf_scroll(term *t, u16 n, u16 dir, ...)
+{
+   if (dir == non_buf_scroll_up) {
+
+      term_action_non_buf_scroll_up(t, n);
+
+   } else {
+
+      ASSERT(dir == non_buf_scroll_down);
+      term_action_non_buf_scroll_down(t, n);
+   }
+}
+
 static void term_action_pause_video_output(term *t, ...)
 {
    if (t->vi->disable_static_elems_refresh)
@@ -612,8 +657,7 @@ static void term_action_restart_video_output(term *t, ...)
    t->vi = t->saved_vi;
 
    term_redraw(t);
-   t->vi->enable_cursor();
-   t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+   term_action_enable_cursor(t, t->cursor_enabled);
 
    if (t->vi->redraw_static_elements)
       t->vi->redraw_static_elements();
@@ -779,6 +823,7 @@ init_term(term *t,
          printk("ERROR: unable to allocate the term buffer.\n");
    }
 
+   t->cursor_enabled = true;
    t->vi->enable_cursor();
    term_action_move_ch_and_cur(t, 0, 0);
 

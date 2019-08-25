@@ -259,14 +259,19 @@ int tty_keypress_handler_int(tty *t, u32 key, u8 c, bool check_mods)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
-static void set_curr_tty(tty *t)
+int set_curr_tty(tty *t)
 {
+   int res = -EPERM;
    disable_preemption();
    {
-      __curr_tty = t;
-      set_curr_term(t->term_inst);
+      if (__curr_tty->kd_mode == KD_TEXT) {
+         __curr_tty = t;
+         set_curr_term(t->term_inst);
+         res = 0;
+      }
    }
    enable_preemption();
+   return res;
 }
 
 int tty_keypress_handler(u32 key, u8 c)

@@ -20,8 +20,8 @@ void bt_setcolor(u8 color)
 
 void bt_movecur(int row, int col)
 {
-   row = BOUND(row, 0, TERM_ROWS - 1);
-   col = BOUND(col, 0, TERM_COLS - 1);
+   row = CLAMP(row, 0, TERM_ROWS - 1);
+   col = CLAMP(col, 0, TERM_COLS - 1);
 
    u16 position = row * TERM_COLS + col;
 

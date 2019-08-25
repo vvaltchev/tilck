@@ -330,8 +330,9 @@ tty_csi_S_handler(u32 *params,
                   twfilter_ctx_t *ctx)
 {
    *a = (term_action) {
-      .type1 = a_non_buf_scroll_up,
-      .arg = UNSAFE_MAX(1, params[0]),
+      .type2 = a_non_buf_scroll,
+      .arg1 = UNSAFE_MAX(1, params[0]),
+      .arg2 = non_buf_scroll_up,
    };
 }
 
@@ -344,8 +345,9 @@ tty_csi_T_handler(u32 *params,
                   twfilter_ctx_t *ctx)
 {
    *a = (term_action) {
-      .type1 = a_non_buf_scroll_down,
-      .arg = UNSAFE_MAX(1, params[0]),
+      .type2 = a_non_buf_scroll,
+      .arg1 = UNSAFE_MAX(1, params[0]),
+      .arg2 = non_buf_scroll_down,
    };
 }
 
@@ -446,6 +448,45 @@ tty_csi_hpa_handler(u32 *params,
    };
 }
 
+static void
+tty_csi_pvt_ext_handler(u32 *params,
+                        int pc,
+                        u8 c,
+                        u8 *color,
+                        term_action *a,
+                        twfilter_ctx_t *ctx)
+{
+   tty *const t = ctx->t;
+
+   switch (params[0]) {
+
+      case 25:
+         if (c == 'h') {
+
+            /* Show the cursor */
+            term_set_cursor_enabled(t->term_inst, true);
+
+         } else if (c == 'l') {
+
+            /* Hide the cursor */
+            term_set_cursor_enabled(t->term_inst, false);
+         }
+         break;
+
+      case 1049:
+         if (c == 'h') {
+            /* Enable alternative screen buffer: not supported */
+         } else if (c == 'l') {
+            /* Disable alternative screen buffer: not supported */
+         }
+         break;
+
+      default:
+         /* unknown private CSI extension: do nothing */
+         break;
+   }
+}
+
 typedef void (*csi_seq_handler)(u32 *params,
                                 int pc,
                                 u8 c,
@@ -484,6 +525,7 @@ tty_filter_end_csi_seq(u8 c,
 {
    const char *endptr;
    u32 params[NPAR] = {0};
+   bool csi_pvt_ext = false;
    int pc = 0;
 
    ctx->param_bytes[ctx->pbc] = 0;
@@ -493,13 +535,26 @@ tty_filter_end_csi_seq(u8 c,
 
       endptr = ctx->param_bytes - 1;
 
+      if (ctx->param_bytes[0] == '?') {
+         csi_pvt_ext = true;
+         endptr++;
+      }
+
       do {
          params[pc++] = (u32) tilck_strtol(endptr + 1, &endptr, NULL);
       } while (*endptr);
    }
 
-   if (csi_handlers[c])
-      csi_handlers[c](params, pc, c, color, a, ctx);
+   if (LIKELY(!csi_pvt_ext)) {
+
+      if (LIKELY(csi_handlers[c] != NULL))
+         csi_handlers[c](params, pc, c, color, a, ctx);
+
+   } else {
+
+      /* CSI ? <n> <c> */
+      tty_csi_pvt_ext_handler(params, pc, c, color, a, ctx);
+   }
 
    tty_reset_filter_ctx(ctx);
    return TERM_FILTER_WRITE_BLANK;
