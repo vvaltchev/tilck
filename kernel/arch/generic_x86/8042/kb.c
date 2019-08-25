@@ -76,7 +76,6 @@ static u8 translate_printable_key(u32 key)
 
 void kb_register_keypress_handler(keypress_handler_elem *e)
 {
-   list_node_init(&e->node);
    list_add_tail(&keypress_handlers, &e->node);
 }
 
