@@ -18,8 +18,9 @@
 
 #include <tilck/common/basic_defs.h> /* for MIN() and ARRAY_SIZE() */
 
+#define BUSYBOX         "/initrd/bin/busybox"
 #define START_SCRIPT    "/initrd/etc/start"
-#define DEFAULT_SHELL   "/usr/bin/devshell"
+#define DEFAULT_SHELL   "/initrd/usr/bin/devshell"
 
 static char *start_script_args[2] = { START_SCRIPT, NULL };
 static char *shell_args[16] = { DEFAULT_SHELL, [1 ... 15] = NULL };
@@ -102,7 +103,16 @@ static void open_std_handles(int tty)
 static void run_start_script(void)
 {
    int rc, wstatus;
+   struct stat statbuf;
    pid_t pid;
+
+   rc = stat(BUSYBOX, &statbuf);
+
+   if (rc < 0 || (statbuf.st_mode & S_IFMT) != S_IFREG) {
+      printf("[init][WARNING] Unable to run the script %s: "
+             "busybox not found\n", START_SCRIPT);
+      return;
+   }
 
    pid = fork();
 
