@@ -199,6 +199,10 @@ else()
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
 endif()
 
+set(BUSYBOX_CONFIG            ${TCROOT}/busybox/.config)
+set(NCURSES_INST              ${TCROOT}/ncurses/install)
+
+
 # BEGIN [ARCH-dependent paths]
 
    # Main toolchain (musl)

@@ -15,8 +15,6 @@ add_custom_target(userapps)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${TCROOT}/zlib/install/include)
 
-set(NCURSES_INST "${TCROOT}/ncurses/install")
-
 # [build utils]
 
    macro(register_usermode_app)
@@ -25,9 +23,19 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
    endmacro()
 
    macro(add_usermode_app)
-      file(GLOB SOURCES "${ARGV1}${ARGV0}*.c")
-      add_executable(${ARGV0} ${SOURCES})
-      register_usermode_app(${ARGV0})
+
+      if (NOT "${ARGV0}" STREQUAL "init")
+         set(USERAPPS_${ARGV0} ON CACHE BOOL "Include `${ARGV0}` in fatpart")
+      else()
+         set(USERAPPS_init ON)
+      endif()
+
+      if (USERAPPS_${ARGV0})
+         file(GLOB SOURCES "${ARGV1}${ARGV0}*.c")
+         add_executable(${ARGV0} ${SOURCES})
+         register_usermode_app(${ARGV0})
+      endif()
+
    endmacro()
 
 # [/build utils]
@@ -51,18 +59,27 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
       "${CMAKE_SOURCE_DIR}/common/3rd_party/base64.c"
    )
 
-   add_executable(devshell ${DEVSHELL_SOURCES})
-   set(DEVSHELL_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/devshell)
-   target_include_directories(devshell PUBLIC ${DEVSHELL_SRC_DIR})
-   target_link_libraries(devshell ${TCROOT}/zlib/install/lib/libz.a)
-   register_usermode_app(devshell)
+   set(USERAPPS_devshell ON CACHE BOOL "Build `${ARGV0}`")
+
+   if (USERAPPS_devshell)
+      add_executable(devshell ${DEVSHELL_SOURCES})
+      set(DEVSHELL_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/devshell)
+      target_include_directories(devshell PUBLIC ${DEVSHELL_SRC_DIR})
+      target_link_libraries(devshell ${TCROOT}/zlib/install/lib/libz.a)
+      register_usermode_app(devshell)
+   endif()
 # [/devshell]
 
 # [ncurses test app]
    if (EXISTS ${NCURSES_INST}/lib/libncurses_g.a)
-      add_usermode_app(ncapp)
-      target_include_directories(ncapp PUBLIC ${NCURSES_INST}/include)
-      target_link_libraries(ncapp ${NCURSES_INST}/lib/libncurses_g.a)
+
+      set(USERAPPS_ncapp ON CACHE BOOL "Build `ncapp`")
+
+      if (USERAPPS_ncapp)
+         add_usermode_app(ncapp)
+         target_include_directories(ncapp PUBLIC ${NCURSES_INST}/include)
+         target_link_libraries(ncapp ${NCURSES_INST}/lib/libncurses_g.a)
+      endif()
    endif()
 # [/ncurses test app]
 
@@ -74,6 +91,8 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
 # in /usr/bin (in Tilck's fatpart).
 # Example: https://github.com/vvaltchev/tfblib
 
+   set(USERAPPS_extra ON CACHE BOOL "Build all apps in userapps/extra")
+
    macro(tilck_add_extra_app)
       set(EXTRA_APPS_LIST_copy ${EXTRA_APPS_LIST})
       list(APPEND EXTRA_APPS_LIST_copy ${ARGV0})
@@ -83,7 +102,9 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
       message(STATUS "Adding EXTRA APP: ${relPath}")
    endmacro()
 
-   add_subdirectory(extra)
+   if (USERAPPS_extra)
+      add_subdirectory(extra)
+   endif()
 
    set(USERAPPS_FILES_LIST ${APPS_BIN_FILES} PARENT_SCOPE)
    set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST} PARENT_SCOPE)
@@ -93,11 +114,11 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
 
 # [busybox]
 
-   if (EXISTS ${TCROOT}/busybox/.config)
+   if (EXISTS ${BUSYBOX_CONFIG})
       execute_process(
          COMMAND ${CMAKE_COMMAND}
          -E compare_files
-            ${TCROOT}/busybox/.config
+            ${BUSYBOX_CONFIG}
             ${CMAKE_SOURCE_DIR}/other/busybox.config
          RESULT_VARIABLE result
       )
@@ -133,6 +154,11 @@ set(NCURSES_INST "${TCROOT}/ncurses/install")
       else()
          message(FATAL_ERROR "Error while comparing the busybox config files.")
       endif()
+
+   else()
+
+      message(WARNING "\nNo busybox in toolchain.")
+
    endif()
 
 # [/busybox]
