@@ -6,7 +6,9 @@ Tilck (Tiny Linux-Compatible Kernel)
 [![codecov](https://codecov.io/gh/vvaltchev/tilck/branch/master/graph/badge.svg)](https://codecov.io/gh/vvaltchev/tilck)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 
-![Tilck screenshot](http://vvaltchev.github.io/tilck_imgs/screen1.png "Tilck")
+<p align="center">
+    <img src="http://vvaltchev.github.io/tilck_imgs/screen1.png" alt="Tilck">
+</p>
 
 What is Tilck?
 ----------------------------------------
