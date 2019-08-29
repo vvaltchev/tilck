@@ -55,7 +55,7 @@ Current state of the kernel
 ----------------------------------------
 
 Today that project is **far** from being ready for any kind of production use, but
-it is growing very fast with major patch series being merged once or twice at week.
+it is growing very fast with major patch series being merged every week.
 It has a read-only support to `FAT32` ramdisk, and it can run a discrete amount of
 `busybox` applications compiled for embedded Linux. Also, it has a console
 (supporting both text-mode and framebuffer) which understands all the essential
@@ -75,6 +75,18 @@ the `toolchain` directory.
 
 In case of any problems with the build system, please don't hesitate to file an
 issue describing your problem.
+
+#### Screenshots 
+
+<p align="center">
+    <a href="https://github.com/vvaltchev/tilck/wiki/Screenshots">
+        <img src="http://vvaltchev.github.io/tilck_imgs/thumbnails.png">
+    </a>
+</p>
+
+For full-size screenshots, see the [screenshots] page in Tilck's wiki.
+
+[screenshots]: https://github.com/vvaltchev/tilck/wiki/Screenshots
 
 The legacy bootloader
 ----------------------------------------
