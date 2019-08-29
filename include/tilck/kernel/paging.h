@@ -111,3 +111,16 @@ static ALWAYS_INLINE bool still_using_orig_pdir(void)
 
 void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap);
 void set_pages_pat_wc(pdir_t *pdir, void *vaddr, size_t size);
+
+/*
+ * Reserve anywhere in the hi virtual mem area (from LINEAR_MAPPING_END to
+ * +4 GB on 32-bit systems) a block. Note: no actual mapping is done here,
+ * just virtual memory is reserved in order to avoid conflicts between multiple
+ * subsystems trying reserve some memory here.
+ */
+void *hi_vmem_reserve(size_t size);
+
+/*
+ * Counter-part of hi_vmem_reserve().
+ */
+void hi_vmem_release(void *ptr, size_t size);

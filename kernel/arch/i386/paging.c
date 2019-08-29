@@ -31,9 +31,11 @@
 extern char vsdo_like_page[PAGE_SIZE];
 
 static char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
+static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
 
 static u16 *pageframes_refcount;
 static uptr phys_mem_lim;
+static kmalloc_heap *hi_vmem_heap;
 
 static ALWAYS_INLINE u32 pf_ref_count_inc(u32 paddr)
 {
@@ -711,20 +713,60 @@ void set_pages_pat_wc(pdir_t *pdir, void *vaddr, size_t size)
    }
 }
 
-
-/*
- * Page directories MUST BE page-size-aligned.
- */
-static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
-
 void init_paging(void)
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
    kernel_page_dir = (pdir_t *) kpdir_buf;
 }
 
+static void init_hi_vmem_heap(void)
+{
+   size_t hi_vmem_size;
+   size_t metadata_size;
+   size_t min_block_size = 4 * PAGE_SIZE;
+   void *metadata;
+   bool success;
+
+   hi_vmem_heap = kmalloc(kmalloc_get_heap_struct_size());
+
+   if (!hi_vmem_heap)
+      panic("Unable to alloc hi_vmem_heap");
+
+   if (LINEAR_MAPPING_MB <= 896) {
+      hi_vmem_size = 128 * MB;
+   } else if (LINEAR_MAPPING_MB <= 960) {
+      hi_vmem_size = 64 * MB;
+   } else {
+      panic("LINEAR_MAPPING_MB (%d) is too big", LINEAR_MAPPING_MB);
+   }
+
+   metadata_size = calculate_heap_metadata_size(hi_vmem_size, min_block_size);
+   metadata = kmalloc(metadata_size);
+
+   if (!metadata)
+      panic("No enough memory for hi vmem heap's metadata");
+
+   success =
+      kmalloc_create_heap(hi_vmem_heap,
+                          LINEAR_MAPPING_END,
+                          hi_vmem_size,
+                          min_block_size,
+                          0,
+                          true,     /* linear mapping true: that's lie! */
+                          metadata,
+                          NULL,
+                          NULL);
+
+   if (!success)
+      panic("Failed to create the hi vmem heap");
+}
+
 void init_paging_cow(void)
 {
+   int rc;
+   void *user_vsdo_like_page_vaddr;
+   size_t pagesframes_refcount_bufsize;
+
    phys_mem_lim = get_phys_mem_size();
 
    /*
@@ -732,7 +774,7 @@ void init_paging_cow(void)
     * This is necessary for COW.
     */
 
-   size_t pagesframes_refcount_bufsize =
+   pagesframes_refcount_bufsize =
       (get_phys_mem_size() >> PAGE_SHIFT) * sizeof(pageframes_refcount[0]);
 
    pageframes_refcount = kzmalloc(pagesframes_refcount_bufsize);
@@ -742,15 +784,27 @@ void init_paging_cow(void)
 
    pf_ref_count_inc(KERNEL_VA_TO_PA(zero_page));
 
+   /* Initialize the kmalloc heap used for the "hi virtual mem" area */
+   init_hi_vmem_heap();
+
+   /*
+    * Now use the just-created hi vmem heap to reserve a page for the user
+    * vsdo-like page and expect it to be == USER_VSDO_LIKE_PAGE_VADDR.
+    */
+   user_vsdo_like_page_vaddr = hi_vmem_reserve(PAGE_SIZE);
+
+   if (user_vsdo_like_page_vaddr != (void*)USER_VSDO_LIKE_PAGE_VADDR)
+      panic("user_vsdo_like_page_vaddr != USER_VSDO_LIKE_PAGE_VADDR");
+
    /*
     * Map a special vdso-like page used for the sysenter interface.
     * This is the only user-mapped page with a vaddr in the kernel space.
     */
-   int rc = map_page(kernel_page_dir,
-                     (void *)USER_VSDO_LIKE_PAGE_VADDR,
-                     KERNEL_VA_TO_PA(&vsdo_like_page),
-                     true,
-                     false);
+   rc = map_page(kernel_page_dir,
+                 user_vsdo_like_page_vaddr,
+                 KERNEL_VA_TO_PA(&vsdo_like_page),
+                 true,   /* user-visible */
+                 false); /* writable */
 
    if (rc < 0)
       panic("Unable to map the vsdo-like page");
@@ -826,4 +880,14 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
    }
 
    set_mtrr((u32)selected_mtrr, paddr, pow2size, MEM_TYPE_WC);
+}
+
+void *hi_vmem_reserve(size_t size)
+{
+   return per_heap_kmalloc(hi_vmem_heap, &size, 0);
+}
+
+void hi_vmem_release(void *ptr, size_t size)
+{
+   per_heap_kfree(hi_vmem_heap, ptr, &size, 0);
 }
