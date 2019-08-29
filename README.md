@@ -76,15 +76,6 @@ the `toolchain` directory.
 In case of any problems with the build system, please don't hesitate to file an
 issue describing your problem.
 
-![Tetris running on Tilck](other/tetris.png?raw=true)
-
-The image here above shows a Tetris implementation based on the [Tiny Framebuffer
-Library] running on `Tilck` in a `QEMU` virtual machine. The game's executable,
-runs smoothly both on `Linux` and on `Tilck`.
-
-[supported Linux syscalls]: docs/syscalls.md
-[Tiny Framebuffer Library]: https://github.com/vvaltchev/tfblib
-
 The legacy bootloader
 ----------------------------------------
 
