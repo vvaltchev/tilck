@@ -6,7 +6,9 @@ Tilck (Tiny Linux-Compatible Kernel)
 [![codecov](https://codecov.io/gh/vvaltchev/tilck/branch/master/graph/badge.svg)](https://codecov.io/gh/vvaltchev/tilck)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 
-![Tilck screenshot](other/screenshot.png?raw=true "Tilck")
+<p align="center">
+    <img src="http://vvaltchev.github.io/tilck_imgs/screen1.png" alt="Tilck">
+</p>
 
 What is Tilck?
 ----------------------------------------
@@ -53,7 +55,7 @@ Current state of the kernel
 ----------------------------------------
 
 Today that project is **far** from being ready for any kind of production use, but
-it is growing very fast with major patch series being merged once or twice at week.
+it is growing very fast with major patch series being merged every week.
 It has a read-only support to `FAT32` ramdisk, and it can run a discrete amount of
 `busybox` applications compiled for embedded Linux. Also, it has a console
 (supporting both text-mode and framebuffer) which understands all the essential
@@ -74,14 +76,17 @@ the `toolchain` directory.
 In case of any problems with the build system, please don't hesitate to file an
 issue describing your problem.
 
-![Tetris running on Tilck](other/tetris.png?raw=true)
+#### Screenshots 
 
-The image here above shows a Tetris implementation based on the [Tiny Framebuffer
-Library] running on `Tilck` in a `QEMU` virtual machine. The game's executable,
-runs smoothly both on `Linux` and on `Tilck`.
+<p align="center">
+    <a href="https://github.com/vvaltchev/tilck/wiki/Screenshots">
+        <img src="http://vvaltchev.github.io/tilck_imgs/thumbnails.png">
+    </a>
+</p>
 
-[supported Linux syscalls]: docs/syscalls.md
-[Tiny Framebuffer Library]: https://github.com/vvaltchev/tfblib
+For full-size screenshots, see the [screenshots] page in Tilck's wiki.
+
+[screenshots]: https://github.com/vvaltchev/tilck/wiki/Screenshots
 
 The legacy bootloader
 ----------------------------------------
