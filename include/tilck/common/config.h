@@ -60,7 +60,8 @@
    #define STRTAB_MAX_SIZE            (128 * KB)
 #endif
 
-#define USER_VSDO_LIKE_PAGE_VADDR  (LINEAR_MAPPING_END)
+#define USER_VSDO_LIKE_PAGE_VADDR                 (LINEAR_MAPPING_END)
+#define FAILSAFE_FB_VADDR          (KERNEL_BASE_VA + (1024 - 64) * MB)
 
 #define MAX_TTYS                                    9
 #define TERM_SCROLL_LINES                           5
