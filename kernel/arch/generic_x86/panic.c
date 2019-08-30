@@ -16,8 +16,7 @@
 #include <tilck/kernel/fault_resumable.h>
 
 void panic_save_current_state(); /* defined in kernel_yield.S */
-
-static regs panic_state_regs;
+regs panic_state_regs;
 
 /* Called by the assembly function panic_save_current_state() */
 void panic_save_current_task_state(regs *r)

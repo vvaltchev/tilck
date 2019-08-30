@@ -5,21 +5,21 @@
 #include <tilck/kernel/process_int.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/debug_utils.h>
 
 #include "double_fault.h"
 #include "gdt_int.h"
 #include "idt_int.h"
 
+void double_fault_handler_asm(void);
 static int double_fault_tss_num;
-static void double_fault_handler(void);
 
 static tss_entry_t double_fault_tss_entry ALIGNED_AT(PAGE_SIZE) =
 {
-   .prev_tss = 0,                        /* updated later */
    .esp0 = ((uptr)kernel_initial_stack + PAGE_SIZE - 4),
    .ss0 = X86_KERNEL_DATA_SEL,
    .cr3 = 0,                             /* updated later */
-   .eip = (uptr)&double_fault_handler,
+   .eip = (uptr)&double_fault_handler_asm,
    .eflags = 0x2,
    .cs = X86_KERNEL_CODE_SEL,
    .es = X86_KERNEL_DATA_SEL,
@@ -60,7 +60,7 @@ void register_double_fault_tss_entry(void)
                  (IDT_FLAG_PRESENT | IDT_FLAG_TASK_GATE | IDT_FLAG_DPL0));
 }
 
-static void double_fault_handler(void)
+void double_fault_handler(void)
 {
    __in_double_fault = true;
    panic("[Double fault] Kernel stack: %p", get_curr_task()->kernel_stack);
