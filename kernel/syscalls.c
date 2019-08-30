@@ -181,6 +181,7 @@ int sys_tilck_run_selftest(const char *user_selftest)
 {
    int rc;
    int tid;
+   uptr addr;
    char buf[256] = SELFTEST_PREFIX;
 
    rc = copy_str_from_user(buf + sizeof(SELFTEST_PREFIX) - 1,
@@ -191,12 +192,10 @@ int sys_tilck_run_selftest(const char *user_selftest)
    if (rc != 0)
       return -EFAULT;
 
-   printk("Running function: %s()\n", buf);
-
-   uptr addr = find_addr_of_symbol(buf);
-
-   if (!addr)
+   if (!(addr = find_addr_of_symbol(buf)))
       return -EINVAL;
+
+   printk("Running function: %s()\n", buf);
 
    if ((tid = kthread_create((void *)addr, NULL)) < 0)
       return tid;
