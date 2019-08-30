@@ -19,7 +19,7 @@ void panic_save_current_state(); /* defined in kernel_yield.S */
 
 static regs panic_state_regs;
 
-/* Called the assembly function panic_save_current_state() */
+/* Called by the assembly function panic_save_current_state() */
 void panic_save_current_task_state(regs *r)
 {
    /*
@@ -101,7 +101,10 @@ NORETURN void panic(const char *fmt, ...)
    __in_panic = true;
 
    disable_fpu_features();
-   panic_save_current_state();
+
+   if (!__in_double_fault)
+      panic_save_current_state();
+
    curr = get_curr_task();
 
    if (term_is_initialized(get_curr_term())) {
@@ -147,11 +150,18 @@ NORETURN void panic(const char *fmt, ...)
    panic_print_task_info(curr);
    panic_dump_nested_interrupts();
 
-   if (PANIC_SHOW_REGS)
-      dump_regs(&panic_state_regs);
+   if (!__in_double_fault) {
 
-   if (PANIC_SHOW_STACKTRACE)
-      dump_stacktrace();
+      if (PANIC_SHOW_REGS)
+         dump_regs(&panic_state_regs);
+
+      if (PANIC_SHOW_STACKTRACE)
+         dump_stacktrace();
+
+   } else {
+
+      printk("TODO: dump regs saved on main_tss\n");
+   }
 
    if (DEBUG_QEMU_EXIT_ON_PANIC)
       debug_qemu_turn_off_machine();

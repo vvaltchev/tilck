@@ -10,6 +10,7 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/syscalls.h>
 
+#include "tss_int.h"
 #include "gdt_int.h"
 #include "double_fault.h"
 
@@ -26,7 +27,7 @@ static s32 *gdt_refcount = initial_gdt_refcount_in_bss;
  * and one dedicated for the double-fault handling. The following TSS is the
  * main one.
  */
-static tss_entry_t tss_main;
+tss_entry_t tss_main ALIGNED_AT(PAGE_SIZE);
 
 static void load_gdt(gdt_entry *gdt, u32 entries_count);
 

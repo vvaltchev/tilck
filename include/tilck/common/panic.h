@@ -3,6 +3,7 @@
 #pragma once
 
 extern volatile bool __in_panic;
+extern volatile bool __in_double_fault;
 
 NORETURN void panic(const char *fmt, ...);
 NORETURN void assert_failed(const char *expr, const char *file, int line);
