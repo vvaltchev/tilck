@@ -934,16 +934,20 @@ void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
 void *hi_vmem_reserve(size_t size)
 {
    void *res;
-   res = per_heap_kmalloc(hi_vmem_heap, &size, 0);
 
-   // if (res) {
-   //    printk("[hi_vmem] Reserved %u KB at %p\n", size / KB, res);
-   // }
-
+   disable_preemption();
+   {
+      res = per_heap_kmalloc(hi_vmem_heap, &size, 0);
+   }
+   enable_preemption();
    return res;
 }
 
 void hi_vmem_release(void *ptr, size_t size)
 {
-   per_heap_kfree(hi_vmem_heap, ptr, &size, 0);
+   disable_preemption();
+   {
+      per_heap_kfree(hi_vmem_heap, ptr, &size, 0);
+   }
+   enable_preemption();
 }
