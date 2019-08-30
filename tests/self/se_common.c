@@ -119,3 +119,50 @@ void selftest_panic2_manual(void)
    printk("[panic selftest] I'll panic with bad pointers\n");
    panic("test panic [str: '%s'][num: %d]", (char *)1234, -123);
 }
+
+/* This works as expected when the KERNEL_STACK_ISOLATION is enabled */
+void selftest_so1_manual(void)
+{
+   char buf[16];
+
+   /*
+    * Hack needed to avoid the compiler detecting that we're accessing the
+    * array out-of-bounds, which is generally a terrible bug. But here we're
+    * looking exactly for this.
+    */
+   char *volatile ptr = buf;
+   printk("Causing intentionally a stack overflow: expect panic\n");
+   memset(ptr, 'x', KERNEL_STACK_SIZE);
+}
+
+/* This works as expected when the KERNEL_STACK_ISOLATION is enabled */
+void selftest_so2_manual(void)
+{
+   char buf[16];
+
+   /*
+    * Hack needed to avoid the compiler detecting that we're accessing the
+    * array below bounds, which is generally a terrible bug. But here we're
+    * looking exactly for this.
+    */
+   char *volatile ptr = buf;
+   printk("Causing intentionally a stack underflow: expect panic\n");
+   memset(ptr - KERNEL_STACK_SIZE, 'y', KERNEL_STACK_SIZE);
+}
+
+/*
+ * This does NOT work as expected even when KERNEL_STACK_ISOLATION is enabled
+ * because the compiler emitted code that moved the stack pointer. The problem
+ * with that is that a regular page fault cannot run, because the stack is
+ * invalid (1st fault). Therefore, the CPU issues the "double-fault" fault (2nd)
+ * because the fault handler caused a fault itself, but, since the stack pointer
+ * is still invalid, another fault is generated (3rd fault): that is called
+ * a triple fault condition and cannot be handled. The CPU triggers a system
+ * reboot.
+ */
+void selftest_so3_manual(void)
+{
+   char buf[KERNEL_STACK_SIZE];
+   printk("Causing intentionally a stack overflow: expect panic\n");
+   memset(buf, 'z', KERNEL_STACK_SIZE);
+}
