@@ -9,7 +9,6 @@
 #include "double_fault.h"
 #include "gdt_int.h"
 #include "idt_int.h"
-#include "tss_int.h"
 
 static int double_fault_tss_num;
 static void double_fault_handler(void);
@@ -64,8 +63,6 @@ void register_double_fault_tss_entry(void)
 static void double_fault_handler(void)
 {
    __in_double_fault = true;
-   panic("double fault");
-   // task_info *ti = get_curr_task();
-   // panic("[Double fault] EIP: %p, ESP: %p [stack: %p]",
-   //       tss_main_ptr->eip, tss_main_ptr->esp, ti->kernel_stack);
+   panic("[Double fault] Kernel stack: %p", get_curr_task()->kernel_stack);
 }
+

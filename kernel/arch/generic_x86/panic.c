@@ -160,7 +160,8 @@ NORETURN void panic(const char *fmt, ...)
 
    } else {
 
-      printk("TODO: dump regs saved on main_tss\n");
+      copy_main_tss_on_regs(&panic_state_regs);
+      dump_regs(&panic_state_regs);
    }
 
    if (DEBUG_QEMU_EXIT_ON_PANIC)

@@ -13,6 +13,7 @@
    #include <tilck/common/arch/generic_x86/cpu_features.h>
    #include <tilck/kernel/arch/i386/asm_defs.h>
    #include <tilck/kernel/arch/i386/arch_utils.h>
+   #include <tilck/kernel/arch/i386/tss.h>
    #include <tilck/kernel/arch/generic_x86/fpu_memcpy.h>
 
 #elif defined(__x86_64__)
@@ -56,3 +57,4 @@ int get_int_num(regs *context);
 void on_first_pdir_update(void);
 
 bool allocate_fpu_regs(arch_task_info_members *arch_fields);
+void copy_main_tss_on_regs(regs *ctx);

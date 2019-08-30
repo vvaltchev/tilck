@@ -10,7 +10,6 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/syscalls.h>
 
-#include "tss_int.h"
 #include "gdt_int.h"
 #include "double_fault.h"
 
@@ -27,7 +26,7 @@ static s32 *gdt_refcount = initial_gdt_refcount_in_bss;
  * and one dedicated for the double-fault handling. The following TSS is the
  * main one.
  */
-tss_entry_t tss_main ALIGNED_AT(PAGE_SIZE);
+static tss_entry_t main_tss ALIGNED_AT(PAGE_SIZE);
 
 static void load_gdt(gdt_entry *gdt, u32 entries_count);
 
@@ -214,8 +213,8 @@ void set_kernel_stack(u32 stack)
    uptr var;
    disable_interrupts(&var);
    {
-      tss_main.ss0 = X86_KERNEL_DATA_SEL; /* Kernel stack segment = data seg */
-      tss_main.esp0 = stack;
+      main_tss.ss0 = X86_KERNEL_DATA_SEL; /* Kernel stack segment = data seg */
+      main_tss.esp0 = stack;
       wrmsr(MSR_IA32_SYSENTER_ESP, stack);
    }
    enable_interrupts(&var);
@@ -297,8 +296,8 @@ void init_segmentation(void)
 
    /* GDT entry for our TSS */
    set_entry_num2(5,
-                  (uptr) &tss_main,   /* TSS addr */
-                  sizeof(tss_main),   /* limit: struct TSS size */
+                  (uptr) &main_tss,   /* TSS addr */
+                  sizeof(main_tss),   /* limit: struct TSS size */
                   GDT_DESC_TYPE_TSS,
                   GDT_GRAN_BYTE | GDT_32BIT);
 
@@ -469,4 +468,31 @@ out:
    }
 
    return rc;
+}
+
+void copy_main_tss_on_regs(regs *ctx)
+{
+   *ctx = (regs) {
+      .kernel_resume_eip   = 0,
+      .custom_flags        = 0,
+      .gs                  = main_tss.gs,
+      .fs                  = main_tss.fs,
+      .es                  = main_tss.es,
+      .ds                  = main_tss.ds,
+      .edi                 = main_tss.edi,
+      .esi                 = main_tss.esi,
+      .ebp                 = main_tss.ebp,
+      .esp                 = main_tss.esp,
+      .ebx                 = main_tss.ebx,
+      .edx                 = main_tss.edx,
+      .ecx                 = main_tss.ecx,
+      .eax                 = main_tss.eax,
+      .int_num             = 0,
+      .err_code            = 0,
+      .eip                 = main_tss.eip,
+      .cs                  = main_tss.cs,
+      .eflags              = main_tss.eflags,
+      .useresp             = main_tss.esp,
+      .ss                  = main_tss.ss0,
+   };
 }
