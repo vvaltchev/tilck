@@ -59,7 +59,8 @@ function do_build_tc_isystem_with_syscc_clang {
 function do_build_gcc_fast_rel {
    RELEASE=1 $CM                              \
       -DKERNEL_TRACK_NESTED_INTERRUPTS=0      \
-      -DDEBUG_CHECKS_IN_RELEASE_BUILD=0
+      -DDEBUG_CHECKS_IN_RELEASE_BUILD=0       \
+      -DKERNEL_STACK_ISOLATION=0
 }
 
 function show_help {
