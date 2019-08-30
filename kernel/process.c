@@ -20,14 +20,72 @@
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
 
-#define EXITCODE(ret, sig)  ((ret) << 8 | (sig))
-#define STOPCODE(sig) ((sig) << 8 | 0x7f)
-#define CONTINUED 0xffff
-#define COREFLAG 0x80
+#define EXITCODE(ret, sig)    ((ret) << 8 | (sig))
+#define STOPCODE(sig)          ((sig) << 8 | 0x7f)
+#define CONTINUED                           0xffff
+#define COREFLAG                              0x80
+
+static void *alloc_kernel_isolated_stack(process_info *pi)
+{
+   void *vaddr_in_block;
+   void *block_vaddr;
+   void *direct_va;
+   uptr direct_pa;
+   size_t count;
+
+   ASSERT(pi->pdir != NULL);
+
+   direct_va = kzmalloc(KERNEL_STACK_SIZE);
+
+   if (!direct_va)
+      return NULL;
+
+   direct_pa = KERNEL_VA_TO_PA(direct_va);
+   block_vaddr = hi_vmem_reserve(4 * KERNEL_STACK_SIZE);
+
+   if (!block_vaddr) {
+      kfree2(direct_va, KERNEL_STACK_SIZE);
+      return NULL;
+   }
+
+   vaddr_in_block = (void *)((uptr)block_vaddr + KERNEL_STACK_SIZE);
+
+   count = map_pages(pi->pdir,
+                     vaddr_in_block,
+                     direct_pa,
+                     KERNEL_STACK_SIZE / PAGE_SIZE,
+                     false,   /* big pages allowed */
+                     false,   /* user accessible */
+                     true);   /* writable */
+
+   if (count != KERNEL_STACK_SIZE / PAGE_SIZE) {
+      unmap_pages(pi->pdir, vaddr_in_block, count, false);
+      hi_vmem_release(block_vaddr, 4 * KERNEL_STACK_SIZE);
+      kfree2(direct_va, KERNEL_STACK_SIZE);
+      return NULL;
+   }
+
+   return vaddr_in_block;
+}
+
+static void free_kernel_isolated_stack(process_info *pi, void *vaddr_in_block)
+{
+   void *block_vaddr = (void *)((uptr)vaddr_in_block - KERNEL_STACK_SIZE);
+   uptr direct_pa = get_mapping(pi->pdir, vaddr_in_block);
+   void *direct_va = KERNEL_PA_TO_VA(direct_pa);
+
+   unmap_pages(pi->pdir, vaddr_in_block, KERNEL_STACK_SIZE / PAGE_SIZE, false);
+   hi_vmem_release(block_vaddr, 4 * KERNEL_STACK_SIZE);
+   kfree2(direct_va, KERNEL_STACK_SIZE);
+}
 
 static bool do_common_task_allocations(task_info *ti)
 {
-   ti->kernel_stack = kzmalloc(KERNEL_STACK_SIZE);
+   if (KERNEL_STACK_ISOLATION) {
+      ti->kernel_stack = alloc_kernel_isolated_stack(ti->pi);
+   } else {
+      ti->kernel_stack = kzmalloc(KERNEL_STACK_SIZE);
+   }
 
    if (!ti->kernel_stack)
       return false;
@@ -45,8 +103,13 @@ static bool do_common_task_allocations(task_info *ti)
 
 static void internal_free_mem_for_zombie_task(task_info *ti)
 {
+   if (KERNEL_STACK_ISOLATION) {
+      free_kernel_isolated_stack(ti->pi, ti->kernel_stack);
+   } else {
+      kfree2(ti->kernel_stack, KERNEL_STACK_SIZE);
+   }
+
    kfree2(ti->io_copybuf, IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE);
-   kfree2(ti->kernel_stack, KERNEL_STACK_SIZE);
 
    ti->io_copybuf = NULL;
    ti->args_copybuf = NULL;
@@ -114,6 +177,7 @@ task_info *allocate_new_process(task_info *parent, int pid)
    ti->tid = pid;
    ti->is_main_thread = true;
    pi->did_call_execve = false;
+   ti->pi = pi;
 
    /* Copy parent's `cwd` while retaining the `fs` and the inode obj */
    process_set_cwd2_nolock_raw(pi, &parent_pi->cwd);
@@ -130,7 +194,6 @@ task_info *allocate_new_process(task_info *parent, int pid)
       return NULL;
    }
 
-   ti->pi = pi;
    init_task_lists(ti);
    init_process_lists(pi);
    list_add_tail(&parent->pi->children_list, &pi->siblings_node);
@@ -144,12 +207,11 @@ task_info *allocate_new_thread(process_info *pi)
    task_info *process_task = get_process_task(pi);
    task_info *ti = kzmalloc(sizeof(task_info));
 
-   if (!ti || !do_common_task_allocations(ti)) {
+   if (!ti || !(ti->pi=pi) || !do_common_task_allocations(ti)) {
       kfree2(ti, sizeof(task_info));
       return NULL;
    }
 
-   ti->pi = pi;
    ti->tid = kthread_calc_tid(ti);
    ti->is_main_thread = false;
    ASSERT(kthread_get_ptr(ti->tid) == ti);

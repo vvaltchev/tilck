@@ -29,6 +29,7 @@
 #cmakedefine01 PANIC_SHOW_STACKTRACE
 #cmakedefine01 DEBUG_CHECKS_IN_RELEASE
 #cmakedefine01 KERNEL_SELFTESTS
+#cmakedefine01 KERNEL_STACK_ISOLATION
 
 /* disabled by default */
 #cmakedefine01 KERNEL_GCOV

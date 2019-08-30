@@ -101,6 +101,9 @@ set(KERNEL_SELFTESTS ON CACHE BOOL
 set(KERNEL_DEBUG_PANEL ON CACHE BOOL
     "Compile-in the debug panel in the kernel")
 
+set(KERNEL_STACK_ISOLATION ON CACHE BOOL
+    "Put the kernel stack in hi the vmem in isolated pages")
+
 # Kernel options (disabled by default)
 
 set(KERNEL_SYSCC OFF CACHE BOOL
@@ -153,6 +156,8 @@ list(
    PANIC_SHOW_STACKTRACE
    DEBUG_CHECKS_IN_RELEASE
    KERNEL_SELFTESTS
+   KERNEL_DEBUG_PANEL
+   KERNEL_STACK_ISOLATION
 
    # Boolean options DISABLED by default
    TEST_GCOV
