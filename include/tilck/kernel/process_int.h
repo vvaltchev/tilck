@@ -2,6 +2,7 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/interrupts.h>
 
 /* Internal stuff (used by process.c, process32.c, misc.c, sched.c) */
 extern char *kernel_initial_stack[KERNEL_STACK_SIZE];

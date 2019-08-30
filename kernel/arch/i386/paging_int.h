@@ -129,4 +129,3 @@ void map_4mb_page_int(pdir_t *pdir,
                       void *vaddr,
                       uptr paddr,
                       u32 flags);
-

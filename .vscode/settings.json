@@ -84,7 +84,9 @@
       "debug_utils.h": "c",
       "dp_int.h": "c",
       "kmalloc_heaps.c.h": "c",
-      "termutil.h": "c"
+      "termutil.h": "c",
+      "gdt_int.h": "c",
+      "process_int.h": "c"
    },
    "python.pythonPath": "/usr/bin/python"
 }

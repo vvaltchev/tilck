@@ -103,3 +103,4 @@ int kb_get_fn_key_pressed() { return 0; }
 
 void *hi_vmem_reserve(size_t size) { return NULL; }
 void hi_vmem_release(void *ptr, size_t size) { }
+void on_first_pdir_update(void) { }

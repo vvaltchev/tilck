@@ -11,6 +11,7 @@
 #include <tilck/kernel/syscalls.h>
 
 #include "gdt_int.h"
+#include "double_fault.h"
 
 static gdt_entry initial_gdt_in_bss[8];
 static s32 initial_gdt_refcount_in_bss[ARRAY_SIZE(initial_gdt_in_bss)];
@@ -20,15 +21,17 @@ static gdt_entry *gdt = initial_gdt_in_bss;
 static s32 *gdt_refcount = initial_gdt_refcount_in_bss;
 
 /*
- * Tilck does use i386's tasks because they do not exist in many architectures.
- * Therefore, we have just need a single TSS entry.
+ * Tilck doesn't use i386's tasks because they don't exist in many
+ * architectures. Therefore, we have just need a two tss entries: one generic
+ * and one dedicated for the double-fault handling. The following TSS is the
+ * main one.
  */
-static tss_entry_t tss_entry;
+static tss_entry_t tss_main;
 
 static void load_gdt(gdt_entry *gdt, u32 entries_count);
 
 
-static void
+void
 gdt_set_entry(gdt_entry *e,
               uptr base,
               uptr limit,
@@ -174,7 +177,7 @@ static NODISCARD int gdt_expand(void)
    return 0;
 }
 
-static int gdt_add_entry(gdt_entry *e)
+int gdt_add_entry(gdt_entry *e)
 {
    int rc = -1;
 
@@ -210,8 +213,8 @@ void set_kernel_stack(u32 stack)
    uptr var;
    disable_interrupts(&var);
    {
-      tss_entry.ss0 = X86_KERNEL_DATA_SEL; /* Kernel stack segment = data seg */
-      tss_entry.esp0 = stack;
+      tss_main.ss0 = X86_KERNEL_DATA_SEL; /* Kernel stack segment = data seg */
+      tss_main.esp0 = stack;
       wrmsr(MSR_IA32_SYSENTER_ESP, stack);
    }
    enable_interrupts(&var);
@@ -293,11 +296,15 @@ void init_segmentation(void)
 
    /* GDT entry for our TSS */
    set_entry_num2(5,
-                  (uptr) &tss_entry,   /* TSS addr */
-                  sizeof(tss_entry),   /* limit: struct TSS size */
+                  (uptr) &tss_main,   /* TSS addr */
+                  sizeof(tss_main),   /* limit: struct TSS size */
                   GDT_DESC_TYPE_TSS,
                   GDT_GRAN_BYTE | GDT_32BIT);
 
+   /* Register other special GDT entires */
+   register_double_fault_tss_entry();
+
+   /* Load the GDT and the TSS */
    load_gdt(gdt, gdt_size);
    load_tss(5 /* TSS index in GDT */, 3 /* priv. level */);
 }
