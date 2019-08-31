@@ -139,3 +139,8 @@ void gdt_set_entry(gdt_entry *e, uptr base, uptr limit, u8 access, u8 flags);
 int gdt_add_entry(gdt_entry *e);
 void gdt_clear_entry(u32 index);
 void gdt_entry_inc_ref_count(u32 n);
+
+#define TSS_MAIN                   0
+#define TSS_DOUBLE_FAULT           1
+
+extern tss_entry_t tss_array[2] ALIGNED_AT(PAGE_SIZE);

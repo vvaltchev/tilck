@@ -23,10 +23,25 @@ static s32 *gdt_refcount = initial_gdt_refcount_in_bss;
 /*
  * Tilck doesn't use i386's tasks because they don't exist in many
  * architectures. Therefore, we have just need a two tss entries: one generic
- * and one dedicated for the double-fault handling. The following TSS is the
- * main one.
+ * and one dedicated for the double-fault handling.
+ *
+ * NOTE: TSS entries do not require to be aligned at page boundary, but they
+ * should not cross page boundaries.
+ *
+ * From Intel's System Programming Guide: <<
+ *    Avoid placing a page boundary in the part of the TSS that the processor
+ *    reads during a task switch (the first 104 bytes). The processor may not
+ *    correctly perform address translations if a boundary occurs in this area.
+ *    During a task switch, the processor reads and writes into the first 104
+ *    bytes of each TSS (using contiguous physical addresses beginning with the
+ *    physical address of the first byte of the TSS). So, after TSS access
+ *    begins, if part of the 104 bytes is not physically contiguous, the
+ *    processor will access incorrect information without generating a
+ *    page-fault exception.
+ * >>
  */
-static tss_entry_t main_tss ALIGNED_AT(PAGE_SIZE);
+
+tss_entry_t tss_array[2] ALIGNED_AT(PAGE_SIZE);
 
 static void load_gdt(gdt_entry *gdt, u32 entries_count);
 
@@ -213,8 +228,9 @@ void set_kernel_stack(u32 stack)
    uptr var;
    disable_interrupts(&var);
    {
-      main_tss.ss0 = X86_KERNEL_DATA_SEL; /* Kernel stack segment = data seg */
-      main_tss.esp0 = stack;
+      /* Kernel stack segment = data seg */
+      tss_array[TSS_MAIN].ss0 = X86_KERNEL_DATA_SEL;
+      tss_array[TSS_MAIN].esp0 = stack;
       wrmsr(MSR_IA32_SYSENTER_ESP, stack);
    }
    enable_interrupts(&var);
@@ -296,8 +312,8 @@ void init_segmentation(void)
 
    /* GDT entry for our TSS */
    set_entry_num2(5,
-                  (uptr) &main_tss,   /* TSS addr */
-                  sizeof(main_tss),   /* limit: struct TSS size */
+                  (uptr)&tss_array[TSS_MAIN],  /* TSS addr */
+                  sizeof(tss_array[TSS_MAIN]), /* limit: struct TSS size */
                   GDT_DESC_TYPE_TSS,
                   GDT_GRAN_BYTE | GDT_32BIT);
 
@@ -475,24 +491,24 @@ void copy_main_tss_on_regs(regs *ctx)
    *ctx = (regs) {
       .kernel_resume_eip   = 0,
       .custom_flags        = 0,
-      .gs                  = main_tss.gs,
-      .fs                  = main_tss.fs,
-      .es                  = main_tss.es,
-      .ds                  = main_tss.ds,
-      .edi                 = main_tss.edi,
-      .esi                 = main_tss.esi,
-      .ebp                 = main_tss.ebp,
-      .esp                 = main_tss.esp,
-      .ebx                 = main_tss.ebx,
-      .edx                 = main_tss.edx,
-      .ecx                 = main_tss.ecx,
-      .eax                 = main_tss.eax,
+      .gs                  = tss_array[TSS_MAIN].gs,
+      .fs                  = tss_array[TSS_MAIN].fs,
+      .es                  = tss_array[TSS_MAIN].es,
+      .ds                  = tss_array[TSS_MAIN].ds,
+      .edi                 = tss_array[TSS_MAIN].edi,
+      .esi                 = tss_array[TSS_MAIN].esi,
+      .ebp                 = tss_array[TSS_MAIN].ebp,
+      .esp                 = tss_array[TSS_MAIN].esp,
+      .ebx                 = tss_array[TSS_MAIN].ebx,
+      .edx                 = tss_array[TSS_MAIN].edx,
+      .ecx                 = tss_array[TSS_MAIN].ecx,
+      .eax                 = tss_array[TSS_MAIN].eax,
       .int_num             = 0,
       .err_code            = 0,
-      .eip                 = main_tss.eip,
-      .cs                  = main_tss.cs,
-      .eflags              = main_tss.eflags,
-      .useresp             = main_tss.esp,
-      .ss                  = main_tss.ss0,
+      .eip                 = tss_array[TSS_MAIN].eip,
+      .cs                  = tss_array[TSS_MAIN].cs,
+      .eflags              = tss_array[TSS_MAIN].eflags,
+      .useresp             = tss_array[TSS_MAIN].esp,
+      .ss                  = tss_array[TSS_MAIN].ss0,
    };
 }

@@ -14,11 +14,10 @@
 void double_fault_handler_asm(void);
 static int double_fault_tss_num;
 
-static tss_entry_t double_fault_tss_entry ALIGNED_AT(PAGE_SIZE) =
-{
+static const tss_entry_t df_tss_data = {
    .esp0 = ((uptr)kernel_initial_stack + PAGE_SIZE - 4),
    .ss0 = X86_KERNEL_DATA_SEL,
-   .cr3 = 0,                             /* updated later */
+   .cr3 = 0 /* updated later */,
    .eip = (uptr)&double_fault_handler_asm,
    .eflags = 0x2,
    .cs = X86_KERNEL_CODE_SEL,
@@ -30,18 +29,20 @@ static tss_entry_t double_fault_tss_entry ALIGNED_AT(PAGE_SIZE) =
    .esp = ((uptr)kernel_initial_stack + PAGE_SIZE - 4),
 };
 
-void on_first_pdir_update(void)
+static inline void double_fault_tss_update_cr3(void)
 {
-   double_fault_tss_entry.cr3 = read_cr3();
+   tss_array[TSS_DOUBLE_FAULT].cr3 = read_cr3();
 }
 
 void register_double_fault_tss_entry(void)
 {
    gdt_entry e;
+   memcpy(&tss_array[TSS_DOUBLE_FAULT], &df_tss_data, sizeof(tss_entry_t));
+   double_fault_tss_update_cr3();
 
    gdt_set_entry(&e,
-                 (uptr)&double_fault_tss_entry,
-                 sizeof(double_fault_tss_entry),
+                 (uptr)&tss_array[TSS_DOUBLE_FAULT],
+                 sizeof(tss_array[TSS_DOUBLE_FAULT]),
                  GDT_DESC_TYPE_TSS,
                  GDT_GRAN_BYTE | GDT_32BIT);
 
@@ -49,9 +50,6 @@ void register_double_fault_tss_entry(void)
 
    if (double_fault_tss_num < 0)
       panic("Unable to add a GDT entry for the double fault TSS");
-
-   /* Set the initial value for CR3 */
-   double_fault_tss_entry.cr3 = read_cr3();
 
    /* Install the task gate for the double fault */
    idt_set_entry(FAULT_DOUBLE_FAULT,
@@ -66,3 +64,9 @@ void double_fault_handler(void)
    panic("[Double fault] Kernel stack: %p", get_curr_task()->kernel_stack);
 }
 
+/* ------------------------------------------------- */
+
+void on_first_pdir_update(void)
+{
+   double_fault_tss_update_cr3();
+}
