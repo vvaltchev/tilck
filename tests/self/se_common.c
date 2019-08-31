@@ -150,19 +150,14 @@ void selftest_so2_manual(void)
    memset(ptr - KERNEL_STACK_SIZE, 'y', KERNEL_STACK_SIZE);
 }
 
-/*
- * This does NOT work as expected even when KERNEL_STACK_ISOLATION is enabled
- * because the compiler emitted code that moved the stack pointer. The problem
- * with that is that a regular page fault cannot run, because the stack is
- * invalid (1st fault). Therefore, the CPU issues the "double-fault" fault (2nd)
- * because the fault handler caused a fault itself, but, since the stack pointer
- * is still invalid, another fault is generated (3rd fault): that is called
- * a triple fault condition and cannot be handled. The CPU triggers a system
- * reboot.
- */
-void selftest_so3_manual(void)
+static void NO_INLINE do_cause_double_fault(void)
 {
    char buf[KERNEL_STACK_SIZE];
-   printk("Causing intentionally a stack overflow: expect panic\n");
    memset(buf, 'z', KERNEL_STACK_SIZE);
+}
+
+void selftest_so3_manual(void)
+{
+   printk("Causing intentionally a double fault: expect panic\n");
+   do_cause_double_fault();
 }
