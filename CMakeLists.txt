@@ -359,7 +359,7 @@ set(QEMU_COMMON_OPTS      "-rtc base=localtime")
 
 set(KERNEL_BASE_VA     0xC0000000)
 set(KERNEL_PADDR       0x00100000)
-set(LINEAR_MAPPING_MB         768)
+set(LINEAR_MAPPING_MB         896)
 
 # Generate config files & build scripts
 include(${CMAKE_SOURCE_DIR}/other/gen_config.cmake)

@@ -661,7 +661,15 @@ per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
       }
 
       *user_size = size;
-      ASSERT(vaddr + size <= h->heap_over_end);
+
+      /*
+       * NOTE: if this is the last heap and it reaches until the very end of the
+       * virtual address space (32-bit systems, hi vmem), then heap_over_end
+       * will be actually 0 [because it's vaddr + start, not vaddr+start-1].
+       * Therefore, in order to handle this case, we have to subtract 1 from
+       * each side of the inequality.
+       */
+      ASSERT(vaddr + size - 1 <= h->heap_over_end - 1);
       return internal_kfree(h, ptr, size, allow_split, do_actual_free);
    }
 
@@ -672,7 +680,7 @@ per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
                        * *user_size too.
                        */
 
-   ASSERT(vaddr + size <= h->heap_over_end);
+   ASSERT(vaddr + size - 1 <= h->heap_over_end - 1); /* see the note above */
    ASSERT(round_up_at(size, h->min_block_size) == size);
 
    size_t tot = 0;
