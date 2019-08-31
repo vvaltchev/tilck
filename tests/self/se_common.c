@@ -119,3 +119,45 @@ void selftest_panic2_manual(void)
    printk("[panic selftest] I'll panic with bad pointers\n");
    panic("test panic [str: '%s'][num: %d]", (char *)1234, -123);
 }
+
+/* This works as expected when the KERNEL_STACK_ISOLATION is enabled */
+void selftest_so1_manual(void)
+{
+   char buf[16];
+
+   /*
+    * Hack needed to avoid the compiler detecting that we're accessing the
+    * array out-of-bounds, which is generally a terrible bug. But here we're
+    * looking exactly for this.
+    */
+   char *volatile ptr = buf;
+   printk("Causing intentionally a stack overflow: expect panic\n");
+   memset(ptr, 'x', KERNEL_STACK_SIZE);
+}
+
+/* This works as expected when the KERNEL_STACK_ISOLATION is enabled */
+void selftest_so2_manual(void)
+{
+   char buf[16];
+
+   /*
+    * Hack needed to avoid the compiler detecting that we're accessing the
+    * array below bounds, which is generally a terrible bug. But here we're
+    * looking exactly for this.
+    */
+   char *volatile ptr = buf;
+   printk("Causing intentionally a stack underflow: expect panic\n");
+   memset(ptr - KERNEL_STACK_SIZE, 'y', KERNEL_STACK_SIZE);
+}
+
+static void NO_INLINE do_cause_double_fault(void)
+{
+   char buf[KERNEL_STACK_SIZE];
+   memset(buf, 'z', KERNEL_STACK_SIZE);
+}
+
+void selftest_so3_manual(void)
+{
+   printk("Causing intentionally a double fault: expect panic\n");
+   do_cause_double_fault();
+}

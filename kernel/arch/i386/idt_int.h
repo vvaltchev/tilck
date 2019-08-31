@@ -22,6 +22,7 @@
 
 #define IDT_FLAG_INT_GATE  (0xE << 0)  /* 32 bit interrupt gate */
 #define IDT_FLAG_TRAP_GATE (0xF << 0)  /* 32 bit trap gate */
+#define IDT_FLAG_TASK_GATE (0x5 << 0)  /* 32 bit task gate */
 #define IDT_FLAG_DPL0      (0 << 5)
 #define IDT_FLAG_DPL1      (1 << 5)
 #define IDT_FLAG_DPL2      (2 << 5)

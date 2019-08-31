@@ -8,6 +8,7 @@
 
 .section .text
 .global fault_entry_points
+.global double_fault_handler_asm
 
 .macro fault number
    FUNC(fault\number):
@@ -75,3 +76,10 @@ fault_entry_points:
    insert_fault_addr %i
    .set i, i+1
 .endr
+
+FUNC(double_fault_handler_asm):
+
+   cld                      # Set DF = 0, as C compilers by default assume that.
+   jmp double_fault_handler # Direct jmp, no call: the callee won't return
+
+END_FUNC(double_fault_handler_asm)

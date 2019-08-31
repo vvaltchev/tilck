@@ -108,7 +108,26 @@ static inline void *kzmalloc(size_t size)
 size_t kmalloc_get_heap_struct_size(void);
 size_t kmalloc_get_max_tot_heap_free(void);
 
+/*
+ * kmalloc() wrapper which prefixes the alloc block with metadata containing
+ * block's size. It's better to avoid this as much as possible, but it's super
+ * useful when, no matter what, the allocated object has variable size and must
+ * contain a `size` field, just in order to it to be passed to kfree2(). In such
+ * cases, it's totally worth just calling `mdalloc()` and freeing the block with
+ * `mkfree()`, without needing to keep explicitly an otherwise-unnecessary size
+ * field.
+ *
+ * NOTE: blocks allocated with this function MUST BE freed using `mdfree()`.
+ */
 void *mdalloc(size_t size);
+
+/*
+ * Counter-part of `mdalloc()`.
+ *
+ * It can only free blocks allocated with `mdalloc()`. Trying to free a regular
+ * block allocated directly with kmalloc(), will end up in underfined behavior.
+ * In debug builds, there's a check against a magic number.
+ */
 void mdfree(void *b);
 
 

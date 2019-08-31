@@ -101,6 +101,9 @@ set(KERNEL_SELFTESTS ON CACHE BOOL
 set(KERNEL_DEBUG_PANEL ON CACHE BOOL
     "Compile-in the debug panel in the kernel")
 
+set(KERNEL_STACK_ISOLATION ON CACHE BOOL
+    "Put the kernel stack in hi the vmem in isolated pages")
+
 # Kernel options (disabled by default)
 
 set(KERNEL_SYSCC OFF CACHE BOOL
@@ -136,6 +139,9 @@ set(WCONV OFF CACHE BOOL
 set(FAT_TEST_DIR OFF CACHE BOOL
     "Create a test dir with many files in the FAT32 init ramdisk")
 
+set(KERNEL_DO_PS2_SELFTEST OFF CACHE BOOL
+    "Do PS/2 controller selftests in init_kb()")
+
 list(
    APPEND kernel_opts_list
 
@@ -153,6 +159,8 @@ list(
    PANIC_SHOW_STACKTRACE
    DEBUG_CHECKS_IN_RELEASE
    KERNEL_SELFTESTS
+   KERNEL_DEBUG_PANEL
+   KERNEL_STACK_ISOLATION
 
    # Boolean options DISABLED by default
    TEST_GCOV
@@ -168,6 +176,7 @@ list(
    BOOTLOADER_POISON_MEMORY
    WCONV
    FAT_TEST_DIR
+   KERNEL_DO_PS2_SELFTEST
 )
 
 ###########################################################
@@ -350,7 +359,7 @@ set(QEMU_COMMON_OPTS      "-rtc base=localtime")
 
 set(KERNEL_BASE_VA     0xC0000000)
 set(KERNEL_PADDR       0x00100000)
-set(LINEAR_MAPPING_MB         768)
+set(LINEAR_MAPPING_MB         896)
 
 # Generate config files & build scripts
 include(${CMAKE_SOURCE_DIR}/other/gen_config.cmake)

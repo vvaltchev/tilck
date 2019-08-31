@@ -11,6 +11,7 @@
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/timer.h>
 
+#include "idt_int.h"
 #include "pic.c.h"
 
 extern void (*irq_entry_points[16])(void);
@@ -96,7 +97,10 @@ void init_irq_handling(void)
    pic_remap(32, 40);
 
    for (u8 i = 0; i < ARRAY_SIZE(irq_handlers_lists); i++) {
-      idt_set_entry(32 + i, irq_entry_points[i], 0x08, 0x8E);
+      idt_set_entry(32 + i,
+                    irq_entry_points[i],
+                    X86_KERNEL_CODE_SEL,
+                    IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL0);
       irq_set_mask(i);
    }
 }

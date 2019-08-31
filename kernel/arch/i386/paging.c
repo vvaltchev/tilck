@@ -15,6 +15,7 @@
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/signal.h>
+#include <tilck/kernel/process.h>
 
 #include "paging_int.h"
 
@@ -31,9 +32,11 @@
 extern char vsdo_like_page[PAGE_SIZE];
 
 static char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
+static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
 
 static u16 *pageframes_refcount;
 static uptr phys_mem_lim;
+static kmalloc_heap *hi_vmem_heap;
 
 static ALWAYS_INLINE u32 pf_ref_count_inc(u32 paddr)
 {
@@ -711,20 +714,59 @@ void set_pages_pat_wc(pdir_t *pdir, void *vaddr, size_t size)
    }
 }
 
-
-/*
- * Page directories MUST BE page-size-aligned.
- */
-static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
-
 void init_paging(void)
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
    kernel_page_dir = (pdir_t *) kpdir_buf;
+   kernel_process_pi->pdir = kernel_page_dir;
+}
+
+static void init_hi_vmem_heap(void)
+{
+   size_t hi_vmem_size;
+   size_t metadata_size;
+   size_t min_block_size = 4 * PAGE_SIZE;
+   void *metadata;
+   bool success;
+
+   hi_vmem_heap = kmalloc(kmalloc_get_heap_struct_size());
+
+   if (!hi_vmem_heap)
+      panic("Unable to alloc hi_vmem_heap");
+
+   if (LINEAR_MAPPING_MB <= 896) {
+      hi_vmem_size = 128 * MB;
+   } else {
+      panic("LINEAR_MAPPING_MB (%d) is too big", LINEAR_MAPPING_MB);
+   }
+
+   metadata_size = calculate_heap_metadata_size(hi_vmem_size, min_block_size);
+   metadata = kmalloc(metadata_size);
+
+   if (!metadata)
+      panic("No enough memory for hi vmem heap's metadata");
+
+   success =
+      kmalloc_create_heap(hi_vmem_heap,
+                          LINEAR_MAPPING_END,
+                          hi_vmem_size,
+                          min_block_size,
+                          0,
+                          true,     /* linear mapping true: that's lie! */
+                          metadata,
+                          NULL,
+                          NULL);
+
+   if (!success)
+      panic("Failed to create the hi vmem heap");
 }
 
 void init_paging_cow(void)
 {
+   int rc;
+   void *user_vsdo_like_page_vaddr;
+   size_t pagesframes_refcount_bufsize;
+
    phys_mem_lim = get_phys_mem_size();
 
    /*
@@ -732,7 +774,7 @@ void init_paging_cow(void)
     * This is necessary for COW.
     */
 
-   size_t pagesframes_refcount_bufsize =
+   pagesframes_refcount_bufsize =
       (get_phys_mem_size() >> PAGE_SHIFT) * sizeof(pageframes_refcount[0]);
 
    pageframes_refcount = kzmalloc(pagesframes_refcount_bufsize);
@@ -742,46 +784,61 @@ void init_paging_cow(void)
 
    pf_ref_count_inc(KERNEL_VA_TO_PA(zero_page));
 
+   /* Initialize the kmalloc heap used for the "hi virtual mem" area */
+   init_hi_vmem_heap();
+
+   /*
+    * Now use the just-created hi vmem heap to reserve a page for the user
+    * vsdo-like page and expect it to be == USER_VSDO_LIKE_PAGE_VADDR.
+    */
+   user_vsdo_like_page_vaddr = hi_vmem_reserve(PAGE_SIZE);
+
+   if (user_vsdo_like_page_vaddr != (void*)USER_VSDO_LIKE_PAGE_VADDR)
+      panic("user_vsdo_like_page_vaddr != USER_VSDO_LIKE_PAGE_VADDR");
+
    /*
     * Map a special vdso-like page used for the sysenter interface.
     * This is the only user-mapped page with a vaddr in the kernel space.
     */
-   int rc = map_page(kernel_page_dir,
-                     (void *)USER_VSDO_LIKE_PAGE_VADDR,
-                     KERNEL_VA_TO_PA(&vsdo_like_page),
-                     true,
-                     false);
+   rc = map_page(kernel_page_dir,
+                 user_vsdo_like_page_vaddr,
+                 KERNEL_VA_TO_PA(&vsdo_like_page),
+                 true,   /* user-visible */
+                 false); /* writable */
 
    if (rc < 0)
       panic("Unable to map the vsdo-like page");
 }
 
-void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
+static void *failsafe_map_framebuffer(uptr paddr, uptr size)
 {
-   if (!get_kernel_pdir()) {
+   /*
+    * Paging has not been initialized yet: probably we're in panic.
+    * At this point, the kernel still uses page_size_buf as pdir, with only
+    * the first 4 MB of the physical mapped at KERNEL_BASE_VA.
+    */
 
-      /*
-       * Paging has not been initialized yet: probably we're in panic.
-       * At this point, the kernel still uses page_size_buf as pdir, with only
-       * the first 4 MB of the physical mapped at KERNEL_BASE_VA.
-       */
+   uptr vaddr = FAILSAFE_FB_VADDR;
+   kernel_page_dir = (pdir_t *)page_size_buf;
 
-      kernel_page_dir = (pdir_t *)page_size_buf;
+   u32 big_pages_to_use = round_up_at(size, 4 * MB) / (4 * MB);
 
-      u32 big_pages_to_use = round_up_at(size, 4 * MB) / (4 * MB);
-
-      for (u32 i = 0; i < big_pages_to_use; i++) {
-         map_4mb_page_int(kernel_page_dir,
-                          (void *)vaddr + i * 4 * MB,
-                          paddr + i * 4 * MB,
-                          PG_PRESENT_BIT | PG_RW_BIT | PG_4MB_BIT);
-      }
-
-      return;
+   for (u32 i = 0; i < big_pages_to_use; i++) {
+      map_4mb_page_int(kernel_page_dir,
+                        (void *)vaddr + i * 4 * MB,
+                        paddr + i * 4 * MB,
+                        PG_PRESENT_BIT | PG_RW_BIT | PG_4MB_BIT);
    }
 
-   pdir_t *pdir = !user_mmap ? get_kernel_pdir() : get_curr_pdir();
+   return (void *)vaddr;
+}
 
+void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
+{
+   if (!get_kernel_pdir())
+      return failsafe_map_framebuffer(paddr, size);
+
+   pdir_t *pdir = !user_mmap ? get_kernel_pdir() : get_curr_pdir();
    size_t page_count = round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
    size_t count;
    u32 mmap_flags = PG_RW_BIT;
@@ -792,6 +849,36 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
       mmap_flags |= PG_GLOBAL_BIT;
    }
 
+   if (!vaddr) {
+
+      vaddr = (uptr) hi_vmem_reserve(size);
+
+      if (!vaddr) {
+
+         /*
+          * This should NEVER happen. The allocation of the hi vmem does not
+          * depend at all from the system. It's all on Tilck. We have 128 MB
+          * of virtual space that we can allocate as we want. Unless there's
+          * a bug in kmalloc(), we'll never get here.
+          */
+
+         if (in_panic()) {
+
+            /*
+             * But, in the extremely unlucky case we end up here, there's still
+             * one thing we can do, at least to be able to show something on
+             * the screen: use a failsafe VADDR for the framebuffer.
+             */
+
+            vaddr = FAILSAFE_FB_VADDR;
+
+         } else {
+
+            panic("Unable to reserve hi vmem for the framebuffer");
+         }
+      }
+   }
+
    count = map_pages_int(pdir,
                          (void *)vaddr,
                          paddr,
@@ -799,31 +886,68 @@ void map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
                          !user_mmap, /* big pages allowed when !user_mmap */
                          mmap_flags);
 
-   if (count < page_count)
+   if (count < page_count) {
+
+      /*
+       * What if this is the only framebuffer available for showing something
+       * on the screen? Well, we're screwed. But this should *never* happen.
+       */
+
       panic("Unable to map the framebuffer in the virtual space");
+   }
 
    if (x86_cpu_features.edx1.pat) {
       size = round_up_at(size, PAGE_SIZE);
       set_pages_pat_wc(pdir, (void *) vaddr, size);
-      return;
+      return (void *)vaddr;
    }
 
    if (!x86_cpu_features.edx1.mtrr || user_mmap)
-      return;
+      return (void *)vaddr;
 
+   /*
+    * PAT is not available: we have to use MTRRs in order to make the paddr
+    * region be of type WC (write-combining).
+    */
    int selected_mtrr = get_free_mtrr();
+   uptr pow2size = roundup_next_power_of_2(size);
 
    if (selected_mtrr < 0) {
+      /*
+       * Show the error, but still don't fail because the framebuffer can work
+       * even without setting its memory region to be WC.
+       */
       printk("ERROR: No MTRR available for framebuffer");
-      return;
+      return (void *)vaddr;
    }
 
-   u32 pow2size = roundup_next_power_of_2(size);
-
    if (round_up_at(paddr, pow2size) != paddr) {
+      /* As above, show the error, but DO NOT fail */
       printk("ERROR: fb_paddr (%p) not aligned at power-of-two address", paddr);
-      return;
+      return (void *)vaddr;
    }
 
    set_mtrr((u32)selected_mtrr, paddr, pow2size, MEM_TYPE_WC);
+   return (void *)vaddr;
+}
+
+void *hi_vmem_reserve(size_t size)
+{
+   void *res;
+
+   disable_preemption();
+   {
+      res = per_heap_kmalloc(hi_vmem_heap, &size, 0);
+   }
+   enable_preemption();
+   return res;
+}
+
+void hi_vmem_release(void *ptr, size_t size)
+{
+   disable_preemption();
+   {
+      per_heap_kfree(hi_vmem_heap, ptr, &size, 0);
+   }
+   enable_preemption();
 }

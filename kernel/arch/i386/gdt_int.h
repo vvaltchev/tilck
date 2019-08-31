@@ -108,40 +108,6 @@ typedef struct
 
 } PACKED gdt_entry;
 
-typedef struct
-{
-   u32 prev_tss;   /* ptr to the previous TSS: unused in Tilck */
-
-   u32 esp0;       /* ESP to use when we change to kernel mode */
-   u32 ss0;        /* SS to use when we change to kernel mode */
-
-   /* Unused registers in Tilck (the hardware task-switch is not used) */
-   u32 esp1;
-   u32 ss1;
-   u32 esp2;
-   u32 ss2;
-   u32 cr3;
-   u32 eip;
-   u32 eflags;
-   u32 eax;
-   u32 ecx;
-   u32 edx;
-   u32 ebx;
-   u32 esp;
-   u32 ebp;
-   u32 esi;
-   u32 edi;
-   u32 es;
-   u32 cs;
-   u32 ss;
-   u32 ds;
-   u32 fs;
-   u32 gs;
-   u32 ldt;
-   u16 trap;
-   u16 iomap_base;
-} PACKED tss_entry_t;
-
 #define INVALID_ENTRY_NUM ((u32) -1)
 #define USER_DESC_FLAGS_EMPTY ((1 << 3) | (1 << 5))
 
@@ -169,5 +135,12 @@ typedef struct {
 } user_desc;
 
 void load_ldt(u32 entry_index_in_gdt, u32 dpl);
+void gdt_set_entry(gdt_entry *e, uptr base, uptr limit, u8 access, u8 flags);
+int gdt_add_entry(gdt_entry *e);
 void gdt_clear_entry(u32 index);
 void gdt_entry_inc_ref_count(u32 n);
+
+#define TSS_MAIN                   0
+#define TSS_DOUBLE_FAULT           1
+
+extern tss_entry_t tss_array[2] ALIGNED_AT(PAGE_SIZE);

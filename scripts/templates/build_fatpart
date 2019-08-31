@@ -12,8 +12,14 @@ archgcc="@ARCH_GCC_TC@"
 strip="@STRIP@"
 gcctc="@GCC_TOOLCHAIN@"
 
-if [ -f "$gcctc/$archgcc-linux-strip" ]; then
-   strip="$gcctc/$archgcc-linux-strip"
+if [ "@HOST_ARCH@" == "x86_64" ]; then
+   if [ -f "$gcctc/$archgcc-linux-strip" ]; then
+      strip="$gcctc/$archgcc-linux-strip"
+   fi
+else
+   if [ ! -f "$strip" ]; then
+      strip="/usr/bin/env strip"
+   fi
 fi
 
 mtoolsdir=$tc/mtools

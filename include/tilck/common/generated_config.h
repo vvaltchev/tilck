@@ -29,6 +29,7 @@
 #cmakedefine01 PANIC_SHOW_STACKTRACE
 #cmakedefine01 DEBUG_CHECKS_IN_RELEASE
 #cmakedefine01 KERNEL_SELFTESTS
+#cmakedefine01 KERNEL_STACK_ISOLATION
 
 /* disabled by default */
 #cmakedefine01 KERNEL_GCOV
@@ -40,6 +41,7 @@
 #cmakedefine01 KMALLOC_SUPPORT_LEAK_DETECTOR
 #cmakedefine01 BOOTLOADER_POISON_MEMORY
 #cmakedefine01 FAT_TEST_DIR
+#cmakedefine01 KERNEL_DO_PS2_SELFTEST
 
 #if DEBUG_CHECKS_IN_RELEASE
    #ifdef NDEBUG

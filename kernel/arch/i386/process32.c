@@ -414,7 +414,7 @@ NORETURN void switch_to_task(task_info *ti, int curr_int)
    task_change_state(ti, TASK_STATE_RUNNING);
    ti->time_slot_ticks = 0;
 
-   if (!is_kernel_thread(curr))
+   if (!is_kernel_thread(curr) && curr->state != TASK_STATE_ZOMBIE)
       save_curr_fpu_ctx_if_enabled();
 
    if (!is_kernel_thread(ti)) {
