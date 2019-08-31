@@ -42,6 +42,7 @@ static void dp_show_opts(void)
    DUMP_BOOL_OPT(KERNEL_STACK_ISOLATION);
 
    // Boolean options DISABLED by default
+   DUMP_BOOL_OPT(KERNEL_DO_PS2_SELFTEST);
    DUMP_BOOL_OPT(KERNEL_GCOV);
    DUMP_BOOL_OPT(FORK_NO_COW);
    DUMP_BOOL_OPT(MMAP_NO_COW);

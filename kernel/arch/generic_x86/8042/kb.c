@@ -296,18 +296,21 @@ void init_kb(void)
 {
    disable_preemption();
 
-   if (!kb_ctrl_self_test()) {
+   if (KERNEL_DO_PS2_SELFTEST) {
+      if (!kb_ctrl_self_test()) {
 
-      printk("Warning: PS/2 controller self-test failed, trying a reset\n");
+         printk("Warning: PS/2 controller self-test failed, trying a reset\n");
 
-      if (!kb_ctrl_reset()) {
-         printk("Unable to initialize the PS/2 controller");
-         create_kb_tasklet_runner();
-         return;
+         if (!kb_ctrl_reset()) {
+            printk("Unable to initialize the PS/2 controller");
+            create_kb_tasklet_runner();
+            return;
+         }
+
+         printk("PS/2 controller: reset successful\n");
       }
-
-      printk("PS/2 controller: reset successful\n");
    }
+
 
    kb_led_update();
    kb_set_typematic_byte(0);

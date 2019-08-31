@@ -139,6 +139,9 @@ set(WCONV OFF CACHE BOOL
 set(FAT_TEST_DIR OFF CACHE BOOL
     "Create a test dir with many files in the FAT32 init ramdisk")
 
+set(KERNEL_DO_PS2_SELFTEST OFF CACHE BOOL
+    "Do PS/2 controller selftests in init_kb()")
+
 list(
    APPEND kernel_opts_list
 
@@ -173,6 +176,7 @@ list(
    BOOTLOADER_POISON_MEMORY
    WCONV
    FAT_TEST_DIR
+   KERNEL_DO_PS2_SELFTEST
 )
 
 ###########################################################
