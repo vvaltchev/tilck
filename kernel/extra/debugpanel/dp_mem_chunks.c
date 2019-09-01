@@ -2,6 +2,8 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
+
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/cmdline.h>
@@ -12,11 +14,14 @@
 typedef struct {
    size_t size;
    size_t count;
+   size_t max_waste;
 } chunk_info;
 
 static debug_kmalloc_stats stats;
+static u64 lifetime_allocs;
+static u64 lifetime_waste;
 static size_t chunks_count;
-static chunk_info chunks_arr[1024];
+static chunk_info chunks_arr[512];
 
 static void dp_chunks_enter(void)
 {
@@ -27,6 +32,8 @@ static void dp_chunks_enter(void)
       return;
 
    debug_kmalloc_get_stats(&stats);
+   lifetime_allocs = 0;
+   lifetime_waste = 0;
    chunks_count = 0;
 
    disable_preemption();
@@ -37,10 +44,16 @@ static void dp_chunks_enter(void)
          if (chunks_count == ARRAY_SIZE(chunks_arr))
             break;
 
+         const size_t waste = (roundup_next_power_of_2(s) - s) * c;
+
          chunks_arr[chunks_count++] = (chunk_info) {
             .size = s,
             .count = c,
+            .max_waste = waste,
          };
+
+         lifetime_allocs += s;
+         lifetime_waste += waste;
       }
    }
    enable_preemption();
@@ -61,12 +74,44 @@ static void dp_show_chunks(void)
       return;
    }
 
-   dp_writeln("Total number of different chunk sizes: %u", chunks_count);
+   dp_writeln("Chunk sizes count:         %5u sizes", chunks_count);
+   dp_writeln("Lifetime data allocated:   %5llu %s",
+              lifetime_allocs < 32*MB ? lifetime_allocs/KB : lifetime_allocs/MB,
+              lifetime_allocs < 32*MB ? "KB" : "MB");
+   dp_writeln("Lifetime max data waste:   %5llu %s (%llu.%llu%%)",
+              lifetime_waste < 32*MB ? lifetime_waste/KB : lifetime_waste/MB,
+              lifetime_waste < 32*MB ? "KB" : "MB",
+              lifetime_waste * 100 / lifetime_allocs,
+              (lifetime_waste * 1000 / lifetime_allocs) % 10);
+
+
    dp_writeln("");
 
+   dp_writeln(
+      "   Size   "
+      TERM_VLINE "  Count  "
+      TERM_VLINE " Max waste "
+   );
+
+   dp_writeln(
+      GFX_ON
+      "qqqqqqqqqqnqqqqqqqqqnqqqqqqqqqqq"
+      GFX_OFF
+   );
+
    for (size_t i = 0; i < chunks_count; i++) {
-      dp_writeln("Size: %8u -> %6u allocs",
-                 chunks_arr[i].size, chunks_arr[i].count);
+
+      const size_t max_waste = chunks_arr[i].max_waste;
+
+      dp_writeln("%9u " TERM_VLINE " %7u " TERM_VLINE " %6u %s ",
+                 chunks_arr[i].size,
+                 chunks_arr[i].count,
+                 max_waste < KB
+                  ? max_waste
+                  : max_waste / KB,
+                 max_waste < KB
+                  ? "B "
+                  : "KB");
    }
 
    dp_writeln("");
