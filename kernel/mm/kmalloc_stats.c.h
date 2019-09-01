@@ -23,22 +23,10 @@ typedef struct {
 
 } kmalloc_acc_alloc;
 
-static size_t alloc_arr_size;
+static size_t alloc_arr_elems;
 static size_t alloc_arr_used;
 static kmalloc_acc_alloc *alloc_arr;
 static kmalloc_acc_alloc *alloc_tree_root;
-
-static void kmalloc_init_heavy_stats(void)
-{
-   alloc_arr_size = 1024;
-   alloc_arr_used = 0;
-   alloc_arr = kmalloc(sizeof(kmalloc_acc_alloc) * alloc_arr_size);
-
-   if (!alloc_arr)
-      panic("Unable to alloc memory for the kmalloc heavy stats");
-
-   printk("[kmalloc] Heavy stats enabled\n");
-}
 
 static void kmalloc_account_alloc(size_t size)
 {
@@ -54,8 +42,20 @@ static void kmalloc_account_alloc(size_t size)
       return;
    }
 
-   if (alloc_arr_used == alloc_arr_size)
+   if (alloc_arr_used == alloc_arr_elems) {
+
+      /*
+       * While it won't be very complex to make `alloc_arr` to be dynamically
+       * resizable (with re-allocation + copy), it seems unnecessary to add
+       * such a feature for this debug utility. Reason: currently, there are
+       * just 42 distinct chunk sizes in Tilck, after running all of its system
+       * tests, while with the current pre-allocated buffer (16 KB), we have
+       * than 800+ slots, for 32-bit systems. This 20-fold ratio seems enough
+       * even for the medium-long term. In particular, it's enough for the
+       * kmalloc perf test, which ends up requiring > 588 slots.
+       */
       panic("[kmalloc] No more space in alloc_arr");
+   }
 
    obj = &alloc_arr[alloc_arr_used++];
    bintree_node_init(&obj->node);
@@ -67,13 +67,30 @@ static void kmalloc_account_alloc(size_t size)
    );
 }
 
+static void kmalloc_init_heavy_stats(void)
+{
+   ASSERT(!is_preemption_enabled());
+
+   const size_t alloc_arr_bytes = 4 * PAGE_SIZE;
+   alloc_arr_elems = alloc_arr_bytes / sizeof(kmalloc_acc_alloc);
+   alloc_arr_used = 0;
+
+   alloc_arr = kmalloc(alloc_arr_bytes);
+
+   if (!alloc_arr)
+      panic("Unable to alloc memory for the kmalloc heavy stats");
+
+   printk("[kmalloc] Heavy stats enabled [buf: %u elems]\n", alloc_arr_elems);
+   kmalloc_account_alloc(alloc_arr_bytes);
+}
+
 void debug_kmalloc_chunks_stats_start_read(debug_kmalloc_chunks_ctx *ctx)
 {
    if (!KMALLOC_HEAVY_STATS)
       return;
 
    ASSERT(!is_preemption_enabled());
-   bintree_in_order_visit_start(ctx,
+   bintree_in_order_visit_start(&ctx->ctx,
                                 alloc_tree_root,
                                 kmalloc_acc_alloc,
                                 node,
@@ -90,7 +107,7 @@ debug_kmalloc_chunks_stats_next(debug_kmalloc_chunks_ctx *ctx,
    ASSERT(!is_preemption_enabled());
 
    kmalloc_acc_alloc *obj;
-   obj = bintree_in_order_visit_next(ctx);
+   obj = bintree_in_order_visit_next(&ctx->ctx);
 
    if (!obj)
       return false;

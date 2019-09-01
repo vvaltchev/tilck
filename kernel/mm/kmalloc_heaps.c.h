@@ -203,6 +203,9 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
    void *md_allocated =
       per_heap_kmalloc(heaps[used_heaps], &actual_metadata_size, 0);
 
+   if (KMALLOC_HEAVY_STATS)
+      kmalloc_account_alloc(metadata_size);
+
    /*
     * We have to be SURE that the allocation returned the very beginning of
     * the heap, as we expected.
@@ -281,6 +284,11 @@ void init_kmalloc(void)
 
    kmalloc_initialized = true; /* we have at least 1 heap */
 
+   if (KMALLOC_HEAVY_STATS) {
+      kmalloc_init_heavy_stats();
+      kmalloc_account_alloc(heaps[0]->metadata_size);
+   }
+
    for (int i = 0; i < mem_regions_count; i++) {
 
       memory_region_t *r = mem_regions + i;
@@ -311,9 +319,6 @@ void init_kmalloc(void)
 
       max_tot_heap_mem_free += (h->size - h->mem_allocated);
    }
-
-   if (KMALLOC_HEAVY_STATS)
-      kmalloc_init_heavy_stats();
 }
 
 size_t kmalloc_get_max_tot_heap_free(void)

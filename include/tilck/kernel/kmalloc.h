@@ -156,6 +156,12 @@ typedef struct {
 
 typedef struct {
 
+   bintree_walk_ctx ctx;
+
+} debug_kmalloc_chunks_ctx;
+
+typedef struct {
+
    kmalloc_small_heaps_stats small_heaps;
    size_t chunk_sizes_count;
 
@@ -163,8 +169,6 @@ typedef struct {
 
 bool debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i);
 void debug_kmalloc_get_stats(debug_kmalloc_stats *stats);
-
-typedef bintree_walk_ctx debug_kmalloc_chunks_ctx;
 void debug_kmalloc_chunks_stats_start_read(debug_kmalloc_chunks_ctx *ctx);
 bool debug_kmalloc_chunks_stats_next(debug_kmalloc_chunks_ctx *ctx,
                                      size_t *size, size_t *count);

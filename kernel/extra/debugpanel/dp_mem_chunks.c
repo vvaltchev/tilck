@@ -21,7 +21,7 @@ static debug_kmalloc_stats stats;
 static u64 lf_allocs;
 static u64 lf_waste;
 static size_t chunks_count;
-static chunk_info chunks_arr[512];
+static chunk_info chunks_arr[1024];
 
 static void dp_chunks_enter(void)
 {
