@@ -762,7 +762,8 @@ init_term(term *t,
           const video_interface *intf,
           u16 rows,
           u16 cols,
-          u16 serial_port_fwd)
+          u16 serial_port_fwd,
+          int rows_buf)
 {
    ASSERT(t != &first_instance || !are_interrupts_enabled());
 
@@ -784,7 +785,7 @@ init_term(term *t,
 
    if (!in_panic() && !serial_port_fwd) {
 
-      t->extra_buffer_rows = 9 * t->rows;
+      t->extra_buffer_rows = rows_buf < 0 ? 9 * t->rows : (u32)rows_buf;
       t->total_buffer_rows = t->rows + t->extra_buffer_rows;
 
       if (is_kmalloc_initialized())

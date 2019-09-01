@@ -146,7 +146,7 @@ tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor)
 }
 
 static term *
-tty_allocate_and_init_new_term(u16 serial_port_fwd)
+tty_allocate_and_init_new_term(u16 serial_port_fwd, int rows_buf)
 {
    term *new_term = alloc_term_struct();
 
@@ -157,7 +157,8 @@ tty_allocate_and_init_new_term(u16 serial_port_fwd)
                  first_term_initial_vi,
                  term_get_rows(ttys[1]->term_inst),
                  term_get_cols(ttys[1]->term_inst),
-                 serial_port_fwd) < 0)
+                 serial_port_fwd,
+                 rows_buf) < 0)
    {
       free_term_struct(new_term);
       return NULL;
@@ -166,7 +167,8 @@ tty_allocate_and_init_new_term(u16 serial_port_fwd)
    return new_term;
 }
 
-static tty *allocate_and_init_tty(u16 minor, u16 serial_port_fwd)
+static tty *
+allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
 {
    tty *t = kzmalloc(sizeof(tty));
 
@@ -175,9 +177,10 @@ static tty *allocate_and_init_tty(u16 minor, u16 serial_port_fwd)
 
    init_tty_struct(t, minor, serial_port_fwd);
 
-   term *new_term = (minor == 1 || kopt_serial_console)
-                        ? get_curr_term()
-                        : tty_allocate_and_init_new_term(serial_port_fwd);
+   term *new_term =
+      (minor == 1 || kopt_serial_console)
+         ? get_curr_term()
+         : tty_allocate_and_init_new_term(serial_port_fwd, rows_buf);
 
    if (!new_term) {
       kfree2(t, sizeof(tty));
@@ -201,7 +204,7 @@ tty_full_destroy(tty *t)
 
 tty *create_tty_nodev(void)
 {
-   tty *const t = allocate_and_init_tty(0, 0);
+   tty *const t = allocate_and_init_tty(0, 0, 0);
 
    if (!t)
       return NULL;
@@ -221,7 +224,7 @@ static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
    ASSERT(minor < ARRAY_SIZE(ttys));
    ASSERT(!ttys[minor]);
 
-   tty *const t = allocate_and_init_tty(minor, serial_port_fwd);
+   tty *const t = allocate_and_init_tty(minor, serial_port_fwd, -1);
 
    if (!t)
       return -ENOMEM;

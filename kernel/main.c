@@ -41,7 +41,7 @@ void init_console(void)
 
    } else {
 
-      init_term(get_curr_term(), NULL, 25, 80, COM1);
+      init_term(get_curr_term(), NULL, 25, 80, COM1, 0);
    }
 
    printk_flush_ringbuf();

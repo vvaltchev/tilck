@@ -33,7 +33,8 @@ int init_term(term *t,
               const video_interface *vi,
               u16 rows,
               u16 cols,
-              u16 serial_port_fwd);
+              u16 serial_port_fwd,
+              int rows_buf); /* note: < 0 means default value */
 
 bool term_is_initialized(term *t);
 const video_interface *term_get_vi(term *t);
