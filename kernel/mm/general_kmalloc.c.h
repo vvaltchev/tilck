@@ -125,7 +125,8 @@ void *general_kmalloc(size_t *size, u32 flags)
       res = __general_kmalloc(size, flags);
 
       if (KMALLOC_HEAVY_STATS && res != NULL)
-         kmalloc_account_alloc(orig_size);
+         if (!(flags & KMALLOC_FL_DONT_ACCOUNT))
+            kmalloc_account_alloc(orig_size);
    }
    enable_preemption();
    return res;
@@ -149,9 +150,7 @@ kmalloc_create_accelerator(kmalloc_accelerator *a, u32 elem_size, u32 elem_c)
    /* The both elem_size and elem_count must be a power of 2 */
    ASSERT(roundup_next_power_of_2(elem_size) == elem_size);
    ASSERT(roundup_next_power_of_2(elem_c) == elem_c);
-
-   /* Max elem_size: 512 MB */
-   ASSERT(elem_size <= (1 << 29));
+   ASSERT(elem_size <= 128 * MB);
 
    *a = (kmalloc_accelerator) {
       .elem_size = elem_size,

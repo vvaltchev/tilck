@@ -95,13 +95,23 @@ static const u32 align_type_table[4] =
 
 static small_heap_node *alloc_new_small_heap(void)
 {
-   void *heap_data = kmalloc(SMALL_HEAP_SIZE);
+   /*
+    * NOTE: here KMALLOC_FL_DONT_ACCOUNT is used in other to avoid the "heavy"
+    * kmalloc stats (when enabled) to account this allocation, as it's not
+    * really a proper allocation: it's the creation of a small heap. Instead,
+    * the allocation for its metadata is explicitly accounted (see below) since
+    * some memory was actually consumed.
+    */
+   size_t actual_metadata_size;
+   size_t small_heap_size = SMALL_HEAP_SIZE;
+   void *heap_data = general_kmalloc(&small_heap_size, KMALLOC_FL_DONT_ACCOUNT);
+   void *metadata = heap_data;
+   small_heap_node *new_node;
 
    if (!heap_data)
       return NULL;
 
-   small_heap_node *new_node =
-      kzmalloc(MAX(sizeof(small_heap_node), SMALL_HEAP_MAX_ALLOC + 1));
+   new_node = kzmalloc(MAX(sizeof(small_heap_node), SMALL_HEAP_MAX_ALLOC + 1));
 
    if (!new_node) {
       kfree2(heap_data, SMALL_HEAP_SIZE);
@@ -109,7 +119,6 @@ static small_heap_node *alloc_new_small_heap(void)
    }
 
    list_node_init(&new_node->not_full_heaps_node);
-   void *md_alloc = heap_data;
 
    bool success =
       kmalloc_create_heap(&new_node->heap,
@@ -118,7 +127,7 @@ static small_heap_node *alloc_new_small_heap(void)
                           SMALL_HEAP_MBS,
                           0,
                           true,
-                          md_alloc,
+                          metadata,
                           NULL,
                           NULL);
 
@@ -128,14 +137,15 @@ static small_heap_node *alloc_new_small_heap(void)
       return NULL;
    }
 
-   size_t actual_size;
-
    // Allocate heap's metadata inside the heap itself
-   actual_size = new_node->heap.metadata_size;
+   actual_metadata_size = new_node->heap.metadata_size;
 
-   DEBUG_ONLY_UNSAFE(void *actual_md_alloc = )
-      per_heap_kmalloc(&new_node->heap, &actual_size, 0);
-   ASSERT(actual_md_alloc == md_alloc);
+   DEBUG_ONLY_UNSAFE(void *actual_metadata = )
+      per_heap_kmalloc(&new_node->heap, &actual_metadata_size, 0);
+   ASSERT(actual_metadata == metadata);
+
+   if (KMALLOC_HEAVY_STATS)
+      kmalloc_account_alloc(actual_metadata_size);
 
    return new_node;
 }
