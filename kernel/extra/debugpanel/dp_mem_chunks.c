@@ -7,6 +7,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/sort.h>
 
 #include "termutil.h"
 #include "dp_int.h"
@@ -15,6 +16,7 @@ typedef struct {
    size_t size;
    size_t count;
    u64 max_waste;
+   u32 max_waste_p;
 } chunk_info;
 
 static debug_kmalloc_stats stats;
@@ -22,6 +24,35 @@ static u64 lf_allocs;
 static u64 lf_waste;
 static size_t chunks_count;
 static chunk_info chunks_arr[1024];
+static u8 chunks_order_by;
+
+static sptr dp_chunks_cmpf_size(const void *a, const void *b)
+{
+   const chunk_info *x = a;
+   const chunk_info *y = b;
+   return (sptr)y->size - (sptr)x->size;
+}
+
+static sptr dp_chunks_cmpf_count(const void *a, const void *b)
+{
+   const chunk_info *x = a;
+   const chunk_info *y = b;
+   return (sptr)y->count - (sptr)x->count;
+}
+
+static sptr dp_chunks_cmpf_waste(const void *a, const void *b)
+{
+   const chunk_info *x = a;
+   const chunk_info *y = b;
+   return (sptr)y->max_waste - (sptr)x->max_waste;
+}
+
+static sptr dp_chunks_cmpf_waste_p(const void *a, const void *b)
+{
+   const chunk_info *x = a;
+   const chunk_info *y = b;
+   return (sptr)y->max_waste_p - (sptr)x->max_waste_p;
+}
 
 static void dp_chunks_enter(void)
 {
@@ -35,6 +66,7 @@ static void dp_chunks_enter(void)
    lf_allocs = 0;
    lf_waste = 0;
    chunks_count = 0;
+   chunks_order_by = 's';
 
    disable_preemption();
    {
@@ -50,6 +82,7 @@ static void dp_chunks_enter(void)
             .size = s,
             .count = c,
             .max_waste = waste,
+            .max_waste_p = (u32)(waste * 1000 / (waste + (u64)s * (u64)c)),
          };
 
          lf_allocs += (u64)s * c;
@@ -64,6 +97,52 @@ static void dp_chunks_exit(void)
    if (!KMALLOC_HEAVY_STATS)
       return;
 }
+
+static int dp_chunks_keypress(u32 key, u8 c)
+{
+   switch (c) {
+
+      case 's':
+         insertion_sort_generic(chunks_arr,
+                                sizeof(chunks_arr[0]),
+                                (u32)chunks_count,
+                                dp_chunks_cmpf_size);
+         ui_need_update = true;
+         chunks_order_by = c;
+         return KB_HANDLER_OK_AND_CONTINUE;
+
+      case 'c':
+         insertion_sort_generic(chunks_arr,
+                                sizeof(chunks_arr[0]),
+                                (u32)chunks_count,
+                                dp_chunks_cmpf_count);
+         ui_need_update = true;
+         chunks_order_by = c;
+         return KB_HANDLER_OK_AND_CONTINUE;
+
+      case 'w':
+         insertion_sort_generic(chunks_arr,
+                                sizeof(chunks_arr[0]),
+                                (u32)chunks_count,
+                                dp_chunks_cmpf_waste);
+         ui_need_update = true;
+         chunks_order_by = c;
+         return KB_HANDLER_OK_AND_CONTINUE;
+
+      case 'p':
+         insertion_sort_generic(chunks_arr,
+                                sizeof(chunks_arr[0]),
+                                (u32)chunks_count,
+                                dp_chunks_cmpf_waste_p);
+         ui_need_update = true;
+         chunks_order_by = c;
+         return KB_HANDLER_OK_AND_CONTINUE;
+
+      default:
+         return KB_HANDLER_NAK;
+   }
+}
+
 
 static void dp_show_chunks(void)
 {
@@ -87,14 +166,18 @@ static void dp_show_chunks(void)
               lf_waste * 100 / lf_tot,
               (lf_waste * 1000 / lf_tot) % 10);
 
-
+   dp_writeln("Order by: (s)ize, (c)ount, (w)aste, waste (p)ercentage");
    dp_writeln("");
 
    dp_writeln(
-      "   Size   "
-      TERM_VLINE "  Count  "
-      TERM_VLINE " Max waste "
-      TERM_VLINE " Max waste (%%)"
+                 "%s" "   Size   "        RESET_ATTRS
+      TERM_VLINE "%s" "  Count  "         RESET_ATTRS
+      TERM_VLINE "%s" " Max waste "       RESET_ATTRS
+      TERM_VLINE "%s" " Max waste (%%)"   RESET_ATTRS,
+      chunks_order_by == 's' ? REVERSE_VIDEO : "",
+      chunks_order_by == 'c' ? REVERSE_VIDEO : "",
+      chunks_order_by == 'w' ? REVERSE_VIDEO : "",
+      chunks_order_by == 'p' ? REVERSE_VIDEO : ""
    );
 
    dp_writeln(
@@ -105,19 +188,18 @@ static void dp_show_chunks(void)
 
    for (size_t i = 0; i < chunks_count; i++) {
 
-      const u64 tot = (u64)chunks_arr[i].size * chunks_arr[i].count;
       const u64 waste = chunks_arr[i].max_waste;
 
       dp_writeln("%9u "
                  TERM_VLINE " %7u "
                  TERM_VLINE " %6llu %s "
-                 TERM_VLINE " %6llu.%llu%%",
+                 TERM_VLINE " %6u.%u%%",
                  chunks_arr[i].size,
                  chunks_arr[i].count,
                  waste < KB ? waste : waste / KB,
                  waste < KB ? "B " : "KB",
-                 waste * 100 / (waste + tot),
-                 (waste * 1000 / (waste + tot)) % 10);
+                 chunks_arr[i].max_waste_p / 10,
+                 chunks_arr[i].max_waste_p % 10);
    }
 
    dp_writeln("");
@@ -130,7 +212,7 @@ static dp_screen dp_chunks_screen =
    .draw_func = dp_show_chunks,
    .on_dp_enter = dp_chunks_enter,
    .on_dp_exit = dp_chunks_exit,
-   .on_keypress_func = NULL,
+   .on_keypress_func = dp_chunks_keypress,
 };
 
 __attribute__((constructor))
