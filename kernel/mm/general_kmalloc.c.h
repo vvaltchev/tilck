@@ -28,20 +28,15 @@ typedef struct {
 
 } mdalloc_metadata;
 
-void *
-general_kmalloc(size_t *size, u32 flags)
+static void *
+__general_kmalloc(size_t *size, u32 flags)
 {
-   void *ret = NULL;
-
    ASSERT(kmalloc_initialized);
-   ASSERT(size);
+   ASSERT(size != NULL);
    ASSERT(*size);
 
-   disable_preemption();
-
    if (*size <= SMALL_HEAP_MAX_ALLOC) {
-      ret = small_heap_kmalloc(*size, flags);
-      goto out;
+      return small_heap_kmalloc(*size, flags);
    }
 
    // Iterate in reverse-order because the first heaps are the biggest ones.
@@ -49,6 +44,7 @@ general_kmalloc(size_t *size, u32 flags)
 
       ASSERT(heaps[i] != NULL);
 
+      void *vaddr;
       const size_t heap_size = heaps[i]->size;
       const size_t heap_free = heap_size - heaps[i]->mem_allocated;
 
@@ -60,50 +56,41 @@ general_kmalloc(size_t *size, u32 flags)
       if (heap_size < *size || heap_free < *size)
          continue;
 
-      void *vaddr = per_heap_kmalloc(heaps[i], size, flags);
-
-      if (vaddr) {
-         ret = vaddr;
+      if ((vaddr = per_heap_kmalloc(heaps[i], size, flags))) {
 
          if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
             debug_kmalloc_register_alloc(vaddr, *size);
          }
 
-         break;
+         return vaddr;
       }
    }
 
-out:
-   enable_preemption();
-   return ret;
+   return NULL;
 }
 
-void
-general_kfree(void *ptr, size_t *size, u32 flags)
+static void
+__general_kfree(void *ptr, size_t *size, u32 flags)
 {
+   kmalloc_heap *h = NULL;
    const uptr vaddr = (uptr) ptr;
    ASSERT(kmalloc_initialized);
 
    if (!ptr)
       return;
 
+   ASSERT(size != NULL);
    ASSERT(*size);
-   disable_preemption();
 
    if (*size <= SMALL_HEAP_MAX_ALLOC) {
-      small_heap_kfree(ptr, flags);
-      goto out;
+      return small_heap_kfree(ptr, flags);
    }
-
-   kmalloc_heap *h = NULL;
 
    for (int i = (int)used_heaps - 1; i >= 0; i--) {
 
       uptr hva = heaps[i]->vaddr;
 
-      /*
-       * Check if [vaddr, vaddr + *size - 1] is in [hva, heap_last_byte].
-       */
+      // Check if [vaddr, vaddr + *size - 1] is in [hva, heap_last_byte].
       if (hva <= vaddr && vaddr + *size - 1 <= heaps[i]->heap_last_byte) {
          h = heaps[i];
          break;
@@ -128,10 +115,26 @@ general_kfree(void *ptr, size_t *size, u32 flags)
    if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
       debug_kmalloc_register_free((void *)vaddr, *size);
    }
+}
 
-out:
+void *general_kmalloc(size_t *size, u32 flags)
+{
+   void *res;
+   disable_preemption();
+   {
+      res = __general_kmalloc(size, flags);
+   }
    enable_preemption();
-   return;
+   return res;
+}
+
+void general_kfree(void *ptr, size_t *size, u32 flags)
+{
+   disable_preemption();
+   {
+      __general_kfree(ptr, size, flags);
+   }
+   enable_preemption();
 }
 
 void
