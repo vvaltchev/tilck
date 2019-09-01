@@ -67,30 +67,36 @@ static void kmalloc_account_alloc(size_t size)
    );
 }
 
-/* NOTE: it requires `arr` to have space for `chunk_sizes_count` elems */
-void debug_kmalloc_get_chunks_info(debug_kmalloc_chunk_stat *arr)
+void debug_kmalloc_chunks_stats_start_read(debug_kmalloc_chunks_ctx *ctx)
 {
-   kmalloc_acc_alloc *obj;
-   bintree_walk_ctx ctx;
-   int i = 0;
-
    if (!KMALLOC_HEAVY_STATS)
       return;
 
-   disable_preemption();
-   {
-      bintree_in_order_visit_start(&ctx,
-                                   alloc_tree_root,
-                                   kmalloc_acc_alloc,
-                                   node,
-                                   true);
-
-      while ((obj = bintree_in_order_visit_next(&ctx))) {
-         arr[i++] = (debug_kmalloc_chunk_stat) {
-            .size = obj->size,
-            .count = obj->count,
-         };
-      }
-   }
-   enable_preemption();
+   ASSERT(!is_preemption_enabled());
+   bintree_in_order_visit_start(ctx,
+                                alloc_tree_root,
+                                kmalloc_acc_alloc,
+                                node,
+                                true);
 }
+
+bool
+debug_kmalloc_chunks_stats_next(debug_kmalloc_chunks_ctx *ctx,
+                                size_t *size, size_t *count)
+{
+   if (!KMALLOC_HEAVY_STATS)
+      return false;
+
+   ASSERT(!is_preemption_enabled());
+
+   kmalloc_acc_alloc *obj;
+   obj = bintree_in_order_visit_next(ctx);
+
+   if (!obj)
+      return false;
+
+   *size = obj->size;
+   *count = obj->count;
+   return true;
+}
+

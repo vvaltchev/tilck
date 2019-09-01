@@ -4,6 +4,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/kernel/bintree.h>
 
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE  (1)
 #define KMALLOC_HEAPS_COUNT              (32)
@@ -155,13 +156,6 @@ typedef struct {
 
 typedef struct {
 
-   size_t size;
-   size_t count;
-
-} debug_kmalloc_chunk_stat;
-
-typedef struct {
-
    kmalloc_small_heaps_stats small_heaps;
    size_t chunk_sizes_count;
 
@@ -170,8 +164,10 @@ typedef struct {
 bool debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i);
 void debug_kmalloc_get_stats(debug_kmalloc_stats *stats);
 
-/* NOTE: it requires `arr` to have space for `chunk_sizes_count` elems */
-void debug_kmalloc_get_chunks_info(debug_kmalloc_chunk_stat *arr);
+typedef bintree_walk_ctx debug_kmalloc_chunks_ctx;
+void debug_kmalloc_chunks_stats_start_read(debug_kmalloc_chunks_ctx *ctx);
+bool debug_kmalloc_chunks_stats_next(debug_kmalloc_chunks_ctx *ctx,
+                                     size_t *size, size_t *count);
 
 void debug_kmalloc_start_leak_detector(bool save_metadata);
 void debug_kmalloc_stop_leak_detector(bool show_leaks);
