@@ -121,7 +121,7 @@ static int debug_per_task_cb(void *obj, void *arg)
    char buf[128];
    char path[MAX_EXEC_PATH_LEN + 1];
    char path2[MAX_EXEC_PATH_LEN + 1];
-   const char *orig_path = pi->filepath;
+   const char *orig_path = pi->debug_filepath;
 
    if (!ti->tid)
       return 0; /* skip the main kernel task */

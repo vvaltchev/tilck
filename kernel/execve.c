@@ -107,12 +107,9 @@ execve_prepare_process(process_info *pi, void *brk, const char *path)
    pi->initial_brk = brk;
    pi->did_call_execve = true;
 
-   /*
-    * TODO: here we might need the canonical file path instead of just any
-    * usable path. In alternative, we might, even better use a vfs_path instead
-    * of a string path.
-    */
-   memcpy(pi->filepath, path, strlen(path) + 1);
+   size_t pl = MIN(strlen(path), ARRAY_SIZE(pi->debug_filepath)-1);
+   memcpy(pi->debug_filepath, path, pl);
+   pi->debug_filepath[pl] = 0;
 }
 
 static inline int

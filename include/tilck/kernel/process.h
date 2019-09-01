@@ -66,7 +66,7 @@ struct process_info {
 
    /* large members */
 
-   char filepath[MAX_PATH];               /* executable's path */
+   char debug_filepath[64];               /* debug field: executable's path */
    char str_cwd[MAX_PATH];                /* current working directory */
    fs_handle handles[MAX_HANDLES];        /* just a small fixed-size array */
 
