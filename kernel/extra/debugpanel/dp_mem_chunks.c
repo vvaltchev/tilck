@@ -14,12 +14,12 @@
 typedef struct {
    size_t size;
    size_t count;
-   size_t max_waste;
+   u64 max_waste;
 } chunk_info;
 
 static debug_kmalloc_stats stats;
-static u64 lifetime_allocs;
-static u64 lifetime_waste;
+static u64 lf_allocs;
+static u64 lf_waste;
 static size_t chunks_count;
 static chunk_info chunks_arr[512];
 
@@ -32,8 +32,8 @@ static void dp_chunks_enter(void)
       return;
 
    debug_kmalloc_get_stats(&stats);
-   lifetime_allocs = 0;
-   lifetime_waste = 0;
+   lf_allocs = 0;
+   lf_waste = 0;
    chunks_count = 0;
 
    disable_preemption();
@@ -44,7 +44,7 @@ static void dp_chunks_enter(void)
          if (chunks_count == ARRAY_SIZE(chunks_arr))
             break;
 
-         const size_t waste = (roundup_next_power_of_2(s) - s) * c;
+         const u64 waste = (u64)(roundup_next_power_of_2(s) - s) * c;
 
          chunks_arr[chunks_count++] = (chunk_info) {
             .size = s,
@@ -52,8 +52,8 @@ static void dp_chunks_enter(void)
             .max_waste = waste,
          };
 
-         lifetime_allocs += s;
-         lifetime_waste += waste;
+         lf_allocs += (u64)s * c;
+         lf_waste += waste;
       }
    }
    enable_preemption();
@@ -68,6 +68,7 @@ static void dp_chunks_exit(void)
 static void dp_show_chunks(void)
 {
    int row = dp_screen_start_row;
+   const u64 lf_tot = lf_allocs + lf_waste;
 
    if (!KMALLOC_HEAVY_STATS) {
       dp_writeln("Not available: recompile with KMALLOC_HEAVY_STATS=1");
@@ -75,14 +76,16 @@ static void dp_show_chunks(void)
    }
 
    dp_writeln("Chunk sizes count:         %5u sizes", chunks_count);
-   dp_writeln("Lifetime data allocated:   %5llu %s",
-              lifetime_allocs < 32*MB ? lifetime_allocs/KB : lifetime_allocs/MB,
-              lifetime_allocs < 32*MB ? "KB" : "MB");
+   dp_writeln("Lifetime data allocated:   %5llu %s [actual: %llu %s]",
+              lf_allocs < 32*MB ? lf_allocs/KB : lf_allocs/MB,
+              lf_allocs < 32*MB ? "KB" : "MB",
+              lf_tot < 32*MB ? lf_tot/KB : lf_tot/MB,
+              lf_tot < 32*MB ? "KB" : "MB");
    dp_writeln("Lifetime max data waste:   %5llu %s (%llu.%llu%%)",
-              lifetime_waste < 32*MB ? lifetime_waste/KB : lifetime_waste/MB,
-              lifetime_waste < 32*MB ? "KB" : "MB",
-              lifetime_waste * 100 / lifetime_allocs,
-              (lifetime_waste * 1000 / lifetime_allocs) % 10);
+              lf_waste < 32*MB ? lf_waste/KB : lf_waste/MB,
+              lf_waste < 32*MB ? "KB" : "MB",
+              lf_waste * 100 / lf_tot,
+              (lf_waste * 1000 / lf_tot) % 10);
 
 
    dp_writeln("");
@@ -91,27 +94,30 @@ static void dp_show_chunks(void)
       "   Size   "
       TERM_VLINE "  Count  "
       TERM_VLINE " Max waste "
+      TERM_VLINE " Max waste (%%)"
    );
 
    dp_writeln(
       GFX_ON
-      "qqqqqqqqqqnqqqqqqqqqnqqqqqqqqqqq"
+      "qqqqqqqqqqnqqqqqqqqqnqqqqqqqqqqqnqqqqqqqqqqqqqqqqqq"
       GFX_OFF
    );
 
    for (size_t i = 0; i < chunks_count; i++) {
 
-      const size_t max_waste = chunks_arr[i].max_waste;
+      const u64 tot = (u64)chunks_arr[i].size * chunks_arr[i].count;
+      const u64 waste = chunks_arr[i].max_waste;
 
-      dp_writeln("%9u " TERM_VLINE " %7u " TERM_VLINE " %6u %s ",
+      dp_writeln("%9u "
+                 TERM_VLINE " %7u "
+                 TERM_VLINE " %6llu %s "
+                 TERM_VLINE " %6llu.%llu%%",
                  chunks_arr[i].size,
                  chunks_arr[i].count,
-                 max_waste < KB
-                  ? max_waste
-                  : max_waste / KB,
-                 max_waste < KB
-                  ? "B "
-                  : "KB");
+                 waste < KB ? waste : waste / KB,
+                 waste < KB ? "B " : "KB",
+                 waste * 100 / (waste + tot),
+                 (waste * 1000 / (waste + tot)) % 10);
    }
 
    dp_writeln("");
