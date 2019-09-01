@@ -121,6 +121,9 @@ set(MMAP_NO_COW OFF CACHE BOOL
 set(PANIC_SHOW_REGS OFF CACHE BOOL
     "Show the content of the main registers in case of kernel panic")
 
+set(KMALLOC_HEAVY_STATS OFF CACHE BOOL
+    "Count the number of allocations for each distinct size")
+
 set(KMALLOC_FREE_MEM_POISONING OFF CACHE BOOL
     "Make kfree() to poison the memory")
 
@@ -170,6 +173,7 @@ list(
    FORK_NO_COW
    MMAP_NO_COW
    PANIC_SHOW_REGS
+   KMALLOC_HEAVY_STATS
    KMALLOC_FREE_MEM_POISONING
    KMALLOC_SUPPORT_DEBUG_LOG
    KMALLOC_SUPPORT_LEAK_DETECTOR

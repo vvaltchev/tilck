@@ -32,8 +32,6 @@ static void *
 __general_kmalloc(size_t *size, u32 flags)
 {
    ASSERT(kmalloc_initialized);
-   ASSERT(size != NULL);
-   ASSERT(*size);
 
    if (*size <= SMALL_HEAP_MAX_ALLOC) {
       return small_heap_kmalloc(*size, flags);
@@ -79,9 +77,6 @@ __general_kfree(void *ptr, size_t *size, u32 flags)
    if (!ptr)
       return;
 
-   ASSERT(size != NULL);
-   ASSERT(*size);
-
    if (*size <= SMALL_HEAP_MAX_ALLOC) {
       return small_heap_kfree(ptr, flags);
    }
@@ -120,9 +115,17 @@ __general_kfree(void *ptr, size_t *size, u32 flags)
 void *general_kmalloc(size_t *size, u32 flags)
 {
    void *res;
+   ASSERT(size != NULL);
+   ASSERT(*size);
+
    disable_preemption();
    {
+      const size_t orig_size = *size;
+
       res = __general_kmalloc(size, flags);
+
+      if (KMALLOC_HEAVY_STATS && res != NULL)
+         kmalloc_account_alloc(orig_size);
    }
    enable_preemption();
    return res;
@@ -130,6 +133,9 @@ void *general_kmalloc(size_t *size, u32 flags)
 
 void general_kfree(void *ptr, size_t *size, u32 flags)
 {
+   ASSERT(size != NULL);
+   ASSERT(!ptr || *size);
+
    disable_preemption();
    {
       __general_kfree(ptr, size, flags);

@@ -311,6 +311,9 @@ void init_kmalloc(void)
 
       max_tot_heap_mem_free += (h->size - h->mem_allocated);
    }
+
+   if (KMALLOC_HEAVY_STATS)
+      kmalloc_init_heavy_stats();
 }
 
 size_t kmalloc_get_max_tot_heap_free(void)
@@ -342,6 +345,8 @@ void
 debug_kmalloc_get_stats(debug_kmalloc_stats *stats)
 {
    *stats = (debug_kmalloc_stats) {
-      .small_heaps = shs
+      .small_heaps = shs,
+      .chunk_sizes_count =
+         KMALLOC_HEAVY_STATS ? alloc_arr_used : 0,
    };
 }

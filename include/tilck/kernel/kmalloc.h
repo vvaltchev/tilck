@@ -155,12 +155,23 @@ typedef struct {
 
 typedef struct {
 
+   size_t size;
+   size_t count;
+
+} debug_kmalloc_chunk_stat;
+
+typedef struct {
+
    kmalloc_small_heaps_stats small_heaps;
+   size_t chunk_sizes_count;
 
 } debug_kmalloc_stats;
 
 bool debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i);
 void debug_kmalloc_get_stats(debug_kmalloc_stats *stats);
+
+/* NOTE: it requires `arr` to have space for `chunk_sizes_count` elems */
+void debug_kmalloc_get_chunks_info(debug_kmalloc_chunk_stat *arr);
 
 void debug_kmalloc_start_leak_detector(bool save_metadata);
 void debug_kmalloc_stop_leak_detector(bool show_leaks);
