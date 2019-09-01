@@ -102,11 +102,9 @@ general_kfree(void *ptr, size_t *size, u32 flags)
       uptr hva = heaps[i]->vaddr;
 
       /*
-       * Check if [vaddr, vaddr + *size) is in [hva, heap_over_end).
-       * Note the -1 used on both sides of the inquality for the case when
-       * heap_over_end is 0 (= 2^32). See the note in kmalloc.c too.
+       * Check if [vaddr, vaddr + *size - 1] is in [hva, heap_last_byte].
        */
-      if (hva <= vaddr && vaddr + *size - 1 <= heaps[i]->heap_over_end - 1) {
+      if (hva <= vaddr && vaddr + *size - 1 <= heaps[i]->heap_last_byte) {
          h = heaps[i];
          break;
       }

@@ -100,7 +100,7 @@ bool kmalloc_create_heap(kmalloc_heap *h,
    h->metadata_nodes = metadata_nodes;
    h->region = -1;
 
-   h->heap_over_end = vaddr + size;
+   h->heap_last_byte = vaddr + size - 1;
    h->heap_data_size_log2 = log2_for_power_of_2(size);
    h->alloc_block_size_log2 = log2_for_power_of_2(alloc_block_size);
 
