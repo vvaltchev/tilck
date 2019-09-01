@@ -6,7 +6,7 @@
 
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/kmalloc.h>
-#include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/kmalloc_debug.h>
 #include <tilck/kernel/sort.h>
 
 #include "termutil.h"

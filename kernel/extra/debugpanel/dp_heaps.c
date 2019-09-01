@@ -3,6 +3,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/kmalloc_debug.h>
 
 #include "termutil.h"
 #include "dp_int.h"

@@ -6,6 +6,7 @@
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/kmalloc_debug.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/sched.h>
