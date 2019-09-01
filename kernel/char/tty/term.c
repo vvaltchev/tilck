@@ -757,6 +757,24 @@ void set_curr_term(term *t)
    term_restart_video_output(get_curr_term());
 }
 
+/*
+ * Calculate an optimal number of extra buffer rows to use for a term of size
+ * `rows` x `cols`, in order to minimize the memory waste (happening when the
+ * buffer size is not a power of 2).
+ */
+static u32 term_calc_opt_buf_rows(u16 rows, u16 cols)
+{
+   if (cols <= 80) {
+      return (32 * KB / 2) / cols - rows;
+   } else if (cols <= 100) {
+      return (64 * KB / 2) / cols - rows;
+   } else if (cols <= 128) {
+      return (128 * KB / 2) / cols - rows;
+   } else {
+      return (256 * KB / 2) / cols - rows;
+   }
+}
+
 int
 init_term(term *t,
           const video_interface *intf,
@@ -785,7 +803,11 @@ init_term(term *t,
 
    if (!in_panic() && !serial_port_fwd) {
 
-      t->extra_buffer_rows = rows_buf < 0 ? 9 * t->rows : (u32)rows_buf;
+      t->extra_buffer_rows =
+         rows_buf >= 0
+            ? (u32)rows_buf
+            : term_calc_opt_buf_rows(rows, cols);
+
       t->total_buffer_rows = t->rows + t->extra_buffer_rows;
 
       if (is_kmalloc_initialized())
