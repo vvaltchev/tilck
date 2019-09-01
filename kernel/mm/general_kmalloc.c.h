@@ -150,7 +150,7 @@ kmalloc_create_accelerator(kmalloc_accelerator *a, u32 elem_size, u32 elem_c)
    /* The both elem_size and elem_count must be a power of 2 */
    ASSERT(roundup_next_power_of_2(elem_size) == elem_size);
    ASSERT(roundup_next_power_of_2(elem_c) == elem_c);
-   ASSERT(elem_size <= 128 * MB);
+   ASSERT(elem_size <= KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK);
 
    *a = (kmalloc_accelerator) {
       .elem_size = elem_size,

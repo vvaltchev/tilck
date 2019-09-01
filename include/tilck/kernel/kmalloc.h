@@ -39,8 +39,6 @@ void init_kmalloc(void);
 
 void *general_kmalloc(size_t *size, u32 flags);
 void general_kfree(void *ptr, size_t *size, u32 flags);
-
-size_t kmalloc_get_total_heap_allocation(void);
 bool is_kmalloc_initialized(void);
 
 bool kmalloc_create_heap(kmalloc_heap *h,

@@ -37,19 +37,6 @@ void *kmalloc_get_first_heap(size_t *size)
 
 #include "kmalloc_leak_detector.c.h"
 
-size_t kmalloc_get_total_heap_allocation(void)
-{
-   size_t tot = 0;
-   disable_preemption();
-
-   for (u32 i = 0; i < used_heaps; i++) {
-      tot += heaps[i]->mem_allocated;
-   }
-
-   enable_preemption();
-   return tot;
-}
-
 bool kmalloc_create_heap(kmalloc_heap *h,
                          uptr vaddr,
                          size_t size,
