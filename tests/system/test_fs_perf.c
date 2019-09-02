@@ -60,14 +60,14 @@ int cmd_fs_perf1(int argc, char **argv)
    elapsed = (end - start) / n;
    start = RDTSC();
 
-   printf("Avg. creat() cost:  %4llu K cycles\n", elapsed / 1000);
+   printf("Avg. creat() cost:  %4llu cycles\n", elapsed);
 
    for (int i = 0; i < n; i++)
      remove_test_file_expecting_success(dest_dir, i);
 
    end = RDTSC();
    elapsed = (end - start) / n;
-   printf("Avg. unlink() cost: %4llu K cycles\n", elapsed / 1000);
+   printf("Avg. unlink() cost: %4llu cycles\n", elapsed);
    return 0;
 }
 
