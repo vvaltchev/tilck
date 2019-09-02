@@ -43,7 +43,6 @@ static void kmalloc_init_heavy_stats(void)
 static void kmalloc_account_alloc(size_t size)
 {
    kmalloc_acc_alloc *obj;
-   bool r;
 
    if (!alloc_arr)
       return;
@@ -63,8 +62,9 @@ static void kmalloc_account_alloc(size_t size)
    obj->size = size;
    obj->count = 1;
 
-   r = bintree_insert_ptr(&alloc_tree_root, obj, kmalloc_acc_alloc, node, size);
-   ASSERT(r);
+   DEBUG_CHECKED_SUCCESS(
+      bintree_insert_ptr(&alloc_tree_root, obj, kmalloc_acc_alloc, node, size)
+   );
 }
 
 /* NOTE: it requires `arr` to have space for `chunk_sizes_count` elems */
