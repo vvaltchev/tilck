@@ -308,7 +308,7 @@ void init_tty(void)
       if (!kopt_serial_console)
          kb_register_keypress_handler(&tty_keypress_handler_elem);
 
-      tty_tasklet_runner = create_tasklet_thread(100, 1024);
+      tty_tasklet_runner = create_tasklet_thread(100, TTY_TASKLETS_QUEUE_SIZE);
 
       if (tty_tasklet_runner < 0)
          panic("TTY: unable to create tasklet runner");

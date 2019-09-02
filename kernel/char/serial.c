@@ -93,7 +93,7 @@ void init_serial_comm(void)
    disable_preemption();
    {
       serial_port_tasklet_runner =
-         create_tasklet_thread(1 /* priority */, 128);
+         create_tasklet_thread(1 /* priority */, KB_TASKLETS_QUEUE_SIZE);
 
       if (serial_port_tasklet_runner < 0)
          panic("Serial: Unable to create a tasklet runner thread for IRQs");

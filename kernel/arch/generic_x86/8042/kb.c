@@ -14,8 +14,6 @@
 #include "kb_layouts.c.h"
 #include "kb_ansi_seq.c.h"
 
-#define KB_TASKLETS_QUEUE_SIZE 128
-
 enum kb_state {
 
    KB_DEFAULT_STATE = 0,

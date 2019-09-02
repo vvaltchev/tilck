@@ -288,7 +288,7 @@ void init_tasklets(void)
    int tn;
 
    tasklet_threads_count = 0;
-   tn = create_tasklet_thread(0 /* priority */, 32 /* max tasklets */);
+   tn = create_tasklet_thread(0 /* priority */, MAX_PRIO_TASKLET_QUEUE_SIZE);
 
    if (tn < 0)
       panic("init_tasklet_thread() failed");
