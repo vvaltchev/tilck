@@ -695,7 +695,7 @@ per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
 
 /* Natural continuation of this source file. Purpose: make this file shorter. */
 #include "kmalloc_stats.c.h"
-#include "kmalloc_small_heap.c.h"
+#include "kmalloc_small_heaps.c.h"
 #include "kmalloc_heaps.c.h"
 #include "general_kmalloc.c.h"
 

@@ -29,13 +29,9 @@ typedef struct {
 } mdalloc_metadata;
 
 static void *
-__general_kmalloc(size_t *size, u32 flags)
+main_heaps_kmalloc(size_t *size, u32 flags)
 {
    ASSERT(kmalloc_initialized);
-
-   if (*size <= SMALL_HEAP_MAX_ALLOC) {
-      return small_heap_kmalloc(*size, flags);
-   }
 
    // Iterate in reverse-order because the first heaps are the biggest ones.
    for (int i = (int)used_heaps - 1; i >= 0; i--) {
@@ -68,18 +64,11 @@ __general_kmalloc(size_t *size, u32 flags)
 }
 
 static void
-__general_kfree(void *ptr, size_t *size, u32 flags)
+main_heaps_kfree(void *ptr, size_t *size, u32 flags)
 {
    kmalloc_heap *h = NULL;
    const uptr vaddr = (uptr) ptr;
    ASSERT(kmalloc_initialized);
-
-   if (!ptr)
-      return;
-
-   if (*size <= SMALL_HEAP_MAX_ALLOC) {
-      return small_heap_kfree(ptr, flags);
-   }
 
    for (int i = (int)used_heaps - 1; i >= 0; i--) {
 
@@ -115,6 +104,7 @@ __general_kfree(void *ptr, size_t *size, u32 flags)
 void *general_kmalloc(size_t *size, u32 flags)
 {
    void *res;
+   ASSERT(kmalloc_initialized);
    ASSERT(size != NULL);
    ASSERT(*size);
 
@@ -122,7 +112,11 @@ void *general_kmalloc(size_t *size, u32 flags)
    {
       const size_t orig_size = *size;
 
-      res = __general_kmalloc(size, flags);
+      if (*size <= SMALL_HEAP_MAX_ALLOC) {
+         res = small_heaps_kmalloc(*size, flags);
+      } else {
+         res = main_heaps_kmalloc(size, flags);
+      }
 
       if (KMALLOC_HEAVY_STATS && res != NULL)
          if (!(flags & KMALLOC_FL_DONT_ACCOUNT))
@@ -134,12 +128,20 @@ void *general_kmalloc(size_t *size, u32 flags)
 
 void general_kfree(void *ptr, size_t *size, u32 flags)
 {
+   ASSERT(kmalloc_initialized);
    ASSERT(size != NULL);
    ASSERT(!ptr || *size);
 
+   if (!ptr)
+      return;
+
    disable_preemption();
    {
-      __general_kfree(ptr, size, flags);
+      if (*size <= SMALL_HEAP_MAX_ALLOC) {
+         small_heaps_kfree(ptr, flags);
+      } else {
+         main_heaps_kfree(ptr, size, flags);
+      }
    }
    enable_preemption();
 }

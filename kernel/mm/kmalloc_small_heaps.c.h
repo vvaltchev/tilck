@@ -151,7 +151,7 @@ static small_heap_node *alloc_new_small_heap(void)
 }
 
 static void *
-small_heap_kmalloc_internal(size_t *size,
+small_heaps_kmalloc_internal(size_t *size,
                             u32 flags,
                             small_heap_node **chosen_node)
 {
@@ -202,7 +202,7 @@ static void destroy_small_heap(small_heap_node *node)
    kfree2(node, MAX(sizeof(small_heap_node), SMALL_HEAP_MAX_ALLOC + 1));
 }
 
-static void *small_heap_kmalloc(size_t size, u32 flags)
+static void *small_heaps_kmalloc(size_t size, u32 flags)
 {
    void *buf;
    small_heap_node *node;
@@ -216,7 +216,7 @@ static void *small_heap_kmalloc(size_t size, u32 flags)
    }
 
    size += sizeof(small_heap_block_metadata) + align_offset;
-   buf = small_heap_kmalloc_internal(&size, flags, &node);
+   buf = small_heaps_kmalloc_internal(&size, flags, &node);
 
    if (!buf)
       return NULL;
@@ -229,7 +229,7 @@ static void *small_heap_kmalloc(size_t size, u32 flags)
 }
 
 static void
-small_heap_kfree(void *ptr, u32 flags)
+small_heaps_kfree(void *ptr, u32 flags)
 {
    ASSERT(!is_preemption_enabled());
 
