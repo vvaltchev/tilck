@@ -72,7 +72,7 @@ main_heaps_kfree(void *ptr, size_t *size, u32 flags)
 
    for (int i = (int)used_heaps - 1; i >= 0; i--) {
 
-      uptr hva = heaps[i]->vaddr;
+      const uptr hva = heaps[i]->vaddr;
 
       // Check if [vaddr, vaddr + *size - 1] is in [hva, heap_last_byte].
       if (hva <= vaddr && vaddr + *size - 1 <= heaps[i]->heap_last_byte) {
@@ -113,7 +113,7 @@ void *general_kmalloc(size_t *size, u32 flags)
       const size_t orig_size = *size;
 
       if (*size <= SMALL_HEAP_MAX_ALLOC) {
-         res = small_heaps_kmalloc(*size, flags);
+         res = small_heaps_kmalloc(size, flags);
       } else {
          res = main_heaps_kmalloc(size, flags);
       }
@@ -138,12 +138,41 @@ void general_kfree(void *ptr, size_t *size, u32 flags)
    disable_preemption();
    {
       if (*size <= SMALL_HEAP_MAX_ALLOC) {
-         small_heaps_kfree(ptr, flags);
+         small_heaps_kfree(ptr, size, flags);
       } else {
          main_heaps_kfree(ptr, size, flags);
       }
    }
    enable_preemption();
+}
+
+/*
+ * Currently, because of the way kmalloc() is implemented, each chunk of actual
+ * size roundup_next_power_of_2(size) with size < KMALLOC_MAX_ALIGN, is
+ * automatically aligned without the need of any effort. Still, it's worth
+ * using functions like aligned_kmalloc() and aligned_kfree() in order to save
+ * the alignment requirement and allow potentially the use of a different
+ * allocator.
+ */
+void *aligned_kmalloc(size_t size, u32 align)
+{
+   void *res = general_kmalloc(&size, 0);
+
+   ASSERT(align > 0);
+   ASSERT(align <= size);
+   ASSERT(align <= KMALLOC_MAX_ALIGN);
+   ASSERT(roundup_next_power_of_2(align) == align);
+
+   if (res != NULL)
+      ASSERT(((uptr)res & (align-1)) == 0);
+
+   return res;
+}
+
+/* See the comment above aligned_kmalloc() */
+void aligned_kfree2(void *ptr, size_t size)
+{
+   general_kfree(ptr, &size, 0);
 }
 
 void *mdalloc(size_t size)

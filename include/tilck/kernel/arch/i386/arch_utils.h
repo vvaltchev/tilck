@@ -32,7 +32,7 @@ typedef struct {
    u16 ldt_index_in_gdt; /* Index in gdt, valid only if ldt != NULL. */
    u16 gdt_entries[3]; /* Array of indexes in gdt, valid if > 0 */
    u16 fpu_regs_size;
-   void *fpu_regs;
+   void *aligned_fpu_regs;
 
 } arch_task_info_members;
 

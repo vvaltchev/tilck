@@ -332,7 +332,7 @@ void set_current_task_in_user_mode(void)
 
 static inline bool is_fpu_enabled_for_task(task_info *ti)
 {
-   return ti->arch.fpu_regs &&
+   return ti->arch.aligned_fpu_regs &&
           (ti->state_regs->custom_flags & REGS_FL_FPU_ENABLED);
 }
 
@@ -506,7 +506,7 @@ bool arch_specific_new_task_setup(task_info *ti, task_info *parent)
       memcpy(&ti->arch, &parent->arch, sizeof(ti->arch));
    }
 
-   ti->arch.fpu_regs = NULL;
+   ti->arch.aligned_fpu_regs = NULL;
    ti->arch.fpu_regs_size = 0;
 
 #if FORK_NO_COW
@@ -546,8 +546,8 @@ void arch_specific_free_task(task_info *ti)
       }
    }
 
-   kfree2(ti->arch.fpu_regs, ti->arch.fpu_regs_size);
-   ti->arch.fpu_regs = NULL;
+   aligned_kfree2(ti->arch.aligned_fpu_regs, ti->arch.fpu_regs_size);
+   ti->arch.aligned_fpu_regs = NULL;
    ti->arch.fpu_regs_size = 0;
 }
 
