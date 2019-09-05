@@ -698,4 +698,5 @@ per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
 #include "kmalloc_small_heaps.c.h"
 #include "kmalloc_heaps.c.h"
 #include "general_kmalloc.c.h"
+#include "kmalloc_accelerator.c.h"
 

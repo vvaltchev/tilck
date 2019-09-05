@@ -146,63 +146,6 @@ void general_kfree(void *ptr, size_t *size, u32 flags)
    enable_preemption();
 }
 
-void
-kmalloc_create_accelerator(kmalloc_accelerator *a, u32 elem_size, u32 elem_c)
-{
-   /* The both elem_size and elem_count must be a power of 2 */
-   ASSERT(roundup_next_power_of_2(elem_size) == elem_size);
-   ASSERT(roundup_next_power_of_2(elem_c) == elem_c);
-   ASSERT(elem_size <= KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK);
-
-   *a = (kmalloc_accelerator) {
-      .elem_size = elem_size,
-      .elem_count = elem_c,
-      .curr_elem = elem_c,
-      .buf = NULL,
-   };
-}
-
-void *
-kmalloc_accelerator_get_elem(kmalloc_accelerator *a)
-{
-   size_t actual_size;
-
-   if (a->curr_elem == a->elem_count) {
-
-      actual_size = a->elem_size * a->elem_count;
-
-      a->buf = general_kmalloc(&actual_size,   /* size (in/out)       */
-                               a->elem_size);  /* sub_blocks_min_size */
-
-      ASSERT(actual_size == a->elem_size * a->elem_count);
-
-      if (!a->buf)
-         return NULL;
-
-      a->curr_elem = 0;
-   }
-
-   return a->buf + (a->elem_size * a->curr_elem++);
-}
-
-void
-kmalloc_destroy_accelerator(kmalloc_accelerator *a)
-{
-   size_t actual_size;
-
-   for (; a->curr_elem < a->elem_count; a->curr_elem++) {
-
-      actual_size = a->elem_size;
-
-      general_kfree(a->buf + (a->curr_elem * a->elem_size), /* ptr           */
-                    &actual_size,                           /* size (in/out) */
-                    KFREE_FL_ALLOW_SPLIT);
-
-      ASSERT(actual_size == a->elem_size);
-   }
-}
-
-
 void *mdalloc(size_t size)
 {
    mdalloc_metadata *b = kmalloc(size + sizeof(mdalloc_metadata));
