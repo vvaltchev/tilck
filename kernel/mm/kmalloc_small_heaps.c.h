@@ -6,12 +6,6 @@
 
 #endif
 
-#define SMALL_HEAP_MBS  32
-#define SMALL_HEAP_SIZE (8 * PAGE_SIZE)
-
-#define SMALL_HEAP_MD_SIZE \
-   (calculate_heap_metadata_size(SMALL_HEAP_SIZE, SMALL_HEAP_MBS))
-
 /*
  * NOTE: the trick to make the small heap to work well without the number of
  * small heaps to explode is to allow it to allocate just a small fraction of

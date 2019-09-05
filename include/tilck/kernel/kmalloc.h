@@ -5,8 +5,14 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
-#define KMALLOC_METADATA_BLOCK_NODE_SIZE  (1)
-#define KMALLOC_HEAPS_COUNT              (32)
+#define KMALLOC_METADATA_BLOCK_NODE_SIZE      1
+#define KMALLOC_HEAPS_COUNT                  32
+
+#define SMALL_HEAP_MBS                       32
+#define SMALL_HEAP_SIZE               (32 * KB)
+
+#define SMALL_HEAP_MD_SIZE \
+   (calculate_heap_metadata_size(SMALL_HEAP_SIZE, SMALL_HEAP_MBS))
 
 #define KMALLOC_FL_MULTI_STEP               (0b10000000000000000000000000000000)
 #define KMALLOC_FL_NO_ACTUAL_ALLOC          (0b01000000000000000000000000000000)
