@@ -251,7 +251,7 @@ void init_kmalloc(void)
 {
    ASSERT(!kmalloc_initialized);
    list_init(&small_heaps_list);
-   list_init(&small_not_full_heaps_list);
+   list_init(&avail_small_heaps_list);
 
    int heap_index;
    used_heaps = 0;
