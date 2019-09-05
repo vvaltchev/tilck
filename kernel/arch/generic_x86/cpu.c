@@ -345,10 +345,13 @@ void fpu_context_begin(void)
 {
    disable_preemption();
 
-   /* NOTE: nested FPU contexts are NOT allowed! */
-   ASSERT(!in_fpu_context);
-   in_fpu_context = true;
+   /* NOTE: nested FPU contexts are NOT allowed (unless we're in panic) */
 
+   if (LIKELY(!in_panic())) {
+      ASSERT(!in_fpu_context);
+   }
+
+   in_fpu_context = true;
    hw_fpu_enable();
    save_current_fpu_regs(true);
 }
