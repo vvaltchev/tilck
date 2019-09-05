@@ -87,7 +87,12 @@
       "termutil.h": "c",
       "gdt_int.h": "c",
       "process_int.h": "c",
-      "hal.h": "c"
+      "hal.h": "c",
+      "array": "cpp",
+      "hash_map": "cpp",
+      "bitset": "cpp",
+      "string_view": "cpp",
+      "utility": "cpp"
    },
    "python.pythonPath": "/usr/bin/python"
 }
