@@ -104,6 +104,7 @@ main_heaps_kfree(void *ptr, size_t *size, u32 flags)
 void *general_kmalloc(size_t *size, u32 flags)
 {
    void *res;
+   const u32 sub_block_sz = flags & KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK;
    ASSERT(kmalloc_initialized);
    ASSERT(size != NULL);
    ASSERT(*size);
@@ -112,7 +113,9 @@ void *general_kmalloc(size_t *size, u32 flags)
    {
       const size_t orig_size = *size;
 
-      if (*size <= SMALL_HEAP_MAX_ALLOC) {
+      if (*size <= SMALL_HEAP_MAX_ALLOC ||
+          UNLIKELY(sub_block_sz && sub_block_sz <= SMALL_HEAP_MAX_ALLOC))
+      {
          res = small_heaps_kmalloc(size, flags);
       } else {
          res = main_heaps_kmalloc(size, flags);

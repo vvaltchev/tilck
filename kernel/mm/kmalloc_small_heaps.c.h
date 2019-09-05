@@ -165,6 +165,7 @@ static void *small_heaps_kmalloc(size_t *size, u32 flags)
    void *ret;
 
    ASSERT(!is_preemption_enabled());
+   ASSERT(*size <= (SMALL_HEAP_SIZE - SMALL_HEAP_MBS));
 
    list_for_each_ro(pos, &avail_small_heaps_list, avail_node) {
 

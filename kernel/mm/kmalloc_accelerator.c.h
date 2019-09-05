@@ -21,6 +21,21 @@ kmalloc_create_accelerator(kmalloc_accelerator *a, u32 elem_size, u32 elem_c)
    ASSERT(roundup_next_power_of_2(elem_c) == elem_c);
    ASSERT(elem_size <= KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK);
 
+   if (elem_size <= SMALL_HEAP_MAX_ALLOC) {
+
+      /*
+       * All the elements must live in a "small heap". The problem with that
+       * is that elem_size * elem_c must be <= SMALL_HEAP_SIZE. Otherwise,
+       * it's possible nor to use bigger heaps (because their MBS (min block
+       * size) is too big), neither to use small heaps because they cannot
+       * contain `elem_c` elements of size `elem_size`.
+       *
+       * Fix: just reduce the value of `elem_c`.
+       */
+
+      ASSERT(elem_size * elem_c <= (SMALL_HEAP_SIZE - SMALL_HEAP_MD_SIZE));
+   }
+
    *a = (kmalloc_accelerator) {
       .elem_size = elem_size,
       .elem_count = elem_c,
@@ -68,4 +83,3 @@ kmalloc_destroy_accelerator(kmalloc_accelerator *a)
       ASSERT(actual_size == a->elem_size);
    }
 }
-
