@@ -6,7 +6,7 @@
 
 #endif
 
-#define SMALL_HEAP_MBS  16
+#define SMALL_HEAP_MBS  32
 #define SMALL_HEAP_SIZE (8 * PAGE_SIZE)
 
 #define SMALL_HEAP_MD_SIZE \
