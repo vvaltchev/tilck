@@ -71,6 +71,11 @@ static void kmalloc_init_heavy_stats(void)
 {
    ASSERT(!is_preemption_enabled());
 
+   if (KERNEL_TEST_INT) {
+      /* It does not make sense to run those heavy stats in unit tests */
+      return;
+   }
+
    const size_t alloc_arr_bytes = 4 * PAGE_SIZE;
    alloc_arr_elems = alloc_arr_bytes / sizeof(kmalloc_acc_alloc);
    alloc_arr_used = 0;
