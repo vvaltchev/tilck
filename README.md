@@ -32,10 +32,10 @@ the following two questions:
 > 2) How fast a given syscall / kernel subsystem can get if we get rid of its most
 > complex features?
 
-While as per today `Tilck` is still far from being able to provide some answers
-to the first question, some progress has been made with the second one: as shown
-in this [article], thanks to several simplifications, `Tilck`'s console is
-faster than the Linux one.
+While as per today `Tilck` is not quite ready yet to provide some answers to the
+first question, some progress has been made with the second one: as shown in
+this [article], thanks to several simplifications, `Tilck`'s console is faster
+than the Linux one.
 
 What Tilck is NOT ?
 ----------------------------------------
@@ -343,7 +343,7 @@ decided to stick initially with the `i686` architecture for the following reason
   machines where supporting a huge amount of memory is a must. We already have
   Linux for that.
 
-* It seemed to me at the time, that there was more online "starters" documentation
+* It seemed to me at the time, that more online "starters" documentation existed
   (like the articles on https://wiki.osdev.org/) for `i686` compared to any other
   architecture.
 
