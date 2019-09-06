@@ -16,10 +16,19 @@
 #define SMALL_HEAP_NODE_ALLOC_SZ \
    MAX(sizeof(small_heap_node), SMALL_HEAP_MAX_ALLOC + 1)
 
+/*
+ * Be careful with this: incrementing its value to 2 does not reduce with any of
+ * the current tests the value of shs.lifetime_created_heaps_count: this means
+ * just wasting memory. While, setting it to 0, increases that by +1. It's a
+ * good parameter to have and evaluate it's effects in the long term, with more
+ * and more complex uses cases.
+ */
+#define MAX_EMPTY_SMALL_HEAPS    1
+
 typedef struct {
 
-   list_node node;
-   list_node avail_node;
+   list_node node;          /* all nodes */
+   list_node avail_node;    /* non-full nodes, including empty ones */
    kmalloc_heap heap;
 
 } small_heap_node;
@@ -125,8 +134,8 @@ static small_heap_node *alloc_new_small_heap(void)
       return NULL;
    }
 
-   list_node_init(&new_node->node);
-   list_node_init(&new_node->avail_node);
+   DEBUG_ONLY(list_node_init(&new_node->node));
+   DEBUG_ONLY(list_node_init(&new_node->avail_node));
 
    bool success =
       kmalloc_create_heap(&new_node->heap,
@@ -155,6 +164,7 @@ static small_heap_node *alloc_new_small_heap(void)
    if (KMALLOC_HEAVY_STATS)
       kmalloc_account_alloc(actual_metadata_size);
 
+   shs.lifetime_created_heaps_count++;
    register_small_heap_node(new_node);
    return new_node;
 }
@@ -171,6 +181,7 @@ static void *small_heaps_kmalloc(size_t *size, u32 flags)
    small_heap_node *new_node;
    small_heap_node *pos;
    void *ret;
+   bool was_empty;
 
    ASSERT(!is_preemption_enabled());
    ASSERT(*size <= (SMALL_HEAP_SIZE - SMALL_HEAP_MBS));
@@ -180,6 +191,8 @@ static void *small_heaps_kmalloc(size_t *size, u32 flags)
       if (pos->heap.size - pos->heap.mem_allocated < *size)
          continue;
 
+      was_empty = pos->heap.mem_allocated == SMALL_HEAP_MD_SIZE;
+
       /* We've found a heap with (potentially) enough space */
       if ((ret = per_heap_kmalloc(&pos->heap, size, flags))) {
 
@@ -187,6 +200,11 @@ static void *small_heaps_kmalloc(size_t *size, u32 flags)
           * The alloc succeeded. If now the heap is full, remove it from the
           * 'avail' list.
           */
+
+         if (was_empty) {
+            shs.empty_count--;
+            ASSERT(shs.empty_count >= 0);
+         }
 
          if (pos->heap.mem_allocated == pos->heap.size)
             remove_from_avail_list(pos);
@@ -204,7 +222,6 @@ static void *small_heaps_kmalloc(size_t *size, u32 flags)
    ASSERT(ret != NULL); // We've just created the node, if should be almost
                         // empty (expect for the metadata). There is no reason
                         // the allocation to fail.
-
    return ret;
 }
 
@@ -248,8 +265,13 @@ small_heaps_kfree(void *ptr, size_t *size, u32 flags)
 
    } else {
 
-      /* The chunk wasn't full: we have to check if it's "empty". */
-      if (node->heap.mem_allocated == SMALL_HEAP_MD_SIZE)
-         destroy_small_heap(node);
+      /* The chunk wasn't full: we have to check if it's "empty" now. */
+      if (node->heap.mem_allocated == SMALL_HEAP_MD_SIZE) {
+         if (MAX_EMPTY_SMALL_HEAPS && shs.empty_count < MAX_EMPTY_SMALL_HEAPS) {
+            shs.empty_count++;
+         } else {
+            destroy_small_heap(node);
+         }
+      }
    }
 }

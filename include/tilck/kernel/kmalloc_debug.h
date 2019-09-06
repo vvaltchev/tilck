@@ -21,6 +21,8 @@ typedef struct {
    int peak_count;
    int not_full_count;
    int peak_not_full_count;
+   int empty_count;
+   int lifetime_created_heaps_count;
 
 } kmalloc_small_heaps_stats;
 
