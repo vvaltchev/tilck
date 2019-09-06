@@ -13,6 +13,9 @@
  */
 #define SMALL_HEAP_MAX_ALLOC (SMALL_HEAP_SIZE / 16 - 1)
 
+#define SMALL_HEAP_NODE_ALLOC_SZ \
+   MAX(sizeof(small_heap_node), SMALL_HEAP_MAX_ALLOC + 1)
+
 typedef struct {
 
    list_node node;
@@ -24,6 +27,16 @@ typedef struct {
 static kmalloc_small_heaps_stats shs;
 static list small_heaps_list;
 static list avail_small_heaps_list;
+
+static inline small_heap_node *alloc_small_heap_node(void)
+{
+   return kzmalloc(SMALL_HEAP_NODE_ALLOC_SZ);
+}
+
+static inline void free_small_heap_node(small_heap_node *obj)
+{
+   kfree2(obj, SMALL_HEAP_NODE_ALLOC_SZ);
+}
 
 static inline void
 add_in_avail_list(small_heap_node *node)
@@ -103,8 +116,9 @@ static small_heap_node *alloc_new_small_heap(void)
    if (!(heap_data = general_kmalloc(&small_heap_sz, KMALLOC_FL_DONT_ACCOUNT)))
       return NULL;
 
+   ASSERT(small_heap_sz == SMALL_HEAP_SIZE);
    metadata = heap_data;
-   new_node = kzmalloc(MAX(sizeof(small_heap_node), SMALL_HEAP_MAX_ALLOC + 1));
+   new_node = alloc_small_heap_node();
 
    if (!new_node) {
       kfree2(heap_data, SMALL_HEAP_SIZE);
@@ -126,7 +140,7 @@ static small_heap_node *alloc_new_small_heap(void)
                           NULL);
 
    if (!success) {
-      kfree2(new_node, MAX(sizeof(small_heap_node), SMALL_HEAP_MAX_ALLOC + 1));
+      free_small_heap_node(new_node);
       kfree2(heap_data, SMALL_HEAP_SIZE);
       return NULL;
    }
@@ -149,7 +163,7 @@ static void destroy_small_heap(small_heap_node *node)
 {
    unregister_small_heap_node(node);
    kfree2((void *)node->heap.vaddr, SMALL_HEAP_SIZE);
-   kfree2(node, MAX(sizeof(small_heap_node), SMALL_HEAP_MAX_ALLOC + 1));
+   free_small_heap_node(node);
 }
 
 static void *small_heaps_kmalloc(size_t *size, u32 flags)
@@ -167,20 +181,18 @@ static void *small_heaps_kmalloc(size_t *size, u32 flags)
          continue;
 
       /* We've found a heap with (potentially) enough space */
-      ret = per_heap_kmalloc(&pos->heap, size, flags);
+      if ((ret = per_heap_kmalloc(&pos->heap, size, flags))) {
 
-      if (!ret)
-         continue;
+         /*
+          * The alloc succeeded. If now the heap is full, remove it from the
+          * 'avail' list.
+          */
 
-      /*
-       * The alloc succeeded. If now the heap is full, remove it from the
-       * 'avail' list.
-       */
+         if (pos->heap.mem_allocated == pos->heap.size)
+            remove_from_avail_list(pos);
 
-      if (pos->heap.mem_allocated == pos->heap.size)
-         remove_from_avail_list(pos);
-
-      return ret;
+         return ret;
+      }
    }
 
    if (!(new_node = alloc_new_small_heap()))
