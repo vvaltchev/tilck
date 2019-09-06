@@ -365,7 +365,7 @@ the FAT32 boot partition is mounted at /initrd. The 2nd reason for keeping
 is to minimize the peak in memory usage during boot. Consider the idea if having
 a `tgz` archive and having to extract all of its files in the root directory:
 doing that will require, even for short period of time, keeping both the archive
-and the its contents in memory. This is against Tilck's effort to reduce its
+and all of its contents in memory. This is against Tilck's effort to reduce its
 memory footprint as much as possible, allowing it to run, potentially, on very
 limited systems.
 
