@@ -22,6 +22,24 @@ void kmutex_destroy(kmutex *m)
    bzero(m, sizeof(kmutex));
 }
 
+static ALWAYS_INLINE void kmutex_lock_enable_preemption_wrapper(kmutex *m)
+{
+#if KERNEL_SELFTESTS
+
+   if (LIKELY(!(m->flags & KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED))) {
+      enable_preemption();       /* default case */
+   } else {
+      ASSERT(disable_preemption_count == 2);
+      force_enable_preemption(); /* special case only for self tests */
+   }
+
+#else
+
+   enable_preemption(); /* the only case when self tests don't exist */
+
+#endif
+}
+
 void kmutex_lock(kmutex *m)
 {
    disable_preemption();
@@ -37,7 +55,7 @@ void kmutex_lock(kmutex *m)
          m->lock_count++;
       }
 
-      enable_preemption();
+      kmutex_lock_enable_preemption_wrapper(m);
       return;
    }
 
@@ -61,7 +79,7 @@ void kmutex_lock(kmutex *m)
 #endif
 
    task_set_wait_obj(get_curr_task(), WOBJ_KMUTEX, m, &m->wait_list);
-   enable_preemption();
+   kmutex_lock_enable_preemption_wrapper(m);
    kernel_yield(); // Go to sleep until someone else is holding the lock.
 
    /* ------------------- We've been woken up ------------------- */

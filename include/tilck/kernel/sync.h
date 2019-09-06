@@ -150,7 +150,17 @@ typedef struct {
       .wait_list = make_list(m.wait_list),        \
    }
 
-#define KMUTEX_FL_RECURSIVE (1 << 0)
+#define KMUTEX_FL_RECURSIVE                                (1 << 0)
+
+#if KERNEL_SELFTESTS
+
+   /*
+    * Magic kmutex flag, existing only when self tests are compiled-in and
+    * designed specifically for selftest_kmutex_ord_med(). See the comments
+    * in se_kmutex.c for more about it.
+    */
+   #define KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED      (1 << 1)
+#endif
 
 void kmutex_init(kmutex *m, u32 flags);
 void kmutex_lock(kmutex *m);

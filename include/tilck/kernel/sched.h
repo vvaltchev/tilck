@@ -49,6 +49,15 @@ static ALWAYS_INLINE void enable_preemption(void)
    ASSERT(oldval > 0);
 }
 
+/*
+ * WARNING: this function is dangerous and should NEVER be used it for anything
+ * other than special self-test code paths. See selftest_kmutex_ord_med().
+ */
+static ALWAYS_INLINE void force_enable_preemption(void)
+{
+   atomic_store_explicit(&disable_preemption_count, 0u, mo_relaxed);
+}
+
 #ifdef DEBUG
 
 /*
