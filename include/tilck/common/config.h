@@ -16,6 +16,14 @@
 #define KMUTEX_STATS_ENABLED                    0
 #define SLOW_DEBUG_REF_COUNT                    0
 
+/* Value-based version of some defined-or-not macros */
+
+#ifdef KERNEL_TEST
+   #define KERNEL_TEST_INT 1
+#else
+   #define KERNEL_TEST_INT 0
+#endif
+
 /* ------------------------------- */
 
 /*
@@ -49,15 +57,15 @@
 #define KMALLOC_MIN_HEAP_SIZE      KMALLOC_MAX_ALIGN
 
 #if !KERNEL_GCOV
-   #define KMALLOC_FIRST_HEAP_SIZE    (256 * KB)
+   #define KMALLOC_FIRST_HEAP_SIZE    ( 256 * KB)
    #define KERNEL_MAX_SIZE            (1024 * KB)
-   #define SYMTAB_MAX_SIZE            (32 * KB)
-   #define STRTAB_MAX_SIZE            (32 * KB)
+   #define SYMTAB_MAX_SIZE            (  32 * KB)
+   #define STRTAB_MAX_SIZE            (  32 * KB)
 #else
-   #define KMALLOC_FIRST_HEAP_SIZE    (512 * KB)
+   #define KMALLOC_FIRST_HEAP_SIZE    ( 512 * KB)
    #define KERNEL_MAX_SIZE            (2048 * KB)
-   #define SYMTAB_MAX_SIZE            (128 * KB)
-   #define STRTAB_MAX_SIZE            (128 * KB)
+   #define SYMTAB_MAX_SIZE            ( 128 * KB)
+   #define STRTAB_MAX_SIZE            ( 128 * KB)
 #endif
 
 #define USER_VSDO_LIKE_PAGE_VADDR                 (LINEAR_MAPPING_END)

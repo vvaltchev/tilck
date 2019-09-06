@@ -8,7 +8,7 @@ static bool kmalloc_debug_log;
    #define DEBUG_COND (kmalloc_debug_log)
    #define DEBUG_printk(...) if (DEBUG_COND) printk(__VA_ARGS__)
 #else
-   #define DEBUG_printk(...)
+   #define DEBUG_printk(...) if (0) printk(__VA_ARGS__)
 #endif
 
 
@@ -57,7 +57,7 @@ void debug_kmalloc_stop_log(void)
                 alloc_block_count)                                          \
 
 #define DEBUG_kmalloc_begin                                                 \
-   DEBUG_printk("kmalloc(%u)...\n", desired_size)
+   DEBUG_printk("kmalloc(%u)...\n", *size)
 
 #define DEBUG_kmalloc_call_begin                                            \
    DEBUG_printk("Node #%i, node_size = %u, vaddr = %p\n",                   \
@@ -65,11 +65,11 @@ void debug_kmalloc_stop_log(void)
 
 #define DEBUG_kmalloc_bad_end                                               \
    DEBUG_printk("kmalloc_bad_end: ptr: %p, node #%i, size: %u\n",           \
-                vaddr, node, desired_size)                                  \
+                vaddr, node, size)                                          \
 
 #define DEBUG_kmalloc_end                                                   \
    DEBUG_printk("kmalloc_end: ptr: %p, node #%i, size: %u\n",               \
-                vaddr, node, desired_size)                                  \
+                vaddr, node, size)                                          \
 
 #define DEBUG_already_full                                                  \
    DEBUG_printk("Already FULL, return NULL\n")

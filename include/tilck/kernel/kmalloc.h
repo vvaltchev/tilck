@@ -5,16 +5,18 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
-#define KMALLOC_METADATA_BLOCK_NODE_SIZE  (1)
-#define KMALLOC_HEAPS_COUNT              (32)
+#define KMALLOC_METADATA_BLOCK_NODE_SIZE      1
+#define KMALLOC_HEAPS_COUNT                  32
+
+#define SMALL_HEAP_MBS                       32
+#define SMALL_HEAP_SIZE               (32 * KB)
+
+#define SMALL_HEAP_MD_SIZE \
+   (calculate_heap_metadata_size(SMALL_HEAP_SIZE, SMALL_HEAP_MBS))
 
 #define KMALLOC_FL_MULTI_STEP               (0b10000000000000000000000000000000)
 #define KMALLOC_FL_NO_ACTUAL_ALLOC          (0b01000000000000000000000000000000)
-#define KMALLOC_FL_ALIGN_TYPE_MASK          (0b00110000000000000000000000000000)
-#define KMALLOC_FL_ALIGN_2PTR_SIZE          (0b00000000000000000000000000000000)
-#define KMALLOC_FL_ALIGN_4PTR_SIZE          (0b00010000000000000000000000000000)
-#define KMALLOC_FL_ALIGN_8PTR_SIZE          (0b00100000000000000000000000000000)
-#define KMALLOC_FL_ALIGN_16PTR_SIZE         (0b00110000000000000000000000000000)
+#define KMALLOC_FL_RESV_FLAGS_MASK          (0b00110000000000000000000000000000)
 #define KMALLOC_FL_DONT_ACCOUNT             (0b00001000000000000000000000000000)
 #define KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK  (0b00000111111111111111111111111111)
 
@@ -81,11 +83,6 @@ static inline void kfree2(void *ptr, size_t size)
    general_kfree(ptr, &size, 0);
 }
 
-static inline void *aligned_kmalloc(size_t size, u32 align_flags)
-{
-   return general_kmalloc(&size, align_flags & KMALLOC_FL_ALIGN_TYPE_MASK);
-}
-
 #else
 
 void *kmalloc(size_t size);
@@ -106,6 +103,8 @@ static inline void *kzmalloc(size_t size)
 
 size_t kmalloc_get_heap_struct_size(void);
 size_t kmalloc_get_max_tot_heap_free(void);
+void *aligned_kmalloc(size_t size, u32 align);
+void aligned_kfree2(void *ptr, size_t size);
 
 /*
  * kmalloc() wrapper which prefixes the alloc block with metadata containing

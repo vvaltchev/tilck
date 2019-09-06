@@ -46,11 +46,11 @@ static void dp_show_kmalloc_heaps(void)
    int row = dp_screen_start_row;
    const int col = dp_start_col + 40;
 
-   dp_writeln2("[     Small heaps     ]");
-   dp_writeln2("count:    %2d [peak: %2d]",
+   dp_writeln2("[      Small heaps      ]");
+   dp_writeln2("count:    %3d [peak: %3d]",
                stats.small_heaps.tot_count,
                stats.small_heaps.peak_count);
-   dp_writeln2("non-full: %2d [peak: %2d]",
+   dp_writeln2("non-full: %3d [peak: %3d]",
                stats.small_heaps.not_full_count,
                stats.small_heaps.peak_not_full_count);
 

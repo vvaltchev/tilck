@@ -16,7 +16,7 @@ typedef struct regs regs;
 typedef struct {
 
    /* STUB struct */
-   void *fpu_regs;
+   void *aligned_fpu_regs;
 
 } arch_task_info_members;
 

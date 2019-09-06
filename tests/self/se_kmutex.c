@@ -184,12 +184,12 @@ void selftest_kmutex_rec_med()
  * How we do know which is the correct order? The creation of threads does NOT
  * have any order. For example: thread B, created AFTER thread A, may run before
  * it. Well, in order to do that, we use another mutex, called `order_mutex`.
- * Threads first get any order using `order_mutex` and then, in that order, the
+ * Threads first get any order using `order_mutex` and then, in that order, they
  * try to acquire `test_mutex`. Of course, threads might be so fast that each
- * thread just acquires and releases both the mutex without being preempted and
- * no thread really sleeps on kmutex_lock(). In order to prevent that, we sleep
- * while holding the `test_mutex`. For a better understanding, see the comments
- * below.
+ * thread just acquires and releases both the mutexes without being preempted
+ * and no thread really sleeps on kmutex_lock(). In order to prevent that, we
+ * sleep while holding the `test_mutex`. For a better understanding, see the
+ * comments below.
  */
 
 static int tids[128];
@@ -201,7 +201,6 @@ static kmutex order_mutex;
 
 static void kmutex_ord_th()
 {
-   u64 ticks;
    int tid = get_curr_task()->tid;
 
    /*
@@ -215,37 +214,48 @@ static void kmutex_ord_th()
    kmutex_lock(&order_mutex);
    {
       tid_by_idx1[idx1++] = tid;
-      ticks = get_ticks();        /* save `ticks` in order to check it later */
+
+      /*
+       * Note: disabling the preemption while holding the lock! This is *not*
+       * a good practice and MUST BE avoided everywhere in real code except in
+       * this test, where HACKS are needed in order to test the properties of
+       * kmutex itself.
+       */
+      disable_preemption();
    }
    kmutex_unlock(&order_mutex);
 
-   if (get_ticks() != ticks) {
-
-      /*
-       * We've been preempted and we won't be able to call kmutex_lock()
-       * immediately after recording our "order" with the `order_mutex`: this
-       * is pretty unlikely to happen, but it can. Therefore, just register -1
-       * as tid, considering this thread "unlucky".
-       *
-       * NOTE: this trick does NOT detect preemption in 100% of the cases, as
-       * we might be preempted just after this check passed, before calling
-       * kmutex_lock(). And we really do not have at the moment a workaround for
-       * that because we cannot call kmutex_lock() with preemption disabled.
-       * Just, this HACK reduces as much as possible the likelyhood of missing
-       * a preemption between `order_mutex` and `test_mutex`, which defeats the
-       * purpose of the `order_mutex`.
-       */
-      tid = -1;
-   }
-
+   /*
+    * Note: calling kmutex_lock() with preemption disabled! This is even worse
+    * than calling kmutex_unlock() with preemption disabled. By definition,
+    * it should *never* work because acquiring the mutex may require this thread
+    * to go to sleep, if it has already an owner. But, for the purposes of this
+    * test, we really need nobody to be able to preempt this thread in the
+    * period of time between the acquisition of `order_mutex` and the attempt to
+    * acquire `test_mutex` because we used `order_mutex` exactly in order to
+    * make the attempts to acquire `test_mutex` happen all together. Ultimately,
+    * we're testing that, if all threads try to lock `test_mutex` at the same
+    * time, they're gonna to ultimately acquire the lock in the same order they
+    * called kmutex_lock().
+    */
    kmutex_lock(&test_mutex);
    {
+      /*
+       * Note: here, the preemption is enabled, even if we called kmutex_lock()
+       * with preemption disabled. That's because of the "magic" kmutex flag
+       * KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED designed specifically for
+       * this self test. It allows the lock to be called while preemption is
+       * disabled and it enables it forcibly, no matter what, before going to
+       * sleep.
+       */
+
+      ASSERT(is_preemption_enabled());
       tid_by_idx2[idx2++] = tid;
 
       /*
        * After registering this thread at position `idx2`, now sleep for 1 tick
        * WHILE holding the lock, in order to force all the other tasks to sleep
-       * on kmutex_lock(), creating a queue. This another trick necessary to
+       * on kmutex_lock(), creating a queue. This is another trick necessary to
        * check that strong ordering actually occurs. Without it, threads might
        * be so fast that they just:
        *
@@ -269,7 +279,7 @@ void selftest_kmutex_ord_med()
    int tid;
 
    idx1 = idx2 = 0;
-   kmutex_init(&test_mutex, 0);
+   kmutex_init(&test_mutex, KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED);
    kmutex_init(&order_mutex, 0);
 
    for (u32 i = 0; i < ARRAY_SIZE(tids); i++) {

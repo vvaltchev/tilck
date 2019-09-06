@@ -29,13 +29,9 @@ typedef struct {
 } mdalloc_metadata;
 
 static void *
-__general_kmalloc(size_t *size, u32 flags)
+main_heaps_kmalloc(size_t *size, u32 flags)
 {
    ASSERT(kmalloc_initialized);
-
-   if (*size <= SMALL_HEAP_MAX_ALLOC) {
-      return small_heap_kmalloc(*size, flags);
-   }
 
    // Iterate in reverse-order because the first heaps are the biggest ones.
    for (int i = (int)used_heaps - 1; i >= 0; i--) {
@@ -68,22 +64,15 @@ __general_kmalloc(size_t *size, u32 flags)
 }
 
 static void
-__general_kfree(void *ptr, size_t *size, u32 flags)
+main_heaps_kfree(void *ptr, size_t *size, u32 flags)
 {
    kmalloc_heap *h = NULL;
    const uptr vaddr = (uptr) ptr;
    ASSERT(kmalloc_initialized);
 
-   if (!ptr)
-      return;
-
-   if (*size <= SMALL_HEAP_MAX_ALLOC) {
-      return small_heap_kfree(ptr, flags);
-   }
-
    for (int i = (int)used_heaps - 1; i >= 0; i--) {
 
-      uptr hva = heaps[i]->vaddr;
+      const uptr hva = heaps[i]->vaddr;
 
       // Check if [vaddr, vaddr + *size - 1] is in [hva, heap_last_byte].
       if (hva <= vaddr && vaddr + *size - 1 <= heaps[i]->heap_last_byte) {
@@ -115,6 +104,8 @@ __general_kfree(void *ptr, size_t *size, u32 flags)
 void *general_kmalloc(size_t *size, u32 flags)
 {
    void *res;
+   const u32 sub_block_sz = flags & KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK;
+   ASSERT(kmalloc_initialized);
    ASSERT(size != NULL);
    ASSERT(*size);
 
@@ -122,7 +113,13 @@ void *general_kmalloc(size_t *size, u32 flags)
    {
       const size_t orig_size = *size;
 
-      res = __general_kmalloc(size, flags);
+      if (*size <= SMALL_HEAP_MAX_ALLOC ||
+          UNLIKELY(sub_block_sz && sub_block_sz <= SMALL_HEAP_MAX_ALLOC))
+      {
+         res = small_heaps_kmalloc(size, flags);
+      } else {
+         res = main_heaps_kmalloc(size, flags);
+      }
 
       if (KMALLOC_HEAVY_STATS && res != NULL)
          if (!(flags & KMALLOC_FL_DONT_ACCOUNT))
@@ -134,72 +131,52 @@ void *general_kmalloc(size_t *size, u32 flags)
 
 void general_kfree(void *ptr, size_t *size, u32 flags)
 {
+   ASSERT(kmalloc_initialized);
    ASSERT(size != NULL);
    ASSERT(!ptr || *size);
 
+   if (!ptr)
+      return;
+
    disable_preemption();
    {
-      __general_kfree(ptr, size, flags);
+      if (*size <= SMALL_HEAP_MAX_ALLOC) {
+         small_heaps_kfree(ptr, size, flags);
+      } else {
+         main_heaps_kfree(ptr, size, flags);
+      }
    }
    enable_preemption();
 }
 
-void
-kmalloc_create_accelerator(kmalloc_accelerator *a, u32 elem_size, u32 elem_c)
+/*
+ * Currently, because of the way kmalloc() is implemented, each chunk of actual
+ * size roundup_next_power_of_2(size) with size < KMALLOC_MAX_ALIGN, is
+ * automatically aligned without the need of any effort. Still, it's worth
+ * using functions like aligned_kmalloc() and aligned_kfree() in order to save
+ * the alignment requirement and allow potentially the use of a different
+ * allocator.
+ */
+void *aligned_kmalloc(size_t size, u32 align)
 {
-   /* The both elem_size and elem_count must be a power of 2 */
-   ASSERT(roundup_next_power_of_2(elem_size) == elem_size);
-   ASSERT(roundup_next_power_of_2(elem_c) == elem_c);
-   ASSERT(elem_size <= KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK);
+   void *res = general_kmalloc(&size, 0);
 
-   *a = (kmalloc_accelerator) {
-      .elem_size = elem_size,
-      .elem_count = elem_c,
-      .curr_elem = elem_c,
-      .buf = NULL,
-   };
+   ASSERT(align > 0);
+   ASSERT(align <= size);
+   ASSERT(align <= KMALLOC_MAX_ALIGN);
+   ASSERT(roundup_next_power_of_2(align) == align);
+
+   if (res != NULL)
+      ASSERT(((uptr)res & (align-1)) == 0);
+
+   return res;
 }
 
-void *
-kmalloc_accelerator_get_elem(kmalloc_accelerator *a)
+/* See the comment above aligned_kmalloc() */
+void aligned_kfree2(void *ptr, size_t size)
 {
-   size_t actual_size;
-
-   if (a->curr_elem == a->elem_count) {
-
-      actual_size = a->elem_size * a->elem_count;
-
-      a->buf = general_kmalloc(&actual_size,   /* size (in/out)       */
-                               a->elem_size);  /* sub_blocks_min_size */
-
-      ASSERT(actual_size == a->elem_size * a->elem_count);
-
-      if (!a->buf)
-         return NULL;
-
-      a->curr_elem = 0;
-   }
-
-   return a->buf + (a->elem_size * a->curr_elem++);
+   general_kfree(ptr, &size, 0);
 }
-
-void
-kmalloc_destroy_accelerator(kmalloc_accelerator *a)
-{
-   size_t actual_size;
-
-   for (; a->curr_elem < a->elem_count; a->curr_elem++) {
-
-      actual_size = a->elem_size;
-
-      general_kfree(a->buf + (a->curr_elem * a->elem_size), /* ptr           */
-                    &actual_size,                           /* size (in/out) */
-                    KFREE_FL_ALLOW_SPLIT);
-
-      ASSERT(actual_size == a->elem_size);
-   }
-}
-
 
 void *mdalloc(size_t size)
 {

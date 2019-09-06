@@ -76,7 +76,9 @@ static void dp_chunks_enter(void)
          if (chunks_count == ARRAY_SIZE(chunks_arr))
             break;
 
-         const u64 waste = (u64)(roundup_next_power_of_2(s) - s) * c;
+         const u64 waste = (u64)(
+            UNSAFE_MAX(SMALL_HEAP_MBS, roundup_next_power_of_2(s)) - s
+         ) * c;
 
          chunks_arr[chunks_count++] = (chunk_info) {
             .size = s,
