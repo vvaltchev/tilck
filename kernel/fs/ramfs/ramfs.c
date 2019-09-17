@@ -222,6 +222,59 @@ static int ramfs_chmod(filesystem *fs, vfs_inode_ptr_t inode, mode_t mode)
    return rc;
 }
 
+static int ramfs_rename(filesystem *fs, vfs_path *voldp, vfs_path *vnewp)
+{
+   ramfs_path *oldp = (void *)&voldp->fs_path;
+   ramfs_path *newp = (void *)&vnewp->fs_path;
+   int rc;
+
+   DEBUG_ONLY_UNSAFE(ramfs_data *d = fs->device_data);
+   ASSERT(rwlock_wp_holding_exlock(&d->rwlock));
+
+   if (newp->inode != NULL) {
+
+      if (newp->type == VFS_DIR) {
+
+         if (oldp->type != VFS_DIR)
+            return -EISDIR;
+
+         if (newp->inode->num_entries > 2)
+            return -ENOTEMPTY;
+
+         if ((rc = ramfs_rmdir(vnewp)))
+            return rc;
+
+      } else {
+
+         if ((rc = ramfs_unlink(vnewp)))
+            return rc;
+      }
+   }
+
+   rc = ramfs_dir_add_entry(newp->dir_inode, vnewp->last_comp, oldp->inode);
+
+   if (rc) {
+
+      /*
+       * Note: the only way this last call could fail is OOM case because of a
+       * race condition exactly between the rmdir/unlink operation and the
+       * creation of the new entry. In that case, the rename syscall will fail
+       * and the destination path (if existing) would be deleted. This is a rare
+       * case of failing syscall having a side-effect. The eventual problem
+       * could be fixed by disabling the preemption here or by avoiding the
+       * destruction of the entry object and then resuing it. Both of these
+       * solutions aren't very elegant and it seems like it's not worth to
+       * implement either of them, at least at the moment; in the future the
+       * trade-off might change.
+       */
+      return rc;
+   }
+
+   /* Finally, this operation cannot fail. */
+   ramfs_dir_remove_entry(oldp->dir_inode, oldp->dir_entry);
+   return 0;
+}
+
 static const fs_ops static_fsops_ramfs =
 {
    .get_inode = ramfs_getinode,
@@ -238,7 +291,7 @@ static const fs_ops static_fsops_ramfs =
    .readlink = ramfs_readlink,
    .chmod = ramfs_chmod,
    .get_entry = ramfs_get_entry,
-   .rename = NULL,
+   .rename = ramfs_rename,
    .retain_inode = ramfs_retain_inode,
    .release_inode = ramfs_release_inode,
 
