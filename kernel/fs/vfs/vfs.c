@@ -209,11 +209,11 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
 typedef int (*vfs_func_impl)(filesystem *, vfs_path *, uptr, uptr, uptr);
 
 static ALWAYS_INLINE int
-_vfs_path_funcs_common_wrapper(const char *path,
-                               bool exlock,
-                               bool res_last_sl,
-                               vfs_func_impl func,
-                               uptr a1, uptr a2, uptr a3)
+__vfs_path_funcs_wrapper(const char *path,
+                         bool exlock,
+                         bool res_last_sl,
+                         vfs_func_impl func,
+                         uptr a1, uptr a2, uptr a3)
 {
    vfs_path p;
    int rc;
@@ -231,9 +231,12 @@ _vfs_path_funcs_common_wrapper(const char *path,
    return rc;
 }
 
-#define vfs_path_funcs_common_wrapper(path, exlock, rsl, func, a1, a2, a3) \
-   _vfs_path_funcs_common_wrapper(path, exlock, rsl, (vfs_func_impl)func, \
-                                  (uptr)a1, (uptr)a2, (uptr)a3)
+#define vfs_path_funcs_wrapper(path, exlock, rsl, func, a1, a2, a3)           \
+   __vfs_path_funcs_wrapper(path,                                             \
+                            exlock,                                           \
+                            rsl,                                              \
+                            (vfs_func_impl)func,                              \
+                            (uptr)a1, (uptr)a2, (uptr)a3)
 
 static ALWAYS_INLINE int
 vfs_open_impl(filesystem *fs, vfs_path *p,
@@ -263,7 +266,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
    if ((flags & O_TMPFILE) == O_TMPFILE)
       return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
 
-   return vfs_path_funcs_common_wrapper(
+   return vfs_path_funcs_wrapper(
       path,
       true,             /* exlock */
       true,             /* res_last_sl */
@@ -289,7 +292,7 @@ vfs_stat64_impl(filesystem *fs,
 
 int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl)
 {
-   return vfs_path_funcs_common_wrapper(
+   return vfs_path_funcs_wrapper(
       path,
       false,               /* exlock */
       res_last_sl,         /* res_last_sl */
@@ -317,7 +320,7 @@ vfs_mkdir_impl(filesystem *fs, vfs_path *p, mode_t mode, uptr u1, uptr u2)
 
 int vfs_mkdir(const char *path, mode_t mode)
 {
-   return vfs_path_funcs_common_wrapper(
+   return vfs_path_funcs_wrapper(
       path,
       true,             /* exlock */
       false,            /* res_last_sl */
@@ -345,7 +348,7 @@ vfs_rmdir_impl(filesystem *fs, vfs_path *p, uptr u1, uptr u2, uptr u3)
 
 int vfs_rmdir(const char *path)
 {
-   return vfs_path_funcs_common_wrapper(
+   return vfs_path_funcs_wrapper(
       path,
       true,             /* exlock */
       false,            /* res_last_sl */
@@ -371,7 +374,7 @@ vfs_unlink_impl(filesystem *fs, vfs_path *p, uptr u1, uptr u2, uptr u3)
 
 int vfs_unlink(const char *path)
 {
-   return vfs_path_funcs_common_wrapper(
+   return vfs_path_funcs_wrapper(
       path,
       true,             /* exlock */
       false,            /* res_last_sl */
@@ -397,7 +400,7 @@ vfs_truncate_impl(filesystem *fs, vfs_path *p, off_t len, uptr u1, uptr u2)
 
 int vfs_truncate(const char *path, off_t len)
 {
-   return vfs_path_funcs_common_wrapper(
+   return vfs_path_funcs_wrapper(
       path,
       false,               /* exlock */
       true,                /* res_last_sl */
@@ -425,7 +428,7 @@ vfs_symlink_impl(filesystem *fs,
 
 int vfs_symlink(const char *target, const char *linkpath)
 {
-   return vfs_path_funcs_common_wrapper(
+   return vfs_path_funcs_wrapper(
       linkpath,
       true,             /* exlock */
       false,            /* res_last_sl */
@@ -455,7 +458,7 @@ vfs_readlink_impl(filesystem *fs, vfs_path *p, char *buf, uptr u1, uptr u2)
 /* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
 int vfs_readlink(const char *path, char *buf)
 {
-   return vfs_path_funcs_common_wrapper(
+   return vfs_path_funcs_wrapper(
       path,
       false,               /* exlock */
       false,               /* res_last_sl */
@@ -473,7 +476,7 @@ vfs_chown_impl(filesystem *fs, vfs_path *p, int owner, int group, bool reslink)
 
 int vfs_chown(const char *path, int owner, int group, bool reslink)
 {
-   return vfs_path_funcs_common_wrapper(
+   return vfs_path_funcs_wrapper(
       path,
       false,            /* exlock */
       reslink,          /* res_last_sl */
@@ -501,7 +504,7 @@ vfs_chmod_impl(filesystem *fs, vfs_path *p, mode_t mode)
 
 int vfs_chmod(const char *path, mode_t mode)
 {
-   return vfs_path_funcs_common_wrapper(
+   return vfs_path_funcs_wrapper(
       path,
       false,            /* exlock */
       true,             /* res_last_sl */
