@@ -98,6 +98,7 @@ typedef int     (*func_chmod)     (filesystem *, vfs_inode_ptr_t, mode_t);
 typedef void    (*func_fslock_t)  (filesystem *);
 typedef int     (*func_rr_inode)  (filesystem *, vfs_inode_ptr_t);
 typedef int     (*func_rename)    (filesystem *, vfs_path *, vfs_path *);
+typedef int     (*func_link)      (filesystem *, vfs_path *, vfs_path *);
 
 typedef void    (*func_get_entry) (filesystem *fs,
                                    void *dir_inode,
@@ -160,6 +161,7 @@ typedef struct {
    func_trunc truncate;
    func_chmod chmod;
    func_rename rename;
+   func_link link;
    func_rr_inode retain_inode;
    func_rr_inode release_inode;
 
