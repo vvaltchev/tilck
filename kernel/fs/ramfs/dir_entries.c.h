@@ -25,7 +25,7 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
       return -ENAMETOOLONG;
 
    if (!(e = kmalloc(sizeof(ramfs_entry))))
-      return -ENOMEM;
+      return -ENOSPC;
 
    ASSERT(ie->parent_dir != NULL);
 
