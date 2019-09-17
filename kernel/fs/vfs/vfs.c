@@ -506,6 +506,11 @@ int vfs_rename(const char *oldpath, const char *newpath)
    return rc;
 }
 
+int vfs_link(const char *oldpath, const char *newpath)
+{
+   return -ENOSYS;
+}
+
 int vfs_fchmod(fs_handle h, mode_t mode)
 {
    fs_handle_base *hb = h;

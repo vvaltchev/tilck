@@ -251,6 +251,7 @@ int vfs_readlink(const char *path, char *buf);
 int vfs_chown(const char *path, int owner, int group, bool reslink);
 int vfs_chmod(const char *path, mode_t mode);
 int vfs_rename(const char *oldpath, const char *newpath);
+int vfs_link(const char *oldpath, const char *newpath);
 int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);
 

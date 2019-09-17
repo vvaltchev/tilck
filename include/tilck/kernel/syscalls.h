@@ -37,15 +37,11 @@ int sys_open(const char *u_path, int flags, mode_t mode);
 int sys_close(int fd);
 int sys_waitpid(int pid, int *u_wstatus, int options);
 int sys_creat(const char *u_path, mode_t mode);
-
-CREATE_STUB_SYSCALL_IMPL(sys_link)
-
+int sys_link(const char *u_oldpath, const char *u_newpath);
 int sys_unlink(const char *u_path);
-
 int sys_execve(const char *u_path,
                const char *const *argv,
                const char *const *env);
-
 int sys_chdir(const char *path);
 
 CREATE_STUB_SYSCALL_IMPL(sys_time)
