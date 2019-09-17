@@ -767,7 +767,10 @@ int sys_fchmod(int fd, mode_t mode)
    return vfs_fchmod(hb, mode);
 }
 
-int sys_rename(const char *u_oldpath, const char *u_newpath)
+static int
+call_rename_or_link(const char *u_oldpath,
+                    const char *u_newpath,
+                    int (*vfs_func)(const char *, const char *))
 {
    task_info *curr = get_curr_task();
    char *oldpath = curr->args_copybuf;
@@ -785,26 +788,15 @@ int sys_rename(const char *u_oldpath, const char *u_newpath)
    if (rc1 > 0 || rc2 > 0)
       return -ENAMETOOLONG;
 
-   return vfs_rename(oldpath, newpath);
+   return vfs_func(oldpath, newpath);
+}
+
+int sys_rename(const char *u_oldpath, const char *u_newpath)
+{
+   return call_rename_or_link(u_oldpath, u_newpath, &vfs_rename);
 }
 
 int sys_link(const char *u_oldpath, const char *u_newpath)
 {
-   task_info *curr = get_curr_task();
-   char *oldpath = curr->args_copybuf;
-   char *newpath = curr->args_copybuf + MAX_PATH;
-   int rc1, rc2;
-
-   STATIC_ASSERT(ARGS_COPYBUF_SIZE >= 2 * MAX_PATH);
-
-   rc1 = copy_str_from_user(oldpath, u_oldpath, MAX_PATH, NULL);
-   rc2 = copy_str_from_user(newpath, u_newpath, MAX_PATH, NULL);
-
-   if (rc1 < 0 || rc2 < 0)
-      return -EFAULT;
-
-   if (rc1 > 0 || rc2 > 0)
-      return -ENAMETOOLONG;
-
-   return vfs_link(oldpath, newpath);
+   return call_rename_or_link(u_oldpath, u_newpath, &vfs_link);
 }
