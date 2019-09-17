@@ -275,6 +275,20 @@ static int ramfs_rename(filesystem *fs, vfs_path *voldp, vfs_path *vnewp)
    return 0;
 }
 
+static int ramfs_link(filesystem *fs, vfs_path *voldp, vfs_path *vnewp)
+{
+   ramfs_path *oldp = (void *)&voldp->fs_path;
+   ramfs_path *newp = (void *)&vnewp->fs_path;
+
+   if (oldp->type != VFS_FILE)
+      return -EPERM;
+
+   if (newp->inode != NULL)
+      return -EEXIST;
+
+   return ramfs_dir_add_entry(newp->dir_inode, vnewp->last_comp, oldp->inode);
+}
+
 static const fs_ops static_fsops_ramfs =
 {
    .get_inode = ramfs_getinode,
@@ -292,7 +306,7 @@ static const fs_ops static_fsops_ramfs =
    .chmod = ramfs_chmod,
    .get_entry = ramfs_get_entry,
    .rename = ramfs_rename,
-   .link = NULL,
+   .link = ramfs_link,
    .retain_inode = ramfs_retain_inode,
    .release_inode = ramfs_release_inode,
 
