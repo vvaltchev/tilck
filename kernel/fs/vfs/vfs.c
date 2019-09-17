@@ -21,39 +21,6 @@
 
 static u32 next_device_id;
 
-static void __nr_check(bool *check)
-{
-   if (!*check)
-      panic("Detected return in VFS func using common header/footer");
-}
-
-#define VFS_FS_PATH_FUNCS_COMMON_HEADER(path_param, exlock, rl)         \
-                                                                        \
-   filesystem *fs;                                                      \
-   vfs_path p;                                                          \
-   int rc;                                                              \
-   const bool __saved_exlock = exlock;                                  \
-   DEBUG_ONLY(bool no_ret_check __attribute__((cleanup(__nr_check))));  \
-   DEBUG_ONLY(no_ret_check = false);                                    \
-                                                                        \
-   NO_TEST_ASSERT(is_preemption_enabled());                             \
-   ASSERT(path_param != NULL);                                          \
-                                                                        \
-   if ((rc = vfs_resolve(path_param, &p, exlock, rl)) < 0) {            \
-      DEBUG_ONLY(no_ret_check = true);                                  \
-      return rc;                                                        \
-   }                                                                    \
-                                                                        \
-   ASSERT(p.fs != NULL);                                                \
-   fs = p.fs;
-
-#define VFS_FS_PATH_FUNCS_COMMON_FOOTER()                               \
-out:                                                                    \
-   DEBUG_ONLY(no_ret_check = true);                                     \
-   vfs_smart_fs_unlock(fs, __saved_exlock);                             \
-   release_obj(fs);                                                     \
-   return rc;
-
 /* ------------ handle-based functions ------------- */
 
 void vfs_close(fs_handle h)
@@ -239,17 +206,41 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
 
 /* ----------- path-based functions -------------- */
 
-int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
+typedef int (*vfs_func_impl)(filesystem *, vfs_path *, uptr, uptr, uptr);
+
+static ALWAYS_INLINE int
+_vfs_path_funcs_common_wrapper(const char *path,
+                               bool exlock,
+                               bool res_last_sl,
+                               vfs_func_impl func,
+                               uptr a1, uptr a2, uptr a3)
 {
-   if (flags & O_ASYNC)
-      return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
+   vfs_path p;
+   int rc;
 
-   if ((flags & O_TMPFILE) == O_TMPFILE)
-      return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
+   NO_TEST_ASSERT(is_preemption_enabled());
 
-   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, true)
+   if ((rc = vfs_resolve(path, &p, exlock, res_last_sl)) < 0)
+      return rc;
 
-   if (!(rc = fs->fsops->open(&p, out, flags, mode))) {
+   ASSERT(p.fs != NULL);
+   rc = func(p.fs, &p, a1, a2, a3);
+
+   vfs_smart_fs_unlock(p.fs, exlock);
+   release_obj(p.fs);
+   return rc;
+}
+
+#define vfs_path_funcs_common_wrapper(path, exlock, rsl, func, a1, a2, a3) \
+   _vfs_path_funcs_common_wrapper(path, exlock, rsl, (vfs_func_impl)func, \
+                                  (uptr)a1, (uptr)a2, (uptr)a3)
+
+static ALWAYS_INLINE int
+vfs_open_impl(filesystem *fs, vfs_path *p, fs_handle *out, int flags, mode_t mode)
+{
+   int rc;
+
+   if (!(rc = fs->fsops->open(p, out, flags, mode))) {
 
       /* open() succeeded, the FS is already retained */
       ((fs_handle_base *) *out)->fl_flags = flags;
@@ -261,29 +252,96 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
       retain_obj(fs);
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+   return rc;
+}
+
+int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
+{
+   if (flags & O_ASYNC)
+      return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
+
+   if ((flags & O_TMPFILE) == O_TMPFILE)
+      return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
+
+   return vfs_path_funcs_common_wrapper(
+      path,
+      true,             /* exlock */
+      true,             /* res_last_sl */
+      &vfs_open_impl,
+      out,
+      flags,
+      mode
+   );
+}
+
+static ALWAYS_INLINE int
+vfs_stat64_impl(filesystem *fs,
+                vfs_path *p,
+                struct stat64 *statbuf,
+                bool res_last_sl,
+                uptr unused1)
+{
+   return p->fs_path.inode
+      ? fs->fsops->stat(fs, p->fs_path.inode, statbuf)
+      : -ENOENT;
 }
 
 int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl)
 {
-   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, res_last_sl)
+   return vfs_path_funcs_common_wrapper(
+      path,
+      false,               /* exlock */
+      res_last_sl,         /* res_last_sl */
+      &vfs_stat64_impl,
+      statbuf,
+      res_last_sl,
+      0
+   );
+}
 
-   rc = p.fs_path.inode
-      ? fs->fsops->stat(fs, p.fs_path.inode, statbuf)
-      : -ENOENT;
+static ALWAYS_INLINE int
+vfs_mkdir_impl(filesystem *fs, vfs_path *p, mode_t mode, uptr u1, uptr u2)
+{
+   int rc;
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+   if (fs->fsops->mkdir) {
+      if (fs->flags & VFS_FS_RW) {
+         rc = p->fs_path.inode
+            ? -EEXIST
+            :  fs->fsops->mkdir(p, mode);
+      } else {
+         rc = -EROFS;
+      }
+   } else {
+      rc = -EPERM;
+   }
+
+   return rc;
 }
 
 int vfs_mkdir(const char *path, mode_t mode)
 {
-   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, false)
+   return vfs_path_funcs_common_wrapper(
+      path,
+      true,             /* exlock */
+      false,            /* res_last_sl */
+      vfs_mkdir_impl,
+      mode,
+      0,
+      0
+   );
+}
 
-   if (fs->fsops->mkdir) {
+static ALWAYS_INLINE int
+vfs_rmdir_impl(filesystem *fs, vfs_path *p, uptr u1, uptr u2, uptr u3)
+{
+   int rc;
+
+   if (fs->fsops->rmdir) {
       if (fs->flags & VFS_FS_RW) {
-         rc = p.fs_path.inode
-            ? -EEXIST
-            :  fs->fsops->mkdir(&p, mode);
+         rc = p->fs_path.inode
+            ? fs->fsops->rmdir(p)
+            : -ENOENT;
       } else {
          rc = -EROFS;
       }
@@ -291,56 +349,61 @@ int vfs_mkdir(const char *path, mode_t mode)
       rc = -EPERM;
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+   return rc;
 }
 
 int vfs_rmdir(const char *path)
 {
-   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, false)
+   return vfs_path_funcs_common_wrapper(
+      path,
+      true,             /* exlock */
+      false,            /* res_last_sl */
+      vfs_rmdir_impl,
+      0, 0, 0
+   );
+}
 
-   if (fs->fsops->rmdir) {
+static ALWAYS_INLINE int
+vfs_unlink_impl(filesystem *fs, vfs_path *p, uptr u1, uptr u2, uptr u3)
+{
+   int rc;
+
+   if (fs->fsops->unlink) {
       if (fs->flags & VFS_FS_RW) {
-         rc = p.fs_path.inode
-            ? fs->fsops->rmdir(&p)
+         rc = p->fs_path.inode
+            ? fs->fsops->unlink(p)
             : -ENOENT;
       } else {
          rc = -EROFS;
       }
    } else {
-      rc = -EPERM;
+      rc = -EROFS;
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+   return rc;
 }
 
 int vfs_unlink(const char *path)
 {
-   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, true, false)
-
-   if (fs->fsops->unlink) {
-      if (fs->flags & VFS_FS_RW) {
-         rc = p.fs_path.inode
-            ? fs->fsops->unlink(&p)
-            : -ENOENT;
-      } else {
-         rc = -EROFS;
-      }
-   } else {
-      rc = -EROFS;
-   }
-
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+   return vfs_path_funcs_common_wrapper(
+      path,
+      true,             /* exlock */
+      false,            /* res_last_sl */
+      vfs_unlink_impl,
+      0, 0, 0
+   );
 }
 
-int vfs_truncate(const char *path, off_t len)
+static ALWAYS_INLINE int
+vfs_truncate_impl(filesystem *fs, vfs_path *p, off_t len, uptr u1, uptr u2)
 {
-   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, true)
+   int rc;
 
    if (fs->fsops->truncate) {
 
       if (fs->flags & VFS_FS_RW) {
-         rc = p.fs_path.inode
-            ? fs->fsops->truncate(fs, p.fs_path.inode, len)
+         rc = p->fs_path.inode
+            ? fs->fsops->truncate(fs, p->fs_path.inode, len)
             : -ENOENT;
       } else {
          rc = -EROFS;
@@ -350,19 +413,33 @@ int vfs_truncate(const char *path, off_t len)
       rc = -EROFS;
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+   return rc;
 }
 
-int vfs_symlink(const char *target, const char *linkpath)
+int vfs_truncate(const char *path, off_t len)
 {
-   VFS_FS_PATH_FUNCS_COMMON_HEADER(linkpath, true, false)
+   return vfs_path_funcs_common_wrapper(
+      path,
+      false,               /* exlock */
+      true,                /* res_last_sl */
+      vfs_truncate_impl,
+      len,
+      0, 0
+   );
+}
+
+static ALWAYS_INLINE int
+vfs_symlink_impl(filesystem *fs,
+                 vfs_path *p, const char *target, uptr u1, uptr u2)
+{
+   int rc;
 
    if (fs->fsops->symlink) {
 
       if (fs->flags & VFS_FS_RW) {
-         rc = p.fs_path.inode
+         rc = p->fs_path.inode
             ? -EEXIST /* the linkpath already exists! */
-            : fs->fsops->symlink(target, &p);
+            : fs->fsops->symlink(target, p);
       } else {
          rc = -EROFS;
       }
@@ -371,20 +448,32 @@ int vfs_symlink(const char *target, const char *linkpath)
       rc = -EPERM; /* symlinks not supported */
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+   return rc;
 }
 
-/* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
-int vfs_readlink(const char *path, char *buf)
+int vfs_symlink(const char *target, const char *linkpath)
 {
-   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, false)
+   return vfs_path_funcs_common_wrapper(
+      linkpath,
+      true,             /* exlock */
+      false,            /* res_last_sl */
+      vfs_symlink_impl,
+      target,
+      0, 0
+   );
+}
+
+static ALWAYS_INLINE int
+vfs_readlink_impl(filesystem *fs, vfs_path *p, char *buf, uptr u1, uptr u2)
+{
+   int rc;
 
    if (fs->fsops->readlink) {
 
       /* there is a readlink function */
 
-      rc = p.fs_path.inode
-         ? fs->fsops->readlink(&p, buf)
+      rc = p->fs_path.inode
+         ? fs->fsops->readlink(p, buf)
          : -ENOENT;
 
    } else {
@@ -396,30 +485,65 @@ int vfs_readlink(const char *path, char *buf)
       rc = -EINVAL;
    }
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+   return rc;
+}
+
+/* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
+int vfs_readlink(const char *path, char *buf)
+{
+   return vfs_path_funcs_common_wrapper(
+      path,
+      false,               /* exlock */
+      false,               /* res_last_sl */
+      vfs_readlink_impl,
+      buf,
+      0, 0
+   );
+}
+
+static ALWAYS_INLINE int
+vfs_chown_impl(filesystem *fs, vfs_path *p, int owner, int group, bool reslink)
+{
+   return (owner == 0 && group == 0) ? 0 : -EPERM;
 }
 
 int vfs_chown(const char *path, int owner, int group, bool reslink)
 {
-   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, reslink)
+   return vfs_path_funcs_common_wrapper(
+      path,
+      false,            /* exlock */
+      reslink,          /* res_last_sl */
+      vfs_chown_impl,
+      owner,
+      group,
+      reslink
+   );
+}
 
-   /* Tilck does not support UIDs, GIDs other than 0 */
-   rc = (owner == 0 && group == 0) ? 0 : -EPERM;
+static ALWAYS_INLINE int
+vfs_chmod_impl(filesystem *fs, vfs_path *p, mode_t mode)
+{
+   int rc;
 
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+   rc = p->fs_path.inode
+         ? fs->flags & VFS_FS_RW
+            ? fs->fsops->chmod(fs, p->fs_path.inode, mode)
+            : -EROFS
+         : -ENOENT;
+
+   return rc;
 }
 
 int vfs_chmod(const char *path, mode_t mode)
 {
-   VFS_FS_PATH_FUNCS_COMMON_HEADER(path, false, true)
-
-   rc = p.fs_path.inode
-         ? p.fs->flags & VFS_FS_RW
-            ? p.fs->fsops->chmod(p.fs, p.fs_path.inode, mode)
-            : -EROFS
-         : -ENOENT;
-
-   VFS_FS_PATH_FUNCS_COMMON_FOOTER()
+   return vfs_path_funcs_common_wrapper(
+      path,
+      false,            /* exlock */
+      true,             /* res_last_sl */
+      vfs_chmod_impl,
+      mode,
+      0, 0
+   );
 }
 
 static int
