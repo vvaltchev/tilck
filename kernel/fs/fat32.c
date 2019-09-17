@@ -646,6 +646,7 @@ static const fs_ops static_fsops_fat =
    .stat = fat_stat,
    .chmod = NULL,
    .get_entry = fat_get_entry,
+   .rename = NULL,
    .retain_inode = fat_retain_inode,
    .release_inode = fat_release_inode,
 

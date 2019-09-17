@@ -468,6 +468,7 @@ static const fs_ops static_fsops_devfs =
    .stat = devfs_stat,
    .chmod = NULL,
    .get_entry = devfs_get_entry,
+   .rename = NULL,
    .retain_inode = devfs_retain_inode,
    .release_inode = devfs_release_inode,
 

@@ -92,7 +92,8 @@
       "hash_map": "cpp",
       "bitset": "cpp",
       "string_view": "cpp",
-      "utility": "cpp"
+      "utility": "cpp",
+      "syscall.h": "c"
    },
    "python.pythonPath": "/usr/bin/python"
 }

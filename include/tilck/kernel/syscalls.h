@@ -86,9 +86,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_nice)
 
 int sys_sync();
 int sys_kill(int pid, int sig);
-
-CREATE_STUB_SYSCALL_IMPL(sys_rename)
-
+int sys_rename(const char *u_oldpath, const char *u_newpath);
 int sys_mkdir(const char *user_path, mode_t mode);
 int sys_rmdir(const char *user_path);
 int sys_dup(int oldfd);

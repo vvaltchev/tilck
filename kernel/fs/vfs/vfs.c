@@ -422,6 +422,11 @@ int vfs_chmod(const char *path, mode_t mode)
    VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
+int vfs_rename(const char *oldpath, const char *newpath)
+{
+   return -ENOSYS;
+}
+
 int vfs_fchmod(fs_handle h, mode_t mode)
 {
    fs_handle_base *hb = h;

@@ -238,6 +238,7 @@ static const fs_ops static_fsops_ramfs =
    .readlink = ramfs_readlink,
    .chmod = ramfs_chmod,
    .get_entry = ramfs_get_entry,
+   .rename = NULL,
    .retain_inode = ramfs_retain_inode,
    .release_inode = ramfs_release_inode,
 
