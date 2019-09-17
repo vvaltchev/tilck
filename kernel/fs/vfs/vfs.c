@@ -424,7 +424,86 @@ int vfs_chmod(const char *path, mode_t mode)
 
 int vfs_rename(const char *oldpath, const char *newpath)
 {
-   return -ENOSYS;
+   filesystem *fs;
+   vfs_path oldp, newp;
+   int rc;
+
+   NO_TEST_ASSERT(is_preemption_enabled());
+
+   /* First, just resolve the old path using a shared lock */
+   if ((rc = vfs_resolve(oldpath, &oldp, false, false)) < 0)
+      return rc;
+
+   ASSERT(oldp.fs != NULL);
+   fs = oldp.fs;
+
+   if (!oldp.fs_path.inode) {
+
+      /* The old path does not exist */
+      vfs_smart_fs_unlock(fs, false);
+      release_obj(fs);
+      return -ENOENT;
+   }
+
+   /* Everything was fine: now retain the file and release the lock */
+   vfs_retain_inode_at(&oldp);
+   vfs_smart_fs_unlock(fs, false);
+
+   /* Now, resolve the new path grabbing an exclusive lock */
+   if ((rc = vfs_resolve(newpath, &newp, true, false)) < 0) {
+
+      /*
+       * Oops, something when wrong: release the oldpath's inode and fs.
+       * Note: no need for release anything about the new path since the func
+       * already does that in the error cases.
+       */
+      vfs_release_inode_at(&oldp);
+      release_obj(fs);
+      return rc;
+   }
+
+   ASSERT(newp.fs != NULL);
+
+   /*
+    * OK, now we're at a crucial point: check if the two files belong to the
+    * same filesystem.
+    */
+
+   if (newp.fs != fs) {
+
+      /*
+       * They do *not* belong to the same fs. It's impossible to continue.
+       * We have to release: the exlock and the retain count of the new
+       * fs plus the retain count of old's inode and its filesystem.
+       */
+
+      vfs_smart_fs_unlock(newp.fs, true);
+      release_obj(newp.fs);
+
+      vfs_release_inode_at(&oldp);
+      release_obj(fs);
+      return -EXDEV;
+   }
+
+   /*
+    * Great! They *do* belong to the same fs. Now we have to just release one
+    * fs retain count and the old inode's retain count as well.
+    */
+
+   release_obj(fs);
+   vfs_release_inode_at(&oldp); /* note: we're still holding an exlock on fs */
+
+   /* Finally, we can call filesystem's rename (if any) */
+   rc = fs->fsops->rename
+      ? fs->flags & VFS_FS_RW
+         ? fs->fsops->rename(fs, &oldp, &newp)
+         : -EROFS /* read-only filesystem */
+      : -EPERM; /* not supported */
+
+   /* We're done, release fs's exlock and its retain count */
+   vfs_smart_fs_unlock(fs, true);
+   release_obj(fs);
+   return rc;
 }
 
 int vfs_fchmod(fs_handle h, mode_t mode)
