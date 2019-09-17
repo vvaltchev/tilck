@@ -33,10 +33,10 @@ int sys_exit(int code);
 int sys_fork(void);
 int sys_read(int fd, void *buf, size_t count);
 int sys_write(int fd, const void *buf, size_t count);
-int sys_open(const char *pathname, int flags, mode_t mode);
+int sys_open(const char *u_path, int flags, mode_t mode);
 int sys_close(int fd);
-int sys_waitpid(int pid, int *wstatus, int options);
-int sys_creat(const char *pathname, mode_t mode);
+int sys_waitpid(int pid, int *u_wstatus, int options);
+int sys_creat(const char *u_path, mode_t mode);
 
 CREATE_STUB_SYSCALL_IMPL(sys_link)
 
@@ -60,11 +60,11 @@ CREATE_STUB_SYSCALL_IMPL(sys_lseek)
 
 int sys_getpid();
 
-int sys_mount(const char *user_source,
-              const char *user_target,
-              const char *user_filesystemtype,
+int sys_mount(const char *u_source,
+              const char *u_target,
+              const char *u_filesystemtype,
               unsigned long mountflags,
-              const void *user_data);
+              const void *u_data);
 
 CREATE_STUB_SYSCALL_IMPL(sys_oldumount)
 
@@ -87,13 +87,13 @@ CREATE_STUB_SYSCALL_IMPL(sys_nice)
 int sys_sync();
 int sys_kill(int pid, int sig);
 int sys_rename(const char *u_oldpath, const char *u_newpath);
-int sys_mkdir(const char *user_path, mode_t mode);
-int sys_rmdir(const char *user_path);
+int sys_mkdir(const char *u_path, mode_t mode);
+int sys_rmdir(const char *u_path);
 int sys_dup(int oldfd);
 
 CREATE_STUB_SYSCALL_IMPL(sys_pipe)
 
-uptr sys_times(struct tms *user_buf);
+uptr sys_times(struct tms *u_buf);
 void *sys_brk(void *vaddr);
 int sys_setgid16(uptr gid);
 int sys_getgid16();
@@ -182,7 +182,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_iopl)
 CREATE_STUB_SYSCALL_IMPL(sys_vhangup)
 CREATE_STUB_SYSCALL_IMPL(sys_vm86old)
 
-int sys_wait4(int pid, int *wstatus, int options, void *user_rusage);
+int sys_wait4(int pid, int *u_wstatus, int options, void *u_rusage);
 
 CREATE_STUB_SYSCALL_IMPL(sys_swapoff)
 CREATE_STUB_SYSCALL_IMPL(sys_sysinfo)
@@ -289,11 +289,11 @@ CREATE_STUB_SYSCALL_IMPL(sys_getrlimit)
 sptr sys_mmap_pgoff(void *addr, size_t length, int prot,
                     int flags, int fd, size_t pgoffset);
 
-int sys_truncate64(const char *user_path, s64 length);
+int sys_truncate64(const char *u_path, s64 length);
 int sys_ftruncate64(int fd, s64 length);
-int sys_stat64(const char *user_path, struct stat64 *user_statbuf);
-int sys_lstat64(const char *user_path, struct stat64 *user_statbuf);
-int sys_fstat64(int fd, struct stat64 *user_statbuf);
+int sys_stat64(const char *u_path, struct stat64 *u_statbuf);
+int sys_lstat64(const char *u_path, struct stat64 *u_statbuf);
+int sys_fstat64(int fd, struct stat64 *u_statbuf);
 int sys_lchown(const char *u_path, int owner, int group);
 
 int sys_getuid();

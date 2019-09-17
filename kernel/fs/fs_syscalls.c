@@ -57,7 +57,7 @@ fs_handle get_fs_handle(int fd)
 }
 
 
-int sys_open(const char *user_path, int flags, mode_t mode)
+int sys_open(const char *u_path, int flags, mode_t mode)
 {
    int ret, free_fd;
    task_info *curr = get_curr_task();
@@ -70,7 +70,7 @@ int sys_open(const char *user_path, int flags, mode_t mode)
    /* Apply the umask upfront */
    mode &= ~curr->pi->umask;
 
-   if ((ret = duplicate_user_path(path, user_path, MAX_PATH, &written)))
+   if ((ret = duplicate_user_path(path, u_path, MAX_PATH, &written)))
       return ret;
 
    kmutex_lock(&curr->pi->fslock);
@@ -95,32 +95,32 @@ no_fds:
    goto end;
 }
 
-int sys_creat(const char *user_path, mode_t mode)
+int sys_creat(const char *u_path, mode_t mode)
 {
-   return sys_open(user_path, O_CREAT | O_WRONLY | O_TRUNC, mode);
+   return sys_open(u_path, O_CREAT | O_WRONLY | O_TRUNC, mode);
 }
 
-int sys_unlink(const char *user_path)
+int sys_unlink(const char *u_path)
 {
    task_info *curr = get_curr_task();
    char *path = curr->args_copybuf;
    size_t written = 0;
    int ret;
 
-   if ((ret = duplicate_user_path(path, user_path, MAX_PATH, &written)))
+   if ((ret = duplicate_user_path(path, u_path, MAX_PATH, &written)))
       return ret;
 
    return vfs_unlink(path);
 }
 
-int sys_rmdir(const char *user_path)
+int sys_rmdir(const char *u_path)
 {
    task_info *curr = get_curr_task();
    char *path = curr->args_copybuf;
    size_t written = 0;
    int ret;
 
-   if ((ret = duplicate_user_path(path, user_path, MAX_PATH, &written)))
+   if ((ret = duplicate_user_path(path, u_path, MAX_PATH, &written)))
       return ret;
 
    return vfs_rmdir(path);
@@ -144,7 +144,7 @@ int sys_close(int fd)
    return ret;
 }
 
-int sys_mkdir(const char *user_path, mode_t mode)
+int sys_mkdir(const char *u_path, mode_t mode)
 {
    task_info *curr = get_curr_task();
    char *path = curr->args_copybuf;
@@ -154,13 +154,13 @@ int sys_mkdir(const char *user_path, mode_t mode)
    /* Apply the umask upfront */
    mode &= ~curr->pi->umask;
 
-   if ((ret = duplicate_user_path(path, user_path, MAX_PATH, &written)))
+   if ((ret = duplicate_user_path(path, u_path, MAX_PATH, &written)))
       return ret;
 
    return vfs_mkdir(path, mode);
 }
 
-int sys_read(int fd, void *user_buf, size_t count)
+int sys_read(int fd, void *u_buf, size_t count)
 {
    int ret;
    task_info *curr = get_curr_task();
@@ -188,7 +188,7 @@ int sys_read(int fd, void *user_buf, size_t count)
    ret = (int) vfs_read(handle, curr->io_copybuf, count);
 
    if (ret > 0) {
-      if (copy_to_user(user_buf, curr->io_copybuf, (size_t)ret) < 0) {
+      if (copy_to_user(u_buf, curr->io_copybuf, (size_t)ret) < 0) {
          // Do we have to rewind the stream in this case? It don't think so.
          ret = -EFAULT;
          goto end;
@@ -199,7 +199,7 @@ end:
    return ret;
 }
 
-int sys_write(int fd, const void *user_buf, size_t count)
+int sys_write(int fd, const void *u_buf, size_t count)
 {
    task_info *curr = get_curr_task();
    fs_handle handle;
@@ -209,7 +209,7 @@ int sys_write(int fd, const void *user_buf, size_t count)
 
    count = MIN(count, IO_COPYBUF_SIZE);
 
-   if (copy_from_user(curr->io_copybuf, user_buf, count))
+   if (copy_from_user(curr->io_copybuf, u_buf, count))
       return -EFAULT;
 
    return (int)vfs_write(handle, (char *)curr->io_copybuf, count);
@@ -225,21 +225,21 @@ int sys_ioctl(int fd, uptr request, void *argp)
    return vfs_ioctl(handle, request, argp);
 }
 
-int sys_writev(int fd, const struct iovec *user_iov, int user_iovcnt)
+int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
 {
    task_info *curr = get_curr_task();
-   const u32 iovcnt = (u32) user_iovcnt;
+   const u32 iovcnt = (u32) u_iovcnt;
    fs_handle handle;
    int rc, ret = 0;
 
-   if (user_iovcnt <= 0)
+   if (u_iovcnt <= 0)
       return -EINVAL;
 
    if (sizeof(struct iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
 
    rc = copy_from_user(curr->args_copybuf,
-                       user_iov,
+                       u_iov,
                        sizeof(struct iovec) * iovcnt);
 
    if (rc != 0)
@@ -274,21 +274,21 @@ int sys_writev(int fd, const struct iovec *user_iov, int user_iovcnt)
    return ret;
 }
 
-int sys_readv(int fd, const struct iovec *user_iov, int user_iovcnt)
+int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
 {
    task_info *curr = get_curr_task();
-   const u32 iovcnt = (u32) user_iovcnt;
+   const u32 iovcnt = (u32) u_iovcnt;
    fs_handle handle;
    int rc, ret = 0;
 
-   if (user_iovcnt <= 0)
+   if (u_iovcnt <= 0)
       return -EINVAL;
 
    if (sizeof(struct iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
 
    rc = copy_from_user(curr->args_copybuf,
-                       user_iov,
+                       u_iov,
                        sizeof(struct iovec) * iovcnt);
 
    if (rc != 0)
@@ -321,8 +321,8 @@ int sys_readv(int fd, const struct iovec *user_iov, int user_iovcnt)
 }
 
 static int
-call_vfs_stat64(const char *user_path,
-                struct stat64 *user_statbuf,
+call_vfs_stat64(const char *u_path,
+                struct stat64 *u_statbuf,
                 bool res_last_sl)
 {
    task_info *curr = get_curr_task();
@@ -330,7 +330,7 @@ call_vfs_stat64(const char *user_path,
    struct stat64 statbuf;
    int rc = 0;
 
-   rc = copy_str_from_user(path, user_path, MAX_PATH, NULL);
+   rc = copy_str_from_user(path, u_path, MAX_PATH, NULL);
 
    if (rc < 0)
       return -EFAULT;
@@ -341,23 +341,23 @@ call_vfs_stat64(const char *user_path,
    if ((rc = vfs_stat64(path, &statbuf, res_last_sl)))
       return rc;
 
-   if (copy_to_user(user_statbuf, &statbuf, sizeof(struct stat64)))
+   if (copy_to_user(u_statbuf, &statbuf, sizeof(struct stat64)))
       rc = -EFAULT;
 
    return rc;
 }
 
-int sys_stat64(const char *user_path, struct stat64 *user_statbuf)
+int sys_stat64(const char *u_path, struct stat64 *u_statbuf)
 {
-   return call_vfs_stat64(user_path, user_statbuf, true);
+   return call_vfs_stat64(u_path, u_statbuf, true);
 }
 
-int sys_lstat64(const char *user_path, struct stat64 *user_statbuf)
+int sys_lstat64(const char *u_path, struct stat64 *u_statbuf)
 {
-   return call_vfs_stat64(user_path, user_statbuf, false);
+   return call_vfs_stat64(u_path, u_statbuf, false);
 }
 
-int sys_fstat64(int fd, struct stat64 *user_statbuf)
+int sys_fstat64(int fd, struct stat64 *u_statbuf)
 {
    struct stat64 statbuf;
    fs_handle h;
@@ -369,7 +369,7 @@ int sys_fstat64(int fd, struct stat64 *user_statbuf)
    if ((rc = vfs_fstat64(h, &statbuf)))
       return rc;
 
-   if (copy_to_user(user_statbuf, &statbuf, sizeof(struct stat64)))
+   if (copy_to_user(u_statbuf, &statbuf, sizeof(struct stat64)))
       rc = -EFAULT;
 
    return rc;
@@ -438,7 +438,7 @@ int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
    return (int) ret_bs;
 }
 
-int sys_truncate64(const char *user_path, s64 len)
+int sys_truncate64(const char *u_path, s64 len)
 {
    task_info *curr = get_curr_task();
    char *path = curr->args_copybuf;
@@ -447,7 +447,7 @@ int sys_truncate64(const char *user_path, s64 len)
    if (len < 0)
       return -EINVAL;
 
-   rc = copy_str_from_user(path, user_path, MAX_PATH, NULL);
+   rc = copy_str_from_user(path, u_path, MAX_PATH, NULL);
 
    if (rc < 0)
       return -EFAULT;
@@ -492,14 +492,14 @@ int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
    return 0;
 }
 
-int sys_getdents64(int fd, struct linux_dirent64 *user_dirp, u32 buf_size)
+int sys_getdents64(int fd, struct linux_dirent64 *u_dirp, u32 buf_size)
 {
    fs_handle handle;
 
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
-   return vfs_getdents64(handle, user_dirp, buf_size);
+   return vfs_getdents64(handle, u_dirp, buf_size);
 }
 
 int sys_access(const char *pathname, int mode)
