@@ -236,23 +236,23 @@ _vfs_path_funcs_common_wrapper(const char *path,
                                   (uptr)a1, (uptr)a2, (uptr)a3)
 
 static ALWAYS_INLINE int
-vfs_open_impl(filesystem *fs, vfs_path *p, fs_handle *out, int flags, mode_t mode)
+vfs_open_impl(filesystem *fs, vfs_path *p,
+              fs_handle *out, int flags, mode_t mode)
 {
    int rc;
 
-   if (!(rc = fs->fsops->open(p, out, flags, mode))) {
+   if ((rc = fs->fsops->open(p, out, flags, mode)))
+      return rc;
 
-      /* open() succeeded, the FS is already retained */
-      ((fs_handle_base *) *out)->fl_flags = flags;
+   /* open() succeeded, the FS is already retained */
+   ((fs_handle_base *) *out)->fl_flags = flags;
 
-      if (flags & O_CLOEXEC)
-         ((fs_handle_base *) *out)->fd_flags |= FD_CLOEXEC;
+   if (flags & O_CLOEXEC)
+      ((fs_handle_base *) *out)->fd_flags |= FD_CLOEXEC;
 
-      /* file handles retain their filesystem */
-      retain_obj(fs);
-   }
-
-   return rc;
+   /* file handles retain their filesystem */
+   retain_obj(fs);
+   return 0;
 }
 
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
@@ -281,9 +281,10 @@ vfs_stat64_impl(filesystem *fs,
                 bool res_last_sl,
                 uptr unused1)
 {
-   return p->fs_path.inode
-      ? fs->fsops->stat(fs, p->fs_path.inode, statbuf)
-      : -ENOENT;
+   if (!p->fs_path.inode)
+      return -ENOENT;
+
+   return fs->fsops->stat(fs, p->fs_path.inode, statbuf);
 }
 
 int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl)
@@ -302,21 +303,16 @@ int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl)
 static ALWAYS_INLINE int
 vfs_mkdir_impl(filesystem *fs, vfs_path *p, mode_t mode, uptr u1, uptr u2)
 {
-   int rc;
+   if (!fs->fsops->mkdir)
+      return -EPERM;
 
-   if (fs->fsops->mkdir) {
-      if (fs->flags & VFS_FS_RW) {
-         rc = p->fs_path.inode
-            ? -EEXIST
-            :  fs->fsops->mkdir(p, mode);
-      } else {
-         rc = -EROFS;
-      }
-   } else {
-      rc = -EPERM;
-   }
+   if (!(fs->flags & VFS_FS_RW))
+      return -EROFS;
 
-   return rc;
+   if (p->fs_path.inode)
+      return -EEXIST;
+
+   return fs->fsops->mkdir(p, mode);
 }
 
 int vfs_mkdir(const char *path, mode_t mode)
@@ -335,21 +331,16 @@ int vfs_mkdir(const char *path, mode_t mode)
 static ALWAYS_INLINE int
 vfs_rmdir_impl(filesystem *fs, vfs_path *p, uptr u1, uptr u2, uptr u3)
 {
-   int rc;
+   if (!fs->fsops->rmdir)
+      return -EPERM;
 
-   if (fs->fsops->rmdir) {
-      if (fs->flags & VFS_FS_RW) {
-         rc = p->fs_path.inode
-            ? fs->fsops->rmdir(p)
-            : -ENOENT;
-      } else {
-         rc = -EROFS;
-      }
-   } else {
-      rc = -EPERM;
-   }
+   if (!(fs->flags & VFS_FS_RW))
+      return -EROFS;
 
-   return rc;
+   if (!p->fs_path.inode)
+      return -ENOENT;
+
+   return fs->fsops->rmdir(p);
 }
 
 int vfs_rmdir(const char *path)
@@ -366,21 +357,16 @@ int vfs_rmdir(const char *path)
 static ALWAYS_INLINE int
 vfs_unlink_impl(filesystem *fs, vfs_path *p, uptr u1, uptr u2, uptr u3)
 {
-   int rc;
+   if (!fs->fsops->unlink)
+      return -EPERM;
 
-   if (fs->fsops->unlink) {
-      if (fs->flags & VFS_FS_RW) {
-         rc = p->fs_path.inode
-            ? fs->fsops->unlink(p)
-            : -ENOENT;
-      } else {
-         rc = -EROFS;
-      }
-   } else {
-      rc = -EROFS;
-   }
+   if (!(fs->flags & VFS_FS_RW))
+      return -EROFS;
 
-   return rc;
+   if (!p->fs_path.inode)
+      return -ENOENT;
+
+   return fs->fsops->unlink(p);
 }
 
 int vfs_unlink(const char *path)
@@ -397,23 +383,16 @@ int vfs_unlink(const char *path)
 static ALWAYS_INLINE int
 vfs_truncate_impl(filesystem *fs, vfs_path *p, off_t len, uptr u1, uptr u2)
 {
-   int rc;
+   if (!fs->fsops->truncate)
+      return -EROFS;
 
-   if (fs->fsops->truncate) {
+   if (!(fs->flags & VFS_FS_RW))
+      return -EROFS;
 
-      if (fs->flags & VFS_FS_RW) {
-         rc = p->fs_path.inode
-            ? fs->fsops->truncate(fs, p->fs_path.inode, len)
-            : -ENOENT;
-      } else {
-         rc = -EROFS;
-      }
+   if (!p->fs_path.inode)
+      return -ENOENT;
 
-   } else {
-      rc = -EROFS;
-   }
-
-   return rc;
+   return fs->fsops->truncate(fs, p->fs_path.inode, len);
 }
 
 int vfs_truncate(const char *path, off_t len)
@@ -432,23 +411,16 @@ static ALWAYS_INLINE int
 vfs_symlink_impl(filesystem *fs,
                  vfs_path *p, const char *target, uptr u1, uptr u2)
 {
-   int rc;
+   if (!fs->fsops->symlink)
+      return -EPERM;
 
-   if (fs->fsops->symlink) {
+   if (!(fs->flags & VFS_FS_RW))
+      return -EROFS;
 
-      if (fs->flags & VFS_FS_RW) {
-         rc = p->fs_path.inode
-            ? -EEXIST /* the linkpath already exists! */
-            : fs->fsops->symlink(target, p);
-      } else {
-         rc = -EROFS;
-      }
+   if (p->fs_path.inode)
+      return -EEXIST; /* the linkpath already exists! */
 
-   } else {
-      rc = -EPERM; /* symlinks not supported */
-   }
-
-   return rc;
+   return fs->fsops->symlink(target, p);
 }
 
 int vfs_symlink(const char *target, const char *linkpath)
@@ -466,26 +438,18 @@ int vfs_symlink(const char *target, const char *linkpath)
 static ALWAYS_INLINE int
 vfs_readlink_impl(filesystem *fs, vfs_path *p, char *buf, uptr u1, uptr u2)
 {
-   int rc;
-
-   if (fs->fsops->readlink) {
-
-      /* there is a readlink function */
-
-      rc = p->fs_path.inode
-         ? fs->fsops->readlink(p, buf)
-         : -ENOENT;
-
-   } else {
-
+   if (!fs->fsops->readlink) {
       /*
        * If there's no readlink(), symlinks are not supported by the FS, ergo
        * the last component of `path` cannot be referring to a symlink.
        */
-      rc = -EINVAL;
+      return -EINVAL;
    }
 
-   return rc;
+   if (!p->fs_path.inode)
+      return -ENOENT;
+
+   return fs->fsops->readlink(p, buf);
 }
 
 /* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
@@ -523,15 +487,16 @@ int vfs_chown(const char *path, int owner, int group, bool reslink)
 static ALWAYS_INLINE int
 vfs_chmod_impl(filesystem *fs, vfs_path *p, mode_t mode)
 {
-   int rc;
+   if (!fs->fsops->chmod)
+      return -EPERM;
 
-   rc = p->fs_path.inode
-         ? fs->flags & VFS_FS_RW
-            ? fs->fsops->chmod(fs, p->fs_path.inode, mode)
-            : -EROFS
-         : -ENOENT;
+   if (!(fs->flags & VFS_FS_RW))
+      return -EROFS;
 
-   return rc;
+   if (!p->fs_path.inode)
+      return -ENOENT;
+
+   return fs->fsops->chmod(fs, p->fs_path.inode, mode);
 }
 
 int vfs_chmod(const char *path, mode_t mode)
