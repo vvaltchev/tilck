@@ -422,9 +422,13 @@ int vfs_chmod(const char *path, mode_t mode)
    VFS_FS_PATH_FUNCS_COMMON_FOOTER()
 }
 
-int vfs_rename(const char *oldpath, const char *newpath)
+static int
+vfs_rename_or_link(const char *oldpath,
+                   const char *newpath,
+                   func_2paths (*get_func_ptr)(filesystem *))
 {
    filesystem *fs;
+   func_2paths func;
    vfs_path oldp, newp;
    int rc;
 
@@ -493,10 +497,12 @@ int vfs_rename(const char *oldpath, const char *newpath)
    release_obj(fs);
    vfs_release_inode_at(&oldp); /* note: we're still holding an exlock on fs */
 
-   /* Finally, we can call filesystem's rename (if any) */
-   rc = fs->fsops->rename
+   /* Finally, we can call filesystem's func (if any) */
+   func = get_func_ptr(fs);
+
+   rc = func
       ? fs->flags & VFS_FS_RW
-         ? fs->fsops->rename(fs, &oldp, &newp)
+         ? func(fs, &oldp, &newp)
          : -EROFS /* read-only filesystem */
       : -EPERM; /* not supported */
 
@@ -506,9 +512,24 @@ int vfs_rename(const char *oldpath, const char *newpath)
    return rc;
 }
 
+static ALWAYS_INLINE func_2paths vfs_get_rename_func(filesystem *fs)
+{
+   return fs->fsops->rename;
+}
+
+static ALWAYS_INLINE func_2paths vfs_get_link_func(filesystem *fs)
+{
+   return fs->fsops->link;
+}
+
+int vfs_rename(const char *oldpath, const char *newpath)
+{
+   return vfs_rename_or_link(oldpath, newpath, &vfs_get_rename_func);
+}
+
 int vfs_link(const char *oldpath, const char *newpath)
 {
-   return -ENOSYS;
+   return vfs_rename_or_link(oldpath, newpath, &vfs_get_link_func);
 }
 
 int vfs_fchmod(fs_handle h, mode_t mode)
