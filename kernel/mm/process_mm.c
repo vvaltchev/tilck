@@ -29,7 +29,8 @@ void user_vfree_and_unmap(uptr user_vaddr, size_t page_count)
 bool user_valloc_and_map_slow(uptr user_vaddr, size_t page_count)
 {
    pdir_t *pdir = get_curr_pdir();
-   uptr va = user_vaddr;
+   uptr pa, va = user_vaddr;
+   void *kernel_vaddr;
 
    for (size_t i = 0; i < page_count; i++, va += PAGE_SIZE) {
 
@@ -38,17 +39,14 @@ bool user_valloc_and_map_slow(uptr user_vaddr, size_t page_count)
          return false;
       }
 
-      void *kernel_vaddr = kmalloc(PAGE_SIZE);
-
-      if (!kernel_vaddr) {
+      if (!(kernel_vaddr = kmalloc(PAGE_SIZE))) {
          user_vfree_and_unmap(user_vaddr, i);
          return false;
       }
 
-      uptr pa = KERNEL_VA_TO_PA(kernel_vaddr);
-      int rc = map_page(pdir, (void *)va, pa, true, true);
+      pa = KERNEL_VA_TO_PA(kernel_vaddr);
 
-      if (rc != 0) {
+      if (map_page(pdir, (void *)va, pa, true, true) != 0) {
          kfree2(kernel_vaddr, PAGE_SIZE);
          user_vfree_and_unmap(user_vaddr, i);
          return false;
