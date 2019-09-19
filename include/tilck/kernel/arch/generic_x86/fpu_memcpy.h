@@ -267,7 +267,7 @@ fpu_cpy_single_128_sse(void *dest, const void *src)
 }
 
 void memcpy256_failsafe(void *dest, const void *src, u32 n);
-void memcpy_single_256_failsafe(void *dest, const void *src);
+FASTCALL void memcpy_single_256_failsafe(void *dest, const void *src);
 
 /* Non-temporal hint for the destination */
 /* 'n' is the number of 32-byte (256-bit) data packets to copy */
