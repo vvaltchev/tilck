@@ -44,11 +44,14 @@ int cmd_fs7(int argc, char **argv)
 int cmd_fmmap1(int argc, char **argv)
 {
    static const char test_str[] = "this is a test string\n";
+   static const char test_str_exp[] = "This is a test string\n";
    static const char test_file[] = "/tmp/test1";
 
-   struct stat statbuf;
    int fd, rc;
    char *vaddr;
+   char buf[64];
+   struct stat statbuf;
+   size_t file_size;
    const size_t page_size = getpagesize();
 
    printf("Using '%s' as test file\n", test_file);
@@ -61,7 +64,8 @@ int cmd_fmmap1(int argc, char **argv)
    rc = fstat(fd, &statbuf);
    DEVSHELL_CMD_ASSERT(rc == 0);
 
-   printf("File size: %llu\n", (ull_t)statbuf.st_size);
+   file_size = statbuf.st_size;
+   printf("File size: %llu\n", (ull_t)file_size);
 
    vaddr = mmap(NULL,                   /* addr */
                 2 * page_size,          /* length */
@@ -80,12 +84,33 @@ int cmd_fmmap1(int argc, char **argv)
    printf("vaddr: %p\n", vaddr);
 
    vaddr[0] = 'T';                     // has real effect
-   vaddr[statbuf.st_size] = '?';       // gets ignored as past of EOF
-   vaddr[statbuf.st_size + 10] = 'x';  // gets ignored as past of EOF
-   vaddr[statbuf.st_size + 11] = '\n'; // gets ignored as past of EOF
+   vaddr[file_size] = '?';             // gets ignored as past of EOF
+   vaddr[file_size + 10] = 'x';        // gets ignored as past of EOF
+   vaddr[file_size + 11] = '\n';       // gets ignored as past of EOF
 
    // vaddr[page_size] = 'y';          // triggers SIGBUS as past of EOF and
-                                       // in a new page.
+                                       // in a new page. Requires a separate
+                                       // test.
+
+   close(fd);
+
+   rc = stat(test_file, &statbuf);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+   DEVSHELL_CMD_ASSERT(statbuf.st_size == file_size);
+
+   fd = open(test_file, O_CREAT | O_RDONLY, 0644);
+   DEVSHELL_CMD_ASSERT(fd > 0);
+
+   rc = read(fd, buf, file_size);
+   DEVSHELL_CMD_ASSERT(rc == file_size);
+   buf[rc] = 0;
+
+   if (strcmp(buf, test_str_exp)) {
+      fprintf(stderr, "File contents != expected:\n");
+      fprintf(stderr, "Contents: <<\n%s>>\n", buf);
+      fprintf(stderr, "Expected: <<\n%s>>\n", test_str_exp);
+      DEVSHELL_CMD_ASSERT(false);
+   }
 
    close(fd);
    rc = unlink(test_file);
