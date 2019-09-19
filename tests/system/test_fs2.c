@@ -74,17 +74,13 @@ int cmd_fmmap1(int argc, char **argv)
                 fd,                     /* fd */
                 0);
 
-   if (vaddr == (void *)-1) {
-      fprintf(stderr, "mmap failed: %s\n", strerror(errno));
-      close(fd);
-      unlink(test_file);
-      DEVSHELL_CMD_ASSERT(vaddr != (void *)-1);
-   }
+   if (vaddr == (void *)-1)
+      goto err_case;
 
    printf("vaddr: %p\n", vaddr);
 
    vaddr[0] = 'T';                     // has real effect
-   vaddr[file_size] = '?';             // gets ignored as past of EOF
+   vaddr[file_size +  0] = '?';        // gets ignored as past of EOF
    vaddr[file_size + 10] = 'x';        // gets ignored as past of EOF
    vaddr[file_size + 11] = '\n';       // gets ignored as past of EOF
 
@@ -98,7 +94,7 @@ int cmd_fmmap1(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(rc == 0);
    DEVSHELL_CMD_ASSERT(statbuf.st_size == file_size);
 
-   fd = open(test_file, O_CREAT | O_RDONLY, 0644);
+   fd = open(test_file, O_RDONLY, 0644);
    DEVSHELL_CMD_ASSERT(fd > 0);
 
    rc = read(fd, buf, file_size);
@@ -112,7 +108,36 @@ int cmd_fmmap1(int argc, char **argv)
       DEVSHELL_CMD_ASSERT(false);
    }
 
+   /* Now, let's mmap the file again and check the past-EOF contents */
+
+   vaddr = mmap(NULL,                   /* addr */
+                2 * page_size,          /* length */
+                PROT_READ,              /* prot */
+                MAP_SHARED,             /* flags */
+                fd,                     /* fd */
+                0);
+
+   if (vaddr == (void *)-1)
+      goto err_case;
+
+   /*
+    * At least on ext4 on Linux, the past-EOF contents are kept. That's the
+    * simplest behavior to implement for Tilck as well.
+    */
+   printf("vaddr[file_size +  0]: %c\n", vaddr[file_size +  0]);
+   printf("vaddr[file_size + 10]: %c\n", vaddr[file_size + 10]);
+
+   DEVSHELL_CMD_ASSERT(vaddr[file_size +  0] == '?');
+   DEVSHELL_CMD_ASSERT(vaddr[file_size + 10] == 'x');
+
    close(fd);
    rc = unlink(test_file);
    DEVSHELL_CMD_ASSERT(rc == 0);
+   return 0;
+
+err_case:
+   fprintf(stderr, "mmap failed: %s\n", strerror(errno));
+   close(fd);
+   unlink(test_file);
+   DEVSHELL_CMD_ASSERT(vaddr != (void *)-1);
 }
