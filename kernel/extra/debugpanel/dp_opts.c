@@ -8,12 +8,6 @@
 
 #include "termutil.h"
 
-#ifdef RELEASE
-   #define IS_RELEASE_BUILD 1
-#else
-   #define IS_RELEASE_BUILD 0
-#endif
-
 #define DUMP_INT(name, val)  dp_write(row++, col, "%-16s: %d", name, val)
 #define DUMP_STR_OPT(opt)    dp_write(row++, col, "%-30s: %s", #opt, opt)
 #define DUMP_INT_OPT(opt)    dp_write(row++, col, "%-30s: %d", #opt, opt)
