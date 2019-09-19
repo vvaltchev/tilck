@@ -110,12 +110,12 @@ typedef void    (*func_get_entry) (filesystem *fs,
 
 /* mixed fs/file ops */
 typedef int     (*func_stat)   (filesystem *, vfs_inode_ptr_t, struct stat64 *);
-typedef int     (*func_trunc)  (filesystem *, vfs_inode_ptr_t, off_t);
+typedef int     (*func_trunc)  (filesystem *, vfs_inode_ptr_t, offt);
 
 /* file ops */
 typedef ssize_t (*func_read)         (fs_handle, char *, size_t);
 typedef ssize_t (*func_write)        (fs_handle, char *, size_t);
-typedef off_t   (*func_seek)         (fs_handle, off_t, int);
+typedef offt    (*func_seek)         (fs_handle, offt, int);
 typedef int     (*func_ioctl)        (fs_handle, uptr, void *);
 typedef int     (*func_mmap)         (fs_handle, void *vaddr, size_t);
 typedef int     (*func_munmap)       (fs_handle, void *vaddr, size_t);
@@ -229,7 +229,7 @@ typedef struct {
    const file_ops *fops;         \
    int fd_flags;                 \
    int fl_flags;                 \
-   off_t pos;                        /* file: offset, dir: opaque entry index */
+   offt pos;                        /* file: offset, dir: opaque entry index */
 
 typedef struct {
 
@@ -248,8 +248,8 @@ int vfs_fcntl(fs_handle h, int cmd, int arg);
 int vfs_unlink(const char *path);
 int vfs_mkdir(const char *path, mode_t mode);
 int vfs_rmdir(const char *path);
-int vfs_truncate(const char *path, off_t length);
-int vfs_ftruncate(fs_handle h, off_t length);
+int vfs_truncate(const char *path, offt length);
+int vfs_ftruncate(fs_handle h, offt length);
 int vfs_symlink(const char *target, const char *linkpath);
 int vfs_readlink(const char *path, char *buf);
 int vfs_chown(const char *path, int owner, int group, bool reslink);
@@ -268,7 +268,7 @@ kcond *vfs_get_except_cond(fs_handle h);
 
 ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);
-off_t vfs_seek(fs_handle h, s64 off, int whence);
+offt vfs_seek(fs_handle h, s64 off, int whence);
 
 static inline void vfs_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
 {

@@ -116,11 +116,11 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
    return ret;
 }
 
-off_t vfs_seek(fs_handle h, s64 off, int whence)
+offt vfs_seek(fs_handle h, s64 off, int whence)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
-   off_t ret;
+   offt ret;
 
    if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)
       return -EINVAL; /* Tilck does NOT support SEEK_DATA and SEEK_HOLE */
@@ -132,8 +132,8 @@ off_t vfs_seek(fs_handle h, s64 off, int whence)
 
    vfs_shlock(h);
    {
-      // NOTE: this won't really work for big offsets in case off_t is 32-bit.
-      ret = hb->fops->seek(h, (off_t) off, whence);
+      // NOTE: this won't really work for big offsets in case offt is 32-bit.
+      ret = hb->fops->seek(h, (offt) off, whence);
    }
    vfs_shunlock(h);
    return ret;
@@ -175,7 +175,7 @@ int vfs_fcntl(fs_handle h, int cmd, int arg)
    return ret;
 }
 
-int vfs_ftruncate(fs_handle h, off_t length)
+int vfs_ftruncate(fs_handle h, offt length)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
    const fs_ops *fsops = hb->fs->fsops;
@@ -384,7 +384,7 @@ int vfs_unlink(const char *path)
 }
 
 static ALWAYS_INLINE int
-vfs_truncate_impl(filesystem *fs, vfs_path *p, off_t len, uptr u1, uptr u2)
+vfs_truncate_impl(filesystem *fs, vfs_path *p, offt len, uptr u1, uptr u2)
 {
    if (!fs->fsops->truncate)
       return -EROFS;
@@ -398,7 +398,7 @@ vfs_truncate_impl(filesystem *fs, vfs_path *p, off_t len, uptr u1, uptr u2)
    return fs->fsops->truncate(fs, p->fs_path.inode, len);
 }
 
-int vfs_truncate(const char *path, off_t len)
+int vfs_truncate(const char *path, offt len)
 {
    return vfs_path_funcs_wrapper(
       path,

@@ -11,11 +11,11 @@ static int ramfs_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
-static off_t ramfs_dir_seek(ramfs_handle *rh, off_t target_off)
+static offt ramfs_dir_seek(ramfs_handle *rh, offt target_off)
 {
    ramfs_inode *i = rh->inode;
    ramfs_entry *dpos;
-   off_t off = 0;
+   offt off = 0;
 
    list_for_each_ro(dpos, &i->entries_list, lnode) {
 
@@ -31,7 +31,7 @@ static off_t ramfs_dir_seek(ramfs_handle *rh, off_t target_off)
    return rh->pos;
 }
 
-static off_t ramfs_seek(fs_handle h, off_t off, int whence)
+static offt ramfs_seek(fs_handle h, offt off, int whence)
 {
    ramfs_handle *rh = h;
    ramfs_inode *i = rh->inode;
@@ -62,7 +62,7 @@ static off_t ramfs_seek(fs_handle h, off_t off, int whence)
          break;
 
       case SEEK_END:
-         rh->pos = (off_t)i->fsize + off;
+         rh->pos = (offt)i->fsize + off;
          break;
 
       default:
@@ -77,7 +77,7 @@ static off_t ramfs_seek(fs_handle h, off_t off, int whence)
    return rh->pos;
 }
 
-static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
+static int ramfs_inode_truncate(ramfs_inode *i, offt len)
 {
    ASSERT(rwlock_wp_holding_exlock(&i->rwlock));
 
@@ -122,7 +122,7 @@ static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
    return 0;
 }
 
-static int ramfs_inode_truncate_safe(ramfs_inode *i, off_t len)
+static int ramfs_inode_truncate_safe(ramfs_inode *i, offt len)
 {
    int rc;
    rwlock_wp_exlock(&i->rwlock);
@@ -133,7 +133,7 @@ static int ramfs_inode_truncate_safe(ramfs_inode *i, off_t len)
    return rc;
 }
 
-static int ramfs_truncate(filesystem *fs, vfs_inode_ptr_t i, off_t len)
+static int ramfs_truncate(filesystem *fs, vfs_inode_ptr_t i, offt len)
 {
    /*
     * NOTE: we don't support len > fsize at the moment.
@@ -146,8 +146,8 @@ static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
 {
    ramfs_handle *rh = h;
    ramfs_inode *inode = rh->inode;
-   off_t tot_read = 0;
-   off_t buf_rem = (off_t) len;
+   offt tot_read = 0;
+   offt buf_rem = (offt) len;
    ASSERT(inode->type == VFS_FILE);
 
    if (inode->type == VFS_DIR)
@@ -156,11 +156,11 @@ static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
    while (buf_rem > 0) {
 
       ramfs_block *block;
-      const off_t page     = rh->pos & (off_t)PAGE_MASK;
-      const off_t page_off = rh->pos & (off_t)OFFSET_IN_PAGE_MASK;
-      const off_t page_rem = (off_t)PAGE_SIZE - page_off;
-      const off_t file_rem = inode->fsize - rh->pos;
-      const off_t to_read  = MIN3(page_rem, buf_rem, file_rem);
+      const offt page     = rh->pos & (offt)PAGE_MASK;
+      const offt page_off = rh->pos & (offt)OFFSET_IN_PAGE_MASK;
+      const offt page_rem = (offt)PAGE_SIZE - page_off;
+      const offt file_rem = inode->fsize - rh->pos;
+      const offt to_read  = MIN3(page_rem, buf_rem, file_rem);
 
       if (rh->pos >= inode->fsize)
          break;
@@ -196,8 +196,8 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
 {
    ramfs_handle *rh = h;
    ramfs_inode *inode = rh->inode;
-   off_t tot_written = 0;
-   off_t buf_rem = (off_t)len;
+   offt tot_written = 0;
+   offt buf_rem = (offt)len;
 
    /* We can be sure it's a file because dirs cannot be open for writing */
    ASSERT(inode->type == VFS_FILE);
@@ -208,10 +208,10 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
    while (buf_rem > 0) {
 
       ramfs_block *block;
-      const off_t page     = rh->pos & (off_t)PAGE_MASK;
-      const off_t page_off = rh->pos & (off_t)OFFSET_IN_PAGE_MASK;
-      const off_t page_rem = (off_t)PAGE_SIZE - page_off;
-      const off_t to_write = MIN(page_rem, buf_rem);
+      const offt page     = rh->pos & (offt)PAGE_MASK;
+      const offt page_off = rh->pos & (offt)OFFSET_IN_PAGE_MASK;
+      const offt page_rem = (offt)PAGE_SIZE - page_off;
+      const offt to_write = MIN(page_rem, buf_rem);
 
       ASSERT(to_write > 0);
 

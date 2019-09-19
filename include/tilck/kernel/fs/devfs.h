@@ -35,11 +35,11 @@ typedef struct {
       struct {
          devfs_file *file;             /* valid only if type != VFS_DIR */
 
-         off_t read_pos;
-         off_t write_pos;
+         offt read_pos;
+         offt write_pos;
 
-         off_t read_buf_used;
-         off_t write_buf_used;
+         offt read_buf_used;
+         offt write_buf_used;
 
          char *read_buf;
          char *write_buf;

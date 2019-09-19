@@ -141,12 +141,12 @@ static ssize_t devfs_dir_write(fs_handle h, char *buf, size_t len)
    return -EINVAL;
 }
 
-static off_t devfs_dir_seek(fs_handle h, off_t target_off, int whence)
+static offt devfs_dir_seek(fs_handle h, offt target_off, int whence)
 {
    devfs_handle *dh = h;
    devfs_data *d = dh->fs->device_data;
    devfs_file *pos;
-   off_t off = 0;
+   offt off = 0;
 
    if (target_off < 0 || whence != SEEK_SET)
       return -EINVAL;

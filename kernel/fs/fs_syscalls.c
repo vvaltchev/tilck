@@ -456,7 +456,7 @@ int sys_truncate64(const char *u_path, s64 len)
       return -ENAMETOOLONG;
 
    // NOTE: truncating the 64-bit length to a pointer-size integer
-   return vfs_truncate(path, (off_t)len);
+   return vfs_truncate(path, (offt)len);
 }
 
 int sys_ftruncate64(int fd, s64 len)
@@ -467,7 +467,7 @@ int sys_ftruncate64(int fd, s64 len)
       return -EBADF;
 
    // NOTE: truncating the 64-bit length to a pointer-size integer
-   return vfs_ftruncate(h, (off_t)len);
+   return vfs_ftruncate(h, (offt)len);
 }
 
 int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
@@ -476,7 +476,7 @@ int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
    fs_handle handle;
    s64 new_off;
 
-   STATIC_ASSERT(sizeof(new_off) >= sizeof(off_t));
+   STATIC_ASSERT(sizeof(new_off) >= sizeof(offt));
 
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;

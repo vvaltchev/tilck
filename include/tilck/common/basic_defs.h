@@ -103,6 +103,12 @@ typedef uint64_t u64;
 
 typedef unsigned long long ull_t;
 
+/*
+ * Tilck's off_t, which does not depend on any extern include files and it's
+ * pointer-size wide.
+ */
+typedef sptr offt;
+
 
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
