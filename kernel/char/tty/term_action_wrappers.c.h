@@ -20,7 +20,7 @@ static const actions_table_item actions_table[] = {
    [a_pause_video_output] = ENTRY(term_action_pause_video_output, 1),
    [a_restart_video_output] = ENTRY(term_action_restart_video_output, 1),
    [a_enable_cursor] = ENTRY(term_action_enable_cursor, 1),
-   [a_non_buf_scroll] = ENTRY(term_action_non_buf_scroll, 1),
+   [a_non_buf_scroll] = ENTRY(term_action_non_buf_scroll, 2),
 };
 
 #undef ENTRY
