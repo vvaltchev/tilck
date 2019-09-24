@@ -349,19 +349,23 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       if ((rc = vfs_mmap(handle, res, actual_len))) {
 
          /*
-         * Everything was apparently OK and the allocation in the user virtual
-         * address space succeeded, but for some reason the actual mapping of
-         * the device to the user vaddr failed.
-         */
+          * Everything was apparently OK and the allocation in the user virtual
+          * address space succeeded, but for some reason the actual mapping of
+          * the device to the user vaddr failed.
+          */
 
-         per_heap_kfree(pi->mmap_heap,
-                        res,
-                        &actual_len,
-                        KFREE_FL_ALLOW_SPLIT |
-                        KFREE_FL_MULTI_STEP  |
-                        KFREE_FL_NO_ACTUAL_FREE);
+         disable_preemption();
+         {
+            per_heap_kfree(pi->mmap_heap,
+                           res,
+                           &actual_len,
+                           KFREE_FL_ALLOW_SPLIT |
+                           KFREE_FL_MULTI_STEP  |
+                           KFREE_FL_NO_ACTUAL_FREE);
 
-         process_remove_user_mapping(um);
+            process_remove_user_mapping(um);
+         }
+         enable_preemption();
          return rc;
       }
 
