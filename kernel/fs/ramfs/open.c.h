@@ -1,5 +1,80 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck/kernel/process.h>
+
+static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
+{
+   process_info *pi = get_curr_task()->pi;
+   //ramfs_handle *rh = h;
+   //ramfs_inode *i = rh->inode;
+   uptr vaddr = (uptr)vaddrp;
+   uptr vend = vaddr + len;
+   ASSERT(len % PAGE_SIZE == 0);
+
+   //printk("[ramfs] UNMAP inode %llu at [%p, %p)\n", i->ino, vaddr, vaddr+len);
+
+   for (; vaddr < vend; vaddr += PAGE_SIZE) {
+      unmap_page_permissive(pi->pdir, (void *)vaddr, false);
+   }
+
+   return 0;
+}
+
+static int ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot)
+{
+   process_info *pi = get_curr_task()->pi;
+   ramfs_handle *rh = h;
+   ramfs_inode *i = rh->inode;
+   uptr vaddr = (uptr) vaddrp;
+   bintree_walk_ctx ctx;
+   ramfs_block *b;
+   int rc;
+
+   ASSERT(len % PAGE_SIZE == 0);
+
+   if (i->type != VFS_FILE)
+      return -EACCES;
+
+   //printk("[ramfs] mmap inode %llu at [%p, %p)\n", i->ino, vaddr, vaddr+len);
+
+   bintree_in_order_visit_start(&ctx,
+                                i->blocks_tree_root,
+                                ramfs_block,
+                                node,
+                                false);
+
+   while ((b = bintree_in_order_visit_next(&ctx))) {
+
+      if ((size_t)b->offset >= len)
+         break;
+
+      //printk("[ramfs] block at offset %u -> %p\n", b->offset, b->vaddr);
+
+      rc = map_page(pi->pdir,
+                    (void *)vaddr,
+                    KERNEL_VA_TO_PA(b->vaddr),
+                    true,
+                    rh->fl_flags & O_RDWR);
+
+      if (rc) {
+
+         /* mmap failed, we have to unmap the pages already mappped */
+         vaddr -= PAGE_SIZE;
+
+         for (; vaddr >= (uptr)vaddrp; vaddr -= PAGE_SIZE) {
+            unmap_page_permissive(pi->pdir, (void *)vaddr, false);
+         }
+
+         return rc;
+      }
+
+      vaddr += PAGE_SIZE;
+   }
+
+   return 0;
+}
+
+
 static const file_ops static_ops_ramfs =
 {
    .read = ramfs_read,
@@ -7,8 +82,8 @@ static const file_ops static_ops_ramfs =
    .seek = ramfs_seek,
    .ioctl = ramfs_ioctl,
    .fcntl = ramfs_fcntl,
-   .mmap = NULL,
-   .munmap = NULL,
+   .mmap = ramfs_mmap,
+   .munmap = ramfs_munmap,
    .exlock = ramfs_file_exlock,
    .exunlock = ramfs_file_exunlock,
    .shlock = ramfs_file_shlock,

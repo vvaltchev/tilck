@@ -89,9 +89,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(fs7, TT_SHORT, true),
    CMD_ENTRY(fs_perf1, TT_SHORT, true),
    CMD_ENTRY(fs_perf2, TT_SHORT, true),
-
-   /* This "test" cannot pass until ramfs support mmap on files */
-   CMD_ENTRY(fmmap1, TT_SHORT, false),
+   CMD_ENTRY(fmmap1, TT_SHORT, true),
 
    /*
     * For the moment these tests can be run only manually because they require
