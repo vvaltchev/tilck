@@ -11,6 +11,7 @@
 
 #include <linux/fb.h>     // system header
 #include <linux/major.h>  // system header
+#include <sys/mman.h>     // system header
 
 static ssize_t total_fb_pages_mapped;
 
@@ -57,8 +58,12 @@ static int fb_ioctl(fs_handle h, uptr request, void *argp)
    return -EINVAL;
 }
 
-static int fbdev_mmap(fs_handle h /* ignored */, void *vaddr, size_t len)
+static int
+fbdev_mmap(fs_handle h /* ignored */, void *vaddr, size_t len, int prot)
 {
+   if ((prot & (PROT_READ | PROT_WRITE)) != (PROT_READ | PROT_WRITE))
+      return -EINVAL; /* don't allow read-only mmap */
+
    ASSERT(IS_PAGE_ALIGNED(len));
    fb_user_mmap(vaddr, len);
 

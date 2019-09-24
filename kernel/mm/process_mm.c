@@ -265,7 +265,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    user_mapping *um = NULL;
    size_t actual_len;
    void *res;
-   int rc;
+   int rc, fl;
 
    //printk("mmap2(addr: %p, len: %u, prot: %u, flags: %p, fd: %d, off: %d)\n",
    //      addr, len, prot, flags, fd, pgoffset);
@@ -282,8 +282,8 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    if (pgoffset != 0)
       return -EINVAL; /* pgoffset != 0 not supported at the moment */
 
-   if (prot != (PROT_READ | PROT_WRITE))
-      return -EINVAL; /* support only read/write mapping, for the moment */
+   if (!(prot & PROT_READ))
+      return -EINVAL;
 
    actual_len = round_up_at(len, PAGE_SIZE);
 
@@ -298,6 +298,9 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       if (!(flags & MAP_PRIVATE))
          return -EINVAL;
 
+      if ((prot & (PROT_READ | PROT_WRITE)) != (PROT_READ | PROT_WRITE))
+         return -EINVAL;
+
    } else {
 
       if (!(flags & MAP_SHARED))
@@ -307,6 +310,19 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
       if (!handle)
          return -EBADF;
+
+      fl = handle->fl_flags;
+
+      if ((prot & (PROT_READ | PROT_WRITE)) == 0)
+         return -EINVAL;
+
+      if ((prot & (PROT_READ | PROT_WRITE)) == PROT_WRITE)
+         return -EINVAL; /* disallow write-only mappings */
+
+      if (prot & PROT_WRITE) {
+         if (!(fl & O_WRONLY) && (fl & O_RDWR) != O_RDWR)
+            return -EINVAL;
+      }
 
       per_heap_kmalloc_flags |= KMALLOC_FL_NO_ACTUAL_ALLOC;
    }
@@ -346,7 +362,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
    if (handle) {
 
-      if ((rc = vfs_mmap(handle, res, actual_len))) {
+      if ((rc = vfs_mmap(handle, res, actual_len, prot))) {
 
          /*
           * Everything was apparently OK and the allocation in the user virtual
