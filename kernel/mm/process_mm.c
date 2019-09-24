@@ -241,10 +241,8 @@ void remove_all_mappings_of_handle(process_info *pi, fs_handle h)
 
 void full_remove_user_mapping(process_info *pi, user_mapping *um)
 {
-   fs_handle_base *hb = um->h;
    size_t actual_len = um->page_count << PAGE_SHIFT;
-
-   hb->fops->munmap(hb, um->vaddr, actual_len);
+   vfs_munmap(um->h, um->vaddr, actual_len);
 
    per_heap_kfree(pi->mmap_heap,
                   um->vaddr,
@@ -260,11 +258,10 @@ sptr
 sys_mmap_pgoff(void *addr, size_t len, int prot,
                int flags, int fd, size_t pgoffset)
 {
+   u32 per_heap_kmalloc_flags = KMALLOC_FL_MULTI_STEP | PAGE_SIZE;
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
    fs_handle_base *handle = NULL;
-   devfs_handle *dh = NULL;
-   u32 per_heap_kmalloc_flags = KMALLOC_FL_MULTI_STEP | PAGE_SIZE;
    user_mapping *um = NULL;
    size_t actual_len;
    void *res;
@@ -311,15 +308,6 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       if (!handle)
          return -EBADF;
 
-      if (handle->fs != get_devfs())
-         return -ENODEV; /* only special dev files can be memory-mapped */
-
-      dh = (devfs_handle *) handle;
-
-      if (!dh->fops->mmap)
-         return -ENODEV; /* this device file does not support memory mapping */
-
-      ASSERT(dh->fops->munmap);
       per_heap_kmalloc_flags |= KMALLOC_FL_NO_ACTUAL_ALLOC;
    }
 
@@ -333,10 +321,10 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
                              &actual_len,
                              per_heap_kmalloc_flags);
 
-      if (dh) {
+      if (handle) {
 
          size_t mapping_page_count = actual_len >> PAGE_SHIFT;
-         um = process_add_user_mapping(dh, res, mapping_page_count);
+         um = process_add_user_mapping(handle, res, mapping_page_count);
 
          if (!um) {
             per_heap_kfree(pi->mmap_heap,
@@ -356,11 +344,9 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    if (!res)
       return -ENOMEM;
 
+   if (handle) {
 
-   if (dh) {
-
-
-      if ((rc = dh->fops->mmap(handle, res, actual_len))) {
+      if ((rc = vfs_mmap(handle, res, actual_len))) {
 
          /*
          * Everything was apparently OK and the allocation in the user virtual
@@ -396,6 +382,7 @@ int sys_munmap(void *vaddrp, size_t len)
    uptr vaddr = (uptr) vaddrp;
    u32 kfree_flags = KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP;
    size_t actual_len;
+   int rc;
 
    if (!len || !pi->mmap_heap)
       return -EINVAL;
@@ -418,13 +405,16 @@ int sys_munmap(void *vaddrp, size_t len)
          actual_len = MAX(actual_len, mapping_len);
          kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
 
+         rc = vfs_munmap(hb, vaddrp, actual_len);
+
          /*
           * If there's an actual user_mapping entry, it means um->h's fops MUST
           * HAVE mmap() implemented. Therefore, we MUST REQUIRE munmap() to be
           * present as well.
           */
-         ASSERT(hb->fops->munmap != NULL);
-         hb->fops->munmap(hb, vaddrp, actual_len);
+
+         ASSERT(rc != -ENODEV);
+         (void) rc; /* prevent "unused variable" Werror in release */
 
          if (actual_len == mapping_len) {
 

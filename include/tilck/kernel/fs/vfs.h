@@ -117,8 +117,8 @@ typedef ssize_t (*func_read)         (fs_handle, char *, size_t);
 typedef ssize_t (*func_write)        (fs_handle, char *, size_t);
 typedef offt    (*func_seek)         (fs_handle, offt, int);
 typedef int     (*func_ioctl)        (fs_handle, uptr, void *);
-typedef int     (*func_mmap)         (fs_handle, void *vaddr, size_t);
-typedef int     (*func_munmap)       (fs_handle, void *vaddr, size_t);
+typedef int     (*func_mmap)         (fs_handle, void *, size_t);
+typedef int     (*func_munmap)       (fs_handle, void *, size_t);
 typedef int     (*func_fcntl)        (fs_handle, int, int);
 typedef void    (*func_hlock_t)      (fs_handle);
 typedef bool    (*func_rwe_ready)    (fs_handle);
@@ -238,24 +238,27 @@ typedef struct {
 } fs_handle_base;
 
 
-int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);
-int vfs_ioctl(fs_handle h, uptr request, void *argp);
 int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl);
-int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
-int vfs_dup(fs_handle h, fs_handle *dup_h);
-int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
-int vfs_fcntl(fs_handle h, int cmd, int arg);
+int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);
 int vfs_unlink(const char *path);
 int vfs_mkdir(const char *path, mode_t mode);
 int vfs_rmdir(const char *path);
 int vfs_truncate(const char *path, offt length);
-int vfs_ftruncate(fs_handle h, offt length);
 int vfs_symlink(const char *target, const char *linkpath);
 int vfs_readlink(const char *path, char *buf);
 int vfs_chown(const char *path, int owner, int group, bool reslink);
 int vfs_chmod(const char *path, mode_t mode);
 int vfs_rename(const char *oldpath, const char *newpath);
 int vfs_link(const char *oldpath, const char *newpath);
+
+int vfs_ftruncate(fs_handle h, offt length);
+int vfs_ioctl(fs_handle h, uptr request, void *argp);
+int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
+int vfs_dup(fs_handle h, fs_handle *dup_h);
+int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
+int vfs_fcntl(fs_handle h, int cmd, int arg);
+int vfs_mmap(fs_handle h, void *vaddr, size_t len);
+int vfs_munmap(fs_handle h, void *vaddr, size_t len);
 int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);
 

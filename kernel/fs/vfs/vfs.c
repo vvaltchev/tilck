@@ -631,6 +631,30 @@ int vfs_fchmod(fs_handle h, mode_t mode)
    return fsops->chmod(hb->fs, fsops->get_inode(h), mode);
 }
 
+int vfs_mmap(fs_handle h, void *vaddr, size_t len)
+{
+   fs_handle_base *hb = h;
+   const file_ops *fops = hb->fops;
+
+   if (!fops->mmap)
+      return -ENODEV;
+
+   ASSERT(fops->munmap != NULL);
+   return fops->mmap(h, vaddr, len);
+}
+
+int vfs_munmap(fs_handle h, void *vaddr, size_t len)
+{
+   fs_handle_base *hb = h;
+   const file_ops *fops = hb->fops;
+
+   if (!fops->munmap)
+      return -ENODEV;
+
+   ASSERT(fops->mmap != NULL);
+   return fops->munmap(h, vaddr, len);
+}
+
 u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;
