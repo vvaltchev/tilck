@@ -109,34 +109,9 @@ bool user_map_zero_page(uptr user_vaddr, size_t page_count)
    return true;
 }
 
-void *sys_brk(void *new_brk)
+static inline void sys_brk_internal(process_info *pi, void *new_brk)
 {
-   task_info *ti = get_curr_task();
-   process_info *pi = ti->pi;
-
-   if (!new_brk)
-      goto ret;
-
-   // TODO: check if Linux accepts non-page aligned addresses.
-   // If yes, what to do? how to approx? truncation, round-up/round-down?
-   if ((uptr)new_brk & OFFSET_IN_PAGE_MASK)
-      goto ret;
-
-   if (new_brk < pi->initial_brk)
-      goto ret;
-
-   if ((uptr)new_brk >= MAX_BRK)
-      goto ret;
-
-   if (new_brk == pi->brk)
-      goto ret;
-
-   disable_preemption();
-
-   /*
-    * Disable preemption to avoid any threads to mess-up with the address space
-    * of the current process (i.e. they might call brk(), mmap() etc.)
-    */
+   ASSERT(!is_preemption_enabled());
 
    if (new_brk < pi->brk) {
 
@@ -147,7 +122,7 @@ void *sys_brk(void *new_brk)
       }
 
       pi->brk = new_brk;
-      goto out;
+      return;
    }
 
    void *vaddr = pi->brk;
@@ -155,7 +130,7 @@ void *sys_brk(void *new_brk)
    while (vaddr < new_brk) {
 
       if (is_mapped(pi->pdir, vaddr))
-         goto out; // error: vaddr is already mapped!
+         return; // error: vaddr is already mapped!
 
       vaddr += PAGE_SIZE;
    }
@@ -184,10 +159,40 @@ void *sys_brk(void *new_brk)
 
    /* We're done. */
    pi->brk = vaddr;
+}
 
-out:
+void *sys_brk(void *new_brk)
+{
+   task_info *ti = get_curr_task();
+   process_info *pi = ti->pi;
+
+   if (!new_brk)
+      return pi->brk;
+
+   // TODO: check if Linux accepts non-page aligned addresses.
+   // If yes, what to do? how to approx? truncation, round-up/round-down?
+   if ((uptr)new_brk & OFFSET_IN_PAGE_MASK)
+      return pi->brk;
+
+   if (new_brk < pi->initial_brk)
+      return pi->brk;
+
+   if ((uptr)new_brk >= MAX_BRK)
+      return pi->brk;
+
+   if (new_brk == pi->brk)
+      return pi->brk;
+
+   /*
+    * Disable preemption to avoid any threads to mess-up with the address space
+    * of the current process (i.e. they might call brk(), mmap() etc.)
+    */
+
+   disable_preemption();
+   {
+      sys_brk_internal(pi, new_brk);
+   }
    enable_preemption();
-ret:
    return pi->brk;
 }
 
@@ -411,7 +416,6 @@ int sys_munmap(void *vaddrp, size_t len)
          ASSERT(um->vaddr == vaddrp);
 
          actual_len = MAX(actual_len, mapping_len);
-
          kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
 
          /*
