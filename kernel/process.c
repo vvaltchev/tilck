@@ -643,7 +643,7 @@ static void close_all_handles(process_info *pi)
       fs_handle *h = pi->handles[i];
 
       if (h) {
-         vfs_close(h);
+         vfs_close2(pi, h);
          pi->handles[i] = NULL;
       }
    }

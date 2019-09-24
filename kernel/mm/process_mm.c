@@ -434,7 +434,7 @@ int sys_munmap(void *vaddrp, size_t len)
           */
 
          ASSERT(rc != -ENODEV);
-         (void) rc; /* prevent "unused variable" Werror in release */
+         (void) rc; /* prevent the "unused variable" Werror in release */
 
          if (actual_len == mapping_len) {
 

@@ -23,7 +23,7 @@ static u32 next_device_id;
 
 /* ------------ handle-based functions ------------- */
 
-void vfs_close(fs_handle h)
+void vfs_close2(process_info *pi, fs_handle h)
 {
    /*
     * TODO: consider forcing also vfs_close() to be run always with preemption
@@ -40,7 +40,6 @@ void vfs_close(fs_handle h)
    filesystem *fs = hb->fs;
 
 #ifndef UNIT_TEST_ENVIRONMENT
-   process_info *pi = get_curr_task()->pi;
    remove_all_mappings_of_handle(pi, h);
 #endif
 
@@ -49,6 +48,11 @@ void vfs_close(fs_handle h)
 
    /* while a filesystem is mounted, the minimum ref-count it can have is 1 */
    ASSERT(get_ref_count(fs) > 0);
+}
+
+void vfs_close(fs_handle h)
+{
+   vfs_close2(get_curr_task()->pi, h);
 }
 
 int vfs_dup(fs_handle h, fs_handle *dup_h)

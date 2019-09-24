@@ -261,6 +261,7 @@ int vfs_mmap(fs_handle h, void *vaddr, size_t len, int prot);
 int vfs_munmap(fs_handle h, void *vaddr, size_t len);
 int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);
+void vfs_close2(process_info *pi, fs_handle h);
 
 bool vfs_read_ready(fs_handle h);
 bool vfs_write_ready(fs_handle h);
