@@ -840,14 +840,8 @@ void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
 
    pdir_t *pdir = !user_mmap ? get_kernel_pdir() : get_curr_pdir();
    size_t page_count = round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
+   u32 mmap_flags = PG_RW_BIT | (user_mmap ? PG_US_BIT : PG_GLOBAL_BIT);
    size_t count;
-   u32 mmap_flags = PG_RW_BIT;
-
-   if (user_mmap) {
-      mmap_flags |= PG_US_BIT;
-   } else {
-      mmap_flags |= PG_GLOBAL_BIT;
-   }
 
    if (!vaddr) {
 
