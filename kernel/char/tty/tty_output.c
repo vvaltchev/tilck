@@ -662,7 +662,12 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
          break;
 
       case 'D': /* linefeed */
+         ctx->state = TERM_WFILTER_STATE_DEFAULT;
          return tty_def_state_lf(c, color, a, ctx_arg);
+
+      case 'M': /* reverse linefeed */
+         ctx->state = TERM_WFILTER_STATE_DEFAULT;
+         return tty_def_state_ri(c, color, a, ctx_arg);
 
       default:
          ctx->state = TERM_WFILTER_STATE_ESC2_UNKNOWN;
