@@ -9,6 +9,8 @@
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/syscalls.h>
 
+#include <sys/mman.h>      // system header
+
 pdir_t *kernel_page_dir;
 char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
@@ -188,15 +190,6 @@ out:
 ret:
    return pi->brk;
 }
-
-#define PROT_NONE       0x0             /* Page can not be accessed.  */
-#define PROT_READ       0x1             /* Page can be read.  */
-#define PROT_WRITE      0x2             /* Page can be written.  */
-#define PROT_EXEC       0x4             /* Page can be executed.  */
-
-#define MAP_SHARED      0x01
-#define MAP_PRIVATE     0x02
-#define MAP_ANONYMOUS   0x20
 
 static int create_process_mmap_heap(process_info *pi)
 {
