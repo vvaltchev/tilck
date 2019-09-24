@@ -65,6 +65,7 @@ map_zero_pages(pdir_t *pdir,
 void init_paging_cow(void);
 bool is_mapped(pdir_t *pdir, void *vaddr);
 void unmap_page(pdir_t *pdir, void *vaddr, bool do_free);
+int unmap_page_permissive(pdir_t *pdir, void *vaddrp, bool do_free);
 void unmap_pages(pdir_t *pdir, void *vaddr, size_t page_count, bool do_free);
 uptr get_mapping(pdir_t *pdir, void *vaddr);
 pdir_t *pdir_clone(pdir_t *pdir);

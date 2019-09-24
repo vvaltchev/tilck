@@ -93,6 +93,12 @@ void unmap_page(pdir_t *, void *vaddrp, bool free_pageframe)
    mappings[(uptr)vaddrp] = INVALID_PADDR;
 }
 
+int unmap_page_permissive(pdir_t *, void *vaddrp, bool free_pageframe)
+{
+   unmap_page(nullptr, vaddrp, free_pageframe);
+   return 0;
+}
+
 void
 unmap_pages(pdir_t *pdir,
             void *vaddr,

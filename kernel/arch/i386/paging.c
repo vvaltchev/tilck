@@ -214,7 +214,8 @@ void set_page_rw(pdir_t *pdir, void *vaddrp, bool rw)
    invalidate_page(vaddr);
 }
 
-void unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe)
+static inline int
+__unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe, bool permissive)
 {
    page_table_t *ptable;
    const uptr vaddr = (uptr) vaddrp;
@@ -222,8 +223,19 @@ void unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe)
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
    ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
-   ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
-   ASSERT(ptable->pages[page_table_index].present);
+
+   if (permissive) {
+
+      if (KERNEL_VA_TO_PA(ptable) == 0)
+         return -EINVAL;
+
+      if (!ptable->pages[page_table_index].present)
+         return -EINVAL;
+
+   } else {
+      ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
+      ASSERT(ptable->pages[page_table_index].present);
+   }
 
    const uptr paddr = (uptr)
       ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
@@ -235,6 +247,20 @@ void unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe)
       ASSERT(paddr != KERNEL_VA_TO_PA(zero_page));
       kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
    }
+
+   return 0;
+}
+
+void
+unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe)
+{
+   __unmap_page(pdir, vaddrp, free_pageframe, false);
+}
+
+int
+unmap_page_permissive(pdir_t *pdir, void *vaddrp, bool free_pageframe)
+{
+   return __unmap_page(pdir, vaddrp, free_pageframe, true);
 }
 
 void
