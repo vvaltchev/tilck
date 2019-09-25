@@ -129,6 +129,7 @@ static void init_tty_struct(tty *t, u16 minor, u16 serial_port_fwd)
    t->c_set = 0;
    t->c_sets_tables[0] = tty_default_trans_table;
    t->c_sets_tables[1] = tty_gfx_trans_table;
+   tty_set_state(&t->filter_ctx, TERM_WFILTER_STATE_DEFAULT);
 }
 
 int tty_get_num(tty *t)

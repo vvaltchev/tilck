@@ -34,7 +34,7 @@ typedef struct {
 
    tty *t;
 
-   enum twfilter_state state;
+   term_filter filter_func;
    char param_bytes[64];
    char interm_bytes[64];
    char tmpbuf[16];
@@ -48,6 +48,7 @@ void tty_input_init(tty *t);
 void tty_kb_buf_reset(tty *t);
 int tty_keypress_handler(u32 key, u8 c);
 void tty_reset_filter_ctx(twfilter_ctx_t *ctx);
+void tty_set_state(twfilter_ctx_t *ctx, enum twfilter_state new_state);
 
 enum term_fret
 tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);

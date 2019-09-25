@@ -112,7 +112,7 @@ const s16 tty_gfx_trans_table[256] =
 void tty_reset_filter_ctx(twfilter_ctx_t *ctx)
 {
    ctx->pbc = ctx->ibc = 0;
-   ctx->state = TERM_WFILTER_STATE_DEFAULT;
+   tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);
 }
 
 static void
@@ -618,7 +618,7 @@ tty_handle_unknown_esc_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 
    if (0x40 <= *c && *c <= 0x5f) {
       /* End of any possible (unknown) escape sequence */
-      ctx->state = TERM_WFILTER_STATE_DEFAULT;
+      tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);
    }
 
    return TERM_FILTER_WRITE_BLANK;
@@ -633,7 +633,7 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 
       case '[':
          tty_reset_filter_ctx(ctx);
-         ctx->state = TERM_WFILTER_STATE_ESC2_CSI;
+         tty_set_state(ctx, TERM_WFILTER_STATE_ESC2_CSI);
          break;
 
       case 'c':
@@ -656,23 +656,23 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
          break;
 
       case '(':
-         ctx->state = TERM_WFILTER_STATE_ESC2_PAR0;
+         tty_set_state(ctx, TERM_WFILTER_STATE_ESC2_PAR0);
          break;
 
       case ')':
-         ctx->state = TERM_WFILTER_STATE_ESC2_PAR1;
+         tty_set_state(ctx, TERM_WFILTER_STATE_ESC2_PAR1);
          break;
 
       case 'D': /* linefeed */
-         ctx->state = TERM_WFILTER_STATE_DEFAULT;
+         tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);
          return tty_def_state_lf(c, color, a, ctx_arg);
 
       case 'M': /* reverse linefeed */
-         ctx->state = TERM_WFILTER_STATE_DEFAULT;
+         tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);;
          return tty_def_state_ri(c, color, a, ctx_arg);
 
       default:
-         ctx->state = TERM_WFILTER_STATE_ESC2_UNKNOWN;
+         tty_set_state(ctx, TERM_WFILTER_STATE_ESC2_UNKNOWN);
          /*
           * We need to handle now this case because the sequence might be 1-char
           * long, like "^[_". Therefore, if the current character is in the
@@ -707,7 +707,7 @@ tty_change_translation_table(twfilter_ctx_t *ctx, u8 *c, int c_set)
          break;
    }
 
-   ctx->state = TERM_WFILTER_STATE_DEFAULT;
+   tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);
    return TERM_FILTER_WRITE_BLANK;
 }
 
@@ -723,8 +723,7 @@ tty_handle_state_esc2_par1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    return tty_change_translation_table(ctx_arg, c, 1);
 }
 
-enum term_fret
-tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+void tty_set_state(twfilter_ctx_t *ctx, enum twfilter_state new_state)
 {
    static const term_filter table[] =
    {
@@ -736,19 +735,26 @@ tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
       [TERM_WFILTER_STATE_ESC2_UNKNOWN] = &tty_handle_unknown_esc_seq
    };
 
+   ASSERT(new_state < ARRAY_SIZE(table));
+   ctx->filter_func = table[new_state];
+}
+
+enum term_fret
+tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
    twfilter_ctx_t *ctx = ctx_arg;
 
    if (kopt_serial_console)
       return TERM_FILTER_WRITE_C;
 
-   if (ctx->state != TERM_WFILTER_STATE_DEFAULT) {
+   if (ctx->filter_func != &tty_handle_default_state) {
 
       switch (*c) {
 
          case '\033':
             /* ESC in the middle of any sequence, just starts a new one */
             tty_reset_filter_ctx(ctx);
-            ctx->state = TERM_WFILTER_STATE_ESC1;
+            tty_set_state(ctx, TERM_WFILTER_STATE_ESC1);
             return TERM_FILTER_WRITE_BLANK;
 
          default:
@@ -757,8 +763,7 @@ tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
       }
    }
 
-   ASSERT(ctx->state < ARRAY_SIZE(table));
-   return table[ctx->state](c, color, a, ctx);
+   return ctx->filter_func(c, color, a, ctx);
 }
 
 ssize_t tty_write_int(tty *t, devfs_handle *h, char *buf, size_t size)
