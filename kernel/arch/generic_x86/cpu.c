@@ -307,8 +307,9 @@ handle_no_coproc_fault(regs *r)
    ASSERT(arch_fields->aligned_fpu_regs != NULL);
 
    /*
-    * With the current implementation, even when the aligned_fpu_regs are pre-allocated
-    * tasks cannot by default use the FPU. This approach has PROs and CONs.
+    * With the current implementation, even when the aligned_fpu_regs are
+    * pre-allocated tasks cannot by default use the FPU. This approach has PROs
+    * and CONs.
     *
     *    PROs:
     *       - the kernel doesn't have to save/restore unnecessarily the FPU ctx
@@ -323,8 +324,8 @@ handle_no_coproc_fault(regs *r)
 
     /*
      * We can hit this fault at MOST once in the lifetime of a task. These
-     * sanity checks ensures that, in no case, we allocated the aligned_fpu_regs and
-     * then, for any reason, we scheduled the task with FPU disabled.
+     * sanity checks ensures that, in no case, we allocated the aligned_fpu_regs
+     * and then, for any reason, we scheduled the task with FPU disabled.
      */
 
    ASSERT(arch_fields->aligned_fpu_regs == NULL);
