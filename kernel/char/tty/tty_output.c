@@ -666,8 +666,8 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
             t->user_color = t->curr_color;
             tty_update_default_state_tables(t);
             bzero(ctx, sizeof(*ctx));
-            tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);
             ctx->t = t;
+            tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);
          }
          break;
 
@@ -765,13 +765,11 @@ void tty_set_state(twfilter_ctx_t *ctx, enum twfilter_state new_state)
 
    ASSERT(new_state < ARRAY_SIZE(table));
    ctx->filter_func = table[new_state];
+   term_set_filter(ctx->t->term_inst, ctx->filter_func, ctx);
 }
 
 static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c)
 {
-   if (kopt_serial_console)
-      return TERM_FILTER_WRITE_C;
-
    if (ctx->filter_func != &tty_handle_default_state) {
 
       switch (*c) {
@@ -791,13 +789,6 @@ static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c)
    return -1;
 }
 
-enum term_fret
-tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
-{
-   twfilter_ctx_t *ctx = ctx_arg;
-   return ctx->filter_func(c, color, a, ctx);
-}
-
 ssize_t tty_write_int(tty *t, devfs_handle *h, char *buf, size_t size)
 {
    /* term_write's size is limited to 2^20 - 1 */
@@ -805,7 +796,6 @@ ssize_t tty_write_int(tty *t, devfs_handle *h, char *buf, size_t size)
    term_write(t->term_inst, buf, size, t->curr_color);
    return (ssize_t) size;
 }
-
 
 enum term_fret
 serial_tty_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)

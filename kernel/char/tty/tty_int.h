@@ -51,8 +51,6 @@ void tty_reset_filter_ctx(twfilter_ctx_t *ctx);
 void tty_set_state(twfilter_ctx_t *ctx, enum twfilter_state new_state);
 
 enum term_fret
-tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);
-enum term_fret
 serial_tty_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);
 
 void tty_update_special_ctrl_handlers(tty *t);

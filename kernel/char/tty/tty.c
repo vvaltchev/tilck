@@ -129,7 +129,6 @@ static void init_tty_struct(tty *t, u16 minor, u16 serial_port_fwd)
    t->c_set = 0;
    t->c_sets_tables[0] = tty_default_trans_table;
    t->c_sets_tables[1] = tty_gfx_trans_table;
-   tty_set_state(&t->filter_ctx, TERM_WFILTER_STATE_DEFAULT);
 }
 
 int tty_get_num(tty *t)
@@ -189,6 +188,11 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
    }
 
    t->term_inst = new_term;
+   tty_set_state(&t->filter_ctx, TERM_WFILTER_STATE_DEFAULT);
+
+   if (serial_port_fwd)
+      term_set_filter(new_term, &serial_tty_write_filter, &t->filter_ctx);
+
    return t;
 }
 
@@ -211,11 +215,6 @@ tty *create_tty_nodev(void)
       return NULL;
 
    tty_input_init(t);
-
-   term_set_filter(t->term_inst,
-                   tty_term_write_filter,
-                   &t->filter_ctx);
-
    tty_update_default_state_tables(t);
    return t;
 }
@@ -241,13 +240,6 @@ static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
    }
 
    tty_input_init(t);
-
-   term_set_filter(t->term_inst,
-                   serial_port_fwd
-                     ? serial_tty_write_filter
-                     : tty_term_write_filter,
-                   &t->filter_ctx);
-
    tty_update_default_state_tables(t);
    ttys[minor] = t;
    return 0;
