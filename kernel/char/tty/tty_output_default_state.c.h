@@ -197,6 +197,10 @@ tty_handle_default_state(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    twfilter_ctx_t *const ctx = ctx_arg;
    tty *const t = ctx->t;
    s16 tv = t->c_sets_tables[t->c_set][*c];
+   int rc;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
 
    if (tv >= 0) {
       *c = (u8) tv;

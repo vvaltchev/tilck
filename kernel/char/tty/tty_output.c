@@ -13,8 +13,11 @@
 
 #include "term_int.h"
 #include "tty_int.h"
-#include "tty_output_default_state.c.h"
 
+/* tty_output internal functions */
+static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c);
+
+#include "tty_output_default_state.c.h"
 #pragma GCC diagnostic push
 
 static const u8 fg_csi_to_vga[256] =
@@ -566,6 +569,10 @@ static enum term_fret
 tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *ctx = ctx_arg;
+   int rc;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
 
    if (0x30 <= *c && *c <= 0x3F) {
 
@@ -615,6 +622,10 @@ static enum term_fret
 tty_handle_unknown_esc_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *ctx = ctx_arg;
+   int rc;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
 
    if (0x40 <= *c && *c <= 0x5f) {
       /* End of any possible (unknown) escape sequence */
@@ -628,6 +639,10 @@ static enum term_fret
 tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *ctx = ctx_arg;
+   int rc;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
 
    switch (*c) {
 
@@ -651,6 +666,7 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
             t->user_color = t->curr_color;
             tty_update_default_state_tables(t);
             bzero(ctx, sizeof(*ctx));
+            tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);
             ctx->t = t;
          }
          break;
@@ -714,12 +730,24 @@ tty_change_translation_table(twfilter_ctx_t *ctx, u8 *c, int c_set)
 static enum term_fret
 tty_handle_state_esc2_par0(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
+   twfilter_ctx_t *const ctx = ctx_arg;
+   int rc;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
+
    return tty_change_translation_table(ctx_arg, c, 0);
 }
 
 static enum term_fret
 tty_handle_state_esc2_par1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
+   twfilter_ctx_t *const ctx = ctx_arg;
+   int rc;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
+
    return tty_change_translation_table(ctx_arg, c, 1);
 }
 
@@ -766,12 +794,7 @@ static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c)
 enum term_fret
 tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
-   int rc;
    twfilter_ctx_t *ctx = ctx_arg;
-
-   if ((rc = tty_pre_filter(ctx, c)) >= 0)
-      return (enum term_fret)rc;
-
    return ctx->filter_func(c, color, a, ctx);
 }
 
