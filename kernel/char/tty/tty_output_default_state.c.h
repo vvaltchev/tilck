@@ -4,7 +4,6 @@ static enum term_fret
 tty_def_state_esc(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
-
    tty_set_state(ctx, TERM_WFILTER_STATE_ESC1);
    return TERM_FILTER_WRITE_BLANK;
 }

@@ -739,11 +739,8 @@ void tty_set_state(twfilter_ctx_t *ctx, enum twfilter_state new_state)
    ctx->filter_func = table[new_state];
 }
 
-enum term_fret
-tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c)
 {
-   twfilter_ctx_t *ctx = ctx_arg;
-
    if (kopt_serial_console)
       return TERM_FILTER_WRITE_C;
 
@@ -762,6 +759,18 @@ tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
             break;
       }
    }
+
+   return -1;
+}
+
+enum term_fret
+tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   int rc;
+   twfilter_ctx_t *ctx = ctx_arg;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
 
    return ctx->filter_func(c, color, a, ctx);
 }

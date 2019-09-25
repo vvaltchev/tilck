@@ -50,7 +50,7 @@ enum term_del_type {
 
 enum term_fret {
    TERM_FILTER_WRITE_BLANK,
-   TERM_FILTER_WRITE_C
+   TERM_FILTER_WRITE_C,
 };
 
 typedef struct {
