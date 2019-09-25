@@ -15,18 +15,6 @@
 #include "term_int.h"
 
 #define NPAR 16 /* maximum number of CSI parameters */
-
-enum twfilter_state {
-
-   TERM_WFILTER_STATE_DEFAULT = 0,
-   TERM_WFILTER_STATE_ESC1,         // ESC
-   TERM_WFILTER_STATE_ESC2_CSI,     // ESC [
-   TERM_WFILTER_STATE_ESC2_PAR0,    // ESC (
-   TERM_WFILTER_STATE_ESC2_PAR1,    // ESC )
-   TERM_WFILTER_STATE_ESC2_UNKNOWN  // ESC ??
-
-};
-
 #define TTY_ATTR_BOLD             (1 << 0)
 #define TTY_ATTR_REVERSE          (1 << 1)
 

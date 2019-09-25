@@ -4,7 +4,7 @@ static enum term_fret
 tty_def_state_esc(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
-   tty_set_state(ctx, TERM_WFILTER_STATE_ESC1);
+   tty_set_state(ctx, &tty_state_esc1);
    return TERM_FILTER_WRITE_BLANK;
 }
 
@@ -123,7 +123,7 @@ tty_def_state_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    twfilter_ctx_t *const ctx = ctx_arg;
 
    tty_reset_filter_ctx(ctx->t);
-   tty_set_state(ctx, TERM_WFILTER_STATE_ESC2_CSI);
+   tty_set_state(ctx, &tty_state_esc2_csi);
    return TERM_FILTER_WRITE_BLANK;
 }
 
@@ -192,7 +192,7 @@ tty_def_print_untrasl_char(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_handle_default_state(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_default(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
    tty *const t = ctx->t;

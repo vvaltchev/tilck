@@ -16,7 +16,13 @@
 
 /* tty_output internal functions */
 static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c);
-static void tty_set_state(twfilter_ctx_t *ctx, enum twfilter_state new_state);
+static void tty_set_state(twfilter_ctx_t *ctx, term_filter new_state);
+static enum term_fret tty_state_default(u8*, u8*, term_action*, void*);
+static enum term_fret tty_state_esc1(u8*, u8*, term_action*, void*);
+static enum term_fret tty_state_esc2_par0(u8*, u8*, term_action*, void*);
+static enum term_fret tty_state_esc2_par1(u8*, u8*, term_action*, void*);
+static enum term_fret tty_state_esc2_csi(u8*, u8*, term_action*, void*);
+static enum term_fret tty_state_esc2_unknown(u8*, u8*, term_action*, void*);
 
 #include "tty_output_default_state.c.h"
 #pragma GCC diagnostic push
@@ -118,7 +124,7 @@ void tty_reset_filter_ctx(tty *t)
    twfilter_ctx_t *ctx = &t->filter_ctx;
    ctx->pbc = ctx->ibc = 0;
    ctx->t = t;
-   tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);
+   tty_set_state(ctx, &tty_state_default);
 }
 
 static void
@@ -569,7 +575,7 @@ tty_filter_end_csi_seq(u8 c,
 }
 
 static enum term_fret
-tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc2_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *ctx = ctx_arg;
    int rc;
@@ -622,7 +628,7 @@ tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_handle_unknown_esc_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc2_unknown(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *ctx = ctx_arg;
    int rc;
@@ -632,14 +638,14 @@ tty_handle_unknown_esc_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 
    if (0x40 <= *c && *c <= 0x5f) {
       /* End of any possible (unknown) escape sequence */
-      tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);
+      tty_set_state(ctx, &tty_state_default);
    }
 
    return TERM_FILTER_WRITE_BLANK;
 }
 
 static enum term_fret
-tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *ctx = ctx_arg;
    int rc;
@@ -651,7 +657,7 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 
       case '[':
          tty_reset_filter_ctx(ctx->t);
-         tty_set_state(ctx, TERM_WFILTER_STATE_ESC2_CSI);
+         tty_set_state(ctx, &tty_state_esc2_csi);
          break;
 
       case 'c':
@@ -670,28 +676,28 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
             tty_update_default_state_tables(t);
             bzero(ctx, sizeof(*ctx));
             ctx->t = t;
-            tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);
+            tty_set_state(ctx, &tty_state_default);
          }
          break;
 
       case '(':
-         tty_set_state(ctx, TERM_WFILTER_STATE_ESC2_PAR0);
+         tty_set_state(ctx, &tty_state_esc2_par0);
          break;
 
       case ')':
-         tty_set_state(ctx, TERM_WFILTER_STATE_ESC2_PAR1);
+         tty_set_state(ctx, &tty_state_esc2_par1);
          break;
 
       case 'D': /* linefeed */
-         tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);
+         tty_set_state(ctx, &tty_state_default);
          return tty_def_state_lf(c, color, a, ctx_arg);
 
       case 'M': /* reverse linefeed */
-         tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);;
+         tty_set_state(ctx, &tty_state_default);
          return tty_def_state_ri(c, color, a, ctx_arg);
 
       default:
-         tty_set_state(ctx, TERM_WFILTER_STATE_ESC2_UNKNOWN);
+         tty_set_state(ctx, &tty_state_esc2_unknown);
          /*
           * We need to handle now this case because the sequence might be 1-char
           * long, like "^[_". Therefore, if the current character is in the
@@ -700,7 +706,7 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
           * will end with the first character in the range [0x40, 0x5f].
           */
 
-         return tty_handle_unknown_esc_seq(c, color, a, ctx);
+         return tty_state_esc2_unknown(c, color, a, ctx);
    }
 
    return TERM_FILTER_WRITE_BLANK;
@@ -726,12 +732,12 @@ tty_change_translation_table(twfilter_ctx_t *ctx, u8 *c, int c_set)
          break;
    }
 
-   tty_set_state(ctx, TERM_WFILTER_STATE_DEFAULT);
+   tty_set_state(ctx, &tty_state_default);
    return TERM_FILTER_WRITE_BLANK;
 }
 
 static enum term_fret
-tty_handle_state_esc2_par0(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc2_par0(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
    int rc;
@@ -743,7 +749,7 @@ tty_handle_state_esc2_par0(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_handle_state_esc2_par1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc2_par1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
    int rc;
@@ -754,33 +760,22 @@ tty_handle_state_esc2_par1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    return tty_change_translation_table(ctx_arg, c, 1);
 }
 
-static void tty_set_state(twfilter_ctx_t *ctx, enum twfilter_state new_state)
+static void tty_set_state(twfilter_ctx_t *ctx, term_filter new_state)
 {
-   static const term_filter table[] =
-   {
-      [TERM_WFILTER_STATE_DEFAULT] = &tty_handle_default_state,
-      [TERM_WFILTER_STATE_ESC1] = &tty_handle_state_esc1,
-      [TERM_WFILTER_STATE_ESC2_PAR0] = &tty_handle_state_esc2_par0,
-      [TERM_WFILTER_STATE_ESC2_PAR1] = &tty_handle_state_esc2_par1,
-      [TERM_WFILTER_STATE_ESC2_CSI] = &tty_handle_csi_seq,
-      [TERM_WFILTER_STATE_ESC2_UNKNOWN] = &tty_handle_unknown_esc_seq
-   };
-
-   ASSERT(new_state < ARRAY_SIZE(table));
-   ctx->filter_func = table[new_state];
+   ctx->filter_func = new_state;
    term_set_filter(ctx->t->term_inst, ctx->filter_func, ctx);
 }
 
 static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c)
 {
-   if (ctx->filter_func != &tty_handle_default_state) {
+   if (ctx->filter_func != &tty_state_default) {
 
       switch (*c) {
 
          case '\033':
             /* ESC in the middle of any sequence, just starts a new one */
             tty_reset_filter_ctx(ctx->t);
-            tty_set_state(ctx, TERM_WFILTER_STATE_ESC1);
+            tty_set_state(ctx, &tty_state_esc1);
             return TERM_FILTER_WRITE_BLANK;
 
          default:
