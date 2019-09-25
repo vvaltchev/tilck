@@ -762,13 +762,13 @@ tty_state_esc2_par1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 
 static void tty_set_state(twfilter_ctx_t *ctx, term_filter new_state)
 {
-   ctx->filter_func = new_state;
-   term_set_filter(ctx->t->term_inst, ctx->filter_func, ctx);
+   ctx->non_default_state = new_state != &tty_state_default;
+   term_set_filter(ctx->t->term_inst, new_state, ctx);
 }
 
 static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c)
 {
-   if (ctx->filter_func != &tty_state_default) {
+   if (ctx->non_default_state) {
 
       switch (*c) {
 

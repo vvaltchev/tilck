@@ -22,11 +22,11 @@ typedef struct {
 
    tty *t;
 
-   term_filter filter_func;
    char param_bytes[64];
    char interm_bytes[64];
    char tmpbuf[16];
 
+   bool non_default_state;
    u8 pbc; /* param bytes count */
    u8 ibc; /* intermediate bytes count */
 
