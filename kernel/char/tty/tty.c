@@ -188,7 +188,7 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
    }
 
    t->term_inst = new_term;
-   tty_set_state(&t->filter_ctx, TERM_WFILTER_STATE_DEFAULT);
+   tty_reset_filter_ctx(t);
 
    if (serial_port_fwd)
       term_set_filter(new_term, &serial_tty_write_filter, &t->filter_ctx);

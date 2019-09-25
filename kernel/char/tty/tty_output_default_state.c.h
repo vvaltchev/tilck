@@ -122,7 +122,7 @@ tty_def_state_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
 
-   tty_reset_filter_ctx(ctx);
+   tty_reset_filter_ctx(ctx->t);
    tty_set_state(ctx, TERM_WFILTER_STATE_ESC2_CSI);
    return TERM_FILTER_WRITE_BLANK;
 }

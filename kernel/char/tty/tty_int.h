@@ -47,8 +47,7 @@ typedef struct {
 void tty_input_init(tty *t);
 void tty_kb_buf_reset(tty *t);
 int tty_keypress_handler(u32 key, u8 c);
-void tty_reset_filter_ctx(twfilter_ctx_t *ctx);
-void tty_set_state(twfilter_ctx_t *ctx, enum twfilter_state new_state);
+void tty_reset_filter_ctx(tty *t);
 
 enum term_fret
 serial_tty_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);
