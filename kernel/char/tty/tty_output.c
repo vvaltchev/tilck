@@ -15,6 +15,8 @@
 #include "tty_int.h"
 #include "tty_output_default_state.c.h"
 
+#pragma GCC diagnostic push
+
 static const u8 fg_csi_to_vga[256] =
 {
    [30] = COLOR_BLACK,

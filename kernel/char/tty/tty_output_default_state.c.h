@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#pragma GCC diagnostic push
-
 static enum term_fret
 tty_def_state_esc(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
