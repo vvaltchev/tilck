@@ -23,23 +23,24 @@ struct term {
    bool cursor_enabled;
    bool using_alt_buffer;
 
-   u16 tabsize;
-   u16 cols;
-   u16 rows;
+   u16 tabsize;               /* term's current tab size */
+   u16 rows;                  /* term's rows count */
+   u16 cols;                  /* term's columns count */
 
-   u16 r; /* current row */
-   u16 c; /* current col */
-   u16 term_col_offset;
+   u16 r;                     /* current row */
+   u16 c;                     /* current col */
+   u16 col_offset;
 
    const video_interface *vi;
    const video_interface *saved_vi;
 
    u16 *buffer;               /* the whole screen buffer */
    u16 *screen_buf_copy;      /* when != NULL, contains one screenshot */
-   u32 scroll;
-   u32 max_scroll;
-   u32 total_buffer_rows;
-   u32 extra_buffer_rows;
+   u32 scroll;                /* != max_scroll only while scrolling */
+   u32 max_scroll;            /* buffer rows used - rows. Its value is 0 until
+                                 the screen scrolls for the first time */
+   u32 total_buffer_rows;     /* >= term rows */
+   u32 extra_buffer_rows;     /* => total_buffer_rows - rows. Always >= 0 */
 
    u16 saved_cur_row;         /* keeps cursor's row in the primary buffer */
    u16 saved_cur_col;         /* keeps cursor's col in the primary buffer */
@@ -254,7 +255,7 @@ static void term_action_scroll(term *t, u32 lines, bool down, ...)
 
 static void term_internal_incr_row(term *t, u8 color)
 {
-   t->term_col_offset = 0;
+   t->col_offset = 0;
 
    if (t->r < t->rows - 1) {
       ++t->r;
@@ -300,7 +301,7 @@ static void term_internal_write_tab(term *t, u8 color)
 
 static void term_internal_write_backspace(term *t, u8 color)
 {
-   if (!t->c || t->c <= t->term_col_offset)
+   if (!t->c || t->c <= t->col_offset)
       return;
 
    const u16 space_entry = make_vgaentry(' ', color);
@@ -317,7 +318,7 @@ static void term_internal_write_backspace(term *t, u8 color)
 
    for (int i = t->tabsize - 1; i >= 0; i--) {
 
-      if (!t->c || t->c == t->term_col_offset)
+      if (!t->c || t->c == t->col_offset)
          break;
 
       if (t->term_tabs_buf[t->r * t->cols + t->c - 1])
@@ -433,7 +434,7 @@ term_action_dwrite_no_filter(term *t, char *buf, u32 len, u8 color)
 
 static void term_action_set_col_offset(term *t, u16 off, ...)
 {
-   t->term_col_offset = off;
+   t->col_offset = off;
 }
 
 static void term_action_move_ch_and_cur(term *t, int row, int col, ...)
