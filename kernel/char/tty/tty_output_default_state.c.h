@@ -92,7 +92,7 @@ static enum term_fret
 tty_def_state_verase(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    *a = (term_action) {
-      .type1 = a_del,
+      .type1 = a_del_generic,
       .arg = TERM_DEL_PREV_CHAR,
    };
 
@@ -103,7 +103,7 @@ static enum term_fret
 tty_def_state_vwerase(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    *a = (term_action) {
-      .type1 = a_del,
+      .type1 = a_del_generic,
       .arg = TERM_DEL_PREV_WORD,
    };
 

@@ -350,23 +350,6 @@ static void term_internal_delete_last_word(term *t, u8 color)
    }
 }
 
-static void term_action_del(term *t, enum term_del_type del_type, ...)
-{
-   switch (del_type) {
-
-      case TERM_DEL_PREV_CHAR:
-         term_internal_write_backspace(t, get_curr_cell_color(t));
-         break;
-
-      case TERM_DEL_PREV_WORD:
-         term_internal_delete_last_word(t, get_curr_cell_color(t));
-         break;
-
-      default:
-         NOT_REACHED();
-   }
-}
-
 static void term_internal_write_char2(term *t, char c, u8 color)
 {
    if (t->serial_port_fwd) {
@@ -587,6 +570,32 @@ static void term_action_erase_in_line(term *t, int mode, ...)
 
    if (t->vi->flush_buffers)
       t->vi->flush_buffers();
+}
+
+
+static void term_action_del(term *t, enum term_del_type del_type, int m, ...)
+{
+   switch (del_type) {
+
+      case TERM_DEL_PREV_CHAR:
+         term_internal_write_backspace(t, get_curr_cell_color(t));
+         break;
+
+      case TERM_DEL_PREV_WORD:
+         term_internal_delete_last_word(t, get_curr_cell_color(t));
+         break;
+
+      case TERM_DEL_ERASE_IN_DISPLAY:
+         term_action_erase_in_display(t, m);
+         break;
+
+      case TERM_DEL_ERASE_IN_LINE:
+         term_action_erase_in_line(t, m);
+         break;
+
+      default:
+         NOT_REACHED();
+   }
 }
 
 static void term_action_non_buf_scroll_up(term *t, u16 n, ...)

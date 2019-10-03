@@ -13,14 +13,12 @@ enum term_action {
    a_none,
    a_write,
    a_dwrite_no_filter,   /* direct write w/o filters/scroll/move_cursor/flush */
-   a_del,
+   a_del_generic,
    a_scroll,               /* arg1 = rows, arg2 = direction */
    a_set_col_offset,
    a_move_ch_and_cur,
    a_move_ch_and_cur_rel,
    a_reset,
-   a_erase_in_display,
-   a_erase_in_line,
    a_pause_video_output,
    a_restart_video_output,
    a_enable_cursor,
@@ -43,7 +41,9 @@ typedef struct {
 enum term_del_type {
 
    TERM_DEL_PREV_CHAR,
-   TERM_DEL_PREV_WORD
+   TERM_DEL_PREV_WORD,
+   TERM_DEL_ERASE_IN_DISPLAY,
+   TERM_DEL_ERASE_IN_LINE,
 };
 
 /* --- term write filter interface --- */
