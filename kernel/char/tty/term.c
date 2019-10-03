@@ -21,6 +21,7 @@ struct term {
 
    bool initialized;
    bool cursor_enabled;
+   bool using_alt_buffer;
 
    u16 tabsize;
    u16 cols;
@@ -33,12 +34,16 @@ struct term {
    const video_interface *vi;
    const video_interface *saved_vi;
 
-   u16 *buffer;
+   u16 *buffer;               /* the whole screen buffer */
+   u16 *screen_buf_copy;      /* when != NULL, contains one screenshot */
    u32 scroll;
    u32 max_scroll;
-
    u32 total_buffer_rows;
    u32 extra_buffer_rows;
+
+   u16 saved_cur_row;         /* keeps cursor's row in the primary buffer */
+   u16 saved_cur_col;         /* keeps cursor's col in the primary buffer */
+
    bool *term_tabs_buf;
 
    safe_ringbuf safe_ringbuf;
@@ -675,6 +680,42 @@ static void term_action_restart_video_output(term *t, ...)
       t->vi->enable_static_elems_refresh();
 }
 
+static void term_action_use_alt_buffer(term *t, bool use_alt_buffer, ...)
+{
+   u16 *b = &t->buffer[t->scroll % t->total_buffer_rows * t->cols];
+
+   if (t->using_alt_buffer == use_alt_buffer)
+      return;
+
+   if (use_alt_buffer) {
+
+      if (!t->screen_buf_copy) {
+
+         t->screen_buf_copy = kmalloc(sizeof(u16) * t->rows * t->cols);
+
+         if (!t->screen_buf_copy)
+            return; /* just do nothing, that's OK */
+      }
+
+      t->saved_cur_row = t->r;
+      t->saved_cur_col = t->c;
+      memcpy(t->screen_buf_copy, b, sizeof(u16) * t->rows * t->cols);
+
+   } else {
+
+      ASSERT(t->screen_buf_copy != NULL);
+
+      memcpy(b, t->screen_buf_copy, sizeof(u16) * t->rows * t->cols);
+      t->r = t->saved_cur_row;
+      t->c = t->saved_cur_col;
+   }
+
+   t->using_alt_buffer = use_alt_buffer;
+   t->vi->disable_cursor();
+   term_redraw(t);
+   term_action_enable_cursor(t, t->cursor_enabled);
+}
+
 #include "term_action_wrappers.c.h"
 
 #ifdef DEBUG
@@ -742,13 +783,18 @@ void dispose_term(term *t)
    ASSERT(t != &first_instance);
 
    if (t->buffer) {
-      kfree2(t->buffer, 2 * t->total_buffer_rows * t->cols);
+      kfree2(t->buffer, sizeof(u16) * t->total_buffer_rows * t->cols);
       t->buffer = NULL;
    }
 
    if (t->term_tabs_buf) {
       kfree2(t->term_tabs_buf, t->cols * t->rows);
       t->term_tabs_buf = NULL;
+   }
+
+   if (t->screen_buf_copy) {
+      kfree2(t->screen_buf_copy, sizeof(u16) * t->rows * t->cols);
+      t->screen_buf_copy = NULL;
    }
 }
 

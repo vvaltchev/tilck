@@ -19,6 +19,7 @@ static const actions_table_item actions_table[] = {
    [a_restart_video_output] = ENTRY(term_action_restart_video_output, 1),
    [a_enable_cursor]        = ENTRY(term_action_enable_cursor, 1),
    [a_non_buf_scroll]       = ENTRY(term_action_non_buf_scroll, 2),
+   [a_use_alt_buffer]       = ENTRY(term_action_use_alt_buffer, 1),
 };
 
 #undef ENTRY

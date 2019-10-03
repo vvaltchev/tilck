@@ -478,28 +478,42 @@ tty_csi_pvt_ext_handler(u32 *params,
                         term_action *a,
                         twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
-
    switch (params[0]) {
 
       case 25:
          if (c == 'h') {
 
             /* Show the cursor */
-            term_set_cursor_enabled(t->term_inst, true);
+
+            *a = (term_action) {
+               .type1 = a_enable_cursor,
+               .arg = true,
+            };
 
          } else if (c == 'l') {
 
-            /* Hide the cursor */
-            term_set_cursor_enabled(t->term_inst, false);
+            *a = (term_action) {
+               .type1 = a_enable_cursor,
+               .arg = false,
+            };
          }
          break;
 
       case 1049:
          if (c == 'h') {
-            /* Enable alternative screen buffer: not supported */
+
+            *a = (term_action) {
+               .type1 = a_use_alt_buffer,
+               .arg = true,
+            };
+
          } else if (c == 'l') {
-            /* Disable alternative screen buffer: not supported */
+
+            *a = (term_action) {
+               .type1 = a_use_alt_buffer,
+               .arg = false,
+            };
+
          }
          break;
 
