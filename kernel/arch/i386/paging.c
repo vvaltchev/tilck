@@ -267,10 +267,21 @@ void
 unmap_pages(pdir_t *pdir,
             void *vaddr,
             size_t page_count,
-            bool free_pageframes)
+            bool do_free)
 {
    for (size_t i = 0; i < page_count; i++) {
-      unmap_page(pdir, (char *)vaddr + (i << PAGE_SHIFT), free_pageframes);
+      unmap_page(pdir, (char *)vaddr + (i << PAGE_SHIFT), do_free);
+   }
+}
+
+void
+unmap_pages_permissive(pdir_t *pdir,
+                       void *vaddr,
+                       size_t page_count,
+                       bool do_free)
+{
+   for (size_t i = 0; i < page_count; i++) {
+      unmap_page_permissive(pdir, (char *)vaddr + (i << PAGE_SHIFT), do_free);
    }
 }
 

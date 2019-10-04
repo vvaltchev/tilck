@@ -74,7 +74,7 @@ fbdev_mmap(fs_handle h /* ignored */, void *vaddr, size_t len, int prot)
 static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
 {
    ASSERT(IS_PAGE_ALIGNED(len));
-   unmap_pages(get_curr_pdir(), vaddr, len >> PAGE_SHIFT, false);
+   unmap_pages_permissive(get_curr_pdir(), vaddr, len >> PAGE_SHIFT, false);
 
    total_fb_pages_mapped -= len >> PAGE_SHIFT;
    ASSERT(total_fb_pages_mapped >= 0);
