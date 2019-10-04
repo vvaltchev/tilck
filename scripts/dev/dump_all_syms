@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+nm_opts='--radix=d --print-size --size-sort'
+exec nm $nm_opts "$1" | grep -E ' [Tt] ' | cut -d ' ' -f 2,4 | sort -t ' ' -k 2
