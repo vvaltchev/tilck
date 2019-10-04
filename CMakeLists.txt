@@ -145,6 +145,9 @@ set(FAT_TEST_DIR OFF CACHE BOOL
 set(KERNEL_DO_PS2_SELFTEST OFF CACHE BOOL
     "Do PS/2 controller selftests in init_kb()")
 
+set(CONSOLE_DEFAULT_BRIGHT_WHITE OFF CACHE BOOL
+    "Use 'bright white' as default text color instead of 'white' (light gray)")
+
 list(
    APPEND kernel_opts_list
 
