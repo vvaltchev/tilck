@@ -279,7 +279,7 @@ process_add_user_mapping(fs_handle h, void *vaddr, size_t page_count)
    list_node_init(&um->node);
 
    um->h = h;
-   um->vaddr = vaddr;
+   um->vaddrp = vaddr;
    um->page_count = page_count;
 
    list_add_tail(&pi->mappings, &um->node);
@@ -294,10 +294,11 @@ void process_remove_user_mapping(user_mapping *um)
    kfree2(um, sizeof(user_mapping));
 }
 
-user_mapping *process_get_user_mapping(void *vaddr)
+user_mapping *process_get_user_mapping(void *vaddrp)
 {
    ASSERT(!is_preemption_enabled());
 
+   uptr vaddr = (uptr)vaddrp;
    process_info *pi = get_curr_task()->pi;
    user_mapping *pos;
 

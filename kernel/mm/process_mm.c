@@ -242,10 +242,10 @@ void remove_all_mappings_of_handle(process_info *pi, fs_handle h)
 void full_remove_user_mapping(process_info *pi, user_mapping *um)
 {
    size_t actual_len = um->page_count << PAGE_SHIFT;
-   vfs_munmap(um->h, um->vaddr, actual_len);
+   vfs_munmap(um->h, um->vaddrp, actual_len);
 
    per_heap_kfree(pi->mmap_heap,
-                  um->vaddr,
+                  um->vaddrp,
                   &actual_len,
                   KFREE_FL_ALLOW_SPLIT |
                   KFREE_FL_MULTI_STEP  |
@@ -382,7 +382,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
    if (handle) {
 
-      if ((rc = vfs_mmap(handle, um->vaddr, actual_len, prot))) {
+      if ((rc = vfs_mmap(handle, um->vaddrp, actual_len, prot))) {
 
          /*
           * Everything was apparently OK and the allocation in the user virtual
@@ -392,7 +392,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
          disable_preemption();
          {
-            mmap_err_case_free(pi, um->vaddr, actual_len);
+            mmap_err_case_free(pi, um->vaddrp, actual_len);
             process_remove_user_mapping(um);
          }
          enable_preemption();
@@ -403,7 +403,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    } else {
 
       if (MMAP_NO_COW)
-         bzero(um->vaddr, actual_len);
+         bzero(um->vaddrp, actual_len);
    }
 
    return (sptr)um->vaddr;
@@ -411,15 +411,16 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
 static int munmap_int(process_info *pi, void *vaddrp, size_t len)
 {
-   //uptr vaddr = (uptr) vaddrp;
    u32 kfree_flags = KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP;
+   uptr vaddr = (uptr) vaddrp;
    size_t actual_len;
+   user_mapping *um;
    int rc;
 
    ASSERT(!is_preemption_enabled());
 
    actual_len = round_up_at(len, PAGE_SIZE);
-   user_mapping *um = process_get_user_mapping(vaddrp);
+   um = process_get_user_mapping(vaddrp);
 
    if (!um) {
 
@@ -433,10 +434,8 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
       return 0;
    }
 
-   size_t mapping_len = um->page_count << PAGE_SHIFT;
-   ASSERT(um->vaddr == vaddrp);
-
-   actual_len = MAX(actual_len, mapping_len);
+   const size_t mapping_len = um->page_count << PAGE_SHIFT;
+   const uptr um_vend = (uptr)um->vaddr + mapping_len;
 
    if (um->h) {
 
@@ -461,10 +460,20 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
 
       /* partial un-map */
 
-      if (vaddrp == um->vaddr) {
+      if (vaddr == um->vaddr) {
+
+         /* unmap the beginning of the chunk */
          um->vaddr += actual_len;
          um->page_count -= (actual_len >> PAGE_SHIFT);
+
+      } else if (vaddr + actual_len == um_vend) {
+
+         /* unmap the end of the chunk */
+         um->page_count -= (actual_len >> PAGE_SHIFT);
+
       } else {
+
+         /* unmap something at the middle of the chunk */
          NOT_IMPLEMENTED();
       }
    }

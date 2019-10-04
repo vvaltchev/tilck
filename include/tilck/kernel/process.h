@@ -25,8 +25,12 @@ typedef struct {
    list_node node;
 
    fs_handle h;
-   void *vaddr;
    size_t page_count;
+
+   union {
+      void *vaddrp;
+      uptr vaddr;
+   };
 
 } user_mapping;
 
