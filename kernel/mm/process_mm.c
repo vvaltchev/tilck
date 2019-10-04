@@ -241,7 +241,7 @@ void remove_all_mappings_of_handle(process_info *pi, fs_handle h)
 
 void full_remove_user_mapping(process_info *pi, user_mapping *um)
 {
-   size_t actual_len = um->page_count << PAGE_SHIFT;
+   size_t actual_len = um->len;
    vfs_munmap(um->h, um->vaddrp, actual_len);
 
    per_heap_kfree(pi->mmap_heap,
@@ -282,8 +282,7 @@ mmap_on_user_heap(process_info *pi,
       return NULL;
 
    /* NOTE: here `handle` might be NULL (zero-map case) and that's OK */
-   size_t mapping_page_count = *actual_len_ref >> PAGE_SHIFT;
-   um = process_add_user_mapping(handle, res, mapping_page_count);
+   um = process_add_user_mapping(handle, res, *actual_len_ref);
 
    if (!um) {
       mmap_err_case_free(pi, res, *actual_len_ref);
@@ -434,10 +433,9 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
       return 0;
    }
 
-   const size_t mapping_len = um->page_count << PAGE_SHIFT;
-   const uptr um_vend = (uptr)um->vaddr + mapping_len;
+   const uptr um_vend = um->vaddr + um->len;
 
-   if (actual_len == mapping_len) {
+   if (actual_len == um->len) {
 
       process_remove_user_mapping(um);
 
@@ -449,26 +447,26 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
 
          /* unmap the beginning of the chunk */
          um->vaddr += actual_len;
-         um->page_count -= (actual_len >> PAGE_SHIFT);
+         um->len -= actual_len;
 
       } else if (vaddr + actual_len == um_vend) {
 
          /* unmap the end of the chunk */
-         um->page_count -= (actual_len >> PAGE_SHIFT);
+         um->len -= actual_len;
 
       } else {
 
          /* Unmap something at the middle of the chunk */
 
          /* Shrink the current user_mapping */
-         um->page_count = (vaddr - um->vaddr) >> PAGE_SHIFT;
+         um->len = vaddr - um->vaddr;
 
          /* Create a new user_mapping for its 2nd part */
          user_mapping *um2 =
             process_add_user_mapping(
                um->h,
                (void *)(vaddr + actual_len),
-               (um_vend - (vaddr + actual_len)) >> PAGE_SHIFT
+               (um_vend - (vaddr + actual_len))
             );
 
          if (!um2) {
@@ -477,7 +475,7 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
              * Oops, we're out-of-memory! No problem, revert um->page_count
              * and return -ENOMEM. Linux is allowed to do that.
              */
-            um->page_count = mapping_len >> PAGE_SHIFT;
+            um->len = um_vend - um->vaddr;
             return -ENOMEM;
          }
       }

@@ -265,11 +265,12 @@ void free_task(task_info *ti)
 }
 
 user_mapping *
-process_add_user_mapping(fs_handle h, void *vaddr, size_t page_count)
+process_add_user_mapping(fs_handle h, void *vaddr, size_t len)
 {
    process_info *pi = get_curr_task()->pi;
    user_mapping *um;
 
+   ASSERT((len & OFFSET_IN_PAGE_MASK) == 0);
    ASSERT(!is_preemption_enabled());
    ASSERT(!process_get_user_mapping(vaddr));
 
@@ -279,8 +280,8 @@ process_add_user_mapping(fs_handle h, void *vaddr, size_t page_count)
    list_node_init(&um->node);
 
    um->h = h;
+   um->len = len;
    um->vaddrp = vaddr;
-   um->page_count = page_count;
 
    list_add_tail(&pi->mappings, &um->node);
    return um;
@@ -304,10 +305,7 @@ user_mapping *process_get_user_mapping(void *vaddrp)
 
    list_for_each_ro(pos, &pi->mappings, node) {
 
-      const uptr vbegin = pos->vaddr;
-      const uptr vend = pos->vaddr + (pos->page_count << PAGE_SHIFT);
-
-      if (IN_RANGE(vaddr, vbegin, vend))
+      if (IN_RANGE(vaddr, pos->vaddr, pos->vaddr + pos->len))
          return pos;
    }
 

@@ -25,7 +25,7 @@ typedef struct {
    list_node node;
 
    fs_handle h;
-   size_t page_count;
+   size_t len;
 
    union {
       void *vaddrp;
@@ -198,7 +198,7 @@ static ALWAYS_INLINE bool is_tasklet_runner(task_info *ti)
 }
 
 user_mapping *
-process_add_user_mapping(fs_handle h, void *vaddr, size_t page_count);
+process_add_user_mapping(fs_handle h, void *vaddr, size_t len);
 void process_remove_user_mapping(user_mapping *um);
 void full_remove_user_mapping(process_info *pi, user_mapping *um);
 void remove_all_mappings_of_handle(process_info *pi, fs_handle h);
