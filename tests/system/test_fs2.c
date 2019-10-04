@@ -40,18 +40,18 @@ int cmd_fs7(int argc, char **argv)
    return 0;
 }
 
+static const char test_str[] = "this is a test string\n";
+static const char test_str_exp[] = "This is a test string\n";
+static const char test_file[] = "/tmp/test1";
+
 /* mmap file */
 int cmd_fmmap1(int argc, char **argv)
 {
-   static const char test_str[] = "this is a test string\n";
-   static const char test_str_exp[] = "This is a test string\n";
-   static const char test_file[] = "/tmp/test1";
-
    int fd, rc;
    char *vaddr;
    char buf[64];
-   struct stat statbuf;
    size_t file_size;
+   struct stat statbuf;
    const size_t page_size = getpagesize();
 
    printf("Using '%s' as test file\n", test_file);
@@ -140,4 +140,62 @@ err_case:
    close(fd);
    unlink(test_file);
    DEVSHELL_CMD_ASSERT(vaddr != (void *)-1);
+}
+
+/* mmap file and then do a partial unmap */
+static void fmmap2_read_unmapped_mem(void)
+{
+   int fd, rc;
+   char *vaddr;
+   size_t file_size;
+   char buf[64] = {0};
+   char *page_size_buf;
+   const size_t page_size = getpagesize();
+
+   printf("Using '%s' as test file\n", test_file);
+   fd = open(test_file, O_CREAT | O_RDWR, 0644);
+   DEVSHELL_CMD_ASSERT(fd > 0);
+
+   page_size_buf = malloc(page_size);
+   DEVSHELL_CMD_ASSERT(page_size_buf != NULL);
+
+   for (int i = 0; i < 4; i++) {
+      memset(page_size_buf, 'A'+i, page_size);
+      rc = write(fd, page_size_buf, page_size);
+      DEVSHELL_CMD_ASSERT(rc == page_size);
+   }
+
+   /* Now, let's mmap the file */
+
+   vaddr = mmap(NULL,                   /* addr */
+                4 * page_size,          /* length */
+                PROT_READ,              /* prot */
+                MAP_SHARED,             /* flags */
+                fd,                     /* fd */
+                0);
+
+   DEVSHELL_CMD_ASSERT(vaddr != (void *)-1);
+
+   /* Un-map the 2nd page */
+   rc = munmap(vaddr + page_size, page_size);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   /* Excepting to receive SIGSEGV from the kernel here */
+   memcpy(buf, vaddr + page_size, sizeof(buf) - 1);
+
+   /* ----------- We should NOT get here ------------------- */
+
+   free(page_size_buf);
+   close(fd);
+   rc = unlink(test_file);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+   exit(1);
+}
+
+/* mmap file and then do a partial unmap */
+int cmd_fmmap2(int argc, char **argv)
+{
+   int rc = test_sig(fmmap2_read_unmapped_mem, SIGSEGV, 0);
+   unlink(test_file);
+   return rc;
 }
