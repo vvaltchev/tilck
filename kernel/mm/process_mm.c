@@ -429,28 +429,13 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
        * Just ignore that and return 0 [linux behavior].
        */
 
-      printk("[%d] Un-map unknown chunk at [%p, %p + %u KB)\n",
-             pi->pid, vaddrp, vaddrp, actual_len >> 10);
+      printk("[%d] Un-map unknown chunk at [%p, %p)\n",
+             pi->pid, vaddr, vaddr + actual_len);
       return 0;
    }
 
    const size_t mapping_len = um->page_count << PAGE_SHIFT;
    const uptr um_vend = (uptr)um->vaddr + mapping_len;
-
-   if (um->h) {
-
-      kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
-      rc = vfs_munmap(um->h, vaddrp, actual_len);
-
-      /*
-       * If there's an actual user_mapping entry, it means um->h's fops MUST
-       * HAVE mmap() implemented. Therefore, we MUST REQUIRE munmap() to be
-       * present as well.
-       */
-
-      ASSERT(rc != -ENODEV);
-      (void) rc; /* prevent the "unused variable" Werror in release */
-   }
 
    if (actual_len == mapping_len) {
 
@@ -473,9 +458,44 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
 
       } else {
 
-         /* unmap something at the middle of the chunk */
-         NOT_IMPLEMENTED();
+         /* Unmap something at the middle of the chunk */
+
+         /* Shrink the current user_mapping */
+         um->page_count = (vaddr - um->vaddr) >> PAGE_SHIFT;
+
+         /* Create a new user_mapping for its 2nd part */
+         user_mapping *um2 =
+            process_add_user_mapping(
+               um->h,
+               (void *)(vaddr + actual_len),
+               (um_vend - (vaddr + actual_len)) >> PAGE_SHIFT
+            );
+
+         if (!um2) {
+
+            /*
+             * Oops, we're out-of-memory! No problem, revert um->page_count
+             * and return -ENOMEM. Linux is allowed to do that.
+             */
+            um->page_count = mapping_len >> PAGE_SHIFT;
+            return -ENOMEM;
+         }
       }
+   }
+
+   if (um->h) {
+
+      kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
+      rc = vfs_munmap(um->h, vaddrp, actual_len);
+
+      /*
+       * If there's an actual user_mapping entry, it means um->h's fops MUST
+       * HAVE mmap() implemented. Therefore, we MUST REQUIRE munmap() to be
+       * present as well.
+       */
+
+      ASSERT(rc != -ENODEV);
+      (void) rc; /* prevent the "unused variable" Werror in release */
    }
 
    per_heap_kfree(pi->mmap_heap,
@@ -505,5 +525,5 @@ int sys_munmap(void *vaddrp, size_t len)
       rc = munmap_int(pi, vaddrp, len);
    }
    enable_preemption();
-   return 0;
+   return rc;
 }

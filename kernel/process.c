@@ -267,13 +267,13 @@ void free_task(task_info *ti)
 user_mapping *
 process_add_user_mapping(fs_handle h, void *vaddr, size_t page_count)
 {
+   process_info *pi = get_curr_task()->pi;
+   user_mapping *um;
+
    ASSERT(!is_preemption_enabled());
    ASSERT(!process_get_user_mapping(vaddr));
 
-   process_info *pi = get_curr_task()->pi;
-   user_mapping *um = kzmalloc(sizeof(user_mapping));
-
-   if (!um)
+   if (!(um = kzmalloc(sizeof(user_mapping))))
       return NULL;
 
    list_node_init(&um->node);
@@ -303,7 +303,11 @@ user_mapping *process_get_user_mapping(void *vaddrp)
    user_mapping *pos;
 
    list_for_each_ro(pos, &pi->mappings, node) {
-      if (pos->vaddr == vaddr)
+
+      const uptr vbegin = pos->vaddr;
+      const uptr vend = pos->vaddr + (pos->page_count << PAGE_SHIFT);
+
+      if (IN_RANGE(vaddr, vbegin, vend))
          return pos;
    }
 
