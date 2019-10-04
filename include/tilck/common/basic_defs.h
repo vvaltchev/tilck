@@ -286,6 +286,10 @@ typedef sptr (*cmpfun_ptr)(const void *a, const void *b);
 /* Checks if 'addr' is in the range [begin, end) */
 #define IN_RANGE(addr, begin, end) ((begin) <= (addr) && (addr) < (end))
 
+/* Checks if 'addr' is in the range [begin, end] */
+#define IN_RANGE_INC(addr, begin, end) ((begin) <= (addr) && (addr) <= (end))
+
+
 /*
  * Brutal double-cast converting any integer to a void * pointer.
  *

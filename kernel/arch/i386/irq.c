@@ -57,7 +57,7 @@ void irq_set_mask(int irq)
 {
    u16 port;
    u8 irq_mask;
-   ASSERT(0 <= irq && irq <= 32);
+   ASSERT(IN_RANGE_INC(irq, 0, 32));
 
    if (irq < 8) {
       port = PIC1_DATA;
@@ -74,7 +74,7 @@ void irq_set_mask(int irq)
 void irq_clear_mask(int irq)
 {
    u16 port;
-   ASSERT(0 <= irq && irq <= 32);
+   ASSERT(IN_RANGE_INC(irq, 0, 32));
 
    if (irq < 8) {
       port = PIC1_DATA;

@@ -89,7 +89,7 @@ static uint64_t read_esc_seq(void)
 
       buf[len++] = c;
 
-      if (0x40 <= c && c <= 0x7E && c != '[')
+      if (IN_RANGE_INC(c, 0x40, 0x7E) && c != '[')
          break;
 
       if (len == 8)

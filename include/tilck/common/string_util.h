@@ -16,11 +16,11 @@ int strncmp(const char *s1, const char *s2, size_t n);
 char *strdup(const char *s);
 
 static ALWAYS_INLINE bool isalpha_lower(int c) {
-   return (c >= 'a' && c <= 'z');
+   return IN_RANGE_INC(c, 'a', 'z');
 }
 
 static ALWAYS_INLINE bool isalpha_upper(int c) {
-   return (c >= 'A' && c <= 'Z');
+   return IN_RANGE_INC(c, 'A', 'Z');
 }
 
 static ALWAYS_INLINE int isalpha(int c) {
@@ -36,7 +36,7 @@ static ALWAYS_INLINE int toupper(int c) {
 }
 
 static ALWAYS_INLINE int isdigit(int c) {
-   return c >= '0' && c <= '9';
+   return IN_RANGE_INC(c, '0', '9');
 }
 
 static ALWAYS_INLINE bool slash_or_nul(char c)

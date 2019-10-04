@@ -342,7 +342,7 @@ const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
    for (uptr i = 0; i < sym_count; i++) {
       Elf_Sym *s = syms + i;
 
-      if (s->st_value <= vaddr && vaddr < s->st_value + s->st_size) {
+      if (IN_RANGE(vaddr, s->st_value, s->st_value + s->st_size)) {
 
          if (offset)
             *offset = (ptrdiff_t)(vaddr - s->st_value);

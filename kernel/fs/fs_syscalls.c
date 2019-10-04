@@ -15,7 +15,7 @@
 
 static inline bool is_fd_in_valid_range(int fd)
 {
-   return 0 <= fd && fd < MAX_HANDLES;
+   return IN_RANGE(fd, 0, MAX_HANDLES);
 }
 
 static int get_free_handle_num_ge(process_info *pi, int ge)

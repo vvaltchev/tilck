@@ -60,5 +60,5 @@ static ALWAYS_INLINE bool is_timer_irq(int int_num)
 // NOTE: this function is x86-dependent
 static ALWAYS_INLINE bool is_fault(int int_num)
 {
-   return 0 <= int_num && int_num < 32;
+   return IN_RANGE(int_num, 0, 32);
 }

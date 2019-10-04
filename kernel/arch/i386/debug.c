@@ -16,11 +16,13 @@ static bool mapped_in_pdir(pdir_t *pdir, void *vaddr)
 {
    if (still_using_orig_pdir()) {
 
-      // Paging has not been initialized yet.
-      // Just check if vaddr is in the first 4 MB (and in BASE_VA + 4 MB).
+      /*
+       * Paging has not been initialized yet.
+       * Just check if vaddr is in the first 4 MB (and in BASE_VA + 4 MB).
+       */
 
       uptr va = (uptr)vaddr;
-      return va < (4*MB)||(KERNEL_BASE_VA <= va && va < (KERNEL_BASE_VA+4*MB));
+      return va < 4*MB || IN_RANGE(va, KERNEL_BASE_VA, KERNEL_BASE_VA+4*MB);
    }
 
    return is_mapped(pdir, vaddr);

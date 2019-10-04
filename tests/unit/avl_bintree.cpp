@@ -209,7 +209,9 @@ generate_random_array(default_random_engine &e,
    for (int i = 0; i < arr_size;) {
 
       int candidate = dist(e);
-      if (candidate <= 0 || candidate > 1000*1000*1000) continue;
+
+      if (!IN_RANGE_INC(candidate, 1, 1000 * 1000 * 1000))
+         continue;
 
       if (s.insert(candidate).second) {
          arr[i++] = candidate;
@@ -271,7 +273,7 @@ int check_height(int_struct *obj, bool *failed)
 
    // balance condition.
 
-   if (!( -1 <= (lh-rh) && (lh-rh) <= 1 )) {
+   if (!IN_RANGE_INC(lh-rh, -1, 1)) {
       printf("[ERROR] lh-rh is %i for node %i; lh:%i, rh:%i\n",
              lh-rh, obj->val, lh, rh);
 
