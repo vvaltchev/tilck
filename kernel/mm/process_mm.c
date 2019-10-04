@@ -254,6 +254,45 @@ void full_remove_user_mapping(process_info *pi, user_mapping *um)
    process_remove_user_mapping(um);
 }
 
+static inline void
+mmap_err_case_free(process_info *pi, void *ptr, size_t actual_len)
+{
+   per_heap_kfree(pi->mmap_heap,
+                  ptr,
+                  &actual_len,
+                  KFREE_FL_ALLOW_SPLIT |
+                  KFREE_FL_MULTI_STEP  |
+                  KFREE_FL_NO_ACTUAL_FREE);
+}
+
+static user_mapping *
+mmap_on_user_heap(process_info *pi,
+                  size_t *actual_len_ref,
+                  fs_handle handle,
+                  u32 per_heap_kmalloc_flags)
+{
+   void *res;
+   user_mapping *um;
+
+   res = per_heap_kmalloc(pi->mmap_heap,
+                          actual_len_ref,
+                          per_heap_kmalloc_flags);
+
+   if (!res)
+      return NULL;
+
+   /* NOTE: here `handle` might be NULL (zero-map case) and that's OK */
+   size_t mapping_page_count = *actual_len_ref >> PAGE_SHIFT;
+   um = process_add_user_mapping(handle, res, mapping_page_count);
+
+   if (!um) {
+      mmap_err_case_free(pi, res, *actual_len_ref);
+      return NULL;
+   }
+
+   return um;
+}
+
 sptr
 sys_mmap_pgoff(void *addr, size_t len, int prot,
                int flags, int fd, size_t pgoffset)
@@ -264,7 +303,6 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    fs_handle_base *handle = NULL;
    user_mapping *um = NULL;
    size_t actual_len;
-   void *res;
    int rc, fl;
 
    //printk("mmap2(addr: %p, len: %u, prot: %u, flags: %p, fd: %d, off: %d)\n",
@@ -333,36 +371,18 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
    disable_preemption();
    {
-      res = per_heap_kmalloc(pi->mmap_heap,
-                             &actual_len,
-                             per_heap_kmalloc_flags);
-
-      if (handle) {
-
-         size_t mapping_page_count = actual_len >> PAGE_SHIFT;
-         um = process_add_user_mapping(handle, res, mapping_page_count);
-
-         if (!um) {
-            per_heap_kfree(pi->mmap_heap,
-                           res,
-                           &actual_len,
-                           KFREE_FL_ALLOW_SPLIT |
-                           KFREE_FL_MULTI_STEP  |
-                           KFREE_FL_NO_ACTUAL_FREE);
-            return -ENOMEM;
-         }
-      }
+      um = mmap_on_user_heap(pi, &actual_len, handle, per_heap_kmalloc_flags);
    }
    enable_preemption();
 
-   ASSERT(actual_len == round_up_at(len, PAGE_SIZE));
-
-   if (!res)
+   if (!um)
       return -ENOMEM;
+
+   ASSERT(actual_len == round_up_at(len, PAGE_SIZE));
 
    if (handle) {
 
-      if ((rc = vfs_mmap(handle, res, actual_len, prot))) {
+      if ((rc = vfs_mmap(handle, um->vaddr, actual_len, prot))) {
 
          /*
           * Everything was apparently OK and the allocation in the user virtual
@@ -372,13 +392,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
          disable_preemption();
          {
-            per_heap_kfree(pi->mmap_heap,
-                           res,
-                           &actual_len,
-                           KFREE_FL_ALLOW_SPLIT |
-                           KFREE_FL_MULTI_STEP  |
-                           KFREE_FL_NO_ACTUAL_FREE);
-
+            mmap_err_case_free(pi, um->vaddr, actual_len);
             process_remove_user_mapping(um);
          }
          enable_preemption();
@@ -389,10 +403,79 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    } else {
 
       if (MMAP_NO_COW)
-         bzero(res, actual_len);
+         bzero(um->vaddr, actual_len);
    }
 
-   return (sptr)res;
+   return (sptr)um->vaddr;
+}
+
+static int munmap_int(process_info *pi, void *vaddrp, size_t len)
+{
+   //uptr vaddr = (uptr) vaddrp;
+   u32 kfree_flags = KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP;
+   size_t actual_len;
+   int rc;
+
+   ASSERT(!is_preemption_enabled());
+
+   actual_len = round_up_at(len, PAGE_SIZE);
+   user_mapping *um = process_get_user_mapping(vaddrp);
+
+   if (!um) {
+
+      /*
+       * We just don't have any user_mappings containing [vaddrp, vaddrp+len).
+       * Just ignore that and return 0 [linux behavior].
+       */
+
+      printk("[%d] Un-map unknown chunk at [%p, %p + %u KB)\n",
+             pi->pid, vaddrp, vaddrp, actual_len >> 10);
+      return 0;
+   }
+
+   size_t mapping_len = um->page_count << PAGE_SHIFT;
+   ASSERT(um->vaddr == vaddrp);
+
+   actual_len = MAX(actual_len, mapping_len);
+
+   if (um->h) {
+
+      kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
+      rc = vfs_munmap(um->h, vaddrp, actual_len);
+
+      /*
+       * If there's an actual user_mapping entry, it means um->h's fops MUST
+       * HAVE mmap() implemented. Therefore, we MUST REQUIRE munmap() to be
+       * present as well.
+       */
+
+      ASSERT(rc != -ENODEV);
+      (void) rc; /* prevent the "unused variable" Werror in release */
+   }
+
+   if (actual_len == mapping_len) {
+
+      process_remove_user_mapping(um);
+
+   } else {
+
+      /* partial un-map */
+
+      if (vaddrp == um->vaddr) {
+         um->vaddr += actual_len;
+         um->page_count -= (actual_len >> PAGE_SHIFT);
+      } else {
+         NOT_IMPLEMENTED();
+      }
+   }
+
+   per_heap_kfree(pi->mmap_heap,
+                  vaddrp,
+                  &actual_len,
+                  kfree_flags);
+
+   ASSERT(actual_len == round_up_at(len, PAGE_SIZE));
+   return 0;
 }
 
 int sys_munmap(void *vaddrp, size_t len)
@@ -400,8 +483,6 @@ int sys_munmap(void *vaddrp, size_t len)
    task_info *curr = get_curr_task();
    process_info *pi = curr->pi;
    uptr vaddr = (uptr) vaddrp;
-   u32 kfree_flags = KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP;
-   size_t actual_len;
    int rc;
 
    if (!len || !pi->mmap_heap)
@@ -412,48 +493,7 @@ int sys_munmap(void *vaddrp, size_t len)
 
    disable_preemption();
    {
-      actual_len = round_up_at(len, PAGE_SIZE);
-
-      user_mapping *um = process_get_user_mapping(vaddrp);
-
-      if (um) {
-
-         fs_handle_base *hb = um->h;
-         size_t mapping_len = um->page_count << PAGE_SHIFT;
-         ASSERT(um->vaddr == vaddrp);
-
-         actual_len = MAX(actual_len, mapping_len);
-         kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
-
-         rc = vfs_munmap(hb, vaddrp, actual_len);
-
-         /*
-          * If there's an actual user_mapping entry, it means um->h's fops MUST
-          * HAVE mmap() implemented. Therefore, we MUST REQUIRE munmap() to be
-          * present as well.
-          */
-
-         ASSERT(rc != -ENODEV);
-         (void) rc; /* prevent the "unused variable" Werror in release */
-
-         if (actual_len == mapping_len) {
-
-            process_remove_user_mapping(um);
-
-         } else {
-
-            /* partial un-map */
-            um->vaddr += actual_len;
-            um->page_count -= (actual_len >> PAGE_SHIFT);
-         }
-      }
-
-      per_heap_kfree(pi->mmap_heap,
-                     vaddrp,
-                     &actual_len,
-                     kfree_flags);
-
-      ASSERT(actual_len == round_up_at(len, PAGE_SIZE));
+      rc = munmap_int(pi, vaddrp, len);
    }
    enable_preemption();
    return 0;
