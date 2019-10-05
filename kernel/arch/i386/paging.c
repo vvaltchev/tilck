@@ -163,10 +163,11 @@ void handle_page_fault_int(regs *r)
       kernel_page_fault_panic(r, vaddr, rw, p);
    }
 
-   printk("USER PAGE FAULT in attempt to %s %p%s\nEIP: %p\n",
-          rw ? "WRITE" : "READ",
-          vaddr,
-          !p ? " (NON present)." : ".", r->eip);
+   printk("USER PAGE FAULT in attempt to %s %p%s\n",
+          rw ? "WRITE" : "READ", vaddr,
+          !p ? " (NON present)." : ".");
+
+   printk("EIP: %p\n", r->eip);
 
    um = process_get_user_mapping((void *)vaddr);
 
