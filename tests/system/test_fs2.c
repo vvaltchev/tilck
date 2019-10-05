@@ -253,7 +253,7 @@ int cmd_fmmap3(int argc, char **argv)
    return failed;
 }
 
-static void fmmap4_read_after_eof(void)
+static void fmmap4_read_write_after_eof(bool rw)
 {
    int fd, rc;
    char *vaddr;
@@ -286,15 +286,40 @@ static void fmmap4_read_after_eof(void)
    DEVSHELL_CMD_ASSERT(vaddr != (void *)-1);
 
    /* Expecting to be killed by SIGBUS here */
-   memcpy(buf, vaddr + page_size, sizeof(buf) - 1);
+
+   if (!rw) {
+      /* Read past EOF */
+      memcpy(buf, vaddr + page_size, sizeof(buf) - 1);
+   } else {
+      /* Write past EOF */
+      memcpy(vaddr + page_size, buf, sizeof(buf) - 1);
+   }
 
    /* If we got here, something went wrong */
+}
+
+static void fmmap4_read_after_eof(void)
+{
+   fmmap4_read_write_after_eof(false);
+}
+
+static void fmmap4_write_after_eof(void)
+{
+   fmmap4_read_write_after_eof(true);
 }
 
 /* mmap file and read past EOF, expecting SIGBUS */
 int cmd_fmmap4(int argc, char **argv)
 {
-   int rc = test_sig(fmmap4_read_after_eof, SIGBUS, 0);
+   int rc;
+
+   if ((rc = test_sig(fmmap4_read_after_eof, SIGBUS, 0)))
+      goto end;
+
+   if ((rc = test_sig(fmmap4_write_after_eof, SIGBUS, 0)))
+      goto end;
+
+end:
    unlink(test_file);
    return rc;
 }
