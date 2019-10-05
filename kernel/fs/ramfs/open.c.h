@@ -86,6 +86,8 @@ ramfs_handle_fault_int(ramfs_handle *rh, void *vaddrp, bool p, bool rw)
 {
    uptr vaddr = (uptr) vaddrp;
    uptr abs_off;
+   ramfs_block *block;
+   int rc;
    user_mapping *um = process_get_user_mapping(vaddrp);
 
    if (!um)
@@ -111,7 +113,23 @@ ramfs_handle_fault_int(ramfs_handle *rh, void *vaddrp, bool p, bool rw)
       return false; /* Read/write past EOF */
 
    /* Create and map on-the-fly a ramfs_block */
-   NOT_IMPLEMENTED();
+   block = ramfs_new_block((offt)(abs_off & PAGE_MASK));
+
+   if (!block)
+      panic("Out-of-memory: unable to allocate a ramfs_block. No OOM killer");
+
+   ramfs_append_new_block(rh->inode, block);
+   rc = map_page(get_curr_pdir(),
+                 (void *)(vaddr & PAGE_MASK),
+                 KERNEL_VA_TO_PA(block->vaddr),
+                 true,
+                 true); /* tmp!! */
+
+   if (rc)
+      panic("Out-of-memory: unable to map a ramfs_block. No OOM killer");
+
+   invalidate_page(vaddr);
+   return true;
 }
 
 

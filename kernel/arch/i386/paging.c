@@ -173,10 +173,8 @@ void handle_page_fault_int(regs *r)
 
    if (um) {
 
-      if (vfs_handle_fault(um->h, (void *)vaddr, p, rw)) {
-         end_fault_handler_state();
+      if (vfs_handle_fault(um->h, (void *)vaddr, p, rw))
          return;
-      }
 
       sig = SIGBUS;
    }

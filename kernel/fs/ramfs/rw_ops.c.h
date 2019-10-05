@@ -127,7 +127,7 @@ static ramfs_block *ramfs_new_block(offt page)
    void *vaddr;
    ramfs_block *block;
 
-   if (!(vaddr = kmalloc(PAGE_SIZE)))
+   if (!(vaddr = kzmalloc(PAGE_SIZE)))
       return NULL;
 
    if (!(block = kmalloc(sizeof(ramfs_block)))) {
@@ -154,12 +154,27 @@ static void ramfs_append_new_block(ramfs_inode *inode, ramfs_block *block)
    inode->blocks_count++;
 }
 
+static int ramfs_inode_extend(ramfs_inode *i, offt new_len)
+{
+   ASSERT(rwlock_wp_holding_exlock(&i->rwlock));
+   ASSERT(new_len > i->fsize);
+
+   i->fsize = new_len;
+   return 0;
+}
+
 static int ramfs_inode_truncate_safe(ramfs_inode *i, offt len)
 {
    int rc;
    rwlock_wp_exlock(&i->rwlock);
    {
-      rc = ramfs_inode_truncate(i, len);
+      if (len < i->fsize) {
+         rc = ramfs_inode_truncate(i, len);
+      } else if (len > i->fsize) {
+         rc = ramfs_inode_extend(i, len);
+      } else {
+         rc = 0; /* len == i->fsize */
+      }
    }
    rwlock_wp_exunlock(&i->rwlock);
    return rc;
@@ -167,10 +182,6 @@ static int ramfs_inode_truncate_safe(ramfs_inode *i, offt len)
 
 static int ramfs_truncate(filesystem *fs, vfs_inode_ptr_t i, offt len)
 {
-   /*
-    * NOTE: we don't support len > fsize at the moment.
-    * TODO: add in ramfs support for truncate with len > fsize.
-    */
    return ramfs_inode_truncate_safe(i, len);
 }
 

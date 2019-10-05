@@ -41,6 +41,7 @@ int cmd_fs7(int argc, char **argv)
 }
 
 static const char test_str[] = "this is a test string\n";
+static const char test_str2[] = "hello from the 2nd page";
 static const char test_str_exp[] = "This is a test string\n";
 static const char test_file[] = "/tmp/test1";
 
@@ -260,7 +261,6 @@ static void fmmap4_read_write_after_eof(bool rw)
    size_t file_size;
    char buf[64] = {0};
    struct stat statbuf;
-   char *page_size_buf;
    const size_t page_size = getpagesize();
 
    printf("Using '%s' as test file\n", test_file);
@@ -322,4 +322,58 @@ int cmd_fmmap4(int argc, char **argv)
 end:
    unlink(test_file);
    return rc;
+}
+
+/* mmap file, truncate (expand) it and write past the original EOF */
+int cmd_fmmap5(int argc, char **argv)
+{
+   int fd, rc;
+   char *vaddr;
+   size_t file_size;
+   char buf[64] = {0};
+   struct stat statbuf;
+   const size_t page_size = getpagesize();
+
+   printf("Using '%s' as test file\n", test_file);
+   fd = open(test_file, O_CREAT | O_RDWR, 0644);
+   DEVSHELL_CMD_ASSERT(fd > 0);
+
+   rc = write(fd, test_str, sizeof(test_str)-1);
+   DEVSHELL_CMD_ASSERT(rc == sizeof(test_str)-1);
+
+   rc = fstat(fd, &statbuf);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   file_size = statbuf.st_size;
+   printf("File size: %llu\n", (ull_t)file_size);
+
+   vaddr = mmap(NULL,                   /* addr */
+                2 * page_size,          /* length */
+                PROT_READ | PROT_WRITE, /* prot */
+                MAP_SHARED,             /* flags */
+                fd,                     /* fd */
+                0);
+
+   DEVSHELL_CMD_ASSERT(vaddr != (void *)-1);
+
+   rc = ftruncate(fd, page_size + 128);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   rc = fstat(fd, &statbuf);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   file_size = statbuf.st_size;
+   printf("(NEW) File size: %llu\n", (ull_t)file_size);
+
+   /*
+    * This memory write will trigger a page-fault and the kernel should allocate
+    * on-the-fly the page (ramfs_block) for us and, ultimately, resume the
+    * write.
+    */
+   strcpy(vaddr + page_size, test_str2);
+
+   close(fd);
+   rc = unlink(test_file);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+   return 0;
 }
