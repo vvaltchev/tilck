@@ -78,7 +78,7 @@ void set_page_rw(pdir_t *pdir, void *vaddr, bool rw);
 
 extern pdir_t *kernel_page_dir;
 extern char page_size_buf[PAGE_SIZE];
-
+extern char zero_page[PAGE_SIZE];
 
 static ALWAYS_INLINE void set_curr_pdir(pdir_t *pdir)
 {

@@ -396,3 +396,66 @@ int cmd_fmmap5(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(rc == 0);
    return failed;
 }
+
+/* mmap file, truncate (expand) it and READ past the original EOF */
+int cmd_fmmap6(int argc, char **argv)
+{
+   int fd, rc;
+   char *vaddr;
+   size_t file_size;
+   char buf[64];
+   struct stat statbuf;
+   const size_t page_size = getpagesize();
+   bool failed = false;
+
+   printf("Using '%s' as test file\n", test_file);
+   fd = open(test_file, O_CREAT | O_RDWR, 0644);
+   DEVSHELL_CMD_ASSERT(fd > 0);
+
+   rc = write(fd, test_str, sizeof(test_str)-1);
+   DEVSHELL_CMD_ASSERT(rc == sizeof(test_str)-1);
+
+   rc = fstat(fd, &statbuf);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   file_size = statbuf.st_size;
+   printf("File size: %llu\n", (ull_t)file_size);
+
+   vaddr = mmap(NULL,                   /* addr */
+                2 * page_size,          /* length */
+                PROT_READ,              /* prot */
+                MAP_SHARED,             /* flags */
+                fd,                     /* fd */
+                0);
+
+   DEVSHELL_CMD_ASSERT(vaddr != (void *)-1);
+
+   rc = ftruncate(fd, page_size + 128);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   rc = fstat(fd, &statbuf);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   file_size = statbuf.st_size;
+   printf("(NEW) File size: %llu\n", (ull_t)file_size);
+
+   memset(buf, 'X', sizeof(buf));
+
+   /*
+    * This memory read is expected trigger a page fault and the kernel to map
+    * the zero page to vaddr in read-only mode.
+    */
+   memcpy(buf, vaddr + page_size, sizeof(buf));
+
+   for (size_t i = 0; i < sizeof(buf); i++) {
+      if (buf[i]) {
+         fprintf(stderr, "Found a non-zero byte in the past-EOF read\n");
+         failed = true;
+      }
+   }
+
+   close(fd);
+   rc = unlink(test_file);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+   return failed;
+}

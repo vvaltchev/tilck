@@ -19,6 +19,8 @@
 
 #include "paging_int.h"
 
+#include <sys/mman.h>      // system header
+
 /*
  * When this flag is set in the 'avail' bits in page_t, in means that the page
  * is writeable even if it marked as read-only and that, on a write attempt
@@ -30,8 +32,8 @@
 /* ---------------------------------------------- */
 
 extern char vsdo_like_page[PAGE_SIZE];
+extern char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
-static char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
 
 static u16 *pageframes_refcount;
@@ -173,10 +175,17 @@ void handle_page_fault_int(regs *r)
 
    if (um) {
 
-      if (vfs_handle_fault(um->h, (void *)vaddr, p, rw))
-         return;
+      /*
+       * Call vfs_handle_fault() only if in first place the mapping allowed
+       * writing or if it didn't but the memory access type was a READ.
+       */
+      if (!!(um->prot & PROT_WRITE) || !rw) {
 
-      sig = SIGBUS;
+         if (vfs_handle_fault(um->h, (void *)vaddr, p, rw))
+            return;
+
+         sig = SIGBUS;
+      }
    }
 
    end_fault_handler_state();

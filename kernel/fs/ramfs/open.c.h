@@ -111,18 +111,19 @@ ramfs_handle_fault_int(ramfs_handle *rh, void *vaddrp, bool p, bool rw)
    if (abs_off >= (uptr)rh->inode->fsize)
       return false; /* Read/write past EOF */
 
-   /* Create and map on-the-fly a ramfs_block */
-   block = ramfs_new_block((offt)(abs_off & PAGE_MASK));
+   if (rw) {
+      /* Create and map on-the-fly a ramfs_block */
+      if (!(block = ramfs_new_block((offt)(abs_off & PAGE_MASK))))
+         panic("Out-of-memory: unable to alloc a ramfs_block. No OOM killer");
 
-   if (!block)
-      panic("Out-of-memory: unable to allocate a ramfs_block. No OOM killer");
+      ramfs_append_new_block(rh->inode, block);
+   }
 
-   ramfs_append_new_block(rh->inode, block);
    rc = map_page(get_curr_pdir(),
                  (void *)(vaddr & PAGE_MASK),
-                 KERNEL_VA_TO_PA(block->vaddr),
+                 KERNEL_VA_TO_PA(rw ? block->vaddr : &zero_page),
                  true,
-                 !!(um->prot & PROT_WRITE));
+                 true);
 
    if (rc)
       panic("Out-of-memory: unable to map a ramfs_block. No OOM killer");
