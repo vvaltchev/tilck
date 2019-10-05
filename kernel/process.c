@@ -265,7 +265,11 @@ void free_task(task_info *ti)
 }
 
 user_mapping *
-process_add_user_mapping(fs_handle h, void *vaddr, size_t len, size_t off)
+process_add_user_mapping(fs_handle h,
+                         void *vaddr,
+                         size_t len,
+                         size_t off,
+                         int prot)
 {
    process_info *pi = get_curr_task()->pi;
    user_mapping *um;
@@ -283,6 +287,7 @@ process_add_user_mapping(fs_handle h, void *vaddr, size_t len, size_t off)
    um->len = len;
    um->vaddrp = vaddr;
    um->off = off;
+   um->prot = prot;
 
    list_add_tail(&pi->mappings, &um->node);
    return um;

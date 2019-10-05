@@ -270,7 +270,8 @@ mmap_on_user_heap(process_info *pi,
                   size_t *actual_len_ref,
                   fs_handle handle,
                   u32 per_heap_kmalloc_flags,
-                  size_t off)
+                  size_t off,
+                  int prot)
 {
    void *res;
    user_mapping *um;
@@ -283,7 +284,7 @@ mmap_on_user_heap(process_info *pi,
       return NULL;
 
    /* NOTE: here `handle` might be NULL (zero-map case) and that's OK */
-   um = process_add_user_mapping(handle, res, *actual_len_ref, off);
+   um = process_add_user_mapping(handle, res, *actual_len_ref, off, prot);
 
    if (!um) {
       mmap_err_case_free(pi, res, *actual_len_ref);
@@ -375,7 +376,8 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
                              &actual_len,
                              handle,
                              per_heap_kmalloc_flags,
-                             pgoffset << PAGE_SHIFT);
+                             pgoffset << PAGE_SHIFT,
+                             prot);
    }
    enable_preemption();
 
@@ -473,7 +475,8 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
                um->h,
                (void *)(vaddr + actual_len),
                (um_vend - (vaddr + actual_len)),
-               um->off + um->len + actual_len
+               um->off + um->len + actual_len,
+               um->prot
             );
 
          if (!um2) {
