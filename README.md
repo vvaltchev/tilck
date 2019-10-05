@@ -86,6 +86,7 @@ issue describing your problem.
 
 For full-size screenshots, see the [screenshots] page in Tilck's wiki.
 
+[supported Linux syscalls]: docs/syscalls.md
 [screenshots]: https://github.com/vvaltchev/tilck/wiki/Screenshots
 
 The legacy bootloader
