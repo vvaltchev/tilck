@@ -130,6 +130,18 @@ bool handle_potential_cow(void *context)
    return true;
 }
 
+static void kernel_page_fault_panic(regs *r, u32 vaddr, bool rw, bool p)
+{
+   ptrdiff_t off = 0;
+   const char *sym_name = find_sym_at_addr_safe(r->eip, &off, NULL);
+   panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p [%s + 0x%x]\n",
+         rw ? "WRITE" : "READ",
+         vaddr,
+         "kernel",
+         !p ? " (NON present)." : ".",
+         r->eip, sym_name ? sym_name : "???", off);
+}
+
 void handle_page_fault_int(regs *r)
 {
    u32 vaddr;
@@ -138,16 +150,17 @@ void handle_page_fault_int(regs *r)
    bool p  = !!(r->err_code & PAGE_FAULT_FL_PRESENT);
    bool rw = !!(r->err_code & PAGE_FAULT_FL_RW);
    bool us = !!(r->err_code & PAGE_FAULT_FL_US);
+   int sig = SIGSEGV;
+   user_mapping *um;
 
    if (!us) {
-      ptrdiff_t off = 0;
-      const char *sym_name = find_sym_at_addr_safe(r->eip, &off, NULL);
-      panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p [%s + 0x%x]\n",
-            rw ? "WRITE" : "READ",
-            vaddr,
-            "kernel",
-            !p ? " (NON present)." : ".",
-            r->eip, sym_name ? sym_name : "???", off);
+      /*
+       * Tilck does not support kernel-space page faults caused by the kernel,
+       * while it allows user-space page faults caused by kernel (CoW pages).
+       * Therefore, such a fault is necessary caused by a bug.
+       * We have to panic.
+       */
+      kernel_page_fault_panic(r, vaddr, rw, p);
    }
 
    printk("USER PAGE FAULT in attempt to %s %p%s\nEIP: %p\n",
@@ -155,8 +168,17 @@ void handle_page_fault_int(regs *r)
           vaddr,
           !p ? " (NON present)." : ".", r->eip);
 
+   um = process_get_user_mapping((void *)vaddr);
+
+   if (um) {
+      /*
+       * For the moment, just always send SIGBUS here.
+       */
+      sig = SIGBUS;
+   }
+
    end_fault_handler_state();
-   send_signal(get_curr_task_tid(), SIGSEGV, true);
+   send_signal(get_curr_task_tid(), sig, true);
 }
 
 

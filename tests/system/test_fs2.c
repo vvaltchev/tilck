@@ -252,3 +252,49 @@ int cmd_fmmap3(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(rc == 0);
    return failed;
 }
+
+static void fmmap4_read_after_eof(void)
+{
+   int fd, rc;
+   char *vaddr;
+   size_t file_size;
+   char buf[64] = {0};
+   struct stat statbuf;
+   char *page_size_buf;
+   const size_t page_size = getpagesize();
+
+   printf("Using '%s' as test file\n", test_file);
+   fd = open(test_file, O_CREAT | O_RDWR, 0644);
+   DEVSHELL_CMD_ASSERT(fd > 0);
+
+   rc = write(fd, test_str, sizeof(test_str)-1);
+   DEVSHELL_CMD_ASSERT(rc == sizeof(test_str)-1);
+
+   rc = fstat(fd, &statbuf);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   file_size = statbuf.st_size;
+   printf("File size: %llu\n", (ull_t)file_size);
+
+   vaddr = mmap(NULL,                   /* addr */
+                2 * page_size,          /* length */
+                PROT_READ | PROT_WRITE, /* prot */
+                MAP_SHARED,             /* flags */
+                fd,                     /* fd */
+                0);
+
+   DEVSHELL_CMD_ASSERT(vaddr != (void *)-1);
+
+   /* Expecting to be killed by SIGBUS here */
+   memcpy(buf, vaddr + page_size, sizeof(buf) - 1);
+
+   /* If we got here, something went wrong */
+}
+
+/* mmap file and read past EOF, expecting SIGBUS */
+int cmd_fmmap4(int argc, char **argv)
+{
+   int rc = test_sig(fmmap4_read_after_eof, SIGBUS, 0);
+   unlink(test_file);
+   return rc;
+}

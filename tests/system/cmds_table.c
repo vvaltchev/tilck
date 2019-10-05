@@ -48,6 +48,7 @@ DECL_CMD(fs7);
 DECL_CMD(fmmap1);
 DECL_CMD(fmmap2);
 DECL_CMD(fmmap3);
+DECL_CMD(fmmap4);
 DECL_CMD(fs_perf1);
 DECL_CMD(fs_perf2);
 
@@ -94,6 +95,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(fmmap1, TT_SHORT, true),
    CMD_ENTRY(fmmap2, TT_SHORT, true),
    CMD_ENTRY(fmmap3, TT_SHORT, true),
+   CMD_ENTRY(fmmap4, TT_SHORT, true),
 
    /*
     * For the moment these tests can be run only manually because they require
