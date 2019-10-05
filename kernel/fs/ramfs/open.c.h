@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/kernel/process.h>
-
 static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
 {
    process_info *pi = get_curr_task()->pi;
@@ -103,6 +101,7 @@ ramfs_handle_fault_int(ramfs_handle *rh, void *vaddrp, bool p, bool rw)
        */
 
       ASSERT(rw);
+      ASSERT((um->prot & PROT_WRITE) == 0);
       return false;
    }
 
@@ -123,7 +122,7 @@ ramfs_handle_fault_int(ramfs_handle *rh, void *vaddrp, bool p, bool rw)
                  (void *)(vaddr & PAGE_MASK),
                  KERNEL_VA_TO_PA(block->vaddr),
                  true,
-                 true); /* tmp!! */
+                 !!(um->prot & PROT_WRITE));
 
    if (rc)
       panic("Out-of-memory: unable to map a ramfs_block. No OOM killer");

@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck/kernel/process.h>
+#include <sys/mman.h>      // system header
+
 #include "ramfs_int.h"
 #include "getdents.c.h"
 #include "locking.c.h"

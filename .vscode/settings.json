@@ -93,7 +93,8 @@
       "bitset": "cpp",
       "string_view": "cpp",
       "utility": "cpp",
-      "syscall.h": "c"
+      "syscall.h": "c",
+      "ramfs_int.h": "c"
    },
    "python.pythonPath": "/usr/bin/python"
 }

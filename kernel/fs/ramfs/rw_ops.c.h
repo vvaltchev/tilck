@@ -168,12 +168,17 @@ static int ramfs_inode_truncate_safe(ramfs_inode *i, offt len)
    int rc;
    rwlock_wp_exlock(&i->rwlock);
    {
-      if (len < i->fsize) {
-         rc = ramfs_inode_truncate(i, len);
-      } else if (len > i->fsize) {
-         rc = ramfs_inode_extend(i, len);
+      if (i->mode & 0200) { /* write permission */
+
+         if (len < i->fsize)
+            rc = ramfs_inode_truncate(i, len);
+         else if (len > i->fsize)
+            rc = ramfs_inode_extend(i, len);
+         else
+            rc = 0; /* len == i->fsize */
+
       } else {
-         rc = 0; /* len == i->fsize */
+         rc = -EACCES;
       }
    }
    rwlock_wp_exunlock(&i->rwlock);
