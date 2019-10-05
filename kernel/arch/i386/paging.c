@@ -172,9 +172,12 @@ void handle_page_fault_int(regs *r)
    um = process_get_user_mapping((void *)vaddr);
 
    if (um) {
-      /*
-       * For the moment, just always send SIGBUS here.
-       */
+
+      if (vfs_handle_fault(um->h, (void *)vaddr, p, rw)) {
+         end_fault_handler_state();
+         return;
+      }
+
       sig = SIGBUS;
    }
 

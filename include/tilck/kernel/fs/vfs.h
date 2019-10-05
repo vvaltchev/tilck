@@ -119,6 +119,7 @@ typedef offt    (*func_seek)         (fs_handle, offt, int);
 typedef int     (*func_ioctl)        (fs_handle, uptr, void *);
 typedef int     (*func_mmap)         (fs_handle, void *, size_t, int, size_t);
 typedef int     (*func_munmap)       (fs_handle, void *, size_t);
+typedef bool    (*func_handle_fault) (fs_handle, void *, bool, bool);
 typedef int     (*func_fcntl)        (fs_handle, int, int);
 typedef void    (*func_hlock_t)      (fs_handle);
 typedef bool    (*func_rwe_ready)    (fs_handle);
@@ -199,6 +200,7 @@ typedef struct {
    /* optional funcs */
    func_mmap mmap;
    func_munmap munmap;
+   func_handle_fault handle_fault;
 
    /* optional, r/w/e ready funcs */
    func_rwe_ready read_ready;
@@ -262,6 +264,7 @@ int vfs_munmap(fs_handle h, void *vaddr, size_t len);
 int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);
 void vfs_close2(process_info *pi, fs_handle h);
+bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw);
 
 bool vfs_read_ready(fs_handle h);
 bool vfs_write_ready(fs_handle h);

@@ -659,6 +659,17 @@ int vfs_munmap(fs_handle h, void *vaddr, size_t len)
    return fops->munmap(h, vaddr, len);
 }
 
+bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw)
+{
+   fs_handle_base *hb = h;
+   const file_ops *fops = hb->fops;
+
+   if (!fops->handle_fault)
+      return false;
+
+   return fops->handle_fault(h, va, p, rw);
+}
+
 u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;
