@@ -20,7 +20,8 @@ static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
    return 0;
 }
 
-static int ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot)
+static int
+ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot, size_t pgoff)
 {
    process_info *pi = get_curr_task()->pi;
    ramfs_handle *rh = h;
@@ -29,6 +30,9 @@ static int ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot)
    bintree_walk_ctx ctx;
    ramfs_block *b;
    int rc;
+
+   const size_t off_begin = pgoff << PAGE_SHIFT;
+   const size_t off_end = off_begin + len;
 
    ASSERT(len % PAGE_SIZE == 0);
 
@@ -45,7 +49,10 @@ static int ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot)
 
    while ((b = bintree_in_order_visit_next(&ctx))) {
 
-      if ((size_t)b->offset >= len)
+      if ((size_t)b->offset < off_begin)
+         continue; /* skip this block */
+
+      if ((size_t)b->offset >= off_end)
          break;
 
       //printk("[ramfs] block at offset %u -> %p\n", b->offset, b->vaddr);

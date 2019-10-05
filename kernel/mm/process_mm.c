@@ -316,9 +316,6 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    if (addr)
       return -EINVAL; /* addr != NULL not supported */
 
-   if (pgoffset != 0)
-      return -EINVAL; /* pgoffset != 0 not supported at the moment */
-
    if (!(prot & PROT_READ))
       return -EINVAL;
 
@@ -337,6 +334,9 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
       if ((prot & (PROT_READ | PROT_WRITE)) != (PROT_READ | PROT_WRITE))
          return -EINVAL;
+
+      if (pgoffset != 0)
+         return -EINVAL; /* pgoffset != 0 does not make sense here */
 
    } else {
 
@@ -381,7 +381,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
    if (handle) {
 
-      if ((rc = vfs_mmap(handle, um->vaddrp, actual_len, prot))) {
+      if ((rc = vfs_mmap(handle, um->vaddrp, actual_len, prot, pgoffset))) {
 
          /*
           * Everything was apparently OK and the allocation in the user virtual

@@ -59,10 +59,12 @@ static int fb_ioctl(fs_handle h, uptr request, void *argp)
 }
 
 static int
-fbdev_mmap(fs_handle h /* ignored */, void *vaddr, size_t len, int prot)
+fbdev_mmap(fs_handle h, void *vaddr, size_t len, int prot, size_t pgoff)
 {
-   if ((prot & (PROT_READ | PROT_WRITE)) != (PROT_READ | PROT_WRITE))
-      return -EINVAL; /* don't allow read-only mmap */
+   (void) h; /* handle ignored: there's only one framebuffer device */
+
+   if (pgoff != 0)
+      return -EINVAL; /* not supported, at least for the moment */
 
    ASSERT(IS_PAGE_ALIGNED(len));
    fb_user_mmap(vaddr, len);

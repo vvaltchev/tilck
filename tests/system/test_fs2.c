@@ -199,3 +199,56 @@ int cmd_fmmap2(int argc, char **argv)
    unlink(test_file);
    return rc;
 }
+
+/* mmap file with offset > 0 */
+int cmd_fmmap3(int argc, char **argv)
+{
+   int fd, rc;
+   char *vaddr;
+   size_t file_size;
+   char buf[64] = {0};
+   char exp_buf[64] = {0};
+   char *page_size_buf;
+   const size_t page_size = getpagesize();
+   bool failed = false;
+
+   printf("Using '%s' as test file\n", test_file);
+   fd = open(test_file, O_CREAT | O_RDWR, 0644);
+   DEVSHELL_CMD_ASSERT(fd > 0);
+
+   page_size_buf = malloc(page_size);
+   DEVSHELL_CMD_ASSERT(page_size_buf != NULL);
+
+   for (int i = 0; i < 4; i++) {
+      memset(page_size_buf, 'A'+i, page_size);
+      rc = write(fd, page_size_buf, page_size);
+      DEVSHELL_CMD_ASSERT(rc == page_size);
+   }
+
+   /* Now, let's mmap the file at offset > 0 */
+
+   vaddr = mmap(NULL,                   /* addr */
+                4 * page_size,          /* length */
+                PROT_READ,              /* prot */
+                MAP_SHARED,             /* flags */
+                fd,                     /* fd */
+                page_size);             /* offset */
+
+   DEVSHELL_CMD_ASSERT(vaddr != (void *)-1);
+
+   memcpy(buf, vaddr, sizeof(buf) - 1);
+   memset(exp_buf, 'B', sizeof(exp_buf)-1);
+
+   if (strcmp(buf, exp_buf)) {
+      fprintf(stderr, "Reading vaddr mapped at off > 0 lead to garbage.\n");
+      fprintf(stderr, "Expected: '%s'\n", exp_buf);
+      fprintf(stderr, "Got     : '%s'\n", buf);
+      failed = true;
+   }
+
+   free(page_size_buf);
+   close(fd);
+   rc = unlink(test_file);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+   return failed;
+}
