@@ -81,6 +81,51 @@ ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot, size_t pgoff)
    return 0;
 }
 
+static bool
+ramfs_handle_fault_int(ramfs_handle *rh, void *vaddrp, bool p, bool rw)
+{
+   uptr vaddr = (uptr) vaddrp;
+   uptr abs_off;
+   user_mapping *um = process_get_user_mapping(vaddrp);
+
+   if (!um)
+      return false; /* Weird, but it's OK */
+
+   ASSERT(um->h == rh);
+
+   if (p) {
+
+      /*
+       * The page is present, just is read-only and the user code tried to
+       * write: there's nothing we can do.
+       */
+
+      ASSERT(rw);
+      return false;
+   }
+
+   /* The page is *not* present */
+   abs_off = um->off + (vaddr - um->vaddr);
+
+   if (abs_off >= (uptr)rh->inode->fsize)
+      return false; /* Read/write past EOF */
+
+   /* Create and map on-the-fly a ramfs_block */
+   NOT_IMPLEMENTED();
+}
+
+
+static bool
+ramfs_handle_fault(fs_handle h, void *vaddrp, bool p, bool rw)
+{
+   bool ret;
+   disable_preemption();
+   {
+      ret = ramfs_handle_fault_int(h, vaddrp, p, rw);
+   }
+   enable_preemption();
+   return ret;
+}
 
 static const file_ops static_ops_ramfs =
 {
@@ -91,6 +136,7 @@ static const file_ops static_ops_ramfs =
    .fcntl = ramfs_fcntl,
    .mmap = ramfs_mmap,
    .munmap = ramfs_munmap,
+   .handle_fault = ramfs_handle_fault,
    .exlock = ramfs_file_exlock,
    .exunlock = ramfs_file_exunlock,
    .shlock = ramfs_file_shlock,
