@@ -243,7 +243,7 @@ int cmd_fmmap3(int argc, char **argv)
    if (strcmp(buf, exp_buf)) {
       fprintf(stderr, "Reading vaddr mapped at off > 0 lead to garbage.\n");
       fprintf(stderr, "Expected: '%s'\n", exp_buf);
-      fprintf(stderr, "Got     : '%s'\n", buf);
+      fprintf(stderr, "Got:      '%s'\n", buf);
       failed = true;
    }
 
@@ -333,6 +333,7 @@ int cmd_fmmap5(int argc, char **argv)
    char buf[64] = {0};
    struct stat statbuf;
    const size_t page_size = getpagesize();
+   bool failed = false;
 
    printf("Using '%s' as test file\n", test_file);
    fd = open(test_file, O_CREAT | O_RDWR, 0644);
@@ -371,9 +372,27 @@ int cmd_fmmap5(int argc, char **argv)
     * write.
     */
    strcpy(vaddr + page_size, test_str2);
+   close(fd);
+
+   fd = open(test_file, O_CREAT | O_RDONLY, 0644);
+   DEVSHELL_CMD_ASSERT(fd > 0);
+
+   /* Check `test_str2` is actually in the file */
+   rc = lseek(fd, page_size, SEEK_SET);
+   DEVSHELL_CMD_ASSERT(rc == page_size);
+
+   rc = read(fd, buf, sizeof(buf)-1);
+   DEVSHELL_CMD_ASSERT(rc == sizeof(buf)-1);
+
+   if (strcmp(buf, test_str2)) {
+      fprintf(stderr, "Reading at offset page_size failure!\n");
+      fprintf(stderr, "Expected: '%s'\n", test_str2);
+      fprintf(stderr, "Got:      '%s'\n", buf);
+      failed = true;
+   }
 
    close(fd);
    rc = unlink(test_file);
    DEVSHELL_CMD_ASSERT(rc == 0);
-   return 0;
+   return failed;
 }
