@@ -269,7 +269,8 @@ static user_mapping *
 mmap_on_user_heap(process_info *pi,
                   size_t *actual_len_ref,
                   fs_handle handle,
-                  u32 per_heap_kmalloc_flags)
+                  u32 per_heap_kmalloc_flags,
+                  size_t off)
 {
    void *res;
    user_mapping *um;
@@ -282,7 +283,7 @@ mmap_on_user_heap(process_info *pi,
       return NULL;
 
    /* NOTE: here `handle` might be NULL (zero-map case) and that's OK */
-   um = process_add_user_mapping(handle, res, *actual_len_ref);
+   um = process_add_user_mapping(handle, res, *actual_len_ref, off);
 
    if (!um) {
       mmap_err_case_free(pi, res, *actual_len_ref);
@@ -370,7 +371,11 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
    disable_preemption();
    {
-      um = mmap_on_user_heap(pi, &actual_len, handle, per_heap_kmalloc_flags);
+      um = mmap_on_user_heap(pi,
+                             &actual_len,
+                             handle,
+                             per_heap_kmalloc_flags,
+                             pgoffset << PAGE_SHIFT);
    }
    enable_preemption();
 
@@ -447,6 +452,7 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
 
          /* unmap the beginning of the chunk */
          um->vaddr += actual_len;
+         um->off += actual_len;
          um->len -= actual_len;
 
       } else if (vaddr + actual_len == um_vend) {
@@ -466,7 +472,8 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
             process_add_user_mapping(
                um->h,
                (void *)(vaddr + actual_len),
-               (um_vend - (vaddr + actual_len))
+               (um_vend - (vaddr + actual_len)),
+               um->off + um->len + actual_len
             );
 
          if (!um2) {
