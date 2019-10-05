@@ -122,6 +122,38 @@ static int ramfs_inode_truncate(ramfs_inode *i, offt len)
    return 0;
 }
 
+static ramfs_block *ramfs_new_block(offt page)
+{
+   void *vaddr;
+   ramfs_block *block;
+
+   if (!(vaddr = kmalloc(PAGE_SIZE)))
+      return NULL;
+
+   if (!(block = kmalloc(sizeof(ramfs_block)))) {
+      kfree2(vaddr, PAGE_SIZE);
+      return NULL;
+   }
+
+   bintree_node_init(&block->node);
+   block->offset = page;
+   block->vaddr = vaddr;
+   return block;
+}
+
+static void ramfs_append_new_block(ramfs_inode *inode, ramfs_block *block)
+{
+   DEBUG_ONLY_UNSAFE(bool success =)
+      bintree_insert_ptr(&inode->blocks_tree_root,
+                         block,
+                         ramfs_block,
+                         node,
+                         offset);
+
+   ASSERT(success);
+   inode->blocks_count++;
+}
+
 static int ramfs_inode_truncate_safe(ramfs_inode *i, offt len)
 {
    int rc;
@@ -226,27 +258,10 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
 
       if (!block) {
 
-         void *vaddr = kmalloc(PAGE_SIZE);
-
-         if (!vaddr)
+         if (!(block = ramfs_new_block(page)))
             break;
 
-         if (!(block = kmalloc(sizeof(ramfs_block)))) {
-            kfree2(vaddr, PAGE_SIZE);
-            break;
-         }
-
-         bintree_node_init(&block->node);
-         block->offset = page;
-         block->vaddr = vaddr;
-
-         bintree_insert_ptr(&inode->blocks_tree_root,
-                            block,
-                            ramfs_block,
-                            node,
-                            offset);
-
-         inode->blocks_count++;
+         ramfs_append_new_block(inode, block);
       }
 
       memcpy(block->vaddr + page_off, buf + tot_written, (size_t)to_write);
