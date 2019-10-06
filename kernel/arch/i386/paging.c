@@ -165,12 +165,6 @@ void handle_page_fault_int(regs *r)
       kernel_page_fault_panic(r, vaddr, rw, p);
    }
 
-   printk("USER PAGE FAULT in attempt to %s %p%s\n",
-          rw ? "WRITE" : "READ", vaddr,
-          !p ? " (NON present)." : ".");
-
-   printk("EIP: %p\n", r->eip);
-
    um = process_get_user_mapping((void *)vaddr);
 
    if (um) {
@@ -187,6 +181,12 @@ void handle_page_fault_int(regs *r)
          sig = SIGBUS;
       }
    }
+
+   printk("USER PAGE FAULT in attempt to %s %p%s\n",
+          rw ? "WRITE" : "READ", vaddr,
+          !p ? " (NON present)." : ".");
+
+   printk("EIP: %p\n", r->eip);
 
    end_fault_handler_state();
    send_signal(get_curr_task_tid(), sig, true);
