@@ -72,7 +72,11 @@ ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot, size_t pgoff)
 }
 
 static bool
-ramfs_handle_fault_int(ramfs_handle *rh, void *vaddrp, bool p, bool rw)
+ramfs_handle_fault_int(process_info *pi,
+                       ramfs_handle *rh,
+                       void *vaddrp,
+                       bool p,
+                       bool rw)
 {
    uptr vaddr = (uptr) vaddrp;
    uptr abs_off;
@@ -111,7 +115,7 @@ ramfs_handle_fault_int(ramfs_handle *rh, void *vaddrp, bool p, bool rw)
       ramfs_append_new_block(rh->inode, block);
    }
 
-   rc = map_page(get_curr_pdir(),
+   rc = map_page(pi->pdir,
                  (void *)(vaddr & PAGE_MASK),
                  KERNEL_VA_TO_PA(rw ? block->vaddr : &zero_page),
                  true,
@@ -129,9 +133,11 @@ static bool
 ramfs_handle_fault(fs_handle h, void *vaddrp, bool p, bool rw)
 {
    bool ret;
+   process_info *pi = get_curr_task()->pi;
+
    disable_preemption();
    {
-      ret = ramfs_handle_fault_int(h, vaddrp, p, rw);
+      ret = ramfs_handle_fault_int(pi, h, vaddrp, p, rw);
    }
    enable_preemption();
    return ret;
