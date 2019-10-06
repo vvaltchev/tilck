@@ -3,13 +3,9 @@
 static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
 {
    process_info *pi = get_curr_task()->pi;
-   //ramfs_handle *rh = h;
-   //ramfs_inode *i = rh->inode;
    uptr vaddr = (uptr)vaddrp;
    uptr vend = vaddr + len;
-   ASSERT(len % PAGE_SIZE == 0);
-
-   //printk("[ramfs] UNMAP inode %llu at [%p, %p)\n", i->ino, vaddr, vaddr+len);
+   ASSERT(IS_PAGE_ALIGNED(len));
 
    for (; vaddr < vend; vaddr += PAGE_SIZE) {
       unmap_page_permissive(pi->pdir, (void *)vaddr, false);
@@ -32,12 +28,10 @@ ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot, size_t pgoff)
    const size_t off_begin = pgoff << PAGE_SHIFT;
    const size_t off_end = off_begin + len;
 
-   ASSERT(len % PAGE_SIZE == 0);
+   ASSERT(IS_PAGE_ALIGNED(len));
 
    if (i->type != VFS_FILE)
       return -EACCES;
-
-   //printk("[ramfs] mmap inode %llu at [%p, %p)\n", i->ino, vaddr, vaddr+len);
 
    bintree_in_order_visit_start(&ctx,
                                 i->blocks_tree_root,
@@ -52,8 +46,6 @@ ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot, size_t pgoff)
 
       if ((size_t)b->offset >= off_end)
          break;
-
-      //printk("[ramfs] block at offset %u -> %p\n", b->offset, b->vaddr);
 
       rc = map_page(pi->pdir,
                     (void *)vaddr,
