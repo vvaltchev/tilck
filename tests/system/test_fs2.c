@@ -402,8 +402,8 @@ int cmd_fmmap6(int argc, char **argv)
 {
    int fd, rc;
    char *vaddr;
-   size_t file_size;
    char buf[64];
+   size_t file_size;
    struct stat statbuf;
    const size_t page_size = getpagesize();
    bool failed = false;
@@ -458,4 +458,91 @@ int cmd_fmmap6(int argc, char **argv)
    rc = unlink(test_file);
    DEVSHELL_CMD_ASSERT(rc == 0);
    return failed;
+}
+
+/* mmap file and then trucate it */
+static void fmmap7_child(void)
+{
+   int fd, rc;
+   char *vaddr;
+   size_t file_size;
+   char buf[64] = {0};
+   struct stat statbuf;
+   char *page_size_buf;
+   const size_t page_size = getpagesize();
+   bool failed = false;
+
+   printf("Using '%s' as test file\n", test_file);
+   fd = open(test_file, O_CREAT | O_RDWR, 0644);
+   DEVSHELL_CMD_ASSERT(fd > 0);
+
+   page_size_buf = malloc(page_size);
+   DEVSHELL_CMD_ASSERT(page_size_buf != NULL);
+
+   for (int i = 0; i < 4; i++) {
+      memset(page_size_buf, 'A'+i, page_size);
+      rc = write(fd, page_size_buf, page_size);
+      DEVSHELL_CMD_ASSERT(rc == page_size);
+   }
+
+   rc = fstat(fd, &statbuf);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   file_size = statbuf.st_size;
+   printf("File size: %llu\n", (ull_t)file_size);
+   printf("Mmap 4 pages of the file\n");
+
+   vaddr = mmap(NULL,                   /* addr */
+                4 * page_size,          /* length */
+                PROT_READ,              /* prot */
+                MAP_SHARED,             /* flags */
+                fd,                     /* fd */
+                0);
+
+   DEVSHELL_CMD_ASSERT(vaddr != (void *)-1);
+
+   printf("Read from the 2nd mapped page...\n");
+
+   memcpy(buf, vaddr + page_size, sizeof(buf));
+   printf("Got in buf: '%s'\n", buf);
+   memset(buf, 0, sizeof(buf));
+
+   printf("Now, trucate the file to just 1 page\n");
+
+   /* Truncate the file using truncate() instead of ftruncate() */
+   rc = truncate(test_file, page_size);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   rc = fstat(fd, &statbuf);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   file_size = statbuf.st_size;
+   printf("(NEW) File size: %llu\n", (ull_t)file_size);
+   printf("Now, trying to read the 2nd page (mapped, but after EOF)\n");
+
+   /*
+    * On Linux, here we get SIGBUS, as if the file was never bigger than that.
+    * This means that the pages after EOF have been un-mapped by the truncate()
+    * syscall.
+    */
+   memcpy(buf, vaddr + page_size, sizeof(buf));
+
+   /* ------------- we should never get here ----------------- */
+
+   fprintf(stderr, "ERROR: We should never get here. ");
+   fprintf(stderr, "Expected to die due to SIGBUS.\n");
+   printf("Got in buf: '%s'\n", buf);
+
+   free(page_size_buf);
+   close(fd);
+   rc = unlink(test_file);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+}
+
+/* mmap file and then trucate it */
+int cmd_fmmap7(int argc, char **argv)
+{
+   int rc = test_sig(fmmap7_child, SIGBUS, 0);
+   unlink(test_file);
+   return rc;
 }

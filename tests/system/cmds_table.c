@@ -51,6 +51,7 @@ DECL_CMD(fmmap3);
 DECL_CMD(fmmap4);
 DECL_CMD(fmmap5);
 DECL_CMD(fmmap6);
+DECL_CMD(fmmap7);
 DECL_CMD(fs_perf1);
 DECL_CMD(fs_perf2);
 
@@ -100,6 +101,9 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(fmmap4, TT_SHORT, true),
    CMD_ENTRY(fmmap5, TT_SHORT, true),
    CMD_ENTRY(fmmap6, TT_SHORT, true),
+
+   /* Case not supported on Tilck, yet */
+   CMD_ENTRY(fmmap7, TT_SHORT, false),
 
    /*
     * For the moment these tests can be run only manually because they require
