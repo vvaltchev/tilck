@@ -20,7 +20,7 @@
 STATIC_ASSERT((KERNEL_STACK_SIZE % PAGE_SIZE) == 0);
 STATIC_ASSERT(((IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE) % PAGE_SIZE) == 0);
 
-typedef struct {
+struct user_mapping {
 
    list_node node;
 
@@ -35,7 +35,9 @@ typedef struct {
 
    int prot;
 
-} user_mapping;
+};
+
+typedef struct user_mapping user_mapping;
 
 typedef struct {
 

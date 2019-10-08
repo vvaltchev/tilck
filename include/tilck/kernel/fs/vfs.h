@@ -14,7 +14,9 @@
 #include <tilck/kernel/sys_types.h>
 #include <tilck/kernel/sync.h>
 
+struct user_mapping;
 typedef struct process_info process_info;
+typedef struct user_mapping user_mapping;
 
 /*
  * Opaque type for file handles.
@@ -259,7 +261,7 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
 int vfs_fcntl(fs_handle h, int cmd, int arg);
-int vfs_mmap(fs_handle h, void *vaddr, size_t len, int prot, size_t pgoff);
+int vfs_mmap(user_mapping *um);
 int vfs_munmap(fs_handle h, void *vaddr, size_t len);
 int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);

@@ -635,16 +635,16 @@ int vfs_fchmod(fs_handle h, mode_t mode)
    return fsops->chmod(hb->fs, fsops->get_inode(h), mode);
 }
 
-int vfs_mmap(fs_handle h, void *vaddr, size_t len, int prot, size_t pgoff)
+int vfs_mmap(user_mapping *um)
 {
-   fs_handle_base *hb = h;
+   fs_handle_base *hb = um->h;
    const file_ops *fops = hb->fops;
 
    if (!fops->mmap)
       return -ENODEV;
 
    ASSERT(fops->munmap != NULL);
-   return fops->mmap(h, vaddr, len, prot, pgoff);
+   return fops->mmap(hb, um->vaddrp, um->len, um->prot, um->off >> PAGE_SHIFT);
 }
 
 int vfs_munmap(fs_handle h, void *vaddr, size_t len)

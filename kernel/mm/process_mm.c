@@ -388,7 +388,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
    if (handle) {
 
-      if ((rc = vfs_mmap(handle, um->vaddrp, actual_len, prot, pgoffset))) {
+      if ((rc = vfs_mmap(um))) {
 
          /*
           * Everything was apparently OK and the allocation in the user virtual
