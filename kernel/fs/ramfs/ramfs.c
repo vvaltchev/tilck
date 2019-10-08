@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/kernel/process.h>      /* needed by mmap.c.h */
+#include <tilck/kernel/process.h>
+#include <tilck/common/utils.h>
 #include <sys/mman.h>      // system header
 
 #include "ramfs_int.h"
@@ -9,8 +10,9 @@
 #include "dir_entries.c.h"
 #include "inodes.c.h"
 #include "stat.c.h"
-#include "rw_ops.c.h"
+#include "blocks.c.h"
 #include "mmap.c.h"
+#include "rw_ops.c.h"
 #include "open.c.h"
 #include "mkdir.c.h"
 
