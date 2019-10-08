@@ -7,7 +7,7 @@
 
 struct user_mapping {
 
-   list_node node;
+   list_node pi_node;
 
    fs_handle h;
    size_t len;

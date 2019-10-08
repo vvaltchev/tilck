@@ -20,7 +20,7 @@ process_add_user_mapping(fs_handle h,
    if (!(um = kzmalloc(sizeof(user_mapping))))
       return NULL;
 
-   list_node_init(&um->node);
+   list_node_init(&um->pi_node);
 
    um->h = h;
    um->len = len;
@@ -28,7 +28,7 @@ process_add_user_mapping(fs_handle h,
    um->off = off;
    um->prot = prot;
 
-   list_add_tail(&pi->mappings, &um->node);
+   list_add_tail(&pi->mappings, &um->pi_node);
    return um;
 }
 
@@ -36,7 +36,7 @@ void process_remove_user_mapping(user_mapping *um)
 {
    ASSERT(!is_preemption_enabled());
 
-   list_remove(&um->node);
+   list_remove(&um->pi_node);
    kfree2(um, sizeof(user_mapping));
 }
 
@@ -48,7 +48,7 @@ user_mapping *process_get_user_mapping(void *vaddrp)
    process_info *pi = get_curr_task()->pi;
    user_mapping *pos;
 
-   list_for_each_ro(pos, &pi->mappings, node) {
+   list_for_each_ro(pos, &pi->mappings, pi_node) {
 
       if (IN_RANGE(vaddr, pos->vaddr, pos->vaddr + pos->len))
          return pos;
@@ -63,7 +63,7 @@ void remove_all_mappings_of_handle(process_info *pi, fs_handle h)
 
    disable_preemption();
    {
-      list_for_each(pos, temp, &pi->mappings, node) {
+      list_for_each(pos, temp, &pi->mappings, pi_node) {
          if (pos->h == h)
             full_remove_user_mapping(pi, pos);
       }
