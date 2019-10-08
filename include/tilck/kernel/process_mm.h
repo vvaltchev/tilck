@@ -8,6 +8,8 @@
 struct user_mapping {
 
    list_node pi_node;
+   list_node inode_node;
+   process_info *pi;
 
    fs_handle h;
    size_t len;

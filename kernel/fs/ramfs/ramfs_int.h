@@ -15,6 +15,7 @@
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/paging.h>
+#include <tilck/kernel/process_mm.h>
 
 #include <dirent.h> // system header
 
@@ -71,6 +72,7 @@ struct ramfs_inode {
    mode_t mode;
    size_t blocks_count;                /* count of page-size blocks */
    struct ramfs_inode *parent_dir;
+   list mappings_list;
 
    union {
 

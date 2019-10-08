@@ -21,7 +21,9 @@ process_add_user_mapping(fs_handle h,
       return NULL;
 
    list_node_init(&um->pi_node);
+   list_node_init(&um->inode_node);
 
+   um->pi = pi;
    um->h = h;
    um->len = len;
    um->vaddrp = vaddr;

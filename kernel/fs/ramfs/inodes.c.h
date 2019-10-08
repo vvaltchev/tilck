@@ -9,8 +9,10 @@ static ramfs_inode *ramfs_new_inode(ramfs_data *d)
    if (!i)
       return NULL;
 
-   i->type = VFS_NONE;
    rwlock_wp_init(&i->rwlock, true);
+   list_init(&i->mappings_list);
+
+   i->type = VFS_NONE;
    i->ino = d->next_inode_num++;
 
    if (DEBUG_RAMFS_CREATE_INODE_PRINTK) {
