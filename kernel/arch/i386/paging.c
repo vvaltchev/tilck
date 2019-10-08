@@ -15,7 +15,7 @@
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/signal.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/process_mm.h>
 
 #include "paging_int.h"
 
@@ -788,7 +788,7 @@ void init_paging(void)
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
    kernel_page_dir = (pdir_t *) kpdir_buf;
-   kernel_process_pi->pdir = kernel_page_dir;
+   set_kernel_process_pdir(kernel_page_dir);
 }
 
 static void init_hi_vmem_heap(void)

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/process.h>      /* needed by mmap.c.h */
+#include <tilck/kernel/process_mm.h>   /* needed by mmap.c.h */
 #include <sys/mman.h>      // system header
 
 #include "ramfs_int.h"

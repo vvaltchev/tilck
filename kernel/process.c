@@ -264,60 +264,6 @@ void free_task(task_info *ti)
    }
 }
 
-user_mapping *
-process_add_user_mapping(fs_handle h,
-                         void *vaddr,
-                         size_t len,
-                         size_t off,
-                         int prot)
-{
-   process_info *pi = get_curr_task()->pi;
-   user_mapping *um;
-
-   ASSERT((len & OFFSET_IN_PAGE_MASK) == 0);
-   ASSERT(!is_preemption_enabled());
-   ASSERT(!process_get_user_mapping(vaddr));
-
-   if (!(um = kzmalloc(sizeof(user_mapping))))
-      return NULL;
-
-   list_node_init(&um->node);
-
-   um->h = h;
-   um->len = len;
-   um->vaddrp = vaddr;
-   um->off = off;
-   um->prot = prot;
-
-   list_add_tail(&pi->mappings, &um->node);
-   return um;
-}
-
-void process_remove_user_mapping(user_mapping *um)
-{
-   ASSERT(!is_preemption_enabled());
-
-   list_remove(&um->node);
-   kfree2(um, sizeof(user_mapping));
-}
-
-user_mapping *process_get_user_mapping(void *vaddrp)
-{
-   ASSERT(!is_preemption_enabled());
-
-   uptr vaddr = (uptr)vaddrp;
-   process_info *pi = get_curr_task()->pi;
-   user_mapping *pos;
-
-   list_for_each_ro(pos, &pi->mappings, node) {
-
-      if (IN_RANGE(vaddr, pos->vaddr, pos->vaddr + pos->len))
-         return pos;
-   }
-
-   return NULL;
-}
-
 void *task_temp_kernel_alloc(size_t size)
 {
    task_info *curr = get_curr_task();
@@ -383,6 +329,11 @@ void task_temp_kernel_free(void *ptr)
       kfree2(alloc, sizeof(kernel_alloc));
    }
    enable_preemption();
+}
+
+void set_kernel_process_pdir(pdir_t *pdir)
+{
+   kernel_process_pi->pdir = pdir;
 }
 
 /*
