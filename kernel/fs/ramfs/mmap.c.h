@@ -14,21 +14,20 @@ static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
    return 0;
 }
 
-static int
-ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot, size_t off)
+static int ramfs_mmap(user_mapping *um)
 {
    process_info *pi = get_curr_task()->pi;
-   ramfs_handle *rh = h;
+   ramfs_handle *rh = um->h;
    ramfs_inode *i = rh->inode;
-   uptr vaddr = (uptr) vaddrp;
+   uptr vaddr = um->vaddr;
    bintree_walk_ctx ctx;
    ramfs_block *b;
    int rc;
 
-   const size_t off_begin = off;
-   const size_t off_end = off_begin + len;
+   const size_t off_begin = um->off;
+   const size_t off_end = off_begin + um->len;
 
-   ASSERT(IS_PAGE_ALIGNED(len));
+   ASSERT(IS_PAGE_ALIGNED(um->len));
 
    if (i->type != VFS_FILE)
       return -EACCES;
@@ -58,7 +57,7 @@ ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot, size_t off)
          /* mmap failed, we have to unmap the pages already mappped */
          vaddr -= PAGE_SIZE;
 
-         for (; vaddr >= (uptr)vaddrp; vaddr -= PAGE_SIZE) {
+         for (; vaddr >= um->vaddr; vaddr -= PAGE_SIZE) {
             unmap_page_permissive(pi->pdir, (void *)vaddr, false);
          }
 

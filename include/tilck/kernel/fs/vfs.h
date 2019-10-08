@@ -118,7 +118,7 @@ typedef ssize_t (*func_read)         (fs_handle, char *, size_t);
 typedef ssize_t (*func_write)        (fs_handle, char *, size_t);
 typedef offt    (*func_seek)         (fs_handle, offt, int);
 typedef int     (*func_ioctl)        (fs_handle, uptr, void *);
-typedef int     (*func_mmap)         (fs_handle, void *, size_t, int, size_t);
+typedef int     (*func_mmap)         (user_mapping *);
 typedef int     (*func_munmap)       (fs_handle, void *, size_t);
 typedef bool    (*func_handle_fault) (fs_handle, void *, bool, bool);
 typedef int     (*func_fcntl)        (fs_handle, int, int);

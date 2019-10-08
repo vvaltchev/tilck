@@ -8,6 +8,7 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/process_mm.h>
 
 #include <linux/fb.h>     // system header
 #include <linux/major.h>  // system header
@@ -59,17 +60,15 @@ static int fb_ioctl(fs_handle h, uptr request, void *argp)
 }
 
 static int
-fbdev_mmap(fs_handle h, void *vaddr, size_t len, int prot, size_t off)
+fbdev_mmap(user_mapping *um)
 {
-   (void) h; /* handle ignored: there's only one framebuffer device */
-
-   if (off != 0)
+   if (um->off != 0)
       return -EINVAL; /* not supported, at least for the moment */
 
-   ASSERT(IS_PAGE_ALIGNED(len));
-   fb_user_mmap(vaddr, len);
+   ASSERT(IS_PAGE_ALIGNED(um->len));
+   fb_user_mmap(um->vaddrp, um->len);
 
-   total_fb_pages_mapped += len >> PAGE_SHIFT;
+   total_fb_pages_mapped += um->len >> PAGE_SHIFT;
    return 0;
 }
 

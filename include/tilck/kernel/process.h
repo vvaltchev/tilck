@@ -16,28 +16,10 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/signal.h>
+#include <tilck/kernel/process_mm.h>
 
 STATIC_ASSERT((KERNEL_STACK_SIZE % PAGE_SIZE) == 0);
 STATIC_ASSERT(((IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE) % PAGE_SIZE) == 0);
-
-struct user_mapping {
-
-   list_node node;
-
-   fs_handle h;
-   size_t len;
-   size_t off;
-
-   union {
-      void *vaddrp;
-      uptr vaddr;
-   };
-
-   int prot;
-
-};
-
-typedef struct user_mapping user_mapping;
 
 typedef struct {
 

@@ -644,7 +644,7 @@ int vfs_mmap(user_mapping *um)
       return -ENODEV;
 
    ASSERT(fops->munmap != NULL);
-   return fops->mmap(hb, um->vaddrp, um->len, um->prot, um->off);
+   return fops->mmap(um);
 }
 
 int vfs_munmap(fs_handle h, void *vaddr, size_t len)
