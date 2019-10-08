@@ -10,6 +10,7 @@
 #include "inodes.c.h"
 #include "stat.c.h"
 #include "rw_ops.c.h"
+#include "mmap.c.h"
 #include "open.c.h"
 #include "mkdir.c.h"
 
