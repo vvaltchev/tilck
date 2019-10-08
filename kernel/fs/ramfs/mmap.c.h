@@ -15,7 +15,7 @@ static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
 }
 
 static int
-ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot, size_t pgoff)
+ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot, size_t off)
 {
    process_info *pi = get_curr_task()->pi;
    ramfs_handle *rh = h;
@@ -25,7 +25,7 @@ ramfs_mmap(fs_handle h, void *vaddrp, size_t len, int prot, size_t pgoff)
    ramfs_block *b;
    int rc;
 
-   const size_t off_begin = pgoff << PAGE_SHIFT;
+   const size_t off_begin = off;
    const size_t off_end = off_begin + len;
 
    ASSERT(IS_PAGE_ALIGNED(len));

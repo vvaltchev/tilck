@@ -59,11 +59,11 @@ static int fb_ioctl(fs_handle h, uptr request, void *argp)
 }
 
 static int
-fbdev_mmap(fs_handle h, void *vaddr, size_t len, int prot, size_t pgoff)
+fbdev_mmap(fs_handle h, void *vaddr, size_t len, int prot, size_t off)
 {
    (void) h; /* handle ignored: there's only one framebuffer device */
 
-   if (pgoff != 0)
+   if (off != 0)
       return -EINVAL; /* not supported, at least for the moment */
 
    ASSERT(IS_PAGE_ALIGNED(len));

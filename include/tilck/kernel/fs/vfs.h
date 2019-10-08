@@ -14,7 +14,6 @@
 #include <tilck/kernel/sys_types.h>
 #include <tilck/kernel/sync.h>
 
-struct user_mapping;
 typedef struct process_info process_info;
 typedef struct user_mapping user_mapping;
 
