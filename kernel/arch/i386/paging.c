@@ -307,15 +307,25 @@ unmap_pages(pdir_t *pdir,
    }
 }
 
-void
+size_t
 unmap_pages_permissive(pdir_t *pdir,
                        void *vaddr,
                        size_t page_count,
                        bool do_free)
 {
+   size_t unmapped_pages = 0;
+   int rc;
+
    for (size_t i = 0; i < page_count; i++) {
-      unmap_page_permissive(pdir, (char *)vaddr + (i << PAGE_SHIFT), do_free);
+      rc = unmap_page_permissive(
+         pdir,
+         (char *)vaddr + (i << PAGE_SHIFT),
+         do_free
+      );
+      unmapped_pages += (rc == 0);
    }
+
+   return unmapped_pages;
 }
 
 uptr get_mapping(pdir_t *pdir, void *vaddrp)

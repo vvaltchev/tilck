@@ -82,17 +82,17 @@ register_mapping:
 
 static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
 {
+   size_t unmapped_count;
    ASSERT(IS_PAGE_ALIGNED(len));
-   unmap_pages_permissive(get_curr_pdir(), vaddr, len >> PAGE_SHIFT, false);
 
-   /*
-    * WARNING: since the permissive version of unmap is used, the calculation
-    * here cannot be reliable! unmap_pages_permissive() could have done just
-    * nothing (all the pages were already un-mapped) and we're assuming it did.
-    *
-    * TODO: fix this bug in fbdev_munmap().
-    */
-   total_fb_pages_mapped -= len >> PAGE_SHIFT;
+   unmapped_count = unmap_pages_permissive(
+      get_curr_pdir(),
+      vaddr,
+      len >> PAGE_SHIFT,
+      false
+   );
+
+   total_fb_pages_mapped -= (size_t)unmapped_count;
    ASSERT(total_fb_pages_mapped >= 0);
 
    /*

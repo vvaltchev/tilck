@@ -110,11 +110,13 @@ unmap_pages(pdir_t *pdir,
    }
 }
 
-void unmap_pages_permissive(pdir_t *pdir, void *va, size_t count, bool do_free)
+size_t unmap_pages_permissive(pdir_t *pd, void *va, size_t count, bool do_free)
 {
    for (size_t i = 0; i < count; i++) {
-      unmap_page_permissive(pdir, (char *)va + (i << PAGE_SHIFT), do_free);
+      unmap_page_permissive(pd, (char *)va + (i << PAGE_SHIFT), do_free);
    }
+
+   return count;
 }
 
 bool is_mapped(pdir_t *, void *vaddrp)
