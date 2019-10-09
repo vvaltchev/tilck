@@ -162,6 +162,11 @@ int cmd_fs3(int argc, char **argv)
    int fd, rc, off = 0;
    DIR *d;
 
+   if (!running_on_tilck()) {
+      not_on_tilck_message();
+      return 0;
+   }
+
    rc = mkdir("/tmp/r", 0755);
    DEVSHELL_CMD_ASSERT(rc == 0);
 
@@ -348,6 +353,11 @@ int cmd_fs4(int argc, char **argv)
    int rc;
    DIR *d;
 
+   if (!running_on_tilck()) {
+      not_on_tilck_message();
+      return 0;
+   }
+
    /* preparing the test environment */
    rc = mkdir("/tmp/r", 0755);
    DEVSHELL_CMD_ASSERT(rc == 0);
@@ -383,8 +393,13 @@ int cmd_fs5(int argc, char **argv)
    DIR *d;
    int rc;
 
+   if (!running_on_tilck()) {
+      not_on_tilck_message();
+      return 0;
+   }
+
    if (!FAT_TEST_DIR) {
-      printf(PFX "Skip fs5 because FAT_TEST_DIR == 0\n");
+      printf(PFX "[SKIP] because FAT_TEST_DIR == 0\n");
       return 0;
    }
 
@@ -405,6 +420,11 @@ int cmd_fs6(int argc, char **argv)
 {
    DIR *d;
    int rc;
+
+   if (!running_on_tilck()) {
+      not_on_tilck_message();
+      return 0;
+   }
 
    d = opendir("/dev");
    DEVSHELL_CMD_ASSERT(d != NULL);

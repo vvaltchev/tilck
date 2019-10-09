@@ -11,6 +11,7 @@
 
 #include "devshell.h"
 #include "sysenter.h"
+#include "test_common.h"
 
 static void do_bigargv_test(size_t len)
 {
@@ -74,6 +75,11 @@ int cmd_bigargv(int argc, char **argv)
    size_t r = 16 * 4096;
    size_t a0;
    size_t argv_len = 0, env_len = 0;
+
+   if (!running_on_tilck()) {
+      not_on_tilck_message();
+      return 0;
+   }
 
    DEVSHELL_CMD_ASSERT(!fails_with_e2big(l));
    DEVSHELL_CMD_ASSERT(fails_with_e2big(r));

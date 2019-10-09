@@ -18,6 +18,16 @@
 #include "devshell.h"
 #include "sysenter.h"
 
+bool running_on_tilck(void)
+{
+   return getenv("TILCK") != NULL;
+}
+
+void not_on_tilck_message(void)
+{
+   fprintf(stderr, "[SKIP]: Test designed to run exclusively on Tilck\n");
+}
+
 
 int cmd_loop(int argc, char **argv)
 {
