@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # SPDX-License-Identifier: BSD-2-Clause
 
 import os
@@ -68,7 +68,7 @@ def load_list_of_shell_cmd_tests():
    tt_long = LONG_TEST_TIMEOUT
 
    devshell = os.path.join(BUILD_DIR, 'userapps', 'devshell')
-   output = subprocess.check_output([devshell, '-l'])
+   output = subprocess.check_output([devshell, '-l']).decode("utf-8")
    arr = output.split("\n")
 
    for r in arr:
@@ -87,7 +87,10 @@ def load_list_of_shell_cmd_tests():
 def load_list_of_kernel_self_tests():
 
    result = []
-   rows = subprocess.check_output(['nm', KERNEL_ELF]).split("\n")
+   rows = subprocess                            \
+            .check_output(['nm', KERNEL_ELF])   \
+               .decode("utf-8")                 \
+                  .split("\n")
 
    short = SHORT_TEST_TIMEOUT
    med = MED_TEST_TIMEOUT
@@ -130,7 +133,7 @@ def internal_run_test(test_type, test, timeout, show_output = False):
                                         stderr=subprocess.STDOUT)
    except subprocess.CalledProcessError as e:
       elapsed = time.time() - start_time
-      print(e.output)
+      print("{0}".format(e.output))
       print("[ FAILED  ] after %.2f seconds with: %s\n" % \
             (elapsed, error_codes_strings[e.returncode]))
       return False
@@ -224,9 +227,9 @@ def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero):
          else:
             print("ERROR: No tests matching "
                   "the '{0}' regex having timeout <= {1}"
-                  .format(reg, max_test_timeout))
+                     .format(reg, max_test_timeout))
             print("Tests matching the regex with timeout > {0}:"
-                  .format(max_test_timeout))
+                     .format(max_test_timeout))
             for x in found:
                print("  {0} [timeout: {1}s]".format(x[0].ljust(20), x[1]))
 
@@ -238,9 +241,10 @@ def dump_test_stats():
 
    for tt in test_types:
       if tests_to_run[tt]:
-         print("{0} passed: {1}/{2}".format(tt_pretty_names[tt],
-                                            tests_passed[tt],
-                                            tests_to_run[tt]))
+         print("{0} passed: {1}/{2}"
+                  .format(tt_pretty_names[tt],
+                          tests_passed[tt],
+                          tests_to_run[tt]))
 
 def main():
 
