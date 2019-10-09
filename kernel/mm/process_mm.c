@@ -265,7 +265,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
    if (handle) {
 
-      if ((rc = vfs_mmap(um))) {
+      if ((rc = vfs_mmap(um, false))) {
 
          /*
           * Everything was apparently OK and the allocation in the user virtual
@@ -295,9 +295,9 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 static int munmap_int(process_info *pi, void *vaddrp, size_t len)
 {
    u32 kfree_flags = KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP;
+   user_mapping *um = NULL, *um2 = NULL;
    uptr vaddr = (uptr) vaddrp;
    size_t actual_len;
-   user_mapping *um;
    int rc;
 
    ASSERT(!is_preemption_enabled());
@@ -347,14 +347,13 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
          um->len = vaddr - um->vaddr;
 
          /* Create a new user_mapping for its 2nd part */
-         user_mapping *um2 =
-            process_add_user_mapping(
-               um->h,
-               (void *)(vaddr + actual_len),
-               (um_vend - (vaddr + actual_len)),
-               um->off + um->len + actual_len,
-               um->prot
-            );
+         um2 = process_add_user_mapping(
+            um->h,
+            (void *)(vaddr + actual_len),
+            (um_vend - (vaddr + actual_len)),
+            um->off + um->len + actual_len,
+            um->prot
+         );
 
          if (!um2) {
 
@@ -381,6 +380,9 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
 
       ASSERT(rc != -ENODEV);
       (void) rc; /* prevent the "unused variable" Werror in release */
+
+      if (um2)
+         vfs_mmap(um2, true);
    }
 
    per_heap_kfree(pi->mmap_heap,

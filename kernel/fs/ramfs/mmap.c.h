@@ -14,7 +14,7 @@ static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
    return 0;
 }
 
-static int ramfs_mmap(user_mapping *um)
+static int ramfs_mmap(user_mapping *um, bool register_only)
 {
    process_info *pi = get_curr_task()->pi;
    ramfs_handle *rh = um->h;
@@ -31,6 +31,9 @@ static int ramfs_mmap(user_mapping *um)
 
    if (i->type != VFS_FILE)
       return -EACCES;
+
+   if (register_only)
+      goto register_mapping;
 
    bintree_in_order_visit_start(&ctx,
                                 i->blocks_tree_root,
@@ -67,6 +70,8 @@ static int ramfs_mmap(user_mapping *um)
       vaddr += PAGE_SIZE;
    }
 
+register_mapping:
+   list_add_tail(&i->mappings_list, &um->inode_node);
    return 0;
 }
 

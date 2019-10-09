@@ -15,6 +15,7 @@
 #include <sys/mman.h>     // system header
 
 static ssize_t total_fb_pages_mapped;
+static list mappings_list = make_list(mappings_list);
 
 static ssize_t fb_read(fs_handle fsh, char *buf, size_t size)
 {
@@ -60,15 +61,22 @@ static int fb_ioctl(fs_handle h, uptr request, void *argp)
 }
 
 static int
-fbdev_mmap(user_mapping *um)
+fbdev_mmap(user_mapping *um, bool register_only)
 {
+   ASSERT(IS_PAGE_ALIGNED(um->len));
+
    if (um->off != 0)
       return -EINVAL; /* not supported, at least for the moment */
 
-   ASSERT(IS_PAGE_ALIGNED(um->len));
+   if (register_only)
+      goto register_mapping;
+
    fb_user_mmap(um->vaddrp, um->len);
 
    total_fb_pages_mapped += um->len >> PAGE_SHIFT;
+
+register_mapping:
+   list_add_tail(&mappings_list, &um->inode_node);
    return 0;
 }
 
@@ -77,6 +85,13 @@ static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
    ASSERT(IS_PAGE_ALIGNED(len));
    unmap_pages_permissive(get_curr_pdir(), vaddr, len >> PAGE_SHIFT, false);
 
+   /*
+    * WARNING: since the permissive version of unmap is used, the calculation
+    * here cannot be reliable! unmap_pages_permissive() could have done just
+    * nothing (all the pages were already un-mapped) and we're assuming it did.
+    *
+    * TODO: fix this bug in fbdev_munmap().
+    */
    total_fb_pages_mapped -= len >> PAGE_SHIFT;
    ASSERT(total_fb_pages_mapped >= 0);
 

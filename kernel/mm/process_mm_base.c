@@ -39,6 +39,7 @@ void process_remove_user_mapping(user_mapping *um)
    ASSERT(!is_preemption_enabled());
 
    list_remove(&um->pi_node);
+   list_remove(&um->inode_node);
    kfree2(um, sizeof(user_mapping));
 }
 
