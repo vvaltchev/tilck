@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <termios.h>
+#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -287,11 +289,16 @@ int main(int argc, char **argv, char **env)
 {
    static char cmdline_buf[256];
    static char cwd_buf[256];
+   static struct termios orig_termios;
+
    char uc = '#';
    int rc;
 
    signal(SIGINT, SIG_IGN);
    signal(SIGQUIT, SIG_IGN);
+
+   /* Save current term's mode */
+   tcgetattr(0, &orig_termios);
 
    shell_argv = argv;
    shell_env = env;
@@ -324,6 +331,9 @@ int main(int argc, char **argv, char **env)
 
       if (rc)
          process_cmd_line(cmdline_buf);
+
+      /* Restore term's mode, in case the command corrupted it */
+      tcsetattr(0, TCSAFLUSH, &orig_termios);
    }
 
    return 0;

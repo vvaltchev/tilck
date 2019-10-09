@@ -80,6 +80,8 @@ considered as *not implemented yet*.
  sys_fchown          | limited [3]
  sys_chmod           | full
  sys_fchmod          | full
+ sys_rename          | full
+ sys_link            | full
 
 Definitions:
 

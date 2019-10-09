@@ -7,20 +7,19 @@
 #define ENTRY(func, n) { (action_func)(func), n }
 
 static const actions_table_item actions_table[] = {
-   [a_write] = ENTRY(term_action_write, 3),
-   [a_dwrite_no_filter] = ENTRY(term_action_dwrite_no_filter, 3),
-   [a_del] = ENTRY(term_action_del, 1),
-   [a_scroll] = ENTRY(term_action_scroll, 2),
-   [a_set_col_offset] = ENTRY(term_action_set_col_offset, 1),
-   [a_move_ch_and_cur] = ENTRY(term_action_move_ch_and_cur, 2),
-   [a_move_ch_and_cur_rel] = ENTRY(term_action_move_ch_and_cur_rel, 2),
-   [a_reset] = ENTRY(term_action_reset, 1),
-   [a_erase_in_display] = ENTRY(term_action_erase_in_display, 1),
-   [a_erase_in_line] = ENTRY(term_action_erase_in_line, 1),
-   [a_pause_video_output] = ENTRY(term_action_pause_video_output, 1),
+   [a_write]                = ENTRY(term_action_write, 3),
+   [a_dwrite_no_filter]     = ENTRY(term_action_dwrite_no_filter, 3),
+   [a_del_generic]          = ENTRY(term_action_del, 2),
+   [a_scroll]               = ENTRY(term_action_scroll, 2),
+   [a_set_col_offset]       = ENTRY(term_action_set_col_offset, 1),
+   [a_move_ch_and_cur]      = ENTRY(term_action_move_ch_and_cur, 2),
+   [a_move_ch_and_cur_rel]  = ENTRY(term_action_move_ch_and_cur_rel, 2),
+   [a_reset]                = ENTRY(term_action_reset, 1),
+   [a_pause_video_output]   = ENTRY(term_action_pause_video_output, 1),
    [a_restart_video_output] = ENTRY(term_action_restart_video_output, 1),
-   [a_enable_cursor] = ENTRY(term_action_enable_cursor, 1),
-   [a_non_buf_scroll] = ENTRY(term_action_non_buf_scroll, 1),
+   [a_enable_cursor]        = ENTRY(term_action_enable_cursor, 1),
+   [a_non_buf_scroll]       = ENTRY(term_action_non_buf_scroll, 2),
+   [a_use_alt_buffer]       = ENTRY(term_action_use_alt_buffer, 1),
 };
 
 #undef ENTRY

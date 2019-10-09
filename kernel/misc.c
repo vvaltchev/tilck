@@ -8,6 +8,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/term.h>
 
+char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 char symtab_buf[SYMTAB_MAX_SIZE] __attribute__ ((section (".Symtab"))) = {0};
 char strtab_buf[STRTAB_MAX_SIZE] __attribute__ ((section (".Strtab"))) = {0};
 

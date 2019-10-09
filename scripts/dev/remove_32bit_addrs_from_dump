@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+sed -E -i 's/[a-f0-9]{8}/ADDR32/g' "$1"

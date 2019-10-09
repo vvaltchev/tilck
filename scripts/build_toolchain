@@ -429,6 +429,12 @@ function build_busybox {
       internal_build_busybox
       popd
 
+   elif [ "$REBUILD" == "1" ]; then
+
+      pushd busybox
+      internal_build_busybox
+      popd
+
    else
       show_skip_component_msg "BUSYBOX"
    fi

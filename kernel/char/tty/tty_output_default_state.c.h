@@ -1,13 +1,10 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#pragma GCC diagnostic push
-
 static enum term_fret
 tty_def_state_esc(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
-
-   ctx->state = TERM_WFILTER_STATE_ESC1;
+   tty_set_state(ctx, &tty_state_esc1);
    return TERM_FILTER_WRITE_BLANK;
 }
 
@@ -16,7 +13,7 @@ tty_def_state_lf(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
 
-   if (ctx->t->c_term.c_oflag & (OPOST | ONLCR)) {
+   if ((ctx->t->c_term.c_oflag & (OPOST | ONLCR)) == (OPOST | ONLCR)) {
 
       *a = (term_action) {
          .type3 = a_dwrite_no_filter,
@@ -29,6 +26,32 @@ tty_def_state_lf(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    }
 
    return TERM_FILTER_WRITE_C;
+}
+
+static enum term_fret
+tty_def_state_ri(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+{
+   twfilter_ctx_t *const ctx = ctx_arg;
+
+   if (term_get_curr_row(ctx->t->term_inst) > 0) {
+
+      *a = (term_action) {
+         .type2 = a_move_ch_and_cur_rel,
+         .arg1 = LO_BITS((u32)-1, 8, u32),
+         .arg2 = 0,
+      };
+
+   } else {
+
+      *a = (term_action) {
+         .type2 = a_non_buf_scroll,
+         .arg1 = 1,
+         .arg2 = non_buf_scroll_down,
+      };
+
+   }
+
+   return TERM_FILTER_WRITE_BLANK;
 }
 
 static enum term_fret
@@ -69,7 +92,7 @@ static enum term_fret
 tty_def_state_verase(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    *a = (term_action) {
-      .type1 = a_del,
+      .type1 = a_del_generic,
       .arg = TERM_DEL_PREV_CHAR,
    };
 
@@ -80,7 +103,7 @@ static enum term_fret
 tty_def_state_vwerase(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    *a = (term_action) {
-      .type1 = a_del,
+      .type1 = a_del_generic,
       .arg = TERM_DEL_PREV_WORD,
    };
 
@@ -99,9 +122,8 @@ tty_def_state_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
 
-   tty_reset_filter_ctx(ctx);
-   ctx->state = TERM_WFILTER_STATE_ESC2_CSI;
-
+   tty_reset_filter_ctx(ctx->t);
+   tty_set_state(ctx, &tty_state_esc2_csi);
    return TERM_FILTER_WRITE_BLANK;
 }
 
@@ -170,11 +192,15 @@ tty_def_print_untrasl_char(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_handle_default_state(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_default(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
    tty *const t = ctx->t;
    s16 tv = t->c_sets_tables[t->c_set][*c];
+   int rc;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
 
    if (tv >= 0) {
       *c = (u8) tv;

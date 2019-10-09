@@ -36,8 +36,8 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
 {
    fat_handle *h = (fat_handle *) handle;
    fat_fs_device_data *d = h->fs->device_data;
-   off_t fsize = (off_t)h->e->DIR_FileSize;
-   off_t written_to_buf = 0;
+   offt fsize = (offt)h->e->DIR_FileSize;
+   offt written_to_buf = 0;
 
    if (h->pos >= fsize) {
 
@@ -52,11 +52,11 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
 
       char *data = fat_get_pointer_to_cluster_data(d->hdr, h->curr_cluster);
 
-      const off_t file_rem       = fsize - h->pos;
-      const off_t buf_rem        = (off_t)bufsize - written_to_buf;
-      const off_t cluster_off    = h->pos % (off_t)d->cluster_size;
-      const off_t cluster_rem    = (off_t)d->cluster_size - cluster_off;
-      const off_t to_read        = MIN3(cluster_rem, buf_rem, file_rem);
+      const offt file_rem       = fsize - h->pos;
+      const offt buf_rem        = (offt)bufsize - written_to_buf;
+      const offt cluster_off    = h->pos % (offt)d->cluster_size;
+      const offt cluster_rem    = (offt)d->cluster_size - cluster_off;
+      const offt to_read        = MIN3(cluster_rem, buf_rem, file_rem);
 
       ASSERT(to_read >= 0);
 
@@ -102,13 +102,13 @@ fat_rewind(fs_handle handle)
    return 0;
 }
 
-STATIC off_t
-fat_seek_forward(fs_handle handle, off_t dist)
+STATIC offt
+fat_seek_forward(fs_handle handle, offt dist)
 {
    fat_handle *h = (fat_handle *) handle;
    fat_fs_device_data *d = h->fs->device_data;
-   off_t fsize = (off_t)h->e->DIR_FileSize;
-   off_t moved_distance = 0;
+   offt fsize = (offt)h->e->DIR_FileSize;
+   offt moved_distance = 0;
 
    if (dist == 0)
       return h->pos;
@@ -117,16 +117,16 @@ fat_seek_forward(fs_handle handle, off_t dist)
       /* Allow, like Linux does, to seek past the end of a file. */
       h->pos += dist;
       h->curr_cluster = (u32) -1; /* invalid cluster */
-      return (off_t) h->pos;
+      return (offt) h->pos;
    }
 
    do {
 
-      const off_t file_rem       = fsize - h->pos;
-      const off_t dist_rem       = dist - moved_distance;
-      const off_t cluster_off    = h->pos % (off_t)d->cluster_size;
-      const off_t cluster_rem    = (off_t)d->cluster_size - cluster_off;
-      const off_t to_move        = MIN3(cluster_rem, dist_rem, file_rem);
+      const offt file_rem       = fsize - h->pos;
+      const offt dist_rem       = dist - moved_distance;
+      const offt cluster_off    = h->pos % (offt)d->cluster_size;
+      const offt cluster_rem    = (offt)d->cluster_size - cluster_off;
+      const offt to_move        = MIN3(cluster_rem, dist_rem, file_rem);
 
       ASSERT(to_move >= 0);
 
@@ -151,7 +151,7 @@ fat_seek_forward(fs_handle handle, off_t dist)
 
    } while (true);
 
-   return (off_t)h->pos;
+   return (offt)h->pos;
 }
 
 static int
@@ -161,7 +161,7 @@ fat_count_dirents_cb(fat_header *hdr,
                      const char *long_name,
                      void *arg)
 {
-   (*(off_t *)arg)++;
+   (*(offt *)arg)++;
    return 0;
 }
 
@@ -170,10 +170,10 @@ fat_count_dirents_cb(fat_header *hdr,
  *
  * TODO: implement fat_count_dirents() in a more efficient way.
  */
-STATIC off_t fat_count_dirents(fat_fs_device_data *d, fat_entry *e)
+STATIC offt fat_count_dirents(fat_fs_device_data *d, fat_entry *e)
 {
    fat_walk_dir_ctx walk_ctx = {0};
-   off_t count = 0;
+   offt count = 0;
    int rc;
 
    ASSERT(e->directory);
@@ -190,7 +190,7 @@ STATIC off_t fat_count_dirents(fat_fs_device_data *d, fat_entry *e)
    return rc ? rc : count;
 }
 
-static off_t fat_seek_dir(fat_handle *fh, off_t off)
+static offt fat_seek_dir(fat_handle *fh, offt off)
 {
    if (off < 0)
       return -EINVAL;
@@ -202,8 +202,8 @@ static off_t fat_seek_dir(fat_handle *fh, off_t off)
    return fh->pos;
 }
 
-STATIC off_t
-fat_seek(fs_handle handle, off_t off, int whence)
+STATIC offt
+fat_seek(fs_handle handle, offt off, int whence)
 {
    fat_handle *fh = handle;
 
@@ -215,7 +215,7 @@ fat_seek(fs_handle handle, off_t off, int whence)
       return fat_seek_dir(fh, off);
    }
 
-   off_t curr_pos = fh->pos;
+   offt curr_pos = fh->pos;
 
    switch (whence) {
 
@@ -233,7 +233,7 @@ fat_seek(fs_handle handle, off_t off, int whence)
             break;
 
          fat_handle *h = (fat_handle *) handle;
-         off = (off_t) h->e->DIR_FileSize + off;
+         off = (offt) h->e->DIR_FileSize + off;
 
          if (off < 0)
             return -EINVAL;
@@ -646,6 +646,8 @@ static const fs_ops static_fsops_fat =
    .stat = fat_stat,
    .chmod = NULL,
    .get_entry = fat_get_entry,
+   .rename = NULL,
+   .link = NULL,
    .retain_inode = fat_retain_inode,
    .release_inode = fat_release_inode,
 

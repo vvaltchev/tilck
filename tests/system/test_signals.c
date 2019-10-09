@@ -16,8 +16,7 @@
 
 #include "devshell.h"
 
-static int
-test_sig(void (*child_func)(void), int expected_sig, int expected_code)
+int test_sig(void (*child_func)(void), int expected_sig, int expected_code)
 {
    int code, term_sig;
    int child_pid;

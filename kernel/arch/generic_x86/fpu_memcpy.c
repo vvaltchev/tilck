@@ -24,14 +24,13 @@
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/arch/generic_x86/fpu_memcpy.h>
 
-
 void
 memcpy256_failsafe(void *dest, const void *src, u32 n)
 {
    memcpy32(dest, src, n * 8);
 }
 
-void
+FASTCALL void
 memcpy_single_256_failsafe(void *dest, const void *src)
 {
    memcpy32(dest, src, 8);
@@ -154,6 +153,39 @@ init_fpu_memcpy_internal_check(void *func, const char *fname, u32 size)
    }
 }
 
+static void *get_fpu_cpy_single_256_nt_func(void)
+{
+   if (x86_cpu_features.can_use_avx2)
+      return &fpu_cpy_single_256_nt_avx2;
+
+   if (x86_cpu_features.can_use_sse2)
+      return &fpu_cpy_single_256_nt_sse2;
+
+   if (x86_cpu_features.can_use_sse)
+      return &fpu_cpy_single_256_nt_sse;
+
+   /* See the comment below in init_fpu_memcpy() */
+   return IS_RELEASE_BUILD ? &memcpy_single_256_failsafe : NULL;
+}
+
+static void *get_fpu_cpy_single_256_nt_read_func(void)
+{
+   if (x86_cpu_features.can_use_avx2)
+      return &fpu_cpy_single_256_nt_read_avx2;
+
+   if (x86_cpu_features.can_use_sse4_1)
+      return &fpu_cpy_single_256_nt_read_sse4_1;
+
+   if (x86_cpu_features.can_use_sse2)
+      return &fpu_cpy_single_256_sse2;     /* no "nt" read here */
+
+   if (x86_cpu_features.can_use_sse)
+      return &fpu_cpy_single_256_sse;      /* no "nt" read here */
+
+   /* See the comment below in init_fpu_memcpy() */
+   return IS_RELEASE_BUILD ? &memcpy_single_256_failsafe : NULL;
+}
+
 void init_fpu_memcpy(void)
 {
    const char *func_name;
@@ -161,35 +193,35 @@ void init_fpu_memcpy(void)
    u32 size;
    void *func;
 
-   func = &memcpy_single_256_failsafe;
+   /*
+    * NOTE: don't hot-patch the *_fpu_cpy_single_* funcs in the failsafe case.
+    * Reason: unless we're using GCC, this file won't be compiled with -O3
+    * and memcpy_single_256_failsafe() will contain a call to memset32()
+    * instead of inlining its body: that makes impossible the copy of the
+    * function's body in __asm_fpu* because by default the compiler emit
+    * relative call instructions (E8 opcode in x86): if we move the body, the
+    * relative call will jump to the wrong place. The alternative of making
+    * memset32() always inline doesn't work either with Clang because, because
+    * of the lack of optimizations, the body of memcpy_single_256_failsafe()
+    * will become huge and full of useless instructions and it won't fit
+    * the 128 bytes reserved in __asm_fpu*, and making that slots bigger just
+    * to contain the crappy code is NOT a solution. Therefore, since clang
+    * does not support the #pragma optimize like GCC, the less evil for the
+    * failsafe case is just to leave the __asm_fpu_* funcs unpatched, keeping
+    * their original body: this means just making an unconditional jmp to
+    * memcpy_single_256_failsafe() and from there a call to memset32(). It seems
+    * by far the less evil solution.
+    */
 
-   if (x86_cpu_features.can_use_avx2)
-      func = &fpu_cpy_single_256_nt_avx2;
-   else if (x86_cpu_features.can_use_sse2)
-      func = &fpu_cpy_single_256_nt_sse2;
-   else if (x86_cpu_features.can_use_sse)
-      func = &fpu_cpy_single_256_nt_sse;
+   if ((func = get_fpu_cpy_single_256_nt_func())) {
+      func_name = find_sym_at_addr((uptr)func, &offset, &size);
+      init_fpu_memcpy_internal_check(func, func_name, size);
+      memcpy(&__asm_fpu_cpy_single_256_nt, func, size);
+   }
 
-   func_name = find_sym_at_addr((uptr)func, &offset, &size);
-
-   init_fpu_memcpy_internal_check(func, func_name, size);
-   memcpy(&__asm_fpu_cpy_single_256_nt, func, size);
-
-   // --------------------------------------------------------------
-
-   func = &memcpy_single_256_failsafe;
-
-   if (x86_cpu_features.can_use_avx2)
-      func = &fpu_cpy_single_256_nt_read_avx2;
-   else if (x86_cpu_features.can_use_sse4_1)
-      func = &fpu_cpy_single_256_nt_read_sse4_1;
-   else if (x86_cpu_features.can_use_sse2)
-      func = &fpu_cpy_single_256_sse2;     /* no "nt" read here */
-   else if (x86_cpu_features.can_use_sse)
-      func = &fpu_cpy_single_256_sse;      /* no "nt" read here */
-
-   func_name = find_sym_at_addr((uptr)func, &offset, &size);
-
-   init_fpu_memcpy_internal_check(func, func_name, size);
-   memcpy(&__asm_fpu_cpy_single_256_nt_read, func, size);
+   if ((func = get_fpu_cpy_single_256_nt_read_func())) {
+      func_name = find_sym_at_addr((uptr)func, &offset, &size);
+      init_fpu_memcpy_internal_check(func, func_name, size);
+      memcpy(&__asm_fpu_cpy_single_256_nt_read, func, size);
+   }
 }

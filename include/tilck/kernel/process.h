@@ -22,16 +22,6 @@ STATIC_ASSERT(((IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE) % PAGE_SIZE) == 0);
 
 typedef struct {
 
-   list_node node;
-
-   fs_handle h;
-   void *vaddr;
-   size_t page_count;
-
-} user_mapping;
-
-typedef struct {
-
    bintree_node node;
 
    void *vaddr;
@@ -192,13 +182,6 @@ static ALWAYS_INLINE bool is_tasklet_runner(task_info *ti)
 {
    return ti->what == &tasklet_runner;
 }
-
-user_mapping *
-process_add_user_mapping(fs_handle h, void *vaddr, size_t page_count);
-void process_remove_user_mapping(user_mapping *um);
-void full_remove_user_mapping(process_info *pi, user_mapping *um);
-void remove_all_mappings_of_handle(process_info *pi, fs_handle h);
-user_mapping *process_get_user_mapping(void *vaddr);
 
 int first_execve(const char *abs_path, const char *const *argv);
 int setup_usermode_task(pdir_t *pdir,

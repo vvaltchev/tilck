@@ -77,7 +77,7 @@ static void pic_remap(u8 offset1, u8 offset2)
 
 static void pic_send_eoi(int irq)
 {
-   ASSERT(0 <= irq && irq <= 15);
+   ASSERT(IN_RANGE_INC(irq, 0, 15));
 
    if (irq >= 8) {
       outb(PIC2_COMMAND, PIC_EOI);

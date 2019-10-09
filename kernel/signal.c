@@ -70,7 +70,7 @@ static const action_type signal_default_actions[32] =
 
 static void do_send_signal(task_info *ti, int signum)
 {
-   ASSERT(0 <= signum && signum < _NSIG);
+   ASSERT(IN_RANGE(signum, 0, _NSIG));
    __sighandler_t h = ti->pi->sa_handlers[signum];
 
    if (h == SIG_IGN)
@@ -183,7 +183,7 @@ sys_rt_sigaction(int signum,
    struct k_sigaction oldact;
    int rc = 0;
 
-   if (signum <= 0 || signum >= _NSIG)
+   if (!IN_RANGE(signum, 1, _NSIG))
       return -EINVAL;
 
    if (signum == SIGKILL || signum == SIGSTOP)

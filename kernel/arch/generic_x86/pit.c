@@ -32,7 +32,7 @@
 
 void timer_set_freq(u32 hz)
 {
-   ASSERT(hz >= 18 && hz <= 1000);
+   ASSERT(IN_RANGE_INC(hz, 18, 1000));
 
    u32 divisor = 1193180 / hz;
 

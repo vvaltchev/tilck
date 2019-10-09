@@ -93,15 +93,30 @@ void unmap_page(pdir_t *, void *vaddrp, bool free_pageframe)
    mappings[(uptr)vaddrp] = INVALID_PADDR;
 }
 
+int unmap_page_permissive(pdir_t *, void *vaddrp, bool free_pageframe)
+{
+   unmap_page(nullptr, vaddrp, free_pageframe);
+   return 0;
+}
+
 void
 unmap_pages(pdir_t *pdir,
             void *vaddr,
-            size_t page_count,
-            bool free_pageframes)
+            size_t count,
+            bool do_free)
 {
-   for (size_t i = 0; i < page_count; i++) {
-      unmap_page(pdir, (char *)vaddr + (i << PAGE_SHIFT), free_pageframes);
+   for (size_t i = 0; i < count; i++) {
+      unmap_page(pdir, (char *)vaddr + (i << PAGE_SHIFT), do_free);
    }
+}
+
+size_t unmap_pages_permissive(pdir_t *pd, void *va, size_t count, bool do_free)
+{
+   for (size_t i = 0; i < count; i++) {
+      unmap_page_permissive(pd, (char *)va + (i << PAGE_SHIFT), do_free);
+   }
+
+   return count;
 }
 
 bool is_mapped(pdir_t *, void *vaddrp)

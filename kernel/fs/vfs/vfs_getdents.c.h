@@ -7,7 +7,7 @@ typedef struct {
    u32 buf_size;
    u32 offset;
    u32 fs_flags;
-   off_t off;
+   offt off;
    struct linux_dirent64 ent;
 
 } vfs_getdents_ctx;

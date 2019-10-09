@@ -15,18 +15,6 @@
 #include "term_int.h"
 
 #define NPAR 16 /* maximum number of CSI parameters */
-
-enum twfilter_state {
-
-   TERM_WFILTER_STATE_DEFAULT = 0,
-   TERM_WFILTER_STATE_ESC1,         // ESC
-   TERM_WFILTER_STATE_ESC2_CSI,     // ESC [
-   TERM_WFILTER_STATE_ESC2_PAR0,    // ESC (
-   TERM_WFILTER_STATE_ESC2_PAR1,    // ESC )
-   TERM_WFILTER_STATE_ESC2_UNKNOWN  // ESC ??
-
-};
-
 #define TTY_ATTR_BOLD             (1 << 0)
 #define TTY_ATTR_REVERSE          (1 << 1)
 
@@ -34,11 +22,11 @@ typedef struct {
 
    tty *t;
 
-   enum twfilter_state state;
    char param_bytes[64];
    char interm_bytes[64];
    char tmpbuf[16];
 
+   bool non_default_state;
    u8 pbc; /* param bytes count */
    u8 ibc; /* intermediate bytes count */
 
@@ -47,10 +35,8 @@ typedef struct {
 void tty_input_init(tty *t);
 void tty_kb_buf_reset(tty *t);
 int tty_keypress_handler(u32 key, u8 c);
-void tty_reset_filter_ctx(twfilter_ctx_t *ctx);
+void tty_reset_filter_ctx(tty *t);
 
-enum term_fret
-tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);
 enum term_fret
 serial_tty_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);
 

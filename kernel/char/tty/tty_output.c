@@ -13,7 +13,19 @@
 
 #include "term_int.h"
 #include "tty_int.h"
+
+/* tty_output internal functions */
+static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c);
+static void tty_set_state(twfilter_ctx_t *ctx, term_filter new_state);
+static enum term_fret tty_state_default(u8*, u8*, term_action*, void*);
+static enum term_fret tty_state_esc1(u8*, u8*, term_action*, void*);
+static enum term_fret tty_state_esc2_par0(u8*, u8*, term_action*, void*);
+static enum term_fret tty_state_esc2_par1(u8*, u8*, term_action*, void*);
+static enum term_fret tty_state_esc2_csi(u8*, u8*, term_action*, void*);
+static enum term_fret tty_state_esc2_unknown(u8*, u8*, term_action*, void*);
+
 #include "tty_output_default_state.c.h"
+#pragma GCC diagnostic push
 
 static const u8 fg_csi_to_vga[256] =
 {
@@ -107,10 +119,12 @@ const s16 tty_gfx_trans_table[256] =
 
 #pragma GCC diagnostic pop
 
-void tty_reset_filter_ctx(twfilter_ctx_t *ctx)
+void tty_reset_filter_ctx(tty *t)
 {
+   twfilter_ctx_t *ctx = &t->filter_ctx;
    ctx->pbc = ctx->ibc = 0;
-   ctx->state = TERM_WFILTER_STATE_DEFAULT;
+   ctx->t = t;
+   tty_set_state(ctx, &tty_state_default);
 }
 
 static void
@@ -307,7 +321,11 @@ tty_csi_J_handler(u32 *params,
                   term_action *a,
                   twfilter_ctx_t *ctx)
 {
-   *a = (term_action) { .type1 = a_erase_in_display, .arg = params[0] };
+   *a = (term_action) {
+      .type2 = a_del_generic,
+      .arg1 = TERM_DEL_ERASE_IN_DISPLAY,
+      .arg2 = params[0],
+   };
 }
 
 static void
@@ -318,7 +336,11 @@ tty_csi_K_handler(u32 *params,
                   term_action *a,
                   twfilter_ctx_t *ctx)
 {
-   *a = (term_action) { .type1 = a_erase_in_line, .arg = params[0] };
+   *a = (term_action) {
+      .type2 = a_del_generic,
+      .arg1 = TERM_DEL_ERASE_IN_LINE,
+      .arg2 = params[0],
+   };
 }
 
 static void
@@ -456,28 +478,42 @@ tty_csi_pvt_ext_handler(u32 *params,
                         term_action *a,
                         twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
-
    switch (params[0]) {
 
       case 25:
          if (c == 'h') {
 
             /* Show the cursor */
-            term_set_cursor_enabled(t->term_inst, true);
+
+            *a = (term_action) {
+               .type1 = a_enable_cursor,
+               .arg = true,
+            };
 
          } else if (c == 'l') {
 
-            /* Hide the cursor */
-            term_set_cursor_enabled(t->term_inst, false);
+            *a = (term_action) {
+               .type1 = a_enable_cursor,
+               .arg = false,
+            };
          }
          break;
 
       case 1049:
          if (c == 'h') {
-            /* Enable alternative screen buffer: not supported */
+
+            *a = (term_action) {
+               .type1 = a_use_alt_buffer,
+               .arg = true,
+            };
+
          } else if (c == 'l') {
-            /* Disable alternative screen buffer: not supported */
+
+            *a = (term_action) {
+               .type1 = a_use_alt_buffer,
+               .arg = false,
+            };
+
          }
          break;
 
@@ -556,14 +592,18 @@ tty_filter_end_csi_seq(u8 c,
       tty_csi_pvt_ext_handler(params, pc, c, color, a, ctx);
    }
 
-   tty_reset_filter_ctx(ctx);
+   tty_reset_filter_ctx(ctx->t);
    return TERM_FILTER_WRITE_BLANK;
 }
 
 static enum term_fret
-tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc2_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *ctx = ctx_arg;
+   int rc;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
 
    if (0x30 <= *c && *c <= 0x3F) {
 
@@ -576,7 +616,7 @@ tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
           * back to the default state ignoring this escape sequence.
           */
 
-         tty_reset_filter_ctx(ctx);
+         tty_reset_filter_ctx(ctx->t);
          return TERM_FILTER_WRITE_BLANK;
       }
 
@@ -591,7 +631,7 @@ tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
       if (ctx->ibc >= ARRAY_SIZE(ctx->interm_bytes)) {
 
          /* As above, the param bytes exceed our limits */
-         tty_reset_filter_ctx(ctx);
+         tty_reset_filter_ctx(ctx->t);
          return TERM_FILTER_WRITE_BLANK;
       }
 
@@ -605,33 +645,41 @@ tty_handle_csi_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    }
 
    /* We shouldn't get here. Something's gone wrong: return the default state */
-   tty_reset_filter_ctx(ctx);
+   tty_reset_filter_ctx(ctx->t);
    return TERM_FILTER_WRITE_BLANK;
 }
 
 static enum term_fret
-tty_handle_unknown_esc_seq(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc2_unknown(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *ctx = ctx_arg;
+   int rc;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
 
    if (0x40 <= *c && *c <= 0x5f) {
       /* End of any possible (unknown) escape sequence */
-      ctx->state = TERM_WFILTER_STATE_DEFAULT;
+      tty_set_state(ctx, &tty_state_default);
    }
 
    return TERM_FILTER_WRITE_BLANK;
 }
 
 static enum term_fret
-tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *ctx = ctx_arg;
+   int rc;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
 
    switch (*c) {
 
       case '[':
-         tty_reset_filter_ctx(ctx);
-         ctx->state = TERM_WFILTER_STATE_ESC2_CSI;
+         tty_reset_filter_ctx(ctx->t);
+         tty_set_state(ctx, &tty_state_esc2_csi);
          break;
 
       case 'c':
@@ -650,19 +698,28 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
             tty_update_default_state_tables(t);
             bzero(ctx, sizeof(*ctx));
             ctx->t = t;
+            tty_set_state(ctx, &tty_state_default);
          }
          break;
 
       case '(':
-         ctx->state = TERM_WFILTER_STATE_ESC2_PAR0;
+         tty_set_state(ctx, &tty_state_esc2_par0);
          break;
 
       case ')':
-         ctx->state = TERM_WFILTER_STATE_ESC2_PAR1;
+         tty_set_state(ctx, &tty_state_esc2_par1);
          break;
 
+      case 'D': /* linefeed */
+         tty_set_state(ctx, &tty_state_default);
+         return tty_def_state_lf(c, color, a, ctx_arg);
+
+      case 'M': /* reverse linefeed */
+         tty_set_state(ctx, &tty_state_default);
+         return tty_def_state_ri(c, color, a, ctx_arg);
+
       default:
-         ctx->state = TERM_WFILTER_STATE_ESC2_UNKNOWN;
+         tty_set_state(ctx, &tty_state_esc2_unknown);
          /*
           * We need to handle now this case because the sequence might be 1-char
           * long, like "^[_". Therefore, if the current character is in the
@@ -671,7 +728,7 @@ tty_handle_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
           * will end with the first character in the range [0x40, 0x5f].
           */
 
-         return tty_handle_unknown_esc_seq(c, color, a, ctx);
+         return tty_state_esc2_unknown(c, color, a, ctx);
    }
 
    return TERM_FILTER_WRITE_BLANK;
@@ -697,48 +754,50 @@ tty_change_translation_table(twfilter_ctx_t *ctx, u8 *c, int c_set)
          break;
    }
 
-   ctx->state = TERM_WFILTER_STATE_DEFAULT;
+   tty_set_state(ctx, &tty_state_default);
    return TERM_FILTER_WRITE_BLANK;
 }
 
 static enum term_fret
-tty_handle_state_esc2_par0(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc2_par0(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
+   twfilter_ctx_t *const ctx = ctx_arg;
+   int rc;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
+
    return tty_change_translation_table(ctx_arg, c, 0);
 }
 
 static enum term_fret
-tty_handle_state_esc2_par1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc2_par1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 {
+   twfilter_ctx_t *const ctx = ctx_arg;
+   int rc;
+
+   if ((rc = tty_pre_filter(ctx, c)) >= 0)
+      return (enum term_fret)rc;
+
    return tty_change_translation_table(ctx_arg, c, 1);
 }
 
-enum term_fret
-tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+static void tty_set_state(twfilter_ctx_t *ctx, term_filter new_state)
 {
-   static const term_filter table[] =
-   {
-      [TERM_WFILTER_STATE_DEFAULT] = &tty_handle_default_state,
-      [TERM_WFILTER_STATE_ESC1] = &tty_handle_state_esc1,
-      [TERM_WFILTER_STATE_ESC2_PAR0] = &tty_handle_state_esc2_par0,
-      [TERM_WFILTER_STATE_ESC2_PAR1] = &tty_handle_state_esc2_par1,
-      [TERM_WFILTER_STATE_ESC2_CSI] = &tty_handle_csi_seq,
-      [TERM_WFILTER_STATE_ESC2_UNKNOWN] = &tty_handle_unknown_esc_seq
-   };
+   ctx->non_default_state = new_state != &tty_state_default;
+   term_set_filter(ctx->t->term_inst, new_state, ctx);
+}
 
-   twfilter_ctx_t *ctx = ctx_arg;
-
-   if (kopt_serial_console)
-      return TERM_FILTER_WRITE_C;
-
-   if (ctx->state != TERM_WFILTER_STATE_DEFAULT) {
+static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c)
+{
+   if (ctx->non_default_state) {
 
       switch (*c) {
 
          case '\033':
             /* ESC in the middle of any sequence, just starts a new one */
-            tty_reset_filter_ctx(ctx);
-            ctx->state = TERM_WFILTER_STATE_ESC1;
+            tty_reset_filter_ctx(ctx->t);
+            tty_set_state(ctx, &tty_state_esc1);
             return TERM_FILTER_WRITE_BLANK;
 
          default:
@@ -747,8 +806,7 @@ tty_term_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
       }
    }
 
-   ASSERT(ctx->state < ARRAY_SIZE(table));
-   return table[ctx->state](c, color, a, ctx);
+   return -1;
 }
 
 ssize_t tty_write_int(tty *t, devfs_handle *h, char *buf, size_t size)
@@ -758,7 +816,6 @@ ssize_t tty_write_int(tty *t, devfs_handle *h, char *buf, size_t size)
    term_write(t->term_inst, buf, size, t->curr_color);
    return (ssize_t) size;
 }
-
 
 enum term_fret
 serial_tty_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)

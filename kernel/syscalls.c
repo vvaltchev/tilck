@@ -85,7 +85,7 @@ NORETURN int sys_exit_group(int status)
 /* NOTE: deprecated syscall */
 int sys_tkill(int tid, int sig)
 {
-   if (sig < 0 || sig >= _NSIG || tid <= 0)
+   if (!IN_RANGE(sig, 0, _NSIG) || tid <= 0)
       return -EINVAL;
 
    return send_signal(tid, sig, false);
@@ -98,7 +98,7 @@ int sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
       return -EINVAL;
    }
 
-   if (sig < 0 || sig >= _NSIG || pid <= 0 || tid <= 0)
+   if (!IN_RANGE(sig, 0, _NSIG) || pid <= 0 || tid <= 0)
       return -EINVAL;
 
    return send_signal2(pid, tid, sig, false);
@@ -111,7 +111,7 @@ int sys_kill(int pid, int sig)
       return -EINVAL;
    }
 
-   if (sig < 0 || sig >= _NSIG || pid <= 0)
+   if (!IN_RANGE(sig, 0, _NSIG) || pid <= 0)
       return -EINVAL;
 
    return send_signal(pid, sig, true);

@@ -21,24 +21,30 @@ struct term {
 
    bool initialized;
    bool cursor_enabled;
+   bool using_alt_buffer;
 
-   u16 tabsize;
-   u16 cols;
-   u16 rows;
+   u16 tabsize;               /* term's current tab size */
+   u16 rows;                  /* term's rows count */
+   u16 cols;                  /* term's columns count */
 
-   u16 r; /* current row */
-   u16 c; /* current col */
-   u16 term_col_offset;
+   u16 r;                     /* current row */
+   u16 c;                     /* current col */
+   u16 col_offset;
 
    const video_interface *vi;
    const video_interface *saved_vi;
 
-   u16 *buffer;
-   u32 scroll;
-   u32 max_scroll;
+   u16 *buffer;               /* the whole screen buffer */
+   u16 *screen_buf_copy;      /* when != NULL, contains one screenshot */
+   u32 scroll;                /* != max_scroll only while scrolling */
+   u32 max_scroll;            /* buffer rows used - rows. Its value is 0 until
+                                 the screen scrolls for the first time */
+   u32 total_buffer_rows;     /* >= term rows */
+   u32 extra_buffer_rows;     /* => total_buffer_rows - rows. Always >= 0 */
 
-   u32 total_buffer_rows;
-   u32 extra_buffer_rows;
+   u16 saved_cur_row;         /* keeps cursor's row in the primary buffer */
+   u16 saved_cur_col;         /* keeps cursor's col in the primary buffer */
+
    bool *term_tabs_buf;
 
    safe_ringbuf safe_ringbuf;
@@ -249,7 +255,7 @@ static void term_action_scroll(term *t, u32 lines, bool down, ...)
 
 static void term_internal_incr_row(term *t, u8 color)
 {
-   t->term_col_offset = 0;
+   t->col_offset = 0;
 
    if (t->r < t->rows - 1) {
       ++t->r;
@@ -295,7 +301,7 @@ static void term_internal_write_tab(term *t, u8 color)
 
 static void term_internal_write_backspace(term *t, u8 color)
 {
-   if (!t->c || t->c <= t->term_col_offset)
+   if (!t->c || t->c <= t->col_offset)
       return;
 
    const u16 space_entry = make_vgaentry(' ', color);
@@ -312,7 +318,7 @@ static void term_internal_write_backspace(term *t, u8 color)
 
    for (int i = t->tabsize - 1; i >= 0; i--) {
 
-      if (!t->c || t->c == t->term_col_offset)
+      if (!t->c || t->c == t->col_offset)
          break;
 
       if (t->term_tabs_buf[t->r * t->cols + t->c - 1])
@@ -347,23 +353,6 @@ static void term_internal_delete_last_word(term *t, u8 color)
          break;
 
       term_internal_write_backspace(t, color);
-   }
-}
-
-static void term_action_del(term *t, enum term_del_type del_type, ...)
-{
-   switch (del_type) {
-
-      case TERM_DEL_PREV_CHAR:
-         term_internal_write_backspace(t, get_curr_cell_color(t));
-         break;
-
-      case TERM_DEL_PREV_WORD:
-         term_internal_delete_last_word(t, get_curr_cell_color(t));
-         break;
-
-      default:
-         NOT_REACHED();
    }
 }
 
@@ -445,7 +434,7 @@ term_action_dwrite_no_filter(term *t, char *buf, u32 len, u8 color)
 
 static void term_action_set_col_offset(term *t, u16 off, ...)
 {
-   t->term_col_offset = off;
+   t->col_offset = off;
 }
 
 static void term_action_move_ch_and_cur(term *t, int row, int col, ...)
@@ -589,6 +578,32 @@ static void term_action_erase_in_line(term *t, int mode, ...)
       t->vi->flush_buffers();
 }
 
+
+static void term_action_del(term *t, enum term_del_type del_type, int m, ...)
+{
+   switch (del_type) {
+
+      case TERM_DEL_PREV_CHAR:
+         term_internal_write_backspace(t, get_curr_cell_color(t));
+         break;
+
+      case TERM_DEL_PREV_WORD:
+         term_internal_delete_last_word(t, get_curr_cell_color(t));
+         break;
+
+      case TERM_DEL_ERASE_IN_DISPLAY:
+         term_action_erase_in_display(t, m);
+         break;
+
+      case TERM_DEL_ERASE_IN_LINE:
+         term_action_erase_in_line(t, m);
+         break;
+
+      default:
+         NOT_REACHED();
+   }
+}
+
 static void term_action_non_buf_scroll_up(term *t, u16 n, ...)
 {
    if (!t->buffer)
@@ -666,6 +681,42 @@ static void term_action_restart_video_output(term *t, ...)
       t->vi->enable_static_elems_refresh();
 }
 
+static void term_action_use_alt_buffer(term *t, bool use_alt_buffer, ...)
+{
+   u16 *b = &t->buffer[t->scroll % t->total_buffer_rows * t->cols];
+
+   if (t->using_alt_buffer == use_alt_buffer)
+      return;
+
+   if (use_alt_buffer) {
+
+      if (!t->screen_buf_copy) {
+
+         t->screen_buf_copy = kmalloc(sizeof(u16) * t->rows * t->cols);
+
+         if (!t->screen_buf_copy)
+            return; /* just do nothing, that's OK */
+      }
+
+      t->saved_cur_row = t->r;
+      t->saved_cur_col = t->c;
+      memcpy(t->screen_buf_copy, b, sizeof(u16) * t->rows * t->cols);
+
+   } else {
+
+      ASSERT(t->screen_buf_copy != NULL);
+
+      memcpy(b, t->screen_buf_copy, sizeof(u16) * t->rows * t->cols);
+      t->r = t->saved_cur_row;
+      t->c = t->saved_cur_col;
+   }
+
+   t->using_alt_buffer = use_alt_buffer;
+   t->vi->disable_cursor();
+   term_redraw(t);
+   term_action_enable_cursor(t, t->cursor_enabled);
+}
+
 #include "term_action_wrappers.c.h"
 
 #ifdef DEBUG
@@ -733,13 +784,18 @@ void dispose_term(term *t)
    ASSERT(t != &first_instance);
 
    if (t->buffer) {
-      kfree2(t->buffer, 2 * t->total_buffer_rows * t->cols);
+      kfree2(t->buffer, sizeof(u16) * t->total_buffer_rows * t->cols);
       t->buffer = NULL;
    }
 
    if (t->term_tabs_buf) {
       kfree2(t->term_tabs_buf, t->cols * t->rows);
       t->term_tabs_buf = NULL;
+   }
+
+   if (t->screen_buf_copy) {
+      kfree2(t->screen_buf_copy, sizeof(u16) * t->rows * t->cols);
+      t->screen_buf_copy = NULL;
    }
 }
 

@@ -8,11 +8,14 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/process_mm.h>
 
 #include <linux/fb.h>     // system header
 #include <linux/major.h>  // system header
+#include <sys/mman.h>     // system header
 
 static ssize_t total_fb_pages_mapped;
+static list mappings_list = make_list(mappings_list);
 
 static ssize_t fb_read(fs_handle fsh, char *buf, size_t size)
 {
@@ -57,21 +60,39 @@ static int fb_ioctl(fs_handle h, uptr request, void *argp)
    return -EINVAL;
 }
 
-static int fbdev_mmap(fs_handle h /* ignored */, void *vaddr, size_t len)
+static int
+fbdev_mmap(user_mapping *um, bool register_only)
 {
-   ASSERT(IS_PAGE_ALIGNED(len));
-   fb_user_mmap(vaddr, len);
+   ASSERT(IS_PAGE_ALIGNED(um->len));
 
-   total_fb_pages_mapped += len >> PAGE_SHIFT;
+   if (um->off != 0)
+      return -EINVAL; /* not supported, at least for the moment */
+
+   if (register_only)
+      goto register_mapping;
+
+   fb_user_mmap(um->vaddrp, um->len);
+
+   total_fb_pages_mapped += um->len >> PAGE_SHIFT;
+
+register_mapping:
+   list_add_tail(&mappings_list, &um->inode_node);
    return 0;
 }
 
 static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
 {
+   size_t unmapped_count;
    ASSERT(IS_PAGE_ALIGNED(len));
-   unmap_pages(get_curr_pdir(), vaddr, len >> PAGE_SHIFT, false);
 
-   total_fb_pages_mapped -= len >> PAGE_SHIFT;
+   unmapped_count = unmap_pages_permissive(
+      get_curr_pdir(),
+      vaddr,
+      len >> PAGE_SHIFT,
+      false
+   );
+
+   total_fb_pages_mapped -= (size_t)unmapped_count;
    ASSERT(total_fb_pages_mapped >= 0);
 
    /*

@@ -1,5 +1,4 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
-#include <tilck/common/utils.h>
 
 static int ramfs_ioctl(fs_handle h, uptr cmd, void *argp)
 {
@@ -11,11 +10,11 @@ static int ramfs_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
-static off_t ramfs_dir_seek(ramfs_handle *rh, off_t target_off)
+static offt ramfs_dir_seek(ramfs_handle *rh, offt target_off)
 {
    ramfs_inode *i = rh->inode;
    ramfs_entry *dpos;
-   off_t off = 0;
+   offt off = 0;
 
    list_for_each_ro(dpos, &i->entries_list, lnode) {
 
@@ -31,7 +30,7 @@ static off_t ramfs_dir_seek(ramfs_handle *rh, off_t target_off)
    return rh->pos;
 }
 
-static off_t ramfs_seek(fs_handle h, off_t off, int whence)
+static offt ramfs_seek(fs_handle h, offt off, int whence)
 {
    ramfs_handle *rh = h;
    ramfs_inode *i = rh->inode;
@@ -62,7 +61,7 @@ static off_t ramfs_seek(fs_handle h, off_t off, int whence)
          break;
 
       case SEEK_END:
-         rh->pos = (off_t)i->fsize + off;
+         rh->pos = (offt)i->fsize + off;
          break;
 
       default:
@@ -77,11 +76,100 @@ static off_t ramfs_seek(fs_handle h, off_t off, int whence)
    return rh->pos;
 }
 
-static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
+/*
+ * ramfs_unmap_past_eof_mappings()
+ *
+ * While reducing the size of a file with truncate(), there could be processes
+ * where the part of the file now becoming "past-EOF" is memory-mapped.
+ * In order to be consistent with Linux, we have to un-map, from all the virtual
+ * space of all of these processes, the "past-EOF" pages. This way, when the
+ * processes try to access these pages, they'll receive a SIGBUS signal, exactly
+ * the same way as if they mapped in memory content past EOF.
+ *
+ * How this is done
+ * ----------------------
+ *
+ * Each inode has a `mappings_list` with all the user_mappings referring to it.
+ * Assuming that `rlen` is the new length of the file after truncate, rounded-up
+ * to PAGE_SIZE, for each `user_mapping` there are 3 cases:
+ *
+ * 1) The mapping remains is in a safe zone, even after the truncate() call:
+ *
+ *    0 KB        4 KB        8 KB        12 KB       16 KB       20 KB
+ *    +-----------+-----------+-----------+-----------+-----------+-----------+
+ *    |###########|###########|###########|###########|           |           |
+ *    |           |  mapped   |  mapped   |           |           |           |
+ *    +-----------+-----------+-----------+-----------+-----------+-----------+
+ *                ^                       ^           ^
+ *              um->off            um->off+um->len  rlen
+ *
+ * 2) The part of the mapping remains in a safe zone, part of it doesn't.
+ *
+ *    0 KB        4 KB        8 KB        12 KB       16 KB       20 KB
+ *    +-----------+-----------+-----------+-----------+-----------+-----------+
+ *    |###########|###########|           |           |           |           |
+ *    |           |  mapped   |  mapped   |  mapped   |  mapped   |           |
+ *    +-----------+-----------+-----------+-----------+-----------+-----------+
+ *                ^           ^                                   ^
+ *              um->off      rlen                          um->off + um->len
+ *
+ * 3) The whole mapping is outside of the safe zone:
+ *
+ *    0 KB        4 KB        8 KB        12 KB       16 KB       20 KB
+ *    +-----------+-----------+-----------+-----------+-----------+-----------+
+ *    |###########|           |           |           |           |           |
+ *    |           |           |  mapped   |  mapped   |  mapped   |           |
+ *    +-----------+-----------+-----------+-----------+-----------+-----------+
+ *                ^           ^                                   ^
+ *               rlen       um->off                            off + um->len
+ *
+ * Case 1) must be checked and completely ignored, as the mapping cannot be
+ * affected by the truncate() call.
+ *
+ * Case 2) requires us to unmap 3 pages, outside of the safe zone. In order to
+ * do that, we need to calculate the starting address as:
+ *
+ *    um->vaddr + (rlen - um->off)
+ *                \_____________/
+ *                     voff
+ *
+ * After that, we just have to calculate `vend` as:
+ *
+ *    um->vaddr + um->len
+ *
+ * No matter where we started, the ending address of the mapping will be the
+ * same and it will always be > `rlen`, because we're not in case 1).
+ *
+ * Case 3) is the same as case 2) with the exception that `voff` is just 0.
+ */
+
+static void ramfs_unmap_past_eof_mappings(ramfs_inode *i, size_t len)
+{
+   const size_t rlen = round_up_at(len, PAGE_SIZE);
+   user_mapping *um;
+   uptr va;
+   ASSERT(!is_preemption_enabled());
+
+   list_for_each_ro(um, &i->mappings_list, inode_node) {
+
+      if (um->off + um->len <= rlen)
+         continue;
+
+      const uptr voff = rlen >= um->off ? rlen - um->off : 0;
+      const uptr vend = um->vaddr + um->len;
+
+      for (va = um->vaddr + voff; va < vend; va += PAGE_SIZE) {
+         unmap_page_permissive(um->pi->pdir, (void *)va, false);
+         invalidate_page(va);
+      }
+   }
+}
+
+static int ramfs_inode_truncate(ramfs_inode *i, offt len)
 {
    ASSERT(rwlock_wp_holding_exlock(&i->rwlock));
 
-   if (len < 0 || len > i->fsize)
+   if (len < 0 || len >= i->fsize)
       return -EINVAL;
 
    if (i->type == VFS_DIR)
@@ -94,6 +182,12 @@ static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
     * redirected the truncate call to a different layer.
     */
    ASSERT(i->type == VFS_FILE);
+
+   disable_preemption();
+   {
+      ramfs_unmap_past_eof_mappings(i, (size_t) len);
+   }
+   enable_preemption();
 
    while (true) {
 
@@ -122,23 +216,30 @@ static int ramfs_inode_truncate(ramfs_inode *i, off_t len)
    return 0;
 }
 
-static int ramfs_inode_truncate_safe(ramfs_inode *i, off_t len)
+static int ramfs_inode_truncate_safe(ramfs_inode *i, offt len)
 {
    int rc;
    rwlock_wp_exlock(&i->rwlock);
    {
-      rc = ramfs_inode_truncate(i, len);
+      if (i->mode & 0200) { /* write permission */
+
+         if (len < i->fsize)
+            rc = ramfs_inode_truncate(i, len);
+         else if (len > i->fsize)
+            rc = ramfs_inode_extend(i, len);
+         else
+            rc = 0; /* len == i->fsize */
+
+      } else {
+         rc = -EACCES;
+      }
    }
    rwlock_wp_exunlock(&i->rwlock);
    return rc;
 }
 
-static int ramfs_truncate(filesystem *fs, vfs_inode_ptr_t i, off_t len)
+static int ramfs_truncate(filesystem *fs, vfs_inode_ptr_t i, offt len)
 {
-   /*
-    * NOTE: we don't support len > fsize at the moment.
-    * TODO: add in ramfs support for truncate with len > fsize.
-    */
    return ramfs_inode_truncate_safe(i, len);
 }
 
@@ -146,8 +247,8 @@ static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
 {
    ramfs_handle *rh = h;
    ramfs_inode *inode = rh->inode;
-   off_t tot_read = 0;
-   off_t buf_rem = (off_t) len;
+   offt tot_read = 0;
+   offt buf_rem = (offt) len;
    ASSERT(inode->type == VFS_FILE);
 
    if (inode->type == VFS_DIR)
@@ -156,11 +257,11 @@ static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
    while (buf_rem > 0) {
 
       ramfs_block *block;
-      const off_t page     = rh->pos & (off_t)PAGE_MASK;
-      const off_t page_off = rh->pos & (off_t)OFFSET_IN_PAGE_MASK;
-      const off_t page_rem = (off_t)PAGE_SIZE - page_off;
-      const off_t file_rem = inode->fsize - rh->pos;
-      const off_t to_read  = MIN3(page_rem, buf_rem, file_rem);
+      const offt page     = rh->pos & (offt)PAGE_MASK;
+      const offt page_off = rh->pos & (offt)OFFSET_IN_PAGE_MASK;
+      const offt page_rem = (offt)PAGE_SIZE - page_off;
+      const offt file_rem = inode->fsize - rh->pos;
+      const offt to_read  = MIN3(page_rem, buf_rem, file_rem);
 
       if (rh->pos >= inode->fsize)
          break;
@@ -196,8 +297,8 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
 {
    ramfs_handle *rh = h;
    ramfs_inode *inode = rh->inode;
-   off_t tot_written = 0;
-   off_t buf_rem = (off_t)len;
+   offt tot_written = 0;
+   offt buf_rem = (offt)len;
 
    /* We can be sure it's a file because dirs cannot be open for writing */
    ASSERT(inode->type == VFS_FILE);
@@ -208,10 +309,10 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
    while (buf_rem > 0) {
 
       ramfs_block *block;
-      const off_t page     = rh->pos & (off_t)PAGE_MASK;
-      const off_t page_off = rh->pos & (off_t)OFFSET_IN_PAGE_MASK;
-      const off_t page_rem = (off_t)PAGE_SIZE - page_off;
-      const off_t to_write = MIN(page_rem, buf_rem);
+      const offt page     = rh->pos & (offt)PAGE_MASK;
+      const offt page_off = rh->pos & (offt)OFFSET_IN_PAGE_MASK;
+      const offt page_rem = (offt)PAGE_SIZE - page_off;
+      const offt to_write = MIN(page_rem, buf_rem);
 
       ASSERT(to_write > 0);
 
@@ -226,27 +327,10 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
 
       if (!block) {
 
-         void *vaddr = kmalloc(PAGE_SIZE);
-
-         if (!vaddr)
+         if (!(block = ramfs_new_block(page)))
             break;
 
-         if (!(block = kmalloc(sizeof(ramfs_block)))) {
-            kfree2(vaddr, PAGE_SIZE);
-            break;
-         }
-
-         bintree_node_init(&block->node);
-         block->offset = page;
-         block->vaddr = vaddr;
-
-         bintree_insert_ptr(&inode->blocks_tree_root,
-                            block,
-                            ramfs_block,
-                            node,
-                            offset);
-
-         inode->blocks_count++;
+         ramfs_append_new_block(inode, block);
       }
 
       memcpy(block->vaddr + page_off, buf + tot_written, (size_t)to_write);

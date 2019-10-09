@@ -55,8 +55,8 @@ static u32 font_width_bytes;
 static u32 font_bytes_per_glyph;
 static u8 *font_glyph_data;
 
-#define DARK_VAL    (168 /* vga */ + 0)
-#define BRIGHT_VAL  (252 /* vga */ + 0)
+#define DARK    (168 /* vga */ + 0)
+#define BRIGHT  (252 /* vga */ + 0)
 
 u32 vga_rgb_colors[16];
 extern inline u32 fb_make_color(u32 r, u32 g, u32 b);
@@ -72,22 +72,22 @@ static void fb_init_colors(void)
 {
    u32 *c = vga_rgb_colors;
 
-   c[COLOR_BLACK] = fb_make_color(0, 0, 0);
-   c[COLOR_BLUE] = fb_make_color(0, 0, DARK_VAL + 30);
-   c[COLOR_GREEN] = fb_make_color(0, DARK_VAL, 0);
-   c[COLOR_CYAN] = fb_make_color(0, DARK_VAL, DARK_VAL);
-   c[COLOR_RED] = fb_make_color(DARK_VAL, 0, 0);
-   c[COLOR_MAGENTA] = fb_make_color(DARK_VAL, 0, DARK_VAL);
-   c[COLOR_YELLOW] = fb_make_color(DARK_VAL, DARK_VAL, 0);
-   c[COLOR_WHITE] = fb_make_color(DARK_VAL+20, DARK_VAL+20, DARK_VAL+20);
-   c[COLOR_BRIGHT_BLACK] = fb_make_color(DARK_VAL-40, DARK_VAL-40, DARK_VAL-40);
-   c[COLOR_BRIGHT_BLUE] = fb_make_color(0, 0, BRIGHT_VAL);
-   c[COLOR_BRIGHT_GREEN] = fb_make_color(0, BRIGHT_VAL, 0);
-   c[COLOR_BRIGHT_CYAN] = fb_make_color(0, BRIGHT_VAL, BRIGHT_VAL);
-   c[COLOR_BRIGHT_RED] = fb_make_color(BRIGHT_VAL, 0, 0);
-   c[COLOR_BRIGHT_MAGENTA] = fb_make_color(BRIGHT_VAL, 0, BRIGHT_VAL);
-   c[COLOR_BRIGHT_YELLOW] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, 0);
-   c[COLOR_BRIGHT_WHITE] = fb_make_color(BRIGHT_VAL, BRIGHT_VAL, BRIGHT_VAL);
+   c[COLOR_BLACK]          = fb_make_color(0      , 0      , 0      );
+   c[COLOR_BLUE]           = fb_make_color(0      , 0      , DARK+30);
+   c[COLOR_GREEN]          = fb_make_color(0      , DARK   , 0      );
+   c[COLOR_CYAN]           = fb_make_color(0      , DARK   , DARK   );
+   c[COLOR_RED]            = fb_make_color(DARK   , 0      , 0      );
+   c[COLOR_MAGENTA]        = fb_make_color(DARK   , 0      , DARK   );
+   c[COLOR_YELLOW]         = fb_make_color(DARK   , DARK   , 0      );
+   c[COLOR_WHITE]          = fb_make_color(DARK+25, DARK+25, DARK+25);
+   c[COLOR_BRIGHT_BLACK]   = fb_make_color(DARK-40, DARK-40, DARK-40);
+   c[COLOR_BRIGHT_BLUE]    = fb_make_color(0      , 0      , BRIGHT );
+   c[COLOR_BRIGHT_GREEN]   = fb_make_color(0      , BRIGHT , 0      );
+   c[COLOR_BRIGHT_CYAN]    = fb_make_color(0      , BRIGHT , BRIGHT );
+   c[COLOR_BRIGHT_RED]     = fb_make_color(BRIGHT , 0      , 0      );
+   c[COLOR_BRIGHT_MAGENTA] = fb_make_color(BRIGHT , 0      , BRIGHT );
+   c[COLOR_BRIGHT_YELLOW]  = fb_make_color(BRIGHT , BRIGHT , 0      );
+   c[COLOR_BRIGHT_WHITE]   = fb_make_color(BRIGHT , BRIGHT , BRIGHT );
 }
 
 /* Note: using these constants won't work on big endian machines */

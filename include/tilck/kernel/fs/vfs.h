@@ -15,6 +15,7 @@
 #include <tilck/kernel/sync.h>
 
 typedef struct process_info process_info;
+typedef struct user_mapping user_mapping;
 
 /*
  * Opaque type for file handles.
@@ -97,6 +98,10 @@ typedef int     (*func_readlink)  (vfs_path *, char *);
 typedef int     (*func_chmod)     (filesystem *, vfs_inode_ptr_t, mode_t);
 typedef void    (*func_fslock_t)  (filesystem *);
 typedef int     (*func_rr_inode)  (filesystem *, vfs_inode_ptr_t);
+typedef int     (*func_2paths)    (filesystem *, vfs_path *, vfs_path *);
+
+typedef func_2paths func_rename;
+typedef func_2paths func_link;
 
 typedef void    (*func_get_entry) (filesystem *fs,
                                    void *dir_inode,
@@ -106,15 +111,16 @@ typedef void    (*func_get_entry) (filesystem *fs,
 
 /* mixed fs/file ops */
 typedef int     (*func_stat)   (filesystem *, vfs_inode_ptr_t, struct stat64 *);
-typedef int     (*func_trunc)  (filesystem *, vfs_inode_ptr_t, off_t);
+typedef int     (*func_trunc)  (filesystem *, vfs_inode_ptr_t, offt);
 
 /* file ops */
 typedef ssize_t (*func_read)         (fs_handle, char *, size_t);
 typedef ssize_t (*func_write)        (fs_handle, char *, size_t);
-typedef off_t   (*func_seek)         (fs_handle, off_t, int);
+typedef offt    (*func_seek)         (fs_handle, offt, int);
 typedef int     (*func_ioctl)        (fs_handle, uptr, void *);
-typedef int     (*func_mmap)         (fs_handle, void *vaddr, size_t);
-typedef int     (*func_munmap)       (fs_handle, void *vaddr, size_t);
+typedef int     (*func_mmap)         (user_mapping *, bool);
+typedef int     (*func_munmap)       (fs_handle, void *, size_t);
+typedef bool    (*func_handle_fault) (fs_handle, void *, bool, bool);
 typedef int     (*func_fcntl)        (fs_handle, int, int);
 typedef void    (*func_hlock_t)      (fs_handle);
 typedef bool    (*func_rwe_ready)    (fs_handle);
@@ -158,6 +164,8 @@ typedef struct {
    func_readlink readlink;
    func_trunc truncate;
    func_chmod chmod;
+   func_rename rename;
+   func_link link;
    func_rr_inode retain_inode;
    func_rr_inode release_inode;
 
@@ -193,6 +201,7 @@ typedef struct {
    /* optional funcs */
    func_mmap mmap;
    func_munmap munmap;
+   func_handle_fault handle_fault;
 
    /* optional, r/w/e ready funcs */
    func_rwe_ready read_ready;
@@ -223,7 +232,7 @@ typedef struct {
    const file_ops *fops;         \
    int fd_flags;                 \
    int fl_flags;                 \
-   off_t pos;                        /* file: offset, dir: opaque entry index */
+   offt pos;                        /* file: offset, dir: opaque entry index */
 
 typedef struct {
 
@@ -232,24 +241,31 @@ typedef struct {
 } fs_handle_base;
 
 
-int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);
-int vfs_ioctl(fs_handle h, uptr request, void *argp);
 int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl);
-int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
-int vfs_dup(fs_handle h, fs_handle *dup_h);
-int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
-int vfs_fcntl(fs_handle h, int cmd, int arg);
+int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);
 int vfs_unlink(const char *path);
 int vfs_mkdir(const char *path, mode_t mode);
 int vfs_rmdir(const char *path);
-int vfs_truncate(const char *path, off_t length);
-int vfs_ftruncate(fs_handle h, off_t length);
+int vfs_truncate(const char *path, offt length);
 int vfs_symlink(const char *target, const char *linkpath);
 int vfs_readlink(const char *path, char *buf);
 int vfs_chown(const char *path, int owner, int group, bool reslink);
 int vfs_chmod(const char *path, mode_t mode);
+int vfs_rename(const char *oldpath, const char *newpath);
+int vfs_link(const char *oldpath, const char *newpath);
+
+int vfs_ftruncate(fs_handle h, offt length);
+int vfs_ioctl(fs_handle h, uptr request, void *argp);
+int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
+int vfs_dup(fs_handle h, fs_handle *dup_h);
+int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
+int vfs_fcntl(fs_handle h, int cmd, int arg);
+int vfs_mmap(user_mapping *um, bool register_only);
+int vfs_munmap(fs_handle h, void *vaddr, size_t len);
 int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);
+void vfs_close2(process_info *pi, fs_handle h);
+bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw);
 
 bool vfs_read_ready(fs_handle h);
 bool vfs_write_ready(fs_handle h);
@@ -260,7 +276,7 @@ kcond *vfs_get_except_cond(fs_handle h);
 
 ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);
-off_t vfs_seek(fs_handle h, s64 off, int whence);
+offt vfs_seek(fs_handle h, s64 off, int whence);
 
 static inline void vfs_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
 {

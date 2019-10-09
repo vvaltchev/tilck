@@ -157,7 +157,7 @@ static void redraw_screen(void)
                  dp_ctx->row_max + 1);
 
    dp_move_cursor(dp_end_row - 1, dp_start_col + DP_W - rc - 2);
-   dp_write_raw(ESC_COLOR_RED "%s" RESET_ATTRS, buf);
+   dp_write_raw(ESC_COLOR_BRIGHT_RED "%s" RESET_ATTRS, buf);
    ui_need_update = false;
 }
 

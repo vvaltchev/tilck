@@ -15,9 +15,11 @@
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/signal.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/process_mm.h>
 
 #include "paging_int.h"
+
+#include <sys/mman.h>      // system header
 
 /*
  * When this flag is set in the 'avail' bits in page_t, in means that the page
@@ -30,8 +32,8 @@
 /* ---------------------------------------------- */
 
 extern char vsdo_like_page[PAGE_SIZE];
+extern char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
-static char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
 
 static u16 *pageframes_refcount;
@@ -82,19 +84,19 @@ bool handle_potential_cow(void *context)
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
    void *const page_vaddr = (void *)(vaddr & PAGE_MASK);
-   page_table_t *ptable = pdir_get_page_table(get_curr_pdir(), page_dir_index);
+   page_table_t *pt = pdir_get_page_table(get_curr_pdir(), page_dir_index);
 
-   if (!(ptable->pages[page_table_index].avail & PAGE_COW_ORIG_RW))
+   if (!(pt->pages[page_table_index].avail & PAGE_COW_ORIG_RW))
       return false; /* Not a COW page */
 
    const u32 orig_page_paddr = (u32)
-      ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
+      pt->pages[page_table_index].pageAddr << PAGE_SHIFT;
 
    if (pf_ref_count_get(orig_page_paddr) == 1) {
 
       /* This page is not shared anymore. No need for copying it. */
-      ptable->pages[page_table_index].rw = true;
-      ptable->pages[page_table_index].avail = 0;
+      pt->pages[page_table_index].rw = true;
+      pt->pages[page_table_index].avail = 0;
       invalidate_page(vaddr);
       return true;
    }
@@ -119,15 +121,27 @@ bool handle_potential_cow(void *context)
    ASSERT(pf_ref_count_get(paddr) == 0);
    pf_ref_count_inc(paddr);
 
-   ptable->pages[page_table_index].pageAddr = SHR_BITS(paddr, PAGE_SHIFT, u32);
-   ptable->pages[page_table_index].rw = true;
-   ptable->pages[page_table_index].avail = 0;
+   pt->pages[page_table_index].pageAddr = SHR_BITS(paddr, PAGE_SHIFT, u32);
+   pt->pages[page_table_index].rw = true;
+   pt->pages[page_table_index].avail = 0;
 
    invalidate_page(vaddr);
 
    // Copy back the page.
    memcpy(page_vaddr, page_size_buf, PAGE_SIZE);
    return true;
+}
+
+static void kernel_page_fault_panic(regs *r, u32 vaddr, bool rw, bool p)
+{
+   ptrdiff_t off = 0;
+   const char *sym_name = find_sym_at_addr_safe(r->eip, &off, NULL);
+   panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p [%s + 0x%x]\n",
+         rw ? "WRITE" : "READ",
+         vaddr,
+         "kernel",
+         !p ? " (NON present)." : ".",
+         r->eip, sym_name ? sym_name : "???", off);
 }
 
 void handle_page_fault_int(regs *r)
@@ -138,25 +152,44 @@ void handle_page_fault_int(regs *r)
    bool p  = !!(r->err_code & PAGE_FAULT_FL_PRESENT);
    bool rw = !!(r->err_code & PAGE_FAULT_FL_RW);
    bool us = !!(r->err_code & PAGE_FAULT_FL_US);
+   int sig = SIGSEGV;
+   user_mapping *um;
 
    if (!us) {
-      ptrdiff_t off = 0;
-      const char *sym_name = find_sym_at_addr_safe(r->eip, &off, NULL);
-      panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p [%s + 0x%x]\n",
-            rw ? "WRITE" : "READ",
-            vaddr,
-            "kernel",
-            !p ? " (NON present)." : ".",
-            r->eip, sym_name ? sym_name : "???", off);
+      /*
+       * Tilck does not support kernel-space page faults caused by the kernel,
+       * while it allows user-space page faults caused by kernel (CoW pages).
+       * Therefore, such a fault is necessary caused by a bug.
+       * We have to panic.
+       */
+      kernel_page_fault_panic(r, vaddr, rw, p);
    }
 
-   printk("USER PAGE FAULT in attempt to %s %p%s\nEIP: %p\n",
-          rw ? "WRITE" : "READ",
-          vaddr,
-          !p ? " (NON present)." : ".", r->eip);
+   um = process_get_user_mapping((void *)vaddr);
+
+   if (um) {
+
+      /*
+       * Call vfs_handle_fault() only if in first place the mapping allowed
+       * writing or if it didn't but the memory access type was a READ.
+       */
+      if (!!(um->prot & PROT_WRITE) || !rw) {
+
+         if (vfs_handle_fault(um->h, (void *)vaddr, p, rw))
+            return;
+
+         sig = SIGBUS;
+      }
+   }
+
+   printk("USER PAGE FAULT in attempt to %s %p%s\n",
+          rw ? "WRITE" : "READ", vaddr,
+          !p ? " (NON present)." : ".");
+
+   printk("EIP: %p\n", r->eip);
 
    end_fault_handler_state();
-   send_signal(get_curr_task_tid(), SIGSEGV, true);
+   send_signal(get_curr_task_tid(), sig, true);
 }
 
 
@@ -184,7 +217,7 @@ void handle_page_fault(regs *r)
 
 bool is_mapped(pdir_t *pdir, void *vaddrp)
 {
-   page_table_t *ptable;
+   page_table_t *pt;
    const uptr vaddr = (uptr) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
@@ -197,60 +230,107 @@ bool is_mapped(pdir_t *pdir, void *vaddrp)
    if (e->psize) /* 4-MB page */
       return e->present;
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
-   return ptable->pages[page_table_index].present;
+   pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+   return pt->pages[page_table_index].present;
 }
 
 void set_page_rw(pdir_t *pdir, void *vaddrp, bool rw)
 {
-   page_table_t *ptable;
+   page_table_t *pt;
    const uptr vaddr = (uptr) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
-   ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
-   ptable->pages[page_table_index].rw = rw;
+   pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+   ASSERT(KERNEL_VA_TO_PA(pt) != 0);
+   pt->pages[page_table_index].rw = rw;
    invalidate_page(vaddr);
 }
 
-void unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe)
+static inline int
+__unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe, bool permissive)
 {
-   page_table_t *ptable;
+   page_table_t *pt;
    const uptr vaddr = (uptr) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
-   ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
-   ASSERT(ptable->pages[page_table_index].present);
+   pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+
+   if (permissive) {
+
+      if (KERNEL_VA_TO_PA(pt) == 0)
+         return -EINVAL;
+
+      if (!pt->pages[page_table_index].present)
+         return -EINVAL;
+
+   } else {
+      ASSERT(KERNEL_VA_TO_PA(pt) != 0);
+      ASSERT(pt->pages[page_table_index].present);
+   }
 
    const uptr paddr = (uptr)
-      ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
+      pt->pages[page_table_index].pageAddr << PAGE_SHIFT;
 
-   ptable->pages[page_table_index].raw = 0;
+   pt->pages[page_table_index].raw = 0;
    invalidate_page(vaddr);
 
    if (!pf_ref_count_dec(paddr) && free_pageframe) {
       ASSERT(paddr != KERNEL_VA_TO_PA(zero_page));
       kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
    }
+
+   return 0;
+}
+
+void
+unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe)
+{
+   __unmap_page(pdir, vaddrp, free_pageframe, false);
+}
+
+int
+unmap_page_permissive(pdir_t *pdir, void *vaddrp, bool free_pageframe)
+{
+   return __unmap_page(pdir, vaddrp, free_pageframe, true);
 }
 
 void
 unmap_pages(pdir_t *pdir,
             void *vaddr,
             size_t page_count,
-            bool free_pageframes)
+            bool do_free)
 {
    for (size_t i = 0; i < page_count; i++) {
-      unmap_page(pdir, (char *)vaddr + (i << PAGE_SHIFT), free_pageframes);
+      unmap_page(pdir, (char *)vaddr + (i << PAGE_SHIFT), do_free);
    }
+}
+
+size_t
+unmap_pages_permissive(pdir_t *pdir,
+                       void *vaddr,
+                       size_t page_count,
+                       bool do_free)
+{
+   size_t unmapped_pages = 0;
+   int rc;
+
+   for (size_t i = 0; i < page_count; i++) {
+      rc = unmap_page_permissive(
+         pdir,
+         (char *)vaddr + (i << PAGE_SHIFT),
+         do_free
+      );
+      unmapped_pages += (rc == 0);
+   }
+
+   return unmapped_pages;
 }
 
 uptr get_mapping(pdir_t *pdir, void *vaddrp)
 {
-   page_table_t *ptable;
+   page_table_t *pt;
    const uptr vaddr = (uptr)vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
    const u32 page_dir_index = (vaddr >> 22) & 0x3FF;
@@ -261,17 +341,17 @@ uptr get_mapping(pdir_t *pdir, void *vaddrp)
     */
    ASSERT(vaddr < KERNEL_BASE_VA || vaddr >= LINEAR_MAPPING_END);
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
-   ASSERT(KERNEL_VA_TO_PA(ptable) != 0);
+   pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+   ASSERT(KERNEL_VA_TO_PA(pt) != 0);
 
-   ASSERT(ptable->pages[page_table_index].present);
-   return (uptr) ptable->pages[page_table_index].pageAddr << PAGE_SHIFT;
+   ASSERT(pt->pages[page_table_index].present);
+   return (uptr) pt->pages[page_table_index].pageAddr << PAGE_SHIFT;
 }
 
 NODISCARD int
 map_page_int(pdir_t *pdir, void *vaddrp, uptr paddr, u32 flags)
 {
-   page_table_t *ptable;
+   page_table_t *pt;
    const u32 vaddr = (u32) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
@@ -279,30 +359,30 @@ map_page_int(pdir_t *pdir, void *vaddrp, uptr paddr, u32 flags)
    ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // the paddr must be page-aligned
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
-   ASSERT(IS_PAGE_ALIGNED(ptable));
+   pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+   ASSERT(IS_PAGE_ALIGNED(pt));
 
-   if (UNLIKELY(KERNEL_VA_TO_PA(ptable) == 0)) {
+   if (UNLIKELY(KERNEL_VA_TO_PA(pt) == 0)) {
 
       // we have to create a page table for mapping 'vaddr'.
-      ptable = kzmalloc(sizeof(page_table_t));
+      pt = kzmalloc(sizeof(page_table_t));
 
-      if (!ptable)
+      if (!pt)
          return -ENOMEM;
 
-      ASSERT(IS_PAGE_ALIGNED(ptable));
+      ASSERT(IS_PAGE_ALIGNED(pt));
 
       pdir->entries[page_dir_index].raw =
          PG_PRESENT_BIT |
          PG_RW_BIT |
          (flags & PG_US_BIT) |
-         KERNEL_VA_TO_PA(ptable);
+         KERNEL_VA_TO_PA(pt);
    }
 
-   if (ptable->pages[page_table_index].present)
+   if (pt->pages[page_table_index].present)
       return -EADDRINUSE;
 
-   ptable->pages[page_table_index].raw = PG_PRESENT_BIT | flags | paddr;
+   pt->pages[page_table_index].raw = PG_PRESENT_BIT | flags | paddr;
    pf_ref_count_inc(paddr);
    invalidate_page(vaddr);
    return 0;
@@ -675,21 +755,21 @@ static void set_big_4mb_page_pat_wc(pdir_t *pdir, void *vaddrp)
 
 static void set_4kb_page_pat_wc(pdir_t *pdir, void *vaddrp)
 {
-   page_table_t *ptable;
+   page_table_t *pt;
    const u32 vaddr = (u32) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
    ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
 
-   ptable = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
-   ASSERT(IS_PAGE_ALIGNED(ptable));
-   ASSERT(ptable != NULL);
+   pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+   ASSERT(IS_PAGE_ALIGNED(pt));
+   ASSERT(pt != NULL);
 
    // 111 => entry[7] in the PAT MSR. See init_pat()
-   ptable->pages[page_table_index].pat = 1;
-   ptable->pages[page_table_index].cd = 1;
-   ptable->pages[page_table_index].wt = 1;
+   pt->pages[page_table_index].pat = 1;
+   pt->pages[page_table_index].cd = 1;
+   pt->pages[page_table_index].wt = 1;
 
    invalidate_page(vaddr);
 }
@@ -718,7 +798,7 @@ void init_paging(void)
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
    kernel_page_dir = (pdir_t *) kpdir_buf;
-   kernel_process_pi->pdir = kernel_page_dir;
+   set_kernel_process_pdir(kernel_page_dir);
 }
 
 static void init_hi_vmem_heap(void)
@@ -840,14 +920,8 @@ void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
 
    pdir_t *pdir = !user_mmap ? get_kernel_pdir() : get_curr_pdir();
    size_t page_count = round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
+   u32 mmap_flags = PG_RW_BIT | (user_mmap ? PG_US_BIT : PG_GLOBAL_BIT);
    size_t count;
-   u32 mmap_flags = PG_RW_BIT;
-
-   if (user_mmap) {
-      mmap_flags |= PG_US_BIT;
-   } else {
-      mmap_flags |= PG_GLOBAL_BIT;
-   }
 
    if (!vaddr) {
 

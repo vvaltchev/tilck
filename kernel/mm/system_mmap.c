@@ -88,8 +88,8 @@ STATIC void remove_mem_region(int i)
 
 STATIC void swap_mem_regions(int i, int j)
 {
-   ASSERT(0 <= i && i < mem_regions_count);
-   ASSERT(0 <= j && j < mem_regions_count);
+   ASSERT(IN_RANGE(i, 0, mem_regions_count));
+   ASSERT(IN_RANGE(j, 0, mem_regions_count));
 
    memory_region_t temp = mem_regions[i];
    mem_regions[i] = mem_regions[j];
@@ -461,7 +461,7 @@ int system_mmap_get_region_of(uptr paddr)
 
       memory_region_t *m = mem_regions + i;
 
-      if (m->addr <= paddr && paddr < (m->addr + m->len))
+      if (IN_RANGE(paddr, m->addr, m->addr + m->len))
          return i;
    }
 

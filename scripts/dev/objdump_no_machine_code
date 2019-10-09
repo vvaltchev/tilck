@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+
+exec objdump -M intel -d --no-show-raw-insn "$1"
