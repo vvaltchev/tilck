@@ -92,9 +92,9 @@ def load_list_of_kernel_self_tests():
                .decode("utf-8")                 \
                   .split("\n")
 
-   short = SHORT_TEST_TIMEOUT
-   med = MED_TEST_TIMEOUT
-   long = LONG_TEST_TIMEOUT
+   t_short = SHORT_TEST_TIMEOUT
+   t_med = MED_TEST_TIMEOUT
+   t_long = LONG_TEST_TIMEOUT
 
    for row in rows:
 
@@ -115,7 +115,7 @@ def load_list_of_kernel_self_tests():
          continue
 
       name = '_'.join(comps[1:])
-      tt = locals()[tt]
+      tt = locals()["t_" + tt]
       result.append([name, tt])
 
    return result
@@ -133,7 +133,7 @@ def internal_run_test(test_type, test, timeout, show_output = False):
                                         stderr=subprocess.STDOUT)
    except subprocess.CalledProcessError as e:
       elapsed = time.time() - start_time
-      print("{0}".format(e.output))
+      print(e.output.decode('utf-8'))
       print("[ FAILED  ] after %.2f seconds with: %s\n" % \
             (elapsed, error_codes_strings[e.returncode]))
       return False
