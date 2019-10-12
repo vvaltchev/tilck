@@ -264,10 +264,10 @@ def RunTheVM():
    process = subprocess.Popen(args, stdout=subprocess.PIPE)
 
    # Get the current flags for the `stdout` file descriptor
-   fl = fcntl(process.stdout.fileno(), F_GETFL)
+   fl = fcntl.fcntl(process.stdout.fileno(), fcntl.F_GETFL)
 
    # Make the `stdout` file descriptor non-blocking
-   fcntl(process.stdout.fileno(), F_SETFL, fl | os.O_NONBLOCK)
+   fcntl.fcntl(process.stdout.fileno(), fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
    read_anything = False
    start_time = time.time()
