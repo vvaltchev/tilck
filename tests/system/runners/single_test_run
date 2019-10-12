@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # SPDX-License-Identifier: BSD-2-Clause
 
 import os
@@ -11,7 +11,7 @@ import threading
 import struct
 import zlib
 import base64
-from fcntl import *
+import fcntl
 
 # Constants
 
@@ -62,6 +62,10 @@ notBase64Char = re.compile(r'[^A-Za-z0-9+/=]')
 def msg_print(msg):
    print("[system test runner] {0}".format(msg))
 
+def raw_print(msg):
+   sys.stdout.buffer.write(msg.encode('latin-1'))
+   sys.stdout.write('\n')
+
 def write_gcda_file():
 
    global gcda_file, gcda_buf, failed, process
@@ -77,12 +81,12 @@ def write_gcda_file():
 
    except Exception as e:
       failed = FAIL_GCOV_ERROR
-      print("\n")
+      msg_print("")
       msg_print(
          "While working on gcda file '{0}', "
          "got exception: {1}".format(gcda_file, str(e))
       )
-      msg_print("gcda_buf:\n<<{0}>>\n".format(orig_gcda_buf))
+      raw_print("gcda_buf:\n<<{0}>>\n".format(orig_gcda_buf))
       process.send_signal(signal.SIGINT)
 
    finally:
@@ -97,11 +101,11 @@ def HandleHelloMsg(line):
 
    if not hello_msg_found:
       hello_msg_found = True
-      print(line)
+      raw_print(line)
       return
 
    # Bad case
-   print("\n")
+   msg_print("")
    msg_print("Detected TWICE the kernel hello msg: the machine rebooted.")
    msg_print("KILLING the VM.")
 
@@ -120,7 +124,7 @@ def ProcessLine(line):
    global gcda_file
 
    stripped = line.rstrip()
-   #print(stripped)
+   #raw_print(stripped)
 
    if stripped and stripped[0] == '[' and stripped.startswith('[init]'):
       m = re.search(r'\[init\] the devshell exited with status: ([0-9]+)',
@@ -129,7 +133,7 @@ def ProcessLine(line):
       if m:
          shell_exit_code = int(m.group(1))
          dumping_gcda_files = False
-         print(stripped)
+         raw_print(stripped)
          return
 
    if stripped.find(KERNEL_HELLO_MSG) != -1:
@@ -148,11 +152,10 @@ def ProcessLine(line):
    if not dumping_gcda_files:
 
       output += stripped + "\n"
-      print(stripped)
+      raw_print(stripped)
 
       if stripped.find(KERNEL_DUMP_GCDA_STR) != -1:
          dumping_gcda_files = True
-         return
 
       return
 
@@ -167,7 +170,7 @@ def ProcessLine(line):
          write_gcda_file()
 
       dumping_gcda_files = False
-      print(stripped)
+      raw_print(stripped)
       return
 
    m = re.search(r'file: (.+)', stripped)
@@ -272,26 +275,21 @@ def RunTheVM():
 
    while True:
 
-      try:
+      text = process.stdout.read()
 
-         text = process.stdout.read()
+      # In python 3, read() will return None when there's nothing to read on
+      # a non-blocking stream. On python 2 instead, it used to throw an IOError
+      # and return None only in case of EOF. Now, apprently, there's no way to
+      # detect the EOF case. Therefore, process.poll() is used. It returns
+      # process' exit-code if the process terminated, otherwise None.
+      if not text:
 
-         # read() returns an empty string only in case of EOF
-         if not text:
-            ProcessText(incompleteLine)
-            process.wait()
-            break
+         if process.poll() is not None:
 
-         if not read_anything:
-            elapsed = time.time() - start_time
-            read_anything = True
-            msg_print("First output after %.2f s" % elapsed)
+            if incompleteLine:
+               ProcessLine(incompleteLine)
 
-         start_time = time.time()
-         text = incompleteLine + text
-         incompleteLine = ProcessText(text)
-
-      except IOError:
+            break # The process exited, we have to stop reading
 
          if not read_anything:
             time.sleep(0.1)
@@ -305,6 +303,16 @@ def RunTheVM():
             start_time = curr_time
 
          time.sleep(0.1)
+         continue
+
+      if not read_anything:
+         elapsed = time.time() - start_time
+         read_anything = True
+         msg_print("First output after %.2f s" % elapsed)
+
+      start_time = time.time()
+      text = incompleteLine + text.decode('latin-1')
+      incompleteLine = ProcessText(text)
 
    print('-' * 80)
 
@@ -368,7 +376,8 @@ if failed == FAIL_SUCCESS and dump_coverage and report_coverage:
       msg_print(
          "{0} generated the exception: {1}".format(GEN_KCOV_REPORT, str(e))
       )
-      msg_print("Output of {0} --acc:\n{1}".format(GEN_KCOV_REPORT, e.output))
+      msg_print("Output of {0} --acc:".format(GEN_KCOV_REPORT))
+      raw_print(e.output) # pylint: disable=no-member
       msg_print("--- end output ---")
       sys.exit(FAIL_GCOV_ERROR)
 
