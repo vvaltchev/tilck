@@ -122,7 +122,7 @@ def load_list_of_kernel_self_tests():
 
 def internal_run_test(test_type, test, timeout, show_output = False):
 
-   print("[ RUNNING ] {0}: '{1}' [timeout: {2}]".format(test_type,test,timeout))
+   print("[ RUNNING ] {}: '{}' [timeout: {}]".format(test_type, test, timeout))
    start_time = time.time()
 
    try:
@@ -223,15 +223,15 @@ def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero):
                   found.append(x)
 
          if not found:
-            print("ERROR: No tests matching the '{0}' regex.".format(reg))
+            print("ERROR: No tests matching the '{}' regex.".format(reg))
          else:
             print("ERROR: No tests matching "
-                  "the '{0}' regex having timeout <= {1}"
+                  "the '{}' regex having timeout <= {}"
                      .format(reg, max_test_timeout))
-            print("Tests matching the regex with timeout > {0}:"
+            print("Tests matching the regex with timeout > {}:"
                      .format(max_test_timeout))
             for x in found:
-               print("  {0} [timeout: {1}s]".format(x[0].ljust(20), x[1]))
+               print("  {} [timeout: {}s]".format(x[0].ljust(20), x[1]))
 
          sys.exit(1)
 
@@ -241,7 +241,7 @@ def dump_test_stats():
 
    for tt in test_types:
       if tests_to_run[tt]:
-         print("{0} passed: {1}/{2}"
+         print("{} passed: {}/{}"
                   .format(tt_pretty_names[tt],
                           tests_passed[tt],
                           tests_to_run[tt]))

@@ -60,7 +60,7 @@ gcda_file = None
 notBase64Char = re.compile(r'[^A-Za-z0-9+/=]')
 
 def msg_print(msg):
-   print("[system test runner] {0}".format(msg))
+   print("[system test runner] {}".format(msg))
 
 def raw_print(msg):
    sys.stdout.buffer.write(msg.encode('latin-1'))
@@ -83,10 +83,10 @@ def write_gcda_file():
       failed = FAIL_GCOV_ERROR
       msg_print("")
       msg_print(
-         "While working on gcda file '{0}', "
-         "got exception: {1}".format(gcda_file, str(e))
+         "While working on gcda file '{}', "
+         "got exception: {}".format(gcda_file, str(e))
       )
-      raw_print("gcda_buf:\n<<{0}>>\n".format(orig_gcda_buf))
+      raw_print("gcda_buf:\n<<{}>>\n".format(orig_gcda_buf))
       process.send_signal(signal.SIGINT)
 
    finally:
@@ -240,18 +240,18 @@ def RunTheVM():
 
    if TEST_TYPE == 'shellcmd':
 
-      print("Running the VM with shell command '{0}'...".format(TEST_NAME))
+      print("Running the VM with shell command '{}'...".format(TEST_NAME))
       cmdline += ' -c ' + TEST_NAME
 
    elif TEST_TYPE == 'selftest':
 
-      print("Running the VM with selftest '{0}'...".format(TEST_NAME))
+      print("Running the VM with selftest '{}'...".format(TEST_NAME))
       cmdline += ' -c selftest ' + TEST_NAME
 
    else:
       sys.exit(1)
 
-   kernel_cmdline += ' -cmd {0} {1} -- {2}'.format(INIT_PATH,init_opts,cmdline)
+   kernel_cmdline += ' -cmd {} {} -- {}'.format(INIT_PATH, init_opts, cmdline)
    args += ['-initrd', FATPART_FILE, '-append', kernel_cmdline]
 
    if verbose:
@@ -349,7 +349,7 @@ if thread.is_alive():
 
       msg_print(
          "The VM is alive after the timeout "
-         "of {0} seconds. KILLING IT.".format(TEST_TIMEOUT)
+         "of {} seconds. KILLING IT.".format(TEST_TIMEOUT)
       )
 
       process.send_signal(signal.SIGINT)
@@ -362,7 +362,7 @@ if output.find("KERNEL PANIC") != -1:
    failed = FAIL_PANIC
 
 if failed == FAIL_SUCCESS and shell_exit_code != 0:
-   msg_print("Shell exited with code {0}.".format(shell_exit_code))
+   msg_print("Shell exited with code {}.".format(shell_exit_code))
    failed = FAIL_SHELL_NO_ZERO_EXIT
 
 if failed == FAIL_SUCCESS and dump_coverage and report_coverage:
@@ -374,9 +374,9 @@ if failed == FAIL_SUCCESS and dump_coverage and report_coverage:
    except Exception as e:
 
       msg_print(
-         "{0} generated the exception: {1}".format(GEN_KCOV_REPORT, str(e))
+         "{} generated the exception: {}".format(GEN_KCOV_REPORT, str(e))
       )
-      msg_print("Output of {0} --acc:".format(GEN_KCOV_REPORT))
+      msg_print("Output of {} --acc:".format(GEN_KCOV_REPORT))
       raw_print(e.output) # pylint: disable=no-member
       msg_print("--- end output ---")
       sys.exit(FAIL_GCOV_ERROR)
