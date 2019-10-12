@@ -134,8 +134,8 @@ def internal_run_test(test_type, test, timeout, show_output = False):
    except subprocess.CalledProcessError as e:
       elapsed = time.time() - start_time
       print(e.output.decode('utf-8'))
-      print("[ FAILED  ] after %.2f seconds with: %s\n" % \
-            (elapsed, error_codes_strings[e.returncode]))
+      print("[ FAILED  ] after {:.2f} seconds with: {}\n"
+               .format(elapsed, error_codes_strings[e.returncode]))
       return False
 
    elapsed = time.time() - start_time
@@ -144,7 +144,7 @@ def internal_run_test(test_type, test, timeout, show_output = False):
       print("")
       print(output)
 
-   print("[ PASSED  ] after %.2f seconds\n" % elapsed)
+   print("[ PASSED  ] after {:.2f} seconds\n".format(elapsed))
    return True
 
 def show_help_and_exit():
