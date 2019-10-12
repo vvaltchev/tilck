@@ -4,7 +4,14 @@
    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
    "version": "0.2.0",
    "configurations": [
-
+      {
+         "name": "Python: Current File",
+         "type": "python",
+         "request": "launch",
+         "program": "${file}",
+         "console": "integratedTerminal",
+         "args": ["selftest", "kcond_short", "10000"]
+      },
       {
          "name": "(gdb) Tilck Kernel",
          "type": "cppdbg",
@@ -15,7 +22,6 @@
          "cwd": "${workspaceRoot}",
          "stopAtEntry": true
       },
-
       {
          "name": "(gdb) Tilck Unit Tests",
          "type": "cppdbg",
@@ -25,7 +31,6 @@
          "cwd": "${workspaceRoot}",
          "stopAtEntry": false
       },
-
       {
          "name": "(gdb) Busybox on Tilck",
          "type": "cppdbg",
