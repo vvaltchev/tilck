@@ -54,6 +54,12 @@ configure_file(
    @ONLY
 )
 
+configure_file(
+   ${CMAKE_SOURCE_DIR}/tests/system/runners/utils.py
+   ${CMAKE_BINARY_DIR}/st/utils.py
+   @ONLY
+)
+
 # Run qemu scripts
 
 list(

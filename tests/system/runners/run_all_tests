@@ -9,6 +9,9 @@ import signal
 import subprocess
 import threading
 
+# Local imports
+import utils as u
+
 # Constants
 BUILD_DIR = r'@CMAKE_BINARY_DIR@'
 KERNEL_ELF = r'@KERNEL_FILE@'
@@ -126,14 +129,19 @@ def internal_run_test(test_type, test, timeout, show_output = False):
    start_time = time.time()
 
    try:
-      output = subprocess.check_output(['@CMAKE_BINARY_DIR@/st/single_test_run',
-                                        test_type,
-                                        test,
-                                        str(timeout)],
-                                        stderr=subprocess.STDOUT)
+      output = subprocess.check_output(
+         [
+            '@CMAKE_BINARY_DIR@/st/single_test_run',
+            test_type,
+            test,
+            str(timeout)
+         ],
+         stderr=subprocess.STDOUT
+      ).decode('utf-8')
+
    except subprocess.CalledProcessError as e:
       elapsed = time.time() - start_time
-      print(e.output.decode('utf-8'))
+      u.raw_print(e.output.decode('utf-8'))
       print("[ FAILED  ] after {:.2f} seconds with: {}\n"
                .format(elapsed, error_codes_strings[e.returncode]))
       return False
@@ -142,7 +150,7 @@ def internal_run_test(test_type, test, timeout, show_output = False):
 
    if show_output:
       print("")
-      print(output)
+      u.raw_print(output)
 
    print("[ PASSED  ] after {:.2f} seconds\n".format(elapsed))
    return True
