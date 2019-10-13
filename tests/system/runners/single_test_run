@@ -43,7 +43,7 @@ TEST_TIMEOUT = 8
 # Internal
 output = ""
 process = None
-failed = FAIL_SUCCESS
+failed = Fail.success
 hello_msg_found = False
 shell_exit_code = -1
 dumping_gcda_files = False
@@ -65,7 +65,7 @@ def write_gcda_file():
          fh.write(gcda_buf)
 
    except Exception as e:
-      failed = FAIL_GCOV_ERROR
+      failed = Fail.gcov_error
       msg_print("")
       msg_print(
          "While working on gcda file '{}', "
@@ -94,7 +94,7 @@ def HandleHelloMsg(line):
    msg_print("Detected TWICE the kernel hello msg: the machine rebooted.")
    msg_print("KILLING the VM.")
 
-   failed = FAIL_REBOOT
+   failed = Fail.reboot
    process.send_signal(signal.SIGINT)
 
 def ProcessLine(line):
@@ -131,7 +131,7 @@ def ProcessLine(line):
    #
    # if stripped.find("KERNEL PANIC") != -1:
    #    raw_print("[system test runner] Detected kernel panic: KILLING the VM.")
-   #    failed = FAIL_PANIC
+   #    failed = Fail.panic
    #    process.send_signal(signal.SIGINT)
 
    if not dumping_gcda_files:
@@ -330,7 +330,7 @@ if thread.is_alive():
       thread.join(30)
 
    if thread.is_alive():
-      failed = FAIL_TIMEOUT
+      failed = Fail.timeout
 
       msg_print(
          "The VM is alive after the timeout "
@@ -344,13 +344,13 @@ if gcda_file:
    write_gcda_file()
 
 if output.find("KERNEL PANIC") != -1:
-   failed = FAIL_PANIC
+   failed = Fail.panic
 
-if failed == FAIL_SUCCESS and shell_exit_code != 0:
+if failed == Fail.success and shell_exit_code != 0:
    msg_print("Shell exited with code {}.".format(shell_exit_code))
-   failed = FAIL_SHELL_NO_ZERO_EXIT
+   failed = Fail.shell_no_zero_exit
 
-if failed == FAIL_SUCCESS and dump_coverage and report_coverage:
+if failed == Fail.success and dump_coverage and report_coverage:
 
    try:
 
@@ -364,7 +364,7 @@ if failed == FAIL_SUCCESS and dump_coverage and report_coverage:
       msg_print("Output of {} --acc:".format(GEN_KCOV_REPORT))
       raw_print(e.output) # pylint: disable=no-member
       msg_print("--- end output ---")
-      sys.exit(FAIL_GCOV_ERROR)
+      sys.exit(Fail.gcov_error)
 
-sys.exit(failed)
+sys.exit(failed.value)
 

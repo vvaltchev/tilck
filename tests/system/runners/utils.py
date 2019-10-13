@@ -1,26 +1,25 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import sys
+from enum import Enum
 
 # Constants
 
-# Fail codes:
-FAIL_SUCCESS = 0
-FAIL_INVALID_ARGS = 1
-FAIL_REBOOT = 2
-FAIL_TIMEOUT = 3
-FAIL_PANIC = 4
-FAIL_SHELL_NO_ZERO_EXIT = 5
-FAIL_GCOV_ERROR = 6
+class Fail(Enum):
+   success              = 0
+   invalid_args         = 1
+   reboot               = 2
+   timeout              = 3
+   panic                = 4
+   shell_no_zero_exit   = 5
+   gcov_error           = 6
 
-error_codes_strings = {
-   FAIL_SUCCESS: 'success',
-   FAIL_INVALID_ARGS: 'invalid_arguments',
-   FAIL_REBOOT: 'reboot',
-   FAIL_TIMEOUT: 'timeout',
-   FAIL_PANIC: 'panic',
-   FAIL_SHELL_NO_ZERO_EXIT: 'shell_no_zero_exit',
-   FAIL_GCOV_ERROR: 'gcov_issue'
-}
+def getFailByCode(err_code):
+
+   for f in Fail:
+      if f.value == err_code:
+         return f
+
+   return None
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
 KERNEL_FILE = r'@KERNEL_FILE@'

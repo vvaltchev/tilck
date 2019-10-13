@@ -131,7 +131,7 @@ def internal_run_test(test_type, test, timeout, show_output = False):
       elapsed = time.time() - start_time
       raw_print(e.output.decode('utf-8'))
       print("[ FAILED  ] after {:.2f} seconds with: {}\n"
-               .format(elapsed, error_codes_strings[e.returncode]))
+               .format(elapsed, getFailByCode(e.returncode)))
       return False
 
    elapsed = time.time() - start_time
