@@ -84,7 +84,7 @@ def write_gcda_file():
       gcda_file = None
       gcda_buf = None
 
-def HandleHelloMsg(line):
+def handle_hello_msg(line):
 
    global process
    global hello_msg_found
@@ -102,7 +102,7 @@ def HandleHelloMsg(line):
    set_fail_reason(Fail.reboot)
    process.send_signal(signal.SIGINT)
 
-def ProcessLine(line):
+def process_line(line):
 
    global output
    global process
@@ -126,7 +126,7 @@ def ProcessLine(line):
          return
 
    if stripped.find(KERNEL_HELLO_MSG) != -1:
-      HandleHelloMsg(stripped)
+      handle_hello_msg(stripped)
       return
 
    # NOTE: we could kill the VM immediately after a kernel panic, but we'll
@@ -175,9 +175,9 @@ def ProcessLine(line):
    else:
       gcda_buf += stripped
 
-def RunTheVM():
+def run_the_vm():
 
-   def ProcessText(text):
+   def process_text(text):
 
       # python's split always leaves an empty element in case of a trailing
       # delimiter. For example:
@@ -194,7 +194,7 @@ def RunTheVM():
       lines = text.split("\n")
 
       for ln in lines[:-1]:
-         ProcessLine(ln)
+         process_line(ln)
 
       return lines[-1]
 
@@ -259,7 +259,7 @@ def RunTheVM():
 
    read_anything = False
    start_time = time.time()
-   incompleteLine = ''
+   incomplete_line = ''
 
    while True:
 
@@ -274,8 +274,8 @@ def RunTheVM():
 
          if process.poll() is not None:
 
-            if incompleteLine:
-               ProcessLine(incompleteLine)
+            if incomplete_line:
+               process_line(incomplete_line)
 
             break # The process exited, we have to stop reading
 
@@ -299,8 +299,8 @@ def RunTheVM():
          msg_print("First output after {:.2f} s".format(elapsed))
 
       start_time = time.time()
-      text = incompleteLine + text.decode('latin-1')
-      incompleteLine = ProcessText(text)
+      text = incomplete_line + text.decode('latin-1')
+      incomplete_line = process_text(text)
 
    raw_print('-' * 80)
 
@@ -323,7 +323,7 @@ g_test_type = sys.argv[1]
 g_test_name = sys.argv[2]
 g_test_timeout = int(sys.argv[3])
 
-thread = threading.Thread(target = RunTheVM)
+thread = threading.Thread(target = run_the_vm)
 thread.start()
 thread.join(g_test_timeout)
 
