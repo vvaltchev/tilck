@@ -10,21 +10,9 @@ import subprocess
 import threading
 
 # Local imports
-import utils as u
+from utils import * # pylint: disable=unused-wildcard-import
 
 # Constants
-BUILD_DIR = r'@CMAKE_BINARY_DIR@'
-KERNEL_ELF = r'@KERNEL_FILE@'
-
-error_codes_strings = {
-   0: 'success',
-   1: 'invalid_arguments',
-   2: 'reboot',
-   3: 'timeout',
-   4: 'panic',
-   5: 'shell_no_zero_exit',
-   6: 'gcov_issue'
-}
 
 SHORT_TEST_TIMEOUT = 12
 MED_TEST_TIMEOUT   = 24
@@ -91,7 +79,7 @@ def load_list_of_kernel_self_tests():
 
    result = []
    rows = subprocess                            \
-            .check_output(['nm', KERNEL_ELF])   \
+            .check_output(['nm', KERNEL_FILE])   \
                .decode("utf-8")                 \
                   .split("\n")
 
@@ -141,7 +129,7 @@ def internal_run_test(test_type, test, timeout, show_output = False):
 
    except subprocess.CalledProcessError as e:
       elapsed = time.time() - start_time
-      u.raw_print(e.output.decode('utf-8'))
+      raw_print(e.output.decode('utf-8'))
       print("[ FAILED  ] after {:.2f} seconds with: {}\n"
                .format(elapsed, error_codes_strings[e.returncode]))
       return False
@@ -150,7 +138,7 @@ def internal_run_test(test_type, test, timeout, show_output = False):
 
    if show_output:
       print("")
-      u.raw_print(output)
+      raw_print(output)
 
    print("[ PASSED  ] after {:.2f} seconds\n".format(elapsed))
    return True

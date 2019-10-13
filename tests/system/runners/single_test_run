@@ -14,24 +14,13 @@ import base64
 import fcntl
 
 # Local imports
-import utils as u
-
-# Constants
-
-# Fail codes:
-FAIL_SUCCESS = 0
-FAIL_REBOOT = 2
-FAIL_TIMEOUT = 3
-FAIL_PANIC = 4
-FAIL_SHELL_NO_ZERO_EXIT = 5
-FAIL_GCOV_ERROR = 6
+from utils import * # pylint: disable=unused-wildcard-import
 
 # Other constants
 INIT_PATH = '/initrd/bin/init'
 DEVSHELL_PATH = '/initrd/usr/bin/devshell'
 KERNEL_HELLO_MSG = 'Hello from Tilck!'
 KERNEL_DUMP_GCDA_STR = '** GCOV gcda files **'
-KERNEL_FILE = '@KERNEL_FILE@'
 FATPART_FILE = '@CMAKE_BINARY_DIR@/fatpart'
 GEN_KCOV_REPORT = '@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report'
 
@@ -77,12 +66,12 @@ def write_gcda_file():
 
    except Exception as e:
       failed = FAIL_GCOV_ERROR
-      u.msg_print("")
-      u.msg_print(
+      msg_print("")
+      msg_print(
          "While working on gcda file '{}', "
          "got exception: {}".format(gcda_file, str(e))
       )
-      u.raw_print("gcda_buf:\n<<{}>>\n".format(orig_gcda_buf))
+      raw_print("gcda_buf:\n<<{}>>\n".format(orig_gcda_buf))
       process.send_signal(signal.SIGINT)
 
    finally:
@@ -97,13 +86,13 @@ def HandleHelloMsg(line):
 
    if not hello_msg_found:
       hello_msg_found = True
-      u.raw_print(line)
+      raw_print(line)
       return
 
    # Bad case
-   u.msg_print("")
-   u.msg_print("Detected TWICE the kernel hello msg: the machine rebooted.")
-   u.msg_print("KILLING the VM.")
+   msg_print("")
+   msg_print("Detected TWICE the kernel hello msg: the machine rebooted.")
+   msg_print("KILLING the VM.")
 
    failed = FAIL_REBOOT
    process.send_signal(signal.SIGINT)
@@ -120,7 +109,7 @@ def ProcessLine(line):
    global gcda_file
 
    stripped = line.rstrip()
-   #u.raw_print(stripped)
+   #raw_print(stripped)
 
    if stripped and stripped[0] == '[' and stripped.startswith('[init]'):
       m = re.search(r'\[init\] the devshell exited with status: ([0-9]+)',
@@ -129,7 +118,7 @@ def ProcessLine(line):
       if m:
          shell_exit_code = int(m.group(1))
          dumping_gcda_files = False
-         u.raw_print(stripped)
+         raw_print(stripped)
          return
 
    if stripped.find(KERNEL_HELLO_MSG) != -1:
@@ -141,14 +130,14 @@ def ProcessLine(line):
    # a some timeout (e.g. 1 sec).
    #
    # if stripped.find("KERNEL PANIC") != -1:
-   #    u.raw_print("[system test runner] Detected kernel panic: KILLING the VM.")
+   #    raw_print("[system test runner] Detected kernel panic: KILLING the VM.")
    #    failed = FAIL_PANIC
    #    process.send_signal(signal.SIGINT)
 
    if not dumping_gcda_files:
 
       output += stripped + "\n"
-      u.raw_print(stripped)
+      raw_print(stripped)
 
       if stripped.find(KERNEL_DUMP_GCDA_STR) != -1:
          dumping_gcda_files = True
@@ -166,7 +155,7 @@ def ProcessLine(line):
          write_gcda_file()
 
       dumping_gcda_files = False
-      u.raw_print(stripped)
+      raw_print(stripped)
       return
 
    m = re.search(r'file: (.+)', stripped)
@@ -236,12 +225,12 @@ def RunTheVM():
 
    if TEST_TYPE == 'shellcmd':
 
-      u.raw_print("Running the VM with shell command '{}'...".format(TEST_NAME))
+      raw_print("Running the VM with shell command '{}'...".format(TEST_NAME))
       cmdline += ' -c ' + TEST_NAME
 
    elif TEST_TYPE == 'selftest':
 
-      u.raw_print("Running the VM with selftest '{}'...".format(TEST_NAME))
+      raw_print("Running the VM with selftest '{}'...".format(TEST_NAME))
       cmdline += ' -c selftest ' + TEST_NAME
 
    else:
@@ -251,10 +240,10 @@ def RunTheVM():
    args += ['-initrd', FATPART_FILE, '-append', kernel_cmdline]
 
    if verbose:
-      u.raw_print(" ".join(args))
+      raw_print(" ".join(args))
 
-   u.raw_print('-' * 80)
-   u.raw_print("")
+   raw_print('-' * 80)
+   raw_print("")
 
    # Run the QEMU process by using a PIPE for its stdout
    process = subprocess.Popen(args, stdout=subprocess.PIPE)
@@ -295,7 +284,7 @@ def RunTheVM():
          e = curr_time - start_time
 
          if e >= 1.0:
-            u.msg_print("WARNING: got nothing in {:.2f} sec".format(e))
+            msg_print("WARNING: got nothing in {:.2f} sec".format(e))
             start_time = curr_time
 
          time.sleep(0.1)
@@ -304,22 +293,22 @@ def RunTheVM():
       if not read_anything:
          elapsed = time.time() - start_time
          read_anything = True
-         u.msg_print("First output after {:.2f} s".format(elapsed))
+         msg_print("First output after {:.2f} s".format(elapsed))
 
       start_time = time.time()
       text = incompleteLine + text.decode('latin-1')
       incompleteLine = ProcessText(text)
 
-   u.raw_print('-' * 80)
+   raw_print('-' * 80)
+
+def show_help_and_exit():
+   raw_print("Syntax: ")
+   raw_print("  single_test_run selftest <name> <timeout>")
+   raw_print("  single_test_run shellcmd <name> <timeout>")
+   sys.exit(1)
 
 ###############################################################################
 # MAIN
-
-def show_help_and_exit():
-   u.raw_print("Syntax: ")
-   u.raw_print("  single_test_run selftest <name> <timeout>")
-   u.raw_print("  single_test_run shellcmd <name> <timeout>")
-   sys.exit(1)
 
 if len(sys.argv) < 4:
    show_help_and_exit()
@@ -343,7 +332,7 @@ if thread.is_alive():
    if thread.is_alive():
       failed = FAIL_TIMEOUT
 
-      u.msg_print(
+      msg_print(
          "The VM is alive after the timeout "
          "of {} seconds. KILLING IT.".format(TEST_TIMEOUT)
       )
@@ -358,7 +347,7 @@ if output.find("KERNEL PANIC") != -1:
    failed = FAIL_PANIC
 
 if failed == FAIL_SUCCESS and shell_exit_code != 0:
-   u.msg_print("Shell exited with code {}.".format(shell_exit_code))
+   msg_print("Shell exited with code {}.".format(shell_exit_code))
    failed = FAIL_SHELL_NO_ZERO_EXIT
 
 if failed == FAIL_SUCCESS and dump_coverage and report_coverage:
@@ -369,12 +358,12 @@ if failed == FAIL_SUCCESS and dump_coverage and report_coverage:
 
    except Exception as e:
 
-      u.msg_print(
+      msg_print(
          "{} generated the exception: {}".format(GEN_KCOV_REPORT, str(e))
       )
-      u.msg_print("Output of {} --acc:".format(GEN_KCOV_REPORT))
-      u.raw_print(e.output) # pylint: disable=no-member
-      u.msg_print("--- end output ---")
+      msg_print("Output of {} --acc:".format(GEN_KCOV_REPORT))
+      raw_print(e.output) # pylint: disable=no-member
+      msg_print("--- end output ---")
       sys.exit(FAIL_GCOV_ERROR)
 
 sys.exit(failed)
