@@ -41,10 +41,10 @@ g_test_name = None
 g_test_type = None
 g_test_timeout = None
 
-# Internal
+# Internal state
 output = ""
 process = None
-failed = Fail.success
+fail_reason = Fail.success
 hello_msg_found = False
 shell_exit_code = -1
 dumping_gcda_files = False
@@ -52,9 +52,14 @@ gcda_buf = None
 gcda_file = None
 notBase64Char = re.compile(r'[^A-Za-z0-9+/=]')
 
+def set_fail_reason(reason: Fail):
+   global fail_reason
+   assert(fail_reason == Fail.success)
+   fail_reason = reason
+
 def write_gcda_file():
 
-   global gcda_file, gcda_buf, failed, process
+   global gcda_file, gcda_buf, process
 
    try:
 
@@ -66,7 +71,7 @@ def write_gcda_file():
          fh.write(gcda_buf)
 
    except Exception as e:
-      failed = Fail.gcov_error
+      set_fail_reason(Fail.gcov_error)
       msg_print("")
       msg_print(
          "While working on gcda file '{}', "
@@ -82,7 +87,6 @@ def write_gcda_file():
 def HandleHelloMsg(line):
 
    global process
-   global failed
    global hello_msg_found
 
    if not hello_msg_found:
@@ -95,14 +99,13 @@ def HandleHelloMsg(line):
    msg_print("Detected TWICE the kernel hello msg: the machine rebooted.")
    msg_print("KILLING the VM.")
 
-   failed = Fail.reboot
+   set_fail_reason(Fail.reboot)
    process.send_signal(signal.SIGINT)
 
 def ProcessLine(line):
 
    global output
    global process
-   global failed
    global hello_msg_found
    global shell_exit_code
    global dumping_gcda_files
@@ -132,7 +135,7 @@ def ProcessLine(line):
    #
    # if stripped.find("KERNEL PANIC") != -1:
    #    raw_print("[system test runner] Detected kernel panic: KILLING the VM.")
-   #    failed = Fail.panic
+   #    set_fail_reason(Fail.panic)
    #    process.send_signal(signal.SIGINT)
 
    if not dumping_gcda_files:
@@ -197,7 +200,6 @@ def RunTheVM():
 
    global output
    global process
-   global failed
    global hello_msg_found
    global shell_exit_code
    global dumping_gcda_files
@@ -331,7 +333,7 @@ if thread.is_alive():
       thread.join(30)
 
    if thread.is_alive():
-      failed = Fail.timeout
+      set_fail_reason(Fail.timeout)
 
       msg_print(
          "The VM is alive after the timeout "
@@ -345,13 +347,13 @@ if gcda_file:
    write_gcda_file()
 
 if output.find("KERNEL PANIC") != -1:
-   failed = Fail.panic
+   set_fail_reason(Fail.panic)
 
-if failed == Fail.success and shell_exit_code != 0:
+if fail_reason == Fail.success and shell_exit_code != 0:
    msg_print("Shell exited with code {}.".format(shell_exit_code))
-   failed = Fail.shell_no_zero_exit
+   set_fail_reason(Fail.shell_no_zero_exit)
 
-if failed == Fail.success and dump_coverage and report_coverage:
+if fail_reason == Fail.success and dump_coverage and report_coverage:
 
    try:
 
@@ -363,9 +365,9 @@ if failed == Fail.success and dump_coverage and report_coverage:
          "{} generated the exception: {}".format(GEN_KCOV_REPORT, str(e))
       )
       msg_print("Output of {} --acc:".format(GEN_KCOV_REPORT))
-      raw_print(e.output) # pylint: disable=no-member
+      raw_print(getattr(e, 'output', '<no output>'))
       msg_print("--- end output ---")
       sys.exit(Fail.gcov_error)
 
-sys.exit(failed.value)
+sys.exit(fail_reason.value)
 
