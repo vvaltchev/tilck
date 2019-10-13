@@ -238,7 +238,7 @@ def run_the_vm():
       cmdline += ' -c selftest ' + g_test_name
 
    else:
-      sys.exit(1)
+      sys.exit(Fail.invalid_args.value)
 
    kernel_cmdline += ' -cmd {} {} -- {}'.format(INIT_PATH, init_opts, cmdline)
    args += ['-initrd', FATPART_FILE, '-append', kernel_cmdline]
@@ -310,7 +310,7 @@ def show_help_and_exit():
    raw_print("Syntax: ")
    raw_print("  single_test_run selftest <name> <timeout>")
    raw_print("  single_test_run shellcmd <name> <timeout>")
-   sys.exit(1)
+   sys.exit(Fail.invalid_args.value)
 
 ###############################################################################
 # MAIN
@@ -369,7 +369,7 @@ if fail_reason == Fail.success and dump_coverage and report_coverage:
       msg_print("Output of {} --acc:".format(GEN_KCOV_REPORT))
       raw_print(getattr(e, 'output', '<no output>'))
       msg_print("--- end output ---")
-      sys.exit(Fail.gcov_error)
+      sys.exit(Fail.gcov_error.value)
 
 sys.exit(fail_reason.value)
 
