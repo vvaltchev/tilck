@@ -57,6 +57,15 @@ def set_fail_reason(reason: Fail):
    assert(fail_reason == Fail.success)
    fail_reason = reason
 
+def append_to_output(s: str):
+   global output
+   output += s
+
+def set_qemu_process(p):
+   global process
+   assert(process is None)
+   process = p
+
 def write_gcda_file():
 
    global gcda_file, gcda_buf, process
@@ -84,9 +93,8 @@ def write_gcda_file():
       gcda_file = None
       gcda_buf = None
 
-def handle_hello_msg(line):
+def handle_hello_msg(line: str):
 
-   global process
    global hello_msg_found
 
    if not hello_msg_found:
@@ -102,11 +110,8 @@ def handle_hello_msg(line):
    set_fail_reason(Fail.reboot)
    process.send_signal(signal.SIGINT)
 
-def process_line(line):
+def process_line(line: str):
 
-   global output
-   global process
-   global hello_msg_found
    global shell_exit_code
    global dumping_gcda_files
    global gcda_buf
@@ -116,8 +121,7 @@ def process_line(line):
    #raw_print(stripped)
 
    if stripped and stripped[0] == '[' and stripped.startswith('[init]'):
-      m = re.search(r'\[init\] the devshell exited with status: ([0-9]+)',
-                    stripped)
+      m = re.search(r'the devshell exited with status: ([0-9]+)', stripped)
 
       if m:
          shell_exit_code = int(m.group(1))
@@ -140,7 +144,7 @@ def process_line(line):
 
    if not dumping_gcda_files:
 
-      output += stripped + "\n"
+      append_to_output(stripped + "\n")
       raw_print(stripped)
 
       if stripped.find(KERNEL_DUMP_GCDA_STR) != -1:
@@ -175,32 +179,29 @@ def process_line(line):
    else:
       gcda_buf += stripped
 
+def process_text(text: str):
+
+   # python's split always leaves an empty element in case of a trailing
+   # delimiter. For example:
+   #
+   #     "a,b,c,".split(",")
+   #
+   # produces
+   #
+   #     ["a", "b", "c", ""]
+   #
+   # Therefore, it's always OK to discard the last line and return it, to
+   # be used for the next (which will be appended to it).
+
+   lines = text.split("\n")
+
+   for ln in lines[:-1]:
+      process_line(ln)
+
+   return lines[-1]
+
 def run_the_vm():
 
-   def process_text(text):
-
-      # python's split always leaves an empty element in case of a trailing
-      # delimiter. For example:
-      #
-      #     "a,b,c,".split(",")
-      #
-      # produces
-      #
-      #     ["a", "b", "c", ""]
-      #
-      # Therefore, it's always OK to discard the last line and return it, to
-      # be used for the next (which will be appended to it).
-
-      lines = text.split("\n")
-
-      for ln in lines[:-1]:
-         process_line(ln)
-
-      return lines[-1]
-
-   global output
-   global process
-   global hello_msg_found
    global shell_exit_code
    global dumping_gcda_files
    global gcda_buf
@@ -250,6 +251,7 @@ def run_the_vm():
 
    # Run the QEMU process by using a PIPE for its stdout
    process = subprocess.Popen(args, stdout=subprocess.PIPE)
+   set_qemu_process(process)
 
    # Get the current flags for the `stdout` file descriptor
    fl = fcntl.fcntl(process.stdout.fileno(), fcntl.F_GETFL)
