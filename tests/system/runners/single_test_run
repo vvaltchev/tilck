@@ -37,8 +37,9 @@ verbose = os.environ.get('VERBOSE', False)
 # Global variables
 
 # Controlled by command line
-TEST_TYPE = None
-TEST_TIMEOUT = 8
+g_test_name = None
+g_test_type = None
+g_test_timeout = None
 
 # Internal
 output = ""
@@ -223,15 +224,15 @@ def RunTheVM():
    if in_circleci:
       kernel_cmdline += ' -sat' # enable sched alive (debug) thread
 
-   if TEST_TYPE == 'shellcmd':
+   if g_test_type == 'shellcmd':
 
-      raw_print("Running the VM with shell command '{}'...".format(TEST_NAME))
-      cmdline += ' -c ' + TEST_NAME
+      raw_print("Running the VM with shell command '{}'...".format(g_test_name))
+      cmdline += ' -c ' + g_test_name
 
-   elif TEST_TYPE == 'selftest':
+   elif g_test_type == 'selftest':
 
-      raw_print("Running the VM with selftest '{}'...".format(TEST_NAME))
-      cmdline += ' -c selftest ' + TEST_NAME
+      raw_print("Running the VM with selftest '{}'...".format(g_test_name))
+      cmdline += ' -c selftest ' + g_test_name
 
    else:
       sys.exit(1)
@@ -316,13 +317,13 @@ if len(sys.argv) < 4:
 if sys.argv[1] not in ['selftest', 'shellcmd']:
    show_help_and_exit()
 
-TEST_TYPE = sys.argv[1]
-TEST_NAME = sys.argv[2]
-TEST_TIMEOUT = int(sys.argv[3])
+g_test_type = sys.argv[1]
+g_test_name = sys.argv[2]
+g_test_timeout = int(sys.argv[3])
 
 thread = threading.Thread(target = RunTheVM)
 thread.start()
-thread.join(TEST_TIMEOUT)
+thread.join(g_test_timeout)
 
 if thread.is_alive():
 
@@ -334,7 +335,7 @@ if thread.is_alive():
 
       msg_print(
          "The VM is alive after the timeout "
-         "of {} seconds. KILLING IT.".format(TEST_TIMEOUT)
+         "of {} seconds. KILLING IT.".format(g_test_timeout)
       )
 
       process.send_signal(signal.SIGINT)
