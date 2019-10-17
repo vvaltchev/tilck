@@ -19,7 +19,6 @@ SHORT_TEST_TIMEOUT = 12
 MED_TEST_TIMEOUT   = 24
 LONG_TEST_TIMEOUT  = 60
 
-test_types = ['selftest', 'shellcmd']
 pretty_names_list = ['Self tests', 'Shell cmd tests']
 load_tests_func_by_type_list = [
    'load_list_of_kernel_self_tests',
@@ -79,9 +78,9 @@ def load_list_of_shell_cmd_tests():
 def load_list_of_kernel_self_tests():
 
    result = []
-   rows = subprocess                            \
+   rows = subprocess                             \
             .check_output(['nm', KERNEL_FILE])   \
-               .decode("utf-8")                 \
+               .decode("utf-8")                  \
                   .split("\n")
 
    t_short = SHORT_TEST_TIMEOUT

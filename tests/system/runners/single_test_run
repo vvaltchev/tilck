@@ -12,9 +12,18 @@ import struct
 import zlib
 import base64
 import fcntl
+from collections import namedtuple
 
 # Local imports
 from utils import * # pylint: disable=unused-wildcard-import
+
+# Runtime-generated constants
+r_notInBase64Char = re.compile(r'[^A-Za-z0-9+/=]')
+
+# Runtime-generated types
+TestParamsType = namedtuple(
+   'TestParamsType', ['type', 'name', 'timeout']
+)
 
 # Other constants
 INIT_PATH = '/initrd/bin/init'
@@ -37,68 +46,70 @@ verbose = os.environ.get('VERBOSE', False)
 # Global variables
 
 # Controlled by command line
-g_test_name = None
-g_test_type = None
-g_test_timeout = None
+g_params:TestParamsType = None
 
 # Internal state
-output = ""
-process = None
-fail_reason = Fail.success
-hello_msg_found = False
-shell_exit_code = -1
-dumping_gcda_files = False
-gcda_buf = None
-gcda_file = None
-notBase64Char = re.compile(r'[^A-Za-z0-9+/=]')
+g_output = ""
+g_process = None
+g_fail_reason = Fail.success
+g_hello_msg_found = False
+g_shell_exit_code = -1
+g_dumping_gcda_files = False
+g_gcda_buf = None
+g_gcda_file = None
 
-def set_fail_reason(reason: Fail):
-   global fail_reason
-   assert(fail_reason == Fail.success)
-   fail_reason = reason
+def set_once_shell_exit_code(val: int):
+   global g_shell_exit_code
+   assert(g_shell_exit_code == -1)
+   g_shell_exit_code = val
+
+def set_once_fail_reason(reason: Fail):
+   global g_fail_reason
+   assert(g_fail_reason == Fail.success)
+   g_fail_reason = reason
+
+def set_once_qemu_process(p):
+   global g_process
+   assert(g_process is None)
+   g_process = p
 
 def append_to_output(s: str):
-   global output
-   output += s
-
-def set_qemu_process(p):
-   global process
-   assert(process is None)
-   process = p
+   global g_output
+   g_output += s
 
 def write_gcda_file():
 
-   global gcda_file, gcda_buf, process
+   global g_gcda_file, g_gcda_buf
 
    try:
 
-      orig_gcda_buf = gcda_buf
-      gcda_buf = base64.b64decode(gcda_buf)
-      gcda_buf = zlib.decompress(gcda_buf)
+      orig_gcda_buf = g_gcda_buf
+      g_gcda_buf = base64.b64decode(g_gcda_buf)
+      g_gcda_buf = zlib.decompress(g_gcda_buf)
 
-      with open(gcda_file, 'wb') as fh:
-         fh.write(gcda_buf)
+      with open(g_gcda_file, 'wb') as fh:
+         fh.write(g_gcda_buf)
 
    except Exception as e:
-      set_fail_reason(Fail.gcov_error)
+      set_once_fail_reason(Fail.gcov_error)
       msg_print("")
       msg_print(
          "While working on gcda file '{}', "
-         "got exception: {}".format(gcda_file, str(e))
+         "got exception: {}".format(g_gcda_file, str(e))
       )
-      raw_print("gcda_buf:\n<<{}>>\n".format(orig_gcda_buf))
-      process.send_signal(signal.SIGINT)
+      raw_print("g_gcda_buf:\n<<{}>>\n".format(orig_gcda_buf))
+      g_process.send_signal(signal.SIGINT)
 
    finally:
-      gcda_file = None
-      gcda_buf = None
+      g_gcda_file = None
+      g_gcda_buf = None
 
 def handle_hello_msg(line: str):
 
-   global hello_msg_found
+   global g_hello_msg_found
 
-   if not hello_msg_found:
-      hello_msg_found = True
+   if not g_hello_msg_found:
+      g_hello_msg_found = True
       raw_print(line)
       return
 
@@ -107,15 +118,14 @@ def handle_hello_msg(line: str):
    msg_print("Detected TWICE the kernel hello msg: the machine rebooted.")
    msg_print("KILLING the VM.")
 
-   set_fail_reason(Fail.reboot)
-   process.send_signal(signal.SIGINT)
+   set_once_fail_reason(Fail.reboot)
+   g_process.send_signal(signal.SIGINT)
 
 def process_line(line: str):
 
-   global shell_exit_code
-   global dumping_gcda_files
-   global gcda_buf
-   global gcda_file
+   global g_dumping_gcda_files
+   global g_gcda_buf
+   global g_gcda_file
 
    stripped = line.rstrip()
    #raw_print(stripped)
@@ -124,8 +134,8 @@ def process_line(line: str):
       m = re.search(r'the devshell exited with status: ([0-9]+)', stripped)
 
       if m:
-         shell_exit_code = int(m.group(1))
-         dumping_gcda_files = False
+         set_once_shell_exit_code(int(m.group(1)))
+         g_dumping_gcda_files = False
          raw_print(stripped)
          return
 
@@ -139,16 +149,16 @@ def process_line(line: str):
    #
    # if stripped.find("KERNEL PANIC") != -1:
    #    raw_print("[system test runner] Detected kernel panic: KILLING the VM.")
-   #    set_fail_reason(Fail.panic)
-   #    process.send_signal(signal.SIGINT)
+   #    set_once_fail_reason(Fail.panic)
+   #    g_process.send_signal(signal.SIGINT)
 
-   if not dumping_gcda_files:
+   if not g_dumping_gcda_files:
 
       append_to_output(stripped + "\n")
       raw_print(stripped)
 
       if stripped.find(KERNEL_DUMP_GCDA_STR) != -1:
-         dumping_gcda_files = True
+         g_dumping_gcda_files = True
 
       return
 
@@ -157,12 +167,12 @@ def process_line(line: str):
    if not stripped:
       return
 
-   if notBase64Char.search(stripped[0]):
+   if r_notInBase64Char.search(stripped[0]):
 
-      if gcda_file:
+      if g_gcda_file:
          write_gcda_file()
 
-      dumping_gcda_files = False
+      g_dumping_gcda_files = False
       raw_print(stripped)
       return
 
@@ -170,14 +180,14 @@ def process_line(line: str):
 
    if m:
 
-      if gcda_file:
+      if g_gcda_file:
          write_gcda_file()
 
-      gcda_file = m.group(1)
-      gcda_buf = ''
+      g_gcda_file = m.group(1)
+      g_gcda_buf = ''
 
    else:
-      gcda_buf += stripped
+      g_gcda_buf += stripped
 
 def process_text(text: str):
 
@@ -202,10 +212,9 @@ def process_text(text: str):
 
 def run_the_vm():
 
-   global shell_exit_code
-   global dumping_gcda_files
-   global gcda_buf
-   global gcda_file
+   global g_dumping_gcda_files
+   global g_gcda_buf
+   global g_gcda_file
 
    args = ['qemu-system-i386',
            '-m', str(VM_MEMORY_SIZE_IN_MB),
@@ -227,15 +236,15 @@ def run_the_vm():
    if in_circleci:
       kernel_cmdline += ' -sat' # enable sched alive (debug) thread
 
-   if g_test_type == 'shellcmd':
+   if g_params.type == 'shellcmd':
 
-      raw_print("Running the VM with shell command '{}'...".format(g_test_name))
-      cmdline += ' -c ' + g_test_name
+      raw_print("Running the VM with shell command '{}'...".format(g_params.name))
+      cmdline += ' -c ' + g_params.name
 
-   elif g_test_type == 'selftest':
+   elif g_params.type == 'selftest':
 
-      raw_print("Running the VM with selftest '{}'...".format(g_test_name))
-      cmdline += ' -c selftest ' + g_test_name
+      raw_print("Running the VM with selftest '{}'...".format(g_params.name))
+      cmdline += ' -c selftest ' + g_params.name
 
    else:
       sys.exit(Fail.invalid_args.value)
@@ -250,14 +259,14 @@ def run_the_vm():
    raw_print("")
 
    # Run the QEMU process by using a PIPE for its stdout
-   process = subprocess.Popen(args, stdout=subprocess.PIPE)
-   set_qemu_process(process)
+   p = subprocess.Popen(args, stdout=subprocess.PIPE)
+   set_once_qemu_process(p)
 
    # Get the current flags for the `stdout` file descriptor
-   fl = fcntl.fcntl(process.stdout.fileno(), fcntl.F_GETFL)
+   fl = fcntl.fcntl(g_process.stdout.fileno(), fcntl.F_GETFL)
 
    # Make the `stdout` file descriptor non-blocking
-   fcntl.fcntl(process.stdout.fileno(), fcntl.F_SETFL, fl | os.O_NONBLOCK)
+   fcntl.fcntl(g_process.stdout.fileno(), fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
    read_anything = False
    start_time = time.time()
@@ -265,16 +274,16 @@ def run_the_vm():
 
    while True:
 
-      text = process.stdout.read()
+      text = g_process.stdout.read()
 
       # In python 3, read() will return None when there's nothing to read on
       # a non-blocking stream. On python 2 instead, it used to throw an IOError
       # and return None only in case of EOF. Now, apprently, there's no way to
-      # detect the EOF case. Therefore, process.poll() is used. It returns
+      # detect the EOF case. Therefore, g_process.poll() is used. It returns
       # process' exit-code if the process terminated, otherwise None.
       if not text:
 
-         if process.poll() is not None:
+         if g_process.poll() is not None:
 
             if incomplete_line:
                process_line(incomplete_line)
@@ -312,50 +321,10 @@ def show_help_and_exit():
    raw_print("  single_test_run shellcmd <name> <timeout>")
    sys.exit(Fail.invalid_args.value)
 
-###############################################################################
-# MAIN
+def generate_coverage_if_enabled():
 
-if len(sys.argv) < 4:
-   show_help_and_exit()
-
-if sys.argv[1] not in ['selftest', 'shellcmd']:
-   show_help_and_exit()
-
-g_test_type = sys.argv[1]
-g_test_name = sys.argv[2]
-g_test_timeout = int(sys.argv[3])
-
-thread = threading.Thread(target = run_the_vm)
-thread.start()
-thread.join(g_test_timeout)
-
-if thread.is_alive():
-
-   if dumping_gcda_files:
-      thread.join(30)
-
-   if thread.is_alive():
-      set_fail_reason(Fail.timeout)
-
-      msg_print(
-         "The VM is alive after the timeout "
-         "of {} seconds. KILLING IT.".format(g_test_timeout)
-      )
-
-      process.send_signal(signal.SIGINT)
-      thread.join()
-
-if gcda_file:
-   write_gcda_file()
-
-if output.find("KERNEL PANIC") != -1:
-   set_fail_reason(Fail.panic)
-
-if fail_reason == Fail.success and shell_exit_code != 0:
-   msg_print("Shell exited with code {}.".format(shell_exit_code))
-   set_fail_reason(Fail.shell_no_zero_exit)
-
-if fail_reason == Fail.success and dump_coverage and report_coverage:
+   if not dump_coverage or not report_coverage:
+      return # Just do nothing
 
    try:
 
@@ -371,5 +340,60 @@ if fail_reason == Fail.success and dump_coverage and report_coverage:
       msg_print("--- end output ---")
       sys.exit(Fail.gcov_error.value)
 
-sys.exit(fail_reason.value)
+###############################################################################
 
+def main():
+
+   global g_params
+
+   if len(sys.argv) < 4:
+      show_help_and_exit()
+
+   if sys.argv[1] not in test_types:
+      show_help_and_exit()
+
+   g_params = TestParamsType(sys.argv[1], sys.argv[2], int(sys.argv[3]))
+
+   thread = threading.Thread(target = run_the_vm)
+   thread.start()
+   thread.join(g_params.timeout)
+
+   if thread.is_alive():
+
+      # If we get here, after `g_params.timeout`, the test is still running
+
+      if g_dumping_gcda_files:
+         # If we're just dumping the GCDA file, wait a little more
+         thread.join(30)
+
+      if thread.is_alive():
+
+         # If it's still alive, we have to fail with timeout
+         set_once_fail_reason(Fail.timeout)
+
+         msg_print(
+            "The VM is alive after the timeout "
+            "of {} seconds. KILLING IT.".format(g_params.timeout)
+         )
+
+         g_process.send_signal(signal.SIGINT)
+         thread.join()
+
+   if g_gcda_file:
+      write_gcda_file()
+
+   if g_output.find("KERNEL PANIC") != -1:
+      set_once_fail_reason(Fail.panic)
+
+   if g_fail_reason == Fail.success and g_shell_exit_code != 0:
+      msg_print("Shell exited with code {}.".format(g_shell_exit_code))
+      set_once_fail_reason(Fail.shell_no_zero_exit)
+
+   if g_fail_reason == Fail.success:
+      generate_coverage_if_enabled()
+
+   sys.exit(g_fail_reason.value)
+
+###############################
+if __name__ == '__main__':
+   main()

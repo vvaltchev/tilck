@@ -21,6 +21,8 @@ def getFailByCode(err_code):
 
    return None
 
+test_types = ['selftest', 'shellcmd']
+
 # Constants coming from CMake (this file gets pre-processed by CMake)
 KERNEL_FILE = r'@KERNEL_FILE@'
 BUILD_DIR = r'@CMAKE_BINARY_DIR@'
