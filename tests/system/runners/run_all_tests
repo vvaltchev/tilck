@@ -8,6 +8,7 @@ import time
 import signal
 import subprocess
 import threading
+from typing import List, Dict
 
 # Local imports
 from utils import * # pylint: disable=unused-wildcard-import
@@ -39,9 +40,9 @@ tt_indexes = {
 
 # Global variables
 
-tests_by_type = { k: [] for k in test_types }
-tests_to_run = { k: 0 for k in test_types }
-tests_passed = { k: 0 for k in test_types }
+tests_by_type : Dict[str, List[str]] = { k: [] for k in test_types }
+tests_to_run  : Dict[str, int]       = { k:  0 for k in test_types }
+tests_passed  : Dict[str, int]       = { k:  0 for k in test_types }
 
 def load_all_tests():
 
