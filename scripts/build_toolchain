@@ -332,6 +332,19 @@ function download_ovmf {
 # Build busybox
 ##################################
 
+function busybox_fix_config_file {
+
+   # Remove the date-time row (in order to allow config diff to work)
+   sed -i -e '4d' .config
+
+   # Remove all empty lines
+   sed -i '/CONFIG_/!d' .config
+
+   # Sort all the lines
+   sort -s .config > .config_sorted
+   mv .config_sorted .config
+}
+
 all_funcs_list+=(config_busybox)
 function config_busybox {
 
@@ -347,8 +360,7 @@ function config_busybox {
    echo -n "Do you want to update busybox.config with the new config? [Y/n]: "
    read answer
 
-   # Remove the date-time row (in order to allow config diff to work)
-   sed -i -e '4d' .config
+   busybox_fix_config_file
 
    if [[ "$answer" == "" || "$answer" == "y" ]]; then
       cp .config $MAIN_DIR/other/busybox.config
@@ -378,8 +390,7 @@ function internal_build_busybox {
    export CROSS_COMPILE=""
    export CC_POST_FLAGS=""
 
-   # Remove the date-time row (in order to allow config diff to work)
-   sed -i -e '4d' .config
+   busybox_fix_config_file
 
    # Save a copy of the last built .config file
    cp .config .last_build_config
