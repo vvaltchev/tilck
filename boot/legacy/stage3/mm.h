@@ -10,18 +10,17 @@
 #define MEM_ACPI_NVS_MEMORY    4
 #define MEM_BAD                5
 
-typedef struct {
+struct mem_area {
 
    u64 base;
    u64 len;
    u32 type;
    u32 acpi;
-
-} mem_area;
+};
 
 typedef struct {
 
-   mem_area *mem_areas;
+   struct mem_area *mem_areas;
    u32 count;
 
 } mem_info;

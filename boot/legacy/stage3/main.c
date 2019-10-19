@@ -40,7 +40,7 @@ u32 cylinders_count;
 
 static u32 ramdisk_max_size;
 static u32 ramdisk_first_data_sector;
-static mem_area ma_buf[64];
+static struct mem_area ma_buf[64];
 
 static void calculate_ramdisk_fat_size(fat_header *hdr)
 {
@@ -151,7 +151,7 @@ setup_multiboot_info(mem_info *mi, uptr ramdisk_paddr, uptr ramdisk_size)
 
    for (u32 i = 0; i < mi->count; i++) {
 
-      mem_area *ma = mi->mem_areas + i;
+      struct mem_area *ma = mi->mem_areas + i;
 
       if (ma->type == MEM_USABLE) {
          if (ma->base < mbi->mem_lower * KB)
