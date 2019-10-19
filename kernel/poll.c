@@ -200,7 +200,7 @@ poll_count_ready_fds(struct pollfd *fds, nfds_t nfds)
 static int
 poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, u32 cond_cnt)
 {
-   task_info *curr = get_curr_task();
+   struct task_info *curr = get_curr_task();
    multi_obj_waiter *waiter = NULL;
    int ready_fds_cnt = 0;
 
@@ -274,7 +274,7 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, u32 cond_cnt)
 
 int sys_poll(struct pollfd *user_fds, nfds_t nfds, int timeout)
 {
-   task_info *curr = get_curr_task();
+   struct task_info *curr = get_curr_task();
    struct pollfd *fds = curr->args_copybuf;
    int rc, ready_fds_cnt;
    u32 cond_cnt = 0;

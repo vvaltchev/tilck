@@ -223,7 +223,7 @@ void restore_fpu_regs(void *task, bool in_kernel)
    if (UNLIKELY(in_panic()))
       return;
 
-   arch_task_info_members *arch_fields = &((task_info *)task)->arch;
+   arch_task_info_members *arch_fields = &((struct task_info *)task)->arch;
    void *buf = in_kernel ? fpu_kernel_regs : arch_fields->aligned_fpu_regs;
 
    ASSERT(buf != NULL);

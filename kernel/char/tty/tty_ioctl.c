@@ -153,7 +153,7 @@ static int tty_ioctl_KDSKBMODE(tty *t, void *argp)
 
 static int tty_ioctl_TIOCSCTTY(tty *t, void *argp)
 {
-   task_info *ti = get_curr_task();
+   struct task_info *ti = get_curr_task();
 
    if (!ti->pi->proc_tty) {
 

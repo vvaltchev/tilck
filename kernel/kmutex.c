@@ -163,7 +163,7 @@ void kmutex_unlock(kmutex *m)
       wait_obj *task_wo =
          list_first_obj(&m->wait_list, wait_obj, wait_list_node);
 
-      task_info *ti = CONTAINER_OF(task_wo, task_info, wobj);
+      struct task_info *ti = CONTAINER_OF(task_wo, struct task_info, wobj);
 
       m->owner_task = ti;
 

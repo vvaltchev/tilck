@@ -95,7 +95,8 @@
       "utility": "cpp",
       "syscall.h": "c",
       "ramfs_int.h": "c",
-      "inodes.c.h": "c"
+      "inodes.c.h": "c",
+      "atomics.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }

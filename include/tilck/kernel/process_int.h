@@ -8,7 +8,7 @@
 extern char *kernel_initial_stack[KERNEL_STACK_SIZE];
 void switch_to_initial_kernel_stack(void);
 
-static ALWAYS_INLINE void set_curr_task(task_info *ti)
+static ALWAYS_INLINE void set_curr_task(struct task_info *ti)
 {
 
 #ifndef UNIT_TEST_ENVIRONMENT

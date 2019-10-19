@@ -40,7 +40,7 @@ void panic_save_current_task_state(regs *r)
     */
 
    memcpy(&panic_state_regs, r, sizeof(regs));
-   task_info *curr = get_curr_task();
+   struct task_info *curr = get_curr_task();
 
    if (curr)
       curr->state_regs = &panic_state_regs;
@@ -54,7 +54,7 @@ static void disable_fpu_features(void)
    x86_cpu_features.can_use_avx2 = false;
 }
 
-static void panic_print_task_info(task_info *curr)
+static void panic_print_task_info(struct task_info *curr)
 {
    const char *str;
 
@@ -83,7 +83,7 @@ NORETURN void panic(const char *fmt, ...)
 
    uptr rc;
    va_list args;
-   task_info *curr;
+   struct task_info *curr;
 
    disable_interrupts_forced(); /* No interrupts: we're in a panic state */
 

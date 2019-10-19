@@ -84,7 +84,7 @@ int sys_chdir(const char *user_path)
 {
    int rc = 0;
    vfs_path p;
-   task_info *curr = get_curr_task();
+   struct task_info *curr = get_curr_task();
    struct process_info *pi = curr->pi;
    char *orig_path = curr->args_copybuf;
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;

@@ -20,7 +20,7 @@ u32 slow_timer_irq_handler_count;
 
 static list timer_wakeup_list = make_list(timer_wakeup_list);
 
-void task_set_wakeup_timer(task_info *ti, u32 ticks)
+void task_set_wakeup_timer(struct task_info *ti, u32 ticks)
 {
    uptr var;
    ASSERT(ticks > 0);
@@ -37,7 +37,7 @@ void task_set_wakeup_timer(task_info *ti, u32 ticks)
    }
 }
 
-void task_update_wakeup_timer_if_any(task_info *ti, u32 new_ticks)
+void task_update_wakeup_timer_if_any(struct task_info *ti, u32 new_ticks)
 {
    u32 curr;
    ASSERT(new_ticks > 0);
@@ -53,15 +53,15 @@ void task_update_wakeup_timer_if_any(task_info *ti, u32 new_ticks)
                              &curr, new_ticks, mo_relaxed, mo_relaxed));
 }
 
-u32 task_cancel_wakeup_timer(task_info *ti)
+u32 task_cancel_wakeup_timer(struct task_info *ti)
 {
    return atomic_exchange_explicit(&ti->ticks_before_wake_up, 0, mo_relaxed);
 }
 
-static task_info *tick_all_timers(void)
+static struct task_info *tick_all_timers(void)
 {
-   task_info *pos, *temp;
-   task_info *last_ready_task = NULL;
+   struct task_info *pos, *temp;
+   struct task_info *last_ready_task = NULL;
    uptr var;
 
    list_for_each(pos, temp, &timer_wakeup_list, wakeup_timer_node) {
@@ -227,7 +227,7 @@ enum irq_action timer_irq_handler(regs *context)
    __ticks++;
 
    account_ticks();
-   task_info *last_ready_task = tick_all_timers();
+   struct task_info *last_ready_task = tick_all_timers();
 
    /*
     * Here we have to check that disabled_preemption_count is > 1, not > 0

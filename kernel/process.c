@@ -80,7 +80,7 @@ free_kernel_isolated_stack(struct process_info *pi, void *vaddr_in_block)
    kfree2(direct_va, KERNEL_STACK_SIZE);
 }
 
-static bool do_common_task_allocations(task_info *ti)
+static bool do_common_task_allocations(struct task_info *ti)
 {
    if (KERNEL_STACK_ISOLATION) {
       ti->kernel_stack = alloc_kernel_isolated_stack(ti->pi);
@@ -102,7 +102,7 @@ static bool do_common_task_allocations(task_info *ti)
    return true;
 }
 
-static void internal_free_mem_for_zombie_task(task_info *ti)
+static void internal_free_mem_for_zombie_task(struct task_info *ti)
 {
    if (KERNEL_STACK_ISOLATION) {
       free_kernel_isolated_stack(ti->pi, ti->kernel_stack);
@@ -117,7 +117,7 @@ static void internal_free_mem_for_zombie_task(task_info *ti)
    ti->kernel_stack = NULL;
 }
 
-void free_mem_for_zombie_task(task_info *ti)
+void free_mem_for_zombie_task(struct task_info *ti)
 {
    ASSERT(ti->state == TASK_STATE_ZOMBIE);
 
@@ -134,7 +134,7 @@ void free_mem_for_zombie_task(task_info *ti)
    internal_free_mem_for_zombie_task(ti);
 }
 
-void init_task_lists(task_info *ti)
+void init_task_lists(struct task_info *ti)
 {
    bintree_node_init(&ti->tree_by_tid_node);
    list_node_init(&ti->runnable_node);
@@ -155,10 +155,12 @@ void init_process_lists(struct process_info *pi)
    kmutex_init(&pi->fslock, KMUTEX_FL_RECURSIVE);
 }
 
-task_info *allocate_new_process(task_info *parent, int pid)
+struct task_info *allocate_new_process(struct task_info *parent, int pid)
 {
    struct process_info *pi, *parent_pi = parent->pi;
-   task_info *ti = kmalloc(sizeof(task_info) + sizeof(struct process_info));
+   struct task_info *ti = kmalloc(
+      sizeof(struct task_info) + sizeof(struct process_info)
+   );
 
    if (!ti)
       return NULL;
@@ -168,7 +170,7 @@ task_info *allocate_new_process(task_info *parent, int pid)
    /* The first process (init) has as parent == kernel_process */
    ASSERT(parent != NULL);
 
-   memcpy(ti, parent, sizeof(task_info));
+   memcpy(ti, parent, sizeof(struct task_info));
    memcpy(pi, parent_pi, sizeof(struct process_info));
    pi->parent_pid = parent_pi->pid;
    pi->mmap_heap = kmalloc_heap_dup(parent_pi->mmap_heap);
@@ -191,7 +193,7 @@ task_info *allocate_new_process(task_info *parent, int pid)
          kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
       }
 
-      kfree2(ti, sizeof(task_info) + sizeof(struct process_info));
+      kfree2(ti, sizeof(struct task_info) + sizeof(struct process_info));
       return NULL;
    }
 
@@ -203,13 +205,13 @@ task_info *allocate_new_process(task_info *parent, int pid)
    return ti;
 }
 
-task_info *allocate_new_thread(struct process_info *pi)
+struct task_info *allocate_new_thread(struct process_info *pi)
 {
-   task_info *process_task = get_process_task(pi);
-   task_info *ti = kzmalloc(sizeof(task_info));
+   struct task_info *process_task = get_process_task(pi);
+   struct task_info *ti = kzmalloc(sizeof(struct task_info));
 
    if (!ti || !(ti->pi=pi) || !do_common_task_allocations(ti)) {
-      kfree2(ti, sizeof(task_info));
+      kfree2(ti, sizeof(struct task_info));
       return NULL;
    }
 
@@ -222,7 +224,7 @@ task_info *allocate_new_thread(struct process_info *pi)
    return ti;
 }
 
-void free_task(task_info *ti)
+void free_task(struct task_info *ti)
 {
    ASSERT(ti->state == TASK_STATE_ZOMBIE);
    arch_specific_free_task(ti);
@@ -244,7 +246,7 @@ void free_task(task_info *ti)
 
       if (release_obj(pi) == 0) {
          list_remove(&pi->siblings_node);
-         kfree2(ti, sizeof(task_info) + sizeof(struct process_info));
+         kfree2(ti, sizeof(struct task_info) + sizeof(struct process_info));
       }
 
       if (LIKELY(pi->cwd.fs != NULL)) {
@@ -261,13 +263,13 @@ void free_task(task_info *ti)
       }
 
    } else {
-      kfree2(ti, sizeof(task_info));
+      kfree2(ti, sizeof(struct task_info));
    }
 }
 
 void *task_temp_kernel_alloc(size_t size)
 {
-   task_info *curr = get_curr_task();
+   struct task_info *curr = get_curr_task();
    void *ptr = NULL;
 
    disable_preemption();
@@ -303,7 +305,7 @@ void *task_temp_kernel_alloc(size_t size)
 
 void task_temp_kernel_free(void *ptr)
 {
-   task_info *curr = get_curr_task();
+   struct task_info *curr = get_curr_task();
    struct kernel_alloc *alloc;
 
    if (!ptr)
@@ -372,7 +374,7 @@ int sys_gettid()
 
 void kthread_join(int tid)
 {
-   task_info *ti;
+   struct task_info *ti;
 
    ASSERT(is_preemption_enabled());
    disable_preemption();
@@ -402,8 +404,8 @@ static int wait_for_single_pid(int pid, int *user_wstatus)
 {
    ASSERT(!is_preemption_enabled());
 
-   task_info *curr = get_curr_task();
-   task_info *waited_task = get_task(pid);
+   struct task_info *curr = get_curr_task();
+   struct task_info *waited_task = get_task(pid);
 
    if (!waited_task || waited_task->pi->parent_pid != curr->pi->pid) {
       return -ECHILD;
@@ -426,19 +428,19 @@ static int wait_for_single_pid(int pid, int *user_wstatus)
                        &waited_task->exit_wstatus,
                        sizeof(s32)) < 0)
       {
-         remove_task((task_info *)waited_task);
+         remove_task((struct task_info *)waited_task);
          return -EFAULT;
       }
    }
 
-   remove_task((task_info *)waited_task);
+   remove_task((struct task_info *)waited_task);
    return pid;
 }
 
 int sys_waitpid(int pid, int *user_wstatus, int options)
 {
-   task_info *curr = get_curr_task();
-   task_info *zombie = NULL;
+   struct task_info *curr = get_curr_task();
+   struct task_info *zombie = NULL;
    int zombie_tid = -1;
 
    ASSERT(are_interrupts_enabled());
@@ -481,7 +483,7 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
 
       list_for_each_ro(pos, &curr->pi->children_list, siblings_node) {
 
-         task_info *ti = get_process_task(pos);
+         struct task_info *ti = get_process_task(pos);
          child_count++;
 
          if (ti->state == TASK_STATE_ZOMBIE) {
@@ -544,7 +546,7 @@ int sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
    return sys_waitpid(pid, user_wstatus, options);
 }
 
-void wake_up_tasks_waiting_on(task_info *ti)
+void wake_up_tasks_waiting_on(struct task_info *ti)
 {
    wait_obj *wo_pos, *wo_temp;
    ASSERT(!is_preemption_enabled());
@@ -553,12 +555,14 @@ void wake_up_tasks_waiting_on(task_info *ti)
 
       ASSERT(wo_pos->type == WOBJ_TASK);
 
-      task_info *task_to_wake_up = CONTAINER_OF(wo_pos, task_info, wobj);
+      struct task_info *task_to_wake_up = CONTAINER_OF(
+         wo_pos, struct task_info, wobj
+      );
       task_reset_wait_obj(task_to_wake_up);
    }
 }
 
-static bool task_is_waiting_on_any_child(task_info *ti)
+static bool task_is_waiting_on_any_child(struct task_info *ti)
 {
    wait_obj *wobj = &ti->wobj;
 
@@ -611,7 +615,7 @@ static void close_all_handles(struct process_info *pi)
 }
 
 static void
-task_free_all_kernel_allocs(task_info *ti)
+task_free_all_kernel_allocs(struct task_info *ti)
 {
    ASSERT(!is_preemption_enabled());
 
@@ -635,7 +639,7 @@ task_free_all_kernel_allocs(task_info *ti)
    }
 }
 
-static void init_terminated(task_info *ti, int exit_code, int term_sig)
+static void init_terminated(struct task_info *ti, int exit_code, int term_sig)
 {
    if (DEBUG_QEMU_EXIT_ON_INIT_EXIT)
       debug_qemu_turn_off_machine();
@@ -651,7 +655,7 @@ static struct process_info *get_child_reaper(struct process_info *pi)
    /* TODO: support prctl(PR_SET_CHILD_SUBREAPER) */
    ASSERT(!is_preemption_enabled());
 
-   task_info *child_reaper = get_task(1); /* init */
+   struct task_info *child_reaper = get_task(1); /* init */
    VERIFY(child_reaper != NULL);
 
    return child_reaper->pi;
@@ -663,7 +667,7 @@ static struct process_info *get_child_reaper(struct process_info *pi)
  *
  * TODO: re-design/adapt this function when thread support is introduced
  */
-void terminate_process(task_info *ti, int exit_code, int term_sig)
+void terminate_process(struct task_info *ti, int exit_code, int term_sig)
 {
    ASSERT(!is_preemption_enabled());
    ASSERT(!is_kernel_thread(ti));
@@ -716,7 +720,7 @@ void terminate_process(task_info *ti, int exit_code, int term_sig)
 
    if (pi->parent_pid > 0) {
 
-      task_info *parent_task = get_task(pi->parent_pid);
+      struct task_info *parent_task = get_task(pi->parent_pid);
 
       /* Wake-up the parent task if it's waiting on any child to exit */
       if (task_is_waiting_on_any_child(parent_task))
@@ -768,8 +772,8 @@ int sys_fork(void)
 {
    int pid;
    int rc = -EAGAIN;
-   task_info *child = NULL;
-   task_info *curr = get_curr_task();
+   struct task_info *child = NULL;
+   struct task_info *curr = get_curr_task();
 
    disable_preemption();
 
@@ -850,7 +854,7 @@ int sys_setsid(void)
     * TODO (future): consider actually implementing setsid()
     */
 
-   task_info *ti = get_curr_task();
+   struct task_info *ti = get_curr_task();
    ti->pi->proc_tty = NULL;
    return ti->pi->pid;
 }
@@ -867,7 +871,7 @@ int sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5)
 
    if (option == PR_SET_NAME) {
       // printk("[TID: %d] PR_SET_NAME '%s'\n", get_curr_task()->tid, a2);
-      // TODO: save the task name in task_info.
+      // TODO: save the task name in struct task_info.
       return 0;
    }
 

@@ -20,7 +20,7 @@ void soft_interrupt_resume(void);
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
 
-void task_info_reset_kernel_stack(task_info *ti)
+void task_info_reset_kernel_stack(struct task_info *ti)
 {
    uptr bottom = (uptr)ti->kernel_stack + KERNEL_STACK_SIZE - 1;
    ti->state_regs = (regs *)(bottom & POINTER_ALIGN_MASK);
@@ -133,7 +133,7 @@ kthread_create(kthread_func_ptr fun, void *arg)
       .ss = X86_KERNEL_DATA_SEL,
    };
 
-   task_info *ti = allocate_new_thread(kernel_process->pi);
+   struct task_info *ti = allocate_new_thread(kernel_process->pi);
    int ret = -ENOMEM;
 
    if (!ti)
@@ -222,10 +222,10 @@ void kthread_exit(void)
 int setup_usermode_task(pdir_t *pdir,
                         void *entry,
                         void *stack_addr,
-                        task_info *ti,
+                        struct task_info *ti,
                         const char *const *argv,
                         const char *const *env,
-                        task_info **ti_ref)
+                        struct task_info **ti_ref)
 {
    regs r = {
       .kernel_resume_eip = (uptr)&soft_interrupt_resume,
@@ -308,7 +308,7 @@ int setup_usermode_task(pdir_t *pdir,
 
 void save_current_task_state(regs *r)
 {
-   task_info *curr = get_curr_task();
+   struct task_info *curr = get_curr_task();
 
    ASSERT(curr != NULL);
    curr->state_regs = r;
@@ -322,7 +322,7 @@ void save_current_task_state(regs *r)
 void set_current_task_in_user_mode(void)
 {
    ASSERT(!is_preemption_enabled());
-   task_info *curr = get_curr_task();
+   struct task_info *curr = get_curr_task();
 
    curr->running_in_kernel = false;
 
@@ -330,7 +330,7 @@ void set_current_task_in_user_mode(void)
    set_kernel_stack((u32)curr->state_regs);
 }
 
-static inline bool is_fpu_enabled_for_task(task_info *ti)
+static inline bool is_fpu_enabled_for_task(struct task_info *ti)
 {
    return ti->arch.aligned_fpu_regs &&
           (ti->state_regs->custom_flags & REGS_FL_FPU_ENABLED);
@@ -393,11 +393,11 @@ switch_to_task_clear_irq_mask(int curr_int)
    }
 }
 
-NORETURN void switch_to_task(task_info *ti, int curr_int)
+NORETURN void switch_to_task(struct task_info *ti, int curr_int)
 {
    /* Save the value of ti->state_regs as it will be reset below */
    regs *state = ti->state_regs;
-   task_info *curr = get_curr_task();
+   struct task_info *curr = get_curr_task();
 
    ASSERT(curr != NULL);
    ASSERT(curr->state != TASK_STATE_RUNNING);
@@ -500,7 +500,8 @@ int sys_set_tid_address(int *tidptr)
    return get_curr_task()->tid;
 }
 
-bool arch_specific_new_task_setup(task_info *ti, task_info *parent)
+bool
+arch_specific_new_task_setup(struct task_info *ti, struct task_info *parent)
 {
    if (LIKELY(parent != NULL)) {
       memcpy(&ti->arch, &parent->arch, sizeof(ti->arch));
@@ -532,7 +533,7 @@ bool arch_specific_new_task_setup(task_info *ti, task_info *parent)
    return true;
 }
 
-void arch_specific_free_task(task_info *ti)
+void arch_specific_free_task(struct task_info *ti)
 {
    if (ti->arch.ldt) {
       gdt_clear_entry(ti->arch.ldt_index_in_gdt);

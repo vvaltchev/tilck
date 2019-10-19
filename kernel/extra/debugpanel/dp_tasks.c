@@ -37,7 +37,7 @@ const char *debug_get_state_name(enum task_state state)
    }
 }
 
-static int debug_get_tn_for_tasklet_runner(task_info *ti)
+static int debug_get_tn_for_tasklet_runner(struct task_info *ti)
 {
    for (u32 i = 0; i < MAX_TASKLET_THREADS; i++)
       if (get_tasklet_runner(i) == ti)
@@ -116,7 +116,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
 static int debug_per_task_cb(void *obj, void *arg)
 {
    const char *fmt = debug_get_task_dump_util_str(ROW_FMT);
-   task_info *ti = obj;
+   struct task_info *ti = obj;
    struct process_info *pi = ti->pi;
    char buf[128];
    char path[MAX_EXEC_PATH_LEN + 1];

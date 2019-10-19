@@ -31,7 +31,7 @@ static u16 cursor_row;
 static u16 cursor_col;
 static u32 *under_cursor_buf;
 static volatile bool cursor_visible = true;
-static task_info *blink_thread_ti;
+static struct task_info *blink_thread_ti;
 static const u32 blink_half_period = (TIMER_HZ * 45)/100;
 static u32 cursor_color;
 
