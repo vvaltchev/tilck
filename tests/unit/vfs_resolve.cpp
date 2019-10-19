@@ -557,7 +557,7 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
 {
    int rc;
    vfs_path p;
-   struct process_info *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_task()->pi;
 
    rc = resolve("/dev/", &p, true);
    ASSERT_EQ(rc, 0);

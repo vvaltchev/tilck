@@ -10,7 +10,7 @@ process_add_user_mapping(fs_handle h,
                          size_t off,
                          int prot)
 {
-   struct process_info *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_task()->pi;
    user_mapping *um;
 
    ASSERT((len & OFFSET_IN_PAGE_MASK) == 0);
@@ -48,7 +48,7 @@ user_mapping *process_get_user_mapping(void *vaddrp)
    ASSERT(!is_preemption_enabled());
 
    uptr vaddr = (uptr)vaddrp;
-   struct process_info *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_task()->pi;
    user_mapping *pos;
 
    list_for_each_ro(pos, &pi->mappings, pi_node) {
@@ -60,7 +60,7 @@ user_mapping *process_get_user_mapping(void *vaddrp)
    return NULL;
 }
 
-void remove_all_mappings_of_handle(struct process_info *pi, fs_handle h)
+void remove_all_mappings_of_handle(struct process *pi, fs_handle h)
 {
    user_mapping *pos, *temp;
 
@@ -74,7 +74,7 @@ void remove_all_mappings_of_handle(struct process_info *pi, fs_handle h)
    enable_preemption();
 }
 
-void full_remove_user_mapping(struct process_info *pi, user_mapping *um)
+void full_remove_user_mapping(struct process *pi, user_mapping *um)
 {
    size_t actual_len = um->len;
    vfs_munmap(um->h, um->vaddrp, actual_len);

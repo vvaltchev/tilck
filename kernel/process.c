@@ -25,7 +25,7 @@
 #define CONTINUED                           0xffff
 #define COREFLAG                              0x80
 
-static void *alloc_kernel_isolated_stack(struct process_info *pi)
+static void *alloc_kernel_isolated_stack(struct process *pi)
 {
    void *vaddr_in_block;
    void *block_vaddr;
@@ -69,7 +69,7 @@ static void *alloc_kernel_isolated_stack(struct process_info *pi)
 }
 
 static void
-free_kernel_isolated_stack(struct process_info *pi, void *vaddr_in_block)
+free_kernel_isolated_stack(struct process *pi, void *vaddr_in_block)
 {
    void *block_vaddr = (void *)((uptr)vaddr_in_block - KERNEL_STACK_SIZE);
    uptr direct_pa = get_mapping(pi->pdir, vaddr_in_block);
@@ -146,7 +146,7 @@ void init_task_lists(struct task_info *ti)
    bzero(&ti->wobj, sizeof(wait_obj));
 }
 
-void init_process_lists(struct process_info *pi)
+void init_process_lists(struct process *pi)
 {
    list_init(&pi->children_list);
    list_init(&pi->mappings);
@@ -157,21 +157,21 @@ void init_process_lists(struct process_info *pi)
 
 struct task_info *allocate_new_process(struct task_info *parent, int pid)
 {
-   struct process_info *pi, *parent_pi = parent->pi;
+   struct process *pi, *parent_pi = parent->pi;
    struct task_info *ti = kmalloc(
-      sizeof(struct task_info) + sizeof(struct process_info)
+      sizeof(struct task_info) + sizeof(struct process)
    );
 
    if (!ti)
       return NULL;
 
-   pi = (struct process_info *)(ti + 1);
+   pi = (struct process *)(ti + 1);
 
    /* The first process (init) has as parent == kernel_process */
    ASSERT(parent != NULL);
 
    memcpy(ti, parent, sizeof(struct task_info));
-   memcpy(pi, parent_pi, sizeof(struct process_info));
+   memcpy(pi, parent_pi, sizeof(struct process));
    pi->parent_pid = parent_pi->pid;
    pi->mmap_heap = kmalloc_heap_dup(parent_pi->mmap_heap);
 
@@ -193,7 +193,7 @@ struct task_info *allocate_new_process(struct task_info *parent, int pid)
          kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
       }
 
-      kfree2(ti, sizeof(struct task_info) + sizeof(struct process_info));
+      kfree2(ti, sizeof(struct task_info) + sizeof(struct process));
       return NULL;
    }
 
@@ -205,7 +205,7 @@ struct task_info *allocate_new_process(struct task_info *parent, int pid)
    return ti;
 }
 
-struct task_info *allocate_new_thread(struct process_info *pi)
+struct task_info *allocate_new_thread(struct process *pi)
 {
    struct task_info *process_task = get_process_task(pi);
    struct task_info *ti = kzmalloc(sizeof(struct task_info));
@@ -235,7 +235,7 @@ void free_task(struct task_info *ti)
 
    if (is_main_thread(ti)) {
 
-      struct process_info *pi = ti->pi;
+      struct process *pi = ti->pi;
       ASSERT(get_ref_count(pi) > 0);
 
       if (pi->mmap_heap) {
@@ -246,7 +246,7 @@ void free_task(struct task_info *ti)
 
       if (release_obj(pi) == 0) {
          list_remove(&pi->siblings_node);
-         kfree2(ti, sizeof(struct task_info) + sizeof(struct process_info));
+         kfree2(ti, sizeof(struct task_info) + sizeof(struct process));
       }
 
       if (LIKELY(pi->cwd.fs != NULL)) {
@@ -349,7 +349,7 @@ void set_kernel_process_pdir(pdir_t *pdir)
 
 mode_t sys_umask(mode_t mask)
 {
-   struct process_info *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_task()->pi;
    mode_t old = pi->umask;
    pi->umask = mask & 0777;
    return old;
@@ -476,7 +476,7 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
 
    while (true) {
 
-      struct process_info *pos;
+      struct process *pos;
       u32 child_count = 0;
 
       disable_preemption();
@@ -601,7 +601,7 @@ switch_stack_free_mem_and_schedule(void)
    NOT_REACHED();
 }
 
-static void close_all_handles(struct process_info *pi)
+static void close_all_handles(struct process *pi)
 {
    for (u32 i = 0; i < MAX_HANDLES; i++) {
 
@@ -650,7 +650,7 @@ static void init_terminated(struct task_info *ti, int exit_code, int term_sig)
       panic("Init terminated by signal %d\n", term_sig);
 }
 
-static struct process_info *get_child_reaper(struct process_info *pi)
+static struct process *get_child_reaper(struct process *pi)
 {
    /* TODO: support prctl(PR_SET_CHILD_SUBREAPER) */
    ASSERT(!is_preemption_enabled());
@@ -672,7 +672,7 @@ void terminate_process(struct task_info *ti, int exit_code, int term_sig)
    ASSERT(!is_preemption_enabled());
    ASSERT(!is_kernel_thread(ti));
 
-   struct process_info *pi = ti->pi;
+   struct process *pi = ti->pi;
 
    if (ti->wobj.type != WOBJ_NONE) {
 
@@ -699,8 +699,8 @@ void terminate_process(struct task_info *ti, int exit_code, int term_sig)
        * supported.
        */
 
-      struct process_info *pos, *temp;
-      struct process_info *child_reaper = get_child_reaper(pi);
+      struct process *pos, *temp;
+      struct process *child_reaper = get_child_reaper(pi);
 
       list_for_each(pos, temp, &pi->children_list, siblings_node) {
 
@@ -740,7 +740,7 @@ void terminate_process(struct task_info *ti, int exit_code, int term_sig)
    free_mem_for_zombie_task(ti);
 }
 
-static int fork_dup_all_handles(struct process_info *pi)
+static int fork_dup_all_handles(struct process *pi)
 {
    for (u32 i = 0; i < MAX_HANDLES; i++) {
 

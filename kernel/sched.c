@@ -15,7 +15,7 @@ struct task_info *__current;
 ATOMIC(u32) disable_preemption_count = 1;
 
 struct task_info *kernel_process;
-struct process_info *kernel_process_pi;
+struct process *kernel_process_pi;
 
 list runnable_tasks_list;
 list sleeping_tasks_list;
@@ -120,11 +120,11 @@ static void idle(void)
 void create_kernel_process(void)
 {
    static char kernel_proc_buf[
-      sizeof(struct process_info) + sizeof(struct task_info)
+      sizeof(struct process) + sizeof(struct task_info)
    ];
 
    struct task_info *s_kernel_ti = (struct task_info *)kernel_proc_buf;
-   struct process_info *s_kernel_pi = (struct process_info *)(s_kernel_ti + 1);
+   struct process *s_kernel_pi = (struct process *)(s_kernel_ti + 1);
 
    list_init(&runnable_tasks_list);
    list_init(&sleeping_tasks_list);
@@ -164,7 +164,7 @@ void create_kernel_process(void)
    set_curr_task(kernel_process);
 }
 
-struct process_info *task_get_pi_opaque(struct task_info *ti)
+struct process *task_get_pi_opaque(struct task_info *ti)
 {
    if (ti != NULL)
       return ti->pi;
@@ -172,7 +172,7 @@ struct process_info *task_get_pi_opaque(struct task_info *ti)
    return NULL;
 }
 
-void process_set_tty(struct process_info *pi, void *t)
+void process_set_tty(struct process *pi, void *t)
 {
    pi->proc_tty = t;
 }

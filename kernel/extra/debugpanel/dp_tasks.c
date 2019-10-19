@@ -117,7 +117,7 @@ static int debug_per_task_cb(void *obj, void *arg)
 {
    const char *fmt = debug_get_task_dump_util_str(ROW_FMT);
    struct task_info *ti = obj;
-   struct process_info *pi = ti->pi;
+   struct process *pi = ti->pi;
    char buf[128];
    char path[MAX_EXEC_PATH_LEN + 1];
    char path2[MAX_EXEC_PATH_LEN + 1];

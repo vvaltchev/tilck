@@ -27,7 +27,7 @@ struct kernel_alloc {
    size_t size;
 };
 
-struct process_info {
+struct process {
 
    REF_COUNTED_OBJECT;
 
@@ -78,7 +78,7 @@ struct task_info {
    int padding_0;
 #endif
 
-   struct process_info *pi;
+   struct process *pi;
 
    bool is_main_thread;     /* value of `tid == pi->pid` */
    bool running_in_kernel;
@@ -129,7 +129,7 @@ struct task_info {
 };
 
 STATIC_ASSERT((sizeof(struct task_info) & ~POINTER_ALIGN_MASK) == 0);
-STATIC_ASSERT((sizeof(struct process_info) & ~POINTER_ALIGN_MASK) == 0);
+STATIC_ASSERT((sizeof(struct process) & ~POINTER_ALIGN_MASK) == 0);
 
 #ifdef __i386__
 STATIC_ASSERT(
@@ -141,11 +141,11 @@ STATIC_ASSERT(
 #endif
 
 static ALWAYS_INLINE struct task_info *
-get_process_task(struct process_info *pi)
+get_process_task(struct process *pi)
 {
    /*
     * allocate_new_process() allocates `task_info` and `process_info` in one
-    * chunk placing struct process_info immediately after struct task_info.
+    * chunk placing struct process immediately after struct task_info.
     */
    return ((struct task_info *)pi) - 1;
 }
@@ -195,17 +195,17 @@ void set_current_task_in_kernel(void);
 void set_current_task_in_user_mode(void);
 
 struct task_info *allocate_new_process(struct task_info *parent, int pid);
-struct task_info *allocate_new_thread(struct process_info *pi);
+struct task_info *allocate_new_thread(struct process *pi);
 void free_task(struct task_info *ti);
 void free_mem_for_zombie_task(struct task_info *ti);
 bool arch_specific_new_task_setup(struct task_info *ti, struct task_info *parent);
 void arch_specific_free_task(struct task_info *ti);
 void wake_up_tasks_waiting_on(struct task_info *ti);
-void init_process_lists(struct process_info *pi);
+void init_process_lists(struct process *pi);
 
 void *task_temp_kernel_alloc(size_t size);
 void task_temp_kernel_free(void *ptr);
 
 void process_set_cwd2_nolock(vfs_path *tp);
-void process_set_cwd2_nolock_raw(struct process_info *pi, vfs_path *tp);
+void process_set_cwd2_nolock_raw(struct process *pi, vfs_path *tp);
 void terminate_process(struct task_info *ti, int exit_code, int term_sig);

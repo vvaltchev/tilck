@@ -15,7 +15,7 @@ struct task_info;
 
 extern struct task_info *__current;
 extern struct task_info *kernel_process;
-extern struct process_info *kernel_process_pi;
+extern struct process *kernel_process_pi;
 
 extern list runnable_tasks_list;
 extern list sleeping_tasks_list;
@@ -141,6 +141,6 @@ typedef void (*kthread_func_ptr)();
 NODISCARD int kthread_create(kthread_func_ptr fun, void *arg);
 int iterate_over_tasks(bintree_visit_cb func, void *arg);
 
-struct process_info *task_get_pi_opaque(struct task_info *ti);
-void process_set_tty(struct process_info *pi, void *t);
+struct process *task_get_pi_opaque(struct task_info *ti);
+void process_set_tty(struct process *pi, void *t);
 bool in_currently_dying_task(void);

@@ -93,7 +93,7 @@ out:
 }
 
 static inline void
-execve_prepare_process(struct process_info *pi, void *brk, const char *path)
+execve_prepare_process(struct process *pi, void *brk, const char *path)
 {
    /*
     * Close the CLOEXEC handles. Note: we couldn't do that before because they
