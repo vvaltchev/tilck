@@ -3,7 +3,7 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
-typedef struct {
+struct x86_cpu_features_t {
 
    bool initialized;
 
@@ -103,9 +103,9 @@ typedef struct {
    bool can_use_avx;
    bool can_use_avx2;
 
-} x86_cpu_features_t;
+};
 
-extern volatile x86_cpu_features_t x86_cpu_features;
+extern volatile struct x86_cpu_features_t x86_cpu_features;
 
 void get_cpu_features(void);
 void dump_x86_features(void);
