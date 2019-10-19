@@ -203,7 +203,7 @@ count_ready_streams(int nfds, fd_set *sets[3])
 static int
 select_wait_on_cond(struct select_ctx *c)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    multi_obj_waiter *waiter = NULL;
    u32 idx = 0;
    int rc = 0;
@@ -270,7 +270,7 @@ out:
 static int
 select_read_user_sets(fd_set *sets[3], fd_set *u_sets[3])
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
 
    for (int i = 0; i < 3; i++) {
 
@@ -291,7 +291,7 @@ select_read_user_tv(struct timeval *user_tv,
                     struct timeval **tv_ref,
                     u32 *timeout)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    struct timeval *tv = NULL;
 
    if (user_tv) {

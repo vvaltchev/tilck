@@ -63,7 +63,7 @@ struct process {
    uptr sa_flags;
 };
 
-struct task_info {
+struct task {
 
    int tid;                 /* User/kernel task ID (pid in the Linux kernel) */
 
@@ -128,56 +128,56 @@ struct task_info {
    arch_task_info_members arch; /* arch-specific fields */
 };
 
-STATIC_ASSERT((sizeof(struct task_info) & ~POINTER_ALIGN_MASK) == 0);
+STATIC_ASSERT((sizeof(struct task) & ~POINTER_ALIGN_MASK) == 0);
 STATIC_ASSERT((sizeof(struct process) & ~POINTER_ALIGN_MASK) == 0);
 
 #ifdef __i386__
 STATIC_ASSERT(
-   OFFSET_OF(struct task_info, fault_resume_regs) == TI_F_RESUME_RS_OFF
+   OFFSET_OF(struct task, fault_resume_regs) == TI_F_RESUME_RS_OFF
 );
 STATIC_ASSERT(
-   OFFSET_OF(struct task_info, faults_resume_mask) == TI_FAULTS_MASK_OFF
+   OFFSET_OF(struct task, faults_resume_mask) == TI_FAULTS_MASK_OFF
 );
 #endif
 
-static ALWAYS_INLINE struct task_info *
+static ALWAYS_INLINE struct task *
 get_process_task(struct process *pi)
 {
    /*
-    * allocate_new_process() allocates `task_info` and `process_info` in one
-    * chunk placing struct process immediately after struct task_info.
+    * allocate_new_process() allocates `struct task` and `struct process` in one
+    * chunk placing struct process immediately after struct task.
     */
-   return ((struct task_info *)pi) - 1;
+   return ((struct task *)pi) - 1;
 }
 
-static ALWAYS_INLINE bool running_in_kernel(struct task_info *t)
+static ALWAYS_INLINE bool running_in_kernel(struct task *t)
 {
    return t->running_in_kernel;
 }
 
-static ALWAYS_INLINE bool is_kernel_thread(struct task_info *ti)
+static ALWAYS_INLINE bool is_kernel_thread(struct task *ti)
 {
    return ti->pi == kernel_process_pi;
 }
 
-static ALWAYS_INLINE bool is_main_thread(struct task_info *ti)
+static ALWAYS_INLINE bool is_main_thread(struct task *ti)
 {
    return ti->is_main_thread;
 }
 
-static ALWAYS_INLINE int kthread_calc_tid(struct task_info *ti)
+static ALWAYS_INLINE int kthread_calc_tid(struct task *ti)
 {
    ASSERT(is_kernel_thread(ti));
    return (int)(MAX_PID + (sptr) ((uptr)ti - KERNEL_BASE_VA));
 }
 
-static ALWAYS_INLINE struct task_info *kthread_get_ptr(int tid)
+static ALWAYS_INLINE struct task *kthread_get_ptr(int tid)
 {
    ASSERT(tid > MAX_PID);
-   return (struct task_info *)((uptr)tid - MAX_PID + KERNEL_BASE_VA);
+   return (struct task *)((uptr)tid - MAX_PID + KERNEL_BASE_VA);
 }
 
-static ALWAYS_INLINE bool is_tasklet_runner(struct task_info *ti)
+static ALWAYS_INLINE bool is_tasklet_runner(struct task *ti)
 {
    return ti->what == &tasklet_runner;
 }
@@ -186,21 +186,21 @@ int first_execve(const char *abs_path, const char *const *argv);
 int setup_usermode_task(pdir_t *pdir,
                         void *entry,
                         void *stack_addr,
-                        struct task_info *task_to_use,
+                        struct task *task_to_use,
                         const char *const *argv,
                         const char *const *env,
-                        struct task_info **ti_ref);
+                        struct task **ti_ref);
 
 void set_current_task_in_kernel(void);
 void set_current_task_in_user_mode(void);
 
-struct task_info *allocate_new_process(struct task_info *parent, int pid);
-struct task_info *allocate_new_thread(struct process *pi);
-void free_task(struct task_info *ti);
-void free_mem_for_zombie_task(struct task_info *ti);
-bool arch_specific_new_task_setup(struct task_info *ti, struct task_info *parent);
-void arch_specific_free_task(struct task_info *ti);
-void wake_up_tasks_waiting_on(struct task_info *ti);
+struct task *allocate_new_process(struct task *parent, int pid);
+struct task *allocate_new_thread(struct process *pi);
+void free_task(struct task *ti);
+void free_mem_for_zombie_task(struct task *ti);
+bool arch_specific_new_task_setup(struct task *ti, struct task *parent);
+void arch_specific_free_task(struct task *ti);
+void wake_up_tasks_waiting_on(struct task *ti);
 void init_process_lists(struct process *pi);
 
 void *task_temp_kernel_alloc(size_t size);
@@ -208,4 +208,4 @@ void task_temp_kernel_free(void *ptr);
 
 void process_set_cwd2_nolock(vfs_path *tp);
 void process_set_cwd2_nolock_raw(struct process *pi, vfs_path *tp);
-void terminate_process(struct task_info *ti, int exit_code, int term_sig);
+void terminate_process(struct task *ti, int exit_code, int term_sig);

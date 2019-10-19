@@ -16,7 +16,7 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
 
    disable_preemption();
    {
@@ -52,9 +52,9 @@ kcond_signal_single(kcond *c, wait_obj *wo)
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
 
-   struct task_info *ti =
+   struct task *ti =
       wo->type != WOBJ_MWO_ELEM
-         ? CONTAINER_OF(wo, struct task_info, wobj)
+         ? CONTAINER_OF(wo, struct task, wobj)
          : CONTAINER_OF(wo, mwobj_elem, wobj)->ti;
 
    if (ti->state != TASK_STATE_SLEEPING) {

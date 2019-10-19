@@ -14,7 +14,7 @@ typedef struct {
    int readers_count;
 
 #ifdef DEBUG
-   struct task_info *ex_owner;
+   struct task *ex_owner;
 #endif
 
 } rwlock_rp;
@@ -44,7 +44,7 @@ void rwlock_rp_exunlock(rwlock_rp *r);
 
 typedef struct {
 
-   struct task_info *ex_owner;
+   struct task *ex_owner;
    kmutex m;
    kcond c;
    int r;     /* readers count */

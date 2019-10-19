@@ -44,7 +44,7 @@ static int get_free_handle_num(struct process *pi)
  */
 fs_handle get_fs_handle(int fd)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    fs_handle handle = NULL;
 
    kmutex_lock(&curr->pi->fslock);
@@ -60,7 +60,7 @@ fs_handle get_fs_handle(int fd)
 int sys_open(const char *u_path, int flags, mode_t mode)
 {
    int ret, free_fd;
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
    size_t written = 0;
    fs_handle h = NULL;
@@ -102,7 +102,7 @@ int sys_creat(const char *u_path, mode_t mode)
 
 int sys_unlink(const char *u_path)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
    size_t written = 0;
    int ret;
@@ -115,7 +115,7 @@ int sys_unlink(const char *u_path)
 
 int sys_rmdir(const char *u_path)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
    size_t written = 0;
    int ret;
@@ -128,7 +128,7 @@ int sys_rmdir(const char *u_path)
 
 int sys_close(int fd)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    fs_handle handle;
    int ret = 0;
 
@@ -146,7 +146,7 @@ int sys_close(int fd)
 
 int sys_mkdir(const char *u_path, mode_t mode)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
    size_t written = 0;
    int ret;
@@ -163,7 +163,7 @@ int sys_mkdir(const char *u_path, mode_t mode)
 int sys_read(int fd, void *u_buf, size_t count)
 {
    int ret;
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    fs_handle handle;
 
    handle = get_fs_handle(fd);
@@ -201,7 +201,7 @@ end:
 
 int sys_write(int fd, const void *u_buf, size_t count)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    fs_handle handle;
 
    if (!(handle = get_fs_handle(fd)))
@@ -227,7 +227,7 @@ int sys_ioctl(int fd, uptr request, void *argp)
 
 int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    const u32 iovcnt = (u32) u_iovcnt;
    fs_handle handle;
    int rc, ret = 0;
@@ -276,7 +276,7 @@ int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
 
 int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    const u32 iovcnt = (u32) u_iovcnt;
    fs_handle handle;
    int rc, ret = 0;
@@ -325,7 +325,7 @@ call_vfs_stat64(const char *u_path,
                 struct stat64 *u_statbuf,
                 bool res_last_sl)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
    struct stat64 statbuf;
    int rc = 0;
@@ -377,7 +377,7 @@ int sys_fstat64(int fd, struct stat64 *u_statbuf)
 
 int sys_symlink(const char *u_target, const char *u_linkpath)
 {
-   struct task_info *curr     = get_curr_task();
+   struct task *curr     = get_curr_task();
    char *target        = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 0;
    char *linkpath      = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 1;
    int rc = 0;
@@ -408,7 +408,7 @@ int sys_symlink(const char *u_target, const char *u_linkpath)
 
 int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    char *path = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 0;
    char *buf       = curr->args_copybuf + (ARGS_COPYBUF_SIZE / 4) * 1;
    size_t ret_bs;
@@ -440,7 +440,7 @@ int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
 
 int sys_truncate64(const char *u_path, s64 len)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
    int rc;
 
@@ -512,7 +512,7 @@ int sys_dup2(int oldfd, int newfd)
 {
    int rc;
    fs_handle old_h, new_h;
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
 
    if (!is_fd_in_valid_range(oldfd))
       return -EBADF;
@@ -630,7 +630,7 @@ void close_cloexec_handles(struct process *pi)
 int sys_fcntl64(int fd, int cmd, int arg)
 {
    int rc = 0;
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    fs_handle_base *hb;
 
    hb = get_fs_handle(fd);
@@ -691,7 +691,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
 static int
 do_chown(const char *u_path, int owner, int group, bool reslink)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
    int rc;
 
@@ -738,7 +738,7 @@ int sys_sync()
 
 int sys_chmod(const char *u_path, mode_t mode)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
    int rc;
 
@@ -772,7 +772,7 @@ call_rename_or_link(const char *u_oldpath,
                     const char *u_newpath,
                     int (*vfs_func)(const char *, const char *))
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    char *oldpath = curr->args_copybuf;
    char *newpath = curr->args_copybuf + MAX_PATH;
    int rc1, rc2;

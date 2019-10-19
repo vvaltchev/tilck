@@ -11,10 +11,10 @@
 #define TIME_SLOT_TICKS (TIMER_HZ / 20)
 
 typedef struct regs regs;
-struct task_info;
+struct task;
 
-extern struct task_info *__current;
-extern struct task_info *kernel_process;
+extern struct task *__current;
+extern struct task *kernel_process;
 extern struct process *kernel_process_pi;
 
 extern list runnable_tasks_list;
@@ -32,8 +32,8 @@ enum task_state {
 };
 
 void init_sched(void);
-struct task_info *get_task(int tid);
-void task_change_state(struct task_info *ti, enum task_state new_state);
+struct task *get_task(int tid);
+void task_change_state(struct task *ti, enum task_state new_state);
 
 static ALWAYS_INLINE void disable_preemption(void)
 {
@@ -89,7 +89,7 @@ static inline void kernel_yield(void)
    asm_kernel_yield();
 }
 
-static ALWAYS_INLINE struct task_info *get_curr_task(void)
+static ALWAYS_INLINE struct task *get_curr_task(void)
 {
    /*
     * Access to `__current` DOES NOT need to be atomic (not even relaxed) even
@@ -114,17 +114,17 @@ int get_curr_task_tid(void);
 void schedule(int curr_int);
 void schedule_outside_interrupt_context(void);
 
-NORETURN void switch_to_task(struct task_info *ti, int curr_int);
+NORETURN void switch_to_task(struct task *ti, int curr_int);
 
 void save_current_task_state(regs *);
 void account_ticks(void);
 bool need_reschedule(void);
 int create_new_pid(void);
-void task_info_reset_kernel_stack(struct task_info *ti);
-void add_task(struct task_info *ti);
-void remove_task(struct task_info *ti);
+void task_info_reset_kernel_stack(struct task *ti);
+void add_task(struct task *ti);
+void remove_task(struct task *ti);
 void create_kernel_process(void);
-void init_task_lists(struct task_info *ti);
+void init_task_lists(struct task *ti);
 
 // It is called when each kernel thread returns. May be called explicitly too.
 void kthread_exit(void);
@@ -133,14 +133,14 @@ void kernel_sleep(u64 ticks);
 void kthread_join(int tid);
 void kthread_join_all(const int *tids, size_t n);
 
-void task_set_wakeup_timer(struct task_info *task, u32 ticks);
-void task_update_wakeup_timer_if_any(struct task_info *ti, u32 new_ticks);
-u32 task_cancel_wakeup_timer(struct task_info *ti);
+void task_set_wakeup_timer(struct task *task, u32 ticks);
+void task_update_wakeup_timer_if_any(struct task *ti, u32 new_ticks);
+u32 task_cancel_wakeup_timer(struct task *ti);
 
 typedef void (*kthread_func_ptr)();
 NODISCARD int kthread_create(kthread_func_ptr fun, void *arg);
 int iterate_over_tasks(bintree_visit_cb func, void *arg);
 
-struct process *task_get_pi_opaque(struct task_info *ti);
+struct process *task_get_pi_opaque(struct task *ti);
 void process_set_tty(struct process *pi, void *t);
 bool in_currently_dying_task(void);

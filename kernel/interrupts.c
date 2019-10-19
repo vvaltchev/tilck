@@ -185,7 +185,7 @@ int get_nested_interrupts_count(void)
  */
 static void DEBUG_check_preemption_enabled_for_usermode(void)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    if (curr && !running_in_kernel(curr) && !nested_interrupts_count) {
       ASSERT(is_preemption_enabled());
    }

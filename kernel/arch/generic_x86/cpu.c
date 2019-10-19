@@ -153,7 +153,7 @@ out:
     *    2. This prevents user space to access any such register without the
     *       kernel knowing about it. When FPU regs are used with TS = 0, the
     *       CPU triggers a "No coprocessor" fault. If the kernel wants to allow
-    *       this to happen[1], it will set a flag in the task_info struct,
+    *       this to happen[1], it will set a flag in the struct task struct,
     *       enable the FPU and resume the process (thread) as if nothing
     *       happened (like for the COW case). Otherwise, the kernel will send
     *       a SIGFPE to the "guilty" process.
@@ -223,7 +223,7 @@ void restore_fpu_regs(void *task, bool in_kernel)
    if (UNLIKELY(in_panic()))
       return;
 
-   arch_task_info_members *arch_fields = &((struct task_info *)task)->arch;
+   arch_task_info_members *arch_fields = &((struct task *)task)->arch;
    void *buf = in_kernel ? fpu_kernel_regs : arch_fields->aligned_fpu_regs;
 
    ASSERT(buf != NULL);

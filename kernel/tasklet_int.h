@@ -16,7 +16,7 @@ typedef struct {
 
    tasklet *tasklets;
    safe_ringbuf safe_ringbuf;
-   struct task_info *task;
+   struct task *task;
    int priority; /* 0 => max priority */
    u32 limit;
 

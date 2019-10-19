@@ -119,7 +119,7 @@ int sys_kill(int pid, int sig)
 
 uptr sys_times(struct tms *user_buf)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    struct tms buf;
 
    // TODO (threads): when threads are supported, update sys_times()

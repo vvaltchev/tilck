@@ -8,24 +8,24 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/syscalls.h>
 
-typedef void (*action_type)(struct task_info *, int signum);
+typedef void (*action_type)(struct task *, int signum);
 
-static void action_terminate(struct task_info *ti, int signum)
+static void action_terminate(struct task *ti, int signum)
 {
    terminate_process(ti, 0, signum);
 }
 
-static void action_ignore(struct task_info *ti, int signum)
+static void action_ignore(struct task *ti, int signum)
 {
    /* do nothing */
 }
 
-static void action_continue(struct task_info *ti, int signum)
+static void action_continue(struct task *ti, int signum)
 {
    NOT_IMPLEMENTED();
 }
 
-static void action_stop(struct task_info *ti, int signum)
+static void action_stop(struct task *ti, int signum)
 {
    NOT_IMPLEMENTED();
 }
@@ -68,7 +68,7 @@ static const action_type signal_default_actions[32] =
    [SIGXFSZ] = action_terminate,
 };
 
-static void do_send_signal(struct task_info *ti, int signum)
+static void do_send_signal(struct task *ti, int signum)
 {
    ASSERT(IN_RANGE(signum, 0, _NSIG));
    __sighandler_t h = ti->pi->sa_handlers[signum];
@@ -110,7 +110,7 @@ static void do_send_signal(struct task_info *ti, int signum)
 
 int send_signal2(int pid, int tid, int signum, bool whole_process)
 {
-   struct task_info *ti;
+   struct task *ti;
    int rc = -ESRCH;
 
    disable_preemption();
@@ -148,7 +148,7 @@ err_end:
 static int
 sigaction_int(int signum, const struct k_sigaction *user_act)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    struct k_sigaction act;
 
    if (copy_from_user(&act, user_act, sizeof(act)) != 0)
@@ -179,7 +179,7 @@ sys_rt_sigaction(int signum,
                  struct k_sigaction *user_oldact,
                  size_t sigsetsize)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    struct k_sigaction oldact;
    int rc = 0;
 

@@ -6,7 +6,7 @@
 #include <tilck/common/atomics.h>
 #include <tilck/kernel/list.h>
 
-struct task_info;
+struct task;
 
 enum wo_type {
 
@@ -23,7 +23,7 @@ enum wo_type {
 };
 
 /*
- * wait_obj is used internally in task_info for referring to an object that
+ * wait_obj is used internally in struct task for referring to an object that
  * is blocking that task (keeping it in a sleep state).
  */
 
@@ -42,7 +42,7 @@ typedef struct {
 typedef struct {
 
    wait_obj wobj;
-   struct task_info *ti;    /* Task owning this wait obj */
+   struct task *ti;    /* Task owning this wait obj */
    enum wo_type type;       /* Actual object type. NOTE: wobj.type cannot be
                              * used because it have to be equal to
                              * WOBJ_MULTI_ELEM. */
@@ -50,7 +50,7 @@ typedef struct {
 } mwobj_elem;
 
 /*
- * Heap-allocated object on which task_info->wobj "waits" when the task is
+ * Heap-allocated object on which struct task->wobj "waits" when the task is
  * waiting on multiple objects.
  *
  * How it works
@@ -83,12 +83,12 @@ static inline void *wait_obj_get_ptr(wait_obj *wo)
    return atomic_load_explicit(&wo->__ptr, mo_relaxed);
 }
 
-void task_set_wait_obj(struct task_info *ti,
+void task_set_wait_obj(struct task *ti,
                        enum wo_type type,
                        void *ptr,
                        list *wait_list);
 
-void *task_reset_wait_obj(struct task_info *ti);
+void *task_reset_wait_obj(struct task *ti);
 
 multi_obj_waiter *allocate_mobj_waiter(u32 elems);
 void free_mobj_waiter(multi_obj_waiter *w);
@@ -130,7 +130,7 @@ void ksem_signal(ksem *s);
 
 typedef struct {
 
-   struct task_info *owner_task;
+   struct task *owner_task;
    u32 flags;
    u32 lock_count; // Valid when the mutex is recursive
    list wait_list;

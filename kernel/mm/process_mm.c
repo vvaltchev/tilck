@@ -69,7 +69,7 @@ static inline void sys_brk_internal(struct process *pi, void *new_brk)
 
 void *sys_brk(void *new_brk)
 {
-   struct task_info *ti = get_curr_task();
+   struct task *ti = get_curr_task();
    struct process *pi = ti->pi;
 
    if (!new_brk)
@@ -176,7 +176,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
                int flags, int fd, size_t pgoffset)
 {
    u32 per_heap_kmalloc_flags = KMALLOC_FL_MULTI_STEP | PAGE_SIZE;
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    struct process *pi = curr->pi;
    fs_handle_base *handle = NULL;
    user_mapping *um = NULL;
@@ -396,7 +396,7 @@ static int munmap_int(struct process *pi, void *vaddrp, size_t len)
 
 int sys_munmap(void *vaddrp, size_t len)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    struct process *pi = curr->pi;
    uptr vaddr = (uptr) vaddrp;
    int rc;

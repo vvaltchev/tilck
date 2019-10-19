@@ -25,7 +25,7 @@ u32 get_tasklet_runner_limit(u32 tn)
    return t ? t->limit : 0;
 }
 
-struct task_info *get_tasklet_runner(u32 tn)
+struct task *get_tasklet_runner(u32 tn)
 {
    tasklet_thread_info *t = tasklet_threads[tn];
 
@@ -193,7 +193,7 @@ void tasklet_runner(void *arg)
    }
 }
 
-struct task_info *get_hi_prio_ready_tasklet_runner(void)
+struct task *get_hi_prio_ready_tasklet_runner(void)
 {
    ASSERT(!is_preemption_enabled());
    tasklet_thread_info *selected = NULL;

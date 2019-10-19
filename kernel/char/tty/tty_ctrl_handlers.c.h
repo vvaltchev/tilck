@@ -20,7 +20,7 @@ static int per_task_cb(void *obj, void *arg)
 {
    tty_and_sig_num *ctx = arg;
    tty *t = ttys[ctx->tty_num];
-   struct task_info *ti = obj;
+   struct task *ti = obj;
 
    if (!is_kernel_thread(ti) && ti->pi->proc_tty == t) {
 

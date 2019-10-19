@@ -351,7 +351,7 @@ static void DEBUG_set_thread_area(user_desc *d)
 
 static int find_available_slot_in_user_task(void)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    for (u32 i = 0; i < ARRAY_SIZE(curr->arch.gdt_entries); i++)
       if (!curr->arch.gdt_entries[i])
          return (int)i;
@@ -361,7 +361,7 @@ static int find_available_slot_in_user_task(void)
 
 static int get_user_task_slot_for_gdt_entry(u32 gdt_entry_num)
 {
-   struct task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    for (u32 i = 0; i < ARRAY_SIZE(curr->arch.gdt_entries); i++)
       if (curr->arch.gdt_entries[i] == gdt_entry_num)
          return (int)i;
@@ -369,7 +369,7 @@ static int get_user_task_slot_for_gdt_entry(u32 gdt_entry_num)
    return -1;
 }
 
-static void gdt_set_slot_in_task(struct task_info *ti, u16 slot, u16 gdt_index)
+static void gdt_set_slot_in_task(struct task *ti, u16 slot, u16 gdt_index)
 {
    ti->arch.gdt_entries[slot] = gdt_index;
 }
@@ -451,7 +451,7 @@ int sys_set_thread_area(void *arg)
       slot = find_available_slot_in_user_task();
 
       if (slot < 0) {
-         /* Unable to find a free slot in this struct task_info struct */
+         /* Unable to find a free slot in this struct task struct */
          rc = -ESRCH;
          goto out;
       }

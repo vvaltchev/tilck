@@ -43,7 +43,7 @@ void *wait_obj_reset(wait_obj *wo)
    return oldp;
 }
 
-void task_set_wait_obj(struct task_info *ti,
+void task_set_wait_obj(struct task *ti,
                        enum wo_type type,
                        void *ptr,
                        list *wait_list)
@@ -57,7 +57,7 @@ void task_set_wait_obj(struct task_info *ti,
    enable_preemption();
 }
 
-void *task_reset_wait_obj(struct task_info *ti)
+void *task_reset_wait_obj(struct task *ti)
 {
    void *oldp;
    disable_preemption();
