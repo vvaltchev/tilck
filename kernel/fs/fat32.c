@@ -156,7 +156,7 @@ fat_seek_forward(fs_handle handle, offt dist)
 
 static int
 fat_count_dirents_cb(fat_header *hdr,
-                     fat_type ft,
+                     enum fat_type ft,
                      fat_entry *entry,
                      const char *long_name,
                      void *arg)
@@ -339,7 +339,7 @@ typedef struct {
 
 static int
 fat_getdents_cb(fat_header *hdr,
-                fat_type ft,
+                enum fat_type ft,
                 fat_entry *entry,
                 const char *long_name,
                 void *arg)

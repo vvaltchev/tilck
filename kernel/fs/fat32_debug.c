@@ -88,7 +88,7 @@ typedef struct {
 } debug_fat_walk_ctx;
 
 static int dump_dir_entry(fat_header *hdr,
-                          fat_type ft,
+                          enum fat_type ft,
                           fat_entry *entry,
                           const char *long_name,
                           void *arg)
@@ -139,7 +139,7 @@ void fat_dump_info(void *fatpart_begin)
 
    printk("\n");
 
-   fat_type ft = fat_get_type(hdr);
+   enum fat_type ft = fat_get_type(hdr);
    ASSERT(ft != fat12_type);
 
    if (ft == fat16_type) {

@@ -4,14 +4,13 @@
 
 #include <tilck/common/basic_defs.h>
 
-typedef enum {
+enum fat_type {
 
    fat_unknown = 0, // unknown FAT type
-   fat12_type = 1,
-   fat16_type = 2,
-   fat32_type = 3
-
-} fat_type;
+   fat12_type  = 1,
+   fat16_type  = 2,
+   fat32_type  = 3
+};
 
 typedef struct PACKED {
 
@@ -127,11 +126,11 @@ void fat_dump_info(void *fatpart_begin);
 
 // FAT INTERNALS ---------------------------------------------------------------
 
-fat_type fat_get_type(fat_header *hdr);
-fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft, u32 *cluster /*out*/);
+enum fat_type fat_get_type(fat_header *hdr);
+fat_entry *fat_get_rootdir(fat_header *hdr, enum fat_type ft, u32 *cluster /*out*/);
 void fat_get_short_name(fat_entry *entry, char *destbuf);
 u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N);
-u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, u32 clusterN, u32 fatNum);
+u32 fat_read_fat_entry(fat_header *hdr, enum fat_type ft, u32 clusterN, u32 fatNum);
 u32 fat_get_first_data_sector(fat_header *hdr);
 
 
@@ -171,13 +170,13 @@ static inline u32 fat_get_first_cluster(fat_entry *entry)
    return (u32)entry->DIR_FstClusHI << 16u | entry->DIR_FstClusLO;
 }
 
-static inline bool fat_is_end_of_clusterchain(fat_type ft, u32 val)
+static inline bool fat_is_end_of_clusterchain(enum fat_type ft, u32 val)
 {
    ASSERT(ft == fat16_type || ft == fat32_type);
    return (ft == fat16_type) ? val >= 0xFFF8 : val >= 0x0FFFFFF8;
 }
 
-static inline bool fat_is_bad_cluster(fat_type ft, u32 val)
+static inline bool fat_is_bad_cluster(enum fat_type ft, u32 val)
 {
    ASSERT(ft == fat16_type || ft == fat32_type);
    return (ft == fat16_type) ? (val == 0xFFF7) : (val == 0x0FFFFFF7);
@@ -204,7 +203,7 @@ typedef struct {
 } fat_walk_dir_ctx;
 
 typedef int (*fat_dentry_cb)(fat_header *,
-                             fat_type,
+                             enum fat_type,
                              fat_entry *,
                              const char *, /* long name */
                              void *);      /* user data pointer */
@@ -212,7 +211,7 @@ typedef int (*fat_dentry_cb)(fat_header *,
 int
 fat_walk_directory(fat_walk_dir_ctx *ctx,
                    fat_header *hdr,
-                   fat_type ft,
+                   enum fat_type ft,
                    fat_entry *entry,
                    u32 cluster,
                    fat_dentry_cb cb,
@@ -220,7 +219,7 @@ fat_walk_directory(fat_walk_dir_ctx *ctx,
 
 
 fat_entry *
-fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath, int *err);
+fat_search_entry(fat_header *hdr, enum fat_type ft, const char *abspath, int *err);
 
 size_t fat_get_file_size(fat_entry *entry);
 
@@ -257,7 +256,7 @@ void
 fat_init_search_ctx(fat_search_ctx *ctx, const char *path, bool single_comp);
 
 int fat_search_entry_cb(fat_header *hdr,
-                        fat_type ft,
+                        enum fat_type ft,
                         fat_entry *entry,
                         const char *long_name,
                         void *arg);
