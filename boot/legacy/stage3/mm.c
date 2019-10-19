@@ -13,7 +13,7 @@
 #define BIOS_INT15h_READ_MEMORY_MAP        0xE820
 #define BIOS_INT15h_READ_MEMORY_MAP_MAGIC  0x534D4150
 
-void read_memory_map(void *buf, size_t buf_size, mem_info *mi)
+void read_memory_map(void *buf, size_t buf_size, struct mem_info *mi)
 {
    struct PACKED {
 
@@ -82,7 +82,7 @@ void read_memory_map(void *buf, size_t buf_size, mem_info *mi)
    mi->count = mem_areas_count;
 }
 
-void poison_usable_memory(mem_info *mi)
+void poison_usable_memory(struct mem_info *mi)
 {
    for (u32 i = 0; i < mi->count; i++) {
 
@@ -99,7 +99,7 @@ void poison_usable_memory(mem_info *mi)
    }
 }
 
-uptr get_usable_mem(mem_info *mi, uptr min_paddr, uptr size)
+uptr get_usable_mem(struct mem_info *mi, uptr min_paddr, uptr size)
 {
    for (u32 i = 0; i < mi->count; i++) {
 
@@ -131,7 +131,7 @@ uptr get_usable_mem(mem_info *mi, uptr min_paddr, uptr size)
    return 0;
 }
 
-uptr get_usable_mem_or_panic(mem_info *mi, uptr min_paddr, uptr size)
+uptr get_usable_mem_or_panic(struct mem_info *mi, uptr min_paddr, uptr size)
 {
    uptr free_mem = get_usable_mem(mi, min_paddr, size);
 

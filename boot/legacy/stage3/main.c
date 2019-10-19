@@ -51,7 +51,7 @@ static void calculate_ramdisk_fat_size(fat_header *hdr)
 }
 
 static void
-load_elf_kernel(mem_info *mi,
+load_elf_kernel(struct mem_info *mi,
                 uptr ramdisk,
                 uptr ramdisk_size,
                 const char *filepath,
@@ -83,7 +83,7 @@ load_elf_kernel(mem_info *mi,
 }
 
 static multiboot_info_t *
-setup_multiboot_info(mem_info *mi, uptr ramdisk_paddr, uptr ramdisk_size)
+setup_multiboot_info(struct mem_info *mi, uptr ramdisk_paddr, uptr ramdisk_size)
 {
    uptr free_mem;
    multiboot_info_t *mbi;
@@ -181,7 +181,7 @@ void bootloader_main(void)
    uptr free_mem;
    void *entry;
    bool success;
-   mem_info mi;
+   struct mem_info mi;
 
    vga_set_video_mode(VGA_COLOR_TEXT_MODE_80x25);
    init_bt();
