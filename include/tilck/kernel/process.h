@@ -20,14 +20,12 @@
 STATIC_ASSERT((KERNEL_STACK_SIZE % PAGE_SIZE) == 0);
 STATIC_ASSERT(((IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE) % PAGE_SIZE) == 0);
 
-typedef struct {
+struct kernel_alloc {
 
    bintree_node node;
-
    void *vaddr;
    size_t size;
-
-} kernel_alloc;
+};
 
 struct process_info {
 
@@ -119,7 +117,7 @@ struct task_info {
    ATOMIC(u32) ticks_before_wake_up;
 
    /* Temp kernel allocations for user requests */
-   kernel_alloc *kallocs_tree_root;
+   struct kernel_alloc *kallocs_tree_root;
 
    /*
     * For kernel threads, this is a function pointer of the thread's entry

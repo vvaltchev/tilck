@@ -275,7 +275,7 @@ void *task_temp_kernel_alloc(size_t size)
 
       if (ptr) {
 
-         kernel_alloc *alloc = kzmalloc(sizeof(kernel_alloc));
+         struct kernel_alloc *alloc = kzmalloc(sizeof(struct kernel_alloc));
 
          if (alloc) {
 
@@ -285,7 +285,7 @@ void *task_temp_kernel_alloc(size_t size)
 
             bintree_insert_ptr(&curr->kallocs_tree_root,
                                alloc,
-                               kernel_alloc,
+                               struct kernel_alloc,
                                node,
                                vaddr);
 
@@ -303,7 +303,7 @@ void *task_temp_kernel_alloc(size_t size)
 void task_temp_kernel_free(void *ptr)
 {
    task_info *curr = get_curr_task();
-   kernel_alloc *alloc;
+   struct kernel_alloc *alloc;
 
    if (!ptr)
       return;
@@ -312,7 +312,7 @@ void task_temp_kernel_free(void *ptr)
    {
       alloc = bintree_find_ptr(&curr->kallocs_tree_root,
                                ptr,
-                               kernel_alloc,
+                               struct kernel_alloc,
                                node,
                                vaddr);
 
@@ -322,11 +322,11 @@ void task_temp_kernel_free(void *ptr)
 
       bintree_remove_ptr(&curr->kallocs_tree_root,
                          alloc,
-                         kernel_alloc,
+                         struct kernel_alloc,
                          node,
                          vaddr);
 
-      kfree2(alloc, sizeof(kernel_alloc));
+      kfree2(alloc, sizeof(struct kernel_alloc));
    }
    enable_preemption();
 }
@@ -617,7 +617,7 @@ task_free_all_kernel_allocs(task_info *ti)
    while (ti->kallocs_tree_root != NULL) {
 
       /* Save a pointer to the alloc object on the stack */
-      kernel_alloc *alloc = ti->kallocs_tree_root;
+      struct kernel_alloc *alloc = ti->kallocs_tree_root;
 
       /* Free the allocated chunk */
       kfree2(alloc->vaddr, alloc->size);
@@ -625,12 +625,12 @@ task_free_all_kernel_allocs(task_info *ti)
       /* Remove the kernel_alloc elem from the tree */
       bintree_remove_ptr(&ti->kallocs_tree_root,
                          alloc,
-                         kernel_alloc,
+                         struct kernel_alloc,
                          node,
                          vaddr);
 
       /* Free the kernel_alloc object itself */
-      kfree2(alloc, sizeof(kernel_alloc));
+      kfree2(alloc, sizeof(struct kernel_alloc));
    }
 }
 
