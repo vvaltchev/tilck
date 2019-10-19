@@ -10,3 +10,5 @@ rel_build/*
 .vscode/ipch/
 other_build*
 tcci_*
+.mypy_cache
+.vscode/.ropeproject
