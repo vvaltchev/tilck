@@ -17,11 +17,11 @@ typedef struct {
    u32 type;
    u32 acpi;
 
-} mem_area_t;
+} mem_area;
 
 typedef struct {
 
-   mem_area_t *mem_areas;
+   mem_area *mem_areas;
    u32 count;
 
 } mem_info;

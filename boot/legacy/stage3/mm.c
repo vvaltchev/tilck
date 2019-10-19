@@ -27,7 +27,7 @@ void read_memory_map(void *buf, size_t buf_size, mem_info *mi)
    } *bios_mem_area = (void *)BIOS_MEM_AREA_BUF;
 
    u32 eax, ebx, ecx, edx, esi, edi, flags;
-   mem_area_t *mem_areas = buf;
+   mem_area *mem_areas = buf;
    uptr buf_end = (uptr) buf + buf_size;
    u32 mem_areas_count = 0;
 
@@ -64,17 +64,17 @@ void read_memory_map(void *buf, size_t buf_size, mem_info *mi)
       if (eax != BIOS_INT15h_READ_MEMORY_MAP_MAGIC)
          panic("Error while reading memory map: eax != magic");
 
-      mem_area_t m = {
+      mem_area m = {
          .base = bios_mem_area->base_low | ((u64)bios_mem_area->base_hi << 32),
          .len  = bios_mem_area->len_low  | ((u64)bios_mem_area->len_hi << 32),
          .type = bios_mem_area->type,
          .acpi = bios_mem_area->acpi,
       };
 
-      if ((uptr)(mem_areas + mem_areas_count + sizeof(mem_area_t)) > buf_end)
+      if ((uptr)(mem_areas + mem_areas_count + sizeof(mem_area)) > buf_end)
          panic("No enough memory for the memory map");
 
-      memcpy(mem_areas + mem_areas_count, &m, sizeof(mem_area_t));
+      memcpy(mem_areas + mem_areas_count, &m, sizeof(mem_area));
       mem_areas_count++;
    }
 
@@ -86,7 +86,7 @@ void poison_usable_memory(mem_info *mi)
 {
    for (u32 i = 0; i < mi->count; i++) {
 
-      mem_area_t *ma = mi->mem_areas + i;
+      mem_area *ma = mi->mem_areas + i;
 
       if (ma->type == MEM_USABLE && ma->base >= MB) {
 
@@ -103,7 +103,7 @@ uptr get_usable_mem(mem_info *mi, uptr min_paddr, uptr size)
 {
    for (u32 i = 0; i < mi->count; i++) {
 
-      mem_area_t *ma = mi->mem_areas + i;
+      mem_area *ma = mi->mem_areas + i;
       uptr mbase = ma->base;
       uptr mend = ma->base + ma->len;
 
