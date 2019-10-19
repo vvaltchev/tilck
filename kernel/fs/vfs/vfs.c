@@ -24,7 +24,7 @@ static u32 next_device_id;
 
 /* ------------ handle-based functions ------------- */
 
-void vfs_close2(process_info *pi, fs_handle h)
+void vfs_close2(struct process_info *pi, fs_handle h)
 {
    /*
     * TODO: consider forcing also vfs_close() to be run always with preemption

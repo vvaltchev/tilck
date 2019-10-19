@@ -9,7 +9,7 @@ struct user_mapping {
 
    list_node pi_node;
    list_node inode_node;
-   process_info *pi;
+   struct process_info *pi;
 
    fs_handle h;
    size_t len;
@@ -29,8 +29,8 @@ typedef struct user_mapping user_mapping;
 user_mapping *
 process_add_user_mapping(fs_handle h, void *v, size_t ln, size_t off, int prot);
 void process_remove_user_mapping(user_mapping *um);
-void full_remove_user_mapping(process_info *pi, user_mapping *um);
-void remove_all_mappings_of_handle(process_info *pi, fs_handle h);
+void full_remove_user_mapping(struct process_info *pi, user_mapping *um);
+void remove_all_mappings_of_handle(struct process_info *pi, fs_handle h);
 user_mapping *process_get_user_mapping(void *vaddr);
 
 /* Internal functions */

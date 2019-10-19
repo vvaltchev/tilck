@@ -125,7 +125,7 @@ static void mount_initrd(void)
    /* Set kernel's process `cwd` to the root folder */
    {
       vfs_path tp;
-      process_info *pi = kernel_process_pi;
+      struct process_info *pi = kernel_process_pi;
       ASSERT(pi == get_curr_task()->pi);
 
       tp.fs = mp2_get_root();

@@ -63,8 +63,6 @@ struct process_info {
    uptr sa_flags;
 };
 
-typedef struct process_info process_info;
-
 struct task_info {
 
    int tid;                 /* User/kernel task ID (pid in the Linux kernel) */
@@ -80,7 +78,7 @@ struct task_info {
    int padding_0;
 #endif
 
-   process_info *pi;
+   struct process_info *pi;
 
    bool is_main_thread;     /* value of `tid == pi->pid` */
    bool running_in_kernel;
@@ -133,18 +131,18 @@ struct task_info {
 typedef struct task_info task_info;
 
 STATIC_ASSERT((sizeof(task_info) & ~POINTER_ALIGN_MASK) == 0);
-STATIC_ASSERT((sizeof(process_info) & ~POINTER_ALIGN_MASK) == 0);
+STATIC_ASSERT((sizeof(struct process_info) & ~POINTER_ALIGN_MASK) == 0);
 
 #ifdef __i386__
 STATIC_ASSERT(OFFSET_OF(task_info, fault_resume_regs) == TI_F_RESUME_RS_OFF);
 STATIC_ASSERT(OFFSET_OF(task_info, faults_resume_mask) == TI_FAULTS_MASK_OFF);
 #endif
 
-static ALWAYS_INLINE task_info *get_process_task(process_info *pi)
+static ALWAYS_INLINE task_info *get_process_task(struct process_info *pi)
 {
    /*
     * allocate_new_process() allocates task_info and process_info in one chunk
-    * placing process_info immediately after task_info.
+    * placing struct process_info immediately after task_info.
     */
    return ((task_info *)pi) - 1;
 }
@@ -194,17 +192,17 @@ void set_current_task_in_kernel(void);
 void set_current_task_in_user_mode(void);
 
 task_info *allocate_new_process(task_info *parent, int pid);
-task_info *allocate_new_thread(process_info *pi);
+task_info *allocate_new_thread(struct process_info *pi);
 void free_task(task_info *ti);
 void free_mem_for_zombie_task(task_info *ti);
 bool arch_specific_new_task_setup(task_info *ti, task_info *parent);
 void arch_specific_free_task(task_info *ti);
 void wake_up_tasks_waiting_on(task_info *ti);
-void init_process_lists(process_info *pi);
+void init_process_lists(struct process_info *pi);
 
 void *task_temp_kernel_alloc(size_t size);
 void task_temp_kernel_free(void *ptr);
 
 void process_set_cwd2_nolock(vfs_path *tp);
-void process_set_cwd2_nolock_raw(process_info *pi, vfs_path *tp);
+void process_set_cwd2_nolock_raw(struct process_info *pi, vfs_path *tp);
 void terminate_process(task_info *ti, int exit_code, int term_sig);

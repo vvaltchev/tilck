@@ -12,11 +12,10 @@
 
 typedef struct regs regs;
 typedef struct task_info task_info;
-typedef struct process_info process_info;
 
 extern task_info *__current;
 extern task_info *kernel_process;
-extern process_info *kernel_process_pi;
+extern struct process_info *kernel_process_pi;
 
 extern list runnable_tasks_list;
 extern list sleeping_tasks_list;
@@ -142,6 +141,6 @@ typedef void (*kthread_func_ptr)();
 NODISCARD int kthread_create(kthread_func_ptr fun, void *arg);
 int iterate_over_tasks(bintree_visit_cb func, void *arg);
 
-process_info *task_get_pi_opaque(task_info *ti);
-void process_set_tty(process_info *pi, void *t);
+struct process_info *task_get_pi_opaque(task_info *ti);
+void process_set_tty(struct process_info *pi, void *t);
 bool in_currently_dying_task(void);

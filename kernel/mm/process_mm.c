@@ -15,7 +15,7 @@
 pdir_t *kernel_page_dir;
 char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
-static inline void sys_brk_internal(process_info *pi, void *new_brk)
+static inline void sys_brk_internal(struct process_info *pi, void *new_brk)
 {
    ASSERT(!is_preemption_enabled());
 
@@ -70,7 +70,7 @@ static inline void sys_brk_internal(process_info *pi, void *new_brk)
 void *sys_brk(void *new_brk)
 {
    task_info *ti = get_curr_task();
-   process_info *pi = ti->pi;
+   struct process_info *pi = ti->pi;
 
    if (!new_brk)
       return pi->brk;
@@ -102,7 +102,7 @@ void *sys_brk(void *new_brk)
    return pi->brk;
 }
 
-static int create_process_mmap_heap(process_info *pi)
+static int create_process_mmap_heap(struct process_info *pi)
 {
    pi->mmap_heap = kzmalloc(kmalloc_get_heap_struct_size());
 
@@ -132,7 +132,7 @@ static int create_process_mmap_heap(process_info *pi)
 }
 
 static inline void
-mmap_err_case_free(process_info *pi, void *ptr, size_t actual_len)
+mmap_err_case_free(struct process_info *pi, void *ptr, size_t actual_len)
 {
    per_heap_kfree(pi->mmap_heap,
                   ptr,
@@ -143,7 +143,7 @@ mmap_err_case_free(process_info *pi, void *ptr, size_t actual_len)
 }
 
 static user_mapping *
-mmap_on_user_heap(process_info *pi,
+mmap_on_user_heap(struct process_info *pi,
                   size_t *actual_len_ref,
                   fs_handle handle,
                   u32 per_heap_kmalloc_flags,
@@ -177,7 +177,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 {
    u32 per_heap_kmalloc_flags = KMALLOC_FL_MULTI_STEP | PAGE_SIZE;
    task_info *curr = get_curr_task();
-   process_info *pi = curr->pi;
+   struct process_info *pi = curr->pi;
    fs_handle_base *handle = NULL;
    user_mapping *um = NULL;
    size_t actual_len;
@@ -292,7 +292,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    return (sptr)um->vaddr;
 }
 
-static int munmap_int(process_info *pi, void *vaddrp, size_t len)
+static int munmap_int(struct process_info *pi, void *vaddrp, size_t len)
 {
    u32 kfree_flags = KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP;
    user_mapping *um = NULL, *um2 = NULL;
@@ -397,7 +397,7 @@ static int munmap_int(process_info *pi, void *vaddrp, size_t len)
 int sys_munmap(void *vaddrp, size_t len)
 {
    task_info *curr = get_curr_task();
-   process_info *pi = curr->pi;
+   struct process_info *pi = curr->pi;
    uptr vaddr = (uptr) vaddrp;
    int rc;
 

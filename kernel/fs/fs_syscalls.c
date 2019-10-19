@@ -18,7 +18,7 @@ static inline bool is_fd_in_valid_range(int fd)
    return IN_RANGE(fd, 0, MAX_HANDLES);
 }
 
-static int get_free_handle_num_ge(process_info *pi, int ge)
+static int get_free_handle_num_ge(struct process_info *pi, int ge)
 {
    ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
 
@@ -29,7 +29,7 @@ static int get_free_handle_num_ge(process_info *pi, int ge)
    return -1;
 }
 
-static int get_free_handle_num(process_info *pi)
+static int get_free_handle_num(struct process_info *pi)
 {
    return get_free_handle_num_ge(pi, 0);
 }
@@ -558,7 +558,7 @@ out:
 int sys_dup(int oldfd)
 {
    int rc = -EMFILE, free_fd;
-   process_info *pi = get_curr_task()->pi;
+   struct process_info *pi = get_curr_task()->pi;
 
    kmutex_lock(&pi->fslock);
 
@@ -610,7 +610,7 @@ static void debug_print_fcntl_command(int cmd)
    }
 }
 
-void close_cloexec_handles(process_info *pi)
+void close_cloexec_handles(struct process_info *pi)
 {
    kmutex_lock(&pi->fslock);
 

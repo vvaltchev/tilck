@@ -14,7 +14,7 @@
 #include <tilck/kernel/sys_types.h>
 #include <tilck/kernel/sync.h>
 
-typedef struct process_info process_info;
+struct process_info;
 typedef struct user_mapping user_mapping;
 
 /*
@@ -264,7 +264,7 @@ int vfs_mmap(user_mapping *um, bool register_only);
 int vfs_munmap(fs_handle h, void *vaddr, size_t len);
 int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);
-void vfs_close2(process_info *pi, fs_handle h);
+void vfs_close2(struct process_info *pi, fs_handle h);
 bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw);
 
 bool vfs_read_ready(fs_handle h);
@@ -338,7 +338,7 @@ compute_abs_path(const char *path, const char *str_cwd, char *dest, u32 dest_s);
 
 u32 vfs_get_new_device_id(void);
 fs_handle get_fs_handle(int fd);
-void close_cloexec_handles(process_info *pi);
+void close_cloexec_handles(struct process_info *pi);
 
 /* ------------ Current mount point interface ------------- */
 
