@@ -102,7 +102,7 @@ struct fat_entry {
 
 #define LAST_LONG_ENTRY_MASK (0x40)
 
-typedef struct PACKED {
+struct fat_long_entry {
 
    u8 LDIR_Ord;
    u8 LDIR_Name1[10];
@@ -113,7 +113,7 @@ typedef struct PACKED {
    u16 LDIR_FstClusLO; /* must be always 0 in this context. */
    u8 LDIR_Name3[4];
 
-} fat_long_entry;
+} PACKED;
 
 
 static inline bool is_long_name_entry(struct fat_entry *e)
@@ -253,7 +253,7 @@ typedef struct {
    bool single_comp;          // search only for the first component
 
    // Output fields
-   struct fat_entry *result;         // the found entry
+   struct fat_entry *result;  // the found entry or NULL
    u32 subdir_cluster;        // the cluster of the subdir's we have to walk to
    bool not_dir;              // path ended with '/' but entry was NOT a dir
 
