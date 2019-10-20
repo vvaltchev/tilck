@@ -24,7 +24,7 @@ typedef struct ramfs_inode ramfs_inode;
 
 typedef struct {
 
-   bintree_node node;
+   struct bintree_node node;
    offt offset;                  /* MUST BE divisible by PAGE_SIZE */
    void *vaddr;
 
@@ -39,7 +39,7 @@ typedef struct {
 #define RAMFS_ENTRY_SIZE 256
 #define RAMFS_ENTRY_MAX_LEN (                   \
    RAMFS_ENTRY_SIZE                             \
-   - sizeof(bintree_node)                       \
+   - sizeof(struct bintree_node)                \
    - sizeof(list_node)                          \
    - sizeof(struct ramfs_inode *)               \
    - sizeof(u8)                                 \
@@ -47,7 +47,7 @@ typedef struct {
 
 typedef struct {
 
-   bintree_node node;
+   struct bintree_node node;
    list_node lnode;
    struct ramfs_inode *inode;
    u8 name_len;                     /* NOTE: includes the final \0 */

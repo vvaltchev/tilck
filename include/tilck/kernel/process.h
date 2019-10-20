@@ -22,7 +22,7 @@ STATIC_ASSERT(((IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE) % PAGE_SIZE) == 0);
 
 struct kernel_alloc {
 
-   bintree_node node;
+   struct bintree_node node;
    void *vaddr;
    size_t size;
 };
@@ -89,7 +89,7 @@ struct task {
    struct regs *fault_resume_regs;
    u32 faults_resume_mask;
 
-   bintree_node tree_by_tid_node;
+   struct bintree_node tree_by_tid_node;
    list_node runnable_node;
    list_node sleeping_node;
    list_node zombie_node;

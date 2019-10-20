@@ -17,7 +17,7 @@
 
 typedef struct {
 
-   bintree_node node;
+   struct bintree_node node;
    size_t size;
    size_t count;
 

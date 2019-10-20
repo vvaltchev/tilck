@@ -7,17 +7,15 @@
 
 #define MAX_TREE_HEIGHT       32
 
-typedef struct bintree_node bintree_node;
-
 struct bintree_node {
    void *left_obj;   // pointer to the left container obj
    void *right_obj;  // pointer to the right container obj
    u16 height;
 };
 
-static inline void bintree_node_init(bintree_node *node)
+static inline void bintree_node_init(struct bintree_node *node)
 {
-   bzero(node, sizeof(bintree_node));
+   bzero(node, sizeof(struct bintree_node));
 }
 
 #include <tilck/common/norec.h>
