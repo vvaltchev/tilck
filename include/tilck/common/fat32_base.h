@@ -264,7 +264,9 @@ struct fat_search_ctx {
 };
 
 void
-fat_init_search_ctx(struct fat_search_ctx *ctx, const char *path, bool single_comp);
+fat_init_search_ctx(struct fat_search_ctx *ctx,
+                    const char *path,
+                    bool single_comp);
 
 int fat_search_entry_cb(struct fat_hdr *hdr,
                         enum fat_type ft,

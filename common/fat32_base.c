@@ -594,7 +594,9 @@ int fat_search_entry_cb(struct fat_hdr *hdr,
 }
 
 void
-fat_init_search_ctx(struct fat_search_ctx *ctx, const char *path, bool single_comp)
+fat_init_search_ctx(struct fat_search_ctx *ctx,
+                    const char *path,
+                    bool single_comp)
 {
    bzero(ctx, sizeof(struct fat_search_ctx));
 
