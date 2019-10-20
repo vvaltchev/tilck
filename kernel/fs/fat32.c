@@ -19,7 +19,7 @@
  */
 
 static inline u32
-fat_get_first_cluster_generic(fat_fs_device_data *d, fat_entry *e)
+fat_get_first_cluster_generic(fat_fs_device_data *d, struct fat_entry *e)
 {
    return e == d->root_entry ? d->root_cluster : fat_get_first_cluster(e);
 }
@@ -157,7 +157,7 @@ fat_seek_forward(fs_handle handle, offt dist)
 static int
 fat_count_dirents_cb(struct fat_hdr *hdr,
                      enum fat_type ft,
-                     fat_entry *entry,
+                     struct fat_entry *entry,
                      const char *long_name,
                      void *arg)
 {
@@ -170,7 +170,7 @@ fat_count_dirents_cb(struct fat_hdr *hdr,
  *
  * TODO: implement fat_count_dirents() in a more efficient way.
  */
-STATIC offt fat_count_dirents(fat_fs_device_data *d, fat_entry *e)
+STATIC offt fat_count_dirents(fat_fs_device_data *d, struct fat_entry *e)
 {
    fat_walk_dir_ctx walk_ctx = {0};
    offt count = 0;
@@ -281,14 +281,14 @@ fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
 }
 
 static inline tilck_inode_t
-fat_entry_to_inode(struct fat_hdr *hdr, fat_entry *e)
+fat_entry_to_inode(struct fat_hdr *hdr, struct fat_entry *e)
 {
    return (tilck_inode_t)((sptr)e - (sptr)hdr);
 }
 
 STATIC int fat_stat(filesystem *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
-   fat_entry *e = i;
+   struct fat_entry *e = i;
    datetime_t crt_time, wrt_time;
 
    if (!e)
@@ -340,7 +340,7 @@ typedef struct {
 static int
 fat_getdents_cb(struct fat_hdr *hdr,
                 enum fat_type ft,
-                fat_entry *entry,
+                struct fat_entry *entry,
                 const char *long_name,
                 void *arg)
 {
@@ -502,7 +502,7 @@ fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
    fat_handle *h;
    filesystem *fs = p->fs;
    fat_fs_path *fp = (fat_fs_path *)&p->fs_path;
-   fat_entry *e = fp->entry;
+   struct fat_entry *e = fp->entry;
 
    if (!e) {
 
@@ -566,7 +566,7 @@ fat_get_entry(filesystem *fs,
 {
    fat_fs_device_data *d = fs->device_data;
    fat_fs_path *fp = (fat_fs_path *)fs_path;
-   fat_entry *dir_entry;
+   struct fat_entry *dir_entry;
    u32 dir_cluster;
    fat_search_ctx ctx;
 
@@ -589,7 +589,7 @@ fat_get_entry(filesystem *fs,
                       &fat_search_entry_cb,
                       &ctx);
 
-   fat_entry *res = !ctx.not_dir ? ctx.result : NULL;
+   struct fat_entry *res = !ctx.not_dir ? ctx.result : NULL;
    enum vfs_entry_type type = VFS_NONE;
 
    if (res) {

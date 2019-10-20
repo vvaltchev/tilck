@@ -70,7 +70,7 @@ static void dump_fat32_headers(struct fat_hdr *common_hdr)
                   hdr->BS_FilSysType, sizeof(hdr->BS_FilSysType));
 }
 
-static void dump_entry_attrs(fat_entry *entry)
+static void dump_entry_attrs(struct fat_entry *entry)
 {
    printk("readonly:  %u\n", entry->readonly);
    printk("hidden:    %u\n", entry->hidden);
@@ -89,7 +89,7 @@ typedef struct {
 
 static int dump_dir_entry(struct fat_hdr *hdr,
                           enum fat_type ft,
-                          fat_entry *entry,
+                          struct fat_entry *entry,
                           const char *long_name,
                           void *arg)
 {
@@ -150,7 +150,7 @@ void fat_dump_info(void *fatpart_begin)
    printk("\n");
 
    u32 root_dir_cluster;
-   fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
+   struct fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
 
    debug_fat_walk_ctx ctx;
    ctx.level = 0;

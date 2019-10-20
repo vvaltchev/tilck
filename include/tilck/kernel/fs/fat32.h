@@ -15,7 +15,7 @@ typedef struct {
    enum fat_type type;
    size_t cluster_size;
 
-   fat_entry *root_entry;
+   struct fat_entry *root_entry;
    u32 root_cluster;
 
 } fat_fs_device_data;
@@ -26,7 +26,7 @@ typedef struct {
    FS_HANDLE_BASE_FIELDS
 
    /* fs-specific members */
-   fat_entry *e;
+   struct fat_entry *e;
    u32 curr_cluster;
 
 } fat_handle;
@@ -45,7 +45,7 @@ datetime_t fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth);
 #define dir_inode    parent_entry
 #define dir_entry    unused
 
-CREATE_FS_PATH_STRUCT(fat_fs_path, fat_entry *, void *);
+CREATE_FS_PATH_STRUCT(fat_fs_path, struct fat_entry *, void *);
 
 #undef inode
 #undef dir_inode

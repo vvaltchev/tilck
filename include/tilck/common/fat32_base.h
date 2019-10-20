@@ -72,7 +72,7 @@ struct fat32_header2 {
 #define FAT_DIR_DOT      ".          "
 #define FAT_DIR_DOT_DOT  "..         "
 
-typedef struct PACKED {
+struct fat_entry {
 
    char DIR_Name[11];
 
@@ -98,7 +98,7 @@ typedef struct PACKED {
    u16 DIR_FstClusLO;   // low word of entry's first cluster
    u32 DIR_FileSize;
 
-} fat_entry;
+} PACKED;
 
 #define LAST_LONG_ENTRY_MASK (0x40)
 
@@ -116,7 +116,7 @@ typedef struct PACKED {
 } fat_long_entry;
 
 
-static inline bool is_long_name_entry(fat_entry *e)
+static inline bool is_long_name_entry(struct fat_entry *e)
 {
    return e->readonly && e->hidden && e->system && e->volume_id;
 }
@@ -128,11 +128,11 @@ void fat_dump_info(void *fatpart_begin);
 
 enum fat_type fat_get_type(struct fat_hdr *hdr);
 
-fat_entry *fat_get_rootdir(struct fat_hdr *hdr,
+struct fat_entry *fat_get_rootdir(struct fat_hdr *hdr,
                            enum fat_type ft,
                            u32 *cluster /*out*/);
 
-void fat_get_short_name(fat_entry *entry, char *destbuf);
+void fat_get_short_name(struct fat_entry *entry, char *destbuf);
 
 u32 fat_get_sector_for_cluster(struct fat_hdr *hdr, u32 N);
 
@@ -175,7 +175,7 @@ static inline u32 fat_get_RootDirSectors(struct fat_hdr *hdr)
    return ((hdr->BPB_RootEntCnt * 32u) + (bps - 1u)) / bps;
 }
 
-static inline u32 fat_get_first_cluster(fat_entry *entry)
+static inline u32 fat_get_first_cluster(struct fat_entry *entry)
 {
    return (u32)entry->DIR_FstClusHI << 16u | entry->DIR_FstClusLO;
 }
@@ -214,7 +214,7 @@ typedef struct {
 
 typedef int (*fat_dentry_cb)(struct fat_hdr *,
                              enum fat_type,
-                             fat_entry *,
+                             struct fat_entry *,
                              const char *, /* long name */
                              void *);      /* user data pointer */
 
@@ -222,23 +222,23 @@ int
 fat_walk_directory(fat_walk_dir_ctx *ctx,
                    struct fat_hdr *hdr,
                    enum fat_type ft,
-                   fat_entry *entry,
+                   struct fat_entry *entry,
                    u32 cluster,
                    fat_dentry_cb cb,
                    void *arg);
 
 
-fat_entry *
+struct fat_entry *
 fat_search_entry(struct fat_hdr *hdr,
                  enum fat_type ft,
                  const char *abspath,
                  int *err);
 
-size_t fat_get_file_size(fat_entry *entry);
+size_t fat_get_file_size(struct fat_entry *entry);
 
 void
 fat_read_whole_file(struct fat_hdr *hdr,
-                    fat_entry *entry,
+                    struct fat_entry *entry,
                     char *dest_buf,
                     size_t dest_buf_size);
 
@@ -253,7 +253,7 @@ typedef struct {
    bool single_comp;          // search only for the first component
 
    // Output fields
-   fat_entry *result;         // the found entry
+   struct fat_entry *result;         // the found entry
    u32 subdir_cluster;        // the cluster of the subdir's we have to walk to
    bool not_dir;              // path ended with '/' but entry was NOT a dir
 
@@ -270,6 +270,6 @@ fat_init_search_ctx(fat_search_ctx *ctx, const char *path, bool single_comp);
 
 int fat_search_entry_cb(struct fat_hdr *hdr,
                         enum fat_type ft,
-                        fat_entry *entry,
+                        struct fat_entry *entry,
                         const char *long_name,
                         void *arg);

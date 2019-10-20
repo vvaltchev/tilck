@@ -59,7 +59,7 @@ load_elf_kernel(struct mem_info *mi,
 {
    struct fat_hdr *hdr = (struct fat_hdr *)ramdisk;
    uptr free_space;
-   fat_entry *e;
+   struct fat_entry *e;
 
    free_space = get_usable_mem(mi, ramdisk + ramdisk_size, KERNEL_MAX_SIZE);
 
