@@ -16,7 +16,7 @@ typedef struct {
    /* STUB struct */
    void *aligned_fpu_regs;
 
-} arch_task_info_members;
+} arch_task_members;
 
 static ALWAYS_INLINE int regs_intnum(struct regs *r)
 {

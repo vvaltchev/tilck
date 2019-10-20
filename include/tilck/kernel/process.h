@@ -125,7 +125,7 @@ struct task {
     */
    void *what;
 
-   arch_task_info_members arch; /* arch-specific fields */
+   arch_task_members arch; /* arch-specific fields */
 };
 
 STATIC_ASSERT((sizeof(struct task) & ~POINTER_ALIGN_MASK) == 0);
