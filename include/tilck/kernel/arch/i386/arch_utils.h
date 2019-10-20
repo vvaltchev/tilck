@@ -23,7 +23,7 @@ STATIC_ASSERT(SIZEOF_REGS == sizeof(struct regs));
 STATIC_ASSERT(REGS_EIP_OFF == OFFSET_OF(struct regs, eip));
 STATIC_ASSERT(REGS_USERESP_OFF == OFFSET_OF(struct regs, useresp));
 
-typedef struct {
+struct arch_task_members {
 
    void *ldt;
    u16 ldt_size; /* Number of entries. Valid only if ldt != NULL. */
@@ -31,8 +31,7 @@ typedef struct {
    u16 gdt_entries[3]; /* Array of indexes in gdt, valid if > 0 */
    u16 fpu_regs_size;
    void *aligned_fpu_regs;
-
-} arch_task_members;
+};
 
 static ALWAYS_INLINE int regs_intnum(struct regs *r)
 {

@@ -189,7 +189,7 @@ void save_current_fpu_regs(bool in_kernel)
    if (UNLIKELY(in_panic()))
       return;
 
-   arch_task_members *arch_fields = &get_curr_task()->arch;
+   struct arch_task_members *arch_fields = &get_curr_task()->arch;
    void *buf = in_kernel ? fpu_kernel_regs : arch_fields->aligned_fpu_regs;
 
    ASSERT(buf != NULL);
@@ -223,7 +223,7 @@ void restore_fpu_regs(void *task, bool in_kernel)
    if (UNLIKELY(in_panic()))
       return;
 
-   arch_task_members *arch_fields = &((struct task *)task)->arch;
+   struct arch_task_members *arch_fields = &((struct task *)task)->arch;
    void *buf = in_kernel ? fpu_kernel_regs : arch_fields->aligned_fpu_regs;
 
    ASSERT(buf != NULL);
@@ -249,7 +249,7 @@ void restore_current_fpu_regs(bool in_kernel)
    restore_fpu_regs(get_curr_task(), in_kernel);
 }
 
-bool allocate_fpu_regs(arch_task_members *arch_fields)
+bool allocate_fpu_regs(struct arch_task_members *arch_fields)
 {
    ASSERT(arch_fields->aligned_fpu_regs == NULL);
 
@@ -299,7 +299,7 @@ handle_no_coproc_fault(struct regs *r)
        panic("x87 FPU instructions not supported on CPUs without SSE");
    }
 
-   arch_task_members *arch_fields = &get_curr_task()->arch;
+   struct arch_task_members *arch_fields = &get_curr_task()->arch;
    ASSERT(!(r->custom_flags & REGS_FL_FPU_ENABLED));
 
 #if FORK_NO_COW

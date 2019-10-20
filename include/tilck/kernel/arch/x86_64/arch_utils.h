@@ -11,12 +11,11 @@ struct regs {
    uptr some_var; /* avoid error: empty struct has size 0 in C, size 1 in C++ */
 };
 
-typedef struct {
+struct arch_task_members {
 
    /* STUB struct */
    void *aligned_fpu_regs;
-
-} arch_task_members;
+};
 
 static ALWAYS_INLINE int regs_intnum(struct regs *r)
 {

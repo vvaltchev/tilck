@@ -56,5 +56,5 @@ int get_irq_num(struct regs *context);
 int get_int_num(struct regs *context);
 void on_first_pdir_update(void);
 
-bool allocate_fpu_regs(arch_task_members *arch_fields);
+bool allocate_fpu_regs(struct arch_task_members *arch_fields);
 void copy_main_tss_on_regs(struct regs *ctx);
