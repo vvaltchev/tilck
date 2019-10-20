@@ -42,7 +42,7 @@ static u32 ramdisk_max_size;
 static u32 ramdisk_first_data_sector;
 static struct mem_area ma_buf[64];
 
-static void calculate_ramdisk_fat_size(struct fat_header *hdr)
+static void calculate_ramdisk_fat_size(struct fat_hdr *hdr)
 {
    const u32 sector_size = fat_get_sector_size(hdr);
 
@@ -57,7 +57,7 @@ load_elf_kernel(struct mem_info *mi,
                 const char *filepath,
                 void **entry)
 {
-   struct fat_header *hdr = (struct fat_header *)ramdisk;
+   struct fat_hdr *hdr = (struct fat_hdr *)ramdisk;
    uptr free_space;
    fat_entry *e;
 
