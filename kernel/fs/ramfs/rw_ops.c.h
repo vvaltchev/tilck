@@ -238,7 +238,7 @@ static int ramfs_inode_truncate_safe(ramfs_inode *i, offt len)
    return rc;
 }
 
-static int ramfs_truncate(filesystem *fs, vfs_inode_ptr_t i, offt len)
+static int ramfs_truncate(struct filesystem *fs, vfs_inode_ptr_t i, offt len)
 {
    return ramfs_inode_truncate_safe(i, len);
 }

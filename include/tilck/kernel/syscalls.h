@@ -58,7 +58,7 @@ int sys_getpid();
 
 int sys_mount(const char *u_source,
               const char *u_target,
-              const char *u_filesystemtype,
+              const char *u_fstype,
               unsigned long mountflags,
               const void *u_data);
 

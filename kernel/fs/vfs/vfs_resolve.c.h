@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static inline void vfs_smart_fs_lock(filesystem *fs, bool exlock)
+static inline void vfs_smart_fs_lock(struct filesystem *fs, bool exlock)
 {
    /* See the comment in vfs.h about the "fs-lock" funcs */
    exlock ? vfs_fs_exlock(fs) : vfs_fs_shlock(fs);
 }
 
-static inline void vfs_smart_fs_unlock(filesystem *fs, bool exlock)
+static inline void vfs_smart_fs_unlock(struct filesystem *fs, bool exlock)
 {
    /* See the comment in vfs.h about the "fs-lock" funcs */
    exlock ? vfs_fs_exunlock(fs) : vfs_fs_shunlock(fs);
@@ -73,16 +73,16 @@ __vfs_resolve_get_entry(vfs_inode_ptr_t idir,
    vfs_get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
 
-   filesystem *target_fs = mp2_get_retained_at(rp->fs, rp->fs_path.inode);
+   struct filesystem *target_fs = mp2_get_retained_at(rp->fs, rp->fs_path.inode);
 
    if (target_fs) {
 
-      /* unlock and release the current (host) filesystem */
+      /* unlock and release the current (host) struct filesystem */
       vfs_smart_fs_unlock(rp->fs, exlock);
       release_obj(rp->fs);
 
       rp->fs = target_fs;
-      /* lock the new (target) filesystem. NOTE: it's already retained */
+      /* lock the new (target) struct filesystem. NOTE: it's already retained */
       vfs_smart_fs_lock(rp->fs, exlock);
 
       /* Get root's entry */
@@ -360,11 +360,11 @@ get_locked_retained_cwd(vfs_path *rp, bool exlock)
 }
 
 /*
- * Resolves the path, locking the last filesystem with an exclusive or a shared
+ * Resolves the path, locking the last struct filesystem with an exclusive or a shared
  * lock depending on `exlock`. The last component of the path, if a symlink, is
  * resolved only with `res_last_sl` is true.
  *
- * NOTE: when the function succeedes (-> return 0), the filesystem is returned
+ * NOTE: when the function succeedes (-> return 0), the struct filesystem is returned
  * as `rp->fs` RETAINED and LOCKED. The caller is supposed to first release the
  * right lock with vfs_shunlock() or with vfs_exunlock() and then to release the
  * FS with release_obj().

@@ -2,11 +2,11 @@
 
 static kmutex mp2_mutex = STATIC_KMUTEX_INIT(mp2_mutex, 0);
 static mountpoint2 mps2[MAX_MOUNTPOINTS];
-static filesystem *mp2_root;
+static struct filesystem *mp2_root;
 
-int mp2_init(filesystem *root_fs)
+int mp2_init(struct filesystem *root_fs)
 {
-   /* do not support changing the root filesystem */
+   /* do not support changing the root struct filesystem */
    NO_TEST_ASSERT(!mp2_root);
 
 #ifdef UNIT_TEST_ENVIRONMENT
@@ -18,13 +18,13 @@ int mp2_init(filesystem *root_fs)
    return 0;
 }
 
-filesystem *mp2_get_root(void)
+struct filesystem *mp2_get_root(void)
 {
    ASSERT(mp2_root != NULL);
    return mp2_root;
 }
 
-filesystem *mp2_get_at_nolock(filesystem *host_fs, vfs_inode_ptr_t inode)
+struct filesystem *mp2_get_at_nolock(struct filesystem *host_fs, vfs_inode_ptr_t inode)
 {
    ASSERT(kmutex_is_curr_task_holding_lock(&mp2_mutex));
 
@@ -35,9 +35,9 @@ filesystem *mp2_get_at_nolock(filesystem *host_fs, vfs_inode_ptr_t inode)
    return NULL;
 }
 
-filesystem *mp2_get_retained_at(filesystem *host_fs, vfs_inode_ptr_t inode)
+struct filesystem *mp2_get_retained_at(struct filesystem *host_fs, vfs_inode_ptr_t inode)
 {
-   filesystem *ret;
+   struct filesystem *ret;
    kmutex_lock(&mp2_mutex);
    {
       if ((ret = mp2_get_at_nolock(host_fs, inode)))
@@ -47,7 +47,7 @@ filesystem *mp2_get_retained_at(filesystem *host_fs, vfs_inode_ptr_t inode)
    return ret;
 }
 
-mountpoint2 *mp2_get_retained_mp_of(filesystem *target_fs)
+mountpoint2 *mp2_get_retained_mp_of(struct filesystem *target_fs)
 {
    uptr i;
    mountpoint2 *res = NULL;
@@ -67,7 +67,7 @@ mountpoint2 *mp2_get_retained_mp_of(filesystem *target_fs)
    return res;
 }
 
-int mp2_add(filesystem *target_fs, const char *target_path)
+int mp2_add(struct filesystem *target_fs, const char *target_path)
 {
    vfs_path p;
    int rc;
@@ -97,7 +97,7 @@ int mp2_add(filesystem *target_fs, const char *target_path)
    vfs_fs_shunlock(p.fs);
    kmutex_lock(&mp2_mutex);
 
-   /* we need to have the root filesystem set */
+   /* we need to have the root struct filesystem set */
    ASSERT(mp2_root != NULL);
 
    if (mp2_get_at_nolock(p.fs, p.fs_path.inode)) {

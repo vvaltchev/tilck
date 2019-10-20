@@ -44,7 +44,7 @@ void vfs_shunlock(fs_handle h)
       hb->fops->shunlock(h);
 }
 
-void vfs_fs_exlock(filesystem *fs)
+void vfs_fs_exlock(struct filesystem *fs)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(fs != NULL);
@@ -53,7 +53,7 @@ void vfs_fs_exlock(filesystem *fs)
    fs->fsops->fs_exlock(fs);
 }
 
-void vfs_fs_exunlock(filesystem *fs)
+void vfs_fs_exunlock(struct filesystem *fs)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(fs != NULL);
@@ -62,7 +62,7 @@ void vfs_fs_exunlock(filesystem *fs)
    fs->fsops->fs_exunlock(fs);
 }
 
-void vfs_fs_shlock(filesystem *fs)
+void vfs_fs_shlock(struct filesystem *fs)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(fs != NULL);
@@ -71,7 +71,7 @@ void vfs_fs_shlock(filesystem *fs)
    fs->fsops->fs_shlock(fs);
 }
 
-void vfs_fs_shunlock(filesystem *fs)
+void vfs_fs_shunlock(struct filesystem *fs)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(fs != NULL);

@@ -64,10 +64,10 @@ typedef struct {
 } driver_info;
 
 
-filesystem *create_devfs(void);
+struct filesystem *create_devfs(void);
 void init_devfs(void);
 int register_driver(driver_info *info, int major);
 
 int create_dev_file(const char *filename, u16 major, u16 minor);
-filesystem *get_devfs(void);
+struct filesystem *get_devfs(void);
 driver_info *get_driver_info(u16 major);

@@ -104,10 +104,10 @@ static void show_system_info(void)
 static void mount_initrd(void)
 {
    /* declare the ramfs_create() function */
-   filesystem *ramfs_create(void);
+   struct filesystem *ramfs_create(void);
 
    void *ramdisk = system_mmap_get_ramdisk_vaddr(0);
-   filesystem *initrd, *ramfs;
+   struct filesystem *initrd, *ramfs;
    int rc;
 
    if (!(ramfs = ramfs_create()))
