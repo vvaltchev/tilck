@@ -121,7 +121,7 @@ sbs_in_order_visit(int_struct *obj,
                    bool reverse = false)
 {
    visit_ctx ctx = {arr, arr_size, 0};
-   bintree_walk_ctx walk_ctx;
+   struct bintree_walk_ctx walk_ctx;
 
    bintree_in_order_visit_start(&walk_ctx, obj, int_struct, node, reverse);
 

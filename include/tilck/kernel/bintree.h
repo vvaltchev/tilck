@@ -20,15 +20,14 @@ static inline void bintree_node_init(struct bintree_node *node)
 
 #include <tilck/common/norec.h>
 
-typedef struct {
+struct bintree_walk_ctx {
 
    DECLARE_SHADOW_STACK(MAX_TREE_HEIGHT, 1)
    ptrdiff_t bintree_offset;
    void *obj;
    bool reverse;
    bool next_called;
-
-} bintree_walk_ctx;
+};
 
 #undef STACK_VAR
 #undef STACK_SIZE_VAR
@@ -84,12 +83,12 @@ bintree_in_order_visit_internal(void *root_obj,
                                 bool reverse);
 
 void
-bintree_in_order_visit_start_internal(bintree_walk_ctx *ctx,
+bintree_in_order_visit_start_internal(struct bintree_walk_ctx *ctx,
                                       void *obj,
                                       ptrdiff_t bintree_offset,
                                       bool reverse);
 void *
-bintree_in_order_visit_next(bintree_walk_ctx *ctx);
+bintree_in_order_visit_next(struct bintree_walk_ctx *ctx);
 
 void *
 bintree_get_first_obj_internal(void *root_obj, ptrdiff_t bintree_offset);

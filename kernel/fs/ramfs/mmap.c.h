@@ -20,7 +20,7 @@ static int ramfs_mmap(struct user_mapping *um, bool register_only)
    ramfs_handle *rh = um->h;
    ramfs_inode *i = rh->inode;
    uptr vaddr = um->vaddr;
-   bintree_walk_ctx ctx;
+   struct bintree_walk_ctx ctx;
    ramfs_block *b;
    int rc;
 

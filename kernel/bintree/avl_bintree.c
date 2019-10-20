@@ -333,12 +333,12 @@ bintree_in_order_visit_internal(void *obj,
 #include <tilck/common/norec.h>
 
 void
-bintree_in_order_visit_start_internal(bintree_walk_ctx *ctx,
+bintree_in_order_visit_start_internal(struct bintree_walk_ctx *ctx,
                                       void *obj,
                                       ptrdiff_t bintree_offset,
                                       bool reverse)
 {
-   *ctx = (bintree_walk_ctx) {
+   *ctx = (struct bintree_walk_ctx) {
       .bintree_offset = bintree_offset,
       .obj = obj,
       .reverse = reverse,
@@ -349,7 +349,7 @@ bintree_in_order_visit_start_internal(bintree_walk_ctx *ctx,
 }
 
 void *
-bintree_in_order_visit_next(bintree_walk_ctx *ctx)
+bintree_in_order_visit_next(struct bintree_walk_ctx *ctx)
 {
    /*
     * This declaration is necessary to make the LEFT_OF() and RIGHT_OF() macros

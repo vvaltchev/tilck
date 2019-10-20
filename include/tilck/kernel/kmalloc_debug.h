@@ -28,7 +28,7 @@ typedef struct {
 
 typedef struct {
 
-   bintree_walk_ctx ctx;
+   struct bintree_walk_ctx ctx;
 
 } debug_kmalloc_chunks_ctx;
 
