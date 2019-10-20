@@ -11,7 +11,7 @@ extern "C" {
    #include <tilck/kernel/fs/fat32.h>
    #include "kernel/fs/fs_int.h"
 
-   struct filesystem *ramfs_create(void);
+   struct fs *ramfs_create(void);
 }
 
 #define TEST_FATPART_FILE     PROJ_BUILD_DIR "/test_fatpart"

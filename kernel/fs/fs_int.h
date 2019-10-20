@@ -7,9 +7,9 @@ typedef struct {
 
    REF_COUNTED_OBJECT;
 
-   struct filesystem *host_fs;
+   struct fs *host_fs;
    vfs_inode_ptr_t host_fs_inode;
-   struct filesystem *target_fs;
+   struct fs *target_fs;
 
 } mountpoint2;
 

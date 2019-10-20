@@ -16,7 +16,7 @@
 
 #include <dirent.h> // system header
 
-static struct filesystem *devfs;
+static struct fs *devfs;
 
 /*
  * Registered drivers.
@@ -24,7 +24,7 @@ static struct filesystem *devfs;
 static driver_info *drivers[32];
 static u32 drivers_count;
 
-struct filesystem *get_devfs(void)
+struct fs *get_devfs(void)
 {
    return devfs;
 }
@@ -75,7 +75,7 @@ int register_driver(driver_info *info, int arg_major)
 typedef struct {
 
    /*
-    * Yes, sub-directories are NOT supported by devfs. The whole struct filesystem is
+    * Yes, sub-directories are NOT supported by devfs. The whole struct fs is
     * just one flat directory.
     */
    enum vfs_entry_type type;
@@ -102,7 +102,7 @@ int create_dev_file(const char *filename, u16 major, u16 minor)
 {
    ASSERT(devfs != NULL);
 
-   struct filesystem *fs = devfs;
+   struct fs *fs = devfs;
    driver_info *dinfo = get_driver_info(major);
 
    if (!dinfo)
@@ -178,7 +178,7 @@ static int devfs_dir_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
-int devfs_stat(struct filesystem *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
+int devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
    devfs_file *df = i;
    devfs_data *ddata = fs->device_data;
@@ -237,7 +237,7 @@ static const file_ops static_ops_devfs =
    .shunlock = vfs_file_nolock,
 };
 
-static int devfs_open_root_dir(struct filesystem *fs, fs_handle *out)
+static int devfs_open_root_dir(struct fs *fs, fs_handle *out)
 {
    devfs_handle *h;
 
@@ -252,7 +252,7 @@ static int devfs_open_root_dir(struct filesystem *fs, fs_handle *out)
    return 0;
 }
 
-static int devfs_open_file(struct filesystem *fs, devfs_file *pos, fs_handle *out)
+static int devfs_open_file(struct fs *fs, devfs_file *pos, fs_handle *out)
 {
    devfs_handle *h;
 
@@ -343,25 +343,25 @@ static int devfs_dup(fs_handle fsh, fs_handle *dup_h)
    return 0;
 }
 
-static void devfs_exclusive_lock(struct filesystem *fs)
+static void devfs_exclusive_lock(struct fs *fs)
 {
    devfs_data *d = fs->device_data;
    rwlock_wp_exlock(&d->rwlock);
 }
 
-static void devfs_exclusive_unlock(struct filesystem *fs)
+static void devfs_exclusive_unlock(struct fs *fs)
 {
    devfs_data *d = fs->device_data;
    rwlock_wp_exunlock(&d->rwlock);
 }
 
-static void devfs_shared_lock(struct filesystem *fs)
+static void devfs_shared_lock(struct fs *fs)
 {
    devfs_data *d = fs->device_data;
    rwlock_wp_shlock(&d->rwlock);
 }
 
-static void devfs_shared_unlock(struct filesystem *fs)
+static void devfs_shared_unlock(struct fs *fs)
 {
    devfs_data *d = fs->device_data;
    rwlock_wp_shunlock(&d->rwlock);
@@ -396,7 +396,7 @@ static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
 }
 
 static void
-devfs_get_entry(struct filesystem *fs,
+devfs_get_entry(struct fs *fs,
                 void *dir_inode,
                 const char *name,
                 ssize_t nl,
@@ -442,13 +442,13 @@ static vfs_inode_ptr_t devfs_get_inode(fs_handle h)
    return ((devfs_handle *)h)->file;
 }
 
-static int devfs_retain_inode(struct filesystem *fs, vfs_inode_ptr_t inode)
+static int devfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
 {
    /* devfs does not support removal of inodes after boot */
    return 1;
 }
 
-static int devfs_release_inode(struct filesystem *fs, vfs_inode_ptr_t inode)
+static int devfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
 {
    /* devfs does not support removal of inodes after boot */
    return 1;
@@ -479,19 +479,19 @@ static const fs_ops static_fsops_devfs =
    .fs_shunlock = devfs_shared_unlock,
 };
 
-struct filesystem *create_devfs(void)
+struct fs *create_devfs(void)
 {
-   struct filesystem *fs;
+   struct fs *fs;
    devfs_data *d;
 
    /* Disallow multiple instances of devfs */
    ASSERT(devfs == NULL);
 
-   if (!(fs = kzmalloc(sizeof(struct filesystem))))
+   if (!(fs = kzmalloc(sizeof(struct fs))))
       return NULL;
 
    if (!(d = kzmalloc(sizeof(devfs_data)))) {
-      kfree2(fs, sizeof(struct filesystem));
+      kfree2(fs, sizeof(struct fs));
       return NULL;
    }
 

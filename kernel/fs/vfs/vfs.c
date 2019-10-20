@@ -38,7 +38,7 @@ void vfs_close2(struct process *pi, fs_handle h)
    ASSERT(h != NULL);
 
    fs_handle_base *hb = (fs_handle_base *) h;
-   struct filesystem *fs = hb->fs;
+   struct fs *fs = hb->fs;
 
 #ifndef UNIT_TEST_ENVIRONMENT
    remove_all_mappings_of_handle(pi, h);
@@ -47,7 +47,7 @@ void vfs_close2(struct process *pi, fs_handle h)
    fs->fsops->close(h);
    release_obj(fs);
 
-   /* while a struct filesystem is mounted, the minimum ref-count it can have is 1 */
+   /* while a struct fs is mounted, the minimum ref-count it can have is 1 */
    ASSERT(get_ref_count(fs) > 0);
 }
 
@@ -197,7 +197,7 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
    ASSERT(h != NULL);
 
    fs_handle_base *hb = (fs_handle_base *) h;
-   struct filesystem *fs = hb->fs;
+   struct fs *fs = hb->fs;
    const fs_ops *fsops = fs->fsops;
    int ret;
 
@@ -211,7 +211,7 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
 
 /* ----------- path-based functions -------------- */
 
-typedef int (*vfs_func_impl)(struct filesystem *, vfs_path *, uptr, uptr, uptr);
+typedef int (*vfs_func_impl)(struct fs *, vfs_path *, uptr, uptr, uptr);
 
 static ALWAYS_INLINE int
 __vfs_path_funcs_wrapper(const char *path,
@@ -244,7 +244,7 @@ __vfs_path_funcs_wrapper(const char *path,
                             (uptr)a1, (uptr)a2, (uptr)a3)
 
 static ALWAYS_INLINE int
-vfs_open_impl(struct filesystem *fs, vfs_path *p,
+vfs_open_impl(struct fs *fs, vfs_path *p,
               fs_handle *out, int flags, mode_t mode)
 {
    int rc;
@@ -258,7 +258,7 @@ vfs_open_impl(struct filesystem *fs, vfs_path *p,
    if (flags & O_CLOEXEC)
       ((fs_handle_base *) *out)->fd_flags |= FD_CLOEXEC;
 
-   /* file handles retain their struct filesystem */
+   /* file handles retain their struct fs */
    retain_obj(fs);
    return 0;
 }
@@ -283,7 +283,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 }
 
 static ALWAYS_INLINE int
-vfs_stat64_impl(struct filesystem *fs,
+vfs_stat64_impl(struct fs *fs,
                 vfs_path *p,
                 struct stat64 *statbuf,
                 bool res_last_sl,
@@ -309,7 +309,7 @@ int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl)
 }
 
 static ALWAYS_INLINE int
-vfs_mkdir_impl(struct filesystem *fs, vfs_path *p, mode_t mode, uptr u1, uptr u2)
+vfs_mkdir_impl(struct fs *fs, vfs_path *p, mode_t mode, uptr u1, uptr u2)
 {
    if (!fs->fsops->mkdir)
       return -EPERM;
@@ -337,7 +337,7 @@ int vfs_mkdir(const char *path, mode_t mode)
 }
 
 static ALWAYS_INLINE int
-vfs_rmdir_impl(struct filesystem *fs, vfs_path *p, uptr u1, uptr u2, uptr u3)
+vfs_rmdir_impl(struct fs *fs, vfs_path *p, uptr u1, uptr u2, uptr u3)
 {
    if (!fs->fsops->rmdir)
       return -EPERM;
@@ -363,7 +363,7 @@ int vfs_rmdir(const char *path)
 }
 
 static ALWAYS_INLINE int
-vfs_unlink_impl(struct filesystem *fs, vfs_path *p, uptr u1, uptr u2, uptr u3)
+vfs_unlink_impl(struct fs *fs, vfs_path *p, uptr u1, uptr u2, uptr u3)
 {
    if (!fs->fsops->unlink)
       return -EPERM;
@@ -389,7 +389,7 @@ int vfs_unlink(const char *path)
 }
 
 static ALWAYS_INLINE int
-vfs_truncate_impl(struct filesystem *fs, vfs_path *p, offt len, uptr u1, uptr u2)
+vfs_truncate_impl(struct fs *fs, vfs_path *p, offt len, uptr u1, uptr u2)
 {
    if (!fs->fsops->truncate)
       return -EROFS;
@@ -416,7 +416,7 @@ int vfs_truncate(const char *path, offt len)
 }
 
 static ALWAYS_INLINE int
-vfs_symlink_impl(struct filesystem *fs,
+vfs_symlink_impl(struct fs *fs,
                  vfs_path *p, const char *target, uptr u1, uptr u2)
 {
    if (!fs->fsops->symlink)
@@ -444,7 +444,7 @@ int vfs_symlink(const char *target, const char *linkpath)
 }
 
 static ALWAYS_INLINE int
-vfs_readlink_impl(struct filesystem *fs, vfs_path *p, char *buf, uptr u1, uptr u2)
+vfs_readlink_impl(struct fs *fs, vfs_path *p, char *buf, uptr u1, uptr u2)
 {
    if (!fs->fsops->readlink) {
       /*
@@ -474,7 +474,7 @@ int vfs_readlink(const char *path, char *buf)
 }
 
 static ALWAYS_INLINE int
-vfs_chown_impl(struct filesystem *fs, vfs_path *p, int owner, int group, bool reslink)
+vfs_chown_impl(struct fs *fs, vfs_path *p, int owner, int group, bool reslink)
 {
    return (owner == 0 && group == 0) ? 0 : -EPERM;
 }
@@ -493,7 +493,7 @@ int vfs_chown(const char *path, int owner, int group, bool reslink)
 }
 
 static ALWAYS_INLINE int
-vfs_chmod_impl(struct filesystem *fs, vfs_path *p, mode_t mode)
+vfs_chmod_impl(struct fs *fs, vfs_path *p, mode_t mode)
 {
    if (!fs->fsops->chmod)
       return -EPERM;
@@ -522,9 +522,9 @@ int vfs_chmod(const char *path, mode_t mode)
 static int
 vfs_rename_or_link(const char *oldpath,
                    const char *newpath,
-                   func_2paths (*get_func_ptr)(struct filesystem *))
+                   func_2paths (*get_func_ptr)(struct fs *))
 {
-   struct filesystem *fs;
+   struct fs *fs;
    func_2paths func;
    vfs_path oldp, newp;
    int rc;
@@ -567,7 +567,7 @@ vfs_rename_or_link(const char *oldpath,
 
    /*
     * OK, now we're at a crucial point: check if the two files belong to the
-    * same struct filesystem.
+    * same struct fs.
     */
 
    if (newp.fs != fs) {
@@ -575,7 +575,7 @@ vfs_rename_or_link(const char *oldpath,
       /*
        * They do *not* belong to the same fs. It's impossible to continue.
        * We have to release: the exlock and the retain count of the new
-       * fs plus the retain count of old's inode and its struct filesystem.
+       * fs plus the retain count of old's inode and its struct fs.
        */
 
       vfs_smart_fs_unlock(newp.fs, true);
@@ -594,13 +594,13 @@ vfs_rename_or_link(const char *oldpath,
    release_obj(fs);
    vfs_release_inode_at(&oldp); /* note: we're still holding an exlock on fs */
 
-   /* Finally, we can call struct filesystem's func (if any) */
+   /* Finally, we can call struct fs's func (if any) */
    func = get_func_ptr(fs);
 
    rc = func
       ? fs->flags & VFS_FS_RW
          ? func(fs, &oldp, &newp)
-         : -EROFS /* read-only struct filesystem */
+         : -EROFS /* read-only struct fs */
       : -EPERM; /* not supported */
 
    /* We're done, release fs's exlock and its retain count */
@@ -609,12 +609,12 @@ vfs_rename_or_link(const char *oldpath,
    return rc;
 }
 
-static ALWAYS_INLINE func_2paths vfs_get_rename_func(struct filesystem *fs)
+static ALWAYS_INLINE func_2paths vfs_get_rename_func(struct fs *fs)
 {
    return fs->fsops->rename;
 }
 
-static ALWAYS_INLINE func_2paths vfs_get_link_func(struct filesystem *fs)
+static ALWAYS_INLINE func_2paths vfs_get_link_func(struct fs *fs)
 {
    return fs->fsops->link;
 }

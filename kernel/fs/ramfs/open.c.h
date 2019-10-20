@@ -17,7 +17,7 @@ static const file_ops static_ops_ramfs =
 };
 
 static int
-ramfs_open_int(struct filesystem *fs, ramfs_inode *inode, fs_handle *out, int fl)
+ramfs_open_int(struct fs *fs, ramfs_inode *inode, fs_handle *out, int fl)
 {
    ramfs_handle *h;
 

@@ -39,7 +39,7 @@ void test_fs_check_refcounts(tfs_entry *node)
 }
 
 static void
-testfs_get_entry(filesystem *fs,
+testfs_get_entry(struct fs *fs,
                  void *dir_inode,
                  const char *name,
                  ssize_t name_len,
@@ -82,33 +82,33 @@ testfs_get_entry(filesystem *fs,
    fs_path->dir_inode = e;
 }
 
-static void vfs_test_fs_exlock(filesystem *fs)
+static void vfs_test_fs_exlock(struct fs *fs)
 {
    //printf("EXLOCK: %s\n", fs->fs_type_name);
 }
 
-static void vfs_test_fs_exunlock(filesystem *fs)
+static void vfs_test_fs_exunlock(struct fs *fs)
 {
    //printf("EXUNLOCK: %s\n", fs->fs_type_name);
 }
 
-static void vfs_test_fs_shlock(filesystem *fs)
+static void vfs_test_fs_shlock(struct fs *fs)
 {
    //printf("SHLOCK: %s\n", fs->fs_type_name);
 }
 
-static void vfs_test_fs_shunlock(filesystem *fs)
+static void vfs_test_fs_shunlock(struct fs *fs)
 {
    //printf("SHUNLOCK: %s\n", fs->fs_type_name);
 }
 
-static int vfs_test_retain_inode(filesystem *fs, vfs_inode_ptr_t i)
+static int vfs_test_retain_inode(struct fs *fs, vfs_inode_ptr_t i)
 {
    tfs_entry *e = (tfs_entry *)i;
    return ++e->ref_count;
 }
 
-static int vfs_test_release_inode(filesystem *fs, vfs_inode_ptr_t i)
+static int vfs_test_release_inode(struct fs *fs, vfs_inode_ptr_t i)
 {
    tfs_entry *e = (tfs_entry *)i;
    assert(e->ref_count > 0);

@@ -103,7 +103,7 @@ static void ramfs_close(fs_handle h)
  * path, as a clean-up. It is *not* a proper way to destroy a whole ramfs
  * instance after unmounting it.
  */
-static void ramfs_err_case_destroy(struct filesystem *fs)
+static void ramfs_err_case_destroy(struct fs *fs)
 {
    ramfs_data *d = fs->device_data;
 
@@ -117,11 +117,11 @@ static void ramfs_err_case_destroy(struct filesystem *fs)
       kfree2(d, sizeof(ramfs_data));
    }
 
-   kfree2(fs, sizeof(struct filesystem));
+   kfree2(fs, sizeof(struct fs));
 }
 
 static void
-ramfs_get_entry(struct filesystem *fs,
+ramfs_get_entry(struct fs *fs,
                 void *dir_inode,
                 const char *name,
                 ssize_t name_len,
@@ -183,7 +183,7 @@ static int ramfs_readlink(vfs_path *p, char *buf)
    return (int) i->path_len;
 }
 
-static int ramfs_retain_inode(struct filesystem *fs, vfs_inode_ptr_t inode)
+static int ramfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
 {
    ASSERT(inode != NULL);
 
@@ -193,7 +193,7 @@ static int ramfs_retain_inode(struct filesystem *fs, vfs_inode_ptr_t inode)
    return retain_obj((ramfs_inode *)inode);
 }
 
-static int ramfs_release_inode(struct filesystem *fs, vfs_inode_ptr_t inode)
+static int ramfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
 {
    ASSERT(inode != NULL);
 
@@ -203,7 +203,7 @@ static int ramfs_release_inode(struct filesystem *fs, vfs_inode_ptr_t inode)
    return release_obj((ramfs_inode *)inode);
 }
 
-static int ramfs_chmod(struct filesystem *fs, vfs_inode_ptr_t inode, mode_t mode)
+static int ramfs_chmod(struct fs *fs, vfs_inode_ptr_t inode, mode_t mode)
 {
    ramfs_inode *i = inode;
    int rc;
@@ -228,7 +228,7 @@ static int ramfs_chmod(struct filesystem *fs, vfs_inode_ptr_t inode, mode_t mode
    return rc;
 }
 
-static int ramfs_rename(struct filesystem *fs, vfs_path *voldp, vfs_path *vnewp)
+static int ramfs_rename(struct fs *fs, vfs_path *voldp, vfs_path *vnewp)
 {
    ramfs_path *oldp = (void *)&voldp->fs_path;
    ramfs_path *newp = (void *)&vnewp->fs_path;
@@ -281,7 +281,7 @@ static int ramfs_rename(struct filesystem *fs, vfs_path *voldp, vfs_path *vnewp)
    return 0;
 }
 
-static int ramfs_link(struct filesystem *fs, vfs_path *voldp, vfs_path *vnewp)
+static int ramfs_link(struct fs *fs, vfs_path *voldp, vfs_path *vnewp)
 {
    ramfs_path *oldp = (void *)&voldp->fs_path;
    ramfs_path *newp = (void *)&vnewp->fs_path;
@@ -322,12 +322,12 @@ static const fs_ops static_fsops_ramfs =
    .fs_shunlock = ramfs_shunlock,
 };
 
-struct filesystem *ramfs_create(void)
+struct fs *ramfs_create(void)
 {
-   struct filesystem *fs;
+   struct fs *fs;
    ramfs_data *d;
 
-   if (!(fs = kzmalloc(sizeof(struct filesystem))))
+   if (!(fs = kzmalloc(sizeof(struct fs))))
       return NULL;
 
    if (!(d = kzmalloc(sizeof(ramfs_data)))) {

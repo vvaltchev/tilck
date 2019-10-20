@@ -63,9 +63,9 @@ static tfs_entry *root3 =
       N_FILE("fd2")
    );
 
-static filesystem fs1 = create_test_fs("fs1", root1);
-static filesystem fs2 = create_test_fs("fs2", root2);
-static filesystem fs3 = create_test_fs("fs3", root3);
+static struct fs fs1 = create_test_fs("fs1", root1);
+static struct fs fs2 = create_test_fs("fs2", root2);
+static struct fs fs3 = create_test_fs("fs3", root3);
 
 static void reset_all_fs_refcounts()
 {

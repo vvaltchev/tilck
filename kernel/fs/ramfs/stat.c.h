@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 static int
-ramfs_stat(struct filesystem *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
+ramfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
    if (!i)
       return -ENOENT;
