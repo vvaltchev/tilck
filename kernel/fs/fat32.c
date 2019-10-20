@@ -155,7 +155,7 @@ fat_seek_forward(fs_handle handle, offt dist)
 }
 
 static int
-fat_count_dirents_cb(fat_header *hdr,
+fat_count_dirents_cb(struct fat_header *hdr,
                      enum fat_type ft,
                      fat_entry *entry,
                      const char *long_name,
@@ -281,7 +281,7 @@ fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
 }
 
 static inline tilck_inode_t
-fat_entry_to_inode(fat_header *hdr, fat_entry *e)
+fat_entry_to_inode(struct fat_header *hdr, fat_entry *e)
 {
    return (tilck_inode_t)((sptr)e - (sptr)hdr);
 }
@@ -338,7 +338,7 @@ typedef struct {
 } fat_getdents_ctx;
 
 static int
-fat_getdents_cb(fat_header *hdr,
+fat_getdents_cb(struct fat_header *hdr,
                 enum fat_type ft,
                 fat_entry *entry,
                 const char *long_name,
@@ -667,7 +667,7 @@ filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
    if (!d)
       return NULL;
 
-   d->hdr = (fat_header *) vaddr;
+   d->hdr = (struct fat_header *) vaddr;
    d->type = fat_get_type(d->hdr);
    d->cluster_size = d->hdr->BPB_SecPerClus * d->hdr->BPB_BytsPerSec;
    d->root_entry = fat_get_rootdir(d->hdr, d->type, &d->root_cluster);

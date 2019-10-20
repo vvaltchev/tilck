@@ -12,7 +12,7 @@ enum fat_type {
    fat32_type  = 3
 };
 
-typedef struct PACKED {
+struct fat_header {
 
    u8 BS_jmpBoot[3];
    char BS_OEMName[8];
@@ -29,7 +29,7 @@ typedef struct PACKED {
    u32 BPB_HiddSec;
    u32 BPB_TotSec32;
 
-} fat_header;
+} PACKED;
 
 typedef struct PACKED {
 
@@ -126,26 +126,26 @@ void fat_dump_info(void *fatpart_begin);
 
 // FAT INTERNALS ---------------------------------------------------------------
 
-enum fat_type fat_get_type(fat_header *hdr);
-fat_entry *fat_get_rootdir(fat_header *hdr, enum fat_type ft, u32 *cluster /*out*/);
+enum fat_type fat_get_type(struct fat_header *hdr);
+fat_entry *fat_get_rootdir(struct fat_header *hdr, enum fat_type ft, u32 *cluster /*out*/);
 void fat_get_short_name(fat_entry *entry, char *destbuf);
-u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N);
-u32 fat_read_fat_entry(fat_header *hdr, enum fat_type ft, u32 clusterN, u32 fatNum);
-u32 fat_get_first_data_sector(fat_header *hdr);
+u32 fat_get_sector_for_cluster(struct fat_header *hdr, u32 N);
+u32 fat_read_fat_entry(struct fat_header *hdr, enum fat_type ft, u32 clusterN, u32 fatNum);
+u32 fat_get_first_data_sector(struct fat_header *hdr);
 
 
-static inline u32 fat_get_reserved_sectors_count(fat_header *hdr)
+static inline u32 fat_get_reserved_sectors_count(struct fat_header *hdr)
 {
    return hdr->BPB_RsvdSecCnt;
 }
 
-static inline u32 fat_get_sector_size(fat_header *hdr)
+static inline u32 fat_get_sector_size(struct fat_header *hdr)
 {
    return hdr->BPB_BytsPerSec;
 }
 
 // FATSz is the number of sectors per FAT
-static inline u32 fat_get_FATSz(fat_header *hdr)
+static inline u32 fat_get_FATSz(struct fat_header *hdr)
 {
    if (hdr->BPB_FATSz16 != 0)
       return hdr->BPB_FATSz16;
@@ -154,12 +154,12 @@ static inline u32 fat_get_FATSz(fat_header *hdr)
    return h2->BPB_FATSz32;
 }
 
-static inline u32 fat_get_TotSec(fat_header *hdr)
+static inline u32 fat_get_TotSec(struct fat_header *hdr)
 {
    return hdr->BPB_TotSec16 != 0 ? hdr->BPB_TotSec16 : hdr->BPB_TotSec32;
 }
 
-static inline u32 fat_get_RootDirSectors(fat_header *hdr)
+static inline u32 fat_get_RootDirSectors(struct fat_header *hdr)
 {
    u32 bps = hdr->BPB_BytsPerSec;
    return ((hdr->BPB_RootEntCnt * 32u) + (bps - 1u)) / bps;
@@ -183,7 +183,7 @@ static inline bool fat_is_bad_cluster(enum fat_type ft, u32 val)
 }
 
 static inline void *
-fat_get_pointer_to_cluster_data(fat_header *hdr, u32 clusterN)
+fat_get_pointer_to_cluster_data(struct fat_header *hdr, u32 clusterN)
 {
    u32 sector = fat_get_sector_for_cluster(hdr, clusterN);
    return ((u8*)hdr + sector * hdr->BPB_BytsPerSec);
@@ -202,7 +202,7 @@ typedef struct {
 
 } fat_walk_dir_ctx;
 
-typedef int (*fat_dentry_cb)(fat_header *,
+typedef int (*fat_dentry_cb)(struct fat_header *,
                              enum fat_type,
                              fat_entry *,
                              const char *, /* long name */
@@ -210,7 +210,7 @@ typedef int (*fat_dentry_cb)(fat_header *,
 
 int
 fat_walk_directory(fat_walk_dir_ctx *ctx,
-                   fat_header *hdr,
+                   struct fat_header *hdr,
                    enum fat_type ft,
                    fat_entry *entry,
                    u32 cluster,
@@ -219,17 +219,17 @@ fat_walk_directory(fat_walk_dir_ctx *ctx,
 
 
 fat_entry *
-fat_search_entry(fat_header *hdr, enum fat_type ft, const char *abspath, int *err);
+fat_search_entry(struct fat_header *hdr, enum fat_type ft, const char *abspath, int *err);
 
 size_t fat_get_file_size(fat_entry *entry);
 
 void
-fat_read_whole_file(fat_header *hdr,
+fat_read_whole_file(struct fat_header *hdr,
                     fat_entry *entry,
                     char *dest_buf,
                     size_t dest_buf_size);
 
-u32 fat_get_used_bytes(fat_header *hdr);
+u32 fat_get_used_bytes(struct fat_header *hdr);
 
 // IMPLEMENTATION INTERNALS --------------------------------------------------
 
@@ -255,7 +255,7 @@ typedef struct {
 void
 fat_init_search_ctx(fat_search_ctx *ctx, const char *path, bool single_comp);
 
-int fat_search_entry_cb(fat_header *hdr,
+int fat_search_entry_cb(struct fat_header *hdr,
                         enum fat_type ft,
                         fat_entry *entry,
                         const char *long_name,

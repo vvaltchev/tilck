@@ -11,7 +11,7 @@
 
 typedef struct {
 
-   fat_header *hdr; /* vaddr of the beginning of the FAT partition */
+   struct fat_header *hdr; /* vaddr of the beginning of the FAT partition */
    enum fat_type type;
    size_t cluster_size;
 

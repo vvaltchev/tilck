@@ -23,7 +23,7 @@ static void dump_fixed_str(const char *what, char *str, u32 len)
 
 void fat_dump_common_header(void *data)
 {
-   fat_header *bpb = data;
+   struct fat_header *bpb = data;
 
    dump_fixed_str("EOM name", bpb->BS_OEMName, sizeof(bpb->BS_OEMName));
    printk("Bytes per sec: %u\n", bpb->BPB_BytsPerSec);
@@ -41,7 +41,7 @@ void fat_dump_common_header(void *data)
 }
 
 
-static void dump_fat16_headers(fat_header *common_hdr)
+static void dump_fat16_headers(struct fat_header *common_hdr)
 {
    fat16_header2 *hdr = (fat16_header2*) (common_hdr+1);
 
@@ -53,7 +53,7 @@ static void dump_fat16_headers(fat_header *common_hdr)
                   hdr->BS_FilSysType, sizeof(hdr->BS_FilSysType));
 }
 
-static void dump_fat32_headers(fat_header *common_hdr)
+static void dump_fat32_headers(struct fat_header *common_hdr)
 {
    fat32_header2 *hdr = (fat32_header2*) (common_hdr+1);
    printk("BPB_FATSz32: %u\n", hdr->BPB_FATSz32);
@@ -87,7 +87,7 @@ typedef struct {
 
 } debug_fat_walk_ctx;
 
-static int dump_dir_entry(fat_header *hdr,
+static int dump_dir_entry(struct fat_header *hdr,
                           enum fat_type ft,
                           fat_entry *entry,
                           const char *long_name,
@@ -134,7 +134,7 @@ static int dump_dir_entry(fat_header *hdr,
 
 void fat_dump_info(void *fatpart_begin)
 {
-   fat_header *hdr = fatpart_begin;
+   struct fat_header *hdr = fatpart_begin;
    fat_dump_common_header(fatpart_begin);
 
    printk("\n");
