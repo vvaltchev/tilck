@@ -37,7 +37,7 @@ bool vbe_get_info_block(struct VbeInfoBlock *vb)
    return true;
 }
 
-bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi)
+bool vbe_get_mode_info(u16 mode, struct ModeInfoBlock *mi)
 {
    u32 eax, ebx, ecx, edx, esi, edi, flags;
 

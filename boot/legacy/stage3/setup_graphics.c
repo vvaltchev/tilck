@@ -8,7 +8,7 @@
 #include "vbe.h"
 #include "common.h"
 
-static void debug_show_detailed_mode_info(ModeInfoBlock *mi)
+static void debug_show_detailed_mode_info(struct ModeInfoBlock *mi)
 {
    printk("Detailed mode info:\n");
    printk("fb_paddr: %p\n", fb_paddr);
@@ -30,14 +30,14 @@ static void debug_show_detailed_mode_info(ModeInfoBlock *mi)
    bios_read_char();
 }
 
-static void show_single_mode(int num, ModeInfoBlock *mi)
+static void show_single_mode(int num, struct ModeInfoBlock *mi)
 {
    printk("Mode [%d]: %d x %d x %d\n",
           num, mi->XResolution, mi->YResolution, mi->BitsPerPixel);
 }
 
 static void show_modes_aux(u16 *modes,
-                           ModeInfoBlock *mi,
+                           struct ModeInfoBlock *mi,
                            u16 *known_modes,
                            int *known_modes_count,
                            int min_bpp)
@@ -95,7 +95,7 @@ void ask_user_video_mode(struct mem_info *minfo)
 {
    uptr free_mem;
    struct VbeInfoBlock *vb;
-   ModeInfoBlock *mi;
+   struct ModeInfoBlock *mi;
    u16 known_modes[10];
    int known_modes_count = 0;
 
@@ -110,7 +110,7 @@ void ask_user_video_mode(struct mem_info *minfo)
    free_mem = get_usable_mem(minfo, free_mem + 4 * KB, 4 * KB);
 
    if (!free_mem) {
-      printk("Unable to allocate memory for ModeInfoBlock\n");
+      printk("Unable to allocate memory for struct ModeInfoBlock\n");
       return;
    }
 

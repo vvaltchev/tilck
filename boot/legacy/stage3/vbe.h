@@ -34,7 +34,7 @@ struct VbeInfoBlock {
 
 } PACKED;
 
-typedef struct {
+struct ModeInfoBlock {
 
    u16 ModeAttributes;
    u8 WinAAttributes;
@@ -77,7 +77,7 @@ typedef struct {
    /* VBE 3.0+ */
    u16 LinBytesPerScanLine;
 
-} PACKED ModeInfoBlock;
+} PACKED;
 
 /*
  * NOTE: the VGA standard modes (0x00 .. 0x13) are reliable, BUT the old
@@ -102,7 +102,7 @@ typedef struct {
 
 void vga_set_video_mode(u8 mode);
 bool vbe_get_info_block(struct VbeInfoBlock *vb);
-bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi);
+bool vbe_get_mode_info(u16 mode, struct ModeInfoBlock *mi);
 bool vbe_set_video_mode(u16 mode);
 bool vbe_get_current_mode(u16 *mode);
 
