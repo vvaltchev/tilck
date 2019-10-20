@@ -19,9 +19,9 @@ struct VbeInfoBlock {
 
    char VbeSignature[4];
    u16 VbeVersion;
-   VbeFarPtr OemStringPtr;
+   struct VbeFarPtr OemStringPtr;
    u8 Capabilities[4];
-   VbeFarPtr VideoModePtr;
+   struct VbeFarPtr VideoModePtr;
    u16 TotalMemory;        /* in number of 64KB blocks */
 
    /* VBE 2.0+ */
@@ -43,7 +43,7 @@ struct ModeInfoBlock {
    u16 WinSize;
    u16 WinASegment;
    u16 WinBSegment;
-   VbeFarPtr WinFuncPtr;
+   struct VbeFarPtr WinFuncPtr;
    u16 BytesPerScanLine;
 
    /* VBE 1.2+ */
