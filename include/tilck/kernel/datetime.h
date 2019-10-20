@@ -6,7 +6,7 @@
 
 #include <time.h> // system header
 
-struct datetime_t {
+struct datetime {
 
    union {
 
@@ -32,7 +32,7 @@ static inline bool is_leap_year(u32 year)
    return (!(year % 4) && (year % 100)) || !(year % 400);
 }
 
-void read_system_clock_datetime(struct datetime_t *out);
+void read_system_clock_datetime(struct datetime *out);
 time_t read_system_clock_timestamp(void);
-time_t datetime_to_timestamp(struct datetime_t d);
+time_t datetime_to_timestamp(struct datetime d);
 void init_system_clock(void);

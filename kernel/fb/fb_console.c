@@ -277,7 +277,7 @@ static void fb_draw_banner(void)
    }
 
    u32 llen, rlen, padding, i;
-   struct datetime_t d;
+   struct datetime d;
    int rc, ttynum = 1;
 
    ASSERT(fb_offset_y >= font_h);

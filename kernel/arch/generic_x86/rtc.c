@@ -38,7 +38,7 @@ static inline bool cmos_is_update_in_progress(void)
    return cmos_read_reg(REG_STATUS_REG_A) & STATUS_REG_A_UPDATE_IN_PROGRESS;
 }
 
-static void cmod_read_datetime_raw(struct datetime_t *d)
+static void cmod_read_datetime_raw(struct datetime *d)
 {
    d->sec = (u8) cmos_read_reg(REG_SECONDS);
    d->min = (u8) cmos_read_reg(REG_MINUTES);
@@ -49,9 +49,9 @@ static void cmod_read_datetime_raw(struct datetime_t *d)
    d->year = (u16) cmos_read_reg(REG_YEAR);
 }
 
-void cmos_read_datetime(struct datetime_t *out)
+void cmos_read_datetime(struct datetime *out)
 {
-   struct datetime_t d, dlast;
+   struct datetime d, dlast;
    u32 reg_b;
    bool use_24h;
    bool use_binary;

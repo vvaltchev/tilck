@@ -262,10 +262,10 @@ fat_seek(fs_handle handle, offt off, int whence)
    return fat_seek_forward(handle, off);
 }
 
-struct datetime_t
+struct datetime
 fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
 {
-   struct datetime_t d;
+   struct datetime d;
 
    d.day = date & 0b11111;           // 5 bits: [0..4]
    d.month = (date >> 5) & 0b1111;   // 4 bits: [5..8]
@@ -289,7 +289,7 @@ fat_entry_to_inode(struct fat_hdr *hdr, struct fat_entry *e)
 STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
    struct fat_entry *e = i;
-   struct datetime_t crt_time, wrt_time;
+   struct datetime crt_time, wrt_time;
 
    if (!e)
       return -ENOENT;
