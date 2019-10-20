@@ -82,7 +82,7 @@ static void dump_entry_attrs(struct fat_entry *entry)
 
 typedef struct {
 
-   fat_walk_dir_ctx walk_ctx;
+   struct fat_walk_dir_ctx walk_ctx;
    int level;
 
 } debug_fat_walk_ctx;

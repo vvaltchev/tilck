@@ -203,14 +203,13 @@ fat_get_pointer_to_cluster_data(struct fat_hdr *hdr, u32 clusterN)
 
 bool fat32_is_valid_filename_character(char c);
 
-typedef struct {
+struct fat_walk_dir_ctx {
 
    bool is_valid;       /* long name valid ? */
    u8 lname_buf[256];   /* long name buffer */
    s16 lname_sz;        /* long name size */
    s16 lname_chksum;    /* long name checksum */
-
-} fat_walk_dir_ctx;
+};
 
 typedef int (*fat_dentry_cb)(struct fat_hdr *,
                              enum fat_type,
@@ -219,7 +218,7 @@ typedef int (*fat_dentry_cb)(struct fat_hdr *,
                              void *);      /* user data pointer */
 
 int
-fat_walk_directory(fat_walk_dir_ctx *ctx,
+fat_walk_directory(struct fat_walk_dir_ctx *ctx,
                    struct fat_hdr *hdr,
                    enum fat_type ft,
                    struct fat_entry *entry,
@@ -261,7 +260,7 @@ typedef struct {
    char pc[256];              // path component
    size_t pcl;                // path component's length
    char shortname[16];        // short name of the current entry
-   fat_walk_dir_ctx walk_ctx; // walk context: contains long names
+   struct fat_walk_dir_ctx walk_ctx; // walk context: contains long names
 
 } fat_search_ctx;
 

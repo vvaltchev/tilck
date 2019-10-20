@@ -172,7 +172,7 @@ fat_count_dirents_cb(struct fat_hdr *hdr,
  */
 STATIC offt fat_count_dirents(fat_fs_device_data *d, struct fat_entry *e)
 {
-   fat_walk_dir_ctx walk_ctx = {0};
+   struct fat_walk_dir_ctx walk_ctx = {0};
    offt count = 0;
    int rc;
 
@@ -365,7 +365,7 @@ static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 {
    fat_handle *fh = h;
    fat_fs_device_data *d = fh->fs->device_data;
-   fat_walk_dir_ctx walk_ctx = {0};
+   struct fat_walk_dir_ctx walk_ctx = {0};
    int rc;
 
    if (!fh->e->directory && !fh->e->volume_id)
