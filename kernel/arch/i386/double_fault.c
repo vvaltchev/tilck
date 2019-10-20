@@ -14,7 +14,7 @@
 void double_fault_handler_asm(void);
 static int double_fault_tss_num;
 
-static const struct tss_entry_t df_tss_data = {
+static const struct tss_entry df_tss_data = {
    .esp0 = ((uptr)kernel_initial_stack + PAGE_SIZE - 4),
    .ss0 = X86_KERNEL_DATA_SEL,
    .cr3 = 0 /* updated later */,
@@ -37,7 +37,7 @@ static inline void double_fault_tss_update_cr3(void)
 void register_double_fault_tss_entry(void)
 {
    gdt_entry e;
-   memcpy(&tss_array[TSS_DOUBLE_FAULT], &df_tss_data, sizeof(struct tss_entry_t));
+   memcpy(&tss_array[TSS_DOUBLE_FAULT], &df_tss_data, sizeof(struct tss_entry));
    double_fault_tss_update_cr3();
 
    gdt_set_entry(&e,

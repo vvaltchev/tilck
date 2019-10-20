@@ -3,7 +3,7 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
-struct tss_entry_t {
+struct tss_entry {
 
    u32 prev_tss;   /* ptr to the previous TSS: unused in Tilck */
 

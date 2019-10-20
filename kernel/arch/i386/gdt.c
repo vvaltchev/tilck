@@ -41,7 +41,7 @@ static s32 *gdt_refcount = initial_gdt_refcount_in_bss;
  * >>
  */
 
-struct tss_entry_t tss_array[2] ALIGNED_AT(PAGE_SIZE);
+struct tss_entry tss_array[2] ALIGNED_AT(PAGE_SIZE);
 
 static void load_gdt(gdt_entry *gdt, u32 entries_count);
 
