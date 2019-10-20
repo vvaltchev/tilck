@@ -33,7 +33,9 @@ typedef struct {
 
 struct fs *fat_mount_ramdisk(void *vaddr, u32 flags);
 void fat_umount_ramdisk(struct fs *fs);
-struct datetime_t fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth);
+
+struct datetime_t
+fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth);
 
 /*
  * On FAT, there are no inodes and dir entries. Just dir entries.

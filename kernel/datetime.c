@@ -89,10 +89,10 @@ void cmos_read_datetime(struct datetime_t *out);
  *       complex to implement correctly.
  *
  *    2) In order to "interpolate" time, we'd need to use a timestamp instead of
- *       struct datetime_t. But, unfortunately, our fb_console needs to know the date
- *       and time. Support that would mean implementing a "hairy" function to
- *       convert timestamp to struct datetime_t considering all the tricky leap years
- *       stuff and maybe leap seconds too?
+ *       struct datetime_t. But, unfortunately, our fb_console needs to know the
+ *       date and time. Support that would mean implementing a "hairy" function
+ *       to convert timestamp to struct datetime_t considering all the tricky
+ *       leap years stuff and maybe leap seconds too?
  *
  *    3) Other problems.
  *
