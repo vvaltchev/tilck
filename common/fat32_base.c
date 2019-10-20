@@ -405,7 +405,7 @@ u32 fat_get_first_data_sector(struct fat_hdr *hdr)
    if (hdr->BPB_FATSz16 != 0) {
       FATSz = hdr->BPB_FATSz16;
    } else {
-      fat32_header2 *h32 = (fat32_header2*) (hdr+1);
+      struct fat32_header2 *h32 = (struct fat32_header2*) (hdr+1);
       FATSz = h32->BPB_FATSz32;
    }
 
@@ -442,7 +442,7 @@ fat_get_rootdir(struct fat_hdr *hdr, enum fat_type ft, u32 *cluster /* out */)
    } else {
 
       /* FAT32 case */
-      fat32_header2 *h32 = (fat32_header2 *) (hdr + 1);
+      struct fat32_header2 *h32 = (struct fat32_header2 *) (hdr + 1);
       *cluster = h32->BPB_RootClus;
       sector = fat_get_sector_for_cluster(hdr, *cluster);
    }

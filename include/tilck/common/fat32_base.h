@@ -31,7 +31,7 @@ struct fat_hdr {
 
 } PACKED;
 
-typedef struct PACKED {
+struct fat16_header2 {
 
    u8 BS_DrvNum;
    u8 BS_Reserved1;
@@ -40,9 +40,9 @@ typedef struct PACKED {
    char BS_VolLab[11];
    char BS_FilSysType[8];
 
-} fat16_header2;
+} PACKED;
 
-typedef struct PACKED {
+struct fat32_header2 {
 
    u32 BPB_FATSz32;
    u16 BPB_ExtFlags;
@@ -58,7 +58,7 @@ typedef struct PACKED {
    char BS_VolLab[11];
    char BS_FilSysType[8];
 
-} fat32_header2;
+} PACKED;
 
 /*
  * Special flags in DIR_NTRes telling us if the base part or the extention of
@@ -160,7 +160,7 @@ static inline u32 fat_get_FATSz(struct fat_hdr *hdr)
    if (hdr->BPB_FATSz16 != 0)
       return hdr->BPB_FATSz16;
 
-   fat32_header2 *h2 = (fat32_header2*)(hdr+1);
+   struct fat32_header2 *h2 = (struct fat32_header2*)(hdr+1);
    return h2->BPB_FATSz32;
 }
 

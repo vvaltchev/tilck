@@ -43,7 +43,7 @@ void fat_dump_common_header(void *data)
 
 static void dump_fat16_headers(struct fat_hdr *common_hdr)
 {
-   fat16_header2 *hdr = (fat16_header2*) (common_hdr+1);
+   struct fat16_header2 *hdr = (struct fat16_header2*) (common_hdr+1);
 
    printk("BS_DrvNum: %u\n", hdr->BS_DrvNum);
    printk("BS_BootSig: %u\n", hdr->BS_BootSig);
@@ -55,7 +55,7 @@ static void dump_fat16_headers(struct fat_hdr *common_hdr)
 
 static void dump_fat32_headers(struct fat_hdr *common_hdr)
 {
-   fat32_header2 *hdr = (fat32_header2*) (common_hdr+1);
+   struct fat32_header2 *hdr = (struct fat32_header2*) (common_hdr+1);
    printk("BPB_FATSz32: %u\n", hdr->BPB_FATSz32);
    printk("BPB_ExtFlags: %u\n", hdr->BPB_ExtFlags);
    printk("BPB_FSVer: %u\n", hdr->BPB_FSVer);
