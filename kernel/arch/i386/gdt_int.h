@@ -143,4 +143,4 @@ void gdt_entry_inc_ref_count(u32 n);
 #define TSS_MAIN                   0
 #define TSS_DOUBLE_FAULT           1
 
-extern tss_entry_t tss_array[2] ALIGNED_AT(PAGE_SIZE);
+extern struct tss_entry_t tss_array[2] ALIGNED_AT(PAGE_SIZE);
