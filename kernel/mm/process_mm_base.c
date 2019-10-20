@@ -3,7 +3,7 @@
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/process.h>
 
-user_mapping *
+struct user_mapping *
 process_add_user_mapping(fs_handle h,
                          void *vaddr,
                          size_t len,
@@ -11,13 +11,13 @@ process_add_user_mapping(fs_handle h,
                          int prot)
 {
    struct process *pi = get_curr_task()->pi;
-   user_mapping *um;
+   struct user_mapping *um;
 
    ASSERT((len & OFFSET_IN_PAGE_MASK) == 0);
    ASSERT(!is_preemption_enabled());
    ASSERT(!process_get_user_mapping(vaddr));
 
-   if (!(um = kzmalloc(sizeof(user_mapping))))
+   if (!(um = kzmalloc(sizeof(struct user_mapping))))
       return NULL;
 
    list_node_init(&um->pi_node);
@@ -34,22 +34,22 @@ process_add_user_mapping(fs_handle h,
    return um;
 }
 
-void process_remove_user_mapping(user_mapping *um)
+void process_remove_user_mapping(struct user_mapping *um)
 {
    ASSERT(!is_preemption_enabled());
 
    list_remove(&um->pi_node);
    list_remove(&um->inode_node);
-   kfree2(um, sizeof(user_mapping));
+   kfree2(um, sizeof(struct user_mapping));
 }
 
-user_mapping *process_get_user_mapping(void *vaddrp)
+struct user_mapping *process_get_user_mapping(void *vaddrp)
 {
    ASSERT(!is_preemption_enabled());
 
    uptr vaddr = (uptr)vaddrp;
    struct process *pi = get_curr_task()->pi;
-   user_mapping *pos;
+   struct user_mapping *pos;
 
    list_for_each_ro(pos, &pi->mappings, pi_node) {
 
@@ -62,7 +62,7 @@ user_mapping *process_get_user_mapping(void *vaddrp)
 
 void remove_all_mappings_of_handle(struct process *pi, fs_handle h)
 {
-   user_mapping *pos, *temp;
+   struct user_mapping *pos, *temp;
 
    disable_preemption();
    {
@@ -74,7 +74,7 @@ void remove_all_mappings_of_handle(struct process *pi, fs_handle h)
    enable_preemption();
 }
 
-void full_remove_user_mapping(struct process *pi, user_mapping *um)
+void full_remove_user_mapping(struct process *pi, struct user_mapping *um)
 {
    size_t actual_len = um->len;
    vfs_munmap(um->h, um->vaddrp, actual_len);

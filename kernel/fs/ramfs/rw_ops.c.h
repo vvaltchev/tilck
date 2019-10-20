@@ -91,7 +91,7 @@ static offt ramfs_seek(fs_handle h, offt off, int whence)
  *
  * Each inode has a `mappings_list` with all the user_mappings referring to it.
  * Assuming that `rlen` is the new length of the file after truncate, rounded-up
- * to PAGE_SIZE, for each `user_mapping` there are 3 cases:
+ * to PAGE_SIZE, for each `struct user_mapping` there are 3 cases:
  *
  * 1) The mapping remains is in a safe zone, even after the truncate() call:
  *
@@ -146,7 +146,7 @@ static offt ramfs_seek(fs_handle h, offt off, int whence)
 static void ramfs_unmap_past_eof_mappings(ramfs_inode *i, size_t len)
 {
    const size_t rlen = round_up_at(len, PAGE_SIZE);
-   user_mapping *um;
+   struct user_mapping *um;
    uptr va;
    ASSERT(!is_preemption_enabled());
 

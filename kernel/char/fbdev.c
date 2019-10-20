@@ -61,7 +61,7 @@ static int fb_ioctl(fs_handle h, uptr request, void *argp)
 }
 
 static int
-fbdev_mmap(user_mapping *um, bool register_only)
+fbdev_mmap(struct user_mapping *um, bool register_only)
 {
    ASSERT(IS_PAGE_ALIGNED(um->len));
 

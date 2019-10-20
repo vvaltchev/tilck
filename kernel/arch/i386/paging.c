@@ -153,7 +153,7 @@ void handle_page_fault_int(regs *r)
    bool rw = !!(r->err_code & PAGE_FAULT_FL_RW);
    bool us = !!(r->err_code & PAGE_FAULT_FL_US);
    int sig = SIGSEGV;
-   user_mapping *um;
+   struct user_mapping *um;
 
    if (!us) {
       /*

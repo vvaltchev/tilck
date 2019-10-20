@@ -142,7 +142,7 @@ mmap_err_case_free(struct process *pi, void *ptr, size_t actual_len)
                   KFREE_FL_NO_ACTUAL_FREE);
 }
 
-static user_mapping *
+static struct user_mapping *
 mmap_on_user_heap(struct process *pi,
                   size_t *actual_len_ref,
                   fs_handle handle,
@@ -151,7 +151,7 @@ mmap_on_user_heap(struct process *pi,
                   int prot)
 {
    void *res;
-   user_mapping *um;
+   struct user_mapping *um;
 
    res = per_heap_kmalloc(pi->mmap_heap,
                           actual_len_ref,
@@ -179,7 +179,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    struct task *curr = get_curr_task();
    struct process *pi = curr->pi;
    fs_handle_base *handle = NULL;
-   user_mapping *um = NULL;
+   struct user_mapping *um = NULL;
    size_t actual_len;
    int rc, fl;
 
@@ -295,7 +295,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 static int munmap_int(struct process *pi, void *vaddrp, size_t len)
 {
    u32 kfree_flags = KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP;
-   user_mapping *um = NULL, *um2 = NULL;
+   struct user_mapping *um = NULL, *um2 = NULL;
    uptr vaddr = (uptr) vaddrp;
    size_t actual_len;
    int rc;
@@ -343,10 +343,10 @@ static int munmap_int(struct process *pi, void *vaddrp, size_t len)
 
          /* Unmap something at the middle of the chunk */
 
-         /* Shrink the current user_mapping */
+         /* Shrink the current struct user_mapping */
          um->len = vaddr - um->vaddr;
 
-         /* Create a new user_mapping for its 2nd part */
+         /* Create a new struct user_mapping for its 2nd part */
          um2 = process_add_user_mapping(
             um->h,
             (void *)(vaddr + actual_len),

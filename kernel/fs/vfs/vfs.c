@@ -636,7 +636,7 @@ int vfs_fchmod(fs_handle h, mode_t mode)
    return fsops->chmod(hb->fs, fsops->get_inode(h), mode);
 }
 
-int vfs_mmap(user_mapping *um, bool register_only)
+int vfs_mmap(struct user_mapping *um, bool register_only)
 {
    fs_handle_base *hb = um->h;
    const file_ops *fops = hb->fops;

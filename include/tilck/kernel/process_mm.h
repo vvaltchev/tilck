@@ -24,14 +24,12 @@ struct user_mapping {
 
 };
 
-typedef struct user_mapping user_mapping;
-
-user_mapping *
+struct user_mapping *
 process_add_user_mapping(fs_handle h, void *v, size_t ln, size_t off, int prot);
-void process_remove_user_mapping(user_mapping *um);
-void full_remove_user_mapping(struct process *pi, user_mapping *um);
+void process_remove_user_mapping(struct user_mapping *um);
+void full_remove_user_mapping(struct process *pi, struct user_mapping *um);
 void remove_all_mappings_of_handle(struct process *pi, fs_handle h);
-user_mapping *process_get_user_mapping(void *vaddr);
+struct user_mapping *process_get_user_mapping(void *vaddr);
 
 /* Internal functions */
 bool user_valloc_and_map(uptr user_vaddr, size_t page_count);

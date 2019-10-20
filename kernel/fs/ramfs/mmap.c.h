@@ -14,7 +14,7 @@ static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
    return 0;
 }
 
-static int ramfs_mmap(user_mapping *um, bool register_only)
+static int ramfs_mmap(struct user_mapping *um, bool register_only)
 {
    struct process *pi = get_curr_task()->pi;
    ramfs_handle *rh = um->h;
@@ -86,7 +86,7 @@ ramfs_handle_fault_int(struct process *pi,
    uptr abs_off;
    ramfs_block *block;
    int rc;
-   user_mapping *um = process_get_user_mapping(vaddrp);
+   struct user_mapping *um = process_get_user_mapping(vaddrp);
 
    if (!um)
       return false; /* Weird, but it's OK */
