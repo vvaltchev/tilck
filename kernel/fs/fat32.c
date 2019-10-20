@@ -568,7 +568,7 @@ fat_get_entry(filesystem *fs,
    fat_fs_path *fp = (fat_fs_path *)fs_path;
    struct fat_entry *dir_entry;
    u32 dir_cluster;
-   fat_search_ctx ctx;
+   struct fat_search_ctx ctx;
 
    if (!dir_inode && !name)              // both dir_inode and name are NULL:
       return fat_get_root_entry(d, fp);  // getting a path to the root dir

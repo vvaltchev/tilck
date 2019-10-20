@@ -245,7 +245,7 @@ u32 fat_get_used_bytes(struct fat_hdr *hdr);
 
 // IMPLEMENTATION INTERNALS --------------------------------------------------
 
-typedef struct {
+struct fat_search_ctx {
 
    // Input fields
    const char *path;          // the searched path.
@@ -261,11 +261,10 @@ typedef struct {
    size_t pcl;                // path component's length
    char shortname[16];        // short name of the current entry
    struct fat_walk_dir_ctx walk_ctx; // walk context: contains long names
-
-} fat_search_ctx;
+};
 
 void
-fat_init_search_ctx(fat_search_ctx *ctx, const char *path, bool single_comp);
+fat_init_search_ctx(struct fat_search_ctx *ctx, const char *path, bool single_comp);
 
 int fat_search_entry_cb(struct fat_hdr *hdr,
                         enum fat_type ft,

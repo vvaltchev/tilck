@@ -485,7 +485,7 @@ void fat_get_short_name(struct fat_entry *entry, char *destbuf)
    destbuf[d] = 0;
 }
 
-static bool fat_fetch_next_component(fat_search_ctx *ctx)
+static bool fat_fetch_next_component(struct fat_search_ctx *ctx)
 {
    ASSERT(ctx->pcl == 0);
 
@@ -509,7 +509,7 @@ int fat_search_entry_cb(struct fat_hdr *hdr,
                         const char *long_name,
                         void *arg)
 {
-   fat_search_ctx *ctx = arg;
+   struct fat_search_ctx *ctx = arg;
 
    if (ctx->pcl == 0) {
       if (!fat_fetch_next_component(ctx)) {
@@ -594,9 +594,9 @@ int fat_search_entry_cb(struct fat_hdr *hdr,
 }
 
 void
-fat_init_search_ctx(fat_search_ctx *ctx, const char *path, bool single_comp)
+fat_init_search_ctx(struct fat_search_ctx *ctx, const char *path, bool single_comp)
 {
-   bzero(ctx, sizeof(fat_search_ctx));
+   bzero(ctx, sizeof(struct fat_search_ctx));
 
 #ifdef __clang_analyzer__
    ctx->pcl = 0;       /* SA: make it sure ctx.pcl is zeroed */
@@ -613,7 +613,7 @@ fat_search_entry(struct fat_hdr *hdr,
                  const char *abspath,
                  int *err)
 {
-   fat_search_ctx ctx;
+   struct fat_search_ctx ctx;
    struct fat_entry *root;
    u32 root_dir_cluster;
 
