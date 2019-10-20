@@ -19,7 +19,7 @@ void vga_set_video_mode(u8 mode)
    realmode_call(&realmode_int_10h, &eax, &ebx, &ecx, &edx, &esi, &edi, &flags);
 }
 
-bool vbe_get_info_block(VbeInfoBlock *vb)
+bool vbe_get_info_block(struct VbeInfoBlock *vb)
 {
    u32 eax, ebx, ecx, edx, esi, edi, flags;
 

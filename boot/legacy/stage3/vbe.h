@@ -15,7 +15,8 @@
  *         Date: September 16, 1998
  */
 
-typedef struct {
+struct VbeInfoBlock {
+
    char VbeSignature[4];
    u16 VbeVersion;
    VbeFarPtr OemStringPtr;
@@ -31,7 +32,7 @@ typedef struct {
    u8 reserved[222];
    u8 OemData[256];
 
-} PACKED VbeInfoBlock;
+} PACKED;
 
 typedef struct {
 
@@ -100,7 +101,7 @@ typedef struct {
 #define VB_MEM_MODEL_DIRECT_COLOR  (0x6)
 
 void vga_set_video_mode(u8 mode);
-bool vbe_get_info_block(VbeInfoBlock *vb);
+bool vbe_get_info_block(struct VbeInfoBlock *vb);
 bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi);
 bool vbe_set_video_mode(u16 mode);
 bool vbe_get_current_mode(u16 *mode);

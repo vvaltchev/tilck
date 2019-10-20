@@ -94,7 +94,7 @@ static void show_modes_aux(u16 *modes,
 void ask_user_video_mode(struct mem_info *minfo)
 {
    uptr free_mem;
-   VbeInfoBlock *vb;
+   struct VbeInfoBlock *vb;
    ModeInfoBlock *mi;
    u16 known_modes[10];
    int known_modes_count = 0;
