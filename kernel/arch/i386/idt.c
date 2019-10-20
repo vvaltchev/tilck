@@ -8,10 +8,10 @@
 
 #include "idt_int.h"
 
-void handle_gpf(regs *r);
-void handle_ill(regs *r);
-void handle_div0(regs *r);
-void handle_cpf(regs *r);
+void handle_gpf(struct regs *r);
+void handle_ill(struct regs *r);
+void handle_div0(struct regs *r);
+void handle_cpf(struct regs *r);
 
 extern void (*fault_entry_points[32])(void);
 
@@ -84,7 +84,7 @@ const char *x86_exception_names[32] =
    "Reserved",
 };
 
-void handle_resumable_fault(regs *r)
+void handle_resumable_fault(struct regs *r)
 {
    struct task *curr = get_curr_task();
 
@@ -94,7 +94,7 @@ void handle_resumable_fault(regs *r)
    context_switch(curr->fault_resume_regs);
 }
 
-static void fault_in_panic(regs *r)
+static void fault_in_panic(struct regs *r)
 {
    const int int_num = r->int_num;
 
@@ -116,7 +116,7 @@ static void fault_in_panic(regs *r)
    while (true) { halt(); }
 }
 
-void handle_fault(regs *r)
+void handle_fault(struct regs *r)
 {
    const int int_num = r->int_num;
    VERIFY(is_fault(int_num));

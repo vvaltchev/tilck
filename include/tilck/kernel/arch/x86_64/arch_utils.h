@@ -11,8 +11,6 @@ struct regs {
    uptr some_var; /* avoid error: empty struct has size 0 in C, size 1 in C++ */
 };
 
-typedef struct regs regs;
-
 typedef struct {
 
    /* STUB struct */
@@ -20,13 +18,13 @@ typedef struct {
 
 } arch_task_info_members;
 
-static ALWAYS_INLINE int regs_intnum(regs *r)
+static ALWAYS_INLINE int regs_intnum(struct regs *r)
 {
    NOT_IMPLEMENTED();
    return 0;
 }
 
-static ALWAYS_INLINE void set_return_register(regs *r, uptr value)
+static ALWAYS_INLINE void set_return_register(struct regs *r, uptr value)
 {
    NOT_IMPLEMENTED();
 }
@@ -37,7 +35,7 @@ static ALWAYS_INLINE uptr get_curr_stack_ptr(void)
    return 0;
 }
 
-static ALWAYS_INLINE NORETURN void context_switch(regs *r)
+static ALWAYS_INLINE NORETURN void context_switch(struct regs *r)
 {
    NOT_IMPLEMENTED();
 }

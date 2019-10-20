@@ -11,9 +11,9 @@
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/hal.h>
 
-void handle_syscall(regs *);
-void handle_fault(regs *);
-void handle_irq(regs *r);
+void handle_syscall(struct regs *);
+void handle_fault(struct regs *);
+void handle_irq(struct regs *r);
 
 #if KRN_TRACK_NESTED_INTERR
 
@@ -199,7 +199,7 @@ static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode(void) { }
 #endif // KRN_TRACK_NESTED_INTERR
 
 
-void irq_entry(regs *r)
+void irq_entry(struct regs *r)
 {
    ASSERT(!are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
@@ -225,7 +225,7 @@ void end_fault_handler_state(void)
    enable_interrupts_forced();
 }
 
-void soft_interrupt_entry(regs *r)
+void soft_interrupt_entry(struct regs *r)
 {
    const int int_num = regs_intnum(r);
    ASSERT(!are_interrupts_enabled());

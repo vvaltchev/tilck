@@ -7,10 +7,9 @@
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/bintree.h>
 
-
 #define TIME_SLOT_TICKS (TIMER_HZ / 20)
 
-typedef struct regs regs;
+struct regs;
 struct task;
 
 extern struct task *__current;
@@ -116,7 +115,7 @@ void schedule_outside_interrupt_context(void);
 
 NORETURN void switch_to_task(struct task *ti, int curr_int);
 
-void save_current_task_state(regs *);
+void save_current_task_state(struct regs *);
 void account_ticks(void);
 bool need_reschedule(void);
 int create_new_pid(void);

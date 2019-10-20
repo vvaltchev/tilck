@@ -26,6 +26,6 @@ static inline int get_fault_num(u32 r)
    return -1;
 }
 
-void handle_resumable_fault(regs *r);
+void handle_resumable_fault(struct regs *r);
 u32 fault_resumable_call(u32 faults_mask, void *func, u32 nargs, ...);
 

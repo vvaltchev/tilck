@@ -38,8 +38,8 @@ enum irq_action {
    IRQ_REQUIRES_BH = 1         /* requires a botton half (tasklet) to run */
 };
 
-typedef void (*soft_int_handler_t)(regs *);
-typedef enum irq_action (*irq_handler_t)(regs *);
+typedef void (*soft_int_handler_t)(struct regs *);
+typedef enum irq_action (*irq_handler_t)(struct regs *);
 
 void reboot();
 void init_segmentation(void);
@@ -52,9 +52,9 @@ void fpu_context_end(void);
 void save_current_fpu_regs(bool in_kernel);
 void restore_fpu_regs(void *task, bool in_kernel);
 void restore_current_fpu_regs(bool in_kernel);
-int get_irq_num(regs *context);
-int get_int_num(regs *context);
+int get_irq_num(struct regs *context);
+int get_int_num(struct regs *context);
 void on_first_pdir_update(void);
 
 bool allocate_fpu_regs(arch_task_info_members *arch_fields);
-void copy_main_tss_on_regs(regs *ctx);
+void copy_main_tss_on_regs(struct regs *ctx);

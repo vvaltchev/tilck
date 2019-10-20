@@ -799,8 +799,8 @@ int sys_fork(void)
    child->running_in_kernel = false;
    task_info_reset_kernel_stack(child);
 
-   child->state_regs--; // make room for a regs struct in child's stack
-   *child->state_regs = *curr->state_regs; // copy parent's regs
+   child->state_regs--; // make room for a struct regs struct in child's stack
+   *child->state_regs = *curr->state_regs; // copy parent's struct regs
    set_return_register(child->state_regs, 0);
 
    // Make the parent to get child's pid as return value.

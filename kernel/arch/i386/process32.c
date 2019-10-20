@@ -23,7 +23,7 @@ void soft_interrupt_resume(void);
 void task_info_reset_kernel_stack(struct task *ti)
 {
    uptr bottom = (uptr)ti->kernel_stack + KERNEL_STACK_SIZE - 1;
-   ti->state_regs = (regs *)(bottom & POINTER_ALIGN_MASK);
+   ti->state_regs = (struct regs *)(bottom & POINTER_ALIGN_MASK);
 }
 
 static inline void push_on_stack(uptr **stack_ptr_ref, uptr val)
@@ -32,12 +32,12 @@ static inline void push_on_stack(uptr **stack_ptr_ref, uptr val)
    **stack_ptr_ref = val;  // *stack_ptr = val
 }
 
-static inline void push_on_user_stack(regs *r, uptr val)
+static inline void push_on_user_stack(struct regs *r, uptr val)
 {
    push_on_stack((uptr **)&r->useresp, val);
 }
 
-static void push_string_on_user_stack(regs *r, const char *str)
+static void push_string_on_user_stack(struct regs *r, const char *str)
 {
    size_t len = strlen(str) + 1; // count also the '\0'
    size_t aligned_len = (len / sizeof(uptr)) * sizeof(uptr);
@@ -55,7 +55,7 @@ static void push_string_on_user_stack(regs *r, const char *str)
 }
 
 static int
-push_args_on_user_stack(regs *r,
+push_args_on_user_stack(struct regs *r,
                         const char *const *argv,
                         u32 argc,
                         const char *const *env,
@@ -115,7 +115,7 @@ push_args_on_user_stack(regs *r,
 NODISCARD int
 kthread_create(kthread_func_ptr fun, void *arg)
 {
-   regs r = {
+   struct regs r = {
       .kernel_resume_eip = (uptr)&soft_interrupt_resume,
       .custom_flags = 0,
       .gs = X86_KERNEL_DATA_SEL,
@@ -168,7 +168,7 @@ kthread_create(kthread_func_ptr fun, void *arg)
     *       <other instructions of kthread_exit>
     */
 
-   ti->state_regs = (void *)ti->state_regs - sizeof(regs) + 8;
+   ti->state_regs = (void *)ti->state_regs - sizeof(struct regs) + 8;
    memcpy(ti->state_regs, &r, sizeof(r) - 8);
    ret = ti->tid;
 
@@ -227,7 +227,7 @@ int setup_usermode_task(pdir_t *pdir,
                         const char *const *env,
                         struct task **ti_ref)
 {
-   regs r = {
+   struct regs r = {
       .kernel_resume_eip = (uptr)&soft_interrupt_resume,
       .custom_flags = 0,
       .gs = X86_USER_DATA_SEL,
@@ -300,13 +300,13 @@ int setup_usermode_task(pdir_t *pdir,
    ASSERT(ti->kernel_stack != NULL);
 
    task_info_reset_kernel_stack(ti);
-   ti->state_regs--;    // make room for a regs struct in the stack
-   *ti->state_regs = r; // copy the regs struct we just prepared
+   ti->state_regs--;    // make room for a struct regs struct in the stack
+   *ti->state_regs = r; // copy the struct regs struct we just prepared
    *ti_ref = ti;
    return 0;
 }
 
-void save_current_task_state(regs *r)
+void save_current_task_state(struct regs *r)
 {
    struct task *curr = get_curr_task();
 
@@ -396,7 +396,7 @@ switch_to_task_clear_irq_mask(int curr_int)
 NORETURN void switch_to_task(struct task *ti, int curr_int)
 {
    /* Save the value of ti->state_regs as it will be reset below */
-   regs *state = ti->state_regs;
+   struct regs *state = ti->state_regs;
    struct task *curr = get_curr_task();
 
    ASSERT(curr != NULL);
@@ -553,7 +553,7 @@ void arch_specific_free_task(struct task *ti)
 }
 
 /* General protection fault handler */
-void handle_gpf(regs *r)
+void handle_gpf(struct regs *r)
 {
    if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("General protection fault. Error: %p\n", r->err_code);
@@ -563,7 +563,7 @@ void handle_gpf(regs *r)
 }
 
 /* Illegal instruction fault handler */
-void handle_ill(regs *r)
+void handle_ill(struct regs *r)
 {
    if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("Illegal instruction fault. Error: %p\n", r->err_code);
@@ -573,7 +573,7 @@ void handle_ill(regs *r)
 }
 
 /* Division by zero fault handler */
-void handle_div0(regs *r)
+void handle_div0(struct regs *r)
 {
    if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("Division by zero fault. Error: %p\n", r->err_code);
@@ -583,7 +583,7 @@ void handle_div0(regs *r)
 }
 
 /* Coproc fault handler */
-void handle_cpf(regs *r)
+void handle_cpf(struct regs *r)
 {
    if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("Co-processor (fpu) fault. Error: %p\n", r->err_code);

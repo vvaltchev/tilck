@@ -182,7 +182,7 @@ static inline bool is_spur_irq(int irq)
    return false;
 }
 
-static inline void run_sched_if_possible(regs *r)
+static inline void run_sched_if_possible(struct regs *r)
 {
    disable_preemption();
 
@@ -212,7 +212,7 @@ static inline void run_sched_if_possible(regs *r)
    enable_preemption();
 }
 
-void handle_irq(regs *r)
+void handle_irq(struct regs *r)
 {
    enum irq_action hret = IRQ_UNHANDLED;
    const int irq = r->int_num - 32;
@@ -257,12 +257,12 @@ void handle_irq(regs *r)
    }
 }
 
-int get_irq_num(regs *context)
+int get_irq_num(struct regs *context)
 {
    return int_to_irq(context->int_num);
 }
 
-int get_int_num(regs *context)
+int get_int_num(struct regs *context)
 {
    return context->int_num;
 }

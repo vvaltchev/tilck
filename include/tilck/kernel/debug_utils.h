@@ -9,7 +9,7 @@ size_t stackwalk32(void **frames, size_t count,
                    void *ebp, pdir_t *pdir);
 
 void dump_stacktrace(void);
-void dump_regs(regs *r);
+void dump_regs(struct regs *r);
 
 void validate_stack_pointer_int(const char *file, int line);
 

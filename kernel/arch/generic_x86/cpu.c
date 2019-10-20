@@ -15,7 +15,7 @@ extern const char *x86_exception_names[32];
 void asm_enable_osxsave(void);
 void asm_enable_sse(void);
 void asm_enable_avx(void);
-static void handle_no_coproc_fault(regs *r);
+static void handle_no_coproc_fault(struct regs *r);
 
 #define CPU_FXSAVE_AREA_SIZE   512
 
@@ -276,7 +276,7 @@ bool allocate_fpu_regs(arch_task_info_members *arch_fields)
 }
 
 static void
-handle_no_coproc_fault(regs *r)
+handle_no_coproc_fault(struct regs *r)
 {
    enable_interrupts_forced();
 

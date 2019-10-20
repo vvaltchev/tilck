@@ -20,6 +20,6 @@ static ALWAYS_INLINE u64 get_ticks(void)
    return curr_ticks;
 }
 
-int timer_irq_handler(regs *r);
+int timer_irq_handler(struct regs *r);
 void timer_set_freq(u32 hz);
 void init_timer(void);

@@ -486,9 +486,9 @@ out:
    return rc;
 }
 
-void copy_main_tss_on_regs(regs *ctx)
+void copy_main_tss_on_regs(struct regs *ctx)
 {
-   *ctx = (regs) {
+   *ctx = (struct regs) {
       .kernel_resume_eip   = 0,
       .custom_flags        = 0,
       .gs                  = tss_array[TSS_MAIN].gs,

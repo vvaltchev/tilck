@@ -85,8 +85,8 @@ struct task {
 
    volatile ATOMIC(enum task_state) state;
 
-   regs *state_regs;
-   regs *fault_resume_regs;
+   struct regs *state_regs;
+   struct regs *fault_resume_regs;
    u32 faults_resume_mask;
 
    bintree_node tree_by_tid_node;
