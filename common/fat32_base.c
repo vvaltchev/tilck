@@ -226,7 +226,7 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
 }
 
 int fat_walk_directory(fat_walk_dir_ctx *ctx,
-                       struct fat_hdr *hdr,
+                       struct fat_hdr *h,
                        enum fat_type ft,
                        struct fat_entry *entry,
                        u32 cluster,
@@ -234,7 +234,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
                        void *arg)
 {
    const u32 entries_per_cluster =
-      ((u32)hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus) / sizeof(struct fat_entry);
+      ((u32)h->BPB_BytsPerSec * h->BPB_SecPerClus) / sizeof(struct fat_entry);
 
    ASSERT(ft == fat16_type || ft == fat32_type);
 
@@ -257,7 +257,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
           * In that case, fat_get_rootdir() returns 0 as cluster. In all the
           * other cases, we need only the cluster.
           */
-         entry = fat_get_pointer_to_cluster_data(hdr, cluster);
+         entry = fat_get_pointer_to_cluster_data(h, cluster);
       }
 
       ASSERT(entry != NULL);
@@ -296,7 +296,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
             }
          }
 
-         int ret = cb(hdr, ft, entry + i, long_name_ptr, arg);
+         int ret = cb(h, ft, entry + i, long_name_ptr, arg);
 
          ctx->lname_sz = 0;
          ctx->lname_chksum = -1;
@@ -320,7 +320,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
        * If we're here, it means that there is more then one cluster for the
        * entries of this directory. We have to follow the chain.
        */
-      u32 val = fat_read_fat_entry(hdr, ft, cluster, 0);
+      u32 val = fat_read_fat_entry(h, ft, cluster, 0);
 
       if (fat_is_end_of_clusterchain(ft, val))
          break; // that's it: we hit an exactly full cluster.
@@ -661,7 +661,9 @@ size_t fat_get_file_size(struct fat_entry *entry)
 
 void
 fat_read_whole_file(struct fat_hdr *hdr,
-                    struct fat_entry *entry, char *dest_buf, size_t dest_buf_size)
+                    struct fat_entry *entry,
+                    char *dest_buf,
+                    size_t dest_buf_size)
 {
    ASSERT(entry->DIR_FileSize <= dest_buf_size);
 

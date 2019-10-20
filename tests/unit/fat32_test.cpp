@@ -86,8 +86,10 @@ TEST(fat32, DISABLED_dumpinfo)
    const char *buf = load_once_file(PROJ_BUILD_DIR "/test_fatpart");
    fat_dump_info((void *) buf);
 
-   struct fat_hdr *hdr = (struct fat_hdr*)buf;
-   struct fat_entry *e = fat_search_entry(hdr, fat_unknown, "/nonesistentfile", NULL);
+   struct fat_hdr *hdr = (struct fat_hdr *)buf;
+   struct fat_entry *e =
+      fat_search_entry(hdr, fat_unknown, "/nonesistentfile", NULL);
+
    ASSERT_TRUE(e == NULL);
 }
 
