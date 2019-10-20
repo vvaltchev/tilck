@@ -361,13 +361,14 @@ enum fat_type fat_get_type(struct fat_hdr *hdr)
 }
 
 /*
- * Reads the entry in the FAT 'fatNum' for cluster 'clusterN'.
+ * Reads the entry in the FAT 'fatN' for cluster 'clusterN'.
  * The entry may be 16 or 32 bit. It returns 32-bit integer for convenience.
  */
-u32 fat_read_fat_entry(struct fat_hdr *hdr, enum fat_type ft, u32 clusterN, u32 fatNum)
+u32
+fat_read_fat_entry(struct fat_hdr *h, enum fat_type ft, u32 clusterN, u32 fatN)
 {
    if (ft == fat_unknown) {
-      ft = fat_get_type(hdr);
+      ft = fat_get_type(h);
    }
 
    if (ft == fat12_type) {
@@ -375,25 +376,25 @@ u32 fat_read_fat_entry(struct fat_hdr *hdr, enum fat_type ft, u32 clusterN, u32 
       NOT_REACHED();
    }
 
-   ASSERT(fatNum < hdr->BPB_NumFATs);
+   ASSERT(fatN < h->BPB_NumFATs);
 
-   u32 FATSz = fat_get_FATSz(hdr);
+   u32 FATSz = fat_get_FATSz(h);
    u32 FATOffset = (ft == fat16_type) ? clusterN * 2 : clusterN * 4;
 
    u32 ThisFATSecNum =
-      fatNum * FATSz + hdr->BPB_RsvdSecCnt + (FATOffset / hdr->BPB_BytsPerSec);
+      fatN * FATSz + h->BPB_RsvdSecCnt + (FATOffset / h->BPB_BytsPerSec);
 
-   u32 ThisFATEntOffset = FATOffset % hdr->BPB_BytsPerSec;
+   u32 ThisFATEntOffset = FATOffset % h->BPB_BytsPerSec;
 
-   u8 *SecBuf = (u8*)hdr + ThisFATSecNum * hdr->BPB_BytsPerSec;
+   u8 *SecBuf = (u8*)h + ThisFATSecNum * h->BPB_BytsPerSec;
 
    if (ft == fat16_type) {
-      return *(u16*)(SecBuf+ThisFATEntOffset);
+      return *(u16 *)(SecBuf + ThisFATEntOffset);
    }
 
    // FAT32
    // Note: FAT32 "FAT" entries are 28-bit. The 4 higher bits are reserved.
-   return (*(u32*)(SecBuf+ThisFATEntOffset)) & 0x0FFFFFFF;
+   return (*(u32 *)(SecBuf + ThisFATEntOffset)) & 0x0FFFFFFF;
 }
 
 u32 fat_get_first_data_sector(struct fat_hdr *hdr)
@@ -422,7 +423,8 @@ u32 fat_get_sector_for_cluster(struct fat_hdr *hdr, u32 N)
    return ((N - 2) * hdr->BPB_SecPerClus) + FirstDataSector;
 }
 
-fat_entry *fat_get_rootdir(struct fat_hdr *hdr, enum fat_type ft, u32 *cluster /* out */)
+fat_entry *
+fat_get_rootdir(struct fat_hdr *hdr, enum fat_type ft, u32 *cluster /* out */)
 {
    ASSERT(ft != fat12_type);
    ASSERT(ft != fat_unknown);
@@ -606,7 +608,10 @@ fat_init_search_ctx(fat_search_ctx *ctx, const char *path, bool single_comp)
 }
 
 fat_entry *
-fat_search_entry(struct fat_hdr *hdr, enum fat_type ft, const char *abspath, int *err)
+fat_search_entry(struct fat_hdr *hdr,
+                 enum fat_type ft,
+                 const char *abspath,
+                 int *err)
 {
    fat_search_ctx ctx;
    fat_entry *root;

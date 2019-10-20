@@ -127,10 +127,20 @@ void fat_dump_info(void *fatpart_begin);
 // FAT INTERNALS ---------------------------------------------------------------
 
 enum fat_type fat_get_type(struct fat_hdr *hdr);
-fat_entry *fat_get_rootdir(struct fat_hdr *hdr, enum fat_type ft, u32 *cluster /*out*/);
+
+fat_entry *fat_get_rootdir(struct fat_hdr *hdr,
+                           enum fat_type ft,
+                           u32 *cluster /*out*/);
+
 void fat_get_short_name(fat_entry *entry, char *destbuf);
+
 u32 fat_get_sector_for_cluster(struct fat_hdr *hdr, u32 N);
-u32 fat_read_fat_entry(struct fat_hdr *hdr, enum fat_type ft, u32 clusterN, u32 fatNum);
+
+u32 fat_read_fat_entry(struct fat_hdr *hdr,
+                       enum fat_type ft,
+                       u32 clusterN,
+                       u32 fatNum);
+
 u32 fat_get_first_data_sector(struct fat_hdr *hdr);
 
 
@@ -219,7 +229,10 @@ fat_walk_directory(fat_walk_dir_ctx *ctx,
 
 
 fat_entry *
-fat_search_entry(struct fat_hdr *hdr, enum fat_type ft, const char *abspath, int *err);
+fat_search_entry(struct fat_hdr *hdr,
+                 enum fat_type ft,
+                 const char *abspath,
+                 int *err);
 
 size_t fat_get_file_size(fat_entry *entry);
 
