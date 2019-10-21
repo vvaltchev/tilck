@@ -125,7 +125,7 @@ ramfs_get_entry(struct fs *fs,
                 void *dir_inode,
                 const char *name,
                 ssize_t name_len,
-                struct fs_path_struct *fs_path)
+                struct fs_path *fs_path)
 {
    ramfs_data *d = fs->device_data;
    ramfs_inode *idir = dir_inode;
@@ -133,7 +133,7 @@ ramfs_get_entry(struct fs *fs,
 
    if (!dir_inode) {
 
-      *fs_path = (struct fs_path_struct) {
+      *fs_path = (struct fs_path) {
          .inode = d->root,
          .dir_inode = d->root,
          .dir_entry = NULL,
@@ -145,7 +145,7 @@ ramfs_get_entry(struct fs *fs,
 
    re = ramfs_dir_get_entry_by_name(idir, name, name_len);
 
-   *fs_path = (struct fs_path_struct) {
+   *fs_path = (struct fs_path) {
       .inode      = re ? re->inode : NULL,
       .dir_inode  = idir,
       .dir_entry  = re,

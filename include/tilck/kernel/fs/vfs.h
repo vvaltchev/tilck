@@ -41,7 +41,7 @@ enum vfs_entry_type {
 /*
  * VFS opaque inode pointer.
  *
- * It is the primary member the fs_path_struct and it's used by functions like
+ * It is the primary member the struct fs_path and it's used by functions like
  * (stat, fstat), (truncate, ftruncate) in order to have a common implementation
  * in the FS layer.
  */
@@ -59,12 +59,12 @@ typedef void *vfs_inode_ptr_t;
       enum vfs_entry_type type;                                           \
    }                                                                      \
 
-CREATE_FS_PATH_STRUCT(fs_path_struct, vfs_inode_ptr_t, void *);
+CREATE_FS_PATH_STRUCT(fs_path, vfs_inode_ptr_t, void *);
 
 typedef struct {
 
    struct fs *fs;
-   struct fs_path_struct fs_path;
+   struct fs_path fs_path;
 
    /* other fields */
    const char *last_comp;
@@ -106,7 +106,7 @@ typedef void    (*func_get_entry) (struct fs *fs,
                                    void *dir_inode,
                                    const char *name,
                                    ssize_t name_len,
-                                   struct fs_path_struct *fs_path);
+                                   struct fs_path *fs_path);
 
 /* mixed fs/file ops */
 typedef int     (*func_stat)   (struct fs *, vfs_inode_ptr_t, struct stat64 *);
@@ -308,13 +308,13 @@ vfs_get_entry(struct fs *fs,
               vfs_inode_ptr_t inode,
               const char *name,
               ssize_t name_len,
-              struct fs_path_struct *fs_path)
+              struct fs_path *fs_path)
 {
    fs->fsops->get_entry(fs, inode, name, name_len, fs_path);
 }
 
 static ALWAYS_INLINE void
-vfs_get_root_entry(struct fs *fs, struct fs_path_struct *fs_path)
+vfs_get_root_entry(struct fs *fs, struct fs_path *fs_path)
 {
    vfs_get_entry(fs, NULL, NULL, 0, fs_path);
 }

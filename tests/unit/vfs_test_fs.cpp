@@ -43,7 +43,7 @@ testfs_get_entry(struct fs *fs,
                  void *dir_inode,
                  const char *name,
                  ssize_t name_len,
-                 fs_path_struct *fs_path)
+                 struct fs_path *fs_path)
 {
    if (!dir_inode && !name) {
       fs_path->type = VFS_DIR;

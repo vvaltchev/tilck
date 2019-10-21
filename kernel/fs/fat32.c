@@ -562,7 +562,7 @@ fat_get_entry(struct fs *fs,
               void *dir_inode,
               const char *name,
               ssize_t name_len,
-              struct fs_path_struct *fs_path)
+              struct fs_path *fs_path)
 {
    fat_fs_device_data *d = fs->device_data;
    struct fat_fs_path *fp = (struct fat_fs_path *)fs_path;

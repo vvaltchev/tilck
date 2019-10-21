@@ -400,7 +400,7 @@ devfs_get_entry(struct fs *fs,
                 void *dir_inode,
                 const char *name,
                 ssize_t nl,
-                struct fs_path_struct *fs_path)
+                struct fs_path *fs_path)
 {
    devfs_data *d = fs->device_data;
    devfs_directory *dir;
@@ -408,7 +408,7 @@ devfs_get_entry(struct fs *fs,
 
    if ((!dir_inode && !name) || is_dot_or_dotdot(name, (int)nl)) {
 
-      *fs_path = (struct fs_path_struct) {
+      *fs_path = (struct fs_path) {
          .inode      = &d->root_dir,
          .dir_inode  = &d->root_dir,
          .dir_entry  = NULL,
@@ -428,7 +428,7 @@ devfs_get_entry(struct fs *fs,
    }
 
    if (&pos->dir_node != (list_node *) &dir->files_list) {
-      *fs_path = (struct fs_path_struct) {
+      *fs_path = (struct fs_path) {
          .inode         = pos,
          .dir_inode     = dir,
          .dir_entry     = pos,
