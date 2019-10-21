@@ -135,7 +135,7 @@ void init_fbdev(void)
    if (!use_framebuffer())
       return;
 
-   driver_info *di = kmalloc(sizeof(driver_info));
+   struct driver_info *di = kmalloc(sizeof(struct driver_info));
 
    if (!di)
       panic("TTY: no enough memory for init_tty()");

@@ -276,10 +276,10 @@ static void init_serial_ttys(void)
 void init_tty(void)
 {
    first_term_initial_vi = term_get_vi(get_curr_term());
-   driver_info *di = kzmalloc(sizeof(driver_info));
+   struct driver_info *di = kzmalloc(sizeof(struct driver_info));
 
    if (!di)
-      panic("TTY: no enough memory for driver_info");
+      panic("TTY: no enough memory for struct driver_info");
 
    di->name = "tty";
    di->create_dev_file = tty_create_device_file;

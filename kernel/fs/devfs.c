@@ -21,7 +21,7 @@ static struct fs *devfs;
 /*
  * Registered drivers.
  */
-static driver_info *drivers[32];
+static struct driver_info *drivers[32];
 static u32 drivers_count;
 
 struct fs *get_devfs(void)
@@ -29,7 +29,7 @@ struct fs *get_devfs(void)
    return devfs;
 }
 
-driver_info *get_driver_info(u16 major)
+struct driver_info *get_driver_info(u16 major)
 {
    for (u32 i = 0; i < ARRAY_SIZE(drivers) && drivers[i]; i++) {
       if (drivers[i]->major == major)
@@ -43,7 +43,7 @@ driver_info *get_driver_info(u16 major)
  * Registers the driver described by 'info'.
  * Returns driver's major number.
  */
-int register_driver(driver_info *info, int arg_major)
+int register_driver(struct driver_info *info, int arg_major)
 {
    u16 major;
 
@@ -103,7 +103,7 @@ int create_dev_file(const char *filename, u16 major, u16 minor)
    ASSERT(devfs != NULL);
 
    struct fs *fs = devfs;
-   driver_info *dinfo = get_driver_info(major);
+   struct driver_info *dinfo = get_driver_info(major);
 
    if (!dinfo)
       return -EINVAL;

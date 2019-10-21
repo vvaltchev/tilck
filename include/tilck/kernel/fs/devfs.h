@@ -54,19 +54,19 @@ struct devfs_handle {
 typedef int
 (*func_create_device_file)(int, const file_ops **, enum vfs_entry_type *);
 
-typedef struct {
+struct driver_info {
 
    u16 major;
    const char *name;
    func_create_device_file create_dev_file;
 
-} driver_info;
+};
 
 
 struct fs *create_devfs(void);
 void init_devfs(void);
-int register_driver(driver_info *info, int major);
+int register_driver(struct driver_info *info, int major);
 
 int create_dev_file(const char *filename, u16 major, u16 minor);
 struct fs *get_devfs(void);
-driver_info *get_driver_info(u16 major);
+struct driver_info *get_driver_info(u16 major);
