@@ -27,14 +27,14 @@ fat_get_first_cluster_generic(struct fat_fs_device_data *d, struct fat_entry *e)
 STATIC void
 fat_close(fs_handle handle)
 {
-   fat_handle *h = (fat_handle *)handle;
-   kfree2(h, sizeof(fat_handle));
+   struct fat_handle *h = (struct fat_handle *)handle;
+   kfree2(h, sizeof(struct fat_handle));
 }
 
 STATIC ssize_t
 fat_read(fs_handle handle, char *buf, size_t bufsize)
 {
-   fat_handle *h = (fat_handle *) handle;
+   struct fat_handle *h = (struct fat_handle *) handle;
    struct fat_fs_device_data *d = h->fs->device_data;
    offt fsize = (offt)h->e->DIR_FileSize;
    offt written_to_buf = 0;
@@ -96,7 +96,7 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
 STATIC int
 fat_rewind(fs_handle handle)
 {
-   fat_handle *h = (fat_handle *) handle;
+   struct fat_handle *h = (struct fat_handle *) handle;
    h->pos = 0;
    h->curr_cluster = fat_get_first_cluster(h->e);
    return 0;
@@ -105,7 +105,7 @@ fat_rewind(fs_handle handle)
 STATIC offt
 fat_seek_forward(fs_handle handle, offt dist)
 {
-   fat_handle *h = (fat_handle *) handle;
+   struct fat_handle *h = (struct fat_handle *) handle;
    struct fat_fs_device_data *d = h->fs->device_data;
    offt fsize = (offt)h->e->DIR_FileSize;
    offt moved_distance = 0;
@@ -190,7 +190,7 @@ STATIC offt fat_count_dirents(struct fat_fs_device_data *d, struct fat_entry *e)
    return rc ? rc : count;
 }
 
-static offt fat_seek_dir(fat_handle *fh, offt off)
+static offt fat_seek_dir(struct fat_handle *fh, offt off)
 {
    if (off < 0)
       return -EINVAL;
@@ -205,7 +205,7 @@ static offt fat_seek_dir(fat_handle *fh, offt off)
 STATIC offt
 fat_seek(fs_handle handle, offt off, int whence)
 {
-   fat_handle *fh = handle;
+   struct fat_handle *fh = handle;
 
    if (fh->e->directory) {
 
@@ -232,7 +232,7 @@ fat_seek(fs_handle handle, offt off, int whence)
          if (off >= 0)
             break;
 
-         fat_handle *h = (fat_handle *) handle;
+         struct fat_handle *h = (struct fat_handle *) handle;
          off = (offt) h->e->DIR_FileSize + off;
 
          if (off < 0)
@@ -330,7 +330,7 @@ STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 
 typedef struct {
 
-   fat_handle *fh;
+   struct fat_handle *fh;
    get_dents_func_cb vfs_cb;
    void *vfs_ctx;
    int rc;
@@ -363,7 +363,7 @@ fat_getdents_cb(struct fat_hdr *hdr,
 
 static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 {
-   fat_handle *fh = h;
+   struct fat_handle *fh = h;
    struct fat_fs_device_data *d = fh->fs->device_data;
    struct fat_walk_dir_ctx walk_ctx = {0};
    int rc;
@@ -499,7 +499,7 @@ static const file_ops static_ops_fat =
 STATIC int
 fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
 {
-   fat_handle *h;
+   struct fat_handle *h;
    struct fs *fs = p->fs;
    struct fat_fs_path *fp = (struct fat_fs_path *)&p->fs_path;
    struct fat_entry *e = fp->entry;
@@ -520,7 +520,7 @@ fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
       if (fl & (O_WRONLY | O_RDWR))
          return -EROFS;
 
-   if (!(h = kzmalloc(sizeof(fat_handle))))
+   if (!(h = kzmalloc(sizeof(struct fat_handle))))
       return -ENOMEM;
 
    h->fs = fs;
@@ -536,12 +536,12 @@ fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
 
 STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
 {
-   fat_handle *new_h = kmalloc(sizeof(fat_handle));
+   struct fat_handle *new_h = kmalloc(sizeof(struct fat_handle));
 
    if (!new_h)
       return -ENOMEM;
 
-   memcpy(new_h, h, sizeof(fat_handle));
+   memcpy(new_h, h, sizeof(struct fat_handle));
    *dup_h = new_h;
    return 0;
 }
@@ -613,7 +613,7 @@ fat_get_entry(struct fs *fs,
 
 static vfs_inode_ptr_t fat_get_inode(fs_handle h)
 {
-   return ((fat_handle *)h)->e;
+   return ((struct fat_handle *)h)->e;
 }
 
 static int fat_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)

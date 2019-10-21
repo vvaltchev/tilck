@@ -20,7 +20,7 @@ struct fat_fs_device_data {
 
 };
 
-typedef struct {
+struct fat_handle {
 
    /* fs_handle_base */
    FS_HANDLE_BASE_FIELDS
@@ -28,8 +28,7 @@ typedef struct {
    /* fs-specific members */
    struct fat_entry *e;
    u32 curr_cluster;
-
-} fat_handle;
+};
 
 struct fs *fat_mount_ramdisk(void *vaddr, u32 flags);
 void fat_umount_ramdisk(struct fs *fs);
