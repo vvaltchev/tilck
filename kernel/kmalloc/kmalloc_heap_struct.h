@@ -43,12 +43,12 @@ struct kmalloc_heap {
 void *kmalloc_get_first_heap(size_t *size);
 
 void
-internal_kmalloc_split_block(kmalloc_heap *h,
+internal_kmalloc_split_block(struct kmalloc_heap *h,
                              void *const vaddr,
                              const size_t block_size,
                              const size_t leaf_node_size);
 
 size_t
-internal_kmalloc_coalesce_block(kmalloc_heap *h,
+internal_kmalloc_coalesce_block(struct kmalloc_heap *h,
                                 void *const vaddr,
                                 const size_t block_size);

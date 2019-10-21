@@ -27,22 +27,20 @@
 typedef bool (*virtual_alloc_and_map_func)(uptr vaddr, size_t page_count);
 typedef void (*virtual_free_and_unmap_func)(uptr vaddr, size_t page_count);
 
-typedef struct kmalloc_heap kmalloc_heap;
-
 #define calculate_heap_metadata_size(heap_size, min_block_size) \
    (2 * (heap_size) / (min_block_size))
 
 #define calculate_heap_min_block_size(heap_size, metadata_size) \
    (2 * (heap_size) / (metadata_size))
 
+struct kmalloc_heap;
 
 void init_kmalloc(void);
-
 void *general_kmalloc(size_t *size, u32 flags);
 void general_kfree(void *ptr, size_t *size, u32 flags);
 bool is_kmalloc_initialized(void);
 
-bool kmalloc_create_heap(kmalloc_heap *h,
+bool kmalloc_create_heap(struct kmalloc_heap *h,
                          uptr vaddr,
                          size_t size,
                          size_t min_block_size,
@@ -52,11 +50,11 @@ bool kmalloc_create_heap(kmalloc_heap *h,
                          virtual_alloc_and_map_func valloc,  // optional
                          virtual_free_and_unmap_func vfree); // optional
 
-void kmalloc_destroy_heap(kmalloc_heap *h);
-kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h);
+void kmalloc_destroy_heap(struct kmalloc_heap *h);
+struct kmalloc_heap *kmalloc_heap_dup(struct kmalloc_heap *h);
 
-void *per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags);
-void per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *size, u32 flags);
+void *per_heap_kmalloc(struct kmalloc_heap *h, size_t *size, u32 flags);
+void per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *size, u32 flags);
 
 typedef struct {
 

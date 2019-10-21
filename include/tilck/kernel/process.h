@@ -38,7 +38,7 @@ struct process {
 
    void *brk;
    void *initial_brk;
-   kmalloc_heap *mmap_heap;
+   struct kmalloc_heap *mmap_heap;
 
    struct list children_list;
    struct list mappings;

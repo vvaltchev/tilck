@@ -26,10 +26,10 @@ extern "C" {
 
    extern bool mock_kmalloc;
    extern bool suppress_printk;
-   extern kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
+   extern struct kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
    void selftest_kmalloc_perf_per_size(int size);
    void kmalloc_dump_heap_stats(void);
-   void *node_to_ptr(kmalloc_heap *h, int node, size_t size);
+   void *node_to_ptr(struct kmalloc_heap *h, int node, size_t size);
 }
 
 using namespace std;
@@ -45,7 +45,7 @@ using namespace testing;
 #define NODE_IS_LEFT(n) (((n) & 1) != 0)
 
 
-u32 calculate_node_size(kmalloc_heap *h, int node)
+u32 calculate_node_size(struct kmalloc_heap *h, int node)
 {
    int i;
    int curr = node;
@@ -83,7 +83,7 @@ void check_heaps_metadata(unique_ptr<u8[]> *meta_before)
    for (int h = 0; h < KMALLOC_HEAPS_COUNT && heaps[h]; h++) {
 
       u8 *meta_ptr = meta_before[h].get();
-      kmalloc_heap *heap = heaps[h];
+      struct kmalloc_heap *heap = heaps[h];
 
       for (u32 i = 0; i < heap->metadata_size; i++) {
 
@@ -231,7 +231,7 @@ dump_heap_node(block_node n, int w)
 }
 
 static void
-dump_heap_subtree(kmalloc_heap *h, int node, int levels)
+dump_heap_subtree(struct kmalloc_heap *h, int node, int levels)
 {
    int width = (1 << (levels - 1)) * 4;
    int level_width = 1;
@@ -331,7 +331,7 @@ TEST_F(kmalloc_test, split_block)
    void *ptr;
    size_t s;
 
-   kmalloc_heap h;
+   struct kmalloc_heap h;
    kmalloc_create_heap(&h,
                        MB,                           /* vaddr */
                        KMALLOC_MIN_HEAP_SIZE,        /* heap size */
@@ -423,7 +423,7 @@ TEST_F(kmalloc_test, coalesce_block)
    void *ptr;
    size_t s;
 
-   kmalloc_heap h;
+   struct kmalloc_heap h;
    kmalloc_create_heap(&h,
                        MB,                           /* vaddr */
                        KMALLOC_MIN_HEAP_SIZE,        /* heap size */
@@ -496,7 +496,7 @@ TEST_F(kmalloc_test, multi_step_alloc)
    void *ptr;
    size_t s;
 
-   kmalloc_heap h;
+   struct kmalloc_heap h;
    kmalloc_create_heap(&h,
                        MB,                           /* vaddr */
                        KMALLOC_MIN_HEAP_SIZE,        /* heap size */
@@ -540,7 +540,7 @@ TEST_F(kmalloc_test, multi_step_alloc2)
    void *ptr;
    size_t s;
 
-   kmalloc_heap h;
+   struct kmalloc_heap h;
    kmalloc_create_heap(&h,
                        MB,                           /* vaddr */
                        KMALLOC_MIN_HEAP_SIZE,        /* heap size */
@@ -583,7 +583,7 @@ TEST_F(kmalloc_test, multi_step_and_split)
    void *ptr;
    size_t s;
 
-   kmalloc_heap h;
+   struct kmalloc_heap h;
    kmalloc_create_heap(&h,
                        MB,                           /* vaddr */
                        KMALLOC_MIN_HEAP_SIZE,        /* heap size */
@@ -626,7 +626,7 @@ TEST_F(kmalloc_test, multi_step_free)
    void *ptr;
    size_t s;
 
-   kmalloc_heap h;
+   struct kmalloc_heap h;
    kmalloc_create_heap(&h,
                        MB,                           /* vaddr */
                        KMALLOC_MIN_HEAP_SIZE,        /* heap size */
@@ -695,7 +695,7 @@ TEST_F(kmalloc_test, partial_free)
    void *ptr;
    size_t s;
 
-   kmalloc_heap h;
+   struct kmalloc_heap h;
    kmalloc_create_heap(&h,
                        MB,                           /* vaddr */
                        KMALLOC_MIN_HEAP_SIZE,        /* heap size */

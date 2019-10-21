@@ -66,7 +66,7 @@ main_heaps_kmalloc(size_t *size, u32 flags)
 static void
 main_heaps_kfree(void *ptr, size_t *size, u32 flags)
 {
-   kmalloc_heap *h = NULL;
+   struct kmalloc_heap *h = NULL;
    const uptr vaddr = (uptr) ptr;
    ASSERT(kmalloc_initialized);
 

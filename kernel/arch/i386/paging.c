@@ -38,7 +38,7 @@ static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
 
 static u16 *pageframes_refcount;
 static uptr phys_mem_lim;
-static kmalloc_heap *hi_vmem_heap;
+static struct kmalloc_heap *hi_vmem_heap;
 
 static ALWAYS_INLINE u32 pf_ref_count_inc(u32 paddr)
 {

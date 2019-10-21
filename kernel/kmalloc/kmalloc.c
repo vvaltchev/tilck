@@ -18,7 +18,7 @@
 
 size_t kmalloc_get_heap_struct_size(void)
 {
-   return sizeof(kmalloc_heap);
+   return sizeof(struct kmalloc_heap);
 }
 
 STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
@@ -39,7 +39,7 @@ bool is_kmalloc_initialized(void)
    return kmalloc_initialized;
 }
 
-STATIC_INLINE int ptr_to_node(kmalloc_heap *h, void *ptr, size_t size)
+STATIC_INLINE int ptr_to_node(struct kmalloc_heap *h, void *ptr, size_t size)
 {
    const uptr size_log = log2_for_power_of_2(size);
 
@@ -50,7 +50,7 @@ STATIC_INLINE int ptr_to_node(kmalloc_heap *h, void *ptr, size_t size)
    return (int)(nodes_before_our + position_in_row);
 }
 
-STATIC_INLINE void *node_to_ptr(kmalloc_heap *h, int node, size_t size)
+STATIC_INLINE void *node_to_ptr(struct kmalloc_heap *h, int node, size_t size)
 {
    const uptr size_log = log2_for_power_of_2(size);
 
@@ -66,7 +66,7 @@ CONSTEXPR static ALWAYS_INLINE bool is_block_node_free(block_node n)
    return !(n.raw & (FL_NODE_FULL | FL_NODE_SPLIT));
 }
 
-static size_t set_free_uplevels(kmalloc_heap *h, int *node, size_t size)
+static size_t set_free_uplevels(struct kmalloc_heap *h, int *node, size_t size)
 {
    block_node *nodes = h->metadata_nodes;
 
@@ -119,7 +119,7 @@ static size_t set_free_uplevels(kmalloc_heap *h, int *node, size_t size)
 }
 
 static bool
-actual_allocate_node(kmalloc_heap *h,
+actual_allocate_node(struct kmalloc_heap *h,
                      size_t node_size,
                      int node,
                      void **vaddr_ref,
@@ -191,7 +191,7 @@ actual_allocate_node(kmalloc_heap *h,
    return !alloc_failed;
 }
 
-static size_t calculate_node_size(kmalloc_heap *h, int node)
+static size_t calculate_node_size(struct kmalloc_heap *h, int node)
 {
    size_t size = h->size;
 
@@ -203,7 +203,7 @@ static size_t calculate_node_size(kmalloc_heap *h, int node)
 }
 
 void
-internal_kmalloc_split_block(kmalloc_heap *h,
+internal_kmalloc_split_block(struct kmalloc_heap *h,
                              void *const vaddr,
                              const size_t block_size,
                              const size_t leaf_node_size)
@@ -248,7 +248,7 @@ internal_kmalloc_split_block(kmalloc_heap *h,
 }
 
 size_t
-internal_kmalloc_coalesce_block(kmalloc_heap *h,
+internal_kmalloc_coalesce_block(struct kmalloc_heap *h,
                                 void *const vaddr,
                                 const size_t block_size)
 {
@@ -294,7 +294,7 @@ internal_kmalloc_coalesce_block(kmalloc_heap *h,
 }
 
 static void *
-internal_kmalloc(kmalloc_heap *h,
+internal_kmalloc(struct kmalloc_heap *h,
                  const size_t size,       /* power of 2 */
                  const int start_node,
                  size_t start_node_size,
@@ -430,7 +430,7 @@ internal_kmalloc(kmalloc_heap *h,
 }
 
 void *
-per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags)
+per_heap_kmalloc(struct kmalloc_heap *h, size_t *size, u32 flags)
 {
    void *addr;
    const bool multi_step_alloc = !!(flags & KMALLOC_FL_MULTI_STEP);
@@ -515,7 +515,7 @@ per_heap_kmalloc(kmalloc_heap *h, size_t *size, u32 flags)
 
 
 static void
-internal_kfree(kmalloc_heap *h,
+internal_kfree(struct kmalloc_heap *h,
                void *ptr,
                size_t size,
                bool allow_split,
@@ -600,7 +600,7 @@ internal_kfree(kmalloc_heap *h,
    }
 }
 
-static size_t calculate_block_size(kmalloc_heap *h, uptr vaddr)
+static size_t calculate_block_size(struct kmalloc_heap *h, uptr vaddr)
 {
    block_node *nodes = h->metadata_nodes;
    int n = 0; /* root's node index */
@@ -626,7 +626,7 @@ static size_t calculate_block_size(kmalloc_heap *h, uptr vaddr)
 }
 
 static void
-debug_check_block_size(kmalloc_heap *h, uptr vaddr, size_t size)
+debug_check_block_size(struct kmalloc_heap *h, uptr vaddr, size_t size)
 {
    size_t cs = calculate_block_size(h, vaddr);
 
@@ -637,7 +637,7 @@ debug_check_block_size(kmalloc_heap *h, uptr vaddr, size_t size)
 }
 
 void
-per_heap_kfree(kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
+per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
 {
    if (!ptr)
       return;

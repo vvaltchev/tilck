@@ -29,7 +29,7 @@ typedef struct {
 
    struct list_node node;          /* all nodes */
    struct list_node avail_node;    /* non-full nodes, including empty ones */
-   kmalloc_heap heap;
+   struct kmalloc_heap heap;
 
 } small_heap_node;
 
