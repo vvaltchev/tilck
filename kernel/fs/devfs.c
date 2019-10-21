@@ -377,8 +377,11 @@ static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
    if (dh->type != VFS_DIR)
       return -ENOTDIR;
 
-   if (!dh->dpos)
-      dh->dpos = list_first_obj(&d->root_dir.files_list, struct devfs_file, dir_node);
+   if (!dh->dpos) {
+      dh->dpos = list_first_obj(
+         &d->root_dir.files_list, struct devfs_file, dir_node
+      );
+   }
 
    list_for_each_ro_kp(dh->dpos, &d->root_dir.files_list, dir_node) {
 

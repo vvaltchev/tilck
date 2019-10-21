@@ -95,7 +95,10 @@ typedef int     (*func_readlink)  (struct vfs_path *, char *);
 typedef int     (*func_chmod)     (struct fs *, vfs_inode_ptr_t, mode_t);
 typedef void    (*func_fslock_t)  (struct fs *);
 typedef int     (*func_rr_inode)  (struct fs *, vfs_inode_ptr_t);
-typedef int     (*func_2paths)    (struct fs *, struct vfs_path *, struct vfs_path *);
+
+typedef int     (*func_2paths)    (struct fs *,
+                                   struct vfs_path *,
+                                   struct vfs_path *);
 
 typedef func_2paths func_rename;
 typedef func_2paths func_link;

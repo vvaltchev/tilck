@@ -228,7 +228,8 @@ static int ramfs_chmod(struct fs *fs, vfs_inode_ptr_t inode, mode_t mode)
    return rc;
 }
 
-static int ramfs_rename(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
+static int
+ramfs_rename(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
 {
    struct ramfs_path *oldp = (void *)&voldp->fs_path;
    struct ramfs_path *newp = (void *)&vnewp->fs_path;
@@ -281,7 +282,8 @@ static int ramfs_rename(struct fs *fs, struct vfs_path *voldp, struct vfs_path *
    return 0;
 }
 
-static int ramfs_link(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
+static int
+ramfs_link(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
 {
    struct ramfs_path *oldp = (void *)&voldp->fs_path;
    struct ramfs_path *newp = (void *)&vnewp->fs_path;

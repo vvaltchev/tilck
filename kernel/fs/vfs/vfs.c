@@ -444,7 +444,11 @@ int vfs_symlink(const char *target, const char *linkpath)
 }
 
 static ALWAYS_INLINE int
-vfs_readlink_impl(struct fs *fs, struct vfs_path *p, char *buf, uptr u1, uptr u2)
+vfs_readlink_impl(struct fs *fs,
+                  struct vfs_path *p,
+                  char *buf,
+                  uptr u1,
+                  uptr u2)
 {
    if (!fs->fsops->readlink) {
       /*
@@ -474,7 +478,11 @@ int vfs_readlink(const char *path, char *buf)
 }
 
 static ALWAYS_INLINE int
-vfs_chown_impl(struct fs *fs, struct vfs_path *p, int owner, int group, bool reslink)
+vfs_chown_impl(struct fs *fs,
+               struct vfs_path *p,
+               int owner,
+               int group,
+               bool reslink)
 {
    return (owner == 0 && group == 0) ? 0 : -EPERM;
 }
