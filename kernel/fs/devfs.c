@@ -143,7 +143,7 @@ static ssize_t devfs_dir_write(fs_handle h, char *buf, size_t len)
 
 static offt devfs_dir_seek(fs_handle h, offt target_off, int whence)
 {
-   devfs_handle *dh = h;
+   struct devfs_handle *dh = h;
    devfs_data *d = dh->fs->device_data;
    struct devfs_file *pos;
    offt off = 0;
@@ -239,9 +239,9 @@ static const file_ops static_ops_devfs =
 
 static int devfs_open_root_dir(struct fs *fs, fs_handle *out)
 {
-   devfs_handle *h;
+   struct devfs_handle *h;
 
-   if (!(h = kzmalloc(sizeof(devfs_handle))))
+   if (!(h = kzmalloc(sizeof(struct devfs_handle))))
       return -ENOMEM;
 
    h->type = VFS_DIR;
@@ -255,13 +255,13 @@ static int devfs_open_root_dir(struct fs *fs, fs_handle *out)
 static int
 devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
 {
-   devfs_handle *h;
+   struct devfs_handle *h;
 
-   if (!(h = kzmalloc(sizeof(devfs_handle))))
+   if (!(h = kzmalloc(sizeof(struct devfs_handle))))
       return -ENOMEM;
 
    if (!(h->read_buf = kzmalloc(DEVFS_READ_BS))) {
-      kfree2(h, sizeof(devfs_handle));
+      kfree2(h, sizeof(struct devfs_handle));
       return -ENOMEM;
    }
 
@@ -300,29 +300,29 @@ devfs_open(vfs_path *p, fs_handle *out, int fl, mode_t mod)
 
 static void devfs_close(fs_handle h)
 {
-   devfs_handle *devh = h;
+   struct devfs_handle *devh = h;
    kfree2(devh->read_buf, DEVFS_READ_BS);
    kfree2(devh->write_buf, DEVFS_WRITE_BS);
-   kfree2(devh, sizeof(devfs_handle));
+   kfree2(devh, sizeof(struct devfs_handle));
 }
 
 static int devfs_dup(fs_handle fsh, fs_handle *dup_h)
 {
-   devfs_handle *h = fsh;
-   devfs_handle *h2;
-   h2 = kzmalloc(sizeof(devfs_handle));
+   struct devfs_handle *h = fsh;
+   struct devfs_handle *h2;
+   h2 = kzmalloc(sizeof(struct devfs_handle));
 
    if (!h2)
       return -ENOMEM;
 
-   memcpy(h2, h, sizeof(devfs_handle));
+   memcpy(h2, h, sizeof(struct devfs_handle));
 
    if (h->read_buf) {
 
       h2->read_buf = kmalloc(DEVFS_READ_BS);
 
       if (!h2->read_buf) {
-         kfree2(h2, sizeof(devfs_handle));
+         kfree2(h2, sizeof(struct devfs_handle));
          return -ENOMEM;
       }
 
@@ -335,7 +335,7 @@ static int devfs_dup(fs_handle fsh, fs_handle *dup_h)
 
       if (!h2->write_buf) {
          kfree2(h->read_buf, DEVFS_READ_BS);
-         kfree2(h2, sizeof(devfs_handle));
+         kfree2(h2, sizeof(struct devfs_handle));
          return -ENOMEM;
       }
    }
@@ -370,7 +370,7 @@ static void devfs_shared_unlock(struct fs *fs)
 
 static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
 {
-   devfs_handle *dh = h;
+   struct devfs_handle *dh = h;
    devfs_data *d = dh->fs->device_data;
    int rc = 0;
 
@@ -440,7 +440,7 @@ devfs_get_entry(struct fs *fs,
 
 static vfs_inode_ptr_t devfs_get_inode(fs_handle h)
 {
-   return ((devfs_handle *)h)->file;
+   return ((struct devfs_handle *)h)->file;
 }
 
 static int devfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)

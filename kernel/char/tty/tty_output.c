@@ -809,7 +809,7 @@ static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c)
    return -1;
 }
 
-ssize_t tty_write_int(tty *t, devfs_handle *h, char *buf, size_t size)
+ssize_t tty_write_int(tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
    /* term_write's size is limited to 2^20 - 1 */
    size = MIN(size, (size_t)MB - 1);

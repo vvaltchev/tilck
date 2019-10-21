@@ -19,7 +19,7 @@ struct devfs_file {
    tilck_inode_t inode;
 };
 
-typedef struct {
+struct devfs_handle {
 
    /* fs_handle_base */
    FS_HANDLE_BASE_FIELDS
@@ -48,7 +48,7 @@ typedef struct {
       };
    };
 
-} devfs_handle;
+};
 
 
 typedef int
