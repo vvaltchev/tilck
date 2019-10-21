@@ -43,7 +43,7 @@ dp_screen *dp_ctx;
 static bool in_debug_panel;
 static tty *dp_tty;
 static tty *saved_tty;
-static list dp_screens_list = make_list(dp_screens_list);
+static struct list dp_screens_list = make_list(dp_screens_list);
 
 static void dp_enter(void)
 {

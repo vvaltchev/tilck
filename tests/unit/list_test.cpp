@@ -29,7 +29,7 @@ extern "C" {
       return debug_list_test_get_struct(n)->data;
    }
 
-   void debug_list_test_dump(list *l) {
+   void debug_list_test_dump(struct list *l) {
 
       my_struct *pos, *temp;
 
@@ -41,7 +41,7 @@ extern "C" {
 
 using tvec = vector<const char *>;
 
-void check_list_elems(list& list_var, const tvec& exp)
+void check_list_elems(struct list& list_var, const tvec& exp)
 {
    size_t i = 0;
    my_struct *pos, *temp;
@@ -63,7 +63,7 @@ void check_list_elems(list& list_var, const tvec& exp)
 
 TEST(list_adt, initialization)
 {
-   list list_var = make_list(list_var);
+   struct list list_var = make_list(list_var);
 
    ASSERT_TRUE(list_is_empty(&list_var));
 
@@ -88,7 +88,7 @@ TEST(list_adt, add)
    ASSERT_TRUE(list_to_obj(&e1.node, my_struct, node) == &e1);
    ASSERT_TRUE(list_to_obj(&e2.node, my_struct, node) == &e2);
 
-   list list_var;
+   struct list list_var;
    list_init(&list_var);
    ASSERT_TRUE(list_is_empty(&list_var));
 
@@ -130,7 +130,7 @@ TEST(list_adt, add_tail)
    ASSERT_TRUE(list_to_obj(&e1.node, my_struct, node) == &e1);
    ASSERT_TRUE(list_to_obj(&e2.node, my_struct, node) == &e2);
 
-   list list_var;
+   struct list list_var;
    list_init(&list_var);
 
    ASSERT_TRUE(list_is_empty(&list_var));
@@ -152,7 +152,7 @@ TEST(list_adt, add_tail)
 
 TEST(list_adt, remove_elem)
 {
-   list list_var;
+   struct list list_var;
    list_init(&list_var);
 
    my_struct e1("e1"), e2("e2"), e3("e3");
@@ -180,7 +180,7 @@ TEST(list_adt, remove_elem)
 
 TEST(list_adt, add_head)
 {
-   list list_var;
+   struct list list_var;
    list_init(&list_var);
 
    my_struct e1("e1"), e2("e2"), e3("e3");

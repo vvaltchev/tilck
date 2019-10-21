@@ -28,7 +28,7 @@ static enum kb_state kb_curr_state;
 static bool key_pressed_state[2][128];
 static bool numLock = true;
 static bool capsLock = false;
-static list keypress_handlers = make_list(keypress_handlers);
+static struct list keypress_handlers = make_list(keypress_handlers);
 
 bool kb_is_pressed(u32 key)
 {

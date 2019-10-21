@@ -72,7 +72,7 @@ struct ramfs_inode {
    mode_t mode;
    size_t blocks_count;                /* count of page-size blocks */
    struct ramfs_inode *parent_dir;
-   list mappings_list;
+   struct list mappings_list;
 
    union {
 
@@ -86,8 +86,8 @@ struct ramfs_inode {
       struct {
          offt num_entries;
          ramfs_entry *entries_tree_root;
-         list entries_list;
-         list handles_list;
+         struct list entries_list;
+         struct list handles_list;
       };
 
       /* valid when type == VFS_SYMLINK */

@@ -8,7 +8,7 @@
 void wait_obj_set(wait_obj *wo,
                   enum wo_type type,
                   void *ptr,
-                  list *wait_list)
+                  struct list *wait_list)
 {
    atomic_store_explicit(&wo->__ptr, ptr, mo_relaxed);
 
@@ -46,7 +46,7 @@ void *wait_obj_reset(wait_obj *wo)
 void task_set_wait_obj(struct task *ti,
                        enum wo_type type,
                        void *ptr,
-                       list *wait_list)
+                       struct list *wait_list)
 {
    disable_preemption();
    {
@@ -102,7 +102,7 @@ mobj_waiter_set(multi_obj_waiter *w,
                 u32 index,
                 enum wo_type type,
                 void *ptr,
-                list *wait_list)
+                struct list *wait_list)
 {
    /*
     * No chaining is allowed: the waited object pointed by `ptr` is expected to

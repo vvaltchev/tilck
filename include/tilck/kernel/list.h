@@ -13,10 +13,8 @@ struct list {
    struct list_node *last;
 };
 
-typedef struct list list;
-
-STATIC_ASSERT(sizeof(list) == sizeof(struct list_node));
-STATIC_ASSERT(alignof(list) == alignof(struct list_node));
+STATIC_ASSERT(sizeof(struct list) == sizeof(struct list_node));
+STATIC_ASSERT(alignof(struct list) == alignof(struct list_node));
 
 #define make_list(name) {                                       \
    (struct list_node *)&(name),                                 \
@@ -39,15 +37,15 @@ static inline bool list_node_is_empty(struct list_node *n) {
    return n->next == n && n->prev == n;
 }
 
-static inline void list_init(list *n) {
+static inline void list_init(struct list *n) {
    list_node_init((struct list_node *)n);
 }
 
-static inline bool list_is_null(list *n) {
+static inline bool list_is_null(struct list *n) {
    return list_node_is_null((struct list_node *) n);
 }
 
-static inline bool list_is_empty(list *n) {
+static inline bool list_is_empty(struct list *n) {
    return list_node_is_empty((struct list_node *) n);
 }
 
@@ -73,12 +71,12 @@ list_add_before(struct list_node *curr, struct list_node *elem)
    list_add_after(curr->prev, elem);
 }
 
-static inline void list_add_tail(list *l, struct list_node *elem)
+static inline void list_add_tail(struct list *l, struct list_node *elem)
 {
    list_add_before((struct list_node *)l, elem);
 }
 
-static inline void list_add_head(list *l, struct list_node *elem)
+static inline void list_add_head(struct list *l, struct list_node *elem)
 {
    list_add_after((struct list_node *)l, elem);
 }

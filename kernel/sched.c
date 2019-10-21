@@ -17,9 +17,9 @@ ATOMIC(u32) disable_preemption_count = 1;
 struct task *kernel_process;
 struct process *kernel_process_pi;
 
-list runnable_tasks_list;
-list sleeping_tasks_list;
-list zombie_tasks_list;
+struct list runnable_tasks_list;
+struct list sleeping_tasks_list;
+struct list zombie_tasks_list;
 
 static struct task *tree_by_tid_root;
 

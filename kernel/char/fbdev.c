@@ -15,7 +15,7 @@
 #include <sys/mman.h>     // system header
 
 static ssize_t total_fb_pages_mapped;
-static list mappings_list = make_list(mappings_list);
+static struct list mappings_list = make_list(mappings_list);
 
 static ssize_t fb_read(fs_handle fsh, char *buf, size_t size)
 {

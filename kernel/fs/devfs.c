@@ -79,7 +79,7 @@ typedef struct {
     * just one flat directory.
     */
    enum vfs_entry_type type;
-   list files_list;
+   struct list files_list;
    tilck_inode_t inode;
 
 } devfs_directory;

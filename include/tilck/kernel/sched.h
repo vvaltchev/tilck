@@ -16,9 +16,9 @@ extern struct task *__current;
 extern struct task *kernel_process;
 extern struct process *kernel_process_pi;
 
-extern list runnable_tasks_list;
-extern list sleeping_tasks_list;
-extern list zombie_tasks_list;
+extern struct list runnable_tasks_list;
+extern struct list sleeping_tasks_list;
+extern struct list zombie_tasks_list;
 
 extern ATOMIC(u32) disable_preemption_count;
 

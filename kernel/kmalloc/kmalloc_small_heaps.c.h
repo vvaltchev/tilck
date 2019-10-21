@@ -34,8 +34,8 @@ typedef struct {
 } small_heap_node;
 
 static kmalloc_small_heaps_stats shs;
-static list small_heaps_list;
-static list avail_small_heaps_list;
+static struct list small_heaps_list;
+static struct list avail_small_heaps_list;
 
 static inline small_heap_node *alloc_small_heap_node(void)
 {
@@ -198,7 +198,7 @@ static void *small_heaps_kmalloc(size_t *size, u32 flags)
 
          /*
           * The alloc succeeded. If now the heap is full, remove it from the
-          * 'avail' list.
+          * 'avail' struct list.
           */
 
          if (was_empty) {

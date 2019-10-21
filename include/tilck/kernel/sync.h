@@ -74,7 +74,7 @@ typedef struct {
 void wait_obj_set(wait_obj *wo,
                   enum wo_type type,
                   void *ptr,
-                  list *wait_list);
+                  struct list *wait_list);
 
 void *wait_obj_reset(wait_obj *wo);
 
@@ -86,7 +86,7 @@ static inline void *wait_obj_get_ptr(wait_obj *wo)
 void task_set_wait_obj(struct task *ti,
                        enum wo_type type,
                        void *ptr,
-                       list *wait_list);
+                       struct list *wait_list);
 
 void *task_reset_wait_obj(struct task *ti);
 
@@ -98,7 +98,7 @@ void mobj_waiter_set(multi_obj_waiter *w,
                      u32 index,
                      enum wo_type type,
                      void *ptr,
-                     list *wait_list);
+                     struct list *wait_list);
 
 void kernel_sleep_on_waiter(multi_obj_waiter *w);
 
@@ -109,7 +109,7 @@ void kernel_sleep_on_waiter(multi_obj_waiter *w);
 typedef struct {
 
    int counter;
-   list wait_list;
+   struct list wait_list;
 
 } ksem;
 
@@ -133,7 +133,7 @@ typedef struct {
    struct task *owner_task;
    u32 flags;
    u32 lock_count; // Valid when the mutex is recursive
-   list wait_list;
+   struct list wait_list;
 
 #if KMUTEX_STATS_ENABLED
    u32 num_waiters;
@@ -178,7 +178,7 @@ bool kmutex_is_curr_task_holding_lock(kmutex *m);
 
 typedef struct {
 
-   list wait_list;
+   struct list wait_list;
 
 } kcond;
 

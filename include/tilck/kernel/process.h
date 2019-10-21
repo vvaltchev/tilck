@@ -40,8 +40,8 @@ struct process {
    void *initial_brk;
    kmalloc_heap *mmap_heap;
 
-   list children_list;
-   list mappings;
+   struct list children_list;
+   struct list mappings;
 
    void *proc_tty;
    bool did_call_execve;
@@ -95,7 +95,7 @@ struct task {
    struct list_node zombie_node;
    struct list_node wakeup_timer_node;
 
-   list tasks_waiting_list; /* tasks waiting this task to end */
+   struct list tasks_waiting_list; /* tasks waiting this task to end */
 
    s32 exit_wstatus;
    u32 time_slot_ticks; /*

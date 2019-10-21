@@ -16,7 +16,7 @@
 
 extern void (*irq_entry_points[16])(void);
 
-static list irq_handlers_lists[16] = {
+static struct list irq_handlers_lists[16] = {
    make_list(irq_handlers_lists[ 0]),
    make_list(irq_handlers_lists[ 1]),
    make_list(irq_handlers_lists[ 2]),

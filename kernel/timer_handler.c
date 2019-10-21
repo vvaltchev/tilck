@@ -18,7 +18,7 @@ u64 __ticks; /* ticks since the timer started */
 u32 slow_timer_irq_handler_count;
 #endif
 
-static list timer_wakeup_list = make_list(timer_wakeup_list);
+static struct list timer_wakeup_list = make_list(timer_wakeup_list);
 
 void task_set_wakeup_timer(struct task *ti, u32 ticks)
 {
