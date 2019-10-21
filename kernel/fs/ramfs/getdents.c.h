@@ -14,7 +14,7 @@ static int ramfs_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 
    list_for_each_ro_kp(rh->dpos, &inode->entries_list, lnode) {
 
-      vfs_dent64 dent = {
+      struct vfs_dent64 dent = {
          .ino        = rh->dpos->inode->ino,
          .type       = rh->dpos->inode->type,
          .name_len   = rh->dpos->name_len,

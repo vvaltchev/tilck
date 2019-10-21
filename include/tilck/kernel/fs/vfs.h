@@ -70,16 +70,15 @@ struct vfs_path {
    const char *last_comp;
 };
 
-typedef struct {
+struct vfs_dent64 {
 
    tilck_inode_t ino;
    enum vfs_entry_type type;
    u8 name_len;               /* NODE: includes the final '\0' */
    const char *name;
+};
 
-} vfs_dent64;
-
-typedef int (*get_dents_func_cb) (vfs_dent64 *, void *);
+typedef int (*get_dents_func_cb) (struct vfs_dent64 *, void *);
 
 /* fs ops */
 typedef vfs_inode_ptr_t (*func_get_inode) (fs_handle);

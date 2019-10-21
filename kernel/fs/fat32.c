@@ -351,7 +351,7 @@ fat_getdents_cb(struct fat_hdr *hdr,
    if (entname == short_name)
       fat_get_short_name(entry, short_name);
 
-   vfs_dent64 dent = {
+   struct vfs_dent64 dent = {
       .ino  = fat_entry_to_inode(hdr, entry),
       .type = entry->directory ? VFS_DIR : VFS_FILE,
       .name_len = (u8) strlen(entname) + 1,

@@ -30,7 +30,7 @@ vfs_type_to_linux_dirent_type(enum vfs_entry_type t)
    return table[t];
 }
 
-static int vfs_getdents_cb(vfs_dent64 *vde, void *arg)
+static int vfs_getdents_cb(struct vfs_dent64 *vde, void *arg)
 {
    const u16 entry_size = sizeof(struct linux_dirent64) + vde->name_len;
    struct linux_dirent64 *user_ent;

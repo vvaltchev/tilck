@@ -382,7 +382,7 @@ static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
 
    list_for_each_ro_kp(dh->dpos, &d->root_dir.files_list, dir_node) {
 
-      vfs_dent64 dent = {
+      struct vfs_dent64 dent = {
          .ino  = dh->dpos->inode,
          .type = dh->dpos->type,
          .name_len = (u8) strlen(dh->dpos->name) + 1,

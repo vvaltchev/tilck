@@ -59,7 +59,6 @@ struct driver_info {
    u16 major;
    const char *name;
    func_create_device_file create_dev_file;
-
 };
 
 
