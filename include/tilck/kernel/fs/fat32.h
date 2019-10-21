@@ -9,7 +9,7 @@
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/datetime.h>
 
-typedef struct {
+struct fat_fs_device_data {
 
    struct fat_hdr *hdr; /* vaddr of the beginning of the FAT partition */
    enum fat_type type;
@@ -18,7 +18,7 @@ typedef struct {
    struct fat_entry *root_entry;
    u32 root_cluster;
 
-} fat_fs_device_data;
+};
 
 typedef struct {
 

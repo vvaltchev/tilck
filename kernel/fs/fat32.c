@@ -19,7 +19,7 @@
  */
 
 static inline u32
-fat_get_first_cluster_generic(fat_fs_device_data *d, struct fat_entry *e)
+fat_get_first_cluster_generic(struct fat_fs_device_data *d, struct fat_entry *e)
 {
    return e == d->root_entry ? d->root_cluster : fat_get_first_cluster(e);
 }
@@ -35,7 +35,7 @@ STATIC ssize_t
 fat_read(fs_handle handle, char *buf, size_t bufsize)
 {
    fat_handle *h = (fat_handle *) handle;
-   fat_fs_device_data *d = h->fs->device_data;
+   struct fat_fs_device_data *d = h->fs->device_data;
    offt fsize = (offt)h->e->DIR_FileSize;
    offt written_to_buf = 0;
 
@@ -106,7 +106,7 @@ STATIC offt
 fat_seek_forward(fs_handle handle, offt dist)
 {
    fat_handle *h = (fat_handle *) handle;
-   fat_fs_device_data *d = h->fs->device_data;
+   struct fat_fs_device_data *d = h->fs->device_data;
    offt fsize = (offt)h->e->DIR_FileSize;
    offt moved_distance = 0;
 
@@ -170,7 +170,7 @@ fat_count_dirents_cb(struct fat_hdr *hdr,
  *
  * TODO: implement fat_count_dirents() in a more efficient way.
  */
-STATIC offt fat_count_dirents(fat_fs_device_data *d, struct fat_entry *e)
+STATIC offt fat_count_dirents(struct fat_fs_device_data *d, struct fat_entry *e)
 {
    struct fat_walk_dir_ctx walk_ctx = {0};
    offt count = 0;
@@ -364,7 +364,7 @@ fat_getdents_cb(struct fat_hdr *hdr,
 static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 {
    fat_handle *fh = h;
-   fat_fs_device_data *d = fh->fs->device_data;
+   struct fat_fs_device_data *d = fh->fs->device_data;
    struct fat_walk_dir_ctx walk_ctx = {0};
    int rc;
 
@@ -547,7 +547,7 @@ STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
 }
 
 static inline void
-fat_get_root_entry(fat_fs_device_data *d, struct fat_fs_path *fp)
+fat_get_root_entry(struct fat_fs_device_data *d, struct fat_fs_path *fp)
 {
    *fp = (struct fat_fs_path) {
       .entry            = d->root_entry,
@@ -564,7 +564,7 @@ fat_get_entry(struct fs *fs,
               ssize_t name_len,
               struct fs_path *fs_path)
 {
-   fat_fs_device_data *d = fs->device_data;
+   struct fat_fs_device_data *d = fs->device_data;
    struct fat_fs_path *fp = (struct fat_fs_path *)fs_path;
    struct fat_entry *dir_entry;
    u32 dir_cluster;
@@ -662,7 +662,7 @@ struct fs *fat_mount_ramdisk(void *vaddr, u32 flags)
    if (flags & VFS_FS_RW)
       panic("fat_mount_ramdisk: r/w mode is NOT currently supported");
 
-   fat_fs_device_data *d = kmalloc(sizeof(fat_fs_device_data));
+   struct fat_fs_device_data *d = kmalloc(sizeof(struct fat_fs_device_data));
 
    if (!d)
       return NULL;
@@ -675,7 +675,7 @@ struct fs *fat_mount_ramdisk(void *vaddr, u32 flags)
    struct fs *fs = kzmalloc(sizeof(struct fs));
 
    if (!fs) {
-      kfree2(d, sizeof(fat_fs_device_data));
+      kfree2(d, sizeof(struct fat_fs_device_data));
       return NULL;
    }
 
@@ -691,6 +691,6 @@ struct fs *fat_mount_ramdisk(void *vaddr, u32 flags)
 
 void fat_umount_ramdisk(struct fs *fs)
 {
-   kfree2(fs->device_data, sizeof(fat_fs_device_data));
+   kfree2(fs->device_data, sizeof(struct fat_fs_device_data));
    kfree2(fs, sizeof(struct fs));
 }
