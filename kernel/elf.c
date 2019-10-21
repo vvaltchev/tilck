@@ -5,6 +5,7 @@
 
 #include <tilck/kernel/elf_loader.h>
 #include <tilck/kernel/paging.h>
+#include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/errno.h>

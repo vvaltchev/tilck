@@ -5,6 +5,7 @@
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/paging.h>
+#include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/debug_utils.h>

@@ -13,6 +13,8 @@
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/syscalls.h>
+#include <tilck/kernel/paging.h>
+#include <tilck/kernel/paging_hw.h>
 
 #include <sys/prctl.h>        // system header
 #include <sys/wait.h>         // system header

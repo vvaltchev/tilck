@@ -5,6 +5,7 @@
 
 #include <tilck/kernel/arch/generic_x86/textmode_video.h>
 #include <tilck/kernel/paging.h>
+#include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/term.h>
 

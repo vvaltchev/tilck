@@ -2,6 +2,7 @@
 
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/paging_hw.h>
 
 struct user_mapping *
 process_add_user_mapping(fs_handle h,
@@ -88,7 +89,6 @@ void full_remove_user_mapping(struct process *pi, struct user_mapping *um)
 
    process_remove_user_mapping(um);
 }
-
 
 void user_vfree_and_unmap(uptr user_vaddr, size_t page_count)
 {

@@ -6,6 +6,7 @@
 
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/paging.h>
+#include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/sort.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/hal.h>

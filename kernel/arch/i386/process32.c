@@ -12,6 +12,7 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/syscalls.h>
+#include <tilck/kernel/paging_hw.h>
 
 #include "gdt_int.h"
 

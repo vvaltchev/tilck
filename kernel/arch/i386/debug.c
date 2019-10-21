@@ -8,6 +8,7 @@
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/elf_utils.h>
+#include <tilck/kernel/paging_hw.h>
 
 #include <elf.h>
 #include <multiboot.h>
