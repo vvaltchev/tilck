@@ -278,7 +278,7 @@ CREATE_FS_PATH_STRUCT(devfs_path, devfs_file *, devfs_file *);
 static int
 devfs_open(vfs_path *p, fs_handle *out, int fl, mode_t mod)
 {
-   devfs_path *dp = (devfs_path *) &p->fs_path;
+   struct devfs_path *dp = (struct devfs_path *) &p->fs_path;
 
    if (dp->inode) {
 
@@ -400,7 +400,7 @@ devfs_get_entry(struct fs *fs,
                 void *dir_inode,
                 const char *name,
                 ssize_t nl,
-                fs_path_struct *fs_path)
+                struct fs_path_struct *fs_path)
 {
    devfs_data *d = fs->device_data;
    devfs_directory *dir;
@@ -408,7 +408,7 @@ devfs_get_entry(struct fs *fs,
 
    if ((!dir_inode && !name) || is_dot_or_dotdot(name, (int)nl)) {
 
-      *fs_path = (fs_path_struct) {
+      *fs_path = (struct fs_path_struct) {
          .inode      = &d->root_dir,
          .dir_inode  = &d->root_dir,
          .dir_entry  = NULL,
@@ -428,7 +428,7 @@ devfs_get_entry(struct fs *fs,
    }
 
    if (&pos->dir_node != (list_node *) &dir->files_list) {
-      *fs_path = (fs_path_struct) {
+      *fs_path = (struct fs_path_struct) {
          .inode         = pos,
          .dir_inode     = dir,
          .dir_entry     = pos,

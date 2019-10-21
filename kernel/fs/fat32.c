@@ -501,7 +501,7 @@ fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
 {
    fat_handle *h;
    struct fs *fs = p->fs;
-   fat_fs_path *fp = (fat_fs_path *)&p->fs_path;
+   struct fat_fs_path *fp = (struct fat_fs_path *)&p->fs_path;
    struct fat_entry *e = fp->entry;
 
    if (!e) {
@@ -547,9 +547,9 @@ STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
 }
 
 static inline void
-fat_get_root_entry(fat_fs_device_data *d, fat_fs_path *fp)
+fat_get_root_entry(fat_fs_device_data *d, struct fat_fs_path *fp)
 {
-   *fp = (fat_fs_path) {
+   *fp = (struct fat_fs_path) {
       .entry            = d->root_entry,
       .parent_entry     = d->root_entry,
       .unused           = NULL,
@@ -562,10 +562,10 @@ fat_get_entry(struct fs *fs,
               void *dir_inode,
               const char *name,
               ssize_t name_len,
-              fs_path_struct *fs_path)
+              struct fs_path_struct *fs_path)
 {
    fat_fs_device_data *d = fs->device_data;
-   fat_fs_path *fp = (fat_fs_path *)fs_path;
+   struct fat_fs_path *fp = (struct fat_fs_path *)fs_path;
    struct fat_entry *dir_entry;
    u32 dir_cluster;
    struct fat_search_ctx ctx;
@@ -603,7 +603,7 @@ fat_get_entry(struct fs *fs,
       }
    }
 
-   *fp = (fat_fs_path) {
+   *fp = (struct fat_fs_path) {
       .entry         = res,
       .parent_entry  = dir_entry,
       .unused        = NULL,

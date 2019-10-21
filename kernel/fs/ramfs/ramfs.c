@@ -18,7 +18,7 @@
 
 static int ramfs_unlink(vfs_path *p)
 {
-   ramfs_path *rp = (ramfs_path *) &p->fs_path;
+   struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
    ramfs_data *d = p->fs->device_data;
    ramfs_inode *i = rp->inode;
    ramfs_inode *idir = rp->dir_inode;
@@ -125,7 +125,7 @@ ramfs_get_entry(struct fs *fs,
                 void *dir_inode,
                 const char *name,
                 ssize_t name_len,
-                fs_path_struct *fs_path)
+                struct fs_path_struct *fs_path)
 {
    ramfs_data *d = fs->device_data;
    ramfs_inode *idir = dir_inode;
@@ -133,7 +133,7 @@ ramfs_get_entry(struct fs *fs,
 
    if (!dir_inode) {
 
-      *fs_path = (fs_path_struct) {
+      *fs_path = (struct fs_path_struct) {
          .inode = d->root,
          .dir_inode = d->root,
          .dir_entry = NULL,
@@ -145,7 +145,7 @@ ramfs_get_entry(struct fs *fs,
 
    re = ramfs_dir_get_entry_by_name(idir, name, name_len);
 
-   *fs_path = (fs_path_struct) {
+   *fs_path = (struct fs_path_struct) {
       .inode      = re ? re->inode : NULL,
       .dir_inode  = idir,
       .dir_entry  = re,
@@ -230,8 +230,8 @@ static int ramfs_chmod(struct fs *fs, vfs_inode_ptr_t inode, mode_t mode)
 
 static int ramfs_rename(struct fs *fs, vfs_path *voldp, vfs_path *vnewp)
 {
-   ramfs_path *oldp = (void *)&voldp->fs_path;
-   ramfs_path *newp = (void *)&vnewp->fs_path;
+   struct ramfs_path *oldp = (void *)&voldp->fs_path;
+   struct ramfs_path *newp = (void *)&vnewp->fs_path;
    int rc;
 
    DEBUG_ONLY_UNSAFE(ramfs_data *d = fs->device_data);
@@ -283,8 +283,8 @@ static int ramfs_rename(struct fs *fs, vfs_path *voldp, vfs_path *vnewp)
 
 static int ramfs_link(struct fs *fs, vfs_path *voldp, vfs_path *vnewp)
 {
-   ramfs_path *oldp = (void *)&voldp->fs_path;
-   ramfs_path *newp = (void *)&vnewp->fs_path;
+   struct ramfs_path *oldp = (void *)&voldp->fs_path;
+   struct ramfs_path *newp = (void *)&vnewp->fs_path;
 
    if (oldp->type != VFS_FILE)
       return -EPERM;

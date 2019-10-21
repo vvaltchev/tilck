@@ -52,19 +52,19 @@ typedef void *vfs_inode_ptr_t;
    STATIC_ASSERT(sizeof(inode_type) == sizeof(vfs_inode_ptr_t));          \
    STATIC_ASSERT(sizeof(fs_entry_type) == sizeof(void *));                \
                                                                           \
-   typedef struct {                                                       \
+   struct name {                                                          \
       inode_type inode;                                                   \
       inode_type dir_inode;                                               \
       fs_entry_type dir_entry;                                            \
       enum vfs_entry_type type;                                           \
-   } name                                                                 \
+   }                                                                      \
 
 CREATE_FS_PATH_STRUCT(fs_path_struct, vfs_inode_ptr_t, void *);
 
 typedef struct {
 
    struct fs *fs;
-   fs_path_struct fs_path;
+   struct fs_path_struct fs_path;
 
    /* other fields */
    const char *last_comp;
@@ -106,7 +106,7 @@ typedef void    (*func_get_entry) (struct fs *fs,
                                    void *dir_inode,
                                    const char *name,
                                    ssize_t name_len,
-                                   fs_path_struct *fs_path);
+                                   struct fs_path_struct *fs_path);
 
 /* mixed fs/file ops */
 typedef int     (*func_stat)   (struct fs *, vfs_inode_ptr_t, struct stat64 *);
@@ -308,13 +308,13 @@ vfs_get_entry(struct fs *fs,
               vfs_inode_ptr_t inode,
               const char *name,
               ssize_t name_len,
-              fs_path_struct *fs_path)
+              struct fs_path_struct *fs_path)
 {
    fs->fsops->get_entry(fs, inode, name, name_len, fs_path);
 }
 
 static ALWAYS_INLINE void
-vfs_get_root_entry(struct fs *fs, fs_path_struct *fs_path)
+vfs_get_root_entry(struct fs *fs, struct fs_path_struct *fs_path)
 {
    vfs_get_entry(fs, NULL, NULL, 0, fs_path);
 }
