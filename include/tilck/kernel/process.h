@@ -34,7 +34,7 @@ struct process {
    int pid;                   /* process id (tgid in the Linux kernel) */
    int parent_pid;
    pdir_t *pdir;
-   list_node siblings_node;   /* nodes in parent's pi's children_list */
+   struct list_node siblings_node;   /* nodes in parent's pi's children_list */
 
    void *brk;
    void *initial_brk;
@@ -90,10 +90,10 @@ struct task {
    u32 faults_resume_mask;
 
    struct bintree_node tree_by_tid_node;
-   list_node runnable_node;
-   list_node sleeping_node;
-   list_node zombie_node;
-   list_node wakeup_timer_node;
+   struct list_node runnable_node;
+   struct list_node sleeping_node;
+   struct list_node zombie_node;
+   struct list_node wakeup_timer_node;
 
    list tasks_waiting_list; /* tasks waiting this task to end */
 

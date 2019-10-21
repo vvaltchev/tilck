@@ -6,7 +6,7 @@
 
 typedef struct {
 
-   list_node node;
+   struct list_node node;
    irq_handler_t handler;
 
 } irq_handler_node;

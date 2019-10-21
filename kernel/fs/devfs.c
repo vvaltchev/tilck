@@ -427,7 +427,7 @@ devfs_get_entry(struct fs *fs,
             break;
    }
 
-   if (&pos->dir_node != (list_node *) &dir->files_list) {
+   if (&pos->dir_node != (struct list_node *) &dir->files_list) {
       *fs_path = (struct fs_path) {
          .inode         = pos,
          .dir_inode     = dir,

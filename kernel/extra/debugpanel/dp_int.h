@@ -9,7 +9,7 @@
 
 typedef struct {
 
-   list_node node;
+   struct list_node node;
 
    int index;
    int row_off;

@@ -40,7 +40,7 @@ typedef struct {
 #define RAMFS_ENTRY_MAX_LEN (                   \
    RAMFS_ENTRY_SIZE                             \
    - sizeof(struct bintree_node)                \
-   - sizeof(list_node)                          \
+   - sizeof(struct list_node)                   \
    - sizeof(struct ramfs_inode *)               \
    - sizeof(u8)                                 \
 )
@@ -48,7 +48,7 @@ typedef struct {
 typedef struct {
 
    struct bintree_node node;
-   list_node lnode;
+   struct list_node lnode;
    struct ramfs_inode *inode;
    u8 name_len;                     /* NOTE: includes the final \0 */
    char name[RAMFS_ENTRY_MAX_LEN];
@@ -111,7 +111,7 @@ typedef struct {
 
    /* valid only if inode->type == VFS_DIR */
    struct {
-      list_node node;               /* node in inode->handles_list */
+      struct list_node node;        /* node in inode->handles_list */
       ramfs_entry *dpos;            /* current entry position */
    };
 

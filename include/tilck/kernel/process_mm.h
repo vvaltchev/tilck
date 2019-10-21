@@ -7,8 +7,8 @@
 
 struct user_mapping {
 
-   list_node pi_node;
-   list_node inode_node;
+   struct list_node pi_node;
+   struct list_node inode_node;
    struct process *pi;
 
    fs_handle h;

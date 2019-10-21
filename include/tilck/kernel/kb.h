@@ -14,7 +14,7 @@ typedef int (*keypress_func)(u32, u8);
 
 typedef struct {
 
-   list_node node;
+   struct list_node node;
    keypress_func handler;
 
 } keypress_handler_elem;

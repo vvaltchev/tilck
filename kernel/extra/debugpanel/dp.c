@@ -87,7 +87,7 @@ static void dp_exit(void)
 void dp_register_screen(dp_screen *screen)
 {
    dp_screen *pos;
-   list_node *pred = (list_node *)&dp_screens_list;
+   struct list_node *pred = (struct list_node *)&dp_screens_list;
 
    list_for_each_ro(pos, &dp_screens_list, node) {
 

@@ -31,7 +31,7 @@ typedef struct {
 
    ATOMIC(void *) __ptr;      /* pointer to the object we're waiting for */
    enum wo_type type;         /* type of the object we're waiting for */
-   list_node wait_list_node;  /* node in waited object's waiting list */
+   struct list_node wait_list_node;  /* node in waited object's waiting list */
 
 } wait_obj;
 

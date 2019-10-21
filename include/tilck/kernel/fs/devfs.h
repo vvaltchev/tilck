@@ -10,7 +10,7 @@
 typedef struct {
 
    enum vfs_entry_type type;
-   list_node dir_node;
+   struct list_node dir_node;
 
    u16 dev_major;
    u16 dev_minor;
