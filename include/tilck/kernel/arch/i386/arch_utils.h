@@ -9,7 +9,7 @@
 #include <tilck/common/arch/generic_x86/x86_utils.h>
 #include <tilck/kernel/arch/i386/asm_defs.h>
 
-struct regs {
+struct x86_regs {
    u32 kernel_resume_eip;
    u32 custom_flags;        /* custom Tilck flags */
    u32 gs, fs, es, ds;
@@ -19,11 +19,11 @@ struct regs {
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
 
-STATIC_ASSERT(SIZEOF_REGS == sizeof(struct regs));
-STATIC_ASSERT(REGS_EIP_OFF == OFFSET_OF(struct regs, eip));
-STATIC_ASSERT(REGS_USERESP_OFF == OFFSET_OF(struct regs, useresp));
+STATIC_ASSERT(SIZEOF_REGS == sizeof(regs_t));
+STATIC_ASSERT(REGS_EIP_OFF == OFFSET_OF(regs_t, eip));
+STATIC_ASSERT(REGS_USERESP_OFF == OFFSET_OF(regs_t, useresp));
 
-struct arch_task_members {
+struct x86_arch_task_members {
 
    void *ldt;
    u16 ldt_size; /* Number of entries. Valid only if ldt != NULL. */
@@ -33,12 +33,12 @@ struct arch_task_members {
    void *aligned_fpu_regs;
 };
 
-static ALWAYS_INLINE int regs_intnum(struct regs *r)
+static ALWAYS_INLINE int regs_intnum(regs_t *r)
 {
    return r->int_num;
 }
 
-static ALWAYS_INLINE void set_return_register(struct regs *r, uptr value)
+static ALWAYS_INLINE void set_return_register(regs_t *r, uptr value)
 {
    r->eax = value;
 }
@@ -55,5 +55,5 @@ static ALWAYS_INLINE uptr get_curr_stack_ptr(void)
    return esp;
 }
 
-NORETURN void context_switch(struct regs *r);
+NORETURN void context_switch(regs_t *r);
 

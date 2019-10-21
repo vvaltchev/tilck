@@ -360,7 +360,7 @@ void *syscalls[] =
    [TILCK_TESTCMD_SYSCALL] = sys_tilck_cmd,
 };
 
-void handle_syscall(struct regs *r)
+void handle_syscall(regs_t *r)
 {
    ASSERT(get_curr_task() != NULL);
    DEBUG_VALIDATE_STACK_PTR();

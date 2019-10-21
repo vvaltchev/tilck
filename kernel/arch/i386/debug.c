@@ -143,7 +143,7 @@ void dump_eflags(u32 f)
           f & EFLAGS_IOPL);
 }
 
-void dump_regs(struct regs *r)
+void dump_regs(regs_t *r)
 {
    dump_eflags(r->eflags);
 

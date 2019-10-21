@@ -211,7 +211,7 @@ static ALWAYS_INLINE bool timer_nested_irq(void)
    return false;
 }
 
-enum irq_action timer_irq_handler(struct regs *context)
+enum irq_action timer_irq_handler(regs_t *context)
 {
    if (KRN_TRACK_NESTED_INTERR)
       if (timer_nested_irq())

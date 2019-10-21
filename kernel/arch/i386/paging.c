@@ -73,7 +73,7 @@ pdir_get_page_table(pdir_t *pdir, u32 i)
 
 bool handle_potential_cow(void *context)
 {
-   struct regs *r = context;
+   regs_t *r = context;
 
    if ((r->err_code & PAGE_FAULT_FL_COW) != PAGE_FAULT_FL_COW)
       return false;
@@ -132,7 +132,7 @@ bool handle_potential_cow(void *context)
    return true;
 }
 
-static void kernel_page_fault_panic(struct regs *r, u32 vaddr, bool rw, bool p)
+static void kernel_page_fault_panic(regs_t *r, u32 vaddr, bool rw, bool p)
 {
    ptrdiff_t off = 0;
    const char *sym_name = find_sym_at_addr_safe(r->eip, &off, NULL);
@@ -144,7 +144,7 @@ static void kernel_page_fault_panic(struct regs *r, u32 vaddr, bool rw, bool p)
          r->eip, sym_name ? sym_name : "???", off);
 }
 
-void handle_page_fault_int(struct regs *r)
+void handle_page_fault_int(regs_t *r)
 {
    u32 vaddr;
    asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
@@ -193,7 +193,7 @@ void handle_page_fault_int(struct regs *r)
 }
 
 
-void handle_page_fault(struct regs *r)
+void handle_page_fault(regs_t *r)
 {
    if (in_panic()) {
 

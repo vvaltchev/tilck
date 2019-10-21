@@ -4,12 +4,12 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
+#include <tilck/kernel/hal_types.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/bintree.h>
 
 #define TIME_SLOT_TICKS (TIMER_HZ / 20)
 
-struct regs;
 struct task;
 
 extern struct task *__current;
@@ -115,7 +115,7 @@ void schedule_outside_interrupt_context(void);
 
 NORETURN void switch_to_task(struct task *ti, int curr_int);
 
-void save_current_task_state(struct regs *);
+void save_current_task_state(regs_t *);
 void account_ticks(void);
 bool need_reschedule(void);
 int create_new_pid(void);

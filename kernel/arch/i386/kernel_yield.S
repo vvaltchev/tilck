@@ -77,10 +77,10 @@ FUNC(panic_save_current_state):
    mov eax, esp
 
    mov ecx, [esp + SIZEOF_REGS]             # ecx = caller's EIP
-   mov [eax + REGS_EIP_OFF], ecx            # struct regs->eip = ecx
+   mov [eax + REGS_EIP_OFF], ecx            # regs_t->eip = ecx
 
    lea ecx, [esp + SIZEOF_REGS]
-   mov [eax + REGS_USERESP_OFF], ecx        # struct regs->useresp = ecx
+   mov [eax + REGS_USERESP_OFF], ecx        # regs_t->useresp = ecx
 
    push eax
    call panic_save_current_task_state

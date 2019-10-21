@@ -85,8 +85,8 @@ struct task {
 
    volatile ATOMIC(enum task_state) state;
 
-   struct regs *state_regs;
-   struct regs *fault_resume_regs;
+   regs_t *state_regs;
+   regs_t *fault_resume_regs;
    u32 faults_resume_mask;
 
    struct bintree_node tree_by_tid_node;
@@ -125,7 +125,7 @@ struct task {
     */
    void *what;
 
-   struct arch_task_members arch; /* arch-specific fields */
+   arch_task_members_t arch; /* arch-specific fields */
 };
 
 STATIC_ASSERT((sizeof(struct task) & ~POINTER_ALIGN_MASK) == 0);
