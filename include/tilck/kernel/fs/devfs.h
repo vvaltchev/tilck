@@ -7,7 +7,7 @@
 #define DEVFS_READ_BS   4096
 #define DEVFS_WRITE_BS  4096
 
-typedef struct {
+struct devfs_file {
 
    enum vfs_entry_type type;
    struct list_node dir_node;
@@ -17,8 +17,7 @@ typedef struct {
    const char *name;
    const file_ops *fops;
    tilck_inode_t inode;
-
-} devfs_file;
+};
 
 typedef struct {
 
@@ -30,10 +29,10 @@ typedef struct {
 
    union {
 
-      devfs_file *dpos;                /* valid only if type == VFS_DIR */
+      struct devfs_file *dpos;               /* valid only if type == VFS_DIR */
 
       struct {
-         devfs_file *file;             /* valid only if type != VFS_DIR */
+         struct devfs_file *file;            /* valid only if type != VFS_DIR */
 
          offt read_pos;
          offt write_pos;

@@ -109,7 +109,7 @@ int create_dev_file(const char *filename, u16 major, u16 minor)
       return -EINVAL;
 
    devfs_data *d = fs->device_data;
-   devfs_file *f = kmalloc(sizeof(devfs_file));
+   struct devfs_file *f = kmalloc(sizeof(struct devfs_file));
 
    if (!f)
       return -ENOMEM;
@@ -123,7 +123,7 @@ int create_dev_file(const char *filename, u16 major, u16 minor)
    int res = dinfo->create_dev_file(minor, &f->fops, &f->type);
 
    if (res < 0) {
-      kfree2(f, sizeof(devfs_file));
+      kfree2(f, sizeof(struct devfs_file));
       return res;
    }
 
@@ -145,7 +145,7 @@ static offt devfs_dir_seek(fs_handle h, offt target_off, int whence)
 {
    devfs_handle *dh = h;
    devfs_data *d = dh->fs->device_data;
-   devfs_file *pos;
+   struct devfs_file *pos;
    offt off = 0;
 
    if (target_off < 0 || whence != SEEK_SET)
@@ -180,7 +180,7 @@ static int devfs_dir_fcntl(fs_handle h, int cmd, int arg)
 
 int devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
-   devfs_file *df = i;
+   struct devfs_file *df = i;
    devfs_data *ddata = fs->device_data;
 
    bzero(statbuf, sizeof(struct stat64));
@@ -252,7 +252,8 @@ static int devfs_open_root_dir(struct fs *fs, fs_handle *out)
    return 0;
 }
 
-static int devfs_open_file(struct fs *fs, devfs_file *pos, fs_handle *out)
+static int
+devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
 {
    devfs_handle *h;
 
@@ -273,7 +274,7 @@ static int devfs_open_file(struct fs *fs, devfs_file *pos, fs_handle *out)
    return 0;
 }
 
-CREATE_FS_PATH_STRUCT(devfs_path, devfs_file *, devfs_file *);
+CREATE_FS_PATH_STRUCT(devfs_path, struct devfs_file *, struct devfs_file *);
 
 static int
 devfs_open(vfs_path *p, fs_handle *out, int fl, mode_t mod)
@@ -377,7 +378,7 @@ static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
       return -ENOTDIR;
 
    if (!dh->dpos)
-      dh->dpos = list_first_obj(&d->root_dir.files_list, devfs_file, dir_node);
+      dh->dpos = list_first_obj(&d->root_dir.files_list, struct devfs_file, dir_node);
 
    list_for_each_ro_kp(dh->dpos, &d->root_dir.files_list, dir_node) {
 
@@ -404,7 +405,7 @@ devfs_get_entry(struct fs *fs,
 {
    devfs_data *d = fs->device_data;
    devfs_directory *dir;
-   devfs_file *pos;
+   struct devfs_file *pos;
 
    if ((!dir_inode && !name) || is_dot_or_dotdot(name, (int)nl)) {
 
