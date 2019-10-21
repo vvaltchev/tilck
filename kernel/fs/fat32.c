@@ -632,7 +632,7 @@ static int fat_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
    return 1;
 }
 
-static const fs_ops static_fsops_fat =
+static const struct fs_ops static_fsops_fat =
 {
    .get_inode = fat_get_inode,
    .open = fat_open,

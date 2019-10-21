@@ -455,7 +455,7 @@ static int devfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
    return 1;
 }
 
-static const fs_ops static_fsops_devfs =
+static const struct fs_ops static_fsops_devfs =
 {
    .get_inode = devfs_get_inode,
    .open = devfs_open,

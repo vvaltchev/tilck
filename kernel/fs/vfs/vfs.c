@@ -183,7 +183,7 @@ int vfs_fcntl(fs_handle h, int cmd, int arg)
 int vfs_ftruncate(fs_handle h, offt length)
 {
    fs_handle_base *hb = (fs_handle_base *) h;
-   const fs_ops *fsops = hb->fs->fsops;
+   const struct fs_ops *fsops = hb->fs->fsops;
 
    if (!fsops->truncate)
       return -EROFS;
@@ -198,7 +198,7 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
 
    fs_handle_base *hb = (fs_handle_base *) h;
    struct fs *fs = hb->fs;
-   const fs_ops *fsops = fs->fsops;
+   const struct fs_ops *fsops = fs->fsops;
    int ret;
 
    vfs_shlock(h);
@@ -632,7 +632,7 @@ int vfs_link(const char *oldpath, const char *newpath)
 int vfs_fchmod(fs_handle h, mode_t mode)
 {
    fs_handle_base *hb = h;
-   const fs_ops *fsops = hb->fs->fsops;
+   const struct fs_ops *fsops = hb->fs->fsops;
    return fsops->chmod(hb->fs, fsops->get_inode(h), mode);
 }
 

@@ -130,7 +130,7 @@ static int test_fs_readlink(struct vfs_path *rp, char *buf)
  * Unfortunately, in C++ non-trivial designated initializers are fully not
  * supported, so we have to explicitly initialize all the members, in order!
  */
-extern const fs_ops static_fsops_testfs = {
+extern const struct fs_ops static_fsops_testfs = {
 
    .get_entry           = testfs_get_entry,
    .get_inode           = nullptr,

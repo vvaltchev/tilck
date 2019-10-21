@@ -295,7 +295,7 @@ static int ramfs_link(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vn
    return ramfs_dir_add_entry(newp->dir_inode, vnewp->last_comp, oldp->inode);
 }
 
-static const fs_ops static_fsops_ramfs =
+static const struct fs_ops static_fsops_ramfs =
 {
    .get_inode = ramfs_getinode,
    .open = ramfs_open,

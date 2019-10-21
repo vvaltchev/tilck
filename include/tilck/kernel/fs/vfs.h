@@ -145,7 +145,7 @@ typedef kcond  *(*func_get_rwe_cond) (fs_handle);
  * the overall throughput of the system (fine-grain per-directory locking is
  * pretty expensive).
  */
-typedef struct {
+struct fs_ops{
 
    func_get_entry get_entry;
    func_get_inode get_inode;
@@ -171,8 +171,7 @@ typedef struct {
    func_fslock_t fs_exunlock;
    func_fslock_t fs_shlock;
    func_fslock_t fs_shunlock;
-
-} fs_ops;
+};
 
 /* This struct is Tilck's analogue of Linux's "superblock" */
 struct fs {
@@ -183,7 +182,7 @@ struct fs {
    u32 device_id;
    u32 flags;
    void *device_data;
-   const fs_ops *fsops;
+   const struct fs_ops *fsops;
 };
 
 typedef struct {
