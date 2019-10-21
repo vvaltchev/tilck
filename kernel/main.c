@@ -124,7 +124,7 @@ static void mount_initrd(void)
 
    /* Set kernel's process `cwd` to the root folder */
    {
-      vfs_path tp;
+      struct vfs_path tp;
       struct process *pi = kernel_process_pi;
       ASSERT(pi == get_curr_task()->pi);
 

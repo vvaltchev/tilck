@@ -50,7 +50,7 @@ struct process {
    kmutex fslock;                      /* protects `handles` and `cwd` */
    mode_t umask;
 
-   vfs_path cwd;                       /* CWD as a vfs_path */
+   struct vfs_path cwd;                       /* CWD as a struct vfs_path */
 
    /* large members */
 
@@ -206,6 +206,6 @@ void init_process_lists(struct process *pi);
 void *task_temp_kernel_alloc(size_t size);
 void task_temp_kernel_free(void *ptr);
 
-void process_set_cwd2_nolock(vfs_path *tp);
-void process_set_cwd2_nolock_raw(struct process *pi, vfs_path *tp);
+void process_set_cwd2_nolock(struct vfs_path *tp);
+void process_set_cwd2_nolock_raw(struct process *pi, struct vfs_path *tp);
 void terminate_process(struct task *ti, int exit_code, int term_sig);

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static int ramfs_mkdir(vfs_path *p, mode_t mode)
+static int ramfs_mkdir(struct vfs_path *p, mode_t mode)
 {
    struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
    ramfs_data *d = p->fs->device_data;
@@ -24,7 +24,7 @@ static int ramfs_mkdir(vfs_path *p, mode_t mode)
    return rc;
 }
 
-static int ramfs_rmdir(vfs_path *p)
+static int ramfs_rmdir(struct vfs_path *p)
 {
    struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
    ramfs_data *d = p->fs->device_data;

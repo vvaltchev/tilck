@@ -53,7 +53,7 @@ getcwd_nolock(struct process *pi, char *user_buf, size_t buf_size)
  * used ONLY directly once during the initialization in main.c and during
  * fork(). For all the other cases, call process_set_cwd2_nolock().
  */
-void process_set_cwd2_nolock_raw(struct process *pi, vfs_path *tp)
+void process_set_cwd2_nolock_raw(struct process *pi, struct vfs_path *tp)
 {
    ASSERT(tp->fs != NULL);
    ASSERT(tp->fs_path.inode != NULL);
@@ -63,7 +63,7 @@ void process_set_cwd2_nolock_raw(struct process *pi, vfs_path *tp)
    pi->cwd = *tp;
 }
 
-void process_set_cwd2_nolock(vfs_path *tp)
+void process_set_cwd2_nolock(struct vfs_path *tp)
 {
    struct process *pi = get_curr_task()->pi;
    ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
@@ -83,7 +83,7 @@ void process_set_cwd2_nolock(vfs_path *tp)
 int sys_chdir(const char *user_path)
 {
    int rc = 0;
-   vfs_path p;
+   struct vfs_path p;
    struct task *curr = get_curr_task();
    struct process *pi = curr->pi;
    char *orig_path = curr->args_copybuf;

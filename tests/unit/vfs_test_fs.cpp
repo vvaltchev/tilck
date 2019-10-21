@@ -115,7 +115,7 @@ static int vfs_test_release_inode(struct fs *fs, vfs_inode_ptr_t i)
    return --e->ref_count;
 }
 
-static int test_fs_readlink(vfs_path *rp, char *buf)
+static int test_fs_readlink(struct vfs_path *rp, char *buf)
 {
    tfs_entry *e = (tfs_entry *)rp->fs_path.inode;
 

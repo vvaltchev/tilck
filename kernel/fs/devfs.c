@@ -277,7 +277,7 @@ devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
 CREATE_FS_PATH_STRUCT(devfs_path, struct devfs_file *, struct devfs_file *);
 
 static int
-devfs_open(vfs_path *p, fs_handle *out, int fl, mode_t mod)
+devfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
 {
    struct devfs_path *dp = (struct devfs_path *) &p->fs_path;
 

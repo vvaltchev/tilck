@@ -69,7 +69,7 @@ mountpoint2 *mp2_get_retained_mp_of(struct fs *target_fs)
 
 int mp2_add(struct fs *target_fs, const char *target_path)
 {
-   vfs_path p;
+   struct vfs_path p;
    int rc;
    u32 i;
 

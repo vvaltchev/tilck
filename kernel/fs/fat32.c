@@ -497,7 +497,7 @@ static const file_ops static_ops_fat =
 };
 
 STATIC int
-fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
+fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
 {
    struct fat_handle *h;
    struct fs *fs = p->fs;

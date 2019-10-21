@@ -253,7 +253,7 @@ void free_task(struct task *ti)
 
          /*
           * When we change the current directory or when we fork a process, we
-          * set a new value for the vfs_path pi->cwd which has its inode
+          * set a new value for the struct vfs_path pi->cwd which has its inode
           * retained as well as its owning fs. Here we have to release those
           * ref-counts.
           */

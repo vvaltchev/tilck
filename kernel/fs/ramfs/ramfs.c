@@ -16,7 +16,7 @@
 #include "open.c.h"
 #include "mkdir.c.h"
 
-static int ramfs_unlink(vfs_path *p)
+static int ramfs_unlink(struct vfs_path *p)
 {
    struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
    ramfs_data *d = p->fs->device_data;
@@ -158,7 +158,7 @@ static vfs_inode_ptr_t ramfs_getinode(fs_handle h)
    return ((ramfs_handle *)h)->inode;
 }
 
-static int ramfs_symlink(const char *target, vfs_path *lp)
+static int ramfs_symlink(const char *target, struct vfs_path *lp)
 {
    ramfs_data *d = lp->fs->device_data;
    ramfs_inode *n;
@@ -172,7 +172,7 @@ static int ramfs_symlink(const char *target, vfs_path *lp)
 }
 
 /* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
-static int ramfs_readlink(vfs_path *p, char *buf)
+static int ramfs_readlink(struct vfs_path *p, char *buf)
 {
    ramfs_inode *i = p->fs_path.inode;
 
@@ -228,7 +228,7 @@ static int ramfs_chmod(struct fs *fs, vfs_inode_ptr_t inode, mode_t mode)
    return rc;
 }
 
-static int ramfs_rename(struct fs *fs, vfs_path *voldp, vfs_path *vnewp)
+static int ramfs_rename(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
 {
    struct ramfs_path *oldp = (void *)&voldp->fs_path;
    struct ramfs_path *newp = (void *)&vnewp->fs_path;
@@ -281,7 +281,7 @@ static int ramfs_rename(struct fs *fs, vfs_path *voldp, vfs_path *vnewp)
    return 0;
 }
 
-static int ramfs_link(struct fs *fs, vfs_path *voldp, vfs_path *vnewp)
+static int ramfs_link(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
 {
    struct ramfs_path *oldp = (void *)&voldp->fs_path;
    struct ramfs_path *newp = (void *)&vnewp->fs_path;

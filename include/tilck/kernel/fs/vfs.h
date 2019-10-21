@@ -61,15 +61,14 @@ typedef void *vfs_inode_ptr_t;
 
 CREATE_FS_PATH_STRUCT(fs_path, vfs_inode_ptr_t, void *);
 
-typedef struct {
+struct vfs_path {
 
    struct fs *fs;
    struct fs_path fs_path;
 
    /* other fields */
    const char *last_comp;
-
-} vfs_path;
+};
 
 typedef struct {
 
@@ -86,18 +85,18 @@ typedef int (*get_dents_func_cb) (vfs_dent64 *, void *);
 typedef vfs_inode_ptr_t (*func_get_inode) (fs_handle);
 
 typedef void    (*func_close)     (fs_handle);
-typedef int     (*func_open)      (vfs_path *, fs_handle *, int, mode_t);
+typedef int     (*func_open)      (struct vfs_path *, fs_handle *, int, mode_t);
 typedef int     (*func_dup)       (fs_handle, fs_handle *);
 typedef int     (*func_getdents)  (fs_handle, get_dents_func_cb, void *);
-typedef int     (*func_unlink)    (vfs_path *p);
-typedef int     (*func_mkdir)     (vfs_path *p, mode_t);
-typedef int     (*func_rmdir)     (vfs_path *p);
-typedef int     (*func_symlink)   (const char *, vfs_path *);
-typedef int     (*func_readlink)  (vfs_path *, char *);
+typedef int     (*func_unlink)    (struct vfs_path *p);
+typedef int     (*func_mkdir)     (struct vfs_path *p, mode_t);
+typedef int     (*func_rmdir)     (struct vfs_path *p);
+typedef int     (*func_symlink)   (const char *, struct vfs_path *);
+typedef int     (*func_readlink)  (struct vfs_path *, char *);
 typedef int     (*func_chmod)     (struct fs *, vfs_inode_ptr_t, mode_t);
 typedef void    (*func_fslock_t)  (struct fs *);
 typedef int     (*func_rr_inode)  (struct fs *, vfs_inode_ptr_t);
-typedef int     (*func_2paths)    (struct fs *, vfs_path *, vfs_path *);
+typedef int     (*func_2paths)    (struct fs *, struct vfs_path *, struct vfs_path *);
 
 typedef func_2paths func_rename;
 typedef func_2paths func_link;
@@ -287,12 +286,12 @@ static inline void vfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
    fs->fsops->release_inode(fs, inode);
 }
 
-static inline void vfs_retain_inode_at(vfs_path *p)
+static inline void vfs_retain_inode_at(struct vfs_path *p)
 {
    vfs_retain_inode(p->fs, p->fs_path.inode);
 }
 
-static inline void vfs_release_inode_at(vfs_path *p)
+static inline void vfs_release_inode_at(struct vfs_path *p)
 {
    vfs_release_inode(p->fs, p->fs_path.inode);
 }
@@ -364,7 +363,7 @@ u32 mp_check_match(const char *mp, u32 lm, const char *path, u32 lp);
  */
 int
 vfs_resolve(const char *path,
-            vfs_path *rp,
+            struct vfs_path *rp,
             bool exlock,
             bool res_last_sl);
 

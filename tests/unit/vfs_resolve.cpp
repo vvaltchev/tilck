@@ -89,7 +89,7 @@ static void check_all_fs_refcounts()
    ASSERT_EQ(fs3.ref_count, 2);
 }
 
-static int resolve(const char *path, vfs_path *p, bool res_last_sl)
+static int resolve(const char *path, struct vfs_path *p, bool res_last_sl)
 {
    int rc;
 
@@ -122,7 +122,7 @@ protected:
           * That is set in a lazy way on the first vfs_resolve() call.
           * TODO: make `cwd` to be always set.
           */
-         vfs_path *tp = &get_curr_task()->pi->cwd;
+         struct vfs_path *tp = &get_curr_task()->pi->cwd;
          tp->fs = mp2_get_root();
          vfs_get_root_entry(tp->fs, &tp->fs_path);
          retain_obj(tp->fs);
@@ -161,7 +161,7 @@ class vfs_resolve_symlinks : public vfs_resolve_test { };
 TEST_F(vfs_resolve_test, basic_test)
 {
    int rc;
-   vfs_path p;
+   struct vfs_path p;
 
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
@@ -233,7 +233,7 @@ TEST_F(vfs_resolve_test, basic_test)
 TEST_F(vfs_resolve_test, corner_cases)
 {
    int rc;
-   vfs_path p;
+   struct vfs_path p;
 
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
@@ -298,7 +298,7 @@ TEST_F(vfs_resolve_test, corner_cases)
 TEST_F(vfs_resolve_test, single_dot)
 {
    int rc;
-   vfs_path p;
+   struct vfs_path p;
 
    rc = resolve("/a/.", &p, true);
    ASSERT_EQ(rc, 0);
@@ -339,7 +339,7 @@ TEST_F(vfs_resolve_test, single_dot)
 TEST_F(vfs_resolve_test, double_dot)
 {
    int rc;
-   vfs_path p;
+   struct vfs_path p;
 
    rc = resolve("/a/b/c/..", &p, true);
    ASSERT_EQ(rc, 0);
@@ -424,7 +424,7 @@ TEST_F(vfs_resolve_test, double_dot)
 TEST_F(vfs_resolve_multi_fs, basic_case)
 {
    int rc;
-   vfs_path p;
+   struct vfs_path p;
 
    /* target-fs's root without slash */
    rc = resolve("/a/b/c2", &p, true);
@@ -481,7 +481,7 @@ TEST_F(vfs_resolve_multi_fs, basic_case)
 TEST_F(vfs_resolve_multi_fs, dot_dot)
 {
    int rc;
-   vfs_path p;
+   struct vfs_path p;
 
    rc = resolve("/a/b/c2/x/y/z/..", &p, true);
    ASSERT_EQ(rc, 0);
@@ -556,7 +556,7 @@ TEST_F(vfs_resolve_multi_fs, dot_dot)
 TEST_F(vfs_resolve_multi_fs, rel_paths)
 {
    int rc;
-   vfs_path p;
+   struct vfs_path p;
    struct process *pi = get_curr_task()->pi;
 
    rc = resolve("/dev/", &p, true);
@@ -590,7 +590,7 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
 TEST_F(vfs_resolve_symlinks, basic_tests)
 {
    int rc;
-   vfs_path p;
+   struct vfs_path p;
 
    rc = resolve("/abs_s1", &p, true);
    ASSERT_EQ(rc, 0);
@@ -643,7 +643,7 @@ TEST_F(vfs_resolve_symlinks, basic_tests)
 TEST_F(vfs_resolve_symlinks, nested_symlinks)
 {
    int rc;
-   vfs_path p;
+   struct vfs_path p;
 
    rc = resolve("/a/p2", &p, true);
    ASSERT_EQ(rc, 0);
@@ -657,7 +657,7 @@ TEST_F(vfs_resolve_symlinks, nested_symlinks)
 TEST_F(vfs_resolve_symlinks, real_eloop)
 {
    int rc;
-   vfs_path p;
+   struct vfs_path p;
 
    rc = resolve("/l0", &p, true);
    ASSERT_EQ(rc, -ELOOP);
@@ -670,7 +670,7 @@ TEST_F(vfs_resolve_symlinks, real_eloop)
 TEST_F(vfs_resolve_symlinks, too_many_links_eloop)
 {
    int rc;
-   vfs_path p;
+   struct vfs_path p;
 
    /* 1 plus max nested symlinks */
    rc = resolve("/p1", &p, true);
@@ -693,7 +693,7 @@ TEST_F(vfs_resolve_symlinks, too_many_links_eloop)
 TEST_F(vfs_resolve_symlinks, cross_fs_symlinks)
 {
    int rc;
-   vfs_path p;
+   struct vfs_path p;
 
    rc = resolve("/a/linkToOtherFs1", &p, true);
    ASSERT_EQ(rc, 0);

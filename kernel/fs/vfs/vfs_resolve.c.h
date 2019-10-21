@@ -19,7 +19,7 @@ vfs_resolve_stack_pop(vfs_resolve_int_ctx *ctx)
    ctx->ss--;
 }
 
-static inline vfs_path *
+static inline struct vfs_path *
 vfs_resolve_stack_top(vfs_resolve_int_ctx *ctx)
 {
    return &ctx->paths[ctx->ss - 1];
@@ -28,7 +28,7 @@ vfs_resolve_stack_top(vfs_resolve_int_ctx *ctx)
 static int
 vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
                        const char *path,
-                       vfs_path *p)
+                       struct vfs_path *p)
 {
    const int ss = ctx->ss;
 
@@ -48,9 +48,9 @@ vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
 static void
 vfs_resolve_stack_replace_top(vfs_resolve_int_ctx *ctx,
                               const char *path,
-                              vfs_path *p)
+                              struct vfs_path *p)
 {
-   vfs_path *cp;
+   struct vfs_path *cp;
    ASSERT(ctx->ss > 0);
    cp = &ctx->paths[--ctx->ss];
 
@@ -65,7 +65,7 @@ static void
 __vfs_resolve_get_entry(vfs_inode_ptr_t idir,
                         const char *pc,
                         const char *path,
-                        vfs_path *rp,
+                        struct vfs_path *rp,
                         bool exlock)
 {
    DEBUG_VALIDATE_STACK_PTR();
@@ -90,7 +90,7 @@ __vfs_resolve_get_entry(vfs_inode_ptr_t idir,
    }
 }
 
-static void get_locked_retained_root(vfs_path *rp, bool exlock)
+static void get_locked_retained_root(struct vfs_path *rp, bool exlock)
 {
    rp->fs = mp2_get_root();
    retain_obj(rp->fs);
@@ -102,13 +102,13 @@ static void get_locked_retained_root(vfs_path *rp, bool exlock)
 static int __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl);
 
 static int
-vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, vfs_path *np)
+vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, struct vfs_path *np)
 {
    int rc;
    const char *lc = np->last_comp;
    char *symlink = ctx->sym_paths[ctx->ss - 1];
-   vfs_path *rp = vfs_resolve_stack_top(ctx);
-   vfs_path np2;
+   struct vfs_path *rp = vfs_resolve_stack_top(ctx);
+   struct vfs_path np2;
    DEBUG_ONLY_UNSAFE(int saved_ss = ctx->ss);
 
    ASSERT(np->fs_path.type == VFS_SYMLINK);
@@ -178,7 +178,7 @@ vfs_is_path_dotdot(const char *path)
 static bool
 vfs_handle_cross_fs_dotdot(vfs_resolve_int_ctx *ctx,
                            const char *path,
-                           vfs_path *np)
+                           struct vfs_path *np)
 {
    struct fs_path root_fsp;
    mountpoint2 *mp;
@@ -246,10 +246,10 @@ vfs_handle_cross_fs_dotdot(vfs_resolve_int_ctx *ctx,
 static int
 vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
                       const char *path,
-                      vfs_path *np,
+                      struct vfs_path *np,
                       bool res_symlinks)
 {
-   vfs_path *rp = vfs_resolve_stack_top(ctx);
+   struct vfs_path *rp = vfs_resolve_stack_top(ctx);
    const char *const lc = rp->last_comp;
 
    if (vfs_handle_cross_fs_dotdot(ctx, lc, np))
@@ -277,7 +277,7 @@ vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
 }
 
 static inline bool
-vfs_resolve_have_to_stop(const char *path, vfs_path *rp, int *rc)
+vfs_resolve_have_to_stop(const char *path, struct vfs_path *rp, int *rc)
 {
    if (!rp->fs_path.inode) {
 
@@ -308,14 +308,14 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
 {
    int rc = 0;
    const char *path = ctx->orig_paths[ctx->ss - 1];
-   vfs_path *rp = vfs_resolve_stack_top(ctx);
-   vfs_path np = *rp;
+   struct vfs_path *rp = vfs_resolve_stack_top(ctx);
+   struct vfs_path np = *rp;
    DEBUG_VALIDATE_STACK_PTR();
 
    if (!*path)
       return -ENOENT;
 
-   /* the vfs_path `rp` is assumed to be valid */
+   /* the struct vfs_path `rp` is assumed to be valid */
    ASSERT(rp->fs != NULL);
    ASSERT(rp->fs_path.inode != NULL);
 
@@ -343,7 +343,7 @@ __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
 }
 
 static void
-get_locked_retained_cwd(vfs_path *rp, bool exlock)
+get_locked_retained_cwd(struct vfs_path *rp, bool exlock)
 {
    struct process *pi = get_curr_task()->pi;
 
@@ -371,7 +371,7 @@ get_locked_retained_cwd(vfs_path *rp, bool exlock)
  */
 int
 vfs_resolve(const char *path,
-            vfs_path *rp,
+            struct vfs_path *rp,
             bool exlock,
             bool res_last_sl)
 {
@@ -396,7 +396,7 @@ vfs_resolve(const char *path,
    /* At the end, resolve() must use exactly 1 stack frame */
    ASSERT(ctx.ss == 1);
 
-   /* Store out the last frame in the caller-provided vfs_path */
+   /* Store out the last frame in the caller-provided struct vfs_path */
    *rp = ctx.paths[0];
 
    if (rp->fs_path.inode)
@@ -418,7 +418,7 @@ vfs_resolve(const char *path,
       /* resolve failed: release the lock and the fs */
       vfs_smart_fs_unlock(rp->fs, exlock);
       release_obj(rp->fs);
-      bzero(rp, sizeof(vfs_path));
+      bzero(rp, sizeof(struct vfs_path));
    }
 
    return rc;

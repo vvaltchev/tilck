@@ -82,7 +82,7 @@ static int ramfs_open_existing_checks(int fl, ramfs_inode *i)
 }
 
 static int
-ramfs_open(vfs_path *p, fs_handle *out, int fl, mode_t mod)
+ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
 {
    struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
    ramfs_data *d = p->fs->device_data;
