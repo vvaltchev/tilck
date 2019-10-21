@@ -98,7 +98,8 @@
       "inodes.c.h": "c",
       "atomics.h": "c",
       "cpu_features.h": "c",
-      "typeinfo": "cpp"
+      "typeinfo": "cpp",
+      "arch_utils.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }

@@ -4,6 +4,7 @@
 #define __TILCK_HAL__
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/hal_types.h>
 
 #if defined(__i386__) && !defined(__x86_64__)
 

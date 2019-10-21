@@ -24,8 +24,6 @@
 #define KERNEL_PA_TO_VA(pa) ((void *) ((uptr)(pa) + KERNEL_BASE_VA))
 #define KERNEL_VA_TO_PA(va) ((uptr)(va) - KERNEL_BASE_VA)
 
-typedef struct pdir_t pdir_t;
-
 void init_paging();
 bool handle_potential_cow(void *r);
 
