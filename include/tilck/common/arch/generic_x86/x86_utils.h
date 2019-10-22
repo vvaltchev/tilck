@@ -253,7 +253,7 @@ static ALWAYS_INLINE void enable_interrupts(const uptr *const var)
 /*
  * Invalidates the TLB entry used for resolving the page containing 'vaddr'.
  */
-static ALWAYS_INLINE void invalidate_page(uptr vaddr)
+static ALWAYS_INLINE void invalidate_page_hw(uptr vaddr)
 {
    asmVolatile("invlpg (%0)"
                : /* no output */

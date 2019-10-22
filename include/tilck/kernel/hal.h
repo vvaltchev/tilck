@@ -33,6 +33,9 @@
 
 #endif
 
+STATIC_ASSERT(ARCH_TASK_MEMBERS_SIZE == sizeof(arch_task_members_t));
+STATIC_ASSERT(ARCH_TASK_MEMBERS_ALIGN == alignof(arch_task_members_t));
+
 void reboot();
 void init_segmentation(void);
 void init_cpu_exception_handling(void);
@@ -50,3 +53,5 @@ void on_first_pdir_update(void);
 
 bool allocate_fpu_regs(arch_task_members_t *arch_fields);
 void copy_main_tss_on_regs(regs_t *ctx);
+
+#define get_arch_fields(ti) ((arch_task_members_t *)(ti)->arch_fields)

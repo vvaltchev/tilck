@@ -4,6 +4,7 @@
 #include <tilck/common/string_util.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/hal.h>
 
 #include "gdt_int.h"
 

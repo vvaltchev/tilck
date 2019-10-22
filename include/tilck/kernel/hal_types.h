@@ -12,11 +12,17 @@
    typedef struct x86_regs regs_t;
    typedef struct x86_arch_task_members arch_task_members_t;
 
+   #define ARCH_TASK_MEMBERS_SIZE   20
+   #define ARCH_TASK_MEMBERS_ALIGN   4
+
 #elif defined(__x86_64__)
 
    typedef void *pdir_t;
    typedef struct x86_64_regs regs_t;
    typedef struct x86_64_arch_task_members arch_task_members_t;
+
+   #define ARCH_TASK_MEMBERS_SIZE    8
+   #define ARCH_TASK_MEMBERS_ALIGN   8
 
 #else
 
@@ -33,3 +39,4 @@ enum irq_action {
 
 typedef void (*soft_int_handler_t)(regs_t *);
 typedef enum irq_action (*irq_handler_t)(regs_t *);
+

@@ -9,13 +9,13 @@
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/irq.h>
-#include <tilck/kernel/hal.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/signal.h>
+#include <tilck/kernel/hal_types.h>
 
 STATIC_ASSERT((KERNEL_STACK_SIZE % PAGE_SIZE) == 0);
 STATIC_ASSERT(((IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE) % PAGE_SIZE) == 0);
@@ -125,20 +125,11 @@ struct task {
     */
    void *what;
 
-   arch_task_members_t arch; /* arch-specific fields */
+   char arch_fields[ARCH_TASK_MEMBERS_SIZE] ALIGNED_AT(ARCH_TASK_MEMBERS_ALIGN);
 };
 
 STATIC_ASSERT((sizeof(struct task) & ~POINTER_ALIGN_MASK) == 0);
 STATIC_ASSERT((sizeof(struct process) & ~POINTER_ALIGN_MASK) == 0);
-
-#ifdef __i386__
-STATIC_ASSERT(
-   OFFSET_OF(struct task, fault_resume_regs) == TI_F_RESUME_RS_OFF
-);
-STATIC_ASSERT(
-   OFFSET_OF(struct task, faults_resume_mask) == TI_FAULTS_MASK_OFF
-);
-#endif
 
 static ALWAYS_INLINE struct task *
 get_process_task(struct process *pi)

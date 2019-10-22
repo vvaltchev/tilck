@@ -70,6 +70,7 @@ uptr get_mapping(pdir_t *pdir, void *vaddr);
 pdir_t *pdir_clone(pdir_t *pdir);
 pdir_t *pdir_deep_clone(pdir_t *pdir);
 void pdir_destroy(pdir_t *pdir);
+void invalidate_page(uptr vaddr);
 
 // Temporary function, until get/set page flags is made available.
 void set_page_rw(pdir_t *pdir, void *vaddr, bool rw);

@@ -72,6 +72,11 @@ pdir_get_page_table(pdir_t *pdir, u32 i)
    return KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 }
 
+void invalidate_page(uptr vaddr)
+{
+   invalidate_page_hw(vaddr);
+}
+
 bool handle_potential_cow(void *context)
 {
    regs_t *r = context;
@@ -98,7 +103,7 @@ bool handle_potential_cow(void *context)
       /* This page is not shared anymore. No need for copying it. */
       pt->pages[page_table_index].rw = true;
       pt->pages[page_table_index].avail = 0;
-      invalidate_page(vaddr);
+      invalidate_page_hw(vaddr);
       return true;
    }
 
@@ -126,7 +131,7 @@ bool handle_potential_cow(void *context)
    pt->pages[page_table_index].rw = true;
    pt->pages[page_table_index].avail = 0;
 
-   invalidate_page(vaddr);
+   invalidate_page_hw(vaddr);
 
    // Copy back the page.
    memcpy(page_vaddr, page_size_buf, PAGE_SIZE);
@@ -245,7 +250,7 @@ void set_page_rw(pdir_t *pdir, void *vaddrp, bool rw)
    pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
    ASSERT(KERNEL_VA_TO_PA(pt) != 0);
    pt->pages[page_table_index].rw = rw;
-   invalidate_page(vaddr);
+   invalidate_page_hw(vaddr);
 }
 
 static inline int
@@ -275,7 +280,7 @@ __unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe, bool permissive)
       pt->pages[page_table_index].pageAddr << PAGE_SHIFT;
 
    pt->pages[page_table_index].raw = 0;
-   invalidate_page(vaddr);
+   invalidate_page_hw(vaddr);
 
    if (!pf_ref_count_dec(paddr) && free_pageframe) {
       ASSERT(paddr != KERNEL_VA_TO_PA(zero_page));
@@ -385,7 +390,7 @@ map_page_int(pdir_t *pdir, void *vaddrp, uptr paddr, u32 flags)
 
    pt->pages[page_table_index].raw = PG_PRESENT_BIT | flags | paddr;
    pf_ref_count_inc(paddr);
-   invalidate_page(vaddr);
+   invalidate_page_hw(vaddr);
    return 0;
 }
 
@@ -751,7 +756,7 @@ static void set_big_4mb_page_pat_wc(pdir_t *pdir, void *vaddrp)
    e->big_4mb_page.cd = 1;
    e->big_4mb_page.wt = 1;
 
-   invalidate_page(vaddr);
+   invalidate_page_hw(vaddr);
 }
 
 static void set_4kb_page_pat_wc(pdir_t *pdir, void *vaddrp)
@@ -772,7 +777,7 @@ static void set_4kb_page_pat_wc(pdir_t *pdir, void *vaddrp)
    pt->pages[page_table_index].cd = 1;
    pt->pages[page_table_index].wt = 1;
 
-   invalidate_page(vaddr);
+   invalidate_page_hw(vaddr);
 }
 
 void set_pages_pat_wc(pdir_t *pdir, void *vaddr, size_t size)

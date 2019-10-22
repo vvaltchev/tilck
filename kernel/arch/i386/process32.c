@@ -21,6 +21,13 @@ void soft_interrupt_resume(void);
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
 
+STATIC_ASSERT(
+   OFFSET_OF(struct task, fault_resume_regs) == TI_F_RESUME_RS_OFF
+);
+STATIC_ASSERT(
+   OFFSET_OF(struct task, faults_resume_mask) == TI_FAULTS_MASK_OFF
+);
+
 void task_info_reset_kernel_stack(struct task *ti)
 {
    uptr bottom = (uptr)ti->kernel_stack + KERNEL_STACK_SIZE - 1;
@@ -333,7 +340,7 @@ void set_current_task_in_user_mode(void)
 
 static inline bool is_fpu_enabled_for_task(struct task *ti)
 {
-   return ti->arch.aligned_fpu_regs &&
+   return get_arch_fields(ti)->aligned_fpu_regs &&
           (ti->state_regs->custom_flags & REGS_FL_FPU_ENABLED);
 }
 
@@ -420,12 +427,14 @@ NORETURN void switch_to_task(struct task *ti, int curr_int)
 
    if (!is_kernel_thread(ti)) {
 
+      arch_task_members_t *arch = get_arch_fields(ti);
+
       /* Switch the page directory only if really necessary */
       if (get_curr_pdir() != ti->pi->pdir)
          set_curr_pdir(ti->pi->pdir);
 
-      if (ti->arch.ldt)
-         load_ldt(ti->arch.ldt_index_in_gdt, ti->arch.ldt_size);
+      if (arch->ldt)
+         load_ldt(arch->ldt_index_in_gdt, arch->ldt_size);
 
       if (is_fpu_enabled_for_task(ti)) {
          hw_fpu_enable();
@@ -504,17 +513,19 @@ int sys_set_tid_address(int *tidptr)
 bool
 arch_specific_new_task_setup(struct task *ti, struct task *parent)
 {
+   arch_task_members_t *arch = get_arch_fields(ti);
+
    if (LIKELY(parent != NULL)) {
-      memcpy(&ti->arch, &parent->arch, sizeof(ti->arch));
+      memcpy(&ti->arch_fields, &parent->arch_fields, sizeof(ti->arch_fields));
    }
 
-   ti->arch.aligned_fpu_regs = NULL;
-   ti->arch.fpu_regs_size = 0;
+   arch->aligned_fpu_regs = NULL;
+   arch->fpu_regs_size = 0;
 
 #if FORK_NO_COW
 
    if (LIKELY(!is_kernel_thread(ti))) {
-      if (!allocate_fpu_regs(&ti->arch))
+      if (!allocate_fpu_regs(arch))
          return false; // out-of-memory
    }
 
@@ -522,12 +533,12 @@ arch_specific_new_task_setup(struct task *ti, struct task *parent)
 
    if (LIKELY(parent != NULL)) {
 
-      if (ti->arch.ldt)
-         gdt_entry_inc_ref_count(ti->arch.ldt_index_in_gdt);
+      if (arch->ldt)
+         gdt_entry_inc_ref_count(arch->ldt_index_in_gdt);
 
-      for (u32 i = 0; i < ARRAY_SIZE(ti->arch.gdt_entries); i++)
-         if (ti->arch.gdt_entries[i])
-            gdt_entry_inc_ref_count(ti->arch.gdt_entries[i]);
+      for (u32 i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++)
+         if (arch->gdt_entries[i])
+            gdt_entry_inc_ref_count(arch->gdt_entries[i]);
    }
 
    ti->pi->set_child_tid = NULL;
@@ -536,21 +547,23 @@ arch_specific_new_task_setup(struct task *ti, struct task *parent)
 
 void arch_specific_free_task(struct task *ti)
 {
-   if (ti->arch.ldt) {
-      gdt_clear_entry(ti->arch.ldt_index_in_gdt);
-      ti->arch.ldt = NULL;
+   arch_task_members_t *arch = get_arch_fields(ti);
+
+   if (arch->ldt) {
+      gdt_clear_entry(arch->ldt_index_in_gdt);
+      arch->ldt = NULL;
    }
 
-   for (u32 i = 0; i < ARRAY_SIZE(ti->arch.gdt_entries); i++) {
-      if (ti->arch.gdt_entries[i]) {
-         gdt_clear_entry(ti->arch.gdt_entries[i]);
-         ti->arch.gdt_entries[i] = 0;
+   for (u32 i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++) {
+      if (arch->gdt_entries[i]) {
+         gdt_clear_entry(arch->gdt_entries[i]);
+         arch->gdt_entries[i] = 0;
       }
    }
 
-   aligned_kfree2(ti->arch.aligned_fpu_regs, ti->arch.fpu_regs_size);
-   ti->arch.aligned_fpu_regs = NULL;
-   ti->arch.fpu_regs_size = 0;
+   aligned_kfree2(arch->aligned_fpu_regs, arch->fpu_regs_size);
+   arch->aligned_fpu_regs = NULL;
+   arch->fpu_regs_size = 0;
 }
 
 /* General protection fault handler */

@@ -60,6 +60,7 @@ void cmos_read_datetime(struct datetime *out)
    memset(out, 0, sizeof(*out));
 }
 
+void invalidate_page() {}
 void init_serial_port() { }
 void serial_write() { }
 void handle_fault() { }
