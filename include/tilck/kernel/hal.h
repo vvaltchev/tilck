@@ -6,41 +6,32 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/hal_types.h>
 
-#if defined(__i386__) && !defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__)
 
    #define __arch__x86__
 
    #include <tilck/common/arch/generic_x86/x86_utils.h>
    #include <tilck/common/arch/generic_x86/cpu_features.h>
-   #include <tilck/kernel/arch/i386/asm_defs.h>
-   #include <tilck/kernel/arch/i386/arch_utils.h>
-   #include <tilck/kernel/arch/i386/tss.h>
    #include <tilck/kernel/arch/generic_x86/fpu_memcpy.h>
+   #include <tilck/kernel/arch/generic_x86/arch_ints.h>
 
-#elif defined(__x86_64__)
+   #if defined(__x86_64__)
 
-   #define __arch__x86__
+      #include <tilck/kernel/arch/x86_64/arch_utils.h>
 
-   #include <tilck/common/arch/generic_x86/x86_utils.h>
-   #include <tilck/common/arch/generic_x86/cpu_features.h>
-   #include <tilck/kernel/arch/x86_64/arch_utils.h>
-   #include <tilck/kernel/arch/generic_x86/fpu_memcpy.h>
+   #else
+
+      #include <tilck/kernel/arch/i386/asm_defs.h>
+      #include <tilck/kernel/arch/i386/arch_utils.h>
+      #include <tilck/kernel/arch/i386/tss.h>
+
+   #endif
 
 #else
 
    #error Unsupported architecture.
 
 #endif
-
-enum irq_action {
-
-   IRQ_UNHANDLED = -1,         /* the irq was not handled at all */
-   IRQ_FULLY_HANDLED = 0,      /* no more work required */
-   IRQ_REQUIRES_BH = 1         /* requires a botton half (tasklet) to run */
-};
-
-typedef void (*soft_int_handler_t)(regs_t *);
-typedef enum irq_action (*irq_handler_t)(regs_t *);
 
 void reboot();
 void init_segmentation(void);

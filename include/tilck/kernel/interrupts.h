@@ -1,15 +1,14 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-#include <tilck/kernel/hal.h>
 #include <tilck/kernel/list.h>
+#include <tilck/kernel/hal_types.h>
 
 struct irq_handler_node {
 
    struct list_node node;
    irq_handler_t handler;
 };
-
 
 void set_fault_handler(int fault, void *ptr);
 void end_fault_handler_state(void);
@@ -37,27 +36,3 @@ static inline void nested_interrupts_drop_top_syscall(void) { }
 static inline void panic_dump_nested_interrupts(void) { }
 static inline void check_in_no_other_irq_than_timer(void) { }
 #endif
-
-// NOTE: this function is x86-dependent
-static ALWAYS_INLINE int int_to_irq(int int_num)
-{
-   return int_num >= 32 ? int_num - 32 : -1;
-}
-
-// NOTE: this function is x86-dependent
-static ALWAYS_INLINE bool is_irq(int int_num)
-{
-   return int_num >= 32 && int_num != SYSCALL_SOFT_INTERRUPT;
-}
-
-// NOTE: this function is x86-dependent
-static ALWAYS_INLINE bool is_timer_irq(int int_num)
-{
-   return int_to_irq(int_num) == X86_PC_TIMER_IRQ;
-}
-
-// NOTE: this function is x86-dependent
-static ALWAYS_INLINE bool is_fault(int int_num)
-{
-   return IN_RANGE(int_num, 0, 32);
-}
