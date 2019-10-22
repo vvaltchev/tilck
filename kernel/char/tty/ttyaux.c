@@ -50,10 +50,10 @@ static bool ttyaux_read_ready(fs_handle h)
 
 static int
 ttyaux_create_device_file(int minor,
-                          const file_ops **fops,
+                          const struct file_ops **fops,
                           enum vfs_entry_type *t)
 {
-   static const file_ops static_ops_ttyaux = {
+   static const struct file_ops static_ops_ttyaux = {
 
       .read = ttyaux_read,
       .write = ttyaux_write,

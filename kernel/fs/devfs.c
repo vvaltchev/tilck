@@ -222,7 +222,7 @@ int devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
    return 0;
 }
 
-static const file_ops static_ops_devfs =
+static const struct file_ops static_ops_devfs =
 {
    .read = devfs_dir_read,
    .write = devfs_dir_write,

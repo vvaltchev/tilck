@@ -483,7 +483,7 @@ STATIC int fat_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
-static const file_ops static_ops_fat =
+static const struct file_ops static_ops_fat =
 {
    .read = fat_read,
    .seek = fat_seek,

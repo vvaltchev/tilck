@@ -115,9 +115,9 @@ static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
 }
 
 static int
-create_fb_device(int minor, const file_ops **fops_ref, enum vfs_entry_type *t)
+create_fb_device(int minor, const struct file_ops **fops_ref, enum vfs_entry_type *t)
 {
-   static const file_ops static_ops_fb = {
+   static const struct file_ops static_ops_fb = {
       .read = fb_read,
       .write = fb_write,
       .ioctl = fb_ioctl,

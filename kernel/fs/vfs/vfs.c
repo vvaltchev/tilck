@@ -647,7 +647,7 @@ int vfs_fchmod(fs_handle h, mode_t mode)
 int vfs_mmap(struct user_mapping *um, bool register_only)
 {
    fs_handle_base *hb = um->h;
-   const file_ops *fops = hb->fops;
+   const struct file_ops *fops = hb->fops;
 
    if (!fops->mmap)
       return -ENODEV;
@@ -659,7 +659,7 @@ int vfs_mmap(struct user_mapping *um, bool register_only)
 int vfs_munmap(fs_handle h, void *vaddr, size_t len)
 {
    fs_handle_base *hb = h;
-   const file_ops *fops = hb->fops;
+   const struct file_ops *fops = hb->fops;
 
    if (!fops->munmap)
       return -ENODEV;
@@ -671,7 +671,7 @@ int vfs_munmap(fs_handle h, void *vaddr, size_t len)
 bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw)
 {
    fs_handle_base *hb = h;
-   const file_ops *fops = hb->fops;
+   const struct file_ops *fops = hb->fops;
 
    if (!fops->handle_fault)
       return false;

@@ -15,7 +15,7 @@ struct devfs_file {
    u16 dev_major;
    u16 dev_minor;
    const char *name;
-   const file_ops *fops;
+   const struct file_ops *fops;
    tilck_inode_t inode;
 };
 
@@ -52,7 +52,7 @@ struct devfs_handle {
 
 
 typedef int
-(*func_create_device_file)(int, const file_ops **, enum vfs_entry_type *);
+(*func_create_device_file)(int, const struct file_ops **, enum vfs_entry_type *);
 
 struct driver_info {
 

@@ -188,7 +188,7 @@ struct fs {
    const struct fs_ops *fsops;
 };
 
-typedef struct {
+struct file_ops {
 
    /* mandatory */
    func_read read;
@@ -215,8 +215,7 @@ typedef struct {
    func_hlock_t exunlock;
    func_hlock_t shlock;
    func_hlock_t shunlock;
-
-} file_ops;
+};
 
 /*
  * Each fs_handle struct should contain at its beginning the fields of the
@@ -227,8 +226,8 @@ typedef struct {
  */
 
 #define FS_HANDLE_BASE_FIELDS    \
-   struct fs *fs;               \
-   const file_ops *fops;         \
+   struct fs *fs;                \
+   const struct file_ops *fops;  \
    int fd_flags;                 \
    int fl_flags;                 \
    offt pos;                        /* file: offset, dir: opaque entry index */
