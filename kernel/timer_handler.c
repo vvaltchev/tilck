@@ -20,6 +20,19 @@ u32 slow_timer_irq_handler_count;
 
 static struct list timer_wakeup_list = make_list(timer_wakeup_list);
 
+u64 get_ticks(void)
+{
+   u64 curr_ticks;
+   uptr var;
+
+   disable_interrupts(&var);
+   {
+      curr_ticks = __ticks;
+   }
+   enable_interrupts(&var);
+   return curr_ticks;
+}
+
 void task_set_wakeup_timer(struct task *ti, u32 ticks)
 {
    uptr var;

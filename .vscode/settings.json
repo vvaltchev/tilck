@@ -101,7 +101,11 @@
       "typeinfo": "cpp",
       "arch_utils.h": "c",
       "irq.h": "c",
-      "asm_defs.h": "c"
+      "asm_defs.h": "c",
+      "datetime.h": "c",
+      "user.h": "c",
+      "errno.h": "c",
+      "timer.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }

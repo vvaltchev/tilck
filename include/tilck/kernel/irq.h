@@ -3,7 +3,7 @@
 #pragma once
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/kernel/hal.h>
+#include <tilck/kernel/hal_types.h>
 #include <tilck/kernel/interrupts.h>
 
 void init_irq_handling();
