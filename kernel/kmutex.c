@@ -3,6 +3,7 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/irq.h>
 
 bool kmutex_is_curr_task_holding_lock(struct kmutex *m)
 {

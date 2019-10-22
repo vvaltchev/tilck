@@ -8,7 +8,6 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/paging.h>
-#include <tilck/kernel/irq.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/bintree.h>
@@ -17,8 +16,9 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/hal_types.h>
 
-STATIC_ASSERT((KERNEL_STACK_SIZE % PAGE_SIZE) == 0);
-STATIC_ASSERT(((IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE) % PAGE_SIZE) == 0);
+STATIC_ASSERT(IS_PAGE_ALIGNED(KERNEL_STACK_SIZE));
+STATIC_ASSERT(IS_PAGE_ALIGNED(IO_COPYBUF_SIZE));
+STATIC_ASSERT(IS_PAGE_ALIGNED(ARGS_COPYBUF_SIZE));
 
 struct kernel_alloc {
 
