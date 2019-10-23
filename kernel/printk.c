@@ -249,7 +249,7 @@ int snprintk(char *buf, size_t size, const char *fmt, ...)
    return written;
 }
 
-typedef struct {
+struct ringbuf_stat {
 
    union {
 
@@ -263,11 +263,10 @@ typedef struct {
 
       ATOMIC(u32) raw;
    };
-
-} ringbuf_stat;
+};
 
 static char printk_rbuf[1024];
-static volatile ringbuf_stat printk_rbuf_stat;
+static volatile struct ringbuf_stat printk_rbuf_stat;
 
 /*
  * NOTE: the ring buf cannot be larger than 1024 elems because the fields
@@ -302,7 +301,7 @@ static void printk_direct_flush(const char *buf, size_t size, u8 color)
 
 void printk_flush_ringbuf(void)
 {
-   ringbuf_stat cs, ns;
+   struct ringbuf_stat cs, ns;
 
    char minibuf[80];
    u32 to_read = 0;
@@ -347,7 +346,7 @@ static void printk_append_to_ringbuf(const char *buf, size_t size)
 {
    static const char err_msg[] = "{_DROPPED_}\n";
 
-   ringbuf_stat cs, ns;
+   struct ringbuf_stat cs, ns;
 
    do {
       cs = printk_rbuf_stat;
@@ -430,7 +429,7 @@ void vprintk(const char *fmt, va_list args)
 
    disable_preemption();
    {
-      ringbuf_stat cs, ns;
+      struct ringbuf_stat cs, ns;
 
       do {
          cs = printk_rbuf_stat;
