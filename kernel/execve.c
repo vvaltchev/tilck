@@ -21,7 +21,7 @@ static const char *const default_env[] =
    NULL,
 };
 
-typedef struct {
+struct execve_ctx {
 
    struct task *curr_user_task;
    const char *const *env;
@@ -29,11 +29,10 @@ typedef struct {
 
    char hdr_stack[MAX_SCRIPT_REC + 1][ELF_RAW_HEADER_SIZE];
    const char *argv_stack[MAX_SCRIPT_REC][USERAPP_MAX_ARGS_COUNT];
-
-} execve_ctx;
+};
 
 static int
-do_execve_int(execve_ctx *ctx, const char *path, const char *const *argv);
+do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv);
 
 static int
 execve_get_path(const char *user_path, char **path_ref)
@@ -113,7 +112,7 @@ execve_prepare_process(struct process *pi, void *brk, const char *path)
 }
 
 static inline int
-execve_handle_script(execve_ctx *ctx, const char *const *argv)
+execve_handle_script(struct execve_ctx *ctx, const char *const *argv)
 {
    const char **new_argv = ctx->argv_stack[ctx->reclvl];
    char *hdr = ctx->hdr_stack[ctx->reclvl];
@@ -163,7 +162,7 @@ execve_handle_script(execve_ctx *ctx, const char *const *argv)
 }
 
 static int
-do_execve_int(execve_ctx *ctx, const char *path, const char *const *argv)
+do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
 {
    int rc;
    pdir_t *pdir = NULL;
@@ -237,8 +236,8 @@ do_execve(struct task *curr_user_task,
 {
    struct task *ti = get_curr_task();
    const char *const default_argv[] = { path, NULL };
-   execve_ctx *ctx = (void *) ti->io_copybuf + MAX_PATH;
-   STATIC_ASSERT(IO_COPYBUF_SIZE > MAX_PATH + sizeof(execve_ctx));
+   struct execve_ctx *ctx = (void *) ti->io_copybuf + MAX_PATH;
+   STATIC_ASSERT(IO_COPYBUF_SIZE > MAX_PATH + sizeof(struct execve_ctx));
 
    ctx->curr_user_task = curr_user_task;
    ctx->env = env ? env : default_env;
