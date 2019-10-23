@@ -181,7 +181,7 @@ vfs_handle_cross_fs_dotdot(vfs_resolve_int_ctx *ctx,
                            struct vfs_path *np)
 {
    struct fs_path root_fsp;
-   mountpoint2 *mp;
+   struct mountpoint2 *mp;
 
    if (!vfs_is_path_dotdot(path))
       return false;

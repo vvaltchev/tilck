@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 static kmutex mp2_mutex = STATIC_KMUTEX_INIT(mp2_mutex, 0);
-static mountpoint2 mps2[MAX_MOUNTPOINTS];
+static struct mountpoint2 mps2[MAX_MOUNTPOINTS];
 static struct fs *mp2_root;
 
 int mp2_init(struct fs *root_fs)
@@ -47,10 +47,10 @@ struct fs *mp2_get_retained_at(struct fs *host_fs, vfs_inode_ptr_t inode)
    return ret;
 }
 
-mountpoint2 *mp2_get_retained_mp_of(struct fs *target_fs)
+struct mountpoint2 *mp2_get_retained_mp_of(struct fs *target_fs)
 {
    uptr i;
-   mountpoint2 *res = NULL;
+   struct mountpoint2 *res = NULL;
 
    kmutex_lock(&mp2_mutex);
    {
@@ -123,7 +123,7 @@ int mp2_add(struct fs *target_fs, const char *target_path)
 
       /* we've found a free slot */
 
-      mps2[i] = (mountpoint2) {
+      mps2[i] = (struct mountpoint2) {
          .host_fs = p.fs,
          .host_fs_inode = p.fs_path.inode,
          .target_fs = target_fs,

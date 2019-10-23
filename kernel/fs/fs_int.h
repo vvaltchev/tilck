@@ -3,15 +3,14 @@
 #pragma once
 #include <tilck/kernel/fs/vfs.h>
 
-typedef struct {
+struct mountpoint2 {
 
    REF_COUNTED_OBJECT;
 
-   struct fs *host_fs;
    vfs_inode_ptr_t host_fs_inode;
+   struct fs *host_fs;
    struct fs *target_fs;
-
-} mountpoint2;
+};
 
 #define RESOLVE_STACK_SIZE       4
 
@@ -22,7 +21,7 @@ typedef struct {
                                                     false -> use shlock */
 
    const char *orig_paths[RESOLVE_STACK_SIZE];   /* original paths stack */
-   struct vfs_path paths[RESOLVE_STACK_SIZE];           /* vfs paths stack */
+   struct vfs_path paths[RESOLVE_STACK_SIZE];    /* vfs paths stack */
    char sym_paths[RESOLVE_STACK_SIZE][MAX_PATH]; /* symlinks paths stack */
 
 } vfs_resolve_int_ctx;
