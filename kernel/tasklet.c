@@ -43,7 +43,7 @@ bool any_tasklets_to_run(u32 tn)
    if (!t)
       return false;
 
-   return !safe_ringbuf_is_empty(&t->safe_ringbuf);
+   return !safe_ringbuf_is_empty(&t->rb);
 }
 
 bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
@@ -68,7 +68,7 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 
    /*
     * Trying to enqueue a tasklet from the same tasklet thread can cause
-    * a deadlock when the safe_ringbuf is full if the caller waits in a loop for
+    * a deadlock when the ringbuf is full if the caller waits in a loop for
     * the enqueue to succeed: the runner function won't get the control back
     * until it gets the control to execute a tasklet and, clearly, this is a
     * contradiction, leading to an endless loop. Exception: if we're running
@@ -89,7 +89,7 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 #endif
 
    success =
-      safe_ringbuf_write_elem_ex(&t->safe_ringbuf, &new_tasklet, &was_empty);
+      safe_ringbuf_write_elem_ex(&t->rb, &new_tasklet, &was_empty);
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
@@ -117,7 +117,7 @@ bool run_one_tasklet(int tn)
    struct tasklet_thread *t = tasklet_threads[tn];
 
    ASSERT(t != NULL);
-   success = safe_ringbuf_read_elem(&t->safe_ringbuf, &tasklet_to_run);
+   success = safe_ringbuf_read_elem(&t->rb, &tasklet_to_run);
 
    if (success) {
       /* Run the tasklet with preemption enabled */
@@ -181,7 +181,7 @@ void tasklet_runner(void *arg)
 
       disable_interrupts(&var);
       {
-         if (safe_ringbuf_is_empty(&t->safe_ringbuf)) {
+         if (safe_ringbuf_is_empty(&t->rb)) {
             t->task->state = TASK_STATE_SLEEPING;
             yield = true;
          }
@@ -238,7 +238,7 @@ int create_tasklet_thread(int priority, u16 limit)
       return -ENOMEM;
    }
 
-   safe_ringbuf_init(&t->safe_ringbuf,
+   safe_ringbuf_init(&t->rb,
                      limit,
                      sizeof(struct tasklet),
                      t->tasklets);
@@ -276,10 +276,10 @@ void destroy_last_tasklet_thread(void)
    ASSERT(t != NULL);
 
 #ifndef UNIT_TEST_ENVIRONMENT
-   ASSERT(safe_ringbuf_is_empty(&t->safe_ringbuf));
+   ASSERT(safe_ringbuf_is_empty(&t->rb));
 #endif
 
-   safe_ringbuf_destory(&t->safe_ringbuf);
+   safe_ringbuf_destory(&t->rb);
    kfree2(t->tasklets, sizeof(struct tasklet) * t->limit);
    kfree2(t, sizeof(struct tasklet_thread));
    bzero(t, sizeof(*t));

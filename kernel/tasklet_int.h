@@ -14,7 +14,7 @@ struct tasklet {
 struct tasklet_thread {
 
    struct tasklet *tasklets;
-   safe_ringbuf safe_ringbuf;
+   struct safe_ringbuf rb;
    struct task *task;
    int priority; /* 0 => max priority */
    u32 limit;

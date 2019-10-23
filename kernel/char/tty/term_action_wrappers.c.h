@@ -51,10 +51,10 @@ static void term_execute_or_enqueue_action(term *t, term_action a)
    bool written;
    bool was_empty;
 
-   written = safe_ringbuf_write_elem_ex(&t->safe_ringbuf, &a, &was_empty);
+   written = safe_ringbuf_write_elem_ex(&t->ringb, &a, &was_empty);
 
    /*
-    * written would be false only if the safe_ringbuf was full. In order that to
+    * written would be false only if the ringbuf was full. In order that to
     * happen, we'll need ARRAY_SIZE(actions_buf) nested interrupts and
     * all of them need to issue a term_* call. Virtually "impossible".
     */
@@ -62,7 +62,7 @@ static void term_execute_or_enqueue_action(term *t, term_action a)
 
    if (was_empty) {
 
-      while (safe_ringbuf_read_elem(&t->safe_ringbuf, &a))
+      while (safe_ringbuf_read_elem(&t->ringb, &a))
          term_execute_action(t, &a);
 
    }

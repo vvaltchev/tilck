@@ -7,13 +7,13 @@
 #include <tilck/kernel/safe_ringbuf.h>
 #include <tilck/kernel/kmalloc.h>
 
-static inline bool rb_stat_is_empty(generic_safe_ringbuf_stat *s)
+static inline bool rb_stat_is_empty(struct generic_safe_ringbuf_stat *s)
 {
    return s->read_pos == s->write_pos && !s->full;
 }
 
 void
-safe_ringbuf_init(safe_ringbuf *rb, u16 max_elems, u16 elem_size, void *buf)
+safe_ringbuf_init(struct safe_ringbuf *rb, u16 max_elems, u16 elem_size, void *buf)
 {
    ASSERT(max_elems <= 32768);
 
@@ -23,14 +23,14 @@ safe_ringbuf_init(safe_ringbuf *rb, u16 max_elems, u16 elem_size, void *buf)
    rb->s.raw = 0;
 }
 
-void safe_ringbuf_destory(safe_ringbuf *rb)
+void safe_ringbuf_destory(struct safe_ringbuf *rb)
 {
-   bzero(rb, sizeof(safe_ringbuf));
+   bzero(rb, sizeof(struct safe_ringbuf));
 }
 
-bool safe_ringbuf_write_elem(safe_ringbuf *rb, void *elem_ptr)
+bool safe_ringbuf_write_elem(struct safe_ringbuf *rb, void *elem_ptr)
 {
-   generic_safe_ringbuf_stat cs, ns;
+   struct generic_safe_ringbuf_stat cs, ns;
 
    do {
 
@@ -57,9 +57,9 @@ bool safe_ringbuf_write_elem(safe_ringbuf *rb, void *elem_ptr)
 
 
 bool
-safe_ringbuf_write_elem_ex(safe_ringbuf *rb, void *elem_ptr, bool *was_empty)
+safe_ringbuf_write_elem_ex(struct safe_ringbuf *rb, void *elem_ptr, bool *was_empty)
 {
-   generic_safe_ringbuf_stat cs, ns;
+   struct generic_safe_ringbuf_stat cs, ns;
 
    do {
 
@@ -86,9 +86,9 @@ safe_ringbuf_write_elem_ex(safe_ringbuf *rb, void *elem_ptr, bool *was_empty)
 }
 
 
-bool safe_ringbuf_read_elem(safe_ringbuf *rb, void *elem_ptr /* out */)
+bool safe_ringbuf_read_elem(struct safe_ringbuf *rb, void *elem_ptr /* out */)
 {
-   generic_safe_ringbuf_stat cs, ns;
+   struct generic_safe_ringbuf_stat cs, ns;
 
    do {
 
@@ -112,9 +112,9 @@ bool safe_ringbuf_read_elem(safe_ringbuf *rb, void *elem_ptr /* out */)
    return true;
 }
 
-bool safe_ringbuf_write_elem1(safe_ringbuf *rb, u8 val)
+bool safe_ringbuf_write_elem1(struct safe_ringbuf *rb, u8 val)
 {
-   generic_safe_ringbuf_stat cs, ns;
+   struct generic_safe_ringbuf_stat cs, ns;
    ASSERT(rb->elem_size == 1);
 
    do {
@@ -140,9 +140,9 @@ bool safe_ringbuf_write_elem1(safe_ringbuf *rb, u8 val)
    return true;
 }
 
-bool safe_ringbuf_read_elem1(safe_ringbuf *rb, u8 *elem_ptr)
+bool safe_ringbuf_read_elem1(struct safe_ringbuf *rb, u8 *elem_ptr)
 {
-   generic_safe_ringbuf_stat cs, ns;
+   struct generic_safe_ringbuf_stat cs, ns;
 
    do {
 

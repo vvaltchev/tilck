@@ -87,7 +87,7 @@ typedef struct {
 typedef struct {
 
    devfs_directory root_dir;
-   rwlock_wp rwlock;
+   struct rwlock_wp rwlock;
    time_t wrt_time;
    tilck_inode_t next_inode;
 

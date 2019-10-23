@@ -42,7 +42,7 @@ void rwlock_rp_exunlock(struct rwlock_rp *r);
 
 /* Writer-preferring rwlock */
 
-typedef struct {
+struct rwlock_wp {
 
    struct task *ex_owner;
    kmutex m;
@@ -51,24 +51,23 @@ typedef struct {
    bool w;    /* writer waiting */
    bool rec;  /* is exlock operation recursive */
    u16 rc;    /* recursive locking count */
+};
 
-} rwlock_wp;
-
-void rwlock_wp_init(rwlock_wp *rw, bool recursive);
-void rwlock_wp_destroy(rwlock_wp *rw);
-void rwlock_wp_shlock(rwlock_wp *rw);
-void rwlock_wp_shunlock(rwlock_wp *rw);
-void rwlock_wp_exlock(rwlock_wp *rw);
-void rwlock_wp_exunlock(rwlock_wp *rw);
+void rwlock_wp_init(struct rwlock_wp *rw, bool recursive);
+void rwlock_wp_destroy(struct rwlock_wp *rw);
+void rwlock_wp_shlock(struct rwlock_wp *rw);
+void rwlock_wp_shunlock(struct rwlock_wp *rw);
+void rwlock_wp_exlock(struct rwlock_wp *rw);
+void rwlock_wp_exunlock(struct rwlock_wp *rw);
 
 #ifdef DEBUG
 
-   static inline bool rwlock_wp_is_shlocked(rwlock_wp *rw)
+   static inline bool rwlock_wp_is_shlocked(struct rwlock_wp *rw)
    {
       return rw->r > 0;
    }
 
-   static inline bool rwlock_wp_holding_exlock(rwlock_wp *rw)
+   static inline bool rwlock_wp_holding_exlock(struct rwlock_wp *rw)
    {
       return rw->ex_owner == get_curr_task();
    }
