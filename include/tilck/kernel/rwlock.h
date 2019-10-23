@@ -10,7 +10,7 @@
 struct rwlock_rp {
 
    kmutex readers_lock;
-   ksem writers_sem;
+   struct ksem writers_sem;
    int readers_count;
 
 #ifdef DEBUG

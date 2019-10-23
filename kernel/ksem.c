@@ -4,18 +4,18 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
 
-void ksem_init(ksem *s)
+void ksem_init(struct ksem *s)
 {
    s->counter = 1;
    list_init(&s->wait_list);
 }
 
-void ksem_destroy(ksem *s)
+void ksem_destroy(struct ksem *s)
 {
-   bzero(s, sizeof(ksem));
+   bzero(s, sizeof(struct ksem));
 }
 
-void ksem_wait(ksem *s)
+void ksem_wait(struct ksem *s)
 {
    disable_preemption();
 
@@ -30,7 +30,7 @@ void ksem_wait(ksem *s)
    enable_preemption();
 }
 
-void ksem_signal(ksem *s)
+void ksem_signal(struct ksem *s)
 {
    disable_preemption();
 

@@ -103,12 +103,11 @@ void kernel_sleep_on_waiter(struct multi_obj_waiter *w);
  * The semaphore implementation used for locking in kernel mode.
  */
 
-typedef struct {
+struct ksem {
 
    int counter;
    struct list wait_list;
-
-} ksem;
+};
 
 #define STATIC_KSEM_INIT(s, val)                 \
    {                                             \
@@ -116,10 +115,10 @@ typedef struct {
       .wait_list = make_list(s.wait_list),       \
    }
 
-void ksem_init(ksem *s);
-void ksem_destroy(ksem *s);
-void ksem_wait(ksem *s);
-void ksem_signal(ksem *s);
+void ksem_init(struct ksem *s);
+void ksem_destroy(struct ksem *s);
+void ksem_wait(struct ksem *s);
+void ksem_signal(struct ksem *s);
 
 /*
  * The mutex implementation used for locking in kernel mode.
