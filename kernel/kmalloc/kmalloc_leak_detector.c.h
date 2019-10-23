@@ -13,21 +13,20 @@
 
 #endif
 
-typedef struct {
+struct alloc_entry {
 
    void *vaddr;
    size_t size;
    void *caller_eip;
    bool leaked;
-
-} alloc_entry;
+};
 
 static bool leak_detector_enabled;
 
 #if KMALLOC_SUPPORT_LEAK_DETECTOR
 
 static u32 alloc_entries_count;
-static alloc_entry alloc_entries[1024];
+static struct alloc_entry alloc_entries[1024];
 static void *metadata_copies[KMALLOC_HEAPS_COUNT];
 
 void debug_kmalloc_start_leak_detector(bool save_metadata)
@@ -140,7 +139,7 @@ static NO_INLINE void debug_kmalloc_register_alloc(void *vaddr, size_t s)
 
 #pragma GCC diagnostic pop
 
-   alloc_entries[alloc_entries_count++] = (alloc_entry) {
+   alloc_entries[alloc_entries_count++] = (struct alloc_entry) {
       .vaddr = vaddr,
       .size = s,
       .caller_eip = eip,
