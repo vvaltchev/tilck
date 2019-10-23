@@ -10,7 +10,7 @@ static int ramfs_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
-static offt ramfs_dir_seek(ramfs_handle *rh, offt target_off)
+static offt ramfs_dir_seek(struct ramfs_handle *rh, offt target_off)
 {
    struct ramfs_inode *i = rh->inode;
    struct ramfs_entry *dpos;
@@ -32,7 +32,7 @@ static offt ramfs_dir_seek(ramfs_handle *rh, offt target_off)
 
 static offt ramfs_seek(fs_handle h, offt off, int whence)
 {
-   ramfs_handle *rh = h;
+   struct ramfs_handle *rh = h;
    struct ramfs_inode *i = rh->inode;
 
    if (i->type == VFS_DIR) {
@@ -245,7 +245,7 @@ static int ramfs_truncate(struct fs *fs, vfs_inode_ptr_t i, offt len)
 
 static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
 {
-   ramfs_handle *rh = h;
+   struct ramfs_handle *rh = h;
    struct ramfs_inode *inode = rh->inode;
    offt tot_read = 0;
    offt buf_rem = (offt) len;
@@ -295,7 +295,7 @@ static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
 
 static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
 {
-   ramfs_handle *rh = h;
+   struct ramfs_handle *rh = h;
    struct ramfs_inode *inode = rh->inode;
    offt tot_written = 0;
    offt buf_rem = (offt)len;

@@ -54,12 +54,12 @@ static int ramfs_unlink(struct vfs_path *p)
 
 static int ramfs_dup(fs_handle h, fs_handle *dup_h)
 {
-   ramfs_handle *new_h = kmalloc(sizeof(ramfs_handle));
+   struct ramfs_handle *new_h = kmalloc(sizeof(struct ramfs_handle));
 
    if (!new_h)
       return -ENOMEM;
 
-   memcpy(new_h, h, sizeof(ramfs_handle));
+   memcpy(new_h, h, sizeof(struct ramfs_handle));
    retain_obj(new_h->inode);
    *dup_h = new_h;
    return 0;
@@ -67,7 +67,7 @@ static int ramfs_dup(fs_handle h, fs_handle *dup_h)
 
 static void ramfs_close(fs_handle h)
 {
-   ramfs_handle *rh = h;
+   struct ramfs_handle *rh = h;
    struct ramfs_inode *i = rh->inode;
 
    if (i->type == VFS_DIR) {
@@ -95,7 +95,7 @@ static void ramfs_close(fs_handle h)
       ramfs_destroy_inode(rh->fs->device_data, i);
    }
 
-   kfree2(rh, sizeof(ramfs_handle));
+   kfree2(rh, sizeof(struct ramfs_handle));
 }
 
 /*
@@ -155,7 +155,7 @@ ramfs_get_entry(struct fs *fs,
 
 static vfs_inode_ptr_t ramfs_getinode(fs_handle h)
 {
-   return ((ramfs_handle *)h)->inode;
+   return ((struct ramfs_handle *)h)->inode;
 }
 
 static int ramfs_symlink(const char *target, struct vfs_path *lp)

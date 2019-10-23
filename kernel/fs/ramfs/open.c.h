@@ -19,9 +19,9 @@ static const struct file_ops static_ops_ramfs =
 static int
 ramfs_open_int(struct fs *fs, struct ramfs_inode *inode, fs_handle *out, int fl)
 {
-   ramfs_handle *h;
+   struct ramfs_handle *h;
 
-   if (!(h = kzmalloc(sizeof(ramfs_handle))))
+   if (!(h = kzmalloc(sizeof(struct ramfs_handle))))
       return -ENOMEM;
 
    h->inode = inode;

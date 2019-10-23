@@ -98,7 +98,7 @@ struct ramfs_inode {
    time_t mtime;
 };
 
-typedef struct {
+struct ramfs_handle {
 
    /* struct fs_handle_base */
    FS_HANDLE_BASE_FIELDS
@@ -109,10 +109,9 @@ typedef struct {
    /* valid only if inode->type == VFS_DIR */
    struct {
       struct list_node node;        /* node in inode->handles_list */
-      struct ramfs_entry *dpos;            /* current entry position */
+      struct ramfs_entry *dpos;     /* current entry position */
    };
-
-} ramfs_handle;
+};
 
 typedef struct {
 

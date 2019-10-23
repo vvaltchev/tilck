@@ -17,7 +17,7 @@ static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
 static int ramfs_mmap(struct user_mapping *um, bool register_only)
 {
    struct process *pi = get_curr_task()->pi;
-   ramfs_handle *rh = um->h;
+   struct ramfs_handle *rh = um->h;
    struct ramfs_inode *i = rh->inode;
    uptr vaddr = um->vaddr;
    struct bintree_walk_ctx ctx;
@@ -77,7 +77,7 @@ register_mapping:
 
 static bool
 ramfs_handle_fault_int(struct process *pi,
-                       ramfs_handle *rh,
+                       struct ramfs_handle *rh,
                        void *vaddrp,
                        bool p,
                        bool rw)

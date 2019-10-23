@@ -2,7 +2,7 @@
 
 static int ramfs_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 {
-   ramfs_handle *rh = h;
+   struct ramfs_handle *rh = h;
    struct ramfs_inode *inode = rh->inode;
    int rc = 0;
 

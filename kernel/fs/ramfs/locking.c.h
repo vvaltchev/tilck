@@ -2,25 +2,25 @@
 
 static void ramfs_file_exlock(fs_handle h)
 {
-   ramfs_handle *rh = h;
+   struct ramfs_handle *rh = h;
    rwlock_wp_exlock(&rh->inode->rwlock);
 }
 
 static void ramfs_file_exunlock(fs_handle h)
 {
-   ramfs_handle *rh = h;
+   struct ramfs_handle *rh = h;
    rwlock_wp_exunlock(&rh->inode->rwlock);
 }
 
 static void ramfs_file_shlock(fs_handle h)
 {
-   ramfs_handle *rh = h;
+   struct ramfs_handle *rh = h;
    rwlock_wp_shlock(&rh->inode->rwlock);
 }
 
 static void ramfs_file_shunlock(fs_handle h)
 {
-   ramfs_handle *rh = h;
+   struct ramfs_handle *rh = h;
    rwlock_wp_shunlock(&rh->inode->rwlock);
 }
 

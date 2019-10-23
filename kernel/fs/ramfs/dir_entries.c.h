@@ -58,7 +58,7 @@ ramfs_dir_add_entry(struct ramfs_inode *idir, const char *iname, struct ramfs_in
 static void
 ramfs_dir_remove_entry(struct ramfs_inode *idir, struct ramfs_entry *e)
 {
-   ramfs_handle *pos;
+   struct ramfs_handle *pos;
    struct ramfs_inode *ie = e->inode;
    ASSERT(idir->type == VFS_DIR);
 
