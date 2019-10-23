@@ -72,7 +72,7 @@ int register_driver(struct driver_info *info, int arg_major)
    return major;
 }
 
-struct devfs_directory {
+struct devfs_dir {
 
    /*
     * Yes, sub-directories are NOT supported by devfs. The whole struct fs is
@@ -85,7 +85,7 @@ struct devfs_directory {
 
 typedef struct {
 
-   struct devfs_directory root_dir;
+   struct devfs_dir root_dir;
    struct rwlock_wp rwlock;
    time_t wrt_time;
    tilck_inode_t next_inode;
@@ -406,7 +406,7 @@ devfs_get_entry(struct fs *fs,
                 struct fs_path *fs_path)
 {
    devfs_data *d = fs->device_data;
-   struct devfs_directory *dir;
+   struct devfs_dir *dir;
    struct devfs_file *pos;
 
    if ((!dir_inode && !name) || is_dot_or_dotdot(name, (int)nl)) {
