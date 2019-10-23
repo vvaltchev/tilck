@@ -132,7 +132,7 @@ static int dp_chunks_keypress(u32 key, u8 c)
          chunks_order_by = c;
          return KB_HANDLER_OK_AND_CONTINUE;
 
-      case 'p':
+      case 't':
          insertion_sort_generic(chunks_arr,
                                 sizeof(chunks_arr[0]),
                                 (u32)chunks_count,
@@ -169,7 +169,21 @@ static void dp_show_chunks(void)
               lf_waste * 100 / lf_tot,
               (lf_waste * 1000 / lf_tot) % 10);
 
-   dp_writeln("Order by: (s)ize, (c)ount, (w)aste, waste (p)ercentage");
+   if (CONSOLE_DEFAULT_BRIGHT_WHITE) {
+
+      dp_writeln("Order by: [s]ize, [c]ount, [w]aste, was[t]e (%%)");
+
+   } else {
+
+      dp_writeln(
+         "Order by: "
+         ESC_COLOR_BRIGHT_WHITE "s" RESET_ATTRS "ize, "
+         ESC_COLOR_BRIGHT_WHITE "c" RESET_ATTRS "ount, "
+         ESC_COLOR_BRIGHT_WHITE "w" RESET_ATTRS "aste, "
+         "was" ESC_COLOR_BRIGHT_WHITE "t" RESET_ATTRS "e (%%)"
+      );
+   }
+
    dp_writeln("");
 
    dp_writeln(
@@ -177,10 +191,10 @@ static void dp_show_chunks(void)
       TERM_VLINE "%s" "  Count  "         RESET_ATTRS
       TERM_VLINE "%s" " Max waste "       RESET_ATTRS
       TERM_VLINE "%s" " Max waste (%%)"   RESET_ATTRS,
-      chunks_order_by == 's' ? REVERSE_VIDEO : "",
-      chunks_order_by == 'c' ? REVERSE_VIDEO : "",
-      chunks_order_by == 'w' ? REVERSE_VIDEO : "",
-      chunks_order_by == 'p' ? REVERSE_VIDEO : ""
+      chunks_order_by == 's' ? ESC_COLOR_BRIGHT_WHITE REVERSE_VIDEO : "",
+      chunks_order_by == 'c' ? ESC_COLOR_BRIGHT_WHITE REVERSE_VIDEO : "",
+      chunks_order_by == 'w' ? ESC_COLOR_BRIGHT_WHITE REVERSE_VIDEO : "",
+      chunks_order_by == 't' ? ESC_COLOR_BRIGHT_WHITE REVERSE_VIDEO : ""
    );
 
    dp_writeln(

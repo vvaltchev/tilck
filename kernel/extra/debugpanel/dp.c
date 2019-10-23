@@ -24,7 +24,12 @@ void dp_draw_rect_raw(int row, int col, int h, int w);
 static inline void dp_write_header(int i, const char *s, bool selected)
 {
    if (selected) {
-      dp_write_raw("%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ", i, s);
+
+      dp_write_raw(
+         ESC_COLOR_BRIGHT_WHITE "%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ",
+         i, s
+      );
+
    } else {
       dp_write_raw("%d[%s]" RESET_ATTRS " ", i, s);
    }
