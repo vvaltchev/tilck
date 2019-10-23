@@ -16,7 +16,13 @@
 #define GFX_OFF                  "\033(B"
 
 #define TERM_VLINE         GFX_ON "x" GFX_OFF
-#define DP_ESC_COLOR       ESC_COLOR_BRIGHT_WHITE
+#define DP_COLOR           DEFAULT_FG_COLOR
+
+#if CONSOLE_DEFAULT_BRIGHT_WHITE
+   #define DP_ESC_COLOR ESC_COLOR_BRIGHT_WHITE
+#else
+   #define DP_ESC_COLOR ESC_COLOR_WHITE
+#endif
 
 void dp_write(int row, int col, const char *fmt, ...);
 void dp_draw_rect(const char *label, int row, int col, int h, int w);
