@@ -8,7 +8,7 @@ typedef void (*tasklet_func)(uptr, uptr);
 struct tasklet {
 
    tasklet_func fptr;
-   tasklet_context ctx;
+   struct tasklet_context ctx;
 };
 
 struct tasklet_thread {

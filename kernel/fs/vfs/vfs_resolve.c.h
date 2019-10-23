@@ -396,7 +396,7 @@ vfs_resolve(const char *path,
    /* At the end, resolve() must use exactly 1 stack frame */
    ASSERT(ctx.ss == 1);
 
-   /* Store out the last frame in the caller-provided struct vfs_path */
+   /* Store out the last frame in the caller-provided vfs_path */
    *rp = ctx.paths[0];
 
    if (rp->fs_path.inode)

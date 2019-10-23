@@ -6,12 +6,11 @@
 
 #define MAX_TASKLET_THREADS 64
 
-typedef struct {
+struct tasklet_context {
 
    uptr arg1;
    uptr arg2;
-
-} tasklet_context;
+};
 
 void init_tasklets();
 
