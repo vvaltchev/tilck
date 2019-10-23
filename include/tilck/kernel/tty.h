@@ -4,20 +4,18 @@
 #include <tilck/common/basic_defs.h>
 
 struct tty;
-typedef struct tty tty;
+extern struct tty *__curr_tty;
 
-extern tty *__curr_tty;
-
-static ALWAYS_INLINE tty *get_curr_tty(void)
+static ALWAYS_INLINE struct tty *get_curr_tty(void)
 {
    return __curr_tty;
 }
 
 void init_tty(void);
-void tty_setup_for_panic(tty *t);
-int tty_keypress_handler_int(tty *t, u32 key, u8, bool check_mods);
-int tty_get_num(tty *t);
-void tty_restore_kd_text_mode(tty *t);
+void tty_setup_for_panic(struct tty *t);
+int tty_keypress_handler_int(struct tty *t, u32 key, u8, bool check_mods);
+int tty_get_num(struct tty *t);
+void tty_restore_kd_text_mode(struct tty *t);
 
 static inline int get_curr_tty_num(void)
 {
@@ -25,5 +23,5 @@ static inline int get_curr_tty_num(void)
 }
 
 /* Used only by the debug panel */
-int set_curr_tty(tty *t);
-tty *create_tty_nodev(void);
+int set_curr_tty(struct tty *t);
+struct tty *create_tty_nodev(void);

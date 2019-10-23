@@ -20,8 +20,8 @@
 
 STATIC_ASSERT(TTY_COUNT <= MAX_TTYS);
 
-tty *ttys[128];
-tty *__curr_tty;
+struct tty *ttys[128];
+struct tty *__curr_tty;
 int tty_tasklet_runner;
 static const struct video_interface *first_term_initial_vi;
 
@@ -36,7 +36,7 @@ static ssize_t tty_read(fs_handle h, char *buf, size_t size)
 {
    struct devfs_handle *dh = h;
    struct devfs_file *df = dh->file;
-   tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
+   struct tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_read_int(t, dh, buf, size);
 }
@@ -45,7 +45,7 @@ static ssize_t tty_write(fs_handle h, char *buf, size_t size)
 {
    struct devfs_handle *dh = h;
    struct devfs_file *df = dh->file;
-   tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
+   struct tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_write_int(t, dh, buf, size);
 }
@@ -54,7 +54,7 @@ static int tty_ioctl(fs_handle h, uptr request, void *argp)
 {
    struct devfs_handle *dh = h;
    struct devfs_file *df = dh->file;
-   tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
+   struct tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_ioctl_int(t, dh, request, argp);
 }
@@ -63,7 +63,7 @@ static int tty_fcntl(fs_handle h, int cmd, int arg)
 {
    struct devfs_handle *dh = h;
    struct devfs_file *df = dh->file;
-   tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
+   struct tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_fcntl_int(t, dh, cmd, arg);
 }
@@ -72,7 +72,7 @@ static struct kcond *tty_get_rready_cond(fs_handle h)
 {
    struct devfs_handle *dh = h;
    struct devfs_file *df = dh->file;
-   tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
+   struct tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return &t->input_cond;
 }
@@ -81,7 +81,7 @@ static bool tty_read_ready(fs_handle h)
 {
    struct devfs_handle *dh = h;
    struct devfs_file *df = dh->file;
-   tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
+   struct tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
    return tty_read_ready_int(t, dh);
 }
@@ -117,7 +117,7 @@ tty_create_device_file(int minor,
    return 0;
 }
 
-static void init_tty_struct(tty *t, u16 minor, u16 serial_port_fwd)
+static void init_tty_struct(struct tty *t, u16 minor, u16 serial_port_fwd)
 {
    t->minor = minor;
    t->filter_ctx.t = t;
@@ -131,7 +131,7 @@ static void init_tty_struct(tty *t, u16 minor, u16 serial_port_fwd)
    t->c_sets_tables[1] = tty_gfx_trans_table;
 }
 
-int tty_get_num(tty *t)
+int tty_get_num(struct tty *t)
 {
    return t->minor;
 }
@@ -167,10 +167,10 @@ tty_allocate_and_init_new_term(u16 serial_port_fwd, int rows_buf)
    return new_term;
 }
 
-static tty *
+static struct tty *
 allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
 {
-   tty *t = kzmalloc(sizeof(tty));
+   struct tty *t = kzmalloc(sizeof(struct tty));
 
    if (!t)
       return NULL;
@@ -183,7 +183,7 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
          : tty_allocate_and_init_new_term(serial_port_fwd, rows_buf);
 
    if (!new_term) {
-      kfree2(t, sizeof(tty));
+      kfree2(t, sizeof(struct tty));
       return NULL;
    }
 
@@ -197,19 +197,19 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
 }
 
 static void
-tty_full_destroy(tty *t)
+tty_full_destroy(struct tty *t)
 {
    if (t->term_inst) {
       dispose_term(t->term_inst);
       free_term_struct(t->term_inst);
    }
 
-   kfree2(t, sizeof(tty));
+   kfree2(t, sizeof(struct tty));
 }
 
-tty *create_tty_nodev(void)
+struct tty *create_tty_nodev(void)
 {
-   tty *const t = allocate_and_init_tty(0, 0, 0);
+   struct tty *const t = allocate_and_init_tty(0, 0, 0);
 
    if (!t)
       return NULL;
@@ -224,7 +224,7 @@ static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
    ASSERT(minor < ARRAY_SIZE(ttys));
    ASSERT(!ttys[minor]);
 
-   tty *const t = allocate_and_init_tty(minor, serial_port_fwd, -1);
+   struct tty *const t = allocate_and_init_tty(minor, serial_port_fwd, -1);
 
    if (!t)
       return -ENOMEM;

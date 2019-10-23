@@ -152,7 +152,7 @@ tty_def_state_raw_lf(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
    return TERM_FILTER_WRITE_C;
 }
 
-void tty_update_default_state_tables(tty *t)
+void tty_update_default_state_tables(struct tty *t)
 {
    const struct termios *const c_term = &t->c_term;
    bzero(t->default_state_funcs, sizeof(t->default_state_funcs));
@@ -195,7 +195,7 @@ static enum term_fret
 tty_state_default(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    struct twfilter_ctx_t *const ctx = ctx_arg;
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
    s16 tv = t->c_sets_tables[t->c_set][*c];
    int rc;
 

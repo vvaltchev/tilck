@@ -119,7 +119,7 @@ const s16 tty_gfx_trans_table[256] =
 
 #pragma GCC diagnostic pop
 
-void tty_reset_filter_ctx(tty *t)
+void tty_reset_filter_ctx(struct tty *t)
 {
    struct twfilter_ctx_t *ctx = &t->filter_ctx;
    ctx->pbc = ctx->ibc = 0;
@@ -148,7 +148,7 @@ tty_filter_handle_csi_ABCD(u32 *params,
 static void
 tty_filter_handle_csi_m_param(u32 p, u8 *color, struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    u8 fg = get_color_fg(t->user_color);
    u8 bg = get_color_bg(t->user_color);
@@ -236,7 +236,7 @@ tty_filter_handle_csi_m(u32 *params,
 }
 
 static inline void
-tty_move_cursor_begin_nth_row(tty *t, struct term_action *a, u32 row)
+tty_move_cursor_begin_nth_row(struct tty *t, struct term_action *a, u32 row)
 {
    u32 new_row =
       MIN(term_get_curr_row(t->term_inst) + row,
@@ -257,7 +257,7 @@ tty_csi_EF_handler(u32 *params,
                    struct term_action *a,
                    struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
    ASSERT(c == 'E' || c == 'F');
 
    if (c == 'E') {
@@ -280,7 +280,7 @@ tty_csi_G_handler(u32 *params,
                   struct term_action *a,
                   struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    /* Move the cursor to the column 'n' (absolute, 1-based) */
    params[0] = MAX(1u, params[0]) - 1;
@@ -300,7 +300,7 @@ tty_csi_fH_handler(u32 *params,
                    struct term_action *a,
                    struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    /* Move the cursor to (n, m) (absolute, 1-based) */
    params[0] = MAX(1u, params[0]) - 1;
@@ -381,7 +381,7 @@ tty_csi_n_handler(u32 *params,
                   struct term_action *a,
                   struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    if (params[0] == 6) {
 
@@ -405,7 +405,7 @@ tty_csi_s_handler(u32 *params,
                   struct term_action *a,
                   struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    /* SCP (Save Cursor Position) */
    ctx->t->saved_cur_row = term_get_curr_row(t->term_inst);
@@ -420,7 +420,7 @@ tty_csi_u_handler(u32 *params,
                   struct term_action *a,
                   struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    /* RCP (Restore Cursor Position) */
    *a = (struct term_action) {
@@ -438,7 +438,7 @@ tty_csi_d_handler(u32 *params,
                   struct term_action *a,
                   struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    /* VPA: Move cursor to the indicated row, current column */
    params[0] = MAX(1u, params[0]) - 1;
@@ -458,7 +458,7 @@ tty_csi_hpa_handler(u32 *params,
                     struct term_action *a,
                     struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    /* HPA: Move cursor to the indicated column, current row */
    params[0] = MAX(1u, params[0]) - 1;
@@ -684,7 +684,7 @@ tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 
       case 'c':
          {
-            tty *t = ctx->t;
+            struct tty *t = ctx->t;
             *a = (struct term_action) { .type1 = a_reset };
 
             tty_kb_buf_reset(t);
@@ -809,7 +809,7 @@ static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c)
    return -1;
 }
 
-ssize_t tty_write_int(tty *t, struct devfs_handle *h, char *buf, size_t size)
+ssize_t tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
    /* term_write's size is limited to 2^20 - 1 */
    size = MIN(size, (size_t)MB - 1);
@@ -821,7 +821,7 @@ enum term_fret
 serial_tty_write_filter(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    struct twfilter_ctx_t *ctx = ctx_arg;
-   tty *t = ctx->t;
+   struct tty *t = ctx->t;
 
    if (*c == t->c_term.c_cc[VERASE]) {
 
