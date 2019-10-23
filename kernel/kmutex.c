@@ -160,8 +160,8 @@ void kmutex_unlock(kmutex *m)
    /* Unlock one task waiting to acquire the mutex 'm' (if any) */
    if (!list_is_empty(&m->wait_list)) {
 
-      wait_obj *task_wo =
-         list_first_obj(&m->wait_list, wait_obj, wait_list_node);
+      struct wait_obj *task_wo =
+         list_first_obj(&m->wait_list, struct wait_obj, wait_list_node);
 
       struct task *ti = CONTAINER_OF(task_wo, struct task, wobj);
 

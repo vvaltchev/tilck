@@ -47,7 +47,7 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
 }
 
 static void
-kcond_signal_single(kcond *c, wait_obj *wo)
+kcond_signal_single(kcond *c, struct wait_obj *wo)
 {
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
@@ -81,7 +81,7 @@ kcond_signal_single(kcond *c, wait_obj *wo)
 
 void kcond_signal_int(kcond *c, bool all)
 {
-   wait_obj *wo_pos, *temp;
+   struct wait_obj *wo_pos, *temp;
    disable_preemption();
    {
       DEBUG_ONLY(check_not_in_irq_handler());

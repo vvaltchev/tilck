@@ -110,7 +110,7 @@ struct task {
    void *io_copybuf;
    void *args_copybuf;
 
-   wait_obj wobj;
+   struct wait_obj wobj;
 
    ATOMIC(u32) ticks_before_wake_up;
 

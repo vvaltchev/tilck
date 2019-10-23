@@ -23,25 +23,24 @@ enum wo_type {
 };
 
 /*
- * wait_obj is used internally in struct task for referring to an object that
+ * struct wait_obj is used internally in struct task for referring to an object that
  * is blocking that task (keeping it in a sleep state).
  */
 
-typedef struct {
+struct wait_obj {
 
    ATOMIC(void *) __ptr;      /* pointer to the object we're waiting for */
    enum wo_type type;         /* type of the object we're waiting for */
    struct list_node wait_list_node;  /* node in waited object's waiting list */
-
-} wait_obj;
+};
 
 /*
- * Struct used as element in `multi_obj_waiter` using `wait_obj` through
+ * Struct used as element in `multi_obj_waiter` using `struct wait_obj` through
  * composition.
  */
 typedef struct {
 
-   wait_obj wobj;
+   struct wait_obj wobj;
    struct task *ti;         /* Task owning this wait obj */
    enum wo_type type;       /* Actual object type. NOTE: wobj.type cannot be
                              * used because it have to be equal to
@@ -65,20 +64,20 @@ typedef struct {
 } multi_obj_waiter;
 
 /*
- * For a wait_obj with type == WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD is a special
- * value for __ptr meaning that the task owning the wait_obj is going to wait
+ * For a struct wait_obj with type == WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD is a special
+ * value for __ptr meaning that the task owning the struct wait_obj is going to wait
  * for any of its children to change state (usually, = to die).
  */
 #define WOBJ_TASK_PTR_ANY_CHILD ((void *) -1)
 
-void wait_obj_set(wait_obj *wo,
+void wait_obj_set(struct wait_obj *wo,
                   enum wo_type type,
                   void *ptr,
                   struct list *wait_list);
 
-void *wait_obj_reset(wait_obj *wo);
+void *wait_obj_reset(struct wait_obj *wo);
 
-static inline void *wait_obj_get_ptr(wait_obj *wo)
+static inline void *wait_obj_get_ptr(struct wait_obj *wo)
 {
    return atomic_load_explicit(&wo->__ptr, mo_relaxed);
 }

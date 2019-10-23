@@ -38,8 +38,8 @@ void ksem_signal(ksem *s)
 
       ASSERT(!list_is_empty(&s->wait_list));
 
-      wait_obj *task_wo =
-         list_first_obj(&s->wait_list, wait_obj, wait_list_node);
+      struct wait_obj *task_wo =
+         list_first_obj(&s->wait_list, struct wait_obj, wait_list_node);
 
       struct task *ti = CONTAINER_OF(task_wo, struct task, wobj);
 

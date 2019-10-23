@@ -5,7 +5,7 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/process.h>
 
-void wait_obj_set(wait_obj *wo,
+void wait_obj_set(struct wait_obj *wo,
                   enum wo_type type,
                   void *ptr,
                   struct list *wait_list)
@@ -26,7 +26,7 @@ void wait_obj_set(wait_obj *wo,
    enable_preemption();
 }
 
-void *wait_obj_reset(wait_obj *wo)
+void *wait_obj_reset(struct wait_obj *wo)
 {
    void *oldp = atomic_exchange_explicit(&wo->__ptr, (void*)NULL, mo_relaxed);
    disable_preemption();

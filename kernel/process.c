@@ -143,7 +143,7 @@ void init_task_lists(struct task *ti)
    list_node_init(&ti->wakeup_timer_node);
 
    list_init(&ti->tasks_waiting_list);
-   bzero(&ti->wobj, sizeof(wait_obj));
+   bzero(&ti->wobj, sizeof(struct wait_obj));
 }
 
 void init_process_lists(struct process *pi)
@@ -548,7 +548,7 @@ int sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
 
 void wake_up_tasks_waiting_on(struct task *ti)
 {
-   wait_obj *wo_pos, *wo_temp;
+   struct wait_obj *wo_pos, *wo_temp;
    ASSERT(!is_preemption_enabled());
 
    list_for_each(wo_pos, wo_temp, &ti->tasks_waiting_list, wait_list_node) {
@@ -564,7 +564,7 @@ void wake_up_tasks_waiting_on(struct task *ti)
 
 static bool task_is_waiting_on_any_child(struct task *ti)
 {
-   wait_obj *wobj = &ti->wobj;
+   struct wait_obj *wobj = &ti->wobj;
 
    if (ti->state != TASK_STATE_SLEEPING)
       return false;
