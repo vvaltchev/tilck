@@ -31,8 +31,8 @@ struct term {
    u16 c;                     /* current col */
    u16 col_offset;
 
-   const video_interface *vi;
-   const video_interface *saved_vi;
+   const struct video_interface *vi;
+   const struct video_interface *saved_vi;
 
    u16 *buffer;               /* the whole screen buffer */
    u16 *screen_buf_copy;      /* when != NULL, contains one screenshot */
@@ -75,7 +75,7 @@ void no_vi_redraw_static_elements(void) { }
 void no_vi_disable_static_elems_refresh(void) { }
 void no_vi_enable_static_elems_refresh(void) { }
 
-static const video_interface no_output_vi =
+static const struct video_interface no_output_vi =
 {
    no_vi_set_char_at,
    no_vi_set_row,
@@ -391,7 +391,7 @@ static void term_internal_write_char2(term *t, char c, u8 color)
 
 static void term_action_write(term *t, char *buf, u32 len, u8 color)
 {
-   const video_interface *const vi = t->vi;
+   const struct video_interface *const vi = t->vi;
 
    ts_scroll_to_bottom(t);
    vi->enable_cursor();
@@ -799,7 +799,7 @@ void dispose_term(term *t)
    }
 }
 
-const video_interface *term_get_vi(term *t)
+const struct video_interface *term_get_vi(term *t)
 {
    return t->vi;
 }
@@ -833,7 +833,7 @@ static u32 term_calc_opt_buf_rows(u16 rows, u16 cols)
 
 int
 init_term(term *t,
-          const video_interface *intf,
+          const struct video_interface *intf,
           u16 rows,
           u16 cols,
           u16 serial_port_fwd,

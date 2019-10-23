@@ -3,7 +3,7 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
-typedef struct {
+struct video_interface {
 
    /* Main functions */
    void (*set_char_at)(u16 row, u16 col, u16 entry);
@@ -24,20 +24,19 @@ typedef struct {
    void (*redraw_static_elements)(void);
    void (*disable_static_elems_refresh)(void);
    void (*enable_static_elems_refresh)(void);
-
-} video_interface;
+};
 
 typedef struct term term;
 
 int init_term(term *t,
-              const video_interface *vi,
+              const struct video_interface *vi,
               u16 rows,
               u16 cols,
               u16 serial_port_fwd,
               int rows_buf); /* note: < 0 means default value */
 
 bool term_is_initialized(term *t);
-const video_interface *term_get_vi(term *t);
+const struct video_interface *term_get_vi(term *t);
 
 u16 term_get_tab_size(term *t);
 u16 term_get_rows(term *t);

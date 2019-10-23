@@ -124,7 +124,7 @@ static void textmode_disable_cursor(void)
    // outb(0x3D5, inb(0x3D5) | 0x20);
 }
 
-static const video_interface ega_text_mode_i =
+static const struct video_interface ega_text_mode_i =
 {
    textmode_set_char_at,
    textmode_set_row,

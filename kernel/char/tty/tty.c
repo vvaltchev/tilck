@@ -23,7 +23,7 @@ STATIC_ASSERT(TTY_COUNT <= MAX_TTYS);
 tty *ttys[128];
 tty *__curr_tty;
 int tty_tasklet_runner;
-static const video_interface *first_term_initial_vi;
+static const struct video_interface *first_term_initial_vi;
 
 static struct keypress_handler_elem tty_keypress_handler_elem =
 {
