@@ -65,7 +65,7 @@ void early_init_serial_ports(void)
    init_serial_port(COM4);
 }
 
-static irq_handler_node serial_irq_handler_nodes[4] =
+static struct irq_handler_node serial_irq_handler_nodes[4] =
 {
    {
       .node = make_list_node(serial_irq_handler_nodes[0].node),

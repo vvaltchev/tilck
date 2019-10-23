@@ -4,12 +4,11 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/list.h>
 
-typedef struct {
+struct irq_handler_node {
 
    struct list_node node;
    irq_handler_t handler;
-
-} irq_handler_node;
+};
 
 
 void set_fault_handler(int fault, void *ptr);

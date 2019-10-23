@@ -284,7 +284,7 @@ int kb_get_fn_key_pressed(u32 key)
    return fn_table[(u8) key];
 }
 
-static irq_handler_node kb_irq_handler_node = {
+static struct irq_handler_node kb_irq_handler_node = {
    .node = make_list_node(kb_irq_handler_node.node),
    .handler = keyboard_irq_handler,
 };

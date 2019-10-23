@@ -41,14 +41,14 @@ u32 spur_irq_count;
 void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags);
 
 /* This installs a custom IRQ handler for the given IRQ */
-void irq_install_handler(u8 irq, irq_handler_node *n)
+void irq_install_handler(u8 irq, struct irq_handler_node *n)
 {
    list_add_tail(&irq_handlers_lists[irq], &n->node);
    irq_clear_mask(irq);
 }
 
 /* This clears the handler for a given IRQ */
-void irq_uninstall_handler(u8 irq, irq_handler_node *n)
+void irq_uninstall_handler(u8 irq, struct irq_handler_node *n)
 {
    list_remove(&n->node);
 }
@@ -235,7 +235,7 @@ void handle_irq(regs_t *r)
    enable_interrupts_forced();
 
    {
-      irq_handler_node *pos;
+      struct irq_handler_node *pos;
 
       list_for_each_ro(pos, &irq_handlers_lists[irq], node) {
 

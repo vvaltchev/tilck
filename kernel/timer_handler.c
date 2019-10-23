@@ -260,7 +260,7 @@ enum irq_action timer_irq_handler(regs_t *context)
    return IRQ_FULLY_HANDLED;
 }
 
-static irq_handler_node timer_irq_handler_node = {
+static struct irq_handler_node timer_irq_handler_node = {
    .node = make_list_node(timer_irq_handler_node.node),
    .handler = timer_irq_handler,
 };
