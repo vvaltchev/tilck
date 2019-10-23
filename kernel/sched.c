@@ -34,17 +34,16 @@ int get_curr_task_tid(void)
    return c ? c->tid : 0;
 }
 
-typedef struct {
+struct create_pid_visit_ctx {
 
    int lowest_available;
    int lowest_after_current_max;
-
-} create_pid_visit_ctx;
+};
 
 static int create_new_pid_visit_cb(void *obj, void *arg)
 {
    struct task *ti = obj;
-   create_pid_visit_ctx *ctx = arg;
+   struct create_pid_visit_ctx *ctx = arg;
 
    if (!is_main_thread(ti))
       return 0; /* skip threads */
@@ -77,7 +76,7 @@ static int create_new_pid_visit_cb(void *obj, void *arg)
 int create_new_pid(void)
 {
    ASSERT(!is_preemption_enabled());
-   create_pid_visit_ctx ctx = { 0, current_max_pid + 1 };
+   struct create_pid_visit_ctx ctx = { 0, current_max_pid + 1 };
    int r;
 
    iterate_over_tasks(&create_new_pid_visit_cb, &ctx);
