@@ -14,7 +14,7 @@ struct mountpoint {
 
 #define RESOLVE_STACK_SIZE       4
 
-typedef struct {
+struct vfs_resolve_int_ctx {
 
    int ss;                                       /* stack size */
    bool exlock;                                  /* true -> use exlock,
@@ -23,5 +23,4 @@ typedef struct {
    const char *orig_paths[RESOLVE_STACK_SIZE];   /* original paths stack */
    struct vfs_path paths[RESOLVE_STACK_SIZE];    /* vfs paths stack */
    char sym_paths[RESOLVE_STACK_SIZE][MAX_PATH]; /* symlinks paths stack */
-
-} vfs_resolve_int_ctx;
+};

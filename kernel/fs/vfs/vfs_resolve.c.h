@@ -13,20 +13,20 @@ static inline void vfs_smart_fs_unlock(struct fs *fs, bool exlock)
 }
 
 static inline void
-vfs_resolve_stack_pop(vfs_resolve_int_ctx *ctx)
+vfs_resolve_stack_pop(struct vfs_resolve_int_ctx *ctx)
 {
    ASSERT(ctx->ss > 0);
    ctx->ss--;
 }
 
 static inline struct vfs_path *
-vfs_resolve_stack_top(vfs_resolve_int_ctx *ctx)
+vfs_resolve_stack_top(struct vfs_resolve_int_ctx *ctx)
 {
    return &ctx->paths[ctx->ss - 1];
 }
 
 static int
-vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
+vfs_resolve_stack_push(struct vfs_resolve_int_ctx *ctx,
                        const char *path,
                        struct vfs_path *p)
 {
@@ -46,7 +46,7 @@ vfs_resolve_stack_push(vfs_resolve_int_ctx *ctx,
 }
 
 static void
-vfs_resolve_stack_replace_top(vfs_resolve_int_ctx *ctx,
+vfs_resolve_stack_replace_top(struct vfs_resolve_int_ctx *ctx,
                               const char *path,
                               struct vfs_path *p)
 {
@@ -99,10 +99,10 @@ static void get_locked_retained_root(struct vfs_path *rp, bool exlock)
 }
 
 /* See the code below */
-static int __vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl);
+static int __vfs_resolve(struct vfs_resolve_int_ctx *ctx, bool res_last_sl);
 
 static int
-vfs_resolve_symlink(vfs_resolve_int_ctx *ctx, struct vfs_path *np)
+vfs_resolve_symlink(struct vfs_resolve_int_ctx *ctx, struct vfs_path *np)
 {
    int rc;
    const char *lc = np->last_comp;
@@ -176,7 +176,7 @@ vfs_is_path_dotdot(const char *path)
 
 /* Returns true if the function completely handled the current component */
 static bool
-vfs_handle_cross_fs_dotdot(vfs_resolve_int_ctx *ctx,
+vfs_handle_cross_fs_dotdot(struct vfs_resolve_int_ctx *ctx,
                            const char *path,
                            struct vfs_path *np)
 {
@@ -244,7 +244,7 @@ vfs_handle_cross_fs_dotdot(vfs_resolve_int_ctx *ctx,
 }
 
 static int
-vfs_resolve_get_entry(vfs_resolve_int_ctx *ctx,
+vfs_resolve_get_entry(struct vfs_resolve_int_ctx *ctx,
                       const char *path,
                       struct vfs_path *np,
                       bool res_symlinks)
@@ -304,7 +304,7 @@ vfs_resolve_have_to_stop(const char *path, struct vfs_path *rp, int *rc)
 }
 
 static int
-__vfs_resolve(vfs_resolve_int_ctx *ctx, bool res_last_sl)
+__vfs_resolve(struct vfs_resolve_int_ctx *ctx, bool res_last_sl)
 {
    int rc = 0;
    const char *path = ctx->orig_paths[ctx->ss - 1];
@@ -378,7 +378,7 @@ vfs_resolve(const char *path,
    int rc;
    bzero(rp, sizeof(*rp));
 
-   vfs_resolve_int_ctx ctx = {
+   struct vfs_resolve_int_ctx ctx = {
       .ss = 0,
       .exlock = exlock,
    };
