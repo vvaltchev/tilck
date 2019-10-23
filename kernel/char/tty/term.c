@@ -47,7 +47,7 @@ struct term {
 
    bool *term_tabs_buf;
 
-   safe_ringbuf safe_ringbuf;
+   struct safe_ringbuf safe_ringbuf;
    term_action actions_buf[32];
 
    term_filter filter;

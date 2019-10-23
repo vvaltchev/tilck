@@ -13,7 +13,7 @@ static inline bool rb_stat_is_empty(struct generic_safe_ringbuf_stat *s)
 }
 
 void
-safe_ringbuf_init(safe_ringbuf *rb, u16 max_elems, u16 elem_size, void *buf)
+safe_ringbuf_init(struct safe_ringbuf *rb, u16 max_elems, u16 elem_size, void *buf)
 {
    ASSERT(max_elems <= 32768);
 
@@ -23,12 +23,12 @@ safe_ringbuf_init(safe_ringbuf *rb, u16 max_elems, u16 elem_size, void *buf)
    rb->s.raw = 0;
 }
 
-void safe_ringbuf_destory(safe_ringbuf *rb)
+void safe_ringbuf_destory(struct safe_ringbuf *rb)
 {
-   bzero(rb, sizeof(safe_ringbuf));
+   bzero(rb, sizeof(struct safe_ringbuf));
 }
 
-bool safe_ringbuf_write_elem(safe_ringbuf *rb, void *elem_ptr)
+bool safe_ringbuf_write_elem(struct safe_ringbuf *rb, void *elem_ptr)
 {
    struct generic_safe_ringbuf_stat cs, ns;
 
@@ -57,7 +57,7 @@ bool safe_ringbuf_write_elem(safe_ringbuf *rb, void *elem_ptr)
 
 
 bool
-safe_ringbuf_write_elem_ex(safe_ringbuf *rb, void *elem_ptr, bool *was_empty)
+safe_ringbuf_write_elem_ex(struct safe_ringbuf *rb, void *elem_ptr, bool *was_empty)
 {
    struct generic_safe_ringbuf_stat cs, ns;
 
@@ -86,7 +86,7 @@ safe_ringbuf_write_elem_ex(safe_ringbuf *rb, void *elem_ptr, bool *was_empty)
 }
 
 
-bool safe_ringbuf_read_elem(safe_ringbuf *rb, void *elem_ptr /* out */)
+bool safe_ringbuf_read_elem(struct safe_ringbuf *rb, void *elem_ptr /* out */)
 {
    struct generic_safe_ringbuf_stat cs, ns;
 
@@ -112,7 +112,7 @@ bool safe_ringbuf_read_elem(safe_ringbuf *rb, void *elem_ptr /* out */)
    return true;
 }
 
-bool safe_ringbuf_write_elem1(safe_ringbuf *rb, u8 val)
+bool safe_ringbuf_write_elem1(struct safe_ringbuf *rb, u8 val)
 {
    struct generic_safe_ringbuf_stat cs, ns;
    ASSERT(rb->elem_size == 1);
@@ -140,7 +140,7 @@ bool safe_ringbuf_write_elem1(safe_ringbuf *rb, u8 val)
    return true;
 }
 
-bool safe_ringbuf_read_elem1(safe_ringbuf *rb, u8 *elem_ptr)
+bool safe_ringbuf_read_elem1(struct safe_ringbuf *rb, u8 *elem_ptr)
 {
    struct generic_safe_ringbuf_stat cs, ns;
 
