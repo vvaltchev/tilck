@@ -80,12 +80,11 @@ static void dump_entry_attrs(struct fat_entry *entry)
    printk("archive:   %u\n", entry->archive);
 }
 
-typedef struct {
+struct debug_fat_walk_ctx {
 
    struct fat_walk_dir_ctx walk_ctx;
    int level;
-
-} debug_fat_walk_ctx;
+};
 
 static int dump_dir_entry(struct fat_hdr *hdr,
                           enum fat_type ft,
@@ -95,7 +94,7 @@ static int dump_dir_entry(struct fat_hdr *hdr,
 {
    char shortname[16];
    fat_get_short_name(entry, shortname);
-   debug_fat_walk_ctx *ctx = arg;
+   struct debug_fat_walk_ctx *ctx = arg;
 
    char indentbuf[4*16] = {0};
    for (int i = 0; i < 4 * ctx->level; i++)
@@ -152,7 +151,7 @@ void fat_dump_info(void *fatpart_begin)
    u32 root_dir_cluster;
    struct fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
 
-   debug_fat_walk_ctx ctx;
+   struct debug_fat_walk_ctx ctx;
    ctx.level = 0;
 
    fat_walk_directory(&ctx.walk_ctx,
