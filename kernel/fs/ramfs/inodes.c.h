@@ -49,7 +49,7 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, struct ramfs_inode *parent)
 
    if (ramfs_dir_add_entry(i, "..", parent) < 0) {
 
-      ramfs_entry *e = i->entries_tree_root;
+      struct ramfs_entry *e = i->entries_tree_root;
       ramfs_dir_remove_entry(i, e);
 
       kfree2(i, sizeof(struct ramfs_inode));

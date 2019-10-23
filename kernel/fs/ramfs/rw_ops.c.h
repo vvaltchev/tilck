@@ -13,7 +13,7 @@ static int ramfs_fcntl(fs_handle h, int cmd, int arg)
 static offt ramfs_dir_seek(ramfs_handle *rh, offt target_off)
 {
    struct ramfs_inode *i = rh->inode;
-   ramfs_entry *dpos;
+   struct ramfs_entry *dpos;
    offt off = 0;
 
    list_for_each_ro(dpos, &i->entries_list, lnode) {

@@ -129,7 +129,7 @@ ramfs_get_entry(struct fs *fs,
 {
    ramfs_data *d = fs->device_data;
    struct ramfs_inode *idir = dir_inode;
-   ramfs_entry *re;
+   struct ramfs_entry *re;
 
    if (!dir_inode) {
 

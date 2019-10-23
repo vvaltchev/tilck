@@ -43,17 +43,16 @@ struct ramfs_block {
    - sizeof(u8)                                 \
 )
 
-typedef struct {
+struct ramfs_entry {
 
    struct bintree_node node;
    struct list_node lnode;
    struct ramfs_inode *inode;
    u8 name_len;                     /* NOTE: includes the final \0 */
    char name[RAMFS_ENTRY_MAX_LEN];
+};
 
-} ramfs_entry;
-
-STATIC_ASSERT(sizeof(ramfs_entry) == RAMFS_ENTRY_SIZE);
+STATIC_ASSERT(sizeof(struct ramfs_entry) == RAMFS_ENTRY_SIZE);
 
 struct ramfs_inode {
 
@@ -83,7 +82,7 @@ struct ramfs_inode {
       /* valid when type == VFS_DIR */
       struct {
          offt num_entries;
-         ramfs_entry *entries_tree_root;
+         struct ramfs_entry *entries_tree_root;
          struct list entries_list;
          struct list handles_list;
       };
@@ -110,7 +109,7 @@ typedef struct {
    /* valid only if inode->type == VFS_DIR */
    struct {
       struct list_node node;        /* node in inode->handles_list */
-      ramfs_entry *dpos;            /* current entry position */
+      struct ramfs_entry *dpos;            /* current entry position */
    };
 
 } ramfs_handle;
@@ -124,4 +123,4 @@ typedef struct {
 
 } ramfs_data;
 
-CREATE_FS_PATH_STRUCT(ramfs_path, struct ramfs_inode *, ramfs_entry *);
+CREATE_FS_PATH_STRUCT(ramfs_path, struct ramfs_inode *, struct ramfs_entry *);

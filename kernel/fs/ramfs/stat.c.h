@@ -29,7 +29,7 @@ ramfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 
       case VFS_DIR:
          statbuf->st_size = (typeof(statbuf->st_size))
-            (inode->num_entries * (offt) sizeof(ramfs_entry));
+            (inode->num_entries * (offt) sizeof(struct ramfs_entry));
          break;
 
       case VFS_SYMLINK:

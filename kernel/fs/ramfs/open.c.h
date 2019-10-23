@@ -39,7 +39,7 @@ ramfs_open_int(struct fs *fs, struct ramfs_inode *inode, fs_handle *out, int fl)
        */
       list_node_init(&h->node);
       list_add_tail(&inode->handles_list, &h->node);
-      h->dpos = list_first_obj(&inode->entries_list, ramfs_entry, lnode);
+      h->dpos = list_first_obj(&inode->entries_list, struct ramfs_entry, lnode);
    }
 
    if (fl & O_TRUNC) {
