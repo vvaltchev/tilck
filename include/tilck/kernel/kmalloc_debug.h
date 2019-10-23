@@ -14,7 +14,7 @@ struct debug_kmalloc_heap_info {
    int region;
 };
 
-typedef struct {
+struct kmalloc_small_heaps_stats {
 
    int tot_count;
    int peak_count;
@@ -22,8 +22,7 @@ typedef struct {
    int peak_not_full_count;
    int empty_count;
    int lifetime_created_heaps_count;
-
-} kmalloc_small_heaps_stats;
+};
 
 typedef struct {
 
@@ -33,7 +32,7 @@ typedef struct {
 
 typedef struct {
 
-   kmalloc_small_heaps_stats small_heaps;
+   struct kmalloc_small_heaps_stats small_heaps;
    size_t chunk_sizes_count;
 
 } debug_kmalloc_stats;

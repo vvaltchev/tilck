@@ -33,7 +33,7 @@ typedef struct {
 
 } small_heap_node;
 
-static kmalloc_small_heaps_stats shs;
+static struct kmalloc_small_heaps_stats shs;
 static struct list small_heaps_list;
 static struct list avail_small_heaps_list;
 
