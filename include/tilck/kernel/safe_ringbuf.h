@@ -4,7 +4,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
 
-typedef struct {
+struct generic_safe_ringbuf_stat {
 
    union {
 
@@ -18,13 +18,13 @@ typedef struct {
       ATOMIC(u32) raw;
    };
 
-} generic_safe_ringbuf_stat;
+};
 
 typedef struct {
 
    u16 max_elems;
    u16 elem_size;
-   generic_safe_ringbuf_stat s;
+   struct generic_safe_ringbuf_stat s;
    u8 *buf;
 
 } safe_ringbuf;
