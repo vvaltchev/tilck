@@ -113,13 +113,11 @@ struct ramfs_handle {
    };
 };
 
-typedef struct {
+struct ramfs_data {
 
    rwlock_wp rwlock;
-
    tilck_inode_t next_inode_num;
    struct ramfs_inode *root;
-
-} ramfs_data;
+};
 
 CREATE_FS_PATH_STRUCT(ramfs_path, struct ramfs_inode *, struct ramfs_entry *);

@@ -19,7 +19,7 @@
 static int ramfs_unlink(struct vfs_path *p)
 {
    struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
-   ramfs_data *d = p->fs->device_data;
+   struct ramfs_data *d = p->fs->device_data;
    struct ramfs_inode *i = rp->inode;
    struct ramfs_inode *idir = rp->dir_inode;
 
@@ -105,7 +105,7 @@ static void ramfs_close(fs_handle h)
  */
 static void ramfs_err_case_destroy(struct fs *fs)
 {
-   ramfs_data *d = fs->device_data;
+   struct ramfs_data *d = fs->device_data;
 
    if (d) {
 
@@ -114,7 +114,7 @@ static void ramfs_err_case_destroy(struct fs *fs)
       }
 
       rwlock_wp_destroy(&d->rwlock);
-      kfree2(d, sizeof(ramfs_data));
+      kfree2(d, sizeof(struct ramfs_data));
    }
 
    kfree2(fs, sizeof(struct fs));
@@ -127,7 +127,7 @@ ramfs_get_entry(struct fs *fs,
                 ssize_t name_len,
                 struct fs_path *fs_path)
 {
-   ramfs_data *d = fs->device_data;
+   struct ramfs_data *d = fs->device_data;
    struct ramfs_inode *idir = dir_inode;
    struct ramfs_entry *re;
 
@@ -160,7 +160,7 @@ static vfs_inode_ptr_t ramfs_getinode(fs_handle h)
 
 static int ramfs_symlink(const char *target, struct vfs_path *lp)
 {
-   ramfs_data *d = lp->fs->device_data;
+   struct ramfs_data *d = lp->fs->device_data;
    struct ramfs_inode *n;
 
    n = ramfs_create_inode_symlink(d, lp->fs_path.dir_inode, target);
@@ -235,7 +235,7 @@ ramfs_rename(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
    struct ramfs_path *newp = (void *)&vnewp->fs_path;
    int rc;
 
-   DEBUG_ONLY_UNSAFE(ramfs_data *d = fs->device_data);
+   DEBUG_ONLY_UNSAFE(struct ramfs_data *d = fs->device_data);
    ASSERT(rwlock_wp_holding_exlock(&d->rwlock));
 
    if (newp->inode != NULL) {
@@ -327,12 +327,12 @@ static const struct fs_ops static_fsops_ramfs =
 struct fs *ramfs_create(void)
 {
    struct fs *fs;
-   ramfs_data *d;
+   struct ramfs_data *d;
 
    if (!(fs = kzmalloc(sizeof(struct fs))))
       return NULL;
 
-   if (!(d = kzmalloc(sizeof(ramfs_data)))) {
+   if (!(d = kzmalloc(sizeof(struct ramfs_data)))) {
       ramfs_err_case_destroy(fs);
       return NULL;
    }

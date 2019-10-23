@@ -2,7 +2,7 @@
 
 #define DEBUG_RAMFS_CREATE_INODE_PRINTK      0
 
-static struct ramfs_inode *ramfs_new_inode(ramfs_data *d)
+static struct ramfs_inode *ramfs_new_inode(struct ramfs_data *d)
 {
    struct ramfs_inode *i = kzmalloc(sizeof(struct ramfs_inode));
 
@@ -23,7 +23,7 @@ static struct ramfs_inode *ramfs_new_inode(ramfs_data *d)
 }
 
 static struct ramfs_inode *
-ramfs_create_inode_dir(ramfs_data *d, mode_t mode, struct ramfs_inode *parent)
+ramfs_create_inode_dir(struct ramfs_data *d, mode_t mode, struct ramfs_inode *parent)
 {
    struct ramfs_inode *i = ramfs_new_inode(d);
 
@@ -62,7 +62,7 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, struct ramfs_inode *parent)
 }
 
 static struct ramfs_inode *
-ramfs_create_inode_file(ramfs_data *d, mode_t mode, struct ramfs_inode *parent)
+ramfs_create_inode_file(struct ramfs_data *d, mode_t mode, struct ramfs_inode *parent)
 {
    struct ramfs_inode *i = ramfs_new_inode(d);
 
@@ -78,7 +78,7 @@ ramfs_create_inode_file(ramfs_data *d, mode_t mode, struct ramfs_inode *parent)
    return i;
 }
 
-static int ramfs_destroy_inode(ramfs_data *d, struct ramfs_inode *i)
+static int ramfs_destroy_inode(struct ramfs_data *d, struct ramfs_inode *i)
 {
    /*
     * We can destroy only inodes referring to NO blocks (= data) in case of
@@ -116,7 +116,7 @@ static int ramfs_destroy_inode(ramfs_data *d, struct ramfs_inode *i)
 }
 
 static struct ramfs_inode *
-ramfs_create_inode_symlink(ramfs_data *d,
+ramfs_create_inode_symlink(struct ramfs_data *d,
                            struct ramfs_inode *parent,
                            const char *target)
 {

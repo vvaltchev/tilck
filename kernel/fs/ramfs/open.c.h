@@ -85,7 +85,7 @@ static int
 ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
 {
    struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
-   ramfs_data *d = p->fs->device_data;
+   struct ramfs_data *d = p->fs->device_data;
    struct ramfs_inode *i = rp->inode;
    struct ramfs_inode *idir = rp->dir_inode;
    int rc;
