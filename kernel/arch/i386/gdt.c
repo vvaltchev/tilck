@@ -325,7 +325,7 @@ void init_segmentation(void)
    load_tss(5 /* TSS index in GDT */, 3 /* priv. level */);
 }
 
-static void DEBUG_set_thread_area(user_desc *d)
+static void DEBUG_set_thread_area(struct user_desc *d)
 {
    printk(NO_PREFIX "set_thread_area(e: %i,\n"
                     "                base: %p,\n"
@@ -378,10 +378,10 @@ int sys_set_thread_area(void *arg)
 {
    int rc = 0;
    gdt_entry e = {0};
-   user_desc dc;
-   user_desc *ud = arg;
+   struct user_desc dc;
+   struct user_desc *ud = arg;
 
-   rc = copy_from_user(&dc, ud, sizeof(user_desc));
+   rc = copy_from_user(&dc, ud, sizeof(struct user_desc));
 
    if (rc != 0)
       return -EFAULT;
@@ -475,9 +475,9 @@ out:
 
       /*
        * Positive case: we get here with rc = SUCCESS, now flush back the
-       * the user_desc struct (we might have changed its entry_number).
+       * the struct user_desc (we might have changed its entry_number).
        */
-      rc = copy_to_user(ud, &dc, sizeof(user_desc));
+      rc = copy_to_user(ud, &dc, sizeof(struct user_desc));
 
       if (rc < 0)
          rc = -EFAULT;

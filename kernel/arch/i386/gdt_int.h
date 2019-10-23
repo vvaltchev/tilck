@@ -111,7 +111,7 @@ typedef struct
 #define INVALID_ENTRY_NUM ((u32) -1)
 #define USER_DESC_FLAGS_EMPTY ((1 << 3) | (1 << 5))
 
-typedef struct {
+struct user_desc {
 
    u32 entry_number;
    uptr base_addr;
@@ -131,8 +131,7 @@ typedef struct {
 
       u32 flags;
    };
-
-} user_desc;
+};
 
 void load_ldt(u32 entry_index_in_gdt, u32 dpl);
 void gdt_set_entry(gdt_entry *e, uptr base, uptr limit, u8 access, u8 flags);
