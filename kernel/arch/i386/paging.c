@@ -604,7 +604,7 @@ pdir_deep_clone(pdir_t *pdir)
    STATIC_ASSERT(sizeof(pdir_t) == PAGE_SIZE);
    STATIC_ASSERT(sizeof(page_table_t) == PAGE_SIZE);
 
-   struct kmalloc_accelerator acc;
+   struct kmalloc_acc acc;
    kmalloc_create_accelerator(&acc, PAGE_SIZE, 4);
 
    pdir_t *new_pdir = kmalloc_accelerator_get_elem(&acc);

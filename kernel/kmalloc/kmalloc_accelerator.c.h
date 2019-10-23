@@ -14,7 +14,7 @@
 #endif
 
 void
-kmalloc_create_accelerator(struct kmalloc_accelerator *a, u32 elem_size, u32 elem_c)
+kmalloc_create_accelerator(struct kmalloc_acc *a, u32 elem_size, u32 elem_c)
 {
    /* The both elem_size and elem_count must be a power of 2 */
    ASSERT(roundup_next_power_of_2(elem_size) == elem_size);
@@ -36,7 +36,7 @@ kmalloc_create_accelerator(struct kmalloc_accelerator *a, u32 elem_size, u32 ele
       ASSERT(elem_size * elem_c <= (SMALL_HEAP_SIZE - SMALL_HEAP_MD_SIZE));
    }
 
-   *a = (struct kmalloc_accelerator) {
+   *a = (struct kmalloc_acc) {
       .elem_size = elem_size,
       .elem_count = elem_c,
       .curr_elem = elem_c,
@@ -45,7 +45,7 @@ kmalloc_create_accelerator(struct kmalloc_accelerator *a, u32 elem_size, u32 ele
 }
 
 void *
-kmalloc_accelerator_get_elem(struct kmalloc_accelerator *a)
+kmalloc_accelerator_get_elem(struct kmalloc_acc *a)
 {
    size_t actual_size;
 
@@ -68,7 +68,7 @@ kmalloc_accelerator_get_elem(struct kmalloc_accelerator *a)
 }
 
 void
-kmalloc_destroy_accelerator(struct kmalloc_accelerator *a)
+kmalloc_destroy_accelerator(struct kmalloc_acc *a)
 {
    size_t actual_size;
 
