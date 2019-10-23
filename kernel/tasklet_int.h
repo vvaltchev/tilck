@@ -11,7 +11,7 @@ struct tasklet {
    tasklet_context ctx;
 };
 
-struct tasklet_thread_info {
+struct tasklet_thread {
 
    struct tasklet *tasklets;
    safe_ringbuf safe_ringbuf;
@@ -20,6 +20,6 @@ struct tasklet_thread_info {
    u32 limit;
 };
 
-extern struct tasklet_thread_info *tasklet_threads[MAX_TASKLET_THREADS];
+extern struct tasklet_thread *tasklet_threads[MAX_TASKLET_THREADS];
 
 bool run_one_tasklet(int tn);
