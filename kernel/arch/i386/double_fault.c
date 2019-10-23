@@ -36,7 +36,7 @@ static inline void double_fault_tss_update_cr3(void)
 
 void register_double_fault_tss_entry(void)
 {
-   gdt_entry e;
+   struct gdt_entry e;
    memcpy(&tss_array[TSS_DOUBLE_FAULT], &df_tss_data, sizeof(struct tss_entry));
    double_fault_tss_update_cr3();
 
